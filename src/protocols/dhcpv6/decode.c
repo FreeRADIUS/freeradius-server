@@ -58,7 +58,7 @@ static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				       fr_dict_attr_t const *parent,
 				       uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
-	if ((parent->type == FR_TYPE_STRING) && da_is_dns_label(parent)) {
+	if ((parent->type == FR_TYPE_STRING) && fr_dhcpv6_flag_any_dns_label(parent)) {
 		return fr_pair_dns_labels_from_network(ctx, out, parent, data, data, data_len, NULL, false);
 	}
 
@@ -176,7 +176,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		break;
 
 	case FR_TYPE_STRUCT:
-		slen = fr_struct_from_network(ctx, out, parent, data, data_len, true,
+		slen = fr_struct_from_network(ctx, out, parent, data, data_len,
 					      decode_ctx, decode_value_trampoline, decode_tlv_trampoline);
 		if (slen < 0) goto raw;
 
@@ -206,11 +206,13 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			vp->vp_tainted = true;
 
 		} else {
+			if (!ref) ref = fr_dict_root(dict_dhcpv6);
+
 			/*
 			 *	Child VPs go into the child group, not in the main parent list.  BUT, we start
-			 *	decoding attributes from the dictionary root, not from this parent.
+			 *	decoding attributes from the ref, and not from the group parent.
 			 */
-			slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, fr_dict_root(dict_dhcpv6), data, data_len, decode_ctx, decode_option, NULL, false);
+			slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, ref, data, data_len, decode_ctx, decode_option, NULL, false);
 			if (slen < 0) goto raw_free;
 		}
 
@@ -295,7 +297,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (!da) {
 		fr_dict_attr_t *n;
 
-		n = fr_dict_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, parent, pen);
+		n = fr_dict_attr_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, parent, pen);
 		if (!n) return PAIR_DECODE_OOM;
 		da = n;
 	}
@@ -343,7 +345,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	da = fr_dict_attr_child_by_num(parent, option);
 	if (!da) {
-		da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, option);
+		da = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, parent, option);
 		if (!da) return PAIR_DECODE_FATAL_ERROR;
 	}
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
@@ -369,7 +371,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		fr_pair_append(out, vp);
 
-	} else if ((da->type == FR_TYPE_STRING) && da_is_dns_label(da)) {
+	} else if ((da->type == FR_TYPE_STRING) && fr_dhcpv6_flag_any_dns_label(da)) {
 		slen = fr_pair_dns_labels_from_network(ctx, out, da, data + 4, data + 4, len, NULL, true);
 		if (slen < 0) return slen;
 
@@ -472,7 +474,7 @@ ssize_t	fr_dhcpv6_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	return data_len;
 }
 
-static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
+static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
 {
 	fr_dhcpv6_decode_ctx_t	*test_ctx;
 

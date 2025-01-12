@@ -46,7 +46,7 @@ jobs:
       fail-fast: false
       matrix:
         env:
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: macos,    OS: macos-12,     NAME: macos-clang         }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: macos,    OS: macos-14,     NAME: macos-clang         }
 
     env: ${{ matrix.env }}
 
@@ -98,7 +98,6 @@ jobs:
           mariadb \
           make \
           mruby \
-          openssl@1.1 \
           openssl \
           python@3.10 \
           talloc

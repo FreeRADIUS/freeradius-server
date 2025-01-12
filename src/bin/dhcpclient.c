@@ -464,7 +464,7 @@ static int send_with_pcap(fr_packet_t **reply, fr_packet_t *request, fr_pair_lis
 
 static void dhcp_packet_debug(fr_packet_t *packet, fr_pair_list_t *list, bool received)
 {
-	char		buffer[2048];
+	char		buffer[2048] = "";
 
 	char		src_ipaddr[INET6_ADDRSTRLEN];
 	char		dst_ipaddr[INET6_ADDRSTRLEN];
@@ -511,10 +511,13 @@ static void dhcp_packet_debug(fr_packet_t *packet, fr_pair_list_t *list, bool re
 	for (vp = fr_pair_list_head(list);
 	     vp;
 	     vp = fr_pair_list_next(list, vp)) {
+		fr_sbuff_t out;
+
 		PAIR_VERIFY(vp);
 
-		(void) fr_pair_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), NULL, vp);
-		printf("\t%s\n", buffer);
+		out = FR_SBUFF_OUT(buffer, sizeof(buffer));
+		(void) fr_pair_print(&out, NULL, vp);
+		printf("\t%s\n", fr_sbuff_start(&out));
 	}
 }
 

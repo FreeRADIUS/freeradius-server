@@ -23,9 +23,24 @@ key:: The default key attribute to use for matches.
 
 The content of this attribute is used to match the `name` of the entry.
 
+Note that unlike v4, the key does not have to be a string, but could instead
+be an IP address or netmask!  For more information, see
+
+xref:raddb:mods-config/files/users.adoc[users]
+
 
 
 filename:: The old `users` style file is now located here.
+
+
+
+match_attr:: List and attribute to populate with the `name` of the matched entry.
+
+Note: the attriubte type should be capable of holding data of the type
+used as key values.
+Particularly useful if matching IP addresses to subnets, since the populated
+value will be the subnet.  In that case it is best to use 0.0.0.0/0 in place
+of DEFAULT for any catch-all entries.
 
 
 
@@ -39,6 +54,7 @@ files {
 	moddir = ${modconfdir}/${.:instance}
 #	key = "%{&Stripped-User-Name || &User-Name}"
 	filename = ${moddir}/authorize
+#	match_attr = &control.User-Category
 }
 files files_accounting {
 #	key = "%{&Stripped-User-Name || &User-Name}"

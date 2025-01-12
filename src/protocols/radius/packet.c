@@ -116,7 +116,7 @@ ssize_t fr_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
  *	- True on success.
  *	- False on failure.
  */
-bool fr_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_message_authenticator, decode_fail_t *reason)
+bool fr_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_message_authenticator, fr_radius_decode_fail_t *reason)
 {
 	char host_ipaddr[INET6_ADDRSTRLEN];
 
@@ -486,12 +486,31 @@ void fr_radius_packet_header_log(fr_log_t const *log, fr_packet_t *packet, bool 
 }
 
 /*
- *	Debug the packet header and all attributes
+ *	Debug the packet header and all attributes.  This function is only called by the client code.
  */
 void fr_radius_packet_log(fr_log_t const *log, fr_packet_t *packet, fr_pair_list_t *list, bool received)
 {
 	fr_radius_packet_header_log(log, packet, received);
-	if (fr_debug_lvl >= L_DBG_LVL_1) fr_pair_list_log(log, 4, list);
+
+	if (!fr_debug_lvl) return;
+
+	/*
+	 *	If we're auto-adding Message Authenticator, then print
+	 *	out that we're auto-adding it.
+	 */
+	if (!received) switch (packet->code) {
+	case FR_RADIUS_CODE_ACCESS_REQUEST:
+	case FR_RADIUS_CODE_STATUS_SERVER:
+		if (!fr_pair_find_by_da(list, NULL, attr_message_authenticator)) {
+			fprintf(fr_log_fp, "\tMessage-Authenticator = 0x\n");
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	fr_pair_list_log(log, 4, list);
 #ifndef NDEBUG
 	if (fr_debug_lvl >= L_DBG_LVL_4) fr_packet_log_hex(log, packet);
 #endif

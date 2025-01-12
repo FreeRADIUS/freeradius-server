@@ -1,0 +1,11 @@
+proto dhcpv4
+proto-dictionary dhcpv4
+fuzzer-out dhcpv4
+
+# Checking that Relay-Agent-Information ends up at the end of the options,
+# even when there are higher numbered options in the packet.
+encode-proto Opcode = ::Server-Message, Client-Hardware-Address = 00:11:22:33:44:55, Your-IP-Address = '10.10.10.10', Server-Identifier = '10.11.12.13', Message-Type = ::Ack, Relay-Agent-Information = { Circuit-Id = 0x1234567890, Remote-Id = 0x567890 }, User-Auth = 'https://www.example.com', V-I-Vendor-Specific = { Cisco = { Indirect-Image-Filename = "aa.txt", Indirect-Image-Filename = "bb.txt" } }
+match 02 01 06 00 00 00 00 00 00 00 00 00 00 00 00 00 0a 0a 0a 0a 00 00 00 00 00 00 00 00 00 11 22 33 44 55 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 63 82 53 63 35 01 05 36 04 0a 0b 0c 0d 62 17 68 74 74 70 73 3a 2f 2f 77 77 77 2e 65 78 61 6d 70 6c 65 2e 63 6f 6d 7d 15 00 00 00 09 10 05 06 61 61 2e 74 78 74 05 06 62 62 2e 74 78 74 52 0c 01 05 12 34 56 78 90 02 03 56 78 90 ff
+
+count
+match 5

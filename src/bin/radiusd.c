@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/radmin.h>
+#include <freeradius-devel/server/snmp.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/util/debug.h>
@@ -638,6 +639,27 @@ int main(int argc, char *argv[])
 	INFO("%s", fr_debug_state_to_msg(fr_debug_state));
 
 	/*
+	 *	Track configuration versions.  This lets us know if the configuration changed.
+	 */
+	if (fr_debug_lvl) {
+		uint8_t digest[16];
+
+		cf_md5_final(digest);
+
+		digest[6] &= 0x0f; /* ver is 0b0100 at bits 48:51 */
+		digest[6] |= 0x40;
+		digest[8] &= ~0xc0; /* var is 0b10 at bits 64:65 */
+		digest[8] |= 0x80;
+
+		/*
+		 *	UUIDv4 format: 4-2-2-2-6
+		 */
+		INFO("Configuration version: %02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+		     digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7],
+		     digest[8], digest[9], digest[10], digest[11], digest[12], digest[13], digest[14], digest[15]);
+	}
+
+	/*
 	 *  Call this again now we've loaded the configuration. Yes I know...
 	 */
 	if (talloc_config_set(config) < 0) {
@@ -792,7 +814,7 @@ int main(int argc, char *argv[])
 	 */
 	if (unlang_global_init() < 0) EXIT_WITH_FAILURE;
 
-	if (server_init(config->root_cs) < 0) EXIT_WITH_FAILURE;
+	if (server_init(config->root_cs, config->raddb_dir, fr_dict_unconst(fr_dict_internal())) < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Everything seems to have loaded OK, exit gracefully.
@@ -910,10 +932,6 @@ int main(int argc, char *argv[])
 	if (fr_set_signal(SIGHUP, sig_hup) < 0) goto set_signal_error;
 	if (fr_set_signal(SIGTERM, sig_fatal) < 0) goto set_signal_error;
 
-#ifdef WITH_STATS
-	radius_stats_init(0);
-#endif
-
 	/*
 	 *  Write the PID after we've forked, so that we write the correct one.
 	 */
@@ -982,9 +1000,6 @@ int main(int argc, char *argv[])
 	 */
 	INFO("Ready to process requests");	/* we were actually ready a while ago, but oh well */
 	while ((status = main_loop_start()) == 0x80) {
-#ifdef WITH_STATS
-		radius_stats_init(1);
-#endif
 		main_config_hup(config);
 	}
 

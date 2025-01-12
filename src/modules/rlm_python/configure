@@ -3494,7 +3494,7 @@ int
 main (void)
 {
 
-			Py_SetProgramName("test")
+			Py_IsInitialized()
 
   ;
   return 0;

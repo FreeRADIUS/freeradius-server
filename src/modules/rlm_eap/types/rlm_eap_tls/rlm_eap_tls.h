@@ -49,6 +49,4 @@ typedef struct {
 							//!< not mandatory, and there are some situations
 							//!< where it's useful to allow client access without
 							//!< a certificate.
-
-	char const		*virtual_server;	//!< Virtual server used for validating certificates.
 } rlm_eap_tls_t;

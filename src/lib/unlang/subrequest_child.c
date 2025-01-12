@@ -241,10 +241,12 @@ int unlang_subrequest_child_push_resume(request_t *child, unlang_frame_state_sub
 /** Function to run in the context of the parent on resumption
  *
  */
-static unlang_action_t unlang_subrequest_calculate_result(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request,
+static unlang_action_t unlang_subrequest_calculate_result(rlm_rcode_t *p_result, UNUSED request_t *request,
 							  unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
+
+	if (*p_result == RLM_MODULE_NOT_SET) *p_result = RLM_MODULE_NOOP;
 
 	if (state->free_child) unlang_subrequest_detach_and_free(&state->child);
 
@@ -355,7 +357,7 @@ int unlang_subrequest_child_push(rlm_rcode_t *out, request_t *child,
 	state->free_child = free_child;
 
 	if (!fr_cond_assert_msg(stack_depth_current(child) == 0,
-				"Child stack depth must be 0 (not %u), when subrequest_child_push is called",
+				"Child stack depth must be 0 (not %d), when subrequest_child_push is called",
 				stack_depth_current(child))) return -1;
 
 	/*

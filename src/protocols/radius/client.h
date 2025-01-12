@@ -32,6 +32,7 @@ RCSIDH(radius_client_h, "$Id$")
 #include <freeradius-devel/bio/retry.h>
 
 typedef struct {
+	fr_event_list_t		*el;
 	fr_log_t		*log;
 
 	fr_radius_bio_verify_t	verify;
@@ -43,7 +44,7 @@ typedef struct {
 	fr_time_delta_t		connection_timeout;
 
 	bool			add_proxy_state;
-	uint32_t		proxy_state;
+	uint64_t		proxy_state;
 
 	bool			outgoing[FR_RADIUS_CODE_MAX];	//!< allowed outgoing packet types
 
@@ -54,6 +55,14 @@ typedef struct {
 	bool			connected;
 
 	fr_bio_fd_info_t const	*fd_info;
+
+	size_t			outstanding;		//!< total number of outstanding packets.
+
+	fr_time_t		mrs_time;		//!< Most recent sent time which had a reply.
+	fr_time_t		last_reply;		//!< When we last received a reply.
+	fr_time_t		first_sent;		//!< first time we sent a packet since going idle
+	fr_time_t		last_sent;		//!< last time we sent a packet.
+	fr_time_t		last_idle;		//!< last time we had nothing to do
 
 	fr_bio_retry_info_t const	*retry_info;
 } fr_radius_client_bio_info_t;
@@ -67,7 +76,5 @@ fr_radius_client_bio_info_t const *fr_radius_client_bio_info(fr_bio_packet_t *bi
 size_t		fr_radius_client_bio_outstanding(fr_bio_packet_t *bio) CC_HINT(nonnull);
 
 int		fr_radius_client_bio_force_id(fr_bio_packet_t *bio, int code, int id);
-
-void		fr_radius_client_bio_cb_set(fr_bio_packet_t *bio, fr_bio_packet_cb_funcs_t const *cb);
 
 void		fr_radius_client_bio_connect(fr_event_list_t *el, int fd, int flags, void *uctx);

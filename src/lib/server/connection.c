@@ -39,6 +39,9 @@ typedef struct connection_s connection_t;
 
 #ifdef HAVE_STDATOMIC_H
 #  include <stdatomic.h>
+#  ifndef ATOMIC_VAR_INIT
+#    define ATOMIC_VAR_INIT(_x) (_x)
+#  endif
 #else
 #  include <freeradius-devel/util/stdatomic.h>
 #endif
@@ -1312,13 +1315,17 @@ void connection_signal_halt(connection_t *conn)
 	 *	must have completed INIT which means it has
 	 *	an active handle which needs to be closed before
 	 *	the connection is halted.
+	 *
+	 *	The exception is when a connection fails to open
+	 *	so goes from INIT -> FAILED, means is_closed
+	 *	is true, as the connection has never opened.
 	 */
 	case CONNECTION_STATE_CONNECTED:
 	case CONNECTION_STATE_CONNECTING:
 	case CONNECTION_STATE_SHUTDOWN:
 	case CONNECTION_STATE_TIMEOUT:
 	case CONNECTION_STATE_FAILED:
-		connection_state_enter_closed(conn);
+		if (!conn->is_closed) connection_state_enter_closed(conn);
 		fr_assert(conn->is_closed);
 		connection_state_enter_halted(conn);
 		break;
@@ -1340,7 +1347,7 @@ static void _connection_error(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 {
 	connection_t *conn = talloc_get_type_abort(uctx, connection_t);
 
-	ERROR("Connection failed for fd (%u): %s", fd, fr_syserror(fd_errno));
+	ERROR("Connection failed for fd (%d): %s", fd, fr_syserror(fd_errno));
 	connection_state_enter_failed(conn);
 }
 
@@ -1411,7 +1418,7 @@ int connection_signal_on_fd(connection_t *conn, int fd)
 			       _connection_writable,
 			       _connection_error,
 			       conn) < 0) {
-		PERROR("Failed inserting fd (%u) into event loop %p",
+		PERROR("Failed inserting fd (%d) into event loop %p",
 		       fd, conn->pub.el);
 		connection_state_enter_failed(conn);
 		return -1;

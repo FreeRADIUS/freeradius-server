@@ -205,6 +205,7 @@ static int _rc_request_free(rc_request_t *request)
 	return 0;
 }
 
+#ifdef HAVE_OPENSSL_SSL_H
 #include <openssl/provider.h>
 
 static OSSL_PROVIDER *openssl_default_provider = NULL;
@@ -247,6 +248,10 @@ static void openssl3_free(void)
 	}
 	openssl_legacy_provider = NULL;
 }
+#else
+#define openssl3_init()
+#define openssl3_free()
+#endif
 
 static int _loop_status(UNUSED fr_time_t now, fr_time_delta_t wake, UNUSED void *ctx)
 {
@@ -468,7 +473,7 @@ static int coa_init(rc_request_t *parent, FILE *coa_reply, char const *reply_fil
 	fr_assert(coa_tree);
 	if (!fr_rb_insert(coa_tree, parent)) {
 		ERROR("Failed inserting packet from %s into CoA tree", request->name);
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	return 0;
@@ -984,7 +989,7 @@ static int send_one_packet(fr_bio_packet_t *client, rc_request_t *request)
 	fr_assert(request->reply == NULL);
 
 #ifdef STATIC_ANALYZER
-	if (!secret) fr_exit_now(1);
+	if (!secret) fr_exit_now(EXIT_FAILURE);
 #endif
 
 	fr_assert(request->packet->id < 0);
@@ -1101,9 +1106,9 @@ static NEVER_RETURNS void client_bio_failed(fr_bio_packet_t *bio)
 	 *	Cleanly close the BIO, so that we exercise the shutdown path.
 	 */
 	fr_assert(bio == client_bio);
-	TALLOC_FREE(client_bio);
+	TALLOC_FREE(bio);
 
-	fr_exit_now(1);
+	fr_exit_now(EXIT_FAILURE);
 }
 
 
@@ -1118,9 +1123,9 @@ static NEVER_RETURNS void client_error(UNUSED fr_event_list_t *el, UNUSED int fd
 	 *	Cleanly close the BIO, so that we exercise the shutdown path.
 	 */
 	fr_assert(client == client_bio);
-	TALLOC_FREE(client_bio);
+	TALLOC_FREE(client);
 
-	fr_exit_now(1);
+	fr_exit_now(EXIT_FAILURE);
 }
 
 static void client_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
@@ -1139,7 +1144,7 @@ static void client_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uct
 	rcode = fr_bio_packet_read(client, (void **) &request, &reply, client, &reply_pairs);
 	if (rcode < 0) {
 		ERROR("Failed reading packet - %s", fr_bio_strerror(rcode));
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	/*
@@ -1209,7 +1214,10 @@ static void client_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uct
 	 *	The retry bio takes care of suppressing duplicate replies.
 	 */
 	if (paused) {
-		if (fr_event_filter_update(el, fd, FR_EVENT_FILTER_IO, resume_write) < 0) fr_assert(0);
+		if (fr_event_filter_update(el, fd, FR_EVENT_FILTER_IO, resume_write) < 0) {
+			fr_perror("radclient");
+			fr_exit_now(EXIT_FAILURE);
+		}
 		paused = false;
 	}
 
@@ -1247,7 +1255,10 @@ static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uc
 	 */
 	if (!request) {
 	pause:
-		if (fr_event_filter_update(el, fd, FR_EVENT_FILTER_IO, pause_write) < 0) fr_assert(0);
+		if (fr_event_filter_update(el, fd, FR_EVENT_FILTER_IO, pause_write) < 0) {
+			fr_perror("radclient");
+			fr_exit_now(EXIT_FAILURE);
+		}
 		return;
 	}
 
@@ -1259,7 +1270,10 @@ static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uc
 		goto pause;
 	}
 
-	if (send_one_packet(client, request) < 0) fr_assert(0);
+	if (send_one_packet(client, request) < 0) {
+		fr_perror("radclient");
+		fr_exit_now(EXIT_FAILURE);
+	}
 
 	request->resend++;
 	current = request;
@@ -1273,7 +1287,7 @@ static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uc
 	}
 }
 
-static void  client_bio_activate(fr_bio_packet_t *client)
+static void  client_bio_connected(fr_bio_packet_t *client)
 {
 	fr_radius_client_bio_info_t const *info;
 
@@ -1282,7 +1296,7 @@ static void  client_bio_activate(fr_bio_packet_t *client)
 	if (fr_event_fd_insert(autofree, NULL, info->retry_info->el, info->fd_info->socket.fd,
 			       client_read, client_write, client_error, client) < 0) {
 		fr_perror("radclient");
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 }
 
@@ -1327,6 +1341,13 @@ int main(int argc, char **argv)
 		fr_perror("radclient");
 		fr_exit_now(EXIT_FAILURE);
 	}
+#endif
+
+#ifdef STATIC_ANALYZER
+	/*
+	 *	clang scan thinks that fr_fault_setup() will set autofree=NULL.
+	 */
+	if (!autofree) fr_exit_now(EXIT_FAILURE);
 #endif
 
 	talloc_set_log_stderr();
@@ -1375,6 +1396,7 @@ int main(int argc, char **argv)
 		.verify = {
 			.require_message_authenticator = false,
 			.max_attributes = RADIUS_MAX_ATTRIBUTES,
+			.max_packet_size = 4096,
 		},
 	};
 
@@ -1413,7 +1435,7 @@ int main(int argc, char **argv)
 				if (fr_inet_pton_port(&fd_config.src_ipaddr, &fd_config.src_port,
 						      optarg, -1, AF_UNSPEC, true, false) < 0) {
 					fr_perror("Failed parsing source address");
-					fr_exit_now(1);
+					fr_exit_now(EXIT_FAILURE);
 				}
 				break;
 			}
@@ -1523,11 +1545,11 @@ int main(int argc, char **argv)
 			fp = fopen(optarg, "r");
 			if (!fp) {
 			       ERROR("Error opening %s: %s", optarg, fr_syserror(errno));
-			       fr_exit_now(1);
+			       fr_exit_now(EXIT_FAILURE);
 			}
 			if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
 			       ERROR("Error reading %s: %s", optarg, fr_syserror(errno));
-			       fr_exit_now(1);
+			       fr_exit_now(EXIT_FAILURE);
 			}
 			fclose(fp);
 
@@ -1541,7 +1563,7 @@ int main(int argc, char **argv)
 
 			if (strlen(filesecret) < 2) {
 			       ERROR("Secret in %s is too short", optarg);
-			       fr_exit_now(1);
+			       fr_exit_now(EXIT_FAILURE);
 			}
 			secret = talloc_strdup(autofree, filesecret);
 			client_config.verify.secret = (uint8_t *) secret;
@@ -1614,7 +1636,7 @@ int main(int argc, char **argv)
 	if (strcmp(argv[1], "-") != 0) {
 		if (fr_inet_pton_port(&fd_config.dst_ipaddr, &fd_config.dst_port, argv[1], -1, fd_config.dst_ipaddr.af, true, true) < 0) {
 			fr_perror("radclient");
-			fr_exit_now(1);
+			fr_exit_now(EXIT_FAILURE);
 		}
 
 		/*
@@ -1674,7 +1696,7 @@ int main(int argc, char **argv)
 		attr_coa_filter = fr_dict_attr_by_name(NULL, fr_dict_root(dict_radius), attr_coa_filter_name);
 		if (!attr_coa_filter) {
 			ERROR("Unknown or invalid CoA filter attribute %s", optarg);
-			fr_exit_now(1);
+			fr_exit_now(EXIT_FAILURE);
 		}
 
 		/*
@@ -1704,7 +1726,7 @@ int main(int argc, char **argv)
 
 		files = talloc_zero(talloc_autofree_context(), rc_file_pair_t);
 		files->packets = "-";
-		if (radclient_init(files, files) < 0) fr_exit_now(1);
+		if (radclient_init(files, files) < 0) fr_exit_now(EXIT_FAILURE);
 	}
 
 	if ((forced_id >= 0) && (fr_dlist_num_elements(&filenames) > 1)) {
@@ -1717,7 +1739,7 @@ int main(int argc, char **argv)
 	fr_dlist_foreach(&filenames, rc_file_pair_t, files) {
 		if (radclient_init(files, files)) {
 			ERROR("Failed parsing input files");
-			fr_exit_now(1);
+			fr_exit_now(EXIT_FAILURE);
 		}
 	}
 
@@ -1726,7 +1748,7 @@ int main(int argc, char **argv)
 	 */
 	if (!fr_dlist_num_elements(&rc_request_list)) {
 		ERROR("Nothing to send");
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	/***********************************************************************
@@ -1735,20 +1757,21 @@ int main(int argc, char **argv)
 	 *
 	 ***********************************************************************/
 
-	client_config.retry_cfg.el = fr_event_list_alloc(autofree,
-							 (fr_debug_lvl >= 2) ? _loop_status : NULL,
-							 NULL);
-	if (!client_config.retry_cfg.el) {
+	client_config.el = fr_event_list_alloc(autofree,
+					       (fr_debug_lvl >= 2) ? _loop_status : NULL,
+					       NULL);
+	if (!client_config.el) {
 		ERROR("Failed opening event list: %s", fr_strerror());
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
+	client_config.retry_cfg.el = client_config.el;
 
 	/*
 	 *	Set callbacks so that the socket is automatically
 	 *	paused or resumed when the socket becomes writeable.
 	 */
 	client_config.packet_cb_cfg = (fr_bio_packet_cb_funcs_t) {
-		.activate	= client_bio_activate,
+		.connected	= client_bio_connected,
 		.failed		= client_bio_failed,
 
 		.write_blocked	= client_bio_write_pause,
@@ -1758,13 +1781,17 @@ int main(int argc, char **argv)
 		.release	= client_packet_release,
 	};
 
+#ifdef STATIC_ANALYZER
+	if (!autofree) fr_exit_now(EXIT_FAILURE);
+#endif
+
 	/*
 	 *	Open the RADIUS client bio, and then get the information associated with it.
 	 */
 	client_bio = fr_radius_client_bio_alloc(autofree, &client_config, &fd_config);
 	if (!client_bio) {
 		ERROR("Failed opening socket: %s", fr_strerror());
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	client_info = fr_radius_client_bio_info(client_bio);
@@ -1773,7 +1800,7 @@ int main(int argc, char **argv)
 	if (forced_id >= 0) {
 		if (fr_radius_client_bio_force_id(client_bio, packet_code, forced_id) < 0) {
 			fr_perror("radclient");
-			fr_exit_now(1);
+			fr_exit_now(EXIT_FAILURE);
 		}
 	}
 
@@ -1786,7 +1813,7 @@ int main(int argc, char **argv)
 	 */
 	fr_dlist_foreach(&rc_request_list, rc_request_t, this) {
 		if (radclient_sane(this) < 0) {
-			fr_exit_now(1);
+			fr_exit_now(EXIT_FAILURE);
 		}
 	}
 
@@ -1798,7 +1825,7 @@ int main(int argc, char **argv)
 	if (fr_event_fd_insert(autofree, NULL, client_config.retry_cfg.el, client_info->fd_info->socket.fd, NULL,
 			       fr_radius_client_bio_connect, client_error, client_bio) < 0) {
 		fr_perror("radclient");
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	/***********************************************************************

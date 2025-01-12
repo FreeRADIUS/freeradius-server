@@ -60,9 +60,13 @@ Common flags and meanings
 | `secret`       | The server will not print `secret` values in debug mode, and in many other situations.
 |=====
 
-The `<ref>` field in the examples above is an attribute references such as `Foo`, or `Foo.Bar`, or `dhcpv4.foo.bar`.
+The `<ref>` field in the examples above is an attribute references such as `Foo`, or `Foo.Bar`, or `@dhcpv4.foo.bar`.  All `<ref>` fields use the same syntax.
 
-The `enum` and `clone` flags are similar, in that they copy "children" of the attribute.  However, the `enum` flag copies values, and `clone` copies attributes.
+If the ref begins with `@` the ref will be treated as a "foreign" reference to another protocol.  The first component will be used as the protocol name e.g. `ref=@RADIUS`.
+
+If the ref begins with `.` the ref will be treated as relative to the current attribute, else resolution will begin from the root of the current dictionary.
+
+Multiple consecutive `.` can be used to traverse up the attribute hierarchy from the current attribute.
 
 .Examples
 ----

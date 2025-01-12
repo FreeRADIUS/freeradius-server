@@ -19,6 +19,7 @@
  * @file src/lib/util/dict_util.c
  *
  * @copyright 2000,2006 The FreeRADIUS server project
+ * @copyright 2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 
@@ -27,11 +28,16 @@ RCSID("$Id$")
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/dict_ext_priv.h>
 #include <freeradius-devel/util/dict_fixup_priv.h>
+#include <freeradius-devel/util/dict_ext.h>
+#include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/talloc.h>
 
 #ifdef HAVE_SYS_STAT_H
 #  include <sys/stat.h>
@@ -79,6 +85,18 @@ bool const fr_dict_enum_allowed_chars[UINT8_MAX + 1] = {
 	['p'] = true, ['q'] = true, ['r'] = true, ['s'] = true, ['t'] = true,
 	['u'] = true, ['v'] = true, ['w'] = true, ['x'] = true, ['y'] = true,
 	['z'] = true
+};
+
+/** Default protocol rules set for every dictionary
+ *
+ * This is usually overriden by the public symbol from the protocol library
+ * associated with the dictionary
+ * e.g. libfreeradius-dhcpv6.so -> libfreeradius_dhcpv6_dict_protocol.
+ */
+static fr_dict_protocol_t dict_proto_default = {
+	.name = "default",
+	.default_type_size = 2,
+	.default_type_length = 2,
 };
 
 /*
@@ -388,25 +406,6 @@ static inline CC_HINT(always_inline) int dict_attr_children_init(fr_dict_attr_t 
 	return 0;
 }
 
-/** Set a reference for a grouping attribute or an alias attribute
- *
- * @note This function can only be used _before_ the attribute is inserted into the dictionary.
- *
- * @param[in] da_p		to set reference for.
- * @param[in] ref		The attribute referred to by this attribute.
- */
-static inline CC_HINT(always_inline) int dict_attr_ref_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *ref)
-{
-	fr_dict_attr_ext_ref_t		*ext;
-
-	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_REF);
-	if (unlikely(!ext)) return -1;
-
-	ext->ref = ref;
-
-	return 0;
-}
-
 /** Cache the vendor pointer for an attribute
  *
  * @note This function can only be used _before_ the attribute is inserted into the dictionary.
@@ -507,60 +506,27 @@ static inline CC_HINT(always_inline) int dict_attr_namespace_init(fr_dict_attr_t
 	return 0;
 }
 
-/** Initialise fields in a dictionary attribute structure
+/** Initialise type specific fields within the dictionary attribute
  *
- * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ * Call when the type of the attribute is known.
  *
- * @param[in] da_p		to initialise.
- * @param[in] parent		of the attribute, if none, should be
- *				the dictionary root.
- * @param[in] name		of attribute.  Pass NULL for auto-generated name.
- * @param[in] attr		number.
- * @param[in] type		of the attribute.
- * @param[in] args		optional initialisation arguments.
+ * @param[in,out] da_p	to set the type for.
+ * @param[in] type	to set.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on error.
  */
-int dict_attr_init(fr_dict_attr_t **da_p,
-		   fr_dict_attr_t const *parent,
-		   char const *name, int attr,
-		   fr_type_t type, dict_attr_args_t const *args)
+int dict_attr_type_init(fr_dict_attr_t **da_p, fr_type_t type)
 {
-	static dict_attr_args_t default_args;
-
-	if (!args) args = &default_args;
-
-	**da_p = (fr_dict_attr_t) {
-		.attr = attr,
-		.last_child_attr = (1 << 24),
-		.type = type,
-		.flags = *args->flags,
-		.parent = parent,
-	};
-
-	/*
-	 *	Record the parent
-	 */
-	if (parent) {
-		(*da_p)->dict = parent->dict;
-		(*da_p)->depth = parent->depth + 1;
-
-		/*
-		 *	Point to the vendor definition.  Since ~90% of
-		 *	attributes are VSAs, caching this pointer will help.
-		 */
-		if (parent->type == FR_TYPE_VENDOR) {
-			if (dict_attr_vendor_set(da_p, parent) < 0) return -1;
-		} else {
-			dict_attr_ext_copy(da_p, parent, FR_DICT_ATTR_EXT_VENDOR); /* Noop if no vendor extension */
-		}
-	} else {
-		(*da_p)->depth = 0;
+	if (unlikely((*da_p)->type != FR_TYPE_NULL)) {
+		fr_strerror_const("Attribute type already set");
+		return -1;
 	}
 
-	/*
-	 *	Cache the da_stack so we don't need
-	 *	to generate it at runtime.
-	 */
-	dict_attr_da_stack_set(da_p);
+	if (unlikely((*da_p)->state.finalised == true)) {
+		fr_strerror_const("Can't perform type initialisation on finalised attribute");
+		return -1;
+	}
 
 	/*
 	 *	Structural types can have children
@@ -583,12 +549,14 @@ int dict_attr_init(fr_dict_attr_t **da_p,
 		 *	the encoders / decoders are updated.  It would be good to just reference the DAs instead of cloning an entire subtree.
 		 */
 		if (type == FR_TYPE_GROUP) {
-			if (dict_attr_ref_init(da_p, NULL) < 0) return -1;
+			if (dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_REF) == NULL) return -1;
 			break;
 		}
 
 		if (dict_attr_children_init(da_p) < 0) return -1;
 		if (dict_attr_namespace_init(da_p) < 0) return -1;	/* Needed for all TLV style attributes */
+
+		(*da_p)->last_child_attr = (1 << 24);	/* High enough not to conflict with protocol numbers */
 		break;
 
 	/*
@@ -607,10 +575,193 @@ int dict_attr_init(fr_dict_attr_t **da_p,
 		break;
 	}
 
+	(*da_p)->flags.is_known_width = fr_type_fixed_size[type];
+
 	/*
-	 *	This attribute is just a reference to another.
+	 *	Set default type-based flags
 	 */
-	if (args->ref) if (dict_attr_ref_init(da_p, args->ref) < 0) return -1;
+	switch (type) {
+	case FR_TYPE_DATE:
+	case FR_TYPE_TIME_DELTA:
+		(*da_p)->flags.length = 4;
+		(*da_p)->flags.flag_time_res = FR_TIME_RES_SEC;
+		break;
+
+
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_STRING:
+		(*da_p)->flags.is_known_width = ((*da_p)->flags.length != 0);
+		break;
+
+	default:
+		break;
+	}
+
+	(*da_p)->type = type;
+
+	return 0;
+}
+
+/** Initialise fields which depend on a parent attribute
+ *
+ * @param[in,out] da_p	to initialise.
+ * @param[in] parent	of the attribute.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on error.
+ */
+int dict_attr_parent_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *parent)
+{
+	fr_dict_attr_t *da = *da_p;
+
+
+	if (unlikely((*da_p)->type == FR_TYPE_NULL)) {
+		fr_strerror_const("Attribute type must be set before initialising parent.  Use dict_attr_type_init() first");
+		return -1;
+	}
+
+	if (unlikely(da->parent != NULL)) {
+		fr_strerror_printf("Attempting to set parent for '%s' to '%s', but parent already set to '%s'",
+				   da->name, parent->name, da->parent->name);
+		return -1;
+	}
+
+	if (unlikely((*da_p)->state.finalised == true)) {
+		fr_strerror_printf("Attempting to set parent for '%s' to '%s', but attribute already finalised",
+				   da->name, parent->name);
+		return -1;
+	}
+
+	da->parent = parent;
+	da->dict = parent->dict;
+	da->depth = parent->depth + 1;
+
+	/*
+	 *	Point to the vendor definition.  Since ~90% of
+	 *	attributes are VSAs, caching this pointer will help.
+	 */
+	if (parent->type == FR_TYPE_VENDOR) {
+		int ret = dict_attr_vendor_set(&da, parent);
+		*da_p = da;
+		if (ret < 0) return -1;
+	} else {
+		dict_attr_ext_copy(da_p, parent, FR_DICT_ATTR_EXT_VENDOR); /* Noop if no vendor extension */
+	}
+
+	/*
+	 *	Cache the da_stack so we don't need
+	 *	to generate it at runtime.
+	 */
+	dict_attr_da_stack_set(da_p);
+
+	return 0;
+}
+
+/** Set the attribute number (if any)
+ *
+ * @param[in] da		to set the attribute number for.
+ * @param[in] num		to set.
+ */
+int dict_attr_num_init(fr_dict_attr_t *da, unsigned int num)
+{
+	if (da->state.attr_set) {
+		fr_strerror_const("Attribute number already set");
+		return -1;
+	}
+	da->attr = num;
+	da->state.attr_set = true;
+
+	return 0;
+}
+
+/** Set the attribute number (if any)
+ *
+ * @note Must have a parent set.
+ *
+ * @param[in] da		to set the attribute number for.
+ */
+int dict_attr_num_init_name_only(fr_dict_attr_t *da)
+{
+	if (!da->parent) {
+		fr_strerror_const("Attribute must have parent set before automatically setting attribute number");
+		return -1;
+	}
+	return dict_attr_num_init(da, ++fr_dict_attr_unconst(da->parent)->last_child_attr);
+}
+
+/** Set where the dictionary attribute was defined
+ *
+ */
+void dict_attr_location_init(fr_dict_attr_t *da, char const *filename, int line)
+{
+	da->filename = filename;
+	da->line = line;
+}
+
+/** Set remaining fields in a dictionary attribute before insertion
+ *
+ * @param[in] da_p		to finalise.
+ * @param[in] name		of the attribute.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on error.
+ */
+int dict_attr_finalise(fr_dict_attr_t **da_p, char const *name)
+{
+	fr_dict_attr_t		*da;
+
+	/*
+	*	Finalising the attribute allocates its
+	*	automatic number if its a name only attribute.
+	*/
+	da = *da_p;
+
+	/*
+	 *	Initialize the length field automatically if it's not been set already
+	 */
+	if (!da->flags.length && fr_type_is_leaf(da->type) && !fr_type_is_variable_size(da->type)) {
+		fr_value_box_t box;
+
+		fr_value_box_init(&box, da->type, NULL, false);
+		da->flags.length = fr_value_box_network_length(&box);
+	}
+
+	switch(da->type) {
+	case FR_TYPE_STRUCT:
+		da->flags.is_known_width |= da->flags.array;
+		break;
+
+	case FR_TYPE_GROUP:
+	{
+		fr_dict_attr_ext_ref_t	*ext;
+		/*
+		*	If it's a group attribute, the default
+		*	reference goes to the root of the
+		*	dictionary as that's where the default
+		*	name/numberspace is.
+		*
+		*	This may be updated by the caller.
+		*/
+		ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_REF);
+		if (unlikely(ext == NULL)) {
+			fr_strerror_const("Missing ref extension");
+			return -1;
+		}
+
+		/*
+		 *	For groups, if a ref wasn't provided then
+		 *	set it to the dictionary root.
+		 */
+		if ((ext->type == FR_DICT_ATTR_REF_NONE) &&
+		    (unlikely(dict_attr_ref_set(da, fr_dict_root(da->dict), FR_DICT_ATTR_REF_ALIAS) < 0))) {
+			return -1;
+		}
+	}
+		break;
+
+	default:
+		break;
+	}
 
 	/*
 	 *	Name is a separate talloc chunk.  We allocate
@@ -619,6 +770,112 @@ int dict_attr_init(fr_dict_attr_t **da_p,
 	if (dict_attr_name_set(da_p, name) < 0) return -1;
 
 	DA_VERIFY(*da_p);
+
+	(*da_p)->state.finalised = true;
+
+	return 0;
+}
+
+static inline CC_HINT(always_inline)
+int dict_attr_init_common(char const *filename, int line,
+			  fr_dict_attr_t **da_p,
+			  fr_dict_attr_t const *parent,
+			  fr_type_t type, dict_attr_args_t const *args)
+{
+	dict_attr_location_init((*da_p), filename, line);
+
+	if (unlikely(dict_attr_type_init(da_p, type) < 0)) return -1;
+
+	if (parent && (dict_attr_parent_init(da_p, parent) < 0)) return -1;
+
+	if (args->ref && (dict_attr_ref_aset(da_p, args->ref, FR_DICT_ATTR_REF_ALIAS) < 0)) return -1;
+
+	if (args->flags) (*da_p)->flags = *args->flags;
+
+	return 0;
+}
+
+/** Initialise fields in a dictionary attribute structure
+ *
+ * This function is a wrapper around the other initialisation functions.
+ *
+ * The reason for the separation, is that sometimes we're initialising a dictionary attribute
+ * by parsing an actual dictionary file, and other times we're copying attribute, or initialising
+ * them programatically.
+ *
+ * This function should only be used for the second case, where we have a complet attribute
+ * definition already.
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] filename		file.
+ * @param[in] line		number.
+ * @param[in] da_p		to initialise.
+ * @param[in] parent		of the attribute, if none, this attribute will
+ *				be initialised as a dictionary root.
+ * @param[in] name		of attribute.  Pass NULL for auto-generated name.
+ * @param[in] attr		number.
+ * @param[in] type		of the attribute.
+ * @param[in] args		optional initialisation arguments.
+ * @return
+ *	- 0 on success.
+ *	- <0 on error.
+ */
+int _dict_attr_init(char const *filename, int line,
+		    fr_dict_attr_t **da_p,
+		    fr_dict_attr_t const *parent,
+		    char const *name, unsigned int attr,
+		    fr_type_t type, dict_attr_args_t const *args)
+{
+	if (unlikely(dict_attr_init_common(filename, line, da_p, parent, type, args) < 0)) return -1;
+
+	if (unlikely(dict_attr_num_init(*da_p, attr) < 0)) return -1;
+
+	if (unlikely(dict_attr_finalise(da_p, name) < 0)) return -1;
+
+	return 0;
+}
+
+/** Initialise fields in a dictionary attribute structure
+ *
+ * This function is a wrapper around the other initialisation functions.
+ *
+ * The reason for the separation, is that sometimes we're initialising a dictionary attribute
+ * by parsing an actual dictionary file, and other times we're copying attribute, or initialising
+ * them programatically.
+ *
+ * This function should only be used for the second case, where we have a complet attribute
+ * definition already.
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] filename		file.
+ * @param[in] line		number.
+ * @param[in] da_p		to initialise.
+ * @param[in] parent		of the attribute, if none, this attribute will
+ *				be initialised as a dictionary root.
+ * @param[in] name		of attribute.  Pass NULL for auto-generated name.
+ *				automatically generated.
+ * @param[in] type		of the attribute.
+ * @param[in] args		optional initialisation arguments.
+ * @return
+ *	- 0 on success.
+ *	- <0 on error.
+ */
+int _dict_attr_init_name_only(char const *filename, int line,
+			 fr_dict_attr_t **da_p,
+			 fr_dict_attr_t const *parent,
+			 char const *name,
+			 fr_type_t type, dict_attr_args_t const *args)
+{
+	if (unlikely(dict_attr_init_common(filename, line, da_p, parent, type, args) < 0)) return -1;
+
+	/*
+	 *	Automatically generate the attribute number when the attribut is added.
+	 */
+	(*da_p)->flags.name_only = true;
+
+	if (unlikely(dict_attr_finalise(da_p, name) < 0)) return -1;
 
 	return 0;
 }
@@ -644,6 +901,7 @@ static int _dict_attr_free(fr_dict_attr_t *da)
 
 	return 0;
 }
+
 /** Allocate a partially completed attribute
  *
  * This is useful in some instances where we need to pre-allocate the attribute
@@ -651,11 +909,12 @@ static int _dict_attr_free(fr_dict_attr_t *da)
  * with #dict_attr_init later.
  *
  * @param[in] ctx		to allocate attribute in.
+ * @param[in] proto		protocol specific extensions.
  * @return
  *	- A new, partially completed, fr_dict_attr_t on success.
  *	- NULL on failure (memory allocation error).
  */
-fr_dict_attr_t *dict_attr_alloc_null(TALLOC_CTX *ctx)
+fr_dict_attr_t *dict_attr_alloc_null(TALLOC_CTX *ctx, fr_dict_protocol_t const *proto)
 {
 	fr_dict_attr_t *da;
 
@@ -664,28 +923,59 @@ fr_dict_attr_t *dict_attr_alloc_null(TALLOC_CTX *ctx)
 	 *	always initialises memory allocated
 	 *	here.
 	 */
-	da = talloc(ctx, fr_dict_attr_t);
+	da = talloc_zero(ctx, fr_dict_attr_t);
 	if (unlikely(!da)) return NULL;
 
 	/*
-	 *	On error paths in the caller, the
-	 *	caller may free the attribute
-	 *	allocated here without initialising
-	 *	the ext array, which is then
-	 *	accessed in the destructor.
+	 *	Allocate room for the protocol specific flags
 	 */
-	memset(da->ext, 0, sizeof(da->ext));
-
+	if (proto->attr.flags.len > 0) {
+		if (unlikely(dict_attr_ext_alloc_size(&da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC,
+						      proto->attr.flags.len) == NULL)) {
+			talloc_free(da);
+			return NULL;
+		}
+	}
 	talloc_set_destructor(da, _dict_attr_free);
 
 	return da;
 }
 
+/** Allocate a dictionary root attribute on the heap
+ *
+ * @param[in] ctx		to allocate the attribute in.
+ * @param[in] dict		the attribute will be used in.
+ * @param[in] name		of the attribute.  If NULL an OID string
+ *				will be created and set as the name.
+ * @param[in] proto_number		number.  This should be
+ * @param[in] args		optional initialisation arguments.
+ * @return
+ *	- A new fr_dict_attr_t on success.
+ *	- NULL on failure.
+ */
+fr_dict_attr_t *_dict_attr_alloc_root(char const *filename, int line,
+				      TALLOC_CTX *ctx,
+				      fr_dict_t const *dict,
+				      char const *name, int proto_number,
+				      dict_attr_args_t const *args)
+{
+	fr_dict_attr_t	*n;
+
+	n = dict_attr_alloc_null(ctx, dict->proto);
+	if (unlikely(!n)) return NULL;
+
+	if (_dict_attr_init(filename, line, &n, NULL, name, proto_number, FR_TYPE_TLV, args) < 0) {
+		talloc_free(n);
+		return NULL;
+	}
+
+	return n;
+}
+
 /** Allocate a dictionary attribute on the heap
  *
  * @param[in] ctx		to allocate the attribute in.
- * @param[in] parent		of the attribute, if none, should be
- *				the dictionary root.
+ * @param[in] parent		of the attribute.
  * @param[in] name		of the attribute.  If NULL an OID string
  *				will be created and set as the name.
  * @param[in] attr		number.
@@ -695,17 +985,18 @@ fr_dict_attr_t *dict_attr_alloc_null(TALLOC_CTX *ctx)
  *	- A new fr_dict_attr_t on success.
  *	- NULL on failure.
  */
-fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
-				fr_dict_attr_t const *parent,
-				char const *name, int attr,
-				fr_type_t type, dict_attr_args_t const *args)
+fr_dict_attr_t *_dict_attr_alloc(char const *filename, int line,
+				 TALLOC_CTX *ctx,
+				 fr_dict_attr_t const *parent,
+				 char const *name, int attr,
+				 fr_type_t type, dict_attr_args_t const *args)
 {
 	fr_dict_attr_t	*n;
 
-	n = dict_attr_alloc_null(ctx);
+	n = dict_attr_alloc_null(ctx, parent->dict->proto);
 	if (unlikely(!n)) return NULL;
 
-	if (dict_attr_init(&n, parent, name, attr, type, args) < 0) {
+	if (_dict_attr_init(filename, line, &n, parent, name, attr, type, args) < 0) {
 		talloc_free(n);
 		return NULL;
 	}
@@ -753,7 +1044,7 @@ static fr_dict_attr_t *dict_attr_acopy_dict(TALLOC_CTX *ctx, fr_dict_attr_t *par
 {
 	fr_dict_attr_t		*n;
 
-	n = dict_attr_alloc(ctx, parent,in->name,
+	n = dict_attr_alloc(ctx, parent, in->name,
 			    in->attr, in->type, &(dict_attr_args_t){ .flags = &in->flags });
 	if (unlikely(!n)) return NULL;
 
@@ -783,7 +1074,6 @@ int fr_dict_attr_acopy_local(fr_dict_attr_t const *dst, fr_dict_attr_t const *sr
 
 	return dict_attr_acopy_children(dst->dict, UNCONST(fr_dict_attr_t *, dst), src);
 }
-
 
 /** Copy the children of an existing attribute
  *
@@ -849,16 +1139,12 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
  * @param[in] dst		where to cast the VALUEs to
  * @param[in] src		where to cast the VALUEs from
  * @return
- *	- 0 on success (but copied no values)
- *	- 1 on success (but copied at least one value)
+ *	- 0 on success
  *	- <0 on error
  */
 int dict_attr_acopy_enumv(fr_dict_attr_t *dst, fr_dict_attr_t const *src)
 {
-	fr_dict_enum_value_t const	*enumv;
 	fr_dict_attr_ext_enumv_t	*ext;
-	fr_hash_iter_t  		iter;
-	int				copied = 0;
 
 	fr_assert(!fr_type_is_non_leaf(dst->type));
 	fr_assert(!fr_type_is_non_leaf(src->type));
@@ -877,24 +1163,64 @@ int dict_attr_acopy_enumv(fr_dict_attr_t *dst, fr_dict_attr_t const *src)
 		return -1;
 	}
 
-	/*
-	 *	Loop over the VALUEs, adding names from the old
-	 *	attribute to the new one.
-	 *
-	 *	If a value can't be cast, then just ignore it.
-	 */
-	for (enumv = fr_hash_table_iter_init(ext->name_by_value, &iter);
-	     enumv;
-	     enumv = fr_hash_table_iter_next(ext->name_by_value, &iter)) {
-		if (dict_attr_enum_add_name(dst, enumv->name, enumv->value, true,
-					    false, NULL) < 0) {
-			continue;
-		}
+	if (dict_attr_ext_copy(&dst, src, FR_DICT_ATTR_EXT_ENUMV)) return fr_hash_table_num_elements(ext->name_by_value);
 
-		copied++;
+	return -1;
+}
+
+/** Add an alias to an existing attribute
+ *
+ */
+int dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict_attr_t const *ref)
+{
+	fr_dict_attr_t const *da;
+	fr_dict_attr_t *self;
+	fr_hash_table_t *namespace;
+
+	da = dict_attr_by_name(NULL, parent, alias);
+	if (da) {
+		fr_strerror_printf("ALIAS '%s' conflicts with another attribute in namespace %s",
+				   alias, parent->name);
+		return -1;
 	}
 
-	return copied;
+	/*
+	 *	Note that we do NOT call fr_dict_attr_add() here.
+	 *
+	 *	When that function adds two equivalent attributes, the
+	 *	second one is prioritized for printing.  For ALIASes,
+	 *	we want the pre-existing one to be prioritized.
+	 *
+	 *	i.e. you can lookup the ALIAS by "name", but you
+	 *	actually get returned "ref".
+	 */
+	{
+		fr_dict_attr_flags_t flags = ref->flags;
+
+		flags.is_alias = 1;	/* These get followed automatically by public functions */
+
+		self = dict_attr_alloc(parent->dict->pool, parent, alias, ref->attr, ref->type, (&(dict_attr_args_t){ .flags = &flags, .ref = ref }));
+		if (unlikely(!self)) return -1;
+	}
+
+	self->dict = parent->dict;
+
+	fr_assert(fr_dict_attr_ref(self) == ref);
+
+	namespace = dict_attr_namespace(parent);
+	if (!namespace) {
+		fr_strerror_printf("Attribute '%s' does not contain a namespace", parent->name);
+	error:
+		talloc_free(self);
+		return -1;
+	}
+
+	if (!fr_hash_table_insert(namespace, self)) {
+		fr_strerror_const("Internal error storing attribute");
+		goto error;
+	}
+
+	return 0;
 }
 
 /** Add a protocol to the global protocol table
@@ -931,7 +1257,7 @@ int dict_protocol_add(fr_dict_t *dict)
 	dict->in_protocol_by_name = true;
 
 	if (!fr_hash_table_insert(dict_gctx->protocol_by_num, dict)) {
-		fr_strerror_printf("%s: Duplicate protocol number %i", __FUNCTION__, dict->root->attr);
+		fr_strerror_printf("%s: Duplicate protocol number %u", __FUNCTION__, dict->root->attr);
 		return -1;
 	}
 	dict->in_protocol_by_num = true;
@@ -952,7 +1278,8 @@ int dict_protocol_add(fr_dict_t *dict)
 
 		da = fr_dict_attr_child_by_num(dict_gctx->attr_protocol_encapsulation, dict->root->attr);
 		if (!da) {
-			if (fr_dict_attr_add(dict_gctx->internal, dict_gctx->attr_protocol_encapsulation, dict->root->name, dict->root->attr, FR_TYPE_GROUP, &flags) < 0) {
+			if (fr_dict_attr_add(dict_gctx->internal, dict_gctx->attr_protocol_encapsulation,
+					     dict->root->name, dict->root->attr, FR_TYPE_GROUP, &flags) < 0) {
 				return -1;
 			}
 
@@ -960,7 +1287,7 @@ int dict_protocol_add(fr_dict_t *dict)
 			fr_assert(da != NULL);
 		}
 
-		dict_attr_ref_set(da, dict->root);
+		dict_attr_ref_set(da, dict->root, FR_DICT_ATTR_REF_ALIAS);
 	}
 
 	return 0;
@@ -1232,7 +1559,10 @@ int dict_attr_add_to_namespace(fr_dict_attr_t const *parent, fr_dict_attr_t *da)
 		a = fr_hash_table_find(namespace, da);
 		if (a && (strcasecmp(a->name, da->name) == 0)) {
 			if ((a->attr != da->attr) || (a->type != da->type) || (a->parent != da->parent)) {
-				fr_strerror_printf("Duplicate attribute name \"%s\"", da->name);
+				fr_strerror_printf("Duplicate attribute name '%s' in namespace '%s'.  "
+				   		   "Originally defined %s[%d]",
+						   da->name, parent->name,
+						   a->filename, a->line);
 				goto error;
 			}
 		}
@@ -1254,29 +1584,114 @@ int dict_attr_add_to_namespace(fr_dict_attr_t const *parent, fr_dict_attr_t *da)
 	return 0;
 }
 
-static int dict_attr_compatible(fr_dict_attr_t const *parent, fr_dict_attr_t const *old, fr_dict_attr_t const *n)
+/** A variant of fr_dict_attr_t that allows a pre-allocated, populated fr_dict_attr_t to be added
+ *
+ */
+int fr_dict_attr_add_initialised(fr_dict_attr_t *da)
 {
-	if (old->parent != parent) {
-		fr_strerror_printf_push("Cannot add duplicate attribute \"%s\" with different parent (old %s, new %s)",
-					n->name, old->parent->name, parent->name);
+	fr_dict_attr_t const	*exists;
+
+	if (unlikely(da->dict->read_only)) {
+		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root(da->dict)->name);
 		return -1;
 	}
 
-	if (old->attr != n->attr) {
-		fr_strerror_printf_push("Cannot add duplicate attribute name \"%s\" with different number (old %u, new %d)",
-					n->name, old->attr, n->attr);
+	if (unlikely(da->state.finalised == false)) {
+		fr_strerror_const("Attribute has not been finalised");
 		return -1;
 	}
 
-	if (old->type != n->type) {
-		fr_strerror_printf_push("Cannot add duplicate attribute with different type "
-					"(old attribute \"%s\" has type %s, new attribute \"%s\" has type %s)",
-					old->name,
-					fr_type_to_str(old->type),
-					n->name,
-					fr_type_to_str(n->type));
+	/*
+	 *	Check that the definition is valid.
+	 */
+	if (!dict_attr_valid(da)) return -1;
+
+	/*
+	 *	Don't allow duplicate names
+	 *
+	 *	Previously we allowed duplicate names, but only if the
+	 *	attributes were compatible (we'd just ignore the operation).
+	 *
+	 *	But as attribute parsing may have generated fixups, which
+	 *	we'd now need to unpick, it's easier just to error out
+	 *	and have the user fix the duplicate.
+	 */
+	exists = fr_dict_attr_by_name(NULL, da->parent, da->name);
+	if (exists) {
+		fr_strerror_printf("Duplicate attribute name '%s' in namespace '%s'.  "
+				   "Originally defined %s[%d]", da->name, da->parent->name,
+				   exists->filename, exists->line);
 		return -1;
 	}
+
+	/*
+	 *	In some cases name_only attributes may have explicitly
+	 *	assigned numbers. Ensure that there are no conflicts
+	 *	between auto-assigned and explkicitly assigned.
+	 */
+	if (da->flags.name_only) {
+		if (da->state.attr_set) {
+			fr_dict_attr_t *parent = fr_dict_attr_unconst(da->parent);
+
+			if (da->attr > da->parent->last_child_attr) {
+				parent->last_child_attr = da->attr;
+
+				/*
+				*	If the attribute is outside of the bounds of
+				*	the type size, then it MUST be an internal
+				*	attribute.  Set the flag in this attribute, so
+				*	that the encoder doesn't have to do complex
+				*	checks.
+				*/
+				if ((da->attr >= (((uint64_t)1) << (8 * parent->flags.type_size)))) da->flags.internal = true;
+			}
+		} else if (unlikely(dict_attr_num_init_name_only(da)) < 0) {
+			return -1;
+		}
+	}
+
+	/*
+	 *	Attributes can also be indexed by number.  Ensure that
+	 *	all attributes of the same number have the same
+	 *	properties.
+	 */
+	exists = fr_dict_attr_child_by_num(da->parent, da->attr);
+	if (exists) {
+		fr_strerror_printf("Duplicate attribute number %u.  "
+				   "Originally defined by '%s' at %s[%d]",
+				   da->attr, exists->name, exists->filename, exists->line);
+		return -1;
+	}
+
+	/*
+	 *	Add in by number
+	 */
+	if (dict_attr_child_add(UNCONST(fr_dict_attr_t *, da->parent), da) < 0) return -1;
+
+	/*
+	 *	Add in by name
+	 */
+	if (dict_attr_add_to_namespace(da->parent, da) < 0) return -1;
+
+#ifndef NDEBUG
+	{
+		fr_dict_attr_t const *found;
+
+		/*
+		 *	Check if we added the attribute
+		 */
+		found = dict_attr_child_by_num(da->parent, da->attr);
+		if (!found) {
+			fr_strerror_printf("FATAL - Failed to find attribute number %u we just added to parent '%s'", da->attr, da->parent->name);
+			return -1;
+		}
+
+		if (!dict_attr_by_name(NULL, da->parent, da->name)) {
+			fr_strerror_printf("FATAL - Failed to find attribute '%s' we just added to parent '%s'", da->name, da->parent->name);
+			return -1;
+		}
+	}
+#endif
 
 	return 0;
 }
@@ -1295,105 +1710,44 @@ static int dict_attr_compatible(fr_dict_attr_t const *parent, fr_dict_attr_t con
  *	- -1 on failure.
  */
 int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
-		     char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t const *flags)
+		     char const *name, unsigned int attr, fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
-	fr_dict_attr_t		*n;
-	fr_dict_attr_t const	*old;
-	fr_dict_attr_flags_t	our_flags = *flags;
-	bool			self_allocated = false;
-#ifndef NDEBUG
-	fr_dict_attr_t		const *da;
-#endif
+	fr_dict_attr_t *da;
 
-	if (unlikely(dict->read_only)) {
-		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root(dict)->name);
-		return -1;
-	}
+	da = dict_attr_alloc_null(dict->pool, dict->proto);
+	if (unlikely(!da)) return -1;
 
-	self_allocated = (attr < 0);
+	if (dict_attr_init(&da, parent, name,
+			   attr, type, &(dict_attr_args_t){ .flags = flags}) < 0) return -1;
 
-	/*
-	 *	Check that the definition is valid.
-	 */
-	if (!dict_attr_fields_valid(dict, parent, name, &attr, type, &our_flags)) return -1;
-
-	n = dict_attr_alloc(dict->pool, parent, name, attr, type, &(dict_attr_args_t){ .flags = &our_flags});
-	if (!n) return -1;
-
-#define FLAGS_EQUAL(_x) (old->flags._x == flags->_x)
-
-	old = fr_dict_attr_by_name(NULL, parent, name);
-	if (old) {
-		/*
-		 *	Don't bother inserting exact duplicates.
-		 */
-		if ((old->parent == parent) && (old->type == type) &&
-		    FLAGS_EQUAL(array) && FLAGS_EQUAL(subtype)  &&
-		    ((old->attr == (unsigned int) attr) || self_allocated)) {
-			return 0;
-		}
-
-		/*
-		 *	We have the same name, but different
-		 *	properties.  That's an error.
-		 */
-		if (dict_attr_compatible(parent, old, n) < 0) goto error;
-
-		/*
-		 *	We have the same name, and same (enough)
-		 *	properties.  Discard the duplicate.
-		 */
-		talloc_free(n);
-		return 0;
-	}
-
-	/*
-	 *	Attributes can also be indexed by number.  Ensure that
-	 *	all attributes of the same number have the same
-	 *	properties.
-	 */
-	old = fr_dict_attr_child_by_num(parent, n->attr);
-	if (old && (dict_attr_compatible(parent, old, n) < 0)) goto error;
-
-	if (dict_attr_add_to_namespace(parent, n) < 0) {
-	error:
-		talloc_free(n);
-		return -1;
-	}
-
-	/*
-	 *	Add in by number
-	 */
-	if (dict_attr_child_add(UNCONST(fr_dict_attr_t *, parent), n) < 0) goto error;
-
-#ifndef NDEBUG
-	/*
-	 *	Check if we added the attribute
-	 */
-	da = dict_attr_child_by_num(parent, n->attr);
-	if (!da) {
-		fr_strerror_printf("FATAL - Failed to find attribute number %u we just added to parent %s.", n->attr, parent->name);
-		return -1;
-	}
-
-	if (!dict_attr_by_name(NULL, parent, n->name)) {
-		fr_strerror_printf("FATAL - Failed to find attribute '%s' we just added to parent %s.", n->name, parent->name);
-		return -1;
-	}
-#endif
-
-	/*
-	 *	If it's a group attribute, the default
-	 *	reference goes to the root of the
-	 *	dictionary as that's where the default
-	 *	name/numberspace is.
-	 *
-	 *	This may be updated by the caller.
-	 */
-	if (type == FR_TYPE_GROUP) dict_attr_ref_set(n, fr_dict_root(dict));
-
-	return 0;
+	return fr_dict_attr_add_initialised(da);
 }
+
+/** Add an attribute to the dictionary
+ *
+ * @param[in] dict		of protocol context we're operating in.
+ *				If NULL the internal dictionary will be used.
+ * @param[in] parent		to add attribute under.
+ * @param[in] name		of the attribute.
+ * @param[in] type		of attribute.
+ * @param[in] flags		to set in the attribute.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_attr_add_name_only(fr_dict_t *dict, fr_dict_attr_t const *parent,
+			       char const *name, fr_type_t type, fr_dict_attr_flags_t const *flags)
+{
+	fr_dict_attr_t *da;
+
+	da = dict_attr_alloc_null(dict->pool, dict->proto);
+	if (unlikely(!da)) return -1;
+
+	if (dict_attr_init_name_only(&da, parent, name,type, &(dict_attr_args_t){ .flags = flags}) < 0) return -1;
+
+	return fr_dict_attr_add_initialised(da);
+}
+
 
 int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 			    fr_value_box_t const *value,
@@ -1800,7 +2154,7 @@ ssize_t fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const *
 
 	default:
 		if (dict_attr_can_have_children(*parent)) break;
-		fr_strerror_printf("Attribute %s (%i) is not a TLV, so cannot contain a child attribute.  "
+		fr_strerror_printf("Attribute %s (%u) is not a TLV, so cannot contain a child attribute.  "
 				   "Error at sub OID \"%s\"", (*parent)->name, (*parent)->attr, oid);
 		return 0;	/* We parsed nothing */
 	}
@@ -1828,7 +2182,7 @@ ssize_t fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const *
 
 		child = dict_attr_child_by_num(*parent, num);
 		if (!child) {
-			fr_strerror_printf("Unknown attribute '%i' in OID string \"%s\" for parent %s",
+			fr_strerror_printf("Unknown attribute '%u' in OID string \"%s\" for parent %s",
 					   num, oid, (*parent)->name);
 			return 0;	/* We parsed nothing */
 		}
@@ -1914,7 +2268,7 @@ fr_slen_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 
 		child = dict_attr_child_by_num(parent, num);
 		if (!child) {
-			fr_strerror_printf("Failed resolving child %u in context %s",
+			fr_strerror_printf("Failed resolving child %u in namespace '%s'",
 					   num, parent->name);
 			if (err) *err = FR_DICT_ATTR_NOTFOUND;
 			FR_SBUFF_ERROR_RETURN(&our_in);
@@ -1929,11 +2283,8 @@ fr_slen_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 	{
 		fr_dict_attr_err_t	our_err;
 	oid_str:
+		/* Sets its own errors, don't override */
 		if (fr_dict_attr_by_name_substr(&our_err, &child, parent, &our_in, tt) < 0) {
-			fr_strerror_printf("Failed resolving \"%.*s\" in context %s",
-					   (int)fr_sbuff_remaining(&our_in),
-					   fr_sbuff_current(&our_in),
-					   parent->name);
 			if (err) *err = our_err;
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
@@ -2358,7 +2709,7 @@ fr_dict_attr_t const *fr_dict_vendor_da_by_num(fr_dict_attr_t const *vendor_root
 
 	vendor = dict_attr_child_by_num(vendor_root, vendor_pen);
 	if (!vendor) {
-		fr_strerror_printf("Vendor %i not defined", vendor_pen);
+		fr_strerror_printf("Vendor %u not defined", vendor_pen);
 		return NULL;
 	}
 
@@ -3203,29 +3554,70 @@ fr_slen_t fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_parse_error_t 
 
 int dict_dlopen(fr_dict_t *dict, char const *name)
 {
-	char *module_name;
-	char *p, *q;
+	char			*lib_name;
+	char			*sym_name;
+	fr_dict_protocol_t	*proto;
 
 	if (!name) return 0;
 
-	module_name = talloc_typed_asprintf(NULL, "libfreeradius-%s", name);
-	for (p = module_name, q = p + talloc_array_length(p) - 1; p < q; p++) *p = tolower((uint8_t) *p);
-
-	/*
-	 *	Pass in dict as the uctx so that we can get at it in
-	 *	any callbacks.
-	 *
-	 *	Not all dictionaries have validation functions.  It's
-	 *	a soft error if they don't exist.
-	 */
-	dict->dl = dl_by_name(dict_gctx->dict_loader, module_name, dict, false);
-	if (!dict->dl) {
-		fr_strerror_printf_push("Failed loading dictionary validation library \"%s\"", module_name);
-		talloc_free(module_name);
+	lib_name = talloc_typed_asprintf(NULL, "libfreeradius-%s", name);
+	if (unlikely(lib_name == NULL)) {
+	oom:
+		fr_strerror_const("Out of memory");
 		return -1;
 	}
+	talloc_bstr_tolower(lib_name);
 
-	talloc_free(module_name);
+	dict->dl = dl_by_name(dict_gctx->dict_loader, lib_name, NULL, false);
+	if (!dict->dl) {
+		fr_strerror_printf_push("Failed loading dictionary validation library \"%s\"", lib_name);
+		talloc_free(lib_name);
+		return -1;
+	}
+	talloc_free(lib_name);
+
+	/*
+	 *	The public symbol that contains per-protocol rules
+	 *	and extensions.
+	 *
+	 *	It ends up being easier to do this using dlsym to
+	 *	resolve the symbol and not use the autoloader
+	 *	callbacks as theoretically multiple dictionaries
+	 *	could use the same protocol library, and then the
+	 *	autoloader callback would only run for the first
+	 * 	dictionary which loaded the protocol.
+	 */
+	sym_name = talloc_typed_asprintf(NULL, "libfreeradius_%s_dict_protocol", name);
+	if (unlikely(sym_name == NULL)) {
+		talloc_free(lib_name);
+		goto oom;
+	}
+	talloc_bstr_tolower(sym_name);
+
+	/*
+	 *	De-hyphenate the symbol name
+	 */
+	{
+		char *p, *q;
+
+		for (p = sym_name, q = p + (talloc_array_length(sym_name) - 1); p < q; p++) *p = *p == '-' ? '_' : *p;
+	}
+
+	proto = dlsym(dict->dl->handle, sym_name);
+	talloc_free(sym_name);
+
+	/*
+	 *	Soft failure, not all protocol libraires provide
+	 *	custom validation functions or flats.
+	 */
+	if (!proto) return 0;
+
+	/*
+	 *	Replace the default protocol with the custom one
+	 *	if we have it...
+	 */
+	dict->proto = proto;
+
 	return 0;
 }
 
@@ -3361,7 +3753,7 @@ static void dependent_debug(fr_dict_t *dict)
 	for (dep = fr_rb_iter_init_inorder(&iter, dict->dependents);
 	     dep;
 	     dep = fr_rb_iter_next_inorder(&iter)) {
-		fprintf(stderr, "\t<- %s (%u)\n", dep->dependent, dep->count);
+		fprintf(stderr, "\t<- %s (%d)\n", dep->dependent, dep->count);
 	}
 }
 #endif
@@ -3405,7 +3797,7 @@ static int _dict_free(fr_dict_t *dict)
 
 		if (dict->gctx->attr_protocol_encapsulation && dict->root) {
 			da = fr_dict_attr_child_by_num(dict->gctx->attr_protocol_encapsulation, dict->root->attr);
-			if (da && fr_dict_attr_ref(da)) dict_attr_ref_set(da, NULL);
+			if (da && fr_dict_attr_ref(da)) dict_attr_ref_null(da);
 		}
 	}
 
@@ -3437,14 +3829,14 @@ static int _dict_free(fr_dict_t *dict)
 
 	if (dict_has_dependents(dict)) {
 		fr_rb_iter_inorder_t	iter;
-		fr_dict_dependent_t		*dep;
+		fr_dict_dependent_t	*dep;
 
 		fr_strerror_printf("Refusing to free dictionary \"%s\", still has dependents", dict->root->name);
 
 		for (dep = fr_rb_iter_init_inorder(&iter, dict->dependents);
 		     dep;
 		     dep = fr_rb_iter_next_inorder(&iter)) {
-			fr_strerror_printf_push("%s (%u)", dep->dependent, dep->count);
+			fr_strerror_printf_push("%s (%d)", dep->dependent, dep->count);
 		}
 
 		return -1;
@@ -3497,6 +3889,11 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	talloc_set_destructor(dict, _dict_free);
 
 	/*
+	 *	A list of all the files that constitute this dictionary
+	 */
+	fr_dlist_talloc_init(&dict->filenames, fr_dict_filename_t, entry);
+
+	/*
 	 *	Pre-Allocate pool memory for rapid startup
 	 *	As that's the working memory required during
 	 *	dictionary initialisation.
@@ -3542,10 +3939,10 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	dict->dependents = fr_rb_inline_alloc(dict, fr_dict_dependent_t, node, _dict_dependent_cmp, NULL);
 
 	/*
-	 *	Set default type size and length.
+	 *	Set the default dictionary protocol, this can
+	 *	be overriden by the protocol library.
 	 */
-	dict->default_type_size = 1;
-	dict->default_type_length = 1;
+	dict->proto = &dict_proto_default;
 
 	return dict;
 }
@@ -3578,17 +3975,11 @@ fr_dict_t *fr_dict_protocol_alloc(fr_dict_t const *parent)
 	if (!dict) return NULL;
 
 	/*
-	 *	Allow for 64k local attributes.
-	 */
-	dict->default_type_size = 2;
-	dict->default_type_length = 2;
-
-	/*
 	 *	Allocate the root attribute.  This dictionary is
 	 *	always protocol "local", and number "0".
 	 */
-	da = dict_attr_alloc(dict->pool, NULL, "local", 0, FR_TYPE_TLV,
-			     &(dict_attr_args_t){ .flags = &flags });
+	da = dict_attr_alloc_root(dict->pool, parent, "local", 0,
+				  &(dict_attr_args_t){ .flags = &flags });
 	if (unlikely(!da)) {
 		talloc_free(dict);
 		return NULL;
@@ -3917,41 +4308,6 @@ void fr_dl_dict_autofree(UNUSED dl_t const *module, void *symbol, UNUSED void *u
 	fr_dict_autofree(((fr_dict_autoload_t *)symbol));
 }
 
-/** Callback to automatically load validation routines for dictionaries.
- *
- * @param[in] dl	the library we just loaded
- * @param[in] symbol	pointer to a fr_dict_protocol_t table
- * @param[in] user_ctx	the global context which we don't need
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int _dict_validation_onload(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
-{
-	fr_dict_t *dict = talloc_get_type_abort(dl->uctx, fr_dict_t);
-	fr_dict_protocol_t const *proto = symbol;
-
-
-	/*
-	 *	Set the protocol-specific callbacks.
-	 */
-	dict->proto = proto;
-
-	/*
-	 *	@todo - just use dict->proto->foo, once we get the
-	 *	rest of the code cleaned up.
-	 */
-#undef COPY
-#define COPY(_x) dict->_x = proto->_x
-	COPY(default_type_size);
-	COPY(default_type_length);
-	COPY(subtype_table);
-	COPY(subtype_table_len);
-	COPY(attr_valid);
-
-	return 0;
-}
-
 static int _dict_global_free_at_exit(void *uctx)
 {
 	return talloc_free(uctx);
@@ -4069,8 +4425,6 @@ fr_dict_gctx_t *fr_dict_global_ctx_init(TALLOC_CTX *ctx, bool free_at_exit, char
 	new_ctx->dict_loader = dl_loader_init(new_ctx, NULL, false, false);
 	if (!new_ctx->dict_loader) goto error;
 
-	if (dl_symbol_init_cb_register(new_ctx->dict_loader, 0, "dict_protocol",
-				       _dict_validation_onload, NULL) < 0) goto error;
 	new_ctx->free_at_exit = free_at_exit;
 
 	talloc_set_destructor(new_ctx, _dict_global_free);
@@ -4194,7 +4548,7 @@ void fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx)
 		for (dep = fr_rb_iter_init_inorder(&dep_iter, dict->dependents);
 		     dep;
 		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
-			FR_FAULT_LOG("\t%s is referenced from %s count (%u)", dict->root->name, dep->dependent, dep->count);
+			FR_FAULT_LOG("\t%s is referenced from %s count (%d)", dict->root->name, dep->dependent, dep->count);
 		}
 	}
 
@@ -4202,7 +4556,7 @@ void fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx)
 		for (dep = fr_rb_iter_init_inorder(&dep_iter, gctx->internal->dependents);
 		     dep;
 		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
-			FR_FAULT_LOG("\t%s is referenced from %s count (%u)", gctx->internal->root->name, dep->dependent, dep->count);
+			FR_FAULT_LOG("\t%s is referenced from %s count (%d)", gctx->internal->root->name, dep->dependent, dep->count);
 		}
 	}
 }
@@ -4431,19 +4785,19 @@ void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
 	int i;
 	fr_dict_attr_t const *da_p;
 
-	if (!da) fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t pointer was NULL", file, line);
+	if (!da) fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_dict_attr_t pointer was NULL", file, line);
 
 	(void) talloc_get_type_abort_const(da, fr_dict_attr_t);
 
 	if ((!da->flags.is_root) && (da->depth == 0)) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_dict_attr_t %s vendor: %u, attr %u: "
 				     "Is not root, but depth is 0",
 				     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr);
 	}
 
 	if (da->depth > FR_DICT_MAX_TLV_STACK) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
-				     "Indicated depth (%u) greater than TLV stack depth (%u)",
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_dict_attr_t %s vendor: %u, attr %u: "
+				     "Indicated depth (%u) greater than TLV stack depth (%d)",
 				     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr,
 				     da->depth, FR_DICT_MAX_TLV_STACK);
 	}
@@ -4453,8 +4807,13 @@ void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
 	}
 
 	for (i = da->depth, da_p = da; (i >= 0) && da; i--, da_p = da_p->parent) {
+		if (!da_p) {
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_dict_attr_t %s vendor: %u, attr %u: "
+					     "Depth indicated there should be a parent, but parent is NULL",
+					     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr);
+		}
 		if (i != (int)da_p->depth) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_dict_attr_t %s vendor: %u, attr %u: "
 					     "Depth out of sequence, expected %i, got %u",
 					     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr, i, da_p->depth);
 		}
@@ -4462,12 +4821,12 @@ void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
 	}
 
 	if ((i + 1) < 0) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t top of hierarchy was not at depth 0",
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_dict_attr_t top of hierarchy was not at depth 0",
 				     file, line);
 	}
 
 	if (da->parent && (da->parent->type == FR_TYPE_VENDOR) && !fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_VENDOR)) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VSA missing 'vendor' extension", file, line);
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: VSA missing 'vendor' extension", file, line);
 	}
 
 	switch (da->type) {
@@ -4478,12 +4837,12 @@ void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
 		if (da->type == FR_TYPE_GROUP) break;
 
 		fr_assert_msg(fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_CHILDREN),
-			      "CONSISTENCY CHECK FAILED %s[%u]: %s missing 'children' extension",
+			      "CONSISTENCY CHECK FAILED %s[%d]: %s missing 'children' extension",
 			      file, line,
 			      fr_type_to_str(da->type));
 
 		fr_assert_msg(fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_NAMESPACE),
-			      "CONSISTENCY CHECK FAILED %s[%u]: %s missing 'namespace' extension",
+			      "CONSISTENCY CHECK FAILED %s[%d]: %s missing 'namespace' extension",
 			      file, line,
 			      fr_type_to_str(da->type));
 

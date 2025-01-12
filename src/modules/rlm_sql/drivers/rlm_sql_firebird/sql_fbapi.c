@@ -25,29 +25,11 @@ RCSID("$Id$")
 
 #include <stdarg.h>
 
-static void fb_set_tpb(rlm_sql_firebird_conn_t *conn, int count, ...)
-{
-	int i;
-	va_list arg;
-
-	va_start(arg, count);
-	MEM(conn->tpb = malloc(count));
-
-	for (i = 0; i < count; i++) conn->tpb[i] = (char) va_arg(arg, int);
-
-	conn->tpb_len = count;
-
-	va_end(arg);
-}
-
-
 static void fb_dpb_add_str(char **dpb, char name, char const *value)
 {
 	int l;
 
-	if (!value) {
-		return;
-	}
+	if (!value) return;
 
 	l = strlen(value);
 
@@ -64,13 +46,13 @@ static void fb_set_sqlda(XSQLDA *sqlda) {
 
 	for (i = 0; i < sqlda->sqld; i++) {
 		if ((sqlda->sqlvar[i].sqltype & ~1) == SQL_VARYING) {
-			MEM(sqlda->sqlvar[i].sqldata = (char*)malloc(sqlda->sqlvar[i].sqllen + sizeof(short)));
+			MEM(sqlda->sqlvar[i].sqldata = talloc_array(sqlda, char, sqlda->sqlvar[i].sqllen + sizeof(short)));
 		} else {
-			MEM(sqlda->sqlvar[i].sqldata = (char*)malloc(sqlda->sqlvar[i].sqllen));
+			MEM(sqlda->sqlvar[i].sqldata = talloc_array(sqlda, char, sqlda->sqlvar[i].sqllen));
 		}
 
 		if (sqlda->sqlvar[i].sqltype & 1) {
-			MEM(sqlda->sqlvar[i].sqlind = (short*)calloc(1, sizeof(short)));
+			MEM(sqlda->sqlvar[i].sqlind = talloc(sqlda, short));
 		} else {
 			sqlda->sqlvar[i].sqlind = 0;
 		}
@@ -95,6 +77,8 @@ int fb_error(rlm_sql_firebird_conn_t *conn)
 	 */
 	if (IS_ISC_ERROR(conn->status)) {
 		conn->sql_code = isc_sqlcode(conn->status);
+
+		if (conn->sql_code == DUPLICATE_KEY_SQL_CODE) return conn->sql_code;
 
 		/*
 		 *	pstatus is a pointer into the status array which is
@@ -146,39 +130,19 @@ typedef struct {
 } VARY;
 
 //function fb_store_row based on fiebird's apifull example
-void fb_store_row(rlm_sql_firebird_conn_t *conn)
+sql_rcode_t fb_store_row(rlm_sql_firebird_conn_t *conn)
 {
-	int dtype;
-	struct tm times;
-	ISC_QUAD bid;
-	int i;
-	XSQLVAR *var;
-	VARY * vary;
+	int		dtype, i, nulls = 0;
+	struct		tm times;
+	ISC_QUAD	bid;
+	XSQLVAR		*var;
+	VARY		*vary;
 
-	/* assumed: id, username, attribute, value, op */
-	if (conn->row_fcount<conn->sqlda_out->sqld)  {
-		i = conn->row_fcount;
-		conn->row_fcount = conn->sqlda_out->sqld;
-		conn->row = (char **) realloc(conn->row, conn->row_fcount * sizeof(char *));
-		conn->row_sizes = (int *) realloc(conn->row_sizes, conn->row_fcount * sizeof(int));
-
-		while( i <conn->row_fcount) {
-			conn->row[i] = 0;
-			conn->row_sizes[i++] = 0;
-		}
-	}
+	conn->row = talloc_zero_array(conn, char *, conn->sqlda_out->sqld + 1);
 
 	for (i = 0, var = conn->sqlda_out->sqlvar; i < conn->sqlda_out->sqld; var++, i++) {
-		/*
-		 *	Initial buffer size to store field's data is 256 bytes
-		 */
-		if (conn->row_sizes[i]<256) {
-			conn->row[i] = (char *) realloc(conn->row[i], 256);
-			conn->row_sizes[i] = 256;
-		}
-
 		if (IS_NULL(var)) {
-			strcpy(conn->row[i], "NULL");
+			nulls++;
 			continue;
 		}
 
@@ -186,30 +150,16 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 
 		switch (dtype) {
 		case SQL_TEXT:
-			if (conn->row_sizes[i]<= var->sqllen) {
-				conn->row_sizes[i] = var->sqllen + 1;
-				conn->row[i] = realloc(conn->row[i],
-						       conn->row_sizes[i]);
-			}
-
-			memmove(conn->row[i], var->sqldata, var->sqllen);
-			conn->row[i][var->sqllen] = 0;
+			conn->row[i] = talloc_bstrndup(conn->row, var->sqldata, var->sqllen);
 			break;
 
 		case SQL_VARYING:
-			vary = (VARY*) var->sqldata;
-			if (conn->row_sizes[i] <= vary->vary_length) {
-				conn->row_sizes[i] = vary->vary_length + 1;
-				conn->row[i] = realloc(conn->row[i],
-						       conn->row_sizes[i]);
-			}
-			memmove(conn->row[i], vary->vary_string, vary->vary_length);
-			conn->row[i][vary->vary_length] = 0;
+			vary = (VARY *)var->sqldata;
+			conn->row[i] = talloc_bstrndup(conn->row, vary->vary_string, vary->vary_length);
 			break;
 
 		case SQL_FLOAT:
-			snprintf(conn->row[i], conn->row_sizes[i], "%15g",
-				 *(double ISC_FAR *) (var->sqldata));
+			conn->row[i] = talloc_typed_asprintf(conn->row, "%g", *(double ISC_FAR *) (var->sqldata));
 			break;
 
 		case SQL_SHORT:
@@ -217,23 +167,19 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 		case SQL_INT64:
 		{
 			ISC_INT64 value = 0;
-			short field_width = 0;
 			short dscale = 0;
 
 			switch (dtype) {
 			case SQL_SHORT:
 				value = (ISC_INT64) *(short *)var->sqldata;
-				field_width = 6;
 				break;
 
 			case SQL_LONG:
 				value = (ISC_INT64) *(int *)var->sqldata;
-				field_width = 11;
 				break;
 
 			case SQL_INT64:
 				value = (ISC_INT64) *(ISC_INT64 *)var->sqldata;
-				field_width = 21;
 				break;
 			}
 			dscale = var->sqlscale;
@@ -248,40 +194,35 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 				}
 
 				if (value >= 0) {
-					snprintf(conn->row[i], conn->row_sizes[i], "%*lld.%0*lld",
-						 field_width - 1 + dscale,
+					conn->row[i] = talloc_typed_asprintf(conn->row, "%lld.%0*lld",
 						 (ISC_INT64) value / tens,
 						 -dscale,
 						 (ISC_INT64) value % tens);
 				} else if ((value / tens) != 0) {
-					snprintf(conn->row[i], conn->row_sizes[i], "%*lld.%0*lld",
-						 field_width - 1 + dscale,
+					conn->row[i] = talloc_typed_asprintf(conn->row, "%lld.%0*lld",
 						 (ISC_INT64) (value / tens),
 						 -dscale,
 						 (ISC_INT64) -(value % tens));
 				} else {
-					snprintf(conn->row[i], conn->row_sizes[i], "%*s.%0*lld", field_width - 1 + dscale,
+					conn->row[i] = talloc_typed_asprintf(conn->row, "%s.%0*lld",
 						 "-0", -dscale, (ISC_INT64) - (value % tens));
 				}
 			} else if (dscale) {
-				snprintf(conn->row[i], conn->row_sizes[i], "%*lld%0*d", field_width,
-					(ISC_INT64) value, dscale, 0);
+				conn->row[i] = talloc_typed_asprintf(conn->row, "%lld%0*d", (ISC_INT64) value, dscale, 0);
 			} else {
-				snprintf(conn->row[i], conn->row_sizes[i], "%*lld", field_width,
-					(ISC_INT64) value);
+				conn->row[i] = talloc_typed_asprintf(conn->row, "%lld", (ISC_INT64) value);
 			}
 		}
 			break;
 
 		case SQL_D_FLOAT:
 		case SQL_DOUBLE:
-			snprintf(conn->row[i], conn->row_sizes[i], "%24f",
-				 *(double ISC_FAR *) (var->sqldata));
+			conn->row[i] = talloc_typed_asprintf(conn->row, "%f", *(double ISC_FAR *) (var->sqldata));
 			break;
 
 		case SQL_TIMESTAMP:
 			isc_decode_timestamp((ISC_TIMESTAMP ISC_FAR *)var->sqldata, &times);
-			snprintf(conn->row[i], conn->row_sizes[i], "%04d-%02d-%02d %02d:%02d:%02d.%04d",
+			conn->row[i] = talloc_typed_asprintf(conn->row, "%04d-%02d-%02d %02d:%02d:%02d.%04d",
 				 times.tm_year + 1900,
 				 times.tm_mon + 1,
 				 times.tm_mday,
@@ -293,7 +234,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 
 		case SQL_TYPE_DATE:
 			isc_decode_sql_date((ISC_DATE ISC_FAR *)var->sqldata, &times);
-			snprintf(conn->row[i], conn->row_sizes[i], "%04d-%02d-%02d",
+			conn->row[i] = talloc_typed_asprintf(conn->row, "%04d-%02d-%02d",
 				 times.tm_year + 1900,
 				 times.tm_mon + 1,
 				 times.tm_mday);
@@ -301,7 +242,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 
 		case SQL_TYPE_TIME:
 			isc_decode_sql_time((ISC_TIME ISC_FAR *)var->sqldata, &times);
-			snprintf(conn->row[i], conn->row_sizes[i], "%02d:%02d:%02d.%04d",
+			conn->row[i] = talloc_typed_asprintf(conn->row, "%02d:%02d:%02d.%04d",
 				 times.tm_hour,
 				 times.tm_min,
 				 times.tm_sec,
@@ -312,57 +253,52 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 		case SQL_ARRAY:
 			/* Print the blob id on blobs or arrays */
 			bid = *(ISC_QUAD ISC_FAR *) var->sqldata;
-			snprintf(conn->row[i], conn->row_sizes[i], "%08" ISC_LONG_FMT "x:%08" ISC_LONG_FMT "x",
+			conn->row[i] = talloc_typed_asprintf(conn->row, "%08" ISC_LONG_FMT "x:%08" ISC_LONG_FMT "x",
 				 bid.gds_quad_high, bid.gds_quad_low);
 			break;
 		}
 	}
-}
-
-int fb_init_socket(rlm_sql_firebird_conn_t *conn)
-{
-	memset(conn, 0, sizeof(*conn));
-	MEM(conn->sqlda_out = (XSQLDA ISC_FAR *) calloc(1, XSQLDA_LENGTH(5)));
-	conn->sqlda_out->sqln = 5;
-	conn->sqlda_out->version =  SQLDA_VERSION1;
-	conn->sql_dialect = 3;
-
-	pthread_mutex_init (&conn->mut, NULL);
-	DEBUG("Init mutex %p\n", &conn->mut);
 
 	/*
-	 *	Set tpb to read_committed/wait/no_rec_version
+	 *	An "UPDATE ... RETURNING" which updated nothing actually returns a row
+	 *	with all fields set to NULL.  This is effectively no rows.
 	 */
-	fb_set_tpb(conn, 5, isc_tpb_version3, isc_tpb_wait, isc_tpb_write,
-		   isc_tpb_read_committed, isc_tpb_no_rec_version);
-	if (!conn->tpb) {
-		return -1;
-	}
+	if (nulls == i) return RLM_SQL_NO_MORE_ROWS;
 
-	return 0;
+	return RLM_SQL_OK;
 }
 
 int fb_connect(rlm_sql_firebird_conn_t *conn, rlm_sql_config_t const *config)
 {
-	char *p;
-	char *database;
+	char		*p, *buff = NULL;
+	char const	*database;
+	uint8_t		timeout;
 
-	conn->dpb_len = 4;
-	if (config->sql_login) {
-		conn->dpb_len+= strlen(config->sql_login) + 2;
-	}
+	conn->dpb_len = 7;
+	if (config->sql_login) conn->dpb_len+= strlen(config->sql_login) + 2;
 
-	if (config->sql_password) {
-		conn->dpb_len += strlen(config->sql_password) + 2;
-	}
+	if (config->sql_password) conn->dpb_len += strlen(config->sql_password) + 2;
 
-	MEM(conn->dpb = (char *) malloc(conn->dpb_len));
+	MEM(conn->dpb = talloc_array(conn, char, conn->dpb_len));
 	p = conn->dpb;
 
 	*conn->dpb++= isc_dpb_version1;
+
+	/*
+	 *	Except for the version above, all Database Parameter Buffer options
+	 *	are LTV format, built from:
+	 *	 - 1 byte option code
+	 *	 - 1 byte length of value
+	 *	 - 1 or more bytes of value.  Integers are lsb first.
+	 */
 	*conn->dpb++= isc_dpb_num_buffers;
 	*conn->dpb++= 1;
 	*conn->dpb++= 90;
+
+	timeout = fr_time_delta_to_sec(config->trunk_conf.conn_conf->connection_timeout);
+	*conn->dpb++= isc_dpb_connect_timeout;
+	*conn->dpb++= 1;
+	*conn->dpb++= timeout;
 
 	fb_dpb_add_str(&conn->dpb, isc_dpb_user_name, config->sql_login);
 	fb_dpb_add_str(&conn->dpb, isc_dpb_password, config->sql_password);
@@ -375,22 +311,18 @@ int fb_connect(rlm_sql_firebird_conn_t *conn, rlm_sql_config_t const *config)
 	 *	parameter ignored.
 	 */
 	if (strchr(config->sql_server, ':')) {
-		database = strdup(config->sql_server);
+		database = config->sql_server;
 	} else {
 		/*
 		 *	Make database and server to be in the form
 		 *	of server:database
 		 */
-		int ls = strlen(config->sql_server);
-		int ld = strlen(config->sql_db);
-		MEM(database = (char *) calloc(1, ls + ld + 2));
-		strcpy(database, config->sql_server);
-		database[ls] = ':';
-		memmove(database + ls + 1, config->sql_db, ld);
+		database = buff = talloc_asprintf(NULL, "%s:%s", config->sql_server, config->sql_db);
 	}
+	DEBUG2("rlm_sql_firebird: Connecting to %s", database);
 	isc_attach_database(conn->status, 0, database, &conn->dbh,
 			    conn->dpb_len, conn->dpb);
-	free(database);
+	talloc_free(buff);
 
 	return fb_error(conn);
 }
@@ -399,9 +331,7 @@ int fb_connect(rlm_sql_firebird_conn_t *conn, rlm_sql_config_t const *config)
 int fb_fetch(rlm_sql_firebird_conn_t *conn)
 {
 	long fetch_stat;
-	if (conn->statement_type!= isc_info_sql_stmt_select) {
-		return 100;
-	}
+	if (conn->statement_type!= isc_info_sql_stmt_select) return 100;
 
 	fetch_stat = isc_dsql_fetch(conn->status, &conn->stmt,
 				    SQL_DIALECT_V6, conn->sqlda_out);
@@ -425,37 +355,27 @@ static int fb_prepare(rlm_sql_firebird_conn_t *conn, char const *query)
 	if (!conn->trh) {
 		isc_start_transaction(conn->status, &conn->trh, 1, &conn->dbh,
 				      conn->tpb_len, conn->tpb);
-		if (!conn->trh) {
-			return -4;
-		}
+		if (!conn->trh) return -4;
 	}
 
-	fb_free_statement(conn);
 	if (!conn->stmt) {
 		isc_dsql_allocate_statement(conn->status, &conn->dbh,
 					    &conn->stmt);
-		if (!conn->stmt) {
-			return -1;
-		}
+		if (!conn->stmt) return -1;
 	}
 
-	fb_free_sqlda(conn->sqlda_out);
 	isc_dsql_prepare(conn->status, &conn->trh, &conn->stmt, 0, query,
 			 conn->sql_dialect, conn->sqlda_out);
-	if (IS_ISC_ERROR(conn->status)) {
-		return -2;
-	}
+	if (IS_ISC_ERROR(conn->status)) return -2;
 
-	if (conn->sqlda_out->sqln<conn->sqlda_out->sqld) {
+	if (conn->sqlda_out->sqln < conn->sqlda_out->sqld) {
+		conn->sqlda_out = (XSQLDA ISC_FAR *) _talloc_realloc_array(conn, conn->sqlda_out, 1,
+							     XSQLDA_LENGTH(conn->sqlda_out->sqld), "XSQLDA");
 		conn->sqlda_out->sqln = conn->sqlda_out->sqld;
-		conn->sqlda_out = (XSQLDA ISC_FAR *) realloc(conn->sqlda_out,
-							     XSQLDA_LENGTH(conn->sqlda_out->sqld));
 		isc_dsql_describe(conn->status, &conn->stmt, SQL_DIALECT_V6,
 				  conn->sqlda_out);
 
-		if (IS_ISC_ERROR(conn->status)) {
-			return -3;
-		}
+		if (IS_ISC_ERROR(conn->status)) return -3;
 	}
 	/*
 	 *	Get statement type
@@ -465,21 +385,16 @@ static int fb_prepare(rlm_sql_firebird_conn_t *conn, char const *query)
 	if (IS_ISC_ERROR(conn->status)) return -4;
 
 	l = (short) isc_vax_integer((char ISC_FAR *) info_buffer + 1, 2);
-	conn->statement_type = isc_vax_integer((char ISC_FAR *) info_buffer + 3,
-					       l);
+	conn->statement_type = isc_vax_integer((char ISC_FAR *) info_buffer + 3, l);
 
-	if (conn->sqlda_out->sqld) {
-		fb_set_sqlda(conn->sqlda_out); //set out sqlda
-	}
+	if (conn->sqlda_out->sqld) fb_set_sqlda(conn->sqlda_out); //set out sqlda
 
 	return 0;
 }
 
 
 int fb_sql_query(rlm_sql_firebird_conn_t *conn, char const *query) {
-	if (fb_prepare(conn, query)) {
-		return fb_error(conn);
-	}
+	if (fb_prepare(conn, query)) return fb_error(conn);
 
 	switch (conn->statement_type) {
 		case isc_info_sql_stmt_exec_procedure:
@@ -507,31 +422,19 @@ int fb_affected_rows(rlm_sql_firebird_conn_t *conn) {
 			  sizeof (count_info), count_info,
 			  sizeof (info_buffer), info_buffer);
 
-	if (IS_ISC_ERROR(conn->status)) {
-		return fb_error(conn);
-	}
+	if (IS_ISC_ERROR(conn->status)) return fb_error(conn);
 
 	p = info_buffer + 3;
 	while (*p != isc_info_end) {
-		p++;
-		{
-			short len = (short)isc_vax_integer(p, 2);
-			p += 2;
+		short len;
+		len = (short)isc_vax_integer(++p, 2);
+		p += 2;
 
-			affected_rows = isc_vax_integer(p, len);
-			if (affected_rows > 0) {
-				break;
-			}
-			p += len;
-		}
+		affected_rows = isc_vax_integer(p, len);
+		if (affected_rows > 0) break;
+		p += len;
 	}
 	return affected_rows;
-}
-
-int fb_close_cursor(rlm_sql_firebird_conn_t *conn) {
-	isc_dsql_free_statement(conn->status, &conn->stmt, DSQL_close);
-
-	return fb_error(conn);
 }
 
 void fb_free_statement(rlm_sql_firebird_conn_t *conn) {
@@ -545,12 +448,7 @@ int fb_rollback(rlm_sql_firebird_conn_t *conn) {
 	conn->sql_code = 0;
 	if (conn->trh)  {
 		isc_rollback_transaction(conn->status, &conn->trh);
-//		conn->in_use = 0;
-		pthread_mutex_unlock(&conn->mut);
-
-		if (IS_ISC_ERROR(conn->status)) {
-			return fb_error(conn);
-		}
+		if (IS_ISC_ERROR(conn->status)) return fb_error(conn);
 	}
 	return conn->sql_code;
 }
@@ -565,8 +463,5 @@ int fb_commit(rlm_sql_firebird_conn_t *conn) {
 			return fb_rollback(conn);
 		}
 	}
-//	conn->in_use = 0;
-	pthread_mutex_unlock(&conn->mut);
-
 	return conn->sql_code;
 }

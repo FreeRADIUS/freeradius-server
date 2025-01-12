@@ -102,14 +102,14 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *	Rapid-Commit does this.  Options 19/20 require encoding as one byte of 0/1.
 		 */
 	case FR_TYPE_BOOL:
-		if (da_is_bool_exists(vp->da)) {
+		if (fr_dhcpv4_flag_exists(vp->da)) {
 			break;
 		}
 		FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t) (vp->vp_bool == true));
 		break;
 
 	case FR_TYPE_IPV4_PREFIX:
-		if (da_is_split_prefix(vp->da)) {
+		if (fr_dhcpv4_flag_prefix_split(vp->da)) {
 			uint32_t mask;
 
 			mask = ~((~(uint32_t) 0) >> vp->vp_ip.prefix);
@@ -121,7 +121,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			break;
 		}
 
-		if (da_is_bits_prefix(vp->da)) {
+		if (fr_dhcpv4_flag_prefix_bits(vp->da)) {
 			size_t num_bytes = (vp->vp_ip.prefix + 0x07) >> 3;
 
 			FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t) vp->vp_ip.prefix);
@@ -144,7 +144,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *
 		 *	https://tools.ietf.org/html/rfc8415#section-10
 		 */
-		if (da_is_dns_label(da)) {
+		if (fr_dhcpv4_flag_dns_label(da)) {
 			fr_dbuff_marker_t	last_byte, src;
 
 			fr_dbuff_marker(&last_byte, &work_dbuff);
@@ -515,7 +515,7 @@ static ssize_t encode_vsio_data(fr_dbuff_t *dbuff,
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX(dbuff, 255 - 4 - 1 - 2);
 	fr_dbuff_marker_t	hdr;
-	fr_dict_attr_t const	*da = da_stack->da[depth - 2];
+	fr_dict_attr_t const	*da;
 	fr_dict_attr_t const	*dv = da_stack->da[depth - 1];
 	ssize_t			len;
 	fr_pair_t		*vp;
@@ -529,11 +529,10 @@ static ssize_t encode_vsio_data(fr_dbuff_t *dbuff,
 	}
 
 	/*
-	 *	Check if we have enough for an option header plus the
-	 *	enterprise-number, plus the data length, plus at least
-	 *	one option header.
+	 *	Check if we have enough the enterprise-number,
+	 *	plus the data length, plus at least one option header.
 	 */
-	FR_DBUFF_REMAINING_RETURN(&work_dbuff, DHCPV4_OPT_HDR_LEN + sizeof(uint32_t) + 3);
+	FR_DBUFF_REMAINING_RETURN(&work_dbuff, sizeof(uint32_t) + 3);
 
 	fr_dbuff_marker(&hdr, &work_dbuff);
 
@@ -542,7 +541,6 @@ static ssize_t encode_vsio_data(fr_dbuff_t *dbuff,
 	 *
 	 *	And leave room for data-len1
 	 */
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) da->attr, 0x00);
 	FR_DBUFF_IN_RETURN(&work_dbuff, dv->attr);
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) 0x00);
 
@@ -588,10 +586,11 @@ static ssize_t encode_vsio_data(fr_dbuff_t *dbuff,
 		if (vp->da->parent != da->parent) break;
 	}
 
-	fr_dbuff_advance(&hdr, 1);
-	FR_DBUFF_IN_RETURN(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV4_OPT_HDR_LEN));
+	/*
+	 *	Write out "data-len1" for this vendor
+	 */
 	fr_dbuff_advance(&hdr, 4);
-	FR_DBUFF_IN_RETURN(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV4_OPT_HDR_LEN - 4 - 1));
+	FR_DBUFF_IN_RETURN(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - 4 - 1));
 
 #ifndef NDEBUG
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done VSIO Data");
@@ -608,6 +607,7 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 	fr_pair_t		*vp;
 	fr_dcursor_t		vendor_cursor;
 	fr_dbuff_t		work_dbuff;
+	fr_dbuff_marker_t	hdr;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -620,6 +620,15 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
+	work_dbuff = FR_DBUFF(dbuff);
+	fr_dbuff_marker(&hdr, &work_dbuff);
+
+	/*
+	 *	Copy in the option code
+	 *	And leave room for data-len1
+	 */
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) da->attr, 0x00);
+
 	/*
 	 *	We are at the VSA.  The next entry in the stack is the vendor.  The entry after that is the vendor data.
 	 */
@@ -628,7 +637,9 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 		fr_dcursor_t vsa_cursor;
 
 		if (da_stack->da[depth + 2]) {
-			return encode_vsio_data(dbuff, da_stack, depth + 2, cursor, encode_ctx);
+			len = encode_vsio_data(&work_dbuff, da_stack, depth + 2, cursor, encode_ctx);
+			if (len <= 0) return len;
+			goto done;
 		}
 
 		vp = fr_dcursor_current(cursor);
@@ -645,14 +656,12 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 			len = encode_vsio_data(&work_dbuff, da_stack, depth + 2, &vsa_cursor, encode_ctx);
 			if (len <= 0) return len;
 		}
-
 		goto done;
 	}
 
 	vp = fr_dcursor_current(cursor);
 	fr_assert(vp->da == da);
 
-	work_dbuff = FR_DBUFF(dbuff);
 	fr_pair_dcursor_init(&vendor_cursor, &vp->vp_group);
 
 	/*
@@ -688,9 +697,15 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 	}
 
 	/*
-	 *	Skip over the attribute we just encoded.
+	 *	Write out length for whole option
 	 */
 done:
+	fr_dbuff_advance(&hdr, 1);
+	FR_DBUFF_IN_RETURN(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV4_OPT_HDR_LEN));
+
+	/*
+	 *	Skip over the attribute we just encoded.
+	 */
 	vp = fr_dcursor_next(cursor);
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
@@ -720,9 +735,9 @@ ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 	if (!vp) return -1;
 
 	if (vp->da == attr_dhcp_message_type) goto next; /* already done */
-	if ((vp->da->attr > 255) && (vp->da->attr != FR_DHCP_OPTION_82)) {
-	next:
+	if (vp->da->attr > 255) {
 		fr_strerror_printf("Attribute \"%s\" is not a DHCP option", vp->da->name);
+	next:
 		(void)fr_dcursor_next(cursor);
 		return 0;
 	}
@@ -788,7 +803,7 @@ static ssize_t fr_dhcpv4_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vp
 	return fr_dhcpv4_encode_dbuff(&FR_DBUFF_TMP(data, data_len), NULL, 0, 0, vps);
 }
 
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
 {
 	fr_dhcpv4_ctx_t *test_ctx;
 

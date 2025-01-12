@@ -34,7 +34,16 @@ typedef int (*fr_bio_shutdown_t)(fr_bio_t *bio);
 typedef struct fr_bio_common_s fr_bio_common_t;
 
 typedef struct {
-	fr_bio_callback_t	eof;
+	fr_bio_io_t		connected;
+	fr_bio_callback_t	shutdown;
+	fr_bio_io_t		eof;
+	fr_bio_callback_t	failed;
+
+	fr_bio_io_t		read_blocked;
+	fr_bio_io_t		write_blocked;
+
+	fr_bio_io_t		read_resume;		//!< "unblocked" is too similar to "blocked"
+	fr_bio_io_t		write_resume;
 } fr_bio_priv_callback_t;
 
 /** Common elements at the start of each private #fr_bio_t
@@ -84,3 +93,5 @@ static inline void CC_HINT(nonnull) fr_bio_unchain(fr_bio_t *bio)
 }
 
 void	fr_bio_eof(fr_bio_t *bio) CC_HINT(nonnull);
+
+int	fr_bio_write_blocked(fr_bio_t *bio) CC_HINT(nonnull);

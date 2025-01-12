@@ -37,6 +37,8 @@
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
+#include <freeradius-devel/unlang/call.h>
+#include <freeradius-devel/unlang/subrequest.h>
 #include <freeradius-devel/unlang/interpret.h>
 
 #include <sys/stat.h>
@@ -519,7 +521,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 			}
 #  endif
 		} else {
-			ROPTIONAL(RDEBUG2, DEBUG2, "Handshake state - %s%s (%i)", role, state, SSL_get_state(ssl));
+			ROPTIONAL(RDEBUG2, DEBUG2, "Handshake state - %s%s (%u)", role, state, SSL_get_state(ssl));
 		}
 		return;
 	}
@@ -619,7 +621,8 @@ static void session_msg_log(request_t *request, fr_tls_session_t *tls_session, u
 
 	if (((size_t)tls_session->info.version >= NUM_ELEMENTS(tls_version_str)) ||
 	    !tls_version_str[tls_session->info.version]) {
-		snprintf(unknown_version, sizeof(unknown_version), "unknown_tls_version_0x%04x", tls_session->info.version);
+		snprintf(unknown_version, sizeof(unknown_version), "unknown_tls_version_0x%04x",
+			 (unsigned int) tls_session->info.version);
 		version = unknown_version;
 	} else {
 		version = tls_version_str[tls_session->info.version];
@@ -631,7 +634,7 @@ static void session_msg_log(request_t *request, fr_tls_session_t *tls_session, u
 	if (((size_t)tls_session->info.content_type >= NUM_ELEMENTS(tls_content_type_str)) ||
 	    !tls_content_type_str[tls_session->info.content_type]) {
 		snprintf(unknown_content_type, sizeof(unknown_content_type),
-			 "unknown_content_type_0x%04x", tls_session->info.content_type);
+			 "unknown_content_type_0x%04x", (unsigned int) tls_session->info.content_type);
 		content_type = unknown_content_type;
 	} else {
 		content_type = tls_content_type_str[tls_session->info.content_type];
@@ -954,7 +957,7 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 		ret = BIO_write(tls_session->into_ssl, tls_session->dirty_in.data, tls_session->dirty_in.used);
 		if (ret != (int) tls_session->dirty_in.used) {
 			record_init(&tls_session->dirty_in);
-			REDEBUG("Failed writing %zd bytes to SSL BIO: %d", tls_session->dirty_in.used, ret);
+			REDEBUG("Failed writing %zu bytes to SSL BIO: %d", tls_session->dirty_in.used, ret);
 			goto error;
 		}
 
@@ -1128,6 +1131,54 @@ static void fr_tls_session_alert_send(request_t *request, fr_tls_session_t *sess
 	session_msg_log(request, session, session->dirty_out.data, session->dirty_out.used);
 }
 
+/** Process the result of `establish session { ... }`
+ *
+ * As this is just a logging session, it's result doesn't affect the parent.
+ */
+static unlang_action_t tls_establish_session_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+						    UNUSED request_t *request, UNUSED void *uctx)
+{
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+/** Push an `establish session { ... }` call into the current request, using a subrequest
+ *
+ * @param[in] request		The current request.
+ * @param[in] conf		TLS configuration.
+ * @param[in] tls_session	The current TLS session.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD on success.
+ *      - UNLANG_ACTION_FAIL on failure.
+ */
+static inline CC_HINT(always_inline)
+unlang_action_t tls_establish_session_push(request_t *request, fr_tls_conf_t *conf, fr_tls_session_t *tls_session)
+{
+	request_t	*child;
+	fr_pair_t	*vp;
+	unlang_action_t	ua;
+
+	MEM(child = unlang_subrequest_alloc(request, dict_tls));
+	request = child;
+
+	/*
+	 *	Setup the child request for reporting session
+	 */
+	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
+	vp->vp_uint32 = enum_tls_packet_type_establish_session->vb_uint32;
+
+	/*
+	 *	Allocate a child, and set it up to call
+	 *      the TLS virtual server.
+	 */
+	ua = fr_tls_call_push(child, tls_establish_session_result, conf, tls_session);
+	if (ua < 0) {
+		talloc_free(child);
+		return UNLANG_ACTION_FAIL;
+	}
+
+	return ua;
+}
+
 /** Finish off a handshake round, possibly adding attributes to the request
  *
  */
@@ -1176,14 +1227,10 @@ static unlang_action_t tls_session_async_handshake_done_round(UNUSED rlm_rcode_t
 		RDEBUG2("Cipher suite: %s", cipher_desc_clean);
 
 		RDEBUG2("Adding TLS session information to request");
-		vp = fr_pair_afrom_da(request->session_state_ctx, attr_tls_session_cipher_suite);
-		if (vp) {
-			fr_pair_value_strdup(vp,  SSL_CIPHER_get_name(cipher), false);
-			fr_pair_append(&request->session_state_pairs, vp);
-			RINDENT();
-			RDEBUG2("&session-state.%pP", vp);
-			REXDENT();
-		}
+		RINDENT();
+		MEM(pair_update_session_state(&vp, attr_tls_session_cipher_suite) >= 0);
+		fr_pair_value_strdup(vp,  SSL_CIPHER_get_name(cipher), false);
+		RDEBUG2("&session-state.%pP", vp);
 
 		if (((size_t)tls_session->info.version >= NUM_ELEMENTS(tls_version_str)) ||
 		    !tls_version_str[tls_session->info.version]) {
@@ -1192,14 +1239,10 @@ static unlang_action_t tls_session_async_handshake_done_round(UNUSED rlm_rcode_t
 			version = tls_version_str[tls_session->info.version];
 		}
 
-		vp = fr_pair_afrom_da(request->session_state_ctx, attr_tls_session_version);
-		if (vp) {
-			fr_pair_value_strdup(vp, version, false);
-			fr_pair_append(&request->session_state_pairs, vp);
-			RINDENT();
-			RDEBUG2("&session-state.TLS-Session-Version := \"%s\"", version);
-			REXDENT();
-		}
+		MEM(pair_update_session_state(&vp, attr_tls_session_version) >= 0);
+		fr_pair_value_strdup(vp, version, false);
+		RDEBUG2("&session-state.%pP", vp);
+		REXDENT();
 
 		/*
 		 *	Cache the SSL_SESSION pointer.
@@ -1275,6 +1318,10 @@ static unlang_action_t tls_session_async_handshake_done_round(UNUSED rlm_rcode_t
 
 	tls_session->result = FR_TLS_RESULT_SUCCESS;
 	fr_tls_session_request_unbind(tls_session->ssl);
+	if (SSL_is_init_finished(tls_session->ssl)) {
+		fr_tls_conf_t	*conf = fr_tls_session_conf(tls_session->ssl);
+		if (conf->establish_session) return tls_establish_session_push(request, conf, tls_session);
+	}
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -1542,7 +1589,7 @@ static unlang_action_t tls_session_async_handshake(rlm_rcode_t *p_result, int *p
 	if (tls_session->dirty_in.used) {
 		ret = BIO_write(tls_session->into_ssl, tls_session->dirty_in.data, tls_session->dirty_in.used);
 		if (ret != (int)tls_session->dirty_in.used) {
-			REDEBUG("Failed writing %zd bytes to TLS BIO: %d", tls_session->dirty_in.used, ret);
+			REDEBUG("Failed writing %zu bytes to TLS BIO: %d", tls_session->dirty_in.used, ret);
 			record_init(&tls_session->dirty_in);
 			goto error;
 		}
@@ -1646,6 +1693,14 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 	SSL_set_info_callback(tls_session->ssl, fr_tls_session_info_cb);
 
 	/*
+	 *	In Client mode we only accept.
+	 *
+	 *	This sets up the SSL session to work correctly with
+	 *	fr_tls_session_handshake.
+	 */
+	SSL_set_connect_state(tls_session->ssl);
+
+	/*
 	 *	Always verify the peer certificate.
 	 */
 	DEBUG2("Requiring Server certificate");
@@ -1679,12 +1734,13 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
  *				talloc'd object.
  * @param[in] ssl_ctx		containing the base configuration for this session.
  * @param[in] request		The current #request_t.
+ * @param[in] dynamic_mtu	If greater than 100, overrides the MTU configured for the SSL_CTX.
  * @param[in] client_cert	Whether to require a client_cert.
  * @return
  *	- A new session on success.
  *	- NULL on error.
  */
-fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx, request_t *request, bool client_cert)
+fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx, request_t *request, size_t dynamic_mtu, bool client_cert)
 {
 	fr_tls_session_t	*tls_session = NULL;
 	SSL			*ssl = NULL;
@@ -1836,7 +1892,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	 *	In Server mode we only accept.
 	 *
 	 *	This sets up the SSL session to work correctly with
-	 *	fr_tls_session_handhsake.
+	 *	fr_tls_session_handshake.
 	 */
 	SSL_set_accept_state(tls_session->ssl);
 
@@ -1855,23 +1911,10 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)tls_session);
 
-	/*
-	 *	We use default fragment size, unless the Framed-MTU
-	 *	tells us it's too big.  Note that we do NOT account
-	 *	for the EAP-TLS headers if conf->fragment_size is
-	 *	large, because that config item looks to be confusing.
-	 *
-	 *	i.e. it should REALLY be called MTU, and the code here
-	 *	should figure out what that means for TLS fragment size.
-	 *	asking the administrator to know the internal details
-	 *	of EAP-TLS in order to calculate fragment sizes is
-	 *	just too much.
-	 */
 	tls_session->mtu = conf->fragment_size;
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_framed_mtu);
-	if (vp && (vp->vp_uint32 > 100) && (vp->vp_uint32 < tls_session->mtu)) {
-		RDEBUG2("Setting fragment_len to %u from &Framed-MTU", vp->vp_uint32);
-		tls_session->mtu = vp->vp_uint32;
+	if (dynamic_mtu > 100 && dynamic_mtu < tls_session->mtu) {
+		RDEBUG2("Setting fragment_len to %zu from dynamic_mtu", dynamic_mtu);
+		tls_session->mtu = dynamic_mtu;
 	}
 
 	if (conf->cache.mode != FR_TLS_CACHE_DISABLED) {
@@ -1882,5 +1925,45 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	fr_tls_session_request_unbind(tls_session->ssl);	/* Was bound in this function */
 
 	return tls_session;
+}
+
+static unlang_action_t tls_new_session_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, UNUSED void *uctx)
+{
+	request_t	*parent = request->parent;
+
+	fr_assert(parent);
+
+	/*
+	 *	Copy control attributes back to the parent.
+	 */
+	if (fr_pair_list_copy(parent->control_ctx, &parent->control_pairs, &request->control_pairs) < 0) return UNLANG_ACTION_FAIL;
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const *tls_conf) {
+	request_t	*child;
+	fr_pair_t	*vp;
+
+	MEM(child = unlang_subrequest_alloc(request, dict_tls));
+	request = child;
+
+	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
+	vp->vp_uint32 = enum_tls_packet_type_new_session->vb_uint32;
+
+	if (unlang_subrequest_child_push(NULL, child,
+					&(unlang_subrequest_session_t){
+						.enable = true,
+						.unique_ptr = child->parent
+					},
+					true, UNLANG_SUB_FRAME) < 0) {
+		return UNLANG_ACTION_FAIL;
+	}
+	if (unlang_function_push(child, NULL, tls_new_session_result, NULL, 0, UNLANG_SUB_FRAME, NULL) < 0) return UNLANG_ACTION_FAIL;
+
+	if (unlang_call_push(child, tls_conf->virtual_server, UNLANG_SUB_FRAME) < 0) {
+		return UNLANG_ACTION_FAIL;
+	}
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 #endif /* WITH_TLS */

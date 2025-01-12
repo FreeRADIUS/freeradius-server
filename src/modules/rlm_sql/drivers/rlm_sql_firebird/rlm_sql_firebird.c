@@ -24,131 +24,158 @@ RCSID("$Id$")
 
 #include "sql_fbapi.h"
 #include <freeradius-devel/util/debug.h>
+#include "rlm_sql_trunk.h"
 
-static int _sql_socket_destructor(rlm_sql_firebird_conn_t *conn)
-{
-	int i;
-
-	DEBUG2("socket destructor called, closing socket");
-
-	fb_commit(conn);
-	if (conn->dbh) {
-		fb_free_statement(conn);
-		isc_detach_database(conn->status, &(conn->dbh));
-
-		if (fb_error(conn)) {
-			WARN("Got error "
-			       "when closing socket: %s", conn->error);
-		}
-	}
-
-	pthread_mutex_destroy (&conn->mut);
-
-	for (i = 0; i < conn->row_fcount; i++) free(conn->row[i]);
-
-	free(conn->row);
-	free(conn->row_sizes);
-	fb_free_sqlda(conn->sqlda_out);
-
-	free(conn->sqlda_out);
-	free(conn->tpb);
-	free(conn->dpb);
-
-	return 0;
-}
+static char tpb[] = {isc_tpb_version3, isc_tpb_wait, isc_tpb_write,
+		     isc_tpb_read_committed, isc_tpb_no_rec_version};
 
 /** Establish connection to the db
  *
  */
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
-				   UNUSED fr_time_delta_t timeout)
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
+static connection_state_t _sql_connection_init(void **h, connection_t *conn, void *uctx)
 {
-	rlm_sql_firebird_conn_t	*conn;
+	rlm_sql_t const		*sql = talloc_get_type_abort_const(uctx, rlm_sql_t);
+	rlm_sql_firebird_conn_t	*c;
 
-	long res;
+	MEM(c = talloc_zero(conn, rlm_sql_firebird_conn_t));
 
-	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_firebird_conn_t));
-	talloc_set_destructor(conn, _sql_socket_destructor);
+	/*
+	 *	Firebird uses a client assigned structure to write info about output data.
+	 *	Based on standard authorize queries, we pre-allocate a structure
+	 *	for 5 columns in SELECT queries.
+	 */
+	MEM(c->sqlda_out = (XSQLDA *)_talloc_array(conn, 1, XSQLDA_LENGTH(5), "XSQLDA"));
+	c->sqlda_out->sqln = 5;
+	c->sqlda_out->version =  SQLDA_VERSION1;
+	c->sql_dialect = 3;
 
-	res = fb_init_socket(conn);
-	if (res) return RLM_SQL_ERROR;
+	/*
+	 *	Set tpb to read_committed/wait/no_rec_version
+	 */
+	c->tpb = tpb;
+	c->tpb_len = NUM_ELEMENTS(tpb);
 
-	if (fb_connect(conn, config)) {
-		ERROR("Connection failed: %s", conn->error);
-
-		return RLM_SQL_RECONNECT;
+	if (fb_connect(c, &sql->config)) {
+		ERROR("Connection failed: %s", c->error);
+		return CONNECTION_STATE_FAILED;
 	}
 
-	return 0;
+	*h = c;
+	return CONNECTION_STATE_CONNECTED;
 }
 
-/** Issue a query to the database.
- *
- */
-static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static void _sql_connection_close(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
 {
-	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	rlm_sql_firebird_conn_t *conn = query_ctx->handle->conn;
+	rlm_sql_firebird_conn_t	*c = talloc_get_type_abort(h, rlm_sql_firebird_conn_t);
 
-	int deadlock = 0;
+	DEBUG2("Socket destructor called, closing socket");
 
-	pthread_mutex_lock(&conn->mut);
+	fb_commit(c);
+	if (c->dbh) {
+		fb_free_statement(c);
+		isc_detach_database(c->status, &(c->dbh));
+
+		if (fb_error(c)) WARN("Got error when closing socket: %s", c->error);
+	}
+
+	talloc_free_children(c);
+}
+
+SQL_TRUNK_CONNECTION_ALLOC
+
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
+static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
+				  connection_t *conn, UNUSED void *uctx)
+{
+	rlm_sql_firebird_conn_t	*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_firebird_conn_t);
+	trunk_request_t		*treq;
+	request_t		*request;
+	fr_sql_query_t		*query_ctx;
+	bool			deadlock = false;
+
+	if (trunk_connection_pop_request(&treq, tconn) != 0) return;
+	if (!treq) return;
+
+	query_ctx = talloc_get_type_abort(treq->preq, fr_sql_query_t);
+	request = query_ctx->request;
+	query_ctx->tconn = tconn;
+
+	ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
 
 	try_again:
 	/*
 	 *	Try again query when deadlock, because in any case it
 	 *	will be retried.
 	 */
-	if (fb_sql_query(conn, query_ctx->query_str)) {
+	if (fb_sql_query(sql_conn, query_ctx->query_str)) {
 		/* but may be lost for short sessions */
-		if ((conn->sql_code == DEADLOCK_SQL_CODE) &&
-		    !deadlock) {
-			DEBUG("conn_id deadlock. Retry query %s", query_ctx->query_str);
+		if ((sql_conn->sql_code == DEADLOCK_SQL_CODE) && !deadlock) {
+			ROPTIONAL(RWARN, WARN, "SQL deadlock. Retry query %s", query_ctx->query_str);
 
 			/*
 			 *	@todo For non READ_COMMITED transactions put
 			 *	rollback here
 			 *	fb_rollback(conn);
 			 */
-			deadlock = 1;
+			deadlock = true;
 			goto try_again;
 		}
 
-		ERROR("conn_id rlm_sql_firebird,sql_query error: sql_code=%li, error='%s', query=%s",
-		      (long int) conn->sql_code, conn->error, query_ctx->query_str);
+		if (sql_conn->sql_code == DUPLICATE_KEY_SQL_CODE) {
+			query_ctx->rcode = RLM_SQL_ALT_QUERY;
+			goto finish;
+		}
 
-		if (conn->sql_code == DOWN_SQL_CODE) {
-			pthread_mutex_unlock(&conn->mut);
+		ROPTIONAL(RERROR, ERROR, "conn_id rlm_sql_firebird,sql_query error: sql_code=%li, error='%s', query=%s",
+		      (long int) sql_conn->sql_code, sql_conn->error, query_ctx->query_str);
 
+		query_ctx->status = SQL_QUERY_FAILED;
+		trunk_request_signal_fail(treq);
+
+		if (sql_conn->sql_code == DOWN_SQL_CODE) {
+		reconnect:
 			query_ctx->rcode = RLM_SQL_RECONNECT;
-			RETURN_MODULE_FAIL;
+			connection_signal_reconnect(conn, CONNECTION_FAILED);
+			return;
 		}
 
 		/* Free problem query */
-		if (fb_rollback(conn)) {
+		if (fb_rollback(sql_conn)) {
 			//assume the network is down if rollback had failed
-			ERROR("Fail to rollback transaction after previous error: %s", conn->error);
+			ROPTIONAL(RERROR, ERROR, "Fail to rollback transaction after previous error: %s", sql_conn->error);
 
-			query_ctx->rcode = RLM_SQL_RECONNECT;
-			RETURN_MODULE_FAIL;
+			goto reconnect;
 		}
-		//   conn->in_use=0;
 
 		query_ctx->rcode = RLM_SQL_ERROR;
-		RETURN_MODULE_FAIL;
-	}
-
-	if (conn->statement_type != isc_info_sql_stmt_select) {
-		if (fb_commit(conn)) {
-			query_ctx->rcode = RLM_SQL_ERROR;	/* fb_commit unlocks the mutex */
-			RETURN_MODULE_FAIL;
-		}
-	} else {
-		pthread_mutex_unlock(&conn->mut);
+		return;
 	}
 
 	query_ctx->rcode = RLM_SQL_OK;
-	RETURN_MODULE_OK;
+finish:
+	query_ctx->status = SQL_QUERY_RETURNED;
+	trunk_request_signal_reapable(treq);
+	if (request) unlang_interpret_mark_runnable(request);
+}
+
+SQL_QUERY_RESUME
+
+static void sql_request_complete(UNUSED request_t *request, void *preq, UNUSED void *rctx, UNUSED void *uctx)
+{
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(preq, fr_sql_query_t);
+	rlm_sql_firebird_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_firebird_conn_t);
+
+	fb_commit(conn);
+}
+
+static void sql_request_fail(UNUSED request_t *request, void *preq, UNUSED void *rctx,
+			     UNUSED trunk_request_state_t state, UNUSED void *uctx)
+{
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(preq, fr_sql_query_t);
+
+	query_ctx->treq = NULL;
+	if (query_ctx->rcode == RLM_SQL_OK) query_ctx->rcode = RLM_SQL_ERROR;
 }
 
 /** Returns name of fields.
@@ -156,7 +183,7 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UN
  */
 static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_firebird_conn_t	*conn = query_ctx->handle->conn;
+	rlm_sql_firebird_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_firebird_conn_t);
 
 	int		fields, i;
 	char const	**names;
@@ -178,8 +205,7 @@ static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNU
 static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	rlm_sql_handle_t	*handle = query_ctx->handle;
-	rlm_sql_firebird_conn_t *conn = handle->conn;
+	rlm_sql_firebird_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_firebird_conn_t);
 	int res;
 
 	query_ctx->row = NULL;
@@ -201,40 +227,36 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		conn->statement_type = 0;
 	}
 
-	fb_store_row(conn);
+	TALLOC_FREE(conn->row);
+	query_ctx->rcode = fb_store_row(conn);
+	if (query_ctx->rcode == RLM_SQL_OK) query_ctx->row = conn->row;
 
-	query_ctx->row = conn->row;
-
-	query_ctx->rcode = RLM_SQL_OK;
 	RETURN_MODULE_OK;
 }
 
-/** End the select query, such as freeing memory or result.
+/** End the query, such as freeing memory or result.
  *
  */
-static sql_rcode_t sql_finish_select_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_firebird_conn_t *conn = (rlm_sql_firebird_conn_t *) query_ctx->handle->conn;
+	rlm_sql_firebird_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_firebird_conn_t);
 
-	fb_commit(conn);
-	fb_close_cursor(conn);
+	fb_free_statement(conn);
+	talloc_free_children(conn->sqlda_out);
+	TALLOC_FREE(conn->row);
+	query_ctx->status = SQL_QUERY_PREPARED;
 
-	return 0;
-}
-
-/** End the query
- *
- */
-static sql_rcode_t sql_finish_query(UNUSED fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
-{
 	return 0;
 }
 
 /** Frees memory allocated for a result set.
  *
  */
-static sql_rcode_t sql_free_result(UNUSED fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
+	rlm_sql_firebird_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_firebird_conn_t);
+
+	TALLOC_FREE(conn->row);
 	return 0;
 }
 
@@ -246,13 +268,12 @@ static sql_rcode_t sql_free_result(UNUSED fr_sql_query_t *query_ctx, UNUSED rlm_
  * @param out Array of sql_log_entrys to fill.
  * @param outlen Length of out array.
  * @param query_ctx Query context to retrieve error for.
- * @param config rlm_sql config.
  * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED size_t outlen,
-			fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
+			fr_sql_query_t *query_ctx)
 {
-	rlm_sql_firebird_conn_t *conn = query_ctx->handle->conn;
+	rlm_sql_firebird_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_firebird_conn_t);
 
 	fr_assert(conn);
 	fr_assert(outlen > 0);
@@ -270,7 +291,9 @@ static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UN
  */
 static int sql_affected_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	return fb_affected_rows(query_ctx->handle->conn);
+	rlm_sql_firebird_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_firebird_conn_t);
+
+	return fb_affected_rows(conn);
 }
 
 /* Exported to rlm_sql */
@@ -280,15 +303,20 @@ rlm_sql_driver_t rlm_sql_firebird = {
 		.name				= "sql_firebird",
 		.magic				= MODULE_MAGIC_INIT
 	},
-	.sql_socket_init		= sql_socket_init,
-	.sql_query			= sql_query,
-	.sql_select_query		= sql_query,
-	.sql_num_rows			= sql_affected_rows,
+	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
+	.sql_query_resume		= sql_query_resume,
+	.sql_select_query_resume	= sql_query_resume,
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_fields			= sql_fields,
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,
-	.sql_finish_select_query	= sql_finish_select_query
+	.sql_finish_select_query	= sql_finish_query,
+	.trunk_io_funcs = {
+		.connection_alloc 	= sql_trunk_connection_alloc,
+		.request_mux		= sql_trunk_request_mux,
+		.request_complete	= sql_request_complete,
+		.request_fail		= sql_request_fail
+	}
 };

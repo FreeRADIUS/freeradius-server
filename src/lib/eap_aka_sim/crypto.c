@@ -231,7 +231,7 @@ static int fr_aka_sim_find_mac(uint8_t const **out, uint8_t *data, size_t data_l
 		if (p[0] == FR_MAC) {
 			len = p[1] << 2;
 			if ((p + len) > end) {
-				fr_strerror_printf("Malformed AT_MAC: Length (%zu) exceeds buffer (%zu)", len, end - p);
+				fr_strerror_printf("Malformed AT_MAC: Length (%zu) exceeds buffer (%zu)", len, (size_t) (end - p));
 				return -1;
 			}
 
@@ -1243,11 +1243,11 @@ void fr_aka_sim_crypto_keys_log(request_t *request, fr_aka_sim_keys_t *keys)
 
 		for (i = 0; i < keys->gsm.num_vectors; i++) {
 			RHEXDUMP_INLINE3(keys->gsm.vector[i].rand, AKA_SIM_VECTOR_GSM_RAND_SIZE,
-					 "[%i] RAND    :", i);
+					 "[%u] RAND    :", i);
 			RHEXDUMP_INLINE3(keys->gsm.vector[i].sres, AKA_SIM_VECTOR_GSM_SRES_SIZE,
-					 "[%i] SRES    :", i);
+					 "[%u] SRES    :", i);
 			RHEXDUMP_INLINE3(keys->gsm.vector[i].kc, AKA_SIM_VECTOR_GSM_KC_SIZE,
-					 "[%i] KC      :", i);
+					 "[%u] KC      :", i);
 		}
 	}
 		break;

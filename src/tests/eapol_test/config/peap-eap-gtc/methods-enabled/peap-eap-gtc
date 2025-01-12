@@ -1,0 +1,11 @@
+type = peap
+type = gtc
+peap {
+	tls = tls-common
+	default_eap_type = gtc
+	virtual_server = "inner-tunnel"
+}
+gtc {
+	auth_type = pap
+}
+

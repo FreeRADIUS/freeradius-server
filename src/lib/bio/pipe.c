@@ -66,8 +66,14 @@ static ssize_t fr_bio_pipe_read(fr_bio_t *bio, void *packet_ctx, void *buffer, s
 	pthread_mutex_lock(&my->mutex);
 	rcode = my->next->read(my->next, packet_ctx, buffer, size);
 	if ((rcode == 0) && my->eof) {
-		rcode = 0;
-		my->bio.read = fr_bio_null_read;
+		pthread_mutex_unlock(&my->mutex);
+
+		/*
+		 *	Don't call our EOF function.  But do tell the other BIOs that we're at EOF.
+		 */
+		my->priv_cb.eof = NULL;
+		fr_bio_eof(bio);
+		return 0;
 
 	} else if (rcode > 0) {
 		/*
@@ -134,14 +140,19 @@ static void fr_bio_pipe_shutdown(fr_bio_t *bio)
  *  Either side can set EOF, in which case pending reads are still processed.  Writes return EOF immediately.
  *  Readers return pending data, and then EOF.
  */
-static void fr_bio_pipe_eof(fr_bio_t *bio)
+static int fr_bio_pipe_eof(fr_bio_t *bio)
 {
 	fr_bio_pipe_t *my = talloc_get_type_abort(bio, fr_bio_pipe_t);	
 
 	pthread_mutex_lock(&my->mutex);
 	my->eof = true;
-	fr_bio_eof(my->next);
 	pthread_mutex_unlock(&my->mutex);
+
+	/*
+	 *	We don't know if the other end is at EOF, we have to do a read.  So we tell fr_bio_eof() to
+	 *	stop processing.
+	 */
+	return 0;
 }
 
 /** Allocate a thread-safe pipe which can be used for both reads and writes.

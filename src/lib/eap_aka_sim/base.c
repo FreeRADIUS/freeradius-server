@@ -186,11 +186,16 @@ fr_value_box_t const	*enum_eap_type_sim;
 fr_value_box_t const	*enum_eap_type_aka;
 fr_value_box_t const	*enum_eap_type_aka_prime;
 
+fr_value_box_t const	*enum_kdf_prime_with_ck_prime_ik_prime;
+
 extern fr_dict_enum_autoload_t libfreeradius_aka_sim_dict_enum[];
 fr_dict_enum_autoload_t libfreeradius_aka_sim_dict_enum[] = {
 	{ .out = &enum_eap_type_sim, .name = "SIM", .attr = &attr_eap_type },
 	{ .out = &enum_eap_type_aka, .name = "AKA", .attr = &attr_eap_type },
 	{ .out = &enum_eap_type_aka_prime, .name = "AKA-Prime", .attr = &attr_eap_type },
+
+	{ .out = &enum_kdf_prime_with_ck_prime_ik_prime, .name = "Prime-With-CK-Prime-IK-Prime", .attr = &attr_eap_aka_sim_kdf },
+
 	{ NULL }
 };
 
@@ -203,7 +208,7 @@ fr_dict_enum_autoload_t libfreeradius_aka_sim_dict_enum[] = {
  * formats and generic NETWORK formats.
  */
 size_t const fr_aka_sim_attr_sizes[FR_TYPE_MAX + 1][2] = {
-	[FR_TYPE_NULL]		= {~0, 0},
+	[FR_TYPE_NULL]			= {~0, 0},
 
 	[FR_TYPE_STRING]		= {0, ~0},
 	[FR_TYPE_OCTETS]		= {0, ~0},
@@ -217,6 +222,31 @@ size_t const fr_aka_sim_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_TLV]			= {2, ~0},
 
 	[FR_TYPE_MAX]			= {~0, 0}	//!< Ensure array covers all types.
+};
+
+static int dict_flag_encrypt(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
+{
+	static fr_table_num_sorted_t const encrypted[] = {
+		{ L("aes-cbc"),		AKA_SIM_FLAG_ENCRYPT_AES_CBC }
+	};
+	static size_t encrypted_len = NUM_ELEMENTS(encrypted);
+
+	fr_aka_sim_attr_flags_encrypt_t encrypt;
+	fr_aka_sim_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+
+	encrypt = fr_table_value_by_str(encrypted, value, AKA_SIM_FLAG_ENCRYPT_INVALID);
+	if (encrypt == AKA_SIM_FLAG_ENCRYPT_INVALID) {
+		fr_strerror_printf("Unknown encryption type '%s'", value);
+		return -1;
+	}
+
+	flags->encrypt = encrypt;
+
+	return 0;
+}
+
+static fr_dict_flag_parser_t const eap_aka_sim_flags[] = {
+	{ L("encrypt"),	{ .func = dict_flag_encrypt, .needs_value = true} }
 };
 
 /** Return the on-the-wire length of an attribute value
@@ -293,15 +323,16 @@ void fr_aka_sim_free(void)
 	fr_openssl_free();
 }
 
-static fr_table_num_ordered_t const subtype_table[] = {
-	{ L("encrypt=aes-cbc"),		1 }, /* any non-zero value will do */
-};
-
 extern fr_dict_protocol_t libfreeradius_eap_aka_sim_dict_protocol;
 fr_dict_protocol_t libfreeradius_eap_aka_sim_dict_protocol = {
 	.name = "eap_aka_sim",
 	.default_type_size = 1,
 	.default_type_length = 1,
-	.subtype_table = subtype_table,
-	.subtype_table_len = NUM_ELEMENTS(subtype_table),
+	.attr = {
+		.flags = {
+			.table = eap_aka_sim_flags,
+			.table_len = NUM_ELEMENTS(eap_aka_sim_flags),
+			.len = sizeof(fr_aka_sim_attr_flags_t)
+		}
+	}
 };

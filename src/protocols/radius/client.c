@@ -115,31 +115,43 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	my->mem = fr_bio_mem_alloc(my, read_size, 2 * 4096, my->fd);
 	if (!my->mem) goto fail;
 
-	my->mem->uctx = &my->cfg.verify;
+	my->mem->uctx = my;
 
 	if (cfg->packet_cb_cfg.retry) rewrite = radius_client_retry;
 
-	my->retry = fr_bio_retry_alloc(my, 256, radius_client_retry_sent, radius_client_retry_response,
-				       rewrite, radius_client_retry_release, &cfg->retry_cfg, my->mem);
-	if (!my->retry) goto fail;
+	/*
+	 *	We allocate a retry BIO even for TCP, as we want to be able to timeout the packets.
+	 */
+	if (cfg->retry_cfg.el) {
+		my->retry = fr_bio_retry_alloc(my, 256, radius_client_retry_sent, radius_client_retry_response,
+					       rewrite, radius_client_retry_release, &cfg->retry_cfg, my->mem);
+		if (!my->retry) goto fail;
 
-	my->retry->uctx = my;
+		my->retry->uctx = my;
 
-	my->info.retry_info = fr_bio_retry_info(my->retry);
-	fr_assert(my->info.retry_info != NULL);
+		my->info.retry_info = fr_bio_retry_info(my->retry);
+		fr_assert(my->info.retry_info != NULL);
+
+		my->common.bio = my->retry;
+
+	} else {
+		/*
+		 *	No timers for retries, we just use a memory buffer for outbound packets.
+		 */
+		my->common.bio = my->mem;
+	}
 
 	my->cfg = *cfg;
 
-	my->common.bio = my->retry;
+	/*
+	 *	Inform the packet BIO about our application callbacks.
+	 */
+	my->common.cb = cfg->packet_cb_cfg;
 
 	/*
-	 *	Inform all BIOs about the write pause / resume callbacks
-	 *
-	 *	@todo - these callbacks are set AFTER the BIOs have been initialized, so the activate()
-	 *	callback is never set, and therefore is never run.  We should add all of the callbacks to the
-	 *	various bio "cfg" data structures.
+	 *	Initialize the packet handlers in each BIO.
 	 */
-	fr_radius_client_bio_cb_set(&my->common, &cfg->packet_cb_cfg);
+	fr_bio_packet_init(&my->common);
 
 	talloc_set_destructor(my, _radius_client_fd_bio_free);
 
@@ -154,9 +166,9 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	 */
 	if ((my->info.fd_info->type == FR_BIO_FD_CONNECTED) && !my->info.connected &&
 	    fr_time_delta_ispos(cfg->connection_timeout) && cfg->retry_cfg.el) {
-		if (fr_event_timer_in(my, cfg->retry_cfg.el, &my->ev, cfg->connection_timeout, fr_radius_client_bio_connect_timer, my) < 0) {
+		if (fr_event_timer_in(my, cfg->el, &my->common.ev, cfg->connection_timeout, fr_radius_client_bio_connect_timer, my) < 0) {
 			talloc_free(my);
-			return -1;
+			return NULL;
 		}
 	}
 
@@ -166,6 +178,8 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 		.secure_transport = false,
 		.proxy_state = my->cfg.proxy_state,
 	};
+
+	my->info.last_idle = fr_time();
 
 	return my;
 }
@@ -192,10 +206,13 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *pctx, fr_
 		/*
 		 *	Try to cancel the oldest one.
 		 */
-		if (fr_bio_retry_entry_cancel(my->retry, NULL) < 1) {
+		if (!my->retry || fr_bio_retry_entry_cancel(my->retry, NULL) < 1) {
 		all_ids_used:
 			my->all_ids_used = true;
 
+			/*
+			 *	Tell the application to stop writing data to the BIO.
+			 */
 			if (my->common.cb.write_blocked) my->common.cb.write_blocked(&my->common);
 
 			fr_strerror_const("All IDs are in use");
@@ -382,6 +399,10 @@ static void radius_client_retry_sent(fr_bio_t *bio, void *packet_ctx, const void
 
 	(void) fr_bio_retry_entry_init(bio, retry_ctx, &my->cfg.retry[data[0]]);
 
+	my->info.outstanding++;
+	my->info.last_sent = retry_ctx->retry.start;
+	if (fr_time_lteq(my->info.first_sent, my->info.last_idle)) my->info.first_sent = my->info.last_sent;
+
 	/*
 	 *	For Accounting-Request packets which have Acct-Delay-Time, we need to track where the
 	 *	Acct-Delay-Time is in the packet, along with its original value, and then we can use the
@@ -455,12 +476,19 @@ static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **r
 	 *	No reply yet, verify the response packet, and save it for later.
 	 */
 	if (!id_ctx->response) {
+		fr_bio_retry_entry_t *retry;
+
 		if (fr_radius_verify(data, id_ctx->packet->data + 4,
 				     my->cfg.verify.secret, my->cfg.verify.secret_len,
 				     my->cfg.verify.require_message_authenticator,
 				     my->cfg.verify.limit_proxy_state) < 0) {
 			return false;
 		}
+
+		retry = *retry_ctx_p = id_ctx->retry_ctx;
+
+		if (fr_time_gt(retry->retry.start, my->info.mrs_time)) my->info.mrs_time = retry->retry.start;
+		my->info.last_reply = fr_time(); /* @todo - cache this so read() doesn't call time? */
 
 		*retry_ctx_p = id_ctx->retry_ctx;
 		response->uctx = id_ctx->packet;
@@ -477,6 +505,7 @@ static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **r
 	 *	Tell the caller that it's a duplicate reply.
 	 */
 	*retry_ctx_p = id_ctx->retry_ctx;
+	my->info.last_reply = fr_time(); /* @todo - cache this so read() doesn't call time? */
 	return false;
 }
 
@@ -509,14 +538,22 @@ static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *ret
 	 */
 	if (my->cfg.packet_cb_cfg.release && (reason == FR_BIO_RETRY_NO_REPLY)) my->cfg.packet_cb_cfg.release(&my->common, packet);
 
+	fr_assert(my->info.outstanding > 0);
+	my->info.outstanding--;
+
 	/*
-	 *	IO was blocked due to IDs.  We now have a free ID, so perhaps we can resume writes.  But only
-	 *	if the IO handlers didn't mark us as "write blocked".
+	 *	IO was blocked due to IDs.  We now have a free ID, so we resume the normal write process.
 	 */
 	if (my->all_ids_used) {
 		my->all_ids_used = false;
 
-		if (!my->common.write_blocked && my->common.cb.write_resume) my->common.cb.write_resume(&my->common);
+		/*
+		 *	Tell the application to resume writing to the BIO.
+		 */
+		if (my->common.cb.write_resume) my->common.cb.write_resume(&my->common);
+
+	} else if (!my->info.outstanding) {
+		my->info.last_idle = fr_time();
 	}
 }
 
@@ -531,15 +568,16 @@ int fr_radius_client_fd_bio_cancel(fr_bio_packet_t *bio, fr_packet_t *packet)
 	fr_radius_id_ctx_t *id_ctx;
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
 
-	if (!my->retry) return 0;
-
 	id_ctx = fr_radius_code_id_find(my->codes, packet->code, packet->id);
-	if (!id_ctx || !id_ctx->retry_ctx) return 0;
 
+	if (!id_ctx || !id_ctx->retry_ctx) return 0;
 	fr_assert(id_ctx->packet == packet);
+
+	if (!my->retry) goto done;
 
 	if (fr_bio_retry_entry_cancel(my->retry, id_ctx->retry_ctx) < 0) return -1;
 
+done:
 	id_ctx->retry_ctx = NULL;
 	id_ctx->packet = NULL;
 
@@ -614,6 +652,11 @@ size_t fr_radius_client_bio_outstanding(fr_bio_packet_t *bio)
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
 
+	/*
+	 *	@todo - add API for ID allocation to track this.
+	 */
+	if (!my->retry) return 0;
+
 	return fr_bio_retry_outstanding(my->retry);
 }
 
@@ -642,35 +685,6 @@ int fr_radius_client_bio_force_id(fr_bio_packet_t *bio, int code, int id)
 	return fr_radius_code_id_force(my->codes, code, id);
 }
 
-static void fr_radius_client_bio_eof(fr_bio_t *bio)
-{
-	fr_radius_client_fd_bio_t *my = bio->uctx;
-
-	if (my->common.cb.eof) my->common.cb.eof(&my->common);
-}
-
-/** Callback for when the FD is activated, i.e. connected.
- *
- */
-static void fr_radius_client_bio_activate(fr_bio_t *bio)
-{
-	fr_radius_client_fd_bio_t *my = bio->uctx;
-
-	fr_assert(!my->info.connected);
-
-	my->info.connected = true;
-
-	/*
-	 *	Stop any connection timeout.
-	 */
-	if (my->ev) talloc_const_free(&my->ev);
-
-	/*
-	 *	Tell the application that the connection has been activated.
-	 */
-	my->common.cb.activate(&my->common);
-}
-
 /** We failed to connect in the given timeout, the connection is dead.
  *
  */
@@ -678,9 +692,7 @@ static void fr_radius_client_bio_connect_timer(NDEBUG_UNUSED fr_event_list_t *el
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(uctx, fr_radius_client_fd_bio_t);
 
-	fr_assert(my->info.retry_info->el == el);
-
-	if (my->ev) talloc_const_free(&my->ev);
+	fr_assert(!my->retry || (my->info.retry_info->el == el));
 
 	if (my->common.cb.failed) my->common.cb.failed(&my->common);
 }
@@ -690,23 +702,23 @@ void fr_radius_client_bio_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUS
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(uctx, fr_radius_client_fd_bio_t);
 
-	fr_assert(my->common.cb.activate);
-	fr_assert(my->info.retry_info->el == el);
+	fr_assert(my->common.cb.connected);
+	fr_assert(!my->retry || (my->info.retry_info->el == el));
 	fr_assert(my->info.fd_info->socket.fd == fd);
 
 	/*
-	 *	The socket is already connected, go activate it.  This happens when the FD bio opens an
-	 *	unconnected socket.  It calls our activation routine before the application has a chance to
+	 *	The socket is already connected, tell the application.  This happens when the FD bio opens an
+	 *	unconnected socket.  It calls our connected routine before the application has a chance to
 	 *	call our connect routine.
 	 */
 	if (my->info.connected) return;
 
 	/*
-	 *	We don't pass the callbacks to fr_bio_fd_alloc(), so it can't call our activate routine.
+	 *	We don't pass the callbacks to fr_bio_fd_alloc(), so it can't call our connected routine.
 	 *	As a result, we have to check if the FD is open, and then call it ourselves.
 	 */
 	if (my->info.fd_info->state == FR_BIO_FD_STATE_OPEN) {
-		fr_radius_client_bio_activate(my->fd);
+		fr_bio_packet_connected(my->fd);
 		return;
 	}
 
@@ -717,128 +729,4 @@ void fr_radius_client_bio_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUS
 	 *	Try to connect it.  Any magic handling is done in the callbacks.
 	 */
 	(void) fr_bio_fd_connect(my->fd);
-}
-
-
-
-/** Callback for when the writes are blocked.
- *
- */
-static int fr_radius_client_bio_write_blocked(fr_bio_t *bio)
-{
-	fr_radius_client_fd_bio_t *my = bio->uctx;
-	int rcode;
-
-	/*
-	 *	This function must be callable multiple times, as different portions of the BIOs can block at
-	 *	different times.
-	 */
-	if (my->common.write_blocked) return 1;
-
-	/*
-	 *	Mark the retry code as blocked, so that it stops trying to write packets.
-	 */
-	rcode = fr_bio_retry_write_blocked(my->retry);
-	if (rcode < 0) return rcode;
-
-	/*
-	 *	The application doesn't want to know that it's blocked, so we just return.
-	 */
-	if (!my->common.cb.write_blocked) {
-		my->common.write_blocked = true;
-		return 1;
-	}
-
-	/*
-	 *	Tell the application that IO is blocked.
-	 */
-	rcode = my->common.cb.write_blocked(&my->common);
-	if (rcode <= 0) return rcode;
-
-	my->common.write_blocked = true;
-	return 1;
-}
-
-
-/** Callback for when the writes can be resumed
- *
- */
-static int fr_radius_client_bio_write_resume(fr_bio_t *bio)
-{
-	fr_radius_client_fd_bio_t *my = bio->uctx;
-	int rcode;
-
-	/*
-	 *	This function must be callable multiple times, as different portions of the BIOs can block or
-	 *	resume at different times.
-	 */
-	if (!my->common.write_blocked) return 1;
-
-	/*
-	 *	Flush the outgoing memory buffers.
-	 */
-	rcode = fr_bio_mem_write_resume(my->mem);
-	if (rcode <= 0) return rcode;
-
-	/*
-	 *	Flush the packets which should have been retried, but weren't due to blocking.
-	 */
-	rcode = fr_bio_retry_write_resume(my->retry);
-	if (rcode <= 0) return rcode;
-
-	/*
-	 *	IO is unblocked, but we don't have any free IDs.  So
-	 *	we can't yet resume application-layer writes.
-	 */
-	if (my->all_ids_used) return 0;
-
-	/*
-	 *	The application doesn't want to know that it's resumed, so we just return.
-	 */
-	if (!my->common.cb.write_resume) {
-		my->common.write_blocked = false;
-		return 1;
-	}
-
-	/*
-	 *	Tell the application that IO has resumed.
-	 */
-	rcode = my->common.cb.write_resume(&my->common);
-	if (rcode <= 0) return rcode;
-
-	my->common.write_blocked = false;
-	return 1;
-}
-
-void fr_radius_client_bio_cb_set(fr_bio_packet_t *bio, fr_bio_packet_cb_funcs_t const *cb)
-{
-	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
-	fr_bio_cb_funcs_t bio_cb = {};
-
-	/*
-	 *	If we have a "blocked" function, we must have a "resume" function, and vice versa.
-	 */
-	fr_assert((cb->write_blocked != NULL) == (cb->write_resume != NULL));
-	fr_assert((cb->read_blocked != NULL) == (cb->read_resume != NULL));
-
-	bio_cb.activate = fr_radius_client_bio_activate;
-	bio_cb.write_blocked = fr_radius_client_bio_write_blocked;
-	bio_cb.write_resume = fr_radius_client_bio_write_resume;
-
-#undef SET
-#define SET(_x) if (cb->_x) bio_cb._x = fr_bio_packet_ ## _x
-
-	SET(read_blocked);
-	SET(read_resume);
-
-	my->common.cb = *cb;
-
-	fr_bio_cb_set(my->mem, &bio_cb);
-	fr_bio_cb_set(my->retry, &bio_cb);
-
-	/*
-	 *	Only the FD bio gets an EOF callback.
-	 */
-	bio_cb.eof = fr_radius_client_bio_eof;
-	fr_bio_cb_set(my->fd, &bio_cb);
 }

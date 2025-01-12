@@ -1,11 +1,7 @@
 #
 #  Used for internal testing
 #
-PROTOCOL	RADIUS		1
-BEGIN-PROTOCOL	RADIUS
-
-ATTRIBUTE	Vendor-Specific				26	vsa
-
+BEGIN PROTOCOL	RADIUS		1
 
 VENDOR TEST 32000
 

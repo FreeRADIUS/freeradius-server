@@ -191,7 +191,7 @@ VALUE	Port-Mirror			Enable			3
 
 ATTRIBUTE	Account-Info				184	string
 ATTRIBUTE	Service-Info				185	string
-ATTRIBUTE	DHCP-Option				187	group ref=..DHCPv4
+ATTRIBUTE	DHCP-Option				187	group ref=@DHCPv4
 ATTRIBUTE	AVpair					188	string
 ATTRIBUTE	Delegated-IPv6-Prefix-Pool		191	string
 ATTRIBUTE	IPv6-Prefix-Lease			192	struct

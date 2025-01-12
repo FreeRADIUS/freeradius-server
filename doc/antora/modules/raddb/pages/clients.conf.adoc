@@ -103,14 +103,60 @@ not be used in any real environment.
 
 
 
-require_message_authenticator:: Old-style clients do not send a
-`link:https://freeradius.org/rfc/rfc2869.html#Message-Authenticator[Message-Authenticator]` in an `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]`. https://tools.ietf.org/html/rfc5080[RFC 5080] suggests
-that all clients *should* include it in an Access-Request. The
-configuration item below allows the server to require it. If a
-client is required to include a `link:https://freeradius.org/rfc/rfc2869.html#Message-Authenticator[Message-Authenticator]` and it
-does not, then the packet will be silently discarded.
+require_message_authenticator::Require Message-Authenticator in Access-Requests.
 
-Allowed values: yes, no
+https://tools.ietf.org/html/rfc5080[RFC 5080] suggests that all clients *should* include it in an
+Access-Request. The configuration item below allows the server
+to require it. If a client is required to include a `link:https://freeradius.org/rfc/rfc2869.html#Message-Authenticator[Message-Authenticator]`
+and it does not, then the packet will be silently discarded.
+
+If value is auto, then if any packet received from the client
+contains a valid Message-Authenticator attribute, then the server
+will require it from all future packets from that client.
+
+NOTE: This setting overrides the identically named config item in the
+radius listener.
+
+Allowed values: yes, no, auto
+
+The default is "no".
+
+
+
+limit_proxy_state:: Control whether Proxy-State is allowed in
+packets from this client which do not have a Message-Authenticator.
+
+The blastradius prefix attack allows an attacker to manipulate
+the contents of response packets without knowing the shared secret.
+
+The attack relies on controlling a portion of the data sent back
+in the response by the RADIUS server. As Proxy-State is always
+echoed back verbatim from the request, it can be leveraged to
+manipulate the data sent back from the server and facilitate the
+attack.
+
+The attack also relies on defficiencies in the original RADIUS
+standards that provided no integrity protection for Access-Requests.
+
+The attack is mitigated by requiring the Message-Authenticator,
+which contains a HMAC over the entire request, preventing
+modification of the request by the attacker.
+
+If value is auto, and the first packet received from the client
+does not contain a Proxy-State attribute, Proxy-State will be
+disallowed in any future packets which do not contain a
+Message-Authenticator.
+
+This provides some level of protection against the blastradius
+attack, without requiring Message-Authenticator, or breaking existing
+deployments.
+
+NOTE: This setting overrides the identically named config item in the
+radius listener.
+
+Allowed values: yes, no, auto
+
+The default is "auto".
 
 
 
@@ -193,7 +239,8 @@ client localhost {
 #	ipv6addr = ::
 	proto = *
 	secret = testing123
-	require_message_authenticator = no
+	require_message_authenticator = auto
+	limit_proxy_state = auto
 #	shortname = localhost
 	limit {
 		max_connections = 16

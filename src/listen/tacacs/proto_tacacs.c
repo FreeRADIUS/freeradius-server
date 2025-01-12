@@ -97,7 +97,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 	proto_tacacs_t		*inst = talloc_get_type_abort(parent, proto_tacacs_t);
 	module_instance_t	*mi;
 
-	if (unlikely(virtual_sever_listen_transport_parse(ctx, out, parent, ci, rule) < 0)) {
+	if (unlikely(virtual_server_listen_transport_parse(ctx, out, parent, ci, rule) < 0)) {
 		return -1;
 	}
 
@@ -184,6 +184,32 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;
 
+	if (!client->active) {
+		fr_assert(client->dynamic);
+		request_set_dynamic_client(request);
+
+		/*
+		 *	For real packets, the code is extracted during packet decode,
+		 *	however, we can't do that for a fake packet used to set up a
+		 *	dynamic client as we don't have the secret - so set an intelligent
+		 *	packet code.
+		 */
+		switch (request->packet->data[1]) {
+		case FR_TAC_PLUS_AUTHEN:
+			request->packet->code = FR_PACKET_TYPE_VALUE_AUTHENTICATION_START;
+			break;
+		case FR_TAC_PLUS_AUTHOR:
+			request->packet->code = FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST;
+			break;
+		case FR_TAC_PLUS_ACCT:
+			request->packet->code = FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST;
+			break;
+		default:
+			return -1;
+		}
+		goto skip_decode;
+	}
+
 	secret = client->secret;
 	if (secret) {
 		if (!packet_is_encrypted((fr_tacacs_packet_t const *) data)) {
@@ -215,6 +241,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	}
 
 	request->packet->code = code;
+skip_decode:
 
 	/*
 	 *	RFC 8907 Section 3.6 says:
@@ -236,45 +263,6 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	fr_socket_addr_swap(&request->reply->socket, &address->socket);
 
 	REQUEST_VERIFY(request);
-
-	/*
-	 *	If we're defining a dynamic client, this packet is
-	 *	fake.  We don't have a secret, so we mash all of the
-	 *	encrypted attributes to sane (i.e. non-hurtful)
-	 *	values.
-	 */
-	if (!client->active) {
-		fr_pair_t *vp;
-
-		fr_assert(client->dynamic);
-
-		for (vp = fr_pair_list_head(&request->request_pairs);
-		     vp != NULL;
-		     vp = fr_pair_list_next(&request->request_pairs, vp)) {
-			if (!vp->da->flags.subtype) {
-				switch (vp->vp_type) {
-				default:
-					break;
-
-				case FR_TYPE_UINT32:
-					vp->vp_uint32 = 0;
-					break;
-
-				case FR_TYPE_IPV4_ADDR:
-					vp->vp_ipv4addr = INADDR_ANY;
-					break;
-
-				case FR_TYPE_OCTETS:
-					fr_pair_value_memdup(vp, (uint8_t const *) "", 1, true);
-					break;
-
-				case FR_TYPE_STRING:
-					fr_pair_value_strdup(vp, "", true);
-					break;
-				}
-			}
-		}
-	}
 
 	if (RDEBUG_ENABLED) {
 		fr_pair_t *vp;

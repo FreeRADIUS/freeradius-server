@@ -1,0 +1,208 @@
+######################################################################
+#
+#  This virtual server controls TLS sessions.
+#
+#  When a TLS session is used, the server will automatically create
+#  attributes in the session-state list with details extracted from
+#  the client certificate chain.
+#
+#  The number of certificates decoded depends on the setting of
+#  setting of `attriubte_mode` in the `verify` section of the
+#  appropriate TLS configuration.
+#
+#  Certificates are decoded into nested attributes e.g.
+#
+#	TLS-Certificate = {
+#		Subject = '...',
+#		Common-Name = '...',
+#		Issuer = '...'
+#	}
+#
+#  When more than one certificate is decoded, the first ( i.e.
+#  &session-state.TLS-Certificate[0] ) will be the client certificate,
+#  with the next being its issuer.
+#
+#	$Id$
+#
+######################################################################
+server tls-session {
+	namespace = tls
+
+	#
+	#  This section can be run to verify a client certificate if
+	#  additional checks need to be performed beyond standard
+	#  checks verification against a trust chain, CRLs and OCSP.
+	#
+	#  Attributes extracted from the certificates forming the
+	#  client certificate chain will be in the session state list.
+	#
+	#  Returning 'ok', 'updated' or 'noop' will cause the verification
+	#  to succeed.  Other return codes will cause the verification
+	#  to fail.
+	#
+	verify certificate {
+		#
+		#  Check the client certificate matches a string, and reject otherwise
+		#
+#		if ("%{session-state.TLS-Certificate.Common-Name}" != 'client.example.com') {
+#			reject
+#		}
+
+		#
+		#  Check the client certificate common name against the supplied identity
+		#
+#		if (&EAP-Identity != "host/%{session-state.TLS-Certificate.Common-Name}") {
+#			reject
+#		}
+
+		#
+		#  This is a convenient place to call LDAP, for example, when using
+		#  EAP-TLS, as it will only be called once, after all certificates as
+		#  part of the EAP-TLS challenge process have been verified.
+		#
+		#  An example could be to use LDAP to check that the connecting host, as
+		#  well as presenting a valid certificate, is also in a group based on
+		#  the EAP-Identity (assuming this contains the service principal name).
+		#  Settings such as the following could be used in the ldap module
+		#  configuration:
+		#
+		#  basedn = "dc=example, dc=com"
+		#  filter = "(servicePrincipalName=%{EAP-Identity})"
+		#  base_filter = "(objectClass=computer)"
+		#  groupname_attribute = cn
+		#  groupmembership_filter = "(&(objectClass=group)(member=%{control.Ldap-UserDn}))"
+		#
+
+#		ldap
+
+		#
+		#  Now let's test membership of an LDAP group (the ldap bind user will
+		#  need permission to read this group membership):
+		#
+
+#		if (!%ldap.group("Permitted-Laptops")) {
+#			reject
+#		}
+
+		#  or, to be more specific, you could use the group's full DN:
+		#  if (!%ldap.group("CN=Permitted-Laptops,OU=Groups,DC=example,DC=org")) {
+
+		#
+		#  This may be a better place to call the files modules when using
+		#  EAP-TLS, as it will only be called once, after the challenge-response
+		#  iteration has completed.
+		#
+
+#		files
+
+		ok
+	}
+
+	#
+	#  This section is run prior to creating a new TLS session
+	#  and can be used to modify session parameters such as
+	#  max and min TLS versions.
+	#
+#	new session {
+#		&control.Max-Version := 1.3
+#		&control.Min-Version := 1.2
+#	}
+
+	#
+	#  This section is run whenever the server needs to read an
+	#  entry from the TLS session cache.
+	#
+	#  It should read the attribute &session-state.TLS-Session-Data
+	#  from the cache, along with any other attributes which
+	#  were in the cache
+	#
+	#  On success it should return 'ok' or 'updated'.
+	#
+	#  The return code has no real effect on session processing
+	#  and will just cause the server to emit a warning.
+	#
+	load session {
+		&control.Cache-Allow-Insert := no
+
+		cache_tls_session
+	}
+
+	#
+	#  This section is run whenever the server needs to write an
+	#  entry to the TLS session cache.
+	#
+	#  It should write the attribute &session-state.Session-Data
+	#  to the cache, along with any other attributes which
+	#  need to be cached.
+	#
+	#  On success it should return 'ok' or 'updated'.
+	#
+	#  The return code has no real effect on session processing
+	#  and will just cause the server to emit a warning.
+	#
+	store session {
+		&control.Cache-TTL := 0
+
+		cache_tls_session
+	}
+
+	#
+	#  This section is run whenever the server needs to delete an
+	#  entry from the TLS session cache.
+	#
+	#  On success it should return 'ok', 'updated', 'noop' or 'notfound'
+	#
+	#  The return code has no real effect on session processing
+	#  and will just cause the server to emit a warning.
+	#
+	clear session {
+		&control.Cache-TTL := 0
+		&control.Cache-Allow-Insert := no
+
+		cache_tls_session
+	}
+
+	#
+	#  This section is run after the TLS session is established.
+	#
+	#  It is intended for logging session details such as
+	#  TLS version or cipher suite.
+	#
+#	establish session {
+#
+#	}
+
+	#
+	#  This section is run after certificate attributes are added
+	#  to the request list, and before performing OCSP validation.
+	#
+	#  It should read the attribute &control.TLS-OCSP-Cert-Valid
+	#  from the cache.
+	#
+	#  On success it should return 'ok', 'updated', 'noop' or 'notfound'
+	#  To force OCSP validation failure, it should return 'reject'.
+	#
+	load ocsp-state {
+		&control.Cache-Allow-Insert := no
+
+		cache_ocsp
+	}
+
+	#
+	#  This section is run after OCSP validation has completed.
+	#
+	#  It should write the attribute &reply.TLS-OCSP-Cert-Valid
+	#  to the cache.
+	#
+	#  On success it should return 'ok' or 'updated'.
+	#
+	#  The return code has no real effect on session processing
+	#  and will just cause the server to emit a warning.
+	#
+	store ocsp-state {
+		&control.Cache-TTL := "%{&reply.TLS-OCSP-Next-Update * -1}"
+		&control.Cache-Allow-Merge := no
+
+		cache_ocsp
+	}
+}

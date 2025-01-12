@@ -1,0 +1,13 @@
+type = ttls
+type = tls
+ttls {
+	tls = tls-common
+	default_eap_type = md5
+	virtual_server = "inner-tunnel"
+	include_length = no
+	require_client_cert = yes
+}
+
+tls {
+	tls = tls-common
+}

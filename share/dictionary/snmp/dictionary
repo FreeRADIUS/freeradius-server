@@ -8,8 +8,7 @@
 # Version:	$Id$
 #
 
-PROTOCOL	SNMP		7	format=4
-BEGIN-PROTOCOL	SNMP
+BEGIN PROTOCOL	SNMP		7	format=4
 
 $INCLUDE dictionary.freeradius
 

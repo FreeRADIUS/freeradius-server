@@ -105,17 +105,10 @@ typedef struct sql_inst rlm_sql_t;
  *	Per-thread instance data structure
  */
 typedef struct {
-	trunk_t		*trunk;				//!< Trunk connection for this thread.
+	trunk_t			*trunk;				//!< Trunk connection for this thread.
 	rlm_sql_t const		*inst;				//!< Module instance data.
 	void			*sql_escape_arg;		//!< Thread specific argument to be passed to escape function.
 } rlm_sql_thread_t;
-
-typedef struct {
-	void			*conn;				//!< Database specific connection handle.
-	rlm_sql_t const		*inst;				//!< The rlm_sql instance this connection belongs to.
-	TALLOC_CTX		*log_ctx;			//!< Talloc pool used to avoid allocing memory
-								//!< when log strings need to be copied.
-} rlm_sql_handle_t;
 
 typedef enum {
 	SQL_QUERY_SELECT,
@@ -130,21 +123,22 @@ typedef enum {
 	SQL_QUERY_SUBMITTED,					//!< Submitted for execution.
 	SQL_QUERY_RETURNED,					//!< Query has executed.
 	SQL_QUERY_FETCHING_RESULTS,				//!< Fetching results from server.
-	SQL_QUERY_RESULTS_FETCHED				//!< Results fetched from the server.
+	SQL_QUERY_RESULTS_FETCHED,				//!< Results fetched from the server.
+	SQL_QUERY_CANCELLED					//!< A cancellation has been sent to the server.
 } fr_sql_query_status_t;
 
 typedef struct {
 	rlm_sql_t const		*inst;				//!< Module instance for this query.
 	request_t		*request;			//!< Request this query relates to.
-	rlm_sql_handle_t	*handle;			//!< Connection handle this query is being run on.
-	trunk_t		*trunk;				//!< Trunk this query is being run on.
+	trunk_t			*trunk;				//!< Trunk this query is being run on.
 	trunk_connection_t	*tconn;				//!< Trunk connection this query is being run on.
-	trunk_request_t	*treq;				//!< Trunk request for this query.
+	trunk_request_t		*treq;				//!< Trunk request for this query.
 	char const		*query_str;			//!< Query string to run.
 	fr_sql_query_type_t	type;				//!< Type of query.
 	fr_sql_query_status_t	status;				//!< Status of the query.
 	sql_rcode_t		rcode;				//!< Result code.
 	rlm_sql_row_t		row;				//!< Row data from the last query.
+	void			*uctx;				//!< Driver specific data.
 } fr_sql_query_t;
 
 /** Context used when fetching attribute value pairs as a map list
@@ -169,6 +163,7 @@ extern size_t sql_rcode_table_len;
  */
 #define RLM_SQL_RCODE_FLAGS_ALT_QUERY	1			//!< Can distinguish between other errors and those
 								//!< resulting from a unique key violation.
+#define RLM_SQL_MULTI_QUERY_CONN	2			//!< Can support multiple queries on a single connection.
 
 /** Retrieve errors from the last query operation
  *
@@ -184,30 +179,21 @@ extern size_t sql_rcode_table_len;
  * @param[out] out a pre-allocated array of log entries to fill. Need not be NULL terminated.
  * @param[in] outlen Number of log entries available for populating. Do not write to index
  *	out[outlen] or higher.
- * @param[in] handle to retrieve errors from.
- * @param[in] config of the SQL instance.
+ * @param[in] query_ctx to retrieve errors from.
  * @return
  *	0  - If no error messages are available.
  *	>0 - Number of log entries
  */
-typedef size_t (*sql_error_t)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen, fr_sql_query_t *handle,
-			      rlm_sql_config_t const *config);
+typedef size_t (*sql_error_t)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen, fr_sql_query_t *query_ctx);
 
 typedef struct {
 	rlm_sql_t const		*sql;
-	rlm_sql_handle_t	*handle;
 } rlm_sql_escape_uctx_t;
 
 typedef struct {
 	module_t	common;				//!< Common fields for all loadable modules.
 
 	int		flags;
-
-	sql_rcode_t	(*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
-					   fr_time_delta_t timeout);
-
-	unlang_function_t	sql_query;			//!< Run an SQL query on a pool connection.
-	unlang_function_t	sql_select_query;		//!< Run an SQL select query on a pool connection.
 
 	unlang_function_t	sql_query_resume;		//!< Callback run after an SQL trunk query is run.
 	unlang_function_t	sql_select_query_resume;	//!< Callback run after an SQL select trunk query is run.
@@ -228,13 +214,11 @@ typedef struct {
 	void		*(*sql_escape_arg_alloc)(TALLOC_CTX *ctx, fr_event_list_t *el, void *uctx);
 	void		(*sql_escape_arg_free)(void *uctx);
 
-	bool			uses_trunks;		//!< Transitional flag for drivers which use trunks.
 	trunk_io_funcs_t	trunk_io_funcs;		//!< Trunk callback functions for this driver.
 } rlm_sql_driver_t;
 
 struct sql_inst {
 	rlm_sql_config_t	config; /* HACK */
-	fr_pool_t		*pool;
 
 	fr_dict_attr_t const	*sql_user;		//!< Cached pointer to SQL-User-Name
 							//!< dictionary attribute.
@@ -249,22 +233,19 @@ struct sql_inst {
 	unlang_function_t	query;
 	unlang_function_t	select;
 	unlang_function_t	fetch_row;
-	fr_sql_query_t		*(*query_alloc)(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);
+	fr_sql_query_t		*(*query_alloc)(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);
 
 	char const		*name;			//!< Module instance name.
 	fr_dict_attr_t const	*group_da;		//!< Group dictionary attribute.
 	module_instance_t const	*mi;			//!< Module instance data for thread lookups.
 };
 
-void		*sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);
-unlang_action_t	sql_get_map_list(request_t *request, fr_sql_map_ctx_t *map_ctx, rlm_sql_handle_t **handle, trunk_t *trunk);
+unlang_action_t	sql_get_map_list(request_t *request, fr_sql_map_ctx_t *map_ctx, trunk_t *trunk);
 void 		rlm_sql_query_log(rlm_sql_t const *inst, char const *filename, char const *query) CC_HINT(nonnull);
-unlang_action_t rlm_sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
-unlang_action_t	rlm_sql_query(rlm_rcode_t *p_result, int *priority, request_t *request, void *uctx);
 unlang_action_t rlm_sql_trunk_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
 unlang_action_t rlm_sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
 void		rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, fr_sql_query_t *query_ctx, bool force_debug);
-fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);
+fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);
 
 /*
  *	sql_state.c

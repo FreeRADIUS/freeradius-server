@@ -116,11 +116,12 @@ typedef struct {
 	} syslog;
 
 	struct {
-		uint32_t		permissions;		//!< Permissions to use when creating new files.
+		mode_t			permissions;		//!< Permissions to use when creating new files.
 		char const		*group_str;		//!< Group to set on new files.
 		gid_t			group;			//!< Resolved gid.
 		exfile_t		*ef;			//!< Exclusive file access handle.
 		bool			escape;			//!< Do filename escaping, yes / no.
+		bool			fsync;			//!< fsync after each write.
 	} file;
 
 	struct {
@@ -140,9 +141,10 @@ typedef struct {
 
 
 static const conf_parser_t file_config[] = {
-	{ FR_CONF_OFFSET("permissions", rlm_linelog_t, file.permissions), .dflt = "0600" },
+	{ FR_CONF_OFFSET("permissions", rlm_linelog_t, file.permissions), .dflt = "0600", .func = cf_parse_permissions },
 	{ FR_CONF_OFFSET("group", rlm_linelog_t, file.group_str) },
 	{ FR_CONF_OFFSET("escape_filenames", rlm_linelog_t, file.escape), .dflt = "no" },
+	{ FR_CONF_OFFSET("fsync", rlm_linelog_t, file.fsync), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -434,6 +436,11 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 				/* Assert on the extra fatal errors */
 				fr_assert((errno != EINVAL) && (errno != EFAULT));
 
+				return -1;
+			}
+			if (inst->file.fsync && (fsync(fd) < 0)) {
+				RERROR("Failed syncing \"%pV\" to persistent storage: %s", call_env->filename, fr_syserror(errno));
+				exfile_close(inst->file.ef, fd);
 				return -1;
 			}
 		}
@@ -896,7 +903,8 @@ static int call_env_filename_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t cons
 
 	if (tmpl_afrom_substr(ctx, &parsed,
 			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
-			      cf_pair_value_quote(to_parse), NULL, &our_rules) < 0) return -1;
+			      cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
+			      &our_rules) < 0) return -1;
 
 	*(void **)out = parsed;
 	return 0;

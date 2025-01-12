@@ -1054,7 +1054,7 @@ int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
 			break;
 
 	 	case TMPL_ATTR_TYPE_UNKNOWN:
-	 		dst_ar->ar_unknown = fr_dict_unknown_copy(dst_ar, src_ar->ar_unknown);
+	 		dst_ar->ar_unknown = fr_dict_attr_unknown_copy(dst_ar, src_ar->ar_unknown);
 	 		break;
 
 	 	case TMPL_ATTR_TYPE_UNRESOLVED:
@@ -1102,7 +1102,7 @@ int tmpl_attr_set_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 */
 	if (da->flags.is_unknown) {
 		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
-		ref->da = ref->ar_unknown = fr_dict_unknown_copy(vpt, da);
+		ref->da = ref->ar_unknown = fr_dict_attr_unknown_copy(vpt, da);
 	} else {
 		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_NORMAL);
 		ref->da = da;
@@ -1160,7 +1160,7 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 *	Unknown attributes get copied
 	 */
 	if (da->flags.is_unknown) {
-		ref->da = ref->ar_unknown = fr_dict_unknown_copy(vpt, da);
+		ref->da = ref->ar_unknown = fr_dict_attr_unknown_copy(vpt, da);
 	} else {
 		ref->da = da;
 	}
@@ -1254,7 +1254,7 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 
 	if (da->flags.is_unknown) {
 		ar = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
-		ar->da = ar->ar_unknown = fr_dict_unknown_copy(vpt, da);
+		ar->da = ar->ar_unknown = fr_dict_attr_unknown_copy(vpt, da);
 	} else {
 		ar = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_NORMAL);
 		ar->ar_da = da;
@@ -1972,11 +1972,11 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		 */
 		switch (namespace->type) {
 		case FR_TYPE_VSA:
-			da = fr_dict_unknown_vendor_afrom_num(ar, namespace, oid);
+			da = fr_dict_attr_unknown_vendor_afrom_num(ar, namespace, oid);
 			break;
 
 		default:
-			da  = fr_dict_unknown_attr_afrom_num(ar, namespace, oid);
+			da  = fr_dict_attr_unknown_raw_afrom_num(ar, namespace, oid);
 			break;
 		}
 
@@ -2183,7 +2183,7 @@ do_suffix:
  *				- list_def		The default list to set if no #fr_pair_list_t
  *							qualifiers are found in the name.
  *				- allow_unknown		If true attributes in the format accepted by
- *							#fr_dict_unknown_afrom_oid_substr will be allowed,
+ *							#fr_dict_attr_unknown_afrom_oid_substr will be allowed,
  *							even if they're not in the main dictionaries.
  *							If an unknown attribute is found a #TMPL_TYPE_ATTR
  *							#tmpl_t will be produced.
@@ -3485,7 +3485,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		vpt = tmpl_alloc_null(ctx);
 
-		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules, t_rules->literals_safe_for);
+		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules, FR_REGEX_SAFE_FOR);
 		if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 		/*
@@ -4374,7 +4374,7 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 	switch (ref->type) {
 	case TMPL_ATTR_TYPE_NORMAL:
 	{
-		ref->da = ref->ar_unknown = fr_dict_unknown_afrom_da(vpt, ref->da);
+		ref->da = ref->ar_unknown = fr_dict_attr_unknown_afrom_da(vpt, ref->da);
 		ref->ar_unknown->type = FR_TYPE_OCTETS;
 		ref->is_raw = 1;
 		ref->ar_unknown->flags.is_unknown = 1;
@@ -4448,7 +4448,7 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 		}
 
 		unknown = ar->ar_unknown;
-		known = fr_dict_unknown_add(fr_dict_unconst(fr_dict_by_da(unknown)), unknown);
+		known = fr_dict_attr_unknown_add(fr_dict_unconst(fr_dict_by_da(unknown)), unknown);
 		if (!known) return -1;
 
 		/*
@@ -4484,7 +4484,7 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 		 *	types for raw attributes.
 		 */
 		if (!ar_is_raw(ar)) {
-			fr_dict_unknown_free(&ar->ar_da);
+			fr_dict_attr_unknown_free(&ar->ar_da);
 			ar->ar_da = known;
 		} else if (!fr_cond_assert(!next)) {
 			fr_strerror_const("Only the leaf may be raw");
@@ -4517,9 +4517,12 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
  *	- -1 on failure.
  */
 int tmpl_attr_tail_unresolved_add(fr_dict_t *dict_def, tmpl_t *vpt,
-			     fr_type_t type, fr_dict_attr_flags_t const *flags)
+				  fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
 	fr_dict_attr_t const *da;
+	fr_dict_attr_flags_t our_flags = *flags;
+
+	our_flags.name_only = true;
 
 	if (!vpt) return -1;
 
@@ -4528,7 +4531,7 @@ int tmpl_attr_tail_unresolved_add(fr_dict_t *dict_def, tmpl_t *vpt,
 	if (!tmpl_is_attr_unresolved(vpt)) return 1;
 
 	if (fr_dict_attr_add(dict_def,
-			     fr_dict_root(fr_dict_internal()), tmpl_attr_tail_unresolved(vpt), -1, type, flags) < 0) {
+			     fr_dict_root(fr_dict_internal()), tmpl_attr_tail_unresolved(vpt), 0, type, &our_flags) < 0) {
 		return -1;
 	}
 	da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_def), tmpl_attr_tail_unresolved(vpt));
@@ -5338,67 +5341,36 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
  * @param      in	where we start looking for the string
  * @param      inlen	length of the input string
  * @param[out] type	token type of the string.
- * @param[out] castda	NULL if casting is not allowed, otherwise the cast
- * @param   require_regex whether or not to require regular expressions
- * @param   allow_xlat  whether or not "bare" xlat's are allowed
  * @return
  *	- > 0, amount of parsed string to skip, to get to the next token
  *	- <=0, -offset in 'start' where the parse error was located
  */
 ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,
-		      fr_token_t *type,
-		      fr_dict_attr_t const **castda, bool require_regex, bool allow_xlat)
+		      fr_token_t *type)
 {
 	char const *p = in, *end = in + inlen;
 	char quote;
 	char close;
 	int depth;
+	bool triple;
 
 	*type = T_INVALID;
-	if (castda) *castda = NULL;
 
 	while (isspace((uint8_t) *p) && (p < end)) p++;
 	if (p >= end) return p - in;
-
-	if (require_regex) {
-		if (castda && *castda) {
-			p++;
-			fr_strerror_const("Invalid cast before regular expression");
-		return_p:
-			return -(p - in);
-		}
-
-		/*
-		 *	Allow this which is sometimes clearer.
-		 */
-		if (*p == 'm') {
-			p++;
-			quote = *(p++);
-			*type = T_OP_REG_EQ;
-			goto skip_string;
-		}
-
-		if (*p != '/') {
-			return_P("Expected regular expression");
-		}
-	} /* else treat '/' as any other character */
 
 	switch (*p) {
 		/*
 		 *	Allow bare xlat's
 		 */
 	case '%':
-		if (!allow_xlat) {
-			return_P("Unexpected expansion");
-		}
-
 		if (p[1] != '{') {
 			char const *q;
 
 			q = p + 1;
 
 			/*
-			 *	New xlat syntax: %foo(...)
+			 *	Function syntax: %foo(...)
 			 */
 			while ((q < end) && (isalnum((int) *q) || (*q == '.') || (*q == '_') || (*q == '-'))) {
 				q++;
@@ -5406,7 +5378,9 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 
 			if (*q != '(') {
 				p++;
-				return_P("Invalid character after '%'");
+				fr_strerror_const("Invalid character after '%'");
+			return_p:
+				return -(p - in);
 			}
 
 			/*
@@ -5498,11 +5472,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		return_P("Unterminated expansion");
 
 	case '/':
-		if (!require_regex) goto bare_word;
-
-		quote = *(p++);
-		*type = T_OP_REG_EQ;
-		goto skip_string;
+		goto bare_word;
 
 	case '\'':
 		quote = *(p++);
@@ -5527,8 +5497,17 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		 *	more rigorous check.
 		 */
 	skip_string:
+		if ((inlen > 3) && (p[0] == quote) && (p[1] == quote)) {
+			triple = true;
+			p += 2;
+		} else {
+			triple = false;
+		}
 		*out = p;
+
 		while (*p) {
+			if (p >= end) goto unterminated;
+
 			/*
 			 *	End of string.  Tell the caller the
 			 *	length of the data inside of the
@@ -5536,9 +5515,21 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 			 *	characters to skip.
 			 */
 			if (*p == quote) {
-				*outlen = p - (*out);
+				if (!triple) {
+					*outlen = p - (*out);
+					p++;
+					return p - in;
+
+				}
+
+				if (((end - p) >= 3) && (p[1] == quote) && (p[2] == quote)) {
+					*outlen = p - (*out);
+					p += 3;
+					return p - in;
+				}
+
 				p++;
-				return p - in;
+				continue;
 			}
 
 			if (*p == '\\') {
@@ -5554,6 +5545,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		 *	End of input without end of string.
 		 *	Point the error to the start of the string.
 		 */
+		unterminated:
 		p = *out;
 		return_P("Unterminated string");
 

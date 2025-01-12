@@ -195,7 +195,7 @@ static inline CC_HINT(nonnull) void _fr_tls_session_request_bind(char const *fil
 {
 	int ret;
 
-	RDEBUG3("%s[%u] - Binding SSL * (%p) to request (%p)", file, line, ssl, request);
+	RDEBUG3("%s[%d] - Binding SSL * (%p) to request (%p)", file, line, ssl, request);
 
 #ifndef NDEBUG
 	{
@@ -231,7 +231,7 @@ static inline CC_HINT(nonnull) void _fr_tls_session_request_unbind(char const *f
 	(void)talloc_get_type_abort(request, request_t);
 #endif
 
-	RDEBUG3("%s[%u] - Unbinding SSL * (%p) from request (%p)", file, line, ssl, request);
+	RDEBUG3("%s[%d] - Unbinding SSL * (%p) from request (%p)", file, line, ssl, request);
 	ret = SSL_set_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST, NULL);
 	if (unlikely(ret == 0)) {
 		fr_assert(0);
@@ -315,7 +315,9 @@ unlang_action_t	fr_tls_session_async_handshake_push(request_t *request, fr_tls_s
 
 fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx);
 
-fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx, request_t *request, bool client_cert);
+fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx, request_t *request, size_t dynamic_mtu, bool client_cert);
+
+unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const *tls_conf);
 
 #ifdef __cplusplus
 }

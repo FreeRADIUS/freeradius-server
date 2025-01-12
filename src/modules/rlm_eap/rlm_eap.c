@@ -606,7 +606,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 	 *	parent.  If the outer session exists, and doesn't have
 	 *	a home server, then it's multiple layers of tunneling.
 	 */
-	if (eap_session->request->parent &&
+	if (type->num == FR_EAP_METHOD_TLS && eap_session->request->parent &&
 	    eap_session->request->parent->parent) {
 		RERROR("Multiple levels of TLS nesting are invalid");
 		goto is_invalid;
@@ -923,15 +923,6 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_eap_t);
 	int			status;
 
-#ifdef WITH_PROXY
-	/*
-	 *	We don't do authorization again, once we've seen the
-	 *	proxy reply (or the proxied packet)
-	 */
-	if (request->proxy != NULL)
-		RETURN_MODULE_NOOP;
-#endif
-
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup EAP authentication",
 		     mctx->mi->name, mctx->mi->name);
@@ -1014,6 +1005,15 @@ static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *
 	if (!eap_session) {
 		RDEBUG3("Failed to get eap_session, probably already removed, not inserting EAP-Failure");
 		RETURN_MODULE_NOOP;
+	}
+
+	/*
+	 *	If this reject is before eap has been called in authenticate
+	 *	the eap_round will not have been populated.
+	 */
+	if (!eap_session->this_round) {
+		eap_packet_raw_t	*eap_packet = eap_packet_from_vp(request, &request->request_pairs);
+		eap_session->this_round  = eap_round_build(eap_session, &eap_packet);
 	}
 
 	/*

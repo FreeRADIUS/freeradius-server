@@ -82,7 +82,7 @@ jobs:
             openldap25-client    \
             python3              \
             py311-pip            \
-            postgresql12-client  \
+            postgresql14-client  \
             sqlite3              \
             talloc               \
             unixODBC

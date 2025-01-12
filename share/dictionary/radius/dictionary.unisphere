@@ -108,13 +108,13 @@ ATTRIBUTE	Sdx-Tunnel-Disconnect-Cause-Info	51	string
 ATTRIBUTE	Radius-Client-Address			52	ipaddr
 ATTRIBUTE	Service-Description			53	string
 ATTRIBUTE	L2tp-Recv-Window-Size			54	integer
-ATTRIBUTE	DHCP-Options				55	group ref=..DHCPv4
+ATTRIBUTE	DHCP-Options				55	group ref=@DHCPv4
 ATTRIBUTE	DHCP-Mac-Addr				56	string
 ATTRIBUTE	DHCP-Gi-Address				57	ipaddr
-ATTRIBUTE	LI-Action				58	integer	encrypt=2
-ATTRIBUTE	Med-Dev-Handle				59	octets	encrypt=2
-ATTRIBUTE	Med-Ip-Address				60	ipaddr	encrypt=2
-ATTRIBUTE	Med-Port-Number				61	integer	encrypt=2
+ATTRIBUTE	LI-Action				58	integer	encrypt=Tunnel-Password
+ATTRIBUTE	Med-Dev-Handle				59	octets	encrypt=Tunnel-Password
+ATTRIBUTE	Med-Ip-Address				60	ipaddr	encrypt=Tunnel-Password
+ATTRIBUTE	Med-Port-Number				61	integer	encrypt=Tunnel-Password
 ATTRIBUTE	MLPPP-Bundle-Name			62	string
 ATTRIBUTE	Interface-Desc				63	string
 ATTRIBUTE	Tunnel-Group				64	string
@@ -262,7 +262,7 @@ ATTRIBUTE	IPv6-Output-Service-Filter		203	string
 ATTRIBUTE	Adv-Pcef-Profile-Name			204	string
 ATTRIBUTE	Adv-Pcef-Rule-Name			205	string
 ATTRIBUTE	Re-Authentication-Catalyst		206	integer
-ATTRIBUTE	DHCPv6-Options				207	group ref=..DHCPv4
+ATTRIBUTE	DHCPv6-Options				207	group ref=@DHCPv6
 ATTRIBUTE	DHCP-Header				208	octets
 ATTRIBUTE	DHCPv6-Header				209	octets
 ATTRIBUTE	Acct-Request-Reason			210	integer

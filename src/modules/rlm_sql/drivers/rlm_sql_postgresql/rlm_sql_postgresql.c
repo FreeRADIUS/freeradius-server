@@ -51,6 +51,7 @@ RCSID("$Id$")
 
 #include "config.h"
 #include "rlm_sql.h"
+#include "rlm_sql_trunk.h"
 
 #ifndef NAMEDATALEN
 #  define NAMEDATALEN 64
@@ -167,6 +168,9 @@ static sql_rcode_t sql_classify_error(rlm_sql_postgresql_t *inst, ExecStatusType
 		case PGRES_COMMAND_OK:
 	#ifdef HAVE_PGRES_SINGLE_TUPLE
 		case PGRES_SINGLE_TUPLE:
+	#endif
+	#ifdef HAVE_PGRES_TUPLES_CHUNK
+		case PGRES_TUPLES_CHUNK:
 	#endif
 		case PGRES_TUPLES_OK:
 	#ifdef HAVE_PGRES_COPY_BOTH
@@ -343,27 +347,7 @@ static void _sql_connection_close(fr_event_list_t *el, void *h, UNUSED void *uct
 	talloc_free(h);
 }
 
-CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
-static connection_t *sql_trunk_connection_alloc(trunk_connection_t *tconn, fr_event_list_t *el,
-						connection_conf_t const *conn_conf,
-						char const *log_prefix, void *uctx)
-{
-	connection_t		*conn;
-	rlm_sql_thread_t	*thread = talloc_get_type_abort(uctx, rlm_sql_thread_t);
-
-	conn = connection_alloc(tconn, el,
-				&(connection_funcs_t) {
-					.init = _sql_connection_init,
-					.close = _sql_connection_close
-				},
-				conn_conf, log_prefix, thread->inst);
-	if (!conn) {
-		PERROR("Failed allocating state handler for new SQL connection");
-		return NULL;
-	}
-
-	return conn;
-}
+SQL_TRUNK_CONNECTION_ALLOC
 
 TRUNK_NOTIFY_FUNC(sql_trunk_connection_notify, rlm_sql_postgres_conn_t)
 
@@ -467,6 +451,9 @@ static void sql_trunk_request_demux(UNUSED fr_event_list_t *el, UNUSED trunk_con
 #ifdef HAVE_PGRES_SINGLE_TUPLE
 		case PGRES_SINGLE_TUPLE:
 #endif
+#ifdef HAVE_PGRES_TUPLES_CHUNK
+		case PGRES_TUPLES_CHUNK:
+#endif
 		case PGRES_TUPLES_OK:
 			sql_conn->cur_row = 0;
 			sql_conn->affected_rows = PQntuples(sql_conn->result);
@@ -548,25 +535,8 @@ static void sql_request_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_
 	}
 }
 
-static void sql_request_fail(request_t *request, void *preq, UNUSED void *rctx,
-			     UNUSED trunk_request_state_t state, UNUSED void *uctx)
-{
-	fr_sql_query_t	*query_ctx = talloc_get_type_abort(preq, fr_sql_query_t);
-
-	query_ctx->treq = NULL;
-	query_ctx->rcode = RLM_SQL_ERROR;
-
-	if (request) unlang_interpret_mark_runnable(request);
-}
-
-static unlang_action_t sql_query_resume(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
-{
-	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-
-	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
-
-	RETURN_MODULE_OK;
-}
+SQL_QUERY_FAIL
+SQL_QUERY_RESUME
 
 static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
@@ -605,6 +575,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	if ((PQntuples(conn->result) > 0) && (records > 0)) {
 		conn->row = talloc_zero_array(conn, char *, records + 1);
 		for (i = 0; i < records; i++) {
+			if (PQgetisnull(conn->result, conn->cur_row, i)) continue;
 			len = PQgetlength(conn->result, conn->cur_row, i);
 			conn->row[i] = talloc_array(conn->row, char, len + 1);
 			strlcpy(conn->row[i], PQgetvalue(conn->result, conn->cur_row, i), len + 1);
@@ -649,11 +620,10 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
  * @param out Array of sql_log_entrys to fill.
  * @param outlen Length of out array.
  * @param query_ctx Query context to retrieve error for.
- * @param config rlm_sql config.
  * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
-			fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
+			fr_sql_query_t *query_ctx)
 {
 	rlm_sql_postgres_conn_t *conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_postgres_conn_t);
 	char const		*p, *q;
@@ -684,12 +654,19 @@ static int sql_affected_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t 
 	return conn->affected_rows;
 }
 
-static size_t sql_escape_func(request_t *request, char *out, size_t outlen, char const *in, void *arg)
+static ssize_t sql_escape_func(request_t *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	size_t			inlen, ret;
 	connection_t		*c = talloc_get_type_abort(arg, connection_t);
-	rlm_sql_postgres_conn_t	*conn = talloc_get_type_abort(c->h, rlm_sql_postgres_conn_t);
+	rlm_sql_postgres_conn_t	*conn;
 	int			err;
+
+	if ((c->state == CONNECTION_STATE_HALTED) || (c->state == CONNECTION_STATE_CLOSED)) {
+		ROPTIONAL(RERROR, ERROR, "Connection not available for escaping");
+		return -1;
+	}
+
+	conn = talloc_get_type_abort(c->h, rlm_sql_postgres_conn_t);
 
 	/* Check for potential buffer overflow */
 	inlen = strlen(in);
@@ -879,7 +856,6 @@ rlm_sql_driver_t rlm_sql_postgresql = {
 	.sql_escape_func		= sql_escape_func,
 	.sql_escape_arg_alloc		= sql_escape_arg_alloc,
 	.sql_escape_arg_free		= sql_escape_arg_free,
-	.uses_trunks			= true,
 	.trunk_io_funcs = {
 		.connection_alloc	= sql_trunk_connection_alloc,
 		.connection_notify	= sql_trunk_connection_notify,

@@ -8,8 +8,7 @@
 # Version:	$Id$
 #
 
-PROTOCOL	TLS		10
-BEGIN-PROTOCOL	TLS
+BEGIN PROTOCOL	TLS		10
 
 $INCLUDE dictionary.freeradius
 

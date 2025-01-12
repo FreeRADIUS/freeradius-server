@@ -46,6 +46,8 @@ typedef struct {
 	CONF_SECTION	*store_session;
 	CONF_SECTION	*clear_session;
 	CONF_SECTION	*verify_certificate;
+	CONF_SECTION	*new_session;
+	CONF_SECTION	*establish_session;
 } process_tls_sections_t;
 
 typedef struct {
@@ -129,6 +131,40 @@ static fr_process_state_t const process_state[] = {
 		.resume = resume_recv_no_send,
 		.section_offset = PROCESS_CONF_OFFSET(verify_certificate),
 	},
+	[FR_PACKET_TYPE_VALUE_NEW_SESSION] = {
+		.packet_type = {
+			[RLM_MODULE_OK] =	FR_PACKET_TYPE_VALUE_SUCCESS,
+			[RLM_MODULE_UPDATED] =	FR_PACKET_TYPE_VALUE_SUCCESS,
+			[RLM_MODULE_NOOP] =	FR_PACKET_TYPE_VALUE_SUCCESS,
+
+			[RLM_MODULE_REJECT] =  	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_FAIL] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_INVALID] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_DISALLOW] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_NOTFOUND,
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.recv = recv_generic,
+		.resume = resume_recv_no_send,
+		.section_offset = PROCESS_CONF_OFFSET(new_session),
+	},
+	[FR_PACKET_TYPE_VALUE_ESTABLISH_SESSION] = {
+		.packet_type = {
+			[RLM_MODULE_OK] =	FR_PACKET_TYPE_VALUE_SUCCESS,
+			[RLM_MODULE_UPDATED] =	FR_PACKET_TYPE_VALUE_SUCCESS,
+			[RLM_MODULE_NOOP] =	FR_PACKET_TYPE_VALUE_SUCCESS,
+
+			[RLM_MODULE_REJECT] =  	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_FAIL] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_INVALID] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_DISALLOW] =	FR_PACKET_TYPE_VALUE_FAILURE,
+			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_NOTFOUND,
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.recv = recv_generic,
+		.resume = resume_recv_no_send,
+		.section_offset = PROCESS_CONF_OFFSET(establish_session),
+	},
 };
 
 static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -170,6 +206,16 @@ static const virtual_server_compile_t compile_list[] = {
 		.section = SECTION_NAME("verify", "certificate"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(verify_certificate)
+	},
+	{
+		.section = SECTION_NAME("new", "session"),
+		.actions = &mod_actions_authorize,
+		.offset = PROCESS_CONF_OFFSET(new_session)
+	},
+	{
+		.section = SECTION_NAME("establish", "session"),
+		.actions = &mod_actions_authorize,
+		.offset = PROCESS_CONF_OFFSET(establish_session)
 	},
 	COMPILE_TERMINATOR
 };

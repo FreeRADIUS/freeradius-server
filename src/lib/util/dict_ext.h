@@ -20,7 +20,7 @@
  * @file src/lib/util/dict_ext.h
  *
  * @copyright 2020 The FreeRADIUS server project
- * @copyright 2020 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2020,2024 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 RCSIDH(dict_ext_h, "$Id$")
 
@@ -54,11 +54,31 @@ typedef struct {
 	fr_dict_attr_t const	**children;			//!< Children of this attribute.
 } fr_dict_attr_ext_children_t;
 
+DIAG_OFF(attributes)
+typedef enum CC_HINT(flag_enum) {
+	FR_DICT_ATTR_REF_NONE		= 0x00,			//!< No ref set.
+	FR_DICT_ATTR_REF_ALIAS		= 0x01,			//!< The attribute is an alias for another attribute.
+								///< Either a straight ALIAS, or a reference into another
+								///< dictionary.
+	FR_DICT_ATTR_REF_CLONE		= 0x02,			//!< The attribute is a "copy" of another attribute.
+	FR_DICT_ATTR_REF_ENUM		= 0x04,			//!< The attribute is an enumeration value.
+	FR_DICT_ATTR_REF_UNRESOLVED	= 0x10			//!< This flag is combined with the other states to indicate
+								///< that the reference is unresolved.
+} fr_dict_attr_ref_type_t;
+DIAG_ON(attributes)
+
+#define fr_dict_attr_ref_is_unresolved(_type)	((_type) & FR_DICT_ATTR_REF_UNRESOLVED)
+#define fr_dict_attr_ref_type(_type)		((_type) & ~FR_DICT_ATTR_REF_UNRESOLVED)
+
 /** Attribute extension - Holds a reference to an attribute in another dictionary
  *
  */
 typedef struct {
-	fr_dict_attr_t const	*ref;				//!< reference, only for #FR_TYPE_GROUP
+	fr_dict_attr_ref_type_t type;				//!< The state of the reference.
+	union {
+		fr_dict_attr_t const	*ref;			//!< A resolved pointer to the referenced attribute.
+		char			*unresolved;		//!< An unresolved reference (will need resolving later).
+	};
 } fr_dict_attr_ext_ref_t;
 
 /** Attribute extension - Cached vendor pointer
@@ -167,6 +187,16 @@ static inline fr_dict_attr_t const *fr_dict_attr_ref(fr_dict_attr_t const *da)
 
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_REF);
 	if (!ext) return NULL;
+
+	/*
+	 *	Unresolve refs aren't valid refs...
+	 */
+	if (fr_dict_attr_ref_is_unresolved(ext->type)) return NULL;
+
+	/*
+	 *	Temporary backwards compatibility...
+	 */
+	if (ext->type != FR_DICT_ATTR_REF_ALIAS) return NULL;
 
 	return ext->ref;
 }

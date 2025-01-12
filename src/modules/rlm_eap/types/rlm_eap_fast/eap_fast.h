@@ -203,7 +203,7 @@ typedef struct {
 	bool		proxy_tunneled_request_as_eap;	//!< Proxy tunneled session as EAP, or as de-capsulated
 							//!< protocol.
 #endif
-	char const	*virtual_server;
+	CONF_SECTION	*server_cs;
 } eap_fast_tunnel_t;
 
 extern HIDDEN fr_dict_attr_t const *attr_eap_tls_require_client_cert;

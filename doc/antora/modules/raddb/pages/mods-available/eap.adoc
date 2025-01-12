@@ -8,10 +8,10 @@ The `eap` module takes care of all EAP authentication as described in https://to
 
 [WARNING]
 ====
-Whatever you do, do NOT set 'Auth-Type := EAP'.  The server is smart enough
+Whatever you do, do NOT set 'Auth-Type := ::EAP'.  The server is smart enough
 to figure this out on its own.
 
-The most common side effect of setting 'Auth-Type := EAP' is that the users
+The most common side effect of setting 'Auth-Type := ::EAP' is that the users
 then cannot use ANY other authentication method.
 ====
 
@@ -215,7 +215,7 @@ the following sections:
 |===
 
 More information about the various sections can be found in the virtual server
-link:../../../../../../sites-available/tls.adoc[sites-available/tls].
+link:../../../../../../sites-available/tls-cache.adoc[sites-available/tls-cache].
 
 
 auto_chain::
@@ -523,10 +523,6 @@ tls_max_version:: Maximum TLS version we allow.
 
 [NOTE]
 ====
-  * Work-arounds for OpenSSL nonsense.  OpenSSL 1.0.1f and 1.0.1g do
-not calculate the `EAP` keys correctly.  The fix is to upgrade
-OpenSSL, or to disable TLS 1.2 here.
-
   * SSLv2 and SSLv3 are permanently disabled due to security
 issues.
 
@@ -690,7 +686,7 @@ allow_not_yet_valid_crl:: Accept a not-yet-valid Certificate Revocation List.
 
 Once authentication has completed, the TLS client may be
 provided with a session ticket which it presents
-during the next authentication attempt.
+during the next authentication attemp.
 
 Presenting a session ticket allows the client to skip the
 majority of TLS tunnel setup during its next authentication
@@ -963,7 +959,7 @@ outer request.  This configuration is NOT RECOMMENDED.
 
 
 
-include_length:: Whether we include a length field in the TLS header.
+include_length:: Whether we include a length fiel in the TLS header.
 
 This has the same meaning, and overwrites, the same field in
 the `tls` configuration, above.  The default value here is
@@ -1372,7 +1368,7 @@ eap {
 		auth_type = PAP
 	}
 	tls-config tls-common {
-#		virtual_server = tls
+#		virtual_server = tls-cache
 #		auto_chain = no
 		chain rsa {
 #			format = "PEM"

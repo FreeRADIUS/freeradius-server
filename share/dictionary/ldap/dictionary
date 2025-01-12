@@ -8,8 +8,7 @@
 # Version:	$Id$
 #
 
-PROTOCOL	LDAP		12
-BEGIN-PROTOCOL	LDAP
+BEGIN PROTOCOL	LDAP		12
 
 $INCLUDE dictionary.freeradius.internal
 

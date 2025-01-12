@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/unlang/function.h>
 
 #include <ctype.h>
@@ -538,28 +539,34 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-#define ATTR_CHECK(_tmpl, _name) if (tmpl_is_attr_unresolved(inst->_tmpl)) { \
-	if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius), tmpl_attr_tail_unresolved(inst->_tmpl), -1, FR_TYPE_UINT64, &flags) < 0) { \
-		cf_log_perr(conf, "Failed defining %s attribute", _name); \
-		return -1; \
-	} \
-} else if (tmpl_is_attr(inst->_tmpl)) { \
-	if (tmpl_attr_tail_da(inst->_tmpl)->type != FR_TYPE_UINT64) { \
-		cf_log_err(conf, "%s attribute %s must be uint64", _name, tmpl_attr_tail_da(inst->_tmpl)->name); \
-		return -1; \
-	} \
+static inline int attr_check(CONF_SECTION *conf, tmpl_t *tmpl, char const *name, fr_dict_attr_flags_t *flags)
+{
+	if (tmpl_is_attr_unresolved(tmpl) && !fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), tmpl_attr_tail_unresolved(tmpl))) {
+		if (fr_dict_attr_add_name_only(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
+					       tmpl_attr_tail_unresolved(tmpl), FR_TYPE_UINT64, flags) < 0) {
+			cf_log_perr(conf, "Failed defining %s attribute", name);
+			return -1;
+		}
+	} else if (tmpl_is_attr(tmpl)) {
+		if (tmpl_attr_tail_da(tmpl)->type != FR_TYPE_UINT64) {
+			cf_log_err(conf, "%s attribute %s must be uint64", name, tmpl_attr_tail_da(tmpl)->name);
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	rlm_sqlcounter_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlcounter_t);
 	CONF_SECTION    	*conf = mctx->mi->conf;
-	fr_dict_attr_flags_t	flags = (fr_dict_attr_flags_t) { .internal = 1, .length = 8 };
+	fr_dict_attr_flags_t	flags = { .internal = 1, .length = 8, .name_only = 1 };
 
-	ATTR_CHECK(start_attr, "reset_period_start")
-	ATTR_CHECK(end_attr, "reset_period_end")
-	ATTR_CHECK(counter_attr, "counter")
-	ATTR_CHECK(limit_attr, "check")
+	if (unlikely(attr_check(conf, inst->start_attr, "reset_period_start", &flags) < 0)) return -1;
+	if (unlikely(attr_check(conf, inst->end_attr, "reset_period_end", &flags) < 0)) return -1;
+	if (unlikely(attr_check(conf, inst->counter_attr, "counter", &flags) < 0)) return -1;
+	if (unlikely(attr_check(conf, inst->limit_attr, "check", &flags) < 0)) return -1;
 
 	return 0;
 }

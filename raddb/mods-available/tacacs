@@ -222,9 +222,9 @@ tacacs {
 		}
 
 		#
-		#  requests { ... }:: Per-request configuration.
+		#  request { ... }:: Per-request configuration.
 		#
-		requests {
+		request {
 			#
 			#  per_connection_max:: The maximum number of requests
 			#  which are "live" on a particular connection.

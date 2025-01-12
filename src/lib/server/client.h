@@ -95,7 +95,7 @@ struct fr_client_s {
 
 	/** Whether require_message_authenticator is set in the configuration.
 	 */
-	bool						require_message_authenticator_is_set;
+	bool			require_message_authenticator_is_set;
 
 	/** Whether to allow Proxy-State in incoming packets that don't contain a message authenticator.
 	 *

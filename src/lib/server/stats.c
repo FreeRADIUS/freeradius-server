@@ -33,13 +33,8 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/defs.h>
 
 
-#ifdef WITH_STATS
-
 #define EMA_SCALE (100)
 #define F_EMA_SCALE (1000000)
-
-static fr_time_t start_time;
-static fr_time_t hup_time;
 
 #define FR_STATS_INIT { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 	\
 				 { 0, 0, 0, 0, 0, 0, 0, 0 }}
@@ -148,62 +143,6 @@ void request_stats_final(request_t *request)
 	request->counted = true;
 }
 
-void radius_stats_init(int flag)
-{
-	if (!flag) {
-		start_time = fr_time();
-		hup_time = start_time; /* it's just nicer this way */
-	} else {
-		hup_time = fr_time();
-	}
-}
-
-void radius_stats_ema(fr_stats_ema_t *ema, fr_time_t start, fr_time_t end)
-{
-	int64_t	tdiff;
-#ifdef WITH_STATS_DEBUG
-	static int	n = 0;
-#endif
-	if (ema->window == 0) return;
-
-	fr_assert(fr_time_lteq(start, end));
-
-	/*
-	 *	Initialize it.
-	 */
-	if (ema->f1 == 0) {
-		if (ema->window > 10000) ema->window = 10000;
-
-		ema->f1 =  (2 * F_EMA_SCALE) / (ema->window + 1);
-		ema->f10 = (2 * F_EMA_SCALE) / ((10 * ema->window) + 1);
-	}
-
-	tdiff = fr_time_delta_to_usec(fr_time_sub(start, end));
-	tdiff *= EMA_SCALE;
-
-	if (ema->ema1 == 0) {
-		ema->ema1 = tdiff;
-		ema->ema10 = tdiff;
-	} else {
-		int diff;
-
-		diff = ema->f1 * (tdiff - ema->ema1);
-		ema->ema1 += (diff / 1000000);
-
-		diff = ema->f10 * (tdiff - ema->ema10);
-		ema->ema10 += (diff / 1000000);
-	}
-
-
-#ifdef WITH_STATS_DEBUG
-	DEBUG("time %d %d.%06d\t%d.%06d\t%d.%06d\n",
-	      n, tdiff / PREC, (tdiff / EMA_SCALE) % USEC,
-	      ema->ema1 / PREC, (ema->ema1 / EMA_SCALE) % USEC,
-	      ema->ema10 / PREC, (ema->ema10 / EMA_SCALE) % USEC);
-	n++;
-#endif
-}
-
 /** Sort latency times into bins
  *
  * This solves the problem of attempting to keep min/max/avg latencies, whilst
@@ -239,5 +178,3 @@ void fr_stats_bins(fr_stats_t *stats, fr_time_t start, fr_time_t end)
 		}
 	}
 }
-
-#endif /* WITH_STATS */

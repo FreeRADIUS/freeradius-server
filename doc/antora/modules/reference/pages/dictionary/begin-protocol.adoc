@@ -25,7 +25,7 @@ END-PROTOCOL RADIUS
 ----
 
 Note that unlike xref:dictionary/begin-vendor.adoc[END-VENDOR] and
-xref:dictionary/begin-tlv.adoc[END-TLV], it is not possible to omit
+xref:dictionary/begin.adoc[END], it is not possible to omit
 the `BEGIN-PROTOCOL` keyword.
 
 // Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

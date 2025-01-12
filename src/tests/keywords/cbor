@@ -1,0 +1,37 @@
+octets cbor
+string foo
+
+cbor = %cbor.encode(User-Name)
+
+#
+#  9f		array of indefinite length
+#    a1		map of lenght 1
+#      01	key is integer, value 1 (User-Name)
+#      63	value is string, of length 3
+#        626f62 string 'bob'
+#  ff		end of indefinite array
+#
+if (cbor != 0x9fa10163626f62ff) {
+	test_fail
+}
+
+#
+#  Delete User-Name
+#
+request -= User-Name[*]
+if (User-Name) {
+	test_fail
+}
+
+#
+#  Decodes are automatically written to the request list.
+#
+#  @todo - change this to be configurable :(
+#
+%cbor.decode(%{cbor})
+
+if (User-Name != "bob") {
+	test_fail
+}
+
+success

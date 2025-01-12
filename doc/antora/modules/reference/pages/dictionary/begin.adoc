@@ -1,0 +1,79 @@
+= The BEGIN keyword
+
+.Syntax
+----
+BEGIN <name>
+----
+
+.Description
+
+The `BEGIN` keyword starts a "nested" set of
+xref:dictionary/attribute.adoc[ATTRIBUTE] definitions which are all
+for a particular parent attribute of type `tlv` or `struct`.
+
+<name>:: The name of the parent attribute.
++
+The tlv or struct must have previously been created in anref:dictionary/attribute.adoc[ATTRIBUTE] definition.
+
+The `BEGIN` keyword must always be paired with a matching xref:dictionary/end.adoc[END] keyword.
+
+Within the context of a ``BEGIN` block, the numbers for each
+xref:dictionary/attribute.adoc[ATTRIBUTE] definition are relative to
+the parent tlv or struct.
+
+.Example
+----
+ATTRIBUTE Foo 2 tlv
+BEGIN Foo
+ATTRIBUTE Bar 1 string
+END Foo
+----
+
+This example defines an attribute `Foo.Bar`, with OID `2.1`.
+
+== Purpose
+
+The `BEGIN` keyword exists for efficiency.  It is not strictly
+needed, but without a `BEGIN` keyword, every
+xref:dictionary/attribute.adoc[ATTRIBUTE] name would need to contain
+the parent attribute name, as in the following
+example.
+
+.Example
+----
+ATTRIBUTE Foo.bar 2.1 string
+----
+
+== Nesting
+
+It is possible to nest multiple `BEGIN` keywords, so long as each
+one is paired with a matching xref:dictionary/end.adoc[END] keyword.
+
+.Example of nested BEGIN
+----
+ATTRIBUTE Foo 2 tlv
+BEGIN Foo
+ATTRIBUTE Bar 1 string
+ATTRIBUTE Baz 2 tlv
+BEGIN Baz
+ATTRIBUTE Such 4 ipaddr
+END Baz
+END Foo
+----
+
+The above example is equivalent to the example below.
+
+.Example
+----
+ATTRIBUTE Foo 2 tlv
+ATTRIBUTE Bar .1 string
+ATTRIBUTE Baz .2 tlv
+ATTRIBUTE Such .2.4 ipaddr
+----
+
+For short entries, it can be simpler to use the full name an OID.
+However, for complex dictionaries, it is almost always clearer to use
+`BEGIN` and xref:dictionary/end.adoc[END].
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

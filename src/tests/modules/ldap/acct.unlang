@@ -3,7 +3,7 @@ string test_string
 #  Run the "ldap" module
 #  PRE: auth
 #
-ldap.accounting {
+ldap.accounting.start {
 }
 if (!ok) {
         test_fail

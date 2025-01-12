@@ -1,0 +1,99 @@
+= The string Data Type
+
+The `string` data type is intended to printable strings.  However,
+strings in the server are _binary safe_.  It is possible to assign any
+value to them, including binary data, embedded `NUL` (0) characters,
+etc.  Assigning a value with an embedded `NUL` character results in
+the string containing the `NUL` character.  The string is not
+terminated at the `NUL`.
+
+When a string is printed to a text form, any binary data is escaped,
+so that the output does not contain embedded binary data.  The output
+is then valid text, usually ASCII or UTF-8.
+
+That output can then be parse to create the original string, with the
+embedded binary data.
+
+There are a number of different ways to parse strings, each of which
+have their different use-cases.
+
+== Single Quoted Strings
+
+A xref:type/string/single.adoc[single quoted string] uses the `'`
+character to delineate the string.
+
+The string does not support escaping its contents, except for allowing
+`\'`, so that the string can contain the quotation character.
+However, we recommend using xref:type/string/triple.adoc[triple quoted
+strings] instead, if the string needs to contain the quotation
+character.
+
+== Double Quoted Strings
+
+A xref:type/string/double.adoc[double quoted string] uses the `"`
+character to delineate the string.
+
+The string supports the usual escaping of its contents, such as `\\r`,
+`\\n`, and `\\"` in order to embed a quotation character in the
+string.  However, we recommend using
+xref:type/string/triple.adoc[triple quoted strings] instead, if the
+string needs to contain the quotation character.
+
+Double-quoted strings can also contain xref:xlat/index.adoc[dynamic
+expansions].
+
+== Back-Quoted Strings
+
+A xref:type/string/backticks.adoc[back quoted string] uses the `\``
+character to delineate the string.
+
+The string supports the same escaping rules as for double-quoted
+strings, including allowing the use of `\\`` to embed the quotation
+character in the string.
+
+This string format is permitted only in a small number of situations,
+typically in `unlang` assignments.  Even then, using this format is
+not recommended, and the `%exec(...)` function should be used instead.
+
+Support for back-quoted strings is likely to be removed in a future
+release.
+
+== Regular Expression Strings
+
+Regular expression strings use the `/` character for string quotes,
+and otherwise are treated exactly the same as a
+xref:type/string/double.adoc[double quoted string].
+
+This string format is permitted only in `unlang` conditional
+expressions, where the operator is a regular expression operator such
+as `=~` or `!~`.
+
+== Unquoted strings
+
+An xref:type/string/unquoted.adoc[unquoted string] is just a piece of
+text without a quotation character, e.g. `foo`.
+
+While the parser tries to be flexible with reading the configuration
+files, it is not perfect.  Using ambiguous syntax in the configuration
+files will likely cause the server to complain that is unable to parse
+the data.
+
+The solution is to properly quote strings, instead of relying on the
+parser to implicitly parse text words.
+
+== Triple quoted strings
+
+Triple quoted strings are a special case of single quoted strings or
+double quoted strings.  They are parsed exactly the same as the base
+string type, with one exception: any quotation character inside of the
+tripled quoted string does not need to be escaped.
+
+See the xref:type/string/single.adoc[single] and
+xref:type/string/double.adoc[double] quoted string documentation for
+examples of using this format.
+
+Triple quoted strings do _not_ support spanning multiple
+lines.  That limitation is likely to be fixed in a future release.
+
+// Copyright (C) 2024 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS

@@ -44,6 +44,7 @@ sql {
 	#  Allowed dialects are:
 	#
 	#    * cassandra
+	#    * firebird
 	#    * mysql
 	#    * mssql
 	#    * oracle
@@ -71,7 +72,6 @@ sql {
 	#  |===
 	#  | Driver            | Dialect
 	#  | db2               | mssql
-	#  | firebird          | mssql
 	#  | freetds           | mssql
 	#  | null              | any
 	#  | unixodbc          | mssql
@@ -84,7 +84,7 @@ sql {
 	#  exists. These are in a separate configuration file
 	#  in mods-config/sql/driver/<driver>.
 	#
-	$-INCLUDE ${modconfdir}/sql/driver/${dialect}
+	$-INCLUDE ${modconfdir}/sql/driver/${driver}
 
 	#
 	#  .Connection info:
@@ -194,42 +194,26 @@ sql {
 #	logfile = ${logdir}/sqllog.sql
 
 	#
-	#  query_timeout:: Set the maximum query duration for `cassandra`.
+	#  query_timeout:: Set the maximum query duration for `cassandra` and `unixodbc`
 	#
 #	query_timeout = 5
 
 	#
 	#  pool { ... }::
 	#
-	#  The connection pool is new for 3.0, and will be used in many modules, for all kinds of
-	#  connection-related activity.
+	#  The connection pool is a set of per-thread parameters for connections to the SQL database.
 	#
-	#  When the server is not threaded, the connection pool limits are ignored, and only one
-	#  connection is used.
+	#  If the driver supports it, then queries are run asynchronously.  Currently the list of
+	#  drivers this applies to is:
 	#
-	#  [NOTE]
-	#  ====
-	#  If you want to have multiple SQL modules reuse the same connection pool, use `pool = name`
-	#  instead of a `pool` section.
+	#     * mysql
+	#     * postgresql
+	#     * unixodbc
+	#     * oracle
+	#     * cassandra
 	#
-	#  e.g:
-	#
-	#  [source,sql]
-	#  ----
-	#  sql sql1 {
-	#   ...
-	#   pool {
-	#     ...
-	#   }
-	#  }
-	#
-	#  # sql2 will use the connection pool from sql1
-	#  sql sql2 {
-	#   ...
-	#   pool = sql1
-	#  }
-	#  ----
-	#  ====
+	#  Other drivers are synchronous and therefore queries will block packet processing, resulting
+	#  in significantly worse system performance.
 	#
 	pool {
 		#
@@ -245,7 +229,7 @@ sql {
 		#
 		#  min:: Minimum number of connections to keep open.
 		#
-		min = 0
+		min = 1
 
 		#
 		#  max:: Maximum number of connections.
@@ -253,25 +237,23 @@ sql {
 		#  If these connections are all in use and a new one
 		#  is requested, the request will NOT get a connection.
 		#
-		#  Setting `max` to *LESS* than the number of threads means
-		#  that some threads may starve, and you will see errors
-		#  like _No connections available and at max connection limit_.
+		#  Since the majority of SQL drivers only allow one outstanding
+		#  query per connection, this represents the maximum number of
+		#  simultaneous packets that a thread can process.
 		#
-		#  Setting `max` to MORE than the number of threads means
-		#  that there are more connections than necessary.
+		#  Note: The maximum number of connections from FreeRADIUS to
+		#  the database will be this number multiplied by the number of
+		#  worker threads.  Ensure that the database server supports that
+		#  number of connections.
 		#
-		#  If `max` is not specified, then it defaults to the number
-		#  of workers configured.
-		#
-#		max =
+		max = 100
 
 		#
-		#  spare:: Spare connections to be left idle.
+		#  connecting:: Number of connections which can be starting at once
 		#
-		#  NOTE: Idle connections WILL be closed if `idle_timeout`
-		#  is set.  This should be less than or equal to `max` above.
+		#  Used to throttle connection spawning.
 		#
-		spare = 1
+		connecting = 2
 
 		#
 		#  uses:: Number of uses before the connection is closed.
@@ -281,53 +263,46 @@ sql {
 		uses = 0
 
 		#
-		#  retry_delay:: The number of seconds to wait after the server tries
-		#  to open a connection, and fails.
-		#
-		#  During this time, no new connections will be opened.
-		#
-		retry_delay = 30
-
-		#
 		#  lifetime:: The lifetime (in seconds) of the connection.
 		#
 		lifetime = 0
 
 		#
-		#  idle_timeout:: idle timeout (in seconds).
+		#  open_delay:: Open delay (in seconds).
 		#
-		#  A connection which is unused for this length of time will be closed.
-		#
-		idle_timeout = 60
+		#  How long must we be above the target utilisation for connections to be opened.
+#		open_delay = 0.2
 
 		#
-		#  connect_timeout:: Connection timeout (in seconds).
+		#  close_delay:: Close delay (in seconds).
 		#
-		#  The maximum amount of time to wait for a new connection to be established.
+		#  How long we must be below the target utilisation for connections to be closed
 		#
-		#  Not supported by:
-		#
-		#  [options="header,autowidth"]
-		#  |===
-		#  | Driver     | Description
-		#  | firebird   | Likely possible but no documentation.
-		#  | oracle     | Not possible.
-		#  | postgresql | Should be set via the radius_db string instead.
-		#  |===
-		#
-		connect_timeout = 3.0
+#		close_delay = 10
 
 		#
-		#  [NOTE]
-		#  ====
-		#  * All configuration settings are enforced.  If a connection is closed because
-		#  of `idle_timeout`, `uses`, or `lifetime`, then the total number of connections
-		#  MAY fall below `min`.
-		#  When that happens, it will open a new connection.  It will also log a WARNING message.
+		#  manage_interval:: How often to manage the connection pool.
 		#
-		#  * The solution is to either lower the "min" connections, or increase lifetime/idle_timeout.
-		#  ====
+#		manage_interval = 0.2
+
 		#
+		#  request:: Options specific to requests handled by this connection pool
+		#
+		#  Note:  Due to the one outstanding query per connection limit, the settings
+		#  `per_connection_max` and `per_connection_target` are forcibly set to 1 for
+		#  SQL database connections.
+		#
+		request {
+
+			#
+			#  free_delay:: How long must a request in the unassigned (free) list not have been
+			#  used for before it's cleaned up and actually freed.
+			#
+			#  Unassigned requests can be re-used, multiple times, reducing memory allocation
+			#  and freeing overheads.
+			#
+#			free_delay = 10
+		}
 	}
 
 	#

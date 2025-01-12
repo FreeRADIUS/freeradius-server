@@ -194,8 +194,6 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 		 *	Loop over all the options data
 		 */
 		while (p < end) {
-			if (p[0] == 0) break; /* padding */
-
 			len = fr_dhcpv4_decode_option(ctx, &tmp, p, (end - p), packet_ctx);
 			if (len <= 0) {
 			fail:
@@ -227,8 +225,6 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 				p = data + 44;
 				end = p + 64;
 				while (p < end) {
-					if (p[0] == 0) break; /* padding */
-
 					len = fr_dhcpv4_decode_option(ctx, &tmp,
 								      p, end - p, packet_ctx);
 					if (len <= 0) goto fail;
@@ -243,8 +239,6 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 				p = data + 108;
 				end = p + 128;
 				while (p < end) {
-					if (p[0] == 0) break; /* padding */
-
 					len = fr_dhcpv4_decode_option(ctx, &tmp,
 								      p, end - p, packet_ctx);
 					if (len <= 0) goto fail;

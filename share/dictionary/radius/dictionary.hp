@@ -54,7 +54,7 @@ ATTRIBUTE	CPPM-Secondary-Role			28	string
 ATTRIBUTE	Port-Priority-Regeneration-Table	40	string
 
 # Access control
-ATTRIBUTE	Cos					40	string
+ALIAS		Cos					.Port-Priority-Regeneration-Table
 #ATTRIBUTE	Rate-Limit				46	integer
 
 ATTRIBUTE	Bandwidth-Max-Ingress			46	integer
@@ -63,7 +63,7 @@ ATTRIBUTE	Bandwidth-Max-Egress			48	integer
 ATTRIBUTE	Ip-Filter-Raw				61	string
 
 # Client ACL attributes
-ATTRIBUTE	Nas-Filter-Rule				61	string
+ALIAS		Nas-Filter-Rule				.Ip-Filter-Raw
 ATTRIBUTE	Access-Profile				62	string
 ATTRIBUTE	Nas-Rules-IPv6				63	integer
 

@@ -1,0 +1,133 @@
+#
+#  Tests for the cbor encoder / decoder
+#
+proto cbor
+
+# Use the RADIUS dictionary for now.  It doesn't really matter which one we use so long as it has
+# complex attributes.
+proto-dictionary radius
+
+fuzzer-out cbor
+
+#
+#  a1: map of 1 item
+#  01: integer of value 1
+#  43: string of length 3
+#
+encode-pair User-Name = "bob"
+match 9f a1 01 63 62 6f 62 ff
+
+decode-pair -
+match User-Name = "bob"
+
+encode-pair User-Name = "bob", Framed-IP-Address = 192.0.2.1
+match 9f a1 01 63 62 6f 62 a1 08 d8 34 44 c0 00 02 01 ff
+
+#
+#  tag decode isn't done
+#
+decode-pair -
+match User-Name = "bob", Framed-IP-Address = 192.0.2.1
+
+encode-pair User-Name = "bob", NAS-Port = 2112
+match 9f a1 01 63 62 6f 62 a1 05 19 08 40 ff
+
+decode-pair -
+match User-Name = "bob", NAS-Port = 2112
+
+encode-pair Vendor-Specific = { Cisco = { AVPair = "foo", Pre-Input-Packets = 6809 } }
+match 9f a1 18 1a 81 a1 09 82 a1 01 63 66 6f 6f a1 18 c0 19 1a 99 ff
+
+decode-pair -
+match Vendor-Specific = { Cisco = { AVPair = "foo", Pre-Input-Packets = 6809 } }
+
+#
+#  time delta, seconds
+#
+encode-pair Vendor-Specific = { Nokia-SR = { Dhcp6-Renew-Time = 3600 } }
+match 9f a1 18 1a 81 a1 19 19 7f 81 a1 18 ca d9 03 ea a1 01 19 0e 10 ff
+
+decode-pair -
+match Vendor-Specific = { Nokia-SR = { Dhcp6-Renew-Time = 3600 } }
+
+#
+#  time delta, with partial seconds
+#
+encode-pair Vendor-Specific = { Nokia-SR = { Dhcp6-Renew-Time = 3600.5 } }
+match 9f a1 18 1a 81 a1 19 19 7f 81 a1 18 ca d9 03 ea a2 01 19 0e 10 28 1a 1d cd 65 00 ff
+
+decode-pair -
+match Vendor-Specific = { Nokia-SR = { Dhcp6-Renew-Time = 3600.5 } }
+
+#
+#  We changed 'ca' to 'ff', which isn't in the Nokia-SR dictionary.
+#  But because CBOR is typed, we can decode typed data.
+#
+decode-pair 9f a1 18 1a 9f a1 19 19 7f 9f a1 18 ff d9 03 ea a2 01 19 0e 10 28 1a 1d cd 65 00 ff ff ff
+match Vendor-Specific = { Nokia-SR = { raw.255 = (time_delta) 3600.5 } }
+
+#
+#  Note that we have to add a cast here :(
+#
+#  Otherwise the "3600.5" is interpreted as a bare word / string.
+#
+encode-pair Vendor-Specific = { Nokia-SR = { raw.255 = (time_delta) 3600.5 } }
+match 9f a1 18 1a 81 a1 19 19 7f 81 a1 18 ff 46 33 36 30 30 2e 35 ff
+
+#
+#  Zero-length strings and octets
+#
+encode-pair User-Name = ""
+match 9f a1 01 60 ff
+
+decode-pair -
+match User-Name = ""
+
+encode-pair Class = 0x
+match 9f a1 18 19 40 ff
+
+decode-pair -
+match Class = 0x
+
+#
+#  Nokia-SR is empty, so it's encoded as "f6"
+#
+encode-pair Vendor-Specific = { Nokia-SR = { } }
+match 9f a1 18 1a 81 a1 19 19 7f f6 ff
+
+decode-pair -
+match Vendor-Specific = { Nokia-SR = { } }
+
+# 97 is the attribute number
+encode-pair PMIP6-Home-HN-Prefix = ::/8
+match 9f a1 18 97 d8 36 82 08 40 ff
+
+# 9b is the attribute number
+encode-pair PMIP6-Home-IPv4-HoA = 0/8
+match 9f a1 18 9b d8 34 82 08 40 ff
+
+#
+#  Prefixes get trailing zeros dropped, no matter what the prefix says.
+#
+#  e.g. ::/128 gets encoded as prefix=128, octets=""
+#
+encode-pair PMIP6-Home-IPv4-HoA = 192/8
+match 9f a1 18 9b d8 34 82 08 41 c0 ff
+
+decode-pair -
+match PMIP6-Home-IPv4-HoA = 192.0.0.0/8
+
+encode-pair PMIP6-Home-IPv4-HoA = 192.0.2/24
+match 9f a1 18 9b d8 34 82 18 18 43 c0 00 02 ff
+
+decode-pair -
+match PMIP6-Home-IPv4-HoA = 192.0.2.0/24
+
+encode-pair PMIP6-Home-HN-Prefix = ::/128
+match 9f a1 18 97 d8 36 82 18 80 40 ff
+
+decode-pair -
+match PMIP6-Home-HN-Prefix = ::/128
+
+count
+match 59

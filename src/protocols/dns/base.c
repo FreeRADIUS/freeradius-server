@@ -73,6 +73,14 @@ fr_dict_attr_autoload_t dns_dict_attr[] = {
 	[FR_DNS_STATEFUL_OPERATION] = "Stateful-Operation",
 };
 
+FR_DICT_ATTR_FLAG_FUNC(fr_dns_attr_flags_t, dns_label)
+FR_DICT_ATTR_FLAG_FUNC(fr_dns_attr_flags_t, dns_label_uncompressed)
+
+static fr_dict_flag_parser_t const dns_flags[] = {
+	{ L("dns_label"),		{ .func = dict_flag_dns_label } },
+	{ L("dns_label_uncompressed"),	{ .func = dict_flag_dns_label_uncompressed } }
+};
+
 #define DECODE_FAIL(_reason) if (reason) *reason = FR_DNS_DECODE_FAIL_ ## _reason
 
 static bool fr_dns_tlv_ok(uint8_t const *p, uint8_t const *end, fr_dns_decode_fail_t *reason)
@@ -432,35 +440,23 @@ void fr_dns_global_free(void)
 	fr_dict_autofree(dns_dict);
 }
 
-static fr_table_num_ordered_t const subtype_table[] = {
-	{ L("dns_label"),			FLAG_ENCODE_DNS_LABEL },
-	{ L("uncompressed"),			FLAG_ENCODE_DNS_LABEL_UNCOMPRESSED },
-};
-
-
-static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *parent,
-		       UNUSED char const *name, UNUSED int attr, fr_type_t type, fr_dict_attr_flags_t *flags)
+static bool attr_valid(fr_dict_attr_t *da)
 {
 	/*
 	 *	"arrays" of string/octets are encoded as a 16-bit
 	 *	length, followed by the actual data.
 	 */
-	if (flags->array && ((type == FR_TYPE_STRING) || (type == FR_TYPE_OCTETS))) {
-		flags->is_known_width = true;
+	if (da->flags.array && ((da->type == FR_TYPE_STRING) || (da->type == FR_TYPE_OCTETS))) {
+		da->flags.is_known_width = true;
 	}
 
-	/*
-	 *	"extra" signifies that subtype is being used by the
-	 *	dictionaries itself.
-	 */
-	if (flags->extra || !flags->subtype) return true;
-
-	if (type != FR_TYPE_STRING) {
-		fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
-		return false;
+	if (fr_dns_flag_dns_label_any(da)) {
+		if (da->type != FR_TYPE_STRING) {
+			fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
+			return false;
+		}
+		da->flags.is_known_width = true;	/* Lie so we don't trip up the main validation checks */
 	}
-
-	flags->is_known_width = true;
 
 	return true;
 }
@@ -470,9 +466,14 @@ fr_dict_protocol_t libfreeradius_dns_dict_protocol = {
 	.name = "dns",
 	.default_type_size = 2,
 	.default_type_length = 2,
-	.subtype_table = subtype_table,
-	.subtype_table_len = NUM_ELEMENTS(subtype_table),
-	.attr_valid = attr_valid,
+	.attr = {
+		.flags = {
+			.table = dns_flags,
+			.table_len = NUM_ELEMENTS(dns_flags),
+			.len = sizeof(fr_dns_attr_flags_t)
+		},
+		.valid = attr_valid
+	},
 
 	.init = fr_dns_global_init,
 	.free = fr_dns_global_free,

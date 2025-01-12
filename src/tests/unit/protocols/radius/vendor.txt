@@ -1,8 +1,7 @@
 proto radius
 proto-dictionary radius
+load-dictionary dictionary.test
 fuzzer-out radius
-
-load-dictionary dictionary
 
 encode-pair Vendor-Specific = { Starent = { VPN-Name = "foo" } }
 match 1a 0d 00 00 1f e4 00 02 00 07 66 6f 6f
@@ -154,5 +153,15 @@ match f1 0b 1a 00 00 19 7f 26 ab cd ef
 decode-pair -
 match Extended-Attribute-1 = { Extended-Vendor-Specific-1 = { Nokia-SR = { raw.38 = 0xabcdef } } }
 
+#
+#  Known vendor, unknown attribute.  Microsoft will never add more RADIUS attributes to
+#  their dictionary, so we use that here.
+#
+encode-pair Vendor-Specific = { Microsoft = { raw.200 = 0xabcdef } }
+match 1a 0b 00 00 01 37 c8 05 ab cd ef
+
+decode-pair -
+match  Vendor-Specific = { Microsoft = { raw.200 = 0xabcdef } }
+
 count
-match 74
+match 78

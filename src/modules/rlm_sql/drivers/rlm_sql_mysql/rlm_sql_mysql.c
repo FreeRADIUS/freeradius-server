@@ -26,7 +26,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "sql - mysql"
+#define LOG_PREFIX log_prefix
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
@@ -50,6 +50,7 @@ DIAG_ON(strict-prototypes)
 #endif
 
 #include "rlm_sql.h"
+#include "rlm_sql_trunk.h"
 
 typedef enum {
 	SERVER_WARNINGS_AUTO = 0,
@@ -140,6 +141,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_sql_mysql_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_mysql_t);
 	int			warnings;
+	char const		*log_prefix = mctx->mi->name;
 
 	warnings = fr_table_value_by_str(server_warnings_table, inst->warnings_str, -1);
 	if (warnings < 0) {
@@ -173,6 +175,7 @@ static void mod_unload(void)
 
 static int mod_load(void)
 {
+	char const	*log_prefix = "rlm_sql_mysql";
 	if (mysql_library_init(0, NULL, NULL)) {
 		ERROR("libmysql initialisation failed");
 
@@ -189,6 +192,7 @@ static int mod_load(void)
 static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	rlm_sql_mysql_conn_t	*c = talloc_get_type_abort(uctx, rlm_sql_mysql_conn_t);
+	char const		*log_prefix = c->conn->name;
 
 	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
 
@@ -225,10 +229,11 @@ static void _sql_connect_query_run(connection_t *conn, UNUSED connection_state_t
 {
 	rlm_sql_t const		*sql = talloc_get_type_abort_const(uctx, rlm_sql_t);
 	rlm_sql_mysql_conn_t	*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_mysql_conn_t);
+	char const		*log_prefix = conn->name;
 	int			ret;
 	MYSQL_RES		*result;
 
-	DEBUG2("Executing \"%s\" on connection %s", sql->config.connect_query, conn->name);
+	DEBUG2("Executing \"%s\"", sql->config.connect_query);
 
 	ret = mysql_real_query(sql_conn->sock, sql->config.connect_query, strlen(sql->config.connect_query));
 	if (ret != 0) {
@@ -256,6 +261,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 {
 	rlm_sql_t const		*sql = talloc_get_type_abort_const(uctx, rlm_sql_t);
 	rlm_sql_mysql_t const	*inst = talloc_get_type_abort(sql->driver_submodule->data, rlm_sql_mysql_t);
+	char const		*log_prefix = conn->name;
 	rlm_sql_mysql_conn_t	*c;
 	rlm_sql_config_t const	*config = &sql->config;
 
@@ -318,14 +324,18 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 
 	if (inst->character_set) mysql_options(&(c->db), MYSQL_SET_CHARSET_NAME, inst->character_set);
 
+#if MYSQL_VERSION_ID < 80034
 	/*
 	 *	We need to know about connection errors, and are capable
 	 *	of reconnecting automatically.
+	 *
+	 *	This deprecated as of 8.0.34.
 	 */
 	{
 		bool reconnect = 0;
 		mysql_options(&(c->db), MYSQL_OPT_RECONNECT, &reconnect);
 	}
+#endif
 
 	sql_flags = CLIENT_MULTI_RESULTS | CLIENT_FOUND_ROWS;
 
@@ -453,6 +463,14 @@ static sql_rcode_t sql_check_error(MYSQL *server, int client_errno)
 	case ER_NON_UNIQ_ERROR:			/* Column '%s' in %s is ambiguous */
 		return RLM_SQL_QUERY_INVALID;
 
+	/*
+	 *	Constraints errors that signify no data returned.
+	 *
+	 *	This is considered OK as the caller may look for the next result set.
+	 */
+	case ER_SP_FETCH_NO_DATA:
+		return RLM_SQL_OK;
+
 	}
 
 	return RLM_SQL_OK;
@@ -529,9 +547,14 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 
 	/*
 	 *  Check pointer before de-referencing it.
+	 *  Lack of conn->result is either an error, or no result returned.
 	 */
 	if (!conn->result) {
-		query_ctx->rcode = RLM_SQL_RECONNECT;
+		query_ctx->rcode = sql_check_error(conn->sock, 0);
+		if (query_ctx->rcode == RLM_SQL_OK) {
+			query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
+			RETURN_MODULE_OK;
+		}
 		RETURN_MODULE_FAIL;
 	}
 
@@ -573,6 +596,7 @@ retry_fetch_row:
 
 	MEM(query_ctx->row = talloc_zero_array(query_ctx, char *, num_fields + 1));
 	for (i = 0; i < num_fields; i++) {
+		if (!row[i]) continue;
 		MEM(query_ctx->row[i] = talloc_bstrndup(query_ctx->row, row[i], field_lens[i]));
 	}
 
@@ -605,18 +629,18 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
  * @param out Array of sql_log_entrys to fill.
  * @param outlen Length of out array.
  * @param conn MySQL connection the query was run on.
- * @param config rlm_sql config.
  * @return
  *	- Number of errors written to the #sql_log_entry_t array.
  *	- -1 on failure.
  */
 static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
-			   rlm_sql_mysql_conn_t *conn, UNUSED rlm_sql_config_t const *config)
+			   rlm_sql_mysql_conn_t *conn)
 {
 	MYSQL_RES		*result;
 	MYSQL_ROW		row;
 	unsigned int		num_fields;
 	size_t			i = 0;
+	char const		*log_prefix = conn->conn->name;
 
 	if (outlen == 0) return 0;
 
@@ -670,19 +694,20 @@ static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen
  * @param out Array of sql_log_entrys to fill.
  * @param outlen Length of out array.
  * @param query_ctx Query context to retrieve error for.
- * @param config rlm_sql config.
  * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
-			fr_sql_query_t *query_ctx, rlm_sql_config_t const *config)
+			fr_sql_query_t *query_ctx)
 {
 	rlm_sql_mysql_t const	*inst = talloc_get_type_abort_const(query_ctx->inst->driver_submodule->data, rlm_sql_mysql_t);
 	rlm_sql_mysql_conn_t	*conn;
 	char const		*error;
 	size_t			i = 0;
+	char const		*log_prefix;
 
 	if (!query_ctx->tconn) return 0;
 	conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_mysql_conn_t);
+	log_prefix = conn->conn->name;
 
 	fr_assert(outlen > 0);
 
@@ -694,6 +719,8 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	if (error && (error[0] != '\0')) {
 		error = talloc_typed_asprintf(ctx, "ERROR %u (%s): %s", mysql_errno(conn->sock), error,
 					      mysql_sqlstate(conn->sock));
+	} else {
+		error = NULL;
 	}
 
 	/*
@@ -717,7 +744,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 
 		FALL_THROUGH;
 		case SERVER_WARNINGS_YES:
-			ret = sql_warnings(ctx, out, outlen - 1, conn, config);
+			ret = sql_warnings(ctx, out, outlen - 1, conn);
 			if (ret > 0) i += ret;
 			break;
 
@@ -732,8 +759,8 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	if (error) {
 		out[i].type = L_ERR;
 		out[i].msg = error;
+		i++;
 	}
-	i++;
 
 	return i;
 }
@@ -818,11 +845,19 @@ static int sql_affected_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t 
 	return mysql_affected_rows(conn->sock);
 }
 
-static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, void *arg)
+static ssize_t sql_escape_func(request_t *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	size_t			inlen;
 	connection_t		*c = talloc_get_type_abort(arg, connection_t);
-	rlm_sql_mysql_conn_t	*conn = talloc_get_type_abort(c->h, rlm_sql_mysql_conn_t);
+	rlm_sql_mysql_conn_t	*conn;
+	char const		*log_prefix = c->name;
+
+	if ((c->state == CONNECTION_STATE_HALTED) || (c->state == CONNECTION_STATE_CLOSED)) {
+		ROPTIONAL(RERROR, ERROR, "Connection not available for escaping");
+		return -1;
+	}
+
+	conn = talloc_get_type_abort(c->h, rlm_sql_mysql_conn_t);
 
 	/* Check for potential buffer overflow */
 	inlen = strlen(in);
@@ -833,45 +868,24 @@ static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outle
 	return mysql_real_escape_string(&conn->db, out, in, inlen);
 }
 
-/** Allocate an SQL trunk connection
- *
- * @param[in] tconn		Trunk handle.
- * @param[in] el		Event list which will be used for I/O and timer events.
- * @param[in] conn_conf		Configuration of the connection.
- * @param[in] log_prefix	What to prefix log messages with.
- * @param[in] uctx		User context passed to trunk_alloc.
- */
-CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
-static connection_t *sql_trunk_connection_alloc(trunk_connection_t *tconn, fr_event_list_t *el,
-						   connection_conf_t const *conn_conf,
-						   char const *log_prefix, void *uctx)
-{
-	connection_t		*conn;
-	rlm_sql_thread_t	*thread = talloc_get_type_abort(uctx, rlm_sql_thread_t);
+SQL_TRUNK_CONNECTION_ALLOC
 
-	conn = connection_alloc(tconn, el,
-				   &(connection_funcs_t){
-				   	.init = _sql_connection_init,
-				   	.close = _sql_connection_close
-				   },
-				   conn_conf, log_prefix, thread->inst);
-	if (!conn) {
-		PERROR("Failed allocating state handler for new SQL connection");
-		return NULL;
-	}
-
-	return conn;
-}
+#undef LOG_PREFIX
+#define LOG_PREFIX "rlm_sql_mysql"
 
 TRUNK_NOTIFY_FUNC(sql_trunk_connection_notify, rlm_sql_mysql_conn_t)
+
+#undef LOG_PREFIX
+#define LOG_PREFIX log_prefix
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 				  connection_t *conn, UNUSED void *uctx)
 {
 	rlm_sql_mysql_conn_t	*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_mysql_conn_t);
+	char const		*log_prefix = conn->name;
 	request_t		*request;
-	trunk_request_t	*treq;
+	trunk_request_t		*treq;
 	fr_sql_query_t		*query_ctx;
 	char const		*info;
 	int			err;
@@ -918,8 +932,11 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 			default:
 				query_ctx->status = SQL_QUERY_FAILED;
 				trunk_request_signal_fail(treq);
+				if (request) unlang_interpret_mark_runnable(request);
 				return;
 			}
+		} else {
+			query_ctx->rcode = RLM_SQL_OK;
 		}
 		query_ctx->status = SQL_QUERY_RETURNED;
 
@@ -938,6 +955,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 			return;
 		}
 		query_ctx->status = SQL_QUERY_RESULTS_FETCHED;
+		query_ctx->rcode = RLM_SQL_OK;
 
 		break;
 
@@ -962,6 +980,7 @@ static void sql_trunk_request_demux(UNUSED fr_event_list_t *el, UNUSED trunk_con
 				    connection_t *conn, UNUSED void *uctx)
 {
 	rlm_sql_mysql_conn_t	*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_mysql_conn_t);
+	char const		*log_prefix = conn->name;
 	fr_sql_query_t		*query_ctx;
 	char const		*info;
 	int			err = 0;
@@ -1057,24 +1076,8 @@ static void sql_request_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_
 	}
 }
 
-static void sql_request_fail(request_t *request, void *preq, UNUSED void *rctx,
-			     UNUSED trunk_request_state_t state, UNUSED void *uctx)
-{
-	fr_sql_query_t		*query_ctx = talloc_get_type_abort(preq, fr_sql_query_t);
-
-	query_ctx->treq = NULL;
-	query_ctx->rcode = RLM_SQL_ERROR;
-
-	if (request) unlang_interpret_mark_runnable(request);
-}
-
-static unlang_action_t sql_query_resume(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
-{
-	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-
-	if (query_ctx->rcode == RLM_SQL_OK) RETURN_MODULE_OK;
-	RETURN_MODULE_FAIL;
-}
+SQL_QUERY_FAIL
+SQL_QUERY_RESUME
 
 static unlang_action_t sql_select_query_resume(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
@@ -1106,6 +1109,7 @@ static void *sql_escape_arg_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, void *uc
 {
 	rlm_sql_t const	*inst = talloc_get_type_abort(uctx, rlm_sql_t);
 	connection_t *conn;
+	char const	*log_prefix = inst->name;
 
 	conn = connection_alloc(ctx, el,
 				    &(connection_funcs_t){
@@ -1156,7 +1160,6 @@ rlm_sql_driver_t rlm_sql_mysql = {
 	.sql_escape_func		= sql_escape_func,
 	.sql_escape_arg_alloc		= sql_escape_arg_alloc,
 	.sql_escape_arg_free		= sql_escape_arg_free,
-	.uses_trunks			= true,
 	.trunk_io_funcs = {
 		.connection_alloc	= sql_trunk_connection_alloc,
 		.connection_notify	= sql_trunk_connection_notify,

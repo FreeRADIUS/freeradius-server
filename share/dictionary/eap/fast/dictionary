@@ -6,8 +6,7 @@
 #	Protocol dictionary for EAP-FAST
 #
 #
-PROTOCOL	EAP-FAST	103
-BEGIN-PROTOCOL	EAP-FAST
+BEGIN PROTOCOL	EAP-FAST	103
 
 $INCLUDE dictionary.freeradius
 

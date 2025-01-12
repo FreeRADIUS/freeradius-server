@@ -76,6 +76,18 @@ typedef struct {
 	fr_event_timer_t const		*ev;			//!< Event in this worker's event heap.
 } unlang_xlat_event_t;
 
+typedef struct {
+	request_t			*request;
+	xlat_inst_t			*inst;			//!< xlat instance data.
+	xlat_thread_inst_t		*thread;		//!< Thread specific xlat instance.
+
+	fr_unlang_xlat_retry_t		retry_cb;		//!< callback to run on timeout
+	void				*rctx;			//!< rctx data to pass to timeout callback
+
+	fr_event_timer_t const		*ev;			//!< retry timer just for this xlat
+	fr_retry_t			retry;			//!< retry timers, etc.
+} unlang_xlat_retry_t;
+
 /** Frees an unlang event, removing it from the request's event loop
  *
  * @param[in] ev	The event to free.
@@ -577,6 +589,141 @@ xlat_action_t unlang_xlat_yield(request_t *request,
 	state->rctx = rctx;
 
 	return XLAT_ACTION_YIELD;
+}
+
+/** Frees an unlang event, removing it from the request's event loop
+ *
+ * @param[in] ev	The event to free.
+ *
+ * @return 0
+ */
+static int _unlang_xlat_retry_free(unlang_xlat_retry_t *ev)
+{
+	if (ev->ev) (void) fr_event_timer_delete(&(ev->ev));
+
+	return 0;
+}
+
+/** Call the callback registered for a timeout event
+ *
+ * @param[in] el	the event timer was inserted into.
+ * @param[in] now	The current time, as held by the event_list.
+ * @param[in] uctx	unlang_module_event_t structure holding callbacks.
+ *
+ */
+static void unlang_xlat_event_retry_handler(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
+{
+	unlang_xlat_retry_t	*ev = talloc_get_type_abort(uctx, unlang_xlat_retry_t);
+	request_t		*request = ev->request;
+
+	switch (fr_retry_next(&ev->retry, now)) {
+	case FR_RETRY_CONTINUE:
+		/*
+		 *	Call the module retry handler, with the state of the retry.  On MRD / MRC, the
+		 *	module is made runnable again, and the "resume" function is called.
+		 */
+		ev->retry_cb(XLAT_CTX(ev->inst->data,
+				      ev->thread->data,
+				      ev->thread->mctx, NULL,
+				      UNCONST(void *, ev->rctx)),
+			     ev->request, &ev->retry);
+
+		/*
+		 *	Reset the timer.
+		 */
+		if (fr_event_timer_at(ev, unlang_interpret_event_list(request), &ev->ev, ev->retry.next,
+				      unlang_xlat_event_retry_handler, request) < 0) {
+			RPEDEBUG("Failed inserting event");
+			talloc_free(ev);
+			unlang_interpret_mark_runnable(request);
+		}
+		return;
+
+	case FR_RETRY_MRD:
+		RDEBUG("Reached max_rtx_duration (%pVs > %pVs) - sending timeout",
+			fr_box_time_delta(fr_time_sub(now, ev->retry.start)), fr_box_time_delta(ev->retry.config->mrd));
+		break;
+
+	case FR_RETRY_MRC:
+		RDEBUG("Reached max_rtx_count %u- sending timeout",
+		        ev->retry.config->mrc);
+		break;
+	}
+
+	/*
+	 *	Run the retry handler on MRD / MRC, too.
+	 */
+	ev->retry_cb(XLAT_CTX(ev->inst->data,
+			      ev->thread->data,
+			      ev->thread->mctx, NULL,
+			      UNCONST(void *, ev->rctx)),
+		     ev->request, &ev->retry);
+
+	/*
+	 *	On final timeout, always mark the request as runnable.
+	 */
+	talloc_free(ev);
+	unlang_interpret_mark_runnable(request);
+}
+
+
+/** Yield a request back to the interpreter, with retries
+ *
+ * This passes control of the request back to the unlang interpreter, setting
+ * callbacks to execute when the request is 'signalled' asynchronously, or when
+ * the retry timer hits.
+ *
+ * @note The module function which calls #unlang_module_yield_to_retry should return control
+ *	of the C stack to the unlang interpreter immediately after calling #unlang_module_yield_to_retry.
+ *	A common pattern is to use ``return unlang_module_yield_to_retry(...)``.
+ *
+ * @param[in] request		The current request.
+ * @param[in] resume		Called on unlang_interpret_mark_runnable().
+ * @param[in] retry		Called on when a retry timer hits
+ * @param[in] signal		Called on unlang_action().
+ * @param[in] sigmask		Set of signals to block.
+ * @param[in] rctx		to pass to the callbacks.
+ * @param[in] retry_cfg		to set up the retries
+ * @return
+ *	- XLAT_ACTION_YIELD on success
+ *	- XLAT_ACTION_FAIL on failure
+ */
+xlat_action_t unlang_xlat_yield_to_retry(request_t *request, xlat_func_t resume, fr_unlang_xlat_retry_t retry,
+					 xlat_func_signal_t signal, fr_signal_t sigmask, void *rctx,
+					 fr_retry_config_t const *retry_cfg)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_xlat_retry_t		*ev;
+	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
+
+	fr_assert(stack->depth > 0);
+	fr_assert(frame->instruction->type == UNLANG_TYPE_XLAT);
+
+	if (!state->event_ctx) MEM(state->event_ctx = talloc_zero(state, bool));
+
+	ev = talloc_zero(state->event_ctx, unlang_xlat_retry_t);
+	if (unlikely(!ev)) return XLAT_ACTION_FAIL;
+
+	ev->request = request;
+	fr_assert(state->exp->type == XLAT_FUNC);
+	ev->inst = state->exp->call.inst;
+	ev->thread = xlat_thread_instance_find(state->exp);
+	ev->retry_cb = retry;
+	ev->rctx = rctx;
+
+	fr_retry_init(&ev->retry, fr_time(), retry_cfg);
+
+	if (fr_event_timer_at(request, unlang_interpret_event_list(request),
+			      &ev->ev, ev->retry.next, unlang_xlat_event_retry_handler, ev) < 0) {
+		RPEDEBUG("Failed inserting event");
+		talloc_free(ev);
+		return XLAT_ACTION_FAIL;
+	}
+
+	talloc_set_destructor(ev, _unlang_xlat_retry_free);
+
+	return unlang_xlat_yield(request, resume, signal, sigmask, rctx);
 }
 
 /** Evaluate a "pure" (or not impure) xlat

@@ -27,4 +27,27 @@ if !(test_octets == 0x520d0103abcdef0206010203040506) {
 	test_fail
 }
 
+#
+#  Check decoding and encoding of VSAs
+#
+test_octets := 0x7d1900002458140101010204c0a80101050968656c6c6f2e62696e
+if !(%dhcpv4.decode(%{test_octets}) == 1) {
+	test_fail
+}
+
+if (V-I-Vendor-Specific.CTS.Firmware-File-Name != 'hello.bin') {
+	test_fail
+}
+
+test_octets := %dhcpv4.encode(V-I-Vendor-Specific)
+
+if (test_octets != 0x7d1900002458140101010204c0a80101050968656c6c6f2e62696e) {
+	test_fail
+}
+
+test_octets := %dhcpv4.encode(V-I-Vendor-Specific.CTS.[*])
+if (test_octets != 0x7d1900002458140101010204c0a80101050968656c6c6f2e62696e) {
+	test_fail
+}
+
 success

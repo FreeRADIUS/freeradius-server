@@ -55,6 +55,7 @@ typedef struct {
 	 *	Virtual server for inner tunnel session.
 	 */
 	char const	*virtual_server;
+	CONF_SECTION	*server_cs;
 
 	/*
 	 * 	Do we do require a client cert?
@@ -84,12 +85,10 @@ fr_dict_autoload_t rlm_eap_ttls_dict[] = {
 };
 
 fr_dict_attr_t const *attr_eap_tls_require_client_cert;
-fr_dict_attr_t const *attr_proxy_to_realm;
 
 fr_dict_attr_t const *attr_chap_challenge;
 fr_dict_attr_t const *attr_ms_chap2_success;
 fr_dict_attr_t const *attr_eap_message;
-fr_dict_attr_t const *attr_freeradius_proxied_to;
 fr_dict_attr_t const *attr_ms_chap_challenge;
 fr_dict_attr_t const *attr_reply_message;
 fr_dict_attr_t const *attr_eap_channel_binding_message;
@@ -100,11 +99,9 @@ fr_dict_attr_t const *attr_vendor_specific;
 extern fr_dict_attr_autoload_t rlm_eap_ttls_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_ttls_dict_attr[] = {
 	{ .out = &attr_eap_tls_require_client_cert, .name = "EAP-TLS-Require-Client-Cert", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_proxy_to_realm, .name = "Proxy-To-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_chap_challenge, .name = "CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_freeradius_proxied_to, .name = "Vendor-Specific.FreeRADIUS.Proxied-To", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
 	{ .out = &attr_ms_chap_challenge, .name = "Vendor-Specific.Microsoft.CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_chap2_success, .name = "Vendor-Specific.Microsoft.CHAP2-Success", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_reply_message, .name = "Reply-Message", .type = FR_TYPE_STRING, .dict = &dict_radius },
@@ -123,7 +120,7 @@ static ttls_tunnel_t *ttls_alloc(TALLOC_CTX *ctx, rlm_eap_ttls_t *inst)
 	ttls_tunnel_t *t;
 
 	t = talloc_zero(ctx, ttls_tunnel_t);
-	t->virtual_server = inst->virtual_server;
+	t->server_cs = inst->server_cs;
 
 	return t;
 }
@@ -153,41 +150,10 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	case EAP_TLS_ESTABLISHED:
 		if (SSL_session_reused(tls_session->ssl)) {
 			RDEBUG2("Skipping Phase2 due to session resumption");
-			goto do_keys;
+			return eap_ttls_success(p_result, request, eap_session);
 		}
 
-		if (tunnel && tunnel->authenticated) {
-			eap_tls_prf_label_t prf_label;
-
-		do_keys:
-			eap_crypto_prf_label_init(&prf_label, eap_session,
-						  "ttls keying material",
-						  sizeof("ttls keying material") - 1);
-			/*
-			 *	Success: Automatically return MPPE keys.
-			 */
-			if (eap_tls_success(request, eap_session, &prf_label) < 0) RETURN_MODULE_FAIL;
-
-			/*
-			 *	Result is always OK, even if we fail to persist the
-			 *	session data.
-			 */
-			*p_result = RLM_MODULE_OK;
-
-			/*
-			 *	Write the session to the session cache
-			 *
-			 *	We do this here (instead of relying on OpenSSL to call the
-			 *	session caching callback), because we only want to write
-			 *	session data to the cache if all phases were successful.
-			 *
-			 *	If we wrote out the cache data earlier, and the server
-			 *	exited whilst the session was in progress, the supplicant
-			 *	could resume the session (and get access) even if phase2
-			 *	never completed.
-			 */
-			return fr_tls_cache_pending_push(request, tls_session);
-		}
+		if (tunnel && tunnel->authenticated) return eap_ttls_success(p_result, request, eap_session);
 
 		eap_tls_request(request, eap_session);
 		RETURN_MODULE_OK;
@@ -223,42 +189,7 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	/*
 	 *	Process the TTLS portion of the request.
 	 */
-	switch (eap_ttls_process(request, eap_session, tls_session)) {
-	case FR_RADIUS_CODE_ACCESS_REJECT:
-		eap_tls_fail(request, eap_session);
-		RETURN_MODULE_REJECT;
-
-		/*
-		 *	Access-Challenge, continue tunneled conversation.
-		 */
-	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
-		eap_tls_request(request, eap_session);
-		RETURN_MODULE_OK;
-
-		/*
-		 *	Success: Automatically return MPPE keys.
-		 */
-	case FR_RADIUS_CODE_ACCESS_ACCEPT:
-		goto do_keys;
-
-	/*
-	 *	No response packet, MUST be proxying it.
-	 *	The main EAP module will take care of discovering
-	 *	that the request now has a "proxy" packet, and
-	 *	will proxy it, rather than returning an EAP packet.
-	 */
-	case FR_RADIUS_CODE_STATUS_CLIENT:
-		RETURN_MODULE_OK;
-
-	default:
-		break;
-	}
-
-	/*
-	 *	Something we don't understand: Reject it.
-	 */
-	eap_tls_fail(request, eap_session);
-	RETURN_MODULE_INVALID;
+	return eap_ttls_process(request, eap_session, tls_session);
 }
 
 /*
@@ -357,9 +288,16 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_eap_ttls_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_ttls_t);
 	CONF_SECTION 	*conf = mctx->mi->conf;
+	virtual_server_t const	*virtual_server = virtual_server_find(inst->virtual_server);
 
-	if (!virtual_server_find(inst->virtual_server)) {
+	if (!virtual_server) {
 		cf_log_err_by_child(conf, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
+		return -1;
+	}
+
+	inst->server_cs = virtual_server_cs(virtual_server);
+	if (!inst->server_cs) {
+		cf_log_err_by_child(conf, "virtual_server", "Virtual server \"%s\" missing", inst->virtual_server);
 		return -1;
 	}
 

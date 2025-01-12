@@ -8,12 +8,12 @@
 
 #  If you require that the Operator-Name be set
 #  for local clients then call the 'operator-name' policy
-#  in the authorize section of the virtual-server for your clients in clients.conf
+#  in the "recv Access-Request" section of the virtual-server for your clients in clients.conf
 
 #  To inject an Operator-Name whilst proxying, call the
 #  'operator-name' policy in the pre-proxy section of the virtual server
 #  No need to call this if you have already enabled this in
-#  the authorize section.
+#  the "recv Access-Request" section.
 
 #
 #  We assume that clients can have the operator-name definition

@@ -22,8 +22,8 @@ DEFINE	inacl						string
 DEFINE	outacl						string
 DEFINE	addr						ipv4addr
 DEFINE	addr-pool					string
-DEFINE	timeout						time_delta minutes
-DEFINE	idletime					time_delta minutes
+DEFINE	timeout						time_delta precision=minutes
+DEFINE	idletime					time_delta precision=minutes
 DEFINE	autocmd						string
 DEFINE	noescape					bool
 DEFINE	nohangup					bool

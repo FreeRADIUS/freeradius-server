@@ -100,20 +100,42 @@ static int fr_bio_fd_destructor(fr_bio_fd_t *my)
 	fr_assert(!fr_bio_prev(&my->bio));
 	fr_assert(!fr_bio_next(&my->bio));
 
-	if (!my->info.eof && my->cb.eof) my->cb.eof(&my->bio);
+	if (my->connect.ev) {
+		talloc_const_free(my->connect.ev);
+		my->connect.ev = NULL;
+	}
+
+	if (my->connect.el) {
+		(void) fr_event_fd_delete(my->connect.el, my->info.socket.fd, FR_EVENT_FILTER_IO);
+		my->connect.el = NULL;
+	}
 
 	if (my->cb.shutdown) my->cb.shutdown(&my->bio);
 
 	return fr_bio_fd_close(&my->bio);
 }
 
-static void fr_bio_fd_eof(fr_bio_t *bio)
+static int fr_bio_fd_eof(fr_bio_t *bio)
 {
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
+	my->info.eof = true;
+
 	bio->read = fr_bio_null_read;
 	bio->write = fr_bio_null_write;
-	my->info.eof = true;
+
+	/*
+	 *	Nothing more for us to do, tell fr_bio_eof() that it can continue with poking other BIOs.
+	 */
+	return 1;
+}
+
+static int fr_bio_fd_write_resume(fr_bio_t *bio)
+{
+	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
+
+	my->info.write_blocked = false;
+	return 1;
 }
 
 /** Stream read.
@@ -132,7 +154,6 @@ retry:
 	rcode = read(my->info.socket.fd, buffer, size);
 	if (rcode == 0) {
 		fr_bio_eof(bio);
-		if (my->cb.eof) my->cb.eof(&my->bio); /* inform the application that we're at EOF */
 		return 0;
 	}
 
@@ -410,14 +431,13 @@ static ssize_t fr_bio_fd_sendfromto4(fr_bio_t *bio, void *packet_ctx, const void
 		.msg_flags	= 0,
 	};
 
-	cmsg = CMSG_FIRSTHDR(&my->msgh);
-
 	{
 #ifdef IP_PKTINFO
 		struct in_pktinfo *pkt;
 
 		my->msgh.msg_controllen = CMSG_SPACE(sizeof(*pkt));
 
+		cmsg = CMSG_FIRSTHDR(&my->msgh);
 		cmsg->cmsg_level = SOL_IP;
 		cmsg->cmsg_type = IP_PKTINFO;
 		cmsg->cmsg_len = CMSG_LEN(sizeof(*pkt));
@@ -432,6 +452,7 @@ static ssize_t fr_bio_fd_sendfromto4(fr_bio_t *bio, void *packet_ctx, const void
 
 		my->msgh.msg_controllen = CMSG_SPACE(sizeof(*in));
 
+		cmsg = CMSG_FIRSTHDR(&my->msgh);
 		cmsg->cmsg_level = IPPROTO_IP;
 		cmsg->cmsg_type = IP_SENDSRCADDR;
 		cmsg->cmsg_len = CMSG_LEN(sizeof(*in));
@@ -558,13 +579,12 @@ static ssize_t fr_bio_fd_sendfromto6(fr_bio_t *bio, void *packet_ctx, const void
 		.msg_flags	= 0,
 	};
 
-	cmsg = CMSG_FIRSTHDR(&my->msgh);
-
 	{
 		struct in6_pktinfo *pkt;
 
 		my->msgh.msg_controllen = CMSG_SPACE(sizeof(*pkt));
 
+		cmsg = CMSG_FIRSTHDR(&my->msgh);
 		cmsg->cmsg_level = IPPROTO_IPV6;
 		cmsg->cmsg_type = IPV6_PKTINFO;
 		cmsg->cmsg_len = CMSG_LEN(sizeof(*pkt));
@@ -618,7 +638,10 @@ int fr_bio_fd_socket_name(fr_bio_fd_t *my)
 	/*
 	 *	Already set: do nothing.
 	 */
-	if (!fr_ipaddr_is_inaddr_any(&my->info.socket.inet.src_ipaddr)) return 0;
+	if (!fr_ipaddr_is_inaddr_any(&my->info.socket.inet.src_ipaddr) &&
+	    (my->info.socket.inet.src_port != 0)) {
+		return 0;
+	}
 
 	/*
 	 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
@@ -650,7 +673,7 @@ static void fr_bio_fd_set_open(fr_bio_fd_t *my)
 	/*
 	 *	Tell the caller that the socket is ready for application data.
 	 */
-	if (my->cb.activate) my->cb.activate(&my->bio);
+	if (my->cb.connected) my->cb.connected(&my->bio);
 }
 
 
@@ -711,12 +734,10 @@ retry:
                  */
         case EINPROGRESS:
 		if (!my->info.write_blocked) {
-			if (my->cb.write_blocked) {
-				rcode = my->cb.write_blocked((fr_bio_t *) my);
-				if (rcode < 0) return rcode;
-			}
-
 			my->info.write_blocked = true;
+
+			rcode = fr_bio_write_blocked((fr_bio_t *) my);
+			if (rcode < 0) return rcode;
 		}
 
 		return fr_bio_error(IO_WOULD_BLOCK);
@@ -946,7 +967,7 @@ retry:
 }
 
 
-int fr_bio_fd_init_accept(fr_bio_fd_t *my)
+int fr_bio_fd_init_listen(fr_bio_fd_t *my)
 {
 	my->bio.read = fr_bio_fd_read_accept;
 	my->bio.write = fr_bio_null_write;
@@ -1031,6 +1052,7 @@ fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_fd_config_t const *cfg, size_t
 	}
 
 	my->priv_cb.eof = fr_bio_fd_eof;
+	my->priv_cb.write_resume = fr_bio_fd_write_resume;
 
 	talloc_set_destructor(my, fr_bio_fd_destructor);
 	return (fr_bio_t *) my;
@@ -1097,52 +1119,215 @@ retry:
 	return 0;
 }
 
+/** FD error when trying to connect, give up on the BIO.
+ *
+ */
+static void fr_bio_fd_el_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
+{
+	fr_bio_fd_t *my = talloc_get_type_abort(uctx, fr_bio_fd_t);
+
+	my->info.connect_errno = fd_errno;
+
+	if (my->connect.error) {
+		my->connect.error(&my->bio);
+	}
+
+	fr_bio_shutdown(&my->bio);
+}
+
+/** Connect callback for when the socket is writable.
+ *
+ *  We try to connect the socket, and if so, call the application which should update the BIO status.
+ */
+static void fr_bio_fd_el_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUSED int fd, NDEBUG_UNUSED int flags, void *uctx)
+{
+	fr_bio_fd_t *my = talloc_get_type_abort(uctx, fr_bio_fd_t);
+
+	fr_assert(my->info.type == FR_BIO_FD_CONNECTED);
+	fr_assert(my->info.state == FR_BIO_FD_STATE_CONNECTING);
+	fr_assert(my->connect.el == el); /* and not NULL */
+	fr_assert(my->connect.success != NULL);
+	fr_assert(my->info.socket.fd == fd);
+
+#ifndef NDEBUG
+	/*
+	 *	This check shouldn't be necessary, as we have a kqeueue error callback.  That should be called
+	 *	when there's a connect error.
+	 */
+	{
+		int error;
+		socklen_t socklen = sizeof(error);
+
+		/*
+		 *	The socket is writeable.  Let's see if there's an error.
+		 *
+		 *	Unix Network Programming says:
+		 *
+		 *	""If so_error is nonzero when the process calls write, -1 is returned with errno set to the
+		 *	value of SO_ERROR (p. 495 of TCPv2) and SO_ERROR is reset to 0.  We have to check for the
+		 *	error, and if there's no error, set the state to "open". ""
+		 *
+		 *	The same applies to connect().  If a non-blocking connect returns INPROGRESS, it may later
+		 *	become writable.  It will be writable even if the connection fails.  Rather than writing some
+		 *	random application data, we call SO_ERROR, and get the underlying error.
+		 */
+		if (getsockopt(my->info.socket.fd, SOL_SOCKET, SO_ERROR, (void *)&error, &socklen) < 0) {
+			fr_bio_fd_el_error(el, fd, flags, errno, uctx);
+			return;
+		}
+
+		fr_assert(error == 0);
+
+		/*
+		 *	There was an error, we call the error handler.
+		 */
+		if (error) {
+			fr_bio_fd_el_error(el, fd, flags, error, uctx);
+			return;
+		}
+	}
+#endif
+
+	/*
+	 *	Try to connect it.  Any magic handling is done in the callbacks.
+	 */
+	if (fr_bio_fd_try_connect(my) < 0) return;
+
+	fr_assert(my->connect.success);
+
+	if (my->connect.ev) {
+		talloc_const_free(my->connect.ev);
+		my->connect.ev = NULL;
+	}
+	my->connect.el = NULL;
+
+	/*
+	 *	This function MUST change the read/write/error callbacks for the FD.
+	 */
+	my->connect.success(&my->bio);
+}
+
+/**  We have a timeout on the conenction
+ *
+ */
+static void fr_bio_fd_el_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	fr_bio_fd_t *my = talloc_get_type_abort(uctx, fr_bio_fd_t);
+
+	fr_assert(my->connect.timeout);
+
+	my->connect.timeout(&my->bio);
+
+	fr_bio_shutdown(&my->bio);
+}
+
+
 /** Finalize a connect()
  *
  *  connect() said "come back when the socket is writeable".  It's now writeable, so we check if there was a
  *  connection error.
+ *
+ *  @param bio		the binary IO handler
+ *  @param el		the event list
+ *  @param connected_cb	callback to run when the BIO is connected
+ *  @param error_cb	callback to run when the FD has an error
+ *  @param timeout	when to time out the connect() attempt
+ *  @param timeout_cb	to call when the timeout runs.
+ *  @return
+ *	- <0 on error
+ *	- 0 for "try again later".  If callbacks are set, the callbacks will try again.  Otherwise the application has to try again.
+ *	- 1 for "we are now connected".
  */
-int fr_bio_fd_connect(fr_bio_t *bio)
+int fr_bio_fd_connect_full(fr_bio_t *bio, fr_event_list_t *el, fr_bio_callback_t connected_cb,
+			   fr_bio_callback_t error_cb,
+			   fr_time_delta_t *timeout, fr_bio_callback_t timeout_cb)
 {
-	int error;
-	socklen_t socklen = sizeof(error);
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
-	if (my->info.state == FR_BIO_FD_STATE_OPEN) return 0;
+	/*
+	 *	We shouldn't be connected an unconnected socket.
+	 */
+	if (my->info.type == FR_BIO_FD_UNCONNECTED) {
+	error:
+#ifdef ECONNABORTED
+		my->info.connect_errno = ECONNABORTED;
+#else
+		my->info.connect_errno = ECONNREFUSED;
+#endif
+		if (error_cb) error_cb(bio);
+		fr_bio_shutdown(&my->bio);
+		return fr_bio_error(GENERIC);
+	}
 
 	/*
-	 *	The caller may just call us without caring about the underlying bio.
+	 *	The initial open may have succeeded in connecting the socket.  In which case we just run the
+	 *	callbacks and return.
 	 */
-	if ((my->info.socket.af == AF_FILE_BIO) || (my->info.type == FR_BIO_FD_ACCEPT)) {
+	if (my->info.state == FR_BIO_FD_STATE_OPEN) {
+	connected:
+		if (connected_cb) connected_cb(bio);
+
+		return 1;
+	}
+
+	/*
+	 *	The caller may just call us without caring about what the underlying BIO is.  In which case we
+	 *	need to be safe.
+	 */
+	if ((my->info.socket.af == AF_FILE_BIO) || (my->info.type == FR_BIO_FD_LISTEN)) {
 		fr_bio_fd_set_open(my);
-		return 0;
-	}
-
-	if (my->info.state != FR_BIO_FD_STATE_CONNECTING) return fr_bio_error(GENERIC);
-
-	/*
-	 *	The socket is writeable.  Let's see if there's an error.
-	 *
-	 *	Unix Network Programming says:
-	 *
-	 *	""If so_error is nonzero when the process calls write, -1 is returned with errno set to the
-	 *	value of SO_ERROR (p. 495 of TCPv2) and SO_ERROR is reset to 0.  We have to check for the
-	 *	error, and if there's no error, set the state to "open". ""
-	 *
-	 *	The same applies to connect().  If a non-blocking connect returns INPROGRESS, it may later
-	 *	become writable.  It will be writable even if the connection fails.  Rather than writing some
-	 *	random application data, we call SO_ERROR, and get the underlying error.
-	 */
-	if (getsockopt(my->info.socket.fd, SOL_SOCKET, SO_ERROR, (void *)&error, &socklen) < 0) {
-	fail:
-		fr_bio_shutdown(bio);
-		return fr_bio_error(IO);
+		goto connected;
 	}
 
 	/*
-	 *	The socket is connected, so initialize the normal IO handlers.
+	 *	It must be in the connecting state, i.e. not INVALID or CLOSED.
 	 */
-	if (fr_bio_fd_init_common(my) < 0) goto fail;
+	if (my->info.state != FR_BIO_FD_STATE_CONNECTING) goto error;
+
+	/*
+	 *	No callback
+	 */
+	if (!connected_cb) {
+		ssize_t rcode;
+
+		rcode = fr_bio_fd_try_connect(my);
+		if (rcode < 0) {
+			if (error_cb) error_cb(bio);
+			return rcode; /* it already called shutdown */
+		}
+
+		return 1;
+	}
+
+	/*
+	 *	It's not connected, the caller has to try again.
+	 */
+	if (!el) return 0;
+
+	/*
+	 *	Set the callbacks to run when something happens.
+	 */
+	my->connect.success = connected_cb;
+	my->connect.error = error_cb;
+	my->connect.timeout = timeout_cb;
+
+	/*
+	 *	Set the timeout callback if asked.
+	 */
+	if (timeout_cb) {
+		if (fr_event_timer_in(my, el, &my->connect.ev, *timeout, fr_bio_fd_el_timeout, my) < 0) {
+			goto error;
+		}
+	}
+
+	/*
+	 *	Set the FD callbacks, and tell the caller that we're not connected.
+	 */
+	if (fr_event_fd_insert(my, NULL, el, my->info.socket.fd, NULL,
+			       fr_bio_fd_el_connect, fr_bio_fd_el_error, my) < 0) {
+		goto error;
+	}
+	my->connect.el = el;
 
 	return 0;
 }
@@ -1185,19 +1370,157 @@ int fr_bio_fd_write_only(fr_bio_t *bio)
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
 	switch (my->info.type) {
+	case FR_BIO_FD_INVALID:
+		return -1;
+
 	case FR_BIO_FD_UNCONNECTED:
 		if (my->info.socket.type != SOCK_DGRAM) {
 			fr_strerror_const("Only datagram sockets can be marked 'write-only'");
 			return -1;
 		}
-		break;
+		goto set_recv_buff_zero;
 
 	case FR_BIO_FD_CONNECTED:
-	case FR_BIO_FD_ACCEPT:
+	case FR_BIO_FD_ACCEPTED:
+		/*
+		 *	Further reads are disallowed.  However, this likely has no effect for UDP sockets.
+		 */
+		if (shutdown(my->info.socket.fd, SHUT_RD) < 0) {
+			fr_strerror_printf("Failed shutting down connected socket - %s", fr_syserror(errno));
+			return -1;
+		}
+
+	set_recv_buff_zero:
+#ifdef __linux__
+#ifdef SO_RCVBUF
+		/*
+		 *	On Linux setting the receive buffer to zero has the effect of discarding all incoming
+		 *	data in the kernel.  With macOS and others it's an invalid value.
+		 */
+		{
+			int opt = 0;
+
+			if (setsockopt(my->info.socket.fd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
+				fr_strerror_printf("Failed setting SO_RCVBUF: %s", fr_syserror(errno));
+				return -1;
+			}
+		}
+#endif
+#endif
+		break;
+
+	case FR_BIO_FD_LISTEN:
 		fr_strerror_const("Only unconnected sockets can be marked 'write-only'");
 		return -1;
 	}
 
+	/*
+	 *	No matter what the possibilities above, we replace the read function with a "discard"
+	 *	function.
+	 */
 	my->bio.read = fr_bio_fd_read_discard;
 	return 0;
+}
+
+/** Alternative to calling fr_bio_read() on new socket.
+ *
+ */
+int fr_bio_fd_accept(TALLOC_CTX *ctx, fr_bio_t **out_p, fr_bio_t *bio)
+{
+	int fd, tries = 0;
+	int rcode;
+	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
+	socklen_t salen;
+	struct sockaddr_storage sockaddr;
+	fr_bio_fd_t *out;
+	fr_bio_fd_config_t *cfg;
+
+	salen = sizeof(sockaddr);
+	*out_p = NULL;
+
+	fr_assert(my->info.type == FR_BIO_FD_LISTEN);
+	fr_assert(my->info.socket.type == SOCK_STREAM);
+
+retry:
+#ifdef __linux__
+	/*
+	 *	Set these flags immediately on the new socket.
+	 */
+	fd = accept4(my->info.socket.fd, (struct sockaddr *) &sockaddr, &salen, SOCK_NONBLOCK | SOCK_CLOEXEC);
+#else
+	fd = accept(my->info.socket.fd, (struct sockaddr *) &sockaddr, &salen);
+#endif
+	if (fd < 0) {
+		switch (errno) {
+		case EINTR:
+			/*
+			 *	Try a few times before giving up.
+			 */
+			tries++;
+			if (tries <= my->max_tries) goto retry;
+			return 0;
+
+			/*
+			 *	We can ignore these errors.
+			 */
+		case ECONNABORTED:
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+		case EWOULDBLOCK:
+#endif
+		case EAGAIN:
+#ifdef EPERM
+		case EPERM:
+#endif
+#ifdef ETIMEDOUT
+		case ETIMEDOUT:
+#endif
+			return 0;
+
+		default:
+			/*
+			 *	Some other error, it's fatal.
+			 */
+			fr_bio_shutdown(&my->bio);
+			break;
+		}
+
+		return fr_bio_error(IO);
+	}
+
+	/*
+	 *	Allocate the base BIO and set it up.
+	 */
+	out = (fr_bio_fd_t *) fr_bio_fd_alloc(ctx, NULL, my->offset);
+	if (!out) {
+		close(fd);
+		return fr_bio_error(GENERIC);
+	}
+
+	/*
+	 *	We have a file descriptor.  Initialize the configuration with the new information.
+	 */
+	cfg = talloc_memdup(out, my->info.cfg, sizeof(*my->info.cfg));
+	if (!cfg) {
+		fr_strerror_const("Out of memory");
+		close(fd);
+		talloc_free(out);
+		return fr_bio_error(GENERIC);
+	}
+
+	/*
+	 *	Set the type to ACCEPTED, and set up the rest of the callbacks to match.
+	 */
+	cfg->type = FR_BIO_FD_ACCEPTED;
+	out->info.socket.fd = fd;
+
+	rcode = fr_bio_fd_open(bio, cfg);
+	if (rcode < 0) {
+		talloc_free(out);
+		return rcode;
+	}
+
+	fr_assert(out->info.type == FR_BIO_FD_CONNECTED);
+
+	*out_p = (fr_bio_t *) out;
+	return 1;
 }

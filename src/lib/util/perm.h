@@ -38,6 +38,8 @@ char const	*fr_perm_mode_to_str(char out[static 10], mode_t mode);
 
 char const 	*fr_perm_mode_to_oct(char out[static 5], mode_t mode);
 
+int		fr_perm_mode_from_str(mode_t *out, char const *str) CC_HINT(nonnull);
+
 int		fr_perm_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid) CC_HINT(nonnull(2));
 
 int		fr_perm_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name) CC_HINT(nonnull(2,3));

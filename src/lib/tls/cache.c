@@ -163,14 +163,20 @@ void _tls_cache_clear_state_reset(request_t *request, fr_tls_cache_t *cache, cha
 /** Serialize the session-state list and store it in the SSL_SESSION *
  *
  */
-static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess)
+static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess, uint32_t resumption_type)
 {
 	fr_dbuff_t		dbuff;
 	fr_dbuff_uctx_talloc_t	tctx;
 	fr_dcursor_t		dcursor;
-	fr_pair_t		*vp;
+	fr_pair_t		*vp, *type_vp;
 	ssize_t			slen;
 	int			ret;
+
+	/*
+	 *	Add a temporary pair for the type of session resumption
+	 */
+	MEM(pair_append_session_state(&type_vp, attr_tls_session_resume_type) >= 0);
+	type_vp->vp_uint32 = resumption_type;
 
 	if (RDEBUG_ENABLED2) {
 		SESSION_ID(sess_id, sess);
@@ -204,6 +210,8 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess)
 			return 0;
 		}
 	}
+
+	fr_pair_remove(&request->session_state_pairs, type_vp);
 
 	RHEXDUMP4(fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff), "session-ticket application data");
 
@@ -338,7 +346,7 @@ static void tls_cache_delete_request(SSL_SESSION *sess)
 	if (tls_session->can_pause) ASYNC_pause_job();
 }
 
-/** Process the result of `session load { ... }`
+/** Process the result of `load session { ... }`
  */
 static unlang_action_t tls_cache_load_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
 					     request_t *request, void *uctx)
@@ -397,10 +405,10 @@ static unlang_action_t tls_cache_load_result(UNUSED rlm_rcode_t *p_result, UNUSE
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-/** Push a `session load { ... }` call into the current request, using a subrequest
+/** Push a `load session { ... }` call into the current request, using a subrequest
  *
  * @param[in] request		The current request.
- * @Param[in] tls_session	The current TLS session.
+ * @param[in] tls_session	The current TLS session.
  * @return
  *      - UNLANG_ACTION_CALCULATE_RESULT on noop.
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
@@ -448,7 +456,7 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 	return ua;
 }
 
-/** Process the result of `session store { ... }`
+/** Process the result of `store session { ... }`
  */
 static unlang_action_t tls_cache_store_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
 					      request_t *request, void *uctx)
@@ -470,11 +478,11 @@ static unlang_action_t tls_cache_store_result(UNUSED rlm_rcode_t *p_result, UNUS
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-/** Push a `session store { ... }` call into the current request, using a subrequest
+/** Push a `store session { ... }` call into the current request, using a subrequest
  *
  * @param[in] request		The current request.
  * @param[in] conf		TLS configuration.
- * @Param[in] tls_session	The current TLS session.
+ * @param[in] tls_session	The current TLS session.
  * @return
  *      - UNLANG_ACTION_CALCULATE_RESULT on noop.
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
@@ -492,7 +500,11 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	fr_pair_t		*vp;
 	SSL_SESSION		*sess = tls_session->cache->store.sess;
 	unlang_action_t		ua;
+#if OPENSSL_VERSION_NUMBER >= 0x30400000L
+	fr_time_t		expires = fr_time_from_sec((time_t)(SSL_SESSION_get_time_ex(sess) + SSL_get_timeout(sess)));
+#else
 	fr_time_t		expires = fr_time_from_sec((time_t)(SSL_SESSION_get_time(sess) + SSL_get_timeout(sess)));
+#endif
 	fr_time_t		now = fr_time();
 
 	fr_assert(tls_cache->store.sess);
@@ -510,7 +522,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	Add the current session-state list
 	 *	contents to the ssl-data
 	 */
-	if (tls_cache_app_data_set(request, sess) < 0) return UNLANG_ACTION_FAIL;
+	if (tls_cache_app_data_set(request, sess, enum_tls_session_resumed_stateful->vb_uint32) < 0) return UNLANG_ACTION_FAIL;
 
 	MEM(child = unlang_subrequest_alloc(request, dict_tls));
 	request = child;
@@ -580,7 +592,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	return ua;
 }
 
-/** Process the result of `session clear { ... }`
+/** Process the result of `clear session { ... }`
  */
 static unlang_action_t tls_cache_clear_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
 					      request_t *request, void *uctx)
@@ -602,11 +614,11 @@ static unlang_action_t tls_cache_clear_result(UNUSED rlm_rcode_t *p_result, UNUS
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-/** Push a `session clear { ... }` call into the current request, using a subrequest
+/** Push a `clear session { ... }` call into the current request, using a subrequest
  *
  * @param[in] request		The current request.
  * @param[in] conf		TLS configuration.
- * @Param[in] tls_session	The current TLS session.
+ * @param[in] tls_session	The current TLS session.
  * @return
  *      - UNLANG_ACTION_CALCULATE_RESULT on noop.
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
@@ -653,10 +665,10 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
 	return ua;
 }
 
-/** Push a `session store { ... }` or session clear { ... }` or `session load { ... }` depending on what operations are pending
+/** Push a `store session { ... }` or `clear session { ... }` or `load session { ... }` depending on what operations are pending
  *
  * @param[in] request		The current request.
- * @Param[in] tls_session	The current TLS session.
+ * @param[in] tls_session	The current TLS session.
  * @return
  *	- UNLANG_ACTION_CALCULATE_RESULT	- No pending actions
  *	- UNLANG_ACTION_PUSHED_CHILD		- Pending operations to evaluate.
@@ -1229,7 +1241,7 @@ static int tls_cache_session_ticket_app_data_set(SSL *ssl, void *arg)
 		return 0;
 	}
 
-	if (tls_cache_app_data_set(request, sess) < 0) return 0;
+	if (tls_cache_app_data_set(request, sess, enum_tls_session_resumed_stateless->vb_uint32) < 0) return 0;
 
 	return 1;
 }

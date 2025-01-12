@@ -18,11 +18,11 @@ case EAGAIN:
 	 *	The operation would block, return that.
 	 */
 	if (!my->info.flag_blocked) {
+		my->info.flag_blocked = true;
+
 		if (my->cb.flag_blocked) {
 			rcode = my->cb.flag_blocked((fr_bio_t *) my);
 			if (rcode < 0) return rcode;
-
-			my->info.flag_blocked = true;
 		}
 	}
 	return fr_bio_error(IO_WOULD_BLOCK);
@@ -44,7 +44,6 @@ case EPIPE:
 	 *	and set EOF on the BIO.
 	 */
 	fr_bio_eof(&my->bio);
-	if (my->cb.eof) my->cb.eof(&my->bio); /* inform the application that we're at EOF */
 	return 0;
 
 default:
@@ -53,3 +52,8 @@ default:
 	 */
 	break;
 }
+
+/*
+ *	Shut down the BIO.  It's no longer useable.
+ */
+fr_bio_shutdown(&my->bio);

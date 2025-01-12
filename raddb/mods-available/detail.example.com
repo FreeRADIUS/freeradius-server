@@ -34,5 +34,5 @@
 #  ## Configuration Settings
 #
 detail detail.example.com {
-	filename = ${radacctdir}/detail.example.com/detail-%Y-%m-%dT%H:%G:00
+	filename = "${radacctdir}/detail.example.com/detail-%Y-%m-%dT%H:%G:00"
 }

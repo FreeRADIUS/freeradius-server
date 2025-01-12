@@ -1,0 +1,12 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+Calling-Station-ID = 00:11:22:33:01:00
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Framed-IP-Address == 10.8.0.255,
+Reply-Message == host256.example.com

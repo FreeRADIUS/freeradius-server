@@ -96,7 +96,7 @@ static inline CC_HINT(nonnull) int fr_radius_code_id_force(fr_radius_code_id_t c
 	fr_assert(code > 0);
 	fr_assert(code < FR_RADIUS_CODE_MAX);
 
-	if (!codes[code]) return NULL;
+	if (!codes[code]) return -1;
 
 	return fr_radius_id_force(codes[code], id);
 }

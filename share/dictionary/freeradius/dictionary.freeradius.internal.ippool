@@ -15,12 +15,11 @@ FLAGS	internal
 
 ATTRIBUTE	IP-Pool					5100	tlv
 
-BEGIN-TLV 	IP-Pool
+BEGIN 	IP-Pool
 ATTRIBUTE	Name					1	string	# Generic identifier for the IP pool to allocate from
 ATTRIBUTE	Name-NA					2	string	# DHCPv6 - Non-Temporary association pool
 ATTRIBUTE	Name-PD					3	string	# DHCPv6 - Prefix-deligation pool
 ATTRIBUTE	Name-TA					4	string	# DHCPv6 - Temporary association pool
 
 ATTRIBUTE	Range					6	string
-END-TLV		IP-Pool
-
+END		IP-Pool

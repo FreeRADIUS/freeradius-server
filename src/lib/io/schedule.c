@@ -535,7 +535,11 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			goto st_fail;
 		}
 
-		(void) fr_network_worker_add(sc->single_network, sc->single_worker);
+		/*
+		 *	Register the worker with the network, so
+		 *	things like fr_network_send_request() work.
+		 */
+		fr_network_worker_add_self(sc->single_network, sc->single_worker);
 		DEBUG("Scheduler created in single-threaded mode");
 
 		if (fr_event_pre_insert(el, fr_worker_pre_event, sc->single_worker) < 0) {

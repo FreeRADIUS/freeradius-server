@@ -36,7 +36,7 @@ possible to write values in the format you expect, The server will do
 | ipv4prefix    | IPv4 network with address and prefix length
 | ipv6prefix    | IPv6 network with address and prefix length
 | octets        | raw binary, printed as hex strings
-| string        | printable strings
+| xref:type/string/index.adoc[string]        | printable strings
 | time_delta	| difference between two calendar dates
 | uint8		| 8-bit unsigned integer
 | uint16	| 16-bit unsigned integer
@@ -56,10 +56,70 @@ statements.
 [cols="15%,85%"]
 |=====
 | Data Type     | Description
+| group		| generic grouping
 | struct	| structure which contains fixed-width fields
 | tlv		| type-length-value which contains other attributes
+| vendor	| Encapsulation of a vendor within data type `vsa`
 | vsa		| Encapsulation of vendor-specific attributes
 |=====
+
+Each structural data type serves a different purpose.  Each structural
+data type can contain child attributes.  The different structural
+types have different behaviors about what kind of children they can
+contain, and how the data type is sent in a packet over the network.
+
+struct:: A `struct` contains fixed-sized data types, in a pre-defined order.
++
+The `struct` can only contain a fixed and pre-defined list of child
+attributes.  These attributes are the fields, or members, of the structure.
++
+The `struct` always encodes all of its children.  If a child is
+missing, then the relevant field is filled with zeros.
+
+group: A `group` contains an arbitrary collection of children, in any order.
++
+A `group` is really a reference to some other attribute elsewhere in
+the same protocol dictionary, or to a different protocol dictionary.
+The `group` allows for dictionaries to contain cross-references.
++
+The `group` can contain any child attributes, so long as they are
+within the same protocol namespace.  See the
+dictionary/attribute.adoc[ATTRIBUTE] documentation for more
+information.
++
+The `group` only encodes the child attributes which have been created
+and stored within the `group`.  The order of children does not matter.
+
+tlv:: A `tlv` defines a hierarchy of children, which can only be contained in the `tlv`.
++
+The `tlv` can only contain child attributes which have been defined as
+children of the `tlv.`
++
+The `tlv` only encodes the child attributes which have been created
+and stored within the `tlv`.  The order of children does not matter.
+
+vendor:: A `vendor` is a group which has a limited subset of children:
+attributes which have been defined by that vendor.
++
+The `vendor` can only contain child attributes which have been defined by the vendor.
++
+The `vendor` only encodes the child attributes which have been created
+and stored within the `vendor`.  The order of children does not
+matter.  In practice, the `vendor` attributes are usually encoded with
+a 32-bit vendor ID, which identies the vendor.
++
+A `vendor` data type can only be a child of a `vsa` data type.
+
+vsa:: A `vsa` is a group which has a limited subset of children: `vendor`s.
++
+The `vsa` can only contain child attributes which are `vendor`s
++
+The `vsa` only encodes the vendor attributes which have been created
+and stored within the `vsa`.  The order of children does not
+matter.
++
+A `vsa` data type can only be a contain children of the `vendor` data type.
+
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS

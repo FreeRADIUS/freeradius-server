@@ -270,14 +270,14 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 
 	default:
 		/* Should never enter here */
-		REDEBUG("Reply code %d is unknown, rejecting the request", reply->code);
+		REDEBUG("Reply code %u is unknown, rejecting the request", reply->code);
 		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
 		reply->code = FR_EAP_CODE_FAILURE;
 		rcode = RLM_MODULE_REJECT;
 		break;
 	}
 
-	RDEBUG2("Sending EAP %s (code %i) ID %d length %i",
+	RDEBUG2("Sending EAP %s (code %d) ID %d length %i",
 		eap_codes[eap_packet->code], eap_packet->code, reply->id,
 		eap_packet->length[0] * 256 + eap_packet->length[1]);
 

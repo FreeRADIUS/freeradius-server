@@ -256,6 +256,7 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 	char			*s;
 	char const		*p;
 	char			quote;
+	bool			triple = false;
 	unsigned int		x;
 	size_t			i;
 	fr_token_t 		token;
@@ -315,6 +316,15 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 
 	if (token != T_BARE_WORD) {
 		quote = *p;
+
+		/*
+		 *	Triple-quoted strings are copied over verbatim, without escapes.
+		 */
+		if ((buflen >= 3) && (p[1] == quote) && (p[2] == quote)) {
+			p += 3;
+			triple = true;
+		}
+
 		p++;
 	}
 	s = buf;
@@ -350,9 +360,20 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 		 *	Un-escaped quote character.  We're done.
 		 */
 		if (*p == quote) {
-			p++;
-			*s++ = 0;
-			goto done;
+			if (!triple) {
+				p++;
+				*s++ = 0;
+				goto done;
+			}
+
+			if ((buflen >= 3) && (p[1] == quote) && (p[2] == quote)) {
+				p += 3;
+				*s++ = 0;
+				goto done;
+			}
+
+			*s++ = *p++;
+			continue;
 		}
 
 		/*

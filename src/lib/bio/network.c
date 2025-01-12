@@ -132,10 +132,12 @@ fr_bio_t *fr_bio_network_alloc(TALLOC_CTX *ctx, fr_ipaddr_t const *allow, fr_ipa
 	case FR_BIO_FD_UNCONNECTED:
 		break;
 
+	case FR_BIO_FD_INVALID:
 	case FR_BIO_FD_CONNECTED:
+	case FR_BIO_FD_ACCEPTED:
 		return NULL;
 
-	case FR_BIO_FD_ACCEPT:
+	case FR_BIO_FD_LISTEN:
 		break;
 	}
 
@@ -180,7 +182,7 @@ fr_trie_t *fr_bio_network_trie_alloc(TALLOC_CTX *ctx, int af, fr_ipaddr_t const 
 		 *	Can't add v4 networks to a v6 socket, or vice versa.
 		 */
 		if (allow[i].af != af) {
-			fr_strerror_printf("Address family in entry %zd - 'allow = %pV' "
+			fr_strerror_printf("Address family in entry %zu - 'allow = %pV' "
 					   "does not match 'ipaddr'", i + 1, fr_box_ipaddr(allow[i]));
 		fail:
 			talloc_free(trie);
@@ -238,7 +240,7 @@ fr_trie_t *fr_bio_network_trie_alloc(TALLOC_CTX *ctx, int af, fr_ipaddr_t const 
 		 *	Can't add v4 networks to a v6 socket, or vice versa.
 		 */
 		if (deny[i].af != af) {
-			fr_strerror_printf("Address family in entry %zd - 'deny = %pV' "
+			fr_strerror_printf("Address family in entry %zu - 'deny = %pV' "
 					   "does not match 'ipaddr'", i + 1, fr_box_ipaddr(deny[i]));
 			goto fail;
 		}
@@ -257,7 +259,7 @@ fr_trie_t *fr_bio_network_trie_alloc(TALLOC_CTX *ctx, int af, fr_ipaddr_t const 
 		 */
 		value = fr_trie_lookup_by_key(trie, &deny[i].addr, deny[i].prefix);		
 		if (!value) {
-			fr_strerror_printf("The network in entry %zd - 'deny = %pV' is not "
+			fr_strerror_printf("The network in entry %zu - 'deny = %pV' is not "
 					   "contained within a previous 'allow'", i + 1, fr_box_ipaddr(deny[i]));
 			goto fail;
 		}
@@ -266,7 +268,7 @@ fr_trie_t *fr_bio_network_trie_alloc(TALLOC_CTX *ctx, int af, fr_ipaddr_t const 
 		 *	A "deny" cannot be within a previous "deny".
 		 */
 		if (value == FR_BIO_NETWORK_DENY) {
-			fr_strerror_printf("The network in entry %zd - 'deny = %pV' is overlaps "
+			fr_strerror_printf("The network in entry %zu - 'deny = %pV' is overlaps "
 					   "with another 'deny' rule", i + 1, fr_box_ipaddr(deny[i]));
 			goto fail;
 		}

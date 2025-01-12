@@ -319,14 +319,14 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(!fr_comparison_op[op]);
 
 	if (fr_value_box_list_num_elements(&a->vb_group) > 1) {
-		REDEBUG("Expected one value as the first argument, got %d",
+		REDEBUG("Expected one value as the first argument, got %u",
 			fr_value_box_list_num_elements(&a->vb_group));
 		return XLAT_ACTION_FAIL;
 	}
 	a = fr_value_box_list_head(&a->vb_group);
 
 	if (fr_value_box_list_num_elements(&b->vb_group) > 1) {
-		REDEBUG("Expected one value as the second argument, got %d",
+		REDEBUG("Expected one value as the second argument, got %u",
 			fr_value_box_list_num_elements(&b->vb_group));
 		return XLAT_ACTION_FAIL;
 	}
@@ -631,7 +631,7 @@ static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, fr_va
 			 *	Concatenate everything, and escape untrusted inputs.
 			 */
 			if (fr_value_box_list_concat_as_string(NULL, NULL, agg, &list, NULL, 0, &regex_escape_rules,
-							       FR_VALUE_BOX_LIST_FREE_BOX, true) < 0) {
+							       FR_VALUE_BOX_LIST_FREE_BOX, FR_REGEX_SAFE_FOR, true) < 0) {
 				RPEDEBUG("Failed concatenating regular expression string");
 				talloc_free(regmatch);
 				return XLAT_ACTION_FAIL;
@@ -703,7 +703,7 @@ static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *      concatenate it here.  We escape the various untrusted inputs.
 	 */
 	if (fr_value_box_list_concat_as_string(NULL, NULL, agg, &rctx->list, NULL, 0, &regex_escape_rules,
-					       FR_VALUE_BOX_LIST_FREE_BOX, true) < 0) {
+					       FR_VALUE_BOX_LIST_FREE_BOX, FR_REGEX_SAFE_FOR, true) < 0) {
 		RPEDEBUG("Failed concatenating regular expression string");
 		return XLAT_ACTION_FAIL;
 	}
@@ -1746,7 +1746,7 @@ static xlat_action_t xlat_exists_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	concatenate it here.  We escape the various untrusted inputs.
 	 */
 	if (fr_value_box_list_concat_as_string(NULL, NULL, agg, &rctx->list, NULL, 0, NULL,
-					       FR_VALUE_BOX_LIST_FREE_BOX, true) < 0) {
+					       FR_VALUE_BOX_LIST_FREE_BOX, 0, true) < 0) {
 		RPEDEBUG("Failed concatenating attribute name string");
 		return XLAT_ACTION_FAIL;
 	}
@@ -2413,6 +2413,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	tmpl_rules_t		our_t_rules = *t_rules;
 	tmpl_t			*vpt = NULL;
 	fr_token_t		quote;
+	int			triple = 1;
 	fr_type_t		cast_type = FR_TYPE_NULL;
 	xlat_exp_t		*cast = NULL;
 
@@ -2516,6 +2517,24 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		if (cast_type != FR_TYPE_NULL) our_t_rules.cast = FR_TYPE_NULL;
 
 		p_rules = value_parse_rules_quoted[quote];
+
+		/*
+		 *	Triple-quoted strings have different terminal conditions.
+		 */
+		if (fr_sbuff_remaining(&our_in) >= 2) {
+			char const *p = fr_sbuff_current(&our_in);
+			char c = fr_token_quote[quote];
+
+			/*
+			 *	"""foo "quote" and end"""
+			 */
+			if ((p[0] == c) && (p[1] == c)) {
+				triple = 3;
+				(void) fr_sbuff_advance(&our_in, 2);
+				p_rules = value_parse_rules_3quoted[quote];
+			}
+		}
+
 		break;
 	}
 
@@ -2545,13 +2564,18 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	}
 
 	if (quote != T_BARE_WORD) {
-		if (!fr_sbuff_is_char(&our_in, fr_token_quote[quote])) {
-			fr_strerror_const("Unterminated string");
-			fr_sbuff_set(&our_in, &opand_m);
-			goto error;
-		}
+		/*
+		 *	Ensure that the string ends with the correct number of quotes.
+		 */
+		do {
+			if (!fr_sbuff_is_char(&our_in, fr_token_quote[quote])) {
+				fr_strerror_const("Unterminated string");
+				fr_sbuff_set(&our_in, &opand_m);
+				goto error;
+			}
 
-		fr_sbuff_advance(&our_in, 1);
+			fr_sbuff_advance(&our_in, 1);
+		} while (--triple > 0);
 
 		/*
 		 *	Quoted strings just get resolved now.
@@ -2868,13 +2892,7 @@ redo:
 	 */
 	XLAT_DEBUG("    operator <-- %pV", fr_box_strvalue_len(fr_sbuff_current(&our_in), fr_sbuff_remaining(&our_in)));
 	fr_sbuff_out_by_longest_prefix(&slen, &op, expr_assignment_op_table, &our_in, T_INVALID);
-	if (op == T_INVALID) {
-		fr_strerror_const("Invalid operator");
-		talloc_free(lhs);
-		FR_SBUFF_ERROR_RETURN(&our_in);
-	}
-
-	if (!binary_ops[op].str) {
+	if ((op == T_INVALID) || !binary_ops[op].str) {
 		fr_strerror_const("Invalid operator");
 		fr_sbuff_set(&our_in, &m_op);
 		talloc_free(lhs);
@@ -2927,7 +2945,7 @@ redo:
 	 */
 	if ((lhs->type == XLAT_TMPL) && tmpl_is_attr(lhs->vpt) && fr_type_is_structural(tmpl_attr_tail_da(lhs->vpt)->type)) {
 		if ((op != T_OP_CMP_EQ) && (op != T_OP_NE)) {
-			fr_strerror_printf("Invalid operatord '%s' for left hand side structural attribute", fr_tokens[op]);
+			fr_strerror_printf("Invalid operator '%s' for left hand side structural attribute", fr_tokens[op]);
 			fr_sbuff_set(&our_in, &m_op);
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}

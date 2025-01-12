@@ -255,6 +255,9 @@ push:
  * @param[in] tmpl		the tmpl to expand
  * @param[in] args		additional controls for expanding #TMPL_TYPE_EXEC,
  * 				and where the status of exited programs will be stored.
+ * @return
+ *	- 0 on success
+ *	- -1 on failure
  */
 int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request,
 		     tmpl_t const *tmpl, unlang_tmpl_args_t *args)

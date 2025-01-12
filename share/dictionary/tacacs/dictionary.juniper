@@ -1,0 +1,76 @@
+# -*- text -*-
+# Copyright (C) 2024 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#	Juniper commands
+#
+#	https://www.juniper.net/documentation/en_US/junos13.1/topics/task/configuration/tacacs-authentication-configuring.html
+#
+#	Example contents of these attributes are documented on the Juniper site:
+#
+#	https://www.juniper.net/documentation/us/en/software/junos/user-access/topics/topic-map/user-access-tacacs-authentication.html#id-using-regular-expressions-on-a-radius-or-tacacs-server-to-allow-or-deny-access
+#
+#
+#	$Id$
+#
+##############################################################################
+
+#
+#  The username local to the router
+#
+DEFINE	local-user-name					string
+
+#
+#  User permissions.
+#
+#	user-permissions = "flag1 flag2 flag3"
+#
+DEFINE	user-permissions				string
+
+#
+#  Each command is enclosed in parantheses: 	"(cmd)"
+#
+#  Multiple commands are separated by a pipe:	"(one)|(two)"
+#
+#  The device will merge all of the regular expressions received from
+#  the local configuration, TACACS+ and RADIUS.
+#
+#  Each of the following commands also has a "regexps" variant. They use the same syntax
+#  as the non-"regexps" attributes, but they allow you to use variables in the regex.
+#
+#  What exactly that means is left undocumented by Juniper.
+#
+
+#
+#  Regular expression to match allowed commands
+#
+#	allow-commands = "(one)|(two)|(three)"
+#
+DEFINE	allow-commands					string
+DEFINE	allow-commands-regexps				string
+
+#
+#  Regular expression to match denied commands
+#
+#	deny-commands = "(one)|(two)|(three)"
+#
+DEFINE	deny-commands					string
+DEFINE	deny-commands-regexps				string
+
+#
+#  Regular expression to match allowed configurations
+#
+#	allow-configurations = "(one thing)|(two)|(three thing)"
+#
+DEFINE	allow-configurations				string
+DEFINE	allow-configurations-regexps			string
+
+#
+#  Regular expression to match denied configurations
+#
+#	deny-configurations = "(one thing)|(two)|(three thing)"
+#
+DEFINE	deny-configuration				string
+DEFINE	deny-configuration-regexps			string

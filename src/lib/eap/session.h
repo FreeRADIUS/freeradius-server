@@ -40,7 +40,7 @@ typedef struct eap_session_s eap_session_t;
 struct eap_session_s {
 	eap_session_t	*prev, *next;			//!< Next/previous eap session in this doubly linked list.
 
-	eap_session_t	*child;				//!< Session for tunneled EAP method.
+	uint8_t		*child_state;			//!< State value returned by tunneled EAP method.
 
 	request_t	*subrequest;			//!< Current subrequest being executed.
 	rlm_rcode_t	submodule_rcode;		//!< Result of last submodule call.

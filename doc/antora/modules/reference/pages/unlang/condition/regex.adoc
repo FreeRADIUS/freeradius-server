@@ -136,6 +136,39 @@ if (&User-Name =~ /^(.*)@example\.com$/) {
 ----
 ====
 
+== Dynamic expressions and escaping
+
+If the pattern contains a xref:xlat/index.adoc[dynamic expansion], elements
+of the expansion could potentially affect pattern evaluation in unanticipated ways.
+
+To prevent this, the server will, by default, escape any special characters
+in the values produced by the dynamic expansion, so that they are treated as
+literal characters in the regular expression.
+
+To allow non-literals in dynamic elements of regular expressions, wrap any literal
+values or expansions in `%regex.safe(...)`.
+
+.Using regex.safe to prevent escaping
+====
+[source,unlang]
+----
+local pattern
+switch (realm) {
+    case example.com {
+        pattern = %regex.safe('.*\.example\.com')
+    }
+    case test.com {
+        # '.' does not need to be escaped
+        pattern = 'test.com'
+    }
+}
+
+if (&Stripped-User-Name =~ /^%{pattern}$/) {
+    ...
+}
+----
+====
+
 == Pre-Compiled vs Runtime Compiled
 
 When the server starts any regular expressions comparisons it finds will be

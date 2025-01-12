@@ -35,5 +35,20 @@ match 7d 0e 00 00 0d e9 09 01 01 01 02 01 02 03 01 03
 decode-pair 7d 0d 00 00 00 09 09 05 06 61 61 2e 74 78 74
 match V-I-Vendor-Specific = { raw.Cisco = 0x09050661612e747874 }
 
+#
+#  Multiple vendors - should result in a single option with multiple vendors inside
+#
+encode-pair V-I-Vendor-Specific = { CTS = { Server-Login-Name = "anonymous" }, Cisco = { Indirect-Image-Filename = "aa.txt" } }
+match 7d 1d 00 00 24 58 0b 03 09 61 6e 6f 6e 79 6d 6f 75 73 00 00 00 09 08 05 06 61 61 2e 74 78 74
+
+decode-pair -
+match V-I-Vendor-Specific = { CTS = { Server-Login-Name = "anonymous" }, Cisco = { Indirect-Image-Filename = "aa.txt" } }
+
+encode-pair V-I-Vendor-Specific.Cisco.Indirect-Image-Filename = "aa.txt", V-I-Vendor-Specific.Cisco.Indirect-Image-Filename = "bb.txt", V-I-Vendor-Specific.ADSL-Forum.Manufacturer-OUI = 0x01, V-I-Vendor-Specific.ADSL-Forum.Device-Serial-Number = 0x02,  V-I-Vendor-Specific.ADSL-Forum.Device-Product-Class = 0x03
+match 7d 23 00 00 00 09 10 05 06 61 61 2e 74 78 74 05 06 62 62 2e 74 78 74 00 00 0d e9 09 01 01 01 02 01 02 03 01 03
+
+decode-pair -
+match V-I-Vendor-Specific = { Cisco = { Indirect-Image-Filename = "aa.txt", Indirect-Image-Filename = "bb.txt" }, ADSL-Forum = { Manufacturer-OUI = 0x01, Device-Serial-Number = 0x02, Device-Product-Class = 0x03 } }
+
 count
-match 19
+match 27

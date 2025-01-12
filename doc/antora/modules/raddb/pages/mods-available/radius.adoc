@@ -4,23 +4,87 @@
 
 = Radius Module
 
-The `radius` module in v4, can be used to implement proxying and request
-fan-out, as well as synchronous and asynchronous `CoA` and `DM`.
+The `radius` module in v4 implements RADIUS proxying and
+replication.  In v3, RADIUS proxying is a special kind of
+configuration, with it's own load-balancing, fail-over etc.  That
+configuration is now simpler in v4.  The outbound RADIUS proxying
+is done by just another module: the `radius` module.
+Load-balancing and redundant fail-over are handled by the
+`load-balance` and `redundant` keywords.
 
-## Configuration Settings
+In v4, the `radius` module most clearly maps to a `home_server` in
+v4.  The `radius` module typically makes a connection from one
+source IP address to a server at one destination IP/port.  It may
+open multiple source ports, depending on how many packets are being
+proxied.
+
+## Recommendations
+
+In most cases, the v3 configuration be moved to v4 without too many
+problems.  For each `home_server foo { ... }` in v3, create a v4
+module `radius foo { ... } `.  Copy over the IP address, port, and
+secret configuration items.  When this step is finished, the bulk
+of the basic work is done.
+
+Converting a `home_server_pool foo { ... }` can be done by
+creating a module in `mods-enabled`, either `load-balance foo {
+... }`, or `redundant foo { ... }`.  i.e. the v3 module
+configuration does not have any `instantiate` section.  You can
+just list "virtual" modules directly in the `modules` directory!
+
+The contents of the `load-balance` or `redundant` section will be
+the list of home servers which will part of that `load-balance` or
+`redundant` pool.
+
+Then, anywhere you want to use a home server, just list it's name
+in an `unlang` processing section.  Anywhere you want to list a
+home server pool, just list it's name in an `unlang` processing
+section.
+
+Unlike v3, there is no `Proxy-To-Realm` attribute, or
+`Home-Server-Pool`, or `Home-Server-Name`.  Instead, you just
+configure a module (`radius`, or `load-balance`), and then use the
+module anywhere you want to proxy packets.
+
+In most cases, you can just set something like `Auth-Type :=
+example.com`, and then have a section `authenticate example.com {
+... }`, which contains the `radius` modules which do proxying.  See
+link:../../../../../../sites-available/default.adoc[sites-available/default] for sample configuration which uses this
+pattern.
+
+## Behavior
+
+The module adds a Proxy-State attribute to all proxied packets.
+This `link:https://freeradius.org/rfc/rfc2865.html#Proxy-State[Proxy-State]` contains a 32-bit random number, which is unique
+to this module.  This unique number helps to detect proxy loops.
+
+The reply from home server is appended to the reply list for the
+current packet.
+
+WARNING: For security reasons, the module ensures that all proxied
+`link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packets contain a `link:https://freeradius.org/rfc/rfc2869.html#Message-Authenticator[Message-Authenticator]`
+attribute.  This behavior is *NOT* configurable, and *CANNOT* be
+changed.  This behavior is part of the BlastRADIUS mitigations.
 
 Any proxied packet (including `link:https://freeradius.org/rfc/rfc2866.html#Accounting-Request[Accounting-Request]`) can
 receive a `Protocol-Error` response packet.  This packet
 is an explicit `NAK` that something went wrong processing
 the request.
 
-WARNING: For security reasons, the module ensures that all proxied
-`link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packets contain a `link:https://freeradius.org/rfc/rfc2869.html#Message-Authenticator[Message-Authenticator]` attribute.
-This behavior is *NOT* configurable, and *CANNOT* be changed.
+Unlike v3, the server does not support any "pre-proxy" or
+"post-proxy" processing sections.  Similarly, this module does not
+support any "proxy" or "proxy-reply" list.  Instead, the current
+request is proxied as-is, and the proxied reply is added to the
+current reply list.  If you want to modify the proxied request
+and/or proxied reply, then you should use a `subrequest` block to
+create a child request.  That child request can then be modified
+independently of the parent.  Any reply attributes will have to be
+copied back manually to the parent request.
 
-The module adds a Proxy-State attribute to all proxied packets.
-This `link:https://freeradius.org/rfc/rfc2865.html#Proxy-State[Proxy-State]` contains a 32-bit random number, which is unique
-to this module.  This unique number helps to detect proxy loops.
+## Configuration Settings
+
+The configuration settings of this module are similar to the
+`home_server` settings in v3.
 
 The module has the following return codes:
 
@@ -40,7 +104,59 @@ The module has the following return codes:
 |===
 
 
-transport:: Only UDP transport is allowed.
+mode:: What kind of client behavior is being used.
+
+proxy - forward packets which are received from a NAS
+- each packet has a Proxy-State attribute added.
+- it looks for, and stops proxy loops
+	- retransmissions are sent only when the NAS retransmits
+- the module fails if it does not receive a reply
+
+client - originate packet, and do retransmissions ourselves
+- no Proxy-State is added.
+- the module retransmits as needed
+- the module fails if it does not receive a reply
+
+replicate - send packets without waiting for a reply.
+- no Proxy-State is added
+- the module does not expect any reply
+- all replies are discarded
+- the module continues with "ok" immediately after
+ sending the packet.
+
+unconnected-replicate - replicate packets to dynamic destinations
+- For unconnected UDP sockets only.
+     - It MUST have `transport = udp`
+- It MUST have `src_ipaddr = *` and no `src_port`
+- You CANNOT use the module "in place" as with normal proxying.
+- It is only supported via the function %replicate.sendto.ipaddr(ipaddr, port, secret)
+
+dynamic-proxy - proxy packets to dynamic destinations
+- https://tools.ietf.org/html/rfc7585[RFC 7585] dynamic DNS lookups are not supported
+- It MUST have `src_ipaddr = *` and no `src_port`
+- You CANNOT use the module "in place" as with normal proxying.
+- Proxying is only supported via the function %proxy.sendto.ipaddr(ipaddr, port, secret)
+
+The server can still be used to create (i.e. originate)
+packets via this module when `mode = proxy` is set.  The
+module can automatically detect the difference between
+proxied packets and client packets it originates.
+Originated packets are taken from the detail file, or
+result when changing packet type (e.g. Accounting-Request
+to Disconnect-Request), or when the current request is a
+subrequest, and the parent request is from a different
+protocol.
+
+Note that there is no `mode = unconnected`, where the
+module then both proxies packets, and replicates them.  The
+need to track replies when proxying means that it's
+difficult to both proxy and replicate at the same time.  As
+a result, there are two "unconnected" modes, one for each
+of "proxy" and "replicate".
+
+
+
+transport:: Transport protocol.  Can be `udp` or `tcp`.
 
 
 
@@ -52,113 +168,88 @@ Default is 255.
 
 type:: List of allowed packet types.
 
-There is currently no way to change the packet type in the
-request.  See `unlang` fork for that functionality.
+The module will only send packets types which are listed
+here.  Other types of packets will be ignored.  The main
+purpose of the `type` configuration is to ensure that the
+correct packets are being sent to the home server.  This
+entry serves as a double-check against misconfigurations.
 
-NOTE: `Status-Server` is reserved for `inter-server` signaling,
+In v3, the `home_server` configuration of `auth`, `acct`,
+or `auth+acct` is used to _find_ a home server.  That is,
+when FreeRADIUS has an `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packet in v3, it
+proxies it by looking up a matching `home_server`.
+
+In v4, proxying is done by listing the `radius` module in a
+processing section, such as `authenticate radius { ... }`,
+or `recv Accounting-Request { ... }`.  So unlike v3, the
+module doesn't have to _find_ a proxy destination for a
+particular kind of packet.  Instead, the administrator
+_configures_ the module to send packets to a destination.
+
+As a result, the module doesn't really care about what kind
+of packets it sends.  It has a packet, a destination where
+that packet should be sent, and it sends the packet.
+
+In order to change packet types, see the `subrequest` keyword.
+
+NOTE: `Status-Server` is reserved for connection signaling,
 and cannot be proxied.
 
+Unlike v3, all packet types are allocated from the same
+8-bit ID space.  This change does not affect the majority
+of RADIUS proxying, which only sends one type of packet.
+This change does not affect the home server which receives
+these packets, as the home server does not track IDs except
+to correlate requests to replies.
 
+The only visible difference, then, between v3 and v4 is
+that in some cases, the new `radius` module will use more
+source ports when proxying.
 
-replicate:: Whether or not we are replicating packets.
-
-Replication is "send proxied request, and continue,
-without waiting for a response".  Any response received
-is discarded, and does not affect packet processing.
-
-
-
-synchronous::
-
-In many cases, the module should do retransmissions of
-proxied request on its own.  See the various
-configurations for `initial_rtx_time`,
-etc. below.  This means setting `synchronous = no`.
-
-However, in some cases, it is useful to retransmit only
-when the server receives a retransmission from the NAS.
-This is done by setting `synchronous = yes`
-
-In general, if the server is receiving packets directly
-from a NAS, you should set `synchronous = no`.  This is
-because the NAS retransmission behavior is horrible,
-inconsistent, and hard to configure.
-
-If the server is receiving packets from another proxy
-server, you should set `synchronous = yes`.  This allows
-the other proxy server to do retransmissions correctly.
-
-NOTE: The behavior in v3 is the same as `synchronous = yes`
+This change simplifies the implementation of the RADIUS
+client.
 
 
 
-originate:: Whether or not we are creating the packet.
+require_message_authenticator::Require Message-Authenticator
+in responses.
 
-Sometimes we are creating a request that is not for the purpose of
-proxying another request, in which case we do not want to add a
-Proxy-State attribute.
+A server should include Message-Authenticator attribute as
+the first attribute in responses to Access-Request packets.
+This behavior mitigates against the BlastRADIUS attack.
 
-In some cases, such as originating a CoA or Disconnect request,
-including Proxy-State may confuse the receiving NAS.
+However, not all servers follow this security practice.  As
+a result, this module can be configured to either not
+require, or require, Message-Authenticator.
 
+If value is `auto`, then the module will automatically
+detect the existence of Message-Authenticator in response
+packets.  Once the module sees a Message-Authenticator, it
+will automatically change the configuration internally to
+`yes`.  This change prevents security "down-bidding"
+attacks.
 
-status_check { ... }:: For "are you alive?" queries.
+Allowed values: yes, no, auto
 
-If the home server does not respond to proxied packets, the
-module starts pinging the home server with these packets.
-
-
-type:: You can specify any type of request packet here,
-e.g. 'Access-Request', 'Accounting-Request' or
-'Status-Server'.
-
-Status-Server is recommended as other packet types may
-be interpreted incorrectly, or proxied to a remote
-server defeting the purpose of the status check
-
-If you specify another type of packet, it MUST be listed
-as an allowed `type`, above.
+The default is `auto`.
 
 
 
-`Status-Server` packet contents are fixed and cannot
-be edited.
-
-For other packet types, you can set the contents
-here.  The section MUST be set over "&request.<attribute> = value", and
-anything else will cause a parse error.
-
-We RECOMMEND that you use packet contents which
-lets the other end easily tell that they are not
-"real" packets from a NAS.
-
-The example here is for Access-Request.  The
-contents will vary by other packet types.
-
-The module will automatically update the contents
-of the Event-Timestamp attribute to be the time
-when the packet is sent.  The module will also
-automatically add a Proxy-State attribute.
-
-WARNING: Do NOT do SQL queries, LDAP queries, dynamic
-expansions, etc. in this section.  The contents are
-created when a connection is opened, and are not
-changeable after that.
+response_window: If we do not receive any replies within
+this time period, then start `zombie_period`
 
 
 
-response_window: If we do not receive a reply within this time period, then
-start `zombie_period`
+zombie_period:: If the home server does not reply to
+packets within `response_window`, then `zombie_period`
+starts.
 
-
-
-zombie_period:: If the home server does not reply to a packet, the
-`zombie_period` starts.
-
-The connection is marked `zombie`, and isn't used to send new packets.
-If there are no responses within `zombie_period`, the server either
-closes the connection (no `status_check` subsection), or starts pinging the
-home server (`status_check.type = Status-Server`).
+When `zombie_period` starts, a connection is marked
+`zombie`, and then is not used to send new packets.  If
+there are no responses on this connection within
+`zombie_period`, the module either closes the connection
+(no `status_check` subsection), or starts pinging the home
+server (`status_check.type = Status-Server`).
 
 
 
@@ -197,6 +288,106 @@ The `revive_interval` configuration is used ONLY if the
 `revive_interval` is not necessary, and should be deleted.
 
 Useful range of values: 10 to 3600
+
+
+
+### Check the status of a connection
+
+status_check { ... }:: For "are you alive?" queries.
+
+If the home server does not respond to proxied packets, the
+module starts pinging the home server with these packets.
+
+
+type:: You can specify any type of request packet here,
+e.g. 'Access-Request', 'Accounting-Request' or
+'Status-Server'.
+
+Status-Server is recommended as other packet types
+may be interpreted incorrectly, or may ve proxied
+to a remote server, which defeats the purpose of
+the status checks.
+
+If you specify another type of packet, it MUST be listed
+as an allowed `type` above.
+
+
+
+`Status-Server` packet contents are fixed and cannot
+be edited.
+
+For other packet types, you can set the contents
+here.  The section MUST be set over
+"&request.<attribute> = value", and anything else
+will cause a parse error.
+
+We RECOMMEND that you use packet contents which
+lets the other end easily tell that they are not
+"real" packets from a NAS.
+
+The example here is for Access-Request.  The
+contents will vary by other packet types.
+
+The module will automatically update the contents
+of the Event-Timestamp attribute to be the time
+when the packet is sent.  The module will also
+automatically add a Proxy-State attribute.
+
+WARNING: Do NOT do SQL queries, LDAP queries, dynamic
+expansions, etc. in this section.  The contents are
+created when a connection is opened, and are not
+changeable after that.
+
+
+
+## Transport Protocols
+
+The module supports multiple transport protocols.
+
+
+
+### File Output
+
+Write raw RADIUS packets (no IP or UDP header) to a file.
+This transport can only be used for `mode = replicate`
+
+
+
+### UDP Transport
+
+Much like the v3 `home_server` configuration.
+
+
+src_ipaddr:: IP we open our socket on.
+
+
+
+Destination IP address, port, and secret.
+
+Use `ipv4addr = ...` to force IPv4 addresses.
+Use `ipv6addr = ...` to force IPv6 addresses.
+
+
+
+interface:: Interface to bind to.
+
+
+
+max_packet_size:: Our max packet size. may be different from the parent.
+
+
+
+recv_buff:: How big the kernel's receive buffer should be.
+
+
+
+send_buff:: How big the kernel's send buffer should be.
+
+
+
+### TCP
+
+The TCP configuration is identical to the `udp` configuration.
 
 
 
@@ -303,7 +494,7 @@ connection.
 
 
 
-requests { ... }:: Per-request configuration.
+request { ... }:: Per-request configuration.
 
 
 per_connection_max:: The maximum number of requests
@@ -329,45 +520,12 @@ the connection.
 
 
 
-## Protocols
-
-For now, only UDP is supported.
-
-udp { ... }:: UDP is configured here.
-
-
-
-NOTE: Don't change anything if you are not sure.
-
-
-
-interface:: Interface to bind to.
-
-
-
-max_packet_size:: Our max packet size. may be different from the parent.
-
-
-
-recv_buff:: How big the kernel's receive buffer should be.
-
-
-
-send_buff:: How big the kernel's send buffer should be.
-
-
-
-src_ipaddr:: IP we open our socket on.
-
-
-
-## Packets
+## Retransmission timers.
 
 Each packet can have its own retransmission timers.
 
 The sections are named for each packet type. The contents
-are the same for all packet types.  Only the relevant ones
-are parsed (see `type` above).
+are the same for all packet types.
 
 
 
@@ -435,17 +593,241 @@ server is alive and responding to requests.
 WARNING: The `Status-Server` packets CANNOT be proxied.
 
 
+
+## Replication of Packets
+
+The module supports replication of packets to new destinations at
+run time.  In this context, replication means "send the packet, and
+do not wait for the response".  This functionality is most useful
+when copying large amounts of accounting data to multiple
+destinations.
+
+The module can then only be used as a dynamic expansion.  That is,
+you cannot specify the `replicate` module directly in a processing
+section.
+
+### Usage
+
+This module can only be used as a dynamic expansion.  Since the
+module does not wait for any response, the expansion does not
+return any value.
+
+The module can be called from any processing section as follows:
+
+
+The function takes three arguments:
+
+
+This function allows the module to send packets to _any_
+destination, where the destination is chosen dynamically at run
+time.  The arguments to the function can be take from other
+attributes, database queries, etc.
+
+
+Generally you only want to replicate accounting packets.
+
+
+
+We are not opening a socket from our server to their
+server.  We are replicating packets.
+
+
+
+For replicated packets, only UDP is supported.
+
+
+
+### UDP Transport
+
+For unconnected modes, only UDP is supported.
+
+
+src_ipaddr:: The source IP address used by the module.
+
+
+
+`src_port` cannot be used.  If it is used here, the
+module will refuse to start.  Instead, the module
+will open a unique source port per thread.
+
+`secret` cannot be used.  If it is used, the value
+will be ignored.
+
+
+
+### Other Configuration
+
+No other configuration items are supported when using
+`mode = unconnected-replicate`.
+
+The `pool` configuration is ignored, as is `status-check`,
+along with all per-packet timeouts.
+
+
+
+A dynamic proxy module
+
+
+
+We are not opening a socket from our server to their
+server.  We are replicating packets.
+
+
+
+Both UDP and TCP are supported.
+
+
+
+### UDP Transport
+
+
+src_ipaddr:: The source IP address used by the module.
+
+
+
+`src_port` cannot be used.  If it is used here, the
+module will refuse to start.  Instead, the module
+will open a unique source port per thread.
+
+`secret` cannot be used.  If it is used, the value
+will be ignored.
+
+
+
+## Connection trunking
+
+See above for documentation on connection trunking.
+
+
+start:: Connections to create during module instantiation.
+
+If the server cannot create specified number of connections during instantiation
+it will exit.
+
+Set to `0` to allow the server to start without the database being available.
+
+
+
+min:: Minimum number of connections to keep open.
+
+
+
+max:: Maximum number of connections.
+
+If these connections are all in use and a new one is requested, the request
+will NOT get a connection.
+
+
+
+connecting:: Maximum number of sockets to have in the "connecting" state.
+
+If a home server goes down, the module will close
+old / broken connections, and try to open new ones.
+In order to avoid flooding the home server with
+connection attempts, set the `connecting` value to
+a small number.
+
+
+
+uses:: number of packets which will use the connection.
+
+After `uses` packets have been sent the connection
+will be closed, and a new one opened.  For no
+limits, set `uses = 0`.
+
+
+
+lifetime:: lifetime of a connection, in seconds.
+
+After `lifetime` seconds have passed, no new
+packets will be sent on the connection.  When all
+replies have been received, the connection will be
+closed.
+
+For no limits, set `lifetime = 0`.
+
+It is possible to use precise times, such as
+`lifetime = 1.023`, or even qualifiers such as
+`lifetime = 400ms`.
+
+
+
+open_delay:: How long (in seconds) a connection
+must be above `per_connection_target` before a new
+connection is opened.
+
+Parsing of this field is the same as for
+`lifetime`.
+
+
+
+close_delay:: How long (in seconds) a connection
+must be below `per_connection_target` before a
+connection is closed.
+
+
+
+manage_interval:: How often (in seconds) the
+connections are checked for limits, in order to
+open / close connections.
+
+
+
+connection { ... }:: Per-connection configuration.
+
+
+connection_timeout:: How long to wait
+before giving up on a connection which is
+being opened.
+
+
+
+reconnect_delay:: If opening a connection
+fails, or an open connection fails,
+we wait `reconnect_delay` seconds before
+attempting to open another
+connection.
+
+
+
+request { ... }:: Per-request configuration.
+
+
+per_connection_max:: The maximum number of requests
+which are "live" on a particular connection.
+
+
+
+per_connection_target:: The target number
+of requests which are "live" on a
+particular connection.
+
+There can be a balance between overloading
+a connection, and under-utilizing it.  The
+default is to fill each connection before
+opening a new one.
+
+
+
+free_delay:: How long to wait before
+freeing internal resources associated with
+the connection.
+
+
+
 == Default Configuration
 
 ```
 radius {
+	mode = proxy
 	transport = udp
 #	max_attributes = 255
 	type = Access-Request
 	type = Accounting-Request
-#	replicate = no
-#	synchronous = no
-#	originate = no
+	require_message_authenticator = auto
+	response_window = 15
+	zombie_period = 10
+	revive_interval = 3600
 	status_check {
 		type = Status-Server
 #		update request {
@@ -455,9 +837,22 @@ radius {
 #			&Event-Timestamp = 0
 #		}
 	}
-	response_window = 15
-	zombie_period = 10
-	revive_interval = 3600
+	file {
+	     filename = ${logdir}/packets.bin
+	}
+	udp {
+#		src_ipaddr = *
+		ipaddr = 127.0.0.1
+		port = 1812
+		secret = testing123
+#		interface = eth0
+#		max_packet_size = 4096
+#		recv_buff = 1048576
+#		send_buff = 1048576
+	}
+#	tcp {
+#		...
+#	}
 	pool {
 		start = 0
 		min = 1
@@ -472,21 +867,11 @@ radius {
 			connection_timeout = 3.0
 			reconnect_delay = 5
 		}
-		requests {
+		request {
 			per_connection_max = 255
 			per_connection_target = 255
 			free_delay = 10
 		}
-	}
-	udp {
-		ipaddr = 127.0.0.1
-		port = 1812
-		secret = testing123
-#		interface = eth0
-#		max_packet_size = 4096
-#		recv_buff = 1048576
-#		send_buff = 1048576
-#		src_ipaddr = ""
 	}
 	Access-Request {
 		initial_rtx_time = 2
@@ -517,6 +902,47 @@ radius {
 		max_rtx_time = 5
 		max_rtx_count = 5
 		max_rtx_duration = 30
+	}
+}
+#	%replicate.sendto.ipaddr(127.0.0.1, 1813, 'testing123')
+#	* IP address where the packet is sent.  It MUST be the same
+#	  address family as `src_ipaddr` below.
+#	* port where the packet is sent.
+#	* secret for this packet.
+radius replicate {
+	type = Accounting-Request
+	mode = unconnected-replicate
+	transport = udp
+	udp {
+		src_ipaddr = *
+	}
+}
+radius proxy {
+	type = Access-Request
+	mode = dynamic-proxy
+	transport = udp
+	udp {
+		src_ipaddr = *
+	}
+	pool {
+		start = 0
+		min = 1
+		max = 8
+		connecting = 1
+		uses = 0
+		lifetime = 0
+		open_delay = 0.2
+		close_delay = 1.0
+		manage_interval = 0.2
+		connection {
+			connection_timeout = 3.0
+			reconnect_delay = 5
+		}
+		request {
+			per_connection_max = 255
+			per_connection_target = 255
+			free_delay = 10
+		}
 	}
 }
 ```

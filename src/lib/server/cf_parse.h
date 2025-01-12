@@ -300,6 +300,19 @@ _Generic(&(_ct), \
 	.offset = offsetof(_struct, _field), \
 	.subcs = _subcs
 
+/** conf_parser_t which populates a sub-struct using a CONF_SECTION
+ *
+ * @param[in] _name		of the CONF_SECTION to search for.
+ * @param[in] _struct		containing the sub-struct to populate.
+ * @param[in] _field		containing the sub-struct to populate.
+ * @param[in] _subcs		conf_parser_t to include in-line in this section
+ */
+#  define FR_CONF_OFFSET_REF(_struct, _field, _subcs) \
+	.name1 = CF_IDENT_ANY, \
+	.flags = CONF_FLAG_REF, \
+	.offset = offsetof(_struct, _field), \
+	.subcs = _subcs
+
 /** conf_parser_t which parses a single CONF_PAIR producing a single global result
  *
  * @param[in] _name		of the CONF_PAIR to search for.
@@ -354,7 +367,7 @@ _Generic(&(_ct), \
  *
  * @param[in] _name		name of pair to search for.
  * @param[in] _type		base type to parse pair as.
- * @param[in] _flags	f	lags controlling parsing behaviour.
+ * @param[in] _flags		flags controlling parsing behaviour.
  * @param[in] _func		to use to record value.
  * @param[in] _dflt_func	to use to get defaults from a 3rd party library.
  */
@@ -427,6 +440,8 @@ typedef enum CC_HINT(flag_enum) {
 	CONF_FLAG_OK_MISSING     	= (1 << 22), 			//!< OK if it's missing
 	CONF_FLAG_HIDDEN		= (1 << 23),			//!< Used by scripts to omit items from the
 									///< generated documentation.
+	CONF_FLAG_REF			= (1 << 24),			//!< reference another conf_parser_t inline in this one
+	CONF_FLAG_OPTIONAL     		= (1 << 25),			//!< subsection is pushed only if a non-optional matching one is pushed
 } conf_parser_flags_t;
 DIAG_ON(attributes)
 
@@ -479,7 +494,7 @@ do {\
 #define FR_INTEGER_COND_CHECK(_name, _var, _cond, _new)\
 do {\
 	if (!(_cond)) {\
-		WARN("Ignoring \"" _name " = %i\", forcing to \"" _name " = %i\"", _var, _new);\
+		WARN("Ignoring \"" _name " = %u\", forcing to \"" _name " = %u\"", (unsigned int) (_var), (unsigned int) (_new));\
 		_var = _new;\
 	}\
 } while (0)
@@ -676,6 +691,9 @@ int		cf_parse_uid(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 
 int		cf_parse_gid(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			     CONF_ITEM *ci, conf_parser_t const *rule);
+
+int		cf_parse_permissions(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+				     CONF_ITEM *ci, conf_parser_t const *rule);
 
 #ifdef __cplusplus
 }

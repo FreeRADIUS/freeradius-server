@@ -1,0 +1,19 @@
+#
+#  Clear out old data
+#
+%sql.modify("${delete_from_radcheck} 'xlat'")
+%sql.modify("${delete_from_radreply} 'xlat'")
+
+if (%sql.modify("${insert_into_radcheck} ('%{User-Name}', 'Password.Cleartext', ':=', 'password')") != 1) {
+	test_fail
+}
+
+if (%sql.modify("${insert_into_radreply} ('%{User-Name}', 'Reply-Message', ':=', '\"Hello \%{User-Name}\"')") != 1) {
+	test_fail
+}
+
+if (%sql.fetch("SELECT value FROM radcheck WHERE username = '%{User-Name}'") != 'password') {
+	test_fail
+}
+
+sql

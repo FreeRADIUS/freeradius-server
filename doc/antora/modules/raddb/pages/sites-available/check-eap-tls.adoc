@@ -33,7 +33,7 @@ hit external services such as sql or ldap.
 
 Authorize - this is the only section required.
 
-To accept the access request, set Auth-Type = Accept, otherwise
+To accept the access request, set Auth-Type = ::Accept, otherwise
 set it to Reject.
 
 
@@ -100,23 +100,23 @@ Post-Auth REJECT sections to log reply packet details, too.
 ```
 server check-eap-tls {
 recv Access-Request {
-	&control.Auth-Type := Accept
+	&control.Auth-Type := ::Accept
 #	if ("%{session-state.TLS-Client-Cert-Common-Name}" == 'client.example.com') {
-#		&control.Auth-Type := Accept
+#		&control.Auth-Type := ::Accept
 #	}
 #	else {
-#		&control.Auth-Type := Reject
+#		&control.Auth-Type := ::Reject
 #		&reply.Reply-Message := "Your certificate is not valid."
 #	}
 #	if (&User-Name == "host/%{session-state.TLS-Client-Cert-Common-Name}") {
-#		&control.Auth-Type := Accept
+#		&control.Auth-Type := ::Accept
 #	}
 #	else {
-#		&control.Auth-Type := Reject
+#		&control.Auth-Type := ::Reject
 #	}
 #	ldap
 #	if (!(Ldap-Group == "Permitted-Laptops")) {
-#		&control.Auth-Type := Reject
+#		&control.Auth-Type := ::Reject
 #	}
 #	files
 	auth_log

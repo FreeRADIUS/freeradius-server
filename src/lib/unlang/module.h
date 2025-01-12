@@ -36,7 +36,7 @@ extern "C" {
 #include <freeradius-devel/unlang/subrequest.h>
 #include <freeradius-devel/unlang/tmpl.h>
 
-/** A callback when the the timeout occurs
+/** A callback when a retry happens
  *
  * Used when a module needs wait for an event.
  * Typically the callback is set, and then the module returns unlang_module_yield().
@@ -47,9 +47,9 @@ extern "C" {
  * @param[in] mctx		calling context for the module.
  *				Contains global, thread-specific, and call-specific data for a module.
  * @param[in] request		the request.
- * @param[in] fired		the time the timeout event actually fired.
+ * @param[in] retry		retry status.  "now" is in retry->updated
  */
-typedef	void (*unlang_module_timeout_t)(module_ctx_t const *mctx, request_t *request, fr_time_t fired);
+typedef	void (*unlang_module_retry_t)(module_ctx_t const *mctx, request_t *request, fr_retry_t const *retry);
 
 /** A callback when the FD is ready for reading
  *
@@ -79,19 +79,6 @@ typedef void (*unlang_module_fd_event_t)(module_ctx_t const *mctx, request_t *re
  */
 typedef void (*unlang_module_signal_t)(module_ctx_t const *mctx, request_t *request, fr_signal_t action);
 
-int		unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callback,
-					  void const *rctx, fr_time_t when);
-
-int		unlang_module_timeout_delete(request_t *request, void const *ctx);
-
-int 		unlang_module_fd_add(request_t *request,
-				     unlang_module_fd_event_t read,
-				     unlang_module_fd_event_t write,
-				     unlang_module_fd_event_t error,
-				     void const *rctx, int fd);
-
-int		unlang_module_fd_delete(request_t *request, void const *rctx, int fd);
-
 int		unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 				   module_instance_t *module_instance, module_method_t method, bool top_frame)
 				   CC_HINT(warn_unused_result) CC_HINT(nonnull(2,3,4));
@@ -114,6 +101,12 @@ unlang_action_t	unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_list_t
 					    unlang_tmpl_args_t *args,
 					    module_method_t resume,
 					    unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx);
+
+void		unlang_module_retry_now(module_ctx_t const *mctx, request_t *request) CC_HINT(nonnull);
+
+unlang_action_t	unlang_module_yield_to_retry(request_t *request, module_method_t resume, unlang_module_retry_t retry_cb,
+					     unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx,
+					     fr_retry_config_t const *retry_cfg);
 
 unlang_action_t	unlang_module_yield(request_t *request,
 				    module_method_t resume,

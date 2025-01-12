@@ -531,6 +531,10 @@ static eap_tls_status_t eap_tls_session_status(request_t *request, eap_session_t
 		 *	to the default section below.
 		 */
 	default:
+		/*
+		 *	If the last message was from us, then the session is established
+		 */
+		if (tls_session->info.origin == 1) return EAP_TLS_ESTABLISHED;
 		REDEBUG("Invalid ACK received: %d", tls_session->info.content_type);
 		return EAP_TLS_INVALID;
 	}
@@ -1130,6 +1134,8 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 	eap_tls_session_t	*eap_tls_session;
 	fr_tls_session_t	*tls_session;
 	fr_tls_conf_t		*conf = fr_tls_ctx_conf(ssl_ctx);
+	fr_pair_t		*vp;
+	fr_pair_t		*tls_max, *tls_min;
 
 	fr_assert(request->parent);	/* must be a subrequest */
 
@@ -1152,6 +1158,20 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 	eap_tls_session->include_length = true;
 
 	/*
+	 *	We use default fragment size, unless the Framed-MTU
+	 *	tells us it's too big.  Note that we do NOT account
+	 *	for the EAP-TLS headers if conf->fragment_size is
+	 *	large, because that config item looks to be confusing.
+	 *
+	 *	i.e. it should REALLY be called MTU, and the code here
+	 *	should figure out what that means for TLS fragment size.
+	 *	asking the administrator to know the internal details
+	 *	of EAP-TLS in order to calculate fragment sizes is
+	 *	just too much.
+	 */
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_framed_mtu);
+
+	/*
 	 *	Every new session is started only from EAP-TLS-START.
 	 *	Before Sending our initial EAP-TLS start open a new
 	 *	SSL session.
@@ -1160,7 +1180,7 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 	 *	these data structures when we get the response.
 	 */
 	eap_tls_session->tls_session = tls_session = fr_tls_session_alloc_server(eap_tls_session, ssl_ctx,
-										 request, client_cert);
+										 request, vp ? vp->vp_uint32 : 0, client_cert);
 	if (unlikely(!tls_session)) return NULL;
 
 	/*
@@ -1193,6 +1213,38 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)tls_session);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_IDENTITY, (void *)&(eap_session->identity));
+
+	tls_max = fr_pair_find_by_da(&request->control_pairs, NULL, attr_tls_max_version);
+	tls_min = fr_pair_find_by_da(&request->control_pairs, NULL, attr_tls_min_version);
+	if (tls_max && tls_min && (tls_min->vp_float32 > tls_max->vp_float32)) {
+		RERROR("Can't set TLS min version greater than max version");
+		goto skip_tls_version;
+	}
+
+#define SET_TLS_VERSION(_type) \
+	if (tls_ ## _type) { \
+		int tls_version = 0; \
+		if (tls_ ## _type->vp_float32 >= 1.3) { \
+			tls_version = TLS1_3_VERSION; \
+		} else if (tls_ ## _type->vp_float32 >= 1.2) { \
+			tls_version = TLS1_2_VERSION; \
+		} else if (tls_ ## _type->vp_float32 >= 1.1) { \
+			tls_version = TLS1_1_VERSION; \
+		} \
+		if (tls_version) { \
+			if (SSL_set_ ## _type ## _proto_version(tls_session->ssl, tls_version) != 1) {\
+				RERROR("Failed to set %pP", tls_ ## _type); \
+			} else { \
+				RDEBUG2("Setting TLS " #_type " version to %0.1f", tls_ ## _type->vp_float32); \
+			} \
+		} else { \
+			RWARN("Invalid value %pP", tls_ ## _type); \
+		} \
+	}
+
+	SET_TLS_VERSION(max)
+	SET_TLS_VERSION(min)
+skip_tls_version:
 
 	return eap_tls_session;
 }

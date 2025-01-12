@@ -92,7 +92,7 @@ call_env_result_t call_env_result(TALLOC_CTX *ctx, request_t *request, void *out
 	}
 
 	if (call_env_single(env->rule->flags) && (fr_value_box_list_num_elements(tmpl_expanded) > 1)) {
-		RPEDEBUG("%d values found for %s.  Only one is allowed",
+		RPEDEBUG("%u values found for %s.  Only one is allowed",
 			 fr_value_box_list_num_elements(tmpl_expanded), env->rule->name);
 		return CALL_ENV_INVALID;
 	}
@@ -380,7 +380,8 @@ int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules,
 
 	if (tmpl_afrom_substr(ctx, &parsed_tmpl,
 			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_strlen(cf_pair_value(to_parse))),
-			      cf_pair_value_quote(to_parse), NULL, t_rules) < 0) {
+			      cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
+			      t_rules) < 0) {
 		return -1;
 	}
 	*(void **)out = parsed_tmpl;

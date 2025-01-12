@@ -33,6 +33,25 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/value.h>
 
+/** Callback for the common case of chown() of the directory.
+ *
+ */
+int fr_mkdir_chown(int fd, char const *path, void *uctx)
+{
+	fr_mkdir_chown_t const *ctx = uctx;
+
+	if ((ctx->uid == (uid_t) -1) && (ctx->gid == (gid_t) -1)) return 0;
+
+	if (fchown(fd, ctx->uid, ctx->gid) < 0) {
+		fr_strerror_printf("Failed changing ownership on directory \"%s\": %s",
+				   path, fr_syserror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+
 static ssize_t _fr_mkdir(int *fd_out, char *start, char *path, mode_t mode, fr_mkdir_func_t func, void *uctx)
 {
 	int		ret, fd;
@@ -310,10 +329,10 @@ ssize_t fr_touch(int *fd_out, char const *filename, mode_t mode, bool mkdir, mod
 		char	*q;
 
 		if (mkdir && (errno == ENOENT) && (q = strrchr(filename, FR_DIR_SEP))) {
-			int dir_fd;
+			int dir_fd = -1;
 
 			slen = fr_mkdir(&dir_fd, filename, q - filename, dir_mode, NULL, NULL);
-			if (slen <= 0) return slen;
+			if((slen <= 0) || (dir_fd < 0)) return slen;
 
 			fd = openat(dir_fd, q + 1, O_WRONLY | O_CREAT, mode);
 			if (fd >= 0) {

@@ -149,16 +149,13 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		/*
 		 *	DNS labels get a special encoder.
 		 */
-		if (!da->flags.extra) {
+		if (fr_dns_flag_dns_label_any(da)) {
 			fr_dbuff_marker_t	last_byte, src;
-
-			fr_assert((da->flags.subtype == FLAG_ENCODE_DNS_LABEL) ||
-				  (da->flags.subtype == FLAG_ENCODE_DNS_LABEL_UNCOMPRESSED));
 
 			fr_dbuff_marker(&last_byte, &work_dbuff);
 			fr_dbuff_marker(&src, &work_dbuff);
 			FR_PROTO_TRACE("encode DNS label %s", vp->vp_strvalue);
-			slen = fr_dns_label_from_value_box_dbuff(&work_dbuff, (da->flags.subtype == FLAG_ENCODE_DNS_LABEL),
+			slen = fr_dns_label_from_value_box_dbuff(&work_dbuff, fr_dns_flag_dns_label(da),
 								 &vp->data, packet_ctx->lb);
 			if (slen < 0) return slen;
 			break;
@@ -512,7 +509,7 @@ ssize_t fr_dns_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_dns_ctx_t *pack
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
 {
 	fr_dns_ctx_t	*test_ctx;
 

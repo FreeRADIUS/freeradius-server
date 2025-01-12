@@ -249,7 +249,7 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 			break;
 		}
 
-		DEBUG4("%u event(s) pending%s",
+		DEBUG4("%d event(s) pending%s",
 		       num_events == -1 ? 0 : num_events, num_events == -1 ? " - event loop exiting" : "");
 
 		/*
@@ -275,7 +275,7 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 		 */
 		sub_request = fr_heap_pop(&intps->runnable);
 		if (!sub_request) {
-			DEBUG4("No pending requests (%u yielded)", intps->yielded);
+			DEBUG4("No pending requests (%d yielded)", intps->yielded);
 			continue;
 		}
 
@@ -295,7 +295,7 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 		 */
 		if (sub_request == request) rcode = sub_rcode;
 
-		DEBUG3("%u runnable, %u yielded", fr_heap_num_elements(intps->runnable), intps->yielded);
+		DEBUG3("%u runnable, %d yielded", fr_heap_num_elements(intps->runnable), intps->yielded);
 	}
 
 	talloc_free(intps);

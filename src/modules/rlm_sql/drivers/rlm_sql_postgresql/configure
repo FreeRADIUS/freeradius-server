@@ -3570,6 +3570,40 @@ esac
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 
+	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for PGRES_TUPLES_CHUNK" >&5
+printf %s "checking for PGRES_TUPLES_CHUNK... " >&6; }
+	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <libpq-fe.h>
+int
+main (void)
+{
+
+		if (PGRES_TUPLES_CHUNK) return 0;
+		return 1;
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+
+
+printf "%s\n" "#define HAVE_PGRES_TUPLES_CHUNK 1" >>confdefs.h
+
+		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+
+else case e in #(
+  e)
+		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+	 ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
 	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for PGRES_COPY_BOTH" >&5
 printf %s "checking for PGRES_COPY_BOTH... " >&6; }
 	cat confdefs.h - <<_ACEOF >conftest.$ac_ext

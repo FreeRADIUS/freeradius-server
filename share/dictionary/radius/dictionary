@@ -4,13 +4,10 @@
 # Version $Id$
 #
 
-PROTOCOL	RADIUS		1	verify=lib
-BEGIN-PROTOCOL	RADIUS
+BEGIN PROTOCOL	RADIUS		1	verify=lib
 
 #
-#	Include compatibility dictionary for older users file. Move
-#	this directive to the end of this file if you want to see the
-#	old names in the logfiles, instead of the new names.
+#	These are mostly ALIASes
 #
 $INCLUDE dictionary.compat
 
@@ -134,7 +131,6 @@ $INCLUDE dictionary.ckey
 $INCLUDE dictionary.clavister
 $INCLUDE dictionary.cnergee
 $INCLUDE dictionary.colubris
-$INCLUDE dictionary.compatible
 $INCLUDE dictionary.cosine
 $INCLUDE dictionary.covaro
 $INCLUDE dictionary.dante
@@ -143,6 +139,7 @@ $INCLUDE dictionary.digium
 $INCLUDE dictionary.dlink
 $INCLUDE dictionary.dragonwave
 $INCLUDE dictionary.efficientip
+$INCLUDE dictionary.eleven
 $INCLUDE dictionary.eltex
 $INCLUDE dictionary.epygi
 $INCLUDE dictionary.equallogic

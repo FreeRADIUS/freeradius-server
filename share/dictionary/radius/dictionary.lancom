@@ -31,8 +31,8 @@ ATTRIBUTE	Traffic-Limit-Gigawords			15	integer
 ATTRIBUTE	Orig-NAS-Identifier			16	string
 ATTRIBUTE	Orig-NAS-IP-Address			17	ipaddr
 ATTRIBUTE	Orig-NAS-IPv6-Address			18	ipv6addr
-ATTRIBUTE	IKEv2-Local-Password			19	string	has_tag,encrypt=2
-ATTRIBUTE	IKEv2-Remote-Password			20	string	has_tag,encrypt=2
+ATTRIBUTE	IKEv2-Local-Password			19	string	has_tag,encrypt=Tunnel-Password
+ATTRIBUTE	IKEv2-Remote-Password			20	string	has_tag,encrypt=Tunnel-Password
 ATTRIBUTE	DNS-Server-IPv4-Address			21	ipaddr
 ATTRIBUTE	VPN-IPv4-Rule				22	string
 ATTRIBUTE	VPN-IPv6-Rule				23	string

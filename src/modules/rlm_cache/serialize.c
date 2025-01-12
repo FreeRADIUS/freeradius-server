@@ -46,8 +46,8 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 
 	char		*to_store = NULL;
 
-	to_store = talloc_typed_asprintf(ctx, "Cache-Expires = %pV\nCache-Created = %pV\n",
-					 fr_box_date(c->expires), fr_box_date(c->created));
+	to_store = fr_asprintf(ctx, "Cache-Expires = '%pV'\nCache-Created = '%pV'\n",
+			       fr_box_date(c->expires), fr_box_date(c->created));
 	if (!to_store) return -1;
 
 	/*
@@ -91,6 +91,7 @@ finish:
 
 /** Converts a serialized cache entry back into a structure
  *
+ * @param[in] request	Current request
  * @param[in] c		Cache entry to populate (should already be allocated)
  * @param[in] dict	to use for unqualified attributes.
  * @param[in] in	String representation of cache entry.
@@ -100,7 +101,7 @@ finish:
  *	- 0 on success.
  *	- -1 on failure.
  */
-int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssize_t inlen)
+int cache_deserialize(request_t *request, rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssize_t inlen)
 {
 	char		*p, *q;
 
@@ -115,7 +116,11 @@ int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssi
 				.dict_def = dict,
 				.list_def = request_attr_request,
 				.prefix = TMPL_ATTR_REF_PREFIX_NO
-			}
+			},
+			.xlat = {
+				.runtime_el = unlang_interpret_event_list(request),
+			},
+			.at_runtime = true,
 		};
 
 		q = strchr(p, '\n');
@@ -136,7 +141,7 @@ int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssi
 			goto error;
 		}
 
-		if (!tmpl_is_data_unresolved(map->rhs)) {
+		if (!tmpl_is_data(map->rhs)) {
 			fr_strerror_printf("Pair right hand side \"%s\" parsed as %s, needed literal.  "
 					   "Check serialized data quoting", map->rhs->name,
 					   tmpl_type_to_str(map->rhs->type));

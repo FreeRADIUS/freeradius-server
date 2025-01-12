@@ -24,7 +24,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/test_point.h>
 
-static int decode_test_ctx(void **out, UNUSED TALLOC_CTX *ctx)
+static int decode_test_ctx(void **out, UNUSED TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
 {
 	*out = NULL;
 	return 0;

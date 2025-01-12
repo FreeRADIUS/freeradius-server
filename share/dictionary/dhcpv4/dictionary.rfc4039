@@ -12,4 +12,4 @@
 ##############################################################################
 
 # Rapid Commit
-ATTRIBUTE	Rapid-Commit				80	bool		encode=exists
+ATTRIBUTE	Rapid-Commit				80	bool		exists

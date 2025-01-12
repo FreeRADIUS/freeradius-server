@@ -48,6 +48,7 @@ typedef struct {
 
 	char const		*virtual_server;			//!< Virtual server to use for processing
 									//!< inner EAP method.
+	CONF_SECTION		*server_cs;
 	char const		*cipher_list;				//!< cipher list specific to EAP-FAST
 	bool			req_client_cert;			//!< Whether we require a client cert
 									//!< in the outer tunnel.
@@ -196,7 +197,7 @@ static eap_fast_tunnel_t *eap_fast_alloc(TALLOC_CTX *ctx, rlm_eap_fast_t const *
 	t->a_id = inst->a_id;
 	t->pac_opaque_key = (uint8_t const *)inst->pac_opaque_key;
 
-	t->virtual_server = inst->virtual_server;
+	t->server_cs = inst->server_cs;
 
 	return t;
 }
@@ -628,10 +629,17 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_eap_fast_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_fast_t);
 	CONF_SECTION		*conf = mctx->mi->conf;
+	virtual_server_t const	*virtual_server = virtual_server_find(inst->virtual_server);
 
-	if (!virtual_server_find(inst->virtual_server)) {
+	if (!virtual_server) {
 		cf_log_err_by_child(mctx->mi->conf, "virtual_server", "Unknown virtual server '%s'",
 				    inst->virtual_server);
+		return -1;
+	}
+
+	inst->server_cs = virtual_server_cs(virtual_server);
+	if (!inst->server_cs) {
+		cf_log_err_by_child(conf, "virtual_server", "Virtual server \"%s\" missing", inst->virtual_server);
 		return -1;
 	}
 

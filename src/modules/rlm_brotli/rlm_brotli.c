@@ -26,8 +26,6 @@ RCSID("$Id$")
 
 #define LOG_PREFIX mctx->mi->name
 
-#include <talloc.h>
-
 #include <brotli/encode.h>
 #include <brotli/decode.h>
 

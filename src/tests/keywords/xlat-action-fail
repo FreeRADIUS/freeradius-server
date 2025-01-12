@@ -1,0 +1,9 @@
+#
+#  A failed xlat is false.
+#
+if (!%debug(foobar)) {
+	success
+
+} else {
+	test_fail
+}

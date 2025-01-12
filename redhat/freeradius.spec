@@ -1020,7 +1020,6 @@ fi
 %{_libdir}/freeradius/rlm_pap.so
 %{_libdir}/freeradius/rlm_passwd.so
 %{_libdir}/freeradius/rlm_radius.so
-%{_libdir}/freeradius/rlm_radius_udp.so
 %{_libdir}/freeradius/rlm_radutmp.so
 %{_libdir}/freeradius/rlm_sometimes.so
 %{_libdir}/freeradius/rlm_sql.so
@@ -1045,6 +1044,7 @@ fi
 # and the majority of utility binaries.
 %{_libdir}/freeradius/libfreeradius-arp.so
 %{_libdir}/freeradius/libfreeradius-bfd.so
+%{_libdir}/freeradius/libfreeradius-cbor.so
 %{_libdir}/freeradius/libfreeradius-dhcpv4.so
 %{_libdir}/freeradius/libfreeradius-dhcpv6.so
 %{_libdir}/freeradius/libfreeradius-dns.so
@@ -1053,6 +1053,7 @@ fi
 %{_libdir}/freeradius/libfreeradius-ethernet.so
 %{_libdir}/freeradius/libfreeradius-internal.so
 %{_libdir}/freeradius/libfreeradius-radius.so
+%{_libdir}/freeradius/libfreeradius-radius-bio.so
 %{_libdir}/freeradius/libfreeradius-sim.so
 %{_libdir}/freeradius/libfreeradius-tacacs.so
 %{_libdir}/freeradius/libfreeradius-tftp.so
@@ -1060,6 +1061,7 @@ fi
 
 # Utility libraries
 %{_libdir}/freeradius/libfreeradius-bio.so
+%{_libdir}/freeradius/libfreeradius-bio-config.so
 %{_libdir}/freeradius/libfreeradius-util.so
 
 # dictionaries
@@ -1165,6 +1167,12 @@ fi
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/driver/oracle
 %endif
+
+#
+#  Firebird / InterBase
+#
+%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/main/firebird
+%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool/firebird
 
 %if %{with rlm_unbound}
 %config(noreplace)	%{_sysconfdir}/raddb/mods-config/unbound/default.conf

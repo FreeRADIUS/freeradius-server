@@ -166,7 +166,7 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 	}
 	RIDEBUG3("attr       : %u", vp->da->attr);
 	vendor = fr_dict_vendor_by_da(vp->da);
-	if (vendor) RIDEBUG2("vendor     : %i (%s)", vendor->pen, vendor->name);
+	if (vendor) RIDEBUG2("vendor     : %u (%s)", vendor->pen, vendor->name);
 	RIDEBUG3("type       : %s", fr_type_to_str(vp->vp_type));
 
 	switch (vp->vp_type) {
@@ -1973,7 +1973,7 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		MEM(dst = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_list_concat_as_string(NULL, NULL, agg, args, NULL, 0, NULL,
-						       FR_VALUE_BOX_LIST_FREE_BOX, true) < 0) {
+						       FR_VALUE_BOX_LIST_FREE_BOX, 0, true) < 0) {
 			RPEDEBUG("Failed concatenating string");
 			return XLAT_ACTION_FAIL;
 		}
@@ -3764,7 +3764,7 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_test_point_pair_decode_t const	*tp_decode = *(void * const *)xctx->inst;
 
 	if (tp_decode->test_ctx) {
-		if (tp_decode->test_ctx(&decode_ctx, ctx) < 0) {
+		if (tp_decode->test_ctx(&decode_ctx, ctx, request->dict) < 0) {
 			return XLAT_ACTION_FAIL;
 		}
 	}
@@ -3899,7 +3899,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Create the encoding context.
 	 */
 	if (tp_encode->test_ctx) {
-		if (tp_encode->test_ctx(&encode_ctx, vpt) < 0) {
+		if (tp_encode->test_ctx(&encode_ctx, vpt, request->dict) < 0) {
 			talloc_free(vpt);
 			return XLAT_ACTION_FAIL;
 		}
@@ -3950,25 +3950,12 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static int xlat_protocol_register(fr_dict_t const *dict)
+static int xlat_protocol_register_by_name(dl_t *dl, char const *name)
 {
 	fr_test_point_pair_decode_t *tp_decode;
 	fr_test_point_pair_encode_t *tp_encode;
 	xlat_t *xlat;
-	dl_t *dl = fr_dict_dl(dict);
-	char *p, buffer[256+32], name[256];
-
-	/*
-	 *	No library for this protocol, skip it.
-	 *
-	 *	Protocol TEST has no libfreeradius-test, so that's OK.
-	 */
-	if (!dl) return 0;
-
-	strlcpy(name, fr_dict_root(dict)->name, sizeof(name));
-	for (p = name; *p != '\0'; p++) {
-		*p = tolower((uint8_t) *p);
-	}
+	char buffer[256+32];
 
 	/*
 	 *	See if there's a decode function for it.
@@ -4008,6 +3995,44 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 	return 0;
 }
 
+static int xlat_protocol_register(fr_dict_t const *dict)
+{
+	dl_t *dl = fr_dict_dl(dict);
+	char *p, name[256];
+
+	/*
+	 *	No library for this protocol, skip it.
+	 *
+	 *	Protocol TEST has no libfreeradius-test, so that's OK.
+	 */
+	if (!dl) return 0;
+
+	strlcpy(name, fr_dict_root(dict)->name, sizeof(name));
+	for (p = name; *p != '\0'; p++) {
+		*p = tolower((uint8_t) *p);
+	}
+
+	return xlat_protocol_register_by_name(dl, name);
+}
+
+static dl_loader_t *cbor_loader = NULL;
+
+static int xlat_protocol_register_cbor(void)
+{
+	dl_t *dl;
+
+	cbor_loader = dl_loader_init(NULL, NULL, false, false);
+	if (!cbor_loader) return 0;
+
+	dl = dl_by_name(cbor_loader, "libfreeradius-cbor", NULL, false);
+	if (!dl) return 0;
+
+	if (xlat_protocol_register_by_name(dl, "cbor") < 0) return -1;
+
+	return 0;
+}
+
+
 /** Register xlats for any loaded dictionaries
  */
 int xlat_protocols_register(void)
@@ -4026,6 +4051,11 @@ int xlat_protocols_register(void)
 	 */
 	if (xlat_protocol_register(fr_dict_internal()) < 0) return -1;
 
+	/*
+	 *	And cbor stuff
+	 */
+	if (xlat_protocol_register_cbor() < 0) return -1;
+
 	return 0;
 }
 
@@ -4037,6 +4067,7 @@ static int _xlat_global_free(UNUSED void *uctx)
 	TALLOC_FREE(xlat_ctx);
 	xlat_func_free();
 	xlat_eval_free();
+	talloc_free(cbor_loader);
 
 	return 0;
 }
@@ -4158,6 +4189,20 @@ do { \
 	if (unlikely((xlat = xlat_func_register(xlat_ctx, "regex", xlat_func_regex, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 #endif
+
+	{
+		static xlat_arg_parser_t const xlat_regex_safe_args[] = {
+			{ .type = FR_TYPE_STRING, .variadic = true, .concat = true },
+			XLAT_ARG_PARSER_TERMINATOR
+		};
+
+		if (unlikely((xlat = xlat_func_register(xlat_ctx, "regex.safe",
+							xlat_transparent, FR_TYPE_STRING)) == NULL)) return -1;
+		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
+		xlat_func_args_set(xlat, xlat_regex_safe_args);
+		xlat_func_safe_for_set(xlat, FR_REGEX_SAFE_FOR);
+	}
+
 	XLAT_REGISTER_PURE("sha1", xlat_func_sha1, FR_TYPE_OCTETS, xlat_func_sha_arg);
 
 #ifdef HAVE_OPENSSL_EVP_H

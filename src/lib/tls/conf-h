@@ -177,6 +177,10 @@ struct fr_tls_conf_s {
 
 	fr_tls_cache_conf_t	cache;			//!< Session cache configuration.
 	fr_tls_verify_conf_t	verify;
+
+	bool		verify_certificate;		//!< Does the "verify certificate" section exist.
+	bool		new_session;			//!< Does the "new session" section exist.
+	bool		establish_session;		//!< Does the "establish session" section exist.
 };
 
 fr_tls_conf_t	*fr_tls_conf_alloc(TALLOC_CTX *ctx);

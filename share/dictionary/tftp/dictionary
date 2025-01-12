@@ -8,8 +8,7 @@
 # Version:	$Id$
 #
 
-PROTOCOL	TFTP		9
-BEGIN-PROTOCOL	TFTP
+BEGIN PROTOCOL	TFTP		9
 
 $INCLUDE dictionary.freeradius.internal
 $INCLUDE dictionary.rfc1350

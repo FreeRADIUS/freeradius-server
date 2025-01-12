@@ -93,7 +93,7 @@ void (*reset_signal(int signo, void (*func)(int)))(int)
  * @param in string to escape.
  * @param arg Context arguments (unused, should be NULL).
  */
-size_t rad_filename_make_safe(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+ssize_t rad_filename_make_safe(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	char const *q = in;
 	char *p = out;
@@ -213,7 +213,7 @@ int rad_filename_box_make_safe(fr_value_box_t *vb, UNUSED void *uxtc)
  * @param in string to escape.
  * @param arg Context arguments (unused, should be NULL).
  */
-size_t rad_filename_escape(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+ssize_t rad_filename_escape(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	size_t freespace = outlen;
 

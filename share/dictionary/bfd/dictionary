@@ -8,8 +8,7 @@
 # Version:	$Id$
 #
 
-PROTOCOL	BFD		13
-BEGIN-PROTOCOL	BFD
+BEGIN PROTOCOL	BFD		13
 
 $INCLUDE dictionary.freeradius.internal
 $INCLUDE dictionary.rfc5880

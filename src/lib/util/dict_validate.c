@@ -19,6 +19,7 @@
  * @file src/lib/util/dict_validate.c
  *
  * @copyright 2019 The FreeRADIUS server project
+ * @copyright 2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 
@@ -26,19 +27,12 @@ RCSID("$Id$")
 
 /** Validate a set of flags
  *
- * @param[in] dict		of protocol context we're operating in.
- *				If NULL the internal dictionary will be used.
- * @param[in] parent		to add attribute under.
- * @param[in] name		of the attribute.
- * @param[in] attr		number.
- * @param[in] type		of attribute.
- * @param[in] flags		to check in the attribute.
+ * @param[in] da		to check.
  * @return
  *	- true if attribute definition is valid.
  *	- false if attribute definition is not valid.
  */
-bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
-			   char const *name, int *attr, fr_type_t type, fr_dict_attr_flags_t *flags)
+bool dict_attr_flags_valid(fr_dict_attr_t *da)
 {
 	int bit;
 	uint32_t all_flags;
@@ -47,6 +41,12 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	uint32_t shift_subtype, shift_extra;
 	uint32_t shift_counter;
 	fr_dict_attr_t const *v;
+	fr_dict_t		*dict = da->dict;
+	fr_dict_attr_t const	*parent = da->parent;
+	char const		*name = da->name;
+	int			attr = da->attr;
+	fr_type_t		type = da->type;
+	fr_dict_attr_flags_t	*flags = &da->flags;
 
 	/*
 	 *	Convert the 1-bit fields into bits numbers, so that we
@@ -64,7 +64,14 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	SET_FLAG(counter);
 	SET_FLAG(subtype);
 
-#define FORBID_OTHER_FLAGS(_flag) do { if (all_flags & ~shift_ ## _flag) { fr_strerror_printf("The '" STRINGIFY(_flag) "' flag cannot be used with any other flag"); return false; } } while (0)
+#define FORBID_OTHER_FLAGS(_flag, _allowed) \
+	do { \
+		if (all_flags & ~shift_ ## _flag & ~(_allowed)) { \
+			fr_strerror_printf("The '" STRINGIFY(_flag) "' flag cannot be used with any other flag (%u) %s[%d]", all_flags, da->filename, da->line); \
+			return false; \
+		} \
+	} while (0)
+
 #define ALLOW_FLAG(_flag) do { all_flags &= ~shift_ ## _flag; } while (0)
 
 	// is_root
@@ -78,7 +85,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	// type_size
 
 	if (flags->is_root) {
-		FORBID_OTHER_FLAGS(is_root);
+		FORBID_OTHER_FLAGS(is_root, 0);
 	}
 
 	if (flags->is_unknown) {
@@ -138,7 +145,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		ALLOW_FLAG(extra);
 		ALLOW_FLAG(subtype);
 
-		FORBID_OTHER_FLAGS(array);
+		FORBID_OTHER_FLAGS(array, 0);
 	}
 
 	/*
@@ -152,7 +159,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			return false;
 		}
 
-		FORBID_OTHER_FLAGS(has_value);
+		FORBID_OTHER_FLAGS(has_value, shift_internal);
 	}
 
 	/*
@@ -244,7 +251,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			return false;
 		}
 
-		FORBID_OTHER_FLAGS(extra);
+		FORBID_OTHER_FLAGS(extra, 0);
 	}
 
 	/*
@@ -341,10 +348,10 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		 */
 		flags->type_size = 1;
 		flags->length = 1;
-		if (attr) {
+		if (attr > 0) {
 			fr_dict_vendor_t const *dv;
 
-			dv = fr_dict_vendor_by_num(dict, *attr);
+			dv = fr_dict_vendor_by_num(dict, attr);
 			if (dv) {
 				flags->type_size = dv->type;
 				flags->length = dv->length;
@@ -398,7 +405,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		if (flags->length) {
 			/*
 			 *	Internal attributes can use octets[n]
-			 *	MS-MPPE-Keys use octets[18],encrypt=1
+			 *	MS-MPPE-Keys use octets[18],encrypt=User-Password
 			 *	EAP-SIM-RAND uses array
 			 */
 			ALLOW_FLAG(internal);
@@ -502,22 +509,20 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		 *	For subsequent children, have each one check
 		 *	the previous child.
 		 */
-		if (*attr != 1) {
+		if (attr != 1) {
 			int i;
 			fr_dict_attr_t const *sibling;
 
-			sibling = fr_dict_attr_child_by_num(parent, (*attr) - 1);
-			if (!sibling) {
-				fr_strerror_printf("Child \"%s\" of 'struct' attribute \"%s\" MUST be "
-						   "numbered consecutively %u.",
-						   name, parent->name, *attr);
-				return false;
-			}
+			sibling = fr_dict_attr_child_by_num(parent, (attr) - 1);
+
+			/*
+			 *	sibling might not exist, if it's a deferred 'tlv clone=...'
+			 */
 
 			/*
 			 *	Variable sized elements cannot have anything after them in a struct.
 			 */
-			if (!sibling->flags.length && !sibling->flags.is_known_width) {
+			if (sibling && !sibling->flags.length && !sibling->flags.is_known_width) {
 				fr_strerror_const("No other field can follow a struct MEMBER which is variable sized");
 				return false;
 			}
@@ -525,7 +530,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			/*
 			 *	The same goes for arrays.
 			 */
-			if (sibling->flags.array) {
+			if (sibling && sibling->flags.array) {
 				fr_strerror_const("No other field can follow a struct MEMBER which is 'array'");
 				return false;
 			}
@@ -536,7 +541,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			 *	the structs are small.
 			 */
 			if (flags->extra && (flags->subtype == FLAG_KEY_FIELD)) {
-				for (i = 1; i < *attr; i++) {
+				for (i = 1; i < attr; i++) {
 					sibling = fr_dict_attr_child_by_num(parent, i);
 					if (!sibling) {
 						fr_strerror_printf("Child %d of 'struct' type attribute %s does not exist.",
@@ -590,118 +595,27 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
  *
  * @todo we need to check length of none vendor attributes.
  *
- * @param[in] dict		of protocol context we're operating in.
- *				If NULL the internal dictionary will be used.
- * @param[in] parent		to add attribute under.
- * @param[in] name		of the attribute.
- * @param[in] attr		number.
- * @param[in] type		of attribute.
- * @param[in] flags		to set in the attribute.
+ * @param[in] da	to validate.
  * @return
  *	- true if attribute definition is valid.
  *	- false if attribute definition is not valid.
  */
-bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
-			    char const *name, int *attr, fr_type_t type, fr_dict_attr_flags_t *flags)
+bool dict_attr_valid(fr_dict_attr_t *da)
 {
-	fr_dict_attr_t const	*v;
-	fr_dict_attr_t *mutable;
+	if (!fr_cond_assert(da->parent)) return false;
 
-	if (!fr_cond_assert(parent)) return false;
-
-	if (fr_dict_valid_name(name, -1) <= 0) return false;
-
-	mutable = UNCONST(fr_dict_attr_t *, parent);
-
-	/******************** sanity check attribute number ********************/
-
-	/*
-	 *	The value -1 is the special flag for "self
-	 *	allocated" numbers.  i.e. we want an
-	 *	attribute, but we don't care what the number
-	 *	is.
-	 */
-	if (*attr == -1) {
-		/*
-		 *	If we don't care about the number, then this attribute is almost always
-		 *	an internal one.  Unless it's a "name only" attribute for string-based
-		 *	protocols.
-		 *
-		 *	We can use DEFINE in number-based protocol dictionaries, and the attributes will be
-		 *	marked up as "internal".
-		 */
-		flags->internal |= !flags->name_only | !dict->string_based;
-
-		v = fr_dict_attr_by_name(NULL, parent, name);
-		if (v) {
-			fr_dict_attr_flags_t cmp;
-
-			/*
-			 *	Exact duplicates are allowed.  The caller will take care of
-			 *	not inserting the duplicate attribute.
-			 */
-			if (v->type != type) {
-				fr_strerror_printf("Conflicting type (asked %s, found %s) for re-definition for attribute %s",
-						   fr_type_to_str(type), fr_type_to_str(v->type), name);
-				return false;
-			}
-
-			/*
-			 *	'has_value' is set if we define VALUEs for it.  But the new definition doesn't
-			 *	know that yet.
-			 */
-			cmp = v->flags;
-			cmp.has_value = 0;
-
-			if (memcmp(&cmp, flags, sizeof(*flags)) != 0) {
-				fr_strerror_printf("Conflicting flags for re-definition for attribute %s", name);
-				return false;
-			}
-
-			return true;
-		}
-
-		*attr = ++mutable->last_child_attr;
-
-	} else if (*attr < 0) {
-		fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", *attr);
-		return false;
-
-	} else if ((unsigned int) *attr > mutable->last_child_attr) {
-		mutable->last_child_attr = *attr;
-
-		/*
-		 *	If the attribute is outside of the bounds of
-		 *	the type size, then it MUST be an internal
-		 *	attribute.  Set the flag in this attribute, so
-		 *	that the encoder doesn't have to do complex
-		 *	checks.
-		 */
-		if ((uint64_t) *attr >= (((uint64_t)1) << (8 * parent->flags.type_size))) flags->internal = true;
-	}
-
-	/*
-	 *	Initialize the length field, which is needed for the attr_valid() callback.
-	 */
-	if (!flags->length && fr_type_is_leaf(type) && !fr_type_is_variable_size(type)) {
-		fr_value_box_t box;
-
-		fr_value_box_init(&box, type, NULL, false);
-		flags->length = fr_value_box_network_length(&box);
-	}
-
-	if (type == FR_TYPE_STRUCT) flags->is_known_width |= flags->array;
+	if (fr_dict_valid_name(da->name, -1) <= 0) return false;
 
 	/*
 	 *	Run protocol-specific validation functions, BEFORE we
 	 *	do the rest of the checks.
 	 */
-	if (dict->attr_valid && !dict->attr_valid(dict, parent, name, *attr, type, flags)) return false;
+	if (da->dict->proto->attr.valid && !da->dict->proto->attr.valid(da)) return false;
 
 	/*
 	 *	Check the flags, data types, and parent data types and flags.
 	 */
-	if (!dict_attr_flags_valid(dict, parent, name, attr, type, flags)) return false;
+	if (!dict_attr_flags_valid(da)) return false;
 
 	return true;
 }

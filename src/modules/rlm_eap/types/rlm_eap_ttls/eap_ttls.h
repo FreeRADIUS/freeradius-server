@@ -30,11 +30,9 @@ RCSIDH(eap_ttls_h, "$Id$")
 #include <freeradius-devel/radius/defs.h>
 
 extern HIDDEN fr_dict_attr_t const *attr_eap_tls_require_client_cert;
-extern HIDDEN fr_dict_attr_t const *attr_proxy_to_realm;
 extern HIDDEN fr_dict_attr_t const *attr_chap_challenge;
 extern HIDDEN fr_dict_attr_t const *attr_ms_chap2_success;
 extern HIDDEN fr_dict_attr_t const *attr_eap_message;
-extern HIDDEN fr_dict_attr_t const *attr_freeradius_proxied_to;
 extern HIDDEN fr_dict_attr_t const *attr_ms_chap_challenge;
 extern HIDDEN fr_dict_attr_t const *attr_reply_message;
 extern HIDDEN fr_dict_attr_t const *attr_eap_channel_binding_message;
@@ -45,10 +43,11 @@ extern HIDDEN fr_dict_attr_t const *attr_vendor_specific;
 typedef struct {
 	fr_pair_t	*username;
 	bool		authenticated;
-	char const	*virtual_server;
+	CONF_SECTION	*server_cs;
 } ttls_tunnel_t;
 
 /*
  *	Process the TTLS portion of an EAP-TTLS request.
  */
-fr_radius_packet_code_t eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session) CC_HINT(nonnull);
+unlang_action_t eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session) CC_HINT(nonnull);
+unlang_action_t eap_ttls_success(rlm_rcode_t *p_result, request_t *request, eap_session_t *eap_session);

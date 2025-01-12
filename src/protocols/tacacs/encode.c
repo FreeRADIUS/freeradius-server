@@ -959,7 +959,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 		return -1;
 
 	default:
-		fr_strerror_printf("encode: unknown packet type %u", packet->hdr.type);
+		fr_strerror_printf("encode: unknown packet type %d", packet->hdr.type);
 		return -1;
 	}
 
@@ -1057,7 +1057,7 @@ static int _encode_test_ctx(fr_tacacs_ctx_t *proto_ctx)
 	return 0;
 }
 
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
 {
 	fr_tacacs_ctx_t *test_ctx;
 

@@ -36,6 +36,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/main_loop.h>
+#include <freeradius-devel/server/snmp.h>
 
 #include <freeradius-devel/protocol/snmp/freeradius.h>
 

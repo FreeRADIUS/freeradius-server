@@ -568,6 +568,33 @@ fr_sbuff_parse_rules_t const value_parse_rules_backtick_quoted = {
 		L(""), L("\n"), L("\r"), L("`"))
 };
 
+/*
+ *	And triple-quoted versions of the above.
+ */
+fr_sbuff_parse_rules_t const value_parse_rules_double_3quoted = {
+	.escapes = &fr_value_unescape_double,
+	.terminals = &FR_SBUFF_TERMS(
+		L(""), L("\n"), L("\r"), L("\"\"\""))
+};
+
+fr_sbuff_parse_rules_t const value_parse_rules_single_3quoted = {
+	.escapes = &fr_value_unescape_single,
+	.terminals = &FR_SBUFF_TERMS(
+		L(""), L("\n"), L("\r"), L("'''"))
+};
+
+fr_sbuff_parse_rules_t const value_parse_rules_solidus_3quoted = {
+	.escapes = &fr_value_unescape_solidus,
+	.terminals = &FR_SBUFF_TERMS(
+		L(""), L("\n"), L("\r"), L("///"))
+};
+
+fr_sbuff_parse_rules_t const value_parse_rules_backtick_3quoted = {
+	.escapes = &fr_value_unescape_backtick,
+	.terminals = &FR_SBUFF_TERMS(
+		L(""), L("\n"), L("\r"), L("```"))
+};
+
 /** Parse rules for quoted strings
  *
  * These parse rules should be used for internal parsing functions that
@@ -591,6 +618,15 @@ fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX] = {
 	['/']				= &value_parse_rules_solidus_quoted,
 	['`']				= &value_parse_rules_backtick_quoted
 };
+
+fr_sbuff_parse_rules_t const *value_parse_rules_3quoted[T_TOKEN_LAST] = {
+	[T_BARE_WORD]			= &value_parse_rules_bareword_quoted,
+	[T_DOUBLE_QUOTED_STRING]	= &value_parse_rules_double_3quoted,
+	[T_SINGLE_QUOTED_STRING]	= &value_parse_rules_single_3quoted,
+	[T_SOLIDUS_QUOTED_STRING]	= &value_parse_rules_solidus_3quoted,
+	[T_BACK_QUOTED_STRING]		= &value_parse_rules_backtick_3quoted
+};
+
 /* clang-format on */
 /** @} */
 
@@ -2067,7 +2103,7 @@ int fr_value_box_to_key(uint8_t **out, size_t *outlen, fr_value_box_t const *val
 		fr_dbuff_init(&dbuff, *out, *outlen >> 3);
 
 		slen = fr_value_box_to_network(&dbuff, value);
-		if (slen < 0) return slen;
+		if (slen < 0) return -1;
 		*outlen = slen * 8; /* bits not bytes */
 		break;
 
@@ -2117,8 +2153,8 @@ static int fr_value_box_fixed_size_from_octets(fr_value_box_t *dst,
 	if (!fr_type_is_fixed_size(dst_type)) if (!fr_cond_assert(false)) return -1;
 
 	if (src->vb_length > network_max_size(dst_type)) {
-		fr_strerror_printf("Invalid cast from %s to %s.  Source length %zd is greater than "
-				   "destination type size %zd",
+		fr_strerror_printf("Invalid cast from %s to %s.  Source length %zu is greater than "
+				   "destination type size %zu",
 				   fr_type_to_str(src->type),
 				   fr_type_to_str(dst_type),
 				   src->vb_length,
@@ -3476,8 +3512,8 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		fr_value_box_t tmp;
 
 		if (src->vb_length < network_min_size(dst_type)) {
-			fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd is smaller than "
-					   "destination type size %zd",
+			fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zu is smaller than "
+					   "destination type size %zu",
 					   fr_type_to_str(src->type),
 					   fr_type_to_str(dst_type),
 					   src->vb_length,
@@ -3486,8 +3522,8 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		}
 
 		if (src->vb_length > network_max_size(dst_type)) {
-			fr_strerror_printf("Invalid cast from %s to %s.  Source length %zd is greater than "
-					   "destination type size %zd",
+			fr_strerror_printf("Invalid cast from %s to %s.  Source length %zu is greater than "
+					   "destination type size %zu",
 					   fr_type_to_str(src->type),
 					   fr_type_to_str(dst_type),
 					   src->vb_length,
@@ -5468,7 +5504,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		FR_SBUFF_RETURN(fr_value_box_list_concat_as_string,
 				NULL, NULL, &our_out, UNCONST(fr_value_box_list_t *, &data->vb_group),
 				", ", (sizeof(", ") - 1), e_rules,
-				0, false);
+				0, 0, false);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '}');
 		break;
 
@@ -5536,6 +5572,7 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
  *				Is not currently applied to any other box type.
  * @param[in] proc_action	What to do with the boxes in the list once
  *				they've been processed.
+ * @param[in] safe_for		if value has this safe_for value, don't apply the escape rules.
  * @param[in] flatten		If true and we encounter a #FR_TYPE_GROUP,
  *				we concat the contents of its children together.
  *      			If false, the contents will be cast to #FR_TYPE_STRING.
@@ -5546,7 +5583,7 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
  */
 ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
 					   char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
-					   fr_value_box_list_action_t proc_action, bool flatten)
+					   fr_value_box_list_action_t proc_action, fr_value_box_safe_for_t safe_for, bool flatten)
 {
 	fr_sbuff_t our_sbuff = FR_SBUFF(sbuff);
 	ssize_t slen;
@@ -5559,7 +5596,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff
 			if (!flatten) goto print;
 			slen = fr_value_box_list_concat_as_string(tainted, secret, &our_sbuff, &vb->vb_group,
 								  sep, sep_len, e_rules,
-								  proc_action, flatten);
+								  proc_action, safe_for, flatten);
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -5567,7 +5604,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff
 			/*
 			 *	Copy the raw string over, if necessary with escaping.
 			 */
-			if (e_rules && (vb->tainted || e_rules->do_oct || e_rules->do_hex)) {
+			if (e_rules && (!fr_value_box_is_safe_for(vb, safe_for) || e_rules->do_oct || e_rules->do_hex)) {
 				slen = fr_sbuff_in_escape(&our_sbuff, (char const *)vb->vb_strvalue, vb->vb_length, e_rules);
 			} else {
 				slen = fr_sbuff_in_bstrncpy(&our_sbuff, (char const *)vb->vb_strvalue, vb->vb_length);
@@ -5575,7 +5612,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff
 			break;
 
 		case FR_TYPE_STRING:
-			if (vb->tainted && e_rules) goto print;
+			if (!fr_value_box_is_safe_for(vb, safe_for) && e_rules) goto print;
 
 			slen = fr_sbuff_in_bstrncpy(&our_sbuff, vb->vb_strvalue, vb->vb_length);
 			break;
@@ -5798,7 +5835,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			 */
 			if (fr_value_box_list_concat_as_string(&tainted, &secret, &sbuff, list,
 							       NULL, 0, NULL,
-							       FR_VALUE_BOX_LIST_REMOVE, flatten) < 0) {
+							       FR_VALUE_BOX_LIST_REMOVE, 0, flatten) < 0) {
 				fr_strerror_printf("Concatenation exceeded max_size (%zu)", max_size);
 			error:
 				switch (type) {
@@ -5821,7 +5858,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			 */
 			if (fr_value_box_list_concat_as_string(&tainted, &secret, &sbuff, list,
 							       NULL, 0, NULL,
-							       proc_action, flatten) < 0) {
+							       proc_action, 0, flatten) < 0) {
 				fr_value_box_list_insert_head(list, head_vb);
 				goto error;
 			}
@@ -5863,7 +5900,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 		case FR_TYPE_STRING:
 			if (fr_value_box_list_concat_as_string(&tainted, &secret, &sbuff, list,
 							       NULL, 0, NULL,
-							       proc_action, flatten) < 0) goto error;
+							       proc_action, 0, flatten) < 0) goto error;
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
 
 			entry = out->entry;
@@ -6208,7 +6245,7 @@ DIAG_ON(nonnull-compare)
 #endif
 	switch (vb->type) {
 	case FR_TYPE_STRING:
-		fr_fatal_assert_msg(vb->vb_strvalue, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t strvalue field "
+		fr_fatal_assert_msg(vb->vb_strvalue, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t strvalue field "
 				    "was NULL", file, line);
 		fr_fatal_assert_msg(vb->vb_strvalue[vb->vb_length] == '\0',
 				    "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t strvalue field "
@@ -6218,7 +6255,7 @@ DIAG_ON(nonnull-compare)
 
 			/* We always \0 terminate to be safe, even though most things should use the len field */
 			if (len <= vb->vb_length) {
-				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: Expected fr_value_box_t->vb_strvalue talloc buffer "
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: Expected fr_value_box_t->vb_strvalue talloc buffer "
 						    "len >= %zu, got %zu",
 						    file, line, vb->vb_length + 1, len);
 			}
@@ -6226,12 +6263,12 @@ DIAG_ON(nonnull-compare)
 		break;
 
 	case FR_TYPE_OCTETS:
-		fr_fatal_assert_msg(vb->vb_octets, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t octets field "
+		fr_fatal_assert_msg(vb->vb_octets, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t octets field "
 				    "was NULL", file, line);
 		break;
 
 	case FR_TYPE_VOID:
-		fr_fatal_assert_msg(vb->vb_void, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t ptr field "
+		fr_fatal_assert_msg(vb->vb_void, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t ptr field "
 				    "was NULL", file, line);
 		break;
 

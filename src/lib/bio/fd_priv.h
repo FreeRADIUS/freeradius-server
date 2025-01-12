@@ -38,13 +38,21 @@ typedef struct fr_bio_fd_s {
 
 	fr_bio_fd_info_t  info;
 
-	int		max_tries;	//!< how many times we retry on EINTR
-	size_t		offset;		//!< where #fr_bio_fd_packet_ctx_t is stored
+	struct {
+		fr_bio_callback_t  success;    	//!< for fr_bio_fd_connect()
+		fr_bio_callback_t  error;	//!< for fr_bio_fd_connect()
+		fr_bio_callback_t  timeout;	//!< for fr_bio_fd_connect()
+		fr_event_list_t	   *el;		//!< for fr_bio_fd_connect()
+		fr_event_timer_t const *ev;	//!< for fr_bio_fd_connect()
+	} connect;
+
+	int		max_tries;		//!< how many times we retry on EINTR
+	size_t		offset;			//!< where #fr_bio_fd_packet_ctx_t is stored
 
 #if defined(IP_PKTINFO) || defined(IP_RECVDSTADDR) || defined(IPV6_PKTINFO)
-	struct iovec	iov;		//!< for recvfromto
-	struct msghdr	msgh;		//!< for recvfromto
-	uint8_t		cbuf[256];	//!< for recvfromto
+	struct iovec	iov;			//!< for recvfromto
+	struct msghdr	msgh;			//!< for recvfromto
+	uint8_t		cbuf[sizeof(struct cmsghdr) * 2]; //!< for recvfromto
 #endif
 } fr_bio_fd_t;
 
@@ -56,6 +64,6 @@ int	fr_bio_fd_init_common(fr_bio_fd_t *my);
 
 int	fr_bio_fd_init_connected(fr_bio_fd_t *my);
 
-int	fr_bio_fd_init_accept(fr_bio_fd_t *my);
+int	fr_bio_fd_init_listen(fr_bio_fd_t *my);
 
 int	fr_bio_fd_socket_name(fr_bio_fd_t *my);

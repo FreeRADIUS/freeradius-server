@@ -201,7 +201,7 @@ e.g:
 ----
 ldap
 if ((ok || updated) && &User-Password) {
-	&control.Auth-Type := ldap
+	&control.Auth-Type := ::ldap
 }
 ----
 ====
@@ -772,7 +772,7 @@ binds which there can be on a single thread.
 
 The rlm_ldap provides the below xlat's functions.
 
-### %ldap.uri.escape(...}
+### %ldap.uri.escape(...)
 
 Escape a string for use in an LDAP filter or DN.  The value will then be marked as safe for use
 in LDAP URIs and DNs, and will not be escaped or modified.
@@ -793,7 +793,7 @@ in LDAP URIs and DNs, and will not be escaped or modified.
 "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
 ```
 
-### %ldap.uri.safe(...}
+### %ldap.uri.safe(...)
 
 Mark a string as safe for use in an LDAP filter or DN.  Values marked as safe for use in LDAP
 URIs will not be escaped or modified, and will be allowed in places where dynamic values are
@@ -827,6 +827,27 @@ Unescape a string for use in an LDAP filter or DN.
 ```
 "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
 ```
+
+### %ldap.group(...)
+
+Check whether the current user is a member of a the given group.  If the attribute
+`control.LDAP-UserDN` exists, that will be used as the "user" object.  If it does
+not then the user is first looked up using the filter form the `user { }` section
+of the module configuration.
+
+Groups can be specified either as a name or a DN, with a lookup used if necessary
+to convert to the required format.
+
+.Return: _bool_
+
+.Example
+
+[source,unlang]
+---
+if (%ldap.group('cn=group1,ou=Groups,dc=example,dc=org')) {
+  ...
+}
+---
 
 
 == Default Configuration

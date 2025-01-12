@@ -45,6 +45,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "log.h"
 
 static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int tls_virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 /** Certificate formats
  *
@@ -154,7 +155,7 @@ static conf_parser_t tls_verify_config[] = {
 };
 
 conf_parser_t fr_tls_server_config[] = {
-	{ FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, 0, fr_tls_conf_t, virtual_server), .func = virtual_server_cf_parse },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, 0, fr_tls_conf_t, virtual_server), .func = tls_virtual_server_cf_parse },
 
 	{ FR_CONF_OFFSET_SUBSECTION("chain", CONF_FLAG_MULTI, fr_tls_conf_t, chains, tls_chain_config),
 	  .subcs_size = sizeof(fr_tls_chain_conf_t), .subcs_type = "fr_tls_chain_conf_t", .name2 = CF_IDENT_ANY },
@@ -242,6 +243,20 @@ conf_parser_t fr_tls_client_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static int tls_virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	fr_tls_conf_t	*conf = talloc_get_type_abort(parent, fr_tls_conf_t);
+
+	if (virtual_server_cf_parse(ctx, out, parent, ci, rule) < 0) return -1;
+
+	if (!conf->virtual_server) return 0;
+
+	conf->verify_certificate = cf_section_find(conf->virtual_server, "verify", "certificate") ? true : false;
+	conf->new_session = cf_section_find(conf->virtual_server, "new", "session") ? true : false;
+	conf->establish_session = cf_section_find(conf->virtual_server, "establish", "session") ? true : false;
+	return 0;
+}
+
 static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	fr_tls_conf_t	*conf = talloc_get_type_abort((uint8_t *)parent - offsetof(fr_tls_conf_t, cache), fr_tls_conf_t);
@@ -295,7 +310,7 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
 			WARN("A virtual_server must be provided for stateful caching. "
 			     "cache.mode = \"auto\" rewritten to cache.mode = \"stateless\"");
 		cache_stateless:
-			conf->cache.mode = FR_TLS_CACHE_STATELESS;
+			cache_mode = FR_TLS_CACHE_STATELESS;
 			break;
 		}
 

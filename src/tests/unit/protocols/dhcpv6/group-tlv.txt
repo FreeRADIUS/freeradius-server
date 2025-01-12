@@ -1,0 +1,36 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL (legal@networkradius.com)
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+
+proto dhcpv6
+proto-dictionary dhcpv6
+load-dictionary dictionary
+fuzzer-out dhcpv6
+
+pair test-group = { child1 = 1 }
+match test-group = { child1 = 1 }
+
+#
+#  This doesn't have Test-tlv encoded
+#
+decode-pair 1a 9a 00 08 00 01 00 04 00 00 00 01
+match test-group = { child1 = 1 }
+
+#
+#  However, this does encode Test-TLV, which is wrong.
+#
+encode-pair test-group = { child1 = 1 }
+match 1a 9a 00 0c 1a 99 00 08 00 01 00 04 00 00 00 01
+
+#
+#  Sadly, there is no child 6809 of the group ref, so this decode
+#  is all raw. :(
+#
+decode-pair -
+match test-group = { raw.6809 = 0x0001000400000001 }
+
+count
+match 12

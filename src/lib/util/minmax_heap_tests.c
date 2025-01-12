@@ -158,7 +158,7 @@ static void minmax_heap_test(int skip)
 
 	TEST_CASE("deletions");
 	{
-		unsigned int entry;
+		int entry;
 
 		for (i = 0; i < MINMAX_HEAP_TEST_SIZE / skip; i++) {
 			entry = i * skip;
@@ -313,7 +313,7 @@ static void minmax_heap_test_order(void)
 	prev = NULL;
 	while ((thing = fr_minmax_heap_min_pop(hp))) {
 		TEST_CHECK(thing->data >= data);
-		TEST_MSG("Expected data >= %i, got %i", data, thing->data);
+		TEST_MSG("Expected data >= %u, got %u", data, thing->data);
 		if (thing->data >= data) data = thing->data;
 		TEST_CHECK(thing != prev);
 		prev = thing;
@@ -338,7 +338,7 @@ static void minmax_heap_test_order(void)
 	prev = NULL;
 	while ((thing = fr_minmax_heap_max_pop(hp))) {
 		TEST_CHECK(thing->data <= data);
-		TEST_MSG("Expected data >= %i, got %i", data, thing->data);
+		TEST_MSG("Expected data >= %u, got %u", data, thing->data);
 		if (thing->data <= data) data = thing->data;
 		TEST_CHECK(thing != prev);
 		prev = thing;
@@ -410,10 +410,10 @@ static void queue_cmp(unsigned int count)
 		end_pop = fr_time();
 
 		TEST_MSG_ALWAYS("\nminmax heap size: %u\n", count);
-		TEST_MSG_ALWAYS("alloc: %"PRIu64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_alloc, start_alloc)));
-		TEST_MSG_ALWAYS("insert: %"PRIu64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_insert, start_insert)));
-		TEST_MSG_ALWAYS("pop-first: %"PRIu64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_pop_first, start_pop)));
-		TEST_MSG_ALWAYS("pop: %"PRIu64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_pop, start_pop)));
+		TEST_MSG_ALWAYS("alloc: %"PRId64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_alloc, start_alloc)));
+		TEST_MSG_ALWAYS("insert: %"PRId64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_insert, start_insert)));
+		TEST_MSG_ALWAYS("pop-first: %"PRId64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_pop_first, start_pop)));
+		TEST_MSG_ALWAYS("pop: %"PRId64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_pop, start_pop)));
 		talloc_free(minmax);
 	}
 
@@ -445,10 +445,10 @@ static void queue_cmp(unsigned int count)
 		end_pop = fr_time();
 
 		TEST_MSG_ALWAYS("\nheap size: %u\n", count);
-		TEST_MSG_ALWAYS("alloc: %"PRIu64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_alloc, start_alloc)));
-		TEST_MSG_ALWAYS("insert: %"PRIu64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_insert, start_insert)));
-		TEST_MSG_ALWAYS("pop-first: %"PRIu64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_pop_first, start_pop)));
-		TEST_MSG_ALWAYS("pop: %"PRIu64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_pop, start_pop)));
+		TEST_MSG_ALWAYS("alloc: %"PRId64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_alloc, start_alloc)));
+		TEST_MSG_ALWAYS("insert: %"PRId64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_insert, start_insert)));
+		TEST_MSG_ALWAYS("pop-first: %"PRId64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_pop_first, start_pop)));
+		TEST_MSG_ALWAYS("pop: %"PRId64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_pop, start_pop)));
 
 		talloc_free(hp);
 	}
@@ -479,10 +479,10 @@ static void queue_cmp(unsigned int count)
 		end_pop = fr_time();
 
 		TEST_MSG_ALWAYS("\narray size: %u\n", count);
-		TEST_MSG_ALWAYS("alloc: %"PRIu64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_alloc, start_alloc)));
-		TEST_MSG_ALWAYS("insert: %"PRIu64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_insert, start_insert)));
-		TEST_MSG_ALWAYS("pop-first: %"PRIu64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_pop_first, start_pop)));
-		TEST_MSG_ALWAYS("pop: %"PRIu64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_pop, start_pop)));
+		TEST_MSG_ALWAYS("alloc: %"PRId64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_alloc, start_alloc)));
+		TEST_MSG_ALWAYS("insert: %"PRId64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_insert, start_insert)));
+		TEST_MSG_ALWAYS("pop-first: %"PRId64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_pop_first, start_pop)));
+		TEST_MSG_ALWAYS("pop: %"PRId64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_pop, start_pop)));
 
 		talloc_free(array);
 	}
@@ -589,9 +589,9 @@ static void minmax_heap_cycle(void)
 	end = fr_time();
 
 	TEST_MSG_ALWAYS("\ncycle size: %d\n", MINMAX_HEAP_CYCLE_SIZE);
-	TEST_MSG_ALWAYS("insert: %"PRIu64" μs\n", fr_time_delta_to_usec(fr_time_sub(start_remove, start_insert)));
-	TEST_MSG_ALWAYS("extract: %"PRIu64" μs\n", fr_time_delta_to_usec(fr_time_sub(start_swap, start_remove)));
-	TEST_MSG_ALWAYS("swap: %"PRIu64" μs\n", fr_time_delta_to_usec(fr_time_sub(end, start_swap)));
+	TEST_MSG_ALWAYS("insert: %"PRId64" μs\n", fr_time_delta_to_usec(fr_time_sub(start_remove, start_insert)));
+	TEST_MSG_ALWAYS("extract: %"PRId64" μs\n", fr_time_delta_to_usec(fr_time_sub(start_swap, start_remove)));
+	TEST_MSG_ALWAYS("swap: %"PRId64" μs\n", fr_time_delta_to_usec(fr_time_sub(end, start_swap)));
 
 	talloc_free(hp);
 	free(array);

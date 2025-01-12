@@ -29,8 +29,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "eap_peap.h"
 
-static int setup_fake_request(request_t *request, request_t *fake, peap_tunnel_t *t);
-
 /*
  *	Send protected EAP-Failure
  *
@@ -275,13 +273,15 @@ static int eap_peap_check_tlv(request_t *request, uint8_t const *data, size_t da
 /*
  *	Use a reply packet to determine what to do.
  */
-static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr_tls_session_t *tls_session,
-						  request_t *request,
-						  fr_packet_t *reply, fr_pair_list_t *reply_list)
+static unlang_action_t process_reply(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
-	rlm_rcode_t rcode = RLM_MODULE_REJECT;
-	fr_pair_list_t vps;
-	peap_tunnel_t *t = tls_session->opaque;
+	eap_session_t		*eap_session = talloc_get_type_abort(uctx, eap_session_t);
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
+	fr_pair_list_t		vps;
+	peap_tunnel_t		*t = tls_session->opaque;
+	request_t		*parent = request->parent;
+	fr_packet_t		*reply = request->reply;
 
 	if (RDEBUG_ENABLED2) {
 
@@ -294,7 +294,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 		} else {
 			RDEBUG2("Got tunneled reply code %i", reply->code);
 		}
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, reply_list, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->reply_pairs, NULL);
 	}
 
 	switch (reply->code) {
@@ -302,15 +302,13 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 		RDEBUG2("Tunneled authentication was successful");
 		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
 		eap_peap_success(request, eap_session, tls_session);
-		rcode = RLM_MODULE_HANDLED;
-		break;
+		RETURN_MODULE_HANDLED;
 
 	case FR_RADIUS_CODE_ACCESS_REJECT:
 		RDEBUG2("Tunneled authentication was rejected");
 		t->status = PEAP_STATUS_SENT_TLV_FAILURE;
 		eap_peap_failure(request, eap_session, tls_session);
-		rcode = RLM_MODULE_HANDLED;
-		break;
+		RETURN_MODULE_HANDLED;
 
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 		RDEBUG2("Got tunneled Access-Challenge");
@@ -321,27 +319,23 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 		 *	Access-Challenge is ignored.
 		 */
 		fr_pair_list_init(&vps);
-		MEM(fr_pair_list_copy_by_da(t, &vps, reply_list, attr_eap_message, 0) >= 0);
+		MEM(fr_pair_list_copy_by_da(t, &vps, &request->reply_pairs, attr_eap_message, 0) >= 0);
 
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply
 		 *	VP's back to the client.
 		 */
 		if (!fr_pair_list_empty(&vps)) {
-			eap_peap_inner_from_pairs(request, tls_session, &vps);
+			eap_peap_inner_from_pairs(parent, tls_session, &vps);
 			fr_pair_list_free(&vps);
 		}
 
-		rcode = RLM_MODULE_HANDLED;
-		break;
+		RETURN_MODULE_HANDLED;
 
 	default:
 		RDEBUG2("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
-		rcode = RLM_MODULE_REJECT;
-		break;
+		RETURN_MODULE_REJECT;
 	}
-
-	return rcode;
 }
 
 
@@ -379,7 +373,7 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 				 eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
 	peap_tunnel_t	*t = tls_session->opaque;
-	request_t	*fake = NULL;
+	request_t	*child = NULL;
 	fr_pair_t	*vp;
 	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
 	uint8_t const	*data;
@@ -504,8 +498,8 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 			goto finish;
 	}
 
-	fake = request_alloc_internal(request, &(request_init_args_t){ .parent = request });
-	fr_assert(fr_pair_list_empty(&fake->request_pairs));
+	MEM(child = unlang_subrequest_alloc(request, request->dict));
+	fr_assert(fr_pair_list_empty(&child->request_pairs));
 
 	switch (t->status) {
 	/*
@@ -523,7 +517,7 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 		len = t->username->vp_length + EAP_HEADER_LEN + 1;
 		t->status = PEAP_STATUS_PHASE2;
 
-		MEM(vp = fr_pair_afrom_da(fake->request_ctx, attr_eap_message));
+		MEM(vp = fr_pair_afrom_da(child->request_ctx, attr_eap_message));
 		MEM(fr_pair_value_mem_alloc(vp, &q, len, false) == 0);
 		q[0] = FR_EAP_CODE_RESPONSE;
 		q[1] = eap_round->response->id;
@@ -532,15 +526,15 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 		q[4] = FR_EAP_METHOD_IDENTITY;
 		memcpy(q + EAP_HEADER_LEN + 1,
 		       t->username->vp_strvalue, t->username->vp_length);
-		fr_pair_append(&fake->request_pairs, vp);
+		fr_pair_append(&child->request_pairs, vp);
 	}
 		break;
 
 	case PEAP_STATUS_PHASE2:
-		eap_peap_inner_to_pairs(fake->request_ctx, &fake->request_pairs,
+		eap_peap_inner_to_pairs(child->request_ctx, &child->request_pairs,
 					eap_round, data, data_len);
-		if (fr_pair_list_empty(&fake->request_pairs)) {
-			talloc_free(fake);
+		if (fr_pair_list_empty(&child->request_pairs)) {
+			talloc_free(child);
 			RDEBUG2("Unable to convert tunneled EAP packet to internal server data structures");
 			rcode = RLM_MODULE_REJECT;
 			goto finish;
@@ -554,7 +548,7 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 	}
 
 	RDEBUG2("Got tunneled request");
-	log_request_pair_list(L_DBG_LVL_2, request, NULL, &fake->request_pairs, NULL);
+	log_request_pair_list(L_DBG_LVL_2, request, NULL, &child->request_pairs, NULL);
 
 	/*
 	 *	Update other items in the request_t data structure.
@@ -576,48 +570,29 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 		}
 	} /* else there WAS a t->username */
 
-	setup_fake_request(request, fake, t);
-
-	/*
-	 *	Call authentication recursively, which will
-	 *	do PAP, CHAP, MS-CHAP, etc.
-	 */
-	eap_virtual_server(request, eap_session, t->virtual_server);
-
-	/*
-	 *	Decide what to do with the reply.
-	 */
-	if (!fake->reply->code) {
-		REDEBUG("Unknown RADIUS packet type %d: rejecting tunneled user", fake->reply->code);
-		rcode = RLM_MODULE_REJECT;
-	} else {
-		rcode = process_reply(eap_session, tls_session, request, fake->reply, &fake->reply_pairs);
-	}
-
-finish:
-	talloc_free(fake);
-
-	RETURN_MODULE_RCODE(rcode);
-}
-
-static int CC_HINT(nonnull) setup_fake_request(request_t *request, request_t *fake, peap_tunnel_t *t) {
-
-	fr_pair_t *vp;
-
-	/*
-	 *	Tell the request that it's a fake one.
-	 */
-	MEM(fr_pair_prepend_by_da(fake->request_ctx, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
-	(void) fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1") - 1, NULL, false);
-
 	if (t->username) {
-		vp = fr_pair_copy(fake->request_ctx, t->username);
-		fr_pair_append(&fake->request_pairs, vp);
+		vp = fr_pair_copy(child->request_ctx, t->username);
+		fr_pair_append(&child->request_pairs, vp);
 		RDEBUG2("Setting &request.User-Name from tunneled (inner) identity \"%s\"",
 			vp->vp_strvalue);
 	} else {
 		RDEBUG2("No tunnel username (SSL resumption?)");
 	}
 
-	return 0;
+	if (unlang_subrequest_child_push(&eap_session->submodule_rcode, child,
+					 &(unlang_subrequest_session_t){ .enable = true, .unique_ptr = child },
+					 false, UNLANG_SUB_FRAME) < 0) goto finish;
+	if (unlang_function_push(child, NULL, process_reply, NULL, 0,
+				 UNLANG_SUB_FRAME, eap_session) != UNLANG_ACTION_PUSHED_CHILD) goto finish;
+
+	/*
+	 *	Call authentication recursively, which will
+	 *	do PAP, CHAP, MS-CHAP, etc.
+	 */
+	return eap_virtual_server(child, eap_session, t->server_cs);
+
+finish:
+	if (child) request_detach(child);
+
+	RETURN_MODULE_RCODE(rcode);
 }

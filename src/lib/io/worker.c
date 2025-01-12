@@ -1518,12 +1518,16 @@ void fr_worker(fr_worker_t *worker)
 		DEBUG4("Gathering events - %s", wait_for_event ? "will wait" : "Will not wait");
 		num_events = fr_event_corral(worker->el, fr_time(), wait_for_event);
 		if (num_events < 0) {
+			if (fr_event_loop_exiting(worker->el)) {
+				DEBUG4("Event loop exiting");
+				break;
+			}
+
 			PERROR("Failed retrieving events");
 			break;
 		}
 
-		DEBUG4("%u event(s) pending%s",
-		       num_events == -1 ? 0 : num_events, num_events == -1 ? " - event loop exiting" : "");
+		DEBUG4("%u event(s) pending", num_events);
 
 		/*
 		 *	Service outstanding events.

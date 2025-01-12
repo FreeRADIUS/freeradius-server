@@ -1278,7 +1278,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	uint8_t			version;		/* IP header version */
 	bool			response;		/* Was it a response code */
 
-	decode_fail_t		reason;			/* Why we failed decoding the packet */
+	fr_radius_decode_fail_t	reason;			/* Why we failed decoding the packet */
 	static uint64_t		captured = 0;
 
 	rs_status_t		status = RS_NORMAL;	/* Any special conditions (RTX, Unlinked, ID-Reused) */

@@ -1068,7 +1068,7 @@ static void test_file_extend(void)
 	TEST_CHECK_LEN(fr_sbuff_adv_past_whitespace(&our_sbuff, SIZE_MAX, NULL), sizeof(fbuff) - PATTERN_LEN);
 	TEST_CASE("Verify extend on unused child buffer");
 	child_sbuff = FR_SBUFF(&our_sbuff);
-	slen = fr_sbuff_extend_file(&child_sbuff, 0);
+	slen = fr_sbuff_extend_file(NULL, &child_sbuff, 0);
 	TEST_CHECK_SLEN(slen, sizeof(fbuff) % PATTERN_LEN);
 	TEST_CASE("Verify that we passed all and only whitespace");
 	(void) fr_sbuff_out_abstrncpy(NULL, &post_ws, &our_sbuff, 24);

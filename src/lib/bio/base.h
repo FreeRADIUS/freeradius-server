@@ -50,6 +50,7 @@ typedef enum {
 
 	FR_BIO_ERROR_IO,				//!< IO error - check errno
 	FR_BIO_ERROR_GENERIC,				//!< generic "failed" error - check fr_strerror()
+	FR_BIO_ERROR_OOM,				//!< out of memory
 	FR_BIO_ERROR_VERIFY,				//!< some packet verification error
 	FR_BIO_ERROR_BUFFER_FULL,      			//!< the buffer is full
 	FR_BIO_ERROR_BUFFER_TOO_SMALL,			//!< the output buffer is too small for the data
@@ -79,18 +80,18 @@ typedef struct fr_bio_s fr_bio_t;
 typedef ssize_t	(*fr_bio_read_t)(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size);
 typedef ssize_t	(*fr_bio_write_t)(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size);
 
-typedef int (*fr_bio_io_t)(fr_bio_t *bio); /* activate / shutdown callbacks */
+typedef int (*fr_bio_io_t)(fr_bio_t *bio); /* read / write blocked callbacks */
 
-typedef void (*fr_bio_callback_t)(fr_bio_t *bio); /* activate / shutdown callbacks */
+typedef void (*fr_bio_callback_t)(fr_bio_t *bio); /* connected / shutdown callbacks */
 
 typedef struct {
-	fr_bio_callback_t	activate;		//!< called when the BIO is ready to be used
+	fr_bio_callback_t	connected;		//!< called when the BIO is ready to be used
 	fr_bio_callback_t	shutdown;		//!< called when the BIO is being shut down
 	fr_bio_callback_t	eof;			//!< called when the BIO is at EOF
 	fr_bio_callback_t	failed;			//!< called when the BIO fails
 
 	fr_bio_io_t		read_blocked;
-	fr_bio_io_t		write_blocked;
+	fr_bio_io_t		write_blocked;		//!< returns 0 for "couldn't block", 1 for "did block".
 
 	fr_bio_io_t		read_resume;		//!< "unblocked" is too similar to "blocked"
 	fr_bio_io_t		write_resume;

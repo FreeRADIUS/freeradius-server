@@ -87,7 +87,7 @@ static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *
 		packet_type_vp = fr_pair_find_by_da(&request->request_pairs, NULL, gext->attr_packet_type);
 		if (!packet_type_vp) {
 		bad_packet_type:
-			REDEBUG("No such value '%d' of attribute 'Packet-Type' for server %s",
+			REDEBUG("No such value '%u' of attribute 'Packet-Type' for server %s",
 				request->packet->code, cf_section_name2(gext->server_cs));
 		error:
 			*p_result = RLM_MODULE_FAIL;

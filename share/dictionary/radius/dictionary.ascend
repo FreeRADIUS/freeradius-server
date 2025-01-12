@@ -336,8 +336,8 @@ ATTRIBUTE	PPP-VJ-Slot-Comp			210	integer
 ATTRIBUTE	PPP-VJ-1172				211	integer
 ATTRIBUTE	PPP-Async-Map				212	integer
 ATTRIBUTE	Third-Prompt				213	string
-ATTRIBUTE	Send-Secret				214	string	encrypt=3
-ATTRIBUTE	Receive-Secret				215	string	encrypt=3
+ATTRIBUTE	Send-Secret				214	string	encrypt=Ascend-Secret
+ATTRIBUTE	Receive-Secret				215	string	encrypt=Ascend-Secret
 ATTRIBUTE	IPX-Peer-Mode				216	integer
 ATTRIBUTE	IP-Pool-Definition			217	string
 ATTRIBUTE	Assign-IP-Pool				218	integer

@@ -673,5 +673,12 @@ match true
 condition (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
 match ((&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message))
 
+#
+#  Triple-quoted strings are parsed, but are printd as single-quoted ones.  Sue me.
+#
+condition (&User-Name == """bob "quoted" """)
+match (&User-Name == "bob \"quoted\" ")
+
+
 count
-match 303
+match 305

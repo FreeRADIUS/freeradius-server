@@ -48,7 +48,6 @@ RCSID("$Id$")
 #include <sys/wait.h>
 
 #include "rlm_mschap.h"
-#include "mschap.h"
 #include "smbdes.h"
 
 #ifdef WITH_AUTH_WINBIND
@@ -85,10 +84,18 @@ static const conf_parser_t passchange_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+#ifdef WITH_AUTH_WINBIND
+static conf_parser_t reuse_winbind_config[] = {
+	FR_SLAB_CONFIG_CONF_PARSER
+	CONF_PARSER_TERMINATOR
+};
+#endif
+
 static const conf_parser_t winbind_config[] = {
 	{ FR_CONF_OFFSET("username", rlm_mschap_t, wb_username) },
 #ifdef WITH_AUTH_WINBIND
 	{ FR_CONF_OFFSET("retry_with_normalised_username", rlm_mschap_t, wb_retry_with_normalised_username), .dflt = "no" },
+	{ FR_CONF_OFFSET_SUBSECTION("reuse", 0, rlm_mschap_t, reuse, reuse_winbind_config) },
 #endif
 	CONF_PARSER_TERMINATOR
 };
@@ -212,26 +219,6 @@ static const call_env_parser_t autz_call_env[] = {
 };
 
 MSCHAP_CALL_ENV(autz);
-
-typedef struct {
-	fr_value_box_list_t	cpw_user;
-	fr_value_box_list_t	cpw_domain;
-	fr_value_box_list_t	local_cpw_result;
-	uint8_t			new_nt_encrypted[516];
-	uint8_t			old_nt_hash[NT_DIGEST_LENGTH];
-	fr_pair_t		*new_hash;
-} mschap_cpw_ctx_t;
-
-typedef struct {
-	char const		*name;
-	rlm_mschap_t const	*inst;
-	mschap_auth_call_env_t	*env_data;
-	MSCHAP_AUTH_METHOD	method;
-	fr_pair_t		*nt_password;
-	fr_pair_t		*smb_ctrl;
-	fr_pair_t		*cpw;
-	mschap_cpw_ctx_t	*cpw_ctx;
-} mschap_auth_ctx_t;
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
@@ -783,36 +770,26 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 #ifdef WITH_AUTH_WINBIND
 /*
- *	Free connection pool winbind context
+ *	Free winbind context
  */
-static int _mod_conn_free(struct wbcContext **wb_ctx)
+static int _mod_ctx_free(winbind_ctx_t *wbctx)
 {
-	wbcCtxFree(*wb_ctx);
-
+	wbcCtxFree(wbctx->ctx);
 	return 0;
 }
 
 /*
- *	Create connection pool winbind context
+ *	Create winbind context
  */
-static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED fr_time_delta_t timeout)
+static int winbind_ctx_alloc(winbind_ctx_t *wbctx, UNUSED void *uctx)
 {
-	/* Needed by ERROR() */
-	module_inst_ctx_t	*mctx = MODULE_INST_CTX(talloc_get_type_abort(instance, module_instance_t));
-	struct wbcContext	**wb_ctx;
-
-	wb_ctx = talloc_zero(ctx, struct wbcContext *);
-	*wb_ctx = wbcCtxCreate();
-
-	if (*wb_ctx == NULL) {
-		ERROR("failed to create winbind context");
-		talloc_free(wb_ctx);
-		return NULL;
+	wbctx->ctx = wbcCtxCreate();
+	if (!wbctx->ctx) {
+		fr_strerror_printf("Unable to create winbind context");
+		return -1;
 	}
-
-	talloc_set_destructor(wb_ctx, _mod_conn_free);
-
-	return *wb_ctx;
+	talloc_set_destructor(wbctx, _mod_ctx_free);
+	return 0;
 }
 #endif
 
@@ -842,6 +819,15 @@ static int write_all(int fd, char const *buf, size_t len) {
 		rv = write(fd, buf+done, len-done);
 		if (rv <= 0)
 			break;
+
+#ifdef STATIC_ANALYZER
+		/*
+		 *	Coverity doesn't appear to know the limits on the
+		 *	return value of write() - so beleives an overflow can happen
+		 */
+		if (rv > (len - done)) break;
+#endif
+
 		done += rv;
 	}
 	rv = write(fd, "\n", 1);
@@ -1065,24 +1051,17 @@ ntlm_auth_err:
  *	authentication is in one place, and we can perhaps later replace
  *	it with code to call winbindd, or something similar.
  */
-static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst,
-						      request_t *request,
-						      fr_pair_t *password,
-						      uint8_t const *challenge,
-						      uint8_t const *response,
-						      uint8_t nthashhash[static NT_DIGEST_LENGTH],
-						      MSCHAP_AUTH_METHOD method,
-#ifdef WITH_AUTH_WINBIND
-						      mschap_auth_call_env_t *env_data)
-#else
-						      UNUSED mschap_auth_call_env_t *env_data)
-#endif
+static int CC_HINT(nonnull) do_mschap(rlm_mschap_t const *inst, request_t *request,
+				      mschap_auth_ctx_t *auth_ctx,
+				      uint8_t const *challenge, uint8_t const *response,
+				      uint8_t nthashhash[static NT_DIGEST_LENGTH])
 {
-	uint8_t	calculated[24];
+	uint8_t		calculated[24];
+	fr_pair_t	*password = auth_ctx->nt_password;
 
 	memset(nthashhash, 0, NT_DIGEST_LENGTH);
 
-	switch (method) {
+	switch (auth_ctx->method) {
 	case AUTH_INTERNAL:
 	case AUTH_AUTO:
 	/*
@@ -1093,7 +1072,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst,
 		 *	No password: can't do authentication.
 		 */
 		if (!password) {
-			if (method == AUTH_AUTO) goto do_ntlm;
+			if (auth_ctx->method == AUTH_AUTO) goto do_ntlm;
 
 			REDEBUG("FAILED: No Password.NT/LM.  Cannot perform authentication");
 			return -1;
@@ -1244,11 +1223,11 @@ static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst,
 	/*
 	 *	Process auth via the wbclient library
 	 */
-		return do_auth_wbclient(inst, request, challenge, response, nthashhash, env_data);
+		return do_auth_wbclient(inst, request, challenge, response, nthashhash, auth_ctx);
 #endif
 	default:
 		/* We should never reach this line */
-		RERROR("Internal error: Unknown mschap auth method (%d)", method);
+		RERROR("Internal error: Unknown mschap auth method (%d)", auth_ctx->method);
 		return -1;
 	}
 
@@ -1365,7 +1344,7 @@ static void mppe_chap2_gen_keys128(uint8_t const *nt_hashhash, uint8_t const *re
 
 	/*
 	 *	dictionary.microsoft defines these attributes as
-	 *	'encrypt=2'.  The functions in src/lib/radius.c will
+	 *	'encrypt=Tunnel-Password'.  The functions in src/lib/radius.c will
 	 *	take care of encrypting/decrypting them as appropriate,
 	 *	so that we don't have to.
 	 */
@@ -1732,20 +1711,15 @@ static int mschap_cpw_prepare(request_t *request, mschap_auth_ctx_t *auth_ctx)
 	return 0;
 }
 
-static CC_HINT(nonnull(1,2,3,4,5,8,9)) unlang_action_t mschap_process_response(rlm_rcode_t *p_result,
-									       int *mschap_version,
-									       uint8_t nthashhash[static NT_DIGEST_LENGTH],
-									       rlm_mschap_t const *inst,
-									       request_t *request,
-									       fr_pair_t *smb_ctrl,
-									       fr_pair_t *nt_password,
-									       fr_pair_t *challenge,
-									       fr_pair_t *response,
-									       MSCHAP_AUTH_METHOD method,
-									       mschap_auth_call_env_t *env_data)
+static CC_HINT(nonnull) unlang_action_t mschap_process_response(rlm_rcode_t *p_result, int *mschap_version,
+								uint8_t nthashhash[static NT_DIGEST_LENGTH],
+								rlm_mschap_t const *inst, request_t *request,
+								mschap_auth_ctx_t *auth_ctx,
+								fr_pair_t *challenge, fr_pair_t *response)
 {
 	int			offset;
 	rlm_rcode_t		mschap_result;
+	mschap_auth_call_env_t	*env_data = auth_ctx->env_data;
 
 	*mschap_version = 1;
 
@@ -1781,166 +1755,159 @@ static CC_HINT(nonnull(1,2,3,4,5,8,9)) unlang_action_t mschap_process_response(r
 	/*
 	 *	Do the MS-CHAP authentication.
 	 */
-	mschap_result = do_mschap(inst, request, nt_password, challenge->vp_octets,
-				  response->vp_octets + offset, nthashhash, method, env_data);
+	mschap_result = do_mschap(inst, request, auth_ctx, challenge->vp_octets, response->vp_octets + offset, nthashhash);
 
 	/*
 	 *	Check for errors, and add MSCHAP-Error if necessary.
 	 */
-	return mschap_error(p_result, inst, request, *response->vp_octets, mschap_result, *mschap_version, smb_ctrl, env_data);
+	return mschap_error(p_result, inst, request, *response->vp_octets, mschap_result, *mschap_version, auth_ctx->smb_ctrl, env_data);
 }
 
-static unlang_action_t CC_HINT(nonnull(1,2,3,4,5,8,9)) mschap_process_v2_response(rlm_rcode_t *p_result,
-										  int *mschap_version,
-									    	  uint8_t nthashhash[static NT_DIGEST_LENGTH],
-									    	  rlm_mschap_t const *inst,
-									    	  request_t *request,
-									    	  fr_pair_t *smb_ctrl,
-									   	  fr_pair_t *nt_password,
-									    	  fr_pair_t *challenge,
-									    	  fr_pair_t *response,
-									    	  MSCHAP_AUTH_METHOD method,
-										  mschap_auth_call_env_t *env_data)
+static unlang_action_t CC_HINT(nonnull) mschap_process_v2_response(rlm_rcode_t *p_result, int *mschap_version,
+								   uint8_t nthashhash[static NT_DIGEST_LENGTH],
+								   rlm_mschap_t const *inst, request_t *request,
+								   mschap_auth_ctx_t *auth_ctx,
+								   fr_pair_t *challenge, fr_pair_t *response)
 {
-		uint8_t		mschap_challenge[16];
-		fr_pair_t	*user_name, *name_vp, *response_name, *peer_challenge_attr;
-		uint8_t const	*peer_challenge;
-		char const	*username_str;
-		size_t		username_len;
-		int		mschap_result;
-		rlm_rcode_t	rcode;
-		char		msch2resp[42];
+	uint8_t		mschap_challenge[16];
+	fr_pair_t	*user_name, *name_vp, *response_name, *peer_challenge_attr;
+	uint8_t const	*peer_challenge;
+	char const	*username_str;
+	size_t		username_len;
+	int		mschap_result;
+	rlm_rcode_t	rcode;
+	char		msch2resp[42];
+	mschap_auth_call_env_t	*env_data = auth_ctx->env_data;
 
-		*mschap_version = 2;
+	*mschap_version = 2;
 
-		RDEBUG2("Processing MS-CHAPv2 response");
+	RDEBUG2("Processing MS-CHAPv2 response");
 
-		/*
-		 *	MS-CHAPv2 challenges are 16 octets.
-		 */
-		if (challenge->vp_length < 16) {
-			REDEBUG("%s has the wrong format", env_data->chap_challenge->name);
-			RETURN_MODULE_INVALID;
-		}
+	/*
+	 *	MS-CHAPv2 challenges are 16 octets.
+	 */
+	if (challenge->vp_length < 16) {
+		REDEBUG("%s has the wrong format", env_data->chap_challenge->name);
+		RETURN_MODULE_INVALID;
+	}
 
-		/*
-		 *	Responses are 50 octets.
-		 */
-		if (response->vp_length < 50) {
-			REDEBUG("%s has the wrong format", env_data->chap2_response->name);
-			RETURN_MODULE_INVALID;
-		}
+	/*
+	 *	Responses are 50 octets.
+	 */
+	if (response->vp_length < 50) {
+		REDEBUG("%s has the wrong format", env_data->chap2_response->name);
+		RETURN_MODULE_INVALID;
+	}
 
-		/*
-		 *	We also require a User-Name
-		 */
-		user_name = mschap_identity_find(request, tmpl_attr_tail_da(env_data->username));
-		if (!user_name) RETURN_MODULE_FAIL;
+	/*
+	 *	We also require a User-Name
+	 */
+	user_name = mschap_identity_find(request, tmpl_attr_tail_da(env_data->username));
+	if (!user_name) RETURN_MODULE_FAIL;
 
-		/*
-		 *      Check for MS-CHAP-User-Name and if found, use it
-		 *      to construct the MSCHAPv1 challenge.  This is
-		 *      set by rlm_eap_mschap to the MS-CHAP Response
-		 *      packet Name field.
-		 *
-		 *	We prefer this to the User-Name in the
-		 *	packet.
-		 */
-		response_name = fr_pair_find_by_da(&request->request_pairs, NULL, attr_ms_chap_user_name);
-		name_vp = response_name ? response_name : user_name;
+	/*
+	 *      Check for MS-CHAP-User-Name and if found, use it
+	 *      to construct the MSCHAPv1 challenge.  This is
+	 *      set by rlm_eap_mschap to the MS-CHAP Response
+	 *      packet Name field.
+	 *
+	 *	We prefer this to the User-Name in the
+	 *	packet.
+	 */
+	response_name = fr_pair_find_by_da(&request->request_pairs, NULL, attr_ms_chap_user_name);
+	name_vp = response_name ? response_name : user_name;
 
-		/*
-		 *	with_ntdomain_hack moved here, too.
-		 */
-		if ((username_str = strchr(name_vp->vp_strvalue, '\\')) != NULL) {
-			if (inst->with_ntdomain_hack) {
-				username_str++;
-			} else {
-				RWDEBUG2("NT Domain delimiter found, should 'with_ntdomain_hack' be enabled?");
-				username_str = name_vp->vp_strvalue;
-			}
+	/*
+	 *	with_ntdomain_hack moved here, too.
+	 */
+	if ((username_str = strchr(name_vp->vp_strvalue, '\\')) != NULL) {
+		if (inst->with_ntdomain_hack) {
+			username_str++;
 		} else {
+			RWDEBUG2("NT Domain delimiter found, should 'with_ntdomain_hack' be enabled?");
 			username_str = name_vp->vp_strvalue;
 		}
-		username_len = name_vp->vp_length - (username_str - name_vp->vp_strvalue);
+	} else {
+		username_str = name_vp->vp_strvalue;
+	}
+	username_len = name_vp->vp_length - (username_str - name_vp->vp_strvalue);
 
-		if (response_name && ((user_name->vp_length != response_name->vp_length) ||
-		    (strncasecmp(user_name->vp_strvalue, response_name->vp_strvalue, user_name->vp_length) != 0))) {
-			RWDEBUG("%pP is not the same as %pP from EAP-MSCHAPv2", user_name, response_name);
-		}
+	if (response_name && ((user_name->vp_length != response_name->vp_length) ||
+	    (strncasecmp(user_name->vp_strvalue, response_name->vp_strvalue, user_name->vp_length) != 0))) {
+		RWDEBUG("%pP is not the same as %pP from EAP-MSCHAPv2", user_name, response_name);
+	}
 
 #ifdef __APPLE__
-		/*
-		 *  No "known good" Password.NT attribute.  Try to do
-		 *  OpenDirectory authentication.
-		 *
-		 *  If OD determines the user is an AD user it will return noop, which
-		 *  indicates the auth process should continue directly to AD.
-		 *  Otherwise OD will determine auth success/fail.
-		 */
-		if (!nt_password && inst->open_directory) {
-			RDEBUG2("No Password.NT available. Trying OpenDirectory Authentication");
-			od_mschap_auth(&rcode, request, challenge, user_name, env_data);
-			if (rcode != RLM_MODULE_NOOP) RETURN_MODULE_RCODE(rcode);
-		}
+	/*
+	 *  No "known good" Password.NT attribute.  Try to do
+	 *  OpenDirectory authentication.
+	 *
+	 *  If OD determines the user is an AD user it will return noop, which
+	 *  indicates the auth process should continue directly to AD.
+	 *  Otherwise OD will determine auth success/fail.
+	 */
+	if (!auth_ctx->nt_password && inst->open_directory) {
+		RDEBUG2("No Password.NT available. Trying OpenDirectory Authentication");
+		od_mschap_auth(&rcode, request, challenge, user_name, env_data);
+		if (rcode != RLM_MODULE_NOOP) RETURN_MODULE_RCODE(rcode);
+	}
 #endif
-		peer_challenge = response->vp_octets + 2;
+	peer_challenge = response->vp_octets + 2;
 
-		peer_challenge_attr = fr_pair_find_by_da(&request->control_pairs, NULL, attr_ms_chap_peer_challenge);
-		if (peer_challenge_attr) {
-			RDEBUG2("Overriding peer challenge");
-			peer_challenge = peer_challenge_attr->vp_octets;
-		}
+	peer_challenge_attr = fr_pair_find_by_da(&request->control_pairs, NULL, attr_ms_chap_peer_challenge);
+	if (peer_challenge_attr) {
+		RDEBUG2("Overriding peer challenge");
+		peer_challenge = peer_challenge_attr->vp_octets;
+	}
 
-		/*
-		 *	The old "mschapv2" function has been moved to
-		 *	here.
-		 *
-		 *	MS-CHAPv2 takes some additional data to create an
-		 *	MS-CHAPv1 challenge, and then does MS-CHAPv1.
-		 */
-		RDEBUG2("Creating challenge with username \"%pV\"",
-			fr_box_strvalue_len(username_str, username_len));
-		mschap_challenge_hash(mschap_challenge,		/* resulting challenge */
-				      peer_challenge,			/* peer challenge */
-				      challenge->vp_octets,		/* our challenge */
-				      username_str, username_len);	/* user name */
+	/*
+	 *	The old "mschapv2" function has been moved to
+	 *	here.
+	 *
+	 *	MS-CHAPv2 takes some additional data to create an
+	 *	MS-CHAPv1 challenge, and then does MS-CHAPv1.
+	 */
+	RDEBUG2("Creating challenge with username \"%pV\"",
+		fr_box_strvalue_len(username_str, username_len));
+	mschap_challenge_hash(mschap_challenge,		/* resulting challenge */
+			      peer_challenge,			/* peer challenge */
+			      challenge->vp_octets,		/* our challenge */
+			      username_str, username_len);	/* user name */
 
-		mschap_result = do_mschap(inst, request, nt_password, mschap_challenge,
-					  response->vp_octets + 26, nthashhash, method, env_data);
+	mschap_result = do_mschap(inst, request, auth_ctx, mschap_challenge, response->vp_octets + 26, nthashhash);
 
-		/*
-		 *	Check for errors, and add MSCHAP-Error if necessary.
-		 */
-		mschap_error(&rcode, inst, request, *response->vp_octets,
-			     mschap_result, *mschap_version, smb_ctrl, env_data);
-		if (rcode != RLM_MODULE_OK) RETURN_MODULE_RCODE(rcode);
+	/*
+	 *	Check for errors, and add MSCHAP-Error if necessary.
+	 */
+	mschap_error(&rcode, inst, request, *response->vp_octets,
+		     mschap_result, *mschap_version, auth_ctx->smb_ctrl, env_data);
+	if (rcode != RLM_MODULE_OK) RETURN_MODULE_RCODE(rcode);
 
 #ifdef WITH_AUTH_WINBIND
-		if (inst->wb_retry_with_normalised_username) {
-			response_name = fr_pair_find_by_da(&request->request_pairs, NULL, attr_ms_chap_user_name);
-			if (response_name) {
-				if (strcmp(username_str, response_name->vp_strvalue)) {
-					RDEBUG2("Normalising username %pV -> %pV",
-						fr_box_strvalue_len(username_str, username_len),
-						&response_name->data);
-					username_str = response_name->vp_strvalue;
-				}
+	if (inst->wb_retry_with_normalised_username) {
+		response_name = fr_pair_find_by_da(&request->request_pairs, NULL, attr_ms_chap_user_name);
+		if (response_name) {
+			if (strcmp(username_str, response_name->vp_strvalue)) {
+				RDEBUG2("Normalising username %pV -> %pV",
+					fr_box_strvalue_len(username_str, username_len),
+					&response_name->data);
+				username_str = response_name->vp_strvalue;
 			}
 		}
+	}
 #endif
 
-		mschap_auth_response(username_str,		/* without the domain */
-				     username_len,		/* Length of username str */
-				     nthashhash,		/* nt-hash-hash */
-				     response->vp_octets + 26,	/* peer response */
-				     peer_challenge,		/* peer challenge */
-				     challenge->vp_octets,	/* our challenge */
-				     msch2resp);		/* calculated MPPE key */
-		if (env_data->chap2_success) mschap_add_reply(request, *response->vp_octets,
-							      tmpl_attr_tail_da(env_data->chap2_success), msch2resp, 42);
+	mschap_auth_response(username_str,		/* without the domain */
+			     username_len,		/* Length of username str */
+			     nthashhash,		/* nt-hash-hash */
+			     response->vp_octets + 26,	/* peer response */
+			     peer_challenge,		/* peer challenge */
+			     challenge->vp_octets,	/* our challenge */
+			     msch2resp);		/* calculated MPPE key */
+	if (env_data->chap2_success) mschap_add_reply(request, *response->vp_octets,
+						      tmpl_attr_tail_da(env_data->chap2_success), msch2resp, 42);
 
-		RETURN_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /** Complete mschap authentication after any tmpls have been expanded.
@@ -2022,17 +1989,15 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 		mschap_process_response(&rcode,
 					&mschap_version, nthashhash,
 					inst, request,
-					auth_ctx->smb_ctrl, auth_ctx->nt_password,
-					challenge, response,
-					auth_ctx->method, auth_ctx->env_data);
+					auth_ctx,
+					challenge, response);
 		if (rcode != RLM_MODULE_OK) goto finish;
 	} else if ((response = fr_pair_find_by_da_nested(&parent->vp_group, NULL, tmpl_attr_tail_da(env_data->chap2_response)))) {
 		mschap_process_v2_response(&rcode,
 					   &mschap_version, nthashhash,
 					   inst, request,
-					   auth_ctx->smb_ctrl, auth_ctx->nt_password,
-					   challenge, response,
-					   auth_ctx->method, auth_ctx->env_data);
+					   auth_ctx,
+					   challenge, response);
 		if (rcode != RLM_MODULE_OK) goto finish;
 	} else {		/* Neither CHAPv1 or CHAPv2 response: die */
 		REDEBUG("&control.Auth-Type = %s set for a request that does not contain &%s or &%s attributes",
@@ -2266,6 +2231,9 @@ static int mschap_new_pass_decrypt(request_t *request, mschap_auth_ctx_t *auth_c
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_mschap_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_mschap_t);
+#ifdef WITH_AUTH_WINBIND
+	rlm_mschap_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_mschap_thread_t);
+#endif
 	mschap_auth_call_env_t	*env_data = talloc_get_type_abort(mctx->env_data, mschap_auth_call_env_t);
 	mschap_auth_ctx_t	*auth_ctx;
 
@@ -2280,6 +2248,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		.inst = inst,
 		.method = inst->method,
 		.env_data = env_data,
+#ifdef WITH_AUTH_WINBIND
+		.t = t,
+#endif
 	};
 
 	/*
@@ -2407,12 +2378,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	if (inst->wb_username) {
 #ifdef WITH_AUTH_WINBIND
 		inst->method = AUTH_WBCLIENT;
-
-		inst->wb_pool = module_rlm_connection_pool_init(conf, UNCONST(module_instance_t *, mctx->mi), mod_conn_create, NULL, NULL, NULL, NULL);
-		if (!inst->wb_pool) {
-			cf_log_err(conf, "Unable to initialise winbind connection pool");
-			return -1;
-		}
 #else
 		cf_log_err(conf, "'winbind' auth not enabled at compiled time");
 		return -1;
@@ -2499,24 +2464,28 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-/*
- *	Tidy up instance
- */
-static int mod_detach(
-#ifndef WITH_AUTH_WINBIND
-		      UNUSED
-#endif
-		      module_detach_ctx_t const *mctx)
-{
 #ifdef WITH_AUTH_WINBIND
-	rlm_mschap_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_mschap_t);
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_mschap_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_mschap_t);
+	rlm_mschap_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_mschap_thread_t);
 
-	fr_pool_free(inst->wb_pool);
-#endif
+	t->inst = inst;
+	if (!(t->slab = mschap_slab_list_alloc(t, mctx->el, &inst->reuse, winbind_ctx_alloc, NULL, NULL, false, false))) {
+		ERROR("Connection handle pool instantiation failed");
+		return -1;
+	}
 
 	return 0;
 }
 
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_mschap_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_mschap_thread_t);
+	talloc_free(t->slab);
+	return 0;
+}
+#endif
 
 extern module_rlm_t rlm_mschap;
 module_rlm_t rlm_mschap = {
@@ -2527,7 +2496,11 @@ module_rlm_t rlm_mschap = {
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate,
-		.detach		= mod_detach
+#ifdef WITH_AUTH_WINBIND
+		.thread_inst_size	= sizeof(rlm_mschap_thread_t),
+		.thread_instantiate	= mod_thread_instantiate,
+		.thread_detach		= mod_thread_detach
+#endif
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){

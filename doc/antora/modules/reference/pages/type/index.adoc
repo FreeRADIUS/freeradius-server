@@ -1,7 +1,7 @@
 = Data Types
 
 Unlang supports a number of data types. These data types are used in
-conditional expressions or when assigning a value to an attribute.
+dictionaries, expressions or when assigning a value to an attribute.
 
 == Using Data Types
 

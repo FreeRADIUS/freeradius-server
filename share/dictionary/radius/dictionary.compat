@@ -9,26 +9,24 @@
 #
 
 #  This has been removed.  Too many people get it wrong.
-#ATTRIBUTE	Password				2	string	encrypt=1
-ATTRIBUTE	Client-Id				4	ipaddr
-ATTRIBUTE	Client-Port-Id				5	integer
-ATTRIBUTE	User-Service-Type			6	integer
-ATTRIBUTE	Framed-Address				8	ipaddr
-ATTRIBUTE	Framed-Netmask				9	ipaddr
-ATTRIBUTE	Framed-Filter-Id			11	string
-ATTRIBUTE	Login-Host				14	ipaddr
-ATTRIBUTE	Login-Port				16	integer
+#ATTRIBUTE	Password				2	string	encrypt=User-Password
+ALIAS		Client-Id				NAS-IP-Address
+ALIAS		Client-Port-Id				NAS-Port
+ALIAS		Framed-Address				Framed-IP-Address
+ALIAS		Framed-Netmask				Framed-IP-Netmask
+ALIAS		Framed-Filter-Id			Filter-ID
+ALIAS		Login-Host				Login-IP-Host
+ALIAS		Login-Port				Login-TCP-Port
 ATTRIBUTE	Old-Password				17	string
-ATTRIBUTE	Port-Message				18	string
-ATTRIBUTE	Dialback-No				19	string
-ATTRIBUTE	Dialback-Name				20	string
-ATTRIBUTE	Challenge-State				24	octets
+ALIAS		Port-Message				Reply-Message
+ALIAS		Dialback-No				Callback-Number
+ALIAS		Dialback-Name				Callback-Id
+ALIAS		Challenge-State				State
 
-ATTRIBUTE	Framed-Compression			13	integer
+# Other enumeration names for hte same integers
 VALUE	Framed-Compression		Van-Jacobsen-TCP-IP	1
 VALUE	Framed-Compression		VJ-TCP-IP		1
 
-ATTRIBUTE	Service-Type				6	integer
 VALUE	Service-Type			Shell-User		6
 VALUE	Service-Type			Dialback-Login-User	3
 VALUE	Service-Type			Dialback-Framed-User	4
@@ -37,10 +35,11 @@ VALUE	Service-Type			Dialout-Framed-User	5
 #
 #	For compatibility with MERIT users files.
 #
-ATTRIBUTE	Login-Callback-Number			19	string
-ATTRIBUTE	Framed-Callback-Id			20	string
-ATTRIBUTE	Client-Port-DNIS			30	string
-ATTRIBUTE	Caller-ID				31	string
+ALIAS	Login-Callback-Number				Callback-Number
+ALIAS	Framed-Callback-Id				Callback-Id
+ALIAS	Client-Port-DNIS				Called-Station-ID
+ALIAS	Caller-ID					Calling-Station-Id
+
 VALUE	Service-Type			Login			1
 VALUE	Service-Type			Framed			2
 VALUE	Service-Type			Callback-Login		3
@@ -48,3 +47,5 @@ VALUE	Service-Type			Callback-Framed		4
 VALUE	Service-Type			Exec-User		7
 
 VALUE	Acct-Status-Type		Alive			3
+
+ALIAS	User-Service-Type			Service-Type

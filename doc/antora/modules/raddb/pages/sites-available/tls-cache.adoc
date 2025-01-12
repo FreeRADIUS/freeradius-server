@@ -14,6 +14,19 @@ the following attributes are also created in the session-state list:
 
 
 
+This section can be run to verify a client certificate if
+additional checks need to be performed beyond standard
+checks verification against a trust chain, CRLs and OCSP.
+
+Attributes extracted from the certificates forming the
+client certificate chain will be in the session state list.
+
+Returning 'ok', 'updated' or 'noop' will cause the verification
+to succeed.  Other return codes will cause the verification
+to fail.
+
+
+
 This section is run whenever the server needs to read an
 entry from the TLS session cache.
 
@@ -95,16 +108,19 @@ and will just cause the server to emit a warning.
 #	       TLS-Client-Cert-Common-Name
 #	       TLS-Client-Cert-Subject-Alt-Name-Email
 server tls-cache {
-	namespace = tls_cache
-	load tls-session {
+	namespace = tls
+	verify certificate {
+		ok
+	}
+	load session {
 		&control.Cache-Allow-Insert := no
 		cache_tls_session
 	}
-	store tls-session {
+	store session {
 		&control.Cache-TTL := 0
 		cache_tls_session
 	}
-	clear tls-session {
+	clear session {
 		&control.Cache-TTL := 0
 		&control.Cache-Allow-Insert := no
 		cache_tls_session

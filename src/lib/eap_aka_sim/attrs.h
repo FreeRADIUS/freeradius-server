@@ -91,3 +91,5 @@ extern HIDDEN fr_dict_attr_t const *attr_sim_sqn;
 extern fr_value_box_t const *enum_eap_type_sim;
 extern fr_value_box_t const *enum_eap_type_aka;
 extern fr_value_box_t const *enum_eap_type_aka_prime;
+
+extern HIDDEN fr_value_box_t const *enum_kdf_prime_with_ck_prime_ik_prime;

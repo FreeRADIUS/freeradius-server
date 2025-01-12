@@ -141,6 +141,13 @@ a limited range should set this to `yes`.
 
 
 
+fsync::
+
+Synchronise data written with the file system after every
+write, returning fail when the operation fails.
+
+
+
 The connection pool for TCP and Unix socket connections.
 
 
@@ -386,6 +393,7 @@ linelog {
 		permissions = 0600
 #		group = ${security.group}
 		escape_filenames = no
+		fsync = no
 	}
 	pool {
 		start = 0

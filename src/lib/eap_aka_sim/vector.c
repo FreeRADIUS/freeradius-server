@@ -49,7 +49,7 @@ static int vector_opc_from_op(request_t *request, uint8_t const **out, uint8_t o
 	opc_vp = fr_pair_find_by_da(list, NULL, attr_sim_opc);
 	if (opc_vp) {
 		if (opc_vp->vp_length != MILENAGE_OPC_SIZE) {
-			REDEBUG("&control.%s has incorrect length, expected %u bytes got %zu bytes",
+			REDEBUG("&control.%s has incorrect length, expected %d bytes got %zu bytes",
 				attr_sim_opc->name, MILENAGE_OPC_SIZE, opc_vp->vp_length);
 			return -1;
 		}
@@ -60,7 +60,7 @@ static int vector_opc_from_op(request_t *request, uint8_t const **out, uint8_t o
 	op_vp = fr_pair_find_by_da(list, NULL, attr_sim_op);
 	if (op_vp) {
 		if (op_vp->vp_length != MILENAGE_OP_SIZE) {
-			REDEBUG("&control.%s has incorrect length, expected %u bytes got %zu bytes",
+			REDEBUG("&control.%s has incorrect length, expected %d bytes got %zu bytes",
 				attr_sim_op->name, MILENAGE_OP_SIZE, op_vp->vp_length);
 			return -1;
 		}
@@ -160,7 +160,7 @@ static int vector_gsm_from_ki(request_t *request, fr_pair_list_t *vps, int idx, 
 		break;
 
 	default:
-		REDEBUG("Unknown/unsupported algorithm %i", version);
+		REDEBUG("Unknown/unsupported algorithm %u", version);
 		return -1;
 	}
 
@@ -432,7 +432,7 @@ static int vector_umts_from_ki(request_t *request, fr_pair_list_t *vps, fr_aka_s
 		return -1;
 
 	default:
-		REDEBUG("Unknown/unsupported algorithm %i", version);
+		REDEBUG("Unknown/unsupported algorithm %u", version);
 		return -1;
 	}
 

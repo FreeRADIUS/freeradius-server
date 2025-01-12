@@ -37,7 +37,7 @@ VALUE	AH-HM-Admin-Group-Id		Read-Write-Admin	2
 # Beginning of HiveOS VSAs
 
 ATTRIBUTE	Extreme-User-Vlan			1	integer
-ATTRIBUTE	Extreme-Libsip-Patron-Info		3	octets encrypt=2
+ATTRIBUTE	Extreme-Libsip-Patron-Info		3	octets encrypt=Tunnel-Password
 ATTRIBUTE	Extreme-Libsip-Action			4	integer
 ATTRIBUTE	Extreme-Libsip-Additional-Message	5	octets
 ATTRIBUTE	Extreme-User-Profile-Attribute		6	integer

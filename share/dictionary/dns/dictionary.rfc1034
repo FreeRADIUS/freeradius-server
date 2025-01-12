@@ -168,4 +168,4 @@ ATTRIBUTE	Padding					.12	octets
 ATTRIBUTE	Name-Server				4	struct	clone=Resource-Record
 
 #  additional "glue" RR, or OPT RR for peer signalling
-ATTRIBUTE	Additional-Record			4	struct	clone=Resource-Record
+ATTRIBUTE	Additional-Record			5	struct	clone=Resource-Record

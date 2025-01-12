@@ -39,6 +39,13 @@ what you're doing. Even if nothing is configured below, the
 server may still NAK legitimate responses from clients.
 This is also the destination port when sending to a giaddr.
 
+The port to which server -> client messages should be sent.
+This should be 68 on a production network, though other ports
+can be useful for testing.
+
+If this is not set then server -> client replies will be sent
+to the source port of the client -> server request.
+
 Interface name we are listening on. See comments above.
 
 source IP address for unicast packets sent by the
@@ -50,7 +57,6 @@ address:
 
      src_ipaddr
      ipaddr
-     reply.Server-IP-Address
      reply.Server-Identifier
 
 
@@ -282,6 +288,7 @@ listen {
 	udp {
 		ipaddr = 127.0.0.1
 		port = 6700
+		client_port = 68
 #		interface = lo0
 #		src_ipaddr = 127.0.0.1
 		broadcast = no
@@ -299,6 +306,7 @@ recv Discover {
 #	ok
 }
 recv Request {
+     files_dhcp
 	&control.Server-Identifier = 192.0.2.1
 	if (&request.Server-Identifier && \
 	    &request.Server-Identifier != &control.Server-Identifier) {

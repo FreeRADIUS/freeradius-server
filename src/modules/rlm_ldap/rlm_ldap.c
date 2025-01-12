@@ -66,8 +66,14 @@ typedef struct {
 } ldap_auth_call_env_t;
 
 typedef struct {
+	char const	*attr;
+	fr_token_t	op;
+	tmpl_t const	*tmpl;
+} ldap_mod_tmpl_t;
+typedef struct {
 	fr_value_box_t	user_base;
 	fr_value_box_t	user_filter;
+	ldap_mod_tmpl_t	**mod;
 } ldap_usermod_call_env_t;
 
 /** Call environment used in the profile xlat
@@ -78,6 +84,7 @@ typedef struct {
 } ldap_xlat_profile_call_env_t;
 
 static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_ctx_t const *cec, call_env_parser_t const *rule);
+static int ldap_mod_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_ctx_t const *cec, call_env_parser_t const *rule);
 
 static int ldap_group_filter_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule);
 
@@ -130,14 +137,6 @@ static conf_parser_t group_config[] = {
 	{ FR_CONF_OFFSET("group_attribute", rlm_ldap_t, group.attribute) },
 	{ FR_CONF_OFFSET("allow_dangling_group_ref", rlm_ldap_t, group.allow_dangling_refs), .dflt = "no" },
 	{ FR_CONF_OFFSET("skip_on_suspend", rlm_ldap_t, group.skip_on_suspend), .dflt = "yes"},
-	CONF_PARSER_TERMINATOR
-};
-
-/*
- *	Reference for accounting updates
- */
-static const conf_parser_t acct_section_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("reference", CONF_FLAG_XLAT, ldap_acct_section_t, reference), .dflt = "." },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -248,18 +247,20 @@ static const call_env_method_t authorize_method_env = {
 	}
 };
 
-static const call_env_method_t usermod_method_env = {
-	FR_CALL_ENV_METHOD_OUT(ldap_usermod_call_env_t),
-	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_SUBSECTION("user", NULL, CALL_ENV_FLAG_REQUIRED,
-					 ((call_env_parser_t[]) {
-						USER_CALL_ENV_COMMON(ldap_usermod_call_env_t),
-						CALL_ENV_TERMINATOR
-					 })) },
+#define USERMOD_ENV(_section) static const call_env_method_t _section ## _usermod_method_env = { \
+	FR_CALL_ENV_METHOD_OUT(ldap_usermod_call_env_t), \
+	.env = (call_env_parser_t[]) { \
+		{ FR_CALL_ENV_SUBSECTION("user", NULL, CALL_ENV_FLAG_REQUIRED, \
+					 ((call_env_parser_t[]) { \
+						USER_CALL_ENV_COMMON(ldap_usermod_call_env_t), CALL_ENV_TERMINATOR \
+					 })) }, \
+		{ FR_CALL_ENV_SUBSECTION_FUNC(STRINGIFY(_section), CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION | CALL_ENV_FLAG_PARSE_MISSING, ldap_mod_section_parse) }, \
+		CALL_ENV_TERMINATOR \
+	} \
+}
 
-		CALL_ENV_TERMINATOR
-	}
-};
+USERMOD_ENV(accounting);
+USERMOD_ENV(send);
 
 static const call_env_method_t xlat_memberof_method_env = {
 	FR_CALL_ENV_METHOD_OUT(ldap_xlat_memberof_call_env_t),
@@ -358,11 +359,14 @@ typedef struct {
 	rlm_ldap_t const	*inst;
 	ldap_usermod_call_env_t	*call_env;
 	char const		*dn;
-	char			*passed[LDAP_MAX_ATTRMAP * 2];
-	LDAPMod			*mod_p[LDAP_MAX_ATTRMAP + 1];
-	LDAPMod			mod_s[LDAP_MAX_ATTRMAP];
+	LDAPMod			**mod_p;
+	LDAPMod			*mod_s;
 	fr_ldap_thread_trunk_t	*ttrunk;
 	fr_ldap_query_t		*query;
+	fr_value_box_list_t	expanded;
+	size_t			num_mods;
+	size_t			current_mod;
+	size_t			expanded_mods;
 } ldap_user_modify_ctx_t;
 
 /** Holds state of in progress LDAP map
@@ -1963,14 +1967,149 @@ static unlang_action_t user_modify_final(rlm_rcode_t *p_result, UNUSED int *prio
 	RETURN_MODULE_RCODE(rcode);
 }
 
-/** Take the retrieved user DN and launch the async modification.
+static unlang_action_t user_modify_mod_build_resume(rlm_rcode_t *p_result, UNUSED int *priority,
+						    request_t *request, void *uctx)
+{
+	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(uctx, ldap_user_modify_ctx_t);
+	ldap_usermod_call_env_t	*call_env = usermod_ctx->call_env;
+	LDAPMod			**modify;
+	ldap_mod_tmpl_t		*mod;
+	fr_value_box_t		*vb = NULL;
+	int			mod_no = usermod_ctx->expanded_mods, i = 0;
+	struct berval		**value_refs;
+	struct berval		*values;
+
+	mod = call_env->mod[usermod_ctx->current_mod];
+
+	/*
+	 *	If the tmpl produced no boxes, skip
+	 */
+	if ((mod->op != T_OP_CMP_FALSE) && (fr_value_box_list_num_elements(&usermod_ctx->expanded) == 0)) {
+		RDEBUG2("Expansion \"%s\" produced no value, skipping attribute \"%s\"", mod->tmpl->name, mod->attr);
+		goto next;
+	}
+
+	switch (mod->op) {
+	/*
+	 *	T_OP_EQ is *NOT* supported, it is impossible to
+	 *	support because of the lack of transactions in LDAP
+	 *
+	 *	To allow for binary data, all data is provided as berval which
+	 *	requires the operation to be logical ORed with LDAP_MOD_BVALUES
+	 */
+	case T_OP_ADD_EQ:
+		usermod_ctx->mod_s[mod_no].mod_op = LDAP_MOD_ADD | LDAP_MOD_BVALUES;
+		break;
+
+	case T_OP_SET:
+		usermod_ctx->mod_s[mod_no].mod_op = LDAP_MOD_REPLACE | LDAP_MOD_BVALUES;
+		break;
+
+	case T_OP_SUB_EQ:
+	case T_OP_CMP_FALSE:
+		usermod_ctx->mod_s[mod_no].mod_op = LDAP_MOD_DELETE | LDAP_MOD_BVALUES;
+		break;
+
+	case T_OP_INCRM:
+		usermod_ctx->mod_s[mod_no].mod_op = LDAP_MOD_INCREMENT | LDAP_MOD_BVALUES;
+		break;
+
+	default:
+		REDEBUG("Operator '%s' is not supported for LDAP modify operations",
+			fr_table_str_by_value(fr_tokens_table, mod->op, "<INVALID>"));
+
+		RETURN_MODULE_INVALID;
+	}
+
+	if (mod->op == T_OP_CMP_FALSE) {
+		MEM(value_refs = talloc_zero_array(usermod_ctx, struct berval *, 1));
+	} else {
+		MEM(value_refs = talloc_zero_array(usermod_ctx, struct berval *,
+						   fr_value_box_list_num_elements(&usermod_ctx->expanded) + 1));
+		MEM(values = talloc_zero_array(usermod_ctx, struct berval,
+					       fr_value_box_list_num_elements(&usermod_ctx->expanded)));
+		while ((vb = fr_value_box_list_pop_head(&usermod_ctx->expanded))) {
+			switch (vb->type) {
+			case FR_TYPE_OCTETS:
+				if (vb->vb_length == 0) continue;
+				memcpy(&values[i].bv_val, &vb->vb_octets, sizeof(values[i].bv_val));
+				values[i].bv_len = vb->vb_length;
+				break;
+
+			case FR_TYPE_STRING:
+			populate_string:
+				if (vb->vb_length == 0) continue;
+				memcpy(&values[i].bv_val, &vb->vb_strvalue, sizeof(values[i].bv_val));
+				values[i].bv_len = vb->vb_length;
+				break;
+
+			case FR_TYPE_GROUP:
+			{
+				fr_value_box_t	*vb_head = fr_value_box_list_head(&vb->vb_group);
+				if (fr_value_box_list_concat_in_place(vb_head, vb_head, &vb->vb_group, FR_TYPE_STRING,
+								      FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+					REDEBUG("Failed concattenating update value");
+					RETURN_MODULE_FAIL;
+				}
+				vb = vb_head;
+				goto populate_string;
+			}
+
+			case FR_TYPE_FIXED_SIZE:
+				if (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0) {
+					REDEBUG("Failed casting update value");
+					RETURN_MODULE_FAIL;
+				}
+				goto populate_string;
+
+			default:
+				fr_assert(0);
+
+			}
+			value_refs[i] = &values[i];
+			i++;
+		}
+		if (i == 0) {
+			RDEBUG2("Expansion \"%s\" produced zero length value, skipping attribute \"%s\"", mod->tmpl->name, mod->attr);
+			goto next;
+		}
+	}
+
+	/*
+	 *	Now everything is evaluated, set up the pointers for the LDAPMod
+	 */
+	memcpy(&(usermod_ctx->mod_s[mod_no].mod_type), &mod->attr, sizeof(usermod_ctx->mod_s[mod_no].mod_type));
+	usermod_ctx->mod_s[mod_no].mod_bvalues = value_refs;
+	usermod_ctx->mod_p[mod_no] = &usermod_ctx->mod_s[mod_no];
+
+	usermod_ctx->expanded_mods++;
+	usermod_ctx->mod_p[usermod_ctx->expanded_mods] = NULL;
+
+next:
+	usermod_ctx->current_mod++;
+	if (usermod_ctx->current_mod < usermod_ctx->num_mods) {
+		if (unlang_function_repeat_set(request, user_modify_mod_build_resume) < 0) RETURN_MODULE_FAIL;
+		if (unlang_tmpl_push(usermod_ctx, &usermod_ctx->expanded, request,
+			     usermod_ctx->call_env->mod[usermod_ctx->current_mod]->tmpl, NULL) < 0) RETURN_MODULE_FAIL;
+		return UNLANG_ACTION_PUSHED_CHILD;
+	}
+
+	modify = usermod_ctx->mod_p;
+
+	if (unlang_function_push(request, NULL, user_modify_final, user_modify_cancel, ~FR_SIGNAL_CANCEL,
+				 UNLANG_SUB_FRAME, usermod_ctx) < 0) RETURN_MODULE_FAIL;
+
+	return fr_ldap_trunk_modify(usermod_ctx, &usermod_ctx->query, request, usermod_ctx->ttrunk,
+				    usermod_ctx->dn, modify, NULL, NULL);
+}
+
+/** Take the retrieved user DN and launch the async tmpl expansion of mod_values.
  *
  */
 static unlang_action_t user_modify_resume(rlm_rcode_t *p_result, UNUSED int *priority,
 					  request_t *request, void *uctx)
 {
 	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(uctx, ldap_user_modify_ctx_t);
-	LDAPMod			**modify = usermod_ctx->mod_p;
 
 	/*
 	 *	If an LDAP search was used to find the user DN
@@ -1984,195 +2123,51 @@ static unlang_action_t user_modify_resume(rlm_rcode_t *p_result, UNUSED int *pri
 		RETURN_MODULE_FAIL;
 	}
 
-	if (unlang_function_push(request, NULL, user_modify_final, user_modify_cancel, ~FR_SIGNAL_CANCEL,
-				 UNLANG_SUB_FRAME, usermod_ctx) < 0) goto fail;
+	/*
+	 *	Allocate arrays to hold mods.  mod_p is one element longer to hold a terminating NULL entry
+	 */
+	MEM(usermod_ctx->mod_p = talloc_zero_array(usermod_ctx, LDAPMod *, usermod_ctx->num_mods + 1));
+	MEM(usermod_ctx->mod_s = talloc_array(usermod_ctx, LDAPMod, usermod_ctx->num_mods));
+	fr_value_box_list_init(&usermod_ctx->expanded);
 
-	return fr_ldap_trunk_modify(usermod_ctx, &usermod_ctx->query, request, usermod_ctx->ttrunk,
-				    usermod_ctx->dn, modify, NULL, NULL);
+	if (unlang_function_repeat_set(request, user_modify_mod_build_resume) < 0) goto fail;
+	if (unlang_tmpl_push(usermod_ctx, &usermod_ctx->expanded, request,
+			     usermod_ctx->call_env->mod[0]->tmpl, NULL) < 0) goto fail;
+
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /** Modify user's object in LDAP
  *
  * Process a modification map to update a user object in the LDAP directory.
  *
- * @param[out] p_result		the result of the modification.
- * @param[in] inst		rlm_ldap instance.
- * @param[in] request		Current request.
- * @param[in] section		that holds the map to process.
- * @param[in] call_env		Call environment.  Contains expanded base and filter to find user.
- * @return one of the RLM_MODULE_* values.
+ * The module method called in "accouting" and "send" sections.
  */
-static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
-				   ldap_acct_section_t *section, ldap_usermod_call_env_t *call_env)
+static unlang_action_t CC_HINT(nonnull) mod_modify(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
+	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_ldap_t);
+	ldap_usermod_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, ldap_usermod_call_env_t);
+
 	rlm_rcode_t		rcode = RLM_MODULE_FAIL;
 	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread(inst->mi)->data, fr_ldap_thread_t);
 	ldap_user_modify_ctx_t	*usermod_ctx = NULL;
 
-	int		total = 0, last_pass = 0;
+	size_t		num_mods = talloc_array_length(call_env->mod);
 
-	char const	*attr;
-	char const	*value;
-
-	/*
-	 *	Build our set of modifications using the update sections in
-	 *	the config.
-	 */
-	CONF_ITEM  	*ci;
-	CONF_PAIR	*cp;
-	CONF_SECTION 	*cs;
-	fr_token_t	op;
-	char		path[FR_MAX_STRING_LEN];
-
-	char		*p = path;
-
-	fr_assert(section);
+	if (num_mods == 0) RETURN_MODULE_NOOP;
 
 	/*
-	 *	Locate the update section were going to be using
+	 *	Include a talloc pool allowing for one value per modification
 	 */
-	if (section->reference[0] != '.') *p++ = '.';
-
-	if (xlat_eval(p, (sizeof(path) - (p - path)) - 1, request, section->reference, NULL, NULL) < 0) goto error;
-
-	ci = cf_reference_item(NULL, section->cs, path);
-	if (!ci) goto error;
-
-	if (!cf_item_is_section(ci)){
-		REDEBUG("Reference must resolve to a section");
-
-		goto error;
-	}
-
-	cs = cf_section_find(cf_item_to_section(ci), "update", NULL);
-	if (!cs) {
-		REDEBUG("Section must contain 'update' subsection");
-
-		goto error;
-	}
-
-	MEM(usermod_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_user_modify_ctx_t));
+	MEM(usermod_ctx = talloc_pooled_object(unlang_interpret_frame_talloc_ctx(request), ldap_user_modify_ctx_t,
+					       2 * num_mods + 2,
+					       (sizeof(struct berval) + (sizeof(struct berval *) * 2) +
+					        (sizeof(LDAPMod) + sizeof(LDAPMod *))) * num_mods));
 	*usermod_ctx = (ldap_user_modify_ctx_t) {
 		.inst = inst,
-		.call_env = call_env
+		.call_env = call_env,
+		.num_mods = num_mods
 	};
-
-	/*
-	 *	Iterate over all the pairs, building our mods array
-	 */
-	for (ci = cf_item_next(cs, NULL); ci != NULL; ci = cf_item_next(cs, ci)) {
-		bool do_xlat = false;
-
-		if (total == LDAP_MAX_ATTRMAP) {
-			REDEBUG("Modify map size exceeded");
-
-			goto error;
-		}
-
-		if (!cf_item_is_pair(ci)) {
-			REDEBUG("Entry is not in \"ldap-attribute = value\" format");
-
-			goto error;
-		}
-
-		/*
-		 *	Retrieve all the information we need about the pair
-		 */
-		cp = cf_item_to_pair(ci);
-		value = cf_pair_value(cp);
-		attr = cf_pair_attr(cp);
-		op = cf_pair_operator(cp);
-
-		if (!value || (*value == '\0')) {
-			RDEBUG2("Empty value string, skipping attribute \"%s\"", attr);
-
-			continue;
-		}
-
-		switch (cf_pair_value_quote(cp)) {
-		case T_BARE_WORD:
-		case T_SINGLE_QUOTED_STRING:
-			break;
-
-		case T_BACK_QUOTED_STRING:
-		case T_DOUBLE_QUOTED_STRING:
-			do_xlat = true;
-			break;
-
-		default:
-			fr_assert(0);
-			goto error;
-		}
-
-		if (op == T_OP_CMP_FALSE) {
-			usermod_ctx->passed[last_pass] = NULL;
-		} else if (do_xlat) {
-			char *exp = NULL;
-
-			if (xlat_aeval(usermod_ctx, &exp, request, value, NULL, NULL) <= 0) {
-				RDEBUG2("Skipping attribute \"%s\"", attr);
-				talloc_free(exp);
-
-				continue;
-			}
-
-			usermod_ctx->passed[last_pass] = exp;
-		/*
-		 *	Static strings
-		 */
-		} else {
-			memcpy(&(usermod_ctx->passed[last_pass]), &value, sizeof(usermod_ctx->passed[last_pass]));
-		}
-
-		usermod_ctx->passed[last_pass + 1] = NULL;
-		usermod_ctx->mod_s[total].mod_values = &(usermod_ctx->passed[last_pass]);
-		last_pass += 2;
-
-		switch (op) {
-		/*
-		 *  T_OP_EQ is *NOT* supported, it is impossible to
-		 *  support because of the lack of transactions in LDAP
-		 */
-		case T_OP_ADD_EQ:
-			usermod_ctx->mod_s[total].mod_op = LDAP_MOD_ADD;
-			break;
-
-		case T_OP_SET:
-			usermod_ctx->mod_s[total].mod_op = LDAP_MOD_REPLACE;
-			break;
-
-		case T_OP_SUB_EQ:
-		case T_OP_CMP_FALSE:
-			usermod_ctx->mod_s[total].mod_op = LDAP_MOD_DELETE;
-			break;
-
-		case T_OP_INCRM:
-			usermod_ctx->mod_s[total].mod_op = LDAP_MOD_INCREMENT;
-			break;
-
-		default:
-			REDEBUG("Operator '%s' is not supported for LDAP modify operations",
-				fr_table_str_by_value(fr_tokens_table, op, "<INVALID>"));
-
-			goto error;
-		}
-
-		/*
-		 *	Now we know the value is ok, copy the pointers into
-		 *	the ldapmod struct.
-		 */
-		memcpy(&(usermod_ctx->mod_s[total].mod_type), &attr, sizeof(usermod_ctx->mod_s[total].mod_type));
-
-		usermod_ctx->mod_p[total] = &(usermod_ctx->mod_s[total]);
-		total++;
-	}
-
-	if (total == 0) {
-		rcode = RLM_MODULE_NOOP;
-		goto release;
-	}
-
-	usermod_ctx->mod_p[total] = NULL;
 
 	usermod_ctx->ttrunk = fr_thread_ldap_trunk_get(thread, inst->handle_config.server,
 						       inst->handle_config.admin_identity,
@@ -2191,32 +2186,10 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 
-release:
 error:
 	TALLOC_FREE(usermod_ctx);
 	RETURN_MODULE_RCODE(rcode);
 }
-
-static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_ldap_t);
-	ldap_usermod_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, ldap_usermod_call_env_t);
-
-	if (inst->accounting) return user_modify(p_result, inst, request, inst->accounting, call_env);
-
-	RETURN_MODULE_NOOP;
-}
-
-static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_ldap_t);
-	ldap_usermod_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, ldap_usermod_call_env_t);
-
-	if (inst->postauth) return user_modify(p_result, inst, request, inst->postauth, call_env);
-
-	RETURN_MODULE_NOOP;
-}
-
 
 /** Detach from the LDAP server and cleanup internal state.
  *
@@ -2226,46 +2199,6 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	rlm_ldap_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
 
 	if (inst->user.obj_sort_ctrl) ldap_control_free(inst->user.obj_sort_ctrl);
-
-	return 0;
-}
-
-/** Parse an accounting sub section.
- *
- * Allocate a new ldap_acct_section_t and write the config data into it.
- *
- * @param[in] mctx rlm_ldap configuration.
- * @param[in] parent of the config section.
- * @param[out] config to write the sub section parameters to.
- * @return
- *	- 0 on success.
- *	- < 0 on failure.
- */
-static int parse_sub_section(module_inst_ctx_t const *mctx,
-			     CONF_SECTION *parent, ldap_acct_section_t **config,
-			     char const *name)
-{
-	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
-	CONF_SECTION 	*cs;
-
-	cs = cf_section_find(parent, name, NULL);
-	if (!cs) {
-		DEBUG2("rlm_ldap (%s) - Couldn't find configuration for %s, will return NOOP for calls "
-		       "from this section", mctx->mi->name, name);
-
-		return 0;
-	}
-
-	if (cf_section_rules_push(cs, acct_section_config) < 0) return -1;
-
-	*config = talloc_zero(inst, ldap_acct_section_t);
-	if (cf_section_parse(*config, *config, cs) < 0) {
-		PERROR("rlm_ldap (%s) - Failed parsing configuration for section %s", mctx->mi->name, name);
-
-		return -1;
-	}
-
-	(*config)->cs = cs;
 
 	return 0;
 }
@@ -2344,6 +2277,103 @@ static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *ou
 		MEM(vb = fr_value_box_alloc(parsed, FR_TYPE_BOOL, NULL));
 		vb->vb_bool = expect_password;
 		call_env_parsed_set_value(parsed, vb);
+	}
+
+	return 0;
+}
+
+static int ldap_mod_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
+				  CONF_ITEM *ci, call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
+{
+	CONF_SECTION const	*subcs = NULL;
+	CONF_PAIR const		*to_parse = NULL;
+	tmpl_t			*parsed_tmpl;
+	call_env_parsed_t	*parsed_env;
+	char			*section2, *p;
+	ssize_t			count, slen, multi_index = 0;
+	ldap_mod_tmpl_t		*mod;
+
+	fr_assert(cec->type == CALL_ENV_CTX_TYPE_MODULE);
+
+	section2 = talloc_strdup(NULL, section_name_str(cec->asked->name2));
+	p = section2;
+	while (*p != '\0') {
+		*(p) = tolower((uint8_t)*p);
+		p++;
+	}
+
+	if (!ci) {
+	not_found:
+		cf_log_warn(ci, "No section found for \"%s.%s\" in module \"%s\", this call will have no effect.",
+			    section_name_str(cec->asked->name1), section2, cec->mi->name);
+	free:
+		talloc_free(section2);
+		return 0;
+	}
+
+	subcs = cf_section_find(cf_item_to_section(ci), section2, CF_IDENT_ANY);
+	if (!subcs) goto not_found;
+
+	subcs = cf_section_find(subcs, "update", CF_IDENT_ANY);
+	if (!subcs) {
+		cf_log_warn(ci, "No update found inside \"%s -> %s\" in module \"%s\"",
+			    section_name_str(cec->asked->name1), section2, cec->mi->name);
+		goto free;
+	}
+
+	count = cf_pair_count_descendents(subcs);
+	if (count == 0) {
+		cf_log_warn(ci, "No modifications found for \"%s.%s\" in module \"%s\"",
+			    section_name_str(cec->asked->name1), section2, cec->mi->name);
+		goto free;
+	}
+	talloc_free(section2);
+
+	while ((to_parse = cf_pair_next(subcs, to_parse))) {
+		switch (cf_pair_operator(to_parse)) {
+		case T_OP_SET:
+		case T_OP_ADD_EQ:
+		case T_OP_SUB_EQ:
+		case T_OP_CMP_FALSE:
+		case T_OP_INCRM:
+			break;
+
+		default:
+			cf_log_perr(to_parse, "Invalid operator for LDAP modification");
+			return -1;
+		}
+
+		MEM(parsed_env = call_env_parsed_add(ctx, out,
+						     &(call_env_parser_t){
+							FR_CALL_ENV_PARSE_ONLY_OFFSET(cf_pair_attr(to_parse), FR_TYPE_VOID,
+										      CALL_ENV_FLAG_MULTI,
+										      ldap_usermod_call_env_t, mod)
+						     }));
+
+		slen = tmpl_afrom_substr(parsed_env, &parsed_tmpl,
+					 &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+					 cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
+					 t_rules);
+
+		if (slen <= 0) {
+			cf_canonicalize_error(to_parse, slen, "Failed parsing LDAP modification \"%s\"", cf_pair_value(to_parse));
+		error:
+			call_env_parsed_free(out, parsed_env);
+			return -1;
+		}
+		if (tmpl_needs_resolving(parsed_tmpl) &&
+		    (tmpl_resolve(parsed_tmpl, &(tmpl_res_rules_t){ .dict_def = t_rules->attr.dict_def }) <0)) {
+			cf_log_perr(to_parse, "Failed resolving LDAP modification \"%s\"", cf_pair_value(to_parse));
+			goto error;
+		}
+
+		MEM(mod = talloc(parsed_env, ldap_mod_tmpl_t));
+		mod->attr = cf_pair_attr(to_parse);
+		mod->tmpl = parsed_tmpl;
+		mod->op = cf_pair_operator(to_parse);
+
+		call_env_parsed_set_multi_index(parsed_env, count, multi_index++);
+		call_env_parsed_set_data(parsed_env, mod);
 	}
 
 	return 0;
@@ -2458,16 +2488,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	options = cf_section_find(conf, "options", NULL);
 	if (!options || !cf_pair_find(options, "chase_referrals")) {
 		inst->handle_config.chase_referrals_unset = true;	 /* use OpenLDAP defaults */
-	}
-
-	/*
-	 *	If the configuration parameters can't be parsed, then fail.
-	 */
-	if ((parse_sub_section(mctx, conf, &inst->accounting, "accounting") < 0) ||
-	    (parse_sub_section(mctx, conf, &inst->postauth, "post-auth") < 0)) {
-		cf_log_err(conf, "Failed parsing configuration");
-
-		goto error;
 	}
 
 	/*
@@ -2673,11 +2693,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 *	If the group attribute was not in the dictionary, create it
 	 */
 	if (!boot->group_da) {
-		fr_dict_attr_flags_t	flags;
-
-		memset(&flags, 0, sizeof(flags));
-		if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
-				     group_attribute, -1, FR_TYPE_STRING, &flags) < 0) {
+		if (fr_dict_attr_add_name_only(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
+					       group_attribute, FR_TYPE_STRING, NULL) < 0) {
 			PERROR("Error creating group attribute");
 			return -1;
 
@@ -2688,17 +2705,17 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Setup the cache attribute
 	 */
+
 	if (inst->group.cache_attribute) {
-		fr_dict_attr_flags_t	flags;
-
-		memset(&flags, 0, sizeof(flags));
-		if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
-				     inst->group.cache_attribute, -1, FR_TYPE_STRING, &flags) < 0) {
-			PERROR("Error creating cache attribute");
-			return -1;
-
-		}
 		boot->cache_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), inst->group.cache_attribute);
+		if (!boot->cache_da) {
+			if (fr_dict_attr_add_name_only(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
+						       inst->group.cache_attribute, FR_TYPE_STRING, NULL) < 0) {
+				PERROR("Error creating cache attribute");
+				return -1;
+			}
+			boot->cache_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), inst->group.cache_attribute);
+		}
 	} else {
 		boot->cache_da = boot->group_da;	/* Default to the group_da */
 	}
@@ -2775,12 +2792,12 @@ module_rlm_t rlm_ldap = {
 			/*
 			 *	Hack to support old configurations
 			 */
-			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting, .method_env = &usermod_method_env },
+			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_modify, .method_env = &accounting_usermod_method_env },
 			{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate, .method_env = &authenticate_method_env },
 			{ .section = SECTION_NAME("authorize", CF_IDENT_ANY), .method = mod_authorize, .method_env = &authorize_method_env },
 
 			{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize, .method_env = &authorize_method_env },
-			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth, .method_env = &usermod_method_env },
+			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_modify, .method_env = &send_usermod_method_env },
 			MODULE_BINDING_TERMINATOR
 		}
 	}

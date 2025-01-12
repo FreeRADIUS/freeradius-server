@@ -22,18 +22,19 @@
  *
  * @copyright 2000-2003,2006 The FreeRADIUS server project
  */
-
 RCSID("$Id$")
 
 #include <fcntl.h>
 #include <ctype.h>
 
 #include "attrs.h"
+#include "radius.h"
 
 #include <freeradius-devel/io/pair.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/protocol/radius/freeradius.internal.h>
 
@@ -81,19 +82,19 @@ fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[] = {
 
 fr_table_num_sorted_t const fr_radius_require_ma_table[] = {
 	{ L("auto"),		FR_RADIUS_REQUIRE_MA_AUTO		},
-	{ L("no"),		FR_RADIUS_REQUIRE_MA_NO			},
-	{ L("yes"),		FR_RADIUS_REQUIRE_MA_YES		},
 	{ L("false"),		FR_RADIUS_REQUIRE_MA_NO			},
+	{ L("no"),		FR_RADIUS_REQUIRE_MA_NO			},
 	{ L("true"),		FR_RADIUS_REQUIRE_MA_YES		},
+	{ L("yes"),		FR_RADIUS_REQUIRE_MA_YES		},
 };
 size_t fr_radius_require_ma_table_len = NUM_ELEMENTS(fr_radius_require_ma_table);
 
 fr_table_num_sorted_t const fr_radius_limit_proxy_state_table[] = {
 	{ L("auto"),		FR_RADIUS_LIMIT_PROXY_STATE_AUTO	},
-	{ L("no"),		FR_RADIUS_LIMIT_PROXY_STATE_NO		},
-	{ L("yes"),		FR_RADIUS_LIMIT_PROXY_STATE_YES		},
 	{ L("false"),		FR_RADIUS_LIMIT_PROXY_STATE_NO		},
+	{ L("no"),		FR_RADIUS_LIMIT_PROXY_STATE_NO		},
 	{ L("true"),		FR_RADIUS_LIMIT_PROXY_STATE_YES		},
+	{ L("yes"),		FR_RADIUS_LIMIT_PROXY_STATE_YES		},
 };
 size_t fr_radius_limit_proxy_state_table_len = NUM_ELEMENTS(fr_radius_limit_proxy_state_table);
 
@@ -184,6 +185,45 @@ static const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
 	[FR_RADIUS_CODE_PROTOCOL_ERROR]		= FR_RADIUS_CODE_PROTOCOL_ERROR,	/* Any */
 };
 
+FR_DICT_ATTR_FLAG_FUNC(fr_radius_attr_flags_t, abinary)
+FR_DICT_ATTR_FLAG_FUNC(fr_radius_attr_flags_t, concat)
+
+static int dict_flag_encrypt(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
+{
+	static fr_table_num_sorted_t const encrypted[] = {
+		{ L("Ascend-Secret"),	RADIUS_FLAG_ENCRYPT_ASCEND_SECRET },
+		{ L("Tunnel-Password"),	RADIUS_FLAG_ENCRYPT_TUNNEL_PASSWORD },
+		{ L("User-Password"),	RADIUS_FLAG_ENCRYPT_USER_PASSWORD}
+	};
+	static size_t encrypted_len = NUM_ELEMENTS(encrypted);
+
+	fr_radius_attr_flags_encrypt_t encrypt;
+	fr_radius_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+
+	encrypt = fr_table_value_by_str(encrypted, value, RADIUS_FLAG_ENCRYPT_INVALID);
+	if (encrypt == RADIUS_FLAG_ENCRYPT_INVALID) {
+		fr_strerror_printf("Unknown encryption type '%s'", value);
+		return -1;
+	}
+
+	flags->encrypt = encrypt;
+
+	return 0;
+}
+
+FR_DICT_ATTR_FLAG_FUNC(fr_radius_attr_flags_t, extended)
+FR_DICT_ATTR_FLAG_FUNC(fr_radius_attr_flags_t, has_tag)
+FR_DICT_ATTR_FLAG_FUNC(fr_radius_attr_flags_t, long_extended)
+
+static fr_dict_flag_parser_t const radius_flags[] = {
+	{ L("abinary"),			{ .func = dict_flag_abinary } },
+	{ L("concat"),			{ .func = dict_flag_concat } },
+	{ L("encrypt"),			{ .func = dict_flag_encrypt, .needs_value = true } },
+	{ L("extended"),		{ .func = dict_flag_extended } },
+	{ L("has_tag"),			{ .func = dict_flag_has_tag } },
+	{ L("long_extended"),		{ .func = dict_flag_long_extended } }
+};
+
 int fr_radius_allow_reply(int code, bool allowed[static FR_RADIUS_CODE_MAX])
 {
 	int i;
@@ -259,7 +299,7 @@ ssize_t fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src
 	if (data_len < 4) {
 		char buffer[INET6_ADDRSTRLEN];
 
-		FR_DEBUG_STRERROR_PRINTF("Expected at least 4 bytes of header data, got %zu bytes", data_len);
+		FR_DEBUG_STRERROR_PRINTF("Expected at least 4 bytes of header data, got %zd bytes", data_len);
 invalid:
 		FR_DEBUG_STRERROR_PRINTF("Invalid data from %s",
 					 inet_ntop(src_ipaddr->af, &src_ipaddr->addr, buffer, sizeof(buffer)));
@@ -279,7 +319,7 @@ invalid:
 	 */
 	if (packet_len < RADIUS_HEADER_LENGTH) {
 		FR_DEBUG_STRERROR_PRINTF("Expected at least " STRINGIFY(RADIUS_HEADER_LENGTH)  " bytes of packet "
-					 "data, got %zu bytes", packet_len);
+					 "data, got %zd bytes", packet_len);
 		goto invalid;
 	}
 
@@ -289,7 +329,7 @@ invalid:
 	 */
 	if (packet_len > MAX_PACKET_LEN) {
 		FR_DEBUG_STRERROR_PRINTF("Length field value too large, expected maximum of "
-					 STRINGIFY(MAX_PACKET_LEN) " bytes, got %zu bytes", packet_len);
+					 STRINGIFY(MAX_PACKET_LEN) " bytes, got %zd bytes", packet_len);
 		goto invalid;
 	}
 
@@ -326,7 +366,8 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *vector,
 	 *	to catch uninitialised fields.
 	 */
 	if (!fr_cond_assert(secret_len <= UINT16_MAX)) {
-		fr_strerror_printf("Secret is too long.  Expected <= %u, got %zu", UINT16_MAX, secret_len);
+		fr_strerror_printf("Secret is too long.  Expected <= %u, got %zu",
+				   (unsigned int) UINT16_MAX, secret_len);
 		return -1;
 	}
 
@@ -472,13 +513,13 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *vector,
  *	- False on failure.
  */
 bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
-		  uint32_t max_attributes, bool require_message_authenticator, decode_fail_t *reason)
+		  uint32_t max_attributes, bool require_message_authenticator, fr_radius_decode_fail_t *reason)
 {
 	uint8_t	const		*attr, *end;
 	size_t			totallen;
 	bool			seen_ma = false;
 	uint32_t		num_attributes;
-	decode_fail_t		failure = DECODE_FAIL_NONE;
+	fr_radius_decode_fail_t failure = DECODE_FAIL_NONE;
 	size_t			packet_len = *packet_len_p;
 
 	/*
@@ -684,7 +725,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 */
 	if ((max_attributes > 0) &&
 	    (num_attributes > max_attributes)) {
-		FR_DEBUG_STRERROR_PRINTF("Possible DoS attack - too many attributes in request (received %d, max %d are allowed).",
+		FR_DEBUG_STRERROR_PRINTF("Possible DoS attack - too many attributes in request (received %u, max %u are allowed).",
 					 num_attributes, max_attributes);
 		failure = DECODE_FAIL_TOO_MANY_ATTRIBUTES;
 		goto finish;
@@ -748,7 +789,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 	uint8_t		message_authenticator[RADIUS_AUTH_VECTOR_LENGTH];
 
 	if (packet_len < RADIUS_HEADER_LENGTH) {
-		fr_strerror_printf("invalid packet length %zd", packet_len);
+		fr_strerror_printf("invalid packet length %zu", packet_len);
 		return -1;
 	}
 
@@ -1029,7 +1070,7 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 	 *	Add Proxy-State to the end of the packet if the caller requested it.
 	 */
 	if (packet_ctx->add_proxy_state) {
-		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_PROXY_STATE, 6);
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_PROXY_STATE, (uint8_t) (2 + sizeof(packet_ctx->common->proxy_state)));
 		FR_DBUFF_IN_RETURN(&work_dbuff, packet_ctx->common->proxy_state);
 	}
 
@@ -1204,93 +1245,61 @@ void fr_radius_global_free(void)
 	fr_dict_autofree(libfreeradius_radius_dict);
 }
 
-static fr_table_num_ordered_t const subtype_table[] = {
-	{ L("long-extended"),  		FLAG_LONG_EXTENDED_ATTR },
-	{ L("extended"),       		FLAG_EXTENDED_ATTR },
-	{ L("concat"),			FLAG_CONCAT },
-	{ L("has_tag"),			FLAG_HAS_TAG },
-	{ L("abinary"),			FLAG_ABINARY },
-	{ L("has_tag,encrypt=2"),	FLAG_TAGGED_TUNNEL_PASSWORD },
-
-	{ L("encrypt=1"),		FLAG_ENCRYPT_USER_PASSWORD },
-	{ L("encrypt=2"),		FLAG_ENCRYPT_TUNNEL_PASSWORD },
-	{ L("encrypt=3"),		FLAG_ENCRYPT_ASCEND_SECRET },
-
-	/*
-	 *	And some humanly-readable names
-	 */
-	{ L("encrypt=User-Password"),	FLAG_ENCRYPT_USER_PASSWORD },
-	{ L("encrypt=Tunnel-Password"),	FLAG_ENCRYPT_TUNNEL_PASSWORD },
-	{ L("encrypt=Ascend-Secret"),	FLAG_ENCRYPT_ASCEND_SECRET },
-};
-
-static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
-		       UNUSED char const *name, UNUSED int attr, fr_type_t type, fr_dict_attr_flags_t *flags)
+static bool attr_valid(fr_dict_attr_t *da)
 {
-	if (parent->type == FR_TYPE_STRUCT) {
-		if (flag_extended(flags)) {
+	fr_radius_attr_flags_t const *flags = fr_radius_attr_flags(da);
+
+	if (da->parent->type == FR_TYPE_STRUCT) {
+		if (flags->extended) {
 			fr_strerror_const("Attributes of type 'extended' cannot be used inside of a 'struct'");
 			return false;
 		}
 
-		/*
-		 *	The "extra" flag signifies that the subtype
-		 *	field is being used by the dictionaries
-		 *	itself, for key fields, etc.
-		 */
-		if (flags->extra) return true;
+		if (flags->long_extended) {
+			fr_strerror_const("Attributes of type 'long_extended' cannot be used inside of a 'struct'");
+			return false;
+		}
 
-		/*
-		 *	All other flags are invalid inside of a struct.
-		 */
-		if (flags->subtype) {
-			fr_strerror_const("Attributes inside of a 'struct' MUST NOT have flags set");
+
+		if (flags->concat) {
+			fr_strerror_const("Attributes of type 'concat' cannot be used inside of a 'struct'");
+			return false;
+		}
+
+		if (flags->has_tag) {
+			fr_strerror_const("Attributes of type 'concat' cannot be used inside of a 'struct'");
+			return false;
+		}
+
+		if (flags->abinary) {
+			fr_strerror_const("Attributes of type 'abinary' cannot be used inside of a 'struct'");
+			return false;
+		}
+
+		if (flags->encrypt > 0) {
+			fr_strerror_const("Attributes of type 'encrypt' cannot be used inside of a 'struct'");
 			return false;
 		}
 
 		return true;
 	}
 
-	/*
-	 *	The 'extra flag is only for inside of structs and TLVs
-	 *	with refs.  It shouldn't appear anywhere else.
-	 */
-	if (flags->extra) {
-		fr_strerror_const("Unsupported extension.");
-		return false;
-	}
-
-	if (flags->length > 253) {
+	if (da->flags.length > 253) {
 		fr_strerror_printf("Attributes cannot be more than 253 octets in length");
 		return false;
 	}
-
-	/*
-	 *	No special flags, so we're OK.
-	 *
-	 *	If there is a subtype, it can only be of one kind.
-	 */
-	if (!flags->subtype) return true;
-
-	if (flags->subtype > FLAG_ENCRYPT_ASCEND_SECRET) {
-		fr_strerror_printf("Invalid flag value %u", flags->subtype);
-		return false;
-	}
-
 	/*
 	 *	Secret things are secret.
 	 */
-	if (flags->subtype > FLAG_TAGGED_TUNNEL_PASSWORD) {
-		flags->secret = true;
-	}
+	if (flags->encrypt != 0) da->flags.secret = true;
 
-	if (flag_concat(flags)) {
-		if (!parent->flags.is_root) {
+	if (flags->concat) {
+		if (!da->parent->flags.is_root) {
 			fr_strerror_const("Attributes with the 'concat' flag MUST be at the root of the dictionary");
 			return false;
 		}
 
-		if (type != FR_TYPE_OCTETS) {
+		if (da->type != FR_TYPE_OCTETS) {
 			fr_strerror_const("Attributes with the 'concat' flag MUST be of data type 'octets'");
 			return false;
 		}
@@ -1302,16 +1311,16 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	Tagged attributes can only be of two data types.  They
 	 *	can, however, be VSAs.
 	 */
-	if (flag_has_tag(flags)) {
-		if ((type != FR_TYPE_UINT32) && (type != FR_TYPE_STRING)) {
+	if (flags->has_tag) {
+		if ((da->type != FR_TYPE_UINT32) && (da->type != FR_TYPE_STRING)) {
 			fr_strerror_printf("The 'has_tag' flag can only be used for attributes of type 'integer' "
 					   "or 'string'");
 			return false;
 		}
 
-		if (!(parent->flags.is_root ||
-		      ((parent->type == FR_TYPE_VENDOR) &&
-		       (parent->parent && parent->parent->type == FR_TYPE_VSA)))) {
+		if (!(da->parent->flags.is_root ||
+		      ((da->parent->type == FR_TYPE_VENDOR) &&
+		       (da->parent->parent && da->parent->parent->type == FR_TYPE_VSA)))) {
 			fr_strerror_const("The 'has_tag' flag can only be used with RFC and VSA attributes");
 			return false;
 		}
@@ -1319,13 +1328,13 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 		return true;
 	}
 
-	if (flag_extended(flags)) {
-		if (type != FR_TYPE_TLV) {
+	if (flags->extended) {
+		if (da->type != FR_TYPE_TLV) {
 			fr_strerror_const("The 'long' or 'extended' flag can only be used for attributes of type 'tlv'");
 			return false;
 		}
 
-		if (!parent->flags.is_root) {
+		if (!da->parent->flags.is_root) {
 			fr_strerror_const("The 'long' flag can only be used for top-level RFC attributes");
 			return false;
 		}
@@ -1341,21 +1350,21 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	MS-CHAP-MPPE-Keys, the data is binary crap.  So... we
 	 *	MUST specify a length in the dictionary.
 	 */
-	if ((flags->subtype == FLAG_ENCRYPT_USER_PASSWORD) && (type != FR_TYPE_STRING)) {
-		if (type != FR_TYPE_OCTETS) {
-			fr_strerror_printf("The 'encrypt=1' flag can only be used with "
+	if ((flags->encrypt == RADIUS_FLAG_ENCRYPT_USER_PASSWORD) && (da->type != FR_TYPE_STRING)) {
+		if (da->type != FR_TYPE_OCTETS) {
+			fr_strerror_printf("The 'encrypt=User-Password' flag can only be used with "
 					   "attributes of type 'string'");
 			return false;
 		}
 
-		if (flags->length == 0) {
-			fr_strerror_printf("The 'encrypt=1' flag MUST be used with an explicit length for "
+		if (da->flags.length == 0) {
+			fr_strerror_printf("The 'encrypt=User-Password' flag MUST be used with an explicit length for "
 					   "'octets' data types");
 			return false;
 		}
 	}
 
-	switch (type) {
+	switch (da->type) {
 	case FR_TYPE_STRING:
 		break;
 
@@ -1363,13 +1372,15 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_UINT32:
 	case FR_TYPE_OCTETS:
-		if (flags->subtype != FLAG_ENCRYPT_ASCEND_SECRET) break;
+		if (flags->encrypt != RADIUS_FLAG_ENCRYPT_ASCEND_SECRET) break;
 		FALL_THROUGH;
 
 	default:
-		fr_strerror_printf("The 'encrypt' flag cannot be used with attributes of type '%s'",
-				   fr_type_to_str(type));
-		return false;
+		if (flags->encrypt) {
+			fr_strerror_printf("The 'encrypt' flag cannot be used with attributes of type '%s'",
+					   fr_type_to_str(da->type));
+			return false;
+		}
 	}
 
 	return true;
@@ -1380,9 +1391,14 @@ fr_dict_protocol_t libfreeradius_radius_dict_protocol = {
 	.name = "radius",
 	.default_type_size = 1,
 	.default_type_length = 1,
-	.subtype_table = subtype_table,
-	.subtype_table_len = NUM_ELEMENTS(subtype_table),
-	.attr_valid = attr_valid,
+	.attr = {
+		.flags = {
+			.table = radius_flags,
+			.table_len = NUM_ELEMENTS(radius_flags),
+			.len = sizeof(fr_radius_attr_flags_t),
+		},
+		.valid = attr_valid,
+	},
 
 	.init = fr_radius_global_init,
 	.free = fr_radius_global_free,

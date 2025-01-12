@@ -295,4 +295,28 @@ if (!notfound) {
 	test_fail
 }
 
+# Clear the control list
+&control -= &User-Name[*]
+&control -= &Filter-Id[*]
+
+# Check behaviour of NULL vs empty string returns.
+# radacct is used here as the default schema allows NULL in many columns
+%sql("DELETE FROM radacct WHERE acctuniqueid = 'nullmap'")
+%sql("INSERT INTO radacct (acctuniqueid, acctsessionid, nasipaddress, username) VALUES ('nullmap', 'nullmap', '10.11.12.13', '')")
+map sql "SELECT username, connectinfo_start, nasipaddress FROM radacct WHERE acctuniqueid = 'nullmap'" {
+	&control.User-Name := 'username'
+	&control.Filter-Id := 'connectinfo_start'
+	&control.NAS-IP-Address := 'nasipaddress'
+}
+
+if !(&control.User-Name == '') {
+	test_fail
+}
+if (&control.Filter-Id) {
+	test_fail
+}
+if !(&control.NAS-IP-Address == 10.11.12.13) {
+	test_fail
+}
+
 test_pass

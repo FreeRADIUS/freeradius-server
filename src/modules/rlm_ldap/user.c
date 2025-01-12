@@ -260,23 +260,26 @@ void rlm_ldap_check_reply(request_t *request, rlm_ldap_t const *inst, char const
 	*/
 	if ((inst->user.expect_password_is_set && !inst->user.expect_password) || !expect_password || !RDEBUG_ENABLED2) return;
 
-	parent = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_password);
-	if (!parent) parent = request->control_ctx;
+	parent = fr_pair_find_by_da(&request->control_pairs, NULL, attr_password);
+	if (!parent) goto warnings;
 
-	if (!fr_pair_find_by_da_nested(&parent->vp_group, NULL, attr_cleartext_password) &&
-	    !fr_pair_find_by_da_nested(&parent->vp_group, NULL, attr_nt_password) &&
-	    !fr_pair_find_by_da_nested(&parent->vp_group, NULL, attr_password_with_header) &&
-	    !fr_pair_find_by_da_nested(&parent->vp_group, NULL, attr_crypt_password)) {
+	if (!fr_pair_find_by_da(&parent->vp_group, NULL, attr_cleartext_password) &&
+	    !fr_pair_find_by_da(&parent->vp_group, NULL, attr_nt_password) &&
+	    !fr_pair_find_by_da(&parent->vp_group, NULL, attr_password_with_header) &&
+	    !fr_pair_find_by_da(&parent->vp_group, NULL, attr_crypt_password)) {
+	warnings:
 		switch (ttrunk->directory->type) {
 		case FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY:
+		case FR_LDAP_DIRECTORY_SAMBA:
 			RWDEBUG2("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
-			RWDEBUG2("!!! Active Directory does not allow passwords to be read via LDAP");
+			RWDEBUG2("!!! %s does not allow passwords to be read via LDAP",
+				(ttrunk->directory->type == FR_LDAP_DIRECTORY_SAMBA ? "Samba" : "Active Directory"));
 			RWDEBUG2("!!! Remove the password map and either:");
 			RWDEBUG2("!!!  - Configure authentication via ntlm_auth (mschapv2 only)");
 			RWDEBUG2("!!!  - Configure authentication via wbclient (mschapv2 only)");
-			RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
-				 inst_name);
-			RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
+			RWDEBUG2("!!!  - Bind as the user by listing %s in an 'authenticate %s' section, and",
+				 inst_name, inst_name);
+			RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the 'recv Access-Request' section",
 				 inst_name);
 			RWDEBUG2("!!!    (pap only)");
 
@@ -288,9 +291,9 @@ void rlm_ldap_check_reply(request_t *request, rlm_ldap_t const *inst, char const
 			RWDEBUG2("!!! Remove the password map and either:");
 			RWDEBUG2("!!!  - Set 'edir = yes' and enable the universal password feature on your");
 			RWDEBUG2("!!!    eDir server (recommended)");
-			RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
-				 inst_name);
-			RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
+			RWDEBUG2("!!!  - Bind as the user by listing %s in an 'authenticate %s' section, and",
+				 inst_name, inst_name);
+			RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the 'recv Access-Request' section",
 				 inst_name);
 			RWDEBUG("!!!    (pap only)");
 			break;
@@ -304,9 +307,9 @@ void rlm_ldap_check_reply(request_t *request, rlm_ldap_t const *inst, char const
 				 ttrunk->config.admin_identity ? '"' : '\0',
 				 ttrunk->config.admin_identity ? ttrunk->config.admin_identity : "the bind user",
 				 ttrunk->config.admin_identity ? '"' : '\0');
-			RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
-				 inst_name);
-			RWDEBUG2("!!!    setting attribute &control.Auth-Type := '%s' in the authorize section",
+			RWDEBUG2("!!!  - Bind as the user by listing %s in an 'authenticate %s' section, and",
+				 inst_name, inst_name);
+			RWDEBUG2("!!!    setting attribute &control.Auth-Type := '%s' in the 'recv Access-Request' section",
 				 inst_name);
 			RWDEBUG2("!!!    (pap only)");
 			break;

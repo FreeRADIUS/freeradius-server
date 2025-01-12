@@ -44,7 +44,7 @@ extern "C" {
  *	Avoid circular type references.
  */
 typedef struct dict_attr_s fr_dict_attr_t;
-typedef struct fr_dict fr_dict_t;
+typedef struct fr_dict_s fr_dict_t;
 
 typedef struct value_box_s fr_value_box_t;
 
@@ -66,6 +66,7 @@ typedef struct value_box_s fr_value_box_t;
 #  define DA_VERIFY(_x)		fr_cond_assert(_x)
 #endif
 
+typedef struct dict_tokenize_ctx_s dict_tokenize_ctx_t;
 typedef struct fr_dict_autoload_talloc_s fr_dict_autoload_talloc_t;
 
 /** Values of the encryption flags
@@ -95,7 +96,10 @@ typedef struct {
 
 	unsigned int		counter : 1;       		//!< integer attribute is actually an impulse / counter
 
-	unsigned int		name_only : 1;			//!< this attribute should always be referred to by name, not by number
+	unsigned int		name_only : 1;			//!< this attribute should always be referred to by name.
+								///< A number will be allocated, but the allocation scheme
+								///< will depend on the parent, and definition type, and
+								///< may not be stable in all instances.
 
 	unsigned int		secret : 1;			//!< this attribute should be omitted in debug mode
 
@@ -151,7 +155,6 @@ enum {
 #define da_is_length_field(_da) ((_da)->flags.extra && (((_da)->flags.subtype == FLAG_LENGTH_UINT8) || ((_da)->flags.subtype == FLAG_LENGTH_UINT16)))
 #define da_length_offset(_da) ((_da)->flags.type_size)
 
-
 /** Extension identifier
  *
  * @note New extension structures should also be added to the to the appropriate table in dict_ext.c
@@ -186,9 +189,24 @@ struct dict_attr_s {
 
 	fr_dict_attr_t const	*parent;			//!< Immediate parent of this attribute.
 	fr_dict_attr_t const	*next;				//!< Next child in bin.
-	fr_dict_attr_t		*fixup;				//!< Attribute has been marked up for fixups.
 
 	fr_dict_attr_flags_t	flags;				//!< Flags.
+
+	struct {
+		bool			attr_set : 1;		//!< Attribute number has been set.
+								//!< We need the full range of values 0-UINT32_MAX
+								///< so we can't use any attr values to indicate
+								///< "unsetness".
+
+		bool			finalised : 1;		//!< Attribute definition is complete and modifications
+								///< that would change the address of the memory chunk
+								///< of the attribute are no longer permitted.
+	} state;
+
+	char const		*filename;			//!< Where the attribute was defined.
+								///< this buffer's lifetime is bound to the
+								///< fr_dict_t.
+	int			line;				//!< Line number where the attribute was defined.
 
 	uint8_t			ext[FR_DICT_ATTR_EXT_MAX];	//!< Extensions to the dictionary attribute.
 } CC_HINT(aligned(FR_EXT_ALIGNMENT));
@@ -285,8 +303,8 @@ typedef enum {
 
 } fr_dict_attr_err_t;
 
-typedef bool (*fr_dict_attr_valid_func_t)(fr_dict_t *dict, fr_dict_attr_t const *parent,
-					  char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t *flags);
+typedef bool (*fr_dict_attr_valid_func_t)(fr_dict_attr_t *da);
+typedef bool (*fr_dict_attr_type_parse_t)(fr_type_t *type, fr_dict_attr_flags_t *flags, char const *name);
 
 /*
  *	Forward declarations to avoid circular references.
@@ -334,23 +352,116 @@ typedef ssize_t(*fr_dict_attr_encode_func_t)(fr_dbuff_t *dbuff, fr_pair_list_t c
 typedef int (*fr_dict_protocol_init_t)(void);
 typedef void (*fr_dict_protocol_free_t)(void);
 
+typedef struct fr_dict_flag_parser_rule_s fr_dict_flag_parser_rule_t;
+
+/** Custom protocol-specific flag parsing function
+ *
+ * @note This function should be used to implement table based flag parsing.
+ *
+ * @param[in] da_p	we're currently populating
+ * @param[in] value	flag value to parse.
+ * @param[in] rule	How to parse the flag.
+ */
+typedef int (*fr_dict_flag_parse_func_t)(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rule);
+
+struct fr_dict_flag_parser_rule_s {
+	fr_dict_flag_parse_func_t	func;				//!< Custom parsing function to convert a flag value string to a C type value.
+	void				*uctx;				//!< Use context to pass to the custom parsing function.
+	bool				needs_value;			//!< This parsing flag must have a value.  Else we error.
+};
+
+/** Copy custom flags from one attribute to another
+ *
+ * @param[out] da_to		attribute to copy to.  Use for the talloc_ctx for any heap allocated flag values.
+ * @param[out] flags_to		protocol specific flags struct to copy to.
+ * @param[in] flags_from	protocol specific flags struct to copy from.
+ * @return
+ *  - 0 on success.
+ *  - -1 on error.
+ */
+typedef int (*fr_dict_flags_copy_func_t)(fr_dict_attr_t *da_to, void *flags_to, void *flags_from);
+
+/** Compare the protocol specific flags struct from two attributes
+ *
+ * @para[in] da_a	first attribute to compare.
+ * @para[in] da_b	second attribute to compare.
+ * @return
+ *  - 0 if the flags are equal.
+ *  - < 0 if da_a < da_b.
+ *  - > 0 if da_a > da_b.
+ */
+ typedef int (*fr_dict_flags_cmp_func_t)(fr_dict_attr_t const *da_a, fr_dict_attr_t const *da_b);
+
+/** Protocol specific custom flag definitnion
+ *
+ */
+typedef struct  {
+	fr_table_elem_name_t		name;				//!< Name of the flag
+	fr_dict_flag_parser_rule_t	value;				//!< Function and context to parse the flag.
+} fr_dict_flag_parser_t;
+
+/** Define a flag setting function, which sets one bit in a fr_dict_attr_flags_t
+ *
+ * This is here, because AFAIK there's no completely portable way to get the bit
+ * offset of a bit field in a structure.
+ */
+#define FR_DICT_ATTR_FLAG_FUNC(_struct, _name) \
+static int dict_flag_##_name(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)\
+{ \
+	_struct *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC); \
+	flags->_name = 1; \
+	return 0; \
+}
+
+/** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct
+ *
+ * @param[in] _name		of the flag search for.
+ * @param[in] _struct		containing the field to write the result to.
+ * @param[in] _field		to write the flag to
+ */
+#  define FR_DICT_PROTOCOL_FLAG(_struct, _field)  \
+	.type = FR_CTYPE_TO_TYPE((((_struct *)NULL)->_field)), \
+	.offset = offsetof(_struct, _field)
 
 /** Protocol-specific callbacks in libfreeradius-PROTOCOL
  *
  */
 typedef struct {
-	char const		*name;				//!< name of this protocol
-	int			default_type_size;		//!< how many octets are in "type" field
-	int			default_type_length;		//!< how many octets are in "length" field
-	fr_table_num_ordered_t	const *subtype_table;		//!< for "encrypt=1", etc.
-	size_t			subtype_table_len;		//!< length of subtype_table
-	fr_dict_attr_valid_func_t attr_valid;			//!< validation function for new attributes
+	char const			*name;				//!< name of this protocol
 
-	fr_dict_protocol_init_t	init;				//!< initialize the library
-	fr_dict_protocol_free_t	free;				//!< free the library
+	int				default_type_size;		//!< how many octets are in "type" field
+	int				default_type_length;		//!< how many octets are in "length" field
 
-	fr_dict_attr_decode_func_t decode;			//!< for decoding attributes
-	fr_dict_attr_encode_func_t encode;			//!< for encoding attributes
+	struct {
+	        /** Custom flags for this protocol
+		 */
+		struct {
+			fr_dict_flag_parser_t const	*table;			//!< Flags for this protocol, an array of fr_dict_flag_parser_t
+			size_t				table_len;		//!< Length of protocol_flags table.
+
+			size_t				len;			//!< Length of the protocol specific flags structure.
+										///< This is used to allocate a FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC
+										///< extension of the specified length.
+
+			fr_dict_flags_copy_func_t	copy;			//!< Copy protocol-specific flags from one attribute to another.
+										///< Called when copying attributes.
+
+			fr_dict_flags_cmp_func_t	cmp;			//!< Compare protocol-specific flags from two attributes.
+										///< Called when comparing attributes by their fields.
+		} flags;
+
+		fr_dict_attr_type_parse_t	type_parse;		//!< parse unknown type names
+		fr_dict_attr_valid_func_t 	valid;			//!< Validation function to ensure that
+									///< new attributes are valid.
+	} attr;
+
+	fr_dict_protocol_init_t		init;				//!< initialize the library
+	fr_dict_protocol_free_t		free;				//!< free the library
+
+	fr_dict_attr_decode_func_t 	decode;				//!< for decoding attributes.  Used for implementing foreign
+									///< protocol attributes.
+	fr_dict_attr_encode_func_t 	encode;				//!< for encoding attributes.  Used for implementing foreign
+									///< protocol attributes.
 } fr_dict_protocol_t;
 
 typedef struct fr_dict_gctx_s fr_dict_gctx_t;
@@ -358,10 +469,10 @@ typedef struct fr_dict_gctx_s fr_dict_gctx_t;
 /*
  *	Dictionary constants
  */
-#define FR_DICT_PROTO_MAX_NAME_LEN	(128)			//!< Maximum length of a protocol name.
-#define FR_DICT_ENUM_MAX_NAME_LEN	(128)			//!< Maximum length of a enum value.
-#define FR_DICT_VENDOR_MAX_NAME_LEN	(128)			//!< Maximum length of a vendor name.
-#define FR_DICT_ATTR_MAX_NAME_LEN	(128)			//!< Maximum length of a attribute name.
+#define FR_DICT_PROTO_MAX_NAME_LEN	(128)				//!< Maximum length of a protocol name.
+#define FR_DICT_ENUM_MAX_NAME_LEN	(128)				//!< Maximum length of a enum value.
+#define FR_DICT_VENDOR_MAX_NAME_LEN	(128)				//!< Maximum length of a vendor name.
+#define FR_DICT_ATTR_MAX_NAME_LEN	(128)				//!< Maximum length of a attribute name.
 
 /** Maximum level of TLV nesting allowed
  */
@@ -404,8 +515,13 @@ extern bool const	fr_dict_enum_allowed_chars[UINT8_MAX + 1];
  *
  * @{
  */
-int			fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent, char const *name, int attr,
+int 			fr_dict_attr_add_initialised(fr_dict_attr_t *da) CC_HINT(nonnull);
+
+int			fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent, char const *name, unsigned int attr,
 					 fr_type_t type, fr_dict_attr_flags_t const *flags) CC_HINT(nonnull(1,2,3));
+
+int			fr_dict_attr_add_name_only(fr_dict_t *dict, fr_dict_attr_t const *parent,
+						   char const *name, fr_type_t type, fr_dict_attr_flags_t const *flags) CC_HINT(nonnull(1,2,3));
 
 int			fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 					      fr_value_box_t const *value, bool coerce, bool replace);
@@ -417,44 +533,66 @@ int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
 int			fr_dict_attr_acopy_local(fr_dict_attr_t const *dst, fr_dict_attr_t const *src) CC_HINT(nonnull);
 /** @} */
 
+/** @name Dict accessors
+ *
+ * @{
+ */
+fr_dict_protocol_t const *fr_dict_protocol(fr_dict_t const *dict);
+/** @} */
+
 /** @name Unknown ephemeral attributes
  *
  * @{
  */
-fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *old) CC_HINT(nonnull);
+fr_dict_attr_t const	*fr_dict_attr_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *old) CC_HINT(nonnull);
 
-void			fr_dict_unknown_free(fr_dict_attr_t const **da);
+void			fr_dict_attr_unknown_free(fr_dict_attr_t const **da);
 
-fr_dict_attr_t		*fr_dict_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da);
+fr_dict_attr_t		*fr_dict_attr_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da) CC_HINT(nonnull(2));
 
-static inline fr_dict_attr_t *fr_dict_unknown_copy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+static inline fr_dict_attr_t *fr_dict_attr_unknown_copy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 {
 	fr_assert(da->flags.is_unknown);
 
-	return fr_dict_unknown_afrom_da(ctx, da);
+	return fr_dict_attr_unknown_afrom_da(ctx, da);
 }
 
-fr_dict_attr_t		*fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
-							  fr_dict_attr_t const *parent, unsigned int vendor)
-							  CC_HINT(nonnull(2));
+fr_dict_attr_t		*fr_dict_attr_unknown_typed_afrom_num_raw(TALLOC_CTX *ctx,
+								  fr_dict_attr_t const *parent,
+								  unsigned int num, fr_type_t type, bool raw)
+								  CC_HINT(nonnull(2));
 
-fr_dict_attr_t		*fr_dict_unknown_tlv_afrom_num(TALLOC_CTX *ctx,
-						       fr_dict_attr_t const *parent, unsigned int num)
-						       CC_HINT(nonnull(2));
-
-fr_dict_attr_t		*fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx,
-							fr_dict_attr_t const *parent, unsigned int num)
-							CC_HINT(nonnull(2));
-
-fr_dict_attr_t		*fr_dict_unknown_attr_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
-						       CC_HINT(nonnull(2));
+static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_typed_afrom_num(TALLOC_CTX *ctx,
+										       fr_dict_attr_t const *parent,
+										       unsigned int num, fr_type_t type)
+{
+	return fr_dict_attr_unknown_typed_afrom_num_raw(ctx, parent, num, type, false);
+}
 
 
-fr_slen_t		fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
-							 fr_dict_attr_t const **out,
-							 fr_dict_attr_t const *parent,
-							 fr_sbuff_t *in)
-							 CC_HINT(nonnull(2,3,4));
+static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
+											fr_dict_attr_t const *parent,
+											unsigned int vendor)
+{
+	return fr_dict_attr_unknown_typed_afrom_num_raw(ctx, parent, vendor, FR_TYPE_VENDOR, false);
+}
+
+static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_raw_afrom_num(TALLOC_CTX *ctx,
+										     fr_dict_attr_t const *parent,
+										     unsigned int attr)
+{
+	return fr_dict_attr_unknown_typed_afrom_num_raw(ctx, parent, attr, FR_TYPE_OCTETS, true);
+}
+
+fr_dict_attr_t		*fr_dict_attr_unknown_raw_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+		                     	       		   CC_HINT(nonnull(2));
+
+
+fr_slen_t		fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
+							      fr_dict_attr_t const **out,
+							      fr_dict_attr_t const *parent,
+							      fr_sbuff_t *in, fr_type_t type)
+							      CC_HINT(nonnull(2,3,4));
 
 int			fr_dict_attr_unknown_parent_to_known(fr_dict_attr_t *da, fr_dict_attr_t const *parent);
 
@@ -465,7 +603,7 @@ fr_dict_attr_t const	*fr_dict_attr_unknown_resolve(fr_dict_t const *dict, fr_dic
  *
  * @{
  */
-static inline  CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
+static inline CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
 {
 	int8_t ret;
 
@@ -491,6 +629,45 @@ static inline  CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a,
 	 *	DAs are unique.
 	 */
 	return CMP(a, b);
+}
+
+/** Compare two dictionary attributes by their contents
+ *
+ * @param[in] a	First attribute to compare.
+ * @param[in] b	Second attribute to compare.
+ * @return
+ *	- 0 if the attributes are equal.
+ *	- -1 if a < b.
+ *	- +1 if a > b.
+ */
+static inline CC_HINT(nonnull) int8_t fr_dict_attr_cmp_fields(const fr_dict_attr_t *a, const fr_dict_attr_t *b)
+{
+	int8_t ret;
+	fr_dict_protocol_t const *a_proto = fr_dict_protocol(a->dict);
+
+	/*
+	 *	Technically this isn't a property of the attribute
+	 *	but we need them to be the same to be able to
+	 *	compare protocol specific flags successfully.
+	 */
+	ret = CMP(a_proto, fr_dict_protocol(b->dict));
+	if (ret != 0) return ret;
+
+	ret = CMP(a->attr, b->attr);
+	if (ret != 0) return ret;
+
+	ret = CMP(a->parent, b->parent);
+	if (ret != 0) return ret;
+
+	ret = CMP(fr_dict_vendor_num_by_da(a), fr_dict_vendor_num_by_da(b));
+	if (ret != 0) return ret;
+
+	/*
+	 *	Compare protocol specific flags
+	 */
+	if (a_proto->attr.flags.cmp && (ret = a_proto->attr.flags.cmp(a, b))) return ret;
+
+	return CMP(memcmp(&a->flags, &b->flags, sizeof(a->flags)), 0);
 }
 /** @} */
 
@@ -561,8 +738,6 @@ fr_slen_t		fr_dict_by_protocol_substr(fr_dict_attr_err_t *err,
 fr_dict_t const		*fr_dict_by_protocol_name(char const *name);
 
 fr_dict_t const		*fr_dict_by_protocol_num(unsigned int num);
-
-fr_dict_protocol_t const *fr_dict_protocol(fr_dict_t const *dict);
 
 fr_dict_attr_t const	*fr_dict_unlocal(fr_dict_attr_t const *da) CC_HINT(nonnull);
 
@@ -741,6 +916,8 @@ fr_dict_t const		*fr_dict_internal(void);
  *
  * @{
  */
+void			dict_dctx_debug(dict_tokenize_ctx_t *dctx);
+
 int			fr_dict_parse_str(fr_dict_t *dict, char *buf,
 					  fr_dict_attr_t const *parent);
 

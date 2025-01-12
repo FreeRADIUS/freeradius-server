@@ -151,10 +151,11 @@ fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t
 				    fr_sbuff_t *in)
 {
 	int			i, components;
-	bool			raw, raw_octets;
+	bool			raw;
 	bool			was_relative = false;
 	bool			append;
 	bool			keep_going;
+	fr_type_t		raw_type;
 	fr_token_t		op;
 	fr_slen_t		slen;
 	fr_pair_t		*vp;
@@ -162,7 +163,20 @@ fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t
 	fr_sbuff_marker_t	lhs_m, rhs_m;
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 
-	if (!root->ctx || !root->da || !root->list) return 0;
+	if (unlikely(!root->ctx)) {
+		fr_strerror_const("Missing ctx fr_pair_parse_t");
+		return -1;
+	}
+
+	if (unlikely(!root->da)) {
+		fr_strerror_const("Missing namespace attribute");
+		return -1;
+	}
+
+	if (unlikely(!root->list)) {
+		fr_strerror_const("Missing list");
+		return -1;
+	}
 
 	if (fr_dict_internal()) internal = fr_dict_root(fr_dict_internal());
 	if (internal == root->da) internal = NULL;
@@ -171,8 +185,10 @@ fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t
 
 redo:
 	append = true;
-	raw = raw_octets = false;
+	raw = false;
+	raw_type = FR_TYPE_NULL;
 	relative->last_char = 0;
+	vp = NULL;
 
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
@@ -257,10 +273,40 @@ redo:
 	fr_sbuff_marker(&rhs_m, &our_in);
 
 	/*
-	 *	Peek ahead to see if the final element is defined to be structural, but the caller instead
-	 *	wants to parse it as raw octets.
+	 *	If the value of the attribute is 0x..., then we always force the raw type to be octets, even
+	 *	if the attribute is named and known.  e.g. raw.Framed-IP-Address = 0x01
+	 *
+	 *	OR if the attribute is entirely unknown (and not a raw version of a known one), then we allow a
+	 *	cast to set the data type.
 	 */
-	if (raw) raw_octets = fr_sbuff_is_str_literal(&our_in, "0x");
+	if (raw) {
+		if (fr_sbuff_is_str_literal(&our_in, "0x")) {
+			raw_type = FR_TYPE_OCTETS;
+
+		} else if (fr_sbuff_next_if_char(&our_in, '(')) {
+			fr_sbuff_marker_t m;
+
+			fr_sbuff_marker(&m, &our_in);
+
+			fr_sbuff_out_by_longest_prefix(&slen, &raw_type, fr_type_table, &our_in, FR_TYPE_NULL);
+			if ((raw_type == FR_TYPE_NULL) || !fr_type_is_leaf(raw_type)) {
+				fr_sbuff_set(&our_in, &rhs_m);
+				fr_strerror_const("Invalid data type in cast");
+				return fr_sbuff_error(&our_in);
+			}
+
+			if (!fr_sbuff_next_if_char(&our_in, ')')) {
+				fr_strerror_const("Missing ')' in cast");
+				return fr_sbuff_error(&our_in);
+			}
+
+			fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
+			fr_sbuff_marker(&rhs_m, &our_in);
+
+		} else if (fr_sbuff_is_char(&our_in, '{')) {
+			raw_type = FR_TYPE_TLV;
+		}
+	}
 
 	fr_sbuff_set(&our_in, &lhs_m);
 
@@ -276,48 +322,61 @@ redo:
 		slen = fr_dict_oid_component(&err, &da, relative->da, &our_in, &bareword_terminals);
 		if (err == FR_DICT_ATTR_NOTFOUND) {
 			if (raw) {
-				if (fr_sbuff_is_digit(&our_in)) {
-					slen = fr_dict_unknown_afrom_oid_substr(NULL, &da_unknown, relative->da, &our_in);
-					if (slen < 0) return fr_sbuff_error(&our_in) + slen;
+				/*
+				 *	We looked up raw.FOO, and FOO wasn't found.  The component must be a number.
+				 */
+				if (!fr_sbuff_is_digit(&our_in)) goto notfound;
 
-					fr_assert(da_unknown);
+				if (raw_type == FR_TYPE_NULL) {
+					raw_type = FR_TYPE_OCTETS;
 
+				} else if (raw_type == FR_TYPE_TLV) {
 					/*
-					 *	Append from the root list, starting at the root depth.
+					 *	Reset the type based on the parent.
 					 */
-					vp = fr_pair_afrom_da_depth_nested(root->ctx, root->list, da_unknown,
-									   root->da->depth);
-					fr_dict_unknown_free(&da_unknown);
-
-					if (!vp) return fr_sbuff_error(&our_in);
-
-					PAIR_VERIFY(vp);
-
-					/*
-					 *	The above function MAY have jumped ahead a few levels.  Ensure
-					 *	that the relative structure is set correctly for the parent,
-					 *	but only if the parent changed.
-					 */
-					if (relative->da != vp->da->parent) {
-						fr_pair_t *parent_vp;
-
-						parent_vp = fr_pair_parent(vp);
-						fr_assert(parent_vp);
-
-						relative->ctx = parent_vp;
-						relative->da = parent_vp->da;
-						relative->list = &parent_vp->vp_group;
+					if (relative->da->type == FR_TYPE_VSA) {
+						raw_type = FR_TYPE_VENDOR;
 					}
-
-					/*
-					 *	Update the new relative information for the current VP, which
-					 *	may be structural, or a key field.
-					 */
-					fr_assert(!fr_sbuff_is_char(&our_in, '.')); /* be sure the loop exits */
-					goto update_relative;
 				}
 
-				goto notfound;
+				slen = fr_dict_attr_unknown_afrom_oid_substr(NULL, &da_unknown, relative->da, &our_in, raw_type);
+				if (slen < 0) return fr_sbuff_error(&our_in) + slen;
+
+				fr_assert(da_unknown);
+
+				/*
+				 *	Append from the root list, starting at the root depth.
+				 */
+				vp = fr_pair_afrom_da_depth_nested(root->ctx, root->list, da_unknown,
+								   root->da->depth);
+				fr_dict_attr_unknown_free(&da_unknown);
+
+				if (!vp) return fr_sbuff_error(&our_in);
+
+				PAIR_VERIFY(vp);
+
+				/*
+				 *	The above function MAY have jumped ahead a few levels.  Ensure
+				 *	that the relative structure is set correctly for the parent,
+				 *	but only if the parent changed.
+				 */
+				if (relative->da != vp->da->parent) {
+					fr_pair_t *parent_vp;
+
+					parent_vp = fr_pair_parent(vp);
+					fr_assert(parent_vp);
+
+					relative->ctx = parent_vp;
+					relative->da = parent_vp->da;
+					relative->list = &parent_vp->vp_group;
+				}
+
+				/*
+				 *	Update the new relative information for the current VP, which
+				 *	may be structural, or a key field.
+				 */
+				fr_assert(!fr_sbuff_is_char(&our_in, '.')); /* be sure the loop exits */
+				goto update_relative;
 			}
 
 			if (internal) {
@@ -374,17 +433,33 @@ redo:
 			 *	its structural or anything else.  Just
 			 *	create the raw attribute.
 			 */
-		} else if (raw_octets) {
-			if (!da_unknown) da_unknown = fr_dict_unknown_attr_afrom_da(NULL, da);
+		} else if (raw_type != FR_TYPE_NULL) {
+			/*
+			 *	We have parsed the full OID tree, *and* found a known attribute.  e.g. raw.Vendor-Specific = ...
+			 *
+			 *	For some reason, we allow: raw.Vendor-Specific = { ... }
+			 *
+			 *	But this is what we really want: raw.Vendor-Specific = 0xabcdef
+			 */
+			fr_assert(!da_unknown);
+
+			if ((raw_type != FR_TYPE_OCTETS) && (raw_type != da->type)) {
+				fr_strerror_printf("Cannot create raw attribute %s which changes data type from %s to %s",
+						   da->name, fr_type_to_str(da->type), fr_type_to_str(raw_type));
+				return fr_sbuff_error(&our_in);
+			}
+
+			da_unknown = fr_dict_attr_unknown_raw_afrom_da(NULL, da);
 			if (!da_unknown) return fr_sbuff_error(&our_in);
 
 			fr_assert(da_unknown->type == FR_TYPE_OCTETS);
 
 			if (fr_pair_append_by_da(relative->ctx, &vp, relative->list, da_unknown) < 0) {
-				fr_dict_unknown_free(&da_unknown);
+				fr_dict_attr_unknown_free(&da_unknown);
 				return fr_sbuff_error(&our_in);
 			}
-			fr_dict_unknown_free(&da_unknown);
+
+			fr_dict_attr_unknown_free(&da_unknown);
 			fr_assert(vp->vp_type == FR_TYPE_OCTETS);
 
 			/*
@@ -499,7 +574,8 @@ redo:
 		};
 
 		if (!fr_type_is_structural(vp->vp_type)) {
-			fr_strerror_const("Cannot assign list to leaf data type");
+			fr_strerror_printf("Cannot assign list to leaf data type %s for attribute %s",
+				fr_type_to_str(vp->vp_type), vp->da->name);
 			return fr_sbuff_error(&our_in);
 		}
 

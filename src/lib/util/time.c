@@ -292,6 +292,10 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 		 *      This can't overflow.
 		 */
 		while (f_len < 9) {
+#ifdef STATIC_ANALYZER
+			// Coverity doesn't understand that the previous conditions prevent overflow.
+			if (f > UINT64_MAX / 10) break;
+#endif
 			f *= 10;
 			f_len++;
 		}

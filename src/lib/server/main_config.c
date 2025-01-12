@@ -1109,25 +1109,6 @@ int main_config_init(main_config_t *config)
 		goto failure;
 	}
 
-#define DICT_READ_OPTIONAL(_d, _n) \
-do {\
-	switch (fr_dict_read(config->dict, _d, _n)) {\
-	case -1:\
-		PERROR("Error reading dictionary \"%s/%s\"", _d, _n);\
-		goto failure;\
-	case 0:\
-		DEBUG2("Including dictionary file \"%s/%s\"", _d,_n);\
-		break;\
-	default:\
-		break;\
-	}\
-} while (0)
-
-	/*
-	 *	It's OK if this one doesn't exist.
-	 */
-	DICT_READ_OPTIONAL(config->raddb_dir, FR_DICTIONARY_FILE);
-
 	/*
 	 *	Special-case things.  If the output is a TTY, AND
 	 *	we're debugging, colourise things.  This flag also
@@ -1169,6 +1150,11 @@ do {\
 	 */
 	if (cf_section_rules_push(cs, lib_dir_on_read_config) < 0) goto failure;
 	if (cf_section_rules_push(cs, virtual_servers_on_read_config) < 0) goto failure;
+
+	/*
+	 *	Track the status of the configuration.
+	 */
+	if (fr_debug_lvl) cf_md5_init();
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", config->raddb_dir, config->name);

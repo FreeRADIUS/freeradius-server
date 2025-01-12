@@ -44,7 +44,7 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 
 			if (pkt->authen_cont.flags == FR_TAC_PLUS_CONTINUE_FLAG_ABORT) return FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE_ABORT;
 
-			fr_strerror_printf("Invalid value %u for authentication continue flag", pkt->authen_cont.flags);
+			fr_strerror_printf("Invalid value %d for authentication continue flag", pkt->authen_cont.flags);
 			return -1;
 		}
 
@@ -74,7 +74,7 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 			break;
 		}
 
-		fr_strerror_printf("Invalid value %u for authentication reply status", pkt->authen_reply.status);
+		fr_strerror_printf("Invalid value %d for authentication reply status", pkt->authen_reply.status);
 		return -1;
 
 	case FR_TAC_PLUS_AUTHOR:
@@ -96,7 +96,7 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 			break;
 		}
 
-		fr_strerror_printf("Invalid value %u for authorization reply status", pkt->author_reply.status);
+		fr_strerror_printf("Invalid value %d for authorization reply status", pkt->author_reply.status);
 		return -1;
 
 	case FR_TAC_PLUS_ACCT:
@@ -115,7 +115,7 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 			break;
 		}
 
-		fr_strerror_printf("Invalid value %u for accounting reply status", pkt->acct_reply.status);
+		fr_strerror_printf("Invalid value %d for accounting reply status", pkt->acct_reply.status);
 		return -1;
 
 	default:
@@ -127,7 +127,7 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 #define PACKET_HEADER_CHECK(_msg, _hdr) do { \
 	p = buffer + FR_HEADER_LENGTH; \
 	if (sizeof(_hdr) > (size_t) (end - p)) { \
-		fr_strerror_printf("Header for %s is too small (%zu < %zu)", _msg, end - (uint8_t const *) pkt, p - (uint8_t const *) pkt); \
+		fr_strerror_printf("Header for %s is too small (%zu < %zu)", _msg, (size_t) (end - (uint8_t const *) pkt), (size_t) (p - (uint8_t const *) pkt)); \
 		goto fail; \
 	} \
 	body = p + sizeof(_hdr); \
@@ -140,14 +140,14 @@ int fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt)
 #define ARG_COUNT_CHECK(_msg, _hdr) do { \
 	fr_assert(p == (uint8_t const *) &(_hdr)); \
 	if (data_len > (size_t) (end - p)) { \
-		fr_strerror_printf("Argument count %u overflows the remaining data (%zu) in the %s packet", _hdr.arg_cnt, end - p, _msg); \
+		fr_strerror_printf("Argument count %u overflows the remaining data (%zu) in the %s packet", _hdr.arg_cnt, (size_t) (end - p), _msg); \
 		goto fail; \
 	} \
 	argv = body; \
 	attrs = buffer + FR_HEADER_LENGTH + data_len; \
 	body += _hdr.arg_cnt; \
 	p = attrs; \
-	for (int i = 0; i < _hdr.arg_cnt; i++) { \
+	for (unsigned int i = 0; i < _hdr.arg_cnt; i++) { \
 		if (_hdr.arg_len[i] > (size_t) (end - p)) { \
 			fr_strerror_printf("Argument %u length %u overflows packet", i, _hdr.arg_len[i]); \
 			goto fail; \
@@ -376,7 +376,7 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_att
 
 	if (field_len > (end - p)) {
 		fr_strerror_printf("'%s' length %u overflows the remaining data (%zu) in the packet",
-				   da->name, field_len, end - p);
+				   da->name, field_len, (size_t) (end - p));
 		return -1;
 	}
 
@@ -488,7 +488,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 	if (!((pkt->hdr.type == FR_TAC_PLUS_AUTHEN) ||
 	      (pkt->hdr.type == FR_TAC_PLUS_AUTHOR) ||
 	      (pkt->hdr.type == FR_TAC_PLUS_ACCT))) {
-		fr_strerror_printf("Unknown packet type %u", pkt->hdr.type);
+		fr_strerror_printf("Unknown packet type %d", pkt->hdr.type);
 		return -1;
 	}
 
@@ -509,7 +509,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 	/*
 	 *	Call the struct encoder to do the actual work.
 	 */
-	if (fr_struct_from_network(ctx, out, attr_tacacs_packet, buffer, buffer_len, true, NULL, NULL, NULL) < 0) {
+	if (fr_struct_from_network(ctx, out, attr_tacacs_packet, buffer, buffer_len, NULL, NULL, NULL) < 0) {
 		fr_strerror_printf("Failed decoding TACACS header - %s", fr_strerror());
 		return -1;
 	}
@@ -681,7 +681,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 			if (raw || (pkt->authen_start.data_len < want)) {
 				fr_dict_attr_t *da_unknown;
 
-				da_unknown = fr_dict_unknown_attr_afrom_da(ctx, attr_tacacs_data);
+				da_unknown = fr_dict_attr_unknown_raw_afrom_num(ctx, fr_dict_root(dict_tacacs),
+										attr_tacacs_data->attr);
 				if (!da_unknown) goto fail;
 
 				want = pkt->authen_start.data_len;
@@ -1055,7 +1056,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 		}
 		break;
 	default:
-		fr_strerror_printf("decode: Unsupported packet type %u", pkt->hdr.type);
+		fr_strerror_printf("decode: Unsupported packet type %d", pkt->hdr.type);
 		goto fail;
 	}
 
@@ -1087,7 +1088,7 @@ static int _encode_test_ctx(fr_tacacs_ctx_t *proto_ctx)
 	return 0;
 }
 
-static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
+static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
 {
 	fr_tacacs_ctx_t *test_ctx;
 

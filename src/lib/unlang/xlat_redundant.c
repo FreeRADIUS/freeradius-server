@@ -24,8 +24,6 @@
  */
 RCSID("$Id$")
 
-#include <talloc.h>
-
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/xlat_redundant.h>
 #include <freeradius-devel/unlang/xlat_func.h>
@@ -218,6 +216,25 @@ static xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t const *func, xlat
 	node->flags.impure_func = !func->flags.pure;
 	xlat_flags_merge(&node->flags, &args->flags);
 
+	if (func->input_type == XLAT_INPUT_ARGS) {
+		xlat_arg_parser_t const	*arg_p;
+		xlat_exp_t		*arg = xlat_exp_head(node->call.args);
+
+		/*
+		 *      The original tokenizing is done using the redundant xlat argument parser
+		 *      so the boxes haven't been marked up with the appropriate "safe for".
+		 */
+		for (arg_p = node->call.func->args; arg_p->type != FR_TYPE_NULL; arg_p++) {
+		        if (!arg) break;
+
+		        xlat_exp_foreach(arg->group, child) {
+		                if (child->type == XLAT_BOX) fr_value_box_mark_safe_for(&child->data, arg_p->safe_for);
+		        }
+
+		        arg = xlat_exp_next(node->call.args, arg);
+		}
+	}
+
 	/*
 	 *	If the function is pure, AND it's arguments are pure,
 	 *	then remember that we need to call a pure function.
@@ -319,7 +336,7 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 }
 
 static xlat_arg_parser_t const xlat_redundant_args[] = {
-	{ .type = FR_TYPE_VOID },
+	{ .type = FR_TYPE_VOID, .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -340,8 +357,6 @@ void xlat_redundant_add_xlat(xlat_redundant_t *xr, xlat_t const *x)
  */
 static int8_t module_xlat_cmp(void const *a, void const *b)
 {
-	int8_t ret;
-
 	module_rlm_xlat_t const *mrx_a = talloc_get_type_abort_const(a, module_rlm_xlat_t);
 	module_rlm_xlat_t const *mrx_b = talloc_get_type_abort_const(b, module_rlm_xlat_t);
 	char const *a_p, *b_p;
@@ -353,13 +368,12 @@ static int8_t module_xlat_cmp(void const *a, void const *b)
 	 */
 	a_p = strchr(mrx_a->xlat->name, '.');
 	b_p = strchr(mrx_b->xlat->name, '.');
-	ret = CMP(a_p == NULL, b_p == NULL);
-	if ((ret != 0)) return 0;
+	if (!a_p && !b_p) return 0;
 
 	/*
 	 *	Compare the bit after the module name
 	 */
-	if (!a_p || !b_p) return 0;
+	if (!a_p || !b_p) return CMP(a_p, b_p);
 
 	return CMP(strcmp(a_p, b_p), 0);
 }

@@ -252,6 +252,23 @@ typedef struct {
 
 extern size_t const fr_aka_sim_attr_sizes[FR_TYPE_MAX + 1][2];
 
+typedef enum {
+	AKA_SIM_FLAG_ENCRYPT_INVALID = -1,			//!< Invalid encryption flag.
+	AKA_SIM_FLAG_ENCRYPT_NONE = 0,				//!< No encryption.
+	AKA_SIM_FLAG_ENCRYPT_AES_CBC = 1,			//!< Encrypt attribute RFC 2865 style.
+} fr_aka_sim_attr_flags_encrypt_t;
+
+typedef struct {
+	fr_aka_sim_attr_flags_encrypt_t	encrypt;		//!< Attribute has a tag and is encrypted
+} fr_aka_sim_attr_flags_t;
+
+static inline fr_aka_sim_attr_flags_t const * fr_aka_sim_attr_flags(fr_dict_attr_t const *da)
+{
+	return fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+}
+
+#define fr_aka_sim_flag_encrypted(_da)		fr_aka_sim_attr_flags(_da)->encrypt
+
 /*
  *	decode.c
  */

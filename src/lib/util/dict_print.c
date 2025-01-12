@@ -43,7 +43,7 @@ ssize_t fr_dict_attr_flags_print(fr_sbuff_t *out, fr_dict_t const *dict, fr_type
 	FLAG_SET(name_only);
 
 	if (dict && !flags->extra && flags->subtype) {
-		FR_SBUFF_IN_STRCPY_RETURN(&our_out, fr_table_str_by_value(dict->subtype_table, flags->subtype, "?"));
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%u", flags->subtype);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, ',');
 	}
 
@@ -195,7 +195,7 @@ static int dict_attr_debug(fr_dict_attr_t const *da, void *uctx)
 			      our_uctx->dict, da->type, &da->flags);
 
 	snprintf(our_uctx->prefix, sizeof(our_uctx->prefix),
-		 "[%02i] 0x%016" PRIxPTR "%*s",
+		 "[%02u] 0x%016" PRIxPTR "%*s",
 		 da->depth,
 		 (unsigned long)da,
 		 (da->depth - our_uctx->start_depth) * 4, "");

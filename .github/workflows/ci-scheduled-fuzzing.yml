@@ -273,7 +273,10 @@ jobs:
       run: |
         export FILE=src/tests/fuzzer-corpus/$PROTOCOL.tar
         if ! git diff --exit-code "$FILE"; then
-          sudo pip3 install --force-reinstall -I -U pyOpenSSL
+          sudo apt-get install -y python3-venv
+          python3 -m venv ~/.venv
+          . ~/.venv/bin/activate
+          pip install --force-reinstall -I -U pyOpenSSL
           pip install PyGithub
           git add "$FILE"
           OID="$(git lfs ls-files -l -I "$FILE" | cut -f1 -d ' ')"

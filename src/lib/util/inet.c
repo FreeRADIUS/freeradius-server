@@ -911,7 +911,7 @@ int fr_inet_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, boo
 	/*
 	 *	No idea what it is...
 	 */
-	fr_strerror_printf("Invalid address family %i", af);
+	fr_strerror_printf("Invalid address family %d", af);
 	return -1;
 }
 
@@ -1371,7 +1371,7 @@ int8_t fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 #endif
 
 	default:
-		fr_strerror_printf("Invalid address family %u", a->af);
+		fr_strerror_printf("Invalid address family %d", a->af);
 		return -2;
 	}
 }

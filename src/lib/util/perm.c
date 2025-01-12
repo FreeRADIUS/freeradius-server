@@ -59,6 +59,134 @@ char const *fr_perm_mode_to_oct(char out[static 5], mode_t mode)
 	return out;
 }
 
+int fr_perm_mode_from_str(mode_t *out, char const *str)
+{
+	char const *p;
+	mode_t mode;
+	int shift;
+
+	/*
+	 *	Octal strings.
+	 */
+	if (*str == '0') {
+		unsigned long value;
+		char *end = NULL;
+
+		/*
+		 *	Might as well be quick about it.
+		 */
+		if (strlen(str) != 4) goto fail;
+
+		value = strtoul(str, &end, 8);
+		if (*end || (value == ULONG_MAX)) {
+		fail:
+			fr_strerror_const("Invalid octal permissions string");
+			return -1;
+		}
+
+		mode = value;
+		goto check;
+	}
+
+	mode = 0;
+	shift = 0;
+
+
+	p = str;
+
+redo:
+	/*
+	 *	g=foo,u=foo
+	 */
+	if (*p == 'g') {
+		if (p[1] != '=') {
+		expected_set:
+			fr_strerror_printf("Invalid permission character '%c', expected '='", *p);
+			return -1;
+		}
+
+		shift = 3;
+		p += 2;
+
+	} else if (*p == 'u') {
+		if (p[1] != '=') goto expected_set;
+
+		shift = 0;
+		p += 2;
+
+	} else if (*p == 'o') {
+		if (p[1] != '=') goto expected_set;
+
+		shift = 6;
+		p += 2;
+
+	} /* else 'rwx' is implicitly "u=rwx" */
+
+	/*
+	 *	Parse permissions in any order.
+	 */
+	for (/* nothing */ ; *p != '\0'; p++) {
+		mode_t mask = 0;
+
+		switch (*p) {
+		case 'r':
+			mask = S_IRUSR;
+			break;
+
+		case 'w':
+			mask = S_IWUSR;
+			break;
+
+		case 'x':
+			mask = S_IXUSR;
+			break;
+
+		case ',':
+			p++;
+
+			if (!*p) {
+				fr_strerror_const("Unexpected end of string after ','");
+				return -1;
+			}
+
+			/*
+			 *	Alphabetical is OK.
+			 */
+			if (isalpha((uint8_t) *p)) goto redo;
+
+			/*
+			 *	Non-alphabetical is bad.
+			 */
+			FALL_THROUGH;
+
+		default:
+			fr_strerror_printf("Invalid permission character '%c', expected one of 'rwx'", *p);
+			return -1;
+		}
+
+		mask >>= shift;
+
+		if ((mode & mask) != 0) {
+			fr_strerror_printf("Permission '%c' is duplicated", *p);
+			return -1;
+		}
+
+		mode |= mask;
+	}
+
+check:
+	/*
+	 *	Some attempt at security is a good idea.
+	 */
+	if ((mode & S_IWOTH) != 0) {
+		fr_strerror_const("Invalid permissions, files cannot be world writeable");
+		return -1;
+	}
+
+	*out = mode;
+	return 0;
+}
+
 /** Resolve a uid to a passwd entry
  *
  * Resolves a uid to a passwd entry. The memory to hold the

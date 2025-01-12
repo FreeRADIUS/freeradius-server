@@ -93,9 +93,9 @@ static void lst_test_basic(void)
 static void lst_test(int skip)
 {
 	fr_lst_t	*lst;
-	unsigned int	i;
+	int		i;
 	lst_thing	*values;
-	unsigned int	left;
+	int		left;
 	int		ret;
 
 	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 0);
@@ -193,7 +193,7 @@ static void lst_stress_realloc(void)
 
 	/* Add the first INITIAL_CAPACITY values to lst and to hp */
 	TEST_CASE("partial fill");
-	for (unsigned int i = 0; i < INITIAL_CAPACITY; i++) {
+	for (int i = 0; i < INITIAL_CAPACITY; i++) {
 		TEST_CHECK((ret = fr_lst_insert(lst, &lst_array[i])) >= 0);
 		TEST_MSG("lst insert failed, iteration %d; returned %i - %s", i, ret, fr_strerror());
 		TEST_CHECK((ret = fr_heap_insert(&hp, &hp_array[i])) >= 0);
@@ -461,10 +461,10 @@ static void queue_cmp(unsigned int count)
 		end_pop = fr_time();
 
 		TEST_MSG_ALWAYS("\nlst size: %u\n", count);
-		TEST_MSG_ALWAYS("alloc: %"PRIu64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_alloc, start_alloc)) / 1000);
-		TEST_MSG_ALWAYS("insert: %"PRIu64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_insert, start_insert)) / 1000);
-		TEST_MSG_ALWAYS("pop-first: %"PRIu64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_pop_first, start_pop)) / 1000);
-		TEST_MSG_ALWAYS("pop: %"PRIu64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_pop, start_pop)) / 1000);
+		TEST_MSG_ALWAYS("alloc: %"PRId64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_alloc, start_alloc)) / 1000);
+		TEST_MSG_ALWAYS("insert: %"PRId64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_insert, start_insert)) / 1000);
+		TEST_MSG_ALWAYS("pop-first: %"PRId64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_pop_first, start_pop)) / 1000);
+		TEST_MSG_ALWAYS("pop: %"PRId64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_pop, start_pop)) / 1000);
 
 		talloc_free(lst);
 	}
@@ -497,10 +497,10 @@ static void queue_cmp(unsigned int count)
 		end_pop = fr_time();
 
 		TEST_MSG_ALWAYS("\nheap size: %u\n", count);
-		TEST_MSG_ALWAYS("alloc: %"PRIu64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_alloc, start_alloc)) / 1000);
-		TEST_MSG_ALWAYS("insert: %"PRIu64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_insert, start_insert)) / 1000);
-		TEST_MSG_ALWAYS("pop-first: %"PRIu64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_pop_first, start_pop)) / 1000);
-		TEST_MSG_ALWAYS("pop: %"PRIu64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_pop, start_pop)) / 1000);
+		TEST_MSG_ALWAYS("alloc: %"PRId64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_alloc, start_alloc)) / 1000);
+		TEST_MSG_ALWAYS("insert: %"PRId64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_insert, start_insert)) / 1000);
+		TEST_MSG_ALWAYS("pop-first: %"PRId64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_pop_first, start_pop)) / 1000);
+		TEST_MSG_ALWAYS("pop: %"PRId64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_pop, start_pop)) / 1000);
 
 		talloc_free(hp);
 	}
@@ -531,10 +531,10 @@ static void queue_cmp(unsigned int count)
 		end_pop = fr_time();
 
 		TEST_MSG_ALWAYS("\narray size: %u\n", count);
-		TEST_MSG_ALWAYS("alloc: %"PRIu64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_alloc, start_alloc)) / 1000);
-		TEST_MSG_ALWAYS("insert: %"PRIu64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_insert, start_insert)) / 1000);
-		TEST_MSG_ALWAYS("pop-first: %"PRIu64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_pop_first, start_pop)) / 1000);
-		TEST_MSG_ALWAYS("pop: %"PRIu64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_pop, start_pop)) / 1000);
+		TEST_MSG_ALWAYS("alloc: %"PRId64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_alloc, start_alloc)) / 1000);
+		TEST_MSG_ALWAYS("insert: %"PRId64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_insert, start_insert)) / 1000);
+		TEST_MSG_ALWAYS("pop-first: %"PRId64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_pop_first, start_pop)) / 1000);
+		TEST_MSG_ALWAYS("pop: %"PRId64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_pop, start_pop)) / 1000);
 
 		talloc_free(array);
 	}

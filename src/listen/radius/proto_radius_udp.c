@@ -122,7 +122,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	int				flags;
 	ssize_t				data_size;
 	size_t				packet_len;
-	decode_fail_t			reason;
+	fr_radius_decode_fail_t		reason;
 
 	*leftover = 0;		/* always for UDP */
 

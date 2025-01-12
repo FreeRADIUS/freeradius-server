@@ -297,7 +297,7 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	if (da->flags.is_unknown) {
 		fr_dict_attr_t const *unknown;
 
-		unknown = fr_dict_unknown_copy(vp, da);
+		unknown = fr_dict_attr_unknown_copy(vp, da);
 		da = unknown;
 	}
 
@@ -336,7 +336,7 @@ int fr_pair_reinit_from_da(fr_pair_list_t *list, fr_pair_t *vp, fr_dict_attr_t c
 	/*
 	 *	Only frees unknown fr_dict_attr_t's
 	 */
-	fr_dict_unknown_free(&to_free);
+	fr_dict_attr_unknown_free(&to_free);
 
 	/*
 	 *	Ensure we update the attribute index in the parent.
@@ -380,7 +380,7 @@ fr_pair_t *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent
 	if (!da) {
 		fr_dict_attr_t *unknown;
 
-		unknown = fr_dict_unknown_attr_afrom_num(vp, parent, attr);
+		unknown = fr_dict_attr_unknown_raw_afrom_num(vp, parent, attr);
 		if (!unknown) {
 			talloc_free(vp);
 			return NULL;
@@ -600,7 +600,7 @@ int fr_pair_raw_afrom_pair(fr_pair_t *vp, uint8_t const *data, size_t data_len)
 
 	if (!fr_cond_assert(vp->da->parent != NULL)) return -1;
 
-	unknown = fr_dict_unknown_afrom_da(vp, vp->da);
+	unknown = fr_dict_attr_unknown_afrom_da(vp, vp->da);
 	if (!unknown) return -1;
 
 	vp->da = unknown;
@@ -2001,7 +2001,7 @@ int fr_pair_cmp(fr_pair_t const *a, fr_pair_t const *b)
 			slen = regex_compile(NULL, &preg, a->vp_strvalue, talloc_array_length(a->vp_strvalue) - 1,
 					     NULL, false, true);
 			if (slen <= 0) {
-				fr_strerror_printf_push("Error at offset %zu compiling regex for %s", -slen,
+				fr_strerror_printf_push("Error at offset %zd compiling regex for %s", -slen,
 							a->da->name);
 				return -1;
 			}
@@ -3178,13 +3178,13 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 	(void) talloc_get_type_abort_const(vp, fr_pair_t);
 
 	if (!vp->da) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t da pointer was NULL", file, line);
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t da pointer was NULL", file, line);
 	}
 
 	fr_dict_attr_verify(file, line, vp->da);
 	if (list) {
 		fr_fatal_assert_msg(fr_pair_order_list_parent(vp) == &list->order,
-				    "CONSISTENCY CHECK FAILED %s[%u]:  pair does not have the correct parentage "
+				    "CONSISTENCY CHECK FAILED %s[%d]:  pair does not have the correct parentage "
 				    "at \"%s\"",
 				    file, line, vp->da->name);
 	}
@@ -3198,7 +3198,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 		if (vp->data.enumv) fr_dict_attr_verify(file, line, vp->data.enumv);
 
 		if (parent && !fr_dict_attr_can_contain(parent->da, vp->da)) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" should be parented by %s, but is parented by %s",
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" should be parented by %s, but is parented by %s",
 					     file, line, vp->da->name, vp->da->parent->name, parent->da->name);
 		}
 
@@ -3206,7 +3206,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 		fr_pair_t *parent = fr_pair_parent(vp);
 
 		if (parent && (parent->vp_type != FR_TYPE_GROUP) && (parent->da == vp->da)) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" structural (non-group) type contains itself",
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" structural (non-group) type contains itself",
 					     file, line, vp->da->name);
 		}
 
@@ -3222,19 +3222,19 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 		if (!vp->vp_octets) break;	/* We might be in the middle of initialisation */
 
 		if (!talloc_get_type(vp->vp_ptr, uint8_t)) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" data buffer type should be "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" data buffer type should be "
 					     "uint8_t but is %s", file, line, vp->da->name, talloc_get_name(vp->vp_ptr));
 		}
 
 		len = talloc_array_length(vp->vp_octets);
 		if (vp->vp_length > len) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" length %zu is greater than "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" length %zu is greater than "
 					     "uint8_t data buffer length %zu", file, line, vp->da->name, vp->vp_length, len);
 		}
 
 		parent = talloc_parent(vp->vp_ptr);
 		if (parent != vp) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" char buffer is not "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" char buffer is not "
 					     "parented by fr_pair_t %p, instead parented by %p (%s)",
 					     file, line, vp->da->name,
 					     vp, parent, parent ? talloc_get_name(parent) : "NULL");
@@ -3250,24 +3250,24 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 		if (!vp->vp_octets) break;	/* We might be in the middle of initialisation */
 
 		if (!talloc_get_type(vp->vp_ptr, char)) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" data buffer type should be "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" data buffer type should be "
 					     "char but is %s", file, line, vp->da->name, talloc_get_name(vp->vp_ptr));
 		}
 
 		len = (talloc_array_length(vp->vp_strvalue) - 1);
 		if (vp->vp_length > len) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" length %zu is greater than "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" length %zu is greater than "
 					     "char buffer length %zu", file, line, vp->da->name, vp->vp_length, len);
 		}
 
 		if (vp->vp_strvalue[vp->vp_length] != '\0') {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" char buffer not \\0 "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" char buffer not \\0 "
 					     "terminated", file, line, vp->da->name);
 		}
 
 		parent = talloc_parent(vp->vp_ptr);
 		if (parent != vp) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" char buffer is not "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" char buffer is not "
 					     "parented by fr_pair_t %p, instead parented by %p (%s)",
 					     file, line, vp->da->name,
 					     vp, parent, parent ? talloc_get_name(parent) : "NULL");
@@ -3278,13 +3278,13 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 
 	case FR_TYPE_IPV4_ADDR:
 		if (vp->vp_ip.af != AF_INET) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" address family is not "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" address family is not "
 					     "set correctly for IPv4 address.  Expected %i got %i",
 					     file, line, vp->da->name,
 					     AF_INET, vp->vp_ip.af);
 		}
 		if (vp->vp_ip.prefix != 32) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" address prefix "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" address prefix "
 					     "set correctly for IPv4 address.  Expected %i got %i",
 					     file, line, vp->da->name,
 					     32, vp->vp_ip.prefix);
@@ -3293,13 +3293,13 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 
 	case FR_TYPE_IPV6_ADDR:
 		if (vp->vp_ip.af != AF_INET6) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" address family is not "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" address family is not "
 					     "set correctly for IPv6 address.  Expected %i got %i",
 					     file, line, vp->da->name,
 					     AF_INET6, vp->vp_ip.af);
 		}
 		if (vp->vp_ip.prefix != 128) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" address prefix "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" address prefix "
 					     "set correctly for IPv6 address.  Expected %i got %i",
 					     file, line, vp->da->name,
 					     128, vp->vp_ip.prefix);
@@ -3314,7 +3314,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 			TALLOC_CTX *parent = talloc_parent(child);
 
 			fr_fatal_assert_msg(parent == vp,
-					    "CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" should be parented "
+					    "CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" should be parented "
 					    "by fr_pair_t \"%s\".  Expected talloc parent %p (%s) got %p (%s)",
 					    file, line,
 					    child->da->name, vp->da->name,
@@ -3325,7 +3325,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 			 *	Check if the child can be in the parent.
 			 */
 			fr_fatal_assert_msg(fr_dict_attr_can_contain(vp->da, child->da),
-					    "CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" should be parented "
+					    "CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" should be parented "
 					    "by fr_pair_t \"%s\", but it is instead parented by \"%s\"",
 					    file, line,
 					    child->da->name, child->da->parent->name, vp->da->name);
@@ -3349,7 +3349,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 
 		da = vp->da;
 		if (da != vp->da) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t "
 					     "dictionary pointer %p \"%s\" (%s) "
 					     "and global dictionary pointer %p \"%s\" (%s) differ",
 					     file, line, vp->da, vp->da->name,
@@ -3360,23 +3360,19 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 	}
 
 	if (vp->vp_raw || vp->da->flags.is_unknown) {
-		if ((vp->da->parent->type != FR_TYPE_VSA) && (vp->vp_type != FR_TYPE_VSA) && (vp->vp_type != FR_TYPE_OCTETS) && (vp->vp_type != FR_TYPE_TLV)) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t (raw/unknown) attribute %p \"%s\" "
-					     "data type incorrect.  Expected %s, got %s",
-					     file, line, vp->da, vp->da->name,
-					     fr_type_to_str(FR_TYPE_OCTETS),
-					     fr_type_to_str(vp->vp_type));
-		}
+		/*
+		 *	Raw or unknown attributes can have specific data types.  See DER and CBOR.
+		 */
 
 	} else if (fr_type_is_leaf(vp->vp_type) && (vp->vp_type != vp->da->type) &&
 		   !((vp->da->type == FR_TYPE_COMBO_IP_ADDR) && ((vp->vp_type == FR_TYPE_IPV4_ADDR) || (vp->vp_type == FR_TYPE_IPV6_ADDR))) &&
 		   !((vp->da->type == FR_TYPE_COMBO_IP_PREFIX) && ((vp->vp_type == FR_TYPE_IPV4_PREFIX) || (vp->vp_type == FR_TYPE_IPV6_PREFIX)))) {
 		char data_type_int[10], da_type_int[10];
 
-		snprintf(data_type_int, sizeof(data_type_int), "%i", vp->vp_type);
-		snprintf(da_type_int, sizeof(da_type_int), "%i", vp->vp_type);
+		snprintf(data_type_int, sizeof(data_type_int), "%u", vp->vp_type);
+		snprintf(da_type_int, sizeof(da_type_int), "%u", vp->vp_type);
 
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t attribute %p \"%s\" "
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t attribute %p \"%s\" "
 				     "data type (%s) does not match da type (%s)",
 				     file, line, vp->da, vp->da->name,
 				     fr_table_str_by_value(fr_type_table, vp->vp_type, data_type_int),
@@ -3413,7 +3409,7 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 		 */
 		fast = fr_pair_list_next(list, fast);
 		fr_fatal_assert_msg(fast != slow,
-				    "CONSISTENCY CHECK FAILED %s[%u]:  Looping list found.  Fast pointer hit "
+				    "CONSISTENCY CHECK FAILED %s[%d]:  Looping list found.  Fast pointer hit "
 				    "slow pointer at \"%s\"",
 				    file, line, slow->da->name);
 
@@ -3423,7 +3419,7 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 			fr_log_talloc_report(expected);
 			if (parent) fr_log_talloc_report(parent);
 
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: Expected fr_pair_t \"%s\" to be parented "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: Expected fr_pair_t \"%s\" to be parented "
 					     "by %p (%s), instead parented by %p (%s)\n",
 					     file, line, slow->da->name,
 					     expected, talloc_get_name(expected),

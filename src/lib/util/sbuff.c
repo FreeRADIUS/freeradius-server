@@ -262,7 +262,7 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 /** Refresh the buffer with more data from the file
  *
  */
-size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
+size_t fr_sbuff_extend_file(fr_sbuff_extend_status_t *status, fr_sbuff_t *sbuff, size_t extension)
 {
 	fr_sbuff_t		*sbuff_i;
 	size_t			read, available, total_read, shift;
@@ -323,6 +323,7 @@ size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 	if (read < available) {
 		if (!feof(fctx->file)) {	/* It's a real error */
 			fr_strerror_printf("Error extending buffer: %s", fr_syserror(ferror(fctx->file)));
+			*status |= FR_SBUFF_FLAG_EXTEND_ERROR;
 			return 0;
 		}
 
@@ -332,8 +333,18 @@ size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
 	return read;
 }
 
+/** Accessor function for the EOF state of the file extendor
+ *
+ */
+bool fr_sbuff_eof_file(fr_sbuff_t *sbuff)
+{
+	fr_sbuff_uctx_file_t	*fctx = sbuff->uctx;
+	return fctx->eof;
+}
+
 /** Reallocate the current buffer
  *
+ * @param[in] status		Extend status.
  * @param[in] sbuff		to be extended.
  * @param[in] extension		How many additional bytes should be allocated
  *				in the buffer.
@@ -341,7 +352,7 @@ size_t fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension)
  *	- 0 the extension operation failed.
  *	- >0 the number of bytes the buffer was extended by.
  */
-size_t fr_sbuff_extend_talloc(fr_sbuff_t *sbuff, size_t extension)
+size_t fr_sbuff_extend_talloc(fr_sbuff_extend_status_t *status, fr_sbuff_t *sbuff, size_t extension)
 {
 	fr_sbuff_uctx_talloc_t	*tctx = sbuff->uctx;
 	size_t			clen, nlen, elen = extension;
@@ -386,6 +397,7 @@ size_t fr_sbuff_extend_talloc(fr_sbuff_t *sbuff, size_t extension)
 	new_buff = talloc_realloc(tctx->ctx, sbuff->buff, char, nlen);
 	if (unlikely(!new_buff)) {
 		fr_strerror_printf("Failed extending buffer by %zu bytes to %zu bytes", elen, nlen);
+		*status |= FR_SBUFF_FLAG_EXTEND_ERROR;
 		return 0;
 	}
 
@@ -536,34 +548,45 @@ static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
 	ssize_t		mid;
 
 	size_t		remaining;
-	fr_sbuff_extend_status_t	status = FR_SBUFF_EXTENDABLE;
 
 	if (!term) return false;			/* If there's no terminals, we don't need to search */
 
 	end = term->len - 1;
+
 	term_idx = idx[(uint8_t)*p];			/* Fast path */
 	if (!term_idx) return false;
 
 	/*
 	 *	Special case for EOFlike states
 	 */
-	remaining = fr_sbuff_extend_lowat(&status, in, needle_len);
-	if (remaining == 0) {
-		if (status & FR_SBUFF_EXTEND_ERROR) return false;
-		return (idx['\0'] != 0);
+	remaining = fr_sbuff_remaining(in);
+	if ((remaining == 0) && !fr_sbuff_is_extendable(in)) {
+		if (idx['\0'] != 0) return true;
+		return false;
+	}
+
+	if (remaining < needle_len) {
+		fr_assert_msg(!fr_sbuff_is_extendable(in),
+			      "Caller failed to extend buffer by %zu bytes before calling fr_sbuff_terminal_search",
+			      needle_len);
+		/*
+		 *	We can't search for the needle if we don't have
+		 *	enough data to match it.
+		 */
+		return false;
 	}
 
 	mid = term_idx - 1;				/* Inform the mid point from the index */
 
 	while (start <= end) {
-		char const	*elem;
-		size_t		tlen;
-		int		ret;
+		fr_sbuff_term_elem_t const 	*elem;
+		size_t				tlen;
+		int				ret;
 
-		elem = term->elem[mid].str;
-		tlen = strlen(elem);
+		elem = &term->elem[mid];
+		tlen = elem->len;
 
-		ret = strncmp(p, elem, tlen < (size_t)remaining ? tlen : (size_t)remaining);
+		ret = memcmp(p, elem->str, tlen < (size_t)remaining ? tlen : (size_t)remaining);
 		if (ret == 0) {
 			/*
 			 *	If we have more text than the table element, that's fine
@@ -921,8 +944,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 
 	uint8_t				idx[UINT8_MAX + 1];			/* Fast path index */
 	size_t				needle_len = 1;
-
-	fr_sbuff_extend_status_t	status = FR_SBUFF_EXTENDABLE;		/* Tracks if we can extend */
+	fr_sbuff_extend_status_t	status = 0;
 
 	/*
 	 *	If we don't need to do unescaping
@@ -1060,7 +1082,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 		}
 
 	next:
-		if (tt && fr_sbuff_terminal_search(in, fr_sbuff_current(&our_in), idx, tt, needle_len)) break;
+		if (tt && fr_sbuff_terminal_search(&our_in, fr_sbuff_current(&our_in), idx, tt, needle_len)) break;
 		fr_sbuff_advance(&our_in, 1);
 	}
 
@@ -2136,10 +2158,10 @@ bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 	 *	No terminal, check for EOF.
 	 */
 	if (!tt) {
-		fr_sbuff_extend_status_t status = FR_SBUFF_EXTENDABLE;
+		fr_sbuff_extend_status_t status = 0;
 
 		if ((fr_sbuff_extend_lowat(&status, in, 1) == 0) &&
-		    (status & FR_SBUFF_EXTEND_ERROR) == 0) {
+		    (status & FR_SBUFF_FLAG_EXTEND_ERROR) == 0) {
 			return true;
 		}
 
@@ -2151,6 +2173,8 @@ bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 	 *	figure out the longest needle.
 	 */
 	fr_sbuff_terminal_idx_init(&needle_len, idx, tt);
+
+	fr_sbuff_extend_lowat(NULL, in, needle_len);
 
 	return fr_sbuff_terminal_search(in, in->p, idx, tt, needle_len);
 }

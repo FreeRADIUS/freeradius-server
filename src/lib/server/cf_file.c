@@ -40,6 +40,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/perm.h>
+#include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/syserror.h>
 
 #include <sys/types.h>
@@ -258,8 +259,8 @@ char const *cf_expand_variables(char const *cf, int lineno,
 
 				if (buf.st_size >= ((output + outsize) - p)) {
 					close(fd);
-					ERROR("%s[%d]: Reference \"${%s}\" file is too large (%zd >= %zd)", cf, lineno, name,
-					      (size_t) buf.st_size, ((output + outsize) - p));
+					ERROR("%s[%d]: Reference \"${%s}\" file is too large (%zu >= %zu)", cf, lineno, name,
+					      (size_t) buf.st_size, (size_t) ((output + outsize) - p));
 					return NULL;
 				}
 
@@ -563,7 +564,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 	if (from_dir) {
 		cf_file_t my_file;
 		char const *r;
-		int dirfd;
+		int my_fd;
 
 		my_file.cs = cs;
 		my_file.filename = filename;
@@ -572,12 +573,12 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 		 *	Find and open the directory containing filename so we can use
 		 * 	 the "at"functions to avoid time of check/time of use insecurities.
 		 */
-		if (fr_dirfd(&dirfd, &r, filename) < 0) {
+		if (fr_dirfd(&my_fd, &r, filename) < 0) {
 			ERROR("Failed to open directory containing %s", filename);
 			return -1;
 		}
 
-		if (fstatat(dirfd, r, &my_file.buf, 0) < 0) goto error;
+		if (fstatat(my_fd, r, &my_file.buf, 0) < 0) goto error;
 
 		file = fr_rb_find(tree, &my_file);
 
@@ -591,12 +592,12 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 		 *	$INCLUDE directory, then we read it again.
 		 */
 		if (file && !file->from_dir) {
-			if (dirfd != AT_FDCWD) close(dirfd);
+			if (my_fd != AT_FDCWD) close(my_fd);
 			return 1;
 		}
-		fd = openat(dirfd, r, O_RDONLY, 0);
+		fd = openat(my_fd, r, O_RDONLY, 0);
 		fp = (fd < 0) ? NULL : fdopen(fd, "r");
-		if (dirfd != AT_FDCWD) close(dirfd);
+		if (my_fd != AT_FDCWD) close(my_fd);
 	} else {
 		fp = fopen(filename, "r");
 		if (fp) fd = fileno(fp);
@@ -695,30 +696,30 @@ bool cf_file_check(CONF_PAIR *cp, bool check_perms)
 
 		if ((conf_check_gid != (gid_t)-1) && ((egid = getegid()) != conf_check_gid)) {
 			if (setegid(conf_check_gid) < 0) {
-				cf_log_perr(cp, "Failed setting effective group ID (%i) for file check: %s",
-					    conf_check_gid, fr_syserror(errno));
+				cf_log_perr(cp, "Failed setting effective group ID (%d) for file check: %s",
+					    (int) conf_check_gid, fr_syserror(errno));
 				goto error;
 			}
 		}
 		if ((conf_check_uid != (uid_t)-1) && ((euid = geteuid()) != conf_check_uid)) {
 			if (seteuid(conf_check_uid) < 0) {
-				cf_log_perr(cp, "Failed setting effective user ID (%i) for file check: %s",
-					    conf_check_uid, fr_syserror(errno));
+				cf_log_perr(cp, "Failed setting effective user ID (%d) for file check: %s",
+					    (int) conf_check_uid, fr_syserror(errno));
 				goto error;
 			}
 		}
 		fd = open(filename, O_RDONLY);
 		if (conf_check_uid != euid) {
 			if (seteuid(euid) < 0) {
-				cf_log_perr(cp, "Failed restoring effective user ID (%i) after file check: %s",
-					    euid, fr_syserror(errno));
+				cf_log_perr(cp, "Failed restoring effective user ID (%d) after file check: %s",
+					    (int) euid, fr_syserror(errno));
 				goto error;
 			}
 		}
 		if (conf_check_gid != egid) {
 			if (setegid(egid) < 0) {
-				cf_log_perr(cp, "Failed restoring effective group ID (%i) after file check: %s",
-					    egid, fr_syserror(errno));
+				cf_log_perr(cp, "Failed restoring effective group ID (%d) after file check: %s",
+					    (int) egid, fr_syserror(errno));
 				goto error;
 			}
 		}
@@ -829,7 +830,7 @@ static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, fr_token_t *to
 	 *	Don't allow casts or regexes.  But do allow bare
 	 *	%{...} expansions.
 	 */
-	slen = tmpl_preparse(&out, &outlen, ptr, strlen(ptr), token, NULL, false, true);
+	slen = tmpl_preparse(&out, &outlen, ptr, strlen(ptr), token);
 	if (slen <= 0) {
 		char *spaces, *text;
 
@@ -1024,6 +1025,9 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		struct dirent	*dp;
 		struct stat	stat_buf;
 		cf_file_heap_t	*h;
+#ifdef S_IWOTH
+		int		my_fd;
+#endif
 
 		/*
 		 *	We need to keep a copy of parent while the
@@ -1042,11 +1046,15 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 			talloc_free(directory);
 			return -1;
 		}
+
 #ifdef S_IWOTH
+		my_fd = dirfd(dir);
+		fr_assert(my_fd >= 0);
+
 		/*
 		 *	Security checks.
 		 */
-		if (fstat(dirfd(dir), &stat_buf) < 0) {
+		if (fstat(my_fd, &stat_buf) < 0) {
 			ERROR("%s[%d]: Failed reading directory %s: %s", frame->filename, frame->lineno,
 			      directory, fr_syserror(errno));
 			goto error;
@@ -2558,7 +2566,15 @@ check_for_eol:
 		 */
 	parse_name2:
 		if (!(isalpha((uint8_t) *ptr) || isdigit((uint8_t) *ptr) || (*(uint8_t const *) ptr >= 0x80))) {
-			return parse_error(stack, ptr, "Invalid second name for configuration section");
+			/*
+			 *	Maybe they missed a closing brace somewhere?
+			 */
+			name2_token = gettoken(&ptr, buff[2], stack->bufsize, false); /* can't be EOL */
+			if (fr_assignment_op[name2_token]) {
+				return parse_error(stack, ptr2, "Unexpected operator, was expecting a configuration section.  Is there a missing '}' somewhere?");
+			}
+
+			return parse_error(stack, ptr2, "Invalid second name for configuration section");
 		}
 
 		name2_token = gettoken(&ptr, buff[2], stack->bufsize, false); /* can't be EOL */
@@ -2685,6 +2701,7 @@ alloc_section:
 		    (strcmp(css->name1, "recv") == 0) ||
 		    (strcmp(css->name1, "send") == 0) ||
 		    (strcmp(css->name1, "store") == 0) ||
+		    (strcmp(css->name1, "establish") == 0) ||
 		    (strcmp(css->name1, "verify") == 0)) {
 			css->unlang = CF_UNLANG_ALLOW;
 			css->allow_locals = true;
@@ -3058,6 +3075,33 @@ static int frame_readdir(cf_stack_t *stack)
 }
 
 
+static fr_md5_ctx_t *cf_md5_ctx = NULL;
+
+void cf_md5_init(void)
+{
+	cf_md5_ctx = fr_md5_ctx_alloc();
+}
+
+
+static void cf_md5_update(char const *p)
+{
+	if (!cf_md5_ctx) return;
+
+	fr_md5_update(cf_md5_ctx, (uint8_t const *)p, strlen(p));
+}
+
+void cf_md5_final(uint8_t *digest)
+{
+	if (!cf_md5_ctx) {
+		memset(digest, 0, MD5_DIGEST_LENGTH);
+		return;
+	}
+
+	fr_md5_final(digest, cf_md5_ctx);
+	fr_md5_ctx_free(&cf_md5_ctx);
+	cf_md5_ctx = NULL;
+}
+
 static int cf_file_fill(cf_stack_t *stack)
 {
 	bool at_eof, has_spaces;
@@ -3073,6 +3117,7 @@ read_continuation:
 	 *	Get data, and remember if we are at EOF.
 	 */
 	at_eof = (fgets(stack->fill, stack->bufsize - (stack->fill - stack->buff[0]), frame->fp) == NULL);
+	cf_md5_update(stack->fill);
 	frame->lineno++;
 
 	/*

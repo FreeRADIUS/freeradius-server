@@ -51,20 +51,43 @@ extern "C" {
 typedef ssize_t fr_slen_t;
 typedef struct fr_sbuff_s fr_sbuff_t;
 typedef struct fr_sbuff_ptr_s fr_sbuff_marker_t;
-typedef size_t(*fr_sbuff_extend_t)(fr_sbuff_t *sbuff, size_t req_extension);
 
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/talloc.h>
 
+/** Whether the buffer is currently extendable and whether it was extended
+ *
+ */
+DIAG_OFF(attributes)
+typedef enum CC_HINT(flag_enum) {
+	FR_SBUFF_FLAG_EXTENDED			= 0x01,		//!< The last call to extend function actually extended the buffer.
+	FR_SBUFF_FLAG_EXTEND_ERROR		= 0x02		//!< The last call to an extend function resulted in an error.
+								///< Error should be provided using fr_strerror_const/fr_strerror_printf
+								///< by the extension function.
+} fr_sbuff_extend_status_t;
+DIAG_OFF(attributes)
+
+/** Extension callback
+ *
+ * Retrieves additional data from a source and adds it to a buffer.
+ */
+typedef size_t(*fr_sbuff_extend_t)(fr_sbuff_extend_status_t *status, fr_sbuff_t *sbuff, size_t req_extension);
+
+/** For a given extension function, returns whether it is at EOF
+ *
+ */
+typedef bool(*fr_sbuff_eof_t)(fr_sbuff_t *sbuff);
+
+
 struct fr_sbuff_ptr_s {
 	union {
 		char const *p_i;				//!< Immutable position pointer.
 		char *p;					//!< Mutable position pointer.
 	};
-	fr_sbuff_marker_t	*next;			//!< Next m in the list.
-	fr_sbuff_t		*parent;		//!< Owner of the marker
+	fr_sbuff_marker_t	*next;					//!< Next m in the list.
+	fr_sbuff_t		*parent;				//!< Owner of the marker
 };
 
 struct fr_sbuff_s {
@@ -88,22 +111,24 @@ struct fr_sbuff_s {
 		char *p;					//!< Mutable position pointer.
 	};
 
-	char const *err;				//!< Where the last error occurred.
+	char const *err;					//!< Where the last error occurred.
 
-	uint8_t			is_const:1;		//!< Can't be modified.
-	uint8_t			adv_parent:1;		//!< If true, advance the parent.
+	uint8_t				is_const:1;		//!< Can't be modified.
+	uint8_t				adv_parent:1;		//!< If true, advance the parent.
+	size_t				shifted;		//!< How many bytes this sbuff has been
+								///< shifted since its creation.
 
-	size_t			shifted;		//!< How many bytes this sbuff has been
-							///< shifted since its creation.
+	fr_sbuff_extend_t		extend;			//!< Function to re-populate or extend
+								///< the buffer.
 
-	fr_sbuff_extend_t	extend;			//!< Function to re-populate or extend
-							///< the buffer.
-	void			*uctx;			//!< Extend uctx data.
+	fr_sbuff_eof_t			eof;			//!< Function to determine if the buffer is at EOF.
 
-	fr_sbuff_t		*parent;		//!< sbuff this sbuff was copied from.
+	void				*uctx;			//!< Extend uctx data.
 
-	fr_sbuff_marker_t	*m;			//!< Pointers to update if the underlying
-							///< buffer changes.
+	fr_sbuff_t			*parent;		//!< sbuff this sbuff was copied from.
+
+	fr_sbuff_marker_t		*m;			//!< Pointers to update if the underlying
+								///< buffer changes.
 };
 
 /** Talloc sbuff extension structure
@@ -246,23 +271,14 @@ static inline void fr_sbuff_parse_error_to_strerror(fr_sbuff_parse_error_t err)
 	fr_strerror_const(fr_table_str_by_value(sbuff_parse_error_table, err, "<INVALID>"));
 }
 
-#define FR_SBUFF_FLAG_EXTENDABLE		0x01
-#define FR_SBUFF_FLAG_EXTENDED			0x02
-#define FR_SBUFF_FLAG_EXTEND_ERROR		0x04
-
-/** Whether the buffer is currently extendable and whether it was extended
- *
+/** Return whether the sbuff is extendable
  */
-typedef enum {
-	FR_SBUFF_NOT_EXTENDABLE			= 0x00,
-	FR_SBUFF_EXTENDABLE			= FR_SBUFF_FLAG_EXTENDABLE,
-	FR_SBUFF_EXTENDABLE_EXTENDED		= FR_SBUFF_FLAG_EXTENDABLE | FR_SBUFF_FLAG_EXTENDED,
-	FR_SBUFF_EXTENDED			= FR_SBUFF_FLAG_EXTENDED,
-	FR_SBUFF_EXTEND_ERROR			= FR_SBUFF_FLAG_EXTEND_ERROR
-} fr_sbuff_extend_status_t;
+static inline bool fr_sbuff_is_extendable(fr_sbuff_t *sbuff)
+{
+	return sbuff->extend && (!sbuff->eof || (sbuff->eof(sbuff) == false));
+}
 
-#define fr_sbuff_is_extendable(_status)		((_status) & FR_SBUFF_FLAG_EXTENDABLE)
-#define fr_sbuff_was_extended(_status)		((_status) & FR_SBUFF_FLAG_EXTENDED)
+#define fr_sbuff_was_extended(_status)		(_status & FR_SBUFF_FLAG_EXTENDED)
 
 extern bool const sbuff_char_class_uint[UINT8_MAX + 1];
 extern bool const sbuff_char_class_int[UINT8_MAX + 1];
@@ -401,7 +417,7 @@ do { \
  *
  * @private
  */
-#define _FR_SBUFF(_sbuff_or_marker, _start, _current, _end, _extend, _adv_parent) \
+#define _FR_SBUFF(_sbuff_or_marker, _start, _current, _end, _extend, _eof, _adv_parent) \
 ((fr_sbuff_t){ \
 	.buff		= fr_sbuff_buff(_sbuff_or_marker), \
 	.start		= (_start), \
@@ -411,6 +427,7 @@ do { \
 	.adv_parent 	= (_adv_parent), \
 	.shifted	= 0, \
 	.extend		= (_extend), \
+	.eof		= (_eof), \
 	.uctx		= fr_sbuff_ptr(_sbuff_or_marker)->uctx, \
 	.parent 	= fr_sbuff_ptr(_sbuff_or_marker) \
 })
@@ -428,6 +445,7 @@ do { \
 					     fr_sbuff_current(_sbuff_or_marker), \
 					     fr_sbuff_end(_sbuff_or_marker), \
 					     fr_sbuff_ptr(_sbuff_or_marker)->extend, \
+					     fr_sbuff_ptr(_sbuff_or_marker)->eof, \
 					     0x00)
 
 /** Create a new sbuff pointing to the same underlying buffer
@@ -461,6 +479,7 @@ do { \
 						     fr_sbuff_start(_sbuff_or_marker), \
 						     fr_sbuff_current(_sbuff_or_marker), \
 						     NULL, \
+						     NULL, \
 						     0x00)
 
 /** Create a new sbuff pointing to the same underlying buffer
@@ -475,6 +494,7 @@ do { \
 							  fr_sbuff_current(_sbuff_or_marker), \
 							  fr_sbuff_end(_sbuff_or_marker), \
 							  fr_sbuff_ptr(_sbuff_or_marker)->extend, \
+							  fr_sbuff_ptr(_sbuff_or_marker)->eof, \
 							  0x01)
 
 /** Create a new sbuff pointing to the same underlying buffer
@@ -489,6 +509,7 @@ do { \
 								 fr_sbuff_current(_sbuff_or_marker), \
 								 fr_sbuff_end(_sbuff_or_marker), \
 								 fr_sbuff_ptr(_sbuff_or_marker)->extend, \
+								 fr_sbuff_ptr(_sbuff_or_marker)->eof, \
 								 0x01)
 
 /** Creates a compound literal to pass into functions which accept a sbuff
@@ -576,9 +597,11 @@ void	fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len);
 
 size_t	fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift);
 
-size_t	fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension);
+size_t	fr_sbuff_extend_file(fr_sbuff_extend_status_t *status, fr_sbuff_t *sbuff, size_t extension);
 
-size_t	fr_sbuff_extend_talloc(fr_sbuff_t *sbuff, size_t extension);
+bool	fr_sbuff_eof_file(fr_sbuff_t *sbuff);
+
+size_t	fr_sbuff_extend_talloc(fr_sbuff_extend_status_t *status, fr_sbuff_t *sbuff, size_t extension);
 
 int	fr_sbuff_trim_talloc(fr_sbuff_t *sbuff, size_t len);
 
@@ -681,6 +704,7 @@ static inline fr_sbuff_t *fr_sbuff_init_file(fr_sbuff_t *sbuff, fr_sbuff_uctx_fi
 		.p = buff,
 		.end = buff,			//!< Starts with 0 bytes available
 		.extend = fr_sbuff_extend_file,
+		.eof = fr_sbuff_eof_file,
 		.uctx = fctx
 	};
 
@@ -989,26 +1013,27 @@ static inline fr_slen_t _fr_sbuff_error(fr_sbuff_t *sbuff, char const *err)
 #define FR_SBUFF_CHECK_REMAINING_RETURN(_sbuff, _len) \
 	if ((_len) > fr_sbuff_remaining(_sbuff)) return -((_len) - fr_sbuff_remaining(_sbuff))
 
-static inline size_t _fr_sbuff_extend_lowat(fr_sbuff_extend_status_t *status, fr_sbuff_t *in,
-					    size_t remaining, size_t lowat)
+static inline size_t _fr_sbuff_extend_lowat(fr_sbuff_extend_status_t *status, fr_sbuff_t *in, size_t remaining, size_t lowat)
 {
 	size_t extended;
+	fr_sbuff_extend_status_t our_status = 0;
 
-	if (status && !(*status & FR_SBUFF_EXTENDABLE)) {
-	not_extendable:
-		if (status) *status = FR_SBUFF_NOT_EXTENDABLE;
+	if (!fr_sbuff_is_extendable(in)) {
+	no_extend:
+		if (status) *status = our_status;
 		return remaining;
 	}
 
-	if (remaining >= lowat) {
-		if (status) *status = FR_SBUFF_EXTENDABLE;
-		return remaining;
+	/* Still have data remaining, no need to try and extend */
+	if (remaining >= lowat) goto no_extend;
+
+	if (!in->extend || ((extended = in->extend(&our_status, in, lowat - remaining)) == 0)) {
+		goto no_extend;
 	}
 
-	if (!in->extend || !(extended = in->extend(in, lowat - remaining))) goto not_extendable;
+	our_status |= FR_SBUFF_FLAG_EXTENDED;
 
-	if (status) *status = FR_SBUFF_EXTENDABLE_EXTENDED;
-
+	if (status) *status = our_status;
 	return remaining + extended;
 }
 
@@ -1803,6 +1828,11 @@ void	fr_sbuff_unescape_debug(fr_sbuff_unescape_rules_t const *escapes);
 void	fr_sbuff_terminal_debug(fr_sbuff_term_t const *tt);
 
 void 	fr_sbuff_parse_rules_debug(fr_sbuff_parse_rules_t const *p_rules);
+
+/*
+ *	...printf("foo %.*s", fr_sbuff_as_percent_s(&sbuff));
+ */
+#define fr_sbuff_as_percent_s(_sbuff) (int) fr_sbuff_remaining(_sbuff), fr_sbuff_current(_sbuff)
 
 #ifdef __cplusplus
 }

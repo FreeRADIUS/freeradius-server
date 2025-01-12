@@ -14,6 +14,8 @@ VALUE	Packet-Type			Load-Session		1
 VALUE	Packet-Type			Store-Session		2
 VALUE	Packet-Type			Clear-Session		3
 VALUE	Packet-Type			Verify-Certificate	4
+VALUE	Packet-Type			New-Session		5
+VALUE	Packet-Type			Establish-Session	6
 
 #
 #  We use response packet types instead of rcodes so that
@@ -27,3 +29,6 @@ ATTRIBUTE	Session-Id				10	octets
 ATTRIBUTE	Session-Data				11	octets
 ATTRIBUTE	Session-Resumed				12	bool
 ATTRIBUTE	Session-TTL				13	time_delta
+
+ATTRIBUTE	Min-Version				14	float32
+ATTRIBUTE	Max-Version				15	float32

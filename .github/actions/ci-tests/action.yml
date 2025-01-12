@@ -57,6 +57,10 @@ inputs:
     description: SMTP server SMTP port
     default: 2525
 
+  memcached_test_server:
+    description: Memcached server host
+    default: 127.0.0.1
+
   use_docker:
     desription: True if running in a Docker container
     default: false
@@ -90,8 +94,9 @@ runs:
     - name: Set up repositories
       shell: bash
       run: |
-        wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
-        echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
+        sudo install -d -o root -g root -m 0755 /etc/apt/keyrings
+        curl -s https://openresty.org/package/pubkey.gpg | sudo tee /etc/apt/keyrings/openresty.asc
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/openresty.asc] http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
 
         sudo apt-get update
 
@@ -104,6 +109,7 @@ runs:
           389-ds \
           dovecot-imapd \
           exim4 \
+          memcached \
           openresty \
           redis-server \
           slapd
@@ -140,7 +146,7 @@ runs:
         sudo sh -c "echo host  all all 127.0.0.1/32 trust >  /etc/postgresql/$PG_VER/main/pg_hba.conf"
         sudo sh -c "echo local all all              trust >> /etc/postgresql/$PG_VER/main/pg_hba.conf"
 
-        sudo systemctl start mysql postgresql redis-server
+        sudo systemctl start mysql postgresql redis-server memcached
 
         mysql -h 127.0.0.1 -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '';";
 
@@ -155,6 +161,7 @@ runs:
       run: |
         mysql -h ${{ inputs.sql_mysql_test_server }} -u root -e "CREATE USER 'radius'@'%' IDENTIFIED WITH mysql_native_password; ALTER USER 'radius'@'%' IDENTIFIED BY 'radpass';"
         mysql -h ${{ inputs.sql_mysql_test_server }} -u root -e "GRANT ALL ON radius.* TO 'radius'; FLUSH PRIVILEGES;"
+        memcached -u memcache -d
 
     - name: Setup databases
       shell: bash
@@ -229,6 +236,7 @@ runs:
         PERSISTENT_SEARCH_TEST_SERVER: ldap://${{ inputs.ldap389_test_server }}:${{ inputs.ldap389_test_server_port }}/
         ACTIVE_DIRECTORY_TEST_SERVER: ${{ inputs.active_directory_test_server }}
         WINBIND_TEST_SERVER: ${{ inputs.active_directory_test_server }}
+        MSCHAP_TEST_SERVER: ${{ inputs.active_directory_test_server }}
         REST_TEST_SERVER: ${{ inputs.rest_test_server }}
         REST_TEST_SERVER_PORT: ${{ inputs.rest_test_port }}
         REST_TEST_SERVER_SSL_PORT: ${{ inputs.rest_test_ssl_port }}
@@ -240,6 +248,7 @@ runs:
         IMAP_TEST_SERVER: ${{ inputs.imap_test_server }}
         IMAP_TEST_SERVER_PORT: ${{ inputs.imap_test_server_port }}
         IMAP_TEST_SERVER_SSL_PORT: ${{ inputs.imap_test_server_ssl_port }}
+        CACHE_MEMCACHED_TEST_SERVER: ${{ inputs.memcached_test_server }}
 
     # Restore ucf
     - name: Restore ucf

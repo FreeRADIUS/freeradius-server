@@ -79,6 +79,7 @@ static fr_ipaddr_t server_ipaddr;
 static int resend_count = 1;
 static bool done = true;
 static bool print_filename = false;
+static bool blast_radius = false;
 
 static fr_ipaddr_t client_ipaddr;
 static uint16_t client_port = 0;
@@ -123,6 +124,7 @@ static fr_dict_attr_t const *attr_chap_challenge;
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
+static fr_dict_attr_t const *attr_proxy_state;
 
 static fr_dict_attr_t const *attr_radclient_coa_filename;
 static fr_dict_attr_t const *attr_radclient_coa_filter;
@@ -147,6 +149,7 @@ fr_dict_attr_autoload_t radclient_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_proxy_state, .name = "Proxy-State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
 	{ NULL }
 };
@@ -159,6 +162,7 @@ static NEVER_RETURNS void usage(void)
 	fprintf(stderr, "  -4                                Use IPv4 address of server\n");
 	fprintf(stderr, "  -6                                Use IPv6 address of server.\n");
 	fprintf(stderr, "  -A <attribute>		     Use named 'attribute' to match CoA requests to packets.  Default is User-Name\n");
+	fprintf(stderr, "  -b                                Mandate checks for Blast RADIUS issue (this is not set by default).\n");
 	fprintf(stderr, "  -C [<client_ip>:]<client_port>    Client source port and source IP address.  Port values may be 1..65535\n");
 	fprintf(stderr, "  -c <count>			     Send each packet 'count' times.\n");
 	fprintf(stderr, "  -d <raddb>                        Set user dictionary directory (defaults to " RADDBDIR ").\n");
@@ -1272,6 +1276,130 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 
 
 /*
+ *	Do Blast RADIUS checks.
+ *
+ *	The request is an Access-Request, and does NOT contain Proxy-State.
+ *
+ *	The reply is a raw packet, and is NOT yet decoded.
+ */
+static int blast_radius_check(rc_request_t *request, fr_packet_t *reply)
+{
+	uint8_t *attr, *end;
+	fr_pair_t *vp;
+	bool have_message_authenticator = false;
+
+	/*
+	 *	We've received a raw packet.  Nothing has (as of yet) checked
+	 *	anything in it other than the length, and that it's a
+	 *	well-formed RADIUS packet.
+	 */
+	switch (reply->data[0]) {
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
+	case FR_RADIUS_CODE_ACCESS_REJECT:
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
+		if (reply->data[1] != request->packet->id) {
+			ERROR("Invalid reply ID %d to Access-Request ID %d", reply->data[1], request->packet->id);
+			return -1;
+		}
+		break;
+
+	default:
+		ERROR("Invalid reply code %d to Access-Request", reply->data[0]);
+		return -1;
+	}
+
+	/*
+	 *	If the reply has a Message-Authenticator, then it MIGHT be fine.
+	 */
+	attr = reply->data + 20;
+	end = reply->data + reply->data_len;
+
+	/*
+	 *	It should be the first attribute, so we warn if it isn't there.
+	 *
+	 *	But it's not a fatal error.
+	 */
+	if (blast_radius && (attr[0] != FR_MESSAGE_AUTHENTICATOR)) {
+		RDEBUG("WARNING The %s reply packet does not have Message-Authenticator as the first attribute.  The packet may be vulnerable to Blast RADIUS attacks.",
+		       fr_radius_packet_name[reply->data[0]]);
+	}
+
+	/*
+	 *	Set up for Proxy-State checks.
+	 *
+	 *	If we see a Proxy-State in the reply which we didn't send, then it's a Blast RADIUS attack.
+	 */
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_proxy_state);
+
+	while (attr < end) {
+		/*
+		 *	Blast RADIUS work-arounds require that
+		 *	Message-Authenticator is the first attribute in the
+		 *	reply.  Note that we don't check for it being the
+		 *	first attribute, but simply that it exists.
+		 *
+		 *	That check is a balance between securing the reply
+		 *	packet from attacks, and not violating the RFCs which
+		 *	say that there is no order to attributes in the
+		 *	packet.
+		 *
+		 *	However, no matter the status of the '-b' flag we
+		 *	still can check for the signature of the attack, and
+		 *	discard packets which are suspicious.  This behavior
+		 *	protects radclient from the attack, without mandating
+		 *	new behavior on the server side.
+		 *
+		 *	Note that we don't set the '-b' flag by default.
+		 *	radclient is intended for testing / debugging, and is
+		 *	not intended to be used as part of a secure login /
+		 *	user checking system.
+		 */
+		if (attr[0] == FR_MESSAGE_AUTHENTICATOR) {
+			have_message_authenticator = true;
+			goto next;
+		}
+
+		/*
+		 *	If there are Proxy-State attributes in the reply, they must
+		 *	match EXACTLY the Proxy-State attributes in the request.
+		 *
+		 *	Note that we don't care if there are more Proxy-States
+		 *	in the request than in the reply.  The Blast RADIUS
+		 *	issue requires _adding_ Proxy-State attributes, and
+		 *	cannot work when the server _deletes_ Proxy-State
+		 *	attributes.
+		 */
+		if (attr[0] == FR_PROXY_STATE) {
+			if (!vp || (vp->vp_length != (size_t) (attr[1] - 2)) || (memcmp(vp->vp_octets, attr + 2, vp->vp_length) != 0)) {
+				ERROR("Invalid reply to Access-Request ID %d - Discarding packet due to Blast RADIUS attack being detected.", request->packet->id);
+				ERROR("We received a Proxy-State in the reply which we did not send, or which is different from what we sent.");
+				return -1;
+			}
+
+			vp = fr_pair_find_by_da(&request->request_pairs, vp, attr_proxy_state);
+		}
+
+	next:
+		attr += attr[1];
+	}
+
+	/*
+	 *	If "-b" is set, then we require Message-Authenticator in the reply.
+	 */
+	if (blast_radius && !have_message_authenticator) {
+		ERROR("The %s reply packet does not contain Message-Authenticator - discarding packet due to Blast RADIUS checks.",
+		      fr_radius_packet_name[reply->data[0]]);
+		return -1;
+	}
+
+	/*
+	 *	The packet doesn't look like it's a Blast RADIUS attack.  The
+	 *	caller will now verify the packet signature.
+	 */
+	return 0;
+}
+
+/*
  *	Receive one packet, maybe.
  */
 static int recv_one_packet(fr_time_delta_t wait_time)
@@ -1362,6 +1490,20 @@ retry:
 		return -1;	/* got reply to packet we didn't send */
 	}
 	request = packet->uctx;
+
+	/*
+	 *	We want radclient to be able to send any packet, including
+	 *	imperfect ones.  However, we do NOT want to be vulnerable to
+	 *	the "Blast RADIUS" issue.  Instead of adding command-line
+	 *	flags to enable/disable similar flags to what the server
+	 *	sends, we just do a few more smart checks to double-check
+	 *	things.
+	 */
+	if ((request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) &&
+	    blast_radius_check(request, reply) < 0) {
+		fr_packet_free(&reply);
+		return -1;
+	}
 
 	/*
 	 *	Fails the signature validation: not a real reply.
@@ -1514,7 +1656,7 @@ int main(int argc, char **argv)
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
 
-	while ((c = getopt(argc, argv, "46c:A:C:d:D:f:Fhi:n:o:p:P:r:sS:t:vx")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "46bc:A:C:d:D:f:Fhi:n:o:p:P:r:sS:t:vx")) != -1) switch (c) {
 		case '4':
 			force_af = AF_INET;
 			break;
@@ -1525,6 +1667,10 @@ int main(int argc, char **argv)
 
 		case 'A':
 			attr_coa_filter_name = optarg;
+			break;
+
+		case 'b':
+			blast_radius = true;
 			break;
 
 		case 'c':

@@ -926,7 +926,7 @@ int main(int argc, char *argv[])
 		client_add(NULL, client);
 	}
 
-	if (server_init(config->root_cs) < 0) EXIT_WITH_FAILURE;
+	if (server_init(config->root_cs, config->raddb_dir, dict) < 0) EXIT_WITH_FAILURE;
 
 	vs = virtual_server_find("default");
 	if (!vs) {

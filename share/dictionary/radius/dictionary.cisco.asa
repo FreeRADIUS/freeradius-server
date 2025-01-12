@@ -69,7 +69,7 @@ ATTRIBUTE	WebVPN-HTML-Filter			70	integer
 ATTRIBUTE	WebVPN-URL-List				71	string
 ATTRIBUTE	WebVPN-Port-Forwarding-List		72	string
 ATTRIBUTE	WebVPN-Access-List			73	string
-ATTRIBUTE	WebVPNACL				73	string
+ALIAS		WebVPNACL			.WebVPN-Access-List
 ATTRIBUTE	WebVPN-HTTP-Proxy-IP-Address		74	string
 ATTRIBUTE	Cisco-LEAP-Bypass			75	integer
 ATTRIBUTE	WebVPN-Default-Homepage			76	string
@@ -101,14 +101,18 @@ ATTRIBUTE	WebVPN-Apply-ACL			102	integer
 ATTRIBUTE	WebVPN-SSL-VPN-Client-Enable		103	integer
 ATTRIBUTE	WebVPN-SSL-VPN-Client-Required		104	integer
 ATTRIBUTE	WebVPN-SSL-VPN-Client-Keep-Installation	105	integer
-ATTRIBUTE	SVC-Keepalive				107	integer
 ATTRIBUTE	WebVPN-SVC-Keepalive-Frequency		107	integer
-ATTRIBUTE	SVC-DPD-Interval-Client			108	integer
+ALIAS		SVC-Keepalive				.WebVPN-SVC-Keepalive-Frequency
+
 ATTRIBUTE	WebVPN-SVC-Client-DPD-Frequency		108	integer
-ATTRIBUTE	SVC-DPD-Interval-Gateway		109	integer
+ALIAS		SVC-DPD-Interval-Client			.WebVPN-SVC-Client-DPD-Frequency
+
 ATTRIBUTE	WebVPN-SVC-Gateway-DPD-Frequency	109	integer
-ATTRIBUTE	SVC-Rekey-Time				110	integer
+ALIAS		SVC-DPD-Interval-Gateway		.WebVPN-SVC-Gateway-DPD-Frequency
+
 ATTRIBUTE	WebVPN-SVC-Rekey-Time			110	integer
+ALIAS		SVC-Rekey-Time				.WebVPN-SVC-Rekey-Time
+
 ATTRIBUTE	WebVPN-SVC-Rekey-Method			111	integer
 ATTRIBUTE	WebVPN-SVC-Compression			112	integer
 ATTRIBUTE	WebVPN-Customization			113	string
@@ -117,11 +121,15 @@ ATTRIBUTE	WebVPN-Deny-Message			116	string
 ATTRIBUTE	WebVPN-HTTP-Compression			120	integer
 ATTRIBUTE	WebVPN-Keepalive-Ignore			121	integer
 ATTRIBUTE	Extended-Authentication-On-Rekey	122	integer
-ATTRIBUTE	SVC-DTLS				123	integer
+
 ATTRIBUTE	WebVPN-SVC-DTLS-Enable			123	integer
+ALIAS		SVC-DTLS-Enable				.WebVPN-SVC-DTLS-Enable
+
 ATTRIBUTE	WebVPN-Auto-HTTP-Signon			124	string
-ATTRIBUTE	SVC-MTU					125	integer
+
 ATTRIBUTE	WebVPN-SVC-DTLS-MTU			125	integer
+ALIAS		SVC-MTU					.WebVPN-SVC-DTLS-MTU
+
 ATTRIBUTE	WebVPN-Hidden-Shares			126	integer
 ATTRIBUTE	SVC-Modules				127	string
 ATTRIBUTE	SVC-Profiles				128	string
@@ -129,13 +137,18 @@ ATTRIBUTE	SVC-Ask					131	integer
 ATTRIBUTE	SVC-Ask-Timeout				132	integer
 ATTRIBUTE	IE-Proxy-PAC-URL			133	string
 ATTRIBUTE	Strip-Realm				135	integer
-ATTRIBUTE	Smart-Tunnel				136	string
+
 ATTRIBUTE	WebVPN-Smart-Tunnel			136	string
+ALIAS		Smart-Tunnel				.WebVPN-Smart-Tunnel
+
 ATTRIBUTE	WebVPN-ActiveX-Relay			137	integer
-ATTRIBUTE	Smart-Tunnel-Auto			138	integer
+
 ATTRIBUTE	WebVPN-Smart-Tunnel-Auto-Start		138	integer
-ATTRIBUTE	Smart-Tunnel-Auto-Signon-Enable		139	string
+ALIAS		Smart-Tunnel-Auto-Start			.WebVPN-Smart-Tunnel-Auto-Start
+
 ATTRIBUTE	WebVPN-Smart-Tunnel-Auto-Sign-On	139	string
+ALIAS		Smart-Tunnel-Auto-Signon-Enable		.WebVPN-Smart-Tunnel-Auto-Sign-On
+
 ATTRIBUTE	VLAN					140	integer
 ATTRIBUTE	NAC-Settings				141	string
 ATTRIBUTE	Member-Of				145	string
@@ -290,9 +303,9 @@ VALUE	SessionType			IKEv1-LAN-to-LAN	6
 VALUE	SessionType			IKEv2-LAN-to-LAN	7
 VALUE	SessionType			VPN-Load-Balancing	8
 
-VALUE	Smart-Tunnel-Auto		Disabled		0
-VALUE	Smart-Tunnel-Auto		Enabled			1
-VALUE	Smart-Tunnel-Auto		AutoStart		2
+VALUE	Smart-Tunnel-Auto-Start		Disabled		0
+VALUE	Smart-Tunnel-Auto-Start		Enabled			1
+VALUE	Smart-Tunnel-Auto-Start		AutoStart		2
 
 VALUE	Strip-Realm			Disabled		0
 VALUE	Strip-Realm			Enabled			1
@@ -301,9 +314,6 @@ VALUE	SVC-Ask				Disabled		0
 VALUE	SVC-Ask				Enabled			1
 VALUE	SVC-Ask				Enable-Default-Service	3
 VALUE	SVC-Ask				Enable-Default-Clientless 5
-
-VALUE	SVC-DTLS			FALSE			0
-VALUE	SVC-DTLS			TRUE			1
 
 VALUE	Use-Client-Address		Disabled		0
 VALUE	Use-Client-Address		Enabled			1

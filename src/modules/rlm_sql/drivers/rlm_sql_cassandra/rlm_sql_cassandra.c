@@ -49,18 +49,13 @@ DIAG_ON(documentation)
 #endif
 
 #include "rlm_sql.h"
+#include "rlm_sql_trunk.h"
 
-/** Cassandra cluster connection
- *
- */
 typedef struct {
-	CassResult const	*result;			//!< Result from executing a query.
-	CassIterator		*iterator;			//!< Row set iterator.
-
-	TALLOC_CTX		*log_ctx;			//!< Prevent unneeded memory allocation by keeping a
-								//!< permanent pool, to store log entries.
-	sql_log_entry_t		last_error;
-} rlm_sql_cassandra_conn_t;
+	bool			done_connect_keyspace;		//!< Whether we've connected to a keyspace.
+	pthread_mutex_t		connect_mutex;			//!< Mutex to prevent multiple connections attempting
+								///< to connect to a keyspace concurrently.
+} rlm_sql_cassandra_mutable_t;
 
 /** Cassandra driver instance
  *
@@ -69,10 +64,7 @@ typedef struct {
 	CassCluster		*cluster;			//!< Configuration of the cassandra cluster connection.
 	CassSession		*session;			//!< Cluster's connection pool.
 	CassSsl			*ssl;				//!< Connection's SSL context.
-	bool			done_connect_keyspace;		//!< Whether we've connected to a keyspace.
-
-	pthread_mutex_t		connect_mutex;			//!< Mutex to prevent multiple connections attempting
-								//!< to connect a keyspace concurrently.
+	rlm_sql_cassandra_mutable_t	*mutable;		//!< Instance data which needs to change post instantiation.
 
 	/*
 	 *	Configuration options
@@ -84,49 +76,13 @@ typedef struct {
 
 	uint32_t		connections_per_host;		//!< Number of connections to each server in each
 								//!< IO thread.
-	uint32_t		connections_per_host_max;	//!< Maximum  number of connections to each server
-								//!< in each IO threads.
 	uint32_t		io_threads;			//!< Number of IO threads.
 
 	uint32_t		io_queue_size;			//!< Size of the the fixed size queue that stores
 								//!< pending requests.
 
-	uint32_t		io_flush_requests_max;		//!< Maximum number of requests processed by an
-								//!< IO worker per flush.
-
-	uint32_t		pending_requests_high;		//!< Sets the high water mark for the number of requests
-								//!< queued waiting for a connection in a connection
-								//!< pool. Disables writes to a host on an IO worker
-								//!< if the number of requests queued exceed this value.
-
-	uint32_t		pending_requests_low;		//!< Sets the low water mark for the number of requests
-								//!< queued waiting for a connection in a connection
-								//!< pool. After exceeding high water mark requests,
-								//!< writes to a host will only resume once the number
-								//!< of requests fall below this value.
-
-	uint32_t		write_bytes_high;		//!< High water mark for the number of bytes
-								//!< outstanding on a connection. Disables writes to
-								//!< a connection if the number of bytes queued exceed
-								//!< this value.
-
-	uint32_t		write_bytes_low;		//!< Low water mark for number of bytes outstanding on
-								//!< a connection. After exceeding high water mark
-								//!< bytes, writes will only resume once the number of
-								//!< bytes fall below this value.
-
 	uint32_t		event_queue_size;		//!< Sets the size of the the fixed size queue
 								//!< that stores events.
-
-	uint32_t		spawn_threshold;		//!< Threshold for the maximum number of concurrent
-								//!< requests in-flight on a connection before creating
-								//!< a new connection.
-	uint32_t		spawn_max;			//!< The maximum number of connections that
-								//!< will be created concurrently.
-
-	fr_time_delta_t		spawn_retry_delay;		//!< Amount of time to wait before attempting
-								//!< to reconnect.
-	bool			spawn_retry_delay_is_set;
 
 	bool			load_balance_round_robin;	//!< Enable round robin load balancing.
 
@@ -173,11 +129,46 @@ typedef struct {
 								//!< server.
 } rlm_sql_cassandra_t;
 
+/** Cassandra cluster connection
+ *
+ */
+typedef struct {
+	connection_t		*conn;				//!< Generic connection structure for managing this handle.
+	rlm_sql_cassandra_t const	*inst;			//!< Module instance for this connection.
+	rlm_sql_config_t const	*config;			//!< SQL instance config
+	CassIterator		*iterator;			//!< Row set iterator.
+
+	TALLOC_CTX		*log_ctx;			//!< Prevent unneeded memory allocation by keeping a
+								//!< permanent pool, to store log entries.
+	fr_dlist_head_t		queries;			//!< Outstanding queries on this connection.
+	fr_event_timer_t const	*read_ev;			//!< Polling event for reading query results.
+	fr_event_timer_t const	*write_ev;			//!< Polling event for sending queries.
+	uint			poll_interval;			//!< Interval between read polling.
+	uint			poll_count;			//!< How many consecutive polls had no available results.
+} rlm_sql_cassandra_conn_t;
+
+/** Structure for tracking outstanding queries
+ *
+ */
+typedef struct {
+	fr_dlist_t		entry;				//!< Entry in list of outstanding queries.
+	fr_sql_query_t		*query_ctx;			//!< SQL query ctx.
+	CassFuture		*future;			//!< Future produced when submitting query.
+} cassandra_query_t;
+
+/** Driver specific data to attach to the query ctx
+ *
+ */
+typedef struct {
+	CassResult const	*result;			//!< Cassandra result handle
+	sql_log_entry_t		error;				//!< Most recent Cassandra error message for this query.
+} cassandra_query_ctx_t;
+
 static fr_table_num_sorted_t const consistency_levels[] = {
 	{ L("all"),		CASS_CONSISTENCY_ALL		},
 	{ L("any"),		CASS_CONSISTENCY_ANY		},
 	{ L("each_quorum"),	CASS_CONSISTENCY_EACH_QUORUM	},
-	{ L("local_one"),		CASS_CONSISTENCY_LOCAL_ONE	},
+	{ L("local_one"),	CASS_CONSISTENCY_LOCAL_ONE	},
 	{ L("local_quorum"),	CASS_CONSISTENCY_LOCAL_QUORUM	},
 	{ L("one"),		CASS_CONSISTENCY_ONE		},
 	{ L("quorum"),		CASS_CONSISTENCY_QUORUM		},
@@ -226,37 +217,6 @@ static const conf_parser_t driver_config[] = {
 
 	{ FR_CONF_OFFSET("connections_per_host", rlm_sql_cassandra_t, connections_per_host) },
 
-/*
- * The below functions was deprecated in 2.10
- */
-#if (CASS_VERSION_MAJOR >= 2 && CASS_VERSION_MINOR >= 10)
-	{ FR_CONF_DEPRECATED("connections_per_host_max", rlm_sql_cassandra_t, connections_per_host_max) },
-	{ FR_CONF_DEPRECATED("io_flush_requests_max", rlm_sql_cassandra_t, io_flush_requests_max) },
-
-	{ FR_CONF_DEPRECATED("pending_requests_high", rlm_sql_cassandra_t, pending_requests_high) },
-	{ FR_CONF_DEPRECATED("pending_requests_low", rlm_sql_cassandra_t, pending_requests_low) },
-
-	{ FR_CONF_DEPRECATED("write_bytes_high", rlm_sql_cassandra_t, write_bytes_high) },
-	{ FR_CONF_DEPRECATED("write_bytes_low", rlm_sql_cassandra_t, write_bytes_low) },
-
-	{ FR_CONF_DEPRECATED("spawn_threshold", rlm_sql_cassandra_t, spawn_threshold) },
-	{ FR_CONF_DEPRECATED("spawn_max", rlm_sql_cassandra_t, spawn_max) },
-	{ FR_CONF_DEPRECATED("spawn_retry_delay", rlm_sql_cassandra_t, spawn_retry_delay) },
-#else
-	{ FR_CONF_OFFSET("connections_per_host_max", rlm_sql_cassandra_t, connections_per_host_max) },
-	{ FR_CONF_OFFSET("io_flush_requests_max", rlm_sql_cassandra_t, io_flush_requests_max) },
-
-	{ FR_CONF_OFFSET("pending_requests_high", rlm_sql_cassandra_t, pending_requests_high) },
-	{ FR_CONF_OFFSET("pending_requests_low", rlm_sql_cassandra_t, pending_requests_low) },
-
-	{ FR_CONF_OFFSET("write_bytes_high", rlm_sql_cassandra_t, write_bytes_high) },
-	{ FR_CONF_OFFSET("write_bytes_low", rlm_sql_cassandra_t, write_bytes_low) },
-
-	{ FR_CONF_OFFSET("spawn_threshold", rlm_sql_cassandra_t, spawn_threshold) },
-	{ FR_CONF_OFFSET("spawn_max", rlm_sql_cassandra_t, spawn_max) },
-	{ FR_CONF_OFFSET_IS_SET("spawn_retry_delay", FR_TYPE_TIME_DELTA, 0, rlm_sql_cassandra_t, spawn_retry_delay) },
-#endif
-
 	{ FR_CONF_OFFSET("io_threads", rlm_sql_cassandra_t, io_threads) },
 	{ FR_CONF_OFFSET("io_queue_size", rlm_sql_cassandra_t, io_queue_size) },
 
@@ -271,7 +231,7 @@ static const conf_parser_t driver_config[] = {
 	{ FR_CONF_OFFSET("tcp_keepalive", rlm_sql_cassandra_t, tcp_keepalive) },
 	{ FR_CONF_OFFSET("tcp_nodelay", rlm_sql_cassandra_t, tcp_nodelay), .dflt = "no" },
 
-	{ FR_CONF_POINTER("tls", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) tls_config },
+	{ FR_CONF_POINTER("tls", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = (void const *) tls_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -332,81 +292,86 @@ static void _rlm_sql_cassandra_log(CassLogMessage const *message, UNUSED void *d
 	}
 }
 
-/** Replace the last error messages associated with the connection
+/** Store the last error associated with a query
  *
- * This could be modified in future to maintain a circular buffer of log entries,
- * but it's not required for now.
- *
- * @param conn to replace log message in.
+ * @param ctx to allocate message in
+ * @param cass_query_ctx cassandra query context to write error message into.
  * @param message from libcassandra.
  * @param len of message.
  */
-static void sql_set_last_error(rlm_sql_cassandra_conn_t *conn, char const *message, size_t len)
+static void sql_set_query_error(TALLOC_CTX *ctx, cassandra_query_ctx_t *cass_query_ctx, char const *message, size_t len)
 {
-	talloc_free_children(conn->log_ctx);
-
-	conn->last_error.msg = fr_asprint(conn->log_ctx, message, len, '\0');
-	conn->last_error.type = L_ERR;
+	talloc_const_free(cass_query_ctx->error.msg);
+	cass_query_ctx->error.msg = fr_asprint(ctx, message, len, '\0');
+	cass_query_ctx->error.type = L_ERR;
 }
 
 
-/** Replace the last error messages associated with the connection
+/** Store the last error associated with a query, using a format string
  *
- * This could be modified in future to maintain a circular buffer of log entries,
- * but it's not required for now.
- *
- * @param conn to replace log message in.
+ * @param ctx to allocate messate in.
+ * @param cass_query_ctx to replace log message in.
  * @param fmt of message.
  * @param ... args.
  */
-static void sql_set_last_error_printf(rlm_sql_cassandra_conn_t *conn, char const *fmt, ...)
-	CC_HINT(format (printf, 2, 3));
-static void sql_set_last_error_printf(rlm_sql_cassandra_conn_t *conn, char const *fmt, ...)
+static void sql_set_query_error_printf(TALLOC_CTX *ctx, cassandra_query_ctx_t *cass_query_ctx, char const *fmt, ...)
+	CC_HINT(format (printf, 3, 4));
+static void sql_set_query_error_printf(TALLOC_CTX *ctx, cassandra_query_ctx_t *cass_query_ctx, char const *fmt, ...)
 {
 	va_list ap;
 
-	talloc_free_children(conn->log_ctx);
-
+	talloc_const_free(cass_query_ctx->error.msg);
 	va_start(ap, fmt);
-	conn->last_error.msg = talloc_vasprintf(conn->log_ctx, fmt, ap);
+	cass_query_ctx->error.msg = talloc_vasprintf(ctx, fmt, ap);
 	va_end(ap);
-	conn->last_error.type = L_ERR;
+	cass_query_ctx->error.type = L_ERR;
 }
 
-static int _sql_socket_destructor(rlm_sql_cassandra_conn_t *conn)
+static void _sql_connection_close(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
 {
+	rlm_sql_cassandra_conn_t *conn = talloc_get_type_abort(h, rlm_sql_cassandra_conn_t);
+
 	DEBUG2("Socket destructor called, closing socket");
 
 	if (conn->iterator) cass_iterator_free(conn->iterator);
-	if (conn->result) cass_result_free(conn->result);
-
-	return 0;
+	talloc_free(h);
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, fr_time_delta_t timeout)
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
+static connection_state_t _sql_connection_init(void **h, connection_t *conn, void *uctx)
 {
-	rlm_sql_cassandra_conn_t	*conn;
-	rlm_sql_cassandra_t		*inst = talloc_get_type_abort(handle->inst->driver_submodule->data, rlm_sql_cassandra_t);
+	rlm_sql_t const			*sql = talloc_get_type_abort_const(uctx, rlm_sql_t);
+	rlm_sql_config_t const		*config = &sql->config;
+	rlm_sql_cassandra_t		*inst = talloc_get_type_abort(sql->driver_submodule->data, rlm_sql_cassandra_t);
+	rlm_sql_cassandra_conn_t	*c;
 
-	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_cassandra_conn_t));
-	talloc_set_destructor(conn, _sql_socket_destructor);
+	MEM(c = talloc_zero(conn, rlm_sql_cassandra_conn_t));
+	*c = (rlm_sql_cassandra_conn_t) {
+		.conn = conn,
+		.inst = inst,
+		.config = config,
+		.log_ctx = talloc_pool(c, 2048),		/* Pre-allocate some memory for log messages */
+		.poll_interval = 1000
+	};
+
+	*h = c;
 
 	/*
 	 *	We do this one inside sql_socket_init, to allow pool.start = 0 to
 	 *	work as expected (allow the server to start if Cassandra is
 	 *	unavailable).
 	 */
-	if (!inst->done_connect_keyspace) {
+	if (!inst->mutable->done_connect_keyspace) {
 		CassFuture	*future;
 		CassError	ret;
 
-		pthread_mutex_lock(&inst->connect_mutex);
-		if (!inst->done_connect_keyspace) {
+		pthread_mutex_lock(&inst->mutable->connect_mutex);
+		if (!inst->mutable->done_connect_keyspace) {
 			/*
 			 *	Easier to do this here instead of mod_instantiate
 			 *	as we don't have a pointer to the pool.
 			 */
-			cass_cluster_set_connect_timeout(inst->cluster, fr_time_delta_to_msec(timeout));
+			cass_cluster_set_connect_timeout(inst->cluster, fr_time_delta_to_msec(config->trunk_conf.conn_conf->connection_timeout));
 
 			DEBUG2("Connecting to Cassandra cluster");
 			future = cass_session_connect_keyspace(inst->session, inst->cluster, config->sql_db);
@@ -418,79 +383,257 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 				cass_future_error_message(future, &msg, &msg_len);
 				ERROR("Unable to connect: [%x] %s", (int)ret, msg);
 				cass_future_free(future);
-				pthread_mutex_unlock(&inst->connect_mutex);
+				pthread_mutex_unlock(&inst->mutable->connect_mutex);
 
-				return RLM_SQL_ERROR;
+				return CONNECTION_STATE_FAILED;
 			}
 			cass_future_free(future);
-			inst->done_connect_keyspace = true;
+			inst->mutable->done_connect_keyspace = true;
 		}
-		pthread_mutex_unlock(&inst->connect_mutex);
+		pthread_mutex_unlock(&inst->mutable->connect_mutex);
 	}
-	conn->log_ctx = talloc_pool(conn, 1024);	/* Pre-allocate some memory for log messages */
 
-	return RLM_SQL_OK;
+	fr_dlist_init(&c->queries, cassandra_query_t, entry);
+
+	return CONNECTION_STATE_CONNECTED;
 }
 
-static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+SQL_TRUNK_CONNECTION_ALLOC
+
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
+static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
+				  connection_t *conn, UNUSED void *uctx)
 {
-	fr_sql_query_t			*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	rlm_sql_cassandra_conn_t	*conn = query_ctx->handle->conn;
-	rlm_sql_cassandra_t		*inst = talloc_get_type_abort(query_ctx->handle->inst->driver_submodule->data, rlm_sql_cassandra_t);
-
+	rlm_sql_cassandra_conn_t	*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_cassandra_conn_t);
+	rlm_sql_cassandra_t const	*inst = sql_conn->inst;
+	request_t			*request;
+	trunk_request_t			*treq;
+	fr_sql_query_t			*query_ctx;
 	CassStatement			*statement;
-	CassFuture			*future;
-	CassError			ret;
+	cassandra_query_t		*cass_query;
+	cassandra_query_ctx_t		*cass_query_ctx;
 
-	statement = cass_statement_new_n(query_ctx->query_str, talloc_array_length(query_ctx->query_str) - 1, 0);
-	if (inst->consistency_str) cass_statement_set_consistency(statement, inst->consistency);
+	while (trunk_connection_pop_request(&treq, tconn) == 0) {
+		if (!treq) return;
 
-	future = cass_session_execute(inst->session, statement);
-	cass_statement_free(statement);
+		query_ctx = talloc_get_type_abort(treq->preq, fr_sql_query_t);
+		request = query_ctx->request;
 
-	ret = cass_future_error_code(future);
-	if (ret != CASS_OK) {
-		char const	*error;
-		size_t		len;
+		switch (query_ctx->status) {
+		case SQL_QUERY_PREPARED:
+			ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
+			statement = cass_statement_new_n(query_ctx->query_str, talloc_array_length(query_ctx->query_str) - 1, 0);
+			if (inst->consistency_str) cass_statement_set_consistency(statement, inst->consistency);
 
-		cass_future_error_message(future, &error, &len);
-		sql_set_last_error(conn, error, len);
-		cass_future_free(future);
+			/*
+			 *	Allocate tracking and driver specific structures.
+			 */
+			MEM(cass_query = talloc_zero(conn, cassandra_query_t));
+			MEM(cass_query_ctx = talloc_zero(query_ctx, cassandra_query_ctx_t));
+			query_ctx->uctx = cass_query_ctx;
 
-		switch (ret) {
-		case CASS_ERROR_SERVER_SYNTAX_ERROR:
-		case CASS_ERROR_SERVER_INVALID_QUERY:
-			query_ctx->rcode = RLM_SQL_QUERY_INVALID;
-			RETURN_MODULE_INVALID;
+			/*
+			 *	Executing the query returns a future which will later be polled for its result.
+			 *	Failures are not visible at this point.
+			 */
+			cass_query->future = cass_session_execute(inst->session, statement);
+			cass_query->query_ctx = query_ctx;
+			cass_statement_free(statement);
+
+			/*
+			 *	Insert the tracking structure into the list of outstanding queries.
+			 */
+			fr_dlist_insert_tail(&sql_conn->queries, cass_query);
+			query_ctx->status = SQL_QUERY_SUBMITTED;
+			query_ctx->tconn = tconn;
+			trunk_request_signal_sent(treq);
+			return;
 
 		default:
-			query_ctx->rcode = RLM_SQL_ERROR;
-			RETURN_MODULE_FAIL;
+			return;
 		}
 	}
+}
 
-	conn->result = cass_future_get_result(future);
-	cass_future_free(future);
+static void sql_trunk_connection_read_poll(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	rlm_sql_cassandra_conn_t	*c = talloc_get_type_abort(uctx, rlm_sql_cassandra_conn_t);
+	cassandra_query_t		*cass_query, *next_query = NULL;
+	fr_sql_query_t			*query_ctx;
+	cassandra_query_ctx_t		*cass_query_ctx;
+	CassError			ret;
+	request_t			*request;
+	bool				handled = false;
 
-	query_ctx->rcode = RLM_SQL_OK;
-	RETURN_MODULE_OK;
+	next_query = fr_dlist_head(&c->queries);
+	while (next_query) {
+		/*
+		 *	If the future is not ready, move to the next.
+		 */
+		if (!cass_future_ready(next_query->future)) goto next;
+
+		cass_query = next_query;
+		next_query = fr_dlist_remove(&c->queries, cass_query);
+
+		query_ctx = cass_query->query_ctx;
+		request = query_ctx->request;
+		handled = true;
+		cass_query_ctx = talloc_get_type_abort(query_ctx->uctx, cassandra_query_ctx_t);
+
+		ret = cass_future_error_code(cass_query->future);
+		if (ret != CASS_OK) {
+			char const	*error;
+			size_t		len;
+
+			cass_future_error_message(cass_query->future, &error, &len);
+			sql_set_query_error(c->log_ctx, cass_query_ctx, error, len);
+
+			switch (ret) {
+			case CASS_ERROR_SERVER_SYNTAX_ERROR:
+			case CASS_ERROR_SERVER_INVALID_QUERY:
+				query_ctx->rcode = RLM_SQL_QUERY_INVALID;
+				break;
+
+			default:
+				query_ctx->rcode = RLM_SQL_ERROR;
+			}
+			trunk_request_signal_fail(query_ctx->treq);
+			cass_future_free(cass_query->future);
+			talloc_free(cass_query);
+			goto next;
+		}
+
+		query_ctx->rcode = RLM_SQL_OK;
+		cass_query_ctx->result = cass_future_get_result(cass_query->future);
+		cass_future_free(cass_query->future);
+		if (request) unlang_interpret_mark_runnable(request);
+		talloc_free(cass_query);
+	next:
+		next_query = fr_dlist_next(&c->queries, next_query);
+	}
+
+	/*
+	 *	Adjust poll interval.  The aim is to return results as fast as
+	 *	possible, but without over polling.
+	 */
+	if (!handled) {
+		/*
+		 *	Nothing was ready - increase the interval
+		 */
+		if (c->poll_interval < fr_time_delta_to_usec(c->config->query_timeout)/2) c->poll_interval += 100;
+		c->poll_count ++;
+	} else {
+		/*
+		 *	Results were immediately available - decrease the interval
+		 */
+		if (c->poll_count == 0) {
+			c->poll_interval /= 2;
+		}
+		c->poll_count = 0;
+	}
+
+	/*
+	 *	There are still outstanding queries, add another polling event
+	 */
+	if (fr_dlist_num_elements(&c->queries)) {
+		if (fr_event_timer_in(c, el, &c->read_ev, fr_time_delta_from_usec(c->poll_interval),
+				      sql_trunk_connection_read_poll, c) < 0) {
+			ERROR("Unable to insert polling event");
+		}
+	}
+}
+
+static void sql_trunk_connection_write_poll(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
+
+	trunk_connection_signal_writable(tconn);
+}
+
+/*
+ *	While libcassandra support installing callbacks to handle futures being set,
+ *	in testing, in the callback attempting to retrieve the error status of the
+ *	future locked up.  So we have to resort to polling.
+ *
+ *	This "notify" callback sets up the appropriate polling events.
+ */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
+static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connection_t *conn, UNUSED fr_event_list_t *el,
+					trunk_connection_event_t notify_on, UNUSED void *uctx)
+{
+	rlm_sql_cassandra_conn_t	*c = talloc_get_type_abort(conn->h, rlm_sql_cassandra_conn_t);
+
+	switch (notify_on) {
+	case TRUNK_CONN_EVENT_NONE:
+		if (c->read_ev) fr_event_timer_delete(&c->read_ev);
+		if (c->write_ev) fr_event_timer_delete(&c->write_ev);
+		return;
+
+	case TRUNK_CONN_EVENT_BOTH:
+	case TRUNK_CONN_EVENT_READ:
+		if (fr_dlist_num_elements(&c->queries)) {
+			if (fr_event_timer_in(c, el, &c->read_ev, fr_time_delta_from_usec(c->poll_interval),
+					      sql_trunk_connection_read_poll, c) < 0) {
+				ERROR("Unable to insert polling event");
+			}
+		}
+		if (notify_on == TRUNK_CONN_EVENT_READ) return;
+
+		FALL_THROUGH;
+
+	case TRUNK_CONN_EVENT_WRITE:
+		if (fr_event_timer_in(c, el, &c->write_ev, fr_time_delta_from_usec(0),
+				      sql_trunk_connection_write_poll, tconn) < 0) {
+			ERROR("Unable to insert polling event");
+		}
+		return;
+	}
+}
+
+SQL_QUERY_RESUME
+SQL_QUERY_FAIL
+
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
+static void sql_request_cancel(connection_t *conn, void *preq, trunk_cancel_reason_t reason,
+			       UNUSED void *uctx)
+{
+	fr_sql_query_t			*query_ctx = talloc_get_type_abort(preq, fr_sql_query_t);
+	rlm_sql_cassandra_conn_t	*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_cassandra_conn_t);
+	cassandra_query_t		*cass_query = NULL;
+
+	if (!query_ctx->treq) return;
+	if (reason != TRUNK_CANCEL_REASON_SIGNAL) return;
+
+	/*
+	 *	There is no query cancellation for Cassandra.
+	 *	So, remove the query from the list of outstanding queries so
+	 *	if it does return, we don't do anything.
+	 */
+	while ((cass_query = fr_dlist_next(&sql_conn->queries, cass_query))) {
+		if (cass_query->query_ctx == query_ctx) {
+			fr_dlist_remove(&sql_conn->queries, cass_query);
+			cass_future_free(cass_query->future);
+			return;
+		}
+	}
 }
 
 static int sql_num_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_cassandra_conn_t *conn = query_ctx->handle->conn;
+	cassandra_query_ctx_t	*cass_query_ctx = query_ctx->uctx;
 
-	return conn->result ? cass_result_row_count(conn->result) : 0;
+	return cass_query_ctx->result ? cass_result_row_count(cass_query_ctx->result) : 0;
 }
 
 static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_cassandra_conn_t *conn = query_ctx->handle->conn;
+	cassandra_query_ctx_t	*cass_query_ctx = query_ctx->uctx;
+	CassResult const	*result = cass_query_ctx->result;
 
 	unsigned int	fields, i;
 	char const	**names;
 
-	fields = conn->result ? cass_result_column_count(conn->result) : 0;
+	fields = result ? cass_result_column_count(result) : 0;
 	if (fields == 0) return RLM_SQL_ERROR;
 
 	MEM(names = talloc_array(query_ctx, char const *, fields));
@@ -500,7 +643,7 @@ static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNU
 		size_t	   col_name_len;
 
 		/* Writes out a pointer to a buffer in the result */
-		if (cass_result_column_name(conn->result, i, &col_name, &col_name_len) != CASS_OK) {
+		if (cass_result_column_name(result, i, &col_name, &col_name_len) != CASS_OK) {
 			col_name = "<INVALID>";
 		}
 		names[i] = col_name;
@@ -514,8 +657,10 @@ static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNU
 static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t			*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	rlm_sql_cassandra_conn_t 	*conn = query_ctx->handle->conn;
+	rlm_sql_cassandra_conn_t 	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_cassandra_conn_t);
 	CassRow	const 			*cass_row;
+	cassandra_query_ctx_t		*cass_query_ctx = query_ctx->uctx;
+	CassResult const		*result = cass_query_ctx->result;
 	int				fields, i;
 	char				**row;
 
@@ -524,10 +669,10 @@ do {\
 	char const *_col_name;\
 	size_t _col_name_len;\
 	CassError _ret;\
-	if ((_ret = cass_result_column_name(conn->result, i, &_col_name, &_col_name_len)) != CASS_OK) {\
+	if ((_ret = cass_result_column_name(result, i, &_col_name, &_col_name_len)) != CASS_OK) {\
 		_col_name = "<INVALID>";\
 	}\
-	sql_set_last_error_printf(conn, "Failed to retrieve " _t " data at column %s (%d): %s", \
+	sql_set_query_error_printf(conn->log_ctx, cass_query_ctx, "Failed to retrieve " _t " data at column %s (%d): %s", \
 				  _col_name, i, cass_error_desc(_ret));\
 	TALLOC_FREE(query_ctx->row);\
 	query_ctx->rcode = RLM_SQL_ERROR;\
@@ -535,13 +680,18 @@ do {\
 } while(0)
 
 	query_ctx->rcode = RLM_SQL_OK;
-	if (!conn->result) RETURN_MODULE_OK;				/* no result */
+	if (!result) RETURN_MODULE_OK;					/* no result */
 
 	/*
 	 *	Start of the result set, initialise the iterator.
 	 */
-	if (!conn->iterator) conn->iterator = cass_iterator_from_result(conn->result);
+	if (!conn->iterator) conn->iterator = cass_iterator_from_result(result);
 	if (!conn->iterator) RETURN_MODULE_OK;				/* no result */
+
+	/*
+	 *	Free the previous result (also gets called on finish_query)
+	 */
+	TALLOC_FREE(query_ctx->row);
 
 	if (!cass_iterator_next(conn->iterator)) {
 		query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;		/* no more rows */
@@ -549,12 +699,8 @@ do {\
 	}
 
 	cass_row = cass_iterator_get_row(conn->iterator);		/* this shouldn't fail ? */
-	fields = cass_result_column_count(conn->result);		/* get the number of fields... */
+	fields = cass_result_column_count(result);			/* get the number of fields... */
 
-	/*
-	 *	Free the previous result (also gets called on finish_query)
-	 */
-	talloc_free(query_ctx->row);
 	MEM(row = query_ctx->row = talloc_zero_array(query_ctx, char *, fields + 1));
 
 	for (i = 0; i < fields; i++) {
@@ -630,10 +776,10 @@ do {\
 			const char *col_name;
 			size_t	   col_name_len;
 
-			if (cass_result_column_name(conn->result, i, &col_name,
+			if (cass_result_column_name(result, i, &col_name,
 						    &col_name_len) != CASS_OK) col_name = "<INVALID>";
 
-			sql_set_last_error_printf(conn,
+			sql_set_query_error_printf(conn->log_ctx, cass_query_ctx,
 						  "Failed to retrieve data at column %s (%d): Unsupported data type",
 						  col_name, i);
 			talloc_free(query_ctx->row);
@@ -648,7 +794,7 @@ do {\
 
 static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_cassandra_conn_t *conn = query_ctx->handle->conn;
+	rlm_sql_cassandra_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_cassandra_conn_t);
 
 	if (query_ctx->row) TALLOC_FREE(query_ctx->row);
 
@@ -657,23 +803,23 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
 		conn->iterator = NULL;
 	}
 
-	if (conn->result) {
-		cass_result_free(conn->result);
-		conn->result = NULL;
+	if (query_ctx->uctx) {
+		cassandra_query_ctx_t *cass_query_ctx = talloc_get_type_abort(query_ctx->uctx, cassandra_query_ctx_t);
+		if (cass_query_ctx->result) cass_result_free(cass_query_ctx->result);
+		cass_query_ctx->result = NULL;
 	}
 
 	return RLM_SQL_OK;
 }
 
 static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
-			fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
+			fr_sql_query_t *query_ctx)
 {
-	rlm_sql_cassandra_conn_t *conn = query_ctx->handle->conn;
+	cassandra_query_ctx_t	*cass_query_ctx = talloc_get_type_abort(query_ctx->uctx, cassandra_query_ctx_t);
 
-	if (conn->last_error.msg && (outlen >= 1)) {
-		out[0].msg = conn->last_error.msg;
-		out[0].type = conn->last_error.type;
-		conn->last_error.msg = NULL;
+	if (cass_query_ctx->error.msg && (outlen >= 1)) {
+		out[0].msg = cass_query_ctx->error.msg;
+		out[0].type = cass_query_ctx->error.type;
 
 		return 1;
 	}
@@ -683,14 +829,10 @@ static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], size_t ou
 
 static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config)
 {
-	rlm_sql_cassandra_conn_t *conn = query_ctx->handle->conn;
+	cassandra_query_ctx_t	*cass_query_ctx = talloc_get_type_abort(query_ctx->uctx, cassandra_query_ctx_t);
 
-	/*
-	 *	Clear our local log buffer, and free any messages which weren't
-	 *	reconfigured (so we don't leak memory).
-	 */
-	talloc_free_children(conn->log_ctx);
-	memset(&conn->last_error, 0, sizeof(conn->last_error));
+	cass_result_free(cass_query_ctx->result);
+	talloc_const_free(cass_query_ctx->error.msg);
 
 	return sql_free_result(query_ctx, config);
 }
@@ -715,7 +857,8 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	if (inst->session) cass_session_free(inst->session);	/* also synchronously closes the session */
 	if (inst->cluster) cass_cluster_free(inst->cluster);
 
-	pthread_mutex_destroy(&inst->connect_mutex);
+	pthread_mutex_destroy(&inst->mutable->connect_mutex);
+	talloc_free(inst->mutable);
 
 	return 0;
 }
@@ -735,11 +878,12 @@ do {\
 	CassError _ret;\
 	if ((_ret = (_x)) != CASS_OK) {\
 		ERROR("Error setting " _opt ": %s", cass_error_desc(_ret));\
-		return RLM_SQL_ERROR;\
+		return -1;\
 	}\
 } while (0)
 
-	if ((ret = pthread_mutex_init(&inst->connect_mutex, NULL)) < 0) {
+	MEM(inst->mutable = talloc_zero(NULL, rlm_sql_cassandra_mutable_t));
+	if ((ret = pthread_mutex_init(&inst->mutable->connect_mutex, NULL)) < 0) {
 		ERROR("Failed initializing mutex: %s", fr_syserror(ret));
 		TALLOC_FREE(inst);
 		return -1;
@@ -754,7 +898,7 @@ do {\
 
 	DEBUG4("Configuring CassCluster structure");
 	cluster = inst->cluster = cass_cluster_new();
-	if (!cluster) return RLM_SQL_ERROR;
+	if (!cluster) return -1;
 
 	/*
 	 *	Parameters inherited from the top level SQL module config
@@ -794,62 +938,6 @@ do {\
 			       cass_cluster_set_core_connections_per_host(inst->cluster,
 			       						  inst->connections_per_host));
 	}
-
-	/*
-	 *	The below functions was deprecated in 2.10
-	 */
-#if (CASS_VERSION_MAJOR <= 2 && CASS_VERSION_MINOR < 10)
-	if (inst->connections_per_host_max) {
-		DO_CASS_OPTION("connections_per_host_max",
-				cass_cluster_set_max_connections_per_host(inst->cluster,
-									  inst->connections_per_host_max));
-	}
-
-	if (inst->io_flush_requests_max) {
-		DO_CASS_OPTION("io_flush_requests_max",
-			       cass_cluster_set_max_requests_per_flush(inst->cluster,
-			       					       inst->io_flush_requests_max));
-	}
-
-	if (inst->pending_requests_high) {
-		DO_CASS_OPTION("pending_requests_high",
-			       cass_cluster_set_pending_requests_high_water_mark(inst->cluster,
-			       							 inst->pending_requests_high));
-	}
-
-	if (inst->pending_requests_low) {
-		DO_CASS_OPTION("pending_requests_low",
-			       cass_cluster_set_pending_requests_high_water_mark(inst->cluster,
-			       							 inst->pending_requests_low));
-	}
-
-	if (inst->write_bytes_high) {
-		DO_CASS_OPTION("write_bytes_high",
-			       cass_cluster_set_write_bytes_high_water_mark(inst->cluster,
-			       						    inst->write_bytes_high));
-	}
-
-	if (inst->write_bytes_low) {
-		DO_CASS_OPTION("write_bytes_low",
-			       cass_cluster_set_write_bytes_low_water_mark(inst->cluster,
-			       						   inst->write_bytes_low));
-	}
-
-	if (inst->spawn_threshold) {
-		DO_CASS_OPTION("spawn_threshold",
-			       cass_cluster_set_max_concurrent_requests_threshold(inst->cluster,
-			       							  inst->spawn_threshold));
-	}
-
-	if (inst->spawn_max) {
-		DO_CASS_OPTION("spawn_max",
-			       cass_cluster_set_max_concurrent_creation(inst->cluster, inst->spawn_max));
-	}
-
-	if (inst->spawn_retry_delay_is_set) {
-		cass_cluster_set_reconnect_wait_time(inst->cluster, fr_time_delta_to_msec(inst->spawn_retry_delay));
-	}
-#endif
 
 	if (inst->event_queue_size) {
 		DO_CASS_OPTION("event_queue_size",
@@ -897,7 +985,7 @@ do {\
 		CassSsl	*ssl;
 
 		ssl = inst->ssl = cass_ssl_new();
-		if (!ssl) return RLM_SQL_ERROR;
+		if (!ssl) return -1;
 
 		if (inst->tls_verify_cert_str) {
 			int	verify_cert;
@@ -930,19 +1018,9 @@ do {\
 	}
 
 	inst->session = cass_session_new();
-	if (!inst->session) return RLM_SQL_ERROR;
+	if (!inst->session) return -1;
 
 	return 0;
-}
-
-static void mod_unload(void)
-{
-	/*
-	 *	The function cass_log_cleanup() was deprecated in 2.0.1
-	 */
-#if (CASS_VERSION_MAJOR <= 2 && CASS_VERSION_MINOR <= 0)
-	cass_log_cleanup();	/* must be last call to libcassandra */
-#endif
 }
 
 static int mod_load(void)
@@ -967,14 +1045,13 @@ rlm_sql_driver_t rlm_sql_cassandra = {
 		.magic				= MODULE_MAGIC_INIT,
 		.inst_size			= sizeof(rlm_sql_cassandra_t),
 		.onload				= mod_load,
-		.unload				= mod_unload,
 		.config				= driver_config,
 		.instantiate			= mod_instantiate,
 		.detach				= mod_detach
 	},
-	.sql_socket_init		= sql_socket_init,
-	.sql_query			= sql_query,
-	.sql_select_query		= sql_query,
+	.flags				= RLM_SQL_MULTI_QUERY_CONN,
+	.sql_query_resume		= sql_query_resume,
+	.sql_select_query_resume	= sql_query_resume,
 	.sql_num_rows			= sql_num_rows,
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fields			= sql_fields,
@@ -982,5 +1059,12 @@ rlm_sql_driver_t rlm_sql_cassandra = {
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,
-	.sql_finish_select_query	= sql_finish_query
+	.sql_finish_select_query	= sql_finish_query,
+	.trunk_io_funcs = {
+		.connection_alloc	= sql_trunk_connection_alloc,
+		.connection_notify	= sql_trunk_connection_notify,
+		.request_mux		= sql_trunk_request_mux,
+		.request_cancel		= sql_request_cancel,
+		.request_fail		= sql_request_fail
+	}
 };

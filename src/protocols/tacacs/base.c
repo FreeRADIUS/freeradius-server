@@ -274,7 +274,7 @@ ssize_t fr_tacacs_length(uint8_t const *buffer, size_t buffer_len)
 	if (!((pkt->hdr.type == FR_TAC_PLUS_AUTHEN) ||
 	      (pkt->hdr.type == FR_TAC_PLUS_AUTHOR) ||
 	      (pkt->hdr.type == FR_TAC_PLUS_ACCT))) {
-		fr_strerror_printf("Unknown packet type %u", pkt->hdr.type);
+		fr_strerror_printf("Unknown packet type %d", pkt->hdr.type);
 		return -1;
 	}
 
@@ -434,8 +434,8 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 	/*
 	 *	It has to be at least 12 bytes long.
 	 */
-	PRINT("  major  %u", (p[0] & 0xf0) >> 4);
-	PRINT("  minor  %u", (p[0] & 0x0f));
+	PRINT("  major  %d", (p[0] & 0xf0) >> 4);
+	PRINT("  minor  %d", (p[0] & 0x0f));
 
 	PRINT("  type   %02x", p[1]);
 	PRINT("  seq_no %02x", p[2]);

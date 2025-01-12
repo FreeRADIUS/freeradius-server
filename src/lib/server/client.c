@@ -38,7 +38,10 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/trie.h>
+#include <freeradius-devel/util/token.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -778,7 +781,7 @@ fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *se
 	 *	Find the virtual server for this client.
 	 */
 	if (c->server) {
-		virtual_server_t const *vs;;
+		virtual_server_t const *vs;
 		if (server_cs) {
 			cf_log_err(cs, "Clients inside of a 'server' section cannot point to a server");
 			goto error;
@@ -928,16 +931,22 @@ fr_client_t *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 {
 	static int	cnt;
 	CONF_SECTION	*cs;
-	char		src_buf[128], buffer[256];
 	fr_client_t	*c;
+	fr_sbuff_t	*tmp;
 
 	if (!request) return NULL;
 
-	fr_value_box_print(&FR_SBUFF_OUT(src_buf, sizeof(src_buf)), fr_box_ipaddr(request->packet->socket.inet.src_ipaddr), NULL);
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&tmp, 128, SIZE_MAX);
 
-	snprintf(buffer, sizeof(buffer), "dynamic_%i_%s", cnt++, src_buf);
+	if (unlikely(fr_sbuff_in_sprintf(tmp, "dynamic_%i_", cnt++) <= 0)) {
+	name_error:
+		RERROR("Failed to generate dynamic client name");
+		return NULL;
+	}
+	if (unlikely(fr_value_box_print(tmp, fr_box_ipaddr(request->packet->socket.inet.src_ipaddr), NULL) <= 0)) goto name_error;
+	fr_sbuff_set_to_start(tmp);
 
-	cs = cf_section_alloc(ctx, NULL, "client", buffer);
+	cs = cf_section_alloc(ctx, NULL, "client", fr_sbuff_current(tmp));
 
 	RDEBUG2("Converting &control.FreeRADIUS-Client-* to client {...} section");
 	RINDENT();
@@ -946,29 +955,35 @@ fr_client_t *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 		CONF_PAIR	*cp = NULL;
 		char const	*value;
 		char const	*attr;
+		fr_token_t	v_token = T_BARE_WORD;
 
 		if (!fr_dict_attr_is_top_level(vp->da)) continue;
 
 		switch (vp->da->attr) {
 		case FR_FREERADIUS_CLIENT_IP_ADDRESS:
 			attr = "ipv4addr";
-			value = fr_inet_ntop(buffer, sizeof(buffer), &vp->vp_ip);
+		vb_to_str:
+			fr_sbuff_set_to_start(tmp);
+			if (unlikely(fr_pair_print_value_quoted(tmp, vp, T_BARE_WORD) < 0)) {
+				RERROR("Failed to convert %pP to string", vp);
+			error:
+				talloc_free(cs);
+				return NULL;
+			}
+			value = fr_sbuff_start(tmp);
 			break;
 
 		case FR_FREERADIUS_CLIENT_IP_PREFIX:
 			attr = "ipv4addr";
-			value = fr_inet_ntop_prefix(buffer, sizeof(buffer), &vp->vp_ip);
-			break;
+			goto vb_to_str;
 
 		case FR_FREERADIUS_CLIENT_IPV6_ADDRESS:
 			attr = "ipv6addr";
-			value = fr_inet_ntop(buffer, sizeof(buffer), &vp->vp_ip);
-			break;
+			goto vb_to_str;
 
 		case FR_FREERADIUS_CLIENT_IPV6_PREFIX:
 			attr = "ipv6addr";
-			value = fr_inet_ntop_prefix(buffer, sizeof(buffer), &vp->vp_ip);
-			break;
+			goto vb_to_str;
 
 		case FR_FREERADIUS_CLIENT_SECRET:
 			attr = "secret";
@@ -987,66 +1002,30 @@ fr_client_t *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 
 		case FR_FREERADIUS_CLIENT_SRC_IP_ADDRESS:
 			attr = "src_ipaddr";
-			value = fr_inet_ntop(buffer, sizeof(buffer), &vp->vp_ip);
-			break;
+			goto vb_to_str;
 
 		case FR_FREERADIUS_CLIENT_REQUIRE_MA:
 			attr = "require_message_authenticator";
-			switch(vp->vp_uint8) {
-			case FR_FREERADIUS_CLIENT_REQUIRE_MA_VALUE_NO:
-				value = "no";
-				break;
-
-			case FR_FREERADIUS_CLIENT_REQUIRE_MA_VALUE_AUTO:
-				value = "auto";
-				break;
-
-			case FR_FREERADIUS_CLIENT_REQUIRE_MA_VALUE_YES:
-				value = "yes";
-				break;
-
-			default:
-				RERROR("Invalid value for FreeRADIUS-Client-Require-MA");
-				goto error;
-			}
-			break;
+			goto vb_to_str;
 
 		case FR_FREERADIUS_CLIENT_LIMIT_PROXY_STATE:
 			attr = "limit_proxy_state";
-			switch(vp->vp_uint8) {
-			case FR_FREERADIUS_CLIENT_LIMIT_PROXY_STATE_VALUE_NO:
-				value = "no";
-				break;
-
-			case FR_FREERADIUS_CLIENT_LIMIT_PROXY_STATE_VALUE_AUTO:
-				value = "auto";
-				break;
-
-			case FR_FREERADIUS_CLIENT_LIMIT_PROXY_STATE_VALUE_YES:
-				value = "yes";
-				break;
-
-			default:
-				RERROR("Invalid value for FreeRADIUS-Client-Limit-Proxy-State");
-				goto error;
-			}
-			break;
+			goto vb_to_str;
 
 		case FR_FREERADIUS_CLIENT_TRACK_CONNECTIONS:
 			attr = "track_connections";
-			if (vp->vp_bool) {
-				value = "true";
-			} else {
-				value = "false";
-			}
-			break;
+			goto vb_to_str;
 
 		default:
-			RERROR("Ignoring attribute %s", vp->da->name);
-			continue;
+			attr = vp->da->name;
+			fr_sbuff_set_to_start(tmp);
+			fr_value_box_print(tmp, &vp->data, &fr_value_escape_single);
+			value = fr_sbuff_start(tmp);
+			v_token = T_SINGLE_QUOTED_STRING;
+			break;
 		}
 
-		cp = cf_pair_alloc(cs, attr, value, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
+		cp = cf_pair_alloc(cs, attr, value, T_OP_SET, T_BARE_WORD, v_token);
 		if (!cp) {
 			RERROR("Error creating equivalent conf pair for %s", vp->da->name);
 			goto error;
@@ -1062,11 +1041,7 @@ fr_client_t *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 	 *	src IP, protocol, etc.  This should all be in TLVs..
 	 */
 	c = client_afrom_cs(cs, cs, unlang_call_current(request), 0);
-	if (!c) {
-	error:
-		talloc_free(cs);
-		return NULL;
-	}
+	if (!c) goto error;
 
 	return c;
 }
@@ -1141,7 +1116,7 @@ fr_client_t *client_from_request(request_t *request)
 
 	do {
 		client = parent->client;
-	} while (!client && (parent = request->parent));
+	} while (!client && (parent = parent->parent));
 
 	return client;
 }

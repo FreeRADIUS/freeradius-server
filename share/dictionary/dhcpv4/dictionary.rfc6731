@@ -1,0 +1,24 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC 6731 - Improved Recursive DNS Server Selection for Multi-Interfaced Nodes
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	RDNSS-Selection				146	struct
+MEMBER		Preference				uint8
+
+VALUE	Preference			High			0x01
+VALUE	Preference			Medium			0x00
+VALUE	Preference			Low			0x03
+VALUE	Preference			Reserved		0x02
+
+MEMBER		Primary-DNS-Recursive-Name-Server	ipv4addr
+MEMBER		Secondary-DNS-Recursive-Name-Server	ipv6addr
+
+MEMBER		FQDN					string dns_label,array

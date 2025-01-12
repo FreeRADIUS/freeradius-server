@@ -1424,7 +1424,7 @@ void fr_fault_log_hex(uint8_t const *data, size_t data_len)
 
 		for (p = buffer, j = 0; j < len; j++, p += 3) snprintf(p, end - p, "%02x ", data[i + j]);
 
-		dprintf(fr_fault_log_fd, "%04x: %s\n", (int)i, buffer);
+		dprintf(fr_fault_log_fd, "%04x: %s\n", (unsigned int) i, buffer);
 	}
 }
 
@@ -1457,19 +1457,19 @@ bool _fr_assert_fail(char const *file, int line, char const *expr, char const *m
 		va_end(ap);
 
 #ifndef NDEBUG
-		FR_FAULT_LOG("ASSERT FAILED %s[%u]: %s: %s", file, line, expr, str);
+		FR_FAULT_LOG("ASSERT FAILED %s[%d]: %s: %s", file, line, expr, str);
 		fr_fault(SIGABRT);
 #else
-		FR_FAULT_LOG("ASSERT WOULD FAIL %s[%u]: %s: %s", file, line, expr, str);
+		FR_FAULT_LOG("ASSERT WOULD FAIL %s[%d]: %s: %s", file, line, expr, str);
 		return false;
 #endif
 	}
 
 #ifndef NDEBUG
-	FR_FAULT_LOG("ASSERT FAILED %s[%u]: %s", file, line, expr);
+	FR_FAULT_LOG("ASSERT FAILED %s[%d]: %s", file, line, expr);
 	fr_fault(SIGABRT);
 #else
-	FR_FAULT_LOG("ASSERT WOULD FAIL %s[%u]: %s", file, line, expr);
+	FR_FAULT_LOG("ASSERT WOULD FAIL %s[%d]: %s", file, line, expr);
 	return false;
 #endif
 }
@@ -1492,9 +1492,9 @@ void _fr_assert_fatal(char const *file, int line, char const *expr, char const *
 		(void)vsnprintf(str, sizeof(str), msg, ap);
 		va_end(ap);
 
-		FR_FAULT_LOG("FATAL ASSERT %s[%u]: %s: %s", file, line, expr, str);
+		FR_FAULT_LOG("FATAL ASSERT %s[%d]: %s: %s", file, line, expr, str);
 	} else {
-		FR_FAULT_LOG("FATAL ASSERT %s[%u]: %s", file, line, expr);
+		FR_FAULT_LOG("FATAL ASSERT %s[%d]: %s", file, line, expr);
 	}
 
 #ifdef NDEBUG
@@ -1520,10 +1520,10 @@ NEVER_RETURNS void _fr_exit(char const *file, int line, int status, bool now)
 		char const *error = fr_strerror();
 
 		if (error && *error && (status != 0)) {
-			FR_FAULT_LOG("%sEXIT(%i) CALLED %s[%u].  Last error was: %s", now ? "_" : "",
+			FR_FAULT_LOG("%sEXIT(%i) CALLED %s[%d].  Last error was: %s", now ? "_" : "",
 				     status, file, line, error);
 		} else {
-			FR_FAULT_LOG("%sEXIT(%i) CALLED %s[%u]", now ? "_" : "", status, file, line);
+			FR_FAULT_LOG("%sEXIT(%i) CALLED %s[%d]", now ? "_" : "", status, file, line);
 		}
 
 		fr_debug_break(false);	/* If running under GDB we'll break here */

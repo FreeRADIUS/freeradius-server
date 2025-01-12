@@ -1,46 +1,6 @@
 #
-#	Response caching to handle proxy failovers
-#
-Xeap.authorize {
-	cache_eap
-	if (ok) {
-		#
-		#	Expire previous cache entry
-		#
-		if (&control.State) {
-			&control.Cache-TTL := 0
-
-			cache_eap
-
-			&control -= &State[*]
-		}
-
-		handled
-	}
-	else {
-		eap.authorize
-	}
-}
-
-#
-#	Populate cache with responses from the EAP module
-#
-Xeap.authenticate {
-	eap {
-		handled = 1
-	}
-	if (handled) {
-		cache_eap.authorize
-
-		handled
-	}
-
-	cache_eap.authorize
-}
-
-#
 #       Forbid all EAP types.  Enable this by putting "forbid_eap"
-#       into the "authorize" section.
+#       into the "recv Access-Request" section.
 #
 forbid_eap {
 	if (&EAP-Message) {

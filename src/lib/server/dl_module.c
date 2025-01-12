@@ -317,7 +317,6 @@ dl_module_t *dl_module_alloc(dl_module_t const *parent, char const *name, dl_mod
 	dl_module_t			*dl_module = NULL;
 	dl_t				*dl = NULL;
 	char				*module_name = NULL;
-	char				*p, *q;
 	dl_module_common_t		*common;
 
 	DL_INIT_CHECK;
@@ -332,9 +331,12 @@ dl_module_t *dl_module_alloc(dl_module_t const *parent, char const *name, dl_mod
 						    name);
 	}
 
-	if (!module_name) return NULL;
+	if (!module_name) {
+		fr_strerror_const("Out of memory");
+		return NULL;
+	}
 
-	for (p = module_name, q = p + talloc_array_length(p) - 1; p < q; p++) *p = tolower((uint8_t) *p);
+	talloc_bstr_tolower(module_name);
 
 	pthread_mutex_lock(&dl_module_loader->lock);
 	/*
@@ -588,7 +590,8 @@ dl_module_loader_t *dl_module_loader_init(char const *lib_dir)
 				   DL_PRIORITY_DICT, "dict", fr_dl_dict_autofree, NULL);
 
 	/*
-	 *	Register library autoload callbacks
+	 *	Register library autoload callbacks for registering
+	 *	global configuration sections.
 	 */
 	dl_symbol_init_cb_register(dl_module_loader->dl_loader,
 				   DL_PRIORITY_LIB, "lib", global_lib_auto_instantiate, NULL);

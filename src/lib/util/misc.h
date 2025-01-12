@@ -160,6 +160,7 @@ int		rad_unlockfd(int fd, int lock_len);
 int		fr_strtoull(uint64_t *out, char **end, char const *value);
 int		fr_strtoll(int64_t *out, char **end, char const *value);
 char		*fr_trim(char const *str, size_t size);
+char		*fr_tolower(char *str);
 
 int		fr_nonblock(int fd);
 int		fr_blocking(int fd);

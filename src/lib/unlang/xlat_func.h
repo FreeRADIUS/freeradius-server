@@ -74,6 +74,8 @@ void		xlat_purify_func_set(xlat_t *xlat, xlat_purify_t func);
 
 /** Set the escaped values for output boxes
  *
+ * Any boxes output by the xlat function will have their values marked as safe for something.
+ *
  * @param[in] _xlat		function to set the escaped value for (as returned by xlat_register).
  * @param[in] _escaped		escaped value to write to output boxes.
  */

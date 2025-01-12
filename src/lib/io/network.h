@@ -54,6 +54,8 @@ int		fr_network_directory_add(fr_network_t *nr, fr_listen_t *li) CC_HINT(nonnull
 
 int		fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker) CC_HINT(nonnull);
 
+void		fr_network_worker_add_self(fr_network_t *nr, fr_worker_t *worker) CC_HINT(nonnull);
+
 void		fr_network_listen_read(fr_network_t *nr, fr_listen_t *li) CC_HINT(nonnull);
 
 void		fr_network_listen_write(fr_network_t *nr, fr_listen_t *li, uint8_t const *packet, size_t packet_len,

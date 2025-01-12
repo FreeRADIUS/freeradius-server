@@ -25,7 +25,7 @@ VALUE	MPPE-Encryption-Policy		Encryption-Required	2
 # This is referred to as both singular and plural in the RFC.
 # Plural seems to make more sense.
 ATTRIBUTE	MPPE-Encryption-Type			8	integer
-ATTRIBUTE	MPPE-Encryption-Types			8	integer
+ALIAS		MPPE-Encryption-Types			.MPPE-Encryption-Type
 
 VALUE	MPPE-Encryption-Types		RC4-40bit-Allowed	1
 VALUE	MPPE-Encryption-Types		RC4-128bit-Allowed	2
@@ -34,12 +34,12 @@ VALUE	MPPE-Encryption-Types		RC4-40or128-bit-Allowed	6
 ATTRIBUTE	RAS-Vendor				9	integer	# content is Vendor-ID
 ATTRIBUTE	CHAP-Domain				10	string
 ATTRIBUTE	CHAP-Challenge				11	octets
-ATTRIBUTE	CHAP-MPPE-Keys				12	octets[24]  encrypt=1
+ATTRIBUTE	CHAP-MPPE-Keys				12	octets[24]  encrypt=User-Password
 ATTRIBUTE	BAP-Usage				13	integer
 ATTRIBUTE	Link-Utilization-Threshold		14	integer # values are 1-100
 ATTRIBUTE	Link-Drop-Time-Limit			15	integer
-ATTRIBUTE	MPPE-Send-Key				16	octets	encrypt=2
-ATTRIBUTE	MPPE-Recv-Key				17	octets	encrypt=2
+ATTRIBUTE	MPPE-Send-Key				16	octets	encrypt=Tunnel-Password
+ATTRIBUTE	MPPE-Recv-Key				17	octets	encrypt=Tunnel-Password
 ATTRIBUTE	RAS-Version				18	string
 ATTRIBUTE	Old-ARAP-Password			19	octets
 ATTRIBUTE	New-ARAP-Password			20	octets
@@ -171,4 +171,3 @@ VALUE	Extended-Quarantine-State	No-Data			4
 END-VENDOR Microsoft
 
 ALIAS		Microsoft				Vendor-Specific.Microsoft
-

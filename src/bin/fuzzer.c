@@ -251,7 +251,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 	fr_pair_list_init(&vps);
 	if (!init) LLVMFuzzerInitialize(NULL, NULL);
 
-	if (tp->test_ctx && (tp->test_ctx(&decode_ctx, NULL) < 0)) {
+	if (tp->test_ctx && (tp->test_ctx(&decode_ctx, NULL, dict) < 0)) {
 		fr_perror("fuzzer: Failed initializing test point decode_ctx");
 		fr_exit_now(EXIT_FAILURE);
 	}

@@ -8,8 +8,7 @@
 # Version:	$Id$
 #
 
-PROTOCOL	ARP		8
-BEGIN-PROTOCOL	ARP
+BEGIN PROTOCOL	ARP		8
 
 $INCLUDE dictionary.freeradius.internal
 $INCLUDE dictionary.rfc826

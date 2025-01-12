@@ -162,7 +162,7 @@ ssize_t fr_bfd_encode(uint8_t *out, size_t outlen, UNUSED uint8_t const *origina
 }
 
 
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
 {
 	fr_bfd_ctx_t	*test_ctx;
 
@@ -194,7 +194,7 @@ static ssize_t fr_bfd_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, 
 	if (!vp) return slen;
 
 	fr_dbuff_init(&dbuff, data + slen, data_len - slen);
-	alen =  fr_internal_encode_list(&dbuff, &vp->vp_group, NULL);
+	alen = fr_internal_encode_list(&dbuff, &vp->vp_group, NULL);
 	if (alen <= 0) return slen;
 
 	return slen + alen;

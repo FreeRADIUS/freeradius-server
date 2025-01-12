@@ -35,279 +35,8 @@ RCSID("$Id$")
 
 #include "tmpl.h"
 
-/** Wrap an #fr_event_timer_t providing data needed for unlang events
- *
- */
-typedef struct {
-	request_t			*request;	//!< Request this event pertains to.
-	int				fd;		//!< File descriptor to wait on.
-	unlang_module_timeout_t		timeout;	//!< Function to call on timeout.
-	unlang_module_fd_event_t	fd_read;	//!< Function to call when FD is readable.
-	unlang_module_fd_event_t	fd_write;	//!< Function to call when FD is writable.
-	unlang_module_fd_event_t	fd_error;	//!< Function to call when FD has errored.
-	module_instance_t const		*mi;		//!< Module instance to pass to callbacks.
-							///< Use mi->data to get instance data.
-	void				*thread;	//!< Thread specific module instance.
-	void				*env_data;	//!< Per call environment data.
-	void const			*rctx;		//!< rctx data to pass to callbacks.
-	fr_event_timer_t const		*ev;		//!< Event in this worker's event heap.
-} unlang_module_event_t;
-
 static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame);
-
-/** Call the callback registered for a read I/O event
- *
- * @param[in] el	containing the event (not passed to the callback).
- * @param[in] fd	the I/O event occurred on.
- * @param[in] flags	from kevent.
- * @param[in] ctx	unlang_module_event_t structure holding callbacks.
- */
-static void unlang_event_fd_read_handler(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
-{
-	unlang_module_event_t *ev = talloc_get_type_abort(ctx, unlang_module_event_t);
-
-	fr_assert(ev->fd == fd);
-
-	ev->fd_read(MODULE_CTX(ev->mi, ev->thread, ev->env_data, UNCONST(void *, ev->rctx)), ev->request, fd);
-}
-
-/** Frees an unlang event, removing it from the request's event loop
- *
- * @param[in] ev	The event to free.
- *
- * @return 0
- */
-static int _unlang_event_free(unlang_module_event_t *ev)
-{
-	if (ev->request) (void) request_data_get(ev->request, ev->rctx, UNLANG_TYPE_MODULE);
-
-	if (ev->ev) {
-		(void) fr_event_timer_delete(&(ev->ev));
-		return 0;
-	}
-
-	if (ev->fd >= 0) {
-		if (!ev->request) return 0;
-		(void) fr_event_fd_delete(unlang_interpret_event_list(ev->request), ev->fd, FR_EVENT_FILTER_IO);
-	}
-
-	return 0;
-}
-
-/** Call the callback registered for a timeout event
- *
- * @param[in] el	the event timer was inserted into.
- * @param[in] now	The current time, as held by the event_list.
- * @param[in] ctx	unlang_module_event_t structure holding callbacks.
- *
- */
-static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, fr_time_t now, void *ctx)
-{
-	unlang_module_event_t *ev = talloc_get_type_abort(ctx, unlang_module_event_t);
-
-	ev->timeout(MODULE_CTX(ev->mi, ev->thread, ev->env_data, UNCONST(void *, ev->rctx)), ev->request, now);
-	talloc_free(ev);
-}
-
-/** Set a timeout for the request.
- *
- * Used when a module needs wait for an event.  Typically the callback is set, and then the
- * module returns unlang_module_yield().
- *
- * @note The callback is automatically removed on unlang_interpret_mark_runnable().
- *
- * param[in] request		the current request.
- * param[in] callback		to call.
- * param[in] rctx		to pass to the callback.
- * param[in] timeout		when to call the timeout (i.e. now + timeout).
- * @return
- *	- 0 on success.
- *	- <0 on error.
- */
-int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callback,
-			      void const *rctx, fr_time_t when)
-{
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_module_event_t		*ev;
-	unlang_module_t			*m;
-	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
-
-	fr_assert(stack->depth > 0);
-	fr_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
-	m = unlang_generic_to_module(frame->instruction);
-
-	ev = talloc(request, unlang_module_event_t);
-	if (!ev) return -1;
-
-	*ev = (unlang_module_event_t){
-		.request = request,
-		.fd = -1,
-		.timeout = callback,
-		.mi = m->mmc.mi,
-		.thread = state->thread,
-		.env_data = state->env_data,
-		.rctx = rctx
-	};
-
-	if (fr_event_timer_at(request, unlang_interpret_event_list(request), &ev->ev,
-			      when, unlang_module_event_timeout_handler, ev) < 0) {
-		RPEDEBUG("Failed inserting event");
-		talloc_free(ev);
-		return -1;
-	}
-
-	(void) request_data_talloc_add(request, rctx, UNLANG_TYPE_MODULE, unlang_module_event_t, ev, true, false, false);
-
-	talloc_set_destructor(ev, _unlang_event_free);
-
-	return 0;
-}
-
-/** Delete a previously set timeout callback
- *
- * @param[in] request	The current request.
- * @param[in] ctx	a local context for the callback.
- * @return
- *	- -1 on error.
- *	- 0 on success.
- */
-int unlang_module_timeout_delete(request_t *request, void const *ctx)
-{
-	unlang_module_event_t *ev;
-
-	ev = request_data_get(request, ctx, UNLANG_TYPE_MODULE);
-	if (!ev) return -1;
-	talloc_free(ev);
-
-	return 0;
-}
-
-/** Call the callback registered for a write I/O event
- *
- * @param[in] el	containing the event (not passed to the callback).
- * @param[in] fd	the I/O event occurred on.
- * @param[in] flags	from kevent.
- * @param[in] ctx	unlang_module_event_t structure holding callbacks.
- */
-static void unlang_event_fd_write_handler(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
-{
-	unlang_module_event_t *ev = talloc_get_type_abort(ctx, unlang_module_event_t);
-	fr_assert(ev->fd == fd);
-
-	ev->fd_write(MODULE_CTX(ev->mi, ev->thread, ev->env_data, UNCONST(void *, ev->rctx)), ev->request, fd);
-}
-
-/** Call the callback registered for an I/O error event
- *
- * @param[in] el	containing the event (not passed to the callback).
- * @param[in] fd	the I/O event occurred on.
- * @param[in] flags	from kevent.
- * @param[in] fd_errno	from kevent.
- * @param[in] ctx	unlang_module_event_t structure holding callbacks.
- */
-static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd,
-					  UNUSED int flags, UNUSED int fd_errno, void *ctx)
-{
-	unlang_module_event_t *ev = talloc_get_type_abort(ctx, unlang_module_event_t);
-
-	fr_assert(ev->fd == fd);
-
-	ev->fd_error(MODULE_CTX(ev->mi, ev->thread, ev->env_data, UNCONST(void *, ev->rctx)), ev->request, fd);
-}
-
-
-/** Set a callback for the request.
- *
- * Used when a module needs to read from an FD.  Typically the callback is set, and then the
- * module returns unlang_module_yield().
- *
- * @note The callback is automatically removed on unlang_interpret_mark_runnable().
- *
- * @param[in] request		The current request.
- * @param[in] read		callback.  Used for receiving and demuxing/decoding data.
- * @param[in] write		callback.  Used for writing and encoding data.
- *				Where a 3rd party library is used, this should be the function
- *				issuing queries, and writing data to the socket.  This should
- *				not be done in the module itself.
- *				This allows write operations to be retried in some instances,
- *				and means if the write buffer is full, the request is kept in
- *				a suspended state.
- * @param[in] error		callback.  If the fd enters an error state.  Should cleanup any
- *				handles wrapping the file descriptor, and any outstanding requests.
- * @param[in] rctx		for the callback.
- * @param[in] fd		to watch.
- * @return
- *	- 0 on success.
- *	- <0 on error.
- */
-int unlang_module_fd_add(request_t *request,
-			unlang_module_fd_event_t read,
-			unlang_module_fd_event_t write,
-			unlang_module_fd_event_t error,
-			void const *rctx, int fd)
-{
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_module_event_t		*ev;
-	unlang_module_t			*m;
-	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state,
-								       unlang_frame_state_module_t);
-
-	fr_assert(stack->depth > 0);
-
-	fr_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
-	m = unlang_generic_to_module(frame->instruction);
-
-	ev = talloc_zero(request, unlang_module_event_t);
-	if (!ev) return -1;
-
-	ev->request = request;
-	ev->fd = fd;
-	ev->fd_read = read;
-	ev->fd_write = write;
-	ev->fd_error = error;
-	ev->mi = m->mmc.mi;
-	ev->thread = state->thread;
-	ev->env_data = state->env_data;
-	ev->rctx = rctx;
-
-	/*
-	 *	Register for events on the file descriptor
-	 */
-	if (fr_event_fd_insert(request, NULL, unlang_interpret_event_list(request), fd,
-			       ev->fd_read ? unlang_event_fd_read_handler : NULL,
-			       ev->fd_write ? unlang_event_fd_write_handler : NULL,
-			       ev->fd_error ? unlang_event_fd_error_handler: NULL,
-			       ev) < 0) {
-		talloc_free(ev);
-		return -1;
-	}
-
-	(void) request_data_talloc_add(request, rctx, fd, unlang_module_event_t, ev, true, false, false);
-	talloc_set_destructor(ev, _unlang_event_free);
-
-	return 0;
-}
-
-/** Delete a previously set file descriptor callback
- *
- * param[in] request the request
- * param[in] fd the file descriptor
- * @return
- *	- 0 on success.
- *	- <0 on error.
- */
-int unlang_module_fd_delete(request_t *request, void const *ctx, int fd)
-{
-	unlang_module_event_t *ev;
-
-	ev = request_data_get(request, ctx, fd);
-	if (!ev) return -1;
-
-	talloc_free(ev);
-	return 0;
-}
+static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_time_t now, void *ctx);
 
 /** Push a module or submodule onto the stack for evaluation
  *
@@ -556,6 +285,118 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
+
+/** Run the retry handler.  Called from an async signal handler.
+ *
+ */
+void unlang_module_retry_now(module_ctx_t const *mctx, request_t *request)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+
+	if (!state->retry_cb) return;
+
+	/*
+	 *	Assert that we have the right things.  Note that this function should only be called when the
+	 *	retry is being used as an expiry time, i.e. mrc==1.  If the module has its own retry handlers,
+	 *	then this function must not be called.
+	 */
+	fr_assert(state->retry.config != NULL);
+	fr_assert(state->retry.config->mrc == 1);
+	fr_assert(state->rctx == mctx->rctx);
+	fr_assert(state->request == request);
+
+	/*
+	 *	Update the time as to when the retry is being called.  This is the main purpose of the
+	 *	function.
+	 */
+	state->retry.updated = fr_time();
+
+	state->retry_cb(mctx, request, &state->retry);
+
+}
+
+/** Cancel the retry timer on resume
+ *
+ */
+static unlang_action_t unlang_module_retry_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+
+	/*
+	 *	Cancel the timers, and clean up any associated retry configuration.
+	 */
+	talloc_const_free(state->ev);
+	state->ev = NULL;
+	state->retry_cb = NULL;
+	state->retry.config = NULL;
+
+	return state->retry_resume(p_result, mctx, request);
+}
+
+/** Yield a request back to the interpreter, with retries
+ *
+ * This passes control of the request back to the unlang interpreter, setting
+ * callbacks to execute when the request is 'signalled' asynchronously, or when
+ * the retry timer hits.
+ *
+ * @note The module function which calls #unlang_module_yield_to_retry should return control
+ *	of the C stack to the unlang interpreter immediately after calling #unlang_module_yield_to_retry.
+ *	A common pattern is to use ``return unlang_module_yield_to_retry(...)``.
+ *
+ * @param[in] request		The current request.
+ * @param[in] resume		Called on unlang_interpret_mark_runnable().
+ * @param[in] retry		Called on when a retry timer hits
+ * @param[in] signal		Called on unlang_action().
+ * @param[in] sigmask		Set of signals to block.
+ * @param[in] rctx		to pass to the callbacks.
+ * @param[in] retry_cfg		to set up the retries
+ * @return
+ *	- UNLANG_ACTION_YIELD on success
+ *	- UNLANG_ACTION_FAIL on failure
+ */
+unlang_action_t	unlang_module_yield_to_retry(request_t *request, module_method_t resume, unlang_module_retry_t retry,
+					     unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx,
+					     fr_retry_config_t const *retry_cfg)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_module_t			*m;
+	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+
+	fr_assert(stack->depth > 0);
+	fr_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
+	m = unlang_generic_to_module(frame->instruction);
+
+	fr_assert(!state->retry_cb);
+
+	state->retry_cb = retry;
+	state->retry_resume = resume;		// so that we can cancel the retry timer
+	state->rctx = rctx;
+
+	state->request = request;
+	state->mi = m->mmc.mi;
+
+	/*
+	 *	Allow unlang statements to override the module configuration.  i.e. if we already have a
+	 *	timer from unlang, then just use that.
+	 */
+	if (!state->retry.config) {
+		fr_retry_init(&state->retry, fr_time(), retry_cfg);
+
+		if (fr_event_timer_at(state, unlang_interpret_event_list(request), &state->ev,
+				      state->retry.next, unlang_module_event_retry_handler, request) < 0) {
+			RPEDEBUG("Failed inserting event");
+			return UNLANG_ACTION_FAIL;
+		}
+	}
+
+	return unlang_module_yield(request, unlang_module_retry_resume, signal, sigmask, rctx);
+}
+
 
 /** Yield a request back to the interpreter from within a module
  *
@@ -829,33 +670,41 @@ static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_tim
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
-	/*
-	 *	The module will get either a RETRY signal, or a
-	 *	TIMEOUT signal (also for max count).
-	 *
-	 *	The signal handler should generally change the resume
-	 *	function, and mark the request as runnable.  We
-	 *	probably don't want the module to do tons of work in
-	 *	the signal handler, as it's called from the event
-	 *	loop.  And doing so could affect the other event
-	 *	timers.
-	 *
-	 *	Note also that we call frame->signal(), and not
-	 *	unlang_interpret_signal().  That is because we want to
-	 *	signal only the module.  We know that the other frames
-	 *	on the stack can't handle this particular signal.  So
-	 *	there's no point in calling them.  Or, if sections
-	 *	have their own retry handlers, then we don't want to
-	 *	signal those _other_ retry handles with _our_ signal.
-	 */
 	switch (fr_retry_next(&state->retry, now)) {
 	case FR_RETRY_CONTINUE:
-		frame->signal(request, frame, FR_SIGNAL_RETRY);
+		if (state->retry_cb) {
+			/*
+			 *	Call the module retry handler, with the state of the retry.  On MRD / MRC, the
+			 *	module is made runnable again, and the "resume" function is called.
+			 */
+			state->retry_cb(MODULE_CTX(state->mi, state->thread, state->env_data, state->rctx), state->request, &state->retry);
+		} else {
+			/*
+			 *	For signals, the module will get either a RETRY
+			 *	signal, or a TIMEOUT signal (also for max count).
+			 *
+			 *	The signal handler should generally change the resume
+			 *	function, and mark the request as runnable.  We
+			 *	probably don't want the module to do tons of work in
+			 *	the signal handler, as it's called from the event
+			 *	loop.  And doing so could affect the other event
+			 *	timers.
+			 *
+			 *	Note also that we call frame->signal(), and not
+			 *	unlang_interpret_signal().  That is because we want to
+			 *	signal only the module.  We know that the other frames
+			 *	on the stack can't handle this particular signal.  So
+			 *	there's no point in calling them.  Or, if sections
+			 *	have their own retry handlers, then we don't want to
+			 *	signal those _other_ retry handlers with _our_ signal.
+			 */
+			frame->signal(request, frame, FR_SIGNAL_RETRY);
+		}
 
 		/*
 		 *	Reset the timer.
 		 */
-		if (fr_event_timer_at(request, unlang_interpret_event_list(request), &state->ev, state->retry.next,
+		if (fr_event_timer_at(state, unlang_interpret_event_list(request), &state->ev, state->retry.next,
 				      unlang_module_event_retry_handler, request) < 0) {
 			RPEDEBUG("Failed inserting event");
 			unlang_interpret_mark_runnable(request); /* and let the caller figure out what's up */
@@ -863,17 +712,29 @@ static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_tim
 		return;
 
 	case FR_RETRY_MRD:
-		REDEBUG("Reached max_rtx_duration (%pVs > %pVs) - sending timeout signal",
+		RDEBUG("Reached max_rtx_duration (%pVs > %pVs) - sending timeout",
 			fr_box_time_delta(fr_time_sub(now, state->retry.start)), fr_box_time_delta(state->retry.config->mrd));
 		break;
 
 	case FR_RETRY_MRC:
-		REDEBUG("Reached max_rtx_count (%u > %u) - sending timeout signal",
-		        state->retry.count, state->retry.config->mrc);
+		RDEBUG("Reached max_rtx_count %u- sending timeout",
+		        state->retry.config->mrc);
 		break;
 	}
 
-	frame->signal(request, frame, FR_SIGNAL_TIMEOUT);
+	/*
+	 *	Run the retry handler on MRD / MRC, too.
+	 */
+	if (state->retry_cb) {
+		state->retry_cb(MODULE_CTX(state->mi, state->thread, state->env_data, state->rctx), state->request, &state->retry);
+	} else {
+		frame->signal(request, frame, FR_SIGNAL_TIMEOUT);
+	}
+
+	/*
+	 *	On final timeout, always mark the request as runnable.
+	 */
+	unlang_interpret_mark_runnable(request);
 }
 
 static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -999,7 +860,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 
 			fr_retry_init(&state->retry, now, &frame->instruction->actions.retry);
 
-			if (fr_event_timer_at(request, unlang_interpret_event_list(request),
+			if (fr_event_timer_at(state, unlang_interpret_event_list(request),
 					      &state->ev, state->retry.next,
 					      unlang_module_event_retry_handler, request) < 0) {
 				RPEDEBUG("Failed inserting event");

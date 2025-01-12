@@ -46,17 +46,14 @@ typedef struct {
 	peap_status	status;
 	bool		home_access_accept;
 	int		default_method;
-	bool		proxy_tunneled_request_as_eap;
-	char const	*virtual_server;
+	CONF_SECTION	*server_cs;
 	peap_resumption	session_resumption_state;
 } peap_tunnel_t;
 
 extern HIDDEN fr_dict_attr_t const *attr_auth_type;
 extern HIDDEN fr_dict_attr_t const *attr_eap_tls_require_client_cert;
-extern HIDDEN fr_dict_attr_t const *attr_proxy_to_realm;
 
 extern HIDDEN fr_dict_attr_t const *attr_eap_message;
-extern HIDDEN fr_dict_attr_t const *attr_freeradius_proxied_to;
 extern HIDDEN fr_dict_attr_t const *attr_user_name;
 
 

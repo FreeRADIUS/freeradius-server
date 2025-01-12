@@ -40,6 +40,7 @@ dialect:: The dialect of SQL you want to use.
 Allowed dialects are:
 
     * cassandra
+    * firebird
     * mysql
     * mssql
     * oracle
@@ -66,7 +67,6 @@ we can fix them,
 |===
 | Driver            | Dialect
 | db2               | mssql
-| firebird          | mssql
 | freetds           | mssql
 | null              | any
 | unixodbc          | mssql
@@ -168,7 +168,7 @@ Per-section logging can be disabled by setting "logfile = ''"
 
 
 
-query_timeout:: Set the maximum query duration for `mysql` and `cassandra`.
+query_timeout:: Set the maximum query duration for `cassandra` and `unixodbc`
 
 
 
@@ -347,7 +347,7 @@ please create them and contribute them back to the project.
 sql {
 	dialect = "sqlite"
 	driver = "${dialect}"
-	$-INCLUDE ${modconfdir}/sql/driver/${dialect}
+	$-INCLUDE ${modconfdir}/sql/driver/${driver}
 #	server = "localhost"
 #	port = 3306
 #	login = "radius"

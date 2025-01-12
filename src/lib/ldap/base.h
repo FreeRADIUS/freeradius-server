@@ -150,7 +150,8 @@ typedef enum {
 	FR_LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY,	//!< Directory server is Oracle Virtual Directory.
 	FR_LDAP_DIRECTORY_SUN_ONE_DIRECTORY,		//!< Directory server is Sun One Directory.
 	FR_LDAP_DIRECTORY_SIEMENS_AG,			//!< Directory server is Siemens AG.
-	FR_LDAP_DIRECTORY_UNBOUND_ID			//!< Directory server is Unbound ID
+	FR_LDAP_DIRECTORY_UNBOUND_ID,			//!< Directory server is Unbound ID
+	FR_LDAP_DIRECTORY_SAMBA				//!< Directory server is Samba.
 } fr_ldap_directory_type_t;
 
 typedef enum {

@@ -18,6 +18,7 @@ SOURCES		:= \
 		   calc.c \
 		   cap.c \
 		   chap.c \
+		   cbor.c \
 		   dbuff.c \
 		   debug.c \
 		   decode.c \
@@ -71,6 +72,7 @@ SOURCES		:= \
 		   proto.c \
 		   rand.c \
 		   rb.c \
+		   rb_expire.c \
 		   regex.c \
 		   retry.c \
 		   sbuff.c \
@@ -108,7 +110,7 @@ endif
 
 HEADERS		:= $(subst src/lib/,,$(wildcard src/lib/util/*.h))
 
-SRC_CFLAGS	:= -D_LIBRADIUS -DNO_ASSERT -I$(top_builddir)/src
+SRC_CFLAGS	:= -DNO_ASSERT -I$(top_builddir)/src
 
 # System libraries discovered by our top level configure script, links things
 # like pthread and the regexp libraries.

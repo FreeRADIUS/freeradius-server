@@ -29,6 +29,8 @@ RCSIDH(xlat_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/util/retry.h>
+
 /*
  *	Forward declarations
  */
@@ -52,7 +54,7 @@ typedef struct xlat_thread_inst_s xlat_thread_inst_t;
 
 #include <freeradius-devel/server/request.h>
 
-typedef size_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t outlen, char const *in, void *arg);
+typedef ssize_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t outlen, char const *in, void *arg);
 
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/signal.h>
@@ -179,6 +181,20 @@ typedef struct {
  * @param[in] fired		the time the timeout event actually fired.
  */
 typedef	void (*fr_unlang_xlat_timeout_t)(xlat_ctx_t const *xctx, request_t *request, fr_time_t fired);
+
+/** A callback when the the timeout occurs
+ *
+ * Used when a xlat needs wait for an event.
+ * Typically the callback is set, and then the xlat returns unlang_xlat_yield().
+ *
+ * @note The callback is automatically removed on unlang_interpret_mark_runnable(), i.e. if an event
+ *	on a registered FD occurs before the timeout event fires.
+ *
+ * @param[in] xctx		xlat calling ctx.  Contains all instance data.
+ * @param[in] request		the request.
+ * @param[in] retry		retry status.  "now" is in retry->updated
+ */
+typedef	void (*fr_unlang_xlat_retry_t)(xlat_ctx_t const *xctx, request_t *request, fr_retry_t const *retry);
 
 /** A callback when the FD is ready for reading
  *
@@ -500,6 +516,10 @@ int		unlang_xlat_eval_type(TALLOC_CTX *ctx, fr_value_box_t *out, fr_type_t type,
 xlat_action_t	unlang_xlat_yield(request_t *request,
 				  xlat_func_t callback, xlat_func_signal_t signal, fr_signal_t sigmask,
 				  void *rctx);
+
+xlat_action_t	unlang_xlat_yield_to_retry(request_t *request, xlat_func_t resume, fr_unlang_xlat_retry_t retry,
+					   xlat_func_signal_t signal, fr_signal_t sigmask, void *rctx,
+					   fr_retry_config_t const *retry_cfg);
 
 /*
  *	xlat_builtin.c

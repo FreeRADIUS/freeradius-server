@@ -1,0 +1,14 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "attrref"
+User-Password = "password"
+NAS-IP-Address = "1.2.3.4"
+Framed-IP-Address = "1.2.3.4"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Idle-Timeout == 3600

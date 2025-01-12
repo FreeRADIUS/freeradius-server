@@ -106,7 +106,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	proto_radius_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_radius_tcp_thread_t);
 	ssize_t				data_size;
 	size_t				packet_len, in_buffer;
-	decode_fail_t			reason;
+	fr_radius_decode_fail_t		reason;
 
 	/*
 	 *	We may have read multiple packets in the previous read.  In which case the buffer may already

@@ -466,6 +466,12 @@ extern fr_sbuff_parse_rules_t const value_parse_rules_solidus_quoted;
 extern fr_sbuff_parse_rules_t const value_parse_rules_backtick_quoted;
 extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted[T_TOKEN_LAST];
 extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX];
+
+extern fr_sbuff_parse_rules_t const value_parse_rules_double_3quoted;
+extern fr_sbuff_parse_rules_t const value_parse_rules_single_3quoted;
+extern fr_sbuff_parse_rules_t const value_parse_rules_solidus_3quoted;
+extern fr_sbuff_parse_rules_t const value_parse_rules_backtick_3quoted;
+extern fr_sbuff_parse_rules_t const *value_parse_rules_3quoted[T_TOKEN_LAST];
 /** @} */
 
 /** @name Allocation and initialisation functions
@@ -1205,7 +1211,7 @@ ssize_t		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
  */
 ssize_t 	fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
 					   	  char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
-					   	  fr_value_box_list_action_t proc_action, bool flatten)
+					   	  fr_value_box_list_action_t proc_action, fr_value_box_safe_for_t safe_for, bool flatten)
 		CC_HINT(nonnull(3,4));
 
 ssize_t		fr_value_box_list_concat_as_octets(bool *tainted, bool *secret, fr_dbuff_t *dbuff, fr_value_box_list_t *list,

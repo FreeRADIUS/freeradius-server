@@ -1,0 +1,19 @@
+#
+#  Clear out old data
+#
+%sql("${delete_from_radcheck} 'attrref'")
+%sql("${delete_from_radreply} 'attrref'")
+
+if (%sql("${insert_into_radcheck} ('attrref', 'NAS-IP-Address', '==', '&Framed-IP-Address')") != "1") {
+	test_fail
+}
+
+if (%sql("${insert_into_radcheck} ('attrref', 'Password.Cleartext', ':=', 'password')") != "1") {
+	test_fail
+}
+
+if (%sql("${insert_into_radreply} ('attrref', 'Idle-Timeout', ':=', '3600')") != "1") {
+	test_fail
+}
+
+sql

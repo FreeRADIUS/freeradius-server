@@ -84,7 +84,7 @@ static char *wbclient_normalise_username(TALLOC_CTX *ctx, struct wbcContext *wb_
  * @param[in] challenge		MS CHAP challenge.
  * @param[in] response		MS CHAP response.
  * @param[out] nthashhash	Hash returned on success.
- * @param[in] env_data		Call_env data for current authentication.
+ * @param[in] auth_ctx		data for current authentication.
  * @return
  *	- 0 success.
  *	- -1 auth failure.
@@ -92,15 +92,17 @@ static char *wbclient_normalise_username(TALLOC_CTX *ctx, struct wbcContext *wb_
  */
 int do_auth_wbclient(rlm_mschap_t const *inst, request_t *request,
 		     uint8_t const *challenge, uint8_t const *response,
-		     uint8_t nthashhash[NT_DIGEST_LENGTH], mschap_auth_call_env_t *env_data)
+		     uint8_t nthashhash[NT_DIGEST_LENGTH], mschap_auth_ctx_t *auth_ctx)
 {
 	int				ret = -1;
+	winbind_ctx_t			*wbctx = NULL;
 	struct wbcContext		*wb_ctx = NULL;
 	struct wbcAuthUserParams	authparams;
 	wbcErr				err;
 	struct wbcAuthUserInfo		*info = NULL;
 	struct wbcAuthErrorInfo		*error = NULL;
 	uint8_t				resp[NT_LENGTH];
+	mschap_auth_call_env_t		*env_data = auth_ctx->env_data;
 
 	/*
 	 * Clear the auth parameters - this is important, as
@@ -138,11 +140,12 @@ int do_auth_wbclient(rlm_mschap_t const *inst, request_t *request,
 	/*
 	 * Send auth request across to winbind
 	 */
-	wb_ctx = fr_pool_connection_get(inst->wb_pool, request);
-	if (wb_ctx == NULL) {
+	wbctx = mschap_slab_reserve(auth_ctx->t->slab);
+	if (!wbctx) {
 		RERROR("Unable to get winbind connection from pool");
 		goto finish;
 	}
+	wb_ctx = wbctx->ctx;
 
 	RDEBUG2("Sending authentication request user \"%pV\" domain \"%pV\"",
 		&env_data->wb_username, &env_data->wb_domain);
@@ -199,7 +202,7 @@ release:
 		talloc_free(normalised_username);
 	}
 
-	fr_pool_connection_release(inst->wb_pool, request, wb_ctx);
+	mschap_slab_release(wbctx);
 
 	/*
 	 * Try and give some useful feedback on what happened. There are only

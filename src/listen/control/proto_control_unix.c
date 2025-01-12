@@ -412,12 +412,12 @@ static int mod_open(fr_listen_t *li)
 	fr_assert(!thread->connection);
 
 	cfg = (fr_bio_fd_config_t) {
-		.type = FR_BIO_FD_ACCEPT,
+		.type = FR_BIO_FD_LISTEN,
 		.socket_type = SOCK_STREAM,
 		.path = inst->filename,
 		.uid = inst->uid,
 		.gid = inst->gid,
-		.perm = 0x700,
+		.perm = 0600,
 		.async = true,
 	};
 

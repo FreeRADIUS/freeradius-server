@@ -56,7 +56,7 @@ server example {
 	#	Listen on 192.0.2.1:1812 for Access-Requests
 	#
 	#	When the server receives a packet, it is processed
-	#	through the "authorize", etc. sections listed here,
+	#	through the "recv ...", etc. sections listed here,
 	#	NOT the global ones the "default" site.
 	#
 	listen {

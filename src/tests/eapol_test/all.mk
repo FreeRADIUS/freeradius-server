@@ -42,18 +42,13 @@ TEST_BIN := $(BUILD_DIR)/bin/local
 RADDB_PATH := $(top_builddir)/raddb
 
 #
-#	Disabled modules.
-#
-IGNORED_EAP_TYPES := peap ttls
-
-#
 #   This ensures that FreeRADIUS uses modules from the build directory
 #
 EAP_TARGETS      := $(filter rlm_eap_%,$(ALL_TGTS))
-EAP_TYPES_LIST   := $(patsubst rlm_eap_%.la,%,$(EAP_TARGETS))
-EAP_TYPES        := $(filter-out $(IGNORED_EAP_TYPES),$(EAP_TYPES_LIST))
+EAP_TYPES        := $(patsubst rlm_eap_%.la,%,$(EAP_TARGETS))
 EAPOL_TEST_FILES := $(foreach x,$(EAP_TYPES),$(wildcard $(DIR)/$(x)*.conf))
 EAPOL_OK_FILES	 := $(patsubst $(DIR)/%.conf,$(OUTPUT)/%.ok,$(EAPOL_TEST_FILES))
+EAP_TESTS        := $(sort $(patsubst $(DIR)/%.conf,%,$(EAPOL_TEST_FILES)))
 
 #
 #  Add rules so that we can run individual tests for each EAP method.
@@ -67,7 +62,7 @@ ifeq "$(PACKAGE_TEST)" ""
 #
 #  Ensure that we run
 #
-$(OUTPUT)/${1}.ok:  $(patsubst %,rlm_eap_%.la,$(subst -,_,${1}))
+$(OUTPUT)/${1}.ok:  $(patsubst %,rlm_eap_%.la,$(word 1,$(subst -, ,${1})))
 endif
 
 endef
@@ -93,21 +88,15 @@ endef
 #
 #  Setup rules to spawn a different RADIUSD instance for each EAP type
 #
-$(foreach TEST,$(addprefix test., $(subst _,-,$(EAP_TYPES))),$(eval $(call RADIUSD_SERVICE,servers,$(OUTPUT)/$(TEST)))$(eval $(call ADD_TEST_EAP_OUTPUT,$(TEST))))
+$(foreach TEST,$(addprefix test., $(subst _,-,$(EAP_TESTS))),$(eval $(call RADIUSD_SERVICE,servers,$(OUTPUT)/$(TEST)))$(eval $(call ADD_TEST_EAP_OUTPUT,$(TEST))))
 
 #  Reset
 TEST := test.eap
 
 #
-#	Print the disabled list.
-#
-$(IGNORED_EAP_TYPES):
-	@echo "EAPOL-TEST $@ - Disabled.  Enable by removing '$@' from 'IGNORED_EAP_TYPES' in src/tests/eapol_test/all.mk"
-
-#
 #  Separate the dependencies here just to keep a bit clear.
 #
-test.eap.check: $(IGNORED_EAP_TYPES) | $(OUTPUT) $(GENERATED_CERT_FILES)
+test.eap.check: $(OUTPUT) $(GENERATED_CERT_FILES)
 
 #
 #  Run EAP tests.
@@ -116,7 +105,7 @@ test.eap.check: $(IGNORED_EAP_TYPES) | $(OUTPUT) $(GENERATED_CERT_FILES)
 #
 $(OUTPUT)/%.ok: $(DIR)/%.conf $(if $(POST_INSTALL_MAKEFILE_ARG),,$(BUILD_DIR)/lib/libfreeradius-server.la $(BUILD_DIR)/lib/libfreeradius-util.la) | $(GENERATED_CERT_FILES)
 	$(eval EAPOL_TEST_LOG := $(patsubst %.ok,%.log,$@))
-	$(eval METHOD := $(notdir $(patsubst %.conf,%,$<)))
+	$(eval METHOD := $(notdir $(subst _,-,$(patsubst %.conf,%,$<))))
 	$(eval KEY := $(shell grep key_mgmt=NONE $< | sed 's/key_mgmt=NONE/-n/'))
 	$(eval RADIUS_LOG := $(dir $@)/test.$(METHOD)/radiusd.log)
 	$(eval TEST_PORT := $($(METHOD)_port))

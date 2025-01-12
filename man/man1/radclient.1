@@ -1,13 +1,13 @@
 '\" t
 .\"     Title: radclient
 .\"    Author: Alan DeKok
-.\" Generator: Asciidoctor 2.0.10
-.\"      Date: 2020-12-25
+.\" Generator: Asciidoctor 2.0.17
+.\"      Date: 2024-12-20
 .\"    Manual: FreeRADIUS
 .\"    Source: FreeRADIUS
 .\"  Language: English
 .\"
-.TH "RADCLIENT" "1" "2020-12-25" "FreeRADIUS" "FreeRADIUS"
+.TH "RADCLIENT" "1" "2024-12-20" "FreeRADIUS" "FreeRADIUS"
 .ie \n(.g .ds Aq \(aq
 .el       .ds Aq '
 .ss \n[.ss] 0
@@ -34,7 +34,7 @@ radclient \- send packets to a RADIUS server, show reply
 \fBradclient\fP \fI[ OPTIONS ]\fP \fIserver {acct|auth|status|disconnect|auto} secret\fP
 .SH "DESCRIPTION"
 .sp
-`radclient* is a radius client program. It can send arbitrary radius
+\fBradclient\fP is a radius client program. It can send arbitrary radius
 packets to a radius server, then shows the reply. It can be used to test
 changes you made in the configuration of the radius server, or it can be
 used to monitor if a radius server is up.
@@ -56,6 +56,22 @@ Use IPv4 (default)
 \fB\-6\fP
 .RS 4
 Use IPv6
+.RE
+.sp
+\fB\-b\fP
+.RS 4
+Enforce the Blast RADIUS checks.   All replies to an Access\-Request packet
+must contain a Message\-Authenticator as the first attribute.
+.sp
+.if n .RS 4
+.nf
+.fam C
+For compatibility with old servers, this flag is not set by default.
+However, radclient still checks for the Blast RADIUS signature, and
+discards packets which match the attack.
+.fam
+.fi
+.if n .RE
 .RE
 .sp
 \fB\-c count\fP
@@ -224,15 +240,17 @@ for it.
 .sp
 .if n .RS 4
 .nf
+.fam C
 $ echo "Message\-Authenticator = 0x00" | radclient 192.0.2.42 status s3cr3t
 Sending request to server 192.0.2.42, port 1812.
 Received Packet from host 192.0.2.42 code=2, id=140, length=54
     Reply\-Message = "FreeRADIUS up 21 days, 02:05"
+.fam
 .fi
 .if n .RE
 .SH "SEE ALSO"
 .sp
-radiusd(8),
+radiusd(8)
 .SH "AUTHOR"
 .sp
 The FreeRADIUS Server Project (\c

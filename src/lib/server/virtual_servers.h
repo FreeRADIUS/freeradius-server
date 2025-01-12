@@ -51,14 +51,14 @@ void		virtual_server_process_debug(void);
 /** @name Resolution functions
  * @{
  */
-module_instance_t *virtual_server_listerner_by_data(void const *data);
+module_instance_t *virtual_server_listener_by_data(void const *data);
 /** @} */
 
 /** @name Callbacks for dealing with transports
  *
  * @{
  */
-int virtual_sever_listen_transport_parse(TALLOC_CTX *ctx, void *out, void *parent,
+int virtual_server_listen_transport_parse(TALLOC_CTX *ctx, void *out, void *parent,
 					 CONF_ITEM *ci, conf_parser_t const *rule);
 /** @} */
 

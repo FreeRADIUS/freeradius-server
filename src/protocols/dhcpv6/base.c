@@ -107,9 +107,12 @@ char const *fr_dhcpv6_packet_names[FR_DHCPV6_CODE_MAX] = {
 	 [FR_PACKET_TYPE_VALUE_CONTACT]			= "Contact"
 };
 
-static fr_table_num_ordered_t const subtype_table[] = {
-	{ L("dns_label"),			FLAG_ENCODE_DNS_LABEL },
-	{ L("partial_dns_label"), 		FLAG_ENCODE_PARTIAL_DNS_LABEL }
+FR_DICT_ATTR_FLAG_FUNC(fr_dhcpv6_attr_flags_t, dns_label)
+FR_DICT_ATTR_FLAG_FUNC(fr_dhcpv6_attr_flags_t, partial_dns_label)
+
+static fr_dict_flag_parser_t const dhcpv6_flags[] = {
+	{ L("dns_label"),		{ .func = dict_flag_dns_label } },
+	{ L("partial_dns_label"),	{ .func = dict_flag_partial_dns_label } }
 };
 
 static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes, int depth);
@@ -786,7 +789,7 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 
 	fr_pair_dcursor_iter_init(&cursor, vps, fr_dhcpv6_next_encodable, dict_dhcpv6);
 	while ((fr_dbuff_extend(&frame_dbuff) > 0) && (fr_dcursor_current(&cursor) != NULL)) {
-		slen = fr_dhcpv6_encode_option(&frame_dbuff, &cursor, &packet_ctx);	
+		slen = fr_dhcpv6_encode_option(&frame_dbuff, &cursor, &packet_ctx);
 		if (slen < 0) return slen - fr_dbuff_used(&frame_dbuff);
 	}
 
@@ -944,23 +947,22 @@ void fr_dhcpv6_global_free(void)
 	fr_dict_autofree(libfreeradius_dhcpv6_dict);
 }
 
-static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *parent,
-		       UNUSED char const *name, UNUSED int attr, fr_type_t type, fr_dict_attr_flags_t *flags)
+static bool attr_valid(fr_dict_attr_t *da)
 {
 	/*
 	 *	"arrays" of string/octets are encoded as a 16-bit
 	 *	length, followed by the actual data.
 	 */
-	if (flags->array && ((type == FR_TYPE_STRING) || (type == FR_TYPE_OCTETS))) {
-		flags->is_known_width = true;
+	if (da->flags.array && ((da->type == FR_TYPE_STRING) || (da->type == FR_TYPE_OCTETS))) {
+		da->flags.is_known_width = true;
 
-		if (flags->extra && (flags->subtype != FLAG_LENGTH_UINT16)) {
+		if (da->flags.extra && (da->flags.subtype != FLAG_LENGTH_UINT16)) {
 			fr_strerror_const("string/octets arrays require the 'length=uint16' flag");
 			return false;
 		}
 	}
 
-	if (flags->extra && (flags->subtype == FLAG_LENGTH_UINT8)) {
+	if (da->flags.extra && (da->flags.subtype == FLAG_LENGTH_UINT8)) {
 		fr_strerror_const("The 'length=uint8' flag cannot be used for DHCPv6");
 		return false;
 	}
@@ -969,14 +971,14 @@ static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *pare
 	 *	"extra" signifies that subtype is being used by the
 	 *	dictionaries itself.
 	 */
-	if (flags->extra || !flags->subtype) return true;
+	if (da->flags.extra || !da->flags.subtype) return true;
 
-	if ((type != FR_TYPE_STRING) && ((flags->subtype == FLAG_ENCODE_DNS_LABEL) || (flags->subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL))) {
+	if ((da->type != FR_TYPE_STRING) && fr_dhcpv6_flag_any_dns_label(da)) {
 		fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
 		return false;
 	}
 
-	flags->is_known_width = true;
+	da->flags.is_known_width = true;
 
 	return true;
 }
@@ -986,9 +988,15 @@ fr_dict_protocol_t libfreeradius_dhcpv6_dict_protocol = {
 	.name = "dhcpv6",
 	.default_type_size = 2,
 	.default_type_length = 2,
-	.subtype_table = subtype_table,
-	.subtype_table_len = NUM_ELEMENTS(subtype_table),
-	.attr_valid = attr_valid,
+
+	.attr = {
+		.valid = attr_valid,
+		.flags = {
+			.table = dhcpv6_flags,
+			.table_len = NUM_ELEMENTS(dhcpv6_flags),
+			.len = sizeof(fr_dhcpv6_attr_flags_t)
+		}
+	},
 
 	.init = fr_dhcpv6_global_init,
 	.free = fr_dhcpv6_global_free,

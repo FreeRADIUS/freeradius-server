@@ -122,7 +122,7 @@ static void test_fr_pair_afrom_child_num(void)
 	PAIR_VERIFY(vp);
 
 	TEST_CHECK(vp && vp->da->attr == FR_TEST_ATTR_STRING);
-	TEST_MSG("Expected attr(%d) == vp->da->attr(%d)", attr, vp->da->attr);
+	TEST_MSG("Expected attr(%u) == vp->da->attr(%u)", attr, vp->da->attr);
 
 	talloc_free(vp);
 }

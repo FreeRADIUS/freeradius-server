@@ -19,10 +19,11 @@
  * @file lib/bio/dedup.c
  * @brief Binary IO abstractions for deduping packets.
  *
- * The dedup BIO receives packets from the network, and allows for deduplication of replies.  The actual
- * deduplication tree / table has to be maintained by the calling application, as packet dedup is very
- * protocol-specific.  The purpose of the dedup BIO is to abstract all of the common support functions around
- * this requirement.
+ * The dedup BIO receives packets from the network, and allows for deduplication of requests, so that
+ * duplicate requests are only processed once.  In addition, if a reply is available, a duplicate request will
+ * result in a duplicate reply.  The actual deduplication tree / table has to be maintained by the calling
+ * application, as packet comparisons for deduplication is very protocol-specific.  The purpose of the dedup
+ * BIO is to abstract all of the common support functions around this limitation.
  *
  * When packets are read() from the next bio, the #fr_bio_dedup_receive_t callback is run.  It tells the BIO
  * whether or not the packet should be received, and whether or not the packet should be returned to the
@@ -654,7 +655,7 @@ static ssize_t fr_bio_dedup_blocked(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *it
 	fr_assert(rcode > 0);
 	fr_assert((size_t) rcode < item->reply_size);
 
-	if (fr_bio_dedup_buffer_save(my, item->reply, item->reply_size, rcode) < 0) return fr_bio_error(GENERIC);
+	if (fr_bio_dedup_buffer_save(my, item->reply, item->reply_size, rcode) < 0) return fr_bio_error(OOM);
 
 	switch (item->state) {
 	case FR_BIO_DEDUP_STATE_ACTIVE:
@@ -742,7 +743,7 @@ static ssize_t fr_bio_dedup_blocked_data(fr_bio_dedup_t *my, uint8_t const *buff
 	fr_assert(rcode > 0);
 	fr_assert((size_t) rcode < size);
 
-	if (fr_bio_dedup_buffer_save(my, buffer, size, rcode) < 0) return fr_bio_error(GENERIC);
+	if (fr_bio_dedup_buffer_save(my, buffer, size, rcode) < 0) return fr_bio_error(OOM);
 
 	/*
 	 *	Reset the write routine, so that if the application tries any more writes, the data

@@ -169,14 +169,12 @@ int fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 	vp->vp_uint32 = data[1];
 	if (code) *code = data[1];
 	vp->vp_tainted = true;
-	DEBUG2("&%pP", vp);
 	fr_pair_append(out, vp);
 
 	vp = fr_pair_afrom_da(ctx, attr_error_code);
 	if (!vp) goto oom;
 	vp->vp_uint32 = data[2];
 	vp->vp_tainted = true;
-	DEBUG2("&%pP", vp);
 	fr_pair_append(out, vp);
 
 	vp = fr_pair_afrom_da(ctx, attr_sequence_number);
@@ -184,7 +182,6 @@ int fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 
 	vp->vp_uint32 = fr_nbo_to_uint32(data + 4);
 	vp->vp_tainted = true;
-	DEBUG2("&%pP", vp);
 	fr_pair_append(out, vp);
 
 	ptr = data + FR_VQP_HDR_LEN;
@@ -236,7 +233,6 @@ int fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 
 		ptr += attr_len;
 		vp->vp_tainted = true;
-		DEBUG2("&%pP", vp);
 		fr_pair_append(out, vp);
 	}
 
@@ -325,8 +321,6 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 		}
 
 		if (!fr_type_is_leaf(vp->vp_type)) continue;
-
-		DEBUG2("&%pP", vp);
 
 		/*
 		 *	Type.  Note that we look at only the lower 8
@@ -467,7 +461,7 @@ static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
  */
 void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 {
-	int length;
+	uint32_t length;
 	uint8_t const *attr, *end;
 	uint32_t id;
 
@@ -527,7 +521,7 @@ static int _decode_test_ctx(UNUSED fr_vmps_ctx_t *proto_ctx)
 	return 0;
 }
 
-static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
+static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
 {
 	fr_vmps_ctx_t *test_ctx;
 
@@ -568,7 +562,7 @@ static int _encode_test_ctx(UNUSED fr_vmps_ctx_t *proto_ctx)
 	return 0;
 }
 
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
 {
 	fr_vmps_ctx_t *test_ctx;
 

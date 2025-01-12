@@ -155,7 +155,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 {
 	proto_detail_t *inst = talloc_get_type_abort(parent, proto_detail_t);
 
-	if (unlikely(virtual_sever_listen_transport_parse(ctx, out, parent, ci, rule) < 0)) {
+	if (unlikely(virtual_server_listen_transport_parse(ctx, out, parent, ci, rule) < 0)) {
 		return -1;
 	}
 
@@ -169,7 +169,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 
 		inst->work_submodule = NULL;
 
-		mi = virtual_server_listerner_by_data(parent);
+		mi = virtual_server_listener_by_data(parent);
 		fr_assert(mi);
 
 		transport_cs = cf_section_find(mi->conf, "work", NULL);

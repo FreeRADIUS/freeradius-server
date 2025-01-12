@@ -40,6 +40,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/virtual_servers.h>
 
 #include <freeradius-devel/unlang/compile.h>
+#include <freeradius-devel/unlang/function.h>
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/master.h>
@@ -62,6 +63,9 @@ struct virtual_server_s {
 								///< cached for convenience.
 
 	fr_rb_tree_t			*sections;		//!< List of sections that need to be compiled.
+
+	fr_log_t			*log;			//!< log destination
+	char const			*log_name;		//!< name of log destination
 };
 
 static fr_dict_t const *dict_freeradius;
@@ -146,6 +150,8 @@ static const conf_parser_t server_config[] = {
 			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
 			 .func = listen_parse },
 
+	{ FR_CONF_OFFSET("log", virtual_server_t, log_name), },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -185,7 +191,7 @@ void virtual_server_process_debug(void)
  *	- The module instance for the proto data.
  *	- NULL if no data matches.
  */
-module_instance_t *virtual_server_listerner_by_data(void const *data)
+module_instance_t *virtual_server_listener_by_data(void const *data)
 {
 	return module_instance_by_data(proto_modules, data);
 }
@@ -193,7 +199,7 @@ module_instance_t *virtual_server_listerner_by_data(void const *data)
 /** Generic conf_parser_t func for loading drivers
  *
  */
-int virtual_sever_listen_transport_parse(TALLOC_CTX *ctx, void *out, void *parent,
+int virtual_server_listen_transport_parse(TALLOC_CTX *ctx, void *out, void *parent,
 					 CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	conf_parser_t our_rule = *rule;
@@ -666,6 +672,26 @@ int virtual_server_has_namespace(CONF_SECTION **out,
 	return 0;
 }
 
+/*
+ *	If we pushed a log destination, we need to pop it/
+ */
+static unlang_action_t server_remove_log_destination(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+						     request_t *request, void *uctx)
+{
+	virtual_server_t *server = uctx;
+
+	request_log_prepend(request, server->log, L_DBG_LVL_DISABLE);
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+static void server_signal_remove_log_destination(request_t *request, UNUSED fr_signal_t action, void *uctx)
+{
+	virtual_server_t *server = uctx;
+
+	request_log_prepend(request, server->log, L_DBG_LVL_DISABLE);
+}
+
 /** Set the request processing function.
  *
  *	Short-term hack
@@ -678,6 +704,39 @@ unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs,
 	if (!server) {
 		cf_log_err(server_cs, "server_cs does not contain virtual server data");
 		return UNLANG_ACTION_FAIL;
+	}
+
+	/*
+	 *	Add a log destination specific to this virtual server.
+	 *
+	 *	If we add a log destination, make sure to remove it when we walk back up the stack.
+	 *	But ONLY if we're not at the top of the stack.
+	 *
+	 *	When a brand new request comes in, it has a "call" frame pushed, and then this function is
+	 *	called.  So if we're at the top of the stack, we don't need to pop any logging function,
+	 *	because the request will die immediately after the top "call" frame is popped.
+	 *
+	 *	However, if we're being reached from a "call" frame in the middle of the stack, then
+	 *	we do have to pop the log destination when we return.
+	 */
+	if (server->log) {
+		request_log_prepend(request, server->log, fr_debug_lvl);
+
+		if (unlang_interpret_stack_depth(request) > 1) {
+			unlang_action_t action;
+
+			action = unlang_function_push(request, NULL, /* don't call it immediately */
+						      server_remove_log_destination, /* but when we pop the frame */
+						      server_signal_remove_log_destination, FR_SIGNAL_CANCEL,
+						      top_frame, server);
+			if (action != UNLANG_ACTION_PUSHED_CHILD) return action;
+
+			/*
+			 *	The pushed function may be a top frame, but the virtual server
+			 *	we're about to push is now definitely a sub frame.
+			 */
+			top_frame = UNLANG_SUB_FRAME;
+		}
 	}
 
 	/*
@@ -1260,6 +1319,7 @@ static int define_server_attrs(CONF_SECTION *cs, fr_dict_t *dict, fr_dict_attr_t
 
 	fr_dict_attr_flags_t flags = {
 		.internal = true,
+		.name_only = true,
 		.local = true,
 	};
 
@@ -1339,7 +1399,7 @@ static int define_server_attrs(CONF_SECTION *cs, fr_dict_t *dict, fr_dict_attr_t
 			return -1;
 		}
 
-		if (fr_dict_attr_add(dict, parent, value, -1, type, &flags) < 0) {
+		if (fr_dict_attr_add_name_only(dict, parent, value, type, &flags) < 0) {
 			cf_log_err(ci, "Failed adding local variable '%s' - %s", value, fr_strerror());
 			return -1;
 		}
@@ -1511,9 +1571,27 @@ int virtual_servers_instantiate(void)
 		CONF_ITEM			*ci = NULL;
 		CONF_SECTION			*server_cs = virtual_servers[i]->server_cs;
 		fr_dict_t const			*dict;
-		virtual_server_t const		*vs = virtual_servers[i];
+		virtual_server_t		*vs = virtual_servers[i];
 		fr_process_module_t const	*process = (fr_process_module_t const *)
 							    vs->process_mi->module->exported;
+
+		/*
+		 *	Set up logging before doing anything else.
+		 */
+		if (vs->log_name) {
+			vs->log = log_dst_by_name(vs->log_name);
+			if (!vs->log) {
+				CONF_PAIR *cp = cf_pair_find(server_cs, "log");
+
+				if (cp) {
+					cf_log_err(cp, "Unknown log destination '%s'", vs->log_name);
+				} else {
+					cf_log_err(server_cs, "Unknown log destination '%s'", vs->log_name);
+				}
+
+				return -1;
+			}
+		}
 
 		dict = virtual_server_local_dict(server_cs, *(process)->dict);
 		if (!dict) return -1;

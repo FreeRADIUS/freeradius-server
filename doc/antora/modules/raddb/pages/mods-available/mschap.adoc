@@ -435,7 +435,7 @@ mschap {
 #	use_open_directory = yes
 #	allow_retry = yes
 #	retry_msg = "Re-enter (or reset) the password"
-	attributes {
+	Xattributes {
 		username = &User-Name
 		chap_challenge = &Vendor-Specific.Microsoft.CHAP-Challenge
 		chap_response = &Vendor-Specific.Microsoft.CHAP-Response
@@ -450,13 +450,13 @@ mschap {
 		chap2_cpw =  &Vendor-Specific.Microsoft.CHAP2-CPW
 		chap_nt_enc_pw = &Vendor-Specific.Microsoft.CHAP-NT-Enc-PW
 	}
-#	attributes {
-#		username = &User-Name
-#		chap_challenge = &MS-CHAP-Challenge
-#		chap_response = &MS-CHAP-Response
-#		chap2_response = &MS-CHAP2-Response
-#		chap2_success = &Data
-#		chap_error = &Server-Message
-#	}
+	attributes {
+		username = &User-Name
+		chap_challenge = &MS-CHAP-Challenge
+		chap_response = &MS-CHAP-Response
+		chap2_response = &MS-CHAP2-Response
+		chap2_success = &MS-CHAP2-Success
+		chap_error = &MS-CHAP-Error
+	}
 }
 ```

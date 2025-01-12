@@ -1104,7 +1104,7 @@ CONF_SECTION *_cf_section_find_parent(CONF_ITEM const *ci,
 		found = cf_item_to_section(ci);
 
 		if (cf_section_name_cmp(found, name1, name2) == 0) return found;
-	};
+	}
 
 	return NULL;
 }
@@ -1390,11 +1390,11 @@ bool cf_pair_is_parsed(CONF_PAIR *cp)
 	return cp->parsed;
 }
 
-/** Return the next child that's a #CONF_PAIR
+/** Return the first child that's a #CONF_PAIR
  *
  * @param[in] cs	to return children from.
  * @return
- *	- The next #CONF_ITEM that's a child of cs and a CONF_PAIR.
+ *	- The first #CONF_ITEM that's a child of cs and a CONF_PAIR.
  *	- NULL if no #CONF_ITEM matches that criteria.
  */
 CONF_PAIR *cf_pair_first(CONF_SECTION const *cs)
@@ -1415,12 +1415,12 @@ CONF_PAIR *cf_pair_next(CONF_SECTION const *cs, CONF_PAIR const *curr)
 	return cf_item_to_pair(cf_next(cf_section_to_item(cs), cf_pair_to_item(curr), CONF_ITEM_PAIR));
 }
 
-/** Return the next child that's a #CONF_PAIR
+/** Return the previous child that's a #CONF_PAIR
  *
  * @param[in] cs	to return children from.
  * @param[in] curr	child to start searching from.
  * @return
- *	- The next #CONF_ITEM that's a child of cs and a CONF_PAIR.
+ *	- The previous #CONF_ITEM that's a child of cs and a CONF_PAIR.
  *	- NULL if no #CONF_ITEM matches that criteria.
  */
 CONF_PAIR *cf_pair_prev(CONF_SECTION const *cs, CONF_PAIR const *curr)
@@ -2286,7 +2286,7 @@ void _cf_item_debug(CONF_ITEM const *ci)
 		DEBUG("  name1         : %s", cs->name1);
 		DEBUG("  name2         : %s", cs->name2 ? cs->name2 : "<none>");
 		DEBUG("  name2_quote   : %s", fr_table_str_by_value(fr_token_quotes_table, cs->name2_quote, "<INVALID>"));
-		DEBUG("  argc          : %u", cs->argc);
+		DEBUG("  argc          : %d", cs->argc);
 
 		for (i = 0; i < cs->argc; i++) {
 			char const *quote = fr_table_str_by_value(fr_token_quotes_table, cs->argv_quote[i], "<INVALID>");

@@ -32,7 +32,9 @@ extern "C" {
  *
  */
 #ifndef static_assert
+# if __STDC_VERSION__ < 202000
 #  define static_assert _Static_assert
+# endif
 # else
 #  include <assert.h>
 #endif

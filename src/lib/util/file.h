@@ -44,6 +44,13 @@ extern "C" {
  */
 typedef int(*fr_mkdir_func_t)(int fd, char const *path, void *uctx);
 
+typedef struct {
+	uid_t		uid;
+	gid_t		gid;
+} fr_mkdir_chown_t;
+
+int		fr_mkdir_chown(int fd, char const *path, void *uctx);
+
 ssize_t		fr_mkdir(int *fd_out, char const *path, ssize_t len, mode_t mode,
 			 fr_mkdir_func_t func, void *uctx);
 

@@ -159,6 +159,14 @@ linelog {
 		#  a limited range should set this to `yes`.
 		#
 		escape_filenames = no
+
+		#
+		#  fsync::
+		#
+		#  Synchronise data written with the file system after every
+		#  write, returning fail when the operation fails.
+		#
+		fsync = no
 	}
 
 	#

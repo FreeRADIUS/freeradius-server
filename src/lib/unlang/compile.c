@@ -672,9 +672,7 @@ static int compile_map_name(unlang_group_t *g)
 	unlang_map_t	*gext = unlang_group_to_map(g);
 
 	/*
-	 *	If the section has arguments beyond
-	 *	name1 and name2, they form input
-	 *	arguments into the map.
+	 *	map <module-name> <arg>
 	 */
 	if (gext->vpt) {
 		char	quote;
@@ -2014,7 +2012,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 
 	/*
 	 *	Over-riding the actions can be done in certain limited
-	 *	situations.  In other situations (e.g. "switch",
+	 *	situations.  In other situations (e.g. "redundant", 
 	 *	"load-balance"), it doesn't make sense.
 	 *
 	 *	Note that this limitation also applies to "retry"
@@ -2029,7 +2027,10 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 	case UNLANG_TYPE_IF:
 	case UNLANG_TYPE_ELSE:
 	case UNLANG_TYPE_ELSIF:
+	case UNLANG_TYPE_FOREACH:
 	case UNLANG_TYPE_GROUP:
+	case UNLANG_TYPE_LIMIT:
+	case UNLANG_TYPE_SWITCH:
 	case UNLANG_TYPE_TIMEOUT:
 	case UNLANG_TYPE_TRANSACTION:
 		break;
@@ -4842,7 +4843,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			if (!op->thread_inst_size) return c;
 
 			if (!fr_rb_insert(unlang_instruction_tree, c)) {
-				cf_log_err(ci, "Instruction \"%s\" number %i has conflict with previous one.",
+				cf_log_err(ci, "Instruction \"%s\" number %u has conflict with previous one.",
 					   c->debug_name, c->number);
 				talloc_free(c);
 				return NULL;
@@ -5284,7 +5285,7 @@ static void unlang_perf_dump(fr_log_t *log, unlang_t const *instruction, int dep
 
 	t = &unlang_thread_array[instruction->number];
 
-	fr_log(log, L_DBG, file, line, "count=%" PRIu64 " cpu_time=%" PRIu64 " yielded_time=%" PRIu64 ,
+	fr_log(log, L_DBG, file, line, "count=%" PRIu64 " cpu_time=%" PRId64 " yielded_time=%" PRId64 ,
 	       t->use_count, fr_time_delta_unwrap(t->tracking.running_total), fr_time_delta_unwrap(t->tracking.waiting_total));
 
 	if (g->children) {

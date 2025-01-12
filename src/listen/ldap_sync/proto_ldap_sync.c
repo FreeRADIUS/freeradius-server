@@ -49,7 +49,7 @@ static conf_parser_t const ldap_sync_search_config[] = {
 
 static conf_parser_t const proto_ldap_sync_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_ldap_sync_t, io_submodule),
-	  .func = virtual_sever_listen_transport_parse },
+	  .func = virtual_server_listen_transport_parse },
 
 	{ FR_CONF_OFFSET("max_packet_size", proto_ldap_sync_t, max_packet_size) },
 	{ FR_CONF_OFFSET("num_messages", proto_ldap_sync_t, num_messages) },
@@ -135,7 +135,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	 */
 	ret = fr_internal_decode_list_dbuff(request->pair_list.request, &request->request_pairs,
 					   fr_dict_root(request->dict), &dbuff, NULL);
-	if (ret < 0) return ret;
+	if (ret < 0) return -1;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_packet_type);
 	fr_assert(vp);

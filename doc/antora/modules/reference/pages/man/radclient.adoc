@@ -37,6 +37,14 @@ encrypted before the packet is sent to the server.
 *-6*::
   Use IPv6
 
+*-b*::
+  Enforce the Blast RADIUS checks.   All replies to an Access-Request packet
+  must contain a Message-Authenticator as the first attribute.
+
+  For compatibility with old servers, this flag is not set by default.
+  However, radclient still checks for the Blast RADIUS signature, and
+  discards packets which match the attack.
+
 *-c count*::
   Send each packet _count_ times.
 

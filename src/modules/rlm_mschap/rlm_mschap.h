@@ -3,14 +3,14 @@
 RCSIDH(rlm_mschap_h, "$Id$")
 
 #include "config.h"
+#include "mschap.h"
 
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/slab.h>
 #include <freeradius-devel/server/tmpl.h>
 
 #ifdef WITH_AUTH_WINBIND
 #  include <wbclient.h>
-
-#include <freeradius-devel/server/pool.h>
 #endif
 
 /* Method of authentication we are going to use */
@@ -57,14 +57,27 @@ typedef struct {
 	MSCHAP_AUTH_METHOD	method;
 	char const		*wb_username;
 #ifdef WITH_AUTH_WINBIND
-	fr_pool_t		*wb_pool;
 	bool			wb_retry_with_normalised_username;
+	fr_slab_config_t	reuse;
 #endif
 #ifdef __APPLE__
 	bool			open_directory;
 #endif
 } rlm_mschap_t;
 
+#ifdef WITH_AUTH_WINBIND
+typedef struct {
+	struct wbcContext	*ctx;
+} winbind_ctx_t;
+
+FR_SLAB_TYPES(mschap, winbind_ctx_t);
+FR_SLAB_FUNCS(mschap, winbind_ctx_t)
+
+typedef struct {
+	rlm_mschap_t const	*inst;		//!< Instance of rlm_mschap.
+	mschap_slab_list_t	*slab;		//!< Slab list for winbind handles.
+} rlm_mschap_thread_t;
+#endif
 typedef struct {
 	tmpl_t const	*username;
 	tmpl_t const	*chap_error;
@@ -85,3 +98,26 @@ typedef struct {
 	tmpl_t const	*ntlm_cpw_domain;
 	tmpl_t const	*local_cpw;
 } mschap_auth_call_env_t;
+
+typedef struct {
+	fr_value_box_list_t	cpw_user;
+	fr_value_box_list_t	cpw_domain;
+	fr_value_box_list_t	local_cpw_result;
+	uint8_t			new_nt_encrypted[516];
+	uint8_t			old_nt_hash[NT_DIGEST_LENGTH];
+	fr_pair_t		*new_hash;
+} mschap_cpw_ctx_t;
+
+typedef struct {
+	char const		*name;
+	rlm_mschap_t const	*inst;
+	mschap_auth_call_env_t	*env_data;
+	MSCHAP_AUTH_METHOD	method;
+	fr_pair_t		*nt_password;
+	fr_pair_t		*smb_ctrl;
+	fr_pair_t		*cpw;
+	mschap_cpw_ctx_t	*cpw_ctx;
+#ifdef WITH_AUTH_WINBIND
+	rlm_mschap_thread_t	*t;
+#endif
+} mschap_auth_ctx_t;

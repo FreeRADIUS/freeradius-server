@@ -128,7 +128,7 @@ static inline size_t fr_nbo_from_uint64v(uint8_t out[static sizeof(uint64_t)], u
 	 * "| 0x80". and this function doesn't specify an error return value,
 	 * so we use a Coverity-only assert.
 	 */
-	fr_assert(ret >= 1 && ret <= 8);
+	if (!fr_cond_assert((ret >= 1) && (ret <= 8))) return 1;
 #endif
 
 	fr_nbo_from_uint64(swapped, num);

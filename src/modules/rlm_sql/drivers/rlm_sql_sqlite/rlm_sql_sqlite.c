@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <sqlite3.h>
 
 #include "rlm_sql.h"
+#include "rlm_sql_trunk.h"
 #include "config.h"
 
 #define BOOTSTRAP_MAX (1048576 * 10)
@@ -568,11 +569,10 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
  * @param out Array of sql_log_entrys to fill.
  * @param outlen Length of out array.
  * @param query_ctx Query context to retrieve error for.
- * @param config rlm_sql config.
  * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED size_t outlen,
-			fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
+			fr_sql_query_t *query_ctx)
 {
 	rlm_sql_sqlite_conn_t *conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_sqlite_conn_t);
 	char const *error;
@@ -603,35 +603,7 @@ static int sql_affected_rows(fr_sql_query_t *query_ctx,
 	return -1;
 }
 
-/** Allocate an SQL trunk connection
- *
- * @param[in] tconn		Trunk handle.
- * @param[in] el		Event list which will be used for I/O and timer events.
- * @param[in] conn_conf		Configuration of the connection.
- * @param[in] log_prefix	What to prefix log messages with.
- * @param[in] uctx		User context passed to trunk_alloc.
- */
-CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
-static connection_t *sql_trunk_connection_alloc(trunk_connection_t *tconn, fr_event_list_t *el,
-						connection_conf_t const *conn_conf,
-						char const *log_prefix, void *uctx)
-{
-	connection_t		*conn;
-	rlm_sql_thread_t	*thread = talloc_get_type_abort(uctx, rlm_sql_thread_t);
-
-	conn = connection_alloc(tconn, el,
-				&(connection_funcs_t){
-					.init = _sql_connection_init,
-					.close = _sql_connection_close
-				},
-				conn_conf, log_prefix, thread->inst);
-	if (!conn) {
-		PERROR("Failed allocating state handler for new SQL connection");
-		return NULL;
-	}
-
-	return conn;
-}
+SQL_TRUNK_CONNECTION_ALLOC
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
@@ -671,13 +643,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 	trunk_request_signal_reapable(treq);
 }
 
-static unlang_action_t sql_query_resume(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
-{
-	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-
-	if (query_ctx->rcode == RLM_SQL_OK) RETURN_MODULE_OK;
-	RETURN_MODULE_FAIL;
-}
+SQL_QUERY_RESUME
 
 static void sql_request_fail(UNUSED request_t *request, void *preq, UNUSED void *rctx,
 			     UNUSED trunk_request_state_t state, UNUSED void *uctx)
@@ -685,7 +651,7 @@ static void sql_request_fail(UNUSED request_t *request, void *preq, UNUSED void 
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(preq, fr_sql_query_t);
 
 	query_ctx->treq = NULL;
-	query_ctx->rcode = RLM_SQL_ERROR;
+	if (query_ctx->rcode == RLM_SQL_OK) query_ctx->rcode = RLM_SQL_ERROR;
 }
 
 static void sql_request_complete(UNUSED request_t *request, void *preq, UNUSED void *rctx, UNUSED void *uctx)
@@ -846,7 +812,6 @@ rlm_sql_driver_t rlm_sql_sqlite = {
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,
 	.sql_finish_select_query	= sql_finish_query,
-	.uses_trunks			= true,
 	.trunk_io_funcs = {
 		.connection_alloc	= sql_trunk_connection_alloc,
 		.request_mux		= sql_trunk_request_mux,

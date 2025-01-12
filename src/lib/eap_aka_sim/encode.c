@@ -708,7 +708,7 @@ static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 	 *	encrypt the contents of the TLV using AES-CBC-128
 	 *	or another encryption algorithm.
 	 */
-	if (!da->flags.extra && da->flags.subtype) {
+	if (fr_aka_sim_flag_encrypted(da)) {
 		ssize_t	value_len = fr_dbuff_used(&work_dbuff) - 2;
 
 		slen = encode_encrypted_value(&value_dbuff, fr_dbuff_current(&value_start),
@@ -776,7 +776,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 	 *	The ASCII art in the RFCs the attributes in
 	 *	this order.
 	 */
-	if (!da_stack->da[depth]->flags.extra && da_stack->da[depth]->flags.subtype) {
+	if (fr_aka_sim_flag_encrypted(da_stack->da[depth])) {
 		len = encode_iv(&work_dbuff, encode_ctx);
 		if (len < 0) return len;
 	}
@@ -823,7 +823,7 @@ ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *en
 	PAIR_VERIFY(vp);
 
 	if (vp->da->depth > FR_DICT_MAX_TLV_STACK) {
-		fr_strerror_printf("%s: Attribute depth %i exceeds maximum nesting depth %i",
+		fr_strerror_printf("%s: Attribute depth %u exceeds maximum nesting depth %d",
 				   __FUNCTION__, vp->da->depth, FR_DICT_MAX_TLV_STACK);
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
@@ -1015,7 +1015,7 @@ static fr_aka_sim_ctx_t *test_ctx_init(TALLOC_CTX *ctx, uint8_t const *k_encr, s
 /*
  *	Test ctx data
  */
-static int encode_test_ctx_sim(void **out, TALLOC_CTX *ctx)
+static int encode_test_ctx_sim(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
 {
 	fr_aka_sim_ctx_t	*test_ctx;
 	static uint8_t		k_encr[] = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
@@ -1031,7 +1031,7 @@ static int encode_test_ctx_sim(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
-static int encode_test_ctx_aka(void **out, TALLOC_CTX *ctx)
+static int encode_test_ctx_aka(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
 {
 	fr_aka_sim_ctx_t	*test_ctx;
 	static uint8_t		k_encr[] = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
@@ -1047,7 +1047,7 @@ static int encode_test_ctx_aka(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
-static int encode_test_ctx_sim_rfc4186(void **out, TALLOC_CTX *ctx)
+static int encode_test_ctx_sim_rfc4186(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
 {
 	fr_aka_sim_ctx_t	*test_ctx;
 	static uint8_t		k_encr[] = { 0x53, 0x6e, 0x5e, 0xbc, 0x44 ,0x65, 0x58, 0x2a,

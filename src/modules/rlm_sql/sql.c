@@ -53,242 +53,14 @@ fr_table_num_sorted_t const sql_rcode_description_table[] = {
 size_t sql_rcode_description_table_len = NUM_ELEMENTS(sql_rcode_description_table);
 
 fr_table_num_sorted_t const sql_rcode_table[] = {
-	{ L("alternate"),		RLM_SQL_ALT_QUERY	},
+	{ L("alternate"),	RLM_SQL_ALT_QUERY	},
 	{ L("empty"),		RLM_SQL_NO_MORE_ROWS	},
 	{ L("error"),		RLM_SQL_ERROR		},
 	{ L("invalid"),		RLM_SQL_QUERY_INVALID	},
-	{ L("ok"),			RLM_SQL_OK		},
-	{ L("reconnect"),		RLM_SQL_RECONNECT	}
+	{ L("ok"),		RLM_SQL_OK		},
+	{ L("reconnect"),	RLM_SQL_RECONNECT	}
 };
 size_t sql_rcode_table_len = NUM_ELEMENTS(sql_rcode_table);
-
-void *sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
-{
-	int rcode;
-	rlm_sql_t *inst = talloc_get_type_abort(instance, rlm_sql_t);
-	rlm_sql_handle_t *handle;
-
-	/*
-	 *	Connections cannot be alloced from the inst or
-	 *	pool contexts due to threading issues.
-	 */
-	handle = talloc_zero(ctx, rlm_sql_handle_t);
-	if (!handle) return NULL;
-
-	handle->log_ctx = talloc_pool(handle, 2048);
-	if (!handle->log_ctx) {
-		talloc_free(handle);
-		return NULL;
-	}
-
-	/*
-	 *	Handle requires a pointer to the SQL inst so the
-	 *	destructor has access to the module configuration.
-	 */
-	handle->inst = inst;
-
-	rcode = (inst->driver->sql_socket_init)(handle, &inst->config, timeout);
-	if (rcode != 0) {
-	fail:
-		/*
-		 *	Destroy any half opened connections.
-		 */
-		talloc_free(handle);
-		return NULL;
-	}
-
-	if (inst->config.connect_query) {
-		fr_sql_query_t	*query_ctx;
-		rlm_rcode_t	p_result;
-		MEM(query_ctx = fr_sql_query_alloc(ctx, inst, NULL, handle, NULL, inst->config.connect_query, SQL_QUERY_OTHER));
-		inst->query(&p_result, NULL, NULL, query_ctx);
-		if (query_ctx->rcode != RLM_SQL_OK) {
-			talloc_free(query_ctx);
-			goto fail;
-		}
-		talloc_free(query_ctx);
-	}
-
-	return handle;
-}
-
-#if 0
-/*************************************************************************
- *
- *	Function: sql_pair_afrom_row
- *
- *	Purpose: Convert one rlm_sql_row_t to a fr_pair_t, and add it to "out"
- *
- *************************************************************************/
-static int sql_pair_afrom_row(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *out, rlm_sql_row_t row, fr_pair_t **relative_vp)
-{
-	fr_pair_t		*vp;
-	char const		*ptr, *value;
-	char			buf[FR_MAX_STRING_LEN];
-	fr_dict_attr_t const	*da;
-	fr_token_t		token, op = T_EOL;
-	fr_pair_list_t		*my_list;
-	TALLOC_CTX		*my_ctx;
-
-	/*
-	 *	Verify the 'Attribute' field
-	 */
-	if (!row[2] || row[2][0] == '\0') {
-		REDEBUG("Attribute field is empty or NULL, skipping the entire row");
-		return -1;
-	}
-
-	/*
-	 *	Verify the 'op' field
-	 */
-	if (row[4] != NULL && row[4][0] != '\0') {
-		ptr = row[4];
-		op = gettoken(&ptr, buf, sizeof(buf), false);
-		if (!fr_assignment_op[op] && !fr_comparison_op[op]) {
-			REDEBUG("Invalid op \"%s\" for attribute %s", row[4], row[2]);
-			return -1;
-		}
-
-	} else {
-		/*
-		 *  Complain about empty or invalid 'op' field
-		 */
-		op = T_OP_CMP_EQ;
-		REDEBUG("The op field for attribute '%s = %s' is NULL, or non-existent.", row[2], row[3]);
-		REDEBUG("You MUST FIX THIS if you want the configuration to behave as you expect");
-	}
-
-	/*
-	 *	The 'Value' field may be empty or NULL
-	 */
-	if (!row[3]) {
-		REDEBUG("Value field is empty or NULL, skipping the entire row");
-		return -1;
-	}
-
-	RDEBUG3("Found row[%s]: %s %s %s", row[0], row[2], fr_table_str_by_value(fr_tokens_table, op, "<INVALID>"), row[3]);
-
-	value = row[3];
-
-	/*
-	 *	If we have a string, where the *entire* string is
-	 *	quoted, do xlat's.
-	 */
-	if (row[3] != NULL &&
-	   ((row[3][0] == '\'') || (row[3][0] == '`') || (row[3][0] == '"')) &&
-	   (row[3][0] == row[3][strlen(row[3])-1])) {
-
-		token = gettoken(&value, buf, sizeof(buf), false);
-		switch (token) {
-		/*
-		 *	Take the unquoted string.
-		 */
-		case T_BACK_QUOTED_STRING:
-		case T_SINGLE_QUOTED_STRING:
-		case T_DOUBLE_QUOTED_STRING:
-			value = buf;
-			break;
-
-		/*
-		 *	Keep the original string.
-		 */
-		default:
-			value = row[3];
-			break;
-		}
-	}
-
-	/*
-	 *	Check for relative attributes
-	 *
-	 *	@todo - allow "..foo" to mean "grandparent of
-	 *	relative_vp", and it should also update relative_vp
-	 *	with the new parent.  However, doing this means
-	 *	walking the list of the current relative_vp, finding
-	 *	the dlist head, and then converting that into a
-	 *	fr_pair_t pointer.  That's complex, so we don't do it
-	 *	right now.
-	 */
-	if (row[2][0] == '.') {
-		char const *p = row[2];
-
-		if (!*relative_vp) {
-			REDEBUG("Relative attribute '%s' can only be used immediately after an attribute of type 'group'", row[2]);
-			return -1;
-		}
-
-		da = fr_dict_attr_by_oid(NULL, (*relative_vp)->da, p + 1);
-		if (!da) goto unknown;
-
-		my_list = &(*relative_vp)->vp_group;
-		my_ctx = *relative_vp;
-
-		MEM(vp = fr_pair_afrom_da(my_ctx, da));
-		fr_pair_append(my_list, vp);
-	} else {
-		/*
-		 *	Search in our local dictionary
-		 *	falling back to internal.
-		 */
-		da = fr_dict_attr_by_oid(NULL, fr_dict_root(request->dict), row[2]);
-		if (!da) {
-			da = fr_dict_attr_by_oid(NULL, fr_dict_root(fr_dict_internal()), row[2]);
-			if (!da) {
-			unknown:
-				RPEDEBUG("Unknown attribute '%s'", row[2]);
-				return -1;
-			}
-		}
-
-		my_list = out;
-		my_ctx = ctx;
-
-		MEM(vp = fr_pair_afrom_da_nested(my_ctx, my_list, da));
-	}
-
-	vp->op = op;
-
-	if ((vp->vp_type == FR_TYPE_TLV) && !*value) {
-		/*
-		 *	Allow empty values for TLVs: we just create the value.
-		 *
-		 *	fr_pair_value_from_str() is not yet updated to
-		 *	handle TLVs.  Until such time as we know what
-		 *	to do there, we will just do a hack here,
-		 *	specific to the SQL module.
-		 */
-	} else {
-		if (fr_pair_value_from_str(vp, value, strlen(value), NULL, true) < 0) {
-			RPEDEBUG("Error parsing value");
-			return -1;
-		}
-	}
-
-	/*
-	 *	Update the relative vp.
-	 */
-	if (my_list == out) switch (da->type) {
-	case FR_TYPE_STRUCTURAL:
-		*relative_vp = vp;
-		break;
-
-	default:
-		break;
-	}
-
-	/*
-	 *	If there's a relative VP, and it's not the one
-	 *	we just added above, and we're not adding this
-	 *	VP to the relative one, then nuke the relative
-	 *	VP.
-	 */
-	if (*relative_vp && (vp != *relative_vp) && (my_ctx != *relative_vp)) {
-		*relative_vp = NULL;
-	}
-
-	return 0;
-}
-#endif
 
 /** Call the driver's sql_fetch_row function
  *
@@ -310,8 +82,7 @@ unlang_action_t rlm_sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, r
 	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	rlm_sql_t const	*inst = query_ctx->inst;
 
-	if ((inst->driver->uses_trunks && !query_ctx->tconn) ||
-	    (!inst->driver->uses_trunks && (!query_ctx->handle || !query_ctx->handle->conn))) {
+	if (!query_ctx->tconn) {
 		ROPTIONAL(RERROR, ERROR, "Invalid connection");
 		query_ctx->rcode = RLM_SQL_ERROR;
 		RETURN_MODULE_FAIL;
@@ -356,7 +127,7 @@ void rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, fr_sql_query
 	size_t		num, i;
 	TALLOC_CTX	*log_ctx = talloc_new(NULL);
 
-	num = (inst->driver->sql_error)(log_ctx, log, (NUM_ELEMENTS(log)), query_ctx, &inst->config);
+	num = (inst->driver->sql_error)(log_ctx, log, (NUM_ELEMENTS(log)), query_ctx);
 	if (num == 0) {
 		ROPTIONAL(RERROR, ERROR, "Unknown error");
 		talloc_free(log_ctx);
@@ -410,14 +181,13 @@ static int fr_sql_query_free(fr_sql_query_t *to_free)
 /** Allocate an sql query structure
  *
  */
-fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle,
+fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request,
 				   trunk_t *trunk, char const *query_str, fr_sql_query_type_t type)
 {
 	fr_sql_query_t	*query;
 	MEM(query = talloc(ctx, fr_sql_query_t));
 	*query = (fr_sql_query_t) {
 		.inst = inst,
-		.handle = handle,
 		.request = request,
 		.trunk = trunk,
 		.query_str = query_str,
@@ -425,113 +195,6 @@ fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, reque
 	};
 	talloc_set_destructor(query, fr_sql_query_free);
 	return query;
-}
-
-/** Call the driver's sql_query method, reconnecting if necessary.
- *
- * @note Caller must call ``(inst->driver->sql_finish_query)(handle, &inst->config);``
- *	after they're done with the result.
- *
- * The rcode within the query context is updated to
- *	- #RLM_SQL_OK on success.
- *	- #RLM_SQL_RECONNECT if a new handle is required (also sets the handle to NULL).
- *	- #RLM_SQL_QUERY_INVALID, #RLM_SQL_ERROR on invalid query or connection error.
- *	- #RLM_SQL_ALT_QUERY on constraints violation.
- *
- * @param p_result	Result of current module call.
- * @param priority	Unused.
- * @param request	Current request.
- * @param uctx		query context containing query to execute.
- * @return an unlang_action_t.
- */
-unlang_action_t rlm_sql_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
-{
-	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	rlm_sql_t const	*inst = query_ctx->inst;
-	int		i, count;
-
-	/* Caller should check they have a valid handle */
-	fr_assert(query_ctx->handle);
-
-	/* There's no query to run, return an error */
-	if (query_ctx->query_str[0] == '\0') {
-		if (request) REDEBUG("Zero length query");
-		RETURN_MODULE_INVALID;
-	}
-
-	/*
-	 *  inst->pool may be NULL is this function is called by sql_mod_conn_create.
-	 */
-	count = inst->pool ? fr_pool_state(inst->pool)->num : 0;
-
-	/*
-	 *  Here we try with each of the existing connections, then try to create
-	 *  a new connection, then give up.
-	 */
-	for (i = 0; i < (count + 1); i++) {
-		ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
-
-		(inst->driver->sql_query)(p_result, NULL, request, query_ctx);
-		query_ctx->status = SQL_QUERY_SUBMITTED;
-		switch (query_ctx->rcode) {
-		case RLM_SQL_OK:
-			RETURN_MODULE_OK;
-
-		/*
-		 *	Run through all available sockets until we exhaust all existing
-		 *	sockets in the pool and fail to establish a *new* connection.
-		 */
-		case RLM_SQL_RECONNECT:
-			query_ctx->handle = fr_pool_connection_reconnect(inst->pool, request, query_ctx->handle);
-			/* Reconnection failed */
-			if (!query_ctx->handle) RETURN_MODULE_FAIL;
-			/* Reconnection succeeded, try again with the new handle */
-			continue;
-
-		/*
-		 *	These are bad and should make rlm_sql return invalid
-		 */
-		case RLM_SQL_QUERY_INVALID:
-			rlm_sql_print_error(inst, request, query_ctx, false);
-			(inst->driver->sql_finish_query)(query_ctx, &inst->config);
-			RETURN_MODULE_INVALID;
-
-		/*
-		 *	Server or client errors.
-		 *
-		 *	If the driver claims to be able to distinguish between
-		 *	duplicate row errors and other errors, and we hit a
-		 *	general error treat it as a failure.
-		 *
-		 *	Otherwise rewrite it to RLM_SQL_ALT_QUERY.
-		 */
-		case RLM_SQL_ERROR:
-			if (inst->driver->flags & RLM_SQL_RCODE_FLAGS_ALT_QUERY) {
-				rlm_sql_print_error(inst, request, query_ctx, false);
-				(inst->driver->sql_finish_query)(query_ctx, &inst->config);
-				RETURN_MODULE_FAIL;
-			}
-			FALL_THROUGH;
-
-		/*
-		 *	Driver suggested using an alternative query
-		 */
-		case RLM_SQL_ALT_QUERY:
-			rlm_sql_print_error(inst, request, query_ctx, true);
-			(inst->driver->sql_finish_query)(query_ctx, &inst->config);
-			break;
-
-		default:
-			break;
-		}
-
-		RETURN_MODULE_OK;
-	}
-
-	ROPTIONAL(RERROR, ERROR, "Hit reconnection limit");
-
-	query_ctx->rcode = RLM_SQL_ERROR;
-	RETURN_MODULE_FAIL;
 }
 
 /** Yield processing after submitting a trunk request.
@@ -554,7 +217,7 @@ static void sql_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_t
 	 *	The query_ctx needs to be parented by the treq so that it still exists
 	 *	when the cancel_mux callback is run.
 	 */
-	talloc_steal(query_ctx->treq, query_ctx);
+	if (query_ctx->inst->driver->trunk_io_funcs.request_cancel_mux) talloc_steal(query_ctx->treq, query_ctx);
 
 	trunk_request_signal_cancel(query_ctx->treq);
 
@@ -626,83 +289,6 @@ unlang_action_t rlm_sql_trunk_query(rlm_rcode_t *p_result, UNUSED int *priority,
 	}
 }
 
-/** Call the driver's sql_select_query method, reconnecting if necessary.
- *
- * @note Caller must call ``(inst->driver->sql_finish_select_query)(handle, &inst->config);``
- *	after they're done with the result.
- *
- * The rcode within the query context is updated to
- *	- #RLM_SQL_OK on success.
- *	- #RLM_SQL_RECONNECT if a new handle is required (also sets the handle to NULL).
- *	- #RLM_SQL_QUERY_INVALID, #RLM_SQL_ERROR on invalid query or connection error.
- *	- #RLM_SQL_ALT_QUERY on constraints violation.
- *
- * @param p_result	Result of current module call.
- * @param priority	Unused.
- * @param request	Current request.
- * @param uctx		query context containing query to execute.
- * @return an unlang_action_t.
- */
-unlang_action_t rlm_sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
-{
-	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	rlm_sql_t const	*inst = query_ctx->inst;
-	int i, count;
-
-	/* Caller should check they have a valid handle */
-	fr_assert(query_ctx->handle);
-
-	/* There's no query to run, return an error */
-	if (query_ctx->query_str[0] == '\0') {
-		if (request) REDEBUG("Zero length query");
-		query_ctx->rcode = RLM_SQL_QUERY_INVALID;
-		RETURN_MODULE_INVALID;
-	}
-
-	/*
-	 *  inst->pool may be NULL is this function is called by sql_mod_conn_create.
-	 */
-	count = inst->pool ? fr_pool_state(inst->pool)->num : 0;
-
-	/*
-	 *  For sanity, for when no connections are viable, and we can't make a new one
-	 */
-	for (i = 0; i < (count + 1); i++) {
-		ROPTIONAL(RDEBUG2, DEBUG2, "Executing select query: %s", query_ctx->query_str);
-
-		(inst->driver->sql_select_query)(p_result, NULL, request, query_ctx);
-		query_ctx->status = SQL_QUERY_SUBMITTED;
-		switch (query_ctx->rcode) {
-		case RLM_SQL_OK:
-			RETURN_MODULE_OK;
-
-		/*
-		 *	Run through all available sockets until we exhaust all existing
-		 *	sockets in the pool and fail to establish a *new* connection.
-		 */
-		case RLM_SQL_RECONNECT:
-			query_ctx->handle = fr_pool_connection_reconnect(inst->pool, request, query_ctx->handle);
-			/* Reconnection failed */
-			if (!query_ctx->handle) RETURN_MODULE_FAIL;
-			/* Reconnection succeeded, try again with the new handle */
-			continue;
-
-		case RLM_SQL_QUERY_INVALID:
-		case RLM_SQL_ERROR:
-		default:
-			rlm_sql_print_error(inst, request, query_ctx, false);
-			(inst->driver->sql_finish_select_query)(query_ctx, &inst->config);
-			if (query_ctx->rcode == RLM_SQL_QUERY_INVALID) RETURN_MODULE_INVALID;
-			RETURN_MODULE_FAIL;
-		}
-	}
-
-	ROPTIONAL(RERROR, ERROR, "Hit reconnection limit");
-
-	query_ctx->rcode = RLM_SQL_ERROR;
-	RETURN_MODULE_FAIL;
-}
-
 /** Process the results of an SQL query to produce a map list.
  *
  */
@@ -733,6 +319,10 @@ static unlang_action_t sql_get_map_list_resume(rlm_rcode_t *p_result, UNUSED int
 		map_t *map;
 
 		row = query_ctx->row;
+		if (!row[2] || !row[3] || !row[4]) {
+			RPERROR("SQL query returned NULL values");
+			RETURN_MODULE_FAIL;
+		}
 		if (map_afrom_fields(map_ctx->ctx, &map, &parent, request, row[2], row[4], row[3], &lhs_rules, &rhs_rules) < 0) {
 			RPEDEBUG("Error parsing user data from database result");
 			RETURN_MODULE_FAIL;
@@ -749,14 +339,13 @@ static unlang_action_t sql_get_map_list_resume(rlm_rcode_t *p_result, UNUSED int
 /** Submit the query to get any user / group check or reply pairs
  *
  */
-unlang_action_t sql_get_map_list(request_t *request, fr_sql_map_ctx_t *map_ctx, rlm_sql_handle_t **handle,
-				 trunk_t *trunk)
+unlang_action_t sql_get_map_list(request_t *request, fr_sql_map_ctx_t *map_ctx, trunk_t *trunk)
 {
 	rlm_sql_t const	*inst = map_ctx->inst;
 
 	fr_assert(request);
 
-	MEM(map_ctx->query_ctx = fr_sql_query_alloc(map_ctx->ctx, inst, request, *handle, trunk,
+	MEM(map_ctx->query_ctx = fr_sql_query_alloc(map_ctx->ctx, inst, request, trunk,
 						    map_ctx->query->vb_strvalue, SQL_QUERY_SELECT));
 
 	if (unlang_function_push(request, NULL, sql_get_map_list_resume, NULL, 0, UNLANG_SUB_FRAME, map_ctx) < 0) return UNLANG_ACTION_FAIL;

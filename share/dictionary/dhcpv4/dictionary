@@ -16,8 +16,7 @@
 #
 ##############################################################################
 
-PROTOCOL	DHCPv4		2	verify=lib
-BEGIN-PROTOCOL	DHCPv4
+BEGIN PROTOCOL	DHCPv4		2	verify=lib
 
 $INCLUDE dictionary.freeradius.internal
 
@@ -59,6 +58,7 @@ $INCLUDE dictionary.rfc5986
 $INCLUDE dictionary.rfc6011
 $INCLUDE dictionary.rfc6153
 $INCLUDE dictionary.rfc6656
+$INCLUDE dictionary.rfc6731
 $INCLUDE dictionary.rfc6926
 $INCLUDE dictionary.rfc7291
 $INCLUDE dictionary.rfc7710

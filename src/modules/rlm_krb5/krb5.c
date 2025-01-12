@@ -98,24 +98,15 @@ static int _mod_conn_free(rlm_krb5_handle_t *conn) {
 	return 0;
 }
 
-/** Create and return a new connection
- *
- * libkrb5(s) can talk to the KDC over TCP. Were assuming something sane is implemented
- * by libkrb5 and that it does connection caching associated with contexts, so it's
- * worth using a connection pool to preserve connections when workers die.
- */
-void *krb5_mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta_t timeout)
+int krb5_handle_init(rlm_krb5_handle_t *conn, void *uctx)
 {
-	rlm_krb5_t const *inst = talloc_get_type_abort_const(instance, rlm_krb5_t);
-	rlm_krb5_handle_t *conn;
+	rlm_krb5_t const *inst = talloc_get_type_abort_const(uctx, rlm_krb5_t);
 	krb5_error_code ret;
 
-	MEM(conn = talloc_zero(ctx, rlm_krb5_handle_t));
 	ret = krb5_init_context(&conn->context);
 	if (ret) {
 		ERROR("Context initialisation failed: %s", rlm_krb5_error(inst, NULL, ret));
-
-		return NULL;
+		return -1;
 	}
 	talloc_set_destructor(conn, _mod_conn_free);
 
@@ -124,16 +115,14 @@ void *krb5_mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta
 		krb5_kt_default(conn->context, &conn->keytab);
 	if (ret) {
 		ERROR("Resolving keytab failed: %s", rlm_krb5_error(inst, conn->context, ret));
-
-		goto cleanup;
+		return -1;
 	}
 
 #ifdef HEIMDAL_KRB5
 	ret = krb5_cc_new_unique(conn->context, "MEMORY", NULL, &conn->ccache);
 	if (ret) {
 		ERROR("Credential cache creation failed: %s", rlm_krb5_error(inst, conn->context, ret));
-
-		return NULL;
+		return -1;
 	}
 
 	krb5_verify_opt_init(&conn->options);
@@ -143,12 +132,27 @@ void *krb5_mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta
 	krb5_verify_opt_set_secure(&conn->options, true);
 
 	if (inst->service) krb5_verify_opt_set_service(&conn->options, inst->service);
-#else
-	krb5_verify_init_creds_opt_set_ap_req_nofail(inst->vic_options, true);
 #endif
-	return conn;
+	return 0;
+}
 
-cleanup:
-	talloc_free(conn);
-	return NULL;
+/** Create and return a new connection
+ *
+ * libkrb5(s) can talk to the KDC over TCP. Were assuming something sane is implemented
+ * by libkrb5 and that it does connection caching associated with contexts, so it's
+ * worth using a connection pool to preserve connections when workers die.
+ */
+void *krb5_mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta_t timeout)
+{
+	rlm_krb5_t *inst = talloc_get_type_abort(instance, rlm_krb5_t);
+	rlm_krb5_handle_t *conn;
+
+	MEM(conn = talloc_zero(ctx, rlm_krb5_handle_t));
+
+	if (krb5_handle_init(conn, inst) < 0) {
+		talloc_free(conn);
+		return NULL;
+	}
+
+	return conn;
 }

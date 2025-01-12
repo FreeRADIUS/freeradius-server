@@ -1,0 +1,12 @@
+type = ttls
+type = gtc
+ttls {
+	tls = tls-common
+	default_eap_type = md5
+	virtual_server = "inner-tunnel"
+	include_length = no
+}
+
+gtc {
+	auth_type = pap
+}

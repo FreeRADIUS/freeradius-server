@@ -393,7 +393,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	unfortunately the ordering of these two attributes
 	 *	aren't specified, so we may have to hunt for the IV.
 	 */
-	if (!parent->flags.extra && parent->flags.subtype) {
+	if (fr_aka_sim_flag_encrypted(parent)) {
 		FR_PROTO_TRACE("found encrypted attribute '%s'", parent->name);
 
 		decr_len = sim_value_decrypt(ctx, &decr, p + 2,
@@ -419,7 +419,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if ((p + sim_at_len) > end) {
 			fr_strerror_printf("%s: Malformed nested attribute %d: Length field (%zu bytes) value "
 					   "longer than remaining data in parent (%zu bytes)",
-					   __FUNCTION__, sim_at, sim_at_len, end - p);
+					   __FUNCTION__, sim_at, sim_at_len, (size_t) (end - p));
 
 		error:
 			talloc_free(decr);
@@ -442,7 +442,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			uint8_t zero = 0;
 			uint8_t i;
 
-			if (!parent->flags.subtype) {
+			if (!fr_aka_sim_flag_encrypted(parent)) {
 				fr_strerror_printf("%s: Found padding attribute outside of an encrypted TLV",
 						   __FUNCTION__);
 				goto error;
@@ -490,7 +490,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			/*
 			 *	Build an unknown attr
 			 */
-			unknown_child = fr_dict_unknown_attr_afrom_num(ctx, parent, p[0]);
+			unknown_child = fr_dict_attr_unknown_raw_afrom_num(ctx, parent, p[0]);
 			if (!unknown_child) goto error;
 			child = unknown_child;
 		}
@@ -498,7 +498,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		ret = sim_decode_pair_value(tlv, &tlv->vp_group, child, p + 2, sim_at_len - 2, (end - p) - 2,
 					    decode_ctx);
-		fr_dict_unknown_free(&unknown_child);
+		fr_dict_attr_unknown_free(&unknown_child);
 		if (ret < 0) goto error;
 		p += sim_at_len;
 	}
@@ -597,13 +597,13 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 		res_len /= 8;
 
 		if (res_len > (attr_len - 2)) {
-			fr_strerror_printf("%s: RES Length field value (%u bits) > attribute value length (%zu bits)",
+			fr_strerror_printf("%s: RES Length field value (%d bits) > attribute value length (%zu bits)",
 					   __FUNCTION__, res_len * 8, (attr_len - 2) * 8);
 			return -1;
 		}
 
 		if ((res_len < 4) || (res_len > 16)) {
-			fr_strerror_printf("%s: RES Length field value must be between 32-128 bits, got %u bits",
+			fr_strerror_printf("%s: RES Length field value must be between 32-128 bits, got %d bits",
 					   __FUNCTION__, (res_len * 8));
 			return -1;
 		}
@@ -876,7 +876,7 @@ static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 			fr_strerror_printf("Unknown (non-skippable) attribute %i", sim_at);
 			return -1;
 		}
-		da = fr_dict_unknown_attr_afrom_num(ctx, parent, sim_at);
+		da = fr_dict_attr_unknown_raw_afrom_num(ctx, parent, sim_at);
 	}
 	if (!da) return -1;
 
@@ -1023,7 +1023,7 @@ static fr_aka_sim_ctx_t *test_ctx_init(TALLOC_CTX *ctx, uint8_t const *k_encr, s
 /*
  *	Test ctx data
  */
-static int decode_test_ctx_sim(void **out, TALLOC_CTX *ctx)
+static int decode_test_ctx_sim(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
 {
 	fr_aka_sim_ctx_t	*test_ctx;
 	static uint8_t		k_encr[] = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
@@ -1040,7 +1040,7 @@ static int decode_test_ctx_sim(void **out, TALLOC_CTX *ctx)
 }
 
 
-static int decode_test_ctx_aka(void **out, TALLOC_CTX *ctx)
+static int decode_test_ctx_aka(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
 {
 	fr_aka_sim_ctx_t *test_ctx;
 	static uint8_t		k_encr[] = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
@@ -1056,7 +1056,7 @@ static int decode_test_ctx_aka(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
-static int decode_test_ctx_sim_rfc4186(void **out, TALLOC_CTX *ctx)
+static int decode_test_ctx_sim_rfc4186(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
 {
 	fr_aka_sim_ctx_t *test_ctx;
 	static uint8_t		k_encr[] = { 0x53, 0x6e, 0x5e, 0xbc, 0x44 ,0x65, 0x58, 0x2a,

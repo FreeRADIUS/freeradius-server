@@ -53,15 +53,15 @@ int fr_openssl_version_consistent(void)
 
 	ssl_linked = OpenSSL_version_num();
 
+
 	/*
-	 *	Major and minor versions mismatch, that's bad.
+	 *	Major mismatch, that's bad.
 	 *
-	 *	We still allow mismatches between patch versions
-	 *	as they should be ABI compatible.
+	 *	For OpenSSL 3, the minor versions are API/ABI compatible.
 	 *
-	 *	This should work for >= 1.1.0 including 3.0.0
+	 *	https://openssl-library.org/policies/releasestrat/index.html
 	 */
-	if ((ssl_linked & 0xfff00000) != (ssl_built & 0xfff00000)) {
+	if ((ssl_linked & 0xff000000) != (ssl_built & 0xff000000)) {
 		ERROR("libssl version mismatch.  built: %lx linked: %lx",
 		      (unsigned long) ssl_built,
 		      (unsigned long) ssl_linked);
@@ -82,43 +82,9 @@ char const *fr_openssl_version_str_from_num(uint32_t v)
 {
 	/* 2 (%s) + 1 (.) + 2 (%i) + 1 (.) + 2 (%i) + 1 (c) + 8 (%s) + \0 */
 	static char buffer[18];
-	char *p = buffer, *end = buffer + sizeof(buffer);
 
 	/*
-	 *	If OpenSSL major version is less than three
-	 *	use the old version number layout.
-	 */
-	if (((v & 0xf0000000) >> 28) < 3) {
-		p += snprintf(p, end - p, "%u.%u.%u",
-			      (0xf0000000 & v) >> 28,
-			      (0x0ff00000 & v) >> 20,
-			      (0x000ff000 & v) >> 12);
-
-		if ((0x00000ff0 & v) >> 4) {
-			*p++ =  (char) (0x60 + ((0x00000ff0 & v) >> 4));
-		}
-
-		*p++ = ' ';
-
-		/*
-		 *	Development (0)
-		 */
-		if ((0x0000000f & v) == 0) {
-			strlcpy(p, "dev", end - p);
-		/*
-		 *	Beta (1-14)
-		 */
-		} else if ((0x0000000f & v) <= 14) {
-			snprintf(p, end - p, "beta %u", 0x0000000f & v);
-		} else {
-			strlcpy(p, "release", end - p);
-		}
-
-		return buffer;
-	}
-
-	/*
-	 *	If OpenSSL major version is >= 3 us the
+	 *	OpenSSL major versions >= 3 (which FreeRADIUS requires) use the
 	 *	new version number layout
 	 *
 	 * 	OPENSSL_VERSION_NUMBER is a combination of the major, minor

@@ -703,7 +703,7 @@ For more documentation on virtual servers, see:
 == Default Configuration
 
 ```
-prefix = /usr/local
+prefix = /Users/alandekok/git/wrapper//install
 exec_prefix = ${prefix}
 sysconfdir = ${prefix}/etc
 localstatedir = ${prefix}/var
@@ -727,7 +727,7 @@ max_requests = 16384
 reverse_lookups = no
 hostname_lookups = yes
 log {
-	destination = files
+	destination = file
 	colourise = yes
 #	timestamp = no
 	file = ${logdir}/radius.log

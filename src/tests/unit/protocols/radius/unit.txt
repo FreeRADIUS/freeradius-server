@@ -1,6 +1,7 @@
 # Load libfreeradius-radius
 proto radius
 proto-dictionary radius
+load-dictionary dictionary.test
 fuzzer-out radius
 
 #
@@ -78,4 +79,4 @@ pair Unit-TLV.Milliseconds = "2019-08-21T07:40:31.123-04:00"
 match Unit-TLV = { Milliseconds = "2019-08-21T03:40:31.123Z" }
 
 count
-match 35
+match 36

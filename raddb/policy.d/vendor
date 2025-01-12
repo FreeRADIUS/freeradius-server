@@ -5,10 +5,14 @@
 #  attributes, but it can be done with unlang for specific ones.
 #
 broadsoft-decode {
-	foreach &BroadSoft-Attr-255 {
-		if ("%{Foreach-Variable-0}" =~ /^([0-9]+)=(.*)$/) {
-#				&request.Broadsoft-Attr-255 -= "%{Foreach-Variable-0}"
+	foreach value ( BroadSoft-Attr-255 ) {
+		if (value =~ /^([0-9]+)=(.*)$/) {
 				"&request.BroadSoft-Attr-%{1}" += "%{2}"
 		}
 	}
+
+	#
+	#  We don't need these any more.
+	#
+	request -= BroadSoft-Attr-255[*]
 }

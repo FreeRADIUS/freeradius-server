@@ -255,12 +255,12 @@ int fr_heap_extract(fr_heap_t **hp, void *data)
 	 *	Out of bounds.
 	 */
 	if (unlikely((parent == 0) || (parent > h->num_elements))) {
-		fr_strerror_printf("Heap parent (%i) out of bounds (0-%i)", parent, h->num_elements);
+		fr_strerror_printf("Heap parent (%u) out of bounds (0-%u)", parent, h->num_elements);
 		return -1;
 	}
 
 	if (unlikely(data != h->p[parent])) {
-		fr_strerror_printf("Invalid heap index.  Expected data %p at offset %i, got %p", data,
+		fr_strerror_printf("Invalid heap index.  Expected data %p at offset %u, got %p", data,
 				   parent, h->p[parent]);
 		return -1;
 	}

@@ -10,8 +10,7 @@
 #
 ##############################################################################
 
-PROTOCOL	DHCPv6		3	verify=lib
-BEGIN-PROTOCOL	DHCPv6
+BEGIN PROTOCOL	DHCPv6		3	verify=lib
 
 $INCLUDE dictionary.freeradius.internal
 $INCLUDE dictionary.rfc3315
@@ -65,6 +64,7 @@ $INCLUDE dictionary.rfc7839
 $INCLUDE dictionary.rfc8026
 $INCLUDE dictionary.rfc8115
 $INCLUDE dictionary.rfc8156
+$INCLUDE dictionary.rfc8357
 
 $INCLUDE dictionary.freeradius
 $INCLUDE dictionary.microsoft

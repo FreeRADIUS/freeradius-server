@@ -274,7 +274,7 @@ done:
 	 *	have been added by this point.
 	 */
 	if (my_ok && (depth == 0)) {
-		if (conf->virtual_server && tls_session->verify_client_cert) {
+		if (conf->verify_certificate && tls_session->verify_client_cert) {
 			RDEBUG2("Requesting certificate validation");
 
 			/*
@@ -424,7 +424,7 @@ static unlang_action_t tls_verify_client_cert_result(UNUSED rlm_rcode_t *p_resul
 /** Push a `verify certificate { ... }` call into the current request, using a subrequest
  *
  * @param[in] request		The current request.
- * @Param[in] tls_session	The current TLS session.
+ * @param[in] tls_session	The current TLS session.
  * @return
  *      - UNLANG_ACTION_CALCULATE_RESULT on noop.
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
@@ -451,6 +451,14 @@ static unlang_action_t tls_verify_client_cert_push(request_t *request, fr_tls_se
 	 */
 	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
 	vp->vp_uint32 = enum_tls_packet_type_verify_certificate->vb_uint32;
+
+	/*
+	 *	Copy certificate pairs to the child session state
+	 */
+	vp = NULL;
+	while ((vp = fr_pair_find_by_da(&request->parent->session_state_pairs, vp, attr_tls_certificate))) {
+		fr_pair_append(&request->session_state_pairs, fr_pair_copy(request->session_state_ctx, vp));
+	}
 
 	MEM(pair_append_request(&vp, attr_tls_session_resumed) >= 0);
 	vp->vp_bool = tls_session->validate.resumed;
@@ -515,7 +523,7 @@ void fr_tls_verify_cert_request(fr_tls_session_t *tls_session, bool session_resu
 /** Push a `verify certificate { ... }` section
  *
  * @param[in] request		The current request.
- * @Param[in] tls_session	The current TLS session.
+ * @param[in] tls_session	The current TLS session.
  * @return
  *	- UNLANG_ACTION_CALCULATE_RESULT	- No pending actions
  *	- UNLANG_ACTION_PUSHED_CHILD		- Pending operations to evaluate.

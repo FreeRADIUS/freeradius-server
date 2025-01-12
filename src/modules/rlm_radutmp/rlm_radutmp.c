@@ -55,7 +55,7 @@ typedef struct {
 typedef struct {
 	rlm_radutmp_mutable_t	*mutable;
 	bool			check_nas;
-	uint32_t		permission;
+	mode_t			permission;
 	bool			caller_id_ok;
 } rlm_radutmp_t;
 
@@ -66,7 +66,7 @@ typedef struct {
 
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("check_with_nas", rlm_radutmp_t, check_nas), .dflt = "yes" },
-	{ FR_CONF_OFFSET("permissions", rlm_radutmp_t, permission), .dflt = "0644" },
+	{ FR_CONF_OFFSET("permissions", rlm_radutmp_t, permission), .dflt = "0644", .func = cf_parse_permissions },
 	{ FR_CONF_OFFSET("caller_id", rlm_radutmp_t, caller_id_ok), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };

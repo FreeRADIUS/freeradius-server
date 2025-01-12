@@ -62,7 +62,7 @@
 #
 server default {
 	#
-	#  namespace::
+	#  namespace:: The protocol namespace (i.e. dictionary) to use.
 	#
 	#  In v4, all "server" sections MUST start with a "namespace"
 	#  parameter.  This tells the server which protocol is being used.
@@ -71,6 +71,23 @@ server default {
 	#  only accept packets for that protocol.
 	#
 	namespace = radius
+
+	#
+	#  log:: The name of the logging section to use.
+	#
+	#  The top configuration section can contain multiple section "log foo { ... }".
+	#  Each of those sections is a different named logging destination.
+	#
+	#  This configuration item allows setting a different logging destination for an
+	#  individual virtual server.
+	#
+	#  There are some limitations.
+	#
+	#  * this logging is in _addition_ to the default logging to "log { .... }".
+	#  * it is not currently possible to _replace_ the default logging destination
+	#  * the name given here _must_ be a fixed string, and is not dynamically expanded.
+	#
+#	log = some_other_logging_destination
 
 	#
 	#  ### RADIUS Configuration
@@ -801,7 +818,7 @@ recv Access-Request {
 	#  The module also sets the EAP-Type attribute in the request
 	#  list, to the incoming EAP type.
 	#
-	#  The `eap` module returns `ok` if it is not yet ready to
+	#  The `eap` module returns `ok` or `updated` if it is not yet ready to
 	#  authenticate the user. The configuration below checks for
 	#  that return value, and if so, stops processing the current
 	#  section.
@@ -815,6 +832,7 @@ recv Access-Request {
 	#
 	eap {
 		ok = return
+		updated = return
 	}
 
 	#
@@ -1049,12 +1067,11 @@ authenticate eap {
 #  The following example shows how proxying to three remote servers
 #  can be configured.
 #
-#  The `Auth-Type` attribute would need to be set to
-#  `proxy-example.com`.  The home servers MUST be defined in
-#  `mods-available/radius`.
+#  Proxying will be done by setting `Auth-Type := example.com`, and
+#  defining the home servers in `mods-available/radius`.
 #
 
-#authenticate proxy-example.com {
+#authenticate example.com {
 #	#
 #	#  Log the request before proxying.
 #	#

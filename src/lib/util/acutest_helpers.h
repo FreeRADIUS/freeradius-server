@@ -31,24 +31,24 @@ extern "C" {
 do { \
 	size_t _our_got = (_got); \
 	TEST_CHECK_(_exp == _our_got, "%s", #_got); \
-	TEST_MSG("Expected length : %zu", (size_t)_exp); \
-	TEST_MSG("Got length      : %zu", (size_t)_our_got); \
+	TEST_MSG("Expected length : %zu", (size_t) (_exp)); \
+	TEST_MSG("Got length      : %zu", (size_t) (_our_got)); \
 } while(0)
 
 #define TEST_CHECK_SLEN(_got, _exp) \
 do { \
 	ssize_t _our_got = (_got); \
 	TEST_CHECK_(_exp == _our_got, "%s", #_got); \
-	TEST_MSG("Expected length : %zd", (ssize_t)_exp); \
-	TEST_MSG("Got length      : %zd", (ssize_t)_our_got); \
+	TEST_MSG("Expected length : %zd", (ssize_t) (_exp)); \
+	TEST_MSG("Got length      : %zd", (ssize_t) (_our_got)); \
 } while(0)
 
 #define TEST_CHECK_SLEN_RETURN(_got, _exp) \
 do { \
 	ssize_t _our_got = (_got); \
 	TEST_CHECK_(_exp == _our_got, "%s", #_got); \
-	TEST_MSG("Expected length : %zd", (ssize_t)_exp); \
-	TEST_MSG("Got length      : %zd", (ssize_t)_our_got); \
+	TEST_MSG("Expected length : %zd", (ssize_t) (_exp)); \
+	TEST_MSG("Got length      : %zd", (ssize_t) (_our_got)); \
 	if (_exp != _our_got) return; \
 } while(0)
 
@@ -56,8 +56,8 @@ do { \
 do { \
 	int _our_got = (_got); \
 	TEST_CHECK_(_exp == _our_got, "%s", #_got); \
-	TEST_MSG("Expected ret    : %"PRId64, (int64_t)_exp); \
-	TEST_MSG("Got ret         : %"PRId64, (int64_t)_our_got); \
+	TEST_MSG("Expected ret    : %"PRId64, (int64_t) (_exp)); \
+	TEST_MSG("Got ret         : %"PRId64, (int64_t) (_our_got)); \
 } while(0)
 
 #define TEST_CHECK_STRCMP(_got, _exp) \

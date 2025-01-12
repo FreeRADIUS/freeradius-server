@@ -36,6 +36,7 @@ typedef struct fr_bio_mem_s {
 	FR_BIO_COMMON;
 
 	fr_bio_verify_t	verify;		//!< verify data to see if we have a packet.
+	void		*verify_ctx;	//!< verify context
 
 	fr_bio_buf_t	read_buffer;	//!< buffering for reads
 	fr_bio_buf_t	write_buffer;	//!< buffering for writes
@@ -58,7 +59,12 @@ static ssize_t fr_bio_mem_read_eof(fr_bio_t *bio, UNUSED void *packet_ctx, void 
 	 *	No more data: return EOF from now on.
 	 */
 	if (fr_bio_buf_used(&my->read_buffer) == 0) {
-		my->bio.read = fr_bio_null_read;
+
+		/*
+		 *	Don't call our EOF function.  But do tell the other BIOs that we're at EOF.
+		 */
+		my->priv_cb.eof = NULL;
+		fr_bio_eof(&my->bio);
 		return 0;
 	}
 
@@ -68,11 +74,20 @@ static ssize_t fr_bio_mem_read_eof(fr_bio_t *bio, UNUSED void *packet_ctx, void 
 	return fr_bio_buf_read(&my->read_buffer, buffer, size);
 }
 
-static void fr_bio_mem_eof(fr_bio_t *bio)
+static int fr_bio_mem_eof(fr_bio_t *bio)
 {
 	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
 
+	/*
+	 *	Nothing more for us to read, tell fr_bio_eof() that it can continue with poking other BIOs.
+	 */
+	if (fr_bio_buf_used(&my->read_buffer) == 0) {
+		return 1;
+	}
+
 	my->bio.read = fr_bio_mem_read_eof;
+
+	return 0;
 }
 
 /** Read from a memory BIO
@@ -299,7 +314,7 @@ static ssize_t fr_bio_mem_read_verify_datagram(fr_bio_t *bio, void *packet_ctx, 
 		 *	@todo - if we're allowed more than one packet in the buffer, we should just call
 		 *	fr_bio_mem_read_verify(), or this function should call fr_bio_mem_call_verify().
 		 */
-		switch (my->verify((fr_bio_t *) my, packet_ctx, buffer, &want)) {
+		switch (my->verify((fr_bio_t *) my, my->verify_ctx, packet_ctx, buffer, &want)) {
 			/*
 			 *	The data in the buffer is exactly a packet.  Return that.
 			 *
@@ -354,6 +369,7 @@ fail:
  */
 static ssize_t fr_bio_mem_write_next(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size)
 {
+	int error;
 	ssize_t rcode;
 	size_t room, leftover;
 	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
@@ -395,14 +411,13 @@ static ssize_t fr_bio_mem_write_next(fr_bio_t *bio, void *packet_ctx, void const
 		return rcode;
 	}
 
-	if (my->cb.write_blocked) {
-		int error;
+	/*
+	 *	Tell previous BIOs in the chain that they are blocked.
+	 */
+	error = fr_bio_write_blocked(bio);
+	if (error < 0) return error;
 
-		error = my->cb.write_blocked(bio);
-		if (error < 0) return error;
-
-		fr_assert(error != 0); /* what to do? */
-	}
+	fr_assert(error != 0); /* what to do? */
 
 	/*
 	 *	We had WOULD BLOCK, or wrote partial bytes.  Save the data to the memory buffer, and ensure
@@ -476,19 +491,15 @@ static ssize_t fr_bio_mem_write_flush(fr_bio_mem_t *my, size_t size)
 	rcode = next->write(next, NULL, my->write_buffer.write, used);
 
 	/*
-	 *	The next bio returned an error.  Anything other than WOULD BLOCK is fatal.  We can read from
-	 *	the memory buffer until it's empty, but we can no longer write to the memory buffer.
-	 */
-	if ((rcode < 0) && (rcode != fr_bio_error(IO_WOULD_BLOCK))) {
-		my->bio.read = fr_bio_mem_read_eof;
-		my->bio.write = fr_bio_null_write;
-		return rcode;
-	}
-
-	/*
-	 *	We didn't write anything, the bio is still blocked.
+	 *	We didn't write anything, the bio is blocked.
 	 */
 	if ((rcode == 0) || (rcode == fr_bio_error(IO_WOULD_BLOCK))) return fr_bio_error(IO_WOULD_BLOCK);
+
+	/*
+	 *	All other errors are fatal.  We can read from the memory buffer until it's empty, but we can
+	 *	no longer write to the memory buffer.
+	 */
+	if (rcode < 0) return rcode;
 
 	/*
 	 *	Tell the buffer that we've read a certain amount of data from it.
@@ -529,16 +540,43 @@ static ssize_t fr_bio_mem_write_buffer(fr_bio_t *bio, UNUSED void *packet_ctx, v
 	room = fr_bio_buf_write_room(&my->write_buffer);
 
 	/*
-	 *	The buffer is full.  We're now blocked.
+	 *	The buffer is full, we can't write anything.
 	 */
 	if (!room) return fr_bio_error(IO_WOULD_BLOCK);
 
-	if (room < size) size = room;
+	/*
+	 *	If we're asked to write more bytes than are available in the buffer, then tell the caller that
+	 *	writes are now blocked, and we can't write any more data.
+	 *
+	 *	Return an WOULD_BLOCK error instead of breaking our promise by writing part of the data,
+	 *	instead of accepting a full application write.
+	 */
+	if (room < size) {
+		int rcode;
+
+		rcode = fr_bio_write_blocked(bio);
+		if (rcode < 0) return rcode;
+
+		return fr_bio_error(IO_WOULD_BLOCK);
+	}
 
 	/*
 	 *	As we have clamped the write, we know that this call must succeed.
 	 */
-	return fr_bio_buf_write(&my->write_buffer, buffer, size);
+	(void) fr_bio_buf_write(&my->write_buffer, buffer, size);
+
+	/*
+	 *	If we've filled the buffer, tell the caller that writes are now blocked, and we can't write
+	 *	any more data.  However, we still return the amount of data we wrote.
+	 */
+	if (room == size) {
+		int rcode;
+
+		rcode = fr_bio_write_blocked(bio);
+		if (rcode < 0) return rcode;
+	}
+
+	return size;
 }
 
 /** Peek at the data in the read buffer
@@ -600,7 +638,7 @@ static int fr_bio_mem_call_verify(fr_bio_t *bio, void *packet_ctx, size_t *size)
 
 		want = end - packet;
 
-		switch (my->verify((fr_bio_t *) my, packet_ctx, packet, &want)) {
+		switch (my->verify((fr_bio_t *) my, my->verify_ctx, packet_ctx, packet, &want)) {
 			/*
 			 *	The data in the buffer is exactly a packet.  Return that.
 			 *
@@ -638,6 +676,15 @@ static int fr_bio_mem_call_verify(fr_bio_t *bio, void *packet_ctx, size_t *size)
 	}
 
 	return -1;
+}
+
+/*
+ *	The application can read from the BIO until EOF, but cannot write to it.
+ */
+static void fr_bio_mem_shutdown(fr_bio_t *bio)
+{
+	bio->read = fr_bio_mem_read_eof;
+	bio->write = fr_bio_null_write;
 }
 
 /** Allocate a memory buffer bio for either reading or writing.
@@ -707,6 +754,8 @@ fr_bio_t *fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size,
 		my->bio.write = fr_bio_next_write;
 	}
 	my->priv_cb.eof = fr_bio_mem_eof;
+	my->priv_cb.write_resume = fr_bio_mem_write_resume;
+	my->priv_cb.shutdown = fr_bio_mem_shutdown;
 
 	fr_bio_chain(&my->bio, next);
 
@@ -739,6 +788,11 @@ fr_bio_t *fr_bio_mem_source_alloc(TALLOC_CTX *ctx, size_t write_size, fr_bio_t *
 
 	my->bio.read = fr_bio_null_read; /* reading FROM this bio is not possible */
 	my->bio.write = fr_bio_mem_write_next;
+
+	/*
+	 *	@todo - have write pause / write resume callbacks?
+	 */
+	my->priv_cb.shutdown = fr_bio_mem_shutdown;
 
 	fr_bio_chain(&my->bio, next);
 
@@ -786,7 +840,7 @@ static ssize_t fr_bio_mem_write_read_buffer(fr_bio_t *bio, UNUSED void *packet_c
 
 /** Allocate a memory buffer which sinks data from a bio system into the callers application.
  *
- *  The caller reads data from this bio, but never writes to it.  Upstream bios will source the data.
+ *  The caller reads data from this bio, but never writes to it.  Upstream BIOs will source the data.
  */
 fr_bio_t *fr_bio_mem_sink_alloc(TALLOC_CTX *ctx, size_t read_size)
 {
@@ -823,7 +877,7 @@ fr_bio_t *fr_bio_mem_sink_alloc(TALLOC_CTX *ctx, size_t read_size)
  *	- <0 on error
  *	- 0 on success
  */
-int fr_bio_mem_set_verify(fr_bio_t *bio, fr_bio_verify_t verify, bool datagram)
+int fr_bio_mem_set_verify(fr_bio_t *bio, fr_bio_verify_t verify, void *verify_ctx, bool datagram)
 {
 	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
 
@@ -833,6 +887,7 @@ int fr_bio_mem_set_verify(fr_bio_t *bio, fr_bio_verify_t verify, bool datagram)
 	}
 
 	my->verify = verify;
+	my->verify_ctx = verify_ctx;
 
 	/*
 	 *	If we are writing datagrams, then we cannot buffer individual datagrams.  We must write
@@ -886,4 +941,23 @@ int fr_bio_mem_write_resume(fr_bio_t *bio)
 	if (!my->cb.write_resume) return 1;
 
 	return my->cb.write_resume(bio);
+}
+
+/** Pause writes.
+ *
+ *  Calls to fr_bio_write() will write to the memory buffer, and not
+ *  to the next bio.  You MUST call fr_bio_mem_write_resume() after
+ *  this to flush any data.
+ */
+int fr_bio_mem_write_pause(fr_bio_t *bio)
+{
+	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
+
+	if (my->bio.write == fr_bio_mem_write_buffer) return 0;
+
+	if (my->bio.write != fr_bio_mem_write_buffer) return -1;
+
+	my->bio.write = fr_bio_mem_write_buffer;
+
+	return 0;
 }

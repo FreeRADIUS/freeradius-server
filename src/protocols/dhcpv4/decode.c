@@ -76,7 +76,7 @@ static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	/*
 	 *	@todo - we might need to limit this to only one DNS label.
 	 */
-	if ((parent->type == FR_TYPE_STRING) && da_is_dns_label(parent)) {
+	if ((parent->type == FR_TYPE_STRING) && fr_dhcpv4_flag_dns_label(parent)) {
 		return fr_pair_dns_labels_from_network(ctx, out, parent, data, data, data_len, NULL, false);
 	}
 
@@ -102,7 +102,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	 *	Structs create their own VP wrapper.
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
-		slen = fr_struct_from_network(ctx, out, da, data, data_len, true,
+		slen = fr_struct_from_network(ctx, out, da, data, data_len,
 					      decode_ctx, decode_value_trampoline, decode_tlv_trampoline);
 		if (slen < 0) return slen;
 
@@ -182,7 +182,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 		 *	4 octets of address
 		 *	4 octets of mask
 		 */
-		if (da_is_split_prefix(da)) {
+		if (fr_dhcpv4_flag_prefix_split(da)) {
 			uint32_t ipaddr, mask;
 
 			if (data_len < 8) goto raw;
@@ -218,7 +218,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 			break;
 		}
 
-		if (da_is_bits_prefix(vp->da)) {
+		if (fr_dhcpv4_flag_prefix_bits(vp->da)) {
 			size_t needs;
 
 			if ((data_len == 0) || (*p > 32)) goto raw;
@@ -288,7 +288,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	}
 
 finish:
-	FR_PROTO_TRACE("decoding value complete, adding new pair and returning %zu byte(s)", p - data);
+	FR_PROTO_TRACE("decoding value complete, adding new pair and returning %zu byte(s)", (size_t) (p - data));
 	fr_pair_append(out, vp);
 
 	return p - data;
@@ -387,7 +387,7 @@ next:
 	if (!vendor) {
 		fr_dict_attr_t *n;
 
-		n = fr_dict_unknown_vendor_afrom_num(ctx, parent, pen);
+		n = fr_dict_attr_unknown_vendor_afrom_num(ctx, parent, pen);
 		if (!n) return PAIR_DECODE_OOM;
 		vendor = n;
 	}
@@ -480,12 +480,12 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	da = fr_dict_attr_child_by_num(parent, option);
 	if (!da) {
-		da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, option);
+		da = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, parent, option);
 		if (!da) return PAIR_DECODE_OOM;
 
 		slen = fr_pair_raw_from_network(ctx, out, da, data + 2, len);
 
-	} else if ((da->type == FR_TYPE_STRING) && da_is_dns_label(da)) {
+	} else if ((da->type == FR_TYPE_STRING) && fr_dhcpv4_flag_dns_label(da)) {
 		slen = fr_pair_dns_labels_from_network(ctx, out, da, data + 2, data + 2, len, NULL, true);
 
 	} else if (da->flags.array) {
@@ -611,7 +611,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		da = fr_dict_attr_child_by_num(fr_dict_root(dict_dhcpv4), p[0]);
 		if (!da) {
-			da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, fr_dict_root(dict_dhcpv4), p[0]);
+			da = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, fr_dict_root(dict_dhcpv4), p[0]);
 			if (!da) return -1;
 
 			slen = fr_pair_raw_from_network(ctx, out, da, concat_buffer, q - concat_buffer);
@@ -634,14 +634,14 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		/*
 		 *	The actual amount of data we decoded, including the various headers.
 		 */
-		FR_PROTO_TRACE("decoding option complete, %zu decoded, returning %zu byte(s)", slen, (size_t) (next - data));
+		FR_PROTO_TRACE("decoding option complete, %zd decoded, returning %zu byte(s)", slen, (size_t) (next - data));
 		return next - data;
 	}
 
 	slen = decode_option(ctx, out, fr_dict_root(dict_dhcpv4), data, data[1] + 2, decode_ctx);
 	if (slen < 0) return slen;
 
-	FR_PROTO_TRACE("decoding option complete, %zu decoded, returning %u byte(s)", slen, data[1] + 2);
+	FR_PROTO_TRACE("decoding option complete, %zd decoded, returning %u byte(s)", slen, (unsigned int) data[1] + 2);
 	return data[1] + 2;
 }
 
@@ -685,7 +685,7 @@ ssize_t	fr_dhcpv4_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
 }
 
 
-static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
+static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
 {
 	fr_dhcpv4_ctx_t *test_ctx;
 

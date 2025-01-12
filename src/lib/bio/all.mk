@@ -1,3 +1,3 @@
-SUBMAKEFILES := libfreeradius-bio.mk
+SUBMAKEFILES := libfreeradius-bio.mk \
+		libfreeradius-bio-config.mk
 
-#		bio_tests.mk

@@ -1063,6 +1063,8 @@ static void log_register_dst(char const *name, fr_log_t *log, CONF_SECTION *cs)
 
 	if (log->dst != L_DST_FILES) return;
 
+	fr_assert(log->file != NULL);
+
 	fr_rb_insert(filename_tree, dst);
 }
 
@@ -1134,7 +1136,7 @@ int log_parse_section(CONF_SECTION *cs)
 	char const *name;
 
 	name = cf_section_name2(cs);
-	if (!name) name = cf_section_name1(cs);
+	if (!name) name = "DEFAULT";
 
 	dst = fr_rb_find(dst_tree, &(fr_log_track_t) {
 			.name = name,

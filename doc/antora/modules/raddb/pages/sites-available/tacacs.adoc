@@ -187,16 +187,22 @@ not recommended.
 ### Recv
 
 
-
-In general, it is not necessary to set `Auth-Type` here.  The packet header
+In general, it is not necessary to set `Auth-Type` in this section.  The packet header
 contains a TACACS `Authentication-Type` with value `PAP`, `CHAP`, etc.  That value will
-be used automatically.
+be used automatically by the server to set `Auth-Type`.
 
 The only reason to set `Auth-Type` here is when you want to use a custom
-authentication method, such as `ldap`.
+authentication method, such as `ldap`.  You should ONLY set `Auth-Type := ldap` when
+the packet contains `Authentication-Type = PAP` _and_ the passwords in LDAP are stored
+in "crypt" or hashed form.
 
 
 
+
+
+
+
+LDAP authentication will only work with PAP authentication
 
 
 
@@ -213,6 +219,8 @@ the next packet (if the client provides it)
 
 
 ### Send
+
+Note that "follow" is officially deprecated, and is not supported.
 
 
 
@@ -237,11 +245,28 @@ for the client to present to the user.
 
 ## Authentication-Continue
 
-This should handle ASCII methods as PAP with challenge-response.
+This section handles responses to challenges for `Authentication-Type = ASCII`
+
+i.e. The server receives an `Authentication-Start` packet
+with `Authentication-Type = ASCII`, and replies with a
+challenge.  The client returns the username or password in
+an `Authentication-Continue` packet.  The server should
+then check the username or password.
+
+The TACACS+ protocol puts the response username or password
+into the "data" field.  For simplicity, the server copies
+that field into the User-Name or User-Password attribute as
+appropriate.  This automatic copyinh means that it is a lot
+easier to understand and configure TACACS+.
 
 
 
 ### Recv
+
+Receive `Authentication-Continue` packet.  When this
+section is done and has a User-Password, the server will
+run an `authenticate ... { }` section.  It will then call
+one of the `send` sections to send the reply.
 
 
 https://tools.ietf.org/id/draft-ietf-opsawg-07.html#rfc.section.4.3
@@ -257,6 +282,16 @@ https://tools.ietf.org/id/draft-ietf-opsawg-07.html#rfc.section.4.3
 
 
 ### Send
+
+Add the arguments to whatever the user entered.
+
+
+
+Replace whatever the user entered with the following arguments
+
+
+
+Reject the request
 
 
 
@@ -342,6 +377,12 @@ server tacacs {
 	authenticate MSCHAPv2 {
 		mschap
 	}
+#	authenticate ldap {
+#		if (Authentication-Type != PAP) {
+#			%log.warn("The packet is not PAP.  LDAP authentication is likely to fail!")
+#		}
+#		ldap
+#	}
 	authenticate ASCII {
 		pap
 	}
@@ -379,6 +420,15 @@ server tacacs {
 		&reply.Server-Message := "authorization-response-server"
 		&reply.Data := "authorization-response-data"
 		&reply.Argument-List := "key1=var1"
+	}
+	send Authorization-Pass-Reply {
+		&reply.Authorization-Status := Pass-Repl
+		&reply.Server-Message := "authorization-response-server"
+		&reply.Data := "authorization-response-data"
+		&reply.Argument-List := "key1=var1"
+	}
+	send Authorization-Fail {
+		&reply.Authorization-Status := Fail
 	}
 	recv Accounting-Request {
 		detail

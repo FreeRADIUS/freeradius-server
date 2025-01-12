@@ -14,6 +14,19 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+/*
+ *	Groups are printed from the referenced attribute.
+ *
+ *	@todo - parent should _never_ be vp->da.
+ */
+#define fr_pair_reset_parent(parent) do { \
+	if (parent && (parent->type == FR_TYPE_GROUP)) { \
+		parent = fr_dict_attr_ref(parent); \
+		if (parent->flags.is_root) parent = NULL; \
+	} \
+	if (parent && (parent == vp->da)) parent = NULL; \
+  } while (0)
+
 /** Pair serialisation API
  *
  * @file src/lib/util/pair_print.c
@@ -40,15 +53,17 @@
 ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_token_t quote)
 {
 	fr_sbuff_t	our_out;
+	ssize_t		slen;
 
 	PAIR_VERIFY(vp);
+
+	our_out = FR_SBUFF(out);
 
 	switch (vp->vp_type) {
 	/*
 	 *	For structural types descend down
 	 */
 	case FR_TYPE_STRUCTURAL:
-		our_out = FR_SBUFF(out);
 		if (fr_pair_list_empty(&vp->vp_group)) {
 			FR_SBUFF_IN_CHAR_RETURN(&our_out, '{', ' ', '}');
 
@@ -66,8 +81,21 @@ ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_toke
 	 *	For simple types just print the box
 	 */
 	default:
-		return fr_value_box_print_quoted(out, &vp->data, quote);
+		/*
+		 *	If it's raw / unknown and not octets, print the cast before the type.
+		 *
+		 *	Otherwise on parsing, we don't know how to interpret the value. :(
+		 */
+		if ((vp->da->flags.is_raw || vp->da->flags.is_unknown) &&
+		    (vp->vp_type != FR_TYPE_OCTETS)) {
+			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "(%s) ", fr_type_to_str(vp->vp_type));
+		}
+
+		slen = fr_value_box_print_quoted(&our_out, &vp->data, quote);
+		if (slen <= 0) return slen;
 	}
+
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
 /** Print one attribute and value to a string
@@ -99,10 +127,7 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_t c
 		token = "<INVALID-TOKEN>";
 	}
 
-	/*
-	 *	Groups are printed from the root.
-	 */
-	if (parent && (parent->type == FR_TYPE_GROUP)) parent = NULL;
+	fr_pair_reset_parent(parent);
 
 	if (vp->vp_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
 	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent, vp->da, false);
@@ -161,10 +186,7 @@ ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_p
 		token = "<INVALID-TOKEN>";
 	}
 
-	/*
-	 *	Groups are printed from the root.
-	 */
-	if (parent && (parent->type == FR_TYPE_GROUP)) parent = NULL;
+	fr_pair_reset_parent(parent);
 
 	if (vp->vp_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
 	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent, vp->da, false);
@@ -226,10 +248,7 @@ ssize_t fr_pair_list_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pai
 		return fr_sbuff_used(out);
 	}
 
-	/*
-	 *	Groups are printed from the root.
-	 */
-	if (parent && (parent->type == FR_TYPE_GROUP)) parent = NULL;
+	fr_pair_reset_parent(parent);
 
 	while (true) {
 		FR_SBUFF_RETURN(fr_pair_print, &our_out, parent, vp);
@@ -269,7 +288,7 @@ static void fr_pair_list_log_sbuff(fr_log_t const *log, int lvl, fr_pair_t *pare
 
 		default:
 			(void) fr_sbuff_in_strcpy(sbuff, " = ");
-			fr_value_box_print_quoted(sbuff, &vp->data, T_DOUBLE_QUOTED_STRING);
+			if (fr_value_box_print_quoted(sbuff, &vp->data, T_DOUBLE_QUOTED_STRING)< 0) break;
 
 			fr_log(log, L_DBG, file, line, "%*s%*s", lvl * 2, "",
 			       (int) fr_sbuff_used(sbuff), fr_sbuff_start(sbuff));

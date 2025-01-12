@@ -80,7 +80,7 @@ static void heap_test(int skip)
 
 	TEST_CASE("deletions");
 	{
-		unsigned int entry;
+		int entry;
 
 		for (i = 0; i < HEAP_TEST_SIZE / skip; i++) {
 			entry = i * skip;

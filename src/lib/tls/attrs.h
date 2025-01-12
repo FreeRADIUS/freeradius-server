@@ -60,6 +60,7 @@ extern HIDDEN fr_dict_attr_t const *attr_tls_session_cert_file;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_require_client_cert;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_cipher_suite;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_version;
+extern HIDDEN fr_dict_attr_t const *attr_tls_session_resume_type;
 
 extern HIDDEN fr_dict_attr_t const *attr_tls_packet_type;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_data;
@@ -67,12 +68,15 @@ extern HIDDEN fr_dict_attr_t const *attr_tls_session_id;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_resumed;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_ttl;
 
-extern HIDDEN fr_dict_attr_t const *attr_framed_mtu;
+extern fr_value_box_t const *enum_tls_session_resumed_stateful;
+extern fr_value_box_t const *enum_tls_session_resumed_stateless;
 
 extern fr_value_box_t const *enum_tls_packet_type_load_session;
 extern fr_value_box_t const *enum_tls_packet_type_store_session;
 extern fr_value_box_t const *enum_tls_packet_type_clear_session;
 extern fr_value_box_t const *enum_tls_packet_type_verify_certificate;
+extern fr_value_box_t const *enum_tls_packet_type_new_session;
+extern fr_value_box_t const *enum_tls_packet_type_establish_session;
 
 extern fr_value_box_t const *enum_tls_packet_type_success;
 extern fr_value_box_t const *enum_tls_packet_type_failure;

@@ -8,5 +8,5 @@
 #
 #	$Id$
 #
-ATTRIBUTE	DHCPv6-Options				245.3	group ref=..DHCPv6
-ATTRIBUTE	DHCPv4-Options				245.4	group ref=..DHCPv4
+ATTRIBUTE	DHCPv6-Options				245.3	group ref=@DHCPv6
+ATTRIBUTE	DHCPv4-Options				245.4	group ref=@DHCPv4

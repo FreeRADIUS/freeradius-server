@@ -155,8 +155,8 @@ The following keywords still XXX
 |=====
 | xref:dictionary/begin-protocol.adoc[BEGIN-PROTOCOL]  | Begin defining a protocol dictionary
 | xref:dictionary/end-protocol.adoc[END-PROTOCOL]      | End a protocol dictionary
-| xref:dictionary/begin-tlv.adoc[BEGIN-TLV]            | Begin defining children of a `tlv` data type
-| xref:dictionary/end-tlv.adoc[END-TLV]                | End defining children of a `tlv` data type
+| xref:dictionary/begin.adoc[BEGIN]            | Begin defining children of a `tlv` data type
+| xref:dictionary/end.adoc[END]                | End defining children of a `tlv` data type
 | xref:dictionary/begin-vendor.adoc[BEGIN-VENDOR]      | Begin defining vendor-specific attributes
 | xref:dictionary/end-vendor.adoc[END-VENDOR]          | End defining vendor-specific attributes
 |=====

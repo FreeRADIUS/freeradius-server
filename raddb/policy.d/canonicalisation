@@ -44,8 +44,8 @@ split_username_nai {
 mac-addr-regexp = '([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})[^0-9a-f]?([0-9a-f]{2})'
 
 #
-#  Add "rewrite_called_station_id" in the "authorize" and
-#  "preacct" sections.
+#  Add "rewrite_called_station_id" in the "recv Access-Request" and
+#  "recv Accounting-Request" sections.
 #
 #  Makes Called-Station-ID conform to what RFC3580 says should
 #  be provided by 802.1X authenticators.
@@ -66,8 +66,8 @@ rewrite_called_station_id {
 }
 
 #
-#  Add "rewrite_calling_station_id" in the "authorize" and
-#  "preacct" sections.
+#  Add "rewrite_calling_station_id" in the "recv Access-Request" and
+#  "recv Accounting-Request" sections.
 #
 #  Makes Calling-Station-ID conform to what RFC3580 says should
 #  be provided by 802.1X authenticators.

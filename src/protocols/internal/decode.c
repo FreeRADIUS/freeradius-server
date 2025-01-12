@@ -214,7 +214,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	if (unknown || parent_da->flags.is_unknown) {
 	unknown:
 		FR_PROTO_TRACE("Unknown attribute %" PRIu64, type);
-		da = fr_dict_unknown_attr_afrom_num(ctx, parent_da, type);
+		da = fr_dict_attr_unknown_raw_afrom_num(ctx, parent_da, type);
 		if (!da) return PAIR_DECODE_FATAL_ERROR;
 	} else {
 		da = fr_dict_attr_child_by_num(parent_da, type);
@@ -247,7 +247,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 						fr_type_to_str(da->type));
 				fr_dbuff_set(&work_dbuff, &ext_field);
 			error:
-				if (unknown) fr_dict_unknown_free(&da);
+				if (unknown) fr_dict_attr_unknown_free(&da);
 				return fr_pair_decode_slen(slen, fr_dbuff_start(&work_dbuff), fr_dbuff_current(&work_dbuff));
 			}
 		}

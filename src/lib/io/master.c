@@ -393,13 +393,16 @@ static fr_client_t *radclient_clone(TALLOC_CTX *ctx, fr_client_t const *parent)
 	DUP_FIELD(nas_type);
 
 	COPY_FIELD(require_message_authenticator);
+	COPY_FIELD(require_message_authenticator_is_set);
 	COPY_FIELD(limit_proxy_state);
+	COPY_FIELD(limit_proxy_state_is_set);
 	COPY_FIELD(received_message_authenticator);
 	COPY_FIELD(first_packet_no_proxy_state);
 	/* dynamic MUST be false */
 	COPY_FIELD(server_cs);
 	COPY_FIELD(cs);
 	COPY_FIELD(proto);
+	COPY_FIELD(active);
 
 	COPY_FIELD(use_connected);
 
@@ -2463,8 +2466,11 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	COPY_FIELD(ipaddr);
 	COPY_FIELD(src_ipaddr);
 	COPY_FIELD(require_message_authenticator);
+	COPY_FIELD(require_message_authenticator_is_set);
 	COPY_FIELD(limit_proxy_state);
+	COPY_FIELD(limit_proxy_state_is_set);
 	COPY_FIELD(use_connected);
+	COPY_FIELD(cs);
 
 	// @todo - fill in other fields?
 
@@ -2473,7 +2479,12 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	radclient = client->radclient; /* laziness */
 	radclient->server_cs = inst->server_cs;
 	radclient->server = cf_section_name2(inst->server_cs);
-	radclient->cs = NULL;
+
+	/*
+	 *	Re-parent the conf section used to build this client
+	 *	so its lifetime is linked to the client
+	 */
+	talloc_steal(radclient, radclient->cs);
 
 	/*
 	 *	This is a connected socket, and it's just been
@@ -2486,8 +2497,6 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		fr_assert(client->connection != NULL);
 
 		client->state = PR_CLIENT_CONNECTED;
-
-		radclient->active = true;
 
 		/*
 		 *	Connections can't spawn new connections.
@@ -2507,6 +2516,18 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 						      FR_EVENT_FILTER_IO, resume_read);
 		}
 
+		connection->parent->radclient->active = true;
+		fr_assert(connection->parent->state == PR_CLIENT_PENDING);
+		connection->parent->state = PR_CLIENT_DYNAMIC;
+
+		connection->parent->radclient->secret = talloc_strdup(connection->parent->radclient,
+								      radclient->secret);
+
+		/*
+		 *	The client has been allowed.
+		 */
+		client->state = PR_CLIENT_DYNAMIC;
+		client->radclient->active = true;
 		goto finish;
 	}
 
@@ -2545,6 +2566,15 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		MEM(client->ht = fr_hash_table_alloc(client, connection_hash, connection_cmp, NULL));
 
 	} else {
+		if (connection) {
+			connection->parent->radclient->active = true;
+			fr_assert(connection->parent->state == PR_CLIENT_PENDING);
+			connection->parent->state = PR_CLIENT_DYNAMIC;
+
+			connection->parent->radclient->secret = talloc_strdup(connection->parent->radclient,
+									      radclient->secret);
+		}
+
 		/*
 		 *	The client has been allowed.
 		 */
@@ -2696,13 +2726,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		}
 
 		if (!cf_section_find(server, "add", "client")) {
-			cf_log_err(conf, "Cannot use 'dynamic_clients = yes' as the virtual server has no 'add client { ... }' section defined.");
-			return -1;
+			cf_log_warn(conf, "No 'add client { ... }' section was defined.");
 		}
 
 		if (!cf_section_find(server, "deny", "client")) {
-			cf_log_err(conf, "Cannot use 'dynamic_clients = yes' as the virtual server has no 'deny client { ... }' section defined.");
-			return -1;
+			cf_log_warn(conf, "No 'deny client { ... }' section was defined.");
 		}
 	}
 
@@ -2893,27 +2921,6 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 }
 
 
-static int _thread_io_free(fr_io_thread_t *thread)
-{
-	fr_io_client_t *client;
-
-	/*
-	 *	Each client is it's own talloc context, so we have to
-	 *	clean them up individually.
-	 *
-	 *	The client destructor will remove them from the heap,
-	 *	so we don't need to do that here.
-	 *
-	 *	Note that the clients *also* use thread->trie, so we
-	 *	have to free the clients *before* freeing thread->trie.
-	 */
-	while ((client = fr_heap_peek(thread->alive_clients)) != NULL) {
-		talloc_free(client);
-	}
-
-	return 0;
-}
-
 int fr_io_listen_free(fr_listen_t *li)
 {
 	if (!li->thread_instance) return 0;
@@ -2978,14 +2985,15 @@ int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 	thread->listen = li;
 	thread->sc = sc;
 
-	talloc_set_destructor(thread, _thread_io_free);
-
 	/*
 	 *	Create the trie of clients for this socket.
 	 */
 	MEM(thread->trie = fr_trie_alloc(thread, NULL, NULL));
-	MEM(thread->alive_clients = fr_heap_alloc(thread, alive_client_cmp,
-						   fr_io_client_t, alive_id, 0));
+
+	if (inst->dynamic_clients) {
+		MEM(thread->alive_clients = fr_heap_alloc(thread, alive_client_cmp,
+							  fr_io_client_t, alive_id, 0));
+	}
 
 	/*
 	 *	Set the listener to call our master trampoline function.

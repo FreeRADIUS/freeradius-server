@@ -68,6 +68,7 @@ fr_dict_attr_t const *attr_dhcp_vendor_class_identifier;
 fr_dict_attr_t const *attr_dhcp_relay_link_selection;
 fr_dict_attr_t const *attr_dhcp_subnet_selection_option;
 fr_dict_attr_t const *attr_dhcp_network_subnet;
+fr_dict_attr_t const *attr_dhcp_option_82;
 
 extern fr_dict_attr_autoload_t dhcpv4_dict_attr[];
 fr_dict_attr_autoload_t dhcpv4_dict_attr[] = {
@@ -94,6 +95,7 @@ fr_dict_attr_autoload_t dhcpv4_dict_attr[] = {
 	{ .out = &attr_dhcp_relay_link_selection, .name = "Relay-Agent-Information.Relay-Link-Selection", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_subnet_selection_option, .name = "Subnet-Selection-Option", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_network_subnet, .name = "Network-Subnet", .type = FR_TYPE_IPV4_PREFIX, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_option_82, .name = "Relay-Agent-Information", .type = FR_TYPE_TLV, .dict = &dict_dhcpv4 },
 	{ NULL }
 };
 
@@ -161,44 +163,67 @@ int dhcp_header_sizes[] = {
 
 uint8_t	eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
-fr_dict_attr_t const *dhcp_option_82;
+FR_DICT_ATTR_FLAG_FUNC(fr_dhcpv4_attr_flags_t, dns_label)
+FR_DICT_ATTR_FLAG_FUNC(fr_dhcpv4_attr_flags_t, exists)
+
+static int dict_flag_prefix(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
+{
+	static fr_table_num_sorted_t const table[] = {
+		{ L("bits"),			DHCPV4_FLAG_PREFIX_BITS },
+		{ L("split"),			DHCPV4_FLAG_PREFIX_SPLIT }
+	};
+	static size_t table_len = NUM_ELEMENTS(table);
+
+	fr_dhcpv4_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	fr_dhcpv4_attr_flags_prefix_t flag;
+
+	flag = fr_table_value_by_str(table, value, DHCPV4_FLAG_PREFIX_INVALID);
+	if (flag == DHCPV4_FLAG_PREFIX_INVALID) {
+		fr_strerror_printf("Unknown prefix type '%s'", value);
+		return -1;
+	}
+	flags->prefix = flag;
+
+	return 0;
+}
+
+static fr_dict_flag_parser_t const dhcpv4_flags[] = {
+	{ L("dns_label"),	{ .func = dict_flag_dns_label } },
+	{ L("exists"),		{ .func = dict_flag_exists } },
+	{ L("prefix"),		{ .func = dict_flag_prefix } }
+};
 
 int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 {
 	fr_pair_t const *my_a = a, *my_b = b;
-	fr_dict_attr_t const *a_82, *b_82;
 
 	PAIR_VERIFY(my_a);
 	PAIR_VERIFY(my_b);
 
 	/*
-	 *	We can only use attribute numbers if we know they're
-	 *	not nested attributes.
-	 *
-	 *	@fixme We should be able to use my_a->da->parent->flags.is_root,
-	 *	but the DHCP attributes are hacked into the server under a vendor
-	 *	dictionary, so we can't.
-	 */
-
-	/*
 	 *	Message-Type is first, for simplicity.
 	 */
-	if (((my_a->da->parent->type != FR_TYPE_TLV) && (my_a->da == attr_dhcp_message_type)) &&
-	    ((my_b->da->parent->type == FR_TYPE_TLV) || (my_b->da != attr_dhcp_message_type))) return -1;
-	if (((my_a->da->parent->type == FR_TYPE_TLV) || (my_a->da != attr_dhcp_message_type)) &&
-	    ((my_b->da->parent->type != FR_TYPE_TLV) && (my_b->da == attr_dhcp_message_type))) return +1;
+	if ((my_a->da == attr_dhcp_message_type) && (my_b->da != attr_dhcp_message_type)) return -1;
+	if ((my_a->da != attr_dhcp_message_type) && (my_b->da == attr_dhcp_message_type)) return +1;
 
 	/*
 	 *	Relay-Agent is last.
 	 *
-	 *	Check if either of the options are descended from option 82.
+	 *	RFC 3046:
+	 *	Servers SHOULD copy the Relay Agent Information
+   	 *	option as the last DHCP option in the response.
+	 *
+	 *	Some crazy DHCP relay agents idea of how to strip option 82 in
+	 *	a reply packet is to simply overwrite the 82 with 255 - the
+	 *	"Eod of Options" option - causing the client to then ignore
+	 *	any subsequent options.
+	 *
+	 *	Check if either of the options are option 82
 	 */
-	a_82 = fr_dict_attr_common_parent(dhcp_option_82, my_a->da, true);
-	b_82 = fr_dict_attr_common_parent(dhcp_option_82, my_b->da, true);
-	if (a_82 && !b_82) return +1;
-	if (!a_82 && b_82) return -1;
+	if ((my_a->da == attr_dhcp_option_82) && (my_b->da != attr_dhcp_option_82)) return +1;
+	if ((my_a->da != attr_dhcp_option_82) && (my_b->da == attr_dhcp_option_82)) return -1;
 
-	return fr_pair_cmp_by_parent_num(my_a, my_b);
+	return fr_dict_attr_cmp(my_a->da, my_b->da);
 }
 
 /** Check received DHCP request is valid and build fr_packet_t structure if it is
@@ -300,7 +325,7 @@ void *fr_dhcpv4_next_encodable(fr_dlist_head_t *list, void *current, void *uctx)
 		PAIR_VERIFY(c);
 		if (c->da->dict != dict || c->da->flags.internal) continue;
 
-		if (c->vp_type == FR_TYPE_BOOL && da_is_bool_exists(c->da) && !c->vp_bool) continue;
+		if (c->vp_type == FR_TYPE_BOOL && fr_dhcpv4_flag_exists(c->da) && !c->vp_bool) continue;
 
 		break;
 	}
@@ -527,7 +552,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 		if (len <= 0) break;
 	}
 
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_END_OF_OPTIONS, 0x00);
+	FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t)FR_END_OF_OPTIONS);
 
 	/*
 	 *	FIXME: if (fr_dbuff_used(&work_dbuff) > mms),
@@ -680,31 +705,22 @@ void fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 	fprintf(fp, "\n");
 }
 
-static fr_table_num_ordered_t const subtype_table[] = {
-	{ L("dns_label"),			FLAG_ENCODE_DNS_LABEL },
-	{ L("encode=dns_label"),		FLAG_ENCODE_DNS_LABEL },
-	{ L("prefix=split"),			FLAG_ENCODE_SPLIT_PREFIX },
-	{ L("prefix=bits"),			FLAG_ENCODE_BITS_PREFIX },
-	{ L("encode=exists"),			FLAG_ENCODE_BOOL_EXISTS },
-};
-
-static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *parent,
-		       UNUSED char const *name, UNUSED int attr, fr_type_t type, fr_dict_attr_flags_t *flags)
+static bool attr_valid(fr_dict_attr_t *da)
 {
 	/*
 	 *	"arrays" of string/octets are encoded as a 8-bit
 	 *	length, followed by the actual data.
 	 */
-	if (flags->array && ((type == FR_TYPE_STRING) || (type == FR_TYPE_OCTETS))) {
-		flags->is_known_width = true;
+	if (da->flags.array && ((da->type == FR_TYPE_STRING) || (da->type == FR_TYPE_OCTETS))) {
+		da->flags.is_known_width = true;
 
-		if (flags->extra && (flags->subtype != FLAG_LENGTH_UINT8)) {
+		if (da->flags.extra && (da->flags.subtype != FLAG_LENGTH_UINT8)) {
 			fr_strerror_const("string/octets arrays require the 'length=uint8' flag");
 			return false;
 		}
 	}
 
-	if (flags->extra && (flags->subtype == FLAG_LENGTH_UINT16)) {
+	if (da->flags.extra && (da->flags.subtype == FLAG_LENGTH_UINT16)) {
 		fr_strerror_const("The 'length=uint16' flag cannot be used for DHCPv4");
 		return false;
 	}
@@ -713,21 +729,21 @@ static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *pare
 	 *	"extra" signifies that subtype is being used by the
 	 *	dictionaries itself.
 	 */
-	if (flags->extra || !flags->subtype) return true;
+	if (da->flags.extra || !da->flags.subtype) return true;
 
-	if ((type != FR_TYPE_STRING) && (flags->subtype == FLAG_ENCODE_DNS_LABEL)) {
+	if ((da->type != FR_TYPE_STRING) && (fr_dhcpv4_flag_dns_label(da))) {
 		fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
 		return false;
 	}
 
-	if ((type != FR_TYPE_IPV4_PREFIX) &&
-	    ((flags->subtype == FLAG_ENCODE_SPLIT_PREFIX) || (flags->subtype == FLAG_ENCODE_BITS_PREFIX))) {
+	if ((da->type != FR_TYPE_IPV4_PREFIX) &&
+	    (fr_dhcpv4_flag_prefix(da))) {
 		fr_strerror_const("The 'prefix=...' flag can only be used with attributes of type 'ipv4prefix'");
 		return false;
 	}
 
-	if ((type != FR_TYPE_BOOL) && (flags->subtype == FLAG_ENCODE_BOOL_EXISTS)) {
-		fr_strerror_const("The 'encode=exists' flag can only be used with attributes of type 'bool'");
+	if ((da->type != FR_TYPE_BOOL) && fr_dhcpv4_flag_exists(da)) {
+		fr_strerror_const("The 'exists' flag can only be used with attributes of type 'bool'");
 		return false;
 	}
 
@@ -739,9 +755,14 @@ fr_dict_protocol_t libfreeradius_dhcpv4_dict_protocol = {
 	.name = "dhcpv4",
 	.default_type_size = 1,
 	.default_type_length = 1,
-	.subtype_table = subtype_table,
-	.subtype_table_len = NUM_ELEMENTS(subtype_table),
-	.attr_valid = attr_valid,
+	.attr = {
+		.flags = {
+			.table = dhcpv4_flags,
+			.table_len = NUM_ELEMENTS(dhcpv4_flags),
+			.len = sizeof(fr_dhcpv4_attr_flags_t)
+		},
+		.valid = attr_valid
+	},
 
 	.init = fr_dhcpv4_global_init,
 	.free = fr_dhcpv4_global_free,

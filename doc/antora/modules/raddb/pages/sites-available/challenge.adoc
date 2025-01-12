@@ -57,11 +57,11 @@ server challenge {
 	}
 recv Access-Request {
 	if (!&State) {
-		&control.Auth-Type := Step1
+		&control.Auth-Type := ::Step1
 		&control.Password.Cleartext := "hello"
 	}
 	else {
-		&control.Auth-Type := Step2
+		&control.Auth-Type := ::Step2
 		&control.Password.Cleartext := &session-state.challenge-string
 	}
 }
