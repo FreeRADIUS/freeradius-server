@@ -576,7 +576,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 		 *	But the list isn't _our_ list that we parsed,
 		 *	so we still need to parse the clients here.
 		 */
-		if (clients->parsed) return clients;		
+		if (clients->parsed) return clients;
 	} else {
 		clients = client_list_init(section);
 		if (!clients) return NULL;
