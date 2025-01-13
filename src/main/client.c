@@ -897,6 +897,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 {
 	RADCLIENT	*c;
 	char const	*name2;
+	CONF_SECTION	*tls;
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
@@ -937,6 +938,17 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 
 		return NULL;
 	}
+
+	/*
+	 *	Check the TLS configuration.
+	 */
+	tls = cf_section_sub_find(cs, "tls");
+#ifndef WITH_TLS
+	if (tls) {
+		cf_log_err_cs(cs, "TLS transport is not available in this executable");
+		goto error;
+	}
+#endif
 
 	/*
 	 *	Global clients can set servers to use, per-server clients cannot.
@@ -1227,6 +1239,13 @@ done_coa:
 		WARN("Shared secret for client %s is short, and likely can be broken by an attacker.",
 		     c->shortname);
 	}
+
+#ifdef WITH_TLS
+	if (tls) {
+		c->tls = tls_client_conf_parse(tls);
+		if (!c->tls) goto error;
+	}
+#endif
 
 	return c;
 }
