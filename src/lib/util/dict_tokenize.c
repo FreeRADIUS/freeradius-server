@@ -435,16 +435,18 @@ static int dict_process_type_field(dict_tokenize_ctx_t *dctx, char const *name, 
 	 */
 	type = fr_type_from_str(name);
 	if (fr_type_is_null(type)) {
-		fr_dict_attr_t *da = *da_p;
-
 		if (!dctx->dict->proto->attr.type_parse) {
 			fr_strerror_printf("Unknown data type '%s'", name);
 			return -1;
 		}
 
-		if (!dctx->dict->proto->attr.type_parse(&type, &da->flags, name)) {
+		if (!dctx->dict->proto->attr.type_parse(da_p, name);
 			return -1;
 		}
+
+		type = (*da_p)->type;
+
+		fr_assert(!fr_type_is_null(type));
 	}
 
 	return dict_attr_type_init(da_p, type);
