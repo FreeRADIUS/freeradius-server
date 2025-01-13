@@ -974,6 +974,7 @@ static int dict_read_process_common(dict_tokenize_ctx_t *dctx, fr_dict_attr_t **
 	da = dict_attr_alloc_null(dctx->dict->pool, dctx->dict->proto);
 	if (unlikely(da == NULL)) return -1;
 	dict_attr_location_set(dctx, da);
+	da->dict = dctx->dict;
 
 	/*
 	 *	Set the attribute flags from the base flags.
@@ -1940,6 +1941,7 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *dctx, char **argv, int ar
 	da = dict_attr_alloc_null(dctx->dict->pool, dctx->dict->proto);
 	if (unlikely(da == NULL)) return -1;
 	dict_attr_location_set(dctx, da);
+	da->dict = dctx->dict;
 
 	/*
 	 *	Set the attribute flags from the base flags.
@@ -2313,6 +2315,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *dctx, char **argv, int 
 	da = dict_attr_alloc_null(dctx->dict->pool, dctx->dict->proto);
 	if (unlikely(da == NULL)) return -1;
 	dict_attr_location_set(dctx, da);
+	da->dict = dctx->dict;
 
 	if (unlikely(dict_attr_type_init(&da, FR_TYPE_STRUCT) < 0)) {
 	error:
