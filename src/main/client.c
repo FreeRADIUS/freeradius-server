@@ -1219,7 +1219,11 @@ done_coa:
 	/*
 	 *	Be annoying to people, but it's about security.
 	 */
+#ifdef WITH_TLS
+	if (!c->tls_required && (strlen(c->secret) < 12)) {
+#else
 	if (strlen(c->secret) < 12) {
+#endif
 		WARN("Shared secret for client %s is short, and likely can be broken by an attacker.",
 		     c->shortname);
 	}
