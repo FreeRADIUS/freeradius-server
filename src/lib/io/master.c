@@ -2568,15 +2568,6 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		MEM(client->ht = fr_hash_table_alloc(client, connection_hash, connection_cmp, NULL));
 
 	} else {
-		if (connection) {
-			connection->parent->radclient->active = true;
-			fr_assert(connection->parent->state == PR_CLIENT_PENDING);
-			connection->parent->state = PR_CLIENT_DYNAMIC;
-
-			connection->parent->radclient->secret = talloc_strdup(connection->parent->radclient,
-									      radclient->secret);
-		}
-
 		/*
 		 *	The client has been allowed.
 		 */
