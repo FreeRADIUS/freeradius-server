@@ -2522,6 +2522,8 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 
 		connection->parent->radclient->secret = talloc_strdup(connection->parent->radclient,
 								      radclient->secret);
+		connection->parent->radclient->shortname = talloc_strdup(connection->parent->radclient,
+									 radclient->shortname);
 
 		/*
 		 *	The client has been allowed.
