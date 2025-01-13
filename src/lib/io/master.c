@@ -1972,8 +1972,6 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		 */
 		if (client->ev) return;
 
-		DEBUG("TIMER - setting idle timeout for connection from client %s", client->radclient->shortname);
-
 		switch (client->state) {
 		case PR_CLIENT_CONNECTED:
 			fr_assert(connection != NULL);
@@ -1995,6 +1993,8 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 			fr_assert(0 == 1);
 			return;
 		}
+
+		DEBUG("TIMER - setting idle timeout to %pVs for connection from client %s", fr_box_time_delta(delay), client->radclient->shortname);
 
 		goto reset_timer;
 	}
