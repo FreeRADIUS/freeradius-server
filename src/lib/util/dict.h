@@ -304,7 +304,7 @@ typedef enum {
 } fr_dict_attr_err_t;
 
 typedef bool (*fr_dict_attr_valid_func_t)(fr_dict_attr_t *da);
-typedef bool (*fr_dict_attr_type_parse_t)(fr_dict_attr_t *da, char const *name);
+typedef bool (*fr_dict_attr_type_parse_t)(fr_dict_attr_t **da_p, char const *name);
 
 /*
  *	Forward declarations to avoid circular references.

@@ -440,7 +440,7 @@ static int dict_process_type_field(dict_tokenize_ctx_t *dctx, char const *name, 
 			return -1;
 		}
 
-		if (!dctx->dict->proto->attr.type_parse(da_p, name);
+		if (!dctx->dict->proto->attr.type_parse(da_p, name)) {
 			return -1;
 		}
 
