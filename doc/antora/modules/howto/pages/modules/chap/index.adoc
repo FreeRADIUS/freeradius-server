@@ -2,7 +2,7 @@
 
 = Configuring the CHAP module
 
-The xref:raddb:mods-available/chap.adoc[mods-available/chap]
+The xref:reference:raddb/mods-available/chap.adoc[mods-available/chap]
 configuration file describes the configuration parameters accepted by
 the CHAP module, and what they do.  This document explains how to
 perform testing with the CHAP module.
@@ -11,7 +11,7 @@ include::howto:partial$pre_test.adoc[]
 
 == Editing mods-available/chap
 
-The xref:raddb:mods-available/chap.adoc[mods-available/chap] module
+The xref:reference:raddb/mods-available/chap.adoc[mods-available/chap] module
 contains no configuration items, and does not need to be edited.
 
 == Enabling mods-available/chap

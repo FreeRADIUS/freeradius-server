@@ -27,9 +27,9 @@ functions, etc.
 
 Despite these limitations, it has proven to be useful and powerful.
 While the server includes plugins for languages such as
-xref:raddb:mods-available/lua.adoc[lua],
-xref:raddb:mods-available/python.adoc[python], and
-xref:raddb:mods-available/perl.adoc[perl], most policies can be done
+xref:reference:raddb/mods-available/lua.adoc[lua],
+xref:reference:raddb/mods-available/python.adoc[python], and
+xref:reference:raddb/mods-available/perl.adoc[perl], most policies can be done
 in simple `unlang` statements.  More general purpose programming
 languages are more powerful than `unlang`, but they are generally
 sustantially slower.
@@ -53,8 +53,8 @@ recv foo {
 ----
 
 The processing sections are defined in
-xref:raddb:sites-available/index.adoc[virtual servers].  The
-xref:raddb:sites-available/index.adoc[virtual server] documentation
+xref:reference:raddb/sites-available/index.adoc[virtual servers].  The
+xref:reference:raddb/sites-available/index.adoc[virtual server] documentation
 describes the larger context of which packets are recieved, and when
 they are received.  This section concentrates on the more narrow topic
 `unlang` itself.
@@ -86,7 +86,7 @@ process that list.
 One key difference between normal programming languages and Unlang is
 the concept of xref:unlang/module.adoc[modules].  The modules are
 treated as keywords in the language which contain complex behavior.
-For example, the xref:raddb:mods-available/sql.adoc[sql] module has a
+For example, the xref:reference:raddb/mods-available/sql.adoc[sql] module has a
 complex set of pre-defined behavior, depending on what kind of packet
 it is processing.
 
@@ -108,16 +108,16 @@ recv Access-Request {
 The benefit of this approach is that the _policies_ are simple:
 "allocate an IP, if that doesn't work, send a reject".  However, the
 _details_ of those policies are hidden behind the
-xref:raddb:mods-available/sqlippool.adoc[sqlippool] configuration.
+xref:reference:raddb/mods-available/sqlippool.adoc[sqlippool] configuration.
 This abstraction allows the underyling
-xref:raddb:mods-available/sqlippool.adoc[sqlippool] configuration to
+xref:reference:raddb/mods-available/sqlippool.adoc[sqlippool] configuration to
 be changed from MySQL to PostgreSQL without affecting any of the
 policies.
 
 The server includes dozens of
-xref:raddb:mods-available/index.adoc[modules], each of which defines a
+xref:reference:raddb/mods-available/index.adoc[modules], each of which defines a
 complex set of behavior.  Please see the
-xref:raddb:mods-available/index.adoc[modules] documentation for more
+xref:reference:raddb/mods-available/index.adoc[modules] documentation for more
 information.
 
 === Algorithm

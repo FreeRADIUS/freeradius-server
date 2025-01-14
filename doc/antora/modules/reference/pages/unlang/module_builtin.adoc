@@ -6,7 +6,7 @@ modules are named for the return codes given in the xref:unlang/module.adoc[modu
 section.
 
 In practice, these modules are implemented by the
-xref:raddb:mods-available/always.adoc[always] module and exist so that a
+xref:reference:raddb/mods-available/always.adoc[always] module and exist so that a
 success or failure can be forced during the processing of a policy.
 
 The names and behaviours of these modules are given below:

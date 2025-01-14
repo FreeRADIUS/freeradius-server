@@ -33,8 +33,8 @@ That is not always the case for RADIUS.
 With RADIUS, it is true that basic configuration is simple.  For
 example, policies such as "I have users in LDAP, and I want
 authenticated users to access the network".  For this policy, the
-administrator configures the xref:raddb:mods-available/ldap.adoc[LDAP]
-module, adds some xref:raddb:clients.conf.adoc[client] definitions,
+administrator configures the xref:reference:raddb/mods-available/ldap.adoc[LDAP]
+module, adds some xref:reference:raddb/clients.conf.adoc[client] definitions,
 and _everything just works_.
 
 The problem comes when people need policies like "allow users onto the

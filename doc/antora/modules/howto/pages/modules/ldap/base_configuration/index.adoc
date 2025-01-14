@@ -2,9 +2,9 @@
 
 The configuration step should be little more than
 xref:modules/ldap/ldapsearch/index.adoc#_translating_ldapsearch_arguments_to_rlm_ldap_configuration_items[copying the parameters used by ldapsearch]
-to the xref:raddb:mods-available/ldap.adoc[ldap module] configuration file.
+to the xref:reference:raddb/mods-available/ldap.adoc[ldap module] configuration file.
 
-The xref:raddb:mods-available/ldap.adoc[ldap module] configuration file
+The xref:reference:raddb/mods-available/ldap.adoc[ldap module] configuration file
 describes the configuration parameters accepted by the module, and what they do.
 
 include::howto:partial$pre_test.adoc[]
@@ -22,7 +22,7 @@ command-line options to that tool using the
 xref:modules/ldap/ldapsearch/index.adoc#_translating_ldapsearch_arguments_to_rlm_ldap_configuration_items[translation table] on that page.
 
 At a minimum you will need to set the following configuration items
-in in xref:raddb:mods-available/ldap.adoc[mods-available/ldap] using
+in in xref:reference:raddb/mods-available/ldap.adoc[mods-available/ldap] using
 the values you discovered
 running the xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] tests.
 

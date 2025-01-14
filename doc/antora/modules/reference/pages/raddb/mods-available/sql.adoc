@@ -26,7 +26,7 @@ oracle, postgresql, sqlite and unixodbc.
 For authorization queries, the default schema mirrors the
 functionality of the `files` module, including check items and
 reply items.  See the
-xref:raddb:mods-config/files/users.adoc[users] file
+xref:reference:raddb/mods-config/files/users.adoc[users] file
 documentation for information on the format of the check items and
 reply items.
 

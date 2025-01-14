@@ -1,7 +1,7 @@
 = Configuring a Module
 
 The configuration files in
-xref:raddb:mods-available/index.adoc[mods-available/] file describe
+xref:reference:raddb/mods-available/index.adoc[mods-available/] file describe
 the configuration parameters accepted by each module, and what they
 do.  This document explains how to perform generic testing with any
 module.

@@ -72,7 +72,7 @@ result: 0 Success
     when the user logs in to services.
 <5> A base64 encoded `userPassword` attribute.  This shows the LDAP directory
     is willing to provided user password hashes.  These hashes can be used by
-    the xref:raddb:mods-available/pap.adoc[pap] module to authenticate the
+    the xref:reference:raddb/mods-available/pap.adoc[pap] module to authenticate the
     user locally without the overhead of additional bind operations.
 ====
 

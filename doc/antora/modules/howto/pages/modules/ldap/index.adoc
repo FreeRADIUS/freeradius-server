@@ -62,7 +62,7 @@ tutorial section.
 == Sections in this tutorial
 
 For features and configuration items not covered by this tutorial series
-xref:raddb:mods-available/ldap.adoc[mods-available/ldap] page provides a complete
+xref:reference:raddb/mods-available/ldap.adoc[mods-available/ldap] page provides a complete
 reference for all the configuration items available for the rlm_ldap module.
 
 === xref:modules/ldap/base_configuration/index.adoc[Base configuration]

@@ -39,7 +39,7 @@ desired outcome. At a high level, the subject areas describe:
 * xref:concepts:index.adoc[Concepts] and introduction for newcomers.
 * xref:installation:index.adoc[Installing] and xref:installation:upgrade.adoc[upgrading] FreeRADIUS.
 * The syntax of the xref:reference:unlang/index.adoc[unlang] processing language.
-* The xref:raddb:index.adoc[configuration files] located in `/etc/raddb/`, or `/etc/freeradius/`
+* The xref:reference:raddb/index.adoc[configuration files] located in `/etc/raddb/`, or `/etc/freeradius/`
 * Various xref:howto:index.adoc[how-to] guides.
 * xref:developers:index.adoc[Developer documentation].
 
@@ -145,7 +145,7 @@ A detailed xref:reference:unlang/index.adoc[unlang] reference guide is also avai
 This section describes the syntax and functionality of the keywords,
 data types, etc. used in the `unlang` processing language.
 
-All of the xref:raddb:index.adoc[configuration files] are available in
+All of the xref:reference:raddb/index.adoc[configuration files] are available in
 hypertext format. It can often be easier to read the configuration files
 in a nicely formatted version, instead of as a fixed-width font in a
 text editor.

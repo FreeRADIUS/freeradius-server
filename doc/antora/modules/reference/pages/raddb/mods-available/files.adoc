@@ -6,7 +6,7 @@
 
 The `users` file as located in `raddb/mods-config/files/authorize`. (Livingston-style format).
 
-See the xref:raddb:mods-config/files/users.adoc[users] file documentation for information
+See the xref:reference:raddb/mods-config/files/users.adoc[users] file documentation for information
 on the format of the input file, and how it operates.
 
 
@@ -26,7 +26,7 @@ The content of this attribute is used to match the `name` of the entry.
 Note that unlike v4, the key does not have to be a string, but could instead
 be an IP address or netmask!  For more information, see
 
-xref:raddb:mods-config/files/users.adoc[users]
+xref:reference:raddb/mods-config/files/users.adoc[users]
 
 
 

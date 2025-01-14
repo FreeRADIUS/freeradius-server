@@ -1,8 +1,8 @@
 = The users file
 
-The `users` file is managed by the xref:raddb:mods-available/files.adoc[files] module.  The format largely goes back to the original Livingston RADIUS server in 1991!
+The `users` file is managed by the xref:reference:raddb/mods-available/files.adoc[files] module.  The format largely goes back to the original Livingston RADIUS server in 1991!
 
-While the format is still called `users` for historical reasons, the name of the file is controlled by the configuration of the xref:raddb:mods-available/files.adoc[files] module, and can therefore something other than `users`.
+While the format is still called `users` for historical reasons, the name of the file is controlled by the configuration of the xref:reference:raddb/mods-available/files.adoc[files] module, and can therefore something other than `users`.
 
 == Format
 
@@ -17,7 +17,7 @@ name	... check items ...
 	... reply items ...
 ----
 
-name:: The name of the entry.  It must be an unquoted string such as `john`.  The xref:raddb:mods-available/files.adoc[files] module configuration expands the `key` configuration item, and then uses the result to match the `name` of the entry.
+name:: The name of the entry.  It must be an unquoted string such as `john`.  The xref:reference:raddb/mods-available/files.adoc[files] module configuration expands the `key` configuration item, and then uses the result to match the `name` of the entry.
 
 check items:: A comma-separated list of attributes to use for conditional matches, such as `Framed-IP-Address == 192.0.2.1`, or `NAS-IP-Address == 192.0.2.2, NAS-Port = 15`.  Multiple conditions are matched with a logical "and".  There is no way to use a logical "or" between conditions.
 +

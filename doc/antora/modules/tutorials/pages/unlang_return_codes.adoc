@@ -13,13 +13,13 @@
 - xref:reference:unlang/condition/index.adoc[Conditional Expressions]
 - xref:reference:unlang/return_codes[Return Codes]
 - xref:reference:unlang/condition/return_codes.adoc[The Return Code Operator]
-- xref:raddb:mods-available/always.adoc[The Always Module]
-- xref:raddb:mods-available/sometimes.adoc[The Sometimes Module]
+- xref:reference:raddb/mods-available/always.adoc[The Always Module]
+- xref:reference:raddb/mods-available/sometimes.adoc[The Sometimes Module]
 
 include::partial$unlang_start.adoc[]
 
 The server includes a number of instances of the
-xref:raddb:mods-available/always.adoc[always] module.  These are used to set
+xref:reference:raddb/mods-available/always.adoc[always] module.  These are used to set
 return codes during policy evaluation.
 
 For example, if the `ok` always module instance is called, the `ok` return code
@@ -30,7 +30,7 @@ One of the most common reasons for overriding return codes is to implement
 special behaviour on failure.
 
 To minimise external dependencies, for this exercise we will use the
-xref:raddb:mods-available/sometimes.adoc[sometimes] module to simulate an
+xref:reference:raddb/mods-available/sometimes.adoc[sometimes] module to simulate an
 unreliable external database.
 
 This module will return a specified xref:reference:unlang/return_codes[return code] 50%
@@ -51,7 +51,7 @@ executing the `files` module to provide an alternative source of credentials.
 [TIP]
 ====
 You may need to modify the return code priorities of the
-xref:raddb:mods-available/sometimes.adoc[sometimes] module.
+xref:reference:raddb/mods-available/sometimes.adoc[sometimes] module.
 ====
 
 If the policies are correct you will see that FreeRADIUS returns an

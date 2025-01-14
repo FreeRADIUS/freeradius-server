@@ -21,7 +21,7 @@ PAP::
 Use "bind as user"
 
 MS-CHAP::
-Use xref:raddb:mods-available/ntlm_auth.adoc[`ntlm`] or xref:raddb:mods-available/winbind.adoc[`winbind`].
+Use xref:reference:raddb/mods-available/ntlm_auth.adoc[`ntlm`] or xref:reference:raddb/mods-available/winbind.adoc[`winbind`].
 
 Due to the limitations of Active Directory, There are unfortunately no
 other possible choices.
@@ -121,7 +121,7 @@ formats.  There is sufficient information in the password values to
 determine what format it is in (base64, binary, or text), and what
 password "encryption" mechanism has been used (crypt, MD5, SHA, SSHA2,
 SHA3, etc).  All that is necessary is that the
-xref:raddb:mods-available/ldap.adoc[ldap module] be configured to map
+xref:reference:raddb/mods-available/ldap.adoc[ldap module] be configured to map
 the `userPassword` LDAP field to the `&control.Password.With-Header`
 attribute in FreeRADIUS.  FreeRADIUS will then "do the right thing" to
 authenticate the user.
@@ -129,7 +129,7 @@ authenticate the user.
 This mapping is done in the default module configuration.  There are
 no additional changes required for FreeRADIUS to correctly read and
 decode the `userPassword` field from LDAP.  Please see the
-xref:raddb:mods-available/pap.adoc[pap module] for a full list of
+xref:reference:raddb/mods-available/pap.adoc[pap module] for a full list of
 supported password "encryption" formats.
 
 == Additional Considerations
