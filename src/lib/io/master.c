@@ -919,14 +919,20 @@ static fr_client_t *radclient_alloc(TALLOC_CTX *ctx, int ipproto, fr_io_address_
  */
 static int _client_live_free(fr_io_client_t *client)
 {
+	talloc_get_type_abort(client, fr_io_client_t);
+
 	fr_assert(client->in_trie);
 	fr_assert(!client->connection);
-	fr_assert(fr_heap_num_elements(client->thread->alive_clients) > 0);
+	fr_assert(client->thread);
 
 	if (client->pending) TALLOC_FREE(client->pending);
 
 	(void) fr_trie_remove_by_key(client->thread->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
-	(void) fr_heap_extract(&client->thread->alive_clients, client);
+
+	if (client->thread->alive_clients) {
+		fr_assert(fr_heap_num_elements(client->thread->alive_clients) > 0);
+		(void) fr_heap_extract(&client->thread->alive_clients, client);
+	}
 
 	return 0;
 }
