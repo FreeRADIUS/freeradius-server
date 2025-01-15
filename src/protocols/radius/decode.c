@@ -991,6 +991,8 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = fr_radius_decode_pair_value(vp, &vp->vp_group, child, data + 3, data[1] - 3, packet_ctx);
 		fr_dict_attr_unknown_free(&child);
 		if (slen < 0 ) return slen;
+
+		fr_assert(slen < (1 << 16));
 		return 3 + slen;
 	}
 
@@ -2081,6 +2083,8 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					  da, data + 2, data[1] - 2,
 					  packet_ctx);
 	if (ret < 0) return ret;
+
+	fr_assert(ret < (1 << 16));
 
 	return 2 + ret;
 }
