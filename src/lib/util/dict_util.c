@@ -2165,8 +2165,8 @@ ssize_t fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const *
 	 *	@fixme: find the TLV parent, and check it's size
 	 */
 	if (((*parent)->type != FR_TYPE_VENDOR) && ((*parent)->type != FR_TYPE_VSA) && !(*parent)->flags.is_root &&
-	    (num > UINT8_MAX)) {
-		fr_strerror_const("TLV attributes must be between 0..255 inclusive");
+	    (num > ((uint64_t) 1 << (8 * (*parent)->flags.type_size)))) {
+		fr_strerror_printf("TLV attributes must be %" PRIu64 " bits or less", ((uint64_t)1 << (8 * (*parent)->flags.type_size)));
 		return 0;
 	}
 
