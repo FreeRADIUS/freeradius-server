@@ -1242,7 +1242,12 @@ done_coa:
 
 #ifdef WITH_TLS
 	if (tls) {
-		c->tls = tls_client_conf_parse(tls);
+		/*
+		 *	Client TLS settings are taken from the
+		 *	_server_ configuration.  See listen.c, where
+		 *	client->tls is used as listener->tls.
+		 */
+		c->tls = tls_server_conf_parse(tls);
 		if (!c->tls) goto error;
 	}
 #endif
