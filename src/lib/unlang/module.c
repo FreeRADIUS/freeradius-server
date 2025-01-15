@@ -482,8 +482,6 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 	request->module = m->mmc.mi->name;
 	safe_lock(m->mmc.mi);
 	if (!(action & state->sigmask)) state->signal(MODULE_CTX(m->mmc.mi, state->thread->data, state->env_data, state->rctx), request, action);
-	safe_unlock(m->mmc.mi);
-	request->module = caller;
 
 	/*
 	 *	One fewer caller for this module.  Since this module
@@ -494,6 +492,9 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 		state->thread->active_callers--;
 		state->signal = NULL;
 	}
+
+	safe_unlock(m->mmc.mi);
+	request->module = caller;
 }
 
 /** Cleanup after a module completes
