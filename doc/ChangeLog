@@ -31,6 +31,10 @@ FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	* Update dictionary "man" page.  Fixes #4346.
 	* Change jlibtool to use --show-config, to avoid conflicts with
 	  clang --config.  Fixes #5442.
+	* RADIUS/TLS clients now support a "tls' subsection.  For
+	  connections from this client, this section is used in preference
+	  to the "listen" TLS settings.  This allows a server to easily
+	  present different identities to different clients.
 
 	Bug fixes
 	* For EAP-TLS, send TLS start without a length field.

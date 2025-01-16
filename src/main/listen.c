@@ -1269,6 +1269,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		this->recv = dual_tcp_recv;
 
 #ifdef WITH_TLS
+		if (client->tls) this->tls = client->tls;
 		if (this->tls) {
 			this->recv = dual_tls_recv;
 			this->send = dual_tls_send;
