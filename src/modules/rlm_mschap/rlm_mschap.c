@@ -811,27 +811,24 @@ static void mppe_add_reply(UNUSED rlm_mschap_t const *inst,
 /*
  *	Write a string to an fd, followed by "\n"
  */
-static int write_all(int fd, char const *buf, size_t len) {
-	ssize_t rv;
-	size_t done=0;
+static int write_all(int fd, char const *buf, size_t len)
+{
+	char const *p = buf;
+	char const *end = buf + len;
 
-	while (done < len) {
-		rv = write(fd, buf+done, len-done);
-		if (rv <= 0)
-			break;
+	while (p < end) {
+		ssize_t slen;
 
-#ifdef STATIC_ANALYZER
-		/*
-		 *	Coverity doesn't appear to know the limits on the
-		 *	return value of write() - so beleives an overflow can happen
-		 */
-		if (rv > (len - done)) break;
-#endif
+		slen = write(fd, p, end - p);
+		if (slen <= 0) return -1;
 
-		done += rv;
+		fr_assert((size_t) slen <= (size_t) (end - p));
+
+		p += slen;
 	}
-	rv = write(fd, "\n", 1);
-	if (rv <= 0) return -1;
+
+	if (write(fd, "\n", 1) <= 0) return -1;
+
 	return 0;
 }
 
