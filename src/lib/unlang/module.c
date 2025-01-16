@@ -427,6 +427,27 @@ unlang_action_t unlang_module_yield(request_t *request,
 
 	state->rctx = rctx;
 	state->resume = resume;
+
+#ifndef NDEBUG
+	/*
+	 *	We can't do asynchronous signals if the module is not thread safe.
+	 *
+	 *	Right now, none of the modules marked THREAD_UNSAFE call yield, or set signal callbacks.
+	 *	Which means that this code doesn't affect anything.
+	 *
+	 *	At some point if we do have modules which take signals and which are not thread safe, then
+	 *	those modules have to ensure that their signal handlers do any locking necessary.
+	 */
+	if (signal) {
+		unlang_module_t	*m;
+
+		m = unlang_generic_to_module(frame->instruction);
+		fr_assert(m);
+
+		fr_assert((m->mmc.mi->exported->flags & MODULE_TYPE_THREAD_UNSAFE) == 0);
+	}
+#endif
+
 	state->signal = signal;
 	state->sigmask = sigmask;
 
@@ -480,21 +501,26 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 	 */
 	caller = request->module;
 	request->module = m->mmc.mi->name;
-	safe_lock(m->mmc.mi);
-	if (!(action & state->sigmask)) state->signal(MODULE_CTX(m->mmc.mi, state->thread->data, state->env_data, state->rctx), request, action);
 
 	/*
-	 *	One fewer caller for this module.  Since this module
-	 *	has been cancelled, decrement the active callers and
-	 *	ignore any future signals.
+	 *	Call the signal routines.  Note that signals are
+	 *	explicitely asynchronous, even if the module has
+	 *	declared itself to be MODULE_TYPE_THREAD_UNSAFE.
 	 */
+	if (!(action & state->sigmask)) state->signal(MODULE_CTX(m->mmc.mi, state->thread->data, state->env_data, state->rctx), request, action);
+
 	if (action == FR_SIGNAL_CANCEL) {
+		/*
+		 *	One fewer caller for this module.  Since this module
+		 *	has been cancelled, decrement the active callers and
+		 *	ignore any future signals.
+		 */
 		state->thread->active_callers--;
 		state->signal = NULL;
 	}
 
-	safe_unlock(m->mmc.mi);
 	request->module = caller;
+
 }
 
 /** Cleanup after a module completes
