@@ -660,6 +660,7 @@ fi
 %{_libdir}/freeradius/rlm_pap.so
 %{_libdir}/freeradius/rlm_passwd.so
 %{_libdir}/freeradius/rlm_preprocess.so
+%{_libdir}/freeradius/rlm_proxy_rate_limit.so
 %{_libdir}/freeradius/rlm_radutmp.so
 %{_libdir}/freeradius/rlm_realm.so
 %{_libdir}/freeradius/rlm_replicate.so
@@ -699,7 +700,7 @@ fi
 %dir %attr(770,root,radiusd) %{_sysconfdir}/raddb/certs
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/README.md
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/Makefile
-%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/bootstrap
+%attr(750,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/bootstrap
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/xpextensions
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/*.cnf
 %dir %attr(770,root,radiusd) %{_sysconfdir}/raddb/certs/realms
