@@ -11,26 +11,39 @@ subrequest <type> {
 The `subrequest` keyword creates a child request.  The child request
 is empty, and contains no attributes.  Attributes in the child can be
 copied from the parent via xref:unlang/edit.adoc[editing] statements.
-Please see the xref:unlang/list.adoc[list] syntax for a description of how to
-refer to parent requests.
+Please see the xref:unlang/list.adoc[list] syntax for a description of
+how to refer to parent requests.
 
 The `subrequest` keyword allows the server to receive one type of
-packet, and then to create a different type of packet.  `subrequest`
-is most commonly used in conjunction with the
-xref:unlang/call.adoc[call] keyword to change packet types or
-protocols, and then run a different virtual server.  See the
-"Operation" section below for more information.
+packet, and then to create a different type of packet.  For example,
+receive a RADIUS `Accounting-Request`, and then create a child
+`Disconnect-Request` to kick the user offline.  The `subrequest`
+keyword can also be used to change protocols.  For example, receive a
+DHCP `Discover` packet, and then send a RADIUS `Access-Request` packet
+to see if the MAC address is authorized.
 
-<type>:: The type of the child request being created.
+`subrequest` is most commonly used in conjunction with the
+xref:unlang/call.adoc[call] keyword to change packet types or
+protocols, and then xref:unlang/call.adoc[call] a different virtual
+server.  See the "Operation" section below for more information.
+
+<type>:: The packet type of the child request being created.
 +
-The _<type>_ field is a either an enumerated packet name such as `::Access-Request`,
-or a protocol name followed by a packet name, such as
-`dhcpv4::Discover`.  Please see the protocol dictionaries for a
-complete list of packet types for each protocol.
+If the _<type>_ field is omitted, then a child request is created
+using the same packet type as the current request.
++
+If the _<type>_ field contains a protocol reference such as `@dhcpv4`,
+then this creates a new child request of a different protocol.  The
+rest of the _<type>_ field is then parsed to see what kind of packet
+is created.
++
+The _<type> field is then parsed as an enumerated packet name such as
+`::Access-Request`, Please see the protocol dictionaries for a
+complete list of allowed packet types for each protocol.
 +
 The _<type>_ field cannot be a dynamic expansion.
 +
-The _<type> field can, however, be an attribute reference.  When an
+As an exception, the _<type>_ field can be an attribute reference.  When an
 attribute reference is used, the attribute must be of an integer type
 (8, 16, 32, or 64-bit), or of type `string`.  Integer types are
 resolved to known / allowed values of the `Packet-Type` attribute.
@@ -39,6 +52,10 @@ attribute.
 +
 When the _<type>_ field is an attribute reference, it is not
 possible to change the dictionary.
++
+We do not suggest using attribute references.  The functionality will
+be removed in a future release, and will be replaced with full support
+for dynamic expansions.
 
 [ statements ]:: The `unlang` commands which will be executed.
 
@@ -71,7 +88,7 @@ parsed in the context of the new protocol.
 .Example
 [source,unlang]
 ----
-subrequest dhcpv4::Discover {
+subrequest @dhcpv4::Discover {
     &Your-IP-Address := &parent.request.Framed-IP-Address
 
     ...
@@ -162,5 +179,5 @@ subrequest ::Disconnect-Request {
 }
 ----
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

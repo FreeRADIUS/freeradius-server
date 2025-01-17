@@ -3995,22 +3995,74 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 		return NULL;
 	}
 
+	dict = unlang_ctx->rules->attr.dict_def;
+
 	/*
+	 *	@foo is "dictionary foo", as with references in the dictionaries.
+	 *
+	 *	@foo::bar is "dictionary foo, Packet-Type = ::bar"
+	 *
+	 *	foo::bar is "dictionary foo, Packet-Type = ::bar"
+	 *
+	 *	::bar is "this dictionary, Packet-Type = ::bar", BUT
+	 *	we don't try to parse the new dictionary name, as it
+	 *	doesn't exist.
+	 */
+	if ((name2[0] == '@') ||
+	    ((name2[0] != ':') && (name2[0] != '&') && (strchr(name2 + 1, ':') != NULL))) {
+		char *q;
+
+		if (name2[0] == '@') name2++;
+
+		MEM(namespace = talloc_strdup(parent, name2));
+		q = namespace;
+
+		while (fr_dict_attr_allowed_chars[(unsigned int) *q]) {
+			q++;
+		}
+		*q = '\0';
+
+		dict = fr_dict_by_protocol_name(namespace);
+		if (!dict) {
+			dict_ref = fr_dict_autoload_talloc(NULL, &dict, namespace);
+			if (!dict_ref) {
+				cf_log_err(cs, "Unknown namespace in '%s'", name2);
+				talloc_free(namespace);
+				return NULL;
+			}
+		}
+
+		/*
+		 *	Skip the dictionary name, and go to the thing
+		 *	right after it.
+		 */
+		name2 += (q - namespace);
+		TALLOC_FREE(namespace);
+	}
+
+	/*
+	 *	@dict::enum is "other dictionary, Packet-Type = ::enum"
 	 *	::enum is this dictionary, "Packet-Type = ::enum"
 	 */
 	if ((name2[0] == ':') && (name2[1] == ':')) {
-		dict = unlang_ctx->rules->attr.dict_def;
 		packet_name = name2;
 		goto get_packet_type;
 	}
 
 	/*
-	 *	If !tmpl_require_enum_prefix, '&' means "attribute reference".
-	 *
-	 *	Or, bare word means "attribute reference".
+	 *	Can't do foo.bar.baz::foo, the enums are only used for Packet-Type.
 	 */
-	if ((name2[0] == '&') ||
-	    (tmpl_require_enum_prefix && ((p = strchr(name2, ':')) == NULL))) {
+	if (strchr(name2, ':') != NULL) {
+		cf_log_err(cs, "Reference cannot contain enum value in '%s'", name2);
+		return NULL;
+	}
+
+	/*
+	 *	'&' means "attribute reference"
+	 *
+	 *	Or, bare word an require_enum_prefix means "attribute reference".
+	 */
+	if ((name2[0] == '&') || tmpl_require_enum_prefix) {
 		ssize_t slen;
 
 		slen = tmpl_afrom_attr_substr(parent, NULL, &vpt,
@@ -4045,47 +4097,19 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	}
 
 	/*
-	 *	subrequest foo::bar { ... }
-	 *
-	 *	Change to dictionary "foo", packet type "bar".
-	 */
-	if (p) {
-		if (p[1] != ':') {
-			cf_log_err(cs, "Invalid syntax in namespace::enum");
-			return NULL;
-		}
-
-		MEM(namespace = talloc_strdup(parent, name2)); /* get a modifiable copy */
-
-		p = namespace + (p - name2);
-		*p = '\0';
-		p += 2;
-		packet_name = p;
-
-		dict = fr_dict_by_protocol_name(namespace);
-		if (!dict) {
-			dict_ref = fr_dict_autoload_talloc(NULL, &dict, namespace);
-			if (!dict_ref) {
-				cf_log_err(cs, "Unknown namespace '%s'", namespace);
-				talloc_free(namespace);
-				return NULL;
-			}
-		}
-
-		goto get_packet_type;
-	}
-
-	/*
-	 *	subrequest foo { ... }
-	 *
-	 *	Change packet types without changing dictionaries.
+	 *	foo.bar without '&' and NOT require_enum_prefix is fugly, we should disallow it.
 	 */
 	p = strchr(name2, '.');
 	if (!p) {
+		cf_log_warn(cs, "Please upgrade configuration to use '::%s' when changing packet types",
+			    name2);
+
 		dict = unlang_ctx->rules->attr.dict_def;
 		packet_name = name2;
 
-	} else if (!tmpl_require_enum_prefix) {
+	} else {
+		cf_log_warn(cs, "Please upgrade configuration to use '@' when changing dictionaries");
+
 		/*
 		 *	subrequest foo.bar { ... }
 		 *
@@ -4109,14 +4133,6 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 
 		WARN("Deprecated syntax 'subrequest %s ...'", name2);
 		WARN(" please switch to 'subrequest %s::%s ...", namespace, packet_name);
-
-	} else {
-		/*
-		 *	We have tmpl_require_enum prefix, so bare word foo.bar is "attribute foo,
-		 *	sub-attribute bar"
-		 */
-		dict = unlang_ctx->rules->attr.dict_def;
-		packet_name = name2;
 	}
 
 	/*
