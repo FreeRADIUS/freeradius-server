@@ -9,5 +9,5 @@
 #  @fixme - EDIT - this is now a run-time error
 #
 update {
-	&Service-Type := 'hello'	# ERROR
+	Service-Type := 'hello'	# ERROR
 }
