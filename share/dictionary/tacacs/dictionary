@@ -14,5 +14,6 @@ $INCLUDE dictionary.freeradius.internal
 $INCLUDE dictionary.tacacs
 $INCLUDE dictionary.rfc8907
 $INCLUDE dictionary.calix
+$INCLUDE dictionary.juniper
 
 END-PROTOCOL TACACS
