@@ -103,7 +103,18 @@ TMPL_REQUEST_REF_DEF(tmpl_request_def_parent, REQUEST_PARENT);
  *
  * Defaults are used if a NULL rules pointer is passed to the parsing function.
  */
-#define DEFAULT_RULES tmpl_rules_t const default_rules = { .attr = { .list_def = request_attr_request }}
+#define DEFAULT_RULES tmpl_rules_t default_rules = { .attr = { .list_def = request_attr_request }}
+
+#define CHECK_T_RULES do { \
+	if (!t_rules) { \
+		t_rules = &default_rules; \
+		if (tmpl_require_enum_prefix) default_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_AUTO; \
+	} else if (tmpl_require_enum_prefix && (t_rules->attr.prefix == TMPL_ATTR_REF_PREFIX_YES)) { \
+		default_rules = *t_rules; \
+		default_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_AUTO; \
+		t_rules = &default_rules; \
+	} \
+  } while (0)
 
 
 /* clang-format off */
@@ -541,11 +552,8 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 	tmpl_attr_rules_t const	*at_rules;
 	DEFAULT_RULES;
 
-	if (!t_rules) {
-		at_rules = &default_rules.attr;
-	} else {
-		at_rules = &t_rules->attr;
-	}
+	CHECK_T_RULES;
+	at_rules = &t_rules->attr;
 
 	/*
 	 *	The caller wants to know the default namespace for
@@ -1075,6 +1083,11 @@ int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
 	 */
 	tmpl_request_list_talloc_reverse_free(&dst->data.attribute.rr);
 	tmpl_request_ref_list_copy(dst, &dst->data.attribute.rr, &src->data.attribute.rr);
+
+	/*
+	 *	Ensure that we copy over any parsing rules, defaults, etc.
+	 */
+	dst->rules = src->rules;
 
 	TMPL_ATTR_VERIFY(dst);
 
@@ -1773,6 +1786,8 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	fr_dict_attr_err_t	dict_err;
 	fr_dict_attr_t const	*our_parent = parent;
 
+	fr_assert(!tmpl_require_enum_prefix || (vpt->rules.attr.prefix != TMPL_ATTR_REF_PREFIX_YES));
+
 	fr_sbuff_marker(&m_s, name);
 
 	if (depth > FR_DICT_MAX_TLV_STACK) {
@@ -2163,6 +2178,8 @@ do_suffix:
 	if (tmpl_is_attr(vpt) && tmpl_attr_tail_is_normal(vpt) &&
 	    (tmpl_rules_cast(vpt) == tmpl_attr_tail_da(vpt)->type)) vpt->rules.cast = FR_TYPE_NULL;
 
+	TMPL_VERIFY(vpt);
+
 	fr_sbuff_marker_release(&m_s);
 	return 0;
 }
@@ -2218,12 +2235,16 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	fr_sbuff_t			our_name = FR_SBUFF(name);	/* Take a local copy in case we need to back track */
 	bool				is_raw = false;
 	tmpl_attr_rules_t const		*at_rules;
+	tmpl_attr_rules_t	       	our_at_rules;
 	fr_sbuff_marker_t		m_l;
 	fr_dict_attr_t const		*namespace;
 	DEFAULT_RULES;
 
-	if (!t_rules) t_rules = &default_rules;
+	CHECK_T_RULES;
+
 	at_rules = &t_rules->attr;
+
+	fr_assert(!tmpl_require_enum_prefix || (at_rules->prefix != TMPL_ATTR_REF_PREFIX_YES));
 
 	if (err) *err = TMPL_ATTR_ERROR_NONE;
 
@@ -2246,6 +2267,14 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 			}
 			break;
 		}
+
+		/*
+		 *	Rewrite the prefix parsing to "auto", which affects the printing.
+		 */
+		our_at_rules = *at_rules;
+		our_at_rules.prefix = TMPL_ATTR_REF_PREFIX_AUTO;
+		at_rules = &our_at_rules;
+
 		FALL_THROUGH;	/* if we do require enum prefixes, then the '&' is optional */
 
 	case TMPL_ATTR_REF_PREFIX_AUTO:
@@ -2270,6 +2299,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 */
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, T_BARE_WORD, NULL, 0));
 	vpt->data.attribute.ref_prefix = TMPL_ATTR_REF_PREFIX_YES;
+	vpt->rules.attr.prefix = at_rules->prefix;
 
 	/*
 	 *	The "raw." prefix marks up the leaf attribute
@@ -2433,6 +2463,9 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		fr_assert(ar != NULL);
 
 		if (tmpl_attr_is_list_attr(ar)) vpt->rules.attr.list_def = ar->ar_da;
+
+		fr_assert(!tmpl_require_enum_prefix || (vpt->rules.attr.prefix != TMPL_ATTR_REF_PREFIX_YES));
+
 	}
 
 	if (!tmpl_substr_terminal_check(&our_name, p_rules)) {
@@ -2478,7 +2511,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	ssize_t slen, name_len;
 	DEFAULT_RULES;
 
-	if (!t_rules) t_rules = &default_rules;	/* Use the defaults */
+	CHECK_T_RULES;
 
 	name_len = strlen(name);
 	slen = tmpl_afrom_attr_substr(ctx, err, out, &FR_SBUFF_IN(name, name_len), NULL, t_rules);
@@ -3188,7 +3221,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 	tmpl_t			*vpt = NULL;
 	DEFAULT_RULES;
 
-	if (!t_rules) t_rules = &default_rules;	/* Use the defaults */
+	CHECK_T_RULES;
 
 	*out = NULL;
 
@@ -3317,6 +3350,8 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		slen = tmpl_afrom_time_delta(ctx, out, &our_in, p_rules);
 		if (slen > 0) goto done_bareword;
 		fr_assert(!*out);
+
+		fr_assert(!tmpl_require_enum_prefix || (t_rules->attr.prefix != TMPL_ATTR_REF_PREFIX_YES));
 
 		/*
 		 *	See if it's an attribute reference
@@ -3595,6 +3630,8 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 
 		if (unlikely(xlat_copy(vpt, vpt->data.xlat.ex, in->data.xlat.ex) < 0)) goto error;
 	}
+
+	TMPL_ATTR_VERIFY(vpt);
 
 	return vpt;
 }
@@ -4265,6 +4302,8 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 		fr_assert(0);
 	}
 
+	TMPL_VERIFY(vpt);
+
 	return ret;
 }
 
@@ -4645,6 +4684,13 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 	}
 
 	/*
+	 *	Suppress the prefix on new syntax.
+	 */
+	if (tmpl_require_enum_prefix && (ar_prefix == TMPL_ATTR_REF_PREFIX_YES)) {
+		ar_prefix = TMPL_ATTR_REF_PREFIX_AUTO;
+	}
+
+	/*
 	 *	Handle printing the request reference
 	 *	prefix.
 	 */
@@ -4837,6 +4883,13 @@ fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 
 	TMPL_VERIFY(vpt);
 
+	/*
+	 *	Suppress the prefix on new syntax.
+	 */
+	if (tmpl_require_enum_prefix && (ar_prefix == TMPL_ATTR_REF_PREFIX_YES)) {
+		ar_prefix = TMPL_ATTR_REF_PREFIX_AUTO;
+	}
+
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 	case TMPL_TYPE_ATTR:
@@ -4992,6 +5045,8 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 	tmpl_attr_t	*seen_unresolved = NULL;
 
 	fr_assert(tmpl_is_attr_unresolved(vpt) || tmpl_is_attr(vpt));
+
+	fr_assert(!tmpl_require_enum_prefix || (vpt->rules.attr.prefix != TMPL_ATTR_REF_PREFIX_YES));
 
 	/*
 	 *	Loop detection
@@ -5780,6 +5835,8 @@ void tmpl_rules_child_init(TALLOC_CTX *ctx, tmpl_rules_t *out, tmpl_rules_t cons
 	/* don't set ->parent=parent, that is only for switching subrequest, etc. */
 
 	if (!tmpl_is_attr(vpt)) return;
+
+	fr_assert(!tmpl_require_enum_prefix || (vpt->rules.attr.prefix != TMPL_ATTR_REF_PREFIX_YES));
 
 	da = tmpl_attr_tail_da(vpt);
 

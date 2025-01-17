@@ -408,7 +408,7 @@ static int unlang_fixup_map(map_t *map, UNUSED void *ctx)
 	/*
 	 *	Anal-retentive checks.
 	 */
-	if (DEBUG_ENABLED3) {
+	if (!tmpl_require_enum_prefix && DEBUG_ENABLED3) {
 		if (tmpl_is_attr(map->lhs) && (map->lhs->name[0] != '&')) {
 			cf_log_warn(cp, "Please change attribute reference to '&%s %s ...'",
 				    map->lhs->name, fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
@@ -474,7 +474,7 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	/*
 	 *	Anal-retentive checks.
 	 */
-	if (DEBUG_ENABLED3) {
+	if (!tmpl_require_enum_prefix && DEBUG_ENABLED3) {
 		if (tmpl_is_attr(map->lhs) && (map->lhs->name[0] != '&')) {
 			cf_log_warn(cp, "Please change attribute reference to '&%s %s ...'",
 				    map->lhs->name, fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
@@ -1306,7 +1306,7 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 	/*
 	 *	Anal-retentive checks.
 	 */
-	if (DEBUG_ENABLED3) {
+	if (!tmpl_require_enum_prefix && DEBUG_ENABLED3) {
 		if (tmpl_is_attr(map->lhs) && (map->lhs->name[0] != '&')) {
 			cf_log_warn(cp, "Please change attribute reference to '&%s %s ...'",
 				    map->lhs->name, fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));

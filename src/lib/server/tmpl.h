@@ -264,7 +264,7 @@ typedef struct tmpl_s tmpl_t;
 typedef enum {
 	TMPL_ATTR_REF_PREFIX_YES = 0,			//!< Attribute refs must have '&' prefix.
 	TMPL_ATTR_REF_PREFIX_NO,			//!< Attribute refs have no '&' prefix.
-	TMPL_ATTR_REF_PREFIX_AUTO 			//!< Attribute refs may have a '&' prefix.
+	TMPL_ATTR_REF_PREFIX_AUTO			//!< Attribute refs may have a '&' prefix.
 } tmpl_attr_prefix_t;
 
 /** Specify whether attribute references can have a list (or parent) reference
@@ -327,6 +327,8 @@ struct tmpl_attr_rules_s {
 	uint8_t			allow_foreign:1;	//!< Allow arguments not found in dict_def.
 
 	uint8_t			disallow_filters:1;	//!< disallow filters.
+
+	uint8_t			xlat:1	;		//!< for %{User-Name}
 };
 
 struct tmpl_xlat_rules_s {

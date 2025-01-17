@@ -2652,7 +2652,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		/*
 		 *	No enums here.
 		 */
-		fr_assert(my_rules.attr.prefix == TMPL_ATTR_REF_PREFIX_YES);
+		fr_assert(my_rules.attr.prefix != TMPL_ATTR_REF_PREFIX_NO);
 		fr_assert(my_rules.attr.list_def == request_attr_request);
 
 		my_rules.enumv = NULL;

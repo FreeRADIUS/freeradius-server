@@ -45,6 +45,8 @@ RCSID("$Id$")
 #  define XLAT_HEXDUMP(...)
 #endif
 
+extern bool tmpl_require_enum_prefix;
+
 /** These rules apply to literal values and function arguments inside of an expansion
  *
  */
@@ -465,9 +467,16 @@ static int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	xlat_exp_t		*node;
 
 	fr_sbuff_marker_t	m_s;
-	tmpl_rules_t		 our_t_rules;
+	tmpl_rules_t		our_t_rules;
 
 	XLAT_DEBUG("ATTRIBUTE <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
+
+	/*
+	 *	Suppress the prefix on new syntax.
+	 */
+	if (tmpl_require_enum_prefix && (attr_prefix == TMPL_ATTR_REF_PREFIX_YES)) {
+		attr_prefix = TMPL_ATTR_REF_PREFIX_AUTO;
+	}
 
 	/*
 	 *	We need a local copy as we always allow unknowns.
@@ -550,6 +559,14 @@ static int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	}
 
 done:
+	/*
+	 *	Remember that it was %{User-Name}
+	 *
+	 *	This is a temporary hack until all of the unit tests
+	 *	pass without '&'.
+	 */
+	UNCONST(tmpl_attr_rules_t *, &vpt->rules.attr)->xlat = true;
+
 	/*
 	 *	Attributes and module calls aren't pure.
 	 */
@@ -1138,6 +1155,12 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		fr_assert(!node->flags.pure);
 
 		/*
+		 *	Can't have prefix YES if we're using the new flag.  The parser / tmpl alloc routines
+		 *	MUST have set this to prefix AUTO.
+		 */
+		fr_assert(!tmpl_require_enum_prefix || (node->vpt->rules.attr.prefix != TMPL_ATTR_REF_PREFIX_YES));
+
+		/*
 		 *	Parsing &User-Name or User-Name gets printed as &User-Name.
 		 *
 		 *	Parsing %{User-Name} gets printed as %{User-Name}
@@ -1145,6 +1168,18 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		if (node->vpt->rules.attr.prefix == TMPL_ATTR_REF_PREFIX_YES) {
 			if (node->vpt->name[0] != '&') FR_SBUFF_IN_CHAR_RETURN(out, '&');
 			FR_SBUFF_IN_STRCPY_RETURN(out, node->fmt);
+			goto done;
+		}
+
+		/*
+		 *	No '&', print the name, BUT without any attribute prefix.
+		 */
+		if (tmpl_require_enum_prefix && !node->vpt->rules.attr.xlat) {
+			char const *p = node->fmt;
+
+			if (*p == '&') p++;
+
+			FR_SBUFF_IN_STRCPY_RETURN(out, p);
 			goto done;
 		}
 		break;
@@ -1354,6 +1389,8 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			 *	tmpl tokenizer, and then pass the tmpl to the function.  Which also means that
 			 *	we need to be able to have a fr_value_box_t which holds a ptr to a tmpl.  And
 			 *	update the function arguments to say "we want a tmpl, not a string".
+			 *
+			 *	@todo - tmpl_require_enum_prefix
 			 */
 			if (allow_attr && fr_sbuff_is_char(&our_in, '&')) {
 				if (xlat_tokenize_attribute(node->group, &our_in, our_p_rules, t_rules, TMPL_ATTR_REF_PREFIX_YES) < 0) goto error;
