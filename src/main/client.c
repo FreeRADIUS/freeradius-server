@@ -1249,6 +1249,7 @@ done_coa:
 		 */
 		c->tls = tls_server_conf_parse(tls);
 		if (!c->tls) goto error;
+		c->tls->name = c->shortname;
 	}
 #endif
 
