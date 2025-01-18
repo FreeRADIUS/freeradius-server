@@ -89,6 +89,7 @@ typedef enum CC_HINT(flag_enum) {
 								///< there is a callback which always needs to be run to set up required
 								///< data structures.
 	CALL_ENV_FLAG_SECRET		= (1 << 10),		//!< The value is a secret, and should not be logged.
+	CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE = (1 << 11),		//!< bare words are treated as an attribute
 } call_env_flags_t;
 DIAG_ON(attributes)
 
@@ -129,6 +130,8 @@ DIAG_ON(attributes)
 #define call_env_parse_missing(_flags)		((_flags) & CALL_ENV_FLAG_PARSE_MISSING)
 
 #define call_env_secret(_flags)			((_flags) & CALL_ENV_FLAG_SECRET)
+
+#define call_env_bare_word_attribute(_flags)	((_flags) & CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE)
 /** @} */
 
 /** Callback for performing custom parsing of a #CONF_PAIR

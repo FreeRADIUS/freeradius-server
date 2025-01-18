@@ -212,8 +212,8 @@ typedef struct {
 static const call_env_method_t linelog_method_env = {
 	FR_CALL_ENV_METHOD_OUT(linelog_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("format", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_PARSE_ONLY, linelog_call_env_t, log_src), .pair.escape.func = linelog_escape_func },
-		{ FR_CALL_ENV_OFFSET("reference",FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_ref), .pair.escape.func = linelog_escape_func },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("format", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_PARSE_ONLY| CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, linelog_call_env_t, log_src), .pair.escape.func = linelog_escape_func },
+		{ FR_CALL_ENV_OFFSET("reference",FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, linelog_call_env_t, log_ref), .pair.escape.func = linelog_escape_func },
 		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_head), .pair.escape.func = linelog_escape_func },
 		{ FR_CALL_ENV_SUBSECTION("file", NULL, CALL_ENV_FLAG_NONE,
 			((call_env_parser_t[]) {
