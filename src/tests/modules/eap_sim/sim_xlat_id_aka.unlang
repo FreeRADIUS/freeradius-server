@@ -51,7 +51,7 @@ if (&result_string != &User-Name) {
 if (&User-Name =~ /^[0-9](.*)/) {
 	&request += {
 		&User-Name = "%{1}"
-		&EAP-Type = AKA
+		&EAP-Type = ::AKA
 	}
 }
 
