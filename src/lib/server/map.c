@@ -643,14 +643,27 @@ parse_rhs:
 		break;
 
 	default:
-		if (!p_rules) p_rules = &value_parse_rules_bareword_quoted;
+		if ((map->op == T_OP_CMP_TRUE) || (map->op == T_OP_CMP_FALSE)) {
+			/*
+			 *	These operators require a hard-coded string on the RHS.
+			 */
+			if (fr_sbuff_adv_past_str_literal(&our_in, "ANY") <= 0) {
+				fr_strerror_printf("Invalid value for %s", fr_tokens[map->op]);
+				goto error;
+			}
 
-		/*
-		 *	Use the RHS termination rules ONLY for bare
-		 *	words.  For quoted strings we already know how
-		 *	to terminate the input string.
-		 */
-		slen = tmpl_afrom_substr(map, &map->rhs, &our_in, token, p_rules, rhs_rules);
+			(void) tmpl_afrom_value_box(map, &map->rhs, fr_box_strvalue("ANY"), false);
+
+		} else {
+			if (!p_rules) p_rules = &value_parse_rules_bareword_quoted;
+
+			/*
+			 *	Use the RHS termination rules ONLY for bare
+			 *	words.  For quoted strings we already know how
+			 *	to terminate the input string.
+			 */
+			slen = tmpl_afrom_substr(map, &map->rhs, &our_in, token, p_rules, rhs_rules);
+		}
 		break;
 	}
 	if (!map->rhs) goto error_adj;
@@ -2595,6 +2608,17 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		/*
 		 *	Ignore any extra data after the string.
 		 */
+
+	} else if ((map->op == T_OP_CMP_TRUE) || (map->op == T_OP_CMP_FALSE)) {
+		/*
+		 *	These operators require a hard-coded string on the RHS.
+		 */
+		if (strcmp(rhs, "ANY") != 0) {
+			fr_strerror_printf("Invalid value for %s", fr_tokens[map->op]);
+			goto error;
+		}
+
+		if (tmpl_afrom_value_box(map, &map->rhs, fr_box_strvalue("ANY"), false) < 0) goto error;
 
 	} else if (rhs[0] == '&') {
 		/*

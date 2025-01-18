@@ -287,19 +287,19 @@ Not allowed as a reply item.
 
 === =*
 
-e.g: `Attribute =* Value`
+e.g: `Attribute =* ANY`
 
 As a check item, it matches if the request contains the named
-attribute, no matter what the value is.
+attribute.  The right-hand side must be the word `ANY`.
 
 Not allowed as a reply item.
 
 === !*
 
-e.g: `Attribute !* Value`
+e.g: `Attribute !* ANY`
 
 As a check item, it matches if the request does not contain
-the named attribute, no matter what the value is.
+the named attribute.  The right-hand side must be the word `ANY`.
 
 Not allowed as a reply item.
 

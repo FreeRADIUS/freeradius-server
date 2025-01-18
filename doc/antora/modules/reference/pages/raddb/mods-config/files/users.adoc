@@ -269,8 +269,8 @@ As a special case for compatibility with previous versions, the `users` file als
 [cols="10%,90%"]
 |=====
 | Operator | Description
-| =*       | Matches if the attribute exists, no matter what the value is.
-| !*       | Matches if the attribute does not exist, no matter what the value is.
+| =*       | Matches if the attribute exists.  The right-hand side must be the word `ANY`.
+| !*       | Matches if the attribute does not exist.  The right-hand side must be the word `ANY`.
 |=====
 
 Due to limitations of the `users` file format, a value must be specified for these additional comparison operators.  The best practice is to use a meaningless special value `ANY`, such as `Framed-IP-Address !* ANY`.

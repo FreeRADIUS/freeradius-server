@@ -31,7 +31,9 @@
 #               output A/V Pairs. If the attribute exists, it is overwritten.
 #  | ==       | Equal, value must match exactly.
 #  | =*       | Always Equal, allow all values for the specified attribute.
+#               The right-hand side must be the word `ANY`.
 #  | !*       | Never Equal, disallow all values for the specified attribute.
+#               The right-hand side must be the word `ANY`.
 #               (This is redundant, as any A/V Pair not explicitly permitted
 #               will be dropped).
 #  | !=       | Not Equal, value must not match.
