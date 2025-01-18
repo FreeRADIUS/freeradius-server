@@ -201,6 +201,18 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 			if ((map->op != T_OP_RSHIFT_EQ) && (map->op != T_OP_LSHIFT_EQ)) {
 				my_rhs_rules.enumv = tmpl_attr_tail_da(map->lhs);
 			}
+		} else {
+			/*
+			 *	If we parsed an attribute on the LHS, and the RHS looks like an enumerated
+			 *	value, then set the enumv.
+			 *
+			 *	@todo tmpl_require_enum_prefix - maybe just _always_ set enumv, because the
+			 *	caller shouldn't have set it?
+			 */
+			if (!rhs_rules->enumv && tmpl_is_attr(map->lhs) &&
+			    (value[0] == ':') && value[1] == ':') {
+				my_rhs_rules.enumv = tmpl_attr_tail_da(map->lhs);
+			}
 		}
 		break;
 	}
@@ -655,7 +667,23 @@ parse_rhs:
 			(void) tmpl_afrom_value_box(map, &map->rhs, fr_box_strvalue("ANY"), false);
 
 		} else {
+			tmpl_rules_t my_rhs_rules;
+
 			if (!p_rules) p_rules = &value_parse_rules_bareword_quoted;
+
+			/*
+			 *	If we parsed an attribute on the LHS, and the RHS looks like an enumerated
+			 *	value, then set the enumv.
+			 *
+			 *	@todo tmpl_require_enum_prefix - maybe just _always_ set enumv, because the
+			 *	caller shouldn't have set it?
+			 */
+			if (rhs_rules && !rhs_rules->enumv && tmpl_is_attr(map->lhs) &&
+			    fr_sbuff_is_str_literal(&our_in, "::")) {
+				my_rhs_rules = *rhs_rules;
+				my_rhs_rules.enumv = tmpl_attr_tail_da(map->lhs);
+				rhs_rules = &my_rhs_rules;
+			}
 
 			/*
 			 *	Use the RHS termination rules ONLY for bare
