@@ -192,7 +192,7 @@ extern bool tmpl_require_enum_prefix;
 static const conf_parser_t migrate_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("rewrite_update", CONF_FLAG_HIDDEN, main_config_t, rewrite_update) },
 	{ FR_CONF_OFFSET_FLAGS("forbid_update", CONF_FLAG_HIDDEN, main_config_t, forbid_update) },
-	{ FR_CONF_OFFSET_FLAGS("require_enum_prefix", CONF_FLAG_HIDDEN, main_config_t, require_enum_prefix), .dflt = "yes" },
+	{ FR_CONF_OFFSET_FLAGS("require_enum_prefix", CONF_FLAG_HIDDEN, main_config_t, require_enum_prefix), .dflt = "no" },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -1077,11 +1077,6 @@ int main_config_init(main_config_t *config)
 	 */
 	config->talloc_pool_size = 8 * 1024; /* default */
 
-	/*
-	 *	Migration flags
-	 */
-	if (!tmpl_require_enum_prefix) tmpl_require_enum_prefix = config->require_enum_prefix;
-
 	cs = cf_section_alloc(NULL, NULL, "main", NULL);
 	if (!cs) return -1;
 
@@ -1535,7 +1530,9 @@ int main_config_parse_option(char const *value)
 		fr_exit(1);
 	}
 
-       *out = box.vb_bool;
+	if (out == &main_config->require_enum_prefix) tmpl_require_enum_prefix = box.vb_bool;
+
+	*out = box.vb_bool;
 
 	return 0;
 }
