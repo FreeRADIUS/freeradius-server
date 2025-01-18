@@ -8,7 +8,7 @@ index := 1
 #
 #  Dynamically create an attribute reference
 #
-ref = "Filter-Id[" + (string) index + "]"
+ref = "&Filter-Id[" + (string) index + "]"
 
 #
 # Evaluate the attribute as an unlang expression.

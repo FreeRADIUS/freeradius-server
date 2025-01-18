@@ -14,7 +14,7 @@ Tmp-String-1 := { "a", "b", "c", "d" }
 foreach string key, string name (Tmp-String-0[*]) {
 	total += key
 	total += " = '"
-	total += %eval(%{key})
+	total += %eval(%{"&" + %{key}})
 	total += "', "
 }
 
