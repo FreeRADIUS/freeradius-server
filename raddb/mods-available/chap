@@ -5,7 +5,7 @@
 
 #######################################################################
 #
-#  = CHAP module
+#  = CHAP
 #
 #  This module authenticates requests containing a `CHAP-Password` attribute.
 #
