@@ -324,7 +324,10 @@ static unlang_action_t sql_get_map_list_resume(rlm_rcode_t *p_result, UNUSED int
 			RETURN_MODULE_FAIL;
 		}
 		if (map_afrom_fields(map_ctx->ctx, &map, &parent, request, row[2], row[4], row[3], &lhs_rules, &rhs_rules) < 0) {
-			RPEDEBUG("Error parsing user data from database result");
+			RPEDEBUG("Data read from SQL cannot be parsed.");
+			REDEBUG("    %s", row[2]);
+			REDEBUG("    %s", row[4]);
+			REDEBUG("    %s", row[3]);
 			RETURN_MODULE_FAIL;
 		}
 		if (!map->parent) map_list_insert_tail(map_ctx->out, map);
