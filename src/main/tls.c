@@ -4017,7 +4017,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client, char const *chain_
 		}
 
 		if (conf->psk_password && *conf->psk_password) {
-			ERROR(LOG_PREFIX ": Invalid PSK Configuration: psk_password and psk_query cannot be used at the same time.");
+			ERROR(LOG_PREFIX ": Invalid PSK Configuration: psk_hexphrase and psk_query cannot be used at the same time.");
 			return NULL;
 		}
 
@@ -4037,12 +4037,12 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client, char const *chain_
 
 
 		if (!conf->psk_password || !*conf->psk_password) {
-			ERROR(LOG_PREFIX ": Invalid PSK Configuration: psk_identity is set, but there is no psk_password");
+			ERROR(LOG_PREFIX ": Invalid PSK Configuration: psk_identity is set, but there is no psk_hexphrase");
 			return NULL;
 		}
 
 	} else if (conf->psk_password) {
-		ERROR(LOG_PREFIX ": Invalid PSK Configuration: psk_password is set, but there is no psk_identity");
+		ERROR(LOG_PREFIX ": Invalid PSK Configuration: psk_hexphrase is set, but there is no psk_identity");
 		return NULL;
 	}
 
