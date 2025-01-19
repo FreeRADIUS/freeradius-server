@@ -47,6 +47,8 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+extern bool tmpl_require_enum_prefix;
+
 static fr_table_num_sorted_t const cond_quote_table[] = {
 	{ L("\""),	T_DOUBLE_QUOTED_STRING	},	/* Don't re-order, backslash throws off ordering */
 	{ L("'"),	T_SINGLE_QUOTED_STRING	},
@@ -2626,7 +2628,12 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 
 		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs + 1, len - 1),
 					 quote, value_parse_rules_quoted[quote], &my_rules);
-		if (slen < 0) goto error;
+		if (slen < 0) {
+			REDEBUG3("Failed parsing right-hand side as quoted string.");
+		fail_rhs:
+			fr_strerror_printf("Failed parsing right-hand side: %s", fr_strerror());
+			goto error;
+		}
 
 		if (slen == 0) {
 			rhs = "";
@@ -2642,13 +2649,14 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		 *	These operators require a hard-coded string on the RHS.
 		 */
 		if (strcmp(rhs, "ANY") != 0) {
-			fr_strerror_printf("Invalid value for %s", fr_tokens[map->op]);
+			fr_strerror_printf("Invalid value %s for operator %s", rhs, fr_tokens[map->op]);
 			goto error;
 		}
 
 		if (tmpl_afrom_value_box(map, &map->rhs, fr_box_strvalue("ANY"), false) < 0) goto error;
 
 	} else if (rhs[0] == '&') {
+	parse_as_attr:
 		/*
 		 *	No enums here.
 		 */
@@ -2658,7 +2666,10 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		my_rules.enumv = NULL;
 
 		slen = tmpl_afrom_attr_str(map, NULL, &map->rhs, rhs, &my_rules);
-		if (slen <= 0) goto error;
+		if (slen <= 0) {
+			REDEBUG3("Failed parsing right-hand side as attribute.");
+			goto fail_rhs;
+		}
 
 	} else if (!rhs[0] || !my_rules.enumv || (my_rules.enumv->type == FR_TYPE_STRING)) {
 		quote = T_BARE_WORD;
@@ -2681,7 +2692,12 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		 */
 		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs, strlen(rhs)),
 					 T_BARE_WORD, value_parse_rules_unquoted[T_BARE_WORD], &my_rules);
-		if (slen <= 0) goto error;
+		if (slen <= 0) {
+			if (tmpl_require_enum_prefix) goto parse_as_attr;
+
+			REDEBUG3("Failed parsing right-hand side as generic data type.");
+			goto fail_rhs;
+		}
 
 		/*
 		 *	Xlat expansions are cast to strings for structural data types.
@@ -2699,7 +2715,10 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 
 		fr_assert(tmpl_is_data_unresolved(map->rhs));
 
-		if (tmpl_resolve(map->rhs, &tr_rules) < 0) goto error;
+		if (tmpl_resolve(map->rhs, &tr_rules) < 0) {
+			REDEBUG3("Failed resolving right-hand side.");
+			goto fail_rhs;
+		}
 	}
 
 	/*
