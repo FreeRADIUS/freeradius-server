@@ -25,7 +25,7 @@ if !(&NAS-Port == &control.NAS-Port) {
 #  Use an Interim-Update and different Framed-IP-Address to check record update
 #
 &Framed-IP-Address := 10.0.10.100
-&Acct-Status-Type := Interim-Update
+&Acct-Status-Type := ::Interim-Update
 
 radutmp.accounting
 
@@ -44,7 +44,7 @@ if !(&Framed-IP-Address == &control.Framed-IP-Address) {
 #
 #  Now use a Stop to clear the user's session
 #
-&Acct-Status-Type := Stop
+&Acct-Status-Type := ::Stop
 
 radutmp.accounting
 
