@@ -2656,13 +2656,13 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		if (tmpl_afrom_value_box(map, &map->rhs, fr_box_strvalue("ANY"), false) < 0) goto error;
 
 	} else if (rhs[0] == '&') {
-	parse_as_attr:
 		/*
 		 *	No enums here.
 		 */
 		fr_assert(my_rules.attr.prefix != TMPL_ATTR_REF_PREFIX_NO);
 		fr_assert(my_rules.attr.list_def == request_attr_request);
 
+	parse_as_attr:
 		my_rules.enumv = NULL;
 
 		slen = tmpl_afrom_attr_str(map, NULL, &map->rhs, rhs, &my_rules);
