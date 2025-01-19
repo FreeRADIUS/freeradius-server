@@ -6,14 +6,14 @@
 # Reply attributes
 &reply.Reply-Message := 'hello'
 &reply += {
-	&Reply-Message = 'goodbye'
+	Reply-Message = 'goodbye'
 }
 
 # Request attributes
 &request += {
-	&NAS-Port = 10
-	&NAS-Port = 20
-	&NAS-Port = 30
+	NAS-Port = 10
+	NAS-Port = 20
+	NAS-Port = 30
 }
 
 #
@@ -37,16 +37,16 @@ if ("%{session-state.[#]}" != 2) {
 	test_fail
 }
 
-if (&session-state.Reply-Message[0] != 'hello') {
+if (session-state.Reply-Message[0] != 'hello') {
 	test_fail
 }
 
-if (&session-state.Reply-Message[1] != 'goodbye') {
+if (session-state.Reply-Message[1] != 'goodbye') {
 	test_fail
 }
 
 # Callback-Id should hold the result of the exec
-if (&Callback-Id != 'echo test') {
+if (Callback-Id != 'echo test') {
 	test_fail
 }
 
@@ -55,17 +55,17 @@ if ("%{Login-LAT-Service[#]}" != 3) {
 	test_fail
 }
 
-if (&Login-LAT-Service[0] != 'foo') {
+if (Login-LAT-Service[0] != 'foo') {
 	test_fail
 }
 
 debug_request
 
-if (&Login-LAT-Service[1] != 'rab') {
+if (Login-LAT-Service[1] != 'rab') {
 	test_fail
 }
 
-if (&Login-LAT-Service[2] != 'baz') {
+if (Login-LAT-Service[2] != 'baz') {
 	test_fail
 }
 

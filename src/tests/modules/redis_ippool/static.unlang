@@ -25,7 +25,7 @@ if (!updated) {
 	test_fail
 }
 
-if (!(&reply.Framed-IP-Address == 192.168.0.10)) {
+if (!(reply.Framed-IP-Address == 192.168.0.10)) {
 	test_fail
 }
 
@@ -33,14 +33,14 @@ if (!(&reply.Framed-IP-Address == 192.168.0.10)) {
 #  Check the expiry attribute is present and correct - although the allocation is static
 #  we report the expiry as if it were dynamic e.g. to drive DHCP renewals
 #
-if (!(&reply.Session-Timeout == 30)) {
+if (!(reply.Session-Timeout == 30)) {
 	test_fail
 }
 
 #
 #  Check that renewal does not mess with static IP
 #
-&Framed-IP-Address := &reply.Framed-IP-Address
+&Framed-IP-Address := reply.Framed-IP-Address
 
 redis_ippool.renew {
 	invalid = 1
@@ -56,7 +56,7 @@ if (%redis(TTL, {%{control.IP-Pool.Name}}:device:%{Calling-Station-Id}) != '-1')
 #
 #  And that the expected expiry is now set
 #
-if (!(&reply.Session-Timeout == 60)) {
+if (!(reply.Session-Timeout == 60)) {
 	test_fail
 }
 

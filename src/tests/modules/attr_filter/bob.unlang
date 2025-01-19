@@ -3,5 +3,5 @@ attr_filter
 &control.Password.Cleartext := "goodbye"
 
 &reply += {
-        &Reply-Message = "success"
+        Reply-Message = "success"
 }

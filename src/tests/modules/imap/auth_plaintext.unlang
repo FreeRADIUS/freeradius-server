@@ -7,7 +7,7 @@ imap.authenticate {
 #  Avoid false negatives by aborting test
 #
 if !(ok) {
-    if (&Module-Failure-Message[*] == "imap: curl request failed: Timeout was reached (28)") {
+    if (Module-Failure-Message[*] == "imap: curl request failed: Timeout was reached (28)") {
         test_pass
         handled
     }
@@ -17,7 +17,7 @@ if !(ok) {
 #
 #  Check for module failing with missing attributes
 #
-&request -= &User-Password[*]
+&request -= User-Password[*]
 
 imap.authenticate {
     fail = 1
@@ -29,7 +29,7 @@ if !(invalid) {
 }
 
 &User-Password := 'test2'
-&request -= &User-Name[*]
+&request -= User-Name[*]
 
 imap.authenticate {
     fail = 1
@@ -50,7 +50,7 @@ imap.authenticate {
 }
 
 if !(ok) {
-    if (&Module-Failure-Message[*] == "imap: curl request failed: Timeout was reached (28)") {
+    if (Module-Failure-Message[*] == "imap: curl request failed: Timeout was reached (28)") {
         test_pass
         handled
     }
@@ -64,7 +64,7 @@ imap.authenticate {
 }
 
 if !(ok) {
-    if (&Module-Failure-Message[*] == "imap: curl request failed: Timeout was reached (28)") {
+    if (Module-Failure-Message[*] == "imap: curl request failed: Timeout was reached (28)") {
         test_pass
         handled
     }
@@ -81,7 +81,7 @@ imap.authenticate {
 }
 
 if !(ok) {
-    if (&Module-Failure-Message[*] == "imap: curl request failed: Timeout was reached (28)") {
+    if (Module-Failure-Message[*] == "imap: curl request failed: Timeout was reached (28)") {
         test_pass
         handled
     }
@@ -95,7 +95,7 @@ imap.authenticate {
 }
 
 if !(ok) {
-    if (&Module-Failure-Message[*] == "imap: curl request failed: Timeout was reached (28)") {
+    if (Module-Failure-Message[*] == "imap: curl request failed: Timeout was reached (28)") {
         test_pass
         handled
     }
@@ -109,7 +109,7 @@ imap.authenticate {
 }
 
 if !(ok) {
-    if (&Module-Failure-Message[*] == "imap: curl request failed: Timeout was reached (28)") {
+    if (Module-Failure-Message[*] == "imap: curl request failed: Timeout was reached (28)") {
         test_pass
         handled
     }

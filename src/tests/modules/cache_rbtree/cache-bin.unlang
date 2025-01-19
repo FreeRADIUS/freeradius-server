@@ -10,7 +10,7 @@
 &Callback-Id := "foo\000bar\000baz"
 
 # 0. Sanity check
-if (&Callback-Id != "foo\000bar\000baz") {
+if (Callback-Id != "foo\000bar\000baz") {
 	test_fail
 }
 
@@ -30,7 +30,7 @@ if (!updated) {
 	test_fail
 }
 
-&request -= &Callback-Id[*]
+&request -= Callback-Id[*]
 
 # If the key is binary safe, we should now be able to retrieve the first entry
 # if it's not, the above test will likely fail, or we'll get the second entry.
@@ -45,11 +45,11 @@ if (%length(%{Callback-Id}) != 11) {
 	test_fail
 }
 
-if (&Callback-Id != "foo\000bar\000baz") {
+if (Callback-Id != "foo\000bar\000baz") {
 	test_fail
 }
 
-&request -= &Callback-Id[*]
+&request -= Callback-Id[*]
 
 # Now try and get the second entry
 &Class := 0xaa00bb00cc00ee00
@@ -63,11 +63,11 @@ if (%length(%{Callback-Id}) != 7) {
 	test_fail
 }
 
-if (&Callback-Id != "bar\000baz") {
+if (Callback-Id != "bar\000baz") {
 	test_fail
 }
 
-&request -= &Callback-Id[*]
+&request -= Callback-Id[*]
 
 #
 #  We should also be able to use any fixed length data type as a key
@@ -90,7 +90,7 @@ if (!ok) {
 	test_fail
 }
 
-&request -= &Callback-Id[*]
+&request -= Callback-Id[*]
 
 # Now retrieve the first entry
 &Framed-IP-Address := 192.168.0.1
@@ -104,11 +104,11 @@ if (%length(%{Callback-Id}) != 11) {
 	test_fail
 }
 
-if (&Callback-Id != "foo\000bar\000baz") {
+if (Callback-Id != "foo\000bar\000baz") {
 	test_fail
 }
 
-&request -= &Callback-Id[*]
+&request -= Callback-Id[*]
 
 # Now try and get the second entry
 &Framed-IP-Address := 192.168.0.2
@@ -122,10 +122,10 @@ if (%length(%{Callback-Id}) != 7) {
 	test_fail
 }
 
-if (&Callback-Id != "bar\000baz") {
+if (Callback-Id != "bar\000baz") {
 	test_fail
 }
 
-&request -= &Callback-Id[*]
+&request -= Callback-Id[*]
 
 test_pass

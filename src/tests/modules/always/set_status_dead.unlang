@@ -8,7 +8,7 @@ db_status {
 }
 
 if (fail) {
-	&reply.Reply-Message := "success"
+	reply.Reply-Message := "success"
 }
 
 &control.Password.Cleartext := "hello"

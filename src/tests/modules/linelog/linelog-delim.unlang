@@ -1,6 +1,6 @@
 string test_string
 
-&control.Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
+control.Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
 
 #
 #  Remove old log files
@@ -8,9 +8,9 @@ string test_string
 %file.rm("$ENV{MODULE_TEST_DIR}/test_delim.log")
 
 linelog_fmt_delim
-&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_delim.log")
+test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_delim.log")
 
-if (&test_string == 'bob, ') {
+if (test_string == 'bob, ') {
 	test_pass
 }
 else {
@@ -19,9 +19,9 @@ else {
 
 #  Check strings are appended
 linelog_fmt_delim
-&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_delim.log")
+test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_delim.log")
 
-if (&test_string == 'bob, bob, ') {
+if (test_string == 'bob, bob, ') {
 	test_pass
 }
 else {

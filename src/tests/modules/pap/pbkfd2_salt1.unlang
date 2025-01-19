@@ -3,8 +3,8 @@ if ("${feature.tls}" == no) {
 	return
 }
 
-if (&User-Name == 'pbkdf2_salt1') {
-	&control.Password.PBKDF2 := 'HMACSHA2+256:AAAnEA:qg==:KQzCdedgOZYFwx+mQp1TKA8VM4fwf02pqSdJEh2ekwM='
+if (User-Name == 'pbkdf2_salt1') {
+	control.Password.PBKDF2 := 'HMACSHA2+256:AAAnEA:qg==:KQzCdedgOZYFwx+mQp1TKA8VM4fwf02pqSdJEh2ekwM='
 
 	pap.authorize
 	pap.authenticate

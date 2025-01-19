@@ -6,7 +6,7 @@ if (!ok) {
 	test_fail
 }
 debug_all
-if (!(&control.Realm == 'matched')) {
+if (!(control.Realm == 'matched')) {
 	test_fail
 }
 

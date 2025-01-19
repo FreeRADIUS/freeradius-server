@@ -1,22 +1,22 @@
 &request += {
-	&SMTP-Mail-Header = "Subject: smtp test"
-	&SMTP-Mail-Header = "FROM: smtp_sender@gmail.com"
-	&SMTP-Mail-Header = "TO: smtp_receiver@localhost"
-	&SMTP-Mail-Body = "sent from the smtp test module\r\n"
-	&SMTP-Sender-Address = "smtp_sender@localhost"
-	&SMTP-Recipients = "smtp_receiver@localhost"
-	&SMTP-Attachments = "testfile"
+	SMTP-Mail-Header = "Subject: smtp test"
+	SMTP-Mail-Header = "FROM: smtp_sender@gmail.com"
+	SMTP-Mail-Header = "TO: smtp_receiver@localhost"
+	SMTP-Mail-Body = "sent from the smtp test module\r\n"
+	SMTP-Sender-Address = "smtp_sender@localhost"
+	SMTP-Recipients = "smtp_receiver@localhost"
+	SMTP-Attachments = "testfile"
 }
 smtp.authenticate {
 	fail = 1
 }
 
-if (fail && (&Module-Failure-Message[*] == 'smtp: curl request failed: Timeout was reached (28)')) {
+if (fail && (Module-Failure-Message[*] == 'smtp: curl request failed: Timeout was reached (28)')) {
 	test_pass
 	handled
 }
 
-if !(&TLS-Certificate.Issuer =~ /@example\.org/) {
+if !(TLS-Certificate.Issuer =~ /@example\.org/) {
 	test_fail
 }
 
@@ -35,7 +35,7 @@ smtp.authenticate {
 }
 
 if !(reject) {
-	if (&Module-Failure-Message[*] == "smtp: curl request failed: Timeout was reached (28)") {
+	if (Module-Failure-Message[*] == "smtp: curl request failed: Timeout was reached (28)") {
 		test_pass
 		handled
 	}
@@ -55,14 +55,14 @@ smtp.authenticate {
 }
 
 if !(reject) {
-	if (&Module-Failure-Message[*] == "smtp: curl request failed: Timeout was reached (28)") {
+	if (Module-Failure-Message[*] == "smtp: curl request failed: Timeout was reached (28)") {
 		test_pass
 		handled
 	}
 	test_fail
 }
 
-&request -= &User-Password[*]
+&request -= User-Password[*]
 
 #
 #  Check that missing password is an invalid request
@@ -77,7 +77,7 @@ if !(invalid) {
 }
 
 &User-Password := 'Saget'
-&request -= &User-Name[*]
+&request -= User-Name[*]
 
 #
 #  Check that missing user name is an invalid request

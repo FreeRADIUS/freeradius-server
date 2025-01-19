@@ -6,8 +6,8 @@ db_status {
 	fail = 1
 }
 if (!fail) {
-	&reply += {
-		&Reply-Message = "Failure in test at line %interpreter(...line)"
+	reply += {
+		Reply-Message = "Failure in test at line %interpreter(...line)"
 	}
 }
 
@@ -18,8 +18,8 @@ if (!fail) {
 %db_status('alive')
 db_status
 if (ok) {
-	&reply += {
-		&Reply-Message = "success"
+	reply += {
+		Reply-Message = "success"
 	}
 }
 

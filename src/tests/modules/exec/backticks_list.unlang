@@ -5,7 +5,7 @@ string test_string
 #  because we don't wait for the response.
 #
 &test_string := %exec('/bin/sh', '-c', 'echo hello')
-if (&test_string != 'hello') {
+if (test_string != 'hello') {
 	test_fail
 }
 
@@ -14,7 +14,7 @@ if (&test_string != 'hello') {
 #
 &control += %exec('/bin/sh', '-c', "echo Reply-Message := \'hello\'")
 
-if (&control.Reply-Message != 'hello') {
+if (control.Reply-Message != 'hello') {
 	test_fail
 } else {
 	test_pass

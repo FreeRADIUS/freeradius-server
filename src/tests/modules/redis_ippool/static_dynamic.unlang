@@ -35,7 +35,7 @@ if (!updated) {
 	test_fail
 }
 
-if (!(&reply.Framed-IP-Address == 192.168.0.1)) {
+if (!(reply.Framed-IP-Address == 192.168.0.1)) {
 	test_fail
 }
 

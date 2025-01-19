@@ -36,23 +36,23 @@ if (!updated) {
 	test_fail
 }
 
-if !(&control.Password.Cleartext == &User-Password) {
+if !(control.Password.Cleartext == User-Password) {
 	test_fail
 }
 
-if !(&reply.Reply-Message == "Hello Fallthrough User") {
+if !(reply.Reply-Message == "Hello Fallthrough User") {
 	test_fail
 }
 
-if !(&control.SQL-Group[*] == 'fallthrough_group_a') {
+if !(control.SQL-Group[*] == 'fallthrough_group_a') {
 	test_fail
 }
 
-if !(&control.SQL-Group[*] == 'fallthrough_group_b') {
+if !(control.SQL-Group[*] == 'fallthrough_group_b') {
 	test_fail
 }
 
-if (&control.SQL-Group[*] == 'fallthrough_group_c') {
+if (control.SQL-Group[*] == 'fallthrough_group_c') {
 	test_fail
 }
 

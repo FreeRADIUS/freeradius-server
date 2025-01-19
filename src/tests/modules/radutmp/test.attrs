@@ -1,13 +1,13 @@
 #
 #  Input packet
 #
-Packet-Type = Access-Request
+Packet-Type = ::Access-Request
 User-Name = 'user0@example.org'
 NAS-Port = 17826193
 NAS-IP-Address = 192.0.2.10
 Calling-Station-Id = 00-11-22-33-44-55
 Framed-IP-Address = 198.51.100.59
-Acct-Status-Type = Start
+Acct-Status-Type = ::Start
 Acct-Delay-Time = 1
 Acct-Input-Octets = 0
 Acct-Output-Octets = 0
@@ -18,10 +18,10 @@ Acct-Output-Packets = 0
 Acct-Input-Gigawords = 0
 Acct-Output-Gigawords = 0
 Event-Timestamp = 'Feb  1 2024 08:28:58 GMT'
-NAS-Port-Type = Ethernet
+NAS-Port-Type = ::Ethernet
 NAS-Port-Id = 'port 001'
 Service-Type = ::Framed-User
-Framed-Protocol = PPP
+Framed-Protocol = ::PPP
 Idle-Timeout = 0
 Session-Timeout = 604800
 
@@ -30,4 +30,4 @@ Session-Timeout = 604800
 #
 #  There's not an Accounting-Failed packet type in RADIUS...
 #
-Packet-Type == Access-Accept
+Packet-Type == ::Access-Accept

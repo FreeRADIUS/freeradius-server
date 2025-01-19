@@ -14,7 +14,7 @@ if (!ok) {
 }
 
 # 1. Check the module didn't perform a merge
-if (&Callback-Id) {
+if (Callback-Id) {
 	test_fail
 }
 
@@ -27,7 +27,7 @@ if (!ok) {
 }
 
 # 3.
-if (&control.Cache-Status-Only) {
+if (control.Cache-Status-Only) {
 	test_fail
 }
 
@@ -38,12 +38,12 @@ if (!updated) {
 }
 
 # 5.
-if (&Callback-Id != &control.Callback-Id) {
+if (Callback-Id != control.Callback-Id) {
 	test_fail
 }
 
 # 6. Retrieving the entry should not expire it
-&request -= &Callback-Id[*]
+&request -= Callback-Id[*]
 
 cache
 if (!updated) {
@@ -51,7 +51,7 @@ if (!updated) {
 }
 
 # 7.
-if (&Callback-Id != &control.Callback-Id) {
+if (Callback-Id != control.Callback-Id) {
 	test_fail
 }
 else {
@@ -77,7 +77,7 @@ if (!notfound) {
 }
 
 # 10.
-if (&control.Cache-Status-Only) {
+if (control.Cache-Status-Only) {
 	test_fail
 }
 
@@ -91,7 +91,7 @@ if (!notfound) {
 }
 
 # 12.
-if (&control.Cache-Allow-Merge) {
+if (control.Cache-Allow-Merge) {
 	test_fail
 }
 
@@ -118,12 +118,12 @@ if (!updated) {
 }
 
 # 16.
-if (&control.Cache-TTL) {
+if (control.Cache-TTL) {
 	test_fail
 }
 
 # 17.
-if (&Callback-Id != &control.Callback-Id) {
+if (Callback-Id != control.Callback-Id) {
 	test_fail
 }
 
@@ -138,7 +138,7 @@ if (!updated) {
 }
 
 # 19. Request Callback-Id shouldn't have been updated yet
-if (&Callback-Id == &control.Callback-Id) {
+if (Callback-Id == control.Callback-Id) {
 	test_fail
 }
 
@@ -151,7 +151,7 @@ if (!updated) {
 }
 
 # 21. Request Callback-Id still shouldn't have been updated yet
-if (&Callback-Id == &control.Callback-Id) {
+if (Callback-Id == control.Callback-Id) {
 	test_fail
 }
 
@@ -162,7 +162,7 @@ if (!updated) {
 }
 
 # 23. Request Callback-Id should now have been updated
-if (&Callback-Id != &control.Callback-Id) {
+if (Callback-Id != control.Callback-Id) {
 	test_fail
 }
 
@@ -177,17 +177,17 @@ if (!updated) {
 }
 
 # 25. Request Callback-Id should now have been updated
-if (&Callback-Id != &control.Callback-Id) {
+if (Callback-Id != control.Callback-Id) {
 	test_fail
 }
 
 # 26. Check Cache-Entry-Hits is updated as we expect
-if (&Cache-Entry-Hits != 0) {
+if (Cache-Entry-Hits != 0) {
 	test_fail
 }
 
 cache
-if (&Cache-Entry-Hits != 1) {
+if (Cache-Entry-Hits != 1) {
 	test_fail
 }
 

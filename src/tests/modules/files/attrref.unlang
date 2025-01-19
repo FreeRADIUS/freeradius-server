@@ -6,6 +6,6 @@ files
 #
 #  The "reply" items can now update any list.
 #
-if (&control.Filter-Id != "foo") {
+if (control.Filter-Id != "foo") {
 	test_fail
 }

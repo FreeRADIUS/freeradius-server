@@ -21,7 +21,7 @@ if (%aka_sim_id_type(%{User-Name}) != 'permanent') {
 &result_string := %3gpp_temporary_id_decrypt(%{control.User-Name}, %{test_string}, 'false')
 
 if ("%{User-Name}" =~ /^0(.*)/) {
-	if (!&result_string || (&result_string == '') || (%{result_string} != "%{1}")) {
+	if (!result_string || (result_string == '') || (%{result_string} != "%{1}")) {
 		test_fail
 	}
 }

@@ -18,14 +18,14 @@ if (!updated) {
 	test_fail
 }
 
-if !(&reply.Framed-IP-Address == 192.168.0.1) {
+if !(reply.Framed-IP-Address == 192.168.0.1) {
 	test_fail
 }
 
 #
 #  Release the IP address
 #
-&Framed-IP-Address := &reply.Framed-IP-Address
+&Framed-IP-Address := reply.Framed-IP-Address
 
 sqlippool.release
 if !(updated) {
@@ -43,11 +43,11 @@ if (%sql("SELECT address FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Nam
 # Check the expiry - releasing an address sets the exipry to now
 # Allow for some time passing between packet processing and "now"
 &expiry := %sql("SELECT strftime('%%s', expiry_time) FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND address = '%{reply.Framed-IP-Address}'")
-if (&expiry > (%l + 5)) {
+if (expiry > (%l + 5)) {
 	test_fail
 }
 
-if ((%l - &expiry) > 5) {
+if ((%l - expiry) > 5) {
 	test_fail
 }
 
@@ -55,7 +55,7 @@ if ((%l - &expiry) > 5) {
 #  Release the IP address again
 #  Will return notfound as address is already released.
 #
-&Framed-IP-Address := &reply.Framed-IP-Address
+&Framed-IP-Address := reply.Framed-IP-Address
 
 sqlippool.release
 

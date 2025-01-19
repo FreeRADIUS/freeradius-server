@@ -14,7 +14,7 @@ if (!updated) {
 	test_fail
 }
 
-if (&reply.Reply-Message != 'User-Suspended') {
+if (reply.Reply-Message != 'User-Suspended') {
 	test_fail
 }
 

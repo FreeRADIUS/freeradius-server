@@ -123,8 +123,8 @@ vendor	Password.Cleartext := "we_are_so_smart"
 #  Compare attribute references
 #
 attrref	Password.Cleartext := "hopefully"
-	Reply-Message := &request.Filter-Id,
-	&control.Filter-Id := "foo"
+	Reply-Message := request.Filter-Id,
+	control.Filter-Id := "foo"
 
 xlat	Password.Cleartext := "open"
 	Reply-Message := "Hello, %{User-Name}"
@@ -132,7 +132,7 @@ xlat	Password.Cleartext := "open"
 #
 #  Inter-attribute comparisons and xlats for comparisons
 #
-attrref_check Filter-Id == &NAS-Identifier, NAS-IP-Address == "%{Calling-Station-Id}", Password.Cleartext := "whoops"
+attrref_check Filter-Id == NAS-Identifier, NAS-IP-Address == "%{Calling-Station-Id}", Password.Cleartext := "whoops"
 	      Reply-Message := "success"
 
 digest	Password.Cleartext := "woo"

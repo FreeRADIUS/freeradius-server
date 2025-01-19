@@ -16,9 +16,9 @@ string cmdresult
 &data3 := "3-%randstr('aaaaaaaa')"
 
 if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
-	&clusterctrl := 'scripts/ci/redis-setup.sh'
+	clusterctrl := 'scripts/ci/redis-setup.sh'
 } else {
-	&clusterctrl := $ENV{REDIS_CLUSTER_CONTROL}
+	clusterctrl := $ENV{REDIS_CLUSTER_CONTROL}
 }
 
 #
@@ -31,7 +31,7 @@ if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
 # Sometimes redis just fails to start - without it we can't run
 # the tests - so just exit early.
 &cmdresult = %exec(%{clusterctrl}, create)
-if (&cmdresult == '') {
+if (cmdresult == '') {
 	test_pass
 	handled
 }
@@ -41,8 +41,8 @@ if (&cmdresult == '') {
 #
 &redisserver := $ENV{REDIS_TEST_SERVER}
 
-if (!&redisserver || (&redisserver == '')) {
-	&redisserver := "$ENV{REDIS_IPPOOL_TEST_SERVER}"
+if (!redisserver || (redisserver == '')) {
+	redisserver := "$ENV{REDIS_IPPOOL_TEST_SERVER}"
 }
 
 #  Test nodes should be running on
@@ -52,7 +52,7 @@ if (!&redisserver || (&redisserver == '')) {
 #  - 127.0.0.1:30005 - slave
 #  - 127.0.0.1:30003 - master [10923-16383]
 #  - 127.0.0.1:30006 - slave
-foreach &control.Filter-Id {
+foreach control.Filter-Id {
 	#
 	#  Force a remap as the slaves don't show up in the cluster immediately
 	#
@@ -74,7 +74,7 @@ foreach &control.Filter-Id {
 		}
 	}
 
-	&request -= &Module-Failure-Message[*]
+	request -= Module-Failure-Message[*]
 
 	# Perform checks every half second for 10 seconds.
 	#

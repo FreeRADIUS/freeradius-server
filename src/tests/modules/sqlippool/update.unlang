@@ -17,18 +17,18 @@ if (!updated) {
 }
 
 # 2.
-if !(&reply.Framed-IP-Address == 192.168.0.1) {
+if !(reply.Framed-IP-Address == 192.168.0.1) {
 	test_fail
 }
 
 # 3. Verify expiry time is based on offer duration
 &expiry := %sql("SELECT strftime('%%s', expiry_time) FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND address = '%{reply.Framed-IP-Address}'")
-if ((&expiry - %l) < 20) {
+if ((expiry - %l) < 20) {
 	test_fail
 }
 
 # 4.
-if ((&expiry - %l) > 40) {
+if ((expiry - %l) > 40) {
 	test_fail
 }
 
@@ -42,7 +42,7 @@ if !(%sql("SELECT gateway FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Na
 %sql("INSERT INTO fr_ippool (pool_name, address, expiry_time) values ('%{control.IP-Pool.Name}', '192.168.1.1', datetime('now', '-00:10'))")
 
 # 7. Verify that the lease time is extended
-&Framed-IP-Address := &reply.Framed-IP-Address
+&Framed-IP-Address := reply.Framed-IP-Address
 &NAS-IP-Address := 127.0.0.2
 
 sqlippool.renew
@@ -52,12 +52,12 @@ if (!updated) {
 
 # 8. Check expiry reflects that
 &expiry := %sql("SELECT strftime('%%s', expiry_time) FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND address = '%{reply.Framed-IP-Address}'")
-if ((&expiry - %l) < 50) {
+if ((expiry - %l) < 50) {
 	test_fail
 }
 
 # 9.
-if ((&expiry - %l) > 70) {
+if ((expiry - %l) > 70) {
 	test_fail
 }
 
@@ -94,7 +94,7 @@ if (!notfound) {
 }
 
 # 14. Verify the lease is still associated with the previous device
-if !(&reply.Framed-IP-Address == %sql("SELECT address FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND owner = '00:11:22:33:44:55'")) {
+if !(reply.Framed-IP-Address == %sql("SELECT address FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND owner = '00:11:22:33:44:55'")) {
 	test_fail
 }
 

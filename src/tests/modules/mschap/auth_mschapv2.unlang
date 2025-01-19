@@ -2,21 +2,21 @@
 
 mschap
 
-if !(&control.Auth-Type == ::mschap) {
+if !(control.Auth-Type == ::mschap) {
 	test_fail
 }
 
 mschap.authenticate
 
-if !(&reply.Vendor-Specific.Microsoft.MPPE-Send-Key) {
+if !(reply.Vendor-Specific.Microsoft.MPPE-Send-Key) {
 	test_fail
 }
 
-if !(&reply.Vendor-Specific.Microsoft.MPPE-Recv-Key) {
+if !(reply.Vendor-Specific.Microsoft.MPPE-Recv-Key) {
 	test_fail
 }
 
-&reply -= &Vendor-Specific.Microsoft.MPPE-Send-Key
-&reply -= &Vendor-Specific.Microsoft.MPPE-Recv-Key
+&reply -= Vendor-Specific.Microsoft.MPPE-Send-Key
+&reply -= Vendor-Specific.Microsoft.MPPE-Recv-Key
 
 test_pass

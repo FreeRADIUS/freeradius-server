@@ -3,7 +3,7 @@
 #
 ldapldapi
 
-if (!(&control.LDAP-UserDN == "uid=john,ou=people,dc=example,dc=com")) {
+if (!(control.LDAP-UserDN == "uid=john,ou=people,dc=example,dc=com")) {
         test_fail
 }
 

@@ -21,7 +21,7 @@ linelog_escapes
 #  Note that there's a '5f6e' here, which is "\n"
 #  And we don't have a '0a', which is the unescaped "\n"
 #
-if (&test_string2 == '666f6f5c6e626172') {
+if (test_string2 == '666f6f5c6e626172') {
 	test_pass
 }
 else {
@@ -33,7 +33,7 @@ else {
 #
 #  This is left alone, and not "\n" --> 0x0a, too.
 #
-if (&test_string1 == 'foo\nbar') {
+if (test_string1 == 'foo\nbar') {
 	test_pass
 }
 else {
@@ -49,7 +49,7 @@ linelog_escapes
 &test_string1 := %file.tail("$ENV{MODULE_TEST_DIR}/test_escapes.log", 2)
 &test_string2 := "%hex(%{test_string1})"
 
-if (&test_string2 == '666f6f0a626172') {
+if (test_string2 == '666f6f0a626172') {
 	test_pass
 }
 else {
@@ -58,7 +58,7 @@ else {
 
 &test_string1 := %file.tail("$ENV{MODULE_TEST_DIR}/test_escapes.log")
 
-if (&test_string1 == "bar") {
+if (test_string1 == "bar") {
 	test_pass
 }
 else {

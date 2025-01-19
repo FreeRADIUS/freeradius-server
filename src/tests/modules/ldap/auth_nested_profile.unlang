@@ -6,16 +6,16 @@ string test_string
 ldap
 
 #IP address is defined in cn=profile2
-if !(&control.Framed-IP-Address == 1.2.3.6) {
+if !(control.Framed-IP-Address == 1.2.3.6) {
         test_fail
 }
 
 # IP netmask defined in cn=reply,cn=profile2
-if (!(&reply.Framed-IP-Netmask == 255.255.192.0)) {
+if (!(reply.Framed-IP-Netmask == 255.255.192.0)) {
         test_fail
 }
 
-if (!(&reply.Acct-Interim-Interval == 7200)) {
+if (!(reply.Acct-Interim-Interval == 7200)) {
         test_fail
 }
 
@@ -26,7 +26,7 @@ ldap.send.access-accept
 
 &test_string := %ldap("ldap://$ENV{TEST_SERVER}/uid=peter,ou=people,dc=example,dc=com?description")
 
-if (!(&test_string == "User %{User-Name} authenticated")) {
+if (!(test_string == "User %{User-Name} authenticated")) {
 	test_fail
 }
 

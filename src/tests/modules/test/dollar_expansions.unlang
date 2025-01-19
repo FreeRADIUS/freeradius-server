@@ -9,7 +9,7 @@ if ("${a_term}" != "${a_term}") {
 	test_fail
 }
 
-if (&Fall-Through != ${d_term}) {
+if (Fall-Through != ${d_term}) {
 	test_fail
 }
 
@@ -27,7 +27,7 @@ if ('${a_term}' == '${b_term}') {
 }
 
 # Check against dynamic attributes
-if ('${c_term}' != &User-Name) {
+if ('${c_term}' != User-Name) {
 	test_fail
 }
 

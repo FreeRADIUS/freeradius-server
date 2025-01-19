@@ -1,13 +1,13 @@
 # Call yubikey module to split OTP from password
 yubikey
 
-if !(&User-Password == 'hello') {
+if !(User-Password == 'hello') {
 	test_fail
 }
-if !(&Vendor-Specific.Yubico.Yubikey-OTP) {
+if !(Vendor-Specific.Yubico.Yubikey-OTP) {
 	test_fail
 }
-if !(&Vendor-Specific.Yubico.Yubikey-Public-Id == 'ddddgciilcjk') {
+if !(Vendor-Specific.Yubico.Yubikey-Public-Id == 'ddddgciilcjk') {
 	test_fail
 }
 
@@ -18,22 +18,22 @@ if !(&Vendor-Specific.Yubico.Yubikey-Public-Id == 'ddddgciilcjk') {
 yubikey.authenticate
 
 # Check all the attributes have been created
-if !(&Vendor-Specific.Yubico.Yubikey-Private-Id == 0x1dfc67f97828) {
+if !(Vendor-Specific.Yubico.Yubikey-Private-Id == 0x1dfc67f97828) {
 	test_fail
 }
-if !(&Vendor-Specific.Yubico.Yubikey-Timestamp) {
+if !(Vendor-Specific.Yubico.Yubikey-Timestamp) {
 	test_fail
 }
-if !(&Vendor-Specific.Yubico.Yubikey-Counter == 258) {
+if !(Vendor-Specific.Yubico.Yubikey-Counter == 258) {
 	test_fail
 }
-if !(&Vendor-Specific.Yubico.Yubikey-Random) {
+if !(Vendor-Specific.Yubico.Yubikey-Random) {
 	test_fail
 }
 
 
 # Increase the known "counter" value to detect a replay attack
-&control.Vendor-Specific.Yubico.Yubikey-Counter := &Vendor-Specific.Yubico.Yubikey-Counter
+&control.Vendor-Specific.Yubico.Yubikey-Counter := Vendor-Specific.Yubico.Yubikey-Counter
 
 yubikey.authenticate {
 	reject = 1
@@ -44,7 +44,7 @@ if !(reject) {
 	test_fail
 }
 
-if !(&Module-Failure-Message == 'yubikey: Replay attack detected! Counter value 258, is lt or eq to last known counter value 258') {
+if !(Module-Failure-Message == 'yubikey: Replay attack detected! Counter value 258, is lt or eq to last known counter value 258') {
 	test_fail
 }
 

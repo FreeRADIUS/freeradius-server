@@ -2,11 +2,11 @@ if (!%ldap.profile('ldap:///cn=profile2,ou=profiles,dc=example,dc=com')) {
 	test_fail
 }
 
-if (!((&reply.Framed-IP-Netmask == 255.255.128.0) && \
-      (&reply.Acct-Interim-Interval == 3600) && \
-      (&request.Service-Type == ::Framed-User) && \
-      (&control.Framed-IP-Address == 1.2.3.5) && \
-      (&control.Reply-Message == 'Bonjour'))) {
+if (!((reply.Framed-IP-Netmask == 255.255.128.0) && \
+      (reply.Acct-Interim-Interval == 3600) && \
+      (request.Service-Type == ::Framed-User) && \
+      (control.Framed-IP-Address == 1.2.3.5) && \
+      (control.Reply-Message == 'Bonjour'))) {
 	test_fail
 }
 
@@ -18,40 +18,40 @@ if (!%ldap.profile('cn=suspended,ou=profiles,dc=example,dc=com')) {
 group {
       string user
 
-      &user := 'suspended'
+      user := 'suspended'
 
       if (!%ldap.profile("ldap:///cn=%{user},ou=profiles,dc=example,dc=com")) {
             test_fail
       }
 
-      if (&reply.Reply-Message != 'User-Suspended') {
+      if (reply.Reply-Message != 'User-Suspended') {
             test_fail
       }
 
-      &control := {}
-      &reply := {}
+      control := {}
+      reply := {}
 
       if (!%ldap.profile("cn=%{user},ou=profiles,dc=example,dc=com")) {
             test_fail
       }
 
-      if (&reply.Reply-Message != 'User-Suspended') {
+      if (reply.Reply-Message != 'User-Suspended') {
             test_fail
       }
 
-      &control := {}
-      &reply := {}
+      control := {}
+      reply := {}
 }
 
 if (!%ldap.profile('cn=profile3,ou=profiles,dc=example,dc=com')) {
 	test_fail
 }
 
-if (!((&reply.Framed-IP-Netmask == 255.255.192.0) && \
-      (&reply.Acct-Interim-Interval == 7200) && \
-      (&request.Service-Type == ::Framed-User) && \
-      (&control.Framed-IP-Address == 1.2.3.6) && \
-      (&control.Reply-Message == 'Salut'))) {
+if (!((reply.Framed-IP-Netmask == 255.255.192.0) && \
+      (reply.Acct-Interim-Interval == 7200) && \
+      (request.Service-Type == ::Framed-User) && \
+      (control.Framed-IP-Address == 1.2.3.6) && \
+      (control.Reply-Message == 'Salut'))) {
 	test_fail
 }
 

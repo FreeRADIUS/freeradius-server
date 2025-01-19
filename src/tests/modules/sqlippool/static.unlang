@@ -24,14 +24,14 @@ if (!updated) {
 	test_fail
 }
 
-if !(&reply.Framed-IP-Address == 192.168.0.10) {
+if !(reply.Framed-IP-Address == 192.168.0.10) {
 	test_fail
 }
 
 #
 #  Check that renewal does not mess with static IP
 #
-&Framed-IP-Address := &reply.Framed-IP-Address
+&Framed-IP-Address := reply.Framed-IP-Address
 
 sqlippool.renew
 if !(updated) {

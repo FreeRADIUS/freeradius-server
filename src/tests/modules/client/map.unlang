@@ -1,32 +1,32 @@
 map client {
-	&Filter-Id := 'nas_type'
+	Filter-Id := 'nas_type'
 }
 
-if (&Filter-Id != 'a_type') {
+if (Filter-Id != 'a_type') {
 	test_fail
 }
 
 map client 127.0.0.1 {
-	&Filter-Id := 'nas_type'
+	Filter-Id := 'nas_type'
 }
 
-if (&Filter-Id != 'a_type') {
+if (Filter-Id != 'a_type') {
 	test_fail
 }
 
 map client 127.0.0.2 {
-	&Filter-Id := 'nas_type'
+	Filter-Id := 'nas_type'
 }
 
-if (&Filter-Id != 'b_type') {
+if (Filter-Id != 'b_type') {
 	test_fail
 }
 
 map client 127.0.0.5 {
-	&Filter-Id := 'nas_type'
+	Filter-Id := 'nas_type'
 }
 
-if (&Filter-Id != 'b_type') {
+if (Filter-Id != 'b_type') {
 	test_fail
 }
 
@@ -34,55 +34,55 @@ if (&Filter-Id != 'b_type') {
 #  Test multi-valued maps
 #
 map client {
-	&Callback-Id += 'group'
+	Callback-Id += 'group'
 }
 
-if (&Callback-Id[0] != 'a') {
+if (Callback-Id[0] != 'a') {
 	test_fail
 }
 
-if (&Callback-Id[1] != 'b') {
+if (Callback-Id[1] != 'b') {
 	test_fail
 }
 
-if (&Callback-Id[2] != 'c') {
+if (Callback-Id[2] != 'c') {
 	test_fail
 }
 
-&request -= &Filter-Id[*]
+&request -= Filter-Id[*]
 
 map client 127.0.0.2 {
-	&Filter-Id += 'group'
+	Filter-Id += 'group'
 }
 
-if (&Filter-Id[0] != 'd') {
+if (Filter-Id[0] != 'd') {
 	test_fail
 }
 
-if (&Filter-Id[1] != 'e') {
+if (Filter-Id[1] != 'e') {
 	test_fail
 }
 
-if (&Filter-Id[2] != 'f') {
+if (Filter-Id[2] != 'f') {
 	test_fail
 }
 
-&request -= &Filter-Id[*]
-&request -= &Callback-Id[*]
+&request -= Filter-Id[*]
+&request -= Callback-Id[*]
 
 #
 #  Test non-existent client properties
 #
 map client {
-	&Filter-Id := 'non-existent-attr'
-	&Callback-Id += 'non-existing-attr2'
+	Filter-Id := 'non-existent-attr'
+	Callback-Id += 'non-existing-attr2'
 }
 
-if (&Filter-Id) {
+if (Filter-Id) {
 	test_fail
 }
 
-if (&Callback-Id) {
+if (Callback-Id) {
 	test_fail
 }
 

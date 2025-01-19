@@ -41,17 +41,17 @@ if ("%3gpp_temporary_id_encrypt(%{control.User-Name},%{test_string},6)" != '') {
 #
 &result_string := %3gpp_temporary_id_decrypt(%{control.User-Name},%{test_string})
 
-if (&result_string != &User-Name) {
+if (result_string != User-Name) {
 	test_fail
 }
 
 #
-#  1.0 Now try with the hint coming from &request.EAP-Type
+#  1.0 Now try with the hint coming from request.EAP-Type
 #
-if (&User-Name =~ /^[0-9](.*)/) {
-	&request += {
-		&User-Name = "%{1}"
-		&EAP-Type = ::AKA
+if (User-Name =~ /^[0-9](.*)/) {
+	request += {
+		User-Name = "%{1}"
+		EAP-Type = ::AKA
 	}
 }
 
@@ -60,7 +60,7 @@ if (&User-Name =~ /^[0-9](.*)/) {
 #
 &test_string := '1420032219455259'
 &control += {
-	&User-Name = %3gpp_temporary_id_encrypt(%{User-Name[1]},%{test_string},6)
+	User-Name = %3gpp_temporary_id_encrypt(%{User-Name[1]},%{test_string},6)
 }
 
 #
@@ -82,7 +82,7 @@ if ("%3gpp_temporary_id_encrypt(%{control.User-Name[1]},%{test_string},6)" != ''
 #
 &result_string := %3gpp_temporary_id_decrypt(%{control.User-Name[1]},%{test_string})
 
-if (&result_string != "0%{User-Name[1]}") {
+if (result_string != "0%{User-Name[1]}") {
 	test_fail
 }
 
@@ -91,7 +91,7 @@ if (&result_string != "0%{User-Name[1]}") {
 #
 &test_string := '1420032219455259'
 &control += {
-	&User-Name = %3gpp_temporary_id_encrypt(%{User-Name[1]},%{test_string},6,fastauth)
+	User-Name = %3gpp_temporary_id_encrypt(%{User-Name[1]},%{test_string},6,fastauth)
 }
 
 #
@@ -113,7 +113,7 @@ if ("%3gpp_temporary_id_encrypt(%{control.User-Name[2]},%{test_string},6,fastaut
 #
 &result_string := %3gpp_temporary_id_decrypt(%{control.User-Name[2]},%{test_string})
 
-if (&result_string != "0%{User-Name[1]}") {
+if (result_string != "0%{User-Name[1]}") {
 	test_fail
 }
 

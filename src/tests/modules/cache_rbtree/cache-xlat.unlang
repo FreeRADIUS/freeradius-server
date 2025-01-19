@@ -16,13 +16,13 @@ if (%cache.ttl.get() < 4) {
 
 &request.Login-LAT-Service := %cache('request.Callback-Id')
 
-if (&Login-LAT-Service != &control.Callback-Id) {
+if (Login-LAT-Service != control.Callback-Id) {
         test_fail
 }
 
 &Login-LAT-Node := %cache(request.Login-LAT-Port)
 
-if (&Login-LAT-Node) {
+if (Login-LAT-Node) {
         test_fail
 }
 

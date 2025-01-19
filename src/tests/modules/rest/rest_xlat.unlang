@@ -15,52 +15,52 @@ string result_string
 # Retrieve a plain text file
 &result_string := %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/test.txt")
 
-if (!(&REST-HTTP-Status-Code == 200)) {
+if (!(REST-HTTP-Status-Code == 200)) {
 	test_fail
 }
 
-if (!(&result_string == "Sample text response\n")) {
+if (!(result_string == "Sample text response\n")) {
 	test_fail
 }
 
 # Take host from incoming packet
 &result_string := %rest('GET', "http://%{Login-IP-Host}:%uri.safe(%{server_port})/test.txt")
 
-if (!(&REST-HTTP-Status-Code == 200) || !(&result_string == "Sample text response\n")) {
+if (!(REST-HTTP-Status-Code == 200) || !(result_string == "Sample text response\n")) {
 	test_fail
 }
 
 # Port is not allowed from incoming packets
 &result_string := %rest('GET', "http://%{server_host}:%{NAS-Port}/test.txt")
 
-if (!(&Module-Failure-Message == "Failed escaping URI: Unsafe input \"8080\" not allowed in URI part port") || &result_string) {
+if (!(Module-Failure-Message == "Failed escaping URI: Unsafe input \"8080\" not allowed in URI part port") || result_string) {
 	test_fail
 }
 
 # Check a "not found" gives a 404 status code
 &result_string := %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/%{test_string}")
 
-if (!(&REST-HTTP-Status-Code == 404)) {
+if (!(REST-HTTP-Status-Code == 404)) {
 	test_fail
 }
 
 # GET with URL parameters
 &test_string := %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/user/%{User-Name}/mac/%{Called-Station-Id}")
 
-if (!(&REST-HTTP-Status-Code == 200)) {
+if (!(REST-HTTP-Status-Code == 200)) {
 	test_fail
 }
 
-map json &test_string {
-	&control.Callback-Id := '$.control\.Callback-Id'
-	&control.User-Name := '$.control\.User-Name.value'
+map json test_string {
+	control.Callback-Id := '$.control\.Callback-Id'
+	control.User-Name := '$.control\.User-Name.value'
 }
 
-if !(&control.Callback-Id == '[ "GET", "\/user\\/<username>\/mac\/<client>" ]') {
+if !(control.Callback-Id == '[ "GET", "\/user\\/<username>\/mac\/<client>" ]') {
 	test_fail
 }
 
-if (!(&control.User-Name == "Bob")) {
+if (!(control.User-Name == "Bob")) {
 	test_fail
 }
 
@@ -68,50 +68,50 @@ if (!(&control.User-Name == "Bob")) {
 
 # Directly use json map and prepend the returned value
 map json %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/user/%{User-Name}/mac/%{Called-Station-Id}") {
-	&control.User-Name ^= '$.control\.User-Name.value'
+	control.User-Name ^= '$.control\.User-Name.value'
 }
 
-if (!(&control.User-Name[0] == 'Bob') || !(&control.User-Name[1] == 'dummy')) {
+if (!(control.User-Name[0] == 'Bob') || !(control.User-Name[1] == 'dummy')) {
 	test_fail
 }
 
-&test_string := %json.encode('&request.NAS-IP-Address')
+&test_string := %json.encode('request.NAS-IP-Address')
 
 # POST to https with JSON body data
 &result_string := %rest('POST', "https://%{server_host}:%uri.safe(%{server_ssl_port})/user/%{User-Name}/mac/%{Called-Station-Id}?section=accounting", %{test_string})
 
-if (!(&REST-HTTP-Status-Code == 200)) {
+if (!(REST-HTTP-Status-Code == 200)) {
 	test_fail
 }
 
-map json &result_string {
-	&control.Callback-Id := '$.control\.Callback-Id'
-	&control.User-Name := '$.control\.User-Name.value'
-	&control.NAS-IP-Address := '$.control\.NAS-IP-Address.value'
+map json result_string {
+	control.Callback-Id := '$.control\.Callback-Id'
+	control.User-Name := '$.control\.User-Name.value'
+	control.NAS-IP-Address := '$.control\.NAS-IP-Address.value'
 }
 
-if (!(&control.Callback-Id == '[ "POST", "\/user\/<username>\/mac\/<client>" ]')) {
+if (!(control.Callback-Id == '[ "POST", "\/user\/<username>\/mac\/<client>" ]')) {
 	test_fail
 }
 
-if (!(&control.User-Name == "Bob")) {
+if (!(control.User-Name == "Bob")) {
 	test_fail
 }
 
-if (!(&control.NAS-IP-Address == "192.168.1.1")) {
+if (!(control.NAS-IP-Address == "192.168.1.1")) {
 	test_fail
 }
 
-&result_string := "NAS=%{NAS-IP-Address}&user=%{User-Name}"
+&result_string := "NAS=%{NAS-IP-Address}user=%{User-Name}"
 
 # POST to https with POST body data
 &result_string := %rest('POST', "https://%{server_host}:%uri.safe(%{server_ssl_port})/post/test?section=dummy", %{result_string})
 
-if (!(&REST-HTTP-Status-Code == 200)) {
+if (!(REST-HTTP-Status-Code == 200)) {
 	test_fail
 }
 
-if (!(&result_string == "Section: dummy, User: Bob\n")) {
+if (!(result_string == "Section: dummy, User: Bob\n")) {
 	test_fail
 }
 
@@ -123,32 +123,32 @@ group {
 	string body
 
 	map json %rest('POST', "http://%{server_host}:%uri.safe(%{server_port})/user/%{User-Name}/reflect/?station=%{Calling-Station-Id}", "{\"test\":\"foo\"}") {
-		&headers := '$.reply\.Reply-Message.value[0]'
-		&arguments := '$.reply\.Reply-Message.value[1]'
-		&body := '$.reply\.Reply-Message.value[2]'
+		headers := '$.reply\.Reply-Message.value[0]'
+		arguments := '$.reply\.Reply-Message.value[1]'
+		body := '$.reply\.Reply-Message.value[2]'
 	}
 
-	&headers := (string)%base64.decode(%{headers})
-	&arguments := (string)%base64.decode(%{arguments})
-	&body := (string)%base64.decode(%{body})
+	headers := (string)%base64.decode(%{headers})
+	arguments := (string)%base64.decode(%{arguments})
+	body := (string)%base64.decode(%{body})
 
-	if (!(&arguments == "{\"station\":\"dummy&unsafe=escaped\"}" )) {
+	if (!(arguments == "{\"station\":\"dummyunsafe=escaped\"}" )) {
 		test_fail
 	}
 
-	if (!(&headers =~ /"user-agent":"FreeRADIUS.*"/)) {
+	if (!(headers =~ /"user-agent":"FreeRADIUS.*"/)) {
 		test_fail
 	}
 
-	if (!(&headers =~ /"x-freeradius-server":"default"/)) {
+	if (!(headers =~ /"x-freeradius-server":"default"/)) {
 		test_fail
 	}
 
-	if (!(&headers =~ /"x-custom-header":\["test","Bob"\]/)) {
+	if (!(headers =~ /"x-custom-header":\["test","Bob"\]/)) {
 		test_fail
 	}
 
-	if (!(&body == "{\"test\":\"foo\"}")) {
+	if (!(body == "{\"test\":\"foo\"}")) {
 		test_fail
 	}
 }
@@ -158,30 +158,30 @@ group {
 	string headers
 	string arguments
 
-	&test_string := ""
+	test_string := ""
 
 	map json %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/user/%{User-Name}/reflect/%{test_string}?station=%{User-Name}") {
-		&headers := '$.reply\.Reply-Message.value[0]'
-		&arguments := '$.reply\.Reply-Message.value[1]'
+		headers := '$.reply\.Reply-Message.value[0]'
+		arguments := '$.reply\.Reply-Message.value[1]'
 	}
 
-	&headers := (string)%base64.decode(%{headers})
-	&arguments := (string)%base64.decode(%{arguments})
+	headers := (string)%base64.decode(%{headers})
+	arguments := (string)%base64.decode(%{arguments})
 
-	if (!(&arguments == "{\"station\":\"Bob\"}" )) {
+	if (!(arguments == "{\"station\":\"Bob\"}" )) {
 		test_fail
 	}
 
-	if (!(&headers =~ /"user-agent":"FreeRADIUS.*"/)) {
+	if (!(headers =~ /"user-agent":"FreeRADIUS.*"/)) {
 		test_fail
 	}
 
-	if (!(&headers =~ /"x-freeradius-server":"default"/)) {
+	if (!(headers =~ /"x-freeradius-server":"default"/)) {
 		test_fail
 	}
 
 	# Some weird escaping issue prevents matching application/json
-	if (!(&headers =~ /"content-type":"application.+json"/)) {
+	if (!(headers =~ /"content-type":"application.+json"/)) {
 		test_fail
 	}
 }
@@ -191,12 +191,12 @@ group {
 	string arguments
 
 	map json %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/user/%{User-Name}/reflect/%{NAS-Identifier}?station=%{Called-Station-Id}") {
-		&arguments := '$.reply\.Reply-Message.value[1]'
+		arguments := '$.reply\.Reply-Message.value[1]'
 	}
 
-	&arguments := (string)%base64.decode(%{arguments})
+	arguments := (string)%base64.decode(%{arguments})
 
-	if (!(&arguments == "{\"station\":\"aa:bb:cc:dd:ee:ff\"}" )) {
+	if (!(arguments == "{\"station\":\"aa:bb:cc:dd:ee:ff\"}" )) {
 		test_fail
 	}
 }
@@ -204,11 +204,11 @@ group {
 # Test against endpoint which will time out
 &result_string := %restshorttimeout('GET', "http://%{server_host}:%uri.safe(%{server_port})/delay")
 
-if (&REST-HTTP-Status-Code) {
+if (REST-HTTP-Status-Code) {
 	test_fail
 }
 
-if (!(&Module-Failure-Message == "curl request failed: Timeout was reached (28)")) {
+if (!(Module-Failure-Message == "curl request failed: Timeout was reached (28)")) {
 	test_fail
 }
 

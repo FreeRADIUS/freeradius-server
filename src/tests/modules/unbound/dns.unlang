@@ -4,54 +4,54 @@ string result_string
 #  Use builtin "local" zone
 &result_ipaddr := %dns('localhost', 'A')
 
-if (&result_ipaddr != 127.0.0.1) {
+if (result_ipaddr != 127.0.0.1) {
 	test_fail
 }
 
 &result_string := %dns('localhost', 'AAAA')
 
-if (&result_string != '::1') {
+if (result_string != '::1') {
 	test_fail
 }
 
 &result_string := %dns('1.0.0.127.in-addr.arpa', 'PTR')
 
-if (&result_string != 'localhost') {
+if (result_string != 'localhost') {
 	test_fail
 }
 
 #  Use local data in module config to allow for dotted names
 &result_ipaddr := %dns('www.example.com', 'A')
 
-if (&result_ipaddr != 192.168.1.1) {
+if (result_ipaddr != 192.168.1.1) {
 	test_fail
 }
 
 &result_string := %dns('1.1.168.192.in-addr.arpa', 'PTR')
 
-if (&result_string != 'www.example.com') {
+if (result_string != 'www.example.com') {
 	test_fail
 }
 
 # Try a real, known, network response
 # Temporarily disabled while there is a bug in unbound
-#&result_string := %dns('8.8.8.8.in-addr.arpa', 'PTR')
+#result_string := %dns('8.8.8.8.in-addr.arpa', 'PTR')
 
-#if (&result_string != 'dns.google') {
+#if (result_string != 'dns.google') {
 #	test_fail
 #}
 
 # Invalid query
 &result_string := %dns('www.example.com', 'ABC')
 
-if (&Module-Failure-Message != "Invalid / unsupported DNS query type") {
+if (Module-Failure-Message != "Invalid / unsupported DNS query type") {
 	test_fail
 }
 
 &result_string := ''
 &result_string := %dns(%{result_string}, 'A')
 
-if (&Module-Failure-Message != "Can't resolve zero length host") {
+if (Module-Failure-Message != "Can't resolve zero length host") {
 	test_fail
 }
 
@@ -59,7 +59,7 @@ if (&Module-Failure-Message != "Can't resolve zero length host") {
 # Each returned record is a pair of priority and host values.
 &Filter-Id := %dns(example.com, 'MX')
 
-if !(((&Filter-Id[0] == '10') && (&Filter-Id[1] == 'mail.example.com') && (&Filter-Id[2] == '20') && (&Filter-Id[3] == 'mail2.example.com')) || ((&Filter-Id[2] == '10') && (&Filter-Id[3] == 'mail.example.com') && (&Filter-Id[0] == '20') && (&Filter-Id[1] == 'mail2.example.com'))) {
+if !(((Filter-Id[0] == '10') && (Filter-Id[1] == 'mail.example.com') && (Filter-Id[2] == '20') && (Filter-Id[3] == 'mail2.example.com')) || ((Filter-Id[2] == '10') && (Filter-Id[3] == 'mail.example.com') && (Filter-Id[0] == '20') && (Filter-Id[1] == 'mail2.example.com'))) {
 	test_fail
 }
 
@@ -67,14 +67,14 @@ if !(((&Filter-Id[0] == '10') && (&Filter-Id[1] == 'mail.example.com') && (&Filt
 # As results are not in a specified order, it could be either.
 &Filter-Id := %dns(example.com,MX,1)
 
-if !(((&Filter-Id[0] == '10') && (&Filter-Id[1] == 'mail.example.com')) || ((&Filter-Id[0] == '20') && (&Filter-Id[1] == 'mail2.example.com'))) {
+if !(((Filter-Id[0] == '10') && (Filter-Id[1] == 'mail.example.com')) || ((Filter-Id[0] == '20') && (Filter-Id[1] == 'mail2.example.com'))) {
 	test_fail
 }
 
 &result_string := %dns('n0nex1stent.d0ma1n', 'A')
 
 # Running this on macOS produces a timeout due to the nonexistent TLD
-if ((&Module-Failure-Message != "dns - Nonexistent domain name") && (&Module-Failure-Message != "Timeout waiting for DNS resolution")) {
+if ((Module-Failure-Message != "dns - Nonexistent domain name") && (Module-Failure-Message != "Timeout waiting for DNS resolution")) {
 	test_fail
 }
 

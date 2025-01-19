@@ -4,7 +4,7 @@ string test_string
 #
 
 &test_string := %json_object_ex_encode()  # ERROR
-if (&test_string) {
+if (test_string) {
 	test_fail
 }
 

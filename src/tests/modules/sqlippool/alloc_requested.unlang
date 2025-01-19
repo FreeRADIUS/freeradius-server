@@ -21,7 +21,7 @@ if (!updated) {
 	test_fail
 }
 
-if !(&reply.Framed-IP-Address == 192.168.0.2) {
+if !(reply.Framed-IP-Address == 192.168.0.2) {
 	test_fail
 }
 
@@ -29,12 +29,12 @@ if !(&reply.Framed-IP-Address == 192.168.0.2) {
 #  Check Expiry
 #
 &expiry := %sql("SELECT strftime('%%s', expiry_time) FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND address = '%{reply.Framed-IP-Address}'")
-if ((&expiry - %l) < 20) {
+if ((expiry - %l) < 20) {
 	test_fail
 }
 
 # +2 - Some slop for macOS
-if ((&expiry - %l) > 42) {
+if ((expiry - %l) > 42) {
 	test_fail
 }
 
@@ -50,7 +50,7 @@ if !(%sql("SELECT gateway FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Na
 }
 
 &reply := {}
-&request -= &Framed-IP-Address
+&request -= Framed-IP-Address
 
 #
 #  Now change the Calling-Station-ID and check we get a different lease
@@ -65,7 +65,7 @@ if (!updated) {
 #
 #  Check we got the right lease - the oldest one by expiry_time
 #
-if !(&reply.Framed-IP-Address == 192.168.0.3) {
+if !(reply.Framed-IP-Address == 192.168.0.3) {
 	test_fail
 }
 

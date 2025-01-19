@@ -4,7 +4,7 @@
 %sql("${delete_from_radcheck} 'attrref'")
 %sql("${delete_from_radreply} 'attrref'")
 
-if (%sql("${insert_into_radcheck} ('attrref', 'NAS-IP-Address', '==', '&Framed-IP-Address')") != "1") {
+if (%sql("${insert_into_radcheck} ('attrref', 'NAS-IP-Address', '==', 'Framed-IP-Address')") != "1") {
 	test_fail
 }
 

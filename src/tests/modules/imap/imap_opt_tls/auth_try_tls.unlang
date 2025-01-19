@@ -15,7 +15,7 @@ if !(ok) {
     test_fail
 }
 
-if !(&TLS-Certificate.Issuer =~ /@example\.org/) {
+if !(TLS-Certificate.Issuer =~ /@example\.org/) {
     test_fail
 }
 

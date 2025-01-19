@@ -11,7 +11,7 @@ if (!ok) {
 
 &test_string := %ldap("ldap://$ENV{TEST_SERVER}/uid=bob,ou=people,dc=example,dc=com?description")
 
-if (&test_string != "User bob is online") {
+if (test_string != "User bob is online") {
         test_fail
 }
 

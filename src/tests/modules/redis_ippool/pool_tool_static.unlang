@@ -26,7 +26,7 @@ if (!updated) {
 	test_fail
 }
 
-if !(&reply.Framed-IP-Address == 192.168.0.10) {
+if !(reply.Framed-IP-Address == 192.168.0.10) {
 	test_fail
 }
 
@@ -70,7 +70,7 @@ if !(%redis(GET, {%{control.IP-Pool.Name}}:device:aa:bb:cc:dd:ee:ff) == '192.168
 #
 #  Change device to grab the dynamic address
 &Calling-Station-ID := '11:22:33:44:55:66'
-&reply -= &Framed-IP-Address[*]
+&reply -= Framed-IP-Address[*]
 
 redis_ippool {
 	invalid = 1
@@ -79,7 +79,7 @@ if (!updated) {
 	test_fail
 }
 
-if !(&reply.Framed-IP-Address == 192.168.0.1) {
+if !(reply.Framed-IP-Address == 192.168.0.1) {
 	test_fail
 }
 
@@ -99,7 +99,7 @@ if !(%redis(GET, {%{control.IP-Pool.Name}}:device:11:22:33:44:55:66) == '192.168
 }
 
 &zscore := %redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, 192.168.0.1)
-if !(&zscore < (uint64)0x10000000000000) {
+if !(zscore < (uint64)0x10000000000000) {
 	test_fail
 }
 
@@ -111,7 +111,7 @@ if !(&zscore < (uint64)0x10000000000000) {
 #
 #  Check that the ZSCORE is maintained, simply with the static bit set
 #
-if !(%redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, 192.168.0.1) == (&zscore + (uint64) 0x10000000000000)) {
+if !(%redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, 192.168.0.1) == (zscore + (uint64) 0x10000000000000)) {
 	test_fail
 }
 

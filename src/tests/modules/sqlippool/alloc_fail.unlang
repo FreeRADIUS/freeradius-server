@@ -17,7 +17,7 @@ if (!noop) {
 	test_fail
 }
 
-if (&reply.Framed-IP-Address) {
+if (reply.Framed-IP-Address) {
 	test_fail
 }
 
@@ -34,7 +34,7 @@ if (!updated) {
 	test_fail
 }
 
-if !(&reply.Framed-IP-Address == 192.168.0.1) {
+if !(reply.Framed-IP-Address == 192.168.0.1) {
 	test_fail
 }
 
@@ -53,7 +53,7 @@ if (!notfound) {
 #
 #  Check we got no address
 #
-if (&reply.Framed-IP-Address) {
+if (reply.Framed-IP-Address) {
 	test_fail
 }
 

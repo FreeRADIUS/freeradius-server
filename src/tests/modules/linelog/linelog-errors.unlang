@@ -21,7 +21,7 @@ linelog_missingref {
 if (!fail) {
 	test_fail
 }
-if !(&Module-Failure-Message == 'linelog_missingref: Invalid path "..messages.valid"') {
+if !(Module-Failure-Message == 'linelog_missingref: Invalid path "..messages.valid"') {
 	test_fail
 }
 
@@ -41,7 +41,7 @@ linelog_missingref {
 	fail = 1
 }
 
-if !(&Module-Failure-Message == 'linelog_missingref: Path ".messages" resolves to a section (should be a pair)') {
+if !(Module-Failure-Message == 'linelog_missingref: Path ".messages" resolves to a section (should be a pair)') {
 	test_fail
 }
 

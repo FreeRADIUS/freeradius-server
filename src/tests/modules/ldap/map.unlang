@@ -1,27 +1,27 @@
 map ldap "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)" {
-	&Framed-IP-Netmask := 'radiusFramedIPNetmask'
-	&Filter-Id += 'entryDN'
+	Framed-IP-Netmask := 'radiusFramedIPNetmask'
+	Filter-Id += 'entryDN'
 }
 
 if (!updated) {
 	test_fail
 }
 
-if (!(&Framed-IP-Netmask == '255.255.255.0')) {
+if (!(Framed-IP-Netmask == '255.255.255.0')) {
 	test_fail
 }
 
-if (!(&Filter-Id[*] == 'cn=radprofile,ou=profiles,dc=example,dc=com')) {
+if (!(Filter-Id[*] == 'cn=radprofile,ou=profiles,dc=example,dc=com')) {
 	test_fail
 }
 
-if (!(&Filter-Id[*] == 'cn=profile1,ou=profiles,dc=example,dc=com')) {
+if (!(Filter-Id[*] == 'cn=profile1,ou=profiles,dc=example,dc=com')) {
 	test_fail
 }
 
 map ldap "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=notARealObject)" {
-	&Framed-IP-Netmask := 'radiusFramedIPNetmask'
-	&Filter-Id += 'entryDN'
+	Framed-IP-Netmask := 'radiusFramedIPNetmask'
+	Filter-Id += 'entryDN'
 }
 
 if (!notfound) {
@@ -29,14 +29,14 @@ if (!notfound) {
 }
 
 map ldapldapi "ldapi://%%2Ftmp%%2Fldap%%2Fsocket/ou=people,dc=example,dc=com??sub?(uid=%{User-Name})" {
-	&Filter-Id := 'displayName'
+	Filter-Id := 'displayName'
 }
 
 if (!updated) {
 	test_fail
 }
 
-if !(&Filter-Id == 'John Doe') {
+if !(Filter-Id == 'John Doe') {
 	test_fail
 }
 
@@ -44,7 +44,7 @@ if !(&Filter-Id == 'John Doe') {
 #  Use an attribute in the incoming requests with non "ldap safe" characters which should be escaped
 #
 map ldapldapi "ldapi://%%2Ftmp%%2Fldap%%2Fsocket/ou=people,dc=example,dc=com??sub?(uid=%{NAS-Identifier})" {
-	&Filter-Id := 'displayName'
+	Filter-Id := 'displayName'
 }
 
 if (!notfound) {

@@ -4,7 +4,7 @@ string result_string
 &test_string := 'vvrbuctetdhc'
 &result_string := %modhextohex(%{test_string})
 
-if (&result_string != 'ffc1e0d3d260') {
+if (result_string != 'ffc1e0d3d260') {
 	test_fail
 }
 
@@ -17,11 +17,11 @@ if (ok) {
 	test_fail
 }
 
-if (&result_string) {
+if (result_string) {
 	test_fail
 }
 
-if (&Module-Failure-Message != "Modhex string invalid") {
+if (Module-Failure-Message != "Modhex string invalid") {
 	test_fail
 }
 
@@ -34,7 +34,7 @@ if (ok) {
 	test_fail
 }
 
-if (&result_string) {
+if (result_string) {
 	test_fail
 }
 

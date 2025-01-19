@@ -10,13 +10,13 @@ string result_string
 # String with no escaping
 &result_string := %ldap.uri.escape(%{test_string})
 
-if (!(&result_string == "safe string")) {
+if (!(result_string == "safe string")) {
         test_fail
 }
 
 &result_string := %ldap.uri.unescape(%{result_string})
 
-if (!(&result_string == 'safe string')) {
+if (!(result_string == 'safe string')) {
         test_fail
 }
 
@@ -24,13 +24,13 @@ if (!(&result_string == 'safe string')) {
 &test_string := 'non safe,+"\<>;*=() string'
 &result_string := %ldap.uri.escape(%{test_string})
 
-if (!(&result_string == 'non safe\2c\2b\22\5c\3c\3e\3b\2a\3d\28\29 string')) {
+if (!(result_string == 'non safe\2c\2b\22\5c\3c\3e\3b\2a\3d\28\29 string')) {
         test_fail
 }
 
 &result_string := %ldap.uri.unescape(%{result_string})
 
-if (!(&result_string == 'non safe,+"\<>;*=() string')) {
+if (!(result_string == 'non safe,+"\<>;*=() string')) {
         test_fail
 }
 
@@ -38,86 +38,86 @@ if (!(&result_string == 'non safe,+"\<>;*=() string')) {
 &test_string := ',+"\<>;*=()'
 &result_string := %ldap.uri.escape(%{test_string})
 
-if (!(&result_string == '\2c\2b\22\5c\3c\3e\3b\2a\3d\28\29')) {
+if (!(result_string == '\2c\2b\22\5c\3c\3e\3b\2a\3d\28\29')) {
         test_fail
 }
 
 &result_string := %ldap.uri.unescape(%{result_string})
 
-if (!(&result_string == ',+"\<>;*=()')) {
+if (!(result_string == ',+"\<>;*=()')) {
         test_fail
 }
 
 &result_string := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=people,dc=example,dc=com?displayName?sub?(uid=john)")
 
-if (!(&result_string == "John Doe")) {
+if (!(result_string == "John Doe")) {
         test_fail
 }
 
 # Return multiple values - could be in any sequence
 &Framed-IP-Address := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=clients,dc=example,dc=com?freeradiusClientIdentifier?sub?(objectClass=freeradiusClient)")
 
-if !((&Framed-IP-Address[0] == "1.1.1.1") && (&Framed-IP-Address[1] == "2.2.2.2")) {
+if !((Framed-IP-Address[0] == "1.1.1.1") && (Framed-IP-Address[1] == "2.2.2.2")) {
         test_fail
 }
 
 # Use tainted string in filter - with special characters
 &result_string := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=people,dc=example,dc=com?cn?sub?(displayName=*%{Filter-Id}*)")
 
-if (!(&result_string == "Bob Smith")) {
+if (!(result_string == "Bob Smith")) {
         test_fail
 }
 
 # A query which should return no results
 &result_string := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=people,dc=example,dc=com?displayName?sub?(uid=notknown)")
 
-if (&result_string) {
+if (result_string) {
         test_fail
 }
 
 # Request an invalid DN
 &result_string := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=notthere?displayName?sub?(uid=john)")
 
-if (&result_string) {
+if (result_string) {
         test_fail
 }
 
 # Query within a dn which will prompt a referral
 &result_string := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/dc=subdept,dc=example,dc=com?displayName?sub?(uid=fred)")
 
-if (!(&result_string == "Fred Jones")) {
+if (!(result_string == "Fred Jones")) {
         test_fail
 }
 
 # Reference an alternative LDAP server in the xlat
 &result_string := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:%ldap.uri.escape(%{$ENV{LDAP_TEST_SERVER_PORT} + 1})/dc=subdept,dc=example,dc=com?displayName?sub?(uid=fred)")
 
-if (!(&result_string == "Fred Jones")) {
+if (!(result_string == "Fred Jones")) {
         test_fail
 }
 
 # This query will follow 2 referrals, the second will present an alternate search base
 &result_string := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=offsite,dc=subdept,dc=example,dc=com?displayName?sub?(uid=john)")
 
-if (!(&result_string == "John Doe")) {
+if (!(result_string == "John Doe")) {
         test_fail
 }
 
 # This query will follow 3 referrals - more than our max referral depth
 &result_string := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=bounce1,dc=subdept,dc=example,dc=com?displayName?sub?(uid=fred)")
 
-if (&result_string) {
+if (result_string) {
         test_fail
 }
 
-if (!(&Module-Failure-Message == "Maximum LDAP referral depth (2) exceeded")) {
+if (!(Module-Failure-Message == "Maximum LDAP referral depth (2) exceeded")) {
         test_fail
 }
 
 # Use an ldapi:// connection
 &result_string := %ldapldapi("ldapi:///ou=people,dc=example,dc=com?displayName?sub?(uid=john)")
 
-if !(&result_string == 'John Doe') {
+if !(result_string == 'John Doe') {
 	test_fail
 }
 

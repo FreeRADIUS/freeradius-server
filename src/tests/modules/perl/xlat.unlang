@@ -10,33 +10,33 @@ uint32 result_integer
 &test_string := 'foo,bar'
 &Callback-Id := %perl_xlat('xlat', %{Filter-Id})
 
-if (&Callback-Id != 'hello|goodbye|welcome|farewell') {
+if (Callback-Id != 'hello|goodbye|welcome|farewell') {
 	test_fail
 }
 
 # Check for multiple arguments to perl function
 &result_string := %perl_xlat('xlat', %{Filter-Id}, %{test_string})
 
-if (&result_string != 'hello|goodbye|welcome|farewell#foo|bar') {
+if (result_string != 'hello|goodbye|welcome|farewell#foo|bar') {
 	test_fail
 }
 
 &result_integer := %perl_xlat('add', 1, 2, 3)
 
-if (&result_integer != 6) {
+if (result_integer != 6) {
 	test_fail
 }
 
 &Filter-Id := 'hello'
 &request += {
-	&Filter-Id = 'goodbye'
-	&Filter-Id = 'welcome'
+	Filter-Id = 'goodbye'
+	Filter-Id = 'welcome'
 }
 
 # Pass a list as an array
 &Callback-Id := %perl_xlat('xlatarray', %{Filter-Id[*]})
 
-if (&Callback-Id != 'hello|goodbye|welcome') {
+if (Callback-Id != 'hello|goodbye|welcome') {
 	test_fail
 }
 
@@ -45,10 +45,10 @@ if (&Callback-Id != 'hello|goodbye|welcome') {
 # Expect an array of returned values
 &Callback-Id := %perl_xlat('xlatscalar2array', %{Filter-Id})
 
-if (&Callback-Id[#] != 5) {
+if (Callback-Id[#] != 5) {
 	test_fail
 }
-if !((&Callback-Id[0] == 'aa') && (&Callback-Id[1] == 'bb') && (&Callback-Id[2] == 'cc') && (&Callback-Id[3] == 'dd') && (&Callback-Id[4] == 'ee')) {
+if !((Callback-Id[0] == 'aa') && (Callback-Id[1] == 'bb') && (Callback-Id[2] == 'cc') && (Callback-Id[3] == 'dd') && (Callback-Id[4] == 'ee')) {
 	test_fail
 }
 
@@ -57,29 +57,29 @@ if !((&Callback-Id[0] == 'aa') && (&Callback-Id[1] == 'bb') && (&Callback-Id[2] 
 # Expect an array of array ref returned values
 &Callback-Id := %perl_xlat('xlatscalar2arrayref', %{Filter-Id}, %{test_string})
 
-if (&Callback-Id[#] != 9) {
+if (Callback-Id[#] != 9) {
 	test_fail
 }
-if !((&Callback-Id[0] == 'aa') && (&Callback-Id[1] == 'bb') && (&Callback-Id[2] == 'cc') && (&Callback-Id[3] == 'dd') && (&Callback-Id[4] == 'ee') && (&Callback-Id[5] == 'ff') && (&Callback-Id[6] == 'gg') && (&Callback-Id[7] == 'hh') && (&Callback-Id[8] == 'ii')) {
+if !((Callback-Id[0] == 'aa') && (Callback-Id[1] == 'bb') && (Callback-Id[2] == 'cc') && (Callback-Id[3] == 'dd') && (Callback-Id[4] == 'ee') && (Callback-Id[5] == 'ff') && (Callback-Id[6] == 'gg') && (Callback-Id[7] == 'hh') && (Callback-Id[8] == 'ii')) {
 	test_fail
 }
 
 &Filter-Id := 'a'
 &request += {
-	&Filter-Id = 'b'
-	&Filter-Id = 'c'
+	Filter-Id = 'b'
+	Filter-Id = 'c'
 }
 
 # Returns a hash with each element in the provided array converted to Vn->value
 &Callback-Id := %perl_xlat('xlatarray2hash', %{Filter-Id[*]})
 
-if (&Callback-Id[#] != 6) {
+if (Callback-Id[#] != 6) {
 	test_fail
 }
 
 # Note: hashes don't have a defined sequence so these are all the possible return values - mashed to single strings for simplicity's sake
 &result_string := "%{Callback-Id[*]}"
-if (&result_string != "V1aV2bV3c") && (&result_string != "V1aV3cV2b") && (&result_string != "V2bV1aV3c") && (&result_string != "V2bV3cV1a") && (&result_string != "V3cV1aV2b") && (&result_string != "V3cV2bV1a") {
+if (result_string != "V1aV2bV3c") && (result_string != "V1aV3cV2b") && (result_string != "V2bV1aV3c") && (result_string != "V2bV3cV1a") && (result_string != "V3cV1aV2b") && (result_string != "V3cV2bV1a") {
 	test_fail
 }
 

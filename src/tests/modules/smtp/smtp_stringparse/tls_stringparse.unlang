@@ -1,9 +1,9 @@
 &request += {
-	&SMTP-Mail-Body = "sent from the smtp test module\r\n"
-	&SMTP-Recipients = "stringparse_test_receiver@localhost"
-	&SMTP-Sender-Address = "smtp_sender@localhost"
-	&SMTP-Sender-Address = "smtp_sender_2@localhost"
-	&SMTP-Sender-Address = "smtp_sender_3@localhost"
+	SMTP-Mail-Body = "sent from the smtp test module\r\n"
+	SMTP-Recipients = "stringparse_test_receiver@localhost"
+	SMTP-Sender-Address = "smtp_sender@localhost"
+	SMTP-Sender-Address = "smtp_sender_2@localhost"
+	SMTP-Sender-Address = "smtp_sender_3@localhost"
 }
 smtp.mail {
 	fail = 1
@@ -13,7 +13,7 @@ smtp.mail {
 #  Module failure is likely a timeout
 #  Avoid false negatives by aborting test
 #
-if (fail && (&Module-Failure-Message[*] == 'smtp: curl request failed: Timeout was reached (28)')) {
+if (fail && (Module-Failure-Message[*] == 'smtp: curl request failed: Timeout was reached (28)')) {
 	test_pass
 	handled
 }
@@ -37,7 +37,7 @@ grep -E 'Subject: for Bob'"`) {
 	test_fail
 }
 
-if !(&TLS-Certificate.Issuer =~ /@example\.org/) {
+if !(TLS-Certificate.Issuer =~ /@example\.org/) {
 	test_fail
 }
 

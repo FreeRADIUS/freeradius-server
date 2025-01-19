@@ -10,7 +10,7 @@ redundant {
         ok
 }
 
-if (&REST-HTTP-Status-Code) {
+if (REST-HTTP-Status-Code) {
 	test_fail
 }
 

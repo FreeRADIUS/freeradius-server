@@ -6,18 +6,18 @@ if (!notfound) {
     test_fail
 }
 
-if !(&reply.Reply-Message == "Denied access by rlm_perl function") {
+if !(reply.Reply-Message == "Denied access by rlm_perl function") {
     test_fail
 }
 
-&reply -= &Reply-Message[*]
+&reply -= Reply-Message[*]
 
 #  User will not be rejected - an xlat will be called setting a reply attribute
 &User-Name := 'bob'
 
 # Add two instances of a TLV - will result in an array of hashes in Perl
-&Vendor-Specific.3GPP2.Remote-IP = { &Address = 192.168.1.1, &Mask = 24 }
-&request.Vendor-Specific.3GPP2 += { &Remote-IP = { &Address = 172.16.1.1, &Mask = 16 } }
+&Vendor-Specific.3GPP2.Remote-IP = { Address = 192.168.1.1, Mask = 24 }
+&request.Vendor-Specific.3GPP2 += { Remote-IP = { Address = 172.16.1.1, Mask = 16 } }
 
 perl.authenticate
 
@@ -25,22 +25,22 @@ if (!ok) {
     test_fail
 }
 
-if (&reply.Vendor-Specific.Cisco.h323-credit-amount != 100) {
+if (reply.Vendor-Specific.Cisco.h323-credit-amount != 100) {
     test_fail
 }
-if (&reply.Filter-Id != 'Hello 127.0.0.1 172.16.1.1') {
+if (reply.Filter-Id != 'Hello 127.0.0.1 172.16.1.1') {
 	test_fail
 }
 # Verify that the change to the request and control lists are
 # not copied back.
-if (&User-Name != 'bob') {
+if (User-Name != 'bob') {
 	test_fail
 }
-if (&control.NAS-Identifier) {
+if (control.NAS-Identifier) {
 	test_fail
 }
 
-&reply -= &Vendor-Specific[*]
-&reply -= &Filter-Id[*]
+&reply -= Vendor-Specific[*]
+&reply -= Filter-Id[*]
 
 test_pass

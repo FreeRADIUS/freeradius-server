@@ -1,5 +1,5 @@
-if (&User-Name == 'plaintext_with_dollar_1') {
-	&control.Password.Cleartext := '$password'
+if (User-Name == 'plaintext_with_dollar_1') {
+	control.Password.Cleartext := '$password'
 
 	pap.authorize
 	pap.authenticate

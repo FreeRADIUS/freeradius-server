@@ -1,6 +1,6 @@
 %file.rm("$ENV{MODULE_TEST_DIR}/127.0.0.1-detail")
 
-&request -= &Module-Failure-Message[*]
+&request -= Module-Failure-Message[*]
 
 detail
 

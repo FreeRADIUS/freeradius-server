@@ -1,14 +1,14 @@
 &request += {
-	&SMTP-Mail-Body = "sent from the smtp test module\r\n"
-	&SMTP-Mail-Body = "\r\n"
-	&SMTP-Mail-Body = "Some Body\r\n"
-	&SMTP-Mail-Body = ".\r\n"
-	&SMTP-Mail-Body = "More Body\r\n"
-	&SMTP-Mail-Body = "."
-	&SMTP-Mail-Body = "Most Body\r\n"
+	SMTP-Mail-Body = "sent from the smtp test module\r\n"
+	SMTP-Mail-Body = "\r\n"
+	SMTP-Mail-Body = "Some Body\r\n"
+	SMTP-Mail-Body = ".\r\n"
+	SMTP-Mail-Body = "More Body\r\n"
+	SMTP-Mail-Body = "."
+	SMTP-Mail-Body = "Most Body\r\n"
 
-	&SMTP-Recipients = "crln_test_receiver@localhost"
-	&SMTP-Sender-Address = "smtp_sender@localhost"
+	SMTP-Recipients = "crln_test_receiver@localhost"
+	SMTP-Sender-Address = "smtp_sender@localhost"
 }
 smtp.mail {
 	fail = 1
@@ -18,7 +18,7 @@ smtp.mail {
 #  Module failure is likely a timeout
 #  Avoid false negatives by aborting test
 #
-if (fail && (&Module-Failure-Message[*] == 'smtp: curl request failed: Timeout was reached (28)')) {
+if (fail && (Module-Failure-Message[*] == 'smtp: curl request failed: Timeout was reached (28)')) {
 	test_pass
 	handled
 }
@@ -42,7 +42,7 @@ grep -E 'Most Body'"`) {
 	test_fail
 }
 
-if !(&TLS-Certificate.Issuer =~ /@example\.org/) {
+if !(TLS-Certificate.Issuer =~ /@example\.org/) {
         test_fail
 }
 

@@ -4,11 +4,11 @@ octets test_octets
 &test_string := "Hello world!"
 &test_octets := %cipher_rsa.sign(%{test_string})
 
-if (!&test_octets) {
+if (!test_octets) {
 	test_fail
 }
 
-if ((octets)&test_string[0] == &test_octets[0]) {
+if ((octets)test_string[0] == test_octets[0]) {
 	test_fail
 }
 
@@ -17,7 +17,7 @@ if ((octets)&test_string[0] == &test_octets[0]) {
 #
 &test_string := %cipher_rsa.verify(%{test_octets}, %{test_string})
 
-if (&test_string != 'yes') {
+if (test_string != 'yes') {
 	test_fail
 }
 
@@ -27,7 +27,7 @@ if (&test_string != 'yes') {
 &test_string := "Goodbye world!"
 &test_string := %cipher_rsa.verify(%{test_octets}, %{test_string})
 
-if (&test_string != 'no') {
+if (test_string != 'no') {
 	test_fail
 }
 
@@ -37,11 +37,11 @@ if (&test_string != 'no') {
 &test_string := "Hello nurse!"
 &test_octets := %cipher_rsa.sign(%{test_string})
 
-if (!&test_octets) {
+if (!test_octets) {
 	test_fail
 }
 
-if ((octets)&test_string[0] == &test_octets[0]) {
+if ((octets)test_string[0] == test_octets[0]) {
 	test_fail
 }
 
@@ -50,7 +50,7 @@ if ((octets)&test_string[0] == &test_octets[0]) {
 #
 &test_string := %cipher_rsa.verify(%{test_octets}, %{test_string})
 
-if (&test_string != 'yes') {
+if (test_string != 'yes') {
 	test_fail
 }
 
@@ -60,7 +60,7 @@ if (&test_string != 'yes') {
 &test_string := "Goodbye nurse!"
 &test_string := %cipher_rsa.verify(%{test_octets}, %{test_string})
 
-if (&test_string != 'no') {
+if (test_string != 'no') {
 	test_fail
 }
 

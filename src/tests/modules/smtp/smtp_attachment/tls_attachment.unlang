@@ -1,16 +1,16 @@
 &request += {
-	&SMTP-Mail-Header = "x-test-Subject: smtp test"
-	&SMTP-Mail-Body = "sent from the smtp test module\r\n"
+	SMTP-Mail-Header = "x-test-Subject: smtp test"
+	SMTP-Mail-Body = "sent from the smtp test module\r\n"
 
-	&SMTP-Recipients = "smtp_attachment_receiver@localhost"
+	SMTP-Recipients = "smtp_attachment_receiver@localhost"
 
-	&SMTP-TO = "smtp_to_1@localhost"
-	&SMTP-TO = "smtp_to_2@localhost"
+	SMTP-TO = "smtp_to_1@localhost"
+	SMTP-TO = "smtp_to_2@localhost"
 
-	&SMTP-CC = "smtp_cc_1@localhost"
-	&SMTP-CC = "smtp_cc_2@localhost"
+	SMTP-CC = "smtp_cc_1@localhost"
+	SMTP-CC = "smtp_cc_2@localhost"
 
-	&SMTP-Attachments = "testfile"
+	SMTP-Attachments = "testfile"
 }
 smtp.mail {
 	fail = 1
@@ -20,7 +20,7 @@ smtp.mail {
 #  Module failure is likely a timeout
 #  Avoid false negatives by aborting test
 #
-if (fail && (&Module-Failure-Message[*] == 'smtp: curl request failed: Timeout was reached (28)')) {
+if (fail && (Module-Failure-Message[*] == 'smtp: curl request failed: Timeout was reached (28)')) {
 	test_pass
 	handled
 }

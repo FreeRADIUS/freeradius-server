@@ -8,14 +8,14 @@ imap_tls.authenticate {
 #  Avoid false negatives by aborting test
 #
 if !(ok) {
-    if (&Module-Failure-Message[*] == "imap: curl request failed: Timeout was reached (28)") {
+    if (Module-Failure-Message[*] == "imap: curl request failed: Timeout was reached (28)") {
         test_pass
         handled
     }
     test_fail
 }
 
-if !(&TLS-Certificate.Issuer =~ /@example\.org/) {
+if !(TLS-Certificate.Issuer =~ /@example\.org/) {
     test_fail
 }
 

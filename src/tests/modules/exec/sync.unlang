@@ -4,34 +4,34 @@ string test_string
 #  Sync calls return the response
 #
 &test_string := %exec_sync('/bin/sh', '-c', "echo 'hello'")
-if (&test_string != 'hello') {
+if (test_string != 'hello') {
 	test_fail
 }
 
 #
 #  Call something which will take longer than the timeout
 #
-&request -= &Module-Failure-Message
+&request -= Module-Failure-Message
 
 &test_string := %exec_sync('/bin/sleep', '10')
 
-if (&Module-Failure-Message != "Execution of external program failed: Timeout running program") {
+if (Module-Failure-Message != "Execution of external program failed: Timeout running program") {
 	test_fail
 }
 
-if &test_string  {
+if test_string  {
 	test_fail
 }
 
-&request -= &Module-Failure-Message
+&request -= Module-Failure-Message
 
 &test_string := %exec_sync('/bin/sh', "$ENV{MODULE_TEST_DIR}/fail.sh")
 
-if &test_string {
+if test_string {
 	test_fail
 }
 
-if (&Module-Failure-Message != "Execution of external program returned 7") {
+if (Module-Failure-Message != "Execution of external program returned 7") {
 	test_fail
 }
 
@@ -40,7 +40,7 @@ if (&Module-Failure-Message != "Execution of external program returned 7") {
 #
 exec_sync_mod
 
-if ((!&control.Called-Station-Id) || (&control.Called-Station-Id != 'welcome')) {
+if ((!control.Called-Station-Id) || (control.Called-Station-Id != 'welcome')) {
 	test_fail
 }
 
@@ -51,15 +51,15 @@ if ((!&control.Called-Station-Id) || (&control.Called-Station-Id != 'welcome')) 
 #
 exec_sync_attrs
 
-if ((!&control.Filter-Id) || (&control.Filter-Id != 'tony')) {
+if ((!control.Filter-Id) || (control.Filter-Id != 'tony')) {
 	test_fail
 }
 
-if ((!&control.Callback-Id) || (&control.Callback-Id != 'aabbccddeeff')) {
+if ((!control.Callback-Id) || (control.Callback-Id != 'aabbccddeeff')) {
 	test_fail
 }
 
-if ((!&reply.Filter-Id) || (&reply.Filter-Id != 'tony')) {
+if ((!reply.Filter-Id) || (reply.Filter-Id != 'tony')) {
 	test_fail
 }
 
@@ -75,19 +75,19 @@ if (notfound) {
 	test_fail
 }
 
-if (&control.NAS-Identifier == "Failure") {
+if (control.NAS-Identifier == "Failure") {
 	test_fail
 }
 
-&control -= &Filter-Id[*]
+&control -= Filter-Id[*]
 #
 #  Call a module which uses an xlat function in its arguments
 #
 exec_sync_xlat_args
 
-if !(&control.Filter-Id == 'TONY') {
+if !(control.Filter-Id == 'TONY') {
 	test_fail
 }
 
-&reply -= &Filter-Id[*]
+&reply -= Filter-Id[*]
 test_pass

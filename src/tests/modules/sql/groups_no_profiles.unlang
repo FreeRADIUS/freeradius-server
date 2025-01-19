@@ -34,11 +34,11 @@ if (!updated) {
 	test_fail
 }
 
-if !(&control.Password.Cleartext == &User-Password) {
+if !(control.Password.Cleartext == User-Password) {
 	test_fail
 }
 
-if !(&reply.Reply-Message == "Hello Groups User") {
+if !(reply.Reply-Message == "Hello Groups User") {
 	test_fail
 }
 

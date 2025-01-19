@@ -14,7 +14,7 @@ if (%linelog_fmt_delim_xlat('bob') != 5) {
 }
 &test_string1 := %file.tail("$ENV{MODULE_TEST_DIR}/test_xlat.log")
 
-if (&test_string1 == 'bob, ') {
+if (test_string1 == 'bob, ') {
 	test_pass
 }
 else {
@@ -28,7 +28,7 @@ if (%linelog_fmt_delim_xlat("%{test_string2}%{test_string3}") != 9) {
 	test_fail
 }
 &test_string1 := %file.tail("$ENV{MODULE_TEST_DIR}/test_xlat.log")
-if (&test_string1 == 'bob, morebob, ') {
+if (test_string1 == 'bob, morebob, ') {
 	test_pass
 }
 else {
@@ -48,7 +48,7 @@ if (%linelog_fmt_delim_xlat("{ \"foo\" : \"bar\", \"baz\" : \"boink\" }") == 36)
 
 &test_string1 := %file.tail("$ENV{MODULE_TEST_DIR}/test_xlat.log")
 
-if (&test_string1 == '{ "foo" : "bar", "baz" : "boink" }, ') {
+if (test_string1 == '{ "foo" : "bar", "baz" : "boink" }, ') {
 	test_pass
 }
 else {

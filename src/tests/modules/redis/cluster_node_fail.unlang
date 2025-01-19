@@ -31,21 +31,21 @@ if (%redis(@%redis.node(b, 0), DEBUG, SEGFAULT)) {
 #  which sometimes happens when running tests with sanitizers, due to
 #  slowness introduced by the sanitizers.
 try {
-	&takeoverresult = %redis(@%{redisreplica}, CLUSTER, FAILOVER, TAKEOVER)
+	takeoverresult = %redis(@%{redisreplica}, CLUSTER, FAILOVER, TAKEOVER)
 }
 catch fail {
-	&takeoverresult = 'OK'
+	takeoverresult = 'OK'
 }
-if (&takeoverresult != 'OK') {
+if (takeoverresult != 'OK') {
 	test_fail
 }
 
 #  Allow time for the takeover to propagate to other nodes
-foreach &control.Filter-Id {
+foreach control.Filter-Id {
 	# Keep remapping the cluster
 	%redis.remap(%{redisreplica})
 
-	if (%redis.node(b, 0) == &redisreplica) {
+	if (%redis.node(b, 0) == redisreplica) {
 		break
 	}
 	%delay(0.5)

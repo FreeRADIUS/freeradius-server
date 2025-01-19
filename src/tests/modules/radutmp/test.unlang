@@ -13,19 +13,19 @@ if (!ok) {
 }
 
 #
-#  Runs radwho to read back stored data as pairs into &control
+#  Runs radwho to read back stored data as pairs into control
 #
 exec
 
-if !(&NAS-Port == &control.NAS-Port) {
+if !(NAS-Port == control.NAS-Port) {
 	test_fail
 }
 
 #
 #  Use an Interim-Update and different Framed-IP-Address to check record update
 #
-&Framed-IP-Address := 10.0.10.100
-&Acct-Status-Type := ::Interim-Update
+Framed-IP-Address := 10.0.10.100
+Acct-Status-Type := ::Interim-Update
 
 radutmp.accounting
 
@@ -33,18 +33,18 @@ if (!ok) {
 	test_fail
 }
 
-&control := {}
+control := {}
 
 exec
 
-if !(&Framed-IP-Address == &control.Framed-IP-Address) {
+if !(Framed-IP-Address == control.Framed-IP-Address) {
 	test_fail
 }
 
 #
 #  Now use a Stop to clear the user's session
 #
-&Acct-Status-Type := ::Stop
+Acct-Status-Type := ::Stop
 
 radutmp.accounting
 
@@ -52,11 +52,11 @@ if (!ok) {
 	test_fail
 }
 
-&control := {}
+control := {}
 
 exec
 
-if (&control.NAS-Port) {
+if (control.NAS-Port) {
 	test_fail
 }
 

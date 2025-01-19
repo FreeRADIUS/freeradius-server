@@ -4,15 +4,15 @@ string test_string
 #
 #  @todo - conditions do not yet support YIELD
 #
-if (&test_string == "yes") {
-	&control.Password.Cleartext := "hello"
+if (test_string == "yes") {
+	control.Password.Cleartext := "hello"
 
-	&reply += {
-		&Reply-Message = "success"
+	reply += {
+		Reply-Message = "success"
 	}
 }
 else {
-	&reply += {
-		&Reply-Message = "failed"
+	reply += {
+		Reply-Message = "failed"
 	}
 }

@@ -4,45 +4,45 @@ string test_string
 #
 
 &test_string := "%idn('example.com')"
-if (&test_string != "example.com") {
+if (test_string != "example.com") {
         test_fail
 }
 
 &test_string := "%idn('èxâmpłé.com')"
-if (&test_string != "xn--xmp-ila2ak63d.com") {
+if (test_string != "xn--xmp-ila2ak63d.com") {
         test_fail
 }
 
 &test_string := "%idn('пример.com')"
-if (&test_string != "xn--e1afmkfd.com") {
+if (test_string != "xn--e1afmkfd.com") {
         test_fail
 }
 
 &test_string := "%idn('παράδειγμα.com')"
-if (&test_string != "xn--hxajbheg2az3al.com") {
+if (test_string != "xn--hxajbheg2az3al.com") {
         test_fail
 }
 
 &test_string := "%idn('ตัวอย่าง.com')"
-if (&test_string != "xn--72c1a1bt4awk9o.com") {
+if (test_string != "xn--72c1a1bt4awk9o.com") {
         test_fail
 }
 
 &test_string := "%idn('invalid_example.com')"
 
-if (&Module-Failure-Message != "Non-digit/letter/hyphen in input") {
+if (Module-Failure-Message != "Non-digit/letter/hyphen in input") {
         test_fail
 }
 
-if (&Module-Failure-Message == "") {
+if (Module-Failure-Message == "") {
         test_fail
 }
 
-&request -= &Module-Failure-Message[*]
+&request -= Module-Failure-Message[*]
 
 &test_string := "%idn('a.véry.löng.ņàme.whîch.when.expânded.exceedş.ţhe.dns.stanđard.fór.string.łength.of.twø.hündred.ând.fifty.threé.charáctèrs.and.therefore.is.invalid.for.idn.conversion')"
 
-if (&Module-Failure-Message != "Conversion was truncated") {
+if (Module-Failure-Message != "Conversion was truncated") {
         test_fail
 }
 

@@ -2,30 +2,30 @@
 
 subnet2
 
-if (&reply.Reply-Message[0] != '10.1/16 subnet') {
+if (reply.Reply-Message[0] != '10.1/16 subnet') {
 	test_fail
 }
 
-if (&reply.Reply-Message[1] != "2nd 10.1/16 subnet") {
+if (reply.Reply-Message[1] != "2nd 10.1/16 subnet") {
 	test_fail
 }
 
-if (&reply.Reply-Message[2] != "10/8 subnet") {
+if (reply.Reply-Message[2] != "10/8 subnet") {
 	test_fail
 }
 
-if !(&control.FreeRADIUS-Client-IP-Prefix == 10.0.0.0/8) {
+if !(control.FreeRADIUS-Client-IP-Prefix == 10.0.0.0/8) {
 	test_fail
 }
 
 #  Delete previous reply messages
-&reply -= &Reply-Message[*]
+&reply -= Reply-Message[*]
 
 &FreeRADIUS-Client-IP-Prefix := 10.2.2.3/15
 
 subnet2
 
-if (&reply.Reply-Message[0] != '10/8 subnet') {
+if (reply.Reply-Message[0] != '10/8 subnet') {
 	test_fail
 }
 
