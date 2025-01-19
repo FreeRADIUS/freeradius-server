@@ -102,7 +102,7 @@ if (!(control.NAS-IP-Address == "192.168.1.1")) {
 	test_fail
 }
 
-&result_string := "NAS=%{NAS-IP-Address}user=%{User-Name}"
+&result_string := "NAS=%{NAS-IP-Address}&user=%{User-Name}"
 
 # POST to https with POST body data
 &result_string := %rest('POST', "https://%{server_host}:%uri.safe(%{server_ssl_port})/post/test?section=dummy", %{result_string})
@@ -132,7 +132,7 @@ group {
 	arguments := (string)%base64.decode(%{arguments})
 	body := (string)%base64.decode(%{body})
 
-	if (!(arguments == "{\"station\":\"dummyunsafe=escaped\"}" )) {
+	if (!(arguments == "{\"station\":\"dummy&unsafe=escaped\"}" )) {
 		test_fail
 	}
 
