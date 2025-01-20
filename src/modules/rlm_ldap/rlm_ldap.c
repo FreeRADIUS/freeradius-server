@@ -90,8 +90,8 @@ static int ldap_group_filter_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t cons
 
 static const call_env_parser_t sasl_call_env[] = {
 	{ FR_CALL_ENV_OFFSET("mech", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, ldap_auth_call_env_t, user_sasl_mech) },
-	{ FR_CALL_ENV_OFFSET("authname", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, ldap_auth_call_env_t, user_sasl_authname) },
-	{ FR_CALL_ENV_OFFSET("proxy", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, ldap_auth_call_env_t, user_sasl_proxy) },
+	{ FR_CALL_ENV_OFFSET("authname", FR_TYPE_STRING, CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, ldap_auth_call_env_t, user_sasl_authname) },
+	{ FR_CALL_ENV_OFFSET("proxy", FR_TYPE_STRING, CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, ldap_auth_call_env_t, user_sasl_proxy) },
 	{ FR_CALL_ENV_OFFSET("realm", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, ldap_auth_call_env_t, user_sasl_realm) },
 	CALL_ENV_TERMINATOR
 };
@@ -192,7 +192,7 @@ static const call_env_method_t authenticate_method_env = {
 					 ((call_env_parser_t[]) {
 						USER_CALL_ENV_COMMON(ldap_auth_call_env_t),
 						{ FR_CALL_ENV_PARSE_OFFSET("password_attribute", FR_TYPE_STRING,
-									  CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT,
+									  CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE,
 									  ldap_auth_call_env_t, password, password_tmpl),
 									  .pair.dflt = "&User-Password", .pair.dflt_quote = T_BARE_WORD },
 						{ FR_CALL_ENV_SUBSECTION("sasl", NULL, CALL_ENV_FLAG_NONE, sasl_call_env) },
