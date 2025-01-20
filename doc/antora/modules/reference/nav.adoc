@@ -118,14 +118,14 @@
 *** xref:man/radmin.adoc[radmin]
 *** xref:man/radsniff.adoc[radsniff]
 
-** xref:index.adoc[Configuration Files]
-*** xref:format.adoc[Format of the Configuration Files]
+** xref:raddb/index.adoc[Configuration Files]
+*** xref:raddb/format.adoc[Format of the Configuration Files]
 
-*** xref:certs/index.adoc[Certificates]
+*** xref:raddb/certs/index.adoc[Certificates]
 
-*** xref:global.d/index.adoc[Global Configuration]
-*** xref:global.d/ldap.adoc[ldap]
-*** xref:global.d/python.adoc[ldap]
+*** xref:raddb/global.d/index.adoc[Global Configuration]
+*** xref:raddb/global.d/ldap.adoc[ldap]
+*** xref:raddb/global.d/python.adoc[python]
 
 *** xref:mods-available/index.adoc[Modules]
 **** xref:mods-available/all_modules.adoc[Summary of all modules]
