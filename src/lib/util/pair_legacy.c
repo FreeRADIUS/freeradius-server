@@ -126,7 +126,10 @@ static ssize_t fr_pair_value_from_substr(fr_pair_t *vp, fr_sbuff_t *in, bool tai
 	}
 
 	slen = fr_value_box_from_substr(vp, &vp->data, vp->da->type, vp->da, in, rules, tainted);
-	if (slen < 0) return slen - (quote != 0);
+	if (slen < 0) {
+		fr_assert(slen >= -((ssize_t) 1 << 20));
+		return slen - (quote != 0);
+	}
 
 	if (quote && !fr_sbuff_next_if_char(in, quote)) {
 		fr_strerror_const("Unterminated string");
