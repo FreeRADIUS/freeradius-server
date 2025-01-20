@@ -790,7 +790,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	 *	Connect to the database
 	 */
 	if (ct_connect(c->db, UNCONST(CS_CHAR *, config->sql_server), strlen(config->sql_server)) != CS_SUCCEED) {
-		ERROR("unable to establish db to symbolic servername %s",
+		ERROR("unable to establish connection to server %s",
 		      config->sql_server);
 		goto error;
 	}
