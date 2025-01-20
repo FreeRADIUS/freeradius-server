@@ -3,7 +3,7 @@ string test_string
 #
 #  Sync calls return the response
 #
-&test_string := %exec_sync('/bin/sh', '-c', "echo 'hello'")
+test_string := %exec_sync('/bin/sh', '-c', "echo 'hello'")
 if (test_string != 'hello') {
 	test_fail
 }
@@ -11,9 +11,9 @@ if (test_string != 'hello') {
 #
 #  Call something which will take longer than the timeout
 #
-&request -= Module-Failure-Message
+request -= Module-Failure-Message
 
-&test_string := %exec_sync('/bin/sleep', '10')
+test_string := %exec_sync('/bin/sleep', '10')
 
 if (Module-Failure-Message != "Execution of external program failed: Timeout running program") {
 	test_fail
@@ -23,9 +23,9 @@ if test_string  {
 	test_fail
 }
 
-&request -= Module-Failure-Message
+request -= Module-Failure-Message
 
-&test_string := %exec_sync('/bin/sh', "$ENV{MODULE_TEST_DIR}/fail.sh")
+test_string := %exec_sync('/bin/sh', "$ENV{MODULE_TEST_DIR}/fail.sh")
 
 if test_string {
 	test_fail
@@ -79,7 +79,7 @@ if (control.NAS-Identifier == "Failure") {
 	test_fail
 }
 
-&control -= Filter-Id[*]
+control -= Filter-Id[*]
 #
 #  Call a module which uses an xlat function in its arguments
 #
@@ -89,5 +89,5 @@ if !(control.Filter-Id == 'TONY') {
 	test_fail
 }
 
-&reply -= Filter-Id[*]
+reply -= Filter-Id[*]
 test_pass

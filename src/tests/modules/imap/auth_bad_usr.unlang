@@ -14,4 +14,4 @@ if (fail) {
     reject
 }
 
-&reply.Packet-Type := "Access-Accept"
+reply.Packet-Type := "Access-Accept"

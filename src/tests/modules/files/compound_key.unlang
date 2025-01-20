@@ -1,5 +1,5 @@
-&Filter-Id := 'test0'
-&Callback-Id := 'test1'
+Filter-Id := 'test0'
+Callback-Id := 'test1'
 
 compound_key
 if (!ok) {

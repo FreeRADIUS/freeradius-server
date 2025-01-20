@@ -5,7 +5,7 @@ uint32 test_integer
 int64 test_int64
 string test_string
 
-&Filter-Id := "{\"foo\":\"bar\"}"
+Filter-Id := "{\"foo\":\"bar\"}"
 
 # 0. Simple field access
 map json Filter-Id {
@@ -16,7 +16,7 @@ if !(Callback-Id == 'bar') {
 	test_fail
 }
 
-&Filter-Id := "\
+Filter-Id := "\
 {\
 	\"my_array\": [0, 1, 2, 3, 4, 5], \
 	\"my_object\": { \
@@ -30,7 +30,7 @@ if !(Callback-Id == 'bar') {
 	\"bool_false\": false \
 }"
 
-&request -= Callback-Id[*]
+request -= Callback-Id[*]
 
 # Check conversion of all JSON types to strings
 map json Filter-Id {
@@ -72,7 +72,7 @@ if (Callback-Id[6] != 'no') {
 	test_fail
 }
 
-&request -= Callback-Id[*]
+request -= Callback-Id[*]
 
 #
 # Now check array slicing operates correctly
@@ -86,7 +86,7 @@ if !(Callback-Id == '[ 0, 1, 2, 3, 4, 5 ]') {
 	test_fail
 }
 
-&request -= Callback-Id[*]
+request -= Callback-Id[*]
 
 # 9. Simple index
 map json Filter-Id {
@@ -96,7 +96,7 @@ if !(NAS-Port == 0) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 9a. All of the array
 map json Filter-Id {
@@ -106,7 +106,7 @@ if (!(NAS-Port[0] == 0) || !(NAS-Port[1] == 1) || !(NAS-Port[2] == 2) || !(NAS-P
 	test_fail
 }
 
-&NAS-Port := 9
+NAS-Port := 9
 
 # 9b. All of the array using prepend, places the array before the existing value
 map json Filter-Id {
@@ -116,7 +116,7 @@ if (!(NAS-Port[0] == 0) || !(NAS-Port[1] == 1) || !(NAS-Port[2] == 2) || !(NAS-P
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 10. End of the array
 map json Filter-Id {
@@ -126,7 +126,7 @@ if !(NAS-Port == 5) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 11. Past end of the array
 map json Filter-Id {
@@ -136,7 +136,7 @@ if (NAS-Port) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 12. Simple slice
 map json Filter-Id {
@@ -146,7 +146,7 @@ if (!(NAS-Port[0] == 0) || !(NAS-Port[1] == 1)) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 13. Slice with negative start
 map json Filter-Id {
@@ -156,7 +156,7 @@ if !(NAS-Port == 5) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 14. Slice with negative start and negative end
 map json Filter-Id {
@@ -174,7 +174,7 @@ if (!(NAS-Port[0] == 1) && !(NAS-Port[1] == 2)) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 16. Slice with start, end and negative step
 map json Filter-Id {
@@ -184,7 +184,7 @@ if (!(NAS-Port[0] == 4) || !(NAS-Port[1] == 3)) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 17. Slice with start, end (inverted) and negative step
 map json Filter-Id {
@@ -194,7 +194,7 @@ if (NAS-Port) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 18. Slice with start, end and positive step
 map json Filter-Id {
@@ -204,7 +204,7 @@ if (!(NAS-Port[0] == 2) || !(NAS-Port[1] == 3)) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 19. Slice with start, end and positive step > 1
 map json Filter-Id {
@@ -214,7 +214,7 @@ if (!(NAS-Port[0] == 1) && !(NAS-Port[1] == 3)) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 20. Slice with start, end and positive step > end of array
 map json Filter-Id {
@@ -224,7 +224,7 @@ if (!(NAS-Port[0] == 1) || NAS-Port[1]) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 21. Slice with start, end and positive step > end of array
 map json Filter-Id {
@@ -234,7 +234,7 @@ if (!(NAS-Port[0] == 5) || NAS-Port[1]) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 22. No start/end 3 step
 map json Filter-Id {
@@ -244,7 +244,7 @@ if (!(NAS-Port[0] == 0) || !(NAS-Port[1] == 3) || NAS-Port[2]) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 23. No start/end 3 step
 map json Filter-Id {
@@ -254,7 +254,7 @@ if (!(NAS-Port[0] == 5) || !(NAS-Port[1] == 2) || NAS-Port[2]) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 24. No end 3 step
 map json Filter-Id {
@@ -264,7 +264,7 @@ if (!(NAS-Port[0] == 3) || !(NAS-Port[1] == 0) || NAS-Port[2]) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 25. End 0, 3 step
 map json Filter-Id {
@@ -274,7 +274,7 @@ if (!(NAS-Port[0] == 3) || NAS-Port[1]) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 26. End 0, 3 step
 map json Filter-Id {
@@ -284,7 +284,7 @@ if (!(NAS-Port[0] == 0) || NAS-Port[1]) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 27. Everything two levels deep
 map json Filter-Id {
@@ -302,7 +302,7 @@ if (!(Callback-Id[0] == '0') || \
 	test_fail
 }
 
-&request -= Callback-Id[*]
+request -= Callback-Id[*]
 
 # 28. Everything three levels deep (nothing)
 map json Filter-Id {
@@ -332,7 +332,7 @@ if (Callback-Id) {
 }
 
 # Some big numbers in nested arrays
-&Filter-Id := "\
+Filter-Id := "\
 [\
 	9223372036854775807, \
 	-9223372036854775807, \
@@ -367,7 +367,7 @@ if !(NAS-Port == 2147483647) {
 	test_fail
 }
 
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 33. Signed 64bit integers
 if (0) {
@@ -386,7 +386,7 @@ if !(test_int64 == -9223372036854775807) {
 	test_fail
 }
 
-&request -= test_int64[*]
+request -= test_int64[*]
 
 # 35. Unsigned 64bit integers (not allowed by json so gets truncated)
 map json Filter-Id {
@@ -397,7 +397,7 @@ if !(Acct-Input-Octets64 == 9223372036854775807) {
 }
 }
 
-&request -= Acct-Input-Octets64[*]
+request -= Acct-Input-Octets64[*]
 
 # 36. Multiple array indices
 map json Filter-Id {
@@ -407,10 +407,10 @@ if (!(Cache-TTL[0] == 2147483647) || !(Cache-TTL[1] == -2147483647)) {
 	test_fail
 }
 
-&request -= Cache-TTL[*]
+request -= Cache-TTL[*]
 
 # 37. Path containing dynamic expansion
-&test_integer := 0
+test_integer := 0
 
 map json Filter-Id {
 	NAS-Port += "$[3][%{test_integer}]"
@@ -418,14 +418,14 @@ map json Filter-Id {
 if !(NAS-Port == 2147483647) {
 	test_fail
 }
-&request -= NAS-Port[*]
+request -= NAS-Port[*]
 
 # 38. An expanded field name with bad chars
-&Filter-Id := "\
+Filter-Id := "\
 {\
 	\"foo.bar\": \"baz\" \
 }"
-&test_string := "%taint('foo.bar')"
+test_string := "%taint('foo.bar')"
 
 map json Filter-Id {
 	Callback-Id := "$.%{test_string}"
@@ -435,9 +435,9 @@ if !(Callback-Id == 'baz') {
 	test_fail
 }
 
-&request -= Callback-Id[*]
+request -= Callback-Id[*]
 
-&Filter-Id := "\
+Filter-Id := "\
 {\
 	\"my_array\": [0, 1, 2, 3, 4, 5], \
 	\"my_object\": { \
@@ -470,7 +470,7 @@ if (!("%{Callback-Id[#]}" == 1) || !(Callback-Id == 'yes')) {
 	test_fail
 }
 
-&request -= Callback-Id[*]
+request -= Callback-Id[*]
 
 # 40. Recursive descent with element match (2nd element in each array)
 map json Filter-Id {
@@ -479,7 +479,7 @@ map json Filter-Id {
 if (!("%{Callback-Id[#]}" == 3) || !(Callback-Id[0] == '1') || !(Callback-Id[1] == 'scratchy') || !(Callback-Id[2] == 'clawy')) {
 	test_fail
 }
-&request -= Callback-Id[*]
+request -= Callback-Id[*]
 
 # 41. Recursive descent with field then element match
 map json Filter-Id {
@@ -489,6 +489,6 @@ if (!("%{Callback-Id[#]}" == 2) || !(Callback-Id[0] == 'flat') || !(Callback-Id[
 	test_fail
 }
 
-&request -= Callback-Id[*]
+request -= Callback-Id[*]
 
 test_pass

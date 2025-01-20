@@ -1,6 +1,6 @@
 %file.rm("$ENV{MODULE_TEST_DIR}/127-2e0-2e0-2e1-with--n-c3-b6n--ascii-21")
 
-&request -= Module-Failure-Message[*]
+request -= Module-Failure-Message[*]
 
 detail_escape
 

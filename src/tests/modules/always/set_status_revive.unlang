@@ -23,4 +23,4 @@ if (ok) {
 	}
 }
 
-&control.Password.Cleartext := "hello"
+control.Password.Cleartext := "hello"

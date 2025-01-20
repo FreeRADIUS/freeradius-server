@@ -3,7 +3,7 @@
 #
 $INCLUDE cluster_reset.inc
 
-&control.IP-Pool.Name := 'test_static'
+control.IP-Pool.Name := 'test_static'
 
 #
 #  Add a dynamic IP addresses
@@ -40,7 +40,7 @@ if (!(reply.Session-Timeout == 30)) {
 #
 #  Check that renewal does not mess with static IP
 #
-&Framed-IP-Address := reply.Framed-IP-Address
+Framed-IP-Address := reply.Framed-IP-Address
 
 redis_ippool.renew {
 	invalid = 1
@@ -89,6 +89,6 @@ if (%redis(ZSCORE, {%{control.IP-Pool.Name}%}:pool, %{reply.Framed-IP-Address}) 
 	test_fail
 }
 
-&reply := {}
+reply := {}
 
 test_pass

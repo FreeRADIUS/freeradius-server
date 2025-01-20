@@ -1,4 +1,4 @@
-&request += {
+request += {
 	SMTP-Mail-Header = "Subject: smtp test"
 	SMTP-Mail-Header = "FROM: smtp_sender@gmail.com"
 	SMTP-Mail-Header = "TO: smtp_receiver@localhost"
@@ -27,7 +27,7 @@ if !(ok) {
 #
 #  Check the wrong password results in a reject
 #
-&User-Password := 'Wrong'
+User-Password := 'Wrong'
 
 smtp.authenticate {
 	reject = 1
@@ -46,8 +46,8 @@ if !(reject) {
 #
 #  Check an invalid user results in a reject
 #
-&User-Name := 'Invalid'
-&User-Password := 'Saget'
+User-Name := 'Invalid'
+User-Password := 'Saget'
 
 smtp.authenticate {
 	reject = 1
@@ -62,7 +62,7 @@ if !(reject) {
 	test_fail
 }
 
-&request -= User-Password[*]
+request -= User-Password[*]
 
 #
 #  Check that missing password is an invalid request
@@ -76,8 +76,8 @@ if !(invalid) {
 	test_fail
 }
 
-&User-Password := 'Saget'
-&request -= User-Name[*]
+User-Password := 'Saget'
+request -= User-Name[*]
 
 #
 #  Check that missing user name is an invalid request

@@ -1,4 +1,4 @@
-&control.Password.Cleartext := 'secret_123'
+control.Password.Cleartext := 'secret_123'
 
 mschap_winbind
 
@@ -24,6 +24,6 @@ if !(reply.Vendor-Specific.Microsoft.CHAP-MPPE-Keys) {
 	test_fail
 }
 
-&reply := {}
+reply := {}
 
 test_pass

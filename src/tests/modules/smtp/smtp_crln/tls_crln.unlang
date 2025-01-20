@@ -1,4 +1,4 @@
-&request += {
+request += {
 	SMTP-Mail-Body = "sent from the smtp test module\r\n"
 	SMTP-Mail-Body = "\r\n"
 	SMTP-Mail-Body = "Some Body\r\n"

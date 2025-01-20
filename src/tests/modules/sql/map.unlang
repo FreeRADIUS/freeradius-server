@@ -54,9 +54,9 @@ if !(control.NAS-Port == 0) {
 }
 
 # Clear the control list
-&control -= User-Name[*]
-&control -= Filter-Id[*]
-&control -= NAS-Port[*]
+control -= User-Name[*]
+control -= Filter-Id[*]
+control -= NAS-Port[*]
 
 # Insert our second test row
 %sql("INSERT INTO radusergroup (username, groupname, priority) VALUES ('oof', 'rab', 1)")
@@ -85,9 +85,9 @@ if !(control.NAS-Port == 1) {
 }
 
 # Clear the control list
-&control -= User-Name[*]
-&control -= Filter-Id[*]
-&control -= NAS-Port[*]
+control -= User-Name[*]
+control -= Filter-Id[*]
+control -= NAS-Port[*]
 
 # Retrieve our test row(s) - With = we should get the values from the first row
 map sql 'SELECT * FROM radusergroup WHERE priority <= 1 ORDER BY priority' {
@@ -113,9 +113,9 @@ if !(control.NAS-Port == 0) {
 }
 
 # Clear the control list
-&control -= User-Name[*]
-&control -= Filter-Id[*]
-&control -= NAS-Port[*]
+control -= User-Name[*]
+control -= Filter-Id[*]
+control -= NAS-Port[*]
 
 # Retrieve our test row(s) - With ^= we should get the values from the second row then the first
 map sql 'SELECT * FROM radusergroup WHERE priority <= 1 ORDER BY priority' {
@@ -143,9 +143,9 @@ if ((control.NAS-Port[0] != 1) || (control.NAS-Port[1] != 0)) {
 }
 
 # Clear the control list
-&control -= User-Name[*]
-&control -= Filter-Id[*]
-&control -= NAS-Port[*]
+control -= User-Name[*]
+control -= Filter-Id[*]
+control -= NAS-Port[*]
 
 # Retrieve our test row(s) - With += we should get the values from both rows
 map sql 'SELECT * FROM radusergroup WHERE priority <= 1 ORDER BY priority' {
@@ -188,9 +188,9 @@ else {
 }
 
 # Clear the control list
-&control -= User-Name[*]
-&control -= Filter-Id[*]
-&control -= NAS-Port[*]
+control -= User-Name[*]
+control -= Filter-Id[*]
+control -= NAS-Port[*]
 
 # Retrieve the username column only (should result in noop because not in map)
 map sql 'SELECT username FROM radusergroup WHERE priority = 0' {
@@ -225,12 +225,12 @@ if !(control.NAS-Port == 0) {
 	test_fail
 }
 
-&sqlcmd := %sql.safe("SELECT * FROM radusergroup WHERE priority <= 1 AND username = '%sql.escape(%{User-Name})'")
+sqlcmd := %sql.safe("SELECT * FROM radusergroup WHERE priority <= 1 AND username = '%sql.escape(%{User-Name})'")
 
 # Clear the control list
-&control -= User-Name[*]
-&control -= Filter-Id[*]
-&control -= NAS-Port[*]
+control -= User-Name[*]
+control -= Filter-Id[*]
+control -= NAS-Port[*]
 
 # Retrieve test row with specific username (using ref'd query)
 map sql sqlcmd {
@@ -256,12 +256,12 @@ if !(control.NAS-Port == 0) {
 }
 
 # Clear the control list
-&control -= User-Name[*]
-&control -= Filter-Id[*]
-&control -= NAS-Port[*]
+control -= User-Name[*]
+control -= Filter-Id[*]
+control -= NAS-Port[*]
 
-&userfield := 'username'
-&groupfield := 'name'
+userfield := 'username'
+groupfield := 'name'
 
 # Retrieve our test row(s) - Using different RHS types
 map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
@@ -296,8 +296,8 @@ if (!notfound) {
 }
 
 # Clear the control list
-&control -= User-Name[*]
-&control -= Filter-Id[*]
+control -= User-Name[*]
+control -= Filter-Id[*]
 
 # Check behaviour of NULL vs empty string returns.
 # radacct is used here as the default schema allows NULL in many columns

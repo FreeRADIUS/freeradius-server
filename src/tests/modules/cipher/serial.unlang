@@ -1,6 +1,6 @@
 octets test_octets
 
-&test_octets := %cipher_rsa.certificate('serial')
+test_octets := %cipher_rsa.certificate('serial')
 
 if (%length(%{test_octets}) != 1) {
 	test_fail

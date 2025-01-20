@@ -11,8 +11,8 @@ if (%aka_sim_id_type(%{User-Name}) != 'permanent') {
 #
 #  Encrypt the permanent ID
 #
-&test_string := '1234567812345678'
-&control.User-Name := %3gpp_temporary_id_encrypt(%{User-Name},%{test_string},6)
+test_string := '1234567812345678'
+control.User-Name := %3gpp_temporary_id_encrypt(%{User-Name},%{test_string},6)
 
 #
 #  Can we get the EAP method from the encrypted blob correctly?

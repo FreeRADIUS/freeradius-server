@@ -3,7 +3,7 @@
 #
 $INCLUDE cluster_reset.inc
 
-&control.IP-Pool.Name := 'test_static_unassign'
+control.IP-Pool.Name := 'test_static_unassign'
 
 #
 #  Add a dynamic IP addresses
@@ -61,7 +61,7 @@ if (%redis(TTL, {%{control.IP-Pool.Name}}:device:%{Calling-Station-Id}) < 20) {
 #
 #  Check that renewal still works as we are within the exipiry time
 #
-&Framed-IP-Address := reply.Framed-IP-Address
+Framed-IP-Address := reply.Framed-IP-Address
 
 redis_ippool.renew {
 	invalid = 1
@@ -98,9 +98,9 @@ if (%redis(ZSCORE, {%{control.IP-Pool.Name}%}:pool, %{reply.Framed-IP-Address}) 
 #  Perform IP allocation for alternative device
 #  Should be allocated the previously static address as that is the only one in the pool
 #
-&reply -= Framed-IP-Address[*]
-&request -= Framed-IP-Address[*]
-&Calling-Station-Id := '00:11:22:33:44:55'
+reply -= Framed-IP-Address[*]
+request -= Framed-IP-Address[*]
+Calling-Station-Id := '00:11:22:33:44:55'
 
 redis_ippool.allocate {
 	invalid = 1
@@ -121,6 +121,6 @@ if !(%redis(HGET, {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}, devic
 	test_fail
 }
 
-&reply := {}
+reply := {}
 
 test_pass

@@ -1,17 +1,17 @@
 string test_string
 string result_string
 
-&test_string := 'vvrbuctetdhc'
-&result_string := %modhextohex(%{test_string})
+test_string := 'vvrbuctetdhc'
+result_string := %modhextohex(%{test_string})
 
 if (result_string != 'ffc1e0d3d260') {
 	test_fail
 }
 
 #  Invalid modhex string - not even length
-&test_string := 'vvrbuctetdh'
+test_string := 'vvrbuctetdh'
 
-&result_string := %modhextohex(%{test_string})
+result_string := %modhextohex(%{test_string})
 
 if (ok) {
 	test_fail
@@ -26,9 +26,9 @@ if (Module-Failure-Message != "Modhex string invalid") {
 }
 
 #  Invalid modhex string - invalid characters
-&test_string := 'vxrbmctetdhc'
+test_string := 'vxrbmctetdhc'
 
-&result_string := %modhextohex(%{test_string})
+result_string := %modhextohex(%{test_string})
 
 if (ok) {
 	test_fail

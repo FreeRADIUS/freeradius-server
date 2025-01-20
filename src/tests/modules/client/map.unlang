@@ -49,7 +49,7 @@ if (Callback-Id[2] != 'c') {
 	test_fail
 }
 
-&request -= Filter-Id[*]
+request -= Filter-Id[*]
 
 map client 127.0.0.2 {
 	Filter-Id += 'group'
@@ -67,8 +67,8 @@ if (Filter-Id[2] != 'f') {
 	test_fail
 }
 
-&request -= Filter-Id[*]
-&request -= Callback-Id[*]
+request -= Filter-Id[*]
+request -= Callback-Id[*]
 
 #
 #  Test non-existent client properties

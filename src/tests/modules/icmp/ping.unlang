@@ -1,5 +1,5 @@
 string test_string
-&test_string := %ping(127.0.0.1)
+test_string := %ping(127.0.0.1)
 
 #
 #  @todo - conditions do not yet support YIELD

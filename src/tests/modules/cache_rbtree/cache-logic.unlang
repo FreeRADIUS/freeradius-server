@@ -1,12 +1,12 @@
 #
 #  PRE:
 #
-&Filter-Id := 'testkey'
+Filter-Id := 'testkey'
 
 #
 # 0.  Basic store and retrieve
 #
-&control.Callback-Id := 'cache me'
+control.Callback-Id := 'cache me'
 
 cache
 if (!ok) {
@@ -19,7 +19,7 @@ if (Callback-Id) {
 }
 
 # 2. Check status-only works correctly (should return ok and consume attribute)
-&control.Cache-Status-Only := 'yes'
+control.Cache-Status-Only := 'yes'
 
 cache
 if (!ok) {
@@ -43,7 +43,7 @@ if (Callback-Id != control.Callback-Id) {
 }
 
 # 6. Retrieving the entry should not expire it
-&request -= Callback-Id[*]
+request -= Callback-Id[*]
 
 cache
 if (!updated) {
@@ -59,9 +59,9 @@ else {
 }
 
 # 8. Force expiry of the entry
-&control.Cache-Allow-Merge := no
-&control.Cache-Allow-Insert := no
-&control.Cache-TTL := 0
+control.Cache-Allow-Merge := no
+control.Cache-Allow-Insert := no
+control.Cache-TTL := 0
 
 cache
 if (!ok) {
@@ -69,7 +69,7 @@ if (!ok) {
 }
 
 # 9. Check status-only works correctly (should return notfound and consume attribute)
-&control.Cache-Status-Only := 'yes'
+control.Cache-Status-Only := 'yes'
 
 cache
 if (!notfound) {
@@ -82,8 +82,8 @@ if (control.Cache-Status-Only) {
 }
 
 # 11. Check merge-only works correctly (should return notfound and consume attribute)
-&control.Cache-Allow-Merge := 'yes'
-&control.Cache-Allow-Insert := 'no'
+control.Cache-Allow-Merge := 'yes'
+control.Cache-Allow-Insert := 'no'
 
 cache
 if (!notfound) {
@@ -96,7 +96,7 @@ if (control.Cache-Allow-Merge) {
 }
 
 # 13. ...and check the entry wasn't recreated
-&control.Cache-Status-Only := 'yes'
+control.Cache-Status-Only := 'yes'
 
 cache
 if (!notfound) {
@@ -104,7 +104,7 @@ if (!notfound) {
 }
 
 # 14. This should still allow the creation of a new entry
-&control.Cache-TTL := -2
+control.Cache-TTL := -2
 
 cache
 if (!ok) {
@@ -127,10 +127,10 @@ if (Callback-Id != control.Callback-Id) {
 	test_fail
 }
 
-&control.Callback-Id := 'cache me2'
+control.Callback-Id := 'cache me2'
 
 # 18. Updating the Cache-TTL shouldn't make things go boom (we can't really check if it works)
-&control.Cache-TTL := 30
+control.Cache-TTL := 30
 
 cache
 if (!updated) {
@@ -143,7 +143,7 @@ if (Callback-Id == control.Callback-Id) {
 }
 
 # 20. Check that a new entry is created
-&control.Cache-TTL := -2
+control.Cache-TTL := -2
 
 cache
 if (!updated) {
@@ -167,9 +167,9 @@ if (Callback-Id != control.Callback-Id) {
 }
 
 # 24. Check Cache-Merge = yes works as expected (should update current request)
-&control.Callback-Id := 'cache me3'
-&control.Cache-TTL := -2
-&control.Cache-Merge-New := yes
+control.Callback-Id := 'cache me3'
+control.Cache-TTL := -2
+control.Cache-Merge-New := yes
 
 cache
 if (!updated) {

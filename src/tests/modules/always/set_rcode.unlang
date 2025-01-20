@@ -38,4 +38,4 @@ if (notfound) {
 	}
 }
 
-&control.Password.Cleartext := "hello"
+control.Password.Cleartext := "hello"

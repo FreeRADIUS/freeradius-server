@@ -4,7 +4,7 @@ string test_string
 #  Async calls should always return a zero length string
 #  because we don't wait for the response.
 #
-&test_string := %exec_async('/bin/sh','-c',"'echo -n hello'")
+test_string := %exec_async('/bin/sh','-c',"'echo -n hello'")
 if test_string {
 	test_fail
 }
@@ -27,7 +27,7 @@ if (reply.Reply-Message == 'hello') {
 #  Smoke test - Setup an async process that'll keep running after
 #  after the test exits.
 #
-&test_string := %exec_async('/bin/sh','-c',"'sleep 1'")
+test_string := %exec_async('/bin/sh','-c',"'sleep 1'")
 if test_string {
 	test_fail
 }

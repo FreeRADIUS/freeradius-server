@@ -9,11 +9,11 @@ string data3
 string cmdresult
 
 # Some values we need for startup
-&control.Filter-Id := { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 }
+control.Filter-Id := { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 }
 
-&data1 := "1-%randstr('aaaaaaaa')"
-&data2 := "2-%randstr('aaaaaaaa')"
-&data3 := "3-%randstr('aaaaaaaa')"
+data1 := "1-%randstr('aaaaaaaa')"
+data2 := "2-%randstr('aaaaaaaa')"
+data3 := "3-%randstr('aaaaaaaa')"
 
 if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
 	clusterctrl := 'scripts/ci/redis-setup.sh'
@@ -30,7 +30,7 @@ if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
 
 # Sometimes redis just fails to start - without it we can't run
 # the tests - so just exit early.
-&cmdresult = %exec(%{clusterctrl}, create)
+cmdresult = %exec(%{clusterctrl}, create)
 if (cmdresult == '') {
 	test_pass
 	handled
@@ -39,7 +39,7 @@ if (cmdresult == '') {
 #
 #  Determine when initial synchronisation has been completed
 #
-&redisserver := $ENV{REDIS_TEST_SERVER}
+redisserver := $ENV{REDIS_TEST_SERVER}
 
 if (!redisserver || (redisserver == '')) {
 	redisserver := "$ENV{REDIS_IPPOOL_TEST_SERVER}"

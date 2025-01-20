@@ -7,13 +7,13 @@ uint32 server_ssl_port
 string test_string
 string result_string
 
-&server_host := "$ENV{REST_TEST_SERVER}"
-&server_port := "$ENV{REST_TEST_SERVER_PORT}"
-&server_ssl_port := "$ENV{REST_TEST_SERVER_SSL_PORT}"
-&test_string := 'notfound'
+server_host := "$ENV{REST_TEST_SERVER}"
+server_port := "$ENV{REST_TEST_SERVER_PORT}"
+server_ssl_port := "$ENV{REST_TEST_SERVER_SSL_PORT}"
+test_string := 'notfound'
 
 # Retrieve a plain text file
-&result_string := %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/test.txt")
+result_string := %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/test.txt")
 
 if (!(REST-HTTP-Status-Code == 200)) {
 	test_fail
@@ -24,28 +24,28 @@ if (!(result_string == "Sample text response\n")) {
 }
 
 # Take host from incoming packet
-&result_string := %rest('GET', "http://%{Login-IP-Host}:%uri.safe(%{server_port})/test.txt")
+result_string := %rest('GET', "http://%{Login-IP-Host}:%uri.safe(%{server_port})/test.txt")
 
 if (!(REST-HTTP-Status-Code == 200) || !(result_string == "Sample text response\n")) {
 	test_fail
 }
 
 # Port is not allowed from incoming packets
-&result_string := %rest('GET', "http://%{server_host}:%{NAS-Port}/test.txt")
+result_string := %rest('GET', "http://%{server_host}:%{NAS-Port}/test.txt")
 
 if (!(Module-Failure-Message == "Failed escaping URI: Unsafe input \"8080\" not allowed in URI part port") || result_string) {
 	test_fail
 }
 
 # Check a "not found" gives a 404 status code
-&result_string := %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/%{test_string}")
+result_string := %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/%{test_string}")
 
 if (!(REST-HTTP-Status-Code == 404)) {
 	test_fail
 }
 
 # GET with URL parameters
-&test_string := %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/user/%{User-Name}/mac/%{Called-Station-Id}")
+test_string := %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/user/%{User-Name}/mac/%{Called-Station-Id}")
 
 if (!(REST-HTTP-Status-Code == 200)) {
 	test_fail
@@ -64,7 +64,7 @@ if (!(control.User-Name == "Bob")) {
 	test_fail
 }
 
-&control.User-Name := 'dummy'
+control.User-Name := 'dummy'
 
 # Directly use json map and prepend the returned value
 map json %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/user/%{User-Name}/mac/%{Called-Station-Id}") {
@@ -75,10 +75,10 @@ if (!(control.User-Name[0] == 'Bob') || !(control.User-Name[1] == 'dummy')) {
 	test_fail
 }
 
-&test_string := %json.encode('request.NAS-IP-Address')
+test_string := %json.encode('request.NAS-IP-Address')
 
 # POST to https with JSON body data
-&result_string := %rest('POST', "https://%{server_host}:%uri.safe(%{server_ssl_port})/user/%{User-Name}/mac/%{Called-Station-Id}?section=accounting", %{test_string})
+result_string := %rest('POST', "https://%{server_host}:%uri.safe(%{server_ssl_port})/user/%{User-Name}/mac/%{Called-Station-Id}?section=accounting", %{test_string})
 
 if (!(REST-HTTP-Status-Code == 200)) {
 	test_fail
@@ -102,10 +102,10 @@ if (!(control.NAS-IP-Address == "192.168.1.1")) {
 	test_fail
 }
 
-&result_string := "NAS=%{NAS-IP-Address}&user=%{User-Name}"
+result_string := "NAS=%{NAS-IP-Address}&user=%{User-Name}"
 
 # POST to https with POST body data
-&result_string := %rest('POST', "https://%{server_host}:%uri.safe(%{server_ssl_port})/post/test?section=dummy", %{result_string})
+result_string := %rest('POST', "https://%{server_host}:%uri.safe(%{server_ssl_port})/post/test?section=dummy", %{result_string})
 
 if (!(REST-HTTP-Status-Code == 200)) {
 	test_fail
@@ -202,7 +202,7 @@ group {
 }
 
 # Test against endpoint which will time out
-&result_string := %restshorttimeout('GET', "http://%{server_host}:%uri.safe(%{server_port})/delay")
+result_string := %restshorttimeout('GET', "http://%{server_host}:%uri.safe(%{server_port})/delay")
 
 if (REST-HTTP-Status-Code) {
 	test_fail

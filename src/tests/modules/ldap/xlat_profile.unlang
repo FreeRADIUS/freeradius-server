@@ -55,7 +55,7 @@ if (!((reply.Framed-IP-Netmask == 255.255.192.0) && \
 	test_fail
 }
 
-&control := {}
-&reply := {}
+control := {}
+reply := {}
 
 test_pass

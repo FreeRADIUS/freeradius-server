@@ -1,5 +1,5 @@
 # Pre-set Login-LAT-Node to check correct operator behaviour
-&control.Login-LAT-Node := "foo"
+control.Login-LAT-Node := "foo"
 
 # Test "authorize" rest call.  Uses http to a GET end point
 rest
@@ -32,12 +32,12 @@ if (!(control.Login-LAT-Node[0] == "Bob") || !(control.Login-LAT-Node[1] == "foo
 }
 
 # Reset control attributes
-&control -= Filter-Id[*]
-&control -= Callback-Id[*]
-&control -= User-Name[*]
+control -= Filter-Id[*]
+control -= Callback-Id[*]
+control -= User-Name[*]
 
 # Pre-fill NAS-IP-Address to check operator behaviour
-&control.NAS-IP-Address := "10.0.0.10"
+control.NAS-IP-Address := "10.0.0.10"
 test_pass
 handled
 # Test "accounting" rest call.  Uses https to a POST end point

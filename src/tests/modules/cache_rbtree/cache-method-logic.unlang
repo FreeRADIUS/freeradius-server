@@ -1,12 +1,12 @@
 #
 #  PRE:
 #
-&Filter-Id := 'testkey1'
+Filter-Id := 'testkey1'
 
 #
 # 0.  Basic update and retrieve
 #
-&control.Callback-Id := 'cache me'
+control.Callback-Id := 'cache me'
 
 cache.update
 if (!updated) {
@@ -36,7 +36,7 @@ if (Callback-Id != control.Callback-Id) {
 }
 
 # 5. Retrieving the entry should not expire it
-&request -= Callback-Id[*]
+request -= Callback-Id[*]
 
 cache.load
 if (!updated) {
@@ -61,7 +61,7 @@ if (!notfound) {
 }
 
 # 14. This should still allow the creation of a new entry
-&control.Cache-TTL := -2
+control.Cache-TTL := -2
 
 cache.update
 if (!updated) {
@@ -84,10 +84,10 @@ if (Callback-Id != control.Callback-Id) {
 	test_fail
 }
 
-&control.Callback-Id := 'cache me2'
+control.Callback-Id := 'cache me2'
 
 # 18. Updating the Cache-TTL shouldn't make things go boom (we can't really check if it works)
-&control.Cache-TTL := 666
+control.Cache-TTL := 666
 
 cache.ttl
 if (!updated) {
@@ -100,7 +100,7 @@ if (Callback-Id == control.Callback-Id) {
 }
 
 # 20. Check that a new entry is created
-&control.Cache-TTL := -2
+control.Cache-TTL := -2
 
 cache.update
 if (!updated) {
@@ -124,9 +124,9 @@ if (Callback-Id != control.Callback-Id) {
 }
 
 # 24. Check Cache-Merge = yes works as expected (should update current request)
-&control.Callback-Id := 'cache me3'
-&control.Cache-TTL := -2
-&control.Cache-Merge-New := yes
+control.Callback-Id := 'cache me3'
+control.Cache-TTL := -2
+control.Cache-Merge-New := yes
 
 cache.update
 if (!updated) {

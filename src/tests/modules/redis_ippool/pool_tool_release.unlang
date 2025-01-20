@@ -3,7 +3,7 @@
 #
 $INCLUDE cluster_reset.inc
 
-&control.IP-Pool.Name := 'test_tool_release'
+control.IP-Pool.Name := 'test_tool_release'
 
 #
 #  Add IP addresses
@@ -56,6 +56,6 @@ if !(%redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, %{reply.Framed-IP-Address}) 
 	test_fail
 }
 
-&reply := {}
+reply := {}
 
 test_pass

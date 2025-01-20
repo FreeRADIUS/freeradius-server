@@ -1,16 +1,16 @@
 #
 #  PRE: cache-logic
 #
-&Filter-Id := 'testkey3'
+Filter-Id := 'testkey3'
 
 # Reply attributes
-&reply.Reply-Message := 'hello'
-&reply += {
+reply.Reply-Message := 'hello'
+reply += {
 	Reply-Message = 'goodbye'
 }
 
 # Request attributes
-&request += {
+request += {
 	NAS-Port = 10
 	NAS-Port = 20
 	NAS-Port = 30
@@ -19,7 +19,7 @@
 #
 #  Basic update and retrieve
 #
-&control.Callback-Id := 'cache me'
+control.Callback-Id := 'cache me'
 
 cache_update.update
 if (!updated) {
@@ -76,6 +76,6 @@ if (Login-LAT-Service[2] != 'baz') {
 }
 
 # Clear out the reply list
-&reply := {}
+reply := {}
 
 test_pass

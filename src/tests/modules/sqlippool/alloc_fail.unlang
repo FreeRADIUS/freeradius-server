@@ -2,7 +2,7 @@
 #  Allocate an address from an SQL IP Pool
 #
 uint32 expiry
-&control.IP-Pool.Name := 'test_alloc_fail'
+control.IP-Pool.Name := 'test_alloc_fail'
 
 #
 #  Ensure no matching records
@@ -38,12 +38,12 @@ if !(reply.Framed-IP-Address == 192.168.0.1) {
 	test_fail
 }
 
-&reply := {}
+reply := {}
 
 #
 #  Now change the Calling-Station-ID and check we don't get an address (pool full)
 #
-&Calling-Station-ID := 'another_mac'
+Calling-Station-ID := 'another_mac'
 
 sqlippool.allocate
 if (!notfound) {

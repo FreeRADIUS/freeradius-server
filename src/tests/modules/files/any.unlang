@@ -1,6 +1,6 @@
 # Add multiple instances of Realm to the control list
 # The data should match on the second.
-&control += {
+control += {
 	Realm = 'one'
 	Realm = 'two'
 	Realm = 'three'

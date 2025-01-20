@@ -1,4 +1,4 @@
-&Tag-1 := {
+Tag-1 := {
 	Vendor-Specific = {
 		Unisphere = {
 			Service-Activate = "PPPOE_SERVICE(3072000,2048000)"

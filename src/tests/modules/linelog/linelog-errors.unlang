@@ -12,7 +12,7 @@ if (!fail) {
 }
 
 #  References are not allowed to go to parent config sections
-&control.Filter-Id := '..messages.valid'
+control.Filter-Id := '..messages.valid'
 
 linelog_missingref {
 	fail = 1
@@ -26,7 +26,7 @@ if !(Module-Failure-Message == 'linelog_missingref: Invalid path "..messages.val
 }
 
 #  Missing config items fall back to the default (which is not set)
-&control.Filter-Id := '.message.valid'
+control.Filter-Id := '.message.valid'
 
 linelog_missingref
 
@@ -35,7 +35,7 @@ if (!noop) {
 }
 
 #  Pointing at a config section is not valid
-&control.Filter-Id := '.messages'
+control.Filter-Id := '.messages'
 
 linelog_missingref {
 	fail = 1
@@ -46,7 +46,7 @@ if !(Module-Failure-Message == 'linelog_missingref: Path ".messages" resolves to
 }
 
 #  Valid reference, but the message points to an attribute that doesn't exist - so no output
-&control.Filter-Id := 'messages.valid'
+control.Filter-Id := 'messages.valid'
 
 linelog_missingref
 

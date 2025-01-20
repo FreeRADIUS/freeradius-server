@@ -3,13 +3,13 @@
 #  but we can test the digest length, and for smoke...
 #
 octets test_octets
-&test_octets := %cipher_rsa.certificate('fingerprint','sha1')
+test_octets := %cipher_rsa.certificate('fingerprint','sha1')
 
 if (%length(%{test_octets}) != 20) {
 	test_fail
 }
 
-&test_octets := %cipher_rsa.certificate('fingerprint','sha256')
+test_octets := %cipher_rsa.certificate('fingerprint','sha256')
 
 if (%length(%{test_octets}) != 32) {
 	test_fail

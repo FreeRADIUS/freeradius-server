@@ -9,7 +9,7 @@ control.Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
 %file.rm("$ENV{MODULE_TEST_DIR}/test_a.log")
 
 #  Check linelog fails over to the default message (an xlat expansion)
-&control.Filter-Id := 'test_default'
+control.Filter-Id := 'test_default'
 
 linelog_fmt_and_ref
 test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")

@@ -14,9 +14,9 @@ $INCLUDE cluster_reset.inc
 #  - 127.0.0.1:30005 - slave
 #  - 127.0.0.1:30003 - master [10923-16383]
 #  - 127.0.0.1:30006 - slave
-&testdata1 := "1-%randstr('aaaaaaaa')"
-&testdata2 := "2-%randstr('aaaaaaaa')"
-&testdata3 := "3-%randstr('aaaaaaaa')"
+testdata1 := "1-%randstr('aaaaaaaa')"
+testdata2 := "2-%randstr('aaaaaaaa')"
+testdata3 := "3-%randstr('aaaaaaaa')"
 
 #  Hashes to Redis cluster node master 1 (1)
 if (%redis(SET, b, %{testdata1}) == 'OK') {

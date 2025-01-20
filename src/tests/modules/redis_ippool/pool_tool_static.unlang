@@ -4,7 +4,7 @@
 uint64 zscore
 $INCLUDE cluster_reset.inc
 
-&control.IP-Pool.Name := 'test_tool_static'
+control.IP-Pool.Name := 'test_tool_static'
 
 #
 #  Add a dynamic IP addresses
@@ -33,7 +33,7 @@ if !(reply.Framed-IP-Address == 192.168.0.10) {
 #
 #  Fetch the ZSCORE now on the address
 #
-&zscore := %redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, %{reply.Framed-IP-Address})
+zscore := %redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, %{reply.Framed-IP-Address})
 
 #
 #  Attempt to re-assign static lease
@@ -69,8 +69,8 @@ if !(%redis(GET, {%{control.IP-Pool.Name}}:device:aa:bb:cc:dd:ee:ff) == '192.168
 
 #
 #  Change device to grab the dynamic address
-&Calling-Station-ID := '11:22:33:44:55:66'
-&reply -= Framed-IP-Address[*]
+Calling-Station-ID := '11:22:33:44:55:66'
+reply -= Framed-IP-Address[*]
 
 redis_ippool {
 	invalid = 1
@@ -98,7 +98,7 @@ if !(%redis(GET, {%{control.IP-Pool.Name}}:device:11:22:33:44:55:66) == '192.168
 	test_fail
 }
 
-&zscore := %redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, 192.168.0.1)
+zscore := %redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, 192.168.0.1)
 if !(zscore < (uint64)0x10000000000000) {
 	test_fail
 }
@@ -122,6 +122,6 @@ if (%redis(TTL, {%{control.IP-Pool.Name}}:device:%{Calling-Station-Id}) != '-1')
 	test_fail
 }
 
-&reply := {}
+reply := {}
 
 test_pass

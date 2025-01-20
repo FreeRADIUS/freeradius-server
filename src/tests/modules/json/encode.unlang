@@ -6,7 +6,7 @@ string test_string5
 #
 #	json.encode tests
 #
-&request -= Packet-Type[*]
+request -= Packet-Type[*]
 
 #
 #  HACK: the edit code does not currently support deleted by parent
@@ -14,18 +14,18 @@ string test_string5
 #  or even request -= Net.[*]
 #  which returns an error?
 #
-&request -= Net.Src.IP
-&request -= Net.Src.Port
-&request -= Net.Dst.IP
-&request -= Net.Dst.Port
-&request -= Net.Timestamp
-&request -= Net[*]
+request -= Net.Src.IP
+request -= Net.Src.Port
+request -= Net.Dst.IP
+request -= Net.Dst.Port
+request -= Net.Timestamp
+request -= Net[*]
 
 # 0. Check basic xlat parsing
-&test_string1 := %json.encode("request.[*]")
-&test_string2 := %json.encode("request.[*] ")
-&test_string3 := %json.encode(" request.[*]")
-&test_string4 := %json.encode(" 	 request.[*]	")
+test_string1 := %json.encode("request.[*]")
+test_string2 := %json.encode("request.[*] ")
+test_string3 := %json.encode(" request.[*]")
+test_string4 := %json.encode(" 	 request.[*]	")
 
 if (!(test_string1 == '{"User-Name":{"type":"string","value":"john"},"Filter-Id":{"type":"string","value":["f1","f2"]},"NAS-Port":{"type":"uint32","value":999},"Service-Type":{"type":"uint32","value":"Login-User"}}')) {
 	test_fail
@@ -39,19 +39,19 @@ if (!(test_string1 == test_string2) ||
 }
 
 #  Check defaults are the same as output_mode "object":
-&test_string2 := %json_object.encode("request.[*]")
-&test_string3 := %json_object_no.encode("request.[*]")
+test_string2 := %json_object.encode("request.[*]")
+test_string3 := %json_object_no.encode("request.[*]")
 if (!(test_string1 == test_string2) ||
     !(test_string1 == test_string3)) {
 	test_fail
 }
 
-&test_string1 := %json.encode(" request.[*]    !Filter-Id ")
+test_string1 := %json.encode(" request.[*]    !Filter-Id ")
 if !(test_string1 == '{"User-Name":{"type":"string","value":"john"},"NAS-Port":{"type":"uint32","value":999},"Service-Type":{"type":"uint32","value":"Login-User"}}') {
 	test_fail
 }
 
-&test_string1 := %json.encode("request.[*] ! ")
+test_string1 := %json.encode("request.[*] ! ")
 if test_string1 {
 	test_fail
 }
@@ -60,8 +60,8 @@ if test_string1 {
 
 # These are unsorted dictionaries. Hopefully json-c doesn't suddenly
 # decide that it's going to use a different ordering of the keys...
-&test_string1 := %json_object.encode("request.[*]")
-&test_string2 := %json_object_ex.encode("request.[*]")
+test_string1 := %json_object.encode("request.[*]")
+test_string2 := %json_object_ex.encode("request.[*]")
 
 if !(test_string1 == '{"User-Name":{"type":"string","value":"john"},"Filter-Id":{"type":"string","value":["f1","f2"]},"NAS-Port":{"type":"uint32","value":999},"Service-Type":{"type":"uint32","value":"Login-User"}}') {
 	test_fail
@@ -73,15 +73,15 @@ if !(test_string2 == '{"pf:User-Name":{"type":"string","value":["john"]},"pf:Fil
 }
 
 # 1b. "object" empty inputs
-&test_string1 := %json_object.encode("!request.[*]")
+test_string1 := %json_object.encode("!request.[*]")
 
 if !(test_string1 == '{}') {
 	test_fail
 }
 
 # 2a. Output mode "object_simple" tests
-&test_string1 := %json_object_simple.encode("request.[*]")
-&test_string2 := %json_object_simple_ex.encode("request.[*]")
+test_string1 := %json_object_simple.encode("request.[*]")
+test_string2 := %json_object_simple_ex.encode("request.[*]")
 
 if !(test_string1 == '{"User-Name":"john","Filter-Id":["f1","f2"],"NAS-Port":999,"Service-Type":"Login-User"}') {
 	test_fail
@@ -92,15 +92,15 @@ if !(test_string2 == '{"pf:User-Name":["john"],"pf:Filter-Id":["f1","f2"],"pf:NA
 }
 
 # 2b. "object_simple" empty inputs
-&test_string1 := %json_object_simple.encode("!request.[*]")
+test_string1 := %json_object_simple.encode("!request.[*]")
 
 if !(test_string1 == '{}') {
 	test_fail
 }
 
 # 3a. Output mode "array" tests
-&test_string1 := %json_array.encode("request.[*]")
-&test_string2 := %json_array_ex.encode("request.[*]")
+test_string1 := %json_array.encode("request.[*]")
+test_string2 := %json_array_ex.encode("request.[*]")
 
 if !(test_string1 == '[{"name":"User-Name","type":"string","value":"john"},{"name":"Filter-Id","type":"string","value":"f1"},{"name":"Filter-Id","type":"string","value":"f2"},{"name":"NAS-Port","type":"uint32","value":999},{"name":"Service-Type","type":"uint32","value":"Login-User"}]') {
 	test_fail
@@ -111,15 +111,15 @@ if !(test_string2 == '[{"name":"pf:User-Name","type":"string","value":["john"]},
 }
 
 # 3b. "array" empty inputs
-&test_string1 := %json_array.encode("!request.[*]")
+test_string1 := %json_array.encode("!request.[*]")
 
 if !(test_string1 == '[]') {
 	test_fail
 }
 
 # 4a. Output mode "array_of_names" tests
-&test_string1 := %json_array_names.encode("request.[*]")
-&test_string2 := %json_array_names_ex.encode("request.[*]")
+test_string1 := %json_array_names.encode("request.[*]")
+test_string2 := %json_array_names_ex.encode("request.[*]")
 
 if !(test_string1 == '["User-Name","Filter-Id","Filter-Id","NAS-Port","Service-Type"]') {
 	test_fail
@@ -130,15 +130,15 @@ if !(test_string2 == '["pf:User-Name","pf:Filter-Id","pf:Filter-Id","pf:NAS-Port
 }
 
 # 4b. "array_of_names" empty inputs
-&test_string1 := %json_array_names.encode("!request.[*]")
+test_string1 := %json_array_names.encode("!request.[*]")
 
 if !(test_string1 == '[]') {
 	test_fail
 }
 
 # 5a. Output mode "array_of_values" tests
-&test_string1 := %json_array_values.encode("request.[*]")
-&test_string2 := %json_array_values_ex.encode("request.[*]")
+test_string1 := %json_array_values.encode("request.[*]")
+test_string2 := %json_array_values_ex.encode("request.[*]")
 
 if !(test_string1 == '["john","f1","f2",999,"Login-User"]') {
 	test_fail
@@ -149,7 +149,7 @@ if !(test_string2 == '["john","f1","f2","999","1"]') {
 }
 
 # 5b. "array_of_values" empty inputs
-&test_string1 := %json_array_values.encode("!request.[*]")
+test_string1 := %json_array_values.encode("!request.[*]")
 
 if !(test_string1 == '[]') {
 	test_fail

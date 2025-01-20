@@ -1,4 +1,4 @@
-&FreeRADIUS-Client-IP-Prefix := 10.1.2.3/32
+FreeRADIUS-Client-IP-Prefix := 10.1.2.3/32
 
 subnet
 
@@ -14,9 +14,9 @@ if (control.FreeRADIUS-Client-IP-Prefix != 10.1.0.0/16) {
 	test_fail
 }
 
-&FreeRADIUS-Client-IP-Prefix := 10.2.3.4/32
+FreeRADIUS-Client-IP-Prefix := 10.2.3.4/32
 
-&reply -= Reply-Message[*]
+reply -= Reply-Message[*]
 
 subnet
 
@@ -28,16 +28,16 @@ if (control.FreeRADIUS-Client-IP-Prefix != 10.0.0.0/8) {
 	test_fail
 }
 
-&FreeRADIUS-Client-IP-Prefix := 10.1.2.3/32
-&Password.Cleartext := "hello"
+FreeRADIUS-Client-IP-Prefix := 10.1.2.3/32
+Password.Cleartext := "hello"
 
-&reply -= Reply-Message[*]
+reply -= Reply-Message[*]
 
 subnet
 
-&FreeRADIUS-Client-IP-Prefix := 192.168.1.1/32
+FreeRADIUS-Client-IP-Prefix := 192.168.1.1/32
 
-&reply -= Reply-Message[*]
+reply -= Reply-Message[*]
 
 subnet
 

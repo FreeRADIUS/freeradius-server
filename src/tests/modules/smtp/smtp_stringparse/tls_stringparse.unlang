@@ -1,4 +1,4 @@
-&request += {
+request += {
 	SMTP-Mail-Body = "sent from the smtp test module\r\n"
 	SMTP-Recipients = "stringparse_test_receiver@localhost"
 	SMTP-Sender-Address = "smtp_sender@localhost"

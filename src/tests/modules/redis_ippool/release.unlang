@@ -3,7 +3,7 @@
 #
 $INCLUDE cluster_reset.inc
 
-&control.IP-Pool.Name := 'test_release'
+control.IP-Pool.Name := 'test_release'
 
 #
 #  Add IP addresses
@@ -27,7 +27,7 @@ if (!(reply.Framed-IP-Address == 192.168.0.1)) {
 #
 #  Release the IP address
 #
-&Framed-IP-Address := reply.Framed-IP-Address
+Framed-IP-Address := reply.Framed-IP-Address
 
 redis_ippool.release {
 	invalid = 1
@@ -70,7 +70,7 @@ if ((%c - %redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, %{reply.Framed-IP-Addre
 #
 #  Release the IP address again (should still be fine)
 #
-&Framed-IP-Address := reply.Framed-IP-Address
+Framed-IP-Address := reply.Framed-IP-Address
 
 redis_ippool.release {
 	invalid = 1
@@ -81,4 +81,4 @@ if (updated) {
 	test_fail
 }
 
-&reply := {}
+reply := {}

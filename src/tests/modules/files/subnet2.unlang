@@ -1,4 +1,4 @@
-&FreeRADIUS-Client-IP-Prefix := 10.1.2.3/32
+FreeRADIUS-Client-IP-Prefix := 10.1.2.3/32
 
 subnet2
 
@@ -19,9 +19,9 @@ if !(control.FreeRADIUS-Client-IP-Prefix == 10.0.0.0/8) {
 }
 
 #  Delete previous reply messages
-&reply -= Reply-Message[*]
+reply -= Reply-Message[*]
 
-&FreeRADIUS-Client-IP-Prefix := 10.2.2.3/15
+FreeRADIUS-Client-IP-Prefix := 10.2.2.3/15
 
 subnet2
 

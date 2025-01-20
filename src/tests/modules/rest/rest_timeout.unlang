@@ -1,5 +1,5 @@
 # Pre-set Login-LAT-Node to check correct operator behaviour
-&control.Login-LAT-Node := "foo"
+control.Login-LAT-Node := "foo"
 
 # Test "authorize" rest call.  Uses http to a GET end point
 

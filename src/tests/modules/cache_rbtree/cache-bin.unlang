@@ -6,8 +6,8 @@
 #  Series of tests to check for binary safe operation of the cache module
 #  both keys and values should be binary safe.
 #
-&Class := 0xaa00bb00cc00dd00
-&Callback-Id := "foo\000bar\000baz"
+Class := 0xaa00bb00cc00dd00
+Callback-Id := "foo\000bar\000baz"
 
 # 0. Sanity check
 if (Callback-Id != "foo\000bar\000baz") {
@@ -21,8 +21,8 @@ if (!updated) {
 }
 
 # Now add a second entry, with the value diverging after the first null byte
-&Class := 0xaa00bb00cc00ee00
-&Callback-Id := "bar\000baz"
+Class := 0xaa00bb00cc00ee00
+Callback-Id := "bar\000baz"
 
 # 2. Should create a *new* entry and not update the existing one
 cache_bin_key_octets.store
@@ -30,11 +30,11 @@ if (!updated) {
 	test_fail
 }
 
-&request -= Callback-Id[*]
+request -= Callback-Id[*]
 
 # If the key is binary safe, we should now be able to retrieve the first entry
 # if it's not, the above test will likely fail, or we'll get the second entry.
-&Class := 0xaa00bb00cc00dd00
+Class := 0xaa00bb00cc00dd00
 
 cache_bin_key_octets
 if (!updated) {
@@ -49,10 +49,10 @@ if (Callback-Id != "foo\000bar\000baz") {
 	test_fail
 }
 
-&request -= Callback-Id[*]
+request -= Callback-Id[*]
 
 # Now try and get the second entry
-&Class := 0xaa00bb00cc00ee00
+Class := 0xaa00bb00cc00ee00
 
 cache_bin_key_octets
 if (!updated) {
@@ -67,14 +67,14 @@ if (Callback-Id != "bar\000baz") {
 	test_fail
 }
 
-&request -= Callback-Id[*]
+request -= Callback-Id[*]
 
 #
 #  We should also be able to use any fixed length data type as a key
 #  though there are no guarantees this will be portable.
 #
-&Framed-IP-Address := 192.168.0.1
-&Callback-Id := "foo\000bar\000baz"
+Framed-IP-Address := 192.168.0.1
+Callback-Id := "foo\000bar\000baz"
 
 cache_bin_key_ipaddr
 if (!ok) {
@@ -82,18 +82,18 @@ if (!ok) {
 }
 
 # Now add a second entry
-&Framed-IP-Address:= 192.168.0.2
-&Callback-Id := "bar\000baz"
+Framed-IP-Address:= 192.168.0.2
+Callback-Id := "bar\000baz"
 
 cache_bin_key_ipaddr
 if (!ok) {
 	test_fail
 }
 
-&request -= Callback-Id[*]
+request -= Callback-Id[*]
 
 # Now retrieve the first entry
-&Framed-IP-Address := 192.168.0.1
+Framed-IP-Address := 192.168.0.1
 
 cache_bin_key_ipaddr
 if (!updated) {
@@ -108,10 +108,10 @@ if (Callback-Id != "foo\000bar\000baz") {
 	test_fail
 }
 
-&request -= Callback-Id[*]
+request -= Callback-Id[*]
 
 # Now try and get the second entry
-&Framed-IP-Address := 192.168.0.2
+Framed-IP-Address := 192.168.0.2
 
 cache_bin_key_ipaddr
 if (!updated) {
@@ -126,6 +126,6 @@ if (Callback-Id != "bar\000baz") {
 	test_fail
 }
 
-&request -= Callback-Id[*]
+request -= Callback-Id[*]
 
 test_pass

@@ -1,8 +1,8 @@
 date test_date1
 date test_date2
 
-&test_date1 := "%cipher_rsa.certificate(notBefore)"
-&test_date2 := "%cipher_rsa.certificate(notAfter)"
+test_date1 := "%cipher_rsa.certificate(notBefore)"
+test_date2 := "%cipher_rsa.certificate(notAfter)"
 
 # Check the cert validity period is 30 days
 if !((test_date2 - test_date1) == ((time_delta) (86400 * 60))) {

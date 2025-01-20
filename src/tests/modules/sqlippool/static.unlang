@@ -1,7 +1,7 @@
 #
 #  Test static IP allocation using sqlippool
 #
-&control.IP-Pool.Name := 'test_static'
+control.IP-Pool.Name := 'test_static'
 
 #
 #  Add a dynamic IP addresses
@@ -31,7 +31,7 @@ if !(reply.Framed-IP-Address == 192.168.0.10) {
 #
 #  Check that renewal does not mess with static IP
 #
-&Framed-IP-Address := reply.Framed-IP-Address
+Framed-IP-Address := reply.Framed-IP-Address
 
 sqlippool.renew
 if !(updated) {
@@ -59,6 +59,6 @@ if (%sql("SELECT strftime('%%s', expiry_time) FROM fr_ippool WHERE pool_name = '
 	test_fail
 }
 
-&reply := {}
+reply := {}
 
 test_pass

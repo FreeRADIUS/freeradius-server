@@ -3,7 +3,7 @@
 #
 $INCLUDE cluster_reset.inc
 
-&control.IP-Pool.Name := 'test_update_alloc'
+control.IP-Pool.Name := 'test_update_alloc'
 
 #
 #  Add IP addresses
@@ -19,8 +19,8 @@ if (!updated) {
 #
 #  Attempt to reserve an IP address by performing a renew
 #
-&Framed-IP-Address := 192.168.0.1
-&NAS-IP-Address := 127.0.0.1
+Framed-IP-Address := 192.168.0.1
+NAS-IP-Address := 127.0.0.1
 
 redis_ippool.renew
 
@@ -39,6 +39,6 @@ if !(reply.Framed-IP-Address == 192.168.0.1) {
 	test_fail
 }
 
-&reply := {}
+reply := {}
 
 test_pass

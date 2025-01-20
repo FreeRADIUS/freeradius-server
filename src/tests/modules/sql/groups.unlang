@@ -84,7 +84,7 @@ if (%sql.group('groups_group_d')) {
 #
 #  Test paircmp group comparisons with dynamic expansions
 #
-&groupname := 'groups_group_b'
+groupname := 'groups_group_b'
 
 if !(%sql.group(%{groupname})) {
 	test_fail

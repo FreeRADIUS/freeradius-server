@@ -1,4 +1,4 @@
-&control.Password.Cleartext := "supersecret"
+control.Password.Cleartext := "supersecret"
 
 mschap
 
@@ -12,7 +12,7 @@ if !(reply.Vendor-Specific.Microsoft.CHAP-MPPE-Keys) {
 	test_fail
 }
 
-&reply -= Vendor-Specific.Microsoft.CHAP-MPPE-Keys
+reply -= Vendor-Specific.Microsoft.CHAP-MPPE-Keys
 
 test_pass
 

@@ -1,5 +1,5 @@
 
-&net.src.ip := 1.1.1.1
+net.src.ip := 1.1.1.1
 
 map ldap "ldapi:///ou=clients,dc=example,dc=com??sub?(&(objectClass=radiusClient)(objectClass=freeradiusClient)(freeradiusClientIdentifier=%{net.src.ip}))" {
 	#  secret

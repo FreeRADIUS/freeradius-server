@@ -1,5 +1,5 @@
 # Copy request to reply for later
-&reply := request
+reply := request
 
 attr_filter
 
@@ -44,7 +44,7 @@ if (reply.Idle-Timeout) {
 	test_fail
 }
 
-&reply := {}
+reply := {}
 
-&control.Password.Cleartext := "goodbye"
-&reply.Reply-Message := Reply-Message
+control.Password.Cleartext := "goodbye"
+reply.Reply-Message := Reply-Message

@@ -3,7 +3,7 @@
 #
 $INCLUDE cluster_reset.inc
 
-&control.IP-Pool.Name := 'test_alloc'
+control.IP-Pool.Name := 'test_alloc'
 
 #
 #  Add IP addresses
@@ -67,10 +67,10 @@ if !(reply.Session-Timeout == 30) {
 	test_fail
 }
 
-&IP-Pool.Range := reply.IP-Pool.Range
-&Framed-IP-Address := reply.Framed-IP-Address
-&Session-Timeout := reply.Session-Timeout # We should get the same lease time
-&reply := {}
+IP-Pool.Range := reply.IP-Pool.Range
+Framed-IP-Address := reply.Framed-IP-Address
+Session-Timeout := reply.Session-Timeout # We should get the same lease time
+reply := {}
 
 #
 #  Add IP addresses
@@ -109,12 +109,12 @@ if ((Session-Timeout - reply.Session-Timeout) > 5) {
 	test_fail
 }
 
-&reply := {}
+reply := {}
 
 #
 #  Now change the Calling-Station-ID and check we get a different lease
 #
-&Calling-Station-ID := 'another_mac'
+Calling-Station-ID := 'another_mac'
 
 redis_ippool
 if (!updated) {
@@ -128,6 +128,6 @@ if !(reply.Framed-IP-Address == 192.168.1.1) {
 	test_fail
 }
 
-&reply := {}
+reply := {}
 
 test_pass

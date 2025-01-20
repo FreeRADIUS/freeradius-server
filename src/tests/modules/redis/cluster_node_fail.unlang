@@ -16,10 +16,10 @@ if (!(%redis(SET, b, 'boom') == 'OK')) {
 %delay(0.5)
 
 #  Note the current master
-&redismaster := %redis.node(b, 0)
+redismaster := %redis.node(b, 0)
 
 #  Note the current replica
-&redisreplica := %redis.node(b, 1)
+redisreplica := %redis.node(b, 1)
 
 #  Cause one of the redis cluster nodes to SEGV
 if (%redis(@%redis.node(b, 0), DEBUG, SEGFAULT)) {

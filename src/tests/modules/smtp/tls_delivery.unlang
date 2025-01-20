@@ -1,4 +1,4 @@
-&request += {
+request += {
 	SMTP-Mail-Header = "x-test-Subject: smtp test"
 	SMTP-Mail-Body = "sent from the smtp test module\r\n"
 
@@ -45,12 +45,12 @@ echo $?"` == "1") {
 #
 if (!(`/bin/bash -c "for i in {0..50} ; \
 do if [ -e build/ci/exim4/mail/smtp_cc_request_1 ] \
-&& [ -e build/ci/exim4/mail/smtp_cc_request_2 ] \
-&& [ -e build/ci/exim4/mail/smtp_to_request_1 ] \
-&& [ -e build/ci/exim4/mail/smtp_to_request_2 ] \
-&& [ -e build/ci/exim4/mail/smtp_recipient_request ] \
-&& [ -e build/ci/exim4/mail/conf_recipient_1 ] \
-&& [ -e build/ci/exim4/mail/conf_recipient_2 ] ;\
+& [ -e build/ci/exim4/mail/smtp_cc_request_2 ] \
+& [ -e build/ci/exim4/mail/smtp_to_request_1 ] \
+& [ -e build/ci/exim4/mail/smtp_to_request_2 ] \
+& [ -e build/ci/exim4/mail/smtp_recipient_request ] \
+& [ -e build/ci/exim4/mail/conf_recipient_1 ] \
+& [ -e build/ci/exim4/mail/conf_recipient_2 ] ;\
 then \
 echo 'found' ;\
 break; \
@@ -70,7 +70,7 @@ grep -f build/ci/exim4/testfile"`){
 	test_fail
 }
 
-&request := {
+request := {
 	SMTP-Mail-Header = "x-test-Subject: 2nd smtp test"
 	SMTP-Mail-Body = "sent from the smtp test module\r\n"
 

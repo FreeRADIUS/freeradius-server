@@ -1,4 +1,4 @@
-&control.Password.Cleartext := "SuperSecret"
+control.Password.Cleartext := "SuperSecret"
 
 mschap_ntlm
 
@@ -16,7 +16,7 @@ if !(reply.Vendor-Specific.Microsoft.MPPE-Recv-Key) {
 	test_fail
 }
 
-&reply -= Vendor-Specific.Microsoft.MPPE-Send-Key
-&reply -= Vendor-Specific.Microsoft.MPPE-Recv-Key
+reply -= Vendor-Specific.Microsoft.MPPE-Send-Key
+reply -= Vendor-Specific.Microsoft.MPPE-Recv-Key
 
 test_pass

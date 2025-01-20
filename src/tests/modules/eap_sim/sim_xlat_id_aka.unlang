@@ -12,8 +12,8 @@ if (%aka_sim_id_type("%{User-Name}") != 'permanent') {
 #
 #  Encrypt the permanent ID
 #
-&test_string := '1420032219455258'
-&control.User-Name := %3gpp_temporary_id_encrypt(%{User-Name},%{test_string},6)
+test_string := '1420032219455258'
+control.User-Name := %3gpp_temporary_id_encrypt(%{User-Name},%{test_string},6)
 
 #
 #  0.2 - Can we get the EAP method from the encrypted blob correctly?
@@ -39,7 +39,7 @@ if ("%3gpp_temporary_id_encrypt(%{control.User-Name},%{test_string},6)" != '') {
 #
 #  0.5 - Get the original IMSI back again
 #
-&result_string := %3gpp_temporary_id_decrypt(%{control.User-Name},%{test_string})
+result_string := %3gpp_temporary_id_decrypt(%{control.User-Name},%{test_string})
 
 if (result_string != User-Name) {
 	test_fail
@@ -58,8 +58,8 @@ if (User-Name =~ /^[0-9](.*)/) {
 #
 #  1.1 - Encrypt the permanent ID
 #
-&test_string := '1420032219455259'
-&control += {
+test_string := '1420032219455259'
+control += {
 	User-Name = %3gpp_temporary_id_encrypt(%{User-Name[1]},%{test_string},6)
 }
 
@@ -80,7 +80,7 @@ if ("%3gpp_temporary_id_encrypt(%{control.User-Name[1]},%{test_string},6)" != ''
 #
 #  1.4 - Get the original IMSI back again
 #
-&result_string := %3gpp_temporary_id_decrypt(%{control.User-Name[1]},%{test_string})
+result_string := %3gpp_temporary_id_decrypt(%{control.User-Name[1]},%{test_string})
 
 if (result_string != "0%{User-Name[1]}") {
 	test_fail
@@ -89,8 +89,8 @@ if (result_string != "0%{User-Name[1]}") {
 #
 #  2.1 - Encrypt the permanent ID for fastauth
 #
-&test_string := '1420032219455259'
-&control += {
+test_string := '1420032219455259'
+control += {
 	User-Name = %3gpp_temporary_id_encrypt(%{User-Name[1]},%{test_string},6,fastauth)
 }
 
@@ -111,7 +111,7 @@ if ("%3gpp_temporary_id_encrypt(%{control.User-Name[2]},%{test_string},6,fastaut
 #
 #  2.4 - Get the original IMSI back again
 #
-&result_string := %3gpp_temporary_id_decrypt(%{control.User-Name[2]},%{test_string})
+result_string := %3gpp_temporary_id_decrypt(%{control.User-Name[2]},%{test_string})
 
 if (result_string != "0%{User-Name[1]}") {
 	test_fail

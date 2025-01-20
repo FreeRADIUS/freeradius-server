@@ -11,8 +11,8 @@ if !(Vendor-Specific.Yubico.Yubikey-Public-Id == 'ddddgciilcjk') {
 	test_fail
 }
 
-&control.Vendor-Specific.Yubico.Yubikey-Counter := 1
-&control.Vendor-Specific.Yubico.Yubikey-Key := 0xb8c56af07ff79b2230e04ab8891784ce
+control.Vendor-Specific.Yubico.Yubikey-Counter := 1
+control.Vendor-Specific.Yubico.Yubikey-Key := 0xb8c56af07ff79b2230e04ab8891784ce
 
 # Call module in authenticate mode to decrypt OTP
 yubikey.authenticate
@@ -33,7 +33,7 @@ if !(Vendor-Specific.Yubico.Yubikey-Random) {
 
 
 # Increase the known "counter" value to detect a replay attack
-&control.Vendor-Specific.Yubico.Yubikey-Counter := Vendor-Specific.Yubico.Yubikey-Counter
+control.Vendor-Specific.Yubico.Yubikey-Counter := Vendor-Specific.Yubico.Yubikey-Counter
 
 yubikey.authenticate {
 	reject = 1

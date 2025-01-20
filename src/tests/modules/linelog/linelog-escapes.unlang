@@ -1,7 +1,7 @@
 string test_string1
 string test_string2
 
-&control.Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
+control.Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
 
 #
 #  Remove old log files
@@ -10,12 +10,12 @@ string test_string2
 
 #  Raw attribute value should be written out without further molestation.
 #  Because the value is wrapped in '' the \n is left as \n.
-&control.Filter-Id := 'test_attr'
-&control.Callback-Id := 'foo\nbar'
+control.Filter-Id := 'test_attr'
+control.Callback-Id := 'foo\nbar'
 
 linelog_escapes
-&test_string1 := %file.tail("$ENV{MODULE_TEST_DIR}/test_escapes.log")
-&test_string2 := "%hex(%{test_string1})"
+test_string1 := %file.tail("$ENV{MODULE_TEST_DIR}/test_escapes.log")
+test_string2 := "%hex(%{test_string1})"
 
 #
 #  Note that there's a '5f6e' here, which is "\n"
@@ -28,7 +28,7 @@ else {
 	test_fail
 }
 
-&test_string1 := %file.tail("$ENV{MODULE_TEST_DIR}/test_escapes.log")
+test_string1 := %file.tail("$ENV{MODULE_TEST_DIR}/test_escapes.log")
 
 #
 #  This is left alone, and not "\n" --> 0x0a, too.
@@ -42,12 +42,12 @@ else {
 
 #  Raw attribute value should be written out without further molestation.
 #  Because the value is wrapped in "" the \n is converted to 0x0a (binary).
-&control.Filter-Id := 'test_attr'
-&control.Callback-Id := "foo\nbar"
+control.Filter-Id := 'test_attr'
+control.Callback-Id := "foo\nbar"
 
 linelog_escapes
-&test_string1 := %file.tail("$ENV{MODULE_TEST_DIR}/test_escapes.log", 2)
-&test_string2 := "%hex(%{test_string1})"
+test_string1 := %file.tail("$ENV{MODULE_TEST_DIR}/test_escapes.log", 2)
+test_string2 := "%hex(%{test_string1})"
 
 if (test_string2 == '666f6f0a626172') {
 	test_pass
@@ -56,7 +56,7 @@ else {
 	test_fail
 }
 
-&test_string1 := %file.tail("$ENV{MODULE_TEST_DIR}/test_escapes.log")
+test_string1 := %file.tail("$ENV{MODULE_TEST_DIR}/test_escapes.log")
 
 if (test_string1 == "bar") {
 	test_pass

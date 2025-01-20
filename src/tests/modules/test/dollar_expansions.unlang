@@ -1,4 +1,4 @@
-&Fall-Through := yes
+Fall-Through := yes
 
 # Should be compiled out
 if ('${a_term}' != '${a_term}') {

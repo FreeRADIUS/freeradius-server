@@ -1,8 +1,8 @@
 #
 #  PRE: cache-logic
 #
-&Filter-Id := 'testkey'
-&control.Callback-Id := 'cache me'
+Filter-Id := 'testkey'
+control.Callback-Id := 'cache me'
 
 cache
 if (!ok) {
@@ -14,24 +14,24 @@ if (%cache.ttl.get() < 4) {
         test_fail
 }
 
-&request.Login-LAT-Service := %cache('request.Callback-Id')
+request.Login-LAT-Service := %cache('request.Callback-Id')
 
 if (Login-LAT-Service != control.Callback-Id) {
         test_fail
 }
 
-&Login-LAT-Node := %cache(request.Login-LAT-Port)
+Login-LAT-Node := %cache(request.Login-LAT-Port)
 
 if (Login-LAT-Node) {
         test_fail
 }
 
 # Regression test for deadlock on notfound
-&Filter-Id := 'testkey0'
+Filter-Id := 'testkey0'
 
-&Login-LAT-Node := %cache(request.Login-LAT-Port)
+Login-LAT-Node := %cache(request.Login-LAT-Port)
 
 # Would previously deadlock
-&Login-LAT-Port := %cache(request.Login-LAT-Port)
+Login-LAT-Port := %cache(request.Login-LAT-Port)
 
 test_pass

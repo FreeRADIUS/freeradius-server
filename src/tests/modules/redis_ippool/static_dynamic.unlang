@@ -3,7 +3,7 @@
 #
 $INCLUDE cluster_reset.inc
 
-&control.IP-Pool.Name := 'test_static_dynamic'
+control.IP-Pool.Name := 'test_static_dynamic'
 
 #
 #  Add a static IP assigned to a calling station not in the request
@@ -39,6 +39,6 @@ if (!(reply.Framed-IP-Address == 192.168.0.1)) {
 	test_fail
 }
 
-&reply := {}
+reply := {}
 
 test_pass
