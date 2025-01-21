@@ -1,4 +1,4 @@
-= Global Configuration Items
+ Global Configuration Items
 
 Some modules have configuration which is _global_ to the server.
 
@@ -17,6 +17,6 @@ once, and not in each module.
 [cols="20%,80%"]
 |=====
 | Configuration | Description
-| xref:reference/raddb/global.d/ldap.adoc[ldap]         | LDAP debugging flags
-| xref:reference/raddb/global.d/python.adoc[python]	| Python path variables
+| xref:raddb/global.d/ldap.adoc[ldap]         | LDAP debugging flags
+| xref:raddb/global.d/python.adoc[python]	| Python path variables
 |=====

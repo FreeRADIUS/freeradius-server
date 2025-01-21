@@ -123,7 +123,7 @@
 *** xref:raddb/certs/index.adoc[Certificates]
 *** xref:raddb/global.d/index.adoc[Global Configuration]
 *** xref:raddb/global.d/ldap.adoc[ldap]
-//*** xref:raddb/global.d/python.adoc[python]
+*** xref:raddb/global.d/python.adoc[python]
 
 ** xref:raddb/mods-available/index.adoc[Modules]
 *** xref:raddb/mods-available/all_modules.adoc[Summary of all modules]
