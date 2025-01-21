@@ -110,7 +110,7 @@ configuration.
 
 Some modules require the use of additional configuration files.  These
 additional files are located in the
-xref:mods-config/index.adoc[mods-config/] directory.  The meaning and
+xref:raddb/mods-config/index.adoc[mods-config/] directory.  The meaning and
 interpretation of those files is documented there.  These files are
 often in a custom, module-specific format, instead of using the
 standard configuration file format.
