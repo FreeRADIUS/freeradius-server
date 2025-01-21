@@ -17,6 +17,6 @@ once, and not in each module.
 [cols="20%,80%"]
 |=====
 | Configuration | Description
-| xref:global.d/ldap.adoc[ldap]         | LDAP debugging flags
+| xref:reference/raddb/global.d/ldap.adoc[ldap]         | LDAP debugging flags
 | xref:global.d/python.adoc[python]	| Python path variables
 |=====
