@@ -982,6 +982,41 @@ int virtual_server_compile_sections(virtual_server_t const *vs, tmpl_rules_t con
 	found = 0;
 
 	/*
+	 *	Complain about v3 things being used in v4.
+	 *
+	 *	Don't complain when running in normal mode, because the server will just ignore the new
+	 *	sections.  But the check_config stuff is generally run before the service starts, and we
+	 *	definitely want to tell people when running in debug mode.
+	 */
+	if (check_config || DEBUG_ENABLED) {
+		bool fail = false;
+
+		while ((subcs = cf_section_next(server, subcs)) != NULL) {
+			char const *name;
+
+			if (cf_section_name2(subcs) != NULL) continue;
+
+			name = cf_section_name1(subcs);
+			if ((strcmp(name, "authorize") == 0) ||
+			    (strcmp(name, "authenticate") == 0) ||
+			    (strcmp(name, "post-auth") == 0) ||
+			    (strcmp(name, "preacct") == 0) ||
+			    (strcmp(name, "accounting") == 0) ||
+			    (strcmp(name, "pre-proxy") == 0) ||
+			    (strcmp(name, "post-proxy") == 0)) {
+				cf_log_err(subcs, "Version 3 processing section '%s' is not valid in version 4.",
+					   name);
+				fail = true;
+			}
+		}
+
+		/*
+		 *	Complain about _all_ of the sections, and not just the first one.
+		 */
+		if (fail) return -1;
+	}
+
+	/*
 	 *	The sections are in trees, so this isn't as bad as it
 	 *	looks.  It's not O(n^2), but O(n logn).  But it could
 	 *	still be improved.
