@@ -3,7 +3,7 @@
 There are small number of high-level concepts associated with the server, as outlined below.
 
 * xref:unlang/index.adoc[Unlang] syntax
-* xref:reference/raddb/index.adoc[Configuration Files]
+* xref:reference:raddb/index.adoc[Configuration Files]
 * xref:dictionary/index.adoc[Dictionary] where attribute names and data types are defined
 * xref:type/index.adoc[Data Types] in the server
 * xref:xlat/index.adoc[Dynamic expansions] i.e. "xlat"s.
