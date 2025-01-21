@@ -6,27 +6,27 @@ files.
 == Format and Layout
 
 The configuration files are in a simple text-based
-xref:format.adoc[format].  They are loaded once when the server
+xref:raddb/format.adoc[format].  They are loaded once when the server
 starts, and then are static for the duration of the server.  Changes
 to the configuration file are picked up only when the server restarts.
 
 The configuration files are organized into groups, generally by
-directory, as discussed below.
+directory, as outlined below.
 
 === radiusd.conf
 
-The xref:radiusd.conf.adoc[radiusd.conf] file is the main server
+The xref:raddb/radiusd.conf.adoc[radiusd.conf] file is the main server
 configuration file.  When the server starts, it reads this file.  This
 file then loads all of the other configuration files.
 
 === dictionary
 
 Site-local dictionary entries are placed in the
-xref:dictionary.adoc[dictionary] file.
+xref:raddb/dictionary.adoc[dictionary] file.
 
 === `mods-available/`
 
-The xref:mods-available/index.adoc[mods-available/] directory contains
+The xref:raddb/mods-available/index.adoc[mods-available/] directory contains
 configuration for all of the available modules. Each module
 configuration is different. Each file contains documentation that
 describes what the module is, and how it works.
@@ -76,7 +76,7 @@ policies are loaded by the server, and unused ones are ignored.
 
 === `sites-available/`
 
-The xref:sites-available/index.adoc[sites-available/] directory
+The xref:raddb/sites-available/index.adoc[sites-available/] directory
 contains virtual servers which process packets. They are similar in
 concept to the virtual servers used by Apache and Nginx.
 
@@ -127,13 +127,13 @@ RADIUS over TLS (i.e. RadSec).
 
 == Additional Configuration Files
 
-* xref:clients.conf.adoc[clients.conf]
-* xref:debug.conf.adoc[debug.conf]
-* xref:experimental.conf.adoc[experimental.conf]
-* xref:panic.gdb.adoc[panic.gdb]
-* xref:radrelay.conf.adoc[radrelay.conf]
-* xref:templates.conf.adoc[templates.conf]
-* xref:trigger.conf.adoc[trigger.conf]
+* xref:raddb/clients.conf.adoc[clients.conf]
+* xref:raddb/debug.conf.adoc[debug.conf]
+* xref:raddb/experimental.conf.adoc[experimental.conf]
+* xref:raddb/panic.gdb.adoc[panic.gdb]
+* xref:raddb/radrelay.conf.adoc[radrelay.conf]
+* xref:raddb/templates.conf.adoc[templates.conf]
+* xref:raddb/trigger.conf.adoc[trigger.conf]
 
 == Changing the Configuration
 
