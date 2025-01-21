@@ -83,13 +83,15 @@ typedef enum CC_HINT(flag_enum) {
 								///< regardless of how they are in the config file.  E.g. the `program`
 								///< option of `rlm_exec` should always be parsed as T_BACK_QUOTED_STRING.
 	CALL_ENV_FLAG_PARSE_ONLY	= (1 << 6),		//!< The result of parsing will not be evaluated at runtime.
-	CALL_ENV_FLAG_ATTRIBUTE		= (1 << 7),		//!< Tmpl must contain an attribute reference.
+	CALL_ENV_FLAG_ATTRIBUTE		= (1 << 7),		//!< Tmpl MUST contain an attribute reference.
 	CALL_ENV_FLAG_SUBSECTION	= (1 << 8),		//!< This is a subsection.
 	CALL_ENV_FLAG_PARSE_MISSING	= (1 << 9),		//!< If this subsection is missing, still parse it.  Useful for cases where
 								///< there is a callback which always needs to be run to set up required
 								///< data structures.
 	CALL_ENV_FLAG_SECRET		= (1 << 10),		//!< The value is a secret, and should not be logged.
-	CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE = (1 << 11),		//!< bare words are treated as an attribute
+	CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE = (1 << 11),		//!< bare words are treated as an attribute, but strings may
+								///< be xlats.  Should not be used with CALL_ENV_FLAG_ATTRIBUTE.
+								///< as that flag _always_ parses it as an attribute.
 } call_env_flags_t;
 DIAG_ON(attributes)
 
