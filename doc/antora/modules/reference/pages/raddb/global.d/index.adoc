@@ -2,7 +2,7 @@
 
 Some modules have configuration which is _global_ to the server.
 
-For example, the xref:mods-available/python.adoc[python] module has
+For example, the xref:raddb/mods-available/python.adoc[python] module has
 the Python path set once for the server.  Due to how the underlying
 Python APIs are written, this path cannot be configured on a
 per-module basis.  If the configuration items were instead placed in
@@ -18,5 +18,5 @@ once, and not in each module.
 |=====
 | Configuration | Description
 | xref:reference/raddb/global.d/ldap.adoc[ldap]         | LDAP debugging flags
-| xref:global.d/python.adoc[python]	| Python path variables
+| xref:reference/raddb/global.d/python.adoc[python]	| Python path variables
 |=====
