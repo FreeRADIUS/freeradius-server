@@ -1644,3 +1644,25 @@ int cf_parse_permissions(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 
 	return 0;
 }
+
+/** NULL callback for sections
+ *
+ *  This callback exists only as a place-holder to ensure that the
+ *  nested on_read functions are called.  The conf file routines won't
+ *  recurse into every conf_parser_t section to check if there's an
+ *  "on_read" callback.  So this place-holder is a signal to do that.
+ *
+ * @param[in] ctx	to allocate data in.
+ * @param[out] out	Unused
+ * @param[in] parent	Base structure address.
+ * @param[in] ci	#CONF_SECTION containing the current section.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int cf_null_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
+		    UNUSED CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
+{
+	return 0;
+}

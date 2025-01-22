@@ -114,7 +114,6 @@ static CONF_SECTION *virtual_server_root;
 static fr_rb_tree_t *listen_addr_root = NULL;
 
 static int namespace_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
-static int server_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
 
 static int namespace_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
@@ -135,7 +134,7 @@ const conf_parser_t virtual_servers_on_read_config[] = {
 	{ FR_CONF_POINTER("server", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING | CONF_FLAG_MULTI, &virtual_servers),
 			  .subcs_size = sizeof(virtual_server_t), .subcs_type = "virtual_server_t",
 			  .subcs = (void const *) server_on_read_config, .name2 = CF_IDENT_ANY,
-			  .on_read = server_on_read },
+			  .on_read = cf_null_on_read },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -278,28 +277,6 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 	cf_data_add(server_cs, mi, "process_module", false);
 	cf_data_add(server_cs, *(process->dict), "dict", false);
 
-	return 0;
-}
-
-/** Callback when a "server" section is created.
- *
- *  This callback exists only as a place-holder to ensure that the
- *  listen_on_read function is called.  The conf file routines won't
- *  recurse into every conf_parser_t section to check if there's an
- *  "on_read" callback.  So this place-holder is a signal.
- *
- * @param[in] ctx	to allocate data in.
- * @param[out] out	Unused
- * @param[in] parent	Base structure address.
- * @param[in] ci	#CONF_SECTION containing the server section.
- * @param[in] rule	unused.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int server_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
-			  UNUSED CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
-{
 	return 0;
 }
 
