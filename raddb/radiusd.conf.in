@@ -648,6 +648,8 @@ global {
 #  Some of these flags can also be passed on the command line as
 #  `-S flag=value`.
 #
+#  Dictionary migration instructions can be found in `${raddbdir}/dictionary`.
+#
 migrate {
 	#
 	#  rewrite_update:: Rewrite old `update` sections to use the new
