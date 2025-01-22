@@ -16,7 +16,7 @@
 #        sections instead of defining attributes in this file. See
 #        the xref:reference:index.adoc[reference documentation]
 #        for more information on
-#        xref:reference:unlang/local.adoc[local variables].
+#        xref:unlang/local.adoc[local variables].
 #
 #
 #  This file exists for two purposes:
