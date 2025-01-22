@@ -3200,6 +3200,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_CDP][lookup], cdp, T_OP_ADD);
 			rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 		}
+		sk_DIST_POINT_pop_free(crl_dp, DIST_POINT_free);
 	}
 
 	/*
