@@ -84,6 +84,8 @@ struct fr_dict_s {
 	fr_dict_gctx_t	        *gctx;			//!< Global dictionary context this dictionary
 							///< was allocated in.
 
+	char const		*dir;			//!< where this protocol is located
+
 	fr_dlist_head_t 	filenames;		//!< Files that this dictionary was loaded from.
 
 	bool			read_only;		//!< If true, disallow modifications.

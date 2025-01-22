@@ -3401,7 +3401,7 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	}
 	dict->loading = false;
 
-	talloc_free(dict_dir);
+	dict->dir = talloc_steal(dict, dict_dir);
 
 	if (!added) dict_dependent_add(dict, dependent);
 
@@ -3458,6 +3458,8 @@ fr_dict_t *fr_dict_alloc(char const *proto_name, unsigned int proto_number)
 int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 {
 	INTERNAL_IF_NULL(dict, -1);
+
+	if (!dir) dir = dict->dir;
 
 	if (unlikely(dict->read_only)) {
 		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root(dict)->name);
