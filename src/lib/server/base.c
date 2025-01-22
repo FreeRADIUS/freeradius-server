@@ -97,7 +97,7 @@ int server_init(CONF_SECTION *cs, char const *dict_dir, fr_dict_t *dict)
 	 */
 	switch (fr_dict_read(dict, dict_dir, FR_DICTIONARY_FILE)) {
 	case -1:
-		PERROR("Error reading custom dictionary");
+		PERROR("Failed reading site-local dictionary");
 		return -1;
 	case 0:
 		DEBUG2("Including dictionary file \"%s/%s\"", dict_dir, FR_DICTIONARY_FILE);
