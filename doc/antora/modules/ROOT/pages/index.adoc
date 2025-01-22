@@ -37,7 +37,7 @@ The documentation is split into sections by subject area, oganized by
 desired outcome. At a high level, the subject areas describe:
 
 * xref:concepts:index.adoc[Concepts] and introduction for newcomers.
-* xref:installation:index.adoc[Installing] and xref:installation:upgrade.adoc[upgrading] FreeRADIUS.
+* xref:howto:installation/index.adoc[Installing] and xref:installation:upgrade.adoc[upgrading] FreeRADIUS.
 * The syntax of the xref:reference:unlang/index.adoc[unlang] processing language.
 * The xref:reference:raddb/index.adoc[configuration files] located in `/etc/raddb/`, or `/etc/freeradius/`
 * Various xref:howto:index.adoc[how-to] guides.
@@ -111,7 +111,7 @@ All of these limitations and more have been removed. The downside of
 these changes is that the some of the configuration has been changed.
 
 Administrators who have version 3 and wish to upgrade to version 4
-should read the xref:installation:upgrade.adoc[upgrading] documentation.
+should read the xref:howto:installation/upgrade.adoc[upgrading] documentation.
 That documentation explains the differences between the two versions, and
 how an existing configuration can be reproduced in the latest
 release. We do _not_ recommend using version 3 configuration files
@@ -128,7 +128,7 @@ has been released.  Packages for older releases are also available for
 historical purposes.
 
 FreeRADIUS can also be installed from the source code.  Please see the
-xref:installation:index.adoc[installation guide] for instructions.
+xref:howto:installation/index.adoc[installation guide] for instructions.
 
 WARNING: Many Operating System distributions ship versions of FreeRADIUS
 which are years out of date. Those versions may contain bugs which have

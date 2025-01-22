@@ -57,5 +57,5 @@ RFC2139(http://www.freeradius.org/rfc/rfc2139.txt)
 ** xref:sbuff-parsing.adoc[Parsing with string buffers]
 ** xref:sbuff-ng.adoc[Sbuff issues]
 
-Also see the xref:installation:dependencies.adoc[build
+Also see the xref:howto:installation/dependencies.adoc[build
 dependencies] page.

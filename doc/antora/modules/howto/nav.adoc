@@ -1,4 +1,14 @@
 * xref:index.adoc[Howto Guides]
+** xref:installation/index.adoc[Installing and upgrading]
+*** xref:installation/packages.adoc[Install from packages]
+*** xref:installation/dependencies.adoc[Dependencies]
+*** xref:installation/source.adoc[Build from source]
+*** xref:installation/upgrade.adoc[Upgrading from v3 to v4]
+*** xref:installation/attribute_names.adoc[Attribute name changes from v3 to v4]
+*** Building Packages
+**** xref:installation/debian.adoc[Debian and Ubuntu]
+**** xref:installation/redhat.adoc[RedHat and CentOS]
+
 ** Modules
 *** xref:modules/configuring_modules.adoc[Configuring Modules]
 *** xref:modules/chap/index.adoc[CHAP]

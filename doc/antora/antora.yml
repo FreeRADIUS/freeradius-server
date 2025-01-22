@@ -13,7 +13,7 @@ nav:
 - modules/concepts/nav.adoc
 - modules/reference/nav.adoc
 #- modules/reference/raddb/nav.adoc
-- modules/installation/nav.adoc
+#- modules/installation/nav.adoc
 - modules/howto/nav.adoc
 - modules/tutorials/nav.adoc
 - modules/developers/nav.adoc
