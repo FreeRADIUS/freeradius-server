@@ -2614,23 +2614,28 @@ static int ocsp_parse_cert_url(X509 *cert, char **host_out, char **port_out,
 			       char **path_out, int *is_https)
 {
 	int			i;
-	bool			found_uri = false;
 
 	AUTHORITY_INFO_ACCESS	*aia;
 	ACCESS_DESCRIPTION	*ad;
+	int			ret = -1;
 
 	aia = X509_get_ext_d2i(cert, NID_info_access, NULL, NULL);
+
+	if (!aia) return 0;
 
 	for (i = 0; i < sk_ACCESS_DESCRIPTION_num(aia); i++) {
 		ad = sk_ACCESS_DESCRIPTION_value(aia, i);
 		if (OBJ_obj2nid(ad->method) != NID_ad_OCSP) continue;
 		if (ad->location->type != GEN_URI) continue;
-		found_uri = true;
 
 		if (OCSP_parse_url((char *) ad->location->d.ia5->data, host_out,
-				   port_out, path_out, is_https)) return 1;
+				   port_out, path_out, is_https)) {
+			ret = 1;
+			break;
+		}
 	}
-	return found_uri ? -1 : 0;
+	AUTHORITY_INFO_ACCESS_free(aia);
+	return ret;
 }
 
 /*
