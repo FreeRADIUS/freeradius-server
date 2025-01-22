@@ -1,6 +1,6 @@
 == Building from Source
 
-We recommend xref:packages.adoc[installing from packages] if
+We recommend xref:installation/packages.adoc[installing from packages] if
 possible. Full instructions on building and installing from source
 code follow.
 

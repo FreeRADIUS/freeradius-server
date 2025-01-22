@@ -27,7 +27,7 @@ The instructions here depend on the following criteria:
   certificate for your RADIUS server, and are aware of the
   security considerations in doing so.
 
-- You wish to use [LetsEncrypt[(https://letsencrypt.org/) for this
+- You wish to use https://letsencrypt.org/[LetsEncrypt] for this
   purpose, and want certificate renewals (usually every 2-3 months) to
   be automatic.
 
@@ -47,7 +47,7 @@ but that configuration is beyond the scope of this document.
 
 == Set up process
 
-The instructions here use LetsEncrypt's [certbot](https://certbot.eff.org/) tool to generate
+The instructions here use LetsEncrypt's https://certbot.eff.org/[certbot] tool to generate
 certificates and renew them when necessary. Other alternative
 tools can be used based on the following instructions.
 

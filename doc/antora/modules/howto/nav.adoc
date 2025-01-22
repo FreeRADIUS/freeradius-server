@@ -17,7 +17,6 @@
 *** xref:modules/krb5/index.adoc[Krb5]
 
 *** xref:modules/ldap/index.adoc[LDAP]
-
 **** xref:modules/ldap/bootstrap_openldap/index.adoc[Installing and Configuring OpenLDAP]
 ***** xref:modules/ldap/bootstrap_openldap/docker.adoc[Docker]
 ***** xref:modules/ldap/bootstrap_openldap/packages.adoc[Packages]

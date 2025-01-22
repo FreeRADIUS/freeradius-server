@@ -2,8 +2,8 @@
 
 FreeRADIUS is available from multiple sources:
 
-* Official xref:packages.adoc[Network RADIUS packages]
-* xref:source.adoc[Source code]
+* Official xref:installation/packages.adoc[Network RADIUS packages]
+* xref:installation/source.adoc[Source code]
 * Many Operating System distributions
 
 We highly recommend using the official packages from Network
@@ -33,9 +33,8 @@ Once you have learnt how FreeRADIUS works, it is then highly
 recommended to move to the latest released stable version before
 moving into production.
 
-If you need to install it yourself, the Wiki
-building and installing(http://wiki.freeradius.org/building/Home)
-page contains detailed instructions for a number of platforms.
+If you need to install it yourself, the http://wiki.freeradius.org/building/Home[FreeRADIUS Wiki]
+building and installing page contains detailed instructions for a number of platforms.
 
 Otherwise, we assume that you can install the server via something like
 `yum install freeradius`, or `apt-get install freeradius`.
@@ -107,7 +106,7 @@ from another terminal window:
 
 You *should* see the server respond with an `Access-Accept`. If it
 doesn't, the debug log will show why. In version 2, you can paste the
-output into the [debug form](http://networkradius.com/freeradius-debugging/),
+output into the http://networkradius.com/freeradius-debugging/[debug form] ,
 and a colorized HTML version will be produced. In version 3, the
 output will already be colorized in the terminal. Look for red or
 yellow text, and read the relevant messages. They should describe
@@ -185,13 +184,13 @@ steps:
         or `warning`. These messages usually contain descriptions of
         what went wrong, and suggestions for how it can be fixed.
         Also see [an explanation of the debug output](/radiusd-X) and
-        the [debug form](http://networkradius.com/freeradius-debugging/);
+        the http://networkradius.com/freeradius-debugging/[debug form];
     -   try replacing your configuration with a saved copy of a "known
         working" configuration, and start again. This process can clean
         up errors caused by temporary edits, or edits that you have
         forgotten about;
     -   ask for help on the
-        [freeradius-users](http://freeradius.org/support/) mailing
+         http://freeradius.org/support/[freeradius-users] mailing
         list. Include a description of what you are trying to do, and
         the *entire debugging output*, especially output showing the
         server receiving and processing test packets. You may want to
@@ -222,8 +221,8 @@ available from https://networkradius.com/[Network RADIUS].
 
 A number of guides are available from Network
 RADIUS. In particular, we recommend
-the Technical
-Guide(http://networkradius.com/doc/FreeRADIUS%20Technical%20Guide.pdf),
+the http://networkradius.com/doc/FreeRADIUS%20Technical%20Guide.pdf[Technical
+Guide] ,
 which should be read by every new RADIUS administrator. It explains
 RADIUS concepts, and covers how to perform introductory administation
 and maintenance. More in-depth guides are available on the same page.

@@ -1,7 +1,7 @@
-= 2 Ways of installing FreeRadius on Ubuntu 
+= 2 Ways of installing FreeRadius on Ubuntu
 
-* Installing from repositories 
-* Installing from source 
+* Installing from repositories
+* Installing from source
 
 == Installing from repositories :
 
@@ -11,7 +11,7 @@ To Install :
 
 Get the latest info about packages from Ubuntu :
 ----
-sudo apt-get update 
+sudo apt-get update
 ----
 
 Then make sure the system is fully upgraded before installing freeradius :
@@ -26,12 +26,12 @@ sudo apt-get dist-upgrade
 
 After that has been done we can use _apt_ to install freeradius :
 ----
-sudo apt-get install freeradius 
+sudo apt-get install freeradius
 ----
 
 This will install the common,utils, ssl-cert, libdbi-perl, and libfreeradius2 packages. As you probably going to connect to a database or use perl, you should probably also install (some of) the suggested packages. Such as: freeradius-ldap, freeradius-postgresql and freeradius-mysql.
 ----
-sudo apt-get install freeradius-ldap        
+sudo apt-get install freeradius-ldap
 ----
 
 The 'apt install freeradius' command will list all the suggested packages.
@@ -55,7 +55,7 @@ Right now your config files are in :
 ----
 cd /etc/freeradius
 ----
-Documentation and files for creation of certificates are in : 
+Documentation and files for creation of certificates are in :
 ----
 cd /usr/share/doc/freeradius
 ----
@@ -64,10 +64,9 @@ cd /usr/share/doc/freeradius
 
 Installing from source can be daunting for people who never did it but as long as you read the output of the building process, it should tell you what went wrong or what is missing.
 
-First step is to get the source. 2 places that currently offer the material :
-* freeradius.org : http://freeradius.org/download.html(http://freeradius.org/download.html)
-* GitHub : https://github.com/FreeRADIUS/freeradius-server(https://github.com/FreeRADIUS/freeradius-server)
-On GitHub select the branch you wish to install and press clone or download.
+Your first step is to download the source files which can be found on one of the following sites:
+    http://freeradius.org/download.html[Freeradius.org] - Select the latest release by pressing the relevant button.
+    https://github.com/FreeRADIUS/freeradius-server[Github] - Select the branch you wish to install and press clone or download.
 
 Make sure unzip or any other utility that can extract the zip is installed. If not :
 ----
@@ -113,7 +112,7 @@ In the file _debian/rules_ we might need to make some changes depending on other
 pico debian/rules
 ----
 
-And just before 
+And just before
 ----
 --without-rlm_eap_ikev2 \
 ----
@@ -133,7 +132,7 @@ sudo apt-get install libcurl4-openssl-dev libcap-dev libgdbm-dev libiodbc2-dev l
 
 After that we try again to build.
 ----
-fakeroot dpkg-buildpackage -b -uc	 
+fakeroot dpkg-buildpackage -b -uc
 ----
 
 If it errors out after it has already started building the deb files, you are sometimes better off starting anew. If that happens :
@@ -155,15 +154,6 @@ cd /home/myusername/freeradius
 sudo dpkg -i *freeradius*_W.X.Y*_*.deb
 ----
 The install might show errors. Read the error !! Ask questions on freeradius list if you cannot figure it out. v2 will fail install often on open_ssl issues. Quick thing to change to prevent just that error is to edit a config file so freeradius will not complain about ssl that might be vulnerable. ( /etc/freeradius/eap.conf (v2) or /etc/freeradius/modules-enabled/eap )
-
-
-
-
-
-
-
-
-
 
 
 = Building on Debian or Ubuntu
@@ -230,7 +220,7 @@ sudo apt-get install g++-4.9
 
 # Then select GCC 4.9
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 100 --slave /usr/bin/g++ g++ /usr/bin/g++-4.8
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 50 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9 
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 50 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9
 sudo update-alternatives --config gcc
 
 # Choose option 3 from the dialogue
