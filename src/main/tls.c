@@ -2821,7 +2821,7 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 	}
 	bresp = OCSP_response_get1_basic(resp);
 	if (!bresp) {
-		RDEBUG("ocsp: Failed parsing response");
+		tls_error_log(request, "ocsp: Failed parsing response");
 		goto ocsp_end;
 	}
 
@@ -2830,13 +2830,13 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 		goto ocsp_end;
 	}
 	if (OCSP_basic_verify(bresp, untrusted, store, 0)!=1){
-		REDEBUG("ocsp: Couldn't verify OCSP basic response");
+		tls_error_log(request, "ocsp: Couldn't verify OCSP basic response");
 		goto ocsp_end;
 	}
 
 	/*	Verify OCSP cert status */
 	if (!OCSP_resp_find_status(bresp, certid, &status, &reason, &rev, &thisupd, &nextupd)) {
-		REDEBUG("ocsp: No Status found");
+		tls_error_log(request, "ocsp: No Status found");
 		goto ocsp_end;
 	}
 
