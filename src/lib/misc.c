@@ -1253,9 +1253,9 @@ struct in_addr fr_inaddr_mask(struct in_addr const *ipaddr, uint8_t prefix)
  */
 struct in6_addr fr_in6addr_mask(struct in6_addr const *ipaddr, uint8_t prefix)
 {
-	uint64_t const *p = (uint64_t const *) ipaddr;
 	uint64_t addr;					/* Needed for alignment */
 	uint64_t ret[2], *o = ret;
+	uint8_t	i = 0;
 
 	if (prefix > 128) prefix = 128;
 
@@ -1264,16 +1264,30 @@ struct in6_addr fr_in6addr_mask(struct in6_addr const *ipaddr, uint8_t prefix)
 
 	if (prefix >= 64) {
 		prefix -= 64;
-		memcpy(&addr, p, sizeof(addr));		/* Needed for aligned access (ubsan) */
+		addr = (uint64_t)ipaddr->s6_addr[i] |
+			((uint64_t)ipaddr->s6_addr[i + 1] << 8) |
+			((uint64_t)ipaddr->s6_addr[i + 2] << 16) |
+			((uint64_t)ipaddr->s6_addr[i + 3] << 24) |
+			((uint64_t)ipaddr->s6_addr[i + 4] << 32) |
+			((uint64_t)ipaddr->s6_addr[i + 5] << 40) |
+			((uint64_t)ipaddr->s6_addr[i + 6] << 48) |
+			((uint64_t)ipaddr->s6_addr[i + 7] << 56);
 		*o++ = 0xffffffffffffffffULL & addr;	/* lhs portion masked */
-		p++;
+		i+=8;
 	} else {
 		ret[1] = 0;				/* rhs portion zeroed */
 	}
 
 	/* Max left shift is 63 else we get overflow */
 	if (prefix > 0) {
-		memcpy(&addr, p, sizeof(addr));		/* Needed for aligned access (ubsan) */
+		addr = (uint64_t)ipaddr->s6_addr[i] |
+			((uint64_t)ipaddr->s6_addr[i + 1] << 8) |
+			((uint64_t)ipaddr->s6_addr[i + 2] << 16) |
+			((uint64_t)ipaddr->s6_addr[i + 3] << 24) |
+			((uint64_t)ipaddr->s6_addr[i + 4] << 32) |
+			((uint64_t)ipaddr->s6_addr[i + 5] << 40) |
+			((uint64_t)ipaddr->s6_addr[i + 6] << 48) |
+			((uint64_t)ipaddr->s6_addr[i + 7] << 56);
 		*o = htonll(~((uint64_t)(0x0000000000000001ULL << (64 - prefix)) - 1)) & addr;
 	} else {
 		*o = 0;
