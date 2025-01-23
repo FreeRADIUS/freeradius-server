@@ -4823,7 +4823,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	 *	PSK query.
 	 */
 #ifdef PSK_MAX_IDENTITY_LEN
-	if (conf->psk_identity) {
+	if (conf->psk_identity || conf->psk_query) {
 		if (conf->private_key_file) {
 			WARN(LOG_PREFIX ": Ignoring private key file due to psk_identity being used");
 		}
