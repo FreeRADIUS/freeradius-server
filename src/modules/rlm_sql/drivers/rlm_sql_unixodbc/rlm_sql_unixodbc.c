@@ -40,7 +40,7 @@ USES_APPLE_DEPRECATED_API
 #include <sqlext.h>
 
 /* Forward declarations */
-static int sql_check_error(long err_handle, rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static sql_rcode_t sql_check_error(long err_handle, rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
@@ -121,7 +121,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 {
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	long err_handle;
-	int state;
+	sql_rcode_t state;
 
 	/* Executing query */
 	{
@@ -145,7 +145,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	SQLINTEGER i;
 	SQLLEN len;
 	int colcount;
-	int state;
+	sql_rcode_t state;
 
 	/* Only state = 0 means success */
 	if ((state = sql_query(handle, config, query))) {
@@ -186,7 +186,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 {
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	long err_handle;
-	int state;
+	sql_rcode_t state;
 
 	handle->row = NULL;
 

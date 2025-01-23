@@ -191,7 +191,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
  */
 sql_rcode_t rlm_sql_fetch_row(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle)
 {
-	int ret;
+	sql_rcode_t ret;
 
 	if (!*handle || !(*handle)->conn) return RLM_SQL_ERROR;
 
