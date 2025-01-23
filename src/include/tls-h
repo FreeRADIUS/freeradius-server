@@ -308,6 +308,9 @@ void 		cbtls_info(SSL const *s, int where, int ret);
 void 		cbtls_msg(int write_p, int msg_version, int content_type, void const *buf, size_t len, SSL *ssl,
 			  void *arg);
 int		cbtls_verify(int ok, X509_STORE_CTX *ctx);
+#ifdef PSK_MAX_IDENTITY_LEN
+unsigned int	psk_server_callback(SSL *ssl, const char *identity, unsigned char *psk, unsigned int max_psk_len);
+#endif
 
 /* threads.c */
 int		tls_mutexes_init(void);

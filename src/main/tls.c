@@ -45,7 +45,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifdef HAVE_UTIME_H
 #include <utime.h>
 #endif
-#include <ctype.h>
 
 #ifdef WITH_TLS
 #  ifdef HAVE_OPENSSL_RAND_H
@@ -358,113 +357,6 @@ int tls_error_io_log(REQUEST *request, tls_session_t *session, int ret, char con
 }
 
 #ifdef PSK_MAX_IDENTITY_LEN
-static bool identity_is_safe(const char *identity)
-{
-	char c;
-
-	if (!identity) return true;
-
-	while ((c = *(identity++)) != '\0') {
-		if (isalpha((uint8_t) c) || isdigit((uint8_t) c) || isspace((uint8_t) c) ||
-		    (c == '@') || (c == '-') || (c == '_') || (c == '.')) {
-			continue;
-		}
-
-		return false;
-	}
-
-	return true;
-}
-
-/*
- *	When a client uses TLS-PSK to talk to a server, this callback
- *	is used by the server to determine the PSK to use.
- */
-static unsigned int psk_server_callback(SSL *ssl, const char *identity,
-					unsigned char *psk,
-					unsigned int max_psk_len)
-{
-	unsigned int psk_len = 0;
-	fr_tls_server_conf_t *conf;
-	REQUEST *request;
-
-	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl,
-						       FR_TLS_EX_INDEX_CONF);
-	if (!conf) return 0;
-
-	request = (REQUEST *)SSL_get_ex_data(ssl,
-					     FR_TLS_EX_INDEX_REQUEST);
-	if (request && conf->psk_query) {
-		size_t hex_len;
-		VALUE_PAIR *vp, **certs;
-		TALLOC_CTX *talloc_ctx;
-		char buffer[2 * PSK_MAX_PSK_LEN + 4]; /* allow for too-long keys */
-
-		/*
-		 *	The passed identity is weird.  Deny it.
-		 */
-		if (!identity_is_safe(identity)) {
-			RWDEBUG("(TLS) %s - Invalid characters in PSK identity %s", conf->name, identity);
-			return 0;
-		}
-
-		vp = pair_make_request("TLS-PSK-Identity", identity, T_OP_SET);
-		if (!vp) return 0;
-
-		certs = (VALUE_PAIR **)SSL_get_ex_data(ssl, fr_tls_ex_index_certs);
-		talloc_ctx = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TALLOC);
-		fr_assert(certs != NULL); /* pointer to sock->certs */
-		fr_assert(talloc_ctx != NULL); /* sock */
-
-		fr_pair_add(certs, fr_pair_copy(talloc_ctx, vp));
-
-		hex_len = radius_xlat(buffer, sizeof(buffer), request, conf->psk_query,
-				      NULL, NULL);
-		if (!hex_len) {
-			RWDEBUG("(TLS) %s - PSK expansion returned an empty string.", conf->name);
-			return 0;
-		}
-
-		/*
-		 *	The returned key is truncated at MORE than
-		 *	OpenSSL can handle.  That way we can detect
-		 *	the truncation, and complain about it.
-		 */
-		if (hex_len > (2 * max_psk_len)) {
-			RWDEBUG("(TLS) %s - Returned PSK is too long (%u > %u)", conf->name,
-				(unsigned int) hex_len, 2 * max_psk_len);
-			return 0;
-		}
-
-		/*
-		 *	Leave the TLS-PSK-Identity in the request, and
-		 *	convert the expansion from printable string
-		 *	back to hex.
-		 */
-		return fr_hex2bin(psk, max_psk_len, buffer, hex_len);
-	}
-
-	if (!conf->psk_identity) {
-		DEBUG("No static PSK identity set.  Rejecting the user");
-		return 0;
-	}
-
-	/*
-	 *	No REQUEST, or no dynamic query.  Just look for a
-	 *	static identity.
-	 */
-	if (strcmp(identity, conf->psk_identity) != 0) {
-		ERROR("(TKS) Supplied PSK identity %s does not match configuration.  Rejecting.",
-		      identity);
-		return 0;
-	}
-
-	psk_len = strlen(conf->psk_password);
-	if (psk_len > (2 * max_psk_len)) return 0;
-
-	return fr_hex2bin(psk, max_psk_len, conf->psk_password, psk_len);
-}
-
 static unsigned int psk_client_callback(SSL *ssl, UNUSED char const *hint,
 					char *identity, unsigned int max_identity_len,
 					unsigned char *psk, unsigned int max_psk_len)
