@@ -187,38 +187,10 @@ jobs:
     #  Build using some alternative libraries
     #
     #    MIT Kerberos -> HEIMDAL Kerberos
-    #    OpenSSL 1.0  -> OpenSSL 3.0
     #
-    - name: 'Fetch OpenSSL 3.0 SHA'
-      id: opensslshasum
-      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      run: |
-        wget -qO- http://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/shasum=/p' >> $GITHUB_OUTPUT
-
-    - name: 'Restore OpenSSL 3.0 from the cache'
-      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      uses: actions/cache@v4
-      id: openssl-cache
-      with:
-        path: /opt/openssl/
-        key: openssl3-${{ steps.opensslshasum.outputs.shasum }}
-
-    - name: 'Build OpenSSL 3.0 (if cache stale)'
-      if: ${{ matrix.env.LIBS_ALT == 'yes' && steps.openssl-cache.outputs.cache-hit != 'true' }}
-      run: |
-        cd ~
-        wget https://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz
-        tar xzf openssl-$ALT_OPENSSL.tar.gz
-        cd openssl-$ALT_OPENSSL
-        ./Configure --prefix=/opt/openssl --openssldir=.
-        make -j `nproc`
-        make install
-
     - name: Use alternative libraries
       if: ${{ matrix.env.LIBS_ALT == 'yes' }}
       run: |
-        echo /opt/openssl/lib64 | sudo tee /etc/ld.so.conf.d/openssl3.conf >/dev/null
-        sudo ldconfig
         sudo apt-get install ${APT_OPTS} heimdal-dev
 
     - name: Show versions
