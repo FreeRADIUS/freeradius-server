@@ -3949,6 +3949,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client, char const *chain_
 	 */
 	if (!client && (conf->psk_identity || conf->psk_query)) {
 		SSL_CTX_set_psk_server_callback(ctx, psk_server_callback);
+		SSL_CTX_set_psk_find_session_callback(ctx, cbtls_psk_find_session);
 	}
 
 	/*
