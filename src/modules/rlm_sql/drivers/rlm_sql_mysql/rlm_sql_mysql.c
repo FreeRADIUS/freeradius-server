@@ -34,12 +34,10 @@ RCSID("$Id$")
 #include "config.h"
 
 #ifdef HAVE_MYSQL_MYSQL_H
-#  include <mysql/mysql_version.h>
 #  include <mysql/errmsg.h>
 #  include <mysql/mysql.h>
 #  include <mysql/mysqld_error.h>
 #elif defined(HAVE_MYSQL_H)
-#  include <mysql_version.h>
 #  include <errmsg.h>
 #  include <mysql.h>
 #  include <mysqld_error.h>
