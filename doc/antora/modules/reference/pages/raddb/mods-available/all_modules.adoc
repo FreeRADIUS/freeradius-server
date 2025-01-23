@@ -46,7 +46,6 @@ of the module.
 | xref:raddb/mods-available/couchbase.adoc[couchbase]	| Allows attributes to be stored and retrieved from a couchbase server. Client definitions may also be bulk loaded from a
 couchbase server as FreeRADIUS starts.
 | xref:raddb/mods-available/csv.adoc[csv]	| Maps values in a CSV file to FreeRADIUS attributes and adds them to the request.
-| xref:raddb/mods-available/kafka.adoc[kafka]	| Produces messages, placing them in a Kafka messaging queue
 | xref:raddb/mods-available/passwd.adoc[passwd]	| Reads and caches line-oriented files that are in a format similar to ``/etc/passwd``.
 | xref:raddb/mods-available/radutmp.adoc[radutmp]	| Writes a utmp style file that lists the users who are logged in. The file is used mainly for Simultaneous-Use checking
 and by radwho to see who has current sessions.

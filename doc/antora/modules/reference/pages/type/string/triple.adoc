@@ -1,0 +1,31 @@
+= Triple Quoted Strings
+
+.Syntax
+`"""string"""`
+`'''string'''`
+
+Triple-quoted strings are similar to their single-quoted or
+double-quoted counterparts.  The main difference is that for triple
+quoted strings, the quotation character does not need to be escaped.
+However, if the string does contain an escaped quotation character,
+the quotation character is unescaped, as with normally quoted strings.
+
+Triple-quoted strings make it easier to create strings with embedded
+quotes in them, because the quotes do not need to be escaped.
+
+.Examples
+
+`"""word"""` +
+`"a string"' +
+`"""foo"bar"!"""` +
+`"""this is a long string"""` +
+`"""this has embedded\ncharacters"""` +
+`"""this string has a "double quoted" string in the middle of it"""`
+`'''This is a string with 'embedded' quotes'''`
+
+// Licenced under CC-by-NC 4.0.
+// Copyright (C) 2025 Network RADIUS SAS.
+
+
+
+

@@ -8,7 +8,7 @@
 
 .Description
 Functions allow for complex expansions at run time.  There are many
-xref:builtin.adoc[built-in expansions].  Many modules also define
+xref:xlat/builtin.adoc[built-in expansions].  Many modules also define
 their own expansions.  The module-specific expansions are documented in each module.
 
 function:: The name of the function.  e.g. `md5` or `sql`, etc.

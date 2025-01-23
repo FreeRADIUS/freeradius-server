@@ -8,13 +8,8 @@ A single-quoted string is interpreted without any dynamic string
 expansion. The quotes allow the string to contain spaces, among other
 special characters.
 
-For normally quoted strings, the quotation character can be placed inside of
-the string by escaping it with a backslash.
-
-For triple quoted strings, the quotation character does not need to be
-escaped.  However, if the string does contain an escaped quotation
-character, the quotation character is unescaped, as with normally
-quoted strings.
+The quotation character can be placed inside of the string by escaping
+it with a backslash.
 
 .Examples
 
@@ -22,7 +17,6 @@ quoted strings.
 `'foo bar`' +
 `'foo\\'bar'` +
 `'this is a long string'`
-`'''This is a string with 'embedded' quotes'''`
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

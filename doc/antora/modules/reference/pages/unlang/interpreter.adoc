@@ -141,7 +141,7 @@ include::partial$rcode_table.adoc[]
 The "return code" used by `unlang` is somewhat similar to return codes
 used by functions in other languages.  However, this return code is
 built into `unlang`, because it simplifies most common scenarios.  For
-example, automatic xref:unlang/load-balance.adocp[load-balancing]
+example, automatic xref:unlang/load-balance.adoc[load-balancing]
 would be much more difficult without `unlang` hiding much of the
 underlying complexity.
 
