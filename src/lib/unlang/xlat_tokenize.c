@@ -1174,6 +1174,8 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		 *	Parsing %{User-Name} gets printed as %{User-Name}
 		 */
 		if (node->vpt->rules.attr.prefix == TMPL_ATTR_REF_PREFIX_YES) {
+			fr_assert(!tmpl_require_enum_prefix);
+
 			if (node->vpt->name[0] != '&') FR_SBUFF_IN_CHAR_RETURN(out, '&');
 			FR_SBUFF_IN_STRCPY_RETURN(out, node->fmt);
 			goto done;
