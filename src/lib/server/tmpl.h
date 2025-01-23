@@ -205,30 +205,30 @@ typedef enum tmpl_type_e {
 
 /** Helpers to verify the type of #tmpl_t
  */
-#define tmpl_is_uninitialised(vpt) 		(vpt->type == TMPL_TYPE_UNINITIALISED)
+#define tmpl_is_uninitialised(vpt) 		((vpt)->type == TMPL_TYPE_UNINITIALISED)
 
-#define tmpl_is_null(vpt) 			(vpt->type == TMPL_TYPE_NULL)
-#define tmpl_is_data(vpt) 			(vpt->type == TMPL_TYPE_DATA)
+#define tmpl_is_null(vpt) 			((vpt)->type == TMPL_TYPE_NULL)
+#define tmpl_is_data(vpt) 			((vpt)->type == TMPL_TYPE_DATA)
 
-#define tmpl_is_attr(vpt) 			(vpt->type == TMPL_TYPE_ATTR)
+#define tmpl_is_attr(vpt) 			((vpt)->type == TMPL_TYPE_ATTR)
 
-#define tmpl_is_xlat(vpt) 			(vpt->type == TMPL_TYPE_XLAT)
-#define tmpl_is_exec(vpt) 			(vpt->type == TMPL_TYPE_EXEC)
+#define tmpl_is_xlat(vpt) 			((vpt)->type == TMPL_TYPE_XLAT)
+#define tmpl_is_exec(vpt) 			((vpt)->type == TMPL_TYPE_EXEC)
 
-#define tmpl_is_regex(vpt) 			(vpt->type == TMPL_TYPE_REGEX)
-#define tmpl_is_regex_uncompiled(vpt)		(vpt->type == TMPL_TYPE_REGEX_UNCOMPILED)
-#define tmpl_is_regex_xlat(vpt) 		(vpt->type == TMPL_TYPE_REGEX_XLAT)
+#define tmpl_is_regex(vpt) 			((vpt)->type == TMPL_TYPE_REGEX)
+#define tmpl_is_regex_uncompiled(vpt)		((vpt)->type == TMPL_TYPE_REGEX_UNCOMPILED)
+#define tmpl_is_regex_xlat(vpt) 		((vpt)->type == TMPL_TYPE_REGEX_XLAT)
 
-#define tmpl_is_data_unresolved(vpt) 		(vpt->type == TMPL_TYPE_DATA_UNRESOLVED)
-#define tmpl_is_exec_unresolved(vpt) 		(vpt->type == TMPL_TYPE_EXEC_UNRESOLVED)
-#define tmpl_is_attr_unresolved(vpt) 		(vpt->type == TMPL_TYPE_ATTR_UNRESOLVED)
-#define tmpl_is_xlat_unresolved(vpt) 		(vpt->type == TMPL_TYPE_XLAT_UNRESOLVED)
-#define tmpl_is_regex_xlat_unresolved(vpt) 	(vpt->type == TMPL_TYPE_REGEX_XLAT_UNRESOLVED)
+#define tmpl_is_data_unresolved(vpt) 		((vpt)->type == TMPL_TYPE_DATA_UNRESOLVED)
+#define tmpl_is_exec_unresolved(vpt) 		((vpt)->type == TMPL_TYPE_EXEC_UNRESOLVED)
+#define tmpl_is_attr_unresolved(vpt) 		((vpt)->type == TMPL_TYPE_ATTR_UNRESOLVED)
+#define tmpl_is_xlat_unresolved(vpt) 		((vpt)->type == TMPL_TYPE_XLAT_UNRESOLVED)
+#define tmpl_is_regex_xlat_unresolved(vpt) 	((vpt)->type == TMPL_TYPE_REGEX_XLAT_UNRESOLVED)
 
-#define tmpl_needs_resolving(vpt)		(vpt->type & TMPL_FLAG_UNRESOLVED)
-#define tmpl_contains_attr(vpt)			(vpt->type & TMPL_FLAG_ATTR)
-#define tmpl_contains_regex(vpt)		(vpt->type & TMPL_FLAG_REGEX)
-#define tmpl_contains_xlat(vpt)			(vpt->type & TMPL_FLAG_XLAT)
+#define tmpl_needs_resolving(vpt)		((vpt)->type & TMPL_FLAG_UNRESOLVED)
+#define tmpl_contains_attr(vpt)			((vpt)->type & TMPL_FLAG_ATTR)
+#define tmpl_contains_regex(vpt)		((vpt)->type & TMPL_FLAG_REGEX)
+#define tmpl_contains_xlat(vpt)			((vpt)->type & TMPL_FLAG_XLAT)
 
 extern fr_table_num_ordered_t const tmpl_type_table[];
 extern size_t tmpl_type_table_len;
