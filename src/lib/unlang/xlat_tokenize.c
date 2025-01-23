@@ -961,6 +961,10 @@ static void _xlat_debug_node(xlat_exp_t const *node, int depth)
 
 	case XLAT_TMPL:
 	{
+		if (tmpl_cast_get(node->vpt) != FR_TYPE_NULL) {
+			INFO_INDENT("cast (%s)", fr_type_to_str(tmpl_cast_get(node->vpt)));
+		}
+
 		if (tmpl_is_attr(node->vpt)) {
 			fr_assert(!node->flags.pure);
 			INFO_INDENT("attribute (%s)", tmpl_attr_tail_da(node->vpt)->name);
@@ -991,6 +995,10 @@ static void _xlat_debug_node(xlat_exp_t const *node, int depth)
 			}
 		} else if (tmpl_is_data(node->vpt)) {
 			INFO_INDENT("tmpl (%s) type %s", node->fmt, fr_type_to_str(tmpl_value_type(node->vpt)));
+		} else if (tmpl_is_xlat(node->vpt)) {
+			INFO_INDENT("tmpl xlat (%s)", node->fmt);
+			_xlat_debug_head(tmpl_xlat(node->vpt), depth + 1);
+
 		} else {
 			INFO_INDENT("tmpl (%s)", node->fmt);
 		}
