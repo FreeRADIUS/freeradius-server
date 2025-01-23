@@ -527,10 +527,10 @@ match ERROR offset 18: Unknown attributes not allowed here
 #  Invalid array references.
 #
 xlat_purify &User-Name[a] == 'bob'
-match ERROR offset 12: Invalid array index
+match ERROR offset 12: Invalid array index 'a'
 
 xlat_purify &User-Name == &Filter-Id[a]
-match ERROR offset 26: Invalid array index
+match ERROR offset 26: Invalid array index 'a'
 
 #
 #  Bounds checks...
@@ -539,7 +539,7 @@ xlat_purify &User-Name[1001] == 'bob'
 match ERROR offset 12: Invalid array index '1001' (should be between 0-1000)
 
 xlat_purify &User-Name[-1] == 'bob'
-match ERROR offset 12: Invalid array index
+match ERROR offset 12: Invalid array index '-1'
 
 #
 #  attributes MUST be prefixed with '&'.

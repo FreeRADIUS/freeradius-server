@@ -526,10 +526,10 @@ match (&26.24757.84.9.5.15 == 0x1a99)
 #  Invalid array references.
 #
 condition &User-Name[a] == 'bob'
-match ERROR offset 12: Invalid array index
+match ERROR offset 12: Invalid array index 'a'
 
 condition &User-Name == &Filter-Id[a]
-match ERROR offset 26: Invalid array index
+match ERROR offset 26: Invalid array index 'a'
 
 #
 #  Bounds checks...
@@ -538,7 +538,7 @@ condition &User-Name[1001] == 'bob'
 match ERROR offset 12: Invalid array index '1001' (should be between 0-1000)
 
 condition &User-Name[-1] == 'bob'
-match ERROR offset 12: Invalid array index
+match ERROR offset 12: Invalid array index '-1'
 
 #
 #  Sometimes the attribute/condition parser needs to fallback to bare words

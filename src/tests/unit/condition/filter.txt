@@ -25,7 +25,7 @@ condition &User-Name[n] == "foo"
 match (&User-Name[n] == "foo")
 
 condition &User-Name[-1] == "foo"
-match ERROR offset 12: Invalid array index
+match ERROR offset 12: Invalid array index '-1'
 
 #
 #  tmpl_dcursor.c has an assert which fails if you try to use

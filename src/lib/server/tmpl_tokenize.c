@@ -1565,7 +1565,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		if (slen <= 0) goto error;
 
 		if (!tmpl_is_attr(ar->ar_tmpl)) {
-			fr_strerror_const("Invalid array index");
+			fr_strerror_printf("Invalid array index '%s'", ar->ar_tmpl->name);
 			goto error;
 		}
 
