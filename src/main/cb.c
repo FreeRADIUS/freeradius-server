@@ -363,5 +363,91 @@ unsigned int psk_server_callback(SSL *ssl, const char *identity, unsigned char *
 	return fr_hex2bin(psk, max_psk_len, conf->psk_password, psk_len);
 }
 
+/** Check that a whole string is valid utf8
+ * @param str input string.
+ * @param inlen length of input string.
+ */
+static bool utf8_validate(uint8_t const *str, size_t inlen) {
+	size_t used, remaining = inlen;
+	uint8_t const *p = str;
+
+	while (remaining > 0) {
+		used = fr_utf8_char(p, remaining);
+		if (used == 0) return false;
+		remaining -= used;
+		p += used;
+	}
+	return true;
+}
+
+int cbtls_psk_find_session(SSL *ssl, const unsigned char *id, size_t idlen, SSL_SESSION **sess) {
+	fr_tls_server_conf_t	*conf = (fr_tls_server_conf_t *) SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
+	REQUEST			*request = (REQUEST *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	SSL_CIPHER const	*cipher;
+	uint8_t			psk_key[PSK_MAX_PSK_LEN];
+	size_t			key_len = 0;
+
+	if (!utf8_validate(id, idlen)) {
+        	DEBUG2("Id is not a valid utf-8 string, assuming session resumption");
+		*sess = NULL;
+		return 1;
+	} else if (idlen > PSK_MAX_IDENTITY_LEN) {
+		WARN("id is longer than %d bytes", PSK_MAX_IDENTITY_LEN);
+		*sess = NULL;
+		return 0;
+	}
+
+	if (!conf) {
+		ERROR("No configuration for client with PSK id %s found, rejecting connection", id);
+		*sess = NULL;
+		return 0;
+	}
+
+	if (conf->psk_password) {
+		key_len = fr_hex2bin(psk_key, sizeof(psk_key), conf->psk_password,
+				     talloc_array_length(conf->psk_password) - 1);
+	} else {
+		if (request && conf->psk_query) {
+			key_len = psk_query_run(psk_key, request, ssl, conf, (char const *)id, sizeof(psk_key));
+		}
+	}
+
+	if (key_len == 0) {
+		ERROR("No PSK for client with id %s found, rejecting connection", id);
+		*sess = NULL;
+		return 0;
+	}
+
+	*sess = SSL_SESSION_new();
+	if (!*sess) {
+		ERROR("Failed to create new SSL session");
+		return 0;
+	}
+	if (!SSL_SESSION_set1_master_key(*sess, psk_key, key_len)) {
+		ERROR("Failed to set PSK key");
+		return 0;
+	}
+
+	if (!SSL_SESSION_set_protocol_version(*sess, TLS1_3_VERSION)) {
+		ERROR("Failed to set tls version 1.3, mandatory for PSK!");
+		return 0;
+	}
+
+	cipher = SSL_get_pending_cipher(ssl);
+	if (!cipher) {
+		ERROR("Failed to get pending cipher");
+		return 0;
+	}
+
+	DEBUG2("Setting session cipher %s", SSL_CIPHER_get_name(cipher));
+	if (!SSL_SESSION_set_cipher(*sess, cipher)) {
+        	ERROR("Failed to set session cipher");
+		return 0;
+	}
+
+	SSL_set_verify(ssl, SSL_VERIFY_NONE, NULL);
+
+	return 1;
+}
 #endif
 #endif
