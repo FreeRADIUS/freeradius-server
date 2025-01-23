@@ -30,13 +30,13 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "extern.h"
 #include "otp.h"
-#include "otp_mppe.h"
 
 #include <openssl/des.h>
 #include <openssl/md4.h>
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 
+#include "otp_mppe.h"
 #include <string.h>
 
 #if defined(OPENSSL_VERSION_NUMBER) && (OPENSSL_VERSION_NUMBER < 0x30000000L)
