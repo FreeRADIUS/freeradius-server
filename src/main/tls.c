@@ -2685,6 +2685,11 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 		}
 	}
 
+	if (!host) {
+		RWDEBUG("ocsp: No host found.  Not doing OCSP");
+		goto skipped;
+	}
+
 	RDEBUG2("ocsp: Using responder URL \"http://%s:%s%s\"", host, port, path);
 
 	/* Check host and port length are sane, then create Host: HTTP header */
