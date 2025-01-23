@@ -1224,7 +1224,7 @@ static unsigned int record_minus(record_t *rec, void *ptr,
 
 void tls_session_information(tls_session_t *tls_session)
 {
-	char const *str_write_p, *str_version, *str_content_type = "";
+	char const *str_write_p, *str_version, *str_content_type;
 	char const *str_details1 = "", *str_details2= "";
 	char const *details = NULL;
 	REQUEST *request;

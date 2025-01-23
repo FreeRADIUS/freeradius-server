@@ -394,7 +394,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	CURL *candle = curl_easy_init();
 
 	CURLcode ret = CURLE_OK;
-	char const *option = "unknown";
+	char const *option;
 
 	if (!candle) {
 		ERROR("rlm_rest (%s): Failed to create CURL handle", inst->xlat_name);
@@ -1959,7 +1959,7 @@ static int rest_request_config_body(UNUSED rlm_rest_t *instance, rlm_rest_sectio
 	CURL			*candle = handle->handle;
 
 	CURLcode ret = CURLE_OK;
-	char const *option = "unknown";
+	char const *option;
 
 	ssize_t len;
 
@@ -2039,7 +2039,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	http_auth_type_t	auth = section->auth;
 
 	CURLcode	ret = CURLE_OK;
-	char const	*option = "unknown";
+	char const	*option;
 	char const	*content_type;
 
 	VALUE_PAIR 	*header;
