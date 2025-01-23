@@ -22,8 +22,8 @@ the wiki.
 
 ## Development mailing list
 
-We encourage everyone who might contribute code to join the FreeRADIUS
-development list(http://www.freeradius.org/list/devel.html). This
+We encourage everyone who might contribute code to join the http://www.freeradius.org/list/devel.html[FreeRADIUS
+development list]. This
 list is highly technical and isn't for most users of the server.
 For normal discussion of the server and how to use it, there's a
 FreeRADIUS user-list.
@@ -33,13 +33,10 @@ interested in writing software for the new server.
 
 ## Miscellaneous links
 
-RADIUS RFC's and drafts: The two
-most important are
-RFC2865(http://www.freeradius.org/rfc/rfc2865.html) and
-RFC2866.(http://www.freeradius.org/rfc/rfc2866.html). These are
-the new RFCs, which replace the old ones,
-RFC2138(http://www.freeradius.org/rfc/rfc2138.txt) and
-RFC2139(http://www.freeradius.org/rfc/rfc2139.txt)
+The two most important RFCs are:
+
+    1. http://www.freeradius.org/rfc/rfc2865.html[RFC2865] - Remote Authentication Dial In User Service (RADIUS) that obsoletes http://www.freeradius.org/rfc/rfc2138.txt[RFC2138].
+    2. http://www.freeradius.org/rfc/rfc2866.html[RFC2866] - RADIUS Accounting that obsoletes http://www.freeradius.org/rfc/rfc2139.txt[RFC2139].
 
 == Topics
 

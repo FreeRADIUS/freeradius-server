@@ -26,7 +26,7 @@ xref:raddb/dictionary.adoc[dictionary] file.
 
 === `mods-available/`
 
-The xref:raddb/mods-available/index.adoc[mods-available/] directory contains
+The xref:mods-available/index.adoc[mods-available/] directory contains
 configuration for all of the available modules. Each module
 configuration is different. Each file contains documentation that
 describes what the module is, and how it works.
@@ -76,7 +76,7 @@ policies are loaded by the server, and unused ones are ignored.
 
 === `sites-available/`
 
-The xref:raddb/sites-available/index.adoc[sites-available/] directory
+The xref:sites-available/index.adoc[sites-available/] directory
 contains virtual servers which process packets. They are similar in
 concept to the virtual servers used by Apache and Nginx.
 

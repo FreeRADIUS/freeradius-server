@@ -24,7 +24,7 @@
 **** xref:modules/ldap/ldapsearch/index.adoc[Mapping and testing with ldapsearch]
 ***** xref:modules/ldap/ldapsearch/before_starting.adoc[Before starting]
 ***** xref:modules/ldap/ldapsearch/connection_parameters.adoc[Determining connection parameters]
-***** xref:modules/ldap/ldapsearch/locating_objects.adoc[Locating objects]
+***** xref:modules/ldap/ldapsearch/ßlocating_objects.adoc[Locating objects]
 ***** xref:modules/ldap/ldapsearch/translating_to_the_ldap_module.adoc[Translating ldapsearch arguments to LDAP configuration items]
 
 **** xref:modules/ldap/base_configuration/index.adoc[Base configuration]
