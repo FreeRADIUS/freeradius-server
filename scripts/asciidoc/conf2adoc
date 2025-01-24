@@ -40,8 +40,8 @@ while (<FILE>) {
 }
 close FILE;
 
-$links{"sites-available/"} = "$opt_a/sites-available/index.adoc";
-$links{"mods-available/"} = "$opt_a/mods-available/index.adoc";
+$links{"sites-available/"} = "xref:reference:raddb/sites-available/index.adoc";
+$links{"mods-available/"} = "xref:reference:raddb/mods-available/index.adoc";
 
 sub process_file {
 	my $input = shift;
@@ -145,18 +145,18 @@ sub process_file {
 			#  etc.
 			#
 			if ($key =~ /^mods-available\/./) {
-				$links{$key} = "$opt_a/$key.adoc";
+				$links{$key} = "xref:reference:raddb/$key.adoc";
 			}
 			elsif ($key =~ /^sites-available\/./) {
-			    	$links{$key} = "$opt_a/$key.adoc";
+				$links{$key} = "xref:reference:raddb/$key.adoc";
 			}
 
 			#
 			#  A bare `eap` gets converted to a reference to the EAP
 			#  module, if the EAP module exists.
 			#
-			if (!$links{%key} && -e "$opt_a/../raddb/mods-available/$key") {
-				$links{$key} = "$opt_a/mods-available/$key.adoc";
+			if (!$links{%key} && -e "xref:reference:raddb/mods-available/$key") {
+				$links{$key} = "xref:reference:raddb/mods-available/$key.adoc";
 			}
 
 			next if (!$links{$key});
@@ -179,7 +179,7 @@ sub process_file {
 				$link = "link:" . $relative . "[" . $key . "]";
 
 			} else {
-				$link = "<<" . $links{$key} . "," . $key . ">>";
+				$link = $links{$key} . "[" . $key . "]";
 			}
 
 			#
@@ -201,7 +201,7 @@ sub process_file {
 			$line =~ s,RFC (\d+),https://tools.ietf.org/html/rfc${1}\[RFC $1\],g;
 		}
 
-		$line =~ s,doc/antora/modules/([^/]+)/pages/(.*)/([^/]+).adoc,xref:$1:$2/$3.adoc[$3],g;
+		$line =~ s,doc/antora/modules/([^/]+)/pages/(.*)/([^/]+).adoc,xref:reference:$1/$2/$3.adoc[$3],g;
 
 		if (!$print_code) {
 		    if ($raw && $was_raw) {
