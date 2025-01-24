@@ -363,6 +363,7 @@ unsigned int psk_server_callback(SSL *ssl, const char *identity, unsigned char *
 	return fr_hex2bin(psk, max_psk_len, conf->psk_password, psk_len);
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10101000
 /** Check that a whole string is valid utf8
  * @param str input string.
  * @param inlen length of input string.
@@ -449,5 +450,6 @@ int cbtls_psk_find_session(SSL *ssl, const unsigned char *id, size_t idlen, SSL_
 
 	return 1;
 }
+#endif
 #endif
 #endif
