@@ -312,7 +312,7 @@ static bool we_are_master(void)
 #define FINAL_STATE(_x) NO_CHILD_THREAD; request->component = "<" #_x ">"; request->module = ""; request->child_state = _x
 
 
-static void event_new_fd(rad_listen_t *this);
+static void event_new_fd(void *ctx);
 
 /*
  *	We need mutexes around the event FD list *only* in certain
@@ -5570,8 +5570,9 @@ static int proxy_eol_cb(void *ctx, void *data)
 }
 #endif	/* WITH_PROXY */
 
-static void event_new_fd(rad_listen_t *this)
+static void event_new_fd(void *ctx)
 {
+	rad_listen_t *this = talloc_get_type_abort(ctx, rad_listen_t);
 	char buffer[1024];
 	listen_socket_t *sock = NULL;
 
