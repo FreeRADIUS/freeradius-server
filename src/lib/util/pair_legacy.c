@@ -136,6 +136,8 @@ static ssize_t fr_pair_value_from_substr(fr_pair_t *vp, fr_sbuff_t *in, bool tai
 		return 0;
 	}
 
+	fr_assert(slen <= ((ssize_t) 1 << 20));
+
 	return slen + ((quote != 0) << 1);
 }
 
