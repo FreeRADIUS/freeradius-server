@@ -35,7 +35,7 @@
 #
 # v3 create aliases file for ingestion by v4:
 #
-#  rm -rf alias;mkdir alias;./build/make/jlibtool --mode=execute ./build/bin/radattr  -D ./share/ -A  | sort -n -k6 -k7 -k8 -k9 -k10 -k11 | gawk '{printf "%s\t%-40s\t%s\n", $1, $2, $3 >> "alias/alias." tolower($5) }'
+#  rm -rf v3;mkdir v3;./build/make/jlibtool --mode=execute ./build/bin/radattr  -D ./share/ -A  | sort -n -k6 -k7 -k8 -k9 -k10 -k11 | gawk '{printf "%s\t%-40s\t%s\n", $1, $2, $3 >> "v4/dictionary." tolower($5) }'
 #
 # v4 create attr to oid file for this program:
 #
