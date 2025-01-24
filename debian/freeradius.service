@@ -25,7 +25,7 @@ MemoryLimit=2G
 # Ensure the daemon can still write its pidfile after it drops
 # privileges. Combination of options that work on a variety of
 # systems. Test very carefully if you alter these lines.
-RuntimeDirectory=freeradius
+RuntimeDirectory=freeradius freeradius/tmp
 RuntimeDirectoryMode=0775
 # This does not work on Debian Jessie:
 User=freerad

@@ -690,6 +690,12 @@ eap {
 			#  You should also delete all of the files
 			#  in the directory when the server starts.
 			#
+			#  Note that, on Linux systems with systemd, the
+			#  /tmp directory may be restricted. In this case
+			#  it may be best to use `${run_dir}/tmp` here
+			#  and create the temporary directory with the
+			#  systemd `RuntimeDirectory` unit option.
+			#
 		#	tmpdir = /tmp/radiusd
 
 			#  The command used to verify the client cert.
