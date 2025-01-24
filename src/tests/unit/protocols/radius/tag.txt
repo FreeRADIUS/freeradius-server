@@ -11,7 +11,7 @@ match 1a 12 00 00 13 0a 41 0c 01 55 4e 50 4f 4c 49 43 45 44
 decode-pair -
 match Tag-1 = { Vendor-Specific = { Unisphere = { Service-Activate = "UNPOLICED" } } }
 
-pair Tag-2 = { &Vendor-Specific.Unisphere.Service-Activate = "PPPOE_SERVICE(3072000,2048000)" }
+pair Tag-2 = { Vendor-Specific.Unisphere.Service-Activate = "PPPOE_SERVICE(3072000,2048000)" }
 match Tag-2 = { Vendor-Specific = { Unisphere = { Service-Activate = "PPPOE_SERVICE(3072000,2048000)" } } }
 
 encode-pair Tag-2 = { Vendor-Specific.Unisphere.Service-Activate = "UNPOLICED" }
