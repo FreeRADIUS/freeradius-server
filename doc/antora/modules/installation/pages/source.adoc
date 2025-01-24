@@ -194,7 +194,4 @@ Configuring and running the server MAY be complicated. Many modules have
 Please read the documentation in the doc/ directory. The comments in the
 configuration files also contain a lot of documentation.
 
-If you have any additional issues, the FAQ is also a good place to
-start.
-
-https://wiki.freeradius.org/guide/FAQ
+If you have any additional issues, refer to the https://wiki.freeradius.org/guide/FAQ[FAQ] for more help.
