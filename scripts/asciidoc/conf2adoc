@@ -14,7 +14,7 @@ $raw = 0;
 $blank = 0;
 $print_code = 0;
 
-getopts('a:c:o:t');
+getopts('c:o:t');
 
 $script_dir = dirname(__FILE__);
 $filename = "$script_dir/links.txt";
@@ -164,20 +164,6 @@ sub process_file {
 			if ($links{$key} =~ /^http/) {
 				$link = "`link:" . $links{$key} . "[" . $key . "]`";
 
-			} elsif ($links{$key} =~ /^$opt_a/) {
-				#
-				#  Link to the *relative* path for the file.
-				#  Note that we're passed "-a foo/doc/raddb",
-				#  and also an output file of "doc/raddb/bar.adoc"
-				#  So we need to strip out the duplicate directories.
-				#
-				my $absdir = dirname($opt_a . "/" . $output_file);
-				$absdir =~ s,doc/raddb/,/,;
-
-				my $relative = File::Spec->abs2rel($links{$key}, $absdir);
-
-				$link = "link:" . $relative . "[" . $key . "]";
-
 			} else {
 				$link = $links{$key} . "[" . $key . "]";
 			}
@@ -240,10 +226,6 @@ sub HELP_MESSAGE {
 	print "    -a <directory>\tthe root directory for Asciidoc conversion.\n";
 	print "    -o <filename>\tthe output filename.\n";
 	exit 0;
-}
-
-if (!defined $opt_a) {
-	$opt_a = "";
 }
 
 process_file(STDIN, $opt_o);
