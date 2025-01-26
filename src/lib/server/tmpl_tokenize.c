@@ -332,10 +332,10 @@ void tmpl_debug(tmpl_t const *vpt)
 		break;
 	}
 
-	FR_FAULT_LOG("tmpl_t %s (%.8x) \"%pR\" (%p)",
+	FR_FAULT_LOG("tmpl_t %s (%.8x) \"%s\" (%p)",
 		     tmpl_type_to_str(vpt->type),
 		     vpt->type,
-		     fr_box_strvalue_len(vpt->name, vpt->len), vpt);
+		     vpt->name, vpt);
 
 	FR_FAULT_LOG("\tcast       : %s", fr_type_to_str(tmpl_rules_cast(vpt)));
 	FR_FAULT_LOG("\tquote      : %s", fr_table_str_by_value(fr_token_quotes_table, vpt->quote, "<INVALID>"));
@@ -360,7 +360,7 @@ void tmpl_debug(tmpl_t const *vpt)
 
 		xlat_aprint(NULL, &str, tmpl_xlat(vpt), NULL);
 
-		FR_FAULT_LOG("\texpansion  : %pR", fr_box_strvalue_buffer(str));
+		FR_FAULT_LOG("\texpansion  : %s", str);
 
 		talloc_free(str);
 	}
@@ -368,17 +368,17 @@ void tmpl_debug(tmpl_t const *vpt)
 
 	case TMPL_TYPE_REGEX:
 	{
-		FR_FAULT_LOG("\tpattern    : %pR", fr_box_strvalue_len(vpt->name, vpt->len));
+		FR_FAULT_LOG("\tpattern    : %s", vpt->name);
 	}
 		break;
 
 	default:
 		if (tmpl_needs_resolving(vpt)) {
 			if (tmpl_is_data_unresolved(vpt)) {
-				FR_FAULT_LOG("\tunescaped  : %pR", fr_box_strvalue_buffer(vpt->data.unescaped));
+				FR_FAULT_LOG("\tunescaped  : %s", vpt->data.unescaped);
 				FR_FAULT_LOG("\tlen        : %zu", talloc_array_length(vpt->data.unescaped) - 1);
 			} else {
-				FR_FAULT_LOG("\tunresolved : %pR", fr_box_strvalue_len(vpt->name, vpt->len));
+				FR_FAULT_LOG("\tunresolved : %s", vpt->name);
 				FR_FAULT_LOG("\tlen        : %zu", vpt->len);
 			}
 		} else {
