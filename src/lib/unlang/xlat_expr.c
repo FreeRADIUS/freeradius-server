@@ -2179,7 +2179,7 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	unary->flags = func->flags;
 	unary->flags.impure_func = !func->flags.pure;
 
-	if (tokenize_field(unary->call.args, &node, &our_in, p_rules, t_rules, bracket_rules, out_c, (c == '!')) < 0) {
+	if (tokenize_field(unary->call.args, &node, &our_in, p_rules, t_rules, bracket_rules, out_c, (c == '!')) <= 0) {
 		talloc_free(unary);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
@@ -2460,7 +2460,18 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	}
 
 	our_t_rules.cast = FR_TYPE_NULL;
-	our_t_rules.enumv = NULL;
+//	our_t_rules.enumv = NULL;
+
+	/*
+	 *	As a special case, we allow
+	 *
+	 *		&reply = "foo = bar"
+	 *
+	 *	and then we don't parse the RHS as any enum.
+	 */
+	if ( our_t_rules.enumv && !fr_type_is_leaf(our_t_rules.enumv->type)) {
+		 our_t_rules.enumv = enumv = NULL;
+	}
 
 	/*
 	 *	If we still have '(', then recurse for other expressions
@@ -2476,11 +2487,17 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		our_t_rules.cast = FR_TYPE_NULL;
 		our_t_rules.enumv = NULL;
 
+		fr_sbuff_skip_whitespace(&our_in);
+		if (fr_sbuff_is_char(&our_in, ')')) {
+			fr_strerror_printf("Empty expressions are invalid.");
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
+
 		/*
 		 *	No input rules means "ignore external terminal sequences, as we're expecting a ')' as
 		 *	our terminal sequence.
 		 */
-		if (tokenize_expression(head, &node, &our_in, bracket_rules, &our_t_rules, T_INVALID, bracket_rules, NULL, cond) < 0) {
+		if (tokenize_expression(head, &node, &our_in, bracket_rules, &our_t_rules, T_INVALID, bracket_rules, NULL, cond) <= 0) {
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
@@ -2567,7 +2584,8 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	 *	our_t_rules, and will try to parse any data there as
 	 *	of the correct type.
 	 */
-	if (tmpl_afrom_substr(node, &vpt, &our_in, quote, p_rules, &our_t_rules) < 0) {
+	slen = tmpl_afrom_substr(node, &vpt, &our_in, quote, p_rules, &our_t_rules);
+	if ((slen < 0) || ((slen == 0) && (quote == T_BARE_WORD))) {
 	error:
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
@@ -2626,17 +2644,15 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 
 	fr_sbuff_skip_whitespace(&our_in);
 
-#if 0
 	/*
 	 *	A bare word which is NOT a known attribute.  That's an error.
 	 */
-	if (tmpl_is_data_unresolved(vpt)) {
+	if (tmpl_require_enum_prefix && tmpl_is_data_unresolved(vpt)) {
 		fr_assert(quote == T_BARE_WORD);
 		fr_strerror_const("Failed parsing input");
 		fr_sbuff_set(&our_in, &opand_m);
 		goto error;
 	}
-#endif
 
 	/*
 	 *	The tmpl has a cast, and it's the same as the explicit cast we were given, we can sometimes
@@ -2711,10 +2727,12 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 				cast_type = FR_TYPE_NULL;
 			}
 
+ 		} else if (tmpl_is_attr_unresolved(vpt)) {
+			fr_assert(t_rules->attr.allow_unresolved);
+
 		} else if (tmpl_is_data_unresolved(vpt)) {
-			/*
-			 *	A bare word which is NOT a known attribute.  That's an error.
-			 */
+			fr_assert(!tmpl_require_enum_prefix);
+
 			fr_assert(quote == T_BARE_WORD);
 			fr_strerror_const("Failed parsing input");
 			fr_sbuff_set(&our_in, &opand_m);
@@ -2886,7 +2904,7 @@ static fr_slen_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr
 	 *	Get the LHS of the operation.
 	 */
 	slen = tokenize_unary(head, &lhs, &our_in, p_rules, t_rules, bracket_rules, &c, cond);
-	if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
+	if (slen <= 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 	if (slen == 0) {
 		fr_assert(lhs == NULL);
@@ -3015,9 +3033,25 @@ redo:
 
 		slen = tokenize_regex_rhs(head, &rhs, &our_in, t_rules, bracket_rules);
 	} else {
-		slen = tokenize_expression(head, &rhs, &our_in, p_rules, t_rules, op, bracket_rules, input_rules, cond);
+		tmpl_rules_t our_t_rules = *t_rules;
+
+		/*
+		 *	The terminal rules for expressions includes "-" and "+", both of which are allowed in
+		 *	enum names.  If we pass the enumv down to the next function, it will see
+		 *	"Access-Accept", and then only parse "Access".  Which is wrong.
+		 *
+		 *	For now, if we _don't_ have tmpl_require_enum_prefix, then we don't pass the enumv,
+		 *	and we somehow skip the entire enum name.  The name is then resolved later by
+		 *	something...
+		 */
+		if (tmpl_require_enum_prefix && (lhs->type == XLAT_TMPL) && tmpl_is_attr(lhs->vpt) &&
+		    fr_sbuff_is_str_literal(&our_in, "::")) {
+			our_t_rules.enumv = tmpl_attr_tail_da(lhs->vpt);
+		}
+
+		slen = tokenize_expression(head, &rhs, &our_in, p_rules, &our_t_rules, op, bracket_rules, input_rules, cond);
 	}
-	if (slen < 0) {
+	if (slen <= 0) {
 		talloc_free(lhs);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
@@ -3175,7 +3209,7 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
 
-	if (slen < 0) {
+	if (slen <= 0) {
 		talloc_free(head);
 		FR_SBUFF_ERROR_RETURN(in);
 	}
@@ -3190,7 +3224,11 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 	 *	error.
 	 */
 	if ((node->type == XLAT_TMPL) && tmpl_is_data_unresolved(node->vpt)) {
-		fr_strerror_const("Unexpected text - attribute names must prefixed with '&'");
+		if (!tmpl_require_enum_prefix) {
+			fr_strerror_const("Unexpected text - attribute names must be prefixed with '&'");
+		} else {
+			fr_strerror_const("Unknown attribute");
+		}
 		return -1;
 	}
 

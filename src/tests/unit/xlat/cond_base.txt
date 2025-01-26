@@ -15,7 +15,7 @@ xlat_purify ("foo
 match ERROR offset 2: Unterminated string
 
 xlat_purify ()
-match ERROR offset 2: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 2: Empty expressions are invalid.
 
 xlat_purify (!)
 match ERROR offset 3: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value

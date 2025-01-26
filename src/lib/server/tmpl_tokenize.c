@@ -3114,6 +3114,17 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 		if (tmpl_require_enum_prefix) return 0;
 
 		if (!t_rules->enumv) return 0;
+
+	} else if (t_rules->enumv &&
+		   ((t_rules->enumv->type == FR_TYPE_IPV6_ADDR) ||
+		   ((t_rules->enumv->type == FR_TYPE_IPV6_PREFIX)))) {
+
+		/*
+		 *	We can't have enumerated names for IPv6 addresses.
+		 *
+		 *	@todo - allow them ONLY if the RHS string is a valid enum name.
+		 */
+		return 0;
 	}
 
 	vpt = tmpl_alloc_null(ctx);
@@ -3280,6 +3291,15 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		}
 
 		/*
+		 *	Prefer enum names to IPv6 addresses.
+		 */
+		if (t_rules->enumv && fr_sbuff_is_str_literal(&our_in, "::")) {
+			slen = tmpl_afrom_enum(ctx, out, &our_in, p_rules, t_rules);
+			if (slen > 0) goto done_bareword;
+			fr_assert(!*out);
+		}
+
+		/*
 		 *	See if it's a boolean value
 		 */
 		slen = tmpl_afrom_bool_substr(ctx, out, &our_in, p_rules);
@@ -3366,8 +3386,10 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	We can't parse it as anything, that's an error.
 		 */
 		if (tmpl_require_enum_prefix) {
-			fr_strerror_const("Failed parsing input");
-			FR_SBUFF_ERROR_RETURN(&our_in);
+			if (!fr_sbuff_is_str_literal(&our_in, "::")) {
+				fr_strerror_const("Failed parsing input");
+				FR_SBUFF_ERROR_RETURN(&our_in);
+			}
 		}
 
 		/*
