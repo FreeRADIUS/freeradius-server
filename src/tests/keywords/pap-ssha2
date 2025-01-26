@@ -13,7 +13,7 @@ octets result_octets
 #  Skip if the server wasn't built with openssl
 #
 if (!('${feature.tls}' == 'yes')) {
-	reply.Packet-Type := Access-Accept
+	reply.Packet-Type := ::Access-Accept
 	handled
 }
 
