@@ -3159,6 +3159,7 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 			tmpl_init(vpt, TMPL_TYPE_DATA, T_BARE_WORD,
 				  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
 			(void) fr_value_box_copy(vpt, &vpt->data.literal, dv->value);
+			vpt->data.literal.enumv = t_rules->enumv;
 
 			*out = vpt;
 			FR_SBUFF_SET_RETURN(in, &our_in);
