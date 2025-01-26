@@ -4115,11 +4115,6 @@ do { \
 	XLAT_REGISTER_ARGS("concat", xlat_func_concat, FR_TYPE_STRING, xlat_func_concat_args);
 	XLAT_REGISTER_ARGS("explode", xlat_func_explode, FR_TYPE_STRING, xlat_func_explode_args);
 	XLAT_REGISTER_ARGS("file.escape", xlat_func_file_escape, FR_TYPE_STRING, xlat_func_file_name_args);
-	XLAT_REGISTER_ARGS("file.exists", xlat_func_file_exists, FR_TYPE_BOOL, xlat_func_file_name_args);
-	XLAT_REGISTER_ARGS("file.head", xlat_func_file_head, FR_TYPE_STRING, xlat_func_file_name_args);
-	XLAT_REGISTER_ARGS("file.rm", xlat_func_file_rm, FR_TYPE_BOOL, xlat_func_file_name_args);
-	XLAT_REGISTER_ARGS("file.size", xlat_func_file_size, FR_TYPE_UINT64, xlat_func_file_name_args);
-	XLAT_REGISTER_ARGS("file.tail", xlat_func_file_tail, FR_TYPE_STRING, xlat_func_file_name_count_args);
 	XLAT_REGISTER_ARGS("hmacmd5", xlat_func_hmac_md5, FR_TYPE_OCTETS, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("hmacsha1", xlat_func_hmac_sha1, FR_TYPE_OCTETS, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("integer", xlat_func_integer, FR_TYPE_VOID, xlat_func_integer_args);
@@ -4145,6 +4140,11 @@ do { \
 
 	XLAT_REGISTER_ARGS("debug", xlat_func_debug, FR_TYPE_INT8, xlat_func_debug_args);
 	XLAT_REGISTER_ARGS("debug_attr", xlat_func_debug_attr, FR_TYPE_NULL, xlat_func_debug_attr_args);
+	XLAT_REGISTER_ARGS("file.exists", xlat_func_file_exists, FR_TYPE_BOOL, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.head", xlat_func_file_head, FR_TYPE_STRING, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.rm", xlat_func_file_rm, FR_TYPE_BOOL, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.size", xlat_func_file_size, FR_TYPE_UINT64, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.tail", xlat_func_file_tail, FR_TYPE_STRING, xlat_func_file_name_count_args);
 	XLAT_REGISTER_ARGS("immutable", xlat_func_immutable_attr, FR_TYPE_NULL, xlat_func_immutable_attr_args);
 	XLAT_REGISTER_ARGS("log.debug", xlat_func_log_debug, FR_TYPE_NULL, xlat_func_log_arg);
 	XLAT_REGISTER_ARGS("log.err", xlat_func_log_err, FR_TYPE_NULL, xlat_func_log_arg);
