@@ -3362,6 +3362,14 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		fr_assert(!*out);
 
 		/*
+		 *	We can't parse it as anything, that's an error.
+		 */
+		if (tmpl_require_enum_prefix) {
+			fr_strerror_const("Failed parsing input");
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
+
+		/*
 		 *	Attempt to resolve enumeration values
 		 */
 		vpt = tmpl_alloc_null(ctx);
@@ -4268,11 +4276,9 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 		if (!enumv) enumv = tr_rules->enumv;
 
 		/*
-		 *	If we've got no explicit casting to do
-		 *	check if we've got either an existing
-		 *	enumv, or one which came in from the
-		 *	resolution rules, and infer our data type
-		 *	from that.
+		 *	We don't have an explicit output type.  Try to
+		 *	interpret the data os the enumv data type, OR
+		 *	if all else fails, it's a string.
 		 */
 		if (fr_type_is_null(dst_type)) {
 			/*
@@ -4280,8 +4286,26 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 			 */
 			if (enumv) {
 				dst_type = enumv->type;
-			} else {
+
+			} else if (!tmpl_require_enum_prefix) {
 				dst_type = FR_TYPE_STRING;	/* Default to strings */
+
+			} else if (vpt->quote != T_BARE_WORD) {
+				dst_type = FR_TYPE_STRING;	/* quoted strings are strings */
+
+			} else if (!enumv || (strncmp(vpt->data.unescaped, "::", 2) != 0)) {
+				/*
+				 *	The rest of the code should have errored out before this.
+				 */
+				fr_strerror_printf("Failed resolving data '%s' - it is not an attribute name or a quoted string", vpt->data.unescaped);
+				return -1;
+
+			} else {
+				/*
+				 *	It's a valid enum ::NAME which was added _after_ the dictionaries were
+				 *	loaded.  That's fine.  fr_value_box_from_substr() will skip over the
+				 *	"::", and parse the enum name.
+				 */
 			}
 		}
 
