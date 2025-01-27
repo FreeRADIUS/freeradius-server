@@ -4,6 +4,7 @@ import time
 import socket
 import ssl
 import logging
+from datetime import datetime
 
 class SSLClient:
     def __init__(self, ip, client_cert_file_location, trusted_cas_file_location):
@@ -32,26 +33,39 @@ class SSLClient:
 
 
 def send_stuff(x):
-    try:
-        test = SSLClient('127.0.0.1', '../../../raddb/certs/client.pem', '../../../raddb/certs/ca.pem')
-
-        test.socket.send(b'asdlkfjasldkfj')
-        test.socket.shutdown(socket.SHUT_WR)
-        test.socket.recv(1024)
-        test.socket.close()
-    except Exception as e: 
-        print('error while sending things')
-    finally:
+    while True:
         try:
+            now = datetime.now()
+            test = SSLClient('127.0.0.1', '../../../raddb/certs/client.pem', '../../../raddb/certs/ca.pem')
+            test.socket.send(b'asdlkfjasldkfj')
+            test.socket.shutdown(socket.SHUT_WR)
+            # don't wait until a clean shutdown is done and close it directly
             test.socket.close()
-        except: 
-            pass
+
+        except Exception as e:
+            print(f'dur: {(datetime.now() - now)} _ error while sending things: {str(e)}')
+        finally:
+            try:
+                if not hasattr(test.socket, '_closed'):
+                    print(f'dur: {(datetime.now() - now)} _ socket not correctly initialized')
+                elif not test.socket._closed:
+                        test.socket.close()
+                print(f"dur: {(datetime.now() - now)}")
+            except Exception as e:
+                print(f'dur: {(datetime.now() - now)} _ error while closing socket: {str(e)}')
+                pass
 
 
 
 
 if __name__ == '__main__':
-    with multiprocessing.Pool(16) as p: 
+    with multiprocessing.Pool(16) as p:
         while True:
-            p.map(send_stuff, range(400))
-            time.sleep(1)
+            try:
+                p.map(send_stuff, range(16))
+            except KeyboardInterrupt:
+                logging.info("Keyboard interrupt")
+                break
+            except Exception as e:
+                logging.error(f"Not able to spwan process: {e}")
+
