@@ -1,13 +1,42 @@
 WARNING: This configuration file has not been updated for v4,
           and therefore WILL NOT WORK.  Please do not use it.
 
+```
+#	In 2.0.0, radrelay functionality is integrated into the
+#	server core.  This virtual server gives an example of
+#	using radrelay functionality inside of the server.
+```
+
+```
+#	In this example, the detail file is read, and the packets
+#	are proxied to a home server.  You will have to configure
+#	realms, home_server_pool, and home_server in proxy.conf
+#	for this to work.
+```
+
+```
+#	The purpose of this virtual server is to enable duplication
+#	of information across a load-balanced, or fail-over set of
+#	servers.  For example, if a group of clients lists two
+#	home servers (primary, secondary), then RADIUS accounting
+#	messages will go only to one server at a time.  This file
+#	configures a server (primary, secondary) to send copies of
+#	the accounting information to each other.
+```
+
+```
+#	That way, each server has the same set of information, and
+#	can make the same decision about the user.
+```
 
 
 
+```
+server copy-acct-to-home-server {
+	listen {
+		type = detail
 
-
-
-
+```
 
 See sites-available/buffered-sql for more details on
 all the options available for the detail reader.
@@ -47,7 +76,10 @@ one large file.  File globbing also means that with
 a common naming scheme for detail files, then you can
 have many detail file writers, and only one reader.
 
+```
+		filename = ${radacctdir}/detail
 
+```
 
 The server can read accounting packets from the
 detail file much more quickly than those packets
@@ -73,7 +105,10 @@ If the "load_factor" is set to 100, then the server
 will read packets as fast as it can, usually
 causing databases to go into overload.
 
+```
+		load_factor = 10
 
+```
 
 Track progress through the detail file.  When the detail
 file is large, and the server is restarted, it will
@@ -84,22 +119,39 @@ have already been processed.  The default is "no".
 
 track = yes
 
+```
+	}
 
+```
 
 Pre-accounting.  Decide which accounting type to use.
 
+```
+	recv Accounting-Request {
+```
 
 Read the 'acct_users' file.  This isn't always
 necessary, and can be deleted if you do not use it.
+```
+		files
+	}
 
+```
 
 Accounting.  Log the accounting data.
 
+```
+	send Accounting-Response {
+```
 
 Since we're proxying, we don't log anything
 locally.  Ensure that the accounting section
 "succeeds" by forcing an "ok" return.
+```
+		   ok
+	}
 
+```
 
 When the server decides to proxy a request to a home server,
 the proxied request is first passed through the pre-proxy
@@ -108,17 +160,26 @@ cancel the proxy.
 
 Only a few modules currently have this method.
 
+```
+	pre-proxy {
 
+```
 If you want to have a log of packets proxied to a home
 server, uncomment the following line, and the
 'detail pre_proxy_log' section in radiusd.conf.
 pre_proxy_log
+```
+	}
 
+```
 
 When the server receives a reply to a request it proxied
 to a home server, the request may be massaged here, in the
 post-proxy stage.
 
+```
+	post-proxy {
+```
 
 
 If you want to have a log of replies from a home
@@ -131,41 +192,12 @@ replies from remote proxies based on the rules
 defined in the 'attrs' file.
 
 attr_filter
+```
+	}
+}
+```
 
 == Default Configuration
 
 ```
-#	In 2.0.0, radrelay functionality is integrated into the
-#	server core.  This virtual server gives an example of
-#	using radrelay functionality inside of the server.
-#	In this example, the detail file is read, and the packets
-#	are proxied to a home server.  You will have to configure
-#	realms, home_server_pool, and home_server in proxy.conf
-#	for this to work.
-#	The purpose of this virtual server is to enable duplication
-#	of information across a load-balanced, or fail-over set of
-#	servers.  For example, if a group of clients lists two
-#	home servers (primary, secondary), then RADIUS accounting
-#	messages will go only to one server at a time.  This file
-#	configures a server (primary, secondary) to send copies of
-#	the accounting information to each other.
-#	That way, each server has the same set of information, and
-#	can make the same decision about the user.
-server copy-acct-to-home-server {
-	listen {
-		type = detail
-		filename = ${radacctdir}/detail
-		load_factor = 10
-	}
-	recv Accounting-Request {
-		files
-	}
-	send Accounting-Response {
-		   ok
-	}
-	pre-proxy {
-	}
-	post-proxy {
-	}
-}
 ```

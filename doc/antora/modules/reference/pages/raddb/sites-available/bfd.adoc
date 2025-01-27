@@ -25,39 +25,64 @@ administratively down.
 
 The virtual server which manages BFD.
 
+```
+server main {
+```
 
 namespace::
 
 The Bidirectional Forwarding Detection (BFD) protocol.
 
+```
+	namespace = bfd
 
+```
 
 Common configuration for the BFD state machine.
 For now, unused.
 
+```
+	bfd {
 
+	}
 
+```
 
 ### listen { ... }
 
+```
+	listen {
+```
 
 Only IP transport is supported for BFD.
 There is no ethernet type for BFD.
 
+```
+		transport = udp
+
+```
 
 
 
-
+```
+		udp {
+```
 
 ipaddr::
 
  IP address, or IPv6 address as with other
 
+```
+			ipaddr = 192.0.2.1
 
+```
 
 port:: Port as normal.
 
+```
+			port = 3784
 
+```
 
 only_state_changes::
 
@@ -65,21 +90,35 @@ In general the server only needs to know if the BFD session state has changed.  
 this value to "false" if you want every received and every sent packet to be
 processed through this virtual server.
 
+```
+			only_state_changes = true
+		}
+	}
 
+```
 
 peer:: BFD peer
 
 The peer definition is based on the `client` definition.  The standard client configuration items will work
 here.
 
+```
+peer other {
+```
 
 ipaddr:: address of the peer
 
+```
+	ipaddr = 192.0.2.2
 
+```
 
 port:: the peers port where we send packets
 
+```
+	port = 3784
 
+```
 
 src_ipaddr:: Source address used when sending packets to this peer.
 
@@ -88,7 +127,10 @@ This source address should match a `listen` section above.  If not source addres
 
 If the source IP address does not match any listener, then the peer will be ignored.
 
+```
+#	src_ipaddr = 192.0.2.1
 
+```
 
 auth_type:: BFD Authentication method.
 
@@ -108,32 +150,51 @@ May be one of:
 NOTE: The other side of the BFD connection has to have the same
 kind of authentication set.
 
+```
+	auth_type = none
 
+```
 
 secret:: The secret key used for authentication.
 
 If it starts with "0x", then it is treated as a hex string. This is recommended
 for security.  The secrets should be no more than 16 octets long, and random.
 
+```
+#	secret = "hello"
 
+```
 
 min_transmit_interval:: Minimum time interval to transmit.
 
+```
+	min_transmit_interval = 250ms
 
+```
 
 min_receive_interval:: Minimum time interval to receive.
 
+```
+	min_receive_interval = 250ms
 
+```
 
 max_timeouts:: Max number of timeouts before the session is declared dead.
 
+```
+	max_timeouts = 3
 
+```
 
 demand:: BFD Demand mode.
 
 allowed values: {no, yes}
 
+```
+	demand = no
+}
 
+```
 
 ## Packet Processing sections
 
@@ -148,94 +209,89 @@ are defined by the protocol.  The `send` section is called only for informationa
 
 ### Receive "Admin-Down" packets from the peer.
 
-
-
-### Receive "Down" packets from the peer.
-
-
-
-### Receive "Init" packets from the peer.
-
-
-
-### Receive "Up" packets from the peer.
-
-
-
-### Send "Admin-Down" packets to the peer.
-
-
-
-### Send "Down" packets to the peer.
-
-
-
-### Send "Init" packets to the peer.
-
-
-
-### Send "Up" packets to the peer.
-
-
-
-
-Sneak in more data after a BFD packet!
-
-
-
-== Default Configuration
-
 ```
-server main {
-	namespace = bfd
-	bfd {
-	}
-	listen {
-		transport = udp
-		udp {
-			ipaddr = 192.0.2.1
-			port = 3784
-			only_state_changes = true
-		}
-	}
-peer other {
-	ipaddr = 192.0.2.2
-	port = 3784
-#	src_ipaddr = 192.0.2.1
-	auth_type = none
-#	secret = "hello"
-	min_transmit_interval = 250ms
-	min_receive_interval = 250ms
-	max_timeouts = 3
-	demand = no
-}
 recv Admin-Down {
 	ok
 }
+
+```
+
+### Receive "Down" packets from the peer.
+
+```
 recv Down {
 	ok
 }
+
+```
+
+### Receive "Init" packets from the peer.
+
+```
 recv Init {
 	ok
 }
+
+```
+
+### Receive "Up" packets from the peer.
+
+```
 recv Up {
 	ok
 }
+
+```
+
+### Send "Admin-Down" packets to the peer.
+
+```
 send Admin-Down {
 	ok
 }
+
+```
+
+### Send "Down" packets to the peer.
+
+```
 send Down {
 	ok
 }
+
+```
+
+### Send "Init" packets to the peer.
+
+```
 send Init {
 	ok
 }
+
+```
+
+### Send "Up" packets to the peer.
+
+```
 send Up {
 #	octets more-data
+
 	ok
+
+```
+
+Sneak in more data after a BFD packet!
+
+```
 #	&reply.Additional-Data := {
 #		&more-data := 0xabcdef
 #	}
 }
+
 }
+```
+
+== Default Configuration
+
+```
 ```

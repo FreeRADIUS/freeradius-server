@@ -1,7 +1,19 @@
+```
+server proxy {
+	namespace = radius
 
+	listen {
+		type = Access-Request
 
+		transport = udp
 
+		udp {
+			ipaddr = *
+			port = 2812
+		}
+	}
 
+```
 
 ## Packet Processing sections
 
@@ -15,29 +27,21 @@ received.
 
 ### Receive Access-Request packets
 
-
-
-
-== Default Configuration
-
 ```
-server proxy {
-	namespace = radius
-	listen {
-		type = Access-Request
-		transport = udp
-		udp {
-			ipaddr = *
-			port = 2812
-		}
-	}
 recv Access-Request {
 	update control {
 		&Auth-Type := proxy
 	}
 }
+
 authenticate proxy {
 	radius
 }
+
 }
+```
+
+== Default Configuration
+
+```
 ```

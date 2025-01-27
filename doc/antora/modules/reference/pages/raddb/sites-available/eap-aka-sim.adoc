@@ -41,6 +41,10 @@ will instead generate a warning:
 - `send Failure-Notification`	already rejecting the auth attempt.
 - `recv Failure-Notification`	already rejecting the auth attempt.
 - `recv Success-Notification`	sending failure after EAP-Response/
+```
+#					Success Notification-ACK would
+#					violate the standard.
+```
 - `recv Authentication-Reject`	already rejecting the auth attempt.
 - `recv Client-Error`		already rejecting the auth attempt.
 - `clear pseudonym`			nothing more we can do...
@@ -57,6 +61,9 @@ attempts to modify it will be ignored (you are not trusted to know how to
 run the EAP-AKA state machine better than the EAP-AKA module).
 
 
+```
+server eap-aka-sim {
+```
 
 This is a unified configuration example for EAP-SIM, EAP-AKA
 and EAP-AKA-Prime.  Many of the sections are identical between
@@ -65,7 +72,13 @@ the three EAP methods.
 The main differences are between EAP-SIM and EAP-AKA['] where
 additional identity processing sections are used.
 
+```
+#	namespace = eap-sim
+	namespace = eap-aka
+#	namespace = eap-aka-prime
 
+#	eap-sim {
+```
 
 request_identity:: Send a SIM-Start message to Requests
 an additional identity to the one from the EAP-Identity-Response.
@@ -87,7 +100,10 @@ Even if this configuration item is set to 'no', additional
 identities can be requested by policy.
 See sites-available/eap-aka-sim for details.
 
+```
+#		request_identity = no
 
+```
 
 ephemeral_id_length:: The length of any pseudonyms or
 fastauth identities we generate (not including hint byte).
@@ -95,7 +111,10 @@ fastauth identities we generate (not including hint byte).
 See sites-available/eap-aka-sim for details on how to trigger
 the generation of pseudonym or fastauth identities.
 
+```
+#		ephemeral_id_length = 14
 
+```
 
 strip_permanent_identity_hint:: Strip the identity hint when
 copying &EAP-Identity or &Identity to &Permanent-Identity.
@@ -104,7 +123,10 @@ The stripping is only performed if this config item is set
 to yes, and the hint byte matches what we'd expect for the
 EAP-Method being executed.
 
+```
+#		strip_permanent_identity_hint = yes
 
+```
 
 protected_success:: Send a protected success message.
 
@@ -116,7 +138,12 @@ packet protected with an `AT_MAC` attribute.
 After the Notification is ACKed by the peer, we send
 the final `EAP-Success` packet containing `MPPE` keys.
 
+```
+#		protected_success = yes
+#	}
 
+	eap-aka {
+```
 request_identity:: Send a AKA-Identity message to request
 an additional identity to the one from the EAP-Identity-Response.
 
@@ -137,12 +164,18 @@ Even if this configuration item is set to 'no', additional
 identities can be requested by policy.
 See sites-available/eap-aka-sim for details.
 
+```
+#		request_identity = no
 
+```
 
 ephemeral_id_length:: The length of any pseudonyms or
 fastauth identities we generate (not including hint byte).
 
+```
+#		ephemeral_id_length = 14
 
+```
 
 strip_permanent_identity_hint:: Strip the identity hint when
 copying &EAP-Identity or &Identity to &Permanent-Identity.
@@ -151,7 +184,10 @@ The stripping is only performed if this config item is set
 to yes, and the hint byte matches what we'd expect for the
 EAP-Method being executed.
 
+```
+#		strip_permanent_identity_hint = yes
 
+```
 
 protected_success:: Send a protected success message.
 
@@ -163,7 +199,12 @@ packet protected with an `AT_MAC` attribute.
 After the Notification is ACKed by the peer, we send
 the final `EAP-Success` packet containing `MPPE` keys.
 
+```
+#		protected_success = yes
+	}
 
+#	eap-aka-prime {
+```
 
 network_name:: The default value used for AT_KDF_INPUT
 
@@ -179,7 +220,10 @@ this value needs to be determined dynamically.
 How this value should be created and formatted is specified
 in 3GPP.24.302.
 
+```
+#		network_name = ""
 
+```
 
 request_identity:: Send a AKA-Identity message to request
 an additional identity to the one from the EAP-Identity-Response.
@@ -201,7 +245,10 @@ Even if this configuration item is set to 'no', additional
 identities can be requested by policy.
 See sites-available/eap-aka-sim for details.
 
+```
+#		request_identity = no
 
+```
 
 ephemeral_id_length:: The length of any pseudonyms or
 fastauth identities we generate (not including hint byte).
@@ -209,7 +256,10 @@ fastauth identities we generate (not including hint byte).
 See sites-available/eap-aka-sim for details on how to trigger
 the generation of pseudonym or fastauth identities.
 
+```
+#		ephemeral_id_length = 14
 
+```
 
 strip_permanent_identity_hint:: Strip the identity hint when
 copying &EAP-Identity or &Identity to &Permanent-Identity.
@@ -218,7 +268,10 @@ The stripping is only performed if this config item is set
 to yes, and the hint byte matches what we'd expect for the
 EAP-Method being executed.
 
+```
+#		strip_permanent_identity_hint = yes
 
+```
 
 protected_success:: Send a protected success message.
 
@@ -230,7 +283,11 @@ packet protected with an `AT_MAC` attribute.
 After the Notification is ACKed by the peer, we send
 the final `EAP-Success` packet containing `MPPE` keys.
 
+```
+#		protected_success = yes
+#	}
 
+```
 
 ### `recv Identity-Response { ... }` - Process an EAP-Identity-Response or AKA-Identity value
 
@@ -355,7 +412,12 @@ The rlm_cipher module and the &control.KDF-Identity attribute override
 scheme described by 3GPP S3-170116 and the Wireless Broadband Allowance
 document "IMSI PRIVACY PROTECTION FOR WI-FI".
 
+```
+	recv Identity-Response {
+		ok
+	}
 
+```
 
 ### `send Identity-Request { ... }` - Allow user massaging of Identity-Request
 
@@ -364,7 +426,12 @@ sent to the supplicant, unless `send Start { ... }` or `send
 AKA-Identity { ... }` sections are provided, in which case they will
 be used instead.
 
+```
+	send Identity-Request {
+		ok
+	}
 
+```
 
 ### `send Start-Request { ... }` - Allow specific policies to be applied to SIM start requests
 
@@ -378,7 +445,12 @@ The Identity and Start messages perform a very similar role in
 EAP-SIM/EAP-AKA, the main difference being, Start messages also
 allow the version of EAP-SIM to be negotiated.
 
+```
+#	send Start-Request {
+#		ok
+#	}
 
+```
 
 ### `send Start-Request { ... }` - Allow specific policies to be applied to SIM start responses
 
@@ -392,7 +464,12 @@ The Identity and Start messages perform a very similar role in
 EAP-SIM/EAP-AKA, the main difference being, Start messages also
 allow the version of EAP-SIM to be negotiated.
 
+```
+#	recv Start-Response {
+#		ok
+#	}
 
+```
 
 ### `send AKA-Identity-Request { ... }` - Allow specific policies to be applied to AKA identity requests
 
@@ -406,7 +483,12 @@ The Identity and Start messages perform a very similar role in
 EAP-SIM/EAP-AKA, the main difference being, Start messages also
 allow the version of EAP-SIM to be negotiated.
 
+```
+#	send AKA-Identity-Request {
+#		ok
+#	}
 
+```
 
 ### `send Challenge-Request { ... }` - Acquire GSM triplets or UMTS quintuplets for the Challenge-Request
 
@@ -546,7 +628,12 @@ WBA document.
 If you need to implement one of these identity privacy schemes, the
 cryptographic identity can be specified with `&control.KDF-Identity`.
 
+```
+	send Challenge-Request {
+		ok
+	}
 
+```
 
 ### `recv Challenge-Response { ... }` - Allow additional authorization checks and logging
 
@@ -574,7 +661,12 @@ The following rcodes have special meanings in this section:
 		(General failure after authentication).
 - Anything else		Continue processing the request.
 
+```
+	recv Challenge-Response {
+		ok
+	}
 
+```
 
 ### `recv Reauthentication-Request { ... }` - Allow user massaging of a reauthentication request
 
@@ -607,7 +699,12 @@ NOTE: You should use fresh reauthentication ID values here, else the
 supplicant may be tracked as they would if their permanent Id has been
 used.
 
+```
+	send Reauthentication-Request {
+		ok
+	}
 
+```
 
 ### `recv Reauthentication-Response { ... }` - Allow additional authorization checks and logging
 
@@ -616,7 +713,12 @@ Uses the same rcode mappings as `recv Challenge-Response { ... }`.
 Will not allow a transition back to the challenge state, as it's
 not clear that this is allowed by RFC4186/RFC4187.
 
+```
+	recv Reauthentication-Response {
+		ok
+	}
 
+```
 
 ### `recv Client-Error { ... }` - Log the fact that the supplicant has terminated authentication
 
@@ -625,7 +727,12 @@ The reason for the error should be available in `&Client-Error-Code`
 After this section is run authentication fails immediately with no
 EAP-Response/AKA-Notification round.
 
+```
+	recv Client-Error {
+		ok
+	}
 
+```
 
 ### `recv Authentication-Reject { ... }` - Log the fact that the supplicant failed to authenticate the AuC
 
@@ -641,7 +748,12 @@ the error.
 After this section is run authentication fails immediately with no
 EAP-Response/AKA-Notification round.
 
+```
+	recv Authentication-Reject {
+		ok
+	}
 
+```
 
 ### `recv Synchronization-Failure { ... }` - Allow resynchronisation of sequence numbers
 
@@ -672,19 +784,34 @@ the supplicant and continue; otherwise authentication fails.
 NOTE: Only one Synchronisation attempt is permitted per
 authentication attempt.
 
+```
+	recv Synchronization-Failure {
+		ok
+	}
 
+```
 
 ### `send Failure-Notification { ... }` - Allow massaging/logging of failure notifications
 
 NOTE: The rcode returned from this section is ignored.
 
+```
+	send Failure-Notification {
+		ok
+	}
 
+```
 
 ### `send Failure-Notification { ... }` - Allow logging of failure notification acknowledgements
 
 NOTE: The rcode returned from this section is ignored.
 
+```
+	recv Failure-Notification-ACK {
+		ok
+	}
 
+```
 
 ### `send Success-Notification { ... }` - Allow massaging/logging of success notifications
 
@@ -692,13 +819,23 @@ Uses the same rcode mappings as `recv Challenge-Response { ... }`.
 
 NOTE: Only entered if protected result indications are used.
 
+```
+	send Success-Notification {
+		ok
+	}
 
+```
 
 ### `send Success-Notification-Ack { ... }` - Allow logging of success notification acknowledgements
 
 NOTE: The rcode returned from this section is ignored.
 
+```
+	recv Success-Notification-ACK {
+		ok
+	}
 
+```
 
 ### `send EAP-Success { ... }` - Allow massaging/logging of success notifications
 
@@ -706,13 +843,23 @@ NOTE: The rcode returned from this section is ignored if we have already sent
 a Success-Notification, otherwise the same rcode mappings as
 `recv Challenge-Response { ... }` are used.
 
+```
+	send EAP-Success {
+		ok
+	}
 
+```
 
 ### `send EAP-Failure { ... }` - Allow logging of failure notification acknowledgements
 
 NOTE: The rcode returned from this section is ignored.
 
+```
+	recv EAP-Failure {
+		ok
+	}
 
+```
 
 ### `store pseudonym { ... }`
 
@@ -743,7 +890,12 @@ NOTE: If you're using 3GPP style encrypted pseudonyms you do not
 need populate this section.  You should however, provide a policy
 for `load session { ... }`, and use that to decrypt the pseudonym.
 
+```
+	store pseudonym {
+		ok
+	}
 
+```
 
 ### `load pseudonym { ... }`
 
@@ -758,7 +910,12 @@ NOTE: If you're using 3GPP style encrypted pseudonyms, you should
 decrypt the pseudonym here, and store the decrypted value in
 `&session-state.Permanent-Identity`.
 
+```
+	load pseudonym {
+		ok
+	}
 
+```
 
 ### `clear pseudonym { ... }`
 
@@ -767,7 +924,12 @@ This section we be called if authentication or re-authentication fails.
 You should remove any session information stored against
 `&Next-Pseudonym-Id`.
 
+```
+	clear pseudonym {
+		ok
+	}
 
+```
 
 ### `store session { ... }`
 
@@ -791,7 +953,12 @@ If you're using multiple instances of FreeRADIUS in a failover
 cluster, you may wish to use the redis or memcached drivers to
 provide a unified session store.
 
+```
+	store session {
+		ok
+	}
 
+```
 
 ### `load session { ... }`
 
@@ -820,7 +987,12 @@ The following rcodes have special meanings in this section:
 - `updated`			Continue with reauthentication.
 - Anything else		Fall back to full authentication.
 
+```
+	load session {
+		ok
+	}
 
+```
 
 ### `clear session { ... }`
 
@@ -828,106 +1000,14 @@ This section we be called if authentication or re-authentication fails.
 
 You should remove any session information stored against `&request.Session-ID`.
 
-
-== Default Configuration
-
 ```
-#					Success Notification-ACK would
-#					violate the standard.
-server eap-aka-sim {
-#	namespace = eap-sim
-	namespace = eap-aka
-#	namespace = eap-aka-prime
-#	eap-sim {
-#		request_identity = no
-#		ephemeral_id_length = 14
-#		strip_permanent_identity_hint = yes
-#		protected_success = yes
-#	}
-	eap-aka {
-#		request_identity = no
-#		ephemeral_id_length = 14
-#		strip_permanent_identity_hint = yes
-#		protected_success = yes
-	}
-#	eap-aka-prime {
-#		network_name = ""
-#		request_identity = no
-#		ephemeral_id_length = 14
-#		strip_permanent_identity_hint = yes
-#		protected_success = yes
-#	}
-	recv Identity-Response {
-		ok
-	}
-	send Identity-Request {
-		ok
-	}
-#	send Start-Request {
-#		ok
-#	}
-#	recv Start-Response {
-#		ok
-#	}
-#	send AKA-Identity-Request {
-#		ok
-#	}
-	send Challenge-Request {
-		ok
-	}
-	recv Challenge-Response {
-		ok
-	}
-	send Reauthentication-Request {
-		ok
-	}
-	recv Reauthentication-Response {
-		ok
-	}
-	recv Client-Error {
-		ok
-	}
-	recv Authentication-Reject {
-		ok
-	}
-	recv Synchronization-Failure {
-		ok
-	}
-	send Failure-Notification {
-		ok
-	}
-	recv Failure-Notification-ACK {
-		ok
-	}
-	send Success-Notification {
-		ok
-	}
-	recv Success-Notification-ACK {
-		ok
-	}
-	send EAP-Success {
-		ok
-	}
-	recv EAP-Failure {
-		ok
-	}
-	store pseudonym {
-		ok
-	}
-	load pseudonym {
-		ok
-	}
-	clear pseudonym {
-		ok
-	}
-	store session {
-		ok
-	}
-	load session {
-		ok
-	}
 	clear session {
 		ok
 	}
 }
+```
+
+== Default Configuration
+
+```
 ```

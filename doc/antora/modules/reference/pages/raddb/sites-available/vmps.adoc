@@ -1,7 +1,14 @@
 
+```
+#	As of version 2.0.0, the server also supports the VMPS
+#	protocol.
+```
 
 
 
+```
+server vmps {
+```
 
 In v4, all "server" sections MUST start with a "namespace"
 parameter.  This tells the server which protocol is being used.
@@ -9,25 +16,43 @@ parameter.  This tells the server which protocol is being used.
 All of the subsequent "listen" sections in this server will
 only accept packets for that protocol.
 
+```
+	namespace = vmps
 
+	listen {
+```
 
 transport::
 
+```
+		transport = udp
 
+```
 
 type:: Type of VMPS packets to listen for.
 
+```
+		type = Join-Request
+		type = Reconfirm-Request
 
+		udp {
+```
 
 ipaddr:: VMPS sockets only support IPv4 addresses.
 
+```
+			ipaddr = *
 
+```
 
 port:: Port on which to listen.
 
 NOTE: 1589 is the default VMPS port.
 
+```
+			port = 1589
 
+```
 
 Some systems support binding to an interface, in addition
 to the IP address.  This feature isn't strictly necessary,
@@ -37,7 +62,12 @@ it's useful to say "listen on all addresses for eth0".
 If your system does not support this feature, you will
 get an error if you try to use it.
 
+```
+#			interface = eth0
+		}
+	}
 
+```
 
 You can list multiple "client" sections here in order to define
 clients which apply only to this virtual server.  i.e. only for
@@ -47,67 +77,13 @@ the VMPS protocol.
 
 This section is called when it receives a Join-Request.
 
+```
+	recv Join-Request {
+```
 
 Some requests may not have a MAC address.  Try to
 create one using other attributes.
-
-
-Do a simple mapping of MAC to VLAN.
-
-See `raddb/mods-available/mac2vlan` for the definition of the "mac2vlan"
-module.
-
-
-
-required VMPS reply attributes
-
-
-
-
-NOTE: If you have VLAN's in a database, you can `select`
-the VLAN name based on the MAC address.
-
-
-
-This section is called when it sends a Join-Response.
-
-
-
-This section is called when it receives a Reconfirm-Request.
-
-
-Add contents here!
-
-
-
-This section is called when it receives a Reconfirm-Response
-
-
-Add contents here!
-
-
-
-This section is called when not responding to packets.
-
-
-== Default Configuration
-
 ```
-#	As of version 2.0.0, the server also supports the VMPS
-#	protocol.
-server vmps {
-	namespace = vmps
-	listen {
-		transport = udp
-		type = Join-Request
-		type = Reconfirm-Request
-		udp {
-			ipaddr = *
-			port = 1589
-#			interface = eth0
-		}
-	}
-	recv Join-Request {
 		if (!&MAC-Address) {
 			if (&Ethernet-Frame =~ /0x.{12}(..)(..)(..)(..)(..)(..).*/) {
 				&request.MAC-Address = "%{1}:%{2}:%{3}:%{4}:%{5}:%{6}"
@@ -116,24 +92,86 @@ server vmps {
 				&request.MAC-Address = &Cookie
 			}
 		}
+
+```
+
+Do a simple mapping of MAC to VLAN.
+
+See `raddb/mods-available/mac2vlan` for the definition of the "mac2vlan"
+module.
+
+```
 #		mac2vlan
+
+```
+
+required VMPS reply attributes
+
+```
 		&reply.Packet-Type = Join-Response
 		&reply.Error-Code = No-Error
 		&reply.Cookie = &MAC-Address
+
 		&reply.VLAN-Name = "please_use_real_vlan_here"
+
+```
+
+NOTE: If you have VLAN's in a database, you can `select`
+the VLAN name based on the MAC address.
+
+```
 #		&reply.VLAN-Name = %sql("select ... where mac='%{MAC-Address}'")
 	}
+
+```
+
+This section is called when it sends a Join-Response.
+
+```
 	send Join-Response {
 		ok
 	}
+
+```
+
+This section is called when it receives a Reconfirm-Request.
+
+```
 	recv Reconfirm-Request {
+```
+
+Add contents here!
+
+```
 		ok
 	}
+
+```
+
+This section is called when it receives a Reconfirm-Response
+
+```
 	recv Reconfirm-Response {
+```
+
+Add contents here!
+
+```
 		ok
 	}
+
+```
+
+This section is called when not responding to packets.
+
+```
 	send Do-Not-Respond {
 		ok
 	}
 }
+```
+
+== Default Configuration
+
+```
 ```

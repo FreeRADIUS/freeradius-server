@@ -102,49 +102,103 @@ Most options within the listen section are identical to rlm_ldap.
 See /etc/raddb/mods-available/ldap for more detailed descriptions of
 configuration items.
 
+```
+server ldap_sync {
+	namespace = ldap_sync
 
+```
 
 Local attributes which are used to cache results from LDAP
 
+```
+	dictionary {
+		string	member
+		uint64	user-acct-control
+		string	last-known-parent
+	}
 
+	listen  {
+		transport = ldap
 
+		ldap {
+```
 The LDAP server to connect to.
 
 May be prefixed with:
   - ldaps:// (LDAP over SSL)
   - ldapi:// (LDAP over Unix socket)
   - ldapc:// (Connectionless LDAP)
+```
+			server = "localhost"
 
+```
 Port to connect on, defaults to 389, will be ignored for LDAP URIs.
+```
+#			port = 389
 
+```
 Administrator account for persistent search.
 If using SASL + KRB5 these should be commented out.
+```
+			identity = 'cn=admin,dc=example,dc=com'
+			password = mypass
 
+			options {
+```
 
 timeouts may need to be longer than for normal LDAP queries
 if a refresh phase returns a lot of data.
 
+```
+				res_timeout = 20
+				srv_timelimit = 120
+				idle = 60
+				probes = 3
+				interval = 3
+				reconnection_delay = 10
+			}
 
+```
 
 SASL parameters to use for binding as the sync user.
 
+```
+			sasl {
+```
 SASL mechanism
+```
+#				mech = 'PLAIN'
 
+```
 SASL authorisation identity to proxy.
+```
+#				proxy = 'autz_id'
 
+```
 SASL realm. Used for kerberos.
+```
+#				realm = 'example.org'
+			}
 
+```
 
 How big the kernel's receive buffer should be.
 
+```
+#			recv_buff = 1048576
 
+```
 
 Maximum number of updates to have outstanding
 When this number is reached, no more are read, potentially
 causing the receive buffer to fill which will cause the
 change notifications to queue up on the LDAP server
 
+```
+#			max_outstanding = 65536
+		}
 
+```
 
 When directories provide cookies to track progress through
 the list of changes, these can be provided on every update,
@@ -160,12 +214,18 @@ have been completed, whichever occurs first.
 
 How often to store cookies.
 
+```
+		cookie_interval = 10
 
+```
 
 Number of completed changes which will prompt the storing
 of a cookie
 
+```
+		cookie_changes = 100
 
+```
 
 Persistent searches.
 
@@ -173,15 +233,27 @@ You can configure an unlimited (within reason, and any limitations
 of the directory you are querying), number of syncs to retrieve
 entries from the LDAP directory.
 
+```
+		sync {
+```
 Where to start searching in the tree for entries
+```
+			base_dn = "ou=people,dc=example,dc=com"
 
+```
 
 Only return entries matching this filter
 Comment this out if all entries should be returned.
 
+```
+			filter = "(objectClass=posixAccount)"
 
+```
 Search scope, may be 'base', 'one', 'sub' or 'children'
+```
+			scope = 'sub'
 
+```
 
 Specify a map of LDAP attributes to FreeRADIUS dictionary attributes.
 
@@ -199,15 +271,32 @@ This is a very limited form of map:
 
 Protocol specific attributes must be qualified e.g. &Proto.radius.User-Name
 
+```
+			update {
+				&Proto.radius.User-Name = 'uid'
+				&Password.With-Header = 'userPassword'
+			}
+		}
 
+#		sync {
+#			base_dn = "ou=groups,dc=example,dc=com"
+#			filter = "(objectClass=groupOfNames)"
+#			scope = "sub"
 
+```
 
 Since there are likely to be multiple members of
 a given group, the += operator should be used when
 defining a mapping of LDAP attribute "member" to
 FreeRADIUS attributes.
 
+```
+#			update {
+#				&member += "member"
+#			}
+#		}
 
+```
 
 If you are querying Active Directory, you are likely to
 want two queries.
@@ -249,8 +338,21 @@ user objects.  This will return results when objects are
 added, modified or restored from the Deleted Objects
 container.
 
+```
+#		sync {
+#			base_dn = 'cn=Users,dc=example,dc=com'
+#			filter = '(userAccountControl:1.2.840.113556.1.4.803:=512)'
+#			scope = 'sub'
+```
 
+```
+#			update {
+#				&Proto.radius.User-Name = 'sAMAccountName'
+#				&user-acct-control = 'userAccountControl'
+#			}
+#		}
 
+```
 
 Secondly, if you have the Recycle Bin enabled in Active
 Directory and wish to be notified about deleted objects,
@@ -262,8 +364,23 @@ lastKnownParent identifies where the object was deleted
 from.  However, lastKnownParent may not be returned when
 searching the Global Catalog.
 
+```
+#		sync {
+#			base_dn = "CN=Deleted Objects,dc=example,dc=com"
+#			filter = '(userAccountControl:1.2.840.113556.1.4.803:=512)'
+#			scope = "one"
+```
 
+```
+#			update {
+#				&Proto.radius.User-Name = 'sAMAccountName'
+#				&user-acct-control = 'userAccountControl'
+#				&last-known-parent = 'lastKnownParent'
+#			}
+#		}
+	}
 
+```
 
 Provides FreeRADIUS with the last cookie value we received for the sync
 
@@ -298,7 +415,11 @@ The section may return one of the following/codes attributes:
 - Any other code with &reply.LDAP-Sync.Cookie populated to indicate a cookie value was loaded.
 - Any other code without &reply.LDAP-Sync.Cookie populated to indicate no cookie was found.
 
+```
+	load Cookie {
+		debug_request
 
+```
 
 If no cookie is returned for https://tools.ietf.org/html/rfc4533[RFC 4533] servers, then the response
 to the initial search will be a complete copy of the directory.
@@ -307,8 +428,18 @@ matches that which OpenLDAP expects can be mocked up with the following,
 presuming the ldap module is enabled and configured with the same
 server settings as ldap_sync.
 
+```
+#		if (!&reply.LDAP-Sync.Cookie) {
+#			string csn
+```
 
+```
+#			&csn := %concat(%ldap("ldap:///%ldap.uri.safe(%{LDAP-Sync.Directory-Root-DN})?contextCSN?base"), ';')
+#			&reply.LDAP-Sync.Cookie := "rid=000,csn=%{csn}"
+#		}
+	}
 
+```
 
 Stores the latest cookie we've received for a sync
 
@@ -328,7 +459,12 @@ A request will be generated with the following attributes:
 
 The return code of this section is ignored.
 
+```
+	store Cookie {
+		debug_request
+	}
 
+```
 
 Notification that a new entry has been added to the LDAP directory
 
@@ -355,7 +491,12 @@ A request will be generated with the following attributes:
 
 The return code of this section is ignored (for now).
 
+```
+	recv Add {
+		debug_request
+	}
 
+```
 
 Notification that an entry has been modified in the LDAP directory
 
@@ -380,7 +521,12 @@ A request will be generated with the following attributes:
 
 The return code of this section is ignored (for now).
 
+```
+	recv Modify {
+		debug_request
+	}
 
+```
 
 Notification that an entry has been modified in the LDAP directory
 
@@ -403,7 +549,12 @@ A request will be generated with the following attributes:
 
 The return code of this section is ignored (for now).
 
+```
+	recv Delete {
+		debug_request
+	}
 
+```
 
 Notification that an entry is still present and unchanged in the LDAP directory.
 
@@ -427,101 +578,14 @@ A request will be generated with the following attributes:
 
 The return code of this section is ignored (for now).
 
-
-== Default Configuration
-
 ```
-server ldap_sync {
-	namespace = ldap_sync
-	dictionary {
-		string	member
-		uint64	user-acct-control
-		string	last-known-parent
-	}
-	listen  {
-		transport = ldap
-		ldap {
-			server = "localhost"
-#			port = 389
-			identity = 'cn=admin,dc=example,dc=com'
-			password = mypass
-			options {
-				res_timeout = 20
-				srv_timelimit = 120
-				idle = 60
-				probes = 3
-				interval = 3
-				reconnection_delay = 10
-			}
-			sasl {
-#				mech = 'PLAIN'
-#				proxy = 'autz_id'
-#				realm = 'example.org'
-			}
-#			recv_buff = 1048576
-#			max_outstanding = 65536
-		}
-		cookie_interval = 10
-		cookie_changes = 100
-		sync {
-			base_dn = "ou=people,dc=example,dc=com"
-			filter = "(objectClass=posixAccount)"
-			scope = 'sub'
-			update {
-				&Proto.radius.User-Name = 'uid'
-				&Password.With-Header = 'userPassword'
-			}
-		}
-#		sync {
-#			base_dn = "ou=groups,dc=example,dc=com"
-#			filter = "(objectClass=groupOfNames)"
-#			scope = "sub"
-#			update {
-#				&member += "member"
-#			}
-#		}
-#		sync {
-#			base_dn = 'cn=Users,dc=example,dc=com'
-#			filter = '(userAccountControl:1.2.840.113556.1.4.803:=512)'
-#			scope = 'sub'
-#			update {
-#				&Proto.radius.User-Name = 'sAMAccountName'
-#				&user-acct-control = 'userAccountControl'
-#			}
-#		}
-#		sync {
-#			base_dn = "CN=Deleted Objects,dc=example,dc=com"
-#			filter = '(userAccountControl:1.2.840.113556.1.4.803:=512)'
-#			scope = "one"
-#			update {
-#				&Proto.radius.User-Name = 'sAMAccountName'
-#				&user-acct-control = 'userAccountControl'
-#				&last-known-parent = 'lastKnownParent'
-#			}
-#		}
-	}
-	load Cookie {
-		debug_request
-#		if (!&reply.LDAP-Sync.Cookie) {
-#			string csn
-#			&csn := %concat(%ldap("ldap:///%ldap.uri.safe(%{LDAP-Sync.Directory-Root-DN})?contextCSN?base"), ';')
-#			&reply.LDAP-Sync.Cookie := "rid=000,csn=%{csn}"
-#		}
-	}
-	store Cookie {
-		debug_request
-	}
-	recv Add {
-		debug_request
-	}
-	recv Modify {
-		debug_request
-	}
-	recv Delete {
-		debug_request
-	}
 	recv Present {
 		debug_request
 	}
 }
+```
+
+== Default Configuration
+
+```
 ```

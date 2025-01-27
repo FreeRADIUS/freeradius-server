@@ -5,36 +5,44 @@ Proxying is not yet possible.
 
 Acct-Type { } is no longer supported.
 
-
-
-This is all the same as before
-
-
-
-
-"preacct"
-
-
-
-"accounting"
-
-
-
-== Default Configuration
-
 ```
 server radius-acct {
 namespace = radius
+
+```
+
+This is all the same as before
+
+```
 listen {
 	type = acct
 	ipaddr = *
 	port = 3000
+
 }
+
+```
+
+"preacct"
+
+```
 recv Accounting-Request {
 	ok
 }
+
+```
+
+"accounting"
+
+```
 send Accounting-Response {
 	ok
 }
+
 } # server radius-acct
+```
+
+== Default Configuration
+
+```
 ```

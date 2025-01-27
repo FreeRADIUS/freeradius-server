@@ -2,14 +2,24 @@
 WARNING: This configuration file has not been updated for v4,
           and therefore WILL NOT WORK.  Please do not use it.
 
+```
+#	This is a virtual server that handles *only* inner tunnel
+#	requests for EAP-TTLS and PEAP types.
+```
 
 
 
+```
+server proxy-inner-tunnel {
 
+```
 
 This example is very simple.  All inner tunnel requests get
 proxied to another RADIUS server.
 
+```
+recv Access-Request {
+```
 
 Do other things here, as necessary.
 
@@ -18,26 +28,26 @@ the inner tunnel request.
 
 
 You should update this to be one of your realms.
+```
+	&control.Proxy-To-Realm := "example.com"
+}
 
+authenticate eap {
+```
 
 This is necessary so that the inner tunnel EAP-MSCHAPv2
 method can be called.  That method takes care of turning
 EAP-MSCHAPv2 into plain MS-CHAPv2, if necessary.
+```
+	eap
+}
 
+post-proxy {
+}
+}
+```
 
 == Default Configuration
 
 ```
-#	This is a virtual server that handles *only* inner tunnel
-#	requests for EAP-TTLS and PEAP types.
-server proxy-inner-tunnel {
-recv Access-Request {
-	&control.Proxy-To-Realm := "example.com"
-}
-authenticate eap {
-	eap
-}
-post-proxy {
-}
-}
 ```

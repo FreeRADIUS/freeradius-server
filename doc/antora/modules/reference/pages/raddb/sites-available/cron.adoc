@@ -10,12 +10,18 @@ The `cron` virtual server is an example of using `cron` style functionality in F
 
 This is the `cron` virtual server.
 
+```
+server cron {
+```
 
 namespace:: The protocol / dictionary to use.
 
 The `cron` functionality can be used with any protocol.
 
+```
+	namespace = radius
 
+```
 
 You can have a `radius` subsection here.  See the `default`
 virtual server for documentation.
@@ -25,21 +31,33 @@ virtual server for documentation.
 Create a `cron` listener.  Note that leaving off the `cron` name
 will result in the protocol trying to open a socket!
 
+```
+	listen cron {
+```
 
 type:: What type of packet is being processed.
 
 The `type` should be a valid name for the protocol.
 
+```
+		type = Access-Request
 
+```
 
 transport: What kind of cron functionality we are using.
 
 For now, only `crontab` is supported.
 
+```
+		transport = crontab
 
+```
 
 crontab:: Run `crontab` style jobs.
 
+```
+		crontab {
+```
 
 timespec:: the `crontab` style time specification.
 
@@ -64,7 +82,10 @@ Ranges can be specified
 Steps can be given for ranges:
   * 1-20/4
 
+```
+			timespec = "* * * * *"
 
+```
 
 filename:: The file which is read, cached, and processed
 
@@ -77,35 +98,30 @@ assumes that all of the work necessary for
 `cron` is done inside of the processing
 sections.
 
-
-
-
-
-
-== Default Configuration
-
 ```
-server cron {
-	namespace = radius
-	listen cron {
-		type = Access-Request
-		transport = crontab
-		crontab {
-			timespec = "* * * * *"
 			filename = /Users/alandekok/git/wrapper/freeradius-server/user_password
 		}
 	}
+
 recv Access-Request {
 	ok
 }
+
 send Access-Accept {
 	ok
 }
+
 send Access-Reject {
 	ok
 }
+
 send Do-Not-Respond {
 	ok
 }
 }
+```
+
+== Default Configuration
+
+```
 ```

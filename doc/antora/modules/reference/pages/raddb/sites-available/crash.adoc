@@ -1,6 +1,3 @@
-
-== Default Configuration
-
 ```
 	&Filter-Id :=	"db.findAndModify({ \
 				    'query': {                                                                     \
@@ -53,4 +50,9 @@
 				    },                                                                             \
 				    'upsert': 2 1 1 true                                                                 \
 				})"
+```
+
+== Default Configuration
+
+```
 ```

@@ -1,24 +1,3 @@
-
-
-
-
-If no other module has claimed responsibility for
-authentication, then try to use PAP.  This allows the
-
-
-If no other module has claimed responsibility for
-authentication, then try to use PAP.  This allows the
-in the 'authorize' section supplies a password.  The
-password can be clear-text, or encrypted.
-
-
-in the 'authorize' section supplies a password.  The
-password can be clear-text, or encrypted.
-
-
-
-== Default Configuration
-
 ```
 ***************
 *** 86,91 ****
@@ -27,6 +6,7 @@ password can be clear-text, or encrypted.
   			port = 1812
   		}
   	}
+
 --- 86,92 ----
   		udp {
   			ipaddr = *
@@ -34,23 +14,48 @@ password can be clear-text, or encrypted.
 + 			cleanup_delay = 30
   		}
   	}
+
 ***************
 *** 227,232 ****
   	expiration
   	logintime
+
+```
+
+If no other module has claimed responsibility for
+authentication, then try to use PAP.  This allows the
+```
 --- 228,237 ----
   	expiration
   	logintime
+
 + 		update control {
 + 			Cleartext-Password := "bob"
 + 		}
 +
+```
+
+If no other module has claimed responsibility for
+authentication, then try to use PAP.  This allows the
+```
 ***************
 *** 277,283 ****
+```
+in the 'authorize' section supplies a password.  The
+password can be clear-text, or encrypted.
+```
   authenticate pap {
 - 	pap
   }
+
+```
+
+```
 --- 282,308 ----
+```
+in the 'authorize' section supplies a password.  The
+password can be clear-text, or encrypted.
+```
   authenticate pap {
 + 	if (!Proxy-State) {
 + 	   fork Access-Request {
@@ -74,4 +79,12 @@ password can be clear-text, or encrypted.
 + #		do_not_respond
 + 	}
   }
+
+```
+
+```
+
+== Default Configuration
+
+```
 ```

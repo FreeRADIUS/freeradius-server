@@ -2,19 +2,35 @@
 RADIUS over TLS
 
 
+```
+server radsec {
+	listen {
+		transport = tls
 
+		type = Access-Request
+		type = Accounting-Request
 
+		tls {
 
+			ipaddr = *
+			port = 2083
 
+```
 
 Connection limiting for sockets with "proto = tcp".
 
+```
+			limit {
+```
 
 Limit the number of simultaneous TCP connections to the socket
 
 The default is 16.
 Setting this to 0 means "no limit"
+```
+			      max_connections = 16
 
+```
 The per-socket "max_requests" option does not exist.
 
 
@@ -22,7 +38,10 @@ The lifetime, in seconds, of a TCP connection.  After
 this lifetime, the connection will be closed.
 
 Setting this to 0 means "forever".
+```
+			      lifetime = 0
 
+```
 
 The idle timeout, in seconds, of a TCP connection.
 If no packets have been received over the connection for
@@ -32,8 +51,14 @@ Setting this to 0 means "no timeout".
 
 We STRONGLY RECOMMEND that you set an idle timeout.
 
+```
+			      idle_timeout = 30
+			}
 
+			private_key_password = whatever
+			private_key_file = ${certdir}/server.pem
 
+```
 If Private key & Certificate are located in
 the same file, then private_key_file &
 certificate_file must contain the same file
@@ -44,7 +69,10 @@ certificate_file below MUST include not
 only the server certificate, but ALSO all
 of the CA certificates used to sign the
 server certificate.
+```
+			certificate_file = ${certdir}/server.pem
 
+```
 Trusted Root CA list
 
 ALL of the CA's in this list will be trusted
@@ -60,14 +88,20 @@ when you issue client certificates.  If you do
 not use client certificates, and you do not want
 to permit EAP-TLS authentication, then delete
 this configuration item.
+```
+			ca_file = ${cadir}/ca.pem
 
+```
 
 For DH cipher suites to work, you have to
 run OpenSSL to create the DH file first:
 
 	openssl dhparam -out certs/dh 1024
 
+```
+			dh_file = ${certdir}/dh
 
+```
 
 If your system doesn't have /dev/urandom,
 you will need to create this file, and
@@ -87,7 +121,10 @@ Setting the fragment size to more than 1K means that
 there are fewer round trips when setting up a TLS
 connection.  But only if the certificates are large.
 
+```
+			fragment_size = 8192
 
+```
 include_length is a flag which is
 by default set to yes If set to
 yes, Total Length of the message is
@@ -106,7 +143,10 @@ Check the Certificate Revocation List
 3) uncomment the line below.
 5) Restart radiusd
 check_crl = yes
+```
+			ca_path = ${cadir}
 
+```
 Accept an expired Certificate Revocation List
 
 allow_expired_crl = no
@@ -148,14 +188,20 @@ check_cert_cn = %{User-Name}
 Set this option to specify the allowed
 TLS cipher suites.  The format is listed
 in "man 1 ciphers".
+```
+			cipher_list = "DEFAULT"
 
+```
 If enabled, OpenSSL will use server cipher list
 (possibly defined by cipher_list option above)
 for choosing right cipher suite rather than
 using client-specified list which is OpenSSl default
 behavior. Having it set to 'yes' is best practice
 for TLS.
+```
+			cipher_server_preference = yes
 
+```
 
 Session resumption / fast reauthentication
 cache.
@@ -182,12 +228,18 @@ reply list.
 You probably also want "use_tunneled_reply = yes"
 when using fast session resumption.
 
+```
+			cache {
+```
 
 Lifetime of the cached entries, in hours.
 The sessions will be deleted after this
 time.
 
+```
+			      lifetime = 24 # hours
 
+```
 
 Internal "name" of the session cache.
 Used to distinguish which TLS context
@@ -218,11 +270,17 @@ a script to remove old files from here periodically:
 This feature REQUIRES "name" option be set above.
 
 persist_dir = "${logdir}/tlscache"
+```
+			}
 
+```
 
 Require a client certificate.
 
+```
+			require_client_cert = yes
 
+```
 
 As of version 2.1.10, client certificates can be
 validated via an external command.  This allows
@@ -232,6 +290,9 @@ This configuration is commented out in the
 default configuration.  Uncomment it, and configure
 the correct paths below to enable it.
 
+```
+			verify {
+```
 The command used to verify the client cert.
 We recommend using the OpenSSL command-line
 tool.
@@ -245,47 +306,22 @@ in PEM format.  This file is automatically
 deleted by the server when the command
 returns.
   		client = "/path/to/openssl verify -CApath ${..ca_path} %{TLS-Client-Cert-Filename}"
-
-
-
-== Default Configuration
-
 ```
-server radsec {
-	listen {
-		transport = tls
-		type = Access-Request
-		type = Accounting-Request
-		tls {
-			ipaddr = *
-			port = 2083
-			limit {
-			      max_connections = 16
-			      lifetime = 0
-			      idle_timeout = 30
-			}
-			private_key_password = whatever
-			private_key_file = ${certdir}/server.pem
-			certificate_file = ${certdir}/server.pem
-			ca_file = ${cadir}/ca.pem
-			dh_file = ${certdir}/dh
-			fragment_size = 8192
-			ca_path = ${cadir}
-			cipher_list = "DEFAULT"
-			cipher_server_preference = yes
-			cache {
-			      lifetime = 24 # hours
-			}
-			require_client_cert = yes
-			verify {
 			}
 		}
 	}
+
 	recv Access-Request {
 		ok
 	}
+
 	recv Accounting-Request {
 		ok
 	}
 }
+```
+
+== Default Configuration
+
+```
 ```
