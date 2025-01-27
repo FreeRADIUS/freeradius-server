@@ -2487,13 +2487,14 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
  * @param[in] rhs		of map
  * @param[in] lhs_rules		for parsing the LHS
  * @param[in] rhs_rules		for parsing the RHS
+ * @param[in] bare_word_only	RHS is bare words, and nothing else.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *request,
 		     char const *lhs, char const *op_str, char const *rhs,
-		     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules)
+		     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules, bool bare_word_only)
 {
 	ssize_t		slen;
 	fr_token_t	quote, op;
@@ -2610,14 +2611,48 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 	}
 
 	/*
-	 *	If we have a string, where the *entire* string is
-	 *	quoted, then tokenize it that way,
-	 *
-	 *	@todo - if the string starts with '(' OR '%' OR
-	 *	doesn't begin with a quote, BUT contains spaces, then
-	 *	parse it as an xlat expression!
+	 *	Try to figure out what we should do with the RHS.
 	 */
-	if (rhs[0] == '"') {
+	if ((map->op == T_OP_CMP_TRUE) || (map->op == T_OP_CMP_FALSE)) {
+		/*
+		 *	These operators require a hard-coded string on the RHS.
+		 */
+		if (strcmp(rhs, "ANY") != 0) {
+			fr_strerror_printf("Invalid value %s for operator %s", rhs, fr_tokens[map->op]);
+			goto error;
+		}
+
+		if (tmpl_afrom_value_box(map, &map->rhs, fr_box_strvalue("ANY"), false) < 0) goto error;
+
+	} else if (bare_word_only) {
+		fr_value_box_t *vb;
+
+		/*
+		 *	No value, or no enum, parse it as a bare-word string.
+		 */
+		if (!rhs[0] || !my_rules.enumv) goto do_bare_word;
+
+		MEM(vb = fr_value_box_alloc(map, my_rules.enumv->type, my_rules.enumv));
+
+		/*
+		 *	It MUST be the given data type.
+		 */
+		slen = fr_value_box_from_str(map, vb, my_rules.enumv->type, my_rules.enumv,
+					     rhs, strlen(rhs), NULL, false);
+		if (slen <= 0) goto error;
+
+		if (tmpl_afrom_value_box(map, &map->rhs, vb, true) < 0) {
+			goto error;
+		}
+
+	} else if (rhs[0] == '"') {
+		/*
+		 *	We've been asked to expand the RHS.  Passwords like
+		 *
+		 *		"%{Calling-Station-ID}"
+		 *
+		 *	might not do what you want.
+		 */
 		quote = T_DOUBLE_QUOTED_STRING;
 		goto parse_quoted;
 
@@ -2654,18 +2689,9 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 
 		/*
 		 *	Ignore any extra data after the string.
+		 *
+		 *	@todo - this should likely be a parse error: we didn't parse the entire string!
 		 */
-
-	} else if ((map->op == T_OP_CMP_TRUE) || (map->op == T_OP_CMP_FALSE)) {
-		/*
-		 *	These operators require a hard-coded string on the RHS.
-		 */
-		if (strcmp(rhs, "ANY") != 0) {
-			fr_strerror_printf("Invalid value %s for operator %s", rhs, fr_tokens[map->op]);
-			goto error;
-		}
-
-		if (tmpl_afrom_value_box(map, &map->rhs, fr_box_strvalue("ANY"), false) < 0) goto error;
 
 	} else if (rhs[0] == '&') {
 		/*
@@ -2684,6 +2710,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		}
 
 	} else if (!rhs[0] || !my_rules.enumv || (my_rules.enumv->type == FR_TYPE_STRING)) {
+	do_bare_word:
 		quote = T_BARE_WORD;
 
 		if (tmpl_attr_tail_da_is_structural(map->lhs) && !*rhs) goto done;

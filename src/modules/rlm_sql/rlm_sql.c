@@ -80,6 +80,8 @@ static const conf_parser_t module_config[] = {
 	 */
 	{ FR_CONF_OFFSET_SUBSECTION("pool", 0, rlm_sql_config_t, trunk_conf, trunk_config) },
 
+	{ FR_CONF_OFFSET_FLAGS("expand_rhs", CONF_FLAG_HIDDEN, rlm_sql_config_t, expand_rhs) },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1426,6 +1428,7 @@ static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *
 			.out = &autz_ctx->reply_tmp,
 			.list = request_attr_reply,
 			.query = query,
+			.expand_rhs = true,
 		};
 
 		if (unlang_function_repeat_set(request, mod_autz_group_resume) < 0) RETURN_MODULE_FAIL;
@@ -1582,6 +1585,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, int *priority
 			.out = &autz_ctx->reply_tmp,
 			.list = request_attr_reply,
 			.query = query,
+			.expand_rhs = true,
 		};
 
 		if (unlang_function_repeat_set(request, mod_authorize_resume) < 0) RETURN_MODULE_FAIL;

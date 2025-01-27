@@ -151,7 +151,8 @@ ssize_t		map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbu
 
 int		map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *request,
 				 char const *lhs, char const *op, char const *rhs,
-				 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules) CC_HINT(nonnull);
+				 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
+				 bool bare_word_only) CC_HINT(nonnull);
 
 int		map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request,
 			  map_t const *map, void *uctx) CC_HINT(nonnull (2,3,4));

@@ -90,6 +90,8 @@ typedef struct {
 								//!< in the previous reply list to process
 								//!< profiles.
 
+	bool			expand_rhs;			//!< expand the RHS for check / reply tables
+
 	char const		*allowed_chars;			//!< Chars which done need escaping..
 	fr_time_delta_t		query_timeout;			//!< How long to allow queries to run for.
 
@@ -151,6 +153,7 @@ typedef struct {
 	fr_dict_attr_t const	*list;				//!< Default list for pair evaluation.
 	map_list_t		*out;				//!< List to append entries to.
 	int			rows;				//!< How many rows the query returned.
+	bool			expand_rhs;			//!< for reply items
 } fr_sql_map_ctx_t;
 
 extern fr_table_num_sorted_t const sql_rcode_description_table[];
