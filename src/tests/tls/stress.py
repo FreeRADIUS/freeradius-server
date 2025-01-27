@@ -54,7 +54,7 @@ def send_stuff(x):
             except Exception as e:
                 print(f'dur: {(datetime.now() - now)} _ error while closing socket: {str(e)}')
                 pass
-
+        time.sleep(0.2)
 
 
 
