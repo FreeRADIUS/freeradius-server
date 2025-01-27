@@ -59,7 +59,6 @@ RCSIDH(base_h, "$Id$")
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/stats.h>
-#include <freeradius-devel/server/sysutmp.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/trigger.h>
 #include <freeradius-devel/server/util.h>
