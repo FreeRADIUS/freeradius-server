@@ -1513,22 +1513,6 @@ send Accounting-Response {
 #	daily
 
 	#
-	#  Update the wtmp file.
-	#
-	#  This is only relevant if you use "radlast".
-	#
-#	unix
-
-	#
-	#  For Simultaneous-Use tracking.
-	#
-	#  Due to packet losses in the network, the data here may
-	#  be incorrect. There is little we can do about it.
-	#
-#	radutmp
-#	sradutmp
-
-	#
 	#  Cisco VoIP specific bulk accounting.
 	#
 #	pgsql-voip

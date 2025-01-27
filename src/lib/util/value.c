@@ -4821,7 +4821,40 @@ ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		size_t			name_len;
 		fr_dict_enum_value_t	*enumv;
 
+		/*
+		 *	@todo - allow enum names for IPv6 addresses and prefixes.  See also
+		 *	tmpl_afrom_enum().
+		 */
 		(void) fr_sbuff_adv_past_str_literal(&our_in, "::");
+
+		/*
+		 *	If there is no escaping, then we ignore the terminals.  The list of allowed characters
+		 *	in enum names will ensure that the parsing doesn't go too far.  i.e. to '\r', '\n'. '}', etc.
+		 *
+		 *	The reason is that the list of terminals may include things like '-', which is also a
+		 *	valid character in enum names.  We don't want to parse "Framed-User" as "Framed - User".
+		 */
+		if (!rules->escapes) {
+			size_t len;
+			fr_sbuff_marker_t m;
+
+			fr_sbuff_marker(&m, &our_in);
+
+			len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in),
+							fr_dict_enum_allowed_chars, NULL);
+			fr_sbuff_set(&our_in, &m);
+			fr_sbuff_marker_release(&m);
+
+			if (!len) goto parse; /* Zero length name can't match enum */
+
+			enumv = fr_dict_enum_by_name(dst_enumv, fr_sbuff_current(&our_in), len);
+			if (!enumv) {
+				goto parse;	/* No enumeration matches escaped string */
+			}
+
+			(void) fr_sbuff_advance(&our_in, len);
+			goto cast_enum;
+		}
 
 		/*
 		 *	Create a thread-local extensible buffer to
@@ -4833,6 +4866,18 @@ ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		 */
 		FR_SBUFF_TALLOC_THREAD_LOCAL(&unescaped, 256, 4096);
 
+		/*
+		 *	This function only does escaping until a terminal character, such as '-'.  So
+		 *	Framed-User will get parsed as "Framed - User".
+		 *
+		 *	Pretty much no other enum has this problem. For Service-Type, it defines "Framed" ss
+		 *	an equivalent name to "Framed-User".  The parser sees "Framed-User", stops at the '-',
+		 *	and then finds the enum named "Framed".  It then returns the trailing "-User" as
+		 *	something more to parse.
+		 *
+		 *	As a result, when the user passes in "Framed-User", the output is "Framed-User -
+		 *	User", which is more than a bit surprising.
+		 */
 		name_len = fr_sbuff_out_unescape_until(unescaped, &our_in, SIZE_MAX,
 						       rules->terminals, rules->escapes);
 		if (!name_len) {
@@ -4846,6 +4891,7 @@ ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			goto parse;	/* No enumeration matches escaped string */
 		}
 
+	cast_enum:
 		/*
 		 *	dst_type may not match enumv type
 		 */

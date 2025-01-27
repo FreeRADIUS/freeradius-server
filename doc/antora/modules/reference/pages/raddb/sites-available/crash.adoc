@@ -1,0 +1,58 @@
+```
+	&Filter-Id :=	"db.findAndModify({ \
+				    'query': {                                                                     \
+				        'AcctStopTime': null,                                                      \
+				        'NasIpAddress': '%{%{NAS-IPv6-Address}:-%{NAS-IP-Address}}',               \
+				        'AcctStarttime': {                                                         \
+				            '$lt':                                           \
+				        }                                                                          \
+				    },                                                                             \
+				    'update': {                                                                    \
+				        '$set': {                                                                  \
+				            'AcctStopTime': '',                              \
+				            'AcctUpdateTime': '',                            \
+				            'AcctSessionTime': {                                                   \
+				                '$subtract': [ '', '123' ]  \
+				            },                                                                     \
+				            'AcctTerminateCause': '%{%{Acct-Terminate-Cause}:-NAS-Reboot}',        \
+				            'Class': '%{Class}',                                                   \
+				            'FramedIpAddress': '%{Framed-IP-Address}',                             \
+				            'update_date':  {                                                      \
+				                '$date': {                                                         \
+				                    '$numberLong': '%{expr: (%l * 1000) + (%M / 1000)}'            \
+				                }                                                                  \
+				            },                                                                     \
+				            'start_time': '%{Packet-Original-Timestamp}'                           \
+				        },                                                                         \
+				        '$push': {                                                                 \
+				            'events_data': {                                                       \
+				                'event_id': '%{sha2_256:%{tolower:%{Calling-Station-Id}}}',        \
+				                'event_type': 'Accounting-Start',                                  \
+				                'event_time': '%{Packet-Original-Timestamp}',                      \
+				                'creation_date': {                                                 \
+				                    '$date': {                                                     \
+				                        '$numberLong': '%{expr: (%l * 1000) + (%M / 1000)}'        \
+				                    }                                                              \
+				                }                                                                  \
+				            }                                                                      \
+				        },                                                                         \
+				        '$setOnInsert': {                                                          \
+				            'pool_name': '%{control.IP-Pool.Name}',                                \
+				            'FramedIpAddress': '%{Framed-IP-Address}',                             \
+				            'closed': false,                                                       \
+				            'update_counter': 0,                                                   \
+				            'creation_date': {                                                     \
+				                '$date': {                                                         \
+				                    '$numberLong': '%{expr: (%l * 1000) + (%M / 1000)}'            \
+				                }                                                                  \
+				            }                                                                      \
+				        }                                                                          \
+				    },                                                                             \
+				    'upsert': 2 1 1 true                                                                 \
+				})"
+```
+
+== Default Configuration
+
+```
+```

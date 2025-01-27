@@ -9,8 +9,6 @@ time.
 *Files:*
 
 - `etc/raddb/users`
-- `etc/raddb/mods-available/radutmp`
-- `/var/log/radius/radutmp`
 
 For this exercise, you are assumed to have previously worked
 through, and be familiar with, the accounting exercise from
@@ -22,14 +20,14 @@ logging into the server, and then attempting a simultaneous login for a
 second session, while still logged in for the first session.
 
 You should run the `bob-login-one.sh` and `bob-acct-start.sh`
-scripts, to simulate a successful user login. You should use the
-`radwho` program to verify that the server knows that the user is logged
+scripts, to simulate a successful user login. You should check the database
+to verify that the server knows that the user is logged
 in.
 
 You should then run the `bob-login-two.sh`, and observe that the
 second authentication request succeeds. The login record should be
-removed through running the `bob-acct-stop.sh` script, and you
-should use the `radwho` program to verify that no one is currently
+removed through running the `bob-acct-stop.sh` script, and check the database
+to verify that no one is currently
 logged in.
 
 you should now read the `Simultaneous-Use` file in the

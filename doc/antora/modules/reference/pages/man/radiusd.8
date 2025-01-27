@@ -1,0 +1,264 @@
+'\" t
+.\"     Title: radiusd
+.\"    Author: Alan DeKok
+.\" Generator: Asciidoctor 2.0.10
+.\"      Date: 2020-12-21
+.\"    Manual: FreeRADIUS
+.\"    Source: FreeRADIUS
+.\"  Language: English
+.\"
+.TH "RADIUSD" "8" "2020-12-21" "FreeRADIUS" "FreeRADIUS"
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH "NAME"
+radiusd \- Authentication, Authorization and Accounting server
+.SH "SYNOPSIS"
+.sp
+\fBradiusd\fP [\fB\-C\fP] [\fB\-d\fP \fIconfig_directory\fP] [\fB\-f\fP] [\fB\-h\fP] [\fB\-l\fP
+\fIlog_file\fP] [\fB\-m\fP] [\fB\-n\fP \fIname\fP] [\fB\-s\fP] [\fB\-t\fP] [\fB\-T\fP] [\fB\-v\fP] [\fB\-x\fP]
+[\fB\-X\fP]
+.SH "DESCRIPTION"
+.sp
+FreeRADIUS is a high\-performance and highly configurable RADIUS server.
+It supports many database back\-ends such as flat\-text files, SQL, LDAP,
+Perl, Python, etc. It also supports many authentication protocols such
+as PAP, CHAP, MS\-CHAP(v2), HTTP Digest, and EAP (EAP\-MD5, EAP\-TLS, PEAP,
+EAP\-TTLS, EAP\-SIM, etc.).
+.sp
+It also has full support for Cisco\(cqs VLAN Query Protocol (VMPS) and DHCP.
+.sp
+Please read the DEBUGGING section below. It contains instructions for
+quickly configuring the server for your local system.
+.SH "OPTIONS"
+.sp
+The following command\-line options are accepted by the server.
+.sp
+\fB\-C\fP
+.RS 4
+Check the configuration and exit immediately. If there is a problem
+reading the configuration, then the server will exit with a non\-zero
+status code. If the configuration appears to be acceptable, then the
+server will exit with a zero status code.
+.sp
+Note that there are limitations to this check. Due to the complexities
+involved in \fIalmost\fP starting a RADIUS server, these checks are
+necessarily incomplete. The server can return a zero status code when
+run with \f(CR\-C\fP, but may still exit with an error when run normally.
+.sp
+See the output of \f(CRradiusd \-XC\fP for a list of which modules are
+checked for correct configuration, and which modules are skipped,
+and therefore not checked.
+.RE
+.sp
+\fB\-d config_directory\fP
+.RS 4
+Defaults to \f(CR/etc/raddb\fP. \f(CRRadiusd\fP looks here for its configuration
+files such as the \f(CRdictionary\fP and the \f(CRusers\fP files.
+.RE
+.sp
+\fB\-f\fP
+.RS 4
+Do not fork, stay running as a foreground process.
+.RE
+.sp
+\fB\-h\fP
+.RS 4
+Print usage help information.
+.RE
+.sp
+\fB\-l log_file\fP
+.RS 4
+Defaults to \f(CR${logdir}/radius.log\fP. \f(CRRadiusd\fP writes its logging
+information to this file. If \f(CRlog_file\fP is the string \f(CRstdout\fP, then
+logging messages will be written to stdout.
+.RE
+.sp
+\fB\-m\fP
+.RS 4
+On SIGINT or SIGQUIT exit cleanly instead of immediately. This is most
+useful for when running the server with "valgrind".
+.RE
+.sp
+\fB\-n name\fP
+.RS 4
+Read \f(CRraddb/name.conf\fP instead of \f(CRraddb/radiusd.conf\fP.
+.sp
+Note that by default, the server looks for a configuration file
+which matches its own name.  Creating a soft link from file \f(CRfoo\fP
+to \f(CRradiusd\fP, and then running the program \f(CRfoo\fP, will cause the
+binary to look for \f(CRraddb/foo.conf\fP.
+.RE
+.sp
+\fB\-s\fP
+.RS 4
+Run in "single server" mode. The server normally runs with multiple
+threads and/or processes, which can lower its response time to
+requests.  In single server mode, the server will not "daemonize"
+(auto\-background) itself.
+.RE
+.sp
+\fB\-t\fP
+.RS 4
+Do not spawn threads.
+.RE
+.sp
+\fB\-T\fP
+.RS 4
+Always add timestamps to log messages.
+.RE
+.sp
+\fB\-v\fP
+.RS 4
+Print server version information and exit.
+.RE
+.sp
+\fB\-X\fP
+.RS 4
+Debugging mode.  This argument is equivalent to using \f(CR\-sfxx \-l
+stdout\fP. When trying to understand how the server works, ALWAYS run
+it with \f(CRradiusd \-X\fP. For production servers, use the \f(CRraddebug\fP
+program.
+.RE
+.sp
+\fB\-x\fP
+.RS 4
+Finer\-grained debug mode. In this mode the server will print details
+of every request to the default logging destination.  Using multiple
+\f(CR\-x\fP options will increase the debug output.
+.RE
+.SH "DEBUGGING"
+.sp
+The default configuration is set to work in the widest possible
+circumstances. It requires minimal changes for your system.
+.sp
+However, your needs may be complex, and may require significant changes
+to the server configuration. Making random changes is a guaranteed
+method of failure. Instead, we STRONGLY RECOMMEND proceeding via the
+following steps:
+.sp
+1) Always run the server in debugging mode ( \f(CRradiusd \-X\fP ) after
+making a configuration change. We cannot emphasize this enough. If you
+are not running the server in debugging mode, you \fIwill not\fP be able to
+see what is doing, and you \fIwill not\fP be able to correct any problems.
+.sp
+If you ask questions on the mailing list, the first response will be to
+tell you "run the server in debugging mode". Please, follow these
+instructions.
+.sp
+2) Change as little as possible in the default configuration
+files. The server contains a decade of experience with protocols,
+databases, and different systems. Its default configuration is designed
+to work almost everywhere, and to do almost everything you need.
+.sp
+3) When you make a small change, testing it before changing
+anything else. If the change works, save a copy of the configuration,
+and make another change. If the change doesn\(cqt work, debug it, and try
+to understand why it doesn\(cqt work.
+.sp
+If you begin by making large changes to the server configuration, it
+will never work, and you will never be able to debug the problem.
+.sp
+4) If you need to add a connection to a database FOO (e.g. LDAP
+or SQL), then:
+
+.br
+a) Edit \f(CRraddb/modules/foo\fP
+
+.br
+This file contains the default configuration for the module. It contains
+comments describing what can be configured, and what those configuration
+entries mean.
+
+.br
+b) Edit \f(CRraddb/sites\-available/default\fP
+
+.br
+This file contains the default policy for the server. e.g. "enable CHAP,
+MS\-CHAP, and EAP authentication". Look in this file for all references
+to your module "foo". Read the comments, and remove the leading hash \(aq#\(aq
+from the lines referencing the module. This enables the module.
+
+.br
+c) Edit \f(CRraddb/sites\-available/inner\-tunnel\fP
+
+.br
+This file contains the default policy for the "tunneled" portion of
+certain EAP methods. Perform the same kind of edits as above, for the
+"default" file.. If you are not using EAP (802.1X), then this step can
+be skipped.
+
+.br
+d) Start the server in debugging mode ( \f(CRradiusd \-X\fP ), and start
+testing.
+.sp
+5) Ask questions on the mailing list
+
+.br
+(\c
+.MTO "freeradius\-users\(atlists.freeradius.org" "" ")."
+When asking questions, include
+the output from debugging mode ( \f(CRradiusd \-X\fP ). This information will
+allow people to help you. If you do not include it, the first response
+to your message will be "post the output of debug mode".
+.sp
+Ask questions earlier, rather than later. If you cannot solve a problem
+in a day, ask a question on the mailing list. Most questions have been
+seen before, and can be answered quickly.
+.SH "BACKGROUND"
+.sp
+\fBRADIUS\fP is a protocol spoken between an access server, typically a
+device connected to several modems or ISDN lines, and a \fBradius\fP server.
+When a user connects to the access server, (s)he is asked for a
+loginname and a password. This information is then sent to the \fBradius\fP
+server. The server replies with "access denied", or "access OK". In the
+latter case login information is sent along, such as the IP address in
+the case of a PPP connection.
+.SH "CONFIGURATION"
+.sp
+\f(CRradiusd\fP uses a number of configuration files. Each file has its own
+manpage describing the format of the file. These files are:
+.sp
+\fBradiusd.conf\fP
+.RS 4
+The main configuration file, which sets the administrator\-controlled
+items.
+.RE
+.sp
+\fBdictionary\fP
+.RS 4
+This file is usually static. It defines all the possible RADIUS
+attributes used in the other configuration files. You don\(cqt have to
+modify it. It includes other dictionary files in the same directory.
+.RE
+.sp
+\fBunlang\fP
+.RS 4
+The processing and policy language used in the server.
+.RE
+.SH "SEE ALSO"
+.sp
+radiusd.conf(5), dictionary(5), unlang(5), raddebug(8)
+.SH "AUTHOR"
+.sp
+The FreeRADIUS Server Project (\c
+.URL "http://www.freeradius.org" "" ")"
+.SH "AUTHOR"
+.sp
+Alan DeKok

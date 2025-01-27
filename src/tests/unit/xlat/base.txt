@@ -182,7 +182,7 @@ xlat %{\n}
 match ERROR offset 3: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
 
 xlat %{foo }
-match ERROR offset 7: Unexpected text - attribute names must prefixed with '&'
+match ERROR offset 7: Unexpected text - attribute names must be prefixed with '&'
 
 xlat %{foo bar}
 match ERROR offset 7: Invalid operator
@@ -191,7 +191,7 @@ xlat %test(
 match ERROR offset 7: Missing closing brace
 
 xlat %test(%{User-Name)
-match ERROR offset 18: Unexpected text - attribute names must prefixed with '&'
+match ERROR offset 18: Unexpected text - attribute names must be prefixed with '&'
 
 # Discuss - Not sure the offset/message is correct here, but not sure if we can determine the correct offset either
 xlat %test(%{User-Name}

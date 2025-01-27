@@ -67,7 +67,6 @@ Sometimes the module you're using does not seem to be loaded or used.  In that c
     including configuration file /etc/raddb/mods-enabled/ntlm_auth
     including configuration file /etc/raddb/mods-enabled/exec
     including configuration file /etc/raddb/mods-enabled/preprocess
-    including configuration file /etc/raddb/mods-enabled/sradutmp
     including configuration file /etc/raddb/mods-enabled/chap
     including configuration file /etc/raddb/mods-enabled/digest
     including configuration file /etc/raddb/mods-enabled/expr
@@ -84,7 +83,6 @@ Sometimes the module you're using does not seem to be loaded or used.  In that c
     including configuration file /etc/raddb/mods-enabled/logintime
     including configuration file /etc/raddb/mods-enabled/utf8
     including configuration file /etc/raddb/mods-enabled/dynamic_clients
-    including configuration file /etc/raddb/mods-enabled/radutmp
     including configuration file /etc/raddb/mods-enabled/realm
     including configuration file /etc/raddb/mods-enabled/cache_eap
     including configuration file /etc/raddb/mods-enabled/replicate

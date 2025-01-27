@@ -88,12 +88,9 @@ Description: FreeRADIUS client utilities
  This package contains various client programs and utilities from
  the FreeRADIUS Server project, including:
   - radclient
-  - radlast
   - radsniff
   - radsqlrelay
   - radtest
-  - radwho
-  - radzap
   - smbencrypt
 
 Package: freeradius-perl-util

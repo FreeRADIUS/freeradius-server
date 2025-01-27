@@ -332,10 +332,10 @@ void tmpl_debug(tmpl_t const *vpt)
 		break;
 	}
 
-	FR_FAULT_LOG("tmpl_t %s (%.8x) \"%pR\" (%p)",
+	FR_FAULT_LOG("tmpl_t %s (%.8x) \"%s\" (%p)",
 		     tmpl_type_to_str(vpt->type),
 		     vpt->type,
-		     fr_box_strvalue_len(vpt->name, vpt->len), vpt);
+		     vpt->name, vpt);
 
 	FR_FAULT_LOG("\tcast       : %s", fr_type_to_str(tmpl_rules_cast(vpt)));
 	FR_FAULT_LOG("\tquote      : %s", fr_table_str_by_value(fr_token_quotes_table, vpt->quote, "<INVALID>"));
@@ -360,7 +360,7 @@ void tmpl_debug(tmpl_t const *vpt)
 
 		xlat_aprint(NULL, &str, tmpl_xlat(vpt), NULL);
 
-		FR_FAULT_LOG("\texpansion  : %pR", fr_box_strvalue_buffer(str));
+		FR_FAULT_LOG("\texpansion  : %s", str);
 
 		talloc_free(str);
 	}
@@ -368,17 +368,17 @@ void tmpl_debug(tmpl_t const *vpt)
 
 	case TMPL_TYPE_REGEX:
 	{
-		FR_FAULT_LOG("\tpattern    : %pR", fr_box_strvalue_len(vpt->name, vpt->len));
+		FR_FAULT_LOG("\tpattern    : %s", vpt->name);
 	}
 		break;
 
 	default:
 		if (tmpl_needs_resolving(vpt)) {
 			if (tmpl_is_data_unresolved(vpt)) {
-				FR_FAULT_LOG("\tunescaped  : %pR", fr_box_strvalue_buffer(vpt->data.unescaped));
+				FR_FAULT_LOG("\tunescaped  : %s", vpt->data.unescaped);
 				FR_FAULT_LOG("\tlen        : %zu", talloc_array_length(vpt->data.unescaped) - 1);
 			} else {
-				FR_FAULT_LOG("\tunresolved : %pR", fr_box_strvalue_len(vpt->name, vpt->len));
+				FR_FAULT_LOG("\tunresolved : %s", vpt->name);
 				FR_FAULT_LOG("\tlen        : %zu", vpt->len);
 			}
 		} else {
@@ -3114,6 +3114,17 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 		if (tmpl_require_enum_prefix) return 0;
 
 		if (!t_rules->enumv) return 0;
+
+	} else if (t_rules->enumv &&
+		   ((t_rules->enumv->type == FR_TYPE_IPV6_ADDR) ||
+		   ((t_rules->enumv->type == FR_TYPE_IPV6_PREFIX)))) {
+
+		/*
+		 *	We can't have enumerated names for IPv6 addresses.
+		 *
+		 *	@todo - allow them ONLY if the RHS string is a valid enum name.
+		 */
+		return 0;
 	}
 
 	vpt = tmpl_alloc_null(ctx);
@@ -3159,6 +3170,7 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 			tmpl_init(vpt, TMPL_TYPE_DATA, T_BARE_WORD,
 				  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
 			(void) fr_value_box_copy(vpt, &vpt->data.literal, dv->value);
+			vpt->data.literal.enumv = t_rules->enumv;
 
 			*out = vpt;
 			FR_SBUFF_SET_RETURN(in, &our_in);
@@ -3279,6 +3291,15 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		}
 
 		/*
+		 *	Prefer enum names to IPv6 addresses.
+		 */
+		if (t_rules->enumv && fr_sbuff_is_str_literal(&our_in, "::")) {
+			slen = tmpl_afrom_enum(ctx, out, &our_in, p_rules, t_rules);
+			if (slen > 0) goto done_bareword;
+			fr_assert(!*out);
+		}
+
+		/*
 		 *	See if it's a boolean value
 		 */
 		slen = tmpl_afrom_bool_substr(ctx, out, &our_in, p_rules);
@@ -3360,6 +3381,16 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		slen = tmpl_afrom_attr_substr(ctx, NULL, out, &our_in, p_rules, t_rules);
 		if (slen > 0) goto done_bareword;
 		fr_assert(!*out);
+
+		/*
+		 *	We can't parse it as anything, that's an error.
+		 */
+		if (tmpl_require_enum_prefix) {
+			if (!fr_sbuff_is_str_literal(&our_in, "::")) {
+				fr_strerror_const("Failed parsing input");
+				FR_SBUFF_ERROR_RETURN(&our_in);
+			}
+		}
 
 		/*
 		 *	Attempt to resolve enumeration values
@@ -4268,11 +4299,9 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 		if (!enumv) enumv = tr_rules->enumv;
 
 		/*
-		 *	If we've got no explicit casting to do
-		 *	check if we've got either an existing
-		 *	enumv, or one which came in from the
-		 *	resolution rules, and infer our data type
-		 *	from that.
+		 *	We don't have an explicit output type.  Try to
+		 *	interpret the data os the enumv data type, OR
+		 *	if all else fails, it's a string.
 		 */
 		if (fr_type_is_null(dst_type)) {
 			/*
@@ -4280,8 +4309,26 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 			 */
 			if (enumv) {
 				dst_type = enumv->type;
-			} else {
+
+			} else if (!tmpl_require_enum_prefix) {
 				dst_type = FR_TYPE_STRING;	/* Default to strings */
+
+			} else if (vpt->quote != T_BARE_WORD) {
+				dst_type = FR_TYPE_STRING;	/* quoted strings are strings */
+
+			} else if (!enumv || (strncmp(vpt->data.unescaped, "::", 2) != 0)) {
+				/*
+				 *	The rest of the code should have errored out before this.
+				 */
+				fr_strerror_printf("Failed resolving data '%s' - it is not an attribute name or a quoted string", vpt->data.unescaped);
+				return -1;
+
+			} else {
+				/*
+				 *	It's a valid enum ::NAME which was added _after_ the dictionaries were
+				 *	loaded.  That's fine.  fr_value_box_from_substr() will skip over the
+				 *	"::", and parse the enum name.
+				 */
 			}
 		}
 

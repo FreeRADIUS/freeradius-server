@@ -10,8 +10,8 @@ LOCAL_SITES :=		$(addprefix raddb/sites-enabled/,$(DEFAULT_SITES))
 DEFAULT_MODULES :=	always attr_filter cache_eap chap client \
 			delay detail detail.log digest eap \
 			eap_inner echo escape exec files linelog \
-			mschap ntlm_auth pap passwd radutmp \
-			sradutmp stats unix unpack utf8
+			mschap ntlm_auth pap passwd \
+			stats unix unpack utf8
 
 LOCAL_MODULES :=	$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 

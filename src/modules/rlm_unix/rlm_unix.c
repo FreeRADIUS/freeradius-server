@@ -31,7 +31,6 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/sysutmp.h>
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
@@ -44,18 +43,6 @@ USES_APPLE_DEPRECATED_API
 #ifdef HAVE_SHADOW_H
 #  include <shadow.h>
 #endif
-
-static char trans[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-#define ENC(c) trans[c]
-
-typedef struct {
-	char const *radwtmp;
-} rlm_unix_t;
-
-static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("radwtmp", CONF_FLAG_FILE_INPUT, rlm_unix_t, radwtmp) },
-	CONF_PARSER_TERMINATOR
-};
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
@@ -98,7 +85,7 @@ fr_dict_attr_autoload_t rlm_unix_dict_attr[] = {
 /** Check if the user is in the given group
  *
  */
-static bool CC_HINT(nonnull) unix_check_group(UNUSED rlm_unix_t const *inst, request_t *request, char const *name)
+static bool CC_HINT(nonnull) unix_check_group(request_t *request, char const *name)
 {
 	bool		rcode = false;
 	struct passwd	*pwd;
@@ -159,10 +146,9 @@ static bool CC_HINT(nonnull) unix_check_group(UNUSED rlm_unix_t const *inst, req
  * @ingroup xlat_functions
  */
 static xlat_action_t unix_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				     xlat_ctx_t const *xctx,
+				     UNUSED xlat_ctx_t const *xctx,
 				     request_t *request, fr_value_box_list_t *in)
 {
-	rlm_unix_t const	*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_unix_t);
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	char const		*p = arg->vb_strvalue;
 	fr_value_box_t		*vb;
@@ -170,7 +156,7 @@ static xlat_action_t unix_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_skip_whitespace(p);
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
-	vb->vb_bool = unix_check_group(inst, request, p);
+	vb->vb_bool = unix_check_group(request, p);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -338,217 +324,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 }
 
 
-/*
- *	UUencode 4 bits base64. We use this to turn a 4 byte field
- *	(an IP address) into 6 bytes of ASCII. This is used for the
- *	wtmp file if we didn't find a short name in the naslist file.
- */
-static char *uue(void *in)
-{
-	int i;
-	static unsigned char res[7];
-	unsigned char *data = (unsigned char *)in;
-
-	res[0] = ENC( data[0] >> 2 );
-	res[1] = ENC( ((data[0] << 4) & 060) + ((data[1] >> 4) & 017) );
-	res[2] = ENC( ((data[1] << 2) & 074) + ((data[2] >> 6) & 03) );
-	res[3] = ENC( data[2] & 077 );
-
-	res[4] = ENC( data[3] >> 2 );
-	res[5] = ENC( (data[3] << 4) & 060 );
-	res[6] = 0;
-
-	for(i = 0; i < 6; i++) {
-		if (res[i] == ' ') res[i] = '`';
-		if (res[i] < 32 || res[i] > 127)
-			printf("uue: protocol error ?!\n");
-	}
-	return (char *)res;
-}
-
-
-/*
- *	Unix accounting - write a wtmp file.
- */
-static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_unix_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_unix_t);
-	fr_pair_t		*vp;
-	FILE			*fp;
-	struct utmp		ut;
-	uint64_t       		t;
-	char			buf[64];
-	char const		*s = NULL;
-	int			status = -1;
-	int			nas_address = 0;
-	int			framed_address = 0;
-#ifdef USER_PROCESS
-	int			protocol = -1;
-#endif
-	uint32_t		nas_port = 0;
-	bool			port_seen = true;
-	fr_client_t		*client;
-
-	/*
-	 *	No radwtmp.  Don't do anything.
-	 */
-	if (!inst->radwtmp) {
-		RDEBUG2("No radwtmp file configured.  Ignoring accounting request");
-		RETURN_MODULE_NOOP;
-	}
-
-	if (request->packet->socket.inet.src_ipaddr.af != AF_INET) {
-		RDEBUG2("IPv6 is not supported!");
-		RETURN_MODULE_NOOP;
-	}
-
-	/*
-	 *	Which type is this.
-	 */
-	if ((vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_acct_status_type)) == NULL) {
-		RDEBUG2("no Accounting-Status-Type attribute in request");
-		RETURN_MODULE_NOOP;
-	}
-	status = vp->vp_uint32;
-
-	/*
-	 *	Maybe handle ALIVE, too?
-	 */
-	if (status != FR_STATUS_START &&
-	    status != FR_STATUS_STOP)
-		RETURN_MODULE_NOOP;
-
-	/*
-	 *	We're only interested in accounting messages
-	 *	with a username in it.
-	 */
-	if (fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name) == NULL)
-		RETURN_MODULE_NOOP;
-
-	t = fr_time_to_sec(request->packet->timestamp);
-	memset(&ut, 0, sizeof(ut));
-
-	/*
-	 *	First, find the interesting attributes.
-	 */
-	for (vp = fr_pair_list_head(&request->request_pairs);
-	     vp;
-	     vp = fr_pair_list_next(&request->request_pairs, vp)) {
-		if (vp->da == attr_user_name) {
-			if (vp->vp_length >= sizeof(ut.ut_name)) {
-				memcpy(ut.ut_name, vp->vp_strvalue, sizeof(ut.ut_name));
-			} else {
-				strlcpy(ut.ut_name, vp->vp_strvalue, sizeof(ut.ut_name));
-			}
-
-		} else if (vp->da == attr_login_ip_host ||
-			   vp->da == attr_framed_ip_address) {
-			framed_address = vp->vp_ipv4addr;
-
-#ifdef USER_PROCESS
-		} else if (vp->da == attr_framed_protocol) {
-			protocol = vp->vp_uint32;
-#endif
-		} else if (vp->da == attr_nas_ip_address) {
-			nas_address = vp->vp_ipv4addr;
-
-		} else if (vp->da == attr_nas_port) {
-			nas_port = vp->vp_uint32;
-			port_seen = true;
-
-		} else if (vp->da == attr_acct_delay_time) {
-			uint32_t delay;
-
-			delay = vp->vp_uint32;
-
-			if (t < delay) RETURN_MODULE_FAIL;
-
-			t -= delay;
-		}
-	}
-	if (t > UINT32_MAX) RETURN_MODULE_FAIL;
-
-	/*
-	 *	We don't store !root sessions, or sessions
-	 *	where we didn't see a NAS-Port attribute.
-	 */
-	if (strncmp(ut.ut_name, "!root", sizeof(ut.ut_name)) == 0 || !port_seen)
-		RETURN_MODULE_NOOP;
-
-	/*
-	 *	If we didn't find out the NAS address, use the
-	 *	originator's IP address.
-	 */
-	if (nas_address == 0) {
-		nas_address = request->packet->socket.inet.src_ipaddr.addr.v4.s_addr;
-	}
-
-	client = client_from_request(request);
-	if (client) s = client->shortname;
-	if (!s || s[0] == 0) s = uue(&(nas_address));
-
-#ifdef __linux__
-	/*
-	 *	Linux has a field for the client address.
-	 */
-	ut.ut_addr = framed_address;
-#endif
-	/*
-	 *	We use the tty field to store the terminal servers' port
-	 *	and address so that the tty field is unique.
-	 */
-	snprintf(buf, sizeof(buf), "%03u:%s", nas_port, s);
-	strlcpy(ut.ut_line, buf, sizeof(ut.ut_line));
-
-	/*
-	 *	We store the dynamic IP address in the hostname field.
-	 */
-#ifdef UT_HOSTSIZE
-	if (framed_address) {
-		inet_ntop(AF_INET, &framed_address, buf, sizeof(buf));
-		strlcpy(ut.ut_host, buf, sizeof(ut.ut_host));
-	}
-#endif
-#ifdef USE_UTMPX
-	ut.ut_xtime = t;
-#else
-	ut.ut_time = t;
-#endif
-#ifdef USER_PROCESS
-	/*
-	 *	And we can use the ID field to store
-	 *	the protocol.
-	 */
-	if (protocol == FR_PPP)
-		strcpy(ut.ut_id, "P");
-	else if (protocol == FR_SLIP)
-		strcpy(ut.ut_id, "S");
-	else
-		strcpy(ut.ut_id, "T");
-	ut.ut_type = status == FR_STATUS_STOP ? DEAD_PROCESS : USER_PROCESS;
-#endif
-	if (status == FR_STATUS_STOP)
-		ut.ut_name[0] = 0;
-
-	/*
-	 *	Write a RADIUS wtmp log file.
-	 *
-	 *	Try to open the file if we can't, we don't write the
-	 *	wtmp file. If we can try to write. If we fail,
-	 *	return RLM_MODULE_FAIL ..
-	 */
-	if ((fp = fopen(inst->radwtmp, "a")) != NULL) {
-		if ((fwrite(&ut, sizeof(ut), 1, fp)) != 1) {
-			fclose(fp);
-			RETURN_MODULE_FAIL;
-		}
-		fclose(fp);
-	} else
-		RETURN_MODULE_FAIL;
-
-	RETURN_MODULE_OK;
-}
-
 /* globally exported name */
 extern module_rlm_t rlm_unix;
 module_rlm_t rlm_unix = {
@@ -556,15 +331,11 @@ module_rlm_t rlm_unix = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "unix",
 		.flags		= MODULE_TYPE_THREAD_UNSAFE,
-		.inst_size	= sizeof(rlm_unix_t),
-		.config		= module_config,
 		.bootstrap	= mod_bootstrap
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
-			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting },
 			{ .section = SECTION_NAME("recv", "Access-Request"), .method = mod_authorize },
-			{ .section = SECTION_NAME("send", "Accounting-Response"), .method = mod_accounting },	/* Backwards compatibility */
 			MODULE_BINDING_TERMINATOR
 		}
 	}

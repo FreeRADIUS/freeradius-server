@@ -9,8 +9,3 @@
 #define RADIUS_CLIENTS			"clients"
 #define RADIUS_NASLIST			"naslist"
 #define RADIUS_REALMS			"realms"
-
-#define RADUTMP				LOGDIR "/radutmp"
-#define SRADUTMP			LOGDIR "/sradutmp"
-#define RADWTMP				LOGDIR "/radwtmp"
-#define SRADWTMP			LOGDIR "/sradwtmp"

@@ -116,7 +116,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	char		*unescaped_value = NULL;
 	fr_sbuff_parse_rules_t const *p_rules;
 	ssize_t		slen;
-	fr_token_t	type;
+	fr_token_t	quote;
 	fr_dict_attr_t const *da;
 	tmpl_rules_t	my_rhs_rules = {};
 	tmpl_rules_t const *rhs_rules = input_rhs_rules;
@@ -148,14 +148,14 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	 *	LHS may be an expansion (that expands to an attribute reference)
 	 *	or an attribute reference. Quoting determines which it is.
 	 */
-	type = cf_pair_attr_quote(cp);
-	switch (type) {
+	quote = cf_pair_attr_quote(cp);
+	switch (quote) {
 	case T_DOUBLE_QUOTED_STRING:
 	case T_BACK_QUOTED_STRING:
 		slen = tmpl_afrom_substr(ctx, &map->lhs,
 					 &FR_SBUFF_IN(attr, talloc_array_length(attr) - 1),
-					 type,
-					 value_parse_rules_unquoted[type],	/* We're not searching for quotes */
+					 quote,
+					 value_parse_rules_unquoted[quote],	/* We're not searching for quotes */
 					 lhs_rules);
 		if (slen <= 0) {
 			char *spaces, *text;
@@ -222,9 +222,9 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	/*
 	 *	RHS might be an attribute reference.
 	 */
-	type = cf_pair_value_quote(cp);
-	p_rules = value_parse_rules_unquoted[type]; /* We're not searching for quotes */
-	if (type == T_DOUBLE_QUOTED_STRING || type == T_BACK_QUOTED_STRING) {
+	quote = cf_pair_value_quote(cp);
+	p_rules = value_parse_rules_unquoted[quote]; /* We're not searching for quotes */
+	if (quote == T_DOUBLE_QUOTED_STRING || quote == T_BACK_QUOTED_STRING) {
 		slen = fr_sbuff_out_aunescape_until(child_ctx, &unescaped_value,
 				&FR_SBUFF_IN(value, talloc_array_length(value) - 1), SIZE_MAX, p_rules->terminals, p_rules->escapes);
 		if (slen < 0) {
@@ -234,7 +234,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		value = unescaped_value;
 		p_rules = NULL;
 
-	} else if (edit && (type == T_HASH)) {
+	} else if (edit && (quote == T_HASH)) {
 		fr_slen_t slent;
 		xlat_exp_head_t *head;
 
@@ -261,6 +261,18 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		tmpl_set_xlat(map->rhs, head);
 		goto verify;
 
+	} else if ((map->op == T_OP_CMP_TRUE) || (map->op == T_OP_CMP_FALSE)) {
+		/*
+		 *	These operators require a hard-coded string on the RHS.
+		 */
+		if (strcmp(value, "ANY") != 0) {
+			fr_strerror_printf("Invalid value for %s", fr_tokens[map->op]);
+			goto error;
+		}
+
+		(void) tmpl_afrom_value_box(map, &map->rhs, fr_box_strvalue("ANY"), false);
+		goto verify;
+
 	} else {
 		slen = talloc_array_length(value) - 1;
 	}
@@ -272,13 +284,13 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	 *	pairs, and work on that.
 	 */
 	if (edit && (rhs_rules == &my_rhs_rules) && my_rhs_rules.enumv && fr_type_is_structural(my_rhs_rules.enumv->type) &&
-	    ((type == T_DOUBLE_QUOTED_STRING) || (type == T_BACK_QUOTED_STRING) || (type == T_SINGLE_QUOTED_STRING))) {
+	    ((quote == T_DOUBLE_QUOTED_STRING) || (quote == T_BACK_QUOTED_STRING) || (quote == T_SINGLE_QUOTED_STRING))) {
 		my_rhs_rules.enumv = NULL;
 	}
 
 	slen = tmpl_afrom_substr(map, &map->rhs,
 				 &FR_SBUFF_IN(value, slen),
-				 type,
+				 quote,
 				 p_rules,
 				 rhs_rules);
 	if (slen < 0) {

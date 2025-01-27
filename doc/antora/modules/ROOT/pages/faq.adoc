@@ -21,9 +21,6 @@ Also, it has many features not found in free servers and many commercial ones, l
 * Multiple DEFAULT entries in raddb/users file
 * All users file entries can optionally "fall through"
 * Caches all config files in-memory
-* Keeps a list of logged in users (radutmp file)
-* "radwho" program can be installed as "fingerd"
-* Logs both UNIX wtmp file format and RADIUS detail logfiles
 * Supports Simultaneous-Use = X parameter. Yes, this means that you can now prevent double logins!
 * Supports Vendor-Specific attributes, including USR non-standard ones.
 * Supports proxying
@@ -350,9 +347,9 @@ Here is a check list:
 1. Check that you added your NAS to _raddb/clients.conf_ and selected correct NAS type, also check the password
 2. Run `radiusd -X` and see if it parses the Simultaneous-Use line.
 3. Try to run `checkrad` manually; maybe you may have a wrong version of perl, don't have cmu-snmp installed etc.
-4. run `radwho`.  If it says no one is logged in, Simultaneous-Use won't work.
+4. Check the database.  If it says no one is logged in, Simultaneous-Use won't work.
 5. Verify that the NAS is sending accounting packets.  Without accounting packets, Simultaneous-Use will NOT work.
-6. Verify that the accounting packets are accepted by the radutmp module.  If the module returns "noop", it means that the accounting packets do not have enough information for the server to perform Simultaneous-Use enforcement.
+6. Verify that the accounting packets are accepted by the datavase module.  If the module returns "noop", it means that the accounting packets do not have enough information for the server to perform Simultaneous-Use enforcement.
 7. In case you have SQL as a database, and you have accounting records in radacct table, you'll need to uncomment sql in session section of radiusd.conf file. Also, you'll need to uncomment Simutaneus check query in sql.conf file.
 
 The radius server calls the checkrad script when it thinks the user is already logged on on one or more other ports/terminal servers to verify that the user is indeed still online on that *other* port/server. If Simultaneous-Use > 1, then it might be that checkrad is called several times to verify each existing session.
@@ -416,10 +413,6 @@ Ascend decided to have the 4000 series NAS boxes retrieve much of their configur
 This is generally caused by an incorrect named configuration. Check your named files and look for invalid entries.
 
 Another file to investigate is raddb/naslist. All entries there must be resolved by a DNS query.
-
-### Why radwho is taking so long to show users connected?
-
-See question 4.9
 
 ### PEAP or EAP-TLS Doesn't Work with a Windows machine
 

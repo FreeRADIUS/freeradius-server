@@ -4,6 +4,9 @@
 
 The `tacacs` virtual server processes TACACS+ packets.
 
+```
+#	https://www.rfc-editor.org/rfc/rfc8907
+```
 
 
 
@@ -12,15 +15,24 @@ The `tacacs` virtual server processes TACACS+ packets.
 
 This is the `tacacs` virtual server.
 
+```
+server tacacs {
+```
 
 namespace:: Needs to be "tacacs" for TACACS+ functionality.
 
+```
+	namespace = tacacs
 
+```
 
 ### TACACS+ Configuration
 
 All of the configuration for processing TACACS+ packets goes here.
 
+```
+	tacacs {
+```
 
 #### Authentication subsection
 
@@ -32,6 +44,9 @@ necessary for Accounting-Request (and other)
 packets.  At this time, there is no configuration
 needed for other packet types.
 
+```
+		Authentication {
+```
 
 session:: Controls how ongoing
 (multi-round) sessions are handled
@@ -40,10 +55,16 @@ This section is only useful for ASCII authentications.
 It is the only authentication type which supports
 sending challenges for further data.
 
+```
+			session {
+```
 
 max:: The maximum number of concurrent ongoing sessions
 
+```
+#				max = 4096
 
+```
 
 max_rounds: The maximum number of round trips which are allowed
 
@@ -53,7 +74,10 @@ the server replies with `GetUser` or `GetPass` or `GetData`.
 Some broken clients will send packets in a loop, forever.
 This configuration helps to catch and prevent that.
 
+```
+				max_rounds = 4
 
+```
 
 timeout:: How long to wait before expiring a
 session.
@@ -64,11 +88,20 @@ timer stops when a request
 containing the previously sent
 state value is received.
 
+```
+#				timeout = 15
+			}
+		}
 
+```
 
 There is currently no configuration for other packet types.
 
+```
+	}
 
+	listen {
+```
 
 type:: The type of packet to accept.
 
@@ -77,18 +110,30 @@ lines of `type = ...`.
 
 As described in https://tools.ietf.org/html/rfc8907[RFC 8907], the packet types are:
 
+```
+		type = Authentication-Start
+		type = Authentication-Continue
+		type = Authorization-Request
+		type = Accounting-Request
 
+```
 
 transport:: The transport protocol.
 
 Only `tcp` is allowed.  TACACS+ does not use UDP or TLS.
 
+```
+		transport = tcp
 
+```
 
 ## Protocols
 
 tcp { ... }:: TCP is configured here.
 
+```
+		tcp {
+```
 
 NOTE: Don't change anything if you are not sure.
 
@@ -98,31 +143,53 @@ port:: The port where we accept packets.
 
 The port should be 49 for a production network.
 
+```
+			port = 49
 
+```
 
 ipaddr:: The IP address where we accept packets.
 
+```
+			ipaddr = *
 
+```
 
 interface:: Interface to bind to.
 
+```
+#			interface = eth0
 
+```
 
 max_packet_size:: Our max packet size. may be different from the parent.
 
+```
+#			max_packet_size = 4096
 
+```
 
 recv_buff:: How big the kernel's receive buffer should be.
 
+```
+#			recv_buff = 1048576
 
+```
 
 send_buff:: How big the kernel's send buffer should be.
 
+```
+#			send_buff = 1048576
 
+```
 
 src_ipaddr:: IP we open our socket on.
 
+```
+#			src_ipaddr = ""
+		}
 
+```
 
 limit:: limits for this socket.
 
@@ -132,6 +199,9 @@ limits are usually transport-specific.
 
 Limits are used to prevent "run-away" problems.
 
+```
+		limit {
+```
 
 max_connections:: The maximum number of
 connected sockets which will be accepted
@@ -145,14 +215,22 @@ If the listeners do not use connected
 sockets (e.g. TCP), then this configuration
 item is ignored.
 
+```
+			max_connections = 256
 
+```
 
 idle_timeout:: Time after which idle
 connections are deleted.
 
 Useful range of values: 5 to 600
 
+```
+			idle_timeout = 60.0
+		}
+	}
 
+```
 
 ## Clients
 
@@ -161,13 +239,20 @@ over  the global `client` definitions.
 
 See the main `clients.conf` file for documentation on the `client` section.
 
+```
+	client tacacs {
+		ipaddr = 127.0.0.1
 
+```
 
 This has to be specified for all TACACS+ clients.
 
 There is no standard for TACACS+ over UDP.
 
+```
+		proto = tcp
 
+```
 
 The TACACS+ key, or secret.  If a secret is defined, then
 it will be used.  All packets coming from this client MUST be
@@ -178,7 +263,11 @@ in which case all of the information (including passwords)
 are sent over the network in the clear.  This practice is
 not recommended.
 
+```
+		secret = testing123
+	}
 
+```
 
 ## Authentication-Start
 
@@ -196,16 +285,43 @@ authentication method, such as `ldap`.  You should ONLY set `Auth-Type := ldap` 
 the packet contains `Authentication-Type = PAP` _and_ the passwords in LDAP are stored
 in "crypt" or hashed form.
 
+```
+	recv Authentication-Start {
+		-sql
+	}
 
+	authenticate PAP {
+		pap
+	}
 
+	authenticate CHAP {
+		chap
+	}
 
+	authenticate MSCHAP {
+		mschap
+	}
 
+	authenticate MSCHAPv2 {
+		mschap
+	}
 
+```
 
 LDAP authentication will only work with PAP authentication
 
+```
+#	authenticate ldap {
+#		if (Authentication-Type != PAP) {
+#			%log.warn("The packet is not PAP.  LDAP authentication is likely to fail!")
+#		}
+```
 
+```
+#		ldap
+#	}
 
+```
 
 The automatic state machine will ensure that both User-Name
 and User-Password have been provided by this point making
@@ -216,32 +332,59 @@ Alternatively, if extra data is required, set
 to request the extra data, which will be in &User-Message in
 the next packet (if the client provides it)
 
+```
+	authenticate ASCII {
+		pap
+	}
 
+```
 
 ### Send
 
 Note that "follow" is officially deprecated, and is not supported.
 
+```
+	send Authentication-Pass {
+		&reply.Server-Message := "Hello %{User-Name}"
 
+```
 
 Call an instance of `linelog` to log the authentication success
 - equivalent to the previous log `auth = yes` option in v3.
 See `mods-enabled/linelog` for message formats and destinations.
 
+```
+#		log_auth_authentication_pass
+	}
 
+	send Authentication-Fail {
+		&reply.Server-Message := "Failed login!"
 
+```
 
 Call an instance of `linelog` to log the authentication failure
 - equivalent to the previous log `auth = yes` option in v3.
 See `mods-enabled/linelog` for message formats and destinations.
 
+```
+#		log_auth_authentication_fail
+	}
 
+```
 
 With ASCII methods, GetUser and GetPass typically send a prompt
 for the client to present to the user.
 
+```
+	send Authentication-GetUser {
+		&reply.Server-Message := "Username:"
+	}
 
+	send Authentication-GetPass {
+		&reply.Server-Message := "Password:"
+	}
 
+```
 
 ## Authentication-Continue
 
@@ -268,10 +411,19 @@ section is done and has a User-Password, the server will
 run an `authenticate ... { }` section.  It will then call
 one of the `send` sections to send the reply.
 
+```
+	recv Authentication-Continue {
+```
 
 https://tools.ietf.org/id/draft-ietf-opsawg-07.html#rfc.section.4.3
 
+```
+		"%{Authentication-Continue-Flags}"
+		"%{User-Message}"
+		"%{Data}"
+	}
 
+```
 
 ## Authorization
 
@@ -279,132 +431,7 @@ https://tools.ietf.org/id/draft-ietf-opsawg-07.html#rfc.section.4.3
 
 ### Recv
 
-
-
-### Send
-
-Add the arguments to whatever the user entered.
-
-
-
-Replace whatever the user entered with the following arguments
-
-
-
-Reject the request
-
-
-
-## Accounting
-
-
-
-### Recv
-
-
-Create a 'detail'ed log of the packets.
-
-
-First packet for a session
-
-Updates a previous start
-
-Updates a session
-
-Stops a session
-
-
-### Send
-
-
-
-
-NOTE: Proxying of TACACS+ requests is NOT supported.
-
-
-== Default Configuration
-
 ```
-#	https://www.rfc-editor.org/rfc/rfc8907
-server tacacs {
-	namespace = tacacs
-	tacacs {
-		Authentication {
-			session {
-#				max = 4096
-				max_rounds = 4
-#				timeout = 15
-			}
-		}
-	}
-	listen {
-		type = Authentication-Start
-		type = Authentication-Continue
-		type = Authorization-Request
-		type = Accounting-Request
-		transport = tcp
-		tcp {
-			port = 49
-			ipaddr = *
-#			interface = eth0
-#			max_packet_size = 4096
-#			recv_buff = 1048576
-#			send_buff = 1048576
-#			src_ipaddr = ""
-		}
-		limit {
-			max_connections = 256
-			idle_timeout = 60.0
-		}
-	}
-	client tacacs {
-		ipaddr = 127.0.0.1
-		proto = tcp
-		secret = testing123
-	}
-	recv Authentication-Start {
-		-sql
-	}
-	authenticate PAP {
-		pap
-	}
-	authenticate CHAP {
-		chap
-	}
-	authenticate MSCHAP {
-		mschap
-	}
-	authenticate MSCHAPv2 {
-		mschap
-	}
-#	authenticate ldap {
-#		if (Authentication-Type != PAP) {
-#			%log.warn("The packet is not PAP.  LDAP authentication is likely to fail!")
-#		}
-#		ldap
-#	}
-	authenticate ASCII {
-		pap
-	}
-	send Authentication-Pass {
-		&reply.Server-Message := "Hello %{User-Name}"
-#		log_auth_authentication_pass
-	}
-	send Authentication-Fail {
-		&reply.Server-Message := "Failed login!"
-#		log_auth_authentication_fail
-	}
-	send Authentication-GetUser {
-		&reply.Server-Message := "Username:"
-	}
-	send Authentication-GetPass {
-		&reply.Server-Message := "Password:"
-	}
-	recv Authentication-Continue {
-		"%{Authentication-Continue-Flags}"
-		"%{User-Message}"
-		"%{Data}"
-	}
 	recv Authorization-Request {
 		"%{Authentication-Method}"
 		"%{Privilege-Level}"
@@ -415,37 +442,106 @@ server tacacs {
 		"%{Remote-Address}"
 		"%{Argument-List}"
 	}
+
+```
+
+### Send
+
+Add the arguments to whatever the user entered.
+
+```
 	send Authorization-Pass-Add {
 		&reply.Authorization-Status := Pass-Add
 		&reply.Server-Message := "authorization-response-server"
 		&reply.Data := "authorization-response-data"
 		&reply.Argument-List := "key1=var1"
 	}
+
+```
+
+Replace whatever the user entered with the following arguments
+
+```
 	send Authorization-Pass-Reply {
 		&reply.Authorization-Status := Pass-Repl
 		&reply.Server-Message := "authorization-response-server"
 		&reply.Data := "authorization-response-data"
 		&reply.Argument-List := "key1=var1"
 	}
+
+```
+
+Reject the request
+
+```
 	send Authorization-Fail {
 		&reply.Authorization-Status := Fail
 	}
+
+```
+
+## Accounting
+
+
+
+### Recv
+
+```
 	recv Accounting-Request {
+```
+
+Create a 'detail'ed log of the packets.
+
+```
 		detail
 	}
+
+```
+First packet for a session
+```
 	accounting Start {
 	}
+
+```
+Updates a previous start
+```
 	accounting Watchdog-Update {
 	}
+
+```
+Updates a session
+```
 	accounting Watchdog {
 	}
+
+```
+Stops a session
+```
 	accounting Stop {
 	}
+
+```
+
+### Send
+
+```
 	send Accounting-Success {
 		&reply.Server-Message := "Success"
 	}
+
 	send Accounting-Error {
 		&reply.Server-Message := "Error"
 	}
+
+```
+
+NOTE: Proxying of TACACS+ requests is NOT supported.
+
+```
 }
+```
+
+== Default Configuration
+
+```
 ```

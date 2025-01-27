@@ -1,0 +1,90 @@
+```
+***************
+*** 86,91 ****
+  		udp {
+  			ipaddr = *
+  			port = 1812
+  		}
+  	}
+
+--- 86,92 ----
+  		udp {
+  			ipaddr = *
+  			port = 1812
++ 			cleanup_delay = 30
+  		}
+  	}
+
+***************
+*** 227,232 ****
+  	expiration
+  	logintime
+
+```
+
+If no other module has claimed responsibility for
+authentication, then try to use PAP.  This allows the
+```
+--- 228,237 ----
+  	expiration
+  	logintime
+
++ 		update control {
++ 			Cleartext-Password := "bob"
++ 		}
++
+```
+
+If no other module has claimed responsibility for
+authentication, then try to use PAP.  This allows the
+```
+***************
+*** 277,283 ****
+```
+in the 'authorize' section supplies a password.  The
+password can be clear-text, or encrypted.
+```
+  authenticate pap {
+- 	pap
+  }
+
+```
+
+```
+--- 282,308 ----
+```
+in the 'authorize' section supplies a password.  The
+password can be clear-text, or encrypted.
+```
+  authenticate pap {
++ 	if (!Proxy-State) {
++ 	   fork Access-Request {
++ 		radius {
++ 		       fail = 1
++ 		}
++ 		if (fail) {
++ 		   update reply {
++ 		   	  Packet-Type := Access-Accept
++ 		   }
++ 		   ok
++ 		}
++ 	   }
++
++ 	   if (!fail) {
++ 	   	accept
++ 	   }
++ 	}
++ 	else {
++ 		pap
++ #		do_not_respond
++ 	}
+  }
+
+```
+
+```
+
+== Default Configuration
+
+```
+```

@@ -1,14 +1,54 @@
 
+```
+#	A virtual server to handle ONLY Status-Server packets.
+```
+
+```
+#	Server statistics can be queried with a properly formatted
+#	Status-Server request.  See dictionary.freeradius for comments.
+```
+
+```
+#	If radiusd.conf has "status_server = yes", then any client
+#	will be able to send a Status-Server packet to any port
+#	(listen section type "auth", "acct", or "status"), and the
+#	server will respond.
+```
+
+```
+#	If radiusd.conf has "status_server = no", then the server will
+#	ignore Status-Server packets to "auth" and "acct" ports.  It
+#	will respond only if the Status-Server packet is sent to a
+#	"status" port.
+```
+
+```
+#	The server statistics are available ONLY on socket of type
+#	"status".  Queries for statistics sent to any other port
+#	are ignored.
+```
+
+```
+#	Similarly, a socket of type "status" will not process
+#	authentication or accounting packets.  This is for security.
+```
 
 
 
+```
+server status {
+	namespace = radius
+	listen {
+		transport = udp
+		udp {
+			ipaddr = 127.0.0.1
+			port = 18121
+		}
 
+		type = Status-Server
+	}
 
-
-
-
-
-
+```
 
 We recommend that you list ONLY management clients here.
 i.e. NOT your NASes or Access Points, and for an ISP,
@@ -22,70 +62,57 @@ these statistics.
 Do you really want your partners seeing the internal details
 of what your RADIUS server is doing?
 
+```
+	client admin {
+		ipaddr = 127.0.0.1
+		secret = adminsecret
+	}
 
+```
 
 Receive a Status-Server packet
 
+```
+	recv Status-Server {
+```
 
 Add statistics based on the Vendor-Specific.FreeRADIUS.Stats4-* queries.
 
+```
+		stats
+		ok
+	}
+}
 
+#	Statistics can be queried via a number of methods:
+```
 
+```
+#	All packets received/sent by the server (1 = auth, 2 = acct)
+#		Vendor-Specific.FreeRADIUS.Stats4-Type = Global
+```
 
+```
+#	All packets for a particular client (globally defined)
+#		Vendor-Specific.FreeRADIUS.Stats4-Type = Client
+#		Vendor-Specific.FreeRADIUS.Stats4-IPv4-Address = 192.0.2.1
+```
 
+```
+#	All packets for a client attached to a "listen" ip/port
+#		Vendor-Specific.FreeRADIUS.Stats4-Type = Listener
+#		Vendor-Specific.FreeRADIUS.Stats4-IPv4-Address = 192.0.2.1
+#		Vendor-Specific.FreeRADIUS.Stats4-port = 1812
+```
 
 
 
 Due to internal limitations, the statistics might not be exactly up
 to date.  Do not expect all of the numbers to add up perfectly.
 
+```
 
 == Default Configuration
 
 ```
-#	A virtual server to handle ONLY Status-Server packets.
-#	Server statistics can be queried with a properly formatted
-#	Status-Server request.  See dictionary.freeradius for comments.
-#	If radiusd.conf has "status_server = yes", then any client
-#	will be able to send a Status-Server packet to any port
-#	(listen section type "auth", "acct", or "status"), and the
-#	server will respond.
-#	If radiusd.conf has "status_server = no", then the server will
-#	ignore Status-Server packets to "auth" and "acct" ports.  It
-#	will respond only if the Status-Server packet is sent to a
-#	"status" port.
-#	The server statistics are available ONLY on socket of type
-#	"status".  Queries for statistics sent to any other port
-#	are ignored.
-#	Similarly, a socket of type "status" will not process
-#	authentication or accounting packets.  This is for security.
-server status {
-	namespace = radius
-	listen {
-		transport = udp
-		udp {
-			ipaddr = 127.0.0.1
-			port = 18121
-		}
-		type = Status-Server
-	}
-	client admin {
-		ipaddr = 127.0.0.1
-		secret = adminsecret
-	}
-	recv Status-Server {
-		stats
-		ok
-	}
-}
-#	Statistics can be queried via a number of methods:
-#	All packets received/sent by the server (1 = auth, 2 = acct)
-#		Vendor-Specific.FreeRADIUS.Stats4-Type = Global
-#	All packets for a particular client (globally defined)
-#		Vendor-Specific.FreeRADIUS.Stats4-Type = Client
-#		Vendor-Specific.FreeRADIUS.Stats4-IPv4-Address = 192.0.2.1
-#	All packets for a client attached to a "listen" ip/port
-#		Vendor-Specific.FreeRADIUS.Stats4-Type = Listener
-#		Vendor-Specific.FreeRADIUS.Stats4-IPv4-Address = 192.0.2.1
-#		Vendor-Specific.FreeRADIUS.Stats4-port = 1812
 ```

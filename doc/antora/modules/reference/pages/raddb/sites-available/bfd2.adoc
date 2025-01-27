@@ -1,0 +1,162 @@
+
+
+
+
+= BFD (Bidirectional Forwarding Detection)
+
+The purpose of `BFD` is to quickly detect if a link is up or down.
+
+We are using it to determine if a `peer` application is up or down.
+For example, when two servers are configured in primary / secondary
+mode, they should be set up as BFD peers.  They can then detect
+when the other one goes down.
+
+The code is in FreeRADIUS because we want to know if the *application*
+is running. It doesn't matter if the link is up, or if the host system
+is running. If the FreeRADIUS daemon is down, then we want to know ASAP.
+
+NOTE: See also `raddb/trigger.conf`.  There are BFD-specific triggers
+which are executed when the link is started, goes up, down, or is
+administratively down.
+
+
+
+## Default instance
+
+
+
+### server bfd  { ... }
+
+```
+server other {
+	namespace = bfd
+
+```
+
+Common configuration for the BFD state machine.
+
+```
+	bfd {
+
+	}
+
+```
+
+#### listen { ... }
+
+```
+	listen {
+		transport = udp
+
+		udp {
+```
+
+ipaddr: IP address, or IPv6 address as normal.
+
+```
+			ipaddr = ${bfd_other}
+
+```
+
+port:: Port as normal.
+
+```
+			port = 3784
+
+			only_state_changes = true
+
+		}
+	}
+
+peer main {
+	ipaddr = ${bfd_main}
+
+	port = 3784
+
+```
+
+auth_type:: BFD Authentication method.
+
+May be one of:
+
+[options="header,autowidth"]
+|===
+| Option         | Description
+| none           | no password, not recommended
+| simple         | cleartext password in the packet, not recommended
+| keyed-md5      | MD5 based, like  RADIUS style shared secret key
+| met-keyed-md5  | similar to above
+| keyed-sha1     | SHA1 based, like RADIUS style shared secret key
+| met-keyed-sha1 | similar to above
+|===
+
+NOTE: The other side of the BFD connection has to have the same
+kind of authentication set.
+
+```
+	auth_type = ${bfd_auth_type}
+
+```
+
+secret:: The secret key used for authentication.
+
+If it starts with "0x", then it is treated as a hex string. This is recommended
+for security.  The secrets should be `~16` octets long, and random.
+
+```
+	secret = "hello"
+
+```
+
+min_transmit_interval:: Minimum time interval to transmit.
+
+```
+	min_transmit_interval = 250ms
+
+```
+
+min_receive_interval:: Minimum time interval to receive.
+
+```
+	min_receive_interval = 250ms
+
+```
+
+max_timeouts:: Max number of timeouts before the session is declared dead.
+
+```
+	max_timeouts = 3
+
+```
+
+demand:: BFD Demand mode.
+
+allowed values: {no, yes}
+
+```
+	demand = no
+}
+
+recv Admin-Down {
+	ok
+}
+
+recv Down {
+	ok
+}
+
+recv Init {
+	ok
+}
+
+recv Up {
+	ok
+}
+
+}
+```
+
+== Default Configuration
+
+```
+```

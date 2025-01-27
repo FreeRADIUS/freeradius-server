@@ -18,11 +18,25 @@ what information their equipment needs to see in a CoA packet.
 
 This information is usually a list of attributes such as:
 
+```
+#	NAS-IP-Address (or NAS-IPv6 address)
+#	NAS-Identifier
+#	User-Name
+#	Acct-Session-Id
+```
 
 CoA packets can be originated when a normal Access-Request or
 Accounting-Request packet is received.  Simply create a subrequest,
 and call the `radius` module to send the packet.
 
+```
+#	subrequest Disconnect-Request {
+#	       &User-Name = &parent.request.User-Name
+#	       &Acct-Session-Id = &parent.request.Acct-Session-Id
+#	       &NAS-IP-Address = &parent.NAS-IP-Address}
+#	       ...
+#	}
+```
 
 NOTE: This functionality is configured differently from v3.
 
@@ -36,16 +50,41 @@ You should NOT enable this virtual server.  Instead, use it as an
 example, and copy the "subrequest" section to the virtual server
 that is actually receiving `link:https://freeradius.org/rfc/rfc2866.html#Accounting-Request[Accounting-Request]` packets.
 
+```
+server originate-coa.example.com {
+	namespace = radius
 
+```
 Listen on the Accounting port.
 
+```
+	listen {
+		type = Accounting-Request
+		transport = udp
 
+		udp {
+			ipaddr = *
+			port = 1812
+		}
+	}
 
+recv Accounting-Request {
+	subrequest Disconnect-Request {
+```
 
 The subrequest begins empty, so copy all necessary
 attributes over.
 
+```
+		&request.User-Name := &parent.request.User-Name
+		&request.Acct-Session-Id := &parent.request.Acct-Session-Id
+		&request.NAS-Identifier := &parent.request.NAS-Identifier
+		&request.NAS-IP-Address := &parent.request.NAS-IP-Addres
+		&request.NAS-IPv6-Address := &parent.request.NAS-IPv6-Address
+		&request.NAS-Port := &parent.request.NAS-Port
+		&request.Framed-IP-Address := &parent.request.Framed-IP-Address
 
+```
 
 Call the `radius` module to send a CoA packet.
 
@@ -56,43 +95,16 @@ this to work.
 See the `radius` module for more documentation on
 how it works.
 
+```
+		radius.coa
 
+	}
+}  # recv Accounting-Request
 
+}
+```
 
 == Default Configuration
 
 ```
-#	NAS-IP-Address (or NAS-IPv6 address)
-#	NAS-Identifier
-#	User-Name
-#	Acct-Session-Id
-#	subrequest Disconnect-Request {
-#	       &User-Name = &parent.request.User-Name
-#	       &Acct-Session-Id = &parent.request.Acct-Session-Id
-#	       &NAS-IP-Address = &parent.NAS-IP-Address}
-#	       ...
-#	}
-server originate-coa.example.com {
-	namespace = radius
-	listen {
-		type = Accounting-Request
-		transport = udp
-		udp {
-			ipaddr = *
-			port = 1812
-		}
-	}
-recv Accounting-Request {
-	subrequest Disconnect-Request {
-		&request.User-Name := &parent.request.User-Name
-		&request.Acct-Session-Id := &parent.request.Acct-Session-Id
-		&request.NAS-Identifier := &parent.request.NAS-Identifier
-		&request.NAS-IP-Address := &parent.request.NAS-IP-Addres
-		&request.NAS-IPv6-Address := &parent.request.NAS-IPv6-Address
-		&request.NAS-Port := &parent.request.NAS-Port
-		&request.Framed-IP-Address := &parent.request.Framed-IP-Address
-		radius.coa
-	}
-}  # recv Accounting-Request
-}
 ```

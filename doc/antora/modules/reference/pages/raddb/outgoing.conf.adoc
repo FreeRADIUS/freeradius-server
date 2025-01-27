@@ -1,0 +1,68 @@
+
+We don't need to set anything here.
+
+
+
+
+
+
+
+Does nothing other than proxying.
+
+
+
+
+
+== Default Configuration
+
+```
+modules {
+radius {
+	transport = udp
+	type = Access-Request
+	originate = yes
+	pool {
+		start = 1
+		min = 1
+		max = 1
+	}
+	udp {
+		ipaddr = 127.0.0.1
+		port = 1812
+		secret = testing123
+	}
+}
+}
+log {
+	colourise = yes
+}
+server default {
+	namespace = radius
+	listen {
+		type = Access-Request
+		type = Accounting-Request
+		type = CoA-Request
+		type = Disconnect-Request
+	}
+	recv Access-Request {
+		radius
+		if (ok) {
+			update reply {
+				&Packet-Type := Access-Accept
+			}
+		}
+	}
+	send Access-Accept {
+	}
+	send Access-Reject {
+	}
+	recv Accounting-Request {
+	}
+	send Accounting-Response {
+	}
+	recv CoA-Request {
+	}
+	recv Disconnect-Request {
+	}
+}
+```

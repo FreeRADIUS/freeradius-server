@@ -59,14 +59,12 @@ Examples:
 | rlm_sql  | Contains code for talking to MySQL or Postgres, and for
              mapping RADIUS records onto SQL tables.
 | rlm_unix | Contains code for making radiusd fit in well on unix-like
-             systems, including getpw* authentication and utmp/wtmp-style
-             logging.
+             systems, including getpw* authentication
 |===
 
 An instance specifies the actual location of a collection data that can
 be used by a module. Examples:
 
-* /var/log/radutmp
 * the MySQL database on bigserver.theisp.com.example
 
 A module can have multiple components which act on RADIUS requests at

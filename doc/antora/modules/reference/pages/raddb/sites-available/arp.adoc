@@ -18,6 +18,9 @@ messages informing the administrator as to what happened.
 
 This is the `arp` virtual server.
 
+```
+server arp {
+```
 
 namespace::
 
@@ -27,7 +30,10 @@ parameter.  This tells the server which protocol is being used.
 All of the "listen" sections in this virtual server will
 only accept packets for that protocol.
 
+```
+	namespace = arp
 
+```
 
 ### The listen section
 
@@ -36,10 +42,16 @@ The `listen` sections in v4 are very different from the
 order to make FreeRADIUS more flexible, and to make the
 configuration simpler and more consistent.
 
+```
+	listen {
+```
 
 interface:: The name of the interface.
 
+```
+		interface = en0
 
+```
 
 filter:: An optional PCAP filter.
 
@@ -54,7 +66,10 @@ out replies, use:
 
 `(arp[6] == 0) and (arp[7] == 1)`
 
+```
+#		filter = "host 192.0.2.1"
 
+```
 
 active:: Whether or not we response to ARP requests
 
@@ -64,30 +79,31 @@ so the default is `active = no`
 When `active = no`, the virtual server will NEVER
 send an ARP reply.
 
+```
+#		active = no
+	}
 
+```
 
 ### Process an ARP request
 
-
-
-### Process an ARP reply before sending it
-
-
-== Default Configuration
-
 ```
-server arp {
-	namespace = arp
-	listen {
-		interface = en0
-#		filter = "host 192.0.2.1"
-#		active = no
-	}
 recv Request {
 	ok
 }
+
+```
+
+### Process an ARP reply before sending it
+
+```
 send Reply {
 	ok
 }
 }
+```
+
+== Default Configuration
+
+```
 ```

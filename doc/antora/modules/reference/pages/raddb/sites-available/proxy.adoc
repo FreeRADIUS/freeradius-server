@@ -1,0 +1,47 @@
+```
+server proxy {
+	namespace = radius
+
+	listen {
+		type = Access-Request
+
+		transport = udp
+
+		udp {
+			ipaddr = *
+			port = 2812
+		}
+	}
+
+```
+
+## Packet Processing sections
+
+The sections below are called when a RADIUS packet has been
+received.
+
+  * recv Access-Request - for authorization and authentication
+  * recv Status-Server  - for checking the server is responding
+
+
+
+### Receive Access-Request packets
+
+```
+recv Access-Request {
+	update control {
+		&Auth-Type := proxy
+	}
+}
+
+authenticate proxy {
+	radius
+}
+
+}
+```
+
+== Default Configuration
+
+```
+```

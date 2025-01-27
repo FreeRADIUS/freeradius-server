@@ -3771,7 +3771,7 @@ int main(int argc, char *argv[])
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
 
-	while ((c = getopt(argc, argv, "cd:D:F:fxMhpr:w:")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "cd:D:F:fxMhpr:S:w:")) != -1) switch (c) {
 		case 'c':
 			do_commands = true;
 			break;
@@ -3808,6 +3808,15 @@ int main(int argc, char *argv[])
 		case 'p':
 			allow_purify = true;
 			break;
+
+		case 'S':
+			if (strcmp(optarg, "require_enum_prefix=yes") == 0) {
+				tmpl_require_enum_prefix = true;
+				break;
+			}
+
+			fprintf(stderr, "Invalid option to -S\n");
+			EXIT_WITH_FAILURE;
 
 		case 'w':
 			write_filename = optarg;

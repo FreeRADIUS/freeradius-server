@@ -18,7 +18,7 @@ condition ("foo
 match ERROR offset 2: Unterminated string
 
 condition ()
-match ERROR offset 2: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 2: Empty expressions are invalid.
 
 condition (!)
 match ERROR offset 3: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
@@ -232,7 +232,7 @@ condition &Event-Timestamp == 'January 1, 2012'
 
 # literals are parsed when the conditions are parsed
 condition (integer)X == 1
-match ERROR offset 10: Failed parsing string as type 'uint32'
+match ERROR offset 10: Failed parsing input
 
 #
 #  @todo - parsing - there is no enum named "X"
@@ -266,7 +266,7 @@ condition (ether) 00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')"
 match (00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')")
 
 condition (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
-match ERROR offset 12: Missing separator, expected ':'
+match ERROR offset 9: enum values must contain at least one alpha character
 
 #
 #  Tests for boolean data types.
@@ -347,7 +347,7 @@ condition (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
 
 condition (ipaddr)127.0.0.1/327 == 127.0.0.1
-match ERROR offset 9: Invalid IPv4 mask length "/327".  Should be between 0-32
+match ERROR offset 9: enum values must contain at least one alpha character
 
 condition (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
@@ -386,7 +386,7 @@ condition ('a')
 match 'a'
 
 condition (a)
-match ERROR offset 1: Unexpected text - attribute names must prefixed with '&'
+match ERROR offset 1: Unexpected text - attribute names must be prefixed with '&'
 
 #
 #  Module return codes are OK
@@ -420,7 +420,6 @@ match ERROR offset 2: Invalid data type 'vsa' in cast
 condition (string)"foo" == &User-Name
 match ("foo" == &User-Name)
 
-# This used to be expr, but expr isn't a builtin, so it failed...
 condition (integer)"%md4(' 1 + 1')" < &NAS-Port
 match ((uint32)"%md4(' 1 + 1')" < &NAS-Port)
 
@@ -679,6 +678,11 @@ match ((&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message))
 condition (&User-Name == """bob "quoted" """)
 match (&User-Name == "bob \"quoted\" ")
 
+#
+#  And enums inside of a sub-expression.
+#
+condition !(&Service-Type == ::Framed-User)
+match !(&Service-Type == ::Framed-User)
 
 count
-match 305
+match 307

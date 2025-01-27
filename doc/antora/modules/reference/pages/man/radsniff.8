@@ -1,0 +1,262 @@
+'\" t
+.\"     Title: radsniff
+.\"    Author: Alan DeKok
+.\" Generator: Asciidoctor 2.0.10
+.\"      Date: 2020-12-21
+.\"    Manual: FreeRADIUS
+.\"    Source: FreeRADIUS
+.\"  Language: English
+.\"
+.TH "RADSNIFF" "8" "2020-12-21" "FreeRADIUS" "FreeRADIUS"
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH "NAME"
+radsniff \- dump radius protocol
+.SH "SYNOPSIS"
+.sp
+*radsniff \fI[ OPTIONS ]\fP
+.SH "DESCRIPTION"
+.sp
+*radsniff  is a simple wrapper around libpcap. It can also print out the
+contents of RADIUS packets using the FreeRADIUS dictionaries.
+.SH "OPTIONS"
+.sp
+\fB\-a\fP
+.RS 4
+List all interfaces which can be used to capture packets.
+.RE
+.sp
+\fB\-c count\fP
+.RS 4
+Number of packets to capture.  Exit after capturing \fBcount\fP packets
+.RE
+.sp
+\fB\-C checksum_type\fP
+.RS 4
+Enable checksum validation.  Specify \f(CRudp\fP or \f(CRradius\fP.
+.RE
+.sp
+\fB\-d config_dir\fP
+.RS 4
+The directory that contains the user dictionary file. Defaults to
+\f(CR/etc/raddb\fP.
+.RE
+.sp
+\fB\-D dict_dir\fP
+.RS 4
+The directory that contains the main dictionary file. Defaults to
+\f(CR/usr/share/freeradius/dictionary\fP.
+.RE
+.sp
+\fB\-e event[,event]\fP
+.RS 4
+ Only log requests with specific \fIevent\fP flags.
++
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\fBreceived\fP \- a request or response
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\fBnorsp\fP \- no response was received to a request
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\fBrtx\fP \- retransmission of a request which was already seen
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\fBnoreq\fP \- a response was seen with no matching request
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\fBreused\fP \- RADIUS ID field was reused too soon
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\fBerror\fP \- error decoding the packet
+.RE
+.RE
+.sp
+\fB\-F\fP
+.RS 4
+Filter PCAP file from stdin to stdout. Output file will contain RADIUS
+packets.
+.RE
+.sp
+\fB\-f filter\fP
+.RS 4
+PCAP filter. (default is \f(CRudp port 1812 or 1813\fP)
+.RE
+.sp
+\fB\-h\fP
+.RS 4
+Print usage help information.
+.RE
+.sp
+\fB\-i interface\fP
+.RS 4
+Capture from the named \fIinterface\fP.
+.RE
+.sp
+\fB\-I filename\fP
+.RS 4
+Read packets from \fIfilename\fP.
+.RE
+.sp
+\fB\-l attr[,attr]\fP
+.RS 4
+Output packet signature and a list of named xattributes.
+.RE
+.sp
+\fB\-L attr[,attr]\fP
+.RS 4
+Use the named attributes tfor detecting retransmissions
+.RE
+.sp
+\fB\-m\fP
+.RS 4
+Print packet headers only, not contents.
+.RE
+.sp
+\fB\-p port\fP
+.RS 4
+Listen for packets on port.
+.RE
+.sp
+\fB\-P filename\fP
+.RS 4
+Daemonize, and write PID to _filename_x
+.RE
+.sp
+\fB\-q\fP
+.RS 4
+Print less debugging information.
+.RE
+.sp
+\fB\-r attribute\-filter\fP
+.RS 4
+RADIUS attribute request filter.
+.RE
+.sp
+\fB\-R attribute\-filter\fP
+.RS 4
+RADIUS attribute response filter.
+.RE
+.sp
+\fB\-s secret\fP
+.RS 4
+RADIUS secret.
+.RE
+.sp
+\fB\-S\fP
+.RS 4
+Sort attributes in the packet. Used to compare server results.
+.RE
+.sp
+\fB\-w filename\fP
+.RS 4
+Write output packets to \fIfilename\fP.
+.RE
+.sp
+\fB\-x\fP
+.RS 4
+Print out debugging information.
+.RE
+.sp
+The following options are for statistics gathering.
+.sp
+\fB\-E\fP
+.RS 4
+Print statistics in CSV format.
+.RE
+.sp
+\fB\-N prefix\fP
+.RS 4
+The instance name passed to the collectd plugin.
+.RE
+.sp
+\fB\-O server\fP
+.RS 4
+Write output statics to the named collectd server.
+.RE
+.sp
+\fB\-T timeout\fP
+.RS 4
+The timeout in milliseconds before the request is considered
+to be lost.
+.RE
+.sp
+\fB\-W interval\fP
+.RS 4
+Write statistics every \fIinterval\fP seconds.
+.RE
+.SH "SEE ALSO"
+.sp
+radiusd(8),pcap(3)
+.SH "AUTHOR"
+.sp
+The FreeRADIUS Server Project (\c
+.URL "http://www.freeradius.org" "" ")"
+.SH "AUTHOR"
+.sp
+Alan DeKok

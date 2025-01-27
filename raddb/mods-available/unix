@@ -32,22 +32,13 @@
 #  The old `Unix-Group`, `Group`, and `Group-Name` attributes and comparisons
 #  are no longer supported.
 #
+#  All of `radutmp`, `radwho`, `radlast`, and `radzap` have been removed.
+#
+#  You can no longer have the `unix` module process accounting packets.
+#
 
 #
 #  ## Configuration Settings
 #
 unix {
-	#
-	#  radwtmp:: The location of the `wtmp` file.
-	#
-	#  The only use for `radlast`.  If you don't use `radlast`,
-	#  then you can comment out this item.
-	#
-	#  NOTE: The radwtmp file may get large!  You should rotate it
-	#  (cp /dev/null radwtmp), or just not use it.
-	#
-	#  The default is to not use radwtmp files.  It's better to
-	#  use a database.
-	#
-#	radwtmp = ${logdir}/radwtmp
 }

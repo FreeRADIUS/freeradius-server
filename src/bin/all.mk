@@ -3,14 +3,11 @@ SUBMAKEFILES := \
     radclient-ng.mk \
     radict.mk \
     radiusd.mk \
-    radlast.mk \
     radlock.mk \
     radsniff.mk \
     radsnmp.mk \
     radsizes.mk \
-    radwho.mk \
     radtest.mk \
-    radzap.mk \
     dhcpclient.mk \
     unit_test_attribute.mk \
     unit_test_map.mk \

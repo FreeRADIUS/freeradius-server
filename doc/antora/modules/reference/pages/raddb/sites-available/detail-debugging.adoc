@@ -1,0 +1,42 @@
+```
+server detail {
+	namespace = detail
+
+	listen {
+		type = Accounting-Request
+		transport = file
+
+		file {
+			filename = "${confdir}/detail-*"
+			filename.work = "${confdir}/detail.work"
+			track = no
+		}
+
+#		work {
+#			filename.work = "${confdir}/detail.work"
+#			track = no
+#		}
+
+	}
+
+recv {
+	fail
+}
+
+send success {
+	ok
+}
+
+send failure {
+```
+do nothing
+```
+}
+
+}
+```
+
+== Default Configuration
+
+```
+```

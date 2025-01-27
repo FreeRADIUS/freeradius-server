@@ -14,7 +14,7 @@ $raw = 0;
 $blank = 0;
 $print_code = 0;
 
-getopts('a:c:o:t');
+getopts('c:o:t');
 
 $script_dir = dirname(__FILE__);
 $filename = "$script_dir/links.txt";
@@ -40,13 +40,16 @@ while (<FILE>) {
 }
 close FILE;
 
-$links{"sites-available/"} = "$opt_a/sites-available/index.adoc";
-$links{"mods-available/"} = "$opt_a/mods-available/index.adoc";
+$links{"sites-available/"} = "xref:reference:raddb/sites-available/index.adoc";
+$links{"mods-available/"} = "xref:reference:raddb/mods-available/index.adoc";
 
 sub process_file {
 	my $input = shift;
 	my $output_file = shift;
 	my @code = ();
+	my $inline = $print_code;
+
+	$inline = 1 if $input =~ /sites-available/ || $output_file =~ /sites-available/;
 
 	if (!defined $output_file) {
 	    $output = STDOUT;
@@ -116,7 +119,7 @@ sub process_file {
 		}
 
 		if ($raw != $was_raw) {
-			print $output "```\n" if ($print_code);
+			print $output "```\n" if ($inline);
 			$was_raw = $raw;
 		}
 
@@ -145,18 +148,18 @@ sub process_file {
 			#  etc.
 			#
 			if ($key =~ /^mods-available\/./) {
-				$links{$key} = "$opt_a/$key.adoc";
+				$links{$key} = "xref:reference:raddb/$key.adoc";
 			}
 			elsif ($key =~ /^sites-available\/./) {
-			    	$links{$key} = "$opt_a/$key.adoc";
+				$links{$key} = "xref:reference:raddb/$key.adoc";
 			}
 
 			#
 			#  A bare `eap` gets converted to a reference to the EAP
 			#  module, if the EAP module exists.
 			#
-			if (!$links{%key} && -e "$opt_a/../raddb/mods-available/$key") {
-				$links{$key} = "$opt_a/mods-available/$key.adoc";
+			if (!$links{%key} && -e "xref:reference:raddb/mods-available/$key") {
+				$links{$key} = "xref:reference:raddb/mods-available/$key.adoc";
 			}
 
 			next if (!$links{$key});
@@ -164,22 +167,8 @@ sub process_file {
 			if ($links{$key} =~ /^http/) {
 				$link = "`link:" . $links{$key} . "[" . $key . "]`";
 
-			} elsif ($links{$key} =~ /^$opt_a/) {
-				#
-				#  Link to the *relative* path for the file.
-				#  Note that we're passed "-a foo/doc/raddb",
-				#  and also an output file of "doc/raddb/bar.adoc"
-				#  So we need to strip out the duplicate directories.
-				#
-				my $absdir = dirname($opt_a . "/" . $output_file);
-				$absdir =~ s,doc/raddb/,/,;
-
-				my $relative = File::Spec->abs2rel($links{$key}, $absdir);
-
-				$link = "link:" . $relative . "[" . $key . "]";
-
 			} else {
-				$link = "<<" . $links{$key} . "," . $key . ">>";
+				$link = $links{$key} . "[" . $key . "]";
 			}
 
 			#
@@ -201,9 +190,9 @@ sub process_file {
 			$line =~ s,RFC (\d+),https://tools.ietf.org/html/rfc${1}\[RFC $1\],g;
 		}
 
-		$line =~ s,doc/antora/modules/([^/]+)/pages/(.*)/([^/]+).adoc,xref:$1:$2/$3.adoc[$3],g;
+		$line =~ s,doc/antora/modules/([^/]+)/pages/(.*)/([^/]+).adoc,xref:reference:$1/$2/$3.adoc[$3],g;
 
-		if (!$print_code) {
+		if (!$inline) {
 		    if ($raw && $was_raw) {
 			push @code, $line if ($opt_t);
 			next;
@@ -219,7 +208,7 @@ sub process_file {
 	#
 	#  Terminate any trailing "raw" text.
 	#
-	print $output "```\n" if ($print_code);
+	print $output "```\n" if ($inline);
 
 	if ($opt_t) {
 	    print $output "\n";
@@ -240,10 +229,6 @@ sub HELP_MESSAGE {
 	print "    -a <directory>\tthe root directory for Asciidoc conversion.\n";
 	print "    -o <filename>\tthe output filename.\n";
 	exit 0;
-}
-
-if (!defined $opt_a) {
-	$opt_a = "";
 }
 
 process_file(STDIN, $opt_o);

@@ -22,7 +22,6 @@ rlm_pap
 rlm_passwd
 rlm_perl
 rlm_python
-rlm_radutmp
 rlm_redis
 rlm_rest
 rlm_sql

@@ -44,7 +44,7 @@ There are many "commented out" references to modules and
 configurations These references serve as place-holders, and as
 documentation.  If you need the functionality of that module, then:
 
-  * configure the module in link:../../../../../../mods-available/index.adoc[mods-available/]
+  * configure the module in xref:reference:raddb/mods-available/index.adoc[mods-available/]
   * enable the module in `mods-enabled`.  e.g. for LDAP, do:  `cd mods-enabled;ln -s ../mods-available/ldap`
   *  uncomment the references to it in this file.
 
@@ -57,8 +57,11 @@ able to connect to the database, and to authenticate users.
 
 This is the `default` virtual server.
 
+```
+server default {
+```
 
-namespace::
+namespace:: The protocol namespace (i.e. dictionary) to use.
 
 In v4, all "server" sections MUST start with a "namespace"
 parameter.  This tells the server which protocol is being used.
@@ -66,12 +69,37 @@ parameter.  This tells the server which protocol is being used.
 All of the "listen" sections in this virtual server will
 only accept packets for that protocol.
 
+```
+	namespace = radius
 
+```
+
+log:: The name of the logging section to use.
+
+The top configuration section can contain multiple section "log foo { ... }".
+Each of those sections is a different named logging destination.
+
+This configuration item allows setting a different logging destination for an
+individual virtual server.
+
+There are some limitations.
+
+  * this logging is in _addition_ to the default logging to "log { .... }".
+  * it is not currently possible to _replace_ the default logging destination
+  * the name given here _must_ be a fixed string, and is not dynamically expanded.
+
+```
+#	log = some_other_logging_destination
+
+```
 
 ### RADIUS Configuration
 
 All of the configuration for processing RADIUS packets goes here.
 
+```
+	radius {
+```
 
 #### Access-Request subsection
 
@@ -83,6 +111,9 @@ necessary for Accounting-Request (and other)
 packets.  At this time, there is no configuration
 needed for other packet types.
 
+```
+		Access-Request {
+```
 
 session:: Controls how ongoing
 (multi-round) sessions are handled
@@ -92,10 +123,16 @@ It controls the number of EAP
 authentication attempts that can occur
 concurrently.
 
+```
+			session {
+```
 
 max:: The maximum number of ongoing sessions
 
+```
+#				max = 4096
 
+```
 
 timeout:: How long to wait before expiring a
 session.
@@ -106,11 +143,19 @@ timer stops when a request
 containing the previously sent
 state value is received.
 
+```
+#				timeout = 15
+			}
+		}
 
+```
 
 There is currently no configuration for other packet types.
 
+```
+	}
 
+```
 
 ### Local Dictionaries
 
@@ -134,6 +179,9 @@ will never match the proxied attributes.
 In all other aspects, the attributes defined here are just the same
 as if they had been assigned in a dictionary file.
 
+```
+	dictionary {
+```
 
 The syntax is _<type>_ followed by _<name>_.
 
@@ -142,20 +190,32 @@ The _<type>_ MUST be a leaf type or a `group`.  i.e. not
 
 The _<name>_ MUST NOT exist in the `namespace` dictionary.
 
+```
+#		uint32 foo
 
+```
 
 tlv:: Define a TLV variable using _tlv <name> { ...}_.
 
 The contents of the `tlv` subsection are more variable
 definitions, including child `tlv`s.
 
+```
+#		tlv bar {
+#		    uint32 baz
+#		    string arg
+#		}
 
+```
 
 values:: Define a set of values for attribute _<name>_.
 
 The contents of the `values` section are a list of names and
 values.
 
+```
+#		values foo {
+```
 
 _<name>_ = _<value>_
 
@@ -164,7 +224,13 @@ The _<name>_ must be unique.
 The _<value>_ is parsed according to the data type of
 the attribute.
 
+```
+#			bar = 1
+#			baz = 2
+#		}
+	}
 
+```
 
 ### The listen section
 
@@ -173,6 +239,9 @@ The `listen` sections in v4 are very different from the
 order to make FreeRADIUS more flexible, and to make the
 configuration simpler and more consistent.
 
+```
+	listen {
+```
 
 type:: The type of packet to accept.
 
@@ -184,7 +253,11 @@ of packet is being accepted.  The old `auth+acct`
 configuration was awkward and potentially
 confusing.
 
+```
+		type = Access-Request
+		type = Status-Server
 
+```
 
 transport:: The transport protocol.
 
@@ -203,7 +276,10 @@ headless server.  It accepts packets from the
 "inner tunnel" portion of PEAP and TTLS.  But it
 does not accept those packets from the network.
 
+```
+		transport = udp
 
+```
 
 require_message_authenticator::Require Message-Authenticator
 in Access-Requests.
@@ -221,7 +297,10 @@ Allowed values: yes, no, auto
 
 The default is "no".
 
+```
+		require_message_authenticator = auto
 
+```
 
 limit_proxy_state:: Control whether Proxy-State is allowed in
 packets from this client which do not have a Message-Authenticator.
@@ -255,7 +334,10 @@ Allowed values: yes, no, auto
 
 The default is "auto".
 
+```
+		limit_proxy_state = auto
 
+```
 
 limit:: limits for this socket.
 
@@ -265,6 +347,9 @@ limits are usually transport-specific.
 
 Limits are used to prevent "run-away" problems.
 
+```
+		limit {
+```
 
 max_clients:: The maximum number of dynamic
 clients which can be defined for this
@@ -284,7 +369,10 @@ the number of individual RADIUS clients
 (e.g. NAS, AP, etc.) which will be sending
 packets to FreeRADIUS.
 
+```
+			max_clients = 256
 
+```
 
 max_connections:: The maximum number of
 connected sockets which will be accepted
@@ -298,14 +386,20 @@ If the listeners do not use connected
 sockets (e.g. TCP), then this configuration
 item is ignored.
 
+```
+			max_connections = 256
 
+```
 
 idle_timeout:: Time after which idle
 connections or dynamic clients are deleted.
 
 Useful range of values: 5 to 600
 
+```
+			idle_timeout = 60.0
 
+```
 
 nak_lifetime:: Time for which blocked
 clients are placed into a NAK cache.
@@ -324,7 +418,10 @@ client.
 
 Useful range of values: 1 to 600
 
+```
+			nak_lifetime = 30.0
 
+```
 
 cleanup_delay:: The time to wait (in
 seconds) before cleaning up a reply to an
@@ -351,7 +448,11 @@ seconds, e.g. "4.1".
 
 Useful range of values: 2 to 30
 
+```
+			cleanup_delay = 5.0
+		}
 
+```
 
 #### UDP Transport
 
@@ -360,6 +461,9 @@ udp`, it looks for a "udp" subsection.  This
 subsection contains all of the configuration for
 the UDP transport.
 
+```
+		udp {
+```
 
 ipaddr:: The IP address where FreeRADIUS
 accepts packets.
@@ -383,7 +487,10 @@ ipv6addr:: Use IPv6 addresses.
 The same as `ipaddr`, but will only use
 IPv6 addresses.
 
+```
+			ipaddr = *
 
+```
 
 port:: the UDP where FreeRADIUS accepts
 packets.
@@ -391,7 +498,10 @@ packets.
 The default port for Access-Accept packets
 is `1812`.
 
+```
+			port = 1812
 
+```
 
 dynamic_clients:: Whether or not we allow
 dynamic clients.
@@ -402,7 +512,10 @@ client` subsection below.  See that section
 for more information about how dynamic
 clients work.
 
+```
+#			dynamic_clients = true
 
+```
 
 networks:: The list of networks which are
 allowed to send packets to FreeRADIUS for
@@ -417,6 +530,9 @@ IPs can trigger dynamic clients.  If anyone
 could trigger dynamic clients, then the
 server would be subject to a DoS attack.
 
+```
+			networks {
+```
 
 allow:: Allow packets from these
 networks to define dynamic clients.
@@ -433,7 +549,11 @@ the client request.
 There is no limit to the number of
 networks which can be listed here.
 
+```
+				allow = 127/8
+				allow = 192.0.2/24
 
+```
 
 deny:: deny some networks.
 
@@ -452,7 +572,12 @@ only to networks.  The order which
 they appear in the configuration
 file does not matter.
 
+```
+#				deny = 127.0.0/24
+			}
+		}
 
+```
 
 #### TCP Transport
 
@@ -464,6 +589,9 @@ transport.
 Since UDP and TCP are similar, the majority of the
 configuration items are the same for both of them.
 
+```
+		tcp {
+```
 
 ipaddr:: The IP address where FreeRADIUS
 accepts packets.
@@ -471,7 +599,10 @@ accepts packets.
 It has the same definition and meaning as
 the UDP `ipaddr` configuration above.
 
+```
+			ipaddr = *
 
+```
 
 NOTE: As with v3, `ipaddr`, `ipv4addr`, and `ipv6addr`
 are all allowed.
@@ -484,7 +615,10 @@ packets.
 The default port for Access-Accept packets
 is `1812`.
 
+```
+			port = 1812
 
+```
 
 dynamic_clients:: Whether or not we allow dynamic clients.
 
@@ -493,7 +627,10 @@ clients are passed through the "new client"
 subsection below.  See that section for
 more information.
 
+```
+#			dynamic_clients = true
 
+```
 
 networks { ... }::
 
@@ -504,6 +641,9 @@ networks.
 If dynamic clients are not allowed, then
 this section is ignored.
 
+```
+			networks {
+```
 
 allow::  Allow packets from a network.
 
@@ -526,14 +666,31 @@ The allow / deny checks are organised by
 address.  The order of the items given here
 does not matter.
 
+```
+				allow = 127/8
+				allow = 192.0.2/24
+#				deny = 127.0.0/24
+			}
+		}
+	}
 
+	listen tcp_auth {
+		type = Access-Request
+		type = Status-Server
 
+		transport = tcp
 
+		tcp {
+```
 
 As with v3, "ipaddr", "ipv4addr", and "ipv6addr"
 are all allowed.
 
+```
+			ipaddr = *
+			port = 1812
 
+```
 
 Whether or not we allow dynamic clients.
 
@@ -542,7 +699,10 @@ clients are passed through the "new client"
 subsection below.  See that section for
 more information.
 
+```
+#			dynamic_clients = true
 
+```
 
 If dynamic clients are allowed, then limit
 them to only a small set of source
@@ -551,6 +711,9 @@ networks.
 If dynamic clients are not allowed, then
 this section is ignored.
 
+```
+			networks {
+```
 
 Allow packets from these networks
 to define dynamic clients.
@@ -565,13 +728,31 @@ by the "new client" subsection.
 There is no limit to the number of
 networks which can be listed here.
 
+```
+				allow = 127/8
+				allow = 192.0.2/24
+#				deny = 127.0.0/24
+			}
+		}
+	}
 
+```
 
 ### Listen for Accounting-Request packets
 
+```
+	listen udp_acct {
+		type = Accounting-Request
 
+		transport = udp
 
+		udp {
+			ipaddr = *
+			port = 1813
+		}
+	}
 
+```
 
 ### Local Clients
 
@@ -585,10 +766,19 @@ virtual server.
 The clients listed here take precedence over the global
 clients.
 
+```
+	client localhost {
+		shortname = sample
+		ipaddr = 192.0.2.1
+		secret = testing123
 
+```
 The other "client" configuration items can be added
 here, too.
+```
+	}
 
+```
 
 ## Packet Processing sections
 
@@ -602,6 +792,9 @@ received.
 
 ### Receive Access-Request packets
 
+```
+recv Access-Request {
+```
 
 Take a `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`, and perform some checks on it, for
 spaces and other invalid characters. If the `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`
@@ -610,7 +803,10 @@ is invalid, reject the request.
 See policy.d/filter for the definition of the
 filter_username policy.
 
+```
+	filter_username
 
+```
 
 Some broken equipment sends passwords with embedded
 zeros, i.e. the debug output will show:
@@ -619,7 +815,10 @@ zeros, i.e. the debug output will show:
 
 This policy will fix the password to just be "password".
 
+```
+#	filter_password
 
+```
 
 If you intend to use CUI and you require that the
 Operator-Name be set for CUI generation and you want to
@@ -627,43 +826,63 @@ generate CUI also for your local clients, then uncomment
 operator-name below and set the operator-name for
 your clients in clients.conf.
 
+```
+#	operator-name
 
+```
 
 Proxying example
 
 The following example will proxy the request if the
 username ends in example.com.
 
+```
+#	if (&User-Name =~ /@example\.com$/) {
+#		&control.Auth-Type := "proxy-example.com"
+#	}
 
+```
 
 If you want to generate CUI for some clients that do
 not send proper CUI requests, then uncomment cui below
 and set "add_cui = yes" for these clients in
 clients.conf.
 
+```
+#	cui
 
+```
 
 The `auth_log` module will write all `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packets to a file.
 
 Uncomment the next bit in order to have a log of
 authentication requests.  For more information, see
-link:../../../../../../mods-available/detail.log.adoc[mods-available/detail.log].
+xref:reference:raddb/mods-available/detail.log.adoc[mods-available/detail.log].
 
+```
+#	auth_log
 
+```
 
 The `chap` module will set `Auth-Type := ::CHAP` if the
 packet contains a `link:https://freeradius.org/rfc/rfc2865.html#CHAP-Challenge[CHAP-Challenge]` attribute.  The module
 does this only if the `Auth-Type` attribute has not already
 been set.
 
+```
+	chap
 
+```
 
 The `mschap` module will set `Auth-Type := ::mschap` if the
 packet contains an `link:https://freeradius.org/rfc/rfc2548.html#MS-CHAP-Challenge[MS-CHAP-Challenge]` attribute.  The
 module does this only if the `Auth-Type` attribute has not
 already been set.
 
+```
+	mschap
 
+```
 
 The `digest` module implements the SIP Digest
 authentication method.
@@ -678,7 +897,10 @@ FreeRADIUS, the `digest` module will set `Auth-Type :=
 "Digest"` if we are handling a SIP Digest request and the
 `Auth-Type` has not already been set.
 
+```
+	digest
 
+```
 
 The `wimax` module fixes up various WiMAX-specific stupidities.
 
@@ -689,7 +911,10 @@ is 6 octets of the MAC.  This definition conflicts with RFC
 `link:https://freeradius.org/rfc/rfc2865.html#Calling-Station-Id[Calling-Station-Id]` attribute to the normal format as
 specified in https://tools.ietf.org/html/rfc3580#section-3.21.[RFC 3580 Section 3.21.]
 
+```
+#	wimax
 
+```
 
 The `eap` module takes care of all EAP authentication,
 including EAP-MD5, EAP-TLS, PEAP and EAP-TTLS.
@@ -697,7 +922,7 @@ including EAP-MD5, EAP-TLS, PEAP and EAP-TTLS.
 The module also sets the EAP-Type attribute in the request
 list, to the incoming EAP type.
 
-The `eap` module returns `ok` if it is not yet ready to
+The `eap` module returns `ok` or `updated` if it is not yet ready to
 authenticate the user. The configuration below checks for
 that return value, and if so, stops processing the current
 section.
@@ -709,31 +934,49 @@ forth to set up EAP-TTLS or PEAP.
 We also recommend doing user lookups in the `inner-tunnel`
 virtual server.
 
+```
+	eap {
+		ok = return
+		updated = return
+	}
 
+```
 
 The `unix` module will obtain passwords from `/etc/passwd`
 or `/etc/shadow`.  It does this via the system API's, which
 are not thread-safe.  We do not recommend using the `unix` module.
 
+```
+#	unix
 
+```
 
 Read what used to be the `users` file. Since v3, this file
 is located in `mods-config/files/authorize`.
 
+```
+	files
 
+```
 
 Look in an SQL database. The schema of the database is
 meant to mirror the `users` file.  For a full description
 of the module behavior, please see
 https://wiki.freeradius.org/modules/Rlm_sql
 
+```
+	-sql
 
+```
 
 If you are using /etc/smbpasswd, and are also doing mschap
 authentication, the uncomment this line, configure the
 module.
 
+```
+#	smbpasswd
 
+```
 
 The `ldap` module reads passwords and other attributes from
 an LDAP database.
@@ -741,18 +984,27 @@ an LDAP database.
 For a full description of the module behavior, please see
 https://wiki.freeradius.org/modules/Rlm_ldap
 
+```
+	-ldap
 
+```
 
 Enforce daily limits on time spent logged in. This module
 is a variant of the `counter` module.
 
+```
+#	dailycounter
 
+```
 
 See if the account has expired: check the time in the
 `Expiration` attribute and reject if we are past it.
 If the account has not expired, set `link:https://freeradius.org/rfc/rfc2865.html#Session-Timeout[Session-Timeout]`.
 
+```
+	expiration
 
+```
 
 The `pap` module will set `Auth-Type := ::PAP` if the
 packet contains a `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]` attribute.  The module
@@ -769,7 +1021,11 @@ encoding, and convert them all to a normal form.
 This module should be listed last, so that the other
 modules get a chance to set Auth-Type for themselves.
 
+```
+	pap
+}
 
+```
 
 ### Receive Status-Server packets
 
@@ -777,10 +1033,17 @@ modules get a chance to set Auth-Type for themselves.
 This section is processed when the server receives a `Status-Server`
 packet.
 
+```
+recv Status-Server {
+```
 
 We are still here and responding.
 
+```
+	ok
+}
 
+```
 
 ## Authentication Sections
 
@@ -821,7 +1084,12 @@ listed in the "recv Access-Request" section MUST supply a "known
 good" password for the user.  The password can be clear-text, or
 encrypted via `crypt`, `bcrypt`, or other hashing.
 
+```
+authenticate pap {
+	pap
+}
 
+```
 
 ### CHAP Authentication
 
@@ -829,7 +1097,12 @@ For users who are using CHAP authentication. A back-end database
 listed in the "recv Access-Request" section MUST supply a
 Password.Cleartext attribute. Encrypted passwords won't work.
 
+```
+authenticate chap {
+	chap
+}
 
+```
 
 ### MS-CHAP authentication
 
@@ -838,7 +1111,12 @@ database listed in the "recv Access-Request" section MUST supply
 either a Password.Cleartext attribute, or a Password.NT
 attribute. Encrypted passwords won't work.
 
+```
+authenticate mschap {
+	mschap
+}
 
+```
 
 ### SIP Digest Authentication
 
@@ -847,7 +1125,12 @@ For users who are using SIP Digest authentication.
 The `digest` line in the `recv Access-Request` section should also
 be uncommented.
 
+```
+authenticate digest {
+	digest
+}
 
+```
 
 ## PAM (Pluggable Authentication Modules) Authentication
 
@@ -857,7 +1140,12 @@ We do not recommend using PAM.  The server has enough functionality
 that anything that can be done in PAM can be done easier in
 FreeRADIUS.
 
+```
+#authenticate pam {
+#	pam
+#}
 
+```
 
 ### LDAP Authentication
 
@@ -875,13 +1163,23 @@ We strongly recommend using `ldap` in the `recv Access-Request`
 section.  And, ensuring that the account used by FreeRADIUS has
 read permission on all of the users, groups, and passwords.
 
+```
+authenticate ldap {
+	-ldap
+}
 
+```
 
 EAP Authentication
 
 For EAP-MD5, EAP-MSCHAP, EAP-TLS, EAP-TTLS, EAP-PEAP, EAP-PWD, etc.
 
+```
+authenticate eap {
+	eap
+}
 
+```
 
 ### Proxying
 
@@ -904,14 +1202,38 @@ https://wiki.freeradius.org/upgrading/version4/proxy.
 The following example shows how proxying to three remote servers
 can be configured.
 
-The `Auth-Type` attribute would need to be set to
-`proxy-example.com`.  The home servers MUST be defined in
-link:../../../../../../mods-available/radius.adoc[mods-available/radius].
+Proxying will be done by setting `Auth-Type := example.com`, and
+defining the home servers in xref:reference:raddb/mods-available/radius.adoc[mods-available/radius].
 
 
+```
+#authenticate example.com {
+#	#
+#	#  Log the request before proxying.
+#	#
+#	pre_proxy_log
+```
 
+```
+#	#
+#	#  Send the request to remote RADIUS servers, with
+#	#  fail-over from one to the other if there's no response.
+#	#
+#	redundant {
+#		radius1.example.com
+#		radius2.example.com
+#		radius3.example.com
+#	}
+```
 
+```
+#	#
+#	#  Log the reply after proxying.
+#	#
+#	post_proxy_log.post-proxy
+#}
 
+```
 
 ## Send replies to Access-Request packets
 
@@ -924,19 +1246,33 @@ This section is called when sending an Access-Challenge
 response. It is configured to filter out all attributes that should
 not be in the packet.
 
+```
+send Access-Challenge {
+	attr_filter.access_challenge
+	handled
+}
 
+```
 
 ### send Access-Accept packets
 
 Once we know that the user has been authenticated successfully,
 there are additional things that can be done.
 
+```
+send Access-Accept {
+```
 
 If you need to have a State attribute, you can add it
 here. e.g. for later CoA-Request with State, and
 Service-Type = ::Authorize-Only.
 
+```
+#	if (!&reply.State) {
+#		&reply.State := "0x%randstr(16h)"
+#	}
 
+```
 
 For EAP-TTLS and PEAP, add any cached attributes to the
 reply. The "session-state" attributes are automatically
@@ -946,57 +1282,92 @@ when an `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Requ
 The `session-state` attributes are deleted after an
 `link:https://freeradius.org/rfc/rfc2865.html#Access-Reject[Access-Reject]` or `link:https://freeradius.org/rfc/rfc2865.html#Access-Accept[Access-Accept]` packet has been sent.
 
+```
+	&reply += &session-state
 
+```
 
 For EAP, ensure that the Access-Accept contains a User-Name
 attribute.
 
+```
+	eap
 
+```
 
 Get an address from the IP Pool.
 
+```
+#	sqlippool
 
+```
 
 Create the CUI value and add the attribute to
 Access-Accept. Uncomment the line below if
   *returning* the CUI to the NAS.
 
+```
+#	cui
 
+```
 
 If you want to have a log of authentication replies,
 uncomment the following line. This is defined in
-link:../../../../../../mods-available/detail.log.adoc[mods-available/detail.log].
+xref:reference:raddb/mods-available/detail.log.adoc[mods-available/detail.log].
 
+```
+#	reply_log
 
+```
 
 After authenticating the user, do another SQL query.
 
+```
+	-sql
 
+```
 
 Uncomment the following if you want to modify the
 user's object in LDAP after a successful login.
 
+```
+#	ldap
 
+```
 
 Calculate the various WiMAX keys. In order for this to
 work, you will need to define the WiMAX NAI, usually
 via:
 
+```
+#	&request.WiMAX-MN-NAI = "%{User-Name}"
 
+```
 If you want various keys to be calculated, you will
 need to update the reply with "template" values. The
 module will see this, and replace the template values
 with the correct ones taken from the cryptographic
 calculations, e.g.
 
+```
+#	&reply += {
+#		&Vendor-Specific.WiMAX = {
+#			&FA-RK-Key = 0x00
+#			&MSK = &reply.EAP-MSK
+#		}
+#	}
 
+```
 You may want to delete the `MS-MPPE-*-Keys` from the
 reply, as some WiMAX clients behave badly when those
 attributes are included. See the configuration entry
-`delete_mppe_keys` in link:../../../../../../mods-available/wimax.adoc[mods-available/wimax] for
+`delete_mppe_keys` in xref:reference:raddb/mods-available/wimax.adoc[mods-available/wimax] for
 more information.
 
+```
+#	wimax
 
+```
 
 If there is a client certificate (EAP-TLS, and very
 occasionally PEAP and EAP-TTLS), then some attributes
@@ -1010,7 +1381,17 @@ the issuing certificate which is being used. The second
 contains information about the client certificate (if
 available).
 
+```
+#	&reply += {
+#		&Reply-Message = "%{session-state.TLS-Certificate.Serial}"
+#		&Reply-Message = "%{session-state.TLS-Certificate.Not-After}"
+#		&Reply-Message = "%{session-state.TLS-Certificate.Subject}"
+#		&Reply-Message = "%{session-state.TLS-Certificate.Issuer}"
+#		&Reply-Message = "%{session-state.TLS-Certificate.Common-Name}"
+#		&Reply-Message = "%{session-state.TLS-Certificate.Subject-Alt-Name-Email}"
+#	}
 
+```
 
 Insert the `link:https://freeradius.org/rfc/rfc2865.html#Class[Class]` attribute with a unique value into the
 response, which aids matching auth and acct records and
@@ -1021,7 +1402,10 @@ Note: This only works if the NAS has implemented RFC
 supports long Class attributes. Many older or cheap
 NASes only support 16-octet Class attributes.
 
+```
+#	insert_acct_class
 
+```
 
 MacSEC requires the use of `EAP-Key-Name`. However, we
 don't want to send it for all EAP sessions. Therefore, the
@@ -1032,13 +1416,21 @@ reply packet.
 Uncomment the next few lines to copy the required data
 into the EAP-Key-Name attribute.
 
+```
+#	if (&reply.EAP-Session-Id) {
+#		&reply.EAP-Key-Name := &reply.EAP-Session-Id
+#	}
 
+```
 
 Call an instance of `linelog` to log the authentication success
 - equivalent to the previous log `auth = yes` option in v3.
 See `mods-enabled/linelog` for message formats and destinations.
 
+```
+#	log_auth_access_accept
 
+```
 
 Remove `link:https://freeradius.org/rfc/rfc2865.html#Reply-Message[Reply-Message]` if the response contains an
 `link:https://freeradius.org/rfc/rfc2869.html#EAP-Message[EAP-Message]` attribute.  Some NAS equipment will
@@ -1046,7 +1438,11 @@ automatically convert the `link:https://freeradius.org/rfc/rfc2865.html#Reply-Me
 notification" packet, which will cause end-user machines to
 drop the network connection.
 
+```
+	remove_reply_message_if_eap
+}
 
+```
 
 ### send Access-Reject packets
 
@@ -1057,26 +1453,41 @@ The `session-state` list is available while this section is being
 processed.  But all of the attributes in that list are discarded as
 soon as the section is finished.
 
+```
+send Access-Reject {
+```
 
 Log failed authentications in SQL, too.
 
+```
+	-sql
 
+```
 
 Filter out attributes that should not be in
 Access-Reject packets.
 
+```
+	attr_filter.access_reject
 
+```
 
 Insert an EAP-Failure message if the request was rejected by
 policy, instead of from an authentication failure.
 
+```
+	eap
 
+```
 
 Call an instance of `linelog` to log the authentication failure
 - equivalent to the previous log `auth = yes` option in v3.
 See `mods-enabled/linelog` for message formats and destinations.
 
+```
+#	log_auth_access_reject
 
+```
 
 Remove `link:https://freeradius.org/rfc/rfc2865.html#Reply-Message[Reply-Message]` if the response contains an
 `link:https://freeradius.org/rfc/rfc2869.html#EAP-Message[EAP-Message]` attribute.  Some NAS equipment will
@@ -1084,12 +1495,19 @@ automatically convert the `link:https://freeradius.org/rfc/rfc2865.html#Reply-Me
 notification" packet, which will cause end-user machines to
 drop the network connection.
 
+```
+	remove_reply_message_if_eap
 
+```
 
 Delay sending the `link:https://freeradius.org/rfc/rfc2865.html#Access-Reject[Access-Reject]` packet. This is no
 longer automatic as it was in version 3.
 
+```
+	delay_reject
+}
 
+```
 
 Accounting
 
@@ -1102,21 +1520,34 @@ sending Accounting responses.
 An Accounting-Request packet has been received. Decide which
 accounting type to use.
 
+```
+recv Accounting-Request {
+```
 
 Merge Acct-[Input|Output]-Gigawords and
 Acct-[Input-Output]-Octets into a single 64-bit
 counter, Acct-[Input|Output]-Octets64.
 
+```
+#	acct_counters64
 
+```
 
 Ensure that we have a semi-unique identifier for every
 request, as many NAS boxes are broken.
 
+```
+	acct_unique
 
+```
 
 Read the 'accounting' file.
 
+```
+	files_accounting
+}
 
+```
 
 Version 4 allows for sections specific to Acct-Status-Type.
 
@@ -1131,12 +1562,18 @@ then process the `send Accounting-Response` section
 
 Session start
 
+```
+accounting Start {
+```
 
 Log traffic to an SQL database.
 
-See "Accounting Queries" in link:../../../../../../mods-available/sql.adoc[mods-available/sql].
+See "Accounting Queries" in xref:reference:raddb/mods-available/sql.adoc[mods-available/sql].
 
+```
+	-sql
 
+```
 
 Refresh leases when we see a start.
 
@@ -1144,14 +1581,24 @@ Ensure that &control.IP-Pool.Name is set to determine which
 pool of IPs are used.  Set this in `recv Accounting-Request` so
 it is available for all the accounting sections.
 
+```
+#	sqlippool
+}
 
+```
 
 Session stop
 
+```
+accounting Stop {
+```
 
 Log traffic to an SQL database.
 
+```
+	-sql
 
+```
 
 If you receive stop packets with zero session length,
 they will NOT be logged in the database. The SQL
@@ -1163,49 +1610,92 @@ following three lines. Otherwise, the server will not
 respond to the accounting request, and the NAS will
 retransmit.
 
+```
+#	if (noop) {
+#		ok
+#	}
 
+```
 
 Return an address to the IP Pool when we see a stop record.
 
+```
+#	sqlippool
+}
 
+```
 
 Session is still alive
 
+```
+accounting Interim-Update {
+```
 
 Log traffic to an SQL database.
 
+```
+	-sql
 
+```
 
 Refresh leases when we see an alive.
 
+```
+#	sqlippool
+}
 
+```
 
 The NAS has just booted up.
 
+```
+accounting Accounting-On {
+```
 
 Record that the NAS has booted to an SQL database
 
+```
+	-sql
 
+```
 
 Return all addresses related to this NAS to the IP Pool
 
+```
+#	sqlippool
+}
 
+```
 
 The NAS is about to go down
 
+```
+accounting Accounting-Off {
+```
 
 Record that the NAS is shutting down to an SQL database
 
+```
+	-sql
 
+```
 
 Return all addresses related to this NAS to the IP Pool
 
+```
+#	sqlippool
+}
 
+```
 
 Session failed to do something
 
+```
+accounting Failed {
 
+}
 
+```
 
 There are many other values for `link:https://freeradius.org/rfc/rfc2866.html#Acct-Status-Type[Acct-Status-Type]` such as:
 
@@ -1226,6 +1716,9 @@ Log the accounting data before replying. If logging fails then
 the reply will not be sent, which means the NAS will send the
 request again.
 
+```
+send Accounting-Response {
+```
 
 Add the CUI attribute from the corresponding
 Access-Accept to the Accounting-Response.
@@ -1233,277 +1726,43 @@ Access-Accept to the Accounting-Response.
 Use it only if your NAS boxes do not support CUI
 themselves.
 
+```
+#	cui
 
+```
 
 Create a 'detail'ed log of the packets. Note that
 accounting requests which are proxied are also logged
 in the detail file.
 
+```
+	detail
 
+```
 
 Update counters for daily usage calculations.
 
+```
+#	daily
 
-
-Update the wtmp file.
-
-This is only relevant if you use "radlast".
-
-
-
-For Simultaneous-Use tracking.
-
-Due to packet losses in the network, the data here may
-be incorrect. There is little we can do about it.
-
-
+```
 
 Cisco VoIP specific bulk accounting.
 
+```
+#	pgsql-voip
 
+```
 
 Filter attributes from the accounting response.
 
+```
+	attr_filter.accounting_response
+}
+}
+```
 
 == Default Configuration
 
 ```
-server default {
-	namespace = radius
-	radius {
-		Access-Request {
-			session {
-#				max = 4096
-#				timeout = 15
-			}
-		}
-	}
-	dictionary {
-#		uint32 foo
-#		tlv bar {
-#		    uint32 baz
-#		    string arg
-#		}
-#		values foo {
-#			bar = 1
-#			baz = 2
-#		}
-	}
-	listen {
-		type = Access-Request
-		type = Status-Server
-		transport = udp
-		require_message_authenticator = auto
-		limit_proxy_state = auto
-		limit {
-			max_clients = 256
-			max_connections = 256
-			idle_timeout = 60.0
-			nak_lifetime = 30.0
-			cleanup_delay = 5.0
-		}
-		udp {
-			ipaddr = *
-			port = 1812
-#			dynamic_clients = true
-			networks {
-				allow = 127/8
-				allow = 192.0.2/24
-#				deny = 127.0.0/24
-			}
-		}
-		tcp {
-			ipaddr = *
-			port = 1812
-#			dynamic_clients = true
-			networks {
-				allow = 127/8
-				allow = 192.0.2/24
-#				deny = 127.0.0/24
-			}
-		}
-	}
-	listen tcp_auth {
-		type = Access-Request
-		type = Status-Server
-		transport = tcp
-		tcp {
-			ipaddr = *
-			port = 1812
-#			dynamic_clients = true
-			networks {
-				allow = 127/8
-				allow = 192.0.2/24
-#				deny = 127.0.0/24
-			}
-		}
-	}
-	listen udp_acct {
-		type = Accounting-Request
-		transport = udp
-		udp {
-			ipaddr = *
-			port = 1813
-		}
-	}
-	client localhost {
-		shortname = sample
-		ipaddr = 192.0.2.1
-		secret = testing123
-	}
-recv Access-Request {
-	filter_username
-#	filter_password
-#	operator-name
-#	if (&User-Name =~ /@example\.com$/) {
-#		&control.Auth-Type := "proxy-example.com"
-#	}
-#	cui
-#	auth_log
-	chap
-	mschap
-	digest
-#	wimax
-	eap {
-		ok = return
-	}
-#	unix
-	files
-	-sql
-#	smbpasswd
-	-ldap
-#	dailycounter
-	expiration
-	pap
-}
-recv Status-Server {
-	ok
-}
-authenticate pap {
-	pap
-}
-authenticate chap {
-	chap
-}
-authenticate mschap {
-	mschap
-}
-authenticate digest {
-	digest
-}
-#authenticate pam {
-#	pam
-#}
-authenticate ldap {
-	-ldap
-}
-authenticate eap {
-	eap
-}
-#authenticate proxy-example.com {
-#	#
-#	#  Log the request before proxying.
-#	#
-#	pre_proxy_log
-#	#
-#	#  Send the request to remote RADIUS servers, with
-#	#  fail-over from one to the other if there's no response.
-#	#
-#	redundant {
-#		radius1.example.com
-#		radius2.example.com
-#		radius3.example.com
-#	}
-#	#
-#	#  Log the reply after proxying.
-#	#
-#	post_proxy_log.post-proxy
-#}
-send Access-Challenge {
-	attr_filter.access_challenge
-	handled
-}
-send Access-Accept {
-#	if (!&reply.State) {
-#		&reply.State := "0x%randstr(16h)"
-#	}
-	&reply += &session-state
-	eap
-#	sqlippool
-#	cui
-#	reply_log
-	-sql
-#	ldap
-#	&request.WiMAX-MN-NAI = "%{User-Name}"
-#	&reply += {
-#		&Vendor-Specific.WiMAX = {
-#			&FA-RK-Key = 0x00
-#			&MSK = &reply.EAP-MSK
-#		}
-#	}
-#	wimax
-#	&reply += {
-#		&Reply-Message = "%{session-state.TLS-Certificate.Serial}"
-#		&Reply-Message = "%{session-state.TLS-Certificate.Not-After}"
-#		&Reply-Message = "%{session-state.TLS-Certificate.Subject}"
-#		&Reply-Message = "%{session-state.TLS-Certificate.Issuer}"
-#		&Reply-Message = "%{session-state.TLS-Certificate.Common-Name}"
-#		&Reply-Message = "%{session-state.TLS-Certificate.Subject-Alt-Name-Email}"
-#	}
-#	insert_acct_class
-#	if (&reply.EAP-Session-Id) {
-#		&reply.EAP-Key-Name := &reply.EAP-Session-Id
-#	}
-#	log_auth_access_accept
-	remove_reply_message_if_eap
-}
-send Access-Reject {
-	-sql
-	attr_filter.access_reject
-	eap
-#	log_auth_access_reject
-	remove_reply_message_if_eap
-	delay_reject
-}
-recv Accounting-Request {
-#	acct_counters64
-	acct_unique
-	files_accounting
-}
-accounting Start {
-	-sql
-#	sqlippool
-}
-accounting Stop {
-	-sql
-#	if (noop) {
-#		ok
-#	}
-#	sqlippool
-}
-accounting Interim-Update {
-	-sql
-#	sqlippool
-}
-accounting Accounting-On {
-	-sql
-#	sqlippool
-}
-accounting Accounting-Off {
-	-sql
-#	sqlippool
-}
-accounting Failed {
-}
-send Accounting-Response {
-#	cui
-	detail
-#	daily
-#	unix
-#	radutmp
-#	sradutmp
-#	pgsql-voip
-	attr_filter.accounting_response
-}
-}
 ```

@@ -1,4 +1,7 @@
 
+```
+#	This is a virtual server that handles DHCPv6.
+```
 
 
 
@@ -8,10 +11,16 @@
 
 ## The Virtual Server
 
+```
+server dhcpv6 {
+```
 
 namespace:: Needs to be "dhcpv6" for DHCPv6 functionality.
 
+```
+	namespace = dhcpv6
 
+```
 
 all_dhcp_servers_and_relays:: Predefined multicast address
 for DHCPv6 servers and relays.
@@ -20,7 +29,10 @@ This configuration item is here for convenience.  It allows
 each `listen` section below to use this definition, so that
 those sections do not need to list magic numbers.
 
+```
+	all_dhcp_servers_and_relays = FF02::1:2
 
+```
 
 interface:: Ethernet interface for DHCPv6.
 
@@ -29,7 +41,10 @@ packets, and one for unicast packets.  Both listeners should
 use the same interface.  So it is defined here once, and used
 below.
 
+```
+	interface = en0
 
+```
 
 port:: The port where we accept packets.
 
@@ -42,7 +57,10 @@ The default DHCPv6 port is `547`.  We use `5470` here, so that
 testing will not affect production systems.  This value should
 be changed to `547` for production use.
 
+```
+	port = 547
 
+```
 
 ### The listen section
 
@@ -51,6 +69,9 @@ defining only one DHCPv6 "listen" per host machine.  This
 suggestion is because all DHCPv6 listeners will receive all
 DHCPv6 packets.
 
+```
+	listen all_dhcp_servers_and_relays {
+```
 
 type:: The type of packet to accept.
 
@@ -60,13 +81,20 @@ lines of `type = ...`.
 All DHCPv6 request types are supported.  Relaying
 is not supported.
 
+```
+		type = Solicit
+		type = Request
 
+```
 
 transport:: The transport protocol.
 
 Only `udp` is allowed.
 
+```
+		transport = udp
 
+```
 
 #### UDP Transport
 
@@ -75,6 +103,9 @@ udp`, it looks for a "udp" subsection.  This
 subsection contains all of the configuration for
 the UDP transport.
 
+```
+		udp {
+```
 
 ipaddr:: The IP address where we accept
 packets.
@@ -84,7 +115,10 @@ If a host name is used, the IPv6 address is
 preferred.  When there is no IPv6 address
 for a host name, an error will occur.
 
+```
+			ipaddr = ${...all_dhcp_servers_and_relays}
 
+```
 
 port:: The port where we accept packets.
 
@@ -95,14 +129,20 @@ port:: The port where we accept packets.
  is configured below, the server may still
  NAK legitimate responses from clients.
 
+```
+			port = ${...port}
 
+```
 
 interface:: Interface where we receive packets.
 
 When a multicast address is used for `ipaddr` above,
 and `interface` configuration MUST be given.
 
+```
+			interface = ${...interface}
 
+```
 
 src_ipaddr:: The source IP address used for
 unicast messages.
@@ -120,7 +160,12 @@ the server will try to choose one automatically:
 In most cases, you should not need to specify
 `src_ipaddr`.
 
+```
+#			src_ipaddr = ${ipaddr}
+		}
+	}
 
+```
 
 ### The listen section
 
@@ -129,6 +174,9 @@ defining only one DHCPv6 "listen" per host machine.  This
 suggestion is because all DHCPv6 listeners will receive all
 DHCPv6 packets.
 
+```
+	listen local_network {
+```
 
 type:: The type of packet to accept.
 
@@ -140,13 +188,20 @@ should not receive Solicit, Rebind, or Reconfirm
 packets.  Those packets MUST be sent to a multicast
 address.
 
+```
+		type = Request
+		type = Information-Request
 
+```
 
 transport:: The transport protocol.
 
 Only `udp` is allowed.
 
+```
+		transport = udp
 
+```
 
 #### UDP Transport
 
@@ -155,6 +210,9 @@ udp`, it looks for a "udp" subsection.  This
 subsection contains all of the configuration for
 the UDP transport.
 
+```
+		udp {
+```
 
 ipaddr:: The IP address where we accept
 packets.
@@ -170,11 +228,21 @@ The server will look for the first
 "link local" address on that interface,
 and use that as the value for `ipaddr`.
 
+```
+#			ipaddr = 2001:db8::
 
+			port = ${...port}
+			interface = ${...interface}
+		}
+	}
 
+```
 
 #### State machine configuration
 
+```
+	dhcpv6 {
+```
 
 status_code_on_success:: Include a status-code
 option in the packet even when the operation is
@@ -192,7 +260,10 @@ per nested message, and some clients are buggy
 and count any status-code option as a failure
 indication.
 
+```
+#		status_code_on_success = no
 
+```
 
 send_failure_message:: Concatenate the contents
 of any Module-Failure-Message attribute in the
@@ -209,7 +280,10 @@ for debugging, or in conjunction with
 move_failure_message_to_parent where the upstream
 relay is trusted and secure.
 
+```
+#		send_failure_message = no
 
+```
 
 move_failure_message_to_parent:: Move all
 Module-Failure-Message attributes to the parent
@@ -233,26 +307,54 @@ as the packet moves through them, the contents
 of the Module-Failure-Message will not reach
 the end DHCPv6 client.
 
+```
+#		move_failure_message_to_parent = yes
+	}
 
+```
 
 Receive a Solicit message
 
+```
+recv Solicit {
+	ok
+}
 
+```
 
 Send an Advertise message
 
+```
+send Advertise {
+```
 
 All replies MUST include a Server-ID option
 
+```
+	&reply.Server-ID.DUID = UUID
+	&reply.Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
+}
 
+```
 
 Receive a Solicit message
 
+```
+recv Request {
+	ok
+}
 
+send Offer {
+```
 
 All replies MUST include a Server-ID option
 
+```
+	&reply.Server-ID.DUID = UUID
+	&reply.Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
+}
 
+```
 
 We also support recv / send for all normal DHCPv6 packet types.
 
@@ -260,67 +362,25 @@ See dictionary/dhcpv6/dictionary.freeradius.internal for a list of
 packet type names.
 
 
+```
+recv Information-Request {
+	ok
+}
 
+send Reply {
+```
 
 All replies MUST include a Server-ID option
 
+```
+	&reply.Server-ID.DUID = UUID
+	&reply.Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
+}
 
+}
+```
 
 == Default Configuration
 
 ```
-#	This is a virtual server that handles DHCPv6.
-server dhcpv6 {
-	namespace = dhcpv6
-	all_dhcp_servers_and_relays = FF02::1:2
-	interface = en0
-	port = 547
-	listen all_dhcp_servers_and_relays {
-		type = Solicit
-		type = Request
-		transport = udp
-		udp {
-			ipaddr = ${...all_dhcp_servers_and_relays}
-			port = ${...port}
-			interface = ${...interface}
-#			src_ipaddr = ${ipaddr}
-		}
-	}
-	listen local_network {
-		type = Request
-		type = Information-Request
-		transport = udp
-		udp {
-#			ipaddr = 2001:db8::
-			port = ${...port}
-			interface = ${...interface}
-		}
-	}
-	dhcpv6 {
-#		status_code_on_success = no
-#		send_failure_message = no
-#		move_failure_message_to_parent = yes
-	}
-recv Solicit {
-	ok
-}
-send Advertise {
-	&reply.Server-ID.DUID = UUID
-	&reply.Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
-}
-recv Request {
-	ok
-}
-send Offer {
-	&reply.Server-ID.DUID = UUID
-	&reply.Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
-}
-recv Information-Request {
-	ok
-}
-send Reply {
-	&reply.Server-ID.DUID = UUID
-	&reply.Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
-}
-}
 ```

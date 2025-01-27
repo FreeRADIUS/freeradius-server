@@ -43,13 +43,22 @@ the data into a long-term SQL database.
 
 ## server buffered-sql { ... }
 
+```
+server buffered-sql {
+```
 
 ### listen { ... }
 
+```
+	listen {
+```
 
 type:: It should be `detail`.
 
+```
+		type = detail
 
+```
 
 filename:: The location where the detail file is located.
 
@@ -62,7 +71,10 @@ This lets you write many smaller detail files as in the example in radiusd.conf:
 one large file.  File globbing also means that with a common naming scheme for
 detail files, then you can have many detail file writers, and only one reader.
 
+```
+		filename = "${radacctdir}/detail-*"
 
+```
 
 load_factor::
 
@@ -84,7 +96,10 @@ it can, usually causing databases to go into overload.
 
 allowed values: `1 to 100`
 
+```
+		load_factor = 10
 
+```
 
 poll_interval:: Interval for polling the detail file.
 
@@ -92,7 +107,10 @@ If the detail file doesn't exist, the server will wake up, and poll for it every
 
 Useful range of values: `1 to 60`
 
+```
+		poll_interval = 1
 
+```
 
 retry_interval:: Set the retry interval for when the home server does not respond.
 
@@ -100,7 +118,10 @@ The current packet will be sent repeatedly, at this interval, until the home ser
 
 Useful range of values: `5 to 30`
 
+```
+		retry_interval = 30
 
+```
 
 track:: Track progress through the detail file.
 
@@ -111,7 +132,10 @@ Setting `track = yes` means it will skip packets which have already been process
 
 The default is `no`.
 
+```
+#		track = yes
 
+```
 
 one_shot::
 
@@ -122,57 +146,63 @@ NOTE: Do not enable this for normal server operation.
 
 The default is `no`.
 
+```
+#		one_shot = no
+	}
 
+```
 
 ### recv Accounting-Request
 
 Pre-accounting. Decide which accounting type to use.
 
+```
+	recv Accounting-Request {
+```
 
 Ensure that we have a semi-unique identifier for every request, and many NAS
 boxes are broken.
 
+```
+		acct_unique
 
+```
 
 Read the `acct_users` file.  This isn't always necessary, and can be deleted
 if you do not use it.
 
+```
+		files
+	}
 
+```
 
 ### send Accounting-Response
 
 Accounting. Log the accounting data.
 
+```
+	send Accounting-Response {
+```
 
 Log traffic to an SQL database.
 
 See `Accounting queries` in `mods-config/sql/main/$driver/queries.conf`
 
+```
+#		sql
 
+```
 
 Cisco VoIP specific bulk accounting.
 
+```
+#		pgsql-voip
+	}
+}
+```
 
 == Default Configuration
 
 ```
-server buffered-sql {
-	listen {
-		type = detail
-		filename = "${radacctdir}/detail-*"
-		load_factor = 10
-		poll_interval = 1
-		retry_interval = 30
-#		track = yes
-#		one_shot = no
-	}
-	recv Accounting-Request {
-		acct_unique
-		files
-	}
-	send Accounting-Response {
-#		sql
-#		pgsql-voip
-	}
-}
 ```

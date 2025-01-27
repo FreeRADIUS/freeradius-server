@@ -15,7 +15,7 @@ xlat_purify ("foo
 match ERROR offset 2: Unterminated string
 
 xlat_purify ()
-match ERROR offset 2: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 2: Empty expressions are invalid.
 
 xlat_purify (!)
 match ERROR offset 3: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
@@ -230,7 +230,7 @@ xlat_purify &Event-Timestamp == 'January 1 2012'
 
 # literals are parsed when the conditions are parsed
 xlat_purify (integer)X == 1
-match ERROR offset 10: Failed parsing string as type 'uint32'
+match ERROR offset 10: Failed parsing input
 
 #
 #  @todo - parsing - resolution is delayed, so we don't know where in the input
@@ -271,7 +271,7 @@ xlat_purify (ether)00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')"
 match (00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')")
 
 xlat_purify (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
-match ERROR offset 12: Missing separator, expected ':'
+match ERROR offset 9: enum values must contain at least one alpha character
 
 #
 #  Tests for boolean data types.
@@ -349,7 +349,7 @@ xlat_purify (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
 
 xlat_purify (ipaddr)127.0.0.1/327 == 127.0.0.1
-match ERROR offset 9: Invalid IPv4 mask length "/327".  Should be between 0-32
+match ERROR offset 9: enum values must contain at least one alpha character
 
 xlat_purify (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true

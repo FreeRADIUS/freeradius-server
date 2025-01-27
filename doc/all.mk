@@ -201,7 +201,7 @@ doc/antora/modules/reference/pages/raddb/%.adoc: raddb/%
 	@echo ADOC $^
 	${Q}mkdir -p $(dir $@)
 	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
-	${Q}./scripts/asciidoc/conf2adoc -t -a ${top_srcdir}/asciidoc -o $@ < $^
+	${Q}./scripts/asciidoc/conf2adoc -t -o $@ < $^
 
 #
 #  Simple rule for lazy people.

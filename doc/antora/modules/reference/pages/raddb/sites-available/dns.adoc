@@ -34,32 +34,31 @@ Requests will pass through the following processing sections:
 - A `send { ... }` section matching the opcode. e.g. `send Query-Response { ... }`.  This can be
   used for general massaging of the reply.  Return codes are ignored.
 
+```
+server dns {
+```
 
 namespace:: The protocol / dictionary to use.
 
+```
+	namespace = dns
 
+	listen {
+		type = Query
 
+		transport = udp
 
+```
 
 Dont use "port = 53" unless you want to break things
 
-
-
-
-
-== Default Configuration
-
 ```
-server dns {
-	namespace = dns
-	listen {
-		type = Query
-		transport = udp
 		udp {
 			ipaddr = *
 			port = 53
 		}
 	}
+
 recv Query {
 	if (&Question[0].Name == 'foo.example.com') {
 		&reply.Resource-Record := {
@@ -70,10 +69,17 @@ recv Query {
 			&Type.A.IP = 127.0.0.1
 		}
 	}
+
 	ok
 }
+
 send Query-Response {
 	ok
 }
 }
+```
+
+== Default Configuration
+
+```
 ```

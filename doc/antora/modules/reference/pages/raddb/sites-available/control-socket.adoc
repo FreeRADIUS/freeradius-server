@@ -4,24 +4,57 @@
 
 = Control socket interface.
 
+```
+#	In the future, we will add username/password checking for
+#	connections to the control socket.  We will also add
+#	command authorization, where the commands entered by the
+#	administrator are run through a virtual server before
+#	they are executed.
+```
 
+```
+#	For now, anyone who has permission to connect to the socket
+#	has nearly complete control over the server.  Be warned!
+```
 
+```
+#	NOTE: This functionality is NOT enabled by default.
+```
 
+```
+#	See also the "radmin" program, which is used to communicate
+#	with the server over the control socket.
+```
 
+```
+server control-socket-server  {
+```
 
 namespace:: Determine the current scope as a control service.
 
+```
+	namespace = control
 
+```
 
 All configuration related to the control interface.
 
+```
+	listen {
+```
 
 transport:: Define which communication channel.
 
+```
+		transport = unix
 
+```
 
 UNIX socket-file as communication channel.
 
+```
+		unix {
+```
 
 filename:: Socket location.
 
@@ -38,7 +71,10 @@ sub-directory.  FreeRADIUS will create this sub-directory
 if it doesn't exist and set the appropriate ownership and
 permissions.
 
+```
+			filename = ${run_dir}/control/${name}.sock
 
+```
 
 uid:: Name of user who owns the control socket.
 
@@ -48,7 +84,10 @@ If that isn't set, then the uid of the current user running radiusd is used.
 
 Note that the control socket cannot have uid of 0.
 
+```
+#			uid = radius
 
+```
 
 gid:: Name of group which owns the control socket.
 
@@ -59,7 +98,10 @@ is used.
 
 Note that the control socket cannot have gid of 0.
 
+```
+#			gid = radius
 
+```
 
 mode:: Access mode.
 
@@ -69,40 +111,26 @@ monitor the system, but not to change it.
 ro = read only access (default)
 rw = read/write access.
 
+```
+			mode = rw
 
+```
 
 As an additional check, the connecting process can be limited to a certain UID and
 GID.  Either or both can be set.  If one is set, it is checked and enforced.
 
-
-
-== Default Configuration
-
 ```
-#	In the future, we will add username/password checking for
-#	connections to the control socket.  We will also add
-#	command authorization, where the commands entered by the
-#	administrator are run through a virtual server before
-#	they are executed.
-#	For now, anyone who has permission to connect to the socket
-#	has nearly complete control over the server.  Be warned!
-#	NOTE: This functionality is NOT enabled by default.
-#	See also the "radmin" program, which is used to communicate
-#	with the server over the control socket.
-server control-socket-server  {
-	namespace = control
-	listen {
-		transport = unix
-		unix {
-			filename = ${run_dir}/control/${name}.sock
-#			uid = radius
-#			gid = radius
-			mode = rw
 			peercred {
 #				uid = something
 #				gid = something
 			}
+
 		}
 	}
 }
+```
+
+== Default Configuration
+
+```
 ```
