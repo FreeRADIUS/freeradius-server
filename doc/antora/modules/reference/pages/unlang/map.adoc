@@ -29,10 +29,10 @@ xref:unlang/update.adoc[update] statement is permissible.
 <field>:: The name of the field from the database. For SQL, the field names are
 usually column names.  For LDAP, the field names are usually LDAP attributes.
 +
-The _<field>_ value should generally be enclosed in single quotes which
-prevents any additional expansion of the value. When the right hand side is
-instead a double-quoted string, that string is expanded dynamically.  The
-resulting value is then taken as the field name.
+The _<field>_ name should be enclosed in single quotes.
+When the right hand side is instead a double-quoted string, that
+string is expanded dynamically.  The resulting value is then taken as
+the field name.
 
 If the `map` fails for any reason, then all of the results are
 discarded, and the `map` does not affect any server attributes.  For
