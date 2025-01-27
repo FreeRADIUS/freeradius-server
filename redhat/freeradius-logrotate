@@ -15,7 +15,6 @@
 # Session monitoring utilities, session database modules and
 # SQL log files
 /var/log/radius/checkrad.log /var/log/radius/radwatch.log
-/var/log/radius/radutmp /var/log/radius/radwtmp
 /var/log/radius/sqllog.sql {
 	nocreate
 	monthly

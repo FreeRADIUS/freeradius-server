@@ -42,11 +42,6 @@ Create a 'detail'ed log of the packets.
 Note that accounting requests which are proxied
 are also logged in the detail file.
 
-Update the wtmp file
-
-If you don't use "radlast", you can delete this line.
-
-
 For Simultaneous-Use tracking.
 
 Due to packet losses in the network, the data here
@@ -119,8 +114,6 @@ send Accounting-Response {
 	detail
 #	daily
 	unix
-	radutmp
-#	sradutmp
 ￼	#  pool of IPs are used.
 	sqlippool
 #	sql

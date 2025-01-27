@@ -36,8 +36,8 @@ case "$1" in
           for mod in always attr_filter cache_eap chap client \
               delay detail detail.log digest eap \
               eap_inner echo exec files linelog \
-              mschap ntlm_auth pap pam passwd radutmp \
-              sradutmp stats unix unpack utf8 ; do
+              mschap ntlm_auth pap pam passwd \
+              stats unix unpack utf8 ; do
             if test ! -h /etc/freeradius/mods-enabled/$mod && \
                test ! -e /etc/freeradius/mods-enabled/$mod; then
               ln -s ../mods-available/$mod /etc/freeradius/mods-enabled/$mod

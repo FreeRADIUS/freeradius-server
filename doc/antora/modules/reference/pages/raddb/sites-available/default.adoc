@@ -1245,12 +1245,6 @@ Update counters for daily usage calculations.
 
 
 
-Update the wtmp file.
-
-This is only relevant if you use "radlast".
-
-
-
 For Simultaneous-Use tracking.
 
 Due to packet losses in the network, the data here may
@@ -1500,8 +1494,6 @@ send Accounting-Response {
 	detail
 #	daily
 #	unix
-#	radutmp
-#	sradutmp
 #	pgsql-voip
 	attr_filter.accounting_response
 }

@@ -16648,7 +16648,7 @@ ac_config_commands="$ac_config_commands scripts-chmod"
 
 
 
-ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/bin/checkrad ./src/bin/radlast ./src/bin/radtest ./scripts/rc.radiusd ./scripts/cron/radiusd.cron.daily ./scripts/cron/radiusd.cron.monthly ./scripts/util/cryptpasswd ./raddb/radrelay.conf ./raddb/radiusd.conf"
+ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/bin/checkrad ./src/bin/radtest ./scripts/rc.radiusd ./scripts/cron/radiusd.cron.daily ./scripts/cron/radiusd.cron.monthly ./scripts/util/cryptpasswd ./raddb/radrelay.conf ./raddb/radiusd.conf"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -17357,7 +17357,6 @@ do
     "./Make.inc") CONFIG_FILES="$CONFIG_FILES ./Make.inc" ;;
     "./src/include/build-radpaths-h") CONFIG_FILES="$CONFIG_FILES ./src/include/build-radpaths-h" ;;
     "./src/bin/checkrad") CONFIG_FILES="$CONFIG_FILES ./src/bin/checkrad" ;;
-    "./src/bin/radlast") CONFIG_FILES="$CONFIG_FILES ./src/bin/radlast" ;;
     "./src/bin/radtest") CONFIG_FILES="$CONFIG_FILES ./src/bin/radtest" ;;
     "./scripts/rc.radiusd") CONFIG_FILES="$CONFIG_FILES ./scripts/rc.radiusd" ;;
     "./scripts/cron/radiusd.cron.daily") CONFIG_FILES="$CONFIG_FILES ./scripts/cron/radiusd.cron.daily" ;;
@@ -17917,7 +17916,7 @@ printf "%s\n" "$as_me: executing $ac_file commands" >&6;}
   case $ac_file$ac_mode in
     "stamp-h":C) echo timestamp > src/include/stamp-h ;;
     "build-radpaths-h":C) (cd ./src/include && /bin/sh ./build-radpaths-h) ;;
-    "main-chmod":C) (cd ./src/bin && chmod +x checkrad radlast radtest) ;;
+    "main-chmod":C) (cd ./src/bin && chmod +x checkrad radtest) ;;
     "scripts-chmod":C) (cd ./scripts && chmod +x rc.radiusd cron/radiusd.cron.daily cron/radiusd.cron.monthly util/cryptpasswd) ;;
 
   esac

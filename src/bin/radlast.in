@@ -1,7 +1,0 @@
-#! /bin/sh
-
-prefix=@prefix@
-localstatedir=@localstatedir@
-logdir=@logdir@
-
-exec last -f $logdir/radwtmp "$@"

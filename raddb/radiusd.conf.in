@@ -703,8 +703,9 @@ modules {
 	#  inventing two 'instance' names, e.g. 'instance1' and 'instance2'
 	#
 	#  The instance names can then be used in later configuration
-	#  INSTEAD of the original 'name'.  See the 'radutmp' configuration
-	#  for an example.
+	#  INSTEAD of the original 'name'.  e.g. instead of `pap { ...}`,
+	#  you can use `pap other {...}`.  The `other` name will then be
+	#  a reference to the second PAP module.
 	#
 
 	#

@@ -1,0 +1,32 @@
+
+uid:: Name of user who is allowed to connect to the control socket.
+
+
+
+gid:: Name of group that is allowed to connect to the control socket.
+
+
+
+Access mode.
+
+uid:: Name of user who is allowed to connect to the control socket.
+
+
+
+gid:: Name of group that is allowed to connect to the control socket.
+
+
+
+Access mode.
+
+== Default Configuration
+
+```
+***************
+*** 83,94 ****
+- #			uid = radius
+- #			gid = radius
+--- 83,94 ----
++ #			uid = freerad
++ #			gid = freerad
+```

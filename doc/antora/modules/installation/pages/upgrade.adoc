@@ -876,17 +876,9 @@ All data received from the network is marked `tainted` by default.
 
 === rlm_radutmp
 
-The `case_sensitive` option has been removed.  Administrators should
-not be permitting users to log in with multiple different user names.
-If your system needs to be case insensitive, we suggest changing all
-names to lowercase:
-
-```
-recv Access-Request {
-	&Stripped-User-Name := %tolower(%{User-Name})
-	...
-}
-```
+The module has been removed.  Many Unix distributions have moved away
+from using flat-text files for `utmp`.  We recommend using sqlite
+to store session data, instead of radutmp.
 
 === rlm_rest
 

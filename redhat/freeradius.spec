@@ -745,7 +745,7 @@ RADDB=$RPM_BUILD_ROOT%{_sysconfdir}/raddb
 
 # logs
 %__mkdir_p $RPM_BUILD_ROOT/var/log/radius/radacct
-touch $RPM_BUILD_ROOT/var/log/radius/{radutmp,radius.log}
+touch $RPM_BUILD_ROOT/var/log/radius/radius.log
 
 %__install -D -m 644 %{SOURCE102} $RPM_BUILD_ROOT/%{_sysconfdir}/logrotate.d/radiusd
 %__install -D -m 644 %{SOURCE103} $RPM_BUILD_ROOT/%{_sysconfdir}/pam.d/radiusd
@@ -908,7 +908,6 @@ fi
 # logs
 %dir %attr(700,radiusd,radiusd) /var/log/radius/
 %dir %attr(700,radiusd,radiusd) /var/log/radius/radacct/
-%ghost %attr(644,radiusd,radiusd) /var/log/radius/radutmp
 %ghost %attr(600,radiusd,radiusd) /var/log/radius/radius.log
 
 #
@@ -1020,7 +1019,6 @@ fi
 %{_libdir}/freeradius/rlm_pap.so
 %{_libdir}/freeradius/rlm_passwd.so
 %{_libdir}/freeradius/rlm_radius.so
-%{_libdir}/freeradius/rlm_radutmp.so
 %{_libdir}/freeradius/rlm_sometimes.so
 %{_libdir}/freeradius/rlm_sql.so
 %{_libdir}/freeradius/rlm_sql_null.so
@@ -1186,21 +1184,15 @@ fi
 /usr/bin/radclient
 /usr/bin/radcrypt
 /usr/bin/radict
-/usr/bin/radlast
 /usr/bin/radsniff
 /usr/bin/radsqlrelay
 /usr/bin/radtest
 /usr/bin/raduat
-/usr/bin/radwho
-/usr/bin/radzap
 /usr/bin/smbencrypt
 # man-pages
 %doc %{_mandir}/man1/dhcpclient.1.gz
 %doc %{_mandir}/man1/radclient.1.gz
-%doc %{_mandir}/man1/radlast.1.gz
 %doc %{_mandir}/man1/radtest.1.gz
-%doc %{_mandir}/man1/radwho.1.gz
-%doc %{_mandir}/man1/radzap.1.gz
 %doc %{_mandir}/man8/radsniff.8.gz
 %doc %{_mandir}/man8/radsqlrelay.8.gz
 

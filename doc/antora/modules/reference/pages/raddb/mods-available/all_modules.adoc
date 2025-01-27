@@ -47,8 +47,6 @@ of the module.
 couchbase server as FreeRADIUS starts.
 | xref:raddb/mods-available/csv.adoc[csv]	| Maps values in a CSV file to FreeRADIUS attributes and adds them to the request.
 | xref:raddb/mods-available/passwd.adoc[passwd]	| Reads and caches line-oriented files that are in a format similar to ``/etc/passwd``.
-| xref:raddb/mods-available/radutmp.adoc[radutmp]	| Writes a utmp style file that lists the users who are logged in. The file is used mainly for Simultaneous-Use checking
-and by radwho to see who has current sessions.
 | xref:raddb/mods-available/redis.adoc[redis]	| Provides connectivity to single and clustered instances of Redis. This module exposes a string expansion that may be
 used to execute queries against Redis.
 | xref:raddb/mods-available/redis_ippool.adoc[redis_ippool]	| Implements a fast and scalable IP allocation system using Redis. Supports both IPv4 and IPv6 address and prefix
@@ -111,7 +109,6 @@ including syslog, flat files, and raw UDP/TCP sockets.
 | xref:raddb/mods-available/ntlm_auth.adoc[ntlm_auth]	| NTLM Auth
 | xref:raddb/mods-available/redundant_sql.adoc[redundant_sql]	| redundant_sql
 | xref:raddb/mods-available/smbpasswd.adoc[smbpasswd]	| SMBPasswd
-| xref:raddb/mods-available/sradutmp.adoc[sradutmp]	| sRadutmp
 | xref:raddb/mods-available/stats.adoc[stats]	| Stats
 | xref:raddb/mods-available/totp.adoc[totp]	|
 |=====

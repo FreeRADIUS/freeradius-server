@@ -8,11 +8,20 @@ log the accounting requests.
 *Files:*
 
 - `/var/radacct/127.0.0.1/detail*`
-- `/var/log/radius/radutmp`
 
-*Modules:* rlm_detail, rlm_radutmp
+*Modules:* detail
 
-*Programs*: radwho, radlast
+[NOTE]
+======================================================================
+This documentation is out of date for v4, and needs to be fixed.
+
+The `radlast` and `radwho` programs are no longer included with the
+server.
+
+The `radutmp` module is no longer included with the server.
+We recommend using sqlite instead of flat-text databases.
+======================================================================
+
 
 In addition to authorization and authentication, one of the primary roles of a
 RADIUS server is to record accounting information supplied by an NAS. In this
@@ -22,13 +31,6 @@ an NAS when a user logs in.
 
 Use the entry in the file from the exercise in
 xref:new_user.adoc[New User] for user "bob".
-
-[NOTE]
-========================================================================
-For FreeRADIUS v3.0.x and later, before starting you should open
-`raddb/sites-available/default` and uncomment all references to the "radutmp"
-module.
-========================================================================
 
 You may create accounting packets by hand for this exercise, but we suggest that
 the follow test packets from the `exercises/packets` directory be used in this
@@ -80,7 +82,7 @@ You should see output containing lines similar to the following:
 -----------------------------------------------------------------------------------
 
 Other modules that should be referenced for "accounting" are the
-"preprocess", "suffix", "detail", "unix", and "radutmp" modules. We
+"preprocess", "suffix", "detail", and "sql" modules. We
 will work through the operation of these modules in a moment.
 
 Now, run the `radwho` and `radlast` programs again:

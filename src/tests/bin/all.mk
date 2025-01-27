@@ -7,7 +7,6 @@ FILES	:= \
 	radmin			\
 	radsniff 		\
 	radsnmp 		\
-	radwho 			\
 	rbmonkey 		\
 	rlm_redis_ippool_tool 	\
 	unit_test_attribute 	\
@@ -19,7 +18,6 @@ FILES	:= \
 #	radmin			\
 #	radsniff 		\
 #	radsnmp 		\
-#	radwho 			\
 #	ring_buffer_test 	\
 #	smbencrypt 		\
 #	unit_test_attribute 	\
@@ -41,7 +39,6 @@ radict.ARGS = -D $(top_srcdir)/share/dictionary User-Name
 radmin.ARGS = -h
 radsniff.ARGS =  -D $(top_srcdir)/share/dictionary -h
 radsnmp.ARGS = -h
-radwho.ARGS = -h
 rlm_redis_ippool_tool.ARGS = -h
 unit_test_attribute.ARGS = -h
 unit_test_map.ARGS = -h

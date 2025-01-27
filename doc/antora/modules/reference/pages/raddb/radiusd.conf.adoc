@@ -628,8 +628,7 @@ The different copies of the module are then created by
 inventing two 'instance' names, e.g. 'instance1' and 'instance2'
 
 The instance names can then be used in later configuration
-INSTEAD of the original 'name'.  See the 'radutmp' configuration
-for an example.
+INSTEAD of the original 'name'.
 
 
 

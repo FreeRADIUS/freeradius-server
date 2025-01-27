@@ -501,8 +501,6 @@ fill:#000000;"/>
 <!-- Text -->
 <text xml:space="preserve" x="6675" y="6675" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">unix</text>
 <!-- Text -->
-<text xml:space="preserve" x="6675" y="7050" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">radutmp</text>
-<!-- Text -->
 <text xml:space="preserve" x="5025" y="7875" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">Home server</text>
 <!-- Text -->
 <text xml:space="preserve" x="5250" y="4125" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">authorize</text>

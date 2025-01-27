@@ -16,7 +16,6 @@
 # Session monitoring utilities, session database modules and
 # SQL log files
 /var/log/freeradius/checkrad.log /var/log/freeradius/radwatch.log
-/var/log/freeradius/radutmp /var/log/freeradius/radwtmp
 /var/log/freeradius/sqllog.sql {
 	nocreate
 	daily

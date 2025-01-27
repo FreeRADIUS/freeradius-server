@@ -3,10 +3,7 @@ radsniff.mk
 checkrad
 radclient
 radiusd
-radlast
 radtest
 radsniff
-radwho
 radmin
-radconf2xml
 dhclient

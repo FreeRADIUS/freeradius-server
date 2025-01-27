@@ -2626,7 +2626,7 @@ dnl #
 dnl #############################################################
 AC_CONFIG_COMMANDS([stamp-h], [echo timestamp > src/include/stamp-h])
 AC_CONFIG_COMMANDS([build-radpaths-h], [(cd ./src/include && /bin/sh ./build-radpaths-h)])
-AC_CONFIG_COMMANDS([main-chmod], [(cd ./src/bin && chmod +x checkrad radlast radtest)])
+AC_CONFIG_COMMANDS([main-chmod], [(cd ./src/bin && chmod +x checkrad radtest)])
 AC_CONFIG_COMMANDS([scripts-chmod], [(cd ./scripts && chmod +x rc.radiusd cron/radiusd.cron.daily cron/radiusd.cron.monthly util/cryptpasswd)])
 
 dnl #
@@ -2639,7 +2639,6 @@ AC_CONFIG_FILES([\
   ./Make.inc \
   ./src/include/build-radpaths-h \
   ./src/bin/checkrad \
-  ./src/bin/radlast \
   ./src/bin/radtest \
   ./scripts/rc.radiusd \
   ./scripts/cron/radiusd.cron.daily \

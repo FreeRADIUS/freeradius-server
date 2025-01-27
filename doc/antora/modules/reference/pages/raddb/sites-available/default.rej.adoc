@@ -1,0 +1,77 @@
+
+
+
+
+If no other module has claimed responsibility for
+authentication, then try to use PAP.  This allows the
+
+
+If no other module has claimed responsibility for
+authentication, then try to use PAP.  This allows the
+in the 'authorize' section supplies a password.  The
+password can be clear-text, or encrypted.
+
+
+in the 'authorize' section supplies a password.  The
+password can be clear-text, or encrypted.
+
+
+
+== Default Configuration
+
+```
+***************
+*** 86,91 ****
+  		udp {
+  			ipaddr = *
+  			port = 1812
+  		}
+  	}
+--- 86,92 ----
+  		udp {
+  			ipaddr = *
+  			port = 1812
++ 			cleanup_delay = 30
+  		}
+  	}
+***************
+*** 227,232 ****
+  	expiration
+  	logintime
+--- 228,237 ----
+  	expiration
+  	logintime
++ 		update control {
++ 			Cleartext-Password := "bob"
++ 		}
++
+***************
+*** 277,283 ****
+  authenticate pap {
+- 	pap
+  }
+--- 282,308 ----
+  authenticate pap {
++ 	if (!Proxy-State) {
++ 	   fork Access-Request {
++ 		radius {
++ 		       fail = 1
++ 		}
++ 		if (fail) {
++ 		   update reply {
++ 		   	  Packet-Type := Access-Accept
++ 		   }
++ 		   ok
++ 		}
++ 	   }
++
++ 	   if (!fail) {
++ 	   	accept
++ 	   }
++ 	}
++ 	else {
++ 		pap
++ #		do_not_respond
++ 	}
+  }
+```

@@ -1,0 +1,73 @@
+
+
+
+
+= FreeRADIUS Client configuration file - 4.0.0
+
+
+
+
+
+
+
+
+Does nothing other than send packets.  It doesn't listen on any input sockets.
+
+
+
+
+
+
+
+== Default Configuration
+
+```
+modules {
+tacacs {
+	transport = tcp
+	type = Authentication-Start
+	type = Authentication-Continue
+	type = Authorization-Request
+	type = Accounting-Request
+	tcp {
+		ipaddr = $ENV{TACCLIENT_SERVER}
+		port = 4900
+#		port = $ENV{TACCLIENT_PORT}
+		secret = $ENV{TACCLIENT_SECRET}
+	}
+	pool {
+		start = 1
+		min = 1
+		max = 1
+		connection {
+			connect_timeout = 3.0
+			reconnect_delay = 0
+		}
+	}
+}
+}
+log {
+	colourise = yes
+}
+server default {
+	namespace = tacacs
+	listen {
+		type = Authentication-Start
+		type = Authentication-Continue
+		type = Authorization-Request
+		type = Accounting-Request
+	}
+	recv Authentication-Start {
+		tacacs
+	}
+	recv Authentication-Continue {
+		tacacs
+	}
+	recv Authorization-Request {
+		tacacs
+	}
+	recv Accounting-Request {
+		tacacs
+	}
+}
+```
