@@ -4,7 +4,7 @@ There are several "Red Hat" distributions which address different
 goals and as a consequence have different philosophies driven by
 different constraints.
 
-=== How is FreeRADIUS distributed on Fedora/RHEL/CentOS systems? 
+== How is FreeRADIUS distributed on Fedora/RHEL/CentOS systems? 
 
 FreeRADIUS is distributed on Fedora/RHEL/CentOS systems as a set of
 RPM packages. There is a main package called "freeradius" and several

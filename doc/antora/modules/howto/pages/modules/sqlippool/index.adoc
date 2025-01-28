@@ -491,7 +491,7 @@ Framed-IPv6-Prefix RADIUS attribute then you can put the IPv6 prefixes into the
 
 Populate the pool either manually using a text editor or database tool, or via a script.
 
-See xref:modules/sqlippool/generating.adoc[Generating IPs for the
+See xref:modules/sqlippool/populating.adoc[Generating IPs for the
 pools] for instructions on how to create lists of IPs for a pool.  And
 then xref:modules/sqlippool/insert.adoc[Inserting IPs into SQL]
 

@@ -34,7 +34,7 @@ follows:
 psql radius -qtAc 'SELECT framedipaddress FROM radippool' > existing_ips.txt
 ----
 
-See the xref:modules/sqlippool/generating.adoc[Generating IPs for the
+See the xref:modules/sqlippool/populating.adoc[Generating IPs for the
 pools] page for instructions on how to generate the list of IPs to
 modify.
 

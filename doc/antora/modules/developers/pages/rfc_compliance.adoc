@@ -1,7 +1,7 @@
 
 = RFC Compliance
 
-=== RADIUS Related
+== RADIUS Related
 
 * RFC 2865 Remote Authentication Dial In User Service (RADIUS) (obsoletes RFC 2138 and RFC 2058)
 * RFC 2866 RADIUS Accounting (obsoletes RFC 2139 and RFC 2059)
@@ -10,7 +10,7 @@
 * RFC 2869 RADIUS Extensions
 * RFC 2548 Microsoft Vendor-Specific RADIUS Attributes
 
-=== Authentication Related
+== Authentication Related
 
 * RFC 1994 PPP Challenge Handshake Authentication Protocol (CHAP)
 * RFC 2284 PPP Extensible Authentication Protocol (EAP)
@@ -18,7 +18,7 @@
 * RFC 2759 Microsoft PPP CHAP Extensions, Version 2
 * RFC 3748 Extensible Authentication Protocol (EAP)
 
-=== SNMP Related
+== SNMP Related
 
 * RFC 1227 SNMP MUX Protocol and MIB
 * RFC 2619 RADIUS Authentication Server MIB

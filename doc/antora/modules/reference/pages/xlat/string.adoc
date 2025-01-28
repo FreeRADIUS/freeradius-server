@@ -9,7 +9,6 @@ The following functions perform string manipulation.
 | Function | Description
 | xref:xlat/concat.adoc[concat]     | Concatenate strings with delimiters
 | xref:xlat/explode.adoc[explode]   | Split a string based on delimiters
-| xref:xlat/length.adoc[length]     | Get the length of a string
 | xref:xlat/lpad.adoc[lpad]         | Left pad a string
 | xref:xlat/pairs.adoc[pairs]       | Serialize a list of attributes to a string
 | xref:xlat/rpad.adoc[rpad]         | Right pad a string

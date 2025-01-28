@@ -50,7 +50,7 @@ accounting {
 The "redundant" section is a configuration directive which tells the server to process the second module if the first one fails.  Any
 number of modules can be listed in a "redundant" section.  The server will process each in turn, until one of the modules succeeds.  It will then stop processing the "redundant" list.
 
-= Rewriting results for single modules
+== Rewriting results for single modules
 
 Normally, when a module fails, the entire section ("authorize", "accounting", etc.) stops being processed.  In some cases, we may want to permit "soft failures".  That is, we may want to tell the server that it is "ok" for a module to fail, and that the failure should not be treated as a fatal error.
 
@@ -76,7 +76,7 @@ redundant {
 The "fail = 1" entry tells the server to remember the "fail" code, with priority "1".  The normal configuration is "fail = return", which
 means "if the detail module fails, stop processing the accounting section".
 
-= Fail-over configuration entries
+== Fail-over configuration entries
 
 Modules normally return on of the following codes as their result:
 
@@ -114,7 +114,7 @@ The <number> used for a value may be any decimal number between 1 and 99999.  Th
 
 This configurability allows the administrator to permit some modules to fail, so long as a later module succeeds.
 
-= More Complex Configurations
+== More Complex Configurations
 
 The "authorize" section is normally a list of module names.  We can create sub-lists by using the section name "group".  The "redundant" section above is just a short-hand for "group", with a set of default return codes, which are different than the normal "stop processing the list on failure".
 
@@ -156,13 +156,13 @@ return code found by processing the list.
 
 This process can be extended to any number of modules listed in a "group" section.
 
-= More Complex Configuration using "if" and "else"
+== More Complex Configuration using "if" and "else"
 
 As of version 2.0, the server allows "if"-style checking in the configuration sections.  The section is still processed as a list, so there is no looping or "goto" support.  But by using "if", the administrator can have branching paths of execution, where none was possible before.
 
 The "if" syntax added in 2.0.0-pre0 has been completely re-written in 2.0.0-pre2, to add major new functionality.  Documentation will be updated later...
 
-= Virtual Modules
+== Virtual Modules
 
 Some configurations may require using the same list of modules, in the same order, in multiple sections.  For those systems, the configuration can be simplified through the use of "virtual" modules.  These modules are configured as named sub-sections of the "instantiate" section, as follows::
 ----
@@ -180,11 +180,11 @@ The name "sql1_or_2" can then be used in any other section, such as "authorize" 
 
 These virtual modules are full-fledged objects in and of themselves.  One virtual module can refer to another virtual module, and they can contain "if" conditions, or any other configuration permitted in a section.
 
-= Redundancy and Load-Balancing
+== Redundancy and Load-Balancing
 
 See load balancing for information on simple redundancy (fail-over) and load balancing.
 
-= The Gory Details
+== The Gory Details
 
 The fundamental object is called a MODCALLABLE, because it is something that can be passed a specific radius request and returns one of the RLM_MODULE_* results. It is a function - if you can accept the fact that pieces of radiusd.conf are functions. There are two kinds of MODCALLABLEs: GROUPs and SINGLEs.
 

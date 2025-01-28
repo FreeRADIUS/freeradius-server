@@ -37,7 +37,6 @@ gid:: Name of group that is allowed to connect to the control socket.
 ```
 
 Access mode.
-```
 
 == Default Configuration
 

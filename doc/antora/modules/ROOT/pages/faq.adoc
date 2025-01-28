@@ -97,7 +97,6 @@ Then the server will always respond with the correct address.
 
 Yes, you can. Assuming you already have daemontools installed, configured and running in your system (see http://cr.yp.to/daemontools.html), you will have to make two decisions:
 1. The log account and group name (_log.log_ is used in this example). Logging programs run under this _account.group_. If this _account.group pair_ does not exist yet, create it now.
-
 2. The radiusd local service directory (_/etc/radiusd_ is used in this example). This is where radiusd will store logs and a few configuration files.
 
 Then perform these steps:
@@ -454,20 +453,20 @@ If you're REALLY interested in knowing how to debug the RADIUS server yourself, 
         Ready to process requests.
     * If it doesn't, then it should print out an error message. Read it.
     * If it takes a long time to start up, and THEN prints out the message, then your DNS is broken.
-8. Ensure that you have localhost in your _raddb/clients_ file. FreeRADIUS comes configured this way, so it should be there.
-9. Ensure you have a valid user in your _raddb/users_ file. If everything else fails, go to the top of the file and add the following entry:
+6. Ensure that you have localhost in your _raddb/clients_ file. FreeRADIUS comes configured this way, so it should be there.
+7. Ensure you have a valid user in your _raddb/users_ file. If everything else fails, go to the top of the file and add the following entry:
         bob Cleartext-Password := "bob"
         Reply-Message = "Hello, bob"
-12. Run the radtest program from the LOCAL machine, in another window. This will tell you if the server is alive and is answering requests.
+8. Run the radtest program from the LOCAL machine, in another window. This will tell you if the server is alive and is answering requests.
         radtest bob bob localhost 0 testing123
-14. Ensure that you see the Reply-Message above and that you do NOT see an "Access denied" message. If you get an Access-Accept message, this means that the server is running properly.
-15. Configure another machine as a RADIUS client and run radtest from that machine too. You SHOULD see the server receive the request and send a reply.
+9. Ensure that you see the Reply-Message above and that you do NOT see an "Access denied" message. If you get an Access-Accept message, this means that the server is running properly.
+10. Configure another machine as a RADIUS client and run radtest from that machine too. You SHOULD see the server receive the request and send a reply.
     * If the server does NOT receive the request then the ports are confused. RADIUS historically uses 1645/UDP, where RFC 2138 and many new systems use the proper value of 1812/UDP. See _/etc/services_ or use the -p option to specify a different port.
     * Run tcpdump in another window on the RADIUS client machine. Use the command:
     * `tcpdump udp`
     * Look CAREFULLY at the packets coming from the RADIUS server. Which address are they coming from? Which port?
-16. If authentication works from a different machine then you have the server set up correctly.
-17. Now you should use a more complicated configuration to see if the server receives and replies with the attributes you want. There is little information that can be offered here in the FAQ as your individual systems configuration can not be predicted.  However, a few hints can help:
+11. If authentication works from a different machine then you have the server set up correctly.
+12. Now you should use a more complicated configuration to see if the server receives and replies with the attributes you want. There is little information that can be offered here in the FAQ as your individual systems configuration can not be predicted.  However, a few hints can help:
     * ALWAYS test your configurations running the server in debugging mode if you want to debug a problem. If you do not do so then DO NOT expect anyone else to be able to help you.
     * `radiusd -X`
     * Read RFC 2138 to see what the RADIUS attributes are and how they work
@@ -769,13 +768,13 @@ Which gives : (tcpdump output)
 
 The whole netmask business is a complicated one. An IP interface has an IP address and usually a netmask associated with it. Netmasks on point-to-point interfaces like a PPP link are generally not used.
 
-If you set the Framed-IP-Netmask attribute in a radius profile, you are setting the netmask of the interface on the side of the [[NAS]].  The Framed-IP-Netmask attribute is NOT something you can set to influence the netmask on the side of the dialin user. And usually, that makes no sense anyway even if you could set it.
+If you set the Framed-IP-Netmask attribute in a radius profile, you are setting the netmask of the interface on the side of the NAS.  The Framed-IP-Netmask attribute is NOT something you can set to influence the netmask on the side of the dialin user. And usually, that makes no sense anyway even if you could set it.
 
 The result of this on most NAS is that they start to route a subnet (the subnet that contains the assigned IP address and that is as big as the netmask indicates) to that PPP interface and thus to the user. If that is exactly what you want, then that's fine, but if you do not intend to route a whole subnet to the user, then by all means do NOT use the Framed-IP-Netmask attribute.
 
-Many [[NAS]] interpret a left-out [[Framed-IP-Netmask]] as if it were set to 255.255.255.255, but to be certain you should set the Framed-IP-Netmask to 255.255.255.255.
+Many NAS interpret a left-out Framed-IP-Netmask as if it were set to 255.255.255.255, but to be certain you should set the Framed-IP-Netmask to 255.255.255.255.
 
-For example, the following entries do almost the same on most [[NAS]]:
+For example, the following entries do almost the same on most NAS:
 
 	user Cleartext-Password := "blegh"
 		Service-Type = Framed-User,
@@ -789,7 +788,7 @@ For example, the following entries do almost the same on most [[NAS]]:
 		Framed-IP-Address = 192.168.5.78,
 		Framed-Route = "192.168.5.64/28 0.0.0.0 1"
 
-The result is that the end user gets IP address 192.168.5.78 and that the whole network with IP addresses 192.168.5.64 - 195.64.5.79 is	routed over the PPP link to the user (see the [[RADIUS]] [[RFC]]s for the exact syntax of the Framed-Route attribute).
+The result is that the end user gets IP address 192.168.5.78 and that the whole network with IP addresses 192.168.5.64 - 195.64.5.79 is	routed over the PPP link to the user (see the RADIUS RFCs for the exact syntax of the Framed-Route attribute).
 
 ### How do I make CHAP work with LDAP?
 

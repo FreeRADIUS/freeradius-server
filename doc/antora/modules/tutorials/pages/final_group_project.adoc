@@ -145,7 +145,7 @@ login, retrieve the user's password and store it in
 
 *Files:*
 
-- xref:reference:raddb/mods-available/suffix.adoc[`etc/raddb/mods-available/suffix`]
+//- xref:reference:raddb/mods-available/suffix.adoc[`etc/raddb/mods-available/suffix`]
 - xref:reference:raddb/mods-available/files.adoc[`etc/raddb/mods-available/files`]
 - `etc/raddb/mods-config/files/authorize`
 - xref:reference:raddb/mods-available/ldap.adoc[`etc/raddb/mods-available/ldap`]
