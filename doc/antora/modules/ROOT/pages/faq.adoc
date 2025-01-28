@@ -97,8 +97,7 @@ Then the server will always respond with the correct address.
 
 Yes, you can. Assuming you already have daemontools installed, configured and running in your system (see http://cr.yp.to/daemontools.html), you will have to make two decisions:
 1. The log account and group name (_log.log_ is used in this example). Logging programs run under this _account.group_. If this _account.group pair_ does not exist yet, create it now.
-
-//2. The radiusd local service directory (_/etc/radiusd_ is used in this example). This is where radiusd will store logs and a few configuration files.
+2. The radiusd local service directory (_/etc/radiusd_ is used in this example). This is where radiusd will store logs and a few configuration files.
 
 Then perform these steps:
 
