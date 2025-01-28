@@ -101,6 +101,7 @@ static conf_parser_t profile_config[] = {
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
 	{ FR_CONF_OFFSET("attribute", rlm_ldap_t, profile_attr) },
 	{ FR_CONF_OFFSET("attribute_suspend", rlm_ldap_t, profile_attr_suspend) },
+	{ FR_CONF_OFFSET("sort_by", rlm_ldap_t, profile_sort_by) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -2199,6 +2200,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	rlm_ldap_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
 
 	if (inst->user.obj_sort_ctrl) ldap_control_free(inst->user.obj_sort_ctrl);
+	if (inst->profile_sort_ctrl) ldap_control_free(inst->profile_sort_ctrl);
 
 	return 0;
 }
@@ -2600,30 +2602,31 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	/*
-	 *	Build the server side sort control for user objects
+	 *	Build the server side sort control for user / profile objects
 	 */
-	if (inst->user.obj_sort_by) {
-		LDAPSortKey	**keys;
-		int		ret;
-
-		ret = ldap_create_sort_keylist(&keys, UNCONST(char *, inst->user.obj_sort_by));
-		if (ret != LDAP_SUCCESS) {
-			cf_log_err(conf, "Invalid user.sort_by value \"%s\": %s",
-				      inst->user.obj_sort_by, ldap_err2string(ret));
-			goto error;
-		}
-
-		/*
-		 *	Always set the control as critical, if it's not needed
-		 *	the user can comment it out...
-		 */
-		ret = ldap_create_sort_control(ldap_global_handle, keys, 1, &inst->user.obj_sort_ctrl);
-		ldap_free_sort_keylist(keys);
-		if (ret != LDAP_SUCCESS) {
-			ERROR("Failed creating server sort control: %s", ldap_err2string(ret));
-			goto error;
-		}
+#define SSS_CONTROL_BUILD(_source, _obj, _dest) if (_source) { \
+		LDAPSortKey	**keys; \
+		int		ret; \
+		ret = ldap_create_sort_keylist(&keys, UNCONST(char *, _source)); \
+		if (ret != LDAP_SUCCESS) { \
+			cf_log_err(conf, "Invalid " STRINGIFY(_obj) ".sort_by value \"%s\": %s", \
+				      _source, ldap_err2string(ret)); \
+			goto error; \
+		} \
+		/* \
+		 *	Always set the control as critical, if it's not needed \
+		 *	the user can comment it out... \
+		 */ \
+		ret = ldap_create_sort_control(ldap_global_handle, keys, 1, &_dest); \
+		ldap_free_sort_keylist(keys); \
+		if (ret != LDAP_SUCCESS) { \
+			ERROR("Failed creating server sort control: %s", ldap_err2string(ret)); \
+			goto error; \
+		} \
 	}
+
+	SSS_CONTROL_BUILD(inst->user.obj_sort_by, user, inst->user.obj_sort_ctrl)
+	SSS_CONTROL_BUILD(inst->profile_sort_by, profile, inst->profile_sort_ctrl)
 
 	if (inst->handle_config.tls_require_cert_str) {
 		/*
