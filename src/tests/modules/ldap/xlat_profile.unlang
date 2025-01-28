@@ -58,4 +58,17 @@ if (!((reply.Framed-IP-Netmask == 255.255.192.0) && \
 control := {}
 reply := {}
 
+# Test profile sort order.
+if (!%ldap.profile('cn=nested,ou=profiles,dc=example,dc=com')) {
+	test_fail
+}
+
+# Reply-Message will be set, overwritten and then unchanged by the
+# profiles, when processed in the correct sequence - leaving this value.
+if (reply.Reply-Message != 'Guten Tag') {
+	test_fail
+}
+
+reply := {}
+
 test_pass

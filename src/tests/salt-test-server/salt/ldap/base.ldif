@@ -117,6 +117,32 @@ objectClass: radiusprofile
 cn: suspended
 radiusReplyAttribute: Reply-Message := 'User-Suspended'
 
+dn: cn=nested,ou=profiles,dc=example,dc=com
+objectClass: freeradiusPolicy
+objectClass: radiusprofile
+cn: nested
+
+dn: cn=child1,cn=nested,ou=profiles,dc=example,dc=com
+objectClass: freeradiusPolicy
+objectClass: radiusprofile
+cn: child1
+radiusAttribute: reply.Reply-Message := 'Guten Tag'
+radiusProfilePriority: 2
+
+dn: cn=child2,cn=nested,ou=profiles,dc=example,dc=com
+objectClass: freeradiusPolicy
+objectClass: radiusprofile
+cn: child2
+radiusAttribute: reply.Reply-Message := 'Good Day'
+radiusProfilePriority: 1
+
+dn: cn=child3,cn=nested,ou=profiles,dc=example,dc=com
+objectClass: freeradiusPolicy
+objectClass: radiusprofile
+cn: child3
+radiusAttribute: reply.Reply-Message = 'Buna Ziua'
+radiusProfilePriority: 3
+
 dn: uid=adminuser,ou=people,dc=example,dc=com
 objectClass: inetOrgPerson
 uid: adminuser
