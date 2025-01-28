@@ -147,7 +147,7 @@ int		map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp,
 ssize_t		map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuff_t *in,
 				fr_table_num_sorted_t const *op_table, size_t op_table_len,
 				tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
-				fr_sbuff_parse_rules_t const *p_rules);
+				fr_sbuff_parse_rules_t const *p_rules) CC_HINT(nonnull(1,2,4,5,7,8));
 
 int		map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *request,
 				 char const *lhs, char const *op, char const *rhs,

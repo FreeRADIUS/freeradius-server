@@ -462,6 +462,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	fr_sbuff_marker_t		m_lhs, m_rhs, m_op;
 	fr_sbuff_term_t const		*tt = p_rules ? p_rules->terminals : NULL;
 	map_t				*parent;
+	tmpl_rules_t			our_rhs_rules;
 
 	if (parent_p) {
 		parent = *parent_p;
@@ -485,11 +486,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	{
 		tmpl_rules_t our_lhs_rules;
 
-		if (lhs_rules) {
-			our_lhs_rules = *lhs_rules;
-		} else {
-			memset(&our_lhs_rules, 0, sizeof(our_lhs_rules));
-		}
+		our_lhs_rules = *lhs_rules;
 
 		/*
 		 *	Allow for ".foo" to refer to the current
@@ -658,6 +655,20 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	}
 
 parse_rhs:
+	if (tmpl_is_attr(map->lhs)) {
+		fr_dict_attr_t const *enumv = tmpl_attr_tail_da(map->lhs);
+
+		/*
+		 *	LHS is a structural type.  The RHS is either empty (create empty LHS), or it's a string
+		 *	containing a list of attributes to create.
+		 */
+		if (fr_type_is_leaf(enumv->type)) {
+			our_rhs_rules = *rhs_rules;
+			our_rhs_rules.enumv = enumv;
+			rhs_rules = &our_rhs_rules;
+		}
+	}
+
 	fr_sbuff_out_by_longest_prefix(&slen, &token, cond_quote_table, &our_in, T_BARE_WORD);
 	switch (token) {
 	case T_SOLIDUS_QUOTED_STRING:
@@ -680,24 +691,26 @@ parse_rhs:
 
 			(void) tmpl_afrom_value_box(map, &map->rhs, fr_box_strvalue("ANY"), false);
 
-		} else {
-			tmpl_rules_t my_rhs_rules;
+		} else if (rhs_rules->attr.bare_word_enum && rhs_rules->enumv) {
+			fr_value_box_t *vb;
+
+			MEM(vb = fr_value_box_alloc(map, rhs_rules->enumv->type, rhs_rules->enumv));
 
 			if (!p_rules) p_rules = &value_parse_rules_bareword_quoted;
 
 			/*
-			 *	If we parsed an attribute on the LHS, and the RHS looks like an enumerated
-			 *	value, then set the enumv.
-			 *
-			 *	@todo tmpl_require_enum_prefix - maybe just _always_ set enumv, because the
-			 *	caller shouldn't have set it?
+			 *	It MUST be the given data type, and it MAY be an enum name.
 			 */
-			if (rhs_rules && !rhs_rules->enumv && tmpl_is_attr(map->lhs) &&
-			    fr_sbuff_is_str_literal(&our_in, "::")) {
-				my_rhs_rules = *rhs_rules;
-				my_rhs_rules.enumv = tmpl_attr_tail_da(map->lhs);
-				rhs_rules = &my_rhs_rules;
+			slen = fr_value_box_from_substr(map, vb, rhs_rules->enumv->type, rhs_rules->enumv,
+							&our_in, p_rules, false);
+			if (slen < 0) goto error;
+
+			if (tmpl_afrom_value_box(map, &map->rhs, vb, true) < 0) {
+				goto error;
 			}
+
+		} else {
+			if (!p_rules) p_rules = &value_parse_rules_bareword_quoted;
 
 			/*
 			 *	Use the RHS termination rules ONLY for bare

@@ -53,8 +53,7 @@ typedef struct pair_list_list {
 	fr_value_box_t		*box;		//!< parsed version of "name".
 } PAIR_LIST_LIST;
 
-/* users_file.c */
-int		pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST_LIST *list);
+int		pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST_LIST *list, bool v3_compat);
 
 static inline void pairlist_list_init(PAIR_LIST_LIST *list)
 {

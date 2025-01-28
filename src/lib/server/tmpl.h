@@ -329,6 +329,8 @@ struct tmpl_attr_rules_s {
 	uint8_t			disallow_filters:1;	//!< disallow filters.
 
 	uint8_t			xlat:1	;		//!< for %{User-Name}
+
+	uint8_t			bare_word_enum:1;	//!< for v3 compatibility.
 };
 
 struct tmpl_xlat_rules_s {

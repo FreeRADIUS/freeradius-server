@@ -152,8 +152,11 @@ undo	Password.Cleartext := "hello"
 #  This should fail, which means that the previous Reply-Message
 #  gets deleted as part of the "undo" operation.
 #
+#  Note that the contents of the RHS have to be expanded at run-time,
+#  otherwise it's a compile-time error.
+#
 undo
-	Framed-IP-Address := "this is not an IP address"
+	Framed-IP-Address := "hello %md5('foo')"
 
 #
 #  Test where additional checks uses the [*] filter

@@ -106,7 +106,7 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx, c
 	PAIR_LIST *entry = NULL;
 	map_t *map;
 
-	rcode = pairlist_read(ctx, dict_radius, filename, pair_list);
+	rcode = pairlist_read(ctx, dict_radius, filename, pair_list, false);
 	if (rcode < 0) {
 		return -1;
 	}

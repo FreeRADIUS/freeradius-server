@@ -38,6 +38,7 @@ RCSID("$Id$")
 
 typedef struct {
 	char const	*filename;
+	bool		v3_compat;
 } rlm_files_t;
 
 /**  Structure produced by custom call_env parser
@@ -78,6 +79,7 @@ fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED | CONF_FLAG_FILE_INPUT, rlm_files_t, filename) },
+	{ FR_CONF_OFFSET("v3_compat", rlm_files_t, v3_compat) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -101,7 +103,7 @@ static int pairlist_to_key(uint8_t **out, size_t *outlen, void const *a)
 }
 
 static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptree, PAIR_LIST_LIST **pdefault,
-			    fr_type_t data_type, fr_dict_attr_t const *key_enum, fr_dict_t const *dict)
+			    fr_type_t data_type, fr_dict_attr_t const *key_enum, fr_dict_t const *dict, bool v3_compat)
 {
 	int			rcode;
 	PAIR_LIST_LIST		users;
@@ -119,7 +121,7 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 	}
 
 	pairlist_list_init(&users);
-	rcode = pairlist_read(ctx, dict, filename, &users);
+	rcode = pairlist_read(ctx, dict, filename, &users, v3_compat);
 	if (rcode < 0) {
 		return -1;
 	}
@@ -678,7 +680,7 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 	}
 
 	if (getrecv_filename(files_data, inst->filename, &files_data->htrie, &files_data->def,
-			     keytype, key_enum, t_rules->attr.dict_def) < 0) goto error;
+			     keytype, key_enum, t_rules->attr.dict_def, inst->v3_compat) < 0) goto error;
 
 	*(void **)out = files_data;
 	return 0;

@@ -38,7 +38,7 @@ RCSID("$Id$")
 #include <fcntl.h>
 
 static int pairlist_read_internal(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST_LIST *list,
-				  bool complain, int *order);
+				  bool complain, bool v3_compat, int *order);
 
 static inline void line_error_marker(char const *src_file, int src_line,
 				     char const *user_file, int user_line,
@@ -141,7 +141,7 @@ static fr_sbuff_parse_rules_t const rhs_term = {
  *	Caller saw a $INCLUDE at the start of a line.
  */
 static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbuff, PAIR_LIST_LIST *list,
-			 char const *file, int lineno, int *order)
+			 char const *file, int lineno, bool v3_compat, int *order)
 {
 	size_t		len;
 	char		*newfile, *p, c;
@@ -221,7 +221,7 @@ static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbu
 	/*
 	 *	Read the $INCLUDEd file recursively.
 	 */
-	if (pairlist_read_internal(ctx, dict, newfile, list, false, order) != 0) {
+	if (pairlist_read_internal(ctx, dict, newfile, list, false, v3_compat, order) != 0) {
 		ERROR("%s[%d]: Could not read included file %s: %s",
 		      file, lineno, newfile, fr_syserror(errno));
 		talloc_free(newfile);
@@ -232,17 +232,17 @@ static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbu
 	return 0;
 }
 
-int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST_LIST *list)
+int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST_LIST *list, bool v3_compat)
 {
 	int order = 0;
 
-	return pairlist_read_internal(ctx, dict, file, list, true, &order);
+	return pairlist_read_internal(ctx, dict, file, list, true, v3_compat, &order);
 }
 
 /*
  *	Read the users file. Return a PAIR_LIST.
  */
-static int pairlist_read_internal(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST_LIST *list, bool complain, int *order)
+static int pairlist_read_internal(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST_LIST *list, bool complain, bool v3_compat, int *order)
 {
 	char			*q;
 	int			lineno		= 1;
@@ -281,6 +281,7 @@ static int pairlist_read_internal(TALLOC_CTX *ctx, fr_dict_t const *dict, char c
 			.prefix = TMPL_ATTR_REF_PREFIX_YES,
 			.list_def = request_attr_request,
 			.list_presence = TMPL_ATTR_LIST_ALLOW,
+			.bare_word_enum = v3_compat,
 		}
 	};
 
@@ -321,7 +322,7 @@ static int pairlist_read_internal(TALLOC_CTX *ctx, fr_dict_t const *dict, char c
 		 *	the tail of the current list.
 		 */
 		if (fr_sbuff_is_str(&sbuff, "$INCLUDE", 8)) {
-			if (users_include(ctx, dict, &sbuff, list, file, lineno, order) < 0) goto fail;
+			if (users_include(ctx, dict, &sbuff, list, file, lineno, v3_compat, order) < 0) goto fail;
 
 			if (fr_sbuff_next_if_char(&sbuff, '\n')) {
 				lineno++;
