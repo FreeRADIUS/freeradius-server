@@ -146,6 +146,7 @@ unlang_action_t rlm_ldap_map_profile(fr_ldap_result_code_t *ret,
 				     char const *dn, int scope, char const *filter, fr_ldap_map_exp_t const *expanded)
 {
 	ldap_profile_ctx_t	*profile_ctx;
+	LDAPControl		*serverctrls[] = { inst->profile_sort_ctrl, NULL };
 
 	if (!dn || !*dn) return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -166,5 +167,5 @@ unlang_action_t rlm_ldap_map_profile(fr_ldap_result_code_t *ret,
 
 	return fr_ldap_trunk_search(profile_ctx, &profile_ctx->query, request, ttrunk, dn,
 				    scope, filter,
-				    expanded->attrs, NULL, NULL);
+				    expanded->attrs, serverctrls, NULL);
 }
