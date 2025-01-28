@@ -2,7 +2,7 @@
 
 As well as being an excellent SCM (Source control management) tool, git is also very useful for tracking changes to configuration files, and even for performing remote administration of servers.
 
-=== The basics
+== The basics
 
 For basic configuration management one only has to:
  
@@ -30,7 +30,7 @@ And if it's all gone horribly wrong:
 
 There are many many tutorials available if you want to learn more generic git administration, this one is extra pretty: http://gitimmersion.com.
 
-==== Remote administration
+=== Remote administration
 
 The basic functionality of git is useful on its own, but one of the features that really makes git shine among the SCMs is its support for commit hooks. Hooks don't require anything special to function (like gitosis or the git-daemon), they work just as well over straight SSH.
 

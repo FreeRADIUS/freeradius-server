@@ -207,7 +207,7 @@ the following sections:
 | `clear session { ... }`
 | Clear stateful session information from a cache.
 
-| `verify certificate { ... }` |
+| `verify certificate { ... }` 
 | Apply policies based on the client certificate presented.
 
 | `staple certificate { ... }`
@@ -944,7 +944,8 @@ removed in v4.0.
 
 See the new policy `copy_request_to_tunnel` in
 link:../../../../../../sites-available/inner-tunnel.adoc[sites-available/inner-tunnel], and in `policy.d/eap` for
-more information.  ====
+more information.
+====
 
 
 
@@ -1015,7 +1016,6 @@ the fix does appear to work.
 NOTE: To use `PEAP` you must also configure an inner method in
 `mods-enabled/eap_inner`.
 
-
 tls::  Point to the common TLS configuration
 
 Which `tls-config` section the TLS negotiation parameters are
@@ -1043,7 +1043,6 @@ for more information.
 ====
 
 
-
 virtual_server:: The virtual server used for "inner" authentication.
 
 The inner tunneled request can be sent through a virtual
@@ -1057,7 +1056,7 @@ outer request.  This configuration is NOT RECOMMENDED.
 
 require_client_cert:: Whether we require a client certificate.
 
-Unlike `EAP-TLS`, `PEAP `does not require a client certificate.
+Unlike `EAP-TLS`, `PEAP` does not require a client certificate.
 However, you can require one by setting the following
 option. You can also override this option by setting
 

@@ -14,7 +14,7 @@ Note: A hashed version of the SRC address is also inserted into the CHAP-Passwor
 
 In normal operation the switch will attempt to authenticate the client every _quiet-period_ (a configurable period measured in seconds). That is, when the client connects and either: The RADIUS server returns an Access-Reject, or the RADIUS server is Unreachable, the switch will retry authentication after _quiet-period_ seconds.
 
-##### Beware using guest VLANs with mac-based authentication and dynamic VLAN assignment
+#### Beware using guest VLANs with mac-based authentication and dynamic VLAN assignment
 
 The quiet-period timer will not fire if an _unauth-vid_ is configured and the client transitions into the 'guest' state. The ASG manual for some products suggests that if the client falls into the 'guest' state because of RADIUS server timeout then they will be re-authenticated, but this was not implemented in software!
 Beware using the _unauth-vid_ where switches rely on RADIUS servers for VLAN assignment. A RADIUS server failure or power outage could place all clients into the 'guest' state where they will not be able to recover without manual intervention.
@@ -64,7 +64,7 @@ Client based mode is a HP proprietary extension to the 802.1X standard, and is u
 In client based mode a filtering table is maintained for each authenticated port. Only devices which have successfully completed 802.1X authentication have their Mac-Addresses added to the filtering table, so only packets from authenticated devices are allowed to ingress into the network.
 Multiple authentication sessions for different devices may run concurrently, and accounting information will be provided for each individual session.
 
-###### In earlier firmware, Reply-Messages were encapsulated as EAP-Notification packets.
+##### In earlier firmware, Reply-Messages were encapsulated as EAP-Notification packets.
 In firmware (< H.10.74 or equivalent) the switch encapsulates the contents of the RADIUS Reply-Message attribute in an EAP-Notification packet, which it sends after the EAP-Success/Failure packet.
 Most supplicants deal with this ok (despite it breaking RFC 3579), but it causes WPA_Supplicant to restart authentication. If you're using 802.1X with older firmware, be sure to filter out the Reply-Message attribute in any Access-Accept packets containing an EAP-Message.
 
@@ -109,7 +109,7 @@ When multiple port-access mechanisms are used, 802.1X based authentication alway
 
 If an 802.1X authenticated client sends an EAPOL-Logoff packet, the 802.1X session is terminated and the client will be re-authenticated using Web/Mac based authentication.
 
-###### Setting the _unauth-vid_ for both 802.1X and Mac/Web authenticators will result in unexpected behaviour
+#### Setting the _unauth-vid_ for both 802.1X and Mac/Web authenticators will result in unexpected behaviour
 This usually results in the client being assigned the port-access authenticator _unauth-vid_ after completing Mac/Web authentication. When you need to configure an _unauth-vid_ with multiple authentication mechanisms, set the _unauth-vid_ for the Mac/Web authenticator, not the 802.1X authenticator.
 
 Note: Setting unath-vid for 802.1X when concurrent 802.1X/MAC authentication is enabled, is now prohibited in software versions >= H.10.79 or equivalent
@@ -171,7 +171,7 @@ The value of Egress-VLANID is a bit string, the first 8 bits specify whether the
 
 Note: It is not possible to specify the ingress untagged VLAN with RFC 4675 attributes, so RFC 3580 attributes must be used instead.
 
-###### Ingress-Filters VSA is ignored by all HP ProCurve switches 
+##### Ingress-Filters VSA is ignored by all HP ProCurve switches 
 
 The default switching 'philosophy' of ProCurve switches is to filter ingress packets based on the egress VLAN membership of a port, this goes against the 802.1Q standard, which requires that frames be allowed to ingress, even if their tag does not match a VLAN the port is a member of.
 Supporting this attribute (i.e. allowing promiscuous ingress) would break the ProCurve switching philosophy, and so this attribute is ignored.
@@ -264,7 +264,7 @@ conf
 exit
 ```
 
-###### Default edge port GVRP settings are insecure, and may allow circumvention of network policy.
+#### Default edge port GVRP settings are insecure, and may allow circumvention of network policy.
 
 The default setting for the interface _unknown-vlan_ option is _learn_, this allows GVRP enabled clients to gain access to additional tagged VLANs once the port is in an open state. This is often undesirable from a security standpoint, so the _unknown-vlan_ option should be set to _disable_ on all port-access authenticated edge ports.
 

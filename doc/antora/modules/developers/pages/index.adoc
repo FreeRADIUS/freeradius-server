@@ -5,7 +5,7 @@ List with some usual howtos for FreeRADIUS.
 Programming reference documentation can be found at the
 https://doc.freeradius.org/[Doxygen] site.
 
-# Instructions for Developers
+## Instructions for Developers
 
 As the name suggests, FreeRADIUS is developed under the GNU
 General Public License, Version 2 (GPLv2).

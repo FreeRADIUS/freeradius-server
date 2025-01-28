@@ -82,9 +82,9 @@ password can be clear-text, or encrypted.
 
 ```
 
-```
 
 == Default Configuration
 
 ```
+
 ```

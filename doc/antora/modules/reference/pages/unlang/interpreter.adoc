@@ -27,9 +27,9 @@ functions, etc.
 
 Despite these limitations, it has proven to be useful and powerful.
 While the server includes plugins for languages such as
-xref:reference:raddb/mods-available/lua.adoc[lua],
-xref:reference:raddb/mods-available/python.adoc[python], and
-xref:reference:raddb/mods-available/perl.adoc[perl], most policies can be done
+xref:raddb/mods-available/lua.adoc[lua],
+xref:raddb/mods-available/python.adoc[python], and
+xref:raddb/mods-available/perl.adoc[perl], most policies can be done
 in simple `unlang` statements.  More general purpose programming
 languages are more powerful than `unlang`, but they are generally
 sustantially slower.
@@ -53,8 +53,8 @@ recv foo {
 ----
 
 The processing sections are defined in
-xref:reference:raddb/sites-available/index.adoc[virtual servers].  The
-xref:reference:raddb/sites-available/index.adoc[virtual server] documentation
+xref:raddb/sites-available/index.adoc[virtual servers].  The
+xref:raddb/sites-available/index.adoc[virtual server] documentation
 describes the larger context of which packets are recieved, and when
 they are received.  This section concentrates on the more narrow topic
 `unlang` itself.
