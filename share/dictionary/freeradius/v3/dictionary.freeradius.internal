@@ -1,0 +1,31 @@
+# -*- text -*-
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+ALIAS		Password-With-Header			Password.With-Header
+ALIAS		Cleartext-Password			Password.Cleartext
+ALIAS		Crypt-Password				Password.crypt
+ALIAS		MD5-Password				Password.MD5
+ALIAS		NT-Password				Password.NT
+ALIAS		PBKDF2-Password				Password.PBKDF2
+ALIAS		SHA1-Password				Password.SHA1
+ALIAS		SHA2-Password				Password.SHA2
+ALIAS		SHA2-224-Password			Password.SHA2-224
+ALIAS		SHA2-256-Password			Password.SHA2-256
+ALIAS		SHA2-384-Password			Password.SHA2-384
+ALIAS		SHA2-512-Password			Password.SHA2-512
+ALIAS		SHA3-Password				Password.SHA3
+ALIAS		SHA3-224-Password			Password.SHA3-224
+ALIAS		SHA3-256-Password			Password.SHA3-256
+ALIAS		SHA3-384-Password			Password.SHA3-384
+ALIAS		SHA3-512-Password			Password.SHA3-512
+ALIAS		SMD5-Password				Password.SMD5
+ALIAS		SSHA1-Password				Password.SSHA1
+ALIAS		SSHA2-224-Password			Password.SSHA2-224
+ALIAS		SSHA2-256-Password			Password.SSHA2-256
+ALIAS		SSHA2-384-Password			Password.SSHA2-384
+ALIAS		SSHA2-512-Password			Password.SSHA2-512
+ALIAS		SSHA3-224-Password			Password.SSHA3-224
+ALIAS		SSHA3-256-Password			Password.SSHA3-256
+ALIAS		SSHA3-384-Password			Password.SSHA3-384
+ALIAS		SSHA3-512-Password			Password.SSHA3-512

@@ -153,11 +153,16 @@
 #  major version numbers means that the configuration files are *not*
 #  100% compatible. This includes the dictionaries!
 #
-#  All of the v3 compatibility names are in the RADIUS namespace.
+#  The v3 compatibility names are in the RADIUS namespace.
 #  There are no aliases for DHCPv4.
 #
-
 #BEGIN-PROTOCOL RADIUS
 #$INCLUDE ${dictdir}/radius/v3/dictionary.cisco
 #$INCLUDE ${dictdir}/radius/v3/dictionary.aruba
 #END-PROTOCOL RADIUS
+
+#
+#  This dictionary includes v3-compatible names like "Cleartext-Password",
+#  or "NT-Password".
+#
+#$INCLUDE ${dictdir}/freeradius/v3/dictionary.freeradius.internal
