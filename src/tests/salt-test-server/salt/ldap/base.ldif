@@ -22,6 +22,13 @@ olcOverlay: syncprov
 olcSpCheckpoint: 100 10
 olcSpSessionlog: 100
 
+dn: olcOverlay=sssvlv,olcDatabase={1}mdb,cn=config
+objectClass: olcOverlayConfig
+objectClass: olcSssVlvConfig
+olcOverlay: sssvlv
+olcSssVlvMaxKeys: 5
+olcSssVlvMaxPerConn: 5
+
 # Create top-level object in domain
 dn: dc=example,dc=com
 objectClass: top
