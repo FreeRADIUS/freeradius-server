@@ -76,7 +76,7 @@ policies are loaded by the server, and unused ones are ignored.
 
 === `sites-available/`
 
-The xref:raddb/sites-available/index.adoc[sites-available/] directory
+The xref:raddb/sites-available/default.adoc[sites-available/] directory
 contains virtual servers which process packets. They are similar in
 concept to the virtual servers used by Apache and Nginx.
 

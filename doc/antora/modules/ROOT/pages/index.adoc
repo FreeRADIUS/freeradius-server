@@ -40,7 +40,7 @@ desired outcome. At a high level, the subject areas describe:
 * The xref:reference:raddb/index.adoc[configuration files] located in `/etc/raddb/`, or `/etc/freeradius/`
 * The syntax of the xref:reference:unlang/index.adoc[unlang] processing language
 * Various xref:howto:index.adoc[how-to] guides
-* xref:howto:installation/index.adoc[Installing] and xref:howto:installation/upgrade.adoc[upgrading] FreeRADIUS
+* xref:installation:index.adoc[Installing] and xref:installation:upgrade.adoc[upgrading] FreeRADIUS
 * xref:developers:index.adoc[Developer documentation]
 
 This organization means that for example, the `ldap` module will have

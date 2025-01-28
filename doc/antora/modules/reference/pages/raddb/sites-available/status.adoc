@@ -110,9 +110,9 @@ Add statistics based on the Vendor-Specific.FreeRADIUS.Stats4-* queries.
 Due to internal limitations, the statistics might not be exactly up
 to date.  Do not expect all of the numbers to add up perfectly.
 
-```
 
 == Default Configuration
 
 ```
+
 ```

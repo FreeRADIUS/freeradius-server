@@ -44,7 +44,7 @@
 
 *** xref:modules/sqlcounter/index.adoc[SQL-Counter]
 *** xref:modules/sqlippool/index.adoc[SQL-IP-Pool]
-**** xref:modules/sqlippool/generating.adoc[Generating IPs]
+**** xref:modules/sqlippool/populating.adoc[Generating IPs]
 **** xref:modules/sqlippool/insert.adoc[Inserting IPs into SQL]
 
 ** xref:protocols/index.adoc[Protocols]

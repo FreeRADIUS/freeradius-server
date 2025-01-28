@@ -44,9 +44,9 @@ There are many "commented out" references to modules and
 configurations These references serve as place-holders, and as
 documentation.  If you need the functionality of that module, then:
 
-  * configure the module in xref:reference:raddb/mods-available/index.adoc[mods-available/]
+  * configure the module in xref:raddb/mods-available/index.adoc[mods-available/]
   * enable the module in `mods-enabled`.  e.g. for LDAP, do:  `cd mods-enabled;ln -s ../mods-available/ldap`
-  *  uncomment the references to it in this file.
+  * uncomment the references to it in this file.
 
 In most cases, those small changes will result in the server being
 able to connect to the database, and to authenticate users.

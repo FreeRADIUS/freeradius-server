@@ -71,7 +71,7 @@ For EAP requests.
 
 ```
 
-.Please see the xref:reference:raddb/mods-available/expiration.adoc[mods-available/expiration] for full documentation.
+.Please see the xref:howto:modules/expiration/index.adoc[expiration] for full documentation.
 
 ```
 		expiration

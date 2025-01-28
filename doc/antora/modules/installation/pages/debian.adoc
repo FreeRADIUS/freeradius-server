@@ -3,7 +3,7 @@
 * Installing from repositories 
 * Installing from source 
 
-== Installing from repositories :
+== Installing from repositories 
 
 This is usually the easiest solution, but at the moment of writing (2016-06) both Ubuntu 16.04 and Ubuntu 14.04.4 contain packages which are EOL and which are not the latest in their own main version. So building from source is recommended as it will contain the latest version, which probably got most of the bugs sorted.
 
@@ -64,8 +64,6 @@ cd /usr/share/doc/freeradius
 
 Installing from source can be daunting for people who never did it but as long as you read the output of the building process, it should tell you what went wrong or what is missing.
 
-On GitHub select the branch you wish to install and press clone or download.
-=======
 Your first step is to download the source files which can be found on one of the following sites:
 
     1. http://freeradius.org/download.html[Freeradius.org] - Choose the latest release by selecting the relevant button.
@@ -169,7 +167,7 @@ The install might show errors. Read the error !! Ask questions on freeradius lis
 
 
 
-= Building on Debian or Ubuntu
+== Building on Debian or Ubuntu
 
 Building Debian packages (including Ubuntu) of FreeRADIUS from source is kept as simple as possible.
 
