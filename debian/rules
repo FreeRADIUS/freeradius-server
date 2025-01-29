@@ -204,6 +204,8 @@ install-arch: build-arch-stamp
 	rm -f $(freeradius_dir)/usr/lib/freeradius/rlm_cache_memcached.so
 
 	dh_install --sourcedir=$(freeradius_dir) -p freeradius-utils
+	[ ! -e $(freeradius_dir)/usr/bin/radlast ] || \
+		install -m 0755 $(freeradius_dir)/usr/bin/radlast $(CURDIR)/debian/freeradius-utils/usr/bin/radlast
 	dh_install --sourcedir=$(freeradius_dir) -p freeradius
 
 	dh_strip -a --dbg-package=freeradius-dbg

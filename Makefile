@@ -142,7 +142,7 @@ $(R)$(dictdir)/%: share/%
 	@echo INSTALL $(notdir $<)
 	${Q}$(INSTALL) -m 644 $< $@
 
-MANFILES := $(wildcard man/man*/*.?)
+MANFILES := $(filter-out $(MANSKIP),$(wildcard man/man*/*.?))
 MANDIR   := $(wildcard man/man*)
 install.man: $(subst man/,$(R)$(mandir)/,$(MANFILES))
 

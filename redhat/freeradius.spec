@@ -1,11 +1,13 @@
 %bcond_with rlm_yubikey
 %bcond_without ldap
+%bcond_with radlast
 # %%bcond_with experimental_modules
 
 %{!?_with_rlm_cache_memcached: %global _without_rlm_cache_memcached --without-rlm_cache_memcached}
 %{!?_with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
 %{!?_with_rlm_eap_tnc: %global _without_rlm_eap_tnc --without-rlm_eap_tnc}
 %{!?_with_rlm_yubikey: %global _without_rlm_yubikey --without-rlm_yubikey}
+%{!?_with_radlast: %global _without_radlast --without-radlast}
 %{?_without_ldap: %global _without_libfreeradius_ldap --without-libfreeradius-ldap}
 %{?el7: %global _without_rlm_eap_teap --without-rlm_eap_teap}
 
@@ -428,6 +430,8 @@ export LDFLAGS="-Wl,--build-id"
         %{?_without_rlm_cache_memcached} \
         %{?_without_libwbclient} \
         %{?_without_libfreeradius_ldap} \
+        %{?_with_radlast} \
+        %{?_without_radlast} \
 #        --with-modules="rlm_wimax" \
 
 make %_smp_mflags
@@ -844,7 +848,9 @@ fi
 /usr/bin/radclient
 /usr/bin/radcrypt
 /usr/bin/radeapclient
+%if %{?_with_radlast:1}%{!?_with_radlast:0}
 /usr/bin/radlast
+%endif
 /usr/bin/radtest
 /usr/bin/radsecret
 /usr/bin/radsniff
@@ -859,7 +865,9 @@ fi
 %doc %{_mandir}/man1/rad_counter.1.gz
 %doc %{_mandir}/man1/radclient.1.gz
 %doc %{_mandir}/man1/radeapclient.1.gz
+%if %{?_with_radlast:1}%{!?_with_radlast:0}
 %doc %{_mandir}/man1/radlast.1.gz
+%endif
 %doc %{_mandir}/man8/radsqlrelay.8.gz
 %doc %{_mandir}/man1/radtest.1.gz
 %doc %{_mandir}/man1/radwho.1.gz

@@ -65,6 +65,7 @@ INSTALL_PROGRAM	= ${INSTALL}
 INSTALL_DATA	= ${INSTALL} -m 644
 INSTALL_SCRIPT	= ${INSTALL_PROGRAM}
 INSTALLSTRIP	= @INSTALLSTRIP@
+MANSKIP         = @MANSKIP@
 
 #
 #  Linker arguments for libraries searched for by the main

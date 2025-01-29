@@ -57,6 +57,7 @@ FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	* Better handler single-character expansions.  Fixes #2216.
 	* Correct calculation of EAP length in pre-proxy.  Fixes #5486.
 	* Don't segfault when using detail listeners. Fixes #5485
+	* radlast is no longer installed if "last" is not present.
 
 FreeRADIUS 3.2.6 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	Configuration changes
