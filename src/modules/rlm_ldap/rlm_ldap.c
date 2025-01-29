@@ -1705,7 +1705,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		if (!map_list_empty(call_env->user_map) || inst->valuepair_attr) {
 			RDEBUG2("Processing user attributes");
 			RINDENT();
-			if (fr_ldap_map_do(request, inst->valuepair_attr,
+			if (fr_ldap_map_do(request, NULL, inst->valuepair_attr,
 					   &autz_ctx->expanded, autz_ctx->entry) > 0) rcode = RLM_MODULE_UPDATED;
 			REXDENT();
 			rlm_ldap_check_reply(request, inst, autz_ctx->dlinst->name, call_env->expect_password->vb_bool, autz_ctx->ttrunk);

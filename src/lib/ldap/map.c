@@ -322,7 +322,7 @@ int fr_ldap_map_expand(TALLOC_CTX *ctx, fr_ldap_map_exp_t *expanded, request_t *
  *	- Number of maps successfully applied.
  *	- -1 on failure.
  */
-int fr_ldap_map_do(request_t *request,
+int fr_ldap_map_do(request_t *request, char const *check_attr,
 		   char const *valuepair_attr, fr_ldap_map_exp_t const *expanded, LDAPMessage *entry)
 {
 	map_t const		*map = NULL;
@@ -332,6 +332,62 @@ int fr_ldap_map_do(request_t *request,
 	fr_ldap_result_t	result;
 	char const		*name;
 	LDAP			*handle = fr_ldap_handle_thread_local();
+
+	if (check_attr) {
+		struct berval	**values;
+		int		count, i;
+		tmpl_rules_t const parse_rules = {
+			.attr = {
+				.dict_def = request->dict,
+				.list_def = request_attr_request,
+				.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+			},
+			.xlat = {
+				.runtime_el = unlang_interpret_event_list(request),
+			},
+			.at_runtime = true,
+		};
+
+		values = ldap_get_values_len(handle, entry, check_attr);
+		count = ldap_count_values_len(values);
+
+		for (i = 0; i < count; i++) {
+			map_t	*check = NULL;
+			char	*value = fr_ldap_berval_to_string(request, values[i]);
+
+			RDEBUG3("Parsing condition %s", value);
+			if (map_afrom_attr_str(request, &check, value, &parse_rules, &parse_rules) < 0) {
+				RPEDEBUG("Failed parsing '%s' value \"%s\"", check_attr, value);
+			fail:
+				applied = -1;
+			free:
+				talloc_free(check);
+				talloc_free(value);
+				ldap_value_free_len(values);
+				return applied;
+			}
+
+			if (!fr_comparison_op[check->op]) {
+				REDEBUG("Invalid operator '%s'", fr_tokens[check->op]);
+				goto fail;
+			}
+
+			if (fr_type_is_structural(tmpl_attr_tail_da(check->lhs)->type) &&
+			    (check->op != T_OP_CMP_TRUE) && (check->op != T_OP_CMP_FALSE)) {
+				REDEBUG("Invalid comparison for structural type");
+				goto fail;
+			}
+
+			RDEBUG2("Checking condition %s %s %s", check->lhs->name, fr_tokens[check->op], check->rhs->name);
+			if (radius_legacy_map_cmp(request, check) != 1) {
+				RDEBUG2("Failed match: skipping this profile");
+				goto free;
+			}
+			talloc_free(value);
+			talloc_free(check);
+		}
+		ldap_value_free_len(values);
+	}
 
 	while ((map = map_list_next(expanded->maps, map))) {
 		int ret;

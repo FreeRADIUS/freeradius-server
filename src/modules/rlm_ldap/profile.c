@@ -99,7 +99,7 @@ static unlang_action_t ldap_map_profile_resume(UNUSED rlm_rcode_t *p_result, UNU
 			ldap_memfree(dn);
 		}
 		RINDENT();
-		if (fr_ldap_map_do(request, profile_ctx->inst->valuepair_attr,
+		if (fr_ldap_map_do(request, profile_ctx->inst->profile_check_attr, profile_ctx->inst->valuepair_attr,
 				   profile_ctx->expanded, entry) < 0) {
 			if (profile_ctx->ret) *profile_ctx->ret = LDAP_RESULT_ERROR;
 		}
