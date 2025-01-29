@@ -268,7 +268,8 @@ int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_ldap_map_expand(TALLOC_CTX *ctx, fr_ldap_map_exp_t *expanded, request_t *request, map_list_t const *maps, char const *generic_attr)
+int fr_ldap_map_expand(TALLOC_CTX *ctx, fr_ldap_map_exp_t *expanded, request_t *request, map_list_t const *maps,
+		       char const *generic_attr, char const *check_attr)
 {
 	map_t const	*map = NULL;
 	unsigned int	total = 0;
@@ -296,6 +297,7 @@ int fr_ldap_map_expand(TALLOC_CTX *ctx, fr_ldap_map_exp_t *expanded, request_t *
 	}
 
 	if (generic_attr) expanded->attrs[total++] = generic_attr;
+	if (check_attr) expanded->attrs[total++] = check_attr;
 
 	expanded->attrs[total] = NULL;
 	expanded->count = total;
