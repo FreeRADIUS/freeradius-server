@@ -333,8 +333,6 @@ server.
 
 === List of provided virtual servers
 
-* xref:raddb/sites-available/abfab-tls.adoc[abfab tls]
-* xref:raddb/sites-available/abfab-tr-idp.adoc[abfab tr idp]
 * xref:raddb/sites-available/arp.adoc[arp]
 * xref:raddb/sites-available/bfd.adoc[bfd]
 * xref:raddb/sites-available/buffered-sql.adoc[buffered sql]

@@ -129,7 +129,6 @@
 
 *** xref:raddb/mods-available/index.adoc[Modules]
 **** xref:raddb/mods-available/all_modules.adoc[Summary of all modules]
-**** xref:raddb/mods-available/abfab_psk_sql.adoc[ADFAB PSK]
 **** xref:raddb/mods-available/always.adoc[Always]
 **** xref:raddb/mods-available/attr_filter.adoc[Attr_filter]
 **** xref:raddb/mods-available/cache.adoc[Cache]
@@ -199,8 +198,6 @@
 **** xref:raddb/mods-available/yubikey.adoc[Yubikey]
 
 *** xref:raddb/sites-available/index.adoc[Virtual Servers]
-**** xref:raddb/sites-available/abfab-tls.adoc[ABFAB: Listening on TLS]
-**** xref:raddb/sites-available/abfab-tr-idp.adoc[ABFAB: Trust Router]
 **** xref:raddb/sites-available/arp.adoc[ARP Virtual Server]
 **** xref:raddb/sites-available/bfd.adoc[BFD - Bidirectional Forwarding Detection]
 **** xref:raddb/sites-available/buffered-sql.adoc[Buffered SQL]

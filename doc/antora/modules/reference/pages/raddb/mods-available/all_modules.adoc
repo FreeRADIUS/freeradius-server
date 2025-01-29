@@ -93,7 +93,6 @@ including syslog, flat files, and raw UDP/TCP sockets.
 [cols="20%,80%"]
 |=====
 | Module | Description
-| xref:raddb/mods-available/abfab_psk_sql.adoc[abfab_psk_sql]	| ADFAB PSK
 | xref:raddb/mods-available/cache_eap.adoc[cache_eap]	| Cache EAP
 | xref:raddb/mods-available/cache_tls.adoc[cache_tls]	| Cache TLS Session
 | xref:raddb/mods-available/cipher.adoc[cipher]	| Cipher

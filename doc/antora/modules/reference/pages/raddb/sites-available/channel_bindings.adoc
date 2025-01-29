@@ -16,7 +16,6 @@ of channel binding that may be in use.  For example each lower
 layer such as GSS-EAP (https://tools.ietf.org/html/rfc7055[RFC 7055]) or IEEE 802.11I is likely to
 need a separate channel binding policy.
 ```
-		abfab_channel_bindings
 	}
 }
 ```
