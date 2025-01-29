@@ -71,4 +71,17 @@ if (reply.Reply-Message != 'Guten Tag') {
 
 reply := {}
 
+# Re-run the above with a different user name - the profile with "Guten Tag"
+# as the reply message has a condition of User-Name == bob
+&User-Name := 'john'
+if (!%ldap.profile('cn=nested,ou=profiles,dc=example,dc=com')) {
+	test_fail
+}
+
+if (reply.Reply-Message != 'Good Day') {
+	test_fail
+}
+
+reply := {}
+
 test_pass
