@@ -103,6 +103,8 @@ typedef struct {
 							///< account is suspended. May appear in userobj or groupobj.
 	char const	*profile_sort_by;		//!< List of attributes to sort profiles by
 	LDAPControl	*profile_sort_ctrl;		//!< Server side sort control
+	char const	*profile_check_attr;		//!< LDAP attribute containing check conditions to determine if
+							//!< the profile should be applied
 
 #ifdef WITH_EDIR
 	/*

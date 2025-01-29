@@ -101,6 +101,7 @@ static conf_parser_t profile_config[] = {
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
 	{ FR_CONF_OFFSET("attribute", rlm_ldap_t, profile_attr) },
 	{ FR_CONF_OFFSET("attribute_suspend", rlm_ldap_t, profile_attr_suspend) },
+	{ FR_CONF_OFFSET("check_attribute", rlm_ldap_t, profile_check_attr) },
 	{ FR_CONF_OFFSET("sort_by", rlm_ldap_t, profile_sort_by) },
 	CONF_PARSER_TERMINATOR
 };
