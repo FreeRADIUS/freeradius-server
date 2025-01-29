@@ -383,8 +383,8 @@ typedef int (*fr_dict_flags_copy_func_t)(fr_dict_attr_t *da_to, void *flags_to, 
 
 /** Compare the protocol specific flags struct from two attributes
  *
- * @para[in] da_a	first attribute to compare.
- * @para[in] da_b	second attribute to compare.
+ * @param[in] da_a	first attribute to compare.
+ * @param[in] da_b	second attribute to compare.
  * @return
  *  - 0 if the flags are equal.
  *  - < 0 if da_a < da_b.
@@ -415,7 +415,6 @@ static int dict_flag_##_name(fr_dict_attr_t **da_p, UNUSED char const *value, UN
 
 /** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct
  *
- * @param[in] _name		of the flag search for.
  * @param[in] _struct		containing the field to write the result to.
  * @param[in] _field		to write the flag to
  */

@@ -943,6 +943,8 @@ fr_dict_attr_t *dict_attr_alloc_null(TALLOC_CTX *ctx, fr_dict_protocol_t const *
 
 /** Allocate a dictionary root attribute on the heap
  *
+ * @param[in] filename		file.
+ * @param[in] line		number.
  * @param[in] ctx		to allocate the attribute in.
  * @param[in] dict		the attribute will be used in.
  * @param[in] name		of the attribute.  If NULL an OID string
@@ -974,6 +976,8 @@ fr_dict_attr_t *_dict_attr_alloc_root(char const *filename, int line,
 
 /** Allocate a dictionary attribute on the heap
  *
+ * @param[in] filename		file.
+ * @param[in] line		number.
  * @param[in] ctx		to allocate the attribute in.
  * @param[in] parent		of the attribute.
  * @param[in] name		of the attribute.  If NULL an OID string

@@ -1151,6 +1151,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
  * @param[out] out	Where to write the string.
  * @param[in] time	to convert.
  * @param[in] res	What base resolution to print the time as.
+ * @param[in] utc	If true, use UTC, otherwise local time.
  * @return
  *	- 0 on success.
  *	- -1 on failure.

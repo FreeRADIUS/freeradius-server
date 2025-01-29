@@ -278,7 +278,7 @@ bool _our_name(size_t *match_len, _our_out_type *out, _our_table_type table, siz
  *
  * @param[in] _our_table_type	C type of the table elements.
  * @param[in] _our_name		name of the search function to define.
- * @param[in] _our_return_type	C type of the value field of the table element.
+ * @param[in] _our_value_type	C type of the value field of the table element.
  */
 #define TABLE_TYPE_VALUE_FUNC(_our_table_type, _our_name, _our_value_type) \
 char const *_our_name(_our_table_type table, size_t table_len, _our_value_type value, char const *def) \
@@ -292,7 +292,7 @@ char const *_our_name(_our_table_type table, size_t table_len, _our_value_type v
  *
  * @param[in] _our_table_type	C type of the table elements.
  * @param[in] _our_name		name of the search function to define.
- * @param[in] _our_return_type	C type of the value field of the table element.
+ * @param[in] _our_value_type	C type of the value field of the table element.
  */
 #define TABLE_TYPE_VALUE_INDEX_BIT_FIELD_FUNC(_our_table_type, _our_name, _our_value_type) \
 char const *_our_name(_our_table_type table, size_t table_len, _our_value_type value, char const *def) \
@@ -306,7 +306,7 @@ char const *_our_name(_our_table_type table, size_t table_len, _our_value_type v
  *
  * @param[in] _our_table_type	C type of the table elements.
  * @param[in] _our_name		name of the search function to define.
- * @param[in] _our_return_type	C type of the value field of the table element.
+ * @param[in] _our_value_type	C type of the value field of the table element.
  */
 #define TABLE_TYPE_VALUE_INDEX_FUNC(_our_table_type, _our_name, _our_value_type) \
 char const *_our_name(_our_table_type table, size_t table_len, _our_value_type value, char const *def) \

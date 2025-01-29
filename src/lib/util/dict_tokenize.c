@@ -181,7 +181,7 @@ dict_dctx_push_or_update(dict_tokenize_ctx_t *dctx, fr_dict_attr_t const *da, di
 /** Pop the current stack frame
  *
  * @param[in] dctx		Stack to pop from.
- * @preturn
+ * @return
  *	- Pointer to the current stack frame.
  *	- NULL, if we're already at the root.
  */

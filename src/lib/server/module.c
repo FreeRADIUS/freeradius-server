@@ -645,6 +645,7 @@ void module_list_debug(module_list_t const *ml)
 
 /** Protect module data
  *
+ * @param[in] mi module instance.
  * @param[in] pool to protect
  * @return
  *	- 0 on success.
@@ -668,6 +669,7 @@ int module_data_protect(module_instance_t *mi, module_data_pool_t *pool)
 
 /** Unprotect module data
  *
+ * @param[in] mi module instance.
  * @param[in] pool to protect
  * @return
  *	- 0 on success.

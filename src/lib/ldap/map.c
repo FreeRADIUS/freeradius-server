@@ -264,6 +264,7 @@ int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
  * @param[in] request		The current request.
  * @param[in] maps		to expand.
  * @param[in] generic_attr	name to append to the attribute list.
+ * @param[in] check_attr	name to append to the attribute list.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -315,6 +316,7 @@ int fr_ldap_map_expand(TALLOC_CTX *ctx, fr_ldap_map_exp_t *expanded, request_t *
  * This is *NOT* atomic, but there's no condition for which we should error out...
  *
  * @param[in] request		Current request.
+ * @param[in] check_attr	Treat attribute with this name as a condition to process the map.
  * @param[in] valuepair_attr	Treat attribute with this name as holding complete AVP definitions.
  * @param[in] expanded		attributes (rhs of map).
  * @param[in] entry		to retrieve attributes from.
