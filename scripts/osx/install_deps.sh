@@ -25,7 +25,6 @@ hiredis
 isc-dhcp
 json-c
 krb5
-libcouchbase
 libidn
 libmemcached
 libpcap

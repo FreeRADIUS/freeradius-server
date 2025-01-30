@@ -137,7 +137,6 @@
 **** xref:raddb/mods-available/chap.adoc[CHAP module]
 **** xref:raddb/mods-available/cipher.adoc[Cipher]
 **** xref:raddb/mods-available/client.adoc[Client]
-**** xref:raddb/mods-available/couchbase.adoc[Couchbase]
 **** xref:raddb/mods-available/csv.adoc[CSV]
 **** xref:raddb/mods-available/cui.adoc[CUI]
 **** xref:raddb/mods-available/date.adoc[Date]

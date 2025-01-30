@@ -43,8 +43,6 @@ Supports file attachments, size limited by the MTA.
 | xref:raddb/mods-available/cache.adoc[cache]	| Stores attributes and/or lists and adds them back to a subsequent request or to the current request on a later execution
 of the module.
 | xref:raddb/mods-available/client.adoc[client]	| Reads client definitions from flat files.
-| xref:raddb/mods-available/couchbase.adoc[couchbase]	| Allows attributes to be stored and retrieved from a couchbase server. Client definitions may also be bulk loaded from a
-couchbase server as FreeRADIUS starts.
 | xref:raddb/mods-available/csv.adoc[csv]	| Maps values in a CSV file to FreeRADIUS attributes and adds them to the request.
 | xref:raddb/mods-available/passwd.adoc[passwd]	| Reads and caches line-oriented files that are in a format similar to ``/etc/passwd``.
 | xref:raddb/mods-available/redis.adoc[redis]	| Provides connectivity to single and clustered instances of Redis. This module exposes a string expansion that may be

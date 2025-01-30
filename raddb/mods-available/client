@@ -15,7 +15,7 @@
 #  These attributes are then used by the server to create internal client definitions.
 #
 #  This indirection is necessary as client definitions can be provided by many different
-#  modules (`ldap`, `sql`, `couchbase` etc...), all of which emit client data in
+#  modules (`ldap`, `sql`, etc...), all of which emit client data in
 #  attribute form.  Treating static configuration files specially would increase code
 #  complexity.
 #

@@ -683,7 +683,6 @@ The following modules will apply `connect_timeout`:
 * rlm_rest
 * rlm_linelog (network connections only)
 * rlm_ldap
-* rlm_couchbase
 * rlm_cache_memcached
 * rlm_redis_* (all the redis modules)
 * rlm_sql_cassandra
@@ -1051,6 +1050,12 @@ The `winbind` module uses an expansion `%winbind.group(<name>)` instead of
 == Deleted Modules
 
 The following modules have been deleted
+
+=== rlm_couchbase
+
+This module used an old version of the Couchbase API, which is no
+longer supported.  Since no one stepped up to upgrade the module, it
+has been removed.
 
 === rlm_counter
 
