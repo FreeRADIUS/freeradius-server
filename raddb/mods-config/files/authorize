@@ -59,13 +59,13 @@
 #
 #steve	Password.Cleartext := "testing"
 #	Service-Type = ::Framed-User,
-#	Framed-Protocol = PPP,
+#	Framed-Protocol = ::PPP,
 #	Framed-IP-Address = 172.16.3.33,
 #	Framed-IP-Netmask = 255.255.255.0,
-#	Framed-Routing = Broadcast-Listen,
+#	Framed-Routing = ::Broadcast-Listen,
 #	Framed-Filter-Id = "std.ppp",
 #	Framed-MTU = 1500,
-#	Framed-Compression = Van-Jacobsen-TCP-IP
+#	Framed-Compression = ::Van-Jacobsen-TCP-IP
 
 #
 # The canonical testing user which is in most of the
@@ -138,16 +138,16 @@
 #
 # Default for PPP: dynamic IP address, PPP mode, VJ-compression.
 #
-DEFAULT	Framed-Protocol == PPP
-	Framed-Protocol = PPP,
-	Framed-Compression = Van-Jacobson-TCP-IP
+DEFAULT	Framed-Protocol == ::PPP
+	Framed-Protocol = ::PPP,
+	Framed-Compression = ::Van-Jacobson-TCP-IP
 
 #
 # Last default: rlogin to our main server.
 #
 #DEFAULT
 #	Service-Type = ::Login-User,
-#	Login-Service = Rlogin,
+#	Login-Service = ::Rlogin,
 #	Login-IP-Host = shellbox.ispdomain.com
 
 # #

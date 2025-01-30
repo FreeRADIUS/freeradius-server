@@ -44,7 +44,7 @@
 #
 #fisp
 #	Service-Type == ::Framed-User,
-#	Framed-Protocol == PPP,
+#	Framed-Protocol == ::PPP,
 #	Framed-IP-Address == 255.255.255.254,
 #	Idle-Timeout <= 600,
 #	Session-Timeout <= 28800
@@ -62,7 +62,7 @@
 #
 #tisp
 #	Service-Type == ::Login-User,
-#	Login-Service == Telnet,
+#	Login-Service == ::Telnet,
 #	Login-TCP-Port == 23,
 #	Login-IP-Host == 192.0.2.1,
 #	Login-IP-Host == 192.0.2.2
@@ -103,15 +103,15 @@
 DEFAULT
 	Service-Type == ::Framed-User,
 	Service-Type == ::Login-User,
-	Login-Service == Telnet,
-	Login-Service == Rlogin,
-	Login-Service == TCP-Clear,
+	Login-Service == ::Telnet,
+	Login-Service == ::Rlogin,
+	Login-Service == ::TCP-Clear,
 	Login-TCP-Port <= 65536,
 	Framed-IP-Address == 255.255.255.254,
 	Framed-IP-Netmask == 255.255.255.255,
-	Framed-Protocol == PPP,
-	Framed-Protocol == SLIP,
-	Framed-Compression == Van-Jacobson-TCP-IP,
+	Framed-Protocol == ::PPP,
+	Framed-Protocol == ::SLIP,
+	Framed-Compression == ::Van-Jacobson-TCP-IP,
 	Framed-MTU >= 576,
 	Framed-Filter-ID =* ANY,
 	Reply-Message =* ANY,
