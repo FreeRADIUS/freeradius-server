@@ -92,7 +92,7 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_attribute
 	$(eval DIR:=${top_srcdir}/src/tests/unit)
 	@echo "UNIT-TEST $(lastword $(subst /, ,$(dir $@))) $(basename $(notdir $@))"
 	${Q}if ! $(TEST_BIN)/unit_test_attribute $(PURIFY) $(REWRITE_FLAGS) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r "$@" $(REQUIRE_ENUM_PREFIX) $<; then \
-		echo "TZ=GMT $(TEST_BIN)/unit_test_attribute $(PURIFY) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r \"$@\" $<"; \
+		echo "TZ=GMT $(TEST_BIN)/unit_test_attribute $(PURIFY) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r \"$@\" $(REQUIRE_ENUM_PREFIX) $<"; \
 		rm -f $(BUILD_DIR)/tests/test.unit; \
 		exit 1; \
 	fi
