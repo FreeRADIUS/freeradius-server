@@ -2587,6 +2587,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	slen = tmpl_afrom_substr(node, &vpt, &our_in, quote, p_rules, &our_t_rules);
 	if ((slen < 0) || ((slen == 0) && (quote == T_BARE_WORD))) {
 	error:
+		talloc_free(node);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
