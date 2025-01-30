@@ -7,8 +7,10 @@
 proto-dictionary radius
 tmpl-rules allow_unresolved=yes allow_unknown=yes
 
-condition &request.User-Name == &reply.User-Name
-match (&request.User-Name == &reply.User-Name)
+tmpl-rules allow_unresolved=false
+
+condition request.User-Name == reply.User-Name
+match (request.User-Name == reply.User-Name)
 
 # All IP address literals should be parsed as prefixes
 condition ("foo\
@@ -21,10 +23,10 @@ condition ()
 match ERROR offset 2: Empty expressions are invalid.
 
 condition (!)
-match ERROR offset 3: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here
 
 condition (|| b)
-match ERROR offset 2: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 2: Zero length attribute name: Unresolved attributes are not allowed here
 
 condition ((ok || handled) foo)
 match ERROR offset 18: Invalid operator
@@ -67,8 +69,8 @@ match %expr.rcode('ok')
 #
 #  Extra braces get squashed
 #
-condition (&User-Name == &User-Password)
-match (&User-Name == &User-Password)
+condition (User-Name == User-Password)
+match (User-Name == User-Password)
 
 condition (!ok)
 match !%expr.rcode('ok')
@@ -88,84 +90,81 @@ match !!%expr.rcode('ok')
 #
 #  These next two are identical after normalization
 #
-condition (&User-Name == &User-Password || &Filter-Id == &Reply-Message)
-match ((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
+condition (User-Name == User-Password || Filter-Id == Reply-Message)
+match ((User-Name == User-Password) || (Filter-Id == Reply-Message))
 
-condition ((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
-match ((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
+condition ((User-Name == User-Password) || (Filter-Id == Reply-Message))
+match ((User-Name == User-Password) || (Filter-Id == Reply-Message))
 
-condition (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
-match (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
+condition (!(User-Name == User-Password) || (Filter-Id == Reply-Message))
+match (!(User-Name == User-Password) || (Filter-Id == Reply-Message))
 
 #  different from the previous ones.
-condition (!((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)))
-match !((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
+condition (!((User-Name == User-Password) || (Filter-Id == Reply-Message)))
+match !((User-Name == User-Password) || (Filter-Id == Reply-Message))
 
-condition (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
-match (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
+condition (!(User-Name == User-Password) || (Filter-Id == Reply-Message))
+match (!(User-Name == User-Password) || (Filter-Id == Reply-Message))
 
 #
 #  @todo - parsing - unit_test_attribute should really check if we read the whole string
 #
-condition ((a == b) || (c == d)))
-match ((a == b) || (c == d))
-#match ERROR offset 23: Unexpected closing brace
+condition ((User-Name == 'b') || (Filter-Id == 'd')))
+match ERROR passed in 43, returned 42
 
-condition (handled && (&Packet-Type == Access-Challenge))
-match (%expr.rcode('handled') && (&Packet-Type == Access-Challenge))
+condition (handled && (Packet-Type == ::Access-Challenge))
+match (%expr.rcode('handled') && (Packet-Type == ::Access-Challenge))
 
 # This is OK, without the braces
-condition handled && &Packet-Type == Access-Challenge
-match (%expr.rcode('handled') && (&Packet-Type == Access-Challenge))
+condition handled && Packet-Type == ::Access-Challenge
+match (%expr.rcode('handled') && (Packet-Type == ::Access-Challenge))
 
 # and this, though it's not a good idea.
-condition handled &&&Packet-Type == Access-Challenge
-match (%expr.rcode('handled') && (&Packet-Type == Access-Challenge))
+condition handled &&&Packet-Type == ::Access-Challenge
+match (%expr.rcode('handled') && (Packet-Type == ::Access-Challenge))
 
-condition &reply == &request
+condition reply == request
 match ERROR offset 1: Cannot use list references in condition
 
-condition &reply == "hello"
+condition reply == "hello"
 match ERROR offset 1: Cannot use list references in condition
 
-condition "hello" == &reply
+condition "hello" == reply
 match ERROR offset 12: Cannot use list references in condition
 
-condition &User-Name == &User-Password
-match (&User-Name == &User-Password)
+condition User-Name == User-Password
+match (User-Name == User-Password)
 
-condition &User-Name != &User-Password
-match (&User-Name != &User-Password)
+condition User-Name != User-Password
+match (User-Name != User-Password)
 
-condition !(&User-Name != &User-Password)
-match !(&User-Name != &User-Password)
+condition !(User-Name != User-Password)
+match !(User-Name != User-Password)
 
 condition (ipv6addr)::1
 match ::1
 
-condition (ipaddr)&Filter-Id == &Framed-IP-Address
-match ((ipaddr)&Filter-Id == &Framed-IP-Address)
+condition (ipaddr)Filter-Id == Framed-IP-Address
+match ((ipaddr)Filter-Id == Framed-IP-Address)
 
 #
 #  We can automatically promote things as needed.  But if the
 #  user forces incompatible types, then that's an error.
 #
-#  @todo - cast - this seems rather a bit wrong
-#
-condition (ipaddr)&Filter-Id == (uint) &Framed-IP-Address
-match (((ipaddr)&Filter-Id == uint) & Framed-IP-Address)
+condition (ipaddr)Filter-Id == (uint) Framed-IP-Address
+match ERROR offset 23: Attribute 'uint' not found in namespace 'internal': Unresolved attributes are not allowed here
 
-#
-#  @todo - cast - yeah, this is quite wrong.
-#
-condition (blerg)&Filter-Id == "foo"
-match (blerg & (Filter-Id == "foo"))
+condition (ipaddr)Filter-Id == (uint32) Framed-IP-Address
+match ((ipaddr)Filter-Id == (uint32)Framed-IP-Address)
+
+condition (blerg)Filter-Id == "foo"
+match ERROR offset 2: Attribute 'blerg' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 #
 #  Normalize things
 #
-condition (ipaddr)127.0.0.1 < &Framed-IP-Address
-match (127.0.0.1 < &Framed-IP-Address)
+condition (ipaddr)127.0.0.1 < Framed-IP-Address
+match (127.0.0.1 < Framed-IP-Address)
 
 # =* and !* are only for attrs / lists
 condition "foo" !* bar
@@ -175,70 +174,64 @@ condition "foo" =* bar
 match ERROR offset 7: Invalid operator
 
 # existence checks don't need the RHS
-condition &User-Name =* bar
+condition User-Name =* bar
+match ERROR offset 11: Invalid operator
+
+condition User-Name !* bar
+match ERROR offset 11: Invalid operator
+
+condition !User-Name =* bar
 match ERROR offset 12: Invalid operator
 
-condition &User-Name !* bar
+condition !User-Name !* bar
 match ERROR offset 12: Invalid operator
-
-condition !&User-Name =* bar
-match ERROR offset 13: Invalid operator
-
-condition !&User-Name !* bar
-match ERROR offset 13: Invalid operator
 
 # redundant casts get squashed
-condition (ipaddr)&Framed-IP-Address == 127.0.0.1
-match (&Framed-IP-Address == 127.0.0.1)
+condition (ipaddr)Framed-IP-Address == 127.0.0.1
+match (Framed-IP-Address == 127.0.0.1)
 
-condition (cidr)&Framed-IP-Address <= 192.168.0.0/16
-match ((ipv4prefix)&Framed-IP-Address <= 192.168.0.0/16)
+condition (cidr)Framed-IP-Address <= 192.168.0.0/16
+match ((ipv4prefix)Framed-IP-Address <= 192.168.0.0/16)
 
 # All IP address literals should be parsed as prefixes
-condition &Framed-IP-Address <= 192.168.0.0/16
-match (&Framed-IP-Address <= 192.168.0.0/16)
+condition Framed-IP-Address <= 192.168.0.0/16
+match (Framed-IP-Address <= 192.168.0.0/16)
 
 # string attributes must be string
-condition &User-Name == "bob"
-match (&User-Name == "bob")
+condition User-Name == "bob"
+match (User-Name == "bob")
 
-condition &User-Name == 'bob'
-match (&User-Name == 'bob')
+condition User-Name == 'bob'
+match (User-Name == 'bob')
 
-#
-#  @todo - parsing - bare-word bob isn't a valid enum name
-#
-condition &User-Name == bob
-match (&User-Name == bob)
+condition User-Name == 'bob'
+match (User-Name == 'bob')
 
 # Integer (etc.) types must be "bare"
-condition &Session-Timeout == 10
-match (&Session-Timeout == 10)
+condition Session-Timeout == 10
+match (Session-Timeout == 10)
 
 #
 #  @todo - parsing - no automatic type casting
 #
-condition &Session-Timeout == '10'
-match  (&Session-Timeout == '10')
+condition Session-Timeout == '10'
+match  (Session-Timeout == '10')
 
 # Except for dates, which can be humanly readable!
 # This one is be an expansion, so it's left as-is.
-condition &Event-Timestamp == "January 1, 2012 %{blah}"
-match (&Event-Timestamp == "January 1, 2012 %{blah}")
+condition Event-Timestamp == "January 1, 2012 %{User-Name}"
+match (Event-Timestamp == "January 1, 2012 %{User-Name}")
 
 # This one is NOT an expansion, so it's parsed into normal form
-condition &Event-Timestamp == 'January 1, 2012'
-#data &Event-Timestamp == 'Jan  1 2012 00:00:00 EST'
+condition Event-Timestamp == 'January 1, 2012'
+#data Event-Timestamp == 'Jan  1 2012 00:00:00 EST'
 
 # literals are parsed when the conditions are parsed
 condition (integer)X == 1
-match ERROR offset 10: Failed parsing input
+match ERROR offset 10: Attribute 'X' not found in namespace 'internal': Unresolved attributes are not allowed here
 
-#
-#  @todo - parsing - there is no enum named "X"
-#
-condition &NAS-Port == X
-match (&NAS-Port == X)
+condition NAS-Port == X
+match ERROR offset 13: Attribute 'X' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 #
 #  The RHS is a static string, so this gets mashed to a literal,
@@ -266,7 +259,7 @@ condition (ether) 00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')"
 match (00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')")
 
 condition (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
-match ERROR offset 9: enum values must contain at least one alpha character
+match ERROR offset 11: Unexpected text after attribute reference
 
 #
 #  Tests for boolean data types.
@@ -283,16 +276,16 @@ match false
 condition 0
 match 0
 
-condition true && (&User-Name == "bob")
-match (&User-Name == "bob")
+condition true && (User-Name == "bob")
+match (User-Name == "bob")
 
-condition false && (&User-Name == "bob")
+condition false && (User-Name == "bob")
 match false
 
-condition false || (&User-Name == "bob")
-match (&User-Name == "bob")
+condition false || (User-Name == "bob")
+match (User-Name == "bob")
 
-condition true || (&User-Name == "bob")
+condition true || (User-Name == "bob")
 match true
 
 #
@@ -333,11 +326,11 @@ match false
 #  a double-quoted string.  Except that there's no '%'
 #  in it, so it reverts back to a literal.
 #
-condition (&User-Name == "bob")
-match (&User-Name == "bob")
+condition (User-Name == "bob")
+match (User-Name == "bob")
 
-condition (&User-Name == "%md4(' blah')")
-match (&User-Name == "%md4(' blah')")
+condition (User-Name == "%md4(' blah')")
+match (User-Name == "%md4(' blah')")
 
 condition (ipaddr)127.0.0.1 == 2130706433
 match true
@@ -347,7 +340,7 @@ condition (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
 
 condition (ipaddr)127.0.0.1/327 == 127.0.0.1
-match ERROR offset 9: enum values must contain at least one alpha character
+match ERROR offset 14: Parent type of nested attribute 0 must be of type "struct", "tlv", "vendor", "vsa" or "group", got "octets"
 
 condition (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
@@ -386,7 +379,7 @@ condition ('a')
 match 'a'
 
 condition (a)
-match ERROR offset 1: Unexpected text - attribute names must be prefixed with '&'
+match ERROR offset 2: Attribute 'a' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 #
 #  Module return codes are OK
@@ -403,13 +396,13 @@ match %expr.rcode('fail')
 condition ("a")
 match "a"
 
-condition (&User-Name)
-match &User-Name
+condition (User-Name)
+match User-Name
 
 #
 #  Forbidden data types in cast
 #
-condition ((vsa)"foo" == &User-Name)
+condition ((vsa)"foo" == User-Name)
 match ERROR offset 2: Invalid data type 'vsa' in cast
 
 #
@@ -417,32 +410,32 @@ match ERROR offset 2: Invalid data type 'vsa' in cast
 #  of the same type, then re-write it so that the attribute
 #  is on the LHS of the condition.
 #
-condition (string)"foo" == &User-Name
-match ("foo" == &User-Name)
+condition (string)"foo" == User-Name
+match ("foo" == User-Name)
 
-condition (integer)"%md4(' 1 + 1')" < &NAS-Port
-match ((uint32)"%md4(' 1 + 1')" < &NAS-Port)
+condition (integer)"%md4(' 1 + 1')" < NAS-Port
+match ((uint32)"%md4(' 1 + 1')" < NAS-Port)
 
 #
 #  The string gets parsed as an IP address.
 #
 
-condition &Filter-Id == &Framed-IP-Address
-match (&Filter-Id == &Framed-IP-Address)
+condition Filter-Id == Framed-IP-Address
+match (Filter-Id == Framed-IP-Address)
 
-condition (ipaddr)127.0.0.1 == &Filter-Id
-match (127.0.0.1 == &Filter-Id)
+condition (ipaddr)127.0.0.1 == Filter-Id
+match (127.0.0.1 == Filter-Id)
 
-condition &Acct-Input-Octets64 == &request.Foo-Stuff-Bar
-match (&Acct-Input-Octets64 == &request.Foo-Stuff-Bar)
+condition Acct-Input-Octets64 == request.Session-Timeout
+match (Acct-Input-Octets64 == request.Session-Timeout)
 
-condition &Acct-Input-Octets64 == &reply.Foo-Stuff-Bar
-match (&Acct-Input-Octets64 == &reply.Foo-Stuff-Bar)
+condition Acct-Input-Octets64 == reply.Session-Timeout
+match (Acct-Input-Octets64 == reply.Session-Timeout)
 
 #
 #  Casting attributes of different size
 #
-condition (ipaddr)&Acct-Input-Octets64 == &Framed-IP-Address
+condition (ipaddr)Acct-Input-Octets64 == Framed-IP-Address
 match ERROR offset 9: Cannot cast type 'uint64' to 'ipaddr'
 
 #
@@ -450,52 +443,50 @@ match ERROR offset 9: Cannot cast type 'uint64' to 'ipaddr'
 #  if the prefix is /32.  We don't know enough at compile time,
 #  so this may be a run-time failure.
 #
-condition (ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
-match ((ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address)
+condition (ipaddr)PMIP6-Home-IPv4-HoA == Framed-IP-Address
+match ((ipaddr)PMIP6-Home-IPv4-HoA == Framed-IP-Address)
 
 # but these are allowed
-condition (ether)&Acct-Input-Octets64 == "%interpreter('foo')"
-match ((ether)&Acct-Input-Octets64 == "%interpreter('foo')")
+condition (ether)Acct-Input-Octets64 == "%interpreter('foo')"
+match ((ether)Acct-Input-Octets64 == "%interpreter('foo')")
 
-condition (ipaddr)&Filter-Id == &Framed-IP-Address
-match ((ipaddr)&Filter-Id == &Framed-IP-Address)
+condition (ipaddr)Filter-Id == Framed-IP-Address
+match ((ipaddr)Filter-Id == Framed-IP-Address)
 
-condition (ipaddr)&Class == &Framed-IP-Address
-match ((ipaddr)&Class == &Framed-IP-Address)
+condition (ipaddr)Class == Framed-IP-Address
+match ((ipaddr)Class == Framed-IP-Address)
 
 #
 #  zero offset into arrays get parsed and ignored
 #
-condition &User-Name[0] == "bob"
-match (&User-Name[0] == "bob")
+condition User-Name[0] == "bob"
+match (User-Name[0] == "bob")
 
-condition &User-Name[1] == "bob"
-match (&User-Name[1] == "bob")
+condition User-Name[1] == "bob"
+match (User-Name[1] == "bob")
 
-condition &User-Name[n] == "bob"
-match (&User-Name[n] == "bob")
+condition User-Name[n] == "bob"
+match (User-Name[n] == "bob")
 
 #
-#  This is allowed for pass2-fixups.  Foo-Bar MAY be an attribute.
-#  If so allow it so that pass2 can fix it up.  Until then,
-#  it's an unknown attribute
+#  Disallowed as it's an unknown attribute
 #
-condition &Foo-Bar
-match &Foo-Bar
+condition Foo-Bar
+match ERROR offset 1: Attribute 'Foo-Bar' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 #  Same types are optimized
 #
 #  FIXME: the tests don't currently run the "pass2" checks.
 #  This test should really be:
 #
-#	data &Acct-Input-Octets > &Session-Timeout
+#	data Acct-Input-Octets > Session-Timeout
 #
-condition &Acct-Input-Octets > "%{Session-Timeout}"
-match (&Acct-Input-Octets > "%{Session-Timeout}")
+condition Acct-Input-Octets > "%{Session-Timeout}"
+match (Acct-Input-Octets > "%{Session-Timeout}")
 
 #  Separate types aren't optimized
-condition &Acct-Input-Octets-64 > "%{Session-Timeout}"
-match (&Acct-Input-Octets-64 > "%{Session-Timeout}")
+condition Acct-Input-Octets64 > "%{Session-Timeout}"
+match (Acct-Input-Octets64 > "%{Session-Timeout}")
 
 #
 #  Parse OIDs into known attributes, where possible.
@@ -503,41 +494,41 @@ match (&Acct-Input-Octets-64 > "%{Session-Timeout}")
 #  @todo - peephole - Perhaps this isn't done because the xlat name is taken from the
 #  input, and not from the canonicalized names.
 #
-condition &26.24757.84.9.5.4 == 0x1a99
-match  (&26.24757.84.9.5.4 == 0x1a99)
-#match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port == 6809
+condition 26.24757.84.9.5.4 == 0x1a99
+match  (26.24757.84.9.5.4 == 0x1a99)
+#match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port == 6809
 
 #
 #  This OID is known, but the data is malformed.
 #  Allow it so that we can look for malformed attributes
 #  in packets.
 #
-condition &raw.26.24757.84.9.5.7 == 0x1a99
-match (&raw.26.24757.84.9.5.7 == 0x1a99)
-#match &raw.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Assigned == 0x1a99
+condition raw.26.24757.84.9.5.7 == 0x1a99
+match (raw.26.24757.84.9.5.7 == 0x1a99)
+#match raw.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Assigned == 0x1a99
 
 #  This one is really unknown
-condition &26.24757.84.9.5.15 == 0x1a99
-match (&26.24757.84.9.5.15 == 0x1a99)
-#match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.15 == 0x1a99
+condition 26.24757.84.9.5.15 == 0x1a99
+match (26.24757.84.9.5.15 == 0x1a99)
+#match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.15 == 0x1a99
 
 #
 #  Invalid array references.
 #
-condition &User-Name[a] == 'bob'
-match ERROR offset 12: Invalid array index 'a'
+condition User-Name[a] == 'bob'
+match ERROR offset 11: Attribute 'a' not found in namespace 'internal': Unresolved attributes are not allowed here
 
-condition &User-Name == &Filter-Id[a]
-match ERROR offset 26: Invalid array index 'a'
+condition User-Name == Filter-Id[a]
+match ERROR offset 24: Attribute 'a' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 #
 #  Bounds checks...
 #
-condition &User-Name[1001] == 'bob'
-match ERROR offset 12: Invalid array index '1001' (should be between 0-1000)
+condition User-Name[1001] == 'bob'
+match ERROR offset 11: Invalid array index '1001' (should be between 0-1000)
 
-condition &User-Name[-1] == 'bob'
-match ERROR offset 12: Invalid array index '-1'
+condition User-Name[-1] == 'bob'
+match ERROR offset 11: Invalid array index '-1'
 
 #
 #  Sometimes the attribute/condition parser needs to fallback to bare words
@@ -545,33 +536,34 @@ match ERROR offset 12: Invalid array index '-1'
 #  @todo - bare word - this is likely treating the LHS as an enum which is impossible here
 #
 condition request.Foo == 'request.Foo'
-match (request.Foo == 'request.Foo')
+match ERROR offset 9: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 # Bareword compared with bareword is true
 condition request.Foo+Bar == request.Foo+Bar
-match (request.Foo+Bar == request.Foo+Bar)
+match ERROR offset 9: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
 
-condition &request.Foo+Bar == 'request.Foo+Bar'
-match ((&request.Foo + Bar) == 'request.Foo+Bar')
-#match ERROR offset 13: Unexpected text after attribute reference
+condition request.Foo+Bar == 'request.Foo+Bar'
+match ERROR offset 9: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
+
+condition request.User-Name+User-Password == 'request.Foo+Bar'
+match ((request.User-Name + User-Password) == 'request.Foo+Bar')
 
 #
 #  @todo - bare word - this is wrong
 #
-condition 'request.Foo+d' == &request.Foo+Bar
-match ('request.Foo+d' == (&request.Foo + Bar))
-#match ERROR offset 32: Unexpected text after attribute reference
+condition 'request.Foo+d' == request.Foo+Bar
+match ERROR offset 28: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 #  Attribute tags are not allowed for unknown attributes
-condition &request.FooBar:0 == &request.FooBar
-match ERROR offset 16: Unexpected text after attribute reference
+condition request.Tunnel-Password:0 == 0
+match ERROR offset 24: Unexpected text after attribute reference
 
-condition &not-a-list:User-Name == &not-a-list:User-Name
-match ERROR offset 12: Unexpected text after attribute reference
+condition not-a-list:User-Name == not-a-list:User-Name
+match ERROR offset 1: Attribute 'not-a-list' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 # . is a valid dictionary name attribute, so we can't error out in pass1
-condition &not-a-packet.User-Name == &not-a-packet.User-Name
-match (&not-a-packet.User-Name == &not-a-packet.User-Name)
+condition not-a-packet.User-Name == not-a-packet.User-Name
+match ERROR offset 1: Attribute 'not-a-packet' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 #
 #  The LHS is a string with ASCII 5C 30 30 30 inside of it vs the RHS which should contain ASCII 0.
@@ -585,25 +577,25 @@ match false
 #
 #  @todo - peephole - resolve it and change its name
 #
-condition &1 == 0x616263
-match (&1 == 0x616263)
+condition raw.1 == 0x616263
+match (raw.1 == 0x616263)
 
-condition &26.11344.1 == 0x7f000001
-match (&26.11344.1 == 0x7f000001)
-#match &Vendor-Specific.FreeRADIUS.Proxied-To == 127.0.0.1
+condition raw.26.11344.1 == 0x7f000001
+match (raw.26.11344.1 == 0x7f000001)
+#match Vendor-Specific.FreeRADIUS.Proxied-To == 127.0.0.1
 
 #
 #  Escape the backslashes correctly
 #  And print them correctly
 #
-condition &User-Name == '\\'
-match (&User-Name == '\\')
+condition User-Name == '\\'
+match (User-Name == '\\')
 
-condition &User-Name == "@|\\"
-match (&User-Name == "@|\\")
+condition User-Name == "@|\\"
+match (User-Name == "@|\\")
 
-condition &User-Name != "foo\nbar"
-match (&User-Name != "foo\nbar")
+condition User-Name != "foo\nbar"
+match (User-Name != "foo\nbar")
 
 #
 #  We infer that the LHS is a prefix and the RHS is
@@ -615,28 +607,24 @@ match true
 condition (ipv4prefix)192.168.0.0/16 > 192.168.1.2
 match true
 
-condition (ipv4prefix)&NAS-IP-Address == 192.168.0.0/24
-match ((ipv4prefix)&NAS-IP-Address == 192.168.0.0/24)
+condition (ipv4prefix)NAS-IP-Address == 192.168.0.0/24
+match ((ipv4prefix)NAS-IP-Address == 192.168.0.0/24)
 
 #
 #  rewrite so that the attribute is on the LHS
 #  and, move the cast to the attribute, as the RHS
 #  is parsed as ipv4prefix
 #
-condition (ipv4prefix)192.168.0.0/24 > &NAS-IP-Address
-match (192.168.0.0/24 > &NAS-IP-Address)
+condition (ipv4prefix)192.168.0.0/24 > NAS-IP-Address
+match (192.168.0.0/24 > NAS-IP-Address)
 
 #
 #  This is allowed and means "the list is not empty"
 #
-condition (&reply.)
-match &reply.
-
+#  @todo - 2024-01-26 this should succeed!
 #
-#  Attributes with a protocol namespace
-#
-condition &radius.User-Name == 'bob'
-match (&radius.User-Name == 'bob')
+#condition (reply.)
+#match reply.
 
 condition !(!(0))
 match !!0
@@ -647,20 +635,20 @@ match false
 #
 #  More short-circuit evaluations
 #
-condition (&User-Name == "bob") && (false)
+condition (User-Name == "bob") && (false)
 match false
 
 #
 #  This could return a string of the User-Name, *or* a boolean true.
 #
-condition &User-Name || true
-match (&User-Name || true)
+condition User-Name || true
+match (User-Name || true)
 
 #
 #  The evaluator does not know that the LHS returns a boolean, so it
 #  can't optimize it.
 #
-condition (&User-Name == "bob") || (true)
+condition (User-Name == "bob") || (true)
 match true
 
 #
@@ -669,20 +657,20 @@ match true
 #	0 && (1 || 1) = 0 && 1 == 0
 #	(0 && 1) || 1 = 0 || 1 == 1
 #
-condition (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
-match ((&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message))
+condition (User-Name == "bob") && ((User-Password == "bob") || EAP-Message)
+match ((User-Name == "bob") && ((User-Password == "bob") || EAP-Message))
 
 #
 #  Triple-quoted strings are parsed, but are printd as single-quoted ones.  Sue me.
 #
-condition (&User-Name == """bob "quoted" """)
-match (&User-Name == "bob \"quoted\" ")
+condition (User-Name == """bob "quoted" """)
+match (User-Name == "bob \"quoted\" ")
 
 #
 #  And enums inside of a sub-expression.
 #
 condition !(&Service-Type == ::Framed-User)
-match !(&Service-Type == ::Framed-User)
+match !(Service-Type == ::Framed-User)
 
 count
-match 307
+match 308

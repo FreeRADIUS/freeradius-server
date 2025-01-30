@@ -82,6 +82,7 @@ $(BUILD_DIR)/tests/unit/xlat/purify.txt $(filter $(BUILD_DIR)/tests/unit/xlat/co
 #  with the "actual" output.  But only for the "match" command.  Everything is including comments and blank
 #  lines is copied verbatim.
 #
+REQUIRE_ENUM_PREFIX=-S require_enum_prefix=yes
 
 #REWRITE_FLAGS = -w $(BUILD_DIR)/tmp
 #

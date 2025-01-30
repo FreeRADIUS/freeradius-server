@@ -158,10 +158,10 @@ xlat %{}
 match ERROR offset 3: Empty expression is invalid
 
 xlat %{:}
-match ERROR offset 3: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat %{:bar}
-match ERROR offset 3: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat %foo(' bar')
 match ERROR offset 2: Unresolved expansion functions are not allowed here
@@ -173,25 +173,25 @@ xlat %{[baz}
 match ERROR offset 3: Missing attribute name
 
 xlat %{ }
-match ERROR offset 4: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 4: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat %{\t}
-match ERROR offset 3: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat %{\n}
-match ERROR offset 3: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat %{foo }
-match ERROR offset 7: Unexpected text - attribute names must be prefixed with '&'
+match ERROR offset 3: Attribute 'foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat %{foo bar}
-match ERROR offset 7: Invalid operator
+match ERROR offset 3: Attribute 'foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat %test(
 match ERROR offset 7: Missing closing brace
 
 xlat %test(%{User-Name)
-match ERROR offset 18: Unexpected text - attribute names must be prefixed with '&'
+match ERROR offset 18: Missing closing brace
 
 # Discuss - Not sure the offset/message is correct here, but not sure if we can determine the correct offset either
 xlat %test(%{User-Name}
@@ -235,7 +235,7 @@ match [0]{ /bin/sh }, [1]{ foo bar }, [2]{ %{User-Name} %{Filter-Id} }
 #  to xlat_tokenize_expansion()
 #
 xlat_argv /bin/sh "foo bar" "%{User-Name} %{Filter-Id"
-match ERROR offset 44: Unexpected text after enum value.  Expected operator
+match ERROR offset 44: Unexpected text after attribute reference
 
 # and text immediately after a variable expansion
 xlat_argv echo hello %{Filter-Id}:1234 world
@@ -253,8 +253,8 @@ match %debug("foo")
 #
 #  This is correct.
 #
-xlat %rpad(&User-Name, 5, 'x')
-match %rpad(&User-Name, 5, 'x')
+xlat %rpad(User-Name, 5, 'x')
+match %rpad(User-Name, 5, 'x')
 
 #
 #  The second argument should be an integer.
@@ -262,8 +262,8 @@ match %rpad(&User-Name, 5, 'x')
 #  @todo - parsing - we don't currently track string offsets for intermediate nodes,
 #  so the "offset 23" is wrong.  It also doesn't say *which* string is wrong.  We'll fix that later.
 #
-xlat %rpad(&User-Name, foo, 'x')
-match ERROR offset 28: Failed parsing argument 1 as type 'uint64'
+xlat %rpad(User-Name, foo, 'x')
+match ERROR offset 27: Failed parsing argument 1 as type 'uint64'
 
 #
 #  Argument quoting

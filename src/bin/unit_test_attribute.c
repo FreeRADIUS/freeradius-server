@@ -1517,7 +1517,13 @@ static size_t command_condition_normalise(command_result_t *result, command_file
 		talloc_free(cs);
 		RETURN_OK_WITH_ERROR();
 	}
-	len = xlat_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), head, NULL);
+
+	if ((size_t) slen < inlen) {
+		len = snprintf(data, COMMAND_OUTPUT_MAX, "ERROR passed in %zu, returned %zd", inlen, slen);
+
+	} else {
+		len = xlat_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), head, NULL);
+	}
 
 	talloc_free(head);
 	talloc_free(cs);
@@ -3383,6 +3389,7 @@ static command_file_ctx_t *command_ctx_alloc(TALLOC_CTX *ctx,
 
 	cc->tmpl_rules.attr.list_def = request_attr_request;
 	cc->tmpl_rules.attr.namespace = fr_dict_root(cc->config->dict);
+	cc->tmpl_rules.attr.allow_unresolved = false; /* tests have to use real attributes */
 
 	return cc;
 }

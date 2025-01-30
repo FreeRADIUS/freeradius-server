@@ -7,11 +7,11 @@
 proto-dictionary radius
 tmpl-rules allow_unresolved=yes allow_unknown=yes
 
-condition &User-Name =~ (uint32) /foo/
-match ERROR offset 15: Expected regular expression
+condition User-Name =~ (uint32) /foo/
+match ERROR offset 14: Expected regular expression
 
-condition &User-Name !~ /^foo\nbar$/
-match (&User-Name !~ /^foo\nbar$/)
+condition User-Name !~ /^foo\nbar$/
+match (User-Name !~ /^foo\nbar$/)
 
 condition ('ok' =~ 'handled')
 match ERROR offset 10: Expected regular expression
@@ -57,29 +57,29 @@ match ERROR offset 16: Duplicate regex flag 'i'
 #  And print them correctly
 #
 
-condition &User-Name =~ /@|./
-match (&User-Name =~ /@|./)
+condition User-Name =~ /@|./
+match (User-Name =~ /@|./)
 
-condition &User-Name =~ /@|\\/
-match  (&User-Name =~ /@|\\/)
+condition User-Name =~ /@|\\/
+match  (User-Name =~ /@|\\/)
 
-condition &User-Name =~ /^([^\\]*)\\(.*)$/
-match (&User-Name =~ /^([^\\]*)\\(.*)$/)
+condition User-Name =~ /^([^\\]*)\\(.*)$/
+match (User-Name =~ /^([^\\]*)\\(.*)$/)
 
 #
 #  Non-integer types get cast to string.
 #
-condition &NAS-Port =~ /%{NAS-Port}/
-match ((string)&NAS-Port =~ /%{NAS-Port}/)
+condition NAS-Port =~ /%{NAS-Port}/
+match ((string)NAS-Port =~ /%{NAS-Port}/)
 
 #
 #  Cannot add a bad cast
 #
-condition (uint32)&Filter-Id =~ /foo/
+condition (uint32)Filter-Id =~ /foo/
 match ERROR offset 1: Casts cannot be used with regular expressions
 
-condition &Filter-Id =~ (uint32)/foo/
-match ERROR offset 15: Expected regular expression
+condition Filter-Id =~ (uint32)/foo/
+match ERROR offset 14: Expected regular expression
 
 xlat %{1}
 match %{1}
@@ -87,8 +87,8 @@ match %{1}
 xlat %{33}
 match ERROR offset 3: Invalid regex reference.  Must be in range 0-32
 
-condition &User-Name == /foo/
-match ERROR offset 15: Unexpected regular expression
+condition User-Name == /foo/
+match ERROR offset 14: Unexpected regular expression
 
 condition %md5("foo") =~ /foo/
 match ((string)%md5("foo") =~ /foo/)

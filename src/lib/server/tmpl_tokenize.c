@@ -3151,7 +3151,7 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 			break;
 
 		default:
-			fr_strerror_const("Unexpected text after enum value.  Expected operator");
+			fr_strerror_const("Unexpected text after enum value.");
 			break;
 		}
 
@@ -3384,10 +3384,16 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		/*
 		 *	We can't parse it as anything, that's an error.
+		 *
+		 *	But it may be an enumeration value for an
+		 *	attribute which is loaded later.  In which
+		 *	case we allow parsing the enumeration.
 		 */
 		if (tmpl_require_enum_prefix) {
 			if (!fr_sbuff_is_str_literal(&our_in, "::")) {
-				fr_strerror_const("Failed parsing input");
+				/*
+				 *	Return the error string from parsing the attribute!
+				 */
 				FR_SBUFF_ERROR_RETURN(&our_in);
 			}
 		}
@@ -3419,7 +3425,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 				break;
 
 			default:
-				fr_strerror_const("Unexpected text after enum value.  Expected operator");
+				fr_strerror_const("Unexpected text after enum value.");
 				break;
 			}
 

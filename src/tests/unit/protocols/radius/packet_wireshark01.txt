@@ -8,7 +8,7 @@
 #
 #  Based on:
 #  - https://wiki.wireshark.org/SampleCaptures
-#  - https://wiki.wireshark.org/SampleCaptures?action=AttachFile&do=get&target=radius_localhost.pcapng
+#  - https://wiki.wireshark.org/SampleCaptures?action=AttachFiledo=gettarget=radius_localhost.pcapng
 #
 proto radius
 proto-dictionary radius

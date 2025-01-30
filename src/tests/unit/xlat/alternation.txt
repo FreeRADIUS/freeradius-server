@@ -21,10 +21,10 @@ xlat %{%test(bar) || %{%{User-Name} || 'bar'}}
 match %{(%test(bar) || %{(%{User-Name} || 'bar')})}
 
 xlat %{%{User-Name} || }
-match ERROR offset 19: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 19: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat %{%{Operator-Name} || }
-match ERROR offset 23: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+matchERROR offset 23: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat %{%{%{User-Name} || 'foo'} || 'bar'}
 match %{(%{(%{User-Name} || 'foo')} || 'bar')}
@@ -33,10 +33,10 @@ xlat %{%{%{User-Name} || 'foo'} || %{%test(bar) || %{User-Name}}}
 match %{(%{(%{User-Name} || 'foo')} || %{(%test(bar) || %{User-Name})})}
 
 xlat %{ || }
-match ERROR offset 4: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 4: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat %{ || %{User-Name}}
-match ERROR offset 4: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 4: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat %{%{} || }
 match ERROR offset 5: Empty expression is invalid
@@ -45,7 +45,7 @@ xlat %{%{} || foo}
 match ERROR offset 5: Empty expression is invalid
 
 xlat %{%{User-Name} || 
-match ERROR offset 19: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 19: Empty attribute reference
 
 # Discuss - Not sure the offset/message is correct here, but not sure if we can determine the correct offset either
 xlat %{%{User-Name} || 'foo'

@@ -18,10 +18,10 @@ xlat_purify ()
 match ERROR offset 2: Empty expressions are invalid.
 
 xlat_purify (!)
-match ERROR offset 3: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat_purify (|| b)
-match ERROR offset 2: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 2: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat_purify ((ok || handled) foo)
 match ERROR offset 18: Invalid operator
@@ -33,8 +33,8 @@ match ERROR offset 4: Invalid operator
 #
 #  0 - 111 is smaller than zero, and Service-Type is uint32.
 #
-xlat_purify (&Service-Type == 000-111)
-match (&Service-Type == (0 - 111))
+xlat_purify (Service-Type == 000-111)
+match (Service-Type == (0 - 111))
 
 xlat_purify (ok FOO handled)
 match ERROR offset 5: Invalid operator
@@ -63,8 +63,8 @@ match ERROR offset 5: Invalid operator
 #
 #  Extra braces get squashed
 #
-#xlat_purify (&User-Name == &User-Password)
-#match (&User-Name == &User-Password)
+#xlat_purify (User-Name == User-Password)
+#match (User-Name == User-Password)
 
 #xlat_purify (!ok)
 #match !ok
@@ -81,26 +81,26 @@ match ERROR offset 2: Double operator is invalid
 #
 #  These next two are identical after normalization
 #
-xlat_purify (&User-Name == &User-Password || &Filter-Id == &Reply-Message)
-match ((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
+xlat_purify (User-Name == User-Password || Filter-Id == Reply-Message)
+match ((User-Name == User-Password) || (Filter-Id == Reply-Message))
 
-xlat_purify ((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
-match ((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
+xlat_purify ((User-Name == User-Password) || (Filter-Id == Reply-Message))
+match ((User-Name == User-Password) || (Filter-Id == Reply-Message))
 
-xlat_purify (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
-match (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
+xlat_purify (!(User-Name == User-Password) || (Filter-Id == Reply-Message))
+match (!(User-Name == User-Password) || (Filter-Id == Reply-Message))
 
 #  different from the previous ones.
-xlat_purify (!((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message)))
-match !((&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
+xlat_purify (!((User-Name == User-Password) || (Filter-Id == Reply-Message)))
+match !((User-Name == User-Password) || (Filter-Id == Reply-Message))
 
-xlat_purify (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
-match (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
+xlat_purify (!(User-Name == User-Password) || (Filter-Id == Reply-Message))
+match (!(User-Name == User-Password) || (Filter-Id == Reply-Message))
 
 #
 #  '!' is higher precedence that '==', so the '!' applies just to the User-Name
 #
-xlat_purify (!&User-Name == &User-Password || &Filter-Id == &Reply-Message)
+xlat_purify (!User-Name == User-Password || Filter-Id == Reply-Message)
 match ERROR offset 2: Operator '!' is only applied to the left hand side of the '==' operation, add (..) to evaluate the operation first
 
 #
@@ -118,46 +118,46 @@ match true
 #
 #  @todo - unit_test_attribute - add a flag which says to parse the FULL thing, or only parse part of it?
 #
-xlat_purify ((&User-Name == &Filter-Id) || (&Reply-Message == &User-Password)))
-match Passed in 67 characters, but only parsed 66 characters
+xlat_purify ((User-Name == Filter-Id) || (Reply-Message == User-Password)))
+match Passed in 63 characters, but only parsed 62 characters
 
 #
 #  Truthy strings get omitted.
 #
-xlat_purify ('handled' && (&Packet-Type == Access-Challenge))
-match (&Packet-Type == Access-Challenge)
+xlat_purify ('handled' && (Packet-Type == Access-Challenge))
+match ERROR offset 31: Attribute 'Access' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
-xlat_purify (handled && (&Packet-Type == Access-Challenge))
-match (%expr.rcode('handled') && (&Packet-Type == Access-Challenge))
+xlat_purify (handled && (Packet-Type == Access-Challenge))
+match ERROR offset 29: Attribute 'Access' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 # This is OK, without the braces
-xlat_purify 'handled' && &Packet-Type == Access-Challenge
-match (&Packet-Type == Access-Challenge)
+xlat_purify 'handled' && Packet-Type == Access-Challenge
+match ERROR offset 29: Attribute 'Access' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 # and this, though it's not a good idea.
 xlat_purify 'handled' &&&Packet-Type == Access-Challenge
-match (&Packet-Type == Access-Challenge)
+match ERROR offset 29: Attribute 'Access' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
-xlat_purify &reply == &request
+xlat_purify reply == request
 match ERROR offset 1: Cannot use list references in condition
 
-xlat_purify &reply == "hello"
+xlat_purify reply == "hello"
 match ERROR offset 1: Cannot use list references in condition
 
-xlat_purify "hello" == &reply
+xlat_purify "hello" == reply
 match ERROR offset 12: Cannot use list references in condition
 
 
 #
 #  We don't need to convert != to !(COND) for normal checks
 #
-xlat_purify &User-Name == &User-Password
-match (&User-Name == &User-Password)
+xlat_purify User-Name == User-Password
+match (User-Name == User-Password)
 
-xlat_purify &User-Name != &User-Password
-match (&User-Name != &User-Password)
+xlat_purify User-Name != User-Password
+match (User-Name != User-Password)
 
-xlat_purify !&User-Name != &User-Password
+xlat_purify !User-Name != User-Password
 match ERROR offset 1: Operator '!' is only applied to the left hand side of the '!=' operation, add (..) to evaluate the operation first
 
 #
@@ -176,68 +176,68 @@ match ERROR offset 11: Failed to parse IPv6 address string "xxx"
 #
 #  Various casts
 #
-xlat_purify (ipaddr)&Filter-Id == &Framed-IP-Address
-match ((ipaddr)&Filter-Id == &Framed-IP-Address)
+xlat_purify (ipaddr)Filter-Id == Framed-IP-Address
+match ((ipaddr)Filter-Id == Framed-IP-Address)
 
 #
 #  Don't normalize things
 #
-xlat_purify (ipaddr)127.0.0.1 < &Framed-IP-Address
-match (127.0.0.1 < &Framed-IP-Address)
+xlat_purify (ipaddr)127.0.0.1 < Framed-IP-Address
+match (127.0.0.1 < Framed-IP-Address)
 
 # redundant casts get squashed
-xlat_purify (ipaddr)&Framed-IP-Address == 127.0.0.1
-match (&Framed-IP-Address == 127.0.0.1)
+xlat_purify (ipaddr)Framed-IP-Address == 127.0.0.1
+match (Framed-IP-Address == 127.0.0.1)
 
-xlat_purify (cidr)&Framed-IP-Address <= 192.168.0.0/16
-match ((ipv4prefix)&Framed-IP-Address <= 192.168.0.0/16)
+xlat_purify (cidr)Framed-IP-Address <= 192.168.0.0/16
+match ((ipv4prefix)Framed-IP-Address <= 192.168.0.0/16)
 
 # All IP address literals should be parsed as prefixes
-xlat_purify &Framed-IP-Address <= 192.168.0.0/16
-match (&Framed-IP-Address <= 192.168.0.0/16)
+xlat_purify Framed-IP-Address <= 192.168.0.0/16
+match (Framed-IP-Address <= 192.168.0.0/16)
 
 # string attributes must be string
-xlat_purify &User-Name == "bob"
-match (&User-Name == "bob")
+xlat_purify User-Name == "bob"
+match (User-Name == "bob")
 
-xlat_purify &User-Name == 'bob'
-match (&User-Name == 'bob')
+xlat_purify User-Name == 'bob'
+match (User-Name == 'bob')
 
-xlat_purify &User-Name == bob
-match (&User-Name == 'bob')
+xlat_purify User-Name == bob
+match ERROR offset 14: Attribute 'bob' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 # Integer (etc.) types must be "bare"
-xlat_purify &Session-Timeout == 10
-match (&Session-Timeout == 10)
+xlat_purify Session-Timeout == 10
+match (Session-Timeout == 10)
 
 # Automatic type inference means this is fine
 
 #
 #  @todo - peephole - resolve the RHS to the type of the LHS
 #
-xlat_purify &Session-Timeout == '10'
-match (&Session-Timeout == '10')
+xlat_purify Session-Timeout == '10'
+match (Session-Timeout == '10')
 
 # Except for dates, which can be humanly readable!
 # This one is be an expansion, so it's left as-is.
 #
-xlat_purify &Event-Timestamp == "January 1, 2012 %{User-Name}"
-match (&Event-Timestamp == "January 1, 2012 %{User-Name}")
+xlat_purify Event-Timestamp == "January 1, 2012 %{User-Name}"
+match (Event-Timestamp == "January 1, 2012 %{User-Name}")
 
 # This one is NOT an expansion, so it's parsed into normal form
-xlat_purify &Event-Timestamp == 'January 1 2012'
-#match (&Event-Timestamp == 'Jan  1 2012 00:00:00 EST')
+xlat_purify Event-Timestamp == 'January 1 2012'
+#match (Event-Timestamp == 'Jan  1 2012 00:00:00 EST')
 
 # literals are parsed when the conditions are parsed
 xlat_purify (integer)X == 1
-match ERROR offset 10: Failed parsing input
+match ERROR offset 10: Attribute 'X' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  @todo - parsing - resolution is delayed, so we don't know where in the input
 #  string the RHS is.
 #
-xlat_purify &NAS-Port == X
-match ERROR offset 1: Failed parsing string as type 'uint32'
+xlat_purify NAS-Port == X
+match ERROR offset 13: Attribute 'X' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 #match ERROR offset 13: Failed parsing string as type 'uint32'
 
 #
@@ -271,7 +271,7 @@ xlat_purify (ether)00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')"
 match (00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')")
 
 xlat_purify (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
-match ERROR offset 9: enum values must contain at least one alpha character
+match ERROR offset 9: Unknown attributes not allowed here
 
 #
 #  Tests for boolean data types.
@@ -331,15 +331,15 @@ match false
 #  a double-quoted string.  Except that there's no '%'
 #  in it, so it reverts back to a literal.
 #
-xlat_purify (&User-Name == "bob")
-match (&User-Name == "bob")
+xlat_purify (User-Name == "bob")
+match (User-Name == "bob")
 
-xlat_purify (&User-Name == %md4(' blah'))
-match (&User-Name == 0x544924d05ec4481925ba3749a096a0a7)
+xlat_purify (User-Name == %md4(' blah'))
+match (User-Name == 0x544924d05ec4481925ba3749a096a0a7)
 
 #  and without the double quotes.
-xlat_purify (&User-Name == %md4(' blah'))
-match (&User-Name == 0x544924d05ec4481925ba3749a096a0a7)
+xlat_purify (User-Name == %md4(' blah'))
+match (User-Name == 0x544924d05ec4481925ba3749a096a0a7)
 
 xlat_purify (ipaddr)127.0.0.1 == 2130706433
 match true
@@ -349,7 +349,7 @@ xlat_purify (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
 
 xlat_purify (ipaddr)127.0.0.1/327 == 127.0.0.1
-match ERROR offset 9: enum values must contain at least one alpha character
+match ERROR offset 13: Unknown attributes not allowed here
 
 xlat_purify (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
@@ -405,13 +405,13 @@ match 'a'
 xlat_purify ("a")
 match "a"
 
-xlat_purify (&User-Name)
-match &User-Name
+xlat_purify (User-Name)
+match User-Name
 
 #
 #  Forbidden data types in cast
 #
-xlat_purify ((vsa)"foo" == &User-Name)
+xlat_purify ((vsa)"foo" == User-Name)
 match ERROR offset 2: Invalid data type 'vsa' in cast
 
 #
@@ -419,8 +419,8 @@ match ERROR offset 2: Invalid data type 'vsa' in cast
 #  of the same type, then re-write it so that the attribute
 #  is on the LHS of the condition.
 #
-xlat_purify (string)"foo" == &User-Name
-match ("foo" == &User-Name)
+xlat_purify (string)"foo" == User-Name
+match ("foo" == User-Name)
 
 # This used to be expr, but expr isn't a builtin, so it failed...
 
@@ -429,28 +429,28 @@ match ("foo" == &User-Name)
 #
 #  ERROR: Failed casting 0x002ade8665c69219ca16bd108d92c8d5 to data type uint32: Invalid cast from octets to uint32.  Source length 16 is greater than destination type size 4
 #
-xlat_purify (integer)"%md4(' 1 + 1')" < &NAS-Port
-match ((uint32)"0x002ade8665c69219ca16bd108d92c8d5" < &NAS-Port)
+xlat_purify (integer)"%md4(' 1 + 1')" < NAS-Port
+match ((uint32)"0x002ade8665c69219ca16bd108d92c8d5" < NAS-Port)
 
 #
 #  The string gets parsed as an IP address.
 #
-xlat_purify &Filter-Id == &Framed-IP-Address
-match (&Filter-Id == &Framed-IP-Address)
+xlat_purify Filter-Id == Framed-IP-Address
+match (Filter-Id == Framed-IP-Address)
 
-xlat_purify (ipaddr)127.0.0.1 == &Filter-Id
-match (127.0.0.1 == &Filter-Id)
+xlat_purify (ipaddr)127.0.0.1 == Filter-Id
+match (127.0.0.1 == Filter-Id)
 
-xlat_purify &Acct-Input-Octets64 == &request.Callback-Id
-match (&Acct-Input-Octets64 == &request.Callback-Id)
+xlat_purify Acct-Input-Octets64 == request.Callback-Id
+match (Acct-Input-Octets64 == request.Callback-Id)
 
-xlat_purify &Acct-Input-Octets64 == &reply.Callback-Id
-match (&Acct-Input-Octets64 == &reply.Callback-Id)
+xlat_purify Acct-Input-Octets64 == reply.Callback-Id
+match (Acct-Input-Octets64 == reply.Callback-Id)
 
 #
 #  Casting attributes of different size
 #
-xlat_purify (ipaddr)&Acct-Input-Octets64 == &Framed-IP-Address
+xlat_purify (ipaddr)Acct-Input-Octets64 == Framed-IP-Address
 match ERROR offset 9: Cannot cast type 'uint64' to 'ipaddr'
 
 #
@@ -458,105 +458,105 @@ match ERROR offset 9: Cannot cast type 'uint64' to 'ipaddr'
 #  if the prefix is /32.  We don't know enough at compile time,
 #  so this may be a run-time failure.
 #
-xlat_purify (ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
-match ((ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address)
+xlat_purify (ipaddr)PMIP6-Home-IPv4-HoA == Framed-IP-Address
+match ((ipaddr)PMIP6-Home-IPv4-HoA == Framed-IP-Address)
 
 # but these are allowed
-xlat_purify (ether)&Acct-Input-Octets64 == "%interpreter('foo')"
-match  ((ether)&Acct-Input-Octets64 == "%interpreter('foo')")
+xlat_purify (ether)Acct-Input-Octets64 == "%interpreter('foo')"
+match  ((ether)Acct-Input-Octets64 == "%interpreter('foo')")
 
-xlat_purify (ipaddr)&Filter-Id == &Framed-IP-Address
-match ((ipaddr)&Filter-Id == &Framed-IP-Address)
+xlat_purify (ipaddr)Filter-Id == Framed-IP-Address
+match ((ipaddr)Filter-Id == Framed-IP-Address)
 
-xlat_purify (ipaddr)&Class == &Framed-IP-Address
-match ((ipaddr)&Class == &Framed-IP-Address)
+xlat_purify (ipaddr)Class == Framed-IP-Address
+match ((ipaddr)Class == Framed-IP-Address)
 
 #
 #  zero offset into arrays get parsed and ignored
 #
-xlat_purify &User-Name[0] == "bob"
-match (&User-Name[0] == "bob")
+xlat_purify User-Name[0] == "bob"
+match (User-Name[0] == "bob")
 
-xlat_purify &User-Name[1] == "bob"
-match (&User-Name[1] == "bob")
+xlat_purify User-Name[1] == "bob"
+match (User-Name[1] == "bob")
 
-xlat_purify &User-Name[n] == "bob"
-match (&User-Name[n] == "bob")
+xlat_purify User-Name[n] == "bob"
+match (User-Name[n] == "bob")
 
 #
 #  This is allowed for pass2-fixups.  Foo-Bar MAY be an attribute.
 #  If so allow it so that pass2 can fix it up.  Until then,
 #  it's an unknown attribute
 #
-#xlat_purify &Foo-Bar
-#match &Foo-Bar
+#xlat_purify Foo-Bar
+#match Foo-Bar
 
-xlat_purify &Acct-Input-Octets > "%{Session-Timeout}"
-match (&Acct-Input-Octets > "%{Session-Timeout}")
+xlat_purify Acct-Input-Octets > "%{Session-Timeout}"
+match (Acct-Input-Octets > "%{Session-Timeout}")
 
-xlat_purify &Acct-Input-Octets > &Session-Timeout
-match (&Acct-Input-Octets > &Session-Timeout)
+xlat_purify Acct-Input-Octets > Session-Timeout
+match (Acct-Input-Octets > Session-Timeout)
 
 #  Separate types aren't optimized
-xlat_purify &Acct-Input-Octets64 > &Session-Timeout
-match (&Acct-Input-Octets64 > &Session-Timeout)
+xlat_purify Acct-Input-Octets64 > Session-Timeout
+match (Acct-Input-Octets64 > Session-Timeout)
 
 #
 #  Parse OIDs into known attributes, where possible.
 #
 # @todo - peephole - resolve the unknown attribute to something real!
-xlat_purify &26.24757.84.9.5.4 == 0x1a99
-match (&26.24757.84.9.5.4 == 0x1a99)
-#match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port == 6809
+xlat_purify 26.24757.84.9.5.4 == 0x1a99
+match (26.24757.84.9.5.4 == 0x1a99)
+#match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port == 6809
 
 #
 #  This OID is known, but the data is malformed.
 #  Allow it so that we can look for malformed attributes
 #  in packets.
 #
-xlat_purify &raw.26.24757.84.9.5.7 == 0x1a99
-match (&raw.26.24757.84.9.5.7 == 0x1a99)
-#match &raw.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Assigned == 0x1a99
+xlat_purify raw.26.24757.84.9.5.7 == 0x1a99
+match (raw.26.24757.84.9.5.7 == 0x1a99)
+#match raw.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Assigned == 0x1a99
 
 #  This one is really unknown
-xlat_purify &26.24757.84.9.5.15 == 0x1a99
-match ERROR offset 18: Unknown attributes not allowed here
-#match &Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.15 == 0x1a99
+xlat_purify 26.24757.84.9.5.15 == 0x1a99
+match ERROR offset 17: Unknown attributes not allowed here
+#match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.15 == 0x1a99
 
 #
 #  Invalid array references.
 #
-xlat_purify &User-Name[a] == 'bob'
-match ERROR offset 12: Invalid array index 'a'
+xlat_purify User-Name[a] == 'bob'
+match ERROR offset 11: Attribute 'a' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
-xlat_purify &User-Name == &Filter-Id[a]
-match ERROR offset 26: Invalid array index 'a'
+xlat_purify User-Name == Filter-Id[a]
+match ERROR offset 24: Attribute 'a' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  Bounds checks...
 #
-xlat_purify &User-Name[1001] == 'bob'
-match ERROR offset 12: Invalid array index '1001' (should be between 0-1000)
+xlat_purify User-Name[1001] == 'bob'
+match ERROR offset 11: Invalid array index '1001' (should be between 0-1000)
 
-xlat_purify &User-Name[-1] == 'bob'
-match ERROR offset 12: Invalid array index '-1'
+xlat_purify User-Name[-1] == 'bob'
+match ERROR offset 11: Invalid array index '-1'
 
 #
 #  attributes MUST be prefixed with '&'.
 #
 xlat_purify request.Foo == 'request.Foo'
-match true
+match ERROR offset 9: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
 
-xlat_purify &request.Foo == 'request.Foo'
-match ERROR offset 10: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
+xlat_purify request.Foo == 'request.Foo'
+match ERROR offset 9: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
 #match ERROR offset 10: Attribute 'Foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
-xlat_purify &not-a-list.User-Name == &not-a-list.User-Name
-match ERROR offset 2: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+xlat_purify not-a-list.User-Name == not-a-list.User-Name
+match ERROR offset 1: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 # . is a valid dictionary name attribute, so we can't error out in pass1
-xlat_purify &not-a-packet.User-Name == &not-a-packet.User-Name
-match ERROR offset 2: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+xlat_purify not-a-packet.User-Name == not-a-packet.User-Name
+match ERROR offset 1: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  The LHS is a string with ASCII 5C 30 30 30 inside of it vs the RHS which should contain ASCII 0.
@@ -568,26 +568,26 @@ match false
 #  'Unknown' attributes which are defined in the main dictionary
 #  should be resolved to their real names.
 # @todo - peephole - resolve it to something real
-xlat_purify &1 == 0x616263
-match (&1 == 0x616263)
-#match (&User-Name == 'abc')
+xlat_purify 1 == 0x616263
+match (1 == 0x616263)
+#match (User-Name == 'abc')
 
 # @todo - peephole - resolve it to something real
-#xlat_purify &26.11344.1 == 0x7f000001
-#match &Vendor-Specific.FreeRADIUS.Proxied-To == 127.0.0.1
+#xlat_purify 26.11344.1 == 0x7f000001
+#match Vendor-Specific.FreeRADIUS.Proxied-To == 127.0.0.1
 
 #
 #  Escape the backslashes correctly
 #  And print them correctly
 #
-xlat_purify &User-Name == '\\'
-match (&User-Name == '\\')
+xlat_purify User-Name == '\\'
+match (User-Name == '\\')
 
-xlat_purify &User-Name == "@|\\"
-match (&User-Name == "@|\\")
+xlat_purify User-Name == "@|\\"
+match (User-Name == "@|\\")
 
-xlat_purify &User-Name != "foo\nbar"
-match (&User-Name != "foo\nbar")
+xlat_purify User-Name != "foo\nbar"
+match (User-Name != "foo\nbar")
 
 #
 #  We infer that the LHS is a prefix and the RHS is
@@ -599,22 +599,22 @@ match true
 xlat_purify (ipv4prefix)192.168.0.0/16 > 192.168.1.2
 match true
 
-xlat_purify (ipv4prefix)&NAS-IP-Address == 192.168.0.0/24
-match ((ipv4prefix)&NAS-IP-Address == 192.168.0.0/24)
+xlat_purify (ipv4prefix)NAS-IP-Address == 192.168.0.0/24
+match ((ipv4prefix)NAS-IP-Address == 192.168.0.0/24)
 
 #
 #  Don't rewrite so that the attribute is on the LHS
 #  and, move the cast to the attribute, as the RHS
 #  is parsed as ipv4prefix
 #
-xlat_purify (ipv4prefix)192.168.0.0/24 > &NAS-IP-Address
-match (192.168.0.0/24 > &NAS-IP-Address)
+xlat_purify (ipv4prefix)192.168.0.0/24 > NAS-IP-Address
+match (192.168.0.0/24 > NAS-IP-Address)
 
 #
 #  This is allowed and means "the list is not empty"
 #
-xlat_purify (&reply)
-match &reply
+xlat_purify (reply)
+match reply
 
 #
 #  Expansions of environment variables
@@ -629,9 +629,9 @@ match false
 # @todo - normalization - if the explicit namespace is the same as the implicit one, we can omit
 # the explicit one?  But this is largely due to the printing fixes, where we just
 # print the tmpl name as-is.
-xlat_purify &radius.User-Name == 'bob'
-match (&radius.User-Name == 'bob')
-#match &User-Name == 'bob'
+xlat_purify radius.User-Name == 'bob'
+match (radius.User-Name == 'bob')
+#match User-Name == 'bob'
 
 xlat_purify !(!(0))
 match false
@@ -645,40 +645,40 @@ match false
 #  * TRUE OP EXPR --> TRUE
 #  * FALSE OP EXPR --> EXPR
 #
-xlat_purify true || (&User-Name == "bob")
+xlat_purify true || (User-Name == "bob")
 match true
 
-xlat_purify true && (&User-Name == "bob")
-match (&User-Name == "bob")
+xlat_purify true && (User-Name == "bob")
+match (User-Name == "bob")
 
-xlat_purify false && (&User-Name == "bob")
+xlat_purify false && (User-Name == "bob")
 match false
 
-xlat_purify false || (&User-Name == "bob")
-match (&User-Name == "bob")
+xlat_purify false || (User-Name == "bob")
+match (User-Name == "bob")
 
-xlat_purify (&User-Name == "bob") && (false)
+xlat_purify (User-Name == "bob") && (false)
 match false
 
-xlat_purify (&User-Name == "bob") && (false) && (&User-Password == "hello")
+xlat_purify (User-Name == "bob") && (false) && (User-Password == "hello")
 match false
 
-xlat_purify (&User-Name == "bob") && (&User-Password == "hello") && false
+xlat_purify (User-Name == "bob") && (User-Password == "hello") && false
 match false
 
-xlat_purify (&User-Name == "bob") && (&User-Password == "hello") && (1 > 2)
+xlat_purify (User-Name == "bob") && (User-Password == "hello") && (1 > 2)
 match false
 
-xlat_purify (&User-Name == "bob") || (true)
+xlat_purify (User-Name == "bob") || (true)
 match true
 
 xlat_purify 1 || 2
 match 1
 
-xlat_purify 1 || 2 || (&User-Name == "bob")
+xlat_purify 1 || 2 || (User-Name == "bob")
 match 1
 
-xlat_purify (&User-Name == "bob") || 1 || 2
+xlat_purify (User-Name == "bob") || 1 || 2
 match 1
 
 xlat_purify 1 && 2
@@ -687,20 +687,20 @@ match 2
 #
 #  Cases which always match should be omitted
 #
-xlat_purify (&User-Name == "bob") && true
-match (&User-Name == "bob")
+xlat_purify (User-Name == "bob") && true
+match (User-Name == "bob")
 
-xlat_purify (&User-Name == "bob") && (&User-Password == "hello") && true
-match ((&User-Name == "bob") && (&User-Password == "hello"))
+xlat_purify (User-Name == "bob") && (User-Password == "hello") && true
+match ((User-Name == "bob") && (User-Password == "hello"))
 
-xlat_purify (&User-Name == "bob") || true
+xlat_purify (User-Name == "bob") || true
 match true
 
-xlat_purify (&User-Name == "bob") && (&User-Password == "hello") && ((&User-Name == "bob") || true)
-match ((&User-Name == "bob") && (&User-Password == "hello"))
+xlat_purify (User-Name == "bob") && (User-Password == "hello") && ((User-Name == "bob") || true)
+match ((User-Name == "bob") && (User-Password == "hello"))
 
-xlat_purify (&User-Name == "bob") && (&User-Password == "hello") && ((&User-Name == "bob") || (1 < 2))
-match ((&User-Name == "bob") && (&User-Password == "hello"))
+xlat_purify (User-Name == "bob") && (User-Password == "hello") && ((User-Name == "bob") || (1 < 2))
+match ((User-Name == "bob") && (User-Password == "hello"))
 
 
 #
@@ -709,17 +709,17 @@ match ((&User-Name == "bob") && (&User-Password == "hello"))
 #	0 && (1 || 1) = 0 && 1 == 0
 #	(0 && 1) || 1 = 0 || 1 == 1
 #
-xlat_purify (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
-match ((&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message))
+xlat_purify (User-Name == "bob") && ((User-Password == "bob") || EAP-Message)
+match ((User-Name == "bob") && ((User-Password == "bob") || EAP-Message))
 
 #
 #  rcode tests
 #
-xlat_purify handled && (&User-Name == "bob")
-match (%expr.rcode('handled') && (&User-Name == "bob"))
+xlat_purify handled && (User-Name == "bob")
+match (%expr.rcode('handled') && (User-Name == "bob"))
 
-xlat_purify (&User-Name == "bob") && (&User-Password == "bob") && handled
-match ((&User-Name == "bob") && (&User-Password == "bob") && %expr.rcode('handled'))
+xlat_purify (User-Name == "bob") && (User-Password == "bob") && handled
+match ((User-Name == "bob") && (User-Password == "bob") && %expr.rcode('handled'))
 
 xlat_purify handledx
 match ERROR offset 8: Invalid operator

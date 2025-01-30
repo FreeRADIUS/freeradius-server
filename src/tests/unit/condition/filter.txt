@@ -6,26 +6,26 @@
 
 proto-dictionary radius
 
-condition &User-Name[0] == "foo"
-match (&User-Name[0] == "foo")
+condition User-Name[0] == "foo"
+match (User-Name[0] == "foo")
 
 #
 #  This is a run-time error.  [#] returns an integer.
 #
-condition &User-Name[#] == "foo"
-match (&User-Name[#] == "foo")
+condition User-Name[#] == "foo"
+match (User-Name[#] == "foo")
 
 #
 #  This is a run-time error.  [*] returns a list.
 #
-condition &User-Name[*] == "foo"
-match (&User-Name[*] == "foo")
+condition User-Name[*] == "foo"
+match (User-Name[*] == "foo")
 
-condition &User-Name[n] == "foo"
-match (&User-Name[n] == "foo")
+condition User-Name[n] == "foo"
+match (User-Name[n] == "foo")
 
-condition &User-Name[-1] == "foo"
-match ERROR offset 12: Invalid array index '-1'
+condition User-Name[-1] == "foo"
+match ERROR offset 11: Invalid array index '-1'
 
 #
 #  tmpl_dcursor.c has an assert which fails if you try to use
@@ -35,23 +35,23 @@ match ERROR offset 12: Invalid array index '-1'
 #
 #  @todo - feature - allow expressions in tmpl_attr_parse_filter(()
 #
-condition &User-Name[(&User-Name == 'bar')] == "foo"
-match ERROR offset 12: Invalid filter - cannot use filter on leaf attributes
+condition User-Name[(User-Name == 'bar')] == "foo"
+match ERROR offset 11: Invalid filter - cannot use filter on leaf attributes
 
 #
-#  The condition code doesn't allow &Group-Thingy == { &foo = bar }
+#  The condition code doesn't allow Group-Thingy == { foo = bar }
 #
 #  Arguably it could, but that wouldn't help here.
 #
 #  What we really want to allow is a filter for use with 'foreach':
 #
-#	foreach &TLS-Certificate[&Common-Name == 'user@example.com'] { ... }
+#	foreach TLS-Certificate[Common-Name == 'user@example.com'] { ... }
 #
-#  which is a loop that returns &TLS-Certificate.
+#  which is a loop that returns TLS-Certificate.
 #
 #  @todo - feature - this error is misleading and wrong.
 #
-condition &TLS-Certificate[(&Common-Name == 'user@example.com')] == bar
+condition TLS-Certificate[(Common-Name == 'user@example.com')] == 'bar'
 match ERROR offset 1: Cannot use list references in condition
 
 count
