@@ -4,7 +4,7 @@
 # Rebuild this file with `make docker.ubuntu24.regen`
 #
 ARG from=ubuntu:24.04
-FROM ${from} as build
+FROM ${from} AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 

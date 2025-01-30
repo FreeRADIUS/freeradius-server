@@ -9,6 +9,8 @@ FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	  the "eap" module.
 	* Change idle timeout for incoming radsec connections, to
 	  better match behavior of radsecproxy.
+	* python2 and rlm_couchbase are no longer available in the
+	  alpine docker image.
 
 	Feature improvements
 	* Print MD5 hash of the configuration files in debug mode.

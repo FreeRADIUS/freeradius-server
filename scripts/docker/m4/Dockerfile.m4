@@ -18,7 +18,7 @@ define([p_SET], [
 ])
 dnl		D_NAME		PKG_TYPE      OS_NAME	OS_VER	OS_CODENAME	DOCKER_IMAGE
 ifelse(
-	D_NAME, [alpine],	[p_SET([alpine], [alpine], [3.13], [alpine],	[alpine:3.13])],
+	D_NAME, [alpine],	[p_SET([alpine], [alpine], [3.21], [alpine],	[alpine:3.21])],
 	D_NAME, [debian10],	[p_SET([deb], [debian],	[10],	[buster],	[debian:buster])],
 	D_NAME, [debian11],	[p_SET([deb], [debian],	[11],	[bullseye],	[debian:bullseye])],
 	D_NAME, [debian12],	[p_SET([deb], [debian],	[12],	[bookworm],	[debian:bookworm])],

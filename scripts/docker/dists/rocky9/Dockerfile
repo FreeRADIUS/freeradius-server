@@ -4,7 +4,8 @@
 # Rebuild this file with `make docker.rocky9.regen`
 #
 ARG from=rockylinux/rockylinux:9
-FROM ${from} as build
+FROM ${from} AS build
+
 
 #
 #  Install yum
@@ -49,7 +50,9 @@ RUN [ -z "$release" ] || git checkout ${release} ; \
 #
 
 #  Enable EPEL repository for freetds and hiredis
+
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+
 
 #  Enable Code Ready Builder repo (CentOS powertools equivalent)
 RUN yum install -y yum-utils
@@ -95,14 +98,15 @@ FROM ${from}
 
 COPY --from=build /root/rpms /tmp/
 
+
 #
 #  Install yum
 #
 RUN dnf install -y yum
 
 
-
 #  EPEL repository for freetds and hiredis
+
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
     && yum install -y dnf-utils \
     && yum config-manager --enable crb \
