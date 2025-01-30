@@ -46,7 +46,7 @@ RCSID("$Id$")
  */
 extern bool tmpl_require_enum_prefix;
 
-bool tmpl_require_enum_prefix = false;
+bool tmpl_require_enum_prefix = true;
 
 /** Define a global variable for specifying a default request reference
  *
