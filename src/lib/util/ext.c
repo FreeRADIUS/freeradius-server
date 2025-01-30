@@ -66,6 +66,9 @@ void *fr_ext_alloc_size(fr_ext_t const *def, void **chunk_p, int ext, size_t ext
 	uint8_t			*ext_ptr;
 	char const		*type;
 
+	fr_assert(chunk != NULL);
+	fr_assert(talloc_parent(chunk) != NULL);
+
 	ext_offsets = fr_ext_offsets(def, *chunk_p);
 	if (ext_offsets[ext]) return fr_ext_ptr(*chunk_p, ext_offsets[ext], info->has_hdr);
 

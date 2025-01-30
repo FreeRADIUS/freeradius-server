@@ -1459,8 +1459,6 @@ static int _tmpl_global_free(UNUSED void *uctx)
 {
 	fr_dict_autofree(tmpl_dict);
 
-	fr_dict_attr_unknown_free(&tmpl_attr_unspec);
-
 	return 0;
 }
 
@@ -1473,7 +1471,7 @@ static int _tmpl_global_init(UNUSED void *uctx)
 		return -1;
 	}
 
-	da = fr_dict_attr_unknown_raw_afrom_num(NULL, fr_dict_root(dict_freeradius), 0);
+	da = fr_dict_attr_unknown_raw_afrom_num(UNCONST(TALLOC_CTX *, dict_freeradius), fr_dict_root(dict_freeradius), 0);
 	fr_assert(da != NULL);
 
 	da->type = FR_TYPE_NULL;

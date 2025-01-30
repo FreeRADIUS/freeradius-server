@@ -1956,6 +1956,8 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	if (fr_sbuff_out(NULL, &oid, name) > 0) {
 		namespace = fr_dict_unlocal(namespace);
 
+		fr_assert(ar == NULL);
+
 		fr_strerror_clear();	/* Clear out any existing errors */
 
 		if (fr_dict_by_da(namespace) == fr_dict_internal()) goto disallow_unknown;
@@ -1981,6 +1983,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		 *      then we create an unknown attribute with
 		 *	the specified attribute number.
 		 */
+		MEM(ar = talloc(ctx, tmpl_attr_t));
 
 		/*
 		 *	VSAs have VENDORs as children.  All others are just normal things.
@@ -2000,7 +2003,6 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 			goto error;
 		}
 
-		MEM(ar = talloc(ctx, tmpl_attr_t));
 		*ar = (tmpl_attr_t){
 			.ar_num = NUM_UNSPEC,
 			.ar_type = TMPL_ATTR_TYPE_UNKNOWN,

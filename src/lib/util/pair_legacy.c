@@ -344,7 +344,7 @@ redo:
 					}
 				}
 
-				slen = fr_dict_attr_unknown_afrom_oid_substr(NULL, &da_unknown, relative->da, &our_in, raw_type);
+				slen = fr_dict_attr_unknown_afrom_oid_substr(root->ctx, &da_unknown, relative->da, &our_in, raw_type);
 				if (slen < 0) return fr_sbuff_error(&our_in) + slen;
 
 				fr_assert(da_unknown);
@@ -454,7 +454,7 @@ redo:
 				return fr_sbuff_error(&our_in);
 			}
 
-			da_unknown = fr_dict_attr_unknown_raw_afrom_da(NULL, da);
+			da_unknown = fr_dict_attr_unknown_raw_afrom_da(root->ctx, da);
 			if (!da_unknown) return fr_sbuff_error(&our_in);
 
 			fr_assert(da_unknown->type == FR_TYPE_OCTETS);
