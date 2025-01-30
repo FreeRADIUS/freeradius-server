@@ -4322,7 +4322,7 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 			} else if (vpt->quote != T_BARE_WORD) {
 				dst_type = FR_TYPE_STRING;	/* quoted strings are strings */
 
-			} else if (!enumv || (strncmp(vpt->data.unescaped, "::", 2) != 0)) {
+			} else if (strncmp(vpt->data.unescaped, "::", 2) != 0) {
 				/*
 				 *	The rest of the code should have errored out before this.
 				 */
