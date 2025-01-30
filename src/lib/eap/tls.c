@@ -299,7 +299,7 @@ int eap_tls_success(request_t *request, eap_session_t *eap_session, eap_tls_prf_
 		fr_pair_value_memdup_buffer_shallow(vp, session_id, false);
 
 		RINDENT();
-		RDEBUG2("&reply.%pP", vp);
+		RDEBUG2("reply.%pP", vp);
 		REXDENT();
 	}
 

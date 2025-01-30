@@ -553,7 +553,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 
 			MEM(pair_update_request(&vp, attr_tls_client_error_code) >= 0);
 			vp->vp_uint8 = ret & 0xff;
-			ROPTIONAL(RDEBUG2, DEBUG2, "&TLS-Client-Error-Code := %pV", &vp->data);
+			ROPTIONAL(RDEBUG2, DEBUG2, "TLS-Client-Error-Code := %pV", &vp->data);
 		/*
 		 *	We're sending the client an alert.
 		 */
@@ -1230,7 +1230,7 @@ static unlang_action_t tls_session_async_handshake_done_round(UNUSED rlm_rcode_t
 		RINDENT();
 		MEM(pair_update_session_state(&vp, attr_tls_session_cipher_suite) >= 0);
 		fr_pair_value_strdup(vp,  SSL_CIPHER_get_name(cipher), false);
-		RDEBUG2("&session-state.%pP", vp);
+		RDEBUG2("session-state.%pP", vp);
 
 		if (((size_t)tls_session->info.version >= NUM_ELEMENTS(tls_version_str)) ||
 		    !tls_version_str[tls_session->info.version]) {
@@ -1241,7 +1241,7 @@ static unlang_action_t tls_session_async_handshake_done_round(UNUSED rlm_rcode_t
 
 		MEM(pair_update_session_state(&vp, attr_tls_session_version) >= 0);
 		fr_pair_value_strdup(vp, version, false);
-		RDEBUG2("&session-state.%pP", vp);
+		RDEBUG2("session-state.%pP", vp);
 		REXDENT();
 
 		/*

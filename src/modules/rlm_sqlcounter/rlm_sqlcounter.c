@@ -368,7 +368,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 
 		fr_value_box_cast(vp, &vp->data, vp->data.type, NULL, &vb);
 
-		RDEBUG2("&%pP", vp);
+		RDEBUG2("%pP", vp);
 
 		RETURN_MODULE_UPDATED;
 	}

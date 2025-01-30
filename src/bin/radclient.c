@@ -723,7 +723,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				goto error;
 
 			default:
-				REDEBUG("Can't determine expected &reply.Packet-Type for Packet-Type %i",
+				REDEBUG("Can't determine expected reply.Packet-Type for Packet-Type %i",
 					request->packet->code);
 				goto error;
 			}
@@ -753,7 +753,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				break;
 
 			default:
-				REDEBUG("Can't determine expected Packet-Type for &reply.Packet-Type %i",
+				REDEBUG("Can't determine expected Packet-Type for reply.Packet-Type %i",
 					request->filter_code);
 				goto error;
 			}

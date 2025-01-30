@@ -310,7 +310,7 @@ SEND(generic)
 			break;
 		}
 
-		RWDEBUG("Ignoring invalid packet-type &reply.%pP", vp);
+		RWDEBUG("Ignoring invalid packet-type reply.%pP", vp);
 		goto update_packet_type;
 
 	default:

@@ -804,7 +804,7 @@ static void mppe_add_reply(UNUSED rlm_mschap_t const *inst,
 	MEM(pair_update_reply(&vp, da) >= 0);
 	fr_pair_value_memdup(vp, value, len, false);
 	RINDENT();
-	RDEBUG2("&reply.%pP", vp);
+	RDEBUG2("reply.%pP", vp);
 	REXDENT();
 }
 
@@ -1516,7 +1516,7 @@ static int CC_HINT(nonnull(1, 2, 3)) nt_password_find(TALLOC_CTX *ctx, fr_pair_t
 			/*
 			 *	If we're doing internal auth, then this is an issue
 			 */
-			RWDEBUG2("No &control.%s or &control.%s found.  Cannot create Password.NT",
+			RWDEBUG2("No control.%s or control.%s found.  Cannot create Password.NT",
 				 attr_cleartext_password->name, attr_nt_password->name);
 			return -1;
 
@@ -1546,10 +1546,10 @@ found_password:
 		}
 
 		if (RDEBUG_ENABLED3) {
-			RDEBUG3("Hashed &control.%pP to create %s = %pV",
+			RDEBUG3("Hashed control.%pP to create %s = %pV",
 				password, attr_nt_password->name, fr_box_octets(p, NT_DIGEST_LENGTH));
 		} else {
-			RDEBUG2("Hashed &control.%s to create %s", attr_nt_password->name, password->da->name);
+			RDEBUG2("Hashed control.%s to create %s", attr_nt_password->name, password->da->name);
 		}
 
 		if (ephemeral) TALLOC_FREE(password);
@@ -1562,9 +1562,9 @@ found_password:
 	fr_assert(password->da == attr_nt_password);
 
 	if (RDEBUG_ENABLED3) {
-		RDEBUG3("Found &control.%pP", password);
+		RDEBUG3("Found control.%pP", password);
 	} else {
-		RDEBUG2("Found &control.%s", attr_nt_password->name);
+		RDEBUG2("Found control.%s", attr_nt_password->name);
 	}
 	*out = password;
 
@@ -1967,7 +1967,7 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 
 	challenge = fr_pair_find_by_da_nested(&request->request_pairs, NULL, tmpl_attr_tail_da(env_data->chap_challenge));
 	if (!challenge) {
-		REDEBUG("&control.Auth-Type = %s set for a request that does not contain &%s",
+		REDEBUG("control.Auth-Type = %s set for a request that does not contain %s",
 			auth_ctx->name, env_data->chap_challenge->name);
 		rcode = RLM_MODULE_INVALID;
 		goto finish;
@@ -1997,7 +1997,7 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 					   challenge, response);
 		if (rcode != RLM_MODULE_OK) goto finish;
 	} else {		/* Neither CHAPv1 or CHAPv2 response: die */
-		REDEBUG("&control.Auth-Type = %s set for a request that does not contain &%s or &%s attributes",
+		REDEBUG("control.Auth-Type = %s set for a request that does not contain %s or %s attributes",
 			auth_ctx->name, env_data->chap_response->name, env_data->chap2_response->name);
 		rcode = RLM_MODULE_INVALID;
 		goto finish;

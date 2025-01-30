@@ -346,10 +346,10 @@ static int recipients_source(fr_mail_ctx_t *uctx, rlm_smtp_env_t const *call_env
 	 *	If any recipients were found, ignore to cc and bcc, return the amount added.
 	 **/
 	if (recipients_set) {
-		RDEBUG2("Recipients were generated from \"&SMTP-Recipients\" and/or recipients in the config");
+		RDEBUG2("Recipients were generated from \"SMTP-Recipients\" and/or recipients in the config");
 		return recipients_set;
 	}
-	RDEBUG2("No addresses were found in \"&SMTP-Recipients\"");
+	RDEBUG2("No addresses were found in \"SMTP-Recipients\"");
 
 	/*
 	 *	Try to load the to: addresses into the envelope recipients if they are set

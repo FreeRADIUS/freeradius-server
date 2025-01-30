@@ -392,7 +392,7 @@ void eap_add_reply(request_t *request, fr_dict_attr_t const *da, uint8_t const *
 	fr_pair_value_memdup(vp, value, len, false);
 
 	RINDENT();
-	RDEBUG2("&reply.%pP", vp);
+	RDEBUG2("reply.%pP", vp);
 	REXDENT();
 }
 

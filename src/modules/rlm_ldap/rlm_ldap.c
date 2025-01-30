@@ -1667,7 +1667,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 									 fr_ldap_thread_t);
 
 			if (!password) {
-				REDEBUG("Failed to find &control.Password.Cleartext");
+				REDEBUG("Failed to find control.Password.Cleartext");
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}

@@ -279,7 +279,7 @@ void rlm_ldap_check_reply(request_t *request, rlm_ldap_t const *inst, char const
 			RWDEBUG2("!!!  - Configure authentication via wbclient (mschapv2 only)");
 			RWDEBUG2("!!!  - Bind as the user by listing %s in an 'authenticate %s' section, and",
 				 inst_name, inst_name);
-			RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the 'recv Access-Request' section",
+			RWDEBUG2("!!!	setting attribute control.Auth-Type := '%s' in the 'recv Access-Request' section",
 				 inst_name);
 			RWDEBUG2("!!!    (pap only)");
 
@@ -293,7 +293,7 @@ void rlm_ldap_check_reply(request_t *request, rlm_ldap_t const *inst, char const
 			RWDEBUG2("!!!    eDir server (recommended)");
 			RWDEBUG2("!!!  - Bind as the user by listing %s in an 'authenticate %s' section, and",
 				 inst_name, inst_name);
-			RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the 'recv Access-Request' section",
+			RWDEBUG2("!!!	setting attribute control.Auth-Type := '%s' in the 'recv Access-Request' section",
 				 inst_name);
 			RWDEBUG("!!!    (pap only)");
 			break;
@@ -309,7 +309,7 @@ void rlm_ldap_check_reply(request_t *request, rlm_ldap_t const *inst, char const
 				 ttrunk->config.admin_identity ? '"' : '\0');
 			RWDEBUG2("!!!  - Bind as the user by listing %s in an 'authenticate %s' section, and",
 				 inst_name, inst_name);
-			RWDEBUG2("!!!    setting attribute &control.Auth-Type := '%s' in the 'recv Access-Request' section",
+			RWDEBUG2("!!!    setting attribute control.Auth-Type := '%s' in the 'recv Access-Request' section",
 				 inst_name);
 			RWDEBUG2("!!!    (pap only)");
 			break;

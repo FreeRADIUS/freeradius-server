@@ -240,7 +240,7 @@ static bool identity_req_set_by_user(request_t *request, eap_aka_sim_session_t *
 			eap_aka_sim_session->id_req = AKA_SIM_PERMANENT_ID_REQ;
 		found:
 			set_by_user = true;
-			RDEBUG2("Previous section added &reply.%pP, will request additional identity", vp);
+			RDEBUG2("Previous section added reply.%pP, will request additional identity", vp);
 			fr_pair_delete(&request->reply_pairs, vp);
 		}
 		else if (vp->da == attr_eap_aka_sim_fullauth_id_req) {
@@ -496,7 +496,7 @@ static int identity_to_permanent_identity(request_t *request, fr_pair_t *in, eap
 			fr_aka_sim_hint_byte(AKA_SIM_ID_TYPE_PERMANENT, expected_method),
 			fr_aka_sim_hint_byte(our_type, our_method));
 		RINDENT();
-		RDEBUG2("&session-state.%pP", vp);
+		RDEBUG2("session-state.%pP", vp);
 		REXDENT();
 	} else {
 		/*
@@ -511,7 +511,7 @@ static int identity_to_permanent_identity(request_t *request, fr_pair_t *in, eap
 
 		RDEBUG2("Stripping 'hint' byte from %s", attr_eap_aka_sim_permanent_identity->name);
 		RINDENT();
-		RDEBUG2("&session-state.%pP", vp);
+		RDEBUG2("session-state.%pP", vp);
 		REXDENT();
 	}
 
@@ -583,7 +583,7 @@ static int mac_validate(request_t *request)
 	 */
 	our_mac = fr_pair_find_by_da(&request->control_pairs, NULL, attr_eap_aka_sim_mac);
 	if (!our_mac) {
-		REDEBUG("Missing &control.%s", attr_eap_aka_sim_mac->name);
+		REDEBUG("Missing control.%s", attr_eap_aka_sim_mac->name);
 		return -1;
 
 	}
@@ -960,7 +960,7 @@ static void common_reply(request_t *request, eap_aka_sim_session_t *eap_aka_sim_
 	if (!eap_aka_sim_session->allow_encrypted) {
 		fr_pair_list_foreach(&request->reply_pairs, vp) {
 			if (fr_dict_attr_common_parent(attr_eap_aka_sim_encr_data, vp->da, true)) {
-				RWDEBUG("Silently discarding &reply.%pP: Encrypted attributes not "
+				RWDEBUG("Silently discarding reply.%pP: Encrypted attributes not "
 					"allowed in this round", vp);
 				fr_pair_delete(&request->reply_pairs, vp);
 			}
@@ -2142,7 +2142,7 @@ RESUME(recv_aka_synchronization_failure)
 	 */
 	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_sim_sqn);
 	if (!vp) {
-		REDEBUG("No &control.SQN value provided after resynchronisation, cannot continue");
+		REDEBUG("No control.SQN value provided after resynchronisation, cannot continue");
 		goto failure;
 	}
 
@@ -3462,7 +3462,7 @@ RESUME(recv_common_identity_response)
 	 *	the submodule.
 	 */
 	eap_type = fr_pair_find_by_da(&request->control_pairs, NULL, attr_eap_type);
-	if (eap_type) RWDEBUG("Ignoring &control.EAP-Type, this must be set *before* the EAP module is called");
+	if (eap_type) RWDEBUG("Ignoring control.EAP-Type, this must be set *before* the EAP module is called");
 
 	method = fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_aka_sim_method_hint);
 

@@ -573,7 +573,7 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 	if (t->username) {
 		vp = fr_pair_copy(child->request_ctx, t->username);
 		fr_pair_append(&child->request_pairs, vp);
-		RDEBUG2("Setting &request.User-Name from tunneled (inner) identity \"%s\"",
+		RDEBUG2("Setting request.User-Name from tunneled (inner) identity \"%s\"",
 			vp->vp_strvalue);
 	} else {
 		RDEBUG2("No tunnel username (SSL resumption?)");

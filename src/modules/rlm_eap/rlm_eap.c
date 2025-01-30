@@ -673,7 +673,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 		 */
 		vp = fr_pair_find_by_da(&eap_session->request->control_pairs, NULL, attr_eap_type);
 		if (vp) {
-			RDEBUG2("Using method from &control.EAP-Type");
+			RDEBUG2("Using method from control.EAP-Type");
 			next = vp->vp_uint32;
 		/*
 		 *	We have an array of the submodules which
@@ -756,7 +756,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 			RDEBUG2("Peer started EAP type %s (%d) without sending an Identity", eap_type2name(type->num), type->num);
 			vp = fr_pair_find_by_da(&eap_session->request->control_pairs, NULL, attr_eap_type);
 			if (vp) {
-				RDEBUG2("Using method from &control.EAP-Type");
+				RDEBUG2("Using method from control.EAP-Type");
 				next = vp->vp_uint32;
 			}
 			goto do_init;

@@ -344,8 +344,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		 */
 		MEM(fr_pair_value_bstr_realloc(password, NULL, password_len) == 0);
 
-		RDEBUG2("&request.%pP", vp);
-		RDEBUG2("&request.%pP", password);
+		RDEBUG2("request.%pP", vp);
+		RDEBUG2("request.%pP", password);
 
 		/*
 		 *	So the ID split code works on the non password portion.
@@ -362,7 +362,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	if (inst->id_len) {
 		MEM(pair_update_request(&vp, attr_yubikey_public_id) >= 0);
 		fr_pair_value_bstrndup(vp, passcode, inst->id_len, true);
-		RDEBUG2("&request.%pP", vp);
+		RDEBUG2("request.%pP", vp);
 	}
 
 	if (!inst->auth_type) {

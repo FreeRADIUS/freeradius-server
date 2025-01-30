@@ -948,7 +948,7 @@ fr_client_t *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 
 	cs = cf_section_alloc(ctx, NULL, "client", fr_sbuff_current(tmp));
 
-	RDEBUG2("Converting &control.FreeRADIUS-Client-* to client {...} section");
+	RDEBUG2("Converting control.FreeRADIUS-Client-* to client {...} section");
 	RINDENT();
 
 	fr_pair_list_foreach(&request->control_pairs, vp) {

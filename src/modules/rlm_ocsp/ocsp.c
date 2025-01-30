@@ -167,7 +167,7 @@ static int ocsp_staple_to_pair(fr_pair_t **out, request_t *request, OCSP_RESPONS
 
 	RDEBUG2("Serializing OCSP response");
 	RINDENT();
-	RDEBUG2("&%pP", vp);
+	RDEBUG2("%pP", vp);
 	REXDENT();
 
 	*out = vp;
@@ -394,11 +394,11 @@ int fr_tls_ocsp_check(request_t *request, SSL *ssl,
 	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_tls_ocsp_cert_valid);
 	if (vp) switch (vp->vp_uint32) {
 	case 0:	/* no */
-		RDEBUG2("Found &control.TLS-OCSP-Cert-Valid = no, forcing OCSP failure");
+		RDEBUG2("Found control.TLS-OCSP-Cert-Valid = no, forcing OCSP failure");
 		return OCSP_STATUS_FAILED;
 
 	case 1: /* yes */
-		RDEBUG2("Found &control.TLS-OCSP-Cert-Valid = yes, forcing OCSP success");
+		RDEBUG2("Found control.TLS-OCSP-Cert-Valid = yes, forcing OCSP success");
 
 		/*
 		 *	If this fails, and an OCSP stapled response is required,
@@ -407,7 +407,7 @@ int fr_tls_ocsp_check(request_t *request, SSL *ssl,
 		if (staple_response) {
 			vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_tls_ocsp_response);
 			if (!vp) {
-				RDEBUG2("No &control.TLS-OCSP-Response attribute found, performing full OCSP check");
+				RDEBUG2("No control.TLS-OCSP-Response attribute found, performing full OCSP check");
 				break;
 			}
 			if (ocsp_staple_from_pair(request, ssl, vp) < 0) {
@@ -419,7 +419,7 @@ int fr_tls_ocsp_check(request_t *request, SSL *ssl,
 		return OCSP_STATUS_OK;
 
 	case 2: /* skipped */
-		RDEBUG2("Found &control.TLS-OCSP-Cert-Valid = skipped, skipping OCSP check");
+		RDEBUG2("Found control.TLS-OCSP-Cert-Valid = skipped, skipping OCSP check");
 		return conf->softfail ? OCSP_STATUS_OK : OCSP_STATUS_FAILED;
 
 	case 3: /* unknown */
@@ -644,13 +644,13 @@ int fr_tls_ocsp_check(request_t *request, SSL *ssl,
 			MEM(pair_update_request(&vp, attr_tls_ocsp_next_update) >= 0);
 			vp->vp_uint32 = next - fr_time_to_sec(now);
 			RINDENT();
-			RDEBUG2("&%pP", vp);
+			RDEBUG2("%pP", vp);
 			REXDENT();
 		} else {
-			RDEBUG2("Update time is in the past.  Not adding &TLS-OCSP-Next-Update");
+			RDEBUG2("Update time is in the past.  Not adding TLS-OCSP-Next-Update");
 		}
 	} else {
-		RDEBUG2("Update time not provided.  Not adding &TLS-OCSP-Next-Update");
+		RDEBUG2("Update time not provided.  Not adding TLS-OCSP-Next-Update");
 	}
 
 	switch (status) {

@@ -667,7 +667,7 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 	 */
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, state->da);
 	if (!vp) {
-		RDEBUG3("No &request.%s attribute, can't restore &session-state", state->da->name);
+		RDEBUG3("No request.%s attribute, can't restore session-state", state->da->name);
 		if (request->seq_start == 0) request->seq_start = request->number;	/* Need check for fake requests */
 		return 1;
 	}
@@ -676,7 +676,7 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 	entry = state_entry_find_and_unlink(state, &vp->data);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
-		RDEBUG2("No state entry matching &request.%pP found", vp);
+		RDEBUG2("No state entry matching request.%pP found", vp);
 		return 2;
 	}
    	PTHREAD_MUTEX_UNLOCK(&state->mutex);
@@ -712,7 +712,7 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 	entry->thawed = request;
 
 	if (!fr_pair_list_empty(&request->session_state_pairs)) {
-		RDEBUG2("Restored &session-state");
+		RDEBUG2("Restored session-state");
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, "&session-state.");
 	}
 
@@ -747,7 +747,7 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 	if (fr_pair_list_empty(&request->session_state_pairs) && fr_dlist_empty(&data)) return 0;
 
 	if (!fr_pair_list_empty(&request->session_state_pairs)) {
-		RDEBUG2("Saving &session-state");
+		RDEBUG2("Saving session-state");
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, "&session-state.");
 
 #ifdef WITH_VERIFY_PTR

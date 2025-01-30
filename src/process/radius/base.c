@@ -294,7 +294,7 @@ void radius_request_pairs_to_reply(request_t *request, process_radius_request_pa
 		MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_proxy_state));
 		fr_value_box_copy(vp, &vp->data, proxy_state_value);
 		fr_pair_append(&request->reply_pairs, vp);
-		RDEBUG3("&reply.%pP", vp);
+		RDEBUG3("reply.%pP", vp);
 	}
 	REXDENT();
 }

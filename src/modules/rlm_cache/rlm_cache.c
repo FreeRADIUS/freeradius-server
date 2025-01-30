@@ -863,7 +863,7 @@ finish:
 		case FR_CACHE_ALLOW_MERGE:
 		case FR_CACHE_ALLOW_INSERT:
 		case FR_CACHE_MERGE_NEW:
-			RDEBUG2("Removing &control.%s", vp->da->name);
+			RDEBUG2("Removing control.%s", vp->da->name);
 			vp = fr_dcursor_remove(&cursor);
 			talloc_free(vp);
 			vp = fr_dcursor_current(&cursor);
@@ -1024,7 +1024,7 @@ static void cache_unref(request_t *request, rlm_cache_t const *inst, rlm_cache_e
 		case FR_CACHE_ALLOW_MERGE:
 		case FR_CACHE_ALLOW_INSERT:
 		case FR_CACHE_MERGE_NEW:
-			RDEBUG2("Removing &control:%s", vp->da->name);
+			RDEBUG2("Removing control:%s", vp->da->name);
 			vp = fr_dcursor_remove(&cursor);
 			TALLOC_FREE(vp);
 			vp = fr_dcursor_current(&cursor);

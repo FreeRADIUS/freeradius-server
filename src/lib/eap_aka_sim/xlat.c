@@ -453,7 +453,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 
 		eap_type = fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_type);
 		if (!eap_type) {
-			REDEBUG("ID does not contain method hint, and no &request.EAP-Type found.  "
+			REDEBUG("ID does not contain method hint, and no request.EAP-Type found.  "
 				"Don't know what tag to prepend to encrypted identity");
 			goto error;
 		}
@@ -465,7 +465,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 		} else if (eap_type->vp_uint32 == enum_eap_type_aka_prime->vb_uint32) {
 			tag = !fastauth ? ID_TAG_AKA_PRIME_PSEUDONYM_B64 : ID_TAG_AKA_PRIME_FASTAUTH_B64;
 		} else {
-			REDEBUG("&request.EAP-Type does not match a SIM based EAP-Type (SIM, AKA, AKA-Prime)");
+			REDEBUG("request.EAP-Type does not match a SIM based EAP-Type (SIM, AKA, AKA-Prime)");
 		}
 
 		id_p = id;

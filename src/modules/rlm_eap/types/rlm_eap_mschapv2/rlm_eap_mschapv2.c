@@ -649,13 +649,13 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	 */
 	auth_challenge = fr_pair_find_by_da_nested(&parent->control_pairs, NULL, attr_ms_chap_challenge);
 	if (auth_challenge && (auth_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
-		RWDEBUG("&parent.control.MS-CHAP-Challenge is incorrect length.  Ignoring it");
+		RWDEBUG("parent.control.MS-CHAP-Challenge is incorrect length.  Ignoring it");
 		auth_challenge = NULL;
 	}
 
 	peer_challenge = fr_pair_find_by_da_nested(&parent->control_pairs, NULL, attr_ms_chap_peer_challenge);
 	if (peer_challenge && (peer_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
-		RWDEBUG("&parent.control.MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
+		RWDEBUG("parent.control.MS-CHAP-Peer-Challenge is incorrect length.  Ignoring it");
 		peer_challenge = NULL;
 	}
 

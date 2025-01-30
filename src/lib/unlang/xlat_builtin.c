@@ -129,7 +129,7 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 	switch (vp->vp_type) {
 	case FR_TYPE_STRUCTURAL:
 		if (vpt) {
-			RIDEBUG2("&%s.%s = {",
+			RIDEBUG2("%s.%s = {",
 				 tmpl_list_name(tmpl_list(vpt), "<INVALID>"),
 				 vp->da->name);
 		} else {
@@ -143,7 +143,7 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 
 	default:
 		if (vpt) {
-			RIDEBUG2("&%s.%s = %pV",
+			RIDEBUG2("%s.%s = %pV",
 				 tmpl_list_name(tmpl_list(vpt), "<INVALID>"),
 				 vp->da->name,
 				 &vp->data);

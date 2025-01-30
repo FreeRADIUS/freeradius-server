@@ -358,7 +358,7 @@ static unlang_action_t ldap_cacheable_userobj_store(rlm_rcode_t *p_result, reque
 		for (vp = fr_pair_list_head(&group_ctx->groups);
 		     vp;
 		     vp = fr_pair_list_next(&group_ctx->groups, vp)) {
-			RDEBUG2("&control.%s += \"%pV\"", group_ctx->inst->group.cache_da->name, &vp->data);
+			RDEBUG2("control.%s += \"%pV\"", group_ctx->inst->group.cache_da->name, &vp->data);
 		}
 	}
 
@@ -662,7 +662,7 @@ static unlang_action_t ldap_cacheable_groupobj_resume(rlm_rcode_t *p_result, UNU
 			fr_pair_value_strdup(vp, dn, false);
 
 			RINDENT();
-			RDEBUG2("&control.%pP", vp);
+			RDEBUG2("control.%pP", vp);
 			REXDENT();
 			ldap_memfree(dn);
 		}
@@ -677,7 +677,7 @@ static unlang_action_t ldap_cacheable_groupobj_resume(rlm_rcode_t *p_result, UNU
 			fr_pair_value_bstrndup(vp, values[0]->bv_val, values[0]->bv_len, true);
 
 			RINDENT();
-			RDEBUG2("&control.%pP", vp);
+			RDEBUG2("control.%pP", vp);
 			REXDENT();
 
 			ldap_value_free_len(values);

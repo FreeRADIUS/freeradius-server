@@ -662,7 +662,7 @@ static int rest_decode_plain(UNUSED rlm_rest_t const *inst, UNUSED rlm_rest_sect
 	MEM(pair_update_request(&vp, attr_rest_http_body) >= 0);
 	fr_pair_value_bstrndup(vp, raw, rawlen, true);
 
-	RDEBUG2("&%pP", vp);
+	RDEBUG2("%pP", vp);
 
 	return 1;
 }
@@ -1155,7 +1155,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 					if (!vp) continue;
 				}
 				RINDENT();
-				RDEBUG2("&%s:%pP", tmpl_list_name(tmpl_list(dst), ""), vp);
+				RDEBUG2("%s:%pP", tmpl_list_name(tmpl_list(dst), ""), vp);
 				REXDENT();
 
 				fr_pair_list_init(&tmp_list);

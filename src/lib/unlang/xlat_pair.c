@@ -122,7 +122,7 @@ int xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		char const *name = parent->name;
 
 		while ((vp = fr_pair_list_next(&head, vp))) {
-			RDEBUG2("decode %s: &%pP", name, vp);
+			RDEBUG2("decode %s: %pP", name, vp);
 		}
 	}
 

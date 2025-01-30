@@ -159,7 +159,7 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		challenge_len = env_data->chap_challenge.vb_length;
 	} else {
 		if (env_data->chap_challenge.type == FR_TYPE_OCTETS)
-			RWDEBUG("&request.CHAP-Challenge shorter than minimum length (%ld)", inst->min_challenge_len);
+			RWDEBUG("request.CHAP-Challenge shorter than minimum length (%ld)", inst->min_challenge_len);
 		challenge = request->packet->vector;
 		challenge_len = RADIUS_AUTH_VECTOR_LENGTH;
 	}
@@ -241,23 +241,23 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	size_t			challenge_len;
 
 	if (env_data->username.type != FR_TYPE_STRING) {
-		REDEBUG("&User-Name attribute is required for authentication");
+		REDEBUG("User-Name attribute is required for authentication");
 		RETURN_MODULE_INVALID;
 	}
 
 	if (env_data->chap_password.type != FR_TYPE_OCTETS) {
-		REDEBUG("You set '&control.Auth-Type = CHAP' for a request that "
+		REDEBUG("You set 'control.Auth-Type = CHAP' for a request that "
 			"does not contain a CHAP-Password attribute!");
 		RETURN_MODULE_INVALID;
 	}
 
 	if (env_data->chap_password.vb_length == 0) {
-		REDEBUG("&request.CHAP-Password is empty");
+		REDEBUG("request.CHAP-Password is empty");
 		RETURN_MODULE_INVALID;
 	}
 
 	if (env_data->chap_password.vb_length != FR_CHAP_CHALLENGE_LENGTH + 1) {
-		REDEBUG("&request.CHAP-Password has invalid length");
+		REDEBUG("request.CHAP-Password has invalid length");
 		RETURN_MODULE_INVALID;
 	}
 
@@ -289,7 +289,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		challenge_len = env_data->chap_challenge.vb_length;
 	} else {
 		if (env_data->chap_challenge.type == FR_TYPE_OCTETS)
-			RWDEBUG("&request.CHAP-Challenge shorter than minimum length (%ld)", inst->min_challenge_len);
+			RWDEBUG("request.CHAP-Challenge shorter than minimum length (%ld)", inst->min_challenge_len);
 		challenge = request->packet->vector;
 		challenge_len = RADIUS_AUTH_VECTOR_LENGTH;
 	}
@@ -306,7 +306,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		size_t		length;
 
 		if (env_data->chap_challenge.type == FR_TYPE_OCTETS) {
-			RDEBUG2("Using challenge from &request.CHAP-Challenge");
+			RDEBUG2("Using challenge from request.CHAP-Challenge");
 			p = env_data->chap_challenge.vb_octets;
 			length = env_data->chap_challenge.vb_length;
 		} else {

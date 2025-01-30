@@ -181,7 +181,7 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess, uint32_
 	if (RDEBUG_ENABLED2) {
 		SESSION_ID(sess_id, sess);
 
-		RDEBUG2("Session ID %pV - Adding &session-state[*] to data", &sess_id);
+		RDEBUG2("Session ID %pV - Adding session-state[*] to data", &sess_id);
 		RINDENT();
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, NULL);
 		REXDENT();
@@ -273,7 +273,7 @@ static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess)
 	if (RDEBUG_ENABLED2) {
 		SESSION_ID(sess_id, sess);
 
-		RDEBUG2("Session-ID %pV - Restoring &session-state[*]", &sess_id);
+		RDEBUG2("Session-ID %pV - Restoring session-state[*]", &sess_id);
 		RINDENT();
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &tmp, "&session-state.");
 		REXDENT();
@@ -1040,7 +1040,7 @@ int fr_tls_cache_disable_cb(SSL *ssl, int is_forward_secure)
 
 	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_allow_session_resumption);
 	if (vp && (vp->vp_uint32 == 0)) {
-		RDEBUG2("&control.Allow-Session-Resumption == no, denying session resumption");
+		RDEBUG2("control.Allow-Session-Resumption == no, denying session resumption");
 	disable:
 		SSL_CTX_remove_session(tls_session->ctx, tls_session->session);
 		tls_session->allow_session_resumption = false;
