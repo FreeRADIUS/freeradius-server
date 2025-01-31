@@ -1,3 +1,10 @@
+FreeRADIUS 3.2.8 Fri 31 Jan 2025 12:00:00 UTC urgency=low
+	Configuration changes
+
+	Feature improvements
+
+	Bug fixes
+
 FreeRADIUS 3.2.7 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	Configuration changes
 	* The dpsk module now supports dynamic expansion of the
