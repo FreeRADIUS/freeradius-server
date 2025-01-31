@@ -1328,8 +1328,8 @@ void		fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t c
  *
  * @{
  */
-void fr_value_box_list_debug(fr_value_box_list_t const *head);
-void fr_value_box_debug(fr_value_box_t const *vb);
+void fr_value_box_list_debug(FILE *fp, fr_value_box_list_t const *head);
+void fr_value_box_debug(FILE *fp, fr_value_box_t const *vb);
 /** @} */
 
 #undef _CONST

@@ -911,7 +911,7 @@ int			fr_dict_global_ctx_dir_set(char const *dict_dir);
 
 void			fr_dict_global_ctx_read_only(void);
 
-void			fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx);
+void			fr_dict_gctx_debug(FILE *fp, fr_dict_gctx_t const *gctx);
 
 char const		*fr_dict_global_ctx_dir(void);
 

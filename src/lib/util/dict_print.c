@@ -208,7 +208,7 @@ static int dict_attr_debug(fr_dict_attr_t const *da, void *uctx)
 		da->attr,
 		fr_type_to_str(da->type),
 		ctx->flags);
-	
+
 	dict_attr_ext_debug(ctx->prefix, da);	/* Print all the extension debug info */
 
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
@@ -218,7 +218,7 @@ static int dict_attr_debug(fr_dict_attr_t const *da, void *uctx)
 	     enumv;
 	     enumv = fr_hash_table_iter_next(ext->name_by_value, &iter)) {
 	     	char *value = fr_asprintf(NULL, "%pV", enumv->value);
-		
+
 		fprintf(ctx->fp, "%s    %s -> %s\n",
 			ctx->prefix,
 			enumv->name,
@@ -348,4 +348,3 @@ void fr_dict_alias_export(FILE *fp, fr_dict_attr_t const *parent)
 		fprintf(fp, "%-40s\t%s\n", da->name, buffer);
 	}
 }
-

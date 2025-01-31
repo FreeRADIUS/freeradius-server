@@ -1046,6 +1046,7 @@ static int dictionary_load_common(command_result_t *result, command_file_ctx_t *
 	 */
 	if (fr_debug_lvl > 5) fr_dict_debug(fr_log_fp, cc->tmpl_rules.attr.dict_def);
 
+
 	RETURN_OK(0);
 }
 
@@ -1155,7 +1156,7 @@ static void command_print(void)
 	void *walk_ctx = NULL;
 
 	printf("Command hierarchy --------");
-	fr_command_debug(stdout, command_head);
+	fr_cmd_debug(stdout, command_head);
 
 	printf("Command list --------");
 	while (fr_command_walk(command_head, &walk_ctx, NULL, command_walk) == 1) {

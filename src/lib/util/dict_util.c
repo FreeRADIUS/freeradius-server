@@ -4406,7 +4406,7 @@ static int _dict_global_free(fr_dict_gctx_t *gctx)
 
 	if (still_loaded) {
 #ifndef NDEBUG
-		fr_dict_global_ctx_debug(gctx);
+		fr_dict_gctx_debug(stderr, gctx);
 #endif
 		return -1;
 	}
@@ -4571,7 +4571,7 @@ void fr_dict_global_ctx_read_only(void)
  *
  * Intended to be called from a debugger
  */
-void fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx)
+void fr_dict_gctx_debug(FILE *fp, fr_dict_gctx_t const *gctx)
 {
 	fr_hash_iter_t			dict_iter;
 	fr_dict_t			*dict;
@@ -4581,18 +4581,19 @@ void fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx)
 	if (gctx == NULL) gctx = dict_gctx;
 
 	if (!gctx) {
-		FR_FAULT_LOG("gctx not initialised");
+		fprintf(fp, "gctx not initialised\n");
 		return;
 	}
 
-	FR_FAULT_LOG("gctx %p report", dict_gctx);
+	fprintf(fp, "gctx %p report\n", dict_gctx);
 	for (dict = fr_hash_table_iter_init(gctx->protocol_by_num, &dict_iter);
 	     dict;
 	     dict = fr_hash_table_iter_next(gctx->protocol_by_num, &dict_iter)) {
 		for (dep = fr_rb_iter_init_inorder(&dep_iter, dict->dependents);
 		     dep;
 		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
-			FR_FAULT_LOG("\t%s is referenced from %s count (%d)", dict->root->name, dep->dependent, dep->count);
+			fprintf(fp, "\t%s is referenced from %s count (%d)\n",
+				dict->root->name, dep->dependent, dep->count);
 		}
 	}
 
@@ -4600,7 +4601,8 @@ void fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx)
 		for (dep = fr_rb_iter_init_inorder(&dep_iter, gctx->internal->dependents);
 		     dep;
 		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
-			FR_FAULT_LOG("\t%s is referenced from %s count (%d)", gctx->internal->root->name, dep->dependent, dep->count);
+			fprintf(fp, "\t%s is referenced from %s count (%d)\n",
+				gctx->internal->root->name, dep->dependent, dep->count);
 		}
 	}
 }

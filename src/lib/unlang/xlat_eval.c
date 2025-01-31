@@ -539,7 +539,7 @@ check_non_leaf:
 		}
 
 		if (!fr_value_box_is_safe_for(vb, FR_VALUE_BOX_SAFE_FOR_ANY)) {
-			fr_value_box_debug(vb);
+			fr_value_box_debug(fr_log_fp, vb);
 			REDEBUG("Refusing to reference attribute from unsafe data");
 			return XLAT_ACTION_FAIL;
 		}

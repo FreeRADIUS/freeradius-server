@@ -174,7 +174,7 @@ static int tmpl_to_values(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
 		 *	The other tmpl types MUST have already been
 		 *	converted to the "realized" types.
 		 */
-		tmpl_debug(vpt);
+		tmpl_debug(stderr, vpt);
 		fr_assert(0);
 		break;
 	}

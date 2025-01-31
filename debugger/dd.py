@@ -3,9 +3,9 @@
 #
 # Syntax: dd <variable name>
 #
-# where the variable named either has one of the types
-# shown in the _howTo list or whose address has one of the
-# types shown in the _howTo list.
+# where <variable name> has a type foo * or foo for which
+# there is a function foo_debug(FILE *, foo_t *) that presumably
+# displays values of type foo_t in a useful, legible format.
 #
 # When the command is run, it calls the appropriate FreeRADIUS
 # function to display the value the variable points at (or
@@ -42,29 +42,25 @@
 # we're running under gdb or lldb, we can have a single Python
 # source that can do the right thing for the debugger it's running
 # under.
+#
+# NOTE: this function cheerfully assumes such functions exist, but
+# will report if the call fails (modulo an issue with lldb and
+# fr_value_box_t being defined twice--see below). The idea is that
+# these reports will point out where an appropriate foo_debug()
+# function needs to exist or to be modified to fit the signature.
 
 import sys
 
-_howTo = {
-    'fr_value_box_t *'           : ('fr_value_box_debug',		True),
-    'fr_value_box_list_t *'      : ('fr_value_box_list_debug',		True),
-    'tmpl_t *'                   : ('tmpl_debug',			True),
-    'CONF_ITEM *'                : ('_cf_debug',			True),
-    'dl_loader_t *'              : ('dl_loader_debug',			False),
-    'fr_dict_gctx_t * '          : ('fr_dict_global_ctx_debug',		True),
-    'fr_pair_t *'                : ('fr_pair_debug',			True),
-    'fr_pair_list_t *'           : ('fr_pair_list_debug',		True),
-    'fr_sbuff_term_t *'          : ('fr_sbuff_terminal_debug',		True),
-    'fr_sbuff_parse_rules_t *'   : ('fr_sbuff_parse_rules_debug',	True),
-    'fr_sbuff_unescape_rules_t *': ('fr_sbuff_unescape_debug',		True),
-    'tmpl_attr_list_head_t *'    : ('tmpl_attr_ref_list_debug',		True),
-    'tmpl_attr_rules_t *'        : ('tmpl_attr_rules_debug',		True),
-    'fr_dlist_head_t *'          : ('tmpl_extents_debug',		False),
-    'tmpl_request_list_head_t *' : ('tmpl_request_ref_list_debug',	True),
-    'tmpl_rules_t *'             : ('tmpl_rules_debug',			True),
-    'lua_State *'                : ('_util_log_debug',			False),
-    'xlat_exp_t *'               : ('xlat_debug',			True)
-}
+def debug_function(ptr_foo_name):
+    # ditch trailng ' *' (will always be there)
+    ptr_foo_name = ptr_foo_name[:-2]
+    # ditch trailing ' const'
+    if ptr_foo_name.endswith(' const'):
+        ptr_foo_name = ptr_foo_name[:-6]
+    # ditch trailing '_t' (again should always be there)
+    if ptr_foo_name.endswith('_t'):
+        ptr_foo_name = ptr_foo_name[:-2]
+    return f'{ptr_foo_name}_debug'
 
 try:
     import gdb  # Attempt to import GDB module
@@ -85,17 +81,13 @@ if dbg == "lldb":
         if not sb_var.IsValid():
             sb_var = target.FindFirstGlobalVariable(command)
         if not sb_var.IsValid():
-            result.SetError('{} is not a variable'.format(command))
+            result.SetError(f'{command} is not a variable')
             return
         arg = sb_var if sb_var.type.is_pointer else sb_var.address_of
         type = arg.GetDisplayTypeName()
-        if not (type in _howTo):
-            result.SetError('unsupported type "{}"'.format(type))
-            return
-        function, const = _howTo[type]
-        cast = '({} const *)'.format(type[0:-2]) if const else ''
-        argName = arg.GetName()
-        cmd = 'expr {0}({1}({2}))'.format(function, cast, argName)
+        function = debug_function(type)
+        cast = f'({type[:-2]} const *)'
+        cmd = f'expr {function}(stderr, {cast}({arg.GetName()}))'
         interpreter = debugger.GetCommandInterpreter()
         if not interpreter.IsValid():
            result.SetError("can't set up SBCommandInterpreter")
@@ -106,7 +98,7 @@ if dbg == "lldb":
         for i in range(2):
             if (cmdStatus := interpreter.HandleCommand(cmd, result)) == lldb.eReturnStatusSuccessFinishResult:
                 return
-        result.SetError("command {} failed, status {}".format(cmd, cmdStatus))
+        result.SetError(f'command "{cmd}" failed, status {cmdStatus}')
 
     # And then some boilerplate to set up the command and announce its availability.
     # I'm guessing that the -f option is <file name without extension>.<name of function>,
@@ -138,12 +130,9 @@ else:
                 argMod = '&'
                 var = var.address
             varType = str(var.type)
-            if not (varType in _howTo):
-                print('unsupported type "{}"'.format(varType))
-                return
-            function, const = _howTo[varType]
-            cast = '({} const *)'.format(varType[0:-2]) if const else ''
-            command = 'call {0}({1}{2}({3}))'.format(function, cast, argMod, arg)
+            function = debug_function(varType)
+            cast = f'({varType[0:-2]} const *)'
+            command = f'call {function}(stderr, {cast}{argMod}({arg}))'
             try:
                 gdb.execute(command)
             except:

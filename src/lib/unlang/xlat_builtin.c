@@ -2724,7 +2724,7 @@ static xlat_action_t xlat_func_range(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	} else {
 		start = 0;
-		fr_value_box_debug(start_vb);
+		fr_value_box_debug(fr_log_fp, start_vb);
 		end = fr_value_box_list_head(&start_vb->vb_group)->vb_uint64;
 		step = 1;
 	}

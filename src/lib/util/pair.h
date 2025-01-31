@@ -848,8 +848,10 @@ static inline fr_slen_t CC_HINT(nonnull(2,4))
 void		_fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent,
 				  fr_pair_list_t const *list, char const *file, int line) CC_HINT(nonnull(1,4));
 
-void		fr_pair_list_debug(fr_pair_list_t const *list) CC_HINT(nonnull);
-void		fr_pair_debug(fr_pair_t const *pair) CC_HINT(nonnull);
+void		fr_pair_list_debug(FILE *fp, fr_pair_list_t const *list) CC_HINT(nonnull);
+void		_fr_pair_list_debug(FILE *fp, int lvl, fr_pair_t *parent, fr_pair_list_t const *list)
+				    CC_HINT(nonnull(1, 4));
+void		fr_pair_debug(FILE *fp, fr_pair_t const *pair) CC_HINT(nonnull);
 
 /** @} */
 

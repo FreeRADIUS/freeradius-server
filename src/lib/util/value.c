@@ -6831,15 +6831,15 @@ bool fr_value_box_is_truthy(fr_value_box_t const *in)
 	}
 }
 
-#define INFO_INDENT(_fmt, ...)  FR_FAULT_LOG("%*s"_fmt, depth * 2, " ", ## __VA_ARGS__)
+#define INFO_INDENT(_fmt, ...)  fprintf(fp, "%*s" _fmt "\n", depth * 2, " ", ## __VA_ARGS__)
 
-static void _fr_value_box_debug(fr_value_box_t const *vb, int depth, int idx);
-static void _fr_value_box_list_debug(fr_value_box_list_t const *head, int depth)
+static void _fr_value_box_debug(FILE *fp, fr_value_box_t const *vb, int depth, int idx);
+static void _fr_value_box_list_debug(FILE *fp, fr_value_box_list_t const *head, int depth)
 {
 	int i = 0;
 
 	INFO_INDENT("{");
-	fr_value_box_list_foreach(head, vb) _fr_value_box_debug(vb, depth + 1, i++);
+	fr_value_box_list_foreach(head, vb) _fr_value_box_debug(fp, vb, depth + 1, i++);
 	INFO_INDENT("}");
 }
 
@@ -6847,18 +6847,18 @@ static void _fr_value_box_list_debug(fr_value_box_list_t const *head, int depth)
  *
  * @note Call directly from the debugger
  */
-void fr_value_box_list_debug(fr_value_box_list_t const *head)
+void fr_value_box_list_debug(FILE *fp, fr_value_box_list_t const *head)
 {
-	_fr_value_box_list_debug(head, 0);
+	_fr_value_box_list_debug(fp, head, 0);
 }
 
-static void _fr_value_box_debug(fr_value_box_t const *vb, int depth, int idx)
+static void _fr_value_box_debug(FILE *fp, fr_value_box_t const *vb, int depth, int idx)
 {
 	char *value;
 	char buffer[64];
 
 	if (fr_type_is_structural(vb->type)) {
-		_fr_value_box_list_debug(&vb->vb_group, depth + 1);
+		_fr_value_box_list_debug(fp, &vb->vb_group, depth + 1);
 		return;
 	}
 
@@ -6894,7 +6894,7 @@ static void _fr_value_box_debug(fr_value_box_t const *vb, int depth, int idx)
  *
  * @note Call directly from the debugger
  */
-void fr_value_box_debug(fr_value_box_t const *vb)
+void fr_value_box_debug(FILE *fp, fr_value_box_t const *vb)
 {
-	_fr_value_box_debug(vb, 0, -1);
+	_fr_value_box_debug(fp, vb, 0, -1);
 }
