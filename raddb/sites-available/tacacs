@@ -275,8 +275,8 @@ server tacacs {
 	#  ASCII authentication equivalent to PAP.
 	#
 	#  Alternatively, if extra data is required, set
-	#  &reply.Authentication-Status := Getdata
-	#  to request the extra data, which will be in &User-Message in
+	#  reply.Authentication-Status := Getdata
+	#  to request the extra data, which will be in User-Message in
 	#  the next packet (if the client provides it)
 	#
 	authenticate ASCII {
@@ -289,7 +289,7 @@ server tacacs {
 	#  Note that "follow" is officially deprecated, and is not supported.
 	#
 	send Authentication-Pass {
-		&reply.Server-Message := "Hello %{User-Name}"
+		reply.Server-Message := "Hello %{User-Name}"
 
 		#
 		#  Call an instance of `linelog` to log the authentication success
@@ -300,7 +300,7 @@ server tacacs {
 	}
 
 	send Authentication-Fail {
-		&reply.Server-Message := "Failed login!"
+		reply.Server-Message := "Failed login!"
 
 		#
 		#  Call an instance of `linelog` to log the authentication failure
@@ -315,11 +315,11 @@ server tacacs {
 	#  for the client to present to the user.
 	#
 	send Authentication-GetUser {
-		&reply.Server-Message := "Username:"
+		reply.Server-Message := "Username:"
 	}
 
 	send Authentication-GetPass {
-		&reply.Server-Message := "Password:"
+		reply.Server-Message := "Password:"
 	}
 
 	#
@@ -381,27 +381,27 @@ server tacacs {
 	#	Add the arguments to whatever the user entered.
 	#
 	send Authorization-Pass-Add {
-		&reply.Authorization-Status := Pass-Add
-		&reply.Server-Message := "authorization-response-server"
-		&reply.Data := "authorization-response-data"
-		&reply.Argument-List := "key1=var1"
+		reply.Authorization-Status := Pass-Add
+		reply.Server-Message := "authorization-response-server"
+		reply.Data := "authorization-response-data"
+		reply.Argument-List := "key1=var1"
 	}
 
 	#
 	#	Replace whatever the user entered with the following arguments
 	#
 	send Authorization-Pass-Reply {
-		&reply.Authorization-Status := Pass-Repl
-		&reply.Server-Message := "authorization-response-server"
-		&reply.Data := "authorization-response-data"
-		&reply.Argument-List := "key1=var1"
+		reply.Authorization-Status := Pass-Repl
+		reply.Server-Message := "authorization-response-server"
+		reply.Data := "authorization-response-data"
+		reply.Argument-List := "key1=var1"
 	}
 
 	#
 	#	Reject the request
 	#
 	send Authorization-Fail {
-		&reply.Authorization-Status := Fail
+		reply.Authorization-Status := Fail
 	}
 
 	#
@@ -438,11 +438,11 @@ server tacacs {
 	#	### Send
 	#
 	send Accounting-Success {
-		&reply.Server-Message := "Success"
+		reply.Server-Message := "Success"
 	}
 
 	send Accounting-Error {
-		&reply.Server-Message := "Error"
+		reply.Server-Message := "Error"
 	}
 
 	#

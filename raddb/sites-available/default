@@ -746,8 +746,8 @@ recv Access-Request {
 	#  The following example will proxy the request if the
 	#  username ends in example.com.
 	#
-#	if (&User-Name =~ /@example\.com$/) {
-#		&control.Auth-Type := "proxy-example.com"
+#	if (User-Name =~ /@example\.com$/) {
+#		control.Auth-Type := "proxy-example.com"
 #	}
 
 	#
@@ -1124,8 +1124,8 @@ send Access-Accept {
 	#  here. e.g. for later CoA-Request with State, and
 	#  Service-Type = ::Authorize-Only.
 	#
-#	if (!&reply.State) {
-#		&reply.State := "0x%randstr(16h)"
+#	if (!reply.State) {
+#		reply.State := "0x%randstr(16h)"
 #	}
 
 	#
@@ -1137,7 +1137,7 @@ send Access-Accept {
 	#  The `session-state` attributes are deleted after an
 	#  `Access-Reject` or `Access-Accept` packet has been sent.
 	#
-	&reply += &session-state
+	reply += session-state
 
 	#
 	#  For EAP, ensure that the Access-Accept contains a User-Name
@@ -1181,7 +1181,7 @@ send Access-Accept {
 	#  work, you will need to define the WiMAX NAI, usually
 	#  via:
 	#
-#	&request.WiMAX-MN-NAI = "%{User-Name}"
+#	request.WiMAX-MN-NAI = "%{User-Name}"
 
 	#  If you want various keys to be calculated, you will
 	#  need to update the reply with "template" values. The
@@ -1189,10 +1189,10 @@ send Access-Accept {
 	#  with the correct ones taken from the cryptographic
 	#  calculations, e.g.
 	#
-#	&reply += {
-#		&Vendor-Specific.WiMAX = {
+#	reply += {
+#		Vendor-Specific.WiMAX = {
 #			&FA-RK-Key = 0x00
-#			&MSK = &reply.EAP-MSK
+#			&MSK = reply.EAP-MSK
 #		}
 #	}
 
@@ -1217,13 +1217,13 @@ send Access-Accept {
 	#  contains information about the client certificate (if
 	#  available).
 	#
-#	&reply += {
-#		&Reply-Message = "%{session-state.TLS-Certificate.Serial}"
-#		&Reply-Message = "%{session-state.TLS-Certificate.Not-After}"
-#		&Reply-Message = "%{session-state.TLS-Certificate.Subject}"
-#		&Reply-Message = "%{session-state.TLS-Certificate.Issuer}"
-#		&Reply-Message = "%{session-state.TLS-Certificate.Common-Name}"
-#		&Reply-Message = "%{session-state.TLS-Certificate.Subject-Alt-Name-Email}"
+#	reply += {
+#		Reply-Message = "%{session-state.TLS-Certificate.Serial}"
+#		Reply-Message = "%{session-state.TLS-Certificate.Not-After}"
+#		Reply-Message = "%{session-state.TLS-Certificate.Subject}"
+#		Reply-Message = "%{session-state.TLS-Certificate.Issuer}"
+#		Reply-Message = "%{session-state.TLS-Certificate.Common-Name}"
+#		Reply-Message = "%{session-state.TLS-Certificate.Subject-Alt-Name-Email}"
 #	}
 
 	#
@@ -1248,8 +1248,8 @@ send Access-Accept {
 	#  Uncomment the next few lines to copy the required data
 	#  into the EAP-Key-Name attribute.
 #
-#	if (&reply.EAP-Session-Id) {
-#		&reply.EAP-Key-Name := &reply.EAP-Session-Id
+#	if (reply.EAP-Session-Id) {
+#		reply.EAP-Key-Name := reply.EAP-Session-Id
 #	}
 
 	#
@@ -1381,7 +1381,7 @@ accounting Start {
 	#
 	#  Refresh leases when we see a start.
 	#
-	#  Ensure that &control.IP-Pool.Name is set to determine which
+	#  Ensure that control.IP-Pool.Name is set to determine which
 	#  pool of IPs are used.  Set this in `recv Accounting-Request` so
 	#  it is available for all the accounting sections.
 	#

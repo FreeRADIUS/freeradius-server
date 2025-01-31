@@ -26,13 +26,13 @@
 #  Requests will pass through the following processing sections:
 #  - A `recv { ... }` section matching the opcode. e.g. `recv Query { ... }`.  Query processing
 #    and response formulation should be done here.
-#    If this section returns anything other than `ok` or `updated`, a &reply.Header.Rcode value is
+#    If this section returns anything other than `ok` or `updated`, a reply.Header.Rcode value is
 #    set.
-#  - An `error { ... }` section matching &reply.Header.Rcode. e.g. `error Server-Fail { ... }`.
-#    If the `recv { ... }` section produced a &reply.Header.Rcode value other than `No-Error`
-#    and a `error { ... } section matching the &reply.Header.Rcode is provided, it is executed.
+#  - An `error { ... }` section matching reply.Header.Rcode. e.g. `error Server-Fail { ... }`.
+#    If the `recv { ... }` section produced a reply.Header.Rcode value other than `No-Error`
+#    and a `error { ... } section matching the reply.Header.Rcode is provided, it is executed.
 #    Error sections are intended only for simplifying logging, and as such, the rcode of the section is ignored.
-#    Error sections can manipulate the reply, e.g. setting a new value for &reply.Header.Rcode, but
+#    Error sections can manipulate the reply, e.g. setting a new value for reply.Header.Rcode, but
 #    this will not cause additional `error { ... }` section to be executed.
 #  - A `send { ... }` section matching the opcode. e.g. `send Query-Response { ... }`.  This can be
 #    used for general massaging of the reply.  Return codes are ignored.
@@ -59,8 +59,8 @@ server dns {
 
 
 recv Query {
-	if (&Question[0].Name == 'foo.example.com') {
-		&reply.Resource-Record := {
+	if (Question[0].Name == 'foo.example.com') {
+		reply.Resource-Record := {
 			&Name = 'foo.example.com'
 			&Type = A
 			&Class = ::Internet

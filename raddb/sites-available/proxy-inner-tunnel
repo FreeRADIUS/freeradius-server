@@ -26,7 +26,7 @@ recv Access-Request {
 	#
 
 	#  You should update this to be one of your realms.
-	&control.Proxy-To-Realm := "example.com"
+	control.Proxy-To-Realm := "example.com"
 }
 
 authenticate eap {
