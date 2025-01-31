@@ -92,9 +92,9 @@ one of the following attributes from the
 `recv Identity-Response { ... }` section of the specified
 EAP-SIM virtual_server, to the reply list:
 
-- &reply.Any-Id-Req
-- &reply.Fullauth-Id-Req
-- &reply.Permanent-Id-Req
+- reply.Any-Id-Req
+- reply.Fullauth-Id-Req
+- reply.Permanent-Id-Req
 
 Even if this configuration item is set to 'no', additional
 identities can be requested by policy.
@@ -117,7 +117,7 @@ the generation of pseudonym or fastauth identities.
 ```
 
 strip_permanent_identity_hint:: Strip the identity hint when
-copying &EAP-Identity or &Identity to &Permanent-Identity.
+copying EAP-Identity or Identity to Permanant-Identity.
 
 The stripping is only performed if this config item is set
 to yes, and the hint byte matches what we'd expect for the
@@ -156,9 +156,9 @@ one of the following attributes from the
 `recv Identity-Response { ... }` section of the specified
 EAP-AKA virtual_server, to the reply list:
 
-- &reply.Any-Id-Req
-- &reply.Fullauth-Id-Req
-- &reply.Permanent-Id-Req
+- reply.Any-Id-Req
+- reply.Fullauth-Id-Req
+- reply.Permanent-Id-Req
 
 Even if this configuration item is set to 'no', additional
 identities can be requested by policy.
@@ -178,7 +178,7 @@ fastauth identities we generate (not including hint byte).
 ```
 
 strip_permanent_identity_hint:: Strip the identity hint when
-copying &EAP-Identity or &Identity to &Permanent-Identity.
+copying EAP-Identity or Identity to Permanant-Identity.
 
 The stripping is only performed if this config item is set
 to yes, and the hint byte matches what we'd expect for the
@@ -214,7 +214,7 @@ to prevent vectors being used where they were not intended
 to be.
 
 The value of the AT_KDF_INPUT can be overridden in the
-eap-aka-prime virtual server with &reply.KDF-Input if
+eap-aka-prime virtual server with reply.KDF-Input if
 this value needs to be determined dynamically.
 
 How this value should be created and formatted is specified
@@ -237,9 +237,9 @@ one of the following attributes from the
 `recv Identity-Response { ... }` section of the specified
 EAP-AKA virtual_server, to the reply list:
 
-- &reply.Any-Id-Req
-- &reply.Fullauth-Id-Req
-- &reply.Permanent-Id-Req
+- reply.Any-Id-Req
+- reply.Fullauth-Id-Req
+- reply.Permanent-Id-Req
 
 Even if this configuration item is set to 'no', additional
 identities can be requested by policy.
@@ -262,7 +262,7 @@ the generation of pseudonym or fastauth identities.
 ```
 
 strip_permanent_identity_hint:: Strip the identity hint when
-copying &EAP-Identity or &Identity to &Permanent-Identity.
+copying EAP-Identity or Identity to Permanant-Identity.
 
 The stripping is only performed if this config item is set
 to yes, and the hint byte matches what we'd expect for the
@@ -313,14 +313,14 @@ The following request attributes are available:
 		- `AKA`
 		- `SIM`
 
-At the end of this section the value of `&Identity-Type` will be
+At the end of this section the value of `Identity-Type` will be
 checked to see if any additional identity processing steps are
 required.
 
 The following actions are associated with the various
 `Identity-Type` values:
-- `Permanent`::	The current `&Identity` value will be copied to
-  	`&session-state.Permanent-Identity`.  The hint byte
+- `Permanent`::	The current `Identity` value will be copied to
+  	`session-state.Permanent-Identity`.  The hint byte
    	will be stripped if the hint matches the current
 	EAP-Method.  If the hint byte does not match
 	the current EAP-Method the complete value of
@@ -361,7 +361,7 @@ EAP type. If, however, you want to avoid the additional round trips
 involved in that negotiation, you can use
 `%aka_sim_id_method(%{User-Name})` in the top level virtual server,
 which will return the EAP method hinted by the identity, and then
-set `&control.EAP-Type` to an appropriate value before calling the
+set `control.EAP-Type` to an appropriate value before calling the
 EAP module.
 
 #### Pseudonyms
@@ -374,7 +374,7 @@ section.
 If for whatever reason the identity cannot be validated, you should
 return `notfound` to request an additional identity.
 
-NOTE: Setting `&Method-Hint = Pseudonym` here will cause the server
+NOTE: Setting `Method-Hint = Pseudonym` here will cause the server
 to execute the `load pseudonym { ... }` section next.  This is
 sometimes useful when dealing with non-standard pseudonym identities.
 
@@ -389,7 +389,7 @@ section.
 If the identity cannot be resolved, you should return `notfound` to
 request an additional identity.
 
-NOTE: Setting `&Method-Hint = Fastauth` here will cause the server
+NOTE: Setting `Method-Hint = Fastauth` here will cause the server
 to execute the `load session { ... }` section next.  This is
 sometimes useful when dealing with non-standard fastauth identities.
 
@@ -407,7 +407,7 @@ The notable exception to this is the scheme described in
 - 3gpp_temporary_id_decrypt
 - 3gpp_temporary_id_encrypt
 
-The rlm_cipher module and the &control.KDF-Identity attribute override
+The rlm_cipher module and the control.KDF-Identity attribute override
 (see notes below) are provided to allow the "Privacy Protection for EAP-AKA"
 scheme described by 3GPP S3-170116 and the Wireless Broadband Allowance
 document "IMSI PRIVACY PROTECTION FOR WI-FI".
@@ -557,8 +557,8 @@ following control attributes:
 
 ### Pseudonyms
 
-For identity privacy you may include a `&reply.Next-Pseudonym`
-attribute. `&reply.Next-Pseudonym` must be a valid UTF8 string and
+For identity privacy you may include a `reply.Next-Pseudonym`
+attribute. `reply.Next-Pseudonym` must be a valid UTF8 string and
 MUST NOT contain a realm.  The supplicant will decorate the identity
 as appropriate to ensure correct routing.
 
@@ -569,7 +569,7 @@ values:
 - The `%3gpp_temporary_id_encrypt()` expansion.
 - The `%randstr()` expansion.
 
-NOTE: Add a `&reply.Next-Pseudonym-Id` attribute in this section to
+NOTE: Add a `reply.Next-Pseudonym-Id` attribute in this section to
 avoid having the permanent Id of the SIM exposed during subsequent
 authentication attempts.
 The value of this attribute may be empty (a zero length string) if
@@ -587,7 +587,7 @@ based EAP methods, where the original MK (Master Key) is stored and
 then used to generate new MSKs (Master Session Keys) for subsequent
 authentication attempts.
 
-NOTE: Add a `&reply.Next-Reauth-Id` attribute in this section, to
+NOTE: Add a `reply.Next-Reauth-Id` attribute in this section, to
 allow session-resumption for subsequent authentication attempts.
 The value of this attribute may be empty (a zero length string) if
 which case a random value with the correct hint character will be
@@ -626,7 +626,7 @@ No where is this mentioned in either the original 3GPP proposal or the
 WBA document.
 
 If you need to implement one of these identity privacy schemes, the
-cryptographic identity can be specified with `&control.KDF-Identity`.
+cryptographic identity can be specified with `control.KDF-Identity`.
 
 ```
 	send Challenge-Request {
@@ -673,11 +673,11 @@ The following rcodes have special meanings in this section:
 There's not much to do here as the majority of the work for
 session resumption is done in `load session { ... }`.
 
-Add a `&reply.Next-Pseudonym` attribute in this section if you want
+Add a `reply.Next-Pseudonym` attribute in this section if you want
 to allow avoid having the permanent Id of the SIM exposed during
 subsequent authentication attempts.
 
-Add a `&reply.Next-Reauth-Id` attribute in this section, to allow
+Add a `reply.Next-Reauth-Id` attribute in this section, to allow
 session resumption for subsequent authentication attempts.
 
 The following rcodes have special meanings in this section:
@@ -722,7 +722,7 @@ not clear that this is allowed by RFC4186/RFC4187.
 
 ### `recv Client-Error { ... }` - Log the fact that the supplicant has terminated authentication
 
-The reason for the error should be available in `&Client-Error-Code`
+The reason for the error should be available in `Client-Error-Code`
 
 After this section is run authentication fails immediately with no
 EAP-Response/AKA-Notification round.
@@ -766,10 +766,10 @@ EAP-Response/Synchronization-Failure message with an AUTS attribute.
 If the original UMTS quintuplets were calculated locally and you
 provided Ki and OP/OPc in the Challenge-Request round, then the
 EAP-AKA module will automatically calculate a new SQN for you and
-place it in `&control.SIM-SQN`.  You should store this new SQN.
+place it in `control.SIM-SQN`.  You should store this new SQN.
 
 As a convenience, the EAP-AKA module will also repopulate
-&control.SIM-Ki and &control.SIM-OPc so you do not need to retrieve
+control.SIM-Ki and control.SIM-OPc so you do not need to retrieve
 them again in the `send Challenge-Request { ... }` section.
 
 If the UMTS quintuplets were provided by an AuC, you should submit
@@ -778,7 +778,7 @@ retrieve a new UMTS quintuplet in the
 `send Challenge-Request { ... }` section.
 
 If the rcode returned from this section does not indicate failure
-and a &control.SQN value is provided, we send a new challenge to
+and a control.SQN value is provided, we send a new challenge to
 the supplicant and continue; otherwise authentication fails.
 
 NOTE: Only one Synchronisation attempt is permitted per
@@ -864,19 +864,19 @@ NOTE: The rcode returned from this section is ignored.
 ### `store pseudonym { ... }`
 
 If when sending a Challenge-Request Reauthentication-Request a
-`&reply.Next-Pseudonym-Id` attribute is found, this section will be
+`reply.Next-Pseudonym-Id` attribute is found, this section will be
 called.
 
-If `&reply.Next-Pseudonym-Id` is empty, it will be filled with a random
+If `reply.Next-Pseudonym-Id` is empty, it will be filled with a random
 string of alphanumeric characters.
 
-For consistency, &reply.Next-Pseudonym-Id will also be made available
-temporarily in `&Next-Pseudonym-Id` for use as a key.
+For consistency, reply.Next-Pseudonym-Id will also be made available
+temporarily in `Next-Pseudonym-Id` for use as a key.
 
 You should store the following attributes against the key
-`&Next-Paeudonym-Id`:
+`Next-Paeudonym-Id`:
 
-- `&session-state.Permanent-Identity`::The permanent identity of the user.
+- `session-state.Permanent-Identity`::The permanent identity of the user.
 
 If a failure rcode is returned authentication continues but the
 Next-Pseudonym-Id will not be sent to the supplicant.
@@ -902,13 +902,13 @@ for `load session { ... }`, and use that to decrypt the pseudonym.
 This section will be called prior to entering the AKA-CHALLENGE state.
 
 You should restore the contents of the following attributes using
-`&Next-Pseudonym-Id` as a key:
+`Next-Pseudonym-Id` as a key:
 
-- `&session-state.Permanent-Identity`::The permanent identity of the user.
+- `session-state.Permanent-Identity`::The permanent identity of the user.
 
 NOTE: If you're using 3GPP style encrypted pseudonyms, you should
 decrypt the pseudonym here, and store the decrypted value in
-`&session-state.Permanent-Identity`.
+`session-state.Permanent-Identity`.
 
 ```
 	load pseudonym {
@@ -922,7 +922,7 @@ decrypt the pseudonym here, and store the decrypted value in
 This section we be called if authentication or re-authentication fails.
 
 You should remove any session information stored against
-`&Next-Pseudonym-Id`.
+`Next-Pseudonym-Id`.
 
 ```
 	clear pseudonym {
@@ -933,16 +933,16 @@ You should remove any session information stored against
 
 ### `store session { ... }`
 
-If when sending a Reauthentication-Request a `&reply.Next-Reauth-Id`
+If when sending a Reauthentication-Request a `reply.Next-Reauth-Id`
 attribute is found, this section will be called.
 
 You should restore the contents of the following attributes using
-`&request.Session-ID` as a key:
+`request.Session-ID` as a key:
 
-- `&session-state.Counter`::		How many times this session has
+- `session-state.Counter`::		How many times this session has
 			been resumed.
-- `&session-state.Session-Data`::	The master session key.
-- `&session-state.Permanent-Identity`::(optionally) the permanent
+- `session-state.Session-Data`::	The master session key.
+- `session-state.Permanent-Identity`::(optionally) the permanent
 			identity of the user.
 
 If a failure rcode is returned, authentication continues but the
@@ -965,12 +965,12 @@ provide a unified session store.
 This section will be called prior to attempting re-authentication.
 
 You should restore the contents of the following attributes using
-`&request.Session-ID` as a key:
+`request.Session-ID` as a key:
 
-- `&session-state.Counter`::		How many times this session has
+- `session-state.Counter`::		How many times this session has
 			been resumed.
-- `&session-state.Session-Data`::	The master session key.
-- `&session-state.Permanent-Identity`::(optionally) the permanent
+- `session-state.Session-Data`::	The master session key.
+- `session-state.Permanent-Identity`::(optionally) the permanent
 			identity of the user.
 
 The following rcodes have special meanings in this section:
@@ -998,7 +998,7 @@ The following rcodes have special meanings in this section:
 
 This section we be called if authentication or re-authentication fails.
 
-You should remove any session information stored against `&request.Session-ID`.
+You should remove any session information stored against `request.Session-ID`.
 
 ```
 	clear session {

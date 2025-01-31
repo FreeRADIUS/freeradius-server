@@ -81,22 +81,45 @@ a secret any more!
 
 The secret can be any string, up to 8k characters in length.
 
-Control codes can be entered via octal encoding,
-e.g. `\101\102` is the same as `AB`
-Quotation marks can be entered by escaping them,
-e.g. `foo\"bar`
+Control codes can be entered via octal encoding:
 
-An important note on security:  The security of the
-RADIUS protocol depends *completely* on this secret! We
-recommend using a shared secret that is composed of:
+`secret = "\101\102"` is the same as `AB`
 
-  * upper case letters
-  * lower case letters
-  * numbers
+Quotation marks can be entered by escaping them:
 
-And is *at least* 8 characters, but preferably 16 characters in
-length.  The secret *must* be random, and should not be words,
-phrase, or anything else that is recognisable.
+`secret = "foo\"bar"`
+
+or by using triple quotes:
+
+`secret = """foo"bar"""
+
+A note on security: The security of the RADIUS protocol
+depends COMPLETELY on this secret!  We recommend using a
+shared secret that at LEAST 16 characters long.  It should
+preferably be 32 characters in length.  The secret MUST be
+random, and should not be words, phrase, or anything else
+that is recognisable.
+
+Computing power has increased enormously since RADIUS was
+first defined.  A hobbyist with a high-end GPU can try ALL
+of the 8-character shared secrets in about a day.  The
+security of shared secrets increases MUCH more with the
+length of the shared secret, than with number of different
+characters used in it.  So don't bother trying to use
+"special characters" or anything else in an attempt to get
+un-guessable secrets.  Instead, just get data from a secure
+random number generator, and use that.
+
+You should create shared secrets using a method like this:
+
+dd if=/dev/random bs=1 count=24 | base64
+
+This process will give output which takes 24 random bytes,
+and converts them to 32 characters of ASCII.  The output
+should be accepted by all RADIUS clients.
+
+You should NOT create shared secrets by hand.  They will
+not be random.  They will will be trivial to crack.
 
 The default secret below is only for testing, and should
 not be used in any real environment.
@@ -105,17 +128,32 @@ not be used in any real environment.
 
 require_message_authenticator::Require Message-Authenticator in Access-Requests.
 
-https://tools.ietf.org/html/rfc5080[RFC 5080] suggests that all clients *should* include it in an
-Access-Request. The configuration item below allows the server
-to require it. If a client is required to include a `link:https://freeradius.org/rfc/rfc2869.html#Message-Authenticator[Message-Authenticator]`
-and it does not, then the packet will be silently discarded.
+https://tools.ietf.org/html/rfc5080[RFC 5080] suggests that all clients *should* include it in
+an Access-Request. The configuration item below allows the
+server to require it. If a client is required to include a
+`link:https://freeradius.org/rfc/rfc2869.html#Message-Authenticator[Message-Authenticator]` and it does not, then the packet
+will be silently discarded.
 
-If value is auto, then if any packet received from the client
-contains a valid Message-Authenticator attribute, then the server
-will require it from all future packets from that client.
+If value is` auto`, then when an `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packet from
+the client contains a valid `link:https://freeradius.org/rfc/rfc2869.html#Message-Authenticator[Message-Authenticator]`
+attribute, the server will then require that it exist in
+all future `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packets from that client.
 
-NOTE: This setting overrides the identically named config item in the
-radius listener.
+This flag exists solely for legacy clients which do not
+send `link:https://freeradius.org/rfc/rfc2869.html#Message-Authenticator[Message-Authenticator]` in all `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]`
+packets.  We do not recommend setting it to `no`, as that
+may allow the BlastRADIUS attack to take place.
+
+The number one way to protect yourself from the BlastRADIUS
+attack is to update all RADIUS servers, and then set this
+flag to `yes`.  If all RADIUS servers are updated, and if
+all of them have this flag set to `yes` for all clients,
+then your network is safe.  You can then upgrade the
+clients when it is convenient, instead of rushing the
+upgrades.
+
+NOTE: This per-client setting overrides the identically
+named configuration item in the `listen` section.
 
 Allowed values: yes, no, auto
 
@@ -124,10 +162,11 @@ The default is "no".
 
 
 limit_proxy_state:: Control whether Proxy-State is allowed in
-packets from this client which do not have a Message-Authenticator.
+packets from this client which do not have a `link:https://freeradius.org/rfc/rfc2869.html#Message-Authenticator[Message-Authenticator]`.
 
-The blastradius prefix attack allows an attacker to manipulate
-the contents of response packets without knowing the shared secret.
+The BlastRADIUS attack allows an attacker to manipulate the
+contents of responses to `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packets, without
+knowing the shared secret.
 
 The attack relies on controlling a portion of the data sent back
 in the response by the RADIUS server. As Proxy-State is always
@@ -135,24 +174,27 @@ echoed back verbatim from the request, it can be leveraged to
 manipulate the data sent back from the server and facilitate the
 attack.
 
-The attack also relies on defficiencies in the original RADIUS
-standards that provided no integrity protection for Access-Requests.
+The attack also relies on deficiencies in the original
+RADIUS standards which do not provide xintegrity protection
+for `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]`s.
 
 The attack is mitigated by requiring the Message-Authenticator,
 which contains a HMAC over the entire request, preventing
 modification of the request by the attacker.
 
-If value is auto, and the first packet received from the client
-does not contain a Proxy-State attribute, Proxy-State will be
-disallowed in any future packets which do not contain a
-Message-Authenticator.
+If value is` auto`, then when an `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packet
+from the client contains does not contain a `link:https://freeradius.org/rfc/rfc2865.html#Proxy-State[Proxy-State]`
+attribute, the server will the discard `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]`
+packets from the client which contain `link:https://freeradius.org/rfc/rfc2865.html#Proxy-State[Proxy-State]`, but no
+`Message-Authenticator.
 
-This provides some level of protection against the blastradius
-attack, without requiring Message-Authenticator, or breaking existing
-deployments.
+This provides some level of protection against the
+blastradius attack, without requiring
+`link:https://freeradius.org/rfc/rfc2869.html#Message-Authenticator[Message-Authenticator]` in all packets, or breaking
+existing deployments.
 
 NOTE: This setting overrides the identically named config item in the
-radius listener.
+radius `listen` section.
 
 Allowed values: yes, no, auto
 

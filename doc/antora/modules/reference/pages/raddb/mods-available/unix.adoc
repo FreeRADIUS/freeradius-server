@@ -29,16 +29,18 @@ group, and `false` otherwise.
 The old `Unix-Group`, `Group`, and `Group-Name` attributes and comparisons
 are no longer supported.
 
+All of `radutmp`, `radwho`, `radlast`, and `radzap` have been removed.
+
+You can no longer have the `unix` module process accounting packets.
+
 
 
 ## Configuration Settings
-
 
 
 == Default Configuration
 
 ```
 unix {
-
 }
 ```

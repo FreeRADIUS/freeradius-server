@@ -21,85 +21,30 @@ service_principal:: Principal that is used by rlm_krb5.
 
 
 
-pool { ... }:: Pool of `krb5` contexts.
+username:: The username (principal) to authenticate as
 
-This allows us to make the module multithreaded and to avoid expensive
-operations like resolving and opening keytabs on every request.
-It may also allow TCP connections to the KDC to be cached if that is
-supported by the version of libkrb5 used.
-
-NOTE: The context `pool` is only used if the underlying libkrb5 reported
-that it was thread safe at compile time.
+If this is just a user name, then the default Kerberos realm will
+automatically be added.
 
 
-start:: Connections to create during module instantiation.
-
-If the server cannot create specified number of
-connections during instantiation it will exit.
-Set to `0` to allow the server to start without the
-external service being available.
+password:: The password to use in user authentication
 
 
+.Reusable Handles
 
-min:: Minimum number of connections to keep open.
+Reusable krb5 handles are allocated in blocks.  These
+parameters allow for tuning how that is done.
+
+
+min:: The minimum number of handles to keep allocated
 
 
 
-max:: Maximum number of connections.
-
-If these connections are all in use and a new one
-is requested, the request will NOT get a connection.
-
-Setting `max` to *LESS* than the number of threads means
-that some threads may starve, and you will see errors
-like _No connections available and at max connection limit_.
-
-Setting `max` to MORE than the number of threads means
-that there are more connections than necessary.
-
-If `max` is not specified, then it defaults to the number
-of workers configured.
+max:: The maximum number of reusable handles to allocate.
 
 
 
-spare:: Spare connections to be left idle.
-
-NOTE: Idle connections WILL be closed if `idle_timeout`
-is set. This should be less than or equal to `max` above.
-
-
-
-uses:: Number of uses before the connection is closed.
-
-NOTE: A setting of `0` means infinite (no limit).
-
-
-
-lifetime:: The lifetime (in seconds) of the connection.
-
-NOTE: A setting of `0` means infinite (no limit).
-
-
-
-idle_timeout:: The idle timeout (in seconds).  A connection which is
-unused for this length of time will be closed.
-
-NOTE: A setting of `0` means infinite (no timeout).
-
-
-
-[NOTE]
-====
-All configuration settings are enforced.  If a
-connection is closed because of `idle_timeout`,
-`uses`, or `lifetime`, then the total number of
-connections MAY fall below `min`.  When that
-happens, it will open a new connection.  It will
-also log a WARNING message.
-
-The solution is to either lower the `min` connections,
-or increase lifetime/idle_timeout.
-====
+cleanup_interval:: How often to free un-used handles.
 
 
 
@@ -136,14 +81,12 @@ krb5
 krb5 {
 	keytab = /path/to/keytab
 	service_principal = name_of_principle
-	pool {
-		start = 0
-		min = 0
-#		max =
-		spare = 1
-		uses = 0
-		lifetime = 0
-		idle_timeout = 0
+#	username = &User-Name
+#	password = &User-Password
+	reuse {
+#		min = 10
+#		max = 100
+#		cleanup_interval = 30s
 	}
 }
 ```

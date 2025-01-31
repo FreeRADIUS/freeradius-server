@@ -2,7 +2,7 @@
 
 
 
-= CHAP module
+= CHAP
 
 This module authenticates requests containing a `link:https://freeradius.org/rfc/rfc2865.html#CHAP-Password[CHAP-Password]` attribute.
 

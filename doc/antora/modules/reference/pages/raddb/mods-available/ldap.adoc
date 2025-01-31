@@ -286,7 +286,7 @@ result will be processed.
 sorting order will be reversed for that attribute.
 
   * If `sort_by` is set, and the server does not support sorting
-the search will fail.
+or the attributes do not have an ORDERING rule, the search will fail.
 
   * If a search returns multiple user objects and `sort_by` is not
 set, the search will fail.
@@ -490,6 +490,20 @@ is successful.
 
 
 
+sort_by:: Server side result sorting.
+
+A list of space delimited attributes to order the result set by,
+controlling the sequence that profiles are applied if the filter
+returns more than one object.
+
+  * If the attribute name is prefixed with a hyphen '-' the
+sorting order will be reversed for that attribute.
+
+  * If `sort_by` is set, and the server does not support sorting
+or the attributes do not have an ORDERING rule, the search will fail.
+
+
+
 ### Modify user object on receiving Accounting-Request
 
 Useful for recording things like the last time the user logged
@@ -518,8 +532,7 @@ replaced with a single attribute.
 
 
 
-
-### Post-Auth can modify LDAP objects too
+### "send" sections can modify LDAP objects too
 
 
 
@@ -919,30 +932,30 @@ ldap {
 #		default = 'cn=radprofile,dc=example,dc=org'
 #		attribute = 'radiusProfileDn'
 #		attribute_suspend = 'radiusProfileDn'
+#		sort_by = 'radiusProfilePriority'
 	}
 	accounting {
-		reference = "%tolower(type.%{Acct-Status-Type})"
-		type {
-			start {
-				update {
-					description := "Online at %S"
-				}
+		start {
+			update {
+				description := "Online at %S"
 			}
-			interim-update {
-				update {
-					description := "Last seen at %S"
-				}
+		}
+		interim-update {
+			update {
+				description := "Last seen at %S"
 			}
-			stop {
-				update {
-					description := "Offline at %S"
-				}
+		}
+		stop {
+			update {
+				description := "Offline at %S"
 			}
 		}
 	}
-	post-auth {
-		update {
-			description := "Authenticated at %S"
+	send {
+		access-accept {
+			update {
+				description := "Authenticated at %S"
+			}
 		}
 	}
 	options {

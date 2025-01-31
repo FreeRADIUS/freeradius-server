@@ -57,7 +57,7 @@ from from v4.0.
 Individual attributes from the outer request may be
 accessed with:
 
-    &outer.request.<attribute>
+    outer.request.<attribute>
 
 The following policy in raddb/policy.d/eap can be used
 to copy attributes over.
@@ -281,7 +281,7 @@ the ONLY safe way is to set the outer session-state list.
 Attributes that should be provided in the reply should be
 copied to the outer.session-state list:
 
-    &outer.session-state.Attribute := <Value>
+    outer.session-state.Attribute := <Value>
 
 The default configuration in the outer post-auth "send" section
 will copy this to the reply. To copy the entire reply see
@@ -380,7 +380,7 @@ See `mods-enabled/linelog` for message formats and destinations.
 Let the outer session know which module failed, and why.
 
 ```
-	&outer.session-state.Module-Failure-Message := &request.Module-Failure-Message
+	outer.session-state.Module-Failure-Message := request.Module-Failure-Message
 }
 } # inner-tunnel server block
 ```

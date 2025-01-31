@@ -291,12 +291,12 @@ Note that we do NOT rely on any Event-Timestamp in the original packet,
 it could be wrong.
 
 ```
-	if (&Acct-Delay-Time) {
-		&Acct-Delay-Time += %l - &Packet-Original-Timestamp
+	if (Acct-Delay-Time) {
+		Acct-Delay-Time += %l - Packet-Original-Timestamp
 	}
 
-	if (!&Event-Timestamp) {
-		&Event-Timestamp := &Packet-Original-Timestamp
+	if (!Event-Timestamp) {
+		Event-Timestamp := Packet-Original-Timestamp
 	}
 
 ```

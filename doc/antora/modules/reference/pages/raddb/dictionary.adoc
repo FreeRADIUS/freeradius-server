@@ -11,7 +11,7 @@ edited by local administrators.  It will be loaded
 
 NOTE: We recommend using local variables inside of "unlang"
       sections instead of defining attributes in this file. See
-      the xref:index.adoc[reference documentation]
+      the xref:reference:index.adoc[reference documentation]
       for more information on
       xref:unlang/local.adoc[local variables].
 
@@ -147,9 +147,13 @@ copy of the v3 dictionary, then it won't work.  Migrations across
 major version numbers means that the configuration files are *not*
 100% compatible. This includes the dictionaries!
 
-All of the v3 compatibility names are in the RADIUS namespace.
+The v3 compatibility names are in the RADIUS namespace.
 There are no aliases for DHCPv4.
 
+
+
+This dictionary includes v3-compatible names like "Cleartext-Password",
+or "NT-Password".
 
 
 == Default Configuration
@@ -162,4 +166,5 @@ There are no aliases for DHCPv4.
 #$INCLUDE ${dictdir}/radius/v3/dictionary.cisco
 #$INCLUDE ${dictdir}/radius/v3/dictionary.aruba
 #END-PROTOCOL RADIUS
+#$INCLUDE ${dictdir}/freeradius/v3/dictionary.freeradius.internal
 ```

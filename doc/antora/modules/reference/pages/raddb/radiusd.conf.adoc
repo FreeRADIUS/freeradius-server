@@ -580,6 +580,8 @@ removed (and made into errors!) in the final release.
 Some of these flags can also be passed on the command line as
 `-S flag=value`.
 
+Dictionary migration instructions can be found in `${raddbdir}/dictionary`.
+
 
 rewrite_update:: Rewrite old `update` sections to use the new
 "edit" code.
@@ -628,7 +630,9 @@ The different copies of the module are then created by
 inventing two 'instance' names, e.g. 'instance1' and 'instance2'
 
 The instance names can then be used in later configuration
-INSTEAD of the original 'name'.
+INSTEAD of the original 'name'.  e.g. instead of `pap { ...}`,
+you can use `pap other {...}`.  The `other` name will then be
+a reference to the second PAP module.
 
 
 

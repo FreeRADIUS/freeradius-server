@@ -188,7 +188,7 @@ and the detail file processed as normal.
 You may want accounting policies here...
 
 ```
-		&control.Proxy-To-Realm := "acct_realm.example.com"
+		control.Proxy-To-Realm := "acct_realm.example.com"
 	}
 
 }

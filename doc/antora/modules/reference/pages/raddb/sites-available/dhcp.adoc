@@ -153,7 +153,7 @@ recv Discover {
 ```
 The DHCP Server Identifier is set here since it is returned in OFFERs
 ```
-	&control.Server-Identifier = 192.0.2.1
+	control.Server-Identifier = 192.0.2.1
 
 ```
 Call a policy (defined in policy.d/dhcp) to set common reply attributes
@@ -180,7 +180,7 @@ if (notfound) {
 Or, allocate IPs from the DHCP pool in SQL. You may need to
 set the pool name here if you haven't set it elsewhere.
 ```
-#	&control.IP-Pool.Name := "local"
+#	control.IP-Pool.Name := "local"
 #	sqlippool
 
 ```
@@ -199,7 +199,7 @@ server will fall back to determining the type of reply
 based on the rcode of this section.
 
 ```
-#	&reply.Message-Type = Offer
+#	reply.Message-Type = Offer
 
 ```
 If Message-Type is not set, returning "ok" or
@@ -217,20 +217,20 @@ recv Request {
 ```
 The DHCP Server Identifier is set here since it is returned in OFFERs
 ```
-	&control.Server-Identifier = 192.0.2.1
+	control.Server-Identifier = 192.0.2.1
 
 ```
 If the request is not for this server then silently discard it
 ```
-	if (&request.Server-Identifier && \
-	    &request.Server-Identifier != &control.Server-Identifier) {
+	if (request.Server-Identifier &&
+	    request.Server-Identifier != control.Server-Identifier) {
 	        do_not_respond
 	}
 
 ```
 Response packet type. See Discover section above.
 ```
-#	&reply.Message-Type = Ack
+#	reply.Message-Type = Ack
 
 ```
 Call a policy (defined in policy.d/dhcp) to set common reply attributes
@@ -257,11 +257,11 @@ if (notfound) {
 Or, allocate IPs from the DHCP pool in SQL. You may need to
 set the pool name here if you haven't set it elsewhere.
 ```
-#	&control.IP-Pool.Name := "local"
+#	control.IP-Pool.Name := "local"
 #	sqlippool
 
 	if (ok) {
-		&reply.Your-IP-Address := "%{&request.Requested-IP-Address || &request.Client-IP-Address}"
+		reply.Your-IP-Address := "%{request.Requested-IP-Address || request.Client-IP-Address}"
 	}
 
 ```
@@ -289,7 +289,7 @@ recv Decline {
 If using IPs from a DHCP pool in SQL then you may need to set the
 pool name here if you haven't set it elsewhere and mark the IP as declined.
 ```
-#	&control.IP-Pool.Name := "local"
+#	control.IP-Pool.Name := "local"
 #	sqlippool
 
 	ok
@@ -317,10 +317,10 @@ For Windows 7 boxes
 
 ```
 #recv Inform {
-#	&reply.Net.Dst.Port = 67
-#	&reply.Message-Type = Ack
-#	&reply.Server-Identifier = "%{Net.Dst.IP}"
-#	&reply.Site-specific-28 = 0x0a00
+#	reply.Net.Dst.Port = 67
+#	reply.Message-Type = Ack
+#	reply.Server-Identifier = "%{Net.Dst.IP}"
+#	reply.Site-specific-28 = 0x0a00
 #	ok
 #}
 
@@ -329,7 +329,7 @@ recv Release {
 If using IPs from a DHCP pool in SQL then you may need to set the
 pool name here if you haven't set it elsewhere and release the IP.
 ```
-#	&control.IP-Pool.Name := "local"
+#	control.IP-Pool.Name := "local"
 #	sqlippool
 
 	ok
@@ -342,7 +342,7 @@ in the packets.
 
 has MAC, asking for IP, etc.
 ```
-	if (&Client-Hardware-Address) {
+	if (Client-Hardware-Address) {
 ```
 look up MAC in database
 ```
@@ -351,7 +351,7 @@ look up MAC in database
 ```
 has IP, asking for MAC, etc.
 ```
-	elsif (&Your-IP-Address) {
+	elsif (Your-IP-Address) {
 ```
 look up IP in database
 ```
@@ -360,13 +360,13 @@ look up IP in database
 ```
 has host name, asking for IP, MAC, etc.
 ```
-	elsif (&Client-Identifier) {
+	elsif (Client-Identifier) {
 ```
 look up identifier in database
 ```
 	}
 	else {
-		&reply.Message-Type = Lease-Unknown
+		reply.Message-Type = Lease-Unknown
 
 		ok
 
@@ -383,7 +383,7 @@ if it can't find anything.
 
 ```
 	if (notfound) {
-		&reply.Message-Type = Lease-Unknown
+		reply.Message-Type = Lease-Unknown
 
 		ok
 
@@ -411,7 +411,7 @@ Lease-Active
 Lease-Unassigned
 
 ```
-	&reply.Message-Type = Lease-Unassigned
+	reply.Message-Type = Lease-Unassigned
 }
 
 }

@@ -37,9 +37,9 @@ If there's no State attribute, then this is the request from
 the user.
 
 ```
-	if (!&State) {
-		&control.Auth-Type := ::Step1
-		&control.Password.Cleartext := "hello"
+	if (!State) {
+		control.Auth-Type := ::Step1
+		control.Password.Cleartext := "hello"
 	}
 	else {
 ```
@@ -49,8 +49,8 @@ Set the "known good" password to the number
 saved in the session-state list.
 
 ```
-		&control.Auth-Type := ::Step2
-		&control.Password.Cleartext := &session-state.challenge-string
+		control.Auth-Type := ::Step2
+		control.Password.Cleartext := session-state.challenge-string
 	}
 }
 
@@ -66,8 +66,8 @@ immediately.
 Set the random number to save.
 
 ```
-	&session-state.challenge-string := "%randstr(n)"
-	&reply.Reply-Message := "Please enter %{session-state.challenge-string}: "
+	session-state.challenge-string := "%randstr(n)"
+	reply.Reply-Message := "Please enter %{session-state.challenge-string}: "
 
 ```
 

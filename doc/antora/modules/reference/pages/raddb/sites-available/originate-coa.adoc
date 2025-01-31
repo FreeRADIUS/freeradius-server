@@ -31,9 +31,9 @@ and call the `radius` module to send the packet.
 
 ```
 #	subrequest Disconnect-Request {
-#	       &User-Name = &parent.request.User-Name
-#	       &Acct-Session-Id = &parent.request.Acct-Session-Id
-#	       &NAS-IP-Address = &parent.NAS-IP-Address}
+#	       User-Name = parent.request.User-Name
+#	       Acct-Session-Id = parent.request.Acct-Session-Id
+#	       NAS-IP-Address = parent.NAS-IP-Address}
 #	       ...
 #	}
 ```
@@ -76,13 +76,13 @@ The subrequest begins empty, so copy all necessary
 attributes over.
 
 ```
-		&request.User-Name := &parent.request.User-Name
-		&request.Acct-Session-Id := &parent.request.Acct-Session-Id
-		&request.NAS-Identifier := &parent.request.NAS-Identifier
-		&request.NAS-IP-Address := &parent.request.NAS-IP-Addres
-		&request.NAS-IPv6-Address := &parent.request.NAS-IPv6-Address
-		&request.NAS-Port := &parent.request.NAS-Port
-		&request.Framed-IP-Address := &parent.request.Framed-IP-Address
+		request.User-Name := parent.request.User-Name
+		request.Acct-Session-Id := parent.request.Acct-Session-Id
+		request.NAS-Identifier := parent.request.NAS-Identifier
+		request.NAS-IP-Address := parent.request.NAS-IP-Addres
+		request.NAS-IPv6-Address := parent.request.NAS-IPv6-Address
+		request.NAS-Port := parent.request.NAS-Port
+		request.Framed-IP-Address := parent.request.Framed-IP-Address
 
 ```
 

@@ -54,14 +54,14 @@ recv Discover {
 ```
 IP Address of the DHCP server
 ```
-	&control.Net.Dst.IP := 192.0.2.2
+	control.Net.Dst.IP := 192.0.2.2
 
 ```
 IP Address of the DHCP relay (where the reply should go to)
 If requests are coming from an upstream relay, this will
 already be set in the packet
 ```
-	&request.Gateway-IP-Address := 192.0.2.1
+	request.Gateway-IP-Address := 192.0.2.1
 
 ```
 Call the dhcpv4 module to do the relay
@@ -81,9 +81,9 @@ This can be repeated for Inform, Release and Decline as required.
 
 ```
 recv Request {
-	&control.Net.Dst.IP := 192.0.2.2
+	control.Net.Dst.IP := 192.0.2.2
 
-	&request.Gateway-IP-Address := 192.0.2.1
+	request.Gateway-IP-Address := 192.0.2.1
 
 	dhcpv4
 

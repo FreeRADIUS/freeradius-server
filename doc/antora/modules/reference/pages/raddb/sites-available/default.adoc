@@ -44,7 +44,7 @@ There are many "commented out" references to modules and
 configurations These references serve as place-holders, and as
 documentation.  If you need the functionality of that module, then:
 
-  * configure the module in xref:raddb/mods-available/index.adoc[mods-available/]
+  * configure the module in xref:reference:raddb/mods-available/index.adoc[mods-available/]
   * enable the module in `mods-enabled`.  e.g. for LDAP, do:  `cd mods-enabled;ln -s ../mods-available/ldap`
   * uncomment the references to it in this file.
 
@@ -837,8 +837,8 @@ The following example will proxy the request if the
 username ends in example.com.
 
 ```
-#	if (&User-Name =~ /@example\.com$/) {
-#		&control.Auth-Type := "proxy-example.com"
+#	if (User-Name =~ /@example\.com$/) {
+#		control.Auth-Type := "proxy-example.com"
 #	}
 
 ```
@@ -1268,8 +1268,8 @@ here. e.g. for later CoA-Request with State, and
 Service-Type = ::Authorize-Only.
 
 ```
-#	if (!&reply.State) {
-#		&reply.State := "0x%randstr(16h)"
+#	if (!reply.State) {
+#		reply.State := "0x%randstr(16h)"
 #	}
 
 ```
@@ -1283,7 +1283,7 @@ The `session-state` attributes are deleted after an
 `link:https://freeradius.org/rfc/rfc2865.html#Access-Reject[Access-Reject]` or `link:https://freeradius.org/rfc/rfc2865.html#Access-Accept[Access-Accept]` packet has been sent.
 
 ```
-	&reply += &session-state
+	reply += session-state
 
 ```
 
@@ -1340,7 +1340,7 @@ work, you will need to define the WiMAX NAI, usually
 via:
 
 ```
-#	&request.WiMAX-MN-NAI = "%{User-Name}"
+#	request.WiMAX-MN-NAI = "%{User-Name}"
 
 ```
 If you want various keys to be calculated, you will
@@ -1350,10 +1350,10 @@ with the correct ones taken from the cryptographic
 calculations, e.g.
 
 ```
-#	&reply += {
-#		&Vendor-Specific.WiMAX = {
-#			&FA-RK-Key = 0x00
-#			&MSK = &reply.EAP-MSK
+#	reply += {
+#		Vendor-Specific.WiMAX = {
+#			FA-RK-Key = 0x00
+#			MSK = reply.EAP-MSK
 #		}
 #	}
 
@@ -1382,13 +1382,13 @@ contains information about the client certificate (if
 available).
 
 ```
-#	&reply += {
-#		&Reply-Message = "%{session-state.TLS-Certificate.Serial}"
-#		&Reply-Message = "%{session-state.TLS-Certificate.Not-After}"
-#		&Reply-Message = "%{session-state.TLS-Certificate.Subject}"
-#		&Reply-Message = "%{session-state.TLS-Certificate.Issuer}"
-#		&Reply-Message = "%{session-state.TLS-Certificate.Common-Name}"
-#		&Reply-Message = "%{session-state.TLS-Certificate.Subject-Alt-Name-Email}"
+#	reply += {
+#		Reply-Message = "%{session-state.TLS-Certificate.Serial}"
+#		Reply-Message = "%{session-state.TLS-Certificate.Not-After}"
+#		Reply-Message = "%{session-state.TLS-Certificate.Subject}"
+#		Reply-Message = "%{session-state.TLS-Certificate.Issuer}"
+#		Reply-Message = "%{session-state.TLS-Certificate.Common-Name}"
+#		Reply-Message = "%{session-state.TLS-Certificate.Subject-Alt-Name-Email}"
 #	}
 
 ```
@@ -1417,8 +1417,8 @@ Uncomment the next few lines to copy the required data
 into the EAP-Key-Name attribute.
 
 ```
-#	if (&reply.EAP-Session-Id) {
-#		&reply.EAP-Key-Name := &reply.EAP-Session-Id
+#	if (reply.EAP-Session-Id) {
+#		reply.EAP-Key-Name := reply.EAP-Session-Id
 #	}
 
 ```
@@ -1577,7 +1577,7 @@ See "Accounting Queries" in xref:reference:raddb/mods-available/sql.adoc[mods-av
 
 Refresh leases when we see a start.
 
-Ensure that &control.IP-Pool.Name is set to determine which
+Ensure that control.IP-Pool.Name is set to determine which
 pool of IPs are used.  Set this in `recv Accounting-Request` so
 it is available for all the accounting sections.
 

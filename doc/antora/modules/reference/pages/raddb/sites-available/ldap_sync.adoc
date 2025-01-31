@@ -269,12 +269,12 @@ This is a very limited form of map:
    single instance of the attribute and += setting as
    many as the LDAP query returns.
 
-Protocol specific attributes must be qualified e.g. &Proto.radius.User-Name
+Protocol specific attributes must be qualified e.g. Proto.radius.User-Name
 
 ```
 			update {
-				&Proto.radius.User-Name = 'uid'
-				&Password.With-Header = 'userPassword'
+				Proto.radius.User-Name = 'uid'
+				Password.With-Header = 'userPassword'
 			}
 		}
 
@@ -292,7 +292,7 @@ FreeRADIUS attributes.
 
 ```
 #			update {
-#				&member += "member"
+#				member += "member"
 #			}
 #		}
 
@@ -347,8 +347,8 @@ container.
 
 ```
 #			update {
-#				&Proto.radius.User-Name = 'sAMAccountName'
-#				&user-acct-control = 'userAccountControl'
+#				Proto.radius.User-Name = 'sAMAccountName'
+#				user-acct-control = 'userAccountControl'
 #			}
 #		}
 
@@ -373,9 +373,9 @@ searching the Global Catalog.
 
 ```
 #			update {
-#				&Proto.radius.User-Name = 'sAMAccountName'
-#				&user-acct-control = 'userAccountControl'
-#				&last-known-parent = 'lastKnownParent'
+#				Proto.radius.User-Name = 'sAMAccountName'
+#				user-acct-control = 'userAccountControl'
+#				last-known-parent = 'lastKnownParent'
 #			}
 #		}
 	}
@@ -392,14 +392,14 @@ sent to the server, so could be used for any initial setup of cache datastores.
 
 A request will be generated with the following attributes:
 
-- &request.LDAP-Sync.DN		the base_dn of the sync.
-- &request.LDAP-Sync.Filter		the filter of the sync (optional).
-- &request.LDAP-Sync.Scope		the scope of the sync (optional).
+- request.LDAP-Sync.DN		the base_dn of the sync.
+- request.LDAP-Sync.Filter		the filter of the sync (optional).
+- request.LDAP-Sync.Scope		the scope of the sync (optional).
 
 You should use these attributes to uniquely identify the sync when retrieving
 previous cookie values.
 
-In addition the attribute &request.LDAP-Sync.Directory-Root-DN will be
+In addition the attribute request.LDAP-Sync.Directory-Root-DN will be
 populated with the root DN of the directory to aid creating a cookie if one
 has not previously been stored.
 
@@ -412,8 +412,8 @@ The section may return one of the following/codes attributes:
 - fail / invalid / reject / disallow to indicate failure.  The section will be
   retried after a delay (the ldap reconnection delay).  The sync query will not be started until
   this section succeeds.
-- Any other code with &reply.LDAP-Sync.Cookie populated to indicate a cookie value was loaded.
-- Any other code without &reply.LDAP-Sync.Cookie populated to indicate no cookie was found.
+- Any other code with reply.LDAP-Sync.Cookie populated to indicate a cookie value was loaded.
+- Any other code without reply.LDAP-Sync.Cookie populated to indicate no cookie was found.
 
 ```
 	load Cookie {
@@ -429,13 +429,13 @@ presuming the ldap module is enabled and configured with the same
 server settings as ldap_sync.
 
 ```
-#		if (!&reply.LDAP-Sync.Cookie) {
+#		if (!reply.LDAP-Sync.Cookie) {
 #			string csn
 ```
 
 ```
-#			&csn := %concat(%ldap("ldap:///%ldap.uri.safe(%{LDAP-Sync.Directory-Root-DN})?contextCSN?base"), ';')
-#			&reply.LDAP-Sync.Cookie := "rid=000,csn=%{csn}"
+#			csn := %concat(%ldap("ldap:///%ldap.uri.safe(%{LDAP-Sync.Directory-Root-DN})?contextCSN?base"), ';')
+#			reply.LDAP-Sync.Cookie := "rid=000,csn=%{csn}"
 #		}
 	}
 
@@ -452,10 +452,10 @@ changeNumber in LDAP-Sync.Cookie.
 
 A request will be generated with the following attributes:
 
-- &request.LDAP-Sync.DN		the base_dn of the sync.
-- &request.LDAP-Sync.Cookie		the cookie value to store.
-- &request.LDAP-Sync.Filter		the filter of the sync (optional).
-- &request.LDAP-Sync.Scope		the scope of the sync (optional).
+- request.LDAP-Sync.DN		the base_dn of the sync.
+- request.LDAP-Sync.Cookie		the cookie value to store.
+- request.LDAP-Sync.Filter		the filter of the sync (optional).
+- request.LDAP-Sync.Scope		the scope of the sync (optional).
 
 The return code of this section is ignored.
 
@@ -480,14 +480,14 @@ during a refresh stage.
 
 A request will be generated with the following attributes:
 
-- &request.LDAP-Sync.DN		the base_dn of the sync.
-- &request.LDAP-Sync.Entry-UUID	the UUID of the object. (https://tools.ietf.org/html/rfc4533[RFC 4533] directories only)
-- &request.LDAP-Sync.Entry-DN	the DN of the object that was added.
-- &*:*				attributes mapped from the LDAP entry to FreeRADIUS
+- request.LDAP-Sync.DN		the base_dn of the sync.
+- request.LDAP-Sync.Entry-UUID	the UUID of the object. (https://tools.ietf.org/html/rfc4533[RFC 4533] directories only)
+- request.LDAP-Sync.Entry-DN	the DN of the object that was added.
+- *:*				attributes mapped from the LDAP entry to FreeRADIUS
 			attributes using the update section within the sync.
-- &request.LDAP-Sync.Filter		the filter of the sync (optional).
-- &request.LDAP-Sync.Scope		the scope of the sync (optional).
-- &request.LDAP-Sync.Attr		the attributes returned by the sync (optional).
+- request.LDAP-Sync.Filter		the filter of the sync (optional).
+- request.LDAP-Sync.Scope		the scope of the sync (optional).
+- request.LDAP-Sync.Attr		the attributes returned by the sync (optional).
 
 The return code of this section is ignored (for now).
 
@@ -509,14 +509,14 @@ during a refresh stage.
 
 A request will be generated with the following attributes:
 
-- &request.LDAP-Sync.DN		the base_dn of the sync.
-- &request.LDAP-Sync.Entry-UUID	the UUID of the object. (https://tools.ietf.org/html/rfc4533[RFC 4533] directories only)
-- &request.LDAP-Sync.Entry-DN	the DN of the object that was added.
-- &*:*				attributes mapped from the LDAP entry to FreeRADIUS
+- request.LDAP-Sync.DN		the base_dn of the sync.
+- request.LDAP-Sync.Entry-UUID	the UUID of the object. (https://tools.ietf.org/html/rfc4533[RFC 4533] directories only)
+- request.LDAP-Sync.Entry-DN	the DN of the object that was added.
+- *:*				attributes mapped from the LDAP entry to FreeRADIUS
 			attributes using the update section within the sync.
-- &request.LDAP-Sync.Filter		the filter of the sync (optional).
-- &request.LDAP-Sync.Scope		the scope of the sync (optional).
-- &request.LDAP-Sync.Original-DN	the original DN of the object, if the object was renamed
+- request.LDAP-Sync.Filter		the filter of the sync (optional).
+- request.LDAP-Sync.Scope		the scope of the sync (optional).
+- request.LDAP-Sync.Original-DN	the original DN of the object, if the object was renamed
 			and the directory returns this attribute.
 
 The return code of this section is ignored (for now).
@@ -538,14 +538,14 @@ during a refresh stage.
 
 A request will be generated with the following attributes:
 
-- &request.LDAP-Sync.DN		the base_dn of the sync.
-- &request.LDAP-Sync.Entry-UUID	the UUID of the object. (https://tools.ietf.org/html/rfc4533[RFC 4533] directories only)
-- &request.LDAP-Sync.Entry-DN	the DN of the object that was removed (optional).
-- &*:*				attributes mapped from the LDAP entry to FreeRADIUS
+- request.LDAP-Sync.DN		the base_dn of the sync.
+- request.LDAP-Sync.Entry-UUID	the UUID of the object. (https://tools.ietf.org/html/rfc4533[RFC 4533] directories only)
+- request.LDAP-Sync.Entry-DN	the DN of the object that was removed (optional).
+- *:*				attributes mapped from the LDAP entry to FreeRADIUS
 			attributes using the update section within the sync,
 			if the attributes are returned by the directory.
-- &request.LDAP-Sync.Filter		the filter of the sync (optional).
-- &request.LDAP-Sync.Scope		the scope of the sync (optional).
+- request.LDAP-Sync.Filter		the filter of the sync (optional).
+- request.LDAP-Sync.Scope		the scope of the sync (optional).
 
 The return code of this section is ignored (for now).
 
@@ -570,11 +570,11 @@ during a refresh stage.
 
 A request will be generated with the following attributes:
 
-- &request.LDAP-Sync.DN		the base_dn of the sync.
-- &request.LDAP-Sync.Entry-UUID	the UUID of the object. (https://tools.ietf.org/html/rfc4533[RFC 4533] directories only)
-- &request.LDAP-Sync.Entry-DN	the DN of the object that is still present (optional).
-- &request.LDAP-Sync.Filter		the filter of the sync (optional).
-- &request.LDAP-Sync.Scope		the scope of the sync (optional).
+- request.LDAP-Sync.DN		the base_dn of the sync.
+- request.LDAP-Sync.Entry-UUID	the UUID of the object. (https://tools.ietf.org/html/rfc4533[RFC 4533] directories only)
+- request.LDAP-Sync.Entry-DN	the DN of the object that is still present (optional).
+- request.LDAP-Sync.Filter		the filter of the sync (optional).
+- request.LDAP-Sync.Scope		the scope of the sync (optional).
 
 The return code of this section is ignored (for now).
 

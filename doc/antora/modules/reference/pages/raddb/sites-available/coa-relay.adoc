@@ -142,30 +142,30 @@ cannot give more detailed advice here.
 Example MySQL lookup
 
 ```
-#		&control.user-session := %sql("SELECT IFNULL(GROUP_CONCAT(CONCAT(nasipaddress,'#',acctsessionid) separator '|'),'') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
+#		control.user-session := %sql("SELECT IFNULL(GROUP_CONCAT(CONCAT(nasipaddress,'#',acctsessionid) separator '|'),'') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
 
 ```
 
 Example PostgreSQL lookup
 
 ```
-#		&control.user-session := %sql("SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
+#		control.user-session := %sql("SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
 
 ```
 
 Keep a count of what we send.
 
 ```
-		&control.sent-counter := 0
+		control.sent-counter := 0
 
 ```
 
 Split the string and split into pieces.
 
 ```
-		if ("%explode(&control.user-session, '|')") {
+		if ("%explode(control.user-session, '|')") {
 
-			foreach &control.user-session {
+			foreach control.user-session {
 ```
 
 Send an update for each session we find.
@@ -175,12 +175,12 @@ Send an update for each session we find.
 ```
 NAS-IP-Address
 ```
-					&control.NAS-IP-Address := "%{1}"
+					control.NAS-IP-Address := "%{1}"
 
 ```
 Acct-Session-Id
 ```
-					&control.Acct-Session-Id := "%{2}"
+					control.Acct-Session-Id := "%{2}"
 
 					subrequest CoA-Request {
 ```
@@ -189,22 +189,22 @@ The subrequest begins empty, so initially copy all attributes
 from the incoming request.
 
 ```
-						&request := &parent.request
+						request := parent.request
 
 ```
 
 Add/override the session identification attributes looked up
 
 ```
-						&request.Acct-Session-Id := &parent.control.Acct-Session-Id
+						request.Acct-Session-Id := parent.control.Acct-Session-Id
 
 ```
 
 Some NASs want these, others don't
 
 ```
-						&request.Event-Timestamp := "%l"
-						&request.Message-Authenticator := 0x00
+						request.Event-Timestamp := "%l"
+						request.Message-Authenticator := 0x00
 
 ```
 
@@ -219,27 +219,27 @@ if it contains attributes which are NOT
 SQL-User-Name is a side-effect of the xlat
 
 ```
-						&request -= &SQL-User-Name[*]
+						request -= SQL-User-Name[*]
 
 ```
 
 Those attributes should be listed here
 
 ```
-						&request -= &Acct-Delay-Time[*]
-						&request -= &Proxy-State[*]
+						request -= Acct-Delay-Time[*]
+						request -= Proxy-State[*]
 
 ```
 
 Uncomment if the NAS does not expect User-Name
 
-&request -= &User-Name[*]
+request -= User-Name[*]
 
 
 Call the radius client module instance for the NAS-IP-Address
 
 ```
-						switch &parent.control.NAS-IP-Address {
+						switch parent.control.NAS-IP-Address {
 ```
 
 Repeat this block for each NAS
@@ -252,7 +252,7 @@ Repeat this block for each NAS
 Increment count of sent updates
 
 ```
-								&parent.control.sent-counter += 1
+								parent.control.sent-counter += 1
 
 								radius-originate-coa-192.0.2.1
 
@@ -264,8 +264,8 @@ Likely a missing "case" block if we can't map NAS-IP-Address to a module
 
 ```
 							default {
-								&parent.control += {
-									&Reply-Message = "Missing map for NAS: %{parent.control.NAS-IP-Address}"
+								parent.control += {
+									Reply-Message = "Missing map for NAS: %{parent.control.NAS-IP-Address}"
 								}
 							}
 
@@ -282,15 +282,15 @@ Likely a missing "case" block if we can't map NAS-IP-Address to a module
 Report what we did
 
 ```
-		if (&control.sent-counter) {
-			&reply += {
-				&Reply-Message = "Sent updates for %{control.sent-counter} active sessions"
+		if (control.sent-counter) {
+			reply += {
+				Reply-Message = "Sent updates for %{control.sent-counter} active sessions"
 			}
 
 			ok
 		} else {
-			&reply += {
-				&Reply-Message = "No active sessions found"
+			reply += {
+				Reply-Message = "No active sessions found"
 			}
 
 			reject

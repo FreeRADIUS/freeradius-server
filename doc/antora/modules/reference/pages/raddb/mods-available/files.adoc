@@ -39,8 +39,18 @@ match_attr:: List and attribute to populate with the `name` of the matched entry
 Note: the attriubte type should be capable of holding data of the type
 used as key values.
 Particularly useful if matching IP addresses to subnets, since the populated
-value will be the subnet.  In that case it is best to use 0.0.0.0/0 in place
-of DEFAULT for any catch-all entries.
+value will be the subnet.  In that case it is best to use `0.0.0.0/0` in place
+of `DEFAULT` for any catch-all entries.
+
+
+
+v3_compat:: Version 3 compatibility flag.
+
+When this flag is set, any enumeration names (e.g. Service-Type := Framed-User)
+do not need to have the v4 "::" prefix.  This flag helps with migrating v3
+configurations to v4.
+
+Default value "false".  Allowerd vlaues, "true' and "false".
 
 
 
@@ -55,6 +65,7 @@ files {
 #	key = "%{&Stripped-User-Name || &User-Name}"
 	filename = ${moddir}/authorize
 #	match_attr = &control.User-Category
+#	v3_compat = false
 }
 files files_accounting {
 #	key = "%{&Stripped-User-Name || &User-Name}"

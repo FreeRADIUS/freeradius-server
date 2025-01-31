@@ -49,7 +49,7 @@ module anywhere you want to proxy packets.
 In most cases, you can just set something like `Auth-Type :=
 example.com`, and then have a section `authenticate example.com {
 ... }`, which contains the `radius` modules which do proxying.  See
-link:../../../../../../sites-available/default.adoc[sites-available/default] for sample configuration which uses this
+xref:reference:raddb/sites-available/default.adoc[sites-available/default] for sample configuration which uses this
 pattern.
 
 ## Behavior
