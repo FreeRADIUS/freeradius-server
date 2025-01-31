@@ -3,8 +3,8 @@ string test_string
 #       json xlat input parsing test - error with no input
 #
 
-test_string := %json_object_ex_encode()  # ERROR
-if (test_string) {
+&test_string := %json_object_ex_encode()  # ERROR
+if (&test_string) {
 	test_fail
 }
 
