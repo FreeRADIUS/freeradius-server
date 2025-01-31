@@ -44,8 +44,6 @@ $(FILES.$(TEST)): export TZ = GMT
 #
 PROTOCOLS := $(subst $(DIR)/protocols/,,$(wildcard $(DIR)/protocols/*))
 define UNIT_TEST_PROTOCOLS
-$(addprefix $(OUTPUT)/,$(filter protocols/${1}/%.txt,$(FILES))): REQUIRE_ENUM_PREFIX=-S require_enum_prefix=yes
-
 $(addprefix $(OUTPUT)/,$(filter protocols/${1}/%.txt,$(FILES))): $(wildcard $(top_srcdir)/share/dictionary/${1}/dictionary*) $(BUILD_DIR)/lib/local/libfreeradius-${1}.la $(BUILD_DIR)/lib/libfreeradius-${1}.la
 
 ifeq "${1}" "eap"
@@ -82,17 +80,16 @@ $(BUILD_DIR)/tests/unit/xlat/purify.txt $(filter $(BUILD_DIR)/tests/unit/xlat/co
 #  with the "actual" output.  But only for the "match" command.  Everything is including comments and blank
 #  lines is copied verbatim.
 #
-REQUIRE_ENUM_PREFIX=-S require_enum_prefix=yes
-
 #REWRITE_FLAGS = -w $(BUILD_DIR)/tmp
+
 #
 #  And the actual script to run each test.
 #
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_attribute
 	$(eval DIR:=${top_srcdir}/src/tests/unit)
 	@echo "UNIT-TEST $(lastword $(subst /, ,$(dir $@))) $(basename $(notdir $@))"
-	${Q}if ! $(TEST_BIN)/unit_test_attribute $(PURIFY) $(REWRITE_FLAGS) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r "$@" $(REQUIRE_ENUM_PREFIX) $<; then \
-		echo "TZ=GMT $(TEST_BIN)/unit_test_attribute $(PURIFY) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r \"$@\" $(REQUIRE_ENUM_PREFIX) $<"; \
+	${Q}if ! $(TEST_BIN)/unit_test_attribute $(PURIFY) $(REWRITE_FLAGS) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r "$@" $<; then \
+		echo "TZ=GMT $(TEST_BIN)/unit_test_attribute $(PURIFY) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r \"$@\" $<"; \
 		rm -f $(BUILD_DIR)/tests/test.unit; \
 		exit 1; \
 	fi

@@ -192,7 +192,7 @@ extern bool tmpl_require_enum_prefix;
 static const conf_parser_t migrate_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("rewrite_update", CONF_FLAG_HIDDEN, main_config_t, rewrite_update) },
 	{ FR_CONF_OFFSET_FLAGS("forbid_update", CONF_FLAG_HIDDEN, main_config_t, forbid_update) },
-	{ FR_CONF_OFFSET_FLAGS("require_enum_prefix", CONF_FLAG_HIDDEN, main_config_t, require_enum_prefix), .dflt = "no" },
+	{ FR_CONF_OFFSET_FLAGS("require_enum_prefix", CONF_FLAG_HIDDEN, main_config_t, require_enum_prefix), .dflt = "yes" },
 
 	CONF_PARSER_TERMINATOR
 };
