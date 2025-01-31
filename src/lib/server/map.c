@@ -2516,9 +2516,27 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 	tmpl_rules_t	my_rules;
 
 	op = fr_table_value_by_str(fr_tokens_table, op_str, T_INVALID);
-	if ((op == T_INVALID) || (!fr_assignment_op[op] && !fr_comparison_op[op])) {
+	if (op == T_INVALID) {
 		fr_strerror_printf("Invalid operator '%s'", op_str);
 		return -1;
+	}
+
+	/*
+	 *	Reply items can be expanded.  Check items cannot be,
+	 *	unless the operator is a comparison operator.
+	 */
+	if (!bare_word_only) {
+		if (!fr_assignment_op[op]) {
+			fr_assert(0);
+			fr_strerror_printf("Invalid operator '%s' for assignment in reply item", op_str);
+			return -1;
+		}
+
+	} else if (!fr_assignment_op[op] && !fr_comparison_op[op]) {
+		if (!fr_assignment_op[op]) {
+			fr_strerror_printf("Invalid operator '%s' for check item", op_str);
+			return -1;
+		}
 	}
 
 	my_rules = *lhs_rules;
