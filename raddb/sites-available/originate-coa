@@ -33,7 +33,7 @@
 #	subrequest Disconnect-Request {
 #	       User-Name = parent.request.User-Name
 #	       Acct-Session-Id = parent.request.Acct-Session-Id
-#	       &NAS-IP-Address = parent.NAS-IP-Address}
+#	       NAS-IP-Address = parent.NAS-IP-Address}
 #	       ...
 #	}
 #

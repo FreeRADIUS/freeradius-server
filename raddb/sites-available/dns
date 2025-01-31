@@ -20,7 +20,7 @@
 #  It's meant to be a _flexible_ DNS server.  Want to give different answers to VoIP phones
 #  and desktops, or other types of split horizon?  It can do that.
 #
-#  Because DNS uses the &Header.Rcode to communicate the result of a query (instead of opcode)
+#  Because DNS uses the Header.Rcode to communicate the result of a query (instead of opcode)
 #  the DNS state machine works differently to other protocols.
 #
 #  Requests will pass through the following processing sections:
@@ -61,11 +61,11 @@ server dns {
 recv Query {
 	if (Question[0].Name == 'foo.example.com') {
 		reply.Resource-Record := {
-			&Name = 'foo.example.com'
-			&Type = A
-			&Class = ::Internet
-			&TTL = 0
-			&Type.A.IP = 127.0.0.1
+			Name = 'foo.example.com'
+			Type = ::A
+			Class = ::Internet
+			TTL = 0
+			Type.A.IP = 127.0.0.1
 		}
 	}
 

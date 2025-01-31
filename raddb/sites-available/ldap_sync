@@ -255,7 +255,7 @@ server ldap_sync {
 			#  FreeRADIUS attributes.
 			#
 #			update {
-#				&member += "member"
+#				member += "member"
 #			}
 #		}
 
@@ -330,7 +330,7 @@ server ldap_sync {
 #			update {
 #				Proto.radius.User-Name = 'sAMAccountName'
 #				user-acct-control = 'userAccountControl'
-#				&last-known-parent = 'lastKnownParent'
+#				last-known-parent = 'lastKnownParent'
 #			}
 #		}
 	}
@@ -383,7 +383,7 @@ server ldap_sync {
 #		if (!reply.LDAP-Sync.Cookie) {
 #			string csn
 #
-#			&csn := %concat(%ldap("ldap:///%ldap.uri.safe(%{LDAP-Sync.Directory-Root-DN})?contextCSN?base"), ';')
+#			csn := %concat(%ldap("ldap:///%ldap.uri.safe(%{LDAP-Sync.Directory-Root-DN})?contextCSN?base"), ';')
 #			reply.LDAP-Sync.Cookie := "rid=000,csn=%{csn}"
 #		}
 	}
@@ -429,7 +429,7 @@ server ldap_sync {
 	#  - request.LDAP-Sync.DN		the base_dn of the sync.
 	#  - request.LDAP-Sync.Entry-UUID	the UUID of the object. (RFC 4533 directories only)
 	#  - request.LDAP-Sync.Entry-DN	the DN of the object that was added.
-	#  - &*:*				attributes mapped from the LDAP entry to FreeRADIUS
+	#  - *:*				attributes mapped from the LDAP entry to FreeRADIUS
 	#					attributes using the update section within the sync.
 	#  - request.LDAP-Sync.Filter		the filter of the sync (optional).
 	#  - request.LDAP-Sync.Scope		the scope of the sync (optional).
@@ -456,7 +456,7 @@ server ldap_sync {
 	#  - request.LDAP-Sync.DN		the base_dn of the sync.
 	#  - request.LDAP-Sync.Entry-UUID	the UUID of the object. (RFC 4533 directories only)
 	#  - request.LDAP-Sync.Entry-DN	the DN of the object that was added.
-	#  - &*:*				attributes mapped from the LDAP entry to FreeRADIUS
+	#  - *:*				attributes mapped from the LDAP entry to FreeRADIUS
 	#					attributes using the update section within the sync.
 	#  - request.LDAP-Sync.Filter		the filter of the sync (optional).
 	#  - request.LDAP-Sync.Scope		the scope of the sync (optional).
@@ -483,7 +483,7 @@ server ldap_sync {
 	#  - request.LDAP-Sync.DN		the base_dn of the sync.
 	#  - request.LDAP-Sync.Entry-UUID	the UUID of the object. (RFC 4533 directories only)
 	#  - request.LDAP-Sync.Entry-DN	the DN of the object that was removed (optional).
-	#  - &*:*				attributes mapped from the LDAP entry to FreeRADIUS
+	#  - *:*				attributes mapped from the LDAP entry to FreeRADIUS
 	#					attributes using the update section within the sync,
 	#					if the attributes are returned by the directory.
 	#  - request.LDAP-Sync.Filter		the filter of the sync (optional).

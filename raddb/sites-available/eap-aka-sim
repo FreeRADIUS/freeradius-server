@@ -347,7 +347,7 @@ server eap-aka-sim {
 	#  If for whatever reason the identity cannot be validated, you should
 	#  return `notfound` to request an additional identity.
 	#
-	#  NOTE: Setting `&Method-Hint = Pseudonym` here will cause the server
+	#  NOTE: Setting `Method-Hint = Pseudonym` here will cause the server
 	#  to execute the `load pseudonym { ... }` section next.  This is
 	#  sometimes useful when dealing with non-standard pseudonym identities.
 	#
@@ -362,7 +362,7 @@ server eap-aka-sim {
 	#  If the identity cannot be resolved, you should return `notfound` to
 	#  request an additional identity.
 	#
-	#  NOTE: Setting `&Method-Hint = Fastauth` here will cause the server
+	#  NOTE: Setting `Method-Hint = Fastauth` here will cause the server
 	#  to execute the `load session { ... }` section next.  This is
 	#  sometimes useful when dealing with non-standard fastauth identities.
 	#
@@ -677,7 +677,7 @@ server eap-aka-sim {
 	#
 	#  ### `recv Client-Error { ... }` - Log the fact that the supplicant has terminated authentication
 	#
-	#  The reason for the error should be available in `&Client-Error-Code`
+	#  The reason for the error should be available in `Client-Error-Code`
 	#
 	#  After this section is run authentication fails immediately with no
 	#  EAP-Response/AKA-Notification round.

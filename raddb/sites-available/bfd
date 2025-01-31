@@ -232,7 +232,7 @@ send Up {
 	#  Sneak in more data after a BFD packet!
 	#
 #	reply.Additional-Data := {
-#		&more-data := 0xabcdef
+#		more-data := 0xabcdef
 #	}
 }
 

@@ -1191,8 +1191,8 @@ send Access-Accept {
 	#
 #	reply += {
 #		Vendor-Specific.WiMAX = {
-#			&FA-RK-Key = 0x00
-#			&MSK = reply.EAP-MSK
+#			FA-RK-Key = 0x00
+#			MSK = reply.EAP-MSK
 #		}
 #	}
 
