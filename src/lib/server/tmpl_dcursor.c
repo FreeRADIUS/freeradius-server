@@ -742,7 +742,7 @@ int tmpl_extents_build_to_leaf_parent(fr_dlist_head_t *existing, fr_dlist_head_t
 	return 0;
 }
 
-void tmpl_extents_debug(fr_dlist_head_t *head)
+void tmpl_extents_debug(FILE *fp, fr_dlist_head_t *head)
 {
 	tmpl_attr_extent_t const *extent = NULL;
 	fr_pair_t *vp = NULL;
@@ -754,25 +754,25 @@ void tmpl_extents_debug(fr_dlist_head_t *head)
 	     	char const *ctx_name;
 
 	     	if (ar) {
-			FR_FAULT_LOG("extent-interior-attr");
-			tmpl_attr_ref_debug(extent->ar, 0);
+			fprintf(fp, "extent-interior-attr\n");
+			tmpl_attr_ref_debug(fp, extent->ar, 0);
 		} else {
-			FR_FAULT_LOG("extent-leaf");
+			fprintf(fp, "extent-leaf\n");
 		}
 
 		ctx_name = talloc_get_name(extent->list_ctx);
 		if (strcmp(ctx_name, "fr_pair_t") == 0) {
-			FR_FAULT_LOG("list_ctx     : %p (%s, %s)", extent->list_ctx, ctx_name,
+			fprintf(fp, "list_ctx     : %p (%s, %s)\n", extent->list_ctx, ctx_name,
 				     ((fr_pair_t *)extent->list_ctx)->da->name);
 		} else {
-			FR_FAULT_LOG("list_ctx     : %p (%s)", extent->list_ctx, ctx_name);
+			fprintf(fp, "list_ctx     : %p (%s)\n", extent->list_ctx, ctx_name);
 		}
-		FR_FAULT_LOG("list         : %p", extent->list);
+		fprintf(fp, "list         : %p", extent->list);
 		if (fr_pair_list_empty(extent->list)) {
-			FR_FAULT_LOG("list (first) : none (%p)", extent->list);
+			fprintf(fp, "list (first) : none (%p)\n", extent->list);
 		} else {
 			vp = fr_pair_list_head(extent->list);
-			FR_FAULT_LOG("list (first) : %s (%p)", vp->da->name, extent->list);
+			fprintf(fp, "list (first) : %s (%p)\n", vp->da->name, extent->list);
 		}
 	}
 

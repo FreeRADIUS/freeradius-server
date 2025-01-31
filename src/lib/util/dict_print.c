@@ -182,6 +182,7 @@ typedef struct {
 	char			flags[256];
 	char			oid[256];
 	unsigned int		start_depth;
+	FILE			*fp;
 } fr_dict_attr_debug_t;
 
 static int dict_attr_debug(fr_dict_attr_t const *da, void *uctx)
@@ -200,12 +201,12 @@ static int dict_attr_debug(fr_dict_attr_t const *da, void *uctx)
 		 (unsigned long)da,
 		 (da->depth - our_uctx->start_depth) * 4, "");
 
-	FR_FAULT_LOG("%s%s(%u) %s %s",
-		     our_uctx->prefix,
-		     da->name,
-		     da->attr,
-		     fr_type_to_str(da->type),
-		     our_uctx->flags);
+	fprintf(our_uctx->fp, "%s%s(%u) %s %s\n",
+		our_uctx->prefix,
+		da->name,
+		da->attr,
+		fr_type_to_str(da->type),
+		our_uctx->flags);
 
 	dict_attr_ext_debug(our_uctx->prefix, da);	/* Print all the extension debug info */
 
@@ -217,26 +218,26 @@ static int dict_attr_debug(fr_dict_attr_t const *da, void *uctx)
 	     enumv = fr_hash_table_iter_next(ext->name_by_value, &iter)) {
 	     	char *value = fr_asprintf(NULL, "%pV", enumv->value);
 
-		FR_FAULT_LOG("%s    %s -> %s",
-			     our_uctx->prefix,
-			     enumv->name,
-			     value);
+		fprintf(our_uctx->fp, "%s    %s -> %s\n",
+			our_uctx->prefix,
+			enumv->name,
+			value);
 		talloc_free(value);
 	}
 
 	return 0;
 }
 
-void fr_dict_namespace_debug(fr_dict_attr_t const *da)
+void fr_dict_namespace_debug(FILE *fp, fr_dict_attr_t const *da)
 {
-	fr_dict_attr_debug_t    uctx = { .dict = fr_dict_by_da(da), .start_depth = da->depth };
+	fr_dict_attr_debug_t    uctx = { .dict = fr_dict_by_da(da), .start_depth = da->depth, .fp = fp };
 	fr_hash_table_t		*namespace;
 	fr_hash_iter_t		iter;
 	fr_dict_attr_t		*our_da;
 
 	namespace = dict_attr_namespace(da);
 	if (!namespace) {
-		FR_FAULT_LOG("%s does not have namespace", da->name);
+		fprintf(fp, "%s does not have namespac\n", da->name);
 		return;
 	}
 
@@ -247,17 +248,17 @@ void fr_dict_namespace_debug(fr_dict_attr_t const *da)
 	}
 }
 
-void fr_dict_attr_debug(fr_dict_attr_t const *da)
+void fr_dict_attr_debug(FILE *fp, fr_dict_attr_t const *da)
 {
-	fr_dict_attr_debug_t	uctx = { .dict = fr_dict_by_da(da), .start_depth = da->depth };
+	fr_dict_attr_debug_t	uctx = { .dict = fr_dict_by_da(da), .start_depth = da->depth, .fp = fp };
 
 	dict_attr_debug(da, &uctx);
 	(void)fr_dict_walk(da, dict_attr_debug, &uctx);
 }
 
-void fr_dict_debug(fr_dict_t const *dict)
+void fr_dict_debug(FILE *fp, fr_dict_t const *dict)
 {
-	fr_dict_attr_debug(fr_dict_root(dict));
+	fr_dict_attr_debug(fp, fr_dict_root(dict));
 }
 
 static int dict_attr_export(fr_dict_attr_t const *da, void *uctx)
@@ -272,18 +273,18 @@ static int dict_attr_export(fr_dict_attr_t const *da, void *uctx)
 	fr_dict_attr_flags_print(&FR_SBUFF_OUT(our_uctx->flags, sizeof(our_uctx->flags)),
 				 our_uctx->dict, da->type, &da->flags);
 
-	FR_FAULT_LOG("ATTRIBUTE\t%-40s\t%-20s\t%s\t%s",
-		     our_uctx->prefix,
-		     our_uctx->oid,
-		     fr_type_to_str(da->type),
-		     our_uctx->flags);
+	fprintf(our_uctx->fp, "ATTRIBUTE\t%-40s\t%-20s\t%s\t%s\n",
+		our_uctx->prefix,
+		our_uctx->oid,
+		fr_type_to_str(da->type),
+		our_uctx->flags);
 
 	return 0;
 }
 
 static void fr_dict_attr_export(fr_dict_attr_t const *da)
 {
-	fr_dict_attr_debug_t	uctx = { .dict = fr_dict_by_da(da), .start_depth = da->depth };
+	fr_dict_attr_debug_t	uctx = { .dict = fr_dict_by_da(da), .start_depth = da->depth, .fp = stderr};
 
 	dict_attr_export(da, &uctx);
 	(void)fr_dict_walk(da, dict_attr_export, &uctx);

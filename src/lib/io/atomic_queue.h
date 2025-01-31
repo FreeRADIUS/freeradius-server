@@ -64,7 +64,7 @@ void			fr_atomic_queue_verify(fr_atomic_queue_t *aq);
 #endif
 
 #ifndef NDEBUG
-void			fr_atomic_queue_debug(fr_atomic_queue_t *aq, FILE *fp);
+void			fr_atomic_queue_debug(FILE *fp, fr_atomic_queue_t *aq);
 #endif
 
 
