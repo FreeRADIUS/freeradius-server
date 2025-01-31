@@ -192,7 +192,14 @@ extern bool tmpl_require_enum_prefix;
 static const conf_parser_t migrate_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("rewrite_update", CONF_FLAG_HIDDEN, main_config_t, rewrite_update) },
 	{ FR_CONF_OFFSET_FLAGS("forbid_update", CONF_FLAG_HIDDEN, main_config_t, forbid_update) },
-	{ FR_CONF_OFFSET_FLAGS("require_enum_prefix", CONF_FLAG_HIDDEN, main_config_t, require_enum_prefix), .dflt = "yes" },
+
+	/*
+	 *	Do not add tmpl_require_enum_prefix here, as it is
+	 *	parsed too late to affect anything.  It must be passed
+	 *	as a command-line option via
+	 *
+	 *		-S v3_enum_names=yes
+	 */
 
 	CONF_PARSER_TERMINATOR
 };
@@ -1493,6 +1500,7 @@ static fr_table_num_ordered_t config_arg_table[] = {
 	{ L("rewrite_update"),		 offsetof(main_config_t, rewrite_update) },
 	{ L("forbid_update"),		 offsetof(main_config_t, forbid_update) },
 	{ L("require_enum_prefix"),	 offsetof(main_config_t, require_enum_prefix) },
+	{ L("v3_enum_names"),		 offsetof(main_config_t, require_enum_prefix) },
 };
 static size_t config_arg_table_len = NUM_ELEMENTS(config_arg_table);
 
