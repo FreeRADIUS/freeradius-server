@@ -1136,6 +1136,7 @@ eap {
 		#  See the new policy `copy_request_to_tunnel` in
 		#  `sites-available/inner-tunnel`, and in `policy.d/eap`
 		#  for more information.
+		#
 		#  ====
 		#
 
@@ -1154,7 +1155,7 @@ eap {
 		#
 		#  require_client_cert:: Whether we require a client certificate.
 		#
-		#  Unlike `EAP-TLS`, `PEAP `does not require a client certificate.
+		#  Unlike `EAP-TLS`, `PEAP` does not require a client certificate.
 		#  However, you can require one by setting the following
 		#  option. You can also override this option by setting
 		#

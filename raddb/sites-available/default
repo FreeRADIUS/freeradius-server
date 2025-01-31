@@ -49,7 +49,7 @@
 #
 #  * configure the module in `mods-available/`
 #  * enable the module in `mods-enabled`.  e.g. for LDAP, do:  `cd mods-enabled;ln -s ../mods-available/ldap`
-#  *  uncomment the references to it in this file.
+#  * uncomment the references to it in this file.
 #
 #  In most cases, those small changes will result in the server being
 #  able to connect to the database, and to authenticate users.
