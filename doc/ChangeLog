@@ -1,4 +1,4 @@
-FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
+FreeRADIUS 3.2.7 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	Configuration changes
 	* The dpsk module now supports dynamic expansion of the
 	  "filename" parameter.
