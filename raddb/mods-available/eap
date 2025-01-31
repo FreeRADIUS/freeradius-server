@@ -244,7 +244,7 @@ eap {
 		#  | `clear session { ... }`
 		#  | Clear stateful session information from a cache.
 		#
-		#  | `verify certificate { ... }` |
+		#  | `verify certificate { ... }`
 		#  | Apply policies based on the client certificate presented.
 		#
 		#  | `staple certificate { ... }`
@@ -1033,7 +1033,8 @@ eap {
 		#
 		#  See the new policy `copy_request_to_tunnel` in
 		#  `sites-available/inner-tunnel`, and in `policy.d/eap` for
-		#  more information.  ====
+		#  more information.
+		#  ====
 		#
 
 		#

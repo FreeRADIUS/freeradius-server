@@ -67,7 +67,6 @@ server status {
 		stats
 		ok
 	}
-}
 
 #	Statistics can be queried via a number of methods:
 #
@@ -88,3 +87,4 @@ server status {
 #  Due to internal limitations, the statistics might not be exactly up
 #  to date.  Do not expect all of the numbers to add up perfectly.
 #
+}
