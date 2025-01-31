@@ -699,6 +699,7 @@ accounting {
 	#  recorded from the corresponding Access-Accept
 	#  use it only if your NAS boxes do not support CUI themselves
 #	cui
+
 	#
 	#  Create a 'detail'ed log of the packets.
 	#  Note that accounting requests which are proxied
@@ -708,8 +709,9 @@ accounting {
 
 	#  Update the wtmp file
 	#
-	#  If you don't use "radlast", you can delete this line.
-	unix
+	#  If you don't use "radlast" (becoming obsolete and no longer
+	#  available on all systems), you can delete this line.
+#	unix
 
 	#
 	#  For Simultaneous-Use tracking.

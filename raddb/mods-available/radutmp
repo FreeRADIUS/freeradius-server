@@ -8,6 +8,9 @@
 #  This file is used mainly for Simultaneous-Use checking,
 #  and also 'radwho', to see who's currently logged in.
 #
+#  The 'utmp' file format is becoming obsolete. You should use
+#  a database instead.
+#
 radutmp {
 	#  Where the file is stored.  It's not a log file,
 	#  so it doesn't need rotating.

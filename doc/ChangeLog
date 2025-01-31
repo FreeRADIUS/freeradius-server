@@ -11,6 +11,9 @@ FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	  better match behavior of radsecproxy.
 	* python2 and rlm_couchbase are no longer available in the
 	  alpine docker image.
+	* utmp files are becoming obsolete due to 32-bit time. unix/radwtmp
+	  have been commented out in the default config and "radlast" is
+	  no longer installed if "last" is not present on the system.
 
 	Feature improvements
 	* Print MD5 hash of the configuration files in debug mode.
@@ -59,7 +62,6 @@ FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	* Better handler single-character expansions.  Fixes #2216.
 	* Correct calculation of EAP length in pre-proxy.  Fixes #5486.
 	* Don't segfault when using detail listeners. Fixes #5485
-	* radlast is no longer installed if "last" is not present.
 	* Add check for Couchbase v2, rlm_couchbase won't build on v3.
 
 FreeRADIUS 3.2.6 Sat 24 Aug 2024 12:00:00 UTC urgency=low

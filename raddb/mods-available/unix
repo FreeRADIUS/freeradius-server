@@ -21,5 +21,9 @@ unix {
 	#  Note that the radwtmp file may get large!  You should
 	#  rotate it (cp /dev/null radwtmp), or just not use it.
 	#
+	#  wtmp files are gradually becoming obsolete. Some systems
+	#  may not have 'last' or 'radlast' available any more.
+	#  You shoud use a database instead.
+	#
 	radwtmp = ${logdir}/radwtmp
 }
