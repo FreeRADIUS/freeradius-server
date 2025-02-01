@@ -75,7 +75,7 @@ if (!(control.User-Name[0] == 'Bob') || !(control.User-Name[1] == 'dummy')) {
 	test_fail
 }
 
-test_string := %json.encode('&request.NAS-IP-Address')
+test_string := %json.encode('request.NAS-IP-Address')
 
 # POST to https with JSON body data
 result_string := %rest('POST', "https://%{server_host}:%uri.safe(%{server_ssl_port})/user/%{User-Name}/mac/%{Called-Station-Id}?section=accounting", %{test_string})
