@@ -296,13 +296,16 @@ void eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *label, uint8_t c
 
 	eaptls_gen_keys_only(request, s, label, context, context_size, out, sizeof(out));
 
+	/*
+	 *	Add these before the MPPE keys for TEAP.
+	 */
+	eap_add_reply(request, "EAP-MSK", out, 64);
+	eap_add_reply(request, "EAP-EMSK", out + 64, 64);
+
 	p = out;
 	eap_add_reply(request, "MS-MPPE-Recv-Key", p, EAPTLS_MPPE_KEY_LEN);
 	p += EAPTLS_MPPE_KEY_LEN;
 	eap_add_reply(request, "MS-MPPE-Send-Key", p, EAPTLS_MPPE_KEY_LEN);
-
-	eap_add_reply(request, "EAP-MSK", out, 64);
-	eap_add_reply(request, "EAP-EMSK", out + 64, 64);
 }
 
 #define FR_TLS_PRF_CHALLENGE		"ttls challenge"

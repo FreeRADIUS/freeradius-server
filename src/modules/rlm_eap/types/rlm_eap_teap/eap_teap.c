@@ -873,9 +873,9 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 	rlm_rcode_t			rcode = RLM_MODULE_REJECT;
 	VALUE_PAIR			*vp;
 	vp_cursor_t			cursor;
-	uint8_t				msk[2 * CHAP_VALUE_LENGTH] = {0}, emsk[2 * EAPTLS_MPPE_KEY_LEN] = {0};
+	uint8_t				msk[2 * EAPTLS_MPPE_KEY_LEN] = {0}, emsk[2 * EAPTLS_MPPE_KEY_LEN] = {0};
 	size_t				msklen = 0, emsklen = 0;
-	bool				doing_eap;
+	bool				doing_eap, msk1, msk2;
 
 	teap_tunnel_t	*t = tls_session->opaque;
 
@@ -893,27 +893,44 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 	switch (reply->code) {
 	case PW_CODE_ACCESS_ACCEPT:
 		RDEBUG("Phase 2: Got tunneled Access-Accept");
+		msk1 = msk2 = false;
 
 		for (vp = fr_cursor_init(&cursor, &reply->vps); vp; vp = fr_cursor_next(&cursor)) {
-			if (vp->da->attr == PW_EAP_EMSK) {
-				// FIXME check if we should be generating an emsk from MPPE keys below
-				emsklen = MIN(vp->vp_length, sizeof(emsk));
-				memcpy(emsk, vp->vp_octets, emsklen);
-				break;
+			debug_pair(vp);
+
+			if (vp->da->vendor == 0) {
+				if (vp->da->attr == PW_EAP_EMSK) {
+					emsklen = MIN(vp->vp_length, sizeof(emsk));
+					memcpy(emsk, vp->vp_octets, emsklen);
+					continue;
+				}
+
+				if (vp->da->attr == PW_EAP_MSK) {
+					msk1 = msk2 = true;
+					msklen = MIN(vp->vp_length, sizeof(msk));
+					memcpy(msk, vp->vp_octets, msklen);
+					continue;
+				}
 			}
+
+			if (msk1 && msk2 && emsklen) break;
 
 			if (vp->da->vendor != VENDORPEC_MICROSOFT) continue;
 
-			/* like for EAP-FAST, the keying material is used reversed */
 			switch (vp->da->attr) {
 			case PW_MSCHAP_MPPE_SEND_KEY:
 				if (vp->vp_length == EAPTLS_MPPE_KEY_LEN) {
-					/* do not set emsklen here so not to blat EAP-EMSK */
-					// emsklen = sizeof(emsk);
-					memcpy(emsk, vp->vp_octets, EAPTLS_MPPE_KEY_LEN);
-				} else if (vp->vp_length == CHAP_VALUE_LENGTH) {
-					msklen = sizeof(msk);
+					if (msk2) {
+						fr_assert(memcmp(&msk[EAPTLS_MPPE_KEY_LEN], vp->vp_octets, EAPTLS_MPPE_KEY_LEN) == 0);
+					} else {
+						memcpy(&msk[EAPTLS_MPPE_KEY_LEN], vp->vp_octets, EAPTLS_MPPE_KEY_LEN);
+						msk2 = true;
+					}
+
+				} else if (vp->vp_length == CHAP_VALUE_LENGTH) { /* reversed, like EAP-FAST */
+					msk2 = true;
 					memcpy(msk, vp->vp_octets, CHAP_VALUE_LENGTH);
+
 				} else {
 				wrong_length:
 					REDEBUG("Phase 2: Found %s with incorrect length.  Expected %u or %u, got %zu",
@@ -921,24 +938,28 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 					return RLM_MODULE_INVALID;
 				}
 
-				RDEBUGHEX("Phase 2: MSCHAP-MPPE-SEND-KEY [low MSK]", vp->vp_octets, vp->length);
+				RDEBUGHEX("Phase 2: MSCHAP-MPPE-Send-Key", vp->vp_octets, vp->length);
+				msklen += vp->length;
 				break;
 
 			case PW_MSCHAP_MPPE_RECV_KEY:
-				/* only do this if there is no EAP-EMSK */
-				if (vp->vp_length == EAPTLS_MPPE_KEY_LEN && emsklen == 0) {
-					msklen = sizeof(msk);
-					memcpy(msk, vp->vp_octets, EAPTLS_MPPE_KEY_LEN);
-					emsklen = sizeof(emsk);
-					memcpy(&emsk[EAPTLS_MPPE_KEY_LEN], vp->vp_octets, EAPTLS_MPPE_KEY_LEN);
+				if (vp->vp_length == EAPTLS_MPPE_KEY_LEN) {
+					if (msk1) {
+						fr_assert(memcmp(msk, vp->vp_octets, EAPTLS_MPPE_KEY_LEN) == 0);
+					} else {
+						memcpy(msk, vp->vp_octets, EAPTLS_MPPE_KEY_LEN);
+						msk1 = true;
+					}
+
 				} else if (vp->vp_length == CHAP_VALUE_LENGTH) {
-					msklen = sizeof(msk);
+					msk1 = true;
 					memcpy(&msk[CHAP_VALUE_LENGTH], vp->vp_octets, CHAP_VALUE_LENGTH);
 				} else {
 					goto wrong_length;
 				}
 
-				RDEBUGHEX("Phase 2: MSCHAP-MPPE-RECV-KEY [high MSK]", vp->vp_octets, vp->vp_length);
+				RDEBUGHEX("Phase 2: MSCHAP-MPPE-Recv-Key", vp->vp_octets, vp->vp_length);
+				msklen += vp->length;
 				break;
 
 			case PW_MSCHAP2_SUCCESS:
@@ -977,6 +998,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			 *	Clean up the tunneled reply.
 			 */
 			fr_pair_delete_by_num(&reply->vps, PW_EAP_EMSK, 0, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, PW_EAP_MSK, 0, TAG_ANY);
 			fr_pair_delete_by_num(&reply->vps, PW_EAP_SESSION_ID, 0, TAG_ANY);
 		}
 
