@@ -246,6 +246,22 @@ _Generic(&(_ct), \
 
 /** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct
  *
+ * This variant takes output hint type.  If the type is a bare word, it MUST be of the relevant data type.
+ *
+ * @param[in] _name		of the CONF_PAIR to search for.
+ * @param[in] _type		to parse the CONF_PAIR as.
+ * @param[in] _flags		controlling parsing behaviour.
+ * @param[in] _struct		containing the field to write the result to.
+ * @param[in] _field		to write the result to.
+ */
+#  define FR_CONF_OFFSET_HINT_TYPE(_name, _type, _struct, _field) \
+	.name1 = _name, \
+	.type = (_type), \
+	.flags = CONF_FLAG_TMPL, \
+	.offset = FR_CONF_FLAG_CHECK(FR_TYPE_VOID, CONF_FLAG_TMPL, &(((_struct *)NULL)->_field), offsetof(_struct, _field))
+
+/** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct
+ *
  * This variant takes additional flags, and will add CONF_FLAG_MULTI automatically if the field is an array.
  *
  * @param[in] _name		of the CONF_PAIR to search for.

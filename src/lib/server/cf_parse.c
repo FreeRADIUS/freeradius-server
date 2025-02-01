@@ -262,6 +262,25 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		}
 		fr_assert(vpt);
 
+		/*
+		 *	The caller told us what data type was expected.  If we do have data, then try to cast
+		 *	it to the requested type.
+		 */
+		if ((rule->type != FR_TYPE_VOID) && tmpl_contains_data(vpt)) {
+			slen = 0;					// for errors
+
+			if (tmpl_is_data_unresolved(vpt)) {
+				tmpl_cast_set(vpt, rule->type);
+
+				if (tmpl_resolve(vpt, NULL) < 0) goto tmpl_error;
+
+			} else if (rule->type != tmpl_value_type(vpt)) {
+				fr_assert(tmpl_is_data(vpt));
+
+				if (tmpl_cast_in_place(vpt, rule->type, NULL) < 0) goto tmpl_error;
+			}
+		}
+
 		*(tmpl_t **)out = vpt;
 		goto finish;
 	}

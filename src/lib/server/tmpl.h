@@ -226,9 +226,11 @@ typedef enum tmpl_type_e {
 #define tmpl_is_regex_xlat_unresolved(vpt) 	((vpt)->type == TMPL_TYPE_REGEX_XLAT_UNRESOLVED)
 
 #define tmpl_needs_resolving(vpt)		((vpt)->type & TMPL_FLAG_UNRESOLVED)
+#define tmpl_contains_data(vpt)			((vpt)->type & TMPL_TYPE_DATA)
 #define tmpl_contains_attr(vpt)			((vpt)->type & TMPL_FLAG_ATTR)
 #define tmpl_contains_regex(vpt)		((vpt)->type & TMPL_FLAG_REGEX)
 #define tmpl_contains_xlat(vpt)			((vpt)->type & TMPL_FLAG_XLAT)
+
 
 extern fr_table_num_ordered_t const tmpl_type_table[];
 extern size_t tmpl_type_table_len;
