@@ -226,9 +226,16 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 	negative = fr_sbuff_is_char(&our_in, '-');
 
 	if (fr_sbuff_out(&sberr, &integer, &our_in) < 0) {
+		char const *err;
+
 	num_error:
-		fr_strerror_printf("Failed parsing time_delta: %s",
-				   fr_table_str_by_value(sbuff_parse_error_table, sberr, "<INVALID>"));
+		if (sberr != FR_SBUFF_PARSE_ERROR_NOT_FOUND) {
+			err = fr_table_str_by_value(sbuff_parse_error_table, sberr, "<INVALID>");
+		} else {
+			err = "Invalid text, input should be an integer";
+		}
+
+		fr_strerror_printf("Failed parsing time_delta: %s", err);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 	fr_sbuff_out_by_longest_prefix(&match_len, &res, fr_time_precision_table, &our_in, FR_TIME_RES_INVALID);
