@@ -224,37 +224,45 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		fr_sbuff_t		sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
 
 		rules.attr.list_def = request_attr_request;
+
 		/*
-		 *	Parse the cast operator for barewords
+		 *	Bare words are magical sometimes.
 		 */
 		if (cp->rhs_quote == T_BARE_WORD) {
-			slen = tmpl_cast_from_substr(&rules, &sbuff);
-			if (slen < 0) {
-			tmpl_error:
-				cf_canonicalize_error(cp, slen, "Failed parsing attribute reference",
-						      cp->value);
-				goto error;
+			/*
+			 *	Attributes are parsed as attributes.
+			 */
+			if (fr_rule_is_attribute(rule)) {
+				slen = tmpl_afrom_attr_substr(cp, NULL, &vpt, &sbuff, NULL, &rules);
+				if (slen < 0) goto tmpl_error;
+
+				fr_assert(vpt);
+
+				*(tmpl_t **)out = vpt;
+				goto finish;
 			}
-			fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
+
+			/*
+			 *	@todo - otherwise bare words are NOT parsed as attributes, they're parsed as
+			 *	bare words, ala v3.
+			 */
 
 		} else if (fr_rule_is_attribute(rule)) {
-			cf_log_err(cp, "Invalid quoting.  Unquoted attribute reference is required");
+			cf_log_err(cp, "Unexpected quoted string.  An attribute name is required here.");
 			goto error;
 		}
 
 		slen = tmpl_afrom_substr(cp, &vpt, &sbuff, cp->rhs_quote,
 					 value_parse_rules_unquoted[cp->rhs_quote],
 					 &rules);
-		if (!vpt) goto tmpl_error;
-
-		if (fr_rule_is_attribute(rule) && (!tmpl_is_attr(vpt) && !tmpl_is_attr_unresolved(vpt))) {
-			cf_log_err(cp, "Expected attr got %s",
-				   tmpl_type_to_str(vpt->type));
-			return -1;
+		if (slen < 0) {
+		tmpl_error:
+			cf_canonicalize_error(cp, slen, fr_strerror(), cp->value);
+			goto error;
 		}
+		fr_assert(vpt);
 
 		*(tmpl_t **)out = vpt;
-
 		goto finish;
 	}
 
