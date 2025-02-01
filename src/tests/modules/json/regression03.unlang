@@ -1,9 +1,9 @@
 # Verify parsing works correctly with an unquoted xlat
 map json %test.passthrough("{ \"foo\":\"bar\" }",{}) {
-	&Filter-Id := '$.foo'
+	Filter-Id := '$.foo'
 }
 
-if (!(&Filter-Id == 'bar')) {
+if (!(Filter-Id == 'bar')) {
 	test_fail
 }
 test_pass

@@ -1,24 +1,24 @@
-&Tag-1 := {
-	&Vendor-Specific = {
-		&Unisphere = {
-			&Service-Activate = "PPPOE_SERVICE(3072000,2048000)"
+Tag-1 := {
+	Vendor-Specific = {
+		Unisphere = {
+			Service-Activate = "PPPOE_SERVICE(3072000,2048000)"
 		}
 	}
 }
 
-if (!(%json.encode('&request.Tag-1') == "{\"Tag-1\":{\"type\":\"group\",\"value\":{\"Vendor-Specific\":{\"type\":\"vsa\",\"value\":{\"Unisphere\":{\"type\":\"vendor\",\"value\":{\"Service-Activate\":{\"type\":\"string\",\"value\":\"PPPOE_SERVICE(3072000,2048000)\"}}}}}}}}")) {
+if (!(%json.encode('request.Tag-1') == "{\"Tag-1\":{\"type\":\"group\",\"value\":{\"Vendor-Specific\":{\"type\":\"vsa\",\"value\":{\"Unisphere\":{\"type\":\"vendor\",\"value\":{\"Service-Activate\":{\"type\":\"string\",\"value\":\"PPPOE_SERVICE(3072000,2048000)\"}}}}}}}}")) {
 	test_fail
 }
 
-if (!(%json_object_simple.encode('&request.Tag-1') == "{\"Tag-1\":{\"Vendor-Specific\":{\"Unisphere\":{\"Service-Activate\":\"PPPOE_SERVICE(3072000,2048000)\"}}}}")) {
+if (!(%json_object_simple.encode('request.Tag-1') == "{\"Tag-1\":{\"Vendor-Specific\":{\"Unisphere\":{\"Service-Activate\":\"PPPOE_SERVICE(3072000,2048000)\"}}}}")) {
 	test_fail
 }
 
-if (!(%json_array.encode('&request.Tag-1') == "[{\"name\":\"Tag-1\",\"type\":\"group\",\"value\":[{\"name\":\"Vendor-Specific\",\"type\":\"vsa\",\"value\":[{\"name\":\"Unisphere\",\"type\":\"vendor\",\"value\":[{\"name\":\"Service-Activate\",\"type\":\"string\",\"value\":\"PPPOE_SERVICE(3072000,2048000)\"}]}]}]}]")) {
+if (!(%json_array.encode('request.Tag-1') == "[{\"name\":\"Tag-1\",\"type\":\"group\",\"value\":[{\"name\":\"Vendor-Specific\",\"type\":\"vsa\",\"value\":[{\"name\":\"Unisphere\",\"type\":\"vendor\",\"value\":[{\"name\":\"Service-Activate\",\"type\":\"string\",\"value\":\"PPPOE_SERVICE(3072000,2048000)\"}]}]}]}]")) {
 	test_fail
 }
 
-if (!(%json_array_names.encode('&request.Tag-1') == "[\"Tag-1\",[\"Vendor-Specific\",[\"Unisphere\",[\"Service-Activate\"]]]]")) {
+if (!(%json_array_names.encode('request.Tag-1') == "[\"Tag-1\",[\"Vendor-Specific\",[\"Unisphere\",[\"Service-Activate\"]]]]")) {
 	test_fail
 }
 

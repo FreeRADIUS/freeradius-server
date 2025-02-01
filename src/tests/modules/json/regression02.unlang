@@ -1,29 +1,29 @@
 string test_string
 
 # An error string from Azure AD, try and access all the bits
-&test_string := "{\"error\":\"invalid_grant\",\"error_description\":\"AADSTS50126: Error validating credentials due to invalid username or password.\\r\\nTrace ID: 20bb60a5-5504-4a6b-ab40-a353a95c2500\\r\\nCorrelation ID: e58bb567-ad15-4a46-8341-cc6e800dd817\\r\\nTimestamp: 2023-02-11 02:32:40Z\",\"error_codes\":[50126],\"timestamp\":\"2023-02-11 02:32:40Z\",\"trace_id\":\"20bb60a5-5504-4a6b-ab40-a353a95c2500\",\"correlation_id\":\"e58bb567-ad15-4a46-8341-cc6e800dd817\",\"error_uri\":\"https://login.microsoftonline.com/error?code=50126\"}"
+test_string := "{\"error\":\"invalid_grant\",\"error_description\":\"AADSTS50126: Error validating credentials due to invalid username or password.\\r\\nTrace ID: 20bb60a5-5504-4a6b-ab40-a353a95c2500\\r\\nCorrelation ID: e58bb567-ad15-4a46-8341-cc6e800dd817\\r\\nTimestamp: 2023-02-11 02:32:40Z\",\"error_codes\":[50126],\"timestamp\":\"2023-02-11 02:32:40Z\",\"trace_id\":\"20bb60a5-5504-4a6b-ab40-a353a95c2500\",\"correlation_id\":\"e58bb567-ad15-4a46-8341-cc6e800dd817\",\"error_uri\":\"https://login.microsoftonline.com/error?code=50126\"}"
 
-map json &test_string {
-	&Filter-Id := '$.error'
-	&Callback-Id := '$.error_description'
-	&Called-Station-Id := '$.error_uri'
-	&NAS-Port := '$.error_codes[0]'
+map json test_string {
+	Filter-Id := '$.error'
+	Callback-Id := '$.error_description'
+	Called-Station-Id := '$.error_uri'
+	NAS-Port := '$.error_codes[0]'
 }
 
-if (&Filter-Id != 'invalid_grant') {
+if (Filter-Id != 'invalid_grant') {
 	test_fail
 }
 
-if (&Callback-Id != "AADSTS50126: Error validating credentials due to invalid username or password.\r\nTrace ID: 20bb60a5-5504-4a6b-ab40-a353a95c2500\r\nCorrelation ID: e58bb567-ad15-4a46-8341-cc6e800dd817\r\nTimestamp: 2023-02-11 02:32:40Z") {
+if (Callback-Id != "AADSTS50126: Error validating credentials due to invalid username or password.\r\nTrace ID: 20bb60a5-5504-4a6b-ab40-a353a95c2500\r\nCorrelation ID: e58bb567-ad15-4a46-8341-cc6e800dd817\r\nTimestamp: 2023-02-11 02:32:40Z") {
 	test_fail
 }
 
-if (&Called-Station-Id != 'https://login.microsoftonline.com/error?code=50126') {
+if (Called-Station-Id != 'https://login.microsoftonline.com/error?code=50126') {
 	test_fail
 }
 
 # This was being parsed as a negative integer
-if (&NAS-Port != 50126) {
+if (NAS-Port != 50126) {
 	test_fail
 }
 

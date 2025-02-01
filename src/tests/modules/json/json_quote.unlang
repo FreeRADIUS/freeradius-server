@@ -3,32 +3,32 @@ uint32 test_integer
 ipaddr test_ipaddr
 string dummy_string
 
-&test_string := "Hello\n"
+test_string := "Hello\n"
 if (!(%json.quote(%{test_string}) == "\"Hello\\n\"")) {
 	test_fail
 }
 
-&test_string := "Hello\nbob"
+test_string := "Hello\nbob"
 if (!(%json.quote(%{test_string}) == "\"Hello\\nbob\"")) {
 	test_fail
 }
 
-&test_string := "\nHello\nbob"
+test_string := "\nHello\nbob"
 if (!(%json.quote(%{test_string}) == "\"\\nHello\\nbob\"")) {
 	test_fail
 }
 
-&test_string := "Hello!"
+test_string := "Hello!"
 if (!(%json.quote(%{test_string}) == '"Hello!"')) {
 	test_fail
 }
 
-&test_integer := 123456
+test_integer := 123456
 if (!(%json.quote(%{test_integer}) == '123456')) {
 	test_fail
 }
 
-&test_ipaddr := 127.0.0.1
+test_ipaddr := 127.0.0.1
 if (!(%json.quote(%{test_ipaddr}) == '"127.0.0.1"')) {
 	test_fail
 }
