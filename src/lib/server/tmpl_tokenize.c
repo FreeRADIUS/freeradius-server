@@ -1786,7 +1786,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	fr_dict_attr_err_t	dict_err;
 	fr_dict_attr_t const	*our_parent = parent;
 
-	fr_assert(!tmpl_require_enum_prefix || (vpt->rules.attr.prefix != TMPL_ATTR_REF_PREFIX_YES));
+	fr_assert(!tmpl_require_enum_prefix || (at_rules->prefix != TMPL_ATTR_REF_PREFIX_YES));
 
 	fr_sbuff_marker(&m_s, name);
 
