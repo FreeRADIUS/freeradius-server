@@ -1412,8 +1412,8 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 	return code;
 }
 
-static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *eap_session,
-				       tls_session_t *tls_session, eap_tlv_crypto_binding_tlv_t const *binding)
+static PW_CODE eap_teap_validate_crypto_binding(REQUEST *request, UNUSED eap_handler_t *eap_session,
+						tls_session_t *tls_session, eap_tlv_crypto_binding_tlv_t const *binding)
 {
 	teap_tunnel_t			*t = tls_session->opaque;
 	uint8_t				*buf;
@@ -1650,8 +1650,8 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 			case EAP_TEAP_TLV_CRYPTO_BINDING:
 				gotcryptobinding = true;
 
-				code = eap_teap_crypto_binding(request, eap_session, tls_session,
-							       (eap_tlv_crypto_binding_tlv_t const *)vp->vp_octets);
+				code = eap_teap_validate_crypto_binding(request, eap_session, tls_session,
+									(eap_tlv_crypto_binding_tlv_t const *)vp->vp_octets);
 				break;
 
 			default:
