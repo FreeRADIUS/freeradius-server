@@ -1443,17 +1443,32 @@ static PW_CODE eap_teap_validate_crypto_binding(REQUEST *request, UNUSED eap_han
 	 *	binding->received_version is what they got from us.
 	 */
 	if (binding->version != t->received_version || binding->received_version != EAP_TEAP_VERSION) {
-		RDEBUG2("Phase 2: Crypto-Binding TLV version mis-match (possible downgrade attack!)");
-		RDEBUG2("Phase 2: Expected client to send %d, got %d.  We sent %d, they echoed back %d",
+		RWDEBUG2("Phase 2: Crypto-Binding TLV version mis-match (possible downgrade attack!)");
+		RWDEBUG2("Phase 2: Expected client to send %d, got %d.  We sent %d, they echoed back %d",
 			t->received_version, binding->version,
 			EAP_TEAP_VERSION, binding->received_version);
 		return PW_CODE_ACCESS_REJECT;
 	}
 	if ((binding->subtype & 0xf) != EAP_TEAP_TLV_CRYPTO_BINDING_SUBTYPE_RESPONSE) {
-		RDEBUG2("Phase 2: Crypto-Binding TLV contains unexpected response");
+		RWDEBUG2("Phase 2: Crypto-Binding TLV contains unexpected response");
 		return PW_CODE_ACCESS_REJECT;
 	}
 	flags = binding->subtype >> 4;
+
+	/*
+	 *	The Flags field is 4 bits:
+	 *
+	 *		0 - EMSK (may or may not be set)
+	 *		1 - MSK (always set)
+	 *		2 - MUST be zero
+	 *		3 - MUST be zero
+	 */
+	if ((flags == 0) || (flags > 3)) {
+		RWDEBUG2("Phase 2: Invalid Crypto-Binding Flags=%d", flags);
+		return PW_CODE_ACCESS_REJECT;
+	}
+
+	RDEBUG("Phase 2: Received Crypto-Binding Flags=%d", flags);
 
 	CRYPTO_BINDING_BUFFER_INIT(cbb);
 	memcpy(&cbb->binding, binding, sizeof(cbb->binding) - sizeof(cbb->binding.emsk_compound_mac) - sizeof(cbb->binding.msk_compound_mac));
@@ -1482,8 +1497,6 @@ static PW_CODE eap_teap_validate_crypto_binding(REQUEST *request, UNUSED eap_han
 	 * https://github.com/emu-wg/teap-errata/pull/13
 	 */
 	const EVP_MD *md = SSL_CIPHER_get_handshake_digest(SSL_get_current_cipher(tls_session->ssl));
-
-	RDEBUG("Phase 2: Crypto-Binding flags=%d", flags);
 
 	/*
 	 *	We verify cryptobinding MSK and EMSK, but we prefer
