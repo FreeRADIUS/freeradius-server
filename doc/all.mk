@@ -210,16 +210,19 @@ doc/antora/modules/reference/pages/raddb/%.adoc: raddb/%
 doc.raddb: $(patsubst raddb/%,doc/antora/modules/reference/pages/raddb/%.adoc,$(CONF_FILES))
 
 #
-#  antora rebuilds the entire documentation site on each run
-#  so we need to pick a single file to compare dependency
-#  timestamps against.
+#  We re-run antora if any of the input files change.  Antora can't do partial updates.
 #
-#  we use sitemap.xml as it'll be regenerated on every antora
-#  run.
-#
+ifneq "$(ANTORA)" ""
 build/docsite/sitemap.xml: $(ADOC_FILES)
 	@echo ANTORA site.yml
 	${Q}$(ANTORA) $(ANTORA_FLAGS) site.yml
+else
+.PHONY: build/docsite/sitemap.xml
+build/docsite/sitemap.xml: $(ADOC_FILES)
+	@echo No antora is installed
+	false
+endif
+
 
 #
 #  Only re-build the adoc files if specifically told to.
