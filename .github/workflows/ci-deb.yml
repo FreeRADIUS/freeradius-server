@@ -18,6 +18,7 @@ jobs:
         env:
           - { NAME: "ubuntu-20.04", OS: "ubuntu:20.04" }
           - { NAME: "ubuntu-22.04", OS: "ubuntu:22.04" }
+          - { NAME: "ubuntu-24.04", OS: "ubuntu:24.04" }
           - { NAME: "debian-10",    OS: "debian:buster" }
           - { NAME: "debian-11",    OS: "debian:bullseye" }
           - { NAME: "debian-12",    OS: "debian:bookworm" }
@@ -94,7 +95,7 @@ jobs:
         key: hostapd-${{ matrix.env.NAME }}-${{ env.HOSTAPD_GIT_TAG }}-v1
 
     # Debian sid defaults to gcc12 which fails to build eapol_test
-    - name: Install GCC 10 for eapol_test build
+    - name: Install GCC 11 for eapol_test build
       run: |
         apt-get install -y --no-install-recommends gcc-11
         update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 60 && update-alternatives --set gcc /usr/bin/gcc-11
@@ -140,6 +141,7 @@ jobs:
         env:
           - { NAME: "ubuntu-20.04", OS: "ubuntu:20.04" }
           - { NAME: "ubuntu-22.04", OS: "ubuntu:22.04" }
+          - { NAME: "ubuntu-24.04", OS: "ubuntu:24.04" }
           - { NAME: "debian-10", OS: "debian:buster" }
           - { NAME: "debian-11", OS: "debian:bullseye" }
           - { NAME: "debian-12", OS: "debian:bookworm" }
@@ -182,7 +184,7 @@ jobs:
 
     - name: Config test
       run: |
-        freeradius -XC
+        freeradius -XxC
 
     #
     #  We now perform some post-install tests that depend on the availability
