@@ -290,7 +290,7 @@ static void tls_mutexes_destroy(void)
 {
 	int i, num;
 
-	rad_assert(ssl_mutex != NULL);
+	rad_assert(ssl_mutexes != NULL);
 
 	num = CRYPTO_num_locks();
 
