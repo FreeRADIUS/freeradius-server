@@ -1,5 +1,6 @@
-= RADIUS Concepts
+= Processing 
 
+Get this diagram or redo
 <a href="request_flow.svg">![FreeRADIUS flow diagram](request_flow.svg "Railroad diagram")</a>
 
 Users new to RADIUS, EAP or AAA in general are encouraged to read the following standards:
@@ -16,7 +17,6 @@ This should provide a solid foundation in RADIUS and EAP at a protocol level.
 == How things work in RADIUS
 
 The client sends the server a RADIUS authentication request. You don't decide what's in the request, the client does.  The server doesn't decide what's in the request, the client does.  The client is 100% responsible for everything in the request.
-
 
 == Picking an Auth-Type - authorize {}
 

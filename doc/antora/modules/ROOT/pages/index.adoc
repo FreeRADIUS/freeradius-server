@@ -11,76 +11,76 @@ documentation may change.
 Please wait for an official release before using version 4.
 ====
 
-This is the documentation for FreeRADIUS, version 4. The documentation
-is available under the Creative Commons Non-Commercial license, as given
-in the `LICENSE` file in this directory.
+This is the FreeRADIUS version 4 documentation that is available under
+the Creative Commons Non-Commercial xref:LICENSE[license].
 
 FreeRADIUS is a complex piece of software with many configuration
-options. However, we have taken great care to make the default
-configuration work in most circumstances. The result is that for most
-simple systems, it is trivial to install and configure the server. For
-those situations, this documentation will serve to answer basic
-questions about functionality, configuration, etc.
-
+options. In most circumstances, the default configuration works with
+minimal effort to install a server.
 For more complex requirements, FreeRADIUS can be difficult to
-configure. The reason for this difficulty is that the server can do
-almost anything, which means that there are a near-infinite number of
-ways to configure it. The question for an administrator, then, is what
+setup because of more features and infinite configurations. The question for an administrator, then, is what
 piece of the configuration to change, and how to change it.
 
-This documentation will answer those questions. The FreeRADIUS team has
-put substantial effort into writing the documentation for this release.
-Everything in the server is fully documented, and there are many
-`how-to` guides available.
+This documentation answers your basic and advanced questions about functionality, configuration, and
+other scenarios. The FreeRADIUS team has updated the documentation for this major release.
+Everything in the server is fully documented with examples, developer information, and additional resources to help you.
 
-The documentation is split into sections by subject area, oganized by
-desired outcome. At a high level, the subject areas describe:
+This documentation is divided into sections by subject area and organized by
+task-based results as follows:
 
-* xref:concepts:index.adoc[Concepts] and introduction for newcomers
-* The xref:reference:raddb/index.adoc[configuration files] located in `/etc/raddb/`, or `/etc/freeradius/`
-* The syntax of the xref:reference:unlang/index.adoc[unlang] processing language
-* Various xref:howto:index.adoc[how-to] guides
-* xref:howto:installation/index.adoc[Installing] and xref:howto:installation/upgrade.adoc[upgrading] FreeRADIUS
-* xref:developers:index.adoc[Developer documentation]
+* xref:getstarted.adoc[Getting Started] guide and FAQ to help you get setup in record time.
+* xref:concepts:index.adoc[Concepts] and overview provides a high level explanation for newcomers.
+* xref:reference:index.adoc[Reference] documentation includes the xref:reference:unlang/index.adoc[Unlang] syntax and xref:reference:raddb/index.adoc[Configuration Files].
+* xref:howto:index.adoc[Howto] guides step you through various tasks and includes xref:howto:installation/index.adoc[Installing] and xref:howto:installation/upgrade.adoc[Upgrade] guide.
+* xref:tutorials:new_user.adoc[Tutorials] task based learning with real-world configurations and debugging exercises.
+* xref:developers:index.adoc[Developers] section outlines coding standards, raising bugs, and contributing with GitHub.
+* xref:ts.adoc[Troubleshooting] section to help you resolve the most common issues with FreeRADIUS installations and configurations.
 
-This organization means that for example, the `ldap` module will have
-documentation located in multiple places. We feel that organizing the
-documentation by desired _goal_ is better than the alternatives.
-
-Within each section, the documentation is split into small pages, which
-are generally no more than a few screens worth of information. We feel
-that having multiple small pages with cross-links is more helpful than
-having a smaller number of enormous pages. This division ensures that
-(for example) the `how-to` guides are split into a series of small
+Within each section, the documentation is organized into subsections, smaller pages, and relavent cross-links.
+This hierarchy ensures that you can find information quickly and extract the instructions you need.
+For example, the Howto guides are split into a series of small
 steps, each of which can be performed quickly.
 
-We hope that this extended documentation will address any lingering
-concerns about the quality of the FreeRADIUS documentation.
+== What's new in FreeRADIUS version 4
 
-== Current Limitations of 4.0.0
+FreeRADIUS version 4 is in "alpha" right now.  If version 4 works, continue to use.
+If you have issues, *return* to using FreeRADIUS version 3.
 
-As of the time of writing this documentation, the server has the
-following limitations:
+As of the time of this release, FreeRADIUS:
 
-* RADIUS/TLS (RadSec) is not implemented.
-* TEAP, and EAP-FAST are not implemented.
-* The "haproxy" and "reverse CoA' features are not implemented
-* The Python, and Lua modules do not fully support the v4 "nested" attributes.
-* Enums are now prefixed with `::`, as in `Service-Type == ::Framed-User`.
+* It's possible to proxy one packet to multiple destinations.
+* Can capture a `failed` proxy, and fall back to local
+  authentication.
+* The server supports multiple clients with different shared
+  secrets behind one NAT gateway.
+* DHCP and VMPS are integrated with full functionality and features.
+* The server supports TACACS+.
+* Connections to databases are `asynchronous` to ensure stable access,
+  and prevents server lockups.
+* The Python and Lua modules do not fully support the v4 "nested" attributes.
+* Enums are prefixed with `::`, as in `Service-Type == ::Framed-User`.
   * The server still does not always require (or print) the `::` prefix.  That will change.
-* As a result of adding `::` for enums, we can then remove the requirement to use `&` as a prefix for attribute names.
+* By implementing `::` for enums, the requirement to use `&` as a prefix for attribute names is not needed.
   * This change may require changes to all of the configuration.  We will try to allow `&` or not, but that may not be possible.
-* Dynamic expansions have changed from `%{md5:foo}` to a slightly more standard syntax of `%md5(foo)`.
-  * The new syntax is much clearer, and supports multiple comma-separated arguments: `%function(a, b, c)`
-  * Expansions such as `%{User-Name}` will still work.  Expressions like `%{1+2}` now work, too.
-  * Alternation `%{%{foo}:-%{bar}}` has been replaced by `%{&foo || &bar}`, which is clearer and uses less nesting.
+* Dynamic expansions have changed from `%{md5:foo}` to a more standard syntax of `%md5(foo)`.
+* The new syntax supports multiple comma-separated arguments such as `%function(a, b, c)`.
+* Expansions such as `%{User-Name}`  still work in addition to expressions like `%{1+2}` too.
+* Alternation `%{%{foo}:-%{bar}}` has been replaced by `%{&foo || &bar}`, which is clearer and uses less nesting.
+* RADIUS/TLS (RadSec) is not implemented.
+* TEAP and EAP-FAST are not implemented.
+* the "haproxy" and "reverse CoA' features are not implemented.
 
-Please be aware that v4 is in "alpha" right now.  If it works, great.
-If it doesn't work, then please return to using v3.
+Administrators who have version 3 and wish to upgrade to version 4
+must read the  xref:howto:installation/upgrade.adoc[Upgrade] guide.
+This guide explains the differences between the two versions, and
+how an existing configuration can be reproduced in the latest
+release. Do *not* use version 3 configuration files
+with version 4. These configuration files are *not* compatible on a
+major version upgrade.
 
 [WARNING]
 ====
-Please do not open bug reports about those features being missing.
+Do not open bug reports about those features being missing.
 All such bug reports will be closed without comment.
 
 We do not recommend that operating systems or Linux distributions
@@ -92,109 +92,35 @@ it is packaged".  They will then run into issues, and will blame us.
 Such behavior is antisocial and is strongly discouraged.
 ====
 
-== Changes From Earlier Versions
+== Network Prequesites
 
-In previous releases, FreeRADIUS had the following limitations:
+=== Operating Systems
 
-* it was impossible to proxy one packet to multiple destinations
-* it was impossible to catch a `failed` proxy, and fall back to local
-  authentication
-* the server could not support multiple clients with different shared
-  secrets behind one NAT gateway
-* the DHCP and VMPS was implemented by making them pretend to be RADIUS,
-  which limited their functionality
-* the server did not support TACACS+
-* connections to databases were `synchronous`. If a database blocked,
-  it could eventually lock up the server
+The FreeRADIUS protocol works on all Unix based systems. Selecting a familiar operating system is
+A FreeRADIUS server has minimal requirements. A basic FreeRADIUS installation uses 8 megabytes of
+RAM, under one hundred megabytes of disk space, and minimal CPU power. An Internet Service Provider
+with 10,000 or fewer users will not have any problems with any commodity system available at the time
+of this printing.
 
-All of these limitations and more have been removed. The downside of
-these changes is that the some of the configuration has been changed.
+If the ISP has more than 10,000 users, the overall system design becomes much more
+important than the specifications of an individual server. Windows does not currently support FreeRADIUS.
 
-Administrators who have version 3 and wish to upgrade to version 4
-should read the  xref:howto:installation/upgrade.adoc[upgrading] documentation.
-That documentation explains the differences between the two versions, and
-how an existing configuration can be reproduced in the latest
-release. We do _not_ recommend using version 3 configuration files
-with version 4. The configuration files are _not_ compatible across a
-major version upgrade.
+=== CPU/RAM/disk space requirements
+A FreeRADIUS server has minimal requirements. A basic FreeRADIUS installation uses 8 megabytes of
+RAM, under one hundred megabytes of disk space, and minimal CPU power. An Internet Service Provider
+with 10,000 or fewer users will not have any problems with any commodity system available at the time
+of this printing. If the ISP has more than 10,000 users, the overall system design becomes much more
+important than the specifications of an individual server.
 
-== Getting Started with FreeRADIUS
-
-FreeRADIUS can be installed using the pre-built packages available
-from https://packages.networkradius.com[Network RADIUS,
-window="_blank"]. That page contains packages for all common OS
-distributions.  New packages are available as soon as a new version
-has been released.  Packages for older releases are also available for
-historical purposes.
-
-FreeRADIUS can also be installed from the source code.  Please see the
- xref:howto:installation/index.adoc[installation guide] for instructions.
-
-WARNING: Many Operating System distributions ship versions of FreeRADIUS
-which are years out of date. Those versions may contain bugs which have
-been fixed in newer releases. We recommend using the
-https://packages.networkradius.com[Network RADIUS, window="_blank"] packages where
-possible.
-
-Administrators who are new to FreeRADIUS should read the
-xref:concepts:index.adoc[concepts section] as it describes the concepts behind
-FreeRADIUS. It is vital for newcomers to understand these concepts, as the rest
-of the documentation assumes familiarity with them.
-
-A detailed xref:reference:unlang/index.adoc[unlang] reference guide is also available.
-This section describes the syntax and functionality of the keywords,
-data types, etc. used in the `unlang` processing language.
-
-All of the xref:reference:raddb/index.adoc[configuration files] are available in
-hypertext format. It can often be easier to read the configuration files
-in a nicely formatted version, instead of as a fixed-width font in a
-text editor.
-
-For specific problem solving, we recommend the xref:howto:index.adoc[how-to]
-guides. These guides give instructions for reaching high-level goals, or for
-configuring and testing individual
-xref:howto:modules/configuring_modules.adoc[modules].
-
-There is also xref:developers:index.adoc[developer documentation]. This section
-documents the APIs for developers. Most people can ignore it.
+=== Datastores
 
 == Debugging
 
-If you have ANY problems, concerns, or surprises when running the
-server, the the server should be run in debugging mode as root, from the
-command line:
+If you have ANY issues with your server, then restart the server
+in xref:radiusd_x.adoc[Debugging] mode. Review the logs to determine what
+the root problem is and make changes accordingly. Do only *ONE* change
+at a time and restart your server.
 
-```
-# radiusd -X
-```
+== More Information
 
-It will produce a large number of messages. The answers to many
-questions, and the solution to many problems, can usually be found in
-these messages. When run in a terminal window, error messages will be
-shown in red text, and warning messages will be shown in yellow text.
-
-For other use-cases, please look for `ERROR` or `WARNING` in the
-debug output. In many cases, those messages describe exactly what is
-going wrong, and how to fix it.
-
-For further details, about the debug output see the
-https://wiki.freeradius.org/radiusd-X[radiusd-X, window="_blank"] page on the
-https://wiki.freeradius.org[wiki, window="_blank"].
-
-== Getting Help
-
-We also recommend joining the
-https://lists.freeradius.org/mailman/listinfo/freeradius-users[mailing
-list] in order to ask questions and receive answers. The developers are
-not on Stack Overflow, IRC, or other web sites. While the FreeRADIUS
-source is available on
-https://github.com/FreeRADIUS/freeradius-server/[GitHub, window="_blank"], questions
-posted there will not be answered.
-
-Before posting to the list, please read the
-https://wiki.freeradius.org/list-help[list help, window="_blank"] page. That page explains
-how to run the server in debugging mode; how to understand the debug
-output; and what information to post to the list.
-
-Commercial support for FreeRADIUS is available from
-https://networkradius.com/freeradius-support/[Network RADIUS, window="_blank"].
+Many resources, https://www.inkbridge.io/[experts], and documentation sets are available to help you with your RADIUS server. Refer to xref:gethelp.adoc[Getting Help] for more details.

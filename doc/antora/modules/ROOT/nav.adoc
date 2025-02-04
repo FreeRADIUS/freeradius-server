@@ -1,3 +1,5 @@
 * xref:index.adoc[Introduction]
-** xref:radiusd_x.adoc[radiusd -X]
+** xref:getstarted.adoc[Getting Started]
+*** xref:radiusd_x.adoc[Debugging]
+*** xref:gethelp.adoc[Getting Help]
 ** xref:faq.adoc[FAQ]
