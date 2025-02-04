@@ -1,10 +1,30 @@
-# How to use `radiusd -X` (debug mode)
+# Debugging
 
-This page explains how to read the output of `radiusd -X`.
+This debugging section outlines the steps to take if you run into issues starting or configuring the FreeRADIUS server.
+If your server starts up successfully, save a copy of the configuration so you always have a "known working" configuration.
+When the server doesn't start up, go back and verify the configuration and read the entire debug output. If you have issues, the initial steps to troubleshoot or debug the server are:
+
+* Make small, discrete changes to the configuration files.
+* Start the server in debugging mode by entering the command *radiusd -X*
+* Verify that the results are what you expect
+* The debug output shows any configuration changes you have made:
+** Datastores are connected and operating.
+** Test packets are accepted by the server.
+** The debug output shows that the packets are being processed as you expect.
+** The response packets contain the attributes you expect to see.
+
+If you can't make any progress, replace your configuration with a saved copy of a "known working" configuration, and start the server again. This process can clean up errors caused by temporary or forgotten edits.
+If you are still having issues, ask for help on the mailto:freeradius-users@lists.freeradius.org[freeradius-users] list. Include a description of what you are trying to do, and the entire debugging output that includes the server receiving and processing test packets.
+
+## How to use `radiusd -X` (debug mode)
+
+This next section explains how to read the output of `radiusd -X`.
 
 The first part of the debug output is the *startup* text.  Once the server is started, it prints `Ready to receive requests`.  The next part of the debug output is the *packet processing* text.  Both parts need to be read (and posted to the list!) in order to solve issues.
 
 ## If it doesn't start
+
+If the server does not start at all, verify that you are running the server with sudo. If the server reboots correctly after this switch, then the problem was that the server was running as an unprivileged user.
 
 If the server does not start up correctly, *the debug output will tell you why*.  It will produce long descriptive error messages, telling you exactly what's wrong.  In some cases, it will tell you how to fix it.
 
@@ -14,7 +34,7 @@ Fixing those errors will usually allow the server to start correctly.
 
 ## Startup text
 
-We start the server with `-X`.  This option gives us the best combination of useful output, and readable output.  Adding more `-x` gives *more complex output*,  not *more useful output*.
+We start the server with *`-X`*.  This option gives us the best combination of useful output, and readable output.  Adding more `-x` gives *more complex output*,  not *more useful output*.
 
     $ radiusd -X 2>&1 | tee debugfile
 
@@ -576,7 +596,7 @@ The `suffix` module splits the `User-Name` into a `Stripped-User-Name` and `Real
     (2) suffix: Adding Stripped-User-Name = "bob"
     (2) suffix: Adding Realm = "int"
     (2) suffix: Proxying request from user bob to realm int
-    (2) suffix: Preparing to proxy authentication request to realm "int" 
+    (2) suffix: Preparing to proxy authentication request to realm "int"
     (2)     [suffix] = updated
     (2)     [files] = noop
     (2)   } # authorize = updated
@@ -635,7 +655,7 @@ Because this is a proxied request, it now runs the `post-proxy` section of the `
     (2)       if ("%{debug_attr:reply:}" == '') {
     (2)       Attributes matching "reply:"
     (2)         EXPAND %{debug_attr:reply:}
-    (2)            --> 
+    (2)            -->
     (2)         if ("%{debug_attr:reply:}" == '')  -> TRUE
     (2)         if ("%{debug_attr:reply:}" == '')  {
     (2)           [noop] = noop

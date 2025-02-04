@@ -1,6 +1,11 @@
 * xref:index.adoc[Concepts]
-** General
-*** xref:aaa.adoc[AAA]
+** xref:overview.adoc[General]
+*** xref:architecture.adoc[Architecture]
+*** xref:authproto.adoc[Protocols]
+*** xref:database.adoc[Datastores]
+** xref:aaa.adoc[AAA]
+*** xref:processing.adoc[Processing]
 ** Modules
 *** LDAP
 **** xref:modules/ldap/authentication.adoc[Authentication]
+** xref:resources.adoc[Resources]

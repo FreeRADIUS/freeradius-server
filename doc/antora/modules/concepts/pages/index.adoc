@@ -1,8 +1,12 @@
 = Concepts
 
-This section documents concerning the protocols and modules used by the
-FreeRADIUS server.
+This section introduces you to the main concepts behind RADIUS and it's related components.
+It is intended for users with limited RADIUS knowledge or experience. The information provided
+will help us understand the basic concepts and how RADIUS works in a network environment.
 
-It is intended to provide more theoretical information about particular subjects
-than would be appropriate to include inline in module configurations or as
-sidebars in howto guides.
+The following sections are:
+
+* xref:concepts:overview.adoc[Overview] outlines the RADIUS protocol, features, and benefits.
+* xref:concepts:architecture.adoc[Architecture] explains the RADIUS design and components.
+* xref:concepts:autoproto.adoc[Protocols] defines the protocols used in the RADIUS environment.
+* xref:concepts:database.adoc[Datastores] details how datastores work and what's supported.S
