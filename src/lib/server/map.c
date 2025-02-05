@@ -655,6 +655,24 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	}
 
 parse_rhs:
+	/*
+	 *	These operators require a hard-coded string on the
+	 *	RHS.  And we don't care about enums.
+	 */
+	if ((map->op == T_OP_CMP_TRUE) || (map->op == T_OP_CMP_FALSE)) {
+		if (fr_sbuff_adv_past_str_literal(&our_in, "ANY") <= 0) {
+			fr_strerror_printf("Invalid value for %s", fr_tokens[map->op]);
+			goto error;
+		}
+
+		(void) tmpl_afrom_value_box(map, &map->rhs, fr_box_strvalue("ANY"), false);
+
+		goto check_for_child;
+	}
+
+	/*
+	 *	If the LHS is an attribute, we can parse enum names from the RHS.
+	 */
 	if (tmpl_is_attr(map->lhs)) {
 		fr_dict_attr_t const *enumv = tmpl_attr_tail_da(map->lhs);
 
@@ -680,18 +698,7 @@ parse_rhs:
 		break;
 
 	default:
-		if ((map->op == T_OP_CMP_TRUE) || (map->op == T_OP_CMP_FALSE)) {
-			/*
-			 *	These operators require a hard-coded string on the RHS.
-			 */
-			if (fr_sbuff_adv_past_str_literal(&our_in, "ANY") <= 0) {
-				fr_strerror_printf("Invalid value for %s", fr_tokens[map->op]);
-				goto error;
-			}
-
-			(void) tmpl_afrom_value_box(map, &map->rhs, fr_box_strvalue("ANY"), false);
-
-		} else if (rhs_rules->attr.bare_word_enum && rhs_rules->enumv) {
+		if (rhs_rules->attr.bare_word_enum && rhs_rules->enumv) {
 			fr_value_box_t *vb;
 
 			MEM(vb = fr_value_box_alloc(map, rhs_rules->enumv->type, rhs_rules->enumv));
