@@ -296,3 +296,41 @@ ALTER TABLE [radpostauth] WITH NOCHECK ADD
 		[id]
 	) ON [PRIMARY]
 GO
+
+--
+-- Table structure for table 'nas'
+--
+CREATE TABLE [nas] (
+	[id] [int] IDENTITY (1, 1) NOT NULL ,
+	[nasname] [varchar] (128) NOT NULL,
+	[shortname] [varchar] (32) NOT NULL,
+	[type] [varchar] (30) NOT NULL,
+	[ports] [int] NULL,
+	[secret] [varchar] (60) NOT NULL,
+	[server] [varchar] (64) NULL,
+	[community] [varchar] (50) NULL,
+	[description] [varchar] (200) NOT NULL,
+	[require_ma] [varchar] (4) NOT NULL,
+	[limit_proxy_state] [varchar] (4) NOT NULL
+) ON [PRIMARY]
+GO
+
+CREATE INDEX [nas_name] ON [nas]([nasname]) ON [PRIMARY]
+GO
+
+ALTER TABLE [nas] WITH NOCHECK ADD
+	CONSTRAINT [DF_nas_type] DEFAULT ('other') FOR [type],
+	CONSTRAINT [DF_nas_secret] DEFAULT ('secret') FOR [secret],
+	CONSTRAINT [DF_nas_description] DEFAULT ('RADIUS Client') FOR [description],
+	CONSTRAINT [DF_require_ma] DEFAULT ('auto') FOR [require_ma],
+	CONSTRAINT [DF_limit_proxy_state] DEFAULT ('auto') FOR [limit_proxy_state]
+GO
+
+--
+-- Table structure for table 'nasreload'
+--
+CREATE TABLE [nasreload] (
+	[nasipaddress] [varchar] (15) NOT NULL PRIMARY KEY,
+	[reloadtime] [datetime] NOT NULL
+) ON [PRIMARY]
+GO
