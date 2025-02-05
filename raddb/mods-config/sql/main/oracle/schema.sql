@@ -224,7 +224,9 @@ CREATE TABLE nas (
 	secret          VARCHAR(60),
 	server          VARCHAR(64),
 	community       VARCHAR(50),
-	description     VARCHAR(200)
+	description     VARCHAR(200),
+	require_ma	VARCHAR(4),
+	limit_proxy_state	VARCHAR(4)
 );
 CREATE SEQUENCE nas_seq START WITH 1 INCREMENT BY 1;
 

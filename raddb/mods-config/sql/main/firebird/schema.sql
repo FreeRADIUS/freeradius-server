@@ -163,7 +163,9 @@ CREATE TABLE nas (
   secret VARCHAR(60) DEFAULT 'secret' NOT NULL,
   server VARCHAR(64),
   community VARCHAR(50),
-  description VARCHAR(200) DEFAULT 'RADIUS Client'
+  description VARCHAR(200) DEFAULT 'RADIUS Client',
+  require_ma VARCHAR(4) DEFAULT 'auto',
+  limit_proxy_state VARCHAR(4) DEFAULT 'auto'
 );
 
 CREATE INDEX nas_name ON nas (nasname);

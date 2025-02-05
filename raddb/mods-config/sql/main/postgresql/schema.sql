@@ -162,7 +162,9 @@ CREATE TABLE nas (
 	secret			text NOT NULL,
 	server			text,
 	community		text,
-	description		text
+	description		text,
+	require_ma		text NOT NULL DEFAULT 'auto',
+	limit_proxy_state	text NOT NULL DEFAULT 'auto'
 );
 create index nas_nasname on nas (nasname);
 

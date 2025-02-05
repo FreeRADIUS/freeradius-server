@@ -127,6 +127,8 @@ CREATE TABLE nas (
   secret text,
   server text,
   community text,
-  description text
+  description text,
+  require_ma text,
+  limit_proxy_state text
 );
 CREATE INDEX ON nas(nasname);
