@@ -89,7 +89,7 @@ static conf_parser_t tls_cache_config[] = {
 			 	.len = &cache_mode_table_len
 			 },
 			 .dflt = "auto" },
-	{ FR_CONF_OFFSET("name", fr_tls_cache_conf_t, id_name),
+	{ FR_CONF_OFFSET_HINT_TYPE("name", FR_TYPE_STRING, fr_tls_cache_conf_t, id_name),
 			 .dflt = "%{EAP-Type}%interpreter(server)", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("lifetime", fr_tls_cache_conf_t, lifetime), .dflt = "1d" },
 
