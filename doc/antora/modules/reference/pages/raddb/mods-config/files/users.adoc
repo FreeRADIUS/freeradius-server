@@ -2,7 +2,14 @@
 
 The `users` file is managed by the xref:reference:raddb/mods-available/files.adoc[files] module.  The format largely goes back to the original Livingston RADIUS server in 1991!
 
-While the format is still called `users` for historical reasons, the name of the file is controlled by the configuration of the xref:reference:raddb/mods-available/files.adoc[files] module, and can therefore something other than `users`.
+While the format is still called `users` for historical reasons, the name of the file is controlled by the configuration of the xref:reference:raddb/mods-available/files.adoc[files] module, and is usually something other than `users`.
+
+While the `users` file format follows largely the same format which was made in 1991, there have been a number of extensions to it.  The current functionality also has improvements over FreeRADIUS version 3.  Notable improvements are:
+
+* the reply attributes can now reference other lists, and are not fixed to updating the reply,
+* the right-side of comparisons and assignments can contain expressions via expansions `%{...}`,
+* the keys are no longer limited to strings, but can be IP addresses, IP address prefixes, or other data types,
+* as with the rest of the server, the `&` is no longer required for attribute names.  It is still accepted for backwards compatibility.
 
 == Format
 
@@ -169,6 +176,19 @@ attribute:: An attribute name such as `Framed-IP-Address`
 operator:: A comparison operator (for check items), or an assignment operator.  See the <<Item Operators>> section for a list of operators and their meaning.
 
 value:: A value such as `192.0.2.1`, `15`, or string `"foo"`.  Values can also be attribute references.  See the <<Item Values>> section below for more information.
++
+The value assigned to comparisons and assignments can now be taken from
+expressions.  In order to not change the file format in incompatible
+ways, the expressions must be placed inside of a dynamic expansion.
+
+.Example of Expressions
+---
+bob	Password.Cleartext := "myPassword!"
+	Session-Timeout := %{4 + 5}
+---
+
+The contents of the expansion can be any valid expression.
+
 
 === Item Attributes
 
