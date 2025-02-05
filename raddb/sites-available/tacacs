@@ -358,11 +358,11 @@ server tacacs {
 	}
 
 	#
-	#	## Authorization
+	#  ## Authorization
 	#
 
 	#
-	#	### Recv
+	#  ### Recv
 	#
 	recv Authorization-Request {
 		"%{Authentication-Method}"
@@ -376,7 +376,7 @@ server tacacs {
 	}
 
 	#
-	#	### Send
+	#  ### Send
 	#
 	#	Add the arguments to whatever the user entered.
 	#
@@ -405,11 +405,11 @@ server tacacs {
 	}
 
 	#
-	#	## Accounting
+	#  ## Accounting
 	#
 
 	#
-	#	### Recv
+	#  ### Recv
 	#
 	recv Accounting-Request {
 		#
@@ -418,24 +418,40 @@ server tacacs {
 		detail
 	}
 
+	#
+	#  ### Accounting "type" Sections
+	#
+	#  Each type of accounting packet is run through its own
+	#  section. The section MUST return "ok" to indicate that
+	#  it successfully handled the accounting data.
+	#
+	#  The "ok" return code is typically set automatically when
+	#  an accounting module succeeds in its work.  The explicit
+	#  "ok" here is just so that the default configuration will
+	#  return success for all accounting packets.
+	#
 	#  First packet for a session
 	accounting Start {
+		ok
 	}
 
 	#  Updates a previous start
 	accounting Watchdog-Update {
+		ok
 	}
 
 	#  Updates a session
 	accounting Watchdog {
+		ok
 	}
 
 	#  Stops a session
 	accounting Stop {
+		ok
 	}
 
 	#
-	#	### Send
+	#  ### Send Responses
 	#
 	send Accounting-Success {
 		reply.Server-Message := "Success"
