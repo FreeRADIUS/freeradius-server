@@ -747,7 +747,7 @@ int unlang_xlat_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 
 	if (unlang_xlat_push(ctx, &success, out, request, xlat, UNLANG_TOP_FRAME) < 0) return -1;
 
-	(void) unlang_interpret(request);
+	(void) unlang_interpret(request, UNLANG_REQUEST_RUNNING);
 
 	if (!success) return -1;
 

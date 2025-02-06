@@ -230,7 +230,7 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 
 	el = intps->el;
 
-	rcode = unlang_interpret(request);
+	rcode = unlang_interpret(request, UNLANG_REQUEST_RESUME);
 
 	while ((dont_wait_for_event = (fr_heap_num_elements(intps->runnable) > 0)) ||
 	       (intps->yielded > 0)) {
@@ -285,7 +285,7 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 		 *	do another loop around.
 		 */
 		RDEBUG4(">>> interpreter (iteration %i)", ++iterations);
-		sub_rcode = unlang_interpret(sub_request);
+		sub_rcode = unlang_interpret(sub_request, UNLANG_REQUEST_RESUME);
 		RDEBUG4("<<< interpreter (iteration %i) - %s", iterations,
 			fr_table_str_by_value(rcode_table, sub_rcode, "<INVALID>"));
 

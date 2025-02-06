@@ -38,6 +38,9 @@ extern "C" {
 #define UNLANG_STACK_MAX (64)		//!< The maximum depth of the stack.
 #define UNLANG_FRAME_PRE_ALLOC (128)	//!< How much memory we pre-alloc for each frame.
 
+#define UNLANG_REQUEST_RUNNING (true)
+#define UNLANG_REQUEST_RESUME (false)
+
 /** Interpreter handle
  *
  */
@@ -142,7 +145,7 @@ void			unlang_interpret_set_thread_default(unlang_interpret_t *intp);
 
 unlang_interpret_t	*unlang_interpret_get_thread_default(void);
 
-rlm_rcode_t		unlang_interpret(request_t *request) CC_HINT(hot);
+rlm_rcode_t		unlang_interpret(request_t *request, bool running) CC_HINT(hot);
 
 rlm_rcode_t		unlang_interpret_synchronous(fr_event_list_t *el, request_t *request);
 

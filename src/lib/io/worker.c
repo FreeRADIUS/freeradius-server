@@ -1335,7 +1335,7 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 			return;
 		}
 
-		(void)unlang_interpret(request);
+		(void)unlang_interpret(request, UNLANG_REQUEST_RESUME);
 
 		now = fr_time();
 	}

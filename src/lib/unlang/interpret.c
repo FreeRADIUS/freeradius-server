@@ -765,9 +765,10 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
  *
  * @param[in] request		to run.  If this is an internal request
  *				the request may be freed by the interpreter.
+ * @param[in] running		Is the interpreter already running.
  * @return The final request rcode.
  */
-CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
+CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 {
 	unlang_frame_action_t	fa = UNLANG_FRAME_ACTION_NEXT;
 	rlm_rcode_t		rcode;
@@ -790,7 +791,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
 	fr_assert_msg(intp, "request has no interpreter associated");
 
 	RDEBUG4("** [%i] %s - interpret entered", stack->depth, __FUNCTION__);
-	intp->funcs.resume(request, intp->uctx);
+	if (!running) intp->funcs.resume(request, intp->uctx);
 
 	for (;;) {
 		fr_assert(request->master_state != REQUEST_STOP_PROCESSING);
@@ -907,6 +908,9 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
 			continue;
 
 		case UNLANG_FRAME_ACTION_YIELD:
+			/* Cannot yield from a nested call to unlang_interpret */
+			fr_assert(!running);
+
 			RDEBUG4("** [%i] %s - interpret yielding", stack->depth, __FUNCTION__);
 			intp->funcs.yield(request, intp->uctx);
 			return stack->result;
