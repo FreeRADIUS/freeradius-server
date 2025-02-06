@@ -1,83 +1,119 @@
-
 = Getting Started with FreeRADIUS
 
-This page describes how to perform the initial install and configuration of FreeRADIUS using a package.
-FreeRADIUS pre-built packages are available from https://packages.inkbridgenetworks.com[InkBridge Networks].
-This site contains the most current packages for all common OS platforms for the latest FreeRADIUS release.
+This page describes how to perform the initial install and
+configuration of FreeRADIUS using a package.  FreeRADIUS pre-built
+packages are available from
+https://packages.inkbridgenetworks.com[InkBridge Networks].  This site
+contains the most current packages for all common OS platforms for the
+latest FreeRADIUS release.
 
 FreeRADIUS can also be installed from the source code. Please see the
  xref:howto:installation/index.adoc[installation guide] for instructions.
 
- == Get the Source
+== Get the Source
 
-This page describes how to perform the initial install and configuration of FreeRADIUS.
-FreeRADIUS can be installed using the pre-built packages available from https://packages.inkbridgenetworks.com[InkBridge Networks].
-This site contains packages for all common OS platforms and has the most current packages
-for the latest release.
+This page describes how to perform the initial install and
+configuration of FreeRADIUS.  FreeRADIUS can be installed using the
+pre-built packages available from
+https://packages.inkbridgenetworks.com[InkBridge Networks].  This site
+contains packages for all common OS platforms and has the most current
+packages for the latest release.
 
 FreeRADIUS can also be installed from the source code. Please see the
- xref:howto:installation/index.adoc[installation guide] for instructions.
+xref:howto:installation/index.adoc[installation guide] for
+instructions.
 
 [NOTE]
 ====
-Debian-based systems call the server daemon *freeradius* instead of radiusd and the configuration files are located in *`/etc/freeradius/`* instead of `/etc/raddb/`.
-====
+Debian-based systems call the server daemon *freeradius* instead of
+radiusd and the configuration files are located in
+*`/etc/freeradius/`* instead of `/etc/raddb/`.
+=====
 
 == Start the server
 
-Once the server has been downloaded and installed, start the server in debugging mode (as user root) by issuing the command:
+Once the server has been downloaded and installed, start the server in
+debugging mode (as user `root`) by issuing the command:
 
-. `radiusd -X`
+```
+radiusd -X
+```
 
-If the message on your screen says *Ready to process requests*, the server is installed and configured properly.
-For help decoding the the output from radiusd -X, refer to the xref:radiusd_x.adoc[Debugging] for more details.
+If the message on your screen says *Ready to process requests*, the
+server is installed and configured properly.  For help decoding the
+the output from `radiusd -X`, refer to the
+xref:radiusd_x.adoc[debugging] page for more details.
 
 == Initial Tests
 
-Test basic authentication by editing the users file (raddb/mods-config/files/authorize) and add the following line at the top of the file:
+Test basic authentication by editing the
+xref:reference:raddb/mods-config/files/.adoc[users] file and add the
+following line at the top of the file:
 
-. testing Cleartext-Password := "password"
+```
+testing Password.Cleartext := "password"
+```
 
-Save the file and restart the server in debugging mode (radiusd -X).
+Save the file and restart the server in debugging mode (`radiusd -X`).
 Open a second terminal window and run radtest by issuing the command:
 
-. `radtest testing password 127.0.0.1 0 testing123`
+```
+radtest testing password 127.0.0.1 0 testing123
+```
 
-The expected result is that the server responds with an Access-Accept. If it doesn't, the debug log will show why.
+The expected result is that the server responds with an `Access-Accept`. If it doesn't, the debug log will show why.
 
-If you do see an Access-Accept, then congratulations, the following authentication methods now work for the testing user:
+If you do see an `Access-Accept`, then congratulations, the following
+authentication methods now work for the testing user:
 
 PAP, CHAP, MS-CHAPv1, MS-CHAPv2, PEAP, EAP-TTLS, EAP-GTC, EAP-MD5.
 
 Your next step is to add more users.
 
-
 == Add a Client
 
-Devices that communicate directly with the RADIUS server are the clients that we need to configure next. These clients can be a wireless access point(WAP) or network access switch(NAS). or other form of NAS. The network clients or end-users such as laptops, tablets, etc. do not talk directly to the RADIUS server.
+Devices that communicate directly with the RADIUS server are the
+clients that we need to configure next. These clients can be a
+wireless access point (WAP) or network access switch (NAS). or other
+form of NAS. The network clients or end-users such as laptops,
+tablets, etc. do not talk directly to the RADIUS server.
 
-The above test runs radtest from localhost. It is useful to add a new client, which can be done by editing the clients.conf file. Add the following content:
+The above test runs `radtest` from localhost. It is useful to add a new
+client, which can be done by editing the clients.conf file. Add the
+following content:
 
+```
 client new {
     ipaddr = 192.0.2.1
     secret = testing123
 }
-You should change the IP address 192.0.2.1 to be the address of the client which will be sending Access-Request packets.
+```
 
-The client should also be configured to talk to the RADIUS server, by using the IP address of the machine running the RADIUS server. The client must use the same secret as configured above in the client section.
+You should change the IP address from `192.0.2.1` to be the address of
+the client which will be sending `Access-Request` packets.
 
-Then restart the server in debugging mode, and run a simple test using the testing user. You should see an Access-Accept in the server output
+The client should also be configured to talk to the RADIUS server, by
+using the IP address of the machine running the RADIUS server. The
+client must use the same secret as configured above in the client
+section.
 
-The following steps outline the best known method for configuring the server. Following them lets you create complex configurations with a minimum of effort. Failure to follow them leads to days of frustration and wasted effort.
+Then restart the server in debugging mode, and run a simple test using
+the testing user. You should see an `Access-Accept` in the server output
+
+The following steps outline the best known method for configuring the
+server. Following them lets you create complex configurations with a
+minimum of effort. Failure to follow them leads to days of frustration
+and wasted effort.
 
 ## Configure the Server
 
-To create complex configurations with a minimum of effort, follow the steps to configure the server *ONE* change at a time:
+To create complex configurations with a minimum of effort, follow the
+steps to configure the server *ONE* change at a time:
 
-. Start with a "known working" configuration, such as supplied by the default installation.
-. Make one small change to the configuration file.
-. Start the server in debugging mode (radiusd -X).
-. Verify that the results are what you expect.
+* Start with a "known working" configuration, such as supplied by the default installation.
+* Make one small change to the configuration file.
+* Start the server in debugging mode (`radiusd -X`).
+* Verify that the results are what you expect.
 
 Your next step is to configure more server components.
 
@@ -87,11 +123,15 @@ For specific problem solving, we recommend the xref:howto:index.adoc[Howto] guid
 For configuring and testing individual modules, refer to
 xref:howto:modules/configuring_modules.adoc[Modules].
 
-All of the xref:reference:raddb/index.adoc[Configuration Files] are available in
-hypertext format.
+All of the xref:reference:raddb/index.adoc[Configuration Files] are
+available in hypertext format.
 
-A detailed xref:reference:unlang/index.adoc[unlang] reference guide that describes the syntax and functionality of the keywords,
-data types, etc. used in the `unlang` processing language.
+A detailed xref:reference:unlang/index.adoc[unlang] reference guide
+that describes the syntax and functionality of the keywords, data
+types, etc. used in the `unlang` processing language.
 
-There is also xref:developers:index.adoc[Developers] documentation that includes
-the APIs references.
+There is also xref:developers:index.adoc[Developers] documentation
+that includes the APIs references.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
