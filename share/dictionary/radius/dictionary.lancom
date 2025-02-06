@@ -45,7 +45,7 @@ ATTRIBUTE LCS-IKEv2-Routing-Tag-List      29 string
 ATTRIBUTE LCS-IKEv2-IPv4-Tagged-Route      30 string
 ATTRIBUTE LCS-IKEv2-IPv6-Tagged-Route      31 string
 ATTRIBUTE LCS-IPv6-Prefix-Length      32 integer
-ATTRIBUTE LCS-IKEv2-PPK      33 string has_tag,encrypt=2
+ATTRIBUTE LCS-IKEv2-PPK      33 string has_tag,encrypt=Tunnel-Password
 ATTRIBUTE LCS-IKEv2-PPK-MANDATORY      34 integer
 
 
