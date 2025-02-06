@@ -1,7 +1,6 @@
 = Processing 
 
-Get this diagram or redo
-<a href="request_flow.svg">![FreeRADIUS flow diagram](request_flow.svg "Railroad diagram")</a>
+image:request_flow.svg[Process Flow railroad diagram].
 
 Users new to RADIUS, EAP or AAA in general are encouraged to read the following standards:
 - RFC 2865 - Remote Authentication Dial In User Service (RADIUS)
