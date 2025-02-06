@@ -964,7 +964,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 	 *	This usually means the request is complete in its
 	 *	entirety.
 	 */
-	if (stack->depth == 0) unlang_interpret_request_done(request);
+	if ((stack->depth == 0) && !running) unlang_interpret_request_done(request);
 
 	return rcode;
 }

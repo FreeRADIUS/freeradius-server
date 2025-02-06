@@ -1348,28 +1348,36 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 	*out = NULL;
 
 	fr_value_box_list_init(&result);
+
 	/*
-	 *	Use the unlang stack to evaluate
-	 *	the async xlat up until the point
-	 *	that it needs to yield.
+	 *	Use the unlang stack to evaluate the xlat.
 	 */
-	if (unlang_xlat_push(pool, &success, &result, request, head, true) < 0) {
+	if (unlang_xlat_push(pool, &success, &result, request, head, UNLANG_TOP_FRAME) < 0) {
+	fail:
 		talloc_free(pool);
 		return -1;
 	}
 
-	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
+	/*
+	 *	Pure functions don't yield, and can therefore be
+	 *	expanded in place.  This check saves an expensive
+	 *	bounce through a new synchronous interpreter.
+	 */
+	if (!xlat_impure_func(head) && unlang_interpret_get(request)) {
+		rcode = unlang_interpret(request, UNLANG_REQUEST_RUNNING);
+	} else {
+		rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
+	}
+
 	switch (rcode) {
 	default:
+		if (!success) goto fail;
 		break;
 
 	case RLM_MODULE_REJECT:
 	case RLM_MODULE_FAIL:
-	eval_failed:
-		talloc_free(pool);
-		return -1;
+		goto fail;
 	}
-	if (!success) goto eval_failed;
 
 	if (!fr_value_box_list_empty(&result)) {
 		if (escape) {
@@ -1387,9 +1395,7 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 
 				if (fr_value_box_cast_in_place(pool, vb, FR_TYPE_STRING, NULL) < 0) {
 					RPEDEBUG("Failed casting result to string");
-				error:
-					talloc_free(pool);
-					return -1;
+					goto fail;
 				}
 
 				len = vb->vb_length * 3;
@@ -1406,10 +1412,7 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 		}
 
 		str = fr_value_box_list_aprint(ctx, &result, NULL, NULL);
-		if (!str) {
-			talloc_free(pool);
-			goto error;
-		}
+		if (!str) goto fail;
 	} else {
 		str = talloc_typed_strdup(ctx, "");
 	}
