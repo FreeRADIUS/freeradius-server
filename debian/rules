@@ -33,7 +33,7 @@ logdir          = /var/log/$(package)
 pkgdocdir       = /usr/share/doc/$(package)
 raddbdir        = /etc/$(package)
 
-modulelist=krb5 ldap sql_freetds sql_mysql sql_postgresql sql_unixodbc dhcp python2 python3 redis rest unbound yubikey
+modulelist=krb5 ldap sql_freetds sql_mysql sql_postgresql sql_unixodbc dhcp python2 python3 redis rest unbound yubikey kafka
 pkgs=$(shell dh_listpackages)
 
 # This has to be exported to make some magic below work.

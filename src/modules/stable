@@ -46,3 +46,4 @@ rlm_unbound
 rlm_yubikey
 rlm_redis
 rlm_rediswho
+rlm_kafka

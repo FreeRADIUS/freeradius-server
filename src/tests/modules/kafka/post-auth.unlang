@@ -1,0 +1,20 @@
+#
+#  Required for message schema reference
+#
+update reply {
+	&Packet-Type := Access-Accept
+}
+
+kafka.post-auth
+if (!ok) {
+	test_fail
+}
+
+#
+#  Reset
+#
+update reply {
+	&Packet-Type !* ANY
+}
+
+test_pass

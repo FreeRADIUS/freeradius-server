@@ -1,0 +1,6 @@
+kafka.authorize
+if (!ok) {
+	test_fail
+}
+
+test_pass
