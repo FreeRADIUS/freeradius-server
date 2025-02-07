@@ -1534,6 +1534,8 @@ void rad_suid_up(void)
 		fr_exit_now(1);
 	}
 
+	if (euid == suid) return;
+
 	if (setresuid(-1, suid, -1) < 0) {
 		ERROR("Failed switching to privileged user");
 		fr_exit_now(1);
