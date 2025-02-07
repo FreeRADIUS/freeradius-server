@@ -1,0 +1,41 @@
+#
+#  Bare message
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka: Test message}"
+
+if (&Module-Failure-Message) {
+	test_fail
+}
+
+
+#
+#  Message with key
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:&User-Name Test mmessage}"
+if (&Module-Failure-Message) {
+	test_fail
+}
+
+
+#
+#  Nonsense
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:Test message not beginning with a space}"
+if (!(&Module-Failure-Message[*] == "Must begin with an attribute reference or a space")) {
+	test_fail
+}
+
+
+test_pass

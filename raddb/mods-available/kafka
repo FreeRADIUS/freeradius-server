@@ -1,0 +1,75 @@
+kafka {
+	bootstrap-servers = "localhost:9092"
+	topic = "radius"
+
+	#
+	#  This initialises the default, synchronous instance of the kafka
+	#  module which has robust event durability semantics.
+	#
+	#  The module adds the message to the local in-memory queue and then
+	#  waits upon a delivery report indicating that it was removed, i.e.
+	#  either successfully delivered to the brokers or not.
+	#
+
+	global-config {
+
+		#
+		#  There are many global parameters that can be used (with
+		#  careful consideration) described in the "Global
+		#  configuration properties" here:
+		#
+		#  https://docs.confluent.io/platform/current/clients/librdkafka/html/md_CONFIGURATION.html
+		#
+		#message.max.bytes = 1048576
+		#socket.send.buffer.bytes = 100000000
+		#socket.receive.buffer.bytes = 100000000
+		#sasl.mechanism = "SCRAM-SHA-512"
+		#security.protocol = "SASL_SSL"
+		#ssl.ca.location = "${cadir}"
+		#sasl.username = "kafkauser"
+		#sasl.password = "kafkapass"
+		# ...
+		#
+
+	}
+
+	topic-config {
+
+		#
+		#  The message durabily strategy: Number of acks required by all
+		#  in-sync replicas. Default of "-1" means all must have acked.
+		#
+		#request.required.acks = -1
+
+		#
+		#  How long a message can remain undelivered in the local
+		#  in-memory queue, with the  before it is timed out.
+		#
+		#  For synchronous delivery, the default local queue is set to
+		#  25 sec. It should be some value less than max_request_time
+		#  to avoid blocking the server indefinately in the event of
+		#  delivery problems.
+		#
+		#message.timeout.ms = 25000
+
+		#
+		#  There are many additional topic parameters that can be used
+		#  (with careful consideration) described in the "Topic
+		#  configuration properties" here:
+		#
+		#  https://docs.confluent.io/platform/current/clients/librdkafka/html/md_CONFIGURATION.html
+		#
+		#  ...
+		#
+
+	}
+
+	#
+	#  Uncomment to generate producer statistics
+	#
+#	statistics {
+#		file = /tmp/kafka_stats.json
+#	}
+
+	$INCLUDE ${modconfdir}/kafka/messages-json.conf
+}

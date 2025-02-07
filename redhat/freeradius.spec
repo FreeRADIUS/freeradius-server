@@ -358,6 +358,17 @@ BuildRequires: ykclient-devel >= 2.10
 This plugin provides YubiCloud support for the FreeRADIUS server project.
 %endif
 
+%if 0%{?rhel} >= 8
+%package kafka
+Summary: Kafka producer support for FreeRADIUS
+Group: System Environment/Daemons
+Requires: %{name} = %{version}-%{release}
+Requires: librdkafka
+BuildRequires: librdkafka-devel
+
+%description kafka
+This plugin provides Kafka producer support for the FreeRADIUS server project.
+%endif
 
 %prep
 %setup -q -n freeradius-server-%{version}
@@ -726,6 +737,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/preprocess/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/unbound
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/unbound/*
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/kafka
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/kafka/*
 %if %{?el6:0}%{!?el6:1}
 %if 0%{?rhel} <= 8
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/python
@@ -955,6 +968,12 @@ fi
 %files yubikey
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_yubikey.so
+%endif
+
+%if 0%{?rhel} >= 8
+%files kafka
+%defattr(-,root,root)
+%{_libdir}/freeradius/rlm_kafka.so
 %endif
 
 %changelog
