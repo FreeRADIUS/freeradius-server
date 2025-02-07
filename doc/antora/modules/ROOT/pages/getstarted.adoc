@@ -27,8 +27,8 @@ instructions.
 ====
 Debian-based systems call the server daemon *freeradius* instead of
 radiusd and the configuration files are located in
-*`/etc/freeradius/`* instead of `/etc/raddb/`.
-=====
+`/etc/freeradius/` instead of `/etc/raddb/`.
+====
 
 == Start the server
 
@@ -47,7 +47,7 @@ xref:radiusd_x.adoc[debugging] page for more details.
 == Initial Tests
 
 Test basic authentication by editing the
-xref:reference:raddb/mods-config/files/.adoc[users] file and add the
+xref:reference:raddb/mods-config/files/users.adoc[users] file and add the
 following line at the top of the file:
 
 ```
