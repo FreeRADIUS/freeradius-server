@@ -2707,14 +2707,11 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 	} else {
 		fr_rb_expire_t *expire = &thread->bio.expires;
 		fr_time_t now = fr_time();
-		fr_dlist_t *entry;
+		home_server_t *old;
 
 		fr_rb_expire_update(expire, home, now);
 
-		while ((entry = fr_dlist_head(&expire->head)) != NULL) {
-			home_server_t *old;
-
-			old = fr_dlist_entry_to_item(expire->head.offset, entry);
+		while ((old = fr_dlist_head(&expire->head)) != NULL) {
 			(void) talloc_get_type_abort(old, home_server_t);
 
 			fr_assert(old->ctx.trunk);
@@ -2734,7 +2731,7 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 			 */
 			if (fr_time_gt(old->expire.when, now)) break;
 
-			fr_dlist_remove(&expire->head, entry);
+			fr_dlist_remove(&expire->head, old);
 			fr_rb_delete(&expire->tree, old);
 		}
 	}
