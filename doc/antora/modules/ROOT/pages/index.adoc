@@ -16,14 +16,16 @@ the Creative Commons Non-Commercial xref:LICENSE[license].
 
 FreeRADIUS is a complex piece of software with many configuration
 options. In most circumstances, the default configuration works with
-minimal effort to install a server.
-For more complex requirements, FreeRADIUS can be difficult to
-setup because of more features and infinite configurations. The question for an administrator, then, is what
-piece of the configuration to change, and how to change it.
+minimal effort to install a server.  For more complex requirements,
+FreeRADIUS can be difficult to setup because of more features and
+infinite configurations. The question for an administrator, then, is
+what piece of the configuration to change, and how to change it.
 
-This documentation answers your basic and advanced questions about functionality, configuration, and
-other scenarios. The FreeRADIUS team has updated the documentation for this major release.
-Everything in the server is fully documented with examples, developer information, and additional resources to help you.
+This documentation answers your basic and advanced questions about
+functionality, configuration, and other scenarios. The FreeRADIUS team
+has updated the documentation for this major release.  Everything in
+the server is fully documented with examples, developer information,
+and additional resources to help you.
 
 This documentation is divided into sections by subject area and organized by
 task-based results as follows:
@@ -36,15 +38,17 @@ task-based results as follows:
 * xref:developers:index.adoc[Developers] section outlines coding standards, raising bugs, and contributing with GitHub.
 * xref:ts.adoc[Troubleshooting] section to help you resolve the most common issues with FreeRADIUS installations and configurations.
 
-Within each section, the documentation is organized into subsections, smaller pages, and relavent cross-links.
-This hierarchy ensures that you can find information quickly and extract the instructions you need.
-For example, the Howto guides are split into a series of small
+Within each section, the documentation is organized into subsections,
+smaller pages, and relavent cross-links.  This hierarchy ensures that
+you can find information quickly and extract the instructions you
+need.  For example, the Howto guides are split into a series of small
 steps, each of which can be performed quickly.
 
 == What's new in FreeRADIUS version 4
 
-FreeRADIUS version 4 is in "alpha" right now.  If version 4 works, continue to use.
-If you have issues, *return* to using FreeRADIUS version 3.
+FreeRADIUS version 4 is in "alpha" right now.  If version 4 works,
+continue to use.  If you have issues, *return* to using FreeRADIUS
+version 3.
 
 As of the time of this release, FreeRADIUS:
 
@@ -92,25 +96,26 @@ it is packaged".  They will then run into issues, and will blame us.
 Such behavior is antisocial and is strongly discouraged.
 ====
 
-== Network Prequesites
+== Network Requireements
 
 === Operating Systems
 
-The FreeRADIUS protocol works on all Unix based systems. Selecting a familiar operating system is
-A FreeRADIUS server has minimal requirements. A basic FreeRADIUS installation uses 8 megabytes of
-RAM, under one hundred megabytes of disk space, and minimal CPU power. An Internet Service Provider
-with 10,000 or fewer users will not have any problems with any commodity system available at the time
-of this printing.
-
-If the ISP has more than 10,000 users, the overall system design becomes much more
-important than the specifications of an individual server. Windows does not currently support FreeRADIUS.
+The FreeRADIUS protocol works on all Unix based systems.  It does not
+run natively under Windows.
 
 === CPU/RAM/disk space requirements
-A FreeRADIUS server has minimal requirements. A basic FreeRADIUS installation uses 8 megabytes of
-RAM, under one hundred megabytes of disk space, and minimal CPU power. An Internet Service Provider
-with 10,000 or fewer users will not have any problems with any commodity system available at the time
-of this printing. If the ISP has more than 10,000 users, the overall system design becomes much more
+
+A FreeRADIUS server has minimal requirements. A basic FreeRADIUS
+installation uses 8 megabytes of RAM, under one hundred megabytes of
+disk space, and minimal CPU power. An Internet Service Provider with
+10,000 or fewer users will not have any problems with any commodity
+system available at the time of this printing. If the ISP has more
+than 10,000 users, the overall system design becomes much more
 important than the specifications of an individual server.
+
+If the ISP has more than 10,000 users, the overall system design
+becomes much more important than the specifications of an individual
+server. Windows does not currently support FreeRADIUS.
 
 === Datastores
 
