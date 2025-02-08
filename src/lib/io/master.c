@@ -2361,6 +2361,9 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	 *	tracking table.
 	 */
 	if (buffer_len == 1) {
+		INFO("proto_%s - Dynamic client verification failed for packet from %pV",
+		     inst->app_io->common.name,	fr_box_ipaddr(client->src_ipaddr));
+
 		client->state = PR_CLIENT_NAK;
 		TALLOC_FREE(client->pending);
 		if (client->table) TALLOC_FREE(client->table);
