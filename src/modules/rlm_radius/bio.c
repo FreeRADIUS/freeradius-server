@@ -931,6 +931,7 @@ static connection_t *thread_conn_alloc(trunk_connection_t *tconn, fr_event_list_
 		PERROR("%s - Failed allocating state handler for new connection", ctx->inst->name);
 		return NULL;
 	}
+	ctx->trunk = tconn->trunk;
 
 	return conn;
 }
