@@ -826,6 +826,9 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 *	add it to the scheduler.
 	 */
 	if (nak) {
+		INFO("proto_%s - Dynamic client verification failed for packet from %pV",
+		     inst->app_io->common.name,	fr_box_ipaddr(client->src_ipaddr));
+
 		connection->name = talloc_strdup(connection, nak->name);
 		connection->client->state = PR_CLIENT_NAK;
 		connection->el = nak->el;
@@ -937,6 +940,9 @@ static int _client_live_free(fr_io_client_t *client)
 	return 0;
 }
 
+/** Allocate a dynamic client.
+ *
+ */
 static fr_io_client_t *client_alloc(TALLOC_CTX *ctx, fr_io_client_state_t state,
 				    fr_io_instance_t const *inst, fr_io_thread_t *thread, fr_client_t *radclient,
 				    fr_ipaddr_t const *network)
@@ -1735,6 +1741,9 @@ have_client:
 			 *	dynamic client.
 			 */
 			track->dynamic = recv_time;
+
+			INFO("proto_%s - Dynamic client verification started for packet from %pV",
+			     inst->app_io->common.name,	fr_box_ipaddr(client->src_ipaddr));
 		}
 
 		/*
@@ -2536,6 +2545,9 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 */
 		client->state = PR_CLIENT_DYNAMIC;
 		client->radclient->active = true;
+
+		INFO("proto_%s - Dynamic client verification succeeded for packet from %pV",
+		     inst->app_io->common.name,	fr_box_ipaddr(client->src_ipaddr));
 		goto finish;
 	}
 
@@ -2579,6 +2591,9 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 */
 		client->state = PR_CLIENT_DYNAMIC;
 		client->radclient->active = true;
+
+		INFO("proto_%s - Dynamic client verification succeeded for packet from %pV",
+		     inst->app_io->common.name,	fr_box_ipaddr(client->src_ipaddr));
 	}
 
 	/*
