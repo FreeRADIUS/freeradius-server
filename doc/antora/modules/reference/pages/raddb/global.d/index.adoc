@@ -20,3 +20,6 @@ once, and not in each module.
 | xref:raddb/global.d/ldap.adoc[ldap]      | LDAP debugging flags
 | xref:raddb/global.d/python.adoc[python]  | Python path variables
 |=====
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

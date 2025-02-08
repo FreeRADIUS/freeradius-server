@@ -114,3 +114,6 @@ xref:raddb/mods-config/index.adoc[mods-config/] directory.  The meaning and
 interpretation of those files is documented there.  These files are
 often in a custom, module-specific format, instead of using the
 standard configuration file format.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

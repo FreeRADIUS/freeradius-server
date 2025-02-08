@@ -400,3 +400,6 @@ blogs = "this ${foo} is ${baz}"
 ====
 
 Will set variable `blogs` to the string `this bar is bug`.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

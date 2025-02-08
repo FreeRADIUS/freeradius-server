@@ -134,3 +134,6 @@ GID.  Either or both can be set.  If one is set, it is checked and enforced.
 
 ```
 ```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

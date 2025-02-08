@@ -90,3 +90,6 @@ This module takes no configuration.
 client {
 }
 ```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

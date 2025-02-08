@@ -222,3 +222,6 @@ with ALL operating systems. Some common issues are:
 * All other operating systems are known to work with EAP and FreeRADIUS.
   This includes Linux, *BSD, Mac OS X, Solaris, etc. along with all
   known embedded systems, phones, WiFi devices, etc.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -130,3 +130,6 @@ configured.
 | xref:raddb/mods-available/utf8.adoc[utf8]	| Checks all attributes of type string in the current request, to ensure that they only contain valid UTF8 sequences.
 |=====
 
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

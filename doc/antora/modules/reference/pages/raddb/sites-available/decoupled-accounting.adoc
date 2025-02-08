@@ -161,3 +161,6 @@ See "Autz-Type Status-Server" for how this works.
 
 ```
 ```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

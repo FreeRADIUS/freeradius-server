@@ -361,3 +361,6 @@ server.
 * xref:raddb/sites-available/tls-cache.adoc[tls cache]
 * xref:raddb/sites-available/virtual.example.com.adoc[virtual example com]
 * xref:raddb/sites-available/vmps.adoc[vmps]
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

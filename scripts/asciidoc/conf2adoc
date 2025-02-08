@@ -8,6 +8,7 @@
 use File::Basename;
 use File::Spec;
 use Getopt::Std;
+use Time::Piece;
 
 $was_raw = 0;
 $raw = 0;
@@ -222,6 +223,15 @@ sub process_file {
 
 	    print $output "```\n";
 	}
+
+	my $t = Time::Piece->new();
+	my $year = $t->year;
+
+	print $output <<EOF;
+
+// Copyright (C) $year Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
+EOF
 }
 
 sub HELP_MESSAGE {

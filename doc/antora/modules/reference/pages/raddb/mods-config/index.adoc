@@ -18,3 +18,6 @@ For example, the `users` file is now located in
 * The file is used in the `authorize` section.
 * The file is used by the `files` module.
 * It is a `module configuration` file, which is a specific format.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

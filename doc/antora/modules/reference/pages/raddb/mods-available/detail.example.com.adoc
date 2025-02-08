@@ -38,3 +38,6 @@ detail detail.example.com {
 	filename = "${radacctdir}/detail.example.com/detail-%Y-%m-%dT%H:%G:00"
 }
 ```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
