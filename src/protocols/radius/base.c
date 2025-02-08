@@ -770,9 +770,7 @@ finish:
  * @param[in] require_message_authenticator	whether we require Message-Authenticator.
  * @param[in] limit_proxy_state			whether we allow Proxy-State without Message-Authenticator.
  * @return
- *	- -2 if the message authenticator or request authenticator was invalid.
- *	- -1 if we were unable to verify the shared secret, or the packet
- *	     was in some other way malformed.
+ *	< <0 on error (negative fr_radius_decode_fail_t)
  *	- 0 on success.
  */
 int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
@@ -790,13 +788,13 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 
 	if (packet_len < RADIUS_HEADER_LENGTH) {
 		fr_strerror_printf("invalid packet length %zu", packet_len);
-		return -1;
+		return -DECODE_FAIL_MIN_LENGTH_PACKET;
 	}
 
 	code = packet[0];
 	if (!code || (code >= FR_RADIUS_CODE_MAX)) {
 		fr_strerror_printf("Unknown reply code %d", code);
-		return -1;
+		return -DECODE_FAIL_UNKNOWN_PACKET_CODE;
 	}
 
 	memcpy(request_authenticator, packet + 4, sizeof(request_authenticator));
@@ -825,7 +823,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 			if ((msg + msg[1]) > end) {
 			invalid_attribute:
 				fr_strerror_printf("invalid attribute at offset %zd", msg - packet);
-				return -1;
+				return -DECODE_FAIL_INVALID_ATTRIBUTE;
 			}
 			msg += msg[1];
 			continue;
@@ -833,7 +831,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 
 		if (msg[1] < 18) {
 			fr_strerror_const("too small Message-Authenticator");
-			return -1;
+			return -DECODE_FAIL_MA_INVALID_LENGTH;
 		}
 
 		/*
@@ -847,12 +845,12 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 	if (packet[0] == FR_RADIUS_CODE_ACCESS_REQUEST) {
 		if (limit_proxy_state && found_proxy_state && !found_message_authenticator) {
 			fr_strerror_const("Proxy-State is not allowed without Message-Authenticator");
-			return -1;
+			return -DECODE_FAIL_MA_MISSING;
 		}
 
 	    	if (require_message_authenticator && !found_message_authenticator) {
 			fr_strerror_const("Access-Request is missing the required Message-Authenticator attribute");
-			return -1;
+			return -DECODE_FAIL_MA_MISSING;
 		}
 	}
 
@@ -863,7 +861,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 	rcode = fr_radius_sign(packet, vector, secret, secret_len);
 	if (rcode < 0) {
 		fr_strerror_const_push("Failed calculating correct authenticator");
-		return -1;
+		return -DECODE_FAIL_VERIFY;
 	}
 
 	/*
@@ -883,7 +881,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 		memcpy(packet + 4, request_authenticator, sizeof(request_authenticator));
 
 		fr_strerror_const("invalid Message-Authenticator (shared secret is incorrect)");
-		return -2;
+		return -DECODE_FAIL_MA_INVALID;
 	}
 
 	/*
@@ -904,7 +902,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 		} else {
 			fr_strerror_const("invalid Request Authenticator (shared secret is incorrect)");
 		}
-		return -2;
+		return -DECODE_FAIL_VERIFY;
 	}
 
 	return 0;
@@ -1115,21 +1113,17 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (decode_ctx->request_code) {
 		unsigned int code = packet[0];
 
-		/*
-		 *	Quiet the compiler, which gets excited about an out
-		 *	of bounds access in allowed_replies
-		 */
-		if (!fr_cond_assert(code < FR_RADIUS_CODE_MAX)) {
-			return DECODE_FAIL_UNKNOWN_PACKET_CODE; /* checked by fr_radius_ok() */
+		if (code >= FR_RADIUS_CODE_MAX) {
+			return -DECODE_FAIL_UNKNOWN_PACKET_CODE;
 		}
-		if (!fr_cond_assert(decode_ctx->request_code < FR_RADIUS_CODE_MAX)) {
-			return DECODE_FAIL_UNKNOWN_PACKET_CODE; /* checked by fr_radius_ok() */
+		if (decode_ctx->request_code >= FR_RADIUS_CODE_MAX) {
+			return -DECODE_FAIL_UNKNOWN_PACKET_CODE;
 		}
 
 		if (!allowed_replies[code]) {
 			fr_strerror_printf("%s packet received unknown reply code %s",
 					   fr_radius_packet_name[decode_ctx->request_code], fr_radius_packet_name[code]);
-			return DECODE_FAIL_UNKNOWN_PACKET_CODE;
+			return -DECODE_FAIL_UNKNOWN_PACKET_CODE;
 		}
 
 		/*
@@ -1143,7 +1137,7 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		    (allowed_replies[code] != decode_ctx->request_code)) {
 			fr_strerror_printf("%s packet received invalid reply code %s",
 					   fr_radius_packet_name[decode_ctx->request_code], fr_radius_packet_name[code]);
-			return DECODE_FAIL_UNKNOWN_PACKET_CODE;
+			return -DECODE_FAIL_UNKNOWN_PACKET_CODE;
 		}
 	}
 

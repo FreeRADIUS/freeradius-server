@@ -2182,6 +2182,7 @@ static const char *reason_name[DECODE_FAIL_MAX] = {
 	[ DECODE_FAIL_TOO_MANY_ATTRIBUTES ] = "too many attributes",
 	[ DECODE_FAIL_MA_MISSING ] = "Message-Authenticator is required, but missing",
 	[ DECODE_FAIL_MA_INVALID ] = "Message-Authenticator is invalid",
+	[ DECODE_FAIL_VERIFY ] = "Authenticator is invalid",
 	[ DECODE_FAIL_UNKNOWN ] = "unknown",
 };
 

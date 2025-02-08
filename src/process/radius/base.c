@@ -862,12 +862,13 @@ static xlat_action_t xlat_func_radius_secret_verify(TALLOC_CTX *ctx, fr_dcursor_
 		vb->vb_bool = true;
 		break;
 
-	case -1:
-		RPEDEBUG("Failed verifying secret");
+	default:
+		RPEDEBUG("Invalid packet");
 		return XLAT_ACTION_FAIL;
 
-	case -2:
-		RPDEBUG2("Provided secret was not used to sign this packet");
+	case -DECODE_FAIL_MA_INVALID:
+	case -DECODE_FAIL_VERIFY:
+		RPEDEBUG("Failed to verify the packet signature");
 		vb->vb_bool = false;
 		break;
 	}
