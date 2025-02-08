@@ -791,11 +791,6 @@ retry:
 
 	rad_assert(*prequest != NULL);
 	rad_assert(request->magic == REQUEST_MAGIC);
-	rad_assert(request->child_state == REQUEST_QUEUED);
-
-	request->component = "<core>";
-	request->module = "";
-	request->child_state = REQUEST_RUNNING;
 
 	/*
 	 *	If the request has sat in the queue for too long,
@@ -810,6 +805,12 @@ retry:
 		request->child_state = REQUEST_DONE;
 		goto retry;
 	}
+
+	rad_assert(request->child_state == REQUEST_QUEUED);
+
+	request->component = "<core>";
+	request->module = "";
+	request->child_state = REQUEST_RUNNING;
 
 	/*
 	 *	The thread is currently processing a request.
