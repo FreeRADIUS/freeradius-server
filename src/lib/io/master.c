@@ -47,6 +47,7 @@ typedef struct {
 	uint32_t			num_connections;		//!< number of dynamic connections
 	uint32_t			num_pending_packets;   		//!< number of pending packets
 	uint64_t			client_id;			//!< Unique client identifier.
+	fr_rate_limit_t			unknown_client;
 } fr_io_thread_t;
 
 /** A saved packet
@@ -1592,15 +1593,21 @@ do_read:
 			state = PR_CLIENT_PENDING;
 
 		} else {
+			char const *msg;
+
 		ignore:
 			if (accept_fd < 0) {
-				DEBUG("proto_%s - ignoring packet from unknown client IP address %pV",
-				      inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
+				msg = "packet";
 			} else {
-				DEBUG("proto_%s - ignoring connection attempt from unknown client IP address %pV",
-				      inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
+				msg = "connection attempt";
 				close(accept_fd);
 			}
+
+			DEBUG("proto_%s - ignoring %s from unknown client IP address %pV",
+			      inst->app_io->common.name, msg, fr_box_ipaddr(address.socket.inet.src_ipaddr));
+
+			RATE_LIMIT_LOCAL(&thread->unknown_client, ERROR, "proto_%s - ignoring %s from unknown client IP address %pV",
+					 inst->app_io->common.name, msg, fr_box_ipaddr(address.socket.inet.src_ipaddr));
 			return 0;
 		}
 
