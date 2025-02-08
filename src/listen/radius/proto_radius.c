@@ -254,7 +254,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	if (fr_radius_decode(request->request_ctx, &request->request_pairs,
 			     data, data_len, &decode_ctx) < 0) {
 		talloc_free(decode_ctx.tmp_ctx);
-		RPEDEBUG("Failed reading packet");
+		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
 	talloc_free(decode_ctx.tmp_ctx);
