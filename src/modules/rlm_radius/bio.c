@@ -932,6 +932,7 @@ static connection_t *thread_conn_alloc(trunk_connection_t *tconn, fr_event_list_
 		return NULL;
 	}
 	ctx->trunk = tconn->trunk;
+	ctx->module_name = log_prefix;
 
 	return conn;
 }
