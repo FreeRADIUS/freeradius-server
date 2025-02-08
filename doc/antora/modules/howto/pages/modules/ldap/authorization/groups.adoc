@@ -182,3 +182,6 @@ should be set, and when checking for group memberships using group names
 One exception to this, is if nested group checks are being performed.
 In this case `group.cacheable_dn` must be set, as the full path of the group
 objects is required.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

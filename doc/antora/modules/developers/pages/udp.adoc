@@ -44,3 +44,6 @@ handler has to take care of manually sending them over to the new connection.
 In short, we can emulate (mostly) TCP connections via UDP.
 
 We do not need to use connected sockets for DHCP.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

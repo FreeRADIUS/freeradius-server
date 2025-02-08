@@ -205,3 +205,6 @@ eap {
 ```
 
 Otherwise password changes for PEAP/MSCHAPv2 will not work.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

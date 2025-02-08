@@ -848,3 +848,6 @@ RADIUS related RFCs and Drafts are archived at:
 FreeRADIUS is the result of the work done by a large number of people.
 
 The major contributors are listed on the Acknowledgments page.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

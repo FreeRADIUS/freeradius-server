@@ -727,3 +727,6 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
 The macro calls above disable and re-enable the `-Wdocumentation` diagnostic for mruby headers. `-Wdocumentation` will produce a warning if doxygen style comment blocks are not correctly composed.  We don't control the mruby headers and we will not be calling doxygen to build documentation based on them, so it's fine to disable the warning.  `-Wdocumentation` is only emitted by clang hence the use of `DIAG_(OFF|ON)_OPTIONAL`.
 ====
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

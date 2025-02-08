@@ -310,3 +310,6 @@ empty, so that the originator can poke the receiver that another message is read
 
 Or, the even loop / FD has to be exposed to the queue API, so that the
 queue code can do this signalling itself.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

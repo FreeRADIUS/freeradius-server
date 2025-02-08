@@ -318,3 +318,6 @@ Brainstorm/TODO by Benny:
 * MAC-ADDRESS format command switch for UPPER or lower case of MAc-ADddreSSes ;)
 * User Community @ http://www.alcatelunleashed.com
 * German DokuWiki @ http://dokuwiki.alu4u.com
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

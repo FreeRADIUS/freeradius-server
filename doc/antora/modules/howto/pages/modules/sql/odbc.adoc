@@ -352,3 +352,6 @@ Finally, attempt an authentication:
 
 CAUTION: If ODBC tracing has been enabled during testing then you should
 remember to disable this before moving into production.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

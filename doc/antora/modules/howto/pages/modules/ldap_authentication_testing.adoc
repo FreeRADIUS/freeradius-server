@@ -209,3 +209,6 @@ Here FreeRADIUS is describes it:
  ** attemps to LDAP bind as `uid=john,ou=people,dc=example,dc=com`
  ** successful so `ok` is returned
  . we return `Access-Accept` as `ok` was returned to unlang
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -277,3 +277,6 @@ that may help.
 - Most devices include the LetsEncrypt root these day, but some older
   devices may not. Install the LetsEncrypt root CA certificate on
   those devices if needed.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

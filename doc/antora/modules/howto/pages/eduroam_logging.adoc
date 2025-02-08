@@ -132,3 +132,6 @@ place. An example linelog configuration could be something like
             reject = "%T reject %{User-Name} %{session-state:User-Name} %{Calling-Station-Id} ..."
         }
     }
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

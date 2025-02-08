@@ -28,3 +28,6 @@ which allows mapping elements of a JSON response to FreeRADIUS.
 
 If you're attempting to integrate an existing REST API, this section will provide
 hints on how to accomplish this.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

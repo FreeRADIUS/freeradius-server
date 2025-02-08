@@ -18,3 +18,6 @@ If that message does not appear, then it is necessary to correct any
 and all errors before proceeding to the next step.  It is a good idea
 to ensure that the current configuration works _before_ making changes
 to it.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

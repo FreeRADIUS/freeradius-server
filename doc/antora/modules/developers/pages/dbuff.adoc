@@ -174,3 +174,6 @@ if ((val = fr_dbuff_foo(dbuff, ...) < 0) return val;
 ----
 
 letting one return an error to the caller without cluttering the code.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

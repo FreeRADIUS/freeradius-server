@@ -233,3 +233,6 @@ Split up functionality as much as possible. If your code needs to do two
 unrelated things, write two functions. Mashing two kinds of work into one
 function makes the server difficult to debug and maintain.
 
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

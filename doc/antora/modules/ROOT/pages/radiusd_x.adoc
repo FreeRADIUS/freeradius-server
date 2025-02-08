@@ -696,3 +696,6 @@ And finally returns an Access-Accept to the client.  The `Reply-Message` here wa
     ^C
 
 That is a *lot* of information to go through.  We hope that this page has been useful.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -147,3 +147,6 @@ rest {
 <6> HTTP(s) settings for the module instance.
 
 include::howto:partial$post_test.adoc[]
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

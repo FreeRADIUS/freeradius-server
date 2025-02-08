@@ -65,3 +65,6 @@ radiusd.RLM_XXX
 access to other C functions. Let the Python module deal with the
 structures directly, instead of letting our C code do it afterwards.
 What’s a good way to represent this?
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

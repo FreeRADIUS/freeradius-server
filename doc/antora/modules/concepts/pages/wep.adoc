@@ -83,3 +83,6 @@ The most widely recommended solution to WEP security problems is to switch to WP
 **[http://sourceforge.net/projects/wepcrack WEPCrack]
 **[http://sourceforge.net/projects/weplab Weplab]
 **[http://kismac.binaervarianz.de/ KisMAC]
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

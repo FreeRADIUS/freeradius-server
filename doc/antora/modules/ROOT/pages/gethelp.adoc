@@ -57,3 +57,6 @@ include:
 Existing systems can be migrated to our product or we can configure our product to work with your
 databases. The final result is a system that is robust, high performance, and easy to maintain. Contact us
 at sales@networkradius.com for more information.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

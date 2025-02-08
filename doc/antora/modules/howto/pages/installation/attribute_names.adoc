@@ -71,3 +71,6 @@ remain the same.
 
 The output file still has be checked manually.  The rewrite process is
 automatic, but is not perfect.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

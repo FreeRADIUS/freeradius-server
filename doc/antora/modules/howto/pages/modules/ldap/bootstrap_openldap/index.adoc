@@ -20,3 +20,6 @@ are not comfortable using docker, then you may wish to install OpenLDAP from pac
 OpenLDAP is available pre-packaged for many distributions.  We recommend
 using the OpenLDAP LTB packages available under the
 "Packaging and OpenLDAP extensions" heading https://ltb-project.org/documentation[here].
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

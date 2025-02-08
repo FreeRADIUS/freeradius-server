@@ -31,3 +31,6 @@ When processing packets, it is possible to call functions or do string
 manipulation with attribute contents.  The
 xref:xlat/index.adoc[dynamic expansion] documentation describes how
 this is done.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

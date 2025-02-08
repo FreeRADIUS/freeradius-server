@@ -115,3 +115,6 @@ then the source of the error is simple.  There is no need to go
 searching through other configuration files or third-party web sites.
 Instead, change and test the module configuration until the server
 works.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

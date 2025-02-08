@@ -84,3 +84,6 @@ In this case, the mschap module looks at the request, and finds the MS-CHAP attr
 > because I don't have the information I need to validate MSCHAP.
 
 But now the server has run out of options! Its only choice was mschap because that's what the client sent in the request.  The mschap module can't do anything because you didn't give it a useful "known good" password . So the server has no choice but to reject the request.  The MSCHAP data might be correct, but the server has no way to know that.  So it replies with a reject.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

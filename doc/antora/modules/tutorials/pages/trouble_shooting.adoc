@@ -39,3 +39,6 @@ You can usually interpret the debug messages, but if you need help, there is a d
 * http://networkradius.com/freeradius.html
 
 Paste the output into the debug form, and a colorized HTML version will be produced. Look for red or yellow text, and read the messages.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

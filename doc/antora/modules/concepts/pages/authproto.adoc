@@ -32,3 +32,6 @@ https://datatracker.ietf.org/doc/html/rfc2868[RFC 2868] RADIUS Attributes for Tu
 https://datatracker.ietf.org/doc/html/rfc2869[RFC 2869] RADIUS Extensions
 https://datatracker.ietf.org/doc/html/rfc3758[RFC 3748] Extensible Authentication Protocol (EAP)
 https://datatracker.ietf.org/doc/html/rfc3579[RFC 3579] - RADIUS (Remote Authentication Dial In User Service) Support For Extensible Authentication Protocol (EAP)
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

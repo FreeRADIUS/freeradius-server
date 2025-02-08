@@ -124,3 +124,6 @@ patch via GitHub instead.
 
 It is important to note, either in the subject line or in the patch
 description, the server version to which this patch applies.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

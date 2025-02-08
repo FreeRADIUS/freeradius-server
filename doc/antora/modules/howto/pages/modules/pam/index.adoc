@@ -97,3 +97,6 @@ NAS-IP-Address = 127.0.0.1 Service-Type = Framed-User, Framed-Protocol =
 PPP, Framed-IP-Address = 255.255.255.254, Filter-Id = std.ppp,
 Framed-MTU = 1500, Framed-Compression = Van-Jacobson-TCP-IP
 ```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

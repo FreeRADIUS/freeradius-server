@@ -148,3 +148,6 @@ A `null` result can be removed via the `||` operator.  For example:
 ----
 
 Will return `6`, as the left side expression of the `||` operator evaluates to `null`.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

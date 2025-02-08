@@ -7,3 +7,6 @@ The main xref:man/radiusd.adoc[radiusd] daemon.
 The command-line tool for radiusd, xref:man/radmin.adoc[radmin].
 
 A RADIUS-aware packet capture tool, xref:man/radsniff.adoc[radsniff].
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

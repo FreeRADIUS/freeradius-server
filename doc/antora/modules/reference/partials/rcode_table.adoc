@@ -37,3 +37,6 @@ In versions ≤ v3.2.x the `disallow` rcode was called `userlock`. `disallow` an
 `userlock` have an identical meaning. `disallow` will be returned in any
 instance where `userlock` was returned in v3.0.x or v3.2.x
 ====
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

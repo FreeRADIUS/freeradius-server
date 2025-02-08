@@ -75,3 +75,6 @@ fr_slen_t my_parse_function(fr_sbuff_t *in)
 Private functions (static functions in the same source file) don't have the same requirements.
 There's no reason for these functions to return the number of parsed bytes, and they can return `0`
 for success, or `-1` for failure like other functions in the server.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

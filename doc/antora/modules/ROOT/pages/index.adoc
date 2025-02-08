@@ -129,3 +129,6 @@ at a time and restart your server.
 == More Information
 
 Many resources, https://www.inkbridge.io/[experts], and documentation sets are available to help you with your RADIUS server. Refer to xref:gethelp.adoc[Getting Help] for more details.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

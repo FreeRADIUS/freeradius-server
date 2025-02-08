@@ -55,3 +55,6 @@ where -r 1 means retry only once and give up.
 
 `RFC 3576
 <http://www.ietf.org/rfc/rfc3576.txt>`_
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

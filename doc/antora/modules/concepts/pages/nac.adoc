@@ -27,3 +27,6 @@ Policy decision may be separate from policy enforcement - this architecture is o
 * Network Access Protection
 * Network Admission Control
 * Trusted Network Connect
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

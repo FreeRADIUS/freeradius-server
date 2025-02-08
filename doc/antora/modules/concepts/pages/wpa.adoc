@@ -72,3 +72,6 @@ Other EAP types may be supported by 802.1X clients and servers developed by spec
 * SmithMicro Quicklink Mobile Software (http://www.smithmicro.com/default.tpl?sku=QLMWA0EE&group=product_full) 
 * Steve Gibson's Perfect Passwords(https://www.grc.com/passwords/) 
 * GRC's Ultra High Security Password Generators(http://darkvoice.dyndns.org/wlankeygen/ Online WEP-/WPA-Key Generator)
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

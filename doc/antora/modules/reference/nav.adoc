@@ -234,3 +234,6 @@
 *** xref:raddb/radiusd.conf.adoc[Server Configuration File]
 *** xref:raddb/templates.conf.adoc[Templates]
 *** xref:raddb/trigger.conf.adoc[Triggers]
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

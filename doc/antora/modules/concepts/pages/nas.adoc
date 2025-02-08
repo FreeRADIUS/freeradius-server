@@ -60,3 +60,6 @@ end NAS.
     Model, July 2000)
 -   RFC 2882 (Network Access Servers Requirements: Extended RADIUS
     Practices, July 2000)
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

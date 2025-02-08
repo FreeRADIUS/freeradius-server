@@ -5,3 +5,6 @@
  **** *a dedicated group object (ie. `member`):* uncomment `membership_filter` and possibility amend the value
  **** *the user object (ie. `memberOf`):* check `membership_attribute` is set apprioately
  . enabled the LDAP module
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

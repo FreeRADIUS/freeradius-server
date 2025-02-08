@@ -15,3 +15,6 @@ through a particularly arduous service configuration and deployment, and would
 like to help your fellow users, then please create a new how to on the wiki.
 If it's popular enough, we'll include it in the official documentation for the
 next release.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

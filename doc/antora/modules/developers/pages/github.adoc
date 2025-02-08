@@ -175,3 +175,6 @@ Refer to the links below for instructions on how to enable this:
 
 - https://git-scm.com/book/en/v2/Git-Tools-Signing-Your-Work
 - https://help.github.com/en/github/authenticating-to-github/signing-commits
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

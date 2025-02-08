@@ -41,3 +41,6 @@ modify.
 The output of this script is a sequence of SQL commands which update
 the pool to match with the definition provided. We recommending
 reviewing this file before running it against your database.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

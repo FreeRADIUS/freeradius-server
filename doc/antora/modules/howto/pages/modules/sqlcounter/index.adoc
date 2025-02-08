@@ -81,3 +81,6 @@ between the configured limit and the retrieved value is sufficient to cover the
 time to the next period.  If it is, then the value returned in the reply
 attribute will be the number of seconds until the next period plus the value of
 the limit.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

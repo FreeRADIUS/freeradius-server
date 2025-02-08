@@ -227,3 +227,6 @@ Guide(http://networkradius.com/doc/FreeRADIUS%20Technical%20Guide.pdf),
 which should be read by every new RADIUS administrator. It explains
 RADIUS concepts, and covers how to perform introductory administation
 and maintenance. More in-depth guides are available on the same page.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

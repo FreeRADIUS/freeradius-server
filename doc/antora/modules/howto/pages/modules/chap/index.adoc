@@ -128,3 +128,6 @@ forbidden.  In that case, the `chap` module should be removed from the
 process CHAP authentication requests.  All `Access-Request` packets
 that contain a `CHAP-Password` attribute will then result in an
 `Access-Reject`.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

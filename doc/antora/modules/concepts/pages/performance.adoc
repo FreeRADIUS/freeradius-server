@@ -37,3 +37,6 @@ available. It uses the FreeRADIUS libraries to implement the RADIUS
 portion, and then builds more complex functionality on top of that. It
 can be used to simulate user logins, and can auto-generate accounting
 packets for user sessions.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

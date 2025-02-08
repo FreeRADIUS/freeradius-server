@@ -514,3 +514,6 @@ encrypted using the session WEP key.
 * Primary author - Raghu mailto:raghud@mail.com[raghud@mail.com]
 * EAP-SIM - Michael Richardson mailto:mcr@sandelman.ottawa.on.ca[mcr@sandelman.ottawa.on.ca]
 * The development of the EAP/SIM support was funded by Internet Foundation Austria (http://www.nic.at/ipa).
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

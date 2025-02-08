@@ -77,3 +77,6 @@ server.
 If detailed information about user activity is required, network administrators can obtain it through other
 protocols such as sFlow or NetFlow. Network administrators may find it difficult to tie the pieces together to get a more comprehensive
 understanding of user activity.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

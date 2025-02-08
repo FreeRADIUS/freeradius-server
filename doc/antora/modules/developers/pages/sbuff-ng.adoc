@@ -244,3 +244,6 @@ and creates/stored the error string from `err_fmt`, and `...`.
 In this way we still get rich, contextful errors, but without passing an offset back up the stack.
 
 All parse functions can revert to returning `int (0, -1)` instead of `fr_slen_t` (as they do now).
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

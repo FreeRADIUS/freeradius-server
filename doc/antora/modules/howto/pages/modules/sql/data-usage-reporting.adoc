@@ -244,3 +244,6 @@ necessary to amend the tables and queries of the existing schema or to reset
 ongoing sessions in order to obtain the necessary information. The collection
 and reporting of the additional data required for time-period based data usage
 accounting can be performed efficiently out of band.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

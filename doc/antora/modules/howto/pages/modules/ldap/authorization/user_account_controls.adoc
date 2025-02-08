@@ -68,3 +68,6 @@ ldap {
 <1> The attribute to use to indicate that the account is disabled.
     If the attribute is present or set to true then the user will be
     "locked out".
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

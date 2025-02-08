@@ -39,3 +39,6 @@ or as cachgrind output
 ----
 pprof --cachegrind /path/to/freeradius /tmp/freeradius.prof
 ----
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

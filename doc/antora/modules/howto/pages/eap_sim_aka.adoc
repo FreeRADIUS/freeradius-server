@@ -113,3 +113,6 @@ But that is outside the scope of this page (for now).
 
 ### Windows
 Should work out of the box
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

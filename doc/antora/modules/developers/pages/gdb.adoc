@@ -63,3 +63,6 @@ After that, you can type `newcmd foo` and the command will run.
 
 * https://sourceware.org/gdb/current/onlinedocs/gdb.html/Python.html#Python [The "Extending GDB using Python" section of Debugging with GDB]
 * https://interrupt.memfault.com/blog/automate-debugging-with-gdb-python-api ["Automate Debugging with GDB Python API" from Interrupt by Memfault] The first section is about writing prettypriters, which isn't of interest to us. Later they get into adding custom gdb commands with Python, our current interest.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

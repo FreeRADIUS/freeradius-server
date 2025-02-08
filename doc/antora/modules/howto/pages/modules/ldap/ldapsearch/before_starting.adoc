@@ -18,3 +18,6 @@ needed to validate the identity of the LDAP server?
 certificate is required.
 * Determine the Base DN, the object deepest in the tree that contains the object
 representing users, groups, clients etc...
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

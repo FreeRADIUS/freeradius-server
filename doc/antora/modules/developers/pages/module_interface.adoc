@@ -183,3 +183,6 @@ int destroy(void)
 ----
 
 It should release resources that were acquired by the `init()` method.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

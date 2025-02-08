@@ -45,3 +45,6 @@ See xref:modules/ldap/authorization/user_disambiguation.adoc[User object
 disambiguation] for strategies for limiting the number of user object entries
 returned.
 ====
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

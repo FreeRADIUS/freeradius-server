@@ -37,3 +37,6 @@ are FreeRADIUS, Radiator, NPS, or IAS.
 Optional database or directory with user authentication and authorisation information. RADIUS server communicates with the
 data store using DB API or LDAP. Types of data stores include SQL Database, Kerberos Service Server, or an
 LDAP Directory.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

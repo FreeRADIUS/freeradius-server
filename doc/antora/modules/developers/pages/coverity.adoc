@@ -164,3 +164,6 @@ CID 1503954 (#1 of 1): Untrusted loop bound (TAINTED_SCALAR)
 * https://sig-product-docs.synopsys.com/bundle/coverity-docs/page/webhelp-files/customize_start.html
 Customizing Coverity. Look especially at the sections "Identifying vulnerable data" and "Models and Primitives" (and in turn the section in "Models and Primitives" on C and C++ primitives).
 * https://www.synopsys.com/blogs/software-security/detecting-heartbleed-with-static-analysis/ "On detecting Heartbleed with static analysis". Describes the method Synopsys developed to detect errors like Heartbleed in a way "that scale[s] to large programs with low false positive rates, yet find[s] critical defects."
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -60,3 +60,6 @@ RFC2139(http://www.freeradius.org/rfc/rfc2139.txt)
 
 Also see the  xref:howto:installation/dependencies.adoc[build
 dependencies] page.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

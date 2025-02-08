@@ -82,3 +82,6 @@ Given all that, you just import the file containing the source. But must one do 
 There are various lldb "cheat sheets", other tutorials, and answered questons on sites such as StackOverflow. Those can be out of date, but may contain useful information. For example, one such answered question mentioned that the `script` command has both a one-line form and a multi-line form.
 
 
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

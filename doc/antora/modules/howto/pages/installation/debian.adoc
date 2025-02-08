@@ -252,3 +252,6 @@ Get the source as described above, then:
 make
 sudo make install
 ----
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

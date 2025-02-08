@@ -195,3 +195,6 @@ Please read the documentation in the doc/ directory. The comments in the
 configuration files also contain a lot of documentation.
 
 If you have any additional issues, refer to the https://wiki.freeradius.org/guide/FAQ[FAQ] for more help.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -128,3 +128,6 @@ clients, and many other features, with no need to purchase additional product li
 * All known RADIUS Clients
 * Flexible configurations using attribute pairs
 * Supports virtual servers
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

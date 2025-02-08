@@ -78,3 +78,6 @@ right-hand side of an action is `retry`.
 All times and durations are parsed as the data type `time_delta`.
 
 If no value is given, it is assumed to be zero.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

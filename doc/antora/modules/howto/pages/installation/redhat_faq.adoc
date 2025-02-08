@@ -662,3 +662,6 @@ This tell us at the minimum we have to update the packages freeradius, freeradiu
  /usr/src/redhat/RPMS/i386/freeradius-mysql-2.1.1-7.fc10.i386.rpm
 
 If figuring out what has to be simultaneously updated, including any missing dependencies, seems onerous then you're right. Normally this work is performed by a package updater such as yum which automatically does all this work for you. But because we've just locally built the packages we do not have the luxury of using the package updater because our local packages are not known to it. However, even though we didn't use the package updater we did use rpm to perform the installation and as a consequence we retain all the advantages of a rpm installation.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

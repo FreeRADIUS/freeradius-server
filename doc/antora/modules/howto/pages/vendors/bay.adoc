@@ -15,3 +15,6 @@ Received packet from xxx.xxx.xxx.xxx with invalid Message-Authenticator!
 
 and you are using a Bay Annex, then you MUST upgrade the software on
 your Annex. There is NO other solution to the problem.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

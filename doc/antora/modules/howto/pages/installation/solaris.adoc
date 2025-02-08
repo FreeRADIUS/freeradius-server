@@ -159,3 +159,6 @@ gmake install
 
 ## Running
 SMF manifest and installation instructions for Solaris 10 can be found [here](https://github.com/freeradius/freeradius-server/tree/master/scripts/solaris).
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

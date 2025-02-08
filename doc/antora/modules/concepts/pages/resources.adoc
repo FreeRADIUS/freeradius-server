@@ -19,3 +19,6 @@ https://datatracker.ietf.org/doc/html/rfc3579[RFC 3579] - RADIUS (Remote Authent
 
 
 
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -98,3 +98,6 @@ both on user DN and user name e.g.
 membership_filter = "(|(<group_membership_filter_by_uid>=%{control.Ldap-UserDn})(<group_membership_filter_by_name>=%{&Stripped-User-Name || &User-Name))"
 ----
 ****
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

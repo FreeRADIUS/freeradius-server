@@ -52,3 +52,6 @@ Especially if you have a lot of access servers or your NAS does not send
 very random Session-Ids. That way you will always have one candidate row
 to search for, instead of all the rows that have the same
 `AcctSessionId`.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -36,3 +36,6 @@
 ** xref:radmin.adoc[Radmin]
 
 ** xref:final_group_project.adoc[Final group project]
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

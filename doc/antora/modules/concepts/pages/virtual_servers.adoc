@@ -198,3 +198,6 @@ More examples
 
 For more examples, see the `raddb/sites-enabled/` directory that is
 included in the server distribution.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

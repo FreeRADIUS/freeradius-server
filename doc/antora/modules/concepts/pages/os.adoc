@@ -35,3 +35,6 @@ FreeRADIUS is reported to run on the following Operating Systems:
 * [Solaris](http://www.oracle.com/technetwork/server-storage/solaris11/overview/index.html)
 
 Porting to other unix-like platforms should be easy. Due to the limited resources of the FreeRADIUS development team, we are not able to test each version on all platforms before release.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

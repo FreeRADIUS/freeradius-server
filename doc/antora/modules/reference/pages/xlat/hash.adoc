@@ -133,3 +133,6 @@ The md5 of Caipirinha in octal is \024\204\013md||\230\243\3472\3703\330n\251
 The md5 of Caipirinha in hex is 14840b6d647c7c98a3e732f833d86ea9
 ```
 
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

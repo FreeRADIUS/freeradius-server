@@ -233,3 +233,6 @@ More information about this process can be seen [here](http://www.cisco.com/en/U
 For more information, the following page on Cisco’s web site may help:
 
 http://www.cisco.com/univercd/cc/td/doc/product/access/acs_serv/vapp_dev/vsaig3.htm
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

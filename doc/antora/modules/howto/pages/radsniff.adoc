@@ -211,3 +211,6 @@ Although the majority of GUAGE values are created using the AVERAGE consolidatio
 ![Accounting Request counters](radsniff_accounting_counters-day.png "Accounting Request counters")
 ![Accounting Request latency](radsniff_accounting_latency-day.png "Accounting Request latency")
 ![Accounting Request RTC](radsniff_accounting_rtx-day.png "Accounting RTX")
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

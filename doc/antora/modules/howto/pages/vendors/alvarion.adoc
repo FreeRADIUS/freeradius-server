@@ -24,3 +24,6 @@ Save the file, and then do:
 Note that you *cannot* build an RPM or other package if you are using Alvarion.  You *must* install from source.
 
 The reason for the above changes is that they have non-standard versions of the dictionaries.  These dictionaries are incompatible with all other WiMAX equipment, so they are not enabled by default.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

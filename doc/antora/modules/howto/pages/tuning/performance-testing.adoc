@@ -188,3 +188,6 @@ I’d really rather not post results because they will vary tremendously
 with other system-specific configuration. This is exactly the reason you
 should run tests of this nature, to find what’s best for _your_ system.
 Good luck!
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

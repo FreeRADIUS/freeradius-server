@@ -205,3 +205,6 @@ radiusd.conf(5), dictionary(5), unlang(5), raddebug(8)
 == AUTHOR
 
 The FreeRADIUS Server Project (https://freeradius.org)
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

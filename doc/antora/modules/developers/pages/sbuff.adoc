@@ -318,3 +318,6 @@ depending on the type of the pointer. (There are no
 `fr_sbuff_out_oct()` or `fr_sbuff_out_hex()` generic macros to let one
 read any integral type using octal or hexadecimal.)
 
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

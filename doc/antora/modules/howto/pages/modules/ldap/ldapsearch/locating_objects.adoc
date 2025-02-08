@@ -274,3 +274,6 @@ user object search with '+' set as the second positional argument.
 ```
 ldapsearch -z 10 -x -H ldap://localhost:389 -b "dc=example,dc=com" "(ObjectClass=posixAccount)" "*" "+"
 ```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

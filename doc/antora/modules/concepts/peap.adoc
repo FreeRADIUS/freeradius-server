@@ -58,3 +58,6 @@ Ultimately, PEAPv0/EAP-MSCHAPv2 is the only form of PEAP that most people will e
 == See Also
 
 * EAP
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

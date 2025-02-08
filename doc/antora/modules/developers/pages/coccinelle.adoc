@@ -81,3 +81,6 @@ index 6fff875fb3..d172db865a 100644
                 }
 $
 ```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

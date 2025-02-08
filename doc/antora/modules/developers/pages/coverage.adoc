@@ -9,3 +9,6 @@ $ make coverage
 ----
 
 If completed with success, a pretty report will be available in `${source_tree}/build/coverage/index.html`
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
