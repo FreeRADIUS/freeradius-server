@@ -215,7 +215,14 @@ server default {
 	#  order to make FreeRADIUS more flexible, and to make the
 	#  configuration simpler and more consistent.
 	#
-	listen {
+	#  If there are multiple `listen` sections in the same
+	#  virtual server, they need to be given a second name.
+	#
+	#  Listen sections are identified by virtual server name,
+	#  then by the namespace, then by transport, finally by
+	#  a second name.
+	#
+	listen authentication {
 		#
 		#  type:: The type of packet to accept.
 		#
@@ -603,7 +610,7 @@ server default {
 		}
 	}
 
-	listen tcp_auth {
+	listen authentication {
 		type = Access-Request
 		type = Status-Server
 
@@ -660,7 +667,7 @@ server default {
 	#
 	#  ### Listen for Accounting-Request packets
 	#
-	listen udp_acct {
+	listen accounting {
 		type = Accounting-Request
 
 		transport = udp

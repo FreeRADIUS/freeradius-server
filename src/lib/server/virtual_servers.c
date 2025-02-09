@@ -378,17 +378,16 @@ static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
+static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	fr_virtual_listen_t	*listener = talloc_get_type_abort(out, fr_virtual_listen_t); /* Pre-allocated for us */
 	CONF_SECTION		*listener_cs = cf_item_to_section(ci);
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
 	CONF_PAIR		*namespace = cf_pair_find(server_cs, "namespace");
 
-	CONF_PAIR		*proto;
-	char const		*mod_name;
-	char const		*inst_name;
-	char			*qual_inst_name;
+	CONF_PAIR		*cp;
+	char const		*protocol, *transport, *name2;
+	char			*inst_name;
 
 	module_instance_t	*mi;
 
@@ -431,55 +430,51 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
 	 *	to be included in the server.
 	 *
 	 */
-	proto = cf_pair_find(listener_cs, "proto");
-	if (proto) {
-		mod_name = cf_pair_value(proto);
+	cp = cf_pair_find(listener_cs, "proto");
+	if (cp) {
+		protocol = cf_pair_value(cp);
+		if (!protocol) {
+			cf_log_err(cp, "Missing value");
+			return -1;
+		}
 	} else {
-		mod_name = cf_pair_value(namespace);
+		protocol = cf_pair_value(namespace);
+	}
+
+	name2 = cf_section_name2(listener_cs);
+
+	/*
+	 *	As with almost everything else, the listeners are
+	 *	modules.  Create a unique name for them.
+	 */
+	cp = cf_pair_find(listener_cs, "transport");
+	if (cp && cf_pair_value(cp)) {
+		transport = cf_pair_value(cp);
+	} else {
+		transport = "generic";
 	}
 
 	/*
-	 *	Inst name comes from the 'listen' name2
-	 *	or from the module name.
-	 *
-	 *	The inst name is qualified with the name
-	 *	of the server the listener appears in.
-	 *
-	 *	The following results in the instance name of 'foo.radius':
-	 *
-	 *	server foo {
-	 *		namespace = radius
-	 *		listen {
-	 *
-	 *		}
-	 *	}
-	 *
-	 *	The following results in the instance name 'foo.my_network':
-	 *
-	 *	server foo {
-	 *		namespace = radius
-	 *		listen my_network {
-	 *
-	 *		}
-	 *	}
+	 *	Instance names are default.radius.udp.foo, or default.radius.udp
 	 */
-	inst_name = cf_section_name2(listener_cs);
-	if (!inst_name) inst_name = mod_name;
+	if (name2) {
+		MEM(inst_name = talloc_asprintf(ctx, "%s.%s.%s.%s", cf_section_name2(server_cs),
+						protocol, transport, name2));
+	} else {
+		MEM(inst_name = talloc_asprintf(ctx, "%s.%s.%s", cf_section_name2(server_cs),
+						protocol, transport));
+	}
 
 	if (module_instance_name_valid(inst_name) < 0) {
 	error:
-		cf_log_err(listener_cs, "Failed loading listener");
+		cf_log_err(listener_cs, "Failed loading listen section.");
 		return -1;
 	}
-
-	MEM(qual_inst_name = talloc_asprintf(NULL, "%s.%s", cf_section_name2(server_cs), inst_name));
-	mi = module_instance_alloc(proto_modules, NULL, DL_MODULE_TYPE_PROTO, mod_name, qual_inst_name, 0);
-	talloc_free(qual_inst_name);
+	mi = module_instance_alloc(proto_modules, NULL, DL_MODULE_TYPE_PROTO, protocol, inst_name, 0);
+	talloc_free(inst_name);
 	if (!mi) goto error;
 
 	if (unlikely(module_instance_conf_parse(mi, listener_cs) < 0)) goto error;
-
-	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading %s listener into %p", inst_name, out);
 
 	listener->proto_mi = mi;
 	listener->proto_module = (fr_app_t const *)listener->proto_mi->module->exported;
