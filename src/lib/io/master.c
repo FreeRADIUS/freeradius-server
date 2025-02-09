@@ -48,6 +48,7 @@ typedef struct {
 	uint32_t			num_pending_packets;   		//!< number of pending packets
 	uint64_t			client_id;			//!< Unique client identifier.
 	fr_rate_limit_t			unknown_client;
+	fr_rate_limit_t			repeat_nak;
 } fr_io_thread_t;
 
 /** A saved packet
@@ -827,8 +828,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 *	add it to the scheduler.
 	 */
 	if (nak) {
-		INFO("proto_%s - Dynamic client verification failed for packet from %pV",
-		     inst->app_io->common.name,	fr_box_ipaddr(client->src_ipaddr));
+		INFO("proto_%s - Verification failed for packet from dynamic client %pV - adding IP address to the NAK cache",
+		     inst->app_io->common.name, fr_box_ipaddr(client->src_ipaddr));
 
 		connection->name = talloc_strdup(connection, nak->name);
 		connection->client->state = PR_CLIENT_NAK;
@@ -1392,8 +1393,8 @@ redo:
 		 *	OK.  So don't return -1.
 		 */
 		if (accept_fd < 0) {
-			DEBUG("proto_%s - failed to accept new socket: %s",
-			      inst->app->common.name, fr_syserror(errno));
+			INFO("proto_%s - failed to accept new socket: %s",
+			     inst->app->common.name, fr_syserror(errno));
 			return 0;
 		}
 
@@ -1534,6 +1535,7 @@ do_read:
 		fr_client_t *radclient = NULL;
 		fr_io_client_state_t state;
 		fr_ipaddr_t const *network = NULL;
+		char const *error;
 
 		/*
 		 *	We MUST be the master socket.
@@ -1552,17 +1554,8 @@ do_read:
 
 		} else if (inst->dynamic_clients) {
 			if (inst->max_clients && (fr_heap_num_elements(thread->alive_clients) >= inst->max_clients)) {
-				if (accept_fd < 0) {
-					DEBUG("proto_%s - ignoring packet from client IP address %pV - "
-					      "too many dynamic clients are defined",
-					      inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
-				} else {
-					DEBUG("proto_%s - ignoring connection attempt from client IP address %pV "
-					      "- too many dynamic clients are defined",
-					      inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
-					close(accept_fd);
-				}
-				return 0;
+				error = "Too many dynamic clients have been defined";
+				goto ignore;
 			}
 
 			/*
@@ -1571,8 +1564,7 @@ do_read:
 			network = fr_trie_lookup_by_key(inst->networks, &address.socket.inet.src_ipaddr.addr,
 						 address.socket.inet.src_ipaddr.prefix);
 			if (!network) {
-				DEBUG3("Source IP %pV is outside of 'allowed' network range",
-				       fr_box_ipaddr(address.socket.inet.src_ipaddr));
+				error = "Address is outside of the the 'allow' network range";
 				goto ignore;
 			}
 
@@ -1580,8 +1572,7 @@ do_read:
 			 *	It exists, but it's a "deny" rule, ignore it.
 			 */
 			if (network->af == AF_UNSPEC) {
-				DEBUG3("Source IP %pV is forbidden by the 'deny' network range",
-				       fr_box_ipaddr(address.socket.inet.src_ipaddr));
+				error = "Address is forbidden by the 'deny' network range";
 				goto ignore;
 			}
 
@@ -1595,6 +1586,8 @@ do_read:
 		} else {
 			char const *msg;
 
+			error = "No matching 'client' definition was found";
+
 		ignore:
 			if (accept_fd < 0) {
 				msg = "packet";
@@ -1603,11 +1596,16 @@ do_read:
 				close(accept_fd);
 			}
 
-			DEBUG("proto_%s - ignoring %s from unknown client IP address %pV",
-			      inst->app_io->common.name, msg, fr_box_ipaddr(address.socket.inet.src_ipaddr));
+			if (DEBUG_ENABLED) {
+				DEBUG("proto_%s - Ignoring %s from IP address %pV - %s",
+				      inst->app_io->common.name, msg, fr_box_ipaddr(address.socket.inet.src_ipaddr),
+				      error);
+			} else {
+				RATE_LIMIT_LOCAL(&thread->unknown_client, ERROR, "proto_%s - Ignoring %s from IP address %pV - %s",
+						 inst->app_io->common.name, msg, fr_box_ipaddr(address.socket.inet.src_ipaddr),
+						 error);
+			}
 
-			RATE_LIMIT_LOCAL(&thread->unknown_client, ERROR, "proto_%s - ignoring %s from unknown client IP address %pV",
-					 inst->app_io->common.name, msg, fr_box_ipaddr(address.socket.inet.src_ipaddr));
 			return 0;
 		}
 
@@ -1718,7 +1716,7 @@ have_client:
 			 *	to track pending packets.
 			 */
 			if (!connection && inst->max_pending_packets && (thread->num_pending_packets >= inst->max_pending_packets)) {
-				DEBUG("Too many pending packets for client %pV - discarding packet",
+				DEBUG("Too many pending packets for dynamic client %pV - discarding packet",
 				      fr_box_ipaddr(client->src_ipaddr));
 
 			done:
@@ -1732,13 +1730,13 @@ have_client:
 			pending = fr_io_pending_alloc(client, buffer, packet_len,
 						      track, priority);
 			if (!pending) {
-				DEBUG("Failed tracking packet from client %pV - discarding packet", fr_box_ipaddr(client->src_ipaddr));
+				INFO("proto_%s - Failed allocating space for dynamic client %pV - discarding packet",
+				     inst->app_io->common.name, fr_box_ipaddr(client->src_ipaddr));
 				goto done;
 			}
 
 			if (fr_heap_num_elements(client->pending) > 1) {
-				DEBUG("Client %pV is still being dynamically defined.  "
-				      "Caching this packet until the client has been defined",
+				DEBUG("Verification is still pending for dynamic client %pV - queuing additional packet(s)",
 				      fr_box_ipaddr(client->src_ipaddr));
 				return 0;
 			}
@@ -1749,7 +1747,7 @@ have_client:
 			 */
 			track->dynamic = recv_time;
 
-			INFO("proto_%s - Dynamic client verification started for packet from %pV",
+			INFO("proto_%s - Verification started for packet from dynamic client %pV - queuing new packets",
 			     inst->app_io->common.name,	fr_box_ipaddr(client->src_ipaddr));
 		}
 
@@ -1799,6 +1797,9 @@ have_client:
 		 *	for it.
 		 */
 		if (nak) {
+			RATE_LIMIT_LOCAL(&thread->repeat_nak, ERROR, "proto_%s - Discarding repeated packet from NAK'd dynamic client %pV",
+					 inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
+
 			DEBUG("Discarding packet to NAKed connection %s", connection->name);
 			return 0;
 		}
@@ -2027,7 +2028,8 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	It's a negative cache entry.  Just delete it.
 	 */
 	if (client->state == PR_CLIENT_NAK) {
-		DEBUG("proto_%s - deleting NAK client %pV", inst->app_io->common.name, fr_box_ipaddr(client->src_ipaddr));
+		INFO("proto_%s - Expiring NAK'd dynamic client %pV - permitting new packets to be verified",
+		     inst->app_io->common.name, fr_box_ipaddr(client->src_ipaddr));
 
 	delete_client:
 		fr_assert(client->packets == 0);
@@ -2368,7 +2370,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	 *	tracking table.
 	 */
 	if (buffer_len == 1) {
-		INFO("proto_%s - Dynamic client verification failed for packet from %pV",
+		INFO("proto_%s - Verification failed for packet from dynamic client %pV - adding IP address to the NAK cache",
 		     inst->app_io->common.name,	fr_box_ipaddr(client->src_ipaddr));
 
 		client->state = PR_CLIENT_NAK;
@@ -2419,7 +2421,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	for unconnected sockets.
 		 */
 		if (client->network.af != radclient->ipaddr.af) {
-			DEBUG("Client IP address %pV IP version does not match the source network %pV of the packet.",
+			DEBUG("Client IP address %pV IP family does not match the source network %pV of the packet.",
 			      fr_box_ipaddr(radclient->ipaddr), fr_box_ipaddr(client->network));
 			goto error;
 		}
@@ -2556,7 +2558,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		client->state = PR_CLIENT_DYNAMIC;
 		client->radclient->active = true;
 
-		INFO("proto_%s - Dynamic client verification succeeded for packet from %pV",
+		INFO("proto_%s - Verification succeeded for packet from dynamic client %pV - processing queued packets",
 		     inst->app_io->common.name,	fr_box_ipaddr(client->src_ipaddr));
 		goto finish;
 	}
@@ -2602,8 +2604,9 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		client->state = PR_CLIENT_DYNAMIC;
 		client->radclient->active = true;
 
-		INFO("proto_%s - Dynamic client verification succeeded for packet from %pV",
-		     inst->app_io->common.name,	fr_box_ipaddr(client->src_ipaddr));
+		INFO("proto_%s - Verification succeeded for packet from dynamic client %pV - processing %d queued packetts",
+		     inst->app_io->common.name,	fr_box_ipaddr(client->src_ipaddr),
+		     fr_heap_num_elements(client->pending));
 	}
 
 	/*
@@ -2703,6 +2706,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	fr_io_instance_t *inst = mctx->mi->data;
 	CONF_SECTION *conf = mctx->mi->conf;
 
+	inst->mi = mctx->mi;
 	inst->app_io = (fr_app_io_t const *) inst->submodule->exported;
 	inst->app_io_conf = inst->submodule->conf;
 	inst->app_io_instance = inst->submodule->data;
