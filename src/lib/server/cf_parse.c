@@ -51,7 +51,7 @@ void cf_pair_debug_log(CONF_SECTION const *cs, CONF_PAIR *cp, conf_parser_t cons
 	char const	*value;
 	char		*tmp = NULL;
 	char const	*quote = "";
-	bool		secret = (rule->flags & CONF_FLAG_SECRET);
+	bool		secret = (rule && (rule->flags & CONF_FLAG_SECRET));
 	fr_type_t	type;
 
 	if (cp->printed) return;
