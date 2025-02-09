@@ -59,7 +59,7 @@ void cf_pair_debug_log(CONF_SECTION const *cs, CONF_PAIR *cp, conf_parser_t cons
 	/*
 	 *	tmpls are special, they just need to get printed as string
 	 */
-	if (rule->flags & CONF_FLAG_TMPL) {
+	if (!rule || (rule->flags & CONF_FLAG_TMPL)) {
 		type = FR_TYPE_STRING;
 	} else {
 		type = rule->type;
