@@ -323,6 +323,11 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 		fr_sbuff_t	sbuff = FR_SBUFF_IN(extensions[i], strlen(extensions[i]));
 		bool		is_critical = false;
 
+		if (sss_p == sss_end) {
+			fr_strerror_printf("Too many extensions.  Maximum is %ld", sss_len);
+			goto error;
+		}
+
 		if (fr_sbuff_next_if_char(&sbuff, '!')) is_critical = true;
 
 		/*
