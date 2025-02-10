@@ -343,6 +343,8 @@ static fr_io_pending_packet_t *pending_packet_pop(fr_io_thread_t *thread)
 
 	client = fr_heap_pop(&thread->pending_clients);
 	if (!client) {
+		fr_assert(thread->num_pending_packets == 0);
+
 		/*
 		 *	99% of the time we don't have pending clients.
 		 *	So we might as well free this, so that the
@@ -350,7 +352,6 @@ static fr_io_pending_packet_t *pending_packet_pop(fr_io_thread_t *thread)
 		 */
 		talloc_free(thread->pending_clients);
 		thread->pending_clients = NULL;
-		thread->num_pending_packets = 0;
 		return NULL;
 	}
 
@@ -465,6 +466,23 @@ static int _client_free(fr_io_client_t *client)
 
 	return 0;
 }
+
+static void client_pending_free(fr_io_client_t *client)
+{
+	size_t num;
+
+	fr_assert(!client->connection);
+
+	if (!client->pending) return;
+
+	num = fr_heap_num_elements(client->pending);
+
+	fr_assert(client->thread->num_pending_packets >= num);
+	client->thread->num_pending_packets -= num;
+
+	TALLOC_FREE(client->pending);
+}
+
 
 static int connection_free(fr_io_connection_t *connection)
 {
@@ -932,7 +950,7 @@ static int _client_live_free(fr_io_client_t *client)
 	fr_assert(!client->connection);
 	fr_assert(client->thread);
 
-	if (client->pending) TALLOC_FREE(client->pending);
+	if (client->pending) client_pending_free(client);
 
 	(void) fr_trie_remove_by_key(client->thread->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
 
@@ -2388,7 +2406,11 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		     inst->app_io->common.name,	fr_box_ipaddr(client->src_ipaddr));
 
 		client->state = PR_CLIENT_NAK;
-		TALLOC_FREE(client->pending);
+		if (!connection) {
+			client_pending_free(client);
+		} else {
+			TALLOC_FREE(client->pending);
+		}
 		if (client->table) TALLOC_FREE(client->table);
 		fr_assert(client->packets == 0);
 
