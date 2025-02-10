@@ -296,7 +296,7 @@ bool fr_ldap_util_is_dn(char const *in, size_t inlen)
 	return true;
 }
 
-/** Parse a subset (just server side sort for now) of LDAP URL extensions
+/** Parse a subset (just server side sort and virtual list view for now) of LDAP URL extensions
  *
  * @param[out] sss		Array of LDAPControl * pointers to add controls to.
  * @param[in] sss_len		How many elements remain in the sss array.
@@ -333,10 +333,11 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 			int		ret;
 
 			if (!fr_sbuff_next_if_char(&sbuff, '=')) {
-				LDAPControl **s = sss;
+				LDAPControl **s;
 				fr_strerror_const("Server side sort extension must be "
 						  "in the format \"[!]sss=<key>[,key]\"");
 			error:
+				s = sss;
 				while (s < sss_p) {
 					if (*s) ldap_control_free(*s);
 					s++;
@@ -362,6 +363,60 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 			}
 			sss_p++;
 
+			continue;
+		}
+
+		if (fr_sbuff_adv_past_str(&sbuff, "vlv", 3)) {
+			LDAPVLVInfo     vlvinfo;
+			uint32_t	ext_value;
+			struct berval	attr_value;
+			int		ret;
+
+			if (!fr_sbuff_next_if_char(&sbuff, '=')) {
+			vlv_error:
+				fr_strerror_const("Virtual list view extension must be "
+						  "in the format \"[!]vlv=<before>/<after>(/<offset>/<count>|:<value>)");
+				goto error;
+			}
+
+			vlvinfo.ldvlv_context = NULL;
+
+			if (fr_sbuff_out(NULL, &ext_value, &sbuff) <= 0) goto vlv_error;
+			if (!fr_sbuff_next_if_char(&sbuff, '/')) goto vlv_error;
+			vlvinfo.ldvlv_before_count = ext_value;
+
+			if (fr_sbuff_out(NULL, &ext_value, &sbuff) <= 0) goto vlv_error;
+			vlvinfo.ldvlv_after_count = ext_value;
+
+			/* offset/count syntax */
+			if (fr_sbuff_next_if_char(&sbuff, '/')) {
+				/* Ensure attrvalue is null - this is how the type of vlv control is determined */
+				vlvinfo.ldvlv_attrvalue = NULL;
+
+				if (fr_sbuff_out(NULL, &ext_value, &sbuff) <= 0) goto vlv_error;
+				if (!fr_sbuff_next_if_char(&sbuff, '/')) goto error;
+				vlvinfo.ldvlv_offset = ext_value;
+
+				if (fr_sbuff_out(NULL, &ext_value, &sbuff) <= 0) goto vlv_error;
+				vlvinfo.ldvlv_count = ext_value;
+
+			/* greaterThanOrEqual attribute syntax*/
+			} else if (fr_sbuff_next_if_char(&sbuff, ':')) {
+				attr_value.bv_val = fr_sbuff_current(&sbuff);
+				attr_value.bv_len = fr_sbuff_remaining(&sbuff);
+				vlvinfo.ldvlv_attrvalue = &attr_value;
+
+			} else goto error;
+
+			ret = ldap_create_vlv_control(fr_ldap_handle_thread_local(), &vlvinfo, sss_p);
+
+			if (ret != LDAP_SUCCESS) {
+				fr_strerror_printf("Failed creating virtual list view control: %s",
+						   ldap_err2string(ret));
+				goto error;
+			}
+
+			sss_p++;
 			continue;
 		}
 
