@@ -745,7 +745,11 @@ static int mod_close(fr_listen_t *li)
 	proto_detail_file_t const  *inst = talloc_get_type_abort_const(li->app_io_instance, proto_detail_file_t);
 	proto_detail_file_thread_t *thread = talloc_get_type_abort(li->thread_instance, proto_detail_file_thread_t);
 
-	if (thread->nr) (void) fr_network_listen_delete(thread->nr, inst->parent->listen);
+	if (thread->nr) {
+		if (unlikely(fr_network_listen_delete(thread->nr, inst->parent->listen) < 0)) {
+			PERROR("Failed removing listener from network on detach");
+		}
+	}
 
 	/*
 	 *	@todo - have our OWN event loop for timers, and a
@@ -756,7 +760,9 @@ static int mod_close(fr_listen_t *li)
 
 	if (thread->vnode_fd >= 0) {
 		if (thread->nr) {
-			(void) fr_network_listen_delete(thread->nr, inst->parent->listen);
+			if (unlikely(fr_network_listen_delete(thread->nr, inst->parent->listen) < 0)) {
+				PERROR("Failed removing listener from network on detach");
+			}
 		} else {
 			if (fr_event_fd_delete(thread->el, thread->vnode_fd, FR_EVENT_FILTER_VNODE) < 0) {
 				PERROR("Failed removing DELETE callback on detach");

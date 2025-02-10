@@ -251,7 +251,10 @@ static void *fr_schedule_worker_thread(void *arg)
 	for (sn = fr_dlist_head(&sc->networks);
 	     sn != NULL;
 	     sn = fr_dlist_next(&sc->networks, sn)) {
-		(void) fr_network_worker_add(sn->nr, sw->worker);
+		if (unlikely(fr_network_worker_add(sn->nr, sw->worker) < 0)) {
+			PERROR("%s - Failed adding worker to network %u", worker_name, sn->id);
+			goto fail;	/* FIXME - Should maybe try to undo partial adds? */
+		}
 	}
 
 	DEBUG3("%s - Started", worker_name);
@@ -501,7 +504,9 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		sc->single_worker = fr_worker_create(sc, el, "Worker", sc->log, sc->lvl, &sc->config->worker);
 		if (!sc->single_worker) {
 			PERROR("Failed creating worker");
-			fr_network_destroy(sc->single_network);
+			if (unlikely(fr_network_destroy(sc->single_network) < 0)) {
+				PERROR("Failed destroying network");
+			}
 			goto pre_instantiate_st_fail;
 		}
 
@@ -517,7 +522,9 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			if (sc->worker_thread_instantiate(sc->single_worker, el, subcs) < 0) {
 				PERROR("Worker thread instantiation failed");
 			destroy_both:
-				fr_network_destroy(sc->single_network);
+				if (unlikely(fr_network_destroy(sc->single_network) < 0)) {
+					PERROR("Failed destroying network");
+				}
 				fr_worker_destroy(sc->single_worker);
 				goto pre_instantiate_st_fail;
 			}
@@ -778,7 +785,9 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		 *	Destroy the network side first.  It tells the
 		 *	workers to close.
 		 */
-		fr_network_destroy(sc->single_network);
+		if (unlikely(fr_network_destroy(sc->single_network) < 0)) {
+			ERROR("Failed destroying network");
+		}
 		fr_worker_destroy(sc->single_worker);
 		goto done;
 	}
@@ -789,7 +798,9 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 	for (sn = fr_dlist_head(&sc->networks);
 	     sn != NULL;
 	     sn = fr_dlist_next(&sc->networks, sn)) {
-		fr_network_exit(sn->nr);
+		if (fr_network_exit(sn->nr) < 0) {
+			PERROR("Failed signaling network %i to exit", sn->id);
+		}
 	}
 
 	/*

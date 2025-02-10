@@ -1101,7 +1101,10 @@ static void _proto_ldap_socket_open_read(fr_event_list_t *el, int fd, UNUSED int
 	 *	use normal network event listeners.
 	 */
 	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
-	fr_network_listen_add(thread->nr, thread->li);
+	if (unlikely(fr_network_listen_add(thread->nr, thread->li) < 0)) {
+		PERROR("Failed adding listener");
+		goto error; /* retry? */
+	}
 
 	DEBUG2("Starting sync(s)");
 

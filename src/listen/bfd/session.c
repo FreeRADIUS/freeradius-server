@@ -797,7 +797,10 @@ static void bfd_unlang_send_packet(UNUSED fr_event_list_t *el, UNUSED fr_time_t 
 					 &session->client.src_ipaddr, session->port);
 	if (!track) return;
 
-	(void) fr_network_sendto_worker(session->nr, parent, track, (uint8_t const *) wrapper, (wrapper->packet + bfd->length) - (uint8_t *) wrapper, fr_time());
+	if (unlikely(fr_network_sendto_worker(session->nr, parent, track, (uint8_t const *) wrapper,
+					      (wrapper->packet + bfd->length) - (uint8_t *) wrapper, fr_time()) < 0)) {
+		PERROR("Failed sending packet to worker");
+	};
 }
 
 /*

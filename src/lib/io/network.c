@@ -1790,7 +1790,10 @@ static void _signal_pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 	 *	exits.
 	 */
 	DEBUG2("Signalled to exit");
-	fr_network_destroy(nr);
+
+	if (unlikely(fr_network_destroy(nr) < 0)) {
+		PERROR("Failed stopping network");
+	}
 }
 
 /** The main network worker function.
