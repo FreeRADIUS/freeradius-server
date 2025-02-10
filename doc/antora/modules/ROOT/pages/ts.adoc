@@ -1,70 +1,213 @@
-## FreeRADIUS Frequently Asked Questions
+# Troubleshooting
 
-This is the FAQ (Frequently Asked Questions) for the FreeRADIUS Server (freeradius for short) development project. It contains both general and technical information about the FreeRADIUS projects' status, what it is and what it does, how to obtain and configure and run it, and more. Please read this FAQ carefully before you post questions about FreeRADIUS to the mailing lists to see if your question is already answered here first.
+Some of the more common troubleshooting issues are covered in the xref:faq.adoc[FAQ]. The guide has been divided into the following sections:
 
-## FreeRADIUS Overview
+* <<Common Server Setup Issues>>
+* <<Common Client Setup Issues>>
+* <<Connectivity Issues>>
 
-### What is FreeRADIUS and what is it supposed to do
+## Common Server Setup Issues
 
-The FreeRADIUS Server is a daemon for unix and unix like operating systems which allows one to set up a radius protocol server, which can be used for Authentication and Accounting various types of network access.
-To use the server, you also need a correctly setup client which will talk to it, including terminal servers, Ethernet Switches, Wireless Access Points or a PC with appropriate software which emulates it (PortSlave, radiusclient etc).
 
-FreeRADIUS is being developed by a group of people who call themselves "the FreeRADIUS project".
+### Why do Acct-Input-Octets and Acct-Output-Octets wrap at 4 GB?
 
-### How does it differ from other radius servers?
+There are two possible causes of this problem:
 
-First of all, FreeRADIUS is an open-source product, and has all the benefits open-source provides.
+#### Gigawords not enabled on NAS
 
-Also, it has many features not found in free servers and many commercial ones, like:
+Some NAS do not send "Gigawords" attributes by default. Read your NAS documentation and configure it to send the attributes Acct-Input-Gigawords and Acct-Output-Gigawords.
 
-* Access based on huntgroups
-* Multiple DEFAULT entries in raddb/users file
-* All users file entries can optionally "fall through"
-* Caches all config files in-memory
-* Supports Simultaneous-Use = X parameter. Yes, this means that you can now prevent double logins!
-* Supports Vendor-Specific attributes, including USR non-standard ones.
-* Supports proxying
-* Supports the "Alive" packet
-* Exec-Program-Wait, allows you to set up an external program which is executed after authentication and outputs a list of A/V pairs which is then added to the reply.
-* Supports PAM
+For Cisco IOS, this usually achieved by entering
 
-### What platforms does it run on?
+	aaa accounting gigawords
 
-FreeRADIUS runs on a large number of 32 and 64bit Unix-like platforms.
+(which, by "ingenious" design, requires a reload of the device on certain IOS versions).
 
-## Where to get information
-### Is there a FreeRADIUS Web site?
+### How do I enable logging of 64 bit counters, a.k.a. `Acct-{Input|Output}-Gigawords?`
 
-Yes, the FreeRADIUS Server site is at http://www.freeradius.org/
+Refer to <<Why do Acct-Input-Octets and Acct-Output-Octets wrap at 4 GB?>>
 
-It contains the server, documentation, and additional RADIUS programs.
+## Common Client Setup Issues
 
-### Is there any mailing list for FreeRADIUS?
+### How do I make CHAP work with LDAP?
 
-Yes, there are mailing lists for announcements, users and developers, they can all be subscribed to freely, and they all have web archives.
+The ldap module can only work with PAP passwords since it needs to send the clear text user password to the LDAP server to authenticate the user.
+There are however provisions to extract the user password from the LDAP and make it available to the server core and the chap module.
+See [[rlm_ldap]] for more details on how to configure the ldap module to do that.
 
-Please see the description of FreeRADIUS mailing lists.
+There are a few things that the administrator should watch out for though:
 
-## How to Find and Install FreeRADIUS?
-### Where can I get FreeRADIUS?
+* Add the chap module in the authorize section of radiusd.conf before any other modules which set the Auth-Type attribute. That way the chap module can check if the current request contains a PAP or CHAP password and if it contains the former then it will set the Auth-Type to CHAP.
+* The := operator should not be used in the users file to set the Auth-Type since it will set the Auth-Type regardless of wether it has already being set to some other value.
+* An 'authtype CHAP' subcomponent should be added in the authenticate section of [[radiusd.conf]] which will contain the chap module.
 
-You can find it, along with some useful links and documentation, at the	official FreeRADIUS WWW site:
+### How do I make Windows XP clients use only PAP (Not CHAP)
 
-* http://www.freeradius.org/
+* Go to Network Connections an open Properties for this connection.
+* Select Security tab
+* Click on Advanced radio button, and then on Settings button
+* Leave only PAP ticked
+* Click OK, OK to set it
 
-Sources are available at:
+If you have control over NAS, then set it to accept only PAP authentication. If you do that, all clients will "listen" and use only PAP. In that case there is no need to configure anything on the client(s).
 
-* ftp://ftp.freeradius.org/pub/radius/
+## Connectivity Issues
 
-### Where can I get binary packages of FreeRADIUS
+### VSA in Access-Reject
 
-Please see the list of available packages.
+Symptom: FreeRADIUS is not including VSA attributes in Access-Reject packets. (but it worked in earlier versions of FreeRADIUS)
 
-You may also easily build a package from source.
+According RFC 2865 (section 5.44)  Vendor-Specific Attributes aren't allow in Access-Reject packets.
 
-### How do I build and install FreeRADIUS from source?
+This behaviour was fixed in newer versions of FreeRADIUS
 
-See the instructions on how to build FreeRADIUS.
+### 3Com/USR HiPerArc doesn't work
+
+I'm using a 3Com/USR HiPerArc and I keep getting this message on radius.log:
+
+	Mon Jul 26 15:18:54 1999: Error: Accounting: logout: entry for NAS tc-if5 port 1 has wrong ID
+
+What should I do to get rid of these messages?
+
+You are using HiPer ARC 4.1.11, right? Version 4.1.11 has a problem reporting NAS-port numbers to Radius. Upgrade the firmware from http://totalservice.usr.com to at least 4.1.59. If you are in Europe you can telephone to 3Com Global Response Center (phone number: 800 879489), and tell them that you have bought it in the last 90 days. They will help you, step by step, to do the upgrade.
+
+### Simultaneous-Use doesn't work
+
+This feature successfully prevents a user from logging in multiple times across multiple NAS boxes. To debug and determine what the problem is, run through the xref:faq.adoc#Why doesn't Simultaneous-Use work?[Simultaneous-Use checklist].
+
+#### 3Com/USR HiPerArc Simultaneous-Use doesn't work
+
+by Robert Dalton support at accesswest dot com
+
+Verify if you are using HiPerArc software version V4.2.32 release date 09/09/99
+
+In order for simultaneous logins to be prevented reported port density must be set to 256 using the command :
+
+	set pbus reported_port_density 256
+
+Otherwise it changes the calculations of the SNMP object ID's.
+
+There is a bug in effected versions of checkrad namely the line under the subroutine "sub_usrhiper". The line that should be commented out is:
+
+	($login) = /^.*\"([^"]+)".*$/;
+
+#### Cisco Simultaneous-Use doesn't work
+
+Q: I am getting the following in radius.log file:
+
+	Thu Oct 21 10:59:01 1999: Error: Check-TS: timeout waiting for checkrad
+
+What's wrong?
+
+A: Verify if you have SNMP enabled on your CISCO router, check the existence of the following line:
+
+	snmp-server community public RO 97
+
+where 97 is the access-list that specifies who gets access to the SNMP info. You should also have a line like this:
+	access-list 97 permit A.B.C.D
+
+where A.B.C.D is the ip address of the host running the radius server.
+
+#### Ascend MAX 4048 Simultaneous-Use doesn't work
+
+Q: I am getting the following in radius.log file:
+
+Thu Oct 21 10:59:01 1999: Error: Check-TS: timeout waiting for checkrad
+
+What's wrong?
+
+A: Verify that you have the MAX 4048 setup in your naslist as max40xx and that you have Finger turned on.
+
+	Ethernet->Mod Config->Finger=Yes
+
+### The server is complaining about invalid user route-bps-asc1-1, along with lots of others
+
+Ascend decided to have the 4000 series NAS boxes retrieve much of their configuration from the RADIUS server. To disable this "feature", set:
+
+	Ethernet->Mod Config->Auth->Allow Auth Config Rqsts = No
+
+## Datastores
+
+### Old FreeRADIUS SQL Queries and Table Structure
+
+Older versions of FreeRADIUS  (prior to 1.1.7) include support for logging 64-Bit counters to both the detail file and SQL modules but only the PostgreSQL module had this support configured by default.
+
+The detail files will simply log two distinct Attributes (Acct-Input-Octets + Acct-Input-Gigawords and Acct-Output-Octets + Acct-Output-Gigawords).
+
+The PostgreSQL module stores the data as a 64-bit integer (BIGINT) in one column each: AcctInputOctets and AcctOutputOctets.
+
+FreeRADIUS 1.1.7 and greater supports 64-bit counters in other SQL modules, with the same semantics as PostgreSQL.
+
+The following procedure is recommended to enable proper support for 64-bit counters in FreeRADIUS 1.1.6 and earlier:
+
+#### Modify Database Schema
+
+Firstly, modify the _radacct_ table schema to be able to store 64bit integers (or 19 digit numeric fields on databases not supporting BIGINT) in the AcctInputOctets and AcctOutputOctets columns using the `ALTER TABLE` command:
+
+##### MySQL
+
+	ALTER TABLE radacct CHANGE AcctInputOctets AcctInputOctets BIGINT(20);
+	ALTER TABLE radacct CHANGE AcctOutputOctets AcctOutputOctets BIGINT(20);
+
+##### Oracle
+
+	ALTER TABLE radacct MODIFY (AcctInputOctets NUMERIC(19));
+	ALTER TABLE radacct MODIFY (AcctOutputOctets NUMERIC(19));
+
+#### Modify FreeRADIUS Queries
+
+Secondly, modify the accounting queries in sql.conf to make the SQL database perform the computation that is required to merge the two values sent as attributes by the NAS into one single 64-bit integer stored in the database.
+
+All occurences of `'%{Acct-Input-Octets}'` need to be replaced with:
+
+	'%{Acct-Input-Gigawords:-0}' << 32 | '%{Acct-Input-Octets:-0}'
+
+The same thing needs to be done for `'%{Acct-Output-Octets}'`:
+
+	'%{Acct-Output-Gigawords:-0}' << 32 | '%{Acct-Output-Octets:-0}'
+
+
+## Connectivity#####################
+
+
+
+
+
+
+
+### Debugging it yourself
+
+If you're REALLY interested in knowing how to debug the RADIUS server yourself, then the following steps will help you:
+
+1. Install "screen" (if not already installed).
+2. Run a new screen and name it something convenient (eg. `screen -S radiusd`)
+3. Hit "Ctrl+A-H" to log all console output to a file.
+4. Start "radiusd -X" (FreeRADIUS is now running in this screen, and everything is being stored to log file. At any time, you can detach from the screen with Ctrl+A-d and reattach to the screen (both from local and over SSH) with `screen -r` to see what is going on in real time.)
+5. The server SHOULD print out:
+        Ready to process requests.
+    * If it doesn't, then it should print out an error message. Read it.
+    * If it takes a long time to start up, and THEN prints out the message, then your DNS is broken.
+6. Ensure that you have localhost in your _raddb/clients_ file. FreeRADIUS comes configured this way, so it should be there.
+7. Ensure you have a valid user in your _raddb/users_ file. If everything else fails, go to the top of the file and add the following entry:
+        bob Cleartext-Password := "bob"
+        Reply-Message = "Hello, bob"
+8. Run the radtest program from the LOCAL machine, in another window. This will tell you if the server is alive and is answering requests.
+        radtest bob bob localhost 0 testing123
+9. Ensure that you see the Reply-Message above and that you do NOT see an "Access denied" message. If you get an Access-Accept message, this means that the server is running properly.
+10. Configure another machine as a RADIUS client and run radtest from that machine too. You SHOULD see the server receive the request and send a reply.
+    * If the server does NOT receive the request then the ports are confused. RADIUS historically uses 1645/UDP, where RFC 2138 and many new systems use the proper value of 1812/UDP. See _/etc/services_ or use the -p option to specify a different port.
+    * Run tcpdump in another window on the RADIUS client machine. Use the command:
+    * `tcpdump udp`
+    * Look CAREFULLY at the packets coming from the RADIUS server. Which address are they coming from? Which port?
+11. If authentication works from a different machine then you have the server set up correctly.
+12. Now you should use a more complicated configuration to see if the server receives and replies with the attributes you want. There is little information that can be offered here in the FAQ as your individual systems configuration can not be predicted.  However, a few hints can help:
+    * ALWAYS test your configurations running the server in debugging mode if you want to debug a problem. If you do not do so then DO NOT expect anyone else to be able to help you.
+    * `radiusd -X`
+    * Read RFC 2138 to see what the RADIUS attributes are and how they work
+    * ALWAYS starts with a simple configuration in place of a more complicated one.  You should not expect to be able to debug a complicated configuration entry by sending one packet, and looking at the trace.
+    * Make the configuration as simple as possible, EVEN IF it doesn't do exactly what you want. Then, repeatedly, try to authenticate and see if it works. If authentication succeeds, then you can gradually add more attributes to the configuration to get the entry you desire.
+
+
 
 ## Common system setup issues
 
@@ -598,7 +741,7 @@ Then add the sql module to the *post-auth* section of radiusd.conf. Since we wan
 	post-auth {
 		# Login successful: get an address from the IP pool.
 		ippool
-		
+
 		Post-Auth-Type REJECT {
 		# Login failed: log to SQL database.
 			sql
@@ -612,7 +755,7 @@ Note: This option is usable if you want to detect fraud or similar activities fr
 Limit logons between 08:00am and 08:00pm for Unix group "daysonly"
 
 	DEFAULT Group == "daysonly", Login-Time := "0800-2000"
-	
+
 or
 
 	DEFAULT Group == "daysonly", Login-Time := "Any0800-2000"
@@ -794,7 +937,7 @@ The result is that the end user gets IP address 192.168.5.78 and that the whole 
 
 The ldap module can only work with PAP passwords since it needs to send the clear text user password to the LDAP server to authenticate the user.
 There are however provisions to extract the user password from the LDAP and make it available to the server core and the chap module.
-See [[rlm_ldap]] for more details on how to configure the ldap module to do that.
+See rlm_ldap for more details on how to configure the ldap module to do that.
 
 There are a few things that the administrator should watch out for though:
 
