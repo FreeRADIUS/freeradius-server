@@ -777,6 +777,8 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		LDAPControl	*serverctrls[LDAP_MAX_CONTROLS];
 		int		i;
 
+		serverctrls[0] = NULL;
+
 		if (fr_ldap_parse_url_extensions(serverctrls, NUM_ELEMENTS(serverctrls),
 						 query->ldap_url->lud_exts) < 0) {
 			RPERROR("Parsing URL extensions failed");
