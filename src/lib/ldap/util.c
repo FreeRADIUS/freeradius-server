@@ -333,8 +333,14 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 			int		ret;
 
 			if (!fr_sbuff_next_if_char(&sbuff, '=')) {
+				LDAPControl **s = sss;
 				fr_strerror_const("Server side sort extension must be "
 						  "in the format \"[!]sss=<key>[,key]\"");
+			error:
+				while (s < sss_p) {
+					if (*s) ldap_control_free(*s);
+					s++;
+				}
 				return -1;
 			}
 
@@ -342,7 +348,7 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 			if (ret != LDAP_SUCCESS) {
 				fr_strerror_printf("Invalid server side sort value \"%s\": %s",
 						   fr_sbuff_current(&sbuff), ldap_err2string(ret));
-				return -1;
+				goto error;
 			}
 
 			if (*sss_p) ldap_control_free(*sss_p);
@@ -352,7 +358,7 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 			if (ret != LDAP_SUCCESS) {
 				fr_strerror_printf("Failed creating server sort control: %s",
 						   ldap_err2string(ret));
-				return -1;
+				goto error;
 			}
 			sss_p++;
 
