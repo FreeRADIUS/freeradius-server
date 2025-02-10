@@ -49,6 +49,7 @@ typedef struct {
 	uint64_t			client_id;			//!< Unique client identifier.
 	fr_rate_limit_t			unknown_client;
 	fr_rate_limit_t			repeat_nak;
+	fr_rate_limit_t			queue_full;
 } fr_io_thread_t;
 
 /** A saved packet
@@ -1279,7 +1280,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	fr_io_client_t		*client;
 	fr_io_address_t		address;
 	fr_io_connection_t	my_connection, *connection;
-	fr_io_pending_packet_t	*pending;
+	fr_io_pending_packet_t	*pending = NULL;
 	fr_io_track_t		*track;
 	fr_listen_t		*child;
 	int			value, accept_fd = -1;
@@ -1345,7 +1346,7 @@ redo:
 		 */
 		if (fr_time_neq(pending->recv_time, track->timestamp)) {
 			DEBUG3("Discarding old packet");
-			talloc_free(pending);
+			TALLOC_FREE(pending);
 			goto redo;
 		}
 
@@ -1365,7 +1366,7 @@ redo:
 		 *	Shouldn't be necessary, but what the heck...
 		 */
 		memcpy(&address, track->address, sizeof(address));
-		talloc_free(pending);
+		TALLOC_FREE(pending);
 
 		/*
 		 *	Skip over all kinds of logic to find /
@@ -1719,7 +1720,7 @@ have_client:
 				DEBUG("Too many pending packets for dynamic client %pV - discarding packet",
 				      fr_box_ipaddr(client->src_ipaddr));
 
-			done:
+			discard:
 				talloc_free(to_free);
 				return 0;
 			}
@@ -1732,7 +1733,7 @@ have_client:
 			if (!pending) {
 				INFO("proto_%s - Failed allocating space for dynamic client %pV - discarding packet",
 				     inst->app_io->common.name, fr_box_ipaddr(client->src_ipaddr));
-				goto done;
+				goto discard;
 			}
 
 			if (fr_heap_num_elements(client->pending) > 1) {
@@ -1768,6 +1769,11 @@ have_client:
 		*packet_ctx = track;
 		return packet_len;
 	}
+
+	/*
+	 *
+	 */
+	fr_assert(!pending);
 
 	/*
 	 *	This must be the main UDP socket which creates
@@ -1834,8 +1840,15 @@ have_client:
 	 *	We don't need "to_free" after this, as it will be
 	 *	tracked in the connected socket.
 	 */
-	(void) fr_network_listen_inject(connection->nr, connection->listen,
-					buffer, packet_len, recv_time);
+	if (fr_network_listen_inject(connection->nr, connection->listen,
+				     buffer, packet_len, recv_time) < 0) {
+		RATE_LIMIT_LOCAL(&thread->queue_full, ERROR, "proto_%s - Discarding packet from dynamic client %pV - cannot push packet to connected socket due to %s",
+				 inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr), fr_strerror());
+		/*
+		 *	Don't return an error, because that will cause the listener to close its socket.
+		 */
+	}
+
 	return 0;
 }
 
