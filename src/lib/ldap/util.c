@@ -320,35 +320,28 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 	 *	Parse extensions in the LDAP URL
 	 */
 	for (i = 0; extensions[i]; i++) {
-		char *p;
-		bool is_critical = false;
+		fr_sbuff_t	sbuff = FR_SBUFF_IN(extensions[i], strlen(extensions[i]));
+		bool		is_critical = false;
 
-		p = extensions[i];
-		if (*p == '!') {
-			is_critical = true;
-			p++;
-		}
+		if (fr_sbuff_next_if_char(&sbuff, '!')) is_critical = true;
 
 		/*
 		 *	Server side sort control
 		 */
-		if (strncmp(p, "sss", 3) == 0) {
+		if (fr_sbuff_adv_past_str(&sbuff, "sss", 3)) {
 			LDAPSortKey	**keys;
 			int		ret;
 
-			p += 3;
-			p = strchr(p, '=');
-			if (!p) {
+			if (!fr_sbuff_next_if_char(&sbuff, '=')) {
 				fr_strerror_const("Server side sort extension must be "
 						  "in the format \"[!]sss=<key>[,key]\"");
 				return -1;
 			}
-			p++;
 
-			ret = ldap_create_sort_keylist(&keys, p);
+			ret = ldap_create_sort_keylist(&keys, fr_sbuff_current(&sbuff));
 			if (ret != LDAP_SUCCESS) {
 				fr_strerror_printf("Invalid server side sort value \"%s\": %s",
-						   p, ldap_err2string(ret));
+						   fr_sbuff_current(&sbuff), ldap_err2string(ret));
 				return -1;
 			}
 
@@ -366,7 +359,7 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 			continue;
 		}
 
-		fr_strerror_printf("URL extension \"%s\" not supported", p);
+		fr_strerror_printf("URL extension \"%s\" not supported", extensions[i]);
 		return -1;
 	}
 
