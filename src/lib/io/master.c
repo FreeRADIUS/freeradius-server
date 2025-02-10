@@ -2604,7 +2604,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		client->state = PR_CLIENT_DYNAMIC;
 		client->radclient->active = true;
 
-		INFO("proto_%s - Verification succeeded for packet from dynamic client %pV - processing %d queued packetts",
+		INFO("proto_%s - Verification succeeded for packet from dynamic client %pV - processing %d queued packets",
 		     inst->app_io->common.name,	fr_box_ipaddr(client->src_ipaddr),
 		     fr_heap_num_elements(client->pending));
 	}
