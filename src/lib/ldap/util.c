@@ -362,7 +362,7 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 				goto error;
 			}
 			sss_p++;
-
+			*sss_p = NULL;	/* Terminate */
 			continue;
 		}
 
@@ -417,14 +417,13 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 			}
 
 			sss_p++;
+			*sss_p = NULL;	/* Terminate */
 			continue;
 		}
 
 		fr_strerror_printf("URL extension \"%s\" not supported", extensions[i]);
 		return -1;
 	}
-
-	*sss_p = NULL;	/* Terminate */
 
 	return (sss_end - sss_p);
 }
