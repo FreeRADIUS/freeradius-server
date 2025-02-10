@@ -1,5 +1,8 @@
 = Introduction
 
+This is the FreeRADIUS version 4 documentation that is available under
+the Creative Commons Non-Commercial xref:LICENSE[license].
+
 [WARNING]
 ====
 *VERSION 4 IS IN DEVELOPMENT AND HAS NOT BEEN OFFICIALLY
@@ -10,9 +13,6 @@ documentation may change.
 
 Please wait for an official release before using version 4.
 ====
-
-This is the FreeRADIUS version 4 documentation that is available under
-the Creative Commons Non-Commercial xref:LICENSE[license].
 
 FreeRADIUS is a complex piece of software with many configuration
 options. In most circumstances, the default configuration works with
@@ -36,13 +36,14 @@ task-based results as follows:
 * xref:howto:index.adoc[Howto] guides step you through various tasks and includes xref:howto:installation/index.adoc[Installing] and xref:howto:installation/upgrade.adoc[Upgrade] guide.
 * xref:tutorials:new_user.adoc[Tutorials] task based learning with real-world configurations and debugging exercises.
 * xref:developers:index.adoc[Developers] section outlines coding standards, raising bugs, and contributing with GitHub.
-* xref:ts.adoc[Troubleshooting] section to help you resolve the most common issues with FreeRADIUS installations and configurations.
+* xref:trouble-shooting/index.adoc[Troubleshooting] section to help you resolve the most common issues with FreeRADIUS installations and configurations.
 
 Within each section, the documentation is organized into subsections,
 smaller pages, and relavent cross-links.  This hierarchy ensures that
 you can find information quickly and extract the instructions you
 need.  For example, the Howto guides are split into a series of small
 steps, each of which can be performed quickly.
+
 
 == What's new in FreeRADIUS version 4
 
@@ -52,72 +53,65 @@ version 3.
 
 As of the time of this release, FreeRADIUS:
 
-* It's possible to proxy one packet to multiple destinations.
+* Abililty to proxy one packet to multiple destinations.
 * Can capture a `failed` proxy, and fall back to local
   authentication.
 * The server supports multiple clients with different shared
   secrets behind one NAT gateway.
 * DHCP and VMPS are integrated with full functionality and features.
 * The server supports TACACS+.
-* Connections to databases are `asynchronous` to ensure stable access,
+* Connections to databases are `asynchronous` ensuring stable access,
   and prevents server lockups.
-* The Python and Lua modules do not fully support the v4 "nested" attributes.
 * Enums are prefixed with `::`, as in `Service-Type == ::Framed-User`.
   * The server still does not always require (or print) the `::` prefix.  That will change.
-* By implementing `::` for enums, the requirement to use `&` as a prefix for attribute names is not needed.
+  * By implementing `::` for enums, the requirement to use `&` as a prefix for attribute names is not needed.
   * This change may require changes to all of the configuration.  We will try to allow `&` or not, but that may not be possible.
 * Dynamic expansions have changed from `%{md5:foo}` to a more standard syntax of `%md5(foo)`.
-* The new syntax supports multiple comma-separated arguments such as `%function(a, b, c)`.
-* Expansions such as `%{User-Name}`  still work in addition to expressions like `%{1+2}` too.
-* Alternation `%{%{foo}:-%{bar}}` has been replaced by `%{&foo || &bar}`, which is clearer and uses less nesting.
+  * The new syntax supports multiple comma-separated arguments such as `%function(a, b, c)`.
+  * Expansions such as `%{User-Name}`  still work in addition to expressions like `%{1+2}` too.
+  * Alternation `%{%{foo}:-%{bar}}` has been replaced by `%{&foo || &bar}`, which is clearer and uses less nesting.
+* Python and Lua modules *only* partially fully support the v4 "nested" attributes.
 * RADIUS/TLS (RadSec) is not implemented.
 * TEAP and EAP-FAST are not implemented.
 * the "haproxy" and "reverse CoA' features are not implemented.
 
-Administrators who have version 3 and wish to upgrade to version 4
-must read the  xref:howto:installation/upgrade.adoc[Upgrade] guide.
-This guide explains the differences between the two versions, and
+Administrators using version 3 and wish to upgrade to version 4
+must read the  xref:howto:installation/upgrade.adoc[Upgrading] page.
+This section explains the differences between the two versions and
 how an existing configuration can be reproduced in the latest
-release. Do *not* use version 3 configuration files
-with version 4. These configuration files are *not* compatible on a
-major version upgrade.
+release. Do *not* use version 3 configuration files with version 4. These configuration files are *not* compatible on a major version upgrade.
 
 [WARNING]
 ====
-Do not open bug reports about those features being missing.
+Do not open bug reports about the previously listed features as missing.
 All such bug reports will be closed without comment.
 
-We do not recommend that operating systems or Linux distributions
-create their own packages for 4.0.0-alpha.  Our experience has been
-that packaging "alpha" releases results in confused and upset users.
-People _will_ install it due to the belief that "it's stable because
-it is packaged".  They will then run into issues, and will blame us.
-
-Such behavior is antisocial and is strongly discouraged.
+*Don't* create 4.0.0-alpha packages for your operating systems or Linux distributions. Our experience has been that creating "alpha" packages results in upset users that install that package. The users believed that the package is stable and then they will run into issues.
 ====
 
-== Network Requireements
+
+== Network Requirements
+blah blah
+
 
 === Operating Systems
 
 The FreeRADIUS protocol works on all Unix based systems.  It does not
 run natively under Windows.
 
+
 === CPU/RAM/disk space requirements
 
-A FreeRADIUS server has minimal requirements. A basic FreeRADIUS
-installation uses 8 megabytes of RAM, under one hundred megabytes of
-disk space, and minimal CPU power. An Internet Service Provider with
-10,000 or fewer users will not have any problems with any commodity
-system available at the time of this printing. If the ISP has more
-than 10,000 users, the overall system design becomes much more
-important than the specifications of an individual server.
+A FreeRADIUS server has minimal requirements. A basic FreeRADIUS installation uses 8 megabytes of RAM, under one hundred megabytes of disk space, and minimal CPU power. An Internet Service Provider with 10,000 or fewer users will not have any problems with any commodity system available at the time of this printing. If the ISP has more than 10,000 users, the overall system design becomes much more important than the specifications of an individual server.
 
 If the ISP has more than 10,000 users, the overall system design
 becomes much more important than the specifications of an individual
-server. Windows does not currently support FreeRADIUS.
+server.
+
 
 === Datastores
+
+The server can read or write to any database and both LDAP and SQL can be used in the same configuration simotaneously. The database queries are customizable and can adapt to any custom schema used at a customers site. The server supports fail-over and load balancing across multiple databases. There are no pre-set limits to the number, or type, of databases used.
 
 == Debugging
 
@@ -125,6 +119,7 @@ If you have ANY issues with your server, then restart the server
 in xref:radiusd_x.adoc[Debugging] mode. Review the logs to determine what
 the root problem is and make changes accordingly. Do only *ONE* change
 at a time and restart your server.
+
 
 == More Information
 

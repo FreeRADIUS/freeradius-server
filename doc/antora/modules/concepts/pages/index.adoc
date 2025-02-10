@@ -1,15 +1,14 @@
 = Concepts
 
 This section introduces you to the main concepts behind RADIUS and it's related components.
-It is intended for users with limited RADIUS knowledge or experience. The information provided
-will help us understand the basic concepts and how RADIUS works in a network environment.
+It is intended for users with limited RADIUS knowledge or experience. The information provided will help us understand the basic concepts and how RADIUS works in a network environment.
 
 The following sections are:
 
 * xref:concepts:overview.adoc[Overview] outlines the RADIUS protocol, features, and benefits.
 * xref:concepts:architecture.adoc[Architecture] explains the RADIUS design and components.
-* xref:concepts:autoproto.adoc[Protocols] defines the protocols used in the RADIUS environment.
-* xref:concepts:database.adoc[Datastores] details how datastores work and what's supported.S
+* xref:concepts:authproto.adoc[Protocols] defines the protocols used in the RADIUS environment.
+* xref:concepts:database.adoc[Datastores] details how datastores work and what's supported.
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
