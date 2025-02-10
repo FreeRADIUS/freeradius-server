@@ -350,6 +350,7 @@ static fr_io_pending_packet_t *pending_packet_pop(fr_io_thread_t *thread)
 		 */
 		talloc_free(thread->pending_clients);
 		thread->pending_clients = NULL;
+		thread->num_pending_packets = 0;
 		return NULL;
 	}
 
