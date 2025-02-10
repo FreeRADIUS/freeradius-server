@@ -67,6 +67,12 @@ static const conf_parser_t priority_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static conf_parser_t const log_config[] = {
+	{ FR_CONF_OFFSET("ignored_clients", proto_radius_t, io.log_ignored_clients), .dflt = "yes" } ,
+
+	CONF_PARSER_TERMINATOR
+};
+
 /** How to parse a RADIUS listen section
  *
  */
@@ -83,6 +89,8 @@ static conf_parser_t const proto_radius_config[] = {
 
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 	{ FR_CONF_POINTER("priority", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) priority_config },
+
+	{ FR_CONF_POINTER("log", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) log_config },
 
 	{ FR_CONF_OFFSET("require_message_authenticator", proto_radius_t, require_message_authenticator),
 	  .func = cf_table_parse_int,

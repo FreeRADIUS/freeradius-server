@@ -26,6 +26,8 @@
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/log.h>
+
 #include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/misc.h>
@@ -47,9 +49,19 @@ typedef struct {
 	uint32_t			num_connections;		//!< number of dynamic connections
 	uint32_t			num_pending_packets;   		//!< number of pending packets
 	uint64_t			client_id;			//!< Unique client identifier.
-	fr_rate_limit_t			unknown_client;
-	fr_rate_limit_t			repeat_nak;
-	fr_rate_limit_t			queue_full;
+
+	struct {
+		fr_rate_limit_t			accept_failed;
+		fr_rate_limit_t			alloc_failed;
+		fr_rate_limit_t			bad_type;
+		fr_rate_limit_t			conn_alloc_failed;
+		fr_rate_limit_t			max_connections;
+		fr_rate_limit_t			queue_full;
+		fr_rate_limit_t			repeat_nak;
+		fr_rate_limit_t			too_many_pending;
+		fr_rate_limit_t			tracking_failed;
+		fr_rate_limit_t			unknown_client;
+	} rate_limit;
 } fr_io_thread_t;
 
 /** A saved packet
@@ -538,8 +550,9 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 				(void) fr_trie_walk(thread->trie, &thread->num_connections, count_connections);
 
 				if ((thread->num_connections + 1) >= max_connections) {
-					DEBUG("proto_%s - Ignoring connection from client %s - 'max_connections' limit reached.",
-					      inst->app->common.name, client->radclient->shortname);
+					RATE_LIMIT_LOCAL(&thread->rate_limit.max_connections, INFO,
+							 "proto_%s - Ignoring connection from client %s - 'max_connections' limit reached.",
+							 inst->app->common.name, client->radclient->shortname);
 					if (fd >= 0) close(fd);
 					return NULL;
 				}
@@ -1305,6 +1318,10 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	int			value, accept_fd = -1;
 	uint32_t		priority = PRIORITY_NORMAL;
 
+/** Log that we ignore clients in debug mode, or when it's enabled for a listener
+ */
+#define LOG_IGNORED_CLIENTS(_inst) ((_inst)->log_ignored_clients || fr_debug_lvl >= 1)
+
 	get_inst(li, &inst, &thread, &connection, &child);
 
 	track = NULL;
@@ -1413,8 +1430,9 @@ redo:
 		 *	OK.  So don't return -1.
 		 */
 		if (accept_fd < 0) {
-			INFO("proto_%s - failed to accept new socket: %s",
-			     inst->app->common.name, fr_syserror(errno));
+			RATE_LIMIT_LOCAL(&thread->rate_limit.accept_failed,
+					 INFO, "proto_%s - failed to accept new socket: %s",
+					 inst->app->common.name, fr_syserror(errno));
 			return 0;
 		}
 
@@ -1494,8 +1512,11 @@ do_read:
 				 *	the "name" of the socket, in the
 				 *	listener?
 				 */
-				DEBUG2("proto_%s - ignoring packet from IP %pV. It is not configured as 'type = ...'",
-				       inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
+				if (LOG_IGNORED_CLIENTS(inst)) {
+					RATE_LIMIT_LOCAL(&thread->rate_limit.bad_type, INFO,
+							 "proto_%s - ignoring packet from IP %pV. It is not configured as 'type = ...'",
+							 inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
+				}
 				return 0;
 			}
 			priority = value;
@@ -1616,12 +1637,9 @@ do_read:
 				close(accept_fd);
 			}
 
-			if (DEBUG_ENABLED) {
-				DEBUG("proto_%s - Ignoring %s from IP address %pV - %s",
-				      inst->app_io->common.name, msg, fr_box_ipaddr(address.socket.inet.src_ipaddr),
-				      error);
-			} else {
-				RATE_LIMIT_LOCAL(&thread->unknown_client, ERROR, "proto_%s - Ignoring %s from IP address %pV - %s",
+			if (LOG_IGNORED_CLIENTS(inst)) {
+				RATE_LIMIT_LOCAL(&thread->rate_limit.unknown_client,
+						 ERROR, "proto_%s - Ignoring %s from IP address %pV - %s",
 						 inst->app_io->common.name, msg, fr_box_ipaddr(address.socket.inet.src_ipaddr),
 						 error);
 			}
@@ -1642,7 +1660,8 @@ have_client:
 	 */
 	if (accept_fd >= 0) {
 		if (!fr_io_connection_alloc(inst, thread, client, accept_fd, &address, NULL)) {
-			DEBUG("Failed to allocate connection from client %s.", client->radclient->shortname);
+			RATE_LIMIT_LOCAL(&thread->rate_limit.conn_alloc_failed,
+					 ERROR, "Failed to allocate connection from client %s", client->radclient->shortname);
 		}
 
 		return 0;
@@ -1667,8 +1686,9 @@ have_client:
 
 			track = fr_io_track_add(client, &address, buffer, packet_len, recv_time, &is_dup);
 			if (!track) {
-				DEBUG("Failed tracking packet from client %s - discarding it",
-				      client->radclient->shortname);
+				RATE_LIMIT_LOCAL(&thread->rate_limit.tracking_failed,
+						 ERROR, "Failed tracking packet from client %s - discarding it",
+						 client->radclient->shortname);
 				return 0;
 			}
 
@@ -1736,8 +1756,9 @@ have_client:
 			 *	to track pending packets.
 			 */
 			if (!connection && inst->max_pending_packets && (thread->num_pending_packets >= inst->max_pending_packets)) {
-				DEBUG("Too many pending packets from dynamic client %pV - discarding packet",
-				      fr_box_ipaddr(client->src_ipaddr));
+				RATE_LIMIT_LOCAL(&thread->rate_limit.too_many_pending,
+						 ERROR, "Too many pending dynamic client packets for listener - discarding packet from %pV",
+						 fr_box_ipaddr(client->src_ipaddr));
 
 			discard:
 				talloc_free(to_free);
@@ -1750,8 +1771,9 @@ have_client:
 			pending = fr_io_pending_alloc(connection, client, buffer, packet_len,
 						      track, priority);
 			if (!pending) {
-				INFO("proto_%s - Failed allocating space for dynamic client %pV - discarding packet",
-				     inst->app_io->common.name, fr_box_ipaddr(client->src_ipaddr));
+				RATE_LIMIT_LOCAL(&thread->rate_limit.alloc_failed,
+						 ERROR, "proto_%s - Failed allocating space for dynamic client %pV - discarding packet",
+						 inst->app_io->common.name, fr_box_ipaddr(client->src_ipaddr));
 				goto discard;
 			}
 
@@ -1822,7 +1844,7 @@ have_client:
 		 *	for it.
 		 */
 		if (nak) {
-			RATE_LIMIT_LOCAL(&thread->repeat_nak, ERROR, "proto_%s - Discarding repeated packet from NAK'd dynamic client %pV",
+			RATE_LIMIT_LOCAL(&thread->rate_limit.repeat_nak, ERROR, "proto_%s - Discarding repeated packet from NAK'd dynamic client %pV",
 					 inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
 
 			DEBUG("Discarding packet to NAKed connection %s", connection->name);
@@ -1836,7 +1858,8 @@ have_client:
 	if (!connection) {
 		connection = fr_io_connection_alloc(inst, thread, client, -1, &address, NULL);
 		if (!connection) {
-			DEBUG("Failed to allocate connection from client %s.  Discarding packet.", client->radclient->shortname);
+			RATE_LIMIT_LOCAL(&thread->rate_limit.conn_alloc_failed,
+					 ERROR, "Failed to allocate connection from client %s.  Discarding packet.", client->radclient->shortname);
 			return 0;
 		}
 	}
@@ -1861,8 +1884,9 @@ have_client:
 	 */
 	if (fr_network_listen_inject(connection->nr, connection->listen,
 				     buffer, packet_len, recv_time) < 0) {
-		RATE_LIMIT_LOCAL(&thread->queue_full, ERROR, "proto_%s - Discarding packet from dynamic client %pV - cannot push packet to connected socket due to %s",
-				 inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr), fr_strerror());
+		RATE_LIMIT_LOCAL(&thread->rate_limit.queue_full, PERROR,
+				 "proto_%s - Discarding packet from dynamic client %pV - cannot push packet to connected socket",
+				 inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
 		/*
 		 *	Don't return an error, because that will cause the listener to close its socket.
 		 */

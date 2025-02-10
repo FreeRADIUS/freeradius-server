@@ -85,6 +85,12 @@ typedef struct {
 	fr_time_delta_t			check_interval;			//!< polling for closed sockets
 
 	bool				dynamic_clients;		//!< do we have dynamic clients.
+	bool				log_ignored_clients;		//!< Whether we emit log messages when we ignore
+									///< a client because it's unknown, or outside
+									///< of the allowed networks.  This is here for
+									///< people who expose their RADIUS servers to
+									///< the internet, and don't want their logs filling
+									///< up with random connection attempts.
 
 	CONF_SECTION			*server_cs;			//!< server CS for this listener
 

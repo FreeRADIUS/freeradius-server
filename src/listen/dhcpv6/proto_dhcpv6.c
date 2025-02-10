@@ -71,6 +71,12 @@ static conf_parser_t const limit_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static conf_parser_t const log_config[] = {
+	{ FR_CONF_OFFSET("ignored_clients", proto_dhcpv6_t, io.log_ignored_clients), .dflt = "yes" } ,
+
+	CONF_PARSER_TERMINATOR
+};
+
 /** How to parse a DHCPV6 listen section
  *
  */
@@ -79,6 +85,7 @@ static conf_parser_t const proto_dhcpv6_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_dhcpv6_t, io.submodule),
 	  .func = transport_parse },
 
+	{ FR_CONF_POINTER("log", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) log_config },
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 
 	CONF_PARSER_TERMINATOR
