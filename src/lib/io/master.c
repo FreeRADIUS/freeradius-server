@@ -2022,8 +2022,6 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		goto reset_timer;
 	}
 
-	DEBUG("TIMER - checking status of client %s", client->radclient->shortname);
-
 	/*
 	 *	It's a negative cache entry.  Just delete it.
 	 */
@@ -2059,6 +2057,8 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		talloc_free(client);
 		return;
 	}
+
+	DEBUG("TIMER - checking status of dynamic client %s %pV", client->radclient->shortname, fr_box_ipaddr(client->src_ipaddr));
 
 	/*
 	 *	It's a dynamically defined client.  If no one is using
