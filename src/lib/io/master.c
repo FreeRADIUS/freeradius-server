@@ -1213,7 +1213,7 @@ static int pending_free(fr_io_pending_packet_t *pending)
 	return 0;
 }
 
-static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
+static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_connection_t *connection, fr_io_client_t *client,
 						   uint8_t const *buffer, size_t packet_len,
 						   fr_io_track_t *track,
 						   int priority)
@@ -1245,7 +1245,7 @@ static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
 	 *	we pause the FD, so the number of
 	 *	pending packets will always be small.
 	 */
-	if (!client->connection) client->thread->num_pending_packets++;
+	if (!connection) client->thread->num_pending_packets++;
 
 	return pending;
 }
@@ -1717,7 +1717,7 @@ have_client:
 			 *	to track pending packets.
 			 */
 			if (!connection && inst->max_pending_packets && (thread->num_pending_packets >= inst->max_pending_packets)) {
-				DEBUG("Too many pending packets for dynamic client %pV - discarding packet",
+				DEBUG("Too many pending packets from dynamic client %pV - discarding packet",
 				      fr_box_ipaddr(client->src_ipaddr));
 
 			discard:
@@ -1728,7 +1728,7 @@ have_client:
 			/*
 			 *	Allocate the pending packet structure.
 			 */
-			pending = fr_io_pending_alloc(client, buffer, packet_len,
+			pending = fr_io_pending_alloc(connection, client, buffer, packet_len,
 						      track, priority);
 			if (!pending) {
 				INFO("proto_%s - Failed allocating space for dynamic client %pV - discarding packet",
@@ -1897,7 +1897,7 @@ static int mod_inject(fr_listen_t *li, uint8_t const *buffer, size_t buffer_len,
 	/*
 	 *	Remember to restore this packet later.
 	 */
-	pending = fr_io_pending_alloc(connection->client, buffer, buffer_len,
+	pending = fr_io_pending_alloc(connection, connection->client, buffer, buffer_len,
 				      track, priority);
 	if (!pending) {
 		DEBUG2("Failed injecting packet due to allocation error");
