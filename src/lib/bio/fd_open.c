@@ -143,21 +143,26 @@ static int fr_bio_fd_common_datagram(int fd, UNUSED fr_socket_t const *sock, fr_
 	return 0;
 }
 
-/** Initialize a UDP server socket.
+/** Initialize a UDP socket.
  *
  */
-static int fr_bio_fd_server_udp(int fd, fr_socket_t const *sock, fr_bio_fd_config_t const *cfg)
+static int fr_bio_fd_common_udp(int fd, fr_socket_t const *sock, fr_bio_fd_config_t const *cfg)
 {
 #ifdef SO_REUSEPORT
-	int on = 1;
-
 	/*
-	 *	Set SO_REUSEPORT before bind, so that all sockets can
-	 *	listen on the same destination IP address.
+	 *	Servers re-use ports by default.  And clients, too, if they ask nicely.
 	 */
-	if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
-		fr_strerror_printf("Failed setting SO_REUSEPORT: %s", fr_syserror(errno));
-		return -1;
+	if (cfg->server || cfg->reuse_port) {
+		int on = 1;
+
+		/*
+		 *	Set SO_REUSEPORT before bind, so that all sockets can
+		 *	listen on the same destination IP address.
+		 */
+		if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
+			fr_strerror_printf("Failed setting SO_REUSEPORT: %s", fr_syserror(errno));
+			return -1;
+		}
 	}
 #endif
 
@@ -214,7 +219,7 @@ static int fr_bio_fd_server_ipv4(int fd, fr_socket_t const *sock, fr_bio_fd_conf
 	/*
 	 *	And set up any UDP / TCP specific information.
 	 */
-	if (sock->type == SOCK_DGRAM) return fr_bio_fd_server_udp(fd, sock, cfg);
+	if (sock->type == SOCK_DGRAM) return fr_bio_fd_common_udp(fd, sock, cfg);
 
 	return fr_bio_fd_server_tcp(fd, sock);
 }
@@ -241,7 +246,7 @@ static int fr_bio_fd_server_ipv6(int fd, fr_socket_t const *sock, fr_bio_fd_conf
 	/*
 	 *	And set up any UDP / TCP specific information.
 	 */
-	if (sock->type == SOCK_DGRAM) return fr_bio_fd_server_udp(fd, sock, cfg);
+	if (sock->type == SOCK_DGRAM) return fr_bio_fd_common_udp(fd, sock, cfg);
 
 	return fr_bio_fd_server_tcp(fd, sock);
 }
@@ -1130,6 +1135,11 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		}
 
 		switch (my->info.socket.af) {
+		case AF_INET:
+		case AF_INET6:
+			if (fr_bio_fd_common_udp(fd, &my->info.socket, cfg) < 0) goto fail;
+			break;
+
 		case AF_LOCAL:
 			if (fr_bio_fd_common_datagram(fd, &my->info.socket, cfg) < 0) goto fail;
 			break;
@@ -1137,12 +1147,6 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		case AF_FILE_BIO:
 			fr_strerror_const("Filenames must use the connected API");
 			goto fail;
-
-		case AF_INET:
-		case AF_INET6:
-			 /* sets SO_REUSEPORT, too */
-			if (fr_bio_fd_server_udp(fd, &my->info.socket, cfg) < 0) goto fail;
-			break;
 
 		default:
 			fr_strerror_const("Unsupported address family for unconnected sockets");
