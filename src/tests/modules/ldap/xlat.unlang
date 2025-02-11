@@ -121,4 +121,10 @@ if !(result_string == 'John Doe') {
 	test_fail
 }
 
+# Use extensions - request the 2nd client, sorted by freeradiusClientIdentifier
+result_string := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=clients,dc=example,dc=com?freeradiusClientIdentifier?sub?(objectClass=freeradiusClient)?sss=freeradiusClientIdentifier,vlv=0/0/2/0")
+if (result_string != '2.2.2.2') {
+	test_fail
+}
+
 test_pass
