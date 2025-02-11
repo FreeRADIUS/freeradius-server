@@ -379,6 +379,7 @@ typedef struct {
 	LDAPURLDesc		*ldap_url;
 	fr_ldap_query_t		*query;
 	fr_ldap_map_exp_t	expanded;
+	LDAPControl		*serverctrls[LDAP_MAX_CONTROLS];
 } ldap_map_ctx_t;
 
 typedef enum {
@@ -1310,8 +1311,13 @@ finish:
  */
 static int map_ctx_free(ldap_map_ctx_t *map_ctx)
 {
+	int i = 0;
 	talloc_free(map_ctx->expanded.ctx);
 	ldap_free_urldesc(map_ctx->ldap_url);
+	while ((i < LDAP_MAX_CONTROLS) && map_ctx->serverctrls[i]) {
+		ldap_control_free(map_ctx->serverctrls[i]);
+		i++;
+	}
 	return (0);
 }
 
@@ -1382,6 +1388,14 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 	}
 	ldap_url = map_ctx->ldap_url;
 
+	if (ldap_url->lud_exts) {
+		if (fr_ldap_parse_url_extensions(map_ctx->serverctrls, NUM_ELEMENTS(map_ctx->serverctrls),
+						 ldap_url->lud_exts) < 0) {
+			RPERROR("Parsing URL extensions failed");
+			goto fail;
+		}
+	}
+
 	/*
 	 *	Expand the RHS of the maps to get the name of the attributes.
 	 */
@@ -1407,7 +1421,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 
 	return fr_ldap_trunk_search(map_ctx, &map_ctx->query, request, ttrunk, ldap_url->lud_dn,
 				    ldap_url->lud_scope, ldap_url->lud_filter, map_ctx->expanded.attrs,
-				    NULL, NULL);
+				    map_ctx->serverctrls, NULL);
 }
 
 /** Perform async lookup of user DN if required for authentication
