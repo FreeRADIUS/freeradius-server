@@ -168,6 +168,18 @@ retry:
  *  where a read of zero on a steam socket means "EOF".
  *
  *  Connected sockets do _not_ update per-packet contexts.
+ *
+ *  Note that for UDP, connect() only affects the sending path.  It
+ *  means that the application can call send() without specifying IP
+ *  addresses.  But when the application calls recv(), the OS will
+ *  deliver packets which have been sent from _any_ port, even ones
+ *  which don't match the address given in connect().
+ *
+ *  @todo - arguably this means that for connected UDP sockets, we
+ *  should _only_ use this function when we can't use the udpfromto
+ *  functionality.  And then if that's available, connected sockets
+ *  should have a special read function which discards packets which
+ *  are not from the connected source IP/port.
  */
 static ssize_t fr_bio_fd_read_connected_datagram(fr_bio_t *bio, UNUSED void *packet_ctx, void *buffer, size_t size)
 {
