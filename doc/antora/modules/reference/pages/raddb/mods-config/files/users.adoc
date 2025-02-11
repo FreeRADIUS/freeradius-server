@@ -1,10 +1,10 @@
-= The users file
+= The Users File
 
-The `users` file is managed by the xref:reference:raddb/mods-available/files.adoc[files] module.  The format largely goes back to the original Livingston RADIUS server in 1991!
+The `users` file is managed by the xref:reference:raddb/mods-available/files.adoc[files] module.  The format largely goes back to the original Livingston RADIUS server in 1991.
 
 While the format is still called `users` for historical reasons, the name of the file is controlled by the configuration of the xref:reference:raddb/mods-available/files.adoc[files] module, and is usually something other than `users`.
 
-While the `users` file format follows largely the same format which was made in 1991, there have been a number of extensions to it.  The current functionality also has improvements over FreeRADIUS version 3.  Notable improvements are:
+While the `users` file format follows largely the same format which was made in 1991, there have been a number of extensions to it. The current functionality also has improvements over FreeRADIUS version 3. Notable improvements are:
 
 * the reply attributes can now reference other lists, and are not fixed to updating the reply,
 * the right-side of comparisons and assignments can contain expressions via expansions `%{...}`,
@@ -42,7 +42,7 @@ The list of reply items can be empty, in which case there must be a blank line a
 
 There is no limit to the size of the file or number of entries in it, other than available memory.  The file is read and cached when the server starts, and cannot be changed while the server is running.
 
-=== The $INCLUDE directive
+=== The $INCLUDE Directive
 
 As a special case, the line can begin with the name `$INCLUDE`.  The `$INCLUDE` name must be followed by a filename.  An `$INCLUDE` must be in the same location where a `name` and check items entry is expected.  It is not possible to put an `$INCLUDE` in the list of reply items.
 
@@ -59,7 +59,7 @@ If the filename does not begin with `/`, it is a relative filename.  The module 
 
 The `$INCLUDE` can be nested to any depth, subject only to available memory.  The module does not cross-reference `$INCLUDE` files, so it is possible for a file to `$INCLUDE` itself in an infinite loop.  This practice is not recommended.  When this misconfiguration happens, the server will run out of memory processing the file, and then exit.
 
-The purpose of `$INCLUDE` is to allow the `users` file to be broken up into multiple logical pieces.  For example, a system mayneed to generate multiple different types of `users ` file entries, depending on the type of user.  These different entries may be placed into different files, so that each different file can be regenerated independently.
+The purpose of `$INCLUDE` is to allow the `users` file to be broken up into multiple logical pieces.  For example, a system may need to generate multiple different types of `users ` file entries, depending on the type of user.  These different entries may be placed into different files, so that each different file can be regenerated independently.
 
 == Processing
 
@@ -79,7 +79,7 @@ These data structures allow the module to operate extremely quickly.  When doing
 
 Where multiple entries are matched, the entries are matched in the order that they appear in the file.  That is, they are matched from the top of the file to the bottom of the file.
 
-=== Matching an entry
+=== Matching an Entry
 
 An entry is found by using the `key` to find a matching `name` field.  Once the entry is found, the module looks for and processes any check items.  If no matching entry is found, the special `name` of `DEFAULT` is searched for.  If no `DEFAULT` is found, processing of the `users` file stops.
 
@@ -127,9 +127,9 @@ The interaction between `Fall-Through` and `Next-Shortest-Prefix` allows the `us
 	Reply-Message = "In the 192 network"
 ----
 
-In this example, a `key` of `192.0.2.1` will both a `Filter-Id` attribute, and a `Reply-Message` attribute.  In contrast, a `key` of `192.0.2.255` will only return a `Reply-Message` attribute.
+In this example, a `key` of `192.0.2.1` has both a `Filter-Id` attribute, and a `Reply-Message` attribute.  In contrast, a `key` of `192.0.2.255` will only return a `Reply-Message` attribute.
 
-=== The DEFAULT name
+=== The DEFAULT Name
 
 If no entry matches, the special name `DEFAULT` will be matched.  The `DEFAULT` entry can also match if a previous `name` matched, and the reply items contained `Fall-Through = yes`, or `Next-Shortest-Prefix = yes`.
 
@@ -167,7 +167,7 @@ not have a `Fall-Through`, should come next.  Any `DEFAULT` entries
 should usually come last.  This ordering means that it will be easier
 to debug policies, and understand how the file works.
 
-== Check and Reply item format
+== Check and Reply Item Iormat
 
 Each check item or reply item must follow the same format, which is shown in the examples above.  The format is an attribute name, followed by an operator, and then a value.
 
@@ -216,7 +216,7 @@ There are some situations where it is useful to refer to structural attributes b
 
 Structural attributes can be copied from another attribute.  Both source and destination attributes must have the same data type.
 
-.Copying a Structural attribute by name
+.Copying a Structural Attribute by Name
 ----
 bob	Password.Cleartext := "hello"
 	Vendor-Specific.Cisco := &control.Vendor-Specific.Cisco
@@ -266,7 +266,7 @@ The relative attributes work fairly simply, subject to the following rules:
 * using an absolute attribute will "reset" the reference for relative attributes, to be either itself (if it is structural), or nothing (if it is a leaf)
 * relative attributes can use multiple `.` to reference attributes "higher" in the tree
 
-.Using multiple '.'
+.Using Multiple '.'
 ----
 bob	Password.Cleartext := "hello"
 	Vendor-Specific = {},

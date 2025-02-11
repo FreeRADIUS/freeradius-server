@@ -7,17 +7,20 @@
 
 == Mailing Lists
 
+Please see the description of FreeRADIUS mailing lists. For normal discussion of the server and how to use it, subscribe to the FreeRADIUS user-list. Only subscribe to the development list if you are interested in writing software for the new server.
+
 * *mailto:freeradius-users@lists.freeradius.org[freeradius-users]*
 This list is for all users of FreeRADIUS and deals with general questions related to FreeRADIUS.
 * *mailto:freeradius-devel@lists.freeradius.org[freeradius-devel]*
-This list is for developers who are writing code for FreeRADIUS.The content is highly technical and is not suited to the average user.
+This list is for developers who are writing code for FreeRADIUS. The content is highly technical and is not suited to the average user. If you looking to contribute code, please join this list.
 * *mailto:freeradius-announce@lists.freeradius.org[freeradius-announce]*
 This list is for all users of FreeRADIUS. Announcements about FreeRADIUS, including new versions and security issues, are made here.
 
-Please see the description of FreeRADIUS mailing lists.
-We encourage everyone who might contribute code to join the FreeRADIUS development list(http://www.freeradius.org/list/devel.html). This list is highly technical and isn’t for most users of the server. For normal discussion of the server and how to use it, subscribe to the FreeRADIUS user-list. Only subscribe to the development list if you are interested in writing software for the new server.
+== Archive Mailing Lists
+* https://lists.freeradius.org/pipermail/freeradius-users/[User Mailing List Archive]
+* https://lists.freeradius.org/pipermail/freeradius-devel/[Developer Mailing List Archive]
 
-== RFCs
+== http://www.freeradius.org/rfc/[Related RFCs and Drafts]
 
 * https://datatracker.ietf.org/doc/html/rfc2865[RFC 2865] Remote Authentication Dial In User Service (RADIUS)
 * https://datatracker.ietf.org/doc/html/rfc2866[RFC 2866] RADIUS Accounting
@@ -27,19 +30,8 @@ We encourage everyone who might contribute code to join the FreeRADIUS developme
 * https://datatracker.ietf.org/doc/html/rfc3758[RFC 3748] Extensible Authentication Protocol (EAP)
 * https://datatracker.ietf.org/doc/html/rfc3579[RFC 3579] - RADIUS (Remote Authentication Dial In User Service) Support For Extensible Authentication Protocol (EAP)
 
-### FreeRADIUS Related Web Pages
 
-* FreeRADIUS Web Page
-* FreeRADIUS Wiki
-* Cistron RADIUS Web Page
-* FreeRADIUS on Red Hat systems
-
-### RADIUS RFC and Drafts
-
-RADIUS related RFCs and Drafts are archived at:
-* http://www.freeradius.org/rfc/
-
-== Related Sites
+== Related RADIUS Sites
 * *https://www.iana.org/assignments/radius-types/radius-types.xhtml[RADIUS Packet Types]*
 
 

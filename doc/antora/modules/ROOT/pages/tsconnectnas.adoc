@@ -1,0 +1,115 @@
+= Connectivity-NAS
+
+
+== How do I tell the user what to use for an IP netmask?
+
+The whole netmask business is a complicated one. An IP interface has an IP address and usually a netmask associated with it. Netmasks on point-to-point interfaces like a PPP link are generally not used.
+
+If you set the Framed-IP-Netmask attribute in a radius profile, you are setting the netmask of the interface on the side of the NAS.  The Framed-IP-Netmask attribute is NOT something you can set to influence the netmask on the side of the dialin user. And usually, that makes no sense anyway even if you could set it.
+
+The result of this on most NAS is that they start to route a subnet (the subnet that contains the assigned IP address and that is as big as the netmask indicates) to that PPP interface and thus to the user. If that is exactly what you want, then that's fine, but if you do not intend to route a whole subnet to the user, then by all means do NOT use the Framed-IP-Netmask attribute.
+
+Many NAS interpret a left-out Framed-IP-Netmask as if it were set to 255.255.255.255, but to be certain you should set the Framed-IP-Netmask to 255.255.255.255.
+
+The following entries do almost the same on most NAS:
+.Entries Example
+[%collapsible]
+====
+	user Cleartext-Password := "blegh"
+		Service-Type = Framed-User,
+		Framed-Protocol = PPP,
+		Framed-IP-Address = 192.168.5.78,
+		Framed-IP-Netmask = 255.255.255.240
+
+	user Cleartext-Password := "blegh"
+		Service-Type = Framed-User,
+		Framed-Protocol = PPP,
+		Framed-IP-Address = 192.168.5.78,
+		Framed-Route = "192.168.5.64/28 0.0.0.0 1"
+====
+
+The result is that the end user gets IP address 192.168.5.78 and that the whole network with IP addresses 192.168.5.64 - 195.64.5.79 is	routed over the PPP link to the user (see the RADIUS RFCs for the exact syntax of the Framed-Route attribute).
+
+
+== 3Com/USR HiPerArc doesn't work
+
+I'm using a 3Com/USR HiPerArc and I keep getting this message on radius.log:
+
+	`Mon Jul 26 15:18:54 1999: Error: Accounting: logout: entry for NAS tc-if5 port 1 has wrong ID`
+
+If you're using HiPer ARC 4.1.11, you need to contact the vendor? Version 4.1.11 has a problem reporting NAS-port numbers to Radius. Upgrade the firmware from http://totalservice.usr.com to at least 4.1.59. If you are in Europe you can telephone to 3Com Global Response Center (phone number: 800 879489), and tell them that you have bought it in the last 90 days. They will help you, step by step, to do the upgrade.
+
+== 3Com/USR HiPerArc Simultaneous-Use doesn't work
+
+by Robert Dalton support at accesswest dot com
+
+Verify if you are using HiPerArc software version V4.2.32 release date 09/09/99
+
+In order for simultaneous logins to be prevented reported port density must be set to 256 using the command :
+
+	set pbus reported_port_density 256
+
+Otherwise it changes the calculations of the SNMP object ID's.
+
+There is a bug in effected versions of checkrad namely the line under the subroutine "sub_usrhiper". The line that should be commented out is:
+
+	($login) = /^.*\"([^"]+)".*$/;
+
+== Cisco Simultaneous-Use doesn't work
+
+Q: I am getting the following in radius.log file:
+
+	Thu Oct 21 10:59:01 1999: Error: Check-TS: timeout waiting for checkrad
+
+What's wrong?
+
+A: Verify if you have SNMP enabled on your CISCO router, check the existence of the following line:
+
+	snmp-server community public RO 97
+
+where 97 is the access-list that specifies who gets access to the SNMP info. You should also have a line like this:
+	access-list 97 permit A.B.C.D
+
+where A.B.C.D is the ip address of the host running the radius server.
+
+== Ascend MAX 4048 Simultaneous-Use doesn't work
+
+Q: I am getting the following in radius.log file:
+
+Thu Oct 21 10:59:01 1999: Error: Check-TS: timeout waiting for checkrad
+
+What's wrong?
+
+A: Verify that you have the MAX 4048 setup in your naslist as max40xx and that you have Finger turned on.
+
+	Ethernet->Mod Config->Finger=Yes
+
+
+== The server is complaining about invalid user route-bps-asc1-1, along with lots of others
+
+Ascend decided to have the 4000 series NAS boxes retrieve much of their configuration from the RADIUS server. To disable this "feature", set:
+
+	Ethernet->Mod Config->Auth->Allow Auth Config Rqsts = No
+
+
+== Why do Acct-Input-Octets and Acct-Output-Octets wrap at 4 GB?
+
+There are two possible causes of this problem:
+
+* Gigawords not enabled on NAS
+
+Some NAS do not send "Gigawords" attributes by default. Read your NAS documentation and configure it to send the attributes Acct-Input-Gigawords and Acct-Output-Gigawords.
+
+* Cisco IOS needs to set the flag for gigawords. Enter the following command on the NAS:
+
+	`aaa accounting gigawords`
+
+[NOTE]
+====
+This command requires a reload of the device on certain IOS version.
+====
+
+
+=== How do I enable logging of 64 bit counters, a.k.a. `Acct-{Input|Output}-Gigawords?`
+
+Refer to <<Why do Acct-Input-Octets and Acct-Output-Octets wrap at 4 GB?>>
