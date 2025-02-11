@@ -572,6 +572,12 @@ ldap {
 		#  or the attributes do not have an ORDERING rule, the search will fail.
 		#
 #		sort_by = 'radiusProfilePriority'
+
+		#
+		#  check_attribute:: The LDAP attribute containing conditions which
+		#  will be evaluated to determine whether a profile should be applied.
+		#
+#		check_attribute = 'radiusProfileCondition'
 	}
 
 	#
