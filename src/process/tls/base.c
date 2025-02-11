@@ -58,6 +58,7 @@ typedef struct {
 
 #define PROCESS_INST			process_tls_t
 #define PROCESS_PACKET_TYPE		uint32_t
+#define PROCESS_CODE_DO_NOT_RESPOND	FR_PACKET_TYPE_VALUE_FAILURE
 #define PROCESS_PACKET_CODE_VALID	FR_TLS_PACKET_CODE_VALID
 
 #include <freeradius-devel/server/process.h>
