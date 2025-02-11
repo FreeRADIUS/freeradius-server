@@ -1,3 +1,4 @@
+ifneq "$(findstring fuzzer,${CFLAGS})" ""
 TARGET		:= fuzzer
 SOURCES		:= fuzzer.c
 
@@ -15,3 +16,5 @@ fuzzer.run: $(BUILD_DIR)/bin/fuzzer
 .PHONY: fuzzer.help
 fuzzer.help:
 	@echo ./build/make/jlibtool --mode=execute ./build/bin/local/fuzzer -max_len=512 -D share src/tests/fuzzer
+
+endif
