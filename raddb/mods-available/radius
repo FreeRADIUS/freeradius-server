@@ -793,6 +793,34 @@ radius proxy {
 		src_ipaddr = *
 
 		#
+		#  src_port_start:: Start of source port range.
+		#
+		#  The outgoing proxy normally uses random source
+		#  ports.  When all of the RADIUS IDs are used for one
+		#  connection, it opens up another random source port.
+		#
+		#  However, it is sometimes useful to restrict the
+		#  range of source ports to known values.  The
+		#  `src_port_start` and `src_port_end` configuration
+		#  flags allow the port range to be controlled.  The
+		#  module will then restrict the source ports it is
+		#  using to be within this range.
+		#
+		#  When all ports in this range are used, the module
+		#  will not be able to open any more outgoing
+		#  connections.x
+		#
+		#  These two configuratiuon items can only be used for
+		#  UDP sockets.
+		#
+		src_port_start = 10000
+
+		#
+		#  src_port_end:: End of source port range.
+		#
+		src_port_end = 11000
+
+		#
 		#  `src_port` cannot be used.  If it is used here, the
 		#  module will refuse to start.  Instead, the module
 		#  will open a unique source port per thread.

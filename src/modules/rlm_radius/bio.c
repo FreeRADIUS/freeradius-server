@@ -49,14 +49,13 @@ typedef struct {
 	rlm_radius_t const	*inst;		//!< our instance
 	fr_event_list_t		*el;	       	//!< Event list.
 	trunk_t			*trunk;	       	//!< trunk handler
-	fr_bio_fd_config_t	*fd_config;	//!< for threads or sockets
+	fr_bio_fd_config_t	fd_config;	//!< for threads or sockets
 	fr_bio_fd_info_t const	*fd_info;	//!< status of the FD.
 	fr_radius_ctx_t		radius_ctx;
 } bio_handle_ctx_t;
 
 typedef struct {
-	bio_handle_ctx_t	ctx;		//!< for copying to bio_handle_t
-
+	bio_handle_ctx_t	ctx;		//!< common struct for home servers and BIO handles
 
 	struct {
 		fr_bio_t *fd;			//!< writing
@@ -71,7 +70,7 @@ typedef struct bio_request_s bio_request_t;
  *
  */
 typedef struct {
-	bio_handle_ctx_t	ctx;		//! from thread or home server
+	bio_handle_ctx_t	ctx;		//!< common struct for home servers and BIO handles
 
 	int			fd;			//!< File descriptor.
 
@@ -139,8 +138,6 @@ struct bio_request_s {
 
 typedef struct {
 	bio_handle_ctx_t	ctx;		//!< for copying to bio_handle_t
-
-	fr_bio_fd_config_t	fd_config;	//!< fil descriptor configuration
 
 	fr_rb_expire_node_t	expire;
 } home_server_t;
@@ -747,7 +744,14 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 
 	MEM(h->tt = radius_track_alloc(h));
 
-	h->bio.fd = fr_bio_fd_alloc(h, h->ctx.fd_config, 0);
+	/*
+	 *	Limit the source port to the given range.
+	 */
+	if (h->ctx.inst->src_port_start) {
+		DEBUG("WARNING - src_port_start and src_port_end not currently supported.  A random source port will be chosen");
+	}
+
+	h->bio.fd = fr_bio_fd_alloc(h, &h->ctx.fd_config, 0);
 	if (!h->bio.fd) {
 		PERROR("%s - failed opening socket", h->ctx.module_name);
 	fail:
@@ -774,7 +778,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	 *	way we don't need a memory BIO for UDP sockets, but we can still add a verification layer for
 	 *	UDP sockets?
 	 */
-	if (h->ctx.fd_config->socket_type == SOCK_STREAM) {
+	if (h->ctx.fd_config.socket_type == SOCK_STREAM) {
 		h->bio.mem = fr_bio_mem_alloc(h, 8192, 0, h->bio.fd);
 		if (!h->bio.mem) {
 			PERROR("%s - Failed allocating memory buffer - ", h->ctx.module_name);
@@ -1411,7 +1415,7 @@ static void mod_dup(request_t *request, bio_request_t *u)
 
 	h = talloc_get_type_abort(u->treq->tconn->conn->h, bio_handle_t);
 
-	if (h->ctx.fd_config->socket_type != SOCK_DGRAM) {
+	if (h->ctx.fd_config.socket_type != SOCK_DGRAM) {
 		RDEBUG("Using stream sockets - suppressing retransmission");
 		return;
 	}
@@ -1735,7 +1739,7 @@ do_write:
 	/*
 	 *	We don't retransmit over TCP.
 	 */
-	if (h->ctx.fd_config->socket_type != SOCK_DGRAM) return;
+	if (h->ctx.fd_config.socket_type != SOCK_DGRAM) return;
 
 	/*
 	 *	If we only send one datagram packet, then don't bother saving it.
@@ -2427,7 +2431,6 @@ static const trunk_io_funcs_t	io_funcs = {
 	.request_cancel = request_cancel,
 };
 
-
 /** Instantiate thread data for the submodule.
  *
  */
@@ -2438,7 +2441,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 
 	thread->ctx.el = mctx->el;
 	thread->ctx.inst = inst;
-	thread->ctx.fd_config = &inst->fd_config;
+	thread->ctx.fd_config = inst->fd_config;
 	thread->ctx.radius_ctx = inst->common_ctx;
 
 	if ((inst->mode != RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) &&
@@ -2450,9 +2453,19 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	}
 
 	/*
+	 *	If we have a port range, allocate the source IP based
+	 *	on the range start, plus the thread ID.  This means
+	 *	that we can avoid "hunt and peck" attempts to open up
+	 *	the source port.
+	 */
+	if (thread->ctx.inst->src_port_start) {
+		thread->ctx.fd_config.src_port = thread->ctx.inst->src_port_start + fr_schedule_worker_id();
+	}
+
+	/*
 	 *	Allocate the unconnected replication socket.
 	 */
-	thread->bio.fd = fr_bio_fd_alloc(thread, &thread->ctx.inst->fd_config, 0);
+	thread->bio.fd = fr_bio_fd_alloc(thread, &thread->ctx.fd_config, 0);
 	if (!thread->bio.fd) {
 		PERROR("%s - failed opening socket", inst->name);
 		return CONNECTION_STATE_FAILED;
@@ -2597,10 +2610,10 @@ static int8_t home_server_cmp(void const *one, void const *two)
 	home_server_t const *b = two;
 	int8_t rcode;
 
-	rcode = fr_ipaddr_cmp(&a->fd_config.dst_ipaddr, &b->fd_config.dst_ipaddr);
+	rcode = fr_ipaddr_cmp(&a->ctx.fd_config.dst_ipaddr, &b->ctx.fd_config.dst_ipaddr);
 	if (rcode != 0) return rcode;
 
-	return CMP(a->fd_config.dst_port, b->fd_config.dst_port);
+	return CMP(a->ctx.fd_config.dst_port, b->ctx.fd_config.dst_port);
 }
 
 static xlat_action_t xlat_sendto_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
@@ -2665,9 +2678,11 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 	}
 
 	home = fr_rb_find(&thread->bio.expires.tree, &(home_server_t) {
-			.fd_config = (fr_bio_fd_config_t) {
-				.dst_ipaddr = ipaddr->vb_ip,
-				.dst_port = port->vb_uint16,
+			.ctx = {
+				.fd_config = (fr_bio_fd_config_t) {
+					.dst_ipaddr = ipaddr->vb_ip,
+					.dst_port = port->vb_uint16,
+				},
 			},
 		});
 	if (!home) {
@@ -2681,12 +2696,14 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 			},
 		};
 
-		home->fd_config = inst->fd_config;
-		home->ctx.fd_config = &home->fd_config;
-
-		home->fd_config.type = FR_BIO_FD_CONNECTED;
-		home->fd_config.dst_ipaddr = ipaddr->vb_ip;
-		home->fd_config.dst_port = port->vb_uint32;
+		/*
+		 *	Copy the home server configuration from the root configuration.  Then update it with
+		 *	the needs of the home server.
+		 */
+		home->ctx.fd_config = inst->fd_config;
+		home->ctx.fd_config.type = FR_BIO_FD_CONNECTED;
+		home->ctx.fd_config.dst_ipaddr = ipaddr->vb_ip;
+		home->ctx.fd_config.dst_port = port->vb_uint32;
 
 		home->ctx.radius_ctx = (fr_radius_ctx_t) {
 			.secret = talloc_strdup(home, secret->vb_strvalue),

@@ -103,6 +103,13 @@ static conf_parser_t const transport_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static conf_parser_t const transport_unconnected_config[] = {
+	{ FR_CONF_OFFSET("src_port_start", rlm_radius_t, src_port_start) },
+	{ FR_CONF_OFFSET("src_port_end", rlm_radius_t, src_port_end) },
+
+	CONF_PARSER_TERMINATOR
+};
+
 /*
  *	We only parse the pool options if we're connected.
  */
@@ -118,6 +125,14 @@ static conf_parser_t const connected_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static conf_parser_t const unconnected_config[] = {
+	{ FR_CONF_POINTER("udp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) transport_unconnected_config },
+
+	{ FR_CONF_POINTER("tcp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) transport_unconnected_config },
+
+	CONF_PARSER_TERMINATOR
+};
+
 /*
  *	We only parse the pool options if we're connected.
  */
@@ -125,6 +140,10 @@ static conf_parser_t const pool_config[] = {
 	{ FR_CONF_POINTER("status_check", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) status_check_config },
 
 	{ FR_CONF_OFFSET_SUBSECTION("pool", 0, rlm_radius_t, trunk_conf, trunk_config ) },
+
+	{ FR_CONF_POINTER("udp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) transport_unconnected_config },
+
+	{ FR_CONF_POINTER("tcp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) transport_unconnected_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -279,6 +298,7 @@ static int mode_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 
 	case RLM_RADIUS_MODE_UNCONNECTED_REPLICATE:
 		inst->fd_config.type = FR_BIO_FD_UNCONNECTED;
+		if (cf_section_rules_push(cs, unconnected_config) < 0) return -1;
 		break;
 	}
 
@@ -656,22 +676,103 @@ check_others:
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 64);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
 
-	if (inst->mode != RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) {
+	/*
+	 *	Check invalid configurations.
+	 */
+	switch (inst->mode) {
+	default:
 		/*
-		 *	These limits are specific to RADIUS, and cannot be over-ridden
+		 *	Filenames are write-only, and cannot get response packets.
+		 */
+		if (inst->fd_config.filename) {
+			cf_log_err(conf, "Cannot set 'filename' here - it is only supported for 'mode=replicate'.");
+			return -1;
+		}
+
+		/*
+		 *	For normal proxying or originating client packets, we need to be able to open multiple
+		 *	source ports.  So the admin can't force a particular source port.
+		 */
+		if (inst->fd_config.src_port && (inst->mode != RLM_RADIUS_MODE_XLAT_PROXY)) {
+			cf_log_err(conf, "Cannot set 'src_port' when sending packets to a static destination");
+			return -1;
+		}
+
+		/*
+		 *	No src_port range, we don't need to check any other settings.
+		 */
+		if (!inst->src_port_start && !inst->src_port_end) break;
+
+		if (inst->fd_config.path) {
+			cf_log_err(conf, "Cannot set 'src_port_start' or 'src_port_end' for outgoing Unix sockets");
+			return -1;
+		}
+
+		/*
+		 *	We can only have one method of allocating source ports.
+		 */
+		if (inst->fd_config.src_port) {
+			cf_log_err(conf, "Cannot set 'src_port' and 'src_port_start' or 'src_port_end'");
+			return -1;
+		}
+
+		/*
+		 *	Cross-check src_port, src_port_start, and src_port_end.
+		 */
+		if (inst->src_port_start) {
+			if (!inst->src_port_end) {
+				cf_log_err(conf, "Range has 'src_port_start', but is missing 'src_port_end'");
+				return -1;
+			}
+
+			if (inst->src_port_start >= inst->src_port_end) {
+				cf_log_err(conf, "Range has invalid values for 'src_port_start' ... 'src_port_end'");
+				return -1;
+			}
+
+		} else if (inst->src_port_end) {
+			cf_log_err(conf, "Range has 'src_port_end', but is missing 'src_port_start'");
+			return -1;
+		}
+
+		/*
+		 *	Encorce limits per trunk, due to the 8-bit ID space.
 		 */
 		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, >=, 2);
 		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, <=, 255);
 		FR_INTEGER_BOUND_CHECK("trunk.per_connection_target", inst->trunk_conf.target_req_per_conn, <=, inst->trunk_conf.max_req_per_conn / 2);
-	}
+		break;
 
-	if ((inst->mode == RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) ||
-	    (inst->mode == RLM_RADIUS_MODE_XLAT_PROXY)) {
-		if (inst->fd_config.src_port != 0) {
-			cf_log_err(conf, "Cannot set 'src_port' when using this 'mode'");
+	case RLM_RADIUS_MODE_UNCONNECTED_REPLICATE:
+		/*
+		 *	Replication to dynamic filenames or dynamic unix sockets isn't supported.
+		 */
+		if (inst->fd_config.filename || inst->fd_config.path) {
+			cf_log_err(conf, "Cannot set 'filename' or 'path' when using 'mode=unconnected-replicate'");
 			return -1;
 		}
+		FALL_THROUGH;
+
+	case RLM_RADIUS_MODE_REPLICATE:
+		/*
+		 *	We can force the source port, but then we have to set SO_REUSEPORT.
+		 */
+		inst->fd_config.reuse_port = (inst->fd_config.src_port != 0);
+
+		/*
+		 *	Files and unix sockets are OK.  The src_port can be set (or not), and that's fine.
+		 */
+		if (inst->src_port_start || inst->src_port_end) {
+			cf_log_err(conf, "Cannot set 'src_port_start' or 'src_port_end' when replicating packets");
+			return -1;
+		}
+		break;
 	}
+
+	/*
+	 *	We allow what may otherwise be conflicting configurations, because the BIO code will pick one
+	 *	path, and the conflicts won't affect anything else.  Only the src_port range is special.
+	 */
 
 	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->zombie_period, >=, fr_time_delta_from_sec(1));
 	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->zombie_period, <=, fr_time_delta_from_sec(120));
