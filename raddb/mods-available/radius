@@ -813,12 +813,12 @@ radius proxy {
 		#  These two configuratiuon items can only be used for
 		#  UDP sockets.
 		#
-		src_port_start = 10000
+#		src_port_start = 10000
 
 		#
 		#  src_port_end:: End of source port range.
 		#
-		src_port_end = 11000
+#		src_port_end = 11000
 
 		#
 		#  `src_port` cannot be used.  If it is used here, the
