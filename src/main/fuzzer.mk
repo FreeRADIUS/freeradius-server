@@ -1,9 +1,6 @@
 TARGET		:= fuzzer
 SOURCES		:= fuzzer.c
 
-SRC_CFLAGS	:= -fsanitize=fuzzer
-TGT_LDFLAGS	:= -fsanitize=fuzzer
-
 TGT_INSTALLDIR  :=
 TGT_LDLIBS	:= $(LIBS)
 TGT_PREREQS	:= libfreeradius-radius.a
