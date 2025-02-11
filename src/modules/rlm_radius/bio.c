@@ -2510,8 +2510,8 @@ static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	 *	Can't change IP address families.
 	 */
 	if (ipaddr->vb_ip.af != thread->ctx.fd_info->socket.af) {
-		RDEBUG("Invalid destination IP address family in %pV", ipaddr);
-		return -1;
+		RPERROR("Invalid destination IP address family in %pV", ipaddr);
+		return XLAT_ACTION_FAIL;
 	}
 
 	/*
