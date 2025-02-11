@@ -12492,7 +12492,7 @@ printf "%s\n" "$ax_cv_cc_weverything_flag" >&6; }
           fsanitizeflags=
 
         if test "x$fuzzer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
-                fsanitizeflags="$fsanitizeflags,fuzzer"
+                fsanitizeflags="$fsanitizeflags,fuzzer-no-link"
   fi
 
         if test "x$address_sanitizer" = "xyes"; then
