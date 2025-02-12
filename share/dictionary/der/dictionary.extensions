@@ -1,0 +1,195 @@
+# -*- text -*-
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+DEFINE	Critical					group ref=OID-Tree
+
+ATTRIBUTE	authorityInfoAccess			1.3.6.1.5.5.7.1.1	sequence        sequence_of=sequence,is_oid_leaf
+BEGIN 1.3.6.1.5.5.7.1.1
+DEFINE	accessDescription				sequence
+BEGIN accessDescription
+DEFINE	accessMethod					oid
+
+DEFINE	accessLocation					choice
+BEGIN accessLocation
+ATTRIBUTE	otherName				0	sequence option=0
+BEGIN otherName
+DEFINE	type-id						string subtype=oid
+DEFINE	Value-thing					tlv subtype=sequence,class=context-specific,tagnum=0
+BEGIN Value-thing
+DEFINE	userPrincipalName				string subtype=utf8string
+END Value-thing
+END otherName
+
+ATTRIBUTE	rfc822Name				1	ia5string option=1
+ATTRIBUTE	dNSName					2	ia5string option=2
+
+ATTRIBUTE	uniformResourceIdentifier		6	ia5string option=6
+END accessLocation
+
+END accessDescription
+END 1.3.6.1.5.5.7.1.1
+
+ATTRIBUTE	subjectInfoAccess			1.3.6.1.5.5.7.1.11	sequence        sequence_of=sequence,is_oid_leaf
+BEGIN 1.3.6.1.5.5.7.1.11
+DEFINE	accessDescription				sequence
+BEGIN accessDescription
+DEFINE	accessMethod					oid
+
+DEFINE	accessLocation					choice
+BEGIN accessLocation
+ATTRIBUTE	otherName				0	sequence option=0
+BEGIN otherName
+DEFINE	type-id						string subtype=oid
+DEFINE	Value-thing					tlv subtype=sequence,class=context-specific,tagnum=0
+BEGIN Value-thing
+DEFINE	userPrincipalName				string subtype=utf8string
+END Value-thing
+END otherName
+
+ATTRIBUTE	rfc822Name				1	ia5string option=1
+ATTRIBUTE	dNSName					2	ia5string option=2
+
+ATTRIBUTE	uniformResourceIdentifier		6	ia5string option=6
+END accessLocation
+
+END accessDescription
+END 1.3.6.1.5.5.7.1.11
+
+ATTRIBUTE	subjectKeyIdentifier			2.5.29.14	octetstring     is_oid_leaf
+
+ATTRIBUTE	keyUsage				2.5.29.15	struct  subtype=bitstring,is_oid_leaf
+BEGIN 2.5.29.15
+MEMBER		digitalSignature			bit[1]
+MEMBER		nonRepudation				bit[1]
+MEMBER		keyEncipherment				bit[1]
+MEMBER		dataEncipherment			bit[1]
+MEMBER		keyAgreement				bit[1]
+MEMBER		keyCertSign				bit[1]
+MEMBER		cRLSign					bit[1]
+MEMBER		encipherOnly				bit[1]
+MEMBER		decipherOnly				bit[1]
+MEMBER		unused_bits				bit[7]
+END 2.5.29.15
+
+ATTRIBUTE	subjectAltName				2.5.29.17	group ref=GeneralName,subtype=sequence,sequence_of=choice,is_oid_leaf
+
+ATTRIBUTE	basicConstraints			2.5.29.19	sequence is_oid_leaf
+BEGIN 2.5.29.19
+DEFINE	cA						boolean has_default
+VALUE	cA				DEFAULT			false
+DEFINE	pathLenConstraint				integer
+END 2.5.29.19
+
+ATTRIBUTE	nameConstraints				2.5.29.30	sequence        is_oid_leaf
+BEGIN 2.5.29.30
+DEFINE	permittedSubtrees				group   ref=GeneralSubtree,sequence_of=sequence,option=0
+DEFINE	excludedSubtrees				group   ref=GeneralSubtree,sequence_of=sequence,option=1
+END 2.5.29.30
+
+ATTRIBUTE	cRLDIstributionPoints			2.5.29.31	sequence        sequence_of=sequence,is_oid_leaf
+BEGIN 2.5.29.31
+DEFINE	distributionPoint				sequence
+BEGIN distributionPoint
+DEFINE	distributionPointName				sequence  option=0
+BEGIN distributionPointName
+ATTRIBUTE	fullName				0	group   ref=GeneralName,subtype=sequence,sequence_of=choice,option=0
+ATTRIBUTE	nameRelativeToCRLIssuer			1	sequence        option=1
+BEGIN nameRelativeToCRLIssuer
+DEFINE	RelativeDistinguishedName			tlv subtype=set
+BEGIN RelativeDistinguishedName
+DEFINE	AttributeTypeandValue				group ref=OID-Tree,is_pair
+END RelativeDistinguishedName
+END nameRelativeToCRLIssuer
+END distributionPointName
+
+DEFINE	reasons						struct  option=1
+BEGIN reasons
+MEMBER		unused					bit[1]
+MEMBER		keyCompromise				bit[1]
+MEMBER		cACompromise				bit[1]
+MEMBER		affiliationChanged			bit[1]
+MEMBER		superseded				bit[1]
+MEMBER		cessationOfOperation			bit[1]
+MEMBER		certificateHold				bit[1]
+MEMBER		privilegeWithdrawn			bit[1]
+MEMBER		aACompromise				bit[1]
+END reasons
+
+DEFINE	cRLIssuer					group   ref=GeneralName,subtype=sequence,sequence_of=choice,option=2
+
+END distributionPoint
+END 2.5.29.31
+
+ATTRIBUTE	certificatePolicies			2.5.29.32	sequence        sequence_of=sequence,is_oid_leaf
+BEGIN 2.5.29.32
+DEFINE	policyInformation				sequence
+BEGIN policyInformation
+DEFINE	policyIdentifier				oid
+
+DEFINE	policyQualifiers				sequence        sequence_of=sequence
+BEGIN policyQualifiers
+DEFINE	policyQualifierInfo				group           ref=OID-Tree,is_pair
+END policyQualifiers
+
+END policyInformation
+END 2.5.29.32
+
+ATTRIBUTE	policyMappings				2.5.29.33	sequence        is_oid_leaf
+BEGIN 2.5.29.33
+DEFINE	issuerDomainPolicy				oid
+DEFINE	subjectDomainPolicy				oid
+END 2.5.29.33
+
+ATTRIBUTE	authorityKeyIdentifier			2.5.29.35	sequence        sequence_of=choice,is_oid_leaf
+BEGIN 2.5.29.35
+ATTRIBUTE	keyIdentifier				0	octetstring  option=0
+ATTRIBUTE	authorityCertIssuer			1	group   ref=GeneralName,subtype=sequence,sequence_of=choice,option=1
+ATTRIBUTE	authorityCertSerialNumber		2	octetstring option=2
+END 2.5.29.35
+
+ATTRIBUTE	policyConstraints			2.5.29.36	sequence        is_oid_leaf
+BEGIN 2.5.29.36
+DEFINE	requireExplicitPolicy				octetstring option=0
+DEFINE	inhibitPolicyMapping				octetstring option=1
+END 2.5.29.36
+
+ATTRIBUTE	extKeyUsage				2.5.29.37	sequence        sequence_of=oid,is_oid_leaf
+#DEFINE extKeyUsageSyntax        sequence
+BEGIN 2.5.29.37
+DEFINE	keyPurposeId					oid
+END 2.5.29.37
+
+ATTRIBUTE	freshestCRL				2.5.29.46	sequence        sequence_of=sequence,is_oid_leaf
+DEFINE	distributionPoint				sequence
+BEGIN distributionPoint
+DEFINE	distributionPointName				sequence  option=0
+BEGIN distributionPointName
+ATTRIBUTE	fullName				0	group   ref=GeneralName,subtype=sequence,sequence_of=choice,option=0
+ATTRIBUTE	nameRelativeToCRLIssuer			1	sequence        option=1
+BEGIN nameRelativeToCRLIssuer
+DEFINE	RelativeDistinguishedName			tlv subtype=set
+BEGIN RelativeDistinguishedName
+DEFINE	AttributeTypeandValue				group ref=OID-Tree,is_pair
+END RelativeDistinguishedName
+END nameRelativeToCRLIssuer
+END distributionPointName
+
+DEFINE	reasons						struct  option=1
+BEGIN reasons
+MEMBER		unused					bit[1]
+MEMBER		keyCompromise				bit[1]
+MEMBER		cACompromise				bit[1]
+MEMBER		affiliationChanged			bit[1]
+MEMBER		superseded				bit[1]
+MEMBER		cessationOfOperation			bit[1]
+MEMBER		certificateHold				bit[1]
+MEMBER		privilegeWithdrawn			bit[1]
+MEMBER		aACompromise				bit[1]
+END reasons
+
+DEFINE	cRLIssuer					group   ref=GeneralName,subtype=sequence,sequence_of=choice,option=2
+
+END distributionPoint
+
+ATTRIBUTE	inhibitAnyPolicy			2.5.29.54	integer is_oid_leaf

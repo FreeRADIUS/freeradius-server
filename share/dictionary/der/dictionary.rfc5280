@@ -1,0 +1,52 @@
+# -*- text -*-
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+DEFINE	Certificate					tlv
+BEGIN Certificate
+
+DEFINE	tbsCertificate					tlv
+BEGIN tbsCertificate
+DEFINE	version						tlv class=context-specific,tagnum=0,subtype=sequence
+BEGIN version
+DEFINE	VersionNum					integer
+END version
+DEFINE	serialNumber					octets tagnum=2
+DEFINE	signature					group ref=OID-Tree,is_pair
+
+DEFINE	issuer						tlv subtype=sequence,sequence_of=set,is_pairs
+BEGIN issuer
+DEFINE	RelativeDistinguishedName			tlv subtype=set
+BEGIN RelativeDistinguishedName
+DEFINE	AttributeTypeAndValue				group ref=OID-Tree,is_pair
+END RelativeDistinguishedName
+END issuer
+
+DEFINE	validity					tlv
+BEGIN validity
+DEFINE	notBefore					utctime
+DEFINE	notAfter					utctime
+END validity
+
+DEFINE	subject						tlv sequence_of=set,is_pairs
+BEGIN subject
+DEFINE	RelativeDistinguishedName			tlv subtype=set
+BEGIN RelativeDistinguishedName
+DEFINE	AttributeTypeandValue				group ref=OID-Tree,is_pair
+END RelativeDistinguishedName
+END subject
+
+DEFINE	subjectPublicKeyInfo				tlv
+BEGIN subjectPublicKeyInfo
+DEFINE	algorithm					group ref=OID-Tree,is_pair
+DEFINE	subjectPublicKey				octets subtype=bitstring
+END subjectPublicKeyInfo
+
+DEFINE	extensions					x509_extensions ref=OID-Tree
+
+END tbsCertificate
+
+DEFINE	signatureAlgorithm				group ref=OID-Tree,is_pair
+
+DEFINE	signature					octets subtype=bitstring
+END Certificate
