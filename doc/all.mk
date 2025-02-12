@@ -6,7 +6,7 @@
 #  to fix that.  So, only run those shell scripts if we're going to
 #  build the documentation.
 #
-WITH_DOC := $(strip $(foreach x,doc man pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
+WITH_DOC := $(strip $(foreach x,doc man doxygen,$(findstring $(x),$(MAKECMDGOALS))))
 
 #
 #  Convert adoc to man, and then let "install.man" deal with things.
@@ -57,9 +57,6 @@ endif
 #  If we still decide to build the documentation, then add in all of the documentation rules.
 #
 ifneq "$(WITH_DOC)" ""
-#
-#	TODO: The 'pdf' target is broken. we should enable here soon.
-#
 all.doc: docsite
 
 install: install.doc
@@ -73,7 +70,6 @@ CONF_FILES := $(filter-out %~,$(wildcard raddb/*conf raddb/mods-available/* radd
 BASE_ADOC_FILES := $(wildcard doc/*.adoc doc/*/*.adoc doc/*/*/*.adoc) doc/antora/modules/reference/pages/raddb/mods-available/all_modules.adoc
 
 ADOC_FILES	:= $(BASE_ADOC_FILES) $(AUTO_ADOC_FILES)
-PDF_FILES := $(patsubst doc/%.adoc,doc/%.pdf,$(ADOC_FILES))
 
 #
 #	Our "conf to Doxygen" stuff.
@@ -117,7 +113,7 @@ install.doc: $(addprefix $(R)$(docdir)/,$(ALL_DOC_FILES))
 
 .PHONY: clean.doc
 clean.doc:
-	${Q}rm -f doc/*~ doc/rfc/*~ doc/examples/*~ $(AUTO_ADOC_FILES) $(PDF_FILES) $(MAN_FILES)
+	${Q}rm -f doc/*~ doc/rfc/*~ doc/examples/*~ $(AUTO_ADOC_FILES) $(MAN_FILES)
 	${Q}rm -rf $(DOXYGEN_HTML_DIR) $(BUILD_DIR)/site
 
 #
@@ -258,20 +254,6 @@ doc/antora/modules/reference/pages/raddb/mods-available/all_modules.adoc: $(READ
 	${Q}./scripts/asciidoc/mod_readme2adoc $(README_MODULES) > $@
 endif
 
-doc/%.pdf: doc/%.adoc
-	@echo PDF $^
-	${Q}$(ASCIIDOCTOR) $< -b docbook5 -o - | \
-		$(PANDOC) -f docbook -t latex --${PANDOC_ENGINE}-engine=xelatex \
-			-V papersize=letter \
-			-V images=yes \
-			--template=./scripts/asciidoc/freeradius.template -o $@
-
-doc/%.pdf: doc/%.md
-	@echo PDF $^
-	${Q}$(PANDOC) -f markdown -t latex --${PANDOC_ENGINE}-engine=xelatex \
-		-V papersize=letter \
-		--template=./scripts/asciidoc/freeradius.template -o $@ $<
-
 doc/man/%.8: doc/man/%.adoc
 	@echo MAN $^
 	${Q}${ASCIIDCOCTOR} asciidoctor -b manpage $<
@@ -280,10 +262,9 @@ doc/man/%.1: doc/man/%.adoc
 	@echo MAN $^
 	${Q}${ASCIIDCOCTOR} asciidoctor -b manpage $<
 
-.PHONY: asciidoc html pdf clean clean.doc
+.PHONY: asciidoc html clean clean.doc
 asciidoc: $(ADOC_FILES)
 docsite: build/docsite/sitemap.xml
-pdf: $(PDF_FILES)
 
 doc: build/docsite/sitemap.xml
 
