@@ -1,0 +1,183 @@
+# -*- text -*-
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+DEFINE	Certificate-Extensions				x509_extensions ref=OID-Tree
+
+DEFINE	Issuer						tlv is_pairs
+BEGIN Issuer
+DEFINE	RelativeDistinguishedName			tlv subtype=set
+BEGIN RelativeDistinguishedName
+DEFINE	AttributeTypeAndValue				group ref=OID-Tree,sequence_of=set,is_pair
+END RelativeDistinguishedName
+END Issuer
+
+DEFINE	Issuer-Set					tlv is_pairs
+BEGIN Issuer-Set
+DEFINE	RelativeDistinguishedName			tlv
+BEGIN RelativeDistinguishedName
+DEFINE	AttributeTypeAndValue				group ref=OID-Tree,sequence_of=set,is_pair
+END RelativeDistinguishedName
+END Issuer-Set
+
+DEFINE	Test-Seq-Of					sequence sequence_of=integer
+BEGIN Test-Seq-Of
+DEFINE	Test-First-Integer				integer
+END Test-Seq-Of
+
+DEFINE	Test-Set-Of					tlv subtype=set,set_of=integer
+BEGIN Test-Set-Of
+DEFINE	Test-First-Integer				int64
+END Test-Set-Of
+
+DEFINE	Test-Set-Of-Group				group ref=Test-Set-Of,subtype=set,set_of=integer
+
+DEFINE	Test-Boolean					bool
+
+DEFINE	Test-Integer					int64
+
+DEFINE	Foo						struct subtype=sequence
+BEGIN Foo
+MEMBER		Test-Integer				int64
+END Foo
+
+DEFINE	Bar						struct
+BEGIN Bar
+MEMBER		Test-Boolean				bool
+END Bar
+
+DEFINE	Foo-Bar						struct subtype=sequence
+BEGIN Foo-Bar
+MEMBER		Test-Integer				int64 has_default
+VALUE	Test-Integer			DEFAULT			1
+MEMBER		Test-Boolean				bool
+END Foo-Bar
+
+DEFINE	Test-Bitstring					octets subtype=bitstring
+
+DEFINE	Seq-Bitstring-Octets				struct
+BEGIN Seq-Bitstring-Octets
+MEMBER		Test-Bitstring				octets
+END Seq-Bitstring-Octets
+
+DEFINE	Bitstring-Struct				struct subtype=bitstring
+BEGIN Bitstring-Struct
+MEMBER		foo					bit[8]
+MEMBER		bar					bit[4]
+MEMBER		foo-bar					bit[4]
+END Bitstring-Struct
+
+DEFINE	Bitstring-Struct-7				struct subtype=bitstring
+BEGIN Bitstring-Struct-7
+MEMBER		foo					bit[2]
+MEMBER		bar					bit[1]
+MEMBER		foo-bar					bit[4]
+END Bitstring-Struct-7
+
+DEFINE	Octetstring					octets
+
+DEFINE	Seq-Octetstring					struct
+BEGIN Seq-Octetstring
+MEMBER		Octetstring				octets
+END Seq-Octetstring
+
+DEFINE	Test-NULL					bool subtype=null
+
+DEFINE	Seq-Null					struct
+BEGIN Seq-Null
+MEMBER		Test-Null				bool subtype=null
+END Seq-Null
+
+DEFINE	Seq-Integer-Null				struct
+BEGIN Seq-Integer-Null
+MEMBER		Test-Integer				int64
+MEMBER		Test-Null				bool subtype=null
+END Seq-Integer-Null
+
+DEFINE	Test-Oid					string subtype=oid
+
+DEFINE	Seq-Oid						struct subtype=sequence
+BEGIN Seq-Oid
+MEMBER		Test-Oid				string subtype=oid
+END Seq-Oid
+
+DEFINE	Test-Enumerated					int64 subtype=enumerated
+
+DEFINE	Test-String					string
+
+DEFINE	Test-String-Max					string max=5
+
+#DEFINE Test-String-UTF8         string subtype=utf8string
+DEFINE	Test-String-UTF8				utf8string
+
+DEFINE	Test-String-Custom				utf8string
+
+DEFINE	Test-String-Printable				printablestring
+
+DEFINE	Test-String-T61					t61string
+
+DEFINE	Test-String-IA5					ia5string
+
+DEFINE	Test-String-Visible				visiblestring
+
+DEFINE	Test-String-General				generalstring
+
+DEFINE	Test-String-Universal				universalstring
+
+DEFINE	Seq-String					struct
+BEGIN Seq-String
+MEMBER		Test-String				string
+END Seq-String
+
+DEFINE	Test-Date					date
+
+DEFINE	Test-UTC					utctime
+
+DEFINE	Test-Generalized-Time				generalizedtime
+
+DEFINE	Seq-Date					struct
+BEGIN Seq-Date
+MEMBER		Test-Date				date
+END Seq-Date
+
+DEFINE	Set-Bool-Integer				struct
+BEGIN Set-Bool-Integer
+MEMBER		Test-Bool				bool
+MEMBER		Test-Integer				int64
+END Set-Bool-Integer
+
+DEFINE	Test-Context-Specific				bool class=context-specific,tagnum=0,subtype=boolean
+
+DEFINE	Test-Sequence-TLV				tlv subtype=sequence
+BEGIN Test-Sequence-TLV
+DEFINE	Test-Integer					int64
+DEFINE	Test-Boolean					bool
+END Test-Sequence-TLV
+
+DEFINE	Test-TLV					tlv
+BEGIN Test-TLV
+DEFINE	Test-Integer					int64 subtype=integer
+DEFINE	Test-Boolean					bool subtype=boolean
+END Test-TLV
+
+DEFINE	Test-Sequence-GROUP				group subtype=sequence,ref=Test-TLV
+
+DEFINE	Test-Set-Struct					struct subtype=set
+BEGIN Test-Set-Struct
+MEMBER		Test-Boolean				bool subtype=boolean
+MEMBER		Test-Integer				int64 subtype=integer
+END Test-Set-Struct
+
+DEFINE	Test-Set-Bad-Struct				struct subtype=set
+BEGIN Test-Set-Bad-Struct
+MEMBER		Test-Integer				int64 subtype=integer
+MEMBER		Test-Boolean				bool subtype=boolean
+END Test-Set-Bad-Struct
+
+DEFINE	Test-Set-TLV					tlv subtype=set
+BEGIN Test-Set-TLV
+DEFINE	Test-Integer					int64 subtype=integer
+DEFINE	Test-Boolean					bool subtype=boolean
+END Test-Set-TLV
+
+DEFINE	Test-Set-GROUP					group subtype=set,ref=Test-TLV
