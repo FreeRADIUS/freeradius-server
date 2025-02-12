@@ -87,7 +87,6 @@ fr_table_num_sorted_t const tag_name_to_number[] = {
 	{ L("utf8string"),		FR_DER_TAG_UTF8_STRING },
 	{ L("visiblestring"),		FR_DER_TAG_VISIBLE_STRING },
 };
-
 static size_t tag_name_to_number_len = NUM_ELEMENTS(tag_name_to_number);
 
 int fr_der_global_init(void)
@@ -123,11 +122,11 @@ void fr_der_global_free(void)
 static int dict_flag_tagnum(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
-	long num;
+	unsigned long num;
 	char *end = NULL;
 
 	num = strtoul(value, &end, 10);
-	if ((num > 255) || !*end) {
+	if ((num > 255) || *end) {
 		fr_strerror_printf("Invalid tag number '%s'", value);
 		return -1;
 	}
@@ -312,7 +311,7 @@ static fr_dict_flag_parser_t const der_flags[] = {
 
 static bool attr_type(fr_type_t *type ,fr_dict_attr_t **da_p, char const *name)
 {
-	static fr_table_num_sorted_t const table[] = {
+	static fr_table_num_sorted_t const type_table[] = {
 		{ L("bitstring"),	FR_TYPE_OCTETS },
 		{ L("boolean"),		FR_TYPE_BOOL },
 		{ L("choice"),		FR_TYPE_TLV },
@@ -333,7 +332,7 @@ static bool attr_type(fr_type_t *type ,fr_dict_attr_t **da_p, char const *name)
 		{ L("visiblestring"),	FR_TYPE_STRING },
 		{ L("x509_extensions"),	FR_TYPE_GROUP }
 	};
-	static size_t table_len = NUM_ELEMENTS(table);
+	static size_t type_table_len = NUM_ELEMENTS(type_table);
 
 	static fr_table_num_sorted_t const der_tag_table[] = {
 		{ L("bitstring"),	FR_DER_TAG_BITSTRING },
@@ -363,7 +362,7 @@ static bool attr_type(fr_type_t *type ,fr_dict_attr_t **da_p, char const *name)
 	fr_der_attr_flags_t	*flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 	fr_der_tag_num_t	subtype;
 
-	*type = fr_table_value_by_str(table, name, UINT8_MAX);
+	*type = fr_table_value_by_str(type_table, name, UINT8_MAX);
 	if (*type == UINT8_MAX) {
 		fr_strerror_printf("Invalid type '%s'", name);
 		return false;
@@ -392,7 +391,7 @@ static bool attr_type(fr_type_t *type ,fr_dict_attr_t **da_p, char const *name)
 		dict_flag_sequence_of(da_p, "sequence", NULL);
 	}
 
-	flags->is_choice =(strcmp(name, "choice") == 0);
+	flags->is_choice = (strcmp(name, "choice") == 0);
 
 	return true;
 }
@@ -437,8 +436,8 @@ fr_dict_protocol_t	  libfreeradius_der_dict_protocol = {
 		       .valid = attr_valid
 	       },
 
-	       .init = fr_der_global_init,
-	       .free		     = fr_der_global_free,
+	       .init 	= fr_der_global_init,
+	       .free	= fr_der_global_free,
 
 	       // .decode = fr_der_decode_foreign,
 	       // .encode = fr_der_encode_foreign,
