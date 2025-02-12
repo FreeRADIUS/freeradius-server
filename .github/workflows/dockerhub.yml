@@ -20,7 +20,7 @@ jobs:
   #  build the Docker images.
   #
   build_docker_images:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     if: github.repository_owner == 'FreeRADIUS'
 
     strategy:
@@ -76,7 +76,7 @@ jobs:
 
 
   manifest:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: build_docker_images
     if: github.repository_owner == 'FreeRADIUS'
 
