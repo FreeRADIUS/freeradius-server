@@ -79,7 +79,7 @@ jobs:
           docker build --no-cache -f "$DOCKERFILE" -t "$DOCKER_IMAGE_NAME" --label preserve=true .
 
       - name: Docker login
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_REPO_UPDATE_USERNAME }}
           password: ${{ secrets.DOCKER_REPO_UPDATE_PASSWORD }}
