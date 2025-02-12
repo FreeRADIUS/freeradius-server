@@ -1,3 +1,4 @@
 checkrad
 radtest
 fuzzer_*.mk
+fuzzer_*.c
