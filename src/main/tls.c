@@ -3077,30 +3077,33 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	/*
 	 *	Get the Certificate Distribution points
 	 */
-	crl_dp = X509_get_ext_d2i(client_cert, NID_crl_distribution_points, NULL, NULL);
-	if (crl_dp) {
-		DIST_POINT *dp;
-		const char *url_ptr;
+	if (certs && (lookup <= 1)) {
+		crl_dp = X509_get_ext_d2i(client_cert, NID_crl_distribution_points, NULL, NULL);
 
-		for (int i = 0; i < sk_DIST_POINT_num(crl_dp); i++) {
-			size_t len;
-			char cdp[1024];
+		if (crl_dp) {
+			DIST_POINT *dp;
+			const char *url_ptr;
 
-			dp = sk_DIST_POINT_value(crl_dp, i);
-			if (!dp) continue;
+			for (int i = 0; i < sk_DIST_POINT_num(crl_dp); i++) {
+				size_t len;
+				char cdp[1024];
 
-			url_ptr = get_cdp_url(dp);
-			if (!url_ptr) continue;
+				dp = sk_DIST_POINT_value(crl_dp, i);
+				if (!dp) continue;
 
-			len = strlen(url_ptr);
-			if (len >= sizeof(cdp)) continue;
+				url_ptr = get_cdp_url(dp);
+				if (!url_ptr) continue;
 
-			memcpy(cdp, url_ptr, len + 1);
+				len = strlen(url_ptr);
+				if (len >= sizeof(cdp)) continue;
 
-			vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_CDP][lookup], cdp, T_OP_ADD);
-			rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+				memcpy(cdp, url_ptr, len + 1);
+
+				vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_CDP][lookup], cdp, T_OP_ADD);
+				rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+			}
+			sk_DIST_POINT_pop_free(crl_dp, DIST_POINT_free);
 		}
-		sk_DIST_POINT_pop_free(crl_dp, DIST_POINT_free);
 	}
 
 	/*
