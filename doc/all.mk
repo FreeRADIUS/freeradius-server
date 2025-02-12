@@ -6,7 +6,7 @@
 #  to fix that.  So, only run those shell scripts if we're going to
 #  build the documentation.
 #
-WITH_DOC := $(strip $(foreach x,doc html man pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
+WITH_DOC := $(strip $(foreach x,doc man pdf doxygen,$(findstring $(x),$(MAKECMDGOALS))))
 
 #
 #  Convert adoc to man, and then let "install.man" deal with things.
@@ -60,7 +60,7 @@ ifneq "$(WITH_DOC)" ""
 #
 #	TODO: The 'pdf' target is broken. we should enable here soon.
 #
-all.doc: html docsite
+all.doc: docsite
 
 install: install.doc
 
@@ -74,8 +74,6 @@ BASE_ADOC_FILES := $(wildcard doc/*.adoc doc/*/*.adoc doc/*/*/*.adoc) doc/antora
 
 ADOC_FILES	:= $(BASE_ADOC_FILES) $(AUTO_ADOC_FILES)
 PDF_FILES := $(patsubst doc/%.adoc,doc/%.pdf,$(ADOC_FILES))
-HTML_FILES := $(filter %html,$(patsubst doc/%.adoc,doc/%.html,$(ADOC_FILES)) \
-              $(subst %home.adoc,index.html,$(ADOC_FILES)))
 
 #
 #	Our "conf to Doxygen" stuff.
@@ -119,7 +117,7 @@ install.doc: $(addprefix $(R)$(docdir)/,$(ALL_DOC_FILES))
 
 .PHONY: clean.doc
 clean.doc:
-	${Q}rm -f doc/*~ doc/rfc/*~ doc/examples/*~ $(AUTO_ADOC_FILES) $(HTML_FILES) $(PDF_FILES) $(MAN_FILES)
+	${Q}rm -f doc/*~ doc/rfc/*~ doc/examples/*~ $(AUTO_ADOC_FILES) $(PDF_FILES) $(MAN_FILES)
 	${Q}rm -rf $(DOXYGEN_HTML_DIR) $(BUILD_DIR)/site
 
 #
@@ -260,32 +258,6 @@ doc/antora/modules/reference/pages/raddb/mods-available/all_modules.adoc: $(READ
 	${Q}./scripts/asciidoc/mod_readme2adoc $(README_MODULES) > $@
 endif
 
-#
-#	Converting *.adoc to *.html
-#
-#	Note that we need to make the BASEDIR relative, so that it works for both
-#	file:// links and http:// links.
-#
-DOC_BASEDIR = $(subst $() $(),,$(foreach x,$(subst /, ,$1),../))
-DOC_UPDATED_LABEL = "FreeRADIUS ${RADIUSD_VERSION} - \#$(shell git rev-parse --short HEAD) - Last updated"
-
-doc/%.html: doc/%.adoc
-	@echo HTML $^
-	$(eval BASEDIR := $(call DOC_BASEDIR,$(subst doc/,,$(dir $^))))
-	$(eval BASEDIR := $(if $(BASEDIR),$(BASEDIR),./))
-	${Q}$(ASCIIDOCTOR) $< -w                                         \
-	                      -a toc="left"                              \
-	                      -a docinfodir="$(BASEDIR)/templates"       \
-	                      -a basedir="$(BASEDIR)"                    \
-	                      -a docinfo="shared,private"                \
-	                      -a last-update-label=${DOC_UPDATED_LABEL}  \
-	                      -a stylesdir="$(BASEDIR)/css"              \
-	                      -a stylesheet="freeradius.css"             \
-	                      -a favicon="$(BASEDIR)/images/favicon.png" \
-	                      -a linkcss                                 \
-	                      -b html5 -o $@ $<
-	${Q}perl -p -i -e 's,\.adoc,\.html,g; s,/.html",/",g; s/\.md\.html/\.html/g' $@
-
 doc/%.pdf: doc/%.adoc
 	@echo PDF $^
 	${Q}$(ASCIIDOCTOR) $< -b docbook5 -o - | \
@@ -311,10 +283,9 @@ doc/man/%.1: doc/man/%.adoc
 .PHONY: asciidoc html pdf clean clean.doc
 asciidoc: $(ADOC_FILES)
 docsite: build/docsite/sitemap.xml
-html: $(HTML_FILES)
 pdf: $(PDF_FILES)
 
-doc: build/docsite/sitemap.xml $(HTML_FILES)
+doc: build/docsite/sitemap.xml
 
 # end of WITH_DOC
 else
