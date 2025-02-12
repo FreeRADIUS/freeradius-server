@@ -733,14 +733,15 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 			return -1;
 		}
 	} else {
-		uint16_t src_port, current;
+		uint16_t src_port, current, range;
 		struct sockaddr_in *sin = (struct sockaddr_in *) &salocal;
 
 		fr_assert(my->info.cfg->src_port_start);
 		fr_assert(my->info.cfg->src_port_end);
 		fr_assert(my->info.cfg->src_port_end >= my->info.cfg->src_port_start);
 
-		src_port = fr_rand() % (my->info.cfg->src_port_end - my->info.cfg->src_port_start);
+		range = my->info.cfg->src_port_end - my->info.cfg->src_port_start;
+		src_port = fr_rand() % range;
 
 		/*
 		 *	We only care about sin_port, which is in the same location for sockaddr_in and sockaddr_in6.
@@ -760,8 +761,8 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 		 */
 		current = src_port;
 		while (true) {
-			if (current == my->info.cfg->src_port_end) {
-				current = my->info.cfg->src_port_start;
+			if (current == range) {
+				current = 0;
 			} else {
 				current++;
 			}
@@ -771,7 +772,7 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 			 */
 			if (current == src_port) break;
 
-			sin->sin_port = htons(current);
+			sin->sin_port = htons(my->info.cfg->src_port_start + current);
 
 			if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) >= 0) goto done;
 		}
@@ -1337,7 +1338,7 @@ int fr_bio_fd_reopen(fr_bio_t *bio)
 			fr_strerror_printf("Failed opening file %s: %s", cfg->filename, fr_syserror(errno));
 			return -1;
 		}
-	
+
 	} else {
 		/*
 		 *	We make the parent directory if told to, AND if there's a '/' in the path.
