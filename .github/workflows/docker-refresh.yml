@@ -31,10 +31,6 @@ jobs:
               - docker.internal.networkradius.com/self-hosted
             dockerfile: scripts/ci/Dockerfile
 
-          - base_image: ubuntu:20.04
-            image_name: docker.internal.networkradius.com/self-hosted-ubuntu20
-            dockerfile: scripts/ci/Dockerfile-ubuntu20
-
           - base_image: mariadb
           - base_image: postgres
           - base_image: 4teamwork/389ds
@@ -110,7 +106,7 @@ jobs:
         shell: bash
         env:
           DOCKER_IMAGE_NAME: ${{ matrix.os.image_name }}
-          DOCKER_TAGS: ${{ matrix.os.extra_tags }}
+          DOCKER_TAGS: ${{ join(matrix.os.extra_tags, ' ') }}
         run: |
           for TAG in $DOCKER_TAGS; do \
             docker image tag "$DOCKER_IMAGE_NAME" "$TAG"; \
