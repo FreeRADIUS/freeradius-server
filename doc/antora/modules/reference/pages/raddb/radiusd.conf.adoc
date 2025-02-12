@@ -700,7 +700,7 @@ edit it to create policies for your local site.
 
 For more documentation on virtual servers, see:
 
-`doc/raddb/sites-available/index.adoc`
+`raddb/sites-available/index.adoc`
 
 
 == Default Configuration

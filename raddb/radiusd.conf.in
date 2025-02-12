@@ -779,6 +779,6 @@ policy {
 #
 #  For more documentation on virtual servers, see:
 #
-#  `doc/raddb/sites-available/index.adoc`
+#  `raddb/sites-available/index.adoc`
 #
 $INCLUDE sites-enabled/

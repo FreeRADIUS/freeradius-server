@@ -1,16 +1,18 @@
 = Documentation for v4
 
 All of the documentation, READMEs, etc. for this directory are now
-stored in the `doc/raddb` directory, which is a soft link to the
-Asciidoc source.  Those files are converted to HTML by Antora.
+stored in Antora, in the `doc/antora/modules/reference/pages/raddb/`
+directory.  The files in this directory are automatically converted to
+Asciidoc during the build process, and added to the cross-linked
+documentation.
 
 If the server is being built from source, you can build the HTML
 documentation and see if via the following commands:
 
 ```
 make docsite
-ls build/docsite/freeradius-server/latest/index.html
+ls build/docsite/freeradius-server/4.0.0/index.html
 ```
 
-If the server is pre-packaged, then the HTML documentation should be
+If the server is pre-packaged, then the documentation should be
 available as a separate package.

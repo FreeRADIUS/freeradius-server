@@ -235,11 +235,6 @@ ifneq "$(findstring asciidoc,$(MAKECMDGOALS))" ""
 #  format to read/write than asciidoc.  But we want a consistent "look
 #  and feel" for the documents, so we make all of them asciidoc.
 #
-doc/raddb/%.adoc: raddb/%.md
-	@echo PANDOC $^
-	${Q}mkdir -p $(dir $@)
-	${Q}$(PANDOC) --filter=scripts/asciidoc/pandoc-filter -w asciidoc -o $@ $^
-
 doc/%.adoc: doc/%.md
 	@echo PANDOC $^
 	${Q}mkdir -p $(dir $@)
@@ -249,7 +244,7 @@ doc/%.adoc: doc/%.md
 #
 #  Conf files get converted to Asciidoc via our own magic script.
 #
-doc/raddb/%.adoc: raddb/%
+doc/antora/modules/reference/pages/raddb/%.adoc: raddb/%
 	@echo ADOC $^
 	${Q}mkdir -p $(dir $@)
 	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^

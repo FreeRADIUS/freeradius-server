@@ -9,7 +9,6 @@ The directories in the server source are laid out ad follows:
 | Directory           | Description
 | `doc/`              | Various snippets of documentation.
 | `doc/introduction/` | Concepts and introduction to FreeRADIUS.
-| `doc/raddb/`        | HTML versions of the configuration files.
 | `doc/developers/`   | Developer documentation for internal APIs
 | `doc/unlang/`       | The unlang processing language.
 | `doc/upgrade/`      | How to upgrade from version 3 to version 4.

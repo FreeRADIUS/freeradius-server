@@ -26,30 +26,6 @@ If Antora is not installed locally, it can usually be installed from
 
     npm i -g @antora/cli@2.0 @antora/site-generator-default@2.0
 
-## Basic HTML
-
-If the local system has Asciidoctor and Pandoc installed, then it is
-possible to create simple HTML output via the following command:
-
-    make html
-
-The build process will create one `html` file for every `adoc` file in
-this directory.  Note that Antora uses a different syntax for
-cross-links than plain Asciidoc.  As a result, the output will look
-OK, but links may be broken.
-
-The main reason to use `make html` is that it can be faster than
-Antora.  You can use this process to get a "quick look" at a rendered
-page, to see if it looks reasonable.
-
-The output HTML files are placed in the same directory as the input
-Asciidoc files, with the extension changed to `.html`.
-
-Note that the CSS for these HTML files is not in the `antora`
-directories.  If you look at the files there, they will be missing the
-CSS.  Instead, the `mods-available/always.adoc` file ends up being
-accessible _only_ via `doc/raddb/mods-available/always.html`
-
 ## Raddb and Module Documentation
 
 The documentation for each module syntax, configuration, etc. is
