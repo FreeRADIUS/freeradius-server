@@ -2439,11 +2439,8 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 
 	switch (inst->mode) {
 	case RLM_RADIUS_MODE_XLAT_PROXY:
-		/*
-		 *	@todo - make lifetime configurable?
-		 */
 		fr_rb_expire_inline_talloc_init(&thread->bio.expires, home_server_t, expire, home_server_cmp, home_server_free,
-						fr_time_delta_from_sec(60));
+						inst->home_server_lifetime);
 		FALL_THROUGH;
 
 	default:

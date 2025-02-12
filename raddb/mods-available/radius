@@ -587,7 +587,7 @@ radius {
 	#
 
 	#
-	#  ### Access requests packets
+	#  ### Access Request packets
 	#
 	Access-Request {
 		#
@@ -767,14 +767,42 @@ radius replicate {
 }
 
 #
-#  A dynamic proxy module
+#  ## Dynamic Proxying
+#
+#  This module supports dynamic proxying via a run-time function:
+#
+#	%proxy.sendto.ipaddr(127.0.0.1, 1812, "testing123")
+#
+#  The first part of the function name (e.g. `proxy`) is taken from
+#  the module name.  The rest is fixed as `sendto.ipaddr()`
+#
+#  The arguments to the function are:
+#
+#  * destination IP address.
+#  * destination port
+#  * shared secret
+#
+#  The function will return the type of response packet if it receives
+#  as a response, or else the function all will fail.
+#
+#	if (%proxy.sendto.ipaddr(127.0.0.1, 1812, "testing123") == 'Access-Accept') {
+#	  ...
+#	}
+#
+#  The packet name must be a quoted string.
+#
+#  The proxying is done asynchronously.  i.e. the packet is sent, and
+#  the server goes on to do other work.  At some point in the future,
+#  a response is received, the module processes it, and the server
+#  continues.
+#
+#  The timeouts are controlled as described above.
 #
 radius proxy {
 	type = Access-Request
 
 	#
-	#  We are not opening a socket from our server to their
-	#  server.  We are replicating packets.
+	#  The mode.
 	#
 	mode = dynamic-proxy
 
@@ -813,12 +841,12 @@ radius proxy {
 		#  These two configuratiuon items can only be used for
 		#  UDP sockets.
 		#
-#		src_port_start = 10000
+		src_port_start = 10000
 
 		#
 		#  src_port_end:: End of source port range.
 		#
-#		src_port_end = 11000
+		src_port_end = 11000
 
 		#
 		#  `src_port` cannot be used.  If it is used here, the
@@ -828,6 +856,55 @@ radius proxy {
 		#  `secret` cannot be used.  If it is used, the value
 		#  will be ignored.
 		#
+	}
+
+	#
+	#  Dynamic proxying does *not* support the `status_check`
+	#  section.
+	#
+
+	#
+	#  home_server_lifetime:: The lifetime of the home server.
+	#
+	#  When a new dynamic home server is used, the module caches
+	#  information about it.  So long as the home server is still
+	#  being used, it will not expire.  But if it has received all
+	#  expected responses (or timeouts), _and_ it has reached its
+	#  expected lifetime, then the home server will be deleted.
+	#
+	#  This process allows for the secret to change over time.
+	#  However, the secret can only be changed if there are no
+	#  outstanding packets.  Otherwise, changing the secret would
+	#  involve having multiple packets outstanding which have
+	#  different secrets.  That doesn't work, and can't be fixed
+	#  through any code changes on the server.
+	#
+	#  The solution to that is to switch to using TLS.
+	#
+	home_server_lifetime = 3600
+
+	#
+	#  These are allowed, but are less useful.  If the home server
+	#  doesn't respond, it will often just hit the home server
+	#  lifetime, and be deleted.
+	#
+	response_window = 15
+	zombie_period = 10
+	revive_interval = 3600
+
+
+	#
+	#  ## Timeouts
+	#
+	#  Timeouts for proxying are controlled in sections named for
+	#  the packet type.  See the examples above for full
+	#  documentation.
+	#
+	Access-Request {
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 5
+		max_rtx_duration = 30
 	}
 
 	#

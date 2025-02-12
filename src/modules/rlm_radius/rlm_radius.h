@@ -59,6 +59,8 @@ struct rlm_radius_s {
 	fr_time_delta_t		zombie_period;
 	fr_time_delta_t		revive_interval;
 
+	fr_time_delta_t		home_server_lifetime;	//!< for XLAT_PROXY
+
 	char const		*secret;		//!< Shared secret.
 
 	uint32_t		max_packet_size;	//!< Maximum packet size.
