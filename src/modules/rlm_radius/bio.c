@@ -2437,12 +2437,24 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	thread->ctx.fd_config = inst->fd_config;
 	thread->ctx.radius_ctx = inst->common_ctx;
 
-	if ((inst->mode != RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) &&
-	    (inst->mode != RLM_RADIUS_MODE_XLAT_PROXY)) {
+	switch (inst->mode) {
+	case RLM_RADIUS_MODE_XLAT_PROXY:
+		/*
+		 *	@todo - make lifetime configurable?
+		 */
+		fr_rb_expire_inline_talloc_init(&thread->bio.expires, home_server_t, expire, home_server_cmp, home_server_free,
+						fr_time_delta_from_sec(60));
+		FALL_THROUGH;
+
+	default:
 		thread->ctx.trunk = trunk_alloc(thread, mctx->el, &io_funcs,
 					    &inst->trunk_conf, inst->name, thread, false);
 		if (!thread->ctx.trunk) return -1;
 		return 0;
+
+	case RLM_RADIUS_MODE_REPLICATE:
+	case RLM_RADIUS_MODE_UNCONNECTED_REPLICATE:
+		break;
 	}
 
 	/*
@@ -2466,25 +2478,11 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 
 	thread->bio.fd->uctx = thread;
 	thread->ctx.fd_info = fr_bio_fd_info(thread->bio.fd);
+	fr_assert(thread->ctx.fd_info != NULL);
 
-	/*
-	 *	We don't care about replies.
-	 */
-	if (inst->mode == RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) {
-		(void) fr_bio_fd_write_only(thread->bio.fd);
+	(void) fr_bio_fd_write_only(thread->bio.fd);
 
-		DEBUG("%s - Opened unconnected replication socket %s", inst->name, thread->ctx.fd_info->name);
-		return 0;
-	}
-
-	DEBUG("%s - Opened unconnected proxy socket %s", inst->name, thread->ctx.fd_info->name);
-
-	/*
-	 *	@todo - make lifetime configurable?
-	 */
-	fr_rb_expire_inline_talloc_init(&thread->bio.expires, home_server_t, expire, home_server_cmp, home_server_free,
-					fr_time_delta_from_sec(60));
-
+	DEBUG("%s - Opened unconnected replication socket %s", inst->name, thread->ctx.fd_info->name);
 	return 0;
 }
 
@@ -2665,7 +2663,7 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 	/*
 	 *	Can't change IP address families.
 	 */
-	if (ipaddr->vb_ip.af != thread->ctx.fd_info->socket.af) {
+	if (ipaddr->vb_ip.af != thread->ctx.fd_config.src_ipaddr.af) {
 		RDEBUG("Invalid destination IP address family in %pV", ipaddr);
 		return XLAT_ACTION_DONE;
 	}

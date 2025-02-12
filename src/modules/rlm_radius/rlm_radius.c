@@ -665,16 +665,16 @@ check_others:
 		 *	Filenames are write-only, and cannot get response packets.
 		 */
 		if (inst->fd_config.filename) {
-			cf_log_err(conf, "Cannot set 'filename' here - it is only supported for 'mode=replicate'.");
+			cf_log_err(conf, "Cannot set 'filename' here - it is only supported for 'mode=replicate'");
 			return -1;
 		}
 
 		/*
-		 *	For normal proxying or originating client packets, we need to be able to open multiple
-		 *	source ports.  So the admin can't force a particular source port.
+		 *	When we expect replies, we need to be able to open multiple source ports.  So the
+		 *	admin can't force a particular source port.
 		 */
-		if (inst->fd_config.src_port && (inst->mode != RLM_RADIUS_MODE_XLAT_PROXY)) {
-			cf_log_err(conf, "Cannot set 'src_port' when sending packets to a static destination");
+		if (inst->fd_config.src_port) {
+			cf_log_err(conf, "Cannot 'src_port' here - it can only be set for replicating packets");
 			return -1;
 		}
 
