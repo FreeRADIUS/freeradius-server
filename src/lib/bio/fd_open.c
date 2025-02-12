@@ -25,6 +25,7 @@
 #include <freeradius-devel/bio/fd_priv.h>
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/cap.h>
+#include <freeradius-devel/util/rand.h>
 
 #include <sys/stat.h>
 #include <net/if.h>
@@ -723,14 +724,66 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 	 */
 	if (fr_ipaddr_to_sockaddr(&salocal, &salen, &my->info.socket.inet.src_ipaddr, my->info.socket.inet.src_port) < 0) return -1;
 
-	if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) < 0) {
-		fr_strerror_printf("Failed binding to socket: %s", fr_syserror(errno));
+	/*
+	 *	If we have a fixed source port, just use that.
+	 */
+	if (my->info.cfg->src_port || !my->info.cfg->src_port_start) {
+		if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) < 0) {
+			fr_strerror_printf("Failed binding to socket: %s", fr_syserror(errno));
+			return -1;
+		}
+	} else {
+		uint16_t src_port, current;
+		struct sockaddr_in *sin = (struct sockaddr_in *) &salocal;
+
+		fr_assert(my->info.cfg->src_port_start);
+		fr_assert(my->info.cfg->src_port_end);
+		fr_assert(my->info.cfg->src_port_end >= my->info.cfg->src_port_start);
+
+		src_port = fr_rand() % (my->info.cfg->src_port_end - my->info.cfg->src_port_start);
+
+		/*
+		 *	We only care about sin_port, which is in the same location for sockaddr_in and sockaddr_in6.
+		 */
+		fr_assert(sin->sin_port == 0);
+
+		sin->sin_port = htons(my->info.cfg->src_port_start + src_port);
+
+		/*
+		 *	We've picked a random port in what is hopefully a large range.  If that works, we're
+		 *	done.
+		 */
+		if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) >= 0) goto done;
+
+		/*
+		 *	Hunt & peck.  Which is horrible.
+		 */
+		current = src_port;
+		while (true) {
+			if (current == my->info.cfg->src_port_end) {
+				current = my->info.cfg->src_port_start;
+			} else {
+				current++;
+			}
+
+			/*
+			 *	We've already checked this, so stop.
+			 */
+			if (current == src_port) break;
+
+			sin->sin_port = htons(current);
+
+			if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) >= 0) goto done;
+		}
+
+		fr_strerror_const("There are no open ports between 'src_port_start' and 'src_port_end'");
 		return -1;
 	}
 
 	/*
 	 *	The source IP may have changed, so get the new one.
 	 */
+done:
 	return fr_bio_fd_socket_name(my);
 }
 
