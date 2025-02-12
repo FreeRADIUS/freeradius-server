@@ -2719,6 +2719,16 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 		fr_time_t now = fr_time();
 		home_server_t *old;
 
+		/*
+		 *	We can't change secrets on the fly.  The home
+		 *	server has to expire first, and then the
+		 *	secret can be changed.
+		 */
+		if ((home->ctx.radius_ctx.secret_length != secret->vb_length) ||
+		    (strcmp(home->ctx.radius_ctx.secret, secret->vb_strvalue) != 0)) {
+			RWDEBUG("The new secret is not the same as the old secret: Ignoring the new one");
+		}
+
 		fr_rb_expire_update(expire, home, now);
 
 		while ((old = fr_dlist_head(&expire->head)) != NULL) {
