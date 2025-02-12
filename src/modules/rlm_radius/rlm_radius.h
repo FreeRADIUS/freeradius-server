@@ -64,9 +64,6 @@ struct rlm_radius_s {
 	uint32_t		max_packet_size;	//!< Maximum packet size.
 	uint16_t		max_send_coalesce;	//!< Maximum number of packets to coalesce into one mmsg call.
 
-	uint16_t		src_port_start;		//!< control the source port range for dynamic destinations
-	uint16_t		src_port_end;
-
 	fr_radius_ctx_t		common_ctx;
 
 	bool			replicate;		//!< Ignore responses.

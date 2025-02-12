@@ -103,13 +103,6 @@ static conf_parser_t const transport_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static conf_parser_t const transport_unconnected_config[] = {
-	{ FR_CONF_OFFSET("src_port_start", rlm_radius_t, src_port_start) },
-	{ FR_CONF_OFFSET("src_port_end", rlm_radius_t, src_port_end) },
-
-	CONF_PARSER_TERMINATOR
-};
-
 /*
  *	We only parse the pool options if we're connected.
  */
@@ -125,14 +118,6 @@ static conf_parser_t const connected_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static conf_parser_t const unconnected_config[] = {
-	{ FR_CONF_POINTER("udp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) transport_unconnected_config },
-
-	{ FR_CONF_POINTER("tcp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) transport_unconnected_config },
-
-	CONF_PARSER_TERMINATOR
-};
-
 /*
  *	We only parse the pool options if we're connected.
  */
@@ -140,10 +125,6 @@ static conf_parser_t const pool_config[] = {
 	{ FR_CONF_POINTER("status_check", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) status_check_config },
 
 	{ FR_CONF_OFFSET_SUBSECTION("pool", 0, rlm_radius_t, trunk_conf, trunk_config ) },
-
-	{ FR_CONF_POINTER("udp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) transport_unconnected_config },
-
-	{ FR_CONF_POINTER("tcp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) transport_unconnected_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -298,7 +279,6 @@ static int mode_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 
 	case RLM_RADIUS_MODE_UNCONNECTED_REPLICATE:
 		inst->fd_config.type = FR_BIO_FD_UNCONNECTED;
-		if (cf_section_rules_push(cs, unconnected_config) < 0) return -1;
 		break;
 	}
 
@@ -701,7 +681,7 @@ check_others:
 		/*
 		 *	No src_port range, we don't need to check any other settings.
 		 */
-		if (!inst->src_port_start && !inst->src_port_end) break;
+		if (!inst->fd_config.src_port_start && !inst->fd_config.src_port_end) break;
 
 		if (inst->fd_config.path) {
 			cf_log_err(conf, "Cannot set 'src_port_start' or 'src_port_end' for outgoing Unix sockets");
@@ -719,18 +699,18 @@ check_others:
 		/*
 		 *	Cross-check src_port, src_port_start, and src_port_end.
 		 */
-		if (inst->src_port_start) {
-			if (!inst->src_port_end) {
+		if (inst->fd_config.src_port_start) {
+			if (!inst->fd_config.src_port_end) {
 				cf_log_err(conf, "Range has 'src_port_start', but is missing 'src_port_end'");
 				return -1;
 			}
 
-			if (inst->src_port_start >= inst->src_port_end) {
+			if (inst->fd_config.src_port_start >= inst->fd_config.src_port_end) {
 				cf_log_err(conf, "Range has invalid values for 'src_port_start' ... 'src_port_end'");
 				return -1;
 			}
 
-		} else if (inst->src_port_end) {
+		} else if (inst->fd_config.src_port_end) {
 			cf_log_err(conf, "Range has 'src_port_end', but is missing 'src_port_start'");
 			return -1;
 		}
@@ -762,7 +742,7 @@ check_others:
 		/*
 		 *	Files and unix sockets are OK.  The src_port can be set (or not), and that's fine.
 		 */
-		if (inst->src_port_start || inst->src_port_end) {
+		if (inst->fd_config.src_port_start || inst->fd_config.src_port_end) {
 			cf_log_err(conf, "Cannot set 'src_port_start' or 'src_port_end' when replicating packets");
 			return -1;
 		}

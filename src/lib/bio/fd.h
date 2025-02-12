@@ -92,6 +92,9 @@ typedef struct {
 	uint16_t	src_port;	//!< our port
 	uint16_t	dst_port;	//!< their port
 
+	uint16_t	src_port_start;	//!< limit source port ranges for client BIOs
+	uint16_t	src_port_end;	//!< limit source port ranges for client BIOs
+
 	char const	*interface;	//!< for binding to an interface
 
 	uint32_t	recv_buff;	//!< How big the kernel's receive buffer should be.

@@ -744,13 +744,6 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 
 	MEM(h->tt = radius_track_alloc(h));
 
-	/*
-	 *	Limit the source port to the given range.
-	 */
-	if (h->ctx.inst->src_port_start) {
-		DEBUG("WARNING - src_port_start and src_port_end not currently supported.  A random source port will be chosen");
-	}
-
 	h->bio.fd = fr_bio_fd_alloc(h, &h->ctx.fd_config, 0);
 	if (!h->bio.fd) {
 		PERROR("%s - failed opening socket", h->ctx.module_name);
@@ -2458,8 +2451,8 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	 *	that we can avoid "hunt and peck" attempts to open up
 	 *	the source port.
 	 */
-	if (thread->ctx.inst->src_port_start) {
-		thread->ctx.fd_config.src_port = thread->ctx.inst->src_port_start + fr_schedule_worker_id();
+	if (thread->ctx.fd_config.src_port_start) {
+		thread->ctx.fd_config.src_port = thread->ctx.fd_config.src_port_start + fr_schedule_worker_id();
 	}
 
 	/*

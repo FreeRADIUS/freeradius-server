@@ -113,6 +113,8 @@ static const conf_parser_t client_udp_sub_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipv6addr", FR_TYPE_IPV6_ADDR, 0, fr_bio_fd_config_t, src_ipaddr) },
 
 	{ FR_CONF_OFFSET("src_port", fr_bio_fd_config_t, src_port) },
+	{ FR_CONF_OFFSET("src_port_start", fr_bio_fd_config_t, src_port_start) },
+	{ FR_CONF_OFFSET("src_port_end", fr_bio_fd_config_t, src_port_end) },
 
 	{ FR_CONF_OFFSET("interface", fr_bio_fd_config_t, interface) },
 
@@ -135,6 +137,9 @@ static const conf_parser_t client_udp_unconnected_sub_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipv6addr", FR_TYPE_IPV6_ADDR, 0, fr_bio_fd_config_t, src_ipaddr) },
 
 	{ FR_CONF_OFFSET("interface", fr_bio_fd_config_t, interface) },
+
+	{ FR_CONF_OFFSET("src_port_start", fr_bio_fd_config_t, src_port_start) },
+	{ FR_CONF_OFFSET("src_port_end", fr_bio_fd_config_t, src_port_end) },
 
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff) },
 	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff) },
@@ -161,6 +166,8 @@ static const conf_parser_t client_tcp_sub_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipv6addr", FR_TYPE_IPV6_ADDR, 0, fr_bio_fd_config_t, src_ipaddr) },
 
 	{ FR_CONF_OFFSET("src_port", fr_bio_fd_config_t, src_port) },
+	{ FR_CONF_OFFSET("src_port_start", fr_bio_fd_config_t, src_port_start) },
+	{ FR_CONF_OFFSET("src_port_end", fr_bio_fd_config_t, src_port_end) },
 
 	{ FR_CONF_OFFSET("interface", fr_bio_fd_config_t, interface) },
 
