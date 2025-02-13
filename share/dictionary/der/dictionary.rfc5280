@@ -9,7 +9,7 @@ DEFINE	tbsCertificate					tlv
 BEGIN tbsCertificate
 DEFINE	version						tlv class=context-specific,tagnum=0,subtype=sequence
 BEGIN version
-DEFINE	VersionNum					integer
+DEFINE	VersionNum					int64
 END version
 DEFINE	serialNumber					octets tagnum=2
 DEFINE	signature					group ref=OID-Tree,is_pair

@@ -7,7 +7,7 @@ BEGIN CertificateRequest
 
 DEFINE	certificationRequestInfo			tlv
 BEGIN certificationRequestInfo
-DEFINE	version						integer
+DEFINE	version						int64
 
 DEFINE	subject						tlv
 BEGIN subject

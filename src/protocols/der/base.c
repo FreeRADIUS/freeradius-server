@@ -418,6 +418,24 @@ static bool attr_valid(fr_dict_attr_t *da)
 		return false;
 	}
 
+	/*
+	 *	The DER encoder / decoder assume that all pairs are FR_TYPE_INT64.
+	 *
+	 *	The "on the wire" DER data has variable-sized encoding for integers,
+	 *	and drops leading zeros.
+	 *
+	 *	For consistency, we disallow data types which the
+	 *	encoder/decoder don't handle.  Except for data types
+	 *	in structs, because the struct encoder/decoder takes
+	 *	care of those.
+	 */
+	if (fr_type_is_integer_except_bool(da->type) && (da->type != FR_TYPE_INT64) &&
+	    (da->type != FR_TYPE_DATE) && (da->type != FR_TYPE_TIME_DELTA) &&
+	    (da->parent->type != FR_TYPE_STRUCT)) {
+		fr_strerror_printf("Only 'int64' is supported by DER");
+		return false;
+	}
+
 	return true;
 }
 

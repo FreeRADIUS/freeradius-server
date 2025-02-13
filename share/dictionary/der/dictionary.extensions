@@ -78,7 +78,7 @@ ATTRIBUTE	basicConstraints			2.5.29.19	sequence is_oid_leaf
 BEGIN 2.5.29.19
 DEFINE	cA						boolean has_default
 VALUE	cA				DEFAULT			false
-DEFINE	pathLenConstraint				integer
+DEFINE	pathLenConstraint				int64
 END 2.5.29.19
 
 ATTRIBUTE	nameConstraints				2.5.29.30	sequence        is_oid_leaf
@@ -192,4 +192,4 @@ DEFINE	cRLIssuer					group   ref=GeneralName,subtype=sequence,sequence_of=choice
 
 END distributionPoint
 
-ATTRIBUTE	inhibitAnyPolicy			2.5.29.54	integer is_oid_leaf
+ATTRIBUTE	inhibitAnyPolicy			2.5.29.54	int64 is_oid_leaf
