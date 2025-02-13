@@ -41,6 +41,12 @@ ATTRIBUTE	IKEv2-IPv4-Route			25	string
 ATTRIBUTE	IKEv2-IPv6-Route			26	string
 ATTRIBUTE	IKEv2-DNS-Domain			27	string
 ATTRIBUTE	Load-Balancer				28	string
+ATTRIBUTE	IKEv2-Routing-Tag-List			29	string
+ATTRIBUTE	IKEv2-IPv4-Tagged-Route			30	string
+ATTRIBUTE	IKEv2-IPv6-Tagged-Route			31	string
+ATTRIBUTE	IPv6-Prefix-Length			32	integer
+ATTRIBUTE	IKEv2-PPK				33	string has_tag,encrypt=Tunnel-Password
+ATTRIBUTE	IKEv2-PPK-MANDATORY			34	integer
 
 END-VENDOR   Lancom
 ALIAS		Lancom					Vendor-Specific.Lancom
