@@ -3322,7 +3322,7 @@ static int request_will_proxy(REQUEST *request)
 	} else if (((vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY)) != NULL) ||
 		   ((vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY)) != NULL)) {
 		uint16_t dst_port;
-		fr_ipaddr_t dst_ipaddr;
+		fr_ipaddr_t dst_ipaddr, src_ipaddr;
 
 		memset(&dst_ipaddr, 0, sizeof(dst_ipaddr));
 
@@ -3359,6 +3359,28 @@ static int request_will_proxy(REQUEST *request)
 			dst_port = vp->vp_integer;
 		}
 
+		if (((vp = fr_pair_find_by_num(request->config, PW_PACKET_SRC_IP_ADDRESS, 0, TAG_ANY)) != NULL) ||
+		    ((vp = fr_pair_find_by_num(request->config, PW_PACKET_SRC_IPV6_ADDRESS, 0, TAG_ANY)) != NULL)) {
+			if (((dst_ipaddr.af == AF_INET) && (vp->da->attr != PW_PACKET_SRC_IP_ADDRESS)) ||
+			    ((dst_ipaddr.af == AF_INET6) && (vp->da->attr != PW_PACKET_SRC_IPV6_ADDRESS))) {
+				REDEBUG("Cannot mix IPv4 and IPv6 source and destination addresses");
+				return 0;
+			}
+			if (vp->da->attr == PW_PACKET_SRC_IP_ADDRESS) {
+				src_ipaddr.af = AF_INET;
+				src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+				src_ipaddr.prefix = 32;
+			} else {
+				src_ipaddr.af = AF_INET6;
+				memcpy(&src_ipaddr.ipaddr.ip6addr, &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+				src_ipaddr.prefix = 128;
+			}
+			home = home_server_find_bysrc(&dst_ipaddr, dst_port, IPPROTO_UDP, &src_ipaddr);
+			if (!home) home_server_find_bysrc(&dst_ipaddr, dst_port, IPPROTO_TCP, &src_ipaddr);
+			if (!home) goto no_home;
+			goto found_home;
+		}
+
 		/*
 		 *	Find the home server.
 		 */
@@ -3366,13 +3388,14 @@ static int request_will_proxy(REQUEST *request)
 		if (!home) home = home_server_find(&dst_ipaddr, dst_port, IPPROTO_TCP);
 		if (!home) {
 			char buffer[256];
-
+		no_home:
 			RWDEBUG("No such home server %s port %u",
 				inet_ntop(dst_ipaddr.af, &dst_ipaddr.ipaddr, buffer, sizeof(buffer)),
 				(unsigned int) dst_port);
 			return 0;
 		}
 
+	found_home:
 		/*
 		 *	The home server is alive (or may be alive).
 		 *	Send the packet to the IP.
