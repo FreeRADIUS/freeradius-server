@@ -14,10 +14,10 @@ DEFINE	accessLocation					choice
 BEGIN accessLocation
 ATTRIBUTE	otherName				0	sequence option=0
 BEGIN otherName
-DEFINE	type-id						string subtype=oid
-DEFINE	Value-thing					tlv subtype=sequence,class=context-specific,tagnum=0
+DEFINE	type-id						string der_type=oid
+DEFINE	Value-thing					tlv der_type=sequence,class=context-specific,tagnum=0
 BEGIN Value-thing
-DEFINE	userPrincipalName				string subtype=utf8string
+DEFINE	userPrincipalName				string der_type=utf8string
 END Value-thing
 END otherName
 
@@ -40,10 +40,10 @@ DEFINE	accessLocation					choice
 BEGIN accessLocation
 ATTRIBUTE	otherName				0	sequence option=0
 BEGIN otherName
-DEFINE	type-id						string subtype=oid
-DEFINE	Value-thing					tlv subtype=sequence,class=context-specific,tagnum=0
+DEFINE	type-id						string der_type=oid
+DEFINE	Value-thing					tlv der_type=sequence,class=context-specific,tagnum=0
 BEGIN Value-thing
-DEFINE	userPrincipalName				string subtype=utf8string
+DEFINE	userPrincipalName				string der_type=utf8string
 END Value-thing
 END otherName
 
@@ -58,7 +58,7 @@ END 1.3.6.1.5.5.7.1.11
 
 ATTRIBUTE	subjectKeyIdentifier			2.5.29.14	octetstring     is_oid_leaf
 
-ATTRIBUTE	keyUsage				2.5.29.15	struct  subtype=bitstring,is_oid_leaf
+ATTRIBUTE	keyUsage				2.5.29.15	struct  der_type=bitstring,is_oid_leaf
 BEGIN 2.5.29.15
 MEMBER		digitalSignature			bit[1]
 MEMBER		nonRepudation				bit[1]
@@ -72,7 +72,7 @@ MEMBER		decipherOnly				bit[1]
 MEMBER		unused_bits				bit[7]
 END 2.5.29.15
 
-ATTRIBUTE	subjectAltName				2.5.29.17	group ref=GeneralName,subtype=sequence,sequence_of=choice,is_oid_leaf
+ATTRIBUTE	subjectAltName				2.5.29.17	group ref=GeneralName,der_type=sequence,sequence_of=choice,is_oid_leaf
 
 ATTRIBUTE	basicConstraints			2.5.29.19	sequence is_oid_leaf
 BEGIN 2.5.29.19
@@ -93,10 +93,10 @@ DEFINE	distributionPoint				sequence
 BEGIN distributionPoint
 DEFINE	distributionPointName				sequence  option=0
 BEGIN distributionPointName
-ATTRIBUTE	fullName				0	group   ref=GeneralName,subtype=sequence,sequence_of=choice,option=0
+ATTRIBUTE	fullName				0	group   ref=GeneralName,der_type=sequence,sequence_of=choice,option=0
 ATTRIBUTE	nameRelativeToCRLIssuer			1	sequence        option=1
 BEGIN nameRelativeToCRLIssuer
-DEFINE	RelativeDistinguishedName			tlv subtype=set
+DEFINE	RelativeDistinguishedName			tlv der_type=set
 BEGIN RelativeDistinguishedName
 DEFINE	AttributeTypeandValue				group ref=OID-Tree,is_pair
 END RelativeDistinguishedName
@@ -116,7 +116,7 @@ MEMBER		privilegeWithdrawn			bit[1]
 MEMBER		aACompromise				bit[1]
 END reasons
 
-DEFINE	cRLIssuer					group   ref=GeneralName,subtype=sequence,sequence_of=choice,option=2
+DEFINE	cRLIssuer					group   ref=GeneralName,der_type=sequence,sequence_of=choice,option=2
 
 END distributionPoint
 END 2.5.29.31
@@ -144,7 +144,7 @@ END 2.5.29.33
 ATTRIBUTE	authorityKeyIdentifier			2.5.29.35	sequence        sequence_of=choice,is_oid_leaf
 BEGIN 2.5.29.35
 ATTRIBUTE	keyIdentifier				0	octetstring  option=0
-ATTRIBUTE	authorityCertIssuer			1	group   ref=GeneralName,subtype=sequence,sequence_of=choice,option=1
+ATTRIBUTE	authorityCertIssuer			1	group   ref=GeneralName,der_type=sequence,sequence_of=choice,option=1
 ATTRIBUTE	authorityCertSerialNumber		2	octetstring option=2
 END 2.5.29.35
 
@@ -165,10 +165,10 @@ DEFINE	distributionPoint				sequence
 BEGIN distributionPoint
 DEFINE	distributionPointName				sequence  option=0
 BEGIN distributionPointName
-ATTRIBUTE	fullName				0	group   ref=GeneralName,subtype=sequence,sequence_of=choice,option=0
+ATTRIBUTE	fullName				0	group   ref=GeneralName,der_type=sequence,sequence_of=choice,option=0
 ATTRIBUTE	nameRelativeToCRLIssuer			1	sequence        option=1
 BEGIN nameRelativeToCRLIssuer
-DEFINE	RelativeDistinguishedName			tlv subtype=set
+DEFINE	RelativeDistinguishedName			tlv der_type=set
 BEGIN RelativeDistinguishedName
 DEFINE	AttributeTypeandValue				group ref=OID-Tree,is_pair
 END RelativeDistinguishedName
@@ -188,7 +188,7 @@ MEMBER		privilegeWithdrawn			bit[1]
 MEMBER		aACompromise				bit[1]
 END reasons
 
-DEFINE	cRLIssuer					group   ref=GeneralName,subtype=sequence,sequence_of=choice,option=2
+DEFINE	cRLIssuer					group   ref=GeneralName,der_type=sequence,sequence_of=choice,option=2
 
 END distributionPoint
 

@@ -125,7 +125,7 @@ static inline CC_HINT(always_inline) int8_t fr_der_pair_cmp_by_da_tag(void const
 	fr_pair_t const *my_a = a;
 	fr_pair_t const *my_b = b;
 
-	return CMP_PREFER_SMALLER(fr_der_flag_subtype(my_a->da), fr_der_flag_subtype(my_b->da));
+	return CMP_PREFER_SMALLER(fr_der_flag_der_type(my_a->da), fr_der_flag_der_type(my_b->da));
 }
 
 static ssize_t fr_der_encode_boolean(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED fr_der_encode_ctx_t *encode_ctx)
@@ -1800,7 +1800,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 		return fr_dbuff_set(dbuff, &our_dbuff);
 	}
 
-	tag_num = fr_der_flag_subtype(vp->da) ? fr_der_flag_subtype(vp->da) : fr_type_to_der_tag_default(vp->vp_type);
+	tag_num = fr_der_flag_der_type(vp->da) ? fr_der_flag_der_type(vp->da) : fr_type_to_der_tag_default(vp->vp_type);
 
 	if (unlikely(tag_num == FR_DER_TAG_INVALID)) {
 		fr_strerror_printf("No tag number for type %" PRId32, vp->vp_type);

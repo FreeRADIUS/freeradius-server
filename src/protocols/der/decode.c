@@ -1600,7 +1600,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 
 		if (tag_class == fr_der_flag_class(parent)) {
 			if (*tag == fr_der_flag_tagnum(parent)) {
-				*tag = fr_der_flag_subtype(parent);
+				*tag = fr_der_flag_der_type(parent);
 			} else {
 				goto bad_tag;
 			}

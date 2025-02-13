@@ -169,18 +169,18 @@ static int dict_flag_has_default(fr_dict_attr_t **da_p, UNUSED char const *value
 	return 0;
 }
 
-static int dict_flag_subtype(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
+static int dict_flag_der_type(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
-	fr_der_tag_num_t     subtype;
+	fr_der_tag_num_t     der_type;
 
-	subtype = fr_table_value_by_str(tag_name_to_number, value, UINT8_MAX);
-	if (subtype == UINT8_MAX) {
-		fr_strerror_printf("Invalid tag subtype '%s'", value);
+	der_type = fr_table_value_by_str(tag_name_to_number, value, UINT8_MAX);
+	if (der_type == UINT8_MAX) {
+		fr_strerror_printf("Invalid tag der_type '%s'", value);
 		return -1;
 	}
 
-	flags->subtype = subtype;
+	flags->der_type = der_type;
 
 	return 0;
 }
@@ -295,6 +295,7 @@ static int dict_flag_option(fr_dict_attr_t **da_p, UNUSED char const *value, UNU
 
 static fr_dict_flag_parser_t const der_flags[] = {
 	{ L("class"),		{ .func = dict_flag_class } },
+	{ L("der_type"),	{ .func = dict_flag_der_type, .needs_value = true } },
 	{ L("has_default"),	{ .func = dict_flag_has_default } },
 	{ L("is_choice"),	{ .func = dict_flag_is_choice } },
 	{ L("is_extensions"),	{ .func = dict_flag_is_extensions } },
@@ -305,7 +306,6 @@ static fr_dict_flag_parser_t const der_flags[] = {
 	{ L("option"),		{ .func = dict_flag_option } },
 	{ L("sequence_of"),	{ .func = dict_flag_sequence_of } },
 	{ L("set_of"),		{ .func = dict_flag_set_of } },
-	{ L("subtype"),		{ .func = dict_flag_subtype } },
 	{ L("tagnum"),		{ .func = dict_flag_tagnum } }
 };
 
@@ -360,7 +360,7 @@ static bool attr_type(fr_type_t *type ,fr_dict_attr_t **da_p, char const *name)
 	static size_t der_tag_table_len = NUM_ELEMENTS(der_tag_table);
 
 	fr_der_attr_flags_t	*flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
-	fr_der_tag_num_t	subtype;
+	fr_der_tag_num_t	der_type;
 
 	*type = fr_table_value_by_str(type_table, name, UINT8_MAX);
 	if (*type == UINT8_MAX) {
@@ -369,16 +369,16 @@ static bool attr_type(fr_type_t *type ,fr_dict_attr_t **da_p, char const *name)
 	}
 
 	/*
-	 *	Make sure to set the subtype flag
+	 *	Make sure to set the der_type flag
 	 * 	This will ensure the attribute it encoded with the correct type
 	 */
-	subtype = fr_table_value_by_str(der_tag_table, name, UINT8_MAX);
-	if (subtype == UINT8_MAX) {
-		fr_strerror_printf("Invalid subtype '%s'", name);
+	der_type = fr_table_value_by_str(der_tag_table, name, UINT8_MAX);
+	if (der_type == UINT8_MAX) {
+		fr_strerror_printf("Invalid der_type '%s'", name);
 		return false;
 	}
 
-	flags->subtype = subtype;
+	flags->der_type = der_type;
 
 	/*
 	 *	If it is a collection of x509 extensions, we will set a few other flags
@@ -396,18 +396,44 @@ static bool attr_type(fr_type_t *type ,fr_dict_attr_t **da_p, char const *name)
 	return true;
 }
 
+static const int fr_type_to_der_tag_defaults[] = {
+	[FR_TYPE_BOOL]		= FR_DER_TAG_BOOLEAN,
+	[FR_TYPE_UINT8]		= FR_DER_TAG_INTEGER,
+	[FR_TYPE_UINT16]	= FR_DER_TAG_INTEGER,
+	[FR_TYPE_UINT32]	= FR_DER_TAG_INTEGER,
+	[FR_TYPE_UINT64]	= FR_DER_TAG_INTEGER,
+	[FR_TYPE_INT8]		= FR_DER_TAG_INTEGER,
+	[FR_TYPE_INT16]		= FR_DER_TAG_INTEGER,
+	[FR_TYPE_INT32]		= FR_DER_TAG_INTEGER,
+	[FR_TYPE_INT64]		= FR_DER_TAG_INTEGER,
+	[FR_TYPE_OCTETS]	= FR_DER_TAG_OCTETSTRING,
+	[FR_TYPE_STRING]	= FR_DER_TAG_UTF8_STRING,
+	[FR_TYPE_DATE]		= FR_DER_TAG_GENERALIZED_TIME,
+	[FR_TYPE_TLV]		= FR_DER_TAG_SEQUENCE,
+	[FR_TYPE_STRUCT]	= FR_DER_TAG_SEQUENCE,
+	[FR_TYPE_GROUP]		= FR_DER_TAG_SEQUENCE,
+};
+
+fr_der_tag_num_t fr_type_to_der_tag_default(fr_type_t type)
+{
+	return fr_type_to_der_tag_defaults[type];
+}
+
 static bool attr_valid(fr_dict_attr_t *da)
 {
-	if (da->flags.subtype && !fr_type_to_der_tag_valid(da->type, da->flags.subtype)) {
-		return false;
-	}
+	fr_der_attr_flags_t *flags = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 
-	if (fr_der_flag_is_sequence_of(da->parent) || fr_der_flag_is_set_of(da->parent)) {
-		uint8_t of_type = fr_der_flag_is_sequence_of(da->parent) ? fr_der_flag_sequence_of(da->parent) : fr_der_flag_set_of(da->parent);
+	if (fr_der_flag_is_sequence_of(da->parent) ||
+	    fr_der_flag_is_set_of(da->parent)) {
+		uint8_t of_type = (fr_der_flag_is_sequence_of(da->parent) ?
+				   fr_der_flag_sequence_of(da->parent) :
+				   fr_der_flag_set_of(da->parent));
 
-		if ((unlikely(of_type != FR_DER_TAG_CHOICE)) && unlikely(fr_type_to_der_tags[da->type][of_type] == false)) {
+		if ((unlikely(of_type != FR_DER_TAG_CHOICE)) &&
+		    unlikely(fr_type_to_der_tags[da->type][of_type] == false)) {
 			fr_strerror_printf("Attribute %s of type %s is not allowed in a sequence/set-of %s",
-					   da->name, fr_type_to_str(da->type), fr_table_str_by_value(tag_name_to_number, of_type, "<INVALID>"));
+					   da->name, fr_type_to_str(da->type),
+					   fr_table_str_by_value(tag_name_to_number, of_type, "<INVALID>"));
 			return false;
 		}
 	}
@@ -432,7 +458,25 @@ static bool attr_valid(fr_dict_attr_t *da)
 	if (fr_type_is_integer_except_bool(da->type) && (da->type != FR_TYPE_INT64) &&
 	    (da->type != FR_TYPE_DATE) && (da->type != FR_TYPE_TIME_DELTA) &&
 	    (da->parent->type != FR_TYPE_STRUCT)) {
-		fr_strerror_printf("Only 'int64' is supported by DER");
+		fr_strerror_printf("All integers in DER must be 'int64', and not '%s'",
+				   fr_type_to_str(da->type));
+		return false;
+	}
+
+	/*
+	 *	The der type is already set, we don't need to do more.
+	 */
+	if (flags->der_type != FR_DER_TAG_INVALID) return true;
+
+	flags->der_type = fr_type_to_der_tag_defaults[da->type];
+
+	/*
+	 *	Not all FreeRADIUS types map to DER types.  Ones like
+	 *	VSA are not supported.
+	 */
+	if (flags->der_type == FR_DER_TAG_INVALID) {
+		fr_strerror_printf("Invalid data type '%s' is not supported by DER",
+				  fr_type_to_str(da->type));
 		return false;
 	}
 

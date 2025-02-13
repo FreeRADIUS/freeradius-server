@@ -119,30 +119,6 @@ static inline CC_HINT(always_inline) bool fr_type_to_der_tag_valid(fr_type_t typ
 	return fr_type_to_der_tags[type][tag];
 }
 
-static int fr_type_to_der_tag_defaults[] = {
-	[FR_TYPE_NULL] = FR_DER_TAG_NULL,
-	[FR_TYPE_BOOL] = FR_DER_TAG_BOOLEAN,
-	[FR_TYPE_UINT8] = FR_DER_TAG_INTEGER,
-	[FR_TYPE_UINT16] = FR_DER_TAG_INTEGER,
-	[FR_TYPE_UINT32] = FR_DER_TAG_INTEGER,
-	[FR_TYPE_UINT64] = FR_DER_TAG_INTEGER,
-	[FR_TYPE_INT8] = FR_DER_TAG_INTEGER,
-	[FR_TYPE_INT16] = FR_DER_TAG_INTEGER,
-	[FR_TYPE_INT32] = FR_DER_TAG_INTEGER,
-	[FR_TYPE_INT64] = FR_DER_TAG_INTEGER,
-	[FR_TYPE_OCTETS] = FR_DER_TAG_OCTETSTRING,
-	[FR_TYPE_STRING] = FR_DER_TAG_UTF8_STRING,
-	[FR_TYPE_DATE] = FR_DER_TAG_GENERALIZED_TIME,
-	[FR_TYPE_TLV] = FR_DER_TAG_SEQUENCE,
-	[FR_TYPE_STRUCT] = FR_DER_TAG_SEQUENCE,
-	[FR_TYPE_GROUP] = FR_DER_TAG_SEQUENCE
-};
-
-static inline CC_HINT(always_inline) fr_der_tag_num_t fr_type_to_der_tag_default(fr_type_t type)
-{
-	return fr_type_to_der_tag_defaults[type];
-}
-
 #define DER_MAX_STR 16384
 
 #define DER_UTC_TIME_LEN 13	 //!< Length of the UTC time string.
@@ -165,7 +141,7 @@ static inline CC_HINT(always_inline) fr_der_tag_num_t fr_type_to_der_tag_default
 typedef struct {
 	uint8_t 		tagnum;
 	fr_der_tag_class_t 	class;
-	fr_der_tag_num_t 	subtype;
+	fr_der_tag_num_t 	der_type;
 	fr_der_tag_num_t 	sequence_of;
 	fr_der_tag_num_t 	set_of;
 	int64_t 		max;
@@ -186,7 +162,7 @@ static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const 
 
 #define fr_der_flag_tagnum(_da) 	(fr_der_attr_flags(_da)->tagnum)
 #define fr_der_flag_class(_da)		(fr_der_attr_flags(_da)->class)
-#define fr_der_flag_subtype(_da) 	(fr_der_attr_flags(_da)->subtype)
+#define fr_der_flag_der_type(_da) 	(fr_der_attr_flags(_da)->der_type)
 #define fr_der_flag_sequence_of(_da) 	(fr_der_attr_flags(_da)->sequence_of)
 #define fr_der_flag_is_sequence_of(_da) (fr_der_attr_flags(_da)->is_sequence_of)
 #define fr_der_flag_set_of(_da) 	(fr_der_attr_flags(_da)->set_of)
@@ -202,5 +178,7 @@ static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const 
 /*
  * 	base.c
  */
-int fr_der_global_init(void);
-void fr_der_global_free(void);
+fr_der_tag_num_t fr_type_to_der_tag_default(fr_type_t type);
+
+int	fr_der_global_init(void);
+void	fr_der_global_free(void);

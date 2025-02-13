@@ -7,16 +7,16 @@ BEGIN Certificate
 
 DEFINE	tbsCertificate					tlv
 BEGIN tbsCertificate
-DEFINE	version						tlv class=context-specific,tagnum=0,subtype=sequence
+DEFINE	version						tlv class=context-specific,tagnum=0,der_type=sequence
 BEGIN version
 DEFINE	VersionNum					int64
 END version
 DEFINE	serialNumber					octets tagnum=2
 DEFINE	signature					group ref=OID-Tree,is_pair
 
-DEFINE	issuer						tlv subtype=sequence,sequence_of=set,is_pairs
+DEFINE	issuer						tlv der_type=sequence,sequence_of=set,is_pairs
 BEGIN issuer
-DEFINE	RelativeDistinguishedName			tlv subtype=set
+DEFINE	RelativeDistinguishedName			tlv der_type=set
 BEGIN RelativeDistinguishedName
 DEFINE	AttributeTypeAndValue				group ref=OID-Tree,is_pair
 END RelativeDistinguishedName
@@ -30,7 +30,7 @@ END validity
 
 DEFINE	subject						tlv sequence_of=set,is_pairs
 BEGIN subject
-DEFINE	RelativeDistinguishedName			tlv subtype=set
+DEFINE	RelativeDistinguishedName			tlv der_type=set
 BEGIN RelativeDistinguishedName
 DEFINE	AttributeTypeandValue				group ref=OID-Tree,is_pair
 END RelativeDistinguishedName
@@ -39,7 +39,7 @@ END subject
 DEFINE	subjectPublicKeyInfo				tlv
 BEGIN subjectPublicKeyInfo
 DEFINE	algorithm					group ref=OID-Tree,is_pair
-DEFINE	subjectPublicKey				octets subtype=bitstring
+DEFINE	subjectPublicKey				octets der_type=bitstring
 END subjectPublicKeyInfo
 
 DEFINE	extensions					x509_extensions ref=OID-Tree
@@ -48,5 +48,5 @@ END tbsCertificate
 
 DEFINE	signatureAlgorithm				group ref=OID-Tree,is_pair
 
-DEFINE	signature					octets subtype=bitstring
+DEFINE	signature					octets der_type=bitstring
 END Certificate
