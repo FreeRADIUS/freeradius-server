@@ -48,77 +48,6 @@ typedef enum {
 
 extern fr_der_tag_constructed_t tag_labels[];
 
-/*
- *	Create a mapping between FR_TYPE_* and valid FR_DER_TAG_*'s
- */
-static bool *fr_type_to_der_tags[] = {
-	[FR_TYPE_MAX] = NULL,
-	[FR_TYPE_BOOL] = (bool []){[FR_DER_TAG_BOOLEAN] = true,
-				   [FR_DER_TAG_INTEGER] = true,
-				   [FR_DER_TAG_NULL] = true,
-				   [FR_DER_TAG_MAX] = false},
-	[FR_TYPE_UINT8] = (bool []){[FR_DER_TAG_INTEGER] = true,
-				    [FR_DER_TAG_ENUMERATED] = true,
-				    [FR_DER_TAG_MAX] = false},
-	[FR_TYPE_UINT16] = (bool []){[FR_DER_TAG_INTEGER] = true,
-				     [FR_DER_TAG_ENUMERATED] = true,
-				     [FR_DER_TAG_MAX] = false},
-	[FR_TYPE_UINT32] = (bool []){[FR_DER_TAG_INTEGER] = true,
-				     [FR_DER_TAG_ENUMERATED] = true,
-				     [FR_DER_TAG_MAX] = false},
-	[FR_TYPE_UINT64] = (bool []){[FR_DER_TAG_INTEGER] = true,
-				     [FR_DER_TAG_ENUMERATED] = true,
-				     [FR_DER_TAG_MAX] = false},
-	[FR_TYPE_INT8] = (bool []){[FR_DER_TAG_INTEGER] = true,
-				   [FR_DER_TAG_ENUMERATED] = true,
-				   [FR_DER_TAG_MAX] = false},
-	[FR_TYPE_INT16] = (bool []){[FR_DER_TAG_INTEGER] = true,
-				    [FR_DER_TAG_ENUMERATED] = true,
-				    [FR_DER_TAG_MAX] = false},
-	[FR_TYPE_INT32] = (bool []){[FR_DER_TAG_INTEGER] = true,
-				    [FR_DER_TAG_ENUMERATED] = true,
-				    [FR_DER_TAG_MAX] = false},
-	[FR_TYPE_INT64] = (bool []){[FR_DER_TAG_INTEGER] = true,
-				    [FR_DER_TAG_ENUMERATED] = true,
-				    [FR_DER_TAG_MAX] = false},
-	[FR_TYPE_OCTETS] = (bool []){[FR_DER_TAG_BITSTRING] = true,
-				     [FR_DER_TAG_OCTETSTRING] = true,
-				     [FR_DER_TAG_MAX] = false},
-	[FR_TYPE_STRING] = (bool []){[FR_DER_TAG_OID] = true,
-				     [FR_DER_TAG_UTF8_STRING] = true,
-				     [FR_DER_TAG_PRINTABLE_STRING] = true,
-				     [FR_DER_TAG_T61_STRING] = true,
-				     [FR_DER_TAG_IA5_STRING] = true,
-				     [FR_DER_TAG_VISIBLE_STRING] = true,
-				     [FR_DER_TAG_GENERAL_STRING] = true,
-				     [FR_DER_TAG_UNIVERSAL_STRING] = true,
-				     [FR_DER_TAG_MAX] = false},
-	[FR_TYPE_DATE] = (bool []){[FR_DER_TAG_UTC_TIME] = true,
-				   [FR_DER_TAG_GENERALIZED_TIME] = true,
-				   [FR_DER_TAG_MAX] = false},
-	[FR_TYPE_TLV] = (bool []){[FR_DER_TAG_SEQUENCE] = true,
-				  [FR_DER_TAG_SET] = true,
-				  [FR_DER_TAG_MAX] = false},
-	[FR_TYPE_STRUCT] = (bool []){[FR_DER_TAG_BITSTRING] = true,
-				     [FR_DER_TAG_SEQUENCE] = true,
-				     [FR_DER_TAG_SET] = true,
-				     [FR_DER_TAG_MAX] = false},
-	[FR_TYPE_GROUP] = (bool []){[FR_DER_TAG_SEQUENCE] = true,
-				    [FR_DER_TAG_SET] = true,
-				    [FR_DER_TAG_MAX] = false}
-};
-
-/*
- *	Return true if the given type can be encoded as the given tag.
- * 		@param[in] type The fr_type to check.
- * 		@param[in] tag The der tag to check.
- * 		@return true if the type can be encoded as the given tag.
- */
-static inline CC_HINT(always_inline) bool fr_type_to_der_tag_valid(fr_type_t type, fr_der_tag_num_t tag)
-{
-	return fr_type_to_der_tags[type][tag];
-}
-
 #define DER_MAX_STR 16384
 
 #define DER_UTC_TIME_LEN 13	 //!< Length of the UTC time string.
@@ -179,6 +108,7 @@ static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const 
  * 	base.c
  */
 fr_der_tag_num_t fr_type_to_der_tag_default(fr_type_t type);
+bool	fr_type_to_der_tag_valid(fr_type_t type, fr_der_tag_num_t tag);
 
 int	fr_der_global_init(void);
 void	fr_der_global_free(void);
