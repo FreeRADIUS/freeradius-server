@@ -57,8 +57,6 @@ typedef struct {
 typedef struct {
 	fr_value_box_t	password;
 	tmpl_t const	*password_tmpl;
-	fr_value_box_t	user_base;
-	fr_value_box_t	user_filter;
 	fr_value_box_t	user_sasl_mech;
 	fr_value_box_t	user_sasl_authname;
 	fr_value_box_t	user_sasl_proxy;
@@ -192,7 +190,6 @@ static const call_env_method_t authenticate_method_env = {
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_SUBSECTION("user", NULL, CALL_ENV_FLAG_REQUIRED,
 					 ((call_env_parser_t[]) {
-						USER_CALL_ENV_COMMON(ldap_auth_call_env_t),
 						{ FR_CALL_ENV_PARSE_OFFSET("password_attribute", FR_TYPE_STRING,
 									  CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE,
 									  ldap_auth_call_env_t, password, password_tmpl),
@@ -1424,70 +1421,6 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 				    map_ctx->serverctrls, NULL);
 }
 
-/** Perform async lookup of user DN if required for authentication
- *
- */
-static unlang_action_t mod_authenticate_start(rlm_rcode_t *p_result, UNUSED int *priority,
-					      request_t *request, void *uctx)
-{
-	ldap_auth_ctx_t		*auth_ctx = talloc_get_type_abort(uctx, ldap_auth_ctx_t);
-	fr_ldap_thread_trunk_t	*ttrunk;
-	rlm_ldap_t const 	*inst = auth_ctx->inst;
-
-	ttrunk = fr_thread_ldap_trunk_get(auth_ctx->thread, inst->handle_config.server, inst->handle_config.admin_identity,
-					  inst->handle_config.admin_password, request, &inst->handle_config);
-	if (!ttrunk) RETURN_MODULE_FAIL;
-
-	return rlm_ldap_find_user_async(auth_ctx, auth_ctx->inst, request, &auth_ctx->call_env->user_base,
-					&auth_ctx->call_env->user_filter, ttrunk, NULL, NULL);
-}
-
-/** Initiate async LDAP bind to authenticate user
- *
- */
-static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int *priority,
-					       request_t *request, void *uctx)
-{
-	ldap_auth_ctx_t	*auth_ctx = talloc_get_type_abort(uctx, ldap_auth_ctx_t);
-
-	/*
-	 *	SASL bind auth will have the mech set.
-	 */
-	if (auth_ctx->call_env->user_sasl_mech.type == FR_TYPE_STRING) {
-#ifdef WITH_SASL
-		ldap_auth_call_env_t *call_env = auth_ctx->call_env;
-
-		RDEBUG2("Login attempt using identity \"%pV\"", &call_env->user_sasl_authname);
-
-		return fr_ldap_sasl_bind_auth_async(request, auth_ctx->thread, call_env->user_sasl_mech.vb_strvalue,
-						 call_env->user_sasl_authname.vb_strvalue,
-						 auth_ctx->password, call_env->user_sasl_proxy.vb_strvalue,
-						 call_env->user_sasl_realm.vb_strvalue);
-#else
-		RDEBUG("Configuration item 'sasl.mech' is not supported.  "
-		       "The linked version of libldap does not provide ldap_sasl_bind( function");
-		RETURN_MODULE_FAIL;
-#endif
-	}
-
-	/*
-	 *	Arriving here from an LDAP search will mean the dn in auth_ctx is NULL.
-	 */
-	if (!auth_ctx->dn) auth_ctx->dn = rlm_find_user_dn_cached(request);
-
-	/*
-	 *	No DN found - can't authenticate the user with a simple bind.
-	 */
-	if (!auth_ctx->dn) {
-		talloc_free(auth_ctx);
-		RETURN_MODULE_FAIL;
-	}
-
-	RDEBUG2("Login attempt as \"%s\"", auth_ctx->dn);
-
-	return fr_ldap_bind_auth_async(request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password);
-}
-
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_ldap_t);
@@ -1507,15 +1440,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		RETURN_MODULE_INVALID;
 	}
 
-	/*
-	 *	Log the password
-	 */
-	if (RDEBUG_ENABLED3) {
-		RDEBUG("Login attempt with password \"%pV\"", &call_env->password);
-	} else {
-		RDEBUG2("Login attempt with password");
-	}
-
 	auth_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_auth_ctx_t);
 	*auth_ctx = (ldap_auth_ctx_t){
 		.password = call_env->password.vb_strvalue,
@@ -1525,15 +1449,51 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	};
 
 	/*
-	 *	Check for a cached copy of the DN
+	 *	Find the user's DN
 	 */
 	auth_ctx->dn = rlm_find_user_dn_cached(request);
 
-	if (unlang_function_push(request, auth_ctx->dn || (call_env->user_sasl_mech.type == FR_TYPE_STRING) ?
-				 NULL : mod_authenticate_start, mod_authenticate_resume,
-				 NULL, 0, UNLANG_SUB_FRAME, auth_ctx) < 0) RETURN_MODULE_FAIL;
+	/*
+	 *	The DN is required for non-SASL auth
+	 */
+	if (!auth_ctx->dn && (call_env->user_sasl_mech.type != FR_TYPE_STRING)) {
+		REDEBUG("No DN found for authentication.  Populate control.%s with the DN to use in authentication.",
+			attr_ldap_userdn->name);
+		REDEBUG("You should call %s in the recv section and check its return.", inst->mi->name);
+		talloc_free(auth_ctx);
+		RETURN_MODULE_FAIL;
+	}
 
-	return UNLANG_ACTION_PUSHED_CHILD;
+	/*
+	 *	Log the password
+	 */
+	if (RDEBUG_ENABLED3) {
+		RDEBUG("Login attempt with password \"%pV\"", &call_env->password);
+	} else {
+		RDEBUG2("Login attempt with password");
+	}
+
+	/*
+	 *	SASL bind auth will have the mech set.
+	 */
+	if (auth_ctx->call_env->user_sasl_mech.type == FR_TYPE_STRING) {
+#ifdef WITH_SASL
+		RDEBUG2("Login attempt using identity \"%pV\"", &call_env->user_sasl_authname);
+
+		return fr_ldap_sasl_bind_auth_async(request, auth_ctx->thread, call_env->user_sasl_mech.vb_strvalue,
+						 call_env->user_sasl_authname.vb_strvalue,
+						 auth_ctx->password, call_env->user_sasl_proxy.vb_strvalue,
+						 call_env->user_sasl_realm.vb_strvalue);
+#else
+		RDEBUG("Configuration item 'sasl.mech' is not supported.  "
+		       "The linked version of libldap does not provide ldap_sasl_bind( function");
+		RETURN_MODULE_FAIL;
+#endif
+	}
+
+	RDEBUG2("Login attempt as \"%s\"", auth_ctx->dn);
+
+	return fr_ldap_bind_auth_async(request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password);
 }
 
 /** Start LDAP authorization with async lookup of user DN
