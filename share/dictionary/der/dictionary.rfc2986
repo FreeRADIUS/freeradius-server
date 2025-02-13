@@ -1,0 +1,50 @@
+# -*- text -*-
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+DEFINE	CertificateRequest				tlv
+BEGIN CertificateRequest
+
+DEFINE	certificationRequestInfo			tlv
+BEGIN certificationRequestInfo
+DEFINE	version						integer
+
+DEFINE	subject						tlv
+BEGIN subject
+DEFINE	RelativeDistinguishedName			tlv subtype=set
+BEGIN RelativeDistinguishedName
+DEFINE	AttributeTypeandValue				tlv
+BEGIN AttributeTypeAndValue
+DEFINE	OID						string subtype=oid
+DEFINE	Value-Thing					string subtype=utf8string
+END AttributeTypeAndValue
+END RelativeDistinguishedName
+END subject
+
+DEFINE	subjectPublicKeyInfo				tlv
+BEGIN subjectPublicKeyInfo
+DEFINE	algorithm					tlv
+BEGIN algorithm
+DEFINE	OID						string subtype=oid
+END algorithm
+DEFINE	subjectPublicKey				octets subtype=bitstring
+END subjectPublicKeyInfo
+
+DEFINE	Attributes					tlv class=context-specific,tagnum=0,subtype=sequence
+BEGIN Attributes
+DEFINE	Attribute-thing					tlv
+BEGIN Attribute-thing
+DEFINE	OID						string subtype=oid
+DEFINE	Extensions					group ref=OID-Tree,subtype=set,is_extensions
+END Attribute-thing
+END Attributes
+
+END certificationRequestInfo
+
+DEFINE	signatureAlgorithm				tlv
+BEGIN signatureAlgorithm
+DEFINE	OID						string subtype=oid
+END signatureAlgorithm
+
+DEFINE	signature					octets subtype=bitstring
+END CertificateRequest

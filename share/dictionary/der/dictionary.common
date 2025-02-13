@@ -1,0 +1,59 @@
+# -*- text -*-
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+DEFINE	GeneralName					choice
+BEGIN GeneralName
+
+ATTRIBUTE	otherName				0	sequence option=0
+BEGIN otherName
+DEFINE	type-id						string subtype=oid
+DEFINE	Value-thing					tlv subtype=sequence,class=context-specific,tagnum=0
+BEGIN Value-thing
+DEFINE	userPrincipalName				string subtype=utf8string
+END Value-thing
+END otherName
+
+ATTRIBUTE	rfc822Name				1	ia5string option=1
+ATTRIBUTE	dNSName					2	ia5string option=2
+
+ATTRIBUTE	directoryName				4	sequence  option=4
+BEGIN directoryName
+DEFINE	RDNSequence					sequence        sequence_of=set
+BEGIN RDNSequence
+DEFINE	RelativeDistinguishedName			set
+BEGIN RelativeDistinguishedName
+DEFINE	AttributeTypeAndValue				group   ref=OID-Tree,is_pair
+END RelativeDistinguishedName
+END RDNSequence
+END directoryName
+
+ATTRIBUTE	uniformResourceIdentifier		6	ia5string option=6
+
+END GeneralName
+
+DEFINE	DirectoryName					choice
+BEGIN DirectoryName
+ATTRIBUTE	printableString				19	printablestring
+ATTRIBUTE	universalString				28	universalstring
+ATTRIBUTE	utf8String				12	utf8string
+END DirectoryName
+
+DEFINE	GeneralSubtree					sequence
+BEGIN GeneralSubtree
+DEFINE	base						sequence        clone=GeneralName
+DEFINE	minimum						integer         option=0,has_default
+VALUE	minimum				DEFAULT			0
+DEFINE	maximum						integer         option=1
+END GeneralSubtree
+
+DEFINE	Name						sequence
+BEGIN Name
+DEFINE	RDNSequence					sequence        sequence_of=set
+BEGIN RDNSequence
+DEFINE	RelativeDistinguishedName			set
+BEGIN RelativeDistinguishedName
+DEFINE	AttributeTypeAndValue				group   ref=OID-Tree,is_pair
+END RelativeDistinguishedName
+END RDNSequence
+END Name

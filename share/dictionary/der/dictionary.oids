@@ -1,0 +1,49 @@
+# -*- text -*-
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+DEFINE	OID-Tree					tlv
+BEGIN OID-Tree
+ATTRIBUTE	iso					1	tlv
+ATTRIBUTE	member-body				1.2	tlv
+ATTRIBUTE	us					1.2.840	tlv
+ATTRIBUTE	ansi-x962				1.2.840.10045	tlv
+ATTRIBUTE	keyType					1.2.840.10045.2	tlv
+ATTRIBUTE	ecPublicKey				1.2.840.10045.2.1	oid     is_oid_leaf
+
+ATTRIBUTE	signatures				1.2.840.10045.4	tlv
+ATTRIBUTE	ecdsa-with-SHA2				1.2.840.10045.4.3	tlv
+ATTRIBUTE	ecdsa-with-SHA384			1.2.840.10045.4.3.3	bool     is_oid_leaf,has_default
+VALUE 1.2.840.10045.4.3.3       DEFAULT false
+
+ATTRIBUTE	rsadsi					1.2.840.113549	tlv
+ATTRIBUTE	pkcs					1.2.840.113549.1	tlv
+ATTRIBUTE	pkcs-1					1.2.840.113549.1.1	tlv
+ATTRIBUTE	rsaEncryption				1.2.840.113549.1.1.1	bool    is_oid_leaf,subtype=null
+
+ATTRIBUTE	sha256WithRSAEncryption			1.2.840.113549.1.1.11	bool    is_oid_leaf,subtype=null
+
+ATTRIBUTE	identified-organization			1.3	tlv
+ATTRIBUTE	dod					1.3.6	tlv
+ATTRIBUTE	internet				1.3.6.1	tlv
+ATTRIBUTE	security				1.3.6.1.5	tlv
+ATTRIBUTE	mechanisms				1.3.6.1.5.5	tlv
+ATTRIBUTE	pkix					1.3.6.1.5.5.7	tlv
+ATTRIBUTE	pe					1.3.6.1.5.5.7.1	tlv
+
+ATTRIBUTE	joint-iso-itu-t				2	tlv
+ATTRIBUTE	ds					2.5	tlv
+
+ATTRIBUTE	attributeType				2.5.4	tlv
+ATTRIBUTE	commonName				2.5.4.3	printablestring is_oid_leaf
+ATTRIBUTE	countryName				2.5.4.6	string[2]       subtype=printablestring,is_oid_leaf
+ATTRIBUTE	serialNumber				2.5.4.5	printablestring is_oid_leaf
+ATTRIBUTE	localityName				2.5.4.7	string  is_oid_leaf
+ATTRIBUTE	stateOrProvinceName			2.5.4.8	string  is_oid_leaf
+ATTRIBUTE	organizationName			2.5.4.10	printablestring is_oid_leaf
+
+ATTRIBUTE	certificateExtension			2.5.29	tlv
+
+$INCLUDE dictionary.extensions
+
+END OID-Tree
