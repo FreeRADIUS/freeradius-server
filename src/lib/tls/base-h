@@ -172,7 +172,7 @@ void		fr_tls_dict_free(void);
  *	tls/virtual_server.c
  */
 unlang_action_t fr_tls_call_push(request_t *child, unlang_function_t resume,
-			       	 fr_tls_conf_t *conf, fr_tls_session_t *tls_session);
+			       	 fr_tls_conf_t *conf, fr_tls_session_t *tls_session, bool cache_required);
 
 #ifdef __cplusplus
 }

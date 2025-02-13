@@ -1170,7 +1170,7 @@ unlang_action_t tls_establish_session_push(request_t *request, fr_tls_conf_t *co
 	 *	Allocate a child, and set it up to call
 	 *      the TLS virtual server.
 	 */
-	ua = fr_tls_call_push(child, tls_establish_session_result, conf, tls_session);
+	ua = fr_tls_call_push(child, tls_establish_session_result, conf, tls_session, false);
 	if (ua < 0) {
 		talloc_free(child);
 		return UNLANG_ACTION_FAIL;

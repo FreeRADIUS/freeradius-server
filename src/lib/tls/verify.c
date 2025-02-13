@@ -467,7 +467,7 @@ static unlang_action_t tls_verify_client_cert_push(request_t *request, fr_tls_se
 	 *	Allocate a child, and set it up to call
 	 *      the TLS virtual server.
 	 */
-	ua = fr_tls_call_push(child, tls_verify_client_cert_result, conf, tls_session);
+	ua = fr_tls_call_push(child, tls_verify_client_cert_result, conf, tls_session, false);
 	if (ua < 0) {
 	        PERROR("Failed calling TLS virtual server");
 		talloc_free(child);

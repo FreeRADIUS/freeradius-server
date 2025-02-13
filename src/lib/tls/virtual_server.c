@@ -43,14 +43,19 @@
  *				be a pointer to the provided tls_session.
  * @param[in] conf		the tls configuration.
  * @param[in] tls_session	The current tls_session.
+ * @param[in] cache_required	Does this action require the tls cache
  * @return
  *      - 0 on success.
  *	- -1 on failure.
  */
 unlang_action_t fr_tls_call_push(request_t *child, unlang_function_t resume,
-				 fr_tls_conf_t *conf, fr_tls_session_t *tls_session)
+				 fr_tls_conf_t *conf, fr_tls_session_t *tls_session,
+#ifdef NDEBUG
+				 UNUSED
+#endif
+				 bool cache_required)
 {
-	fr_assert(tls_session->cache);
+	fr_assert(tls_session->cache || !cache_required);
 
 	/*
 	 *	Sets up a dispatch frame in the parent
