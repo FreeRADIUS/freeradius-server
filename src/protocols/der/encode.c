@@ -161,7 +161,7 @@ static ssize_t fr_der_encode_integer(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UN
 {
 	fr_dbuff_t	 our_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t const *vp;
-	int64_t		 value;
+	uint64_t       	 value;
 	uint8_t		 first_octet = 0;
 	size_t		 i, len;
 
@@ -183,7 +183,13 @@ static ssize_t fr_der_encode_integer(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UN
 	 *	      second octet, followed by bits 8 to 1 of each octet in turn up to and including the last octet of
 	 *	      the contents octets.
 	 */
-	value = vp->vp_int64;
+
+	/*
+	 *	Yes, the type is FR_TYPE_INT64.  But we encode the
+	 *	data as-is, without caring about things like signed
+	 *	math.
+	 */
+	value = vp->vp_uint64;
 
 	for (i = 0, len = 0; i < sizeof(value); i++) {
 		uint8_t byte = (value >> 56) & 0xff;
