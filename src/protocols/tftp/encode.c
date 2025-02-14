@@ -86,7 +86,7 @@ ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps)
 	}
 
 	opcode = vp->vp_uint16;
-	fr_dbuff_in(&work_dbuff, opcode);
+	FR_DBUFF_IN_RETURN(&work_dbuff, opcode);
 
 	switch (opcode) {
 	case FR_OPCODE_VALUE_READ_REQUEST:
@@ -107,7 +107,7 @@ ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps)
 		}
 
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_strvalue, vp->vp_length);
-		fr_dbuff_in_bytes(&work_dbuff, '\0');
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, '\0');
 
 		/* <mode> */
 		vp = fr_pair_find_by_da(vps, NULL, attr_tftp_mode);
@@ -125,7 +125,7 @@ ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps)
 		}
 
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, buf, 5);
-		fr_dbuff_in_bytes(&work_dbuff, '\0');
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, '\0');
 
 		/* <blksize> is optional */
 		vp = fr_pair_find_by_da(vps, NULL, attr_tftp_block_size);
@@ -133,11 +133,11 @@ ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps)
 			char tmp[5+1];                                   /* max: 65535 */
 
 			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, "blksize", 7);
-			fr_dbuff_in_bytes(&work_dbuff, '\0');
+			FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, '\0');
 
 			snprintf(tmp, sizeof(tmp), "%d", vp->vp_uint16); /* #blksize */
 			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, tmp, strlen(tmp));
-			fr_dbuff_in_bytes(&work_dbuff, '\0');
+			FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, '\0');
 		}
 
 		break;
@@ -218,7 +218,7 @@ ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps)
 		}
 
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, error_msg, error_msg_len);
-		fr_dbuff_in_bytes(&work_dbuff, '\0');
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, '\0');
 		break;
 	}
 
