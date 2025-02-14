@@ -70,7 +70,6 @@ static ssize_t fr_der_encode_bitstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, 
 static ssize_t fr_der_encode_octetstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull);
 static ssize_t fr_der_encode_null(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull(2));
 static ssize_t fr_der_encode_oid(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull(1,2));
-static ssize_t fr_der_encode_enumerated(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull(1,2));
 static ssize_t fr_der_encode_sequence(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull);
 static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull);
 static ssize_t fr_der_encode_utc_time(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull(1,2));
@@ -79,6 +78,14 @@ static ssize_t fr_der_encode_generalized_time(fr_dbuff_t *dbuff, fr_dcursor_t *c
 static ssize_t fr_der_encode_oid_value_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull);
 
 static ssize_t fr_der_encode_string(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull(1,2));
+
+/*
+ *	We have per-type function names to make it clear that different types have different encoders.
+ *	However, the methods to encode them are the same.  So rather than having trampoline functions, we just
+ *	use defines.
+ */
+#define fr_der_encode_enumerated fr_der_encode_integer
+
 
 static ssize_t fr_der_encode_len(fr_dbuff_t *dbuff, fr_dbuff_marker_t *length_start, ssize_t len) CC_HINT(nonnull);
 static inline CC_HINT(always_inline) ssize_t
@@ -568,68 +575,6 @@ static ssize_t fr_der_encode_oid(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED
 	if (slen < 0) {
 		fr_strerror_printf("Failed to encode OID: %s", fr_strerror());
 		return slen;
-	}
-
-	return fr_dbuff_set(dbuff, &our_dbuff);
-}
-
-static ssize_t fr_der_encode_enumerated(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED fr_der_encode_ctx_t *encode_ctx)
-{
-	fr_dbuff_t     our_dbuff = FR_DBUFF(dbuff);
-	fr_pair_t const *vp;
-	int64_t		 value;
-	uint8_t		 first_octet = 0;
-	size_t		 i, len;
-
-	vp = fr_dcursor_current(cursor);
-	PAIR_VERIFY(vp);
-
-	/*
-	 *	ISO/IEC 8825-1:2021
-	 *	8.4 Encoding of an enumerated value
-	 *		The encoding of an enumerated value shall be that of the integer value with which it is
-	 *		associated.
-	 *			NOTE - It is primitive.
-	 */
-	value = vp->vp_int64;
-
-	for (i = 0, len = 0; i < sizeof(value); i++) {
-		uint8_t byte = (value >> 56) & 0xff;
-
-		value <<= 8;
-
-		if (len == 0) {
-			first_octet = byte;
-			len++;
-			continue;
-
-		} else if (len == 1) {
-			/*
-			 *	8.3.2 If the contents octets of an integer value encoding consist of more than one
-			 *	octet, then the bits of the first octet and bit 8 of the second octet: a) shall not
-			 *	all be ones; and b) shall not all be zero.
-			 */
-			if ((first_octet == 0xff && (byte & 0x80)) || ((first_octet == 0x00) && (byte >> 7 == 0))) {
-				if (i == sizeof(value) - 1) {
-					/*
-					 * If this is the only byte, then we can encode it in a single byte.
-					 */
-					FR_DBUFF_IN_RETURN(&our_dbuff, byte);
-					continue;
-				}
-
-				first_octet = byte;
-				continue;
-			} else {
-				FR_DBUFF_IN_RETURN(&our_dbuff, first_octet);
-				FR_DBUFF_IN_RETURN(&our_dbuff, byte);
-				len++;
-				continue;
-			}
-		}
-
-		FR_DBUFF_IN_RETURN(&our_dbuff, byte);
-		len++;
 	}
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
