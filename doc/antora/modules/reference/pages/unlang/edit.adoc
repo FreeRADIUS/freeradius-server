@@ -52,10 +52,13 @@ brackets, as in `{...}`.
 
 The _<rhs>_ may be value such as `192.0.2.1, or `5`, or an expression such as `1 + 2`, or `"foo" + "bar"`.
 
-NOTE: Despite the edit statements having syntax similar to `update`
+[NOTE]
+====
+Despite the edit statements having syntax similar to `update`
 sections, the meaning of the operators have changed significantly.
 You _cannot_ convert an `update` section to the new syntax simply by
 removing the `update` keyword.
+====
 
 == Atomic "Transactions" and Errors
 
@@ -123,10 +126,13 @@ the list operations are simple, and well defined.
 | \<=       | Perform a priority merge of two lists. The resulting list has all of the contents of the original _<rhs>_, and of all _<list>_ list attributes which are not in _<rhs>_ are left alone..
 |=====
 
-Note that operations on lists are generally performed recursively on
+[NOTE]
+====
+Operations on lists are generally performed recursively on
 sub-lists.  For example, the `\|=` operator will perform the union of
 not only two lists, but also will recurse to perform a union of any
 sub-lists.
+====
 
 The _<rhs>_ can be a reference to another list (e.g. `request`,
 `reply`), or to a nested / grouped attribute.
@@ -136,7 +142,7 @@ to the `update` section.  However, for "in-place" lists, _the only
 operator which is permitted is `=`.  The server *will not start* if
 any other operator is used._
 
-NOTE: If the right-hand side of an assignment is a list, then _only_
+NOTE: If the right-hand side of an assignment is a list, then the *only*
 operator allowed inside of the right-hand side list is `=`.
 
 If the _<rhs>_ is an "in-place" list, then all of the
@@ -211,7 +217,7 @@ appended to the list.
 ====
 
 
-=== Over-riding the contents of a list
+=== Override the contents of a list
 
 The `:=` (override) operator will delete the contents of a list.  We
 note that the empty list example above is just a special case of
@@ -230,7 +236,7 @@ overriding the contents of a list.
 Aftet this operation, the contents of the `reply` list will be one
 attribute: `Filter-Id`.
 
-=== Removing attributes from a list
+=== Remove attributes from a list
 
 Attributes can be removed from a list using the `-=` (remove) operator.
 
@@ -409,7 +415,7 @@ The operators also apply to variable-sized values.
 | =        | Set the attribute to the contents of the _<rhs>_, if the _<attribute>_ does not exist.  If the attribute already exists, nothing is done.  If the attribute does not exist, it is created, and the contents set to the value of the _<rhs>_
 | :=       | Override the attribute with the contents with the _<rhs>_.  If the attribute already exists, its value is over-written.  If the attribute does not exist, it is created, and the contents set to the value of the _<rhs>_
 | +=       | Perform string append.  The contents of the _<rhs>_ are appended to the _<attribute>_.
-| -=       | Inverse of string append. The contents of the _<rhs>_ are deleted from from the _<attribute>_, if the `_<rhs>_` is a suffix of _<attribute>_ 
+| -=       | Inverse of string append. The contents of the _<rhs>_ are deleted from from the _<attribute>_, if the `_<rhs>_` is a suffix of _<attribute>_
 | ^=       | For `string`, performs a "prepend" operation.  The contents of the _<rhs>_ are prepended to the _<attribute>_.  This is the opposite of `+=`.
 |          | For `octets`, perform logical "xor".  The value of the _<attribute>_ is "or"ed with the contents of the _<rhs>_.  Both strings must be of the same length.
 | \|=      | Perform logical "or".  The value of the _<attribute>_ is "or"ed with the contents of the _<rhs>_.  Both strings must be of the same length.
