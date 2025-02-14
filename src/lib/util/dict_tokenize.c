@@ -431,20 +431,29 @@ static int dict_process_type_field(dict_tokenize_ctx_t *dctx, char const *name, 
 	}
 
 	/*
-	 *	find the type of the attribute.
+	 *	We default to using the standard FreeRADIUS types.
+	 *
+	 *	However, if there is a protocol-specific type parsing
+	 *	function, we call that, too.  That ordering allows the
+	 *	protocol-specific names to over-ride the default ones.
 	 */
 	type = fr_type_from_str(name);
+
+	if (dctx->dict->proto->attr.type_parse &&
+	    !dctx->dict->proto->attr.type_parse(&type, da_p, name)) {
+		return -1;
+	}
+
+	/*
+	 *	Still not known, or is still a NULL type, that's an error.
+	 *
+	 *	The protocol-specific function can return an error if
+	 *	it has an error in its parsing.  Or, it can return
+	 *	"true"
+	 */
 	if (fr_type_is_null(type)) {
-		if (!dctx->dict->proto->attr.type_parse) {
-			fr_strerror_printf("Unknown data type '%s'", name);
-			return -1;
-		}
-
-		if (!dctx->dict->proto->attr.type_parse(&type, da_p, name)) {
-			return -1;
-		}
-
-		fr_assert(!fr_type_is_null(type));
+		fr_strerror_printf("Unknown data type '%s'", name);
+		return -1;
 	}
 
 	return dict_attr_type_init(da_p, type);

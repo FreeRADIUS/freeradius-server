@@ -381,17 +381,19 @@ static fr_dict_flag_parser_t const der_flags[] = {
 	{ L("tagnum"),		{ .func = dict_flag_tagnum } }
 };
 
-static bool attr_type(fr_type_t *type ,fr_dict_attr_t **da_p, char const *name)
+static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name)
 {
 	static fr_table_num_sorted_t const type_table[] = {
 		{ L("bitstring"),	FR_TYPE_OCTETS },
+//		{ L("bmpstring"),	FR_TYPE_OCTETS },
 		{ L("boolean"),		FR_TYPE_BOOL },
 		{ L("choice"),		FR_TYPE_TLV },
 		{ L("enumerated"),	FR_TYPE_INT64 },
 		{ L("generalizedtime"),	FR_TYPE_DATE },
 		{ L("generalstring"),	FR_TYPE_STRING },
 		{ L("ia5string"),	FR_TYPE_STRING },
-		{ L("null"),		FR_TYPE_NULL },
+		{ L("integer"),		FR_TYPE_INT64 },
+		{ L("null"),		FR_TYPE_BOOL },
 		{ L("octetstring"),	FR_TYPE_OCTETS },
 		{ L("oid"),		FR_TYPE_STRING },
 		{ L("printablestring"),	FR_TYPE_STRING },
@@ -408,7 +410,7 @@ static bool attr_type(fr_type_t *type ,fr_dict_attr_t **da_p, char const *name)
 
 	static fr_table_num_sorted_t const der_tag_table[] = {
 		{ L("bitstring"),	FR_DER_TAG_BITSTRING },
-		{ L("bmpstring"),	FR_DER_TAG_BMP_STRING },
+//		{ L("bmpstring"),	FR_DER_TAG_BMP_STRING },
 		{ L("boolean"),		FR_DER_TAG_BOOLEAN },
 		{ L("choice"),		FR_DER_TAG_SEQUENCE },
 		{ L("enumerated"),	FR_DER_TAG_ENUMERATED },
@@ -433,30 +435,56 @@ static bool attr_type(fr_type_t *type ,fr_dict_attr_t **da_p, char const *name)
 
 	fr_der_attr_flags_t	*flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 	fr_der_tag_num_t	der_type;
+	fr_type_t		fr_type;
 
-	*type = fr_table_value_by_str(type_table, name, UINT8_MAX);
-	if (*type == UINT8_MAX) {
-		fr_strerror_printf("Invalid type '%s'", name);
-		return false;
+	/*
+	 *	Convert the DER data type to the underlying FreeRADIUS
+	 *	data type.
+	 *
+	 *	If we don't know anything about the data type then
+	 *	it's either bad, or a data type which we don't care
+	 *	about.  We set the der_type, and then return to the
+	 *	caller.  It will check *type_p, which is likely
+	 *	FR_TYPE_NULL, and will print an error.
+	 *
+	 *	"return true" here means "I dunno, you deal with it".
+	 */
+	fr_type = fr_table_value_by_str(type_table, name, FR_TYPE_MAX);
+	if (fr_type == FR_TYPE_MAX) {
+		flags->der_type = fr_type_to_der_tag_default(*type_p);
+		return true;
 	}
 
 	/*
-	 *	Make sure to set the der_type flag
-	 * 	This will ensure the attribute it encoded with the correct type
+	 *	Now that we've converted the DER type to the
+	 *	underlying FreeRADIUS type, we get the corresponding
+	 *	DER type.  This MUST exist, as the two tables MUST
+	 *	have the same names.
+	 *
+	 *	@todo - arguably they should be in one table....
 	 */
-	der_type = fr_table_value_by_str(der_tag_table, name, UINT8_MAX);
-	if (der_type == UINT8_MAX) {
-		fr_strerror_printf("Invalid der_type '%s'", name);
-		return false;
-	}
+	der_type = fr_table_value_by_str(der_tag_table, name, FR_DER_TAG_INVALID);
+	fr_assert(der_type != FR_DER_TAG_INVALID);
 
+	/*
+	 *	The der type is set only if there are extra flags seen
+	 *	and parsed by attr_valid().
+	 */
+	fr_assert(flags->der_type == FR_DER_TAG_INVALID);
+
+	/*
+	 *	Only now do we update the output data type.  From here
+	 *	on in, any validation failure will return 'false', and
+	 *	not 'true'.
+	 */
+	*type_p = fr_type;
 	flags->der_type = der_type;
 
 	/*
 	 *	If it is a collection of x509 extensions, we will set a few other flags
 	 * 	as per RFC 5280.
 	 */
-	if (*type == FR_TYPE_GROUP) {
+	if (fr_type == FR_TYPE_GROUP) {
 		dict_flag_is_extensions(da_p, "true", NULL);
 		dict_flag_tagnum(da_p, "3", NULL);
 		dict_flag_class(da_p, "context-specific", NULL);
@@ -468,7 +496,7 @@ static bool attr_type(fr_type_t *type ,fr_dict_attr_t **da_p, char const *name)
 	return true;
 }
 
-static const int fr_type_to_der_tag_defaults[] = {
+static const fr_der_tag_num_t fr_type_to_der_tag_defaults[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_BOOL]		= FR_DER_TAG_BOOLEAN,
 	[FR_TYPE_UINT8]		= FR_DER_TAG_INTEGER,
 	[FR_TYPE_UINT16]	= FR_DER_TAG_INTEGER,
@@ -493,8 +521,6 @@ fr_der_tag_num_t fr_type_to_der_tag_default(fr_type_t type)
 
 static bool attr_valid(fr_dict_attr_t *da)
 {
-	fr_der_attr_flags_t *flags = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
-
 	if (fr_der_flag_is_sequence_of(da->parent) ||
 	    fr_der_flag_is_set_of(da->parent)) {
 		uint8_t of_type = (fr_der_flag_is_sequence_of(da->parent) ?
@@ -535,23 +561,6 @@ static bool attr_valid(fr_dict_attr_t *da)
 		return false;
 	}
 
-	/*
-	 *	The der type is already set, we don't need to do more.
-	 */
-	if (flags->der_type != FR_DER_TAG_INVALID) return true;
-
-	flags->der_type = fr_type_to_der_tag_defaults[da->type];
-
-	/*
-	 *	Not all FreeRADIUS types map to DER types.  Ones like
-	 *	VSA are not supported.
-	 */
-	if (flags->der_type == FR_DER_TAG_INVALID) {
-		fr_strerror_printf("Invalid data type '%s' is not supported by DER",
-				  fr_type_to_str(da->type));
-		return false;
-	}
-
 	return true;
 }
 
@@ -566,7 +575,7 @@ fr_dict_protocol_t	  libfreeradius_der_dict_protocol = {
 			       .table_len = NUM_ELEMENTS(der_flags),
 			       .len	   = sizeof(fr_der_attr_flags_t),
 		       },
-		       .type_parse = attr_type,
+		       .type_parse = type_parse,
 		       .valid = attr_valid
 	       },
 
