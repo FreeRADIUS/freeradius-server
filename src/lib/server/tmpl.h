@@ -1085,7 +1085,7 @@ typedef enum {
 #define tmpl_aexpand_type(_ctx, _out, _type, _request, _vpt, _escape, _escape_ctx) \
 			  _tmpl_to_atype(_ctx, (void *)(_out), _request, _vpt, _escape, _escape_ctx, _type)
 
-void			tmpl_debug(tmpl_t const *vpt) CC_HINT(nonnull);
+void			tmpl_debug(FILE *fp, tmpl_t const *vpt) CC_HINT(nonnull);
 
 fr_pair_list_t		*tmpl_list_head(request_t *request, fr_dict_attr_t const *list);
 
@@ -1183,11 +1183,11 @@ void			tmpl_set_xlat(tmpl_t *vpt, xlat_exp_head_t *xlat) CC_HINT(nonnull);
 
 int			tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bool steal) CC_HINT(nonnull);
 
-void			tmpl_attr_ref_debug(const tmpl_attr_t *ar, int idx) CC_HINT(nonnull);
+void			tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, int idx) CC_HINT(nonnull);
 
-void			tmpl_attr_ref_list_debug(FR_DLIST_HEAD(tmpl_attr_list) const *ar_head) CC_HINT(nonnull);
+void			tmpl_attr_ref_list_debug(FILE *fp, FR_DLIST_HEAD(tmpl_attr_list) const *ar_head) CC_HINT(nonnull);
 
-void			tmpl_attr_debug(tmpl_t const *vpt) CC_HINT(nonnull);
+void			tmpl_attr_debug(FILE *fp, tmpl_t const *vpt) CC_HINT(nonnull);
 
 int			tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src) CC_HINT(nonnull);
 
@@ -1330,7 +1330,7 @@ int			tmpl_extents_find(TALLOC_CTX *ctx,
 int			tmpl_extents_build_to_leaf_parent(fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 						   tmpl_t const *vpt) CC_HINT(nonnull);
 
-void			tmpl_extents_debug(fr_dlist_head_t *head) CC_HINT(nonnull);
+void			tmpl_extents_debug(FILE *fp, fr_dlist_head_t *head) CC_HINT(nonnull);
 
 int			tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmpl_t const *vpt);
 
