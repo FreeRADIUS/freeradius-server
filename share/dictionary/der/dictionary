@@ -9,6 +9,16 @@
 #
 BEGIN PROTOCOL DER      11354911
 
+#
+#  Note that the data types for DER are local to DER!
+#
+# * `integer` is packed as 1, 2, or more bytes, depending on its size.
+#   The server manages all DER numbers as `int64`.
+#
+# * `null` is an empty value.  
+#   The server manages all DER `null` as `bool`.
+#
+
 $INCLUDE dictionary.common
 $INCLUDE dictionary.oids
 $INCLUDE dictionary.rfc2986

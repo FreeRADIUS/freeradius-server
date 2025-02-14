@@ -19,9 +19,9 @@ VALUE 1.2.840.10045.4.3.3       DEFAULT false
 ATTRIBUTE	rsadsi					1.2.840.113549	tlv
 ATTRIBUTE	pkcs					1.2.840.113549.1	tlv
 ATTRIBUTE	pkcs-1					1.2.840.113549.1.1	tlv
-ATTRIBUTE	rsaEncryption				1.2.840.113549.1.1.1	bool    is_oid_leaf,der_type=null
+ATTRIBUTE	rsaEncryption				1.2.840.113549.1.1.1	null    is_oid_leaf
 
-ATTRIBUTE	sha256WithRSAEncryption			1.2.840.113549.1.1.11	bool    is_oid_leaf,der_type=null
+ATTRIBUTE	sha256WithRSAEncryption			1.2.840.113549.1.1.11	null    is_oid_leaf
 
 ATTRIBUTE	identified-organization			1.3	tlv
 ATTRIBUTE	dod					1.3.6	tlv

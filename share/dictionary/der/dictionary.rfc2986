@@ -7,16 +7,16 @@ BEGIN CertificateRequest
 
 DEFINE	certificationRequestInfo			tlv
 BEGIN certificationRequestInfo
-DEFINE	version						int64
+DEFINE	version						integer
 
 DEFINE	subject						tlv
 BEGIN subject
-DEFINE	RelativeDistinguishedName			tlv der_type=set
+DEFINE	RelativeDistinguishedName			set
 BEGIN RelativeDistinguishedName
 DEFINE	AttributeTypeandValue				tlv
 BEGIN AttributeTypeAndValue
-DEFINE	OID						string der_type=oid
-DEFINE	Value-Thing					string der_type=utf8string
+DEFINE	OID						oid
+DEFINE	Value-Thing					utf8string
 END AttributeTypeAndValue
 END RelativeDistinguishedName
 END subject
@@ -25,16 +25,16 @@ DEFINE	subjectPublicKeyInfo				tlv
 BEGIN subjectPublicKeyInfo
 DEFINE	algorithm					tlv
 BEGIN algorithm
-DEFINE	OID						string der_type=oid
+DEFINE	OID						oid
 END algorithm
-DEFINE	subjectPublicKey				octets der_type=bitstring
+DEFINE	subjectPublicKey				bitstring
 END subjectPublicKeyInfo
 
-DEFINE	Attributes					tlv class=context-specific,tagnum=0,der_type=sequence
+DEFINE	Attributes					sequence class=context-specific,tagnum=0
 BEGIN Attributes
 DEFINE	Attribute-thing					tlv
 BEGIN Attribute-thing
-DEFINE	OID						string der_type=oid
+DEFINE	OID						oid
 DEFINE	Extensions					group ref=OID-Tree,der_type=set,is_extensions
 END Attribute-thing
 END Attributes
@@ -43,8 +43,8 @@ END certificationRequestInfo
 
 DEFINE	signatureAlgorithm				tlv
 BEGIN signatureAlgorithm
-DEFINE	OID						string der_type=oid
+DEFINE	OID						oid
 END signatureAlgorithm
 
-DEFINE	signature					octets der_type=bitstring
+DEFINE	signature					bitstring
 END CertificateRequest
