@@ -581,7 +581,7 @@ static ssize_t fr_der_decode_oid_to_str(uint64_t subidentifier, void *uctx, bool
 
 	fr_sbuff_set(&sb, &marker);
 
-	fr_sbuff_in_sprintf(&sb, ".%" PRIu64, subidentifier);
+	FR_SBUFF_IN_SPRINTF_RETURN(&sb, ".%" PRIu64, subidentifier);
 	fr_sbuff_marker(&marker, &sb);
 
 	decode_ctx->marker = marker;
