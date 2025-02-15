@@ -1308,9 +1308,11 @@ void tls_session_information(tls_session_t *tls_session)
 
 				case SSL3_AD_ILLEGAL_PARAMETER:
 					str_details2 = " illegal_parameter";
+					#ifdef PSK_MAX_IDENTITY_LEN
 					if (tls_session->conf->psk_identity || tls_session->conf->psk_query) {
 						details = "the client and server have different values for the PSK";
 					}
+					#endif
 					break;
 
 				case TLS1_AD_UNKNOWN_CA:
