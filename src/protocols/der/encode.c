@@ -87,7 +87,7 @@ static ssize_t fr_der_encode_string(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_
 #define fr_der_encode_enumerated fr_der_encode_integer
 
 
-static ssize_t fr_der_encode_len(fr_dbuff_t *dbuff, fr_dbuff_marker_t *length_start, ssize_t len) CC_HINT(nonnull);
+static ssize_t fr_der_encode_len(fr_dbuff_t *dbuff, fr_dbuff_marker_t *length_start) CC_HINT(nonnull);
 static inline CC_HINT(always_inline) ssize_t
 	fr_der_encode_tag(fr_dbuff_t *dbuff, fr_der_tag_num_t tag_num, fr_der_tag_class_t tag_class,
 			  fr_der_tag_constructed_t constructed) CC_HINT(nonnull);
@@ -1305,7 +1305,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		/*
 		 *	Encode the length of the OID
 		 */
-		slen = fr_der_encode_len(&our_dbuff, &length_start, fr_dbuff_behind(&length_start) - 1);
+		slen = fr_der_encode_len(&our_dbuff, &length_start);
 		fr_dbuff_marker_release(&length_start);
 		if (slen < 0) {
 			fr_dbuff_marker_release(&inner_seq_len_start);
@@ -1328,7 +1328,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 
 			FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t)(0xff));
 
-			slen = fr_der_encode_len(&our_dbuff, &length_start, fr_dbuff_behind(&length_start) - 1);
+			slen = fr_der_encode_len(&our_dbuff, &length_start);
 			fr_dbuff_marker_release(&length_start);
 			if (slen < 0) {
 				fr_dbuff_marker_release(&inner_seq_len_start);
@@ -1364,7 +1364,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		/*
 		 *	Encode the length of the value
 		 */
-		slen = fr_der_encode_len(&our_dbuff, &length_start, fr_dbuff_behind(&length_start) - 1);
+		slen = fr_der_encode_len(&our_dbuff, &length_start);
 		fr_dbuff_marker_release(&length_start);
 		if (slen < 0) {
 			fr_dbuff_marker_release(&inner_seq_len_start);
@@ -1374,7 +1374,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		/*
 		 *	Encode the length of the extension (OID + Value portions)
 		 */
-		slen = fr_der_encode_len(&our_dbuff, &inner_seq_len_start, fr_dbuff_behind(&inner_seq_len_start) - 1);
+		slen = fr_der_encode_len(&our_dbuff, &inner_seq_len_start);
 		fr_dbuff_marker_release(&inner_seq_len_start);
 		if (slen < 0) {
 			goto error;
@@ -1397,7 +1397,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 	/*
 	 *	Encode the length of the extensions
 	 */
-	slen = fr_der_encode_len(&our_dbuff, &outer_seq_len_start, fr_dbuff_behind(&outer_seq_len_start) - 1);
+	slen = fr_der_encode_len(&our_dbuff, &outer_seq_len_start);
 	fr_dbuff_marker_release(&outer_seq_len_start);
 	if (slen < 0) return slen;
 
@@ -1517,7 +1517,7 @@ static ssize_t fr_der_encode_oid_value_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cur
 	/*
 	 *	Encode the length of the OID
 	 */
-	slen = fr_der_encode_len(&our_dbuff, &length_start, slen);
+	slen = fr_der_encode_len(&our_dbuff, &length_start);
 	fr_dbuff_marker_release(&length_start);
 	if (slen < 0) return slen;
 
@@ -1565,62 +1565,69 @@ static ssize_t fr_der_encode_string(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNU
  *
  * @param dbuff		The buffer to write the length field to
  * @param length_start	The start of the length field
- * @param inlen		The length of the structure
  *
  * @return		The number of bytes written to the buffer
  */
-static ssize_t fr_der_encode_len(fr_dbuff_t *dbuff, fr_dbuff_marker_t *length_start, ssize_t inlen)
+static ssize_t fr_der_encode_len(fr_dbuff_t *dbuff, fr_dbuff_marker_t *length_start)
 {
-	fr_dbuff_marker_t value_start;
-	fr_dbuff_t	  value_field;
-	uint8_t		  len_len = 0;
-	ssize_t		  i, slen = inlen;
+	int		  i, len_len;
+	size_t		  tmp, datalen;
+	fr_dbuff_t	  data;
+
+	datalen = fr_dbuff_current(dbuff) - fr_dbuff_current(length_start) - 1;
 
 	/*
 	 *	If the length can fit in a single byte, we don't need to extend the size of the length field
 	 */
-	if (inlen <= 0x7f) {
-		FR_DBUFF_IN_RETURN(length_start, (uint8_t) inlen);
+	if (datalen <= 0x7f) {
+		FR_DBUFF_IN_RETURN(length_start, (uint8_t) datalen);
 		return 1;
 	}
 
 	/*
-	 *	Calculate the number of bytes needed to encode the length
+	 *	Calculate the number of bytes needed to encode the length.
 	 */
-	while (slen > 0) {
-		slen >>= 8;
+	for (tmp = datalen, len_len = 0; tmp != 0; tmp >>= 8) {
 		len_len++;
 	}
 
-	if (len_len > 0x7f) {
-		fr_strerror_printf("Length %zd is too large to encode", inlen);
-		return -1;
-	}
-
-	value_field = FR_DBUFF(length_start);
-
-	fr_dbuff_set(&value_field, fr_dbuff_current(length_start));
-
-	fr_dbuff_marker(&value_start, &value_field);
+	/*
+	 *	DER says that the length field cannot be more than
+	 *	0x7f.  Since sizeof(datalen) == 8, we can always
+	 *	encode the length field.
+	 */
+	fr_assert(len_len > 0);
+	fr_assert(len_len < 0x7f);
 
 	/*
-	 *	Set the dbuff write locaiton to where the new value field will start
+	 *	Get a new buffer where the length field is.  Update
+	 *	the current buffer to make room for len_len.  Move all
+	 *	of the data (including the length field) over to that
+	 *	new buffer.  Reset the dbuff back to the length field,
+	 *	and encode the length of the length field.
 	 */
+	data = FR_DBUFF(length_start);
+
 	fr_dbuff_set(dbuff, fr_dbuff_current(length_start) + len_len);
 
-	fr_dbuff_move(dbuff, fr_dbuff_ptr(&value_start), inlen + 1);
+	fr_dbuff_move(dbuff, &data, datalen + 1);
 
 	fr_dbuff_set(dbuff, length_start);
 
 	FR_DBUFF_IN_RETURN(dbuff, (uint8_t)(0x80 | len_len));
 
-	for (i = 0; i < len_len; i++) {
-		FR_DBUFF_IN_RETURN(dbuff, (uint8_t)((inlen) >> ((len_len - i - 1) * 8)));
+	/*
+	 *	Encode high bits first, but only the non-zero ones.
+	 */
+	for (i = len_len; i > 0; i--) {
+		FR_DBUFF_IN_RETURN(dbuff, (uint8_t)((datalen) >> ((i - 1) * 8)));
 	}
 
-	fr_dbuff_marker_release(&value_start);
-
-	fr_dbuff_set(dbuff, fr_dbuff_current(length_start) + len_len + 1 + inlen);
+	/*
+	 *	And set the dbuff to contain the length header, plus
+	 *	the encoded length, plus the original data.
+	 */
+	fr_dbuff_set(dbuff, fr_dbuff_current(length_start) + 1 + len_len + datalen);
 
 	return len_len + 1;
 }
@@ -1801,7 +1808,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	/*
 	 *	Encode the length of the value
 	 */
-	slen = fr_der_encode_len(&our_dbuff, &marker, fr_dbuff_behind(&marker) - 1);
+	slen = fr_der_encode_len(&our_dbuff, &marker);
 	if (slen < 0) {
 		fr_dbuff_marker_release(&marker);
 		goto error;
