@@ -1644,7 +1644,7 @@ static ssize_t fr_der_encode_len(fr_dbuff_t *dbuff, fr_dbuff_marker_t *length_st
 	 *	Encode high bits first, but only the non-zero ones.
 	 */
 	for (i = len_len; i > 0; i--) {
-		fr_dbuff_in(length_start, (uint8_t)((datalen) >> ((i - 1) * 8)));
+		(void) fr_dbuff_in(length_start, (uint8_t)((datalen) >> ((i - 1) * 8)));
 	}
 
 	return 1;
