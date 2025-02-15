@@ -95,7 +95,7 @@ static void test_base16_decode(void)
 				(ssize_t)base16_vectors[i].cleartext.len);
 		TEST_MSG("%s", fr_strerror());
 
-		fr_dbuff_in_bytes(&out, 0x00);	/* Terminate */
+		(void) fr_dbuff_in_bytes(&out, 0x00);	/* Terminate */
 
 		fr_dbuff_set_to_start(&out);
 		TEST_CHECK_STRCMP((char *)fr_dbuff_current(&out), base16_vectors[i].cleartext.str);
