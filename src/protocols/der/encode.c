@@ -1563,16 +1563,28 @@ static ssize_t fr_der_encode_string(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNU
 
 /** Encode the length field of a DER structure
  *
- * @param dbuff		The buffer to write the length field to
- * @param length_start	The start of the length field
+ *  The input dbuff is composed of the following data:
  *
- * @return		The number of bytes written to the buffer
+ *	1 byte of nothing (length_start).  Where the "length length" will be written to.
+ *	N bytes of data.  dbuff is pointing to the end of the encoded data.
+ *
+ *  We have to either write a length to length_start (if it's < 0x7f),
+ *
+ *  OR we figure out how many bytes we need to encode the length,
+ *  shift the data to the right to make room, and then encode the
+ *  length.
+ *
+ * @param dbuff		The buffer to update with the length field
+ * @param length_start	The start of the length field
+ * @return
+ *	- <0 for "cannot extend the input buffer by the needed "length length".
+ *	- 1 for "success".  Note that 'length_start' WILL be updated after this call,
+ *	  and the caller should just release it immediately.
  */
 static ssize_t fr_der_encode_len(fr_dbuff_t *dbuff, fr_dbuff_marker_t *length_start)
 {
-	int		  i, len_len;
+	size_t		  i, len_len;
 	size_t		  tmp, datalen;
-	fr_dbuff_t	  data;
 
 	datalen = fr_dbuff_current(dbuff) - fr_dbuff_current(length_start) - 1;
 
@@ -1580,7 +1592,7 @@ static ssize_t fr_der_encode_len(fr_dbuff_t *dbuff, fr_dbuff_marker_t *length_st
 	 *	If the length can fit in a single byte, we don't need to extend the size of the length field
 	 */
 	if (datalen <= 0x7f) {
-		FR_DBUFF_IN_RETURN(length_start, (uint8_t) datalen);
+		(void) fr_dbuff_in(length_start, (uint8_t) datalen);
 		return 1;
 	}
 
@@ -1599,37 +1611,43 @@ static ssize_t fr_der_encode_len(fr_dbuff_t *dbuff, fr_dbuff_marker_t *length_st
 	fr_assert(len_len > 0);
 	fr_assert(len_len < 0x7f);
 
-	/*
-	 *	Get a new buffer where the length field is.  Update
-	 *	the current buffer to make room for len_len.  Move all
-	 *	of the data (including the length field) over to that
-	 *	new buffer.  Reset the dbuff back to the length field,
-	 *	and encode the length of the length field.
-	 */
-	data = FR_DBUFF(length_start);
+	(void) fr_dbuff_in(length_start, (uint8_t) (0x80 | len_len));
 
+	/*
+	 *	This is the only operation which can fail.  The dbuff
+	 *	is currently set to the end of the encoded data.  We
+	 *	need to ensure that there is sufficient room in the
+	 *	dbuff to encode the additional bytes.
+	 *
+	 *	fr_dbuff_set() checks if the length exceeds the input
+	 *	buffer.  But it does NOT extend the buffer by reading
+	 *	more data, if more data is needed.  So we need to
+	 *	manually extend the dbuff here.
+	 */
+	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(dbuff, len_len);
+
+	/*
+	 *	Reset the dbuff to the new start, where the data
+	 *	should be.
+	 */
 	fr_dbuff_set(dbuff, fr_dbuff_current(length_start) + len_len);
 
-	fr_dbuff_move(dbuff, &data, datalen + 1);
-
-	fr_dbuff_set(dbuff, length_start);
-
-	FR_DBUFF_IN_RETURN(dbuff, (uint8_t)(0x80 | len_len));
+	/*
+	 *	Move the data over.  Note that the move updates BOTH
+	 *	input and output dbuffs.  As a result, we have to wrap
+	 *	'length_start' in a temporary dbuff, so that it
+	 *	doesn't get updated by the move.
+	 */
+	fr_dbuff_move(dbuff, &FR_DBUFF(length_start), datalen);
 
 	/*
 	 *	Encode high bits first, but only the non-zero ones.
 	 */
 	for (i = len_len; i > 0; i--) {
-		FR_DBUFF_IN_RETURN(dbuff, (uint8_t)((datalen) >> ((i - 1) * 8)));
+		fr_dbuff_in(length_start, (uint8_t)((datalen) >> ((i - 1) * 8)));
 	}
 
-	/*
-	 *	And set the dbuff to contain the length header, plus
-	 *	the encoded length, plus the original data.
-	 */
-	fr_dbuff_set(dbuff, fr_dbuff_current(length_start) + 1 + len_len + datalen);
-
-	return len_len + 1;
+	return 1;
 }
 
 /** Encode a DER tag
