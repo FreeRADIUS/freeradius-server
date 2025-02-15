@@ -2145,7 +2145,7 @@ static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 
 	fr_dbuff_out_memcpy((uint8_t *)str, &our_in, len);
 
-	if (allowed_chars) {
+	if (allowed_chars && len) {
 		fr_sbuff_t sbuff;
 		sbuff = FR_SBUFF_OUT(str, len);
 
