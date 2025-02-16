@@ -1597,11 +1597,11 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		if (tag_class != fr_der_flag_class(parent)) {
 		bad_tag:
 			fr_strerror_printf("Invalid tag %u for attribute %s. Expected %" PRIu32, *tag, parent->name,
-					   fr_der_flag_tagnum(parent));
+					   fr_der_flag_option(parent));
 			return -1;
 		}
 
-		if (*tag != fr_der_flag_tagnum(parent)) goto bad_tag;
+		if (*tag != fr_der_flag_option(parent)) goto bad_tag;
 
 		*tag = fr_der_flag_der_type(parent);
 	}

@@ -184,27 +184,7 @@ void fr_der_global_free(void)
 	fr_dict_autofree(libfreeradius_der_dict);
 }
 
-static int dict_flag_tagnum(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
-{
-	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
-	unsigned long num;
-	char *end = NULL;
-
-	/*
-	 *	We limit the allowed tag numbers to ones which fit into the
-	 *	5 bits of the first byte.  We don't support continued tags.
-	 */
-	num = strtoul(value, &end, 10);
-	if ((num > 0x1f) || *end) {
-		fr_strerror_printf("Invalid tag number '%s'", value);
-		return -1;
-	}
-
-	flags->tagnum = num;
-
-	return 0;
-}
-
+#if 0
 static int dict_flag_class(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	static fr_table_num_sorted_t const table[] = {
@@ -228,6 +208,7 @@ static int dict_flag_class(fr_dict_attr_t **da_p, char const *value, UNUSED fr_d
 
 	return 0;
 }
+#endif
 
 static int dict_flag_has_default(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
@@ -392,14 +373,17 @@ static int dict_flag_option(fr_dict_attr_t **da_p, UNUSED char const *value, UNU
 		return -1;
 	}
 
+	/*
+	 *	Don't over-ride 'class==foo,option=bar'
+	 */
 	flags->class = FR_DER_CLASS_CONTEXT;
-	flags->tagnum = num;
+	flags->option = num;
 
 	return 0;
 }
 
-static fr_dict_flag_parser_t const der_flags[] = {
-	{ L("class"),		{ .func = dict_flag_class } },
+static const fr_dict_flag_parser_t  der_flags[] = {
+//	{ L("class"),		{ .func = dict_flag_class } },
 	{ L("der_type"),	{ .func = dict_flag_der_type, .needs_value = true } },
 	{ L("has_default"),	{ .func = dict_flag_has_default } },
 	{ L("is_choice"),	{ .func = dict_flag_is_choice } },
@@ -411,7 +395,6 @@ static fr_dict_flag_parser_t const der_flags[] = {
 	{ L("option"),		{ .func = dict_flag_option } },
 	{ L("sequence_of"),	{ .func = dict_flag_sequence_of } },
 	{ L("set_of"),		{ .func = dict_flag_set_of } },
-	{ L("tagnum"),		{ .func = dict_flag_tagnum } }
 };
 
 static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name)
@@ -516,12 +499,18 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 	/*
 	 *	If it is a collection of x509 extensions, we will set a few other flags
 	 * 	as per RFC 5280.
+	 *
+	 *	@todo - this is hard-coded for RFC 5280 rules.  Other
+	 *	things may have different rules.
 	 */
 	if (fr_type == FR_TYPE_GROUP) {
-		dict_flag_is_extensions(da_p, "true", NULL);
-		dict_flag_tagnum(da_p, "3", NULL);
-		dict_flag_class(da_p, "context-specific", NULL);
-		dict_flag_sequence_of(da_p, "sequence", NULL);
+		flags->is_extensions = true;
+
+		flags->class = FR_DER_CLASS_CONTEXT;
+		flags->option = 3;
+
+		flags->is_sequence_of = true;
+		flags->sequence_of = FR_DER_TAG_SEQUENCE;
 	}
 
 	flags->is_choice = (strcmp(name, "choice") == 0);

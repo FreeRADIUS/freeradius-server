@@ -64,7 +64,7 @@ typedef enum {
 #define DER_BOOLEAN_TRUE 0xff	 //!< DER encoded boolean true value.
 
 typedef struct {
-	uint8_t 		tagnum;
+	uint8_t 		option;		//!< "attribute number" encoded in the tag field.
 	fr_der_tag_class_t 	class;
 	fr_der_tag_t 		der_type;
 	union {
@@ -87,7 +87,7 @@ static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const 
 	return fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 }
 
-#define fr_der_flag_tagnum(_da) 	(fr_der_attr_flags(_da)->tagnum)
+#define fr_der_flag_option(_da) 	(fr_der_attr_flags(_da)->option)
 #define fr_der_flag_class(_da)		(fr_der_attr_flags(_da)->class)
 #define fr_der_flag_der_type(_da) 	(fr_der_attr_flags(_da)->der_type)
 #define fr_der_flag_sequence_of(_da) 	(fr_der_attr_flags(_da)->sequence_of)

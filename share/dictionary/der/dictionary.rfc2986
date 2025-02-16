@@ -30,7 +30,7 @@ END algorithm
 DEFINE	subjectPublicKey				bitstring
 END subjectPublicKeyInfo
 
-DEFINE	Attributes					sequence class=context-specific,tagnum=0
+DEFINE	Attributes					sequence option=0
 BEGIN Attributes
 DEFINE	Attribute-thing					tlv
 BEGIN Attribute-thing

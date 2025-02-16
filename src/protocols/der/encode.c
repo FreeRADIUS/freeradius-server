@@ -1700,8 +1700,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	fr_pair_t const	    *vp;
 	fr_dbuff_t	     our_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_marker_t    marker;
-	fr_der_tag_encode_t *tag_encode;
-	fr_der_tag_t     tag_num;
+	fr_der_tag_encode_t *func;
+	fr_der_tag_t         tag;
 	fr_der_tag_class_t   tag_class;
 	fr_der_encode_ctx_t *uctx = encode_ctx;
 	ssize_t		     slen = 0;
@@ -1788,26 +1788,35 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 		return fr_dbuff_set(dbuff, &our_dbuff);
 	}
 
-	tag_num = fr_der_flag_der_type(vp->da) ? fr_der_flag_der_type(vp->da) : fr_type_to_der_tag_default(vp->vp_type);
+	tag = fr_der_flag_der_type(vp->da);
+	if (!tag) tag = fr_type_to_der_tag_default(vp->vp_type);
 
-	if (unlikely(tag_num == FR_DER_TAG_INVALID)) {
-		fr_strerror_printf("No tag number for type %" PRId32, vp->vp_type);
+	if (unlikely(tag == FR_DER_TAG_INVALID)) {
+		fr_strerror_printf("No tag defined for type %s", fr_type_to_str(vp->vp_type));
 		return -1;
 	}
 
-	tag_encode = &tag_funcs[tag_num];
-	if (!tag_encode->encode) {
-		fr_strerror_printf("No encoding function for type %" PRId32, vp->vp_type);
+	func = &tag_funcs[tag];
+	if (!func->encode) {
+		fr_strerror_printf("No encoding function for type %s", fr_type_to_str(vp->vp_type));
 		return -1;
 	}
 
-	tag_class = fr_der_flag_class(vp->da) ? fr_der_flag_class(vp->da) : FR_DER_CLASS_UNIVERSAL;
+	/*
+	 *	Default flag class is 0, which is FR_DER_CLASS_UNIVERSAL.
+	 */
+	tag_class = fr_der_flag_class(vp->da);
+
+	/*
+	 *	We call the DER type encoding function based on its
+	 *	tag, but we might need to encode an option value
+	 *	instead of a tag.
+	 */
+	if (fr_der_flag_option(vp->da) | tag_class) tag = fr_der_flag_option(vp->da);
 
 	fr_dbuff_marker(&uctx->encoding_start, &our_dbuff);
 
-	slen = fr_der_encode_tag(&our_dbuff,
-				 fr_der_flag_tagnum(vp->da) | tag_class ? fr_der_flag_tagnum(vp->da) : tag_num,
-				 tag_class, tag_encode->constructed);
+	slen = fr_der_encode_tag(&our_dbuff, tag, tag_class, func->constructed);
 	if (slen < 0) {
 	error:
 		fr_dbuff_marker_release(&uctx->encoding_start);
@@ -1825,7 +1834,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	if (fr_der_flag_is_extensions(vp->da)) {
 		slen = fr_der_encode_X509_extensions(&our_dbuff, cursor, uctx);
 	} else {
-		slen = tag_encode->encode(&our_dbuff, cursor, uctx);
+		slen = func->encode(&our_dbuff, cursor, uctx);
 	}
 	if (slen < 0) {
 		fr_dbuff_marker_release(&marker);

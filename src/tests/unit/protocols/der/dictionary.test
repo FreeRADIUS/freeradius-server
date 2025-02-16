@@ -146,7 +146,7 @@ MEMBER		Test-Bool				bool
 MEMBER		Test-Integer				int64
 END Set-Bool-Integer
 
-DEFINE	Test-Context-Specific				bool class=context-specific,tagnum=0,der_type=boolean
+DEFINE	Test-Context-Specific				bool option=0
 
 DEFINE	Test-Sequence-TLV				sequence
 BEGIN Test-Sequence-TLV

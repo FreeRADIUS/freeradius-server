@@ -7,7 +7,7 @@ BEGIN Certificate
 
 DEFINE	tbsCertificate					tlv
 BEGIN tbsCertificate
-DEFINE	version						sequence class=context-specific,tagnum=0
+DEFINE	version						sequence option=0
 BEGIN version
 DEFINE	VersionNum					integer
 END version

@@ -8,7 +8,7 @@ BEGIN GeneralName
 ATTRIBUTE	otherName				0	sequence option=0
 BEGIN otherName
 DEFINE	type-id						oid
-DEFINE	Value-thing					sequence class=context-specific,tagnum=0
+DEFINE	Value-thing					sequence option=0
 BEGIN Value-thing
 DEFINE	userPrincipalName				utf8string
 END Value-thing
