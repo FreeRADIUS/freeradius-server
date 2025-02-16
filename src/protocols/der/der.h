@@ -30,7 +30,7 @@ typedef enum {
 
 	FR_DER_TAG_CHOICE	    = 0x23,	   //!< A choice of types. Techically not a DER tag, but used to represent a choice.
 
-	FR_DER_TAG_MAX		= UINT8_MAX
+	FR_DER_TAG_MAX		    = 0x24
 } fr_der_tag_t;
 
 typedef enum {

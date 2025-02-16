@@ -137,7 +137,7 @@ static ssize_t fr_der_decode_universal_string(TALLOC_CTX *ctx, fr_pair_list_t *o
  */
 #define fr_der_decode_enumerated fr_der_decode_integer
 
-static fr_der_tag_decode_t tag_funcs[] = {
+static fr_der_tag_decode_t tag_funcs[FR_DER_TAG_MAX] = {
 	[FR_DER_TAG_BOOLEAN]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_boolean },
 	[FR_DER_TAG_INTEGER]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_integer },
 	[FR_DER_TAG_BITSTRING]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_bitstring },
@@ -158,8 +158,6 @@ static fr_der_tag_decode_t tag_funcs[] = {
 	[FR_DER_TAG_GENERAL_STRING]   = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_general_string },
 	[FR_DER_TAG_UNIVERSAL_STRING] = { .constructed = FR_DER_TAG_PRIMITIVE,
 					  .decode      = fr_der_decode_universal_string },
-
-	[UINT8_MAX] = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = NULL },
 };
 
 static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent, fr_dbuff_t *in,
@@ -1573,7 +1571,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		 *
 		 *	Note: Multi-byte tags would mean having a tag number that is greater than 30 (0x1E) (since tag
 		 *	31 would indicate a multi-byte tag). For most use-cases, this should not be needed, since all
-		 *	of the basic ASN.1 types are tagged under 30, and if a CHOICE type were to have over 30 options
+		 *	of the basic ASN.1 types have values under 30, and if a CHOICE type were to have over 30 options
 		 *	(meaning a multi-byte tag would be needed), that would be a very complex CHOICE type that
 		 *	should probably be simplified.
 		 */
@@ -1608,7 +1606,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		*tag = fr_der_flag_der_type(parent);
 	}
 
-	if ((*tag > NUM_ELEMENTS(tag_funcs)) || (*tag == FR_DER_TAG_INVALID)) {
+	if ((*tag >= NUM_ELEMENTS(tag_funcs)) || (*tag == FR_DER_TAG_INVALID)) {
 		fr_strerror_printf("Unknown tag %" PRIu64, *tag);
 		return -1;
 	}
