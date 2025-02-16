@@ -245,7 +245,7 @@ static int dict_flag_der_type(fr_dict_attr_t **da_p, char const *value, UNUSED f
 
 	der_type = fr_table_value_by_str(tag_name_to_number, value, FR_DER_TAG_INVALID);
 	if (der_type == FR_DER_TAG_INVALID) {
-		fr_strerror_printf("Invalid tag 'der_type=%s'", value);
+		fr_strerror_printf("Unknown type in 'der_type=%s'", value);
 		return -1;
 	}
 
@@ -259,9 +259,14 @@ static int dict_flag_sequence_of(fr_dict_attr_t **da_p, char const *value, UNUSE
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 	fr_der_tag_t     type;
 
+	if (flags->is_set_of) {
+		fr_strerror_const("Cannot be both 'sequence_of=...' and 'set_of=...'");
+		return -1;
+	}
+
 	type = fr_table_value_by_str(tag_name_to_number, value, FR_DER_TAG_INVALID);
 	if (type == FR_DER_TAG_INVALID) {
-		fr_strerror_printf("Invalid tag type '%s'", value);
+		fr_strerror_printf("Unknown type in 'sequence_of=%s'", value);
 		return -1;
 	}
 
@@ -276,9 +281,14 @@ static int dict_flag_set_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 	fr_der_tag_t     type;
 
+	if (flags->is_sequence_of) {
+		fr_strerror_const("Cannot be both 'sequence_of=...' and 'set_of=...'");
+		return -1;
+	}
+
 	type = fr_table_value_by_str(tag_name_to_number, value, FR_DER_TAG_INVALID);
 	if (type == FR_DER_TAG_INVALID) {
-		fr_strerror_printf("Invalid tag type '%s'", value);
+		fr_strerror_printf("Unknown type in 'set_of=%s'", value);
 		return -1;
 	}
 
