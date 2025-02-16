@@ -56,7 +56,7 @@ static ssize_t fr_der_decode_oid(fr_pair_list_t *out, fr_dbuff_t *in, fr_der_dec
 static ssize_t fr_der_decode_oid_value_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *in,
 					    fr_dict_attr_t const *parent, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
 
-static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, uint64_t *tag, size_t *len) CC_HINT(nonnull(2,3,4));
+static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, uint8_t *tag, size_t *len) CC_HINT(nonnull(2,3,4));
 
 typedef ssize_t (*fr_der_decode_t)(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent, fr_dbuff_t *in,
 				   fr_der_decode_ctx_t *decode_ctx);
@@ -956,7 +956,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 
 		while (fr_dbuff_remaining(&our_in) > 0) {
 			ssize_t	 ret;
-			uint8_t	 current_tag;
+			uint8_t current_tag;
 			uint8_t	 tag_byte;
 			uint8_t *current_marker = fr_dbuff_current(&our_in);
 
@@ -965,7 +965,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 			current_tag = (tag_byte & DER_TAG_CONTINUATION);
 
 			if (unlikely(!restriction_types[current_tag])) {
-				fr_strerror_printf("Attribute %s is a sequence-of, but received tag %" PRIu32, parent->name,
+				fr_strerror_printf("Attribute %s is a sequence-of, but received tag %u", parent->name,
 						   current_tag);
 			error:
 				talloc_free(vp);
@@ -977,7 +977,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 				child = fr_dict_attr_child_by_num(parent, current_tag);
 				if (unlikely(!child)) {
 					fr_strerror_printf(
-						"Attribute %s is a sequence-of choice, but received unknown option %" PRIu32,
+						"Attribute %s is a sequence-of choice, but received unknown option %u",
 						parent->name, current_tag);
 					goto error;
 				}
@@ -1111,7 +1111,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 		while (fr_dbuff_remaining(&our_in) > 0) {
 			fr_dbuff_marker_t current_value_marker;
 			ssize_t		  ret;
-			uint64_t	  current_tag;
+			uint8_t		  current_tag;
 			uint8_t		 *current_marker = fr_dbuff_current(&our_in);
 			size_t		  len;
 
@@ -1130,7 +1130,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 			}
 
 			if (unlikely(current_tag != restriction_type)) {
-				fr_strerror_printf("Attribute %s is a set-of type %" PRIu32 ", but found type %" PRIu64,
+				fr_strerror_printf("Attribute %s is a set-of type %" PRIu32 ", but found type %u",
 						   parent->name, restriction_type, current_tag);
 				ret = -1;
 				goto error;
@@ -1138,7 +1138,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 
 			fr_dbuff_marker(&current_value_marker, &our_in);
 
-			if (previous_tag != 0x00) {
+			if (previous_tag) {
 				uint8_t	   prev_char = 0, curr_char = 0;
 				fr_dbuff_t previous_item = FR_DBUFF(&previous_marker);
 
@@ -1542,7 +1542,7 @@ static ssize_t fr_der_decode_universal_string(TALLOC_CTX *ctx, fr_pair_list_t *o
  *
  * @return		0 on success, -1 on failure
  */
-static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, uint64_t *tag, size_t *len)
+static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, uint8_t *tag, size_t *len)
 {
 	fr_dbuff_t		 our_in = FR_DBUFF(in);
 	uint8_t			 tag_byte;
@@ -1596,7 +1596,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 
 		if (tag_class != fr_der_flag_class(parent)) {
 		bad_tag:
-			fr_strerror_printf("Invalid tag %" PRIu64 " for attribute %s. Expected %" PRIu32, *tag, parent->name,
+			fr_strerror_printf("Invalid tag %u for attribute %s. Expected %" PRIu32, *tag, parent->name,
 					   fr_der_flag_tagnum(parent));
 			return -1;
 		}
@@ -1607,7 +1607,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 	}
 
 	if ((*tag >= NUM_ELEMENTS(tag_funcs)) || (*tag == FR_DER_TAG_INVALID)) {
-		fr_strerror_printf("Unknown tag %" PRIu64, *tag);
+		fr_strerror_printf("Unknown tag %u", *tag);
 		return -1;
 	}
 
@@ -1618,12 +1618,12 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 	 */
 	if (*tag != FR_DER_TAG_OID) {
 		if (unlikely(func->decode == NULL)) {
-			fr_strerror_printf("No decode function for tag %" PRIu64, *tag);
+			fr_strerror_printf("No decode function for tag %u", *tag);
 			return -1;
 		}
 
 		if (IS_DER_TAG_CONSTRUCTED(func->constructed) != constructed) {
-			fr_strerror_printf("Constructed flag mismatch for tag %" PRIu64, *tag);
+			fr_strerror_printf("Constructed flag mismatch for tag %u", *tag);
 			return -1;
 		}
 	}
@@ -1695,7 +1695,7 @@ static ssize_t fr_der_decode_choice(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	fr_pair_t	     *vp;
 	fr_dict_attr_t const *child  = NULL;
 	fr_dbuff_t	      our_in = FR_DBUFF(in);
-	uint64_t	   tag_num;
+	uint8_t	   	   tag;
 	uint8_t		   tag_byte;
 	uint8_t		  *current_marker = fr_dbuff_current(&our_in);
 
@@ -1713,12 +1713,12 @@ static ssize_t fr_der_decode_choice(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 		return -1;
 	}
 
-	tag_num = (tag_byte & DER_TAG_CONTINUATION);
+	tag = (tag_byte & DER_TAG_CONTINUATION);
 
-	child = fr_dict_attr_child_by_num(parent, tag_num);
+	child = fr_dict_attr_child_by_num(parent, tag);
 	if (unlikely(!child)) {
-		fr_strerror_printf("Attribute %s is a choice, but received unknown option %" PRIu64, parent->name,
-					tag_num);
+		fr_strerror_printf("Attribute %s is a choice, but received unknown option %u",
+				   parent->name, tag);
 		return -1;
 	}
 
@@ -1756,7 +1756,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 	fr_dbuff_t our_in = FR_DBUFF(in);
 	fr_pair_t *vp, *vp2;
 
-	uint64_t tag;
+	uint8_t tag;
 	int64_t	max;
 	size_t	 len;
 	ssize_t	 slen;
@@ -1824,12 +1824,12 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 	}
 
 	if (tag != FR_DER_TAG_SEQUENCE) {
-		fr_strerror_printf("Expected SEQUENCE tag as the first item in an extensions list. Got tag: %" PRIu64, tag);
+		fr_strerror_printf("Expected SEQUENCE tag as the first item in an extensions list. Got tag %u", tag);
 		slen = -1;
 		goto error;
 	}
 
-	FR_PROTO_TRACE("Attribute %s, tag %" PRIu64, parent->name, tag);
+	FR_PROTO_TRACE("Attribute %s, tag %u", parent->name, tag);
 
 	max = fr_der_flag_max(parent); /* Maximum number of extensions specified in the dictionary*/
 
@@ -1849,13 +1849,13 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		}
 
 		if (tag != FR_DER_TAG_SEQUENCE) {
-			fr_strerror_printf("Expected SEQUENCE tag as the first tag in an extension. Got tag: %" PRIu64,
+			fr_strerror_printf("Expected SEQUENCE tag as the first tag in an extension. Got tag %u",
 					   tag);
 			slen = -1;
 			goto error;
 		}
 
-		FR_PROTO_TRACE("Attribute %s, tag %" PRIu64, parent->name, tag);
+		FR_PROTO_TRACE("Attribute %s, tag %u", parent->name, tag);
 
 		if (unlikely((slen = fr_der_decode_hdr(NULL, &sub_in, &tag, &sub_len)) < 0)) {
 			fr_strerror_const_push("Failed decoding oid header");
@@ -1863,12 +1863,12 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		}
 
 		if (tag != FR_DER_TAG_OID) {
-			fr_strerror_printf("Expected OID tag as the first item in an extension. Got tag: %" PRIu64, tag);
+			fr_strerror_printf("Expected OID tag as the first item in an extension. Got tag %u", tag);
 			slen = -1;
 			goto error;
 		}
 
-		FR_PROTO_TRACE("Attribute %s, tag %" PRIu64, parent->name, tag);
+		FR_PROTO_TRACE("Attribute %s, tag %u", parent->name, tag);
 
 		uctx.ctx	 = vp;
 		uctx.parent_da	 = vp->da;
@@ -1952,7 +1952,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		}
 
 		if (unlikely(tag != FR_DER_TAG_OCTETSTRING)) {
-			fr_strerror_printf("Expected OCTETSTRING tag as the second item in an extension. Got tag: %" PRIu64,
+			fr_strerror_printf("Expected OCTETSTRING tag as the second item in an extension. Got tag %u",
 					   tag);
 			slen = -1;
 			goto error;
@@ -2016,7 +2016,7 @@ static ssize_t fr_der_decode_oid_value_pair(TALLOC_CTX *ctx, fr_pair_list_t *out
 	fr_dbuff_marker_t	      marker;
 	fr_der_decode_oid_to_da_ctx_t uctx;
 
-	uint64_t tag;
+	uint8_t tag;
 	size_t	 len;
 	ssize_t	 slen;
 
@@ -2045,12 +2045,12 @@ static ssize_t fr_der_decode_oid_value_pair(TALLOC_CTX *ctx, fr_pair_list_t *out
 	}
 
 	if (tag != FR_DER_TAG_OID) {
-		fr_strerror_printf("Expected OID tag as the first item in a pair. Got tag: %" PRIu64, tag);
+		fr_strerror_printf("Expected OID tag as the first item in a pair. Got tag: %u", tag);
 		slen = -1;
 		goto error;
 	}
 
-	FR_PROTO_TRACE("Attribute %s, tag %" PRIu64, parent->name, tag);
+	FR_PROTO_TRACE("Attribute %s, tag %u", parent->name, tag);
 
 	uctx.ctx	 = ctx;
 	uctx.parent_da	 = fr_dict_attr_ref(parent);
@@ -2169,7 +2169,8 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	fr_dbuff_t	     our_in = FR_DBUFF(in);
 	fr_der_tag_decode_t *func;
 	ssize_t		     slen;
-	uint64_t	     tag, max;
+	uint8_t	     	     tag;
+	uint64_t 	     max;
 	size_t		     len;
 
 	/*
@@ -2266,7 +2267,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		return -1;
 	}
 
-	FR_PROTO_TRACE("Attribute %s, tag %" PRIu64, parent->name, tag);
+	FR_PROTO_TRACE("Attribute %s, tag %u", parent->name, tag);
 
 	if (unlikely(tag != FR_DER_TAG_NULL) && (!fr_type_to_der_tag_valid(parent->type, tag) || fr_dbuff_remaining(&our_in) == 0)) {
 		if (fr_der_flag_has_default(parent)) {
@@ -2317,7 +2318,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 			 *	If this is not a sequence/set/structure like thing, then it does not have children that
 			 *	could have defaults.
 			 */
-			fr_strerror_printf("Attribute %s of type %s cannot store type %" PRIu64, parent->name,
+			fr_strerror_printf("Attribute %s of type %s cannot store type %u", parent->name,
 					   fr_type_to_str(parent->type), tag);
 			return -1;
 		}

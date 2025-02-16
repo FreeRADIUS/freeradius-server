@@ -531,9 +531,9 @@ static bool attr_valid(fr_dict_attr_t *da)
 {
 	if (fr_der_flag_is_sequence_of(da->parent) ||
 	    fr_der_flag_is_set_of(da->parent)) {
-		uint8_t of_type = (fr_der_flag_is_sequence_of(da->parent) ?
-				   fr_der_flag_sequence_of(da->parent) :
-				   fr_der_flag_set_of(da->parent));
+		fr_der_tag_t of_type = (fr_der_flag_is_sequence_of(da->parent) ?
+					fr_der_flag_sequence_of(da->parent) :
+					fr_der_flag_set_of(da->parent));
 
 		if ((unlikely(of_type != FR_DER_TAG_CHOICE)) &&
 		    unlikely(fr_type_to_der_tags[da->type][of_type] == false)) {
