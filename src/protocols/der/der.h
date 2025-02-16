@@ -70,14 +70,14 @@ typedef struct {
 	fr_der_tag_t 		sequence_of;
 	fr_der_tag_t 		set_of;
 	int64_t 		max;
-	bool 			is_sequence_of;
-	bool 			is_set_of;
-	bool 			is_pair;
-	bool 			is_pairs;
-	bool 			is_extensions; // This is a flag for a list X.509 extensions
-	bool 			has_default;
-	bool 			is_oid_leaf;
-	bool			is_choice;
+	bool			is_sequence_of : 1;
+	bool 			is_set_of : 1;
+	bool 			is_pair : 1;
+	bool 			is_pairs : 1;
+	bool 			is_extensions : 1; // This is a flag for a list X.509 extensions
+	bool 			has_default : 1;
+	bool 			is_oid_leaf : 1;
+	bool			is_choice : 1;
 } fr_der_attr_flags_t;
 
 static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const *da)
