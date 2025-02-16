@@ -249,6 +249,21 @@ static int dict_flag_der_type(fr_dict_attr_t **da_p, char const *value, UNUSED f
 		return -1;
 	}
 
+	/*
+	 *	The DER type and FreeRADIUS type must be compatible.
+	 *
+	 *	Except for some der_type=integer, such as a
+	 *	certificate serialNumber.  Those are too large for us
+	 *	to represent in 64 bits, so we just treat them as
+	 *	'octets'.
+	 */
+	if (!fr_type_to_der_tag_valid((*da_p)->type, der_type) &&
+	    (der_type != FR_DER_TAG_INTEGER) && ((*da_p)->type != FR_TYPE_OCTETS)) {
+		fr_strerror_printf("Attribute type %s is not compatible with 'der_type=%s'",
+				   fr_type_to_str((*da_p)->type), value);
+		return -1;
+	}
+
 	flags->der_type = der_type;
 
 	return 0;

@@ -192,6 +192,17 @@ static ssize_t fr_der_encode_integer(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UN
 	 */
 
 	/*
+	 *	Some 'integer' types such as serialNumber are too
+	 *	large for 64-bits.  So we just treat them as octet
+	 *	strings.
+	 */
+	if (vp->da->type != FR_TYPE_INT64) {
+		fr_assert(vp->da->type == FR_TYPE_OCTETS);
+		FR_DBUFF_IN_MEMCPY_RETURN(&our_dbuff, vp->vp_octets, vp->vp_length);
+		return fr_dbuff_set(dbuff, &our_dbuff);
+	}
+
+	/*
 	 *	Yes, the type is FR_TYPE_INT64.  But we encode the
 	 *	data as-is, without caring about things like signed
 	 *	math.

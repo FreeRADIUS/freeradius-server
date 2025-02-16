@@ -2310,6 +2310,8 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		if (fr_type_is_octets(parent->type)) {
 			/*
 			 *	We will store the value as raw octets if indicated by the dictionary
+			 *
+			 *	This is mainly for large 'integer' types, such as serialNumber.
 			 */
 			tag = FR_DER_TAG_OCTETSTRING;
 
