@@ -89,7 +89,7 @@ static ssize_t fr_der_encode_string(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_
 
 static ssize_t fr_der_encode_len(fr_dbuff_t *dbuff, fr_dbuff_marker_t *length_start) CC_HINT(nonnull);
 static inline CC_HINT(always_inline) ssize_t
-	fr_der_encode_tag(fr_dbuff_t *dbuff, fr_der_tag_num_t tag_num, fr_der_tag_class_t tag_class,
+	fr_der_encode_tag(fr_dbuff_t *dbuff, fr_der_tag_t tag_num, fr_der_tag_class_t tag_class,
 			  fr_der_tag_constructed_t constructed) CC_HINT(nonnull);
 static ssize_t encode_value(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth, fr_dcursor_t *cursor,
 			    void *encode_ctx);
@@ -1660,7 +1660,7 @@ static ssize_t fr_der_encode_len(fr_dbuff_t *dbuff, fr_dbuff_marker_t *length_st
  * @return		The number of bytes written to the buffer
  */
 static inline CC_HINT(always_inline) ssize_t
-	fr_der_encode_tag(fr_dbuff_t *dbuff, fr_der_tag_num_t tag_num, fr_der_tag_class_t tag_class,
+	fr_der_encode_tag(fr_dbuff_t *dbuff, fr_der_tag_t tag_num, fr_der_tag_class_t tag_class,
 			  fr_der_tag_constructed_t constructed)
 {
 	fr_dbuff_t	our_dbuff = FR_DBUFF(dbuff);
@@ -1689,7 +1689,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	fr_dbuff_t	     our_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_marker_t    marker;
 	fr_der_tag_encode_t *tag_encode;
-	fr_der_tag_num_t     tag_num;
+	fr_der_tag_t     tag_num;
 	fr_der_tag_class_t   tag_class;
 	fr_der_encode_ctx_t *uctx = encode_ctx;
 	ssize_t		     slen = 0;

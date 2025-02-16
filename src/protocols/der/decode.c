@@ -1108,7 +1108,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 		/*
 		 * 	This is a set-of, meaning there are restrictions on the types which can be present
 		 */
-		fr_der_tag_num_t restriction_type = fr_der_flag_set_of(parent);
+		fr_der_tag_t restriction_type = fr_der_flag_set_of(parent);
 
 		while (fr_dbuff_remaining(&our_in) > 0) {
 			fr_dbuff_marker_t current_value_marker;

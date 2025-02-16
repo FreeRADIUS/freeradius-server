@@ -31,7 +31,7 @@ typedef enum {
 	FR_DER_TAG_CHOICE	    = 0x23,	   //!< A choice of types. Techically not a DER tag, but used to represent a choice.
 
 	FR_DER_TAG_MAX		= UINT8_MAX
-} fr_der_tag_num_t;
+} fr_der_tag_t;
 
 typedef enum {
 	FR_DER_TAG_PRIMITIVE   = 0x00,	     //!< This is a leaf value, it contains no children.
@@ -68,9 +68,9 @@ typedef enum {
 typedef struct {
 	uint8_t 		tagnum;
 	fr_der_tag_class_t 	class;
-	fr_der_tag_num_t 	der_type;
-	fr_der_tag_num_t 	sequence_of;
-	fr_der_tag_num_t 	set_of;
+	fr_der_tag_t 		der_type;
+	fr_der_tag_t 		sequence_of;
+	fr_der_tag_t 		set_of;
 	int64_t 		max;
 	bool 			is_sequence_of;
 	bool 			is_set_of;
@@ -105,8 +105,8 @@ static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const 
 /*
  * 	base.c
  */
-fr_der_tag_num_t fr_type_to_der_tag_default(fr_type_t type);
-bool	fr_type_to_der_tag_valid(fr_type_t type, fr_der_tag_num_t tag);
+fr_der_tag_t fr_type_to_der_tag_default(fr_type_t type);
+bool	fr_type_to_der_tag_valid(fr_type_t type, fr_der_tag_t tag);
 
 int	fr_der_global_init(void);
 void	fr_der_global_free(void);

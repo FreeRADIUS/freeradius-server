@@ -134,7 +134,7 @@ static const bool *fr_type_to_der_tags[] = {
  * 		@param[in] tag The der tag to check.
  * 		@return true if the type can be encoded as the given tag.
  */
-bool fr_type_to_der_tag_valid(fr_type_t type, fr_der_tag_num_t tag)
+bool fr_type_to_der_tag_valid(fr_type_t type, fr_der_tag_t tag)
 {
 	return fr_type_to_der_tags[type][tag];
 }
@@ -223,7 +223,7 @@ static int dict_flag_has_default(fr_dict_attr_t **da_p, UNUSED char const *value
 static int dict_flag_der_type(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
-	fr_der_tag_num_t     der_type;
+	fr_der_tag_t     der_type;
 
 	der_type = fr_table_value_by_str(tag_name_to_number, value, UINT8_MAX);
 	if (der_type == UINT8_MAX) {
@@ -239,7 +239,7 @@ static int dict_flag_der_type(fr_dict_attr_t **da_p, char const *value, UNUSED f
 static int dict_flag_sequence_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
-	fr_der_tag_num_t     type;
+	fr_der_tag_t     type;
 
 	type = fr_table_value_by_str(tag_name_to_number, value, UINT8_MAX);
 	if (type == UINT8_MAX) {
@@ -256,7 +256,7 @@ static int dict_flag_sequence_of(fr_dict_attr_t **da_p, char const *value, UNUSE
 static int dict_flag_set_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
-	fr_der_tag_num_t     type;
+	fr_der_tag_t     type;
 
 	type = fr_table_value_by_str(tag_name_to_number, value, UINT8_MAX);
 	if (type == UINT8_MAX) {
@@ -413,7 +413,7 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 	static size_t der_tag_table_len = NUM_ELEMENTS(der_tag_table);
 
 	fr_der_attr_flags_t	*flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
-	fr_der_tag_num_t	der_type;
+	fr_der_tag_t	der_type;
 	fr_type_t		fr_type;
 
 	/*
@@ -475,7 +475,7 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 	return true;
 }
 
-static const fr_der_tag_num_t fr_type_to_der_tag_defaults[FR_TYPE_MAX + 1] = {
+static const fr_der_tag_t fr_type_to_der_tag_defaults[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_BOOL]		= FR_DER_TAG_BOOLEAN,
 	[FR_TYPE_UINT8]		= FR_DER_TAG_INTEGER,
 	[FR_TYPE_UINT16]	= FR_DER_TAG_INTEGER,
@@ -493,7 +493,7 @@ static const fr_der_tag_num_t fr_type_to_der_tag_defaults[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_GROUP]		= FR_DER_TAG_SEQUENCE,
 };
 
-fr_der_tag_num_t fr_type_to_der_tag_default(fr_type_t type)
+fr_der_tag_t fr_type_to_der_tag_default(fr_type_t type)
 {
 	return fr_type_to_der_tag_defaults[type];
 }
