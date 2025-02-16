@@ -1757,7 +1757,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 	fr_pair_t *vp, *vp2;
 
 	uint8_t tag;
-	int64_t	max;
+	uint64_t max;
 	size_t	 len;
 	ssize_t	 slen;
 

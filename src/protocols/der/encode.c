@@ -1120,7 +1120,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 	fr_pair_t const	 *vp;
 	ssize_t		  slen	      = 0;
 	size_t		  is_critical = 0;
-	int64_t	 	  max;
+	uint64_t	  max, num;
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
@@ -1162,7 +1162,8 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 
 	max = fr_der_flag_max(vp->da); /* Maximum number of extensions specified in the dictionary */
 
-	if (max == 0) max = INT64_MAX;
+	if (!max) max = UINT64_MAX;
+	num = 0;
 
 	slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_SEQUENCE, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_CONSTRUCTED);
 	if (slen < 0) return slen;
@@ -1190,8 +1191,8 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		 *	Note: The value may be a constructed or primitive type
 		 */
 
-		if (max < 0) {
-			fr_strerror_printf("Too many X509 extensions (%" PRIi64 ")", max);
+		if (num >= max) {
+			fr_strerror_printf("Too many X509 extensions (%" PRIu64 ")", max);
 			break;
 		}
 
@@ -1382,7 +1383,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 
 		if (is_critical) {
 			fr_dcursor_next(&parent_cursor);
-			max--;
+			num++;
 			continue;
 		}
 
@@ -1391,7 +1392,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 
 		fr_dcursor_next(&root_cursor);
 		fr_dcursor_copy(&parent_cursor, &root_cursor);
-		max--;
+		num++;
 	}
 
 	/*

@@ -67,9 +67,11 @@ typedef struct {
 	uint8_t 		tagnum;
 	fr_der_tag_class_t 	class;
 	fr_der_tag_t 		der_type;
-	fr_der_tag_t 		sequence_of;
-	fr_der_tag_t 		set_of;
-	int64_t 		max;
+	union {
+		fr_der_tag_t 		sequence_of;
+		fr_der_tag_t 		set_of;
+	};
+	uint64_t 		max;
 	bool			is_sequence_of : 1;
 	bool 			is_set_of : 1;
 	bool 			is_pair : 1;
