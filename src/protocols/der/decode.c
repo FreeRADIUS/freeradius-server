@@ -924,7 +924,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 		 * 	This is a sequence-of, meaning there are restrictions on the types which can be present
 		 */
 
-		bool restriction_types[] = { [UINT8_MAX] = false };
+		bool restriction_types[FR_DER_TAG_MAX] = { };
 
 		if (fr_der_flag_sequence_of(parent) != FR_DER_TAG_CHOICE) {
 			restriction_types[fr_der_flag_sequence_of(parent)] = true;
@@ -1222,12 +1222,12 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 static ssize_t fr_der_decode_printable_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 					      fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
-	static bool const allowed_chars[] = {
+	static bool const allowed_chars[UINT8_MAX + 1] = {
 		[' '] = true, ['\''] = true, ['('] = true, [')'] = true,
 		['+'] = true, [','] = true, ['-'] = true, ['.'] = true,
 		['/'] = true, [':'] = true, ['='] = true, ['?'] = true,
 		['A' ... 'Z'] = true, ['a' ... 'z'] = true,
-		['0' ... '9'] = true, [UINT8_MAX] = false
+		['0' ... '9'] = true,
 	};
 
 	return fr_der_decode_string(ctx, out, parent, in, allowed_chars, decode_ctx);
@@ -1236,7 +1236,7 @@ static ssize_t fr_der_decode_printable_string(TALLOC_CTX *ctx, fr_pair_list_t *o
 static ssize_t fr_der_decode_t61_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 					fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
-	static bool const allowed_chars[] = {
+	static bool const allowed_chars[UINT8_MAX + 1] = {
 		[0x08] = true, [0x0A] = true, [0x0C] = true, [0x0D] = true,
 		[0x0E] = true, [0x0F] = true, [0x19] = true, [0x1A] = true,
 		[0x1B] = true, [0x1D] = true, [' '] = true, ['!'] = true,
@@ -1265,7 +1265,7 @@ static ssize_t fr_der_decode_t61_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		[0xF7] = true, [0xF8] = true, [0xF9] = true, [0xFA] = true,
 		[0xFB] = true, [0xFC] = true, [0xFD] = true, [0xFE] = true,
 		['A' ... 'Z'] = true, ['a' ... 'z'] = true,
-		['0' ... '9'] = true, [UINT8_MAX] = false
+		['0' ... '9'] = true,
 	};
 
 	return fr_der_decode_string(ctx, out, parent, in, allowed_chars, decode_ctx);
@@ -1505,7 +1505,7 @@ static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *o
 static ssize_t fr_der_decode_visible_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 					    fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
-	static bool const allowed_chars[] = {
+	static bool const allowed_chars[UINT8_MAX + 1] = {
 		[' '] = true,  ['!'] = true,  ['"'] = true, ['#'] = true,
 		['$'] = true,  ['%'] = true,  ['&'] = true, ['\''] = true,
 		['('] = true,  [')'] = true,  ['*'] = true, ['+'] = true,
@@ -1515,7 +1515,7 @@ static ssize_t fr_der_decode_visible_string(TALLOC_CTX *ctx, fr_pair_list_t *out
 		['\\'] = true, [']'] = true,  ['^'] = true, ['_'] = true,
 		['`'] = true,  ['{'] = true,  ['|'] = true, ['}'] = true,
 		['A' ... 'Z'] = true, ['a' ... 'z'] = true,
-		['0' ... '9'] = true, [UINT8_MAX] = false
+		['0' ... '9'] = true,
 	};
 
 	return fr_der_decode_string(ctx, out, parent, in, allowed_chars, decode_ctx);
