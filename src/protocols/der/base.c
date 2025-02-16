@@ -176,8 +176,12 @@ static int dict_flag_tagnum(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 	unsigned long num;
 	char *end = NULL;
 
+	/*
+	 *	We limit the allowed tag numbers to ones which fit into the
+	 *	5 bits of the first byte.  We don't support continued tags.
+	 */
 	num = strtoul(value, &end, 10);
-	if ((num > 255) || *end) {
+	if ((num > 0x1f) || *end) {
 		fr_strerror_printf("Invalid tag number '%s'", value);
 		return -1;
 	}
@@ -225,9 +229,9 @@ static int dict_flag_der_type(fr_dict_attr_t **da_p, char const *value, UNUSED f
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 	fr_der_tag_t     der_type;
 
-	der_type = fr_table_value_by_str(tag_name_to_number, value, UINT8_MAX);
-	if (der_type == UINT8_MAX) {
-		fr_strerror_printf("Invalid tag der_type '%s'", value);
+	der_type = fr_table_value_by_str(tag_name_to_number, value, FR_DER_TAG_INVALID);
+	if (der_type == FR_DER_TAG_INVALID) {
+		fr_strerror_printf("Invalid tag 'der_type=%s'", value);
 		return -1;
 	}
 
@@ -241,8 +245,8 @@ static int dict_flag_sequence_of(fr_dict_attr_t **da_p, char const *value, UNUSE
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 	fr_der_tag_t     type;
 
-	type = fr_table_value_by_str(tag_name_to_number, value, UINT8_MAX);
-	if (type == UINT8_MAX) {
+	type = fr_table_value_by_str(tag_name_to_number, value, FR_DER_TAG_INVALID);
+	if (type == FR_DER_TAG_INVALID) {
 		fr_strerror_printf("Invalid tag type '%s'", value);
 		return -1;
 	}
@@ -258,8 +262,8 @@ static int dict_flag_set_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 	fr_der_tag_t     type;
 
-	type = fr_table_value_by_str(tag_name_to_number, value, UINT8_MAX);
-	if (type == UINT8_MAX) {
+	type = fr_table_value_by_str(tag_name_to_number, value, FR_DER_TAG_INVALID);
+	if (type == FR_DER_TAG_INVALID) {
 		fr_strerror_printf("Invalid tag type '%s'", value);
 		return -1;
 	}
@@ -318,13 +322,16 @@ static int dict_flag_is_choice(fr_dict_attr_t **da_p, UNUSED char const *value, 
 static int dict_flag_max(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	unsigned long num;
+	char *end = NULL;
 
-	if (!isdigit((int64_t) *value)) {
-		fr_strerror_printf("Invalid max value '%s'", value);
+	num = strtoul(value, &end, 10);
+	if (*end) {
+		fr_strerror_printf("Invalid value in 'max=%s'", value);
 		return -1;
 	}
 
-	flags->max = (int64_t)atoll(value);
+	flags->max = num;
 
 	return 0;
 }
@@ -332,14 +339,22 @@ static int dict_flag_max(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dic
 static int dict_flag_option(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	unsigned long num;
+	char *end = NULL;
 
-	flags->class = FR_DER_CLASS_CONTEXT;
-
-	if (!isdigit((uint8_t) *value)) {
-		fr_strerror_printf("Invalid option value '%s'", value);
+	/*
+	 *	We limit the allowed options (tag numbers) to ones
+	 *	which fit into the 5 bits of the first byte.  We don't
+	 *	support continued tags.
+	 */
+	num = strtoul(value, &end, 10);
+	if ((num > 0x1f) || *end) {
+		fr_strerror_printf("Invalid value in 'option=%s'", value);
 		return -1;
 	}
-	flags->tagnum = (uint8_t)atoi(value);
+
+	flags->class = FR_DER_CLASS_CONTEXT;
+	flags->tagnum = num;
 
 	return 0;
 }
