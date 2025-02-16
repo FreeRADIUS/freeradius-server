@@ -44,28 +44,7 @@ fr_dict_attr_autoload_t	       libfreeradius_der_dict_attr[] = {
 	       { NULL }
 };
 
-fr_der_tag_constructed_t tag_labels[] = {
-	[FR_DER_TAG_BOOLEAN]	      = FR_DER_TAG_PRIMITIVE,
-	[FR_DER_TAG_INTEGER]	      = FR_DER_TAG_PRIMITIVE,
-	[FR_DER_TAG_BITSTRING]	      = FR_DER_TAG_PRIMITIVE,
-	[FR_DER_TAG_OCTETSTRING]      = FR_DER_TAG_PRIMITIVE,
-	[FR_DER_TAG_NULL]	      = FR_DER_TAG_PRIMITIVE,
-	[FR_DER_TAG_OID]	      = FR_DER_TAG_PRIMITIVE,
-	[FR_DER_TAG_ENUMERATED]	      = FR_DER_TAG_PRIMITIVE,
-	[FR_DER_TAG_UTF8_STRING]      = FR_DER_TAG_PRIMITIVE,
-	[FR_DER_TAG_SEQUENCE]	      = FR_DER_TAG_CONSTRUCTED,
-	[FR_DER_TAG_SET]	      = FR_DER_TAG_CONSTRUCTED,
-	[FR_DER_TAG_PRINTABLE_STRING] = FR_DER_TAG_PRIMITIVE,
-	[FR_DER_TAG_T61_STRING]	      = FR_DER_TAG_PRIMITIVE,
-	[FR_DER_TAG_IA5_STRING]	      = FR_DER_TAG_PRIMITIVE,
-	[FR_DER_TAG_UTC_TIME]	      = FR_DER_TAG_PRIMITIVE,
-	[FR_DER_TAG_GENERALIZED_TIME] = FR_DER_TAG_PRIMITIVE,
-	[FR_DER_TAG_VISIBLE_STRING]   = FR_DER_TAG_PRIMITIVE,
-	[FR_DER_TAG_GENERAL_STRING]   = FR_DER_TAG_PRIMITIVE,
-	[FR_DER_TAG_UNIVERSAL_STRING] = FR_DER_TAG_PRIMITIVE,
-};
-
-fr_table_num_sorted_t const tag_name_to_number[] = {
+static fr_table_num_sorted_t const tag_name_to_number[] = {
 	{ L("bitstring"),		FR_DER_TAG_BITSTRING },
 	{ L("bmpstring"),		FR_DER_TAG_BMP_STRING },
 	{ L("boolean"),			FR_DER_TAG_BOOLEAN },

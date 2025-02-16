@@ -46,8 +46,6 @@ typedef enum {
 	FR_DER_CLASS_INVALID	    = 0x04
 } fr_der_tag_class_t;
 
-extern fr_der_tag_constructed_t tag_labels[];
-
 #define DER_MAX_STR 16384
 
 #define DER_UTC_TIME_LEN 13	 //!< Length of the UTC time string.
