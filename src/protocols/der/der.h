@@ -56,8 +56,6 @@ typedef enum {
 #define DER_TAG_CONSTRUCTED_MASK 0x20	 //!< Mask to check if the tag is constructed.
 #define DER_TAG_NUM_MASK 0x1f	 //!< Mask to extract the tag number from the tag.
 
-#define DER_MAX_TAG_NUM 0xfe * 8	 //!< Maximum tag number that can be encoded in a single byte.
-
 #define DER_TAG_CONTINUATION 0x1f	 //!< Mask to check if the tag is a continuation.
 
 #define DER_LEN_MULTI_BYTE 0x80	 //!< Mask to check if the length is multi-byte.
