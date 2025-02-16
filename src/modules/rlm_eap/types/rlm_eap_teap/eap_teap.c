@@ -1770,9 +1770,11 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 	if (!eap_teap_verify(request, tls_session, data, data_len)) return PW_CODE_ACCESS_REJECT;
 
 	if (t->stage == TLS_SESSION_HANDSHAKE) {
+		char buf[256];
+		int identity_type = 0;
+
 		rad_assert(t->mode == EAP_TEAP_UNKNOWN);
 
-		char buf[256];
 		if (strstr(SSL_CIPHER_description(SSL_get_current_cipher(tls_session->ssl),
 						  buf, sizeof(buf)), "Au=None")) {
 			/* FIXME enforce MSCHAPv2 - RFC 7170 */
@@ -1790,7 +1792,6 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 
 		eap_teap_init_keys(request, tls_session);
 
-
 		/* RFC7170, Appendix C.6 */
 		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (vp) {
@@ -1802,21 +1803,22 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 				goto fail;
 			}
 
-			t->identity_types[t->num_identities++] = vp->vp_short;
+			identity_type = t->identity_types[t->num_identities++] = vp->vp_short;
 
 			RDEBUG("Phase 2: Deleting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
 			       (vp->vp_short == 1) ? "User" : "Machine");
 			fr_pair_delete(&request->state, vp);
+			vp = NULL;
 		}
 
 		/*
 		 *	We always start off with an EAP-Identity-Request.
 		 */
-		if (t->default_method || (vp && t->eap_method[vp->vp_short])) {
+		if (t->default_method || (identity_type && t->eap_method[identity_type])) {
 			eap_teap_append_eap_identity_request(request, tls_session, eap_session);
 		} else {
-			RDEBUG("Phase 2: No %s EAP method configured - sending Basic-Password-Auth-Req = \"\"",
-			       !vp ? "" : (vp->vp_short == 1) ? "User" : "Machine");
+			RDEBUG("Phase 2: No %sEAP method configured - sending Basic-Password-Auth-Req = \"\"",
+			       !identity_type ? "" : (identity_type == 1) ? "User " : "Machine ");
 			eap_teap_tlv_append(request, tls_session, EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ, true, 0, "");
 		}
 
