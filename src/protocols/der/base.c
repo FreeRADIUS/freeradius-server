@@ -187,7 +187,7 @@ void fr_der_global_free(void)
 #if 0
 static int dict_flag_class(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
-	static fr_table_num_sorted_t const table[] = {
+	static const fr_table_num_sorted_t table[] = {
 		{ L("application"),	FR_DER_CLASS_APPLICATION },
 		{ L("context-specific"), FR_DER_CLASS_CONTEXT },
 		{ L("private"),		FR_DER_CLASS_PRIVATE },
@@ -198,9 +198,14 @@ static int dict_flag_class(fr_dict_attr_t **da_p, char const *value, UNUSED fr_d
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 	fr_der_tag_class_t   tag_class;
 
+	if (flags->class) {
+		fr_strerror_printf("Attribute already has a 'class' defined");
+		return -1;
+	}
+
 	tag_class = fr_table_value_by_str(table, value, FR_DER_CLASS_INVALID);
 	if (tag_class == FR_DER_CLASS_INVALID) {
-		fr_strerror_printf("Invalid tag class '%s'", value);
+		fr_strerror_printf("Invalid value in 'class=%s'", value);
 		return -1;
 	}
 
@@ -391,15 +396,15 @@ static const fr_dict_flag_parser_t  der_flags[] = {
 	{ L("is_oid_leaf"),	{ .func = dict_flag_is_oid_leaf } },
 	{ L("is_pair"),		{ .func = dict_flag_is_pair } },
 	{ L("is_pairs"),	{ .func = dict_flag_is_pairs } },
-	{ L("max"),		{ .func = dict_flag_max } },
-	{ L("option"),		{ .func = dict_flag_option } },
-	{ L("sequence_of"),	{ .func = dict_flag_sequence_of } },
-	{ L("set_of"),		{ .func = dict_flag_set_of } },
+	{ L("max"),		{ .func = dict_flag_max, .needs_value = true } },
+	{ L("option"),		{ .func = dict_flag_option, .needs_value = true } },
+	{ L("sequence_of"),	{ .func = dict_flag_sequence_of, .needs_value = true } },
+	{ L("set_of"),		{ .func = dict_flag_set_of, .needs_value = true } },
 };
 
 static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name)
 {
-	static fr_table_num_sorted_t const type_table[] = {
+	static const fr_table_num_sorted_t type_table[] = {
 		{ L("bitstring"),	FR_TYPE_OCTETS },
 //		{ L("bmpstring"),	FR_TYPE_OCTETS },
 		{ L("boolean"),		FR_TYPE_BOOL },
@@ -424,7 +429,7 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 	};
 	static size_t type_table_len = NUM_ELEMENTS(type_table);
 
-	static fr_table_num_sorted_t const der_tag_table[] = {
+	static const fr_table_num_sorted_t der_tag_table[] = {
 		{ L("bitstring"),	FR_DER_TAG_BITSTRING },
 //		{ L("bmpstring"),	FR_DER_TAG_BMP_STRING },
 		{ L("boolean"),		FR_DER_TAG_BOOLEAN },
