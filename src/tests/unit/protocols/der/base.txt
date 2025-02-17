@@ -326,18 +326,24 @@ decode-pair 06 10 2a 86 48 ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
 match Test-Oid = "1.2.840.9223372036854775807.13.1.1.11"
 
 decode-pair 06 11 2a 86 48 ff ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match OID subidentifier too large (9 chunks)
+match OID subidentifier too large (>63 bits)
 
 decode-pair 06 12 2a 86 48 ff ff ff ff ff ff ff ff ff 86 f7 0d 01 01 0b
-match OID subidentifier too large (9 chunks)
+match OID subidentifier too large (>63 bits)
 
 decode-pair 06 19 2a 86 48 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 86 f7 0d 01 01 0b
-match OID subidentifier too large (9 chunks)
+match OID subidentifier too large (>63 bits)
 
 proto-dictionary-root Seq-Oid
 
 decode-pair 30 05 06 03 88 37 03
 match Seq-Oid = { Test-Oid = "2.999.3" }
+
+#
+#  Last byte cannot end with the high bit set
+#
+decode-pair 30 05 06 03 88 37 83
+match OID subidentifier is truncated
 
 decode-pair 30 0b 06 09 2a 86 48 86 f7 0d 01 01 0B
 match Seq-Oid = { Test-Oid = "1.2.840.113549.1.1.11" }
@@ -367,13 +373,13 @@ decode-pair 30 12 06 10 2a 86 48 ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
 match Seq-Oid = { Test-Oid = "1.2.840.9223372036854775807.13.1.1.11" }
 
 decode-pair 30 13 06 11 2a 86 48 ff ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match OID subidentifier too large (9 chunks)
+match OID subidentifier too large (>63 bits)
 
 decode-pair 30 14 06 12 2a 86 48 ff ff ff ff ff ff ff ff ff 86 f7 0d 01 01 0b
-match OID subidentifier too large (9 chunks)
+match OID subidentifier too large (>63 bits)
 
 decode-pair 30 1b 06 19 2a 86 48 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 86 f7 0d 01 01 0b
-match OID subidentifier too large (9 chunks)
+match OID subidentifier too large (>63 bits)
 
 proto-dictionary-root Test-String
 
@@ -922,4 +928,4 @@ encode-pair Issuer = { RelativeDistinguishedName = { AttributeTypeAndValue = { j
 match 30 3f 31 24 30 22 06 03 55 04 0a 13 1b 44 69 67 69 74 61 6c 20 53 69 67 6e 61 74 75 72 65 20 54 72 75 73 74 20 43 6f 2e 31 17 30 15 06 03 55 04 03 13 0e 44 53 54 20 52 6f 6f 74 20 43 41 20 58 33
 
 count
-match 565
+match 567

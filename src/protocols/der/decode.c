@@ -707,13 +707,11 @@ static ssize_t fr_der_decode_oid_to_da(uint64_t subidentifier, void *uctx, bool 
  */
 static ssize_t fr_der_decode_oid(UNUSED fr_pair_list_t *out, fr_dbuff_t *in, fr_der_decode_oid_t func, void *uctx)
 {
-	fr_dbuff_t our_in  = FR_DBUFF(in);
-	uint64_t   oid_a   = 0;
-	uint64_t   oid_b   = 0;
-	bool	   is_last = false;
-
-	size_t     index, magnitude = 1;
-	size_t     len = fr_dbuff_remaining(&our_in);
+	fr_dbuff_t	our_in  = FR_DBUFF(in);
+	bool		first;
+	uint64_t	oid;
+	int		magnitude;
+	size_t		len = fr_dbuff_remaining(&our_in); /* we decode the entire dbuff */
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -741,91 +739,77 @@ static ssize_t fr_der_decode_oid(UNUSED fr_pair_list_t *out, fr_dbuff_t *in, fr_
 
 	FR_PROTO_TRACE("Decoding OID");
 	FR_PROTO_HEX_DUMP(fr_dbuff_current(&our_in), len, "buff in OID");
+
+	first = true;
+	oid = 0;
+	magnitude = 0;
+
 	/*
-	 *	The first subidentifier is the encoding of the first two object identifier components, encoded as:
-	 *		(X * 40) + Y
-	 *	where X is the first number and Y is the second number.
-	 *	The first number is 0, 1, or 2.
+	 *	Loop until done.
 	 */
-	for (index = 1; index < len; index++) {
+	while (len) {
 		uint8_t byte;
 
 		FR_DBUFF_OUT_RETURN(&byte, &our_in);
-
-		oid_b = (oid_b << 7) | (byte & 0x7f);
-
-		if (!(byte & 0x80)) {
-			/*
-			 *	If the high bit is not set, this is the last byte of the subidentifier
-			 */
-			if (oid_b < 40) {
-				oid_a = 0;
-			} else if (oid_b < 80) {
-				oid_a = 1;
-				oid_b = oid_b - 40;
-			} else {
-				oid_a = 2;
-				oid_b = oid_b - 80;
-			}
-
-			magnitude = 1;
-			break;
-		}
 
 		magnitude++;
-
-		/*
-		 *	We need to check that the subidentifier is not too large
-		 *	Since the subidentifier is encoded using 7-bit "chunks", we can't have a subidentifier larger
-		 *	than 9 chunks
-		 */
-		if (unlikely(magnitude > 9)) {
-			fr_strerror_const("OID subidentifier too large (9 chunks)");
+		if (magnitude > 9) {
+			fr_strerror_const("OID subidentifier too large (>63 bits)");
 			return -1;
 		}
-	}
 
-	FR_PROTO_TRACE("decode context - OID A: %" PRIu64, oid_a);
-	FR_PROTO_TRACE("decode context - OID B: %" PRIu64, oid_b);
+		/*
+		 *	Shift in the new data.
+		 */
+		oid <<= 7;
+		oid |= byte & 0x7f;
+		len--;
 
-	if (unlikely(func(oid_a, uctx, is_last) < 0)) return -1;
-
-	if (index == len) is_last = true;
-
-	if (unlikely(func(oid_b, uctx, is_last) < 0)) return -1;
-
-	/*
-	 *	The remaining subidentifiers are encoded individually
-	 */
-	oid_b = 0;
-	for (; index < len; index++) {
-		uint8_t byte;
-
-		FR_DBUFF_OUT_RETURN(&byte, &our_in);
-
-		oid_b = (oid_b << 7) | (byte & 0x7f);
-
-		if (!(byte & 0x80)) {
-			if (index == len - 1) is_last = true;
-
-			if (unlikely(func(oid_b, uctx, is_last) < 0)) return -1;
-
-			oid_b	  = 0;
-			magnitude = 1;
+		/*
+		 *	There's more?  The MUST be more if the high bit is set.
+		 */
+		if ((byte & 0x80) != 0) {
+			if (len == 0) {
+				fr_strerror_const("OID subidentifier is truncated");
+				return -1;
+			}
 			continue;
 		}
 
-		magnitude++;
+		/*
+		 *	The initial packed field has the first two compenents included, as (x * 40) + y.
+		 */
+		if (first) {
+			uint64_t first_component;
+
+			if (oid < 40) {
+				first_component = 0;
+
+			} else if (oid < 80) {
+				first_component = 1;
+				oid -= 40;
+
+			} else {
+				first_component = 2;
+				oid -= 80;
+			}
+			first = false;
+
+			/*
+			 *	Note that we allow OID=1 here.  It doesn't make sense, but whatever.
+			 */
+			FR_PROTO_TRACE("decode context - first OID: %" PRIu64, first_component);
+			if (unlikely(func(first_component, uctx, (len == 0)) < 0)) return -1;
+		}
+
+		FR_PROTO_TRACE("decode context - OID: %" PRIu64, oid);
+		if (unlikely(func(oid, uctx, (len == 0)) < 0)) return -1;
 
 		/*
-		 *	We need to check that the subidentifier is not too large
-		 *	Since the subidentifier is encoded using 7-bit "chunks", we can't have a subidentifier larger
-		 *	than 9 chunks
+		 *	Reset fields.
 		 */
-		if (unlikely(magnitude > 9)) {
-			fr_strerror_const("OID subidentifier too large (9 chunks)");
-			return -1;
-		}
+		oid = 0;
+		magnitude = 0;
 	}
 
 	return fr_dbuff_set(in, &our_in);
