@@ -38,7 +38,7 @@ ATTRIBUTE	Stats4-Port				.6	integer
 #
 #  All of the counters are in a sub-TLV
 #
-ATTRIBUTE	Stats4-Counters				15.8	TLV
+ATTRIBUTE	Stats4-Counters				15.8	tlv
 ATTRIBUTE	Stats4-Requests				.1	integer64
 ATTRIBUTE	Stats4-Responses			.2	integer64
 ATTRIBUTE	Stats4-Invalid-Requests			.3	integer64
@@ -54,7 +54,7 @@ ATTRIBUTE	Stats4-Unknown-Types			.8	integer64
 #  that the reader is knowledgeable enough to know which ones are
 #  requests, and which ones are responses.
 #
-ATTRIBUTE	Stats4-Packet-Counters			15.9	TLV
+ATTRIBUTE	Stats4-Packet-Counters			15.9	tlv
 
 #
 #  The attribute number for the counters is taken from the packet codes.
