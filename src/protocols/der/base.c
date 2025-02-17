@@ -303,6 +303,12 @@ static int dict_flag_is_pair(fr_dict_attr_t **da_p, UNUSED char const *value, UN
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 
+	if ((*da_p)->type != FR_TYPE_GROUP) {
+		fr_strerror_printf("Invalid data type '%s' for 'is_pair'.  Only 'group' is allowed",
+				   fr_type_to_str((*da_p)->type));
+		return -1;
+	}
+
 	flags->is_pair = true;
 
 	return 0;

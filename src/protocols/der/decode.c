@@ -874,15 +874,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	}
 
 	if (unlikely(fr_der_flag_is_pair(parent))) {
-		/*
-		 *	This sequence contains an oid value pair
-		 */
-		if (unlikely(!fr_type_is_group(parent->type))) {
-			fr_strerror_printf("Sequence with pair found in incompatible attribute %s of type %s",
-					   parent->name, fr_type_to_str(parent->type));
-			talloc_free(vp);
-			return -1;
-		}
+		fr_assert(fr_type_is_group(parent->type));
 
 		if (unlikely(fr_der_decode_oid_value_pair(vp, &vp->vp_group, &our_in, vp->da, decode_ctx) < 0)) {
 			talloc_free(vp);
@@ -1056,15 +1048,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	}
 
 	if (fr_der_flag_is_pair(parent)) {
-		/*
-		 *	This set contains an oid value pair
-		 */
-		if (unlikely(!fr_type_is_group(parent->type))) {
-			fr_strerror_printf("Set with pair found in incompatible attribute %s of type %s", parent->name,
-					   fr_type_to_str(parent->type));
-			talloc_free(vp);
-			return -1;
-		}
+		fr_assert(fr_type_is_group(parent->type));
 
 		if (unlikely(fr_der_decode_oid_value_pair(vp, &vp->vp_group, &our_in, vp->da, decode_ctx) < 0)) {
 			talloc_free(vp);
