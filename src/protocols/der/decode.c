@@ -1114,8 +1114,8 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 			}
 
 			if (unlikely(current_tag != restriction_type)) {
-				fr_strerror_printf("Attribute %s is a set-of type %" PRIu32 ", but found type %u",
-						   parent->name, restriction_type, current_tag);
+				fr_strerror_printf("Attribute %s is a set-of DER type '%s', but found DER type '%s'",
+						   parent->name, fr_der_tag_to_str(restriction_type), fr_der_tag_to_str(current_tag));
 				ret = -1;
 				goto error;
 			}
@@ -1579,13 +1579,16 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		}
 
 		if (tag_class != fr_der_flag_class(parent)) {
-		bad_tag:
-			fr_strerror_printf("Invalid tag %u for attribute %s. Expected %" PRIu32, *tag, parent->name,
-					   fr_der_flag_option(parent));
+			fr_strerror_printf("Invalid DER class %02x for attribute %s. Expected DER class %02x", *tag, parent->name,
+					   tag_class, fr_der_flag_class(parent));
 			return -1;
 		}
 
-		if (*tag != fr_der_flag_option(parent)) goto bad_tag;
+		if (*tag != fr_der_flag_option(parent)) {
+			fr_strerror_printf("Invalid tag %u for attribute %s. Expected %u", *tag, parent->name,
+					   fr_der_flag_option(parent));
+			return -1;
+		}
 
 		*tag = fr_der_flag_der_type(parent);
 	}
@@ -2304,8 +2307,9 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 			 *	If this is not a sequence/set/structure like thing, then it does not have children that
 			 *	could have defaults.
 			 */
-			fr_strerror_printf("Attribute %s of type %s cannot store type %u", parent->name,
-					   fr_type_to_str(parent->type), tag);
+			fr_strerror_printf("Attribute %s of DER type '%s' cannot store DER type '%s'", parent->name,
+					   fr_der_tag_to_str(fr_der_flag_der_type(parent)),
+					   fr_der_tag_to_str(tag));
 			return -1;
 		}
 	}

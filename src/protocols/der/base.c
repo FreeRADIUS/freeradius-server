@@ -68,6 +68,12 @@ static fr_table_num_sorted_t const tag_name_to_number[] = {
 };
 static size_t tag_name_to_number_len = NUM_ELEMENTS(tag_name_to_number);
 
+
+char const *fr_der_tag_to_str(fr_der_tag_t tag)
+{
+	return fr_table_str_by_value(tag_name_to_number, tag, "???");
+}
+
 /*
  *	Create a mapping between FR_TYPE_* and valid FR_DER_TAG_*'s
  */

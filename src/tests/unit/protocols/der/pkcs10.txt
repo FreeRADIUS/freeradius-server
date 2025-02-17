@@ -73,7 +73,7 @@ match Set tags are not in ascending order. Previous item has more data
 proto-dictionary-root Test-Set-Of
 
 decode-pair 31 06 02 01 01 01 01 FF
-match Attribute Test-Set-Of is a set-of type 2, but found type 1
+match Attribute Test-Set-Of is a set-of DER type 'integer', but found DER type 'boolean'
 
 proto-dictionary-root Test-String-Max
 
