@@ -499,7 +499,13 @@ static ssize_t fr_der_encode_oid_to_str(fr_dbuff_t *dbuff, const char *oid_str)
 		 *	The initial packed field has the first two compenents included, as (x * 40) + y.
 		 */
 		if (first) {
-			if (oid > (((unsigned long long) 1) << 60)) goto invalid_oid; /* avoid overflow */
+			if (first_component < 2) {
+				if (oid >= 40) goto invalid_oid;
+
+			} else {
+				if (oid > (((unsigned long long) 1) << 60)) goto invalid_oid; /* avoid overflow */
+			}
+
 			first = false;
 			oid += first_component * 40;
 		}
