@@ -1148,6 +1148,17 @@ eap {
 	#
 	#  The TEAP module implements the EAP-TEAP protocol
 	#
+	#  Note that for Windows:
+	#
+	#  * "machine" authentication is ALWAYS EAP-TLS.
+	#  * "user" authentication is almost always EAP-MSCHAPv2,
+	#    except when Windows is configured for "smartcard"
+	#    authentication.
+	#
+	#  If you configure FreeRADIUS to do anything else, then
+	#  Windows will either fail, or will just return one of the
+	#  methods listed above.
+	#
 	#teap {
 		#  Point to the common TLS configuration
 		#
