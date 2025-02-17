@@ -484,6 +484,45 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 	fr_type_t		fr_type;
 
 	/*
+	 *	To avoid confusion, we want to use the DER names where
+	 *	possible.
+	 *
+	 *	We only use the FreeRADIUS names where we don't have a
+	 *	choice. :(
+	 */
+	switch (*type_p) {
+	case FR_TYPE_TLV:
+		fr_strerror_const("Cannot use 'tlv' in DER.  Please use 'sequence'");
+		return false;
+
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_IFID:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_FLOAT32:
+	case FR_TYPE_FLOAT64:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_VALUE_BOX:
+	case FR_TYPE_VOID:
+	case FR_TYPE_MAX:
+		fr_strerror_printf("Cannot use type '%s' in the DER dictionaries",
+				   fr_type_to_str(*type_p));
+		return false;
+
+		/*
+		 *	We allow integers for now.  They may be
+		 *	internal, or they may be inside of a struct.
+		 */
+	default:
+		break;
+	}
+
+	/*
 	 *	Convert the DER data type to the underlying FreeRADIUS
 	 *	data type.
 	 *
@@ -605,7 +644,9 @@ static bool attr_valid(fr_dict_attr_t *da)
 	 *	in structs, because the struct encoder/decoder takes
 	 *	care of those.
 	 */
-	if (fr_type_is_integer_except_bool(da->type) && (da->type != FR_TYPE_INT64) &&
+	if (fr_type_is_integer_except_bool(da->type) &&
+	    !da->flags.internal &&
+	    (da->type != FR_TYPE_INT64) &&
 	    (da->type != FR_TYPE_DATE) && (da->type != FR_TYPE_TIME_DELTA) &&
 	    (da->parent->type != FR_TYPE_STRUCT)) {
 		fr_strerror_printf("All integers in DER must be 'int64', and not '%s'",

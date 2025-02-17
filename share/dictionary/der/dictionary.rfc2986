@@ -2,18 +2,18 @@
 # Copyright (C) 2025 Network RADIUS SAS (legal@networkradius.com)
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
-DEFINE	CertificateRequest				tlv
+DEFINE	CertificateRequest				sequence
 BEGIN CertificateRequest
 
-DEFINE	certificationRequestInfo			tlv
+DEFINE	certificationRequestInfo			sequence
 BEGIN certificationRequestInfo
 DEFINE	version						integer
 
-DEFINE	subject						tlv
+DEFINE	subject						sequence
 BEGIN subject
 DEFINE	RelativeDistinguishedName			set
 BEGIN RelativeDistinguishedName
-DEFINE	AttributeTypeandValue				tlv
+DEFINE	AttributeTypeandValue				sequence
 BEGIN AttributeTypeAndValue
 DEFINE	OID						oid
 DEFINE	Value-Thing					utf8string
@@ -21,9 +21,9 @@ END AttributeTypeAndValue
 END RelativeDistinguishedName
 END subject
 
-DEFINE	subjectPublicKeyInfo				tlv
+DEFINE	subjectPublicKeyInfo				sequence
 BEGIN subjectPublicKeyInfo
-DEFINE	algorithm					tlv
+DEFINE	algorithm					sequence
 BEGIN algorithm
 DEFINE	OID						oid
 END algorithm
@@ -32,7 +32,7 @@ END subjectPublicKeyInfo
 
 DEFINE	Attributes					sequence option=0
 BEGIN Attributes
-DEFINE	Attribute-thing					tlv
+DEFINE	Attribute-thing					sequence
 BEGIN Attribute-thing
 DEFINE	OID						oid
 DEFINE	Extensions					group ref=OID-Tree,der_type=set,is_extensions
@@ -41,7 +41,7 @@ END Attributes
 
 END certificationRequestInfo
 
-DEFINE	signatureAlgorithm				tlv
+DEFINE	signatureAlgorithm				sequence
 BEGIN signatureAlgorithm
 DEFINE	OID						oid
 END signatureAlgorithm

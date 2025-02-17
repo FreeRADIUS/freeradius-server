@@ -94,11 +94,11 @@ MEMBER		Test-Integer				integer
 MEMBER		Test-Null				null
 END Seq-Integer-Null
 
-DEFINE	Test-Oid					string der_type=oid
+DEFINE	Test-Oid					oid
 
 DEFINE	Seq-Oid						struct der_type=sequence
 BEGIN Seq-Oid
-MEMBER		Test-Oid				string der_type=oid
+MEMBER		Test-Oid				oid
 END Seq-Oid
 
 DEFINE	Test-Enumerated					enumerated

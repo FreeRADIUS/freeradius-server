@@ -2,10 +2,10 @@
 # Copyright (C) 2025 Network RADIUS SAS (legal@networkradius.com)
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
-DEFINE	Certificate					tlv
+DEFINE	Certificate					sequence
 BEGIN Certificate
 
-DEFINE	tbsCertificate					tlv
+DEFINE	tbsCertificate					sequence
 BEGIN tbsCertificate
 DEFINE	version						sequence option=0
 BEGIN version
@@ -14,7 +14,7 @@ END version
 DEFINE	serialNumber					octets der_type=integer
 DEFINE	signature					group ref=OID-Tree,is_pair
 
-DEFINE	issuer						sequence sequence_of=set,is_pairs
+DEFINE	issuer						sequence sequence_of=set
 BEGIN issuer
 DEFINE	RelativeDistinguishedName			set
 BEGIN RelativeDistinguishedName
@@ -22,13 +22,13 @@ DEFINE	AttributeTypeAndValue				group ref=OID-Tree,is_pair
 END RelativeDistinguishedName
 END issuer
 
-DEFINE	validity					tlv
+DEFINE	validity					sequence
 BEGIN validity
 DEFINE	notBefore					utctime
 DEFINE	notAfter					utctime
 END validity
 
-DEFINE	subject						tlv sequence_of=set,is_pairs
+DEFINE	subject						sequence sequence_of=set
 BEGIN subject
 DEFINE	RelativeDistinguishedName			set
 BEGIN RelativeDistinguishedName
@@ -36,7 +36,7 @@ DEFINE	AttributeTypeandValue				group ref=OID-Tree,is_pair
 END RelativeDistinguishedName
 END subject
 
-DEFINE	subjectPublicKeyInfo				tlv
+DEFINE	subjectPublicKeyInfo				sequence
 BEGIN subjectPublicKeyInfo
 DEFINE	algorithm					group ref=OID-Tree,is_pair
 DEFINE	subjectPublicKey				bitstring
