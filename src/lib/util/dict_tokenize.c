@@ -978,8 +978,12 @@ static int dict_read_process_common(dict_tokenize_ctx_t *dctx, fr_dict_attr_t **
 	 *	Allocate the attribute here, and then fill in the fields
 	 *	as we start parsing the various elements of the definition.
 	 */
-	da = dict_attr_alloc_null(dctx->dict->pool, dctx->dict->proto);
-	if (unlikely(da == NULL)) return -1;
+	if (!*da_p) {
+		da = dict_attr_alloc_null(dctx->dict->pool, dctx->dict->proto);
+		if (unlikely(da == NULL)) return -1;
+	} else {
+		da = *da_p;
+	}
 	dict_attr_location_set(dctx, da);
 	da->dict = dctx->dict;
 
@@ -1219,16 +1223,6 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		return -1;
 	}
 
-	if (dict_read_process_common(dctx, &da, argv[0], argv[2],
-				     (argc > 3) ? argv[3] : NULL, base_flags) < 0) {
-		return -1;
-	}
-
-	if (da->flags.extra && (da->flags.subtype == FLAG_BIT_FIELD)) {
-		fr_strerror_const("Bit fields can only be defined as a MEMBER of a STRUCT");
-		goto error;
-	}
-
 	/*
 	 *	A non-relative ATTRIBUTE definition means that it is
 	 *	in the context of the previous BEGIN-FOO.  So we
@@ -1244,41 +1238,67 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		if (strchr(argv[1], '.') == 0) {
 			if (!dict_read_sscanf_i(&attr, argv[1])) {
 				fr_strerror_const("Invalid ATTRIBUTE number");
-				goto error;
+				return -1;
 			}
 
 		} else {
 			slen = fr_dict_attr_by_oid_legacy(dctx->dict, &parent, &attr, argv[1]);
-			if (slen <= 0) goto error;
+			if (slen <= 0) return -1;
 		}
 
 		/*
 		 *	We allow relative attributes only for TLVs.
+		 *
+		 *	We haven't parsed the type field yet, so we
+		 *	just check it here manually.
 		 */
-		set_relative_attr = (da->type == FR_TYPE_TLV);
+		set_relative_attr = (strcasecmp(argv[2], "tlv") == 0);
 
 	} else {
 		if (!dctx->relative_attr) {
 			fr_strerror_const("Unknown parent for partial OID");
-			goto error;
+			return -1;
 		}
 
 		parent = dctx->relative_attr;
 
 		slen = fr_dict_attr_by_oid_legacy(dctx->dict, &parent, &attr, argv[1]);
-		if (slen <= 0) goto error;
+		if (slen <= 0) return -1;
 
 		set_relative_attr = false;
 	}
 
+	da = dict_attr_alloc_null(dctx->dict->pool, dctx->dict->proto);
+	if (unlikely(!da)) return -1;
+
 	/*
-	 *	Record the attribute number
+	 *	Record the attribute number BEFORE we parse the type and flags.
+	 *
+	 *	This is needed for the DER dictionaries, and 'option'.
+	 *
+	 *	It can also be useful for other protocols, which may
+	 *	have restrictions on the various fields.  It is
+	 *	therefore useful to have all fields initialized before
+	 *	the type/flag validation routines are called.
 	 */
 	if (unlikely(dict_attr_num_init(da, attr) < 0)) {
 	error:
 		talloc_free(da);
 		return -1;
 	}
+
+	if (dict_read_process_common(dctx, &da, argv[0], argv[2],
+				     (argc > 3) ? argv[3] : NULL, base_flags) < 0) {
+		goto error;
+	}
+
+	if (da->flags.extra && (da->flags.subtype == FLAG_BIT_FIELD)) {
+		fr_strerror_const("Bit fields can only be defined as a MEMBER of a STRUCT");
+		goto error;
+	}
+
+
+	if (!fr_cond_assert(parent)) goto error;	/* Should have provided us with a parent */
 
 	/*
 	 *	Members of a 'struct' MUST use MEMBER, not ATTRIBUTE.
@@ -1288,8 +1308,6 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 				   argv[0], parent->name);
 		goto error;
 	}
-
-	if (!fr_cond_assert(parent)) goto error;	/* Should have provided us with a parent */
 
 	/*
 	 *	Set the parent we just determined...
@@ -1633,7 +1651,7 @@ static int dict_read_process_define(dict_tokenize_ctx_t *dctx, char **argv, int 
 				    fr_dict_attr_flags_t *base_flags)
 {
 	fr_dict_attr_t const		*parent;
-	fr_dict_attr_t			*da;
+	fr_dict_attr_t			*da = NULL;
 	dict_tokenize_frame_t const	*frame;
 
 	if ((argc < 2) || (argc > 3)) {
@@ -2051,7 +2069,7 @@ static int dict_read_process_flags(UNUSED dict_tokenize_ctx_t *dctx, char **argv
 static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int argc,
 				    fr_dict_attr_flags_t *base_flags)
 {
-	fr_dict_attr_t		*da;
+	fr_dict_attr_t		*da = NULL;
 
 	if ((argc < 2) || (argc > 3)) {
 		fr_strerror_const("Invalid MEMBER syntax");
