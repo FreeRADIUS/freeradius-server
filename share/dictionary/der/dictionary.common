@@ -5,7 +5,7 @@
 DEFINE	GeneralName					choice
 BEGIN GeneralName
 
-ATTRIBUTE	otherName				0	sequence option=0
+ATTRIBUTE	otherName				0	sequence option
 BEGIN otherName
 DEFINE	type-id						oid
 DEFINE	Value-thing					sequence option=0
@@ -14,10 +14,10 @@ DEFINE	userPrincipalName				utf8string
 END Value-thing
 END otherName
 
-ATTRIBUTE	rfc822Name				1	ia5string option=1
-ATTRIBUTE	dNSName					2	ia5string option=2
+ATTRIBUTE	rfc822Name				1	ia5string option
+ATTRIBUTE	dNSName					2	ia5string option
 
-ATTRIBUTE	directoryName				4	sequence  option=4
+ATTRIBUTE	directoryName				4	sequence  option
 BEGIN directoryName
 DEFINE	RDNSequence					sequence        sequence_of=set
 BEGIN RDNSequence
@@ -28,7 +28,7 @@ END RelativeDistinguishedName
 END RDNSequence
 END directoryName
 
-ATTRIBUTE	uniformResourceIdentifier		6	ia5string option=6
+ATTRIBUTE	uniformResourceIdentifier		6	ia5string option
 
 END GeneralName
 

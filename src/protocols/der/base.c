@@ -394,8 +394,6 @@ static int dict_flag_option(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 		return -1;
 	}
 
-	fr_assert(!(*da_p)->state.attr_set);
-
 	flags->class = FR_DER_CLASS_CONTEXT;
 	flags->option = num;
 

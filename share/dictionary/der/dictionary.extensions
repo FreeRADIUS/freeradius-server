@@ -12,7 +12,7 @@ DEFINE	accessMethod					oid
 
 DEFINE	accessLocation					choice
 BEGIN accessLocation
-ATTRIBUTE	otherName				0	sequence option=0
+ATTRIBUTE	otherName				0	sequence option
 BEGIN otherName
 DEFINE	type-id						oid
 DEFINE	Value-thing					sequence option=0
@@ -21,10 +21,10 @@ DEFINE	userPrincipalName				utf8string
 END Value-thing
 END otherName
 
-ATTRIBUTE	rfc822Name				1	ia5string option=1
-ATTRIBUTE	dNSName					2	ia5string option=2
+ATTRIBUTE	rfc822Name				1	ia5string option
+ATTRIBUTE	dNSName					2	ia5string option
 
-ATTRIBUTE	uniformResourceIdentifier		6	ia5string option=6
+ATTRIBUTE	uniformResourceIdentifier		6	ia5string option
 END accessLocation
 
 END accessDescription
@@ -38,7 +38,7 @@ DEFINE	accessMethod					oid
 
 DEFINE	accessLocation					choice
 BEGIN accessLocation
-ATTRIBUTE	otherName				0	sequence option=0
+ATTRIBUTE	otherName				0	sequence option
 BEGIN otherName
 DEFINE	type-id						oid
 DEFINE	Value-thing					sequence option=0
@@ -47,10 +47,10 @@ DEFINE	userPrincipalName				utf8string
 END Value-thing
 END otherName
 
-ATTRIBUTE	rfc822Name				1	ia5string option=1
-ATTRIBUTE	dNSName					2	ia5string option=2
+ATTRIBUTE	rfc822Name				1	ia5string option
+ATTRIBUTE	dNSName					2	ia5string option
 
-ATTRIBUTE	uniformResourceIdentifier		6	ia5string option=6
+ATTRIBUTE	uniformResourceIdentifier		6	ia5string option
 END accessLocation
 
 END accessDescription
@@ -93,8 +93,8 @@ DEFINE	distributionPoint				sequence
 BEGIN distributionPoint
 DEFINE	distributionPointName				sequence  option=0
 BEGIN distributionPointName
-ATTRIBUTE	fullName				0	group   ref=GeneralName,der_type=sequence,sequence_of=choice,option=0
-ATTRIBUTE	nameRelativeToCRLIssuer			1	sequence        option=1
+ATTRIBUTE	fullName				0	group   ref=GeneralName,der_type=sequence,sequence_of=choice,option
+ATTRIBUTE	nameRelativeToCRLIssuer			1	sequence        option
 BEGIN nameRelativeToCRLIssuer
 DEFINE	RelativeDistinguishedName			set
 BEGIN RelativeDistinguishedName
@@ -143,9 +143,9 @@ END 2.5.29.33
 
 ATTRIBUTE	authorityKeyIdentifier			2.5.29.35	sequence        sequence_of=choice,is_oid_leaf
 BEGIN 2.5.29.35
-ATTRIBUTE	keyIdentifier				0	octetstring  option=0
-ATTRIBUTE	authorityCertIssuer			1	group   ref=GeneralName,der_type=sequence,sequence_of=choice,option=1
-ATTRIBUTE	authorityCertSerialNumber		2	octetstring option=2
+ATTRIBUTE	keyIdentifier				0	octetstring  option
+ATTRIBUTE	authorityCertIssuer			1	group   ref=GeneralName,der_type=sequence,sequence_of=choice,option
+ATTRIBUTE	authorityCertSerialNumber		2	octetstring option
 END 2.5.29.35
 
 ATTRIBUTE	policyConstraints			2.5.29.36	sequence        is_oid_leaf
@@ -165,8 +165,8 @@ DEFINE	distributionPoint				sequence
 BEGIN distributionPoint
 DEFINE	distributionPointName				sequence  option=0
 BEGIN distributionPointName
-ATTRIBUTE	fullName				0	group   ref=GeneralName,der_type=sequence,sequence_of=choice,option=0
-ATTRIBUTE	nameRelativeToCRLIssuer			1	sequence        option=1
+ATTRIBUTE	fullName				0	group   ref=GeneralName,der_type=sequence,sequence_of=choice,option
+ATTRIBUTE	nameRelativeToCRLIssuer			1	sequence        option
 BEGIN nameRelativeToCRLIssuer
 DEFINE	RelativeDistinguishedName			set
 BEGIN RelativeDistinguishedName
