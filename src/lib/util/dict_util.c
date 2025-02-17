@@ -1661,9 +1661,9 @@ int fr_dict_attr_add_initialised(fr_dict_attr_t *da)
 	 */
 	exists = fr_dict_attr_child_by_num(da->parent, da->attr);
 	if (exists) {
-		fr_strerror_printf("Duplicate attribute number %u.  "
+		fr_strerror_printf("Duplicate attribute number %u in namespace '%s'.  "
 				   "Originally defined by '%s' at %s[%d]",
-				   da->attr, exists->name, exists->filename, exists->line);
+				   da->attr, da->parent->name, exists->name, exists->filename, exists->line);
 		return -1;
 	}
 
@@ -1686,12 +1686,12 @@ int fr_dict_attr_add_initialised(fr_dict_attr_t *da)
 		 */
 		found = dict_attr_child_by_num(da->parent, da->attr);
 		if (!found) {
-			fr_strerror_printf("FATAL - Failed to find attribute number %u we just added to parent '%s'", da->attr, da->parent->name);
+			fr_strerror_printf("FATAL - Failed to find attribute number %u we just added to namespace '%s'", da->attr, da->parent->name);
 			return -1;
 		}
 
 		if (!dict_attr_by_name(NULL, da->parent, da->name)) {
-			fr_strerror_printf("FATAL - Failed to find attribute '%s' we just added to parent '%s'", da->name, da->parent->name);
+			fr_strerror_printf("FATAL - Failed to find attribute '%s' we just added to namespace '%s'", da->name, da->parent->name);
 			return -1;
 		}
 	}
