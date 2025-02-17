@@ -960,11 +960,11 @@ static int dict_set_value_attr(dict_tokenize_ctx_t *dctx, fr_dict_attr_t *da)
 }
 
 static int dict_read_process_common(dict_tokenize_ctx_t *dctx, fr_dict_attr_t **da_p,
-				    char const *name,
+				    fr_dict_attr_t const *parent, char const *name,
 				    char const *type_name, char *flag_name,
 				    fr_dict_attr_flags_t const *base_flags)
 {
-	fr_dict_attr_t *da;
+	fr_dict_attr_t *da, *to_free = NULL;
 
 	/*
 	 *	Dictionaries need to have real names, not shitty ones.
@@ -980,12 +980,21 @@ static int dict_read_process_common(dict_tokenize_ctx_t *dctx, fr_dict_attr_t **
 	 */
 	if (!*da_p) {
 		da = dict_attr_alloc_null(dctx->dict->pool, dctx->dict->proto);
-		if (unlikely(da == NULL)) return -1;
+		if (unlikely(!da)) return -1;
+		to_free = da;
+
 	} else {
 		da = *da_p;
 	}
 	dict_attr_location_set(dctx, da);
 	da->dict = dctx->dict;
+
+	/*
+	 *	Set some fields to be friendlier to the type / flag
+	 *	parsing and validation routines.
+	 */
+	da->parent = parent;
+	da->name = name;
 
 	/*
 	 *	Set the attribute flags from the base flags.
@@ -997,9 +1006,15 @@ static int dict_read_process_common(dict_tokenize_ctx_t *dctx, fr_dict_attr_t **
 	 */
 	if (dict_process_type_field(dctx, type_name, &da) < 0) {
 	error:
-		talloc_free(da);
+		talloc_free(to_free);
 		return -1;
 	}
+
+	/*
+	 *	Clear the temporary parent pointer.
+	 */
+	da->parent = NULL;
+	if (unlikely(dict_attr_parent_init(&da, parent) < 0)) goto error;
 
 	/*
 	 *	Parse optional flags.  We pass in the partially allocated
@@ -1009,6 +1024,8 @@ static int dict_read_process_common(dict_tokenize_ctx_t *dctx, fr_dict_attr_t **
 	 *	significantly easier than populating a temporary struct.
 	 */
 	if (flag_name) if (dict_process_flag_field(dctx, flag_name, &da) < 0) goto error;
+
+	da->name = NULL;	/* the real name will be a talloc'd chunk */
 
 	*da_p = da;
 	return 0;
@@ -1268,6 +1285,17 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		set_relative_attr = false;
 	}
 
+	if (!fr_cond_assert(parent)) return -1;	/* Should have provided us with a parent */
+
+	/*
+	 *	Members of a 'struct' MUST use MEMBER, not ATTRIBUTE.
+	 */
+	if (parent->type == FR_TYPE_STRUCT) {
+		fr_strerror_printf("Member %s of ATTRIBUTE %s type 'struct' MUST use the \"MEMBER\" keyword",
+				   argv[0], parent->name);
+		return -1;
+	}
+
 	da = dict_attr_alloc_null(dctx->dict->pool, dctx->dict->proto);
 	if (unlikely(!da)) return -1;
 
@@ -1287,7 +1315,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		return -1;
 	}
 
-	if (dict_read_process_common(dctx, &da, argv[0], argv[2],
+	if (dict_read_process_common(dctx, &da, parent, argv[0], argv[2],
 				     (argc > 3) ? argv[3] : NULL, base_flags) < 0) {
 		goto error;
 	}
@@ -1297,22 +1325,6 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		goto error;
 	}
 
-
-	if (!fr_cond_assert(parent)) goto error;	/* Should have provided us with a parent */
-
-	/*
-	 *	Members of a 'struct' MUST use MEMBER, not ATTRIBUTE.
-	 */
-	if (parent->type == FR_TYPE_STRUCT) {
-		fr_strerror_printf("Member %s of ATTRIBUTE %s type 'struct' MUST use the \"MEMBER\" keyword",
-				   argv[0], parent->name);
-		goto error;
-	}
-
-	/*
-	 *	Set the parent we just determined...
-	 */
-	if (unlikely(dict_attr_parent_init(&da, parent) < 0)) goto error;
 
 #ifdef WITH_DICTIONARY_WARNINGS
 	/*
@@ -1333,7 +1345,9 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 	/*
 	 *	Set the attribute name
 	 */
-	if (unlikely(dict_attr_finalise(&da, argv[0]) < 0)) goto error;
+	if (unlikely(dict_attr_finalise(&da, argv[0]) < 0)) {
+		goto error;
+	}
 
 	/*
 	 *	Check to see if this is a duplicate attribute
@@ -1659,7 +1673,26 @@ static int dict_read_process_define(dict_tokenize_ctx_t *dctx, char **argv, int 
 		return -1;
 	}
 
-	if (dict_read_process_common(dctx, &da, argv[0], argv[1],
+	frame = dict_dctx_unwind(dctx);
+	if (!fr_cond_assert(frame && frame->da)) return -1;	/* Should have provided us with a parent */
+
+	parent = frame->da;
+
+	/*
+	 *	Members of a 'struct' MUST use MEMBER, not ATTRIBUTE.
+	 */
+	if (parent->type == FR_TYPE_STRUCT) {
+		fr_strerror_printf("Member %s of parent %s type 'struct' MUST use the \"MEMBER\" keyword",
+				   argv[0], parent->name);
+		return -1;
+	}
+
+	/*
+	 *	We don't set the attribute number before parsing the
+	 *	type and flags.  The number is chosen internally, and
+	 *	no one should depend on it.
+	 */
+	if (dict_read_process_common(dctx, &da, parent, argv[0], argv[1],
 				     (argc > 2) ? argv[2] : NULL, base_flags) < 0) {
 		return -1;
 	}
@@ -1684,20 +1717,6 @@ static int dict_read_process_define(dict_tokenize_ctx_t *dctx, char **argv, int 
 		goto error;
 	}
 
-	frame = dict_dctx_unwind(dctx);
-	if (!fr_cond_assert(frame && frame->da)) goto error;	/* Should have provided us with a parent */
-
-	parent = frame->da;
-
-	/*
-	 *	Members of a 'struct' MUST use MEMBER, not ATTRIBUTE.
-	 */
-	if (parent->type == FR_TYPE_STRUCT) {
-		fr_strerror_printf("Member %s of parent %s type 'struct' MUST use the \"MEMBER\" keyword",
-				   argv[0], parent->name);
-		goto error;
-	}
-
 #ifdef STATIC_ANALYZER
 	if (!dctx->dict) goto error;
 #endif
@@ -1707,8 +1726,6 @@ static int dict_read_process_define(dict_tokenize_ctx_t *dctx, char **argv, int 
 	 *	encoded as a number.
 	 */
 	da->flags.name_only = true;
-
-	if (unlikely(dict_attr_parent_init(&da, parent) < 0)) goto error;
 
 	/*
 	 *	Add an attribute number now so the allocations occur in order
@@ -2083,7 +2100,26 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 		return -1;
 	}
 
-	if (dict_read_process_common(dctx, &da, argv[0], argv[1],
+	/*
+	 *	Check if the parent 'struct' is fixed size.  And if
+	 *	so, complain if we're adding a variable sized member.
+	 */
+	if (dctx->stack[dctx->stack_depth].struct_is_closed) {
+		fr_strerror_printf("Cannot add MEMBER to 'struct' %s after a variable sized member %s",
+				   dctx->stack[dctx->stack_depth].da->name,
+				   dctx->stack[dctx->stack_depth].struct_is_closed->name);
+		return -1;
+	}
+
+	/*
+	 *	We don't set the attribute number before parsing the
+	 *	type and flags.  The number is chosen internally, and
+	 *	no one should depend on it.
+	 *
+	 *	Although _arguably_, it may be useful to know which
+	 *	field this is, 0..N?
+	 */
+	if (dict_read_process_common(dctx, &da, dctx->stack[dctx->stack_depth].da, argv[0], argv[1],
 				     (argc > 2) ? argv[2] : NULL, base_flags) < 0) {
 		return -1;
 	}
@@ -2098,7 +2134,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 	da->flags.is_known_width |= dctx->stack[dctx->stack_depth].da->flags.is_known_width;
 
 	/*
-	 *	Double check bit field magic
+	 *	Double check any bit field magic
 	 */
 	if (dctx->stack[dctx->stack_depth].member_num > 0) {
 		fr_dict_attr_t const *previous;
@@ -2134,17 +2170,6 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 	}
 
 	/*
-	 *	Check if the parent 'struct' is fixed size.  And if
-	 *	so, complain if we're adding a variable sized member.
-	 */
-	if (dctx->stack[dctx->stack_depth].struct_is_closed) {
-		fr_strerror_printf("Cannot add MEMBER to 'struct' %s after a variable sized member %s",
-				   dctx->stack[dctx->stack_depth].da->name,
-				   dctx->stack[dctx->stack_depth].struct_is_closed->name);
-		goto error;
-	}
-
-	/*
 	 *	Ensure that no previous child has "key" or "length" set.
 	 */
 	if (da->type == FR_TYPE_TLV) {
@@ -2172,7 +2197,6 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 		}
 	}
 
-	if (unlikely(dict_attr_parent_init(&da, dctx->stack[dctx->stack_depth].da) < 0)) goto error;
 	if (unlikely(dict_attr_num_init(da, ++dctx->stack[dctx->stack_depth].member_num) < 0)) goto error;
 	if (unlikely(dict_attr_finalise(&da, argv[0]) < 0)) goto error;
 
