@@ -4,7 +4,7 @@
 # Version $Id$
 DEFINE	Certificate-Extensions				x509_extensions ref=OID-Tree
 
-DEFINE	Issuer						tlv is_pairs
+DEFINE	Issuer						sequence is_pairs
 BEGIN Issuer
 DEFINE	RelativeDistinguishedName			set
 BEGIN RelativeDistinguishedName
@@ -12,9 +12,9 @@ DEFINE	AttributeTypeAndValue				group ref=OID-Tree,sequence_of=set,is_pair
 END RelativeDistinguishedName
 END Issuer
 
-DEFINE	Issuer-Set					tlv is_pairs
+DEFINE	Issuer-Set					sequence is_pairs
 BEGIN Issuer-Set
-DEFINE	RelativeDistinguishedName			tlv
+DEFINE	RelativeDistinguishedName			sequence
 BEGIN RelativeDistinguishedName
 DEFINE	AttributeTypeAndValue				group ref=OID-Tree,sequence_of=set,is_pair
 END RelativeDistinguishedName
@@ -22,23 +22,23 @@ END Issuer-Set
 
 DEFINE	Test-Seq-Of					sequence sequence_of=integer
 BEGIN Test-Seq-Of
-DEFINE	Test-First-Integer				int64
+DEFINE	Test-First-Integer				integer
 END Test-Seq-Of
 
-DEFINE	Test-Set-Of					tlv der_type=set,set_of=integer
+DEFINE	Test-Set-Of					set set_of=integer
 BEGIN Test-Set-Of
-DEFINE	Test-First-Integer				int64
+DEFINE	Test-First-Integer				integer
 END Test-Set-Of
 
 DEFINE	Test-Set-Of-Group				group ref=Test-Set-Of,der_type=set,set_of=integer
 
 DEFINE	Test-Boolean					bool
 
-DEFINE	Test-Integer					int64
+DEFINE	Test-Integer					integer
 
 DEFINE	Foo						struct der_type=sequence
 BEGIN Foo
-MEMBER		Test-Integer				int64
+MEMBER		Test-Integer				integer
 END Foo
 
 DEFINE	Bar						struct
@@ -48,7 +48,7 @@ END Bar
 
 DEFINE	Foo-Bar						struct der_type=sequence
 BEGIN Foo-Bar
-MEMBER		Test-Integer				int64 has_default
+MEMBER		Test-Integer				integer has_default
 VALUE	Test-Integer			DEFAULT			1
 MEMBER		Test-Boolean				bool
 END Foo-Bar
@@ -81,17 +81,17 @@ BEGIN Seq-Octetstring
 MEMBER		Octetstring				octets
 END Seq-Octetstring
 
-DEFINE	Test-NULL					bool der_type=null
+DEFINE	Test-NULL					null
 
 DEFINE	Seq-Null					struct
 BEGIN Seq-Null
-MEMBER		Test-Null				bool der_type=null
+MEMBER		Test-Null				null
 END Seq-Null
 
 DEFINE	Seq-Integer-Null				struct
 BEGIN Seq-Integer-Null
-MEMBER		Test-Integer				int64
-MEMBER		Test-Null				bool der_type=null
+MEMBER		Test-Integer				integer
+MEMBER		Test-Null				null
 END Seq-Integer-Null
 
 DEFINE	Test-Oid					string der_type=oid
@@ -101,13 +101,12 @@ BEGIN Seq-Oid
 MEMBER		Test-Oid				string der_type=oid
 END Seq-Oid
 
-DEFINE	Test-Enumerated					int64 der_type=enumerated
+DEFINE	Test-Enumerated					enumerated
 
 DEFINE	Test-String					string
 
 DEFINE	Test-String-Max					string max=5
 
-#DEFINE Test-String-UTF8         string der_type=utf8string
 DEFINE	Test-String-UTF8				utf8string
 
 DEFINE	Test-String-Custom				utf8string
@@ -143,20 +142,20 @@ END Seq-Date
 DEFINE	Set-Bool-Integer				struct
 BEGIN Set-Bool-Integer
 MEMBER		Test-Bool				bool
-MEMBER		Test-Integer				int64
+MEMBER		Test-Integer				integer
 END Set-Bool-Integer
 
 DEFINE	Test-Context-Specific				bool option=0
 
 DEFINE	Test-Sequence-TLV				sequence
 BEGIN Test-Sequence-TLV
-DEFINE	Test-Integer					int64
+DEFINE	Test-Integer					integer
 DEFINE	Test-Boolean					bool
 END Test-Sequence-TLV
 
-DEFINE	Test-TLV					tlv
+DEFINE	Test-TLV					sequence
 BEGIN Test-TLV
-DEFINE	Test-Integer					int64
+DEFINE	Test-Integer					integer
 DEFINE	Test-Boolean					bool
 END Test-TLV
 
@@ -165,18 +164,18 @@ DEFINE	Test-Sequence-GROUP				group der_type=sequence,ref=Test-TLV
 DEFINE	Test-Set-Struct					struct der_type=set
 BEGIN Test-Set-Struct
 MEMBER		Test-Boolean				bool
-MEMBER		Test-Integer				int64
+MEMBER		Test-Integer				integer
 END Test-Set-Struct
 
 DEFINE	Test-Set-Bad-Struct				struct der_type=set
 BEGIN Test-Set-Bad-Struct
-MEMBER		Test-Integer				int64
+MEMBER		Test-Integer				integer
 MEMBER		Test-Boolean				bool
 END Test-Set-Bad-Struct
 
 DEFINE	Test-Set-TLV					set
 BEGIN Test-Set-TLV
-DEFINE	Test-Integer					int64
+DEFINE	Test-Integer					integer
 DEFINE	Test-Boolean					bool
 END Test-Set-TLV
 
