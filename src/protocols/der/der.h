@@ -64,22 +64,22 @@ typedef enum {
 #define DER_BOOLEAN_TRUE 0xff	 //!< DER encoded boolean true value.
 
 typedef struct {
-	uint8_t 		option;		//!< "attribute number" encoded in the tag field.
-	fr_der_tag_class_t 	class;
-	fr_der_tag_t 		der_type;
+	uint8_t 		option;		//!< an "attribute number" encoded in the tag field.
+	fr_der_tag_class_t 	class;		//!< tag Class
+	fr_der_tag_t 		der_type;	//!< the DER type, which is different from the FreeRADIUS type
 	union {
 		fr_der_tag_t 		sequence_of;
 		fr_der_tag_t 		set_of;
 	};
-	uint64_t 		max;
-	bool			is_sequence_of : 1;
-	bool 			is_set_of : 1;
+	uint64_t 		max;			//!< maximum count of items in a sequence, set, or string.
+	bool			is_sequence_of : 1;	//!< sequence_of has been defined
+	bool 			is_set_of : 1;		//!< set_of has been defined
 	bool 			is_pair : 1;
 	bool 			is_pairs : 1;
-	bool 			is_extensions : 1; // This is a flag for a list X.509 extensions
-	bool 			has_default : 1;
+	bool 			is_extensions : 1;	//!< a list of X.509 extensions
+	bool 			has_default : 1;	//!< a default value exists
 	bool 			is_oid_leaf : 1;
-	bool			is_choice : 1;
+	bool			is_choice : 1;		//!< DER name "choice".
 } fr_der_attr_flags_t;
 
 static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const *da)
