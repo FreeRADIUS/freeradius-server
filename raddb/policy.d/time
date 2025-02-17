@@ -2,19 +2,19 @@
 # Handles the Expiration attribute
 #
 expiration {
-	if (&control.Expiration) {
+	if (control.Expiration) {
 		time_delta when
 
 		#
 		#  %l is "when the server received the request"
 		#
-		if (&control.Expiration < %l) {
+		if (control.Expiration < %l) {
 			disallow
 			return
 		}
 
-		&when = &control.Expiration - %l
+		&when = control.Expiration - %l
 
-		&reply.Session-Timeout <= &when
+		reply.Session-Timeout <= &when
 	}
 }

@@ -3,7 +3,7 @@
 #       into the "recv Access-Request" section.
 #
 forbid_eap {
-	if (&EAP-Message) {
+	if (EAP-Message) {
 		reject
 	}
 }
@@ -12,12 +12,12 @@ forbid_eap {
 #       Forbid all non-EAP types outside of an EAP tunnel.
 #
 permit_only_eap {
-	if (!&EAP-Message) {
+	if (!EAP-Message) {
 		#  We MAY be inside of a TTLS tunnel.
 		#  PEAP and EAP-FAST require EAP inside of
 		#  the tunnel, so this check is OK.
 		#  If so, then there MUST be an outer EAP message.
-		if (!&outer.request || !&outer.request.EAP-Message) {
+		if (!outer.request || !outer.request.EAP-Message) {
 			reject
 		}
 	}
@@ -30,8 +30,8 @@ permit_only_eap {
 #  not be present in the same response.
 #
 remove_reply_message_if_eap {
-	if (&reply.EAP-Message && &reply.Reply-Message) {
-		&reply -= &Reply-Message[*]
+	if (reply.EAP-Message && reply.Reply-Message) {
+		reply -= &Reply-Message[*]
 	}
 	else {
 		noop
@@ -46,8 +46,8 @@ remove_reply_message_if_eap {
 #	to copy now have to be explicitly listed.
 #
 copy_request_to_tunnel {
-	&request.Calling-Station-Id = &outer.request.Calling-Station-Id
-	&request.Called-Station-Id = &outer.request.Called-Station-Id
+	request.Calling-Station-Id = outer.request.Calling-Station-Id
+	request.Called-Station-Id = outer.request.Called-Station-Id
 }
 
 #
@@ -62,7 +62,7 @@ use_tunneled_reply {
 	#  These attributes are for the inner-tunnel only,
 	#  and MUST NOT be copied to the outer reply.
 	#
-	&reply -= &User-Name[*]
+	reply -= &User-Name[*]
 
 	#
 	#  Copy the remaining inner reply attributes to the outer
@@ -73,6 +73,6 @@ use_tunneled_reply {
 	#  'send Access-Accept' policy in sites-available/default will
 	#  copy the outer session-state list to the final reply.
 	#
-	&outer.session-state += &reply
+	outer.session-state += reply
 }
 

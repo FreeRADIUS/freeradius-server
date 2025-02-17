@@ -7,7 +7,7 @@
 broadsoft-decode {
 	foreach value ( BroadSoft-Attr-255 ) {
 		if (value =~ /^([0-9]+)=(.*)$/) {
-				"&request.BroadSoft-Attr-%{1}" += "%{2}"
+			"request.BroadSoft-Attr-%{1}" += "%{2}"
 		}
 	}
 

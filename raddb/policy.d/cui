@@ -40,7 +40,7 @@ cui_require_operator_name = "no"
 #
 cui.authorize {
 	if ("%client(add_cui)" == 'yes') {
-		&request.Chargeable-User-Identity := 0x00
+		request.Chargeable-User-Identity := 0x00
 	}
 }
 
@@ -52,9 +52,9 @@ cui.authorize {
 #  use_tunneled_reply parameter MUST be set to yes
 #
 cui.post-auth {
-	if (!&control.Proxy-To-Realm && &Chargeable-User-Identity && !&reply.Chargeable-User-Identity &&
-	    (&Operator-Name || ('${policy.cui_require_operator_name}' != 'yes')) ) {
-		&reply.Chargeable-User-Identity = "%sha1(${policy.cui_hash_key}%tolower(%{User-Name}%{&Operator-Name || ''}))"
+	if (!control.Proxy-To-Realm && Chargeable-User-Identity && !reply.Chargeable-User-Identity &&
+	    (Operator-Name || ('${policy.cui_require_operator_name}' != 'yes')) ) {
+		reply.Chargeable-User-Identity = "%sha1(${policy.cui_hash_key}%tolower(%{User-Name}%{Operator-Name || ''}))"
 	}
 
 	#
@@ -65,9 +65,9 @@ cui.post-auth {
 	#  If your NAS can do CUI based accounting themselves or you do not care about
 	#  accounting, comment out the 'cuisql' line below.
 	#
-	if (&reply.Chargeable-User-Identity) {
+	if (reply.Chargeable-User-Identity) {
 		# Force User-Name to be the User-Name from the request
-		&reply.User-Name := &request.User-Name
+		reply.User-Name := &request.User-Name
 
 		cuisql
 	}
@@ -75,9 +75,9 @@ cui.post-auth {
 
 
 cui-inner.post-auth {
-	if (&outer.request.Chargeable-User-Identity && \
-	    (&outer.request.Operator-Name || ('${policy.cui_require_operator_name}' != 'yes'))) {
-		&reply.Chargeable-User-Identity := "%sha1(${policy.cui_hash_key}%tolower(%{User-Name}%{&outer.request.Operator-Name || ''}))"
+	if (outer.request.Chargeable-User-Identity && \
+	    (outer.request.Operator-Name || ('${policy.cui_require_operator_name}' != 'yes'))) {
+		reply.Chargeable-User-Identity := "%sha1(${policy.cui_hash_key}%tolower(%{User-Name}%{outer.request.Operator-Name || ''}))"
 	}
 }
 
@@ -92,8 +92,8 @@ cui.accounting {
 	#  If the CUI isn't in the packet, see if we can find it
 	#  in the DB.
 	#
-	if (!&Chargeable-User-Identity) {
-		&request.Chargeable-User-Identity := %cuisql(\
+	if (!Chargeable-User-Identity) {
+		request.Chargeable-User-Identity := %cuisql(\
 				SELECT cui FROM cui \
 				WHERE clientipaddress = '%{Net.Src.IP}' \
 				AND callingstationid = '%{Calling-Station-Id}' \
@@ -104,7 +104,7 @@ cui.accounting {
 	#  If it exists now, then write out when we last saw
 	#  this CUI.
 	#
-	if (&Chargeable-User-Identity && (&Chargeable-User-Identity != '')) {
+	if (Chargeable-User-Identity && (Chargeable-User-Identity != '')) {
 		cuisql
 	}
 }
