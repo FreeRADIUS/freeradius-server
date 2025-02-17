@@ -453,12 +453,11 @@ static ssize_t fr_der_encode_null(UNUSED fr_dbuff_t *dbuff, fr_dcursor_t *cursor
 static ssize_t fr_der_encode_oid_to_str(fr_dbuff_t *dbuff, const char *oid_str)
 {
 	fr_dbuff_t our_dbuff = FR_DBUFF(dbuff);
-	char	 buffer[21] = { 0 };
-	uint64_t subidentifier	       = 0;
-	uint8_t	 first_component       = 0;
-	size_t	 buffer_len	       = 0;
-	size_t	 index		       = 0, bit_index;
-	bool	 started_subidentifier = false, subsequent = false;
+	bool	first = true;
+	uint8_t	first_component;
+	unsigned long long oid;
+	char const *start = oid_str;
+	char	 *end = NULL;
 
 	/*
 	 *	The first subidentifier is the encoding of the first two object identifier components, encoded as:
@@ -467,84 +466,61 @@ static ssize_t fr_der_encode_oid_to_str(fr_dbuff_t *dbuff, const char *oid_str)
 	 *	The first number is 0, 1, or 2.
 	 */
 
-	first_component = (uint8_t)(strtol(&oid_str[0], NULL, 10));
+	oid = strtoull(start, &end, 10);
+	if (!((oid == 0) || (oid == 1) || (oid == 2)) ||
+	    !end || (*end != '.')) {
+	invalid_oid:
+		fr_strerror_const("Invalid OID");
+		return -1;
+	}
 
-	index += 2; /* Advance past the first number and the delimiter '.' */
+	first_component = oid;
 
-	for (; index < strlen(oid_str) + 1; index++) {
-		uint8_t byte = 0;
+	/*
+	 *	Loop until we're done the string.
+	 */
+	while (*end) {
+		int i;
 
-		if (oid_str[index] == '.' || oid_str[index] == '\0') {
-			/*
-			 *	We have a subidentifier
-			 */
-			started_subidentifier = false;
-			bit_index	      = sizeof(subidentifier) * 8;
+		/*
+		 *	The previous round MUST have ended with '.'
+		 */
+		start = end + 1;
+		if (!*start) goto invalid_oid; /* OID=1 or OID=1.2. is not allowed */
 
-			if (buffer_len == 0) {
-				fr_strerror_const("Empty buffer for final subidentifier");
-				return -1;
-			}
+		/*
+		 *	Parse the component.
+		 */
+		oid = strtoull(start, &end, 10);
+		if (oid == ULLONG_MAX) goto invalid_oid;
+		if (*end && (*end != '.')) goto invalid_oid;
 
-			if (!subsequent) {
-				subidentifier = (first_component * 40) + (uint64_t)strtol(buffer, NULL, 10);
-				subsequent    = true;
-
-			} else {
-				subidentifier = (uint64_t)strtol(buffer, NULL, 10);
-			}
-
-			/*
-			 *	We will be reading the subidentifier 7 bits at a time. This is because the
-			 *	OID components are encoded in a variable length format, where the high bit
-			 *	of each byte indicates if there are more bytes to follow.
-			 */
-			while (bit_index > 7) {
-				if (!started_subidentifier && ((uint8_t)(subidentifier >> (bit_index - 8)) == 0)) {
-					bit_index -= 8;
-					continue;
-				}
-
-				if (!started_subidentifier) {
-					byte = (uint8_t)(subidentifier >> (bit_index -= (bit_index % 7)));
-
-					if (byte == 0) {
-						if (bit_index <= 7) {
-							break;
-						}
-
-						byte = (uint8_t)(subidentifier >> (bit_index -= 7));
-
-						if (byte == 0) {
-							byte = (uint8_t)(subidentifier >> (bit_index -= 7));
-						}
-					}
-
-				} else {
-					byte = (uint8_t)(subidentifier >> (bit_index -= 7));
-				}
-
-				byte = byte | 0x80; /* Set the high bit to indicate more bytes to follow */
-
-				FR_DBUFF_IN_RETURN(&our_dbuff, byte);
-				started_subidentifier = true;
-			}
-
-			/*
-			 *	Tack on the last byte
-			 */
-			byte = (uint8_t)(subidentifier);
-
-			byte = byte & 0x7f;
-
-			FR_DBUFF_IN_RETURN(&our_dbuff, byte);
-			memset(buffer, 0, sizeof(buffer));
-			buffer_len = 0;
-
-			continue;
+		/*
+		 *	The initial packed field has the first two compenents included, as (x * 40) + y.
+		 */
+		if (first) {
+			if (oid > (((unsigned long long) 1) << 60)) goto invalid_oid; /* avoid overflow */
+			first = false;
+			oid += first_component * 40;
 		}
 
-		buffer[buffer_len++] = oid_str[index];
+		/*
+		 *	Encode the number as 7-bit chunks.  Just brute-force over all bits, as doing that ends
+		 *	up being fast enough.
+		 *
+		 *	i.e. if we did anything else to count bits, it would end up with pretty much the same
+		 *	code.
+		 */
+		for (i = 63; i >= 0; i -= 7) {
+			uint8_t more, part;
+
+			part = (oid >> i) & 0x7f;
+			if (!part) continue;
+
+			more = ((uint8_t) (i > 0)) << 7;
+
+			FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) (more | part));
+		}
 	}
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
