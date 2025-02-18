@@ -1021,10 +1021,10 @@ static const call_env_method_t auth_env = {
 	FR_CALL_ENV_METHOD_OUT(rlm_smtp_auth_env_t),
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_PARSE_OFFSET("username_attribute", FR_TYPE_STRING,
-					   CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE,
+					   CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE,
 					   rlm_smtp_auth_env_t, username, username_tmpl), .pair.dflt = "&User-Name", .pair.dflt_quote = T_BARE_WORD },
 		{ FR_CALL_ENV_PARSE_OFFSET("password_attribute", FR_TYPE_STRING,
-					   CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_SECRET,
+					   CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_SECRET,
 					   rlm_smtp_auth_env_t, password, password_tmpl), .pair.dflt = "&User-Password", .pair.dflt_quote = T_BARE_WORD },
 		CALL_ENV_TERMINATOR
 	}
