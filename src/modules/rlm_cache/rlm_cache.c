@@ -598,7 +598,7 @@ static ssize_t cache_xlat(void *instance, REQUEST *request,
 
 	if (cache_acquire(&handle, inst, request) < 0) return -1;
 
-	switch (cache_find(&c, inst, request, handle, fmt)) {
+	switch (cache_find(&c, inst, request, &handle, fmt)) {
 	case RLM_MODULE_OK:		/* found */
 		break;
 
