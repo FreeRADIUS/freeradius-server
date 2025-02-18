@@ -1240,6 +1240,10 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		return -1;
 	}
 
+#ifdef STATIC_ANALYZER
+	if (!dctx->dict) return -1;
+#endif
+
 	/*
 	 *	A non-relative ATTRIBUTE definition means that it is
 	 *	in the context of the previous BEGIN-FOO.  So we
@@ -1336,10 +1340,6 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		fprintf(stderr, "WARNING: Illegal attribute %s in %s\n",
 			argv[0], fn);
 	}
-#endif
-
-#ifdef STATIC_ANALYZER
-	if (!dctx->dict) return -1;
 #endif
 
 	/*
