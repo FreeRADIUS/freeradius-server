@@ -400,7 +400,7 @@ static const call_env_method_t winbind_autz_method_env = {
 	FR_CALL_ENV_METHOD_OUT(winbind_autz_call_env_t),
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("password", FR_TYPE_STRING, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_PARSE_ONLY, winbind_autz_call_env_t, password),
-			.pair.dflt = "&User-Password", .pair.dflt_quote = T_BARE_WORD },
+			.pair.dflt = "User-Password", .pair.dflt_quote = T_BARE_WORD },
 		CALL_ENV_TERMINATOR
 	}
 };
