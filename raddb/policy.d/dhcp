@@ -9,5 +9,5 @@ dhcp_common {
 	reply.Router-Address = 192.0.2.1
 	reply.IP-Address-Lease-Time = 7200
 #	reply.IP-Address-Lease-Time = "${modules.sqlippool[sqlippool].lease_duration}"
-	reply.Server-Identifier = &control.Server-Identifier
+	reply.Server-Identifier = control.Server-Identifier
 }

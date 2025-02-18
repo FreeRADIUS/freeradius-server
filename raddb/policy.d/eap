@@ -31,7 +31,7 @@ permit_only_eap {
 #
 remove_reply_message_if_eap {
 	if (reply.EAP-Message && reply.Reply-Message) {
-		reply -= &Reply-Message[*]
+		reply -= Reply-Message[*]
 	}
 	else {
 		noop
@@ -62,7 +62,7 @@ use_tunneled_reply {
 	#  These attributes are for the inner-tunnel only,
 	#  and MUST NOT be copied to the outer reply.
 	#
-	reply -= &User-Name[*]
+	reply -= User-Name[*]
 
 	#
 	#  Copy the remaining inner reply attributes to the outer

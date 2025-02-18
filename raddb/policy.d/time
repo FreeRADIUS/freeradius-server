@@ -13,8 +13,8 @@ expiration {
 			return
 		}
 
-		&when = control.Expiration - %l
+		when = control.Expiration - %l
 
-		reply.Session-Timeout <= &when
+		reply.Session-Timeout <= when
 	}
 }

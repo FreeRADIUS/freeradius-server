@@ -68,7 +68,7 @@ acct_unique {
 	#  is not included
 	#
 	else {
-		request.Acct-Unique-Session-Id := %hex(%md5("%{User-Name},%{Acct-Multi-Session-ID},%{Acct-Session-ID},%{&NAS-IPv6-Address || &NAS-IP-Address},%{NAS-Identifier},%{NAS-Port-ID},%{NAS-Port}"))
+		request.Acct-Unique-Session-Id := %hex(%md5("%{User-Name},%{Acct-Multi-Session-ID},%{Acct-Session-ID},%{NAS-IPv6-Address || NAS-IP-Address},%{NAS-Identifier},%{NAS-Port-ID},%{NAS-Port}"))
 	}
 }
 
@@ -82,7 +82,7 @@ insert_acct_class {
 #
 #	Merges Acct-[Input|Output]-Octets and Acct-[Input|Output]-Gigawords into Acct-[Input|Output]-Octets64
 #
-#	If the &Attr-Foo doesn't exist, it's value is taken as zero.
+#	If the Attr-Foo doesn't exist, it's value is taken as zero.
 #
 acct_counters64 {
 	if (!Acct-Input-Gigawords) {

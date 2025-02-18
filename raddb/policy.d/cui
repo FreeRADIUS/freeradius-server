@@ -67,7 +67,7 @@ cui.post-auth {
 	#
 	if (reply.Chargeable-User-Identity) {
 		# Force User-Name to be the User-Name from the request
-		reply.User-Name := &request.User-Name
+		reply.User-Name := request.User-Name
 
 		cuisql
 	}
