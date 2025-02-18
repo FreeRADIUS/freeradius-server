@@ -10,12 +10,12 @@
 #
 
 if [ "$#" -ne 1 ]; then
-    echo "Usage: process-radacct-new-data-usage-period.sh SQLITE_DB_FILE" 2>&1
+    echo "Usage: process-radacct-new-data-usage-period.sh SQLITE_DB_FILE" 2>1
     exit 1
 fi
 
 if [ ! -r "$1" ]; then
-    echo "The SQLite database must exist: $1" 1>&2
+    echo "The SQLite database must exist: $1" 1>2
     exit 1
 fi
 
