@@ -224,6 +224,12 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 				return -1;
 			}
 
+			if ((i == 1) && (inst->identity_type[0] == inst->identity_type[1])) {
+				cf_log_err_cs(cs, "Duplicate value in identity_types = '%s' at %s",
+					      inst->identity_type_name, p);
+				return -1;
+			}
+
 			i++;
 
 			while (isspace((uint8_t) *p)) p++;
