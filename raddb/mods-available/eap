@@ -117,7 +117,7 @@ eap {
 	#
 	#  ### EAP-PWD (Secure password-based authentication)
 	#
-	#  In v4, the "known good" password is taken from the `&request.control.Password.Cleartext` list,
+	#  In v4, the "known good" password is taken from the `request.control.Password.Cleartext` list,
 	#  as is done by other modules. The change from v3 is that the `inner-tunnel` virtual server
 	#  is no not used.
 	#
@@ -455,7 +455,7 @@ eap {
 		#
 		#  The file should be provided as the attribute:
 		#
-		#      &control.TLS-Session-Cert-File
+		#      control.TLS-Session-Cert-File
 		#
 		#  If there are any errors loading or verifying the
 		#  certificate, then authentication will fail.
@@ -686,7 +686,7 @@ eap {
 			#  `virtual_server`.
 			#
 			#  Attributes created during certificate processing
-			#  will be placed in the `&session-state` list.
+			#  will be placed in the `session-state` list.
 			#  This is to simplify session-resumption, as the
 			#  contents of this list also contains session data
 			#  for stateful resumption, and this list is encoded
@@ -721,7 +721,7 @@ eap {
 			#  ====
 			#  Attribute generation is only performed on full
 			#  handshake, or where we detect that attributes
-			#  are missing from the &session-state list during
+			#  are missing from the `session-state` list during
 			#  stateful session-resumption.
 			#
 			#  Certificate attributes will usually be retrieved
@@ -795,8 +795,8 @@ eap {
 		#  You must ensure that any attributes required for policy
 		#  decisions are cached along with the TLS session
 		#  data. This is usually done by placing policy attributes in the
-		#  `&session-state` list, or in the case of EAP-PEAP, EAP-TTLS and
-		#  EAP-FAST, the `&parent.session-state` list (i.e. in the request
+		#  `session-state` list, or in the case of EAP-PEAP, EAP-TTLS and
+		#  EAP-FAST, the `parent.session-state` list (i.e. in the request
 		#  which sets up the TLS part of the authentication attempt).
 		#
 		#  Caching this data means that the policies are cached at the
@@ -980,7 +980,7 @@ eap {
 		#
 		#  You can override this configuration item at run-time by setting:
 		#
-		#    &control.EAP-TLS-Require-Client-Cert = Yes/No
+		#    control.EAP-TLS-Require-Client-Cert = Yes/No
 		#
 #		require_client_cert = yes
 
@@ -1066,7 +1066,7 @@ eap {
 		#  following option. You can also override this option by
 		#  setting:
 		#
-		#    &control.EAP-TLS-Require-Client-Cert = Yes
+		#    control.EAP-TLS-Require-Client-Cert = Yes
 		#
 		#  NOTE: The majority of supplicants do not support using a
 		#  client certificate with `EAP-TTLS`, so this option is unlikely
@@ -1160,7 +1160,7 @@ eap {
 		#  However, you can require one by setting the following
 		#  option. You can also override this option by setting
 		#
-		#	&control.EAP-TLS-Require-Client-Cert = Yes
+		#	control.EAP-TLS-Require-Client-Cert = Yes
 		#
 		#  NOTE: The majority of supplicants do not support using a
 		#  client certificate with `PEAP`, so this option is unlikely to

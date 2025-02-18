@@ -24,7 +24,7 @@
 #  Note that when the assignment is to a list, the `exec` call _must_ be
 #  inside of a double-quoted string.
 #
-#    &request += "%exec(/path/to/program,args, ...)"
+#    request += "%exec(/path/to/program,args, ...)"
 #
 #  The value of the attribute will be replaced with the output of the
 #  program which is executed.
@@ -96,7 +96,7 @@ exec {
 	#  |===
 	#  | Pairs          | Description
 	#  | &request       | attributes from the request
-	#  | &config        | attributes from the configuration items list
+	#  | &control       | attributes from the control list
 	#  | &reply         | attributes from the reply
 	#  | &session-state | attributes that persist over multiple request/response rounds.
 	#  |===

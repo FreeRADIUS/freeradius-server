@@ -12,17 +12,17 @@
 #
 #  The Base32-encoded secret should be placed into:
 #
-#	`&control.TOTP.Secret`
+#	`control.TOTP.Secret`
 #
 #  Any "bare" key should be placed into:
 #
-#	`&control.TOTP.Key`
+#	`control.TOTP.Key`
 #
 #  If `TOTP.Key` exists, then it will be used instead of `TOTP.Secret`.
 #
 #  The TOTP password entered by the user should be placed into:
 #
-#	`&request.TOTP.From-User`
+#	`request.TOTP.From-User`
 #
 #  The module will return `ok` if the passwords match, and `fail`
 #  if the passwords do not match.

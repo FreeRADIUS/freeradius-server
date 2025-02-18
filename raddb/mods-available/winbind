@@ -25,7 +25,7 @@ winbind {
 	#
 	#  username:: The username to pass to `winbind` for authentication.
 	#
-	username = "%{&Stripped-User-Name || &User-Name}"
+	username = "%{Stripped-User-Name || User-Name}"
 
 	#
 	#  domain:: The windows domain.
@@ -52,7 +52,7 @@ winbind {
 		#  This should generally not include a realm, so `Stripped-User-Name`
 		#  is likely the best attribute if it exists.
 		#
-		search_username = "%{&Stripped-User-Name || &User-Name}"
+		search_username = "%{Stripped-User-Name || User-Name}"
 
 		#
 		#  add_domain:: Include the domain in group searches.
