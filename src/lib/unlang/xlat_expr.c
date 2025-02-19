@@ -2535,6 +2535,23 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 			*out = node;
 			FR_SBUFF_SET_RETURN(in, &our_in);
 		}
+
+		/*
+		 *	@todo - check if the input is %{...}, AND the contents are not exactly tmpl_attr_allowed_chars.
+		 *	If so, parse it here as a nested expression.  That way we avoid a bounce through:
+		 *
+		 *		tmpl_afrom_substr() ->
+		 *		xalt_tokenize() ->
+		 *		xlat_tokenize_input() ->
+		 *		xlat_tokenize_expansion() ->
+		 *		xlat_tokenize_expression()
+		 *
+		 *	Which is horribly inefficient.  It also means that we have xlats containing tmpls
+		 *	which then contain xlats.
+		 *
+		 *	If the content is exactly tmpl_attr_allowed_chars, then we can parse it either as a
+		 *	regex reference, OR as an attribute expansion.
+		 */
 		break;
 
 	case T_SOLIDUS_QUOTED_STRING:
