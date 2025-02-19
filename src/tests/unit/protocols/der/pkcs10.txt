@@ -48,9 +48,17 @@ match Issuer = { RelativeDistinguishedName = { AttributeTypeAndValue = { joint-i
 decode-pair 30 4A 31 0B 30 09 06 03 55 04 06 13 02 55 53 31 16 30 14 06 03 55 04 0A 13 0D 4C 65 74 27 73 20 45 6E 63 72 79 70 74 31 23 30 21 06 03 55 04 03 13 1A 4C 65 74 27 73 20 45 6E 63 72 79 70 74 20 41 75 74 68 6F 72 69 74 79 20 58 33
 match Issuer = { RelativeDistinguishedName = { AttributeTypeAndValue = { joint-iso-itu-t = { ds = { attributeType = { countryName = "US" } } } } }, RelativeDistinguishedName = { AttributeTypeAndValue = { joint-iso-itu-t = { ds = { attributeType = { organizationName = "Let's Encrypt" } } } } }, RelativeDistinguishedName = { AttributeTypeAndValue = { joint-iso-itu-t = { ds = { attributeType = { commonName = "Let's Encrypt Authority X3" } } } } } }
 
+proto-dictionary der
+encode-pair Issuer = { RelativeDistinguishedName = { AttributeTypeAndValue = { joint-iso-itu-t = { ds = { attributeType = { countryName = "US" } } } } }, RelativeDistinguishedName = { AttributeTypeAndValue = { joint-iso-itu-t = { ds = { attributeType = { organizationName = "Let's Encrypt" } } } } }, RelativeDistinguishedName = { AttributeTypeAndValue = { joint-iso-itu-t = { ds = { attributeType = { commonName = "Let's Encrypt Authority X3" } } } } } }
+match 30 4a 31 0b 30 09 06 03 55 04 06 13 02 55 53 31 16 30 14 06 03 55 04 0a 13 0d 4c 65 74 27 73 20 45 6e 63 72 79 70 74 31 23 30 21 06 03 55 04 03 13 1a 4c 65 74 27 73 20 45 6e 63 72 79 70 74 20 41 75 74 68 6f 72 69 74 79 20 58 33
+
+proto-dictionary der
+encode-pair Issuer-Set = { RelativeDistinguishedName = { AttributeTypeAndValue = { joint-iso-itu-t = { ds = { attributeType = { commonName = "DST Root CA X3" } } } } }, RelativeDistinguishedName = { AttributeTypeAndValue = { joint-iso-itu-t = { ds = { attributeType = { organizationName = "Digital Signature Trust Co." } } } } } }
+match 31 3f 31 17 30 15 06 03 55 04 03 13 0e 44 53 54 20 52 6f 6f 74 20 43 41 20 58 33 31 24 30 22 06 03 55 04 0a 13 1b 44 69 67 69 74 61 6c 20 53 69 67 6e 61 74 75 72 65 20 54 72 75 73 74 20 43 6f 2e
+
 proto-dictionary-root Issuer-Set
-decode-pair 31 3F 31 24 30 22 06 03 55 04 0A 13 1B 44 69 67 69 74 61 6C 20 53 69 67 6E 61 74 75 72 65 20 54 72 75 73 74 20 43 6F 2E 31 17 30 15 06 03 55 04 03 13 0E 44 53 54 20 52 6F 6F 74 20 43 41 20 58 33
-match Issuer-Set = { RelativeDistinguishedName = { AttributeTypeAndValue = { joint-iso-itu-t = { ds = { attributeType = { organizationName = "Digital Signature Trust Co." } } } } }, RelativeDistinguishedName = { AttributeTypeAndValue = { joint-iso-itu-t = { ds = { attributeType = { commonName = "DST Root CA X3" } } } } } }
+decode-pair 31 3F 31 17 30 15 06 03 55 04 03 13 0E 44 53 54 20 52 6F 6F 74 20 43 41 20 58 33 31 24 30 22 06 03 55 04 0A 13 1B 44 69 67 69 74 61 6C 20 53 69 67 6E 61 74 75 72 65 20 54 72 75 73 74 20 43 6F 2E
+match Issuer-Set = { RelativeDistinguishedName = { AttributeTypeAndValue = { joint-iso-itu-t = { ds = { attributeType = { commonName = "DST Root CA X3" } } } } }, RelativeDistinguishedName = { AttributeTypeAndValue = { joint-iso-itu-t = { ds = { attributeType = { organizationName = "Digital Signature Trust Co." } } } } } }
 
 count
-match 35
+match 41

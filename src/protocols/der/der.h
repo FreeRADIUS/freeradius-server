@@ -75,7 +75,6 @@ typedef struct {
 	bool			is_sequence_of : 1;	//!< sequence_of has been defined
 	bool 			is_set_of : 1;		//!< set_of has been defined
 	bool 			is_pair : 1;
-	bool 			is_pairs : 1;
 	bool 			is_extensions : 1;	//!< a list of X.509 extensions
 	bool 			has_default : 1;	//!< a default value exists
 	bool 			is_oid_leaf : 1;
@@ -96,7 +95,6 @@ static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const 
 #define fr_der_flag_is_set_of(_da) 	(fr_der_attr_flags(_da)->is_set_of)
 #define fr_der_flag_max(_da) 		(fr_der_attr_flags(_da)->max)
 #define fr_der_flag_is_pair(_da) 	(fr_der_attr_flags(_da)->is_pair)
-#define fr_der_flag_is_pairs(_da) 	(fr_der_attr_flags(_da)->is_pairs)
 #define fr_der_flag_is_extensions(_da) 	(fr_der_attr_flags(_da)->is_extensions)
 #define fr_der_flag_has_default(_da) 	(fr_der_attr_flags(_da)->has_default)
 #define fr_der_flag_is_oid_leaf(_da) 	(fr_der_attr_flags(_da)->is_oid_leaf)

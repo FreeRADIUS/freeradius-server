@@ -870,31 +870,6 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 		return fr_dbuff_set(in, &our_in);
 	}
 
-	if (unlikely(fr_der_flag_is_pairs(parent) || decode_ctx->oid_value_pairs)) {
-		/*
-		 *	This sequence contains sequences/sets of pairs
-		 */
-		bool old		    = decode_ctx->oid_value_pairs;
-		decode_ctx->oid_value_pairs = true;
-		while (fr_dbuff_remaining(&our_in) > 0) {
-			child = NULL;
-			child = fr_dict_attr_iterate_children(parent, &child);
-
-			FR_PROTO_TRACE("decode context %s -> %s", parent->name, child->name);
-
-			if (unlikely(fr_der_decode_pair_dbuff(vp, &vp->vp_group, child, &our_in, decode_ctx) < 0)) {
-				talloc_free(vp);
-				return -1;
-			}
-		}
-
-		decode_ctx->oid_value_pairs = old;
-
-		fr_pair_append(out, vp);
-
-		return fr_dbuff_set(in, &our_in);
-	}
-
 	if (unlikely(fr_der_flag_is_sequence_of(parent))) {
 		/*
 		 * 	This is a sequence-of, meaning there are restrictions on the types which can be present
@@ -1044,32 +1019,6 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 		return fr_dbuff_set(in, &our_in);
 	}
 
-	if (fr_der_flag_is_pairs(parent) || decode_ctx->oid_value_pairs) {
-		/*
-		 *	This set contains sequences/sets of pairs
-		 */
-		bool old		    = decode_ctx->oid_value_pairs;
-
-		decode_ctx->oid_value_pairs = true;
-		while (fr_dbuff_remaining(&our_in) > 0) {
-			child = NULL;
-			child = fr_dict_attr_iterate_children(parent, &child);
-
-			FR_PROTO_TRACE("decode context %s -> %s", parent->name, child->name);
-
-			if (unlikely(fr_der_decode_pair_dbuff(vp, &vp->vp_group, child, &our_in, decode_ctx) < 0)) {
-				talloc_free(vp);
-				return -1;
-			}
-		}
-
-		decode_ctx->oid_value_pairs = old;
-
-		fr_pair_append(out, vp);
-
-		return fr_dbuff_set(in, &our_in);
-	}
-
 	if (fr_der_flag_is_set_of(parent)) {
 		/*
 		 * 	This is a set-of, meaning there are restrictions on the types which can be present
@@ -1122,9 +1071,13 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 						goto error;
 					}
 
+					if (prev_char < curr_char) {
+						break;
+					}
+
 				} while (fr_dbuff_remaining(&our_in) > 0 && fr_dbuff_remaining(&previous_item) > 0);
 
-				if (fr_dbuff_remaining(&previous_item) > 0) {
+				if (prev_char > curr_char && fr_dbuff_remaining(&previous_item) > 0) {
 					fr_strerror_const(
 						"Set tags are not in ascending order. Previous item has more data");
 					ret = -1;

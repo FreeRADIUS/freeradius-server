@@ -4,7 +4,7 @@
 # Version $Id$
 DEFINE	Certificate-Extensions				x509_extensions ref=OID-Tree
 
-DEFINE	Issuer						sequence is_pairs
+DEFINE	Issuer						sequence sequence_of=set
 BEGIN Issuer
 DEFINE	RelativeDistinguishedName			set
 BEGIN RelativeDistinguishedName
@@ -12,9 +12,9 @@ DEFINE	AttributeTypeAndValue				group ref=OID-Tree,sequence_of=set,is_pair
 END RelativeDistinguishedName
 END Issuer
 
-DEFINE	Issuer-Set					sequence is_pairs
+DEFINE	Issuer-Set					set set_of=set
 BEGIN Issuer-Set
-DEFINE	RelativeDistinguishedName			sequence
+DEFINE	RelativeDistinguishedName			set
 BEGIN RelativeDistinguishedName
 DEFINE	AttributeTypeAndValue				group ref=OID-Tree,sequence_of=set,is_pair
 END RelativeDistinguishedName

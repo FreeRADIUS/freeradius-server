@@ -38,13 +38,11 @@ RCSID("$Id$")
 
 typedef struct {
 	fr_dbuff_marker_t encoding_start;	//!< This is the start of the encoding. It is NOT the same as the start of the
+						//!< encoded value. It includes the tag, length, and value.
 	uint8_t *tmp_ctx;	 		//!< Temporary context for encoding.
 						//!< encoded value. It is the position of the tag.
 	size_t encoding_length;			//!< This is the length of the entire encoding. It is NOT the same as the length
 						//!< of the encoded value. It includes the tag, length, and value.
-	ssize_t value_length;			//!< This is the number of bytes used by the encoded value. It is NOT the
-						//!< same as the encoded length field.
-	uint8_t *encoded_value;			//!< This is a pointer to the start of the encoded value.
 } fr_der_encode_ctx_t;
 
 /** Function signature for DER encode functions
@@ -667,8 +665,6 @@ static ssize_t fr_der_encode_sequence(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, f
 typedef struct {
 	fr_dbuff_marker_t item_ptr;	//!< Pointer to the start of the encoded item (beginning of the tag)
 	size_t	 item_len;		//!< Length of the encoded item (tag + length + value)
-	uint8_t *octet_ptr;		//!< Pointer to the current octet
-	size_t	 remaining;		//!< Remaining octets
 } fr_der_encode_set_of_ptr_pairs_t;
 
 /*
@@ -827,8 +823,6 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 
 			ptr_pairs[i].item_ptr  = encode_ctx->encoding_start;
 			ptr_pairs[i].item_len  = encode_ctx->encoding_length;
-			ptr_pairs[i].octet_ptr = encode_ctx->encoded_value;
-			ptr_pairs[i].remaining = encode_ctx->value_length;
 
 			slen += len_count;
 		}
@@ -1681,12 +1675,13 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 {
 	fr_pair_t const	    *vp;
 	fr_dbuff_t	     our_dbuff = FR_DBUFF(dbuff);
-	fr_dbuff_marker_t    marker;
+	fr_dbuff_marker_t    marker, encoding_start;
 	fr_der_tag_encode_t *func;
 	fr_der_tag_t         tag;
 	fr_der_tag_class_t   tag_class;
 	fr_der_encode_ctx_t *uctx = encode_ctx;
 	ssize_t		     slen = 0;
+	size_t		     encoding_length;
 
 	if (unlikely(cursor == NULL)) {
 		fr_strerror_const("No cursor to encode");
@@ -1796,16 +1791,16 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	 */
 	if (fr_der_flag_option(vp->da) | tag_class) tag = fr_der_flag_option(vp->da);
 
-	fr_dbuff_marker(&uctx->encoding_start, &our_dbuff);
+	fr_dbuff_marker(&encoding_start, &our_dbuff);
 
 	slen = fr_der_encode_tag(&our_dbuff, tag, tag_class, func->constructed);
 	if (slen < 0) {
 	error:
-		fr_dbuff_marker_release(&uctx->encoding_start);
+		fr_dbuff_marker_release(&encoding_start);
 		return slen;
 	}
 
-	uctx->encoding_length = slen;
+	encoding_length = slen;
 
 	/*
 	 *	Mark and reserve space in the buffer for the length field
@@ -1823,21 +1818,21 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 		goto error;
 	}
 
-	uctx->encoding_length += slen;
-	uctx->value_length = slen;
+	encoding_length += slen;
 
 	/*
-	 *	Encode the length of the value
-	 */
+	*	Encode the length of the value
+	*/
 	slen = fr_der_encode_len(&our_dbuff, &marker);
 	if (slen < 0) {
 		fr_dbuff_marker_release(&marker);
 		goto error;
 	}
 
-	uctx->encoded_value = fr_dbuff_start(&marker) + slen + 1;
 	fr_dbuff_marker_release(&marker);
-	uctx->encoding_length += slen;
+
+	uctx->encoding_start = encoding_start;
+	uctx->encoding_length = encoding_length + slen;
 
 	fr_dcursor_next(cursor);
 	return fr_dbuff_set(dbuff, &our_dbuff);
@@ -1887,8 +1882,6 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *
 
 	test_ctx->tmp_ctx	     = talloc(test_ctx, uint8_t);
 	test_ctx->encoding_length    = 0;
-	test_ctx->value_length = 0;
-	test_ctx->encoded_value	     = NULL;
 
 	*out = test_ctx;
 

@@ -26,8 +26,8 @@ proto-dictionary-root Test-Set-Of
 decode-pair 31 06 02 01 01 02 01 02
 match Test-Set-Of = { Test-First-Integer = 1, Test-First-Integer = 2 }
 
-decode-pair 31 07 02 02 00 80 02 01 02
-match Set tags are not in ascending order. Previous item has more data
+decode-pair 31 07 02 01 02 02 02 00 80
+match Set tags are not in ascending order
 
 proto-dictionary-root Test-Set-Of
 
