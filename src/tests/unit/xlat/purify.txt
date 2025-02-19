@@ -48,10 +48,10 @@ match 25
 #  Not the same as a regex %{3}, but we can't tell the difference here.
 #
 xlat_purify %{1 + 2}
-match %{3}
+match 3
 
 xlat_purify %{'a' + 'b'}
-match %{"ab"}
+match "ab"
 
 xlat_purify NAS-Port + 5
 match (NAS-Port + 5)
@@ -213,7 +213,7 @@ match "3"
 #  This is a different code path than the above.
 #
 xlat_purify (string)%{1 + 2}
-match (string)%{3}
+match (string)3
 
 xlat_purify "hello"
 match "hello"

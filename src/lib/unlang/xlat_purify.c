@@ -56,13 +56,20 @@ static void xlat_value_list_to_xlat(xlat_exp_head_t *head, fr_value_box_list_t *
 	}
 }
 
+static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, fr_token_t quote);
 
 int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
+{
+	return xlat_purify_list_internal(head, request, T_BARE_WORD);
+}
+
+static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, fr_token_t quote)
 {
 	int rcode;
 	bool success;
 	fr_value_box_list_t list;
 	xlat_flags_t our_flags;
+	xlat_exp_t *node, *next;
 
 	if (!head->flags.can_purify) return 0;
 
@@ -74,18 +81,76 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 	our_flags = head->flags;
 	our_flags.pure = true;					/* we flip this if the children are not pure */
 
-	xlat_exp_foreach(head, node) {
+	for (node = fr_dlist_head(&head->dlist);
+	     next = fr_dlist_next(&head->dlist, node), node != NULL;
+	     node = next) {
 		if (!node->flags.can_purify) continue;
 
 		switch (node->type) {
 		case XLAT_TMPL:
+			/*
+			 *	Optimize it by replacing the xlat -> tmpl -> xlat with just an xlat.
+			 *
+			 *	That way we avoid a bounce through the tmpl code at run-time.
+			 */
 			if (tmpl_is_xlat(node->vpt)) {
-				xlat_exp_head_t *child = tmpl_xlat(node->vpt);
+				xlat_exp_head_t *xlat = tmpl_xlat(node->vpt);
 
-				rcode = xlat_purify_list(child, request);
+				rcode = xlat_purify_list_internal(xlat, request, node->vpt->quote);
 				if (rcode < 0) return rcode;
 
-				node->flags = child->flags;
+				node->flags = xlat->flags;
+
+				/*
+				 *	@todo - for casts, check if the xlat is pure and/or contains just
+				 *	data.  If so, cast the data.
+				 */
+
+				/*
+				 *	If there's a cast, then keep it.  The xlat_exp_t doesn't contain a
+				 *	cast type, so we have to leave it in the tmpl_t.
+				 */
+				if (tmpl_rules_cast(node->vpt) != FR_TYPE_NULL) break;
+
+				/*
+				 *	We're in a string, or we will be in a string.  Don't do any more
+				 *	optimizations.
+				 *
+				 *	@todo - maybe add a cast here, but the expression evaluator will take
+				 *	care of that.
+				 */
+				if ((quote != T_BARE_WORD) || (node->vpt->quote != T_BARE_WORD)) break;
+
+				/*
+				 *	If there's only one item here, we can just replace this node with the
+				 *	one item.
+				 */
+				if (fr_dlist_num_elements(&xlat->dlist) == 1) {
+					xlat_exp_t *child, *prev;
+
+					prev = fr_dlist_remove(&head->dlist, node);
+					child = fr_dlist_head(&xlat->dlist);
+
+					(void) talloc_steal(child, node->vpt->name);
+					(void) talloc_steal(head, child);
+
+					(void) fr_dlist_remove(&xlat->dlist, child);
+					fr_dlist_insert_after(&head->dlist, prev, child);
+					talloc_free(node); /* and vpt and xlat */
+					node = child;
+					break;
+				}
+
+				/*
+				 *	There are multiple items in the child.  We need to keep the group
+				 *	wrapper, which ensures that the entire sub-expression results in one
+				 *	output value.
+				 */
+				xlat_exp_set_type(node, XLAT_GROUP);
+				(void) talloc_steal(node, node->vpt->name);
+				(void) talloc_steal(node, xlat);
+				talloc_free(node->vpt);
+				node->group = xlat;
 				break;
 			}
 			break;
@@ -103,7 +168,7 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			return -1;
 
 		case XLAT_GROUP:
-			rcode = xlat_purify_list(node->group, request);
+			rcode = xlat_purify_list_internal(node->group, request, quote);
 			if (rcode < 0) return rcode;
 
 			node->flags = node->group->flags;
@@ -132,7 +197,7 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 					if (node->call.func->purify(node, node->call.inst->data, request) < 0) return -1;
 					request->dict = dict;
 				} else {
-					if (xlat_purify_list(node->call.args, request) < 0) return -1;
+					if (xlat_purify_list_internal(node->call.args, request, T_BARE_WORD) < 0) return -1;
 				}
 
 				/*
