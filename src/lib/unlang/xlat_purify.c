@@ -88,10 +88,18 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 				node->flags = child->flags;
 				break;
 			}
-			FALL_THROUGH;
+			break;
 
-		default:
-			fr_strerror_printf("Internal error - cannot purify xlat");
+		case XLAT_BOX:
+		case XLAT_ONE_LETTER:
+		case XLAT_REGEX:
+			break;
+
+		case XLAT_INVALID:
+		case XLAT_FUNC_UNRESOLVED:
+		case XLAT_VIRTUAL:
+		case XLAT_VIRTUAL_UNRESOLVED:
+			fr_assert(0);
 			return -1;
 
 		case XLAT_GROUP:
@@ -205,8 +213,11 @@ int xlat_purify(xlat_exp_head_t *head, unlang_interpret_t *intp)
 
 	rcode = xlat_purify_list(head, request);
 	talloc_free(request);
+	if (rcode < 0) return rcode;
 
-	return rcode;
+	fr_assert(!head->flags.can_purify);
+
+	return 0;
 }
 
 static fr_value_box_t *xlat_value_box(xlat_exp_t *node)

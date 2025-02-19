@@ -39,7 +39,7 @@ xlat_exp_head_t *_xlat_exp_head_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx)
 	MEM(head = talloc_zero(ctx, xlat_exp_head_t));
 
 	fr_dlist_init(&head->dlist, xlat_exp_t, entry);
-	head->flags.pure = true;
+	head->flags.pure = head->flags.can_purify = true;
 #ifndef NDEBUG
 	head->file = file;
 	head->line = line;
@@ -107,7 +107,7 @@ static xlat_exp_t *xlat_exp_alloc_pool(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, uns
 	xlat_exp_t *node;
 
 	MEM(node = talloc_zero_pooled_object(ctx, xlat_exp_t, extra_hdrs, extra));
-	node->flags.pure = true;	/* everything starts pure */
+	node->flags.pure = node->flags.can_purify = true;	/* everything starts pure */
 	node->quote = T_BARE_WORD;
 #ifndef NDEBUG
 	node->file = file;

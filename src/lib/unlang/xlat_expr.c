@@ -2764,13 +2764,13 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		}
 
 		node->flags.constant = true;
-		node->flags.pure = true;
+		node->flags.pure = node->flags.can_purify = true;
 
 	} else if (tmpl_contains_xlat(node->vpt)) {
 		node->flags = tmpl_xlat(vpt)->flags;
 
 	} else if (tmpl_is_attr(node->vpt)) {
-		node->flags.pure = false;
+		node->flags.pure = node->flags.can_purify = false;
 
 #ifndef NDEBUG
 		if (vpt->name[0] == '%') {

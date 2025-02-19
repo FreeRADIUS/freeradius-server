@@ -228,7 +228,7 @@ static inline CC_HINT(nonnull) void xlat_flags_merge(xlat_flags_t *parent, xlat_
 {
 	parent->needs_resolving |= child->needs_resolving;
 	parent->pure &= child->pure; /* purity can only be removed, never added */
-	parent->can_purify |= child->can_purify;
+	parent->can_purify |= child->can_purify; /* there is SOME node under us which can be purified */
 	parent->constant &= child->constant;
 	parent->impure_func |= child->impure_func;
 }
