@@ -157,7 +157,7 @@ static ssize_t fr_der_encode_boolean(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UN
 	 */
 	value = vp->vp_bool;
 
-	fr_dbuff_in(&our_dbuff, (uint8_t)(value ? DER_BOOLEAN_TRUE : DER_BOOLEAN_FALSE));
+	FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t)(value ? DER_BOOLEAN_TRUE : DER_BOOLEAN_FALSE));
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
 }
