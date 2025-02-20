@@ -69,6 +69,8 @@ typedef struct {
 typedef struct {
 	fr_dlist_t		entry;			//!< Entry in the list of filenames.
 
+	char const		*src_file;		//!< the source file which did the $INCLUDE
+	int			src_line;		//!< the line number in the source file
 	char			*filename;		//!< Name of the file the dictionary was loaded on.
 } fr_dict_filename_t;
 

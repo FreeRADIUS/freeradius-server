@@ -2766,18 +2766,25 @@ done:
  * that we can reference from fr_dict_attr_t without having the memory bloat of
  * assigning a buffer to every attribute.
  */
-static inline int dict_filename_add(char **filename_out, fr_dict_t *dict, char const *filename)
+static inline int dict_filename_add(char **filename_out, fr_dict_t *dict, char const *filename,
+				    char const *src_file, int src_line)
 {
 	fr_dict_filename_t *file;
 
 	file = talloc_zero(dict, fr_dict_filename_t);
-	if (unlikely(file == NULL)) {
+	if (unlikely(!file)) {
 	oom:
 		fr_strerror_const("Out of memory");
 		return -1;
 	}
-	*filename_out = file->filename = talloc_typed_strdup(dict, filename);
-	if (unlikely(*filename_out == NULL)) goto oom;
+	*filename_out = file->filename = talloc_typed_strdup(file, filename);
+	if (unlikely(!*filename_out)) goto oom;
+
+	if (src_file) {
+		file->src_line = src_line;
+		file->src_file = talloc_typed_strdup(file, src_file);
+		if (!file->src_file) goto oom;
+	}
 
 	fr_dlist_insert_tail(&dict->filenames, file);
 
@@ -2788,14 +2795,20 @@ static inline int dict_filename_add(char **filename_out, fr_dict_t *dict, char c
 /** See if we have already loaded the file,
  *
  */
-static inline bool dict_filename_loaded(fr_dict_t *dict, char const *filename)
+static inline bool dict_filename_loaded(fr_dict_t *dict, char const *filename,
+					char const *src_file, int src_line)
 {
 	fr_dict_filename_t *file;
 
 	for (file = (fr_dict_filename_t *) fr_dlist_head(&dict->filenames);
 	     file != NULL;
 	     file = (fr_dict_filename_t *) fr_dlist_next(&dict->filenames, &file->entry)) {
-		if (strcmp(file->filename, filename) == 0) return true;
+		if (file->src_file && src_file) {
+			if (file->src_line != src_line) continue;
+			if (strcmp(file->src_file, src_file) != 0) continue;
+		}
+
+		if (strcmp(file->filename, filename) == 0) return true; /* this should always be true */
 	}
 
 	return false;
@@ -3006,7 +3019,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	 *	See if we have already loaded this filename.  If so, suppress it.
 	 */
 #ifndef NDEBUG
-	if (unlikely(dict_filename_loaded(dctx->dict, fn))) {
+	if (unlikely(dict_filename_loaded(dctx->dict, fn, src_file, src_line))) {
 		fr_strerror_printf("ERROR - we have a recursive $INCLUDE or load of dictionary %s", fn);
 		return -1;
 	}
@@ -3056,8 +3069,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	 *	This string is safe to assign to the filename pointer in any attributes added beneath the
 	 *	dictionary.
 	 */
-	if (unlikely(dict_filename_add(&CURRENT_FILENAME(dctx), dctx->dict, fn) < 0)) {
-		fr_strerror_const("Out of memory");
+	if (unlikely(dict_filename_add(&CURRENT_FILENAME(dctx), dctx->dict, fn, src_file, src_line) < 0)) {
 		goto perm_error;
 	}
 
