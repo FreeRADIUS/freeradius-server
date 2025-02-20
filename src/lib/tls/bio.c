@@ -197,7 +197,7 @@ char *fr_tls_bio_dbuff_finalise_bstr(fr_tls_bio_dbuff_t *bd)
 	if (unlikely(!bd)) return NULL;
 	if (unlikely(!bd->dbuff_in.buff)) return NULL;
 
-	fr_dbuff_in_bytes(&bd->dbuff_in, 0x00);
+	if (fr_dbuff_in_bytes(&bd->dbuff_in, 0x00) <= 0) return NULL;
 	fr_dbuff_trim_talloc(&bd->dbuff_in, SIZE_MAX);
 
 	buff = bd->dbuff_in.buff;
