@@ -89,36 +89,7 @@ END 2.5.29.30
 
 ATTRIBUTE	cRLDIstributionPoints			2.5.29.31	sequence        sequence_of=sequence,is_oid_leaf
 BEGIN 2.5.29.31
-DEFINE	distributionPoint				sequence
-BEGIN distributionPoint
-DEFINE	distributionPointName				sequence  option=0
-BEGIN distributionPointName
-ATTRIBUTE	fullName				0	group   ref=GeneralName,der_type=sequence,sequence_of=choice,option
-ATTRIBUTE	nameRelativeToCRLIssuer			1	sequence        option
-BEGIN nameRelativeToCRLIssuer
-DEFINE	RelativeDistinguishedName			set
-BEGIN RelativeDistinguishedName
-DEFINE	AttributeTypeandValue				sequence sequence_of=oid_and_value,ref=OID-Tree
-END RelativeDistinguishedName
-END nameRelativeToCRLIssuer
-END distributionPointName
-
-DEFINE	reasons						struct  option=1
-BEGIN reasons
-MEMBER		unused					bit[1]
-MEMBER		keyCompromise				bit[1]
-MEMBER		cACompromise				bit[1]
-MEMBER		affiliationChanged			bit[1]
-MEMBER		superseded				bit[1]
-MEMBER		cessationOfOperation			bit[1]
-MEMBER		certificateHold				bit[1]
-MEMBER		privilegeWithdrawn			bit[1]
-MEMBER		aACompromise				bit[1]
-END reasons
-
-DEFINE	cRLIssuer					group   ref=GeneralName,der_type=sequence,sequence_of=choice,option=2
-
-END distributionPoint
+$INCLUDE dictionary.crl
 END 2.5.29.31
 
 ATTRIBUTE	certificatePolicies			2.5.29.32	sequence        sequence_of=sequence,is_oid_leaf
@@ -161,35 +132,6 @@ DEFINE	keyPurposeId					oid
 END 2.5.29.37
 
 ATTRIBUTE	freshestCRL				2.5.29.46	sequence        sequence_of=sequence,is_oid_leaf
-DEFINE	distributionPoint				sequence
-BEGIN distributionPoint
-DEFINE	distributionPointName				sequence  option=0
-BEGIN distributionPointName
-ATTRIBUTE	fullName				0	group   ref=GeneralName,der_type=sequence,sequence_of=choice,option
-ATTRIBUTE	nameRelativeToCRLIssuer			1	sequence        option
-BEGIN nameRelativeToCRLIssuer
-DEFINE	RelativeDistinguishedName			set
-BEGIN RelativeDistinguishedName
-DEFINE	AttributeTypeandValue				sequence sequence_of=oid_and_value,ref=OID-Tree
-END RelativeDistinguishedName
-END nameRelativeToCRLIssuer
-END distributionPointName
-
-DEFINE	reasons						struct  option=1
-BEGIN reasons
-MEMBER		unused					bit[1]
-MEMBER		keyCompromise				bit[1]
-MEMBER		cACompromise				bit[1]
-MEMBER		affiliationChanged			bit[1]
-MEMBER		superseded				bit[1]
-MEMBER		cessationOfOperation			bit[1]
-MEMBER		certificateHold				bit[1]
-MEMBER		privilegeWithdrawn			bit[1]
-MEMBER		aACompromise				bit[1]
-END reasons
-
-DEFINE	cRLIssuer					group   ref=GeneralName,der_type=sequence,sequence_of=choice,option=2
-
-END distributionPoint
+$INCLUDE dictionary.crl
 
 ATTRIBUTE	inhibitAnyPolicy			2.5.29.54	integer is_oid_leaf
