@@ -258,15 +258,15 @@ static ssize_t fr_der_decode_integer(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 
 	if (sign & 0x80) {
 		/*
-		 *	If the sign bit is set, this is a negative number.
-		 *	This will fill the upper bits with 1s.
+		 *	If the sign bit is set, this fill the upper bits with all zeros,
+		 *	and set the lower bits to "sign".
 		 *	This is important for the case where the length of the integer is less than the length of the
 		 *	integer type.
 		 */
-		value = UINT64_MAX;
+		value = ~(uint64_t) 0xff;
 	}
 
-	value = (value << 8) | sign;
+	value |= sign;
 
 	if (len > 1) {
 		/*
