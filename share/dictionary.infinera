@@ -27,40 +27,40 @@ ATTRIBUTE	Infinera-Rsvd-Str-Attribute2		241	string
 ATTRIBUTE	Infinera-Rsvd-Int-Attribute1		249	integer
 ATTRIBUTE	Infinera-Rsvd-Int-Attribute2		250	integer
 
-VALUE	Infinera-User-Priv-NE		Non-Privileged	0
+VALUE	Infinera-User-Priv-NE		Non-Privileged		0
 VALUE	Infinera-User-Priv-NE		Privileged		1
 
-VALUE	Infinera-User-Priv-PR		Non-Privileged	0
+VALUE	Infinera-User-Priv-PR		Non-Privileged		0
 VALUE	Infinera-User-Priv-PR		Privileged		1
 
-VALUE	Infinera-User-Priv-TT		Non-Privileged	0
+VALUE	Infinera-User-Priv-TT		Non-Privileged		0
 VALUE	Infinera-User-Priv-TT		Privileged		1
 
-VALUE	Infinera-User-Priv-MA		Non-Privileged	0
+VALUE	Infinera-User-Priv-MA		Non-Privileged		0
 VALUE	Infinera-User-Priv-MA		Privileged		1
 
-VALUE	Infinera-User-Priv-RA		Non-Privileged	0
+VALUE	Infinera-User-Priv-RA		Non-Privileged		0
 VALUE	Infinera-User-Priv-RA		Privileged		1
 
-VALUE	Infinera-User-Priv-EA		Non-Privileged	0
+VALUE	Infinera-User-Priv-EA		Non-Privileged		0
 VALUE	Infinera-User-Priv-EA		Privileged		1
 
-VALUE	Infinera-User-CanUseResSession	No	0
-VALUE	Infinera-User-CanUseResSession	Can-Yes	1
+VALUE	Infinera-User-CanUseResSession	No			0
+VALUE	Infinera-User-CanUseResSession	Can-Yes			1
 
-VALUE	Infinera-User-MgtType-EMS	Disallowed	0
-VALUE	Infinera-User-MgtType-EMS	Allowed	1
+VALUE	Infinera-User-MgtType-EMS	Disallowed		0
+VALUE	Infinera-User-MgtType-EMS	Allowed			1
 
-VALUE	Infinera-User-MgtType-GNM	Disallowed	0
-VALUE	Infinera-User-MgtType-GNM	Allowed	1
+VALUE	Infinera-User-MgtType-GNM	Disallowed		0
+VALUE	Infinera-User-MgtType-GNM	Allowed			1
 
-VALUE	Infinera-User-MgtType-TL1	Disallowed	0
-VALUE	Infinera-User-MgtType-TL1	Allowed	1
+VALUE	Infinera-User-MgtType-TL1	Disallowed		0
+VALUE	Infinera-User-MgtType-TL1	Allowed			1
 
-VALUE	Infinera-User-MgtType-CLI	Disallowed	0
-VALUE	Infinera-User-MgtType-CLI	Allowed	1
+VALUE	Infinera-User-MgtType-CLI	Disallowed		0
+VALUE	Infinera-User-MgtType-CLI	Allowed			1
 
-VALUE	Infinera-User-MgtType-NETCONF	Disallowed 0
-VALUE	Infinera-User-MgtType-NETCONF	Allowed 1
+VALUE	Infinera-User-MgtType-NETCONF	Disallowed		0
+VALUE	Infinera-User-MgtType-NETCONF	Allowed			1
 
 END-VENDOR               Infinera
