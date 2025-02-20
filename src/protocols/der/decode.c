@@ -364,16 +364,21 @@ static ssize_t fr_der_decode_bitstring(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 		/*
 		 *	This means an entire byte is unused bits. Which is not allowed.
 		 */
-		fr_strerror_const("Invalid number of unused bits in bitstring");
+		fr_strerror_const("Invalid number of unused bits in 'bitstring'");
 		return -1;
 	}
 
 	if ((len == 1) && unused_bits) {
-		fr_strerror_const("Insufficient data for bitstring. Missing data bytes");
+		fr_strerror_const("Insufficient data for 'bitstring'. Missing data bytes");
 		return -1;
 	}
 
 	if (fr_type_is_struct(parent->type)) {
+		if (!len) {
+			fr_strerror_const("Insufficient data for 'struct'. Missing data bytes");
+			return -1;
+		}
+
 		/*
 		 *	If the parent is a struct attribute, we will not be adding the unused bits count to the first
 		 *	byte
