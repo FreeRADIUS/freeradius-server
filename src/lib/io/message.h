@@ -64,7 +64,7 @@ fr_message_t *fr_message_localize(TALLOC_CTX *ctx, fr_message_t *m, size_t messa
 int fr_message_set_messages_used(fr_message_set_t *ms) CC_HINT(nonnull);
 void fr_message_set_gc(fr_message_set_t *ms) CC_HINT(nonnull);
 
-void fr_message_set_debug(fr_message_set_t *ms, FILE *fp) CC_HINT(nonnull);
+void fr_message_set_debug(FILE *fp, fr_message_set_t *ms) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

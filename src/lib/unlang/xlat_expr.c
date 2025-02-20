@@ -2760,7 +2760,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 			/*
 			 *	Regex?  Or something else weird?
 			 */
-			tmpl_debug(vpt);
+			tmpl_debug(stderr, vpt);
 			fr_assert(0);
 		}
 	}
