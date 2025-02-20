@@ -595,11 +595,12 @@ fr_der_tag_t fr_type_to_der_tag_default(fr_type_t type)
 
 static bool attr_valid(fr_dict_attr_t *da)
 {
-	if (fr_der_flag_is_sequence_of(da->parent) ||
-	    fr_der_flag_is_set_of(da->parent)) {
-		fr_der_tag_t of_type = (fr_der_flag_is_sequence_of(da->parent) ?
-					fr_der_flag_sequence_of(da->parent) :
-					fr_der_flag_set_of(da->parent));
+	fr_der_attr_flags_t *flags = fr_dict_attr_ext(da->parent, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+
+	if (flags->is_sequence_of || flags->is_set_of) {
+		fr_der_tag_t of_type = (flags->is_sequence_of ?
+					flags->sequence_of :
+					flags->set_of);
 
 		if ((unlikely(of_type != FR_DER_TAG_CHOICE)) &&
 		    unlikely(fr_type_to_der_tags[da->type][of_type] == false)) {
@@ -610,7 +611,9 @@ static bool attr_valid(fr_dict_attr_t *da)
 		}
 	}
 
-	if (fr_der_flag_is_choice(da) && unlikely(!fr_type_is_tlv(da->type))) {
+	flags = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+
+	if (flags->is_choice && unlikely(!fr_type_is_tlv(da->type))) {
 		fr_strerror_printf("Attribute %s of type %s is not allowed represent a collection of choices.",
 				   da->name, fr_type_to_str(da->type));
 		return false;
@@ -637,9 +640,16 @@ static bool attr_valid(fr_dict_attr_t *da)
 		return false;
 	}
 
-	if (fr_der_flag_is_extensions(da) && (da->type != FR_TYPE_GROUP)) {
-		fr_strerror_printf("Extensions must be type 'group'");
-		return false;
+	if (flags->is_extensions) {
+		if (da->type != FR_TYPE_GROUP) {
+			fr_strerror_printf("Extensions must be type 'group'");
+			return false;
+		}
+
+		/*
+		 *	Avoid run-time checks.
+		 */
+		if (!flags->max) flags->max = UINT64_MAX;
 	}
 
 	return true;

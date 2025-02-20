@@ -1145,8 +1145,6 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 	 */
 
 	max = fr_der_flag_max(vp->da); /* Maximum number of extensions specified in the dictionary */
-
-	if (!max) max = UINT64_MAX;
 	num = 0;
 
 	slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_SEQUENCE, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_CONSTRUCTED);
