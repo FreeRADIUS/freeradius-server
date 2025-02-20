@@ -1153,8 +1153,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 	fr_dbuff_marker(&outer_seq_len_start, &our_dbuff);
 	FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
-	FR_PROTO_HEX_DUMP(fr_dbuff_start(&our_dbuff), fr_dbuff_behind(&outer_seq_len_start) - 1,
-			  "BEFORE encoded X509 extension");
+	FR_PROTO_HEX_DUMP(fr_dbuff_start(&our_dbuff), fr_dbuff_used(&our_dbuff),"BEFORE encoded X509 extension");
 
 	fr_pair_dcursor_child_iter_init(&root_cursor, &vp->children, cursor);
 	fr_dcursor_copy(&parent_cursor, &root_cursor);
