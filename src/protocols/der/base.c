@@ -271,6 +271,12 @@ static int dict_flag_sequence_of(fr_dict_attr_t **da_p, char const *value, UNUSE
 		return -1;
 	}
 
+	if (strcmp(value, "oid_and_value") == 0) {
+		(*da_p)->type = FR_TYPE_GROUP;
+		flags->is_pair = true;
+		return 0;
+	}
+
 	type = fr_table_value_by_str(tag_name_to_number, value, FR_DER_TAG_INVALID);
 	if (type == FR_DER_TAG_INVALID) {
 		fr_strerror_printf("Unknown type in 'sequence_of=%s'", value);
@@ -293,6 +299,12 @@ static int dict_flag_set_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 		return -1;
 	}
 
+	if (strcmp(value, "oid_and_value") == 0) {
+		(*da_p)->type = FR_TYPE_GROUP;
+		flags->is_pair = true;
+		return 0;
+	}
+
 	type = fr_table_value_by_str(tag_name_to_number, value, FR_DER_TAG_INVALID);
 	if (type == FR_DER_TAG_INVALID) {
 		fr_strerror_printf("Unknown type in 'set_of=%s'", value);
@@ -312,6 +324,14 @@ static int dict_flag_is_pair(fr_dict_attr_t **da_p, UNUSED char const *value, UN
 	if ((*da_p)->type != FR_TYPE_GROUP) {
 		fr_strerror_printf("Invalid data type '%s' for 'is_pair'.  Only 'group' is allowed",
 				   fr_type_to_str((*da_p)->type));
+		return -1;
+	}
+
+	/*
+	 *	Only sets and sequences can use 'is_pair'.
+	 */
+	if ((flags->der_type != FR_DER_TAG_SET) && (flags->der_type != FR_DER_TAG_SEQUENCE)) {
+		fr_strerror_printf("Cannot use 'is_pair' for DER type '%s'", fr_der_tag_to_str(flags->der_type));
 		return -1;
 	}
 
@@ -556,13 +576,10 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 	flags->der_type = der_type;
 
 	/*
-	 *	If it is a collection of x509 extensions, we will set a few other flags
-	 * 	as per RFC 5280.
-	 *
-	 *	@todo - this is hard-coded for RFC 5280 rules.  Other
-	 *	things may have different rules.
+	 *	If it is a collection of x509 extensions, we will set
+	 * 	a few other flags as per RFC 5280.
 	 */
-	if (fr_type == FR_TYPE_GROUP) {
+	if (strcmp(name, "x509_extensions") == 0) {
 		flags->is_extensions = true;
 
 		flags->class = FR_DER_CLASS_CONTEXT;

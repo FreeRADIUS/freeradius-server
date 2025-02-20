@@ -23,7 +23,7 @@ DEFINE	RDNSequence					sequence        sequence_of=set
 BEGIN RDNSequence
 DEFINE	RelativeDistinguishedName			set
 BEGIN RelativeDistinguishedName
-DEFINE	AttributeTypeAndValue				group   ref=OID-Tree,is_pair
+DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=OID-Tree
 END RelativeDistinguishedName
 END RDNSequence
 END directoryName
@@ -53,7 +53,7 @@ DEFINE	RDNSequence					sequence        sequence_of=set
 BEGIN RDNSequence
 DEFINE	RelativeDistinguishedName			set
 BEGIN RelativeDistinguishedName
-DEFINE	AttributeTypeAndValue				group   ref=OID-Tree,is_pair
+DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=OID-Tree
 END RelativeDistinguishedName
 END RDNSequence
 END Name
