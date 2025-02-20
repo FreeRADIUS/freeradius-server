@@ -95,7 +95,7 @@ static ssize_t encode_pair(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned 
 			   void *encode_ctx);
 static ssize_t der_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx) CC_HINT(nonnull);
 
-static fr_der_tag_encode_t tag_funcs[] = {
+static fr_der_tag_encode_t tag_funcs[FR_DER_TAG_MAX] = {
 	[FR_DER_TAG_BOOLEAN]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_boolean },
 	[FR_DER_TAG_INTEGER]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_integer },
 	[FR_DER_TAG_BITSTRING]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_bitstring },
@@ -1767,6 +1767,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 		fr_strerror_printf("No tag defined for type %s", fr_type_to_str(vp->vp_type));
 		return -1;
 	}
+
+	fr_assert(tag < FR_DER_TAG_MAX);
 
 	func = &tag_funcs[tag];
 	if (!func->encode) {
