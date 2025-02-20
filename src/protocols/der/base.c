@@ -317,29 +317,6 @@ static int dict_flag_set_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 	return 0;
 }
 
-static int dict_flag_is_pair(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
-{
-	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
-
-	if ((*da_p)->type != FR_TYPE_GROUP) {
-		fr_strerror_printf("Invalid data type '%s' for 'is_pair'.  Only 'group' is allowed",
-				   fr_type_to_str((*da_p)->type));
-		return -1;
-	}
-
-	/*
-	 *	Only sets and sequences can use 'is_pair'.
-	 */
-	if ((flags->der_type != FR_DER_TAG_SET) && (flags->der_type != FR_DER_TAG_SEQUENCE)) {
-		fr_strerror_printf("Cannot use 'is_pair' for DER type '%s'", fr_der_tag_to_str(flags->der_type));
-		return -1;
-	}
-
-	flags->is_pair = true;
-
-	return 0;
-}
-
 static int dict_flag_is_extensions(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
@@ -430,7 +407,6 @@ static const fr_dict_flag_parser_t  der_flags[] = {
 	{ L("is_choice"),	{ .func = dict_flag_is_choice } },
 	{ L("is_extensions"),	{ .func = dict_flag_is_extensions } },
 	{ L("is_oid_leaf"),	{ .func = dict_flag_is_oid_leaf } },
-	{ L("is_pair"),		{ .func = dict_flag_is_pair } },
 	{ L("max"),		{ .func = dict_flag_max, .needs_value = true } },
 	{ L("option"),		{ .func = dict_flag_option} },
 	{ L("sequence_of"),	{ .func = dict_flag_sequence_of, .needs_value = true } },

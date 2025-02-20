@@ -8,7 +8,7 @@ DEFINE	Issuer						sequence sequence_of=set
 BEGIN Issuer
 DEFINE	RelativeDistinguishedName			set
 BEGIN RelativeDistinguishedName
-DEFINE	AttributeTypeAndValue				group ref=OID-Tree,sequence_of=set,is_pair
+DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=OID-Tree
 END RelativeDistinguishedName
 END Issuer
 
@@ -16,7 +16,7 @@ DEFINE	Issuer-Set					set set_of=set
 BEGIN Issuer-Set
 DEFINE	RelativeDistinguishedName			set
 BEGIN RelativeDistinguishedName
-DEFINE	AttributeTypeAndValue				group ref=OID-Tree,sequence_of=set,is_pair
+DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=OID-Tree
 END RelativeDistinguishedName
 END Issuer-Set
 
