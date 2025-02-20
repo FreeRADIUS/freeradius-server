@@ -661,6 +661,11 @@ static bool attr_valid(fr_dict_attr_t *da)
 		return false;
 	}
 
+	if (fr_der_flag_is_extensions(da) && (da->type != FR_TYPE_GROUP)) {
+		fr_strerror_printf("Extensions must be type 'group'");
+		return false;
+	}
+
 	return true;
 }
 

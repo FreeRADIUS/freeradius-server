@@ -1112,10 +1112,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
 
-	if (unlikely(!fr_type_is_group(vp->vp_type))) {
-		fr_strerror_printf("Pair %s is not a group", vp->da->name);
-		return -1;
-	}
+	fr_assert(fr_type_is_group(vp->vp_type));
 
 	/*
 	 *	RFC 5280 Section 4.2
