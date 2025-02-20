@@ -27,29 +27,40 @@ ATTRIBUTE	Infinera-Rsvd-Str-Attribute2		241	string
 ATTRIBUTE	Infinera-Rsvd-Int-Attribute1		249	integer
 ATTRIBUTE	Infinera-Rsvd-Int-Attribute2		250	integer
 
-VALUE	Infinera-User-Priv-NE		NE-NonPrivileged	0
-VALUE	Infinera-User-Priv-NE		NE-Privileged		1
-VALUE	Infinera-User-Priv-PR		PR-NonPrivileged	0
-VALUE	Infinera-User-Priv-PR		PR-Privileged		1
-VALUE	Infinera-User-Priv-TT		TT-NonPrivileged	0
-VALUE	Infinera-User-Priv-TT		TT-Privileged		1
-VALUE	Infinera-User-Priv-MA		MA-NonPrivileged	0
-VALUE	Infinera-User-Priv-MA		MA-Privileged		1
-VALUE	Infinera-User-Priv-RA		RA-NonPrivileged	0
-VALUE	Infinera-User-Priv-RA		RA-Privileged		1
-VALUE	Infinera-User-Priv-EA		EA-NonPrivileged	0
-VALUE	Infinera-User-Priv-EA		EA-Privileged		1
-VALUE	Infinera-User-CanUseResSession	Cannot-Use-RES-Session	0
-VALUE	Infinera-User-CanUseResSession	Can-Use-RES-Session	1
-VALUE	Infinera-User-MgmtType-EMS	MgmtType-EMS-Disallowed	0
-VALUE	Infinera-User-MgmtType-EMS	MgmtType-EMS-Allowed	1
-VALUE	Infinera-User-MgmtType-GNM	MgmtType-GNM-Disallowed	0
-VALUE	Infinera-User-MgmtType-GNM	MgmtType-GNM-Allowed	1
-VALUE	Infinera-User-MgmtType-TL1	MgmtType-TL1-Disallowed	0
-VALUE	Infinera-User-MgmtType-TL1	MgmtType-TL1-Allowed	1
-VALUE	Infinera-User-MgmtType-CLI	MgmtType-CLI-Disallowed	0
-VALUE	Infinera-User-MgmtType-CLI	MgmtType-CLI-Allowed	1
-VALUE	Infinera-User-MgmtType-NETCONF	MgmtType-NETCONF-Disallowed 0
-VALUE	Infinera-User-MgmtType-NETCONF	MgmtType-NETCONF-Allowed 1
+VALUE	Infinera-User-Priv-NE		Non-Privileged	0
+VALUE	Infinera-User-Priv-NE		Privileged		1
+
+VALUE	Infinera-User-Priv-PR		Non-Privileged	0
+VALUE	Infinera-User-Priv-PR		Privileged		1
+
+VALUE	Infinera-User-Priv-TT		Non-Privileged	0
+VALUE	Infinera-User-Priv-TT		Privileged		1
+
+VALUE	Infinera-User-Priv-MA		Non-Privileged	0
+VALUE	Infinera-User-Priv-MA		Privileged		1
+
+VALUE	Infinera-User-Priv-RA		Non-Privileged	0
+VALUE	Infinera-User-Priv-RA		Privileged		1
+
+VALUE	Infinera-User-Priv-EA		Non-Privileged	0
+VALUE	Infinera-User-Priv-EA		Privileged		1
+
+VALUE	Infinera-User-CanUseResSession	No	0
+VALUE	Infinera-User-CanUseResSession	Can-Yes	1
+
+VALUE	Infinera-User-MgtType-EMS	Disallowed	0
+VALUE	Infinera-User-MgtType-EMS	Allowed	1
+
+VALUE	Infinera-User-MgtType-GNM	Disallowed	0
+VALUE	Infinera-User-MgtType-GNM	Allowed	1
+
+VALUE	Infinera-User-MgtType-TL1	Disallowed	0
+VALUE	Infinera-User-MgtType-TL1	Allowed	1
+
+VALUE	Infinera-User-MgtType-CLI	Disallowed	0
+VALUE	Infinera-User-MgtType-CLI	Allowed	1
+
+VALUE	Infinera-User-MgtType-NETCONF	Disallowed 0
+VALUE	Infinera-User-MgtType-NETCONF	Allowed 1
 
 END-VENDOR               Infinera
