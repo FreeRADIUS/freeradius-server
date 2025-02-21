@@ -113,7 +113,7 @@ If you don’t mean to modify an input structure to your function, declare it
 errors to be found at compile time.
 
 Use `const` everywhere. Once you throw a few into your code, and have it save
-you from stupid bugs, you’ll blindly throw in `const` everywhere. It’s a
+you from nonsensical bugs, you’ll blindly throw in `const` everywhere. It’s a
 life-saver.
 
 == Use C compiler warnings

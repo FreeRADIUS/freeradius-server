@@ -136,8 +136,8 @@ timeout:: Set a time wait for the program to finish.
 Default is `10` seconds, which should be plenty for nearly
 anything. Range is `1` to `30` seconds.
 
-WARNING: You are strongly encouraged to NOT increase this value.
-Decreasing can be used to cause authentication to fail sooner
+WARNING: The recommendation is to *not* increase this value.
+Decreasing this value causes authentication to fail sooner
 when you know it's going to fail anyway due to the time taken,
 thereby saving resources.
 

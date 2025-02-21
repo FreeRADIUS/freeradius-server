@@ -264,8 +264,8 @@ ATTRIBUTE	RSVP-Inbound-Octet-Count		164	integer
 ATTRIBUTE	RSVP-Outbound-Packet-Count		165	integer
 
 ATTRIBUTE	HA-Request				168	integer
-ATTRIBUTE	HA-Authorised				169	integer
-ATTRIBUTE	IP-Ver-Authorised			172	integer
+ATTRIBUTE	HA-Authorized				169	integer
+ATTRIBUTE	IP-Ver-Authorized			172	integer
 ATTRIBUTE	MIPv4-Mesg-Id				173	string
 
 ATTRIBUTE	MIP6-HA-Local-Assigment-Capability	179	integer

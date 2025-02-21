@@ -116,7 +116,7 @@ static int m3ua_setnonblocking(int fd)
 
 	flags = fcntl(fd, F_GETFL, NULL);
 	if (flags < 0)  {
-		LOGP(DINP, LOGL_ERROR, "Failed getting socket flags whilst setting O_NONBLOCK.\n");
+		LOGP(DINP, LOGL_ERROR, "Failed getting socket flags while setting O_NONBLOCK.\n");
 		return -1;
 	}
 
@@ -135,7 +135,7 @@ static int m3ua_setblocking(int fd)
 
 	flags = fcntl(fd, F_GETFL, NULL);
 	if (flags < 0)  {
-		LOGP(DINP, LOGL_ERROR, "Failed getting socket flags whilst clearing O_NONBLOCK.\n");
+		LOGP(DINP, LOGL_ERROR, "Failed getting socket flags while clearing O_NONBLOCK.\n");
 		return -1;
 	}
 

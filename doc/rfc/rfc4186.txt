@@ -627,7 +627,7 @@ RFC 4186                 EAP-SIM Authentication             January 2006
 4.2.1.2.  Identity Privacy Support
 
    EAP-SIM includes optional identity privacy (anonymity) support that
-   can be used to hide the cleartext permanent identity and thereby make
+   can be used to hide the cleartext permanent identity and thus make
    the subscriber's EAP exchanges untraceable to eavesdroppers.  Because
    the permanent identity never changes, revealing it would help
    observers to track the user.  The permanent identity is usually based

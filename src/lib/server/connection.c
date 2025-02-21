@@ -114,7 +114,7 @@ struct connection_s {
 	fr_time_delta_t		reconnection_delay;	//!< How long to wait in the
 							//!< #CONNECTION_STATE_FAILED state.
 
-	fr_dlist_head_t		deferred_signals;	//!< A list of signals we received whilst we were in
+	fr_dlist_head_t		deferred_signals;	//!< A list of signals we received while we were in
 							///< a handler.
 
 
@@ -199,7 +199,7 @@ static void connection_state_enter_init(connection_t *conn);
 
 /** Add a deferred signal to the signal list
  *
- * Processing signals whilst in handlers usually leads to weird
+ * Processing signals while in handlers usually leads to weird
  * inconsistent states within the connection.
  *
  * If a public signal function is called, and detects its being called
@@ -608,10 +608,10 @@ uint64_t connection_get_num_reconnected(connection_t const *conn)
 	return conn->pub.reconnected - 1;		/* We don't count the first connection attempt */
 }
 
-/** Return the number of times this connection has timed out whilst connecting
+/** Return the number of times this connection has timed out while connecting
  *
  * @param[in] conn	to get count from.
- * @return the number of times the connection has timed out whilst connecting.
+ * @return the number of times the connection has timed out while connecting.
  */
 uint64_t connection_get_num_timed_out(connection_t const *conn)
 {
@@ -813,7 +813,7 @@ static void connection_state_enter_failed(connection_t *conn)
 	case CONNECTION_STATE_CONNECTED:
 	case CONNECTION_STATE_CONNECTING:
 	case CONNECTION_STATE_TIMEOUT:		/* Timeout means the connection progress past init */
-	case CONNECTION_STATE_SHUTDOWN:		/* Shutdown means the connection failed whilst shutting down */
+	case CONNECTION_STATE_SHUTDOWN:		/* Shutdown means the connection failed while shutting down */
 		connection_state_enter_closed(conn);
 		break;
 

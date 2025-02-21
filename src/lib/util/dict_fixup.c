@@ -171,7 +171,7 @@ fr_dict_attr_t const *dict_protocol_reference(fr_dict_attr_t const *rel, char co
 			fr_tolower(proto_name);
 
 			/*
-			 *	Catch this early, so people don't do stupid things
+			 *	Catch this early, so people don't do nonsensical things
 			 *	like put slashes in the references and then claim
 			 *	it's a security issue.
 			 */

@@ -3759,7 +3759,7 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 
 	/*
 	 *	Only "base" data types are allowed.  Structural types
-	 *	and horrid WiMAX crap is forbidden.
+	 *	and horrid WiMAX  is forbidden.
 	 */
 	case FR_TYPE_LEAF:
 		break;
@@ -4574,7 +4574,7 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 		 *
 		 *	This establishes the unknown attribute
 		 *	in the dictionary if it was really
-		 *	unknown whilst not mucking up the
+		 *	unknown while not mucking up the
 		 *	types for raw attributes.
 		 */
 		if (!ar_is_raw(ar)) {

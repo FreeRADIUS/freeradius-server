@@ -189,7 +189,7 @@ int fr_atexit_global_setup(void)
 do { \
 	int _ret = 0; \
 	pthread_mutex_lock(&fr_atexit_global_mutex); \
-	fr_cond_assert_msg(!is_exiting, "New atexit handlers should not be allocated whilst exiting"); \
+	fr_cond_assert_msg(!is_exiting, "New atexit handlers should not be allocated while exiting"); \
 	if (!fr_atexit_global) _ret = fr_atexit_global_setup(); \
 	pthread_mutex_unlock(&fr_atexit_global_mutex); \
 	if (_ret < 0) return _ret; \
@@ -198,7 +198,7 @@ do { \
 #define CHECK_GLOBAL_SETUP() \
 do { \
 	int _ret = 0; \
-	fr_cond_assert_msg(!is_exiting, "New atexit handlers should not be allocated whilst exiting"); \
+	fr_cond_assert_msg(!is_exiting, "New atexit handlers should not be allocated while exiting"); \
 	if (!fr_atexit_global) _ret = fr_atexit_global_setup(); \
 	if (_ret < 0) return _ret; \
 } while(0)

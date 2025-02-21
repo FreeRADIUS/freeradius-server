@@ -53,7 +53,7 @@ acct_unique {
 	#
 	#  This policy should ensure that session data is not
 	#  affected if NAS IP addresses change, or the client
-	#  roams to a different 'port' whilst maintaining its
+	#  roams to a different 'port' while maintaining its
 	#  initial authentication session (Common in a
 	#  wireless environment).
 	#
@@ -98,4 +98,3 @@ acct_counters64 {
 		request.Acct-Output-Octets64 = (((uint64) Acct-Output-Gigawords) << 32) | (uint64) Acct-Output-Octets
 	}
 }
-

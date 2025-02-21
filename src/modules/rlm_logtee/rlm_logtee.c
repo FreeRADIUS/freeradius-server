@@ -121,7 +121,7 @@ typedef struct {
 
 	bool			pending;		//!< We have pending messages to write.
 
-	TALLOC_CTX		*msg_pool;		//!< A 1k talloc pool to hold the log message whilst
+	TALLOC_CTX		*msg_pool;		//!< A 1k talloc pool to hold the log message while
 							//!< it's being expanded.
 	fr_pair_t		*msg;			//!< Temporary value pair holding the message value.
 	fr_pair_t		*type;			//!< Temporary value pair holding the message type.

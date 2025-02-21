@@ -1029,7 +1029,7 @@ static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src, b
 	fr_pair_t *c;
 
 	/*
-	 *	Prevent people from doing stupid things.
+	 *	Prevent people from doing nonsensical things.
 	 *	While it's technically possible to take a
 	 *	UNION of structs, that would work ONLY when
 	 *	the two structs had disjoint members.
@@ -1378,7 +1378,7 @@ static int list_intersection(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t 
 	fr_pair_t *b, *bn;
 
 	/*
-	 *	Prevent people from doing stupid things.
+	 *	Prevent people from doing nonsensical things.
 	 */
 	if (dst->vp_type == FR_TYPE_STRUCT) {
 		fr_strerror_printf("Cannot take intersection of STRUCT data types, it would break the structure");

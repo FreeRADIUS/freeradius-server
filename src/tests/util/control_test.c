@@ -89,7 +89,7 @@ static void *control_master(UNUSED void *arg)
 	MPRINT1("Master started.\n");
 
 	/*
-	 *	Busy loop.  We're stupid.
+	 *	Busy loop.  We're silly.
 	 */
 	while (true) {
 		int num_events;

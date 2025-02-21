@@ -11,7 +11,7 @@ update request {
 #
 #  Shouldn't update Tmp-String-0, should instead update Tmp-String-1
 #  ... maybe this is what Alan meant when he was talking about people
-#  doing stupid things with this feature.
+#  doing nonsensical things with this feature.
 #
 update request {
 	"%{Tmp-String-0}" := 'hello'

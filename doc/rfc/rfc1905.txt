@@ -431,7 +431,7 @@ RFC 1905             Protocol Operations for SNMPv2         January 1996
    The value of the request-id field in a Response-PDU takes the value
    of the request-id field in the request PDU to which it is a response.
    By use of the request-id value, a SNMPv2 application can distinguish
-   the (potentially multiple) outstanding requests, and thereby
+   the (potentially multiple) outstanding requests, and thus
    correlate incoming responses with outstanding requests.  In cases
    where an unreliable datagram service is used, the request-id also
    provides a simple means of identifying messages duplicated by the

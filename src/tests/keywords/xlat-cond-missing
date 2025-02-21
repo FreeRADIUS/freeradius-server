@@ -12,7 +12,7 @@ if (%{Framed-IP-Address[#]} != 4) {
 #
 #  This expansion should succeed, and should result in an empty string.
 #
-#  It's stupid to do this expansion.  The admin should instead just check
+#  It's nonsensical to do this expansion.  The admin should instead just check
 #  for the existence of the attribute.  But... the syntax allows it, so
 #  it should work.
 #

@@ -951,7 +951,7 @@ FreeRADIUS, the `digest` module will set `Auth-Type :=
 
 ```
 
-The `wimax` module fixes up various WiMAX-specific stupidities.
+The `wimax` module fixes up various WiMAX-specific issues.
 
 The WiMAX specification says that the `link:https://freeradius.org/rfc/rfc2865.html#Calling-Station-Id[Calling-Station-Id]`
 is 6 octets of the MAC.  This definition conflicts with RFC

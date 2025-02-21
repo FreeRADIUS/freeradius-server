@@ -29,7 +29,7 @@ return code for the request.
 One of the most common reasons for overriding return codes is to implement
 special behaviour on failure.
 
-To minimise external dependencies, for this exercise we will use the
+To minimize external dependencies, for this exercise we will use the
 xref:reference:raddb/mods-available/sometimes.adoc[sometimes] module to simulate an
 unreliable external database.
 

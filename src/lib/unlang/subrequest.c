@@ -43,7 +43,7 @@ static void unlang_subrequest_signal_child(UNUSED request_t *request, unlang_sta
 
 	/*
 	 *	Parent should never receive a detach
-	 *	signal whilst the child is running.
+	 *	signal while the child is running.
 	 *
 	 *	Only the child receives a detach
 	 *	signal when the detach keyword is used.
@@ -52,7 +52,7 @@ static void unlang_subrequest_signal_child(UNUSED request_t *request, unlang_sta
 
 	/*
 	 *	If the server is stopped, inside a breakpoint,
-	 *	whilst processing a child, on resumption both
+	 *	while processing a child, on resumption both
 	 *	requests (parent and child) may need to be
 	 *	cancelled as they've both hit max request_time.
 	 *

@@ -186,7 +186,7 @@ static struct hashtable * build_hash_table (char const * file, int num_fields,
 	}
 
 	/*
-	 *	@todo: This code is SHIT.  It's badly formatted.  It's
+	 *	@todo: This code is useless.  It's badly formatted.  It's
 	 *	hard to understand.  It re-implements tons of things
 	 *	which are already in the server core.
 	 */

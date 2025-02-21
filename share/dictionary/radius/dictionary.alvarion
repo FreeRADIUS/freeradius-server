@@ -7,7 +7,7 @@
 #	Alvarion VSAs, also known as Breezecom / Breezenet.
 #
 #
-#	These are retarded beyond belief.  The only VSA's it sends in
+#	These are nonsensical beyond belief.  The only VSA's it sends in
 #	accounting packets are text strings for accounting.  And, it
 #	doesn't use the same VSA numbers consistently.  WTF?
 #

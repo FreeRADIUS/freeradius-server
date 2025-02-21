@@ -2279,7 +2279,7 @@ RFC 5247              EAP Key Management Framework           August 2008
       exchanges;  Discovery (phase 0) and Secure Association Protocol
       (phase 2) exchanges occur as described in Section 1.3.  As a
       result, the primary benefit is to enable EAP authentication to be
-      removed from the handoff critical path, thereby reducing latency.
+      removed from the handoff critical path, thus reducing latency.
       Use of EAP pre-authentication within IEEE 802.11 is described in
       [IEEE-802.11] and [8021XPreAuth].
 

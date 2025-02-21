@@ -145,7 +145,7 @@ void request_stats_final(request_t *request)
 
 /** Sort latency times into bins
  *
- * This solves the problem of attempting to keep min/max/avg latencies, whilst
+ * This solves the problem of attempting to keep min/max/avg latencies, while
  * not knowing what the polling frequency will be.
  *
  * @param[out] stats Holding monotonically increasing stats bins.

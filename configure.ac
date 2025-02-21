@@ -2653,7 +2653,7 @@ FR_LIBRARY_REPORT
 FR_MODULE_REPORT
 
 dnl #
-dnl #  Inform people about OSX stupidities.
+dnl #  Inform people about OSX issues.
 dnl #
 case "$target" in
   *-darwin*)

@@ -16,7 +16,7 @@ depend on the actual demand for twitter integration.
 
 ## Getting the tokens
 
-Follow the link here(https://dev.twitter.com/docs/auth/tokens-devtwittercom) signing up 
+Follow the link here(https://dev.twitter.com/docs/auth/tokens-devtwittercom) signing up
 for an account and creating a new application if necessary.
 
 ## Understanding how signing works
@@ -27,12 +27,12 @@ The policies below implement signing for simple status updates. It's not current
 
 ## Dictionary attributes
 
-Add the following to your custom dictionary 
+Add the following to your custom dictionary
 ```text
 ATTRIBUTE	Twitter-API-Method			<next #>	integer
 ATTRIBUTE	Twitter-API-URL				<next #>	string
 ATTRIBUTE	Twitter-API-Data			<next #>	string
- 
+
 VALUE	Twitter-API-Method		GET			1
 VALUE	Twitter-API-Method		POST			2
 VALUE	Twitter-API-Method		PUT			3
@@ -55,7 +55,7 @@ And add this to policy.d/twitter
 #  Note: Unless you're using twitter as part of an authorisation scheme, you should
 #	 use a detail reader/writer pair to provide a buffer in case the twitter
 #	 API becomes unavailable/unreachable. You don't want authentication to be
-#        delayed whilst waiting for a twitter API request to time out.
+#        delayed while waiting for a twitter API request to time out.
 #
 twitter {
 	oauth_consumer_key = ''

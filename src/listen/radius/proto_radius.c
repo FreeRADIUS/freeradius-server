@@ -307,7 +307,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		/*
 		 *	It's important we only evaluate this on the
 		 *	first packet.  Otherwise an attacker could send
-		 *	Access-Requests with no Proxy-State whilst
+		 *	Access-Requests with no Proxy-State while
 		 *	spoofing a legitimate Proxy-Server, and causing an
 		 *	outage.
 		 *

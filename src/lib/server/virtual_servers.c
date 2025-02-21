@@ -1105,7 +1105,7 @@ int virtual_server_section_register(virtual_server_t *vs, virtual_server_compile
 
 #ifndef NDEBUG
 	/*
-	 *	Catch stupid programmers.
+	 *	Catch nonsensical programmers.
 	 *
 	 *	Processing sections can't allow "*" for module
 	 *	methods, because otherwise you would be allowed to run

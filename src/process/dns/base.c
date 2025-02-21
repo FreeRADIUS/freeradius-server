@@ -456,7 +456,7 @@ RESUME(send_response)
 	dns_packet_debug(request, request->reply, &request->reply_pairs, false);
 
 	/*
-	 *	Hack.  This is because this stupid framework uses
+	 *	Hack.  This is because this nonsensical framework uses
 	 *	packet_type values to represent request and response
 	 *	packet types, and DNS uses the same values for
 	 *	both request and response packet types.

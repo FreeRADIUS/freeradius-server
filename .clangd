@@ -46,7 +46,7 @@ CompileFlags:
 Diagnostics:
   ClangTidy:
     Remove: [
-      # This is stupid and warns over talloc_array_length using sizeof(foo) / sizeof(foo *)
+      # This is nonsensical and warns over talloc_array_length using sizeof(foo) / sizeof(foo *)
       # to determine the number of elements in an array.
       "bugprone-sizeof-expression"
     ]

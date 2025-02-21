@@ -119,6 +119,6 @@ ALIAS	3GPP2-DNS-Server-Entity-Type            	26.5535.117.4
 ALIAS	3GPP2-Carrier-ID                        	26.5535.142
 ALIAS	3GPP2-GMT-Time-Zone-Offset              	26.5535.143
 ALIAS	3GPP2-HA-Request                        	26.5535.168
-ALIAS	3GPP2-HA-Authorised                     	26.5535.169
-ALIAS	3GPP2-IP-Ver-Authorised                 	26.5535.172
+ALIAS	3GPP2-HA-Authorized                     	26.5535.169
+ALIAS	3GPP2-IP-Ver-Authorized                 	26.5535.172
 ALIAS	3GPP2-MIPv4-Mesg-Id                     	26.5535.173

@@ -651,7 +651,7 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	}
 
 	/*
-	 *	Don't allow stupidities
+	 *	Don't allow issues
 	 */
 	if (!((where >= buf) && (where < (buf + buf_len)))) {
 		fr_strerror_const("Label to write is outside of buffer");
@@ -896,7 +896,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 	start = *next;
 
 	/*
-	 *	Don't allow stupidities
+	 *	Don't allow issues
 	 */
 	if (!((start >= packet) && (start < (buf + buf_len)))) {
 		fr_strerror_printf("Label is not within the buffer");

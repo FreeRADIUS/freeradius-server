@@ -1485,7 +1485,7 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned i
 	}
 
 	/*
-	 *	NAS-Filter-Rule has a stupid format in order to save
+	 *	NAS-Filter-Rule has a nonsensical format in order to save
 	 *	one byte per attribute.
 	 */
 	if (vp->da == attr_nas_filter_rule) {

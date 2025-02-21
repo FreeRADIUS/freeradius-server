@@ -628,7 +628,7 @@ static inline void _fr_sbuff_init(fr_sbuff_t *out, char const *start, char const
 }
 
 /*
- *	GCC is stupid and will warn about output variables
+ *	GCC is nonsensical and will warn about output variables
  *	being unnitialised, even if they're not dereferenced.
  */
 #if defined(__GNUC__) && __GNUC__ >= 11

@@ -8,7 +8,7 @@ define LIB_INCLUDE
 #
 #	$${libfreeradius-${1}.la_OBJS}: | src/include/${1}
 #
-#  but GNU Make is too stupid to wait until that variable is defined
+#  but GNU Make is too nonsensical to wait until that variable is defined
 #  to evaluate the condition.  Instead, it evaluates the rule
 #  immediately, and decides that nothing is there.
 #

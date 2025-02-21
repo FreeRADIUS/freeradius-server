@@ -1,7 +1,7 @@
 = FreeRADIUS Dependencies
 
 Some external dependencies must be installed before building or
-running FreeRADIUS. The core depends on two mandatory libraries:
+running FreeRADIUS. The core depends on two required libraries:
 `libtalloc` for memory management and `libkqueue` for event
 handling.
 

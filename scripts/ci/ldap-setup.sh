@@ -142,7 +142,7 @@ done
 # Ensure we have some certs generated
 make -C raddb/certs
 
-# Copy certificates - whilst not stricltly LDAP certs they work fine for these tests
+# Copy certificates - while not stricltly LDAP certs they work fine for these tests
 cp raddb/certs/rsa/ca.pem "${cert_dir}/cacert.pem"
 cp raddb/certs/rsa/server.pem "${cert_dir}/servercert.pem"
 openssl rsa -in raddb/certs/rsa/server.key -out "${cert_dir}/serverkey.pem" -passin pass:whatever

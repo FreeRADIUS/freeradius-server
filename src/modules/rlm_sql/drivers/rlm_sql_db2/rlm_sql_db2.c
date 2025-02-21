@@ -88,7 +88,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	 *	http://www.ibm.com/support/knowledgecenter/SSEPGG_10.5.0/com.ibm.db2.luw.apdv.cli.doc/doc/r0000584.html
 	 *	http://stackoverflow.com/questions/27167070/connection-string-to-a-remote-db2-db-in-another-server
 	 *
-	 *	And probably synthesise the retarded connection string ourselves,
+	 *	And probably synthesise the specific connection string ourselves,
 	 *	probably via config file expansions:
 	 *
 	 *	Driver={IBM DB2 ODBC Driver};Database=testDb;Hostname=remoteHostName.com;UID=username;PWD=mypasswd;PORT=50000

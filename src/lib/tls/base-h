@@ -95,7 +95,7 @@ extern _Thread_local TALLOC_CTX *ssl_talloc_ctx;
 /** Bind any memory allocated by an OpenSSL function to the object it created
  *
  * This is a horrible workaround for OpenSSL memory leaks.  But should always
- * work, unless OpenSSL allocates memory for global structures whilst allocating
+ * work, unless OpenSSL allocates memory for global structures while allocating
  * non-global ones.
  *
  * It is technically threadsafe as ssl_talloc_ctx is thread specific.

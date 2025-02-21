@@ -186,7 +186,7 @@ static void eap_peap_inner_to_pairs(TALLOC_CTX *ctx, fr_pair_list_t *pairs,
 	if (total > 249) total = 249;
 
 	/*
-	 *	Hand-build an EAP packet from the crap in PEAP version 0.
+	 *	Hand-build an EAP packet from the code in PEAP version 0.
 	 */
 	MEM(fr_pair_value_mem_alloc(vp, &p, EAP_HEADER_LEN + total, false) == 0);
 	p[0] = FR_EAP_CODE_RESPONSE;

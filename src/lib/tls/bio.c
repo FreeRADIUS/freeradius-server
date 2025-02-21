@@ -130,7 +130,7 @@ static int _tls_bio_talloc_gets_cb(BIO *bio, char *buf, int size)
 	fr_assert_msg(bd->dbuff_out.buff, "BIO not initialised");
 
 	/*
-	 *	Deal with stupid corner case
+	 *	Deal with nonsensical corner case
 	 */
 	if (unlikely(size == 1)) {
 		buf[0] = '\0';

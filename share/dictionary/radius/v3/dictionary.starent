@@ -221,7 +221,7 @@ ALIAS	SN-Terminating-IOI                      	26.8164.262
 ALIAS	SN-SDP-Session-Description              	26.8164.263
 ALIAS	SN-GGSN-Address                         	26.8164.264
 ALIAS	SN-Sec-IP-Pool-Name                     	26.8164.265
-ALIAS	SN-Authorised-Qos                       	26.8164.266
+ALIAS	SN-Authorized-Qos                       	26.8164.266
 ALIAS	SN-Cause-Code                           	26.8164.267
 ALIAS	SN-Node-Functionality                   	26.8164.268
 ALIAS	SN-Is-Unregistered-Subscriber           	26.8164.269

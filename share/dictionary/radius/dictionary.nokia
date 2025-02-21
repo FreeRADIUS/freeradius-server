@@ -37,6 +37,6 @@ END-VENDOR	Nokia
 #
 #	e.g 123 is encoded as hexadecimal bytes 21 F3
 #
-#	This is an incredibly stupid way of encoding the data.
+#	This is an incredibly nonsensical way of encoding the data.
 #
 ALIAS		Nokia					Vendor-Specific.Nokia

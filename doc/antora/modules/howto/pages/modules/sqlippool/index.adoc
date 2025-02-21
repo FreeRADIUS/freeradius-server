@@ -560,7 +560,7 @@ send Access-Accept {
 
 NOTE: Recall that if `sqlippool` is invoked without a `IP-Pool.Name` check
 attribute then no action is taken. Also recall that if `sqlippool` is invoked
-whilst the attribute configured in the `attribute_name` configuration item
+while the attribute configured in the `attribute_name` configuration item
 (e.g. `Framed-IP-Address`) already exists then no action is taken.
 
 
@@ -966,7 +966,7 @@ In particular, the SQL standard introduces two pragmas that facilitate an
 optimised implementation of a worker queue:
 
 `SELECT FOR UPDATE ...`::
-Selects rows whilst exclusively locking them to prevent simultaneous locking
+Selects rows while exclusively locking them to prevent simultaneous locking
 reads and writes of those same rows. When connections are simultaneously
 selecting an IP address from a pool this pragma is what provides the guarantee
 of uniqueness of the IP selected for each authentication request.
@@ -981,7 +981,7 @@ allocated to a device. When the lock is release all but one of these previously
 blocked connections block waiting for the next free IP address to be allocated.
 And so on until they have all been serviced or their query times out... In the
 absence of this pragma concurrent authentication requests are unnecessarily
-serialised whilst their IP addresses are allocated resulting in poor
+serialised while their IP addresses are allocated resulting in poor
 performance.
 
 Here are some comments regarding the main database engines in relation to this
@@ -1068,7 +1068,7 @@ do not propagate around database clusters which means that unique IP address
 selection cannot always be guaranteed.
 
 Ingress nodes (relays, proxies, etc.) typically balance reads across all
-cluster nodes (master and slave) whilst sending writes to one or more masters.
+cluster nodes (master and slave) while sending writes to one or more masters.
 For many workloads this guarantees an appropriate level of data coherency,
 however for an IP pool allocation implementation this is insufficient since we
 must guarantee that no two nodes may concurrently `SELECT` the same IP address

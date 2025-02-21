@@ -318,7 +318,7 @@ do { \
 #define FR_DBUFF_MAX_BIND_CURRENT(_dbuff_or_marker,  _max) _FR_DBUFF_MAX(_dbuff_or_marker, _max, FR_DBUFF_ADV_PARENT_CURRENT)
 
 /*
- *	GCC is stupid and will warn about output variables
+ *	GCC is nonsensical and will warn about output variables
  *	being unnitialised, even if they're not dereferenced.
  */
 #if defined(__GNUC__) && __GNUC__ >= 11

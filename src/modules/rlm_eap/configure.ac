@@ -17,7 +17,7 @@ for foo in `find ./types -name configure -print`; do
   eapsubdirs="$eapsubdirs $bar"
 done
 
-dnl # don't ask... this is done to avoid autoconf stupidities.
+dnl # don't ask... this is done to avoid autoconf issues.
 ln -s ../../../install-sh install-sh
 
 AC_CONFIG_SUBDIRS($eapsubdirs)

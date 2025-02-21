@@ -113,7 +113,7 @@ int fr_time_sync(void)
 	struct timespec ts_realtime, ts_monotime;
 
 	/*
-	 *	Call these consecutively to minimise drift...
+	 *	Call these consecutively to minimize drift...
 	 */
 	if (clock_gettime(CLOCK_REALTIME, &ts_realtime) < 0) return -1;
 	if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts_monotime) < 0) return -1;
@@ -947,7 +947,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 		 *	because the timegm() function helpfully zeros
 		 *	it out.
 		 *
-		 *	So insyead of using stupid C library
+		 *	So insyead of using nonsensical C library
 		 *	functions, we just roll our own.
 		 */
 		tz = tz_hour * 3600 + tz_min;
@@ -976,7 +976,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 	 *
 	 *	However, when printing dates via strftime(), it prints
 	 *	"UTC" instead of "GMT".  So... we have to fix it up
-	 *	for stupid nonsense.
+	 *	for nonsensical nonsense.
 	 */
 	{
 		char const *tz = strstr(date_str, "UTC");

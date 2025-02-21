@@ -24,7 +24,7 @@
  * referenced within a #virtual_server_compile_t and a #module_t.
  *
  * This is partly for documentation, partly for boilerplate reducation
- * and partly to minimise stupid typos and other screwups which'd lead
+ * and partly to minimize nonsensical typos and other mistakes which'd lead
  * to matches failing.
  *
  * Referencing the same #module_method_t in both the virtual server

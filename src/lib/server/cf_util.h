@@ -60,7 +60,7 @@ typedef struct cf_data CONF_DATA;	//!< #CONF_ITEM used to associate arbitrary da
  * - #CONF_PAIR
  * - #CONF_DATA
  *
- * To a #CONF_ITEM, whilst performing talloc type checks.
+ * To a #CONF_ITEM, while performing talloc type checks.
  */
 #define CF_TO_ITEM(_cf) \
 _Generic((_cf), \

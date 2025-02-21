@@ -1228,7 +1228,7 @@ void fr_pool_reconnect_func(fr_pool_t *pool, fr_pool_reconnect_t reconnect)
 
 /** Mark connections for reconnection, and spawn at least 'start' connections
  *
- * @note This call may block whilst waiting for pending connection attempts to complete.
+ * @note This call may block while waiting for pending connection attempts to complete.
  *
  * This intended to be called on a connection pool that's in use, to have it reflect
  * a configuration change, or because the administrator knows that all connections

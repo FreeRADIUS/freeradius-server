@@ -1,5 +1,5 @@
 #
-#  Test vectors for umpteen different stupid IPv4 prefix formats.
+#  Test vectors for umpteen different nonsensical IPv4 prefix formats.
 #
 proto dhcpv4
 proto-dictionary dhcpv4

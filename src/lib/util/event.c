@@ -1871,7 +1871,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 				break;
 
 			default:
-				fr_strerror_printf("Unexpected code %s (%d) whilst waiting on PID %ld",
+				fr_strerror_printf("Unexpected code %s (%d) while waiting on PID %ld",
 						   fr_table_str_by_value(si_codes, info.si_code, "<UNKOWN>"),
 						   info.si_code, (long) pid);
 

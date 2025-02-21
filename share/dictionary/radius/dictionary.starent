@@ -246,7 +246,7 @@ ATTRIBUTE	Terminating-IOI				262	string
 ATTRIBUTE	SDP-Session-Description			263	string
 ATTRIBUTE	GGAddress				264	ipaddr
 ATTRIBUTE	Sec-IP-Pool-Name			265	string
-ATTRIBUTE	Authorised-Qos				266	string
+ATTRIBUTE	Authorized-Qos				266	string
 ATTRIBUTE	Cause-Code				267	integer
 ATTRIBUTE	Node-Functionality			268	integer
 ATTRIBUTE	Is-Unregistered-Subscriber		269	string
