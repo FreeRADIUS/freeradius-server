@@ -51,8 +51,8 @@ server radsec {
 			private_key_password = whatever
 			private_key_file = ${certdir}/server.pem
 
-			#  If Private key & Certificate are located in
-			#  the same file, then private_key_file &
+			#  If Private key and Certificate are located in
+			#  the same file, then the private_key_file and
 			#  certificate_file must contain the same file
 			#  name.
 			#
@@ -122,7 +122,7 @@ server radsec {
 			#  Check the Certificate Revocation List
 			#
 			#  1) Copy CA certificates and CRLs to same directory.
-			#  2) Execute 'c_rehash <CA certs&CRLs Directory>'.
+			#  2) Execute `c_rehash /path/to/cert/directory`.
 			#    'c_rehash' is OpenSSL's command.
 			#  3) uncomment the line below.
 			#  5) Restart radiusd

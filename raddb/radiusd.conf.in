@@ -313,7 +313,7 @@ log {
 	#  follows:
 	#
 	#	...
-	#	&User-Password = "<<< secret >>>"
+	#	User-Password = "<<< secret >>>"
 	#	...
 	#
 	#  Note that secret values are tracked across string
