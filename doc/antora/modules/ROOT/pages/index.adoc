@@ -36,7 +36,7 @@ task-based results as follows:
 * xref:howto:index.adoc[Howto] guides step you through various tasks and includes xref:howto:installation/index.adoc[Installing] and xref:howto:installation/upgrade.adoc[Upgrade] guide.
 * xref:tutorials:new_user.adoc[Tutorials] task based learning with real-world configurations and debugging exercises.
 * xref:developers:index.adoc[Developers] section outlines coding standards, raising bugs, and contributing with GitHub.
-* xref:ts.adoc[Troubleshooting] section to help you resolve the most common issues with FreeRADIUS installations and configurations.
+* xref:troubleshooting/ts.adoc[Troubleshooting] section to help you resolve the most common issues with FreeRADIUS installations and configurations.
 
 Within each section, the documentation is organized into subsections,
 smaller pages, and relavent cross-links.  This hierarchy ensures that

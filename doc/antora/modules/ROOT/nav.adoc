@@ -3,12 +3,12 @@
 *** xref:radiusd_x.adoc[Debugging]
 *** xref:gethelp.adoc[Getting Help]
 ** xref:faq.adoc[FAQ]
-** xref:ts.adoc[Troubleshooting]
-*** xref:tsuser.adoc[User Management]
-*** xref:tsserver.adoc[Server Configuration]
-*** xref:tsclient.adoc[Client Configuration]
-*** xref:tsconnectnas.adoc[Connectivity-NAS]
-*** xref:tsdatastore.adoc[Datastores]
+** xref:troubleshooting/ts.adoc[Troubleshooting]
+*** xref:troubleshooting/tsuser.adoc[User Management]
+*** xref:troubleshooting/tsserver.adoc[Server Configuration]
+*** xref:troubleshooting/tsclient.adoc[Client Configuration]
+*** xref:troubleshooting/tsconnectnas.adoc[Connectivity-NAS]
+*** xref:troubleshooting/tsdatastore.adoc[Datastores]
 
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

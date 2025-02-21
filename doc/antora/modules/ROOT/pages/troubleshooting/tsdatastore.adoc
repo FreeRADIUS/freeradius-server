@@ -1,0 +1,52 @@
+= Datastores
+
+== How do I make CHAP work with LDAP?
+
+The ldap module can only work with PAP passwords since it needs to send the clear text user password to the LDAP server to authenticate the user.
+There are however provisions to extract the user password from the LDAP and make it available to the server core and the chap module.
+See [[rlm_ldap]] for more details on how to configure the ldap module to do that.
+
+There are a few things that the administrator should watch out for though:
+
+* Add the chap module in the authorize section of radiusd.conf before any other modules which set the Auth-Type attribute. That way the chap module can check if the current request contains a PAP or CHAP password and if it contains the former then it will set the Auth-Type to CHAP.
+* The := operator should not be used in the users file to set the Auth-Type since it will set the Auth-Type regardless of wether it has already being set to some other value.
+* An 'authtype CHAP' subcomponent should be added in the authenticate section of [[radiusd.conf]] which will contain the chap module.
+
+
+== Old FreeRADIUS SQL Queries and Table Structure
+
+Older versions of FreeRADIUS  (prior to 1.1.7) include support for logging 64-Bit counters to both the detail file and SQL modules but only the PostgreSQL module had this support configured by default.
+
+The detail files will simply log two distinct Attributes (Acct-Input-Octets + Acct-Input-Gigawords and Acct-Output-Octets + Acct-Output-Gigawords).
+
+The PostgreSQL module stores the data as a 64-bit integer (BIGINT) in one column each: AcctInputOctets and AcctOutputOctets.
+
+FreeRADIUS 1.1.7 and greater supports 64-bit counters in other SQL modules, with the same semantics as PostgreSQL.
+
+The following procedure is recommended to enable proper support for 64-bit counters in FreeRADIUS 1.1.6 and earlier:
+
+=== Modify Database Schema
+
+Firstly, modify the _radacct_ table schema to be able to store 64bit integers (or 19 digit numeric fields on databases not supporting BIGINT) in the AcctInputOctets and AcctOutputOctets columns using the `ALTER TABLE` command:
+
+==== MySQL
+
+	ALTER TABLE radacct CHANGE AcctInputOctets AcctInputOctets BIGINT(20);
+	ALTER TABLE radacct CHANGE AcctOutputOctets AcctOutputOctets BIGINT(20);
+
+==== Oracle
+
+	ALTER TABLE radacct MODIFY (AcctInputOctets NUMERIC(19));
+	ALTER TABLE radacct MODIFY (AcctOutputOctets NUMERIC(19));
+
+=== Modify FreeRADIUS Queries
+
+Secondly, modify the accounting queries in sql.conf to make the SQL database perform the computation that is required to merge the two values sent as attributes by the NAS into one single 64-bit integer stored in the database.
+
+All occurences of `'%{Acct-Input-Octets}'` need to be replaced with:
+
+	'%{Acct-Input-Gigawords:-0}' << 32 | '%{Acct-Input-Octets:-0}'
+
+The same thing needs to be done for `'%{Acct-Output-Octets}'`:
+
+	'%{Acct-Output-Gigawords:-0}' << 32 | '%{Acct-Output-Octets:-0}'
