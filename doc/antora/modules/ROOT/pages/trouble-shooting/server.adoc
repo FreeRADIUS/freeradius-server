@@ -18,11 +18,11 @@ If only PAP is used, format your entries as:
 
 If FreeRADIUS is configured to use threads, then nothing is wrong.  Newer Linux kernels / procps utilities report one thread by default. To view all threads, execute `ps` command with one of the following options:
 
-* Old `ps` version / kernel (2.4):
+=== Old `ps` version / kernel (2.4):
 	* `ps -efm`
 	* `ps auxm`
 
-* Old `ps` version / kernel (2.6):
+=== New `ps` version / kernel (2.6):
 	* `ps -efl`
 	* `ps auxH`
 

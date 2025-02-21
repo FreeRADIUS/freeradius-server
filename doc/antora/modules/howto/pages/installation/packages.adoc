@@ -16,7 +16,7 @@ As well as missing out on the latest bug fixes and features, this
 also means that it is very hard to know if an issue encountered is
 still a problem or if it is fixed in the latest release.
 
-Therefore, whilst the distribution-supplied packages can often be
+Therefore, while the distribution-supplied packages can often be
 the most convenient to install, we do not usually recommend using
 them.
 

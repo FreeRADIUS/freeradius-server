@@ -620,7 +620,7 @@ unlang_action_t eap_ttls_success(rlm_rcode_t *p_result, request_t *request, eap_
 	 *	session data to the cache if all phases were successful.
 	 *
 	 *	If we wrote out the cache data earlier, and the server
-	 *	exited whilst the session was in progress, the supplicant
+	 *	exited while the session was in progress, the supplicant
 	 *	could resume the session (and get access) even if phase2
 	 *	never completed.
 	 */

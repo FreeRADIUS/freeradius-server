@@ -153,7 +153,7 @@ struct fr_state_tree_s {
 
 	fr_time_delta_t		timeout;			//!< How long to wait before cleaning up state entries.
 
-	bool			thread_safe;			//!< Whether we lock the tree whilst modifying it.
+	bool			thread_safe;			//!< Whether we lock the tree while modifying it.
 	pthread_mutex_t		mutex;				//!< Synchronisation mutex.
 
 	uint8_t			server_id;			//!< ID to use for load balancing.
@@ -381,7 +381,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 
 	if (!old) {
 		too_many = (state->used_sessions == (uint32_t) state->max_sessions);
-		if (!too_many) state->used_sessions++;	/* preemptively increment whilst we hold the mutex */
+		if (!too_many) state->used_sessions++;	/* preemptively increment while we hold the mutex */
 	} else {
 		old_tries = old->tries;
 		memcpy(old_state, old->state, sizeof(old_state));
@@ -632,7 +632,7 @@ void fr_state_discard(fr_state_tree_t *state, request_t *request)
 	 *	holds the existing state data.  We need to destroy it,
 	 *	and return the request to the state it was in when
 	 *	it was first allocated, just in case a user does something
-	 *	stupid like add more session-state attributes
+	 *	nonsensical like add more session-state attributes
 	 *	in  one of the later sections.
 	 */
 	talloc_free(request_state_replace(request, NULL));

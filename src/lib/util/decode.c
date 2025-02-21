@@ -52,7 +52,7 @@ ssize_t fr_pair_array_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict
 				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
 
 	/*
-	 *	Catch stupidities.
+	 *	Catch issues.
 	 */
 	if (data_len == 0) return data_len;
 
@@ -85,7 +85,7 @@ ssize_t fr_pair_raw_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	fr_dict_attr_t const *child;
 
 #if defined(STATIC_ANALYZER) || !defined(NDEBUG)
-	if (!parent->parent) return -1; /* stupid static analyzers */
+	if (!parent->parent) return -1; /* nonsensical static analyzers */
 #endif
 
 	FR_PROTO_HEX_DUMP(data, data_len, "fr_pair_raw_from_network");

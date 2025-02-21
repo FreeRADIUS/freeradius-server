@@ -280,7 +280,7 @@ static inline CC_HINT(nonnull) void fr_dlist_entry_replace(fr_dlist_t *entry, fr
  */
 static inline void _fr_dlist_init(fr_dlist_head_t *list_head, size_t offset, char const *type)
 {
-	fr_assert(offset < (1 << 20)); /* list_head->offset is `unsigned int`, and 1G structs are stupid. */
+	fr_assert(offset < (1 << 20)); /* list_head->offset is `unsigned int`, and 1G structs are nonsensical. */
 
 	fr_dlist_entry_init(&list_head->entry);
 	list_head->offset = offset;

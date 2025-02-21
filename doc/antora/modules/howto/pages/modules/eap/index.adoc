@@ -181,29 +181,29 @@ NOTE: `EAP-SIM` will send WEP attributes to the resquestor.
 
 == EAP Sub-Types
 
-=== LEAP 
+=== LEAP
 
 The Lightweight Extensible Authentication Protocol (LEAP) is a proprietary EAP method developed by Cisco Systems.
 
 There is no native support for LEAP in any Windows operating system but is supported by third party supplicants. The protocol is known to be vulnerable to dictionary attacks however Cisco still maintains that LEAP can be secure if sufficiently complex passwords are used. Newer protocols like EAP-TTLS and EAP-PEAP do not have this problem and can operate on Cisco and non-Cisco Access Points.
 
-=== EAP-TLS 
+=== EAP-TLS
 
 *EAP-TLS*, defined in RFC 2716, is an IETF open standard, and is well-supported among wireless vendors.  It offers a good deal of security, since TLS is considered the successor of the SSL standard.  It uses PKI to secure communication to the RADIUS authentication server which provides excellent security however the overhead of client-side certificates can make it seem daunting to set up.
 
 EAP-TLS is the original standard wireless LAN EAP authentication protocol. It is considered one of the most secure EAP standards available and is universally supported by all manufacturers of wireless LAN hardware and software including Microsoft.  The requirement for a client-side certificate, however unpopular it may be, is what gives EAP-TLS its authentication strength and illustrates the classic convenience vs. security trade-off.  A compromised password is not enough to break into EAP-TLS enabled systems because the hacker still needs to have the client-side certificate.  When the client-side certificates are housed in smartcards, this offers the most security available because there is no way to steal a certificate's private key from a smartcard without stealing the smartcard itself.  It is significantly more likely that physical theft of a smartcard would be immediately noticed and the smartcard revoked and a new card issued than that password theft would be noticed and the password changed or account disabled.  Up until April of 2005, EAP-TLS was the only EAP type vendors needed to certify for a WPA or WPA2 logo.  There are client and server implementations of it in Microsoft, Cisco, Apple, Linux, and open source.  EAP-TLS is natively supported in MAC OS 10.3 and above, Windows 2000 SP4, Windows XP, Windows Mobile 2003 and above, and Windows CE 4.2 as well as by many Open Source EAP Clients.
 
-=== EAP-MD5 
+=== EAP-MD5
 
 *EAP-MD5*, defined in RFC 3748, is another IETF open standard, but offers minimal security.  The MD5 hash function is vulnerable to dictionary attacks, and does not support mutual authentication or key generation, which makes it unsuitable for use with dynamic WEP,  or WPA/WPA2 enterprise.
 
-=== EAP-TTLS 
+=== EAP-TTLS
 
 *EAP-Tunneled Transport Layer Security*, or *EAP-TTLS*, was co-developed by Funk Software and Certicom.  It is widely supported across platforms, and offers very good security, using PKI certificates only on the authentication server.
 
 EAP TTLS is also described in an IETF internet draft, "draft-funk-eap-ttls-v0-04.txt http://www.ietf.org/internet-drafts/draft-funk-eap-ttls-v0-04.txt". Note that this an individual submission and not standardized in the IETF.
 
-=== EAP-IKEv2 
+=== EAP-IKEv2
 
 EAP-IKEv2 is an EAP authentication method based on the Internet Key Exchange Protocol version 2 (IKEv2). It provides mutual authentication and session key establishment between an EAP peer and an EAP server. It supports authentication techniques that are based on the following types of credentials:
 
@@ -211,7 +211,7 @@ EAP-IKEv2 is an EAP authentication method based on the Internet Key Exchange Pro
 * *Passwords* - low-entropy bit strings that are known to both the server and the peer.
 * *Symmetric keys* - high-entropy bit strings that known to both the server and the peer.
 
-It is possible to use a different authentication credential (and thereby technique) in each direction. For example that the EAP server authenticates itself using public/private key pair and the EAP client using symmetric key. In particular, the following combinations are expected to be used in practice:
+It is possible to use a different authentication credential (and technique) in each direction. For example that the EAP server authenticates itself using public/private key pair and the EAP client using symmetric key. In particular, the following combinations are expected to be used in practice:
 
 |===
 |EAP server |EAP peer
@@ -223,7 +223,7 @@ It is possible to use a different authentication credential (and thereby techniq
 
 EAP-IKEv2 is described in an IETF internet draft, http://www.ietf.org/internet-drafts/draft-tschofenig-eap-ikev2-11.txt draft-tschofenig-eap-ikev2-11.txt. Prototype implementation can be found at http://eap-ikev2.sourceforge.net page.
 
-=== PEAP 
+=== PEAP
 
 *Protected Extensible Authentication Protocol* is a joint proposal by Cisco Systems, Microsoft and RSA Security as an open standard.  It is already widely available in products, and provides very good security.  It is similar in design to EAP-TTLS, requiring only a server-side PKI certificate to create a secure TLS tunnel to protect user authentication.
 
@@ -231,15 +231,15 @@ As of May of 2005, there were two PEAP sub-types certified for the updated WPA a
 *PEAPv0/EAP-MSCHAPv2
 *PEAPv1/EAP-GTC
 
-==== PEAPv0/EAP-MSCHAPv2 
+==== PEAPv0/EAP-MSCHAPv2
 
 PEAPv0/EAP-MSCHAPv2 is the technical term for what people most commonly refer to as "PEAP".  Whenever the word PEAP is used, it almost always refers to this form of PEAP since most people have no idea there are so many flavors of PEAP.  Behind EAP-TLS, PEAPv0/EAP-MSCHAPv2 is the second most widely supported EAP standard in the world.  There are client and server implementations of it in Microsoft, Cisco, Apple, Linux, and open source.  PEAPv0/EAP-MSCHAPv2 is natively supported in MAC OS 10.3 and above, Windows 2000 SP4, Windows XP, Windows Mobile 2003 and above, and Windows CE 4.2.  The server side implementation of PEAPv0/EAP-MSCHAPv2, called IAS (Internet Authentication Service), is also included in Windows 2003 server.  PEAPv0/EAP-MSCHAPv2 enjoys universal support and is known as the PEAP standard.
 
 This version of PEAP is defined through IETF Internet Draft "draft-kamath-pppext-peapv0-00 http://www.watersprings.org/pub/id/draft-kamath-pppext-peapv0-00.txt". Note that this is an expired draft.
 
-==== PEAPv1/EAP-GTC 
+==== PEAPv1/EAP-GTC
 
-PEAPv1/EAP-GTC was created by Cisco as an alternative to PEAPv0/EAP-MSCHAPv2.  It allows the use of an inner authentication protocol other than Microsoft's MSCHAPv2. EAP-GTC (Generic Token Card) is defined in RFC 3748. It carries a text challenge from the authentication server, and a reply which is assumed to be generated by a security token. EAP-GTC does not protect the authentication data in any way. 
+PEAPv1/EAP-GTC was created by Cisco as an alternative to PEAPv0/EAP-MSCHAPv2.  It allows the use of an inner authentication protocol other than Microsoft's MSCHAPv2. EAP-GTC (Generic Token Card) is defined in RFC 3748. It carries a text challenge from the authentication server, and a reply which is assumed to be generated by a security token. EAP-GTC does not protect the authentication data in any way.
 
 Even though Microsoft (along with RSA and Cisco) co-invented the PEAP standard, Microsoft never added support for PEAPv1 in general, which means PEAPv1/EAP-GTC has no native Windows OS support.  Since Cisco has always favored the use of its own less secure proprietary LEAP and EAP-FAST protocols over PEAP and markets them as simpler certificate-less solutions, standardized PEAP is rarely promoted by Cisco. With no interest from Microsoft to support PEAPv1 and little interest from Cisco to promote PEAP in general, PEAPv1 authentication is rarely used.  There is no native OS support for this EAP protocol.
 
@@ -249,7 +249,7 @@ Note: The PEAP standard was created by Microsoft, Cisco, and RSA after EAP-TTLS 
 
 This version of PEAP is defined through the IETF internet draft "draft-josefsson-pppext-eap-tls-eap-05 http://www.watersprings.org/pub/id/draft-josefsson-pppext-eap-tls-eap-05.txt."  Note that this is an expired draft.
 
-=== EAP-FAST 
+=== EAP-FAST
 
 _EAP-FAST (Flexible Authentication via Secure Tunneling)_ is a method designed by Cisco Systems to fix the weaknesses of LEAP. Use of server certificates is optional in EAP-FAST. EAP-FAST uses a Protected Access Credential (PAC). The PAC can be provisioned manually or dynamically in Phase 0 of EAP-FAST. EAP-FAST has three phases. Phase 0 is an optional phase. In Phase 1 the client and the AAA server uses the PAC to establish TLS tunnel. In Phase 2, the client sends user information across the tunnel.
 

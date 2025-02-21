@@ -557,7 +557,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			ENCODE_FIELD_UINT8(packet->authen_start.authen_service, attr_tacacs_authentication_service);
 
 			/*
-			 *	Encode 4 mandatory fields.
+			 *	Encode 4 required fields.
 			 */
 			ENCODE_FIELD_STRING8(packet->authen_start.user_len, attr_tacacs_user_name);
 			ENCODE_FIELD_STRING8(packet->authen_start.port_len, attr_tacacs_client_port);
@@ -619,7 +619,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->authen_cont));
 
 			/*
-			 *	Encode 2 mandatory fields.
+			 *	Encode 2 required fields.
 			 */
 			ENCODE_FIELD_STRING16(packet->authen_cont.user_msg_len, attr_tacacs_user_message);
 			ENCODE_FIELD_STRING16(packet->authen_cont.data_len, attr_tacacs_data);
@@ -654,7 +654,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			ENCODE_FIELD_UINT8(packet->authen_reply.flags, attr_tacacs_authentication_flags);
 
 			/*
-			 *	Encode 2 mandatory fields.
+			 *	Encode 2 required fields.
 			 */
 			ENCODE_FIELD_STRING16(packet->authen_reply.server_msg_len, attr_tacacs_server_message);
 			ENCODE_FIELD_STRING16(packet->authen_reply.data_len, attr_tacacs_data);
@@ -714,7 +714,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			if (packet->author_req.arg_cnt) FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, packet->author_req.arg_cnt);
 
 			/*
-			 *	Encode 3 mandatory fields.
+			 *	Encode 3 required fields.
 			 */
 			ENCODE_FIELD_STRING8(packet->author_req.user_len, attr_tacacs_user_name);
 			ENCODE_FIELD_STRING8(packet->author_req.port_len, attr_tacacs_client_port);
@@ -758,7 +758,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->author_reply));
 
 			/*
-			 * 	Encode 1 mandatory field.
+			 * 	Encode 1 required field.
 			 */
 			ENCODE_FIELD_UINT8(packet->author_reply.status, attr_tacacs_authorization_status);
 
@@ -786,7 +786,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			}
 
 			/*
-			 *	Encode 2 mandatory fields.
+			 *	Encode 2 required fields.
 			 */
 			ENCODE_FIELD_STRING16(packet->author_reply.server_msg_len, attr_tacacs_server_message);
 			ENCODE_FIELD_STRING16(packet->author_reply.data_len, attr_tacacs_data);
@@ -855,7 +855,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			if (packet->acct_req.arg_cnt) FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, packet->acct_req.arg_cnt);
 
 			/*
-			 *	Encode 3 mandatory fields.
+			 *	Encode 3 required fields.
 			 */
 			ENCODE_FIELD_STRING8(packet->acct_req.user_len, attr_tacacs_user_name);
 			ENCODE_FIELD_STRING8(packet->acct_req.port_len, attr_tacacs_client_port);
@@ -912,7 +912,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, sizeof(packet->acct_reply));
 
 			/*
-			 *	Encode 2 mandatory fields.
+			 *	Encode 2 required fields.
 			 */
 			ENCODE_FIELD_STRING16(packet->acct_reply.server_msg_len, attr_tacacs_server_message);
 			ENCODE_FIELD_STRING16(packet->acct_reply.data_len, attr_tacacs_data);

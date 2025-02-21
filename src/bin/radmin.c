@@ -155,7 +155,7 @@ static main_config_t *radmin_main_config = NULL;
 
 #ifdef USE_READLINE
 /*
- *	Global variables because readline() is stupid.
+ *	Global variables because readline() is nonsensical.
  */
 static int radmin_num_expansions;
 static char *radmin_expansions[CMD_MAX_EXPANSIONS] = {0};

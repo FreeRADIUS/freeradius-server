@@ -1641,7 +1641,7 @@ static int mschap_cpw_prepare(request_t *request, mschap_auth_ctx_t *auth_ctx)
 	/*
 	 *	Look for the new (encrypted) password.
 	 *
-	 *	Bah, stupid composite attributes...
+	 *	Bah, nonsensical composite attributes...
 	 *	we're expecting 3 attributes with the leading bytes -
 	 *	06:<mschapid>:00:01:<1st chunk>
 	 *	06:<mschapid>:00:02:<2nd chunk>

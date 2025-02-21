@@ -38,7 +38,7 @@
 #
 #  It does NOT send a 'Start' packet, so this behaviour confuses the
 #  heck out of most admins, who do everything right, but have the ERX
-#  do stupid things.
+#  do nonsensical things.
 #
 #  The ERX supports Ascend "abinary" format.  See:
 #

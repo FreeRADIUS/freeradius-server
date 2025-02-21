@@ -1296,7 +1296,7 @@ static char *make_ad_have_headers(char const *nm, unsigned int argc, char **argv
 		 *	uses spaces for similar things.
 		 *
 		 *	Instead of punishing the poor admin with GNU
-		 *	Make stupidities, we just do the Right Thing.
+		 *	Make issues, we just do the Right Thing.
 		 */
 		p = argv[i];
 		while (p) {

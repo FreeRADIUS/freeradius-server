@@ -250,7 +250,7 @@ struct trunk_s {
 	fr_dlist_head_t		to_free;		//!< Connections we're done with and will free on
 							//!< the next call to trunk_manage.
 							//!< This prevents connections from being freed
-							//!< whilst we're inside callbacks.
+							//!< while we're inside callbacks.
 	/** @} */
 
 	/** @name Callbacks
@@ -1800,7 +1800,7 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, trunk_co
 			fr_assert(treq->pub.state == TRUNK_REQUEST_STATE_PARTIAL);
 
 			/*
-			 *	Don't allow the connection to change state whilst
+			 *	Don't allow the connection to change state while
 			 *	we're draining requests from it.
 			 */
 			connection_signals_pause(tconn->pub.conn);
@@ -1816,7 +1816,7 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, trunk_co
 	 */
 	if (states & TRUNK_REQUEST_STATE_SENT) {
 		/*
-		 *	Don't allow the connection to change state whilst
+		 *	Don't allow the connection to change state while
 		 *	we're draining requests from it.
 		 */
 		connection_signals_pause(tconn->pub.conn);
@@ -1857,7 +1857,7 @@ static uint64_t trunk_connection_requests_requeue_priv(trunk_connection_t *tconn
 	fr_dlist_talloc_init(&to_process, trunk_request_t, entry);
 
 	/*
-	 *	Prevent the connection changing state whilst we're
+	 *	Prevent the connection changing state while we're
 	 *	working with it.
 	 *
 	 *	There's a user callback that can be called by

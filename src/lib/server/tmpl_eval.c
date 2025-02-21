@@ -1001,7 +1001,7 @@ int pair_append_by_tmpl_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t 
 		if (ar != leaf) {
 			vp = fr_pair_find_by_da(list, NULL, ar->da);
 			/*
-			 *	HACK - Pretend we didn't see this stupid key field
+			 *	HACK - Pretend we didn't see this nonsensical key field
 			 *
 			 *	If we don't have this, the code creates a key pair
 			 *	and then horribly mangles its data by adding children

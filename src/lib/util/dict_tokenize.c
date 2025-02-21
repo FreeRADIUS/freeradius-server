@@ -967,7 +967,7 @@ static int dict_read_process_common(dict_tokenize_ctx_t *dctx, fr_dict_attr_t **
 	fr_dict_attr_t *da, *to_free = NULL;
 
 	/*
-	 *	Dictionaries need to have real names, not shitty ones.
+	 *	Dictionaries need to have real names, not garbage ones.
 	 */
 	if (strncmp(name, "Attr-", 5) == 0) {
 		fr_strerror_const("Invalid name");
@@ -1184,7 +1184,7 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *dctx, char **argv, int a
 	}
 
 	/*
-	 *	Dictionaries need to have real names, not shitty ones.
+	 *	Dictionaries need to have real names, not garbage ones.
 	 */
 	if (strncmp(argv[0], "Attr-", 5) == 0) {
 		fr_strerror_const("Invalid ALIAS name");
@@ -1965,7 +1965,7 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *dctx, char **argv, int ar
 	}
 
 	/*
-	 *	Dictionaries need to have real names, not shitty ones.
+	 *	Dictionaries need to have real names, not garbage ones.
 	 */
 	if (strncmp(argv[0], "Attr-", 5) == 0) {
 		fr_strerror_const("Invalid ENUM name");

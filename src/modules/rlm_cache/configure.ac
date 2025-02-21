@@ -23,7 +23,7 @@ else
 	done
 fi
 
-dnl # don't ask... this is done to avoid autoconf stupidities.
+dnl # don't ask... this is done to avoid autoconf issues.
 ln -s ../../../install-sh install-sh
 
 AC_CONFIG_SUBDIRS($mysubdirs)

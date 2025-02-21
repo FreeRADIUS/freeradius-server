@@ -187,7 +187,7 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 					 *	Swap in the node specific dictionary.
 					 *
 					 *	The previous code stored the dictionary in the xlat_exp_head_t,
-					 *	and whilst this wasn't wrong, it was duplicative.
+					 *	and while this wasn't wrong, it was duplicative.
 					 *
 					 *	This allows future code to create inline definitions of local
 					 *	attributes, and have them work correctly, as more deeply nested

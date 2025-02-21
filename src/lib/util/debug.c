@@ -94,7 +94,7 @@ struct fr_bt_marker {
 #endif
 
 static char panic_action[512];				//!< The command to execute when panicking.
-static fr_fault_cb_t panic_cb = NULL;			//!< Callback to execute whilst panicking, before the
+static fr_fault_cb_t panic_cb = NULL;			//!< Callback to execute while panicking, before the
 							//!< panic_action.
 
 static bool dump_core;					//!< Whether we should drop a core on fatal signals.
@@ -419,7 +419,7 @@ DIAG_ON(deprecated-declarations)
 
 		/*
 		 *	FreeBSD is extremely picky about the order of operations here
-		 *	we need to attach, wait *then* write whilst the parent is still
+		 *	we need to attach, wait *then* write while the parent is still
 		 *	suspended, then detach, continuing the process.
 		 *
 		 *	If we don't do it in that order the read in the parent triggers

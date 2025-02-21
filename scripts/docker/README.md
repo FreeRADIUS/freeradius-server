@@ -103,7 +103,7 @@ Info  : Copyright (C) 1999-2017 The FreeRADIUS server project and contributors
 ```
 
 When ``docker run`` is used to execute an image a new container is
-created from the image.  This stores any changes you make, whilst
+created from the image.  This stores any changes you make, while
 leaving the original container image unchanged.
 
 You can attach multiple terminals to a docker container with ``docker

@@ -266,7 +266,7 @@ radius_track_entry_t *radius_track_entry_find(radius_track_t *tt, uint8_t packet
 	/*
 	 *	Protocol-Error and Original-Packet-Vector <sigh>
 	 *
-	 *	This should arguably have been Original-Packet-Code, but we are stupid.
+	 *	This should arguably have been Original-Packet-Code, but we are nonsensical.
 	 *
 	 *	@todo - Allow for multiple ID arrays, one for each packet code.  Or, just switch to using
 	 *	src/protocols/radius/id.[ch].

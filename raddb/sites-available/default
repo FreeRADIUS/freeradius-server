@@ -807,7 +807,7 @@ recv Access-Request {
 	digest
 
 	#
-	#  The `wimax` module fixes up various WiMAX-specific stupidities.
+	#  The `wimax` module fixes up various WiMAX-specific issues.
 	#
 	#  The WiMAX specification says that the `Calling-Station-Id`
 	#  is 6 octets of the MAC.  This definition conflicts with RFC

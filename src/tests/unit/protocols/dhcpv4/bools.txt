@@ -1,5 +1,5 @@
 #
-#  Test vectors for bools, which are shit and random.
+#  Test vectors for bools, which are garbage and random.
 #
 proto dhcpv4
 proto-dictionary dhcpv4
@@ -15,7 +15,7 @@ match Rapid-Commit = yes
 #  false is "don't encode"
 #
 encode-pair Rapid-Commit = false
-match 
+match
 
 #
 #  Normal bools get encoded as 0/1
@@ -36,7 +36,7 @@ decode-pair 13 01 88
 match IP-Forward-Enable = yes
 
 #
-#  Rapid-Commit is stupid
+#  Rapid-Commit is nonsensical
 #
 encode-pair Rapid-Commit = yes
 match 50 00
@@ -48,7 +48,7 @@ match Rapid-Commit = yes
 #  false is "don't encode"
 #
 encode-pair Rapid-Commit = false
-match 
+match
 
 #
 #  We allow Rapid-Commit to be normal, if it so chooses

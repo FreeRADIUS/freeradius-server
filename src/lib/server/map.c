@@ -1028,7 +1028,7 @@ do_children:
 		 *		&User-Name = &User-Name
 		 *	}
 		 *
-		 *	Which looks stupid.  Instead we require
+		 *	Which looks nonsensical.  Instead we require
 		 *
 		 *	&reply += {
 		 *		&User-Name = &request.User-Name

@@ -697,7 +697,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 		}
 
 #ifdef STATIC_ANALYZER
-		if (!parent->parent) return -1; /* stupid static analyzers */
+		if (!parent->parent) return -1; /* nonsensical static analyzers */
 #endif
 		fr_assert(parent->parent);
 

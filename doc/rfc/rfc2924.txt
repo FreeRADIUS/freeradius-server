@@ -1070,7 +1070,7 @@ RFC 2924        Accounting Attributes and Record Formats  September 2000
 
    AToMMIB carries this a stage further by defining an accounting file
    format in ASN.1 and making it available for retrieval by a file
-   transfer protocol, thereby providing a more efficient alternative to
+   transfer protocol, thus providing a more efficient alternative to
    simply retrieving the records using SNMP.
 
 7.1.2.  Q.825

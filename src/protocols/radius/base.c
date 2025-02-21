@@ -1341,7 +1341,7 @@ static bool attr_valid(fr_dict_attr_t *da)
 	 *	encryption method has no provisions for encoding the
 	 *	length of the data.  For User-Password, the data is
 	 *	(presumably) all printable non-zero data.  For
-	 *	MS-CHAP-MPPE-Keys, the data is binary crap.  So... we
+	 *	MS-CHAP-MPPE-Keys, the data is binary code.  So... we
 	 *	MUST specify a length in the dictionary.
 	 */
 	if ((flags->encrypt == RADIUS_FLAG_ENCRYPT_USER_PASSWORD) && (da->type != FR_TYPE_STRING)) {

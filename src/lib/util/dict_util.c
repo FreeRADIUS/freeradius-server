@@ -3960,7 +3960,7 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
  *  This dictionary cannot define vendors, or inter-dictionary
  *  dependencies.  However, we initialize the relevant fields just in
  *  case.  We should arguably just skip initializing those fields, and
- *  just allow the server to crash if programmers do something stupid with it.
+ *  just allow the server to crash if programmers do something nonsensical with it.
  */
 fr_dict_t *fr_dict_protocol_alloc(fr_dict_t const *parent)
 {
@@ -4883,7 +4883,7 @@ bool fr_dict_attr_can_contain(fr_dict_attr_t const *parent, fr_dict_attr_t const
 	 */
 	if (child->parent == parent) return true;
 
-	if (child->flags.is_raw) return true; /* let people do stupid things */
+	if (child->flags.is_raw) return true; /* let people do nonsensical things */
 
 	/*
 	 *	Child is a STRUCT which has a parent key field.  The

@@ -1090,7 +1090,7 @@ int module_thread_instantiate(TALLOC_CTX *ctx, module_instance_t *mi, fr_event_l
 	/*
 	 *	Allows the caller of module_instance_alloc to
 	 *	skip thread instantiation for certain modules instances
-	 *	whilst allowing modules to still register thread
+	 *	while allowing modules to still register thread
 	 *	instantiation callbacks.
 	 *
 	 *	This is mainly there for the single global instance of

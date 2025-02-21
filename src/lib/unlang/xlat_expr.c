@@ -2934,7 +2934,7 @@ redo:
 	rhs = NULL;
 
 #ifdef STATIC_ANALYZER
-	if (!lhs) return 0;	/* shut up stupid analyzer */
+	if (!lhs) return 0;	/* shut up nonsensical analyzer */
 #else
 	fr_assert(lhs != NULL);
 #endif

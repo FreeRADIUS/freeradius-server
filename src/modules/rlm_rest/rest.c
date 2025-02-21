@@ -1774,7 +1774,7 @@ static bool rest_request_contains_header(fr_curl_io_request_t *randle, char cons
  * @param[in] type	Content-Type for request encoding, also sets
  *			the default for decoding.
  * @param[in] uri	buffer containing the expanded URI to send the request to.
- * @param[in] body_data	(optional) custom body data. Must persist whilst we're
+ * @param[in] body_data	(optional) custom body data. Must persist while we're
  *			writing data out to the socket.  Must be a talloced buffer
  *			which is \0 terminated.
  * @return

@@ -251,11 +251,11 @@ RFC 1157                          SNMP                          May 1990
            necessary to support the protocol is accordingly reduced.
 
       (2)  The degree of management function that is remotely
-           supported is accordingly increased, thereby admitting
+           supported is accordingly increased, thus admitting
            fullest use of internet resources in the management task.
 
       (3)  The degree of management function that is remotely
-           supported is accordingly increased, thereby imposing the
+           supported is accordingly increased, thus imposing the
            fewest possible restrictions on the form and
            sophistication of management tools.
 

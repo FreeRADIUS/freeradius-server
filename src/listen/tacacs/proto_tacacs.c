@@ -250,7 +250,7 @@ skip_decode:
 	 *	  identical cleartext header but with a sequence number incremented by one and the length set to
 	 *	  zero MUST be returned to indicate an error.
 	 *
-	 *	This is substantially retarded.  It should instead just close the connection.
+	 *	This is substantially nonsensical.  It should instead just close the connection.
 	 */
 
 

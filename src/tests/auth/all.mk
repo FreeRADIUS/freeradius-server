@@ -59,7 +59,7 @@ $(OUTPUT)/%.attrs: $(DIR)/%.attrs | $(OUTPUT)
 
 #
 #  Don't auto-remove the files copied by the rule just above.
-#  It's unnecessary, and it clutters the output with crap.
+#  It's unnecessary, and it clutters the output with garbage.
 #
 .PRECIOUS: $(OUTPUT)/%.attrs raddb/mods-enabled/wimax
 

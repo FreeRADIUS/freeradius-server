@@ -55,7 +55,7 @@ static xlat_action_t date_convert_string(TALLOC_CTX *ctx, fr_dcursor_t *out, req
 	 *
 	 *	However, when printing dates via strftime(), it prints
 	 *	"UTC" instead of "GMT".  So... we have to fix it up
-	 *	for stupid nonsense.
+	 *	for nonsensical nonsense.
 	 */
 	char const *tz = strstr(str, "UTC");
 	if (tz) {

@@ -2763,7 +2763,7 @@ static int run_mode(command_t *cmd)
 		setenv("FR_LIBRARY_PATH", libpath, 1);
 
 		/*
-		 *	Work around stupid crap on Linux, where the
+		 *	Work around issues on Linux, where the
 		 *	debug code can't detect that a debugger is
 		 *	attached.
 		 */

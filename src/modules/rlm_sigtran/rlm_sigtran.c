@@ -378,7 +378,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	each thread registering its own pipe via the ctrl_pipe.
 	 *
 	 *	This makes it really easy to collect and distribute
-	 *	requests/responses, whilst using libosmo in a
+	 *	requests/responses, while using libosmo in a
 	 *	threadsafe way.
 	 */
 	if (sigtran_instances == 0) sigtran_event_start();
