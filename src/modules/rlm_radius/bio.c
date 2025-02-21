@@ -2606,7 +2606,7 @@ static int8_t home_server_cmp(void const *one, void const *two)
 
 static xlat_action_t xlat_sendto_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					xlat_ctx_t const *xctx,
-					UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+					request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	bio_request_t	*u = talloc_get_type_abort(xctx->rctx, bio_request_t);
 	fr_value_box_t *dst;
@@ -2614,7 +2614,7 @@ static xlat_action_t xlat_sendto_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (u->rcode == RLM_MODULE_FAIL) return XLAT_ACTION_FAIL;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_UINT32, attr_packet_type));
-	dst->vb_uint32 = u->rcode;
+	dst->vb_uint32 = request->reply->code;
 
 	fr_dcursor_append(out, dst);
 
