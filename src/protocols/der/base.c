@@ -74,6 +74,16 @@ char const *fr_der_tag_to_str(fr_der_tag_t tag)
 	return fr_table_str_by_value(tag_name_to_number, tag, "???");
 }
 
+static const uint64_t der_tags_compatible[FR_DER_TAG_MAX] = {
+	[FR_DER_TAG_UTC_TIME] = (1 << FR_DER_TAG_GENERALIZED_TIME),
+	[FR_DER_TAG_GENERALIZED_TIME] = (1 << FR_DER_TAG_UTC_TIME),
+};
+
+bool fr_der_tags_compatible(fr_der_tag_t tag1, fr_der_tag_t tag2)
+{
+	return (der_tags_compatible[tag1] & (1 << (uint64_t) tag2)) != 0;
+}
+
 /*
  *	Create a mapping between FR_TYPE_* and valid FR_DER_TAG_*'s
  */

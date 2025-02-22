@@ -132,6 +132,7 @@ static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const 
  */
 fr_der_tag_t fr_type_to_der_tag_default(fr_type_t type);
 bool	fr_type_to_der_tag_valid(fr_type_t type, fr_der_tag_t tag);
+bool	fr_der_tags_compatible(fr_der_tag_t tag1, fr_der_tag_t tag2);
 char	const *fr_der_tag_to_str(fr_der_tag_t tag);
 
 int	fr_der_global_init(void);
