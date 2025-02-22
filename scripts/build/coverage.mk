@@ -1,4 +1,8 @@
 #
+#  Before doing `make coverage`, you should do a `make clean`.
+#
+
+#
 #  The coverage tests require lcov.
 #
 #  OSX: brew install lcov
@@ -14,10 +18,6 @@
 CFLAGS += -fprofile-arcs -ftest-coverage
 LDFLAGS += -fprofile-instr-generate
 
-#
-#  Before doing `make coverage`, you should do a
-#  `make clean`.
-#
 #  Order is important here.  And the dependencies in the rest of the
 #  makefiles aren't *quite* there to allow for these to be targets.
 #  So we just run them manually one after the other.
@@ -42,3 +42,11 @@ ${BUILD_DIR}/radiusd.info:
 ${BUILD_DIR}/coverage/index.html: ${BUILD_DIR}/radiusd.info
 	${Q}genhtml $< -o $(dir $@) > ${BUILD_DIR}/genhtml.log
 	${Q}echo Please see $@
+
+#
+#  Clean gcov files, too.
+#
+clean: clean.coverage
+.PHONY: clean.coverage
+clean.coverage:
+	@rm -f ${BUILD_DIR}/*.info $(find ${BUILD_DIR} -name "*.gcda" -print)

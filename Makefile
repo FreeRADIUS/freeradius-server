@@ -563,11 +563,3 @@ endif
 ifneq "$(findstring docker,$(MAKECMDGOALS))" ""
   include scripts/docker/docker.mk
 endif
-
-#
-#  Clean gcov files, too.
-#
-clean: clean.coverage
-.PHONY: clean.coverage
-clean.coverage:
-	@rm -f ${BUILD_DIR}/radiusd.info $(find ${BUILD_DIR} -name "*.gcda" -print)
