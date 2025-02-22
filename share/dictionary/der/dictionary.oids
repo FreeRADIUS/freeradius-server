@@ -36,7 +36,7 @@ ATTRIBUTE	ds					2.5	sequence
 
 ATTRIBUTE	attributeType				2.5.4	sequence
 ATTRIBUTE	commonName				2.5.4.3	printablestring is_oid_leaf
-ATTRIBUTE	countryName				2.5.4.6	string[2]       der_type=printablestring,is_oid_leaf
+ATTRIBUTE	countryName				2.5.4.6	printablestring size=2,is_oid_leaf
 ATTRIBUTE	serialNumber				2.5.4.5	printablestring is_oid_leaf
 ATTRIBUTE	localityName				2.5.4.7	string  is_oid_leaf
 ATTRIBUTE	stateOrProvinceName			2.5.4.8	string  is_oid_leaf

@@ -91,7 +91,6 @@ typedef enum {
 #define DER_BOOLEAN_TRUE 0xff	 //!< DER encoded boolean true value.
 
 typedef struct {
-	uint8_t 		option;		//!< an "attribute number" encoded in the tag field.
 	fr_der_tag_class_t 	class;		//!< tag Class
 	fr_der_tag_t 		der_type;	//!< the DER type, which is different from the FreeRADIUS type
 	union {
@@ -99,9 +98,11 @@ typedef struct {
 		fr_der_tag_t 		set_of;
 	};
 	uint64_t 		max;			//!< maximum count of items in a sequence, set, or string.
+	uint8_t			min;			//!< mininum count
+	uint8_t 		option;			//!< an "attribute number" encoded in the tag field.
 	bool			is_sequence_of : 1;	//!< sequence_of has been defined
 	bool 			is_set_of : 1;		//!< set_of has been defined
-	bool 			is_pair : 1;
+	bool 			is_pair : 1;		//!< is OID+value
 	bool 			is_extensions : 1;	//!< a list of X.509 extensions
 	bool 			has_default : 1;	//!< a default value exists
 	bool 			is_oid_leaf : 1;

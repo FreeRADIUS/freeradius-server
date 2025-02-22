@@ -1742,7 +1742,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 
 	FR_PROTO_TRACE("Attribute %s, tag %u", parent->name, tag);
 
-	max = fr_der_flag_max(parent); /* Maximum number of extensions specified in the dictionary*/
+	max = fr_der_flag_max(parent); /* Maximum number of extensions specified in the dictionary */
 
 	while (fr_dbuff_remaining(&our_in) > 0) {
 		fr_dbuff_t		      sub_in = FR_DBUFF(&our_in);
@@ -2074,7 +2074,6 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	fr_der_tag_decode_t *func;
 	ssize_t		     slen;
 	uint8_t	     	     tag;
-	uint64_t 	     max;
 	size_t		     len;
 	fr_der_attr_flags_t const *flags = fr_der_attr_flags(parent);
 
@@ -2124,7 +2123,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	 *	the next header.
 	 */
 	if ((fr_dbuff_extend_lowat(NULL, &our_in, 2) < 2)) {
-		if (fr_der_flag_has_default(parent)) {
+		if (flags->has_default) {
 			fr_pair_t	     *vp = fr_pair_afrom_da(ctx, parent);
 			fr_dict_enum_value_t *ev;
 
@@ -2159,7 +2158,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		return 0;
 	}
 
-	if (unlikely(fr_der_flag_is_choice(parent))) {
+	if (unlikely(flags->is_choice)) {
 		slen = fr_der_decode_choice(ctx, out, parent, &our_in, decode_ctx);
 
 		if (unlikely(slen <= 0)) return slen;
@@ -2175,7 +2174,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	FR_PROTO_TRACE("Attribute %s, tag %u", parent->name, tag);
 
 	if (unlikely(tag != FR_DER_TAG_NULL) && (!fr_type_to_der_tag_valid(parent->type, tag) || fr_dbuff_remaining(&our_in) == 0)) {
-		if (fr_der_flag_has_default(parent)) {
+		if (flags->has_default) {
 			/*
 			 *	If the attribute has a default value, we will use that.
 			 *	We could end up here if we are decoding a sequence which has a default value
@@ -2224,7 +2223,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 			 *	could have defaults.
 			 */
 			fr_strerror_printf("Attribute %s of DER type '%s' cannot store DER type '%s'", parent->name,
-					   fr_der_tag_to_str(fr_der_flag_der_type(parent)),
+					   fr_der_tag_to_str(flags->der_type),
 					   fr_der_tag_to_str(tag));
 			return -1;
 		}
@@ -2248,7 +2247,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		return -1;
 	}
 
-	if (fr_der_flag_is_extensions(parent)) {
+	if (flags->is_extensions) {
 		slen = fr_der_decode_x509_extensions(ctx, out, &our_in, parent, decode_ctx);
 		if (slen <= 0) return slen;
 
@@ -2258,19 +2257,51 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	func = &tag_funcs[tag];
 
 	/*
-	 *	Make sure the data length is less than the maximum allowed
+	 *	Enforce limits on min/max.
 	 */
 	switch (tag) {
 	case FR_DER_TAG_SEQUENCE:
 	case FR_DER_TAG_SET:
+		/*
+		 *	min/max is the number of elements, NOT the number of bytes.  The set / sequence
+		 *	decoder has to validate its input.
+		 */
+		break;
+
+		/*
+		 *	min/max applies to the decoded values.
+		 */
+	case FR_DER_TAG_INTEGER:
+	case FR_DER_TAG_ENUMERATED:
 		break;
 
 	default:
-		max = fr_der_flag_max(parent);
-		fr_assert(max <= DER_MAX_STR);
+		/*
+		 *	min/max can be fixed width, but we only care for 'octets' and 'string'.
+		 *
+		 *	@todo - when we support IP addresses (which DER usually encodes as strings), this
+		 *	check will have to be updated.
+		 */
+		if (parent->flags.is_known_width) {
+			if (!fr_type_is_variable_size(parent->type)) break;
 
-		if (unlikely(len > max)) {
-			fr_strerror_printf("Data length (%zu) exceeds max size (%" PRIu64 ")", len, max);
+			if (len != parent->flags.length) {
+				fr_strerror_printf("Data length (%zu) is different from expected fixed size (%u)", len, parent->flags.length);
+				return -1;
+			}
+
+			break;
+		}
+
+		if (flags->min && (len < flags->min)) {
+			fr_strerror_printf("Data length (%zu) is smaller than expected minimum size (%u)", len, flags->min);
+			return -1;
+		}
+
+		fr_assert(flags->max <= DER_MAX_STR); /* 'max' is always set in the attr_valid() function */
+
+		if (unlikely(len > flags->max)) {
+			fr_strerror_printf("Data length (%zu) exceeds max size (%" PRIu64 ")", len, flags->max);
 			return -1;
 		}
 		break;

@@ -342,6 +342,93 @@ static int dict_flag_is_oid_leaf(fr_dict_attr_t **da_p, UNUSED char const *value
 	return 0;
 }
 
+/*
+ *	size=MIN..MAX
+ */
+static int dict_flag_size(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
+{
+	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	unsigned long num;
+	char const *p = value;
+	char *end = NULL;
+
+	if (fr_type_is_leaf((*da_p)->type) && !fr_type_is_variable_size((*da_p)->type)) {
+		fr_strerror_printf("Cannot use 'size=...' for type '%s'", fr_type_to_str((*da_p)->type));
+		return -1;
+	}
+
+	/*
+	 *	size=..max
+	 */
+	if ((p[0] == '.') && (p[1] == '.')) goto check_max;
+
+	num = strtoul(p, &end, 10);
+	if (num == ULONG_MAX) {
+	invalid:
+		fr_strerror_printf("Invalid value in 'size=%s'", value);
+		return -1;
+	}
+
+	if (num > UINT8_MAX) {
+		fr_strerror_printf("Invalid value in 'size=%s' - 'min' value is too large", value);
+		return -1;
+	}
+
+	/*
+	 *	size=4
+	 *
+	 *	Fixed size, but not size=0.
+	 */
+	if (!*end) {
+		if (!num) goto invalid;
+
+		/*
+		 *	printablestring	size=2
+		 *
+		 *	instead of string[2] der_type=printablestring
+		 */
+		if (((*da_p)->type == FR_TYPE_OCTETS) || ((*da_p)->type == FR_TYPE_STRING)) {
+			(*da_p)->flags.is_known_width = !fr_type_is_structural((*da_p)->type);
+			(*da_p)->flags.length = num;
+			return 0;
+		}
+
+		/*
+		 *	Sets and sequences can have a fixed number of elements.
+		 */
+		flags->min = flags->max = num;
+		return 0;
+	}
+
+	if ((end[0] != '.') || (end[1] != '.')) {
+		fr_strerror_printf("Invalid value in 'size=%s' - unexpected data after 'min'", value);
+		return -1;
+	}
+
+	flags->min = num;
+
+	/*
+	 *	size=1..
+	 *
+	 *	Sets the minimum, but not the maximum.
+	 */
+	p = end + 2;
+	if (!*p) return 0;
+
+check_max:
+	num = strtoul(p, &end, 10);
+	if (num == ULONG_MAX) goto invalid;
+
+	if (*end) {
+		fr_strerror_printf("Invalid value in 'size=%s' - unexpected data after 'max'", value);
+		return -1;
+	}
+
+	flags->max = num;
+
+	return 0;
+}
+
 static int dict_flag_max(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
@@ -349,7 +436,7 @@ static int dict_flag_max(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dic
 	char *end = NULL;
 
 	num = strtoul(value, &end, 10);
-	if (*end || !num) {
+	if (*end || !num || (num == ULONG_MAX)) {
 		fr_strerror_printf("Invalid value in 'max=%s'", value);
 		return -1;
 	}
@@ -408,6 +495,7 @@ static const fr_dict_flag_parser_t  der_flags[] = {
 	{ L("option"),		{ .func = dict_flag_option} },
 	{ L("sequence_of"),	{ .func = dict_flag_sequence_of, .needs_value = true } },
 	{ L("set_of"),		{ .func = dict_flag_set_of, .needs_value = true } },
+	{ L("size"),		{ .func = dict_flag_size, .needs_value=true } },
 };
 
 static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name)
