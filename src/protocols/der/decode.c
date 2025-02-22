@@ -818,8 +818,9 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	fr_pair_t	     *vp;
 	fr_dict_attr_t const *child  = NULL;
 	fr_dbuff_t	      our_in = FR_DBUFF(in);
+	fr_der_attr_flags_t const *flags = fr_der_attr_flags(parent);
 
-	fr_assert(fr_type_is_struct(parent->type) || fr_type_is_tlv(parent->type) || fr_type_is_group(parent->type));
+	fr_assert(fr_type_is_tlv(parent->type) || fr_type_is_group(parent->type));
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -838,13 +839,18 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	 *		value which is equal to its default value.
 	 */
 
+	if (flags->min && !fr_dbuff_remaining(&our_in)) {
+		fr_strerror_printf("Expected at last %d elements in %s, got 0", flags->min, parent->name);
+		return -1;
+	}
+
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
 		fr_strerror_const("Out of memory");
 		return -1;
 	}
 
-	if (unlikely(fr_der_flag_is_pair(parent))) {
+	if (unlikely(flags->is_pair)) {
 		fr_assert(fr_type_is_group(parent->type));
 
 		if (unlikely(fr_der_decode_oid_value_pair(vp, &vp->vp_group, &our_in, vp->da, decode_ctx) <= 0)) {
@@ -857,25 +863,26 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 		return fr_dbuff_set(in, &our_in);
 	}
 
-	if (unlikely(fr_der_flag_is_sequence_of(parent))) {
-		/*
-		 * 	This is a sequence-of, meaning there are restrictions on the types which can be present
-		 */
-
+	/*
+	 * 	This is a sequence-of, meaning there are restrictions on the types which can be present
+	 */
+	if (unlikely(flags->is_sequence_of)) {
 		bool restriction_types[FR_DER_TAG_MAX] = { };
 
-		if (fr_der_flag_sequence_of(parent) != FR_DER_TAG_CHOICE) {
-			restriction_types[fr_der_flag_sequence_of(parent)] = true;
+		if (flags->sequence_of != FR_DER_TAG_CHOICE) {
+			restriction_types[flags->sequence_of] = true;
 
 		} else {
 			/*
-			 *	If it is a seuqnec of choices, then we must construct the list of restriction_types.
+			 *	If it is a sequence of choices, then we must construct the list of restriction_types.
 			 *	This will be a list of the number of choices, starting at 0.
 			 */
 			fr_dict_attr_t const *choices = NULL;
 
 			if (fr_type_is_group(parent->type)) {
-				while ((choices = fr_dict_attr_iterate_children(fr_dict_attr_ref(parent), &choices))) {
+				fr_dict_attr_t const *ref = fr_dict_attr_ref(parent);
+
+				while ((choices = fr_dict_attr_iterate_children(ref, &choices))) {
 					restriction_types[choices->attr] = true;
 				}
 			} else {
@@ -904,7 +911,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 
 			}
 
-			if (unlikely(fr_der_flag_sequence_of(parent) == FR_DER_TAG_CHOICE)) {
+			if (unlikely(flags->sequence_of == FR_DER_TAG_CHOICE)) {
 				child = fr_dict_attr_child_by_num(parent, current_tag);
 				if (unlikely(!child)) {
 					fr_strerror_printf(
@@ -971,8 +978,9 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	fr_dbuff_marker_t     previous_marker;
 	uint8_t		      previous_tag = 0x00;
 	size_t		      previous_len = 0;
+	fr_der_attr_flags_t const *flags = fr_der_attr_flags(parent);
 
-	fr_assert(fr_type_is_struct(parent->type) || fr_type_is_tlv(parent->type) || fr_type_is_group(parent->type));
+	fr_assert(fr_type_is_tlv(parent->type) || fr_type_is_group(parent->type));
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -989,13 +997,18 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	 *		value which is equal to its default value.
 	 */
 
+	if (flags->min && !fr_dbuff_remaining(&our_in)) {
+		fr_strerror_printf("Expected at last %d elements in %s, got 0", flags->min, parent->name);
+		return -1;
+	}
+
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
 		fr_strerror_const("Out of memory");
 		return -1;
 	}
 
-	if (fr_der_flag_is_pair(parent)) {
+	if (flags->is_pair) {
 		fr_assert(fr_type_is_group(parent->type));
 
 		if (unlikely(fr_der_decode_oid_value_pair(vp, &vp->vp_group, &our_in, vp->da, decode_ctx) <= 0)) {
@@ -1008,11 +1021,11 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 		return fr_dbuff_set(in, &our_in);
 	}
 
-	if (fr_der_flag_is_set_of(parent)) {
+	if (flags->is_set_of) {
 		/*
 		 * 	This is a set-of, meaning there are restrictions on the types which can be present
 		 */
-		fr_der_tag_t restriction_type = fr_der_flag_set_of(parent);
+		fr_der_tag_t restriction_type = flags->set_of;
 
 		while (fr_dbuff_remaining(&our_in) > 0) {
 			fr_dbuff_marker_t current_value_marker;

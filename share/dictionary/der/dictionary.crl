@@ -3,7 +3,7 @@
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 
-DEFINE	distributionPoint				sequence
+DEFINE	distributionPoint				sequence size=1..
 BEGIN   distributionPoint
 DEFINE	distributionPointName				sequence  option=0
 BEGIN     distributionPointName

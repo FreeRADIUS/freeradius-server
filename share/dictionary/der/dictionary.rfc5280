@@ -30,7 +30,7 @@ END validity
 
 DEFINE	subject						sequence sequence_of=set
 BEGIN subject
-DEFINE	RelativeDistinguishedName			set
+DEFINE	RelativeDistinguishedName			set size=1..
 BEGIN RelativeDistinguishedName
 DEFINE	AttributeTypeandValue				sequence sequence_of=oid_and_value,ref=OID-Tree
 END RelativeDistinguishedName
@@ -42,7 +42,7 @@ DEFINE	algorithm					sequence sequence_of=oid_and_value,ref=OID-Tree
 DEFINE	subjectPublicKey				bitstring
 END subjectPublicKeyInfo
 
-DEFINE	extensions					x509_extensions ref=OID-Tree
+DEFINE	extensions					x509_extensions ref=OID-Tree,size=1..
 
 END tbsCertificate
 

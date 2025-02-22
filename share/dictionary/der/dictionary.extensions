@@ -72,7 +72,7 @@ MEMBER		decipherOnly				bit[1]
 MEMBER		unused_bits				bit[7]
 END 2.5.29.15
 
-ATTRIBUTE	subjectAltName				2.5.29.17	group ref=GeneralName,der_type=sequence,sequence_of=choice,is_oid_leaf
+ATTRIBUTE	subjectAltName				2.5.29.17	group ref=GeneralName,der_type=sequence,sequence_of=choice,is_oid_leaf,size=1..
 
 ATTRIBUTE	basicConstraints			2.5.29.19	sequence is_oid_leaf
 BEGIN 2.5.29.19
@@ -92,13 +92,13 @@ BEGIN 2.5.29.31
 $INCLUDE dictionary.crl
 END 2.5.29.31
 
-ATTRIBUTE	certificatePolicies			2.5.29.32	sequence        sequence_of=sequence,is_oid_leaf
+ATTRIBUTE	certificatePolicies			2.5.29.32	sequence        sequence_of=sequence,is_oid_leaf,size=1..
 BEGIN 2.5.29.32
 DEFINE	policyInformation				sequence
 BEGIN policyInformation
 DEFINE	policyIdentifier				oid
 
-DEFINE	policyQualifiers				sequence        sequence_of=sequence
+DEFINE	policyQualifiers				sequence        sequence_of=sequence,size=1..
 BEGIN policyQualifiers
 DEFINE	policyQualifierInfo				sequence	sequence_of=oid_and_value,ref=OID-Tree
 END policyQualifiers
@@ -106,7 +106,7 @@ END policyQualifiers
 END policyInformation
 END 2.5.29.32
 
-ATTRIBUTE	policyMappings				2.5.29.33	sequence        is_oid_leaf
+ATTRIBUTE	policyMappings				2.5.29.33	sequence        is_oid_leaf,size=1..
 BEGIN 2.5.29.33
 DEFINE	issuerDomainPolicy				oid
 DEFINE	subjectDomainPolicy				oid
@@ -125,7 +125,7 @@ DEFINE	requireExplicitPolicy				octetstring option=0
 DEFINE	inhibitPolicyMapping				octetstring option=1
 END 2.5.29.36
 
-ATTRIBUTE	extKeyUsage				2.5.29.37	sequence        sequence_of=oid,is_oid_leaf
+ATTRIBUTE	extKeyUsage				2.5.29.37	sequence        sequence_of=oid,size=1..,is_oid_leaf
 #DEFINE extKeyUsageSyntax        sequence
 BEGIN 2.5.29.37
 DEFINE	keyPurposeId					oid
