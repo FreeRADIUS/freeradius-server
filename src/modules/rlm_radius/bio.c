@@ -285,28 +285,6 @@ static void CC_HINT(nonnull) status_check_alloc(bio_handle_t *h)
 	 *	creating them.
 	 */
 	while ((map = map_list_next(&inst->status_check_map, map))) {
-		/*
-		 *	Skip things which aren't attributes.
-		 */
-		if (!tmpl_is_attr(map->lhs)) continue;
-
-		/*
-		 *	Ignore internal attributes.
-		 */
-		if (tmpl_attr_tail_da(map->lhs)->flags.internal) continue;
-
-		/*
-		 *	Ignore signalling attributes.  They shouldn't exist.
-		 */
-		if ((tmpl_attr_tail_da(map->lhs) == attr_proxy_state) ||
-		    (tmpl_attr_tail_da(map->lhs) == attr_message_authenticator)) continue;
-
-		/*
-		 *	Allow passwords only in Access-Request packets.
-		 */
-		if ((inst->status_check != FR_RADIUS_CODE_ACCESS_REQUEST) &&
-		    (tmpl_attr_tail_da(map->lhs) == attr_user_password)) continue;
-
 		(void) map_to_request(request, map, map_to_vp, NULL);
 	}
 

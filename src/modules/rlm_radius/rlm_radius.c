@@ -406,6 +406,58 @@ static int status_check_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED voi
 	return 0;
 }
 
+static int status_check_verify(map_t *map, void *ctx)
+{
+	rlm_radius_t const *inst = talloc_get_type_abort_const(ctx, rlm_radius_t);
+	fr_dict_attr_t const *da;
+
+	fr_assert(tmpl_is_attr(map->lhs));
+
+	if (unlang_fixup_update(map, NULL) < 0) return -1;
+
+	if (!map->rhs) return 0;
+
+	if (tmpl_is_xlat(map->rhs)) {
+		if (xlat_impure_func(tmpl_xlat(map->rhs))) {
+		invalid_xlat:
+			cf_log_err(map->ci, "Cannot assign dynamic values here");
+			return -1;
+		}
+	} else if (!tmpl_is_data(map->rhs)) {
+		goto invalid_xlat;
+	}
+
+	da = tmpl_attr_tail_da(map->lhs);
+
+	/*
+	 *	Ignore internal attributes.
+	 */
+	if (da->flags.internal) {
+		cf_log_err(map->ci, "Cannot use internal attributes");
+		return -1;
+	}
+
+	/*
+	 *	Ignore signalling attributes.  They shouldn't exist.
+	 */
+	if ((da == attr_proxy_state) ||
+	    (da == attr_message_authenticator)) {
+	cannot_use:
+		cf_log_err(map->ci, "Cannot use %s here.", da->name);
+		return -1;
+	}
+
+	/*
+	 *	Allow passwords only in Access-Request packets.
+	 */
+	if ((inst->status_check != FR_RADIUS_CODE_ACCESS_REQUEST) &&
+	    ((da == attr_user_password) || (da == attr_chap_password) || (da == attr_eap_message))) {
+		goto cannot_use;
+	}
+
+	return 0;
+}
+
 /** Allow the admin to set packet contents for Status-Server ping checks
  *
  * @param[in] ctx	to allocate data in (instance of proto_radius).
@@ -417,7 +469,7 @@ static int status_check_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED voi
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+static int status_check_update_parse(TALLOC_CTX *ctx, void *out, void *parent,
 				     CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	int			rcode;
@@ -442,13 +494,17 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 		tmpl_rules_t	parse_rules = {
 			.attr = {
 				.dict_def = dict_radius,
+				.namespace = fr_dict_root(dict_radius),
+				.list_def = request_attr_request,
+				.list_presence = TMPL_ATTR_LIST_FORBID,
+				.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
 			}
 		};
 
-		rcode = map_afrom_cs(ctx, head, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
+		rcode = map_afrom_cs(ctx, head, cs, &parse_rules, &parse_rules, status_check_verify, parent, 128);
 		if (rcode < 0) return -1; /* message already printed */
 		if (map_list_empty(head)) {
-			cf_log_err(cs, "'update' sections cannot be empty");
+			cf_log_err(cs, "Invalid configuration - status check packets cannot be empty");
 			return -1;
 		}
 	}
