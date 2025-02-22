@@ -74,6 +74,8 @@ END 2.5.29.15
 
 ATTRIBUTE	subjectAltName				2.5.29.17	group ref=GeneralName,der_type=sequence,sequence_of=choice,is_oid_leaf,size=1..
 
+ATTRIBUTE	issuerAltName				2.5.29.18	group ref=GeneralName,der_type=sequence,sequence_of=choice,is_oid_leaf,size=1..
+
 ATTRIBUTE	basicConstraints			2.5.29.19	sequence is_oid_leaf
 BEGIN 2.5.29.19
 DEFINE	cA						boolean has_default
