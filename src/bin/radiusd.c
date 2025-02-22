@@ -80,8 +80,9 @@ RCSID("$Id$")
 #  include <freeradius-devel/tls/version.h>
 #endif
 
-char const *radiusd_version = RADIUSD_VERSION_BUILD("FreeRADIUS");
-static pid_t radius_pid;
+char const	*radiusd_version = RADIUSD_VERSION_BUILD("FreeRADIUS");
+static pid_t	radius_pid;
+char const	*program = NULL;
 
 /*
  *  Configuration items.
@@ -90,7 +91,7 @@ static pid_t radius_pid;
 /*
  *	Static functions.
  */
-static void usage(main_config_t const *config, int status);
+static void usage(int status);
 
 static void sig_fatal (int);
 #ifdef SIGHUP
@@ -193,7 +194,7 @@ static void fr_exit_after(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	if (fr_time_eq(now, fr_time_wrap(0))) {
 		if (fr_event_timer_in(el, el, &ev, exit_after, fr_exit_after, uctx) < 0) {
-			PERROR("Failed inserting exit event");
+			PERROR("%s: Failed inserting exit event", program);
 		}
 		return;
 	}
@@ -228,7 +229,6 @@ int main(int argc, char *argv[])
 	bool			display_version = false;
 	bool			radmin = false;
 	int			from_child[2] = {-1, -1};
-	char const		*program;
 	fr_schedule_t		*sc = NULL;
 	int			ret = EXIT_SUCCESS;
 
@@ -257,6 +257,16 @@ int main(int argc, char *argv[])
 	(void) fr_talloc_fault_setup();
 
 	/*
+	 *	Set some default values
+	 */
+	program = strrchr(argv[0], FR_DIR_SEP);
+	if (!program) {
+		program = argv[0];
+	} else {
+		program++;
+	}
+
+	/*
 	 * 	We probably don't want to free the talloc global_ctx context
 	 * 	directly, so we'll allocate a new context beneath it, and
 	 *	free that before any leak reports.
@@ -276,7 +286,7 @@ int main(int argc, char *argv[])
 		env = getenv("FR_GLOBAL_POOL");
 		if (env) {
 			if (fr_size_from_str(&pool_size, &FR_SBUFF_IN(env, strlen(env))) < 0) {
-				fr_perror("Invalid pool size string \"%s\"", env);
+				fr_perror("%s: Invalid pool size string \"%s\"", program, env);
 				EXIT_WITH_FAILURE;
 			}
 
@@ -309,33 +319,10 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	/*
-	 *	Set some default values
-	 */
-	program = strrchr(argv[0], FR_DIR_SEP);
-	if (!program) {
-		program = argv[0];
-	} else {
-		program++;
-	}
 	main_config_name_set_default(config, program, false);
 
 	config->daemonize = true;
 	config->spawn_workers = true;
-
-#ifdef OSFC2
-	set_auth_parameters(argc, argv);
-#endif
-
-#ifdef WIN32
-	{
-		WSADATA wsaData;
-		if (WSAStartup(MAKEWORD(2, 0), &wsaData)) {
-			fprintf(stderr, "%s: Unable to initialize socket library.\n", config->name);
-			EXIT_WITH_FAILURE;
-		}
-	}
-#endif
 
 	fr_debug_lvl = 0;
 	fr_time_start();
@@ -353,7 +340,7 @@ int main(int argc, char *argv[])
 	 *  Set the panic action and enable other debugging facilities
 	 */
 	if (fr_fault_setup(global_ctx, getenv("PANIC_ACTION"), argv[0]) < 0) {
-		fr_perror("Failed installing fault handlers... continuing");
+		fr_perror("%s: Failed installing fault handlers... continuing", program);
 	}
 
 	/*  Process the options.  */
@@ -384,7 +371,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'h':
-			usage(config, EXIT_SUCCESS);
+			usage(EXIT_SUCCESS);
 			break;
 
 		case 'l':
@@ -396,7 +383,7 @@ int main(int argc, char *argv[])
 			default_log.fd = open(config->log_file, O_WRONLY | O_APPEND | O_CREAT, 0640);
 			if (default_log.fd < 0) {
 				fprintf(stderr, "%s: Failed to open log file %s: %s\n",
-					config->name, config->log_file, fr_syserror(errno));
+					program, config->log_file, fr_syserror(errno));
 				EXIT_WITH_FAILURE;
 			}
 			break;
@@ -431,7 +418,7 @@ int main(int argc, char *argv[])
 		case 'S':	/* Migration support */
 			if (main_config_parse_option(optarg) < 0) {
 				fprintf(stderr, "%s: Unknown configuration option '%s'\n",
-					config->name, optarg);
+					program, optarg);
 				EXIT_WITH_FAILURE;
 			}
 			break;
@@ -465,7 +452,7 @@ int main(int argc, char *argv[])
 			break;
 
 		default:
-			usage(config, EXIT_FAILURE);
+			usage(EXIT_FAILURE);
 			break;
 	}
 
@@ -491,7 +478,7 @@ int main(int argc, char *argv[])
 	 *  Mismatch between the binary and the libraries it depends on.
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
-		fr_perror("%s", config->name);
+		fr_perror("%s", program);
 		EXIT_WITH_FAILURE;
 	}
 
@@ -521,7 +508,7 @@ int main(int argc, char *argv[])
 	 *  So we can't run with a null context and threads.
 	 */
 	if (talloc_config_set(config) != 0) {
-		fr_perror("%s", config->name);
+		fr_perror("%s", program);
 		EXIT_WITH_FAILURE;
 	}
 
@@ -533,7 +520,7 @@ int main(int argc, char *argv[])
 		default_log.dst = L_DST_STDOUT;
 		default_log.fd = STDOUT_FILENO;
 
-		INFO("%s - %s", config->name, radiusd_version);
+		INFO("%s - %s", program, radiusd_version);
 		dependency_version_print();
 		EXIT_WITH_SUCCESS;
 	}
@@ -613,7 +600,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case -1:	/* Permissions error - fail open */
-			PWARN("%s - Process concurrency checks disabled", program);
+			PWARN("%s: Process concurrency checks disabled", program);
 			break;
 
 		case 1:
@@ -629,7 +616,7 @@ int main(int argc, char *argv[])
 	 */
 	if (config->panic_action && !getenv("PANIC_ACTION") &&
 	    (fr_fault_setup(global_ctx, config->panic_action, argv[0]) < 0)) {
-		fr_perror("radiusd - Failed configuring panic action: %s", config->name);
+		fr_perror("%s: Failed configuring panic action", program);
 		EXIT_WITH_FAILURE;
 	}
 
@@ -663,7 +650,7 @@ int main(int argc, char *argv[])
 	 *  Call this again now we've loaded the configuration. Yes I know...
 	 */
 	if (talloc_config_set(config) < 0) {
-		fr_perror("%s", config->name);
+		fr_perror("%s", program);
 		EXIT_WITH_FAILURE;
 	}
 
@@ -788,7 +775,7 @@ int main(int argc, char *argv[])
 		 */
 		} else if (pid == 0) {
 			if (main_config_exclusive_proc_child(main_config) < 0) {
-				PWARN("%s - Failed incrementing exclusive proc semaphore in child", program);
+				PWARN("%s: Failed incrementing exclusive proc semaphore in child", program);
 			}
 		}
 
@@ -1159,7 +1146,7 @@ cleanup:
 	 */
 	if (talloc_free(global_ctx) < 0) {
 #ifndef NDEBUG
-		fr_perror("radiusd");
+		fr_perror("program");
 		ret = EXIT_FAILURE;
 #endif
 	}
@@ -1189,11 +1176,11 @@ cleanup:
 /*
  *  Display the syntax for starting this program.
  */
-static NEVER_RETURNS void usage(main_config_t const *config, int status)
+static NEVER_RETURNS void usage(int status)
 {
 	FILE *output = status ? stderr : stdout;
 
-	fprintf(output, "Usage: %s [options]\n", config->name);
+	fprintf(output, "Usage: %s [options]\n", program);
 	fprintf(output, "Options:\n");
 	fprintf(output, "  -C            Check configuration and exit.\n");
 	fprintf(stderr, "  -d <raddb>    Set configuration directory (defaults to " RADDBDIR ").\n");
@@ -1207,8 +1194,8 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
 #ifndef NDEBUG
 	fprintf(output, "  -L <size>     When running in memory debug mode, set a hard limit on talloced memory\n");
 #endif
-	fprintf(output, "  -n <name>     Read raddb/name.conf instead of raddb/radiusd.conf.\n");
-	fprintf(output, "  -m            Allow multiple processes reading the same radiusd.conf to exist simultaneously.\n");
+	fprintf(output, "  -n <name>     Read raddb/name.conf instead of raddb/%s.conf.\n", program);
+	fprintf(output, "  -m            Allow multiple processes reading the same %s.conf to exist simultaneously.\n", program);
 #ifndef NDEBUG
 	fprintf(output, "  -M            Enable talloc memory debugging, and issue a memory report when the server terminates\n");
 #endif
