@@ -19,7 +19,7 @@ match Test-Seq-Of = { Test-First-Integer = 1, Test-First-Integer = 2 }
 proto-dictionary-root Test-Seq-Of
 
 decode-pair 30 06 02 01 01 01 01 FF
-match Attribute Test-Seq-Of is a sequence-of, but received tag 1
+match Attribute Test-Seq-Of is a sequence-of, but received tag boolean
 
 proto-dictionary-root Test-Set-Of
 
