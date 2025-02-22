@@ -319,15 +319,6 @@ static int dict_flag_is_oid_leaf(fr_dict_attr_t **da_p, UNUSED char const *value
 	return 0;
 }
 
-static int dict_flag_is_choice(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
-{
-	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
-
-	flags->is_choice = true;
-
-	return 0;
-}
-
 static int dict_flag_max(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
@@ -388,7 +379,6 @@ static const fr_dict_flag_parser_t  der_flags[] = {
 //	{ L("class"),		{ .func = dict_flag_class } },
 	{ L("der_type"),	{ .func = dict_flag_der_type, .needs_value = true } },
 	{ L("has_default"),	{ .func = dict_flag_has_default } },
-	{ L("is_choice"),	{ .func = dict_flag_is_choice } },
 	{ L("is_extensions"),	{ .func = dict_flag_is_extensions } },
 	{ L("is_oid_leaf"),	{ .func = dict_flag_is_oid_leaf } },
 	{ L("max"),		{ .func = dict_flag_max, .needs_value = true } },

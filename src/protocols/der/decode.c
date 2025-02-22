@@ -2144,12 +2144,12 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	if (unlikely(fr_der_flag_is_choice(parent))) {
 		slen = fr_der_decode_choice(ctx, out, parent, &our_in, decode_ctx);
 
-		if (unlikely(slen < 0)) return slen;
+		if (unlikely(slen <= 0)) return slen;
 
 		return fr_dbuff_set(in, &our_in);
 	}
 
-	if (unlikely(fr_der_decode_hdr(parent, &our_in, &tag, &len) < 0)) {
+	if (unlikely(fr_der_decode_hdr(parent, &our_in, &tag, &len) <= 0)) {
 		fr_strerror_const_push("Failed decoding header");
 		return -1;
 	}
