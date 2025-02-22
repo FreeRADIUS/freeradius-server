@@ -589,7 +589,10 @@ static ssize_t fr_der_decode_oid_to_str(uint64_t subidentifier, void *uctx, bool
 		vp = fr_pair_afrom_da(decode_ctx->ctx, decode_ctx->parent_da);
 		if (unlikely(!vp)) goto oom;
 
-		fr_pair_value_bstrndup(vp, decode_ctx->oid_buff, fr_sbuff_used(&sb), false);
+		if (fr_pair_value_bstrndup(vp, decode_ctx->oid_buff, fr_sbuff_used(&sb), false) < 0) {
+			talloc_free(vp);
+			goto oom;
+		}
 
 		fr_pair_append(decode_ctx->parent_list, vp);
 
