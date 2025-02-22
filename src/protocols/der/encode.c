@@ -584,10 +584,7 @@ static ssize_t fr_der_encode_sequence(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, f
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
 
-	if (!fr_type_is_group(vp->vp_type) && !fr_type_is_struct(vp->vp_type) && !fr_type_is_tlv(vp->vp_type)) {
-		fr_strerror_printf("Invalid type %s for sequence", fr_type_to_str(vp->vp_type));
-		return -1;
-	}
+	fr_assert(fr_type_is_group(vp->vp_type) || fr_type_is_struct(vp->vp_type) || fr_type_is_tlv(vp->vp_type));
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -695,10 +692,7 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
 
-	if (!fr_type_is_group(vp->vp_type) && !fr_type_is_struct(vp->vp_type) && !fr_type_is_tlv(vp->vp_type)) {
-		fr_strerror_printf("Unknown type %" PRId32, vp->vp_type);
-		return -1;
-	}
+	fr_assert(fr_type_is_group(vp->vp_type) || fr_type_is_struct(vp->vp_type) || fr_type_is_tlv(vp->vp_type));
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -1402,10 +1396,7 @@ static ssize_t fr_der_encode_oid_value_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cur
 	vp = fr_dcursor_current(&parent_cursor);
 	PAIR_VERIFY(vp);
 
-	if (unlikely(!fr_type_is_group(vp->vp_type))) {
-		fr_strerror_printf("Pair %s is not a group", vp->da->name);
-		return -1;
-	}
+	fr_assert(fr_type_is_group(vp->vp_type));
 
 	/*
 	 *	A very common pattern in DER encoding is ro have a sequence of set containing two things: an OID and a

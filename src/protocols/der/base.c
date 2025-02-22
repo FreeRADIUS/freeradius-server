@@ -271,6 +271,11 @@ static int dict_flag_sequence_of(fr_dict_attr_t **da_p, char const *value, UNUSE
 		return -1;
 	}
 
+	if (flags->der_type != FR_DER_TAG_SEQUENCE) {
+		fr_strerror_printf("Cannot use 'sequence_of=...' for DER type '%s'", fr_der_tag_to_str(flags->der_type));
+		return -1;
+	}
+
 	if (strcmp(value, "oid_and_value") == 0) {
 		(*da_p)->type = FR_TYPE_GROUP;
 		flags->is_pair = true;
@@ -296,6 +301,11 @@ static int dict_flag_set_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 
 	if (flags->is_sequence_of) {
 		fr_strerror_const("Cannot be both 'sequence_of=...' and 'set_of=...'");
+		return -1;
+	}
+
+	if (flags->der_type != FR_DER_TAG_SET) {
+		fr_strerror_printf("Cannot use 'set_of=...' for DER type '%s'", fr_der_tag_to_str(flags->der_type));
 		return -1;
 	}
 

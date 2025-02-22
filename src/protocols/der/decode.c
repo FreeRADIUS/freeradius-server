@@ -172,11 +172,7 @@ static ssize_t fr_der_decode_boolean(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 
 	size_t len = fr_dbuff_remaining(&our_in);
 
-	if (!fr_type_is_bool(parent->type)) {
-		fr_strerror_printf("Boolean found in non-boolean attribute %s of type %s", parent->name,
-				   fr_type_to_str(parent->type));
-		return -1;
-	}
+	fr_assert(fr_type_is_bool(parent->type));
 
 	/*
 	 * 	ISO/IEC 8825-1:2021
@@ -318,11 +314,7 @@ static ssize_t fr_der_decode_bitstring(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 	ssize_t data_len = 0, index = 0;
 	size_t	len = fr_dbuff_remaining(&our_in);
 
-	if (!fr_type_is_octets(parent->type) && !fr_type_is_struct(parent->type)) {
-		fr_strerror_printf("Bitstring found in non-octets attribute %s of type %s", parent->name,
-				   fr_type_to_str(parent->type));
-		return -1;
-	}
+	fr_assert(fr_type_is_octets(parent->type) || fr_type_is_struct(parent->type));
 
 	/*
 	 *	Now we know that the parent is an octets attribute, we can decode the bitstring
@@ -464,11 +456,7 @@ static ssize_t fr_der_decode_octetstring(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 
 	size_t len = fr_dbuff_remaining(&our_in);
 
-	if (!fr_type_is_octets(parent->type)) {
-		fr_strerror_printf("Octetstring found in non-octets attribute %s of type %s", parent->name,
-				   fr_type_to_str(parent->type));
-		return -1;
-	}
+	fr_assert(fr_type_is_octets(parent->type));
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -591,24 +579,17 @@ static ssize_t fr_der_decode_oid_to_str(uint64_t subidentifier, void *uctx, bool
 
 	if (is_last) {
 		/*
-		 *	If this is the last subidentifier, we need to terminate the string,
-		 * 	create a vp with the oid string, and add it to the parent list
+		 *	If this is the last subidentifier, we need to create a vp with the oid string, and add
+		 *	it to the parent list
 		 */
 		fr_pair_t *vp;
+
+		fr_assert(fr_type_is_string(decode_ctx->parent_da->type));
 
 		vp = fr_pair_afrom_da(decode_ctx->ctx, decode_ctx->parent_da);
 		if (unlikely(!vp)) goto oom;
 
-		if (unlikely(!fr_type_is_string(vp->da->type))) {
-			fr_strerror_printf("OID found in non-string attribute %s of type %s", vp->da->name,
-					   fr_type_to_str(vp->da->type));
-			talloc_free(vp);
-			return -1;
-		}
-
-		fr_sbuff_terminate(&sb);
-
-		fr_pair_value_strdup(vp, decode_ctx->oid_buff, false);
+		fr_pair_value_bstrndup(vp, decode_ctx->oid_buff, fr_sbuff_used(&sb), false);
 
 		fr_pair_append(decode_ctx->parent_list, vp);
 
@@ -820,9 +801,14 @@ static ssize_t fr_der_decode_oid(UNUSED fr_pair_list_t *out, fr_dbuff_t *in, fr_
 	return fr_dbuff_set(in, &our_in);
 }
 
+
 static ssize_t fr_der_decode_utf8_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 					 fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx)
 {
+	/*
+	 *	@todo - check for valid UTF8 string.
+	 */
+
 	return fr_der_decode_string(ctx, out, parent, in, NULL, decode_ctx);
 }
 
@@ -833,11 +819,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	fr_dict_attr_t const *child  = NULL;
 	fr_dbuff_t	      our_in = FR_DBUFF(in);
 
-	if (!fr_type_is_struct(parent->type) && !fr_type_is_tlv(parent->type) && !fr_type_is_group(parent->type)) {
-		fr_strerror_printf("Sequence found in incompatible attribute %s of type %s", parent->name,
-				   fr_type_to_str(parent->type));
-		return -1;
-	}
+	fr_assert(fr_type_is_struct(parent->type) || fr_type_is_tlv(parent->type) || fr_type_is_group(parent->type));
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -891,13 +873,6 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 			 *	This will be a list of the number of choices, starting at 0.
 			 */
 			fr_dict_attr_t const *choices = NULL;
-
-			if (unlikely(!fr_type_is_structural(parent->type))) {
-				fr_strerror_printf("Sequence-of choice found in incompatible attribute %s of type %s",
-						   parent->name, fr_type_to_str(parent->type));
-				talloc_free(vp);
-				return -1;
-			}
 
 			if (fr_type_is_group(parent->type)) {
 				while ((choices = fr_dict_attr_iterate_children(fr_dict_attr_ref(parent), &choices))) {
@@ -984,11 +959,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	uint8_t		      previous_tag = 0x00;
 	size_t		      previous_len = 0;
 
-	if (!fr_type_is_struct(parent->type) && !fr_type_is_tlv(parent->type) && !fr_type_is_group(parent->type)) {
-		fr_strerror_printf("Set found in incompatible attribute %s of type %s", parent->name,
-				   fr_type_to_str(parent->type));
-		return -1;
-	}
+	fr_assert(fr_type_is_struct(parent->type) || fr_type_is_tlv(parent->type) || fr_type_is_group(parent->type));
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -1196,9 +1167,19 @@ static ssize_t fr_der_decode_t61_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 
 	return fr_der_decode_string(ctx, out, parent, in, allowed_chars, decode_ctx);
 }
+
+/*
+ *	128 characters exactly.  Identical to the first 128 characters of the ASCII alphabet.
+ */
 static ssize_t fr_der_decode_ia5_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 					fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
+#if 0
+	static bool const allowed_chars[UINT8_MAX + 1] = {
+		[0x00 ... 0x7f] = true,
+	};
+#endif
+
 	return fr_der_decode_string(ctx, out, parent, in, NULL, decode_ctx);
 }
 
@@ -1211,11 +1192,7 @@ static ssize_t fr_der_decode_utc_time(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	char	  *p;
 	struct tm  tm = {};
 
-	if (!fr_type_is_date(parent->type)) {
-		fr_strerror_printf("UTC time found in non-date attribute %s of type %s", parent->name,
-				   fr_type_to_str(parent->type));
-		return -1;
-	}
+	fr_assert(fr_type_is_date(parent->type));
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -1294,11 +1271,7 @@ static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *o
 
 	size_t len = fr_dbuff_remaining(&our_in);
 
-	if (!fr_type_is_date(parent->type)) {
-		fr_strerror_printf("Generalized time found in non-date attribute %s of type %s", parent->name,
-				   fr_type_to_str(parent->type));
-		return -1;
-	}
+	fr_assert(fr_type_is_date(parent->type));
 
 	if (len < DER_GENERALIZED_TIME_LEN_MIN) {
 		fr_strerror_const("Insufficient data for generalized time or incorrect length");
@@ -1628,11 +1601,7 @@ static ssize_t fr_der_decode_choice(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	uint8_t		   tag_byte;
 	uint8_t		  *current_marker = fr_dbuff_current(&our_in);
 
-	if (!fr_type_is_struct(parent->type) && !fr_type_is_tlv(parent->type) && !fr_type_is_group(parent->type)) {
-		fr_strerror_printf("Sequence found in incompatible attribute %s of type %s", parent->name,
-				   fr_type_to_str(parent->type));
-		return -1;
-	}
+	fr_assert(fr_type_is_struct(parent->type) || fr_type_is_tlv(parent->type) || fr_type_is_group(parent->type));
 
 	FR_DBUFF_OUT_RETURN(&tag_byte, &our_in);
 
@@ -1694,11 +1663,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 	FR_PROTO_TRACE("Attribute %s", parent->name);
 	FR_PROTO_HEX_DUMP(fr_dbuff_current(in), fr_dbuff_remaining(in), "Top of extension decoding");
 
-	if (unlikely(!fr_type_is_group(parent->type))) {
-		fr_strerror_printf("Pair found in non-group attribute %s of type %s", parent->name,
-				   fr_type_to_str(parent->type));
-		return -1;
-	}
+	fr_assert(fr_type_is_group(parent->type));
 
 	/*
 	 *	RFC 5280 Section 4.2
@@ -1903,7 +1868,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 			}
 
 		} else if (unlikely((slen = fr_der_decode_pair_dbuff(uctx.ctx, uctx.parent_list, uctx.parent_da, &sub_in,
-								   decode_ctx)) < 0)) {
+								     decode_ctx)) < 0)) {
 			fr_strerror_const_push("Failed decoding extension value");
 			goto error;
 		}
@@ -1950,14 +1915,11 @@ static ssize_t fr_der_decode_oid_value_pair(TALLOC_CTX *ctx, fr_pair_list_t *out
 	ssize_t	 slen;
 
 	FR_PROTO_TRACE("Decoding OID value pair");
-	if (unlikely(!fr_type_is_group(parent->type))) {
-		fr_strerror_printf("Pair found in non-group attribute %s of type %s", parent->name,
-				   fr_type_to_str(parent->type));
-		return -1;
-	}
+
+	fr_assert(fr_type_is_group(parent->type));
 
 	/*
-	 *	A very common pattern in DER encoding is ro have a sequence of set containing two things: an OID and a
+	 *	A very common pattern in DER encoding is to have a sequence of set containing two things: an OID and a
 	 *	value, where the OID is used to determine how to decode the value.
 	 *	We will be decoding the OID first and then try to find the attribute associated with that OID to then
 	 *	decode the value. If no attribute is found, one will be created and the value will be stored as raw
@@ -2038,11 +2000,7 @@ static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 
 	size_t    pos, len = fr_dbuff_remaining(&our_in);
 
-	if (!fr_type_is_string(parent->type)) {
-		fr_strerror_printf("String found in non-string attribute %s of type %s", parent->name,
-				   fr_type_to_str(parent->type));
-		return -1;
-	}
+	fr_assert(fr_type_is_string(parent->type));
 
 	/*
 	 *	ISO/IEC 8825-1:2021
