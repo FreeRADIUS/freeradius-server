@@ -495,7 +495,7 @@ static ssize_t fr_der_decode_octetstring(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 		goto oom;
 	}
 
-	fr_dbuff_out_memcpy(data, &our_in, len);
+	(void) fr_dbuff_out_memcpy(data, &our_in, len); /* this can never fail */
 
 	fr_pair_append(out, vp);
 
@@ -1450,10 +1450,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 	fr_der_tag_class_t	 tag_class;
 	fr_der_tag_constructed_t constructed;
 
-	if (unlikely(fr_dbuff_out(&tag_byte, &our_in) < 0)) {
-		fr_strerror_const("Insufficient data for tag field");
-		return -1;
-	}
+	FR_DBUFF_OUT_RETURN(&tag_byte, &our_in);
 
 	/*
 	 *	Decode the tag flags
@@ -1530,10 +1527,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		}
 	}
 
-	if (unlikely(fr_dbuff_out(&len_byte, &our_in) < 0)) {
-		fr_strerror_const("Missing length field");
-		return -1;
-	}
+	FR_DBUFF_OUT_RETURN(&len_byte, &our_in);
 
 	/*
 	 *	Check if the length is a multi-byte length field
@@ -1553,10 +1547,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 			}
 
 			while (len_len--) {
-				if (unlikely(fr_dbuff_out(&len_byte, &our_in) < 0)) {
-					fr_strerror_const("Insufficient data to satisfy multi-byte length field");
-					return -1;
-				}
+				FR_DBUFF_OUT_RETURN(&len_byte, &our_in);
 				*len = (*len << 8) | len_byte;
 			}
 		}
@@ -2027,7 +2018,7 @@ static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 		goto oom;
 	}
 
-	fr_dbuff_out_memcpy((uint8_t *)str, &our_in, len);
+	(void) fr_dbuff_out_memcpy((uint8_t *)str, &our_in, len); /* this can never fail */
 
 	if (allowed_chars && len) {
 		fr_sbuff_t sbuff;
