@@ -337,6 +337,16 @@ static int dict_flag_is_oid_leaf(fr_dict_attr_t **da_p, UNUSED char const *value
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 
+	/*
+	 *	is_oid_leaf is perhaps better as a property of the _parent_ sequence.  It ensures that we only
+	 *	walk through the sequences children once.
+	 */
+	if (fr_der_flag_der_type((*da_p)->parent) != FR_DER_TAG_SEQUENCE) {
+		fr_strerror_printf("Cannot set 'is_oid_leaf' for parent %s of DER type %s",
+				   (*da_p)->parent->name, fr_der_tag_to_str(fr_der_flag_der_type((*da_p)->parent)));
+		return -1;
+	}
+
 	flags->is_oid_leaf = true;
 
 	return 0;
