@@ -857,12 +857,17 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 		p = cf_section_name2(cs);
 		if (!p) goto do_children;
 
+		if (our_lhs_rules.attr.list_presence == TMPL_ATTR_LIST_FORBID) {
+			cf_log_err(ci, "Invalid \"update\" section - list references are not allowed here");
+			return -1;
+		}
+
 		MEM(tmp_ctx = talloc_init_const("tmp"));
 
 		slen = tmpl_request_ref_list_afrom_substr(ctx, NULL, &our_lhs_rules.attr.request_def,
 							  &FR_SBUFF_IN(p, strlen(p)));
 		if (slen < 0) {
-			cf_log_err(ci, "Default request specified in mapping section is invalid");
+			cf_log_err(ci, "Invalid reference - %s", fr_strerror());
 			talloc_free(tmp_ctx);
 			return -1;
 		}
@@ -870,7 +875,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 
 		slen = tmpl_attr_list_from_substr(&our_lhs_rules.attr.list_def, &FR_SBUFF_IN(p, strlen(p)));
 		if (slen == 0) {
-			cf_log_err(ci, "Default list \"%s\" specified in mapping section is invalid", p);
+			cf_log_err(ci, "Unknown list reference \"%s\"", p);
 			talloc_free(tmp_ctx);
 			return -1;
 		}
