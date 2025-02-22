@@ -83,34 +83,6 @@ static const bool *fr_type_to_der_tags[FR_DER_TAG_MAX] = {
 		[FR_DER_TAG_INTEGER] = true,
 		[FR_DER_TAG_NULL] = true,
 	},
-	[FR_TYPE_UINT8] = (bool [FR_DER_TAG_MAX]) {
-		[FR_DER_TAG_INTEGER] = true,
-		[FR_DER_TAG_ENUMERATED] = true,
-	},
-	[FR_TYPE_UINT16] = (bool [FR_DER_TAG_MAX]) {
-		[FR_DER_TAG_INTEGER] = true,
-		[FR_DER_TAG_ENUMERATED] = true,
-	},
-	[FR_TYPE_UINT32] = (bool [FR_DER_TAG_MAX]) {
-		[FR_DER_TAG_INTEGER] = true,
-		[FR_DER_TAG_ENUMERATED] = true,
-	},
-	[FR_TYPE_UINT64] = (bool [FR_DER_TAG_MAX]) {
-		[FR_DER_TAG_INTEGER] = true,
-		[FR_DER_TAG_ENUMERATED] = true,
-	},
-	[FR_TYPE_INT8] = (bool [FR_DER_TAG_MAX]) {
-		[FR_DER_TAG_INTEGER] = true,
-		[FR_DER_TAG_ENUMERATED] = true,
-	},
-	[FR_TYPE_INT16] = (bool [FR_DER_TAG_MAX]) {
-		[FR_DER_TAG_INTEGER] = true,
-		[FR_DER_TAG_ENUMERATED] = true,
-	},
-	[FR_TYPE_INT32] = (bool [FR_DER_TAG_MAX]) {
-		[FR_DER_TAG_INTEGER] = true,
-		[FR_DER_TAG_ENUMERATED] = true,
-	},
 	[FR_TYPE_INT64] = (bool [FR_DER_TAG_MAX]) {
 		[FR_DER_TAG_INTEGER] = true,
 		[FR_DER_TAG_ENUMERATED] = true,
@@ -156,6 +128,8 @@ static const bool *fr_type_to_der_tags[FR_DER_TAG_MAX] = {
  */
 bool fr_type_to_der_tag_valid(fr_type_t type, fr_der_tag_t tag)
 {
+	if (!fr_type_to_der_tags[type]) return false;
+
 	return fr_type_to_der_tags[type][tag];
 }
 
