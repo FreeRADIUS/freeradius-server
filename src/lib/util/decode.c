@@ -66,17 +66,17 @@ ssize_t fr_pair_array_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict
 	return data_len;
 }
 
-/** Create a "raw" pair from the network data
+/** Create a "raw" pair from malformed network data
  *
  * @param[in] ctx context	to alloc new attributes in.
  * @param[out] out		Where to write the decoded #fr_pair_t
- * @param[in] parent		dictionary entry
+ * @param[in] da		dictionary entry which it should be
  * @param[in] data		to parse.
  * @param[in] data_len		of data to parse.
  *	<0 on error - decode error, or OOM
  *	data_len on success
  */
-ssize_t fr_pair_raw_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+ssize_t fr_pair_raw_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *da,
 				 uint8_t const *data, size_t data_len)
 {
 	ssize_t slen;
@@ -85,7 +85,7 @@ ssize_t fr_pair_raw_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	fr_dict_attr_t const *child;
 
 #if defined(STATIC_ANALYZER) || !defined(NDEBUG)
-	if (!parent->parent) return -1; /* stupid static analyzers */
+	if (!da->parent) return -1; /* stupid static analyzers */
 #endif
 
 	FR_PROTO_HEX_DUMP(data, data_len, "fr_pair_raw_from_network");
@@ -93,7 +93,7 @@ ssize_t fr_pair_raw_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	/*
 	 *	Build an unknown attr of the entire data.
 	 */
-	unknown = fr_dict_attr_unknown_raw_afrom_da(ctx, parent);
+	unknown = fr_dict_attr_unknown_raw_afrom_da(ctx, da);
 	if (!unknown) return -1;
 
 	vp = fr_pair_afrom_da(ctx, unknown); /* makes a copy of 'unknown' */

@@ -55,7 +55,7 @@ typedef bool (*fr_pair_tlvs_verify_t)(uint8_t const *data, size_t const data_len
 ssize_t fr_pair_array_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 				   uint8_t const *data, size_t data_len, void *decode_ctx, fr_pair_decode_value_t decode_value) CC_HINT(nonnull(1,2,3,4,7));
 
-ssize_t fr_pair_raw_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+ssize_t fr_pair_raw_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *da,
 				 uint8_t const *data, size_t data_len) CC_HINT(nonnull);
 
 ssize_t fr_pair_tlvs_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
