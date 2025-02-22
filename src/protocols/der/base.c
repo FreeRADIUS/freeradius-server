@@ -616,7 +616,8 @@ static bool attr_valid(fr_dict_attr_t *da)
 
 	if (flags->is_extensions) {
 		if (da->type != FR_TYPE_GROUP) {
-			fr_strerror_printf("Extensions must be type 'group'");
+			fr_strerror_printf("Extensions must be type 'group', and not '%s'",
+					   fr_type_to_str(da->type));
 			return false;
 		}
 
@@ -624,6 +625,15 @@ static bool attr_valid(fr_dict_attr_t *da)
 		 *	Avoid run-time checks.
 		 */
 		if (!flags->max) flags->max = UINT64_MAX;
+	}
+
+	/*
+	 *	Packed structures can only be bit strings, they can't be sequences or sets.
+	 */
+	if ((da->type == FR_TYPE_STRUCT) && (flags->der_type != FR_DER_TAG_BITSTRING)) {
+		fr_strerror_printf("A 'struct' must be encoded as 'bitstring', and not as '%s'",
+				   fr_der_tag_to_str(flags->der_type));
+		return false;
 	}
 
 	return true;

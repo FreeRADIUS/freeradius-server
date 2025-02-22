@@ -36,28 +36,28 @@ DEFINE	Test-Boolean					bool
 
 DEFINE	Test-Integer					integer
 
-DEFINE	Foo						struct der_type=sequence
+DEFINE	Foo						sequence
 BEGIN Foo
-MEMBER		Test-Integer				integer
+DEFINE		Test-Integer				integer
 END Foo
 
-DEFINE	Bar						struct
+DEFINE	Bar						sequence
 BEGIN Bar
-MEMBER		Test-Boolean				bool
+DEFINE		Test-Boolean				bool
 END Bar
 
-DEFINE	Foo-Bar						struct der_type=sequence
+DEFINE	Foo-Bar						sequence
 BEGIN Foo-Bar
-MEMBER		Test-Integer				integer has_default
+DEFINE		Test-Integer				integer has_default
 VALUE	Test-Integer			DEFAULT			1
-MEMBER		Test-Boolean				bool
+DEFINE		Test-Boolean				bool
 END Foo-Bar
 
-DEFINE	Test-Bitstring					octets der_type=bitstring
+DEFINE	Test-Bitstring					bitstring
 
-DEFINE	Seq-Bitstring-Octets				struct
+DEFINE	Seq-Bitstring-Octets				sequence
 BEGIN Seq-Bitstring-Octets
-MEMBER		Test-Bitstring				octets
+DEFINE		Test-Bitstring				bitstring
 END Seq-Bitstring-Octets
 
 DEFINE	Bitstring-Struct				struct der_type=bitstring
@@ -74,31 +74,31 @@ MEMBER		bar					bit[1]
 MEMBER		foo-bar					bit[4]
 END Bitstring-Struct-7
 
-DEFINE	Octetstring					octets
+DEFINE	Octetstring					octetstring
 
-DEFINE	Seq-Octetstring					struct
+DEFINE	Seq-Octetstring					sequence
 BEGIN Seq-Octetstring
-MEMBER		Octetstring				octets
+DEFINE		Octetstring				octetstring
 END Seq-Octetstring
 
 DEFINE	Test-NULL					null
 
-DEFINE	Seq-Null					struct
+DEFINE	Seq-Null					sequence
 BEGIN Seq-Null
-MEMBER		Test-Null				null
+DEFINE		Test-Null				null
 END Seq-Null
 
-DEFINE	Seq-Integer-Null				struct
+DEFINE	Seq-Integer-Null				sequence
 BEGIN Seq-Integer-Null
-MEMBER		Test-Integer				integer
-MEMBER		Test-Null				null
+DEFINE		Test-Integer				integer
+DEFINE		Test-Null				null
 END Seq-Integer-Null
 
 DEFINE	Test-Oid					oid
 
-DEFINE	Seq-Oid						struct der_type=sequence
+DEFINE	Seq-Oid						sequence
 BEGIN Seq-Oid
-MEMBER		Test-Oid				oid
+DEFINE		Test-Oid				oid
 END Seq-Oid
 
 DEFINE	Test-Enumerated					enumerated
@@ -123,9 +123,9 @@ DEFINE	Test-String-General				generalstring
 
 DEFINE	Test-String-Universal				universalstring
 
-DEFINE	Seq-String					struct
+DEFINE	Seq-String					sequence
 BEGIN Seq-String
-MEMBER		Test-String				string
+DEFINE		Test-String				string
 END Seq-String
 
 DEFINE	Test-Date					date
@@ -134,15 +134,15 @@ DEFINE	Test-UTC					utctime
 
 DEFINE	Test-Generalized-Time				generalizedtime
 
-DEFINE	Seq-Date					struct
+DEFINE	Seq-Date					sequence
 BEGIN Seq-Date
-MEMBER		Test-Date				date
+DEFINE		Test-Date				date
 END Seq-Date
 
-DEFINE	Set-Bool-Integer				struct
+DEFINE	Set-Bool-Integer				set
 BEGIN Set-Bool-Integer
-MEMBER		Test-Bool				bool
-MEMBER		Test-Integer				integer
+DEFINE		Test-Bool				bool
+DEFINE		Test-Integer				integer
 END Set-Bool-Integer
 
 DEFINE	Test-Context-Specific				bool option=0
@@ -161,16 +161,16 @@ END Test-TLV
 
 DEFINE	Test-Sequence-GROUP				group der_type=sequence,ref=Test-TLV
 
-DEFINE	Test-Set-Struct					struct der_type=set
+DEFINE	Test-Set-Struct					set
 BEGIN Test-Set-Struct
-MEMBER		Test-Boolean				bool
-MEMBER		Test-Integer				integer
+DEFINE		Test-Boolean				bool
+DEFINE		Test-Integer				integer
 END Test-Set-Struct
 
-DEFINE	Test-Set-Bad-Struct				struct der_type=set
+DEFINE	Test-Set-Bad-Struct				set
 BEGIN Test-Set-Bad-Struct
-MEMBER		Test-Integer				integer
-MEMBER		Test-Boolean				bool
+DEFINE		Test-Integer				integer
+DEFINE		Test-Boolean				bool
 END Test-Set-Bad-Struct
 
 DEFINE	Test-Set-TLV					set

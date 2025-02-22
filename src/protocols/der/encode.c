@@ -584,7 +584,7 @@ static ssize_t fr_der_encode_sequence(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, f
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
 
-	fr_assert(fr_type_is_group(vp->vp_type) || fr_type_is_struct(vp->vp_type) || fr_type_is_tlv(vp->vp_type));
+	fr_assert(fr_type_is_group(vp->vp_type) || fr_type_is_tlv(vp->vp_type));
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -602,21 +602,6 @@ static ssize_t fr_der_encode_sequence(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, f
 	 *		The encoding of a set value or sequence value shall not include an encoding for any component
 	 *		value which is equal to its default value.
 	 */
-
-	if (fr_type_is_struct(vp->vp_type)) {
-		fr_proto_da_stack_build(&da_stack, vp->da);
-
-		FR_PROTO_STACK_PRINT(&da_stack, depth);
-
-		slen = fr_struct_to_network(&our_dbuff, &da_stack, depth, cursor, encode_ctx, encode_value, encode_pair);
-		if (slen < 0) {
-			fr_strerror_printf("Failed to encode struct: %s", fr_strerror());
-			return -1;
-		}
-
-		return fr_dbuff_set(dbuff, &our_dbuff);
-	}
-
 	if (fr_type_is_group(vp->vp_type)) {
 		/*
 		 *	Groups could be also be a pair, so we need to check for that.
@@ -692,7 +677,7 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
 
-	fr_assert(fr_type_is_group(vp->vp_type) || fr_type_is_struct(vp->vp_type) || fr_type_is_tlv(vp->vp_type));
+	fr_assert(fr_type_is_group(vp->vp_type) || fr_type_is_tlv(vp->vp_type));
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -721,25 +706,6 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 	 *			NOTE - The padding octets are for comparison purposes only and do not appear in the
 	 *			encodings.
 	 */
-
-	if (fr_type_is_struct(vp->vp_type)) {
-		/*
-		 * 	Note: Structures should be in the correct order in the dictionary.
-		 *	if they are not, the dictionary loader should complain.
-		 */
-
-		fr_proto_da_stack_build(&da_stack, vp->da);
-
-		FR_PROTO_STACK_PRINT(&da_stack, depth);
-
-		slen = fr_struct_to_network(&our_dbuff, &da_stack, depth, cursor, encode_ctx, encode_value, encode_pair);
-		if (slen < 0) {
-			fr_strerror_printf("Failed to encode struct: %s", fr_strerror());
-			return -1;
-		}
-
-		return fr_dbuff_set(dbuff, &our_dbuff);
-	}
 
 	if (fr_type_is_group(vp->vp_type)) {
 		/*
