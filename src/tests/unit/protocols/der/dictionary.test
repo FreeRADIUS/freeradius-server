@@ -103,9 +103,9 @@ END Seq-Oid
 
 DEFINE	Test-Enumerated					enumerated
 
-DEFINE	Test-String					string
+DEFINE	Test-String					ia5string
 
-DEFINE	Test-String-Max					string max=5
+DEFINE	Test-String-Max					utf8string max=5
 
 DEFINE	Test-String-UTF8				utf8string
 
@@ -125,7 +125,7 @@ DEFINE	Test-String-Universal				universalstring
 
 DEFINE	Seq-String					sequence
 BEGIN Seq-String
-DEFINE		Test-String				string
+DEFINE		Test-String				utf8string
 END Seq-String
 
 DEFINE	Test-Date					date
