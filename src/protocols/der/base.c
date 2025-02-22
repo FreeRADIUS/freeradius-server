@@ -326,7 +326,7 @@ static int dict_flag_max(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dic
 	char *end = NULL;
 
 	num = strtoul(value, &end, 10);
-	if (*end) {
+	if (*end || !num) {
 		fr_strerror_printf("Invalid value in 'max=%s'", value);
 		return -1;
 	}
@@ -625,6 +625,20 @@ static bool attr_valid(fr_dict_attr_t *da)
 		 *	Avoid run-time checks.
 		 */
 		if (!flags->max) flags->max = UINT64_MAX;
+	}
+
+	/*
+	 *	Either complain on invalid 'max', or set it to the maximum.
+	 */
+	if ((flags->der_type != FR_DER_TAG_SET) && (flags->der_type != FR_DER_TAG_SEQUENCE)) {
+		if (!flags->max) {
+			flags->max = DER_MAX_STR;
+
+		} else if (flags->max > DER_MAX_STR) {
+			fr_strerror_printf("Invalid value of 'max' for DER type '%s'",
+					   fr_der_tag_to_str(flags->der_type));
+			return false;
+		}
 	}
 
 	/*

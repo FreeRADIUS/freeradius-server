@@ -2231,7 +2231,8 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	case FR_DER_TAG_SET:
 		break;
 	default:
-		max = fr_der_flag_max(parent) ? fr_der_flag_max(parent) : DER_MAX_STR;
+		max = fr_der_flag_max(parent);
+		fr_assert(max <= DER_MAX_STR);
 
 		if (unlikely(len > max)) {
 			fr_strerror_printf("Data length (%zu) exceeds max size (%" PRIu64 ")", len, max);
