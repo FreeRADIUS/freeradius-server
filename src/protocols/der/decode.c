@@ -921,6 +921,9 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 				child = fr_dict_attr_iterate_children(parent, &child);
 			}
 
+			/*
+			 *	@todo - we should be iterating over the tags, and comparing them to the children.
+			 */
 			if (!child) child = fr_dict_attr_unknown_raw_afrom_num(decode_ctx->tmp_ctx, parent, current_tag);
 
 			FR_PROTO_TRACE("decode context %s -> %s", parent->name, child->name);
@@ -941,6 +944,9 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 		return fr_dbuff_set(in, &our_in);
 	}
 
+	/*
+	 *	@todo - we should be iterating over the tags, and comparing them to the children.
+	 */
 	while ((child = fr_dict_attr_iterate_children(parent, &child))) {
 		ssize_t ret;
 
@@ -955,6 +961,8 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 
 	/*
 	 *	Ensure that we grab all of the data.
+	 *
+	 *	@todo - if there is data left over, decode it as raw octets.
 	 */
 	if (fr_dbuff_remaining(&our_in)) {
 		FR_PROTO_TRACE("Ignoring extra data in sequence");
@@ -1033,9 +1041,19 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 			uint8_t		 *current_marker = fr_dbuff_current(&our_in);
 			size_t		  len;
 
-			if (!child) {
-				child = fr_dict_attr_iterate_children(parent, &child);
-			}
+			/*
+			 *	There should only be one child in a "set_of".  We can't check this when we load
+			 *	the dictionaries, because there is no "finalize" callback.
+			 *
+			 *	@todo - we would need to walk through all of the dictionary attributes, and
+			 *	call a new function which would check whether or not the parent had any
+			 *	children. And if not, return a load-time error.
+			 *
+			 *	@todo - the assertion !child needs to be a run-time check.
+			 */
+			child = NULL;
+			child = fr_dict_attr_iterate_children(parent, &child);
+			fr_assert(child);
 
 			FR_PROTO_TRACE("decode context %s -> %s", parent->name, child->name);
 
@@ -1144,6 +1162,8 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 
 	/*
 	 *	Ensure that we grab all of the data.
+	 *
+	 *	@todo - if there is data left over, decode it as raw octets.
 	 */
 	if (fr_dbuff_remaining(&our_in)) {
 		FR_PROTO_TRACE("Ignoring extra data in set");
@@ -2002,7 +2022,7 @@ static ssize_t fr_der_decode_oid_value_pair(TALLOC_CTX *ctx, fr_pair_list_t *out
 
 	if (unlikely(uctx.parent_da->flags.is_unknown)) {
 		/*
-		 *	The this pair is not in the dictionary
+		 *	This pair is not in the dictionary
 		 *	We will store the value as raw octets
 		 */
 		if (unlikely(slen = fr_der_decode_octetstring(uctx.ctx, uctx.parent_list, uctx.parent_da, &our_in,
@@ -2011,7 +2031,7 @@ static ssize_t fr_der_decode_oid_value_pair(TALLOC_CTX *ctx, fr_pair_list_t *out
 			goto error;
 		}
 	} else if (unlikely(slen = fr_der_decode_pair_dbuff(uctx.ctx, uctx.parent_list, uctx.parent_da, &our_in,
-							    decode_ctx) < 0)) {
+							    decode_ctx) <= 0)) {
 		fr_strerror_const_push("Failed decoding extension value");
 		goto error;
 	}
