@@ -30,6 +30,8 @@ ATTRIBUTE	security				1.3.6.1.5	sequence
 ATTRIBUTE	mechanisms				1.3.6.1.5.5	sequence
 ATTRIBUTE	pkix					1.3.6.1.5.5.7	sequence
 ATTRIBUTE	pe					1.3.6.1.5.5.7.1	sequence
+ATTRIBUTE	qualifier				1.3.6.1.5.5.7.2 choice
+ATTRIBUTE	cpsuri					1.3.6.1.5.5.7.2.1 ia5string
 
 ATTRIBUTE	joint-iso-itu-t				2	sequence
 ATTRIBUTE	ds					2.5	sequence
