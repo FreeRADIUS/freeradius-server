@@ -74,9 +74,22 @@ char const *fr_der_tag_to_str(fr_der_tag_t tag)
 	return fr_table_str_by_value(tag_name_to_number, tag, "???");
 }
 
+#define ALL_STRINGS ((1 << FR_DER_TAG_BMP_STRING) | (1 << FR_DER_TAG_GENERAL_STRING) | \
+		     (1 << FR_DER_TAG_IA5_STRING) | (1 << FR_DER_TAG_PRINTABLE_STRING) | \
+		     (1 << FR_DER_TAG_T61_STRING) | (1 << FR_DER_TAG_UTF8_STRING) | \
+		     (1 << FR_DER_TAG_VISIBLE_STRING))
+
 static const uint64_t der_tags_compatible[FR_DER_TAG_MAX] = {
 	[FR_DER_TAG_UTC_TIME] = (1 << FR_DER_TAG_GENERALIZED_TIME),
 	[FR_DER_TAG_GENERALIZED_TIME] = (1 << FR_DER_TAG_UTC_TIME),
+
+	[FR_DER_TAG_BMP_STRING] = ALL_STRINGS,
+	[FR_DER_TAG_GENERAL_STRING] = ALL_STRINGS,
+	[FR_DER_TAG_IA5_STRING] = ALL_STRINGS,
+	[FR_DER_TAG_PRINTABLE_STRING] = ALL_STRINGS,
+	[FR_DER_TAG_T61_STRING] = ALL_STRINGS,
+	[FR_DER_TAG_UTF8_STRING] = ALL_STRINGS,
+	[FR_DER_TAG_VISIBLE_STRING] = ALL_STRINGS,
 };
 
 bool fr_der_tags_compatible(fr_der_tag_t tag1, fr_der_tag_t tag2)

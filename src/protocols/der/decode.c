@@ -785,11 +785,11 @@ static ssize_t fr_der_decode_oid(UNUSED fr_pair_list_t *out, fr_dbuff_t *in, fr_
 			 *	Note that we allow OID=1 here.  It doesn't make sense, but whatever.
 			 */
 			FR_PROTO_TRACE("decode context - first OID: %" PRIu64, first_component);
-			if (unlikely(func(first_component, uctx, (len == 0)) < 0)) return -1;
+			if (unlikely(func(first_component, uctx, (len == 0)) <= 0)) return -1;
 		}
 
 		FR_PROTO_TRACE("decode context - OID: %" PRIu64, oid);
-		if (unlikely(func(oid, uctx, (len == 0)) < 0)) return -1;
+		if (unlikely(func(oid, uctx, (len == 0)) <= 0)) return -1;
 
 		/*
 		 *	Reset fields.
@@ -847,7 +847,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	if (unlikely(fr_der_flag_is_pair(parent))) {
 		fr_assert(fr_type_is_group(parent->type));
 
-		if (unlikely(fr_der_decode_oid_value_pair(vp, &vp->vp_group, &our_in, vp->da, decode_ctx) < 0)) {
+		if (unlikely(fr_der_decode_oid_value_pair(vp, &vp->vp_group, &our_in, vp->da, decode_ctx) <= 0)) {
 			talloc_free(vp);
 			return -1;
 		}
@@ -921,6 +921,9 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 
 			fr_dbuff_set(&our_in, current_marker);
 
+			/*
+			 *	A child could have been encoded with zero bytes if it has a default value.
+			 */
 			ret = fr_der_decode_pair_dbuff(vp, &vp->vp_group, child, &our_in, decode_ctx);
 			if (unlikely(ret < 0)) {
 				goto error;
@@ -942,6 +945,16 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 			talloc_free(vp);
 			return ret;
 		}
+	}
+
+	/*
+	 *	Ensure that we grab all of the data.
+	 */
+	if (fr_dbuff_remaining(&our_in)) {
+		FR_PROTO_TRACE("Ignoring extra data in sequence");
+		FR_PROTO_HEX_DUMP(fr_dbuff_current(&our_in), fr_dbuff_remaining(&our_in), " ");
+
+		(void) fr_dbuff_advance(&our_in, fr_dbuff_remaining(&our_in));
 	}
 
 	fr_pair_append(out, vp);
@@ -985,7 +998,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	if (fr_der_flag_is_pair(parent)) {
 		fr_assert(fr_type_is_group(parent->type));
 
-		if (unlikely(fr_der_decode_oid_value_pair(vp, &vp->vp_group, &our_in, vp->da, decode_ctx) < 0)) {
+		if (unlikely(fr_der_decode_oid_value_pair(vp, &vp->vp_group, &our_in, vp->da, decode_ctx) <= 0)) {
 			talloc_free(vp);
 			return -1;
 		}
@@ -1014,7 +1027,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 
 			FR_PROTO_TRACE("decode context %s -> %s", parent->name, child->name);
 
-			if (unlikely(fr_der_decode_hdr(NULL, &our_in, &current_tag, &len) < 0)) {
+			if (unlikely(fr_der_decode_hdr(NULL, &our_in, &current_tag, &len) <= 0)) {
 				fr_strerror_const("Insufficient data for set. Missing tag");
 				ret = -1;
 			error:
@@ -1069,7 +1082,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 			fr_dbuff_set(&our_in, current_marker);
 
 			ret = fr_der_decode_pair_dbuff(vp, &vp->vp_group, child, &our_in, decode_ctx);
-			if (unlikely(ret < 0)) {
+			if (unlikely(ret <= 0)) {
 				goto error;
 			}
 		}
@@ -1104,11 +1117,24 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 		 */
 		fr_dbuff_set(&our_in, current_marker);
 
+		/*
+		 *	A child could have been encoded with zero bytes if it has a default value.
+		 */
 		ret = fr_der_decode_pair_dbuff(vp, &vp->vp_group, child, &our_in, decode_ctx);
 		if (unlikely(ret < 0)) {
 			talloc_free(vp);
 			return ret;
 		}
+	}
+
+	/*
+	 *	Ensure that we grab all of the data.
+	 */
+	if (fr_dbuff_remaining(&our_in)) {
+		FR_PROTO_TRACE("Ignoring extra data in set");
+		FR_PROTO_HEX_DUMP(fr_dbuff_current(&our_in), fr_dbuff_remaining(&our_in), " ");
+
+		(void) fr_dbuff_advance(&our_in, fr_dbuff_remaining(&our_in));
 	}
 
 	fr_pair_append(out, vp);
@@ -1700,7 +1726,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		goto oom;
 	}
 
-	if (unlikely((slen = fr_der_decode_hdr(parent, &our_in, &tag, &len)) < 0)) {
+	if (unlikely((slen = fr_der_decode_hdr(parent, &our_in, &tag, &len)) <= 0)) {
 		fr_strerror_const_push("Failed decoding extensions list header");
 	error:
 		talloc_free(vp2);
@@ -1728,7 +1754,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 
 		fr_dbuff_set_end(&sub_in, fr_dbuff_current(&sub_in) + len);
 
-		if (unlikely((slen = fr_der_decode_hdr(parent, &sub_in, &tag, &sub_len)) < 0)) {
+		if (unlikely((slen = fr_der_decode_hdr(parent, &sub_in, &tag, &sub_len)) <= 0)) {
 			fr_strerror_const_push("Failed decoding extension sequence header");
 			goto error;
 		}
@@ -1742,7 +1768,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 
 		FR_PROTO_TRACE("Attribute %s, tag %u", parent->name, tag);
 
-		if (unlikely((slen = fr_der_decode_hdr(NULL, &sub_in, &tag, &sub_len)) < 0)) {
+		if (unlikely((slen = fr_der_decode_hdr(NULL, &sub_in, &tag, &sub_len)) <= 0)) {
 			fr_strerror_const_push("Failed decoding oid header");
 			goto error;
 		}
@@ -1769,7 +1795,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&sub_in), fr_dbuff_remaining(&sub_in),
 				  "After moving buffer in extension");
 
-		if (unlikely(fr_der_decode_hdr(NULL, &sub_in, &tag, &len_peek) < 0)) {
+		if (unlikely(fr_der_decode_hdr(NULL, &sub_in, &tag, &len_peek) <= 0)) {
 			fr_strerror_const_push("Failed decoding value header for extension ");
 			slen = -1;
 			fr_dbuff_marker_release(&sub_marker);
@@ -1781,7 +1807,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 			 *	This Extension has the isCritical field.
 			 * 	If this value is true, we will be storing the pair in the critical list
 			 */
-			if (unlikely(fr_dbuff_out(&is_critical, &sub_in) < 0)) {
+			if (unlikely(fr_dbuff_out(&is_critical, &sub_in) <= 0)) {
 				fr_strerror_const("Insufficient data for isCritical field");
 				slen = -1;
 				fr_dbuff_marker_release(&sub_marker);
@@ -1809,7 +1835,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		/*
 		 *	Decode the OID to get the attribute to use for the extension value
 		 */
-		if (unlikely((slen = fr_der_decode_oid(NULL, &sub_in, fr_der_decode_oid_to_da, &uctx)) < 0)) {
+		if (unlikely((slen = fr_der_decode_oid(NULL, &sub_in, fr_der_decode_oid_to_da, &uctx)) <= 0)) {
 			fr_strerror_const_push("Failed decoding extension");
 			goto error;
 		}
@@ -1831,7 +1857,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&sub_in), fr_dbuff_remaining(&sub_in),
 				  "After advancing buffer in extension");
 
-		if (unlikely((slen = fr_der_decode_hdr(NULL, &sub_in, &tag, &sub_len)) < 0)) {
+		if (unlikely((slen = fr_der_decode_hdr(NULL, &sub_in, &tag, &sub_len)) <= 0)) {
 			fr_strerror_const_push("Failed decoding value header for extension value");
 			goto error;
 		}
@@ -1919,7 +1945,7 @@ static ssize_t fr_der_decode_oid_value_pair(TALLOC_CTX *ctx, fr_pair_list_t *out
 
 	fr_dbuff_marker(&marker, in);
 
-	if (unlikely((slen = fr_der_decode_hdr(parent, &our_in, &tag, &len)) < 0)) {
+	if (unlikely((slen = fr_der_decode_hdr(parent, &our_in, &tag, &len)) <= 0)) {
 		fr_strerror_const_push("Failed decoding oid header");
 	error:
 		fr_dbuff_marker_release(&marker);
@@ -1943,7 +1969,7 @@ static ssize_t fr_der_decode_oid_value_pair(TALLOC_CTX *ctx, fr_pair_list_t *out
 	FR_PROTO_HEX_DUMP(fr_dbuff_current(&our_in), fr_dbuff_remaining(&our_in), "DER pair value");
 
 	slen = fr_der_decode_oid(out, &our_in, fr_der_decode_oid_to_da, &uctx);
-	if (unlikely(slen < 0)) goto error;
+	if (unlikely(slen <= 0)) goto error;
 
 	/*
 	 *	We have the attribute associated with the OID
@@ -2050,6 +2076,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	uint8_t	     	     tag;
 	uint64_t 	     max;
 	size_t		     len;
+	fr_der_attr_flags_t const *flags = fr_der_attr_flags(parent);
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -2176,12 +2203,10 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 			fr_pair_append(out, vp);
 
 			/*
-			 *	If we did not consume any bytes (tag didn't match, and DEFAULT was used), we
-			 *	should return 0 to indicate that we successfully decoded the attribute.
-			 * 	If we did consume bytes, we should return the number of bytes consumed.
+			 *	Tell the caller that we didn't consume any bytes, but instead have set a
+			 *	default value.  The caller will then try to decode the data via the next
+			 *	child.
 			 */
-			if (fr_dbuff_remaining(&our_in) == 0) return fr_dbuff_set(in, &our_in);
-
 			return 0;
 		}
 
@@ -2205,9 +2230,27 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		}
 	}
 
+	/*
+	 *	If the tag is not what we expect, then we do a bit more sanity checking.
+	 *
+	 *	* a missing field is encoded as boolean (???), and is OK if there's a default value
+	 *	* otherwise the tags have to be compatible
+	 *	  * UTC time and generalized time are equivalent
+	 *	  * the various string types are all equivalent.
+	 *	  * @todo - perhaps instead, check if the underlying FreeRADIUS types are compatible?
+	 */
+	if ((tag != flags->der_type) &&
+	    !((tag == FR_DER_TAG_OCTETSTRING) && (flags->der_type == FR_DER_TAG_INTEGER)) &&
+	    !((tag == FR_DER_TAG_BOOLEAN) && flags->has_default) &&
+	    !fr_der_tags_compatible(tag, flags->der_type)) {
+		fr_strerror_printf("Failed decoding %s - got tag '%s', expected '%s'", parent->name,
+				   fr_der_tag_to_str(tag), fr_der_tag_to_str(flags->der_type));
+		return -1;
+	}
+
 	if (fr_der_flag_is_extensions(parent)) {
 		slen = fr_der_decode_x509_extensions(ctx, out, &our_in, parent, decode_ctx);
-		if (slen < 0) return slen;
+		if (slen <= 0) return slen;
 
 		return fr_dbuff_set(in, &our_in);
 	}
@@ -2221,6 +2264,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	case FR_DER_TAG_SEQUENCE:
 	case FR_DER_TAG_SET:
 		break;
+
 	default:
 		max = fr_der_flag_max(parent);
 		fr_assert(max <= DER_MAX_STR);
@@ -2233,8 +2277,13 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	}
 
 	if (tag != FR_DER_TAG_OID) {
+		/*
+		 *	The decode function can return 0 if len==0.  This is true for 'null' data types, and
+		 *	for variable-sized types such as strings.
+		 */
 		fr_dbuff_set_end(&our_in, fr_dbuff_current(&our_in) + len);
 		slen = func->decode(ctx, out, parent, &our_in, decode_ctx);
+		if (unlikely(slen < 0)) return slen;
 
 	} else {
 		fr_der_decode_oid_to_str_ctx_t uctx = {
@@ -2248,9 +2297,20 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		fr_dbuff_set_end(&our_in, fr_dbuff_current(&our_in) + len);
 
 		slen = fr_der_decode_oid(out, &our_in, fr_der_decode_oid_to_str, &uctx);
+		if (unlikely(slen <= 0)) return slen;
 	}
 
-	if (unlikely(slen < 0)) return slen;
+	/*
+	 *	There may be extra data, in which case we ignore it.
+	 *
+	 *	@todo - if the data type is fixed size, then return an error.
+	 */
+	if ((size_t) slen < len) {
+		FR_PROTO_TRACE("Ignoring extra data");
+		FR_PROTO_HEX_DUMP(fr_dbuff_current(&our_in), fr_dbuff_remaining(&our_in), " ");
+
+		fr_dbuff_advance(&our_in, len - (size_t) slen);
+	}
 
 	return fr_dbuff_set(in, &our_in);
 }

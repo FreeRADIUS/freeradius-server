@@ -568,7 +568,8 @@ match Set-Bool-Integer = { Test-Bool = no, Test-Integer = 9 }
 
 # we expect bool then integer, the DER below has integer then bool
 decode-pair 3106020109010100
-match Expected parent type 'int64', got attribute Test-Bool of type bool
+match Failed decoding Test-Bool - got tag 'integer', expected 'boolean'
+#match Expected parent type 'int64', got attribute Test-Bool of type bool
 
 # Test sub_type
 proto der
