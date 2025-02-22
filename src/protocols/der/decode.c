@@ -916,16 +916,12 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 
 			if (unlikely(flags->sequence_of == FR_DER_TAG_CHOICE)) {
 				child = fr_dict_attr_child_by_num(parent, current_tag);
-				if (unlikely(!child)) {
-					fr_strerror_printf(
-						"Attribute %s is a sequence-of choice, but received unknown option %u",
-						parent->name, current_tag);
-					goto error;
-				}
 
 			} else if (!child) {
 				child = fr_dict_attr_iterate_children(parent, &child);
 			}
+
+			if (!child) child = fr_dict_attr_unknown_raw_afrom_num(decode_ctx->tmp_ctx, parent, current_tag);
 
 			FR_PROTO_TRACE("decode context %s -> %s", parent->name, child->name);
 
@@ -1108,6 +1104,9 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 		return fr_dbuff_set(in, &our_in);
 	}
 
+	/*
+	 *	@todo - We should really be iterating over the tag here, not the child.
+	 */
 	while ((child = fr_dict_attr_iterate_children(parent, &child))) {
 		ssize_t	 ret;
 		uint8_t	 current_tag;
@@ -2255,6 +2254,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	 *	  * @todo - perhaps instead, check if the underlying FreeRADIUS types are compatible?
 	 */
 	if ((tag != flags->der_type) &&
+	    !parent->flags.is_unknown &&
 	    !((tag == FR_DER_TAG_OCTETSTRING) && (flags->der_type == FR_DER_TAG_INTEGER)) &&
 	    !((tag == FR_DER_TAG_BOOLEAN) && flags->has_default) &&
 	    !fr_der_tags_compatible(tag, flags->der_type)) {
@@ -2292,6 +2292,8 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		break;
 
 	default:
+		if (parent->flags.is_raw) break;
+
 		/*
 		 *	min/max can be fixed width, but we only care for 'octets' and 'string'.
 		 *
