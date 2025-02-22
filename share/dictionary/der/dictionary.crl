@@ -17,7 +17,7 @@ END           RelativeDistinguishedName
 END         nameRelativeToCRLIssuer
 END       distributionPointName
 
-DEFINE	reasons						struct  option=1
+DEFINE	reasons						struct  der_type=bitstring,option=1
 BEGIN   reasons
 MEMBER		unused					bit[1]
 MEMBER		keyCompromise				bit[1]
