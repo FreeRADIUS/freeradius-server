@@ -454,10 +454,17 @@ redo:
 				return fr_sbuff_error(&our_in);
 			}
 
-			da_unknown = fr_dict_attr_unknown_raw_afrom_da(root->ctx, da);
+			/*
+			 *	If we're parsing raw octets, create a raw octets attribute.
+			 *
+			 *	Otherwise create one of type 'tlv', and then parse the children.
+			 */
+			if (raw_type == FR_TYPE_OCTETS) {
+				da_unknown = fr_dict_attr_unknown_raw_afrom_da(root->ctx, da);
+			} else {
+				da_unknown = fr_dict_attr_unknown_afrom_da(root->ctx, da);
+			}
 			if (!da_unknown) return fr_sbuff_error(&our_in);
-
-			fr_assert(da_unknown->type == FR_TYPE_OCTETS);
 
 			if (fr_pair_append_by_da(relative->ctx, &vp, relative->list, da_unknown) < 0) {
 				fr_dict_attr_unknown_free(&da_unknown);
@@ -465,7 +472,6 @@ redo:
 			}
 
 			fr_dict_attr_unknown_free(&da_unknown);
-			fr_assert(vp->vp_type == FR_TYPE_OCTETS);
 
 			/*
 			 *	Just create the leaf attribute.
