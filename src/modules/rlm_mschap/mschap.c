@@ -52,8 +52,14 @@ int mschap_ntpwdhash(uint8_t *out, char const *password)
 	ssize_t len;
 	uint8_t ucs2_password[512];
 
+	if (!password || !*password) {
+		fr_strerror_printf("Password is missing or is empty");
+		return -1;
+	}
+
 	len = fr_utf8_to_ucs2(ucs2_password, sizeof(ucs2_password), password, strlen(password));
 	if (len < 0) {
+		fr_strerror_printf("Password contains invalid UTF-8 characters, and cannot be converted to UCS2");
 		*out = '\0';
 		return -1;
 	}
