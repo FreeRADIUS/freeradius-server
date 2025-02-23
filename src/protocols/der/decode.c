@@ -1725,6 +1725,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 {
 	fr_dbuff_t our_in = FR_DBUFF(in);
 	fr_pair_t *vp, *vp2;
+	fr_dict_attr_t const *ref;
 
 	uint8_t tag;
 	uint64_t max;
@@ -1774,7 +1775,12 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		return -1;
 	}
 
-	vp2 = fr_pair_afrom_da(vp, fr_dict_attr_by_name(NULL, fr_dict_attr_ref(parent), "critical"));
+	ref = fr_dict_attr_ref(parent);
+	fr_assert(ref != NULL);
+	ref = fr_dict_attr_by_name(NULL, ref, "Critical");
+	fr_assert(ref != NULL);
+
+	vp2 = fr_pair_afrom_da(vp, ref);
 
 	if (unlikely(vp2 == NULL)) {
 		talloc_free(vp);
@@ -1840,6 +1846,8 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		uctx.parent_da	 = vp->da;
 		uctx.parent_list = &vp->vp_group;
 
+		fr_assert(uctx.parent_da != NULL);
+
 		fr_dbuff_marker(&sub_marker, &sub_in);
 
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&sub_in), fr_dbuff_remaining(&sub_in),
@@ -1874,6 +1882,8 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 				uctx.parent_da	 = vp2->da;
 				uctx.parent_list = &vp2->vp_group;
 			}
+
+			fr_assert(uctx.parent_da != NULL);
 		}
 
 		/*
@@ -2018,6 +2028,8 @@ static ssize_t fr_der_decode_oid_value_pair(TALLOC_CTX *ctx, fr_pair_list_t *out
 	uctx.ctx	 = ctx;
 	uctx.parent_da	 = fr_dict_attr_ref(parent);
 	uctx.parent_list = out;
+
+	fr_assert(uctx.parent_da != NULL);
 
 	fr_dbuff_set_end(&our_in, fr_dbuff_current(&our_in) + len);
 
@@ -2382,6 +2394,8 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 			.oid_buff = {},
 			.marker = {},
 		};
+
+		fr_assert(uctx.parent_da != NULL);
 
 		fr_dbuff_set_end(&our_in, fr_dbuff_current(&our_in) + len);
 
