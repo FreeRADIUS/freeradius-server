@@ -10,7 +10,7 @@ BEGIN     distributionPointName
 ATTRIBUTE	fullName				0	group   ref=GeneralName,der_type=sequence,sequence_of=choice,option
 ATTRIBUTE	nameRelativeToCRLIssuer			1	sequence        option
 BEGIN       nameRelativeToCRLIssuer
-DEFINE	RelativeDistinguishedName			set
+DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
 BEGIN         RelativeDistinguishedName
 DEFINE	AttributeTypeandValue				sequence sequence_of=oid_and_value,ref=OID-Tree
 END           RelativeDistinguishedName

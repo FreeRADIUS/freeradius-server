@@ -16,7 +16,7 @@ DEFINE	signature					sequence sequence_of=oid_and_value,ref=OID-Tree
 
 DEFINE	issuer						sequence sequence_of=set
 BEGIN issuer
-DEFINE	RelativeDistinguishedName			set
+DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
 BEGIN RelativeDistinguishedName
 DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=OID-Tree
 END RelativeDistinguishedName
@@ -30,7 +30,7 @@ END validity
 
 DEFINE	subject						sequence sequence_of=set
 BEGIN subject
-DEFINE	RelativeDistinguishedName			set size=1..
+DEFINE	RelativeDistinguishedName			set  set_of=sequence,size=1..
 BEGIN RelativeDistinguishedName
 DEFINE	AttributeTypeandValue				sequence sequence_of=oid_and_value,ref=OID-Tree
 END RelativeDistinguishedName

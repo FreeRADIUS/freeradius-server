@@ -11,7 +11,7 @@ DEFINE	version						integer
 
 DEFINE	subject						sequence
 BEGIN subject
-DEFINE	RelativeDistinguishedName			set
+DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
 BEGIN RelativeDistinguishedName
 DEFINE	AttributeTypeandValue				sequence
 BEGIN AttributeTypeAndValue

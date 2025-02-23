@@ -6,7 +6,7 @@ DEFINE	Certificate-Extensions				x509_extensions ref=OID-Tree
 
 DEFINE	Issuer						sequence sequence_of=set
 BEGIN Issuer
-DEFINE	RelativeDistinguishedName			set
+DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
 BEGIN RelativeDistinguishedName
 DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=OID-Tree
 END RelativeDistinguishedName
@@ -14,7 +14,7 @@ END Issuer
 
 DEFINE	Issuer-Set					set set_of=set
 BEGIN Issuer-Set
-DEFINE	RelativeDistinguishedName			set
+DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
 BEGIN RelativeDistinguishedName
 DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=OID-Tree
 END RelativeDistinguishedName
@@ -36,12 +36,12 @@ DEFINE	Test-Boolean					bool
 
 DEFINE	Test-Integer					integer
 
-DEFINE	Foo						sequence
+DEFINE	Foo						sequence sequence_of=integer
 BEGIN Foo
 DEFINE		Test-Integer				integer
 END Foo
 
-DEFINE	Bar						sequence
+DEFINE	Bar						sequence sequence_of=boolean
 BEGIN Bar
 DEFINE		Test-Boolean				bool
 END Bar

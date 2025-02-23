@@ -874,6 +874,11 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 
 		if (flags->sequence_of != FR_DER_TAG_CHOICE) {
 			restriction_types[flags->sequence_of] = true;
+			child = fr_dict_attr_iterate_children(parent, &child);
+			if (!child) {
+				fr_strerror_printf("Sequence %s has no children", parent->name);
+				return -1;
+			}
 
 		} else {
 			/*
@@ -881,20 +886,22 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 			 *	This will be a list of the number of choices, starting at 0.
 			 */
 			fr_dict_attr_t const *choices = NULL;
+			fr_dict_attr_t const *ref;
 
 			if (fr_type_is_group(parent->type)) {
-				fr_dict_attr_t const *ref = fr_dict_attr_ref(parent);
-
-				while ((choices = fr_dict_attr_iterate_children(ref, &choices))) {
-					restriction_types[choices->attr] = true;
-				}
+				ref = fr_dict_attr_ref(parent);
 			} else {
-				while ((choices = fr_dict_attr_iterate_children(parent, &choices))) {
-					restriction_types[choices->attr] = true;
-				}
+				ref = parent;
+			}
+
+			while ((choices = fr_dict_attr_iterate_children(ref, &choices))) {
+				restriction_types[choices->attr] = true;
 			}
 		}
 
+		/*
+		 *	Decode all of the data.
+		 */
 		while (fr_dbuff_remaining(&our_in) > 0) {
 			ssize_t	 ret;
 			uint8_t current_tag;
@@ -914,17 +921,13 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 
 			}
 
+			/*
+			 *	If we have a choice, the children are numbered.
+			 */
 			if (unlikely(flags->sequence_of == FR_DER_TAG_CHOICE)) {
 				child = fr_dict_attr_child_by_num(parent, current_tag);
-
-			} else if (!child) {
-				child = fr_dict_attr_iterate_children(parent, &child);
+				if (!child) child = fr_dict_attr_unknown_raw_afrom_num(decode_ctx->tmp_ctx, parent, current_tag);
 			}
-
-			/*
-			 *	@todo - we should be iterating over the tags, and comparing them to the children.
-			 */
-			if (!child) child = fr_dict_attr_unknown_raw_afrom_num(decode_ctx->tmp_ctx, parent, current_tag);
 
 			FR_PROTO_TRACE("decode context %s -> %s", parent->name, child->name);
 
@@ -945,7 +948,12 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	}
 
 	/*
-	 *	@todo - we should be iterating over the tags, and comparing them to the children.
+	 *	Decode the children.  Since it's not a sequence_of=..., we must have a set of children.  The
+	 *	children are packed in order.  Some may be optional.
+	 *
+	 *	We loop over all of the children, because some might have default values.
+	 *
+	 *	@todo - implement OPTIONAL flag.
 	 */
 	while ((child = fr_dict_attr_iterate_children(parent, &child))) {
 		ssize_t ret;
@@ -962,7 +970,8 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	/*
 	 *	Ensure that we grab all of the data.
 	 *
-	 *	@todo - if there is data left over, decode it as raw octets.
+	 *	@todo - if there is data left over, decode it as raw octets.  We then also have to keep track
+	 *	of the maximum child number, and create unknown attributes starting from the last one.
 	 */
 	if (fr_dbuff_remaining(&our_in)) {
 		FR_PROTO_TRACE("Ignoring extra data in sequence");
@@ -1034,26 +1043,27 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 		 */
 		fr_der_tag_t restriction_type = flags->set_of;
 
+		/*
+		 *	There should only be one child in a "set_of".  We can't check this when we load
+		 *	the dictionaries, because there is no "finalize" callback.
+		 *
+		 *	@todo - we would need to walk through all of the dictionary attributes, and
+		 *	call a new function which would check whether or not the parent had any
+		 *	children. And if not, return a load-time error.
+		 */
+		child = NULL;
+		child = fr_dict_attr_iterate_children(parent, &child);
+		if (!child) {
+			fr_strerror_printf("Missing child for %s", parent->name);
+			return -1;
+		}
+
 		while (fr_dbuff_remaining(&our_in) > 0) {
 			fr_dbuff_marker_t current_value_marker;
 			ssize_t		  ret;
 			uint8_t		  current_tag;
 			uint8_t		 *current_marker = fr_dbuff_current(&our_in);
 			size_t		  len;
-
-			/*
-			 *	There should only be one child in a "set_of".  We can't check this when we load
-			 *	the dictionaries, because there is no "finalize" callback.
-			 *
-			 *	@todo - we would need to walk through all of the dictionary attributes, and
-			 *	call a new function which would check whether or not the parent had any
-			 *	children. And if not, return a load-time error.
-			 *
-			 *	@todo - the assertion !child needs to be a run-time check.
-			 */
-			child = NULL;
-			child = fr_dict_attr_iterate_children(parent, &child);
-			fr_assert(child);
 
 			FR_PROTO_TRACE("decode context %s -> %s", parent->name, child->name);
 
@@ -1074,29 +1084,32 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 
 			fr_dbuff_marker(&current_value_marker, &our_in);
 
+			/*
+			 *	Ensure that the contents of the tags are sorted.
+			 */
 			if (previous_tag) {
-				uint8_t	   prev_char = 0, curr_char = 0;
+				uint8_t	   prev_byte = 0, curr_byte = 0;
 				fr_dbuff_t previous_item = FR_DBUFF(&previous_marker);
 
 				fr_dbuff_set_end(&previous_item, fr_dbuff_current(&previous_marker) + previous_len);
 
 				do {
-					FR_DBUFF_OUT_RETURN(&prev_char, &previous_item);
-					FR_DBUFF_OUT_RETURN(&curr_char, &our_in);
+					FR_DBUFF_OUT_RETURN(&prev_byte, &previous_item);
+					FR_DBUFF_OUT_RETURN(&curr_byte, &our_in);
 
-					if (prev_char > curr_char) {
+					if (prev_byte > curr_byte) {
 						fr_strerror_const("Set tags are not in ascending order");
 						ret = -1;
 						goto error;
 					}
 
-					if (prev_char < curr_char) {
+					if (prev_byte < curr_byte) {
 						break;
 					}
 
 				} while (fr_dbuff_remaining(&our_in) > 0 && fr_dbuff_remaining(&previous_item) > 0);
 
-				if (prev_char > curr_char && fr_dbuff_remaining(&previous_item) > 0) {
+				if (prev_byte > curr_byte && fr_dbuff_remaining(&previous_item) > 0) {
 					fr_strerror_const(
 						"Set tags are not in ascending order. Previous item has more data");
 					ret = -1;
@@ -1123,32 +1136,38 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	}
 
 	/*
-	 *	@todo - We should really be iterating over the tag here, not the child.
+	 *	Decode the children.  Since it's not a sequence_of=..., we must have a set of children.  The
+	 *	children are packed in order.  Some may be optional.
+	 *
+	 *	@todo - implement OPTIONAL flag.
 	 */
 	while ((child = fr_dict_attr_iterate_children(parent, &child))) {
 		ssize_t	 ret;
 		uint8_t	 current_tag;
-		uint8_t *current_marker = fr_dbuff_current(&our_in);
 
 		FR_PROTO_TRACE("decode context %s -> %s", parent->name, child->name);
 
-		/*
-		 *	Check that the tag is in ascending order
-		 */
-		FR_DBUFF_OUT_RETURN(&current_tag, &our_in);
+		if (fr_dbuff_remaining(&our_in)) {
+			uint8_t *current_ptr = fr_dbuff_current(&our_in);
 
-		if (unlikely(current_tag < previous_tag)) {
-			fr_strerror_const("Set tags are not in ascending order");
-			talloc_free(vp);
-			return -1;
+			/*
+			 *	Check that the tag is in ascending order
+			 */
+			FR_DBUFF_OUT_RETURN(&current_tag, &our_in);
+
+			if (unlikely(current_tag < previous_tag)) {
+				fr_strerror_const("Set tags are not in ascending order");
+				talloc_free(vp);
+				return -1;
+			}
+
+			previous_tag = current_tag;
+
+			/*
+			 *      Reset the buffer to the start of the tag
+			 */
+			fr_dbuff_set(&our_in, current_ptr);
 		}
-
-		previous_tag = current_tag;
-
-		/*
-		 *	Reset the buffer to the start of the tag
-		 */
-		fr_dbuff_set(&our_in, current_marker);
 
 		/*
 		 *	A child could have been encoded with zero bytes if it has a default value.
@@ -1163,7 +1182,8 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	/*
 	 *	Ensure that we grab all of the data.
 	 *
-	 *	@todo - if there is data left over, decode it as raw octets.
+	 *	@todo - if there is data left over, decode it as raw octets.  We then also have to keep track
+	 *	of the maximum child number, and create unknown attributes starting from the last one.
 	 */
 	if (fr_dbuff_remaining(&our_in)) {
 		FR_PROTO_TRACE("Ignoring extra data in set");

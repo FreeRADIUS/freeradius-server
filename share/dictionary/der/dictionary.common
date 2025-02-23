@@ -21,7 +21,7 @@ ATTRIBUTE	directoryName				4	sequence  option
 BEGIN directoryName
 DEFINE	RDNSequence					sequence        sequence_of=set
 BEGIN RDNSequence
-DEFINE	RelativeDistinguishedName			set
+DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
 BEGIN RelativeDistinguishedName
 DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=OID-Tree
 END RelativeDistinguishedName
@@ -51,7 +51,7 @@ DEFINE	Name						sequence
 BEGIN Name
 DEFINE	RDNSequence					sequence        sequence_of=set
 BEGIN RDNSequence
-DEFINE	RelativeDistinguishedName			set
+DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
 BEGIN RelativeDistinguishedName
 DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=OID-Tree
 END RelativeDistinguishedName
