@@ -913,7 +913,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 			current_tag = (tag_byte & DER_TAG_CONTINUATION);
 
 			if (unlikely(!restriction_types[current_tag])) {
-				fr_strerror_printf("Attribute %s is a sequence-of, but received tag %s", parent->name,
+				fr_strerror_printf("Attribute %s is a sequence-of which does not allow DER type '%s'", parent->name,
 						   fr_der_tag_to_str(current_tag));
 			error:
 				talloc_free(vp);
