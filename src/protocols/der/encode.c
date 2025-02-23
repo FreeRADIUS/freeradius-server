@@ -141,6 +141,7 @@ static ssize_t fr_der_encode_boolean(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UN
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
 
 	/*
 	 * 	ISO/IEC 8825-1:2021
@@ -172,6 +173,7 @@ static ssize_t fr_der_encode_integer(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UN
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -259,6 +261,7 @@ static ssize_t fr_der_encode_bitstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, 
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -395,6 +398,7 @@ static ssize_t fr_der_encode_octetstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
+	/* can be raw! */
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -432,6 +436,7 @@ static ssize_t fr_der_encode_null(UNUSED fr_dbuff_t *dbuff, fr_dcursor_t *cursor
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -538,6 +543,7 @@ static ssize_t fr_der_encode_oid(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -583,6 +589,7 @@ static ssize_t fr_der_encode_sequence(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, f
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
 
 	fr_assert(fr_type_is_group(vp->vp_type) || fr_type_is_tlv(vp->vp_type));
 
@@ -634,7 +641,7 @@ static ssize_t fr_der_encode_sequence(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, f
 
 	while (fr_dcursor_current(&child_cursor)) {
 		slen = fr_pair_cursor_to_network(&our_dbuff, &da_stack, depth, &child_cursor,
-							encode_ctx, encode_pair);
+						 encode_ctx, encode_pair);
 		if (slen < 0) {
 			fr_strerror_printf("Failed to encode pair: %s", fr_strerror());
 			return -1;
@@ -676,6 +683,7 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
 
 	fr_assert(fr_type_is_group(vp->vp_type) || fr_type_is_tlv(vp->vp_type));
 
@@ -846,6 +854,7 @@ static ssize_t fr_der_encode_utc_time(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, U
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -930,6 +939,7 @@ static ssize_t fr_der_encode_generalized_time(fr_dbuff_t *dbuff, fr_dcursor_t *c
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -1038,6 +1048,7 @@ static ssize_t fr_der_encode_choice(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
 
 	depth = vp->da->depth - 1;
 
@@ -1071,6 +1082,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
 
 	fr_assert(fr_type_is_group(vp->vp_type));
 
@@ -1122,7 +1134,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		fr_sbuff_t	  oid_sbuff;
 		fr_dbuff_marker_t length_start, inner_seq_len_start;
 		char		  oid_buff[1024] = { 0 };
-		bool		  is_raw = false;
+		fr_pair_t	  *child;
 
 		/*
 		 *	Extensions are sequences or sets containing 2 items:
@@ -1149,39 +1161,36 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		 */
 		fr_dcursor_copy(&child_cursor, &parent_cursor);
 
-		while (fr_dcursor_current(&child_cursor)) {
-			fr_pair_t const *child_vp = fr_dcursor_current(&child_cursor);
+		while ((child = fr_dcursor_current(&child_cursor)) != NULL) {
+			PAIR_VERIFY(child);
 
-			PAIR_VERIFY(child_vp);
+			FR_PROTO_TRACE("Child: %s", child->da->name);
 
-			FR_PROTO_TRACE("Child: %s", child_vp->da->name);
-
-			if (!is_critical && (strcmp(child_vp->da->name, "Critical") == 0)) {
+			if (!is_critical && (strcmp(child->da->name, "Critical") == 0)) {
 				/*
 				 *	We don't encode the critical flag
 				 */
-				is_critical = fr_pair_list_num_elements(&child_vp->children);
+				is_critical = fr_pair_list_num_elements(&child->children);
 				FR_PROTO_TRACE("Critical flag: %zu", is_critical);
 
-				fr_pair_dcursor_child_iter_init(&parent_cursor, &child_vp->children, &child_cursor);
+				fr_pair_dcursor_child_iter_init(&parent_cursor, &child->children, &child_cursor);
 				goto next;
 			}
 
-			if (!fr_type_is_structural(child_vp->vp_type) && !fr_der_flag_is_oid_leaf(child_vp->da)) {
-				FR_PROTO_TRACE("Found non-structural child %s", child_vp->da->name);
+			if (!fr_type_is_structural(child->vp_type) && !fr_der_flag_is_oid_leaf(child->da)) {
+				FR_PROTO_TRACE("Found non-structural child %s", child->da->name);
 
-				if (child_vp->da->flags.is_raw) {
+				if (child->da->flags.is_raw) {
 					/*
 					 *	This was an unknown oid
 					 */
-					if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, ".%" PRIu32, child_vp->da->attr) <= 0)) {
+					if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, ".%" PRIu32, child->da->attr) <= 0)) {
 						fr_strerror_const("Failed to copy OID to buffer");
 						slen = -1;
 					error:
 						fr_dbuff_marker_release(&outer_seq_len_start);
 						return slen;
 					}
-					is_raw = true;
 					break;
 				}
 
@@ -1190,7 +1199,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 			}
 
 			if (oid_buff[0] == '\0') {
-				if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, "%" PRIu32, child_vp->da->attr) <= 0)) {
+				if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, "%" PRIu32, child->da->attr) <= 0)) {
 					fr_strerror_const("Failed to copy OID to buffer");
 					slen = -1;
 					goto error;
@@ -1199,7 +1208,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 				goto next;
 			}
 
-			if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, ".%" PRIu32, child_vp->da->attr) <= 0)) {
+			if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, ".%" PRIu32, child->da->attr) <= 0)) {
 				goto error;
 			}
 
@@ -1207,13 +1216,13 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 			 *	Unless this was the last child (marked as an extension), there should only be one child
 			 *	- representing the next OID in the extension
 			 */
-			if (fr_pair_list_num_elements(&child_vp->children) > 1) break;
+			if (fr_pair_list_num_elements(&child->children) > 1) break;
 
 		next:
 			FR_PROTO_TRACE("OID: %s", oid_buff);
 
-			if (fr_der_flag_is_oid_leaf(child_vp->da)) break;
-			fr_pair_dcursor_child_iter_init(&child_cursor, &child_vp->children, &child_cursor);
+			if (fr_der_flag_is_oid_leaf(child->da)) break;
+			fr_pair_dcursor_child_iter_init(&child_cursor, &child->children, &child_cursor);
 		}
 
 		fr_sbuff_terminate(&oid_sbuff);
@@ -1292,7 +1301,13 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		fr_dbuff_marker(&length_start, &our_dbuff);
 		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
-		if (is_raw) {
+		/*
+		 *	Encode the data either as raw garbage, or as an OID pair.
+		 */
+		child = fr_dcursor_current(&child_cursor);
+		fr_assert(child != NULL);
+
+		if (child->da->flags.is_raw) {
 			slen = fr_der_encode_octetstring(&our_dbuff, &child_cursor, encode_ctx);
 		} else {
 			slen = der_encode_pair(&our_dbuff, &child_cursor, encode_ctx);
@@ -1354,13 +1369,13 @@ static ssize_t fr_der_encode_oid_value_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cur
 	fr_sbuff_t	  oid_sbuff;
 	fr_dbuff_marker_t length_start;
 	fr_dcursor_t	  child_cursor, parent_cursor = *cursor;
-	fr_pair_t const	 *vp;
+	fr_pair_t const	  *vp, *child;
 	char		  oid_buff[1024] = { 0 };
 	ssize_t		  slen	 = 0;
-	bool		  is_raw = false;
 
 	vp = fr_dcursor_current(&parent_cursor);
 	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
 
 	fr_assert(fr_type_is_group(vp->vp_type));
 
@@ -1385,23 +1400,20 @@ static ssize_t fr_der_encode_oid_value_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cur
 	 *	pair.
 	 */
 	fr_pair_dcursor_child_iter_init(&child_cursor, &vp->children, &parent_cursor);
-	while (fr_dcursor_current(&child_cursor)) {
-		fr_pair_t const *child_vp = fr_dcursor_current(&child_cursor);
+	while ((child = fr_dcursor_current(&child_cursor)) != NULL) {
+		PAIR_VERIFY(child);
 
-		PAIR_VERIFY(child_vp);
+		if (!fr_type_is_structural(child->vp_type) && !fr_der_flag_is_oid_leaf(child->da)) {
+			FR_PROTO_TRACE("Found non-structural child %s", child->da->name);
 
-		if (!fr_type_is_structural(child_vp->vp_type) && !fr_der_flag_is_oid_leaf(child_vp->da)) {
-			FR_PROTO_TRACE("Found non-structural child %s", child_vp->da->name);
-
-			if (child_vp->da->flags.is_raw) {
+			if (child->da->flags.is_raw) {
 				/*
 				 *	This was an unknown oid
 				 */
-				if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, ".%" PRIu32, child_vp->da->attr) <= 0)) {
+				if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, ".%" PRIu32, child->da->attr) <= 0)) {
 					fr_strerror_const("Failed to copy OID to buffer");
 					return slen;
 				}
-				is_raw = true;
 				break;
 			}
 
@@ -1410,7 +1422,7 @@ static ssize_t fr_der_encode_oid_value_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cur
 		}
 
 		if (oid_buff[0] == '\0') {
-			if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, "%" PRIu32, child_vp->da->attr) <= 0)) {
+			if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, "%" PRIu32, child->da->attr) <= 0)) {
 				fr_strerror_const("Failed to copy OID to buffer");
 				return -1;
 			}
@@ -1418,7 +1430,7 @@ static ssize_t fr_der_encode_oid_value_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cur
 			goto next;
 		}
 
-		if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, ".%" PRIu32, child_vp->da->attr) <= 0)) {
+		if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, ".%" PRIu32, child->da->attr) <= 0)) {
 			fr_strerror_const("Failed to copy OID to buffer");
 			return -1;
 		}
@@ -1427,12 +1439,12 @@ static ssize_t fr_der_encode_oid_value_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cur
 		 *	Unless this was the last child (marked as an oid leaf), there should only be one child
 		 *	- representing the next OID in the pair
 		 */
-		if (fr_pair_list_num_elements(&child_vp->children) > 1) break;
+		if (fr_pair_list_num_elements(&child->children) > 1) break;
 
 	next:
 		FR_PROTO_TRACE("OID: %s", oid_buff);
-		if (fr_der_flag_is_oid_leaf(child_vp->da)) break;
-		fr_pair_dcursor_child_iter_init(&child_cursor, &child_vp->children, &child_cursor);
+		if (fr_der_flag_is_oid_leaf(child->da)) break;
+		fr_pair_dcursor_child_iter_init(&child_cursor, &child->children, &child_cursor);
 	}
 
 	fr_sbuff_terminate(&oid_sbuff);
@@ -1460,7 +1472,13 @@ static ssize_t fr_der_encode_oid_value_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cur
 	fr_dbuff_marker_release(&length_start);
 	if (slen < 0) return slen;
 
-	if (is_raw) {
+	/*
+	 *	Encode the data either as raw garbage, or as an OID pair.
+	 */
+	child = fr_dcursor_current(&child_cursor);
+	fr_assert(child);
+
+	if (child->da->flags.is_raw) {
 		slen = fr_der_encode_octetstring(&our_dbuff, &child_cursor, encode_ctx);
 	} else {
 		slen = der_encode_pair(&our_dbuff, &child_cursor, encode_ctx);
@@ -1477,6 +1495,7 @@ static ssize_t fr_der_encode_string(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNU
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -1767,6 +1786,10 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 
 	if (flags->is_extensions) {
 		slen = fr_der_encode_X509_extensions(&our_dbuff, cursor, uctx);
+
+	} else if (vp->da->flags.is_raw) {
+		slen = fr_der_encode_octetstring(&our_dbuff, cursor, uctx);
+
 	} else {
 		slen = func->encode(&our_dbuff, cursor, uctx);
 	}
