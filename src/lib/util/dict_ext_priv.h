@@ -76,10 +76,21 @@ static inline size_t dict_attr_ext_len(fr_dict_attr_t const *da, fr_dict_attr_ex
  */
 static inline void *dict_attr_ext_copy(fr_dict_attr_t **da_out_p, fr_dict_attr_t const *da_in, fr_dict_attr_ext_t ext)
 {
-	if (unlikely((*da_out_p)->dict && fr_dict_is_read_only((*da_out_p)->dict))) {
+	if (unlikely((*da_out_p)->dict && fr_dict_is_read_only((*da_out_p)->dict) && !(*da_out_p)->flags.is_unknown)) {
 		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root((*da_out_p)->dict)->name);
 		return NULL;
 	}
+
+	/*
+	 *	We might be able to copy things for unknown
+	 *	attributes.  But if the unknown is of type 'octets',
+	 *	then we can only copy the protocol-specific things.
+	 */
+#ifndef NDEBUG
+	if ((*da_out_p)->flags.is_unknown && ((*da_out_p)->type == FR_TYPE_OCTETS)) {
+		fr_assert(ext == FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	}
+#endif
 
 	return fr_ext_copy(&fr_dict_attr_ext_def, (void **)da_out_p, (void const *)da_in, ext);
 }

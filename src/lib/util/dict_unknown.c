@@ -216,7 +216,13 @@ static fr_dict_attr_t *dict_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const 
 	if (dict_attr_init(&n, parent, da->name, da->attr, type, &(dict_attr_args_t){ .flags = &flags }) < 0) {
 		goto error;
 	}
-	if (type != FR_TYPE_OCTETS) dict_attr_ext_copy_all(&n, da);
+	if (type != FR_TYPE_OCTETS) {
+		dict_attr_ext_copy_all(&n, da);
+
+	} else if (fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC) &&
+		   !dict_attr_ext_copy(&n, da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC)) {
+		goto error;
+	}
 	DA_VERIFY(n);
 
 	return n;
