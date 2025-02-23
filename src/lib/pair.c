@@ -2006,7 +2006,8 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR 
 		 *	for expansion.
 		 */
 		if ((raw.quote == T_DOUBLE_QUOTED_STRING) &&
-		    (((q = strchr(raw.r_opand, '%')) == NULL) || !q[1])) {
+		    (((strchr(raw.r_opand, '%')) != NULL) || (q && !q[1]))) {
+
 			vp = fr_pair_make(ctx, NULL, raw.l_opand, NULL, raw.op);
 			if (!vp) {
 				last_token = T_INVALID;
