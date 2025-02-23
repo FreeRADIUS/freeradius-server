@@ -1633,6 +1633,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	fr_der_encode_ctx_t *uctx = encode_ctx;
 	ssize_t		     slen = 0;
 	size_t		     encoding_length;
+	fr_der_attr_flags_t const *flags;
 
 	if (unlikely(cursor == NULL)) {
 		fr_strerror_const("No cursor to encode");
@@ -1648,6 +1649,9 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	PAIR_VERIFY(vp);
 
 	FR_PROTO_TRACE("Encoding %s", vp->da->name);
+
+	flags = fr_der_attr_flags(vp->da);
+	fr_assert(flags != NULL);
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -1689,7 +1693,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	 *
 	 */
 
-	if (fr_der_flag_has_default(vp->da)) {
+	if (flags->has_default) {
 		/*
 		 *	Skip encoding the default value, as per ISO/IEC 8825-1:2021 11.5
 		 */
@@ -1708,7 +1712,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 		}
 	}
 
-	if (unlikely(fr_der_flag_is_choice(vp->da))) {
+	if (unlikely(flags->is_choice)) {
 		slen = fr_der_encode_choice(&our_dbuff, cursor, uctx);
 		if (slen < 0) return slen;
 
@@ -1716,7 +1720,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 		return fr_dbuff_set(dbuff, &our_dbuff);
 	}
 
-	tag = fr_der_flag_der_type(vp->da);
+	tag = flags->der_type;
 	if (!tag) tag = fr_type_to_der_tag_default(vp->vp_type);
 
 	if (unlikely(tag == FR_DER_TAG_INVALID)) {
@@ -1735,14 +1739,14 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	/*
 	 *	Default flag class is 0, which is FR_DER_CLASS_UNIVERSAL.
 	 */
-	tag_class = fr_der_flag_class(vp->da);
+	tag_class = flags->class;
 
 	/*
 	 *	We call the DER type encoding function based on its
 	 *	tag, but we might need to encode an option value
 	 *	instead of a tag.
 	 */
-	if (fr_der_flag_option(vp->da) | tag_class) tag = fr_der_flag_option(vp->da);
+	if (flags->option | tag_class) tag = flags->option;
 
 	fr_dbuff_marker(&encoding_start, &our_dbuff);
 
@@ -1761,7 +1765,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	fr_dbuff_marker(&marker, &our_dbuff);
 	FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
-	if (fr_der_flag_is_extensions(vp->da)) {
+	if (flags->is_extensions) {
 		slen = fr_der_encode_X509_extensions(&our_dbuff, cursor, uctx);
 	} else {
 		slen = func->encode(&our_dbuff, cursor, uctx);
