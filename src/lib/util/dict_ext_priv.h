@@ -216,7 +216,7 @@ static inline int dict_attr_ref_aunresolved(fr_dict_attr_t **da_p, char const *r
 	}
 	da = *da_p;
 	if (unlikely(ext->type != 0)) {
-		fr_strerror_printf("Attribute already contains a populatd 'ref' extension");
+		fr_strerror_printf("Attribute already contains a populated 'ref' extension");
 		return -1;
 	}
 	ext->type = type | FR_DICT_ATTR_REF_UNRESOLVED;	/* Always unresolved */
