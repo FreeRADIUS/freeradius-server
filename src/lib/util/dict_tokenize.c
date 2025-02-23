@@ -3139,9 +3139,15 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 		}
 
 		if (fr_dict_keyword(&parser, keywords, NUM_ELEMENTS(keywords), argv_p[0], NULL)) {
+			/*
+			 *	We are allowed to have attributes
+			 *	named for keywords.  Most notably
+			 *	"value".  If there's no such attribute
+			 *	'value', then the user will get a
+			 *	descriptive error.
+			 */
 			if (do_begin && !parser->begin) {
-				fr_strerror_printf_push("BEGIN not allowed with %s", argv_p[0]);
-				goto error;
+				goto process_begin;
 			}
 
 			/*
@@ -3168,6 +3174,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 		 *	It's a naked BEGIN keyword
 		 */
 		if (do_begin) {
+		process_begin:
 			if (unlikely(dict_read_process_begin(dctx, argv_p, argc, &base_flags) < 0)) goto error;
 			continue;
 		}
