@@ -1980,6 +1980,8 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR 
 
 	p = buffer;
 	do {
+		char const *q;
+
 		raw.l_opand[0] = '\0';
 		raw.r_opand[0] = '\0';
 
@@ -1995,7 +1997,16 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR 
 		}
 		if (last_token == T_INVALID) break;
 
-		if (raw.quote == T_DOUBLE_QUOTED_STRING) {
+		/*
+		 *	Mark double-quoted strings as being expanded,
+		 *	but only if they contain a '%' character.
+		 *
+		 *	Note that this check is a bit too narrow, but
+		 *	most of the time it avoids marking the string
+		 *	for expansion.
+		 */
+		if ((raw.quote == T_DOUBLE_QUOTED_STRING) &&
+		    (((q = strchr(raw.r_opand, '%')) != NULL) || !q[1])) {
 			vp = fr_pair_make(ctx, NULL, raw.l_opand, NULL, raw.op);
 			if (!vp) {
 				last_token = T_INVALID;
