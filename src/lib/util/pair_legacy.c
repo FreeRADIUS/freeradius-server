@@ -541,6 +541,7 @@ redo:
 			if (relative->da == internal) {
 				relative->da = fr_dict_root(root->da->dict);
 			}
+			fr_assert(relative->da != NULL);
 			relative->list = &vp->vp_group;
 			break;
 
