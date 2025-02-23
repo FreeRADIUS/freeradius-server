@@ -926,7 +926,10 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 			 */
 			if (unlikely(flags->sequence_of == FR_DER_TAG_CHOICE)) {
 				child = fr_dict_attr_child_by_num(parent, current_tag);
-				if (!child) child = fr_dict_attr_unknown_raw_afrom_num(decode_ctx->tmp_ctx, parent, current_tag);
+				if (!child) {
+					child = fr_dict_attr_unknown_raw_afrom_num(decode_ctx->tmp_ctx, parent, current_tag);
+					if (!child) return -1;
+				}
 			}
 
 			FR_PROTO_TRACE("decode context %s -> %s", parent->name, child->name);
