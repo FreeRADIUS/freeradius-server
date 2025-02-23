@@ -1759,6 +1759,8 @@ static inline bool fr_sbuff_is_str(fr_sbuff_t *sbuff, char const *str, size_t le
 }
 #define fr_sbuff_is_str_literal(_sbuff, _str) fr_sbuff_is_str(_sbuff, _str, sizeof(_str) - 1)
 
+#define fr_sbuff_eof(_x) (!fr_sbuff_extend(_x))
+
 static inline bool _fr_sbuff_is_char(fr_sbuff_t *sbuff, char *p, char c)
 {
 	if (!fr_sbuff_extend(sbuff)) return false;
