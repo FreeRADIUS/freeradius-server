@@ -692,6 +692,14 @@ static bool attr_valid(fr_dict_attr_t *da)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(da->parent, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 
+	/*
+	 *	sequence_of=oid_and_value has to have a reference to the OID tree.
+	 */
+	if (flags->is_pair && !fr_dict_attr_ref(da)) {
+		fr_strerror_const("Flag has 'oid_and_value' set, but is missing 'ref=OID-Tree'");
+		return false;
+	}
+
 	if (flags->is_sequence_of || flags->is_set_of) {
 		fr_der_tag_t of_type = (flags->is_sequence_of ?
 					flags->sequence_of :
@@ -741,6 +749,19 @@ static bool attr_valid(fr_dict_attr_t *da)
 					   fr_type_to_str(da->type));
 			return false;
 		}
+
+#if 0
+		/*
+		 *	Group refs are added as unresolved refs, see dict_flag_ref(), and are resolved later
+		 *	in dict_fixup_group_apply().
+		 *
+		 *	@todo - have a function called from dict_attr_finalize() ?
+		 */
+		if (!fr_dict_attr_ref(da)) {
+			fr_strerror_const("Attribute is 'x509_extensions', but is missing 'ref=OID-Tree'");
+			return false;
+		}
+#endif
 
 		/*
 		 *	Avoid run-time checks.
