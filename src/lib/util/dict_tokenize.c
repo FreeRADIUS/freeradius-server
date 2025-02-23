@@ -840,6 +840,11 @@ static int dict_attr_add_or_fixup(dict_fixup_ctx_t *fixup, fr_dict_attr_t **da_p
 	 */
 	ref = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_REF);
 	if (ref && fr_dict_attr_ref_is_unresolved(ref->type)) {
+		/*
+		 *	See if we can immediately apply the ref.
+		 */
+		fr_dict_attr_t const *src;
+
 		switch (fr_dict_attr_ref_type(ref->type)) {
 		case FR_DICT_ATTR_REF_ALIAS:
 			if (fr_dict_attr_add_initialised(da) < 0) {
@@ -849,21 +854,35 @@ static int dict_attr_add_or_fixup(dict_fixup_ctx_t *fixup, fr_dict_attr_t **da_p
 				return -1;
 			}
 
+			/*
+			 *	IF the ref exists, we can always add it.  The ref won't be changed later.
+			 */
+			src = dict_protocol_reference(da->parent, ref->unresolved, true);
+			if (src) {
+				if (dict_attr_ref_set(*da_p, src, FR_DICT_ATTR_REF_ALIAS) < 0) return -1;
+				break;
+			}
+
 			if (dict_fixup_group_enqueue(fixup, da, ref->unresolved) < 0) return -1;
+			ret = 1;
 			break;
 
 		case FR_DICT_ATTR_REF_ENUM:
+			/*
+			 *	Do NOT copy the enums now.  Later dictionaries may add more values, and we
+			 *	want to be able to copy all values.
+			 */
 			if (fr_dict_attr_add_initialised(da) < 0) goto error;
 
 			if (dict_fixup_clone_enum_enqueue(fixup, da, ref->unresolved) < 0) return -1;
 			break;
 
 		case FR_DICT_ATTR_REF_CLONE:
-		{
 			/*
-			 *	See if we can immediately apply the clone
+			 *	@todo - if we defer this clone, we get errors loading dictionary.wimax.  That
+			 *	likely means there are issues with the dict_fixup_clone_apply() function.
 			 */
-			fr_dict_attr_t const *src = dict_protocol_reference(da->parent, ref->unresolved, true);
+			src = dict_protocol_reference(da->parent, ref->unresolved, true);
 			if (src) {
 				if (dict_fixup_clone(da_p, src) < 0) return -1;
 				break;
@@ -871,7 +890,6 @@ static int dict_attr_add_or_fixup(dict_fixup_ctx_t *fixup, fr_dict_attr_t **da_p
 
 			if (dict_fixup_clone_enqueue(fixup, da, ref->unresolved) < 0) return -1;
 			ret = 1;
-		}
 			break;
 
 		default:

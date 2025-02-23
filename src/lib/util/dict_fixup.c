@@ -309,10 +309,9 @@ static inline CC_HINT(always_inline) int dict_fixup_enumv_apply(UNUSED dict_fixu
 
 	ret = fr_dict_enum_add_name(da, fixup->name, &value, false, false);
 	fr_value_box_clear(&value);
+	da->flags.has_fixup = false;
 
-	if (ret < 0) return -1;
-
-	return 0;
+	return ret;
 }
 
 /** Resolve a group reference
@@ -340,6 +339,8 @@ int dict_fixup_group_enqueue(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, char co
 		.da = da,
 		.ref = talloc_strdup(fixup, ref),
 	};
+
+	da->flags.has_fixup = true;
 
 	return dict_fixup_common(&fctx->group, &fixup->common);
 }
@@ -374,9 +375,10 @@ static inline CC_HINT(always_inline) int dict_fixup_group_apply(UNUSED dict_fixu
 				   fr_cwd_strip(fixup->da->filename), fixup->da->line);
 		return -1;
 	}
-	if (unlikely(dict_attr_ref_resolve(fixup->da, da) < 0)) return -1;
 
-	return 0;
+	fixup->da->flags.has_fixup = false;
+
+	return dict_attr_ref_resolve(fixup->da, da);
 }
 
 /** Clone one area of a tree into another
@@ -537,7 +539,7 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 	 */
 	if (dict_attr_children(dst)) {
 		if (dict_attr_acopy_children(dict, cloned, dst) < 0) {
-			fr_strerror_printf("Failed populating attribute '%s' with children of %s", src->name, dst->name);
+			fr_strerror_printf("Failed populating attribute '%s' with children of %s - %s", src->name, dst->name, fr_strerror());
 			return -1;
 		}
 	}
@@ -547,7 +549,7 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 	 */
 	if (dict_attr_children(src)) {
 		if (dict_attr_acopy_children(dict, cloned, src) < 0) {
-			fr_strerror_printf("Failed populating attribute '%s' with children of %s", src->name, dst->name);
+			fr_strerror_printf("Failed populating attribute '%s' with children of %s - %s", src->name, dst->name, fr_strerror());
 			return -1;
 		}
 	}
@@ -585,6 +587,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 		return -1;
 	}
 
+	fixup->da->flags.has_fixup = false;
 	return dict_fixup_clone(&fixup->da, src);
 }
 
@@ -685,6 +688,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict
 		return -1;
 	}
 
+	fixup->da->flags.has_fixup = false;
 	return 0;
 }
 
@@ -742,6 +746,7 @@ static inline CC_HINT(always_inline) int dict_fixup_vsa_apply(UNUSED dict_fixup_
 		if (fr_dict_attr_add(dict, fixup->da, dv->name, dv->pen, FR_TYPE_VENDOR, NULL) < 0) return -1;
 	}
 
+	fixup->da->flags.has_fixup = false;
 	return 0;
 }
 
@@ -802,6 +807,7 @@ static inline CC_HINT(always_inline) int dict_fixup_alias_apply(UNUSED dict_fixu
 		return -1;
 	}
 
+	fr_dict_attr_unconst(da)->flags.has_fixup = false;
 	return dict_attr_alias_add(fixup->alias_parent, fixup->alias, da);
 }
 

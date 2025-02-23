@@ -114,6 +114,8 @@ typedef struct {
 
 	unsigned int		local : 1;       		//!< is a local variable
 
+	unsigned int		has_fixup : 1;
+
 	/*
 	 *	main: extra is set, then this field is is key, bit, or a uint16 length field.
 	 *	radius: is one of 9 options for flags

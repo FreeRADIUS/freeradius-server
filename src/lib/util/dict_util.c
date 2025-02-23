@@ -1022,6 +1022,12 @@ fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char 
 {
 	fr_dict_attr_t		*n;
 
+	if (in->flags.has_fixup) {
+		fr_strerror_printf("Cannot copy from %s - source attribute is waiting for additional definitions",
+				   in->name);
+		return NULL;
+	}
+
 	n = dict_attr_alloc(ctx, in->parent, new_name ? new_name : in->name,
 			    in->attr, in->type, &(dict_attr_args_t){ .flags = &in->flags });
 	if (unlikely(!n)) return NULL;
@@ -1048,6 +1054,12 @@ static fr_dict_attr_t *dict_attr_acopy_dict(TALLOC_CTX *ctx, fr_dict_attr_t *par
 {
 	fr_dict_attr_t		*n;
 
+	if (in->flags.has_fixup) {
+		fr_strerror_printf("Cannot copy from %s - source attribute is waiting for additional definitions",
+				   in->name);
+		return NULL;
+	}
+
 	n = dict_attr_alloc(ctx, parent, in->name,
 			    in->attr, in->type, &(dict_attr_args_t){ .flags = &in->flags });
 	if (unlikely(!n)) return NULL;
@@ -1065,6 +1077,12 @@ int fr_dict_attr_acopy_local(fr_dict_attr_t const *dst, fr_dict_attr_t const *sr
 {
 	if (!dst->flags.local) {
 		fr_strerror_const("Cannot copy attributes to a non-local dictionary");
+		return -1;
+	}
+
+	if (src->flags.has_fixup) {
+		fr_strerror_printf("Cannot copy from %s to %s - source attribute is waiting for additional definitions",
+				   src->name, dst->name);
 		return -1;
 	}
 
@@ -1106,10 +1124,7 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 		} else {
 			copy = dict_attr_acopy_dict(dict->pool, dst, child);
 		}
-		if (!copy) {
-			fr_strerror_printf("Failed cloning child %s", child->name);
-			return -1;
-		}
+		if (!copy) return -1;
 
 		copy->parent = dst;
 		copy->depth += depth_diff;
