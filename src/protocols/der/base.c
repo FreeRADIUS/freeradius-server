@@ -29,19 +29,22 @@ RCSID("$Id$")
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/table.h>
+#include <freeradius-devel/util/dict_ext_priv.h>
 
 #include "der.h"
 
 static uint32_t instance_count = 0;
 
 fr_dict_t const *dict_der;
+//fr_dict_attr_t const *attr_oid_tree;
 
 extern fr_dict_autoload_t libfreeradius_der_dict[];
 fr_dict_autoload_t	  libfreeradius_der_dict[] = { { .out = &dict_der, .proto = "der" }, { NULL } };
 
 extern fr_dict_attr_autoload_t libfreeradius_der_dict_attr[];
 fr_dict_attr_autoload_t	       libfreeradius_der_dict_attr[] = {
-	       { NULL }
+//	{ .out = &attr_oid_tree, .name = "OID-Tree", .type = FR_TYPE_TLV, .dict = &dict_der },
+	{ NULL }
 };
 
 static fr_table_num_sorted_t const tag_name_to_number[] = {
@@ -274,9 +277,8 @@ static int dict_flag_sequence_of(fr_dict_attr_t **da_p, char const *value, UNUSE
 	}
 
 	if (strcmp(value, "oid_and_value") == 0) {
-		(*da_p)->type = FR_TYPE_GROUP;
 		flags->is_pair = true;
-		return 0;
+		return fr_dict_attr_set_group(da_p);
 	}
 
 	type = fr_table_value_by_str(tag_name_to_number, value, FR_DER_TAG_INVALID);
@@ -307,9 +309,8 @@ static int dict_flag_set_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 	}
 
 	if (strcmp(value, "oid_and_value") == 0) {
-		(*da_p)->type = FR_TYPE_GROUP;
 		flags->is_pair = true;
-		return 0;
+		return fr_dict_attr_set_group(da_p);
 	}
 
 	type = fr_table_value_by_str(tag_name_to_number, value, FR_DER_TAG_INVALID);
@@ -692,14 +693,6 @@ static bool attr_valid(fr_dict_attr_t *da)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(da->parent, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 
-	/*
-	 *	sequence_of=oid_and_value has to have a reference to the OID tree.
-	 */
-	if (flags->is_pair && !fr_dict_attr_ref(da)) {
-		fr_strerror_const("Flag has 'oid_and_value' set, but is missing 'ref=OID-Tree'");
-		return false;
-	}
-
 	if (flags->is_sequence_of || flags->is_set_of) {
 		fr_der_tag_t of_type = (flags->is_sequence_of ?
 					flags->sequence_of :
@@ -715,6 +708,26 @@ static bool attr_valid(fr_dict_attr_t *da)
 	}
 
 	flags = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+
+	/*
+	 *	sequence_of=oid_and_value has to have a reference to the OID tree.
+	 *
+	 *	Group refs are added as unresolved refs, see dict_flag_ref(), and are resolved later
+	 *	in dict_fixup_group_apply().
+	 *
+	 *	@todo - have a function called from dict_attr_finalize() ?
+	 */
+#if 0
+	if (flags->is_pair) {
+		fr_dict_attr_t const *ref;
+
+		fr_assert(da->type == FR_TYPE_GROUP);
+
+		if (!fr_dict_attr_ref(da)) {
+			(void) dict_attr_ref_set(da, attr_oid_tree, FR_DICT_ATTR_REF_ALIAS);
+		}
+	}
+#endif
 
 	if (flags->is_choice && unlikely(!fr_type_is_tlv(da->type))) {
 		fr_strerror_printf("Attribute %s of type %s is not allowed represent a collection of choices.",

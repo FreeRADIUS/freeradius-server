@@ -532,6 +532,8 @@ int			fr_dict_enum_add_name_next(fr_dict_attr_t *da, char const *name) CC_HINT(n
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
 
 int			fr_dict_attr_acopy_local(fr_dict_attr_t const *dst, fr_dict_attr_t const *src) CC_HINT(nonnull);
+
+int			fr_dict_attr_set_group(fr_dict_attr_t **da_p) CC_HINT(nonnull);
 /** @} */
 
 /** @name Dict accessors

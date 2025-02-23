@@ -4972,3 +4972,22 @@ fr_dict_attr_t const *fr_dict_unlocal(fr_dict_attr_t const *da)
 
 	return da;
 }
+
+int fr_dict_attr_set_group(fr_dict_attr_t **da_p)
+{
+	if ((*da_p)->type == FR_TYPE_GROUP) {
+		fr_assert(fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_REF) != NULL);
+		return 0;
+	}
+
+	(*da_p)->type = FR_TYPE_GROUP;
+
+	fr_assert(fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_REF) == NULL);
+
+	if (!dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_REF)) {
+		return -1;
+	}
+
+	return 0;
+}
+
