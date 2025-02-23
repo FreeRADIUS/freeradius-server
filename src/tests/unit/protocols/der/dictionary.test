@@ -6,18 +6,12 @@ DEFINE	Certificate-Extensions				x509_extensions ref=@.OID-Tree
 
 DEFINE	Issuer						sequence sequence_of=set
 BEGIN Issuer
-DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
-BEGIN RelativeDistinguishedName
-DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=@.OID-Tree
-END RelativeDistinguishedName
+DEFINE	RelativeDistinguishedName			set clone=@.RelativeDistinguishedName
 END Issuer
 
 DEFINE	Issuer-Set					set set_of=set
 BEGIN Issuer-Set
-DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
-BEGIN RelativeDistinguishedName
-DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=@.OID-Tree
-END RelativeDistinguishedName
+DEFINE	RelativeDistinguishedName			set clone=@.RelativeDistinguishedName
 END Issuer-Set
 
 DEFINE	Test-Seq-Of					sequence sequence_of=integer

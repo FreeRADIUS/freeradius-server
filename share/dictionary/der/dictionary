@@ -13,12 +13,55 @@ BEGIN PROTOCOL DER      11354911
 #  Note that the data types for DER are local to DER!
 #
 # * `integer` is packed as 1, 2, or more bytes, depending on its size.
-#   The server manages all DER numbers as `int64`.
+#   The server manages all DER numbers as FreeRADIUS type `int64`.
+#
+# * All other integer / float types are forbidden.
 #
 # * `null` is an empty value.  
-#   The server manages all DER `null` as `bool`.
+#   The server treats all DER `null` as FreeRADIUS type `bool`.
+#
+# * All IP address types are forbidden.
+#
+# * In general, you MUST use the DER names for data types, which map
+#   to the following FreeRADIUS data types:
+#
+#   DER			FreeRADIUS
+#   ----------------	-----------------
+#   bitstring		octets
+#   boolean		bool
+#   choice		tlv
+#   enumerated		int64
+#   generalizedtime	date
+#   generalstring	string
+#   ia5string		string
+#   integer		int64
+#   null		bool	with a fixed value of `false`
+#   octetstring		octets
+#   oid			string	ASN.1 encodes OIDs as printable strings
+#   printablestring	string
+#   sequence		tlv
+#   set			tlv
+#   t61string		string
+#   universalstring	string
+#   utctime		date
+#   utf8string		string
+#   visiblestring	string
+#   x509_extension	group
+#
+#  It is possible in some cases to use FreeRADIUS type `group` or
+#  `struct`, and then manually set `der_type=...` in the attribute
+#  flags.
+#
+#  There are a number of DER-specific attribute flags.  Please see the
+#  example dictionaries for what flags are supported.  In most cases,
+#  the name and functionality should be clear.
 #
 
+#
+#  List the OIDs first.  The OID-Tree attribute is referenced from
+#  many places. By listing it first, we ensure that it exists before
+#  anything else references it.
+#
 $INCLUDE dictionary.oids
 $INCLUDE dictionary.common
 $INCLUDE dictionary.rfc2986

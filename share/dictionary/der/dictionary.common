@@ -4,7 +4,10 @@
 # Version $Id$
 
 #
-#  This is used in lots of places.
+#  List this at the top of the DER dictionary, so that it can be
+#  referenced from elsewhere.  While technically doing so allows
+#  people to reference it out of scope, in practice that isn't a huge
+#  issue.
 #
 DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
 BEGIN RelativeDistinguishedName
@@ -31,13 +34,7 @@ ATTRIBUTE	directoryName				4	sequence  option
 BEGIN directoryName
 DEFINE	RDNSequence					sequence        sequence_of=set
 BEGIN RDNSequence
-
 DEFINE	RelativeDistinguishedName			set clone=@.RelativeDistinguishedName
-#DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
-#BEGIN RelativeDistinguishedName
-#DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=@.OID-Tree
-#END RelativeDistinguishedName
-
 END RDNSequence
 END directoryName
 
@@ -64,9 +61,6 @@ DEFINE	Name						sequence
 BEGIN Name
 DEFINE	RDNSequence					sequence        sequence_of=set
 BEGIN RDNSequence
-DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
-BEGIN RelativeDistinguishedName
-DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=@.OID-Tree
-END RelativeDistinguishedName
+DEFINE	RelativeDistinguishedName			set clone=@.RelativeDistinguishedName
 END RDNSequence
 END Name

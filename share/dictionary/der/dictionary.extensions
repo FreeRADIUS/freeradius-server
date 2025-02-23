@@ -72,9 +72,9 @@ MEMBER		decipherOnly				bit[1]
 MEMBER		unused_bits				bit[7]
 END 2.5.29.15
 
-ATTRIBUTE	subjectAltName				2.5.29.17	group ref=@.GeneralName,der_type=sequence,sequence_of=choice,is_oid_leaf,size=1..
+ATTRIBUTE	subjectAltName				2.5.29.17	group der_type=sequence,sequence_of=choice,ref=@.GeneralName,is_oid_leaf,size=1..
 
-ATTRIBUTE	issuerAltName				2.5.29.18	group ref=@.GeneralName,der_type=sequence,sequence_of=choice,is_oid_leaf,size=1..
+ATTRIBUTE	issuerAltName				2.5.29.18	group der_type=sequence,sequence_of=choice,ref=@.GeneralName,is_oid_leaf,size=1..
 
 ATTRIBUTE	basicConstraints			2.5.29.19	sequence is_oid_leaf
 BEGIN 2.5.29.19
@@ -117,7 +117,7 @@ END 2.5.29.33
 ATTRIBUTE	authorityKeyIdentifier			2.5.29.35	sequence        sequence_of=choice,is_oid_leaf
 BEGIN 2.5.29.35
 ATTRIBUTE	keyIdentifier				0	octetstring  option
-ATTRIBUTE	authorityCertIssuer			1	group   ref=@.GeneralName,der_type=sequence,sequence_of=choice,option
+ATTRIBUTE	authorityCertIssuer			1	group   der_type=sequence,sequence_of=choice,ref=@.GeneralName,option
 ATTRIBUTE	authorityCertSerialNumber		2	octetstring option
 END 2.5.29.35
 
