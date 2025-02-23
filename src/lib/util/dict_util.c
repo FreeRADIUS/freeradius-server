@@ -1092,7 +1092,6 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 {
 	fr_dict_attr_t const		*child = NULL;
 	fr_dict_attr_t			*copy;
-	fr_dict_attr_ext_enumv_t	*ext;
 	uint				depth_diff = dst->depth - src->depth;
 
 	fr_assert(fr_dict_attr_has_ext(dst, FR_DICT_ATTR_EXT_CHILDREN));
@@ -1122,17 +1121,6 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 		if (!dict_attr_children(child)) continue;
 
 		if (dict_attr_acopy_children(dict, copy, child) < 0) return -1;
-	}
-
-	/*
-	 *	Copy VALUEs, too.
-	 */
-	ext = fr_dict_attr_ext(src, FR_DICT_ATTR_EXT_ENUMV);
-	if (ext && ext->name_by_value) {
-		int cloned;
-
-		cloned = dict_attr_acopy_enumv(dst, src);
-		if (cloned < 0) return -1;
 	}
 
 	return 0;
