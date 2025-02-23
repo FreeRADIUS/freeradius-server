@@ -100,6 +100,7 @@ typedef struct {
 	uint64_t 		max;			//!< maximum count of items in a sequence, set, or string.
 	uint8_t			min;			//!< mininum count
 	uint8_t 		option;			//!< an "attribute number" encoded in the tag field.
+	bool			optional : 1;		//!< optional, we MUST already have set 'option'
 	bool			is_sequence_of : 1;	//!< sequence_of has been defined
 	bool 			is_set_of : 1;		//!< set_of has been defined
 	bool 			is_pair : 1;		//!< is OID+value
@@ -115,6 +116,7 @@ static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const 
 }
 
 #define fr_der_flag_option(_da) 	(fr_der_attr_flags(_da)->option)
+#define fr_der_flag_optional(_da) 	(fr_der_attr_flags(_da)->optional)
 #define fr_der_flag_class(_da)		(fr_der_attr_flags(_da)->class)
 #define fr_der_flag_der_type(_da) 	(fr_der_attr_flags(_da)->der_type)
 #define fr_der_flag_sequence_of(_da) 	(fr_der_attr_flags(_da)->sequence_of)

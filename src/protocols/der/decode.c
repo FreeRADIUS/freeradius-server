@@ -1530,6 +1530,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 	fr_der_tag_decode_t	*func;
 	fr_der_tag_class_t	 tag_class;
 	fr_der_tag_constructed_t constructed;
+	fr_der_attr_flags_t const *flags;
 
 	FR_DBUFF_OUT_RETURN(&tag_byte, &our_in);
 
@@ -1570,20 +1571,26 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 			fr_strerror_const("No parent attribute to resolve tag");
 			return -1;
 		}
+		flags = fr_der_attr_flags(parent);
 
-		if (tag_class != fr_der_flag_class(parent)) {
+		if (tag_class != flags->class) {
 			fr_strerror_printf("Invalid DER class %02x for attribute %s. Expected DER class %02x", *tag, parent->name,
-					   tag_class, fr_der_flag_class(parent));
+					   tag_class, flags->class);
 			return -1;
 		}
 
-		if (*tag != fr_der_flag_option(parent)) {
+		/*
+		 *	Doesn't match, check if it's optional.
+		 */
+		if (*tag != flags->option) {
+			if (flags->optional) return 0;
+
 			fr_strerror_printf("Invalid tag %u for attribute %s. Expected %u", *tag, parent->name,
 					   fr_der_flag_option(parent));
 			return -1;
 		}
 
-		*tag = fr_der_flag_der_type(parent);
+		*tag = flags->der_type;
 	}
 
 	if ((*tag >= NUM_ELEMENTS(tag_funcs)) || (*tag == FR_DER_TAG_INVALID)) {
@@ -2233,7 +2240,9 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		return fr_dbuff_set(in, &our_in);
 	}
 
-	if (unlikely(fr_der_decode_hdr(parent, &our_in, &tag, &len) <= 0)) {
+	slen = fr_der_decode_hdr(parent, &our_in, &tag, &len);
+	if ((slen == 0) && flags->optional) return 0;
+	if (slen <= 0) {
 		fr_strerror_const_push("Failed decoding header");
 		return -1;
 	}

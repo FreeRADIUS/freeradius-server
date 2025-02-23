@@ -36,7 +36,10 @@ DEFINE	algorithm					sequence sequence_of=oid_and_value,ref=@.OID-Tree
 DEFINE	subjectPublicKey				bitstring
 END subjectPublicKeyInfo
 
-DEFINE	extensions					x509_extensions ref=@.OID-Tree,size=1..
+DEFINE issuerUniqueID					octetstring option=1,optional
+DEFINE subjectUniqueID					octetstring option=2,optional
+
+DEFINE	extensions					x509_extensions ref=@.OID-Tree,size=1..,option=3,optional
 
 END tbsCertificate
 

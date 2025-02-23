@@ -46,16 +46,16 @@ ATTRIBUTE	basicConstraints			2.5.29.19	sequence is_oid_leaf
 BEGIN 2.5.29.19
 DEFINE	cA						boolean has_default
 VALUE	cA				DEFAULT			false
-DEFINE	pathLenConstraint				integer
+DEFINE	pathLenConstraint				integer		optional
 END 2.5.29.19
 
 ATTRIBUTE	nameConstraints				2.5.29.30	sequence        is_oid_leaf
 BEGIN 2.5.29.30
-DEFINE	permittedSubtrees				group   ref=@.GeneralSubtree,sequence_of=sequence,option=0
-DEFINE	excludedSubtrees				group   ref=@.GeneralSubtree,sequence_of=sequence,option=1
+DEFINE	permittedSubtrees				group   ref=@.GeneralSubtree,sequence_of=sequence,option=0,optional
+DEFINE	excludedSubtrees				group   ref=@.GeneralSubtree,sequence_of=sequence,option=1,optional
 END 2.5.29.30
 
-ATTRIBUTE	cRLDIstributionPoints			2.5.29.31	sequence        sequence_of=sequence,is_oid_leaf
+ATTRIBUTE	CRLDIstributionPoints			2.5.29.31	sequence        sequence_of=sequence,is_oid_leaf
 BEGIN 2.5.29.31
 $INCLUDE dictionary.crl
 END 2.5.29.31
@@ -66,7 +66,7 @@ DEFINE	policyInformation				sequence
 BEGIN policyInformation
 DEFINE	policyIdentifier				oid
 
-DEFINE	policyQualifiers				sequence        sequence_of=sequence,size=1..
+DEFINE	policyQualifiers				sequence        sequence_of=sequence,size=1..,optional
 BEGIN policyQualifiers
 DEFINE	policyQualifierInfo				sequence	sequence_of=oid_and_value,ref=@.OID-Tree
 END policyQualifiers
@@ -82,15 +82,15 @@ END 2.5.29.33
 
 ATTRIBUTE	authorityKeyIdentifier			2.5.29.35	sequence        sequence_of=choice,is_oid_leaf
 BEGIN 2.5.29.35
-ATTRIBUTE	keyIdentifier				0	octetstring  option
-ATTRIBUTE	authorityCertIssuer			1	group   der_type=sequence,sequence_of=choice,ref=@.GeneralName,option
-ATTRIBUTE	authorityCertSerialNumber		2	octetstring option
+ATTRIBUTE	keyIdentifier				0	octetstring  option,optional
+ATTRIBUTE	authorityCertIssuer			1	group   der_type=sequence,sequence_of=choice,ref=@.GeneralName,option,optional
+ATTRIBUTE	authorityCertSerialNumber		2	octetstring der_type=integer,option,optional
 END 2.5.29.35
 
 ATTRIBUTE	policyConstraints			2.5.29.36	sequence        is_oid_leaf
 BEGIN 2.5.29.36
-DEFINE	requireExplicitPolicy				octetstring option=0
-DEFINE	inhibitPolicyMapping				octetstring option=1
+DEFINE	requireExplicitPolicy				octetstring option=0,optional
+DEFINE	inhibitPolicyMapping				octetstring option=1,optional
 END 2.5.29.36
 
 ATTRIBUTE	extKeyUsage				2.5.29.37	sequence        sequence_of=oid,size=1..,is_oid_leaf

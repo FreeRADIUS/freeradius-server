@@ -5,7 +5,7 @@
 
 DEFINE	distributionPoint				sequence size=1..
 BEGIN   distributionPoint
-DEFINE	distributionPointName				sequence  option=0
+DEFINE	distributionPointName				sequence  option=0,optional
 BEGIN     distributionPointName
 ATTRIBUTE	fullName				0	group   der_type=sequence,sequence_of=choice,ref=@.GeneralName,option
 ATTRIBUTE	nameRelativeToCRLIssuer			1	sequence        option
@@ -14,7 +14,7 @@ DEFINE	RelativeDistinguishedName			set clone=@.RelativeDistinguishedName
 END         nameRelativeToCRLIssuer
 END       distributionPointName
 
-DEFINE	reasons						struct  der_type=bitstring,option=1
+ATTRIBUTE reasons					1	struct  der_type=bitstring,option,optional
 BEGIN   reasons
 MEMBER		unused					bit[1]
 MEMBER		keyCompromise				bit[1]
@@ -27,6 +27,6 @@ MEMBER		privilegeWithdrawn			bit[1]
 MEMBER		aACompromise				bit[1]
 END     reasons
 
-ATTRIBUTE cRLIssuer					2	group   der_type=sequence,sequence_of=choice,ref=@.GeneralName,option
+ATTRIBUTE cRLIssuer					2	group   der_type=sequence,sequence_of=choice,ref=@.GeneralName,option,optional
 
 END   distributionPoint
