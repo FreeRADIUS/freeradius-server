@@ -1509,12 +1509,14 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 
 		/*
 		 *	Check for valid single-character expansions.
+		 *
+		 *	Allow '%' at the end of a string as itself.
 		 */
-		if (p[0] == '%') {
+		if ((p[0] == '%') && p[1]) {
 			ssize_t slen;
 			xlat_exp_t *next;
 
-			if (!p[1] || !strchr("%}cdelmntCDGHIMSTYv", p[1])) {
+			if (!strchr("%}cdelmntCDGHIMSTYv", p[1])) {
 				talloc_free(node);
 				*error = "Invalid variable expansion";
 				p++;
