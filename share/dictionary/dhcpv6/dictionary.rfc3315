@@ -41,7 +41,7 @@ MEMBER		Address					ether
 #
 #  Server-ID is a clone of Client-ID
 #
-ATTRIBUTE	Server-ID				2	struct clone=Client-ID
+ATTRIBUTE	Server-ID				2	struct clone=@.Client-ID
 
 ATTRIBUTE	IA-NA					3	struct
 MEMBER		IAID					uint32

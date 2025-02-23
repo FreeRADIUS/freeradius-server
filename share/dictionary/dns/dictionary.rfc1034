@@ -70,7 +70,7 @@ VALUE	Class				Any			255
 ATTRIBUTE	Resource-Record				3	struct
 MEMBER		Name					string	dns_label
 MEMBER		Type					uint16	key
-MEMBER		Class					uint16 enum=Question.Class
+MEMBER		Class					uint16 enum=@.Question.Class
 MEMBER		TTL					time_delta
 
 ######################################################################
@@ -165,7 +165,7 @@ ATTRIBUTE	EDNS0-Tcp-Keepalive			.11	uint16 # time_delta in units of 100 millisec
 ATTRIBUTE	Padding					.12	octets
 
 #  Name server RR
-ATTRIBUTE	Name-Server				4	struct	clone=Resource-Record
+ATTRIBUTE	Name-Server				4	struct	clone=@.Resource-Record
 
 #  additional "glue" RR, or OPT RR for peer signalling
-ATTRIBUTE	Additional-Record			5	struct	clone=Resource-Record
+ATTRIBUTE	Additional-Record			5	struct	clone=@.Resource-Record

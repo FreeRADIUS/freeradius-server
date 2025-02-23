@@ -47,6 +47,8 @@ Common flags and meanings
 | `key`        | This member is a "key" type.  The struct can have different xref:dictionary/struct.adoc[STRUCT] children depending on the value of the key.
 |=====
 
+See the the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
+
 .Examples
 ----
 STRUCT Foo

@@ -218,7 +218,7 @@ ATTRIBUTE	IPv6-Acct-Input-Gigawords		155	integer
 ATTRIBUTE	IPv6-Acct-Output-Gigawords		156	integer
 ATTRIBUTE	IPv6-NdRa-Pool-Name			157	string
 ATTRIBUTE	PppoE-Padn				158	string
-ATTRIBUTE	DHCP-Option-82				159	octets # ref=..DHCPv4.Relay-Agent-Information
+ATTRIBUTE	DHCP-Option-82				159	octets # ref=@.DHCPv4.Relay-Agent-Information
 ATTRIBUTE	Vlan-Map-Id				160	integer
 ATTRIBUTE	IPv6-Delegated-Pool-Name		161	string
 ATTRIBUTE	Tx-Connect-Speed			162	integer

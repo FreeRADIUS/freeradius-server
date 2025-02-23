@@ -7,12 +7,12 @@ DEFINE	distributionPoint				sequence size=1..
 BEGIN   distributionPoint
 DEFINE	distributionPointName				sequence  option=0
 BEGIN     distributionPointName
-ATTRIBUTE	fullName				0	group   ref=GeneralName,der_type=sequence,sequence_of=choice,option
+ATTRIBUTE	fullName				0	group   ref=@.GeneralName,der_type=sequence,sequence_of=choice,option
 ATTRIBUTE	nameRelativeToCRLIssuer			1	sequence        option
 BEGIN       nameRelativeToCRLIssuer
 DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
 BEGIN         RelativeDistinguishedName
-DEFINE	AttributeTypeandValue				sequence sequence_of=oid_and_value,ref=OID-Tree
+DEFINE	AttributeTypeandValue				sequence sequence_of=oid_and_value,ref=@.OID-Tree
 END           RelativeDistinguishedName
 END         nameRelativeToCRLIssuer
 END       distributionPointName
@@ -30,6 +30,6 @@ MEMBER		privilegeWithdrawn			bit[1]
 MEMBER		aACompromise				bit[1]
 END     reasons
 
-DEFINE	cRLIssuer					group   ref=GeneralName,der_type=sequence,sequence_of=choice,option=2
+DEFINE	cRLIssuer					group   ref=@.GeneralName,der_type=sequence,sequence_of=choice,option=2
 
 END   distributionPoint

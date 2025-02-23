@@ -12,13 +12,13 @@ BEGIN version
 DEFINE	VersionNum					integer
 END version
 DEFINE	serialNumber					octets der_type=integer
-DEFINE	signature					sequence sequence_of=oid_and_value,ref=OID-Tree
+DEFINE	signature					sequence sequence_of=oid_and_value,ref=@.OID-Tree
 
 DEFINE	issuer						sequence sequence_of=set
 BEGIN issuer
 DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
 BEGIN RelativeDistinguishedName
-DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=OID-Tree
+DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=@.OID-Tree
 END RelativeDistinguishedName
 END issuer
 
@@ -32,21 +32,21 @@ DEFINE	subject						sequence sequence_of=set
 BEGIN subject
 DEFINE	RelativeDistinguishedName			set  set_of=sequence,size=1..
 BEGIN RelativeDistinguishedName
-DEFINE	AttributeTypeandValue				sequence sequence_of=oid_and_value,ref=OID-Tree
+DEFINE	AttributeTypeandValue				sequence sequence_of=oid_and_value,ref=@.OID-Tree
 END RelativeDistinguishedName
 END subject
 
 DEFINE	subjectPublicKeyInfo				sequence
 BEGIN subjectPublicKeyInfo
-DEFINE	algorithm					sequence sequence_of=oid_and_value,ref=OID-Tree
+DEFINE	algorithm					sequence sequence_of=oid_and_value,ref=@.OID-Tree
 DEFINE	subjectPublicKey				bitstring
 END subjectPublicKeyInfo
 
-DEFINE	extensions					x509_extensions ref=OID-Tree,size=1..
+DEFINE	extensions					x509_extensions ref=@.OID-Tree,size=1..
 
 END tbsCertificate
 
-DEFINE	signatureAlgorithm				sequence sequence_of=oid_and_value,ref=OID-Tree
+DEFINE	signatureAlgorithm				sequence sequence_of=oid_and_value,ref=@.OID-Tree
 
 DEFINE	signature					bitstring
 END Certificate

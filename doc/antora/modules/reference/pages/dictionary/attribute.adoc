@@ -60,13 +60,7 @@ Common flags and meanings
 | `secret`       | The server will not print `secret` values in debug mode, and in many other situations.
 |=====
 
-The `<ref>` field in the examples above is an attribute references such as `Foo`, or `Foo.Bar`, or `@dhcpv4.foo.bar`.  All `<ref>` fields use the same syntax.
-
-If the ref begins with `@` the ref will be treated as a "foreign" reference to another protocol.  The first component will be used as the protocol name e.g. `ref=@RADIUS`.
-
-If the ref begins with `.` the ref will be treated as relative to the current attribute, else resolution will begin from the root of the current dictionary.
-
-Multiple consecutive `.` can be used to traverse up the attribute hierarchy from the current attribute.
+See the the xref:dictionary/reference.adoc[reference] page for the syntax of references in the dictionary.
 
 .Examples
 ----
@@ -75,59 +69,9 @@ ATTRIBUTE Bar 2 octets
 ATTRIBUTE baz 3 ipv4addr
 ----
 
-
-== Enum
-
-In some cases, attributes need to reuse the same set of `VALUE` statements.
-The `enum=...` flag allows an attribute to copy enumerated vl
-
-The `enum` flag can only be used for "leaf" data types.  i.e. ones
-which can contain a `VALUE`.
-
-.Enum Examples
-----
-ATTRIBUTE Foo 1 integer
-VALUE Zero Foo 0
-
-ATTRIBUTE Bar 2 integer enum=Foo
-----
-
-The result of the above dictionary is that the `Bar` attribute also has `VALUE` defined, with name `Zero`.
-
-== Clone
-
-In some cases, structured attributes have different parents, but
-identical children. The `clone=...` flag allows an attribute to copy
-or "clone" the children of another attribute.
-
-The `clone` flag can only be used for data types `tlv` and `struct`.
-
-.Clone Examples
-----
-ATTRIBUTE Foo 1 tlv
-ATTRIBUTE Bar 1.1 ipaddr
-ATTRIBUTE Baz 2 tlv clone=Foo
-----
-
-The result of the above dictionary is that the `Baz` attribute also has child attribute, of name `Bar`.
-
-== Ref
-
-In some cases, attributes can "group" other attributes without adding
-a new hierarchy.  The `ref=...` flag allows a grouped attribute to
-reference another attribute.  The grouped attribute can then contain
-the referenced attributes, as if those other attributes were members
-of the group.
-
-If `ref` is not given for an attribute of type `group` then the
-reference is assumed to be to the "root" of the current protocol
-dictionary.
-
-The `ref` flag can only be used for the data type `group`.  The referenced attribute must be of data type `group` or `tlv`.
-613 816 8331
 == Fixed Size Data types
 
-The following data types can be marked up as having fixed size, by
+Some following data types can be marked up as having fixed size, by
 using an array suffix, e.g. `octets[14]`.
 
 Fixed Size types and meanings
@@ -141,5 +85,5 @@ Fixed Size types and meanings
 |=====
 
 
-// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

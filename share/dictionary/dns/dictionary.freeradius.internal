@@ -10,6 +10,6 @@ VALUE	Packet-Type			Status-Response		18
 VALUE	Packet-Type			Notify-Response		20
 VALUE	Packet-Type			Update-Response		21
 VALUE	Packet-Type			Stateful-Operation-Response 22
-ATTRIBUTE	Packet-Type				1000	uint32 enum=Header.Opcode
+ATTRIBUTE	Packet-Type				1000	uint32 enum=@.Header.Opcode
 
 VALUE	Packet-Type			Do-Not-Respond		256

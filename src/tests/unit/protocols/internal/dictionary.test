@@ -45,10 +45,10 @@ ATTRIBUTE	Delta-Sec-uint32	254.9		time_delta precision=seconds,subtype=uint32
 ATTRIBUTE	Delta-MSec-int32	254.10		time_delta precision=milliseconds,subtype=int32
 ATTRIBUTE	Delta-Sec-int32		254.11		time_delta precision=seconds,subtype=int32
 
-ATTRIBUTE	Test-Enum-Integer64	254.12		uint64 enum=base-enum-uint64
+ATTRIBUTE	Test-Enum-Integer64	254.12		uint64 enum=@.base-enum-uint64
 
 #  and this casting should work
-ATTRIBUTE	Test-Enum-Integer32	254.13		uint32	enum=base-enum-uint64
+ATTRIBUTE	Test-Enum-Integer32	254.13		uint32	enum=@.base-enum-uint64
 
 #
 #  Copied here for simplicity

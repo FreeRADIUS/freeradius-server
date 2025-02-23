@@ -126,22 +126,24 @@ static inline CC_HINT(always_inline) int dict_fixup_common(fr_dlist_head_t *fixu
 	return 0;
 }
 
-/** Resolve a ref= or copy= value to a dictionary */
-
 /** Resolve a reference string to a dictionary attribute
  *
+ * @param[out] da_p		Where the attribute will be stored
  * @param[in] rel		Relative attribute to resolve from.
  * @param[in] ref		Reference string.
- * @param[in] absolute_root	If true, and there is no '.' prefix, searching will begin from
- *				the root of the dictionary, else we pretend there was a '.' and
- *				search from rel.
+ * @return
+ *	- <0 on error
+ *	- 0 on parse OK, but *da_p is NULL;
+ *	- 1 for parse OK, and *da_p is !NULL
  */
-fr_dict_attr_t const *dict_protocol_reference(fr_dict_attr_t const *rel, char const *ref, bool absolute_root)
+int dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *rel, char const *ref)
 {
 	fr_dict_t			*dict = fr_dict_unconst(rel->dict);
-	fr_dict_attr_t const		*da = rel, *found;
+	fr_dict_attr_t const		*da = rel;
 	ssize_t				slen;
 	fr_sbuff_t			sbuff = FR_SBUFF_IN(ref, strlen(ref));
+
+	*da_p = NULL;
 
 	/*
 	 *	Are we resolving a foreign reference?
@@ -149,6 +151,18 @@ fr_dict_attr_t const *dict_protocol_reference(fr_dict_attr_t const *rel, char co
 	if (fr_sbuff_next_if_char(&sbuff, '@')) {
 		char proto_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
 		fr_sbuff_t proto_name_sbuff = FR_SBUFF_OUT(proto_name, sizeof(proto_name));
+
+		/*
+		 *	@.foo is "foo from the current root".
+		 *
+		 *	This is a bit clearer than "foo".
+		 */
+		if (fr_sbuff_next_if_char(&sbuff, '.')) {
+			if (fr_sbuff_is_char(&sbuff, '.')) goto above_root;
+
+			da = rel->dict->root;
+			goto more;
+		}
 
 		slen = dict_by_protocol_substr(NULL, &dict, &sbuff, NULL);
 		/* Need to load it... */
@@ -161,7 +175,7 @@ fr_dict_attr_t const *dict_protocol_reference(fr_dict_attr_t const *rel, char co
 							&FR_SBUFF_TERMS(L(""), L(".")), NULL) <= 0) {
 			invalid_name:
 				fr_strerror_const("Invalid protocol name");
-				return NULL;
+				return -1;
 			}
 
 			/*
@@ -181,23 +195,30 @@ fr_dict_attr_t const *dict_protocol_reference(fr_dict_attr_t const *rel, char co
 			 *	Load the new dictionary, and mark it as loaded from our dictionary.
 			 */
 			if (fr_dict_protocol_afrom_file(&dict, proto_name, NULL, (rel->dict)->root->name) < 0) {
-				return NULL;
+				return -1;
 			}
 
 			if (!fr_hash_table_insert((rel->dict)->autoref, dict)) {
 				fr_strerror_const("Failed inserting into internal autoref table");
-				return NULL;
+				return -1;
 			}
 		}
 
 		/*
 		 *	Didn't stop at an attribute ref... we're done
 		 */
-		if (!fr_sbuff_next_if_char(&sbuff, '.')) {
-			return dict->root;
+		if (fr_sbuff_eof(&sbuff)) {
+			*da_p = dict->root;
+			return 1;
 		}
 
 		da = dict->root;
+	}
+
+	if (!fr_sbuff_next_if_char(&sbuff, '.')) {
+		fr_strerror_printf("Attribute %s has reference '%s' which does not begin with '.' or '@'",
+				   rel->name, ref);
+		return -1;
 	}
 
 	/*
@@ -205,24 +226,29 @@ fr_dict_attr_t const *dict_protocol_reference(fr_dict_attr_t const *rel, char co
 	 *
 	 *	No '.' means use the root.
 	 */
-	if (fr_sbuff_next_if_char(&sbuff, '.')) {
-		while (fr_sbuff_next_if_char(&sbuff, '.')) {
-			if (!da->parent) {
-				fr_strerror_const("Reference attempted to navigate above dictionary root");
-				return NULL;
-			}
-			da = da->parent;
+	while (fr_sbuff_next_if_char(&sbuff, '.')) {
+		if (!da->parent) {
+		above_root:
+			fr_strerror_const("Reference attempted to navigate above dictionary root");
+			return -1;
 		}
-	} else {
-		da = absolute_root ? dict->root : rel;
+		da = da->parent;
 	}
 
 	/*
-	 *	Look up the attribute.
+	 *	Look up the attribute.  Note that this call will
+	 *	update *da_p with a partial reference if it exists.
 	 */
-	if (fr_dict_attr_by_oid_substr(NULL, &found, da, &sbuff, NULL) <= 0) return NULL;
+more:
+	slen = fr_dict_attr_by_oid_substr(NULL, da_p, da, &sbuff, NULL);
+	if (slen < 0) return -1;
 
-	return found;
+	if (slen == 0) {
+		*da_p = NULL;
+		return 0;
+	}
+
+	return 1;
 }
 
 /** Add an enumeration value to an attribute which has not yet been defined
@@ -357,7 +383,7 @@ static inline CC_HINT(always_inline) int dict_fixup_group_apply(UNUSED dict_fixu
 {
 	fr_dict_attr_t const *da;
 
-	da = dict_protocol_reference(fixup->da->parent, fixup->ref, true);
+	(void) dict_protocol_reference(&da, fixup->da->parent, fixup->ref);
 	if (!da) {
 		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%d]",
 					fr_cwd_strip(fixup->da->filename), fixup->da->line);
@@ -580,7 +606,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 {
 	fr_dict_attr_t const	*src;
 
-	src = dict_protocol_reference(fixup->da->parent, fixup->ref, true);
+	(void) dict_protocol_reference(&src, fixup->da->parent, fixup->ref);
 	if (!src) {
 		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%d]",
 					fr_cwd_strip(fixup->da->filename), fixup->da->line);
@@ -639,7 +665,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict
 	fr_dict_attr_t const	*src;
 	int			copied;
 
-	src = dict_protocol_reference(fixup->da->parent, fixup->ref, true);
+	(void) dict_protocol_reference(&src, fixup->da->parent, fixup->ref);
 	if (!src) {
 		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%d]",
 					fr_cwd_strip(fixup->da->filename), fixup->da->line);

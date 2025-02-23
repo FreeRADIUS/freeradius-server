@@ -4,6 +4,6 @@ ATTRIBUTE	test-tlv	6809	tlv
 ATTRIBUTE	child1		.1	uint32
 ATTRIBUTE	child2		.2	uint32
 
-ATTRIBUTE	test-group	6810	group ref=test-tlv
+ATTRIBUTE	test-group	6810	group ref=@.test-tlv
 
 END-PROTOCOL 	DHCPv6

@@ -2,6 +2,16 @@
 # Copyright (C) 2025 Network RADIUS SAS (legal@networkradius.com)
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
+
+#
+#  This is used in lots of places.
+#
+DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
+BEGIN RelativeDistinguishedName
+DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=@.OID-Tree
+END RelativeDistinguishedName
+
+
 DEFINE	GeneralName					choice
 BEGIN GeneralName
 
@@ -21,10 +31,13 @@ ATTRIBUTE	directoryName				4	sequence  option
 BEGIN directoryName
 DEFINE	RDNSequence					sequence        sequence_of=set
 BEGIN RDNSequence
-DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
-BEGIN RelativeDistinguishedName
-DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=OID-Tree
-END RelativeDistinguishedName
+
+DEFINE	RelativeDistinguishedName			set clone=@.RelativeDistinguishedName
+#DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
+#BEGIN RelativeDistinguishedName
+#DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=@.OID-Tree
+#END RelativeDistinguishedName
+
 END RDNSequence
 END directoryName
 
@@ -41,7 +54,7 @@ END DirectoryName
 
 DEFINE	GeneralSubtree					sequence
 BEGIN GeneralSubtree
-DEFINE	base						sequence        clone=GeneralName
+DEFINE	base						sequence        clone=@.GeneralName
 DEFINE	minimum						integer		option=0,has_default
 VALUE	minimum				DEFAULT			0
 DEFINE	maximum						integer		option=1
@@ -53,7 +66,7 @@ DEFINE	RDNSequence					sequence        sequence_of=set
 BEGIN RDNSequence
 DEFINE	RelativeDistinguishedName			set set_of=sequence,size=1..
 BEGIN RelativeDistinguishedName
-DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=OID-Tree
+DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=@.OID-Tree
 END RelativeDistinguishedName
 END RDNSequence
 END Name

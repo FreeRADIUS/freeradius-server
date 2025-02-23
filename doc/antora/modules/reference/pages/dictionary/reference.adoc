@@ -1,0 +1,75 @@
+# References
+
+Some dictionary keywords allow references.  For example, xref:dictionary/attribute.adoc[ATTRIBUTE],  xref:dictionary/define.adoc[DEFINE], xref:dictionary/enum.adoc[ENUM], and xref:dictionary/member.adoc[MEMBER].
+
+References allow the dictionaries to be smaller, by re-using previous definitions via a reference.
+
+Common References and meanings
+[options="header"]
+[cols="30%,70%"]
+|=====
+| Name           | Description
+| `clone=<ref>`  | For `tlv` or 'struct' types, clone (or copy) child definitions from another attribute of the same type
+| `enum=<ref>`   | For "leaf" types, copy xref:dictionary/value.adoc[VALUE]s from an xref:dictionary/enum.adoc[ENUM] or other attribute.
+| `ref=<ref>`    | For `group` types, the referenced attributes will be allowed in the group
+|=====
+
+All `<ref>` fields use the same syntax.
+
+If the ref begins with `.` the ref will be treated as relative to the _parent_ of the current attribute.  Since the current attribute is in the process of being defined, it is not possible to refer to it or to its children.
+
+Multiple consecutive `.` can be used to traverse up the attribute hierarchy from the current attribute.
+
+If the ref begins with `@` the ref will be treated as an absolute reference.  The reference is either to the root of the current dictionary (`@.foo`), or to the root of a different dictionary (`@DHCPv4`, or `@DHCPv4.foo`).
+
+== clone=...
+
+In some cases, structured attributes have different parents, but
+identical children. The `clone=...` flag allows an attribute to copy
+or "clone" the children of another attribute.
+
+The `clone` flag can only be used for data types `tlv` and `struct`.
+
+.Clone Examples
+----
+ATTRIBUTE Foo 1 tlv
+ATTRIBUTE Bar 1.1 ipaddr
+ATTRIBUTE Baz 2 tlv clone=Foo
+----
+
+The result of the above dictionary is that the `Baz` attribute also has child attribute, of name `Bar`.
+
+== enum=...
+
+In some cases, attributes need to reuse the same set of `VALUE` statements.
+The `enum=...` flag allows an attribute to copy enumerated vl
+
+The `enum` flag can only be used for "leaf" data types.  i.e. ones
+which can contain a `VALUE`.
+
+.Enum Examples
+----
+ATTRIBUTE Foo 1 integer
+VALUE Zero Foo 0
+
+ATTRIBUTE Bar 2 integer enum=Foo
+----
+
+The result of the above dictionary is that the `Bar` attribute also has `VALUE` defined, with name `Zero`.
+
+== ref=...
+
+In some cases, attributes can "group" other attributes without adding
+a new hierarchy.  The `ref=...` flag allows a grouped attribute to
+reference another attribute.  The grouped attribute can then contain
+attributes from the destination reference, as if those other
+attributes were members of the group.
+
+If a `ref=` is not define for an attribute of type `group`, then the
+reference is assumed to be to the "root" of the current protocol
+dictionary.
+
+The `ref=` flag can only be used for the data type `group`.  The destination of the reference must be of data type `group` or `tlv`.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -19,8 +19,8 @@ BEGIN PROTOCOL DER      11354911
 #   The server manages all DER `null` as `bool`.
 #
 
-$INCLUDE dictionary.common
 $INCLUDE dictionary.oids
+$INCLUDE dictionary.common
 $INCLUDE dictionary.rfc2986
 $INCLUDE dictionary.rfc5280
 

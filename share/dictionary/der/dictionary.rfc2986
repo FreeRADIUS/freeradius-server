@@ -35,7 +35,7 @@ BEGIN Attributes
 DEFINE	Attribute-thing					sequence
 BEGIN Attribute-thing
 DEFINE	OID						oid
-DEFINE	Extensions					set set_of=oid_and_value,ref=OID-Tree,is_extensions
+DEFINE	Extensions					set set_of=oid_and_value,ref=@.OID-Tree,is_extensions
 END Attribute-thing
 END Attributes
 
