@@ -14,17 +14,16 @@ BEGIN RelativeDistinguishedName
 DEFINE	AttributeTypeAndValue				sequence sequence_of=oid_and_value,ref=@.OID-Tree
 END RelativeDistinguishedName
 
-
 DEFINE	GeneralName					choice
 BEGIN GeneralName
 
 ATTRIBUTE	otherName				0	sequence option
 BEGIN otherName
 DEFINE	type-id						oid
-DEFINE	Value-thing					sequence option=0
-BEGIN Value-thing
+DEFINE	value						sequence option=0
+BEGIN value
 DEFINE	userPrincipalName				utf8string
-END Value-thing
+END value
 END otherName
 
 ATTRIBUTE	rfc822Name				1	ia5string option

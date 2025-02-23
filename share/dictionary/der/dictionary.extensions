@@ -9,24 +9,7 @@ BEGIN 1.3.6.1.5.5.7.1.1
 DEFINE	accessDescription				sequence
 BEGIN accessDescription
 DEFINE	accessMethod					oid
-
-DEFINE	accessLocation					choice
-BEGIN accessLocation
-ATTRIBUTE	otherName				0	sequence option
-BEGIN otherName
-DEFINE	type-id						oid
-DEFINE	Value-thing					sequence option=0
-BEGIN Value-thing
-DEFINE	userPrincipalName				utf8string
-END Value-thing
-END otherName
-
-ATTRIBUTE	rfc822Name				1	ia5string option
-ATTRIBUTE	dNSName					2	ia5string option
-
-ATTRIBUTE	uniformResourceIdentifier		6	ia5string option
-END accessLocation
-
+DEFINE	accessLocation					choice clone=@.GeneralName
 END accessDescription
 END 1.3.6.1.5.5.7.1.1
 
@@ -35,24 +18,7 @@ BEGIN 1.3.6.1.5.5.7.1.11
 DEFINE	accessDescription				sequence
 BEGIN accessDescription
 DEFINE	accessMethod					oid
-
-DEFINE	accessLocation					choice
-BEGIN accessLocation
-ATTRIBUTE	otherName				0	sequence option
-BEGIN otherName
-DEFINE	type-id						oid
-DEFINE	Value-thing					sequence option=0
-BEGIN Value-thing
-DEFINE	userPrincipalName				utf8string
-END Value-thing
-END otherName
-
-ATTRIBUTE	rfc822Name				1	ia5string option
-ATTRIBUTE	dNSName					2	ia5string option
-
-ATTRIBUTE	uniformResourceIdentifier		6	ia5string option
-END accessLocation
-
+DEFINE	accessLocation					choice clone=@.GeneralName
 END accessDescription
 END 1.3.6.1.5.5.7.1.11
 

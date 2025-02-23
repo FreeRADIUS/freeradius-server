@@ -9,7 +9,7 @@ DEFINE	tbsCertificate					sequence
 BEGIN tbsCertificate
 DEFINE	version						sequence option=0
 BEGIN version
-DEFINE	VersionNum					integer
+DEFINE	number						integer
 END version
 DEFINE	serialNumber					octets der_type=integer
 DEFINE	signature					sequence sequence_of=oid_and_value,ref=@.OID-Tree

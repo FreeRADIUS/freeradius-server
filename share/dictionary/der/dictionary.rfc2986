@@ -2,6 +2,14 @@
 # Copyright (C) 2025 Network RADIUS SAS (legal@networkradius.com)
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
+
+DEFINE	algorithm					sequence
+BEGIN algorithm
+DEFINE	algorithmId					oid
+DEFINE  parameters					sequence  # really ANY
+END algorithm
+
+
 DEFINE	CertificateRequest				sequence
 BEGIN CertificateRequest
 
@@ -16,28 +24,22 @@ END subject
 
 DEFINE	subjectPublicKeyInfo				sequence
 BEGIN subjectPublicKeyInfo
-DEFINE	algorithm					sequence
-BEGIN algorithm
-DEFINE	OID						oid
-END algorithm
+DEFINE algorithm					sequence clone=@.algorithm
 DEFINE	subjectPublicKey				bitstring
 END subjectPublicKeyInfo
 
 DEFINE	Attributes					sequence option=0
 BEGIN Attributes
-DEFINE	Attribute-thing					sequence
-BEGIN Attribute-thing
+DEFINE	Attribute					sequence
+BEGIN Attribute
 DEFINE	OID						oid
 DEFINE	Extensions					set set_of=oid_and_value,ref=@.OID-Tree,is_extensions
-END Attribute-thing
+END Attribute
 END Attributes
 
 END certificationRequestInfo
 
-DEFINE	signatureAlgorithm				sequence
-BEGIN signatureAlgorithm
-DEFINE	OID						oid
-END signatureAlgorithm
+DEFINE	signatureAlgorithm				sequence clone=@.algorithm
 
 DEFINE	signature					bitstring
 END CertificateRequest
