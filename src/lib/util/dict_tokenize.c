@@ -1025,7 +1025,7 @@ static int dict_read_process_common(dict_tokenize_ctx_t *dctx, fr_dict_attr_t **
 	 */
 	if (dict_process_type_field(dctx, type_name, &da) < 0) {
 	error:
-		talloc_free(to_free);
+		if (da == to_free) talloc_free(to_free);
 		return -1;
 	}
 
