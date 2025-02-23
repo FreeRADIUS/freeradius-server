@@ -35,6 +35,9 @@ proto-dictionary der
 encode-pair Certificate-Extensions = { iso = { identified-organization = { raw.4 = 0x3071303201 } } }
 match a3 0f 30 0d 30 0b 06 02 2b 04 04 05 30 71 30 32 01
 
+encode-pair Certificate-Extensions = { iso = { identified-organization = { dod = { internet = { security = { mechanisms = { pkix = { pe = { raw.1 = 0xfffefdfc } } } } } } } } }
+match a3 14 30 12 30 10 06 08 2b 06 01 05 05 07 01 01 04 04 ff fe fd fc
+
 encode-pair Certificate-Extensions = { iso = { identified-organization = { dod = { internet = { security = { mechanisms = { pkix = { pe = { raw.1 = 0x3071303206082b060105050730018626687474703a2f2f697372672e747275737469642e6f6373702e6964656e74727573742e636f6d303b06082b06010505073002862f687474703a2f2f617070732e6964656e74727573742e636f6d2f726f6f74732f647374726f6f74636178332e703763 } } } } } } } } }
 match a3 81 84 30 81 81 30 7f 06 08 2b 06 01 05 05 07 01 01 04 73 30 71 30 32 06 08 2b 06 01 05 05 07 30 01 86 26 68 74 74 70 3a 2f 2f 69 73 72 67 2e 74 72 75 73 74 69 64 2e 6f 63 73 70 2e 69 64 65 6e 74 72 75 73 74 2e 63 6f 6d 30 3b 06 08 2b 06 01 05 05 07 30 02 86 2f 68 74 74 70 3a 2f 2f 61 70 70 73 2e 69 64 65 6e 74 72 75 73 74 2e 63 6f 6d 2f 72 6f 6f 74 73 2f 64 73 74 72 6f 6f 74 63 61 78 33 2e 70 37 63
 
@@ -61,4 +64,4 @@ decode-pair 31 3f 31 17 30 15 06 03 55 04 03 13 0e 44 53 54 20 52 6f 6f 74 20 43
 match Issuer-Set = { RelativeDistinguishedName = { AttributeTypeAndValue = { joint-iso-itu-t = { ds = { attributeType = { commonName = "DST Root CA X3" } } } } }, RelativeDistinguishedName = { AttributeTypeAndValue = { joint-iso-itu-t = { ds = { attributeType = { organizationName = "Digital Signature Trust Co." } } } } } }
 
 count
-match 41
+match 43

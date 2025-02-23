@@ -177,6 +177,15 @@ match Bar = { Test-Boolean = yes }
 decode-pair 30 03 01 01 01
 match Boolean is not correctly DER encoded (0x00 or 0xff).
 
+decode-pair 30 04 01 02 00 01
+match Boolean has incorrect length (2). Must be 1.
+
+encode-pair Test-Boolean = true
+match 01 01 ff
+
+encode-pair raw.Test-Boolean = 0x0001
+match 01 02 00 01
+
 proto-dictionary-root Foo-Bar
 
 decode-pair 30 06 02 01 09 01 01 00
@@ -866,4 +875,4 @@ encode-pair Issuer = { RelativeDistinguishedName = { AttributeTypeAndValue = { j
 match 30 3f 31 24 30 22 06 03 55 04 0a 13 1b 44 69 67 69 74 61 6c 20 53 69 67 6e 61 74 75 72 65 20 54 72 75 73 74 20 43 6f 2e 31 17 30 15 06 03 55 04 03 13 0e 44 53 54 20 52 6f 6f 74 20 43 41 20 58 33
 
 count
-match 523
+match 529
