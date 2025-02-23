@@ -1743,7 +1743,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 			nt_password->vp_octets = p = talloc_array(nt_password, uint8_t, nt_password->vp_length);
 
 			if (mschap_ntpwdhash(p, password->vp_strvalue) < 0) {
-				RERROR("Failed generating NT-Password");
+				RERROR("Failed generating NT-Password - %s", fr_strerror());
 				return RLM_MODULE_FAIL;
 			}
 		} else if (auth_method == AUTH_INTERNAL) {
