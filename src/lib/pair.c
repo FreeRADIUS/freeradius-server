@@ -1296,9 +1296,84 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 	type = vp->da->type;
 
 	/*
+	 *	We MIGHT get the tag from the value.  But it's not guaranteed.
+	 *
+	 *	:tag:value
+	 *
+	 *	@todo - the current parser requires that strings are NOT quoted.
+	 */
+	if (vp->tag == TAG_VALUE) {
+		char const *p = value;
+		char const *end = value + inlen;
+
+		vp->tag = 0;
+
+		/*
+		 *	No data or no ':' prefix, there's no tag.
+		 */
+		if ((inlen == 0) || (*p != ':')) goto parse_value;
+		p++;
+
+		/*
+		 *	Input is just ':', that's invalid.
+		 */
+		if (p == end) {
+		missing_tag:
+			fr_strerror_printf("Value has tag prefix ':', but the tag is missing or malformed");
+			return -1;
+		}
+
+		/*
+		 *	:x is invalid.
+		 */
+		if (!((*p >= 0) && (*p <= '9'))) {
+		invalid_chars:
+			fr_strerror_printf("Value has invalid characters in tag");
+			return -1;
+		}
+		vp->tag = *p - '0';
+		p++;
+
+		/*
+		 *	:1 is invalid.
+		 */
+		if (p == end) goto done_tag;
+
+		/*
+		 *	:1: is a valid tag, with perhaps an empty string.
+		 */
+		if (*p == ':') {
+			p++;
+			goto done_tag;
+		}
+
+		/*
+		 *	Tags are 0..31
+		 */
+		if (!((*p >= 0) && (*p <= '9'))) goto invalid_chars;
+
+		vp->tag *= 10;
+		vp->tag += *p - '0';
+
+		if (vp->tag >= 0x20) goto invalid_chars;
+		p++;
+
+		/*
+		 *	Tags must end with another ':'
+		 */
+		if ((p == end) || (*p != ':')) goto missing_tag;
+		p++;
+
+	done_tag:
+		value = p;
+		inlen = (size_t) (end - p);
+	}
+
+	/*
 	 *	We presume that the input data is from a double quoted
 	 *	string, and needs escaping
 	 */
+parse_value:
 	ret = value_data_from_str(vp, &vp->data, &type, vp->da, value, inlen, '"');
 	if (ret < 0) return -1;
 
