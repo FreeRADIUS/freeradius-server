@@ -271,6 +271,11 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 			goto error;
 		}
 
+		if ((map->lhs->tmpl_tag == TAG_VALUE) &&
+		    ((map->op == T_OP_CMP_FALSE) || (map->op == T_OP_CMP_TRUE) || (map->op == T_OP_SUB))) {
+			cf_log_err_cp(cp, "Cannot use ':V' for this operator");
+			goto error;
+		}
 		break;
 	}
 
@@ -298,6 +303,11 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 	}
 
 	if (map->rhs->type == TMPL_TYPE_ATTR) {
+		if (map->rhs->tmpl_tag == TAG_VALUE) {
+			cf_log_err_cp(cp, "Cannot use ':V' for tags here.");
+			goto error;
+		}
+
 		/*
 		 *	We cannot assign a count to an attribute.  That must
 		 *	be done in an xlat.
@@ -1331,7 +1341,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	/*
 	 *	Another fixup pass to set tags on attributes were about to insert
 	 */
-	if (map->lhs->tmpl_tag != TAG_ANY) {
+	if (TAG_VALID(map->lhs->tmpl_tag)) {
 		for (vp = fr_cursor_init(&src_list, &head);
 		     vp;
 		     vp = fr_cursor_next(&src_list)) {
