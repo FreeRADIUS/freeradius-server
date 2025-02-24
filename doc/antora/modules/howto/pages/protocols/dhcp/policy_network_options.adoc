@@ -1,0 +1,237 @@
+== Configure network-specific options and IP pool selection
+
+In an environment where multiple networks (often VLANs) are in use, it is
+necessary to identify which network a client belongs to in order to assign an
+address from the correct pool.
+
+Consider the ISC DHCP configuration snippet:
+
+[source,iscdhcp]
+----
+option domain-name "example.org";
+
+subnet 10.10.0.0 netmask 255.255.0.0 {
+    range 10.10.1.10 10.10.10.254;
+    range 10.10.100.10 10.10.110.254;
+    option routers 10.10.0.1;
+    option domain-name-servers 10.10.0.2, 10.10.0.3;
+    default-lease-time 7200;
+}
+----
+
+Or the equivalent Kea configuration:
+
+[source,isckea]
+----
+"Dhcp4": {
+    "option-data": [
+        { "name": "domain-name", "data": "example.org" }
+    ],
+    "subnet4": [{
+        "subnet": "10.10.0.0/16",
+        "pools": [ { "pool": "10.10.1.10 - 10.10.10.254" },
+                   { "pool": "10.10.100.10 - 10.10.110.254" }
+        ],
+        "option-data": [
+            { "name": "routers", "data": "10.10.0.1" },
+            { "name": "domain-name-servers", "data": "10.10.0.2, 10.10.0.3" }
+        ],
+        "valid-lifetime": 7200
+    }],
+    ...
+}
+----
+
+These define a network consisting of a single subnet 10.10.0.0/16 containing two
+IP address pools 10.10.1.10 - 10.10.10.254 and 10.10.100.10 - 10.10.110.254.
+Requests that are determined to have originated from this network (e.g. because
+their `giaddr` belongs within the subnet) will be assigned the specified DHCP
+parameters and allocated an address from one of its ranges.
+
+To provide equivalent functionality, FreeRADIUS must identify the correct DHCP
+reply parameters as well as the name of the pool to be used for IP address
+assignment, based on the originating network of the request.
+
+The definition for this pool (the addresses contained within it, corresponding
+to the `range` statement in ISC DHCP and Kea) is specified entirely in the
+database: It is precisely the rows in the `dhcpippool` table with a particular
+`pool_name`.
+
+[TIP]
+====
+As described previously, in FreeRADIUS a pool is a set of IP addresses that are
+equally valid with respect to the network policy; therefore, unlike ISC DHCP
+and ISC Kea, FreeRADIUS does not differentiate between the two `range`s.
+Instead we should have previously populated a single pool containing all of the
+IP addresses from both ranges.
+====
+
+FreeRADIUS derives a request attribute called `DHCP-Network-Subnet` which
+honours the standard DHCP process for designating the choice of network, in
+order of preference:
+
+  1. Link Selection Suboption of Option 82
+  2. IPv4 Subnet Selection Option
+  3. Gateway IP Address ("giaddr")
+  4. Client IP Address ("ciaddr", only set for unicast packets)
+
+If `DHCP-Network-Subnet` contains an IP address then this should be used as
+the basis of choosing a network.  When there is no address in this attribute it
+can be assumed that the packet has been received from a client on the local
+LAN.
+
+The `files` module in FreeRADIUS provides a simple method to map
+`DHCP-Network-Subnet` to the corresponding pool based on its network
+membership, setting the appropriate options to return to clients.  It can also
+set the global options.
+
+[TIP]
+====
+In the case where an instance of the `files` module is used to get global
+default parameters, the `dhcp_common` policy becomes redundant so the
+statement calling the policy (by name) can be commented out in
+`<raddb>/sites-enabled/dhcp`.
+====
+
+To use the provided example `files` module instance for DHCP, symlink or copy
+`<raddb>/mods-available/dhcp_files` into `<raddb>/mods-enabled/` and then
+uncomment the calls to `dhcp_network` in `<raddb>/sites-enabled/dhcp`.
+
+A template configuration file `<raddb>/mods-config/files/dhcp` is also
+provided which should be adapted to suit your network topology.
+
+For the configuration above you may deduce the following configuration, which
+has been extended to include an initial default section for requests originating
+from directly-connected clients on the local LAN (192.168.20/24):
+
+[source,config]
+----
+network Pool-Name := "local"
+        DHCP-Domain-Name := "example.org",
+        DHCP-Subnet-Mask := 255.255.255.0,
+        DHCP-Router-Address := 192.168.20.1,
+        DHCP-Domain-Name-Server := 192.168.20.2,
+        Fall-Through := yes
+
+network DHCP-Network-Subnet < 10.10.0.0/16, Pool-Name := "remote"
+        DHCP-Subnet-Mask := 255.0.0.0,
+        DHCP-Router-Address := 10.10.0.1,
+        DHCP-Domain-Name-Server := 10.10.0.2,
+        DHCP-Domain-Name-Server += 10.10.0.3,
+        DHCP-IP-Address-Lease-Time := 7200
+----
+
+Each block in the file starts with a line beginning with the key to be matched.
+In this case the keyword of `network` (defined earlier in `dhcp_networks`
+configuration) is used for each block, so each of the above blocks is a
+candidate during the search.
+
+There may be further filtering of the candidates in the form of `<Attribute>
+<op> <Value>`.  In the case of the second block we match the
+`DHCP-Network-Subnet` to an enclosing subnet with
+`DHCP-Network-Subnet < <subnet>`.  Additional filters could be added as
+required, comma separated.
+
+Following the filters on the first line, attributes in the `control` list can
+be set using the syntax of `<Attribute> := <Value>`.  In this example this is
+used to specify the `Pool-Name` for choosing the appropriate IP pool to
+allocate an address from.
+
+Subsequent indented lines are attribute assignments for values in the `reply`
+list.  Note that, apart from the last line, they are all terminated with a
+comma.
+
+The special option `Fall-Through` determines whether, following a match,
+other records are checked for a match.  All lookups will match the entry
+with a key of `network` and no further filtering, so `Fall-Through`
+is set on that record in order that the other records will be tested
+to find subnet matches.
+
+=== Example packet processing
+
+For our example, we consider a request arriving from a DHCP relay within
+10.10.0.0/16. In the absence of any specific DHCP subnet selection options in
+the request, the `DHCP-Network-Subnet` attribute is calculated to be the
+relay's IP address, say 10.10.0.1.
+
+The request is matched against the first block, setting an initial pool name to
+"local", domain name to "example.org" and setting some additional global
+default parameters. By virtue of `Fall-Through` being set, the next block is
+considered.
+
+Since the network identifier is within the specified subnet (i.e.  `10.10.0.1 <
+10.10.0.0/16`) this second block is matched. This block overrides the pool name
+setting it to "remote", overrides some other global defaults and sets the lease
+time to 7200 seconds. `Fall-Through` is not set, so we are now done with
+deriving the pool name and network options.
+
+When the `dhcp_sqlippool` module is called during DHCP DISCOVER processing (in
+`<raddb>/sites-enabled/dhcp`) the `remote` pool will be used for IP address
+allocation.
+
+The assigned IP address and network parameters will subsequently be returned in
+the DHCP reply.
+
+=== Testing the pool operation and network-specific options
+
+Before proceeding further, you should test the operation of the IP pools and
+ensure that any network-specific reply attributes that you have configured are
+correctly set in replies.
+
+For example, if you have a single, flat pool you should test using sample
+packets for devices with different MAC addresses and/or Client Identifiers.
+
+[source,shell]
+----
+cat <<EOF > dhcp-packet-1.txt
+DHCP-Message-Type := DHCP-Discover
+DHCP-Client-Hardware-Address := 02:01:11:11:11:11
+DHCP-Client-Identifier := device1
+EOF
+----
+
+[source,shell]
+----
+cat <<EOF > dhcp-packet-2.txt
+DHCP-Message-Type := DHCP-Discover
+DHCP-Client-Hardware-Address := 02:01:22:22:22:22
+DHCP-Client-Identifier := device2
+EOF
+----
+
+Generate these packets as show previously using the dhcpclient tool and look
+for `DHCP-Your-IP-Address` in the DHCP responses to determine the IP address
+that has been offered.
+
+Ensure that the DHCP Offer responses contain unique IP addresses. Ensure that
+when these requests are resent within the lifetime of the initial offer that
+the reponses to the subsequent replies contain the original IP address that was
+in the initial offer to the device.
+
+Additionally, ensure that the DHCP Offers contain any network-specific
+parameters that you have specified.
+
+In the case that the policy contains multiple IP pools and network definitions
+for clients belonging to different Layer 2 networks (or indeed belonging to the
+same network but segregated according to some local policy) you should ensure
+that the devices are being mapped to the correct definition.
+
+For a typical policy that selects the IP pool and network options based on the
+originating network for the DHCP packet, explicitly specifying a network by
+including a `DHCP-Subnet-Selection-Option` parameter may avoid the need to test
+from a host within each individual network:
+
+[source,shell]
+----
+cat <<EOF > dhcp-packet-network-10.10.10.0.txt
+DHCP-Message-Type := DHCP-Discover
+DHCP-Client-Hardware-Address := 02:01:aa:bb:cc:dd
+DHCP-Client-Identifier := abc123
+DHCP-Subnet-Selection-Option := 10.10.10.0
+EOF
+----
+
+For policies where the IP pool and network option selection is based on some
+custom criteria it is necessary to include different variations for the
+parameters on which the policy makes the decision. The testing example for the
+class-specific options later in this document provides such an example.

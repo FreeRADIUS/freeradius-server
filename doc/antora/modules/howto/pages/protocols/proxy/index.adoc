@@ -1,0 +1,126 @@
+= Proxying RadSec and enabling PROXY Protocol
+
+This guide shows how to set up FreeRADIUS to serve RadSec connections, fronted
+by either HAproxy or Traefik as Layer 4 proxies that pass on the original
+client connection information using PROXY Protocol.
+
+It is not a comprehensive guide to using RadSec with FreeRADIUS. It presents a
+basic configuration that uses an example CA and does not validate certificate
+attributes or perform revokation status.
+
+
+== Introduction
+
+FreeRADIUS supports receiving RADIUS requests over TLS-enabled TCP connections
+and supports proxying of requests over TCP connections to another TLS-enabled
+homeserver. The protocol for RADIUS over TLS is called "RadSec" and is defined
+in RFC 6614.
+
+FreeRADIUS is a capable and performant application-aware ("Layer 7") proxy /
+load-balancer for RadSec and other forms of RADIUS traffic.
+
+
+=== Layer 4 proxying
+
+Rather than use an application-aware proxy it is sometimes better to reduce the
+performance impact incurred by re-encoding an application protocol by using a
+"Layer 4" proxy that operates at the level of individual connections without
+regard for the application protocol. Such a proxy is more of a "bump in the
+wire" than a request buffer and minimises the latency incurred due to proxying.
+
+It is common to see software such as HAproxy and Traefik used in Layer 4 mode
+in place of FreeRADIUS for purposes such as connection load balancing. In
+addition to improved performance, these tools have the benefit that they
+typically support dynamic service discovery and "hitless" reloads to
+automatically adapt their connection routing based on changes to backend
+services such as the introduction of new nodes with even a momentary loss of
+service.
+
+
+=== Loss of connection information
+
+When TCP connections are relayed through Layer 4 proxies the information
+about the originating source of the connection is no longer known to the
+backend service, unless it is otherwise made available. Identifying the
+originator of connections is often necessary for security purposes and for
+request processing.
+
+Whilst many application protcols support headers that allow proxies to preserve
+connection information these are not helpful in the context of Layer 4
+proxying: The process of populating headers requires knowledge of the
+application protocol to re-encode requests as they are transmitted between the
+frontend and backend connections.
+
+
+=== PROXY Protocol
+
+PROXY Protocol overcomes this limitation by allowing the original connection
+information to be provided to the backend at the start of the TCP connection.
+After this initial data is encoded the remainder of the conversation then
+proceeds as normal. However now that the connection information is known to the
+backend server it is able to process requests made on the connection as though
+the connection were being made directly by the client and not via the proxy.
+
+PROXY Protocol is specified in this document:
+http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
+
+
+== Requirements
+
+PROXY Protocol Version 1 is supported by FreeRADIUS v3.0.24 and later versions.
+
+You will require the following set of VMs or containers, each with their own
+IP address:
+
+[cols="1,1,1"]
+|===
+|Hostname|IP address|Purpose
+
+|radseccli
+|172.23.0.2
+|FreeRADIUS configured to provide a RadSec test client
+
+|radsecsvr
+|172.23.0.3
+|FreeRADIUS configured as a RadSec server
+
+|haproxy
+|172.23.0.4
+|HAproxy in Layer 4 mode to the FreeRADIUS RadSec backend
+|===
+
+Optionally you may want to configure a host to run Traefik within a Docker
+container using host mode networking, perhaps configured by Docker Compose,
+however the installation is beyond the scope of this guide:
+
+[cols="1,1,1"]
+|===
+|traefik
+|172.23.0.5
+|Traefik configured as a TCP router with TLS passthrough to the FreeRADIUS RadSec backend
+|===
+
+The hostnames and IP addresses provided above are for examples purposes and are
+used throughout the remainder of this guide. This guide provides commands and
+output for CentOS. Other distributions will have minor differences, including
+the location of the FreeRADIUS configuration (the "raddb").
+
+[NOTE]
+====
+You can choose to use your own hostname, IP addresses and OS distribution. You
+could also use official Docker images provided by the respecitive projects,
+however these prescribe methods for configuring and managing the services
+that are not typical for a normal package installation which would provide a
+distraction if used for by guide.
+====
+
+
+== Sections in this guide
+
+This guide is organised into four parts that should be read in order:
+
+1. xref:protocols/proxy/enable_radsec.adoc[Enabling RadSec]
+2. xref:protocols/proxy/radsec_client.adoc[Configuring a test RadSec client]
+3. xref:protocols/proxy/radsec_with_haproxy.adoc[Proxying RadSec with HAproxy]
+4. xref:protocols/proxy/radsec_with_traefik.adoc[Proxying RadSec with Traefik]
+5. xref:protocols/proxy/enable_proxy_protocol.adoc[Enabling PROXY Protocol for RadSec]

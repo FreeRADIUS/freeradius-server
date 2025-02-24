@@ -18,7 +18,6 @@
 *** xref:modules/krb5/index.adoc[Krb5]
 
 *** xref:modules/ldap/index.adoc[LDAP]
-
 **** xref:modules/ldap/bootstrap_openldap/index.adoc[Installing and Configuring OpenLDAP]
 ***** xref:modules/ldap/bootstrap_openldap/docker.adoc[Docker]
 ***** xref:modules/ldap/bootstrap_openldap/packages.adoc[Packages]
@@ -59,8 +58,19 @@
 **** xref:modules/sqlippool/insert.adoc[Inserting IPs into SQL]
 
 ** xref:protocols/index.adoc[Protocols]
+*** xref:protocols/dhcp/index.adoc[DHCP]
+**** xref:protocols/dhcp/prepare.adoc[Preparation]
+**** xref:protocols/dhcp/enable.adoc[Enabling the DHCP service]
+**** xref:protocols/dhcp/test.adoc[Testing the DHCP service]
+**** xref:protocols/dhcp/policy.adoc[Defining the DHCP policy]
+***** xref:protocols/dhcp/policy_ippool_creation.adoc[IP pool creation]
+***** xref:protocols/dhcp/policy_common_options.adoc[Common options]
+***** xref:protocols/dhcp/policy_network_options.adoc[Network options and IP pool selection]
+***** xref:protocols/dhcp/policy_subnet_options.adoc[Subnet options]
+***** xref:protocols/dhcp/policy_device_options.adoc[Device, class and group options]
+***** xref:protocols/dhcp/policy_ippool_access.adoc[IP pool access restriction]
 
-** Operating System
+** Security Certificates
 *** xref:os/letsencrypt.adoc[Using LetsEncrypt certificates]
 
 ** Vendors
@@ -69,9 +79,12 @@
 *** xref:vendors/cisco.adoc[Cisco]
 *** xref:vendors/proxim.adoc[ProxIM]
 
-** Tuning
+** Optimization
+*** xref:monitoring/index.adoc[Monitoring]
+**** xref:monitoring/statistics.adoc[Server Statistics]
 *** xref:tuning/performance-testing.adoc[Performance Testing]
 *** xref:tuning/tuning_guide.adoc[Tuning Guide]
+
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

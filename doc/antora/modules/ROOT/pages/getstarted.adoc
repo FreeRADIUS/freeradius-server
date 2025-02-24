@@ -7,9 +7,6 @@ https://packages.inkbridgenetworks.com[InkBridge Networks].  This site
 contains the most current packages for all common OS platforms for the
 latest FreeRADIUS release.
 
-FreeRADIUS can also be installed from the source code. Please see the
- xref:howto:installation/index.adoc[installation guide] for instructions.
-
 == Get the Source
 
 This page describes how to perform the initial install and

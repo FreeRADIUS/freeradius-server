@@ -1,0 +1,134 @@
+== Proxying RadSec with HAproxy
+
+This section shows how to configure HAproxy to proxy RadSec connections.
+
+The following steps should be performed on the `haproxy` host, unless otherwise
+stated.
+
+Install the HAproxy package supplied with the OS distribution:
+
+[source,shell]
+----
+ yum install haproxy
+----
+
+Stop the haproxy service:
+
+[source,shell]
+----
+ service haproxy stop
+----
+
+Modify the haproxy configuration (typically `/etc/haproxy/haproxy.conf`) so
+that it includes new frontend and backend configuration for the radsec service:
+
+.Example minimal HAproxy configuration
+======================================
+
+ global
+     maxconn     100
+ defaults
+     mode tcp
+     timeout connect 10s
+     timeout client 30s
+     timeout server 30s
+ frontend radsec_fe
+     bind *:2083
+     default_backend radsec_be
+ backend radsec_be
+     balance roundrobin
+     server radsecsvr 172.23.0.3:2083
+
+======================================
+
+Note the `mode tcp` directive which tells HAproxy to act as a Layer 4
+proxy, so that it doesn't attempt to perform SSL termination or
+decode the RADIUS protocol.
+
+[NOTE]
+====
+The above example is a minimal configuration. In practise you will want to
+retain many of the HAproxy configuration items already present in the
+configuration (e.g. `log`, `chroot`, `user`, `group`), but these vary across
+distributions. Other HTTP-related options that may already exist in the
+configuration will conflict with `mode tcp` (Layer 4 proxying) and should be
+removed if HAproxy complains about them.
+
+However, you should first get things working with the minimal
+configuration which is known to work, and then make customisations.
+If you start off with a complex configuration, then there may be a
+large number of things which are broken, and debugging them all will
+be difficult.  Start simple, and then add complexity!
+====
+
+Restart the haproxy service in foreground mode for debugging purposes:
+
+[source,shell]
+----
+haproxy -f /etc/haproxy/haproxy.cfg -db
+----
+
+
+=== Testing RadSec connectivity via HAproxy
+
+Now edit the test RadSec client, so that instead of making connections directly
+to the RadSec server it makes connections to the HAproxy server.
+
+On `radseccli` edit the `/etc/raddb/sites-enabled/tls` file, and set
+the IP address to the address of the `haproxy` host.
+
+.Example updated test client homeserver configuration
+=====================================================
+
+ home_server tls {
+         ipaddr = 172.23.0.4    # Updated from radsecsvr to haproxy
+         ...
+ }
+
+=====================================================
+
+Restart the debug mode session:
+
+[source,shell]
+----
+radiusd -X
+----
+
+Perform a test authentication:
+
+[source,shell]
+----
+ echo "User-Name = bob" | radclient 127.0.0.1 auth testing123
+----
+
+If the test client is able to successfully establish the RadSec
+connection via HAproxy, and the RadSec server replies with an
+Access-Accept response, then the output will be as follows:
+
+.Expected output from radclient
+===============================
+
+ Sent Access-Request Id 252 from 0.0.0.0:50118 to 127.0.0.1:1812 length 27
+ Received Access-Accept Id 252 from 127.0.0.1:1812 to 127.0.0.1:50118 length 39
+
+===============================
+
+HAproxy should also log a message that indicates that the connection was
+proxied, such as the following:
+
+.Expected output from HAproxy
+=============================
+
+ <150>...: Connect from 172.23.0.2:50087 to 172.23.0.4:2083 (radius_fr/TCP)
+
+=============================
+
+Any other output from radclient or HAproxy indicates that there is a
+problem with the HAproxy configuration, or that FreeRADIUS is not
+accepting connection from the `haproxy` host, which must be solved
+before continuing.
+
+Once proxied connections are working we are ready to
+xref:protocols/proxy/enable_proxy_protocol.adoc[enable the PROXY
+Protocol] on both HAproxy and the RadSec server.
+
