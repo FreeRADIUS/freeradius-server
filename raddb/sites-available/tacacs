@@ -381,7 +381,6 @@ server tacacs {
 	#	Add the arguments to whatever the user entered.
 	#
 	send Authorization-Pass-Add {
-		reply.Authorization-Status := Pass-Add
 		reply.Server-Message := "authorization-response-server"
 		reply.Data := "authorization-response-data"
 		reply.Argument-List := "key1=var1"
@@ -391,7 +390,6 @@ server tacacs {
 	#	Replace whatever the user entered with the following arguments
 	#
 	send Authorization-Pass-Reply {
-		reply.Authorization-Status := Pass-Repl
 		reply.Server-Message := "authorization-response-server"
 		reply.Data := "authorization-response-data"
 		reply.Argument-List := "key1=var1"
@@ -401,7 +399,7 @@ server tacacs {
 	#	Reject the request
 	#
 	send Authorization-Fail {
-		reply.Authorization-Status := Fail
+
 	}
 
 	#
