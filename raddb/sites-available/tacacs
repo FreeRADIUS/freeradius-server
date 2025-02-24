@@ -275,7 +275,7 @@ server tacacs {
 	#  ASCII authentication equivalent to PAP.
 	#
 	#  Alternatively, if extra data is required, set
-	#  reply.Authentication-Status := Getdata
+	#  reply.Packet-Type := ::Authentication-GetData
 	#  to request the extra data, which will be in User-Message in
 	#  the next packet (if the client provides it)
 	#
