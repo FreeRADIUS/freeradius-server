@@ -3,9 +3,10 @@ objectClass: olcSchemaConfig
 cn: freeradius-tacacs
 olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.5.2.1.1 NAME 'tacacsAttribute' DESC 'TACACS+ attribute in format [<list>.]<attr> <op> <value>' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
 olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.5.2.1.2 NAME 'tacacsService' DESC 'The identifier for the TACACS+ service e.g. exec, shell, ppp, etc...' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
-olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.5.3.1.1 NAME 'tacacsCommand' DESC 'The identifier for the TACACS+ command e.g. show, enable, etc...' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.5.2.1.3 NAME 'tacacsProfilePriority' DESC 'Priority to apply profiles' SYNTAX 1.3.6.1.4.1.1466.115.121.1.27 EQUALITY integerMatch ORDERING integerOrderingMatch SINGLE-VALUE )
+olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.5.2.1.4 NAME 'tacacsProfileCondition' DESC 'Condition to apply profiles' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
 olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.5.1.1.1 NAME 'tacacsClientSecret' DESC 'Client Secret' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 SINGLE-VALUE )
 olcAttributeTypes: ( 1.3.6.1.4.1.11344.4.5.1.1.2 NAME 'tacacsClientSingleConnectionMode' DESC 'Set whether we allow and request single connection mode for this client' EQUALITY booleanMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.7 SINGLE-VALUE )
-olcObjectClasses: ( 1.3.6.1.4.1.11344.4.5.2.2.2 NAME 'tacacsServiceProfile' SUP top AUXILIARY MUST tacacsService MAY tacacsAttribute )
-olcObjectClasses: ( 1.3.6.1.4.1.11344.4.5.3.2.2 NAME 'tacacsCommandProfile' SUP top AUXILIARY MUST tacacsCommand MAY tacacsAttribute )
+olcObjectClasses: ( 1.3.6.1.4.1.11344.4.5.2.2.2 NAME 'tacacsServiceProfile' SUP top AUXILIARY MUST tacacsService MAY ( tacacsAttribute $ tacacsProfilePriority $ tacacsProfileCondition ) )
+olcObjectClasses: ( 1.3.6.1.4.1.11344.4.5.3.2.2 NAME 'tacacsCommandProfile' SUP top AUXILIARY MUST tacacsCommand MAY ( tacacsAttribute $ tacacsProfilePriority $ tacacsProfileCondition ) )
 olcObjectClasses: ( 1.3.6.1.4.1.11344.4.5.1.2.1 NAME 'tacacsClient' SUP top AUXILIARY MUST tacacsClientSecret MAY tacacsClientSingleConnectionMode )
