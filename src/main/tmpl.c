@@ -1894,7 +1894,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 	 *	May not may not be found, but it *is* a known name.
 	 */
 	case TMPL_TYPE_ATTR:
-		if (vpt->tmpl_tag == TAG_ANY) {
+		if (vpt->tmpl_tag == TAG_VALUE) {
 			if (err) *err = -1;
 			return NULL;
 		}
