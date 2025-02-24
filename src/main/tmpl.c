@@ -703,7 +703,6 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 	da = dict_attrbyvalue(attr.da->attr, attr.da->vendor);
 	if (da && (attr.da != da)) attr.da = da;
 
-
 	/*
 	 *	The string MIGHT have a tag.
 	 */
@@ -711,6 +710,15 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 		if (attr.da && !attr.da->flags.has_tag) { /* Lists don't have a da */
 			fr_strerror_printf("Attribute '%s' cannot have a tag", attr.da->name);
 			return -(p - name);
+		}
+
+		/*
+		 *	Get the tag from the value.
+		 */
+		if (*p == 'V') {
+			attr.tag = TAG_VALUE;
+			p++;
+			goto do_num;
 		}
 
 		num = strtol(p + 1, &q, 10);
@@ -1223,6 +1231,13 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	data.strvalue = p;
 
 	/*
+	 *	Copy over any additional fields needed...
+	 */
+	if ((vpt->type == TMPL_TYPE_ATTR) && vp->da->flags.has_tag) {
+		vp->tag = vpt->tmpl_tag;
+	}
+
+	/*
 	 *	New escapes: strings are in binary form.
 	 */
 	if (cf_new_escape && (vp->da->type == PW_TYPE_STRING)) {
@@ -1233,13 +1248,6 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 		talloc_free(data.ptr);
 		fr_pair_list_free(&vp);
 		return -1;
-	}
-
-	/*
-	 *	Copy over any additional fields needed...
-	 */
-	if ((vpt->type == TMPL_TYPE_ATTR) && vp->da->flags.has_tag) {
-		vp->tag = vpt->tmpl_tag;
 	}
 
 	*out = vp;
@@ -1732,7 +1740,15 @@ size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR con
 		q = out + len;
 		outlen -= len;
 
-		if (vpt->tmpl_tag != TAG_ANY) {
+		if (vpt->tmpl_tag == TAG_ANY) {
+			/* do nothing */
+
+		} else if (vpt->tmpl_tag == TAG_VALUE) {
+			*q++ = ':';
+			*q++ = 'V';
+			outlen -= 2;
+
+		} else {
 			snprintf(q, outlen, ":%d", vpt->tmpl_tag);
 			len = strlen(q);
 			q += len;
@@ -1878,6 +1894,11 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 	 *	May not may not be found, but it *is* a known name.
 	 */
 	case TMPL_TYPE_ATTR:
+		if (vpt->tmpl_tag == TAG_ANY) {
+			if (err) *err = -1;
+			return NULL;
+		}
+
 		switch (vpt->tmpl_num) {
 		case NUM_ANY:
 			vp = fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag);

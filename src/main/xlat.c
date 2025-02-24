@@ -1631,7 +1631,9 @@ static void xlat_tokenize_debug(xlat_exp_t const *node, int lvl)
 				DEBUG("%.*sref  %d", lvl + 1, xlat_tabs, node->attr.tmpl_request);
 				DEBUG("%.*slist %d", lvl + 1, xlat_tabs, node->attr.tmpl_list);
 
-				if (node->attr.tmpl_tag != TAG_ANY) {
+				if (node->attr.tmpl_tag == TAG_VALUE) {
+					DEBUG("%.*stag V", lvl + 1, xlat_tabs);
+				} else if (node->attr.tmpl_tag != TAG_ANY) {
 					DEBUG("%.*stag %d", lvl + 1, xlat_tabs, node->attr.tmpl_tag);
 				}
 				if (node->attr.tmpl_num != NUM_ANY) {

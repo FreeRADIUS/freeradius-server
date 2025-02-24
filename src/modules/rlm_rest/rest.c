@@ -1294,6 +1294,9 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_r
 		return NULL;
 	}
 
+	vp->op = flags->op;
+	vp->tag = flags->tag;
+
 	ret = fr_pair_value_from_str(vp, to_parse, -1);
 	talloc_free(expanded);
 	if (ret < 0) {
@@ -1302,9 +1305,6 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_r
 
 		return NULL;
 	}
-
-	vp->op = flags->op;
-	vp->tag = flags->tag;
 
 	return vp;
 }
