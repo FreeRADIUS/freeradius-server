@@ -884,5 +884,24 @@ proto-dictionary-root Test-IPv4-Address
 decode-pair 03 05 00 0a 05 00 04
 match Test-IPv4-Address = 10.5.0.4
 
+proto-dictionary der
+
+encode-pair Test-IPv4-Prefix = 10.5.0.0/23
+match 03 04 01 0a 05 00
+
+#
+#  Just the length byte
+#
+encode-pair Test-IPv4-Prefix = 0/0
+match 03 01 00
+
+proto-dictionary-root Test-IPv4-Prefix
+
+decode-pair 03 04 01 0a 05 00
+match Test-IPv4-Prefix = 10.5.0.0/23
+
+decode-pair 03 01 00
+match Test-IPv4-Prefix = 0.0.0.0/0
+
 count
-match 535
+match 545

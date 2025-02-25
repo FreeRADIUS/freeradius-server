@@ -31,7 +31,9 @@ DEFINE	Test-Boolean					bool
 DEFINE	Test-Integer					integer
 
 DEFINE	Test-IPv4-Address				ipv4addr
+DEFINE	Test-IPv4-Prefix				ipv4prefix
 DEFINE	Test-IPv6-Address				ipv4addr
+DEFINE	Test-IPv6-Prefix				ipv4prefix
 
 DEFINE	Foo						sequence sequence_of=integer
 BEGIN Foo

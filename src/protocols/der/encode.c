@@ -386,6 +386,43 @@ static ssize_t fr_der_encode_ipv4_addr(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, 
 	return fr_dbuff_set(dbuff, &our_dbuff);
 }
 
+static ssize_t fr_der_encode_ipv4_prefix(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED fr_der_encode_ctx_t *encode_ctx)
+{
+	fr_dbuff_t	 our_dbuff = FR_DBUFF(dbuff);
+	fr_pair_t const *vp;
+	size_t		len;
+
+	vp = fr_dcursor_current(cursor);
+	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
+
+	if (vp->vp_ip.prefix == 0) {
+		FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) 0x00);
+		return fr_dbuff_set(dbuff, &our_dbuff);
+	}
+
+	/*
+	 *	RFC3779 Section 2.1.1.
+	 *
+	 *	An IP address or prefix is encoded in the IP address delegation
+	 *	extension as a DER-encoded ASN.1 BIT STRING containing the constant
+	 *	most-significant bits.  Recall [X.690] that the DER encoding of a BIT
+	 *	STRING consists of the BIT STRING type (0x03), followed by (an
+	 *	encoding of) the number of value octets, followed by the value.  The
+	 *	value consists of an "initial octet" that specifies the number of
+	 *	unused bits in the last value octet, followed by the "subsequent
+	 *	octets" that contain the octets of the bit string.  (For IP
+	 *	addresses, the encoding of the length will be just the length.)
+	 */
+	FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) (8 - (vp->vp_ip.prefix & 0x07)));
+
+	len = (vp->vp_ip.prefix + 0x07) >> 3;
+
+	if (len) FR_DBUFF_IN_MEMCPY_RETURN(&our_dbuff, (uint8_t const *) &vp->vp_ipv4addr, len);
+
+	return fr_dbuff_set(dbuff, &our_dbuff);
+}
+
 static ssize_t fr_der_encode_ipv6_addr(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED fr_der_encode_ctx_t *encode_ctx)
 {
 	fr_dbuff_t	 our_dbuff = FR_DBUFF(dbuff);
@@ -418,6 +455,38 @@ static ssize_t fr_der_encode_ipv6_addr(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, 
 	return fr_dbuff_set(dbuff, &our_dbuff);
 }
 
+static ssize_t fr_der_encode_ipv6_prefix(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED fr_der_encode_ctx_t *encode_ctx)
+{
+	fr_dbuff_t	 our_dbuff = FR_DBUFF(dbuff);
+	fr_pair_t const *vp;
+	size_t		len;
+
+	vp = fr_dcursor_current(cursor);
+	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
+
+	/*
+	 *	RFC3779 Section 2.1.1.
+	 *
+	 *	An IP address or prefix is encoded in the IP address delegation
+	 *	extension as a DER-encoded ASN.1 BIT STRING containing the constant
+	 *	most-significant bits.  Recall [X.690] that the DER encoding of a BIT
+	 *	STRING consists of the BIT STRING type (0x03), followed by (an
+	 *	encoding of) the number of value octets, followed by the value.  The
+	 *	value consists of an "initial octet" that specifies the number of
+	 *	unused bits in the last value octet, followed by the "subsequent
+	 *	octets" that contain the octets of the bit string.  (For IP
+	 *	addresses, the encoding of the length will be just the length.)
+	 */
+
+	FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) (8 - (vp->vp_ip.prefix & 0x07)));
+
+	len = (vp->vp_ip.prefix + 0x07) >> 3;
+
+	if (len) FR_DBUFF_IN_MEMCPY_RETURN(&our_dbuff, (uint8_t const *) &vp->vp_ipv6addr, len);
+
+	return fr_dbuff_set(dbuff, &our_dbuff);
+}
 
 
 static ssize_t fr_der_encode_octetstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor,
@@ -1576,7 +1645,9 @@ static const fr_der_tag_encode_t tag_funcs[FR_DER_TAG_MAX] = {
 
 static const fr_der_tag_encode_t type_funcs[FR_TYPE_MAX] = {
 	[FR_TYPE_IPV4_ADDR]    	  = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_ipv4_addr },
+	[FR_TYPE_IPV4_PREFIX]  	  = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_ipv4_prefix },
 	[FR_TYPE_IPV6_ADDR]    	  = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_ipv6_addr },
+	[FR_TYPE_IPV6_PREFIX]	  = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_ipv6_prefix },
 };
 
 
@@ -1810,16 +1881,10 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 
 	fr_assert(tag < FR_DER_TAG_MAX);
 
-	switch (vp->vp_type) {
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV6_ADDR:
-		func = &type_funcs[tag];
-		break;
+	func = &type_funcs[vp->vp_type];
+	if (!func->encode) func = &tag_funcs[tag];
 
-	default:
-		func = &tag_funcs[tag];
-		break;
-	}
+	fr_assert(func != NULL);
 	fr_assert(func->encode != NULL);
 
 	/*

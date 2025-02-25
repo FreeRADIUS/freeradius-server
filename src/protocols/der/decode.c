@@ -1452,6 +1452,20 @@ static ssize_t fr_der_decode_ipv4_addr(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 	fr_pair_t *vp;
 	fr_dbuff_t our_in = FR_DBUFF(in);
 
+	/*
+	 *	RFC3779 Section 2.1.1.
+	 *
+	 *	An IP address or prefix is encoded in the IP address delegation
+	 *	extension as a DER-encoded ASN.1 BIT STRING containing the constant
+	 *	most-significant bits.  Recall [X.690] that the DER encoding of a BIT
+	 *	STRING consists of the BIT STRING type (0x03), followed by (an
+	 *	encoding of) the number of value octets, followed by the value.  The
+	 *	value consists of an "initial octet" that specifies the number of
+	 *	unused bits in the last value octet, followed by the "subsequent
+	 *	octets" that contain the octets of the bit string.  (For IP
+	 *	addresses, the encoding of the length will be just the length.)
+	 */
+
 	if (fr_dbuff_remaining(&our_in) != 1 + sizeof(vp->vp_ipv4addr)) {
 		fr_strerror_printf("Invalid ipv4addr size.  Expected %zu, got %zu",
 				   1 + sizeof(vp->vp_ipv4addr), fr_dbuff_remaining(&our_in));
@@ -1479,12 +1493,77 @@ static ssize_t fr_der_decode_ipv4_addr(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 	return fr_dbuff_set(in, &our_in);
 }
 
+static ssize_t fr_der_decode_ipv4_prefix(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+				       fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
+{
+	uint8_t byte;
+	fr_pair_t *vp;
+	fr_dbuff_t our_in = FR_DBUFF(in);
+	size_t len = fr_dbuff_remaining(&our_in);
+
+	/*
+	 *	RFC3779 Section 2.1.1.
+	 *
+	 *	An IP address or prefix is encoded in the IP address delegation
+	 *	extension as a DER-encoded ASN.1 BIT STRING containing the constant
+	 *	most-significant bits.  Recall [X.690] that the DER encoding of a BIT
+	 *	STRING consists of the BIT STRING type (0x03), followed by (an
+	 *	encoding of) the number of value octets, followed by the value.  The
+	 *	value consists of an "initial octet" that specifies the number of
+	 *	unused bits in the last value octet, followed by the "subsequent
+	 *	octets" that contain the octets of the bit string.  (For IP
+	 *	addresses, the encoding of the length will be just the length.)
+	 */
+
+	if (!len || (len > 1 + sizeof(vp->vp_ipv4addr))) {
+		fr_strerror_printf("Invalid ipv4prefix size.  Expected 1..%zu, got %zu",
+				   1 + sizeof(vp->vp_ipv4addr), len);
+		return -1;
+	}
+	len--;
+
+	FR_DBUFF_OUT_RETURN(&byte, &our_in);
+	if (byte > 7) {
+		fr_strerror_printf("Invalid ipv4prefix is too large (%02x)", byte);
+		return -1;
+	}
+
+	vp = fr_pair_afrom_da(ctx, parent);
+	if (unlikely(!vp)) {
+		fr_strerror_const("Out of memory");
+		return -1;
+	}
+
+	vp->vp_ip.af = AF_INET;
+	vp->vp_ip.prefix = len * 8 - byte;
+
+	if (len) FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *) &vp->vp_ipv4addr, &our_in, len);
+
+	fr_pair_append(out, vp);
+
+	return fr_dbuff_set(in, &our_in);
+}
+
 static ssize_t fr_der_decode_ipv6_addr(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 				       fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
 	uint8_t byte;
 	fr_pair_t *vp;
 	fr_dbuff_t our_in = FR_DBUFF(in);
+
+	/*
+	 *	RFC3779 Section 2.1.1.
+	 *
+	 *	An IP address or prefix is encoded in the IP address delegation
+	 *	extension as a DER-encoded ASN.1 BIT STRING containing the constant
+	 *	most-significant bits.  Recall [X.690] that the DER encoding of a BIT
+	 *	STRING consists of the BIT STRING type (0x03), followed by (an
+	 *	encoding of) the number of value octets, followed by the value.  The
+	 *	value consists of an "initial octet" that specifies the number of
+	 *	unused bits in the last value octet, followed by the "subsequent
+	 *	octets" that contain the octets of the bit string.  (For IP
+	 *	addresses, the encoding of the length will be just the length.)
+	 */
 
 	if (fr_dbuff_remaining(&our_in) != 1 + sizeof(vp->vp_ipv6addr)) {
 		fr_strerror_printf("Invalid ipv6addr size.  Expected %zu, got %zu",
@@ -1507,6 +1586,57 @@ static ssize_t fr_der_decode_ipv6_addr(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 	vp->vp_ip.af = AF_INET;
 	vp->vp_ip.prefix = 128;
 	FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *) &vp->vp_ipv6addr, &our_in, sizeof(vp->vp_ipv6addr));
+
+	fr_pair_append(out, vp);
+
+	return fr_dbuff_set(in, &our_in);
+}
+
+static ssize_t fr_der_decode_ipv6_prefix(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+				       fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
+{
+	uint8_t byte;
+	fr_pair_t *vp;
+	fr_dbuff_t our_in = FR_DBUFF(in);
+	size_t len = fr_dbuff_remaining(&our_in);
+
+	/*
+	 *	RFC3779 Section 2.1.1.
+	 *
+	 *	An IP address or prefix is encoded in the IP address delegation
+	 *	extension as a DER-encoded ASN.1 BIT STRING containing the constant
+	 *	most-significant bits.  Recall [X.690] that the DER encoding of a BIT
+	 *	STRING consists of the BIT STRING type (0x03), followed by (an
+	 *	encoding of) the number of value octets, followed by the value.  The
+	 *	value consists of an "initial octet" that specifies the number of
+	 *	unused bits in the last value octet, followed by the "subsequent
+	 *	octets" that contain the octets of the bit string.  (For IP
+	 *	addresses, the encoding of the length will be just the length.)
+	 */
+
+	if (!len || (len > 1 + sizeof(vp->vp_ipv6addr))) {
+		fr_strerror_printf("Invalid ipv6prefix size.  Expected 1..%zu, got %zu",
+				   1 + sizeof(vp->vp_ipv6addr), len);
+		return -1;
+	}
+	len--;
+
+	FR_DBUFF_OUT_RETURN(&byte, &our_in);
+	if (byte > 7) {
+		fr_strerror_printf("Invalid ipv6prefix is too large (%02x)", byte);
+		return -1;
+	}
+
+	vp = fr_pair_afrom_da(ctx, parent);
+	if (unlikely(!vp)) {
+		fr_strerror_const("Out of memory");
+		return -1;
+	}
+
+	vp->vp_ip.af = AF_INET;
+	vp->vp_ip.prefix = len * 8 - byte;
+
+	if (len) FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *) &vp->vp_ipv6addr, &our_in, len);
 
 	fr_pair_append(out, vp);
 
@@ -1538,7 +1668,9 @@ static const fr_der_tag_decode_t tag_funcs[FR_DER_TAG_MAX] = {
 
 static const fr_der_tag_decode_t type_funcs[FR_TYPE_MAX] = {
 	[FR_TYPE_IPV4_ADDR]	= { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_ipv4_addr },
+	[FR_TYPE_IPV4_PREFIX]	= { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_ipv4_prefix },
 	[FR_TYPE_IPV6_ADDR]	= { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_ipv6_addr },
+	[FR_TYPE_IPV6_PREFIX]	= { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_ipv6_prefix },
 };
 
 /** Decode the tag and length fields of a DER encoded structure
@@ -1626,18 +1758,8 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		return -1;
 	}
 
-	if (parent) switch (parent->type) {
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV6_ADDR:
-		func = &type_funcs[parent->type];
-		break;
-
-	default:
-		func = &tag_funcs[*tag];
-		break;
-	} else {
-		func = &tag_funcs[*tag];
-	}
+	func = &tag_funcs[*tag];
+	fr_assert(func != NULL);
 
 	/*
 	 *	Check if the tag is an OID. OID tags will be handled differently
@@ -2370,16 +2492,8 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		return fr_dbuff_set(in, &our_in);
 	}
 
-	switch (parent->type) {
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV6_ADDR:
-		func = &type_funcs[parent->type];
-		break;
-
-	default:
-		func = &tag_funcs[tag];
-		break;
-	}
+	func = &type_funcs[parent->type];
+	if (!func->decode) func = &tag_funcs[tag];
 	fr_assert(func != NULL);
 
 	/*
@@ -2436,6 +2550,8 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	}
 
 	if (tag != FR_DER_TAG_OID) {
+		fr_assert(func->decode != NULL);
+
 		/*
 		 *	The decode function can return 0 if len==0.  This is true for 'null' data types, and
 		 *	for variable-sized types such as strings.
