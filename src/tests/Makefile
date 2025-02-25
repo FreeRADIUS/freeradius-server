@@ -115,7 +115,7 @@ SECRET	= testing123
 #
 #	Build the directory for testing the server
 #
-all: tests
+all: tests tests.load
 
 clean:
 	@rm -f test.conf dictionary *.ok *.log $(BUILD_DIR)/tests/eap
@@ -136,7 +136,7 @@ test.conf: dictionary config/eap-test
 	fi
 	${Q}echo "testdir =" $(TEST_PATH) >> $@
 	${Q}echo 'logdir = $${testdir}' >> $@
-	${Q}echo "maindir =" $(RADDB_PATH) >> $@
+	${Q}echo "maindir =" $(RADDB_PATH:/=) >> $@
 	${Q}echo 'radacctdir = $${testdir}' >> $@
 	${Q}echo 'pidfile = $${testdir}/radiusd.pid' >> $@
 	${Q}echo 'panic_action = "gdb -batch -x $${testdir}/panic.gdb %e %p > $${testdir}/gdb.log 2>&1; cat $${testdir}/gdb.log"' >> $@
@@ -144,11 +144,20 @@ test.conf: dictionary config/eap-test
 	${Q}echo '        allow_vulnerable_openssl = yes' >> $@
 	${Q}echo '}' >> $@
 	${Q}echo >> $@
-	${Q}echo 'modconfdir = $${maindir}mods-config' >> $@
+	${Q}echo 'modconfdir = $${maindir}/mods-config' >> $@
 	${Q}echo 'certdir = $${maindir}/certs' >> $@
 	${Q}echo 'cadir   = $${maindir}/certs' >> $@
 	${Q}echo '$$INCLUDE $${testdir}/config/' >> $@
 	${Q}echo '$$INCLUDE $${maindir}/radiusd.conf' >> $@
+
+$(RADDB_PATH)certs/ca.pem:
+	${Q}make -C $(RADDB_PATH)certs ca.pem
+
+$(RADDB_PATH)certs/server.pem:
+	${Q}make -C $(RADDB_PATH)certs server.pem
+
+$(RADDB_PATH)certs/client.pem:
+	${Q}make -C $(RADDB_PATH)certs client.pem
 
 #
 #  Rename "inner-tunnel", and ensure that it only uses the "eap-test" module.
@@ -176,7 +185,7 @@ config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
 	     -e 's/cipher_list = "DEFAULT"/cipher_list = "DEFAULT${SECLEVEL}"/' \
 		 < $< > $@
 
-radiusd.pid: test.conf
+radiusd.pid: test.conf $(RADDB_PATH)certs/ca.pem $(RADDB_PATH)certs/server.pem
 	${Q}rm -rf $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log $(TEST_PATH)/tlscache
 	${Q}mkdir -p $(TEST_PATH)/tlscache
 	${Q}printf "Starting server... "
@@ -342,6 +351,14 @@ endif # we have eapol_test built
 tests.runtests:  test.conf | radiusd.kill radiusd.pid
 	${Q}chmod a+x runtests.sh
 	${Q}BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
+
+# probably not the best way to do this
+.PHONY: $(BUILD_PATH)/tests/tls-load
+$(BUILD_PATH)/tests/tls-load:
+	${Q}mkdir -p $@
+
+tests.load: $(BUILD_PATH)/tests/tls-load $(RADDB_PATH)certs/ca.pem $(RADDB_PATH)certs/server.pem $(RADDB_PATH)certs/client.pem
+	${Q}(cd tls-load && BUILD_DIR=${BUILD_PATH} LIB_DIR=${LIB_PATH} DICT_DIR=${top_builddir}/share RADDB_DIR=${top_builddir}/raddb ./run_test.sh -o $(BUILD_PATH)/tests/tls-load 10)
 
 tests: tests.runtests tests.eap
 	$(MAKE) radiusd.kill
