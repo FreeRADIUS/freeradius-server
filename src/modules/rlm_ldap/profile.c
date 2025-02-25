@@ -42,6 +42,7 @@ USES_APPLE_DEPRECATED_API
  */
 typedef struct {
 	fr_ldap_result_code_t	*ret;			//!< Result of the query and applying the map.
+	int			*applied;		//!< Number of profiles applied.
 	fr_ldap_query_t		*query;
 	char const		*dn;
 	rlm_ldap_t const	*inst;
@@ -60,6 +61,7 @@ static unlang_action_t ldap_map_profile_resume(UNUSED rlm_rcode_t *p_result, UNU
 	LDAPMessage		*entry = NULL;
 	int			ldap_errno;
 	char			*dn = NULL;
+	int			ret;
 
 	/*
 	 *	Tell the caller what happened
@@ -99,9 +101,12 @@ static unlang_action_t ldap_map_profile_resume(UNUSED rlm_rcode_t *p_result, UNU
 			ldap_memfree(dn);
 		}
 		RINDENT();
-		if (fr_ldap_map_do(request, profile_ctx->inst->profile_check_attr, profile_ctx->inst->valuepair_attr,
-				   profile_ctx->expanded, entry) < 0) {
+		ret = fr_ldap_map_do(request, profile_ctx->inst->profile_check_attr, profile_ctx->inst->valuepair_attr,
+				   profile_ctx->expanded, entry);
+		if (ret < 0) {
 			if (profile_ctx->ret) *profile_ctx->ret = LDAP_RESULT_ERROR;
+		} else {
+			if (profile_ctx->applied) *profile_ctx->applied += ret;
 		}
 		entry = ldap_next_entry(handle, entry);
 		REXDENT();
@@ -131,6 +136,7 @@ static void ldap_map_profile_cancel(UNUSED request_t *request, UNUSED fr_signal_
  * sets of attributes to the request.
  *
  * @param[out] ret		Where to write the result of the query.
+ * @param[out] applied		Where to write the number of profiles applied.
  * @param[in] inst		LDAP module instance.
  * @param[in] request		Current request.
  * @param[in] ttrunk		Trunk connection on which to run LDAP queries.
@@ -141,7 +147,7 @@ static void ldap_map_profile_cancel(UNUSED request_t *request, UNUSED fr_signal_
  *				expanded attribute names and mapping information.
  * @return One of the RLM_MODULE_* values.
  */
-unlang_action_t rlm_ldap_map_profile(fr_ldap_result_code_t *ret,
+unlang_action_t rlm_ldap_map_profile(fr_ldap_result_code_t *ret, int *applied,
 				     rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				     char const *dn, int scope, char const *filter, fr_ldap_map_exp_t const *expanded)
 {
@@ -153,6 +159,7 @@ unlang_action_t rlm_ldap_map_profile(fr_ldap_result_code_t *ret,
 	MEM(profile_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_profile_ctx_t));
 	*profile_ctx = (ldap_profile_ctx_t) {
 		.ret = ret,
+		.applied = applied,
 		.dn = dn,
 		.expanded = expanded,
 		.inst = inst

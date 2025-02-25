@@ -1030,6 +1030,7 @@ static xlat_action_t ldap_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ct
 
 typedef struct {
 	fr_ldap_result_code_t	ret;
+	int			applied;
 	LDAPURLDesc		*url;
 	fr_ldap_map_exp_t	expanded;
 } ldap_xlat_profile_ctx_t;
@@ -1044,7 +1045,7 @@ static xlat_action_t ldap_profile_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out
 	fr_value_box_t			*vb;
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
-	vb->vb_bool = xlat_ctx->ret == LDAP_RESULT_SUCCESS;
+	vb->vb_bool = (xlat_ctx->ret == LDAP_RESULT_SUCCESS) && (xlat_ctx->applied > 0);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -1185,7 +1186,8 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	/*
 	 *	Pushes a frame onto the stack to retrieve and evaluate a profile
 	 */
-	if (rlm_ldap_map_profile(&xlat_ctx->ret, inst, request, ttrunk, dn, scope, filter, &xlat_ctx->expanded) < 0) goto error;
+	if (rlm_ldap_map_profile(&xlat_ctx->ret, &xlat_ctx->applied, inst, request, ttrunk, dn,
+				 scope, filter, &xlat_ctx->expanded) < 0) goto error;
 
 	return XLAT_ACTION_PUSH_UNLANG;
 }
@@ -1696,7 +1698,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 			unlang_action_t	ret;
 
 			REPEAT_MOD_AUTHORIZE_RESUME;
-			ret = rlm_ldap_map_profile(NULL, inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
+			ret = rlm_ldap_map_profile(NULL, NULL, inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
 						   inst->profile_scope, call_env->default_profile.vb_strvalue, &autz_ctx->expanded);
 			switch (ret) {
 			case UNLANG_ACTION_FAIL:
@@ -1784,7 +1786,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 
 			autz_ctx->profile_value = fr_ldap_berval_to_string(autz_ctx, autz_ctx->profile_values[autz_ctx->value_idx++]);
 			REPEAT_MOD_AUTHORIZE_RESUME;
-			ret = rlm_ldap_map_profile(NULL, inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
+			ret = rlm_ldap_map_profile(NULL, NULL, inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
 						   inst->profile_scope, autz_ctx->call_env->profile_filter.vb_strvalue, &autz_ctx->expanded);
 			switch (ret) {
 			case UNLANG_ACTION_FAIL:
