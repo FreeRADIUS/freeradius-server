@@ -4,46 +4,53 @@
 
 A lot of information can be found online for FreeRADIUS, but most of this information is out-of-date or incorrect. Avoid third party documentation refer to the documentation created by FreeRADIUS and InkBridge Networks as follows:
 
-* *https://www.freeradius.org[FreeRADIUS]*
-* *https://www.inkbridgenetworks.com[InkBridge Networks]*
+* https://www.freeradius.org[FreeRADIUS org]
+* https://www.inkbridgenetworks.com[InkBridge Networks]
 
 ## What Email list do I use?
 
-There are several mailing lists associated with the FreeRADIUS server project. The lists are on the http://freeradius.org/list/[freeRADIUS] website.
+Several mailing lists associated with the FreeRADIUS server project are available for subscription from http://freeradius.org/list/[freeRADIUS org]. See below for a description of the FreeRADIUS mailing lists and archive repositories. For normal discussion of the server and how to use it, subscribe to the FreeRADIUS users list. Only subscribe to the developer list if you're interested in writing software for the new server.
 
 include::partial$mailinglist.adoc[]
 
-## How can I get training for my staff?
-
-https://www.inkbridgenetworks.com/[Inkbridge Networks] offers a range of training courses to meet your needs. Courses include:
-
-* *Introduction to RADIUS* is an introductory course for all administrators who are unfamiliar with
-RADIUS. Basic RADIUS concepts that are key to understanding RADIUS-based systems are
-introduced.
-* *Advanced RADIUS* is a course for senior administrators who are already familiar with RADIUS. It
-introduces advanced RADIUS concepts that will help system administrators design, deploy, maintain
-and debug their systems.
-* *Programming with RADIUS* is a course for developers who wish to create their own customized
-solutions.
-
-## How do I get support from a consultant?
+## How do I get support from an expert?
 
 Our goal at https://www.inkbridgenetworks.com/support[InkBridge Networks] is to help you build a world-class system and to make sure it operates
-smoothly. InkBridge Networks are experts at designing a customized RADIUS solution that meet your needs. Your customized network will include
-the appropriate number of RADIUS and database servers for your particular business needs. We install the RADIUS server and database and generate
-the necessary tables, schemas, queries, and replication.
+smoothly. We're experts at designing a customized RADIUS solution that seamlessly integrates with your existing infrastructure. Your customized network will include the appropriate number of RADIUS and database servers for your specific business needs.
 
-We can configure multiple forms of authorization on the same system simultaneously. The system can include:
+We install the RADIUS server and database and generate the necessary tables, schemas, queries, and replication. We can integrate multiple types of authorization on the same system simultaneously. The network system can include:
 
 * 802.1x
 * PEAP
-* EAP-TTLS
-* EAP-TLS
-* Authentication against Active Directory
-* MAC authentication
-* MAC auth bypass (MAB)
+* EAP-TTLS and EAP-TLS
+* Authentication against Active Directory (AD)
+* MAC authentication and MAC auth bypass (MAB)
 
-Existing systems can be migrated to our product or we can configure our product to work with your databases. The final result is a system that is robust, high performance, and easy to maintain. Contact us at sales@networkradius.com for more information.
+Existing systems can be migrated to our product or we can configure our product to work with your databases. The final result is a system that is robust, high performance, and easy to maintain. Contact us at sales@inkbridge.io for more information.
+
+## How can I get training?
+
+https://www.inkbridgenetworks.com/[Inkbridge Networks] offers a range of https://www.inkbridgenetworks.com/services/training[training] courses to meet your needs.
+
+.InkBridge Training on FreeRADIUS
+[cols="1,3"]
+|===
+|Course|Description
+
+|Introduction to RADIUS
+|An introductory course for all administrators who are unfamiliar with
+RADIUS. Basic RADIUS concepts that are key to understanding RADIUS-based systems are
+introduced.
+
+|Advanced RADIUS
+|A course for senior administrators who are already familiar with RADIUS. It
+introduces advanced RADIUS concepts that will help system administrators design, deploy, maintain
+and debug their systems.
+
+|Programming with RADIUS
+|A course for developers who wish to create their own customized
+solutions.
+|===
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

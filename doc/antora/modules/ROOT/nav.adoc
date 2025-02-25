@@ -1,6 +1,8 @@
 * xref:index.adoc[Introduction]
 ** xref:getstarted.adoc[Getting Started]
-*** xref:radiusd_x.adoc[Debugging]
+*** xref:debugging/radiusd_x.adoc[Debugging]
+**** xref:debugging/startuptxt.adoc[Startup Text]
+**** xref:debugging/pktprocessing.adoc[Packet Processing]
 *** xref:gethelp.adoc[Getting Help]
 ** xref:bestpractices.adoc[Best Practices]
 ** xref:faq.adoc[Frequently Asked Question (FAQ)]
@@ -10,7 +12,6 @@
 *** xref:trouble-shooting/client.adoc[Client Configuration]
 *** xref:trouble-shooting/connect_nas.adoc[Connectivity-NAS]
 *** xref:trouble-shooting/datastore.adoc[Datastores]
-
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

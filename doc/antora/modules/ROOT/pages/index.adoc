@@ -66,16 +66,19 @@ As of the time of this release, FreeRADIUS:
 * RADIUS/TLS (RadSec) isn't available.
 * The "haproxy" and "reverse CoA" features aren't implemented.
 
-Administrators using version 3 that wish to upgrade to version 4
+[CAUTION]
+====
+*Don't* open bug reports about previous features as missing. All such bug reports will be closed without comment.
+====
+
+Administrators using v3 that wish to upgrade to v4
 must read the xref:howto:installation/upgrade.adoc[upgrading] guide.
 This guide explains the differences between the two versions and
 how an existing configuration is reproduced in the latest
-release. Do *not* use version 3 configuration files with version 4. These configuration files are *not* compatible on this major version upgrade.
+release. Do *not* use v3 configuration files with v4. These configuration files are *not* compatible on this major version upgrade.
 
-[WARNING]
+[IMPORTANT]
 ====
-*Don't* open bug reports about previous features as missing. All such bug reports will be closed without comment.
-
 *Don't* create 4.0.0-alpha packages for your operating systems or Linux distributions. Creating "alpha" packages results in upset users that install that package. The users believed that the package is stable and they run into issues.
 ====
 
@@ -88,24 +91,24 @@ A RADIUS server requires a network connection with access to UDP ports 1812 for 
 The FreeRADIUS protocol works on all Unix based systems.  FreeRADIUS doesn't
 run natively under Windows.
 
-=== CPU/RAM/disk space requirements
+=== CPU/RAM/disk space Requirements
 
 A FreeRADIUS server has minimal requirements. A FreeRADIUS installation uses 8 MB of RAM, less than 100 MB of disk space, and minimal CPU power. An Internet Service Provider (ISP) with less than 10,000 users have no issues with a basic setup. ISPs with more than 10,000 users, focuses on system design such as more servers and databases.
 
 === Datastores
 
-The server reads or writes to any database and both LDAP and SQL can be in the same configuration simultaneously. The database queries are customizable and can be adapted to any custom schema . The server supports fail-over and load balancing across multiple databases. There are no pre-set limits to the number, or type, of databases used.
+The server reads or writes to any database and both LDAP and SQL can be in the same configuration simultaneously. The database queries are customizable and can be adapted to any custom schema. The server supports fail-over and load balancing across multiple databases. There are no pre-set limits to the number, or type, of databases used.
 
 == Debugging
 
 If you have *any* issues with your server, then restart the server
-in xref:radiusd_x.adoc[Debugging] mode. Review the logs to determine what
+in xref:radiusd_x.adoc[debugging] mode. Review the logs to determine what
 the root cause is and make changes. Do only *one* change
 at a time and restart your server.
 
 == More Information
 
-The https://www.inkbridge.io/[RADIUS experts] are available to help you with your FreeRADIUS. See xref:gethelp.adoc[Getting Help] for more information and details.
+The https://www.inkbridge.io/[RADIUS experts] are available to help you with your FreeRADIUS customizations. See xref:gethelp.adoc[Getting Help] for more information and additional resources.
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

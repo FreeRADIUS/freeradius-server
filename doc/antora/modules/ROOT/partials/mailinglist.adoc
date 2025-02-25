@@ -1,6 +1,3 @@
-Please see the following for a description of the FreeRADIUS mailing lists. For normal discussion of the server and how to use it, subscribe to the FreeRADIUS user-list. Only subscribe to the development list if you are interested in writing software for the new server.
-
-
 [cols="1,3"]
 |===
 |Mailing List|Description

@@ -1,24 +1,13 @@
 = Getting Started with FreeRADIUS
 
 This page describes how to perform the initial install and
-configuration of FreeRADIUS using a package.  FreeRADIUS pre-built
-packages are available from
-https://packages.inkbridgenetworks.com[InkBridge Networks].  This site
-contains the most current packages for all common OS platforms for the
-latest FreeRADIUS release.
+configuration of FreeRADIUS. For larger deployments or more complex network design, see the xref:howto:index.adoc[Howto] guides and xref:reference:raddb/mods-available/index.adoc[Modules] section.
 
-== Get the Source
+== Get the Package or Source
 
-This page describes how to perform the initial install and
-configuration of FreeRADIUS.  FreeRADIUS can be installed using the
-pre-built packages available from
-https://packages.inkbridgenetworks.com[InkBridge Networks].  This site
-contains packages for all common OS platforms and has the most current
-packages for the latest release.
+FreeRADIUS pre-built packages are available from https://packages.inkbridgenetworks.com[InkBridge Networks]. This site contains the most current packages for all common OS platforms for the latest FreeRADIUS release. Using packages to install a FreeRADIUS server is the recommended method.
 
-FreeRADIUS can also be installed from the source code. Please see the
-xref:howto:installation/index.adoc[installation guide] for
-instructions.
+FreeRADIUS can also be installed from the source code avilable from https://www.freeradius.org/releases/[FreeRADIUS org] or https://github.com/FreeRADIUS/freeradius-server/[GitHub]. Refer to the xref:howto:installation/source.adoc[Install from Source] section for instructions.
 
 [NOTE]
 ====
@@ -39,13 +28,11 @@ radiusd -X
 If the message on your screen says *Ready to process requests*, the
 server is installed and configured properly.  For help decoding the
 the output from `radiusd -X`, refer to the
-xref:radiusd_x.adoc[debugging] page for more details.
+xref:radiusd_x.adoc[debugging] pages for more details.
 
 == Initial Tests
 
-Test basic authentication by editing the
-xref:reference:raddb/mods-config/files/users.adoc[users] file and add the
-following line at the top of the file:
+Test basic authentication by editing the xref:reference:raddb/mods-config/files/users.adoc[users] file and add the following line at the top of the file:
 
 ```
 testing Password.Cleartext := "password"
@@ -97,15 +84,11 @@ section.
 Then restart the server in debugging mode, and run a simple test using
 the testing user. You should see an `Access-Accept` in the server output
 
-The following steps outline the best known method for configuring the
-server. Following them lets you create complex configurations with a
-minimum of effort. Failure to follow them leads to days of frustration
-and wasted effort.
-
 ## Configure the Server
 
-To create complex configurations with a minimum of effort, follow the
-steps to configure the server *ONE* change at a time:
+The following steps outline the best known method for configuring the
+server. Following them lets you create complex configurations with a
+minimum of effort. Failure to follow these steps may lead to days of frustration and wasted effort.
 
 * Start with a "known working" configuration, such as supplied by the default installation.
 * Make one small change to the configuration file.
@@ -116,19 +99,14 @@ Your next step is to configure more server components.
 
 ## More Information
 
-For specific problem solving, we recommend the xref:howto:index.adoc[Howto] guide.
-For configuring and testing individual modules, refer to
-xref:howto:modules/configuring_modules.adoc[Modules].
-
-All of the xref:reference:raddb/index.adoc[Configuration Files] are
-available in hypertext format.
+For specific problem solving and provisioning, we recommend the xref:howto:index.adoc[Howto] guides. To configure and test individual modules, refer to xref:howto:modules/configuring_modules.adoc[Modules].
 
 A detailed xref:reference:unlang/index.adoc[unlang] reference guide
 that describes the syntax and functionality of the keywords, data
 types, etc. used in the `unlang` processing language.
 
-There is also xref:developers:index.adoc[Developers] documentation
-that includes the APIs references.
+All of the xref:reference:raddb/index.adoc[Configuration Files] are
+available in hypertext format. There is also xref:developers:index.adoc[Developers] documentation that includes the APIs references.
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
