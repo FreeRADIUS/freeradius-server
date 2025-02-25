@@ -414,6 +414,12 @@ static ssize_t fr_der_encode_ipv4_prefix(fr_dbuff_t *dbuff, fr_dcursor_t *cursor
 	 *	octets" that contain the octets of the bit string.  (For IP
 	 *	addresses, the encoding of the length will be just the length.)
 	 */
+	if (vp->vp_ip.prefix == 32) {
+		FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) 0x00);
+		FR_DBUFF_IN_MEMCPY_RETURN(&our_dbuff, (uint8_t const *) &vp->vp_ipv4addr, sizeof(vp->vp_ipv4addr));
+		return fr_dbuff_set(dbuff, &our_dbuff);
+	}
+
 	FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) (8 - (vp->vp_ip.prefix & 0x07)));
 
 	len = (vp->vp_ip.prefix + 0x07) >> 3;
@@ -478,6 +484,12 @@ static ssize_t fr_der_encode_ipv6_prefix(fr_dbuff_t *dbuff, fr_dcursor_t *cursor
 	 *	octets" that contain the octets of the bit string.  (For IP
 	 *	addresses, the encoding of the length will be just the length.)
 	 */
+
+	if (vp->vp_ip.prefix == 128) {
+		FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) 0x00);
+		FR_DBUFF_IN_MEMCPY_RETURN(&our_dbuff, (uint8_t const *) &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+		return fr_dbuff_set(dbuff, &our_dbuff);
+	}
 
 	FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) (8 - (vp->vp_ip.prefix & 0x07)));
 
