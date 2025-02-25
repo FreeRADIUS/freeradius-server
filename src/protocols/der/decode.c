@@ -82,84 +82,6 @@ typedef struct {
 static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 					fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
 
-static ssize_t fr_der_decode_boolean(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent, fr_dbuff_t *in,
-				     fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
-static ssize_t fr_der_decode_integer(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent, fr_dbuff_t *in,
-				     fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
-static ssize_t fr_der_decode_bitstring(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-				       fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
-static ssize_t fr_der_decode_octetstring(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-					 fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
-static ssize_t fr_der_decode_null(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent, fr_dbuff_t *in,
-				  fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
-static ssize_t fr_der_decode_utf8_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-					 fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
-static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-				      fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
-static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent, fr_dbuff_t *in,
-				 fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
-static ssize_t fr_der_decode_printable_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-					      fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
-static ssize_t fr_der_decode_t61_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-					fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
-static ssize_t fr_der_decode_ia5_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-					fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
-static ssize_t fr_der_decode_utc_time(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-				      fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
-static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-					      fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
-static ssize_t fr_der_decode_visible_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-					    fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
-static ssize_t fr_der_decode_general_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-					    fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
-static ssize_t fr_der_decode_universal_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-					      fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
-/*
- *	We have per-type function names to make it clear that different types have different decoders.
- *	However, the methods to decode them are the same.  So rather than having trampoline functions, we just
- *	use defines.
- */
-#define fr_der_decode_enumerated fr_der_decode_integer
-
-static fr_der_tag_decode_t tag_funcs[FR_DER_TAG_MAX] = {
-	[FR_DER_TAG_BOOLEAN]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_boolean },
-	[FR_DER_TAG_INTEGER]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_integer },
-	[FR_DER_TAG_BITSTRING]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_bitstring },
-	[FR_DER_TAG_OCTETSTRING]      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_octetstring },
-	[FR_DER_TAG_NULL]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_null },
-	[FR_DER_TAG_ENUMERATED]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_enumerated },
-	[FR_DER_TAG_UTF8_STRING]      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_utf8_string },
-	[FR_DER_TAG_SEQUENCE]	      = { .constructed = FR_DER_TAG_CONSTRUCTED, .decode = fr_der_decode_sequence },
-	[FR_DER_TAG_SET]	      = { .constructed = FR_DER_TAG_CONSTRUCTED, .decode = fr_der_decode_set },
-	[FR_DER_TAG_PRINTABLE_STRING] = { .constructed = FR_DER_TAG_PRIMITIVE,
-					  .decode      = fr_der_decode_printable_string },
-	[FR_DER_TAG_T61_STRING]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_t61_string },
-	[FR_DER_TAG_IA5_STRING]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_ia5_string },
-	[FR_DER_TAG_UTC_TIME]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_utc_time },
-	[FR_DER_TAG_GENERALIZED_TIME] = { .constructed = FR_DER_TAG_PRIMITIVE,
-					  .decode      = fr_der_decode_generalized_time },
-	[FR_DER_TAG_VISIBLE_STRING]   = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_visible_string },
-	[FR_DER_TAG_GENERAL_STRING]   = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_general_string },
-	[FR_DER_TAG_UNIVERSAL_STRING] = { .constructed = FR_DER_TAG_PRIMITIVE,
-					  .decode      = fr_der_decode_universal_string },
-};
-
 static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent, fr_dbuff_t *in,
 				    bool const allowed_chars[], fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull(1,2,3,4,6));
 
@@ -1504,6 +1426,13 @@ static ssize_t fr_der_decode_visible_string(TALLOC_CTX *ctx, fr_pair_list_t *out
 	return fr_der_decode_string(ctx, out, parent, in, allowed_chars, decode_ctx);
 }
 
+/*
+ *	We have per-type function names to make it clear that different types have different decoders.
+ *	However, the methods to decode them are the same.  So rather than having trampoline functions, we just
+ *	use defines.
+ */
+#define fr_der_decode_enumerated fr_der_decode_integer
+
 static ssize_t fr_der_decode_general_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 					    fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
@@ -1515,6 +1444,102 @@ static ssize_t fr_der_decode_universal_string(TALLOC_CTX *ctx, fr_pair_list_t *o
 {
 	return fr_der_decode_string(ctx, out, parent, in, NULL, decode_ctx);
 }
+
+static ssize_t fr_der_decode_ipv4_addr(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+				       fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
+{
+	uint8_t byte;
+	fr_pair_t *vp;
+	fr_dbuff_t our_in = FR_DBUFF(in);
+
+	if (fr_dbuff_remaining(&our_in) != 1 + sizeof(vp->vp_ipv4addr)) {
+		fr_strerror_printf("Invalid ipv4addr size.  Expected %zu, got %zu",
+				   1 + sizeof(vp->vp_ipv4addr), fr_dbuff_remaining(&our_in));
+		return -1;
+	}
+
+	FR_DBUFF_OUT_RETURN(&byte, &our_in);
+	if (byte != 0) {
+		fr_strerror_printf("Invalid ipv4addr prefix is non-zero (%02x)", byte);
+		return -1;
+	}
+
+	vp = fr_pair_afrom_da(ctx, parent);
+	if (unlikely(!vp)) {
+		fr_strerror_const("Out of memory");
+		return -1;
+	}
+
+	vp->vp_ip.af = AF_INET;
+	vp->vp_ip.prefix = 32;
+	FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *) &vp->vp_ipv4addr, &our_in, sizeof(vp->vp_ipv4addr));
+
+	fr_pair_append(out, vp);
+
+	return fr_dbuff_set(in, &our_in);
+}
+
+static ssize_t fr_der_decode_ipv6_addr(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+				       fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
+{
+	uint8_t byte;
+	fr_pair_t *vp;
+	fr_dbuff_t our_in = FR_DBUFF(in);
+
+	if (fr_dbuff_remaining(&our_in) != 1 + sizeof(vp->vp_ipv6addr)) {
+		fr_strerror_printf("Invalid ipv6addr size.  Expected %zu, got %zu",
+				   1 + sizeof(vp->vp_ipv6addr), fr_dbuff_remaining(&our_in));
+		return -1;
+	}
+
+	FR_DBUFF_OUT_RETURN(&byte, &our_in);
+	if (byte != 0) {
+		fr_strerror_printf("Invalid ipv6addr prefix is non-zero (%02x)", byte);
+		return -1;
+	}
+
+	vp = fr_pair_afrom_da(ctx, parent);
+	if (unlikely(!vp)) {
+		fr_strerror_const("Out of memory");
+		return -1;
+	}
+
+	vp->vp_ip.af = AF_INET;
+	vp->vp_ip.prefix = 128;
+	FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *) &vp->vp_ipv6addr, &our_in, sizeof(vp->vp_ipv6addr));
+
+	fr_pair_append(out, vp);
+
+	return fr_dbuff_set(in, &our_in);
+}
+
+static const fr_der_tag_decode_t tag_funcs[FR_DER_TAG_MAX] = {
+	[FR_DER_TAG_BOOLEAN]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_boolean },
+	[FR_DER_TAG_INTEGER]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_integer },
+	[FR_DER_TAG_BITSTRING]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_bitstring },
+	[FR_DER_TAG_OCTETSTRING]      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_octetstring },
+	[FR_DER_TAG_NULL]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_null },
+	[FR_DER_TAG_ENUMERATED]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_enumerated },
+	[FR_DER_TAG_UTF8_STRING]      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_utf8_string },
+	[FR_DER_TAG_SEQUENCE]	      = { .constructed = FR_DER_TAG_CONSTRUCTED, .decode = fr_der_decode_sequence },
+	[FR_DER_TAG_SET]	      = { .constructed = FR_DER_TAG_CONSTRUCTED, .decode = fr_der_decode_set },
+	[FR_DER_TAG_PRINTABLE_STRING] = { .constructed = FR_DER_TAG_PRIMITIVE,
+					  .decode      = fr_der_decode_printable_string },
+	[FR_DER_TAG_T61_STRING]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_t61_string },
+	[FR_DER_TAG_IA5_STRING]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_ia5_string },
+	[FR_DER_TAG_UTC_TIME]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_utc_time },
+	[FR_DER_TAG_GENERALIZED_TIME] = { .constructed = FR_DER_TAG_PRIMITIVE,
+					  .decode      = fr_der_decode_generalized_time },
+	[FR_DER_TAG_VISIBLE_STRING]   = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_visible_string },
+	[FR_DER_TAG_GENERAL_STRING]   = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_general_string },
+	[FR_DER_TAG_UNIVERSAL_STRING] = { .constructed = FR_DER_TAG_PRIMITIVE,
+					  .decode      = fr_der_decode_universal_string },
+};
+
+static const fr_der_tag_decode_t type_funcs[FR_TYPE_MAX] = {
+	[FR_TYPE_IPV4_ADDR]	= { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_ipv4_addr },
+	[FR_TYPE_IPV6_ADDR]	= { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_ipv6_addr },
+};
 
 /** Decode the tag and length fields of a DER encoded structure
  *
@@ -1530,7 +1555,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 	fr_dbuff_t		 our_in = FR_DBUFF(in);
 	uint8_t			 tag_byte;
 	uint8_t			 len_byte;
-	fr_der_tag_decode_t	*func;
+	fr_der_tag_decode_t const *func;
 	fr_der_tag_class_t	 tag_class;
 	fr_der_tag_constructed_t constructed;
 	fr_der_attr_flags_t const *flags;
@@ -1601,7 +1626,18 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		return -1;
 	}
 
-	func = &tag_funcs[*tag];
+	if (parent) switch (parent->type) {
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+		func = &type_funcs[parent->type];
+		break;
+
+	default:
+		func = &tag_funcs[*tag];
+		break;
+	} else {
+		func = &tag_funcs[*tag];
+	}
 
 	/*
 	 *	Check if the tag is an OID. OID tags will be handled differently
@@ -2148,7 +2184,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 					fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx)
 {
 	fr_dbuff_t	     our_in = FR_DBUFF(in);
-	fr_der_tag_decode_t *func;
+	fr_der_tag_decode_t const *func;
 	ssize_t		     slen;
 	uint8_t	     	     tag;
 	size_t		     len;
@@ -2334,7 +2370,17 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		return fr_dbuff_set(in, &our_in);
 	}
 
-	func = &tag_funcs[tag];
+	switch (parent->type) {
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+		func = &type_funcs[parent->type];
+		break;
+
+	default:
+		func = &tag_funcs[tag];
+		break;
+	}
+	fr_assert(func != NULL);
 
 	/*
 	 *	Enforce limits on min/max.

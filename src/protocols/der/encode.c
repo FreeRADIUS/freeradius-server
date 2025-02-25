@@ -62,20 +62,8 @@ typedef struct {
 	fr_der_encode_t		 encode;
 } fr_der_tag_encode_t;
 
-static ssize_t fr_der_encode_boolean(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull(1,2));
-static ssize_t fr_der_encode_integer(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull(1,2));
-static ssize_t fr_der_encode_bitstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull);
-static ssize_t fr_der_encode_octetstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull);
-static ssize_t fr_der_encode_null(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull(2));
-static ssize_t fr_der_encode_oid(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull(1,2));
-static ssize_t fr_der_encode_sequence(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull);
-static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull);
-static ssize_t fr_der_encode_utc_time(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull(1,2));
-static ssize_t fr_der_encode_generalized_time(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull(1,2));
 
 static ssize_t fr_der_encode_oid_value_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull);
-
-static ssize_t fr_der_encode_string(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull(1,2));
 
 /*
  *	We have per-type function names to make it clear that different types have different encoders.
@@ -94,30 +82,6 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned
 static ssize_t encode_pair(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth, fr_dcursor_t *cursor,
 			   void *encode_ctx);
 static ssize_t der_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx) CC_HINT(nonnull);
-
-static fr_der_tag_encode_t tag_funcs[FR_DER_TAG_MAX] = {
-	[FR_DER_TAG_BOOLEAN]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_boolean },
-	[FR_DER_TAG_INTEGER]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_integer },
-	[FR_DER_TAG_BITSTRING]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_bitstring },
-	[FR_DER_TAG_OCTETSTRING]      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_octetstring },
-	[FR_DER_TAG_NULL]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_null },
-	[FR_DER_TAG_OID]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_oid },
-	[FR_DER_TAG_ENUMERATED]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_enumerated },
-	[FR_DER_TAG_UTF8_STRING]      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_string },
-	[FR_DER_TAG_SEQUENCE]	      = { .constructed = FR_DER_TAG_CONSTRUCTED, .encode = fr_der_encode_sequence },
-	[FR_DER_TAG_SET]	      = { .constructed = FR_DER_TAG_CONSTRUCTED, .encode = fr_der_encode_set },
-	[FR_DER_TAG_PRINTABLE_STRING] = { .constructed = FR_DER_TAG_PRIMITIVE,
-					  .encode      = fr_der_encode_string },
-	[FR_DER_TAG_T61_STRING]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_string },
-	[FR_DER_TAG_IA5_STRING]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_string },
-	[FR_DER_TAG_UTC_TIME]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_utc_time },
-	[FR_DER_TAG_GENERALIZED_TIME] = { .constructed = FR_DER_TAG_PRIMITIVE,
-					  .encode      = fr_der_encode_generalized_time },
-	[FR_DER_TAG_VISIBLE_STRING]   = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_string },
-	[FR_DER_TAG_GENERAL_STRING]   = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_string },
-	[FR_DER_TAG_UNIVERSAL_STRING] = { .constructed = FR_DER_TAG_PRIMITIVE,
-					  .encode      = fr_der_encode_string },
-};
 
 /** Compare two pairs by their tag number.
  *
@@ -381,7 +345,7 @@ static ssize_t fr_der_encode_bitstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, 
 	 *	because this information should be retained when encoding/decoding.
 	 */
 	if (vp->vp_length == 0) {
-		FR_DBUFF_IN_RETURN(&our_dbuff, 0x00);
+		FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) 0x00);
 
 	} else {
 		FR_DBUFF_IN_MEMCPY_RETURN(&our_dbuff, vp->vp_octets, vp->vp_length);
@@ -389,6 +353,72 @@ static ssize_t fr_der_encode_bitstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, 
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
 }
+
+static ssize_t fr_der_encode_ipv4_addr(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED fr_der_encode_ctx_t *encode_ctx)
+{
+	fr_dbuff_t	 our_dbuff = FR_DBUFF(dbuff);
+	fr_pair_t const *vp;
+
+	vp = fr_dcursor_current(cursor);
+	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
+
+	/*
+	 *	RFC3779 Section 2.1.1.
+	 *
+	 *	An IP address or prefix is encoded in the IP address delegation
+	 *	extension as a DER-encoded ASN.1 BIT STRING containing the constant
+	 *	most-significant bits.  Recall [X.690] that the DER encoding of a BIT
+	 *	STRING consists of the BIT STRING type (0x03), followed by (an
+	 *	encoding of) the number of value octets, followed by the value.  The
+	 *	value consists of an "initial octet" that specifies the number of
+	 *	unused bits in the last value octet, followed by the "subsequent
+	 *	octets" that contain the octets of the bit string.  (For IP
+	 *	addresses, the encoding of the length will be just the length.)
+	 */
+
+	/*
+	 *	The number of unused bits in the last byte is always zero.
+	 */
+	FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) 0x00);
+	FR_DBUFF_IN_MEMCPY_RETURN(&our_dbuff, (uint8_t const *) &vp->vp_ipv4addr, sizeof(vp->vp_ipv4addr));
+
+	return fr_dbuff_set(dbuff, &our_dbuff);
+}
+
+static ssize_t fr_der_encode_ipv6_addr(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED fr_der_encode_ctx_t *encode_ctx)
+{
+	fr_dbuff_t	 our_dbuff = FR_DBUFF(dbuff);
+	fr_pair_t const *vp;
+
+	vp = fr_dcursor_current(cursor);
+	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
+
+	/*
+	 *	RFC3779 Section 2.1.1.
+	 *
+	 *	An IP address or prefix is encoded in the IP address delegation
+	 *	extension as a DER-encoded ASN.1 BIT STRING containing the constant
+	 *	most-significant bits.  Recall [X.690] that the DER encoding of a BIT
+	 *	STRING consists of the BIT STRING type (0x03), followed by (an
+	 *	encoding of) the number of value octets, followed by the value.  The
+	 *	value consists of an "initial octet" that specifies the number of
+	 *	unused bits in the last value octet, followed by the "subsequent
+	 *	octets" that contain the octets of the bit string.  (For IP
+	 *	addresses, the encoding of the length will be just the length.)
+	 */
+
+	/*
+	 *	The number of unused bits in the last byte is always zero.
+	 */
+	FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) 0x00);
+	FR_DBUFF_IN_MEMCPY_RETURN(&our_dbuff, (uint8_t const *) &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+
+	return fr_dbuff_set(dbuff, &our_dbuff);
+}
+
+
 
 static ssize_t fr_der_encode_octetstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor,
 					 UNUSED fr_der_encode_ctx_t *encode_ctx)
@@ -428,6 +458,7 @@ static ssize_t fr_der_encode_octetstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
 }
+
 
 static ssize_t fr_der_encode_null(UNUSED fr_dbuff_t *dbuff, fr_dcursor_t *cursor,
 				  UNUSED fr_der_encode_ctx_t *encode_ctx)
@@ -1519,6 +1550,36 @@ static ssize_t fr_der_encode_string(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNU
 	return fr_dbuff_set(dbuff, &our_dbuff);
 }
 
+static const fr_der_tag_encode_t tag_funcs[FR_DER_TAG_MAX] = {
+	[FR_DER_TAG_BOOLEAN]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_boolean },
+	[FR_DER_TAG_INTEGER]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_integer },
+	[FR_DER_TAG_BITSTRING]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_bitstring },
+	[FR_DER_TAG_OCTETSTRING]      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_octetstring },
+	[FR_DER_TAG_NULL]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_null },
+	[FR_DER_TAG_OID]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_oid },
+	[FR_DER_TAG_ENUMERATED]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_enumerated },
+	[FR_DER_TAG_UTF8_STRING]      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_string },
+	[FR_DER_TAG_SEQUENCE]	      = { .constructed = FR_DER_TAG_CONSTRUCTED, .encode = fr_der_encode_sequence },
+	[FR_DER_TAG_SET]	      = { .constructed = FR_DER_TAG_CONSTRUCTED, .encode = fr_der_encode_set },
+	[FR_DER_TAG_PRINTABLE_STRING] = { .constructed = FR_DER_TAG_PRIMITIVE,
+					  .encode      = fr_der_encode_string },
+	[FR_DER_TAG_T61_STRING]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_string },
+	[FR_DER_TAG_IA5_STRING]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_string },
+	[FR_DER_TAG_UTC_TIME]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_utc_time },
+	[FR_DER_TAG_GENERALIZED_TIME] = { .constructed = FR_DER_TAG_PRIMITIVE,
+					  .encode      = fr_der_encode_generalized_time },
+	[FR_DER_TAG_VISIBLE_STRING]   = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_string },
+	[FR_DER_TAG_GENERAL_STRING]   = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_string },
+	[FR_DER_TAG_UNIVERSAL_STRING] = { .constructed = FR_DER_TAG_PRIMITIVE,
+					  .encode      = fr_der_encode_string },
+};
+
+static const fr_der_tag_encode_t type_funcs[FR_TYPE_MAX] = {
+	[FR_TYPE_IPV4_ADDR]    	  = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_ipv4_addr },
+	[FR_TYPE_IPV6_ADDR]    	  = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_ipv6_addr },
+};
+
+
 /** Encode the length field of a DER structure
  *
  *  The input dbuff is composed of the following data:
@@ -1646,7 +1707,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	fr_pair_t const	    *vp;
 	fr_dbuff_t	     our_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_marker_t    marker, encoding_start;
-	fr_der_tag_encode_t *func;
+	fr_der_tag_encode_t const *func;
 	fr_der_tag_t         tag;
 	fr_der_tag_class_t   tag_class;
 	fr_der_encode_ctx_t *uctx = encode_ctx;
@@ -1749,11 +1810,17 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 
 	fr_assert(tag < FR_DER_TAG_MAX);
 
-	func = &tag_funcs[tag];
-	if (!func->encode) {
-		fr_strerror_printf("No encoding function for type %s", fr_type_to_str(vp->vp_type));
-		return -1;
+	switch (vp->vp_type) {
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+		func = &type_funcs[tag];
+		break;
+
+	default:
+		func = &tag_funcs[tag];
+		break;
 	}
+	fr_assert(func->encode != NULL);
 
 	/*
 	 *	Default flag class is 0, which is FR_DER_CLASS_UNIVERSAL.

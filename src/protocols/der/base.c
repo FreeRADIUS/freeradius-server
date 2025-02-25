@@ -104,6 +104,14 @@ bool fr_der_tags_compatible(fr_der_tag_t tag1, fr_der_tag_t tag2)
  *	Create a mapping between FR_TYPE_* and valid FR_DER_TAG_*'s
  */
 static const bool *fr_type_to_der_tags[FR_DER_TAG_MAX] = {
+	[FR_TYPE_IPV4_ADDR] = (bool [FR_DER_TAG_MAX]) {
+		[FR_DER_TAG_BITSTRING] = true,
+	},
+
+	[FR_TYPE_IPV6_ADDR] = (bool [FR_DER_TAG_MAX]) {
+		[FR_DER_TAG_BITSTRING] = true,
+	},
+
 	[FR_TYPE_BOOL] = (bool [FR_DER_TAG_MAX]) {
 		[FR_DER_TAG_BOOLEAN] = true,
 		[FR_DER_TAG_INTEGER] = true,
@@ -587,9 +595,7 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 		fr_strerror_const("Cannot use 'tlv' in DER.  Please use 'sequence'");
 		return false;
 
-	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV6_PREFIX:
 	case FR_TYPE_IFID:
 	case FR_TYPE_COMBO_IP_ADDR:
@@ -677,7 +683,14 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 }
 
 static const fr_der_tag_t fr_type_to_der_tag_defaults[FR_TYPE_MAX + 1] = {
+	[FR_TYPE_OCTETS]	= FR_DER_TAG_OCTETSTRING,
+	[FR_TYPE_STRING]	= FR_DER_TAG_UTF8_STRING,
+
+	[FR_TYPE_IPV4_ADDR]	= FR_DER_TAG_BITSTRING,
+	[FR_TYPE_IPV6_ADDR]	= FR_DER_TAG_BITSTRING,
+
 	[FR_TYPE_BOOL]		= FR_DER_TAG_BOOLEAN,
+
 	[FR_TYPE_UINT8]		= FR_DER_TAG_INTEGER,
 	[FR_TYPE_UINT16]	= FR_DER_TAG_INTEGER,
 	[FR_TYPE_UINT32]	= FR_DER_TAG_INTEGER,
@@ -686,8 +699,6 @@ static const fr_der_tag_t fr_type_to_der_tag_defaults[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_INT16]		= FR_DER_TAG_INTEGER,
 	[FR_TYPE_INT32]		= FR_DER_TAG_INTEGER,
 	[FR_TYPE_INT64]		= FR_DER_TAG_INTEGER,
-	[FR_TYPE_OCTETS]	= FR_DER_TAG_OCTETSTRING,
-	[FR_TYPE_STRING]	= FR_DER_TAG_UTF8_STRING,
 	[FR_TYPE_DATE]		= FR_DER_TAG_GENERALIZED_TIME,
 	[FR_TYPE_TLV]		= FR_DER_TAG_SEQUENCE,
 	[FR_TYPE_STRUCT]	= FR_DER_TAG_SEQUENCE,
