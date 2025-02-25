@@ -302,12 +302,25 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 		goto error;
 	}
 
-	if (map->rhs->type == TMPL_TYPE_ATTR) {
-		if (map->rhs->tmpl_tag == TAG_VALUE) {
+	/*
+	 *	For :V, enforce / verify limits on the RHS.
+	 */
+	if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->tmpl_tag == TAG_VALUE)) {
+		fr_assert(map->lhs->tmpl_da->flags.has_tag);
+
+		switch (map->rhs->type) {
+		case TMPL_TYPE_XLAT_STRUCT:
+		case TMPL_TYPE_XLAT:
+		case TMPL_TYPE_LITERAL:
+			break;
+
+		default:
 			cf_log_err_cp(cp, "Cannot use ':V' for tags here.");
 			goto error;
 		}
+	}
 
+	if (map->rhs->type == TMPL_TYPE_ATTR) {
 		/*
 		 *	We cannot assign a count to an attribute.  That must
 		 *	be done in an xlat.
@@ -845,14 +858,15 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		RDEBUG2("EXPAND %s", map->rhs->name);
 		RDEBUG2("   --> %s", str);
 
+		new->op = map->op;
+		new->tag = map->lhs->tmpl_tag;
+
 		rcode = fr_pair_value_from_str(new, str, -1);
 		talloc_free(str);
 		if (rcode < 0) {
 			fr_pair_list_free(&new);
 			goto error;
 		}
-		new->op = map->op;
-		new->tag = map->lhs->tmpl_tag;
 		*out = new;
 		break;
 
@@ -870,14 +884,15 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 			goto error;
 		}
 
+		new->op = map->op;
+		new->tag = map->lhs->tmpl_tag;
+
 		rcode = fr_pair_value_from_str(new, str, -1);
 		talloc_free(str);
 		if (rcode < 0) {
 			fr_pair_list_free(&new);
 			goto error;
 		}
-		new->op = map->op;
-		new->tag = map->lhs->tmpl_tag;
 		*out = new;
 		break;
 
@@ -888,12 +903,13 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		if (!new) return -1;
 
+		new->op = map->op;
+		new->tag = map->lhs->tmpl_tag;
+
 		if (fr_pair_value_from_str(new, map->rhs->name, -1) < 0) {
 			rcode = 0;
 			goto error;
 		}
-		new->op = map->op;
-		new->tag = map->lhs->tmpl_tag;
 		*out = new;
 		break;
 
@@ -924,6 +940,10 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 				new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 				if (!new) return -1;
 
+				new->op = map->op;
+				new->tag = map->lhs->tmpl_tag;
+				fr_assert(new->tag != TAG_VALUE);
+
 				len = value_data_cast(new, &new->data, new->da->type, new->da,
 						      vp->da->type, vp->da, &vp->data, vp->vp_length);
 				if (len < 0) {
@@ -941,8 +961,6 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 					rad_assert(new->vp_strvalue != NULL);
 				}
 
-				new->op = map->op;
-				new->tag = map->lhs->tmpl_tag;
 				fr_cursor_insert(&to, new);
 			}
 			return 0;
@@ -952,6 +970,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		 *   Otherwise we just need to fixup the attribute types
 		 *   and operators
 		 */
+		fr_assert(map->lhs->tmpl_tag != TAG_VALUE);
 		for (; vp; vp = fr_cursor_next(&from)) {
 			vp->da = map->lhs->tmpl_da;
 			vp->op = map->op;
@@ -969,15 +988,16 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		if (!new) return -1;
 
+		new->op = map->op;
+		new->tag = map->lhs->tmpl_tag;
+		fr_assert(new->tag != TAG_VALUE);
+
 		len = value_data_copy(new, &new->data, new->da->type, &map->rhs->tmpl_data_value,
 				      map->rhs->tmpl_data_length);
 		if (len < 0) goto error;
 
 		new->vp_length = len;
-		new->op = map->op;
-		new->tag = map->lhs->tmpl_tag;
 		*out = new;
-
 		VERIFY_MAP(map);
 		break;
 

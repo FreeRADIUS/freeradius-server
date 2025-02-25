@@ -1,0 +1,8 @@
+update control {
+       Cleartext-Password := 'hello'
+}
+
+update reply {
+       Tunnel-Assignment-Id:1 = "foo"
+       Tunnel-Assignment-Id:V = ":2:bar"
+}
