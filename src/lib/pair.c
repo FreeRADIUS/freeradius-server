@@ -1620,7 +1620,10 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 			 if (tc && !*tc && TAG_VALID_ZERO(tag))
 				 *ts = '\0';
 			 else tag = TAG_ANY;
+		 } else if (ts[1] == 'V') {
+			 tag = TAG_VALUE;
 		 } else {
+		 invalid_tag:
 			 fr_strerror_printf("Invalid tag for attribute %s", attribute);
 			 return NULL;
 		 }
@@ -1638,6 +1641,11 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		return vp;
 	}
 
+	/*
+	 *	Can only use tags when the DA says that it supports tags.
+	 */
+	if (!da->flags.has_tag && found_tag) goto invalid_tag;
+
 	/*      Check for a tag in the 'Merit' format of:
 	 *      :Tag:Value.  Print an error if we already found
 	 *      a tag in the Attribute.
@@ -1645,7 +1653,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 
 	if (value && (*value == ':' && da->flags.has_tag)) {
 		/* If we already found a tag, this is invalid */
-		if(found_tag) {
+		if(found_tag && (tag != TAG_VALUE)) {
 			fr_strerror_printf("Duplicate tag %s for attribute %s",
 				   value, da->name);
 			DEBUG("Duplicate tag %s for attribute %s\n",
