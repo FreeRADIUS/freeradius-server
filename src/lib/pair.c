@@ -1813,7 +1813,8 @@ do_add:
  */
 int fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value)
 {
-	char *raw;
+	char *str;
+	char const *q;
 
 	/*
 	 *	valuepair should not already have a value.
@@ -1823,14 +1824,21 @@ int fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value)
 		return -1;
 	}
 
-	raw = talloc_typed_strdup(vp, value);
-	if (!raw) {
+	/*
+	 *	No '%', OR '%' is at the end of the string.  Just set
+	 *	the value from the string.
+	 */
+	q = strchr(value, '%');
+	if (!q || !q[1]) return fr_pair_value_from_str(vp, value, -1);
+
+	str = talloc_typed_strdup(vp, value);
+	if (!str) {
 		fr_strerror_printf("Out of memory");
 		return -1;
 	}
 
 	vp->type = VT_XLAT;
-	vp->value.xlat = raw;
+	vp->value.xlat = str;
 	vp->vp_length = 0;
 
 	return 0;
@@ -2063,8 +2071,6 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR 
 
 	p = buffer;
 	do {
-		char const *q;
-
 		raw.l_opand[0] = '\0';
 		raw.r_opand[0] = '\0';
 
@@ -2088,9 +2094,7 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR 
 		 *	most of the time it avoids marking the string
 		 *	for expansion.
 		 */
-		if ((raw.quote == T_DOUBLE_QUOTED_STRING) &&
-		    (((q = strchr(raw.r_opand, '%')) != NULL) || (q && !q[1]))) {
-
+		if (raw.quote == T_DOUBLE_QUOTED_STRING) {
 			vp = fr_pair_make(ctx, NULL, raw.l_opand, NULL, raw.op);
 			if (!vp) {
 				last_token = T_INVALID;
