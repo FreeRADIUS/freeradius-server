@@ -1,17 +1,32 @@
 FreeRADIUS 3.2.8 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	Configuration changes
+	* Replace dictionary.infinera with the correct one.
 
 	Feature improvements
 	* Add support for automated fuzzing.  This doesn't affect
 	  normal operations, but it does allow for testing of the
 	  RADIUS decoder.
+	* Allow tagged attributes to use ":V" as a tag in some cases.
+	  The tag is then read from the value which is being assigned
+	  to the attribute.  This functionality is allowed in 'update'
+	  sections, including 'update' in module configurations.
+	  See mods-available/ldap for an example.
+	* Add kafka module.  See mods-available/kafka.
+	* Allow &control:Packet-SRC-IP-Address to be used when
+	  proxying needs a given source address.
 
 	Bug fixes
+	* Move assertion in thread / queue code, which only affects
+	  debug builds.  Fixes #5512.
+	* Update CRL checks to avoid crash in some cases.  Fixes #5515
 	* More tweaks to the TEAP code.
+	* Allow building when OpenSSL is missing PSK.  Fixes $5520
 	* Move assertion so that it isn't triggered when the incoming
 	  queue is full, and the server is blocked.  Fixes #5512
 	* Fix crash when multiple certs are used along with
 	  CRL distribution points.  Fixes #5515
+	* Fix typo in rlm_cache which could cause crashes. Fixes #5522
+	* Be more forgiving about '%' in strings.  Fixes #5525.
 
 FreeRADIUS 3.2.7 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	Configuration changes
