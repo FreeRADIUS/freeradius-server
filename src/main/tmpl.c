@@ -167,6 +167,14 @@ size_t radius_list_name(pair_lists_t *out, char const *name, pair_lists_t def)
 			}
 		}
 
+		/*
+		 *	Check for the special ':V' tag.
+		 */
+		if ((*d == 'V') && !dict_attr_allowed_chars[(uint8_t) d[1]]) {
+			*out = def;
+			return 0;
+		}
+
 		*out = fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
 		if (*out == PAIR_LIST_UNKNOWN) return 0;
 
@@ -715,9 +723,9 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 		/*
 		 *	Get the tag from the value.
 		 */
-		if (*p == 'V') {
+		if (p[1] == 'V') {
 			attr.tag = TAG_VALUE;
-			p++;
+			p += 2;
 			goto do_num;
 		}
 
