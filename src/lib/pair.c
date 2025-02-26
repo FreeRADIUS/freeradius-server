@@ -1829,8 +1829,23 @@ int fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value)
 	 *	the value from the string.
 	 */
 	q = strchr(value, '%');
-	if (!q || !q[1]) return fr_pair_value_from_str(vp, value, -1);
+	while (true) {
+		if (!q || !q[1]) return fr_pair_value_from_str(vp, value, -1);
 
+		if (q[1] == '{') goto do_xlat; /* very common */
+
+		if (strchr("%cdelmntCDGHIMSTYv", q[1])) goto do_xlat;
+
+		/*
+		 *	"%?" either gets ignored by the xlat parser,
+		 *	or results in an error where it can't expand
+		 *	the string.  For our purposes, we skip them,
+		 *	to allow more strings to be treated "as-is"
+		 */
+		q = strchr(q + 1, '%');
+	}
+
+do_xlat:
 	str = talloc_typed_strdup(vp, value);
 	if (!str) {
 		fr_strerror_printf("Out of memory");
