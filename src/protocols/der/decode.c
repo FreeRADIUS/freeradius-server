@@ -564,13 +564,13 @@ static ssize_t fr_der_decode_oid_to_da(uint64_t subidentifier, void *uctx, bool 
 				return -1;
 			}
 
-			FR_PROTO_TRACE("Created DA: ", decode_ctx->parent_da->name);
+			FR_PROTO_TRACE("Created DA: %s", decode_ctx->parent_da->name);
 			return 1;
 		}
 
 		decode_ctx->parent_da = da;
 
-		FR_PROTO_TRACE("Created DA: ", decode_ctx->parent_da->name);
+		FR_PROTO_TRACE("Created DA: %s", decode_ctx->parent_da->name);
 		return 1;
 	}
 
@@ -602,7 +602,7 @@ static ssize_t fr_der_decode_oid_to_da(uint64_t subidentifier, void *uctx, bool 
 	decode_ctx->parent_da	= vp->da;
 	decode_ctx->parent_list = &vp->vp_group;
 
-	FR_PROTO_TRACE("Created DA: ", decode_ctx->parent_da->name);
+	FR_PROTO_TRACE("Created DA: %s", decode_ctx->parent_da->name);
 	return 1;
 }
 
