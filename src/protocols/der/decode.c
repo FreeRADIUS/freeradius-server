@@ -814,6 +814,8 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 
 			if (fr_type_is_group(parent->type)) {
 				ref = fr_dict_attr_ref(parent);
+				fr_assert(fr_der_flag_der_type(ref) == FR_DER_TAG_SEQUENCE);
+
 			} else {
 				ref = parent;
 			}
@@ -880,8 +882,6 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	 *	children are packed in order.  Some may be optional.
 	 *
 	 *	We loop over all of the children, because some might have default values.
-	 *
-	 *	@todo - implement OPTIONAL flag.
 	 */
 	while ((child = fr_dict_attr_iterate_children(parent, &child))) {
 		ssize_t ret;
@@ -1066,8 +1066,6 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	/*
 	 *	Decode the children.  Since it's not a sequence_of=..., we must have a set of children.  The
 	 *	children are packed in order.  Some may be optional.
-	 *
-	 *	@todo - implement OPTIONAL flag.
 	 */
 	while ((child = fr_dict_attr_iterate_children(parent, &child))) {
 		ssize_t	 ret;
@@ -2451,23 +2449,13 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 			return 0;
 		}
 
+		/*
+		 *	We will store the value as raw octets if indicated by the dictionary
+		 *
+		 *	This is for large 'integer' types, such as serialNumber.
+		 */
 		if (fr_type_is_octets(parent->type)) {
-			/*
-			 *	We will store the value as raw octets if indicated by the dictionary
-			 *
-			 *	This is mainly for large 'integer' types, such as serialNumber.
-			 */
 			tag = FR_DER_TAG_OCTETSTRING;
-
-		} else if (!(fr_type_to_der_tag_valid(parent->type, tag) && fr_type_is_structural(parent->type))) {
-			/*
-			 *	If this is not a sequence/set/structure like thing, then it does not have children that
-			 *	could have defaults.
-			 */
-			fr_strerror_printf("Attribute %s of DER type '%s' cannot store DER type '%s'", parent->name,
-					   fr_der_tag_to_str(flags->der_type),
-					   fr_der_tag_to_str(tag));
-			return -1;
 		}
 	}
 

@@ -156,7 +156,6 @@ static const bool *fr_type_to_der_tags[FR_DER_TAG_MAX] = {
 	},
 	[FR_TYPE_GROUP] = (bool [FR_DER_TAG_MAX]) {
 		[FR_DER_TAG_SEQUENCE] = true,
-		[FR_DER_TAG_SET] = true,
 	},
 };
 

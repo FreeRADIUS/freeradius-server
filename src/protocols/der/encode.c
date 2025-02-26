@@ -789,7 +789,6 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 	fr_pair_t	     *vp;
 	fr_da_stack_t	      da_stack;
 	fr_dcursor_t	      child_cursor;
-	fr_dict_attr_t const *ref   = NULL;
 	ssize_t		      slen  = 0;
 	unsigned int	      depth = 0;
 
@@ -797,7 +796,7 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 	PAIR_VERIFY(vp);
 	fr_assert(!vp->da->flags.is_raw);
 
-	fr_assert(fr_type_is_group(vp->vp_type) || fr_type_is_tlv(vp->vp_type));
+	fr_assert(fr_type_is_tlv(vp->vp_type));
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -826,31 +825,6 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 	 *			NOTE - The padding octets are for comparison purposes only and do not appear in the
 	 *			encodings.
 	 */
-
-	if (fr_type_is_group(vp->vp_type)) {
-		/*
-		 *	Groups could be also be a pair, so we need to check for that.
-		 */
-		if (fr_der_flag_is_pair(vp->da)) {
-			slen = fr_der_encode_oid_value_pair(&our_dbuff, cursor, encode_ctx);
-			if (slen < 0) {
-				fr_strerror_printf("Failed to encode OID value pair: %s", fr_strerror());
-				return -1;
-			}
-
-			return fr_dbuff_set(dbuff, &our_dbuff);
-		}
-
-
-		/*
-		 *	Check that the group is not referencing a non-DER-thing.
-		 */
-		ref = fr_dict_attr_ref(vp->da);
-		if (ref && (ref->dict != dict_der)) {
-			fr_strerror_printf("Group %s is not a DER group", ref->name);
-			return -1;
-		}
-	}
 
 	if (fr_der_flag_is_set_of(vp->da)) {
 		/*
@@ -933,6 +907,9 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 		goto free_and_return;
 	}
 
+	/*
+	 *	@todo - this gives a partial order.  It does NOT sort by comparing the encoded data.
+	 */
 	fr_pair_list_sort(&vp->children, fr_der_pair_cmp_by_da_tag);
 
 	fr_proto_da_stack_build(&da_stack, vp->da);

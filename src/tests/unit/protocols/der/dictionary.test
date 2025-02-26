@@ -24,8 +24,6 @@ BEGIN Test-Set-Of
 DEFINE	Test-First-Integer				integer
 END Test-Set-Of
 
-DEFINE	Test-Set-Of-Group				group ref=@.Test-Set-Of,der_type=set,set_of=integer
-
 DEFINE	Test-Boolean					bool
 
 DEFINE	Test-Integer					integer
@@ -177,5 +175,3 @@ BEGIN Test-Set-TLV
 DEFINE	Test-Integer					integer
 DEFINE	Test-Boolean					bool
 END Test-Set-TLV
-
-DEFINE	Test-Set-GROUP					group der_type=set,ref=@.Test-TLV

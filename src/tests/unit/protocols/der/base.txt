@@ -793,12 +793,6 @@ match 31 06 01 01 00 02 01 09
 encode-pair Test-Set-TLV  = { Test-Integer = 9, Test-Boolean = yes }
 match 31 06 01 01 ff 02 01 09
 
-encode-pair Test-Set-GROUP = { Test-Integer = 9 }
-match 31 03 02 01 09
-
-encode-pair Test-Set-GROUP = { Test-Integer = 9, Test-Boolean = yes }
-match 31 06 01 01 ff 02 01 09
-
 encode-pair Test-Oid = "2.999.3"
 match 06 03 88 37 03
 
@@ -865,9 +859,6 @@ match 31 07 02 01 01 02 02 0a 14
 encode-pair Test-Set-Of = { Test-First-Integer = 2, Test-First-Integer = 1 }
 match 31 06 02 01 01 02 01 02
 
-encode-pair Test-Set-Of-Group = { Test-First-Integer = 2, Test-First-Integer = 1 }
-match 31 06 02 01 01 02 01 02
-
 encode-pair Foo-Bar = { Test-Integer = 1, Test-Boolean = yes }
 match 30 03 01 01 ff
 
@@ -910,4 +901,4 @@ decode-pair 03 01 00
 match Test-IPv4-Prefix = 0.0.0.0/0
 
 count
-match 549
+match 543
