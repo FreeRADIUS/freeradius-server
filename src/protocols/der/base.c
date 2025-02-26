@@ -292,6 +292,8 @@ static int dict_flag_sequence_of(fr_dict_attr_t **da_p, char const *value, UNUSE
 
 	if (strcmp(value, "oid_and_value") == 0) {
 		flags->is_pair = true;
+		flags->is_sequence_of = true;
+		flags->sequence_of = FR_DER_TAG_SEQUENCE;
 		return fr_dict_attr_set_group(da_p);
 	}
 
@@ -324,12 +326,22 @@ static int dict_flag_set_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 
 	if (strcmp(value, "oid_and_value") == 0) {
 		flags->is_pair = true;
+		flags->is_sequence_of = true;
+		flags->sequence_of = FR_DER_TAG_SEQUENCE;
 		return fr_dict_attr_set_group(da_p);
 	}
 
 	type = fr_table_value_by_str(tag_name_to_number, value, FR_DER_TAG_INVALID);
 	if (type == FR_DER_TAG_INVALID) {
 		fr_strerror_printf("Unknown type in 'set_of=%s'", value);
+		return -1;
+	}
+
+	/*
+	 *	The "choice" can only be used for sequence.
+	 */
+	if (type == FR_DER_TAG_CHOICE) {
+		fr_strerror_printf("Invalid type in 'set_of=%s' - 'choice' can only be used for sequences", value);
 		return -1;
 	}
 
@@ -488,9 +500,8 @@ static int dict_flag_option(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 			return -1;
 		}
 
-		flags->class = FR_DER_CLASS_CONTEXT;
-		flags->option = (*da_p)->attr;
-		return 0;
+		num = (*da_p)->attr;
+		goto check;
 	}
 
 	/*
@@ -499,8 +510,14 @@ static int dict_flag_option(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 	 *	support continued tags.
 	 */
 	num = strtoul(value, &end, 10);
-	if ((num > 0x1f) || *end) {
+	if ((num == ULONG_MAX) || *end) {
 		fr_strerror_printf("Invalid value in 'option=%s'", value);
+		return -1;
+	}
+
+check:
+	if (num >= FR_DER_TAG_VALUE_MAX) {
+		fr_strerror_printf("Option value '%lu' is larger than 30", num);
 		return -1;
 	}
 
@@ -681,6 +698,9 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 		flags->sequence_of = FR_DER_TAG_SEQUENCE;
 	}
 
+	/*
+	 *	If this is a choice, then the children MUST have a limited option.
+	 */
 	flags->is_choice = (strcmp(name, "choice") == 0);
 
 	return true;
@@ -718,23 +738,8 @@ fr_der_tag_t fr_type_to_der_tag_default(fr_type_t type)
 
 static bool attr_valid(fr_dict_attr_t *da)
 {
-	fr_der_attr_flags_t *flags = fr_dict_attr_ext(da->parent, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
-
-	if (flags->is_sequence_of || flags->is_set_of) {
-		fr_der_tag_t of_type = (flags->is_sequence_of ?
-					flags->sequence_of :
-					flags->set_of);
-
-		if ((unlikely(of_type != FR_DER_TAG_CHOICE)) &&
-		    unlikely(fr_type_to_der_tags[da->type][of_type] == false)) {
-			fr_strerror_printf("Attribute %s of type %s is not allowed in a sequence/set-of %s",
-					   da->name, fr_type_to_str(da->type),
-					   fr_table_str_by_value(tag_name_to_number, of_type, "<INVALID>"));
-			return false;
-		}
-	}
-
-	flags = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	fr_der_attr_flags_t *flags = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	fr_der_attr_flags_t *parent;
 
 	/*
 	 *	sequence_of=oid_and_value has to have a reference to the OID tree.
@@ -818,6 +823,99 @@ static bool attr_valid(fr_dict_attr_t *da)
 
 		} else if (flags->max > DER_MAX_STR) {
 			fr_strerror_printf("Invalid value of 'max' for DER type '%s'",
+					   fr_der_tag_to_str(flags->der_type));
+			return false;
+		}
+	}
+
+	/*
+	 *	Set the restriction types, which make the run-time decoding a lot easier.
+	 */
+	if (flags->is_set_of) {
+		flags->restrictions = (1 << flags->set_of);
+	}
+
+	if (flags->is_sequence_of) {
+		/*
+		 *	If the sequence isn't a choice, it has to be a sequence of one thing.
+		 *
+		 *	If the sequence is group, then it has to be a sequence of sequences.
+		 *
+		 *	If the sequence is a TLV, then the children will update the restrictions.
+		 */
+		if (flags->sequence_of != FR_DER_TAG_CHOICE) {
+			flags->restrictions = (1 << flags->sequence_of);
+
+		} else if (da->type == FR_TYPE_GROUP) {
+#ifndef NDEBUG
+			fr_dict_attr_t const *ref;
+
+			ref = fr_dict_attr_ref(da);
+			if (ref) {
+				fr_assert(fr_der_flag_der_type(ref) == FR_DER_TAG_SEQUENCE);
+			}
+#endif
+
+			/*
+			 *	When sequence_of=choice, it MUST also have a ref.  But we can't check that
+			 *	right now, as the ref isn't added until later.
+			 *
+			 *	A group of choices is really a sequence of sequences.  i.e. x509extensions
+			 *	contain only a sequence, as does sequence_of=oid_and_value.
+			 *
+			 *	@todo - fix that.
+			 */
+			flags->restrictions = (1 << FR_DER_TAG_SEQUENCE);
+
+		} else {
+			/*
+			 *	The children will update our restriction types.
+			 */
+			fr_assert(da->type == FR_TYPE_TLV);
+		}
+	}
+
+	/*
+	 *	If the parent is a choice, then the child MUST have a limited set of options / tags.
+	 */
+	parent = fr_dict_attr_ext(da->parent, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	if (parent->is_choice) {
+		if (!flags->option) {
+			fr_assert(da->attr < FR_DER_TAG_VALUE_MAX);
+			flags->option = da->attr;
+		}
+
+		if ((parent->restrictions & (1 << flags->option)) != 0) {
+			fr_strerror_printf("Parent %s already has a child with option %u - duplicates are not allowed",
+					   da->parent->name, flags->option);
+			return false;
+		}
+
+		parent->restrictions |= (1 << flags->option);
+
+	} else if (parent->is_sequence_of && (parent->sequence_of == FR_DER_TAG_CHOICE)) {
+		fr_assert(flags->der_type < FR_DER_TAG_VALUE_MAX);
+
+		if ((parent->restrictions & (1 << flags->der_type)) != 0) {
+			fr_strerror_printf("Parent %s already has a child with tag %s - duplicates are not allowed",
+					   da->parent->name, fr_der_tag_to_str(flags->der_type));
+			return false;
+		}
+
+		parent->restrictions |= (1 << flags->der_type);
+
+	} else if (parent->is_sequence_of) {
+		if (flags->der_type != parent->sequence_of) {
+			fr_strerror_printf("Parent %s is a sequence_of=%s - a child cannot be %s",
+					   da->parent->name, fr_der_tag_to_str(parent->set_of),
+					   fr_der_tag_to_str(flags->der_type));
+			return false;
+		}
+
+	} else if (parent->is_set_of) {
+		if (flags->der_type != parent->set_of) {
+			fr_strerror_printf("Parent %s is a set_of=%s - a child cannot be %s",
+					   da->parent->name, fr_der_tag_to_str(parent->set_of),
 					   fr_der_tag_to_str(flags->der_type));
 			return false;
 		}

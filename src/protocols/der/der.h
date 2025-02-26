@@ -60,6 +60,8 @@ typedef enum {
 	FR_DER_TAG_MAX		    = 0x24
 } fr_der_tag_t;
 
+#define FR_DER_TAG_VALUE_MAX (0x1f)		//!< tags >=max can't exist
+
 typedef enum {
 	FR_DER_TAG_PRIMITIVE   = 0x00,	     //!< This is a leaf value, it contains no children.
 	FR_DER_TAG_CONSTRUCTED = 0x20	     //!< This is a sequence or set, it contains children.
@@ -98,6 +100,7 @@ typedef struct {
 		fr_der_tag_t 		set_of;
 	};
 	uint64_t 		max;			//!< maximum count of items in a sequence, set, or string.
+	uint32_t		restrictions;		//!< for choice of options and tags - no dups allowed
 	uint8_t			min;			//!< mininum count
 	uint8_t 		option;			//!< an "attribute number" encoded in the tag field.
 	bool			optional : 1;		//!< optional, we MUST already have set 'option'
