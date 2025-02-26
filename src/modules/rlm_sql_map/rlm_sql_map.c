@@ -181,6 +181,9 @@ static int sql_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 		vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		rad_assert(vp);
 
+		vp->op = map->op;
+		vp->tag = map->lhs->tmpl_tag;
+
 		if (fr_pair_value_from_str(vp, value, -1) < 0) {
 			char *escaped;
 
@@ -191,7 +194,6 @@ static int sql_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 			break;
 		}
 
-		vp->op = map->op;
 		fr_cursor_insert(&cursor, vp);
 		break;
 

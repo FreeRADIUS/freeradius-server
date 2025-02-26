@@ -347,11 +347,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		}
 
 		vp->op = op;
-
-		/*
-		 *	@todo - use tmpl_cast_to_vp() instead ???
-		 */
-		if (vp->da->flags.has_tag) vp->tag = dst.tmpl_tag;
+		vp->tag = dst.tmpl_tag;
 
 		if (fr_pair_value_from_str(vp, s2, -1) < 0) {
 			DEBUG("%s - Failed: '%s:%s' %s '%s'", funcname, list_name, s1,
