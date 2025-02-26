@@ -375,10 +375,25 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	status = sqlite3_open_v2(inst->filename, &(c->db), SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, NULL);
 
 	if (!c->db || (sql_check_error(c->db, status) != RLM_SQL_OK)) {
+		int fd;
+
 		sql_print_error(c->db, status, "Failed opening SQLite database \"%s\"", inst->filename);
-		if (!inst->bootstrap) {
-			INFO("Use the sqlite driver 'bootstrap' option to automatically create the database file");
+		ERROR("%s", fr_strerror());
+
+		fd = open(inst->filename, O_RDWR);
+		if (fd < 0) {
+			if (!inst->bootstrap && (errno == ENOENT)) {
+				WARN("Perhaps use the sqlite driver 'bootstrap' option to create the database file?");
+			}
+		
+			fr_strerror_printf("Cannot open \"%s\" in read/write mode - %s",
+					   inst->filename, fr_syserror(errno));
+		} else {
+			close(fd);
+			fr_strerror_printf("Failed in SQLite while opening \"%s\" - the file exists, but is the database corrupted?",
+				inst->filename);
 		}
+
 	error:
 		ERROR("%s", fr_strerror());
 		talloc_free(c);
