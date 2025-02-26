@@ -1964,7 +1964,8 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 	}
 
 	if (tag != FR_DER_TAG_SEQUENCE) {
-		fr_strerror_printf("Expected SEQUENCE tag as the first item in an extensions list. Got tag %u", tag);
+		fr_strerror_printf("Expected 'sequence' tag as the first item in an extensions list. Got tag %s",
+				   fr_der_tag_to_str(tag));
 		slen = -1;
 		goto error;
 	}
@@ -1989,8 +1990,8 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		}
 
 		if (tag != FR_DER_TAG_SEQUENCE) {
-			fr_strerror_printf("Expected SEQUENCE tag as the first tag in an extension. Got tag %u",
-					   tag);
+			fr_strerror_printf("Expected 'sequence' tag as the first tag in an extension. Got tag %s",
+					   fr_der_tag_to_str(tag));
 			slen = -1;
 			goto error;
 		}
@@ -2003,7 +2004,8 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		}
 
 		if (tag != FR_DER_TAG_OID) {
-			fr_strerror_printf("Expected OID tag as the first item in an extension. Got tag %u", tag);
+			fr_strerror_printf("Expected OID tag as the first item in an extension. Got tag %s",
+					   fr_der_tag_to_str(tag));
 			slen = -1;
 			goto error;
 		}
