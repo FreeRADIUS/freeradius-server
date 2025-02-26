@@ -218,11 +218,11 @@ static void sql_print_error(sqlite3 *db, int status, char const *fmt, ...)
 	 *	print them both.
 	 */
 	if ((status != SQLITE_OK) && (status != hstatus)) {
-		ERROR("%s: Code 0x%04x (%i): %s", p, status, status, sqlite3_errstr(status));
+		fr_strerror_printf("%s: Code 0x%04x (%i): %s", p, status, status, sqlite3_errstr(status));
 	}
 
-	if (hstatus != SQLITE_OK) ERROR("%s: Code 0x%04x (%i): %s",
-					p, hstatus, hstatus, sqlite3_errmsg(db));
+	if (hstatus != SQLITE_OK) fr_strerror_printf("%s: Code 0x%04x (%i): %s",
+						     p, hstatus, hstatus, sqlite3_errmsg(db));
 }
 
 static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
@@ -243,53 +243,44 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 
 	f = fopen(filename, "r");
 	if (!f) {
-		ERROR("Failed opening SQL file \"%s\": %s", filename,
-		       fr_syserror(errno));
-
+		fr_strerror_printf("Failed opening SQL file \"%s\": %s", filename,
+				   fr_syserror(errno));
 		return -1;
 	}
 
 	if (fstat(fileno(f), &finfo) < 0) {
-		ERROR("Failed stating SQL file \"%s\": %s", filename,
+		fr_strerror_printf("Failed stating SQL file \"%s\": %s", filename,
 		       fr_syserror(errno));
-
+	error:
 		fclose(f);
-
 		return -1;
 	}
 
 	if (finfo.st_size > BOOTSTRAP_MAX) {
-		too_big:
-		ERROR("Size of SQL (%zu) file exceeds limit (%uk)",
+	too_big:
+		fr_strerror_printf("Size of SQL (%zu) file exceeds limit (%uk)",
 		       (size_t) finfo.st_size / 1024, BOOTSTRAP_MAX / 1024);
-
-		fclose(f);
-
-		return -1;
+		goto error;
 	}
 
 	MEM(buffer = talloc_array(ctx, char, finfo.st_size + 1));
 	len = fread(buffer, sizeof(char), finfo.st_size, f);
+
 	if (len > finfo.st_size) {
 		talloc_free(buffer);
 		goto too_big;
 	}
 
 	if (!len) {
+		talloc_free(buffer);
 		if (ferror(f)) {
-			ERROR("Error reading SQL file: %s", fr_syserror(errno));
-
-			fclose(f);
-			talloc_free(buffer);
-
-			return -1;
+			fr_strerror_printf("Failed reading from SQL file: %s", fr_syserror(errno));
+			goto error;
 		}
 
 		DEBUG("Ignoring empty SQL file");
 
 		fclose(f);
-		talloc_free(buffer);
-
 		return 0;
 	}
 
@@ -310,7 +301,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	}
 
 	if ((p - buffer) != len) {
-		ERROR("Bootstrap file contains non-UTF8 char at offset %zu", p - buffer);
+		fr_strerror_printf("Bootstrap file contains non-UTF8 char at offset %zu", p - buffer);
 		talloc_free(buffer);
 		return -1;
 	}
@@ -384,17 +375,18 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	status = sqlite3_open_v2(inst->filename, &(c->db), SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, NULL);
 
 	if (!c->db || (sql_check_error(c->db, status) != RLM_SQL_OK)) {
-		sql_print_error(c->db, status, "Error opening SQLite database \"%s\"", inst->filename);
+		sql_print_error(c->db, status, "Failed opening SQLite database \"%s\"", inst->filename);
 		if (!inst->bootstrap) {
 			INFO("Use the sqlite driver 'bootstrap' option to automatically create the database file");
 		}
 	error:
+		ERROR("%s", fr_strerror());
 		talloc_free(c);
 		return CONNECTION_STATE_FAILED;
 	}
 	status = sqlite3_busy_timeout(c->db, fr_time_delta_to_sec(config->query_timeout));
 	if (sql_check_error(c->db, status) != RLM_SQL_OK) {
-		sql_print_error(c->db, status, "Error setting busy timeout");
+		sql_print_error(c->db, status, "Failed setting busy timeout");
 		goto error;
 	}
 
@@ -403,7 +395,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	 */
 	status = sqlite3_extended_result_codes(c->db, 1);
 	if (sql_check_error(c->db, status) != RLM_SQL_OK) {
-		sql_print_error(c->db, status, "Error enabling extended result codes");
+		sql_print_error(c->db, status, "Failed enabling extended result codes");
 		goto error;
 	}
 
@@ -751,6 +743,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 			ret = sql_loadfile(mctx->mi->conf, db, p);
 			if (ret < 0) {
+				ERROR("%s", fr_strerror());
 				(void) sqlite3_close(db);
 				goto unlink;
 			}
@@ -758,17 +751,17 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 		status = sqlite3_close(db);
 		if (status != SQLITE_OK) {
-		/*
-		 *	Safer to use sqlite3_errstr here, just in case the handle is in a weird state
-		 */
-			ERROR("Error closing SQLite handle: %s", sqlite3_errstr(status));
+			/*
+			 *	Safer to use sqlite3_errstr here, just in case the handle is in a weird state
+			 */
+			ERROR("Failed closing SQLite handle: %s", sqlite3_errstr(status));
 			goto unlink;
 		}
 
 		if (ret < 0) {
 		unlink:
 			if ((unlinkat(fd, r, 0) < 0) && (errno != ENOENT)) {
-				ERROR("Error removing partially initialised database: %s",
+				ERROR("Failed to remove partially initialised database: %s",
 				      fr_syserror(errno));
 			}
 			close(fd);
