@@ -795,6 +795,8 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 		bool restriction_types[FR_DER_TAG_MAX] = { };
 
 		if (flags->sequence_of != FR_DER_TAG_CHOICE) {
+			fr_assert(flags->sequence_of < FR_DER_TAG_MAX);
+
 			restriction_types[flags->sequence_of] = true;
 			child = fr_dict_attr_iterate_children(parent, &child);
 			if (!child) {
@@ -817,6 +819,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 			}
 
 			while ((choices = fr_dict_attr_iterate_children(ref, &choices))) {
+				fr_assert(choices->attr < FR_DER_TAG_MAX);
 				restriction_types[choices->attr] = true;
 			}
 		}
@@ -832,7 +835,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 
 			FR_DBUFF_OUT_RETURN(&tag_byte, &our_in);
 
-			current_tag = (tag_byte & DER_TAG_CONTINUATION);
+			current_tag = (tag_byte & DER_TAG_CONTINUATION); /* always <= FR_DER_TAG_MAX */
 
 			if (unlikely(!restriction_types[current_tag])) {
 				fr_strerror_printf("Attribute %s is a sequence-of which does not allow DER type '%s'", parent->name,
