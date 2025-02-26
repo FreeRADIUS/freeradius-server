@@ -1583,7 +1583,7 @@ static ssize_t fr_der_decode_ipv6_addr(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 		return -1;
 	}
 
-	vp->vp_ip.af = AF_INET;
+	vp->vp_ip.af = AF_INET6;
 	vp->vp_ip.prefix = 128;
 	FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *) &vp->vp_ipv6addr, &our_in, sizeof(vp->vp_ipv6addr));
 
@@ -1633,7 +1633,7 @@ static ssize_t fr_der_decode_ipv6_prefix(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 		return -1;
 	}
 
-	vp->vp_ip.af = AF_INET;
+	vp->vp_ip.af = AF_INET6;
 	vp->vp_ip.prefix = len * 8 - byte;
 
 	if (len) FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *) &vp->vp_ipv6addr, &our_in, len);
