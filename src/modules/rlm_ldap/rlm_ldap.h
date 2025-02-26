@@ -106,6 +106,10 @@ typedef struct {
 		LDAPControl	*obj_sort_ctrl;			//!< Server side sort control
 		char const	*check_attr;			//!< LDAP attribute containing check conditions to determine if
 								//!< the profile should be applied
+		char const	*fallthrough_attr;		//!< LDAP attribute containing conditions to determine if
+								///< processing should continue to the next profile when more
+								///< than one is returned.
+		bool		fallthrough_def;		//!< Should profile processing fall through by default.
 	} profile;
 
 #ifdef WITH_EDIR

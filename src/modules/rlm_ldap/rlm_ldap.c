@@ -101,6 +101,8 @@ static conf_parser_t profile_config[] = {
 	{ FR_CONF_OFFSET("attribute_suspend", rlm_ldap_t, profile.attr_suspend) },
 	{ FR_CONF_OFFSET("check_attribute", rlm_ldap_t, profile.check_attr) },
 	{ FR_CONF_OFFSET("sort_by", rlm_ldap_t, profile.obj_sort_by) },
+	{ FR_CONF_OFFSET("fallthrough_attribute", rlm_ldap_t, profile.fallthrough_attr) },
+	{ FR_CONF_OFFSET("fallthrough_default", rlm_ldap_t, profile.fallthrough_def), .dflt = "yes" },
 	CONF_PARSER_TERMINATOR
 };
 
