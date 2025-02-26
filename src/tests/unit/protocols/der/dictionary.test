@@ -4,6 +4,8 @@
 # Version $Id$
 DEFINE	Certificate-Extensions				x509_extensions ref=@.OID-Tree
 
+DEFINE Test-GeneralNames				group sequence_of=choice,ref=@.GeneralName
+
 DEFINE	Issuer						sequence sequence_of=set
 BEGIN Issuer
 DEFINE	RelativeDistinguishedName			set clone=@.RelativeDistinguishedName

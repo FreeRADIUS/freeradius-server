@@ -857,6 +857,14 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 					child = fr_dict_attr_unknown_raw_afrom_num(decode_ctx->tmp_ctx, parent, current_tag);
 					if (!child) return -1;
 				}
+
+				/*
+				 *	Options always have to have the context field set.
+				 */
+				if ((tag_byte & DER_TAG_CLASS_MASK) != FR_DER_CLASS_CONTEXT) {
+					fr_strerror_printf("Tag has unexpected class %20x", tag_byte & DER_TAG_CLASS_MASK);
+					return -1;
+				}
 			}
 
 			FR_PROTO_TRACE("decode context %s -> %s", parent->name, child->name);
@@ -1644,6 +1652,53 @@ static ssize_t fr_der_decode_ipv6_prefix(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 	return fr_dbuff_set(in, &our_in);
 }
 
+static ssize_t fr_der_decode_combo_ip_addr(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+					   fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
+{
+	fr_pair_t *vp;
+	fr_dbuff_t our_in = FR_DBUFF(in);
+	size_t len = fr_dbuff_remaining(&our_in);
+
+	/*
+	 *	RFC5280 Section 4.2.1.6
+	 *
+	 *	When the subjectAltName extension contains an iPAddress, the address
+	 *	MUST be stored in the octet string in "network byte order", as
+	 *	specified in [RFC791].  The least significant bit (LSB) of each octet
+	 *	is the LSB of the corresponding byte in the network address.  For IP
+	 *	version 4, as specified in [RFC791], the octet string MUST contain
+	 *	exactly four octets.  For IP version 6, as specified in
+	 *	[RFC2460], the octet string MUST contain exactly sixteen octets.
+	 */
+	if ((len != 4) && (len != 16)) {
+		fr_strerror_printf("Invalid combo_ip_addr size.  Expected 4 or 16, got %zu",
+				   len);
+		return -1;
+	}
+
+	vp = fr_pair_afrom_da(ctx, parent);
+	if (unlikely(!vp)) {
+		fr_strerror_const("Out of memory");
+		return -1;
+	}
+
+	if (len == 4) {
+		vp->vp_ip.af = AF_INET;
+		vp->vp_ip.prefix = 32;
+		FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *) &vp->vp_ipv4addr, &our_in, sizeof(vp->vp_ipv4addr));
+
+	} else {
+		vp->vp_ip.af = AF_INET6;
+		vp->vp_ip.prefix = 128;
+		FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *) &vp->vp_ipv6addr, &our_in, sizeof(vp->vp_ipv6addr));
+	}
+
+	fr_pair_append(out, vp);
+
+	return fr_dbuff_set(in, &our_in);
+}
+
+
 static const fr_der_tag_decode_t tag_funcs[FR_DER_TAG_MAX] = {
 	[FR_DER_TAG_BOOLEAN]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_boolean },
 	[FR_DER_TAG_INTEGER]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_integer },
@@ -1672,6 +1727,8 @@ static const fr_der_tag_decode_t type_funcs[FR_TYPE_MAX] = {
 	[FR_TYPE_IPV4_PREFIX]	= { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_ipv4_prefix },
 	[FR_TYPE_IPV6_ADDR]	= { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_ipv6_addr },
 	[FR_TYPE_IPV6_PREFIX]	= { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_ipv6_prefix },
+
+	[FR_TYPE_COMBO_IP_ADDR]	= { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_combo_ip_addr },
 };
 
 /** Decode the tag and length fields of a DER encoded structure

@@ -900,5 +900,24 @@ match Test-IPv4-Prefix = 10.5.0.4/32
 decode-pair 03 01 00
 match Test-IPv4-Prefix = 0.0.0.0/0
 
+proto-dictionary der
+
+#
+#  IP address as fixed-size octets  i.e. GeneralName.iPAddress
+#
+encode-pair Test-GeneralNames = { dNSName = "foo.bar" }
+match 30 09 82 07 66 6f 6f 2e 62 61 72
+
+encode-pair Test-GeneralNames = { iPAddress = 10.0.5.4 }
+match 30 06 87 04 0a 00 05 04
+
+proto-dictionary-root Test-GeneralNames
+
+decode-pair 30 09 82 07 66 6f 6f 2e 62 61 72
+match Test-GeneralNames = { dNSName = "foo.bar" }
+
+decode-pair 30 06 87 04 0a 00 05 04
+match Test-GeneralNames = { iPAddress = 10.0.5.4 }
+
 count
-match 543
+match 553

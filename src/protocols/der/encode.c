@@ -501,6 +501,36 @@ static ssize_t fr_der_encode_ipv6_prefix(fr_dbuff_t *dbuff, fr_dcursor_t *cursor
 }
 
 
+static ssize_t fr_der_encode_combo_ip(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED fr_der_encode_ctx_t *encode_ctx)
+{
+	fr_dbuff_t	 our_dbuff = FR_DBUFF(dbuff);
+	fr_pair_t const *vp;
+
+	vp = fr_dcursor_current(cursor);
+	PAIR_VERIFY(vp);
+	fr_assert(!vp->da->flags.is_raw);
+
+	/*
+	 *	RFC5280 Section 4.2.1.6
+	 *
+	 *	When the subjectAltName extension contains an iPAddress, the address
+	 *	MUST be stored in the octet string in "network byte order", as
+	 *	specified in [RFC791].  The least significant bit (LSB) of each octet
+	 *	is the LSB of the corresponding byte in the network address.  For IP
+	 *	version 4, as specified in [RFC791], the octet string MUST contain
+	 *	exactly four octets.  For IP version 6, as specified in
+	 *	[RFC2460], the octet string MUST contain exactly sixteen octets.
+	 */
+	if (vp->vp_ip.af == AF_INET) {
+		FR_DBUFF_IN_MEMCPY_RETURN(&our_dbuff, (uint8_t const *) &vp->vp_ipv4addr, sizeof(vp->vp_ipv4addr));
+	} else {
+		FR_DBUFF_IN_MEMCPY_RETURN(&our_dbuff, (uint8_t const *) &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+	}
+
+	return fr_dbuff_set(dbuff, &our_dbuff);
+}
+
+
 static ssize_t fr_der_encode_octetstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor,
 					 UNUSED fr_der_encode_ctx_t *encode_ctx)
 {
@@ -1637,6 +1667,8 @@ static const fr_der_tag_encode_t type_funcs[FR_TYPE_MAX] = {
 	[FR_TYPE_IPV4_PREFIX]  	  = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_ipv4_prefix },
 	[FR_TYPE_IPV6_ADDR]    	  = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_ipv6_addr },
 	[FR_TYPE_IPV6_PREFIX]	  = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_ipv6_prefix },
+
+	[FR_TYPE_COMBO_IP_ADDR]	  = { .constructed = FR_DER_TAG_PRIMITIVE, .encode = fr_der_encode_combo_ip },
 };
 
 

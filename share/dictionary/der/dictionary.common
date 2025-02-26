@@ -38,6 +38,7 @@ END RDNSequence
 END directoryName
 
 ATTRIBUTE	uniformResourceIdentifier		6	ia5string option
+ATTRIBUTE	iPAddress				7	combo-ip option
 
 END GeneralName
 
