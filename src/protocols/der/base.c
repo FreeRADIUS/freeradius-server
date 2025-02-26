@@ -884,6 +884,8 @@ static bool attr_valid(fr_dict_attr_t *da)
 			flags->option = da->attr;
 		}
 
+		flags->class = FR_DER_CLASS_CONTEXT;
+
 		if ((parent->restrictions & (1 << flags->option)) != 0) {
 			fr_strerror_printf("Parent %s already has a child with option %u - duplicates are not allowed",
 					   da->parent->name, flags->option);
@@ -894,6 +896,8 @@ static bool attr_valid(fr_dict_attr_t *da)
 
 	} else if (parent->is_sequence_of && (parent->sequence_of == FR_DER_TAG_CHOICE)) {
 		fr_assert(flags->der_type < FR_DER_TAG_VALUE_MAX);
+
+		flags->class = FR_DER_CLASS_CONTEXT;
 
 		if ((parent->restrictions & (1 << flags->der_type)) != 0) {
 			fr_strerror_printf("Parent %s already has a child with tag %s - duplicates are not allowed",
