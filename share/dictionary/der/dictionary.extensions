@@ -24,7 +24,7 @@ END 1.3.6.1.5.5.7.1.11
 
 ATTRIBUTE	subjectKeyIdentifier			2.5.29.14	octetstring     is_oid_leaf
 
-ATTRIBUTE	keyUsage				2.5.29.15	struct  der_type=bitstring,is_oid_leaf
+ATTRIBUTE	keyUsage				2.5.29.15	struct  is_oid_leaf
 BEGIN 2.5.29.15
 MEMBER		digitalSignature			bit[1]
 MEMBER		nonRepudation				bit[1]

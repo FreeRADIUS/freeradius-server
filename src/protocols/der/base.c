@@ -153,8 +153,6 @@ static const bool *fr_type_to_der_tags[FR_DER_TAG_MAX] = {
 	},
 	[FR_TYPE_STRUCT] = (bool [FR_DER_TAG_MAX]) {
 		[FR_DER_TAG_BITSTRING] = true,
-		[FR_DER_TAG_SEQUENCE] = true,
-		[FR_DER_TAG_SET] = true,
 	},
 	[FR_TYPE_GROUP] = (bool [FR_DER_TAG_MAX]) {
 		[FR_DER_TAG_SEQUENCE] = true,
@@ -709,7 +707,7 @@ static const fr_der_tag_t fr_type_to_der_tag_defaults[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_INT64]		= FR_DER_TAG_INTEGER,
 	[FR_TYPE_DATE]		= FR_DER_TAG_GENERALIZED_TIME,
 	[FR_TYPE_TLV]		= FR_DER_TAG_SEQUENCE,
-	[FR_TYPE_STRUCT]	= FR_DER_TAG_SEQUENCE,
+	[FR_TYPE_STRUCT]	= FR_DER_TAG_BITSTRING,
 	[FR_TYPE_GROUP]		= FR_DER_TAG_SEQUENCE,
 };
 
@@ -823,15 +821,6 @@ static bool attr_valid(fr_dict_attr_t *da)
 					   fr_der_tag_to_str(flags->der_type));
 			return false;
 		}
-	}
-
-	/*
-	 *	Packed structures can only be bit strings, they can't be sequences or sets.
-	 */
-	if ((da->type == FR_TYPE_STRUCT) && (flags->der_type != FR_DER_TAG_BITSTRING)) {
-		fr_strerror_printf("A 'struct' must be encoded as 'bitstring', and not as '%s'",
-				   fr_der_tag_to_str(flags->der_type));
-		return false;
 	}
 
 	return true;

@@ -14,7 +14,7 @@ DEFINE	RelativeDistinguishedName			set clone=@.RelativeDistinguishedName
 END         nameRelativeToCRLIssuer
 END       distributionPointName
 
-ATTRIBUTE reasons					1	struct  der_type=bitstring,option,optional
+ATTRIBUTE reasons					1	struct  option,optional
 BEGIN   reasons
 MEMBER		unused					bit[1]
 MEMBER		keyCompromise				bit[1]
