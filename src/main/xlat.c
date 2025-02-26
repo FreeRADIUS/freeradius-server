@@ -1516,6 +1516,16 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			ssize_t slen;
 			xlat_exp_t *next;
 
+			/*
+			 *	%" is likely the end of a string inside of a string.
+			 *	We'll allow it.
+			 */
+			if ((p[1] == '"') || (p[1] == '\'') || (p[1] == '`') || (p[1] == '/')) {
+				p += 2;
+				node->len += 2;
+				continue;
+			}
+
 			if (!strchr("%}cdelmntCDGHIMSTYv", p[1])) {
 				talloc_free(node);
 				*error = "Invalid variable expansion";
