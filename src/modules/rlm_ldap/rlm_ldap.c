@@ -95,12 +95,12 @@ static const call_env_parser_t sasl_call_env[] = {
 };
 
 static conf_parser_t profile_config[] = {
-	{ FR_CONF_OFFSET("scope", rlm_ldap_t, profile_scope), .dflt = "base",
+	{ FR_CONF_OFFSET("scope", rlm_ldap_t, profile.obj_scope), .dflt = "base",
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
-	{ FR_CONF_OFFSET("attribute", rlm_ldap_t, profile_attr) },
-	{ FR_CONF_OFFSET("attribute_suspend", rlm_ldap_t, profile_attr_suspend) },
-	{ FR_CONF_OFFSET("check_attribute", rlm_ldap_t, profile_check_attr) },
-	{ FR_CONF_OFFSET("sort_by", rlm_ldap_t, profile_sort_by) },
+	{ FR_CONF_OFFSET("attribute", rlm_ldap_t, profile.attr) },
+	{ FR_CONF_OFFSET("attribute_suspend", rlm_ldap_t, profile.attr_suspend) },
+	{ FR_CONF_OFFSET("check_attribute", rlm_ldap_t, profile.check_attr) },
+	{ FR_CONF_OFFSET("sort_by", rlm_ldap_t, profile.obj_sort_by) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1127,7 +1127,7 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 		host_url = handle_config->server;
 		dn = talloc_typed_strdup_buffer(xlat_ctx, uri->vb_strvalue);
 		filter = env_data->profile_filter.vb_strvalue;
-		scope = inst->profile_scope;
+		scope = inst->profile.obj_scope;
 	} else {
 		ldap_url_ret = ldap_url_parse(uri->vb_strvalue, &xlat_ctx->url);
 		if (ldap_url_ret != LDAP_URL_SUCCESS){
@@ -1155,7 +1155,7 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 		/*
 		 *	Determine if the URL includes a scope.
 		 */
-		scope = xlat_ctx->url->lud_scope == LDAP_SCOPE_DEFAULT ? inst->profile_scope : xlat_ctx->url->lud_scope;
+		scope = xlat_ctx->url->lud_scope == LDAP_SCOPE_DEFAULT ? inst->profile.obj_scope : xlat_ctx->url->lud_scope;
 
 		/*
 		 *	If the URL is <scheme>:/// the parsed host will be NULL - use config default
@@ -1172,7 +1172,7 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	 *	Synchronous expansion of maps (fixme!)
 	 */
 	if (fr_ldap_map_expand(xlat_ctx, &xlat_ctx->expanded, request, env_data->profile_map,
-			       inst->valuepair_attr, inst->profile_check_attr) < 0) goto error;
+			       inst->valuepair_attr, inst->profile.check_attr) < 0) goto error;
 	ttrunk = fr_thread_ldap_trunk_get(t, host_url, handle_config->admin_identity,
 					  handle_config->admin_password, request, handle_config);
 	if (host) ldap_memfree(host);
@@ -1699,7 +1699,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 
 			REPEAT_MOD_AUTHORIZE_RESUME;
 			ret = rlm_ldap_map_profile(NULL, NULL, inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
-						   inst->profile_scope, call_env->default_profile.vb_strvalue, &autz_ctx->expanded);
+						   inst->profile.obj_scope, call_env->default_profile.vb_strvalue, &autz_ctx->expanded);
 			switch (ret) {
 			case UNLANG_ACTION_FAIL:
 				rcode = RLM_MODULE_FAIL;
@@ -1727,32 +1727,32 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		 */
 		switch (autz_ctx->access_state) {
 		case LDAP_ACCESS_ALLOWED:
-			if (inst->profile_attr) {
+			if (inst->profile.attr) {
 				int count;
 
-				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile_attr);
+				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile.attr);
 				count = ldap_count_values_len(autz_ctx->profile_values);
 				if (count > 0) {
-					RDEBUG2("Processing %i profile(s) found in attribute \"%s\"", count, inst->profile_attr);
+					RDEBUG2("Processing %i profile(s) found in attribute \"%s\"", count, inst->profile.attr);
 					if (RDEBUG_ENABLED3) {
 						for (struct berval **bv_p = autz_ctx->profile_values; *bv_p; bv_p++) {
 							RDEBUG3("Will evaluate profile with DN \"%pV\"", fr_box_strvalue_len((*bv_p)->bv_val, (*bv_p)->bv_len));
 						}
 					}
 				} else {
-					RDEBUG2("No profile(s) found in attribute \"%s\"", inst->profile_attr);
+					RDEBUG2("No profile(s) found in attribute \"%s\"", inst->profile.attr);
 				}
 			}
 			break;
 
 		case LDAP_ACCESS_SUSPENDED:
-			if (inst->profile_attr_suspend) {
+			if (inst->profile.attr_suspend) {
 				int count;
 
-				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile_attr_suspend);
+				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile.attr_suspend);
 				count = ldap_count_values_len(autz_ctx->profile_values);
 				if (count > 0) {
-					RDEBUG2("Processing %i suspension profile(s) found in attribute \"%s\"", count, inst->profile_attr_suspend);
+					RDEBUG2("Processing %i suspension profile(s) found in attribute \"%s\"", count, inst->profile.attr_suspend);
 					if (RDEBUG_ENABLED3) {
 						for (struct berval **bv_p = autz_ctx->profile_values; *bv_p; bv_p++) {
 							RDEBUG3("Will evaluate suspenension profile with DN \"%pV\"",
@@ -1760,7 +1760,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 						}
 					}
 				} else {
-					RDEBUG2("No suspension profile(s) found in attribute \"%s\"", inst->profile_attr_suspend);
+					RDEBUG2("No suspension profile(s) found in attribute \"%s\"", inst->profile.attr_suspend);
 				}
 			}
 			break;
@@ -1787,7 +1787,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 			autz_ctx->profile_value = fr_ldap_berval_to_string(autz_ctx, autz_ctx->profile_values[autz_ctx->value_idx++]);
 			REPEAT_MOD_AUTHORIZE_RESUME;
 			ret = rlm_ldap_map_profile(NULL, NULL, inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
-						   inst->profile_scope, autz_ctx->call_env->profile_filter.vb_strvalue, &autz_ctx->expanded);
+						   inst->profile.obj_scope, autz_ctx->call_env->profile_filter.vb_strvalue, &autz_ctx->expanded);
 			switch (ret) {
 			case UNLANG_ACTION_FAIL:
 				rcode = RLM_MODULE_FAIL;
@@ -1872,14 +1872,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		expanded->attrs[expanded->count++] = inst->group.userobj_membership_attr;
 	}
 
-	if (inst->profile_attr) {
+	if (inst->profile.attr) {
 		CHECK_EXPANDED_SPACE(expanded);
-		expanded->attrs[expanded->count++] = inst->profile_attr;
+		expanded->attrs[expanded->count++] = inst->profile.attr;
 	}
 
-	if (inst->profile_attr_suspend) {
+	if (inst->profile.attr_suspend) {
 		CHECK_EXPANDED_SPACE(expanded);
-		expanded->attrs[expanded->count++] = inst->profile_attr_suspend;
+		expanded->attrs[expanded->count++] = inst->profile.attr_suspend;
 	}
 	expanded->attrs[expanded->count] = NULL;
 
@@ -2179,7 +2179,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	rlm_ldap_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
 
 	if (inst->user.obj_sort_ctrl) ldap_control_free(inst->user.obj_sort_ctrl);
-	if (inst->profile_sort_ctrl) ldap_control_free(inst->profile_sort_ctrl);
+	if (inst->profile.obj_sort_ctrl) ldap_control_free(inst->profile.obj_sort_ctrl);
 
 	return 0;
 }
@@ -2583,20 +2583,20 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	Build the server side sort control for user / profile objects
 	 */
-#define SSS_CONTROL_BUILD(_source, _obj, _dest) if (_source) { \
+#define SSS_CONTROL_BUILD(_obj) if (inst->_obj.obj_sort_by) { \
 		LDAPSortKey	**keys; \
 		int		ret; \
-		ret = ldap_create_sort_keylist(&keys, UNCONST(char *, _source)); \
+		ret = ldap_create_sort_keylist(&keys, UNCONST(char *, inst->_obj.obj_sort_by)); \
 		if (ret != LDAP_SUCCESS) { \
 			cf_log_err(conf, "Invalid " STRINGIFY(_obj) ".sort_by value \"%s\": %s", \
-				      _source, ldap_err2string(ret)); \
+				      inst->_obj.obj_sort_by, ldap_err2string(ret)); \
 			goto error; \
 		} \
 		/* \
 		 *	Always set the control as critical, if it's not needed \
 		 *	the user can comment it out... \
 		 */ \
-		ret = ldap_create_sort_control(ldap_global_handle, keys, 1, &_dest); \
+		ret = ldap_create_sort_control(ldap_global_handle, keys, 1, &inst->_obj.obj_sort_ctrl); \
 		ldap_free_sort_keylist(keys); \
 		if (ret != LDAP_SUCCESS) { \
 			ERROR("Failed creating server sort control: %s", ldap_err2string(ret)); \
@@ -2604,8 +2604,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		} \
 	}
 
-	SSS_CONTROL_BUILD(inst->user.obj_sort_by, user, inst->user.obj_sort_ctrl)
-	SSS_CONTROL_BUILD(inst->profile_sort_by, profile, inst->profile_sort_ctrl)
+	SSS_CONTROL_BUILD(user)
+	SSS_CONTROL_BUILD(profile)
 
 	if (inst->handle_config.tls_require_cert_str) {
 		/*

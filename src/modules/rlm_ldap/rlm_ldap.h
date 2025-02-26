@@ -96,15 +96,17 @@ typedef struct {
 	/*
 	 *	Profiles
 	 */
-	int		profile_scope;			//!< Search scope.
-	char const	*profile_attr;			//!< Attribute that identifies profiles to apply. May appear
-							//!< in userobj or groupobj.
-	char const	*profile_attr_suspend;		//!< Attribute that identifies profiles to apply when the user's
-							///< account is suspended. May appear in userobj or groupobj.
-	char const	*profile_sort_by;		//!< List of attributes to sort profiles by
-	LDAPControl	*profile_sort_ctrl;		//!< Server side sort control
-	char const	*profile_check_attr;		//!< LDAP attribute containing check conditions to determine if
-							//!< the profile should be applied
+	struct {
+		int		obj_scope;			//!< Search scope.
+		char const	*attr;				//!< Attribute that identifies profiles to apply. May appear
+								//!< in userobj or groupobj.
+		char const	*attr_suspend;			//!< Attribute that identifies profiles to apply when the user's
+								///< account is suspended. May appear in userobj or groupobj.
+		char const	*obj_sort_by;			//!< List of attributes to sort profiles by
+		LDAPControl	*obj_sort_ctrl;			//!< Server side sort control
+		char const	*check_attr;			//!< LDAP attribute containing check conditions to determine if
+								//!< the profile should be applied
+	} profile;
 
 #ifdef WITH_EDIR
 	/*

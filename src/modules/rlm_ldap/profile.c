@@ -101,7 +101,7 @@ static unlang_action_t ldap_map_profile_resume(UNUSED rlm_rcode_t *p_result, UNU
 			ldap_memfree(dn);
 		}
 		RINDENT();
-		ret = fr_ldap_map_do(request, profile_ctx->inst->profile_check_attr, profile_ctx->inst->valuepair_attr,
+		ret = fr_ldap_map_do(request, profile_ctx->inst->profile.check_attr, profile_ctx->inst->valuepair_attr,
 				   profile_ctx->expanded, entry);
 		if (ret < 0) {
 			if (profile_ctx->ret) *profile_ctx->ret = LDAP_RESULT_ERROR;
@@ -152,7 +152,7 @@ unlang_action_t rlm_ldap_map_profile(fr_ldap_result_code_t *ret, int *applied,
 				     char const *dn, int scope, char const *filter, fr_ldap_map_exp_t const *expanded)
 {
 	ldap_profile_ctx_t	*profile_ctx;
-	LDAPControl		*serverctrls[] = { inst->profile_sort_ctrl, NULL };
+	LDAPControl		*serverctrls[] = { inst->profile.obj_sort_ctrl, NULL };
 
 	if (!dn || !*dn) return UNLANG_ACTION_CALCULATE_RESULT;
 
