@@ -465,7 +465,7 @@ ssize_t fr_dns_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_dns_ctx_t *pack
 	 */
 	vp = fr_pair_dcursor_by_da_init(&cursor, vps, attr_dns_packet);
 	if (!vp) {
-		fr_pair_list_debug(vps);
+		fr_pair_list_log(&default_log, 0, vps);
 
 		fr_strerror_const("attribute list does not include DNS packet header");
 		return -1;
