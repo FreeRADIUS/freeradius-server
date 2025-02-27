@@ -2030,6 +2030,23 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 	 *	Note: If the boolean value is false, it is not included in the encoding.
 	 */
 
+	/*
+	 *	Get the overall length of the sequence.
+	 */
+	if (unlikely((slen = fr_der_decode_hdr(parent, &our_in, &tag, &len)) <= 0)) {
+		fr_strerror_const_push("Failed decoding extensions list header");
+		return slen;
+	}
+
+	if (tag != FR_DER_TAG_SEQUENCE) {
+		fr_strerror_printf("Expected 'sequence' tag as the first item in an extensions list. Got tag %s",
+				   fr_der_tag_to_str(tag));
+		return -1;
+	}
+
+	/*
+	 *	Normal extensions are decoded into the normal parent.
+	 */
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
 	oom:
@@ -2037,36 +2054,28 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		return -1;
 	}
 
+	/*
+	 *	Critical extensions are decoded into the Critical parent.
+	 */
 	ref = fr_dict_attr_ref(parent);
 	fr_assert(ref != NULL);
 	ref = fr_dict_attr_by_name(NULL, ref, "Critical");
 	fr_assert(ref != NULL);
 
 	vp2 = fr_pair_afrom_da(vp, ref);
-
 	if (unlikely(vp2 == NULL)) {
 		talloc_free(vp);
 		goto oom;
 	}
 
-	if (unlikely((slen = fr_der_decode_hdr(parent, &our_in, &tag, &len)) <= 0)) {
-		fr_strerror_const_push("Failed decoding extensions list header");
-	error:
-		talloc_free(vp2);
-		talloc_free(vp);
-		return slen;
-	}
-
-	if (tag != FR_DER_TAG_SEQUENCE) {
-		fr_strerror_printf("Expected 'sequence' tag as the first item in an extensions list. Got tag %s",
-				   fr_der_tag_to_str(tag));
-		slen = -1;
-		goto error;
-	}
+	/*
+	 *	Set the end of the extension sequence to be decoded.
+	 */
+	fr_dbuff_set_end(&our_in, fr_dbuff_current(&our_in) + len);
 
 	FR_PROTO_TRACE("Attribute %s, tag %u", parent->name, tag);
 
-	max = fr_der_flag_max(parent); /* Maximum number of extensions specified in the dictionary */
+	max = fr_der_flag_max(parent); /* Maximum number of extensions which can be used here */
 
 	/*
 	 *	Each extension is composed of a sequence containing the following objects:
@@ -2077,17 +2086,18 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 	 */
 	while (fr_dbuff_remaining(&our_in) > 0) {
 		fr_dbuff_t		      ext_in = FR_DBUFF(&our_in);
-		fr_dbuff_marker_t	      oid_marker;
+		fr_dbuff_marker_t	      oid_marker, value_marker;
 		fr_der_decode_oid_to_da_ctx_t uctx;
 
 		size_t	sub_len, len_peek;
 		uint8_t is_critical = false;
 
-		fr_dbuff_set_end(&ext_in, fr_dbuff_current(&ext_in) + len);
-
 		if (unlikely((slen = fr_der_decode_hdr(parent, &ext_in, &tag, &sub_len)) <= 0)) {
 			fr_strerror_const_push("Failed decoding extension sequence header");
-			goto error;
+		error:
+			talloc_free(vp);
+			talloc_free(vp2);
+			return slen;
 		}
 
 		if (tag != FR_DER_TAG_SEQUENCE) {
