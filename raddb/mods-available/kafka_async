@@ -1,6 +1,5 @@
 kafka kafka_async {
 	bootstrap-servers = "localhost:9092"
-	topic = "radius"
 
 	#
 	#  This initialises an asynchronous instance of the kafka module.
@@ -58,7 +57,17 @@ kafka kafka_async {
 
 	}
 
-	topic-config {
+	#
+	#  A user-defined topic called by reference or by using its name (which may
+	#  be changed) in an xlat of either form:
+	#
+	#    - "%{kafka_async:custom-topic &Key-Attr-Ref Remainder is the message}"
+	#    - "%{kafka_async:custom-topic  Remainder is the message}", if no key
+	#
+	#  The attribute referred to by &Key-Attr-Ref holds the Kafka message's key.
+	#  Notice two spaces leading the message in case there is no key.
+	#
+	topic-config custom-topic {
 
 		#
 		#  The message durabily strategy: Number of acks required by all
@@ -90,8 +99,41 @@ kafka kafka_async {
 	}
 
 	#
-	#  Uncomment to generate producer statistics
+	#  Topic used by calls from an accounting section
 	#
+	topic-config accounting {
+
+		#
+		#  You may either provide topic configuration parameters
+		#  or reference an existing topic (declared above this) to
+		#  reuse it.
+		#
+		#reference = custom-topic
+
+	}
+
+	#
+	#  Topic used by calls from an authorize section
+	#
+	topic-config authorize {
+
+		#
+		#  Used to set the topic name to something other than the
+		#  section from which it was called.
+		#
+		#name = "radius.auth_request"
+
+	}
+
+	#
+	#  Topic used by calls from a post-auth section
+	#
+	topic-config post-auth {
+		#name = "radius.auth_result"
+		#request.required.acks = 2
+	}
+
+
 #	statistics {
 #		file = /tmp/kafka_async_stats.json
 #	}

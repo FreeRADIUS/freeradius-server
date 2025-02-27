@@ -1,6 +1,5 @@
 kafka {
 	bootstrap-servers = "localhost:9092"
-	topic = "radius"
 
 	#
 	#  This initialises the default, synchronous instance of the kafka
@@ -28,12 +27,23 @@ kafka {
 		#ssl.ca.location = "${cadir}"
 		#sasl.username = "kafkauser"
 		#sasl.password = "kafkapass"
-		# ...
+		#  ...
 		#
 
 	}
 
-	topic-config {
+
+        #
+        #  A user-defined topic called by reference or by using its name (which may
+        #  be changed) in an xlat of either form:
+        #
+        #    - "%{kafka:custom-topic &Key-Attr-Ref Remainder is the message}"
+        #    - "%{kafka:custom-topic  Remainder is the message}", if no key
+        #
+        #  The attribute referred to by &Key-Attr-Ref holds the Kafka message's key.
+        #  Notice two spaces leading the message in case there is no key.
+        #
+        topic-config custom-topic {
 
 		#
 		#  The message durabily strategy: Number of acks required by all
@@ -43,7 +53,7 @@ kafka {
 
 		#
 		#  How long a message can remain undelivered in the local
-		#  in-memory queue, with the  before it is timed out.
+		#  in-memory queue before it is timed out.
 		#
 		#  For synchronous delivery, the default local queue is set to
 		#  25 sec. It should be some value less than max_request_time
@@ -62,6 +72,41 @@ kafka {
 		#  ...
 		#
 
+	}
+
+	#
+	#  Topic used by calls from an accounting section
+	#
+	topic-config accounting {
+
+		#
+		#  You may either provide topic configuration parameters
+		#  or reference an existing topic (declared above this) to
+		#  reuse it.
+		#
+		#reference = custom-topic
+
+	}
+
+	#
+	#  Topic used by calls from an authorize section
+	#
+	topic-config authorize {
+
+		#
+		#  Used to set the topic name to something other than the
+		#  section from which it was called.
+		#
+		#name = "radius.auth_request"
+
+	}
+
+	#
+	#  Topic used by calls from a post-auth section
+	#
+	topic-config post-auth {
+		#name = "radius.auth_result"
+		#request.required.acks = 2
 	}
 
 	#
