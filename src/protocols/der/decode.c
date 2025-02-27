@@ -56,7 +56,8 @@ static ssize_t fr_der_decode_oid(fr_dbuff_t *in, fr_der_decode_oid_t func, void 
 static ssize_t fr_der_decode_oid_value_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *in,
 					    fr_dict_attr_t const *parent, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
 
-static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, uint8_t *tag, size_t *len) CC_HINT(nonnull(2,3,4));
+static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, uint8_t *tag, size_t *len,
+				 fr_der_tag_t expected) CC_HINT(nonnull(2,3,4));
 
 typedef ssize_t (*fr_der_decode_t)(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent, fr_dbuff_t *in,
 				   fr_der_decode_ctx_t *decode_ctx);
@@ -864,6 +865,11 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 					fr_strerror_printf("Tag has unexpected class %20x", tag_byte & DER_TAG_CLASS_MASK);
 					return -1;
 				}
+			} else {
+				if ((tag_byte & DER_TAG_CLASS_MASK) != FR_DER_CLASS_UNIVERSAL) {
+					fr_strerror_printf("Tag has unexpected class %20x", tag_byte & DER_TAG_CLASS_MASK);
+					return -1;
+				}
 			}
 
 			FR_PROTO_TRACE("decode context %s -> %s", parent->name, child->name);
@@ -974,11 +980,6 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 
 	if (flags->is_set_of) {
 		/*
-		 * 	This is a set-of, meaning there are restrictions on the types which can be present
-		 */
-		fr_der_tag_t restriction_type = flags->set_of;
-
-		/*
 		 *	There should only be one child in a "set_of".  We can't check this when we load
 		 *	the dictionaries, because there is no "finalize" callback.
 		 *
@@ -1002,19 +1003,11 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 
 			FR_PROTO_TRACE("decode context %s -> %s", parent->name, child->name);
 
-			if (unlikely(fr_der_decode_hdr(NULL, &our_in, &current_tag, &len) <= 0)) {
-				fr_strerror_const("Insufficient data for set. Missing tag");
+			if (unlikely(fr_der_decode_hdr(NULL, &our_in, &current_tag, &len, flags->set_of) <= 0)) {
 				ret = -1;
 			error:
 				talloc_free(vp);
 				return ret;
-			}
-
-			if (unlikely(current_tag != restriction_type)) {
-				fr_strerror_printf("Attribute %s is a set-of DER type '%s', but found DER type '%s'",
-						   parent->name, fr_der_tag_to_str(restriction_type), fr_der_tag_to_str(current_tag));
-				ret = -1;
-				goto error;
 			}
 
 			fr_dbuff_marker(&current_value_marker, &our_in);
@@ -1759,10 +1752,12 @@ static const fr_der_tag_decode_t type_funcs[FR_TYPE_MAX] = {
  * @param[in] in	Input buffer
  * @param[out] tag	Tag value
  * @param[out] len	Length of the value field
+ * @param[in] expected  the expected / required tag
  *
  * @return		0 on success, -1 on failure
  */
-static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, uint8_t *tag, size_t *len)
+static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, uint8_t *tag, size_t *len,
+				 fr_der_tag_t expected)
 {
 	fr_dbuff_t		 our_in = FR_DBUFF(in);
 	uint8_t			 tag_byte;
@@ -1772,7 +1767,11 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 	fr_der_tag_constructed_t constructed;
 	fr_der_attr_flags_t const *flags;
 
-	FR_DBUFF_OUT_RETURN(&tag_byte, &our_in);
+	if (fr_dbuff_out(&tag_byte, &our_in) < 0) {
+	error:
+		fr_strerror_const("Failed decoding DER header - insufficient data");
+		return -1;
+	}
 
 	/*
 	 *	Decode the tag flags
@@ -1806,6 +1805,12 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 	case FR_DER_CLASS_UNIVERSAL:
 		if ((*tag == FR_DER_TAG_INVALID) || (*tag >= FR_DER_TAG_VALUE_MAX)) {
 			fr_strerror_printf("Invalid tag %u", *tag);
+			return -1;
+		}
+
+		if ((expected != FR_DER_TAG_INVALID) && (*tag != expected)) {
+			fr_strerror_printf("Invalid tag %s. Expected tag %s",
+					   fr_der_tag_to_str(*tag), fr_der_tag_to_str(expected));
 			return -1;
 		}
 		break;
@@ -1871,7 +1876,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		return -1;
 	}
 
-	FR_DBUFF_OUT_RETURN(&len_byte, &our_in);
+	if (fr_dbuff_out(&len_byte, &our_in) < 0) goto error;
 
 	/*
 	 *	Check if the length is a multi-byte length field
@@ -1891,7 +1896,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 			}
 
 			while (len_len--) {
-				FR_DBUFF_OUT_RETURN(&len_byte, &our_in);
+				if (fr_dbuff_out(&len_byte, &our_in) < 0) goto error;
 				*len = (*len << 8) | len_byte;
 			}
 		} else if (!constructed) {
@@ -2034,15 +2039,9 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 	 *	Get the overall length of the first inner sequence.
 	 *	Ideally this should fill the entire outer sequence.
 	 */
-	if (unlikely((slen = fr_der_decode_hdr(parent, &our_in, &tag, &len)) <= 0)) {
+	if (unlikely((slen = fr_der_decode_hdr(parent, &our_in, &tag, &len, FR_DER_TAG_SEQUENCE)) <= 0)) {
 		fr_strerror_const_push("Failed decoding extensions list header");
 		return slen;
-	}
-
-	if (tag != FR_DER_TAG_SEQUENCE) {
-		fr_strerror_printf("Expected 'sequence' tag as the first item in an extensions list. Got tag %s",
-				   fr_der_tag_to_str(tag));
-		return -1;
 	}
 
 	if (len != fr_dbuff_remaining(&our_in)) {
@@ -2096,18 +2095,11 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 			return -1;
 		}
 
-		if (unlikely((slen = fr_der_decode_hdr(parent, &seq_in, &tag, &seq_len)) <= 0)) {
+		if (unlikely((slen = fr_der_decode_hdr(parent, &seq_in, &tag, &seq_len, FR_DER_TAG_SEQUENCE)) <= 0)) {
 			fr_strerror_const_push("Failed decoding extension sequence header");
 		error:
 			talloc_free(vp);
 			return slen;
-		}
-
-		if (tag != FR_DER_TAG_SEQUENCE) {
-			fr_strerror_printf("Expected 'sequence' tag as the first tag in an extension. Got tag %s",
-					   fr_der_tag_to_str(tag));
-			slen = -1;
-			goto error;
 		}
 
 		/*
@@ -2118,15 +2110,8 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		/*
 		 *	Start decoding the OID.
 		 */
-		if (unlikely((slen = fr_der_decode_hdr(NULL, &seq_in, &tag, &oid_len)) <= 0)) {
+		if (unlikely((slen = fr_der_decode_hdr(NULL, &seq_in, &tag, &oid_len, FR_DER_TAG_OID)) <= 0)) {
 			fr_strerror_const_push("Failed decoding oid header");
-			goto error;
-		}
-
-		if (tag != FR_DER_TAG_OID) {
-			fr_strerror_printf("Expected OID tag as the first item in an extension. Got tag %s",
-					   fr_der_tag_to_str(tag));
-			slen = -1;
 			goto error;
 		}
 
@@ -2153,7 +2138,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		/*
 		 *	The next thing is either Critical, or is the extValue.
 		 */
-		if (unlikely(fr_der_decode_hdr(NULL, &seq_in, &tag, &ext_len) <= 0)) {
+		if (unlikely(fr_der_decode_hdr(NULL, &seq_in, &tag, &ext_len, FR_DER_TAG_INVALID) <= 0)) {
 			fr_strerror_const_push("Failed decoding value header for extension ");
 			slen = -1;
 			goto error;
@@ -2192,21 +2177,21 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 			/*
 			 *	The next header should be the extnValue
 			 */
-			if (unlikely(fr_der_decode_hdr(NULL, &seq_in, &tag, &ext_len) <= 0)) {
+			if (unlikely(fr_der_decode_hdr(NULL, &seq_in, &tag, &ext_len, FR_DER_TAG_OCTETSTRING) <= 0)) {
 				fr_strerror_const_push("Failed decoding value header for extension ");
 				slen = -1;
 				goto error;
 			}
-		}
-
-		/*
-		 *	The extnValue is DER tag OCTETSTRING.
-		 */
-		if (unlikely(tag != FR_DER_TAG_OCTETSTRING)) {
-			fr_strerror_printf("Expected tag OCTETSTRING for the extnValue. Got tag %s",
-					   fr_der_tag_to_str(tag));
-			slen = -1;
-			goto error;
+		} else {
+			/*
+			 *	The extnValue is DER tag OCTETSTRING.
+			 */
+			if (unlikely(tag != FR_DER_TAG_OCTETSTRING)) {
+				fr_strerror_printf("Expected tag OCTETSTRING for the extnValue. Got tag %s",
+						   fr_der_tag_to_str(tag));
+				slen = -1;
+				goto error;
+			}
 		}
 
 		/*
@@ -2308,17 +2293,11 @@ static ssize_t fr_der_decode_oid_value_pair(TALLOC_CTX *ctx, fr_pair_list_t *out
 
 	fr_dbuff_marker(&marker, in);
 
-	if (unlikely((slen = fr_der_decode_hdr(parent, &our_in, &tag, &len)) <= 0)) {
+	if (unlikely((slen = fr_der_decode_hdr(parent, &our_in, &tag, &len, FR_DER_TAG_OID)) <= 0)) {
 		fr_strerror_const_push("Failed decoding oid header");
 	error:
 		fr_dbuff_marker_release(&marker);
 		return slen;
-	}
-
-	if (tag != FR_DER_TAG_OID) {
-		fr_strerror_printf("Expected OID tag as the first item in a pair. Got tag: %u", tag);
-		slen = -1;
-		goto error;
 	}
 
 	FR_PROTO_TRACE("Attribute %s, tag %u", parent->name, tag);
@@ -2531,7 +2510,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		return fr_dbuff_set(in, &our_in);
 	}
 
-	slen = fr_der_decode_hdr(parent, &our_in, &tag, &len);
+	slen = fr_der_decode_hdr(parent, &our_in, &tag, &len, FR_DER_TAG_INVALID);
 	if ((slen == 0) && flags->optional) return 0;
 	if (slen <= 0) {
 		fr_strerror_const_push("Failed decoding header");

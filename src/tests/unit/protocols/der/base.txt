@@ -35,7 +35,7 @@ match Set tags are not in ascending order
 proto-dictionary-root Test-Set-Of
 
 decode-pair 31 06 02 01 01 01 01 FF
-match Attribute Test-Set-Of is a set-of DER type 'integer', but found DER type 'boolean'
+match Invalid tag boolean. Expected tag integer
 
 proto-dictionary-root Test-String-Max
 
