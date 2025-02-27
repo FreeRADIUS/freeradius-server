@@ -388,10 +388,12 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 			}
 			if (!fr_value_box_list_head(&res) || !fr_value_box_is_truthy(fr_value_box_list_head(&res))) {
 				RDEBUG2("Failed match: skipping this profile");
+				fr_value_box_list_talloc_free(&res);
 				goto free;
 			}
 			talloc_free(value);
 			talloc_free(cond_expr);
+			fr_value_box_list_talloc_free(&res);
 		}
 		ldap_value_free_len(values);
 	}
