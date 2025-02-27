@@ -1,0 +1,5 @@
+= Datastore Virtual Servers
+
+xref:raddb/sites-available/buffered-sql.adoc[Buffered SQL]
+
+xref:raddb/sites-available/ldap_sync.adoc[LDAP Sync]
