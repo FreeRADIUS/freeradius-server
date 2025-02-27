@@ -2584,6 +2584,11 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		return -1;
 	}
 
+	/*
+	 *	Limit the length of the data to be decoded.
+	 */
+	fr_dbuff_set_end(&our_in, fr_dbuff_current(&our_in) + len);
+
 	if (flags->is_extensions) {
 		slen = fr_der_decode_x509_extensions(ctx, out, &our_in, parent, decode_ctx);
 		if (slen <= 0) return slen;
@@ -2594,6 +2599,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	func = &type_funcs[parent->type];
 	if (!func->decode) func = &tag_funcs[tag];
 	fr_assert(func != NULL);
+	fr_assert(func->decode != NULL);
 
 	/*
 	 *	Enforce limits on min/max.
@@ -2647,13 +2653,6 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		}
 		break;
 	}
-
-	/*
-	 *	Limit the length of the data to be decoded.
-	 */
-	fr_dbuff_set_end(&our_in, fr_dbuff_current(&our_in) + len);
-
-	fr_assert(func->decode != NULL);
 
 	/*
 	 *	The decode function can return 0 if len==0.  This is true for 'null' data types, and
