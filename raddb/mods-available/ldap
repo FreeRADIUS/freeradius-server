@@ -578,6 +578,19 @@ ldap {
 		#  will be evaluated to determine whether a profile should be applied.
 		#
 #		check_attribute = 'radiusProfileCondition'
+
+		#
+		#  fallthrough_attribute:: The LDAP attribute containing a condition
+		#  which will be evaluated to determine whether more profiles should
+		#  be applied after this one.
+		#
+#		fallthrough_attribute = 'radiusProfileFallthrough'
+
+		#
+		#  fallthrough_def:: If the attribute referenced in fallthrough_attribute
+		#  is not in the reply, what should be the default behaviour
+		#
+#		fallthrough_default = yes
 	}
 
 	#
