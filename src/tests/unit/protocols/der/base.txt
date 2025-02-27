@@ -30,12 +30,12 @@ decode-pair 31 06 02 01 01 02 01 02
 match Test-Set-Of = { Test-First-Integer = 1, Test-First-Integer = 2 }
 
 decode-pair 31 07 02 01 02 02 02 00 80
-match Set tags are not in ascending order
+match Set tags are not in ascending order: Failed decoding Test-Set-Of
 
 proto-dictionary-root Test-Set-Of
 
 decode-pair 31 06 02 01 01 01 01 FF
-match Invalid tag boolean. Expected tag integer
+match Invalid tag boolean. Expected tag integer: Failed decoding Test-Set-Of
 
 proto-dictionary-root Test-String-Max
 
@@ -59,10 +59,10 @@ decode-pair 30 04 02 02 00 80
 match Foo = { Test-Integer = 128 }
 
 decode-pair 30 04 02 02 FF 80
-match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.: Failed decoding Foo
 
 decode-pair 30 04 02 02 00 70
-match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.: Failed decoding Foo
 
 decode-pair 30 04 02 02 80 00
 match Foo = { Test-Integer = -32768 }
@@ -74,10 +74,10 @@ decode-pair 30 05 02 03 00 80 00
 match Foo = { Test-Integer = 32768 }
 
 decode-pair 30 05 02 03 FF 80 00
-match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.: Failed decoding Foo
 
 decode-pair 30 05 02 03 00 70 00
-match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.: Failed decoding Foo
 
 decode-pair 30 05 02 03 80 00 00
 match Foo = { Test-Integer = -8388608 }
@@ -89,10 +89,10 @@ decode-pair 30 06 02 04 00 80 00 00
 match Foo = { Test-Integer = 8388608 }
 
 decode-pair 30 06 02 04 FF 80 00 00
-match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.: Failed decoding Foo
 
 decode-pair 30 06 02 04 00 70 00 00
-match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.: Failed decoding Foo
 
 decode-pair 30 06 02 04 80 00 00 00
 match Foo = { Test-Integer = -2147483648 }
@@ -104,10 +104,10 @@ decode-pair 30 07 02 05 00 80 00 00 00
 match Foo = { Test-Integer = 2147483648 }
 
 decode-pair 30 07 02 05 FF 80 00 00 00
-match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.: Failed decoding Foo
 
 decode-pair 30 07 02 05 00 70 00 00 00
-match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.: Failed decoding Foo
 
 decode-pair 30 07 02 05 80 00 00 00 00
 match Foo = { Test-Integer = -549755813888 }
@@ -119,10 +119,10 @@ decode-pair 30 08 02 06 00 80 00 00 00 00
 match Foo = { Test-Integer = 549755813888 }
 
 decode-pair 30 08 02 06 FF 80 00 00 00 00
-match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.: Failed decoding Foo
 
 decode-pair 30 08 02 06 00 70 00 00 00 00
-match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.: Failed decoding Foo
 
 decode-pair 30 08 02 06 80 00 00 00 00 00
 match Foo = { Test-Integer = -140737488355328 }
@@ -134,10 +134,10 @@ decode-pair 30 09 02 07 00 80 00 00 00 00 00
 match Foo = { Test-Integer = 140737488355328 }
 
 decode-pair 30 09 02 07 FF 80 00 00 00 00 00
-match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.: Failed decoding Foo
 
 decode-pair 30 09 02 07 00 70 00 00 00 00 00
-match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.: Failed decoding Foo
 
 decode-pair 30 09 02 07 80 00 00 00 00 00 00
 match Foo = { Test-Integer = -36028797018963968 }
@@ -149,10 +149,10 @@ decode-pair 30 0A 02 08 00 80 00 00 00 00 00 00
 match Foo = { Test-Integer = 36028797018963968 }
 
 decode-pair 30 0A 02 08 FF 80 00 00 00 00 00 00
-match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.: Failed decoding Foo
 
 decode-pair 30 0A 02 08 00 70 00 00 00 00 00 00
-match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.
+match Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.: Failed decoding Foo
 
 decode-pair 30 0A 02 08 80 00 00 00 00 00 00 00
 match Foo = { Test-Integer = -9223372036854775808 }
@@ -161,10 +161,10 @@ decode-pair 30 0A 02 08 7F FF FF FF FF FF FF FF
 match Foo = { Test-Integer = 9223372036854775807 }
 
 decode-pair 30 0B 02 09 00 80 00 00 00 00 00 00 00
-match Integer too large (9)
+match Integer too large (9): Failed decoding Foo
 
 decode-pair 30 13 02 11 00 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-match Integer too large (17)
+match Integer too large (17): Failed decoding Foo
 
 proto-dictionary-root Bar
 
@@ -175,10 +175,10 @@ decode-pair 30 03 01 01 FF
 match Bar = { Test-Boolean = yes }
 
 decode-pair 30 03 01 01 01
-match Boolean is not correctly DER encoded (0x00 or 0xff).
+match Boolean is not correctly DER encoded (0x00 or 0xff).: Failed decoding Bar
 
 decode-pair 30 04 01 02 00 01
-match Boolean has incorrect length (2). Must be 1.
+match Boolean has incorrect length (2). Must be 1.: Failed decoding Bar
 
 encode-pair Test-Boolean = true
 match 01 01 ff
@@ -201,10 +201,10 @@ decode-pair 30 03 01 01 FF
 match Foo-Bar = { Test-Integer = ::DEFAULT, Test-Boolean = yes }
 
 decode-pair 30 06 02 01 09 01 01 01
-match Boolean is not correctly DER encoded (0x00 or 0xff).
+match Boolean is not correctly DER encoded (0x00 or 0xff).: Failed decoding Foo-Bar
 
 decode-pair 30 06 02 02 09 01 01 FF
-match Length field too large (127): Failed decoding header
+match Length field too large (127): Failed decoding Test-Boolean header: Failed decoding Foo-Bar
 
 proto-dictionary-root SEQ-BITSTRING-OCTETS
 
@@ -230,13 +230,13 @@ decode-pair 30 09 03 07 04 0A 3B 5F 29 1C DF
 match Seq-Bitstring-Octets = { Test-Bitstring = 0x040a3b5f291cd0 }
 
 decode-pair 30 04 03 01
-match Insufficient data for length field (4): Failed decoding header
+match Insufficient data for length field (4): Failed decoding Seq-Bitstring-Octets header
 
 decode-pair 30 04 03 01 08
-match Insufficient data for length field (4): Failed decoding header
+match Insufficient data for length field (4): Failed decoding Seq-Bitstring-Octets header
 
 decode-pair 30 04 03 01 01
-match Insufficient data for length field (4): Failed decoding header
+match Insufficient data for length field (4): Failed decoding Seq-Bitstring-Octets header
 
 proto-dictionary-root Bitstring-Struct
 
@@ -298,7 +298,7 @@ decode-pair 30 02 05 00
 match Seq-Null = { Test-Null = no }
 
 decode-pair 30 02 05 01
-match Insufficient data for length field (1): Failed decoding header
+match Insufficient data for length field (1): Failed decoding Test-Null header: Failed decoding Seq-Null
 
 proto-dictionary-root Seq-Integer-Null
 
@@ -355,7 +355,7 @@ match Seq-Oid = { Test-Oid = "2.999.3" }
 #  Last byte cannot end with the high bit set
 #
 decode-pair 30 05 06 03 88 37 83
-match OID subidentifier is truncated
+match OID subidentifier is truncated: Failed decoding Seq-Oid
 
 decode-pair 30 0b 06 09 2a 86 48 86 f7 0d 01 01 0B
 match Seq-Oid = { Test-Oid = "1.2.840.113549.1.1.11" }
@@ -385,13 +385,13 @@ decode-pair 30 12 06 10 2a 86 48 ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
 match Seq-Oid = { Test-Oid = "1.2.840.9223372036854775807.13.1.1.11" }
 
 decode-pair 30 13 06 11 2a 86 48 ff ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match OID subidentifier too large (>63 bits)
+match OID subidentifier too large (>63 bits): Failed decoding Seq-Oid
 
 decode-pair 30 14 06 12 2a 86 48 ff ff ff ff ff ff ff ff ff 86 f7 0d 01 01 0b
-match OID subidentifier too large (>63 bits)
+match OID subidentifier too large (>63 bits): Failed decoding Seq-Oid
 
 decode-pair 30 1b 06 19 2a 86 48 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 86 f7 0d 01 01 0b
-match OID subidentifier too large (>63 bits)
+match OID subidentifier too large (>63 bits): Failed decoding Seq-Oid
 
 
 # Test IA5String
@@ -419,7 +419,7 @@ decode-pair 0c 04 f0 9f 98 8e
 match Test-String-UTF8 = "😎"
 
 decode-pair 0c 04 f0 9f 98
-match Insufficient data for length field (4): Failed decoding header
+match Insufficient data for length field (4): Failed decoding Test-String-UTF8 header
 
 
 # Test PrintableString
@@ -519,7 +519,7 @@ decode-pair 30 06 0c 04 f0 9f 98 8e
 match Seq-String = { Test-String = "😎" }
 
 decode-pair 30 06 0c 04 f0 9f 98
-match Insufficient data for length field (6): Failed decoding header
+match Insufficient data for length field (6): Failed decoding Seq-String header
 
 proto-dictionary-root Test-Date
 
@@ -580,8 +580,7 @@ match Set-Bool-Integer = { Test-Bool = no, Test-Integer = 9 }
 
 # we expect bool then integer, the DER below has integer then bool
 decode-pair 3106020109010100
-match Failed decoding Test-Bool - got tag 'integer', expected 'boolean'
-#match Expected parent type 'int64', got attribute Test-Bool of type bool
+match Failed decoding Test-Bool - got tag 'integer', expected 'boolean': Failed decoding Set-Bool-Integer
 
 # Test sub_type
 proto der

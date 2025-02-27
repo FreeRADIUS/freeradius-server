@@ -111,21 +111,21 @@ static ssize_t fr_der_decode_boolean(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 	 *		eight bits set to one [0xff]. (Contrast with 8.2.2.)
 	 */
 	if (len != 1) {
-		fr_strerror_printf("Boolean has incorrect length (%zu). Must be 1.", len);
+		fr_strerror_printf_push("Boolean has incorrect length (%zu). Must be 1.", len);
 		return -1;
 	}
 
 	FR_DBUFF_OUT_RETURN(&value, &our_in);
 
 	if (unlikely((value != DER_BOOLEAN_FALSE) && (value != DER_BOOLEAN_TRUE))) {
-		fr_strerror_printf("Boolean is not correctly DER encoded (0x%02" PRIx32 " or 0x%02" PRIx32 ").", DER_BOOLEAN_FALSE,
+		fr_strerror_printf_push("Boolean is not correctly DER encoded (0x%02" PRIx32 " or 0x%02" PRIx32 ").", DER_BOOLEAN_FALSE,
 				   DER_BOOLEAN_TRUE);
 		return -1;
 	}
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(vp == NULL)) {
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
 
@@ -148,13 +148,13 @@ static ssize_t fr_der_decode_integer(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 	size_t len = fr_dbuff_remaining(&our_in);
 
 	if (parent->type != FR_TYPE_INT64) {
-		fr_strerror_printf("Expected parent type 'int64', got attribute %s of type %s", parent->name,
+		fr_strerror_printf_push("Expected parent type 'int64', got attribute %s of type %s", parent->name,
 				   fr_type_to_str(parent->type));
 		return -1;
 	}
 
 	if (len > sizeof(value)) {
-		fr_strerror_printf("Integer too large (%zu)", len);
+		fr_strerror_printf_push("Integer too large (%zu)", len);
 		return -1;
 	}
 
@@ -199,7 +199,7 @@ static ssize_t fr_der_decode_integer(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 		FR_DBUFF_OUT_RETURN(&byte, &our_in);
 
 		if ((((value & 0xff) == 0xff) && (byte & 0x80)) || (((~value & 0xff) == 0xff) && !(byte & 0x80))) {
-			fr_strerror_const("Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.");
+			fr_strerror_const_push("Integer is not correctly DER encoded. First two bytes are all 0s or all 1s.");
 			return -1;
 		}
 
@@ -215,7 +215,7 @@ static ssize_t fr_der_decode_integer(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(vp == NULL)) {
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
 
@@ -279,18 +279,18 @@ static ssize_t fr_der_decode_bitstring(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 		/*
 		 *	This means an entire byte is unused bits. Which is not allowed.
 		 */
-		fr_strerror_const("Invalid number of unused bits in 'bitstring'");
+		fr_strerror_const_push("Invalid number of unused bits in 'bitstring'");
 		return -1;
 	}
 
 	if ((len == 1) && unused_bits) {
-		fr_strerror_const("Insufficient data for 'bitstring'. Missing data bytes");
+		fr_strerror_const_push("Insufficient data for 'bitstring'. Missing data bytes");
 		return -1;
 	}
 
 	if (fr_type_is_struct(parent->type)) {
 		if (!len) {
-			fr_strerror_const("Insufficient data for 'struct'. Missing data bytes");
+			fr_strerror_const_push("Insufficient data for 'struct'. Missing data bytes");
 			return -1;
 		}
 
@@ -305,7 +305,7 @@ static ssize_t fr_der_decode_bitstring(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 
 	data = talloc_array(decode_ctx->tmp_ctx, uint8_t, data_len);
 	if (unlikely(!data)) {
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
 
@@ -343,7 +343,7 @@ static ssize_t fr_der_decode_bitstring(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 		 *	If the structure decoder didn't consume all the data, we need to free the data and bail out
 		 */
 		if (unlikely(slen < data_len - 1)) {
-			fr_strerror_printf("Bitstring structure decoder didn't consume all data. Consumed %zd of %zu bytes",
+			fr_strerror_printf_push("Bitstring structure decoder didn't consume all data. Consumed %zd of %zu bytes",
 					   slen, data_len);
 		error:
 			talloc_free(data);
@@ -356,7 +356,7 @@ static ssize_t fr_der_decode_bitstring(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		goto error;
 	}
 
@@ -409,7 +409,7 @@ static ssize_t fr_der_decode_octetstring(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
 	oom:
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
 
@@ -432,7 +432,7 @@ static ssize_t fr_der_decode_null(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_
 	fr_dbuff_t our_in = FR_DBUFF(in);
 
 	if (fr_dbuff_remaining(&our_in) != 0) {
-		fr_strerror_const("Null has non-zero length");
+		fr_strerror_const_push("Null has non-zero length");
 		return -1;
 	}
 
@@ -444,7 +444,7 @@ static ssize_t fr_der_decode_null(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
 
@@ -483,7 +483,7 @@ static ssize_t fr_der_decode_oid_to_str(uint64_t subidentifier, void *uctx, bool
 		 */
 		if (unlikely(fr_sbuff_in_sprintf(&sb, "%" PRIu64, subidentifier) < 0)) {
 		oom:
-			fr_strerror_const("Out of memory");
+			fr_strerror_const_push("Out of memory");
 			return -1;
 		}
 
@@ -584,7 +584,7 @@ static ssize_t fr_der_decode_oid_to_da(uint64_t subidentifier, void *uctx, bool 
 
 		if (unlikely(unknown_da == NULL)) {
 		oom:
-			fr_strerror_const("Out of memory");
+			fr_strerror_const_push("Out of memory");
 			return -1;
 		}
 
@@ -665,7 +665,7 @@ static ssize_t fr_der_decode_oid(fr_dbuff_t *in, fr_der_decode_oid_t func, void 
 
 		magnitude++;
 		if (magnitude > 9) {
-			fr_strerror_const("OID subidentifier too large (>63 bits)");
+			fr_strerror_const_push("OID subidentifier too large (>63 bits)");
 			return -1;
 		}
 
@@ -681,7 +681,7 @@ static ssize_t fr_der_decode_oid(fr_dbuff_t *in, fr_der_decode_oid_t func, void 
 		 */
 		if ((byte & 0x80) != 0) {
 			if (len == 0) {
-				fr_strerror_const("OID subidentifier is truncated");
+				fr_strerror_const_push("OID subidentifier is truncated");
 				return -1;
 			}
 			continue;
@@ -765,13 +765,13 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	 */
 
 	if (flags->min && !fr_dbuff_remaining(&our_in)) {
-		fr_strerror_printf("Expected at last %d elements in %s, got 0", flags->min, parent->name);
+		fr_strerror_printf_push("Expected at last %d elements in %s, got 0", flags->min, parent->name);
 		return -1;
 	}
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
 
@@ -800,7 +800,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 			restriction_types[flags->sequence_of] = true;
 			child = fr_dict_attr_iterate_children(parent, &child);
 			if (!child) {
-				fr_strerror_printf("Sequence %s has no children", parent->name);
+				fr_strerror_printf_push("Sequence %s has no children", parent->name);
 				return -1;
 			}
 
@@ -840,7 +840,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 			current_tag = (tag_byte & DER_TAG_CONTINUATION); /* always <= FR_DER_TAG_MAX */
 
 			if (unlikely(!restriction_types[current_tag])) {
-				fr_strerror_printf("Attribute %s is a sequence-of which does not allow DER type '%s'", parent->name,
+				fr_strerror_printf_push("Attribute %s is a sequence-of which does not allow DER type '%s'", parent->name,
 						   fr_der_tag_to_str(current_tag));
 			error:
 				talloc_free(vp);
@@ -862,12 +862,12 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 				 *	Options always have to have the context field set.
 				 */
 				if ((tag_byte & DER_TAG_CLASS_MASK) != FR_DER_CLASS_CONTEXT) {
-					fr_strerror_printf("Tag has unexpected class %20x", tag_byte & DER_TAG_CLASS_MASK);
+					fr_strerror_printf_push("Tag has unexpected class %20x", tag_byte & DER_TAG_CLASS_MASK);
 					return -1;
 				}
 			} else {
 				if ((tag_byte & DER_TAG_CLASS_MASK) != FR_DER_CLASS_UNIVERSAL) {
-					fr_strerror_printf("Tag has unexpected class %20x", tag_byte & DER_TAG_CLASS_MASK);
+					fr_strerror_printf_push("Tag has unexpected class %20x", tag_byte & DER_TAG_CLASS_MASK);
 					return -1;
 				}
 			}
@@ -881,6 +881,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 			 */
 			ret = fr_der_decode_pair_dbuff(vp, &vp->vp_group, child, &our_in, decode_ctx);
 			if (unlikely(ret < 0)) {
+				fr_strerror_printf_push("Failed decoding %s", vp->da->name);
 				goto error;
 			}
 		}
@@ -903,6 +904,7 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 
 		ret = fr_der_decode_pair_dbuff(vp, &vp->vp_group, child, &our_in, decode_ctx);
 		if (unlikely(ret < 0)) {
+			fr_strerror_printf_push("Failed decoding %s", vp->da->name);
 			talloc_free(vp);
 			return ret;
 		}
@@ -955,13 +957,13 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	 */
 
 	if (flags->min && !fr_dbuff_remaining(&our_in)) {
-		fr_strerror_printf("Expected at last %d elements in %s, got 0", flags->min, parent->name);
+		fr_strerror_printf_push("Expected at last %d elements in %s, got 0", flags->min, parent->name);
 		return -1;
 	}
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
 
@@ -990,7 +992,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 		child = NULL;
 		child = fr_dict_attr_iterate_children(parent, &child);
 		if (!child) {
-			fr_strerror_printf("Missing child for %s", parent->name);
+			fr_strerror_printf_push("Missing child for %s", parent->name);
 			return -1;
 		}
 
@@ -1007,6 +1009,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 				ret = -1;
 			error:
 				talloc_free(vp);
+				fr_strerror_printf_push("Failed decoding %s", parent->name);
 				return ret;
 			}
 
@@ -1026,7 +1029,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 					FR_DBUFF_OUT_RETURN(&curr_byte, &our_in);
 
 					if (prev_byte > curr_byte) {
-						fr_strerror_const("Set tags are not in ascending order");
+						fr_strerror_const_push("Set tags are not in ascending order");
 						ret = -1;
 						goto error;
 					}
@@ -1038,7 +1041,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 				} while (fr_dbuff_remaining(&our_in) > 0 && fr_dbuff_remaining(&previous_item) > 0);
 
 				if (prev_byte > curr_byte && fr_dbuff_remaining(&previous_item) > 0) {
-					fr_strerror_const(
+					fr_strerror_const_push(
 						"Set tags are not in ascending order. Previous item has more data");
 					ret = -1;
 					goto error;
@@ -1054,6 +1057,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 
 			ret = fr_der_decode_pair_dbuff(vp, &vp->vp_group, child, &our_in, decode_ctx);
 			if (unlikely(ret <= 0)) {
+				fr_strerror_printf_push("Failed decoding %s", vp->da->name);
 				goto error;
 			}
 		}
@@ -1082,7 +1086,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 			FR_DBUFF_OUT_RETURN(&current_tag, &our_in);
 
 			if (unlikely(current_tag < previous_tag)) {
-				fr_strerror_const("Set tags are not in ascending order");
+				fr_strerror_const_push("Set tags are not in ascending order");
 				talloc_free(vp);
 				return -1;
 			}
@@ -1100,6 +1104,7 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 		 */
 		ret = fr_der_decode_pair_dbuff(vp, &vp->vp_group, child, &our_in, decode_ctx);
 		if (unlikely(ret < 0)) {
+			fr_strerror_printf_push("Failed decoding %s", vp->da->name);
 			talloc_free(vp);
 			return ret;
 		}
@@ -1240,7 +1245,7 @@ static ssize_t fr_der_decode_utc_time(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *)timestr, &our_in, DER_UTC_TIME_LEN);
 
 	if (memchr(timestr, '\0', DER_UTC_TIME_LEN) != NULL) {
-		fr_strerror_const("UTC time contains null byte");
+		fr_strerror_const_push("UTC time contains null byte");
 		return -1;
 	}
 
@@ -1249,13 +1254,13 @@ static ssize_t fr_der_decode_utc_time(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	p = strptime(timestr, "%y%m%d%H%M%SZ", &tm);
 
 	if (unlikely(p == NULL) || *p != '\0') {
-		fr_strerror_const("Invalid UTC time format");
+		fr_strerror_const_push("Invalid UTC time format");
 		return -1;
 	}
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
 
@@ -1281,7 +1286,7 @@ static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *o
 	fr_assert(fr_type_is_date(parent->type));
 
 	if (len < DER_GENERALIZED_TIME_LEN_MIN) {
-		fr_strerror_const("Insufficient data for generalized time or incorrect length");
+		fr_strerror_const_push("Insufficient data for generalized time or incorrect length");
 		return -1;
 	}
 
@@ -1326,12 +1331,12 @@ static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *o
 	FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *)timestr, &our_in, DER_GENERALIZED_TIME_LEN_MIN);
 
 	if (memchr(timestr, '\0', DER_GENERALIZED_TIME_LEN_MIN) != NULL) {
-		fr_strerror_const("Generalized time contains null byte");
+		fr_strerror_const_push("Generalized time contains null byte");
 		return -1;
 	}
 
 	if (timestr[DER_GENERALIZED_TIME_LEN_MIN - 1] != 'Z' && timestr[DER_GENERALIZED_TIME_LEN_MIN - 1] != '.') {
-		fr_strerror_const("Incorrect format for generalized time. Missing timezone");
+		fr_strerror_const_push("Incorrect format for generalized time. Missing timezone");
 		return -1;
 	}
 
@@ -1351,14 +1356,14 @@ static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *o
 		}
 
 		if (unlikely(precision == 0)) {
-			fr_strerror_const("Insufficient data for subseconds");
+			fr_strerror_const_push("Insufficient data for subseconds");
 			return -1;
 		}
 
 		FR_DBUFF_OUT_MEMCPY_RETURN((uint8_t *)subsecstring, &our_in, precision);
 
 		if (memchr(subsecstring, '\0', precision) != NULL) {
-			fr_strerror_const("Generalized time contains null byte in subseconds");
+			fr_strerror_const_push("Generalized time contains null byte in subseconds");
 			return -1;
 		}
 
@@ -1385,13 +1390,13 @@ static ssize_t fr_der_decode_generalized_time(TALLOC_CTX *ctx, fr_pair_list_t *o
 	p = strptime(timestr, "%Y%m%d%H%M%SZ", &tm);
 
 	if (unlikely(p == NULL)) {
-		fr_strerror_const("Invalid generalized time format (strptime)");
+		fr_strerror_const_push("Invalid generalized time format (strptime)");
 		return -1;
 	}
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
 
@@ -1468,20 +1473,20 @@ static ssize_t fr_der_decode_ipv4_addr(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 	 */
 
 	if (fr_dbuff_remaining(&our_in) != 1 + sizeof(vp->vp_ipv4addr)) {
-		fr_strerror_printf("Invalid ipv4addr size.  Expected %zu, got %zu",
+		fr_strerror_printf_push("Invalid ipv4addr size.  Expected %zu, got %zu",
 				   1 + sizeof(vp->vp_ipv4addr), fr_dbuff_remaining(&our_in));
 		return -1;
 	}
 
 	FR_DBUFF_OUT_RETURN(&byte, &our_in);
 	if (byte != 0) {
-		fr_strerror_printf("Invalid ipv4addr prefix is non-zero (%02x)", byte);
+		fr_strerror_printf_push("Invalid ipv4addr prefix is non-zero (%02x)", byte);
 		return -1;
 	}
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
 
@@ -1517,7 +1522,7 @@ static ssize_t fr_der_decode_ipv4_prefix(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 	 */
 
 	if (!len || (len > 1 + sizeof(vp->vp_ipv4addr))) {
-		fr_strerror_printf("Invalid ipv4prefix size.  Expected 1..%zu, got %zu",
+		fr_strerror_printf_push("Invalid ipv4prefix size.  Expected 1..%zu, got %zu",
 				   1 + sizeof(vp->vp_ipv4addr), len);
 		return -1;
 	}
@@ -1525,13 +1530,13 @@ static ssize_t fr_der_decode_ipv4_prefix(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 
 	FR_DBUFF_OUT_RETURN(&byte, &our_in);
 	if (byte > 7) {
-		fr_strerror_printf("Invalid ipv4prefix is too large (%02x)", byte);
+		fr_strerror_printf_push("Invalid ipv4prefix is too large (%02x)", byte);
 		return -1;
 	}
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
 
@@ -1567,20 +1572,20 @@ static ssize_t fr_der_decode_ipv6_addr(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_
 	 */
 
 	if (fr_dbuff_remaining(&our_in) != 1 + sizeof(vp->vp_ipv6addr)) {
-		fr_strerror_printf("Invalid ipv6addr size.  Expected %zu, got %zu",
+		fr_strerror_printf_push("Invalid ipv6addr size.  Expected %zu, got %zu",
 				   1 + sizeof(vp->vp_ipv6addr), fr_dbuff_remaining(&our_in));
 		return -1;
 	}
 
 	FR_DBUFF_OUT_RETURN(&byte, &our_in);
 	if (byte != 0) {
-		fr_strerror_printf("Invalid ipv6addr prefix is non-zero (%02x)", byte);
+		fr_strerror_printf_push("Invalid ipv6addr prefix is non-zero (%02x)", byte);
 		return -1;
 	}
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
 
@@ -1616,7 +1621,7 @@ static ssize_t fr_der_decode_ipv6_prefix(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 	 */
 
 	if (!len || (len > 1 + sizeof(vp->vp_ipv6addr))) {
-		fr_strerror_printf("Invalid ipv6prefix size.  Expected 1..%zu, got %zu",
+		fr_strerror_printf_push("Invalid ipv6prefix size.  Expected 1..%zu, got %zu",
 				   1 + sizeof(vp->vp_ipv6addr), len);
 		return -1;
 	}
@@ -1624,13 +1629,13 @@ static ssize_t fr_der_decode_ipv6_prefix(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 
 	FR_DBUFF_OUT_RETURN(&byte, &our_in);
 	if (byte > 7) {
-		fr_strerror_printf("Invalid ipv6prefix is too large (%02x)", byte);
+		fr_strerror_printf_push("Invalid ipv6prefix is too large (%02x)", byte);
 		return -1;
 	}
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
 
@@ -1663,14 +1668,14 @@ static ssize_t fr_der_decode_combo_ip_addr(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	[RFC2460], the octet string MUST contain exactly sixteen octets.
 	 */
 	if ((len != 4) && (len != 16)) {
-		fr_strerror_printf("Invalid combo_ip_addr size.  Expected 4 or 16, got %zu",
+		fr_strerror_printf_push("Invalid combo_ip_addr size.  Expected 4 or 16, got %zu",
 				   len);
 		return -1;
 	}
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
 
@@ -1769,7 +1774,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 
 	if (fr_dbuff_out(&tag_byte, &our_in) < 0) {
 	error:
-		fr_strerror_const("Failed decoding DER header - insufficient data");
+		fr_strerror_const_push("Failed decoding DER header - insufficient data");
 		return -1;
 	}
 
@@ -1792,7 +1797,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		 *	(meaning a multi-byte tag would be needed), that would be a very complex CHOICE type that
 		 *	should probably be simplified.
 		 */
-		fr_strerror_const("Multi-byte tags are not supported");
+		fr_strerror_const_push("Multi-byte tags are not supported");
 		return -1;
 	}
 
@@ -1804,12 +1809,12 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 	switch (tag_class) {
 	case FR_DER_CLASS_UNIVERSAL:
 		if ((*tag == FR_DER_TAG_INVALID) || (*tag >= FR_DER_TAG_VALUE_MAX)) {
-			fr_strerror_printf("Invalid tag %u", *tag);
+			fr_strerror_printf_push("Invalid tag %u", *tag);
 			return -1;
 		}
 
 		if ((expected != FR_DER_TAG_INVALID) && (*tag != expected)) {
-			fr_strerror_printf("Invalid tag %s. Expected tag %s",
+			fr_strerror_printf_push("Invalid tag %s. Expected tag %s",
 					   fr_der_tag_to_str(*tag), fr_der_tag_to_str(expected));
 			return -1;
 		}
@@ -1820,13 +1825,13 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		 *	The data type will need to be resolved using the dictionary and the tag value
 		 */
 		if (!parent) {
-			fr_strerror_const("No parent attribute to resolve tag");
+			fr_strerror_const_push("No parent attribute to resolve tag");
 			return -1;
 		}
 		flags = fr_der_attr_flags(parent);
 
 		if (tag_class != flags->class) {
-			fr_strerror_printf("Invalid DER class %02x for attribute %s. Expected DER class %02x", *tag, parent->name,
+			fr_strerror_printf_push("Invalid DER class %02x for attribute %s. Expected DER class %02x", *tag, parent->name,
 					   tag_class, flags->class);
 			return -1;
 		}
@@ -1838,7 +1843,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 			if (*tag != flags->option) {
 				if (flags->optional) return 0;
 
-				fr_strerror_printf("Invalid option %u for attribute %s. Expected option %u",
+				fr_strerror_printf_push("Invalid option %u for attribute %s. Expected option %u",
 						   *tag, parent->name, flags->option);
 				return -1;
 			}
@@ -1849,7 +1854,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 			if (*tag != flags->der_type) {
 				if (flags->optional) return 0;
 
-				fr_strerror_printf("Invalid tag %s for attribute %s. Expected tag %s",
+				fr_strerror_printf_push("Invalid tag %s for attribute %s. Expected tag %s",
 						   fr_der_tag_to_str(*tag), parent->name, fr_der_tag_to_str(flags->der_type));
 				return -1;
 			}
@@ -1859,7 +1864,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		break;
 
 	default:
-		fr_strerror_printf("Unsupported tag class %02x", tag_class);
+		fr_strerror_printf_push("Unsupported tag class %02x", tag_class);
 		return -1;
 	}
 
@@ -1867,12 +1872,12 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 	fr_assert(func != NULL);
 
 	if (unlikely(func->decode == NULL)) {
-		fr_strerror_printf("No decode function for tag %u", *tag);
+		fr_strerror_printf_push("No decode function for tag %u", *tag);
 		return -1;
 	}
 
 	if (IS_DER_TAG_CONSTRUCTED(func->constructed) != constructed) {
-		fr_strerror_printf("Constructed flag mismatch for tag %u", *tag);
+		fr_strerror_printf_push("Constructed flag mismatch for tag %u", *tag);
 		return -1;
 	}
 
@@ -1891,7 +1896,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		 */
 		if (len_len > 0) {
 			if (unlikely(len_len > sizeof(*len))) {
-				fr_strerror_printf("Length field too large (%" PRIu32 ")", len_len);
+				fr_strerror_printf_push("Length field too large (%" PRIu32 ")", len_len);
 				return -1;
 			}
 
@@ -1900,7 +1905,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 				*len = (*len << 8) | len_byte;
 			}
 		} else if (!constructed) {
-			fr_strerror_const("Primitive data with indefinite form length field is invalid");
+			fr_strerror_const_push("Primitive data with indefinite form length field is invalid");
 			return -1;
 		}
 
@@ -1912,7 +1917,7 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 	 *	Ensure that there is the correct amount of data available to read.
 	 */
 	if (*len && unlikely((fr_dbuff_extend_lowat(NULL, &our_in, *len) < *len))) {
-		fr_strerror_printf("Insufficient data for length field (%zu)", *len);
+		fr_strerror_printf_push("Insufficient data for length field (%zu)", *len);
 		return -1;
 	}
 
@@ -1945,7 +1950,7 @@ static ssize_t fr_der_decode_choice(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	FR_DBUFF_OUT_RETURN(&tag_byte, &our_in);
 
 	if (unlikely(IS_DER_TAG_CONTINUATION(tag_byte))) {
-		fr_strerror_printf("Attribute %s is a choice, but received tag with continuation bit set",
+		fr_strerror_printf_push("Attribute %s is a choice, but received tag with continuation bit set",
 					parent->name);
 		return -1;
 	}
@@ -1954,7 +1959,7 @@ static ssize_t fr_der_decode_choice(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 
 	child = fr_dict_attr_child_by_num(parent, tag);
 	if (unlikely(!child)) {
-		fr_strerror_printf("Attribute %s is a choice, but received unknown option %u",
+		fr_strerror_printf_push("Attribute %s is a choice, but received unknown option %u",
 				   parent->name, tag);
 		return -1;
 	}
@@ -1963,11 +1968,12 @@ static ssize_t fr_der_decode_choice(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
 
 	if (unlikely(fr_der_decode_pair_dbuff(vp, &vp->vp_group, child, &our_in, decode_ctx) < 0)) {
+		fr_strerror_printf_push("Failed decoding %s", vp->da->name);
 		talloc_free(vp);
 		return -1;
 	}
@@ -2040,12 +2046,13 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 	 *	Ideally this should fill the entire outer sequence.
 	 */
 	if (unlikely((slen = fr_der_decode_hdr(parent, &our_in, &tag, &len, FR_DER_TAG_SEQUENCE)) <= 0)) {
-		fr_strerror_const_push("Failed decoding extensions list header");
+		fr_strerror_printf_push("Failed decoding %s sequence header", parent->name);
 		return slen;
 	}
 
 	if (len != fr_dbuff_remaining(&our_in)) {
-		fr_strerror_printf("Inner x509extension sequence does not exactly fill the outer sequence");
+		fr_strerror_printf_push("Inner %s x509extension sequence does not exactly fill the outer sequence",
+					parent->name);
 		return -1;
 	}
 
@@ -2055,7 +2062,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
 	oom:
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
 
@@ -2091,12 +2098,13 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&our_in), fr_dbuff_remaining(&our_in), "inner x509 sequence");
 
 		if (!max) {
-			fr_strerror_printf("Too many extensions - reached the limit of %" PRIu64, max);
+			fr_strerror_printf_push("Too many extensions - reached the limit of %" PRIu64, max);
 			return -1;
 		}
 
 		if (unlikely((slen = fr_der_decode_hdr(parent, &seq_in, &tag, &seq_len, FR_DER_TAG_SEQUENCE)) <= 0)) {
-			fr_strerror_const_push("Failed decoding extension sequence header");
+			fr_strerror_printf_push("Failed decoding %s extension inner sequence header",
+						parent->name);
 		error:
 			talloc_free(vp);
 			return slen;
@@ -2111,7 +2119,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		 *	Start decoding the OID.
 		 */
 		if (unlikely((slen = fr_der_decode_hdr(NULL, &seq_in, &tag, &oid_len, FR_DER_TAG_OID)) <= 0)) {
-			fr_strerror_const_push("Failed decoding oid header");
+			fr_strerror_printf_push("Failed decoding %s OID header", parent->name);
 			goto error;
 		}
 
@@ -2139,7 +2147,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		 *	The next thing is either Critical, or is the extValue.
 		 */
 		if (unlikely(fr_der_decode_hdr(NULL, &seq_in, &tag, &ext_len, FR_DER_TAG_INVALID) <= 0)) {
-			fr_strerror_const_push("Failed decoding value header for extension ");
+			fr_strerror_printf_push("Failed decoding %s extnValue", parent->name);
 			slen = -1;
 			goto error;
 		}
@@ -2160,7 +2168,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 			 * 	If this value is true, we will be storing the pair in the critical list
 			 */
 			if (unlikely(fr_dbuff_out(&is_critical, &seq_in) <= 0)) {
-				fr_strerror_const("Insufficient data for isCritical field");
+				fr_strerror_const_push("Insufficient data for isCritical field");
 				slen = -1;
 				goto error;
 			}
@@ -2178,7 +2186,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 			 *	The next header should be the extnValue
 			 */
 			if (unlikely(fr_der_decode_hdr(NULL, &seq_in, &tag, &ext_len, FR_DER_TAG_OCTETSTRING) <= 0)) {
-				fr_strerror_const_push("Failed decoding value header for extension ");
+				fr_strerror_printf_push("Failed decoding %s extnValue", parent->name);
 				slen = -1;
 				goto error;
 			}
@@ -2187,8 +2195,8 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 			 *	The extnValue is DER tag OCTETSTRING.
 			 */
 			if (unlikely(tag != FR_DER_TAG_OCTETSTRING)) {
-				fr_strerror_printf("Expected tag OCTETSTRING for the extnValue. Got tag %s",
-						   fr_der_tag_to_str(tag));
+				fr_strerror_printf_push("Expected tag OCTETSTRING for the %s extnValue. Got tag %s",
+							parent->name, fr_der_tag_to_str(tag));
 				slen = -1;
 				goto error;
 			}
@@ -2200,7 +2208,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&seq_in), fr_dbuff_remaining(&seq_in),
 				  "extnValue");
 
-		fr_strerror_const("DBUFF issue");
+		fr_strerror_const_push("DBUFF issue");
 
 		/*
 		 *	Decode the OID, which gets us the DA which lets us know how to decode the extnValue.
@@ -2231,12 +2239,13 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 							decode_ctx);
 		}
 		if (unlikely(slen < 0)) {
-			fr_strerror_const_push("Failed decoding extValue in extension");
+			fr_strerror_printf_push("Failed decoding %s extValue", parent->name);
 			goto error;
 		}
 
 		if (fr_dbuff_remaining(&seq_in)) {
-			fr_strerror_const("Failed to decode all of the data in the x509_extensions inner sequence");
+			fr_strerror_printf_push("Failed to decode all of the data in the %s x509_extensions inner sequence",
+						parent->name);
 			return -1;
 		}
 
@@ -2294,8 +2303,8 @@ static ssize_t fr_der_decode_oid_value_pair(TALLOC_CTX *ctx, fr_pair_list_t *out
 	fr_dbuff_marker(&marker, in);
 
 	if (unlikely((slen = fr_der_decode_hdr(parent, &our_in, &tag, &len, FR_DER_TAG_OID)) <= 0)) {
-		fr_strerror_const_push("Failed decoding oid header");
 	error:
+		fr_strerror_printf_push("Failed decoding %s OID header", parent->name);
 		fr_dbuff_marker_release(&marker);
 		return slen;
 	}
@@ -2336,12 +2345,12 @@ static ssize_t fr_der_decode_oid_value_pair(TALLOC_CTX *ctx, fr_pair_list_t *out
 		 */
 		if (unlikely(slen = fr_der_decode_octetstring(uctx.ctx, uctx.parent_list, uctx.parent_da, &our_in,
 							      decode_ctx) < 0)) {
-			fr_strerror_const_push("Failed decoding OID value");
+			fr_strerror_printf_push("Failed decoding %s OID value", parent->name);
 			goto error;
 		}
 	} else if (unlikely(slen = fr_der_decode_pair_dbuff(uctx.ctx, uctx.parent_list, uctx.parent_da, &our_in,
 							    decode_ctx) <= 0)) {
-		fr_strerror_const_push("Failed decoding OID value");
+		fr_strerror_printf_push("Failed decoding %s OID value", parent->name);
 		goto error;
 	}
 
@@ -2379,7 +2388,7 @@ static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (unlikely(!vp)) {
 	oom:
-		fr_strerror_const("Out of memory");
+		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
 
@@ -2396,7 +2405,7 @@ static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 
 		if ((pos = fr_sbuff_adv_past_allowed(&sbuff, SIZE_MAX, allowed_chars, NULL)) < len - 1) {
 		invalid:
-			fr_strerror_printf("Invalid character in a string (%" PRId32 ")", str[pos]);
+			fr_strerror_printf_push("Invalid character in a string (%" PRId32 ")", str[pos]);
 			return -1;
 		}
 
@@ -2473,13 +2482,13 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 
 			if (unlikely(!vp)) {
 			oom:
-				fr_strerror_const("Out of memory");
+				fr_strerror_const_push("Out of memory");
 				return -1;
 			}
 
 			ev = fr_dict_enum_by_name(parent, "DEFAULT", strlen("DEFAULT"));
 			if (unlikely(ev == NULL)) {
-				fr_strerror_printf("No DEFAULT value for attribute %s", parent->name);
+				fr_strerror_printf_push("No DEFAULT value for attribute %s", parent->name);
 			error:
 				talloc_free(vp);
 				return -1;
@@ -2513,7 +2522,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	slen = fr_der_decode_hdr(parent, &our_in, &tag, &len, FR_DER_TAG_INVALID);
 	if ((slen == 0) && flags->optional) return 0;
 	if (slen <= 0) {
-		fr_strerror_const_push("Failed decoding header");
+		fr_strerror_printf_push("Failed decoding %s header", parent->name);
 		return -1;
 	}
 
@@ -2533,7 +2542,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 
 			ev = fr_dict_enum_by_name(parent, "DEFAULT", strlen("DEFAULT"));
 			if (unlikely(ev == NULL)) {
-				fr_strerror_printf("No DEFAULT value for attribute %s", parent->name);
+				fr_strerror_printf_push("No DEFAULT value for attribute %s", parent->name);
 				talloc_free(vp);
 				return -1;
 			}
@@ -2579,7 +2588,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	    !((tag == FR_DER_TAG_OCTETSTRING) && (flags->der_type == FR_DER_TAG_INTEGER)) &&
 	    !((tag == FR_DER_TAG_BOOLEAN) && flags->has_default) &&
 	    !fr_der_tags_compatible(tag, flags->der_type)) {
-		fr_strerror_printf("Failed decoding %s - got tag '%s', expected '%s'", parent->name,
+		fr_strerror_printf_push("Failed decoding %s - got tag '%s', expected '%s'", parent->name,
 				   fr_der_tag_to_str(tag), fr_der_tag_to_str(flags->der_type));
 		return -1;
 	}
@@ -2633,7 +2642,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 			if (!fr_type_is_variable_size(parent->type)) break;
 
 			if (len != parent->flags.length) {
-				fr_strerror_printf("Data length (%zu) is different from expected fixed size (%u)", len, parent->flags.length);
+				fr_strerror_printf_push("Data length (%zu) is different from expected fixed size (%u)", len, parent->flags.length);
 				return -1;
 			}
 
@@ -2641,14 +2650,14 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		}
 
 		if (flags->min && (len < flags->min)) {
-			fr_strerror_printf("Data length (%zu) is smaller than expected minimum size (%u)", len, flags->min);
+			fr_strerror_printf_push("Data length (%zu) is smaller than expected minimum size (%u)", len, flags->min);
 			return -1;
 		}
 
 		fr_assert(flags->max <= DER_MAX_STR); /* 'max' is always set in the attr_valid() function */
 
 		if (unlikely(len > flags->max)) {
-			fr_strerror_printf("Data length (%zu) exceeds max size (%" PRIu64 ")", len, flags->max);
+			fr_strerror_printf_push("Data length (%zu) exceeds max size (%" PRIu64 ")", len, flags->max);
 			return -1;
 		}
 		break;
@@ -2684,7 +2693,7 @@ static ssize_t fr_der_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t
 	fr_dict_attr_t const *parent = fr_dict_root(dict_der);
 
 	if (unlikely(parent == fr_dict_root(dict_der))) {
-		fr_strerror_printf("Invalid dictionary. DER decoding requires a specific dictionary.");
+		fr_strerror_printf_push("Invalid dictionary. DER decoding requires a specific dictionary.");
 		return -1;
 	}
 
@@ -2705,7 +2714,7 @@ static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t 
 			   size_t data_len, void *decode_ctx)
 {
 	if (unlikely(parent == fr_dict_root(dict_der))) {
-		fr_strerror_printf("Invalid dictionary. DER decoding requires a specific dictionary.");
+		fr_strerror_printf_push("Invalid dictionary. DER decoding requires a specific dictionary.");
 		return -1;
 	}
 
