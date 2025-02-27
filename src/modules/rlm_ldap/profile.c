@@ -62,6 +62,7 @@ static unlang_action_t ldap_map_profile_resume(UNUSED rlm_rcode_t *p_result, UNU
 	int			ldap_errno;
 	char			*dn = NULL;
 	int			ret;
+	bool			fallthrough;
 
 	/*
 	 *	Tell the caller what happened
@@ -100,6 +101,10 @@ static unlang_action_t ldap_map_profile_resume(UNUSED rlm_rcode_t *p_result, UNU
 			RDEBUG2("Processing \"%s\"", dn);
 			ldap_memfree(dn);
 		}
+
+		// Set fallthrough to the configured default
+		fallthrough = profile_ctx->inst->profile.fallthrough_def;
+
 		RINDENT();
 		ret = fr_ldap_map_do(request, profile_ctx->inst->profile.check_attr, profile_ctx->inst->valuepair_attr,
 				   profile_ctx->expanded, entry);
@@ -108,8 +113,67 @@ static unlang_action_t ldap_map_profile_resume(UNUSED rlm_rcode_t *p_result, UNU
 		} else {
 			if (profile_ctx->applied) *profile_ctx->applied += ret;
 		}
+
+		if (profile_ctx->inst->profile.fallthrough_attr) {
+			struct berval		**values;
+			int			count;
+			char			*value;
+			xlat_exp_head_t		*cond_expr = NULL;
+			fr_value_box_list_t	res;
+
+			tmpl_rules_t const parse_rules = {
+				.attr = {
+					.dict_def = request->dict,
+					.list_def = request_attr_request,
+					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+				},
+				.xlat = {
+					.runtime_el = unlang_interpret_event_list(request),
+				},
+				.at_runtime = true,
+			};
+
+			values = ldap_get_values_len(handle, entry, profile_ctx->inst->profile.fallthrough_attr);
+			count = ldap_count_values_len(values);
+			if (count == 0) goto free_values;
+			if (count > 1) {
+				RWARN("%s returned more than 1 value.  Only evaluating the first.",
+				      profile_ctx->inst->profile.fallthrough_attr);
+			}
+			value = fr_ldap_berval_to_string(request, values[0]);
+
+			RDEBUG3("Parsing fallthrough condition %s", value);
+			if (xlat_tokenize_expression(request, &cond_expr,
+						     &FR_SBUFF_IN(value, talloc_array_length(value) - 1),
+						     NULL, &parse_rules) < 0) {
+				RPEDEBUG("Failed parsing '%s' value \"%s\"", profile_ctx->inst->profile.fallthrough_attr, value);
+				goto free;
+			}
+
+			if (xlat_impure_func(cond_expr)) {
+				fr_strerror_const("Fallthrough expression cannot depend on functions which call external databases");
+				goto free;
+			}
+
+			RDEBUG2("Checking fallthrough condition %s", value);
+			fr_value_box_list_init(&res);
+			if (unlang_xlat_eval(request, &res, request, cond_expr) < 0) {
+				RPEDEBUG("Failed evaluating condition");
+				goto free;
+			}
+			fallthrough = (fr_value_box_list_head(&res) && fr_value_box_is_truthy(fr_value_box_list_head(&res))) ? true : false;
+			fr_value_box_list_talloc_free(&res);
+			RDEBUG2("Fallthrough condition evaluated to %s", fallthrough ? "true" : "false");
+		free:
+			talloc_free(value);
+			talloc_free(cond_expr);
+		free_values:
+			ldap_value_free_len(values);
+		}
+
 		entry = ldap_next_entry(handle, entry);
 		REXDENT();
+		if (!fallthrough) break;
 	}
 	REXDENT();
 
