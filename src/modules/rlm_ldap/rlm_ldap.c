@@ -1849,7 +1849,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	User-Password here.  LDAP authorization can be used
 	 *	for many things besides searching for users.
 	 */
-	if (fr_ldap_map_expand(autz_ctx, expanded, request, call_env->user_map, inst->valuepair_attr, NULL, NULL) < 0) {
+	if (fr_ldap_map_expand(autz_ctx, expanded, request, call_env->user_map, inst->valuepair_attr,
+			       inst->profile.check_attr, inst->profile.fallthrough_attr) < 0) {
 	fail:
 		talloc_free(autz_ctx);
 		RETURN_MODULE_FAIL;
