@@ -1,12 +1,25 @@
 #
-#  Bare message
+#  Call from accounting, configured as regular topic
 #
-update {
-	&Module-Failure-Message !* ANY
+kafka.accounting
+if (&Module-Failure-Message) {
+	test_fail
 }
 
-"%{kafka: Test message}"
 
+#
+#  Call from authorize, configured with custom published name
+#
+kafka.authorize
+if (&Module-Failure-Message) {
+	test_fail
+}
+
+
+#
+#  Call from post-auth, configured as reference to accounting
+#
+kafka.accounting
 if (&Module-Failure-Message) {
 	test_fail
 }
@@ -19,21 +32,86 @@ update {
 	&Module-Failure-Message !* ANY
 }
 
-"%{kafka:&User-Name Test mmessage}"
+"%{kafka:custom-topic &User-Name Test mmessage}"
 if (&Module-Failure-Message) {
 	test_fail
 }
 
 
 #
-#  Nonsense
+#  Bare message, with no key
 #
 update {
 	&Module-Failure-Message !* ANY
 }
 
-"%{kafka:Test message not beginning with a space}"
-if (!(&Module-Failure-Message[*] == "Must begin with an attribute reference or a space")) {
+"%{kafka:custom-topic  Test message}"
+if (&Module-Failure-Message) {
+	test_fail
+}
+
+
+#
+#  No key and empty message is useless, but still acceptable to Kafka
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:custom-topic  }"
+if (&Module-Failure-Message) {
+	test_fail
+}
+
+
+#
+#  Missing topic
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka: &User-Name Topic is missing here}"
+if (!(&Module-Failure-Message[*] == "Kafka xlat must begin with a topic followed by the payload")) {
+	test_fail
+}
+
+
+#
+#  Lone topic
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:custom-topic}"
+if (!(&Module-Failure-Message[*] == "Kafka xlat must begin with a topic followed by the payload")) {
+	test_fail
+}
+
+
+#
+#  No payload
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:custom-topic }"
+if (!(&Module-Failure-Message[*] == "Kafka xlat must begin with a topic followed by the payload")) {
+	test_fail
+}
+
+
+#
+#  Nonsense payload
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:custom-topic Test message not preceeded by Key-Attr-Ref or two spaces}"
+if (!(&Module-Failure-Message[*] == "Kafka payload must begin with an attribute reference or a space")) {
 	test_fail
 }
 
