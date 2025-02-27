@@ -51,7 +51,7 @@ typedef struct {
 
 typedef ssize_t (*fr_der_decode_oid_t)(uint64_t subidentifier, void *uctx, bool is_last);
 
-static ssize_t fr_der_decode_oid(fr_pair_list_t *out, fr_dbuff_t *in, fr_der_decode_oid_t func, void *uctx) CC_HINT(nonnull(2,3,4));
+static ssize_t fr_der_decode_oid(fr_dbuff_t *in, fr_der_decode_oid_t func, void *uctx) CC_HINT(nonnull);
 
 static ssize_t fr_der_decode_oid_value_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *in,
 					    fr_dict_attr_t const *parent, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
@@ -608,7 +608,6 @@ static ssize_t fr_der_decode_oid_to_da(uint64_t subidentifier, void *uctx, bool 
 
 /** Decode an OID from a DER encoded buffer using a callback
  *
- * @param[in] out		The pair list to add the OID to.
  * @param[in] in		The DER encoded data.
  * @param[in] func		The callback function to call for each subidentifier.
  * @param[in] uctx		User context for the callback function.
@@ -616,7 +615,7 @@ static ssize_t fr_der_decode_oid_to_da(uint64_t subidentifier, void *uctx, bool 
  *	- 0 on success
  *	- < 0 on error
  */
-static ssize_t fr_der_decode_oid(UNUSED fr_pair_list_t *out, fr_dbuff_t *in, fr_der_decode_oid_t func, void *uctx)
+static ssize_t fr_der_decode_oid(fr_dbuff_t *in, fr_der_decode_oid_t func, void *uctx)
 {
 	fr_dbuff_t	our_in  = FR_DBUFF(in);
 	bool		first;
@@ -1715,7 +1714,7 @@ static ssize_t fr_der_decode_oid_wrapper(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 	 *	doing anything with the dbuff, so an extra buffer
 	 *	isn't necessary.
 	 */
-	slen = fr_der_decode_oid(out, in, fr_der_decode_oid_to_str, &uctx);
+	slen = fr_der_decode_oid(in, fr_der_decode_oid_to_str, &uctx);
 	if (unlikely(slen <= 0)) return -1; /* OIDs of zero length are invalid */
 
 	return slen;
@@ -2069,17 +2068,24 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 
 	max = fr_der_flag_max(parent); /* Maximum number of extensions specified in the dictionary */
 
+	/*
+	 *	Each extension is composed of a sequence containing the following objects:
+	 *
+	 *		extnID	    OID - a printable string "1.2.3.4"
+	 *		critical    BOOLEAN OPTIONAL DEFAULT FALSE
+	 *		extnValue   OCTETSTRING - the DER encoding of the referenced ASN.1 extension
+	 */
 	while (fr_dbuff_remaining(&our_in) > 0) {
-		fr_dbuff_t		      sub_in = FR_DBUFF(&our_in);
-		fr_dbuff_marker_t	      sub_marker;
+		fr_dbuff_t		      ext_in = FR_DBUFF(&our_in);
+		fr_dbuff_marker_t	      oid_marker;
 		fr_der_decode_oid_to_da_ctx_t uctx;
 
 		size_t	sub_len, len_peek;
 		uint8_t is_critical = false;
 
-		fr_dbuff_set_end(&sub_in, fr_dbuff_current(&sub_in) + len);
+		fr_dbuff_set_end(&ext_in, fr_dbuff_current(&ext_in) + len);
 
-		if (unlikely((slen = fr_der_decode_hdr(parent, &sub_in, &tag, &sub_len)) <= 0)) {
+		if (unlikely((slen = fr_der_decode_hdr(parent, &ext_in, &tag, &sub_len)) <= 0)) {
 			fr_strerror_const_push("Failed decoding extension sequence header");
 			goto error;
 		}
@@ -2093,7 +2099,10 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 
 		FR_PROTO_TRACE("Attribute %s, tag %u", parent->name, tag);
 
-		if (unlikely((slen = fr_der_decode_hdr(NULL, &sub_in, &tag, &sub_len)) <= 0)) {
+		/*
+		 *	Get the OID
+		 */
+		if (unlikely((slen = fr_der_decode_hdr(NULL, &ext_in, &tag, &sub_len)) <= 0)) {
 			fr_strerror_const_push("Failed decoding oid header");
 			goto error;
 		}
@@ -2113,32 +2122,35 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 
 		fr_assert(uctx.parent_da != NULL);
 
-		fr_dbuff_marker(&sub_marker, &sub_in);
+		fr_dbuff_marker(&oid_marker, &ext_in);
 
-		FR_PROTO_HEX_DUMP(fr_dbuff_current(&sub_in), fr_dbuff_remaining(&sub_in),
+		FR_PROTO_HEX_DUMP(fr_dbuff_current(&ext_in), fr_dbuff_remaining(&ext_in),
 				  "Before moving buffer in extension");
 
-		FR_DBUFF_ADVANCE_RETURN(&sub_in, sub_len);
+		FR_DBUFF_ADVANCE_RETURN(&ext_in, sub_len);
 
-		FR_PROTO_HEX_DUMP(fr_dbuff_current(&sub_in), fr_dbuff_remaining(&sub_in),
+		FR_PROTO_HEX_DUMP(fr_dbuff_current(&ext_in), fr_dbuff_remaining(&ext_in),
 				  "After moving buffer in extension");
 
-		if (unlikely(fr_der_decode_hdr(NULL, &sub_in, &tag, &len_peek) <= 0)) {
+		if (unlikely(fr_der_decode_hdr(NULL, &ext_in, &tag, &len_peek) <= 0)) {
 			fr_strerror_const_push("Failed decoding value header for extension ");
 			slen = -1;
-			fr_dbuff_marker_release(&sub_marker);
+			fr_dbuff_marker_release(&oid_marker);
 			goto error;
 		}
 
+		/*
+		 *	The optional Critical field.
+		 */
 		if (tag == FR_DER_TAG_BOOLEAN) {
 			/*
 			 *	This Extension has the isCritical field.
 			 * 	If this value is true, we will be storing the pair in the critical list
 			 */
-			if (unlikely(fr_dbuff_out(&is_critical, &sub_in) <= 0)) {
+			if (unlikely(fr_dbuff_out(&is_critical, &ext_in) <= 0)) {
 				fr_strerror_const("Insufficient data for isCritical field");
 				slen = -1;
-				fr_dbuff_marker_release(&sub_marker);
+				fr_dbuff_marker_release(&oid_marker);
 				goto error;
 			}
 
@@ -2154,40 +2166,40 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		/*
 		 *	Restore the marker and rewind the buffer
 		 */
-		fr_dbuff_set(&sub_in, &sub_marker);
-		fr_dbuff_marker_release(&sub_marker);
+		fr_dbuff_set(&ext_in, &oid_marker);
+		fr_dbuff_marker_release(&oid_marker);
 
-		fr_dbuff_set_end(&sub_in, fr_dbuff_current(&sub_in) + sub_len);
+		fr_dbuff_set_end(&ext_in, fr_dbuff_current(&ext_in) + sub_len);
 
-		FR_PROTO_HEX_DUMP(fr_dbuff_current(&sub_in), fr_dbuff_remaining(&sub_in),
+		FR_PROTO_HEX_DUMP(fr_dbuff_current(&ext_in), fr_dbuff_remaining(&ext_in),
 				  "Before decoding extension oid");
 
 		/*
 		 *	Decode the OID to get the attribute to use for the extension value
 		 */
-		if (unlikely((slen = fr_der_decode_oid(NULL, &sub_in, fr_der_decode_oid_to_da, &uctx)) <= 0)) {
+		if (unlikely((slen = fr_der_decode_oid(&ext_in, fr_der_decode_oid_to_da, &uctx)) <= 0)) {
 			fr_strerror_const_push("Failed decoding extension");
 			goto error;
 		}
 
-		fr_dbuff_set(&our_in, &sub_in);
+		fr_dbuff_set(&our_in, &ext_in);
 
-		sub_in = FR_DBUFF(&our_in);
+		ext_in = FR_DBUFF(&our_in);
 
-		FR_PROTO_HEX_DUMP(fr_dbuff_current(&sub_in), fr_dbuff_remaining(&sub_in),
+		FR_PROTO_HEX_DUMP(fr_dbuff_current(&ext_in), fr_dbuff_remaining(&ext_in),
 				  "After decoding extension oid");
 
 		if (is_critical) {
 			/*
 			 *	Skip over boolean value
 			 */
-			FR_DBUFF_ADVANCE_RETURN(&sub_in, 3);
+			FR_DBUFF_ADVANCE_RETURN(&ext_in, 3);
 		}
 
-		FR_PROTO_HEX_DUMP(fr_dbuff_current(&sub_in), fr_dbuff_remaining(&sub_in),
+		FR_PROTO_HEX_DUMP(fr_dbuff_current(&ext_in), fr_dbuff_remaining(&ext_in),
 				  "After advancing buffer in extension");
 
-		if (unlikely((slen = fr_der_decode_hdr(NULL, &sub_in, &tag, &sub_len)) <= 0)) {
+		if (unlikely((slen = fr_der_decode_hdr(NULL, &ext_in, &tag, &sub_len)) <= 0)) {
 			fr_strerror_const_push("Failed decoding value header for extension value");
 			goto error;
 		}
@@ -2199,9 +2211,9 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 			goto error;
 		}
 
-		fr_dbuff_set_end(&sub_in, fr_dbuff_current(&sub_in) + sub_len);
+		fr_dbuff_set_end(&ext_in, fr_dbuff_current(&ext_in) + sub_len);
 
-		FR_PROTO_HEX_DUMP(fr_dbuff_current(&sub_in), fr_dbuff_remaining(&sub_in),
+		FR_PROTO_HEX_DUMP(fr_dbuff_current(&ext_in), fr_dbuff_remaining(&ext_in),
 				  "Before decoding extension value");
 
 		if (uctx.parent_da->flags.is_unknown) {
@@ -2209,21 +2221,21 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 			 * 	The extension was not found in the dictionary. We will store the value as raw octets
 			 */
 			if (unlikely((slen = fr_der_decode_octetstring(uctx.ctx, uctx.parent_list, uctx.parent_da,
-								       &sub_in, decode_ctx)) < 0)) {
+								       &ext_in, decode_ctx)) < 0)) {
 				fr_strerror_const_push("Failed decoding extension value");
 				goto error;
 			}
 
-		} else if (unlikely((slen = fr_der_decode_pair_dbuff(uctx.ctx, uctx.parent_list, uctx.parent_da, &sub_in,
+		} else if (unlikely((slen = fr_der_decode_pair_dbuff(uctx.ctx, uctx.parent_list, uctx.parent_da, &ext_in,
 								     decode_ctx)) < 0)) {
 			fr_strerror_const_push("Failed decoding extension value");
 			goto error;
 		}
 
-		FR_PROTO_HEX_DUMP(fr_dbuff_current(&sub_in), fr_dbuff_remaining(&sub_in),
+		FR_PROTO_HEX_DUMP(fr_dbuff_current(&ext_in), fr_dbuff_remaining(&ext_in),
 				  "After decoding extension value");
 
-		fr_dbuff_set(&our_in, &sub_in);
+		fr_dbuff_set(&our_in, &ext_in);
 
 		if ((--max == 0) && (fr_dbuff_remaining(&our_in) > 0)) {
 			fr_strerror_const("Too many extensions");
@@ -2300,7 +2312,7 @@ static ssize_t fr_der_decode_oid_value_pair(TALLOC_CTX *ctx, fr_pair_list_t *out
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_current(&our_in), fr_dbuff_remaining(&our_in), "DER pair value");
 
-	slen = fr_der_decode_oid(out, &our_in, fr_der_decode_oid_to_da, &uctx);
+	slen = fr_der_decode_oid(&our_in, fr_der_decode_oid_to_da, &uctx);
 	if (unlikely(slen <= 0)) goto error;
 
 	/*
