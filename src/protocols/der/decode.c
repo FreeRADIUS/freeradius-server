@@ -1698,10 +1698,33 @@ static ssize_t fr_der_decode_combo_ip_addr(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	return fr_dbuff_set(in, &our_in);
 }
 
+static ssize_t fr_der_decode_oid_wrapper(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+					 fr_dbuff_t *in, UNUSED fr_der_decode_ctx_t *decode_ctx)
+{
+	ssize_t slen;
+	fr_der_decode_oid_to_str_ctx_t uctx = {
+		.ctx	     = ctx,
+		.parent_da   = parent,
+		.parent_list = out,
+		.oid_buff = {},
+		.marker = {},
+	};
+
+	/*
+	 *	We don't use an intermediate dbuff here.  We're not
+	 *	doing anything with the dbuff, so an extra buffer
+	 *	isn't necessary.
+	 */
+	slen = fr_der_decode_oid(out, in, fr_der_decode_oid_to_str, &uctx);
+	if (unlikely(slen <= 0)) return -1; /* OIDs of zero length are invalid */
+
+	return slen;
+}
 
 static const fr_der_tag_decode_t tag_funcs[FR_DER_TAG_VALUE_MAX] = {
 	[FR_DER_TAG_BOOLEAN]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_boolean },
 	[FR_DER_TAG_INTEGER]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_integer },
+	[FR_DER_TAG_OID]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_oid_wrapper },
 	[FR_DER_TAG_BITSTRING]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_bitstring },
 	[FR_DER_TAG_OCTETSTRING]      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_octetstring },
 	[FR_DER_TAG_NULL]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_null },
@@ -1839,19 +1862,14 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 	func = &tag_funcs[*tag];
 	fr_assert(func != NULL);
 
-	/*
-	 *	Check if the tag is an OID. OID tags will be handled differently
-	 */
-	if (*tag != FR_DER_TAG_OID) {
-		if (unlikely(func->decode == NULL)) {
-			fr_strerror_printf("No decode function for tag %u", *tag);
-			return -1;
-		}
+	if (unlikely(func->decode == NULL)) {
+		fr_strerror_printf("No decode function for tag %u", *tag);
+		return -1;
+	}
 
-		if (IS_DER_TAG_CONSTRUCTED(func->constructed) != constructed) {
-			fr_strerror_printf("Constructed flag mismatch for tag %u", *tag);
-			return -1;
-		}
+	if (IS_DER_TAG_CONSTRUCTED(func->constructed) != constructed) {
+		fr_strerror_printf("Constructed flag mismatch for tag %u", *tag);
+		return -1;
 	}
 
 	FR_DBUFF_OUT_RETURN(&len_byte, &our_in);
@@ -2618,33 +2636,19 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		break;
 	}
 
-	if (tag != FR_DER_TAG_OID) {
-		fr_assert(func->decode != NULL);
+	/*
+	 *	Limit the length of the data to be decoded.
+	 */
+	fr_dbuff_set_end(&our_in, fr_dbuff_current(&our_in) + len);
 
-		/*
-		 *	The decode function can return 0 if len==0.  This is true for 'null' data types, and
-		 *	for variable-sized types such as strings.
-		 */
-		fr_dbuff_set_end(&our_in, fr_dbuff_current(&our_in) + len);
-		slen = func->decode(ctx, out, parent, &our_in, decode_ctx);
-		if (unlikely(slen < 0)) return slen;
+	fr_assert(func->decode != NULL);
 
-	} else {
-		fr_der_decode_oid_to_str_ctx_t uctx = {
-			.ctx	     = ctx,
-			.parent_da   = parent,
-			.parent_list = out,
-			.oid_buff = {},
-			.marker = {},
-		};
-
-		fr_assert(uctx.parent_da != NULL);
-
-		fr_dbuff_set_end(&our_in, fr_dbuff_current(&our_in) + len);
-
-		slen = fr_der_decode_oid(out, &our_in, fr_der_decode_oid_to_str, &uctx);
-		if (unlikely(slen <= 0)) return slen;
-	}
+	/*
+	 *	The decode function can return 0 if len==0.  This is true for 'null' data types, and
+	 *	for variable-sized types such as strings.
+	 */
+	slen = func->decode(ctx, out, parent, &our_in, decode_ctx);
+	if (unlikely(slen < 0)) return slen;
 
 	/*
 	 *	There may be extra data, in which case we ignore it.
