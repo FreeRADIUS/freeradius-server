@@ -71,6 +71,18 @@ if (reply.Reply-Message != 'Guten Tag') {
 
 reply := {}
 
+# Test fallthrough processing.
+if (!%ldap.profile('cn=nested2,ou=profiles,dc=example,dc=com')) {
+	test_fail
+}
+
+# fallthrough condition should mean only the second profile will be applied
+if (reply.Reply-Message != 'Good Day') {
+	test_fail
+}
+
+reply := {}
+
 # Re-run the above with a different user name - the profile with "Guten Tag"
 # as the reply message has a condition of User-Name == bob
 &User-Name := 'john'
@@ -79,6 +91,17 @@ if (!%ldap.profile('cn=nested,ou=profiles,dc=example,dc=com')) {
 }
 
 if (reply.Reply-Message != 'Good Day') {
+	test_fail
+}
+
+reply := {}
+
+if (!%ldap.profile('cn=nested2,ou=profiles,dc=example,dc=com')) {
+	test_fail
+}
+
+# fallthrough condition should mean only the first profile is applied
+if (reply.Reply-Message != 'Guten Tag') {
 	test_fail
 }
 
