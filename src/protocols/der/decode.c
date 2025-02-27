@@ -2208,13 +2208,10 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(&seq_in), fr_dbuff_remaining(&seq_in),
 				  "extnValue");
 
-		fr_strerror_const_push("DBUFF issue");
-
 		/*
 		 *	Decode the OID, which gets us the DA which lets us know how to decode the extnValue.
 		 */
 		if (unlikely((slen = fr_der_decode_oid(&oid_in, fr_der_decode_oid_to_da, &uctx)) <= 0)) {
-			fprintf(stderr, "FUCK %s\n", fr_strerror());
 			fr_strerror_const_push("Failed decoding OID in extension");
 			goto error;
 		}
@@ -2230,8 +2227,6 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		 * 	The extension was not found in the dictionary. We will store the value as raw octets.
 		 */
 		if (uctx.parent_da->flags.is_unknown) {
-			FR_PROTO_TRACE("RAW %s ------------------------------------------------------------", uctx.parent_da->name);
-
 			slen = fr_der_decode_octetstring(uctx.ctx, uctx.parent_list, uctx.parent_da,
 							 &seq_in, decode_ctx);
 		} else {
