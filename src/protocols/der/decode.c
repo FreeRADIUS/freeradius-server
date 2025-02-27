@@ -1699,7 +1699,7 @@ static ssize_t fr_der_decode_combo_ip_addr(TALLOC_CTX *ctx, fr_pair_list_t *out,
 }
 
 
-static const fr_der_tag_decode_t tag_funcs[FR_DER_TAG_MAX] = {
+static const fr_der_tag_decode_t tag_funcs[FR_DER_TAG_VALUE_MAX] = {
 	[FR_DER_TAG_BOOLEAN]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_boolean },
 	[FR_DER_TAG_INTEGER]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_integer },
 	[FR_DER_TAG_BITSTRING]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_bitstring },
@@ -1780,11 +1780,18 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 	/*
 	 *	Check if the tag is not universal
 	 */
-	if (tag_class != FR_DER_CLASS_UNIVERSAL) {
+	switch (tag_class) {
+	case FR_DER_CLASS_UNIVERSAL:
+		if ((*tag == FR_DER_TAG_INVALID) || (*tag >= FR_DER_TAG_VALUE_MAX)) {
+			fr_strerror_printf("Invalid tag %u", *tag);
+			return -1;
+		}
+		break;
+
+	case FR_DER_CLASS_CONTEXT:
 		/*
 		 *	The data type will need to be resolved using the dictionary and the tag value
 		 */
-
 		if (!parent) {
 			fr_strerror_const("No parent attribute to resolve tag");
 			return -1;
@@ -1800,19 +1807,32 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		/*
 		 *	Doesn't match, check if it's optional.
 		 */
-		if (*tag != flags->option) {
-			if (flags->optional) return 0;
+		if (flags->is_option) {
+			if (*tag != flags->option) {
+				if (flags->optional) return 0;
 
-			fr_strerror_printf("Invalid tag %u for attribute %s. Expected %u", *tag, parent->name,
-					   fr_der_flag_option(parent));
-			return -1;
+				fr_strerror_printf("Invalid option %u for attribute %s. Expected option %u",
+						   *tag, parent->name, flags->option);
+				return -1;
+			}
+
+			*tag = flags->der_type;
+
+		} else {
+			if (*tag != flags->der_type) {
+				if (flags->optional) return 0;
+
+				fr_strerror_printf("Invalid tag %s for attribute %s. Expected tag %s",
+						   fr_der_tag_to_str(*tag), parent->name, fr_der_tag_to_str(flags->der_type));
+				return -1;
+			}
 		}
+		fr_assert(flags->der_type != FR_DER_TAG_INVALID);
+		fr_assert(flags->der_type < NUM_ELEMENTS(tag_funcs));
+		break;
 
-		*tag = flags->der_type;
-	}
-
-	if ((*tag >= NUM_ELEMENTS(tag_funcs)) || (*tag == FR_DER_TAG_INVALID)) {
-		fr_strerror_printf("Unknown tag %u", *tag);
+	default:
+		fr_strerror_printf("Unsupported tag class %02x", tag_class);
 		return -1;
 	}
 
@@ -1857,20 +1877,19 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 				FR_DBUFF_OUT_RETURN(&len_byte, &our_in);
 				*len = (*len << 8) | len_byte;
 			}
-		}
-
-		else if (!constructed) {
+		} else if (!constructed) {
 			fr_strerror_const("Primitive data with indefinite form length field is invalid");
 			return -1;
 		}
+
 	} else {
 		*len = len_byte;
 	}
 
 	/*
-	 *	Check if the length is valid for our buffer
+	 *	Ensure that there is the correct amount of data available to read.
 	 */
-	if (unlikely(fr_dbuff_extend_lowat(NULL, &our_in, *len) < *len)) {
+	if (*len && unlikely((fr_dbuff_extend_lowat(NULL, &our_in, *len) < *len))) {
 		fr_strerror_printf("Insufficient data for length field (%zu)", *len);
 		return -1;
 	}

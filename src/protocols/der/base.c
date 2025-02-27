@@ -526,6 +526,7 @@ check:
 
 	flags->class = FR_DER_CLASS_CONTEXT;
 	flags->option = num;
+	flags->is_option = true;
 
 	return 0;
 }
@@ -695,6 +696,7 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 
 		flags->class = FR_DER_CLASS_CONTEXT;
 		flags->option = 3;
+		flags->is_option = true;
 
 		flags->is_sequence_of = true;
 		flags->sequence_of = FR_DER_TAG_SEQUENCE;
@@ -861,13 +863,8 @@ static bool attr_valid(fr_dict_attr_t *da)
 #endif
 
 			/*
-			 *	When sequence_of=choice, it MUST also have a ref.  But we can't check that
-			 *	right now, as the ref isn't added until later.
-			 *
 			 *	A group of choices is really a sequence of sequences.  i.e. x509extensions
 			 *	contain only a sequence, as does sequence_of=oid_and_value.
-			 *
-			 *	@todo - fix that.
 			 */
 			flags->restrictions = (1 << FR_DER_TAG_SEQUENCE);
 
@@ -886,10 +883,11 @@ static bool attr_valid(fr_dict_attr_t *da)
 	if (parent->is_choice) {
 		if (!flags->option) {
 			fr_assert(da->attr < FR_DER_TAG_VALUE_MAX);
-			flags->option = da->attr;
-		}
 
-		flags->class = FR_DER_CLASS_CONTEXT;
+			flags->class = FR_DER_CLASS_CONTEXT;
+			flags->option = da->attr;
+			flags->is_option = true;
+		}
 
 		if ((parent->restrictions & (1 << flags->option)) != 0) {
 			fr_strerror_printf("Parent %s already has a child with option %u - duplicates are not allowed",
@@ -903,6 +901,7 @@ static bool attr_valid(fr_dict_attr_t *da)
 		fr_assert(flags->der_type < FR_DER_TAG_VALUE_MAX);
 
 		flags->class = FR_DER_CLASS_CONTEXT;
+//		flags->option = flags->der_type;
 
 		if ((parent->restrictions & (1 << flags->der_type)) != 0) {
 			fr_strerror_printf("Parent %s already has a child with tag %s - duplicates are not allowed",
@@ -919,6 +918,11 @@ static bool attr_valid(fr_dict_attr_t *da)
 					   fr_der_tag_to_str(flags->der_type));
 			return false;
 		}
+
+		/*
+		 *	A sequence can sometimes have mixed tags && options.
+		 */
+		fr_assert(!flags->is_option);
 
 	} else if (parent->is_set_of) {
 		if (flags->der_type != parent->set_of) {

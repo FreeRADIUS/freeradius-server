@@ -1918,7 +1918,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	 *	tag, but we might need to encode an option value
 	 *	instead of a tag.
 	 */
-	if (flags->option | tag_class) tag = flags->option;
+	if (flags->is_option) tag = flags->option;
 
 	fr_dbuff_marker(&encoding_start, &our_dbuff);
 

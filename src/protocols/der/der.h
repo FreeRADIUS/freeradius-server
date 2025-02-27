@@ -103,6 +103,7 @@ typedef struct {
 	uint32_t		restrictions;		//!< for choice of options and tags - no dups allowed
 	uint8_t			min;			//!< mininum count
 	uint8_t 		option;			//!< an "attribute number" encoded in the tag field.
+	bool			is_option : 1;		//!< has an option defined
 	bool			optional : 1;		//!< optional, we MUST already have set 'option'
 	bool			is_sequence_of : 1;	//!< sequence_of has been defined
 	bool 			is_set_of : 1;		//!< set_of has been defined
