@@ -19,11 +19,13 @@ on:
       - 'man/**'
       - 'raddb/**'
       - 'share/**'
+  schedule:
+    - cron: '1 20 * * *'
 
 jobs:
   build-docs:
     runs-on: ubuntu-latest
-
+    if: github.repository_owner == 'FreeRADIUS' || github.event_name != 'schedule'
     strategy:
       fail-fast: true
 
@@ -75,7 +77,7 @@ jobs:
 
   # Actual deployment to GitHub Pages is only on pushes to the head of the master branch
   deploy-doxygen-docs:
-    if: ( github.repository_owner == 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' ) && ( github.event_name == 'push' )
+    if: ( github.repository_owner == 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' ) && (( github.event_name == 'push' ) || ( github.event_name == 'schedule' ))
 
     needs:
       - build-docs
@@ -122,7 +124,7 @@ jobs:
       uses: actions/deploy-pages@v4
 
   deploy-antora-docs:
-    if: ( github.repository_owner == 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' ) && ( github.event_name == 'push' )
+    if: ( github.repository_owner == 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' ) && (( github.event_name == 'push' ) || ( github.event_name == 'schedule' ))
 
     needs:
       - build-docs
