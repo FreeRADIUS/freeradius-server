@@ -63,7 +63,7 @@ typedef struct {
 } fr_der_tag_encode_t;
 
 
-static ssize_t fr_der_encode_oid_value_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull);
+static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull);
 
 /*
  *	We have per-type function names to make it clear that different types have different encoders.
@@ -755,8 +755,8 @@ static ssize_t fr_der_encode_sequence(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, f
 		/*
 		 *	Groups could be also be a pair, so we need to check for that.
 		 */
-		if (fr_der_flag_is_pair(vp->da)) {
-			slen = fr_der_encode_oid_value_pair(&our_dbuff, cursor, encode_ctx);
+		if (fr_der_flag_is_oid_and_value(vp->da)) {
+			slen = fr_der_encode_oid_and_value(&our_dbuff, cursor, encode_ctx);
 			if (slen < 0) {
 				fr_strerror_printf("Failed to encode OID value pair: %s", fr_strerror());
 				return -1;
@@ -1482,7 +1482,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 	return fr_dbuff_set(dbuff, &our_dbuff);
 }
 
-static ssize_t fr_der_encode_oid_value_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx)
+static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx)
 {
 	fr_dbuff_t	  our_dbuff = FR_DBUFF(dbuff);
 	fr_sbuff_t	  oid_sbuff;

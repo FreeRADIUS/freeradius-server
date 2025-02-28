@@ -53,9 +53,6 @@ typedef ssize_t (*fr_der_decode_oid_t)(uint64_t subidentifier, void *uctx, bool 
 
 static ssize_t fr_der_decode_oid(fr_dbuff_t *in, fr_der_decode_oid_t func, void *uctx) CC_HINT(nonnull);
 
-static ssize_t fr_der_decode_oid_value_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *in,
-					    fr_dict_attr_t const *parent, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
 static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, uint8_t *tag, size_t *len,
 				 fr_der_tag_t expected) CC_HINT(nonnull(2,3,4));
 
@@ -775,19 +772,6 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 		return -1;
 	}
 
-	if (unlikely(flags->is_pair)) {
-		fr_assert(fr_type_is_group(parent->type));
-
-		if (unlikely(fr_der_decode_oid_value_pair(vp, &vp->vp_group, &our_in, vp->da, decode_ctx) <= 0)) {
-			talloc_free(vp);
-			return -1;
-		}
-
-		fr_pair_append(out, vp);
-
-		return fr_dbuff_set(in, &our_in);
-	}
-
 	/*
 	 * 	This is a sequence-of, meaning there are restrictions on the types which can be present
 	 */
@@ -965,19 +949,6 @@ static ssize_t fr_der_decode_set(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	if (unlikely(!vp)) {
 		fr_strerror_const_push("Out of memory");
 		return -1;
-	}
-
-	if (flags->is_pair) {
-		fr_assert(fr_type_is_group(parent->type));
-
-		if (unlikely(fr_der_decode_oid_value_pair(vp, &vp->vp_group, &our_in, vp->da, decode_ctx) <= 0)) {
-			talloc_free(vp);
-			return -1;
-		}
-
-		fr_pair_append(out, vp);
-
-		return fr_dbuff_set(in, &our_in);
 	}
 
 	if (flags->is_set_of) {
@@ -1718,6 +1689,95 @@ static ssize_t fr_der_decode_oid_wrapper(TALLOC_CTX *ctx, fr_pair_list_t *out, f
 	return slen;
 }
 
+/** Decode an OID value pair
+ *
+ * @param[in] ctx		Talloc context
+ * @param[out] out		Output list
+ * @param[in] parent		Parent attribute
+ * @param[in] in		Input buffer
+ * @param[in] decode_ctx	Decode context
+ *
+ * @return		0 on success, -1 on failure
+ */
+static ssize_t fr_der_decode_oid_and_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+					   fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx)
+{
+	fr_dbuff_t		      our_in = FR_DBUFF(in);
+	fr_dbuff_t		      oid_in;
+	fr_der_decode_oid_to_da_ctx_t uctx;
+	fr_pair_t		      *vp;
+
+	uint8_t	 tag;
+	size_t	 oid_len;
+	ssize_t	 slen;
+
+	FR_PROTO_TRACE("Decoding OID value pair");
+
+	fr_assert(fr_type_is_group(parent->type));
+
+	/*
+	 *	A very common pattern in DER encoding is to have a sequence of set containing two things: an OID and a
+	 *	value, where the OID is used to determine how to decode the value.
+	 *	We will be decoding the OID first and then try to find the attribute associated with that OID to then
+	 *	decode the value. If no attribute is found, one will be created and the value will be stored as raw
+	 *	octets in the attribute.
+	 */
+
+	if (unlikely((slen = fr_der_decode_hdr(parent, &our_in, &tag, &oid_len, FR_DER_TAG_OID)) <= 0)) {
+	error:
+		fr_strerror_printf_push("Failed decoding %s OID header", parent->name);
+		return slen;
+	}
+
+	FR_PROTO_TRACE("Attribute %s, tag %u", parent->name, tag);
+
+	vp = fr_pair_afrom_da(ctx, parent);
+	if (unlikely(vp == NULL)) {
+		fr_strerror_const_push("Out of memory");
+		return -1;
+	}
+
+	uctx.ctx	 = vp;
+	uctx.parent_da	 = fr_dict_attr_ref(parent);
+	uctx.parent_list = &vp->vp_group;
+
+	fr_assert(uctx.parent_da != NULL);
+
+	/*
+	 *	Limit the OID decoding to the length as given by the OID header.
+	 */
+	oid_in = FR_DBUFF(&our_in);
+	fr_dbuff_set_end(&oid_in, fr_dbuff_current(&oid_in) + oid_len);
+
+	slen = fr_der_decode_oid(&oid_in, fr_der_decode_oid_to_da, &uctx);
+	if (unlikely(slen <= 0)) goto error;
+
+	/*
+	 *	Skip the OID data.
+	 */
+	FR_DBUFF_ADVANCE_RETURN(&our_in, oid_len);
+
+	if (unlikely(uctx.parent_da->flags.is_unknown)) {
+		/*
+		 *	This pair is not in the dictionary.
+		 *	We will store the value as raw octets.
+		 */
+		if (unlikely((slen = fr_der_decode_octetstring(uctx.ctx, uctx.parent_list, uctx.parent_da, &our_in,
+							       decode_ctx)) < 0)) {
+			fr_strerror_printf_push("Failed decoding %s OID value", parent->name);
+			return -1;
+		}
+	} else if (unlikely((slen = fr_der_decode_pair_dbuff(uctx.ctx, uctx.parent_list, uctx.parent_da, &our_in,
+							    decode_ctx)) < 0)) {
+		fr_strerror_printf_push("Failed decoding %s OID value", parent->name);
+		return -1;
+	}
+
+	fr_pair_append(out, vp);
+
+	return fr_dbuff_set(in, &our_in);
+}
+
 static const fr_der_tag_decode_t tag_funcs[FR_DER_TAG_VALUE_MAX] = {
 	[FR_DER_TAG_BOOLEAN]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_boolean },
 	[FR_DER_TAG_INTEGER]	      = { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_integer },
@@ -1749,6 +1809,10 @@ static const fr_der_tag_decode_t type_funcs[FR_TYPE_MAX] = {
 	[FR_TYPE_IPV6_PREFIX]	= { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_ipv6_prefix },
 
 	[FR_TYPE_COMBO_IP_ADDR]	= { .constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_combo_ip_addr },
+};
+
+static const fr_der_tag_decode_t oid_and_value_func = {
+	.constructed = FR_DER_TAG_PRIMITIVE, .decode = fr_der_decode_oid_and_value,
 };
 
 /** Decode the tag and length fields of a DER encoded structure
@@ -2262,100 +2326,6 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 	return fr_dbuff_set(in, fr_dbuff_end(&our_in));
 }
 
-/** Decode an OID value pair
- *
- * @param[in] ctx		Talloc context
- * @param[out] out		Output list
- * @param[in] in		Input buffer
- * @param[in] parent		Parent attribute
- * @param[in] decode_ctx	Decode context
- *
- * @return		0 on success, -1 on failure
- */
-static ssize_t fr_der_decode_oid_value_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *in,
-					    fr_dict_attr_t const *parent, fr_der_decode_ctx_t *decode_ctx)
-{
-	fr_dbuff_t		      our_in = FR_DBUFF(in);
-	fr_dbuff_marker_t	      marker;
-	fr_der_decode_oid_to_da_ctx_t uctx;
-
-	uint8_t tag;
-	size_t	 len;
-	ssize_t	 slen;
-
-	FR_PROTO_TRACE("Decoding OID value pair");
-
-	fr_assert(fr_type_is_group(parent->type));
-
-	/*
-	 *	A very common pattern in DER encoding is to have a sequence of set containing two things: an OID and a
-	 *	value, where the OID is used to determine how to decode the value.
-	 *	We will be decoding the OID first and then try to find the attribute associated with that OID to then
-	 *	decode the value. If no attribute is found, one will be created and the value will be stored as raw
-	 *	octets in the attribute.
-	 */
-
-	fr_dbuff_marker(&marker, in);
-
-	if (unlikely((slen = fr_der_decode_hdr(parent, &our_in, &tag, &len, FR_DER_TAG_OID)) <= 0)) {
-	error:
-		fr_strerror_printf_push("Failed decoding %s OID header", parent->name);
-		fr_dbuff_marker_release(&marker);
-		return slen;
-	}
-
-	FR_PROTO_TRACE("Attribute %s, tag %u", parent->name, tag);
-
-	uctx.ctx	 = ctx;
-	uctx.parent_da	 = fr_dict_attr_ref(parent);
-	uctx.parent_list = out;
-
-	fr_assert(uctx.parent_da != NULL);
-
-	fr_dbuff_set_end(&our_in, fr_dbuff_current(&our_in) + len);
-
-	FR_PROTO_HEX_DUMP(fr_dbuff_current(&our_in), fr_dbuff_remaining(&our_in), "DER pair value");
-
-	slen = fr_der_decode_oid(&our_in, fr_der_decode_oid_to_da, &uctx);
-	if (unlikely(slen <= 0)) goto error;
-
-	/*
-	 *	We have the attribute associated with the OID
-	 *	We will now decode the value.
-	 *
-	 *	We will advance the buffer to the end of the OID, and then reuse the our_in buffer to decode the value.
-	 *  	This looks strange in the code, but it is necessary to reset the end restrictions on the our_in buffer
-	 * 	which were set to avoid overreading the buffer when decoding the OID.
-	 */
-	fr_dbuff_set(in, &our_in);
-
-	our_in = FR_DBUFF(in);
-
-	FR_PROTO_HEX_DUMP(fr_dbuff_current(&our_in), fr_dbuff_remaining(&our_in), "DER pair value");
-
-	if (unlikely(uctx.parent_da->flags.is_unknown)) {
-		/*
-		 *	This pair is not in the dictionary
-		 *	We will store the value as raw octets
-		 */
-		if (unlikely(slen = fr_der_decode_octetstring(uctx.ctx, uctx.parent_list, uctx.parent_da, &our_in,
-							      decode_ctx) < 0)) {
-			fr_strerror_printf_push("Failed decoding %s OID value", parent->name);
-			goto error;
-		}
-	} else if (unlikely(slen = fr_der_decode_pair_dbuff(uctx.ctx, uctx.parent_list, uctx.parent_da, &our_in,
-							    decode_ctx) <= 0)) {
-		fr_strerror_printf_push("Failed decoding %s OID value", parent->name);
-		goto error;
-	}
-
-	fr_dbuff_set(in, &our_in);
-
-	FR_PROTO_HEX_DUMP(fr_dbuff_current(&our_in), fr_dbuff_remaining(&our_in), "DER pair value");
-
-	return fr_dbuff_marker_release_behind(&marker);
-}
-
 static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent, fr_dbuff_t *in,
 				    bool const allowed_chars[], UNUSED fr_der_decode_ctx_t *decode_ctx)
 {
@@ -2615,6 +2585,12 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		 *	min/max is the number of elements, NOT the number of bytes.  The set / sequence
 		 *	decoder has to validate its input.
 		 */
+
+		/*
+		 *	If the sequence or set is an OID Value pair, then we decode it with the special OID
+		 *	Value decoder.
+		 */
+		if (flags->is_oid_and_value) func = &oid_and_value_func;
 		break;
 
 		/*

@@ -294,7 +294,7 @@ static int dict_flag_sequence_of(fr_dict_attr_t **da_p, char const *value, UNUSE
 	}
 
 	if (strcmp(value, "oid_and_value") == 0) {
-		flags->is_pair = true;
+		flags->is_oid_and_value = true;
 		flags->is_sequence_of = true;
 		flags->sequence_of = FR_DER_TAG_SEQUENCE;
 		return fr_dict_attr_set_group(da_p);
@@ -328,7 +328,7 @@ static int dict_flag_set_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 	}
 
 	if (strcmp(value, "oid_and_value") == 0) {
-		flags->is_pair = true;
+		flags->is_oid_and_value = true;
 		flags->is_sequence_of = true;
 		flags->sequence_of = FR_DER_TAG_SEQUENCE;
 		return fr_dict_attr_set_group(da_p);
@@ -756,7 +756,7 @@ static bool attr_valid(fr_dict_attr_t *da)
 	 *	@todo - have a function called from dict_attr_finalize() ?
 	 */
 #if 0
-	if (flags->is_pair) {
+	if (flags->is_oid_and_value) {
 		fr_dict_attr_t const *ref;
 
 		fr_assert(da->type == FR_TYPE_GROUP);
