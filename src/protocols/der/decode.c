@@ -2412,43 +2412,52 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	 */
 
 	/*
-	 *	If there are no more bytes to read, it is possible that the value was not encoded since
-	 *	it may be using the DEFAULT value. Here we try extending the buffer to see if we can read
-	 *	the next header.
+	 *	Ensure that we have at least 2 bytes for the header.
 	 */
-	if ((fr_dbuff_extend_lowat(NULL, &our_in, 2) < 2)) {
-		if (flags->has_default) {
-			fr_pair_t	     *vp = fr_pair_afrom_da(ctx, parent);
-			fr_dict_enum_value_t *ev;
+	slen = fr_dbuff_extend_lowat(NULL, &our_in, 2);
+	if (unlikely(slen < 0)) {
+		fr_strerror_const("Failed trying to read more data");
+		return -1;
+	}
 
-			if (unlikely(!vp)) {
-			oom:
-				fr_strerror_const_push("Out of memory");
-				return -1;
-			}
+	/*
+	 *	One byte is not enough.
+	 */
+	if (unlikely(slen == 1)) {
+		fr_strerror_printf_push("Truncated header while trying to decode %s", parent->name);
+		return -1;
+	}
 
-			ev = fr_dict_enum_by_name(parent, "DEFAULT", strlen("DEFAULT"));
-			if (unlikely(ev == NULL)) {
-				fr_strerror_printf_push("No DEFAULT value for attribute %s", parent->name);
-			error:
-				talloc_free(vp);
-				return -1;
-			}
+	/*
+	 *	No header, we may need to create a default value.
+	 */
+	if (unlikely(slen == 0)) {
+		fr_pair_t	     *vp;
+		fr_dict_enum_value_t *ev;
 
-			if (fr_value_box_copy(vp, &vp->data, ev->value) < 0) goto error;
+		if (likely(!flags->has_default)) return 0;
 
-			vp->data.enumv = vp->da;
-
-			fr_pair_append(out, vp);
-
-			return 0;
+	create_default:
+		vp = fr_pair_afrom_da(ctx, parent);
+		if (unlikely(!vp)) {
+			fr_strerror_const_push("Out of memory");
+			return -1;
 		}
 
-		/*
-		 *	This may look like a "quiet fail", but this is needed when looping over a sequence
-		 *	and the last attribute has a default value. This will allow the loop to continue
-		 *	without failing.
-		 */
+		ev = fr_dict_enum_by_name(parent, "DEFAULT", strlen("DEFAULT"));
+		if (unlikely(ev == NULL)) {
+			fr_strerror_printf_push("No DEFAULT value for attribute %s", parent->name);
+		error:
+			talloc_free(vp);
+			return -1;
+		}
+
+		if (fr_value_box_copy(vp, &vp->data, ev->value) < 0) goto error;
+
+		vp->data.enumv = vp->da;
+
+		fr_pair_append(out, vp);
+
 		return 0;
 	}
 
@@ -2469,75 +2478,77 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 
 	FR_PROTO_TRACE("Attribute %s, tag %u", parent->name, tag);
 
-	if (unlikely(tag != FR_DER_TAG_NULL) && (!fr_type_to_der_tag_valid(parent->type, tag) || fr_dbuff_remaining(&our_in) == 0)) {
-		if (flags->has_default) {
-			/*
-			 *	If the attribute has a default value, we will use that.
-			 *	We could end up here if we are decoding a sequence which has a default value
-			 *	for an attribute that is not the last attribute in the sequence.
-			 */
-			fr_pair_t	     *vp = fr_pair_afrom_da(ctx, parent);
-			fr_dict_enum_value_t *ev;
-
-			if (unlikely(!vp)) goto oom;
-
-			ev = fr_dict_enum_by_name(parent, "DEFAULT", strlen("DEFAULT"));
-			if (unlikely(ev == NULL)) {
-				fr_strerror_printf_push("No DEFAULT value for attribute %s", parent->name);
-				talloc_free(vp);
-				return -1;
-			}
-
-			if (fr_value_box_copy(vp, &vp->data, ev->value) < 0) {
-				talloc_free(vp);
-				goto oom;
-			}
-
-			vp->data.enumv = vp->da;
-
-			fr_pair_append(out, vp);
-
-			/*
-			 *	Tell the caller that we didn't consume any bytes, but instead have set a
-			 *	default value.  The caller will then try to decode the data via the next
-			 *	child.
-			 */
-			return 0;
-		}
-
-		/*
-		 *	We will store the value as raw octets if indicated by the dictionary
-		 *
-		 *	This is for large 'integer' types, such as serialNumber.
-		 */
-		if (fr_type_is_octets(parent->type)) {
-			tag = FR_DER_TAG_OCTETSTRING;
-		}
-	}
-
-	/*
-	 *	If the tag is not what we expect, then we do a bit more sanity checking.
-	 *
-	 *	* a missing field is encoded as boolean (???), and is OK if there's a default value
-	 *	* otherwise the tags have to be compatible
-	 *	  * UTC time and generalized time are equivalent
-	 *	  * the various string types are all equivalent.
-	 *	  * @todo - perhaps instead, check if the underlying FreeRADIUS types are compatible?
-	 */
-	if ((tag != flags->der_type) &&
-	    !parent->flags.is_unknown &&
-	    !((tag == FR_DER_TAG_OCTETSTRING) && (flags->der_type == FR_DER_TAG_INTEGER)) &&
-	    !((tag == FR_DER_TAG_BOOLEAN) && flags->has_default) &&
-	    !fr_der_tags_compatible(tag, flags->der_type)) {
-		fr_strerror_printf_push("Failed decoding %s - got tag '%s', expected '%s'", parent->name,
-				   fr_der_tag_to_str(tag), fr_der_tag_to_str(flags->der_type));
-		return -1;
-	}
-
 	/*
 	 *	Limit the length of the data to be decoded.
 	 */
 	fr_dbuff_set_end(&our_in, fr_dbuff_current(&our_in) + len);
+
+	/*
+	 *	Unknown attributes have no defaults, and can be zero
+	 *	length.  We also ignore whatever tag and class is
+	 *	being used.
+	 *
+	 *	@todo - we need to store the tag and class somewhere,
+	 *	so that re-encoding the "raw" data type will result in
+	 *	the same data.
+	 */
+	if (unlikely(parent->flags.is_unknown)) {
+		func = &tag_funcs[FR_DER_TAG_OCTETSTRING];
+		goto decode_it;
+	}
+
+	/*
+	 *	No data?  Try to set a default value, OR decode it as
+	 *	NULL.
+	 */
+	if (unlikely(fr_dbuff_remaining(&our_in) == 0)) {
+		if (flags->has_default) goto create_default;
+
+		if (tag == FR_DER_TAG_NULL) {
+			func = &tag_funcs[FR_DER_TAG_NULL];
+			goto decode_it;
+		}
+
+	}
+
+	/*
+	 *	Hacks for serialNumber
+	 */
+	if (unlikely((tag == FR_DER_TAG_INTEGER) && (parent->type == FR_TYPE_OCTETS))) {
+		func = &tag_funcs[FR_DER_TAG_OCTETSTRING];
+		goto decode_it;
+	}
+
+	/*
+	 *	We didn't get the expected tag.  If it's not allowed for this parent, OR it's not an
+	 *	equivalent tag, then that is likely an error.
+	 *
+	 *	The "compatible" check is to really to hack around Time and DirectoryString.  It's technically
+	 *	wrong, and should perhaps be fixed.
+	 *
+	 *	@todo - parse 'string' and 'date', and then set flags->restrictions to allow any compatible
+	 *	DER tags, as a hack.  Doing that makes this a little more generic?  Or, add support for data
+	 *	types "Time" and "DirectoryString", and do the right thing.  Or, define them as separate
+	 *	attributes in dictionarty.common, and remove the "tags compatible" checks.
+	 */
+	if (unlikely((tag != flags->der_type) &&
+		     (!fr_type_to_der_tag_valid(parent->type, tag) || !fr_der_tags_compatible(tag, flags->der_type)))) {
+		/*
+		 *	Optional or not, if we can create a default value, then do so.
+		 */
+		if (flags->has_default) goto create_default;
+
+		/*
+		 *	Optional means "decoded nothing".  Otherwise it's a hard failure.
+		 */
+		if (!flags->optional) {
+			fr_strerror_printf_push("Failed decoding %s - got tag '%s', expected '%s'", parent->name,
+						fr_der_tag_to_str(tag), fr_der_tag_to_str(flags->der_type));
+			return -1;
+		}
+
+		return 0;
+	}
 
 	if (flags->is_extensions) {
 		slen = fr_der_decode_x509_extensions(ctx, out, &our_in, parent, decode_ctx);
@@ -2614,6 +2625,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	 *	The decode function can return 0 if len==0.  This is true for 'null' data types, and
 	 *	for variable-sized types such as strings.
 	 */
+decode_it:
 	slen = func->decode(ctx, out, parent, &our_in, decode_ctx);
 	if (unlikely(slen < 0)) return slen;
 
