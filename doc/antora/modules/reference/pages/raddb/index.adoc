@@ -129,7 +129,6 @@ RADIUS over TLS (i.e. RadSec).
 
 * xref:raddb/clients.conf.adoc[clients.conf]
 * xref:raddb/debug.conf.adoc[debug.conf]
-* xref:raddb/experimental.conf.adoc[experimental.conf]
 * xref:raddb/panic.gdb.adoc[panic.gdb]
 * xref:raddb/radrelay.conf.adoc[radrelay.conf]
 * xref:raddb/templates.conf.adoc[templates.conf]

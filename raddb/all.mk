@@ -1,7 +1,7 @@
 #
 #  The list of files to install.
 #
-LOCAL_FILES :=		clients.conf dictionary experimental.conf \
+LOCAL_FILES :=		clients.conf dictionary \
 			radiusd.conf trigger.conf panic.gdb
 
 DEFAULT_SITES :=	default inner-tunnel
