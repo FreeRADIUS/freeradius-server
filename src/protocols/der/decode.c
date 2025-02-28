@@ -777,6 +777,8 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	 * 	and all of the children are numbered options.
 	 */
 	if (unlikely(flags->is_sequence_of)) {
+		uint8_t tag_class;
+
 		if (flags->sequence_of != FR_DER_TAG_CHOICE) {
 			child = fr_dict_attr_iterate_children(parent, &child);
 			if (!child) {
@@ -785,18 +787,30 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 				talloc_free(vp);
 				return -1;
 			}
+
+			tag_class = FR_DER_CLASS_UNIVERSAL;
+		} else {
+			tag_class = FR_DER_CLASS_CONTEXT;
 		}
 
 		/*
 		 *	Decode all of the data.
 		 */
 		while (fr_dbuff_remaining(&our_in) > 0) {
-			ssize_t	 ret;
-			uint8_t current_tag;
+			ssize_t	 slen;
+			uint8_t  current_tag;
 			uint8_t	 tag_byte;
 			uint8_t *current_marker = fr_dbuff_current(&our_in);
 
 			FR_DBUFF_OUT_RETURN(&tag_byte, &our_in);
+
+			/*
+			 *	Validate the tag class.
+			 */
+			if ((tag_byte & DER_TAG_CLASS_MASK) != tag_class) {
+				fr_strerror_printf_push("Tag has unexpected class %20x", tag_byte & DER_TAG_CLASS_MASK);
+				goto error;
+			}
 
 			current_tag = (tag_byte & DER_TAG_CONTINUATION); /* always <= FR_DER_TAG_MAX */
 
@@ -804,37 +818,18 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 			 *	If we have a choice, the children are numbered.
 			 */
 			if (unlikely(flags->sequence_of == FR_DER_TAG_CHOICE)) {
-				/*
-				 *	Options always have to have the context field set.
-				 */
-				if ((tag_byte & DER_TAG_CLASS_MASK) != FR_DER_CLASS_CONTEXT) {
-					fr_strerror_printf_push("Tag has unexpected class %20x", tag_byte & DER_TAG_CLASS_MASK);
-					goto error;
-				}
-
 				child = fr_dict_attr_child_by_num(parent, current_tag);
 				if (!child) {
 					child = fr_dict_attr_unknown_raw_afrom_num(decode_ctx->tmp_ctx, parent, current_tag);
 					if (!child) goto error;
 				}
-			} else {
-				fr_assert(flags->is_sequence_of);
 
-				/*
-				 *	It must be a DER type, and must be only one type.
-				 */
-				if ((tag_byte & DER_TAG_CLASS_MASK) != FR_DER_CLASS_UNIVERSAL) {
-					fr_strerror_printf_push("Tag has unexpected class %20x", tag_byte & DER_TAG_CLASS_MASK);
-					goto error;
-				}
-
-				if (unlikely(current_tag != flags->sequence_of)) {
-					fr_strerror_printf_push("Attribute %s is a sequence_of=%s which does not allow DER type '%s'",
-								parent->name,
-								fr_der_tag_to_str(flags->sequence_of),
-								fr_der_tag_to_str(current_tag));
-					goto error;
-				}
+			} else if (unlikely(current_tag != flags->sequence_of)) {
+				fr_strerror_printf_push("Attribute %s is a sequence_of=%s which does not allow DER type '%s'",
+							parent->name,
+							fr_der_tag_to_str(flags->sequence_of),
+							fr_der_tag_to_str(current_tag));
+				goto error;
 			}
 
 			FR_PROTO_TRACE("decode context %s -> %s", parent->name, child->name);
@@ -844,8 +839,8 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 			/*
 			 *	A child could have been encoded with zero bytes if it has a default value.
 			 */
-			ret = fr_der_decode_pair_dbuff(vp, &vp->vp_group, child, &our_in, decode_ctx);
-			if (unlikely(ret < 0)) {
+			slen = fr_der_decode_pair_dbuff(vp, &vp->vp_group, child, &our_in, decode_ctx);
+			if (unlikely(slen < 0)) {
 				fr_strerror_printf_push("Failed decoding %s", vp->da->name);
 				goto error;
 			}
