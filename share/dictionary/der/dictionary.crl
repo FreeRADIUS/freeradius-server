@@ -5,7 +5,7 @@
 
 DEFINE	distributionPoint				sequence size=1..
 BEGIN   distributionPoint
-DEFINE	distributionPointName				sequence  option=0,optional
+ATTRIBUTE distributionPointName				0	sequence  option,optional
 BEGIN     distributionPointName
 ATTRIBUTE	fullName				0	group   der_type=sequence,sequence_of=choice,ref=@.GeneralName,option
 ATTRIBUTE	nameRelativeToCRLIssuer			1	sequence        option

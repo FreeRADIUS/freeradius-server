@@ -51,8 +51,9 @@ END 2.5.29.19
 
 ATTRIBUTE	nameConstraints				2.5.29.30	sequence        is_oid_leaf
 BEGIN 2.5.29.30
-DEFINE	permittedSubtrees				group   ref=@.GeneralSubtree,sequence_of=sequence,option=0,optional
-DEFINE	excludedSubtrees				group   ref=@.GeneralSubtree,sequence_of=sequence,option=1,optional
+ATTRIBUTE	permittedSubtrees			0	group   ref=@.GeneralSubtree,sequence_of=sequence,option,optional
+ATTRIBUTE	permittedSubtrees			0	group   ref=@.GeneralSubtree,sequence_of=sequence,option,optional
+ATTRIBUTE	excludedSubtrees			1	group   ref=@.GeneralSubtree,sequence_of=sequence,option,optional
 END 2.5.29.30
 
 ATTRIBUTE	CRLDIstributionPoints			2.5.29.31	sequence        sequence_of=sequence,is_oid_leaf
@@ -89,8 +90,8 @@ END 2.5.29.35
 
 ATTRIBUTE	policyConstraints			2.5.29.36	sequence        is_oid_leaf
 BEGIN 2.5.29.36
-DEFINE	requireExplicitPolicy				octetstring option=0,optional
-DEFINE	inhibitPolicyMapping				octetstring option=1,optional
+ATTRIBUTE	requireExplicitPolicy			0	octetstring option,optional
+ATTRIBUTE	inhibitPolicyMapping			1	octetstring option,optional
 END 2.5.29.36
 
 ATTRIBUTE	extKeyUsage				2.5.29.37	sequence        sequence_of=oid,size=1..,is_oid_leaf
