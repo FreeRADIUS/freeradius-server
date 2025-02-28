@@ -1,0 +1,60 @@
+# Debugging
+
+This debugging section outlines the steps to take if you run into issues starting or configuring the FreeRADIUS server.
+If your server starts up successfully, save a copy of the configuration so you always have a "known working" configuration.
+When the server doesn't start up, go back and verify the configuration and read the entire debug output. If you have issues, the initial steps to troubleshoot or debug the server are:
+
+* Make small, discrete changes to the configuration files.
+* Start the server in debugging mode by entering the command *radiusd -X*
+* Verify that the results are what you expect
+* The debug output shows any configuration changes you have made:
+** Datastores are connected and operating.
+** Test packets are accepted by the server.
+** The debug output shows that the packets are being processed as you expect.
+** The response packets contain the attributes you expect to see.
+
+If you can't make any progress, replace your configuration with a saved copy of a "known working" configuration, and start the server again. This process can clean up errors caused by temporary or forgotten edits.
+If you are still having issues, ask for help on the mailto:freeradius-users@lists.freeradius.org[freeradius-users] list. Include a description of what you are trying to do, and the entire debugging output that includes the server receiving and processing test packets.
+
+## How to use `radiusd -X` (debug mode)
+
+This next section explains how to read the output of `radiusd -X`.
+
+The first part of the debug output is the *startup* text.  Once the server is started, it prints `Ready to receive requests`.  The next part of the debug output is the *packet processing* text.  Both parts need to be read (and posted to the list!) in order to solve issues.
+
+## If it doesn't start
+
+If the server does not start at all, verify that you are running the server with sudo. If the server reboots correctly after this switch, then the problem was that the server was running as an unprivileged user.
+
+If the server does not start up correctly, *the debug output will tell you why*.  It will produce long descriptive error messages, telling you exactly what's wrong.  In some cases, it will tell you how to fix it.
+
+Look for messages like *Error* or *Warning*.  If you are running the server in a terminal console, those messages will appear in red or yellow.  It should be simple to scroll through the output, ignoring most of it, and looking for red *Error* text. Fixing those errors will usually allow the server to start correctly.
+
+The next sections are huge and have been broken apart into two sections so it's easier for you to read though and understand the steps the RADIUS server goes through.
+
+Essentially, the first section is xref:debugging/startup.adoc[*Startup Text*] where the RADIUS server reads, loads, and initilizes itself through the following processes:
+
+. Reads the configuration files.
+. Reads the dictionaries.
+. Loads the config files.
+. Loads the policies.
+. Loads the server config.
+. Loads the proxy config.
+. Loads the client config.
+. Initializes the auth-types.
+. Reads and load the modules.
+. Loads the users file (called by Modules file).
+. Listen section is read and sockets initialized.
+
+The next section xref:debugging/processing.adoc[*Packet Processing*] is where the server accepts, inspects, and manages the received RADIUS packets in this order:
+
+. Server receives a RADIUS packet.
+. Authorize module is called.
+. Inspection of packet contents and multiple modules may be called to complete processing. A decision is made to call one of the following actions:
+    . POST-AUTH-REJECT
+    . POST-AUTH-ACCEPT
+. Server completes the post-authorization processes for the current packet.
+
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

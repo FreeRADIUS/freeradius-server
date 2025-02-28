@@ -39,7 +39,7 @@ radiusd -X
 If the message on your screen says *Ready to process requests*, the
 server is installed and configured properly.  For help decoding the
 the output from `radiusd -X`, refer to the
-xref:radiusd_x.adoc[debugging] page for more details.
+xref:debugging/radiusd_X.adoc[debugging] page for more details.
 
 == Initial Tests
 

@@ -99,7 +99,7 @@ The server reads or writes to any database and both LDAP and SQL can be in the s
 == Debugging
 
 If you have *any* issues with your server, then restart the server
-in xref:radiusd_x.adoc[Debugging] mode. Review the logs to determine what
+in xref:debugging/radiusd_X.adoc[Debugging] mode. Review the logs to determine what
 the root cause is and make changes. Do only *one* change
 at a time and restart your server.
 
