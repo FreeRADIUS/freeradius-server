@@ -4,7 +4,7 @@ We recommend xref:howto:installation/packages.adoc[installing from packages] if
 possible. Full instructions on building and installing from source
 code follow.
 
-The mandatory  xref:howto:installation/dependencies.adoc[dependencies]
+The required xref:howto:installation/dependencies.adoc[dependencies]
 must be installed before FreeRADIUS can be built. These dependencies
 are `libtalloc` and `libkqueue`, which FreeRADIUS uses for memory
 management, and platform-independent event handling.

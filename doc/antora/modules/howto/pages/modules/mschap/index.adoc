@@ -62,7 +62,7 @@ password changes (see below).
 
 == Password changes
 
-From FreeRADIUS version 3.0.0 the mschap module supports password
+From FreeRADIUS version 3 the mschap module supports password
 changes.
 
 There are two options, ntlm_auth and local.

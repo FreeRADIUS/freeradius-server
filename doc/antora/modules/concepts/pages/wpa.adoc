@@ -7,13 +7,13 @@
 
 == History
 
-WPA was created by the The Wi-Fi Alliance, an industry trade group, which owns the trademark to the Wi-Fi name and certifies devices that carry that name. 
+WPA was created by the The Wi-Fi Alliance, an industry trade group, which owns the trademark to the Wi-Fi name and certifies devices that carry that name.
 
 WPA is designed for use with an IEEE 802.1X authentication server, which distributes different keys to each user; however, it can also be used in a less secure *"pre-shared key" (PSK)* mode, where every user is given the same passphrase. The design of WPA is based on a Draft 3 of the IEEE 802.11i standard.
 
 The Wi-Fi Alliance created WPA to enable introduction of standard-based secure wireless network products prior to the IEEE 802.11i group finishing its work. The Wi-Fi Alliance at the time already anticipated the WPA2 certification based on the final draft of the IEEE 802.11i standard, therefore the tags on the frame fields (Information Elements or IEs) are intentionally made different from 802.11i to avoid the confusion in unified WPA/WPA2 implementations.
 
-Data is encrypted using the RC4 (cipher), with a 128-bit key and a 48-bit initialization vector (IV). One major improvement in WPA over WEP is the Temporal Key Integrity Protocol (TKIP), which dynamically changes keys as the system is used. When combined with the much larger IV, this defeats the well-known related-key attack on WEP.  
+Data is encrypted using the RC4 (cipher), with a 128-bit key and a 48-bit initialization vector (IV). One major improvement in WPA over WEP is the Temporal Key Integrity Protocol (TKIP), which dynamically changes keys as the system is used. When combined with the much larger IV, this defeats the well-known related-key attack on WEP.
 
 In addition to authentication and encryption, WPA also provides vastly improved payload integrity. The cyclic redundancy check (CRC) used in WEP is inherently insecure; it is possible to alter the payload and update the message CRC without knowing the WEP key.  A more secure message authentication code (usually known as a MAC, but here termed a *MIC* for "Message Integrity Code") is used in WPA, an algorithm named "Michael". The MIC used in WPA includes a frame counter, which prevents replay attack being executed;
 
@@ -68,9 +68,9 @@ Other EAP types may be supported by 802.1X clients and servers developed by spec
 * Network Configuration with WPA (http://www.wi-fiplanet.com/tutorials/article.php/3552826)
 * Apple Airport and Wi-Fi Network Security (http://theworld.com/~reinhold/airport.html)
 * EAP types supported under WPA-Enterprise (http://www.wi-fi.org/OpenSection/eap.asp)
-* Linux WPA/WPA2/IEEE 802.1X Supplicant (http://hostap.epitest.fi/wpa_supplicant/) 
-* SmithMicro Quicklink Mobile Software (http://www.smithmicro.com/default.tpl?sku=QLMWA0EE&group=product_full) 
-* Steve Gibson's Perfect Passwords(https://www.grc.com/passwords/) 
+* Linux WPA/WPA2/IEEE 802.1X Supplicant (http://hostap.epitest.fi/wpa_supplicant/)
+* SmithMicro Quicklink Mobile Software (http://www.smithmicro.com/default.tpl?sku=QLMWA0EE&group=product_full)
+* Steve Gibson's Perfect Passwords(https://www.grc.com/passwords/)
 * GRC's Ultra High Security Password Generators(http://darkvoice.dyndns.org/wlankeygen/ Online WEP-/WPA-Key Generator)
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

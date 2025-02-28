@@ -17,7 +17,7 @@ Note: Not all features are shared/available across the product lines, I'll do my
 * AOS Release 6.6.x
 ** OmniSwitch 6250
 ** OmniSwitch 6450
- 
+
 **AOS Release 7**
 * AOS Release 7.3.2.R01
 ** OmniSwitch 6900
@@ -30,10 +30,10 @@ If you want to access the OmniSwitch via Telnet/SSH/WebView and authenticate the
 By default all access to the switch is limited to "console access" (User: admin, Password: switch)
 Except for SSH if the switch obtained an IP address via DHCP, then SSH will be available for initial remote configuration (that is the case below).
 
-    -> show aaa authentication 
+    -> show aaa authentication
     Service type = Default
       Authentication = denied
-    Service type = Console 
+    Service type = Console
       1st authentication server  = local
     Service type = Telnet
      Authentication = Use Default,
@@ -95,8 +95,8 @@ Now let us assume you want to create an "read-only" user that can see all aspect
 If you just use the configuration above, you'll see the following error message:
 
     Benny$ ssh readadmin@192.168.2.106
-    readadmin's password for keyboard-interactive method: 
-     
+    readadmin's password for keyboard-interactive method:
+
     PTY allocation request failed on channel 0
 
 Instead the entry needs to look like this:
@@ -111,27 +111,27 @@ Instead the entry needs to look like this:
 The result should look like this:
 
     Benny$ ssh readadmin@192.168.2.106
-    readadmin's password for keyboard-interactive method: 
-    
-     
+    readadmin's password for keyboard-interactive method:
+
+
     Welcome to the Alcatel-Lucent OmniSwitch 6450
-    Software Version 6.6.3.451.R01 Service Release, December 20, 2012. 
-     
+    Software Version 6.6.3.451.R01 Service Release, December 20, 2012.
+
     Copyright(c), 1994-2012 Alcatel-Lucent. All Rights reserved.
-    
+
     OmniSwitch(TM) is a trademark of Alcatel-Lucent registered
     in the United States Patent and Trademark Office.
-  
-    -> 
-    -> vlan 20 enable 
+
+    ->
+    -> vlan 20 enable
     ERROR: Authorization failed. No functional privileges for this command
-    -> show vlan 
-                                  stree                 mble   src        
+    -> show vlan
+                                  stree                 mble   src
      vlan  type  admin   oper   1x1   flat   auth   ip   tag   lrn   name
     -----+-----+------+------+------+------+----+-----+-----+------+----------
-       1    std   on     on     on    on     off    on   off     on   VLAN 1 
+       1    std   on     on     on    on     off    on   off     on   VLAN 1
       10    std   on    off     on    on     off   off   off     on   VLAN 10
-    
+
 Although we just want to give "read-only" access to the OmniSwitch, we'll need to allow "read-write" for the access method, in this case SSH. The domains/command family values are simply added to the read-only or read-write entries.
 
 You can get the values for the various commands/domains either via the CLI or by using the "Bitmap Calculator" that is accessible through the WebView of the AOS.
@@ -140,18 +140,18 @@ You can get the values for the various commands/domains either via the CLI or by
 
      -> show aaa priv hexa ?
                      ^
-                     WEBMGT VRRP VLAN UDLD TFTP-CLIENT TELNET SYSTEM STP SSH 
-                     SNMP SESSION SCP-SFTP RMON RIP RDP QOS PORT-MAPPING 
-                     POLICY PMM NTP NONE MODULE LOOPBACK-DETECTION LLDP 
-                     LINKAGG IPV6 IPMS IPMR IP-ROUTING IP-HELPER IP INTERFACE 
-                     HEALTH FILE DSHELL DOMAIN-SYSTEM DOMAIN-SERVICE 
-                     DOMAIN-SECURITY DOMAIN-POLICY DOMAIN-PHYSICAL 
-                     DOMAIN-NETWORK DOMAIN-LAYER2 DOMAIN-ADMIN DNS DHCP-SERVER 
-                     DEBUG CONFIG CHASSIS BRIDGE AVLAN ALL AIP AAA 802.1Q <cr> 
+                     WEBMGT VRRP VLAN UDLD TFTP-CLIENT TELNET SYSTEM STP SSH
+                     SNMP SESSION SCP-SFTP RMON RIP RDP QOS PORT-MAPPING
+                     POLICY PMM NTP NONE MODULE LOOPBACK-DETECTION LLDP
+                     LINKAGG IPV6 IPMS IPMR IP-ROUTING IP-HELPER IP INTERFACE
+                     HEALTH FILE DSHELL DOMAIN-SYSTEM DOMAIN-SERVICE
+                     DOMAIN-SECURITY DOMAIN-POLICY DOMAIN-PHYSICAL
+                     DOMAIN-NETWORK DOMAIN-LAYER2 DOMAIN-ADMIN DNS DHCP-SERVER
+                     DEBUG CONFIG CHASSIS BRIDGE AVLAN ALL AIP AAA 802.1Q <cr>
      (AAA & Configuration Mgr Command Set)
-    
-    
-    -> show aaa priv hexa ssh 
+
+
+    -> show aaa priv hexa ssh
     0x00000002 0x00000000
 
     -> show aaa priv hexa telnet
@@ -176,7 +176,7 @@ That said, a read-only user for all domains with SSH + Telnet access would look 
 
 Please don't forget that you'll have to add the following command on your OmniSwitch if you want Telnet to query the Radius.
 
-    -> aaa authentication telnet freeradius local 
+    -> aaa authentication telnet freeradius local
 
 ### MAC-ADDRESS Authentication (aka non-supplicant authentication)
 Read this if you want to authenticate MAC-ADDRESSES through the Radius server.
@@ -185,7 +185,7 @@ Read this if you want to authenticate MAC-ADDRESSES through the Radius server.
 
     -> aaa radius-server "freeradius" host 192.168.2.103 key verysecret
     -> vlan port mobile 1/2
-    -> vlan port 1/2 802.1x enable 
+    -> vlan port 1/2 802.1x enable
     -> aaa authentication 802.1x freeradius
     -> aaa authentication mac freeradius
 
@@ -195,8 +195,8 @@ The OmniSwitch created the following template automatically for you:
     ...
     ! 802.1x :
     802.1x 1/2 direction both port-control auto quiet-period 60 tx-period 30 supp-timeout 30 server-timeout 30 max-req 2 re-authperiod 3600 no reauthentication
-    802.1x 1/2 captive-portal session-limit 12 retry-count 3 
-    802.1x 1/2 supp-polling retry 2 
+    802.1x 1/2 captive-portal session-limit 12 retry-count 3
+    802.1x 1/2 supp-polling retry 2
     802.1x 1/2 captive-portal inactivity-logout disable
     802.1x 1/2 supplicant policy authentication pass group-mobility default-vlan fail block
     802.1x 1/2 non-supplicant policy block
@@ -204,7 +204,7 @@ The OmniSwitch created the following template automatically for you:
 
 This is a secure (802.1x enabled) starting point, but we want to look at MAC-ADDRESS (non-supplicant) authentication first.
 
-    -> 802.1x 1/2 non-supplicant policy authentication pass default-vlan fail block 
+    -> 802.1x 1/2 non-supplicant policy authentication pass default-vlan fail block
 
 It is important to note the "policy authentication" keyword, as otherwise the MAC-ADDRESS will not be sent for verification to the Radius. In case of success we'll place the user in default-vlan, if not block.
 
@@ -223,26 +223,26 @@ TODO: Document how to change that... (it is possible)
 
 In case that the authentication failed, you can verify the same on AOS CLI:
 
-    -> show 802.1x non-supplicant 
-    
-    Slot  MAC               MAC Authent      Classification      Vlan      
-    Port  Address           Status           Policy              Learned   
+    -> show 802.1x non-supplicant
+
+    Slot  MAC               MAC Authent      Classification      Vlan
+    Port  Address           Status           Policy              Learned
     -----+-----------------+----------------+-------------------+--------
-    01/02 00:1e:ec:aa:aa:aa Failed           Basic-Blk           1 
+    01/02 00:1e:ec:aa:aa:aa Failed           Basic-Blk           1
 
 Now we add an entry to the /etc/freeradius/users for that MAC-ADDRESS:
 
     001EECAAAAAA    Cleartext-Password := "001EECAAAAAA"
-    
+
 The authentication should now be successful, verify like this:
 
-    -> show 802.1x non-supplicant 
-    
-    Slot  MAC               MAC Authent      Classification      Vlan      
-    Port  Address           Status           Policy              Learned   
+    -> show 802.1x non-supplicant
+
+    Slot  MAC               MAC Authent      Classification      Vlan
+    Port  Address           Status           Policy              Learned
     -----+-----------------+----------------+-------------------+--------
-    01/02 00:1e:ec:aa:aa:aa Authenticated    Basic-Dft VLAN      1 
-    
+    01/02 00:1e:ec:aa:aa:aa Authenticated    Basic-Dft VLAN      1
+
 Now let us assume that you want to place the user in a different VLAN (Dynamic VLAN Assignment) via Radius.
 There are two ways to do that ... (VLAN 20 is our plan)
 
@@ -260,12 +260,12 @@ The following looks good ...
 
 Here is the confirmation:
 
-    -> show 802.1x non-supplicant 
-    
-    Slot  MAC               MAC Authent      Classification      Vlan      
-    Port  Address           Status           Policy              Learned   
+    -> show 802.1x non-supplicant
+
+    Slot  MAC               MAC Authent      Classification      Vlan
+    Port  Address           Status           Policy              Learned
     -----+-----------------+----------------+-------------------+--------
-    01/02 00:1e:ec:aa:aa:aa Authenticated    Basic-Auth Svr      20 
+    01/02 00:1e:ec:aa:aa:aa Authenticated    Basic-Auth Svr      20
 
 2.) Use the standardised way (IEEE)
 
@@ -285,12 +285,12 @@ The following looks good ...
 
 Here is the confirmation:
 
-    -> show 802.1x non-supplicant 
-    
-    Slot  MAC               MAC Authent      Classification      Vlan      
-    Port  Address           Status           Policy              Learned   
+    -> show 802.1x non-supplicant
+
+    Slot  MAC               MAC Authent      Classification      Vlan
+    Port  Address           Status           Policy              Learned
     -----+-----------------+----------------+-------------------+--------
-    01/02 00:1e:ec:aa:aa:aa Authenticated    Basic-Auth Svr      20 
+    01/02 00:1e:ec:aa:aa:aa Authenticated    Basic-Auth Svr      20
 
 
 ### 802.1X Authentication (aka supplicant authentication)
@@ -301,12 +301,12 @@ TODO
 ***
 
 Brainstorm/TODO by Benny:
-* **DONE:** Authorise the user access to the switch via RADIUS
-* **DONE:** Authorise MAC (non-supplicant)
+* **DONE:** Authorize the user access to the switch via RADIUS
+* **DONE:** Authorize MAC (non-supplicant)
 * **DONE:** Dynamic VLAN Assignment / VSA
 * **DONE:** Dynamic VLAN Assignment / IEEE
-* Authorise 802.1x (supplicant)
-* Authorise Captive Portal
+* Authorize 802.1x (supplicant)
+* Authorize Captive Portal
 * Bandwidth Management
 * service-type (call check, framed user)
 * radius test tool

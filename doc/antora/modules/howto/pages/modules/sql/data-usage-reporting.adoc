@@ -54,7 +54,7 @@ to the start of the reporting period. Alternatively, scripting the generation
 of CoA/Disconnect packets for all ongoing sessions in the `radacct` table may be
 possible, but great care should be taken to not overwhelm a NAS’s limited CPU
 resources since disconnected devices will likely be trying to reauthenticate
-whilst other are still being disconnected. Either approach to terminating
+while other are still being disconnected. Either approach to terminating
 existing sessions will of course result in an interruption of connectivity for
 users.
 
