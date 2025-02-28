@@ -773,40 +773,17 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	}
 
 	/*
-	 * 	This is a sequence-of, meaning there are restrictions on the types which can be present
+	 * 	This is a sequence-of, which means it either has only one child, or it's a sequence_of=choice,
+	 * 	and all of the children are numbered options.
 	 */
 	if (unlikely(flags->is_sequence_of)) {
-		bool restriction_types[FR_DER_TAG_MAX] = { };
-
 		if (flags->sequence_of != FR_DER_TAG_CHOICE) {
-			fr_assert(flags->sequence_of < FR_DER_TAG_MAX);
-
-			restriction_types[flags->sequence_of] = true;
 			child = fr_dict_attr_iterate_children(parent, &child);
 			if (!child) {
 				fr_strerror_printf_push("Sequence %s has no children", parent->name);
+			error:
+				talloc_free(vp);
 				return -1;
-			}
-
-		} else {
-			/*
-			 *	If it is a sequence of choices, then we must construct the list of restriction_types.
-			 *	This will be a list of the number of choices, starting at 0.
-			 */
-			fr_dict_attr_t const *choices = NULL;
-			fr_dict_attr_t const *ref;
-
-			if (fr_type_is_group(parent->type)) {
-				ref = fr_dict_attr_ref(parent);
-				fr_assert(fr_der_flag_der_type(ref) == FR_DER_TAG_SEQUENCE);
-
-			} else {
-				ref = parent;
-			}
-
-			while ((choices = fr_dict_attr_iterate_children(ref, &choices))) {
-				fr_assert(choices->attr < FR_DER_TAG_MAX);
-				restriction_types[choices->attr] = true;
 			}
 		}
 
@@ -823,36 +800,40 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 
 			current_tag = (tag_byte & DER_TAG_CONTINUATION); /* always <= FR_DER_TAG_MAX */
 
-			if (unlikely(!restriction_types[current_tag])) {
-				fr_strerror_printf_push("Attribute %s is a sequence-of which does not allow DER type '%s'", parent->name,
-						   fr_der_tag_to_str(current_tag));
-			error:
-				talloc_free(vp);
-				return -1;
-
-			}
-
 			/*
 			 *	If we have a choice, the children are numbered.
 			 */
 			if (unlikely(flags->sequence_of == FR_DER_TAG_CHOICE)) {
-				child = fr_dict_attr_child_by_num(parent, current_tag);
-				if (!child) {
-					child = fr_dict_attr_unknown_raw_afrom_num(decode_ctx->tmp_ctx, parent, current_tag);
-					if (!child) return -1;
-				}
-
 				/*
 				 *	Options always have to have the context field set.
 				 */
 				if ((tag_byte & DER_TAG_CLASS_MASK) != FR_DER_CLASS_CONTEXT) {
 					fr_strerror_printf_push("Tag has unexpected class %20x", tag_byte & DER_TAG_CLASS_MASK);
-					return -1;
+					goto error;
+				}
+
+				child = fr_dict_attr_child_by_num(parent, current_tag);
+				if (!child) {
+					child = fr_dict_attr_unknown_raw_afrom_num(decode_ctx->tmp_ctx, parent, current_tag);
+					if (!child) goto error;
 				}
 			} else {
+				fr_assert(flags->is_sequence_of);
+
+				/*
+				 *	It must be a DER type, and must be only one type.
+				 */
 				if ((tag_byte & DER_TAG_CLASS_MASK) != FR_DER_CLASS_UNIVERSAL) {
 					fr_strerror_printf_push("Tag has unexpected class %20x", tag_byte & DER_TAG_CLASS_MASK);
-					return -1;
+					goto error;
+				}
+
+				if (unlikely(current_tag != flags->sequence_of)) {
+					fr_strerror_printf_push("Attribute %s is a sequence_of=%s which does not allow DER type '%s'",
+								parent->name,
+								fr_der_tag_to_str(flags->sequence_of),
+								fr_der_tag_to_str(current_tag));
+					goto error;
 				}
 			}
 
@@ -876,8 +857,8 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	}
 
 	/*
-	 *	Decode the children.  Since it's not a sequence_of=..., we must have a set of children.  The
-	 *	children are packed in order.  Some may be optional.
+	 *	Decode the children.  Since it's not a sequence_of=..., we must have a random bunch of
+	 *	children.  The children are packed in order.  Some may be optional.
 	 *
 	 *	We loop over all of the children, because some might have default values.
 	 */

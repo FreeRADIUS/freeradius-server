@@ -22,7 +22,7 @@ match 02 01 01 02 01 02
 proto-dictionary-root Test-Seq-Of
 
 decode-pair 30 06 02 01 01 01 01 FF
-match Attribute Test-Seq-Of is a sequence-of which does not allow DER type 'boolean'
+match Attribute Test-Seq-Of is a sequence_of=integer which does not allow DER type 'boolean'
 
 proto-dictionary-root Test-Set-Of
 
