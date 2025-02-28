@@ -880,8 +880,8 @@ static bool attr_valid(fr_dict_attr_t *da)
 	 *	If the parent is a choice, then the child MUST have a limited set of options / tags.
 	 */
 	parent = fr_dict_attr_ext(da->parent, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
-	if (parent->is_choice) {
-		if (!flags->option) {
+	if (parent->is_choice || flags->is_option) {
+		if (!flags->class) {
 			fr_assert(da->attr < FR_DER_TAG_VALUE_MAX);
 
 			flags->class = FR_DER_CLASS_CONTEXT;
