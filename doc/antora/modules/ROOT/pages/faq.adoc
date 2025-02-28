@@ -8,13 +8,11 @@ This FreeRADIUS FAQ contains both general and technical information about FreeRA
 
 Read this FAQ before posting questions to the mailing lists as your question may be answered.
 
-
 == FreeRADIUS Overview
 
 FreeRADIUS is the worlds leading RADIUS server used by Internet Service Providers (ISPs), cellular providers, and corporate and educational networks.  RADIUS, which stands for “Remote Authentication Dial In User Service”, is a network protocol used to manage network access using xref:concepts:authproto.adoc[Authentication, Authorization and Accounting] processes.
 
 FreeRADIUS is developed by a group of people who call themselves "The FreeRADIUS Project" and is sponsored by https://www.inkbridgenetworks.com/[InkBridge Networks].
-
 
 === What is FreeRADIUS and what is it supposed to do?
 
@@ -24,7 +22,6 @@ authentication and accounting practices. See xref:concepts:architecture.adoc[Arc
 * Authenticates users or devices before allowing them access to a network.
 * Authorizes those users or devices for specific network services.
 * Accounts for and tracks the usage of those services.
-
 
 === How does FreeRADIUS differ from other radius servers?
 
@@ -41,57 +38,45 @@ FreeRADIUS is an open-source product with all the benefits of open-source softwa
 * Exec-Program-Wait capability that allows an external program to execute after authentication and output a list of A/V pairs, which is then added to the reply.
 * Supports PAM.
 
-
 === Can I install FreeRADIUS on any platform?
 
 Yes. FreeRADIUS is compatible with all known equipment and products which implement the RADIUS standards. FreeRADIUS runs on a large number of 32 and 64 bit Unix-like platforms. Where there are compatibility issues is ofent due to third-party vendors' implementation of the relevant standards.
-
 
 === Can I get binary packages of FreeRADIUS?
 
 Yes. You can find it on the official http://www.freeradius.org/[FreeRADIUS] site.
 
-
 === Can I build and install FreeRADIUS from source?
 
 Yes. The source is available at ftp://ftp.freeradius.org/pub/radius/[ftp] or on https://github.com/FreeRADIUS/freeradius-server[github]. See the xref:howto:installation/source.adoc[instructions] on how to build FreeRADIUS.
-
 
 === Does FreeRADIUS Support IPv6?
 
 Yes. FreeRADIUS v2 and later has full support for both IPv6 attributes and IPv6 network packets.
 
-
 === Can I get more information?
 
-Yes. The official site for http://www.freeradius.org/[FreeRADIUS] contains the server, documentation, and additional RADIUS programs.
+Yes. The official site for http://www.freeradius.org/[FreeRADIUS] contains the server, documentation, and additional RADIUS programs. FreeRADIUS is supported by the https://www.inkbridgenetworks.com/[InkBridge Networks] team.
 
-The mailto:freeradius-announce@lists.freeradius.org[freeradius-announce], mailto:freeradius-users@lists.freeradius.org[freeradius-users], and mailto:freeradius-devel@lists.freeradius.org[freeradius-devel] mailing lists are available for you to subscribe to.
-
-FreeRADIUS is supported by the https://www.inkbridgenetworks.com/[InkBridge Networks] team.
-
+include::partial$mailinglist.adoc[]
 
 == User Management
-
 
 === Can I disconnect a user with FreeRADIUS?
 
 No. A user with an active session can't be disconnected with FreeRADIUS. The RADIUS server doesn't actively maintain the user sessions and only receives information about these sessions from the NAS. This means that you have to signal your NAS to disconnect sessions. Depending on the NAS type and it's configuration, there are a number of ways to disconnect sessions.
 
-
-.Packet of Disconnect
+.Packet of disconnect
 [%collapsible]
 ====
 Packet of Disconnect is the standard and recommended method to disconnect users. It is supported by many newer NAS and uses a RADIUS packet (usually sent to port 3799 although some NAS use 1700 (Mikrotik for example)) to signal that a NAS should terminate an active session.
 ====
-
 
 .SNMP
 [%collapsible]
 ====
 Many NAS support SNMP which can usually (among other things) be used to disconnect users, however implimentation details vary. Read your NAS documentation to find out whether it supports this, and which MIB to use.
 ====
-
 
 .Radkill
 [%collapsible]
@@ -101,7 +86,6 @@ The radkill tool is a TCL program written by Jason Straight for FreeRADIUS users
 Download the ftp://ftp.nmo.net/pub/radkill/radkill-latest.tar.gz[radkill] source archive and install the program on your server.
 ====
 
-
 === Can I send a message to PPP users?
 
 Yes. RADIUS defines a Reply-Message attribute, which you can use to
@@ -109,7 +93,6 @@ send text messages in a RADIUS reply packet. PPP has provisions for
 passing text messages back to the user.
 
 However, Microsoft windows users can't see PPP messages due to Microsoft's implementation of the PPP protocol. For macs, the only dialer that shows up the server's message is http://www.rockstar.com[FreePPP].
-
 
 === Can I use Login-Time for groups instead of users?
 
@@ -131,7 +114,6 @@ DEFAULT Group == "daysonly", Login-Time := "Any0800-2000"
 |DEFAULT Group == "weekends", Login-Time := "Sa-Su0800-2000"
 |===
 
-
 === Can I permit access to any user regardless of password?
 
 Yes. Edit the raddb/users file with the following entry on the first line (top of the file). This entry accepts everybody on to the network.
@@ -140,9 +122,7 @@ Yes. Edit the raddb/users file with the following entry on the first line (top o
 
 If you want this to apply to a single user replace DEFAULT with username. You can also add Auth-Type Accept to radcheck or radgroupcheck entries in order to accept that user/group. This only works for PAP, and does NOT work for EAP-TLS, CHAP,  MSCHAP, or WIMAX authentication.
 
-
 == Server Configuration
-
 
 === Is there a way to bind FreeRADIUS to a specific IP address?
 
@@ -164,16 +144,18 @@ Yes. There are several ways to bind the IP address.
 
 No. The RADIUS server only logs the messages which a NAS sends to it. If your NAS is not sending those messages or attributes, then the RADIUS server will not log them.  Configure your NAS to send the information you want to the RADIUS server. Once the NAS is sending the information, the server can then log it.
 
-
 === Do I need to use the Attribute Operators?
 
 Yes.  All of the attribute operators such as `:=`, `==`, `+=`, etc. are documented via the:
 
 * xref:reference:raddb/mods-config/files/users.adoc[users] file,
-* xref:reference:unlang/condition/index.adoc[conditional expressions], 
-* xref:reference:unlang/edit.adoc[attribute editing]
+* xref:reference:unlang/condition/index.adoc[conditional expressions],
+* xref:reference:unlang/edit.adoc[attribute editing].
 
-Note that the xref:reference:unlang/update.adoc[update] is no longer necessary.  The new xref:reference:unlang/edit.adoc[attribute editing] is much simpler, and is more powerful.
+[NOTE]
+===
+The xref:reference:unlang/update.adoc[update] is no longer necessary.  The new xref:reference:unlang/edit.adoc[attribute editing] is much simpler, and is more powerful.
+===
 
 === Can I send multiple values for an attribute ?
 
@@ -192,7 +174,6 @@ Yes. use the following example to configure multiple values on an attribute.
 	  0x0000:  3130 2e31 3330 2e30 2e32 3532 2f33 3220
 	  0x0010:  302e 302e 302e 3020 3130
 ====
-
 
 === Isn't CHAP more secure?
 
@@ -213,15 +194,13 @@ As an administrator, decide which authentication method is required for your bus
 |passwords going cleartext over the phone line between the user and the terminal server.
 |===
 
-
 === Can I limit access to only POP3 and SMTP?
 
 Yes. The most common approach is to just assign non-globally-routable IP addresses to those users, such as https://datatracker.ietf.org/doc/html/rfc1918[RFC 1918] addresses. Make sure you have RADIUS authorization enabled on your NAS.
 
 Depending on your internal network configuration, you may need to set up internal routes for those addresses, and if you don't want them to do anything besides SMTP and POP3 within your network, you'll have to set up ACLs on your dialup interfaces allowing only ports 25 and 110 through.
 
-
-.User entry in raddb/users file example:
+User entry in raddb/users file example
 [%collapsible]
 ====
 
@@ -231,7 +210,7 @@ Depending on your internal network configuration, you may need to set up interna
         Fall-Through = Yes
 ====
 
-.CISCO configuation example:
+.CISCO configuation example
 [%collapsible]
 ====
 	aaa authorization network default radius
@@ -242,7 +221,6 @@ Depending on your internal network configuration, you may need to set up interna
 
 The access list 160 gets applied on inbound packets and 161 on outbound packets.
 ====
-
 
 === Can I use Privledged Access Management (PAM) with FreeRADIUS?
 
@@ -265,7 +243,6 @@ and
 		Fall-Through = Yes
 
 With this method, I have NO users on /etc/password and NO need for lots of lines on /etc/raddb/users. time to search for a db enabled pam_listfile module
-
 
 === Is the RADIUS server broken after an upgrade?
 

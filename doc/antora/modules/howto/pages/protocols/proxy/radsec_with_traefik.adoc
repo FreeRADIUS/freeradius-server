@@ -1,0 +1,128 @@
+== Proxying RadSec with Traefik
+
+This section shows how to configure Traefik to proxy RadSec connections. You
+should skip this section if you are not using Traefik as your proxy.
+
+Installing Traefik is beyond the scope of this guide. It is typically installed
+as a service mesh router within a Docker or Kubernetes environment using
+offical Docker images.
+
+Traefik configuration has two components of interest:
+
+  * Static configuration: Defines "entrypoints" on which Traefik listens for connections.
+  * Dynamic configuration: Defines backend service components and the routing policy.
+
+Traefik supports a number of providers of dynamic configuration data for the
+router and service definitions. For demonstration purposes the files provider
+is used here, however you can switch to another provide once you have things
+working using this method.
+
+The static configuration can be provided by starting Traefik with the following
+arguments:
+
+.Example Traefik static configuration
+=====================================
+
+  traefik \
+    --log.level=DEBUG \
+    --providers.file.filename=/etc/traefik/dynamic_config.yml
+    --providers.file.watch=true
+    --entryPoints.radsec.address=:2083
+
+=====================================
+
+Note that a `radsec` entrypoint is defined to listen on port 2083 and that a
+static `file` provider is used to defined the dynamic services.
+
+The backend for RadSec should be defined in this file as follows:
+
+.Example Traefik dynamic configuration
+======================================
+
+ tcp:
+   routers:
+     radsec-router:
+       entryPoints:
+         - radsec
+       rule: "HostSNI(`*`)"
+       service: "radsec-service"
+       tls:
+         passthrough: true
+   services:
+     radsec-service:
+       loadBalancer:
+         servers:
+         - address: "172.23.0.3:2083"
+
+======================================
+
+Note the `passthrough: true` directive under `tls:` which tells Treafik not to
+attempt TLS termination which it would otherwise perform for all incoming TLS
+connections. We require that the connection is passed through from the RadSec
+client to the RadSec server without being reterminated since the end client's
+certificate is authenticated by the RadSec server and many be used for
+policy decisions.
+
+
+=== Testing RadSec connectivity via Traefik
+
+Now amend the test RadSec client so that instead of making connections directly
+to the RadSec server it makes them via Traefik.
+
+On `radseccli` amend `/etc/raddb/sites-enabled/tls` and set the IP address to
+that of the `traefik` host.
+
+.Example updated test client homeserver configuration
+=====================================================
+
+ home_server tls {
+         ipaddr = 172.23.0.5    # Updated from radsecsvr to traefik
+         ...
+ }
+
+=====================================================
+
+Restart the debug mode session:
+
+[source,shell]
+----
+radiusd -X
+----
+
+Perform a test authentication:
+
+[source,shell]
+----
+ echo "User-Name = bob" | radclient 127.0.0.1 auth testing123
+----
+
+If the test client is able to successfully establish the RadSec connection via
+Traefik and the RadSec server replies with an Access-Accept response then the
+output will be as follows:
+
+.Example output from radclient
+==============================
+
+ Sent Access-Request Id 252 from 0.0.0.0:50118 to 127.0.0.1:1812 length 27
+ Received Access-Accept Id 252 from 127.0.0.1:1812 to 127.0.0.1:50118 length 39
+
+==============================
+
+Traefik should also log a message that indicates that the connection was
+proxied, such as the following:
+
+.Example output from Traefik
+============================
+
+ time="..." level=debug msg="Handling connection from 172.23.0.2:57367"
+
+============================
+
+Any other output from radclient or Traefik indicates that there is a problem
+with the Traefik configuration or that FreeRADIUS is not accepting connection
+from the `traefik` host, which must be solved before continuing.
+
+Once proxied connections are working we are ready to
+xref:protocols/proxy/enable_proxy_protocol.adoc[enable the PROXY Protocol] on
+both Traefik and the RadSec server.
+

@@ -1,0 +1,14 @@
+== Defining the DHCP policy
+
+Now that FreeRADIUS is successfully running as a DHCP server it is necessary to
+configure a DHCP policy so that it returns correctly formed responses to the DHCP
+requests that it receives.
+
+This involves a number of steps:
+
+  * xref:protocols/dhcp/policy_ippool_creation.adoc[Defining the IP address pools.]
+  * xref:protocols/dhcp/policy_common_options.adoc[Defining the options that are common to all replies.]
+  * xref:protocols/dhcp/policy_network_options.adoc[Defining the options for the network from which the request originates and ensuring that IP addresses are allocated from the correct pool.]
+  * xref:protocols/dhcp/policy_subnet_options.adoc[Defining the options for the subnet to which this issued IP address belongs.]
+  * xref:protocols/dhcp/policy_device_options.adoc[Defining the device, class and group based options specific to the device.]
+  * xref:protocols/dhcp/policy_ippool_access.adoc[Using device properties to restrict access to certain pools.]

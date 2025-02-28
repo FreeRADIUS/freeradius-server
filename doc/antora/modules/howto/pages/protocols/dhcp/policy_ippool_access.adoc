@@ -1,0 +1,54 @@
+== Configure access restrictions for pools
+
+We can combine what we have learned in the preceeding sections to provide pools
+whose access is restricted in some way, for example to a particular class.
+
+Consider the ISC DHCP configuration snippet:
+
+[source,iscdhcp]
+----
+subnet 10.99.99.0 netmask 255.255.255.0 {
+    pool {
+        range 10.99.99.200 10.99.99.250;
+        allow members of "printers";
+    }
+    option routers 10.99.99.1;
+}
+----
+
+Or the equivalent Kea configuration:
+
+[source,isckea]
+----
+"Dhcp4": {
+    "subnet4": [{
+        "subnet": "10.99.99.0/24",
+        "pools": [
+            {
+                "pool": "10.99.99.200 - 10.99.99.250",
+                "client-class": "printers"
+            }
+        ],
+        "option-data": [
+            { "name": "routers", "data": "10.10.0.1" }
+        ]
+    }],
+    ...
+}
+----
+
+These define a subnet containing a single pool that is restricted to members of
+the "printers" class. (The definition for this class is omitted.)
+
+In FreeRADIUS, to filter access to this pool entries such as the following
+should included in the `<raddb>/mods-config/files/dhcp` configuration file:
+
+[source,config]
+----
+network DHCP-Network-Subnet < 10.99.99.0/24, \
+           DHCP-Group-Name == "printers", Pool-Name := "printers-pool"
+       DHCP-Router-Address := 10.99.99.1
+----
+
+Note that any number of additional filters can be added to the initial "check"
+line to restrict matches to the network block.

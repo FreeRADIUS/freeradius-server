@@ -1,0 +1,336 @@
+= Server statistics
+
+FreeRADIUS collects statistics internally about certain operations
+it is doing, such as the number of authentication and accounting
+requests, how many accepts and failures, and server queue lengths.
+These can be queried by sending a specially-crafted RADIUS
+`Status-Server` packet to a "status" virtual server.
+
+== Configuring the status virtual server
+
+The `status` virtual server is present in the default
+configuration, but needs to be enabled before it can be used. To
+do this, create a symlink from `sites-enabled/status` to
+`../sites-available/status`:
+
+[source,shell]
+----
+# cd raddb/sites-enabled
+# ln -s ../sites-available/status
+----
+
+[NOTE]
+====
+If you are not starting from the default configuration, check that
+`status_server` is still set to `yes` in `raddb/radiusd.conf` as
+well.
+====
+
+While the default configuration will work for most setups, you may
+edit the virtual server configuration in `sites-enabled/status`.
+No major changes are necessary here, though the default secret,
+`adminsecret`, should be changed. Other possible changes may be
+the listening IP address and port, and the clients that are
+allowed to connect. By default, connections are restricted to the
+local host only.
+
+Having enabled and configured the status server, restart
+FreeRADIUS to make it active.
+
+== Querying the server
+
+To get the current statistics from the server, send a RADIUS
+request of type `Status-Server` to the status port. Unless edited
+above, the request must come from the same server that FreeRADIUS
+is running on, and be sent to port 18121 with the secret
+'adminsecret' . At a minimum, the `FreeRADIUS-Statistics-Type`
+attribute must be set. For example:
+
+    $ cat <<EOF | radclient -x localhost:18121 status adminsecret
+    > FreeRADIUS-Statistics-Type = 0x01
+    > Message-Authenticator = 0x00
+    > EOF
+    Sent Status-Server Id 145 from 0.0.0.0:b852 to 127.0.0.1:18121 length 62
+        FreeRADIUS-Statistics-Type = Authentication
+        Message-Authenticator = 0x00
+    Received Access-Accept Id 145 from 127.0.0.1:46c9 to 127.0.0.1:47186 length 152
+        FreeRADIUS-Total-Access-Requests = 27
+        FreeRADIUS-Total-Access-Accepts = 20
+        FreeRADIUS-Total-Access-Rejects = 1
+        FreeRADIUS-Total-Access-Challenges = 0
+        FreeRADIUS-Total-Auth-Responses = 5
+        FreeRADIUS-Total-Auth-Duplicate-Requests = 0
+        FreeRADIUS-Total-Auth-Malformed-Requests = 0
+        FreeRADIUS-Total-Auth-Invalid-Requests = 0
+        FreeRADIUS-Total-Auth-Dropped-Requests = 0
+        FreeRADIUS-Total-Auth-Unknown-Types = 0
+        FreeRADIUS-Total-Auth-Conflicts = 0
+
+The `FreeRADIUS-Statistics-Type` attribute is a bitmask - add
+together the following numbers to select the statistics required.
+Some options are mutually exclusive, so it might be necessary to
+send multiple requests to collect all information.
+
+[%header,cols="2,1,1,5"]
+|===
+|Name|Hex value|Decimal value|Description
+
+|Authentication
+|0x01
+|1
+|Stats about authentications
+
+|Accounting
+|0x02
+|2
+|Stats about accounting
+
+|Proxy Auth
+|0x04
+|4
+|Proxied authentication requests
+
+|Proxy Accounting
+|0x08
+|8
+|Proxied accounting requests
+
+|Internal
+|0x10
+|16
+|Queue lengths, thread information etc.
+
+|Client
+|0x20
+|32
+|Statistics about RADIUS clients e.g. defined in `clients.conf`
+
+|Server
+|0x40
+|64
+|Statistics about server 'listen' sockets e.g. in `sites-enabled/*`
+
+|Home Server
+|0x80
+|128
+|Statistics about a proxy home servers e.g. in `proxy.conf`
+|===
+
+== Worked examples
+
+To show the statistics available, a few examples follow.
+
+=== Global server authentications
+
+Using `FreeRADIUS-Statistics-Type = 0x01` requests stats about
+authentications. Because, for example, no "Client" qualifier has
+been added (`0x20`) the numbers are global to the server.
+
+[source,shell]
+----
+# cat <<EOF | radclient -x localhost:18121 status adminsecret
+FreeRADIUS-Statistics-Type = 0x01
+Message-Authenticator=0x00
+EOF
+Sent Status-Server Id 90 from 0.0.0.0:e008 to 127.0.0.1:18121 length 50
+	FreeRADIUS-Statistics-Type = Authentication
+	Message-Authenticator = 0x00
+Received Access-Accept Id 90 from 127.0.0.1:46c9 to 127.0.0.1:57352 length 152
+	FreeRADIUS-Total-Access-Requests = 133
+	FreeRADIUS-Total-Access-Accepts = 114
+	FreeRADIUS-Total-Access-Rejects = 13
+	FreeRADIUS-Total-Access-Challenges = 0
+	FreeRADIUS-Total-Auth-Responses = 127
+	FreeRADIUS-Total-Auth-Duplicate-Requests = 0
+	FreeRADIUS-Total-Auth-Malformed-Requests = 0
+	FreeRADIUS-Total-Auth-Invalid-Requests = 0
+	FreeRADIUS-Total-Auth-Dropped-Requests = 0
+	FreeRADIUS-Total-Auth-Unknown-Types = 0
+	FreeRADIUS-Total-Auth-Conflicts = 0
+----
+
+=== Global server authentication and accounting requests
+
+Sending `0x01` requests authentication statistics, and `0x02`
+requests accounting stats. To get both in one result, add them
+together, so we requst `0x03`. In this example we send decimal
+rather than hexadecimal.
+
+[source,shell]
+----
+# cat <<EOF | radclient -x localhost:18121 status adminsecret
+FreeRADIUS-Statistics-Type = 3
+Message-Authenticator=0x00
+EOF
+Sent Status-Server Id 216 from 0.0.0.0:ce7b to 127.0.0.1:18121 length 50
+	FreeRADIUS-Statistics-Type = Auth-Acct
+	Message-Authenticator = 0x00
+Received Access-Accept Id 216 from 127.0.0.1:46c9 to 127.0.0.1:52859 length 248
+	FreeRADIUS-Total-Access-Requests = 542
+	FreeRADIUS-Total-Access-Accepts = 451
+	FreeRADIUS-Total-Access-Rejects = 81
+	FreeRADIUS-Total-Access-Challenges = 0
+	FreeRADIUS-Total-Auth-Responses = 532
+	FreeRADIUS-Total-Auth-Duplicate-Requests = 0
+	FreeRADIUS-Total-Auth-Malformed-Requests = 0
+	FreeRADIUS-Total-Auth-Invalid-Requests = 0
+	FreeRADIUS-Total-Auth-Dropped-Requests = 0
+	FreeRADIUS-Total-Auth-Unknown-Types = 0
+	FreeRADIUS-Total-Auth-Conflicts = 0
+	FreeRADIUS-Total-Accounting-Requests = 0
+	FreeRADIUS-Total-Accounting-Responses = 0
+	FreeRADIUS-Total-Acct-Duplicate-Requests = 0
+	FreeRADIUS-Total-Acct-Malformed-Requests = 0
+	FreeRADIUS-Total-Acct-Invalid-Requests = 0
+	FreeRADIUS-Total-Acct-Dropped-Requests = 0
+	FreeRADIUS-Total-Acct-Unknown-Types = 0
+	FreeRADIUS-Total-Acct-Conflicts = 0
+----
+
+=== Internal server stats
+
+The value `0x10` requests information about the server such as queue
+lengths and thread state.
+
+[source,shell]
+----
+# cat <<EOF | radclient -x localhost:18121 status adminsecret
+FreeRADIUS-Statistics-Type = 0x10
+Message-Authenticator=0x00
+EOF
+Sent Status-Server Id 158 from 0.0.0.0:a090 to 127.0.0.1:18121 length 50
+	FreeRADIUS-Statistics-Type = Internal
+	Message-Authenticator = 0x00
+Received Access-Accept Id 158 from 127.0.0.1:46c9 to 127.0.0.1:41104 length 164
+	FreeRADIUS-Stats-Start-Time = "Aug  3 2023 13:36:24 UTC"
+	FreeRADIUS-Stats-HUP-Time = "Aug  3 2023 13:36:24 UTC"
+	FreeRADIUS-Queue-Len-Internal = 0
+	FreeRADIUS-Queue-Len-Proxy = 0
+	FreeRADIUS-Queue-Len-Auth = 0
+	FreeRADIUS-Queue-Len-Acct = 0
+	FreeRADIUS-Queue-Len-Detail = 0
+	FreeRADIUS-Queue-PPS-In = 0
+	FreeRADIUS-Queue-PPS-Out = 0
+	FreeRADIUS-Stats-Threads-Active = 0
+	FreeRADIUS-Stats-Threads-Total = 0
+	FreeRADIUS-Stats-Threads-Max = 0
+----
+
+=== Complete global server information
+
+A useful common request is all information about the server on a
+global basis: internal stats (16 / `0x10`) plus authentications (1
+/ `0x01`), accounting (2 / `0x02`), proxy authentications (4 /
+`0x04`) and proxy accounting (8 / `0x08`). The value `All` is
+defined in the dictionary as `0x1f` (decimal 31) to cover
+this common eventuality, and is what we demonstrate here.
+
+[source,shell]
+----
+# cat <<EOF | radclient -x localhost:18121 status adminsecret
+FreeRADIUS-Statistics-Type = All
+Message-Authenticator=0x00
+EOF
+Sent Status-Server Id 4 from 0.0.0.0:9ee4 to 127.0.0.1:18121 length 50
+	FreeRADIUS-Statistics-Type = All
+	Message-Authenticator = 0x00
+Received Access-Accept Id 4 from 127.0.0.1:46c9 to 127.0.0.1:40676 length 596
+	FreeRADIUS-Total-Access-Requests = 792
+	FreeRADIUS-Total-Access-Accepts = 659
+	FreeRADIUS-Total-Access-Rejects = 122
+	FreeRADIUS-Total-Access-Challenges = 0
+	FreeRADIUS-Total-Auth-Responses = 781
+	FreeRADIUS-Total-Auth-Duplicate-Requests = 0
+	FreeRADIUS-Total-Auth-Malformed-Requests = 0
+	FreeRADIUS-Total-Auth-Invalid-Requests = 0
+	FreeRADIUS-Total-Auth-Dropped-Requests = 0
+	FreeRADIUS-Total-Auth-Unknown-Types = 0
+	FreeRADIUS-Total-Auth-Conflicts = 0
+	FreeRADIUS-Total-Accounting-Requests = 0
+	FreeRADIUS-Total-Accounting-Responses = 0
+	FreeRADIUS-Total-Acct-Duplicate-Requests = 0
+	FreeRADIUS-Total-Acct-Malformed-Requests = 0
+	FreeRADIUS-Total-Acct-Invalid-Requests = 0
+	FreeRADIUS-Total-Acct-Dropped-Requests = 0
+	FreeRADIUS-Total-Acct-Unknown-Types = 0
+	FreeRADIUS-Total-Acct-Conflicts = 0
+	FreeRADIUS-Total-Proxy-Access-Requests = 0
+	FreeRADIUS-Total-Proxy-Access-Accepts = 0
+	FreeRADIUS-Total-Proxy-Access-Rejects = 0
+	FreeRADIUS-Total-Proxy-Access-Challenges = 0
+	FreeRADIUS-Total-Proxy-Auth-Responses = 0
+	FreeRADIUS-Total-Proxy-Auth-Duplicate-Requests = 0
+	FreeRADIUS-Total-Proxy-Auth-Malformed-Requests = 0
+	FreeRADIUS-Total-Proxy-Auth-Invalid-Requests = 0
+	FreeRADIUS-Total-Proxy-Auth-Dropped-Requests = 0
+	FreeRADIUS-Total-Proxy-Auth-Unknown-Types = 0
+	FreeRADIUS-Total-Proxy-Accounting-Requests = 0
+	FreeRADIUS-Total-Proxy-Accounting-Responses = 0
+	FreeRADIUS-Total-Proxy-Acct-Duplicate-Requests = 0
+	FreeRADIUS-Total-Proxy-Acct-Malformed-Requests = 0
+	FreeRADIUS-Total-Proxy-Acct-Invalid-Requests = 0
+	FreeRADIUS-Total-Proxy-Acct-Dropped-Requests = 0
+	FreeRADIUS-Total-Proxy-Acct-Unknown-Types = 0
+	FreeRADIUS-Stats-Start-Time = "Aug  3 2023 13:36:24 UTC"
+	FreeRADIUS-Stats-HUP-Time = "Aug  3 2023 13:36:24 UTC"
+	FreeRADIUS-Queue-Len-Internal = 0
+	FreeRADIUS-Queue-Len-Proxy = 0
+	FreeRADIUS-Queue-Len-Auth = 0
+	FreeRADIUS-Queue-Len-Acct = 0
+	FreeRADIUS-Queue-Len-Detail = 0
+	FreeRADIUS-Queue-PPS-In = 0
+	FreeRADIUS-Queue-PPS-Out = 0
+	FreeRADIUS-Stats-Threads-Active = 0
+	FreeRADIUS-Stats-Threads-Total = 0
+	FreeRADIUS-Stats-Threads-Max = 0
+----
+
+=== Client statistics
+
+Data can be provided about each RADIUS client defined in the
+server. Note that this is for the client definition, not for each
+client that connects - if a client definition has a wide netmask
+and permits multiple clients to connect, the statistics will be
+aggregate for all clients using that definition.
+
+[NOTE]
+====
+It is not possible to request global server statistics
+concurrently with client statistics as both use the same reply
+attributes.
+====
+
+Here we request accounting data for one particular client by IP
+address.
+
+[source,shell]
+----
+# cat <<EOF | radclient -x localhost:18121 status adminsecret
+FreeRADIUS-Statistics-Type = 0x2f
+FreeRADIUS-Stats-Client-IP-Address = 172.16.0.10
+Message-Authenticator=0x00
+EOF
+Sent Status-Server Id 194 from 0.0.0.0:d897 to 127.0.0.1:18121 length 62
+	FreeRADIUS-Statistics-Type = 47
+	FreeRADIUS-Stats-Client-IP-Address = 172.16.0.10
+	Message-Authenticator = 0x00
+Received Access-Accept Id 194 from 127.0.0.1:46c9 to 127.0.0.1:55447 length 236
+	FreeRADIUS-Stats-Client-IP-Address = 172.16.0.10
+	FreeRADIUS-Total-Access-Requests = 1491
+	FreeRADIUS-Total-Access-Accepts = 1240
+	FreeRADIUS-Total-Access-Rejects = 246
+	FreeRADIUS-Total-Access-Challenges = 0
+	FreeRADIUS-Total-Auth-Responses = 1486
+	FreeRADIUS-Total-Auth-Duplicate-Requests = 0
+	FreeRADIUS-Total-Auth-Malformed-Requests = 0
+	FreeRADIUS-Total-Auth-Invalid-Requests = 0
+	FreeRADIUS-Total-Auth-Dropped-Requests = 0
+	FreeRADIUS-Total-Auth-Unknown-Types = 0
+	FreeRADIUS-Total-Accounting-Requests = 0
+	FreeRADIUS-Total-Accounting-Responses = 0
+	FreeRADIUS-Total-Acct-Duplicate-Requests = 0
+	FreeRADIUS-Total-Acct-Malformed-Requests = 0
+	FreeRADIUS-Total-Acct-Invalid-Requests = 0
+	FreeRADIUS-Total-Acct-Dropped-Requests = 0
+	FreeRADIUS-Total-Acct-Unknown-Types = 0
+----

@@ -27,7 +27,7 @@ The instructions here depend on the following criteria:
   certificate for your RADIUS server, and are aware of the
   security considerations in doing so.
 
-- You wish to use [LetsEncrypt[(https://letsencrypt.org/) for this
+- You wish to use https://letsencrypt.org/[LetsEncrypt[ for this
   purpose, and want certificate renewals (usually every 2-3 months) to
   be automatic.
 
@@ -47,7 +47,7 @@ but that configuration is beyond the scope of this document.
 
 == Set up process
 
-The instructions here use LetsEncrypt's [certbot](https://certbot.eff.org/) tool to generate
+The instructions here use LetsEncrypt's https://certbot.eff.org/[certbot] tool to generate
 certificates and renew them when necessary. Other alternative
 tools can be used based on the following instructions.
 
@@ -78,10 +78,13 @@ it is running as the `freerad` user, but may be `radiusd` on RPM
 based systems, `radius` if installed from source, or some other
 user.
 
-NOTE: You *must* have a public IP address for the server, and
+[NOTE]
+===
+You *must* have a public IP address for the server, and
 there *must* be a DNS entry (of the name of the certificate you
 will be requesting) pointing to this IP. The server *must* be
 reachable on port 80 (HTTP) from the Internet.
+===
 
 Install the `certbot` utility from LetsEncrypt. On Debian it can
 be installed from the default repositories:
@@ -138,12 +141,11 @@ are severe rate limits on the production issuer server, which can mean
 you are quickly locked out if making multiple requests while testing.
 It is therefore useful to try with the test issuer first.
 
-Run the following to generate a key and to request the certificate.
-Note that `certbot` will open up a temporary web server on port 80
-while this is in progress, so ensure that any firewalls are already
-opened up, and that external systems can connect to the machine in
-port 80.
+Run the following set of commands to generate a key and to request the certificate.
 
+.Generate a test certificate
+[%collapsible]
+====
 [source,shell]
 ----
 certbot certonly \
@@ -153,18 +155,33 @@ certbot certonly \
         -d radius.example.com \
         --post-hook /usr/local/sbin/certbot-post-hook
 ----
+====
+
+[NOTE]
+====
+The `certbot` opens up a temporary web server on port 80
+while this is in progress. Ensure that any firewalls are already
+opened up, and that external systems can connect to the machine in
+port 80.
+====
 
 Any issues generating this certificate pair need to be
 investigated and fixed. Repeat the above command as necessary
 until the certificate is issued successfully.
 
-NOTE: There are still rate limits on LetsEncrypt's test server,
+[NOTE]
+====
+There are still rate limits on LetsEncrypt's test server,
 but they are higher and you are less likely to hit them than with
 the production issuer.
+====
 
 Once you have successfully generated a test certificate, you can
 remove it and request the real certificate:
 
+.Generate a real certificate
+[%collapsible]
+====
 [source,shell]
 ----
 certbot revoke \
@@ -179,7 +196,7 @@ certbot certonly \
         -d radius.example.com \
         --post-hook /usr/local/sbin/certbot-post-hook
 ----
-
+====
 
 === FreeRADIUS configuration
 

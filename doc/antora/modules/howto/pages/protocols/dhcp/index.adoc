@@ -1,0 +1,35 @@
+= FreeRADIUS DHCP server
+
+This guide describes how FreeRADIUS can be used in place of ISC DHCP or ISC Kea
+to provide a significantly more performant and, above all, more flexible DHCP
+server.
+
+This guide provides a suggested configuration that should be somewhat familiar
+to anyone who has previously implemented DHCP using the most frequently used
+features of other DHCP server software.
+
+The modular design of FreeRADIUS means that there is no one "right" way to
+implement the DHCP service. FreeRADIUS allows you to put together a "mix and
+match" approach.
+
+For example you can manage the leases in an SQL database. You might then hard
+code certain DHCP reply parameters within configuration and then look up
+additional parameters using a datastore such as:
+
+  * a local file such as a structured text file or an SQLite database
+  * an organisational LDAP directory
+  * an SQL or "no SQL" database
+  * a remote endpoint such as a RESTful HTTP API
+
+The policy language and modular configuration of FreeRADIUS is sufficiently
+powerful and that almost any aspect of the server's behaviour can be customised
+to implement even the most sophisticated DHCP configurations.
+
+== Sections in this guide
+
+This guide is organised into four parts that should be read in order:
+
+1. xref:protocols/dhcp/prepare.adoc[Preparation]
+2. xref:protocols/dhcp/enable.adoc[Enabling the DHCP service]
+3. xref:protocols/dhcp/test.adoc[Testing the DHCP service]
+4. xref:protocols/dhcp/policy.adoc[Defining the DHCP policy]
