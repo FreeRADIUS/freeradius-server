@@ -45,15 +45,26 @@ attribute, `chap` for `CHAP-Password`, `mschap` for `MS-CHAP-*`, etc.
 === Request Processing
 
 When the server processes requests, it manages four
-xref:reference:unlang/list.adoc[attribute lists]:
+xref:reference:unlang/list.adoc[attribute lists].
 
-`request`:: attributes taken from the received packet
+.Attribute Lists and Details
 
-`reply`:: attributes which will be sent in the reply
+[cols="1,2"]
+|===
+|Attribute List|Description
 
-`control`:: attributes used to control how the server operates.  These are never sent in a packet
+|`request`
+|Attributes taken from the received packet.
 
-`session-state`:: attributes which are saved and restroed across multiple request / reply exchanges.
+|`reply`
+|Attributes which will be sent in the reply.
+
+|`control`
+|Attributes used to control how the server operates.  These are never sent in a packet.
+
+|`session-state`
+|Attributes which are saved and restored across multiple request / reply exchanges.
+|===
 
 All of these lists are available to all modules.  All of these lists are available in xref:reference:unlang/index.adoc[Unlang]
 

@@ -29,6 +29,3 @@ The debug output show the current configuration and relevant information such as
 * The debug output shows that the packets are being processed as you expect.
 
 * The response packets contain the attributes you expect to see.
-
-
-== Best Practices

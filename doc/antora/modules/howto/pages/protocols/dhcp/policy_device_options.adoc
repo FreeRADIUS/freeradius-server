@@ -1,0 +1,310 @@
+== Configure "device", "class" and "group" options
+
+Beyond the global, network and subnet options already described, most sites
+will have a number of group or class based options, and have a requirement for
+setting reply parameters against individual devices.
+
+In general, FreeRADIUS does not differentiate between "classes" (memberships
+defined by some attribute of the DHCP request) and "groups" (memberships
+defined by some manually aggregation related devices, typically based on lists
+of MAC address).
+
+The sample DHCP configuration provided with FreeRADIUS makes use of an internal
+attribute `DHCP-Group-Name` to support the setting of different options for
+different groups of devices.
+
+In general the groups to which a device belongs is determined during the
+processing of a request and these are added as instances of the
+`DHCP-Group-Name` attribute. This may be by performing a test on one or more
+request parameters (akin to a "class"), hash-based lookup of up all of part of
+an attribute in a local list (akin to a "subclass"), or doing the same using a
+remote datastore (SQL, LDAP, REST API, etc).
+
+FreeRADIUS can then iterate over `DHCP-Group-Name` to set group-specific
+options.
+
+We describe some of these options in more detail.
+
+=== Directly in Policy
+
+Simple class options can be written directly into policy.  This is most
+suited to those options that rarely change and are based on attributes in the
+request such as the `User-Class`.
+
+Consider the ISC DHCP configuration snippet:
+
+[source,iscdhcp]
+----
+filename "undionly.kpxe";
+class "pxeclient" {
+    match option substring(user-class,0,4);
+}
+subclass "pxeclient" "iPXE" {
+    filename "http://my.web.server/boot_script.php";
+}
+----
+
+Or the equivalent Kea configuration:
+
+[source,isckea]
+----
+"Dhcp4": {
+    "option-data": [
+        { "name": "boot-file-name", "data": "undionly.kpxe" }
+    ],
+    "client-classes": [
+        {
+            "name": "pxeclient",
+            "test": "substring(option[77],0,4) == 'iPXE'",
+            "option-data": [
+               {
+                   "name": "boot-file-name",
+                   "data": "http://my.web.server/boot_script.php"
+               }
+            ]
+        }
+    ]
+    ...
+}
+----
+
+These define the "filename" DHCP option differently based on whether or not the
+supplied "user-class" option begins with "iPXE".
+
+FreeRADIUS provides multiple ways for this to be configured.
+
+For example, the following "unlang" policy implements the class options defined
+above:
+
+[source,unlang]
+----
+if (&DHCP-User-Class && "%{substring:&DHCP-User-Class 0 4}" == "iPXE") {
+    update reply {
+        &DHCP-Boot-Filename := "http://my.web.server/boot_script.php"
+    }
+} else {
+    update reply {
+        &DHCP-Boot-Filename := "undionly.kpxe"
+    }
+}
+----
+
+Policy-based configuration of DHCP options is also useful for complex matching.
+For example, the following Unlang sets the DHCP-Boot-Filename parameter based
+on the request's DHCP-Client-Identifier using regular expression captures,
+provided that it matches the given format:
+
+[source,unlang]
+----
+if (&DHCP-Client-Identifier && \
+        "%{string:DHCP-Client-Identifier}" =~ /^RAS([0-9])-site([A-Z])$/) {
+    update reply {
+        &DHCP-Boot-Filename := "rasboot-%{1}-%{2}.kpxe"
+    }
+}
+----
+
+=== In Text Files
+
+The `files` module that has already been described for global, network and
+subnet options can also be used to apply options to groups of clients.
+
+Firstly we must defined a mapping from a set of clients clients to their
+respective groups.  One option for this is to use the `passwd` module, for
+which a sample configuration is included.
+
+Firstly symlink or copy the module configuration
+`<raddb>/mods-available/dhcp_passwd` into `<raddb>/mods-enabled/`.  The
+suggested configuration expects the group membership file to be in
+`<raddb>/mods-config/files/dhcp_groups` and take the form of:
+
+[source,config]
+----
+<group1 name>|<hardware address>,<hardware address>,<hardware address>
+<group2 name>|<hardware address>,<hardware address>
+----
+
+i.e. one line for each group starting with the group name followed by a pipe
+character and then a comma-separated list of hardware addresses.
+
+The `allow_multiple_keys` option allows for a host to be a member of
+more than one group.
+
+Sample configuration for looking up group options is contained in
+`<raddb>/policy.d/dhcp` in the `dhcp_group_options` policy and in
+`<raddb>/mods-available/dhcp_files` as the `dhcp_set_group_options` instance.
+
+The same data file `<raddb>/mods-config/files/dhcp` is used to lookup
+group options as was used for global and network options.  In this instance,
+add entries with the group name as the key such as:
+
+[source,config]
+----
+group1
+       DHCP-Log-Server := 10.10.0.100,
+       DHCP-LPR-Server := 10.10.0.200
+
+group2
+       DHCP-LPR-Server := 192.168.20.200
+----
+
+=== In the SQL Database
+
+Policy and files are both read during startup and editing them while
+FreeRADIUS is running will not result in any changes in behaviour.  If
+you require regular changes to DHCP options, then storing them in
+an SQL database provides greater flexibility since the queries will be run in
+response to each DHCP packet rather than requiring the server to be restarted.
+
+DHCP reply options for devices (including network-specific options) can be
+fetched from SQL using an arbitrary lookup key. This can be performed multiple
+times as necessary using different contexts, for example to first set
+subnet-specific options and then to set group-specific options.
+
+The default schema contains three tables to support this:
+
+"dhcpreply" contains reply options for a given identifier (e.g. MAC Address):
+
+.dhcpreply table
+|===
+|Identifier |Attribute |Op |Value |Context
+
+|`02:01:aa:bb:cc:dd` |`DHCP-Log-Server` |`:=` |`192.0.2.10` |`by-mac`
+|`02:01:aa:bb:cc:dd` |`DHCP-LPR-Server` |`:=` |`192.0.2.11` |`by-mac`
+|`02:01:aa:bb:cc:dd` |`Fall-Through`    |`:=` |`Yes`        |`by-mac`
+|===
+
+"dhcpgroup" maps identifiers to a group of options that can be shared:
+
+.dhcpgroup table
+|===
+|Identifier |GroupName |Priority |Context
+
+|`02:01:aa:bb:cc:dd` |`salesdept` |`10` |`by-mac`
+|===
+
+"dhcpgroupreply" contains reply options for each group:
+
+.dhcpgroupreply table
+|===
+|GroupName |Attribute |Op |Value |Context
+
+|`salesdept` |`DHCP-NTP-Servers` |`:=` |`192.0.2.20` |`by-mac`
+|`salesdept` |`DHCP-Log-Server`  |`+=` |`192.0.2.21` |`by-mac`
+|`salesdept` |`DHCP-LPR-Server`  |`^=` |`192.0.2.22` |`by-mac`
+|===
+
+Within the context of assigning options directly to devices, as well as to
+manually-curated groups of devices keyed by their MAC address:
+
+  - Place device-specific options in the "dhcpreply" table.
+  - Add `Fall-Through := Yes` to the options in the "dhcpreply" table in order
+    to trigger group lookups, which are disabled by default.
+  - Place entries in the "dhcpgroup" `identifier = <MAC-Address>, groupname = <group>, priority =
+    <priority>` in the "dhcpgroup" table to map a device to its groups by
+    priority.
+  - Place the grouped options in the "dhcpgroupreply" table.
+  - For each of the above, set `Context` to something by which the option
+    lookup is referred to in the policy, for example `Context = 'by-mac'`.
+
+For the above example you would add the following to the DHCP virtual server to
+perform reply option lookup using the device's MAC address against the `by-mac`
+context:
+
+[source,unlang]
+----
+update control {
+        &DHCP-SQL-Option-Context := "by-mac"
+        &DHCP-SQL-Option-Identifier := &request:DHCP-Client-Hardware-Address
+}
+dhcp_sql.authorize
+----
+
+In the above, the DHCP reply options would be assigned to a device with MAC
+address 02:01:aa:bb:cc:dd as follows:
+
+  - Firstly, the `DHCP-Log-Server` option would be set to `192.0.2.10` and the
+    `DHCP-LPR-Server` option set to `192.0.2.11`.
+  - `Fall-Through` is set, so the group mapping is then queried which
+    determines that the device belongs to a single `salesdept` group.
+  - Finally, the options for the `salesdept` group are now merged, setting a
+    `DHCP-NTP-Servers` option to `192.0.2.20`, appending an additional
+    `DHCP-Log-Server` option set to `192.0.2.21`, and prepending an additional
+    `DHCP-LPR-Server` option set to `192.0.2.22`.
+
+If instead you wanted to perform a "subclass" lookup based on the first three
+octets of the device's MAC address then with tables containing the following
+sample data you could invoke an SQL lookup as shown:
+
+."dhcpreply" table:
+|===
+|Identifier |Attribute |Op |Value |Context
+
+|`000393` |`Fall-Through` |`:=` |`Yes` |`class-vendor`
+|`000a27` |`Fall-Through` |`:=` |`Yes` |`class-vendor`
+|`f40304` |`Fall-Through` |`:=` |`Yes` |`class-vendor`
+|===
+
+."dhcpgroup" table:
+|===
+|Identifier |GroupName |Priority |Context
+
+|`000393` |`apple`  |`10` |`class-vendor`
+|`000a27` |`apple`  |`10` |`class-vendor`
+|`f40304` |`google` |`10` |`class-vendor`
+|===
+
+."dhcpgroupreply" table:
+|===
+|GroupName |Attribute |Op |Value |Context
+
+|`apple`  |`DHCP-Boot-Filename` |`:=` |`apple.efi`  |`class-vendor`
+|`google` |`DHCP-Boot-Filename` |`:=` |`google.efi` |`class-vendor`
+|===
+
+
+[source,unlang]
+----
+update control {
+        &DHCP-SQL-Option-Context := "class-vendor"
+        &DHCP-SQL-Option-Identifier := \
+            "%{substring:%{hex:&DHCP-Client-Hardware-Address} 0 6}"
+}
+dhcp_sql.authorize
+----
+
+The file `policy.d/dhcp` contains a policy named `dhcp_policy_sql` which
+provides further worked examples for different types of option lookups.
+
+=== Testing "device", "class" and "group" options
+
+You should now test that any device-related options that you have configured
+using the various methods available are applied successfully by generating
+packets containing those parameters based upon which the reply options are set.
+
+For example, to test the iPXE user class example above you might want to
+generate a request as follows:
+
+[source,shell]
+----
+cat <<EOF > dhcp-packet-ipxe-boot.txt
+DHCP-Message-Type := DHCP-Discover
+DHCP-Client-Hardware-Address := 02:01:aa:bb:cc:dd
+DHCP-User-Class := "iPXE-class-abc"
+EOF
+----
+
+To which you would expect to see a response such as:
+
+.Example output from dhcpclient
+===============================
+ dhcpclient: ...
+ ----------------------------------------------------------------------
+ Waiting for DHCP replies for: 5.000000
+ ----------------------------------------------------------------------
+ ...
+ DHCP-Message-Type = DHCP-Offer
+ DHCP-Your-IP-Address = 1.2.3.4
+ DHCP-Boot-Filename := "http://my.web.server/boot_script.php"
+ ...
+===============================

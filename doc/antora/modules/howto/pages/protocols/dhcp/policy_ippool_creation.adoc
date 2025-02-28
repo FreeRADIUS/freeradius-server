@@ -1,0 +1,112 @@
+=== Determine the IP pool plan
+
+Except for cases where all IP allocation is performed using a mapping from the
+device MAC address to a fixed IP address, the DHCP configuration will involve
+the use of one or more IP address pools.
+
+FreeRADIUS stores all the IP addresses in its pools in whichever database has
+been chosen. An instance of the `sqlippools` module is used to manage all pools
+within a single table (normally `dhcpippool`). Each row of this table
+corresponds to an IP address that is a member of some pool. The pools are
+distinguished by name, so the table has a column (`pool_name`) that denotes
+this.
+
+Each pool in this table should be composed of a set of equally valid IP
+addresses for the devices that are designated to be members of the pool.
+
+Firstly, consider the network locations to which distinct ranges of IP
+addresses must be allocated and provisionally assign a pool to each.
+
+Next, consider that many networks support multiple co-existing subnets without
+VLAN separation. We will call this a "shared-network" to use the original ISC
+DHCP parlance. In Microsoft DHCP contexts this is often referred to as a
+"multinet".
+
+Often in a shared-network the policy has no regard for which of the network's
+devices is allocated to which subnet. In this case we must create a single,
+combined pool containing all of the IP addresses from each subnet in that
+network. Since all addresses in a pool are treated equally this will mean that
+any IP address may be allocated to a device that is making a DHCP request from
+that network. The appropriate DHCP parameters for the subnet to which the IP
+address belongs is determined after allocation.
+
+There are sometimes shared-networks (or even single subnets) for which IP
+addresses belonging to any subnet may be technically suitable for any device,
+however some local policy wants to assigning them to a particular subnet, for
+example to provide loose segregation between classes of device. In this case we
+define multiple pools, one for each range of IP addresses whose devices needs to
+be differentiated.
+
+The choice of pool is ordinarily determined based on the network from which the
+request originates using a mapping from Layer 2 networks to the pool name
+provided by the user. The indicator for the originating network can be
+overridden when this alone is insufficient to implement the required pool
+selection policy such as when you need to differentiate the pool's users with
+more granularity that their Layer 2 network, such as by considering device
+attributes ("class" membership in ISC parlance) or Option 82 circuit data.
+
+
+=== Populate the IP Pools
+
+By this stage you should have derived a list of pools, the IP address ranges
+contained therein, and the means of selecting the pool to use based on the
+originating network and/or some additional criteria from the request.
+
+A helper Perl script is provided with FreeRADIUS that can be used to populate
+the pools provide that you are using the default schema.
+
+[source,shell]
+----
+rlm_sqlippool_tool -p <pool_name> -s <range_start> -e <range_end> \
+        -t <table_name> (-d <sql_dialect> | -f <raddb_dir> [ -i <instance> ]) \
+        [ -c <capacity> ] [ -x <existing_ips_file> ]
+----
+
+If, for example, you had a range configured in ISC DHCP as:
+
+[source,iscdhcp]
+----
+range 10.0.0.5 10.0.0.199
+----
+
+and you are using PostgreSQL as your database, and you wish to refer to this pool
+using the name `local`, this could be prepared with:
+
+[source,shell]
+----
+rlm_sqlippool_tool -p local -s 10.0.0.5 -e 10.0.0.199 -t dhcpippool -d postgresql
+----
+
+If the SQL module of FreeRADIUS is already configured then this can
+be referenced so that the tool is able to use the configured connection
+parameters to connect to the database and populate the pool:
+
+[source,shell]
+----
+rlm_sqlippool_tool -p local -s 10.0.0.5 -e 10.0.0.199 -t dhcpippool -f /etc/raddb
+----
+
+For installations that require multiple pools, `rlm_sqlippool_tool` can
+be called referencing a YAML file defining the pools.  Comments at the
+head of `rlm_sqlippool_tool` explain the options in more detail.
+
+If static leases are required then these should be set up in the database
+such that the MAC address of the client should be set as the `pool_key`
+against the corresponding address and the `status` column of the row
+representing the address set to `static`.  A helper perl script,
+`rlm_iscfixed2ippool` can be used to read an ISC DHCP config file and produce
+SQL to perform these changes or directly update the database:
+
+[source,shell]
+----
+rlm_iscfixed2ippool -c <dhcpd.<raddb> -t <table_name> -k <mac|id> \
+    (-d <sql_dialect> | -f <raddb_dir> [-i <instance>])
+----
+
+For example, to read /etc/dhcp/dhcpd.conf and populate the configured
+FreeRADIUS database, using the mac as the identifier:
+
+[source,shell]
+----
+rlm_iscfixed2ippool -c /etc/dhcp/dhcpd.conf -t dhcpippool -k mac -f /usr/local/etc/raddb
+----

@@ -1,24 +1,9 @@
 = RESOURCES
 
-== Primary sites
+== Primary Sites
 
 * *https://www.freeradius.org/[FreeRADIUS]*
 * *https://www.inkbridgenetworks.com/[Inkbridge Networks]*
-
-== Mailing Lists
-
-Please see the description of FreeRADIUS mailing lists. For normal discussion of the server and how to use it, subscribe to the FreeRADIUS user-list. Only subscribe to the development list if you are interested in writing software for the new server.
-
-* *mailto:freeradius-users@lists.freeradius.org[freeradius-users]*
-This list is for all users of FreeRADIUS and deals with general questions related to FreeRADIUS.
-* *mailto:freeradius-devel@lists.freeradius.org[freeradius-devel]*
-This list is for developers who are writing code for FreeRADIUS. The content is highly technical and is not suited to the average user. If you looking to contribute code, please join this list.
-* *mailto:freeradius-announce@lists.freeradius.org[freeradius-announce]*
-This list is for all users of FreeRADIUS. Announcements about FreeRADIUS, including new versions and security issues, are made here.
-
-== Archive Mailing Lists
-* https://lists.freeradius.org/pipermail/freeradius-users/[User Mailing List Archive]
-* https://lists.freeradius.org/pipermail/freeradius-devel/[Developer Mailing List Archive]
 
 == Mailing lists
 
@@ -40,6 +25,5 @@ include::ROOT:partial$mailinglist.adoc[]
 * *https://www.iana.org/assignments/radius-types/radius-types.xhtml[RADIUS Packet Types]*
 
 
->>>>>>> 0e9c6571f1 (Updated faq, troubleshooting, added pages. Updated top-level nav file to include new entries.)
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

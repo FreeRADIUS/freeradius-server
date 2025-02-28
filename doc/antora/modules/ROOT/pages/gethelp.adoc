@@ -9,16 +9,9 @@ A lot of information can be found online for FreeRADIUS, but most of this inform
 
 ## What Email list do I use?
 
-There are several mailing lists associated with the FreeRADIUS server project. The lists are on the http://freeradius.org/list/[freeRADIUS] website. The current lists are:
+There are several mailing lists associated with the FreeRADIUS server project. The lists are on the http://freeradius.org/list/[freeRADIUS] website.
 
-* *mailto:freeradius-users@lists.freeradius.org[freeradius-users]*
-This list is for all users of FreeRADIUS and deals with general questions related to FreeRADIUS
-* *mailto:freeradius-devel@lists.freeradius.org[freeradius-devel]*
-This list is for developers who are writing code for FreeRADIUS.The content is highly technical and is
-not suited to the average user.
-* *mailto:freeradius-announce@lists.freeradius.org[freeradius-announce]*
-This list is for all users of FreeRADIUS. Announcements about FreeRADIUS, including new versions
-and security issues, are made here.
+include::partial$mailinglist.adoc[]
 
 ## How can I get training for my staff?
 
