@@ -37,6 +37,15 @@ DEFINE	RelativeDistinguishedName			set clone=@.RelativeDistinguishedName
 END RDNSequence
 END directoryName
 
+ATTRIBUTE	EDIPartyName				5	sequence option
+BEGIN EDIPartyName
+#
+#  These are really DirectoryString, which is CHOICE of all of the string options.
+#
+ATTRIBUTE nameAssigner					0	utf8string option
+ATTRIBUTE partyName					1	utf8string option
+END EDIPartyName
+
 ATTRIBUTE	uniformResourceIdentifier		6	ia5string option
 ATTRIBUTE	iPAddress				7	combo-ip option
 
