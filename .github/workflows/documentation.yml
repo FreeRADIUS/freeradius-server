@@ -26,8 +26,6 @@ jobs:
   build-docs:
     runs-on: ubuntu-latest
     if: github.repository_owner == 'FreeRADIUS' || github.event_name != 'schedule'
-    strategy:
-      fail-fast: true
 
     steps:
     - uses: actions/checkout@v4
@@ -84,9 +82,6 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    strategy:
-      fail-fast: true
-
     # Permissions needed to deploy on GitHub Pages
     permissions:
       contents: read
@@ -130,9 +125,6 @@ jobs:
       - build-docs
 
     runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: true
 
     # Ensure only one job is attempting to update the docs repo
     concurrency:
