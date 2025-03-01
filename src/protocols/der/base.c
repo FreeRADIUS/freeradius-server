@@ -488,14 +488,25 @@ static int dict_flag_max(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dic
 
 static int dict_flag_option(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
-	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	fr_der_attr_flags_t *flags;
 	unsigned long num;
 	char *end = NULL;
 
 	/*
+	 *	Only SET and SEQUENCE can have tagged types.
+	 */
+	flags = fr_dict_attr_ext((*da_p)->parent, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	if (!(*da_p)->parent->flags.is_root &&
+	    (flags->der_type != FR_DER_TAG_SEQUENCE) && (flags->der_type != FR_DER_TAG_SET)) {
+		fr_strerror_printf("Cannot use 'option' for attribute %s DER type %s - the parent must be 'sequence' or 'set'",
+				   (*da_p)->parent->name, fr_der_tag_to_str(flags->der_type));
+		return -1;
+	}
+
+	/*
 	 *	In the interest of laziness, allow a bare 'option', so
 	 *	that we don't have to give an attribute number, and
-	 *	then also duplicate that numbr in 'option='.
+	 *	then also duplicate that number in 'option='.
 	 */
 	if (!value) {
 		if (!(*da_p)->state.attr_set || (*da_p)->attr > 0x1f) {
@@ -505,6 +516,14 @@ static int dict_flag_option(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 
 		num = (*da_p)->attr;
 		goto check;
+	}
+
+	/*
+	 *	ATTRIBUTE can't have 'option='.
+	 */
+	if ((*da_p)->state.attr_set) {
+		fr_strerror_printf("Cannot use 'option=%s' for attribute %s, just use 'option'", value, (*da_p)->name);
+		return -1;
 	}
 
 	/*
@@ -524,6 +543,7 @@ check:
 		return -1;
 	}
 
+	flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 	flags->class = FR_DER_CLASS_CONTEXT;
 	flags->option = num;
 	flags->is_option = true;
@@ -533,8 +553,20 @@ check:
 
 static int dict_flag_optional(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
-	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	fr_der_attr_flags_t *flags;
 
+	/*
+	 *	Only SET and SEQUENCE can have optional elements.
+	 */
+	flags = fr_dict_attr_ext((*da_p)->parent, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	if (!(*da_p)->parent->flags.is_root &&
+	    (flags->der_type != FR_DER_TAG_SEQUENCE) && (flags->der_type != FR_DER_TAG_SET)) {
+		fr_strerror_printf("Cannot use 'optional' for attribute %s DER type %s - the parent must be 'sequence' or 'set'",
+				   (*da_p)->parent->name, fr_der_tag_to_str(flags->der_type));
+		return -1;
+	}
+
+	flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 	flags->optional = true;
 
 	return 0;
