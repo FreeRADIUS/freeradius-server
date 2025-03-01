@@ -177,3 +177,9 @@ BEGIN Test-Set-TLV
 DEFINE	Test-Integer					integer
 DEFINE	Test-Boolean					bool
 END Test-Set-TLV
+
+DEFINE Test-Choice					sequence
+BEGIN Test-Choice
+ATTRIBUTE option0					0 integer class=private
+ATTRIBUTE option1					1 integer class=private
+END Test-Choice

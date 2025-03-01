@@ -207,28 +207,42 @@ void fr_der_global_free(void)
 	fr_dict_autofree(libfreeradius_der_dict);
 }
 
-#if 0
+/*
+ *	Allow setting class of APPLICATION and PRIVATE.
+ */
 static int dict_flag_class(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	static const fr_table_num_sorted_t table[] = {
 		{ L("application"),	FR_DER_CLASS_APPLICATION },
-		{ L("context-specific"), FR_DER_CLASS_CONTEXT },
 		{ L("private"),		FR_DER_CLASS_PRIVATE },
-		{ L("universal"),	FR_DER_CLASS_UNIVERSAL },
 	};
 	static size_t table_len = NUM_ELEMENTS(table);
 
-	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	fr_der_attr_flags_t *flags;
 	fr_der_tag_class_t   tag_class;
 
+	flags = fr_dict_attr_ext((*da_p)->parent, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	if (flags->der_type != FR_DER_TAG_SEQUENCE) {
+		fr_strerror_printf("Cannot use 'class' for attribute %s DER type %s - the parent must be 'sequence'",
+				   (*da_p)->parent->name, fr_der_tag_to_str(flags->der_type));
+		return -1;
+	}
+
+	if ((*da_p)->attr >= FR_DER_TAG_VALUE_MAX) {
+		fr_strerror_printf("Cannot use 'class' for attribute %s - the attribute number must be 0..30",
+				   (*da_p)->parent->name);
+		return -1;
+	}
+
+	flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 	if (flags->class) {
-		fr_strerror_printf("Attribute already has a 'class' defined");
+		fr_strerror_printf("Attribute %s already has a 'class' defined", (*da_p)->name);
 		return -1;
 	}
 
 	tag_class = fr_table_value_by_str(table, value, FR_DER_CLASS_INVALID);
 	if (tag_class == FR_DER_CLASS_INVALID) {
-		fr_strerror_printf("Invalid value in 'class=%s'", value);
+		fr_strerror_printf("Unknown or invalid name in 'class=%s'", value);
 		return -1;
 	}
 
@@ -236,7 +250,6 @@ static int dict_flag_class(fr_dict_attr_t **da_p, char const *value, UNUSED fr_d
 
 	return 0;
 }
-#endif
 
 static int dict_flag_has_default(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
@@ -573,7 +586,7 @@ static int dict_flag_optional(fr_dict_attr_t **da_p, UNUSED char const *value, U
 }
 
 static const fr_dict_flag_parser_t  der_flags[] = {
-//	{ L("class"),		{ .func = dict_flag_class } },
+	{ L("class"),		{ .func = dict_flag_class } },
 	{ L("der_type"),	{ .func = dict_flag_der_type, .needs_value = true } },
 	{ L("has_default"),	{ .func = dict_flag_has_default } },
 	{ L("is_extensions"),	{ .func = dict_flag_is_extensions } },
@@ -912,15 +925,23 @@ static bool attr_valid(fr_dict_attr_t *da)
 	 *	If the parent is a choice, then the child MUST have a limited set of options / tags.
 	 */
 	parent = fr_dict_attr_ext(da->parent, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
-	if (parent->is_choice || flags->is_option) {
-		if (!flags->class) {
-			fr_assert(da->attr < FR_DER_TAG_VALUE_MAX);
 
-			flags->class = FR_DER_CLASS_CONTEXT;
-			flags->option = da->attr;
-			flags->is_option = true;
-		}
+	/*
+	 *	The attribute was defined with the full OID, and no 'option' flag.  Add it manually.
+	 */
+	if ((parent->is_choice && !flags->is_option) ||
+	    (flags->class == FR_DER_CLASS_PRIVATE) || (flags->class == FR_DER_CLASS_APPLICATION)) {
+		fr_assert(da->attr < FR_DER_TAG_VALUE_MAX);
 
+		if (!flags->class) flags->class = FR_DER_CLASS_CONTEXT;
+		flags->option = da->attr;
+		flags->is_option = true;
+	}
+
+	/*
+	 *	Can't have duplicates.
+	 */
+	if (flags->is_option) {
 		if ((parent->restrictions & (1 << flags->option)) != 0) {
 			fr_strerror_printf("Parent %s already has a child with option %u - duplicates are not allowed",
 					   da->parent->name, flags->option);

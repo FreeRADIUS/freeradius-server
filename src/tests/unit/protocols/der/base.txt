@@ -918,5 +918,16 @@ match Test-GeneralNames = { dNSName = "foo.bar" }
 decode-pair 30 06 87 04 0a 00 05 04
 match Test-GeneralNames = { iPAddress = 10.0.5.4 }
 
+#
+#  private / application class
+#
+proto-dictionary-root Test-Choice
+decode-pair 30 06 c0 01 01 c1 01 02
+match Test-Choice = { option0 = 1, option1 = 2 }
+
+encode-pair option0 = 1, option1 = 2
+match c0 01 01 c1 01 02
+
+
 count
-match 553
+match 558
