@@ -52,7 +52,6 @@ END 2.5.29.19
 ATTRIBUTE	nameConstraints				2.5.29.30	sequence        is_oid_leaf
 BEGIN 2.5.29.30
 ATTRIBUTE	permittedSubtrees			0	group   ref=@.GeneralSubtree,sequence_of=sequence,option,optional
-ATTRIBUTE	permittedSubtrees			0	group   ref=@.GeneralSubtree,sequence_of=sequence,option,optional
 ATTRIBUTE	excludedSubtrees			1	group   ref=@.GeneralSubtree,sequence_of=sequence,option,optional
 END 2.5.29.30
 
