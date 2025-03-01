@@ -2428,9 +2428,8 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	 */
 	if (unlikely(slen == 0)) {
 		fr_pair_t	     *vp;
-		fr_dict_enum_value_t *ev;
 
-		if (likely(!flags->has_default)) return 0;
+		if (likely(!flags->has_default_value)) return 0;
 
 	create_default:
 		vp = fr_pair_afrom_da(ctx, parent);
@@ -2439,15 +2438,10 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 			return -1;
 		}
 
-		ev = fr_dict_enum_by_name(parent, "DEFAULT", strlen("DEFAULT"));
-		if (unlikely(ev == NULL)) {
-			fr_strerror_printf_push("No DEFAULT value for attribute %s", parent->name);
-		error:
+		if (fr_value_box_copy(vp, &vp->data, flags->default_value) < 0) {
 			talloc_free(vp);
 			return -1;
 		}
-
-		if (fr_value_box_copy(vp, &vp->data, ev->value) < 0) goto error;
 
 		vp->data.enumv = vp->da;
 
@@ -2497,7 +2491,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 	 *	NULL.
 	 */
 	if (unlikely(fr_dbuff_remaining(&our_in) == 0)) {
-		if (flags->has_default) goto create_default;
+		if (flags->has_default_value) goto create_default;
 
 		if (tag == FR_DER_TAG_NULL) {
 			func = &tag_funcs[FR_DER_TAG_NULL];
@@ -2531,7 +2525,7 @@ static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 		/*
 		 *	Optional or not, if we can create a default value, then do so.
 		 */
-		if (flags->has_default) goto create_default;
+		if (flags->has_default_value) goto create_default;
 
 		/*
 		 *	Optional means "decoded nothing".  Otherwise it's a hard failure.

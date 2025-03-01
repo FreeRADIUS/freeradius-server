@@ -27,7 +27,7 @@
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/types.h>
+#include <freeradius-devel/util/value.h>
 
 extern HIDDEN fr_dict_t const *dict_der;
 
@@ -98,6 +98,7 @@ typedef struct {
 	union {
 		fr_der_tag_t 		sequence_of;
 		fr_der_tag_t 		set_of;
+		fr_value_box_t		*default_value;
 	};
 	uint64_t 		max;			//!< maximum count of items in a sequence, set, or string.
 	uint32_t		restrictions;		//!< for choice of options and tags - no dups allowed
@@ -107,12 +108,13 @@ typedef struct {
 	bool			optional : 1;		//!< optional, we MUST already have set 'option'
 	bool			is_sequence_of : 1;	//!< sequence_of has been defined
 	bool 			is_set_of : 1;		//!< set_of has been defined
-	bool 			is_oid_and_value : 1;		//!< is OID+value
+	bool 			is_oid_and_value : 1;	//!< is OID+value
 	bool 			is_extensions : 1;	//!< a list of X.509 extensions
-	bool 			has_default : 1;	//!< a default value exists
+	bool			has_default_value : 1;	//!< a default value exists
 	bool 			is_oid_leaf : 1;
 	bool			is_choice : 1;		//!< DER name "choice".
 } fr_der_attr_flags_t;
+
 
 static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const *da)
 {
@@ -130,7 +132,7 @@ static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const 
 #define fr_der_flag_max(_da) 		(fr_der_attr_flags(_da)->max)
 #define fr_der_flag_is_oid_and_value(_da) (fr_der_attr_flags(_da)->is_oid_and_value)
 #define fr_der_flag_is_extensions(_da) 	(fr_der_attr_flags(_da)->is_extensions)
-#define fr_der_flag_has_default(_da) 	(fr_der_attr_flags(_da)->has_default)
+#define fr_der_flag_has_default_value(_da) 	((fr_der_attr_flags(_da)->has_default_value) != NULL);
 #define fr_der_flag_is_oid_leaf(_da) 	(fr_der_attr_flags(_da)->is_oid_leaf)
 #define fr_der_flag_is_choice(_da) 	(fr_der_attr_flags(_da)->is_choice)
 

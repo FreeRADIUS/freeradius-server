@@ -47,8 +47,7 @@ END Bar
 
 DEFINE	Foo-Bar						sequence
 BEGIN Foo-Bar
-DEFINE		Test-Integer				integer has_default
-VALUE	Test-Integer			DEFAULT			1
+DEFINE		Test-Integer				integer default=1
 DEFINE		Test-Boolean				bool
 END Foo-Bar
 

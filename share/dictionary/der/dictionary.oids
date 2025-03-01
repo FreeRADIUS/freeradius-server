@@ -13,8 +13,7 @@ ATTRIBUTE	ecPublicKey				1.2.840.10045.2.1	oid     is_oid_leaf
 
 ATTRIBUTE	signatures				1.2.840.10045.4	sequence
 ATTRIBUTE	ecdsa-with-SHA2				1.2.840.10045.4.3	sequence
-ATTRIBUTE	ecdsa-with-SHA384			1.2.840.10045.4.3.3	bool     is_oid_leaf,has_default
-VALUE 1.2.840.10045.4.3.3       DEFAULT false
+ATTRIBUTE	ecdsa-with-SHA384			1.2.840.10045.4.3.3	bool     is_oid_leaf,default=false
 
 ATTRIBUTE	rsadsi					1.2.840.113549	sequence
 ATTRIBUTE	pkcs					1.2.840.113549.1	sequence

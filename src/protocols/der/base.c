@@ -251,11 +251,30 @@ static int dict_flag_class(fr_dict_attr_t **da_p, char const *value, UNUSED fr_d
 	return 0;
 }
 
-static int dict_flag_has_default(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
+static int dict_flag_default_value(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 
-	flags->has_default = true;
+	if (!fr_type_is_leaf((*da_p)->type)) {
+		fr_strerror_printf("Cannot set 'default=...' for attribute %s DER type %s",
+				   (*da_p)->name, fr_der_tag_to_str(flags->der_type));
+		return -1;
+	}
+
+	/*
+	 *	The default values are parented from the dict root.  That way we don't need to copy the values
+	 *	when we clone the attribute, we can just copy the pointer.
+	 */
+	flags->default_value = fr_value_box_alloc(fr_dict_unconst((*da_p)->dict), (*da_p)->type, NULL);
+	if (!flags->default_value) return -1;
+
+	if (fr_value_box_from_str(flags->default_value, flags->default_value, (*da_p)->type, NULL,
+				  value, strlen(value), NULL, false) < 0) {
+		fr_strerror_printf("Failed parsing 'value=...' - %s", fr_strerror());
+		return -1;
+	}
+
+	flags->has_default_value = true;
 
 	return 0;
 }
@@ -587,8 +606,8 @@ static int dict_flag_optional(fr_dict_attr_t **da_p, UNUSED char const *value, U
 
 static const fr_dict_flag_parser_t  der_flags[] = {
 	{ L("class"),		{ .func = dict_flag_class } },
+	{ L("default"),		{ .func = dict_flag_default_value,.needs_value = true } },
 	{ L("der_type"),	{ .func = dict_flag_der_type, .needs_value = true } },
-	{ L("has_default"),	{ .func = dict_flag_has_default } },
 	{ L("is_extensions"),	{ .func = dict_flag_is_extensions } },
 	{ L("is_oid_leaf"),	{ .func = dict_flag_is_oid_leaf } },
 	{ L("max"),		{ .func = dict_flag_max, .needs_value = true } },

@@ -195,10 +195,10 @@ decode-pair 30 06 02 01 09 01 01 FF
 match Foo-Bar = { Test-Integer = 9, Test-Boolean = yes }
 
 decode-pair 30 06 02 01 01 01 01 FF
-match Foo-Bar = { Test-Integer = ::DEFAULT, Test-Boolean = yes }
+match Foo-Bar = { Test-Integer = 1, Test-Boolean = yes }
 
 decode-pair 30 03 01 01 FF
-match Foo-Bar = { Test-Integer = ::DEFAULT, Test-Boolean = yes }
+match Foo-Bar = { Test-Integer = 1, Test-Boolean = yes }
 
 decode-pair 30 06 02 01 09 01 01 01
 match Boolean is not correctly DER encoded (0x00 or 0xff).: Failed decoding Foo-Bar

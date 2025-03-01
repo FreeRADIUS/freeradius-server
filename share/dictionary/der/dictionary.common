@@ -61,8 +61,7 @@ END DirectoryName
 DEFINE	GeneralSubtree					sequence
 BEGIN GeneralSubtree
 DEFINE	base						sequence        clone=@.GeneralName
-ATTRIBUTE minimum					0	integer		has_default,option,optional
-VALUE	minimum				DEFAULT			0
+ATTRIBUTE minimum					0	integer		option,optional,default=0
 ATTRIBUTE maximum					1	integer		option,optional
 END GeneralSubtree
 

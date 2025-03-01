@@ -1865,19 +1865,11 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	 *
 	 */
 
-	if (flags->has_default) {
+	if (flags->has_default_value) {
 		/*
 		 *	Skip encoding the default value, as per ISO/IEC 8825-1:2021 11.5
 		 */
-		fr_dict_enum_value_t const *evp;
-
-		evp = fr_dict_enum_by_name(vp->da, "DEFAULT", strlen("DEFAULT"));
-		if (unlikely(!evp)) {
-			fr_strerror_printf("No default value for %s", vp->da->name);
-			return -1;
-		}
-
-		if (fr_value_box_cmp(&vp->data, evp->value) == 0) {
+		if (fr_value_box_cmp(&vp->data, flags->default_value) == 0) {
 			FR_PROTO_TRACE("Skipping default value");
 			fr_dcursor_next(cursor);
 			return 0;

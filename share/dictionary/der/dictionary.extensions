@@ -44,8 +44,7 @@ ATTRIBUTE	issuerAltName				2.5.29.18	group der_type=sequence,sequence_of=choice,
 
 ATTRIBUTE	basicConstraints			2.5.29.19	sequence is_oid_leaf
 BEGIN 2.5.29.19
-DEFINE	cA						boolean has_default
-VALUE	cA				DEFAULT			false
+DEFINE	cA						boolean		default=false
 DEFINE	pathLenConstraint				integer		optional
 END 2.5.29.19
 
