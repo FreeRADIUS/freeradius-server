@@ -8,10 +8,7 @@ the Creative Commons Non-Commercial xref:LICENSE[license].
 *VERSION 4 IS IN DEVELOPMENT AND HAS NOT BEEN OFFICIALLY
 RELEASED. USE AT YOUR OWN RISK.*
 
-The configuration may change. The behavior may change. The
-documentation may change.
-
-Please wait for an official release before using version 4 (v4).
+Please wait for an official release before using version 4 (v4)
 ====
 
 FreeRADIUS is a complex piece of software with many configuration
@@ -25,6 +22,14 @@ This updated documentation answers your basic and advanced questions about
 functionality, configuration, and other scenarios. The FreeRADIUS team
 included examples, developer information,
 and extra resources to assist you.
+
+These documentation pages have had many updates from version 3.  The
+xref:reference:unlang/index.adoc[Unlang] policy language is fully
+documented.  There is complete documentation for all
+xref:reference:raddb/index.adoc[configuration files], including all
+configuration items.  However, there may still be some pages which
+still refer to the old v3 syntax and examples.  We will be updating
+those over time, as we can.
 
 The documentation is organized into main sections, sub-sections with smaller pages, and links to pertinent information.  This hierarchy ensures that
 you can find information easily and extract the instructions you need.  For example, all the Howto guides are a series of small steps to guide you through a task. The main sections by subject area and organized by
