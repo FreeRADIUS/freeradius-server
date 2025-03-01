@@ -777,8 +777,6 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 	 * 	and all of the children are numbered options.
 	 */
 	if (unlikely(flags->is_sequence_of)) {
-		uint8_t tag_class;
-
 		if (flags->sequence_of != FR_DER_TAG_CHOICE) {
 			child = fr_dict_attr_iterate_children(parent, &child);
 			if (!child) {
@@ -787,10 +785,6 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 				talloc_free(vp);
 				return -1;
 			}
-
-			tag_class = FR_DER_CLASS_UNIVERSAL;
-		} else {
-			tag_class = FR_DER_CLASS_CONTEXT;
 		}
 
 		/*
@@ -804,20 +798,21 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 
 			FR_DBUFF_OUT_RETURN(&tag_byte, &our_in);
 
-			/*
-			 *	Validate the tag class.
-			 */
-			if ((tag_byte & DER_TAG_CLASS_MASK) != tag_class) {
-				fr_strerror_printf_push("Tag has unexpected class %20x", tag_byte & DER_TAG_CLASS_MASK);
-				goto error;
-			}
-
 			current_tag = (tag_byte & DER_TAG_CONTINUATION); /* always <= FR_DER_TAG_MAX */
 
 			/*
-			 *	If we have a choice, the children are numbered.
+			 *	If we have a choice, the children must be numbered.  The class can be CONTEXT,
+			 *	PRIVATE, or ENTERPRISE.
+			 *
+			 *	Otherwise the children are standard DER tags.  The class must be UNIVERSAL.
 			 */
 			if (unlikely(flags->sequence_of == FR_DER_TAG_CHOICE)) {
+				if ((tag_byte & DER_TAG_CLASS_MASK) == FR_DER_CLASS_UNIVERSAL) {
+				unexpected_class:
+					fr_strerror_printf_push("Tag has unexpected class %20x", tag_byte & DER_TAG_CLASS_MASK);
+					goto error;
+				}
+
 				child = fr_dict_attr_child_by_num(parent, current_tag);
 				if (!child) {
 					child = fr_dict_attr_unknown_raw_afrom_num(decode_ctx->tmp_ctx, parent, current_tag);
@@ -825,6 +820,10 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 				}
 
 			} else if (unlikely(current_tag != flags->sequence_of)) {
+				if ((tag_byte & DER_TAG_CLASS_MASK) != FR_DER_CLASS_UNIVERSAL) {
+					goto unexpected_class;
+				}
+
 				fr_strerror_printf_push("Attribute %s is a sequence_of=%s which does not allow DER type '%s'",
 							parent->name,
 							fr_der_tag_to_str(flags->sequence_of),
@@ -1860,12 +1859,12 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		}
 		break;
 
-	case FR_DER_CLASS_CONTEXT:
+	default:
 		/*
 		 *	The data type will need to be resolved using the dictionary and the tag value
 		 */
 		if (!parent) {
-			fr_strerror_const_push("No parent attribute to resolve tag");
+			fr_strerror_const_push("No parent attribute to resolve tag to class");
 			return -1;
 		}
 		flags = fr_der_attr_flags(parent);
@@ -1902,10 +1901,6 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		fr_assert(flags->der_type != FR_DER_TAG_INVALID);
 		fr_assert(flags->der_type < NUM_ELEMENTS(tag_funcs));
 		break;
-
-	default:
-		fr_strerror_printf_push("Unsupported tag class %02x", tag_class);
-		return -1;
 	}
 
 	func = &tag_funcs[*tag];
