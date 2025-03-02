@@ -725,7 +725,6 @@ static ssize_t fr_der_encode_sequence(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, f
 	fr_pair_t const	     *vp;
 	fr_da_stack_t	      da_stack;
 	fr_dcursor_t	      child_cursor;
-	fr_dict_attr_t const *ref   = NULL;
 	ssize_t		      slen  = 0;
 	unsigned int	      depth = 0;
 
@@ -751,28 +750,14 @@ static ssize_t fr_der_encode_sequence(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, f
 	 *		The encoding of a set value or sequence value shall not include an encoding for any component
 	 *		value which is equal to its default value.
 	 */
-	if (fr_type_is_group(vp->vp_type)) {
-		/*
-		 *	Groups could be also be a pair, so we need to check for that.
-		 */
-		if (fr_der_flag_is_oid_and_value(vp->da)) {
-			slen = fr_der_encode_oid_and_value(&our_dbuff, cursor, encode_ctx);
-			if (slen < 0) {
-				fr_strerror_printf("Failed to encode OID value pair: %s", fr_strerror());
-				return -1;
-			}
-
-			return fr_dbuff_set(dbuff, &our_dbuff);
-		}
-
-		/*
-		 *	The group can also change it's root, but having a ref.
-		 */
-		ref = fr_dict_attr_ref(vp->da);
-		if (ref && (ref->dict != dict_der)) {
-			fr_strerror_printf("Group %s is not a DER group", ref->name);
+	if (fr_type_is_group(vp->vp_type) && fr_der_flag_is_oid_and_value(vp->da)) {
+		slen = fr_der_encode_oid_and_value(&our_dbuff, cursor, encode_ctx);
+		if (slen < 0) {
+			fr_strerror_printf("Failed to encode OID value pair: %s", fr_strerror());
 			return -1;
 		}
+
+		return fr_dbuff_set(dbuff, &our_dbuff);
 	}
 
 	fr_proto_da_stack_build(&da_stack, vp->da);
@@ -781,14 +766,9 @@ static ssize_t fr_der_encode_sequence(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, f
 
 	fr_pair_dcursor_child_iter_init(&child_cursor, &vp->children, cursor);
 
-	while (fr_dcursor_current(&child_cursor)) {
-		slen = fr_pair_cursor_to_network(&our_dbuff, &da_stack, depth, &child_cursor,
-						 encode_ctx, encode_pair);
-		if (slen < 0) {
-			fr_strerror_printf("Failed to encode pair: %s", fr_strerror());
-			return -1;
-		}
-	}
+	slen = fr_pair_cursor_to_network(&our_dbuff, &da_stack, depth, &child_cursor,
+					 encode_ctx, encode_pair);
+	if (slen < 0) return -1;
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
 }
@@ -948,14 +928,9 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 
 	fr_pair_dcursor_child_iter_init(&child_cursor, &vp->children, cursor);
 
-	while (fr_dcursor_current(&child_cursor)) {
-		slen = fr_pair_cursor_to_network(&our_dbuff, &da_stack, depth, &child_cursor, encode_ctx,
+	slen = fr_pair_cursor_to_network(&our_dbuff, &da_stack, depth, &child_cursor, encode_ctx,
 							encode_pair);
-		if (slen < 0) {
-			fr_strerror_printf("Failed to encode pair: %s", fr_strerror());
-			return -1;
-		}
-	}
+	if (slen < 0) return -1;
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
 }
@@ -1177,14 +1152,9 @@ static ssize_t fr_der_encode_choice(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_
 
 	fr_pair_dcursor_child_iter_init(&child_cursor, &vp->children, cursor);
 
-	do {
-		slen = fr_pair_cursor_to_network(&our_dbuff, &da_stack, depth, &child_cursor, encode_ctx,
-							encode_pair);
-		if (unlikely(slen < 0)) {
-			fr_strerror_printf("Failed to encode pair: %s", fr_strerror());
-			return slen;
-		}
-	} while (fr_dcursor_next(&child_cursor));
+	slen = fr_pair_cursor_to_network(&our_dbuff, &da_stack, depth, &child_cursor, encode_ctx,
+					 encode_pair);
+	if (slen < 0) return -1;
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
 }
