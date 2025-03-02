@@ -73,11 +73,7 @@ static ssize_t fr_der_encode_len(fr_dbuff_t *dbuff, fr_dbuff_marker_t *length_st
 static inline CC_HINT(always_inline) ssize_t
 	fr_der_encode_tag(fr_dbuff_t *dbuff, fr_der_tag_t tag_num, fr_der_tag_class_t tag_class,
 			  fr_der_tag_constructed_t constructed) CC_HINT(nonnull);
-static ssize_t encode_value(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth, fr_dcursor_t *cursor,
-			    void *encode_ctx);
-static ssize_t encode_pair(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth, fr_dcursor_t *cursor,
-			   void *encode_ctx);
-static ssize_t der_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx) CC_HINT(nonnull);
+static ssize_t encode_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx);
 
 /** Compare two pairs by their tag number.
  *
@@ -91,6 +87,12 @@ static inline CC_HINT(always_inline) int8_t fr_der_pair_cmp_by_da_tag(void const
 	fr_pair_t const *my_b = b;
 
 	return CMP_PREFER_SMALLER(fr_der_flag_der_type(my_a->da), fr_der_flag_der_type(my_b->da));
+}
+
+static ssize_t encode_pair(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, UNUSED unsigned int depth, fr_dcursor_t *cursor,
+			   void *encode_ctx)
+{
+	return encode_value(dbuff, cursor, encode_ctx);
 }
 
 static ssize_t fr_der_encode_boolean(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED fr_der_encode_ctx_t *encode_ctx)
@@ -773,7 +775,6 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 	fr_dbuff_t	      our_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t	     *vp;
 	ssize_t		      slen;
-	unsigned int	      depth = 0;
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
@@ -846,14 +847,14 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 
 		fr_proto_da_stack_build(&da_stack, vp->da);
 
-		FR_PROTO_STACK_PRINT(&da_stack, depth);
+		FR_PROTO_STACK_PRINT(&da_stack, vp->da->depth - 1);
 
 		fr_pair_dcursor_child_iter_init(&child_cursor, &vp->children, cursor);
 
 		for (i = 0; fr_dcursor_current(&child_cursor) != NULL; i++) {
 			ptr_pairs[i].data = fr_dbuff_current(&work_dbuff);
 
-			slen = encode_value(&work_dbuff, NULL, depth, &child_cursor, encode_ctx);
+			slen = encode_value(&work_dbuff, &child_cursor, encode_ctx);
 			if (unlikely(slen < 0)) {
 				fr_strerror_printf("Failed to encode pair: %s", fr_strerror());
 				talloc_free(buff);
@@ -1102,22 +1103,18 @@ static ssize_t fr_der_encode_choice(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_
 	fr_da_stack_t	      da_stack;
 	fr_dcursor_t	      child_cursor;
 	ssize_t		 slen = 0;
-	unsigned int 	depth = 0;
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
 	fr_assert(!vp->da->flags.is_raw);
 
-	depth = vp->da->depth - 1;
-
 	fr_proto_da_stack_build(&da_stack, vp->da);
 
-	FR_PROTO_STACK_PRINT(&da_stack, depth);
+	FR_PROTO_STACK_PRINT(&da_stack, vp->da->depth - 1);
 
 	fr_pair_dcursor_child_iter_init(&child_cursor, &vp->children, cursor);
 
-	slen = fr_pair_cursor_to_network(&our_dbuff, &da_stack, depth, &child_cursor, encode_ctx,
-					 encode_pair);
+	slen = fr_pair_cursor_to_network(&our_dbuff, &da_stack, vp->da->depth - 1, &child_cursor, encode_ctx, encode_pair);
 	if (slen < 0) return -1;
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
@@ -1354,17 +1351,17 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		fr_dbuff_marker(&length_start, &our_dbuff);
 		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
-		/*
-		 *	Encode the data either as raw garbage, or as an OID pair.
-		 */
-		child = fr_dcursor_current(&child_cursor);
-		fr_assert(child != NULL);
+                /*
+		 *      Encode the data either as raw garbage, or as an OID pair.
+                 */
+               child = fr_dcursor_current(&child_cursor);
+               fr_assert(child != NULL);
 
-		if (child->da->flags.is_raw) {
-			slen = fr_der_encode_octetstring(&our_dbuff, &child_cursor, encode_ctx);
-		} else {
-			slen = der_encode_pair(&our_dbuff, &child_cursor, encode_ctx);
-		}
+               if (child->da->flags.is_raw) {
+		       slen = fr_der_encode_octetstring(&our_dbuff, &child_cursor, encode_ctx);
+               } else {
+                       slen = encode_value(&our_dbuff, &child_cursor, encode_ctx);
+               }
 		if (slen < 0) {
 			fr_dbuff_marker_release(&length_start);
 			fr_dbuff_marker_release(&inner_seq_len_start);
@@ -1534,7 +1531,7 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 	if (child->da->flags.is_raw) {
 		slen = fr_der_encode_octetstring(&our_dbuff, &child_cursor, encode_ctx);
 	} else {
-		slen = der_encode_pair(&our_dbuff, &child_cursor, encode_ctx);
+		slen = encode_value(&our_dbuff, &child_cursor, encode_ctx);
 	}
 	if (slen < 0) return slen;
 
@@ -1727,8 +1724,7 @@ static inline CC_HINT(always_inline) ssize_t
  *
  * @return		The number of bytes written to the buffer
  */
-static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, UNUSED unsigned int depth,
-			    fr_dcursor_t *cursor, void *encode_ctx)
+static ssize_t encode_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_pair_t const	    *vp;
 	fr_dbuff_t	     our_dbuff = FR_DBUFF(dbuff);
@@ -1854,11 +1850,11 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	fr_dbuff_marker(&marker, &our_dbuff);
 	FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
-	if (flags->is_extensions) {
-		slen = fr_der_encode_X509_extensions(&our_dbuff, cursor, uctx);
-
-	} else if (vp->da->flags.is_raw) {
+	if (vp->da->flags.is_raw) {
 		slen = fr_der_encode_octetstring(&our_dbuff, cursor, uctx);
+
+	} else if (flags->is_extensions) {
+		slen = fr_der_encode_X509_extensions(&our_dbuff, cursor, uctx);
 
 	} else {
 		slen = func->encode(&our_dbuff, cursor, uctx);
@@ -1879,17 +1875,6 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	return fr_dbuff_set(dbuff, &our_dbuff);
 }
 
-static ssize_t encode_pair(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth, fr_dcursor_t *cursor,
-			   void *encode_ctx)
-{
-	return encode_value(dbuff, da_stack, depth, cursor, encode_ctx);
-}
-
-static ssize_t der_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx)
-{
-	return encode_pair(dbuff, NULL, 0, cursor, encode_ctx);
-}
-
 static ssize_t fr_der_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len,
 				   void *encode_ctx)
 {
@@ -1901,7 +1886,7 @@ static ssize_t fr_der_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, 
 
 	fr_pair_dcursor_init(&cursor, vps);
 
-	slen = der_encode_pair(&dbuff, &cursor, encode_ctx);
+	slen = encode_value(&dbuff, &cursor, encode_ctx);
 
 	if (slen < 0) {
 		fr_strerror_printf("Failed to encode data: %s", fr_strerror());
@@ -1931,7 +1916,7 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *
 extern fr_test_point_pair_encode_t der_tp_encode_pair;
 fr_test_point_pair_encode_t	   der_tp_encode_pair = {
 	       .test_ctx = encode_test_ctx,
-	       .func	 = der_encode_pair,
+	       .func	 = encode_value,
 };
 
 extern fr_test_point_proto_encode_t der_tp_encode_proto;
