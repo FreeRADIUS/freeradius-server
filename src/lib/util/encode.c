@@ -74,7 +74,6 @@ ssize_t fr_pair_cursor_to_network(fr_dbuff_t *dbuff,
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t const		*vp;
-	fr_dict_attr_t const	*da = da_stack->da[depth];
 	ssize_t			len;
 
 	while (true) {
@@ -95,13 +94,6 @@ ssize_t fr_pair_cursor_to_network(fr_dbuff_t *dbuff,
 		if (!vp) break;
 
 		fr_proto_da_stack_build(da_stack, vp->da);
-
-		/*
-		 *	We can encode multiple children, if after
-		 *	rebuilding the DA Stack, the attribute at this
-		 *	depth is the same.
-		 */
-		if ((da != da_stack->da[depth]) || (da_stack->depth < da->depth)) break;
 	}
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Done cursor");
