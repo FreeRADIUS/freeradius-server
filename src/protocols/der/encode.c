@@ -37,12 +37,7 @@ RCSID("$Id$")
 #include "der.h"
 
 typedef struct {
-	fr_dbuff_marker_t encoding_start;	//!< This is the start of the encoding. It is NOT the same as the start of the
-						//!< encoded value. It includes the tag, length, and value.
 	uint8_t *tmp_ctx;	 		//!< Temporary context for encoding.
-						//!< encoded value. It is the position of the tag.
-	size_t encoding_length;			//!< This is the length of the entire encoding. It is NOT the same as the length
-						//!< of the encoded value. It includes the tag, length, and value.
 } fr_der_encode_ctx_t;
 
 /** Function signature for DER encode functions
@@ -754,23 +749,23 @@ static ssize_t fr_der_encode_sequence(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, f
 }
 
 typedef struct {
-	fr_dbuff_marker_t item_ptr;	//!< Pointer to the start of the encoded item (beginning of the tag)
-	size_t	 item_len;		//!< Length of the encoded item (tag + length + value)
+	uint8_t	*data;		//!< Pointer to the start of the encoded item (beginning of the tag)
+	size_t	 len;		//!< Length of the encoded item (tag + length + value)
 } fr_der_encode_set_of_ptr_pairs_t;
 
 /*
  *	Lexicographically sort the set of pairs
  */
-static int CC_HINT(nonnull) fr_der_encode_set_of_cmp(void const *a, void const *b)
+static int CC_HINT(nonnull) fr_der_encode_set_of_cmp(void const *one, void const *two)
 {
-	fr_der_encode_set_of_ptr_pairs_t const *my_a = a;
-	fr_der_encode_set_of_ptr_pairs_t const *my_b = b;
+	fr_der_encode_set_of_ptr_pairs_t const *a = one;
+	fr_der_encode_set_of_ptr_pairs_t const *b = two;
 
-	if (my_a->item_len > my_b->item_len) {
-		return memcmp(fr_dbuff_current(&my_a->item_ptr), fr_dbuff_current(&my_b->item_ptr), my_a->item_len);
+	if (a->len >= b->len) {
+		return memcmp(a->data, b->data, a->len);
 	}
 
-	return memcmp(fr_dbuff_current(&my_a->item_ptr), fr_dbuff_current(&my_b->item_ptr), my_b->item_len);
+	return memcmp(a->data, b->data, b->len);
 }
 
 static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx)
@@ -779,7 +774,7 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 	fr_pair_t	     *vp;
 	fr_da_stack_t	      da_stack;
 	fr_dcursor_t	      child_cursor;
-	ssize_t		      slen  = 0;
+	ssize_t		      slen;
 	unsigned int	      depth = 0;
 
 	vp = fr_dcursor_current(cursor);
@@ -845,8 +840,6 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 		}
 
 		for (i = 0; i < count; i++) {
-			ssize_t len_count;
-
 			if (unlikely(fr_dcursor_current(&child_cursor) == NULL)) {
 				fr_strerror_const("No pair to encode set of");
 				slen = -1;
@@ -857,18 +850,16 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 				return slen;
 			}
 
-			len_count = encode_value(&work_dbuff, NULL, depth, &child_cursor, encode_ctx);
+			ptr_pairs[i].data = fr_dbuff_current(&work_dbuff);
 
-			if (unlikely(len_count < 0)) {
+			slen = encode_value(&work_dbuff, NULL, depth, &child_cursor, encode_ctx);
+
+			if (unlikely(slen < 0)) {
 				fr_strerror_printf("Failed to encode pair: %s", fr_strerror());
-				slen = -1;
 				goto free_and_return;
 			}
 
-			ptr_pairs[i].item_ptr  = encode_ctx->encoding_start;
-			ptr_pairs[i].item_len  = encode_ctx->encoding_length;
-
-			slen += len_count;
+			ptr_pairs[i].len  = slen;
 		}
 
 		if (unlikely(fr_dcursor_current(&child_cursor) != NULL)) {
@@ -880,13 +871,7 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 		qsort(ptr_pairs, count, sizeof(fr_der_encode_set_of_ptr_pairs_t), fr_der_encode_set_of_cmp);
 
 		for (i = 0; i < count; i++) {
-			fr_dbuff_set(&work_dbuff, &ptr_pairs[i].item_ptr);
-
-			FR_PROTO_TRACE("Copying %zu bytes from %p to %p", ptr_pairs[i].item_len,
-					&ptr_pairs[i].item_ptr, fr_dbuff_current(dbuff));
-
-			if (fr_dbuff_in_memcpy(&our_dbuff, fr_dbuff_current(&work_dbuff), ptr_pairs[i].item_len) <=
-				0) {
+			if (fr_dbuff_in_memcpy(&our_dbuff, ptr_pairs[i].data, ptr_pairs[i].len) <= 0) {
 				fr_strerror_const("Failed to copy set of value");
 				slen = -1;
 				goto free_and_return;
@@ -1739,13 +1724,12 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 {
 	fr_pair_t const	    *vp;
 	fr_dbuff_t	     our_dbuff = FR_DBUFF(dbuff);
-	fr_dbuff_marker_t    marker, encoding_start;
+	fr_dbuff_marker_t    marker;
 	fr_der_tag_encode_t const *func;
 	fr_der_tag_t         tag;
 	fr_der_tag_class_t   tag_class;
 	fr_der_encode_ctx_t *uctx = encode_ctx;
 	ssize_t		     slen = 0;
-	size_t		     encoding_length;
 	fr_der_attr_flags_t const *flags;
 
 	if (unlikely(cursor == NULL)) {
@@ -1853,16 +1837,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	 */
 	if (flags->is_option) tag = flags->option;
 
-	fr_dbuff_marker(&encoding_start, &our_dbuff);
-
 	slen = fr_der_encode_tag(&our_dbuff, tag, tag_class, func->constructed);
-	if (slen < 0) {
-	error:
-		fr_dbuff_marker_release(&encoding_start);
-		return slen;
-	}
-
-	encoding_length = slen;
+	if (slen < 0) return slen;
 
 	/*
 	 *	Mark and reserve space in the buffer for the length field
@@ -1881,24 +1857,15 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, U
 	}
 	if (slen < 0) {
 		fr_dbuff_marker_release(&marker);
-		goto error;
+		return slen;
 	}
-
-	encoding_length += slen;
 
 	/*
 	*	Encode the length of the value
 	*/
 	slen = fr_der_encode_len(&our_dbuff, &marker);
-	if (slen < 0) {
-		fr_dbuff_marker_release(&marker);
-		goto error;
-	}
-
 	fr_dbuff_marker_release(&marker);
-
-	uctx->encoding_start = encoding_start;
-	uctx->encoding_length = encoding_length + slen;
+	if (slen < 0) return slen;
 
 	fr_dcursor_next(cursor);
 	return fr_dbuff_set(dbuff, &our_dbuff);
@@ -1947,7 +1914,6 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *
 	if (!test_ctx) return -1;
 
 	test_ctx->tmp_ctx	     = talloc(test_ctx, uint8_t);
-	test_ctx->encoding_length    = 0;
 
 	*out = test_ctx;
 
