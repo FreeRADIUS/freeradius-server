@@ -1351,17 +1351,10 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		fr_dbuff_marker(&length_start, &our_dbuff);
 		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
-                /*
-		 *      Encode the data either as raw garbage, or as an OID pair.
-                 */
-               child = fr_dcursor_current(&child_cursor);
-               fr_assert(child != NULL);
-
-               if (child->da->flags.is_raw) {
-		       slen = fr_der_encode_octetstring(&our_dbuff, &child_cursor, encode_ctx);
-               } else {
-                       slen = encode_value(&our_dbuff, &child_cursor, encode_ctx);
-               }
+		/*
+		 *	Encode the data
+		 */
+		slen = encode_value(&our_dbuff, &child_cursor, encode_ctx);
 		if (slen < 0) {
 			fr_dbuff_marker_release(&length_start);
 			fr_dbuff_marker_release(&inner_seq_len_start);
@@ -1523,16 +1516,9 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 	if (slen < 0) return slen;
 
 	/*
-	 *	Encode the data either as raw garbage, or as an OID pair.
+	 *	And then encode the actual data.
 	 */
-	child = fr_dcursor_current(&child_cursor);
-	fr_assert(child);
-
-	if (child->da->flags.is_raw) {
-		slen = fr_der_encode_octetstring(&our_dbuff, &child_cursor, encode_ctx);
-	} else {
-		slen = encode_value(&our_dbuff, &child_cursor, encode_ctx);
-	}
+	slen = encode_value(&our_dbuff, &child_cursor, encode_ctx);
 	if (slen < 0) return slen;
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
@@ -1727,7 +1713,7 @@ static inline CC_HINT(always_inline) ssize_t
 static ssize_t encode_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_pair_t const	    *vp;
-	fr_dbuff_t	     our_dbuff = FR_DBUFF(dbuff);
+	fr_dbuff_t	     our_dbuff;
 	fr_dbuff_marker_t    marker;
 	fr_der_tag_encode_t const *func;
 	fr_der_tag_t         tag;
@@ -1753,6 +1739,21 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encod
 
 	flags = fr_der_attr_flags(vp->da);
 	fr_assert(flags != NULL);
+
+	/*
+	 *	Raw things get encoded as-is, so that we can encode the correct tag and class.
+	 */
+	if (unlikely(vp->da->flags.is_raw)) {
+		fr_assert(vp->vp_type == FR_TYPE_OCTETS);
+
+		slen = fr_der_encode_octetstring(dbuff, cursor, encode_ctx);
+		if (slen < 0) return 0;
+
+		fr_dcursor_next(cursor);
+		return slen;
+	}
+
+	our_dbuff = FR_DBUFF(dbuff);
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -1850,13 +1851,10 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encod
 	fr_dbuff_marker(&marker, &our_dbuff);
 	FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
-	if (vp->da->flags.is_raw) {
-		slen = fr_der_encode_octetstring(&our_dbuff, cursor, uctx);
-
-	} else if (flags->is_extensions) {
+	if (flags->is_extensions) {
 		slen = fr_der_encode_X509_extensions(&our_dbuff, cursor, uctx);
-
 	} else {
+
 		slen = func->encode(&our_dbuff, cursor, uctx);
 	}
 	if (slen < 0) {

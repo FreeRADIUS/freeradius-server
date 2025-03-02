@@ -815,8 +815,18 @@ static ssize_t fr_der_decode_sequence(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 
 				child = fr_dict_attr_child_by_num(parent, current_tag);
 				if (!child) {
+					fr_der_attr_flags_t *child_flags;
+
 					child = fr_dict_attr_unknown_raw_afrom_num(decode_ctx->tmp_ctx, parent, current_tag);
 					if (!child) goto error;
+
+					/*
+					 *	Save the option and class, so that we can encode it later.
+					 */
+					child_flags = fr_dict_attr_ext(child, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+					child_flags->is_option = true;
+					child_flags->option = current_tag;
+					child_flags->class = tag_byte & DER_TAG_CLASS_MASK;
 				}
 
 			} else if (unlikely(current_tag != flags->sequence_of)) {

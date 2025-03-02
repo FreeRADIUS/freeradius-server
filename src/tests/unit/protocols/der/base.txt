@@ -183,7 +183,7 @@ match Boolean has incorrect length (2). Must be 1.: Failed decoding Bar
 encode-pair Test-Boolean = true
 match 01 01 ff
 
-encode-pair raw.Test-Boolean = 0x0001
+encode-pair raw.Test-Boolean = 0x01020001
 match 01 02 00 01
 
 proto-dictionary-root Foo-Bar
@@ -910,6 +910,12 @@ match 30 09 82 07 66 6f 6f 2e 62 61 72
 encode-pair Test-GeneralNames = { iPAddress = 10.0.5.4 }
 match 30 06 87 04 0a 00 05 04
 
+#
+#  Ignore raw.FOO when we know the subtypes.
+#
+encode-pair raw.Test-GeneralNames = { dNSName = "foo.bar" }
+match 30 09 82 07 66 6f 6f 2e 62 61 72
+
 proto-dictionary-root Test-GeneralNames
 
 decode-pair 30 09 82 07 66 6f 6f 2e 62 61 72
@@ -930,4 +936,4 @@ match c0 01 01 c1 01 02
 
 
 count
-match 558
+match 560
