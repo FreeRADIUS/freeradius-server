@@ -772,8 +772,6 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 {
 	fr_dbuff_t	      our_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t	     *vp;
-	fr_da_stack_t	      da_stack;
-	fr_dcursor_t	      child_cursor;
 	ssize_t		      slen;
 	unsigned int	      depth = 0;
 
@@ -815,13 +813,35 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 		/*
 		 *	Set-of items will all have the same tag, so we need to sort them lexicographically
 		 */
+		size_t				  i, count;
 		fr_dbuff_t			  work_dbuff;
 		fr_der_encode_set_of_ptr_pairs_t *ptr_pairs;
 		uint8_t				 *buff;
-		size_t				  i = 0, count;
+		fr_da_stack_t	      		  da_stack;
+		fr_dcursor_t	      		  child_cursor;
 
+		/*
+		 *	This can happen, but is possible.
+		 */
+		count = fr_pair_list_num_elements(&vp->children);
+		if (unlikely(!count)) return 0;
+
+		/*
+		 *	Sets can be nested, so we have to use local buffers when sorting.
+		 */
 		buff = talloc_array(encode_ctx->tmp_ctx, uint8_t, fr_dbuff_remaining(&our_dbuff));
+		fr_assert(buff != NULL);
 
+		ptr_pairs = talloc_array(buff, fr_der_encode_set_of_ptr_pairs_t, count);
+		if (unlikely(ptr_pairs == NULL)) {
+			fr_strerror_const("Failed to allocate memory for set of pointers");
+			talloc_free(buff);
+			return -1;
+		}
+
+		/*
+		 *	Now that we have our intermediate buffers, initialize the buffers and start encoding.
+		 */
 		fr_dbuff_init(&work_dbuff, buff, fr_dbuff_remaining(&our_dbuff));
 
 		fr_proto_da_stack_build(&da_stack, vp->da);
@@ -830,56 +850,44 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 
 		fr_pair_dcursor_child_iter_init(&child_cursor, &vp->children, cursor);
 
-		count = fr_pair_list_num_elements(&vp->children);
+		for (i = 0; fr_dcursor_current(&child_cursor) != NULL; i++) {
+			ptr_pairs[i].data = fr_dbuff_current(&work_dbuff);
 
-		ptr_pairs = talloc_array(encode_ctx->tmp_ctx, fr_der_encode_set_of_ptr_pairs_t, count);
-		if (unlikely(ptr_pairs == NULL)) {
-			fr_strerror_const("Failed to allocate memory for set of pointers");
-			talloc_free(buff);
-			return -1;
-		}
-
-		for (i = 0; i < count; i++) {
-			if (unlikely(fr_dcursor_current(&child_cursor) == NULL)) {
-				fr_strerror_const("No pair to encode set of");
-				slen = -1;
-
-			free_and_return:
-				talloc_free(ptr_pairs);
+			slen = encode_value(&work_dbuff, NULL, depth, &child_cursor, encode_ctx);
+			if (unlikely(slen < 0)) {
+				fr_strerror_printf("Failed to encode pair: %s", fr_strerror());
 				talloc_free(buff);
 				return slen;
 			}
 
-			ptr_pairs[i].data = fr_dbuff_current(&work_dbuff);
-
-			slen = encode_value(&work_dbuff, NULL, depth, &child_cursor, encode_ctx);
-
-			if (unlikely(slen < 0)) {
-				fr_strerror_printf("Failed to encode pair: %s", fr_strerror());
-				goto free_and_return;
-			}
-
-			ptr_pairs[i].len  = slen;
+			ptr_pairs[i].len = slen;
 		}
 
-		if (unlikely(fr_dcursor_current(&child_cursor) != NULL)) {
-			fr_strerror_const("Failed to encode all pairs");
-			slen = -1;
-			goto free_and_return;
-		}
+		fr_assert(i <= count);
+		count = i;
 
-		qsort(ptr_pairs, count, sizeof(fr_der_encode_set_of_ptr_pairs_t), fr_der_encode_set_of_cmp);
+		/*
+		 *	If there's a "min" for this set, then we can't do anything about it.
+		 */
+		if (unlikely(!count)) goto done;
 
+		/*
+		 *	If there's only one child, we don't need to sort it.
+		 */
+		if (count > 1) qsort(ptr_pairs, count, sizeof(fr_der_encode_set_of_ptr_pairs_t), fr_der_encode_set_of_cmp);
+
+		/*
+		 *	The data in work_dbuff is always less than the data in the our_dbuff, so we don't need
+		 *	to check the return value here.
+		 */
 		for (i = 0; i < count; i++) {
-			if (fr_dbuff_in_memcpy(&our_dbuff, ptr_pairs[i].data, ptr_pairs[i].len) <= 0) {
-				fr_strerror_const("Failed to copy set of value");
-				slen = -1;
-				goto free_and_return;
-			}
+			(void) fr_dbuff_in_memcpy(&our_dbuff, ptr_pairs[i].data, ptr_pairs[i].len);
 		}
 
-		slen = fr_dbuff_set(dbuff, &our_dbuff);
-		goto free_and_return;
+	done:
+		talloc_free(buff);
+
+		return fr_dbuff_set(dbuff, &our_dbuff);
 	}
 
 	/*
