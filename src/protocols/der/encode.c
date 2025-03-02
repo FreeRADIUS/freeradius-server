@@ -64,6 +64,7 @@ typedef struct {
 
 
 static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull);
+static ssize_t fr_der_encode_choice(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx) CC_HINT(nonnull);
 
 /*
  *	We have per-type function names to make it clear that different types have different encoders.
@@ -721,12 +722,7 @@ static ssize_t fr_der_encode_oid(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED
 
 static ssize_t fr_der_encode_sequence(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx)
 {
-	fr_dbuff_t	      our_dbuff = FR_DBUFF(dbuff);
-	fr_pair_t const	     *vp;
-	fr_da_stack_t	      da_stack;
-	fr_dcursor_t	      child_cursor;
-	ssize_t		      slen  = 0;
-	unsigned int	      depth = 0;
+	fr_pair_t	      *vp;
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
@@ -751,26 +747,10 @@ static ssize_t fr_der_encode_sequence(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, f
 	 *		value which is equal to its default value.
 	 */
 	if (fr_type_is_group(vp->vp_type) && fr_der_flag_is_oid_and_value(vp->da)) {
-		slen = fr_der_encode_oid_and_value(&our_dbuff, cursor, encode_ctx);
-		if (slen < 0) {
-			fr_strerror_printf("Failed to encode OID value pair: %s", fr_strerror());
-			return -1;
-		}
-
-		return fr_dbuff_set(dbuff, &our_dbuff);
+		return fr_der_encode_oid_and_value(dbuff, cursor, encode_ctx);
 	}
 
-	fr_proto_da_stack_build(&da_stack, vp->da);
-
-	FR_PROTO_STACK_PRINT(&da_stack, depth);
-
-	fr_pair_dcursor_child_iter_init(&child_cursor, &vp->children, cursor);
-
-	slen = fr_pair_cursor_to_network(&our_dbuff, &da_stack, depth, &child_cursor,
-					 encode_ctx, encode_pair);
-	if (slen < 0) return -1;
-
-	return fr_dbuff_set(dbuff, &our_dbuff);
+	return fr_der_encode_choice(dbuff, cursor, encode_ctx);
 }
 
 typedef struct {
@@ -918,21 +898,12 @@ static ssize_t fr_der_encode_set(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der
 	}
 
 	/*
-	 *	@todo - this gives a partial order.  It does NOT sort by comparing the encoded data.
+	 *	Children of a set are ordered by tag.  However, as each tag can only be used once, this is a
+	 *	unique order.
 	 */
 	fr_pair_list_sort(&vp->children, fr_der_pair_cmp_by_da_tag);
 
-	fr_proto_da_stack_build(&da_stack, vp->da);
-
-	FR_PROTO_STACK_PRINT(&da_stack, depth);
-
-	fr_pair_dcursor_child_iter_init(&child_cursor, &vp->children, cursor);
-
-	slen = fr_pair_cursor_to_network(&our_dbuff, &da_stack, depth, &child_cursor, encode_ctx,
-							encode_pair);
-	if (slen < 0) return -1;
-
-	return fr_dbuff_set(dbuff, &our_dbuff);
+	return fr_der_encode_choice(dbuff, cursor, encode_ctx);
 }
 
 static ssize_t fr_der_encode_utc_time(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED fr_der_encode_ctx_t *encode_ctx)
