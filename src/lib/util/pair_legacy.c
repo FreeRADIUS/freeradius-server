@@ -387,6 +387,17 @@ redo:
 			if (internal) {
 				slen = fr_dict_oid_component(&err, &da, internal, &our_in, &bareword_terminals);
 			}
+
+		} else if (raw && fr_type_is_structural(da->type) && (raw_type != FR_TYPE_OCTETS)) {
+			/*
+			 *	We were asked to do a "raw" thing, but we found a known attribute matching
+			 *	that description.
+			 *
+			 *	@todo - this is only allowed because we can't distinguish between "raw.1" and
+			 *	"raw.User-Name".
+			 */
+			raw = false;
+			raw_type = FR_TYPE_NULL;
 		}
 
 		if (err != FR_DICT_ATTR_OK) {
