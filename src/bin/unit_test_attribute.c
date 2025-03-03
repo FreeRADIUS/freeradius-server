@@ -344,13 +344,13 @@ static void mismatch_print(command_file_ctx_t *cc, char const *command,
 			   bool print_diff)
 {
 	char *g, *e;
-	char *spaces;
 
 	ERROR("%s failed %s/%s:%d", command, cc->path, cc->filename, cc->lineno);
-	ERROR("  got      : %.*s", (int) got_len, got);
-	ERROR("  expected : %.*s", (int) expected_len, expected);
 
-	if (print_diff) {
+	if (!print_diff) {
+		ERROR("  got      : %.*s", (int) got_len, got);
+		ERROR("  expected : %.*s", (int) expected_len, expected);
+	} else {
 		g = got;
 		e = expected;
 
@@ -359,15 +359,23 @@ static void mismatch_print(command_file_ctx_t *cc, char const *command,
 			e++;
 		}
 
-		spaces = talloc_zero_array(NULL, char, (e - expected) + 1);
-		memset(spaces, ' ', talloc_array_length(spaces) - 1);
-		if (((e - expected) < 80) && (expected_len < 80)) {
-			ERROR("             %s^ differs here", spaces);
+		if (expected_len < 80) {
+			char const *spaces = "                                                                                ";
+
+			ERROR("  got      : %.*s", (int) got_len, got);
+			ERROR("  expected : %.*s", (int) expected_len, expected);
+			ERROR("             %s^ differs here (%zu)", spaces, e - expected);
 		} else {
-			ERROR("             %s^ differs here (%zu) ... %.*s ...", spaces, e - expected,
-			      16, e);
+			size_t glen, elen;
+
+			elen = strlen(e);
+			if (elen > 40) elen = 40;
+			glen = strlen(g);
+			if (glen > 40) glen = 40;
+
+			ERROR("(%zu) ... %.*s ... ", e - expected, (int) elen, e);
+			ERROR("(%zu) ... %.*s ... ", e - expected, (int) glen, g);
 		}
-		talloc_free(spaces);
 	}
 }
 
