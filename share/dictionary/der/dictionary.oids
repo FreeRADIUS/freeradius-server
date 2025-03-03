@@ -43,6 +43,14 @@ END noticeNumbers
 END noticeRef
 END 1.3.6.1.5.5.7.2.2
 
+ATTRIBUTE	kp					1.3.6.1.5.5.7.3 sequence
+ATTRIBUTE	id-kp-serverAuth			1.3.6.1.5.5.7.3.1 boolean
+ATTRIBUTE	id-kp-clientAuth			1.3.6.1.5.5.7.3.2 boolean
+
+ATTRIBUTE	on					1.3.6.1.5.5.7.8 sequence
+ATTRIBUTE	id-on-naiRealm				1.3.6.1.5.5.7.8.8 utf8string size=1..255
+
+
 ATTRIBUTE	joint-iso-itu-t				2	sequence
 ATTRIBUTE	ds					2.5	sequence
 
