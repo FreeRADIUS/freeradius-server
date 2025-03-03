@@ -276,8 +276,6 @@ static ssize_t fr_der_encode_bitstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, 
 		slen = fr_struct_to_network(&work_dbuff, &da_stack, depth, cursor, encode_ctx, NULL, NULL);
 		if (slen < 0) {
 			fr_strerror_printf("Failed to encode struct: %s", fr_strerror());
-		error:
-			fr_dbuff_marker_release(&unused_bits_marker);
 			return slen;
 		}
 
@@ -294,18 +292,17 @@ static ssize_t fr_der_encode_bitstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, 
 
 			if (fr_dbuff_out(&byte, &work_dbuff) < 0) {
 				fr_strerror_const("Failed to read byte");
-				slen = -1;
-				goto error;
+				return -1;
 			}
 
 			if (byte != 0) break;
 
-				/*
-				 *	Trim this byte from the buff
-				 */
-				fr_dbuff_set_end(&work_dbuff, fr_dbuff_current(&work_dbuff) - sizeof(byte));
-				fr_dbuff_set(&work_dbuff, fr_dbuff_current(&work_dbuff) - (sizeof(byte) * 2));
-				slen--;
+			/*
+			 *	Trim this byte from the buff
+			 */
+			fr_dbuff_set_end(&work_dbuff, fr_dbuff_current(&work_dbuff) - sizeof(byte));
+			fr_dbuff_set(&work_dbuff, fr_dbuff_current(&work_dbuff) - (sizeof(byte) * 2));
+			slen--;
 		}
 
 		/*
@@ -313,8 +310,7 @@ static ssize_t fr_der_encode_bitstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, 
 		 */
 		if (fr_dbuff_out(&last_byte, &work_dbuff) < 0) {
 			fr_strerror_const("Failed to read last byte");
-			slen = -1;
-			goto error;
+			return -1;
 		}
 
 		while ((last_byte != 0) && ((last_byte & 0x01) == 0)) {
@@ -326,7 +322,6 @@ static ssize_t fr_der_encode_bitstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, 
 		 *	Write the unused bits
 		 */
 		fr_dbuff_set(&our_dbuff, fr_dbuff_current(&unused_bits_marker));
-		fr_dbuff_marker_release(&unused_bits_marker);
 		FR_DBUFF_IN_MEMCPY_RETURN(&our_dbuff, &unused_bits, 1);
 
 		/*
@@ -1210,11 +1205,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		 *	Encode the OID portion of the extension
 		 */
 		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_OID, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_PRIMITIVE);
-		if (slen < 0) {
-		error:
-			fr_dbuff_marker_release(&inner_seq_len_start);
-			return slen;
-		}
+		if (slen < 0) return slen;
 
 		fr_dbuff_marker(&length_start, &our_dbuff);
 		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
@@ -1280,7 +1271,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		 *	Encode the length of the OID
 		 */
 		slen = fr_der_encode_len(&our_dbuff, &length_start);
-		if (slen < 0) goto error;
+		if (slen < 0) return slen;
 
 		/*
 		 *	Encode the critical flag
@@ -1298,7 +1289,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		 *	Encode the value portion of the extension
 		 */
 		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_OCTETSTRING, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_PRIMITIVE);
-		if (slen < 0) goto error;
+		if (slen < 0) return slen;
 
 		fr_dbuff_marker(&length_start, &our_dbuff);
 		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
@@ -1307,23 +1298,18 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		 *	Encode the data
 		 */
 		slen = encode_value(&our_dbuff, &child_cursor, encode_ctx);
-		if (slen < 0) {
-			fr_dbuff_marker_release(&length_start);
-			goto error;
-		}
+		if (slen < 0) return slen;
 
 		/*
 		 *	Encode the length of the value
 		 */
 		slen = fr_der_encode_len(&our_dbuff, &length_start);
-		fr_dbuff_marker_release(&length_start);
-		if (slen < 0) goto error;
+		if (slen < 0) return slen;
 
 		/*
 		 *	Encode the length of the extension (OID + Value portions)
 		 */
 		slen = fr_der_encode_len(&our_dbuff, &inner_seq_len_start);
-		fr_dbuff_marker_release(&inner_seq_len_start);
 		if (slen < 0) return -1;
 
 		if (is_critical) {
@@ -1344,7 +1330,6 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 	 *	Encode the length of the extensions
 	 */
 	slen = fr_der_encode_len(&our_dbuff, &outer_seq_len_start);
-	fr_dbuff_marker_release(&outer_seq_len_start);
 	if (slen < 0) return slen;
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&our_dbuff), slen, "Encoded X509 extensions");
@@ -1434,7 +1419,6 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 	 *	Encode the length of the OID
 	 */
 	slen = fr_der_encode_len(&our_dbuff, &length_start);
-	fr_dbuff_marker_release(&length_start);
 	if (slen < 0) return slen;
 
 	/*
@@ -1779,16 +1763,12 @@ static ssize_t encode_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encod
 
 		slen = func->encode(&our_dbuff, cursor, uctx);
 	}
-	if (slen < 0) {
-		fr_dbuff_marker_release(&marker);
-		return slen;
-	}
+	if (slen < 0) return slen;
 
 	/*
 	*	Encode the length of the value
 	*/
 	slen = fr_der_encode_len(&our_dbuff, &marker);
-	fr_dbuff_marker_release(&marker);
 	if (slen < 0) return slen;
 
 	fr_dcursor_next(cursor);
