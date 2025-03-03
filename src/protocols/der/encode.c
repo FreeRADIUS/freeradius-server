@@ -1191,9 +1191,9 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 	fr_dcursor_copy(&parent_cursor, &root_cursor);
 
 	while (fr_dcursor_current(&parent_cursor)) {
-		fr_sbuff_t	  oid_sbuff;
+		uint64_t	  component;
+		int		  count;
 		fr_dbuff_marker_t length_start, inner_seq_len_start;
-		char		  oid_buff[1024] = { 0 };
 		fr_pair_t	  *child;
 
 		/*
@@ -1209,8 +1209,24 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 			break;
 		}
 
-		oid_sbuff   = FR_SBUFF_OUT(oid_buff, sizeof(oid_buff));
-		oid_buff[0] = '\0';
+		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_SEQUENCE, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_CONSTRUCTED);
+		if (slen < 0) return slen;
+
+		fr_dbuff_marker(&inner_seq_len_start, &our_dbuff);
+		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
+
+		/*
+		 *	Encode the OID portion of the extension
+		 */
+		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_OID, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_PRIMITIVE);
+		if (slen < 0) {
+		error:
+			fr_dbuff_marker_release(&inner_seq_len_start);
+			return slen;
+		}
+
+		fr_dbuff_marker(&length_start, &our_dbuff);
+		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
 		/*
 		 *	Walk through the children until we find either an attribute marked as an extension, or one with
@@ -1220,6 +1236,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		 *	extension.
 		 */
 		fr_dcursor_copy(&child_cursor, &parent_cursor);
+		count = 0;
 
 		while ((child = fr_dcursor_current(&child_cursor)) != NULL) {
 			PAIR_VERIFY(child);
@@ -1237,40 +1254,24 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 				goto next;
 			}
 
-			if (!fr_type_is_structural(child->vp_type) && !fr_der_flag_is_oid_leaf(child->da)) {
+			/*
+			 *	If we find a normal leaf data type, we don't encode it.  But we do encode leaf data
+			 *	types which are marked up as needing OID leaf encoding.
+			 */
+			if (!fr_type_is_structural(child->vp_type) && !fr_der_flag_is_oid_leaf(child->da) && !child->da->flags.is_raw) {
 				FR_PROTO_TRACE("Found non-structural child %s", child->da->name);
-
-				if (child->da->flags.is_raw) {
-					/*
-					 *	This was an unknown oid
-					 */
-					if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, ".%" PRIu32, child->da->attr) <= 0)) {
-						fr_strerror_const("Failed to copy OID to buffer");
-						slen = -1;
-					error:
-						fr_dbuff_marker_release(&outer_seq_len_start);
-						return slen;
-					}
-					break;
-				}
 
 				fr_dcursor_copy(&child_cursor, &parent_cursor);
 				break;
 			}
 
-			if (oid_buff[0] == '\0') {
-				if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, "%" PRIu32, child->da->attr) <= 0)) {
-					fr_strerror_const("Failed to copy OID to buffer");
-					slen = -1;
-					goto error;
-				}
+			slen = fr_der_encode_oid_from_value(&our_dbuff, child->da->attr, &component, &count);
+			if (unlikely(slen < 0)) return -1;
 
-				goto next;
-			}
-
-			if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, ".%" PRIu32, child->da->attr) <= 0)) {
-				goto error;
-			}
+			/*
+			 *	We've encoded a leaf data type, or a raw one.  Stop encoding it.
+			 */
+			if (!fr_type_is_structural(child->vp_type)) break;
 
 			/*
 			 *	Unless this was the last child (marked as an extension), there should only be one child
@@ -1279,49 +1280,16 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 			if (fr_pair_list_num_elements(&child->children) > 1) break;
 
 		next:
-			FR_PROTO_TRACE("OID: %s", oid_buff);
-
 			if (fr_der_flag_is_oid_leaf(child->da)) break;
+
 			fr_pair_dcursor_child_iter_init(&child_cursor, &child->children, &child_cursor);
-		}
-
-		fr_sbuff_terminate(&oid_sbuff);
-		FR_PROTO_TRACE("OID: %s", oid_buff);
-
-		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_SEQUENCE, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_CONSTRUCTED);
-		if (slen < 0) goto error;
-
-		fr_dbuff_marker(&inner_seq_len_start, &our_dbuff);
-		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
-
-		/*
-		 *	Encode the OID portion of the extension
-		 */
-		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_OID, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_PRIMITIVE);
-		if (slen < 0) {
-			fr_dbuff_marker_release(&inner_seq_len_start);
-			goto error;
-		}
-
-		fr_dbuff_marker(&length_start, &our_dbuff);
-		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
-
-		slen = fr_der_encode_oid_from_str(&our_dbuff, oid_buff);
-		if (slen < 0) {
-			fr_dbuff_marker_release(&length_start);
-			fr_dbuff_marker_release(&inner_seq_len_start);
-			goto error;
 		}
 
 		/*
 		 *	Encode the length of the OID
 		 */
 		slen = fr_der_encode_len(&our_dbuff, &length_start);
-		fr_dbuff_marker_release(&length_start);
-		if (slen < 0) {
-			fr_dbuff_marker_release(&inner_seq_len_start);
-			goto error;
-		}
+		if (slen < 0) goto error;
 
 		/*
 		 *	Encode the critical flag
@@ -1339,10 +1307,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		 *	Encode the value portion of the extension
 		 */
 		slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_OCTETSTRING, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_PRIMITIVE);
-		if (slen < 0) {
-			fr_dbuff_marker_release(&inner_seq_len_start);
-			goto error;
-		}
+		if (slen < 0) goto error;
 
 		fr_dbuff_marker(&length_start, &our_dbuff);
 		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
@@ -1353,7 +1318,6 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		slen = encode_value(&our_dbuff, &child_cursor, encode_ctx);
 		if (slen < 0) {
 			fr_dbuff_marker_release(&length_start);
-			fr_dbuff_marker_release(&inner_seq_len_start);
 			goto error;
 		}
 
@@ -1362,19 +1326,14 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		 */
 		slen = fr_der_encode_len(&our_dbuff, &length_start);
 		fr_dbuff_marker_release(&length_start);
-		if (slen < 0) {
-			fr_dbuff_marker_release(&inner_seq_len_start);
-			goto error;
-		}
+		if (slen < 0) goto error;
 
 		/*
 		 *	Encode the length of the extension (OID + Value portions)
 		 */
 		slen = fr_der_encode_len(&our_dbuff, &inner_seq_len_start);
 		fr_dbuff_marker_release(&inner_seq_len_start);
-		if (slen < 0) {
-			goto error;
-		}
+		if (slen < 0) return -1;
 
 		if (is_critical) {
 			fr_dcursor_next(&parent_cursor);
