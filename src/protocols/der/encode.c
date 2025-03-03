@@ -1313,29 +1313,15 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 			goto error;
 		}
 
+		/*
+		 *	Encode the critical flag
+		 */
 		if (is_critical) {
 			/*
-			 *	Encode the critical flag
+			 *	Universal+Boolean flag is always 0x01. Length of a boolean is always 0x01.
+			 *	True is always 0xff.
 			 */
-			slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_BOOLEAN, FR_DER_CLASS_UNIVERSAL,
-						 FR_DER_TAG_PRIMITIVE);
-			if (slen < 0) {
-				fr_dbuff_marker_release(&inner_seq_len_start);
-				goto error;
-			}
-
-			fr_dbuff_marker(&length_start, &our_dbuff);
-			FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
-
-			FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t)(0xff));
-
-			slen = fr_der_encode_len(&our_dbuff, &length_start);
-			fr_dbuff_marker_release(&length_start);
-			if (slen < 0) {
-				fr_dbuff_marker_release(&inner_seq_len_start);
-				goto error;
-			}
-
+			FR_DBUFF_IN_BYTES_RETURN(&our_dbuff, (uint8_t) 0x01, (uint8_t) 0x01, (uint8_t)(0xff));
 			is_critical--;
 		}
 
