@@ -593,14 +593,11 @@ static ssize_t fr_der_encode_null(UNUSED fr_dbuff_t *dbuff, fr_dcursor_t *cursor
 	return 0;
 }
 
-static ssize_t fr_der_encode_oid_from_str(fr_dbuff_t *dbuff, const char *oid_str)
+static ssize_t fr_der_encode_oid_from_value(fr_dbuff_t *dbuff, uint64_t value, uint64_t *component, int *count)
 {
-	fr_dbuff_t our_dbuff = FR_DBUFF(dbuff);
-	bool	first = true;
-	uint8_t	first_component;
-	unsigned long long oid;
-	char const *start = oid_str;
-	char	 *end = NULL;
+	fr_dbuff_t	our_dbuff;
+	int		i;
+	uint64_t	oid;
 
 	/*
 	 *	The first subidentifier is the encoding of the first two object identifier components, encoded as:
@@ -608,68 +605,81 @@ static ssize_t fr_der_encode_oid_from_str(fr_dbuff_t *dbuff, const char *oid_str
 	 *	where X is the first number and Y is the second number.
 	 *	The first number is 0, 1, or 2.
 	 */
+	if (*count == 0) {
+		if (!((value == 0) || (value == 1) || (value == 2))) {
+			fr_strerror_printf("Invalid value %" PRIu64 " for initial component", value);
+			return -1;
+		}
 
-	oid = strtoull(start, &end, 10);
-	if (!((oid == 0) || (oid == 1) || (oid == 2)) ||
-	    !end || (*end != '.')) {
-	invalid_oid:
-		fr_strerror_const("Invalid OID");
-		return -1;
+		*component = value;
+		(*count)++;
+		return 0;
 	}
 
-	first_component = oid;
+	if (*count == 1) {
+		if ((*component < 2) && (value > 40)) {
+			fr_strerror_printf("Invalid value %" PRIu64 " for second component", value);
+			return -1;
+		}
+
+		oid = *component * 40 + value;
+	} else {
+		oid = value;
+	}
+
+	our_dbuff = FR_DBUFF(dbuff);
+
+	/*
+	 *	Encode the number as 7-bit chunks.  Just brute-force over all bits, as doing that ends
+	 *	up being fast enough.
+	 *
+	 *	i.e. if we did anything else to count bits, it would end up with pretty much the same
+	 *	code.
+	 */
+	for (i = 63; i >= 0; i -= 7) {
+		uint8_t more, part;
+
+		part = (oid >> i) & 0x7f;
+		if (!part) continue;
+
+		more = ((uint8_t) (i > 0)) << 7;
+
+		FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) (more | part));
+	}
+
+	(*count)++;
+
+	return fr_dbuff_set(dbuff, &our_dbuff);
+}
+
+static ssize_t fr_der_encode_oid_from_str(fr_dbuff_t *dbuff, const char *oid_str)
+{
+	fr_dbuff_t our_dbuff = FR_DBUFF(dbuff);
+	uint64_t	component;
+	int		count = 0;
+	unsigned long long oid;
+	char const *start = oid_str;
+	char	 *end = NULL;
 
 	/*
 	 *	Loop until we're done the string.
 	 */
-	while (*end) {
-		int i;
-
-		/*
-		 *	The previous round MUST have ended with '.'
-		 */
-		start = end + 1;
-		if (!*start) goto invalid_oid; /* OID=1 or OID=1.2. is not allowed */
+	while (*start) {
+		ssize_t slen;
 
 		/*
 		 *	Parse the component.
 		 */
 		oid = strtoull(start, &end, 10);
-		if (oid == ULLONG_MAX) goto invalid_oid;
-		if (*end && (*end != '.')) goto invalid_oid;
-
-		/*
-		 *	The initial packed field has the first two compenents included, as (x * 40) + y.
-		 */
-		if (first) {
-			if (first_component < 2) {
-				if (oid >= 40) goto invalid_oid;
-
-			} else {
-				if (oid > (((unsigned long long) 1) << 60)) goto invalid_oid; /* avoid overflow */
-			}
-
-			first = false;
-			oid += first_component * 40;
+		if ((oid == ULLONG_MAX) || (*end && (*end != '.'))) {
+			fr_strerror_const("Invalid OID");
+			return -1;
 		}
 
-		/*
-		 *	Encode the number as 7-bit chunks.  Just brute-force over all bits, as doing that ends
-		 *	up being fast enough.
-		 *
-		 *	i.e. if we did anything else to count bits, it would end up with pretty much the same
-		 *	code.
-		 */
-		for (i = 63; i >= 0; i -= 7) {
-			uint8_t more, part;
+		slen = fr_der_encode_oid_from_value(&our_dbuff, oid, &component, &count);
+		if (slen < 0) return -1;
 
-			part = (oid >> i) & 0x7f;
-			if (!part) continue;
-
-			more = ((uint8_t) (i > 0)) << 7;
-
-			FR_DBUFF_IN_RETURN(&our_dbuff, (uint8_t) (more | part));
-		}
+		start = end + 1;
 	}
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
@@ -1395,12 +1405,12 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, fr_der_encode_ctx_t *encode_ctx)
 {
 	fr_dbuff_t	  our_dbuff = FR_DBUFF(dbuff);
-	fr_sbuff_t	  oid_sbuff;
 	fr_dbuff_marker_t length_start;
 	fr_dcursor_t	  child_cursor, parent_cursor = *cursor;
 	fr_pair_t const	  *vp, *child;
-	char		  oid_buff[1024] = { 0 };
 	ssize_t		  slen	 = 0;
+	uint64_t	  component;
+	int		  count;
 
 	vp = fr_dcursor_current(&parent_cursor);
 	PAIR_VERIFY(vp);
@@ -1418,8 +1428,11 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 	 *	Note: The value may be a constructed or primitive type
 	 */
 
-	oid_sbuff   = FR_SBUFF_OUT(oid_buff, sizeof(oid_buff));
-	oid_buff[0] = '\0';
+	slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_OID, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_PRIMITIVE);
+	if (slen < 0) return slen;
+
+	fr_dbuff_marker(&length_start, &our_dbuff);
+	FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
 	/*
 	 *	Walk through the children until we find either an attribute marked as an oid leaf, or one with
@@ -1429,20 +1442,20 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 	 *	pair.
 	 */
 	fr_pair_dcursor_child_iter_init(&child_cursor, &vp->children, &parent_cursor);
+	count = 0;
+
 	while ((child = fr_dcursor_current(&child_cursor)) != NULL) {
 		PAIR_VERIFY(child);
 
+		/*
+		 *	We stop encoding at a leaf.
+		 */
 		if (!fr_type_is_structural(child->vp_type) && !fr_der_flag_is_oid_leaf(child->da)) {
 			FR_PROTO_TRACE("Found non-structural child %s", child->da->name);
 
 			if (child->da->flags.is_raw) {
-				/*
-				 *	This was an unknown oid
-				 */
-				if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, ".%" PRIu32, child->da->attr) <= 0)) {
-					fr_strerror_const("Failed to copy OID to buffer");
-					return slen;
-				}
+				slen = fr_der_encode_oid_from_value(&our_dbuff, child->da->attr, &component, &count);
+				if (unlikely(slen < 0)) return -1;
 				break;
 			}
 
@@ -1450,19 +1463,8 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 			break;
 		}
 
-		if (oid_buff[0] == '\0') {
-			if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, "%" PRIu32, child->da->attr) <= 0)) {
-				fr_strerror_const("Failed to copy OID to buffer");
-				return -1;
-			}
-
-			goto next;
-		}
-
-		if (unlikely(fr_sbuff_in_sprintf(&oid_sbuff, ".%" PRIu32, child->da->attr) <= 0)) {
-			fr_strerror_const("Failed to copy OID to buffer");
-			return -1;
-		}
+		slen = fr_der_encode_oid_from_value(&our_dbuff, child->da->attr, &component, &count);
+		if (unlikely(slen < 0)) return -1;
 
 		/*
 		 *	Unless this was the last child (marked as an oid leaf), there should only be one child
@@ -1470,28 +1472,8 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 		 */
 		if (fr_pair_list_num_elements(&child->children) > 1) break;
 
-	next:
-		FR_PROTO_TRACE("OID: %s", oid_buff);
 		if (fr_der_flag_is_oid_leaf(child->da)) break;
 		fr_pair_dcursor_child_iter_init(&child_cursor, &child->children, &child_cursor);
-	}
-
-	fr_sbuff_terminate(&oid_sbuff);
-	FR_PROTO_TRACE("OID: %s", oid_buff);
-
-	slen = fr_der_encode_tag(&our_dbuff, FR_DER_TAG_OID, FR_DER_CLASS_UNIVERSAL, FR_DER_TAG_PRIMITIVE);
-	if (slen < 0) return slen;
-
-	fr_dbuff_marker(&length_start, &our_dbuff);
-	FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
-
-	/*
-	 *	Encode the OID portion of the pair
-	 */
-	slen = fr_der_encode_oid_from_str(&our_dbuff, oid_buff);
-	if (slen < 0) {
-		fr_dbuff_marker_release(&length_start);
-		return slen;
 	}
 
 	/*
