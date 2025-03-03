@@ -1259,7 +1259,7 @@ void fr_message_set_gc(fr_message_set_t *ms)
  * @param[in] ms the message set
  * @param[in] fp the FILE where the messages are printed.
  */
-void fr_message_set_debug(fr_message_set_t *ms, FILE *fp)
+void fr_message_set_debug(FILE *fp, fr_message_set_t *ms)
 {
 	int i;
 
