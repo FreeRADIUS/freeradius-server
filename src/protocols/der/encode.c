@@ -652,44 +652,15 @@ static ssize_t fr_der_encode_oid_from_value(fr_dbuff_t *dbuff, uint64_t value, u
 	return fr_dbuff_set(dbuff, &our_dbuff);
 }
 
-static ssize_t fr_der_encode_oid_from_str(fr_dbuff_t *dbuff, const char *oid_str)
-{
-	fr_dbuff_t our_dbuff = FR_DBUFF(dbuff);
-	uint64_t	component;
-	int		count = 0;
-	unsigned long long oid;
-	char const *start = oid_str;
-	char	 *end = NULL;
-
-	/*
-	 *	Loop until we're done the string.
-	 */
-	while (*start) {
-		ssize_t slen;
-
-		/*
-		 *	Parse the component.
-		 */
-		oid = strtoull(start, &end, 10);
-		if ((oid == ULLONG_MAX) || (*end && (*end != '.'))) {
-			fr_strerror_const("Invalid OID");
-			return -1;
-		}
-
-		slen = fr_der_encode_oid_from_value(&our_dbuff, oid, &component, &count);
-		if (slen < 0) return -1;
-
-		start = end + 1;
-	}
-
-	return fr_dbuff_set(dbuff, &our_dbuff);
-}
-
 static ssize_t fr_der_encode_oid(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED fr_der_encode_ctx_t *encode_ctx)
 {
 	fr_dbuff_t	our_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t const *vp;
-	ssize_t		slen = 0;
+	uint64_t	component;
+	int		count = 0;
+	unsigned long long oid;
+	char const *start;
+	char	 *end = NULL;
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
@@ -718,10 +689,30 @@ static ssize_t fr_der_encode_oid(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED
 	 *		reached by X = 0 and X = 1. 8.19.5 The numerical value of the ith subidentifier, (2 <= i <= N) is
 	 *		that of the (i + 1)th object identifier component.
 	 */
-	slen = fr_der_encode_oid_from_str(&our_dbuff, vp->vp_strvalue);
-	if (slen < 0) {
-		fr_strerror_printf("Failed to encode OID: %s", fr_strerror());
-		return slen;
+
+
+	/*
+	 *	Parse each OID component.
+	 */
+	for (start = vp->vp_strvalue; *start != '\0'; start = end + 1) {
+		ssize_t slen;
+
+		/*
+		 *	Parse the component.
+		 */
+		oid = strtoull(start, &end, 10);
+		if ((oid == ULLONG_MAX) || (*end && (*end != '.'))) {
+			fr_strerror_const("Invalid OID");
+			return -1;
+		}
+
+		slen = fr_der_encode_oid_from_value(&our_dbuff, oid, &component, &count);
+		if (slen < 0) return -1;
+	}
+
+	if (count <= 2) {
+		fr_strerror_printf("Invalid OID '%s' - too short", vp->vp_strvalue);
+		return -1;
 	}
 
 	return fr_dbuff_set(dbuff, &our_dbuff);
