@@ -593,7 +593,7 @@ static ssize_t fr_der_encode_null(UNUSED fr_dbuff_t *dbuff, fr_dcursor_t *cursor
 	return 0;
 }
 
-static ssize_t fr_der_encode_oid_to_str(fr_dbuff_t *dbuff, const char *oid_str)
+static ssize_t fr_der_encode_oid_from_str(fr_dbuff_t *dbuff, const char *oid_str)
 {
 	fr_dbuff_t our_dbuff = FR_DBUFF(dbuff);
 	bool	first = true;
@@ -708,7 +708,7 @@ static ssize_t fr_der_encode_oid(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED
 	 *		reached by X = 0 and X = 1. 8.19.5 The numerical value of the ith subidentifier, (2 <= i <= N) is
 	 *		that of the (i + 1)th object identifier component.
 	 */
-	slen = fr_der_encode_oid_to_str(&our_dbuff, vp->vp_strvalue);
+	slen = fr_der_encode_oid_from_str(&our_dbuff, vp->vp_strvalue);
 	if (slen < 0) {
 		fr_strerror_printf("Failed to encode OID: %s", fr_strerror());
 		return slen;
@@ -1296,7 +1296,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 		fr_dbuff_marker(&length_start, &our_dbuff);
 		FR_DBUFF_ADVANCE_RETURN(&our_dbuff, 1);
 
-		slen = fr_der_encode_oid_to_str(&our_dbuff, oid_buff);
+		slen = fr_der_encode_oid_from_str(&our_dbuff, oid_buff);
 		if (slen < 0) {
 			fr_dbuff_marker_release(&length_start);
 			fr_dbuff_marker_release(&inner_seq_len_start);
@@ -1502,7 +1502,7 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 	/*
 	 *	Encode the OID portion of the pair
 	 */
-	slen = fr_der_encode_oid_to_str(&our_dbuff, oid_buff);
+	slen = fr_der_encode_oid_from_str(&our_dbuff, oid_buff);
 	if (slen < 0) {
 		fr_dbuff_marker_release(&length_start);
 		return slen;
