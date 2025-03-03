@@ -1448,16 +1448,11 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 		PAIR_VERIFY(child);
 
 		/*
-		 *	We stop encoding at a leaf.
+		 *	If we find a normal leaf data type, we don't encode it.  But we do encode leaf data
+		 *	types which are marked up as needing OID leaf encoding.
 		 */
-		if (!fr_type_is_structural(child->vp_type) && !fr_der_flag_is_oid_leaf(child->da)) {
+		if (!fr_type_is_structural(child->vp_type) && !fr_der_flag_is_oid_leaf(child->da) && !child->da->flags.is_raw) {
 			FR_PROTO_TRACE("Found non-structural child %s", child->da->name);
-
-			if (child->da->flags.is_raw) {
-				slen = fr_der_encode_oid_from_value(&our_dbuff, child->da->attr, &component, &count);
-				if (unlikely(slen < 0)) return -1;
-				break;
-			}
 
 			fr_dcursor_copy(&child_cursor, &parent_cursor);
 			break;
@@ -1467,12 +1462,21 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 		if (unlikely(slen < 0)) return -1;
 
 		/*
+		 *	We've encoded a leaf data type, or a raw one.  Stop encoding it.
+		 */
+		if (!fr_type_is_structural(child->vp_type)) break;
+
+		/*
+		 *	Some structural types can be marked as a leaf for the purposes of OID encoding.
+		 */
+		if (fr_der_flag_is_oid_leaf(child->da)) break;
+
+		/*
 		 *	Unless this was the last child (marked as an oid leaf), there should only be one child
 		 *	- representing the next OID in the pair
 		 */
 		if (fr_pair_list_num_elements(&child->children) > 1) break;
 
-		if (fr_der_flag_is_oid_leaf(child->da)) break;
 		fr_pair_dcursor_child_iter_init(&child_cursor, &child->children, &child_cursor);
 	}
 
