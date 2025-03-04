@@ -6,7 +6,7 @@ TARGETNAME=
 
 ifneq "${TARGETNAME}" ""
   TARGETNAME	:= sync_touch
-  TARGET	:= $(TARGETNAME)$(L)
+  TARGET	:= $(TARGETNAME)$(E)
 endif
 
 SOURCES		:= $(TARGETNAME).c
