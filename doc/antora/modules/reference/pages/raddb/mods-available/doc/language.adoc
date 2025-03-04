@@ -1,0 +1,15 @@
+= Language Modules
+
+Language modules are embedded with the RADIUS server to allow an administrator to extend the capabilities of with extra progamming languages.
+
+The available Language modules are:
+
+* xref:raddb/mods-available/exec.adoc[Exec]
+
+* xref:raddb/mods-available/lua.adoc[Lua]
+
+* xref:raddb/mods-available/perl.adoc[Perl]
+
+* xref:raddb/mods-available/python.adoc[Python]
+
+* xref:raddb/mods-available/mruby.adoc[Ruby]

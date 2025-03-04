@@ -1,0 +1,19 @@
+= Authentication Modules
+
+Authentication modules are available for multiple types and methods of verifiying your users.
+
+
+
+xref:raddb/mods-available/chap.adoc[CHAP module]
+xref:raddb/mods-available/digest.adoc[Digest]
+xref:raddb/mods-available/eap.adoc[EAP]
+xref:raddb/mods-available/eap_inner.adoc[EAP/Inner]
+xref:raddb/mods-available/imap.adoc[IMAP]
+xref:raddb/mods-available/krb5.adoc[Kerberos]
+xref:raddb/mods-available/mschap.adoc[Microsoft CHAP authentication]
+xref:raddb/mods-available/pap.adoc[PAP]
+xref:raddb/mods-available/passwd.adoc[Passwd]
+xref:raddb/mods-available/totp.adoc[TOTP]
+xref:raddb/mods-available/wimax.adoc[WiMAX]
+xref:raddb/mods-available/winbind.adoc[Winbind]
+xref:raddb/mods-available/yubikey.adoc[Yubikey]

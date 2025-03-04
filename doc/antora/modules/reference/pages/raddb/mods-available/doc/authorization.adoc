@@ -1,0 +1,5 @@
+= Authorization Modules
+
+The only authorization module available is:
+
+* xref:raddb/mods-available/smtp.adoc[SMTP]

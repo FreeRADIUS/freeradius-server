@@ -1,7 +1,3 @@
-
-
-
-
 = LDAP (Lightweight Directory Access Protocol) Module
 
 The `ldap` module allows LDAP directory entries to be retrieved, modified,

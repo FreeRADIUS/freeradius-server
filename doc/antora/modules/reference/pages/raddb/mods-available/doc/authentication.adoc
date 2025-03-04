@@ -1,0 +1,31 @@
+= Authentication Modules
+
+The authentication modules manages the verification processes by validating a set of credentials.  These modules are available for different types and methods of authentication. For example, RADIUS supports PAP, CHAP, or EAP protocols and multiple datastores like LDAP or local password file to verify a user's identity.
+
+The Authentication modules available are:
+
+xref:raddb/mods-available/chap.adoc[CHAP module]
+
+xref:raddb/mods-available/digest.adoc[Digest]
+
+xref:raddb/mods-available/eap.adoc[EAP]
+
+xref:raddb/mods-available/eap_inner.adoc[EAP/Inner]
+
+xref:raddb/mods-available/imap.adoc[IMAP]
+
+xref:raddb/mods-available/krb5.adoc[Kerberos]
+
+xref:raddb/mods-available/mschap.adoc[Microsoft CHAP authentication]
+
+xref:raddb/mods-available/pap.adoc[PAP]
+
+xref:raddb/mods-available/passwd.adoc[Passwd]
+
+xref:raddb/mods-available/totp.adoc[TOTP]
+
+xref:raddb/mods-available/wimax.adoc[WiMAX]
+
+xref:raddb/mods-available/winbind.adoc[Winbind]
+
+xref:raddb/mods-available/yubikey.adoc[Yubikey]
