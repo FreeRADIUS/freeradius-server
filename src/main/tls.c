@@ -4093,6 +4093,13 @@ load_ca:
 post_ca:
 #endif
 
+#ifdef SSL_OP_NO_RENEGOTIATION
+	/*
+	 *	This is never useful for anything.
+	 */
+	ctx_options |= SSL_OP_NO_RENEGOTIATION;
+#endif
+
 	/*
 	 *	We never want SSLv2 or SSLv3.
 	 */
