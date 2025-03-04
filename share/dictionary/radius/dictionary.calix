@@ -16,6 +16,9 @@ BEGIN-VENDOR	Calix
 
 ATTRIBUTE	Role					1	string
 
+# The current session Role is returned in this attribute in accounting
+ATTRIBUTE	Applied-Role				50	string
+
 #
 #  CMS attributes
 #
