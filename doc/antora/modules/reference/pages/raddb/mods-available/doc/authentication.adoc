@@ -1,31 +1,54 @@
 = Authentication Modules
 
-The authentication modules manages the verification processes by validating a set of credentials.  These modules are available for different types and methods of authentication. For example, RADIUS supports PAP, CHAP, or EAP protocols and multiple datastores like LDAP or local password file to verify a user's identity.
+The authentication modules verify user credentials.  They can do this
+by checking them against an external system, or by implementing an
+authentication protocol such as EAP.
+
+There are many different types and methods of authentication. For
+example, RADIUS supports PAP, CHAP, or EAP.  In many cases, datastores
+such as LDAP can be used to check a users name and password.
+
+In most cases, we recommend using a
+xref:raddb/mods-available/doc/datastore.adoc[datastore]
+(i.e. database) to store user credentials.  The server can then obtain
+the credentials from the datastore, and run the authentication method
+itself.
+
+In rare cases, the datastore will not return the users credentials to
+the server.  In that case, the server must send the users name and
+password to the datastore, where it authenticates the user and returns
+a "pass" or "fail" result.  This process almost always requires the
+user to supply the server with a clear-text password.  Other
+authentication methods such as CHAP or EAP will pretty much never work.
 
 The Authentication modules available are:
 
-xref:raddb/mods-available/chap.adoc[CHAP module]
+* xref:raddb/mods-available/chap.adoc[CHAP module] - CHAP authentication
 
-xref:raddb/mods-available/digest.adoc[Digest]
+* xref:raddb/mods-available/digest.adoc[Digest] - HTTP Digest Authentication
 
-xref:raddb/mods-available/eap.adoc[EAP]
+* xref:raddb/mods-available/eap.adoc[EAP] - EAP-MD5, EAP-MSCHAPv2, TTLS, PEAP, FAST, TEAP, etc.
 
-xref:raddb/mods-available/eap_inner.adoc[EAP/Inner]
+** xref:raddb/mods-available/eap_inner.adoc[EAP/Inner] - limit EAP methods to ones which can be used in an "inner tunnel".
 
-xref:raddb/mods-available/imap.adoc[IMAP]
+* xref:raddb/mods-available/imap.adoc[IMAP] - check user credentials against an IMAP server
 
-xref:raddb/mods-available/krb5.adoc[Kerberos]
+* xref:raddb/mods-available/krb5.adoc[Kerberos] - check user credentials against a Kerberos server
 
-xref:raddb/mods-available/mschap.adoc[Microsoft CHAP authentication]
+* xref:raddb/mods-available/ldap.adoc[LDAP] - check user credentials against an LDAP server
 
-xref:raddb/mods-available/pap.adoc[PAP]
+* xref:raddb/mods-available/mschap.adoc[Microsoft CHAP] - MSCHAPv1 and MSCHAPv2 authentication.
 
-xref:raddb/mods-available/passwd.adoc[Passwd]
+* xref:raddb/mods-available/ntlm_auth.adoc[NTLM Auth] - check user credentials against a Samba / Active Directory server
 
-xref:raddb/mods-available/totp.adoc[TOTP]
+* xref:raddb/mods-available/pam.adoc[Pluggable Authentication] - check user credentials against the Pluggable Authentication Method (PAM)
 
-xref:raddb/mods-available/wimax.adoc[WiMAX]
+* xref:raddb/mods-available/pap.adoc[PAP] - PAP authentication.  Supports all common password hashing / encryption methods.
 
-xref:raddb/mods-available/winbind.adoc[Winbind]
+* xref:raddb/mods-available/rest.adoc[REST] - check user credentials against a REST server
 
-xref:raddb/mods-available/yubikey.adoc[Yubikey]
+* xref:raddb/mods-available/totp.adoc[TOTP] - perform time-based one-time-password (TOTP) checks.
+
+* xref:raddb/mods-available/winbind.adoc[Winbind] - check user credentials against a Samba / Active Directory server
+
+* xref:raddb/mods-available/yubikey.adoc[Yubikey] - check user credentials against a Yubikey server or database.

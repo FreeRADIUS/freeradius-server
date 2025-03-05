@@ -1,7 +1,15 @@
 = Protocol Modules
 
+The protocol modules implement protocol-specific functionality.
+
 The available protocol modules are:
 
-* xref:raddb/mods-available/dhcpv4.adoc[DHCPv4]
+* xref:raddb/mods-available/dhcpv4.adoc[DHCPv4] - send DHCPv4 packets as a relay
 
-* xref:raddb/mods-available/isc_dhcp.adoc[ISC DHCP]
+* xref:raddb/mods-available/isc_dhcp.adoc[ISC DHCP] - Read ISC DHCP configuration files
+
+* xref:raddb/mods-available/radius.adoc[Radius] - Proxy RADIUS packets
+
+** xref:raddb/mods-available/cui.adoc[CUI] - Manage Chargeable-User-Identifier
+
+** xref:raddb/mods-available/wimax.adoc[WiMAX] - Fix WiMAX issues

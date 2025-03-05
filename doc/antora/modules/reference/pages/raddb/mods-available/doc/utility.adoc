@@ -1,5 +1,17 @@
 = Utility Modules
 
-The available utility modules are:
+The utility modules implement a wide range of functionality which
+cannot be placed into one of the other categories.
 
-* xref:raddb/mods-available/smtp.adoc[SMTP]
+* xref:raddb/mods-available/delay.adoc[Delay] - add a controlled delay to responses
+
+* xref:raddb/mods-available/dict.adoc[Dict] - look up dictionary entries by name
+
+* xref:raddb/mods-available/smtp.adoc[SMTP] - send email
+
+* xref:raddb/mods-available/stats.adoc[Stats] - gather internal server statistics
+
+* xref:raddb/mods-available/unbound.adoc[Unbound] - do asynchronous DNS lookips
+
+
+
