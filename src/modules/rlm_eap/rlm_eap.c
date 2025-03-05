@@ -93,6 +93,7 @@ static fr_dict_attr_t const *attr_auth_type;
 static fr_dict_attr_t const *attr_eap_type;
 static fr_dict_attr_t const *attr_eap_identity;
 static fr_dict_attr_t const *attr_stripped_user_domain;
+static fr_dict_attr_t const *attr_module_failure_message;
 
 static fr_dict_attr_t const *attr_eap_message;
 static fr_dict_attr_t const *attr_message_authenticator;
@@ -106,6 +107,7 @@ fr_dict_attr_autoload_t rlm_eap_dict_attr[] = {
 	{ .out = &attr_eap_type, .name = "EAP-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_eap_identity, .name = "EAP-Identity", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_stripped_user_domain, .name = "Stripped-User-Domain", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_module_failure_message, .name = "Module-Failure-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -420,6 +422,19 @@ static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result, UNUSED mod
 					       request_t *request, eap_session_t *eap_session, rlm_rcode_t result)
 {
 	rlm_rcode_t	rcode;
+	fr_pair_t	*next, *vp;
+
+	/*
+	 *	Hoist any instances of Module-Failure-Message from the subrequest
+	 *	so they can be used for logging failures.
+	 */
+	vp = fr_pair_find_by_da(&eap_session->subrequest->request_pairs, NULL, attr_module_failure_message);
+	while (vp) {
+		next = fr_pair_find_by_da(&eap_session->subrequest->request_pairs, vp, attr_module_failure_message);
+		fr_pair_remove(&eap_session->subrequest->request_pairs, vp);
+		fr_pair_steal_append(request->request_ctx, &request->request_pairs, vp);
+		vp = next;
+	}
 
 	/*
 	 *	Cleanup the subrequest
