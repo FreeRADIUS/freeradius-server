@@ -167,7 +167,7 @@ not have a `Fall-Through`, should come next.  Any `DEFAULT` entries
 should usually come last.  This ordering means that it will be easier
 to debug policies, and understand how the file works.
 
-== Check and Reply Item Iormat
+== Check and Reply Item Format
 
 Each check item or reply item must follow the same format, which is shown in the examples above.  The format is an attribute name, followed by an operator, and then a value.
 
