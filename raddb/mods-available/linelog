@@ -32,7 +32,7 @@ linelog {
 	#
 	#  format:: The default format string. May be an attribute reference.
 	#
-	#  e.g. `&User-Name`, or `xlat`, `literal` or `exec`.
+	#  e.g. `User-Name`, or `xlat`, `literal` or `exec`.
 	#
 	format = "This is a log message for %{User-Name}"
 
@@ -64,9 +64,9 @@ linelog {
 	#  `reference` is commented out, the `format` entry above is
 	#  used instead.
 	#
-	#  May be an attribute reference, e.g. `&User-Name`, or `xlat`, `literal` or `exec`.
+	#  May be an attribute reference, e.g. `User-Name`, or `xlat`, `literal` or `exec`.
 	#
-	reference = "messages.%{&reply.Packet-Type || 'default'}"
+	reference = "messages.%{reply.Packet-Type || 'default'}"
 
 	#
 	#  messages { ... }::
@@ -74,7 +74,7 @@ linelog {
 	#  The messages defined here are chosen from the `reference`
 	#  expansion, above.
 	#
-	#  Pairs may be attributes attribute reference `&User-Name` , `xlat`, `literal` or `exec`.
+	#  Pairs may be attributes attribute reference `User-Name` , `xlat`, `literal` or `exec`.
 	#
 	messages {
 		default = "Unknown packet type %{Packet-Type}"
@@ -407,7 +407,7 @@ linelog log_accounting {
 		permissions = 0600
 	}
 
-	reference = "Accounting-Request.%{&Acct-Status-Type || 'unknown'}"
+	reference = "Accounting-Request.%{Acct-Status-Type || 'unknown'}"
 
 	#
 	#  Example for `Accounting-Request`.
@@ -419,11 +419,11 @@ linelog log_accounting {
 		#  Don't log anything for these packets.
 		Interim-Update = ""
 
-		Accounting-On = "NAS %{Net.Src.IP} (%{&NAS-IP-Address || &NAS-IPv6-Address}) just came online"
-		Accounting-Off = "NAS %{Net.Src.IP} (%{&NAS-IP-Address || &NAS-IPv6-Address}) just went offline"
+		Accounting-On = "NAS %{Net.Src.IP} (%{NAS-IP-Address || NAS-IPv6-Address}) just came online"
+		Accounting-Off = "NAS %{Net.Src.IP} (%{NAS-IP-Address || NAS-IPv6-Address}) just went offline"
 
 		#  Don't log anything for other `Acct-Status-Type` 's.
-		unknown = "NAS %{Net.Src.IP} (%{&NAS-IP-Address || &NAS-IPv6-Address}) sent unknown Acct-Status-Type %{Acct-Status-Type}"
+		unknown = "NAS %{Net.Src.IP} (%{NAS-IP-Address || NAS-IPv6-Address}) sent unknown Acct-Status-Type %{Acct-Status-Type}"
 	}
 }
 
