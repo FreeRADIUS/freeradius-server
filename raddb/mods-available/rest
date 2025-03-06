@@ -255,7 +255,7 @@ rest {
 	#  |===
 	#  | Option         | Description
 	#  | `header`       | Where to write out HTTP headers included in the response.
-	#		      Must resolve to a leaf attribute i.e. &reply.REST-HTTP-Header.
+	#		      Must resolve to a leaf attribute i.e. `reply.REST-HTTP-Header`.
 	#		      If unspecified, headers will be discarded.
 	#		      Values will be in the format '<header>: <value>'.
 	#  | `force_to`     | Force the response to be decoded with this decoder.
