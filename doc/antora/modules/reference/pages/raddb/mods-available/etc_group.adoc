@@ -52,11 +52,11 @@ csv etc_group {
 	filename = ${modconfdir}/csv/${.:instance}
 	delimiter = ":"
 	header = no
-	key = &User-Name
+	key = User-Name
 	fields = "group:::,user"
 	index_field = user
 	update request {
-	       &ETC-Group-Name := 'group'
+	       ETC-Group-Name := 'group'
 	}
 }
 ```
