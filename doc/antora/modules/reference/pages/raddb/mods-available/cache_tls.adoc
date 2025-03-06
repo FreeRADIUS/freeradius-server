@@ -69,18 +69,18 @@ update <section> { ... }::
 ```
 cache cache_tls_session {
 	driver = "rbtree"
-	key = &Session-Id
+	key = %{Session-Id}
 	ttl = 3600	# 60 mins
 	update {
-		&reply.Session-Data := &Session-Data
+		reply.Session-Data := Session-Data
 	}
 }
 cache cache_ocsp {
 	driver = "rbtree"
-	key = &session-state.TLS-Client-Cert-Serial
+	key = %{session-state.TLS-Client-Cert-Serial}
 	update {
-		&control.TLS-OCSP-Cert-Valid := &TLS-OCSP-Cert-Valid
-		&control.TLS-OCSP-Response := &TLS-OCSP-Response
+		control.TLS-OCSP-Cert-Valid := TLS-OCSP-Cert-Valid
+		control.TLS-OCSP-Response := TLS-OCSP-Response
 	}
 }
 ```

@@ -43,7 +43,7 @@ cache cache_tls_session {
 	#
 	#  key:: The `cache` key.
 	#
-	key = &Session-Id
+	key = %{Session-Id}
 
 	#
 	#  ttl:: TTL for `cache` entries.
@@ -54,7 +54,7 @@ cache cache_tls_session {
 	#  update <section> { ... }::
 	#
 	update {
-		&reply.Session-Data := &Session-Data
+		reply.Session-Data := Session-Data
 	}
 }
 
@@ -72,13 +72,13 @@ cache cache_ocsp {
 	#
 	#  key:: `cache` key.
 	#
-	key = &session-state.TLS-Client-Cert-Serial
+	key = %{session-state.TLS-Client-Cert-Serial}
 
 	#
 	#  update <section> { ... }::
 	#
 	update {
-		&control.TLS-OCSP-Cert-Valid := &TLS-OCSP-Cert-Valid
-		&control.TLS-OCSP-Response := &TLS-OCSP-Response
+		control.TLS-OCSP-Cert-Valid := TLS-OCSP-Cert-Valid
+		control.TLS-OCSP-Response := TLS-OCSP-Response
 	}
 }
