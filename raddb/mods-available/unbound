@@ -18,7 +18,7 @@ unbound dns {
 	#
 	#  File to read unbound configuration details from.
 	#
-	#  filename = "${raddbdir}/mods-config/unbound/default.conf"
+	#  filename = "${confdir}/mods-config/unbound/default.conf"
 
 	#
 	#  Timeout for unbound queries.
