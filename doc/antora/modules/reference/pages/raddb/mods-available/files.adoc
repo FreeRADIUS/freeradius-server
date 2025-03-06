@@ -50,7 +50,7 @@ When this flag is set, any enumeration names (e.g. Service-Type := Framed-User)
 do not need to have the v4 "::" prefix.  This flag helps with migrating v3
 configurations to v4.
 
-Default value "false".  Allowerd vlaues, "true' and "false".
+Default value "false".  Allowed vaues, `true` and `false`.
 
 
 
@@ -62,13 +62,13 @@ Default value "false".  Allowerd vlaues, "true' and "false".
 ```
 files {
 	moddir = ${modconfdir}/${.:instance}
-#	key = "%{&Stripped-User-Name || &User-Name}"
+#	key = "%{Stripped-User-Name || User-Name}"
 	filename = ${moddir}/authorize
-#	match_attr = &control.User-Category
+#	match_attr = control.User-Category
 #	v3_compat = false
 }
 files files_accounting {
-#	key = "%{&Stripped-User-Name || &User-Name}"
+#	key = "%{Stripped-User-Name || &User-Name}"
 	filename = ${modconfdir}/files/accounting
 }
 ```

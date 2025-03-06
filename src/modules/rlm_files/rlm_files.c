@@ -690,7 +690,7 @@ static const call_env_method_t method_env = {
 	FR_CALL_ENV_METHOD_OUT(rlm_files_env_t),
 	.env = (call_env_parser_t[]){
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("key", FR_TYPE_VOID, CALL_ENV_FLAG_PARSE_ONLY, rlm_files_env_t, data),
-				     .pair.dflt = "%{%{Stripped-User-Name} || %{User-Name}}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING,
+				     .pair.dflt = "%{Stripped-User-Name || User-Name}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING,
 				     .pair.func = call_env_parse },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("match_attr", FR_TYPE_VOID, CALL_ENV_FLAG_ATTRIBUTE, rlm_files_env_t, match_attr) },
 		CALL_ENV_TERMINATOR

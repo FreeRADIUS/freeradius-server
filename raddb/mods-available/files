@@ -33,7 +33,7 @@ files {
 	#
 	#	doc/antora/modules/raddb/pages/mods-config/files/users.adoc
 	#
-#	key = "%{&Stripped-User-Name || &User-Name}"
+#	key = "%{Stripped-User-Name || User-Name}"
 
 	#
 	#  filename:: The old `users` style file is now located here.
@@ -49,7 +49,7 @@ files {
 	#  value will be the subnet.  In that case it is best to use `0.0.0.0/0` in place
 	#  of `DEFAULT` for any catch-all entries.
 	#
-#	match_attr = &control.User-Category
+#	match_attr = control.User-Category
 
 	#
 	#  v3_compat:: Version 3 compatibility flag.
@@ -58,7 +58,7 @@ files {
 	#  do not need to have the v4 "::" prefix.  This flag helps with migrating v3
 	#  configurations to v4.
 	#
-	#  Default value "false".  Allowerd vlaues, "true' and "false".
+	#  Default value "false".  Allowed vaues, `true` and `false`.
 	#
 #	v3_compat = false
 }
@@ -67,6 +67,6 @@ files {
 #  ## An instance of the `files` module for use in processing accounting packets
 #
 files files_accounting {
-#	key = "%{&Stripped-User-Name || &User-Name}"
+#	key = "%{Stripped-User-Name || &User-Name}"
 	filename = ${modconfdir}/files/accounting
 }
