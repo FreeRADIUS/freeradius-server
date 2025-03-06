@@ -10,7 +10,7 @@ See raddb/mods-config/sql/ippool/ for the schemas.
 See raddb/sites-available/dhcp for instructions on how to configure
 the DHCP server.
 
-
+## The Virtual Server
 
 
 The DHCP functionality goes into a virtual server.

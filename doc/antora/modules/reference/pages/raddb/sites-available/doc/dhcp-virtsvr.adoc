@@ -1,0 +1,54 @@
+= DHCP Virtual Server
+
+FreeRADIUS includes a DHCP server that more fully supports the DHCP protocol.  The enhanced features include performance, no limits on the size of IP pools, the ability to use many data sources. FreeRADIUS DHCP server provides a  more flexible solution for DHCP capabilities that include:
+
+== Optimal perfomance surpassing other implementations (ISC or Kea)
+
+FreeRADIUS is multi-threaded by default, and has been for almost two decades. It can robustly support high input packets rates using many threads. For example, our benchmarking tests were using thirty-two threads, because there was no performance benefit in using more threads. In contrast, ISC DHCP is single threaded, while the more recent Kea implementation is single threaded by default, and only supports up to four threads as an “experimental” feature.
+
+The mature multi-threaded capability of FreeRADIUS translates into higher performance in high load scenarios. While one thread is accessing the database, another thread can be applying complex local policies.
+
+== Integration into network seamlessly
+Large, complex networks often have a diverse combination of network-management components that have been specifically chosen for the unique needs of that organization. For example, device registration and provisioning systems. Our philosophy is that a DHCP server should not artificially constrain what those components are or how they should work. We believe that the network administrator has made site-local choices for a reason.
+
+FreeRADIUS is designed to be highly modular, which makes it trivial to “mix and match” different systems. For example, leases could be taken from SQL, and options from LDAP. Or, options could be assigned from both PostgreSQL and MySQL, depending on factors such as the network from which the request originates, or the type of device. This flexibility allows the server to support almost any work-flow, without requiring a migration away from existing datastores. It also allows for fine grained control of policies, which is impossible with Kea.
+
+
+== Implements query strategies that are optimized for the most common databases
+
+We tested FreeRADIUS with a variety of backend databases and found that each had different performance characteristics when responding to queries. For example, our analysis showed that MySQL performed best using stored procedures, while PostgreSQL was fastest with a discrete query implementation.
+
+In order to realize the best possible performance gains, we developed optimized configurations for the most common databases used in DHCP deployments. This key optimisation work has been replicated across a number of different database back ends, namely, PostgreSQL, MySQL, SQLite, Oracle and MS SQL Server.
+
+== Simplifies data workflow
+
+In many environments, device provisioning depends on existing databases and schemas. If the DHCP server is not customizable, then the local systems have to be adapted to work with it, instead of the other way around. Not only is this more effort, but it also becomes another potential source of errors, and makes the system more brittle to change.
+
+With FreeRADIUS DHCP, queries are simply text which is stored in configuration files, and are not hard-coded into the source code. This choice means that unlike ISC DHCP and Kea, FreeRADIUS has the flexibility to work with pretty much any schema which can define device option data or be used to maintain a pool of leases.
+
+== Enables real time monitoring
+
+Good network administrators are proactive about detecting potential issues before they become actual service-affecting problems. This means that they want to monitor the DHCP server for certain conditions, for example, if they are approaching their IP address pool capacity. They also want to easily get data about usage trends over time, so that they can accurately plan and project their provisioning needs.
+
+With FreeRADIUS DHCP, all the leases are pre-inserted into the database. For the administrator, this means a simple SQL query can give them a real-time and a historic view of the status of leases and the address pool. Creating alerts for specific conditions also becomes a trivial exercise.
+
+In contrast, Kea stores only active addresses in the database with its pool definitions (start and end IP addresses) configured elsewhere. When a lease expires, it is eventually removed from the database. This process makes it very difficult or even impossible to know how many leases are free, by just looking at the database. Management software instead has to be aligned with the pool definitions maintained within configuration files, via some “out of band” method. Such a limited use of the database makes it more difficult to use KEA in a production environment.
+
+FreeRADIUS supports:
+
+* xref:raddb/sites-available/dhcp.adoc[dhcp]
+* xref:raddb/sites-available/dhcp.relay.adoc[dhcp relay]
+
+== Why use FreeRADIUS DHCP?
+optimized to work with FreeRADIUS
+a simple cost-effective solution - comes with packaage and can use the same hardware
+Flexible configuration and can scale up depending on organization's needs
+
+
+== Related information
+
+See raddb/mods-available/sqlippool for the IP Pool configuration.
+
+See raddb/mods-config/sql/ippool/ for the schemas.
+
+See raddb/sites-available/dhcp for instructions on how to configure the DHCP server.

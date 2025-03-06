@@ -1,8 +1,4 @@
-
-
-
-
-= FreeRADIUS server configuration file - 4.0
+= FreeRADIUS v4 Server Configuration File
 
 Read `man radiusd` before editing this file.  See the section
 titled DEBUGGING.  It outlines a method where you can quickly
