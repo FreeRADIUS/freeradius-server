@@ -803,7 +803,7 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 
 				PAIR_VERIFY(in);
 
-				if (unlikely(in && in->data.secret && suppress_secrets)) {
+				if (unlikely(in && suppress_secrets)) {
 					fr_pair_aprint_secure(NULL, &subst, NULL, in);
 				} else {
 					fr_pair_aprint(NULL, &subst, NULL, in);
