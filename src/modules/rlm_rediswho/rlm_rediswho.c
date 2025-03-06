@@ -186,7 +186,7 @@ static unlang_action_t mod_accounting_all(rlm_rcode_t *p_result, rlm_rediswho_t 
 	if (ret < 0) RETURN_MODULE_FAIL;
 
 	/* Only trim if necessary */
-	if ((inst->trim_count >= 0) && (ret > inst->trim_count)) {
+	if (trim && (inst->trim_count >= 0) && (ret > inst->trim_count)) {
 		if (rediswho_command(inst, request, trim) < 0) RETURN_MODULE_FAIL;
 	}
 
@@ -225,6 +225,16 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	insert = cf_pair_value(cf_pair_find(cs, "insert"));
 	trim = cf_pair_value(cf_pair_find(cs, "trim"));
 	expire = cf_pair_value(cf_pair_find(cs, "expire"));
+
+	if (!insert) {
+		RDEBUG("No 'insert' query - ignoring");
+		RETURN_MODULE_NOOP;
+	}
+
+	if (!expire) {
+		RDEBUG("No 'expire' query - ignoring");
+		RETURN_MODULE_NOOP;
+	}
 
 	return mod_accounting_all(&rcode, inst, request, insert, trim, expire);
 }
