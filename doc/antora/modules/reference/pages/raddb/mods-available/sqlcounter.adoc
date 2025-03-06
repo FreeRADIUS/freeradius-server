@@ -67,14 +67,14 @@ from the database.
 reset_period_start_name::  The name of the attribute which is used to store the
 time that the current reset period started.
 
-The default is `&control.${.:instance}-Reset-Start`
+The default is `control.${.:instance}-Reset-Start`
 
 Note because we are counting seconds, this attribute is of type `uint64`, and not `date`.
 
 reset_period_end_name::  The name of the attribute which is used to store the
 time that the current reset period will end.
 
-The default is `&control.${.:instance}-Reset-End`
+The default is `control.${.:instance}-Reset-End`
 
 Note because we are counting seconds, this attribute is of type `uint64`, and not `date`.
 
@@ -87,7 +87,7 @@ After the sqlcounter module has run, the counter attribute will exist.
 check_name:: Name of the attribute containing the limit to compare the counter to.
 
 reply_name:: Name of the attribute to populate with the remaining session time.
-e.g. `&reply.Session-Timeout`.  If the attribute already exists and contains
+e.g. `reply.Session-Timeout`.  If the attribute already exists and contains
 a lower value, then it will not be updated.
 
 reply_message_name:: Name of the attribute into which a message should be placed
@@ -146,51 +146,51 @@ NOTE: You may need to edit `raddb/dictionary` to add the `Expire-After` attribut
 #	sqlcounter <name> {
 #	sql_module_instance = sql_foo
 #	reset = 12h
-#	key = "%{&Stripped-User-Name || &User-Name}"
-#	if (&control.Daily-Session-Time > 3600) {
-#		 &Reply-Message := "You've used up more than one hour today"
+#	key = "%{Stripped-User-Name || User-Name}"
+#	if (control.Daily-Session-Time > 3600) {
+#		 Reply-Message := "You've used up more than one hour today"
 #		 reject
 #	}
 sqlcounter dailycounter {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
-#	reset_period_start_name = &control.${.:instance}-Reset-Start
-#	reset_period_end_name = &control.${.:instance}-Reset-End
-	counter_name = &control.Daily-Session-Time
-	check_name = &control.Max-Daily-Session
-	reply_name = &reply.Session-Timeout
+#	reset_period_start_name = control.${.:instance}-Reset-Start
+#	reset_period_end_name = control.${.:instance}-Reset-End
+	counter_name = control.Daily-Session-Time
+	check_name = control.Max-Daily-Session
+	reply_name = reply.Session-Timeout
 	auto_extend = yes
-	key = "%{&Stripped-User-Name || &User-Name}"
-	reply_message_name = &Reply-Message
+	key = "%{Stripped-User-Name || User-Name}"
+	reply_message_name = Reply-Message
 	reset = daily
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
 }
 sqlcounter monthlycounter {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
-	counter_name = &Monthly-Session-Time
-	check_name = &control.Max-Monthly-Session
-	reply_name = &reply.Session-Timeout
+	counter_name = Monthly-Session-Time
+	check_name = control.Max-Monthly-Session
+	reply_name = reply.Session-Timeout
 	auto_extend = yes
-	key = &User-Name
+	key = User-Name
 	reset = monthly
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
 }
 sqlcounter noresetcounter {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
-	counter_name = &Max-All-Session-Time
-	check_name = &control.Max-All-Session
-	key = &User-Name
+	counter_name = Max-All-Session-Time
+	check_name = control.Max-All-Session
+	key = User-Name
 	reset = never
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
 }
 sqlcounter expire_on_login {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
-	counter_name = &Expire-After-Initial-Login
-	check_name = &control.Expire-After
-	key = &User-Name
+	counter_name = Expire-After-Initial-Login
+	check_name = control.Expire-After
+	key = User-Name
 	reset = never
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
 }
