@@ -210,7 +210,7 @@ static void bio_tracking_entry_log(fr_log_t const *log, fr_log_type_t log_type, 
 static void bio_request_reset(bio_request_t *u)
 {
 	TALLOC_FREE(u->packet);
-	fr_pair_list_init(&u->extra);	/* Freed with packet */
+	fr_pair_list_free(&u->extra);
 
 	/*
 	 *	Can have packet put no u->rr
@@ -1225,7 +1225,7 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 	if (encode_ctx.add_proxy_state) {
 		fr_pair_t	*vp;
 
-		MEM(vp = fr_pair_afrom_da(u->packet, attr_proxy_state));
+		MEM(vp = fr_pair_afrom_da(u, attr_proxy_state));
 		fr_pair_value_memdup(vp, (uint8_t const *) &inst->common_ctx.proxy_state, sizeof(inst->common_ctx.proxy_state), false);
 		fr_pair_append(&u->extra, vp);
 		packet_len += 2 + sizeof(inst->common_ctx.proxy_state);
