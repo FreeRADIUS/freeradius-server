@@ -68,8 +68,8 @@
 #  [source, unlang]
 #  ----
 #  map json "%rest(GET http://example.org/api/user/%{User-Name})" {
-#    &Foo            := '$.account number'
-#    &Group          += '$.groups.*'
+#    Foo            := '$.account number'
+#    Group          += '$.groups.*'
 #  }
 #  ----
 #
@@ -176,7 +176,7 @@ json {
 #  ----
 #  string payload
 #  payload := '$.my.json.payload[1]'
-#  &reply.Reply-Message := "Validation of %{payload} is %json.jpath_validate($.my.json.payload[1])"
+#  reply.Reply-Message := "Validation of %{payload} is %json.jpath_validate($.my.json.payload[1])"
 #  ----
 #
 #  .Output
@@ -196,8 +196,8 @@ json {
 #  [source,unlang]
 #  ----
 #  string path
-#  &path := "caipirinha/gelada"
-#  &reply.Reply-Message := "The string %{path} should be %json.quote(%{path}) to be a valid JSON string."
+#  path := "caipirinha/gelada"
+#  reply.Reply-Message := "The string %{path} should be %json.quote(%{path}) to be a valid JSON string."
 #  ----
 #
 #  .Output
