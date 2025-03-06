@@ -138,20 +138,20 @@ NOTE: See the `redis` module for more information.
 
 ```
 redis_ippool {
-	pool_name = &control.IP-Pool.Name
+	pool_name = control.IP-Pool.Name
 	offer_time = 30
 	lease_time = 3600
 #	wait_num = 10
 #	wait_timeout = 2
-#	gateway = &NAS-Identifier
-	owner = &Client-Hardware-Address
-#	owner = "%{&Client-Identifier || &Client-Hardware-Address}"
+#	gateway = NAS-Identifier
+	owner = Client-Hardware-Address
+#	owner = "%{Client-Identifier || Client-Hardware-Address}"
 #	owner = "%{Vendor-Specific.ADSL-Forum.Agent-Circuit-ID} %{Calling-Station-Id}"
-	requested_address = "%{&Requested-IP-Address || &Net.Src.IP}"
+	requested_address = "%{Requested-IP-Address || Net.Src.IP}"
 #	ipv4_integer = yes
-	allocated_address_attr = &reply.Your-IP-Address
-	range_attr = &reply.IP-Pool.Range
-	expiry_attr = &reply.IP-Address-Lease-Time
+	allocated_address_attr = reply.Your-IP-Address
+	range_attr = reply.IP-Pool.Range
+	expiry_attr = reply.IP-Address-Lease-Time
 	copy_on_update = yes
 	redis {
 		server = localhost
