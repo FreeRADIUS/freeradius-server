@@ -2106,7 +2106,7 @@ static void request_conn_release(connection_t *conn, void *preq_to_reset, UNUSED
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
 	if (u->ev) (void)fr_event_timer_delete(&u->ev);
-	if (u->packet) bio_request_reset(u);
+	bio_request_reset(u);
 
 	if (h->ctx.inst->mode == RLM_RADIUS_MODE_REPLICATE) return;
 
