@@ -191,19 +191,19 @@ ldap {
 	#  update { ... }::
 	#
 	update {
-		&control.Password.With-Header	+= 'userPassword'
-#		&control.Password.NT		:= 'ntPassword'
-#		&reply.Reply-Message		:= 'radiusReplyMessage'
-#		&reply.Tunnel-Type		:= 'radiusTunnelType'
-#		&reply.Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
-#		&reply.Tunnel-Private-Group-ID	:= 'radiusTunnelPrivategroupId'
+		control.Password.With-Header	+= 'userPassword'
+#		control.Password.NT		:= 'ntPassword'
+#		reply.Reply-Message		:= 'radiusReplyMessage'
+#		reply.Tunnel-Type		:= 'radiusTunnelType'
+#		reply.Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
+#		reply.Tunnel-Private-Group-ID	:= 'radiusTunnelPrivategroupId'
 
 		#  NOTE: Where only a list is specified as the RADIUS attribute,
 		#  the value of the LDAP attribute is parsed as a valuepair
 		#  in the same format as the 'valuepair_attribute' (above).
-		&control			+= 'radiusControlAttribute'
-		&request			+= 'radiusRequestAttribute'
-		&reply				+= 'radiusReplyAttribute'
+		control			+= 'radiusControlAttribute'
+		request			+= 'radiusRequestAttribute'
+		reply				+= 'radiusReplyAttribute'
 	}
 
 	#
@@ -230,8 +230,8 @@ ldap {
 	#  [source, unlang]
 	#  ----
 	#  ldap
-	#  if ((ok || updated) && &User-Password) {
-	#  	&control.Auth-Type := ::ldap
+	#  if ((ok || updated) && User-Password) {
+	#  	control.Auth-Type := ::ldap
 	#  }
 	#  ----
 	#  ====
@@ -250,7 +250,7 @@ ldap {
 		#  filter:: Filter for user objects, should be specific enough
 		#  to identify a single user object.
 		#
-		filter = "(uid=%{&Stripped-User-Name || &User-Name})"
+		filter = "(uid=%{&Stripped-User-Name || User-Name})"
 
 		#  For Active Directory nested group, you should comment out the previous 'filter = ...'
 		#  and use the below. Where 'group' is the group you are querying for.
@@ -263,7 +263,7 @@ ldap {
 		#
 		#  See: https://social.technet.microsoft.com/wiki/contents/articles/5392.active-directory-ldap-syntax-filters.aspx
 		#
-#		filter = "(&(objectClass=user)(sAMAccountName=%{&Stripped-User-Name || &User-Name})(memberOf:1.2.840.113556.1.4.1941:=cn=group,${..base_dn}))"
+#		filter = "(&(objectClass=user)(sAMAccountName=%{Stripped-User-Name || User-Name})(memberOf:1.2.840.113556.1.4.1941:=cn=group,${..base_dn}))"
 
 		#
 		#  sasl { ... }:: SASL parameters to use for user binds
@@ -285,12 +285,12 @@ ldap {
 			#  authname:: SASL authentication name.  Mechanism specific value
 			#  to use when prompted for the client authentication name.
 			#
-#			authname = &User-Name
+#			authname = User-Name
 
 			#
 			#  proxy:: SASL authorisation identity to proxy.
 			#
-#			proxy = &User-Name
+#			proxy = User-Name
 
 			#
 			#  realm:: SASL realm. Used for kerberos.
@@ -309,7 +309,7 @@ ldap {
 		#  Service, CN=Windows NT, CN=Services, CN=Configuration` object.  Modify the
 		#  `msDS-Other-Settings` attribute, and add a new entry for `DenyUnauthenticatedBind=1`.
 		#
-#		password_attribute = &User-Password
+#		password_attribute = User-Password
 
 		#
 		#  scope:: Search scope, may be `base`, `one`, `sub' or `children`.
@@ -426,7 +426,7 @@ ldap {
 		#  That is, group objects with attributes that identify
 		#  members (the inverse of `membership_attribute`).
 		#
-#		membership_filter = "(|(member=%{control.Ldap-UserDn})(memberUid=%{&Stripped-User-Name || &User-Name}))"
+#		membership_filter = "(|(member=%{control.Ldap-UserDn})(memberUid=%{Stripped-User-Name || User-Name}))"
 
 		#
 		#  membership_attribute:: The attribute, in user objects, which contain
@@ -532,8 +532,8 @@ ldap {
 		#
 		#  default:: The default profile. This may be a DN or an attribute reference.
 		#
-		#  NOTE: To get old v2.2.x style behaviour, or to use the `&User-Profile` attribute
-		#  to specify the default profile, set this to `&control.User-Profile`.
+		#  NOTE: To get old v2.2.x style behaviour, or to use the `User-Profile` attribute
+		#  to specify the default profile, set this to `control.User-Profile`.
 		#
 #		default = 'cn=radprofile,dc=example,dc=org'
 
@@ -957,8 +957,8 @@ ldap {
 #
 #  [source,unlang]
 #  ----
-#  &my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
-#  &reply.Reply-Message := "The LDAP url is %ldap.uri.escape(%{my-string}}"
+#  my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+#  reply.Reply-Message := "The LDAP url is %ldap.uri.escape(%{my-string}}"
 #  ----
 #
 #  .Output
@@ -979,7 +979,7 @@ ldap {
 #
 #  [source,unlang]
 #  ----
-#  &my-int := "%ldap.profile(ldap://%ldap.uri.safe(%{LDAP-Host}):%ldap.uri.safe(%{LDAP-Port})/ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+#  my-int := "%ldap.profile(ldap://%ldap.uri.safe(%{LDAP-Host}):%ldap.uri.safe(%{LDAP-Port})/ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
 #  ----
 #
 #  ### %ldap.uri.unescape(...)
@@ -992,8 +992,8 @@ ldap {
 #
 #  [source,unlang]
 #  ----
-#  &my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
-#  &reply.Reply-Message := "The LDAP url is %ldap.uri.unescape(%{my-string})"
+#  my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
+#  reply.Reply-Message := "The LDAP url is %ldap.uri.unescape(%{my-string})"
 #  ----
 #
 #  .Output

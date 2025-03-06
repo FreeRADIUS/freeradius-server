@@ -1,3 +1,7 @@
+
+
+
+
 = LDAP (Lightweight Directory Access Protocol) Module
 
 The `ldap` module allows LDAP directory entries to be retrieved, modified,
@@ -196,8 +200,8 @@ e.g:
 [source, unlang]
 ----
 ldap
-if ((ok || updated) && &User-Password) {
-	&control.Auth-Type := ::ldap
+if ((ok || updated) && User-Password) {
+	control.Auth-Type := ::ldap
 }
 ----
 ====
@@ -462,8 +466,8 @@ specified by 'default' or in the user or group objects.
 
 default:: The default profile. This may be a DN or an attribute reference.
 
-NOTE: To get old v2.2.x style behaviour, or to use the `&User-Profile` attribute
-to specify the default profile, set this to `&control.User-Profile`.
+NOTE: To get old v2.2.x style behaviour, or to use the `User-Profile` attribute
+to specify the default profile, set this to `control.User-Profile`.
 
 
 
@@ -497,6 +501,22 @@ sorting order will be reversed for that attribute.
 
   * If `sort_by` is set, and the server does not support sorting
 or the attributes do not have an ORDERING rule, the search will fail.
+
+
+
+check_attribute:: The LDAP attribute containing conditions which
+will be evaluated to determine whether a profile should be applied.
+
+
+
+fallthrough_attribute:: The LDAP attribute containing a condition
+which will be evaluated to determine whether more profiles should
+be applied after this one.
+
+
+
+fallthrough_def:: If the attribute referenced in fallthrough_attribute
+is not in the reply, what should be the default behaviour
 
 
 
@@ -792,8 +812,8 @@ in LDAP URIs and DNs, and will not be escaped or modified.
 
 [source,unlang]
 ----
-&my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
-&reply.Reply-Message := "The LDAP url is %ldap.uri.escape(%{my-string}}"
+my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+reply.Reply-Message := "The LDAP url is %ldap.uri.escape(%{my-string}}"
 ----
 
 .Output
@@ -814,7 +834,7 @@ usually prohibited.
 
 [source,unlang]
 ----
-&my-int := "%ldap.profile(ldap://%ldap.uri.safe(%{LDAP-Host}):%ldap.uri.safe(%{LDAP-Port})/ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+my-int := "%ldap.profile(ldap://%ldap.uri.safe(%{LDAP-Host}):%ldap.uri.safe(%{LDAP-Port})/ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
 ----
 
 ### %ldap.uri.unescape(...)
@@ -827,8 +847,8 @@ Unescape a string for use in an LDAP filter or DN.
 
 [source,unlang]
 ----
-&my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
-&reply.Reply-Message := "The LDAP url is %ldap.uri.unescape(%{my-string})"
+my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
+reply.Reply-Message := "The LDAP url is %ldap.uri.unescape(%{my-string})"
 ----
 
 .Output
@@ -877,29 +897,29 @@ ldap {
 	}
 #	valuepair_attribute = 'radiusAttribute'
 	update {
-		&control.Password.With-Header	+= 'userPassword'
-#		&control.Password.NT		:= 'ntPassword'
-#		&reply.Reply-Message		:= 'radiusReplyMessage'
-#		&reply.Tunnel-Type		:= 'radiusTunnelType'
-#		&reply.Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
-#		&reply.Tunnel-Private-Group-ID	:= 'radiusTunnelPrivategroupId'
-		&control			+= 'radiusControlAttribute'
-		&request			+= 'radiusRequestAttribute'
-		&reply				+= 'radiusReplyAttribute'
+		control.Password.With-Header	+= 'userPassword'
+#		control.Password.NT		:= 'ntPassword'
+#		reply.Reply-Message		:= 'radiusReplyMessage'
+#		reply.Tunnel-Type		:= 'radiusTunnelType'
+#		reply.Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
+#		reply.Tunnel-Private-Group-ID	:= 'radiusTunnelPrivategroupId'
+		control			+= 'radiusControlAttribute'
+		request			+= 'radiusRequestAttribute'
+		reply				+= 'radiusReplyAttribute'
 	}
 #	edir = no
 #	edir_autz = no
 	user {
 		base_dn = "${..base_dn}"
-		filter = "(uid=%{&Stripped-User-Name || &User-Name})"
-#		filter = "(&(objectClass=user)(sAMAccountName=%{&Stripped-User-Name || &User-Name})(memberOf:1.2.840.113556.1.4.1941:=cn=group,${..base_dn}))"
+		filter = "(uid=%{&Stripped-User-Name || User-Name})"
+#		filter = "(&(objectClass=user)(sAMAccountName=%{Stripped-User-Name || User-Name})(memberOf:1.2.840.113556.1.4.1941:=cn=group,${..base_dn}))"
 		sasl {
 #			mech = 'PLAIN'
-#			authname = &User-Name
-#			proxy = &User-Name
+#			authname = User-Name
+#			proxy = User-Name
 #			realm = 'example.org'
 		}
-#		password_attribute = &User-Password
+#		password_attribute = User-Password
 #		scope = 'sub'
 #		sort_by = '-uid'
 #		access_attribute = 'dialupAccess'
@@ -913,7 +933,7 @@ ldap {
 		filter = '(objectClass=posixGroup)'
 #		scope = 'sub'
 #		name_attribute = cn
-#		membership_filter = "(|(member=%{control.Ldap-UserDn})(memberUid=%{&Stripped-User-Name || &User-Name}))"
+#		membership_filter = "(|(member=%{control.Ldap-UserDn})(memberUid=%{Stripped-User-Name || User-Name}))"
 		membership_attribute = 'memberOf'
 #		cacheable_name = 'no'
 #		cacheable_dn = 'no'
@@ -929,6 +949,9 @@ ldap {
 #		attribute = 'radiusProfileDn'
 #		attribute_suspend = 'radiusProfileDn'
 #		sort_by = 'radiusProfilePriority'
+#		check_attribute = 'radiusProfileCondition'
+#		fallthrough_attribute = 'radiusProfileFallthrough'
+#		fallthrough_default = yes
 	}
 	accounting {
 		start {
