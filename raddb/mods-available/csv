@@ -15,7 +15,7 @@
 #
 #  The CSV map can be used in a `map` section, as in the following example.
 #
-#    map csv &User-Name {
+#    map csv User-Name {
 #		Attribute-Name := field1
 #		Attribute-Name := field2
 #		...
@@ -130,7 +130,7 @@ csv {
 	#  If a data type other than the native type of `key` expression
 	#  is needed, the casting operator can be used.
 	#  For example:
-	#  a key value of `<ipv4prefix>&reply.Reply-Message`.
+	#  a key value of `(ipv4addr) reply.Reply-Message`.
 	#  would result in a prefix trie being used for lookups, and the
 	#  `string` value of the `Reply-Message` attribute being parsed as
 	#  CIDR notation.
@@ -140,7 +140,7 @@ csv {
 	#  parsed to the final data type only when the `csv` module
 	#  is run, either in-place, or as a `map`.
 	#
-	key = &User-Name
+	key = User-Name
 
 	#
 	#  ### Mapping of CSV fields to attributes.
@@ -175,8 +175,8 @@ csv {
 	#  update { ... }::
 	#
 	update reply {
-	       &Reply-Message := 'color'
-	       &my-integer := 'count'
+	       Reply-Message := 'color'
+	       my-integer := 'count'
 	}
 
 	#
@@ -188,9 +188,9 @@ csv {
 	#  as given the the key` field above.  For example, the map could
 	#  look like this:
 	#
-	#	map csv &User-Name {
-	#		&reply.Reply-Message := 'color'
-	#		&my-integer := 'count'
+	#	map csv User-Name {
+	#		reply.Reply-Message := 'color'
+	#		my-integer := 'count'
 	#	}
 	#
 	#  This map does the same operations as the key / update

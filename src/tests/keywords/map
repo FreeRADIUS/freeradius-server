@@ -3,7 +3,7 @@ string CSV-Result
 #
 #  PRE: map-2arg-error map-empty-error map-module-error map-field-error
 #
-map csv &User-Name {
+map csv User-Name {
 	CSV-Result := 'field3'
 }
 
