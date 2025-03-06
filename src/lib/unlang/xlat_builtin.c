@@ -3289,8 +3289,8 @@ static int xlat_func_subst_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		talloc_free(pattern);
 		return -1;
 	}
-	fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, buff, subject_vb->tainted);
-	fr_value_box_set_secret(vb, fr_value_box_is_secret(subject_vb));
+	fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, buff, subject_vb->tainted | rep_vb->tainted);
+	fr_value_box_set_secret(vb, fr_value_box_is_secret(subject_vb) || fr_value_box_is_secret(rep_vb));
 
 	fr_dcursor_append(out, vb);
 
@@ -3396,14 +3396,14 @@ static xlat_action_t xlat_func_subst(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		p = q + pattern_len;
 	}
 
-	if (fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, vb_str, subject_vb->tainted) < 0) {
+	if (fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, vb_str, subject_vb->tainted | rep_vb->tainted) < 0) {
 		RPEDEBUG("Failed creating output box");
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;
 	}
 
 	fr_assert(vb && (vb->type != FR_TYPE_NULL));
-	fr_value_box_set_secret(vb, fr_value_box_is_secret(subject_vb));
+	fr_value_box_set_secret(vb, fr_value_box_is_secret(subject_vb) || fr_value_box_is_secret(rep_vb));
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
