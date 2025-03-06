@@ -1151,7 +1151,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		switch (listener->tls->radiusv11) {
 		case FR_RADIUSV11_FORBID:
 			if (client->radiusv11 == FR_RADIUSV11_REQUIRE) {
-				INFO("Ignoring new connection as client is marked as 'radiusv11 = require', and this socket has 'radiusv11 = forbid'");
+				RATE_LIMIT(INFO("Ignoring new connection from client %s it is marked as 'radiusv11 = require', and this socket has 'radiusv11 = forbid'", client->shortname));
 				close(newfd);
 				return 0;
 			}
@@ -1165,7 +1165,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 
 		case FR_RADIUSV11_REQUIRE:
 			if (client->radiusv11 == FR_RADIUSV11_FORBID) {
-				INFO("Ignoring new connection as client is marked as 'radiusv11 = forbid', and this socket has 'radiusv11 = require'");
+				RATE_LIMIT(INFO("Ignoring new connection from client %s as it is marked as 'radiusv11 = forbid', and this socket has 'radiusv11 = require'", client->shortname));
 				close(newfd);
 				return 0;
 			}
@@ -1184,7 +1184,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		/*
 		 *	FIXME: Print client IP/port, and server IP/port.
 		 */
-		INFO("Ignoring new connection due to client max_connections (%d)", client->limit.max_connections);
+		RATE_LIMIT(INFO("Ignoring new connection from client %s due to client max_connections (%d)", client->shortname, client->limit.max_connections));
 		close(newfd);
 		return 0;
 	}
@@ -1195,7 +1195,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		/*
 		 *	FIXME: Print client IP/port, and server IP/port.
 		 */
-		INFO("Ignoring new connection due to socket max_connections");
+		RATE_LIMIT(INFO("Ignoring new connection from client %s due to socket max_connections (%d)", client->shortname, sock->limit.num_connections));
 		close(newfd);
 		return 0;
 	}
