@@ -57,8 +57,8 @@ typedef struct {
 
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("wait", rlm_exec_t, wait), .dflt = "yes" },
-	{ FR_CONF_OFFSET("input_pairs", rlm_exec_t, input_list) },
-	{ FR_CONF_OFFSET("output_pairs", rlm_exec_t, output_list) },
+	{ FR_CONF_OFFSET_FLAGS("input_pairs", CONF_FLAG_ATTRIBUTE, rlm_exec_t, input_list) },
+	{ FR_CONF_OFFSET_FLAGS("output_pairs", CONF_FLAG_ATTRIBUTE, rlm_exec_t, output_list) },
 	{ FR_CONF_OFFSET("shell_escape", rlm_exec_t, shell_escape), .dflt = "yes" },
 	{ FR_CONF_OFFSET("env_inherit", rlm_exec_t, env_inherit), .dflt = "no" },
 	{ FR_CONF_OFFSET_IS_SET("timeout", FR_TYPE_TIME_DELTA, 0, rlm_exec_t, timeout) },

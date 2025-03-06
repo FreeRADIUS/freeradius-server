@@ -40,17 +40,6 @@ NOTE: See `doc/configurable_failover` for details.
 ## Configuration Settings
 
 
-wait:: Wait for the program to finish.
-
-If we do NOT wait, then the program is "fire and
-forget", and any output attributes from it are ignored.
-
-If we are looking for the program to output
-attributes, and want to add those attributes to the
-request, then we MUST wait for the program to
-finish, and therefore set 'wait=yes'
-
-
 
 program:: The name of the program to execute, and it's
 arguments.
@@ -92,55 +81,6 @@ Any string values should also be quoted.
 
 
 
-input_pairs:: The attributes which are placed into the
-environment variables for the program.
-
-If your program does not require access to values from
-environment variables, then do not set this.
-
-Allowed values are:
-
-[options="header,autowidth"]
-|===
-| Pairs         | Description
-| &request       | attributes from the request
-| &config        | attributes from the configuration items list
-| &reply         | attributes from the reply
-| &session-state | attributes that persist over multiple request/response rounds.
-|===
-
-
-
-output_pairs::: Where to place the output attributes (if any) from
-the executed program.
-
-The values allowed, and the restrictions as to availability, are the
-same as for the `input_pairs`.
-
-
-
-shell_escape:: Escape the environment variables.
-
-If this is set, all the RADIUS attributes are capitalised and dashes
-replaced with underscores. Also, RADIUS values are surrounded with
-double-quotes.
-
-That is to say:
-
-  User-Name=BobUser => USER_NAME="BobUser"
-
-
-
-timeout:: Set a time wait for the program to finish.
-
-Default is `10` seconds, which should be plenty for nearly
-anything. Range is `1` to `30` seconds.
-
-WARNING: You are strongly encouraged to NOT increase this value.
-Decreasing can be used to cause authentication to fail sooner
-when you know it's going to fail anyway due to the time taken,
-thereby saving resources.
-
 
 == Default Configuration
 
@@ -148,8 +88,8 @@ thereby saving resources.
 exec echo {
 	wait = yes
 	program = """/bin/echo "Filter-Id := '%{User-Name}'" """
-	input_pairs = &request
-	output_pairs = &reply
+	input_pairs = request
+	output_pairs = reply
 	shell_escape = yes
 #	timeout = 10
 }
