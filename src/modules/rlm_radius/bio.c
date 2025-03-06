@@ -1715,7 +1715,10 @@ do_write:
 	/*
 	 *	If we only send one datagram packet, then don't bother saving it.
 	 */
-	if (u->retry.config && u->retry.config->mrc == 1) return;
+	if (u->retry.config && u->retry.config->mrc == 1) {
+		u->packet = NULL;
+		return;
+	}
 
 	MEM(u->packet = talloc_memdup(u, u->packet, u->packet_len));
 }
