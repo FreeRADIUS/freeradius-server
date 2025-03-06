@@ -517,7 +517,7 @@ unexpected:
 	if (status) {
 		if (status == EAP_TEAP_TLV_RESULT_FAILURE) {
 			if (!error) {
-				REDEBUG("Phase 2: Received Result from peer which indicates failure with error %u.  Rejecting request.", error);
+				REDEBUG("Phase 2: Received Result TLV from peer which indicates failure with error %u.  Rejecting request.", error);
 			} else {
 				REDEBUG("Phase 2: Received Result from peer which indicates failure.  Rejecting request.");
 			}
@@ -526,9 +526,21 @@ unexpected:
 
 		if (status != EAP_TEAP_TLV_RESULT_SUCCESS) {
 		unknown_value:
-			REDEBUG("Phase 2: Received Result from peer with unknown value %u.  Rejecting request.", status);
+			REDEBUG("Phase 2: Received Result TLV from peer with unknown value %u.  Rejecting request.", status);
 			goto unexpected;
 		}
+	}
+
+	/*
+	 *	Success + fatal Error = Failure
+	 *
+	 *	A fatal error MUST be accompanied by a Result TLV indicating Failure.  But if the other end
+	 *	doesn't do that, we still tear down the session on Success + fatal error.
+	 */
+	if ((error >= 2000) && (error <= 2999)) {
+		REDEBUG("Phase 2: Received Error TLV from peer which indicates fatal error %u.  Rejecting request.",
+			error);
+		return 0;
 	}
 
 	/*
