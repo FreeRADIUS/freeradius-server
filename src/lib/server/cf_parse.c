@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/misc.h>
@@ -45,6 +46,11 @@ static char const parse_spaces[] = "                                            
 
 #define PAIR_SPACE(_cs) ((_cs->depth + 1) * 2)
 #define SECTION_SPACE(_cs) (_cs->depth * 2)
+
+/*
+ *	For migration.
+ */
+extern bool tmpl_require_enum_prefix;
 
 void cf_pair_debug_log(CONF_SECTION const *cs, CONF_PAIR *cp, conf_parser_t const *rule)
 {
@@ -1202,10 +1208,12 @@ static int cf_parse_tmpl_pass2(UNUSED CONF_SECTION *cs, tmpl_t **out, CONF_PAIR 
 		return -1;
 	}
 
-	if (attribute && !tmpl_is_attr(vpt)) {
-		cf_log_err(cp, "Expected attr got %s",
-			   tmpl_type_to_str(vpt->type));
-		return -1;
+	if (attribute) {
+		if (!tmpl_is_attr(vpt)) {
+			cf_log_err(cp, "Expected attr got %s",
+				   tmpl_type_to_str(vpt->type));
+			return -1;
+		}
 	}
 
 	switch (vpt->type) {
@@ -1227,6 +1235,20 @@ static int cf_parse_tmpl_pass2(UNUSED CONF_SECTION *cs, tmpl_t **out, CONF_PAIR 
 		break;
 
 	case TMPL_TYPE_ATTR:
+		if (!check_config) break;
+
+		if (vpt->name[0] != '&') break;
+
+		if (main_config_migrate_option_get("call_env_forbid_ampersand")) {
+			cf_log_err(cp, "Please remove '&' from the attribute name");
+			return -1;
+		}
+
+		if (tmpl_require_enum_prefix)  {
+			cf_log_warn(cp, "Please remove '&' from the attribute name");
+		}
+		break;
+
 	case TMPL_TYPE_DATA:
 	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_EXEC_UNRESOLVED:
