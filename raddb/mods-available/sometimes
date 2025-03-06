@@ -20,7 +20,7 @@ sometimes {
 	#
 	#  key:: The `key` used for index.
 	#
-	key = &User-Name
+	key = User-Name
 
 	#
 	#  rcode:: Return code.

@@ -31,7 +31,7 @@ Must be a number between 0 and 100.
 
 ```
 sometimes {
-	key = &User-Name
+	key = User-Name
 	rcode = fail
 	percentage = 1
 }
