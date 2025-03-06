@@ -1,0 +1,4 @@
+# TACACS+
+
+The TACACS+ protocol is largely used for command
+authorization. FreeRADIUS implements all of the TACACS+ standards.

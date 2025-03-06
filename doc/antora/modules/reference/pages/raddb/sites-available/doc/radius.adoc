@@ -1,0 +1,4 @@
+# RADIUS
+
+The RADIUS protocol performs Authentication, Authorization, and Accounting. FreeRADIUS
+implements all of the RADIUS standards.

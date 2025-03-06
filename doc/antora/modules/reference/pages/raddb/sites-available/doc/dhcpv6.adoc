@@ -1,0 +1,4 @@
+= DHCPv6
+
+The DHCPv6 protocol assigns IPv6 addresses to machines.  FreeRADIUS
+implements all of the DHCPv6 standards.
