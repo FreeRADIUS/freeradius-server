@@ -2570,7 +2570,7 @@ int fr_pair_value_copy(fr_pair_t *dst, fr_pair_t *src)
 	/*
 	 *	If either source or destination is secret, then this value is secret.
 	 */
-	dst->data.secret |= src->da->flags.secret | dst->da->flags.secret;
+	dst->data.secret |= src->da->flags.secret | dst->da->flags.secret | src->data.secret;
 	return 0;
 }
 
