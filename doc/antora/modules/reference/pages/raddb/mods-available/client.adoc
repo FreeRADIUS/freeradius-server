@@ -52,19 +52,19 @@ Maps arbitrary fields from a client definition to attributes in the current requ
 [source,unlang]
 ---
 map client [<ipaddr>] {      // <1>
-     &Foo = 'nas_type'       // <2>
-     &Bar := 'shortname'     // <3>
-     &Baz += 'groups'        // <4>
+     Foo = 'nas_type'       // <2>
+     Bar := 'shortname'     // <3>
+     Baz += 'groups'        // <4>
 }
 ---
 
 <1> By default `map client { ... }` will operate on the current client, but alternative
     clients can by specified by `<ipaddr>`.
 <2> Assigns the value of the `nas_type` field from the client definition to
-    `&Foo` if the `&Foo` attribute does not exist.
+    `Foo` if the `&Foo` attribute does not exist.
 <3> Assigns the value of the `shortname` field from the client definition to
-    `&Bar`.
-<4> Creates multiple `&Baz` attributes from a custom group field associated
+    `Bar`.
+<4> Creates multiple `Baz` attributes from a custom group field associated
     with the client.
 
 
