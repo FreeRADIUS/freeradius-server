@@ -16,7 +16,7 @@ ATTRIBUTE	CHAP-Error				2	string
 ATTRIBUTE	CHAP-CPW-1				3	octets[70]
 ATTRIBUTE	CHAP-CPW-2				4	octets[84]
 ATTRIBUTE	CHAP-LM-Enc-PW				5	octets
-ATTRIBUTE	CHAP-NT-Enc-PW				6	octets
+ATTRIBUTE	CHAP-NT-Enc-PW				6	octets	secret
 ATTRIBUTE	MPPE-Encryption-Policy			7	integer
 
 VALUE	MPPE-Encryption-Policy		Encryption-Allowed	1
@@ -33,7 +33,7 @@ VALUE	MPPE-Encryption-Types		RC4-40or128-bit-Allowed	6
 
 ATTRIBUTE	RAS-Vendor				9	integer	# content is Vendor-ID
 ATTRIBUTE	CHAP-Domain				10	string
-ATTRIBUTE	CHAP-Challenge				11	octets
+ATTRIBUTE	CHAP-Challenge				11	octets	secret
 ATTRIBUTE	CHAP-MPPE-Keys				12	octets[24]  encrypt=User-Password
 ATTRIBUTE	BAP-Usage				13	integer
 ATTRIBUTE	Link-Utilization-Threshold		14	integer # values are 1-100
