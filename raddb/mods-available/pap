@@ -92,5 +92,5 @@ pap {
 	#  password_attribute:: Which attribute in the request should be used as
 	#  the user's password when performing PAP authentication.
 	#
-#	password_attribute = &User-Password
+#	password_attribute = User-Password
 }

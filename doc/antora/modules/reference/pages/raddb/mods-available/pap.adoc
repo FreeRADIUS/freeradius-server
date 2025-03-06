@@ -93,7 +93,7 @@ the user's password when performing PAP authentication.
 ```
 pap {
 #	normalise = no
-#	password_attribute = &User-Password
+#	password_attribute = User-Password
 }
 ```
 
