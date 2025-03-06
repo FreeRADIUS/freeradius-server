@@ -32,7 +32,7 @@
 #  quickly obtain the configuration you want, without running into
 #  trouble.  See also "man unlang", which documents the format of this
 #  file.  And finally, the debug output can be complex. Please read
-#  https://wiki.freeradius.org/radiusd-X to understand that output.
+#  https://wiki.freeradius.org/radiusd-X[debugging] to understand that output.
 #
 #  The best way to configure the server for your local system is to
 #  *carefully* edit this file.  Most attempts to make large edits to
@@ -48,7 +48,7 @@
 #  documentation.  If you need the functionality of that module, then:
 #
 #  * configure the module in `mods-available/`
-#  * enable the module in `mods-enabled`.  e.g. for LDAP, do:  `cd mods-enabled;ln -s ../mods-available/ldap`
+#  * enable the module in `mods-enabled/`.  e.g. for LDAP, do:  `cd mods-enabled;ln -s ../mods-available/ldap`
 #  * uncomment the references to it in this file.
 #
 #  In most cases, those small changes will result in the server being

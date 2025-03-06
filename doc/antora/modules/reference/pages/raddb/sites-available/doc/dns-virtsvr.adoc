@@ -1,0 +1,12 @@
+= DNS Virtual Server
+
+This is the dynamic Name Service server that may be confiugred inside of RADIUS. The `dns` virtual server is an example of using `dns` style functionality in FreeRADIUS.
+
+The Domain Name System (DNS) allows users to access websites using domain names and URLs rather than IP addresses. A DNS query happens when a user enters a host name  into a browser’s address bar. A DNS lookup begins and the process attempts to match the domain name with its designated IP address. Both IPv4 and IPv6 addresses are supported.
+
+DNS allows domain names to be customized allowing a simplified user experience. DNS servers can handle high volume traffic while simultaneously completing name resolutions. DNS resolution depends on your network infrastructure that may include load-balancing, user locations, and internet bandwidth.
+
+[NOTE]
+====
+Relying on DNS is problematic. We strongly recommend using numerical IP addresses instead of host names. When a host name is used, the server has to perform a DNS lookup. If the DNS lookup fails or times out, the server will be unable to start, or may be blocked at run-time. Using numerical IP addresses means that the server will always be able to run.
+====

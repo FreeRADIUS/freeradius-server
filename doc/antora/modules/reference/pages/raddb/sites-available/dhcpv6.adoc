@@ -4,11 +4,6 @@
 ```
 
 
-
-
-== The DHCPv6 Virtual Server
-
-
 ## The Virtual Server
 
 ```
