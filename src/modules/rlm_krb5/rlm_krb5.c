@@ -485,10 +485,10 @@ cleanup:
 static const call_env_method_t krb5_auth_call_env = {
 	FR_CALL_ENV_METHOD_OUT(krb5_auth_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED, krb5_auth_call_env_t, username),
-			.pair.dflt = "&User-Name", .pair.dflt_quote = T_BARE_WORD },
-		{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, CALL_ENV_FLAG_SECRET | CALL_ENV_FLAG_REQUIRED, krb5_auth_call_env_t, password),
-			.pair.dflt = "&User-Password", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED| CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, krb5_auth_call_env_t, username),
+			.pair.dflt = "User-Name", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, CALL_ENV_FLAG_SECRET | CALL_ENV_FLAG_REQUIRED| CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, krb5_auth_call_env_t, password),
+			.pair.dflt = "User-Password", .pair.dflt_quote = T_BARE_WORD },
 		CALL_ENV_TERMINATOR
 	}
 };
