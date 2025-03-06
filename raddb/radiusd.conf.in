@@ -317,10 +317,10 @@ log {
 	#	...
 	#
 	#  Note that secret values are tracked across string
-	#  expansions, string modifications, concatenations, etc.!
-	#  i.e. if a User-Password is placed into a Reply-Message,
-	#  then the value of the Reply-Message is also marked
-	#  "secret".
+	#  expansions, string modifications, concatenations, etc.
+	#  i.e. if a `User-Password` is placed into a `Reply-Message`,
+	#  then the value of the `Reply-Message` will also be marked
+	#  as "secret".
 	#
 	#  This configuration is disabled by default.  It is extremely
 	#  important for administrators to be able to debug user
