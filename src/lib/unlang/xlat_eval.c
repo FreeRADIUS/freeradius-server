@@ -1573,51 +1573,6 @@ ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, request_t *request,
 }
 
 
-/** Synchronous compile xlat_tokenize_argv() into argv[] array.
- *
- *  This is mostly for synchronous evaluation.
- *
- * @param ctx		The talloc_ctx
- * @param[out] argv	the argv array of resulting strings, size is argc + 1
- * @param request	the request
- * @param head		from xlat_tokenize_argv()
- * @param escape	escape function
- * @param escape_ctx	context for escape function
- * @return
- *	- <=0 on error	number indicates which argument caused the problem
- *	- >0 on success	which is argc to the corresponding argv
- */
-int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, request_t *request,
-			     xlat_exp_head_t const *head, xlat_escape_legacy_t escape, void const *escape_ctx)
-{
-	int			i;
-	ssize_t			slen;
-	char			**my_argv;
-	size_t			count;
-
-	count = 0;
-	xlat_exp_foreach(head, node) {
-		count++;
-	}
-
-	MEM(my_argv = talloc_zero_array(ctx, char *, count + 1));
-	*argv = my_argv;
-
-	fr_assert(instance_count);
-
-	i = 0;
-	xlat_exp_foreach(head, node) {
-		my_argv[i] = NULL;
-
-		slen = _xlat_eval_compiled(my_argv, &my_argv[i], 0, request, node->group, escape, escape_ctx);
-		if (slen < 0) return -i;
-
-		i++;
-	}
-
-	return count;
-}
-
 /** Turn xlat_tokenize_argv() into an argv[] array, and nuke the input list.
  *
  *  This is mostly for async use.
