@@ -323,21 +323,23 @@ smtp {
 	}
 	uri = "smtp://192.0.20.1/"
 	timeout = 5s
-#	username_attribute = &User-Name
-#	password_attribute = &User-Password
+	authenticate {
+#		username = User-Name
+#		password = User-Password
+	}
 #	username = "user"
 #	password = "secret"
 	template_directory = raddb/mods_config/smtp
-	attachments = &SMTP-Attachments[*]
+	attachments = SMTP-Attachments[*]
 	envelope_address = "postmaster@localhost"
-	sender_address = &SMTP-Sender-Address[*]
-#	recipients = &SMTP-Recipients[*]
-#	recipients = &SMTP-TO[*]
-#	recipients = &SMTP-CC[*]
-#	recipients = &SMTP-BCC[*]
-#	to = &SMTP-TO[*]
-#	cc = &SMTP-CC[*]
-#	bcc = &SMTP-BCC[*]
+	sender_address = SMTP-Sender-Address[*]
+#	recipients = SMTP-Recipients[*]
+#	recipients = SMTP-TO[*]
+#	recipients = SMTP-CC[*]
+#	recipients = SMTP-BCC[*]
+#	to = SMTP-TO[*]
+#	cc = SMTP-CC[*]
+#	bcc = SMTP-BCC[*]
 #	set_date = yes
 	header {
 		subject = "email subject"

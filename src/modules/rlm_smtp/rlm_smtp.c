@@ -1000,17 +1000,17 @@ static const call_env_method_t method_env = {
 		{ FR_CALL_ENV_PARSE_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT, rlm_smtp_env_t, username, username_tmpl),
 					  .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
 		{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT, rlm_smtp_env_t, password), .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
-		{ FR_CALL_ENV_OFFSET("sender_address", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, rlm_smtp_env_t, sender_address) },
-		{ FR_CALL_ENV_OFFSET("recipients", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_smtp_env_t, recipient_addrs),
-				     .pair.dflt = "&SMTP-Recipients[*]", .pair.dflt_quote = T_BARE_WORD },
-	   	{ FR_CALL_ENV_OFFSET("TO", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_smtp_env_t, to_addrs),
-		 		    .pair.dflt = "&SMTP-TO[*]", .pair.dflt_quote = T_BARE_WORD },
-	   	{ FR_CALL_ENV_OFFSET("CC", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_smtp_env_t, cc_addrs),
-		 		    .pair.dflt = "&SMTP-CC[*]", .pair.dflt_quote = T_BARE_WORD },
-	   	{ FR_CALL_ENV_OFFSET("BCC", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_smtp_env_t, bcc_addrs),
-		 		    .pair.dflt = "&SMTP-BCC[*]", .pair.dflt_quote = T_BARE_WORD },
-		{ FR_CALL_ENV_OFFSET("attachments", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_smtp_env_t, attachments),
-				    .pair.dflt = "&SMTP-Attachments[*]", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_OFFSET("sender_address", FR_TYPE_STRING, CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, rlm_smtp_env_t, sender_address) },
+		{ FR_CALL_ENV_OFFSET("recipients", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, rlm_smtp_env_t, recipient_addrs),
+				     .pair.dflt = "SMTP-Recipients[*]", .pair.dflt_quote = T_BARE_WORD },
+	   	{ FR_CALL_ENV_OFFSET("to", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, rlm_smtp_env_t, to_addrs),
+		 		    .pair.dflt = "SMTP-TO[*]", .pair.dflt_quote = T_BARE_WORD },
+	   	{ FR_CALL_ENV_OFFSET("cc", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, rlm_smtp_env_t, cc_addrs),
+		 		    .pair.dflt = "SMTP-CC[*]", .pair.dflt_quote = T_BARE_WORD },
+	   	{ FR_CALL_ENV_OFFSET("bcc", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, rlm_smtp_env_t, bcc_addrs),
+		 		    .pair.dflt = "SMTP-BCC[*]", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_OFFSET("attachments", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, rlm_smtp_env_t, attachments),
+				    .pair.dflt = "SMTP-Attachments[*]", .pair.dflt_quote = T_BARE_WORD },
 		{ FR_CALL_ENV_SUBSECTION_FUNC("header", CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, smtp_header_section_parse) },
 
 		CALL_ENV_TERMINATOR
@@ -1020,12 +1020,16 @@ static const call_env_method_t method_env = {
 static const call_env_method_t auth_env = {
 	FR_CALL_ENV_METHOD_OUT(rlm_smtp_auth_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_PARSE_OFFSET("username_attribute", FR_TYPE_STRING,
-					   CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE,
-					   rlm_smtp_auth_env_t, username, username_tmpl), .pair.dflt = "&User-Name", .pair.dflt_quote = T_BARE_WORD },
-		{ FR_CALL_ENV_PARSE_OFFSET("password_attribute", FR_TYPE_STRING,
-					   CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_SECRET,
-					   rlm_smtp_auth_env_t, password, password_tmpl), .pair.dflt = "&User-Password", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_SUBSECTION("authenticate", NULL, CALL_ENV_FLAG_SUBSECTION | CALL_ENV_FLAG_PARSE_MISSING,
+			((call_env_parser_t[]) {
+				{ FR_CALL_ENV_PARSE_OFFSET("username", FR_TYPE_STRING,
+							   CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE,
+							   rlm_smtp_auth_env_t, username, username_tmpl), .pair.dflt = "User-Name", .pair.dflt_quote = T_BARE_WORD },
+				{ FR_CALL_ENV_PARSE_OFFSET("password", FR_TYPE_STRING,
+							   CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_SECRET,
+							   rlm_smtp_auth_env_t, password, password_tmpl), .pair.dflt = "User-Password", .pair.dflt_quote = T_BARE_WORD },
+				CALL_ENV_TERMINATOR
+				}))},
 		CALL_ENV_TERMINATOR
 	}
 };

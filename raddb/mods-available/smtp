@@ -198,16 +198,27 @@ smtp {
 	timeout = 5s
 
 	#
-	#  username_attribute:: Which attribute in the request should be used as
-	#  the user's username when performing SMTP authentication.
+	#  authenticate: Configuration for verifying a users name and clear-text password
+	#  against an SMTP server.
 	#
-#	username_attribute = &User-Name
+	#  This is not generally recommended, but is supported for cases where an LDAP server
+	#  is not available, and only an SMTP server is available.
+	#
+	authenticate {
+		#
+		#  username:: The users name when performing SMTP authentication.
+		#
+#		username = User-Name
+
+		#
+		#  password_attribute:: The users password when performing SMTP authentication
+		#
+#		password = User-Password
+	}
 
 	#
-	#  password_attribute:: Which attribute in the request should be used as
-	#  the user's password when performing SMTP authentication.
+	#  In most cases, the SMTP module will be used to send email.
 	#
-#	password_attribute = &User-Password
 
 	#
 	#  username:: User name to use when sending emails.  Can be a fixed
@@ -232,7 +243,7 @@ smtp {
 	#  Attachments:: attachments with their relative path from template_directory
 	#  There can be no leading / or ..
 	#
-	attachments = &SMTP-Attachments[*]
+	attachments = SMTP-Attachments[*]
 
 	#
 	#  envelope_address:: This is the address used to send the mail,
@@ -242,42 +253,55 @@ smtp {
 	envelope_address = "postmaster@localhost"
 
 	#
-	#  sender_address:: This are the addresses displayed in the FROM: element of the header
-	#  This can be different than the provided envelope_address,
-	#  If envelope_address is set, this can be formatted however you want it to appear to the receiver
-	#  If envelope_address is not set, the first element in sender_address will be used as the envelope address
+	#  sender_address:: Set the body `FROM` address.
 	#
-	sender_address = &SMTP-Sender-Address[*]
+	#  This can be different than the provided envelope_address.
+	#
+	#  If envelope_address is set, this can be formatted however
+	#  you want it to appear to the receiver.
+	#
+	#  If envelope_address is not set, the first element in
+	#  sender_address will be used as the envelope address.
+	#
+	sender_address = SMTP-Sender-Address[*]
 
 	#
 	#  recipients:: Email addresses to be set as recipients for the email
-	#  If recipients is set bcc, cc, and to will not be automatically added to the email
-	#  And so they must be included here.
 	#
-#	recipients = &SMTP-Recipients[*]
-#	recipients = &SMTP-TO[*]
-#	recipients = &SMTP-CC[*]
-#	recipients = &SMTP-BCC[*]
+	#  If recipients is set, then `bcc`, `cc`, and `to` will not
+	#  be automatically added to the email.  Only the list of
+	#  `recipients` will be used.
+	#
+#	recipients = SMTP-Recipients[*]
+#	recipients = SMTP-TO[*]
+#	recipients = SMTP-CC[*]
+#	recipients = SMTP-BCC[*]
 
 	#
-	#  to:: Email addresses to be set in the TO: header
-	#  These addresses will be added as envelope recipients only if recipients is not set
+	#  to:: Set the body `TO` header.
 	#
-#	to = &SMTP-TO[*]
+	#  If `recepients` is not set, then messages will be sent to the `TO` address.
 	#
-	#  cc:: Email addresses to be set in the CC: header
-	#  These addresses will be added as envelope recipients only if recipients is not set
-	#
-#	cc = &SMTP-CC[*]
+#	to = SMTP-TO[*]
 
 	#
-	#  bcc:: Comma separated list of emails.
-	#  the local part may contain commas, the domain may not (RFC 2821)
-	#  Therefore, first comma after the @ represents a new address
-	#  not listed in the header of the email
-	#  if recipients is not set, these emails will be added to the envelope recipients
+	#  cc:: Set the body `CC` header.
 	#
-#	bcc = &SMTP-BCC[*]
+	#  If `recepients` is not set, then messages will also be sent to the `CC` addresses.
+	#
+#	cc = SMTP-CC[*]
+
+	#
+	#  bcc:: Set the `BCC` recipients.
+	#
+	#  The local part may contain commas, the domain may not (RFC 2821)
+	#
+	#  Therefore, the first comma after the @ represents a new
+	#  address, and is not listed in the header of the email.
+	#
+	#  If `recepients` is not set, then messages will also be sent to the `CCC` addresses.
+	#
+#	bcc = SMTP-BCC[*]
 
 	#
 	#  set_date:: Adds a Date: to the header, set to the time the request is received
