@@ -402,7 +402,7 @@ static int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in, tm
 	 *	function's arguments.
 	 */
 	if (xlat_tokenize_argv(node, &node->call.args, in, func,
-			       &xlat_function_arg_rules, t_rules, true, false) < 0) {
+			       &xlat_function_arg_rules, t_rules, false) < 0) {
 error:
 		talloc_free(node);
 		return -1;
@@ -1326,15 +1326,14 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_head_t const *head, fr_sbuff_escape
  * @param[in] p_rules		controlling how to parse the string outside of
  *				any expansions.
  * @param[in] t_rules		controlling how attribute references are parsed.
- * @param[in] comma		whether the arguments are delimited by commas
- * @param[in] allow_attr	allow attribute references as arguments
+ * @param[in] spaces		whether the arguments are delimited by spaces
  * @return
  *	- < 0 on error.
  *	- >0  on success which is the number of characters parsed.
  */
 fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 			     xlat_t const *xlat,
-			     fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, bool comma, bool allow_attr)
+			     fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, bool spaces)
 {
 	int				argc = 0;
 	fr_sbuff_t			our_in = FR_SBUFF(in);
@@ -1353,22 +1352,32 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		arg_start = arg = &default_arg[0];
 	}
 
-	MEM(head = xlat_exp_head_alloc(ctx));
-	if (p_rules && p_rules->terminals) {
-		tmp_p_rules = (fr_sbuff_parse_rules_t){	/* Stack allocated due to CL scope */
-			.terminals = fr_sbuff_terminals_amerge(NULL, p_rules->terminals,
-							       value_parse_rules_bareword_quoted.terminals),
-			.escapes = (p_rules->escapes ? p_rules->escapes : value_parse_rules_bareword_quoted.escapes)
-		};
-		our_p_rules = &tmp_p_rules;
+	if (spaces) {
+		fr_assert(p_rules != &xlat_function_arg_rules);
+		if (p_rules) {	/* only for tmpl_tokenize, and back-ticks */
+			fr_assert(p_rules->terminals);
+
+			tmp_p_rules = (fr_sbuff_parse_rules_t){	/* Stack allocated due to CL scope */
+				.terminals = fr_sbuff_terminals_amerge(NULL, p_rules->terminals,
+								       value_parse_rules_bareword_quoted.terminals),
+				.escapes = (p_rules->escapes ? p_rules->escapes : value_parse_rules_bareword_quoted.escapes)
+			};
+			our_p_rules = &tmp_p_rules;
+		} else {
+			our_p_rules = &value_parse_rules_bareword_quoted;			
+		}
+
 	} else {
-		our_p_rules = &value_parse_rules_bareword_quoted;
+		fr_assert(p_rules == &xlat_function_arg_rules);
+		fr_assert(p_rules->terminals);
+
+		our_p_rules = p_rules;
 	}
 
+	MEM(head = xlat_exp_head_alloc(ctx));
+
 	/*
-	 *	skip spaces at the beginning as we
-	 *	don't want them to become a whitespace
-	 *	literal.
+	 *	skip spaces at the beginning as we don't want them to become a whitespace literal.
 	 */
 	fr_sbuff_adv_past_whitespace(in, SIZE_MAX, NULL);
 	fr_sbuff_marker(&m, &our_in);
@@ -1385,7 +1394,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		/*
 		 *	Whitespace isn't significant for comma-separated argvs
 		 */
-		if (comma) fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
+		if (!spaces) fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
 		fr_sbuff_out_by_longest_prefix(&slen, &quote, xlat_quote_table, &our_in, T_BARE_WORD);
 
@@ -1406,19 +1415,15 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			/*
 			 *	&User-Name is an attribute reference
 			 *
-			 *	@todo - only the mono functions allow this automatic conversion.
-			 *	The input args ones (e.g. immutable) take an input string, and parse the tmpl from that.
+			 *	@todo - move '&' to be a _dcursor_. and not an attribute reference.
 			 *
-			 *	We need to signal the tokenize / eval code that the parameter here is a tmpl, and not a string.
-			 *
-			 *	Perhaps &"foo" can dynamically create the string, and then pass it to the the
-			 *	tmpl tokenizer, and then pass the tmpl to the function.  Which also means that
-			 *	we need to be able to have a fr_value_box_t which holds a ptr to a tmpl.  And
-			 *	update the function arguments to say "we want a tmpl, not a string".
-			 *
-			 *	@todo - tmpl_require_enum_prefix
+			 *	@todo - Perhaps &"foo" can dynamically create the string, and then pass it to
+			 *	the the tmpl tokenizer, and then pass the tmpl to the function.  Which also
+			 *	means that we need to be able to have a fr_value_box_t which holds a ptr to a
+			 *	tmpl.  And update the function arguments to say "we want a tmpl, not a
+			 *	string".
 			 */
-			if (allow_attr && fr_sbuff_is_char(&our_in, '&')) {
+			if (fr_sbuff_is_char(&our_in, '&')) {
 				if (xlat_tokenize_attribute(node->group, &our_in, our_p_rules, t_rules, TMPL_ATTR_REF_PREFIX_YES) < 0) goto error;
 				break;
 			}
@@ -1426,9 +1431,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			if (xlat_tokenize_input(node->group, &our_in,
 						our_p_rules, t_rules, arg->safe_for) < 0) {
 			error:
-				if (our_p_rules != &value_parse_rules_bareword_quoted) {
-					talloc_const_free(our_p_rules->terminals);
-				}
+				if (our_p_rules == &tmp_p_rules) talloc_const_free(our_p_rules->terminals);
 				talloc_free(head);
 
 				FR_SBUFF_ERROR_RETURN(&our_in);	/* error */
@@ -1504,23 +1507,36 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		len = fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
                /*
-		*	Commas are in the list of terminals, but we skip over them,
+		*	Commas are in the list of terminals, but we skip over them, and keep parsing more
+		*	arguments.
 		*/
-		if (comma) {
+		if (!spaces) {
 			fr_assert(p_rules && p_rules->terminals);
 
 			if (fr_sbuff_next_if_char(&our_in, ',')) goto next;
 
 			if (fr_sbuff_is_char(&our_in, ')')) break;
 
+			if (fr_sbuff_eof(&our_in)) {
+				fr_strerror_printf("Missing ')' after argument %d", argc);
+				goto error;
+			}
+
 			fr_strerror_printf("Unexpected text after argument %d", argc);
 			goto error;
 		}
 
 		/*
-		 *	Check to see if we have a terminal char
+		 *	Check to see if we have a terminal char, which at this point has to be '``.
 		 */
-		if ((p_rules && p_rules->terminals) && fr_sbuff_is_terminal(&our_in, p_rules->terminals)) break;
+		if (our_p_rules->terminals) {
+			if (fr_sbuff_is_terminal(&our_in, our_p_rules->terminals)) break;
+
+			if (fr_sbuff_eof(&our_in)) {
+				fr_strerror_printf("Unexpected end of input string after argument %d", argc);
+				goto error;
+			}
+		}
 
 		/*
 		 *	Otherwise, if we can extend, and found
@@ -1542,7 +1558,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		}
 	}
 
-	if (our_p_rules != &value_parse_rules_bareword_quoted) talloc_const_free(our_p_rules->terminals);
+	if (our_p_rules == &tmp_p_rules) talloc_const_free(our_p_rules->terminals);
 
 	XLAT_HEAD_VERIFY(head);
 	*out = head;

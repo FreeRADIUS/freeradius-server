@@ -384,7 +384,7 @@ int trigger_exec(unlang_interpret_t *intp,
 
 	slen = xlat_tokenize_argv(trigger, &trigger->xlat,
 				  &FR_SBUFF_IN(trigger->command, talloc_array_length(trigger->command) - 1),
-				  NULL, NULL, NULL, false, false);
+				  NULL, NULL, NULL, true);
 	if (slen <= 0) {
 		char *spaces, *text;
 

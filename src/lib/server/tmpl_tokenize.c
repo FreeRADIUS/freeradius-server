@@ -3524,7 +3524,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	FIXME - We need an ephemeral version of this
 		 *	too.
 		 */
-		slen = xlat_tokenize_argv(vpt, &head, &our_in, NULL, p_rules, t_rules, false, false);
+		slen = xlat_tokenize_argv(vpt, &head, &our_in, NULL, p_rules, t_rules, true);
 		if ((slen <= 0) || !head) {
 			talloc_free(vpt);
 			FR_SBUFF_ERROR_RETURN(&our_in);
