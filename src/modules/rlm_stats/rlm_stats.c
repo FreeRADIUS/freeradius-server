@@ -163,10 +163,85 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_
 }
 
 
+static unlang_action_t CC_HINT(nonnull) mod_stats_inc(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_stats_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_stats_t);
+	rlm_stats_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_stats_thread_t);
+	int			i, src_code, dst_code;
+	rlm_stats_data_t	*stats;
+	rlm_stats_data_t	mydata;
+
+	src_code = request->packet->code;
+	if (src_code >= FR_RADIUS_CODE_MAX) src_code = 0;
+
+	dst_code = request->reply->code;
+	if (dst_code >= FR_RADIUS_CODE_MAX) dst_code = 0;
+
+	pthread_mutex_lock(&t->mutex);
+	t->stats[src_code]++;
+	t->stats[dst_code]++;
+
+	/*
+	 *	Update source statistics
+	 */
+	mydata.ipaddr = request->packet->socket.inet.src_ipaddr;
+	stats = fr_rb_find(t->src, &mydata);
+	if (!stats) {
+		MEM(stats = talloc_zero(t, rlm_stats_data_t));
+
+		stats->ipaddr = request->packet->socket.inet.src_ipaddr;
+		stats->created = request->async->recv_time;
+
+		(void) fr_rb_insert(t->src, stats);
+	}
+
+	stats->last_packet = request->async->recv_time;
+	stats->stats[src_code]++;
+	stats->stats[dst_code]++;
+
+	/*
+	 *	Update destination statistics
+	 */
+	mydata.ipaddr = request->packet->socket.inet.dst_ipaddr;
+	stats = fr_rb_find(t->dst, &mydata);
+	if (!stats) {
+		MEM(stats = talloc_zero(t, rlm_stats_data_t));
+
+		stats->ipaddr = request->packet->socket.inet.dst_ipaddr;
+		stats->created = request->async->recv_time;
+
+		(void) fr_rb_insert(t->dst, stats);
+	}
+
+	stats->last_packet = request->async->recv_time;
+	stats->stats[src_code]++;
+	stats->stats[dst_code]++;
+	pthread_mutex_unlock(&t->mutex);
+
+	/*
+	 *	@todo - periodically clean up old entries.
+	 */
+
+	if (fr_time_gt(fr_time_add(t->last_global_update, fr_time_delta_wrap(NSEC)), request->async->recv_time)) {
+		RETURN_MODULE_UPDATED;
+	}
+
+	t->last_global_update = request->async->recv_time;
+
+	pthread_mutex_lock(&inst->mutable->mutex);
+	for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
+		inst->mutable->stats[i] += t->stats[i];
+		t->stats[i] = 0;
+	}
+	pthread_mutex_unlock(&inst->mutable->mutex);
+
+	RETURN_MODULE_UPDATED;
+}
+
 /*
  *	Do the statistics
  */
-static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_stats_read(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_stats_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_stats_t);
 	rlm_stats_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_stats_thread_t);
@@ -178,86 +253,6 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 	rlm_stats_data_t mydata;
 	char buffer[64];
 	uint64_t local_stats[NUM_ELEMENTS(inst->mutable->stats)];
-
-	/*
-	 *	Increment counters only in "send foo" sections.
-	 *
-	 *	i.e. only when we have a reply to send.
-	 *
-	 *	FIXME - Nothing sets request_state anymore
-	 */
-#if 0
-	if (request->request_state == REQUEST_SEND) {
-		int src_code, dst_code;
-		rlm_stats_data_t *stats;
-
-		src_code = request->packet->code;
-		if (src_code >= FR_RADIUS_CODE_MAX) src_code = 0;
-
-		dst_code = request->reply->code;
-		if (dst_code >= FR_RADIUS_CODE_MAX) dst_code = 0;
-
-		pthread_mutex_lock(&t->mutex);
-		t->stats[src_code]++;
-		t->stats[dst_code]++;
-
-		/*
-		 *	Update source statistics
-		 */
-		mydata.ipaddr = request->packet->socket.inet.src_ipaddr;
-		stats = fr_rb_find(t->src, &mydata);
-		if (!stats) {
-			MEM(stats = talloc_zero(t, rlm_stats_data_t));
-
-			stats->ipaddr = request->packet->socket.inet.src_ipaddr;
-			stats->created = request->async->recv_time;
-
-			(void) fr_rb_insert(t->src, stats);
-		}
-
-		stats->last_packet = request->async->recv_time;
-		stats->stats[src_code]++;
-		stats->stats[dst_code]++;
-
-		/*
-		 *	Update destination statistics
-		 */
-		mydata.ipaddr = request->packet->socket.inet.dst_ipaddr;
-		stats = fr_rb_find(t->dst, &mydata);
-		if (!stats) {
-			MEM(stats = talloc_zero(t, rlm_stats_data_t));
-
-			stats->ipaddr = request->packet->socket.inet.dst_ipaddr;
-			stats->created = request->async->recv_time;
-
-			(void) fr_rb_insert(t->dst, stats);
-		}
-
-		stats->last_packet = request->async->recv_time;
-		stats->stats[src_code]++;
-		stats->stats[dst_code]++;
-		pthread_mutex_unlock(&t->mutex);
-
-		/*
-		 *	@todo - periodically clean up old entries.
-		 */
-
-		if ((t->last_global_update + NSEC) > request->async->recv_time) {
-			RETURN_MODULE_UPDATED;
-		}
-
-		t->last_global_update = request->async->recv_time;
-
-		pthread_mutex_lock(&inst->mutable->mutex);
-		for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
-			inst->mutable->stats[i] += t->stats[i];
-			t->stats[i] = 0;
-		}
-		pthread_mutex_unlock(&inst->mutable->mutex);
-
-		RETURN_MODULE_UPDATED;
-	}
-#endif
 
 	/*
 	 *	Ignore "authenticate" and anything other than Status-Server
@@ -460,7 +455,8 @@ module_rlm_t rlm_stats = {
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
-			{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_stats },
+			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_stats_inc },
+			{ .section = SECTION_NAME("recv", "Status-Server"), .method = mod_stats_read },
 			MODULE_BINDING_TERMINATOR
 		}
 	}
