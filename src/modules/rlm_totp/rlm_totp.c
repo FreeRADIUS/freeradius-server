@@ -475,7 +475,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	uint64_t now = time(NULL);
 
 	password = fr_pair_find_by_num(request->packet->vps, PW_TOTP_PASSWORD, 0, TAG_ANY);
-	if (!password) return RLM_MODULE_NOOP;
+	if (!password) {
+		RDEBUG2("No User-Password attribute in the request.  Cannot do TOTP");
+		return RLM_MODULE_NOOP;
+	}
 
 	if ((password->vp_length != 6) && (password->vp_length != 8)) {
 		RDEBUG("TOTP-Password has incorrect length %d", (int) password->vp_length);
