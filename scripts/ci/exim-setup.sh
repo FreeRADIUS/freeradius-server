@@ -21,6 +21,11 @@ CERTDIR="${BUILDDIR}/certs"
 CERTSRCDIR="${BASEDIR}/raddb/certs"
 PASSWORD="whatever"
 
+# Listen options
+: "${BINDIP:=127.0.0.1}"
+: "${BINDPORT:=2525}"
+: "${BINDSSLPORT:=2465}"
+
 # Important files for running dovecot
 CONF="${BUILDDIR}/exim.conf"
 
@@ -58,7 +63,7 @@ echo "
 #
 #EXIMUSER = username
 #EXIMGROUP = groupname
-LISTEN=127.0.0.1
+LISTEN=${BINDIP}
 #
 #
 #  Where all the config files, logs, etc are. See also the
@@ -71,7 +76,7 @@ log_file_path = ${LOGDIR}/%s
 spool_directory = ${SPOOLDIR}
 exim_user = EXIMUSER
 exim_group = EXIMGROUP
-daemon_smtp_ports = 2525 : 2465
+daemon_smtp_ports = ${BINDPORT} : ${BINDSSLPORT}
 local_interfaces = LISTEN
 deliver_drop_privilege
 keep_environment = ${BASEDIR}
@@ -80,9 +85,9 @@ tls_certificate = ${CERTDIR}/server.pem
 tls_privatekey = ${CERTDIR}/server.key
 tls_verify_certificates = ${CERTDIR}/ca.pem
 #tls_dhparam = ${CERTDIR}/dh
-tls_on_connect_ports = 2465
+tls_on_connect_ports = ${BINDSSLPORT}
 tls_verify_hosts = *
-tls_require_ciphers = \${if =={\$received_port}{2525}\
+tls_require_ciphers = \${if =={\$received_port}{${BINDPORT}}\
                            {NORMAL:%COMPAT}\
                            {SECURE128}}
 received_header_text =
@@ -164,4 +169,10 @@ chmod g+r -R "${CERTDIR}"
 #
 echo "Starting exim"
 exim -C ${CONF} -bd -DEXIMUSER=$EXIMUSER -DEXIMGROUP=$EXIMGROUP
-echo "Running exim on port 2525, accepting all local connections"
+echo "Running exim on port ${BINDPORT}, accepting all local connections"
+cat << EOF
+export SMTP_TEST_SERVER=${BINDIP}
+export SMTP_TEST_SERVER_PORT=${BINDPORT}
+export SMTP_TEST_SERVER_SSL_PORT=${BINDSSLPORT}
+EOF
+
