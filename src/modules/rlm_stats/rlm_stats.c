@@ -173,6 +173,11 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_inc(rlm_rcode_t *p_result, mod
 	rlm_stats_data_t	*stats;
 	rlm_stats_data_t	mydata;
 
+	if (request->dict != dict_radius) {
+		RWARN("%s can only be called in RADIUS virtual servers", mctx->mi->name);
+		RETURN_MODULE_NOOP;
+	}
+
 	src_code = request->packet->code;
 	if (src_code >= FR_RADIUS_CODE_MAX) src_code = 0;
 
@@ -255,6 +260,11 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(rlm_rcode_t *p_result, mo
 	rlm_stats_data_t mydata;
 	uint64_t local_stats[NUM_ELEMENTS(inst->mutable->stats)];
 
+	if (request->dict != dict_radius) {
+		RWARN("%s can only be called in RADIUS virtual servers", mctx->mi->name);
+		RETURN_MODULE_NOOP;
+	}
+
 	/*
 	 *	Ignore "authenticate" and anything other than Status-Server
 	 */
@@ -323,10 +333,6 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(rlm_rcode_t *p_result, mo
 		}
 	}
 
-	/*
-	 *	@todo - do this only for RADIUS
-	 *	key off of packet ID, and Stats4-Packet-Counters TLV.
-	 */
 	for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
 		fr_dict_attr_t const *da;
 
