@@ -23,32 +23,4 @@ authentication methods such as CHAP or EAP will pretty much never work.
 
 The Authentication modules available are:
 
-* xref:raddb/mods-available/chap.adoc[CHAP module] - CHAP authentication
-
-* xref:raddb/mods-available/digest.adoc[Digest] - HTTP Digest Authentication
-
-* xref:raddb/mods-available/eap.adoc[EAP] - EAP-MD5, EAP-MSCHAPv2, TTLS, PEAP, FAST, TEAP, etc.
-
-** xref:raddb/mods-available/eap_inner.adoc[EAP/Inner] - limit EAP methods to ones which can be used in an "inner tunnel".
-
-* xref:raddb/mods-available/imap.adoc[IMAP] - check user credentials against an IMAP server
-
-* xref:raddb/mods-available/krb5.adoc[Kerberos] - check user credentials against a Kerberos server
-
-* xref:raddb/mods-available/ldap.adoc[LDAP] - check user credentials against an LDAP server
-
-* xref:raddb/mods-available/mschap.adoc[Microsoft CHAP] - MSCHAPv1 and MSCHAPv2 authentication.
-
-* xref:raddb/mods-available/ntlm_auth.adoc[NTLM Auth] - check user credentials against a Samba / Active Directory server
-
-* xref:raddb/mods-available/pam.adoc[Pluggable Authentication] - check user credentials against the Pluggable Authentication Method (PAM)
-
-* xref:raddb/mods-available/pap.adoc[PAP] - PAP authentication.  Supports all common password hashing / encryption methods.
-
-* xref:raddb/mods-available/rest.adoc[REST] - check user credentials against a REST server
-
-* xref:raddb/mods-available/totp.adoc[TOTP] - perform time-based one-time-password (TOTP) checks.
-
-* xref:raddb/mods-available/winbind.adoc[Winbind] - check user credentials against a Samba / Active Directory server
-
-* xref:raddb/mods-available/yubikey.adoc[Yubikey] - check user credentials against a Yubikey server or database.
+include::partial$authentication_table.adoc[]

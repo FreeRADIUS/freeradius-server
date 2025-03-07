@@ -16,14 +16,4 @@ faster.
 
 The available Language modules are:
 
-* xref:raddb/mods-available/exec.adoc[Exec]- run external programs or shell scripts
-
-** xref:raddb/mods-available/echo.adoc[Echo] - example of using `echo`
-
-* xref:raddb/mods-available/lua.adoc[Lua] - run Lua programs
-
-* xref:raddb/mods-available/perl.adoc[Perl] - run Perl programs
-
-* xref:raddb/mods-available/python.adoc[Python] - run Python programs
-
-* xref:raddb/mods-available/mruby.adoc[Ruby] - run Ruby programs
+include::partial$language_table.adoc[]

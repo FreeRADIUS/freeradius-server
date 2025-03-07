@@ -22,6 +22,7 @@ higher performance in high load scenarios. While one thread is
 accessing the database, another thread can be applying complex local
 policies.
 
+
 == Integration into network seamlessly
 
 Large, complex networks often have a diverse combination of
@@ -103,13 +104,13 @@ FreeRADIUS supports:
 
 == Why use FreeRADIUS DHCP?
 
-* optimized to work with FreeRADIUS
+* Optimized to work with FreeRADIUS.
 
-* a simple cost-effective solution - comes with packaage and can use the same hardware
+* Simple cost-effective solution - comes with packaage and can use the same hardware.
 
-* Flexible configuration and can scale up depending on organization's needs
+* Flexible configuration and can scale up depending on organization's needs.
 
-* includes an xref:raddb/mods-available/isc_dhcp.adoc[ISC DHCP] compatibility module, which allows it to read most common ISC DHCP configuration files.
+* Includes an xref:raddb/mods-available/isc_dhcp.adoc[ISC DHCP] compatibility module, which allows it to read most common ISC DHCP configuration files.
 
 
 == Related information
