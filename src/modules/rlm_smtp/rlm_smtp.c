@@ -267,7 +267,7 @@ static int str_to_attachments(fr_mail_ctx_t *uctx, curl_mime *mime, char const *
 	/* Check to see if the file attachment is valid, skip it if not */
 	RDEBUG2("Trying to set attachment: %s", str);
 
-	if (strncmp(str, "/", 1) == 0) {
+	if (*str == '/') {
 		RDEBUG2("File attachments cannot be an absolute path");
 		return 0;
 	}
@@ -514,7 +514,6 @@ static int body_init(fr_mail_ctx_t *uctx, curl_mime *mime)
  */
 static int attachments_source(fr_mail_ctx_t *uctx, curl_mime *mime, rlm_smtp_t const *inst, rlm_smtp_env_t const *call_env)
 {
-	request_t			*request = uctx->request;
 	int	 			attachments_set = 0;
 	fr_sbuff_uctx_talloc_t 		sbuff_ctx;
 	fr_sbuff_t 			path_buffer;
@@ -534,8 +533,7 @@ static int attachments_source(fr_mail_ctx_t *uctx, curl_mime *mime, rlm_smtp_t c
 	fr_sbuff_in_bstrcpy_buffer(&path_buffer, inst->template_dir);
 
 	/* Make sure the template_directory path ends in a "/" */
-	if (inst->template_dir[talloc_array_length(inst->template_dir)-2] != '/'){
-		RDEBUG2("Adding / to end of template_dir");
+	if (inst->template_dir[talloc_array_length(inst->template_dir) - 2] != '/'){
 		(void) fr_sbuff_in_char(&path_buffer, '/');
 	}
 
@@ -591,6 +589,7 @@ static unlang_action_t smtp_io_module_resume(rlm_rcode_t *p_result, module_ctx_t
 	long				curl_out_valid;
 
 	curl_out_valid = curl_easy_getinfo(randle->candle, CURLINFO_SSL_VERIFYRESULT, &curl_out);
+
 	if (curl_out_valid == CURLE_OK){
 		RDEBUG2("server certificate %s verified", curl_out ? "was" : "not");
 	} else {
@@ -600,10 +599,12 @@ static unlang_action_t smtp_io_module_resume(rlm_rcode_t *p_result, module_ctx_t
 	if (randle->result != CURLE_OK) {
 		CURLcode result = randle->result;
 		smtp_slab_release(randle);
+
 		switch (result) {
 		case CURLE_PEER_FAILED_VERIFICATION:
 		case CURLE_LOGIN_DENIED:
 			RETURN_MODULE_REJECT;
+
 		default:
 			RETURN_MODULE_FAIL;
 		}
@@ -751,25 +752,39 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 	rlm_smtp_auth_env_t	*env_data = talloc_get_type_abort(mctx->env_data, rlm_smtp_auth_env_t);
 	fr_curl_io_request_t    *randle;
 
-	randle = smtp_slab_reserve(t->slab_onetime);
-	if (!randle) RETURN_MODULE_FAIL;
+	if (!env_data->username_tmpl) {
+		RDEBUG("No 'username' was set for authentication - failing the request");
+		RETURN_MODULE_INVALID;
+	}
+
+	if (!env_data->password_tmpl) {
+		RDEBUG("No 'username' was set for authentication - failing the request");
+		RETURN_MODULE_INVALID;
+	}
 
 	if (env_data->username.type != FR_TYPE_STRING || (env_data->username.vb_length == 0)) {
 		RWARN("\"%s\" is required for authentication", env_data->username_tmpl->name);
-	error:
-		smtp_slab_release(randle);
 		RETURN_MODULE_INVALID;
 	}
 
 	if (env_data->password.type != FR_TYPE_STRING || (env_data->password.vb_length == 0)) {
 		RWARN("\"%s\" is required for authentication", env_data->password_tmpl->name);
-		goto error;
+		RETURN_MODULE_INVALID;
+	}
+
+	randle = smtp_slab_reserve(t->slab_onetime);
+	if (!randle) {
+		RETURN_MODULE_FAIL;
 	}
 
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_USERNAME, env_data->username.vb_strvalue);
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PASSWORD, env_data->password.vb_strvalue);
 
-	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_MODULE_INVALID;
+	if (fr_curl_io_request_enqueue(t->mhandle, request, randle) < 0) {
+	error:
+		smtp_slab_release(randle);
+		RETURN_MODULE_FAIL;
+	}
 
 	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, ~FR_SIGNAL_CANCEL, randle);
 }
