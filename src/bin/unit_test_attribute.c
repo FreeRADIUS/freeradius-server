@@ -364,7 +364,7 @@ static void mismatch_print(command_file_ctx_t *cc, char const *command,
 
 			ERROR("  got      : %.*s", (int) got_len, got);
 			ERROR("  expected : %.*s", (int) expected_len, expected);
-			ERROR("             %s^ differs here (%zu)", spaces, e - expected);
+			ERROR("             %.*s^ differs here (%zu)", (int) (e - expected), spaces, e - expected);
 		} else {
 			size_t glen, elen;
 
