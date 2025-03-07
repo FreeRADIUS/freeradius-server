@@ -1,0 +1,79 @@
+#
+#  Suggested contents for ~/.gitconfig
+#
+
+
+#
+#  Remove trailing whitespace from files
+#
+[apply]
+        whitespace = strip
+[add]
+        whitespace = strip
+[move]
+        whitespace = strip
+
+#
+#  On push. automatically set up a remote and follow the tags,
+#  so you don't have to do --set-upstream
+#
+[push]
+	default = simple
+	autoSetupRemote = true
+	followTags = true
+
+#
+#  Rebase on git pull, so your changes are always on top of the remote
+#  ones.  Merges are bad.
+#
+[pull]
+	rebase = true
+
+#
+#  Rebase merges, instead of creating merge commits.
+#
+#  Stash local changes before rebase, and pop them afterwards.
+#
+#  "updateRefs" means that more commits are rebased when pulling
+#  patches from multiple branches, which helps keep the history as a
+#  linear set of commits.
+#
+[rebase]
+	rebaseMerges = true
+	autoStash = true
+	updateRefs = true
+
+#
+#  Don't throw away data!
+#
+[mergetool]
+	keepBackup = true
+#
+#  Make diffs look better.
+#
+[diff]
+        algorithm = histogram
+        colorMoved = plain
+        mnemonicPrefix = true
+        renames = true
+
+#
+#  Make things prettier
+#
+[column]
+        ui = auto
+[branch]
+        sort = -committerdate
+[tag]
+        sort = version:refname
+
+#
+#  More useful things
+#
+[help]
+        autocorrect = prompt
+[commit]
+        verbose = true
+[rerere]
+        enabled = true
+        autoupdate = true
