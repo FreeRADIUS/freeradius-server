@@ -101,12 +101,14 @@ fr_dict_autoload_t rlm_stats_dict[] = {
 static fr_dict_attr_t const *attr_freeradius_stats4_ipv4_address;
 static fr_dict_attr_t const *attr_freeradius_stats4_ipv6_address;
 static fr_dict_attr_t const *attr_freeradius_stats4_type;
+static fr_dict_attr_t const *attr_freeradius_stats4_packet_counters;
 
 extern fr_dict_attr_autoload_t rlm_stats_dict_attr[];
 fr_dict_attr_autoload_t rlm_stats_dict_attr[] = {
 	{ .out = &attr_freeradius_stats4_ipv4_address, .name = "Vendor-Specific.FreeRADIUS.Stats4.IPv4-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
 	{ .out = &attr_freeradius_stats4_ipv6_address, .name = "Vendor-Specific.FreeRADIUS.Stats4.IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_radius },
 	{ .out = &attr_freeradius_stats4_type, .name = "Vendor-Specific.FreeRADIUS.Stats4.Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_freeradius_stats4_packet_counters, .name = "Vendor-Specific.FreeRADIUS.Stats4.Packet-Counters", .type = FR_TYPE_TLV, .dict = &dict_radius },
 	{ NULL }
 };
 
@@ -251,7 +253,6 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(rlm_rcode_t *p_result, mo
 
 	fr_pair_t *vp;
 	rlm_stats_data_t mydata;
-	char buffer[64];
 	uint64_t local_stats[NUM_ELEMENTS(inst->mutable->stats)];
 
 	/*
@@ -326,21 +327,16 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(rlm_rcode_t *p_result, mo
 	 *	@todo - do this only for RADIUS
 	 *	key off of packet ID, and Stats4-Packet-Counters TLV.
 	 */
-	strcpy(buffer, "FreeRADIUS-Stats4-");
-
 	for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
 		fr_dict_attr_t const *da;
 
 		if (!local_stats[i]) continue;
 
-		strlcpy(buffer + 18, fr_radius_packet_name[i], sizeof(buffer) - 18);
-		da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_radius), buffer);
+		da = fr_dict_attr_by_name(NULL, attr_freeradius_stats4_packet_counters, fr_radius_packet_name[i]);
 		if (!da) continue;
 
-		MEM(vp = fr_pair_afrom_da(request->reply_ctx, da));
+		MEM(vp = fr_pair_afrom_da_nested(request->reply_ctx, &request->reply_pairs, da));
 		vp->vp_uint64 = local_stats[i];
-
-		fr_pair_append(&request->reply_pairs, vp);
 	}
 
 	RETURN_MODULE_OK;
