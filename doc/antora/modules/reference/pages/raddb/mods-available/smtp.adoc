@@ -158,91 +158,115 @@ the underlying mail protocols.  The URI should be in the form of:
 `SCHEME://IP:PORT/`
 
 
-`SCHEME` can be one of the SMTP protocols supported by Curl.
-i.e. smtp, smtps.
-If no `SCHEME` is given, it defaults to `smtp`.
+  * `SCHEME` can be one of the SMTP protocols supported by Curl.
+   i.e. smtp, smtps.
+   If no `SCHEME` is given, it defaults to `smtp`.
 
-`IP` is the IP address of the server.  It can be an IPv4 address,
-IPv6 address, hostname, etc.
+  * `IP` is the IP address of the server.  It can be an IPv4 address,
+  IPv6 address, hostname, etc.
 
-`PORT` is optional, and will normally be chosen to be correct
-for the given `SCHEME`.
+  * `PORT` is optional, and will normally be chosen to be correct
+  for the given `SCHEME`.
 
-For more information, see the CURL documentation at
+For more information, see the CURL documentation at:
 
 https://ec.haxx.se/cmdline/cmdline-urls
 
 
 
-timeout:: How long the module will wait before giving up on the response
+timeout:: How long the module will wait, before giving up on the response
 from the SMTP server.
 
 
 
-username_attribute:: Which attribute in the request should be used as
-the user's username when performing SMTP authentication.
+authenticate: Configuration for verifying a users name and clear-text password
+against an SMTP server.
+
+This is not generally recommended, but is supported for cases where an LDAP server
+is not available, and only an SMTP server is available.
+
+
+username:: The users name when performing SMTP authentication.
 
 
 
-password_attribute:: Which attribute in the request should be used as
-the user's password when performing SMTP authentication.
+password_attribute:: The users password when performing SMTP authentication
 
 
 
-username:: User name to use when sending emails.  Can be a fixed
-string or an attribute.  Leave unset if authentication is not
-required to send emails.
+In most cases, the SMTP module will be used to send email.
 
 
 
-password:: Password to use in conjunction with the above user name
-for SMTP authentication.
+username:: The name or login identifier to use when sending email.
+
+If authentication is not required, it can be commented out/
 
 
 
-template_directory:: The source directory where all file attachments are pulled from
-All file attachments should be their relative path from this location, without a leading /
+password:: Password to use when sending email.
 
 
 
-Attachments:: attachments with their relative path from template_directory
-There can be no leading / or ..
+template_directory:: Directory where email templates are stored.
+
+All file attachments should be given as a relative path
+from this location. i.e. without a leading '/'.
 
 
 
-envelope_address:: This is the address used to send the mail,
-Sent to the receiving server as MAIL FROM:<envelope_address>
-sender_address will be defaulted to if this is not set
+Attachments:: File names to attach to the templates.
+
+The filenames are relative to `template_directory`
 
 
 
-sender_address:: This are the addresses displayed in the FROM: element of the header
-This can be different than the provided envelope_address,
-If envelope_address is set, this can be formatted however you want it to appear to the receiver
-If envelope_address is not set, the first element in sender_address will be used as the envelope address
+envelope_address:: Set the `MAIL FROM:<envelope_address>`
+
+If this is not set, `MAIL FROM` will be set from `sender_address`.
+
+
+
+sender_address:: Set the body `FROM` address.
+
+This can be different than the provided envelope_address.
+
+If envelope_address is set, this can be formatted however
+you want it to appear to the receiver.
+
+If envelope_address is not set, the first element in
+sender_address will be used as the envelope address.
 
 
 
 recipients:: Email addresses to be set as recipients for the email
-If recipients is set bcc, cc, and to will not be automatically added to the email
-And so they must be included here.
+
+If recipients is set, then `bcc`, `cc`, and `to` will not
+be automatically added to the email.  Only the list of
+`recipients` will be used.
 
 
 
-to:: Email addresses to be set in the TO: header
-These addresses will be added as envelope recipients only if recipients is not set
+to:: Set the body `TO` header.
 
-
-cc:: Email addresses to be set in the CC: header
-These addresses will be added as envelope recipients only if recipients is not set
+If `recepients` is not set, then messages will be sent to the `TO` address.
 
 
 
-bcc:: Comma separated list of emails.
-the local part may contain commas, the domain may not (https://tools.ietf.org/html/rfc2821[RFC 2821])
-Therefore, first comma after the @ represents a new address
-not listed in the header of the email
-if recipients is not set, these emails will be added to the envelope recipients
+cc:: Set the body `CC` header.
+
+If `recepients` is not set, then messages will also be sent to the `CC` addresses.
+
+
+
+bcc:: Set the `BCC` recipients.
+
+The local part may contain commas, the domain may not (https://tools.ietf.org/html/rfc2821[RFC 2821])
+
+Therefore, the first comma after the @ represents a new
+address, and is not listed in the header of the email.
+
+If `recepients` is not set, then messages will also be sent to the `CCC` addresses.
 
 
 
@@ -261,10 +285,18 @@ Default is `yes`
 
 
 
-header:: This is where any other headers can be added to the email
-FROM, TO, and CC, should not be added here if their respective elements were set in the config
-If no DATE header is provided, one will be added showing time that the request was received(recommended)
-Non-standard mail headers may be set. Adhere to your MTA's documentation
+header:: Additional headers to add to the messages.
+
+Any `FROM`, `TO`, and `CC` should not be added here.  They are set in the configuration items above.
+
+If no `DATE` header is provided, one will be added which
+shows the time that the request was sent.
+
+Non-standard mail headers may be set. Adhere to your MTA's
+documentation
+
+
+Headers are added with the given names and values, in the order listed here.
 
 
 
@@ -329,7 +361,7 @@ smtp {
 	}
 #	username = "user"
 #	password = "secret"
-	template_directory = raddb/mods_config/smtp
+	template_directory = ${confdir}/mods_config/smtp/
 	attachments = SMTP-Attachments[*]
 	envelope_address = "postmaster@localhost"
 	sender_address = SMTP-Sender-Address[*]

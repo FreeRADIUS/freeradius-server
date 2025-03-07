@@ -174,25 +174,25 @@ smtp {
 	#
 	#  `SCHEME://IP:PORT/`
 	#
-
-	#	`SCHEME` can be one of the SMTP protocols supported by Curl.
-	#	i.e. smtp, smtps.
-	#	If no `SCHEME` is given, it defaults to `smtp`.
 	#
-	#	`IP` is the IP address of the server.  It can be an IPv4 address,
-	#	IPv6 address, hostname, etc.
+	#  * `SCHEME` can be one of the SMTP protocols supported by Curl.
+	#     i.e. smtp, smtps.
+	#     If no `SCHEME` is given, it defaults to `smtp`.
 	#
-	#	`PORT` is optional, and will normally be chosen to be correct
-	#	for the given `SCHEME`.
+	#  * `IP` is the IP address of the server.  It can be an IPv4 address,
+	#    IPv6 address, hostname, etc.
 	#
-	#  For more information, see the CURL documentation at
+	#  * `PORT` is optional, and will normally be chosen to be correct
+	#    for the given `SCHEME`.
+	#
+	#  For more information, see the CURL documentation at:
 	#
 	#	https://ec.haxx.se/cmdline/cmdline-urls
 	#
 	uri = "smtp://192.0.20.1/"
 
 	#
-	#  timeout:: How long the module will wait before giving up on the response
+	#  timeout:: How long the module will wait, before giving up on the response
 	#  from the SMTP server.
 	#
 	timeout = 5s
@@ -221,34 +221,36 @@ smtp {
 	#
 
 	#
-	#  username:: User name to use when sending emails.  Can be a fixed
-	#  string or an attribute.  Leave unset if authentication is not
-	#  required to send emails.
+	#  username:: The name or login identifier to use when sending email.
+	#
+	#  If authentication is not required, it can be commented out/
 	#
 #	username = "user"
 
 	#
-	#  password:: Password to use in conjunction with the above user name
-	#  for SMTP authentication.
+	#  password:: Password to use when sending email.
 	#
 #	password = "secret"
 
 	#
-	#  template_directory:: The source directory where all file attachments are pulled from
-	#  All file attachments should be their relative path from this location, without a leading /
+	#  template_directory:: Directory where email templates are stored.
 	#
-	template_directory = raddb/mods_config/smtp
+	#  All file attachments should be given as a relative path
+	#  from this location. i.e. without a leading '/'.
+	#
+	template_directory = ${confdir}/mods_config/smtp/
 
 	#
-	#  Attachments:: attachments with their relative path from template_directory
-	#  There can be no leading / or ..
+	#  Attachments:: File names to attach to the templates.
+	#
+	#  The filenames are relative to `template_directory`
 	#
 	attachments = SMTP-Attachments[*]
 
 	#
-	#  envelope_address:: This is the address used to send the mail,
-	#  Sent to the receiving server as MAIL FROM:<envelope_address>
-	#  sender_address will be defaulted to if this is not set
+	#  envelope_address:: Set the `MAIL FROM:<envelope_address>`
+	#
+	#  If this is not set, `MAIL FROM` will be set from `sender_address`.
 	#
 	envelope_address = "postmaster@localhost"
 
@@ -320,12 +322,20 @@ smtp {
 #	set_date = yes
 
 	#
-	#  header:: This is where any other headers can be added to the email
-	#  FROM, TO, and CC, should not be added here if their respective elements were set in the config
-	#  If no DATE header is provided, one will be added showing time that the request was received(recommended)
-	#  Non-standard mail headers may be set. Adhere to your MTA's documentation
+	#  header:: Additional headers to add to the messages.
+	#
+	#  Any `FROM`, `TO`, and `CC` should not be added here.  They are set in the configuration items above.
+	#
+	#  If no `DATE` header is provided, one will be added which
+	#  shows the time that the request was sent.
+	#
+	#  Non-standard mail headers may be set. Adhere to your MTA's
+	#  documentation
 	#
 	header {
+		#
+		#  Headers are added with the given names and values, in the order listed here.
+		#
 		subject = "email subject"
 		Message-ID = "950124.162336@example.com"
 #		X-Originating-IP = "192.0.20.1"
