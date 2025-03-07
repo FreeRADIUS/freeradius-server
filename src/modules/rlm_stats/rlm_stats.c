@@ -104,9 +104,9 @@ static fr_dict_attr_t const *attr_freeradius_stats4_type;
 
 extern fr_dict_attr_autoload_t rlm_stats_dict_attr[];
 fr_dict_attr_autoload_t rlm_stats_dict_attr[] = {
-	{ .out = &attr_freeradius_stats4_ipv4_address, .name = "Vendor-Specific.FreeRADIUS.Stats4.Stats4-IPv4-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
-	{ .out = &attr_freeradius_stats4_ipv6_address, .name = "Vendor-Specific.FreeRADIUS.Stats4.Stats4-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_radius },
-	{ .out = &attr_freeradius_stats4_type, .name = "Vendor-Specific.FreeRADIUS.Stats4.Stats4-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_freeradius_stats4_ipv4_address, .name = "Vendor-Specific.FreeRADIUS.Stats4.IPv4-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_freeradius_stats4_ipv6_address, .name = "Vendor-Specific.FreeRADIUS.Stats4.IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_radius },
+	{ .out = &attr_freeradius_stats4_type, .name = "Vendor-Specific.FreeRADIUS.Stats4.Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
 };
 
@@ -263,7 +263,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(rlm_rcode_t *p_result, mo
 
 	vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_type);
 	if (!vp) {
-		stats_type = FR_STATS4_TYPE_VALUE_GLOBAL;
+		stats_type = FR_TYPE_VALUE_GLOBAL;
 	} else {
 		stats_type = vp->vp_uint32;
 	}
@@ -275,7 +275,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(rlm_rcode_t *p_result, mo
 	vp->vp_uint32 = stats_type;
 
 	switch (stats_type) {
-	case FR_STATS4_TYPE_VALUE_GLOBAL:			/* global */
+	case FR_TYPE_VALUE_GLOBAL:			/* global */
 		/*
 		 *	Merge our stats with the global stats, and then copy
 		 *	the global stats to a thread-local variable.
@@ -292,7 +292,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(rlm_rcode_t *p_result, mo
 		vp = NULL;
 		break;
 
-	case FR_STATS4_TYPE_VALUE_CLIENT:			/* src */
+	case FR_TYPE_VALUE_CLIENT:			/* src */
 		vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_ipv4_address);
 		if (!vp) vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_ipv6_address);
 		if (!vp) RETURN_MODULE_NOOP;
@@ -301,7 +301,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(rlm_rcode_t *p_result, mo
 		coalesce(local_stats, t, offsetof(rlm_stats_thread_t, src), &mydata);
 		break;
 
-	case FR_STATS4_TYPE_VALUE_LISTENER:			/* dst */
+	case FR_TYPE_VALUE_LISTENER:			/* dst */
 		vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_ipv4_address);
 		if (!vp) vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_ipv6_address);
 		if (!vp) RETURN_MODULE_NOOP;

@@ -23,30 +23,30 @@ ATTRIBUTE	Session-Start-Time			2	date
 #  FreeRADIUS v4 produces statistics in its own TLV
 #
 ATTRIBUTE	Stats4					15	tlv
-ATTRIBUTE	Stats4-Type				.1	integer
+ATTRIBUTE	Type					.1	integer
 
-VALUE	Stats4-Type			Global			1
-VALUE	Stats4-Type			Client			2
-VALUE	Stats4-Type			Listener		3
+VALUE	Type				Global			1
+VALUE	Type				Client			2
+VALUE	Type				Listener		3
 
-ATTRIBUTE	Stats4-Name				.2	string
-ATTRIBUTE	Stats4-Number				.3	string
-ATTRIBUTE	Stats4-IPv4-Address			.4	ipaddr
-ATTRIBUTE	Stats4-IPv6-Address			.5	ipv6addr
-ATTRIBUTE	Stats4-Port				.6	integer
+ATTRIBUTE	Name					.2	string
+ATTRIBUTE	Number					.3	string
+ATTRIBUTE	IPv4-Address				.4	ipaddr
+ATTRIBUTE	IPv6-Address				.5	ipv6addr
+ATTRIBUTE	Port					.6	integer
 
 #
 #  All of the counters are in a sub-TLV
 #
-ATTRIBUTE	Stats4-Counters				15.8	tlv
-ATTRIBUTE	Stats4-Requests				.1	integer64
-ATTRIBUTE	Stats4-Responses			.2	integer64
-ATTRIBUTE	Stats4-Invalid-Requests			.3	integer64
-ATTRIBUTE	Stats4-Dup-Requests			.4	integer64
-ATTRIBUTE	Stats4-Malformed-Requests		.5	integer64
-ATTRIBUTE	Stats4-Packets-Dropped			.6	integer64
-ATTRIBUTE	Stats4-Bad-Authenticators		.7	integer64
-ATTRIBUTE	Stats4-Unknown-Types			.8	integer64
+ATTRIBUTE	Counters				15.8	tlv
+ATTRIBUTE	Requests				.1	integer64
+ATTRIBUTE	Responses				.2	integer64
+ATTRIBUTE	Invalid-Requests			.3	integer64
+ATTRIBUTE	Dup-Requests				.4	integer64
+ATTRIBUTE	Malformed-Requests			.5	integer64
+ATTRIBUTE	Packets-Dropped				.6	integer64
+ATTRIBUTE	Bad-Authenticators			.7	integer64
+ATTRIBUTE	Unknown-Types				.8	integer64
 
 #
 #  These count request and response packets for each type of packet.
@@ -54,25 +54,25 @@ ATTRIBUTE	Stats4-Unknown-Types			.8	integer64
 #  that the reader is knowledgeable enough to know which ones are
 #  requests, and which ones are responses.
 #
-ATTRIBUTE	Stats4-Packet-Counters			15.9	tlv
+ATTRIBUTE	Packet-Counters				15.9	tlv
 
 #
 #  The attribute number for the counters is taken from the packet codes.
 #
-ATTRIBUTE	Stats4-Access-Request			15.9.1	integer64
-ATTRIBUTE	Stats4-Access-Accept			15.9.2	integer64
-ATTRIBUTE	Stats4-Access-Reject			15.9.3	integer64
-ATTRIBUTE	Stats4-Accounting-Request		15.9.4	integer64
-ATTRIBUTE	Stats4-Accounting-Response		15.9.5	integer64
-ATTRIBUTE	Stats4-Access-Challenge			15.9.11	integer64
-ATTRIBUTE	Stats4-Status-Server			15.9.12	integer64
-ATTRIBUTE	Stats4-Disconnect-Request		15.9.40	integer64
-ATTRIBUTE	Stats4-Disconnect-ACK			15.9.41	integer64
-ATTRIBUTE	Stats4-Disconnect-NAK			15.9.42	integer64
-ATTRIBUTE	Stats4-CoA-Request			15.9.43	integer64
-ATTRIBUTE	Stats4-CoA-ACK				15.9.44	integer64
-ATTRIBUTE	Stats4-CoA-NAK				15.9.45	integer64
-ATTRIBUTE	Stats4-Protocol-Error			15.9.52	integer64
+ATTRIBUTE	Access-Request				15.9.1	integer64
+ATTRIBUTE	Access-Accept				15.9.2	integer64
+ATTRIBUTE	Access-Reject				15.9.3	integer64
+ATTRIBUTE	Accounting-Request			15.9.4	integer64
+ATTRIBUTE	Accounting-Response			15.9.5	integer64
+ATTRIBUTE	Access-Challenge			15.9.11	integer64
+ATTRIBUTE	Status-Server				15.9.12	integer64
+ATTRIBUTE	Disconnect-Request			15.9.40	integer64
+ATTRIBUTE	Disconnect-ACK				15.9.41	integer64
+ATTRIBUTE	Disconnect-NAK				15.9.42	integer64
+ATTRIBUTE	CoA-Request				15.9.43	integer64
+ATTRIBUTE	CoA-ACK					15.9.44	integer64
+ATTRIBUTE	CoA-NAK					15.9.45	integer64
+ATTRIBUTE	Protocol-Error				15.9.52	integer64
 
 #
 #  Attributes 127 through 187 are for statistics produced by
