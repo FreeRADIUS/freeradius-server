@@ -41,9 +41,9 @@ above.
 
 You can create another virtual server by:
 
-* defining a new "server foo \{…}" section in `radiusd.conf`
-* Putting the normal "authorize", etc. sections inside of it
-* Adding a "listen" section _inside_ of the "server" section.
+* Define a new "server foo \{…}" section in `radiusd.conf`
+* Put the normal "authorize", etc. sections inside of it
+* Add a "listen" section _inside_ of the "server" section.
 
 e.g.
 

@@ -5,11 +5,4 @@ transmission, storage, server configs and behaviors.
 
 The available Policy modules are:
 
-* xref:raddb/mods-available/always.adoc[Always] - always return a value (can be programattically changed!)
-
-* xref:raddb/mods-available/attr_filter.adoc[Attribute filter] - filter replies so that they contain only limited data
-
-* xref:raddb/mods-available/idn.adoc[IDN] - convert internationalized strings to DNS "punycode" encoding.
-
-* xref:raddb/mods-available/sometimes.adoc[Sometimes] - randomly succeed or fail.  Mostly used for testing.
-
+include::partial$policy_table.adoc[]

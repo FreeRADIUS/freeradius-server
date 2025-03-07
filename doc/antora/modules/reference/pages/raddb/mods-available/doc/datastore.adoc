@@ -12,48 +12,4 @@ credentials.
 
 The available Datastore modules are:
 
-* xref:raddb/mods-available/cache.adoc[Cache] - cache data to local disk, memcached, or redis
-
-** xref:raddb/mods-available/cache_eap.adoc[Cache EAP] - example of caching EAP sessions
-
-** xref:raddb/mods-available/cache_tls.adoc[Cache TLS Session] - example of caching TLS sessions
-
-* xref:raddb/mods-available/client.adoc[Client] - read client definitions dynamically from text files
-
-* xref:raddb/mods-available/csv.adoc[CSV] - read data from a CSV file
-
-* xref:raddb/mods-available/etc_group.adoc[etc_group] - read data from `/etc/group`, or similarly formatted files
-
-* xref:raddb/mods-available/files.adoc[Files] - read data from the `users` file.
-
-* xref:raddb/mods-config/files/users.adoc[Users File Format] - format of the `users` file
-
-* xref:raddb/mods-available/ldap.adoc[LDAP] - connect to an LDAP server
-
-* xref:raddb/mods-available/opendirectory.adoc[OpenDirectory] - connect to an OpenDirectory server
-
-* xref:raddb/mods-available/passwd.adoc[Passwd] - read data from `/etc/passwd`, or similarly formatted files
-
-** xref:raddb/mods-available/mac2ip.adoc[Mac2IP] - example of using the `passwd` module to lookup up IP address by MAC address
-
-** xref:raddb/mods-available/mac2vlan.adoc[Mac2Vlan] - example of using the `passwd` module to lookup up VLAN by MAC address
-
-** xref:raddb/mods-available/smbpasswd.adoc[SMBPasswd] - read data from `/etc/smbpasswd`
-
-* xref:raddb/mods-available/redis.adoc[Redis] - connect to a Redis server
-
-** xref:raddb/mods-available/redis_ippool.adoc[Redis IP Pool] - manages IP pools in Redis
-
-** xref:raddb/mods-available/rediswho.adoc[REDISWho] - manages online users in Redis
-
-* xref:raddb/mods-available/rest.adoc[Rest] - connect to a REST server
-
-* xref:raddb/mods-available/sql.adoc[SQL] - connect to an SQL server
-
-** xref:raddb/mods-available/sqlcounter.adoc[Counter] - track user activity (time / bandwidth) in SQL
-
-** xref:raddb/mods-available/sqlippool.adoc[IP-Pool] - manages IP pools in SQL
-
-** xref:raddb/mods-available/redundant_sql.adoc[Redundant] - example of using redundant connections to an SQL sercer
-
-* xref:raddb/mods-available/unix.adoc[Unix] - read passwords from `getpwent()`
+include::partial$datastore_table.adoc[]

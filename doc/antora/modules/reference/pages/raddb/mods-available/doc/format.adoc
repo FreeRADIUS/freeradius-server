@@ -1,14 +1,7 @@
 = Formatting and Conversion Modules
 
-The formatting and conversion modules allow the server to read and
-write data in different formats.
+The modules allow the server to read and write data in different formats and storage types.
 
-* xref:raddb/mods-available/cipher.adoc[Cipher] - encrypt or decrypt data
+The Formatting and Conversions modules available are:
 
-* xref:raddb/mods-available/date.adoc[Date] - parse or print dates in specific formats
-
-* xref:raddb/mods-available/escape.adoc[Escape] - escape or un-escape strings
-
-* xref:raddb/mods-available/unpack.adoc[Unpack] - decode binary data from octet strings
-
-* xref:raddb/mods-available/utf8.adoc[UTF-8] - check and enforce UTF8 encoding for strings
+include::partial$formatconvert_table.adoc[]

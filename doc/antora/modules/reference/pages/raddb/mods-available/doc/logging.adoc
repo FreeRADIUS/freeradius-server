@@ -4,12 +4,4 @@ The logging modules write data to external destinations such as files, syslog, e
 
 The available Logging modules are:
 
-* xref:raddb/mods-available/linelog.adoc[Linelog] - log single lines to syslog, UDP, TCP, etc.
-
-** xref:raddb/mods-available/logtee.adoc[Logtee] - log to multiple destinations
-
-* xref:raddb/mods-available/detail.adoc[Detail] - log packets in the RADIUS "detail" file format
-
-** xref:raddb/mods-available/detail.example.com.adoc[Detail Sample] - example of writing detail files by date
-
-** xref:raddb/mods-available/detail.log.adoc[Detail Log Sample] - example of logging different packets to different files
+include::partial$logging_table.adoc[]
