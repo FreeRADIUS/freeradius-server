@@ -68,7 +68,7 @@ files {
 #	v3_compat = false
 }
 files files_accounting {
-#	key = "%{Stripped-User-Name || &User-Name}"
+#	key = "%{Stripped-User-Name || User-Name}"
 	filename = ${modconfdir}/files/accounting
 }
 ```

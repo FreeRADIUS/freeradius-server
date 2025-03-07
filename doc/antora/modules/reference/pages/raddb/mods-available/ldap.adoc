@@ -911,7 +911,7 @@ ldap {
 #	edir_autz = no
 	user {
 		base_dn = "${..base_dn}"
-		filter = "(uid=%{&Stripped-User-Name || User-Name})"
+		filter = "(uid=%{Stripped-User-Name || User-Name})"
 #		filter = "(&(objectClass=user)(sAMAccountName=%{Stripped-User-Name || User-Name})(memberOf:1.2.840.113556.1.4.1941:=cn=group,${..base_dn}))"
 		sasl {
 #			mech = 'PLAIN'

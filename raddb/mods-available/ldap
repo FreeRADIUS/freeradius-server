@@ -250,7 +250,7 @@ ldap {
 		#  filter:: Filter for user objects, should be specific enough
 		#  to identify a single user object.
 		#
-		filter = "(uid=%{&Stripped-User-Name || User-Name})"
+		filter = "(uid=%{Stripped-User-Name || User-Name})"
 
 		#  For Active Directory nested group, you should comment out the previous 'filter = ...'
 		#  and use the below. Where 'group' is the group you are querying for.

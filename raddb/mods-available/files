@@ -67,6 +67,6 @@ files {
 #  ## An instance of the `files` module for use in processing accounting packets
 #
 files files_accounting {
-#	key = "%{Stripped-User-Name || &User-Name}"
+#	key = "%{Stripped-User-Name || User-Name}"
 	filename = ${modconfdir}/files/accounting
 }
