@@ -1296,7 +1296,7 @@ static int xlat_instantiate_logical(xlat_inst_ctx_t const *xctx)
 {
 	xlat_logical_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_logical_inst_t);
 
-	inst->argc = xlat_flatten_compiled_argv(inst, &inst->argv, xctx->ex->call.args);
+	inst->argc = xlat_flatten_to_argv(inst, &inst->argv, xctx->ex->call.args);
 	if (xctx->ex->call.func->token == T_LOR) {
 		inst->callback = xlat_logical_or_resume;
 		inst->stop_on_match = true;

@@ -1573,15 +1573,20 @@ ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, request_t *request,
 }
 
 
-/** Turn xlat_tokenize_argv() into an argv[] array, and nuke the input list.
+/** Turn am xlat list into an argv[] array, and nuke the input list.
  *
  *  This is mostly for async use.
  */
-int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_exp_head_t *head)
+int xlat_flatten_to_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_exp_head_t *head)
 {
 	int			i;
 	xlat_exp_head_t		**my_argv;
 	size_t			count;
+
+	if (head->flags.needs_resolving) {
+		fr_strerror_printf("Cannot flatten expression with unresolved functions");
+		return -1;
+	}
 
 	count = 0;
 	xlat_exp_foreach(head, node) {
