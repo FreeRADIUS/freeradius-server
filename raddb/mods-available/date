@@ -73,7 +73,7 @@ date date_iso {
 #  string will be parsed according to the `format` configuration,
 #  and a Unix date will be returned, as integer seconds since the epoch.
 #
-#  For example, `%date(&Event-Timestamp)` will use the date from the
+#  For example, `%date('Event-Timestamp')` will use the date from the
 #  `Event-Timestamp` attribute as the source of the date for printing.
 #
 #  ."Get time" mode:
@@ -106,11 +106,12 @@ date date_iso {
 #
 #  [options="header,autowidth"]
 #  |===
-#  | Parameter       | Description
-#  | %l              | request time in seconds since the epoch.
-#  | %M              | request time microsecond component.
-#  | %c              | current time in seconds since the epoch.
-#  | %C              | current time microsecond component.
-#  | &Attribute-Name | for string attributes, parse the string according to `format`, and return the integer value as a Unix timestamp.
+#  | Parameter        | Description
+#  |===
+#  | %l               | request time in seconds since the epoch.
+#  | %M               | request time microsecond component.
+#  | %c               | current time in seconds since the epoch.
+#  | %C               | current time microsecond component.
+#  | 'Attribute-Name' | for string attributes, parse the string according to `format`, and return the integer value as a Unix timestamp.
 #  |===
 #
