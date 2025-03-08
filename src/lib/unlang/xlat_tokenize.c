@@ -110,9 +110,6 @@ static fr_sbuff_parse_rules_t const xlat_function_arg_rules = {
 		),
 };
 
-static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
-				fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, fr_value_box_safe_for_t safe_for);
-
 #ifdef HAVE_REGEX
 /** Parse an xlat reference
  *
@@ -459,8 +456,8 @@ static int xlat_resolve_virtual_attribute(xlat_exp_t *node, tmpl_t *vpt)
 /** Parse an attribute ref or a virtual attribute
  *
  */
-static int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
-				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, tmpl_attr_prefix_t attr_prefix)
+static ssize_t xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
+				       fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, tmpl_attr_prefix_t attr_prefix)
 {
 	tmpl_attr_error_t	err;
 	tmpl_t			*vpt = NULL;
@@ -468,6 +465,7 @@ static int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 
 	fr_sbuff_marker_t	m_s;
 	tmpl_rules_t		our_t_rules;
+	fr_sbuff_t		our_in = FR_SBUFF(in);
 
 	XLAT_DEBUG("ATTRIBUTE <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
 
@@ -506,18 +504,18 @@ static int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	fr_sbuff_marker(&m_s, in);
 
 	MEM(node = xlat_exp_alloc_null(head));
-	if (tmpl_afrom_attr_substr(node, &err, &vpt, in, p_rules, &our_t_rules) < 0) {
+	if (tmpl_afrom_attr_substr(node, &err, &vpt, &our_in, p_rules, &our_t_rules) < 0) {
 		/*
 		 *	If the parse error occurred before a terminator,
 		 *	then the error is changed to 'Unknown module',
 		 *	as it was more likely to be a bad module name,
 		 *	than a request qualifier.
 		 */
-		if (err == TMPL_ATTR_ERROR_MISSING_TERMINATOR) fr_sbuff_set(in, &m_s);
+		if (err == TMPL_ATTR_ERROR_MISSING_TERMINATOR) fr_sbuff_set(&our_in, &m_s);
 	error:
 		fr_sbuff_marker_release(&m_s);
 		talloc_free(node);
-		FR_SBUFF_ERROR_RETURN(in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	/*
@@ -533,7 +531,7 @@ static int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 			talloc_free(vpt);
 
 			fr_strerror_const("Unresolved attributes not allowed in expansions here");
-			fr_sbuff_set(in, &m_s);		/* Error at the start of the attribute */
+			fr_sbuff_set(&our_in, &m_s);		/* Error at the start of the attribute */
 			goto error;
 		}
 
@@ -575,7 +573,7 @@ done:
 	xlat_exp_insert_tail(head, node);
 
 	fr_sbuff_marker_release(&m_s);
-	return 0;
+	return fr_sbuff_set(in, &our_in);
 }
 
 static bool const tmpl_attr_allowed_chars[UINT8_MAX + 1] = {
@@ -792,12 +790,12 @@ check_for_attr:
  * @param[in] safe_for		mark up literal values as being pre-escaped.  May be merged
  *				with t_rules in future.
  * @return
- *	- 0 on success.
- *	- -1 on failure.
+ *	- <0 on failure
+ *	- >=0 for number of bytes parsed
  */
-static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
-			       fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-			       fr_value_box_safe_for_t safe_for)
+static ssize_t xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
+				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
+				   fr_value_box_safe_for_t safe_for)
 {
 	xlat_exp_t			*node = NULL;
 	fr_slen_t			slen;
@@ -806,6 +804,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 					);
 	fr_sbuff_term_t			*tokens;
 	fr_sbuff_unescape_rules_t const	*escapes;
+	fr_sbuff_t			our_in = FR_SBUFF(in);
 
 	XLAT_DEBUG("STRING <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
 
@@ -825,8 +824,8 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 		/*
 		 *	Find the next token
 		 */
-		fr_sbuff_marker(&m_s, in);
-		slen = fr_sbuff_out_aunescape_until(node, &str, in, SIZE_MAX, tokens, escapes);
+		fr_sbuff_marker(&m_s, &our_in);
+		slen = fr_sbuff_out_aunescape_until(node, &str, &our_in, SIZE_MAX, tokens, escapes);
 
 		if (slen < 0) {
 		error:
@@ -837,7 +836,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 			 */
 			if (tokens != &terminals) talloc_free(tokens);
 			fr_sbuff_marker_release(&m_s);
-			return -1;
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		/*
@@ -867,7 +866,6 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 			continue;
 		}
 
-
 		/*
 		 *	We have parsed as much as we can as unescaped
 		 *	input.  Either some text (and added the node
@@ -878,9 +876,9 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 		/*
 		 *	Attribute, function call, or other expansion.
 		 */
-		if (fr_sbuff_adv_past_str_literal(in, "%{")) {
+		if (fr_sbuff_adv_past_str_literal(&our_in, "%{")) {
 			TALLOC_FREE(node); /* nope, couldn't use it */
-			if (xlat_tokenize_expansion(head, in, t_rules) < 0) goto error;
+			if (xlat_tokenize_expansion(head, &our_in, t_rules) < 0) goto error;
 		next:
 			fr_sbuff_marker_release(&m_s);
 			continue;
@@ -889,12 +887,12 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 		/*
 		 *	More migration hacks: allow %foo(...)
 		 */
-		if (fr_sbuff_next_if_char(in, '%')) {
+		if (fr_sbuff_next_if_char(&our_in, '%')) {
 			/*
 			 *	% non-alphanumeric, create a value-box for just the "%" character.
 			 */
-			if (!fr_sbuff_is_alnum(in)) {
-				if (fr_sbuff_next_if_char(in, '%')) { /* nothing */ }
+			if (!fr_sbuff_is_alnum(&our_in)) {
+				if (fr_sbuff_next_if_char(&our_in, '%')) { /* nothing */ }
 
 				str = talloc_typed_strdup(node, "%");
 				goto do_value_box;
@@ -905,7 +903,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 			/*
 			 *	Tokenize the function arguments using the new method.
 			 */
-			if (xlat_tokenize_function_args(head, in, t_rules) < 0) goto error;
+			if (xlat_tokenize_function_args(head, &our_in, t_rules) < 0) goto error;
 			goto next;
 		}
 
@@ -923,7 +921,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 	 */
 	if (tokens != &terminals) talloc_free(tokens);
 
-	return 0;
+	return fr_sbuff_set(in, &our_in);
 }
 
 static fr_table_num_sorted_t const xlat_quote_table[] = {
