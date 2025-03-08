@@ -260,7 +260,7 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 			goto done;
 		}
 
-		log_request_pair(L_DBG_LVL_2, request, NULL, container, "&session-state.");
+		log_request_pair(L_DBG_LVL_2, request, NULL, container, "session-state.");
 	}
 done:
 	/*

@@ -1040,7 +1040,7 @@ do_children:
 		 *	}
 		 *
 		 *	On the other hand, any xlats on the RHS don't use the full path.  :( And we still need
-		 *	to allow relative attribute references via "&.foo", when updating structures.
+		 *	to allow relative attribute references via ".foo", when updating structures.
 		 */
 		our_rhs_rules = rhs_rules;
 		if (edit && (rhs_rules->attr.list_def != child_lhs_rules.attr.list_def)) {

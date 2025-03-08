@@ -594,7 +594,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map, fr_edit_list_t
 
 		/*
 		 *	Delete all existing attributes.  Note that we re-initialize the cursor every time,
-		 *	because creating "&foo := baz" means deleting ALL existing "foo".  But we can't use
+		 *	because creating "foo := baz" means deleting ALL existing "foo".  But we can't use
 		 *	the tmpl as a cursor, because the tmpl containst NUM_UNSPEC, and the cursor needs
 		 *	NUM_ALL.  So we have to delete all existing attributes, and then add a new one.
 		 */

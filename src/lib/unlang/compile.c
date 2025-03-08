@@ -939,13 +939,13 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 	cf_item_insert_after(g->cs, cs, group);
 
 	/*
-	 *	Hoist this out of the loop, and make sure it always has a '&' prefix.
+	 *	Hoist this out of the loop, and make sure it never has a '&' prefix.
 	 */
 	if (name2) {
 		if (*name2 == '&') name2++;
-		snprintf(list_buffer, sizeof(list_buffer), "&%s", name2);
+		snprintf(list_buffer, sizeof(list_buffer), "%s", name2);
 	} else {
-		snprintf(list_buffer, sizeof(list_buffer), "&%s", tmpl_list_name(unlang_ctx->rules->attr.list_def, "<INVALID>"));
+		snprintf(list_buffer, sizeof(list_buffer), "%s", tmpl_list_name(unlang_ctx->rules->attr.list_def, "<INVALID>"));
 
 	}
 
@@ -1027,7 +1027,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 				char *p;
 
 			attr_is_list:
-				snprintf(attr_buffer, sizeof(attr_buffer), "&%s", attr);
+				snprintf(attr_buffer, sizeof(attr_buffer), "%s", attr);
 				list = attr_buffer;
 				attr = NULL;
 
@@ -1054,9 +1054,9 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 
 			} else {
 				if (strchr(attr, '[') == NULL) {
-					snprintf(value_buffer, sizeof(value_buffer), "&%s[*]", attr);
+					snprintf(value_buffer, sizeof(value_buffer), "%s[*]", attr);
 				} else {
-					snprintf(value_buffer, sizeof(value_buffer), "&%s", attr);
+					snprintf(value_buffer, sizeof(value_buffer), "%s", attr);
 				}
 
 				rcode = edit_pair_alloc(group, cp, list, T_OP_SUB_EQ, value_buffer, T_INVALID);
@@ -1105,8 +1105,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 			rcode = edit_section_alloc(group, &child, list, op);
 			if (rcode < 0) break;
 
-			snprintf(attr_buffer, sizeof(attr_buffer), "&%s", attr);
-			rcode = edit_pair_alloc(child, cp, attr_buffer, T_OP_EQ, value, op);
+			rcode = edit_pair_alloc(child, cp, attr, T_OP_EQ, value, op);
 			break;
 
 			/*
@@ -1129,8 +1128,7 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 				return NULL;
 			}
 
-			snprintf(attr_buffer, sizeof(attr_buffer), "&%s", attr);
-			rcode = edit_pair_alloc(child, cp, attr_buffer, op, value, T_OP_SUB_EQ);
+			rcode = edit_pair_alloc(child, cp, attr, op, value, T_OP_SUB_EQ);
 			break;
 
 			/*

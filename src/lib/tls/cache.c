@@ -275,7 +275,7 @@ static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess)
 
 		RDEBUG2("Session-ID %pV - Restoring session-state[*]", &sess_id);
 		RINDENT();
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, &tmp, "&session-state.");
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &tmp, "session-state.");
 		REXDENT();
 	}
 

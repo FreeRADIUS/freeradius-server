@@ -713,7 +713,7 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 
 	if (!fr_pair_list_empty(&request->session_state_pairs)) {
 		RDEBUG2("Restored session-state");
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, "&session-state.");
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, "session-state.");
 	}
 
 	RDEBUG3("%s - restored", state->da->name);
@@ -748,7 +748,7 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 
 	if (!fr_pair_list_empty(&request->session_state_pairs)) {
 		RDEBUG2("Saving session-state");
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, "&session-state.");
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, "session-state.");
 
 #ifdef WITH_VERIFY_PTR
 		/*

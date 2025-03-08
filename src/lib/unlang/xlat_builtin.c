@@ -1226,7 +1226,7 @@ static xlat_arg_parser_t const xlat_func_map_arg[] = {
  *
  * e.g.
 @verbatim
-%map("&User-Name := 'foo'")
+%map("User-Name := 'foo'")
 @endverbatim
  *
  * Allows sets of modifications to be cached and then applied.
