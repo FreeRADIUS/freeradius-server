@@ -65,8 +65,8 @@ fields can be accessed using 'map' as shown in the example below.
 [source, unlang]
 ----
 map json "%rest(GET http://example.org/api/user/%{User-Name})" {
-  &Foo            := '$.account number'
-  &Group          += '$.groups.*'
+  Foo            := '$.account number'
+  Group          += '$.groups.*'
 }
 ----
 
@@ -159,7 +159,7 @@ NOTE: Validate parser for everything except unions and expressions.
 ----
 string payload
 payload := '$.my.json.payload[1]'
-&reply.Reply-Message := "Validation of %{payload} is %json.jpath_validate($.my.json.payload[1])"
+reply.Reply-Message := "Validation of %{payload} is %json.jpath_validate($.my.json.payload[1])"
 ----
 
 .Output
@@ -179,8 +179,8 @@ Escapes string for use as a JSON string.
 [source,unlang]
 ----
 string path
-&path := "caipirinha/gelada"
-&reply.Reply-Message := "The string %{path} should be %json.quote(%{path}) to be a valid JSON string."
+path := "caipirinha/gelada"
+reply.Reply-Message := "The string %{path} should be %json.quote(%{path}) to be a valid JSON string."
 ----
 
 .Output
@@ -212,7 +212,7 @@ it, `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` and `lin
 .Example
 
 ```
-%json.encode(&User-Name, &Calling-Station-Id)
+%json.encode('User-Name', 'Calling-Station-Id')
 ```
 
 The following will include all attributes in the RADIUS request, except for
@@ -221,17 +221,17 @@ The following will include all attributes in the RADIUS request, except for
 .Example
 
 ```
-%json.encode(&request[*], !&User-Password)
+%json.encode('request[*]', '!User-Password')
 ```
 
 In another (contrived) example, all the attributes in the RADIUS request will
 be included in the document, _except_ any attributes in the RADIUS reply.
-`&User-Name` will be included from the control list, too, if it exists:
+`link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` will be included from the control list, too, if it exists:
 
 .Example
 
 ```
-%json.encode(&request[*], !&reply[*], &control.User-Name)
+%json.encode('request[*]', '!reply[*]', 'control.User-Name')
 ```
 
 #### Output format modes
