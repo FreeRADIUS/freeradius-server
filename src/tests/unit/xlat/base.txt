@@ -260,10 +260,10 @@ match %rpad(User-Name, 5, 'x')
 #  The second argument should be an integer.
 #
 #  @todo - parsing - we don't currently track string offsets for intermediate nodes,
-#  so the "offset 23" is wrong.  It also doesn't say *which* string is wrong.  We'll fix that later.
+#  so the "offset" is wrong.  It also doesn't say *which* string is wrong.  We'll fix that later.
 #
-xlat %rpad(User-Name, foo, 'x')
-match ERROR offset 27: Failed parsing argument 1 as type 'uint64'
+xlat %rpad(User-Name, 'foo', 'x')
+match ERROR offset 29: Failed parsing argument 1 as type 'uint64'
 
 #
 #  Argument quoting

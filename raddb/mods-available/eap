@@ -870,7 +870,7 @@ eap {
 			#  the value provided here is first hashed with SHA256
 			#  before being passed to OpenSSL.
 			#
-#			name = "%{EAP-Type}%interpreter(server)"
+#			name = "%{EAP-Type}%interpreter('server')"
 
 			#
 			#  lifetime:: The period for which a resumable session remains vali.d

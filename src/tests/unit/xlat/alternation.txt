@@ -14,11 +14,11 @@ match %{(%{User-Name} || "bar")}
 xlat foo %{%{User-Name} || 'bar'} baz
 match foo %{(%{User-Name} || 'bar')} baz
 
-xlat %{%test(bar) || %{User-Name}}
-match %{(%test(bar) || %{User-Name})}
+xlat %{%test('bar') || %{User-Name}}
+match %{(%test('bar') || %{User-Name})}
 
-xlat %{%test(bar) || %{%{User-Name} || 'bar'}}
-match %{(%test(bar) || %{(%{User-Name} || 'bar')})}
+xlat %{%test('bar') || %{%{User-Name} || 'bar'}}
+match %{(%test('bar') || %{(%{User-Name} || 'bar')})}
 
 xlat %{%{User-Name} || }
 match ERROR offset 19: Zero length attribute name: Unresolved attributes are not allowed here
@@ -29,8 +29,8 @@ matchERROR offset 23: Zero length attribute name: Unresolved attributes are not 
 xlat %{%{%{User-Name} || 'foo'} || 'bar'}
 match %{(%{(%{User-Name} || 'foo')} || 'bar')}
 
-xlat %{%{%{User-Name} || 'foo'} || %{%test(bar) || %{User-Name}}}
-match %{(%{(%{User-Name} || 'foo')} || %{(%test(bar) || %{User-Name})})}
+xlat %{%{%{User-Name} || 'foo'} || %{%test('bar') || %{User-Name}}}
+match %{(%{(%{User-Name} || 'foo')} || %{(%test('bar') || %{User-Name})})}
 
 xlat %{ || }
 match ERROR offset 4: Zero length attribute name: Unresolved attributes are not allowed here

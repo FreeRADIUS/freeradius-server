@@ -90,7 +90,7 @@ static conf_parser_t tls_cache_config[] = {
 			 },
 			 .dflt = "auto" },
 	{ FR_CONF_OFFSET_HINT_TYPE("name", FR_TYPE_STRING, fr_tls_cache_conf_t, id_name),
-			 .dflt = "%{EAP-Type}%interpreter(server)", .quote = T_DOUBLE_QUOTED_STRING },
+			 .dflt = "%{EAP-Type}%interpreter('server')", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("lifetime", fr_tls_cache_conf_t, lifetime), .dflt = "1d" },
 
 	{ FR_CONF_OFFSET("require_extended_master_secret", fr_tls_cache_conf_t, require_extms), .dflt = "yes" },

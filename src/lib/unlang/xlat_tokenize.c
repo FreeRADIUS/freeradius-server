@@ -45,7 +45,8 @@ RCSID("$Id$")
 #  define XLAT_HEXDUMP(...)
 #endif
 
-extern bool tmpl_require_enum_prefix;
+extern const bool tmpl_require_enum_prefix;
+extern const bool xlat_func_bare_words;
 
 /** These rules apply to literal values and function arguments inside of an expansion
  *
@@ -1333,7 +1334,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			     xlat_t const *xlat,
 			     fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, bool spaces)
 {
-	int				argc = 0;
+	int				argc;
 	fr_sbuff_t			our_in = FR_SBUFF(in);
 	ssize_t				slen;
 	fr_sbuff_marker_t		m;
@@ -1379,6 +1380,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 	 */
 	fr_sbuff_adv_past_whitespace(in, SIZE_MAX, NULL);
 	fr_sbuff_marker(&m, &our_in);
+	argc = 1;
 
 	while (fr_sbuff_extend(&our_in)) {
 		xlat_exp_t	*node = NULL;
@@ -1387,7 +1389,6 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		size_t		len;
 
 		fr_sbuff_set(&m, &our_in);	/* Record start of argument */
-		argc++;
 
 		/*
 		 *	Whitespace isn't significant for comma-separated argvs
@@ -1421,18 +1422,40 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			 *	tmpl.  And update the function arguments to say "we want a tmpl, not a
 			 *	string".
 			 */
-			if (fr_sbuff_is_char(&our_in, '&')) {
-				if (xlat_tokenize_attribute(node->group, &our_in, our_p_rules, t_rules, TMPL_ATTR_REF_PREFIX_YES) < 0) goto error;
-				break;
-			}
+			if (spaces && !tmpl_require_enum_prefix && fr_sbuff_is_char(&our_in, '&')) {
+				slen = xlat_tokenize_attribute(node->group, &our_in, our_p_rules, t_rules, TMPL_ATTR_REF_PREFIX_YES);
 
-			if (xlat_tokenize_input(node->group, &our_in,
-						our_p_rules, t_rules, arg->safe_for) < 0) {
+			} else if (spaces || xlat_func_bare_words) {
+				/*
+				 *	Spaces - each argument is a bare word all by itself, OR an xlat thing all by itself.
+				 *
+				 *	No spaces - each arugment is an expression, which can have embedded spaces.
+				 */
+				slen = xlat_tokenize_input(node->group, &our_in, our_p_rules, t_rules, arg->safe_for);
+
+			} else if (fr_sbuff_is_char(&our_in, ')')) {
+				/*
+				 *	%foo()
+				 */
+				slen = 0;
+
+			} else {
+				slen = xlat_tokenize_expression(node, &node->group, &our_in, our_p_rules, t_rules);
+			}
+			if (slen < 0) {
 			error:
 				if (our_p_rules == &tmp_p_rules) talloc_const_free(our_p_rules->terminals);
 				talloc_free(head);
 
 				FR_SBUFF_ERROR_RETURN(&our_in);	/* error */
+			}
+
+			/*
+			 *	No data, but the argument was required.  Complain.
+			 */
+			if (!slen && arg->required) {
+				fr_strerror_printf("Missing required arg %u", argc);
+				goto error;
 			}
 			break;
 
@@ -1548,9 +1571,11 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 	next:
 		if (!arg->variadic) {
 			arg++;
+			argc++;
+
 			if (arg->type == FR_TYPE_NULL) {
 				fr_strerror_printf("Too many arguments, expected %zu, got %d",
-						   (size_t) (arg - arg_start), argc - 1);
+						   (size_t) (arg - arg_start), argc);
 				goto error;
 			}
 		}

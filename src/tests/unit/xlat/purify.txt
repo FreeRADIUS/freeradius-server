@@ -244,10 +244,10 @@ match "a""b""c""d"
 #
 # @todo - bare words should probably be disallowed
 #
-xlat_purify %md5(foo)
+xlat_purify %md5('foo')
 match 0xacbd18db4cc2f85cedef654fccc4a4d8
 
-xlat_purify %md5(%md5(foo))
+xlat_purify %md5(%md5('foo'))
 match 0x47847ae721df523d6388aebc9c94d656
 
 xlat_purify %md5('%md5(foo)')

@@ -2386,6 +2386,7 @@ static size_t command_max_buffer_size(command_result_t *result, command_file_ctx
 }
 
 extern bool tmpl_require_enum_prefix;
+extern bool xlat_func_bare_words;
 
 /** Set or clear migration flags.
  *
@@ -3785,6 +3786,14 @@ int main(int argc, char *argv[])
 	default_log.dst = L_DST_STDOUT;
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
+
+	/*
+	 *	Migration option - it's enabled by default in
+	 *	src/lib/server/main_config.c, until we have time to
+	 *	update all of the default configuration files and
+	 *	tests.
+	 */
+	xlat_func_bare_words = false;
 
 	while ((c = getopt(argc, argv, "cd:D:F:fxMhpr:S:w:")) != -1) switch (c) {
 		case 'c':
