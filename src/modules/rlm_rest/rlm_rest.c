@@ -188,9 +188,9 @@ static const conf_parser_t module_config[] = {
 #define REST_CALL_ENV_REQUEST_COMMON(_dflt_username, _dflt_password) \
 	{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_MULTI, rlm_rest_call_env_t, request.header) }, \
 	{ FR_CALL_ENV_OFFSET("data", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, rlm_rest_call_env_t, request.data) }, \
-	{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_SINGLE | CALL_ENV_FLAG_NULLABLE, \
+	{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_SINGLE | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, \
 				rlm_rest_call_env_t, request.username), .pair.dflt_quote = T_BARE_WORD, _dflt_username }, \
-	{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, CALL_ENV_FLAG_SINGLE | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_SECRET, \
+	{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, CALL_ENV_FLAG_SINGLE | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_SECRET | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, \
 				rlm_rest_call_env_t, request.password), .pair.dflt_quote = T_BARE_WORD, _dflt_password }, \
 
 #define REST_CALL_ENV_RESPONSE_COMMON \
@@ -234,7 +234,7 @@ static const call_env_method_t _var = { \
 }
 
 REST_CALL_ENV_SECTION(rest_call_env_authorize, "authorize",,);
-REST_CALL_ENV_SECTION(rest_call_env_authenticate, "authenticate", .pair.dflt = "&User-Name", .pair.dflt = "&User-Password");
+REST_CALL_ENV_SECTION(rest_call_env_authenticate, "authenticate", .pair.dflt = "User-Name", .pair.dflt = "User-Password");
 REST_CALL_ENV_SECTION(rest_call_env_post_auth, "post-auth",,);
 REST_CALL_ENV_SECTION(rest_call_env_accounting, "accounting",,);
 

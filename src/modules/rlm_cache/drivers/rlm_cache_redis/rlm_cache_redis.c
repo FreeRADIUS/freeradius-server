@@ -87,12 +87,12 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	These never change, so do it once on instantiation
 	 */
-	if (tmpl_afrom_attr_str(driver, NULL, &driver->created_attr, "&Cache-Created", NULL) <= 0) {
+	if (tmpl_afrom_attr_str(driver, NULL, &driver->created_attr, "Cache-Created", NULL) <= 0) {
 		ERROR("Cache-Created attribute not defined");
 		return -1;
 	}
 
-	if (tmpl_afrom_attr_str(driver, NULL, &driver->expires_attr, "&Cache-Expires", NULL) <= 0) {
+	if (tmpl_afrom_attr_str(driver, NULL, &driver->expires_attr, "Cache-Expires", NULL) <= 0) {
 		ERROR("Cache-Expires attribute not defined");
 		return -1;
 	}

@@ -196,7 +196,7 @@ static const call_env_method_t redis_ippool_alloc_method_env = {
 				     .pair.dflt = "%{%{Requested-IP-Address} || %{Net.Src.IP}}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("allocated_address_attr", FR_TYPE_VOID, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, redis_ippool_alloc_call_env_t, allocated_address_attr) },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("range_attr", FR_TYPE_VOID, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, redis_ippool_alloc_call_env_t, range_attr),
-					       .pair.dflt = "&reply.IP-Pool.Range", .pair.dflt_quote = T_BARE_WORD },
+					       .pair.dflt = "reply.IP-Pool.Range", .pair.dflt_quote = T_BARE_WORD },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("expiry_attr", FR_TYPE_VOID, CALL_ENV_FLAG_ATTRIBUTE, redis_ippool_alloc_call_env_t, expiry_attr) },
 		CALL_ENV_TERMINATOR
 	}
