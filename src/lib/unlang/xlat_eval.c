@@ -34,9 +34,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/value.h>
 
-#include <freeradius-devel/unlang/unlang_priv.h>	/* Remove when everything uses new xlat API */
-
-
 static int instance_count = 0;
 
 static fr_dict_t const *dict_freeradius;
