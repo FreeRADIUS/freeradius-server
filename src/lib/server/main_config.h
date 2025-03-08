@@ -163,6 +163,7 @@ struct main_config_s {
 	bool		forbid_update;			//!< forbid "update" sections
 	bool		require_enum_prefix;		//!< require "::" for enum parsing.  They're always printed with this
 	bool		call_env_forbid_ampersand;	//!< for help with migration
+	bool		xlat_func_bare_words;		//!< %foo(0xabcdef) is string (yes) versus binary blob (no)
 };
 
 void			main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config);

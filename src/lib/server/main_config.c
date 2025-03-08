@@ -188,6 +188,7 @@ static const conf_parser_t thread_config[] = {
  *	Migration configuration.
  */
 extern bool tmpl_require_enum_prefix;
+bool xlat_func_bare_words = false;
 
 static const conf_parser_t migrate_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("rewrite_update", CONF_FLAG_HIDDEN, main_config_t, rewrite_update) },
@@ -1502,6 +1503,7 @@ static fr_table_num_ordered_t config_arg_table[] = {
 	{ L("forbid_update"),		 offsetof(main_config_t, forbid_update) },
 	{ L("require_enum_prefix"),	 offsetof(main_config_t, require_enum_prefix) },
 	{ L("v3_enum_names"),		 offsetof(main_config_t, require_enum_prefix) },
+	{ L("xlat_func_bare_words"),	 offsetof(main_config_t, xlat_func_bare_words) },
 };
 static size_t config_arg_table_len = NUM_ELEMENTS(config_arg_table);
 
@@ -1540,6 +1542,7 @@ int main_config_parse_option(char const *value)
 	}
 
 	if (out == &main_config->require_enum_prefix) tmpl_require_enum_prefix = box.vb_bool;
+	if (out == &main_config->xlat_func_bare_words) xlat_func_bare_words = box.vb_bool;
 
 	*out = box.vb_bool;
 
