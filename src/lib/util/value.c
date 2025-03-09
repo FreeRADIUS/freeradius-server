@@ -5290,7 +5290,7 @@ parse:
 			FR_SBUFF_SET_RETURN(in, &our_in);
 		}
 
-		fr_strerror_const("String value was not NULL");
+		fr_strerror_const("Unexpected value for data type NULL");
 		return -1;
 
 	/*
