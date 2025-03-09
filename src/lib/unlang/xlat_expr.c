@@ -1999,6 +1999,11 @@ static const bool logical_ops[T_TOKEN_LAST] = {
 
 /*
  *	These operators can take multiple arguments.
+ *
+ *	@todo - include T_ADD, T_SUB, T_MUL, T_AND, T_OR, T_XOR, here too.
+ *
+ *	This array should contain a function pointer to the code which either appends the results, or does
+ *	peephole optimizations to merge the arguments together.  This merging will reduce run-time effort.
  */
 static const bool multivalue_ops[T_TOKEN_LAST] = {
 	[T_LAND] = true,
