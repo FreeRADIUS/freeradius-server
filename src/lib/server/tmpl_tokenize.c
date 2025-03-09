@@ -3670,7 +3670,7 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 		if (unlikely(xlat_copy(vpt, vpt->data.xlat.ex, in->data.xlat.ex) < 0)) goto error;
 	}
 
-	TMPL_ATTR_VERIFY(vpt);
+	TMPL_VERIFY(vpt);
 
 	return vpt;
 }
