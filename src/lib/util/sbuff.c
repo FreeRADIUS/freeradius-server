@@ -2190,7 +2190,7 @@ static char const *sbuff_print_char(char c)
 	};
 
 	static _Thread_local char str[10][5];
-	static _Thread_local char **p;
+	static _Thread_local size_t i = 0;
 
 	switch (c) {
 	case '\a':
@@ -2215,16 +2215,16 @@ static char const *sbuff_print_char(char c)
 		return "\v";
 
 	default:
-		if (!p || (p++ >= ((char **)str + (NUM_PTR_ELEMENTS(str) - 1)))) p = (char **)str;
+		if (i >= NUM_ELEMENTS(str)) i = 0;
 
 		if (unprintables[(uint8_t)c]) {
-			snprintf(*p, sizeof(*str), "\\x%x", c);
-			return *p;
+			snprintf(str[i], sizeof(str[i]), "\\x%x", c);
+			return str[i++];
 		}
 
-		*p[0] = c;
-		*p[1] = '\0';
-		return *p;
+		str[i][0] = c;
+		str[i][1] = '\0';
+		return str[i++];
 	}
 }
 
@@ -2262,15 +2262,17 @@ void fr_sbuff_parse_rules_debug(fr_sbuff_parse_rules_t const *p_rules)
 {
 	FR_FAULT_LOG("Parse rules %p", p_rules);
 
+	FR_FAULT_LOG("Escapes - ");
 	if (p_rules->escapes) {
 		fr_sbuff_unescape_debug(p_rules->escapes);
 	} else {
-		FR_FAULT_LOG("No unescapes");
+		FR_FAULT_LOG("<none>");
 	}
 
+	FR_FAULT_LOG("Terminals - ");
 	if (p_rules->terminals) {
 		fr_sbuff_terminal_debug(p_rules->terminals);
 	} else {
-		FR_FAULT_LOG("No terminals");
+		FR_FAULT_LOG("<none>");
 	}
 }
