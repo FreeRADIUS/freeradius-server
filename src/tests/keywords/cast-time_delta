@@ -39,7 +39,7 @@ if (diff != 60s) {
 #
 #  Cast the time delta to milliseconds
 #
-num = %cast("ms", %{diff})
+num = %cast("ms", diff)
 
 #
 #  This results in 60, because the conversion to fr_value_box_cast() doesn't pass dst->enumv?

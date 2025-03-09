@@ -30,73 +30,73 @@ test_int64	 	:= 1152921505566832445
 test_ipv4prefix	:= 57.56.55.62/32
 
 # String
-result_string := %hex(%{test_string})
+result_string := %hex(test_string)
 if (!(result_string == '39383730')) {
 	test_fail
 }
 
 # Octets
-result_string := %hex(%{test_octets})
+result_string := %hex(test_octets)
 if (!(result_string == '39383731')) {
 	test_fail
 }
 
 # IP Address
-result_string := %hex(%{test_ipaddr})
+result_string := %hex(test_ipaddr)
 if (!(result_string == '39383732')) {
 	test_fail
 }
 
 # Integer
-result_string := %hex(%{test_integer})
+result_string := %hex(test_integer)
 if (!(result_string == '39383734')) {
 	test_fail
 }
 
 # ifid
-result_string := %hex(%{test_ifid})
+result_string := %hex(test_ifid)
 if (!(result_string == '0000000039383737')) {
 	test_fail
 }
 
 # ipv6addr
-result_string := %hex(%{test_ipv6addr})
+result_string := %hex(test_ipv6addr)
 if (!(result_string == '00000000000000000000000039383738')) {
 	test_fail
 }
 
 # ipv6addrprefix
-result_string := %hex(%{test_ipv6prefix})
+result_string := %hex(test_ipv6prefix)
 if (!(result_string == '008000000000000000000000000039383739')) {
 	test_fail
 }
 
 # byte
-result_string := %hex(%{test_byte})
+result_string := %hex(test_byte)
 if (!(result_string == '3a')) {
 	test_fail
 }
 
 # short
-result_string := %hex(%{test_short})
+result_string := %hex(test_short)
 if (!(result_string == '373b')) {
 	test_fail
 }
 
 # ethernet
-result_string := %hex(%{test_ether})
+result_string := %hex(test_ether)
 if (!(result_string == '00003938373c')) {
 	test_fail
 }
 
 # integer64
-result_string := %hex(%{test_int64})
+result_string := %hex(test_int64)
 if (!(result_string == '100000003938373d')) {
 	test_fail
 }
 
 # ipv4prefix
-result_string := %hex(%{test_ipv4prefix})
+result_string := %hex(test_ipv4prefix)
 if (!(result_string == '203938373e')) {
 	test_fail
 }
@@ -107,7 +107,7 @@ request += {
 	Class = 0x0405
 }
 
-NAS-Identifier := %hex(%{Class[*]})
+NAS-Identifier := %hex(Class[*])
 
 if (NAS-Identifier[#] != 3) {
 	test_fail

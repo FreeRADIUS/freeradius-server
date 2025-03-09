@@ -7,7 +7,7 @@ string result
 input = "a b c d e f"
 result = ""
 
-foreach string thing (%explode(%{input}, ' ')) {
+foreach string thing (%explode(input, ' ')) {
 	result += thing
 	result += ','
 }

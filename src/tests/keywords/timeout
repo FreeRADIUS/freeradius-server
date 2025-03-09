@@ -10,7 +10,7 @@ bool c
 #
 redundant {
 	timeout 0.01s {
-		a := %delay_10s(0.1)
+		a := %delay_10s(0.1s)
 		test_fail
 	}
 
@@ -21,7 +21,7 @@ redundant {
 
 redundant {
 	timeout "0.01" {
-		a := %delay_10s(0.1)
+		a := %delay_10s(0.1s)
 		test_fail
 	}
 
