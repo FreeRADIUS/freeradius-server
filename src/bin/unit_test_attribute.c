@@ -256,6 +256,11 @@ typedef struct {
 	char const	*description;
 } command_entry_t;
 
+static xlat_arg_parser_t const xlat_test_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 static xlat_action_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
 			       UNUSED fr_value_box_list_t *in)
@@ -3745,6 +3750,7 @@ int main(int argc, char *argv[])
 	bool			do_commands = false;
 	bool			do_usage = false;
 	bool			allow_purify = false;
+	xlat_t			*xlat;
 
 	/*
 	 *	Must be called first, so the handler is called last
@@ -3940,10 +3946,12 @@ int main(int argc, char *argv[])
 
 	unlang_thread_instantiate(thread_ctx);
 
-	if (!xlat_func_register(NULL, "test", xlat_test, FR_TYPE_NULL)) {
+	xlat = xlat_func_register(NULL, "test", xlat_test, FR_TYPE_NULL);
+	if (!xlat) {
 		ERROR("Failed registering xlat");
 		EXIT_WITH_FAILURE;
 	}
+	xlat_func_args_set(xlat, xlat_test_args);
 
 	/*
 	 *	Disable hostname lookups, so we don't produce spurious DNS
