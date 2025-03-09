@@ -190,6 +190,8 @@ xlat_exp_t *_xlat_exp_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_type_t ty
  */
 void xlat_exp_set_name(xlat_exp_t *node, char const *fmt, size_t len)
 {
+	fr_assert(node->fmt != fmt);
+
 	if (node->fmt) talloc_const_free(node->fmt);
 	node->fmt = talloc_bstrndup(node, fmt, len);
 }
@@ -201,7 +203,13 @@ void xlat_exp_set_name(xlat_exp_t *node, char const *fmt, size_t len)
  */
 void xlat_exp_set_name_buffer(xlat_exp_t *node, char const *fmt)
 {
-	if (node->fmt) talloc_const_free(node->fmt);
+	if (node->fmt) {
+		if (node->fmt == fmt) {
+			(void) talloc_steal(node, fmt);
+		} else {
+			talloc_const_free(node->fmt);
+		}
+	}
 	node->fmt = talloc_typed_strdup_buffer(node, fmt);
 }
 
@@ -212,6 +220,8 @@ void xlat_exp_set_name_buffer(xlat_exp_t *node, char const *fmt)
  */
 void xlat_exp_set_name_buffer_shallow(xlat_exp_t *node, char const *fmt)
 {
+	fr_assert(node->fmt != fmt);
+
 	if (node->fmt) talloc_const_free(node->fmt);
 	node->fmt = talloc_get_type_abort_const(fmt, char);
 }
