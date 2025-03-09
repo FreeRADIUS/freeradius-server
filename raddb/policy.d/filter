@@ -37,7 +37,7 @@ filter_username {
 		#
 		#  reject mixed case e.g. "UseRNaMe"
 		#
-		#if (User-Name != "%tolower(%{User-Name}}") {
+		#if (User-Name != %tolower(User-Name)) {
 		#	reject
 		#}
 
