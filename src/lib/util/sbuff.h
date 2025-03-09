@@ -1825,11 +1825,11 @@ SBUFF_IS_FUNC(hex, isxdigit((uint8_t) *p))
 
 /** @} */
 
-void	fr_sbuff_unescape_debug(fr_sbuff_unescape_rules_t const *escapes);
+void	fr_sbuff_unescape_debug(FILE *fp, fr_sbuff_unescape_rules_t const *escapes);
 
-void	fr_sbuff_terminal_debug(fr_sbuff_term_t const *tt);
+void	fr_sbuff_terminal_debug(FILE *fp, fr_sbuff_term_t const *tt);
 
-void 	fr_sbuff_parse_rules_debug(fr_sbuff_parse_rules_t const *p_rules);
+void 	fr_sbuff_parse_rules_debug(FILE *fp, fr_sbuff_parse_rules_t const *p_rules);
 
 /*
  *	...printf("foo %.*s", fr_sbuff_as_percent_s(&sbuff));

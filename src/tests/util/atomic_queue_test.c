@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 #ifndef NDEBUG
 	if (debug_lvl) {
 		printf("Start\n");
-		fr_atomic_queue_debug(aq, stdout);
+		fr_atomic_queue_debug(stdout, aq);
 
 		if (debug_lvl > 1) printf("Filling with %d\n", size);
 	}
@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
 #ifndef NDEBUG
 		if (debug_lvl > 1) {
 			printf("iteration %d\n", i);
-			fr_atomic_queue_debug(aq, stdout);
+			fr_atomic_queue_debug(stdout, aq);
 		}
 #endif
 	}
@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
 #ifndef NDEBUG
 	if (debug_lvl) {
 		printf("Full\n");
-		fr_atomic_queue_debug(aq, stdout);
+		fr_atomic_queue_debug(stdout, aq);
 
 		if (debug_lvl > 1) printf("Emptying\n");
 	}
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
 #ifndef NDEBUG
 		if (debug_lvl > 1) {
 			printf("iteration %d\n", i);
-			fr_atomic_queue_debug(aq, stdout);
+			fr_atomic_queue_debug(stdout, aq);
 		}
 #endif
 	}
@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
 #ifndef NDEBUG
 	if (debug_lvl) {
 		printf("Empty\n");
-		fr_atomic_queue_debug(aq, stdout);
+		fr_atomic_queue_debug(stdout, aq);
 	}
 #endif
 

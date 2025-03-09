@@ -169,7 +169,7 @@ bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
 		 */
 		if (diff < 0) {
 #if 0
-			fr_atomic_queue_debug(aq, stderr);
+			fr_atomic_queue_debug(stderr, aq);
 #endif
 			return false;
 		}
@@ -298,7 +298,7 @@ typedef struct {
  * @param[in] aq	The atomic queue to debug.
  * @param[in] fp	where the debugging information will be printed.
  */
-void fr_atomic_queue_debug(fr_atomic_queue_t *aq, FILE *fp)
+void fr_atomic_queue_debug(FILE * fp, fr_atomic_queue_t *aq)
 {
 	size_t i;
 	int64_t head, tail;

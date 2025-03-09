@@ -2228,49 +2228,49 @@ static char const *sbuff_print_char(char c)
 	}
 }
 
-void fr_sbuff_unescape_debug(fr_sbuff_unescape_rules_t const *escapes)
+void fr_sbuff_unescape_debug(FILE *fp, fr_sbuff_unescape_rules_t const *escapes)
 {
 	uint8_t i;
 
-	FR_FAULT_LOG("Escape rules %s (%p)", escapes->name, escapes);
-	FR_FAULT_LOG("chr     : %c", escapes->chr ? escapes->chr : ' ');
-	FR_FAULT_LOG("do_hex  : %s", escapes->do_hex ? "yes" : "no");
-	FR_FAULT_LOG("do_oct  : %s", escapes->do_oct ? "yes" : "no");
+	fprintf(fp, "Escape rules %s (%p)\n", escapes->name, escapes);
+	fprintf(fp, "chr     : %c\n", escapes->chr ? escapes->chr : ' ');
+	fprintf(fp, "do_hex  : %s\n", escapes->do_hex ? "yes" : "no");
+	fprintf(fp, "do_oct  : %s\n", escapes->do_oct ? "yes" : "no");
 
-	FR_FAULT_LOG("substitutions:");
+	fprintf(fp, "substitutions:\n");
 	for (i = 0; i < UINT8_MAX; i++) {
-		if (escapes->subs[i]) FR_FAULT_LOG("\t%s -> %s",
+		if (escapes->subs[i]) FR_FAULT_LOG("\t%s -> %s\n",
 						   sbuff_print_char((char)i),
 						   sbuff_print_char((char)escapes->subs[i]));
 	}
-	FR_FAULT_LOG("skipes:");
+	fprintf(fp, "skipes:\n");
 	for (i = 0; i < UINT8_MAX; i++) {
-		if (escapes->skip[i]) FR_FAULT_LOG("\t%s", sbuff_print_char((char)i));
+		if (escapes->skip[i]) fprintf(fp, "\t%s\n", sbuff_print_char((char)i));
 	}
 }
 
-void fr_sbuff_terminal_debug(fr_sbuff_term_t const *tt)
+void fr_sbuff_terminal_debug(FILE *fp, fr_sbuff_term_t const *tt)
 {
 	size_t i;
 
-	FR_FAULT_LOG("Terminal count %zu", tt->len);
+	fprintf(fp, "Terminal count %zu\n", tt->len);
 
-	for (i = 0; i < tt->len; i++) FR_FAULT_LOG("\t\"%s\" (%zu)", tt->elem[i].str, tt->elem[i].len);
+	for (i = 0; i < tt->len; i++) fprintf(fp, "\t\"%s\" (%zu)\n", tt->elem[i].str, tt->elem[i].len);
 }
 
-void fr_sbuff_parse_rules_debug(fr_sbuff_parse_rules_t const *p_rules)
+void fr_sbuff_parse_rules_debug(FILE *fp, fr_sbuff_parse_rules_t const *p_rules)
 {
-	FR_FAULT_LOG("Parse rules %p", p_rules);
+	fprintf(fp, "Parse rules %p\n", p_rules);
 
 	if (p_rules->escapes) {
-		fr_sbuff_unescape_debug(p_rules->escapes);
+		fr_sbuff_unescape_debug(fp, p_rules->escapes);
 	} else {
-		FR_FAULT_LOG("No unescapes");
+		fprintf(fp, "No unescapes\n");
 	}
 
 	if (p_rules->terminals) {
-		fr_sbuff_terminal_debug(p_rules->terminals);
+		fr_sbuff_terminal_debug(fp, p_rules->terminals);
 	} else {
-		FR_FAULT_LOG("No terminals");
+		fprintf(fp, "No terminals\n");
 	}
 }

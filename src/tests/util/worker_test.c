@@ -455,7 +455,7 @@ check_close:
 	MPRINT2("GC\n");
 	fr_message_set_gc(ms);
 
-	if (debug_lvl > 1) fr_message_set_debug(ms, stdout);
+	if (debug_lvl > 1) fr_message_set_debug(stdout, ms);
 
 	/*
 	 *	After the garbage collection, all messages marked "done" MUST also be marked "free".
