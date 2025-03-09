@@ -241,13 +241,13 @@ condition (ipaddr)127.0.0.1 == "127.0.0.1"
 match true
 
 condition (ipaddr)127.0.0.1 == "%md4(' 127.0.0.1')"
-match (127.0.0.1 == "%md4(' 127.0.0.1')")
+match (127.0.0.1 == "%md4(0x203132372e302e302e31)")
 
 #
 #  Bare %{...} is allowed.
 #
 condition (ipaddr)127.0.0.1 == %md4('127.0.0.1')
-match (127.0.0.1 == %md4('127.0.0.1'))
+match (127.0.0.1 == %md4(0x3132372e302e302e31))
 
 condition (ipaddr)127.0.0.1 == %md4("SELECT user FROM table WHERE user='%{User-Name}'")
 match (127.0.0.1 == %md4("SELECT user FROM table WHERE user='%{User-Name}'"))
@@ -256,7 +256,7 @@ condition (ether) 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true
 
 condition (ether) 00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')"
-match (00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')")
+match (00:11:22:33:44:55 == "%md4(0x30303a31313a32323a33333a34343a3535)")
 
 condition (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
 match ERROR offset 11: Unexpected text after attribute reference
@@ -310,10 +310,10 @@ condition ('foo' == 'foo')
 match true
 
 condition ("foo" == "%md4(' foo')")
-match ("foo" == "%md4(' foo')")
+match ("foo" == "%md4(0x20666f6f)")
 
 condition ("foo bar" == "%md4(' foo')")
-match ("foo bar" == "%md4(' foo')")
+match ("foo bar" == "%md4(0x20666f6f)")
 
 condition ("foo" == "bar")
 match false
@@ -330,7 +330,7 @@ condition (User-Name == "bob")
 match (User-Name == "bob")
 
 condition (User-Name == "%md4(' blah')")
-match (User-Name == "%md4(' blah')")
+match (User-Name == "%md4(0x20626c6168)")
 
 condition (ipaddr)127.0.0.1 == 2130706433
 match true
@@ -414,11 +414,7 @@ condition (string)"foo" == User-Name
 match ("foo" == User-Name)
 
 condition (integer)"%md4(' 1 + 1')" < NAS-Port
-match ((uint32)"%md4(' 1 + 1')" < NAS-Port)
-
-#
-#  The string gets parsed as an IP address.
-#
+match ((uint32)"%md4(0x2031202b2031)" < NAS-Port)
 
 condition Filter-Id == Framed-IP-Address
 match (Filter-Id == Framed-IP-Address)

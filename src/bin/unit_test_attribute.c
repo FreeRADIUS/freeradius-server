@@ -3954,6 +3954,15 @@ int main(int argc, char *argv[])
 	xlat_func_args_set(xlat, xlat_test_args);
 
 	/*
+	 *	And again WITHOUT arguments.
+	 */
+	xlat = xlat_func_register(NULL, "test_no_args", xlat_test, FR_TYPE_NULL);
+	if (!xlat) {
+		ERROR("Failed registering xlat");
+		EXIT_WITH_FAILURE;
+	}
+
+	/*
 	 *	Disable hostname lookups, so we don't produce spurious DNS
 	 *	queries, and there's no chance of spurious failures if
 	 *	it takes a long time to get a response.

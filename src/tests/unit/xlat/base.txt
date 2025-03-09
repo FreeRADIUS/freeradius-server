@@ -67,6 +67,9 @@ match ERROR offset 4: Missing closing brace
 xlat %{Tunnel-Password}
 match %{Tunnel-Password}
 
+xlat %test_no_args('foo')
+match ERROR offset 20: Too many arguments, expected 0, got 1
+
 xlat %test('bar')
 match %test('bar')
 
@@ -248,7 +251,7 @@ xlat %debug( 5)
 match %debug(5)
 
 xlat %debug("foo")
-match %debug("foo")
+match ERROR offset 8: Invalid argument 1 - Failed parsing string as type 'int8'
 
 #
 #  This is correct.
@@ -263,31 +266,36 @@ match %rpad(User-Name, 5, 'x')
 #  so the "offset" is wrong.  It also doesn't say *which* string is wrong.  We'll fix that later.
 #
 xlat %rpad(User-Name, 'foo', 'x')
-match ERROR offset 29: Failed parsing argument 1 as type 'uint64'
+match ERROR offset 17: Invalid argument 2 - Failed parsing string as type 'uint64'
 
 #
 #  Argument quoting
 #
 xlat %md5('"arg"')
-match %md5('"arg"')
+match %md5(0x2261726722)
 
+#
+#  Arguably this should be a parse error.  There's trailing text "}
+#  after the function call.
+#
+#  @todo - this is a side effect of command_xlat_normalize(), which passes in
+#  escape_rules_double, but does NOT look for leading or trailing ".  AND it
+#  doesn't pass in a terminal which says to stop at ".
+#
 xlat %md5('"arg')"}
-match %md5('"arg')\"}
+match %md5(0x22617267)\"}
 
 xlat %md5('"arg')
-match %md5('"arg')
+match %md5(0x22617267)
 
-#
-#  @todo - ??? not sure here
-#
 xlat %md5('"arg\""')
-match  %md5('"arg\\""')
+match %md5(0x226172675c2222)
 
 xlat %md5('arg')
-match %md5('arg')
+match %md5(0x617267)
 
 xlat %md5('arg"')
-match %md5('arg"')
+match %md5(0x61726722)
 
 count
-match 159
+match 161

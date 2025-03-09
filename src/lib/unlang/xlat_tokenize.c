@@ -171,58 +171,95 @@ bool const xlat_func_chars[UINT8_MAX + 1] = {
 };
 
 
-static fr_slen_t xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t *arg)
+static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t *arg, int argc)
 {
-	ssize_t slen;
 	xlat_exp_t *node;
-	fr_value_box_t box;
 
 	/*
-	 *	The caller doesn't care about the type, OR the type is string, which it already is.
+	 *	The caller doesn't care about the type, we don't do any validation.
+	 *
+	 *	@todo - maybe check single / required?
 	 */
-	if ((arg_p->type == FR_TYPE_VOID) || (arg_p->type == FR_TYPE_STRING)) {
+	if (arg_p->type == FR_TYPE_VOID) {
 		return 0;
 	}
 
 	node = xlat_exp_head(arg->group);
 
-	if (!node) return -1;
+	if (!node) {
+		if (!arg_p->required) return 0;
+
+		fr_strerror_const("Missing argument");
+		return -1;
+	}
 
 	/*
 	 *	@todo - check arg_p->single, and complain.
 	 */
-	if (xlat_exp_next(arg->group, node)) return 0;
+	if (xlat_exp_next(arg->group, node)) {
+		return 0;
+	}
+
+	/*
+	 *	Hoist constant factors.
+	 */
+	if (node->type == XLAT_TMPL) {
+		/*
+		 *	@todo - hoist the xlat, and then check the hoisted value again.
+		 *	However, there seem to be few cases where this is used?
+		 */
+		if (tmpl_is_xlat(node->vpt)) {
+			return 0;
+
+			/*
+			 *	Raw data can be hoisted to a value-box in this xlat node.
+			 */
+		} else if (tmpl_is_data(node->vpt)) {
+			tmpl_t *vpt = node->vpt;
+
+			fr_assert(tmpl_rules_cast(vpt) == FR_TYPE_NULL);
+
+			fr_value_box_steal(node, &node->data, tmpl_value(vpt));
+
+			talloc_free(vpt);
+			xlat_exp_set_type(node, XLAT_BOX);
+
+		} else {
+			fr_assert(!tmpl_is_data_unresolved(node->vpt));
+			fr_assert(!tmpl_contains_regex(node->vpt));
+
+			/*
+			 *	Can't cast the attribute / exec/ etc. to the expected data type of the
+			 *	argument, that has to happen at run-time.
+			 */
+			return 0;
+		}
+	}
 
 	/*
 	 *	@todo - These checks are relatively basic.  We should do better checks, such as if the
-	 *	expected type is not string/octets, and the passed arguments are multiple things, then
-	 *	die?
+	 *	expected type is not string/octets, and the passed arguments are multiple things, then die?
 	 *
-	 *	And check also the 'concat' flag?
+	 *	If the node is pure, then we should arguably try to purify it now.
 	 */
-	if (node->type != XLAT_BOX) return 0;
+	if (node->type != XLAT_BOX) {
+		return 0;
+	}
 
 	/*
-	 *	Boxes are always strings, because of xlat_tokenize_input()
+	 *	If it's the correct data type, then we don't need to do anything.
 	 */
-	fr_assert(node->data.type == FR_TYPE_STRING);
-
-	fr_value_box_init_null(&box);
-
-	/*
-	 *	The entire string must be parseable as the data type we expect.
-	 */
-	slen = fr_value_box_from_str(node, &box, arg_p->type, NULL, /* no enum */
-				     node->data.vb_strvalue, node->data.vb_length,
-				     NULL, /* no parse rules */
-				     node->data.tainted);
-	if (slen <= 0) return slen;
+	if (arg_p->type == node->data.type) {
+		return 0;
+	}
 
 	/*
-	 *	Replace the string value with the parsed data type.
+	 *	Cast (or parse) the input data to the expected argument data type.
 	 */
-	fr_value_box_clear(&node->data);
-	fr_value_box_copy(node, &node->data, &box);
+	if (fr_value_box_cast_in_place(node, &node->data, arg_p->type, NULL) < 0) {
+		fr_strerror_printf("Invalid argument %d - %s", argc, fr_strerror());
+		return -1;
+	}
 
 	return 0;
 }
@@ -231,17 +268,15 @@ fr_slen_t xlat_validate_function_args(xlat_exp_t *node)
 {
 	xlat_arg_parser_t const *arg_p;
 	xlat_exp_t		*arg = xlat_exp_head(node->call.args);
-	int			i = 0;
+	int			i = 1;
 
 	fr_assert(node->type == XLAT_FUNC);
 
 	for (arg_p = node->call.func->args, i = 0; arg_p->type != FR_TYPE_NULL; arg_p++) {
-		fr_slen_t slen;
-
 		if (!arg_p->required) break;
 
 		if (!arg) {
-			fr_strerror_printf("Missing required arg %u",
+			fr_strerror_printf("Missing required argument %u",
 					   (unsigned int)(arg_p - node->call.func->args) + 1);
 			return -1;
 		}
@@ -252,15 +287,16 @@ fr_slen_t xlat_validate_function_args(xlat_exp_t *node)
 		 */
 		fr_assert(arg->type == XLAT_GROUP);
 
-		slen = xlat_validate_function_arg(arg_p, arg);
-		if (slen < 0) {
-			fr_strerror_printf("Failed parsing argument %d as type '%s'", i, fr_type_to_str(arg_p->type));
-			return slen;
-		}
+		if (xlat_validate_function_arg(arg_p, arg, i) < 0) return -1;
 
 		arg = xlat_exp_next(node->call.args, arg);
 		i++;
 	}
+
+	/*
+	 *	@todo - check if there is a trailing argument.  But for functions which take no arguments, the
+	 *	"arg" is an empty group.
+	 */
 
 	return 0;
 }
@@ -1342,6 +1378,8 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 	fr_sbuff_parse_rules_t		tmp_p_rules;
 	xlat_exp_head_t			*head;
 	xlat_arg_parser_t const		*arg = NULL, *arg_start;
+	tmpl_rules_t const		*our_t_rules = t_rules;
+	tmpl_rules_t			tmp_t_rules;
 
 	if (xlat && xlat->args) {
 		arg_start = arg = xlat->args;	/* Track the arguments as we parse */
@@ -1371,6 +1409,28 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		fr_assert(p_rules->terminals);
 
 		our_p_rules = p_rules;
+
+		/*
+		 *	The arguments to a function are NOT the output data type of the function.
+		 *
+		 *	We do NOT check for quotation characters.  We DO update t_rules to strip any casts.  The
+		 *	OUTPUT of the function is cast to the relevant data type, but each ARGUMENT is just an
+		 *	expression with no given data type.  Parsing the expression is NOT done with the cast of
+		 *	arg->type, as that means each individual piece of the expression is parsed as the type.  We
+		 *	have to cast on the final _output_ of the expression, and we allow the _input_ pieces of the
+		 *	expression to be just about anything.
+		 */
+		if (!xlat_func_bare_words) {
+			tmp_t_rules = *t_rules;
+			our_t_rules = &tmp_t_rules;
+
+			tmp_t_rules.enumv = NULL;
+			tmp_t_rules.cast = FR_TYPE_NULL;
+			tmp_t_rules.attr.namespace = NULL;
+			tmp_t_rules.attr.request_def = NULL;
+			tmp_t_rules.attr.list_def = request_attr_request;
+			tmp_t_rules.attr.list_presence = TMPL_ATTR_LIST_ALLOW;
+		}
 	}
 
 	MEM(head = xlat_exp_head_alloc(ctx));
@@ -1395,13 +1455,19 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		 */
 		if (!spaces) fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
-		fr_sbuff_out_by_longest_prefix(&slen, &quote, xlat_quote_table, &our_in, T_BARE_WORD);
-
 		/*
 		 *	Alloc a new node to hold the child nodes
 		 *	that make up the argument.
 		 */
 		MEM(node = xlat_exp_alloc(head, XLAT_GROUP, NULL, 0));
+
+		if (!spaces && !xlat_func_bare_words) {
+			quote = T_BARE_WORD;
+			node->quote = quote;
+			goto tokenize_expression;
+		}
+
+		fr_sbuff_out_by_longest_prefix(&slen, &quote, xlat_quote_table, &our_in, T_BARE_WORD);
 		node->quote = quote;
 
 		switch (quote) {
@@ -1433,14 +1499,17 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 				 */
 				slen = xlat_tokenize_input(node->group, &our_in, our_p_rules, t_rules, arg->safe_for);
 
-			} else if (fr_sbuff_is_char(&our_in, ')')) {
-				/*
-				 *	%foo()
-				 */
-				slen = 0;
-
 			} else {
-				slen = xlat_tokenize_expression(node, &node->group, &our_in, our_p_rules, t_rules);
+			tokenize_expression:
+				if (fr_sbuff_is_char(&our_in, ')')) {
+					/*
+					 *	%foo()
+					 */
+					slen = 0;
+
+				} else {
+					slen = xlat_tokenize_expression(node, &node->group, &our_in, our_p_rules, our_t_rules);
+				}
 			}
 			if (slen < 0) {
 			error:
@@ -1456,6 +1525,22 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			if (!slen && arg->required) {
 				fr_strerror_printf("Missing required arg %u", argc);
 				goto error;
+			}
+
+			/*
+			 *	Validate the argument immediately on parsing it, and not later.
+			 */
+			if (!spaces && slen) {
+				if (arg->type == FR_TYPE_NULL) {
+					fr_strerror_printf("Too many arguments, expected %zu, got %d",
+							   (size_t) (arg - arg_start), argc);
+					goto error;
+				}
+
+				if (xlat_validate_function_arg(arg, node, argc) < 0) {
+					fr_sbuff_set(&our_in, &m);
+					goto error;
+				}
 			}
 			break;
 

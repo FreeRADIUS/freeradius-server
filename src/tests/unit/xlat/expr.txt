@@ -94,7 +94,7 @@ xlat_expr Filter-Id
 match Filter-Id
 
 xlat_expr %md5('foo') + "foo"
-match  (%md5('foo') + "foo")
+match (%md5(0x666f6f) + "foo")
 
 #  We can name the xlat's, tho we don't need to
 xlat_expr %op_add(4, 3) + 6

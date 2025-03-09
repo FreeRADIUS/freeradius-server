@@ -91,7 +91,7 @@ condition User-Name == /foo/
 match ERROR offset 14: Unexpected regular expression
 
 condition %md5("foo") =~ /foo/
-match ((string)%md5("foo") =~ /foo/)
+match ((string)%md5(0x666f6f) =~ /foo/)
 
 count
 match 50

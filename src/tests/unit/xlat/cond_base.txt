@@ -248,17 +248,17 @@ xlat_purify (ipaddr)127.0.0.1 == "127.0.0.1"
 match true
 
 # LHS is IPaddr, RHS is string (malformed IP address).
-# We can only fail this at run-time.
+# We can only fail this at run-time, as the MD4 output
+# _might_ just accidentally be well-formed an IP address?
+#
+# i.e. the MD4 function doesn't define itself as returning
+# fixed length, just "octets".
+#
 xlat_purify (ipaddr)127.0.0.1 == "%md4(' 127.0.0.1')"
-match (127.0.0.1 == "%md4(' 127.0.0.1')")
+match (127.0.0.1 == "%md4(0x203132372e302e302e31)")
 
-#
-#  Bare %{...} is allowed.
-#
-
-# Invalid cast from octets to ipaddr.
 xlat_purify (ipaddr)127.0.0.1 == %md4('127.0.0.1')
-match (127.0.0.1 == %md4('127.0.0.1'))
+match (127.0.0.1 == %md4(0x3132372e302e302e31))
 
 xlat_purify (ipaddr)127.0.0.1 == %md4("SELECT user FROM table WHERE user='%{User-Name}'")
 match (127.0.0.1 == %md4("SELECT user FROM table WHERE user='%{User-Name}'"))
@@ -266,9 +266,8 @@ match (127.0.0.1 == %md4("SELECT user FROM table WHERE user='%{User-Name}'"))
 xlat_purify (ether) 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true
 
-# Invalid cast from octets to ether.
 xlat_purify (ether)00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')"
-match (00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')")
+match (00:11:22:33:44:55 == "%md4(0x30303a31313a32323a33333a34343a3535)")
 
 xlat_purify (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
 match ERROR offset 9: Unknown attributes not allowed here
