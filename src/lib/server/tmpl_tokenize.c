@@ -3633,12 +3633,13 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 	/*
 	 *	Copy attribute references
 	 */
-	if (tmpl_contains_attr(vpt) && unlikely(tmpl_attr_copy(vpt, in) < 0)) goto error;
+	else if (tmpl_contains_attr(vpt)) {
+		if (unlikely(tmpl_attr_copy(vpt, in) < 0)) goto error;
 
 	/*
 	 *	Copy flags for all regex flavours (and possibly recompile the regex)
 	 */
-	if (tmpl_contains_regex(vpt)) {
+	} else if (tmpl_contains_regex(vpt)) {
 		vpt->data.reg_flags = in->data.reg_flags;
 
 		/*
@@ -3655,7 +3656,6 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 			if (unlikely(tmpl_regex_compile(vpt, vpt->data.reg.subcaptures) < 0)) goto error;
 			return vpt;
 		}
-	}
 
 	/*
 	 *	Copy the xlat component.
@@ -3664,10 +3664,16 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 	 *
 	 *	We add an assertion here because nothing allocates the head, and we need it.
 	 */
-	if (tmpl_contains_xlat(vpt)) {
+	} else if (tmpl_contains_xlat(vpt)) {
 		fr_assert(vpt->data.xlat.ex != NULL);
 
 		if (unlikely(xlat_copy(vpt, vpt->data.xlat.ex, in->data.xlat.ex) < 0)) goto error;
+
+	} else if (tmpl_is_data(vpt)) {
+		if (unlikely(fr_value_box_copy(vpt, &vpt->data.literal, &in->data.literal) < 0)) goto error;
+
+	} else {
+		fr_assert(0);	/* copy of this type is unimplemented */
 	}
 
 	TMPL_VERIFY(vpt);
