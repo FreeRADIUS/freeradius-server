@@ -1543,7 +1543,8 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 			.list_def = request_attr_request,
 			.allow_unresolved = true,
 			.allow_unknown = true
-		}
+		},
+		.literals_safe_for = FR_VALUE_BOX_SAFE_FOR_ANY,
 	};
 
 	/*

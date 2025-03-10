@@ -8,7 +8,7 @@ string test_string2
 #  Strings which are expanded in a regex have regex special
 #  characters escaped.  Because the input strings are unsafe.
 #
-test_string1 := "example.com"
+test_string1 := %taint("example.com")
 test_string2 := "exampleXcom"
 
 if ("exampleXcom" =~ /%{test_string1}/) {
