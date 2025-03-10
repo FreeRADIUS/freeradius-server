@@ -154,6 +154,17 @@ typedef union {
  */
 typedef uintptr_t fr_value_box_safe_for_t;
 
+/*
+ *	The default value of "completely unsafe" is zero.  That way any initialization routines will default
+ *	to marking the data as unsafe.
+ *
+ *	The only data which should be marked as being completely safe is data taken from the configuration
+ *	files which are managed by the administrator.  Data create by end users (e.g. passwords) should always
+ *	be marked as unsafe.
+ */
+#define FR_VALUE_BOX_SAFE_FOR_NONE ((uintptr_t) 0)
+#define FR_VALUE_BOX_SAFE_FOR_ANY (~((uintptr_t) 0))
+
 /** Union containing all data types supported by the server
  *
  * This union contains all data types that can be represented by fr_pair_ts. It may also be used in other parts
@@ -1052,7 +1063,7 @@ void		_fr_value_box_mark_safe_for(fr_value_box_t *box, fr_value_box_safe_for_t s
 void		fr_value_box_mark_unsafe(fr_value_box_t *box)
 		CC_HINT(nonnull);
 
-#define		fr_value_box_is_safe_for(_box, _safe_for) (_box->safe_for == (fr_value_box_safe_for_t)_safe_for)
+#define		fr_value_box_is_safe_for(_box, _safe_for) ((_box->safe_for == (fr_value_box_safe_for_t)_safe_for) || (_box->safe_for == FR_VALUE_BOX_SAFE_FOR_ANY))
 
 void		fr_value_box_list_mark_safe_for(fr_value_box_list_t *list, fr_value_box_safe_for_t safe_for);
 

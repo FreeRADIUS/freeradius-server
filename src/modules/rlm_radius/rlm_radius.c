@@ -498,7 +498,8 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, void *parent,
 				.list_def = request_attr_request,
 				.list_presence = TMPL_ATTR_LIST_FORBID,
 				.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
-			}
+			},
+			.literals_safe_for = FR_VALUE_BOX_SAFE_FOR_ANY,
 		};
 
 		rcode = map_afrom_cs(ctx, head, cs, &parse_rules, &parse_rules, status_check_verify, parent, 128);

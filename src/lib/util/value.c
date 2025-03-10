@@ -6358,6 +6358,16 @@ void fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t co
  */
 void _fr_value_box_mark_safe_for(fr_value_box_t *vb, fr_value_box_safe_for_t safe_for)
 {
+	/*
+	 *	Don't over-ride value-boxes which are already safe, unless we want to mark them as being
+	 *	completely unsafe.
+	 */
+	if ((vb->safe_for == FR_VALUE_BOX_SAFE_FOR_ANY) &&
+	    (safe_for != FR_VALUE_BOX_SAFE_FOR_NONE)) {
+		fr_assert(!vb->tainted);
+		return;
+	}
+
 	vb->safe_for = safe_for;
 }
 
@@ -6367,7 +6377,7 @@ void _fr_value_box_mark_safe_for(fr_value_box_t *vb, fr_value_box_safe_for_t saf
  */
 void fr_value_box_mark_unsafe(fr_value_box_t *vb)
 {
-	vb->safe_for = 0;
+	vb->safe_for = FR_VALUE_BOX_SAFE_FOR_NONE;
 }
 
 /** Set the escaped flag for all value boxes in a list
@@ -6379,7 +6389,17 @@ void fr_value_box_mark_unsafe(fr_value_box_t *vb)
  */
 void fr_value_box_list_mark_safe_for(fr_value_box_list_t *list, fr_value_box_safe_for_t safe_for)
 {
-	fr_value_box_list_foreach(list, vb) vb->safe_for = safe_for;
+	fr_value_box_list_foreach(list, vb) {
+		/*
+		 *	Don't over-ride value-boxes which are already safe.
+		 */
+		if (vb->safe_for == FR_VALUE_BOX_SAFE_FOR_ANY) {
+			fr_assert(!vb->tainted);
+
+		} else {
+			vb->safe_for = safe_for;
+		}
+	}
 }
 
 /** Check truthiness of values.

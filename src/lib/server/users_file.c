@@ -273,7 +273,9 @@ static int pairlist_read_internal(TALLOC_CTX *ctx, fr_dict_t const *dict, char c
 			.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
 			.list_def = request_attr_request,
 			.list_presence = TMPL_ATTR_LIST_ALLOW,
-		}
+		},
+		.literals_safe_for = FR_VALUE_BOX_SAFE_FOR_ANY,
+
 	};
 	rhs_rules = (tmpl_rules_t) {
 		.attr = {
@@ -282,7 +284,8 @@ static int pairlist_read_internal(TALLOC_CTX *ctx, fr_dict_t const *dict, char c
 			.list_def = request_attr_request,
 			.list_presence = TMPL_ATTR_LIST_ALLOW,
 			.bare_word_enum = v3_compat,
-		}
+		},
+		.literals_safe_for = FR_VALUE_BOX_SAFE_FOR_ANY,
 	};
 
 	while (true) {

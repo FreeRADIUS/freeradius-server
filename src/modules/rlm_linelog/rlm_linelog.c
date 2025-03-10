@@ -767,7 +767,8 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 						.xlat = {
 							.runtime_el = unlang_interpret_event_list(request),
 						},
-					 	.at_runtime = true
+						.at_runtime = true,
+						.literals_safe_for = FR_VALUE_BOX_SAFE_FOR_ANY,
 					 });
 		if (!vpt) {
 			REMARKER(tmpl_str, -slen, "%s", fr_strerror());

@@ -1,5 +1,5 @@
 #
-#  PRE: if regex-escape
+#  PRE: if
 #
 string test_string1
 string test_string2

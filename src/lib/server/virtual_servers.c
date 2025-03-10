@@ -1619,6 +1619,8 @@ int virtual_servers_instantiate(void)
 					.dict_def = dict,
 					.list_def = request_attr_request,
 				},
+
+				.literals_safe_for = FR_VALUE_BOX_SAFE_FOR_ANY,
 			};
 
 			fr_assert(parse_rules.attr.dict_def != NULL);

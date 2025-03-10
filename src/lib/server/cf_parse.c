@@ -220,7 +220,8 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 							.allow_unknown = true,
 							.allow_unresolved = true,
 							.allow_foreign = true,
-						}
+						},
+						.literals_safe_for = FR_VALUE_BOX_SAFE_FOR_ANY,
 					};
 		fr_sbuff_t		sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
 

@@ -758,6 +758,7 @@ static xlat_action_t xlat_func_taint(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		while ((child = fr_value_box_list_pop_head(&vb->vb_group)) != NULL) {
 			child->tainted = true;
+			fr_value_box_mark_unsafe(child);
 
 			fr_dcursor_append(out, child);
 		}
