@@ -1,4 +1,4 @@
-if (%test_trigger(test) == false) {
+if (%test_trigger('test') == false) {
 	test_fail
 }
 
