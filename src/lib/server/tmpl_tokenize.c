@@ -3665,7 +3665,7 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 	 *	We add an assertion here because nothing allocates the head, and we need it.
 	 */
 	} else if (tmpl_contains_xlat(vpt)) {
-		fr_assert(vpt->data.xlat.ex != NULL);
+		fr_assert(in->data.xlat.ex != NULL);
 
 		if (unlikely(xlat_copy(vpt, vpt->data.xlat.ex, in->data.xlat.ex) < 0)) goto error;
 
