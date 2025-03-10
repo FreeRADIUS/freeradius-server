@@ -125,7 +125,11 @@ static xlat_action_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	MEM(da = fr_dict_attr_child_by_num(parent, attr));
+	da = fr_dict_attr_child_by_num(parent, attr);
+	if (!da) {
+		RDEBUG("Parent %s has no child %u", parent->name, attr);
+		return XLAT_ACTION_FAIL;
+	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 
