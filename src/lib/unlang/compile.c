@@ -3578,8 +3578,9 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 				.dict_def = xr_rules.tr_rules->dict_def,
 				.list_def = request_attr_request,
 				.allow_unresolved = true,
-				.allow_unknown = true
-			}
+				.allow_unknown = true,
+			},
+			.literals_safe_for = unlang_ctx->rules->literals_safe_for,
 		};
 
 		fr_sbuff_parse_rules_t p_rules = { };
