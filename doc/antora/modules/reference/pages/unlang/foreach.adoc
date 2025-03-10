@@ -67,18 +67,18 @@ the execution of the loop.
 .Example of modifying values
 [source,unlang]
 ----
-&Tmp-Integer-0 := { 1, 3, 5, 11 }
+Tmp-Integer-0 := { 1, 3, 5, 11 }
 
 foreach self (&Tmp-Integer-0) {
-	&self += 19
+	self += 19
 }
 ----
 
-Once the loop has finished , the `&Tmp-Integer-0` attribute will have the following set of values.
+Once the loop has finished , the `Tmp-Integer-0` attribute will have the following set of values.
 
 [source,unlang]
 ----
-&Tmp-Integer-0 := { 20, 22, 24, 30 }
+Tmp-Integer-0 := { 20, 22, 24, 30 }
 ----
 
 .Pseudocode for variable modification
@@ -102,7 +102,7 @@ For attributes, the `<key-type>` must be `string`.  For dynamic expansions, it m
 [source,unlang]
 ----
 string total
-&Tmp-Integer-0 := { 1, 3, 5, 11 }
+Tmp-Integer-0 := { 1, 3, 5, 11 }
 
 foreach string ref, uint32 self (Tmp-Integer-0) {
 	total += ref
@@ -148,9 +148,9 @@ In this example, we have to explicitly give a data type `string`.  The data type
 .Example of Looping over children of a structural type.
 [source,unlang]
 ----
-foreach string child (&TLV-Thing.[*]) {
-	&out += &child
-	&out += " "
+foreach string child (TLV-Thing.[*]) {
+	out += &child
+	out += " "
 }
 ----
 
@@ -162,8 +162,8 @@ examined, but cannot be changed.  This is a limitation of the current interprete
 [source,unlang]
 ----
 foreach thing (&Tmp-TLV-0[*]) {
-	&out += &thing.c
-	&out += " "
+	out += &thing.c
+	out += " "
 }
 ----
 

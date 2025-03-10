@@ -20,7 +20,7 @@ an xref:unlang/elsif.adoc[elsif] statement.
 .Example
 [source,unlang]
 ----
-if (&User-Name == "bob") {
+if (User-Name == "bob") {
     reject
 }
 ----
@@ -36,7 +36,7 @@ There is no need to put brackets around a _<condition>_.  The following two exam
 .Example With Brackets
 [source,unlang]
 ----
-if (&User-Name == "bob") {
+if (User-Name == "bob") {
     reject
 }
 ----
@@ -46,7 +46,7 @@ And without:
 .Example Without Brackes
 [source,unlang]
 ----
-if &User-Name == "bob" {
+if User-Name == "bob" {
     reject
 }
 ----
@@ -62,7 +62,7 @@ A _<condition>_ can span multiple lines.  There is no need to use `\\` at the en
 .Example With Brackets
 [source,unlang]
 ----
-if (&User-Name ==
+if (User-Name ==
      "bob") {
     reject
 }

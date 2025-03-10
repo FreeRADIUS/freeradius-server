@@ -30,9 +30,9 @@ Causes the request to be immediately rejected.
 .Example
 [source,unlang]
 ----
-if (!&User-Name) {
-    &reply += {
-        &Reply-Message = "We don't know who you are"
+if (!User-Name) {
+    reply += {
+        Reply-Message = "We don't know who you are"
     }
     reject
 }

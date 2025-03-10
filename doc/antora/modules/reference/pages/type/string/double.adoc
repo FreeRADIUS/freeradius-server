@@ -85,19 +85,19 @@ resulting string can be quite different, depending on the inputs.
 .Example of casting to 'string'
 [source,unlang]
 ----
-"User-Name is " + &User-Name
-"IP Address is " + (string) &reply.Framed-IP-Address
+"User-Name is " + User-Name
+"IP Address is " + (string) reply.Framed-IP-Address
 ----
 
 The output strings here (with casting) are the same as for the
-previous example.  Note that we do not have to cast `&User-Name`,
+previous example.  Note that we do not have to cast `User-Name`,
 because it is already a string.
 
 .Example of casting to 'octets'
 [source,unlang]
 ----
-"User-Name is " + (octets) &User-Name
-"IP Address is " + (octets) &reply.Framed-IP-Address
+"User-Name is " + (octets) User-Name
+"IP Address is " + (octets) reply.Framed-IP-Address
 ----
 
 The output strings here are completely different than for the previous
@@ -115,7 +115,7 @@ type to `string`.  The value is left alone.
 "User-Name is %{(string) &Tmp-Octets-0}"
 ----
 
-if the `&Tmp-Octets-0` attribute has value `0x666f6f` (`foo`)
+if the `Tmp-Octets-0` attribute has value `0x666f6f` (`foo`)
 
 In the first expansion, the resulting output is `User-Name is
 0x666f6f`.  In the second expansion, the resulting output is

@@ -78,13 +78,13 @@ above:
 
 [source,unlang]
 ----
-if (&DHCP-User-Class && "%{substring:&DHCP-User-Class 0 4}" == "iPXE") {
+if (DHCP-User-Class && "%{substring:DHCP-User-Class 0 4}" == "iPXE") {
     update reply {
-        &DHCP-Boot-Filename := "http://my.web.server/boot_script.php"
+        DHCP-Boot-Filename := "http://my.web.server/boot_script.php"
     }
 } else {
     update reply {
-        &DHCP-Boot-Filename := "undionly.kpxe"
+        DHCP-Boot-Filename := "undionly.kpxe"
     }
 }
 ----
@@ -96,10 +96,10 @@ provided that it matches the given format:
 
 [source,unlang]
 ----
-if (&DHCP-Client-Identifier && \
+if (DHCP-Client-Identifier & \
         "%{string:DHCP-Client-Identifier}" =~ /^RAS([0-9])-site([A-Z])$/) {
     update reply {
-        &DHCP-Boot-Filename := "rasboot-%{1}-%{2}.kpxe"
+        DHCP-Boot-Filename := "rasboot-%{1}-%{2}.kpxe"
     }
 }
 ----
@@ -214,8 +214,8 @@ context:
 [source,unlang]
 ----
 update control {
-        &DHCP-SQL-Option-Context := "by-mac"
-        &DHCP-SQL-Option-Identifier := &request:DHCP-Client-Hardware-Address
+        DHCP-SQL-Option-Context := "by-mac"
+        DHCP-SQL-Option-Identifier := request:DHCP-Client-Hardware-Address
 }
 dhcp_sql.authorize
 ----
@@ -266,9 +266,9 @@ sample data you could invoke an SQL lookup as shown:
 [source,unlang]
 ----
 update control {
-        &DHCP-SQL-Option-Context := "class-vendor"
-        &DHCP-SQL-Option-Identifier := \
-            "%{substring:%{hex:&DHCP-Client-Hardware-Address} 0 6}"
+        DHCP-SQL-Option-Context := "class-vendor"
+        DHCP-SQL-Option-Identifier := \
+            "%{substring:%{hex:DHCP-Client-Hardware-Address} 0 6}"
 }
 dhcp_sql.authorize
 ----

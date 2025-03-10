@@ -298,6 +298,9 @@ status_check { ... }:: For "are you alive?" queries.
 If the home server does not respond to proxied packets, the
 module starts pinging the home server with these packets.
 
+Disable status checks by deleting this section, or by
+commenting it out.
+
 
 type:: You can specify any type of request packet here,
 e.g. 'Access-Request', 'Accounting-Request' or
@@ -313,30 +316,26 @@ as an allowed `type` above.
 
 
 
-`Status-Server` packet contents are fixed and cannot
-be edited.
-
-For other packet types, you can set the contents
-here.  The section MUST be set over
-"&request.<attribute> = value", and anything else
-will cause a parse error.
+The packet contents can be set here.
 
 We RECOMMEND that you use packet contents which
 lets the other end easily tell that they are not
 "real" packets from a NAS.
 
-The example here is for Access-Request.  The
-contents will vary by other packet types.
+The example here is for Status-Server.  The
+contents will vary by other packet types.  The
+Message-Authenticator attribute will be added
+automatically, and does not need to be specified
+here.
 
-The module will automatically update the contents
-of the Event-Timestamp attribute to be the time
-when the packet is sent.  The module will also
-automatically add a Proxy-State attribute.
+If the Event-Timestamp attribute is added, it will
+be updated each time the packet is sent.
 
-WARNING: Do NOT do SQL queries, LDAP queries, dynamic
-expansions, etc. in this section.  The contents are
-created when a connection is opened, and are not
-changeable after that.
+WARNING: Do NOT do SQL queries, LDAP queries,
+dynamic expansions, etc. in this section.  The
+contents of the packet are created when a
+connection is opened, and are not changeable after
+that.
 
 
 
@@ -918,12 +917,11 @@ radius {
 	revive_interval = 3600
 	status_check {
 		type = Status-Server
-#		update request {
-#			&User-Name := "test-user"
-#			&User-Password := "this-is-not-a-real-password"
-#			&NAS-Identifier := "Status check.  Are you alive?"
-#			&Event-Timestamp = 0
-#		}
+		update {
+			User-Name := "test-user"
+			NAS-Identifier := "Status check.  Are you alive?"
+			Event-Timestamp = 0
+		}
 	}
 	file {
 	     filename = ${logdir}/packets.bin

@@ -2,7 +2,7 @@
 
 No matter how the LDAP module is called (via its `authorize`, `authenticate`,
 `accounting` methods or the `%ldap.group()` xlat) the first operation the
-module performs it to populate `&control.LDAP-UserDN` with the location of
+module performs it to populate `control.LDAP-UserDN` with the location of
 the authenticating user's object in LDAP.
 
 Below is an example of configuring a user section for OpenLDAP, with callouts
@@ -19,8 +19,8 @@ ldap {
 		# example - ou=people,${..base_dn}
 		base_dn = "<user.base_dn>" <1>
 
-		# example - (&(objectClass=posixAccount)(uid=%{&Stripped-User-Name || &User-Name}))
-		filter = "(&(<user.filter>)(<user_uid_attribute>=%{&Stripped-User-Name || &User-Name}))"  <2>
+		# example - (&(objectClass=posixAccount)(uid=%{Stripped-User-Name || User-Name}))
+		filter = "(&(<user.filter>)(<user_uid_attribute>=%{Stripped-User-Name || User-Name}))"  <2>
 	}
 }
 ----

@@ -1,4 +1,8 @@
-= FreeRADIUS v4 Server Configuration File
+
+
+
+
+= FreeRADIUS server configuration file - 4.0
 
 Read `man radiusd` before editing this file.  See the section
 titled DEBUGGING.  It outlines a method where you can quickly
@@ -277,7 +281,7 @@ instead prints a place-holder value "<<< secret >>>", as
 follows:
 
 ...
-&User-Password = "<<< secret >>>"
+User-Password = "<<< secret >>>"
 ...
 
 Note that secret values are tracked across string
@@ -696,13 +700,13 @@ edit it to create policies for your local site.
 
 For more documentation on virtual servers, see:
 
-`raddb/sites-available/index.adoc`
+`doc/raddb/sites-available/index.adoc`
 
 
 == Default Configuration
 
 ```
-prefix = /Users/alandekok/git/wrapper//install
+prefix = /usr/local
 exec_prefix = ${prefix}
 sysconfdir = ${prefix}/etc
 localstatedir = ${prefix}/var

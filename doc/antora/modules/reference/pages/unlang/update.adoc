@@ -38,10 +38,10 @@ The following example creates four attributes, and appends them to the
 [source,unlang]
 ----
 update request {
-	&User-Name += "foo"
-	&Filter-Id += "bar"
-	&NAS-IP-Address += 127.0.0.1
-	&NAS-Port += 5
+	User-Name += "foo"
+	Filter-Id += "bar"
+	NAS-IP-Address += 127.0.0.1
+	NAS-Port += 5
 }
 ----
 
@@ -49,15 +49,15 @@ This example should be converted to the following syntax:
 
 [source,unlang]
 ----
-&request += {
-	&User-Name = "foo"
-	&Filter-Id = "bar"
-	&NAS-IP-Address = 127.0.0.1
-	&NAS-Por = 5
+request += {
+	User-Name = "foo"
+	Filter-Id = "bar"
+	NAS-IP-Address = 127.0.0.1
+	NAS-Por = 5
 }
 ----
 
-This configuration can be interpreted as "edit the `&request` list,
+This configuration can be interpreted as "edit the `request` list,
 but appending (`+=`) another list to it.  The list being appended
 contains four attributes".
 
@@ -73,8 +73,8 @@ The following example over-writes the values for two attributes in the
 [source,unlang]
 ----
 update request {
-	&User-Name := "foo"
-	&Filter-Id := "bar"
+	User-Name := "foo"
+	Filter-Id := "bar"
 }
 ----
 
@@ -83,8 +83,8 @@ assign the attributes in place, with a list qualifier.
 
 [source,unlang]
 ----
-&request.User-Name := "foo"
-&request.Filter-Id := "bar"
+request.User-Name := "foo"
+request.Filter-Id := "bar"
 ----
 
 Note that the following conversion is _not_ correct, as it will
@@ -94,9 +94,9 @@ assigned to it.
 
 [source,unlang]
 ----
-&request := {
-	&User-Name = "foo"
-	&Filter-Id = "bar"
+request := {
+	User-Name = "foo"
+	Filter-Id = "bar"
 }
 ----
 === Conditionally Over-writing attributes in a list: =
@@ -107,8 +107,8 @@ The following example conditionally over-writes the values for two attributes in
 [source,unlang]
 ----
 update request {
-	&User-Name = "foo"
-	&Filter-Id = "bar"
+	User-Name = "foo"
+	Filter-Id = "bar"
 }
 ----
 
@@ -117,18 +117,18 @@ assign the attributes in place, with a list qualifier.
 
 [source,unlang]
 ----
-&request.User-Name = "foo"
-&request.Filter-Id = "bar"
+request.User-Name = "foo"
+request.Filter-Id = "bar"
 ----
 
 === Removing Attributes from a list: !*
 
-The following example removes all `&User-Name` attributes from the `request` list.
+The following example removes all `User-Name` attributes from the `request` list.
 
 [source,unlang]
 ----
 update request {
-	&User-Name !* ANY
+	User-Name !* ANY
 }
 ----
 
@@ -136,7 +136,7 @@ The conversion is to use the `-=` operator:
 
 [source,unlang]
 ----
-&request -= &User-Name
+request -= User-Name
 ----
 
 == More Complex Conversions

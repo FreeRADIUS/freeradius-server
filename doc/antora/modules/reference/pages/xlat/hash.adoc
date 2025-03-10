@@ -16,13 +16,13 @@ Generate `HMAC-MD5` of string.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "mykey"
-&control.Tmp-String-1 := "Caipirinha"
-&reply.control.Tmp-Octets-0 := "%hmacmd5(%{control.Tmp-String-0} %{control.Tmp-String-1})"
+control.Tmp-String-0 := "mykey"
+control.Tmp-String-1 := "Caipirinha"
+reply.control.Tmp-Octets-0 := "%hmacmd5(%{control.Tmp-String-0} %{control.Tmp-String-1})"
 
-&reply += {
-    &Reply-Message = "The HMAC-MD5 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
-    &Reply-Message = "The HMAC-MD5 of %{control.Tmp-String-1} in hex is %hex(control.Tmp-Octets-0)"
+reply += {
+    Reply-Message = "The HMAC-MD5 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
+    Reply-Message = "The HMAC-MD5 of %{control.Tmp-String-1} in hex is %hex(control.Tmp-Octets-0)"
 }
 ----
 
@@ -43,13 +43,13 @@ Generate `HMAC-SHA1` of string.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "mykey"
-&control.Tmp-String-1 := "Caipirinha"
-&control.Tmp-Octets-0 := "%hmacsha1(%{control.Tmp-String-0}, %{control.Tmp-String-1})"
+control.Tmp-String-0 := "mykey"
+control.Tmp-String-1 := "Caipirinha"
+control.Tmp-Octets-0 := "%hmacsha1(%{control.Tmp-String-0}, %{control.Tmp-String-1})"
 
-&reply += {
-    &Reply-Message = "The HMAC-SHA1 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
-    &Reply-Message = "The HMAC-SHA1 of %{control.Tmp-String-1} in hex is %hex(control.Tmp-Octets-0}"
+reply += {
+    Reply-Message = "The HMAC-SHA1 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
+    Reply-Message = "The HMAC-SHA1 of %{control.Tmp-String-1} in hex is %hex(control.Tmp-Octets-0}"
 }
 ----
 
@@ -71,10 +71,10 @@ result is binary data.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "Caipirinha"
-&reply += {
-    &Reply-Message = "md5 of %{control.Tmp-String-0} is octal=%md5(%{control.Tmp-String-0})"
-    &Reply-Message = "md5 of %{control.Tmp-String-0} is hex=%hex(%md5(%{control.Tmp-String-0}))"
+control.Tmp-String-0 := "Caipirinha"
+reply += {
+    Reply-Message = "md5 of %{control.Tmp-String-0} is octal=%md5(%{control.Tmp-String-0})"
+    Reply-Message = "md5 of %{control.Tmp-String-0} is hex=%hex(%md5(%{control.Tmp-String-0}))"
 }
 ----
 
@@ -119,10 +119,10 @@ families of digest functions.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "Caipirinha"
-&reply += {
-    &Reply-Message = "The md5 of %{control.Tmp-String-0} in octal is %md5(%{control.Tmp-String-0}}"
-    &Reply-Message = "The md5 of %{control.Tmp-String-0} in hex is %hex(%md5(%{control.Tmp-String-0}}}"
+control.Tmp-String-0 := "Caipirinha"
+reply += {
+    Reply-Message = "The md5 of %{control.Tmp-String-0} in octal is %md5(%{control.Tmp-String-0}}"
+    Reply-Message = "The md5 of %{control.Tmp-String-0} in hex is %hex(%md5(%{control.Tmp-String-0}}}"
 }
 ----
 

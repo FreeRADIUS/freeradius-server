@@ -168,7 +168,7 @@ Running the above test requests/response filters against a dummy configuration:
 
 ```text
 authorize {
-	switch &User-Name {
+	switch User-Name {
 		case 'test_user001@test.realm' {
 			update reply {
 				Framed-IP-Address := 192.168.0.1

@@ -110,8 +110,8 @@ snooping.
 server default {
 	...
 	recv Access-Request {
-		if (&User-Password) {
-			&control.Auth-Type := rest
+		if (User-Password) {
+			control.Auth-Type := rest
 		}
 	}
 

@@ -12,8 +12,8 @@ Encode a string using Base64.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "Caipirinha"
-&reply.Reply-Message := "The base64 of %{control.Tmp-String-0} is %base64.encode(%{control.Tmp-String-0})"
+control.Tmp-String-0 := "Caipirinha"
+reply.Reply-Message := "The base64 of %{control.Tmp-String-0} is %base64.encode(%{control.Tmp-String-0})"
 ----
 
 .Output
@@ -32,8 +32,8 @@ Decode a string previously encoded using Base64.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "Q2FpcGlyaW5oYQ=="
-&reply.Reply-Message := "The base64.decode of %{control.Tmp-String-0} is %base64.decode(%{control.Tmp-String-0})"
+control.Tmp-String-0 := "Q2FpcGlyaW5oYQ=="
+reply.Reply-Message := "The base64.decode of %{control.Tmp-String-0} is %base64.decode(%{control.Tmp-String-0})"
 ----
 
 .Output
@@ -52,8 +52,8 @@ Convert string to binary.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "10"
-&reply.Reply-Message := "The %{control.Tmp-String-0} in binary is %bin(%{control.Tmp-String-0})"
+control.Tmp-String-0 := "10"
+reply.Reply-Message := "The %{control.Tmp-String-0} in binary is %bin(%{control.Tmp-String-0})"
 ----
 
 .Output
@@ -72,8 +72,8 @@ Convert to hex.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "12345"
-&reply.Reply-Message := "The value of %{control.Tmp-String-0} in hex is %hex(%{control.Tmp-String-0})"
+control.Tmp-String-0 := "12345"
+reply.Reply-Message := "The value of %{control.Tmp-String-0} in hex is %hex(%{control.Tmp-String-0})"
 ----
 
 .Output
@@ -92,9 +92,9 @@ Quote URL special characters.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "http://example.org/"
-&reply += {
-	&Reply-Message = "The urlquote of %{control.Tmp-String-0} is %urlquote(%{control.Tmp-String-0})"
+control.Tmp-String-0 := "http://example.org/"
+reply += {
+	Reply-Message = "The urlquote of %{control.Tmp-String-0} is %urlquote(%{control.Tmp-String-0})"
 }
 ----
 
@@ -114,9 +114,9 @@ Unquote URL special characters.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "http%%3A%%2F%%2Fexample.org%%2F" # Attention for the double %.
-&reply += {
-	&Reply-Message = "The urlunquote of %{control.Tmp-String-0} is %urlunquote(%{control.Tmp-String-0})"
+control.Tmp-String-0 := "http%%3A%%2F%%2Fexample.org%%2F" # Attention for the double %.
+reply += {
+	Reply-Message = "The urlunquote of %{control.Tmp-String-0} is %urlunquote(%{control.Tmp-String-0})"
 }
 ----
 

@@ -10,7 +10,7 @@ server to include the following:
 [source,unlang]
 ----
 update reply {
-    &DHCP-Your-IP-Address := 1.2.3.4
+    DHCP-Your-IP-Address := 1.2.3.4
 }
 ----
 

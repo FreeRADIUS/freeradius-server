@@ -14,11 +14,11 @@ inside of a xref:unlang/foreach.adoc[foreach] loop.
 [source,unlang]
 ----
 foreach &Class {
-    if (&Foreach-Variable-0 == 0xabcdef) {
+    if (Foreach-Variable-0 == 0xabcdef) {
         break
     }
 
-    &reply += {
+    reply += {
         Reply-Message = "Contains %{Foreach-Variable-0}"
     }
 }

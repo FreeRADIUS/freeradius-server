@@ -27,12 +27,12 @@ This syntax is deprecated, and will be removed in a future release.
 .Example
 [source,unlang]
 ----
-switch &User-Name {
+switch User-Name {
     case "bob" {
         reject
     }
 
-    case &Filter-Id {
+    case Filter-Id {
         reject
     }
 

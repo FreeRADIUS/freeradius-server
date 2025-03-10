@@ -68,9 +68,9 @@ Cannot be larger than `time_step`
 == Default Configuration
 
 ```
-#	`&control.TOTP.Secret`
-#	`&control.TOTP.Key`
-#	`&request.TOTP.From-User`
+#	`control.TOTP.Secret`
+#	`control.TOTP.Key`
+#	`request.TOTP.From-User`
 #	https://linux.die.net/man/1/qrencode
 totp {
 	time_step = 30

@@ -11,8 +11,8 @@ The uppercasecase operation is done using the current locale.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "caipirinha"
-&reply.Reply-Message := "toupper of %{control.Tmp-String-0} is " + %toupper(%{control.Tmp-String-0})
+control.Tmp-String-0 := "caipirinha"
+reply.Reply-Message := "toupper of %{control.Tmp-String-0} is " + %toupper(%{control.Tmp-String-0})
 ----
 
 .Output

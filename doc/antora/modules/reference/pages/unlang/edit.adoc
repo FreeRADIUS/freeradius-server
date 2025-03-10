@@ -8,15 +8,15 @@ attributes.
 .Syntax
 [source,unlang]
 ----
-&attribute := <expression>
-&attribute = <expression>
-&attribute += <expression>
-&attribute -= <expression>
+attribute := <expression>
+attribute = <expression>
+attribute += <expression>
+attribute -= <expression>
 ...
 
-&list1 := &list2
-&list1 += { &attribute = value, ... }
-&list1 += " attribute = value, ... "
+list1 := &list2
+list1 += { attribute = value, ... }
+list1 += " attribute = value, ... "
 ...
 ----
 
@@ -97,7 +97,7 @@ retrieving data from a database.
 .Syntax
 [source,unlang]
 ----
-&<list> <op> <rhs>
+<list> <op> <rhs>
 ----
 
 List editing can be done for the usual xref:reference:unlang/list.adoc[lists] such as `request`,
@@ -166,7 +166,7 @@ assigning the empty list to the destination.
 ====
 [source,unlang]
 ----
-&reply := {}
+reply := {}
 ----
 ====
 
@@ -197,8 +197,8 @@ given.
 ====
 [source,unlang]
 ----
-&reply += {
-	&Filter-Id = "foo"
+reply += {
+	Filter-Id = "foo"
 }
 ----
 ====
@@ -212,7 +212,7 @@ appended to the list.
 ====
 [source,unlang]
 ----
-&reply += &request.User-Name
+reply += request.User-Name
 ----
 ====
 
@@ -227,8 +227,8 @@ overriding the contents of a list.
 ====
 [source,unlang]
 ----
-&reply := {
-	&Filter-Id = "foo"
+reply := {
+	Filter-Id = "foo"
 }
 ----
 ====
@@ -244,7 +244,7 @@ Attributes can be removed from a list using the `-=` (remove) operator.
 ====
 [source,unlang]
 ----
-&reply -= &Filter-Id
+reply -= Filter-Id
 ----
 ====
 
@@ -252,7 +252,7 @@ Attributes can be removed from a list using the `-=` (remove) operator.
 ====
 [source,unlang]
 ----
-&reply -= &Filter-Id[*]
+reply -= Filter-Id[*]
 ----
 ====
 
@@ -260,8 +260,8 @@ Attributes can be removed from a list using the `-=` (remove) operator.
 ====
 [source,unlang]
 ----
-&reply -= {
-    &Filter-Id == "bar"
+reply -= {
+    Filter-Id == "bar"
 }
 ----
 ====
@@ -295,7 +295,7 @@ copies all of the `request` list contents to the `reply` list.
 ====
 [source,unlang]
 ----
-&reply := &request
+reply := request
 ----
 ====
 
@@ -303,7 +303,7 @@ copies all of the `request` list contents to the `reply` list.
 ====
 [source,unlang]
 ----
-&reply += &request
+reply += request
 ----
 ====
 
@@ -315,13 +315,13 @@ lists into a database, and then reading them back when a request is
 processed.
 
 Note that the pairs in the string _cannot_ have list qualifiers.  That
-is, `&reply += "request.foo ..."` is not allowed.
+is, `reply += "request.foo ..."` is not allowed.
 
 .Assigning attributes taken from a string
 ====
 [source,unlang]
 ----
-&reply += "Filter-Id = 'foo'"
+reply += "Filter-Id = 'foo'"
 ----
 ====
 
@@ -332,7 +332,7 @@ The above example has the same result as the earlier example of adding
 ====
 [source,unlang]
 ----
-&reply += "sql("SELECT pairs FROM pair_table WHERE username = '%{User-Name}'")
+reply += "sql("SELECT pairs FROM pair_table WHERE username = '%{User-Name}'")
 ----
 ====
 
@@ -345,7 +345,7 @@ strings, such as `Filter-Id = "foo"`.
 .Syntax
 [source,unlang]
 ----
-&<attribute> <op> <rhs>
+<attribute> <op> <rhs>
 ----
 
 Attribute editing can be done for any

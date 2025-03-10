@@ -318,9 +318,9 @@ For example, instead of doing this:
 
 [source,unlang]
 ----
-if (&User-Name == "bob") {
+if (User-Name == "bob") {
     update reply {
-        &Reply-Message := "Hello, %{User-Name}"
+        Reply-Message := "Hello, %{User-Name}"
     }
 }
 ----
@@ -329,8 +329,8 @@ You can now do this:
 
 [source,unlang]
 ----
-if (&User-Name == "bob") {
-    &reply.Reply-Message := "Hello, %{User-Name}"
+if (User-Name == "bob") {
+    reply.Reply-Message := "Hello, %{User-Name}"
 }
 ----
 
@@ -573,7 +573,7 @@ Use of attributes in xlats e.g. `%{User-Name}` remains unchanged.
 There is no plan to require prefixes here.
 
 As of v3, the preferred format for `unknown` attributes is
-`&Attr-oid.oid.oid`, e.g. `&Attr-26.11344.255`. However, v3 would
+`Attr-oid.oid.oid`, e.g. `Attr-26.11344.255`. However, v3 would
 still parse (but not generate) attributes of the form
 `Vendor-FreeRADIUS-Attr-255`. The `Vendor-` syntax has been removed in
 version 4. The server would never produce such names, and allowing
@@ -606,14 +606,14 @@ operator does not work the same way as before.
 Instead of doing:
 
 ```
-&Reply-Message += "foo"
+Reply-Message += "foo"
 ```
 
 you should edit the `reply` list, using the `+=` operator:
 
 ```
-&reply += {
-    &Reply-Message = "foo"
+reply += {
+    Reply-Message = "foo"
 }
 ```
 
@@ -626,14 +626,14 @@ For example, in v3 you would do:
 
 ```
 update reply {
-	&Framed-IP-Address := "%{sql:SELECT ...}"
+	Framed-IP-Address := "%{sql:SELECT ...}"
 }
 ```
 
 In v4, you can remove the `update`, and rewrite the SQL call to:
 
 ```
-&reply.Framed-IP-Address := %sql("SELECT ...")
+reply.Framed-IP-Address := %sql("SELECT ...")
 ```
 
 Using double quotes everywhere means that every bit of data gets
@@ -709,7 +709,7 @@ xref:reference:xlat/index.adoc[xlat] expansions have been changed from syntax li
 
 `%{integer:...}` has been removed.  Just use a cast, such as `(integer) &Service-Type`.
 
-`%{expr:...}` has been removed.  You can instead use in-place expressions, such as `%{1 + 2}` or `%{&NAS-Port + 14}`.
+`%{expr:...}` has been removed.  You can instead use in-place expressions, such as `%{1 + 2}` or `%{NAS-Port + 14}`.
 
 == New Modules
 
@@ -750,24 +750,24 @@ The following modules exhibit changed behaviour.
 
 === rlm_cache
 
-`&control.Cache-Merge` has been renamed to
-`&control.Cache-Merge-New` and controls whether new entries are merged
+`control.Cache-Merge` has been renamed to
+`control.Cache-Merge-New` and controls whether new entries are merged
 into the current request. It defaults to `no`. The primary use case,
 is if you’re using xlat expansions in the cache module itself to
 retrieve information for caching, and need the result of those
 expansions to be available immediately.
 
-Two new control attributes `&control.Cache-Allow-Merge` and
-`&control.Cache-Allow-Insert` have been added. These control whether
+Two new control attributes `control.Cache-Allow-Merge` and
+`control.Cache-Allow-Insert` have been added. These control whether
 existing entries are to be merged, and new entries created on the next
 call to a cache module instance. Both default to `yes`.
 
 === rlm_eap
 
-All certificate attributes are available in the `&session-state.`
+All certificate attributes are available in the `session-state.`
 list, immediately after they are parsed from their ASN1 form.
 
-The certificates are no longer added to the `&request.` list. Instead,
+The certificates are no longer added to the `request.` list. Instead,
 they are added to the `session-state` list.  You are advised to update
 any references during the upgrade to 4.0:
 
@@ -802,7 +802,7 @@ preferable to having them hard-coded in C.
 === rlm_eap_pwd
 
 The `virtual_server` configuration has been removed from EAP-PWD. The
-module now looks for &request.control.Password.Cleartext.
+module now looks for request.control.Password.Cleartext.
 
 === rlm_eap_leap
 
@@ -824,7 +824,7 @@ The xref:reference:xlat/index.adoc[xlat] expansions just support math
 natively.  For example:
 
 ```
-&Reply-Message := "1 + 2 = %{1 + 2}"
+Reply-Message := "1 + 2 = %{1 + 2}"
 ```
 
 will return the string `1 + 2 = 3`.  The contents of the expansion can
@@ -856,7 +856,7 @@ The caching of group membership into attributes in the `control` list is
 still available, so
 
 ```
-&control.LDAP-Group[*] == "foo"
+control.LDAP-Group[*] == "foo"
 ```
 can also be used to test membership after having called the `ldap` module,
 if `cacheable_name` or `cacheable_dn` are enabled.
@@ -881,8 +881,8 @@ to store session data, instead of radutmp.
 
 === rlm_rest
 
-`REST-HTTP-Code` is now inserted into the `&request.` list instead
-of the `&reply.` list, to be compliant with the
+`REST-HTTP-Code` is now inserted into the `request.` list instead
+of the `reply.` list, to be compliant with the
 https://wiki.freeradius.org/guide/List-Usage[list usage] guidelines.
 
 === rlm_sql
@@ -894,8 +894,8 @@ If caching is enabled, the `SQL-Group` attribute is cached in the
 `control` list after the module has run.  This means it is possible to
 do regular expression comparison on group names.
 
-It also means that any comparison of `&SQL-Group == "foo"` has to be
-updated to use `&control.SQL-Group == "foo"` instead.
+It also means that any comparison of `SQL-Group == "foo"` has to be
+updated to use `control.SQL-Group == "foo"` instead.
 
 This caching also means that the group comparison will be done
 internally, and will not result in a database lookup.  This also means
@@ -990,10 +990,10 @@ key             = User-Name
 In v4 they must now be specified as::
 
 ```
-counter_name    = &control.Daily-Session-Time
-check_name      = &control.Max-Daily-Session
-reply_name      = &reply.Session-Timeout
-key             = "%{&Stripped-User-Name || &User-Name}"
+counter_name    = control.Daily-Session-Time
+check_name      = control.Max-Daily-Session
+reply_name      = reply.Session-Timeout
+key             = "%{Stripped-User-Name || User-Name}"
 ```
 
 Just adding the `&` prefix to the attribute name is not sufficient.
@@ -1001,7 +1001,7 @@ Attributes must be qualified with the list to search in, or add to.
 
 This allows significantly greater flexibility, and better integration
 with newer features in the server such as CoA, where reply_name can now
-be `&coa:Session-Timeout`. That allows the server to send a CoA packet
+be `coa:Session-Timeout`. That allows the server to send a CoA packet
 which updates the `Session-Timeout` for the user.
 
 In v4, when the `key` field was set to `User-Name`, the module would
@@ -1010,7 +1010,7 @@ functionality has been moved to the configuration.  To get the same
 functionality, the key should now be specified as a dynamic expansion:
 
 ```
-key = "%{&Stripped-User-Name || &User-Name}"
+key = "%{Stripped-User-Name || User-Name}"
 ```
 
 The `count_attribute` has been removed, as it is no longer necessary.
@@ -1085,7 +1085,7 @@ Dates and time attributes can be checked against date strings by
 casting them:
 
 ```
-if (&Date-attribute < (date) 'Aug 1 2023 01:02:03 UTC') {
+if (Date-attribute < (date) 'Aug 1 2023 01:02:03 UTC') {
 	...
 }
 ```
@@ -1102,21 +1102,21 @@ if (%time() < (date) 'Aug 1 2023 01:02:03 UTC') {
 
 Many "virtual" or "fake" attributes have been removed or renamed.
 
-`&Module-Return-Code` should be replaced by `%interpreter(rcode)`.
+`Module-Return-Code` should be replaced by `%interpreter(rcode)`.
 
-`&Response-Packet-Type` should be replaced by `&reply.Packet-Type`.
+`Response-Packet-Type` should be replaced by `reply.Packet-Type`.
 
-`&Virtual-Server` should be replaced by `%interpreter(server)`.
+`Virtual-Server` should be replaced by `%interpreter(server)`.
 
-`&Packet-Authentication-Vector` should be replaced by `%radius.packet.vector()`.
+`Packet-Authentication-Vector` should be replaced by `%radius.packet.vector()`.
 
-`&Packet-Dst-IP-Address` and `&Packet-Dst-IPv6-Address` should be replaced by `&Net.Dst.IP`.
+`Packet-Dst-IP-Address` and `Packet-Dst-IPv6-Address` should be replaced by `Net.Dst.IP`.
 
-`&Packet-Dst-Port` should be replaced by `&Net.Dst.Port`.
+`Packet-Dst-Port` should be replaced by `Net.Dst.Port`.
 
-`&Packet-Src-IP-Address` and `&Packet-Src-IPv6-Address` should be replaced by `&Net.Src.IP`.
+`Packet-Src-IP-Address` and `Packet-Src-IPv6-Address` should be replaced by `Net.Src.IP`.
 
-`&Packet-Src-Port` should be replaced by `&Net.Src.Port`.
+`Packet-Src-Port` should be replaced by `Net.Src.Port`.
 
 == Recommended Changes
 
@@ -1126,7 +1126,7 @@ In v3, many people had a habit of just adding `"..."` around _everything_.  For 
 [source,unlang]
 ----
 update reply {
-	&Reply-Message := "%{User-Name}"
+	Reply-Message := "%{User-Name}"
 }
 
 ...
@@ -1144,11 +1144,11 @@ In v4, it is clearer, simpler, and faster to just use `unlang` syntax correctly.
 
 [source,unlang]
 ----
-&reply.Reply-Message := &User-Name
+reply.Reply-Message := User-Name
 
 ...
 
-if (&User-Name == "bob") {
+if (User-Name == "bob") {
    ...
 }
 ----
