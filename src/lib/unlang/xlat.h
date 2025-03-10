@@ -405,12 +405,11 @@ fr_slen_t	xlat_tokenize_condition(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sb
 					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
 fr_slen_t 	xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
-				   xlat_t const *xlat,
-				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, bool spaces);
+				   xlat_t const *xlat, fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
+				   bool spaces) CC_HINT(nonnull(1,2,3,6));
 
 fr_slen_t	xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
-			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-			      fr_value_box_safe_for_t literals_safe_for);
+			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
 fr_slen_t	xlat_print(fr_sbuff_t *in, xlat_exp_head_t const *node, fr_sbuff_escape_rules_t const *e_rules);
 

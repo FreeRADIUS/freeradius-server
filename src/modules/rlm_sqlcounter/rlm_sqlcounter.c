@@ -463,7 +463,7 @@ static int call_env_query_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *
 					['%'] = '%',
 					['\\'] = '\\',
 				},
-		  }}, t_rules, 0) < 0) {
+		  }}, t_rules) < 0) {
 		talloc_free(query);
 		return -1;
 	}

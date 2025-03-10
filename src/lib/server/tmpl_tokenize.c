@@ -3262,7 +3262,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			xlat_exp_head_t	*head = NULL;
 
 			vpt = tmpl_alloc_null(ctx);
-			slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules, t_rules->literals_safe_for);
+			slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
 			if (slen <= 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 			if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
@@ -3471,7 +3471,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		vpt = tmpl_alloc_null(ctx);
 
-		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules, t_rules->literals_safe_for);
+		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
 		if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 		/*
@@ -3555,6 +3555,9 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 	{
 		xlat_exp_head_t		*head = NULL;
 		tmpl_type_t		type = TMPL_TYPE_REGEX_XLAT;
+		tmpl_rules_t		arg_t_rules = *t_rules;
+
+		arg_t_rules.literals_safe_for = FR_REGEX_SAFE_FOR;
 
 		if (!fr_type_is_null(t_rules->cast)) {
 			fr_strerror_const("Casts cannot be used with regular expressions");
@@ -3564,7 +3567,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		vpt = tmpl_alloc_null(ctx);
 
-		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules, FR_REGEX_SAFE_FOR);
+		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, &arg_t_rules);
 		if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 		/*
@@ -4003,6 +4006,7 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 		 *	i.e. TMPL_TYPE_DATA_UNRESOLVED != TMPL_TYPE_DATA(FR_TYPE_STRING)
 		 */
 		if (fr_value_box_cast_in_place(vpt, &vpt->data.literal, type, NULL) < 0) return -1;
+//		fr_value_box_mark_safe_for(&vpt->data.literal, vpt->rules.literals_safe_for); ??? is this necessary?
 
 		/*
 		 *	Strings get quoted, everything else is a bare

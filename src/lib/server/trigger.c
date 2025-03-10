@@ -380,11 +380,17 @@ int trigger_exec(unlang_interpret_t *intp,
 	MEM(trigger = talloc_zero(request, fr_trigger_t));
 	fr_value_box_list_init(&trigger->args);
 	trigger->command = talloc_strdup(trigger, value);
-	trigger->timeout = fr_time_delta_from_sec(5);	/* FIXME - Should be configurable? */
+	trigger->timeout = fr_time_delta_from_sec(5);	/* @todo - Should be configurable? */
 
 	slen = xlat_tokenize_argv(trigger, &trigger->xlat,
 				  &FR_SBUFF_IN(trigger->command, talloc_array_length(trigger->command) - 1),
-				  NULL, NULL, NULL, true);
+				  NULL, NULL, &(tmpl_rules_t) {
+					  .attr = {
+						  .dict_def = request->dict,
+						  .list_def = request_attr_request,
+						  .allow_unresolved = false,
+					  },
+				  }, true);
 	if (slen <= 0) {
 		char *spaces, *text;
 

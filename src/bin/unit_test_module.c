@@ -486,7 +486,7 @@ static bool do_xlats(fr_event_list_t *el, request_t *request, char const *filena
 								};
 
 
-			slen = xlat_tokenize(xlat_ctx, &head, &line, &p_rules, &t_rules, 0);
+			slen = xlat_tokenize(xlat_ctx, &head, &line, &p_rules, &t_rules);
 			if (slen <= 0) {
 				talloc_free(xlat_ctx);
 				fr_sbuff_in_sprintf(&out, "ERROR offset %d '%s'", (int) -slen, fr_strerror());
