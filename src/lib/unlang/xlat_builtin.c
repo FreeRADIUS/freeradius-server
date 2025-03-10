@@ -725,6 +725,12 @@ static xlat_action_t xlat_func_file_rm(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
+static xlat_arg_parser_t const xlat_func_taint_args[] = {
+	{ .required = true, .type = FR_TYPE_VOID },
+	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_VOID },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 static xlat_action_t xlat_func_untaint(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       UNUSED xlat_ctx_t const *xctx,
 				       UNUSED request_t *request, fr_value_box_list_t *in)
@@ -4172,9 +4178,11 @@ do { \
 
 	if (unlikely((xlat = xlat_func_register(xlat_ctx, "untaint", xlat_func_untaint, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL);
+	xlat_func_args_set(xlat, xlat_func_taint_args);
 
 	if (unlikely((xlat = xlat_func_register(xlat_ctx, "taint", xlat_func_taint, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL);
+	xlat_func_args_set(xlat, xlat_func_taint_args);
 
 	/*
 	 *	All of these functions are pure.
