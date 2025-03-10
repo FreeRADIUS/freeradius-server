@@ -39,6 +39,11 @@ RCSID("$Id$")
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/value.h>
 
+/*
+ *	For xlat_exp_head_alloc(), because xlat_copy() doesn't create an output head.
+ */
+#include <freeradius-devel/unlang/xlat_priv.h>
+
 #include <ctype.h>
 
 /*
@@ -3666,6 +3671,9 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 	 */
 	} else if (tmpl_contains_xlat(vpt)) {
 		fr_assert(in->data.xlat.ex != NULL);
+
+		vpt->data.xlat.ex = xlat_exp_head_alloc(vpt);
+		if (!vpt->data.xlat.ex) goto error;
 
 		if (unlikely(xlat_copy(vpt, vpt->data.xlat.ex, in->data.xlat.ex) < 0)) goto error;
 
