@@ -25,12 +25,18 @@ ATTRIBUTE	Domain-Name				10	string
 
 ATTRIBUTE	Service-Type				26	integer
 
+VALUE	Service-Type			Admin			6
 VALUE	Service-Type			L4admin			250
 VALUE	Service-Type			Slbadmin		251
 VALUE	Service-Type			Oper			252
 VALUE	Service-Type			L4oper			253
 VALUE	Service-Type			Slboper			254
 VALUE	Service-Type			User			255
+
+ATTRIBUTE	Language				28	integer
+
+VALUE	Language			English			0
+VALUE	Language			Chinese			1
 
 END-VENDOR	Alteon
 ALIAS		Alteon					Vendor-Specific.Alteon
