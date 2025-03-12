@@ -1098,7 +1098,6 @@ static int libpython_init(void)
 	PyConfig	config;
 	PyStatus	status;
 	wchar_t		*wide_name;
-	char		*path;
 
 	fr_assert(!Py_IsInitialized());
 
@@ -1165,13 +1164,6 @@ static int libpython_init(void)
 	if (PyStatus_Exception(status)) goto fail;
 
 	PyConfig_Clear(&config);
-
-	/*
-	 *	Report the path
-	 */
-	path = Py_EncodeLocale(Py_GetPath(), NULL);
-	LOAD_INFO("Python path set to \"%s\"", path);
-	PyMem_Free(path);
 
 	global_interpreter = PyEval_SaveThread();	/* Store reference to the main interpreter and release the GIL */
 
