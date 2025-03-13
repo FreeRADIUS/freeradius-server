@@ -68,7 +68,7 @@ twitter_sign {
 	# Stage 1.0 - Generate the nonce (base64 encoding of 32 bytes of random data) and record the timestamp
 	update request {
 		Tmp-Octets-0  := "0x%{randstr:hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh}"
-		Tmp-String-0  := "%{base64:&Tmp-Octets-0}"
+		Tmp-String-0  := "%{base64:Tmp-Octets-0}"
 		Tmp-Integer-0 := "%l"
 	}
 
@@ -100,8 +100,8 @@ twitter_sign {
 
 	# Stage 1.4 - Create the oAuth signature
 	update request {
-		Tmp-Octets-1 := "0x%{hmacsha1:&Tmp-String-2 &Tmp-String-3}"
-		Tmp-String-4 := "%{base64:&Tmp-Octets-1}"
+		Tmp-Octets-1 := "0x%{hmacsha1:Tmp-String-2 Tmp-String-3}"
+		Tmp-String-4 := "%{base64:Tmp-Octets-1}"
 	}
 
 	# Stage 2.0 - Adding the authorization header
