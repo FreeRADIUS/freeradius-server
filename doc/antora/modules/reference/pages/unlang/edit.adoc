@@ -315,7 +315,7 @@ lists into a database, and then reading them back when a request is
 processed.
 
 Note that the pairs in the string _cannot_ have list qualifiers.  That
-is, `&reply += "request.foo ..."` is not allowed.
+is, `reply += "request.foo ..."` is not allowed.
 
 .Assigning attributes taken from a string
 ====

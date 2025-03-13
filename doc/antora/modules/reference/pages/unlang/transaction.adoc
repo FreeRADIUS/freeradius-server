@@ -35,7 +35,7 @@ a `transaction` statement will remain in `sql`.
 .Example
 
 In this example, if the SQL `select` statement fails, then the
-`&reply.Framed-IP-Address` attribute is _not_ updated, and the
+`reply.Framed-IP-Address` attribute is _not_ updated, and the
 `transaction` section returns `fail`.
 
 [source,unlang]

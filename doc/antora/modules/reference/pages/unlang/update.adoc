@@ -57,7 +57,7 @@ This example should be converted to the following syntax:
 }
 ----
 
-This configuration can be interpreted as "edit the `&request` list,
+This configuration can be interpreted as "edit the `request` list,
 but appending (`+=`) another list to it.  The list being appended
 contains four attributes".
 
@@ -123,7 +123,7 @@ assign the attributes in place, with a list qualifier.
 
 === Removing Attributes from a list: !*
 
-The following example removes all `&User-Name` attributes from the `request` list.
+The following example removes all `User-Name` attributes from the `request` list.
 
 [source,unlang]
 ----
