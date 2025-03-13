@@ -59,7 +59,7 @@ Tmp-String-1 to note the type of log record.
 Make these changes in the default server (`raddb/sites-enabled/default`).
 
     authorize {
-        if (!&session-state:) {
+        if (!session-state:) {
             update session-state {
                 Tmp-String-1 := "request"
             }

@@ -182,7 +182,7 @@ server eduroam {
 
 		# We're sending a response to one of OUR network devices for one of 
 		# OUR users so provide it with the real user-identity.
-		if (&session-state:Stripped-User-Name) {
+		if (session-state:Stripped-User-Name) {
 			update reply {
 				User-Name := "%{session-state:Stripped-User-Name}@%{Stripped-User-Domain}"
 			}
