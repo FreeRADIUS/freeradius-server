@@ -212,7 +212,7 @@ appended to the list.
 ====
 [source,unlang]
 ----
-reply += &request.User-Name
+reply += request.User-Name
 ----
 ====
 
@@ -295,7 +295,7 @@ copies all of the `request` list contents to the `reply` list.
 ====
 [source,unlang]
 ----
-reply := &request
+reply := request
 ----
 ====
 
@@ -303,7 +303,7 @@ reply := &request
 ====
 [source,unlang]
 ----
-reply += &request
+reply += request
 ----
 ====
 

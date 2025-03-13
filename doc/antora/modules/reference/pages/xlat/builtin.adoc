@@ -136,7 +136,7 @@ if (User-Name == "bob") {
     request.Tmp-String-0 := "not bob!"
 }
 
-reply.Reply-Message := "%eval(&request.Tmp-String-0}"
+reply.Reply-Message := "%eval(request.Tmp-String-0}"
 ----
 
 .Output when `User-Name == bob`

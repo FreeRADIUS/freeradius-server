@@ -215,7 +215,7 @@ context:
 ----
 update control {
         DHCP-SQL-Option-Context := "by-mac"
-        DHCP-SQL-Option-Identifier := &request:DHCP-Client-Hardware-Address
+        DHCP-SQL-Option-Identifier := request:DHCP-Client-Hardware-Address
 }
 dhcp_sql.authorize
 ----
