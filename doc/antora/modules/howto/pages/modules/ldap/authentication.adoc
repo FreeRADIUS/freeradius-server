@@ -148,7 +148,7 @@ You have two options available to you here (`Ctrl-C` the running FreeRADIUS serv
 [source,unlang]
 ----
 -ldap
-if ((ok || updated) && &User-Password) {
+if ((ok || updated) && User-Password) {
   control.Auth-Type := ldap
 }
 ----
@@ -167,9 +167,9 @@ If you use LDAP bind'ing to perform user authentication, then when `radclient` r
 (0)    ldap - Processing user attributes
 (0)    ldap - Released connection (0)
 (0)    ldap (ok)
-(0)    if ((ok || updated) && &User-Password) {
+(0)    if ((ok || updated) && User-Password) {
 (0)      control.Auth-Type := ldap
-(0)    } # if ((ok || updated) && &User-Password) (noop)
+(0)    } # if ((ok || updated) && User-Password) (noop)
 (0)    expiration (noop)
 (0)    pap - WARNING: No "known good" password found for the user.  Not setting Auth-Type
 (0)    pap - WARNING: Authentication will fail unless a "known good" password is available

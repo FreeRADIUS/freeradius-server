@@ -131,7 +131,7 @@ Evaluates the string as an expansion, and returns the result.  The main differen
 [source,unlang]
 ----
 if (User-Name == "bob") {
-    request.Tmp-String-0 := "&User-Name"
+    request.Tmp-String-0 := "User-Name"
 } else {
     request.Tmp-String-0 := "not bob!"
 }

@@ -32,7 +32,7 @@ statements is executed.
 
 [source,unlang]
 ----
-load-balance &User-Name {
+load-balance User-Name {
     sql1
     sql2
 }

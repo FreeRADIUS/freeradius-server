@@ -13,7 +13,7 @@ when _condition_ returns `true`.
 .Examples
 
 `(! (foo == bar))` +
-`! &User-Name`
+`! User-Name`
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

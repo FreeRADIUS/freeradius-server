@@ -111,7 +111,7 @@ future release.
 .Switch over a User-Name
 [source,unlang]
 ----
-switch &User-Name {
+switch User-Name {
     case "bob" {
         reject
     }

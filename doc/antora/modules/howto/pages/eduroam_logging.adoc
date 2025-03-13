@@ -79,13 +79,13 @@ update `post-auth`:
         post-auth {
             ...
             update outer.session-state {
-                User-Name := &User-Name
+                User-Name := User-Name
             }
 
             Post-Auth-Type REJECT {
                 ...
                 update outer.session-state {
-                    User-Name := &User-Name
+                    User-Name := User-Name
                 }
             }
         }

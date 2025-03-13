@@ -38,7 +38,7 @@ through different modules and will give different results.
 .Example
 [source,unlang]
 ----
-redundant-load-balance &User-Name {
+redundant-load-balance User-Name {
     sql1
     sql2
     sql3
