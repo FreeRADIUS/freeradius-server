@@ -354,7 +354,6 @@ server.
 * xref:raddb/sites-available/status.adoc[status]
 * xref:raddb/sites-available/tacacs.adoc[tacacs]
 * xref:raddb/sites-available/tls.adoc[tls]
-* xref:raddb/sites-available/tls-cache.adoc[tls cache]
 * xref:raddb/sites-available/virtual.example.com.adoc[virtual example com]
 * xref:raddb/sites-available/vmps.adoc[vmps]
 

@@ -35,7 +35,7 @@ Processing the contents of a DHCPv6 relay-message by using a
 subrequest and recursively calling the DHCPv6 virtual server.
 [source,unlang]
 ----
-subrequest &Packet-Type &Relay-Message reply.Relay-Message {
+subrequest Packet-Type Relay-Message reply.Relay-Message {
     call dhcpv6 {}
 }
 ----

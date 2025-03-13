@@ -243,7 +243,6 @@
 **** xref:raddb/sites-available/doc/tacacs.adoc[TACACS+]
 ***** xref:raddb/sites-available/tacacs.adoc[Virtual Server]
 **** xref:raddb/sites-available/tls.adoc[TLS]
-***** xref:raddb/sites-available/tls-cache.adoc[TLS Cache]
 **** xref:raddb/sites-available/vmps.adoc[VMPS]
 **** xref:raddb/sites-available/dynamic-clients.adoc[Dynamic Clients]
 
