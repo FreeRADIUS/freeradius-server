@@ -328,7 +328,7 @@ and User-Password have been provided by this point making
 ASCII authentication equivalent to PAP.
 
 Alternatively, if extra data is required, set
-reply.Authentication-Status := Getdata
+reply.Packet-Type := ::Authentication-GetData
 to request the extra data, which will be in User-Message in
 the next packet (if the client provides it)
 
@@ -451,7 +451,6 @@ Add the arguments to whatever the user entered.
 
 ```
 	send Authorization-Pass-Add {
-		reply.Authorization-Status := Pass-Add
 		reply.Server-Message := "authorization-response-server"
 		reply.Data := "authorization-response-data"
 		reply.Argument-List := "key1=var1"
@@ -463,7 +462,6 @@ Replace whatever the user entered with the following arguments
 
 ```
 	send Authorization-Pass-Reply {
-		reply.Authorization-Status := Pass-Repl
 		reply.Server-Message := "authorization-response-server"
 		reply.Data := "authorization-response-data"
 		reply.Argument-List := "key1=var1"
@@ -475,7 +473,7 @@ Reject the request
 
 ```
 	send Authorization-Fail {
-		reply.Authorization-Status := Fail
+
 	}
 
 ```
@@ -497,32 +495,48 @@ Create a 'detail'ed log of the packets.
 	}
 
 ```
+
+### Accounting "type" Sections
+
+Each type of accounting packet is run through its own
+section. The section MUST return "ok" to indicate that
+it successfully handled the accounting data.
+
+The "ok" return code is typically set automatically when
+an accounting module succeeds in its work.  The explicit
+"ok" here is just so that the default configuration will
+return success for all accounting packets.
+
 First packet for a session
 ```
 	accounting Start {
+		ok
 	}
 
 ```
 Updates a previous start
 ```
 	accounting Watchdog-Update {
+		ok
 	}
 
 ```
 Updates a session
 ```
 	accounting Watchdog {
+		ok
 	}
 
 ```
 Stops a session
 ```
 	accounting Stop {
+		ok
 	}
 
 ```
 
-### Send
+### Send Responses
 
 ```
 	send Accounting-Success {

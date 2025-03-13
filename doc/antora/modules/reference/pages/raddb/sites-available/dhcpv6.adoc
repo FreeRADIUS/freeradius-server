@@ -4,7 +4,9 @@
 ```
 
 
-## The Virtual Server
+
+
+## The DHCPv6 Virtual Server
 
 ```
 server dhcpv6 {
