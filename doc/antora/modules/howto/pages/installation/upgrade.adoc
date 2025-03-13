@@ -573,7 +573,7 @@ Use of attributes in xlats e.g. `%{User-Name}` remains unchanged.
 There is no plan to require prefixes here.
 
 As of v3, the preferred format for `unknown` attributes is
-`&Attr-oid.oid.oid`, e.g. `&Attr-26.11344.255`. However, v3 would
+`Attr-oid.oid.oid`, e.g. `Attr-26.11344.255`. However, v3 would
 still parse (but not generate) attributes of the form
 `Vendor-FreeRADIUS-Attr-255`. The `Vendor-` syntax has been removed in
 version 4. The server would never produce such names, and allowing
@@ -750,24 +750,24 @@ The following modules exhibit changed behaviour.
 
 === rlm_cache
 
-`&control.Cache-Merge` has been renamed to
-`&control.Cache-Merge-New` and controls whether new entries are merged
+`control.Cache-Merge` has been renamed to
+`control.Cache-Merge-New` and controls whether new entries are merged
 into the current request. It defaults to `no`. The primary use case,
 is if you’re using xlat expansions in the cache module itself to
 retrieve information for caching, and need the result of those
 expansions to be available immediately.
 
-Two new control attributes `&control.Cache-Allow-Merge` and
-`&control.Cache-Allow-Insert` have been added. These control whether
+Two new control attributes `control.Cache-Allow-Merge` and
+`control.Cache-Allow-Insert` have been added. These control whether
 existing entries are to be merged, and new entries created on the next
 call to a cache module instance. Both default to `yes`.
 
 === rlm_eap
 
-All certificate attributes are available in the `&session-state.`
+All certificate attributes are available in the `session-state.`
 list, immediately after they are parsed from their ASN1 form.
 
-The certificates are no longer added to the `&request.` list. Instead,
+The certificates are no longer added to the `request.` list. Instead,
 they are added to the `session-state` list.  You are advised to update
 any references during the upgrade to 4.0:
 
@@ -881,8 +881,8 @@ to store session data, instead of radutmp.
 
 === rlm_rest
 
-`REST-HTTP-Code` is now inserted into the `&request.` list instead
-of the `&reply.` list, to be compliant with the
+`REST-HTTP-Code` is now inserted into the `request.` list instead
+of the `reply.` list, to be compliant with the
 https://wiki.freeradius.org/guide/List-Usage[list usage] guidelines.
 
 === rlm_sql
@@ -894,8 +894,8 @@ If caching is enabled, the `SQL-Group` attribute is cached in the
 `control` list after the module has run.  This means it is possible to
 do regular expression comparison on group names.
 
-It also means that any comparison of `&SQL-Group == "foo"` has to be
-updated to use `&control.SQL-Group == "foo"` instead.
+It also means that any comparison of `SQL-Group == "foo"` has to be
+updated to use `control.SQL-Group == "foo"` instead.
 
 This caching also means that the group comparison will be done
 internally, and will not result in a database lookup.  This also means
@@ -1001,7 +1001,7 @@ Attributes must be qualified with the list to search in, or add to.
 
 This allows significantly greater flexibility, and better integration
 with newer features in the server such as CoA, where reply_name can now
-be `&coa:Session-Timeout`. That allows the server to send a CoA packet
+be `coa:Session-Timeout`. That allows the server to send a CoA packet
 which updates the `Session-Timeout` for the user.
 
 In v4, when the `key` field was set to `User-Name`, the module would
@@ -1102,21 +1102,21 @@ if (%time() < (date) 'Aug 1 2023 01:02:03 UTC') {
 
 Many "virtual" or "fake" attributes have been removed or renamed.
 
-`&Module-Return-Code` should be replaced by `%interpreter(rcode)`.
+`Module-Return-Code` should be replaced by `%interpreter(rcode)`.
 
-`&Response-Packet-Type` should be replaced by `&reply.Packet-Type`.
+`Response-Packet-Type` should be replaced by `reply.Packet-Type`.
 
-`&Virtual-Server` should be replaced by `%interpreter(server)`.
+`Virtual-Server` should be replaced by `%interpreter(server)`.
 
-`&Packet-Authentication-Vector` should be replaced by `%radius.packet.vector()`.
+`Packet-Authentication-Vector` should be replaced by `%radius.packet.vector()`.
 
-`&Packet-Dst-IP-Address` and `&Packet-Dst-IPv6-Address` should be replaced by `&Net.Dst.IP`.
+`Packet-Dst-IP-Address` and `Packet-Dst-IPv6-Address` should be replaced by `Net.Dst.IP`.
 
-`&Packet-Dst-Port` should be replaced by `&Net.Dst.Port`.
+`Packet-Dst-Port` should be replaced by `Net.Dst.Port`.
 
-`&Packet-Src-IP-Address` and `&Packet-Src-IPv6-Address` should be replaced by `&Net.Src.IP`.
+`Packet-Src-IP-Address` and `Packet-Src-IPv6-Address` should be replaced by `Net.Src.IP`.
 
-`&Packet-Src-Port` should be replaced by `&Net.Src.Port`.
+`Packet-Src-Port` should be replaced by `Net.Src.Port`.
 
 == Recommended Changes
 

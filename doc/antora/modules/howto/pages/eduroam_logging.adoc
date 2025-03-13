@@ -50,7 +50,7 @@ accurate timestamp:
 
 ## Logging the initial EAP request
 
-The `&session-state:` list can be used to determine whether the
+The `session-state:` list can be used to determine whether the
 incoming request is the first in an EAP transaction, as on the
 first packet the list will be empty. Update the list at the same
 time to ensure that it is not empty on the next round; we can use

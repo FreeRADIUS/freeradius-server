@@ -58,8 +58,8 @@ parallel {
 Each module or subsection runs as a new child request, i.e. a
 xref:unlang/subrequest.adoc[subrequest].  Each child request is an identical
 copy of the parent request.  Policies in the child can update the
-original parent by referencing `&parent.request`, or 
-`&parent.reply`.  Please see the xref:unlang/list.adoc[list] syntax for a
+original parent by referencing `parent.request`, or 
+`parent.reply`.  Please see the xref:unlang/list.adoc[list] syntax for a
 more complete description of how to refer to parent requests.
 
 The child requests are required because each subsection is run

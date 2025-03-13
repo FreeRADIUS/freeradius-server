@@ -74,7 +74,7 @@ foreach self (&Tmp-Integer-0) {
 }
 ----
 
-Once the loop has finished , the `&Tmp-Integer-0` attribute will have the following set of values.
+Once the loop has finished , the `Tmp-Integer-0` attribute will have the following set of values.
 
 [source,unlang]
 ----

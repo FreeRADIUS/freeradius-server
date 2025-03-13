@@ -6,7 +6,7 @@
 &Attribute-Name
 ----
 
-The `&Attribute-Name` operator returns a reference to the named
+The `Attribute-Name` operator returns a reference to the named
 attribute.
 
 When used as an existence check in a condition, the condition
@@ -117,7 +117,7 @@ i.e. "the first child of the `request` list.
 
 This syntax is most useful in xref:xlat/attribute.adoc[xlat attribute references].
 
-Note that the old syntax of `&request[...]` is disallowed.
+Note that the old syntax of `request[...]` is disallowed.
 
 == Parent / child references
 

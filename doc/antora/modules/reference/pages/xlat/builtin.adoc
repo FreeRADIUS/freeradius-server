@@ -139,13 +139,13 @@ if (&User-Name == "bob") {
 &reply.Reply-Message := "%eval(&request.Tmp-String-0}"
 ----
 
-.Output when `&User-Name == bob`
+.Output when `User-Name == bob`
 
 ```
 bob
 ```
 
-.Output when `&User-Name == not bob`
+.Output when `User-Name == not bob`
 
 ```
 not bob!

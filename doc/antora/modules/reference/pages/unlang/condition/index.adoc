@@ -109,7 +109,7 @@ if (&Framed-IP-Address == 192.0.2.1) {
 
 In general, the following rules apply:
 
-* There is no need to quote attributes.  `&User-Name` is almost always preferable to `%{User-Name}`.
+* There is no need to quote attributes.  `User-Name` is almost always preferable to `%{User-Name}`.
 
 * There is no need to quote values, unless the value is a string.  `192.0.2.1` is always preferable to `"192.0.2.1"`
 

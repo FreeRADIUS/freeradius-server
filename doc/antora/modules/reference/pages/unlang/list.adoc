@@ -50,9 +50,9 @@ the child is running, the parent is suspended.  Once the child
 finishes, it is deleted, and is no longer accessible to the parent.
 
 .Examples
-`&parent.request.User-Name` +
-`&parent.reply.Reply-Message` +
-`&parent.parent.session-state.Filter-Id`
+`parent.request.User-Name` +
+`parent.reply.Reply-Message` +
+`parent.parent.session-state.Filter-Id`
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

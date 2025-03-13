@@ -96,7 +96,7 @@ data types.  (And incidentally, `-` is the inverse of `+`!)
 &Reply-Message := "foo" + "bar"
 ----
 
-Will result in `&Reply-Message == "foobar"`.
+Will result in `Reply-Message == "foobar"`.
 
 The suffix can then be "subtracted" off, with:
 
@@ -105,7 +105,7 @@ The suffix can then be "subtracted" off, with:
 &Reply-Message -= "bar"
 ----
 
-Will result in `&Reply-Message == "foo"` !.
+Will result in `Reply-Message == "foo"` !.
 
 Other data types will generally yield results which make sense.  For
 example:
@@ -116,7 +116,7 @@ example:
 * `ipv4addr` types can be subtracted, and will return a number which is the number of IPs between the two values,
 * two `date` values can be subtracted, and will return a `time_delta`,
 * operations on integers are upgraded to the next largest integer size when necessary,
-* the logical operators `&&` and `||` return the value which caused them to succeed, e.g. `&Foo := (&User-Password || "help")` will return the contents of `&User-Name` if it exists, otherwise it will return the string `help`.
+* the logical operators `&` and `||` return the value which caused them to succeed, e.g. `Foo := (&User-Password || "help")` will return the contents of `User-Name` if it exists, otherwise it will return the string `help`.
 
 In most cases, the data types are derived from the attribute
 dictionaries.  However, it is sometimes necessary to force the fields
