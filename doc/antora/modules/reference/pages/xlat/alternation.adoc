@@ -14,7 +14,7 @@ Reply-Message := "Hello %{%{User-Name}:-none}"
 .New Alternation
 [source,unlang]
 ----
-Reply-Message := "Hello %{&User-Name || 'none'}"
+Reply-Message := "Hello %{User-Name || 'none'}"
 ----
 
 This approach also means that nested alternation is no longer necessary:
@@ -28,7 +28,7 @@ Reply-Message := "Hello %{%{NAS-Identifer}:-%{%{User-Name}:-none}}"
 .New Alternation
 [source,unlang]
 ----
-Reply-Message := "Hello %{&NAS-Identifier || &User-Name || 'none'}"
+Reply-Message := "Hello %{NAS-Identifier || &User-Name || 'none'}"
 ----
 
 [NOTE]
