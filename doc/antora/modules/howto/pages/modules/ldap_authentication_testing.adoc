@@ -40,8 +40,8 @@ On the FreeRADIUS debug terminal side, you should see something like:
 (0)    ldap (updated)
 ...
 (0)    pap - No {...} in &Password-With-Header, re-writing to Cleartext-Password
-(0)    pap - Normalized &control:Password-With-Header -> &control:Cleartext-Password
-(0)    pap - Removing &control:Password-With-Header
+(0)    pap - Normalized control:Password-With-Header -> control:Cleartext-Password
+(0)    pap - Removing control:Password-With-Header
 (0)    pap - Setting control:Auth-Type = pap
 (0)    pap (updated)
 (0)  } # recv Access-Request (updated)

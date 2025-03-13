@@ -169,7 +169,7 @@ server eduroam {
 			Tunnel-Type := VLAN
 			Tunnel-Medium-Type := IEEE-802
 		}
-		if (&control:Proxy-To-Realm) {
+		if (control:Proxy-To-Realm) {
 			update reply {
 				Tunnel-Private-Group-ID = ${eduroam_default_guest_vlan}
 			}

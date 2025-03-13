@@ -165,7 +165,7 @@ modules being called, when we know the request will be handled by a remote proxy
 [source,unlang]
 ----
 suffix
-if (&control.Proxy-To-Realm) {
+if (control.Proxy-To-Realm) {
 	return
 }
 ----

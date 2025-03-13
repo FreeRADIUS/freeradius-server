@@ -39,7 +39,7 @@ string foo
 
 foo += { "a", "c", "c", "d" } # abcd
 
-foo += &control.Tmp-String-0[*]
+foo += control.Tmp-String-0[*]
 ----
 
 // Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

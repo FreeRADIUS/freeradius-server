@@ -81,7 +81,7 @@ containing `ERROR` or `WARNING`, or the `chap` module name.
 (0)    chap - Setting control.Auth-Type = chap
 (0)    chap (ok)
 ...
-(0)  Found "known good" password in &control.Password.Cleartext
+(0)  Found "known good" password in control.Password.Cleartext
 (0)  Running 'authenticate chap' from file ./raddb/sites-enabled/default
 (0)  authenticate chap {
 (0)    chap - Comparing with "known good" Password.Cleartext

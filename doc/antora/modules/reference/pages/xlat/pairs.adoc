@@ -11,7 +11,7 @@ Note that there is no "convert string to pairs" function.  Instead, you can simp
 [source,unlang]
 ----
 control.Tmp-String-0 := { "This is a string", "This is another one" }
-reply.Reply-Message := "Serialize output: %pairs(&control.[*])"
+reply.Reply-Message := "Serialize output: %pairs(control.[*])"
 ----
 
 .Output
