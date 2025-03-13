@@ -707,7 +707,7 @@ xref:reference:xlat/index.adoc[xlat] expansions have been changed from syntax li
 
 === Removed expansions
 
-`%{integer:...}` has been removed.  Just use a cast, such as `(integer) &Service-Type`.
+`%{integer:...}` has been removed.  Just use a cast, such as `(integer) Service-Type`.
 
 `%{expr:...}` has been removed.  You can instead use in-place expressions, such as `%{1 + 2}` or `%{NAS-Port + 14}`.
 
@@ -1085,7 +1085,7 @@ Dates and time attributes can be checked against date strings by
 casting them:
 
 ```
-if (&Date-attribute < (date) 'Aug 1 2023 01:02:03 UTC') {
+if (Date-attribute < (date) 'Aug 1 2023 01:02:03 UTC') {
 	...
 }
 ```

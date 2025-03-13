@@ -43,7 +43,7 @@ On the FreeRADIUS debug terminal side, you should see something like:
 (0)    ldap - Released connection (0)
 (0)    ldap (updated)
 ...
-(0)    pap - No {...} in &Password.With-Header, re-writing to Password.Cleartext
+(0)    pap - No {...} in Password.With-Header, re-writing to Password.Cleartext
 (0)    pap - Normalized control.Password.With-Header -> control.Password.Cleartext
 (0)    pap - Removing control.Password.With-Header
 (0)    pap - Setting control.Auth-Type = pap
