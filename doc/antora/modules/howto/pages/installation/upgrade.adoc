@@ -582,7 +582,7 @@ them as input made attribute parsing significantly more complex.
 === List references
 
 The old-style `request:` and `reply:` syntax for lists has been
-deprecated.  Please use `request.` and `reply.` instead.
+deprecated.  Please use `request` and `reply` instead.
 
 Many lists have been removed.  e.g._`proxy`, `proxy-reply`, `coa`,
 `coa-reply`, `disconnect`, and `disconnect-reply`.  The underlying
@@ -767,7 +767,7 @@ call to a cache module instance. Both default to `yes`.
 All certificate attributes are available in the `session-state.`
 list, immediately after they are parsed from their ASN1 form.
 
-The certificates are no longer added to the `request.` list. Instead,
+The certificates are no longer added to the `request` list. Instead,
 they are added to the `session-state` list.  You are advised to update
 any references during the upgrade to 4.0:
 
@@ -881,7 +881,7 @@ to store session data, instead of radutmp.
 
 === rlm_rest
 
-`REST-HTTP-Code` is now inserted into the `request.` list instead
+`REST-HTTP-Code` is now inserted into the `request` list instead
 of the `reply.` list, to be compliant with the
 https://wiki.freeradius.org/guide/List-Usage[list usage] guidelines.
 

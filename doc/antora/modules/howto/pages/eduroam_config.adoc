@@ -123,8 +123,8 @@ server eduroam {
 		# with &&.
 		if (Stripped-User-Domain != "${operator_name}") {
 			update {
-				control:Load-Balance-Key := Calling-Station-ID
-				control:Proxy-To-Realm := 'eduroam_flr'
+				control.Load-Balance-Key := Calling-Station-ID
+				control.Proxy-To-Realm := 'eduroam_flr'
 
 				# Operator name (RFC 5580) identifies the network the
 				# request originated from. It's not absolutely necessary
@@ -169,7 +169,7 @@ server eduroam {
 			Tunnel-Type := VLAN
 			Tunnel-Medium-Type := IEEE-802
 		}
-		if (control:Proxy-To-Realm) {
+		if (control.Proxy-To-Realm) {
 			update reply {
 				Tunnel-Private-Group-ID = ${eduroam_default_guest_vlan}
 			}
@@ -182,9 +182,9 @@ server eduroam {
 
 		# We're sending a response to one of OUR network devices for one of
 		# OUR users so provide it with the real user-identity.
-		if (session-state:Stripped-User-Name) {
+		if (session-state.Stripped-User-Name) {
 			update reply {
-				User-Name := "%{session-state:Stripped-User-Name}@%{Stripped-User-Domain}"
+				User-Name := "%{session-state.Stripped-User-Name}@%{Stripped-User-Domain}"
 			}
 		}
 
@@ -444,9 +444,9 @@ server eduroam-inner {
 
 		# Make the user's real identity available to anything that needs
 		# it in the outer server.
-		if (outer.session-state:)
+		if (outer.session-state.)
 			update {
-				outer.session-state:Stripped-User-Name := Stripped-User-Name
+				outer.session-state.Stripped-User-Name := Stripped-User-Name
 			}
 		}
 
