@@ -66,7 +66,7 @@ As of the time of this release, FreeRADIUS:
 * Dynamic expansions have changed from `%{md5:foo}` to a more standard syntax of `%md5(foo)`.
   ** The new syntax supports multiple comma-separated arguments such as `%function(a, b, c)`.
   ** Expansions such as `%{User-Name}` work in addition to expressions like `%{1+2}` too.
-  ** Alternation `%{foo || &bar}` supersedes `%{%{foo}:-%{bar}}` now.
+  ** Alternation `%{foo || bar}` supersedes `%{%{foo}:-%{bar}}` now.
 * Python and Lua modules *only* partially support the v4 "nested" attributes.
 * RADIUS/TLS (RadSec) isn't available.
 * The "haproxy" and "reverse CoA" features aren't implemented.

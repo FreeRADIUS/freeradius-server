@@ -368,7 +368,7 @@ if (ok) {
   * This is evaluated before `Cache-TTL`, so entries being expired
 may first be merged.
   * All runtime configuration attributes will be removed from the
-`control:` list after any cache method is called.
+`control.` list after any cache method is called.
 ====
 
 

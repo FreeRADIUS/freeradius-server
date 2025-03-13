@@ -50,7 +50,7 @@ accurate timestamp:
 
 ## Logging the initial EAP request
 
-The `session-state:` list can be used to determine whether the
+The `session-state.` list can be used to determine whether the
 incoming request is the first in an EAP transaction, as on the
 first packet the list will be empty. Update the list at the same
 time to ensure that it is not empty on the next round; we can use
@@ -59,7 +59,7 @@ Tmp-String-1 to note the type of log record.
 Make these changes in the default server (`raddb/sites-enabled/default`).
 
     authorize {
-        if (!session-state:) {
+        if (!session-state.) {
             update session-state {
                 Tmp-String-1 := "request"
             }
@@ -125,11 +125,11 @@ place. An example linelog configuration could be something like
     linelog {
         filename = /path/to/log/file
         permissions = 0600
-        reference = "messages.%{session-state:Tmp-String-1}"
+        reference = "messages.%{session-state.Tmp-String-1}"
         messages {
             request = "%T request %{User-Name} %{Calling-Station-Id} ..."
-            accept = "%T accept %{User-Name} %{session-state:User-Name} %{Calling-Station-Id} ..."
-            reject = "%T reject %{User-Name} %{session-state:User-Name} %{Calling-Station-Id} ..."
+            accept = "%T accept %{User-Name} %{session-state.User-Name} %{Calling-Station-Id} ..."
+            reject = "%T reject %{User-Name} %{session-state.User-Name} %{Calling-Station-Id} ..."
         }
     }
 
