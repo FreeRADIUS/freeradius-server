@@ -86,7 +86,7 @@ resulting string can be quite different, depending on the inputs.
 [source,unlang]
 ----
 "User-Name is " + &User-Name
-"IP Address is " + (string) &reply.Framed-IP-Address
+"IP Address is " + (string) reply.Framed-IP-Address
 ----
 
 The output strings here (with casting) are the same as for the
@@ -97,7 +97,7 @@ because it is already a string.
 [source,unlang]
 ----
 "User-Name is " + (octets) &User-Name
-"IP Address is " + (octets) &reply.Framed-IP-Address
+"IP Address is " + (octets) reply.Framed-IP-Address
 ----
 
 The output strings here are completely different than for the previous
