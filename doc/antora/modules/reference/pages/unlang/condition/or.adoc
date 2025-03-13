@@ -14,7 +14,7 @@ is _condition-2_ evaluated and its result returned.
 .Examples
 [source,unlang]
 ----
-if (&User-Name || &NAS-IP-Address) { ...
+if (User-Name || &NAS-IP-Address) { ...
 ----
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

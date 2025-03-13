@@ -28,7 +28,7 @@ Reply-Message := "Hello %{%{NAS-Identifer}:-%{%{User-Name}:-none}}"
 .New Alternation
 [source,unlang]
 ----
-Reply-Message := "Hello %{NAS-Identifier || &User-Name || 'none'}"
+Reply-Message := "Hello %{NAS-Identifier || User-Name || 'none'}"
 ----
 
 [NOTE]

@@ -30,7 +30,7 @@ Causes the request to be immediately rejected.
 .Example
 [source,unlang]
 ----
-if (!&User-Name) {
+if (!User-Name) {
     reply += {
         Reply-Message = "We don't know who you are"
     }
