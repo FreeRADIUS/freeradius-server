@@ -606,13 +606,13 @@ operator does not work the same way as before.
 Instead of doing:
 
 ```
-&Reply-Message += "foo"
+Reply-Message += "foo"
 ```
 
 you should edit the `reply` list, using the `+=` operator:
 
 ```
-&reply += {
+reply += {
     &Reply-Message = "foo"
 }
 ```
@@ -633,7 +633,7 @@ update reply {
 In v4, you can remove the `update`, and rewrite the SQL call to:
 
 ```
-&reply.Framed-IP-Address := %sql("SELECT ...")
+reply.Framed-IP-Address := %sql("SELECT ...")
 ```
 
 Using double quotes everywhere means that every bit of data gets
@@ -824,7 +824,7 @@ The xref:reference:xlat/index.adoc[xlat] expansions just support math
 natively.  For example:
 
 ```
-&Reply-Message := "1 + 2 = %{1 + 2}"
+Reply-Message := "1 + 2 = %{1 + 2}"
 ```
 
 will return the string `1 + 2 = 3`.  The contents of the expansion can
@@ -856,7 +856,7 @@ The caching of group membership into attributes in the `control` list is
 still available, so
 
 ```
-&control.LDAP-Group[*] == "foo"
+control.LDAP-Group[*] == "foo"
 ```
 can also be used to test membership after having called the `ldap` module,
 if `cacheable_name` or `cacheable_dn` are enabled.
@@ -1144,7 +1144,7 @@ In v4, it is clearer, simpler, and faster to just use `unlang` syntax correctly.
 
 [source,unlang]
 ----
-&reply.Reply-Message := &User-Name
+reply.Reply-Message := &User-Name
 
 ...
 

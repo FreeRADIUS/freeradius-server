@@ -21,10 +21,10 @@ the attributes data as encoded "on the wire".
 ====
 [source,unlang]
 ----
-&Tmp-String-0 := "Caipirinha"
-&Framed-IP-Address := 192.0.2.1
+Tmp-String-0 := "Caipirinha"
+Framed-IP-Address := 192.0.2.1
 
-&reply += {
+reply += {
 	&Reply-Message = "The length of %{control.Tmp-String-0} is %length(&control.Tmp-String-0)"
 	&Reply-Message = "The length of %{control.Framed-IP-Address} is %length(&control.Framed-IP-Address)"
 }
@@ -47,7 +47,7 @@ Generate random number from `0` to `<number>-1`.
 ====
 [source,unlang]
 ----
-&reply.Reply-Message := "The random number is %rand(512}"
+reply.Reply-Message := "The random number is %rand(512}"
 ----
 
 .Output
@@ -136,7 +136,7 @@ if (&User-Name == "bob") {
     &request.Tmp-String-0 := "not bob!"
 }
 
-&reply.Reply-Message := "%eval(&request.Tmp-String-0}"
+reply.Reply-Message := "%eval(&request.Tmp-String-0}"
 ----
 
 .Output when `User-Name == bob`
@@ -163,7 +163,7 @@ With the current time at 16:18, `%nexttime(1h)` will expand to `2520`.
 
 [source,unlang]
 ----
-&reply.Reply-Message := "You should wait for %nexttime(1h)s"
+reply.Reply-Message := "You should wait for %nexttime(1h)s"
 ----
 
 .Output
@@ -182,8 +182,8 @@ Substitute text just as easily as it can match it, even using regex patterns.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "Caipirinha is a light and refreshing drink!"
-&reply.Reply-Message := "%sub(%{control.Tmp-String-0}, / /, ',')"
+control.Tmp-String-0 := "Caipirinha is a light and refreshing drink!"
+reply.Reply-Message := "%sub(%{control.Tmp-String-0}, / /, ',')"
 ----
 
 .Output
@@ -212,7 +212,7 @@ If no argument is passed, it returns the current time.  Otherwise if the argumen
 
 [source,unlang]
 ----
-&Acct-Start-Time := %time(now)
+Acct-Start-Time := %time(now)
 ----
 
 The current time can also be compared to a known date:

@@ -48,7 +48,7 @@ information.
 
 [source,unlang]
 ----
-&Reply-Message := "%{User-Name} with a literal %%"
+Reply-Message := "%{User-Name} with a literal %%"
 ----
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

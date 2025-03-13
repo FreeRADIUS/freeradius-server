@@ -10,11 +10,11 @@ This expansion is the inverse of xref:xlat/concat.adoc[concat].
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "bob.toba@domain.com"
+control.Tmp-String-0 := "bob.toba@domain.com"
 
-&control.Tmp-String-1 := "%explode(&control.Tmp-String-0, '@')"
+control.Tmp-String-1 := "%explode(&control.Tmp-String-0, '@')"
 
-&reply.Reply-Message := "Welcome %{control.Tmp-String-1[0]}"
+reply.Reply-Message := "Welcome %{control.Tmp-String-1[0]}"
 ----
 
 .Output

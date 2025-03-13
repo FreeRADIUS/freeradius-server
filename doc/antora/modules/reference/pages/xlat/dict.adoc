@@ -18,13 +18,13 @@ expanded string.  If you need to concatenate strings together in a policy, just 
 
 [source,unlang]
 ----
-&control += {
+control += {
 	&Tmp-String-0 = "aaa"
 	&Tmp-String-0 = "bb"
 	&Tmp-String-0 = "c"
 }
 
-&reply += {
+reply += {
     &Reply-Message = "%concat(%{control.Tmp-String-0[*]}, ', ')"
     &Reply-Message = "%concat(%{control.Tmp-String-0[*]}, ',')"
 }
@@ -42,9 +42,9 @@ aaa,bb,c
 ----
 string foo
 
-&foo += { "a", "c", "c", "d" } # abcd
+foo += { "a", "c", "c", "d" } # abcd
 
-&foo += &control.Tmp-String-0[*]
+foo += &control.Tmp-String-0[*]
 ----
 
 == %explode(<&ref>, <delim>)
@@ -59,11 +59,11 @@ This expansion is the opposite of `%concat( ... )`.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "bob.toba@domain.com"
+control.Tmp-String-0 := "bob.toba@domain.com"
 
-&control.Tmp-String-1 := "%explode(&control.Tmp-String-0, '@')"
+control.Tmp-String-1 := "%explode(&control.Tmp-String-0, '@')"
 
-&reply.Reply-Message := "Welcome %{control.Tmp-String-1[0]}"
+reply.Reply-Message := "Welcome %{control.Tmp-String-1[0]}"
 ----
 
 .Output
@@ -82,9 +82,9 @@ Left-pad a string.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "123"
+control.Tmp-String-0 := "123"
 
-&reply.Reply-Message := "Maximum should be %lpad(%{control.Tmp-String-0}, 11, '0')"
+reply.Reply-Message := "Maximum should be %lpad(%{control.Tmp-String-0}, 11, '0')"
 ----
 
 .Output
@@ -103,9 +103,9 @@ Right-pad a string.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "123"
+control.Tmp-String-0 := "123"
 
-&reply.Reply-Message := "Maximum should be %rpad(%{control.Tmp-String-0}, 11, '0')"
+reply.Reply-Message := "Maximum should be %rpad(%{control.Tmp-String-0}, 11, '0')"
 ----
 
 .Output
@@ -124,8 +124,8 @@ Serialize attributes as comma-delimited string.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := { "This is a string", "This is another one" }
-&reply.Reply-Message := "Serialize output: %pairs(&control.[*])"
+control.Tmp-String-0 := { "This is a string", "This is another one" }
+reply.Reply-Message := "Serialize output: %pairs(&control.[*])"
 ----
 
 .Output
@@ -144,7 +144,7 @@ Get random string built from character classes.
 
 [source,unlang]
 ----
-&reply.Reply-Message := "The random string output is %randstr(aaaaaaaa}"
+reply.Reply-Message := "The random string output is %randstr(aaaaaaaa}"
 ----
 
 .Output
@@ -164,8 +164,8 @@ it. This definition is only available in version 2.1.10 and later.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "CAIPIRINHA"
-&reply.Reply-Message := "tolower of %{control.Tmp-String-0} is %tolower(%{control.Tmp-String-0})"
+control.Tmp-String-0 := "CAIPIRINHA"
+reply.Reply-Message := "tolower of %{control.Tmp-String-0} is %tolower(%{control.Tmp-String-0})"
 ----
 
 .Output
@@ -185,8 +185,8 @@ it. This definition is only available in version 2.1.10 and later.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "caipirinha"
-&reply.Reply-Message := "toupper of %{control.Tmp-String-0} is " + %toupper(%{control.Tmp-String-0})
+control.Tmp-String-0 := "caipirinha"
+reply.Reply-Message := "toupper of %{control.Tmp-String-0} is " + %toupper(%{control.Tmp-String-0})
 ----
 
 .Output

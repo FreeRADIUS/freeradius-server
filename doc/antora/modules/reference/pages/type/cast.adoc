@@ -135,9 +135,9 @@ reply.
 .Example Copying Attributes
 [source,unlang]
 ----
-&control.Reply-Message := { "one", "two" }
+control.Reply-Message := { "one", "two" }
 
-&reply.Reply-Message := &control.Reply-Message[*]
+reply.Reply-Message := &control.Reply-Message[*]
 ----
 
 The following example will take an input string `"192.168.0.1"`, split
@@ -147,7 +147,7 @@ attribute, which each carry one octet of the IP address.
 
 .Example Creating multiple Attributes
 ----
-&Tmp-Integer-0 := %explode("192.168.0.1", '.')
+Tmp-Integer-0 := %explode("192.168.0.1", '.')
 ----
 
 If you need to cast an entire list to a value, then the value being
@@ -164,7 +164,7 @@ expansions] list.
 
 .Example Creating multiple Attributes
 ----
-&reply.Reply-Message := (string) (%explode("192.168.0.1", '.'))
+reply.Reply-Message := (string) (%explode("192.168.0.1", '.'))
 ----
 
 === Other Data Types

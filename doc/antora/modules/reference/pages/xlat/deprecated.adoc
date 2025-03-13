@@ -10,7 +10,7 @@ This expansion has been removed.  Instead, just use `%{ ... }`.
 
 [source,unlang]
 ----
-&reply.Reply-Message := "The 1 + 2 = %{1 + 2}"
+reply.Reply-Message := "The 1 + 2 = %{1 + 2}"
 ----
 
 == %integer(...)
@@ -19,7 +19,7 @@ This expansion has been removed.  Instead, just use `%{(integer) ...}` with math
 
 [source,unlang]
 ----
-&reply.Reply-Message := "Value of Service-Type is %{(integer) &Service-Type}"
+reply.Reply-Message := "Value of Service-Type is %{(integer) &Service-Type}"
 ----
 
 === +%pack(%{Attribute-Name}%{Attribute-Name}...)+
@@ -37,7 +37,7 @@ See also the `unpack` module, which is the inverse to `pack`.
 
 [source,unlang]
 ----
-&reply.Class := "%pack(%{reply.Framed-IP-Address}%{NAS-IP-Address}}"
+reply.Class := "%pack(%{reply.Framed-IP-Address}%{NAS-IP-Address}}"
 ----
 
 It is easier to just use casting and string append:
@@ -46,7 +46,7 @@ It is easier to just use casting and string append:
 
 [source,unlang]
 ----
-&reply.Class := (octets) &Framed-IP-Address + (octets) &NAS-IP-Address.
+reply.Class := (octets) &Framed-IP-Address + (octets) &NAS-IP-Address.
 ----
 
 == %string(...)
@@ -55,7 +55,7 @@ This expansion has been removed.  Instead, just use `%{(string) ...}` with an ex
 
 [source,unlang]
 ----
-&reply.Reply-Message := "The printable version of Class is %{(string) &Class}"
+reply.Reply-Message := "The printable version of Class is %{(string) &Class}"
 ----
 
 == %strlen( ... )

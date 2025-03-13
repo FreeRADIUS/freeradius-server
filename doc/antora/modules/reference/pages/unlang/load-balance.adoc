@@ -72,7 +72,7 @@ in a xref:xlat/index.adoc[dynamic expansion]:
 .Example of Load-Balance SQL module
 [source,unlang]
 ----
-&Reply-Message := %sql_all("SELECT message FROM table WHERE name='%{User-Name}'")
+Reply-Message := %sql_all("SELECT message FROM table WHERE name='%{User-Name}'")
 }
 ----
 

@@ -20,7 +20,7 @@ The returned filename is guaranteed to be safe to use.  Any portion of the filen
 ====
 [source,unlang]
 ----
-&filename = "${logdir}/" + %file.escape(%{User-Name})
+filename = "${logdir}/" + %file.escape(%{User-Name})
 
 %exec("/bin/rm", %{filename})
 ----
@@ -55,7 +55,7 @@ This function returns the first line of the file.  If the file does not exist, o
 ----
 string line
 
-&line := %file.head("/var/log/radius.log")
+line := %file.head("/var/log/radius.log")
 ----
 ====
 
@@ -105,9 +105,9 @@ The function takes an optional second argument, which is the number of lines whi
 ----
 string line
 
-&line := %file.tail("/var/log/radius.log")
+line := %file.tail("/var/log/radius.log")
 
-&line := %file.tail("/var/log/radius.log", 2)
+line := %file.tail("/var/log/radius.log", 2)
 ----
 ====
 
