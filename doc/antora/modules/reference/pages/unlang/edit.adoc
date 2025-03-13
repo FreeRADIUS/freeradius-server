@@ -244,7 +244,7 @@ Attributes can be removed from a list using the `-=` (remove) operator.
 ====
 [source,unlang]
 ----
-reply -= &Filter-Id
+reply -= Filter-Id
 ----
 ====
 
@@ -252,7 +252,7 @@ reply -= &Filter-Id
 ====
 [source,unlang]
 ----
-reply -= &Filter-Id[*]
+reply -= Filter-Id[*]
 ----
 ====
 
