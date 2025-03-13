@@ -154,7 +154,7 @@ server default {
 	recv Access-Request {
 		ldap
 		if (ok || updated) {
-			&control.Auth-Type := ldap
+			control.Auth-Type := ldap
 		}
 	}
 

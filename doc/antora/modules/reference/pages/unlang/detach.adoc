@@ -19,10 +19,10 @@ access any attributes in the parent.
 [source,unlang]
 ----
 subrequest Disconnect-Request {
-    &User-Name := &parent.request.User-Name
-    &NAS-IP-Address := &parent.request.NAS-IP-Address
-    &NAS-Port := &parent.request.NAS-Port
-    &Acct-Session-Id := &parent.request.Acct-Session-Id
+    User-Name := &parent.request.User-Name
+    NAS-IP-Address := &parent.request.NAS-IP-Address
+    NAS-Port := &parent.request.NAS-Port
+    Acct-Session-Id := &parent.request.Acct-Session-Id
 
     detach
     radius
@@ -50,12 +50,12 @@ seconds.  Only integer seconds can be set.
 [source,unlang]
 ----
 subrequest Disconnect-Request {
-    &User-Name := &parent.request.User-Name
-    &NAS-IP-Address := &parent.request.NAS-IP-Address
-    &NAS-Port := &parent.request.NAS-Port
-    &Acct-Session-Id := &parent.request.Acct-Session-Id
+    User-Name := &parent.request.User-Name
+    NAS-IP-Address := &parent.request.NAS-IP-Address
+    NAS-Port := &parent.request.NAS-Port
+    Acct-Session-Id := &parent.request.Acct-Session-Id
 
-    &control.Request-Lifetime := 60
+    control.Request-Lifetime := 60
 
     detach
     radius

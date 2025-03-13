@@ -318,9 +318,9 @@ For example, instead of doing this:
 
 [source,unlang]
 ----
-if (&User-Name == "bob") {
+if (User-Name == "bob") {
     update reply {
-        &Reply-Message := "Hello, %{User-Name}"
+        Reply-Message := "Hello, %{User-Name}"
     }
 }
 ----
@@ -329,8 +329,8 @@ You can now do this:
 
 [source,unlang]
 ----
-if (&User-Name == "bob") {
-    &reply.Reply-Message := "Hello, %{User-Name}"
+if (User-Name == "bob") {
+    reply.Reply-Message := "Hello, %{User-Name}"
 }
 ----
 
@@ -613,7 +613,7 @@ you should edit the `reply` list, using the `+=` operator:
 
 ```
 reply += {
-    &Reply-Message = "foo"
+    Reply-Message = "foo"
 }
 ```
 
@@ -626,7 +626,7 @@ For example, in v3 you would do:
 
 ```
 update reply {
-	&Framed-IP-Address := "%{sql:SELECT ...}"
+	Framed-IP-Address := "%{sql:SELECT ...}"
 }
 ```
 
@@ -1126,7 +1126,7 @@ In v3, many people had a habit of just adding `"..."` around _everything_.  For 
 [source,unlang]
 ----
 update reply {
-	&Reply-Message := "%{User-Name}"
+	Reply-Message := "%{User-Name}"
 }
 
 ...
@@ -1148,7 +1148,7 @@ reply.Reply-Message := &User-Name
 
 ...
 
-if (&User-Name == "bob") {
+if (User-Name == "bob") {
    ...
 }
 ----

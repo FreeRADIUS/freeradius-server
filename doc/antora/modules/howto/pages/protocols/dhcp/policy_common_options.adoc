@@ -31,10 +31,10 @@ applicable to all clients in this policy.
 ----
 dhcp_common {
     update reply {
-        &DHCP-Domain-Name-Server := 8.8.8.8
-        &DHCP-Domain-Name-Server += 8.8.4.4
-        &DHCP-Subnet-Mask := 255.255.255.0
-        &DHCP-Router-Address := 192.0.2.1
+        DHCP-Domain-Name-Server := 8.8.8.8
+        DHCP-Domain-Name-Server += 8.8.4.4
+        DHCP-Subnet-Mask := 255.255.255.0
+        DHCP-Router-Address := 192.0.2.1
         ...
     }
 }
@@ -64,7 +64,7 @@ the block:
 [source,unlang]
 ----
 update control {
-    &Pool-Name := "local"
+    Pool-Name := "local"
 }
 dhcp_sqlippool
 ----

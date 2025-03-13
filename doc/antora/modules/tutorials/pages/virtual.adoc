@@ -33,7 +33,7 @@ listen {
 }
 
 authorize {
-    &control.Clearext-Password := "hello"
+    control.Clearext-Password := "hello"
     pap
 }
 

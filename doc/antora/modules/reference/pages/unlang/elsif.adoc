@@ -31,10 +31,10 @@ conditional checks and statements.
 .Example
 [source,unlang]
 ----
-if (&User-Name == "bob") {
+if (User-Name == "bob") {
     reject
 }
-elsif (&User-Name == "doug") {
+elsif (User-Name == "doug") {
     ok
 }
 ----

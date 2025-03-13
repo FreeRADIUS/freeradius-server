@@ -15,7 +15,7 @@ attribute -= <expression>
 ...
 
 list1 := &list2
-list1 += { &attribute = value, ... }
+list1 += { attribute = value, ... }
 list1 += " attribute = value, ... "
 ...
 ----
@@ -198,7 +198,7 @@ given.
 [source,unlang]
 ----
 reply += {
-	&Filter-Id = "foo"
+	Filter-Id = "foo"
 }
 ----
 ====
@@ -228,7 +228,7 @@ overriding the contents of a list.
 [source,unlang]
 ----
 reply := {
-	&Filter-Id = "foo"
+	Filter-Id = "foo"
 }
 ----
 ====
@@ -261,7 +261,7 @@ reply -= &Filter-Id[*]
 [source,unlang]
 ----
 reply -= {
-    &Filter-Id == "bar"
+    Filter-Id == "bar"
 }
 ----
 ====

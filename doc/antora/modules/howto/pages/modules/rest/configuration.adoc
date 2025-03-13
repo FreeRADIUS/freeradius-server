@@ -111,7 +111,7 @@ server default {
 	...
 	recv Access-Request {
 		if (&User-Password) {
-			&control.Auth-Type := rest
+			control.Auth-Type := rest
 		}
 	}
 

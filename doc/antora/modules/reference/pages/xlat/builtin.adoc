@@ -25,8 +25,8 @@ Tmp-String-0 := "Caipirinha"
 Framed-IP-Address := 192.0.2.1
 
 reply += {
-	&Reply-Message = "The length of %{control.Tmp-String-0} is %length(&control.Tmp-String-0)"
-	&Reply-Message = "The length of %{control.Framed-IP-Address} is %length(&control.Framed-IP-Address)"
+	Reply-Message = "The length of %{control.Tmp-String-0} is %length(&control.Tmp-String-0)"
+	Reply-Message = "The length of %{control.Framed-IP-Address} is %length(&control.Framed-IP-Address)"
 }
 ----
 
@@ -130,10 +130,10 @@ Evaluates the string as an expansion, and returns the result.  The main differen
 
 [source,unlang]
 ----
-if (&User-Name == "bob") {
-    &request.Tmp-String-0 := "&User-Name"
+if (User-Name == "bob") {
+    request.Tmp-String-0 := "&User-Name"
 } else {
-    &request.Tmp-String-0 := "not bob!"
+    request.Tmp-String-0 := "not bob!"
 }
 
 reply.Reply-Message := "%eval(&request.Tmp-String-0}"
@@ -276,13 +276,13 @@ group {
     date tomorrow
     time_delta time_of_day
 
-    &now := %time('request')
+    now := %time('request')
 
     #  We are this many seconds into one day
-    &time_of_day := &now % (time_delta) 1d
+    time_of_day := &now % (time_delta) 1d
 
     # calculate the start of today, and then add one day to that
-    &tomorrow := &now - &time_of_day + (time_delta) 1d
+    tomorrow := &now - &time_of_day + (time_delta) 1d
 }
 ----
 
@@ -298,16 +298,16 @@ group {
     date tomorrow
     time_delta time_of_day
 
-    &now := %time('request')
+    now := %time('request')
 
     #  We are this many seconds into one day
-    &time_of_day := &now % (time_delta) 1d
+    time_of_day := &now % (time_delta) 1d
 
     # calculate the start of today, and then add one day to that
-    &tomorrow := &now - &time_of_day + (time_delta) 1d
+    tomorrow := &now - &time_of_day + (time_delta) 1d
 
     #  add in the time zone offset
-    &tomorrow += %time('offset')
+    tomorrow += %time('offset')
 }
 ----
 

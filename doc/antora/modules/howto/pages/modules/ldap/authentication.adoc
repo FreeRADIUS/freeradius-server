@@ -39,14 +39,14 @@ On the FreeRADIUS debug terminal side, you should see something like:
 (0)    ldap - Waiting for search result...
 (0)    ldap - User object found at DN "uid=john,ou=people,dc=example,dc=com"
 (0)    ldap - Processing user attributes
-(0)    ldap -   &control.Password.With-Header += password
+(0)    ldap -   control.Password.With-Header += password
 (0)    ldap - Released connection (0)
 (0)    ldap (updated)
 ...
 (0)    pap - No {...} in &Password.With-Header, re-writing to Password.Cleartext
 (0)    pap - Normalized &control.Password.With-Header -> &control.Password.Cleartext
 (0)    pap - Removing &control.Password.With-Header
-(0)    pap - Setting &control.Auth-Type = pap
+(0)    pap - Setting control.Auth-Type = pap
 (0)    pap (updated)
 (0)  } # recv Access-Request (updated)
 (0)  Running 'authenticate pap' from file /usr/local/etc/raddb/sites-enabled/default
@@ -149,7 +149,7 @@ You have two options available to you here (`Ctrl-C` the running FreeRADIUS serv
 ----
 -ldap
 if ((ok || updated) && &User-Password) {
-  &control.Auth-Type := ldap
+  control.Auth-Type := ldap
 }
 ----
  ** FreeRADIUS is now configured to attempt to LDAP bind if the `ldap` module finds a user and the RADIUS request contains a `User-Password` RADIUS attribute
@@ -168,7 +168,7 @@ If you use LDAP bind'ing to perform user authentication, then when `radclient` r
 (0)    ldap - Released connection (0)
 (0)    ldap (ok)
 (0)    if ((ok || updated) && &User-Password) {
-(0)      &control.Auth-Type := ldap
+(0)      control.Auth-Type := ldap
 (0)    } # if ((ok || updated) && &User-Password) (noop)
 (0)    expiration (noop)
 (0)    pap - WARNING: No "known good" password found for the user.  Not setting Auth-Type

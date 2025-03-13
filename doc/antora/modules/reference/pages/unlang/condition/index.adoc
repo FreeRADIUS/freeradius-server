@@ -32,15 +32,15 @@ Conditions are expressed using the following syntax:
 .Examples
 [source,unlang]
 ----
-if ( &User-Name == "bob" ) {
+if ( User-Name == "bob" ) {
     ...
 }
 
-if ( &Framed-IP-Address == 127.0.0.1 ) {
+if ( Framed-IP-Address == 127.0.0.1 ) {
     ...
 }
 
-if ( &Calling-Station-Id == "%sql("SELECT ...") ) {
+if ( Calling-Station-Id == "%sql("SELECT ...") ) {
     ...
 }
 ----
@@ -102,7 +102,7 @@ It should instead be written as:
 .Simplified Example
 [source,unlang]
 ----
-if (&Framed-IP-Address == 192.0.2.1) {
+if (Framed-IP-Address == 192.0.2.1) {
     ...
 }
 ----

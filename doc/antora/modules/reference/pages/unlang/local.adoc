@@ -51,12 +51,12 @@ Local variables _cannot_ be deleted.  When the current scope exits, the local va
 .Example
 [source,unlang]
 ----
-if (&User-Name == "bob") {
+if (User-Name == "bob") {
     uint32 len
 
-    &len := %length(%{User-Name})
+    len := %length(%{User-Name})
 
-    &Reply-Message := "Length of %{User-Name} is %{len}"
+    Reply-Message := "Length of %{User-Name} is %{len}"
 }
 ----
 
@@ -66,7 +66,7 @@ attributes.  These are no longer necessary, and should not be used.
 .Local variables exist on only if they have been created
 [source,unlang]
 ----
-if (&User-Name == "bob") {
+if (User-Name == "bob") {
     # declare "len" as ALLOWED to be used
     uint32 len
 
@@ -76,9 +76,9 @@ if (&User-Name == "bob") {
     }
 
     #  "len" is created, and can now be used
-    &len := %length(%{User-Name})
+    len := %length(%{User-Name})
 
-    &Reply-Message := "Length of %{User-Name} is %{len}"
+    Reply-Message := "Length of %{User-Name} is %{len}"
 }
 ----
 
