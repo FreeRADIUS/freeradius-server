@@ -145,7 +145,7 @@ parallel empty {
     group {
         request := {
             User-Name = "%{parent.request.User-Name}@example.com"
-            User-Password = &parent.request.User-Password
+            User-Password = parent.request.User-Password
         }
         radius2
     }
