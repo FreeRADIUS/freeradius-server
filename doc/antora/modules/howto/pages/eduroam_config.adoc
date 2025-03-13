@@ -444,7 +444,7 @@ server eduroam-inner {
 
 		# Make the user's real identity available to anything that needs
 		# it in the outer server.
-		if (&outer.session-state:)
+		if (outer.session-state:)
 			update {
 				outer.session-state:Stripped-User-Name := &Stripped-User-Name
 			}
