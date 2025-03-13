@@ -261,6 +261,10 @@ static xlat_arg_parser_t const xlat_test_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
+static xlat_arg_parser_t const xlat_test_no_args[] = {
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 static xlat_action_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
 			       UNUSED fr_value_box_list_t *in)
@@ -3960,6 +3964,7 @@ int main(int argc, char *argv[])
 		ERROR("Failed registering xlat");
 		EXIT_WITH_FAILURE;
 	}
+	xlat_func_args_set(xlat, xlat_test_no_args);
 
 	/*
 	 *	Disable hostname lookups, so we don't produce spurious DNS

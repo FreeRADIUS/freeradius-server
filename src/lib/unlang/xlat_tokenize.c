@@ -458,7 +458,6 @@ error:
 			break;
 
 		case XLAT_INPUT_ARGS:
-			if (xlat_validate_function_args(node) < 0) goto error;
 			node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
 			break;
 		}
@@ -1404,7 +1403,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 	if (xlat && xlat->args) {
 		arg_start = arg = xlat->args;	/* Track the arguments as we parse */
 	} else {
-		static xlat_arg_parser_t const	default_arg[] = { { .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH },
+		static xlat_arg_parser_t const	default_arg[] = { { .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH, .type = FR_TYPE_VOID  },
 								  XLAT_ARG_PARSER_TERMINATOR };
 		arg_start = arg = &default_arg[0];
 	}
@@ -1549,17 +1548,18 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			/*
 			 *	Validate the argument immediately on parsing it, and not later.
 			 */
-			if (!spaces && slen) {
-				if (arg->type == FR_TYPE_NULL) {
-					fr_strerror_printf("Too many arguments, expected %zu, got %d",
-							   (size_t) (arg - arg_start), argc);
-					goto error;
-				}
+			if (arg->type == FR_TYPE_NULL) {
+				fr_strerror_printf("Too many arguments, expected %zu, got %d",
+						   (size_t) (arg - arg_start), argc);
+				goto error;
+			}
 
-				if (xlat_validate_function_arg(arg, node, argc) < 0) {
-					fr_sbuff_set(&our_in, &m);
-					goto error;
-				}
+			/*
+			 *	Ensure that the function args are correct.
+			 */
+			if (xlat_validate_function_arg(arg, node, argc) < 0) {
+				fr_sbuff_set(&our_in, &m);
+				goto error;
 			}
 			break;
 
@@ -1884,7 +1884,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			case XLAT_INPUT_ARGS:
 				if (node->call.input_type != XLAT_INPUT_ARGS) {
 					fr_strerror_const("Function takes defined arguments and should "
-							  "be called using %(func:args) syntax");
+							  "be called using %func(args) syntax");
 					return -1;
 				}
 				if (xlat_validate_function_args(node) < 0) return -1;
