@@ -27,7 +27,7 @@ call syntax is for that function.
 .Example
 [source,unlang]
 ----
-if (User-Name == %md5(&NAS-Identifier)) {
+if (User-Name == %md5(NAS-Identifier)) {
     reject
 }
 ----
