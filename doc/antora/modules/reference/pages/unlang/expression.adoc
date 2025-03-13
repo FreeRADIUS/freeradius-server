@@ -17,7 +17,7 @@ Expressions can be used inside of xref:xlat/index.adoc[dynamic expansions], or i
 .Expression in an assignment
 [source,unlang]
 ----
-&NAS-Port = 1 + 2
+NAS-Port = 1 + 2
 ----
 
 == Operators in an Expression
@@ -62,7 +62,7 @@ supported.  For example:
 
 [source,unlang]
 ----
-&NAS-Port = 5 + (&User-Name == "bob")
+NAS-Port = 5 + (&User-Name == "bob")
 ----
 
 This expression will return `6` if the users name is `bob`, and `5` otherwise.
@@ -76,7 +76,7 @@ You can just put math in-place, as with the following example:
 
 [source,unlang]
 ----
-&Filter-Id = "Adding %{NAS-Port} + 4 = %{&NAS-Port + 4}"
+Filter-Id = "Adding %{NAS-Port} + 4 = %{&NAS-Port + 4}"
 ----
 
 The old ``%{expr:...}` syntax will return an error in v4.  That functiuonality is no longer supported.
@@ -93,7 +93,7 @@ data types.  (And incidentally, `-` is the inverse of `+`!)
 
 [source,unlang]
 ----
-&Reply-Message := "foo" + "bar"
+Reply-Message := "foo" + "bar"
 ----
 
 Will result in `Reply-Message == "foobar"`.
@@ -102,7 +102,7 @@ The suffix can then be "subtracted" off, with:
 
 [source,unlang]
 ----
-&Reply-Message -= "bar"
+Reply-Message -= "bar"
 ----
 
 Will result in `Reply-Message == "foo"` !.
@@ -130,7 +130,7 @@ syntax.  The old syntax of `<type>` is not accepted.
 
 [source,unlang]
 ----
-&NAS-Port-Id = (uint32) "%sql("SELECT...") + 4
+NAS-Port-Id = (uint32) "%sql("SELECT...") + 4
 ----
 
 == Errors
@@ -144,7 +144,7 @@ A `null` result can be removed via the `||` operator.  For example:
 
 [source,unlang]
 ----
-&NAS-Port-Id = (5 - "foo") || 6
+NAS-Port-Id = (5 - "foo") || 6
 ----
 
 Will return `6`, as the left side expression of the `||` operator evaluates to `null`.

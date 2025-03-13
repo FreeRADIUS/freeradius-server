@@ -3,7 +3,7 @@
 .Syntax
 [source,unlang]
 ----
-&Attribute-Name
+Attribute-Name
 ----
 
 The `Attribute-Name` operator returns a reference to the named
@@ -19,8 +19,8 @@ the value of the named attribute.
 .Examples
 [source,unlang]
 ----
-&User-Name
-&NAS-IP-Address
+User-Name
+NAS-IP-Address
 ----
 
 == Lists
@@ -33,8 +33,8 @@ looks in the input packet list for the named attribute.
 
 [source,unlang]
 ----
-&request.User-Name
-&reply.NAS-IP-Address
+request.User-Name
+reply.NAS-IP-Address
 ----
 
 == Array References
@@ -42,7 +42,7 @@ looks in the input packet list for the named attribute.
 .Syntax
 [source,unlang]
 ----
-&Attribute-Name[<index>]
+Attribute-Name[<index>]
 ----
 
 When an attribute appears multiple times in a list, this syntax allows
@@ -59,8 +59,8 @@ protocols which have more than 1000 attributes.
 .Integer Array index
 [source,unlang]
 ----
-&EAP-Message[1]
-&reply.NAS-IP-Address[2]
+EAP-Message[1]
+reply.NAS-IP-Address[2]
 ----
 
 The `<index>` can also be a special value `n`, which means "the last attribute in the list.
@@ -68,7 +68,7 @@ The `<index>` can also be a special value `n`, which means "the last attribute i
 .Last attribute in a list
 [source,unlang]
 ----
-&EAP-Message[n]
+EAP-Message[n]
 ----
 
 The `<index>` can also be a reference to a numerical attribute.
@@ -82,9 +82,9 @@ The main utility of attribute indexes is in a xref:unlang/foreach.adoc[foreach] 
 ----
 uint32 foo
 
-&foo = 2
+foo = 2
 
-&EAP-Message[&foo]
+EAP-Message[&foo]
 ----
 
 The `<index>` can also be an expression which is calculated at run time.  The expression _must_ not cause the server to call an external database, script, etc.  The main purpose of these expressions is to calculated an index without first placing it into another attribute.
@@ -96,9 +96,9 @@ The expression _must_ be in an expansion block: `%{...}`.
 .Expression as an Array index
 [source,unlang]
 ----
-&index = 0
+index = 0
 
-&EAP-Message[%{&index + 1}]
+EAP-Message[%{&index + 1}]
 ----
 
 === Array References in lists
@@ -110,7 +110,7 @@ attribute can be omitted, as follow:
 .Examples
 [source,unlang]
 ----
-&request.[0]
+request.[0]
 ----
 
 i.e. "the first child of the `request` list.
@@ -124,7 +124,7 @@ Note that the old syntax of `request[...]` is disallowed.
 .Syntax
 [source,unlang]
 ----
-&Attribute-Name.Attribute-Name
+Attribute-Name.Attribute-Name
 ----
 
 In some cases, attributes are nested or grouped.  The child reference
@@ -136,9 +136,9 @@ the name of another child attribute, separated by the `.` character.
 
 [source,unlang]
 ----
-&TLV-One.Child-one
-&TLV-One.Child-one.Child-Three
-&reply.TLV[3].Child-Two
+TLV-One.Child-one
+TLV-One.Child-one.Child-Three
+reply.TLV[3].Child-Two
 ----
 
 == Putting it All Together
@@ -148,8 +148,8 @@ All of the above syntaxes can be used interchangeably, at any nesting level.  Th
 .Examples
 [source,unlang]
 ----
-&TLV-One.Child-one[3].Child-Three
-&reply.TLV[3].Child-Two
+TLV-One.Child-one[3].Child-Three
+reply.TLV[3].Child-Two
 ----
 
 == Compatibility with Older Versions of FreeRADIUS

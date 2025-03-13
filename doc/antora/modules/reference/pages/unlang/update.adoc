@@ -49,7 +49,7 @@ This example should be converted to the following syntax:
 
 [source,unlang]
 ----
-&request += {
+request += {
 	&User-Name = "foo"
 	&Filter-Id = "bar"
 	&NAS-IP-Address = 127.0.0.1
@@ -83,8 +83,8 @@ assign the attributes in place, with a list qualifier.
 
 [source,unlang]
 ----
-&request.User-Name := "foo"
-&request.Filter-Id := "bar"
+request.User-Name := "foo"
+request.Filter-Id := "bar"
 ----
 
 Note that the following conversion is _not_ correct, as it will
@@ -94,7 +94,7 @@ assigned to it.
 
 [source,unlang]
 ----
-&request := {
+request := {
 	&User-Name = "foo"
 	&Filter-Id = "bar"
 }
@@ -117,8 +117,8 @@ assign the attributes in place, with a list qualifier.
 
 [source,unlang]
 ----
-&request.User-Name = "foo"
-&request.Filter-Id = "bar"
+request.User-Name = "foo"
+request.Filter-Id = "bar"
 ----
 
 === Removing Attributes from a list: !*
@@ -136,7 +136,7 @@ The conversion is to use the `-=` operator:
 
 [source,unlang]
 ----
-&request -= &User-Name
+request -= &User-Name
 ----
 
 == More Complex Conversions

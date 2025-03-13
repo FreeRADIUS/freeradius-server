@@ -13,13 +13,13 @@ expanded string.  If you need to concatenate strings together in a policy, just 
 
 [source,unlang]
 ----
-&control += {
+control += {
 	&Tmp-String-0 = "aaa"
 	&Tmp-String-0 = "bb"
 	&Tmp-String-0 = "c"
 }
 
-&reply += {
+reply += {
     &Reply-Message = "%concat(%{control.Tmp-String-0[*]}, ', ')"
     &Reply-Message = "%concat(%{control.Tmp-String-0[*]}, ',')"
 }
@@ -37,9 +37,9 @@ aaa,bb,c
 ----
 string foo
 
-&foo += { "a", "c", "c", "d" } # abcd
+foo += { "a", "c", "c", "d" } # abcd
 
-&foo += &control.Tmp-String-0[*]
+foo += &control.Tmp-String-0[*]
 ----
 
 // Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

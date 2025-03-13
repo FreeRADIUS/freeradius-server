@@ -121,7 +121,7 @@ bit in the `SMB-Account-Ctrl` value - for example::
 # U == user
 # e == expired
 
-&control.SMB-Account-Ctrl-Text := '[Ue]'
+control.SMB-Account-Ctrl-Text := '[Ue]'
 ```
 
 This will cause the client to receive `error 648 - password expired`.
