@@ -85,7 +85,7 @@ It does the following:
 #### ``sites-available/default``
 
 ```text
-# The domain users will add to their username to have their credentials 
+# The domain users will add to their username to have their credentials
 # routed to your institution.  You will also need to register this
 # and your RADIUS server addresses with your NRO.
 operator_name = "<your-institutions-domain>"
@@ -107,8 +107,8 @@ server eduroam {
 		# Log requests before we change them
 		linelog_recv_request
 
-		# split_username_nai is a policy in the default distribution to 
-		# split a username into username and domain.  We reject user-name 
+		# split_username_nai is a policy in the default distribution to
+		# split a username into username and domain.  We reject user-name
 		# strings without domains, as they're not routable.
 		split_username_nai
 		if (noop || !Stripped-User-Domain) {
@@ -118,15 +118,15 @@ server eduroam {
 		# Send the request to the NRO for your region.
 		# The details of the FLRs (Federation Level RADIUS servers)
 		# are in proxy.conf.
-		# You can make this condition as complex as you like, to 
+		# You can make this condition as complex as you like, to
 		# include additional subdomains just concatenate the conditions
 		# with &&.
 		if (Stripped-User-Domain != "${operator_name}") {
 			update {
-				control:Load-Balance-Key := &Calling-Station-ID
+				control:Load-Balance-Key := Calling-Station-ID
 				control:Proxy-To-Realm := 'eduroam_flr'
-				
-				# Operator name (RFC 5580) identifies the network the 
+
+				# Operator name (RFC 5580) identifies the network the
 				# request originated from. It's not absolutely necessary
 				# but it helps with debugging.
 				request:Operator-Name := "1${operator_name}"
@@ -159,7 +159,7 @@ server eduroam {
 
 	post-auth {
 		# To implement eduroam you must:
-		# - Use wireless access points or a controller which supports 
+		# - Use wireless access points or a controller which supports
                 #   dynamic VLAN assignments.
 		# - Have that feature enabled.
 		# - Have the guest_vlan/local_vlan available to the controller,
@@ -180,7 +180,7 @@ server eduroam {
 			}
 		}
 
-		# We're sending a response to one of OUR network devices for one of 
+		# We're sending a response to one of OUR network devices for one of
 		# OUR users so provide it with the real user-identity.
 		if (session-state:Stripped-User-Name) {
 			update reply {
@@ -237,7 +237,7 @@ eap {
 		# If your AP drops packets towards the client, try reducing this.
 		fragment_size = 1024
 
-		# When issuing client certificates embed the OCSP URL in the 
+		# When issuing client certificates embed the OCSP URL in the
 		# certificate if you want to be able to revoke them later.
 		ocsp {
 			enable = yes
@@ -404,7 +404,7 @@ client wireless_access_points_mgmt {
 
 	# This should be long and random
 	secret = <secret>
-}	
+}
 
 ----
 
@@ -434,7 +434,7 @@ server eduroam-inner {
 	}
 
 	authorize {
-		# The outer username is considered garabage for autz purposes, but 
+		# The outer username is considered garabage for autz purposes, but
 		# the domain portion of the outer and inner identities must match.
 		split_username_nai
 		if (noop || (Stripped-User-Domain && \
@@ -457,28 +457,28 @@ server eduroam-inner {
 
 		# THIS IS SITE SPECIFIC
 		#
-		# The files module is *ONLY* used for testing.  It lets you define 
+		# The files module is *ONLY* used for testing.  It lets you define
 		# credentials in a flat file, IT WILL NOT SCALE.
 		#
-		# - If you use OpenLDAP with salted password hashes you should 
+		# - If you use OpenLDAP with salted password hashes you should
  		#   call the 'ldap' module here and use EAP-TTLS-PAP as your EAP method.
-		# - If you use OpenLDAP with cleartext passwords you should 
+		# - If you use OpenLDAP with cleartext passwords you should
 		#   call the 'ldap' module here and use EAP-TTLS or PEAPv0.
-		# - If you use an SQL DB with salted password hashes you should call 
+		# - If you use an SQL DB with salted password hashes you should call
 		#   the 'sql' module here and use EAP-TTLS-PAP as your EAP method.
-		# - If you use an SQL DB with cleartext passwords you should call 
+		# - If you use an SQL DB with cleartext passwords you should call
 		#   the 'sql' module here and use EAP-TTLS or PEAPv0.
-		# - If you use Novell you should call the 'ldap' module here and 
+		# - If you use Novell you should call the 'ldap' module here and
 		#   set ``edir = yes`` in ``mods-available/ldap`` and use EAP-TTLS or
 		#   PEAPv0.
-		# - If you use Active Directory, you don't need anything here (remove 
-		#   the call to files) but you'll need to follow this 
-		#   [guide](freeradius-active-directory-integration-howto) and use 
+		# - If you use Active Directory, you don't need anything here (remove
+		#   the call to files) but you'll need to follow this
+		#   [guide](freeradius-active-directory-integration-howto) and use
 		#   EAP-TTLS-PAP or PEAPv0.
 		# - If you're using EAP-TLS (i'm impressed!) remove the call to files.
 		#
-		# EAP-TTLS-PAP and PEAPv0 are equally secure/insecure depending on how the 
-		# supplicant is configured. PEAPv0 has a slight edge in that you need to 
+		# EAP-TTLS-PAP and PEAPv0 are equally secure/insecure depending on how the
+		# supplicant is configured. PEAPv0 has a slight edge in that you need to
 		# crack MSCHAPv2 to get the user's password (but this is not hard).
 		files
 
@@ -491,7 +491,7 @@ server eduroam-inner {
 		mschap
 		pap
 
-		# Comment pap above and uncomment the stanza below if you're using 
+		# Comment pap above and uncomment the stanza below if you're using
 		# Active Directory; this will allow it to work with EAP-TTLS/PAP.
 		#Auth-Type pap {
 		#	ntlm_auth

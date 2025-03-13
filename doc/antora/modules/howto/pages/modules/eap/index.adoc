@@ -253,7 +253,7 @@ This version of PEAP is defined through the IETF internet draft "draft-josefsson
 
 _EAP-FAST (Flexible Authentication via Secure Tunneling)_ is a method designed by Cisco Systems to fix the weaknesses of LEAP. Use of server certificates is optional in EAP-FAST. EAP-FAST uses a Protected Access Credential (PAC). The PAC can be provisioned manually or dynamically in Phase 0 of EAP-FAST. EAP-FAST has three phases. Phase 0 is an optional phase. In Phase 1 the client and the AAA server uses the PAC to establish TLS tunnel. In Phase 2, the client sends user information across the tunnel.
 
-Although Cisco advertises EAP-FAST as being much more secure than LEAP, it can still suffer from a poor implementation.  EAP-MD5 & LEAP suffered from a weak user password, EAP-FAST can give up usernames and passwords in situations where Automatic PAC provisioning is enabled on the RADIUS server and the Wireless Client.
+Although Cisco advertises EAP-FAST as being much more secure than LEAP, it can still suffer from a poor implementation. EAP-MD5 and LEAP suffered from a weak user password, EAP-FAST can give up usernames and passwords in situations where Automatic PAC provisioning is enabled on the RADIUS server and the Wireless Client.
 
 EAP-FAST is defined in IETF RFC 4851. Note that this is an Informational RFC.
 
@@ -275,7 +275,7 @@ An Open Source audit tool is available at:
 
 https://github.com/ANSSI-FR/audit-radius
 
-== FAQ & Examples
+== FAQ and Examples
 
 How do i use it?
 

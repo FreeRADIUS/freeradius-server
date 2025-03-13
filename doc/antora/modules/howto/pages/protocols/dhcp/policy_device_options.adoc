@@ -78,7 +78,7 @@ above:
 
 [source,unlang]
 ----
-if (&DHCP-User-Class && "%{substring:&DHCP-User-Class 0 4}" == "iPXE") {
+if (DHCP-User-Class && "%{substring:DHCP-User-Class 0 4}" == "iPXE") {
     update reply {
         DHCP-Boot-Filename := "http://my.web.server/boot_script.php"
     }
@@ -96,7 +96,7 @@ provided that it matches the given format:
 
 [source,unlang]
 ----
-if (&DHCP-Client-Identifier && \
+if (DHCP-Client-Identifier && \
         "%{string:DHCP-Client-Identifier}" =~ /^RAS([0-9])-site([A-Z])$/) {
     update reply {
         DHCP-Boot-Filename := "rasboot-%{1}-%{2}.kpxe"
@@ -268,7 +268,7 @@ sample data you could invoke an SQL lookup as shown:
 update control {
         DHCP-SQL-Option-Context := "class-vendor"
         DHCP-SQL-Option-Identifier := \
-            "%{substring:%{hex:&DHCP-Client-Hardware-Address} 0 6}"
+            "%{substring:%{hex:DHCP-Client-Hardware-Address} 0 6}"
 }
 dhcp_sql.authorize
 ----

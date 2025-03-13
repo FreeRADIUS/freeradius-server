@@ -9,7 +9,7 @@ options to make your Ciscos interoperate with radius as you would expect
 a well-behaved NAS to do.
 
 ## Shell Access
-To use RADIUS to authenticate your inbound shell (telnet & ssh) connections you need to create an entry in your users file similar to the following
+To use RADIUS to authenticate your inbound shell (telnet and ssh) connections you need to create an entry in your users file similar to the following
 
     youruser   Cleartext-Password := "somepass"
                Service-Type = NAS-Prompt-User

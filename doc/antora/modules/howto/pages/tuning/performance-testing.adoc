@@ -37,7 +37,7 @@ and passwords
 Output from the script will include several files:
         passwd : A standard passwd file you can append to /etc/passwd
         shadow : A standard shadow file you can append to /etc/shadow
-passwd.nocrypt : A file with *unencrypted* users & passes in form "user:pass"
+passwd.nocrypt : A file with *unencrypted* users and passes in form "user:pass"
    radius.test : File you'll use as input for radclient
   radius.users : A standard radius 'users' file
 
