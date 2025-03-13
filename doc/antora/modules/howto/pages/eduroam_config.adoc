@@ -111,7 +111,7 @@ server eduroam {
 		# split a username into username and domain.  We reject user-name 
 		# strings without domains, as they're not routable.
 		split_username_nai
-		if (noop || !&Stripped-User-Domain) {
+		if (noop || !Stripped-User-Domain) {
 			reject
 		}
 
@@ -437,8 +437,8 @@ server eduroam-inner {
 		# The outer username is considered garabage for autz purposes, but 
 		# the domain portion of the outer and inner identities must match.
 		split_username_nai
-		if (noop || (&Stripped-User-Domain && \
-		    (outer.Stripped-User-Domain != &Stripped-User-Domain))) {
+		if (noop || (Stripped-User-Domain && \
+		    (outer.Stripped-User-Domain != Stripped-User-Domain))) {
 			reject
 		}
 
@@ -446,7 +446,7 @@ server eduroam-inner {
 		# it in the outer server.
 		if (outer.session-state:)
 			update {
-				outer.session-state:Stripped-User-Name := &Stripped-User-Name
+				outer.session-state:Stripped-User-Name := Stripped-User-Name
 			}
 		}
 
