@@ -1,10 +1,10 @@
-= LDAP Content Synchronization Operation
 
 Sample virtual server for receiving entries from an LDAP directory
 using the https://tools.ietf.org/html/rfc4533[RFC 4533] (LDAP Content Synchronization Operation) in
 refreshAndPersist mode, Active Directory using its LDAP_SERVER_NOTIFY_OID
 server control, or a directory implementing Persistent Search as
 described in https://tools.ietf.org/id/draft-ietf-ldapext-psearch-03.txt
+
 
 Persistent searches work in a similar way to normal searches except
 they continue running indefinitely.  We continue to receive notifications
@@ -19,6 +19,7 @@ information or act on it.
 Note: Each of the three implementations of LDAP synchronisation behave
 differently:
 
+
 == https://tools.ietf.org/html/rfc4533[RFC 4533]
 
 This provides a robust mechanism to allow clients to maintain a
@@ -29,6 +30,7 @@ updates from the server.
 However, when an object is deleted from the directory, the entry which is
 received only contains the DN, or, if the deletion is reported as part of
 the initial refresh phase it may only be the UUID.
+
 
 == Active Directory
 

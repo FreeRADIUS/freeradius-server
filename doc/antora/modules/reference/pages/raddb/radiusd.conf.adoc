@@ -1,4 +1,8 @@
-= FreeRADIUS v4 Server Configuration File
+
+
+
+
+= FreeRADIUS server configuration file - 4.0
 
 Read `man radiusd` before editing this file.  See the section
 titled DEBUGGING.  It outlines a method where you can quickly
@@ -277,14 +281,14 @@ instead prints a place-holder value "<<< secret >>>", as
 follows:
 
 ...
-&User-Password = "<<< secret >>>"
+User-Password = "<<< secret >>>"
 ...
 
 Note that secret values are tracked across string
-expansions, string modifications, concatenations, etc.!
-i.e. if a User-Password is placed into a Reply-Message,
-then the value of the Reply-Message is also marked
-"secret".
+expansions, string modifications, concatenations, etc.
+i.e. if a `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]` is placed into a `link:https://freeradius.org/rfc/rfc2865.html#Reply-Message[Reply-Message]`,
+then the value of the `link:https://freeradius.org/rfc/rfc2865.html#Reply-Message[Reply-Message]` will also be marked
+as "secret".
 
 This configuration is disabled by default.  It is extremely
 important for administrators to be able to debug user
@@ -702,7 +706,7 @@ For more documentation on virtual servers, see:
 == Default Configuration
 
 ```
-prefix = /Users/alandekok/git/wrapper//install
+prefix = /usr/local
 exec_prefix = ${prefix}
 sysconfdir = ${prefix}/etc
 localstatedir = ${prefix}/var
