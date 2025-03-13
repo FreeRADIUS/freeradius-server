@@ -62,7 +62,7 @@ can be used to control the flow of processing.
 .Example
 [source,unlang]
 ----
-if ((&User-Name == "bob") && (&Calling-Station-Id == "00:01:03:04:05")) {
+if ((User-Name == "bob") && (Calling-Station-Id == "00:01:03:04:05")) {
 	...
 }
 ----
@@ -116,9 +116,9 @@ error.
 [source,unlang]
 ----
 reply += {
-	&Framed-IP-Address = 192.0.2.4
-	&Session-Timeout = 5
-	&Reply-Message = "hello"
+	Framed-IP-Address = 192.0.2.4
+	Session-Timeout = 5
+	Reply-Message = "hello"
 }
 ----
 
@@ -157,12 +157,12 @@ attribute contents or lists of attributes.
 # followed by condition which checks that the User-Name
 # attribute has value "bob"
 
-if (&User-Name == "bob") {
+if (User-Name == "bob") {
     # followed by instructions to add the Reply-Message
     # attribute to the "reply" list, with contents
     # "Hello, bob"
 
-    &reply.Reply-Message := "Hello, bob"
+    reply.Reply-Message := "Hello, bob"
 }
 ----
 

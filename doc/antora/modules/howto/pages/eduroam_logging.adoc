@@ -61,7 +61,7 @@ Make these changes in the default server (`raddb/sites-enabled/default`).
     authorize {
         if (!&session-state:) {
             update session-state {
-                &Tmp-String-1 := "request"
+                Tmp-String-1 := "request"
             }
             linelog
         }
@@ -79,13 +79,13 @@ update `post-auth`:
         post-auth {
             ...
             update outer.session-state {
-                &User-Name := &User-Name
+                User-Name := &User-Name
             }
 
             Post-Auth-Type REJECT {
                 ...
                 update outer.session-state {
-                    &User-Name := &User-Name
+                    User-Name := &User-Name
                 }
             }
         }
@@ -101,14 +101,14 @@ log the reply with the required attributes.
         post-auth {
             ...
             update session-state {
-                &Tmp-String-1 := "accept"
+                Tmp-String-1 := "accept"
             }
             linelog
 
             Post-Auth-Type REJECT {
                 ...
                 update session-state {
-                    &Tmp-String-1 := "reject"
+                    Tmp-String-1 := "reject"
                 }
                 linelog
             }

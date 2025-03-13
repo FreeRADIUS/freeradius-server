@@ -72,7 +72,7 @@ the `authorize` and `preacct` sections looks as follows:
 
  authorize {
      update control {
-         &Proxy-To-Realm := tls
+         Proxy-To-Realm := tls
      }
      handled
      ...
@@ -80,7 +80,7 @@ the `authorize` and `preacct` sections looks as follows:
  ...
  preacct {
      update control {
-         &Proxy-To-Realm := tls
+         Proxy-To-Realm := tls
      }
      handled
      ...

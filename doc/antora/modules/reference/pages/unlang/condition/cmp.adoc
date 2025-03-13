@@ -81,7 +81,7 @@ types, as with the following example:
 .Example
 [source,unlang]
 ----
-(ipaddr)&Class == 127.0.0.1
+(ipaddr)Class == 127.0.0.1
 ----
 
 In this example, the `Class` attribute is treated as if it was an IPv4

@@ -38,10 +38,10 @@ The following example creates four attributes, and appends them to the
 [source,unlang]
 ----
 update request {
-	&User-Name += "foo"
-	&Filter-Id += "bar"
-	&NAS-IP-Address += 127.0.0.1
-	&NAS-Port += 5
+	User-Name += "foo"
+	Filter-Id += "bar"
+	NAS-IP-Address += 127.0.0.1
+	NAS-Port += 5
 }
 ----
 
@@ -50,10 +50,10 @@ This example should be converted to the following syntax:
 [source,unlang]
 ----
 request += {
-	&User-Name = "foo"
-	&Filter-Id = "bar"
-	&NAS-IP-Address = 127.0.0.1
-	&NAS-Por = 5
+	User-Name = "foo"
+	Filter-Id = "bar"
+	NAS-IP-Address = 127.0.0.1
+	NAS-Por = 5
 }
 ----
 
@@ -73,8 +73,8 @@ The following example over-writes the values for two attributes in the
 [source,unlang]
 ----
 update request {
-	&User-Name := "foo"
-	&Filter-Id := "bar"
+	User-Name := "foo"
+	Filter-Id := "bar"
 }
 ----
 
@@ -95,8 +95,8 @@ assigned to it.
 [source,unlang]
 ----
 request := {
-	&User-Name = "foo"
-	&Filter-Id = "bar"
+	User-Name = "foo"
+	Filter-Id = "bar"
 }
 ----
 === Conditionally Over-writing attributes in a list: =
@@ -107,8 +107,8 @@ The following example conditionally over-writes the values for two attributes in
 [source,unlang]
 ----
 update request {
-	&User-Name = "foo"
-	&Filter-Id = "bar"
+	User-Name = "foo"
+	Filter-Id = "bar"
 }
 ----
 

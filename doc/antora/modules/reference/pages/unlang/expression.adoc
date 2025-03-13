@@ -11,7 +11,7 @@ Expressions can be used inside of xref:xlat/index.adoc[dynamic expansions], or i
 .Expression in a Condition
 [source,unlang]
 ----
-(&NAS-Port == 1 + 2)
+(NAS-Port == 1 + 2)
 ----
 
 .Expression in an assignment
@@ -62,7 +62,7 @@ supported.  For example:
 
 [source,unlang]
 ----
-NAS-Port = 5 + (&User-Name == "bob")
+NAS-Port = 5 + (User-Name == "bob")
 ----
 
 This expression will return `6` if the users name is `bob`, and `5` otherwise.

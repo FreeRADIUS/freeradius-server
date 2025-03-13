@@ -19,14 +19,14 @@ expanded string.  If you need to concatenate strings together in a policy, just 
 [source,unlang]
 ----
 control += {
-	&Tmp-String-0 = "aaa"
-	&Tmp-String-0 = "bb"
-	&Tmp-String-0 = "c"
+	Tmp-String-0 = "aaa"
+	Tmp-String-0 = "bb"
+	Tmp-String-0 = "c"
 }
 
 reply += {
-    &Reply-Message = "%concat(%{control.Tmp-String-0[*]}, ', ')"
-    &Reply-Message = "%concat(%{control.Tmp-String-0[*]}, ',')"
+    Reply-Message = "%concat(%{control.Tmp-String-0[*]}, ', ')"
+    Reply-Message = "%concat(%{control.Tmp-String-0[*]}, ',')"
 }
 ----
 

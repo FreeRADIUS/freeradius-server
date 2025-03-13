@@ -41,8 +41,8 @@ In this example, if the SQL `select` statement fails, then the
 [source,unlang]
 ----
 transaction {
-    &reply.Filter-Id := %sql("SELECT ...")
-    &reply.Framed-IP-Address := 192.0.2.1
+    reply.Filter-Id := %sql("SELECT ...")
+    reply.Framed-IP-Address := 192.0.2.1
 }
 ----
 

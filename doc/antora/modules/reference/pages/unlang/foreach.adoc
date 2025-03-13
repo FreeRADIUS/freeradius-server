@@ -70,7 +70,7 @@ the execution of the loop.
 Tmp-Integer-0 := { 1, 3, 5, 11 }
 
 foreach self (&Tmp-Integer-0) {
-	&self += 19
+	self += 19
 }
 ----
 
@@ -149,8 +149,8 @@ In this example, we have to explicitly give a data type `string`.  The data type
 [source,unlang]
 ----
 foreach string child (&TLV-Thing.[*]) {
-	&out += &child
-	&out += " "
+	out += &child
+	out += " "
 }
 ----
 
@@ -162,8 +162,8 @@ examined, but cannot be changed.  This is a limitation of the current interprete
 [source,unlang]
 ----
 foreach thing (&Tmp-TLV-0[*]) {
-	&out += &thing.c
-	&out += " "
+	out += &thing.c
+	out += " "
 }
 ----
 

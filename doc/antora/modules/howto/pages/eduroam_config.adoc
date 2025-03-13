@@ -121,7 +121,7 @@ server eduroam {
 		# You can make this condition as complex as you like, to 
 		# include additional subdomains just concatenate the conditions
 		# with &&.
-		if (&Stripped-User-Domain != "${operator_name}") {
+		if (Stripped-User-Domain != "${operator_name}") {
 			update {
 				control:Load-Balance-Key := &Calling-Station-ID
 				control:Proxy-To-Realm := 'eduroam_flr'
@@ -438,7 +438,7 @@ server eduroam-inner {
 		# the domain portion of the outer and inner identities must match.
 		split_username_nai
 		if (noop || (&Stripped-User-Domain && \
-		    (&outer.Stripped-User-Domain != &Stripped-User-Domain))) {
+		    (outer.Stripped-User-Domain != &Stripped-User-Domain))) {
 			reject
 		}
 
@@ -446,7 +446,7 @@ server eduroam-inner {
 		# it in the outer server.
 		if (&outer.session-state:)
 			update {
-				&outer.session-state:Stripped-User-Name := &Stripped-User-Name
+				outer.session-state:Stripped-User-Name := &Stripped-User-Name
 			}
 		}
 

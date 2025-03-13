@@ -18,7 +18,7 @@ and the statements within the `else` subsection are executed.
 .Example
 [source,unlang]
 ----
-if (&User-Name == "bob") {
+if (User-Name == "bob") {
     reject
 }
 else {

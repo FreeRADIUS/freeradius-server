@@ -78,7 +78,7 @@ containing `ERROR` or `WARNING`, or the `chap` module name.
 (0)    CHAP-Password = 0x3549a4e40fc76e876499badf736712c951
 ...
 (0)    chap - Creating &CHAP-Challenge from request authenticator
-(0)    chap - Setting &control.Auth-Type = chap
+(0)    chap - Setting control.Auth-Type = chap
 (0)    chap (ok)
 ...
 (0)  Found "known good" password in &control.Password.Cleartext
