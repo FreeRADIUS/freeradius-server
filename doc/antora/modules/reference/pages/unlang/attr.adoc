@@ -1,4 +1,4 @@
-= &Attribute References
+= Attribute References
 
 .Syntax
 [source,unlang]
@@ -84,7 +84,7 @@ uint32 foo
 
 foo = 2
 
-EAP-Message[&foo]
+EAP-Message[foo]
 ----
 
 The `<index>` can also be an expression which is calculated at run time.  The expression _must_ not cause the server to call an external database, script, etc.  The main purpose of these expressions is to calculated an index without first placing it into another attribute.

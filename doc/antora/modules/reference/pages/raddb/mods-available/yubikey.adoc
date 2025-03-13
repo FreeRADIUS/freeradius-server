@@ -99,7 +99,7 @@ These attributes are available after authentication (if successful):
                                                           The value is a `6-byte` binary blob.
 | `request.Vendor-Specific.Yubicon.Yubikey-Counter`    | The last counter value (should be recorded).
                                                           The value is a concatenation of the 16-bit
-                                                          session count & `8-bit` use count which form a
+                                                          session count and `8-bit` use count which form a
                                                           `24-bit` monotonically strictly increasing
                                                           integer (until the individual count ceilings
                                                           are hit)

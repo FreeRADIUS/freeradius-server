@@ -71,7 +71,7 @@ if (User-Name == "bob") {
     uint32 len
 
     # this test ALWAYS fails, as "len" has not been assigned a value
-    if (&len) {
+    if (len) {
        ...
     }
 

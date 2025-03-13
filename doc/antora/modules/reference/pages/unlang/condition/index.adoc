@@ -17,7 +17,7 @@ Conditions are expressed using the following syntax:
 [options="header"]
 |=====
 | Syntax | Description
-| xref:unlang/attr.adoc[&Attribute-Name] | Check for attribute existence.
+| xref:unlang/attr.adoc[Attribute-Name] | Check for attribute existence.
 | xref:unlang/return_codes.adoc[rcode] | Check return code of a previous module.
 | xref:unlang/condition/operands.adoc[data] | Check value of data.
 | xref:unlang/condition/cmp.adoc[lhs OP rhs] | Compare two kinds of data.

@@ -14,7 +14,7 @@ attribute += <expression>
 attribute -= <expression>
 ...
 
-list1 := &list2
+list1 := list2
 list1 += { attribute = value, ... }
 list1 += " attribute = value, ... "
 ...

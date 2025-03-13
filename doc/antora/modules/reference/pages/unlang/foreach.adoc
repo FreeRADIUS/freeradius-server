@@ -148,8 +148,8 @@ In this example, we have to explicitly give a data type `string`.  The data type
 .Example of Looping over children of a structural type.
 [source,unlang]
 ----
-foreach string child (&TLV-Thing.[*]) {
-	out += &child
+foreach string child (TLV-Thing.[*]) {
+	out += child
 	out += " "
 }
 ----
@@ -162,7 +162,7 @@ examined, but cannot be changed.  This is a limitation of the current interprete
 [source,unlang]
 ----
 foreach thing (Tmp-TLV-0[*]) {
-	out += &thing.c
+	out += thing.c
 	out += " "
 }
 ----

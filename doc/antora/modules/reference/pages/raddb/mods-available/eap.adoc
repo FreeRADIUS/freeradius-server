@@ -337,8 +337,8 @@ encrypting the `private_key_file` with a password.
 
 private_key_file:: File which contains the private key.
 
-If the Private key & Certificate are located in the same file,
-then `private_key_file` & `certificate_file` must contain the
+If the Private key and Certificate are located in the same file,
+then `private_key_file` and `certificate_file` must contain the
 same file name.
 
 

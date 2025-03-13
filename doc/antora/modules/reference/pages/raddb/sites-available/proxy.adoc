@@ -30,7 +30,7 @@ received.
 ```
 recv Access-Request {
 	update control {
-		&Auth-Type := proxy
+		Auth-Type := proxy
 	}
 }
 

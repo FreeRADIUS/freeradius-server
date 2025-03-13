@@ -16,9 +16,9 @@ group {
 	#
 	#  Enforce it
 	#
-	large <= &small
+	large <= small
 
-	# &large now has value '10'
+	# large now has value '10'
 
 }
 ----
