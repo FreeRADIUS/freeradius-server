@@ -23,7 +23,7 @@ switch User-Name {
         reject
     }
 
-    case &Filter-Id {
+    case Filter-Id {
         reject
     }
 
