@@ -69,7 +69,7 @@ the execution of the loop.
 ----
 Tmp-Integer-0 := { 1, 3, 5, 11 }
 
-foreach self (&Tmp-Integer-0) {
+foreach self (Tmp-Integer-0) {
 	self += 19
 }
 ----
@@ -161,7 +161,7 @@ examined, but cannot be changed.  This is a limitation of the current interprete
 .Example of Looping over children of a structural type.
 [source,unlang]
 ----
-foreach thing (&Tmp-TLV-0[*]) {
+foreach thing (Tmp-TLV-0[*]) {
 	out += &thing.c
 	out += " "
 }

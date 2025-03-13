@@ -112,7 +112,7 @@ type to `string`.  The value is left alone.
 [source,unlang]
 ----
 "User-Name is %{Tmp-Octets-0}"
-"User-Name is %{(string) &Tmp-Octets-0}"
+"User-Name is %{(string) Tmp-Octets-0}"
 ----
 
 if the `Tmp-Octets-0` attribute has value `0x666f6f` (`foo`)
