@@ -137,7 +137,7 @@ reply.
 ----
 control.Reply-Message := { "one", "two" }
 
-reply.Reply-Message := &control.Reply-Message[*]
+reply.Reply-Message := control.Reply-Message[*]
 ----
 
 The following example will take an input string `"192.168.0.1"`, split
