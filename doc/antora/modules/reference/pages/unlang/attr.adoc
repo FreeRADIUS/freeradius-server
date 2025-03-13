@@ -98,7 +98,7 @@ The expression _must_ be in an expansion block: `%{...}`.
 ----
 index = 0
 
-EAP-Message[%{&index + 1}]
+EAP-Message[%{index + 1}]
 ----
 
 === Array References in lists

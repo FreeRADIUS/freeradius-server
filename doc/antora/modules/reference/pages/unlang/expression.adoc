@@ -76,7 +76,7 @@ You can just put math in-place, as with the following example:
 
 [source,unlang]
 ----
-Filter-Id = "Adding %{NAS-Port} + 4 = %{&NAS-Port + 4}"
+Filter-Id = "Adding %{NAS-Port} + 4 = %{NAS-Port + 4}"
 ----
 
 The old ``%{expr:...}` syntax will return an error in v4.  That functiuonality is no longer supported.
