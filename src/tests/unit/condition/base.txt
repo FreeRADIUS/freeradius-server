@@ -20,7 +20,7 @@ condition ("foo
 match ERROR offset 2: Unterminated string
 
 condition ()
-match ERROR offset 2: Empty expressions are invalid.
+match ERROR offset 2: Empty expressions are invalid
 
 condition (!)
 match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here

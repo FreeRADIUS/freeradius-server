@@ -2191,7 +2191,7 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	}
 
 	if (!node) {
-		fr_strerror_const("Empty expression is invalid");
+		fr_strerror_const("Empty expressions are invalid");
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
@@ -2495,7 +2495,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 
 		fr_sbuff_skip_whitespace(&our_in);
 		if (fr_sbuff_is_char(&our_in, ')')) {
-			fr_strerror_printf("Empty expressions are invalid.");
+			fr_strerror_printf("Empty expressions are invalid");
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
@@ -2513,10 +2513,17 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		}
 
 		/*
-		 *	We've parsed one "thing", so we stop.  The
-		 *	next thing should be an operator, not another
-		 *	value.
+		 *	We've parsed one "thing", so we stop.  The next thing should be an operator, not
+		 *	another value.
+		 *
+		 *	The nested call to tokenize_expression() can return >=0 if there are spaces followed by a
+		 *	terminal character.  So "node" may be NULL;
 		 */
+		if (!node) {
+			fr_strerror_const("Empty expressions are invalid");
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
+
 		*out_c = '\0';
 		goto done;
 	}
@@ -2954,12 +2961,6 @@ static fr_slen_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr
 redo:
 	rhs = NULL;
 
-#ifdef STATIC_ANALYZER
-	if (!lhs) return 0;	/* shut up stupid analyzer */
-#else
-	fr_assert(lhs != NULL);
-#endif
-
 	fr_sbuff_skip_whitespace(&our_in);
 
 	/*
@@ -2967,6 +2968,9 @@ redo:
 	 */
 	if (fr_sbuff_extend(&our_in) == 0) {
 	done:
+		/*
+		 *	LHS may be NULL if the expression has spaces followed by a terminal character.
+		 */
 		*out = lhs;
 		FR_SBUFF_SET_RETURN(in, &our_in);
 	}
@@ -3127,9 +3131,11 @@ redo:
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
-#ifdef STATIC_ANALYZER
-	if (!rhs) return -1;
-#endif
+	/*
+	 *	The nested call to tokenize_expression() can return >=0 if there are spaces followed by a
+	 *	terminal character.
+	 */
+	if (!rhs) goto done;
 
 	func = xlat_func_find(binary_ops[op].str, binary_ops[op].len);
 	fr_assert(func != NULL);

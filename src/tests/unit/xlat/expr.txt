@@ -145,5 +145,8 @@ match (uint32)Service-Type
 xlat_expr (uint32) (Service-Type)
 match %cast(uint32, Service-Type)
 
+xlat_expr 5 + ()
+match ERROR offset 6: Empty expressions are invalid
+
 count
-match 69
+match 71
