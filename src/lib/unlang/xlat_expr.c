@@ -2789,6 +2789,21 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		node->flags.constant = true;
 		node->flags.pure = node->flags.can_purify = true;
 
+		/*
+		 *	Casts must have been handled above.
+		 */
+		fr_assert(cast_type == FR_TYPE_NULL);
+		fr_assert(tmpl_rules_cast(vpt) == FR_TYPE_NULL);
+
+		/*
+		 *	Convert the XLAT_TMPL to XLAT_BOX
+		 */
+		fr_value_box_steal(node, &node->data, tmpl_value(vpt));
+		xlat_exp_set_name_buffer(node, vpt->name);
+		talloc_free(vpt);
+		xlat_exp_set_type(node, XLAT_BOX);
+		goto done;
+
 	} else if (tmpl_contains_xlat(node->vpt)) {
 		node->flags = tmpl_xlat(vpt)->flags;
 
@@ -3041,19 +3056,51 @@ redo:
 		/*
 		 *	@todo - LHS shouldn't be anything else.
 		 */
-		fr_assert(lhs->type == XLAT_TMPL);
+		switch (lhs->type) {
+		case XLAT_TMPL:
+			type = tmpl_cast_get(lhs->vpt);
+			if ((type != FR_TYPE_NULL) && (type != FR_TYPE_STRING)) {
+				fr_strerror_const("Casts cannot be used with regular expressions");
+				fr_sbuff_set(&our_in, &m_lhs);
+				FR_SBUFF_ERROR_RETURN(&our_in);
+			}
 
-		type = tmpl_cast_get(lhs->vpt);
-		if ((type != FR_TYPE_NULL) && (type != FR_TYPE_STRING)) {
-			fr_strerror_const("Casts cannot be used with regular expressions");
-			fr_sbuff_set(&our_in, &m_lhs);
-			FR_SBUFF_ERROR_RETURN(&our_in);
+			/*
+			 *	Cast the LHS to a string, if it's not already one!
+			 */
+			if (lhs->vpt->quote == T_BARE_WORD) tmpl_cast_set(lhs->vpt, FR_TYPE_STRING);
+			break;
+
+		case XLAT_BOX:
+			/*
+			 *	192.168.0.1 =~ /foo/
+			 *
+			 *	Gets the LHS automatically converted to a string.
+			 */
+			if (lhs->data.type != FR_TYPE_STRING) {
+				if (fr_value_box_cast_in_place(lhs, &lhs->data, FR_TYPE_STRING, NULL) < 0) {
+					fr_sbuff_set(&our_in, &m_lhs);
+					FR_SBUFF_ERROR_RETURN(&our_in);
+				}
+			}
+			break;
+
+		default:
+			/*
+			 *	@todo - if we hoist the LHS to a function instead of an xlat->tmpl->xlat, then
+			 *	we can't cast the LHS to a string.  OR, we have to manually add a lHS cast to
+			 *	a string.  Maybe we need to delay the LHS hoisting until such time as we know
+			 *	it's safe.
+			 *
+			 *	Also, hoisting a double-quoted xlat string to a _list_ of xlats is hard,
+			 *	because we expect the LHS here to be one node.  So perhaps the hoisting has to
+			 *	be from an XLAT_TMPL to an XLAT_GROUP, which is still perhaps a bit of an
+			 *	improvement.
+			 */
+			fr_assert(0);
+			break;
+
 		}
-
-		/*
-		 *	Cast the LHS to a string, if it's not already one!
-		 */
-		if (lhs->vpt->quote == T_BARE_WORD) tmpl_cast_set(lhs->vpt, FR_TYPE_STRING);
 
 		slen = tokenize_regex_rhs(head, &rhs, &our_in, t_rules, bracket_rules);
 	} else {
