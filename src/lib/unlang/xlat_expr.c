@@ -1427,7 +1427,7 @@ static xlat_action_t xlat_func_unary_complement(TALLOC_CTX *ctx, fr_dcursor_t *o
 	return xlat_func_unary_op(ctx, out, xctx, request, in, T_COMPLEMENT);
 }
 
-/** Convert XLAT_BOX arguments to XLAT_TMPL
+/** Convert XLAT_BOX arguments to the correct data type.
  *
  *  xlat_tokenize() just makes all unknown arguments into XLAT_BOX, of data type FR_TYPE_STRING.  Whereas
  *  xlat_tokenize_expr() calls tmpl_afrom_substr(), which tries hard to create a particular data type.
@@ -1451,6 +1451,7 @@ static int xlat_function_args_to_tmpl(xlat_inst_ctx_t const *xctx)
 		if (!node) continue;
 		if (node->type != XLAT_BOX) continue;
 		if (node->data.type != FR_TYPE_STRING) continue;
+		if (node->quote != T_BARE_WORD) continue;
 
 		/*
 		 *	Try to parse it.  If we can't, leave it for a run-time error.
