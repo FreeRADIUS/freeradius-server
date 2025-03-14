@@ -1134,6 +1134,11 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		 *	@todo - respect node->quote here, too.  Which also means updating the parser.
 		 */
 		if (node->quote == T_BARE_WORD) {
+			if (tmpl_require_enum_prefix && node->data.enumv &&
+			    (strncmp(node->fmt, "::", 2) == 0)) {
+				FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "::");
+			}
+
 			FR_SBUFF_RETURN(fr_value_box_print, out, &node->data, e_rules);
 		} else {
 			FR_SBUFF_RETURN(fr_value_box_print_quoted, out, &node->data, node->quote);
