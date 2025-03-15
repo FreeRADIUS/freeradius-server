@@ -1427,51 +1427,6 @@ static xlat_action_t xlat_func_unary_complement(TALLOC_CTX *ctx, fr_dcursor_t *o
 	return xlat_func_unary_op(ctx, out, xctx, request, in, T_COMPLEMENT);
 }
 
-/** Convert XLAT_BOX arguments to the correct data type.
- *
- *  xlat_tokenize() just makes all unknown arguments into XLAT_BOX, of data type FR_TYPE_STRING.  Whereas
- *  xlat_tokenize_expr() calls tmpl_afrom_substr(), which tries hard to create a particular data type.
- *
- *  This function fixes up calls of the form %op_add(3, 4), which normally passes 2 arguments of "3" and "4",
- *  so that the arguments are instead passed as integers 3 and 4.
- *
- *  This fixup isn't *strictly* necessary, but it's good to have no surprises in the code, if the user creates
- *  an expression manually.
- */
-static int xlat_function_args_to_tmpl(xlat_inst_ctx_t const *xctx)
-{
-	xlat_exp_foreach(xctx->ex->call.args, arg) {
-		ssize_t slen;
-		xlat_exp_t *node;
-		tmpl_t *vpt;
-
-		fr_assert(arg->type == XLAT_GROUP);
-
-		node = xlat_exp_head(arg->group);
-		if (!node) continue;
-		if (node->type != XLAT_BOX) continue;
-		if (node->data.type != FR_TYPE_STRING) continue;
-		if (node->quote != T_BARE_WORD) continue;
-
-		/*
-		 *	Try to parse it.  If we can't, leave it for a run-time error.
-		 */
-		slen = tmpl_afrom_substr(node, &vpt, &FR_SBUFF_IN(node->data.vb_strvalue, node->data.vb_length),
-					 node->quote, NULL, NULL);
-		if (slen <= 0) continue;
-		if ((size_t) slen < node->data.vb_length) continue;
-
-		/*
-		 *	Leave it as XLAT_BOX, but with the (guessed) new data type.
-		 */
-		fr_value_box_clear(&node->data);
-		fr_value_box_copy(node, &node->data, tmpl_value(vpt));
-		talloc_free(vpt);
-	}
-
-	return 0;
-}
-
 static xlat_arg_parser_t const xlat_func_expr_rcode_arg[] = {
 	{ .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -1845,7 +1800,6 @@ do { \
 	xlat_func_args_set(xlat, binary_op_xlat_args); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
 	xlat_func_print_set(xlat, xlat_expr_print_binary); \
-	xlat_func_instantiate_set(xlat, xlat_function_args_to_tmpl, NULL, NULL, NULL); \
 	xlat->token = _op; \
 } while (0)
 
