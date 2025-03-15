@@ -107,7 +107,6 @@ date date_iso {
 #  [options="header,autowidth"]
 #  |===
 #  | Parameter        | Description
-#  |===
 #  | %l               | request time in seconds since the epoch.
 #  | %M               | request time microsecond component.
 #  | %c               | current time in seconds since the epoch.
