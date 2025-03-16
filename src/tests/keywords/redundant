@@ -43,7 +43,7 @@ if (!reply.Result-Status) {
 #
 #  Loop 0..9
 #
-foreach NAS-Port {
+foreach NAS-Port[*] {
 	redundant {
 		group {
 			# fail on even numbered values, succeed on odd numbered ones
