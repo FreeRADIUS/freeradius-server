@@ -3272,15 +3272,6 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 
 	xlat_exp_insert_tail(head, node);
 
-	/*
-	 *	Add nodes that need to be bootstrapped to
-	 *	the registry.
-	 */
-	if (xlat_finalize(head, t_rules->xlat.runtime_el) < 0) {
-		talloc_free(head);
-		return -1;
-	}
-
 	*out = head;
 	return slen;
 }
@@ -3288,13 +3279,33 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 fr_slen_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
-	return xlat_tokenize_expression_internal(ctx, out, in, p_rules, t_rules, false);
+	fr_slen_t slen;
+
+	slen = xlat_tokenize_expression_internal(ctx, out, in, p_rules, t_rules, false);
+	if (slen < 0) return slen;
+
+	if (xlat_finalize(*out, t_rules->xlat.runtime_el) < 0) {
+		TALLOC_FREE(*out);
+		return -1;
+	}
+
+	return slen;
 }
 
 fr_slen_t xlat_tokenize_condition(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 				  fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
-	return xlat_tokenize_expression_internal(ctx, out, in, p_rules, t_rules, true);
+	fr_slen_t slen;
+
+	slen = xlat_tokenize_expression_internal(ctx, out, in, p_rules, t_rules, true);
+	if (slen < 0) return slen;
+
+	if (xlat_finalize(*out, t_rules->xlat.runtime_el) < 0) {
+		TALLOC_FREE(*out);
+		return -1;
+	}
+
+	return slen;
 }
 
 /**  Allow callers to see if an xlat is truthy
