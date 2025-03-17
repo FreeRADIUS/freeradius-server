@@ -962,7 +962,10 @@ static size_t xlat_quote_table_len = NUM_ELEMENTS(xlat_quote_table);
 static void _xlat_debug_head(xlat_exp_head_t const *head, int depth);
 static void _xlat_debug_node(xlat_exp_t const *node, int depth)
 {
-	INFO_INDENT("{");
+	INFO_INDENT("{ -- %s", node->fmt);
+#ifndef NDEBUG
+//	INFO_INDENT("  %s:%d", node->file, node->line);
+#endif
 	depth++;
 
 	if (node->quote != T_BARE_WORD) INFO_INDENT("quote = %c", fr_token_quote[node->quote]);
@@ -1019,6 +1022,7 @@ static void _xlat_debug_node(xlat_exp_t const *node, int depth)
 			}
 		} else if (tmpl_is_data(node->vpt)) {
 			INFO_INDENT("tmpl (%s) type %s", node->fmt, fr_type_to_str(tmpl_value_type(node->vpt)));
+
 		} else if (tmpl_is_xlat(node->vpt)) {
 			INFO_INDENT("tmpl xlat (%s)", node->fmt);
 			_xlat_debug_head(tmpl_xlat(node->vpt), depth + 1);
@@ -1041,7 +1045,7 @@ static void _xlat_debug_node(xlat_exp_t const *node, int depth)
 
 	case XLAT_FUNC:
 		fr_assert(node->call.func != NULL);
-		INFO_INDENT("xlat (%s)", node->call.func->name);
+		INFO_INDENT("func (%s)", node->call.func->name);
 		if (xlat_exp_head(node->call.args)) {
 			INFO_INDENT("{");
 			_xlat_debug_head(node->call.args, depth + 1);
@@ -1050,7 +1054,7 @@ static void _xlat_debug_node(xlat_exp_t const *node, int depth)
 		break;
 
 	case XLAT_FUNC_UNRESOLVED:
-		INFO_INDENT("xlat-unresolved (%s)", node->fmt);
+		INFO_INDENT("func-unresolved (%s)", node->fmt);
 		if (xlat_exp_head(node->call.args)) {
 			INFO_INDENT("{");
 			_xlat_debug_head(node->call.args, depth + 1);
