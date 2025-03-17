@@ -2083,6 +2083,7 @@ int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **out, tmpl_t **vpt_p)
 	fr_assert(!node->flags.pure);
 
 done:
+	XLAT_VERIFY(node);
 	xlat_exp_insert_tail(head, node);
 	*out = head;
 

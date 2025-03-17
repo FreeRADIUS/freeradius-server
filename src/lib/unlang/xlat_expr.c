@@ -3271,6 +3271,7 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 		node = xlat_exists_alloc(head, node);
 	}
 
+	XLAT_VERIFY(node);
 	xlat_exp_insert_tail(head, node);
 
 	*out = head;

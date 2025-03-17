@@ -350,6 +350,63 @@ void xlat_exp_verify(xlat_exp_t const *node)
 		(void)talloc_get_type_abort_const(node->fmt, char);
 		return;
 
+	case XLAT_TMPL: {
+		tmpl_t const *vpt = node->vpt;
+
+		if (node->quote != node->vpt->quote) {
+			if (node->vpt->quote == T_SOLIDUS_QUOTED_STRING) {
+				/*
+				 *	m'foo' versus /foo/
+				 */
+				fr_assert(node->quote != T_BARE_WORD);
+			} else {
+				/*
+				 *	Mismatching quotes are bad.
+				 */
+				fr_assert(node->quote == T_BARE_WORD);
+			}
+		}
+
+		if (tmpl_is_attr(vpt)) {
+			fr_dict_attr_t const *da;
+			da = tmpl_attr_tail_da(node->vpt);
+
+			if (tmpl_rules_cast(node->vpt) != FR_TYPE_NULL) {
+				/*
+				 *	Casts must be omitted, unless we're using a cast as a way to get rid
+				 *	of enum names.
+				 */
+				if (tmpl_rules_cast(node->vpt) == da->type) {
+					fr_assert(da->flags.has_value);
+				}
+
+			} else if (node->quote != T_BARE_WORD) {
+				fr_assert(da->type != FR_TYPE_STRING);
+			}
+
+			return;
+		}
+
+		/*
+		 *	Casts should have been hoisted.
+		 */
+		if (tmpl_is_data(node->vpt)) {
+			fr_assert(tmpl_rules_cast(node->vpt) == FR_TYPE_NULL);
+		}
+
+#if 0
+		/*
+		 *	@todo - xlats SHOULD have been hoisted, unless they're quoted or cast.
+		 */
+		if (tmpl_is_xlat(node->vpt)) {
+			fr_assert((node->vpt->quote != T_BARE_WORD) ||
+				  (tmpl_rules_cast(node->vpt) != FR_TYPE_NULL));
+			return;
+		}
+#endif
+		return;
+	}
+
 	default:
 		break;
 	}
