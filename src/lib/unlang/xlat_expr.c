@@ -2167,7 +2167,7 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
  *  See xlat_func_cast() for the implementation.
  *
  */
-static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type)
+static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type, xlat_exp_t *child)
 {
 	xlat_exp_t *cast, *node;
 
@@ -2198,6 +2198,8 @@ static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type)
 	node->data.vb_uint8 = type;
 
 	xlat_func_append_arg(cast, node, false);
+	(void) talloc_steal(cast, child);
+	xlat_func_append_arg(cast, child, false);
 
 	return cast;
 }
@@ -2795,8 +2797,7 @@ done:
 	if (cast_type != FR_TYPE_NULL) {
 		xlat_exp_t *cast;
 
-		MEM(cast = expr_cast_alloc(head, cast_type));
-		xlat_func_append_arg(cast, node, false);
+		MEM(cast = expr_cast_alloc(head, cast_type, node));
 		node = cast;
 	}
 
