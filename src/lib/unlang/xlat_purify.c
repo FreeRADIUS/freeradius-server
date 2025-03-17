@@ -42,13 +42,13 @@ static void xlat_value_list_to_xlat(xlat_exp_head_t *head, fr_value_box_list_t *
 
 		if (node->data.type == FR_TYPE_STRING) {
 			node->quote = T_DOUBLE_QUOTED_STRING;
-			xlat_exp_set_name_buffer_shallow(node, node->data.vb_strvalue);
+			xlat_exp_set_name_buffer(node, node->data.vb_strvalue); /* later changes can free strvalue */
 		} else {
 			char *name;
 
 			node->quote = T_BARE_WORD;
 			MEM(fr_value_box_aprint(node, &name, box, NULL) >= 0);
-			xlat_exp_set_name_buffer_shallow(node, name);
+			xlat_exp_set_name_shallow(node, name);
 		}
 		talloc_free(box);
 
@@ -490,7 +490,7 @@ static int binary_peephole_optimize(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_
 	if (box.type == FR_TYPE_BOOL) box.enumv = attr_expr_bool_enum;
 
 	MEM(fr_value_box_aprint(node, &name, &box, NULL) >= 0);
-	xlat_exp_set_name_buffer_shallow(node, name);
+	xlat_exp_set_name_shallow(node, name);
 	fr_value_box_copy(node, &node->data, &box);
 
 	*out = node;

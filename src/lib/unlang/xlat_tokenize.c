@@ -479,7 +479,7 @@ static int xlat_resolve_virtual_attribute(xlat_exp_t *node, tmpl_t *vpt)
 	if (!func) return -1;
 
 	xlat_exp_set_type(node, XLAT_VIRTUAL);
-	xlat_exp_set_name_buffer_shallow(node, vpt->name);
+	xlat_exp_set_name_shallow(node, vpt->name);
 
 	XLAT_DEBUG("VIRTUAL <-- %pV",
 		   fr_box_strvalue_len(vpt->name, vpt->len));
@@ -575,7 +575,7 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_attribute(xlat_exp_head_t *
 		 *	this out in a later pass.
 		 */
 		xlat_exp_set_type(node, XLAT_VIRTUAL_UNRESOLVED);
-		xlat_exp_set_name_buffer_shallow(node, vpt->name);
+		xlat_exp_set_name_shallow(node, vpt->name);
 		node->vpt = vpt;
 		node->flags.needs_resolving = true;
 	/*
@@ -583,7 +583,7 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_attribute(xlat_exp_head_t *
 	 */
 	} else {
 		xlat_exp_set_type(node, XLAT_TMPL);
-		xlat_exp_set_name_buffer_shallow(node, vpt->name);
+		xlat_exp_set_name_shallow(node, vpt->name);
 		node->vpt = vpt;
 	}
 
@@ -676,7 +676,6 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 	 */
 	{
 		int ret;
-		char *fmt;
 		xlat_exp_t *node;
 		xlat_exp_head_t *child;
 		tmpl_rules_t my_rules;
@@ -704,9 +703,8 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 			return -1;
 		}
 
-		MEM(fmt = talloc_bstrndup(node, fr_sbuff_current(&s_m), fr_sbuff_behind(&s_m)));
-		xlat_exp_set_name_buffer_shallow(node, fmt);
-		tmpl_set_name_shallow(node->vpt, T_BARE_WORD, fmt, fr_sbuff_behind(&s_m));
+		xlat_exp_set_name(node, fr_sbuff_current(&s_m), fr_sbuff_behind(&s_m));
+		tmpl_set_name_shallow(node->vpt, T_BARE_WORD, node->fmt, fr_sbuff_behind(&s_m));
 
 		tmpl_set_xlat(node->vpt, child);
 		xlat_exp_insert_tail(head, node);
@@ -872,7 +870,7 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 		 */
 		if (slen > 0) {
 		do_value_box:
-			xlat_exp_set_name_buffer_shallow(node, str);
+			xlat_exp_set_name_shallow(node, str);
 			fr_value_box_strdup(node, &node->data, NULL, str, false);
 			fr_value_box_mark_safe_for(&node->data, t_rules->literals_safe_for);
 			node->flags.constant = true;
@@ -1467,7 +1465,6 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 	while (fr_sbuff_extend(&our_in)) {
 		xlat_exp_t	*node = NULL;
 		fr_token_t	quote;
-		char		*fmt;
 		size_t		len;
 
 		fr_sbuff_set(&m, &our_in);	/* Record start of argument */
@@ -1594,7 +1591,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 							    value_parse_rules_single_quoted.escapes);
 			if (slen < 0) goto error;
 
-			xlat_exp_set_name_buffer_shallow(child, str);
+			xlat_exp_set_name_shallow(child, str);
 			fr_value_box_strdup(child, &child->data, NULL, str, false);
 			fr_value_box_mark_safe_for(&child->data, arg->safe_for);	/* Literal values are treated as implicitly safe */
 			child->flags.constant = true;
@@ -1621,8 +1618,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			goto error;
 		}
 
-		fmt = talloc_bstrndup(node, fr_sbuff_current(&m), fr_sbuff_behind(&m));
-		xlat_exp_set_name_buffer_shallow(node, fmt);
+		xlat_exp_set_name(node, fr_sbuff_current(&m), fr_sbuff_behind(&m));
 
 		/*
 		 *	Assert that the parser has created things which are safe for the current argument.

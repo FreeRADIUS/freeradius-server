@@ -280,7 +280,7 @@ xlat_exp_t	*_xlat_exp_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_type_t ty
 #define		xlat_exp_alloc(_ctx, _type, _in, _inlen) _xlat_exp_alloc(NDEBUG_LOCATION_EXP _ctx, _type, _in, _inlen)
 
 void		xlat_exp_set_name(xlat_exp_t *node, char const *fmt, size_t len) CC_HINT(nonnull);
-void		xlat_exp_set_name_buffer_shallow(xlat_exp_t *node, char const *fmt) CC_HINT(nonnull);
+void		xlat_exp_set_name_shallow(xlat_exp_t *node, char const *fmt) CC_HINT(nonnull);
 void		xlat_exp_set_name_buffer(xlat_exp_t *node, char const *fmt) CC_HINT(nonnull);
 
 /*

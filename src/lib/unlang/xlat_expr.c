@@ -92,7 +92,7 @@ static void xlat_func_append_arg(xlat_exp_t *head, xlat_exp_t *node, bool exists
 	group = xlat_exp_alloc(head->call.args, XLAT_GROUP, NULL, 0);
 	group->quote = T_BARE_WORD;
 
-	xlat_exp_set_name_buffer_shallow(group, node->fmt); /* not entirely correct, but good enough for now */
+	xlat_exp_set_name_shallow(group, node->fmt); /* not entirely correct, but good enough for now */
 	group->flags = node->flags;
 
 	talloc_steal(group->group, node);
@@ -124,7 +124,7 @@ static xlat_exp_t *xlat_exists_alloc(TALLOC_CTX *ctx, xlat_exp_t *child)
 
 	fr_assert(child->type == XLAT_TMPL);
 	fr_assert(tmpl_contains_attr(child->vpt));
-	xlat_exp_set_name_buffer_shallow(node, child->vpt->name);
+	xlat_exp_set_name_shallow(node, child->vpt->name);
 
 	xlat_func_append_arg(node, child, false);
 
@@ -1033,7 +1033,7 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
 		char *name;
 
 		MEM(xlat_aprint(node, &name, group, NULL) >= 0);
-		xlat_exp_set_name_buffer_shallow(node, name);
+		xlat_exp_set_name_shallow(node, name);
 	}
 
 	node->group = group;
@@ -2328,7 +2328,7 @@ static fr_slen_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_
 
 	node->vpt = vpt;
 	node->quote = quote;
-	xlat_exp_set_name_buffer_shallow(node, vpt->name);
+	xlat_exp_set_name_shallow(node, vpt->name);
 
 	node->flags.pure = !tmpl_contains_xlat(node->vpt);
 	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
@@ -2737,7 +2737,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	 */
 	node->vpt = vpt;
 	node->quote = quote;
-	xlat_exp_set_name_buffer_shallow(node, vpt->name);
+	xlat_exp_set_name_shallow(node, vpt->name);
 
 	if (tmpl_is_data(node->vpt)) {
 		/*
