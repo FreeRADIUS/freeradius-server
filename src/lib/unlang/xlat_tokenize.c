@@ -614,8 +614,8 @@ static bool const tmpl_attr_allowed_chars[UINT8_MAX + 1] = {
 	['['] = true, [']'] = true, 					// tmpls and attribute arrays
 };
 
-int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
-			    tmpl_rules_t const *t_rules)
+static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
+							 tmpl_rules_t const *t_rules)
 {
 	size_t			len;
 	fr_sbuff_marker_t	s_m;
