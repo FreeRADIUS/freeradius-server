@@ -2341,7 +2341,7 @@ static fr_slen_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_
 }
 
 
-static fr_slen_t tokenize_rcode(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in)
+static ssize_t tokenize_rcode(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in, fr_sbuff_term_t const *terminals)
 {
 	rlm_rcode_t		rcode;
 	ssize_t			slen;
@@ -2351,6 +2351,14 @@ static fr_slen_t tokenize_rcode(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 
 	fr_sbuff_out_by_longest_prefix(&slen, &rcode, rcode_table, &our_in, T_BARE_WORD);
 	if (slen <= 0) return 0;
+
+	if (!fr_sbuff_is_terminal(&our_in, terminals)) {
+		if (!fr_dict_attr_allowed_chars[fr_sbuff_char(&our_in, '\0')]) {
+			fr_strerror_const("Unexpected text after return code");
+			return -slen;
+		}
+		return 0;
+	}
 
 	/*
 	 *	@todo - allow for attributes to have the name "ok-foo" ???
@@ -2499,7 +2507,11 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		/*
 		 *	Peek for rcodes.
 		 */
-		slen = tokenize_rcode(head, &node, &our_in);
+		slen = tokenize_rcode(head, &node, &our_in, p_rules->terminals);
+		if (slen < 0) {
+			fr_sbuff_advance(&our_in, -slen);
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
 		if (slen > 0) {
 			*out = node;
 			FR_SBUFF_SET_RETURN(in, &our_in);

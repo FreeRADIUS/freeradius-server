@@ -33,7 +33,7 @@ match ERROR offset 18: Invalid operator
 
 # escapes in names are illegal
 condition (ok\ foo || handled)
-match ERROR offset 4: Invalid operator
+match ERROR offset 4: Unexpected text after return code
 
 #
 #  @todo - parsing - This is just a bare word comparison, and should be disallowed?

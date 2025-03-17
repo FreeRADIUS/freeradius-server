@@ -28,7 +28,7 @@ match ERROR offset 18: Invalid operator
 
 # escapes in names are illegal
 xlat_purify (ok\ foo || handled)
-match ERROR offset 4: Invalid operator
+match ERROR offset 4: Unexpected text after return code
 
 #
 #  0 - 111 is smaller than zero, and Service-Type is uint32.
@@ -721,7 +721,7 @@ xlat_purify (User-Name == "bob") && (User-Password == "bob") && handled
 match ((User-Name == "bob") && (User-Password == "bob") && %expr.rcode('handled'))
 
 xlat_purify handledx
-match ERROR offset 8: Invalid operator
+match ERROR offset 1: Attribute 'handledx' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat_purify handled
 match %expr.rcode('handled')
