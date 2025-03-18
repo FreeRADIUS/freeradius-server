@@ -9,9 +9,15 @@ Tmp-Integer-0 := { 1, 3, 5, 11 }
 #  then the underlying tmpl_dcursor would crash, as it didn't know about the deletion.
 #
 foreach uint32 self (Tmp-Integer-0) {
-	request -= Tmp-Integer-0[1]
-	self += 19
+	try {
+		request -= Tmp-Integer-0[1]
+	}
+	catch {
+		self += 19
+	}
 }
+
+%debug(&request)
 
 if (Tmp-Integer-0[0] != 20) {
 	test_fail

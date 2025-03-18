@@ -269,12 +269,27 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 			 *	No need to save the value.
 			 */
 		case FR_EDIT_VALUE:
+			if (fr_pair_immutable(vp)) {
+				fr_strerror_printf("Cannot modify immutable value for %s", vp->da->name);
+				return -1;
+			}
 			return 0;
 
 			/*
 			 *	No need to save the value.
 			 */
 		case FR_EDIT_DELETE:
+			/*
+			 *	We silently refuse to delete immutable attributes.
+			 */
+			if (fr_pair_immutable(vp)) return 0;
+
+			if (vp->vp_edit) {
+			vp_edit_error:
+				fr_strerror_printf("Attribute cannot be removed, as it is being used in a 'foreach' loop - %pP", vp);
+				return -1;
+			}
+
 			fr_pair_remove(list, vp);
 			return 0;
 
@@ -466,6 +481,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 			 *	which has been deleted!
 			 */
 			e->op = FR_EDIT_DELETE;
+			fr_assert(!e->vp->vp_edit);
 			fr_dlist_remove(&el->undo, e);
 			goto delete;
 
@@ -522,6 +538,19 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 
 	case FR_EDIT_DELETE:
 	delete:
+		/*
+		 *	We silently refuse to delete immutable attributes.
+		 */
+		if (fr_pair_immutable(e->vp)) {
+			talloc_free(e);
+			return 0;
+		}
+
+		if (e->vp->vp_edit) {
+			talloc_free(e);
+			goto vp_edit_error;
+		}
+
 		fr_assert(list != NULL);
 		fr_assert(ref == NULL);
 
@@ -574,11 +603,6 @@ int fr_edit_list_insert_pair_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_
  */
 int fr_edit_list_pair_delete(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *vp)
 {
-	if (fr_pair_immutable(vp)) {
-		fr_strerror_printf("Cannot modify immutable value for %s", vp->da->name);
-		return -1;
-	}
-
 	if (!el) {
 		fr_pair_delete(list, vp);
 		return 0;
@@ -602,11 +626,7 @@ int fr_edit_list_pair_delete_by_da(fr_edit_list_t *el, fr_pair_list_t *list, fr_
 	 *	Delete all VPs with a matching da.
 	 */
 	fr_pair_list_foreach(list, vp) {
-		if (fr_pair_immutable(vp)) continue;
-
 		if (vp->da != da) continue;
-
-		(void) fr_pair_remove(list, vp);
 
 		if (edit_record(el, FR_EDIT_DELETE, vp, list, NULL) < 0) return -1;
 	}
@@ -636,11 +656,6 @@ int fr_edit_list_replace_pair_value(fr_edit_list_t *el, fr_pair_t *vp, fr_value_
 {
 	if (!fr_type_is_leaf(vp->vp_type)) return -1;
 
-	if (vp->vp_immutable) {
-		fr_strerror_printf("Cannot modify immutable value for %s", vp->da->name);
-		return -1;
-	}
-
 	if (el && (edit_record(el, FR_EDIT_VALUE, vp, NULL, NULL) < 0)) return -1;
 
 	if (!fr_type_is_fixed_size(vp->vp_type)) fr_value_box_clear(&vp->data);
@@ -658,11 +673,6 @@ int fr_edit_list_replace_pair_value(fr_edit_list_t *el, fr_pair_t *vp, fr_value_
 int fr_edit_list_replace_pair(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp)
 {
 	if (to_replace->da != vp->da) return -1;
-
-	if (fr_pair_immutable(to_replace)) {
-		fr_strerror_printf("Cannot modify immutable value for %s", vp->da->name);
-		return -1;
-	}
 
 	if (!el) {
 		if (fr_pair_insert_after(list, to_replace, vp) < 0) return -1;
