@@ -3298,6 +3298,13 @@ fr_slen_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sb
 	slen = xlat_tokenize_expression_internal(ctx, out, in, p_rules, t_rules, false);
 	if (slen < 0) return slen;
 
+#ifdef STATIC_ANALYZER
+	/*
+	 *	Coverity doesn't realise that out will be set by this point
+	 *	by a successful call to xlat_tokenize_expression_internal.
+	 */
+	if (!out) return -1;
+#endif
 	if (!*out) {
 		fr_strerror_const("Empty expressions are invalid");
 		return -1;
@@ -3319,6 +3326,9 @@ fr_slen_t xlat_tokenize_condition(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbu
 	slen = xlat_tokenize_expression_internal(ctx, out, in, p_rules, t_rules, true);
 	if (slen < 0) return slen;
 
+#ifdef STATIC_ANALYZER
+	if (!out) return -1;
+#endif
 	if (!*out) {
 		fr_strerror_const("Empty conditions are invalid");
 		return -1;
