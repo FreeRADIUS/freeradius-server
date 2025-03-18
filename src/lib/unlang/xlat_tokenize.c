@@ -751,7 +751,7 @@ check_for_attr:
 		switch (hint) {
 		case '}':
 		empty_disallowed:
-			fr_strerror_const("Empty expression is invalid");
+			fr_strerror_const("Empty expressions are invalid");
 			return -1;
 
 		case '[':

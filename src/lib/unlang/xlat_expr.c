@@ -3298,6 +3298,11 @@ fr_slen_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sb
 	slen = xlat_tokenize_expression_internal(ctx, out, in, p_rules, t_rules, false);
 	if (slen < 0) return slen;
 
+	if (!*out) {
+		fr_strerror_const("Empty expressions are invalid");
+		return -1;
+	}
+
 	if (xlat_finalize(*out, t_rules->xlat.runtime_el) < 0) {
 		TALLOC_FREE(*out);
 		return -1;
@@ -3313,6 +3318,11 @@ fr_slen_t xlat_tokenize_condition(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbu
 
 	slen = xlat_tokenize_expression_internal(ctx, out, in, p_rules, t_rules, true);
 	if (slen < 0) return slen;
+
+	if (!*out) {
+		fr_strerror_const("Empty conditions are invalid");
+		return -1;
+	}
 
 	if (xlat_finalize(*out, t_rules->xlat.runtime_el) < 0) {
 		TALLOC_FREE(*out);

@@ -39,10 +39,10 @@ xlat %{ || %{User-Name}}
 match ERROR offset 4: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat %{%{} || }
-match ERROR offset 5: Empty expression is invalid
+match ERROR offset 5: Empty expressions are invalid
 
 xlat %{%{} || foo}
-match ERROR offset 5: Empty expression is invalid
+match ERROR offset 5: Empty expressions are invalid
 
 xlat %{%{User-Name} || 
 match ERROR offset 19: Empty attribute reference

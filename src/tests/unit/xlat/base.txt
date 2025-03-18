@@ -158,7 +158,7 @@ xlat %{
 match ERROR offset 3: Missing closing brace
 
 xlat %{}
-match ERROR offset 3: Empty expression is invalid
+match ERROR offset 3: Empty expressions are invalid
 
 xlat %{:}
 match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here
