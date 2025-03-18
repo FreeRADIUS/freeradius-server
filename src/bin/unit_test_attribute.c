@@ -368,7 +368,7 @@ static void mismatch_print(command_file_ctx_t *cc, char const *command,
 			e++;
 		}
 
-		if (expected_len < 80) {
+		if (expected_len < 100) {
 			char const *spaces = "                                                                                ";
 
 			ERROR("  got      : %.*s", (int) got_len, got);
