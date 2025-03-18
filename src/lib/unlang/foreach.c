@@ -163,8 +163,7 @@ static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 		 *	Now that we're done, the leaf entries can be changed again.
 		 */
 		vp = tmpl_dcursor_init(NULL, NULL, &state->cc, &state->cursor, state->request, state->vpt);
-		fr_assert(vp != NULL);
-
+		if (!vp) return 0;
 		do {
 			vp->vp_edit = false;
 		} while ((vp = fr_dcursor_next(&state->cursor)) != NULL);
