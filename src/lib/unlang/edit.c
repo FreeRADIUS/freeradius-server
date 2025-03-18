@@ -390,8 +390,8 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			}
 
 			if (vp->vp_edit) {
-				REDEBUG("Attribute cannot be removed, as it is being used in a 'foreach' loop - %pP", vp);
-				return -1;
+				RWDEBUG("Attribute cannot be removed, as it is being used in a 'foreach' loop - %pP", vp);
+				continue;
 			}
 
 			if (fr_edit_list_pair_delete(current->el, list, vp) < 0) {

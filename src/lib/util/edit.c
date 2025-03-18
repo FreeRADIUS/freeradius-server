@@ -284,11 +284,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 			 */
 			if (fr_pair_immutable(vp)) return 0;
 
-			if (vp->vp_edit) {
-			vp_edit_error:
-				fr_strerror_printf("Attribute cannot be removed, as it is being used in a 'foreach' loop - %pP", vp);
-				return -1;
-			}
+			if (vp->vp_edit) return 0;
 
 			fr_pair_remove(list, vp);
 			return 0;
@@ -481,7 +477,6 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 			 *	which has been deleted!
 			 */
 			e->op = FR_EDIT_DELETE;
-			fr_assert(!e->vp->vp_edit);
 			fr_dlist_remove(&el->undo, e);
 			goto delete;
 
@@ -548,7 +543,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 
 		if (e->vp->vp_edit) {
 			talloc_free(e);
-			goto vp_edit_error;
+			return 0;
 		}
 
 		fr_assert(list != NULL);

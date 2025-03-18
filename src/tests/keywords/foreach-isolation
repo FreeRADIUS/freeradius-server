@@ -4,12 +4,17 @@
 
 control.User-Name := { "0", "1", "2", "3" }
 
-foreach control.User-Name {
+#
+#  We still can't delete the _next_ attribute.
+#
+#  @todo - maybe make this possible?
+#
+foreach thing (control.User-Name) {
 	control -= {
-		User-Name == "%{1 + %{Foreach-Variable-0}}"
+		User-Name == "%{1 + thing}"
 	}
 	request += {
-		Filter-Id = "%{Foreach-Variable-0}"
+		Filter-Id = thing
 	}
 }
 
@@ -21,7 +26,7 @@ if (!((Filter-Id[0] == '0')) || (!(Filter-Id[1] == '1')) || (!(Filter-Id[2] == '
 	test_fail
 }
 
-if (!control.User-Name[0] || control.User-Name[1] || control.User-Name[2] || control.User-Name[3]) {
+if (%{control.User-Name[#]} != 4) {
 	test_fail
 }
 

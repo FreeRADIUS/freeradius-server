@@ -1,7 +1,0 @@
-request -= Packet-Type[*]
-
-foreach request.[*] {
-	reply += {
-		Called-Station-Id = "%{Foreach-Variable-0}"
-	}
-}

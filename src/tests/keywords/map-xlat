@@ -17,8 +17,8 @@ if (!(control.Filter-Id == 'testing123')) {
 	test_fail
 }
 
-foreach NAS-Port-Id[*] {
-	if (!("%map(%{Foreach-Variable-0})" == 1)) {
+foreach thing (NAS-Port-Id[*]) {
+	if (%map(thing) != 1) {
 		test_fail
 	}
 }

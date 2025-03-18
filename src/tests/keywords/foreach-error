@@ -1,3 +1,3 @@
-foreach "%tolower('foo')" {	# ERROR
-	reply.Called-Station-Id += "%{Foreach-Variable-0}"
+foreach thing ("%tolower('foo')") {	# ERROR
+	reply.Called-Station-Id += thing
 }

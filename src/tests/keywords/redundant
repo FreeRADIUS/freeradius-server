@@ -43,30 +43,30 @@ if (!reply.Result-Status) {
 #
 #  Loop 0..9
 #
-foreach NAS-Port[*] {
+foreach thing (NAS-Port[*]) {
 	redundant {
 		group {
 			# fail on even numbered values, succeed on odd numbered ones
-			if (%{Foreach-Variable-0} % 2 == 0) {
+			if (thing % 2 == 0) {
 				fail
 			}
 			else {
 				count += 1
 				request += {
-					Reply-Message = "Succeed odd %{Foreach-Variable-0} %{count}"
+					Reply-Message = "Succeed odd %{thing} %{count}"
 				}
 				ok
 			}
 		}
 		group {
 			# succeed on even-numbered values, fail on off-numbered ones.
-			if (%{Foreach-Variable-0} % 2 == 1) {
+			if (thing % 2 == 1) {
 				fail
 			}
 			else {
 				count += 1
 				request += {
-					Reply-Message = "Succeed even %{Foreach-Variable-0} %{count}"
+					Reply-Message = "Succeed even %{thing} %{count}"
 				}
 				ok
 			}
