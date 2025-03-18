@@ -1547,6 +1547,7 @@ static CONF_PARSER ocsp_config[] = {
 	{ "use_nonce", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, ocsp_use_nonce), "yes" },
 	{ "timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, ocsp_timeout), "yes" },
 	{ "softfail", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, ocsp_softfail), "no" },
+	{ "verifycert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, ocsp_verifycert), "yes" },
 	CONF_PARSER_TERMINATOR
 };
 #endif
@@ -2731,10 +2732,12 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 		REDEBUG("ocsp: Response has wrong nonce value");
 		goto ocsp_end;
 	}
-	if (OCSP_basic_verify(bresp, untrusted, store, 0)!=1){
-		tls_error_log(request, "ocsp: Couldn't verify OCSP basic response");
-		goto ocsp_end;
-	}
+        if (conf->ocsp_verifycert) {
+	        if (OCSP_basic_verify(bresp, untrusted, store, 0)!=1){
+		       tls_error_log(request, "ocsp: Couldn't verify OCSP basic response");
+		       goto ocsp_end;
+	        }
+        }
 
 	/*	Verify OCSP cert status */
 	if (!OCSP_resp_find_status(bresp, certid, &status, &reason, &rev, &thisupd, &nextupd)) {
