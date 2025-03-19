@@ -4,8 +4,11 @@ The configuration for v4 is _somewhat_ compatible with the v3
 configuration. It should be possible to reuse most of a v3
 reconfiguration with minor tweaks.
 
-NOTE: This file describes the differences between v3 and v4. It does not
+[NOTE]
+====
+This file describes the differences between v3 and v4. It does not
 contain a step-by-step process for upgrading the server.
+====
 
 In general, we have the following changes:
 
@@ -18,6 +21,12 @@ In general, we have the following changes:
 * each `listen` section needs to be converted to the v4 format.
 
 == Upgrading from older versions
+
+=== Upgrading from v2
+
+If you are upgrading from v2 you should read the v3 version of this
+file.  It describes changed from v2 to v3. This file describes only
+the changes from v3 to v4.
 
 === Upgrading from v3
 
@@ -41,11 +50,6 @@ information.  This change was necessary in order to support the new
 "grouped" attributes, which are required for DHCPv6 and other
 protocols.
 
-=== Upgrading from v2
-
-If you are upgrading from v2 you should read the v3 version of this
-file.  It describes changed from v2 to v3. This file describes only
-the changes from v3 to v4.
 
 == Attribute Names
 
@@ -296,13 +300,50 @@ network. The `send` sections send packets back to the network. The
 second name of the section is the _type_ of the packet that is being
 received or sent.
 
-NOTE: For accounting, packets are also processed through an
+[NOTE]
+====
+For accounting, packets are also processed through an
 `accounting` section named after Acct-Status-Type. This process is
 similar to `authenticate` for `Access-Request` packets. The goal
 here is to allow a common pre-processing of accounting packets in the
 `recv Accounting-Request` packet, followed by type-specific processing
 in `accounting %{Acct-Status-Type}`. See sites-available/default for
 examples and more information.
+====
+
+=== Update Sections
+
+A major difference between v3 and v4 is that `update` sections are no
+longer necessary.  It is now possible to just edit attributes "in
+place", as with:
+
+See the xref:reference:unlang/update.adoc[update] documentation for a
+description of what has changed, and how to use the attribute new
+xref:reference:unlang/edit.adoc[edit] functionality.
+
+For example, instead of doing this:
+
+[source,unlang]
+----
+if (User-Name == "bob") {
+    update reply {
+        Reply-Message := "Hello, %{User-Name}"
+    }
+}
+----
+
+You can now do this:
+
+[source,unlang]
+----
+if (User-Name == "bob") {
+    reply.Reply-Message := "Hello, %{User-Name}"
+}
+----
+
+As with any upgrade across major version numbers, there are caveats.
+See the full xref:reference:unlang/update.adoc[update] documentation
+and xref:reference:unlang/edit.adoc[edit] documentation for details.
 
 == Proxying
 
@@ -665,7 +706,7 @@ Data type casts have changed from `<ipaddr> ...` to `(ipaddr) ...`
 
 The xref:reference:unlang/foreach.adoc[foreach] keyword has changed syntax.
 
-Instead of 
+Instead of
 
 ----
 foreach &reply.Filter-Id {

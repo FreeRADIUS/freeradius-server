@@ -1,24 +1,62 @@
-# Building on macOS
+= Building on OSX
 
-## Hard dependencies
+FreeRADIUS can be installed on OSX platforms, however some environment setup is required. Additional dev tools are also configured before the server installation.
 
-If you don't have homebrew package manager installed, [do it now](http://brew.sh)... it'll make your life on macOS far simpler.
+== Hard Dependencies
+
+=== Homebrew
+
+Install the https://brew.sh[Homebrew] package manager to streamline the installation process on OSX platforms. It'll make your life on macOS far simpler. Once you've installed Homebrew, you can install more from the command line:
 
 ```bash
 brew install talloc
 ```
+=== Install Script
 
-## Getting the source
+Run the `install_deps.sh` script to install the build dependencies. It's recommended to create a copy of this file and edit locally. You can remove apps, libs, or utilites that you don't need such as postgresql. Ensure that you use the updated file when running the script.
 
-include:Getting-the-Source
+=== Xcode Tools
 
-## Building from source
+Install Xcode from the https://www.apple.com/ca/app-store/[app store]. This tool is used to help develop, test, and manage your applications.
 
-```bash
-# Use ./configure --enable-developer if you're debugging issues, or using unstable code.
+Install the xcode command-line tools.
+
+```
+xcode-select --install
+```
+
+Update the `~/.zshrc` file.
+
+```
+cat scripts/osx/bash_profile >> ~/.zshrc
+```
+[NOTE]
+====
+If using a different shell, ensure you copy the environment paramenters to your current shell.
+====
+
+=== Getting the Source
+
+Get the FreeRADIUS source from one of these methods:
+include::partial$get_the_source.adoc[]
+
+=== Build= from Source and Install
+
+To begin the install process,  enter the following commands:
+
+```
+cd freeradius-server
 ./configure
 make
-sudo make install
+```
+
+=== Running FreeRADIUS in the background all of the time.
+
+The information below is for future reference.
+
+```
+cp ./org.freeradius.radius.plist /Library/LaunchDaemons
+launchctl load -w Library/LaunchDaemons/org.freeradius.radiusd.plist
 ```
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

@@ -1,41 +1,43 @@
-= Building on RHEL7 or Centos7
+= Building on RHEL7
 
-There are only a few requirements to building on RHEL, or CentoS
+There are minimal requirements to building on RHEL, including Rocky or Alma versions.
 
-== Hard dependencies
+[NOTE]
+====
+Centos Stream is now a rolling release, feeder distribution for RHEL and no longer supported.
+====
+
+== Hard Dependencies
+
+=== libtalloc
 
 ----
 yum -y install libtalloc-devel
 ----
 
-== Getting the source
+=== libkqueue
 
-include:/building/Getting-the-Source
+> libkqueue required for >= v4.0.x, you can skip this step for v3.0.x and below.
 
-== Building from source
+Unfortunately neither RHEL nor Centos provide an RPM for libkqueue.  The instructions below will produce a libkqueue RPM, which can then be installed for building from source, or distributed with the FreeRADIUS RPMs when building packages.
+
+Building the libkqueue RPM requires these packages:
 
 ----
-# Use ./configure --enable-developer if you're debugging issues, or using unstable code.
-./configure
-make
-sudo make install
+yum -y install cmake3
 ----
 
-== Building Packages
+include::partial$libkqueue-rpm.adoc
 
-=== With Oracle support
-
-include:RPMs-with-Oracle-support
-
-== Upgrading GCC (>= v4.0.x and master branch only)
+=== Upgrading GCC (>= v4.0.x and master branch only)
 
 > GCC upgrade only required for versions >= v4.0.x you can skip this step for v3.0.x and below.
 
-RHE7 ships with GCC 4.8.5 but we require GCC >= 4.9.0 for FreeRADIUS >= v4.0.x.
+RHE7 ships with GCC 4.8.5 but FreeRADIUS v4 requires GCC >= 4.9.0.
 
-Fortunately, the ``devtoolset-3`` series of packages provides a later version of GCC.
+The ``devtoolset-3`` series of packages provides a later version of GCC.
 
-Follow the instructions here to enable the [devtoolset-3 repository](https://www.softwarecollections.org/en/scls/rhscl/devtoolset-3/).
+ https://www.softwarecollections.org/en/scls/rhscl/devtoolset-3/[devtoolset-3 repository][Follow these instructions] to enable the toolset.
 
 To install:
 
@@ -53,20 +55,25 @@ Or can set ``CC=/opt/rh/devtoolset-3/root/usr/bin/gcc`` in your environment, whi
 
 If you're building on older versions of RedHat then you'll need to compile GCC from source.
 
+== Getting the source
 
-=== libkqueue
+include::partial$get_the_source.adoc
 
-> libkqueue required for >= v4.0.x, you can skip this step for v3.0.x and below.
+== Build from Source and Install
 
-Unfortunately neither RHEL nor Centos provide an RPM for libkqueue.  The instructions below will produce a libkqueue RPM, which can then be installed for building from source, or distributed with the FreeRADIUS RPMs when building packages.
-
-Building the libkqueue RPM will require these packages:
+If you're using unstable code or encountering issues with the install, use `configure --enable-developer` option.
 
 ----
-yum -y install cmake3
+./configure
+make
+sudo make install
 ----
 
-include:libkqueue-rpm
+== Building Packages
+
+=== With Oracle support
+
+include:RPMs-with-Oracle-support
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -1,0 +1,15 @@
+Depending on your OS, select the commands required to upgrade to GCC 4.9:
+
+----
+sudo apt-get install software-properties-common python-software-properties
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt-get update
+sudo apt-get install g++-4.9
+
+# Then select GCC 4.9
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 100 --slave /usr/bin/g++ g++ /usr/bin/g++-4.8
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 50 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9
+sudo update-alternatives --config gcc
+
+# Choose option 3 from the dialogue
+----

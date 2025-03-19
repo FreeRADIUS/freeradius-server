@@ -1,0 +1,7 @@
+When the server has been installed on a new machine, the first step is
+to start it in debugging mode, as user `root`:
+
+    # radiusd -X
+
+This step demonstrates that the server is installed and configured
+properly. If the output says `Ready to process requests`, then the installation was successful.

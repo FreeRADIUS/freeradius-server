@@ -1,0 +1,35 @@
+Changing the server configuration should be done via the following
+steps:
+
+1.  Start with a "known working" configuration, such as supplied by the
+    default installation.
+2.  Make one *small* change to the configuration files.
+3.  Start the server in debugging mode with `radiusd -X`.
+4.  Verify that the results are what you expect
+    -   The debug output shows any configuration changes you have made.
+    -   Databases (if used) are connected and operating.
+    -   Test packets are accepted by the server.
+    -   The debug output shows that the packets are being processed as
+        you expect.
+    -   The response packets are contain the attributes you expect
+        to see.
+
+5.  If everything is OK, save a copy of the configuration, go back to
+    step (2), and make another change.
+6.  If anything goes wrong,
+    -   double-check the configuration;
+    -   read the *entire* debug output, looking for words like `error`
+        or `warning`. These messages usually contain descriptions of
+        what went wrong, and suggestions for how it can be fixed.
+        See xref:debugging/radiusd_X.adoc[an explanation of the debug output] for more details;
+    -   try replacing your configuration with a saved copy of a "known
+        working" configuration, and start again. This process can clean
+        up errors caused by temporary edits, or edits that you have
+        forgotten about;
+    -   ask for help on the
+        http://freeradius.org/support/[freeradius-users] mailing
+        list. Include a description of what you are trying to do, and
+        the *entire debugging output*, especially output showing the
+        server receiving and processing test packets. You may want to
+        scrub "secret" information from the output before posting it
+        (shared secrets, passwords, etc).
