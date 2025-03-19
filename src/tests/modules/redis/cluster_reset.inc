@@ -8,9 +8,6 @@ string data2
 string data3
 string cmdresult
 
-# Some values we need for startup
-control.Filter-Id := { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 }
-
 data1 := "1-%randstr('aaaaaaaa')"
 data2 := "2-%randstr('aaaaaaaa')"
 data3 := "3-%randstr('aaaaaaaa')"
@@ -52,7 +49,7 @@ if (!redisserver || (redisserver == '')) {
 #  - 127.0.0.1:30005 - slave
 #  - 127.0.0.1:30003 - master [10923-16383]
 #  - 127.0.0.1:30006 - slave
-foreach result (control.Filter-Id[*]) {
+foreach i (%range(20)) {
 	#
 	#  Force a remap as the slaves don't show up in the cluster immediately
 	#
@@ -86,7 +83,7 @@ foreach result (control.Filter-Id[*]) {
 	#  If the cluster is still not behaving
 	#  abandon the test to avoid false negatives
 	#
-	if (result == 20) {
+	if (i == 20) {
 		test_fail
 		return
 	}

@@ -41,7 +41,7 @@ if (takeoverresult != 'OK') {
 }
 
 #  Allow time for the takeover to propagate to other nodes
-foreach control.Filter-Id {
+foreach i (%range(20)) {
 	# Keep remapping the cluster
 	%redis.remap(%{redisreplica})
 
