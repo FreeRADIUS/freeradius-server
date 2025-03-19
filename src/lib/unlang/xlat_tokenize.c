@@ -2028,68 +2028,6 @@ tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t *head)
 	return vpt;
 }
 
-/** Convert attr tmpl to an xlat for &attr[*]
- *
- * @param[in] ctx	to allocate new expansion in.
- * @param[out] out	Where to write new xlat node.
- * @param[in,out] vpt_p	to convert to xlat expansion.
- *			Will be set to NULL on completion
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **out, tmpl_t **vpt_p)
-{
-	xlat_exp_t	*node;
-	xlat_t		*func;
-	tmpl_t		*vpt = *vpt_p;
-	xlat_exp_head_t *head;
-
-	if (!tmpl_is_attr(vpt) && !tmpl_is_attr_unresolved(vpt)) return 0;
-
-	MEM(head = xlat_exp_head_alloc(ctx));
-
-	/*
-	 *	If it's a single attribute reference
-	 *	see if it's actually a virtual attribute.
-	 */
-	if ((tmpl_attr_num_elements(vpt) == 1) ||
-	    (((tmpl_attr_list_head(tmpl_attr(vpt))->da) == request_attr_request) && tmpl_attr_num_elements(vpt) == 2)) {
-		if (tmpl_is_attr_unresolved(vpt)) {
-			func = xlat_func_find(tmpl_attr_tail_unresolved(vpt), -1);
-			if (!func) {
-				node = xlat_exp_alloc(head, XLAT_VIRTUAL_UNRESOLVED, vpt->name, vpt->len);
-
-				/*
-				 *	FIXME - Need a tmpl_copy function to
-				 *	the assignment of the tmpl to the new
-				 *	xlat expression
-				 */
-				node->vpt = talloc_move(node, vpt_p);
-				node->flags = (xlat_flags_t) { .needs_resolving = true };
-				goto done;
-			}
-
-			node = xlat_exp_alloc(head, XLAT_VIRTUAL, vpt->name, vpt->len);
-			node->vpt = talloc_move(node, vpt_p);
-			node->call.func = func;
-			node->flags = func->flags;
-			goto done;
-		}
-	}
-
-	node = xlat_exp_alloc(head, XLAT_TMPL, vpt->name, vpt->len);
-	node->vpt = talloc_move(node, vpt_p);
-	fr_assert(!node->flags.pure);
-
-done:
-	XLAT_VERIFY(node);
-	xlat_exp_insert_tail(head, node);
-	*out = head;
-
-	return 0;
-}
-
 bool xlat_impure_func(xlat_exp_head_t const *head)
 {
 	return head->flags.impure_func;

@@ -4444,41 +4444,6 @@ void tmpl_unresolve(tmpl_t *vpt)
 	TMPL_VERIFY(vpt);
 }
 
-/** Convert an attribute reference to an xlat expansion
- *
- * This is where a user attempts to use an attribute reference which is actually
- * a virtual attribute.
- *
- * @param[in] ctx		to convert new tmpl in.
- * @param[in,out] vpt_p		pointer to #tmpl_t of TMPL_TYPE_ATTR | TMPL_TYPE_ATTR_UNPARSED.
- */
-int tmpl_attr_to_xlat(TALLOC_CTX *ctx, tmpl_t **vpt_p)
-{
-
-	tmpl_t	*vpt;
-	tmpl_t	*attr = *vpt_p;
-
-	/*
-	 *	First alloc a new tmpl to hold the xlat expansion
-	 */
-	vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, attr->quote, attr->name, attr->len);
-
-	/*
-	 *	...then wrap the old tmpl_t in an xlat expansion
-	 *	doing conversion to a virtual attribute if necessary.
-	 */
-	if (xlat_from_tmpl_attr(vpt, &vpt->data.xlat.ex, vpt_p) < 0) {
-		talloc_free(vpt);
-		return -1;
-	}
-
-	if (xlat_needs_resolving(vpt->data.xlat.ex)) UNRESOLVED_SET(&vpt->type);
-
-	*vpt_p = vpt;
-
-	return 0;
-}
-
 static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 {
 	if (!ref) return;
