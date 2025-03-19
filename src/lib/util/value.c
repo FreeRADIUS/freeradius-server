@@ -6456,9 +6456,9 @@ static void _fr_value_box_debug(fr_value_box_t const *vb, int depth, int idx)
 
 	fr_value_box_aprint(NULL, &value, vb, NULL);
 	if (idx >= 0) {
-		INFO_INDENT("[%d] %s", idx, value);
+		INFO_INDENT("[%d] (%s) %s", idx, fr_type_to_str(vb->type), value);
 	} else {
-		INFO_INDENT("%s", value);
+		INFO_INDENT("(%s) %s", fr_type_to_str(vb->type), value);
 	}
 	talloc_free(value);
 }
