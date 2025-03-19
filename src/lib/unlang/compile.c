@@ -3355,8 +3355,8 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	} else {
 		fr_assert(tmpl_is_attr(vpt));
 
-		if ((key_type != FR_TYPE_VOID) && (key_type != FR_TYPE_STRING)) {
-			cf_log_err(cs, "Invalid data type '%s' for 'key' variable - it should be 'string'", fr_type_to_str(key_type));
+		if ((key_type != FR_TYPE_VOID) && (key_type != FR_TYPE_STRING) && (key_type != FR_TYPE_UINT32)) {
+			cf_log_err(cs, "Invalid data type '%s' for 'key' variable - it should be 'string' or 'uint32'", fr_type_to_str(key_type));
 			return NULL;
 		}
 	}

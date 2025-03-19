@@ -342,9 +342,22 @@ static void unlang_foreach_attr_key_update(UNUSED request_t *request, unlang_fra
 {
 	if (!state->key) return;
 
-	fr_value_box_clear_value(&state->key->data);
-	if (tmpl_dcursor_print(&FR_SBUFF_IN(state->buffer, BUFFER_SIZE), &state->cc) > 0) {
-		fr_value_box_strdup(state->key, &state->key->data, NULL, state->buffer, false);
+	switch (state->key->vp_type) {
+	case FR_TYPE_UINT32:
+		state->key->vp_uint32++;
+		break;
+
+	case FR_TYPE_STRING:
+		fr_value_box_clear_value(&state->key->data);
+		if (tmpl_dcursor_print(&FR_SBUFF_IN(state->buffer, BUFFER_SIZE), &state->cc) > 0) {
+			fr_value_box_strdup(state->key, &state->key->data, NULL, state->buffer, false);
+		}
+		break;		
+
+	default:
+		fr_assert(0);
+		break;
+
 	}
 }
 
@@ -474,9 +487,9 @@ static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t
 	fr_assert(vp != NULL);
 
 	/*
-	 *	Update the key with the current path or index.
+	 *	Update the key with the current path.  Attribute indexes start at zero.
 	 */
-	unlang_foreach_attr_key_update(request, state);
+	if (state->key && (state->key->vp_type == FR_TYPE_STRING)) unlang_foreach_attr_key_update(request, state);
 
 	if (vp->vp_type == FR_TYPE_GROUP) {
 		fr_assert(state->value->vp_type == FR_TYPE_GROUP);

@@ -1,0 +1,20 @@
+#
+#  PRE: foreach-key-ref
+#
+string total
+
+Tmp-String-0 := { "a", "b", "c", "d" }
+
+#
+#  Ensure that attributes can be referenced, and
+#  that the count is correct.
+#
+foreach uint32 index, string value (Tmp-String-0[*]) {
+	total += Tmp-String-0[index]
+}
+
+if (total != "abcd") {
+	test_fail
+}
+
+success
