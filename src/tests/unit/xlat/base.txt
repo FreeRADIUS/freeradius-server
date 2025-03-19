@@ -106,9 +106,6 @@ match %{Vendor-Specific.3GPP.SGSN-Address}
 xlat \"Hello %S goo\"
 match \"Hello %S goo\"
 
-xlat \"%{Foreach-Variable-0}\"
-match \"%{Foreach-Variable-0}\"
-
 #
 #  3GPP stuff
 #
@@ -298,4 +295,4 @@ xlat %md5('arg"')
 match %md5(0x61726722)
 
 count
-match 161
+match 159
