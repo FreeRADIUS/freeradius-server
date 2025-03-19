@@ -11,63 +11,10 @@ uint32 count2
 count1 := 0
 count2 := 0
 
-request += {
-	NAS-Port = 0		# 0
-	NAS-Port = 1
-	NAS-Port = 2
-	NAS-Port = 3
-	NAS-Port = 4
-	NAS-Port = 5
-	NAS-Port = 6
-	NAS-Port = 7
-	NAS-Port = 8
-	NAS-Port = 9		# 10
-	NAS-Port = 0
-	NAS-Port = 1
-	NAS-Port = 2
-	NAS-Port = 3
-	NAS-Port = 4
-	NAS-Port = 5
-	NAS-Port = 6
-	NAS-Port = 7
-	NAS-Port = 8
-	NAS-Port = 9		# 20
-	NAS-Port = 0
-	NAS-Port = 1
-	NAS-Port = 2
-	NAS-Port = 3
-	NAS-Port = 4
-	NAS-Port = 5
-	NAS-Port = 6
-	NAS-Port = 7
-	NAS-Port = 8
-	NAS-Port = 9		# 30
-	NAS-Port = 0
-	NAS-Port = 1
-	NAS-Port = 2
-	NAS-Port = 3
-	NAS-Port = 4
-	NAS-Port = 5
-	NAS-Port = 6
-	NAS-Port = 7
-	NAS-Port = 8
-	NAS-Port = 9		# 40
-	NAS-Port = 0
-	NAS-Port = 1
-	NAS-Port = 2
-	NAS-Port = 3
-	NAS-Port = 4
-	NAS-Port = 5
-	NAS-Port = 6
-	NAS-Port = 7
-	NAS-Port = 8
-	NAS-Port = 9		# 49
-}
-
 #
 #  Loop 0..9
 #
-foreach NAS-Port {
+foreach i (%range(50)) {
 	load-balance {
 		group {
 			count1 += 1
