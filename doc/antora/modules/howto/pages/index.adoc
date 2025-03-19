@@ -1,16 +1,49 @@
 = Howto Guides
 
-The documents in this section describe how to perform various common tasks with
-FreeRADIUS. They also provide worked examples on using the various modules in
-common deployment scenarios.
+This section describe how to perform various common tasks with
+FreeRADIUS. Each sub-section provides worked examples such as using the modules in common deployment scenarios or building packages.
+
+The section is broken down into the following top-level areas:
+
+xref:howto:installation/index.adoc[Installing and Upgrading] contains instructions for building and installing freeRADIUS from packages and source.
+
+xref:modules/configuring_modules.adoc[Configuring Modules] provides worked examples on using the various modules in common deployment scenarios.
+
+xref:protocols/index.adoc[Protocols]
+*** xref:protocols/dhcp/index.adoc[DHCP]
+**** xref:protocols/dhcp/prepare.adoc[Preparation]
+**** xref:protocols/dhcp/enable.adoc[Enabling the DHCP service]
+**** xref:protocols/dhcp/test.adoc[Testing the DHCP service]
+**** xref:protocols/dhcp/policy.adoc[Defining the DHCP policy]
+***** xref:protocols/dhcp/policy_ippool_creation.adoc[IP pool creation]
+***** xref:protocols/dhcp/policy_common_options.adoc[Common options]
+***** xref:protocols/dhcp/policy_network_options.adoc[Network options and IP pool selection]
+***** xref:protocols/dhcp/policy_subnet_options.adoc[Subnet options]
+***** xref:protocols/dhcp/policy_device_options.adoc[Device, class and group options]
+***** xref:protocols/dhcp/policy_ippool_access.adoc[IP pool access restriction]
+
+** Security Certificates
+*** xref:os/letsencrypt.adoc[Using LetsEncrypt certificates]
+
+** Vendors
+*** xref:vendors/ascend.adoc[Ascend]
+*** xref:vendors/bay.adoc[Bay]
+*** xref:vendors/cisco.adoc[Cisco]
+*** xref:vendors/proxim.adoc[ProxIM]
+
+** Optimization
+*** xref:monitoring/index.adoc[Monitoring]
+**** xref:monitoring/statistics.adoc[Server Statistics]
+*** xref:tuning/performance-testing.adoc[Performance Testing]
+*** xref:tuning/tuning_guide.adoc[Tuning Guide]
 
 If you have a topic you'd like to see included in the list of howtos, contact
 the developers on the
-link:https://lists.freeradius.org/mailman/listinfo/freeradius-users[User's
+https://lists.freeradius.org/mailman/listinfo/freeradius-users[User's
 mailing list].
 
 Some of the documents here started life as pages on
-link:https://wiki.freeradius.org[wiki.freeradius.org].  If you've just been
+https://wiki.freeradius.org[wiki.freeradius.org].  If you've just been
 through a particularly arduous service configuration and deployment, and would
 like to help your fellow users, then please create a new how to on the wiki.
 If it's popular enough, we'll include it in the official documentation for the

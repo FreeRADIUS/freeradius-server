@@ -1,0 +1,8 @@
+= Vendors
+
+FreeRADIUS provides vendor-specific attributes and protocols to support many common vendors that include:
+
+* xref:vendors/ascend.adoc[Ascend]
+* xref:vendors/bay.adoc[Bay]
+* xref:vendors/cisco.adoc[Cisco]
+* xref:vendors/proxim.adoc[ProxIM]
