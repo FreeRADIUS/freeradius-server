@@ -39,6 +39,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/dict.h>
 
+#include <freeradius-devel/unlang/xlat_priv.h>
+
 #include "catch_priv.h"
 #include "call_priv.h"
 #include "caller_priv.h"
@@ -3313,14 +3315,32 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	if (tmpl_is_xlat(vpt)) {
 		if (!type_name) {
-			/*
-			 *	@todo - find a way to get the data type.
-			 */
 			cf_log_err(cs, "Dynamic expansions MUST specify a data type for the variable");
 			return NULL;
 		}
 
 		type = fr_table_value_by_str(fr_type_table, type_name, FR_TYPE_VOID);
+
+		/*
+		 *	No data type was specified, see if we can get one from the function.
+		 */
+		if (type == FR_TYPE_NULL) {
+			xlat_exp_head_t *xlat = tmpl_xlat(vpt);
+			xlat_exp_t *node;
+
+			node = xlat_exp_head(xlat);
+			fr_assert(node);
+			if (!xlat_exp_next(xlat, node) &&
+			    (node->type == XLAT_FUNC) &
+			    fr_type_is_leaf(node->call.func->return_type)) {
+				type = node->call.func->return_type;
+				if (fr_type_is_leaf(type)) goto get_name;
+			}
+
+			cf_log_err(cs, "Unable to  determine return data type from dynamic expansion");
+			return NULL;
+		}
+
 		if (!fr_type_is_leaf(type)) {
 			cf_log_err(cs, "Dynamic expansions MUST specify a non-structural data type for the variable");
 			return NULL;
