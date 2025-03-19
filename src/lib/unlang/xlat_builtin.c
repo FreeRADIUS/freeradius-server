@@ -2667,6 +2667,79 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
+static xlat_arg_parser_t const xlat_func_range_arg[] = {
+	{ .required = true, .type = FR_TYPE_UINT64 },
+	{ .required = false, .type = FR_TYPE_UINT64 },
+	{ .required = false, .type = FR_TYPE_UINT64 },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Generate a range of uint64 numbers
+ *
+ * Example:
+@verbatim
+%range(end) -  0..end
+%rang(start, end)
+%range(start,end, step)
+@endverbatim
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_range(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				       UNUSED xlat_ctx_t const *xctx,
+				       request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t *start_vb, *end_vb, *step_vb;
+	fr_value_box_t *dst;
+	uint64_t i, start, end, step;
+
+	XLAT_ARGS(args, &start_vb, &end_vb, &step_vb);
+
+	if (step_vb) {
+		start = fr_value_box_list_head(&start_vb->vb_group)->vb_uint64;
+		end = fr_value_box_list_head(&end_vb->vb_group)->vb_uint64;
+		step = fr_value_box_list_head(&step_vb->vb_group)->vb_uint64;
+
+	} else if (end_vb) {
+		start = fr_value_box_list_head(&start_vb->vb_group)->vb_uint64;
+		end = fr_value_box_list_head(&end_vb->vb_group)->vb_uint64;
+		step = 1;
+
+	} else {
+		start = 0;
+		fr_value_box_debug(start_vb);
+		end = fr_value_box_list_head(&start_vb->vb_group)->vb_uint64;
+		step = 1;
+	}
+
+	if (end <= start) {
+		REDEBUG("Invalid range - 'start' must be less than 'end'");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (!step) {
+		REDEBUG("Invalid range - 'step' must be greater than zero");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (step > (end - start)) {
+		REDEBUG("Invalid range - 'step' must allow for at least one result");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (((end - start) / step) > 1000) {
+		REDEBUG("Invalid range - Too many results");
+		return XLAT_ACTION_FAIL;
+	}
+
+	for (i = start; i < end; i += step) {
+		MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
+		dst->vb_uint64 = i;
+		fr_dcursor_append(out, dst);
+	}
+
+	return XLAT_ACTION_DONE;
+}
+
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
 static xlat_arg_parser_t const xlat_func_regex_args[] = {
 	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_VOID },
@@ -4175,6 +4248,7 @@ do { \
 	XLAT_REGISTER_ARGS("base64.decode", xlat_func_base64_decode, FR_TYPE_OCTETS, xlat_func_base64_decode_arg);
 	XLAT_REGISTER_ARGS("rand", xlat_func_rand, FR_TYPE_UINT64, xlat_func_rand_arg);
 	XLAT_REGISTER_ARGS("randstr", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
+	XLAT_REGISTER_ARGS("range", xlat_func_range, FR_TYPE_UINT64, xlat_func_range_arg);
 
 	if (unlikely((xlat = xlat_func_register(xlat_ctx, "untaint", xlat_func_untaint, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL);

@@ -52,7 +52,7 @@ if (!redisserver || (redisserver == '')) {
 #  - 127.0.0.1:30005 - slave
 #  - 127.0.0.1:30003 - master [10923-16383]
 #  - 127.0.0.1:30006 - slave
-foreach control.Filter-Id {
+foreach result (control.Filter-Id[*]) {
 	#
 	#  Force a remap as the slaves don't show up in the cluster immediately
 	#
@@ -86,7 +86,7 @@ foreach control.Filter-Id {
 	#  If the cluster is still not behaving
 	#  abandon the test to avoid false negatives
 	#
-	if (%{Foreach-Variable-0} == 20) {
+	if (result == 20) {
 		test_fail
 		return
 	}
