@@ -152,6 +152,8 @@ static xlat_action_t unlang_foreach_xlat_func(TALLOC_CTX *ctx, fr_dcursor_t *out
  */
 static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 {
+	request_t *request = state->request;
+
 	if (state->value) {
 		fr_pair_t *vp;
 
@@ -162,15 +164,18 @@ static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 		/*
 		 *	Now that we're done, the leaf entries can be changed again.
 		 */
-		vp = tmpl_dcursor_init(NULL, NULL, &state->cc, &state->cursor, state->request, state->vpt);
-		if (!vp) return 0;
+		vp = tmpl_dcursor_init(NULL, NULL, &state->cc, &state->cursor, request, state->vpt);
+		if (!vp) {
+			tmpl_dcursor_clear(&state->cc);
+			return 0;
+		}
 		do {
 			vp->vp_edit = false;
 		} while ((vp = fr_dcursor_next(&state->cursor)) != NULL);
 		tmpl_dcursor_clear(&state->cc);
 
 	} else {
-		request_data_get(state->request, FOREACH_REQUEST_DATA, state->depth);
+		request_data_get(request, FOREACH_REQUEST_DATA, state->depth);
 	}
 
 	return 0;
@@ -362,6 +367,10 @@ static unlang_action_t unlang_foreach_attr_next(rlm_rcode_t *p_result, request_t
 		if (vp->vp_type == state->value->vp_type) {
 			fr_value_box_clear_value(&vp->data);
 			(void) fr_value_box_copy(vp, &vp->data, &state->value->data);
+		} else {
+			/*
+			 *	@todo - this shouldn't happen?
+			 */
 		}
 	} else {
 		/*
@@ -439,6 +448,7 @@ static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t
 	 */
 	vp = tmpl_dcursor_init(NULL, NULL, &state->cc, &state->cursor, request, state->vpt);
 	if (!vp) {
+		tmpl_dcursor_clear(&state->cc);
 		*p_result = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -450,6 +460,8 @@ static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t
 	do {
 		if (vp->vp_edit) {
 			REDEBUG("Cannot do nested 'foreach' loops over the same attribute %pP", vp);
+		fail:
+			tmpl_dcursor_clear(&state->cc);
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
@@ -471,21 +483,18 @@ static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t
 
 		if (fr_pair_list_copy(state->value, &state->value->vp_group, &vp->vp_group) < 0) {
 			REDEBUG("Failed copying members of %s", state->value->da->name);
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			goto fail;
 		}
 
 	} else if (fr_type_is_structural(vp->vp_type)) {
 		if (state->value->vp_type == vp->vp_type) {
 			if (unlang_foreach_pair_copy(state->value, vp, vp->da) < 0) {
 				REDEBUG("Failed copying children of %s", state->value->da->name);
-				*p_result = RLM_MODULE_FAIL;
-				return UNLANG_ACTION_CALCULATE_RESULT;
+				goto fail;
 			}
 		} else {
 			REDEBUG("Failed initializing loop variable %s - expected %s type, but got input (%pP)", state->value->da->name, fr_type_to_str(state->value->vp_type), vp);
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			goto fail;
 		}
 
 	} else {
@@ -499,6 +508,7 @@ static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t
 		 *	Couldn't cast anything, the loop can't be run.
 		 */
 		if (!vp) {
+			tmpl_dcursor_clear(&state->cc);
 			*p_result = RLM_MODULE_NOOP;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
@@ -630,6 +640,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 	 */
 	if (!vp) {
 		fr_dcursor_free_list(&state->cursor);
+		tmpl_dcursor_clear(&state->cc);
 		*p_result = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
