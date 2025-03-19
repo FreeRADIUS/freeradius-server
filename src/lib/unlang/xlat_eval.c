@@ -1174,6 +1174,11 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 			continue;
 
 		case XLAT_TMPL:
+			/*
+			 *	Everything should have been resolved.
+			 */
+			fr_assert(!tmpl_needs_resolving(node->vpt));
+
 			if (tmpl_is_data(node->vpt)) {
 				XLAT_DEBUG("** [%i] %s(value) - %s", unlang_interpret_stack_depth(request), __FUNCTION__,
 					   node->vpt->name);
@@ -1317,7 +1322,6 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 		 */
 		case XLAT_INVALID:
 		case XLAT_FUNC_UNRESOLVED:
-		case XLAT_VIRTUAL_UNRESOLVED:
 			fr_assert(0);
 			return XLAT_ACTION_FAIL;
 		}

@@ -109,12 +109,11 @@ typedef enum {
 	XLAT_FUNC		= 0x0004,		//!< xlat module
 	XLAT_FUNC_UNRESOLVED	= 0x0008,		//!< func needs resolution during pass2.
 	XLAT_VIRTUAL		= 0x0010,		//!< virtual attribute
-	XLAT_VIRTUAL_UNRESOLVED = 0x0020,		//!< virtual attribute needs resolution during pass2.
-	XLAT_TMPL		= 0x0040,		//!< xlat attribute
+	XLAT_TMPL		= 0x0020,		//!< xlat attribute
 #ifdef HAVE_REGEX
-	XLAT_REGEX		= 0x0080,		//!< regex reference %{1}, etc.
+	XLAT_REGEX		= 0x0040,		//!< regex reference %{1}, etc.
 #endif
-	XLAT_GROUP		= 0x0200		//!< encapsulated string of xlats
+	XLAT_GROUP		= 0x0100		//!< encapsulated string of xlats
 } xlat_type_t;
 
 /** An xlat function call

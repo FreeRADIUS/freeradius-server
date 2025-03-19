@@ -272,7 +272,6 @@ static int CC_HINT(nonnull) _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX 
 
 		case XLAT_ONE_LETTER: /* Done with format */
 		case XLAT_FUNC_UNRESOLVED:
-		case XLAT_VIRTUAL_UNRESOLVED:
 			break;
 
 		case XLAT_VIRTUAL:

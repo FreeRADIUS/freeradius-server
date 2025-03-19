@@ -163,7 +163,6 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 		case XLAT_INVALID:
 		case XLAT_FUNC_UNRESOLVED:
 		case XLAT_VIRTUAL:
-		case XLAT_VIRTUAL_UNRESOLVED:
 			fr_assert(0);
 			return -1;
 

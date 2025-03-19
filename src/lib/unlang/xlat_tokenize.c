@@ -567,21 +567,17 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_attribute(xlat_exp_head_t *
 		}
 
 		/*
-		 *	We don't know it's virtual but
-		 *	we don't know it's not either...
-		 *
-		 *	Mark it up as virtual-unresolved
-		 *	and let the resolution code figure
-		 *	this out in a later pass.
+		 *	Try to resolve it later
 		 */
-		xlat_exp_set_type(node, XLAT_VIRTUAL_UNRESOLVED);
+		xlat_exp_set_type(node, XLAT_TMPL);
 		xlat_exp_set_name_shallow(node, vpt->name);
 		node->vpt = vpt;
 		node->flags.needs_resolving = true;
-	/*
-	 *	Deal with normal attribute (or list)
-	 */
+
 	} else {
+		/*
+		 *	Deal with normal attribute (or list)
+		 */
 		xlat_exp_set_type(node, XLAT_TMPL);
 		xlat_exp_set_name_shallow(node, vpt->name);
 		node->vpt = vpt;
@@ -1038,11 +1034,6 @@ static void _xlat_debug_node(xlat_exp_t const *node, int depth)
 		INFO_INDENT("virtual (%s)", node->fmt);
 		break;
 
-	case XLAT_VIRTUAL_UNRESOLVED:
-		fr_assert(node->fmt != NULL);
-		INFO_INDENT("virtual-unresolved (%s)", node->fmt);
-		break;
-
 	case XLAT_FUNC:
 		fr_assert(node->call.func != NULL);
 		INFO_INDENT("func (%s)", node->call.func->name);
@@ -1286,10 +1277,6 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 #endif
 	case XLAT_VIRTUAL:
 		FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->call.func->name);
-		break;
-
-	case XLAT_VIRTUAL_UNRESOLVED:
-		FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->fmt);
 		break;
 
 	case XLAT_FUNC:
@@ -1927,48 +1914,6 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			node->flags.impure_func = !node->call.func->flags.pure;
 			break;
 
-		/*
-		 *	This covers unresolved attributes as well as
-		 *	unresolved functions.
-		 */
-		case XLAT_VIRTUAL_UNRESOLVED:
-		{
-			if (xlat_resolve_virtual_attribute(node, node->vpt) == 0) break;
-
-			/*
-			 *	Try and resolve (in-place) as an attribute
-			 */
-			if ((tmpl_resolve(node->vpt, xr_rules->tr_rules) < 0) ||
-			    (node->vpt->type != TMPL_TYPE_ATTR)) {
-				/*
-				 *	FIXME - Produce proper error with marker
-				 */
-				if (!xr_rules->allow_unresolved) {
-				error_unresolved:
-					if (node->quote == T_BARE_WORD) {
-						fr_strerror_printf_push("Failed resolving expansion: %s",
-									node->fmt);
-					} else {
-						fr_strerror_printf_push("Failed resolving expansion: %c%s%c",
-									fr_token_quote[node->quote], node->fmt, fr_token_quote[node->quote]);
-					}
-					return -1;
-				}
-				break;
-			}
-
-			/*
-			 *	Just need to flip the type as the tmpl should already have been fixed up
-			 */
-			xlat_exp_set_type(node, XLAT_TMPL);
-
-			/*
-			 *	Reset node flags.  Attributes aren't pure, and don't need further resolving.
-			 */
-			node->flags = (xlat_flags_t){ };
-		}
-			break;
-
 		case XLAT_TMPL:
 			/*
 			 *	Double-quoted etc. strings may contain xlats, so we try to resolve them now.
@@ -1986,7 +1931,15 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			return -1;
 		}
 
-		if (node->flags.needs_resolving && !xr_rules->allow_unresolved) goto error_unresolved;
+		if (node->flags.needs_resolving && !xr_rules->allow_unresolved) {
+			if (node->quote == T_BARE_WORD) {
+				fr_strerror_printf_push("Failed resolving attribute: %s",
+							node->fmt);
+			} else {
+				fr_strerror_printf_push("Failed resolving attribute: %c%s%c",
+							fr_token_quote[node->quote], node->fmt, fr_token_quote[node->quote]);
+			}
+		}
 
 		xlat_flags_merge(&our_flags, &node->flags);
 	}
