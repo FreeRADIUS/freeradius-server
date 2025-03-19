@@ -219,10 +219,21 @@ typedef struct {
 
 static int _local_variables_free(unlang_variable_ref_t *ref)
 {
-	fr_pair_list_foreach(&ref->request->local_pairs, vp) {
-		if (vp->da->dict != ref->dict) break;
+	fr_pair_t *vp, *prev;
+
+	/*
+	 *	Local variables are appended to the end of the list.  So we remove them by walking backwards
+	 *	from the end of the list.
+	 */
+	vp = fr_pair_list_tail(&ref->request->local_pairs);
+	while (vp) {
+		prev = fr_pair_list_prev(&ref->request->local_pairs, vp);
+		if (vp->da->dict != ref->dict) {
+			break;
+		}
 
 		(void) fr_pair_delete(&ref->request->local_pairs, vp);
+		vp = prev;
 	}
 
 	return 0;

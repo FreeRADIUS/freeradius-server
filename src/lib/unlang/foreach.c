@@ -557,6 +557,8 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 	if (gext->value) {
 		state->vpt = gext->vpt;
 
+		fr_assert(fr_pair_find_by_da(&request->local_pairs, NULL, gext->value) == NULL);
+
 		/*
 		 *	Create the local variable and populate its value.
 		 */
@@ -568,6 +570,8 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 		fr_assert(state->value != NULL);
 
 		if (gext->key) {
+			fr_assert(fr_pair_find_by_da(&request->local_pairs, NULL, gext->key) == NULL);
+
 			if (fr_pair_append_by_da(request->local_ctx, &state->key, &request->local_pairs, gext->key) < 0) {
 				REDEBUG("Failed creating %s", gext->key->name);
 				*p_result = RLM_MODULE_FAIL;
