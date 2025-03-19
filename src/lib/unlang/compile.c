@@ -3337,7 +3337,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 				if (fr_type_is_leaf(type)) goto get_name;
 			}
 
-			cf_log_err(cs, "Unable to  determine return data type from dynamic expansion");
+			cf_log_err(cs, "Unable to determine return data type from dynamic expansion");
 			return NULL;
 		}
 
