@@ -8,25 +8,41 @@ control += {
 	NAS-Port = 3
 }
 
-foreach control.NAS-Port {
+foreach thing (control.NAS-Port[*]) {
+	#
+	#  Test where a "return" in a policy will stop exection
+	#  of the caller.
+	#
 	policy_return
 
 	# Should continue executing
-	if ("%{Foreach-Variable-0}" == '2') {
+	if (thing == 2) {
 		break
 	}
 
-	control -= {
-		NAS-Port == "%{Foreach-Variable-0}"
-	}
+	thing += 7
 }
 
-# Everything should have been removed except
-# the last incidence of NAS-Port
-if (!control.NAS-Port) {
+#
+#  0, and 1 should have been updated.  2 and 3 are left alone.
+#
+if (control.NAS-Port[#] != 4) {
 	test_fail
 }
-if (!(control.NAS-Port[0] == 2)) {
+
+if (control.NAS-Port[0] != 7) {
+	test_fail
+}
+
+if (control.NAS-Port[1] != 8) {
+	test_fail
+}
+
+if (control.NAS-Port[2] != 2) {
+	test_fail
+}
+
+if (control.NAS-Port[3] != 3) {
 	test_fail
 }
 
