@@ -8,37 +8,69 @@ foreach [<key-type> <key-name>,] [<value-type>] <value-name> (<reference>) {
 }
 ----
 
-The `foreach` statement loops over a set of attributes as given by
-`<attribute-reference>`.  The loop can be exited early by using the
+The `foreach` statement loops over values given in `<reference>`.
+Each value is assigned to the given loop variable.  If the loop is
+done over attributes, it is also possible to get a reference to the
+current attribute, either as a string reference, or an integer index.
+
+The loop can be exited early by using the
 xref:unlang/break.adoc[break] keyword.
 
 There is no limit to how many `foreach` statements can be nested.
 
 <key-type>::
 
-In conjunction with `<key-name>`, an optional data type for the key or index variable.  The data type should be numeric (e.g. `uint32`) for a `<reference>` which is a dynamic expansion.  The data type should be `string` for a `<reference>` which is an attribute reference.
+The `<key-type>` and `<key-name>` fields are optional.  But if used,
+both must be specified.
+
+The `<key-type>` is the data type for the key or index variable.  The data type can be numeric (e.g. `uint32`) for a `<reference>` which is a dynamic expansion or attribute reference.  The data type can be `string` for an attribute reference.
 
 <key-name>::
 
-The name of the local variable which is used as the name of key when iterating over the attributes.
+The local variable where the key refereence is placed.
 
-For numerical data types, the key value starts off at zero (0), and increases by one every round through the loop.  For `string` data types the key value is the full path to the current attribute.
+For numerical data types, the key value starts off at zero (0), and
+increases by one every round through the loop.  For `string` data
+types the key value is the full path to the current attribute.
 
 The `<key-type>` and `<key-name>` are optional, and can be omitted.
 
+A `<key-name>` must not be an `unlang` keyword, a module name, or
+the name of an existing attribute.
+
 <value-type>::
 
-An optional data type for the `<value-name>` local variable.  When looping over attributes, the data type can be omitted.  The data type of the local variable is then taken from the attribute reference.
+An optional data type for the `<value-name>` local variable.  It must be a 'leaf' data type like `uint32`, or `string`, or `ipv4addr`.  Structural data types like `group` or `tlv` are not allowed.
+
+When looping over attributes, the `<value-type>` can be omitted.  The
+data type of the local variable is then taken automatically from the
+attribute reference.
+
+When looping over data returned from a dynamic expansion, the
+`<value-type>` can sometimes be determined from the expansion.
+e.g. `%range(...)` returns a `uint32`.  However, if the `<value-type>`
+cannot be automatically determined, then an error will be produced.
+
+If the `<value-type>` is specified, it has to be compatible with the
+data type produced by the `<reference>`.  That is, the data types can
+be different, but it must be possible to cast one data type to another.
 
 <value-name>::
 
-The name of the local variable which is used as the name of value when iterating over the attributes.
+The name of the local variable which is used to store the current value when iterating over the attributes.
 
-The local variable is created automatically when the `foreach` loop is entered, and is deleted automatically when the `foreach` loop exits.
+The local variable is created automatically when the `foreach` loop is
+entered, and is deleted automatically when the `foreach` loop exits.
 
-The `<value-name>` can be modified during the course of the `foreach` loop.  Modifications to the variable are copied back to the referenced attribute when the loop is done.  See below for an example.
+The `<value-name>` can be modified during the course of the `foreach`
+loop.  Modifications to the variable do not result in immediate
+changes being made to any attribute being looped over.  Instead, the
+value is copied back to the attribute at the end of each loop
+iteration.
 
-The only limitation on the `<value-name>` is that it must be unique.
+A `<value-name>` must not be an `unlang` keyword, a module name, or
+the name of an existing attribute.  A `<value-name>` can be reused in
+different sections.
 
 <reference>::
 
@@ -46,23 +78,24 @@ An xref:unlang/attr.adoc[attribute reference] which will will be looped
 over.  The reference can be to one attribute, to an array, a child, or
 be a subset of attributes.
 
-Alternatively, the `<reference>` can be a xref:reference:xlat/index.adoc[dynamic expansion function],
-such as `%sql("SELECT ...")`.  When the reference is a dynamic
-expansion function, a `<value-type>` must be specified.
+Alternatively, the `<reference>` can be a
+xref:reference:xlat/index.adoc[dynamic expansion function], such as
+`%sql("SELECT ...")`.  When the reference is a dynamic expansion
+function, a `<value-type>` usually needs to be specified.
 
-== Modifying Loop variables
+There is currently no way to assign _sets_ of results to a value.
+That is, an SQL query can return a list of strings or IP addresses,
+but it cannot return a series of rows, each of which contains a number
+of columns.
 
-When the `<reference>` is an attribute, the attribute being looped
-over can sometimes be modified.  When the `<reference>` is a dynamic
-expansion, the results cannot be modified, and are discarded when the
-`foreach` loop is finished.  If it is necessary to save the results,
-they should be placed into another attribute.
+== Attributes Being Looped over
 
-An attribute which is a "leaf" data type (e.g. `uint32`, and not
-`tlv`) will be automatically copied back to the original attribute at
-the end of each iteration of the `foreach` loop.  That is, the
-original attribute will still exist, and will be unmodified, during
-the execution of the loop.
+While it is technically possible to modify the attributes being looped
+over, any modifications are over-written at the end of each loop.
+
+Instead, any modifications should be done to the loop variable.
+
+It is not possible to delete the attributes being looped over.
 
 .Example of modifying values
 [source,unlang]
@@ -74,7 +107,8 @@ foreach self (Tmp-Integer-0) {
 }
 ----
 
-Once the loop has finished , the `Tmp-Integer-0` attribute will have the following set of values.
+Once the loop has finished , the `Tmp-Integer-0` attribute will have
+the following set of values.
 
 [source,unlang]
 ----
@@ -84,19 +118,28 @@ Tmp-Integer-0 := { 20, 22, 24, 30 }
 .Pseudocode for variable modification
 ----
 loop over each i in attribute[0..n]
-    copy attribute[i] to the key variable, or cast the attribute to the destination type
+    copy / cast attribute[i] to <value-name>
 
     run loop body
 
-    if data type of attribute matches the data type of the key
-        copy the key variable back to attribute[i]
+    copy / cast <value-name> back to attribute[i]
 ----
 
 === Keys
 
-Using a key variable allows the loop to determine exactly which attribute is being modified.  Or for dynamic expansions, which of `0..n` values are being examined.
+Using a key variable allows the loop to determine exactly which
+attribute is being modified.  Or else, which of `0..n` values are
+being examined.
 
-For attributes, the `<key-type>` must be `string` or `uint32`.  For dynamic expansions, it must be a numerical type such as `uint32`.
+For attributes, the `<key-type>` must be `string` or `uint32`.  When
+the `string` data type is used, a reference to the attribute is placed
+into the string value.  e.g. `reply.Reply-Message[3]` When the
+`uint32` data type is used, the index to the current loop iteration is
+placed into the value, e.g. `3`.
+
+For dynamic expansions, The `<key-type> must be a numerical type such
+as `uint32`.  The index to the current loop iteration is placed into
+the value at the beginning of each loop iteration.
 
 .Key variable with attribute reference
 [source,unlang]
@@ -108,7 +151,7 @@ foreach string ref, uint32 self (Tmp-Integer-0) {
 	total += ref
 	total += " = "
 	total += (string) self
-	ttoal += ", "
+	total += ", "
 }
 ----
 
@@ -130,7 +173,9 @@ foreach uint32 index, uint32 self (Tmp-Integer-0) {
 ----
 
 
-A dynamic expansion can use a keyed index.  If the `SELECT` statement below returns a list of `"a", "b", "c", "d"`. then we have the following example:
+A dynamic expansion can use a keyed index.  If the `SELECT` statement
+below returns a list of `"a", "b", "c", "d"`. then we have the
+following example:
 
 .Key variable with expansion
 [source,unlang]
@@ -153,9 +198,14 @@ When the loop is finished, the `total` variable will have the following value:
 
 === Structural Data Types
 
-It is possible to loop over the children of a structural data type, as given in the example below.  Since the loop is over the child (i.e. leaf) attributes, the values are copied back.
+It is possible to loop over the children of a structural data type, as
+given in the example below.  Since the loop is over the child
+(i.e. leaf) attributes, the values are copied back as described above.
 
-In this example, we have to explicitly give a data type `string`.  The data type is needed because there may be multiple children of the `TLV-Thing` attribute, and the children may not all have the same data type.
+In this example, we have to explicitly give a data type of `string`.  The
+data type is needed because there may be multiple children of the
+`TLV-Thing` attribute, and the children may not all have the same data
+type.
 
 .Example of Looping over children of a structural type.
 [source,unlang]
@@ -166,9 +216,9 @@ foreach string child (TLV-Thing.[*]) {
 }
 ----
 
-
-When using `foreach` to loop over multiple structural data types, the values can be
-examined, but cannot be changed.  This is a limitation of the current interpreter, and may be changed in the future.
+When using `foreach` to loop over differnet data types, the values can
+be examined, but cannot be changed.  This is a limitation of the
+current interpreter, and may be changed in the future.
 
 .Example of Looping over children of a structural type.
 [source,unlang]

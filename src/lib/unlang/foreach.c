@@ -24,26 +24,12 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/request_data.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include "foreach_priv.h"
 #include "return_priv.h"
 #include "xlat_priv.h"
-
-static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
-						  "Foreach-Variable-1",
-						  "Foreach-Variable-2",
-						  "Foreach-Variable-3",
-						  "Foreach-Variable-4",
-						  "Foreach-Variable-5",
-						  "Foreach-Variable-6",
-						  "Foreach-Variable-7",
-						  "Foreach-Variable-8",
-						  "Foreach-Variable-9"};
-
-static int xlat_foreach_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };	/* up to 10 for foreach */
 
 #define BUFFER_SIZE (256)
 
@@ -65,10 +51,6 @@ typedef struct {
 
 	tmpl_dcursor_ctx_t	cc;				//!< tmpl cursor state
 
-								///< we're iterating over.
-	fr_pair_list_t 		vps;				//!< List containing the attribute(s) we're
-								///< iterating over.
-	int			depth;				//!< Level of nesting of this foreach loop.
 #ifndef NDEBUG
 	int			indent;				//!< for catching indentation issues
 #endif
@@ -141,87 +123,34 @@ static int unlang_foreach_pair_copy(fr_pair_t *to, fr_pair_t *from, fr_dict_attr
 	return 0;
 }
 
-static xlat_action_t unlang_foreach_xlat_func(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					      xlat_ctx_t const *xctx,
-					      request_t *request, UNUSED fr_value_box_list_t *in);
-
-#define FOREACH_REQUEST_DATA (void *)unlang_foreach_xlat_func
-
 /** Ensure request data is pulled out of the request if the frame is popped
  *
  */
 static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 {
 	request_t *request = state->request;
+	fr_pair_t *vp;
 
-	if (state->value) {
-		fr_pair_t *vp;
+	fr_assert(state->value);
 
-		if (tmpl_is_xlat(state->vpt)) return 0;
+	if (tmpl_is_xlat(state->vpt)) return 0;
 
+	tmpl_dcursor_clear(&state->cc);
+
+	/*
+	 *	Now that we're done, the leaf entries can be changed again.
+	 */
+	vp = tmpl_dcursor_init(NULL, NULL, &state->cc, &state->cursor, request, state->vpt);
+	if (!vp) {
 		tmpl_dcursor_clear(&state->cc);
-
-		/*
-		 *	Now that we're done, the leaf entries can be changed again.
-		 */
-		vp = tmpl_dcursor_init(NULL, NULL, &state->cc, &state->cursor, request, state->vpt);
-		if (!vp) {
-			tmpl_dcursor_clear(&state->cc);
-			return 0;
-		}
-		do {
-			vp->vp_edit = false;
-		} while ((vp = fr_dcursor_next(&state->cursor)) != NULL);
-		tmpl_dcursor_clear(&state->cc);
-
-	} else {
-		request_data_get(request, FOREACH_REQUEST_DATA, state->depth);
+		return 0;
 	}
+	do {
+		vp->vp_edit = false;
+	} while ((vp = fr_dcursor_next(&state->cursor)) != NULL);
+	tmpl_dcursor_clear(&state->cc);
 
 	return 0;
-}
-
-static unlang_action_t unlang_foreach_next_old(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
-{
-	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
-	fr_pair_t			*vp;
-
-	if (is_stack_unwinding_to_break(request->stack)) return UNLANG_ACTION_CALCULATE_RESULT;
-
-	vp = fr_dcursor_next(&state->cursor);
-
-	/*
-	 *	Skip any non-leaf attributes - adds sanity to foreach &request.[*]
-	 */
-	while (vp) {
-		switch (vp->vp_type) {
-		case FR_TYPE_LEAF:
-			break;
-		default:
-			vp = fr_dcursor_next(&state->cursor);
-			continue;
-		}
-		break;
-	}
-
-	if (!vp) {
-		*p_result = frame->result;
-#ifndef NDEBUG
-		fr_assert(state->indent == request->log.indent.unlang);
-#endif
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-#ifndef NDEBUG
-	RDEBUG2("# looping with: Foreach-Variable-%d = %pV", state->depth, &vp->data);
-#endif
-
-	repeatable_set(frame);
-
-	/*
-	 *	Push the child, and yield for a later return.
-	 */
-	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
 }
 
 static int unlang_foreach_xlat_key_update(request_t *request, unlang_frame_state_foreach_t *state)
@@ -545,16 +474,9 @@ next:
 
 static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t			*stack = request->stack;
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_foreach_t		*gext = unlang_group_to_foreach(g);
 	unlang_frame_state_foreach_t	*state;
-
-	int				i, depth = 0;
-	fr_pair_list_t			vps;
-	fr_pair_t			*vp;
-
-	fr_pair_list_init(&vps);
 
 	/*
 	 *	Ensure any breaks terminate here...
@@ -570,118 +492,43 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 #endif
 
 	/*
-	 *	We have a key variable, let's use that.
+	 *	Get the value.
 	 */
-	if (gext->value) {
-		state->vpt = gext->vpt;
+	fr_assert(gext->value);
 
-		fr_assert(fr_pair_find_by_da(&request->local_pairs, NULL, gext->value) == NULL);
+	state->vpt = gext->vpt;
 
-		/*
-		 *	Create the local variable and populate its value.
-		 */
-		if (fr_pair_append_by_da(request->local_ctx, &state->value, &request->local_pairs, gext->value) < 0) {
-			REDEBUG("Failed creating %s", gext->value->name);
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
-		}
-		fr_assert(state->value != NULL);
-
-		if (gext->key) {
-			fr_assert(fr_pair_find_by_da(&request->local_pairs, NULL, gext->key) == NULL);
-
-			if (fr_pair_append_by_da(request->local_ctx, &state->key, &request->local_pairs, gext->key) < 0) {
-				REDEBUG("Failed creating %s", gext->key->name);
-				*p_result = RLM_MODULE_FAIL;
-				return UNLANG_ACTION_CALCULATE_RESULT;
-			}
-			fr_assert(state->key != NULL);
-		}
-			
-		if (tmpl_is_attr(gext->vpt)) {
-			MEM(state->buffer = talloc_array(state, char, BUFFER_SIZE));
-			return unlang_foreach_attr_init(p_result, request, frame, state);
-		}
-
-		fr_assert(tmpl_is_xlat(gext->vpt));
-
-		return unlang_foreach_xlat_init(p_result, request, frame, state);
-	}
+	fr_assert(fr_pair_find_by_da(&request->local_pairs, NULL, gext->value) == NULL);
 
 	/*
-	 *	Figure out foreach depth by walking back up the stack
+	 *	Create the local variable and populate its value.
 	 */
-	if (stack->depth > 0) for (i = (stack->depth - 1); i >= 0; i--) {
-			unlang_t const *our_instruction;
-			our_instruction = stack->frame[i].instruction;
-			if (!our_instruction || (our_instruction->type != UNLANG_TYPE_FOREACH)) continue;
-			depth++;
-		}
-
-	if (depth >= (int)NUM_ELEMENTS(xlat_foreach_names)) {
-		REDEBUG("foreach Nesting too deep!");
+	if (fr_pair_append_by_da(request->local_ctx, &state->value, &request->local_pairs, gext->value) < 0) {
+		REDEBUG("Failed creating %s", gext->value->name);
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
+	fr_assert(state->value != NULL);
 
-	fr_pair_list_init(&state->vps);
+	if (gext->key) {
+		fr_assert(fr_pair_find_by_da(&request->local_pairs, NULL, gext->key) == NULL);
 
-	/*
-	 *	Copy the VPs from the original request, this ensures deterministic
-	 *	behaviour if someone decides to add or remove VPs in the set we're
-	 *	iterating over.
-	 */
-	if (tmpl_copy_pairs(frame->state, &vps, request, gext->vpt) < 0) {	/* nothing to loop over */
-		*p_result = RLM_MODULE_NOOP;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	fr_assert(!fr_pair_list_empty(&vps));
-
-	fr_pair_list_append(&state->vps, &vps);
-	fr_pair_dcursor_init(&state->cursor, &state->vps);
-
-	/*
-	 *	Skip any non-leaf attributes at the start of the cursor
-	 *	Adds sanity to foreach &request.[*]
-	 */
-	vp = fr_dcursor_current(&state->cursor);
-	while (vp) {
-		switch (vp->vp_type) {
-		case FR_TYPE_LEAF:
-			break;
-		default:
-			vp = fr_dcursor_next(&state->cursor);
-			continue;
+		if (fr_pair_append_by_da(request->local_ctx, &state->key, &request->local_pairs, gext->key) < 0) {
+			REDEBUG("Failed creating %s", gext->key->name);
+			*p_result = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
-		break;
+		fr_assert(state->key != NULL);
+	}
+			
+	if (tmpl_is_attr(gext->vpt)) {
+		MEM(state->buffer = talloc_array(state, char, BUFFER_SIZE));
+		return unlang_foreach_attr_init(p_result, request, frame, state);
 	}
 
-	/*
-	 *	If no non-leaf attributes found clean up
-	 */
-	if (!vp) {
-		fr_dcursor_free_list(&state->cursor);
-		tmpl_dcursor_clear(&state->cc);
-		*p_result = RLM_MODULE_NOOP;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	fr_assert(tmpl_is_xlat(gext->vpt));
 
-	state->depth = depth;
-
-	/*
-	 *	Add a (hopefully) faster lookup to get the state.
-	 */
-	request_data_add(request, FOREACH_REQUEST_DATA, state->depth, state, false, false, false);
-
-	frame->process = unlang_foreach_next_old;
-
-	repeatable_set(frame);
-
-	/*
-	 *	Push the child, and go process it.
-	 */
-	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+	return unlang_foreach_xlat_init(p_result, request, frame, state);
 }
 
 static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -697,45 +544,8 @@ static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, u
 	return unwind_to_break(request->stack);
 }
 
-/** Implements the Foreach-Variable-X
- *
- * @ingroup xlat_functions
- */
-static xlat_action_t unlang_foreach_xlat_func(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					      xlat_ctx_t const *xctx,
-					      request_t *request, UNUSED fr_value_box_list_t *in)
+void unlang_foreach_init(void)
 {
-	fr_pair_t			*vp;
-	int const			*inst = xctx->inst;
-	fr_value_box_t			*vb;
-	unlang_frame_state_foreach_t	*state;
-
-	state = request_data_reference(request, FOREACH_REQUEST_DATA, *inst);
-	if (!state) return XLAT_ACTION_FAIL;
-
-	vp = fr_dcursor_current(&state->cursor);
-	fr_assert(vp != NULL);
-
-	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_copy(vb, vb, &vp->data);
-	fr_dcursor_append(out, vb);
-	return XLAT_ACTION_DONE;
-}
-
-void unlang_foreach_init(TALLOC_CTX *ctx)
-{
-	size_t	i;
-
-	for (i = 0; i < NUM_ELEMENTS(xlat_foreach_names); i++) {
-		xlat_t *x;
-
-		x = xlat_func_register(ctx, xlat_foreach_names[i],
-				  unlang_foreach_xlat_func, FR_TYPE_VOID);
-		fr_assert(x);
-		xlat_func_flags_set(x, XLAT_FUNC_FLAG_INTERNAL);
-		x->uctx = &xlat_foreach_inst[i];
-	}
-
 	unlang_register(UNLANG_TYPE_FOREACH,
 			   &(unlang_op_t){
 				.name = "foreach",

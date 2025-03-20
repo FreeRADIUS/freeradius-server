@@ -304,40 +304,6 @@ here is to allow a common pre-processing of accounting packets in the
 in `accounting %{Acct-Status-Type}`. See sites-available/default for
 examples and more information.
 
-=== update sections
-
-A major difference between v3 and v4 is that `update` sections are no
-longer necessary.  It is now possible to just edit attributes "in
-place", as with:
-
-See the xref:reference:unlang/update.adoc[update] documentation for a
-description of what has changed, and how to use the attribute new
-xref:reference:unlang/edit.adoc[edit] functionality.
-
-For example, instead of doing this:
-
-[source,unlang]
-----
-if (User-Name == "bob") {
-    update reply {
-        Reply-Message := "Hello, %{User-Name}"
-    }
-}
-----
-
-You can now do this:
-
-[source,unlang]
-----
-if (User-Name == "bob") {
-    reply.Reply-Message := "Hello, %{User-Name}"
-}
-----
-
-As with any upgrade across major version numbers, there are caveats.
-See the full xref:reference:unlang/update.adoc[update] documentation
-and xref:reference:unlang/edit.adoc[edit] documentation for details.
-
 == Proxying
 
 Proxying has undergone massive changes. The `proxy.conf` file no
@@ -589,14 +555,6 @@ Many lists have been removed.  e.g._`proxy`, `proxy-reply`, `coa`,
 functionality still exists, but it has been moved to different
 keywords, such as `subrequest`.
 
-== Update sections
-
-The `update` sections are deprecated.  See the new way to
-xref:reference:unlang/edit.adoc[edit attributes].
-
-The server has limited support for "auto-conversion" of `update`
-sections to the new syntax.
-
 === Recommendations
 
 We recommend manually converting the `update` sections to the new
@@ -700,6 +658,67 @@ postgresql).
 Many new xref:reference:unlang/index.adoc[unlang] keywords have been added.
 
 Data type casts have changed from `<ipaddr> ...` to `(ipaddr) ...`
+
+== Keyword Changes
+
+=== foreach
+
+The xref:reference:unlang/foreach.adoc[foreach] keyword has changed syntax.
+
+Instead of 
+
+----
+foreach &reply.Filter-Id {
+	if ("%{Foreach-Variable-0}" == ...) {
+}
+----
+
+You can define a xref:reference:unlang/local.adoc[local variable] via
+the following syntax:
+
+----
+foreach thing (reply.Filter-Id[*]) {
+	if (thing == ...) {
+}
+----
+
+The result is much simpler and clearer.
+
+=== update
+
+The `update` sections are deprecated.  The new way to
+xref:reference:unlang/edit.adoc[edit] is much simpler.
+See the xref:reference:unlang/update.adoc[update] documentation for a
+description of what has changed, and how to use the attribute new
+xref:reference:unlang/edit.adoc[edit] functionality.
+
+The server has limited support for "auto-conversion" of `update`
+sections to the new syntax.  Documentation is TBD.
+
+It is now possible to just edit attributes "in place".  For example,
+instead of doing this:
+
+[source,unlang]
+----
+if (User-Name == "bob") {
+    update reply {
+        Reply-Message := "Hello, %{User-Name}"
+    }
+}
+----
+
+You can now do this:
+
+[source,unlang]
+----
+if (User-Name == "bob") {
+    reply.Reply-Message := "Hello, %{User-Name}"
+}
+----
+
+As with any upgrade across major version numbers, there are caveats.
+See the full xref:reference:unlang/update.adoc[update] documentation
+for further information.
 
 == Xlat expansions
 

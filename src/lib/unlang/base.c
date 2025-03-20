@@ -107,7 +107,7 @@ static int _unlang_global_init(UNUSED void *uctx)
 	 */
 	unlang_compile_init(unlang_ctx);
 	unlang_condition_init();
-	unlang_foreach_init(unlang_ctx);
+	unlang_foreach_init();
 	unlang_function_init();
 	unlang_group_init();
 	unlang_load_balance_init();
