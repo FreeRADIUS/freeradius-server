@@ -256,7 +256,7 @@ next:
 		*p_result = frame->result;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
-	
+
 	if (unlang_foreach_xlat_key_update(request, state) < 0) goto next;
 
 	fr_value_box_clear_value(&state->value->data);
@@ -418,7 +418,7 @@ next:
 		}
 
 	} else if (fr_type_is_structural(vp->vp_type)) {
-		fr_assert(state->value->vp_type == vp->vp_type);
+		if (state->value->vp_type != vp->vp_type) goto next;
 
 		fr_pair_list_free(&state->value->vp_group);
 
@@ -486,6 +486,7 @@ static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t
 	vp = tmpl_dcursor_init(NULL, NULL, &state->cc, &state->cursor, request, state->vpt);
 	fr_assert(vp != NULL);
 
+next:
 	/*
 	 *	Update the key with the current path.  Attribute indexes start at zero.
 	 */
@@ -500,13 +501,17 @@ static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t
 		}
 
 	} else if (fr_type_is_structural(vp->vp_type)) {
-		if (state->value->vp_type == vp->vp_type) {
-			if (unlang_foreach_pair_copy(state->value, vp, vp->da) < 0) {
-				REDEBUG("Failed copying children of %s", state->value->da->name);
-				goto fail;
-			}
-		} else {
-			REDEBUG("Failed initializing loop variable %s - expected %s type, but got input (%pP)", state->value->da->name, fr_type_to_str(state->value->vp_type), vp);
+		if (state->value->vp_type != vp->vp_type) {
+			vp = fr_dcursor_next(&state->cursor);
+			if (vp) goto next;
+
+			*p_result = frame->result;
+			fr_assert(state->indent == request->log.indent.unlang);
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+
+		if (unlang_foreach_pair_copy(state->value, vp, vp->da) < 0) {
+			REDEBUG("Failed copying children of %s", state->value->da->name);
 			goto fail;
 		}
 
