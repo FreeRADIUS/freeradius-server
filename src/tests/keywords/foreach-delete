@@ -13,8 +13,6 @@ foreach uint32 self (Tmp-Integer-0) {
 	self += 19
 }
 
-%debug(&request)
-
 if (Tmp-Integer-0[0] != 20) {
 	test_fail
 }
