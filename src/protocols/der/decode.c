@@ -1880,8 +1880,8 @@ static ssize_t fr_der_decode_hdr(fr_dict_attr_t const *parent, fr_dbuff_t *in, u
 		flags = fr_der_attr_flags(parent);
 
 		if (tag_class != flags->class) {
-			fr_strerror_printf_push("Invalid DER class %02x for attribute %s. Expected DER class %02x", *tag, parent->name,
-					   tag_class, flags->class);
+			fr_strerror_printf_push("Invalid DER class %02x for attribute %s. Expected DER class %02x",
+						tag_class, parent->name, flags->class);
 			return -1;
 		}
 
