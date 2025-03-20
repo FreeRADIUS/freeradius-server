@@ -335,10 +335,10 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 				fr_value_box_list_talloc_free(&out->vb_group);
 				return -1;
 			}
-			fr_value_box_list_insert_tail(&out->vb_group, vb);
 
 			if (fr_redis_reply_to_value_box(vb, vb, reply->element[i],
 							FR_TYPE_VOID, NULL, box_error, shallow) < 0) goto array_error;
+			fr_value_box_list_insert_tail(&out->vb_group, vb);
 		}
 	}
 	}
