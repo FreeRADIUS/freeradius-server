@@ -4,8 +4,9 @@
 string total
 
 #
-#  Try to delete one of the variables we're looping over.  If the user could delete one,
-#  then the underlying tmpl_dcursor would crash, as it didn't know about the deletion.
+#  Loop over children of a list.
+#
+#  Do NOT loop over the grandchildren.
 #
 foreach string value (request.[*]) {
 	total += value
