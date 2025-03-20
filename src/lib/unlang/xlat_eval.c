@@ -169,9 +169,6 @@ static fr_slen_t xlat_fmt_print(fr_sbuff_t *out, xlat_exp_t const *node)
 			return fr_sbuff_in_sprintf(out, "%%{%pV}", fr_box_strvalue_buffer(node->fmt));
 		}
 
-	case XLAT_VIRTUAL:
-		return fr_sbuff_in_sprintf(out, "%%{%s}", node->call.func->name);
-
 #ifdef HAVE_REGEX
 	case XLAT_REGEX:
 		return fr_sbuff_in_sprintf(out, "%%{%u}", node->regex_index);
@@ -1243,21 +1240,6 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 
 			xlat_debug_log_list_result(request, node, &result);
 			fr_value_box_list_move((fr_value_box_list_t *)out->dlist, &result);
-			continue;
-
-		case XLAT_VIRTUAL:
-		{
-			XLAT_DEBUG("** [%i] %s(virtual) - %%{%s}", unlang_interpret_stack_depth(request), __FUNCTION__,
-				   node->fmt);
-
-			xlat_debug_log_expansion(request, node, NULL, __LINE__);
-			xa = node->call.func->func(ctx, out,
-						   XLAT_CTX(node->call.func->uctx, NULL, NULL, NULL, NULL),
-						   request, NULL);
-			fr_dcursor_next(out);
-
-			xlat_debug_log_result(request, node, fr_dcursor_current(out));
-		}
 			continue;
 
 		case XLAT_FUNC:

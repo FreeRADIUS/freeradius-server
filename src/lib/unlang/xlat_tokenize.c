@@ -467,28 +467,6 @@ error:
 	return 0;
 }
 
-static int xlat_resolve_virtual_attribute(xlat_exp_t *node, tmpl_t *vpt)
-{
-	xlat_t	*func;
-
-	if (tmpl_is_attr(vpt)) {
-		func = xlat_func_find(tmpl_attr_tail_da(vpt)->name, -1);
-	} else {
-		func = xlat_func_find(tmpl_attr_tail_unresolved(vpt), -1);
-	}
-	if (!func) return -1;
-
-	xlat_exp_set_type(node, XLAT_VIRTUAL);
-	xlat_exp_set_name_shallow(node, vpt->name);
-
-	XLAT_DEBUG("VIRTUAL <-- %pV",
-		   fr_box_strvalue_len(vpt->name, vpt->len));
-	node->call.func = func;
-	node->flags = func->flags;
-
-	return 0;
-}
-
 /** Parse an attribute ref or a virtual attribute
  *
  */
@@ -553,11 +531,6 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_attribute(xlat_exp_head_t *
 	 *	Deal with unresolved attributes.
 	 */
 	if (tmpl_is_attr_unresolved(vpt)) {
-		/*
-		 *	Could it be a virtual attribute?
-		 */
-		if ((tmpl_attr_num_elements(vpt) == 2) && (xlat_resolve_virtual_attribute(node, vpt) == 0)) goto done;
-
 		if (!t_rules->attr.allow_unresolved) {
 			talloc_free(vpt);
 
@@ -569,21 +542,16 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_attribute(xlat_exp_head_t *
 		/*
 		 *	Try to resolve it later
 		 */
-		xlat_exp_set_type(node, XLAT_TMPL);
-		xlat_exp_set_name_shallow(node, vpt->name);
-		node->vpt = vpt;
 		node->flags.needs_resolving = true;
-
-	} else {
-		/*
-		 *	Deal with normal attribute (or list)
-		 */
-		xlat_exp_set_type(node, XLAT_TMPL);
-		xlat_exp_set_name_shallow(node, vpt->name);
-		node->vpt = vpt;
 	}
 
-done:
+	/*
+	 *	Deal with normal attribute (or list)
+	 */
+	xlat_exp_set_type(node, XLAT_TMPL);
+	xlat_exp_set_name_shallow(node, vpt->name);
+	node->vpt = vpt;
+
 	/*
 	 *	Remember that it was %{User-Name}
 	 *
@@ -1029,11 +997,6 @@ static void _xlat_debug_node(xlat_exp_t const *node, int depth)
 	}
 		break;
 
-	case XLAT_VIRTUAL:
-		fr_assert(node->fmt != NULL);
-		INFO_INDENT("virtual (%s)", node->fmt);
-		break;
-
 	case XLAT_FUNC:
 		fr_assert(node->call.func != NULL);
 		INFO_INDENT("func (%s)", node->call.func->name);
@@ -1270,14 +1233,12 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		slen = tmpl_attr_print(out, node->vpt, TMPL_ATTR_REF_PREFIX_NO);
 		if (slen < 0) return slen;
 		break;
+
 #ifdef HAVE_REGEX
 	case XLAT_REGEX:
 		FR_SBUFF_IN_SPRINTF_RETURN(out, "%i", node->regex_index);
 		break;
 #endif
-	case XLAT_VIRTUAL:
-		FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->call.func->name);
-		break;
 
 	case XLAT_FUNC:
 		FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->call.func->name);

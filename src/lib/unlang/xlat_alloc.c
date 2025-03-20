@@ -274,12 +274,6 @@ static int CC_HINT(nonnull) _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX 
 		case XLAT_FUNC_UNRESOLVED:
 			break;
 
-		case XLAT_VIRTUAL:
-			node->call.func = p->call.func;
-			node->call.dict = p->call.dict;
-			node->call.ephemeral = p->call.ephemeral;
-			break;
-
 		case XLAT_FUNC:
 			/*
 			 *	Only copy the function pointer, and whether this
