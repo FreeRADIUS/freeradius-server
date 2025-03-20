@@ -476,6 +476,8 @@ static fr_slen_t xlat_expr_print_regex(fr_sbuff_t *out, xlat_exp_t const *node, 
 	 */
 	if (!inst->xlat) {
 		child = xlat_exp_next(node->call.args, child);
+
+		fr_assert(child != NULL);
 		fr_assert(!xlat_exp_next(node->call.args, child));
 		fr_assert(child->type == XLAT_GROUP);
 
