@@ -1214,6 +1214,10 @@ do {\
 	FR_INTEGER_COND_CHECK("max_request_time", main_config.max_request_time,
 			      (main_config.max_request_time != 0), 100);
 
+#ifndef USEC
+#define USEC (1000000)
+#endif
+
 	/*
 	 *	reject_delay can be zero.  OR 1 though 10.
 	 */
