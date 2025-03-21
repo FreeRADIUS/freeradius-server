@@ -1218,7 +1218,7 @@ do {\
 	 *	reject_delay can be zero.  OR 1 though 10.
 	 */
 	if ((main_config.reject_delay.tv_sec != 0) || (main_config.reject_delay.tv_usec != 0)) {
-		FR_TIMEVAL_BOUND_CHECK("reject_delay", &main_config.reject_delay, >=, 1, 0);
+		FR_TIMEVAL_BOUND_CHECK("reject_delay", &main_config.reject_delay, >=, 0, USEC / 2);
 	}
 
 	FR_INTEGER_BOUND_CHECK("proxy_dedup_window", main_config.proxy_dedup_window, <=, 10);

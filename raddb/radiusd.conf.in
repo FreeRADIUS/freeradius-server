@@ -599,9 +599,12 @@ security {
 	#  rejects will be sent at 'cleanup_delay' time, when the request
 	#  is deleted from the internal cache of requests.
 	#
+	#  Some equipment is known to retry aggressively if the delay is about
+	#  one second.
+	#
 	#  This number can be a decimal, e.g. 3.4
 	#
-	#  Useful ranges: 1 to 5
+	#  Useful ranges: 0.5 to 5
 	reject_delay = 1
 
 	#
