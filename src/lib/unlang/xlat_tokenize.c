@@ -116,52 +116,41 @@ static fr_sbuff_parse_rules_t const xlat_function_arg_rules = {
  *
  * Allows access to a subcapture groups
  * @verbatim %{<num>} @endverbatim
- *
  */
-static inline int xlat_tokenize_regex(xlat_exp_head_t *head, fr_sbuff_t *in)
+static int xlat_tokenize_regex(xlat_exp_head_t *head, fr_sbuff_t *in, fr_sbuff_marker_t *m_s)
 {
 	uint8_t			num;
 	xlat_exp_t		*node;
 	fr_sbuff_parse_error_t	err;
-	fr_sbuff_marker_t	m_s;
 
 	XLAT_DEBUG("REGEX <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
 
-	fr_sbuff_marker(&m_s, in);
-
+	/*
+	 *	Not a number, ignore it.
+	 */
 	(void) fr_sbuff_out(&err, &num, in);
-	if (err != FR_SBUFF_PARSE_OK) {
-	invalid_ref:
+	if (err != FR_SBUFF_PARSE_OK) return 0;
+
+	/*
+	 *	Not %{\d+}, ignore it.
+	 */
+	if (!fr_sbuff_is_char(in, '}')) return 0;
+
+	/*
+	 *	It is a regex ref, but it has to be a valid one.
+	 */
+	if (num > REQUEST_MAX_REGEX) {
 		fr_strerror_printf("Invalid regex reference.  Must be in range 0-%d", REQUEST_MAX_REGEX);
-		fr_sbuff_marker_release(&m_s);
+		fr_sbuff_set(in, m_s);
 		return -1;
 	}
 
-	if (num > REQUEST_MAX_REGEX) {
-		fr_sbuff_set(in, &m_s);
-		goto invalid_ref;
-	}
-
-	if (!fr_sbuff_is_char(in, '}')) {
-		if (!fr_sbuff_remaining(in)) {
-			fr_strerror_const("Missing closing brace");
-			fr_sbuff_marker_release(&m_s);
-			return -1;
-		}
-		fr_sbuff_set(in, &m_s);
-		fr_sbuff_marker_release(&m_s);
-		return 1;
-	}
-
-	node = xlat_exp_alloc(head, XLAT_REGEX, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
+	MEM(node = xlat_exp_alloc(head, XLAT_REGEX, fr_sbuff_current(m_s), fr_sbuff_behind(m_s)));
 	node->regex_index = num;
-
-	fr_sbuff_marker_release(&m_s);
-	fr_sbuff_next(in);	/* Skip '}' */
-
 	xlat_exp_insert_tail(head, node);
 
-	return 0;
+	(void) fr_sbuff_advance(in, 1); /* must be '}' */
+	return 1;
 }
 #endif
 
@@ -582,7 +571,8 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 							 tmpl_rules_t const *t_rules)
 {
 	size_t			len;
-	fr_sbuff_marker_t	s_m;
+	int			ret;
+	fr_sbuff_marker_t	m_s;
 	char			hint;
 	fr_sbuff_term_t		hint_tokens = FR_SBUFF_TERMS(
 					L(" "),		/* First special token is a ' ' - Likely a syntax error */
@@ -597,24 +587,13 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 
 	XLAT_DEBUG("EXPANSION <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
 
+	fr_sbuff_marker(&m_s, in);
+
 #ifdef HAVE_REGEX
-	fr_sbuff_marker(&s_m, in);
-	len = fr_sbuff_adv_past_allowed(in, SIZE_MAX, sbuff_char_class_uint, NULL);
+	ret = xlat_tokenize_regex(head, in, &m_s);
+	if (ret != 0) return ret;
 
-	/*
-	 *	Handle regex's %{<num>} specially.  But '3GPP-Foo' is an attribute.  :(
-	 */
-	if (len && fr_sbuff_is_char(in, '}')) {
-		int ret;
-
-		fr_sbuff_set(in, &s_m);		/* backtrack */
-		ret = xlat_tokenize_regex(head, in);
-		if (ret <= 0) return ret;
-
-		/* ret==1 means "nope, it's an attribute" */
-	}
-	fr_sbuff_set(in, &s_m);		/* backtrack */
-
+	fr_sbuff_set(in, &m_s);		/* backtrack to the start of the expression */
 #endif /* HAVE_REGEX */
 
 	/*
@@ -628,7 +607,7 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 
 	if (!fr_sbuff_extend(in)) {
 		fr_strerror_const("Missing closing brace");
-		fr_sbuff_marker_release(&s_m);
+		fr_sbuff_marker_release(&m_s);
 		return -1;
 	}
 
@@ -639,12 +618,11 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 	 *	XLAT_GROUP, which turns into a wrapper of FR_TYPE_GROUP in the value-box.
 	 */
 	{
-		int ret;
 		xlat_exp_t *node;
 		xlat_exp_head_t *child;
 		tmpl_rules_t my_rules;
 
-		fr_sbuff_set(in, &s_m);		/* backtrack to the start of the expression */
+		fr_sbuff_set(in, &m_s);		/* backtrack to the start of the expression */
 
 		MEM(node = xlat_exp_alloc(head, XLAT_TMPL, NULL, 0));
 		MEM(node->vpt = tmpl_alloc(node, TMPL_TYPE_XLAT, T_BARE_WORD, "", 1));
@@ -667,8 +645,8 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 			return -1;
 		}
 
-		xlat_exp_set_name(node, fr_sbuff_current(&s_m), fr_sbuff_behind(&s_m));
-		tmpl_set_name_shallow(node->vpt, T_BARE_WORD, node->fmt, fr_sbuff_behind(&s_m));
+		xlat_exp_set_name(node, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
+		tmpl_set_name_shallow(node->vpt, T_BARE_WORD, node->fmt, fr_sbuff_behind(&m_s));
 
 		tmpl_set_xlat(node->vpt, child);
 		xlat_exp_insert_tail(head, node);
@@ -682,7 +660,7 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 	}
 
 check_for_attr:
-	fr_sbuff_set(in, &s_m);		/* backtrack */
+	fr_sbuff_set(in, &m_s);		/* backtrack */
 
 	/*
 	 *	%{Attr-Name}
@@ -693,7 +671,7 @@ check_for_attr:
 	/*
 	 *	Check for empty expressions %{} %{: %{[
 	 */
-	fr_sbuff_marker(&s_m, in);
+	fr_sbuff_marker(&m_s, in);
 	len = fr_sbuff_adv_until(in, SIZE_MAX, &hint_tokens, '\0');
 
 	/*
@@ -704,7 +682,7 @@ check_for_attr:
 	 */
 	if (!fr_sbuff_extend(in)) {
 		fr_strerror_const("Missing closing brace");
-		fr_sbuff_marker_release(&s_m);
+		fr_sbuff_marker_release(&m_s);
 		return -1;
 	}
 
@@ -736,8 +714,8 @@ check_for_attr:
 	case '.':
 	case '}':
 	case '[':
-		fr_sbuff_set(in, &s_m);		/* backtrack */
-		fr_sbuff_marker_release(&s_m);
+		fr_sbuff_set(in, &m_s);		/* backtrack */
+		fr_sbuff_marker_release(&m_s);
 
 		if (xlat_tokenize_attribute(head, in, &attr_p_rules, t_rules, TMPL_ATTR_REF_PREFIX_NO) < 0) return -1;
 
