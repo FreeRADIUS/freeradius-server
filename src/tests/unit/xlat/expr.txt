@@ -148,5 +148,17 @@ match %cast(uint32, Service-Type)
 xlat_expr 5 + ()
 match ERROR offset 6: Empty expressions are invalid
 
+xlat_expr %{3}
+match %{3}
+
+#
+#  These next two are arguably wrong.
+#
+xlat_expr %{-3}
+match ERROR offset 3: Unresolved attributes not allowed in expansions here
+
+xlat_expr %{'foo'}
+match %{'foo'}
+
 count
-match 71
+match 77

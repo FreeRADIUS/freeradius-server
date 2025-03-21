@@ -117,7 +117,7 @@ static fr_sbuff_parse_rules_t const xlat_function_arg_rules = {
  * Allows access to a subcapture groups
  * @verbatim %{<num>} @endverbatim
  */
-static int xlat_tokenize_regex(xlat_exp_head_t *head, fr_sbuff_t *in, fr_sbuff_marker_t *m_s)
+int xlat_tokenize_regex(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in, fr_sbuff_marker_t *m_s)
 {
 	uint8_t			num;
 	xlat_exp_t		*node;
@@ -147,7 +147,7 @@ static int xlat_tokenize_regex(xlat_exp_head_t *head, fr_sbuff_t *in, fr_sbuff_m
 
 	MEM(node = xlat_exp_alloc(head, XLAT_REGEX, fr_sbuff_current(m_s), fr_sbuff_behind(m_s)));
 	node->regex_index = num;
-	xlat_exp_insert_tail(head, node);
+	*out = node;
 
 	(void) fr_sbuff_advance(in, 1); /* must be '}' */
 	return 1;
@@ -584,14 +584,23 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 					.escapes = &xlat_unescape,
 					.terminals = &FR_SBUFF_TERM("}")
 				};
+#ifdef HAVE_REGEX
+	xlat_exp_t		*node;
+#endif
 
 	XLAT_DEBUG("EXPANSION <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
 
 	fr_sbuff_marker(&m_s, in);
 
 #ifdef HAVE_REGEX
-	ret = xlat_tokenize_regex(head, in, &m_s);
-	if (ret != 0) return ret;
+	ret = xlat_tokenize_regex(head, &node, in, &m_s);
+	if (ret < 0) return ret;
+
+	if (ret == 1) {
+		fr_assert(node != NULL);
+		xlat_exp_insert_tail(head, node);
+		return 0;
+	}
 
 	fr_sbuff_set(in, &m_s);		/* backtrack to the start of the expression */
 #endif /* HAVE_REGEX */
@@ -618,7 +627,6 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 	 *	XLAT_GROUP, which turns into a wrapper of FR_TYPE_GROUP in the value-box.
 	 */
 	{
-		xlat_exp_t *node;
 		xlat_exp_head_t *child;
 		tmpl_rules_t my_rules;
 
