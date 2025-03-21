@@ -3,26 +3,26 @@ control := {
 	Framed-IP-Address = 192.0.2.2
 }
 
-if !(%{control.[#]} == 2) {
+if (control.[#] != 2) {
 	test_fail
 }
 
-if !(%{control.[0]} == 192.0.2.1) {
+if (control.[0] != 192.0.2.1) {
 	test_fail
 }
 
-if !(%{control.[1]} == 192.0.2.2) {
+if (control.[1] != 192.0.2.2) {
 	test_fail
 }
 
-if !(%{control.[n]} == 192.0.2.2) {
+if (control.[n] != 192.0.2.2) {
 	test_fail
 }
 
 #
 #  Cast this to a string!
 #
-if !("%{control.[*]}" == '192.0.2.1192.0.2.2') {
+if ("%{control.[*]}" != '192.0.2.1192.0.2.2') {
 	test_fail
 }
 
@@ -35,11 +35,11 @@ request += {
 	NAS-Port = %{control.[#]}
 }
 
-if !(Filter-Id == '192.0.2.1,192.0.2.2') {
+if (Filter-Id != '192.0.2.1,192.0.2.2') {
 	test_fail
 }
 
-if !(NAS-Port == 2) {
+if (NAS-Port != 2) {
 	test_fail
 }
 

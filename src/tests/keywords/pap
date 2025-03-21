@@ -26,9 +26,9 @@ if (reject) {
 #
 #  Base64 encoded Password.Cleartext in password with header
 #
-result_string := "{clear}%{User-Password}"
+result_string := "{clear}" + User-Password
 control := {
-	Password.With-Header = %base64.encode(%{result_string})
+	Password.With-Header = %base64.encode(result_string)
 }
 
 pap.authorize
@@ -43,7 +43,7 @@ if (reject) {
 #  Hex encoded SSHA password
 #
 control := {
-	Password.With-Header = "{ssha}%hex(%sha1(%{User-Password}%{salt}))%hex(%{salt})"
+	Password.With-Header = "{ssha}" + %hex(%sha1(User-Password + salt)) + %hex(salt)
 }
 
 pap.authorize
@@ -57,14 +57,14 @@ if (reject) {
 #
 #  Base64 encoded SSHA password
 #
-result_string := "%hex(%sha1(%{User-Password}%{salt}))%hex(%{salt})"
+result_string := %hex(%sha1(User-Password + salt)) + %hex(salt)
 
 # To Binary
-result_octets := "%bin(%{result_string})"
+result_octets := %bin(result_string)
 
 # To Base64
-result_string := "%base64.encode(%{result_octets})"
-control.Password.With-Header := "{ssha}%{result_string}"
+result_string := %base64.encode(result_octets)
+control.Password.With-Header := "{ssha}" + result_string
 
 pap.authorize
 pap.authenticate {
@@ -78,14 +78,14 @@ if (reject) {
 #
 #  Base64 of Base64 encoded SSHA password
 #
-result_string := "%hex(%sha1(%{User-Password}%{salt}))%hex(%{salt})"
+result_string := %hex(%sha1(User-Password + salt)) + %hex(salt)
 
 # To Binary
-result_octets := "%bin(%{result_string})"
+result_octets := %bin(result_string)
 
 # To Base64
-result_string := "{ssha}%base64.encode(%{result_octets})"
-control.Password.With-Header := "%base64.encode(%{result_string})"
+result_string := "{ssha}" + %base64.encode(result_octets)
+control.Password.With-Header := %base64.encode(result_string)
 
 pap.authorize
 pap.authenticate {
