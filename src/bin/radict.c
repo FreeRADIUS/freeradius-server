@@ -57,6 +57,7 @@ DIAG_ON(unused-macros)
 static void usage(void)
 {
 	fprintf(stderr, "usage: radict [OPTS] <attribute> [attribute...]\n");
+	fprintf(stderr, "  -A               Export aliases.\n");
 	fprintf(stderr, "  -c               Print out in CSV format.\n");
 	fprintf(stderr, "  -D <dictdir>     Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -f               Export dictionary definitions in the normal dictionary format\n");
@@ -295,6 +296,7 @@ int main(int argc, char *argv[])
 	bool			found = false;
 	bool			export = false;
 	bool			file_export = false;
+	bool			alias = false;
 	char const		*protocol = NULL;
 
 	TALLOC_CTX		*autofree;
@@ -318,7 +320,11 @@ int main(int argc, char *argv[])
 	fr_debug_lvl = 1;
 	fr_log_fp = stdout;
 
-	while ((c = getopt(argc, argv, "cfED:p:VxhH")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "AcfED:p:VxhH")) != -1) switch (c) {
+		case 'A':
+			alias = true;
+			break;
+
 		case 'c':
 			output_format = RADICT_OUT_CSV;
 			break;
@@ -430,6 +436,16 @@ int main(int argc, char *argv[])
 			DEBUG2("Attribute count %" PRIu64, count);
 			DEBUG2("Memory allocd %zu (bytes)", talloc_total_size(*dict_p));
 			DEBUG2("Memory spread %zu (bytes)", (size_t) (high - low));
+		} while (++dict_p < dict_end);
+	}
+
+	if (alias) {
+		fr_dict_t	**dict_p = dicts;
+
+		do {
+			if (protocol && (strcasecmp(fr_dict_root(*dict_p)->name, protocol) == 0)) {
+				fr_dict_alias_export(fr_log_fp, fr_dict_root(*dict_p));
+			}
 		} while (++dict_p < dict_end);
 	}
 
