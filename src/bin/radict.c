@@ -57,13 +57,15 @@ DIAG_ON(unused-macros)
 static void usage(void)
 {
 	fprintf(stderr, "usage: radict [OPTS] <attribute> [attribute...]\n");
-	fprintf(stderr, "  -E               Export dictionary definitions.\n");
-	fprintf(stderr, "  -V               Write out all attribute values.\n");
-	fprintf(stderr, "  -D <dictdir>     Set main dictionary directory (defaults to " DICTDIR ").\n");
-	fprintf(stderr, "  -p <protocol>    Set protocol by name\n");
-	fprintf(stderr, "  -x               Debugging mode.\n");
 	fprintf(stderr, "  -c               Print out in CSV format.\n");
+	fprintf(stderr, "  -D <dictdir>     Set main dictionary directory (defaults to " DICTDIR ").\n");
+	fprintf(stderr, "  -f               Export dictionary definitions in the normal dictionary format\n");
+	fprintf(stderr, "  -E               Export dictionary definitions.\n");
+	fprintf(stderr, "  -h               Print help text.\n");
 	fprintf(stderr, "  -H               Show the headers of each field.\n");
+	fprintf(stderr, "  -p <protocol>    Set protocol by name\n");
+	fprintf(stderr, "  -V               Write out all attribute values.\n");
+	fprintf(stderr, "  -x               Debugging mode.\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Very simple interface to extract attribute definitions from FreeRADIUS dictionaries\n");
 }
@@ -314,6 +316,7 @@ int main(int argc, char *argv[])
 	talloc_set_log_stderr();
 
 	fr_debug_lvl = 1;
+	fr_log_fp = stdout;
 
 	while ((c = getopt(argc, argv, "cfED:p:VxhH")) != -1) switch (c) {
 		case 'c':
@@ -345,7 +348,6 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'x':
-			fr_log_fp = stdout;
 			fr_debug_lvl++;
 			break;
 
@@ -411,7 +413,7 @@ int main(int argc, char *argv[])
 
 		do {
 			if (protocol && (strcasecmp(fr_dict_root(*dict_p)->name, protocol) == 0)) {
-				fr_dict_export(*dict_p);
+				fr_dict_export(fr_log_fp, *dict_p);
 			}
 		} while (++dict_p < dict_end);
 	}

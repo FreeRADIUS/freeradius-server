@@ -177,6 +177,7 @@ ssize_t fr_dict_attr_oid_print(fr_sbuff_t *out,
 }
 
 typedef struct {
+	FILE			*fp;
 	fr_dict_t const		*dict;
 	char			prefix[256];
 	char			flags[256];
@@ -186,28 +187,28 @@ typedef struct {
 
 static int dict_attr_debug(fr_dict_attr_t const *da, void *uctx)
 {
-	fr_dict_attr_debug_t 		*our_uctx = uctx;
+	fr_dict_attr_debug_t 		*ctx = uctx;
 	fr_hash_iter_t			iter;
-	fr_dict_enum_value_t const		*enumv;
+	fr_dict_enum_value_t const	*enumv;
 	fr_dict_attr_ext_enumv_t 	*ext;
 
-	fr_dict_attr_flags_print(&FR_SBUFF_OUT(our_uctx->flags, sizeof(our_uctx->flags)),
-			      our_uctx->dict, da->type, &da->flags);
+	fr_dict_attr_flags_print(&FR_SBUFF_OUT(ctx->flags, sizeof(ctx->flags)),
+			      ctx->dict, da->type, &da->flags);
 
-	snprintf(our_uctx->prefix, sizeof(our_uctx->prefix),
+	snprintf(ctx->prefix, sizeof(ctx->prefix),
 		 "[%02u] 0x%016" PRIxPTR "%*s",
 		 da->depth,
 		 (unsigned long)da,
-		 (da->depth - our_uctx->start_depth) * 4, "");
+		 (da->depth - ctx->start_depth) * 4, "");
 
-	FR_FAULT_LOG("%s%s(%u) %s %s",
-		     our_uctx->prefix,
-		     da->name,
-		     da->attr,
-		     fr_type_to_str(da->type),
-		     our_uctx->flags);
-
-	dict_attr_ext_debug(our_uctx->prefix, da);	/* Print all the extension debug info */
+	fprintf(ctx->fp, "%s%s(%u) %s %s\n",
+		ctx->prefix,
+		da->name,
+		da->attr,
+		fr_type_to_str(da->type),
+		ctx->flags);
+	
+	dict_attr_ext_debug(ctx->prefix, da);	/* Print all the extension debug info */
 
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
 	if (!ext || !ext->name_by_value) return 0;
@@ -216,27 +217,31 @@ static int dict_attr_debug(fr_dict_attr_t const *da, void *uctx)
 	     enumv;
 	     enumv = fr_hash_table_iter_next(ext->name_by_value, &iter)) {
 	     	char *value = fr_asprintf(NULL, "%pV", enumv->value);
-
-		FR_FAULT_LOG("%s    %s -> %s",
-			     our_uctx->prefix,
-			     enumv->name,
-			     value);
+		
+		fprintf(ctx->fp, "%s    %s -> %s\n",
+			ctx->prefix,
+			enumv->name,
+			value);
 		talloc_free(value);
 	}
 
 	return 0;
 }
 
-void fr_dict_namespace_debug(fr_dict_attr_t const *da)
+void fr_dict_namespace_debug(FILE *fp, fr_dict_attr_t const *da)
 {
-	fr_dict_attr_debug_t    uctx = { .dict = fr_dict_by_da(da), .start_depth = da->depth };
+	fr_dict_attr_debug_t    uctx = {
+		.fp = fp,
+		.dict = fr_dict_by_da(da),
+		.start_depth = da->depth,
+	};
 	fr_hash_table_t		*namespace;
 	fr_hash_iter_t		iter;
 	fr_dict_attr_t		*our_da;
 
 	namespace = dict_attr_namespace(da);
 	if (!namespace) {
-		FR_FAULT_LOG("%s does not have namespace", da->name);
+		fprintf(fp, "%s does not have namespace\n", da->name);
 		return;
 	}
 
@@ -247,43 +252,51 @@ void fr_dict_namespace_debug(fr_dict_attr_t const *da)
 	}
 }
 
-void fr_dict_attr_debug(fr_dict_attr_t const *da)
+void fr_dict_attr_debug(FILE *fp, fr_dict_attr_t const *da)
 {
-	fr_dict_attr_debug_t	uctx = { .dict = fr_dict_by_da(da), .start_depth = da->depth };
+	fr_dict_attr_debug_t	uctx = {
+		.fp = fp,
+		.dict = fr_dict_by_da(da),
+		.start_depth = da->depth,
+	};
 
 	dict_attr_debug(da, &uctx);
 	(void)fr_dict_walk(da, dict_attr_debug, &uctx);
 }
 
-void fr_dict_debug(fr_dict_t const *dict)
+void fr_dict_debug(FILE *fp, fr_dict_t const *dict)
 {
-	fr_dict_attr_debug(fr_dict_root(dict));
+	fr_dict_attr_debug(fp, fr_dict_root(dict));
 }
 
 static int dict_attr_export(fr_dict_attr_t const *da, void *uctx)
 {
-	fr_dict_attr_debug_t 		*our_uctx = uctx;
+	fr_dict_attr_debug_t 		*ctx = uctx;
 
-	(void) fr_dict_attr_oid_print(&FR_SBUFF_OUT(our_uctx->prefix, sizeof(our_uctx->prefix)),
+	(void) fr_dict_attr_oid_print(&FR_SBUFF_OUT(ctx->prefix, sizeof(ctx->prefix)),
 				      NULL, da, false);
-	(void) fr_dict_attr_oid_print(&FR_SBUFF_OUT(our_uctx->oid, sizeof(our_uctx->oid)),
+	(void) fr_dict_attr_oid_print(&FR_SBUFF_OUT(ctx->oid, sizeof(ctx->oid)),
 				      NULL, da, true);
-	*our_uctx->flags = 0;	/* some attributes don't have flags */
-	fr_dict_attr_flags_print(&FR_SBUFF_OUT(our_uctx->flags, sizeof(our_uctx->flags)),
-				 our_uctx->dict, da->type, &da->flags);
+	*ctx->flags = 0;	/* some attributes don't have flags */
+	fr_dict_attr_flags_print(&FR_SBUFF_OUT(ctx->flags, sizeof(ctx->flags)),
+				 ctx->dict, da->type, &da->flags);
 
-	FR_FAULT_LOG("ATTRIBUTE\t%-40s\t%-20s\t%s\t%s",
-		     our_uctx->prefix,
-		     our_uctx->oid,
-		     fr_type_to_str(da->type),
-		     our_uctx->flags);
+	fprintf(ctx->fp, "ATTRIBUTE\t%-40s\t%-20s\t%s\t%s\n",
+		ctx->prefix,
+		ctx->oid,
+		fr_type_to_str(da->type),
+		ctx->flags);
 
 	return 0;
 }
 
-static void fr_dict_attr_export(fr_dict_attr_t const *da)
+static void fr_dict_attr_export(FILE *fp, fr_dict_attr_t const *da)
 {
-	fr_dict_attr_debug_t	uctx = { .dict = fr_dict_by_da(da), .start_depth = da->depth };
+	fr_dict_attr_debug_t	uctx = {
+		.fp = fp,
+		.dict = fr_dict_by_da(da),
+		.start_depth = da->depth
+	};
 
 	dict_attr_export(da, &uctx);
 	(void)fr_dict_walk(da, dict_attr_export, &uctx);
@@ -292,7 +305,7 @@ static void fr_dict_attr_export(fr_dict_attr_t const *da)
 /** Export in the standard form: ATTRIBUTE name oid flags
  *
  */
-void fr_dict_export(fr_dict_t const *dict)
+void fr_dict_export(FILE *fp, fr_dict_t const *dict)
 {
-	fr_dict_attr_export(fr_dict_root(dict));
+	fr_dict_attr_export(fp, fr_dict_root(dict));
 }

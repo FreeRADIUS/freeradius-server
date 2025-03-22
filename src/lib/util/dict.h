@@ -678,13 +678,13 @@ static inline CC_HINT(nonnull) int8_t fr_dict_attr_cmp_fields(const fr_dict_attr
  *
  * @{
  */
-void			fr_dict_namespace_debug(fr_dict_attr_t const *da);
+void			fr_dict_namespace_debug(FILE *fp, fr_dict_attr_t const *da);
 
-void			fr_dict_attr_debug(fr_dict_attr_t const *da);
+void			fr_dict_attr_debug(FILE *fp, fr_dict_attr_t const *da);
 
-void			fr_dict_debug(fr_dict_t const *dict);
+void			fr_dict_debug(FILE *fp, fr_dict_t const *dict);
 
-void			fr_dict_export(fr_dict_t const *dict);
+void			fr_dict_export(FILE *fp, fr_dict_t const *dict);
 /** @} */
 
 /** @name Attribute lineage
