@@ -3289,20 +3289,22 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 	 *	If the tmpl is not resolved, then it refers to an attribute which doesn't exist.  That's an
 	 *	error.
 	 */
-	if ((node->type == XLAT_TMPL) && tmpl_is_data_unresolved(node->vpt)) {
-		if (!tmpl_require_enum_prefix) {
-			fr_strerror_const("Unexpected text - attribute names must be prefixed with '&'");
-		} else {
-			fr_strerror_const("Unknown attribute");
+	if (node->type == XLAT_TMPL) {
+		if (tmpl_is_data_unresolved(node->vpt)) {
+				if (!tmpl_require_enum_prefix) {
+					fr_strerror_const("Unexpected text - attribute names must be prefixed with '&'");
+				} else {
+					fr_strerror_const("Unknown attribute");
+				}
+				return -1;
 		}
-		return -1;
-	}
 
-	/*
-	 *	Convert raw existence checks to existence functions.
-	 */
-	if (cond && (node->type == XLAT_TMPL) && tmpl_contains_attr(node->vpt)) {
-		node = xlat_exists_alloc(head, node);
+		/*
+		 *	Convert raw existence checks to existence functions.
+		 */
+		if (tmpl_contains_attr(node->vpt)) {
+			if (cond) MEM(node = xlat_exists_alloc(head, node));
+		}
 	}
 
 	XLAT_VERIFY(node);
