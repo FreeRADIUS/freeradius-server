@@ -277,10 +277,10 @@ static int dict_attr_export(fr_dict_attr_t const *da, void *uctx)
 				      NULL, da, false);
 	(void) fr_dict_attr_oid_print(&FR_SBUFF_OUT(ctx->oid, sizeof(ctx->oid)),
 				      NULL, da, true);
+
 	*ctx->flags = 0;	/* some attributes don't have flags */
 	fr_dict_attr_flags_print(&FR_SBUFF_OUT(ctx->flags, sizeof(ctx->flags)),
 				 ctx->dict, da->type, &da->flags);
-
 	fprintf(ctx->fp, "ATTRIBUTE\t%-40s\t%-20s\t%s\t%s\n",
 		ctx->prefix,
 		ctx->oid,
@@ -309,3 +309,38 @@ void fr_dict_export(FILE *fp, fr_dict_t const *dict)
 {
 	fr_dict_attr_export(fp, fr_dict_root(dict));
 }
+
+void fr_dict_alias_export(FILE *fp, fr_dict_attr_t const *parent)
+{
+	fr_hash_table_t		*namespace;
+	fr_hash_iter_t		iter;
+	fr_dict_attr_t		*da;
+	char buffer		[256];
+
+	namespace = dict_attr_namespace(parent);
+	if (!namespace) {
+		fprintf(fp, "%s does not have namespace\n", parent->name);
+		return;
+	}
+
+	for (da = fr_hash_table_iter_init(namespace, &iter);
+	     da;
+	     da = fr_hash_table_iter_next(namespace, &iter)) {
+		fr_dict_attr_t const *ref;
+
+		if (!da->flags.is_alias) continue;
+
+		if (!fr_type_is_leaf(da->type)) continue;
+
+		ref = fr_dict_attr_ref(da);
+		if (!ref) continue;
+
+		if (da->depth == ref->depth) continue;
+
+		(void) fr_dict_attr_oid_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)),
+					      NULL, ref, false);
+
+		fprintf(fp, "%-40s\t%s\n", da->name, buffer);
+	}
+}
+

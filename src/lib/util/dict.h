@@ -685,6 +685,8 @@ void			fr_dict_attr_debug(FILE *fp, fr_dict_attr_t const *da);
 void			fr_dict_debug(FILE *fp, fr_dict_t const *dict);
 
 void			fr_dict_export(FILE *fp, fr_dict_t const *dict);
+
+void			fr_dict_alias_export(FILE *fp, fr_dict_attr_t const *parent);
 /** @} */
 
 /** @name Attribute lineage
