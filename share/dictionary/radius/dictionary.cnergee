@@ -33,6 +33,14 @@ ATTRIBUTE	REDIFF-Speed				20	integer
 ATTRIBUTE	TORRENT-Speed				21	integer
 ATTRIBUTE	BELCACHE-Speed				22	integer
 ATTRIBUTE	DHCP-Lease-Time				23	integer
+ATTRIBUTE	Group					24	integer
+ATTRIBUTE	LIMIT					25	string
+ATTRIBUTE	Auth					26	string
+ATTRIBUTE	Acct					27	string
+ATTRIBUTE	Framed-IP-Address			28	string
+ATTRIBUTE	BL					29	string
+ATTRIBUTE	IN					30	string
+ATTRIBUTE	CO					31	string
 
 VALUE	redirect-Pool			Deleted			1
 VALUE	redirect-Pool			Disabled		2

@@ -44,6 +44,7 @@ ATTRIBUTE	Wireless-VLANID				26	integer
 ATTRIBUTE	Wireless-VLANID-Type			27	integer
 ATTRIBUTE	Wireless-Minsignal			28	string
 ATTRIBUTE	Wireless-Maxsignal			29	string
+ATTRIBUTE	Switching-Filter			30	string
 
 # MikroTik Values
 
