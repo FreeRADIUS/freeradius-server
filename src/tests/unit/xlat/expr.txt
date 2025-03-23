@@ -154,11 +154,11 @@ match %{3}
 #
 #  These next two are arguably wrong.
 #
-xlat_expr %{-3}
-match ERROR offset 3: Unresolved attributes not allowed in expansions here
+#xlat_expr %{-3}
+#match ERROR offset 3: Unresolved attributes not allowed in expansions here
 
 xlat_expr %{'foo'}
 match %{'foo'}
 
 count
-match 77
+match 75

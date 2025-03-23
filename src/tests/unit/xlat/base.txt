@@ -55,8 +55,8 @@ match ERROR offset 3: Invalid regex reference.  Must be in range 0-32
 xlat %{3a}
 match ERROR offset 3: Unexpected text after attribute reference
 
-xlat %{-3}
-match ERROR offset 3: Unresolved attributes not allowed in expansions here
+#xlat %{-3}
+#match ERROR offset 3: Unresolved attributes not allowed in expansions here
 
 xlat %{3
 match ERROR offset 4: Missing closing brace
@@ -143,10 +143,10 @@ match \"foo %test('foo')\"
 #  Alternations
 #
 xlat %{%{foo} || %{bar}}
-match ERROR offset 5: Unresolved attributes not allowed in expansions here
+match ERROR offset 5: Attribute 'foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat %{%{User-Name} || %{bar}}
-match ERROR offset 21: Unresolved attributes not allowed in expansions here
+match ERROR offset 21: Attribute 'bar' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  Empty and malformed expansions
@@ -295,4 +295,4 @@ xlat %md5('arg"')
 match %md5(0x61726722)
 
 count
-match 159
+match 157

@@ -480,23 +480,17 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_attribute(xlat_exp_head_t *
 	}
 
 	/*
-	 *	We need a local copy as we always allow unknowns.
-	 *	This is because not all attribute references
-	 *	reference real attributes in the dictionaries,
-	 *	and instead are "virtual" attributes like
-	 *	Foreach-Variable-N.
-	 */
-	our_t_rules = *t_rules;
-
-	our_t_rules.attr.allow_unresolved = true;		/* So we can check for virtual attributes later */
-
-	/*
 	 *	attr_prefix is NO for %{User-Name}
 	 *
 	 *	attr_prefix is YES for %foo(&User-Name)
 	 *
 	 *	attr_prefix is YES for (&User-Name == "foo")
+	 *
+	 *	We also allow wildcards in the tmpls, ad we're being
+	 *	called from within a %{...} block.
 	 */
+	our_t_rules = *t_rules;
+	our_t_rules.attr.allow_wildcard = true;
 	our_t_rules.attr.prefix = attr_prefix;
 
 	fr_sbuff_marker(&m_s, in);
