@@ -98,6 +98,7 @@ static int cf_htrie_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_
 	rlm_cache_htrie_t	*inst = talloc_get_type_abort(parent->driver_submodule->data, rlm_cache_htrie_t);
 	tmpl_t			*key_tmpl;
 	fr_type_t		our_ktype, old_ktype;
+	bool			set_type = false;
 
 	/*
 	 *	Call the standard pair parsing function
@@ -116,8 +117,9 @@ static int cf_htrie_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_
 	/*
 	 *	If we don't have a key type already, then just set it to the first key type we see
 	 */
-	if (fr_type_is_void(inst->ktype)) {
+	if (fr_type_is_void(inst->ktype) || fr_type_is_null(inst->ktype)) {
 		inst->ktype = our_ktype;
+		set_type = true;
 	/*
 	 *	Check if we can cast this key type, to the key type we've already seen
 	 */
@@ -139,7 +141,7 @@ static int cf_htrie_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_
 	 *	or the ktype hasn't changed, then don't bother figuring
 	 *	out the htrie type.
 	 */
-	if (!inst->htrie_auto || (old_ktype == inst->ktype)) return 0;
+	if ((!inst->htrie_auto || (old_ktype == inst->ktype)) && !set_type) goto finish;
 
 	/*
 	 *	We need to figure out the htrie type based on the key type
@@ -154,6 +156,7 @@ static int cf_htrie_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_
 	cf_log_info(ci, "Automatically setting htrie type to '%s' based on key type '%s'",
 		    fr_htrie_type_to_str(inst->htype), fr_type_to_str(inst->ktype));
 
+finish:
 	*(void **)out = key_tmpl;
 	return 0;
 }
