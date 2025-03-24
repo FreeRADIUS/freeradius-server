@@ -34,7 +34,6 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 	unlang_group_t		*switch_g;
 	unlang_switch_t		*switch_gext;
 
-	tmpl_t			vpt;
 	fr_value_box_t const	*box = NULL;
 
 	fr_pair_t		*vp;
@@ -81,15 +80,12 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 	 */
 	} else if (tmpl_is_xlat(switch_gext->vpt) ||
 		   tmpl_is_exec(switch_gext->vpt)) {
-		char *p;
-		ssize_t len;
+		ssize_t slen;
 
-		len = tmpl_aexpand(request, &p, request, switch_gext->vpt, NULL, NULL);
-		if (len < 0) goto find_null_case;
+		slen = tmpl_aexpand_type(unlang_interpret_frame_talloc_ctx(request), &box, FR_TYPE_VALUE_BOX,
+					 request, switch_gext->vpt);
+		if (slen < 0) goto find_null_case;
 
-		tmpl_init_shallow(&vpt, TMPL_TYPE_DATA, T_SINGLE_QUOTED_STRING, p, len, NULL);
-		fr_value_box_bstrndup_shallow(&vpt.data.literal, NULL, p, len, false);
-		box = tmpl_value(&vpt);
 	} else if (!fr_cond_assert_msg(0, "Invalid tmpl type %s", tmpl_type_to_str(switch_gext->vpt->type))) {
 		return UNLANG_ACTION_FAIL;
 	}
@@ -109,8 +105,6 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 	}
 
 do_null_case:
-	if (box == tmpl_value(&vpt)) fr_value_box_clear_value(&vpt.data.literal);
-
 	/*
 	 *	Nothing found.  Just continue, and ignore the "switch"
 	 *	statement.
