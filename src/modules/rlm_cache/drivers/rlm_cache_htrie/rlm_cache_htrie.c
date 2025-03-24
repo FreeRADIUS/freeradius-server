@@ -40,14 +40,18 @@ typedef struct {
 	fr_htrie_t		*cache;		//!< Tree for looking up cache keys.
 	fr_heap_t		*heap;		//!< For managing entry expiry.
 
-	fr_type_t		ktype;		//!< When htrie is "auto", we use this type to decide
-						///< what type of tree to use.
-
-	fr_htrie_type_t		htype;		//!< The htrie type we'll be using
-	bool			htrie_auto;	//!< Whether the user wanted to automatically configure
-						///< the htrie.
-
 	pthread_mutex_t		mutex;		//!< Protect the tree from multiple readers/writers.
+} rlm_cache_htrie_mutable_t;
+
+typedef struct {
+	fr_type_t			ktype;		//!< When htrie is "auto", we use this type to decide
+							///< what type of tree to use.
+
+	fr_htrie_type_t			htype;		//!< The htrie type we'll be using
+	bool				htrie_auto;	//!< Whether the user wanted to automatically configure
+							///< the htrie.
+
+	rlm_cache_htrie_mutable_t	*mutable;	//!< Mutable instance data.
 } rlm_cache_htrie_t;
 
 typedef struct {
@@ -203,19 +207,20 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 				       request_t *request, UNUSED void *handle, fr_value_box_t const *key)
 {
 	rlm_cache_htrie_t *driver = talloc_get_type_abort(instance, rlm_cache_htrie_t);
+	rlm_cache_htrie_mutable_t *mutable = driver->mutable;
 	rlm_cache_entry_t find = {};
 
 	rlm_cache_entry_t *c;
 
-	fr_assert(driver->cache);
+	fr_assert(mutable->cache);
 
 	/*
 	 *	Clear out old entries
 	 */
-	c = fr_heap_peek(driver->heap);
+	c = fr_heap_peek(mutable->heap);
 	if (c && (fr_unix_time_lt(c->expires, fr_time_to_unix_time(request->packet->timestamp)))) {
-		fr_heap_extract(&driver->heap, c);
-		fr_htrie_delete(driver->cache, c);
+		fr_heap_extract(&mutable->heap, c);
+		fr_htrie_delete(mutable->cache, c);
 		talloc_free(c);
 	}
 
@@ -224,7 +229,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	/*
 	 *	Is there an entry for this key?
 	 */
-	c = fr_htrie_find(driver->cache, &find);
+	c = fr_htrie_find(mutable->cache, &find);
 	if (!c) {
 		*out = NULL;
 		return CACHE_MISS;
@@ -245,6 +250,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 					 fr_value_box_t const *key)
 {
 	rlm_cache_htrie_t *driver = talloc_get_type_abort(instance, rlm_cache_htrie_t);
+	rlm_cache_htrie_mutable_t *mutable = driver->mutable;
 	rlm_cache_entry_t find = {};
 	rlm_cache_entry_t *c;
 
@@ -252,11 +258,11 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 
 	fr_value_box_copy_shallow(NULL, &find.key, key);
 
-	c = fr_htrie_find(driver->cache, &find);
+	c = fr_htrie_find(mutable->cache, &find);
 	if (!c) return CACHE_MISS;
 
-	fr_heap_extract(&driver->heap, c);
-	fr_htrie_delete(driver->cache, c);
+	fr_heap_extract(&mutable->heap, c);
+	fr_htrie_delete(mutable->cache, c);
 	talloc_free(c);
 
 	return CACHE_OK;
@@ -275,6 +281,7 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 	cache_status_t status;
 
 	rlm_cache_htrie_t *driver = talloc_get_type_abort(instance, rlm_cache_htrie_t);
+	rlm_cache_htrie_mutable_t *mutable = driver->mutable;
 
 	fr_assert(handle == request);
 
@@ -283,19 +290,19 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 	/*
 	 *	Allow overwriting
 	 */
-	if (!fr_htrie_insert(driver->cache, c)) {
+	if (!fr_htrie_insert(mutable->cache, c)) {
 		status = cache_entry_expire(config, instance, request, handle, &c->key);
 		if ((status != CACHE_OK) && !fr_cond_assert(0)) return CACHE_ERROR;
 
-		if (!fr_htrie_insert(driver->cache, c)) {
+		if (!fr_htrie_insert(mutable->cache, c)) {
 			RERROR("Failed adding entry");
 
 			return CACHE_ERROR;
 		}
 	}
 
-	if (fr_heap_insert(&driver->heap, UNCONST(rlm_cache_entry_t *, c)) < 0) {
-		fr_htrie_delete(driver->cache, c);
+	if (fr_heap_insert(&mutable->heap, UNCONST(rlm_cache_entry_t *, c)) < 0) {
+		fr_htrie_delete(mutable->cache, c);
 		RERROR("Failed adding entry to expiry heap");
 
 		return CACHE_ERROR;
@@ -315,18 +322,19 @@ static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *confi
 					  rlm_cache_entry_t *c)
 {
 	rlm_cache_htrie_t *driver = talloc_get_type_abort(instance, rlm_cache_htrie_t);
+	rlm_cache_htrie_mutable_t *mutable = driver->mutable;
 
 #ifdef NDEBUG
 	if (!request) return CACHE_ERROR;
 #endif
 
-	if (!fr_cond_assert(fr_heap_extract(&driver->heap, c) == 0)) {
+	if (!fr_cond_assert(fr_heap_extract(&mutable->heap, c) == 0)) {
 		RERROR("Entry not in heap");
 		return CACHE_ERROR;
 	}
 
-	if (fr_heap_insert(&driver->heap, c) < 0) {
-		fr_htrie_delete(driver->cache, c);	/* make sure we don't leak entries... */
+	if (fr_heap_insert(&mutable->heap, c) < 0) {
+		fr_htrie_delete(mutable->cache, c);	/* make sure we don't leak entries... */
 		RERROR("Failed updating entry TTL.  Entry was forcefully expired");
 		return CACHE_ERROR;
 	}
@@ -346,7 +354,7 @@ static uint64_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void 
 
 	if (!request) return CACHE_ERROR;
 
-	return fr_htrie_num_elements(driver->cache);
+	return fr_htrie_num_elements(driver->mutable->cache);
 }
 
 /** Lock the htrie
@@ -360,7 +368,7 @@ static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config,
 {
 	rlm_cache_htrie_t *driver = talloc_get_type_abort(instance, rlm_cache_htrie_t);
 
-	pthread_mutex_lock(&driver->mutex);
+	pthread_mutex_lock(&driver->mutable->mutex);
 
 	*handle = request;		/* handle is unused, this is just for sanity checking */
 
@@ -380,7 +388,7 @@ static void cache_release(UNUSED rlm_cache_config_t const *config, void *instanc
 {
 	rlm_cache_htrie_t *driver = talloc_get_type_abort(instance, rlm_cache_htrie_t);
 
-	pthread_mutex_unlock(&driver->mutex);
+	pthread_mutex_unlock(&driver->mutable->mutex);
 
 	RDEBUG3("Mutex released");
 }
@@ -391,18 +399,22 @@ static void cache_release(UNUSED rlm_cache_config_t const *config, void *instanc
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_cache_htrie_t *driver = talloc_get_type_abort(mctx->mi->data, rlm_cache_htrie_t);
+	rlm_cache_htrie_mutable_t *mutable = driver->mutable;
 
-	if (driver->cache) {
+	if (!mutable) return 0;
+
+	if (mutable->cache) {
 		rlm_cache_entry_t *c;
 
-		while ((c = fr_heap_peek(driver->heap))) {
-			fr_heap_extract(&driver->heap, c);
-			fr_htrie_delete(driver->cache, c);
+		while ((c = fr_heap_peek(mutable->heap))) {
+			fr_heap_extract(&mutable->heap, c);
+			fr_htrie_delete(mutable->cache, c);
 			talloc_free(c);
 		}
 	}
 
-	pthread_mutex_destroy(&driver->mutex);
+	pthread_mutex_destroy(&mutable->mutex);
+	talloc_free(mutable);
 
 	return 0;
 }
@@ -416,34 +428,41 @@ static int mod_detach(module_detach_ctx_t const *mctx)
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_cache_htrie_t *driver = talloc_get_type_abort(mctx->mi->data, rlm_cache_htrie_t);
+	rlm_cache_htrie_t		*driver = talloc_get_type_abort(mctx->mi->data, rlm_cache_htrie_t);
+	rlm_cache_htrie_mutable_t	*mutable;
 	int ret;
+
+	MEM(mutable = talloc_zero(NULL, rlm_cache_htrie_mutable_t));
 
 	/*
 	 *	The cache.
 	 */
-	driver->cache = fr_htrie_alloc(driver, driver->htype,
+	mutable->cache = fr_htrie_alloc(mutable, driver->htype,
 				       (fr_hash_t)fr_value_box_hash,
 				       (fr_cmp_t)fr_value_box_cmp,
 				       (fr_trie_key_t)fr_value_box_to_key, NULL);
-	if (!driver->cache) {
+	if (!mutable->cache) {
 		PERROR("Failed to create cache");
+	error:
+		talloc_free(mutable);
 		return -1;
 	}
 
 	/*
 	 *	The heap of entries to expire.
 	 */
-	driver->heap = fr_heap_talloc_alloc(driver, cache_heap_cmp, rlm_cache_htrie_entry_t, heap_id, 0);
-	if (!driver->heap) {
+	mutable->heap = fr_heap_talloc_alloc(mutable, cache_heap_cmp, rlm_cache_htrie_entry_t, heap_id, 0);
+	if (!mutable->heap) {
 		ERROR("Failed to create heap for the cache");
-		return -1;
+		goto error;
 	}
 
-	if ((ret = pthread_mutex_init(&driver->mutex, NULL)) < 0) {
+	if ((ret = pthread_mutex_init(&mutable->mutex, NULL)) < 0) {
 		ERROR("Failed initializing mutex: %s", fr_syserror(ret));
-		return -1;
+		goto error;
 	}
+
+	driver->mutable = mutable;
 
 	return 0;
 }
