@@ -32,7 +32,7 @@ my $dir;
 
 my  %v3_to_v4;
 
-our $opt_a = "alias.txt";
+our $opt_D = "./share/dictionary";
 our $opt_i = "";
 our $opt_o = "";
 
@@ -106,7 +106,10 @@ getopts('a:i:o:');
 #
 #  Read the alias mappings.
 #
-read_v4_alias($opt_a);
+my @protocols = ( "freeradius", "radius" );
+foreach (@protocols) {
+    read_v4_alias($opt_D . "/" . $_ . "/v3/upgrade.txt");
+}
 
 #
 #  Now that we have all of the attributes defined, let's process the input file.

@@ -1,0 +1,32 @@
+#
+#  Mapping of v3 names to v4 names
+#
+#  This file is used by the upgrade tool.
+#
+Cleartext-Password                      	Password.Cleartext
+Crypt-Password                          	Password.Crypt
+MD5-Password                            	Password.MD5
+NT-Password                             	Password.NT
+PBKDF2-Password                         	Password.PBKDF2
+Password-With-Header                    	Password.With-Header
+SHA1-Password                           	Password.SHA1
+SHA2-224-Password                       	Password.SHA2-224
+SHA2-256-Password                       	Password.SHA2-256
+SHA2-384-Password                       	Password.SHA2-384
+SHA2-512-Password                       	Password.SHA2-512
+SHA2-Password                           	Password.SHA2
+SHA3-224-Password                       	Password.SHA3-224
+SHA3-256-Password                       	Password.SHA3-256
+SHA3-384-Password                       	Password.SHA3-384
+SHA3-512-Password                       	Password.SHA3-512
+SHA3-Password                           	Password.SHA3
+SMD5-Password                           	Password.SMD5
+SSHA1-Password                          	Password.SSHA1
+SSHA2-224-Password                      	Password.SSHA2-224
+SSHA2-256-Password                      	Password.SSHA2-256
+SSHA2-384-Password                      	Password.SSHA2-384
+SSHA2-512-Password                      	Password.SSHA2-512
+SSHA3-224-Password                      	Password.SSHA3-224
+SSHA3-256-Password                      	Password.SSHA3-256
+SSHA3-384-Password                      	Password.SSHA3-384
+SSHA3-512-Password                      	Password.SSHA3-512
