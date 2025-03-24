@@ -2734,13 +2734,13 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		}
 	}
 
-	type = FR_TYPE_STRING;
-	if (tmpl_rules_cast(gext->vpt)) {
-		type = tmpl_rules_cast(gext->vpt);
+	/*
+	 *	Get the return type of the tmpl.  If we don't know,
+	 *	mash it all to string.
+	 */
+	type = tmpl_data_type(gext->vpt);
+	if (type == FR_TYPE_NULL) type = FR_TYPE_STRING;
 
-	} else if (tmpl_is_attr(gext->vpt)) {
-		type = tmpl_attr_tail_da(gext->vpt)->type;
-	}
 
 	htype = fr_htrie_hint(type);
 	if (htype == FR_HTRIE_INVALID) {
@@ -3330,17 +3330,8 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		 *	No data type was specified, see if we can get one from the function.
 		 */
 		if (type == FR_TYPE_NULL) {
-			xlat_exp_head_t *xlat = tmpl_xlat(vpt);
-			xlat_exp_t *node;
-
-			node = xlat_exp_head(xlat);
-			fr_assert(node);
-			if (!xlat_exp_next(xlat, node) &&
-			    (node->type == XLAT_FUNC) &
-			    fr_type_is_leaf(node->call.func->return_type)) {
-				type = node->call.func->return_type;
-				if (fr_type_is_leaf(type)) goto get_name;
-			}
+			type = xlat_data_type(tmpl_xlat(vpt));
+			if (fr_type_is_leaf(type)) goto get_name;
 
 			cf_log_err(cs, "Unable to determine return data type from dynamic expansion");
 			return NULL;

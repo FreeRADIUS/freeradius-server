@@ -958,6 +958,9 @@ static inline bool tmpl_is_list(tmpl_t const *vpt)
 
 #define tmpl_rules_cast(_tmpl)			(_tmpl)->rules.cast
 #define tmpl_rules_enumv(_tmpl)			(_tmpl)->rules.enumv
+
+fr_type_t tmpl_data_type(tmpl_t const *vpt) CC_HINT(nonnull);
+
 /** @} */
 
 /** @name Field accessors for #TMPL_TYPE_REGEX and #TMPL_TYPE_REGEX_XLAT_UNRESOLVED

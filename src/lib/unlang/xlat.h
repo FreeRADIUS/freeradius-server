@@ -439,12 +439,15 @@ void		xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt);
 xlat_action_t	xlat_transparent(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 UNUSED xlat_ctx_t const *xctx,
 				 request_t *request, fr_value_box_list_t *args);
+
 /*
  *	xlat_tokenize.c
  */
 tmpl_t		*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t *xlat);
 
 bool		xlat_impure_func(xlat_exp_head_t const *head) CC_HINT(nonnull);
+
+fr_type_t	xlat_data_type(xlat_exp_head_t const *head);
 
 /*
  *	xlat_alloc.c

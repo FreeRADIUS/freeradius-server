@@ -1926,3 +1926,28 @@ bool xlat_impure_func(xlat_exp_head_t const *head)
 {
 	return head->flags.impure_func;
 }
+
+/*
+ *	Try to determine the output data type of an expansion.
+ *
+ *	This is only a best guess for now.
+ */
+fr_type_t xlat_data_type(xlat_exp_head_t const *head)
+{
+	xlat_exp_t *node;
+
+	node = xlat_exp_head(head);
+	fr_assert(node);
+
+	if (xlat_exp_next(head, node)) return FR_TYPE_NULL;
+
+	if (node->type == XLAT_FUNC) {
+		return node->call.func->return_type;
+	}
+
+	if (node->type == XLAT_TMPL) {
+		return tmpl_data_type(node->vpt);
+	}
+
+	return FR_TYPE_NULL;
+}

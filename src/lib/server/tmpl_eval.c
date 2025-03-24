@@ -1439,6 +1439,20 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, request_t *request, tmpl_
 	goto success;
 }
 
+fr_type_t tmpl_data_type(tmpl_t const *vpt)
+{
+	if (tmpl_rules_cast(vpt) != FR_TYPE_NULL) return tmpl_rules_cast(vpt);
+
+	if (tmpl_is_data(vpt)) return tmpl_value_type(vpt);
+
+	if (tmpl_is_attr(vpt)) return tmpl_attr_tail_da(vpt)->type;
+
+	if (tmpl_is_xlat(vpt)) return xlat_data_type(tmpl_xlat(vpt));
+
+	return FR_TYPE_NULL;	/* can't determine it */
+}
+
+
 static int _tmpl_global_free(UNUSED void *uctx)
 {
 	fr_dict_autofree(tmpl_dict);
