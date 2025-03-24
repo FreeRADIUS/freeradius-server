@@ -1082,8 +1082,8 @@ typedef enum {
  *
  * @see _tmpl_to_atype
  */
-#define tmpl_aexpand_type(_ctx, _out, _type, _request, _vpt, _escape, _escape_ctx) \
-			  _tmpl_to_atype(_ctx, (void *)(_out), _request, _vpt, _escape, _escape_ctx, _type)
+#define tmpl_aexpand_type(_ctx, _out, _type, _request, _vpt) \
+			  _tmpl_to_atype(_ctx, (void *)(_out), _request, _vpt, NULL, NULL, _type)
 
 void			tmpl_debug(tmpl_t const *vpt) CC_HINT(nonnull);
 

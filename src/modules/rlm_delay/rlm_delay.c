@@ -140,10 +140,25 @@ static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_
 
 	if (inst->delay) {
 		if (tmpl_aexpand_type(request, &delay, FR_TYPE_TIME_DELTA,
-				      request, inst->delay, NULL, NULL) < 0) {
+				      request, inst->delay) < 0) {
 			RPEDEBUG("Failed parsing %s as delay time", inst->delay->name);
 			RETURN_MODULE_FAIL;
 		}
+
+		/*
+		 *	Cap delays.  So that no matter what crazy
+		 *	thing the admin does, it doesn't cause an
+		 *	issue.
+		 */
+		if (fr_time_delta_cmp(delay, fr_time_delta_from_sec(0)) < 0) {
+			RWDEBUG("Delay is too small.  Limiting to 0s");
+			delay = fr_time_delta_wrap(0);
+
+		} else if (fr_time_delta_cmp(delay, fr_time_delta_from_sec(30)) > 0) {
+			RWDEBUG("Delay is too large.  Limiting to 30s");
+			delay = fr_time_delta_from_sec(30);
+		}
+
 	} else {
 		delay = fr_time_delta_wrap(0);
 	}

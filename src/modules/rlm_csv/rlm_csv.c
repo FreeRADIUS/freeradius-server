@@ -1013,7 +1013,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	 *	Expand the key to whatever it is.  For attributes,
 	 *	this usually just means copying the value box.
 	 */
-	slen = tmpl_aexpand_type(request, &key, FR_TYPE_VALUE_BOX, request, inst->key, NULL, NULL);
+	slen = tmpl_aexpand_type(request, &key, FR_TYPE_VALUE_BOX, request, inst->key);
 	if (slen < 0) {
 		DEBUG("Failed expanding key '%s'", inst->key->name);
 		RETURN_MODULE_FAIL;
