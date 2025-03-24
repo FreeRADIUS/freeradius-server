@@ -393,14 +393,12 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	rlm_cache_htrie_t *driver = talloc_get_type_abort(mctx->mi->data, rlm_cache_htrie_t);
 
 	if (driver->cache) {
-		fr_rb_iter_inorder_t	iter;
-		void			*data;
+		rlm_cache_entry_t *c;
 
-		for (data = fr_rb_iter_init_inorder(&iter, driver->cache);
-		     data;
-		     data = fr_rb_iter_next_inorder(&iter)) {
-			fr_rb_iter_delete_inorder(&iter);
-			talloc_free(data);
+		while ((c = fr_heap_peek(driver->heap))) {
+			fr_heap_extract(&driver->heap, c);
+			fr_htrie_delete(driver->cache, c);
+			talloc_free(c);
 		}
 	}
 
