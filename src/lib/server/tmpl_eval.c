@@ -712,10 +712,17 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	 */
 	if (dst_type == FR_TYPE_VALUE_BOX) {
 		fr_value_box_t	**vb_out = (fr_value_box_t **)out;
+		fr_type_t cast_type;
 
 		MEM(*vb_out = fr_value_box_alloc_null(ctx));
 
-		ret = needs_dup ? fr_value_box_copy(*vb_out, *vb_out, to_cast) : fr_value_box_steal(*vb_out, *vb_out, to_cast);
+		cast_type = tmpl_rules_cast(vpt);
+		if (cast_type == FR_TYPE_NULL) {
+			ret = needs_dup ? fr_value_box_copy(*vb_out, *vb_out, to_cast) : fr_value_box_steal(*vb_out, *vb_out, to_cast);
+		} else {
+			ret = fr_value_box_cast(ctx, *vb_out, cast_type, NULL, to_cast);
+		}
+
 		talloc_free(tmp_ctx);
 		if (ret < 0) {
 			RPEDEBUG("Failed copying data to output box");
