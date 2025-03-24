@@ -80,7 +80,6 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 	 *	statement.
 	 */
 	} else if (tmpl_is_xlat(switch_gext->vpt) ||
-		   tmpl_is_xlat_unresolved(switch_gext->vpt) ||
 		   tmpl_is_exec(switch_gext->vpt)) {
 		char *p;
 		ssize_t len;

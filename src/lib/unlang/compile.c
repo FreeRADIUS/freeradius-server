@@ -2722,6 +2722,11 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		goto error;
 	}
 
+	if (tmpl_needs_resolving(gext->vpt)) {
+		cf_log_err(cs, "Cannot resolve key for 'switch' statement");
+		goto error;
+	}
+
 	if (!tmpl_is_attr(gext->vpt)) {
 		if (tmpl_cast_set(gext->vpt, FR_TYPE_STRING) < 0) {
 			cf_log_perr(cs, "Failed setting cast type");
