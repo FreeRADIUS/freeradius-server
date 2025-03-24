@@ -281,7 +281,7 @@ int fr_ldap_map_expand(TALLOC_CTX *ctx, fr_ldap_map_exp_t *expanded, request_t *
 	char		attr_buff[1024 + 1];	/* X.501 says we need to support at least 1024 chars for attr names */
 
 	while ((map = map_list_next(maps, map))) {
-		if (tmpl_expand(&attr, attr_buff, sizeof(attr_buff), request, map->rhs, NULL, NULL) < 0) {
+		if (tmpl_expand(&attr, attr_buff, sizeof(attr_buff), request, map->rhs) < 0) {
 			REDEBUG("Expansion of LDAP attribute \"%s\" failed", map->rhs->name);
 			TALLOC_FREE(our_ctx);
 			return -1;

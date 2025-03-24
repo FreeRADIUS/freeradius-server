@@ -169,7 +169,7 @@ static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *req
 			}
 
 		} else {
-			slen = tmpl_expand(&p, buffer, sizeof(buffer), request, gext->vpt, NULL, NULL);
+			slen = tmpl_expand(&p, buffer, sizeof(buffer), request, gext->vpt);
 			if (slen < 0) {
 				REDEBUG("Failed expanding template");
 				goto randomly_choose;

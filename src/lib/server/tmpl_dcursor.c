@@ -153,7 +153,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 		/*
 		 *	Can't cast it, we're done.
 		 */
-		if (tmpl_expand(&ref, NULL, 0, cc->request, ar->ar_tmpl, NULL, NULL) < 0) {
+		if (tmpl_expand(&ref, NULL, 0, cc->request, ar->ar_tmpl) < 0) {
 			vp = NULL;
 			pop = true;
 			goto done;

@@ -274,8 +274,6 @@ fr_type_t tmpl_expanded_type(tmpl_t const *vpt)
  *				- #TMPL_TYPE_XLAT
  *				- #TMPL_TYPE_ATTR
  *				- #TMPL_TYPE_DATA
- * @param[in] escape		xlat escape function (only used for xlat types).
- * @param[in] escape_ctx	xlat escape function data.
  * @param dst_type		FR_TYPE_* matching out pointer.  @see tmpl_expand.
  * @return
  *	- -1 on failure.
@@ -285,7 +283,6 @@ ssize_t _tmpl_to_type(void *out,
 		      uint8_t *buff, size_t bufflen,
 		      request_t *request,
 		      tmpl_t const *vpt,
-		      xlat_escape_legacy_t escape, void const *escape_ctx,
 		      fr_type_t dst_type)
 {
 	fr_value_box_t		value_to_cast = FR_VALUE_BOX_INITIALISER_NULL(value_to_cast);
@@ -327,8 +324,6 @@ ssize_t _tmpl_to_type(void *out,
 
 	case TMPL_TYPE_XLAT:
 	{
-		size_t len;
-
 		RDEBUG4("EXPAND TMPL XLAT PARSED");
 
 		/* No EXPAND <xlat> here as the xlat code does it */
@@ -338,21 +333,10 @@ ssize_t _tmpl_to_type(void *out,
 			return -1;
 		}
 		/* Error in expansion, this is distinct from zero length expansion */
-		slen = xlat_eval_compiled((char *)buff, bufflen, request, tmpl_xlat(vpt), escape, escape_ctx);
+		slen = xlat_eval_compiled((char *)buff, bufflen, request, tmpl_xlat(vpt), NULL, NULL);
 		if (slen < 0) return slen;
 
-		RDEBUG2("   --> %s", (char *)buff);	/* Print pre-unescaping (so it's escaped) */
-
-		/*
-		 *	Undo any of the escaping that was done by the
-		 *	xlat expansion function.
-		 *
-		 *	@fixme We need a way of signalling xlat not to escape things.
-		 */
-		len = fr_value_str_unescape(&FR_SBUFF_IN((char *)buff, slen),
-					    &FR_SBUFF_IN((char *)buff, slen), SIZE_MAX, '"');
-		fr_assert(buff);
-		fr_value_box_bstrndup_shallow(&value_to_cast, NULL, (char *)buff, len, true);
+		fr_value_box_bstrndup_shallow(&value_to_cast, NULL, (char *)buff, slen, true);
 		src_type = FR_TYPE_STRING;
 	}
 		break;

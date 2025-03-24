@@ -790,7 +790,7 @@ static unlang_action_t mod_map_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 		 *	Expand the RHS to get the name of the SQL field
 		 */
 		if (tmpl_expand(&map_rhs, map_rhs_buff, sizeof(map_rhs_buff),
-				request, map->rhs, NULL, NULL) < 0) {
+				request, map->rhs) < 0) {
 			RPERROR("Failed getting field name");
 			goto error;
 		}

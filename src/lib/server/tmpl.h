@@ -1063,9 +1063,9 @@ typedef enum {
  *
  * @see _tmpl_to_type
  */
-#define	tmpl_expand(_out, _buff, _buff_len, _request, _vpt, _escape, _escape_ctx) \
+#define	tmpl_expand(_out, _buff, _buff_len, _request, _vpt) \
 	_tmpl_to_type((void *)(_out), (uint8_t *)_buff, _buff_len, \
-		      _request, _vpt, _escape, _escape_ctx, FR_TYPE_FROM_PTR(_out))
+		      _request, _vpt, FR_TYPE_FROM_PTR(_out))
 
 /** Expand a tmpl to a C type, allocing a new buffer to hold the string
  *
@@ -1297,7 +1297,6 @@ ssize_t			_tmpl_to_type(void *out,
 				      uint8_t *buff, size_t outlen,
 				      request_t *request,
 				      tmpl_t const *vpt,
-				      xlat_escape_legacy_t escape, void const *escape_ctx,
 				      fr_type_t dst_type)
 			CC_HINT(nonnull (1, 4, 5));
 

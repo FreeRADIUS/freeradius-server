@@ -199,7 +199,7 @@ static unlang_action_t CC_HINT(nonnull) attr_filter_common(TALLOC_CTX *ctx, rlm_
 	char		buffer[256];
 	ssize_t		slen;
 
-	slen = tmpl_expand(&keyname, buffer, sizeof(buffer), request, inst->key, NULL, NULL);
+	slen = tmpl_expand(&keyname, buffer, sizeof(buffer), request, inst->key);
 	if (slen < 0) {
 		RETURN_MODULE_FAIL;
 	}
