@@ -130,7 +130,7 @@ static int cache_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rul
 	 *	Call the custom key parse function, OR the standard call_env_parse_pair
 	 *	function, depending on whether the driver calls a custom parsing function.
 	 */
-	if (unlikely((ret = func(ctx, &key_tmpl, t_rules, ci, inst->driver_submodule->data, rule)) < 0)) return ret;
+	if (unlikely((ret = func(ctx, &key_tmpl, t_rules, ci, cec, rule)) < 0)) return ret;
 	*((tmpl_t **)out) = key_tmpl;
 
 	/*
