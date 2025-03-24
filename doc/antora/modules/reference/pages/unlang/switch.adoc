@@ -17,14 +17,22 @@ switch <expansion> {
 ----
 
 A `switch` statement causes the server to evaluate _<expansion>_,
-which can be an xref:unlang/attr.adoc[Attribute-Name] or
-xref:unlang/condition/operands.adoc[data].  The result is compared against
-_<match-1>_ and _<match-2>_, etc. in order to find a match. If no
-match is found, then the server looks for the `default`
-xref:unlang/case.adoc[case] statement.
+which can be an xref:unlang/attr.adoc[Attribute-Name] or a
+xref:xlat/index.adoc[dynamic expansion].
 
-The matching is done via equality comparison.  The `switch`
-statement is functionally equivalent to the following use of
+The _<expansion>_ cannot be static data, such as a fixed string.
+
+The data is taken from the source, and is compared against _<match-1>_
+and _<match-2>_, etc. in order to find a match. If no match is found,
+then the server looks for the `default` xref:unlang/case.adoc[case]
+statement.
+
+The `case` statements are matches in a type-specific manner, In most
+cases, they are matched via an equality comparison.  For IP address
+types, the match is done on the network which most narrowly matches
+the input.  See below for more information.
+
+The `switch` statement is largely equivalent to the following use of
 xref:unlang/if.adoc[if] statements:
 
 .Nearly equivalent syntax
@@ -61,21 +69,27 @@ behaves as if the `default` section was empty.
 
 The `switch` keyword will automatically choose an efficient
 representation for the set of xref:unlang/case.adoc[case] statements,
-depending on the data type of the _<expansion>_.
+depending on the data type of the _<expansion>_.  This data type can
+be forced by using a cast operation, e.g.
 
-For `string` and `octets` data, the xref:unlang/case.adoc[case]
+```
+switch (ipaddr) %sql.query("SELECT ...") {
+```
+
+For `string` and `octets` data type, the xref:unlang/case.adoc[case]
 statements are place into a
 https://en.wikipedia.org/wiki/Red%E2%80%93black_tree[Red-black tree].
+Entries are matched exactly.
 
 For IP address data types (`ipv4addr`, `ipv6addr`, `ipv4prefix`, and
 `ipv6prefix`), the xref:unlang/case.adoc[case] statements are placed
 into a https://en.wikipedia.org/wiki/Radix_tree[Patricia / Radix
-tree].  The Patricia Trie allows for an IP address to match exactly,
-or to match a particular network.  Multiple networks can be given,
-including nested networks, so long as there are no duplicates.
+tree]. Multiple networks can be given, including nested networks, so
+long as there are no duplicates.  Entries are matched on the smallest
+network which contains the input data.
 
 Data types which are of the various "integer" types, or `ethernet`, or
-`ifid` are put into a hash table.
+`ifid` are put into a hash table.  Entries are matched exactly.
 
 Other data types such as `vsa` or `group` are not permitted in the
 _<expansion>_ field of a `switch` statement.
@@ -126,6 +140,24 @@ switch User-Name {
 [source,unlang]
 ----
 switch Framed-IP-Address {
+    case 192.168/16 {
+        accept
+    }
+
+    case 192.168.2.0/24 {
+        reject
+    }
+
+    default {
+        ok
+    }
+}
+----
+
+.Switch with cast
+[source,unlang]
+----
+switch (ipaddr) %sql.query("SELECT ...") {
     case 192.168/16 {
         accept
     }

@@ -2625,6 +2625,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	CONF_ITEM		*subci;
 	fr_token_t		token;
 	char const		*name1, *name2;
+	char const		*type_name;
 
 	unlang_group_t		*g;
 	unlang_switch_t		*gext;
@@ -2727,20 +2728,29 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		goto error;
 	}
 
-	if (!tmpl_is_attr(gext->vpt)) {
-		if (tmpl_cast_set(gext->vpt, FR_TYPE_STRING) < 0) {
+	type_name = cf_section_argv(cs, 0); /* AFTER name1, name2 */
+	if (type_name) {
+		type = fr_table_value_by_str(fr_type_table, type_name, FR_TYPE_NULL);
+
+		/*
+		 *	Should have been caught in cf_file.c, process_switch()
+		 */
+		fr_assert(type != FR_TYPE_NULL);
+		fr_assert(fr_type_is_leaf(type));
+
+		if (tmpl_cast_set(gext->vpt, type) < 0) {
 			cf_log_perr(cs, "Failed setting cast type");
 			goto error;
 		}
+
+	} else {
+		/*
+		 *	Get the return type of the tmpl.  If we don't know,
+		 *	mash it all to string.
+		 */
+		type = tmpl_data_type(gext->vpt);
+		if (type == FR_TYPE_NULL) type = FR_TYPE_STRING;
 	}
-
-	/*
-	 *	Get the return type of the tmpl.  If we don't know,
-	 *	mash it all to string.
-	 */
-	type = tmpl_data_type(gext->vpt);
-	if (type == FR_TYPE_NULL) type = FR_TYPE_STRING;
-
 
 	htype = fr_htrie_hint(type);
 	if (htype == FR_HTRIE_INVALID) {

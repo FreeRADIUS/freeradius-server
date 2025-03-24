@@ -2293,13 +2293,108 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 	return rule->on_read(parent, NULL, NULL, cf_pair_to_item(cp), rule);
 }
 
+/*
+ *	switch (cast) foo {
+ */
+static CONF_ITEM *process_switch(cf_stack_t *stack)
+{
+	size_t		match_len;
+	fr_type_t	type = FR_TYPE_NULL;
+	CONF_SECTION	*css;
+	char const	*ptr = stack->ptr;
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+	CONF_SECTION	*parent = frame->current;
+
+	fr_skip_whitespace(ptr);
+	if (*ptr == '(') {
+		char const *start;
+
+		ptr++;
+		start = ptr;
+
+		while (isalpha(*ptr)) ptr++;
+
+		if (*ptr != ')') {
+			ERROR("%s[%d]: Missing ')' in cast",
+			      frame->filename, frame->lineno);
+			return NULL;
+		}
+
+		type = fr_table_value_by_longest_prefix(&match_len, fr_type_table,
+							start, ptr - start, FR_TYPE_MAX);
+		if (type == FR_TYPE_MAX) {
+			ERROR("%s[%d]: Unknown data type '%.*s' in cast",
+			      frame->filename, frame->lineno, (int) (ptr - start), start);
+			return NULL;
+		}
+
+		if (!fr_type_is_leaf(type)) {
+			ERROR("%s[%d]: Invalid data type '%.*s' in cast",
+			      frame->filename, frame->lineno, (int) (ptr - start), start);
+			return NULL;
+		}
+
+		ptr++;
+		fr_skip_whitespace(ptr);
+	}
+
+	css = cf_section_alloc(parent, parent, "switch", NULL);
+	if (!css) {
+		ERROR("%s[%d]: Failed allocating memory for section",
+		      frame->filename, frame->lineno);
+		return NULL;
+	}
+
+	cf_filename_set(css, frame->filename);
+	cf_lineno_set(css, frame->lineno);
+	css->name2_quote = T_BARE_WORD;
+	css->unlang = CF_UNLANG_ALLOW;
+	css->allow_locals = true;
+
+	/*
+	 *	Get the argument to the switch statement
+	 */
+	if (cf_get_token(parent, &ptr, &css->name2_quote, stack->buff[1], stack->bufsize,
+			 frame->filename, frame->lineno) < 0) {
+		return NULL;
+	}
+
+	fr_skip_whitespace(ptr);
+
+	if (*ptr != '{') {
+		(void) parse_error(stack, ptr, "Expected '{' in 'switch'");
+		return NULL;
+	}
+
+	css->name2 = talloc_typed_strdup(css, stack->buff[1]);
+
+	/*
+	 *	Add in the extra argument.
+	 */
+	if (type != FR_TYPE_NULL) {
+		css->argc = 1;
+		css->argv = talloc_array(css, char const *, css->argc);
+		css->argv_quote = talloc_array(css, fr_token_t, css->argc);
+
+		css->argv[0] = fr_type_to_str(type);
+		css->argv_quote[0] = T_BARE_WORD;
+	}
+
+	ptr++;
+	stack->ptr = ptr;
+
+	return cf_section_to_item(css);
+}
+
+
 static fr_table_ptr_sorted_t unlang_keywords[] = {
 	{ L("catch"),		(void *) process_catch },
 	{ L("elsif"),		(void *) process_if },
 	{ L("foreach"),		(void *) process_foreach },
 	{ L("if"),		(void *) process_if },
 	{ L("map"),		(void *) process_map },
-	{ L("subrequest"),	(void *) process_subrequest }
+	{ L("subrequest"),	(void *) process_subrequest },
+	{ L("switch"),		(void *) process_switch }
 };
 static int unlang_keywords_len = NUM_ELEMENTS(unlang_keywords);
 
