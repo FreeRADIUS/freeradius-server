@@ -432,6 +432,12 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_cache_htrie_mutable_t	*mutable;
 	int ret;
 
+	/*
+	 *	An instance with htype of FR_HTRIE_AUTO has not been used
+	 *	in any policy - so instantiation can be short circuited.
+	 */
+	if (driver->htype == FR_HTRIE_AUTO) return 0;
+
 	MEM(mutable = talloc_zero(NULL, rlm_cache_htrie_mutable_t));
 
 	/*
