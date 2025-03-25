@@ -42,6 +42,9 @@ cache {
 	#  | Driver                | Description
 	#  | `rbtree`              | An in memory, non persistent rbtree based datastore.
 	#                            Useful for caching data locally.
+	#  | `htrie`               | An in memory, non persistent datastore which can use
+	#                            a hash table, rbtree or patricia trie store depending
+	#                            on the data type of the key.
 	#  | `memcached`           | A non persistent "webscale" distributed datastore.
 	#                            Useful if the cached data need to be shared between
 	#                            a cluster of RADIUS servers.
@@ -59,6 +62,24 @@ cache {
 	#
 	#  Driver specific options are:
 	#
+
+#
+#  ### Htrie cache driver
+#
+#	htrie {
+		#
+		#  type:: Htrie backend type
+		#
+		#  [options="header,autowidth"]
+		#  |===
+		#  | Option    | Description
+		#  | `auto`    | The backend is automatically determined based on data type of the key
+		#  | `hash`    | Use a hash table
+		#  | `rb`      | Use an rbtree
+		#  | `trie`    | Use a patricia trie
+		#
+#		type = "auto"
+#	}
 
 #
 #  ### Memcached cache driver
