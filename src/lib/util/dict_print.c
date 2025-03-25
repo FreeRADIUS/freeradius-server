@@ -337,6 +337,10 @@ void fr_dict_alias_export(FILE *fp, fr_dict_attr_t const *parent)
 
 		if (da->depth == ref->depth) continue;
 
+#ifdef STATIC_ANALYZER
+		buffer[0] = '\0';
+#endif
+
 		(void) fr_dict_attr_oid_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)),
 					      NULL, ref, false);
 
