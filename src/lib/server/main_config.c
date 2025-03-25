@@ -188,7 +188,7 @@ static const conf_parser_t thread_config[] = {
  *	Migration configuration.
  */
 extern bool tmpl_require_enum_prefix;
-bool xlat_func_bare_words = true;
+bool xlat_func_bare_words = false;
 
 static const conf_parser_t migrate_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("rewrite_update", CONF_FLAG_HIDDEN, main_config_t, rewrite_update) },

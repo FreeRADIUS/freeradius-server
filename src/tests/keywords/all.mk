@@ -87,7 +87,7 @@ endif
 endif
 
 #
-#  Always use the new xlat parser
+#  Use the new parser for things
 #
 $(OUTPUT)/${1}: NEW_COND += -S xlat_func_bare_words=no
 
