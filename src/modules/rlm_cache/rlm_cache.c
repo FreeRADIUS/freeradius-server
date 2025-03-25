@@ -635,7 +635,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, modu
 
 	fr_time_delta_t		ttl = inst->config.ttl;
 
-	if (env->key->vb_length == 0) {
+	if (fr_type_is_variable_size(env->key->type) && (env->key->vb_length == 0)) {
 		REDEBUG("Zero length key string is invalid");
 		RETURN_MODULE_INVALID;
 	}
@@ -1049,7 +1049,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_status(rlm_rcode_t *p_result,
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 
-	if (env->key->vb_length == 0) {
+	if (fr_type_is_variable_size(env->key->type) && (env->key->vb_length == 0)) {
 		REDEBUG("Zero length key string is invalid");
 		RETURN_MODULE_FAIL;
 	}
@@ -1087,7 +1087,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_load(rlm_rcode_t *p_result, m
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 
-	if (env->key->vb_length == 0) {
+	if (fr_type_is_variable_size(env->key->type) && (env->key->vb_length == 0)) {
 		REDEBUG("Zero length key string is invalid");
 		RETURN_MODULE_FAIL;
 	}
@@ -1132,7 +1132,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_update(rlm_rcode_t *p_result,
 	rlm_cache_handle_t 	*handle = NULL;
 	fr_pair_t		*vp;
 
-	if (env->key->vb_length == 0) {
+	if (fr_type_is_variable_size(env->key->type) && (env->key->vb_length == 0)) {
 		REDEBUG("Zero length key string is invalid");
 		RETURN_MODULE_FAIL;
 	}
@@ -1219,7 +1219,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(rlm_rcode_t *p_result, 
 	rlm_cache_handle_t 	*handle = NULL;
 	fr_pair_t		*vp;
 
-	if (env->key->vb_length == 0) {
+	if (fr_type_is_variable_size(env->key->type) && (env->key->vb_length == 0)) {
 		REDEBUG("Zero length key string is invalid");
 		RETURN_MODULE_FAIL;
 	}
@@ -1286,7 +1286,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_clear(rlm_rcode_t *p_result, 
 
 	DEBUG3("Calling %s.clear", mctx->mi->name);
 
-	if (env->key->vb_length == 0) {
+	if (fr_type_is_variable_size(env->key->type) && (env->key->vb_length == 0)) {
 		REDEBUG("Zero length key string is invalid");
 		RETURN_MODULE_FAIL;
 	}
@@ -1332,7 +1332,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl(rlm_rcode_t *p_result, mo
 
 	DEBUG3("Calling %s.ttl", mctx->mi->name);
 
-	if (env->key->vb_length == 0) {
+	if (fr_type_is_variable_size(env->key->type) && (env->key->vb_length == 0)) {
 		REDEBUG("Zero length key string is invalid");
 		RETURN_MODULE_FAIL;
 	}
