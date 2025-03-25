@@ -419,6 +419,12 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	return 0;
 }
 
+static int8_t _value_cmp(void const *a, void const *b) {
+	fr_value_box_t	const *one = a;
+	fr_value_box_t	const *two = b;
+	return fr_value_box_cmp(one, two);
+}
+
 /** Create a new cache_htrie instance
  *
  * @param[in] mctx		Data required for instantiation.
@@ -445,7 +451,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 */
 	mutable->cache = fr_htrie_alloc(mutable, driver->htype,
 				       (fr_hash_t)fr_value_box_hash,
-				       (fr_cmp_t)fr_value_box_cmp,
+				       _value_cmp,
 				       (fr_trie_key_t)fr_value_box_to_key, NULL);
 	if (!mutable->cache) {
 		PERROR("Failed to create cache");
