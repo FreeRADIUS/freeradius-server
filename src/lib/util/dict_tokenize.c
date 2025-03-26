@@ -700,6 +700,8 @@ static int dict_flag_subtype(fr_dict_attr_t **da_p, char const *value, UNUSED fr
 	return 0;
 }
 
+FLAG_FUNC(unsafe)
+
 /** A lookup function for dictionary attribute flags
  *
  */
@@ -720,7 +722,8 @@ static int CC_HINT(nonnull) dict_process_flag_field(dict_tokenize_ctx_t *dctx, c
 		{ L("precision"),	{ .func = dict_flag_precision, .needs_value = true } },
 		{ L("ref"),		{ .func = dict_flag_ref, .needs_value = true } },
 		{ L("secret"), 		{ .func = dict_flag_secret } },
-		{ L("subtype"),		{ .func = dict_flag_subtype, .needs_value = true } }
+		{ L("subtype"),		{ .func = dict_flag_subtype, .needs_value = true } },
+		{ L("unsafe"), 		{ .func = dict_flag_unsafe } },
 	};
 	static size_t dict_common_flags_len = NUM_ELEMENTS(dict_common_flags);
 

@@ -103,6 +103,8 @@ typedef struct {
 
 	unsigned int		secret : 1;			//!< this attribute should be omitted in debug mode
 
+	unsigned int		unsafe : 1;	       		//!< e.g. Cleartext-Password
+
 	/*
 	 *	@todo - if we want to clean these fields up, make
 	 *	"subtype" and "type_size" both 4-bit bitfields.  That
