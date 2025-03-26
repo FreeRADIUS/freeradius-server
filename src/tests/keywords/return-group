@@ -1,7 +1,7 @@
 #
 #  PRE: return
 #
-control.Auth-Type := 'Accept'
+control.Auth-Type := ::Accept
 
 group {
 	# Section should exit after this statement
