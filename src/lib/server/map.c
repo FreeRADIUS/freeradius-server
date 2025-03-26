@@ -474,6 +474,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	fr_sbuff_marker_t		m_lhs, m_rhs, m_op;
 	fr_sbuff_term_t const		*tt = p_rules ? p_rules->terminals : NULL;
 	map_t				*parent;
+	fr_dict_attr_t const		*enumv;
 	tmpl_rules_t			our_rhs_rules;
 
 	if (parent_p) {
@@ -561,6 +562,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 		talloc_free(map);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
+	fr_assert(tmpl_is_attr(map->lhs));
 
 	(void)fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
 	fr_sbuff_marker(&m_op, &our_in);
@@ -607,7 +609,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	 *	only be an attribute, etc.  Not trivial, so we'll just
 	 *	skip all that for now.
 	 */
-	if (tmpl_is_attr(map->lhs)) switch (tmpl_attr_tail_da(map->lhs)->type) {
+	switch (tmpl_attr_tail_da(map->lhs)->type) {
 		case FR_TYPE_STRUCTURAL:
 			if ((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)) {
 				fr_sbuff_set(&our_in, &m_op);
@@ -682,21 +684,16 @@ parse_rhs:
 		goto check_for_child;
 	}
 
-	/*
-	 *	If the LHS is an attribute, we can parse enum names from the RHS.
-	 */
-	if (tmpl_is_attr(map->lhs)) {
-		fr_dict_attr_t const *enumv = tmpl_attr_tail_da(map->lhs);
+	enumv = tmpl_attr_tail_da(map->lhs);
 
-		/*
-		 *	LHS is a structural type.  The RHS is either empty (create empty LHS), or it's a string
-		 *	containing a list of attributes to create.
-		 */
-		if (fr_type_is_leaf(enumv->type)) {
-			our_rhs_rules = *rhs_rules;
-			our_rhs_rules.enumv = enumv;
-			rhs_rules = &our_rhs_rules;
-		}
+	/*
+	 *	LHS is a structural type.  The RHS is either empty (create empty LHS), or it's a string
+	 *	containing a list of attributes to create.
+	 */
+	if (fr_type_is_leaf(enumv->type)) {
+		our_rhs_rules = *rhs_rules;
+		our_rhs_rules.enumv = enumv;
+		rhs_rules = &our_rhs_rules;
 	}
 
 	fr_sbuff_out_by_longest_prefix(&slen, &token, cond_quote_table, &our_in, T_BARE_WORD);
