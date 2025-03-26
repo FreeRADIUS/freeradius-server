@@ -2,17 +2,17 @@
 #  No proxy-state attributes
 #
 subrequest RADIUS.Access-Request {
-	&User-Name = "bob"
-	&User-Password = "hello"
+	User-Name = "bob"
+	User-Password = "hello"
 
 	call radius {}
 
-	if (!(&reply.Packet-Type == Access-Accept)) {
+	if (!(reply.Packet-Type == Access-Accept)) {
 		test_fail
 	}
 
 	# We shouldn't magically acquire new proxy state values
-	if (&reply.Proxy-State) {
+	if (reply.Proxy-State) {
 		test_fail
 	}
 }
@@ -21,21 +21,21 @@ subrequest RADIUS.Access-Request {
 #  One proxy state-attribute
 #
 subrequest RADIUS.Access-Request {
-	&User-Name = "bob"
-	&User-Password = "hello"
-	&Proxy-State := { 0x01 }
+	User-Name = "bob"
+	User-Password = "hello"
+	Proxy-State := { 0x01 }
 
 	call radius {}
 
-	if (!(&reply.Packet-Type == Access-Accept)) {
+	if (!(reply.Packet-Type == Access-Accept)) {
 		test_fail
 	}
 
-	if (!(&reply.Proxy-State[0] == 0x01)) {
+	if (!(reply.Proxy-State[0] == 0x01)) {
 		test_fail
 	}
 
-	if (&reply.Proxy-State[1]) {
+	if (reply.Proxy-State[1]) {
 		test_fail
 	}
 }
@@ -44,25 +44,25 @@ subrequest RADIUS.Access-Request {
 #  Two proxy state-attributes
 #
 subrequest RADIUS.Access-Request {
-	&User-Name = "bob"
-	&User-Password = "hello"
-	&Proxy-State := { 0x01, 0x02 }
+	User-Name = "bob"
+	User-Password = "hello"
+	Proxy-State := { 0x01, 0x02 }
 
 	call radius {}
 
-	if (!(&reply.Packet-Type == Access-Accept)) {
+	if (!(reply.Packet-Type == Access-Accept)) {
 		test_fail
 	}
 
-	if (!(&reply.Proxy-State[0] == 0x01)) {
+	if (!(reply.Proxy-State[0] == 0x01)) {
 		test_fail
 	}
 
-	if (!(&reply.Proxy-State[1] == 0x02)) {
+	if (!(reply.Proxy-State[1] == 0x02)) {
 		test_fail
 	}
 
-	if (&reply.Proxy-State[2]) {
+	if (reply.Proxy-State[2]) {
 		test_fail
 	}
 }

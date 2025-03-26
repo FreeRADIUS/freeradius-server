@@ -2,5 +2,5 @@
 #	This should be an xlat, not a direct assignment
 #
 update request {
-	&NAS-Port := &Filter-Id[#]	# ERROR
+	NAS-Port := Filter-Id[#]	# ERROR
 }

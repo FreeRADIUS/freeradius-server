@@ -7,7 +7,7 @@ recv Access-Request {
 	filter_inner_identity
 
 	split_username_nai
-	&control.Password.Cleartext := &Stripped-User-Name
+	control.Password.Cleartext := Stripped-User-Name
 
 	chap
 	mschap
