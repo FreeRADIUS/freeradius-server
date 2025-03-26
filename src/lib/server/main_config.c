@@ -1491,8 +1491,6 @@ void main_config_hup(main_config_t *config)
 static fr_table_num_ordered_t config_arg_table[] = {
 	{ L("rewrite_update"),		 offsetof(main_config_t, rewrite_update) },
 	{ L("forbid_update"),		 offsetof(main_config_t, forbid_update) },
-	{ L("require_enum_prefix"),	 offsetof(main_config_t, require_enum_prefix) },
-	{ L("v3_enum_names"),		 offsetof(main_config_t, require_enum_prefix) },
 	{ L("xlat_func_bare_words"),	 offsetof(main_config_t, xlat_func_bare_words) },
 };
 static size_t config_arg_table_len = NUM_ELEMENTS(config_arg_table);
@@ -1531,7 +1529,6 @@ int main_config_parse_option(char const *value)
 		fr_exit(1);
 	}
 
-	if (out == &main_config->require_enum_prefix) {}
 	if (out == &main_config->xlat_func_bare_words) xlat_func_bare_words = box.vb_bool;
 
 	*out = box.vb_bool;
