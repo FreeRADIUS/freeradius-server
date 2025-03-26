@@ -319,13 +319,25 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	}
 
 	/*
-	 *	If we know that the assignment is forbidden, then fail early.
+	 *	If we can resolve the RHS in the context of the LHS,
+	 *	and are allowed to do so, then do that now.
 	 *
-	 *	Note that we can do some assignment of strings to
-	 *	structural elements.  The string is parsed as a list
-	 *	of edit instructions.
+	 *	The "map" keyword uses the RHS not as the value which
+	 *	is assigned to the LHS.  Instead, it is a pointer to
+	 *	the value.  As such, we cannot immediately resolve the
+	 *	RHS in the context of the LHS.
+	 *
+	 *	The edit code allows string assignments to lists, and
+	 *	will interpret the string as a sequence of edit
+	 *	operations.  So we skip casting strings to lists.
+	 *
+	 *	@todo - that could arguably be done immediately here,
+	 *	and the RHS could be parsed and created as a child
+	 *	map.  That would allow for more compile-time sanity
+	 *	checks.
 	 */
 	if (tmpl_is_attr(map->lhs) && tmpl_is_data(map->rhs) &&
+	    (!input_rhs_rules || !input_rhs_rules->attr.disallow_rhs_resolve) &&
 	    fr_type_is_leaf(tmpl_attr_tail_da(map->lhs)->type)) {
 		fr_type_t cast_type;
 

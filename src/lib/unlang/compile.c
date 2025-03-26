@@ -744,10 +744,10 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	};
 
 	/*
-	 *	We allow unknown attributes here.
+	 *	The RHS is NOT resolved in the context of the LHS.
 	 */
 	t_rules = *(unlang_ctx->rules);
-	t_rules.attr.allow_unknown = true;
+	t_rules.attr.disallow_rhs_resolve = true;
 	RULES_VERIFY(&t_rules);
 
 	modules = cf_section_find(cf_root(cs), "modules", NULL);
@@ -819,7 +819,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	 *	This looks at cs->name2 to determine which list to update
 	 */
 	map_list_init(&gext->map);
-	rcode = map_afrom_cs(gext, &gext->map, cs, &t_rules, &t_rules, unlang_fixup_map, NULL, 256);
+	rcode = map_afrom_cs(gext, &gext->map, cs, unlang_ctx->rules, &t_rules, unlang_fixup_map, NULL, 256);
 	if (rcode < 0) return NULL; /* message already printed */
 	if (map_list_empty(&gext->map)) {
 		cf_log_err(cs, "'map' sections cannot be empty");

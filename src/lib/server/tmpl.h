@@ -333,6 +333,8 @@ struct tmpl_attr_rules_s {
 	uint8_t			xlat:1	;		//!< for %{User-Name}
 
 	uint8_t			bare_word_enum:1;	//!< for v3 compatibility.
+
+	uint8_t			disallow_rhs_resolve:1;	//!< map RHS is NOT immediately resolved in the context of the LHS.
 };
 
 struct tmpl_xlat_rules_s {
