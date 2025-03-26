@@ -320,8 +320,13 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 
 	/*
 	 *	If we know that the assignment is forbidden, then fail early.
+	 *
+	 *	Note that we can do some assignment of strings to
+	 *	structural elements.  The string is parsed as a list
+	 *	of edit instructions.
 	 */
-	if (tmpl_is_attr(map->lhs) && tmpl_is_data(map->rhs)) {
+	if (tmpl_is_attr(map->lhs) && tmpl_is_data(map->rhs) &&
+	    fr_type_is_leaf(tmpl_attr_tail_da(map->lhs)->type)) {
 		fr_type_t cast_type;
 
 		if ((map->op != T_OP_RSHIFT_EQ) && (map->op != T_OP_LSHIFT_EQ)) {
