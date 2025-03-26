@@ -727,6 +727,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map, fr_edit_list_t
 			return -1;
 		}
 
+		if (vp->da->flags.unsafe) fr_value_box_mark_unsafe(&vp->data);
 		TALLOC_FREE(to_free);
 		return 0;
 	}

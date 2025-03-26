@@ -2617,6 +2617,8 @@ int fr_pair_value_from_str(fr_pair_t *vp, char const *value, size_t inlen,
 				  uerules,
 				  tainted) < 0) return -1;
 
+	fr_assert(vp->data.safe_for == FR_VALUE_BOX_SAFE_FOR_NONE);
+
 	PAIR_VERIFY(vp);
 
 	return 0;

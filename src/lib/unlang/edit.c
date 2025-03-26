@@ -797,6 +797,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 		 */
 		if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) goto fail;
 		vp->op = T_OP_EQ;
+		if (vp->da->flags.unsafe) fr_value_box_mark_unsafe(&vp->data);
 
 		if (single) goto done;
 
@@ -823,6 +824,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 
 			MEM(vp = fr_pair_afrom_da(current->lhs.vp_parent, da));
 			if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) goto fail;
+			if (vp->da->flags.unsafe) fr_value_box_mark_unsafe(&vp->data);
 
 			if (fr_edit_list_insert_pair_tail(state->el, &current->lhs.vp_parent->vp_group, vp) < 0) goto fail;
 			vp->op = T_OP_EQ;
@@ -850,6 +852,7 @@ apply_op:
 	 */
 	while (box) {
 		RDEBUG_ASSIGN(current->lhs.vpt->name, map->op, box);
+		if (current->lhs.vp->da->flags.unsafe) fr_value_box_mark_unsafe(box);
 
 		/*
 		 *	The apply function also takes care of doing data type upcasting and conversion.  So we don't
