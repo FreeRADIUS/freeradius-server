@@ -119,8 +119,8 @@ typedef struct {
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("tmpl", rlm_test_t, tmpl), .dflt = "&Tmp-String-0", .quote = T_BARE_WORD },
-	{ FR_CONF_OFFSET("tmpl_m", rlm_test_t, tmpl_m), .dflt = "&Tmp-String-0", .quote = T_DOUBLE_QUOTED_STRING },
+	{ FR_CONF_OFFSET("tmpl", rlm_test_t, tmpl), .dflt = "Tmp-String-0", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("tmpl_m", rlm_test_t, tmpl_m), .dflt = "Tmp-String-0", .quote = T_DOUBLE_QUOTED_STRING },
 
 	{ FR_CONF_OFFSET("string", rlm_test_t, string) },
 	{ FR_CONF_OFFSET("string_m", rlm_test_t, string_m) },
