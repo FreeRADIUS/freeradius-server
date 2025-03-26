@@ -754,7 +754,7 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 		 *	We've picked a random port in what is hopefully a large range.  If that works, we're
 		 *	done.
 		 */
-		if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) >= 0) goto done;
+		if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) == 0) goto done;
 
 		/*
 		 *	Hunt & peck.  Which is horrible.
@@ -774,10 +774,14 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 
 			sin->sin_port = htons(my->info.cfg->src_port_start + current);
 
-			if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) >= 0) goto done;
+			if (bind(my->info.socket.fd, (struct sockaddr *) &salocal, salen) == 0) goto done;
 		}
 
-		fr_strerror_const("There are no open ports between 'src_port_start' and 'src_port_end'");
+		/*
+		 *	The error is a good hint at _why_ we failed to bind.
+		 *	We expect errno to be EADDRINUSE, anything else is a surprise.
+		 */
+		fr_strerror_printf("Failed binding port between 'src_port_start' and 'src_port_end': %s", fr_syserror(errno));
 		return -1;
 	}
 

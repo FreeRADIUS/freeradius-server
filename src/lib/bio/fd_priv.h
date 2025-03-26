@@ -39,11 +39,11 @@ typedef struct fr_bio_fd_s {
 	fr_bio_fd_info_t  info;
 
 	struct {
-		fr_bio_callback_t  success;    	//!< for fr_bio_fd_connect()
-		fr_bio_callback_t  error;	//!< for fr_bio_fd_connect()
-		fr_bio_callback_t  timeout;	//!< for fr_bio_fd_connect()
-		fr_event_list_t	   *el;		//!< for fr_bio_fd_connect()
-		fr_event_timer_t const *ev;	//!< for fr_bio_fd_connect()
+		fr_bio_callback_t 	success;    	//!< for fr_bio_fd_connect()
+		fr_bio_callback_t 	error;	//!< for fr_bio_fd_connect()
+		fr_bio_callback_t 	timeout;	//!< for fr_bio_fd_connect()
+		fr_event_list_t	  	*el;		//!< for fr_bio_fd_connect()
+		fr_timer_t		*ev;	//!< for fr_bio_fd_connect()
 	} connect;
 
 	int		max_tries;		//!< how many times we retry on EINTR

@@ -52,7 +52,7 @@ typedef struct {
 	fr_stats_t			stats;			//!< statistics for this socket
 
 	int				fd;			//!< for CSV files
-	fr_event_timer_t const		*ev;			//!< for writing statistics
+	fr_timer_t			*ev;			//!< for writing statistics
 
 	fr_listen_t			*parent;		//!< master IO handler
 } proto_load_step_thread_t;
@@ -235,13 +235,13 @@ static int mod_generate(fr_time_t now, void *uctx)
 }
 
 
-static void write_stats(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void write_stats(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	proto_load_step_thread_t	*thread = uctx;
 	size_t len;
 	char buffer[1024];
 
-	(void) fr_event_timer_in(thread, el, &thread->ev, fr_time_delta_from_sec(1), write_stats, thread);
+	(void) fr_timer_in(thread, tl, &thread->ev, fr_time_delta_from_sec(1), false, write_stats, thread);
 
 	len = fr_load_generator_stats_sprint(thread->l, now, buffer, sizeof(buffer));
 	if (write(thread->fd, buffer, len) < 0) {
@@ -322,7 +322,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 		return;
 	}
 
-	(void) fr_event_timer_in(thread, thread->el, &thread->ev, fr_time_delta_from_sec(1), write_stats, thread);
+	(void) fr_timer_in(thread, thread->el->tl, &thread->ev, fr_time_delta_from_sec(1), false, write_stats, thread);
 
 	len = fr_load_generator_stats_sprint(thread->l, fr_time(), buffer, sizeof(buffer));
 	if (write(thread->fd, buffer, len) < 0) {

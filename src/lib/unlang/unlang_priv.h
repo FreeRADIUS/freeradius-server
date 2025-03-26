@@ -262,7 +262,7 @@ typedef struct {
 	fr_retry_state_t	state;
 	fr_time_t		timeout;
 	uint32_t       		count;
-	fr_event_timer_t const	*ev;
+	fr_timer_t		*ev;
 } unlang_retry_t;
 
 /** Our interpreter stack, as distinct from the C stack

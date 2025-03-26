@@ -122,7 +122,7 @@ static void mod_vnode_extend(fr_listen_t *li, UNUSED uint32_t fflags)
 
 	if (has_worker) return;
 
-	if (thread->ev) fr_event_timer_delete(&thread->ev);
+	if (thread->ev) fr_timer_delete(&thread->ev);
 
 	work_init(thread, false);
 }
@@ -231,7 +231,7 @@ static int work_rename(proto_detail_file_thread_t *thread)
 /*
  *	Start polling again after a timeout.
  */
-static void work_retry_timer(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void work_retry_timer(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	proto_detail_file_thread_t *thread = talloc_get_type_abort(uctx, proto_detail_file_thread_t);
 
@@ -280,8 +280,8 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 		DEBUG3("proto_detail (%s): Waiting %.6fs for lock on file %s",
 		       thread->name, fr_time_delta_unwrap(delay) / (double)NSEC, inst->filename_work);
 
-		if (fr_event_timer_in(thread, thread->el, &thread->ev,
-				      delay, work_retry_timer, thread) < 0) {
+		if (fr_timer_in(thread, thread->el->tl, &thread->ev, delay,
+				false, work_retry_timer, thread) < 0) {
 			ERROR("Failed inserting retry timer for %s", inst->filename_work);
 		}
 		return 0;
@@ -552,8 +552,9 @@ delay:
 		 */
 		DEBUG3("Waiting %d.000000s for new files in %s", inst->poll_interval, thread->name);
 
-		if (fr_event_timer_in(thread, thread->el, &thread->ev,
-				      fr_time_delta_from_sec(inst->poll_interval), work_retry_timer, thread) < 0) {
+		if (fr_timer_in(thread, thread->el->tl, &thread->ev,
+				fr_time_delta_from_sec(inst->poll_interval),
+				false, work_retry_timer, thread) < 0) {
 			ERROR("Failed inserting poll timer for %s", inst->filename_work);
 		}
 		return;
@@ -607,8 +608,8 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void
 	 *	therefore change permissions, so that libkqueue can
 	 *	read it.
 	 */
-	if (fr_event_timer_in(thread, thread->el, &thread->ev,
-			      fr_time_delta_from_sec(1), work_retry_timer, thread) < 0) {
+	if (fr_timer_in(thread, thread->el->tl, &thread->ev,
+			fr_time_delta_from_sec(1), false, work_retry_timer, thread) < 0) {
 		ERROR("Failed inserting poll timer for %s", thread->filename_work);
 	}
 }

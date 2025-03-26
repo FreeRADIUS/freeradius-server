@@ -84,7 +84,7 @@ typedef struct {
 	module_instance_t const		*mi;			//!< Module instance to pass to callbacks.
 	request_t			*request;
 
-	fr_event_timer_t const		*ev;			//!< retry timer just for this module.
+	fr_timer_t			*ev;			//!< retry timer just for this module.
 	fr_retry_t			retry;			//!< retry timers, etc.
 
 	/** @} */

@@ -99,7 +99,7 @@ typedef struct {
 	fr_time_t		last_sent;		//!< last time we sent a packet.
 	fr_time_t		last_idle;		//!< last time we had nothing to do
 
-	fr_event_timer_t const	*zombie_ev;		//!< Zombie timeout.
+	fr_timer_t		*zombie_ev;		//!< Zombie timeout.
 
 	bool			status_checking;       	//!< whether we're doing status checks
 	bio_request_t		*status_u;		//!< for sending status check packets
@@ -132,7 +132,7 @@ struct bio_request_s {
 	size_t			partial;		//!< partially sent data
 
 	radius_track_entry_t	*rr;			//!< ID tracking, resend count, etc.
-	fr_event_timer_t const	*ev;			//!< timer for retransmissions
+	fr_timer_t	*ev;			//!< timer for retransmissions
 	fr_retry_t		retry;			//!< retransmission timers
 };
 
@@ -232,7 +232,7 @@ static void status_check_reset(bio_handle_t *h, bio_request_t *u)
 	u->num_replies = 0;	/* Reset */
 	u->retry.start = fr_time_wrap(0);
 
-	if (u->ev) (void) fr_event_timer_delete(&u->ev);
+	if (u->ev) (void) fr_timer_delete(&u->ev);
 
 	bio_request_reset(u);
 }
@@ -350,7 +350,7 @@ static void conn_init_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED in
  *
  * Setup retries, or fail the connection.
  */
-static void conn_init_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void conn_init_timeout(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	bio_handle_t		*h;
@@ -384,7 +384,7 @@ static void conn_init_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 		return;
 
 	case FR_RETRY_CONTINUE:
-		if (fr_event_fd_insert(h, NULL, el, h->fd, conn_init_writable, NULL,
+		if (fr_event_fd_insert(h, NULL, conn->el, h->fd, conn_init_writable, NULL,
 				       conn_init_error, conn) < 0) {
 			PERROR("%s - Failed inserting FD event", h->ctx.module_name);
 			connection_signal_reconnect(conn, CONNECTION_FAILED);
@@ -398,12 +398,12 @@ static void conn_init_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 /** Perform the next step of init and negotiation.
  *
  */
-static void conn_init_next(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void conn_init_next(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
-	if (fr_event_fd_insert(h, NULL, el, h->fd, conn_init_writable, NULL, conn_init_error, conn) < 0) {
+	if (fr_event_fd_insert(h, NULL, conn->el, h->fd, conn_init_writable, NULL, conn_init_error, conn) < 0) {
 		PERROR("%s - Failed inserting FD event", h->ctx.module_name);
 		connection_signal_reconnect(conn, CONNECTION_FAILED);
 	}
@@ -507,7 +507,7 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 		/*
 		 *	Set the timer for the next retransmit.
 		 */
-		if (fr_event_timer_at(h, el, &u->ev, u->retry.next, conn_init_next, conn) < 0) {
+		if (fr_timer_at(h, el->tl, &u->ev, u->retry.next, false, conn_init_next, conn) < 0) {
 			connection_signal_reconnect(conn, CONNECTION_FAILED);
 		}
 		return;
@@ -593,7 +593,7 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	      h->ctx.module_name, (u->retry.count == 1) ? "Originated" : "Retransmitted",
 	      fr_box_time_delta(u->retry.rt));
 
-	if (fr_event_timer_at(h, el, &u->ev, u->retry.next, conn_init_timeout, conn) < 0) {
+	if (fr_timer_at(h, el->tl, &u->ev, u->retry.next, false, conn_init_timeout, conn) < 0) {
 		PERROR("%s - Failed inserting timer event", h->ctx.module_name);
 		goto fail;
 	}
@@ -613,7 +613,7 @@ static int _bio_handle_free(bio_handle_t *h)
 
 	fr_assert(h->fd >= 0);
 
-	if (h->status_u) fr_event_timer_delete(&h->status_u->ev);
+	if (h->status_u) fr_timer_delete(&h->status_u->ev);
 
 	/*
 	 *	The connection code will take care of deleting the FD from the event loop.
@@ -874,7 +874,7 @@ static connection_state_t conn_failed(void *handle, connection_state_t state, UN
 		/*
 		 *	Reset the Status-Server checks.
 		 */
-		if (h->status_u && h->status_u->ev) (void) fr_event_timer_delete(&h->status_u->ev);
+		if (h->status_u && h->status_u->ev) (void) fr_timer_delete(&h->status_u->ev);
 	}
 		break;
 
@@ -1252,7 +1252,7 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 /** Revive a connection after "revive_interval"
  *
  */
-static void revive_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void revive_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
@@ -1264,7 +1264,7 @@ static void revive_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, voi
 /** Mark a connection dead after "zombie_interval"
  *
  */
-static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void zombie_timeout(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
@@ -1290,8 +1290,9 @@ static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	Revive the connection after a time.
 	 */
-	if (fr_event_timer_at(h, el, &h->zombie_ev,
-			      fr_time_add(now, h->ctx.inst->revive_interval), revive_timeout, tconn) < 0) {
+	if (fr_timer_at(h, tl, &h->zombie_ev,
+			fr_time_add(now, h->ctx.inst->revive_interval), false,
+			revive_timeout, tconn) < 0) {
 		ERROR("Failed inserting revive timeout for connection");
 		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 	}
@@ -1370,8 +1371,8 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 		}
 	} else {
-		if (fr_event_timer_at(h, el, &h->zombie_ev, fr_time_add(now, h->ctx.inst->zombie_period),
-				      zombie_timeout, tconn) < 0) {
+		if (fr_timer_at(h, el->tl, &h->zombie_ev, fr_time_add(now, h->ctx.inst->zombie_period),
+				false, zombie_timeout, tconn) < 0) {
 			ERROR("Failed inserting zombie timeout for connection");
 			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 		}
@@ -1841,7 +1842,7 @@ static void protocol_error_reply(bio_request_t *u, bio_handle_t *h)
 /** Handle retries for a status check
  *
  */
-static void status_check_next(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void status_check_next(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t		*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
@@ -1880,7 +1881,7 @@ static void status_check_reply(trunk_request_t *treq, fr_time_t now)
 		/*
 		 *	Set the timer for the next retransmit.
 		 */
-		if (fr_event_timer_at(h, h->ctx.el, &u->ev, u->retry.next, status_check_next, treq->tconn) < 0) {
+		if (fr_timer_at(h, h->ctx.el->tl, &u->ev, u->retry.next, false, status_check_next, treq->tconn) < 0) {
 			trunk_connection_signal_reconnect(treq->tconn, CONNECTION_FAILED);
 		}
 		return;
@@ -2087,7 +2088,7 @@ static void request_cancel(UNUSED connection_t *conn, void *preq_to_reset,
 		 *	queued for sendmmsg but never actually
 		 *	sent.
 		 */
-		if (u->ev) (void) fr_event_timer_delete(&u->ev);
+		if (u->ev) (void) fr_timer_delete(&u->ev);
 	}
 
 	/*
@@ -2105,7 +2106,7 @@ static void request_conn_release(connection_t *conn, void *preq_to_reset, UNUSED
 	bio_request_t		*u = preq_to_reset;
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
-	if (u->ev) (void)fr_event_timer_delete(&u->ev);
+	if (u->ev) (void)fr_timer_delete(&u->ev);
 	bio_request_reset(u);
 
 	if (h->ctx.inst->mode == RLM_RADIUS_MODE_REPLICATE) return;
@@ -2246,7 +2247,7 @@ static int _bio_request_free(bio_request_t *u)
 
 	fr_assert_msg(!u->ev, "bio_request_t freed with active timer");
 
-	if (u->ev) (void) fr_event_timer_delete(&u->ev);
+	if (u->ev) (void) fr_timer_delete(&u->ev);
 
 	fr_assert(u->rr == NULL);
 

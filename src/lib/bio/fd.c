@@ -1222,7 +1222,7 @@ static void fr_bio_fd_el_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUSE
 /**  We have a timeout on the conenction
  *
  */
-static void fr_bio_fd_el_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void fr_bio_fd_el_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	fr_bio_fd_t *my = talloc_get_type_abort(uctx, fr_bio_fd_t);
 
@@ -1327,7 +1327,7 @@ int fr_bio_fd_connect_full(fr_bio_t *bio, fr_event_list_t *el, fr_bio_callback_t
 	 *	Set the timeout callback if asked.
 	 */
 	if (timeout_cb) {
-		if (fr_event_timer_in(my, el, &my->connect.ev, *timeout, fr_bio_fd_el_timeout, my) < 0) {
+		if (fr_timer_in(my, el->tl, &my->connect.ev, *timeout, false, fr_bio_fd_el_timeout, my) < 0) {
 			goto error;
 		}
 	}

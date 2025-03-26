@@ -127,7 +127,7 @@ struct fr_io_client_s {
 
 	fr_io_instance_t const		*inst;		//!< parent instance for master IO handler
 	fr_io_thread_t			*thread;
-	fr_event_timer_t const		*ev;		//!< when we clean up the client
+	fr_timer_t			*ev;		//!< when we clean up the client
 	fr_rb_tree_t			*table;		//!< tracking table for packets
 
 	fr_heap_t			*pending;	//!< pending packets for this client
@@ -179,7 +179,7 @@ static fr_event_update_t resume_read[] = {
 
 static int track_free(fr_io_track_t *track)
 {
-	if (track->ev) (void) fr_event_timer_delete(&track->ev);
+	if (track->ev) (void) fr_timer_delete(&track->ev);
 
 	talloc_free_children(track);
 
@@ -1181,7 +1181,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 		 *	struct while the packet is in the outbound
 		 *	queue.
 		 */
-		if (old->ev) (void) fr_event_timer_delete(&old->ev);
+		if (old->ev) (void) fr_timer_delete(&old->ev);
 		return old;
 	}
 
@@ -1203,7 +1203,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 		if (!fr_rb_delete(client->table, old)) {
 			fr_assert(0);
 		}
-		if (old->ev) (void) fr_event_timer_delete(&old->ev);
+		if (old->ev) (void) fr_timer_delete(&old->ev);
 
 		talloc_set_destructor(old, track_free);
 
@@ -2022,7 +2022,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 }
 
 
-static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void client_expiry_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	fr_io_client_t		*client = talloc_get_type_abort(uctx, fr_io_client_t);
 	fr_io_instance_t const	*inst;
@@ -2033,7 +2033,7 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	No event list?  We don't need to expire the client.
 	 */
-	if (!el) return;
+	if (!tl) return;
 
 	// @todo - print out what we plan on doing next
 	connection = client->connection;
@@ -2221,8 +2221,8 @@ idle_timeout:
 	delay = inst->check_interval;
 
 reset_timer:
-	if (fr_event_timer_in(client, el, &client->ev,
-			      delay, client_expiry_timer, client) < 0) {
+	if (fr_timer_in(client, tl, &client->ev,
+			delay, false, client_expiry_timer, client) < 0) {
 		ERROR("proto_%s - Failed adding timeout for dynamic client %s.  It will be permanent!",
 		      inst->app_io->common.name, client->radclient->shortname);
 		return;
@@ -2235,7 +2235,7 @@ reset_timer:
 /*
  *	Expire cached packets after cleanup_delay time
  */
-static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void packet_expiry_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	fr_io_track_t *track = talloc_get_type_abort(uctx, fr_io_track_t);
 	fr_io_client_t *client = track->client;
@@ -2257,8 +2257,9 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		 *	will be cleaned up when the timer
 		 *	fires.
 		 */
-		if (fr_event_timer_at(track, el, &track->ev,
-				      track->expires, packet_expiry_timer, track) == 0) {
+		if (fr_timer_at(track, tl, &track->ev,
+				track->expires,
+				false, packet_expiry_timer, track) == 0) {
 			DEBUG("proto_%s - cleaning up request in %.6fs", inst->app_io->common.name,
 			      fr_time_delta_unwrap(inst->cleanup_delay) / (double)NSEC);
 			return;
@@ -2296,7 +2297,7 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	the client.
 	 */
 	if (client->packets == 0) {
-		client_expiry_timer(el, now, client);
+		client_expiry_timer(tl, now, client);
 	}
 }
 
@@ -2362,7 +2363,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 						 buffer, buffer_len, written);
 		if (packet_len <= 0) {
 			track->discard = true;
-			packet_expiry_timer(el, fr_time_wrap(0), track);
+			packet_expiry_timer(el->tl, fr_time_wrap(0), track);
 			return packet_len;
 		}
 
@@ -2398,7 +2399,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	On dedup this also extends the timer.
 		 */
 	setup_timer:
-		packet_expiry_timer(el, fr_time_wrap(0), track);
+		packet_expiry_timer(el->tl, fr_time_wrap(0), track);
 		return buffer_len;
 	}
 
@@ -2453,7 +2454,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 */
 		if (connection && (inst->ipproto == IPPROTO_UDP)) {
 			connection = fr_io_connection_alloc(inst, thread, client, -1, connection->address, connection);
-			client_expiry_timer(el, fr_time_wrap(0), connection->client);
+			client_expiry_timer(el->tl, fr_time_wrap(0), connection->client);
 
 			errno = ECONNREFUSED;
 			return -1;
@@ -2464,7 +2465,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	expiry timer, which will close and free the
 		 *	connection.
 		 */
-		client_expiry_timer(el, fr_time_wrap(0), client);
+		client_expiry_timer(el->tl, fr_time_wrap(0), client);
 		return buffer_len;
 	}
 
@@ -2704,7 +2705,7 @@ finish:
 	 *	timed out, so there's nothing more to do.  In that case, set up the expiry timers.
 	 */
 	if (client->packets == 0) {
-		client_expiry_timer(el, fr_time_wrap(0), client);
+		client_expiry_timer(el->tl, fr_time_wrap(0), client);
 	}
 
 reread:

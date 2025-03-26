@@ -35,6 +35,7 @@ SOURCES		:= \
 		   edit.c \
 		   encode.c \
 		   event.c \
+		   timer.c \
 		   ext.c \
 		   fifo.c \
 		   file.c \
@@ -121,4 +122,3 @@ ifeq "$(TARGET_IS_WASM)" "yes"
 SRC_CFLAGS      += -sMAIN_MODULE=1 -sUSE_PTHREADS=1
 TGT_LDFLAGS	+= --no-entry -sALLOW_MEMORY_GROWTH=1 -sFORCE_FILESYSTEM=1 -sEXPORT_ALL=1 -sLINKABLE=1 -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORT_NAME=libfreeradiusUtil -sEXPORTED_RUNTIME_METHODS=ccall,cwrap,setValue,getValue --preload-file=$(top_builddir)/share/dictionary@/share/dictionary
 endif
-

@@ -137,7 +137,8 @@ int persistent_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no, proto
 	 *	Whilst persistent search LDAP servers don't provide cookies as such
 	 *	we treat change numbers, if provided, as cookies.
 	 */
-	fr_event_timer_in(sync, conn->conn->el, &sync->cookie_ev, inst->cookie_interval, ldap_sync_cookie_event, sync);
+	fr_timer_in(sync, conn->conn->el->tl, &sync->cookie_ev, inst->cookie_interval,
+		    false, ldap_sync_cookie_event, sync);
 
 	return 0;
 }

@@ -29,9 +29,12 @@
  */
 RCSID("$Id$")
 
+#define _EVENT_LIST_PRIVATE 1
+typedef struct fr_event_list_s fr_event_list_t;
+
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/event.h>
-#include <freeradius-devel/util/lst.h>
+#include <freeradius-devel/util/timer.h>
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/strerror.h>
@@ -64,15 +67,6 @@ DIAG_ON(unused-macros)
 #  define SO_GET_FILTER SO_ATTACH_FILTER
 #endif
 
-#ifdef WITH_EVENT_DEBUG
-#  define EVENT_DEBUG(fmt, ...) printf("EVENT:");printf(fmt, ## __VA_ARGS__);printf("\n");
-#  ifndef EVENT_REPORT_FREQ
-#    define EVENT_REPORT_FREQ	5
-#  endif
-#else
-#  define EVENT_DEBUG(...)
-#endif
-
 static fr_table_num_sorted_t const kevent_filter_table[] = {
 #ifdef EVFILT_AIO
 	{ L("EVFILT_AIO"),	EVFILT_AIO },
@@ -95,31 +89,6 @@ static size_t kevent_filter_table_len = NUM_ELEMENTS(kevent_filter_table);
 #ifdef EVFILT_LIBKQUEUE
 static int log_conf_kq;
 #endif
-
-/** A timer event
- *
- */
-struct fr_event_timer {
-	fr_time_t		when;			//!< When this timer should fire.
-
-	fr_event_timer_cb_t	callback;		//!< Callback to execute when the timer fires.
-	void const		*uctx;			//!< Context pointer to pass to the callback.
-
-	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
-
-	fr_event_timer_t const	**parent;		//!< A pointer to the parent structure containing the timer
-							///< event.
-
-	fr_lst_index_t		lst_id;	     	  	//!< Where to store opaque lst data.
-	fr_dlist_t		entry;			//!< List of deferred timer events.
-
-	fr_event_list_t		*el;			//!< Event list containing this timer.
-
-#ifndef NDEBUG
-	char const		*file;			//!< Source file this event was last updated in.
-	int			line;			//!< Line this event was last updated on.
-#endif
-};
 
 typedef enum {
 	FR_EVENT_FD_SOCKET	= 1,			//!< is a socket.
@@ -401,46 +370,43 @@ typedef struct {
  */
 typedef struct {
 	fr_dlist_t		entry;			//!< Linked list of callback.
-	fr_event_timer_cb_t	callback;		//!< The callback to call.
+	fr_event_post_cb_t	callback;		//!< The callback to call.
 	void			*uctx;			//!< Context for the callback.
 } fr_event_post_t;
 
 /** Stores all information relating to an event list
  *
  */
-struct fr_event_list {
-	fr_lst_t		*times;			//!< of timer events to be executed.
-	fr_rb_tree_t		*fds;			//!< Tree used to track FDs with filters in kqueue.
+struct fr_event_list_s {
+	struct fr_event_list_pub_s	pub;			//!< Next event list in the chain.
+	fr_rb_tree_t			*fds;			//!< Tree used to track FDs with filters in kqueue.
 
-	int			will_exit;		//!< Will exit on next call to fr_event_corral.
-	int			exit;			//!< If non-zero event loop will prevent the addition
-							///< of new events, and will return immediately
-							///< from the corral/service function.
+	int				will_exit;		//!< Will exit on next call to fr_event_corral.
+	int				exit;			//!< If non-zero event loop will prevent the addition
+								///< of new events, and will return immediately
+								///< from the corral/service function.
 
-	fr_event_time_source_t	time;			//!< Where our time comes from.
-	fr_time_t 		now;			//!< The last time the event list was serviced.
-	bool			dispatch;		//!< Whether the event list is currently dispatching events.
+	bool				dispatch;		//!< Whether the event list is currently dispatching events.
 
-	int			num_fd_events;		//!< Number of events in this event list.
+	int				num_fd_events;		//!< Number of events in this event list.
 
-	int			kq;			//!< instance associated with this event list.
+	int				kq;			//!< instance associated with this event list.
 
-	fr_dlist_head_t		pre_callbacks;		//!< callbacks when we may be idle...
-	fr_dlist_head_t		post_callbacks;		//!< post-processing callbacks
+	fr_dlist_head_t			pre_callbacks;		//!< callbacks when we may be idle...
+	fr_dlist_head_t			post_callbacks;		//!< post-processing callbacks
 
-	fr_dlist_head_t		pid_to_reap;		//!< A list of all orphaned child processes we're
-							///< waiting to reap.
+	fr_dlist_head_t			pid_to_reap;		//!< A list of all orphaned child processes we're
+								///< waiting to reap.
 
-	struct kevent		events[FR_EV_BATCH_FDS]; /* so it doesn't go on the stack every time */
+	struct kevent			events[FR_EV_BATCH_FDS]; /* so it doesn't go on the stack every time */
 
-	bool			in_handler;		//!< Deletes should be deferred until after the
-							///< handlers complete.
+	bool				in_handler;		//!< Deletes should be deferred until after the
+								///< handlers complete.
 
-	fr_dlist_head_t		fd_to_free;		//!< File descriptor events pending deletion.
-	fr_dlist_head_t		ev_to_add;		//!< dlist of events to add
+	fr_dlist_head_t			fd_to_free;		//!< File descriptor events pending deletion.
 
 #ifdef WITH_EVENT_DEBUG
-	fr_event_timer_t const	*report;		//!< Report event.
+	fr_timer_t			*report;		//!< Report event.
 #endif
 };
 
@@ -564,22 +530,6 @@ static inline CC_HINT(always_inline) fr_event_fd_cb_t event_fd_func(fr_event_fd_
 	}
 }
 
-/** Compare two timer events to see which one should occur first
- *
- * @param[in] a the first timer event.
- * @param[in] b the second timer event.
- * @return
- *	- +1 if a should occur later than b.
- *	- -1 if a should occur earlier than b.
- *	- 0 if both events occur at the same time.
- */
-static int8_t fr_event_timer_cmp(void const *a, void const *b)
-{
-	fr_event_timer_t const	*ev_a = a, *ev_b = b;
-
-	return fr_time_cmp(ev_a->when, ev_b->when);
-}
-
 /** Compare two file descriptor handles
  *
  * @param[in] one the first file descriptor handle.
@@ -614,7 +564,7 @@ uint64_t fr_event_list_num_timers(fr_event_list_t *el)
 {
 	if (unlikely(!el)) return -1;
 
-	return fr_lst_num_elements(el->times);
+	return fr_timer_list_num_events(el->pub.tl);
 }
 
 /** Return the kq associated with an event list.
@@ -642,11 +592,7 @@ int fr_event_list_kq(fr_event_list_t *el)
  */
 fr_time_t fr_event_list_time(fr_event_list_t *el)
 {
-	if (el->dispatch) {
-		return el->now;
-	} else {
-		return el->time();
-	}
+	return el->pub.tl->time();
 }
 
 /** Placeholder callback to avoid branches in service loop
@@ -1386,255 +1332,6 @@ int fr_event_fd_unarmour(fr_event_list_t *el, int fd, fr_event_filter_t filter, 
 }
 #endif
 
-/** Remove an event from the event loop
- *
- * @param[in] ev	to free.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int _event_timer_free(fr_event_timer_t *ev)
-{
-	fr_event_list_t		*el = ev->el;
-	fr_event_timer_t const	**ev_p;
-
-	if (fr_dlist_entry_in_list(&ev->entry)) {
-		(void) fr_dlist_remove(&el->ev_to_add, ev);
-	} else {
-		int		ret = fr_lst_extract(el->times, ev);
-		char const	*err_file;
-		int		err_line;
-
-#ifndef NDEBUG
-		err_file = ev->file;
-		err_line = ev->line;
-#else
-		err_file = "not-available";
-		err_line = 0;
-#endif
-
-
-		/*
-		 *	Events MUST be in the lst (or the insertion list).
-		 */
-		if (!fr_cond_assert_msg(ret == 0,
-					"Event %p, lst_id %u, allocd %s[%d], was not found in the event lst or "
-					"insertion list when freed: %s", ev, ev->lst_id, err_file, err_line,
-					 fr_strerror())) return -1;
-	}
-
-	ev_p = ev->parent;
-	fr_assert(*(ev->parent) == ev);
-	*ev_p = NULL;
-
-	return 0;
-}
-
-/** Insert a timer event into an event list
- *
- * @note The talloc parent of the memory returned in ev_p must not be changed.
- *	 If the lifetime of the event needs to be bound to another context
- *	 this function should be called with the existing event pointed to by
- *	 ev_p.
- *
- * @param[in] ctx		to bind lifetime of the event to.
- * @param[in] el		to insert event into.
- * @param[in,out] ev_p		If not NULL modify this event instead of creating a new one.  This is a parent
- *				in a temporal sense, not in a memory structure or dependency sense.
- * @param[in] when		we should run the event.
- * @param[in] callback		function to execute if the event fires.
- * @param[in] uctx		user data to pass to the event.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
-		       TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev_p,
-		       fr_time_t when, fr_event_timer_cb_t callback, void const *uctx)
-{
-	fr_event_timer_t *ev;
-
-	if (unlikely(!el)) {
-		fr_strerror_const("Invalid arguments: NULL event list");
-		return -1;
-	}
-
-	if (unlikely(!callback)) {
-		fr_strerror_const("Invalid arguments: NULL callback");
-		return -1;
-	}
-
-	if (unlikely(!ev_p)) {
-		fr_strerror_const("Invalid arguments: NULL ev_p");
-		return -1;
-	}
-
-	if (unlikely(el->exit)) {
-		fr_strerror_const("Event loop exiting");
-		return -1;
-	}
-
-	/*
-	 *	If there is an event, reuse it instead of freeing it
-	 *	and allocating a new one.  This is to reduce memory
-	 *	churn for repeat events.
-	 */
-	if (!*ev_p) {
-	new_event:
-		ev = talloc_zero(el, fr_event_timer_t);
-		if (unlikely(!ev)) return -1;
-
-		EVENT_DEBUG("%p - %s[%i] Added new timer %p", el, file, line, ev);
-
-		/*
-		 *	Bind the lifetime of the event to the specified
-		 *	talloc ctx.  If the talloc ctx is freed, the
-		 *	event will also be freed.
-		 */
-		if (ctx != el) talloc_link_ctx(ctx, ev);
-
-		talloc_set_destructor(ev, _event_timer_free);
-		ev->lst_id = 0;
-
-	} else {
-		ev = UNCONST(fr_event_timer_t *, *ev_p);
-
-		EVENT_DEBUG("%p - %s[%i] Re-armed timer %p", el, file, line, ev);
-
-		/*
-		 *	We can't disarm the linking context due to
-		 *	limitations in talloc, so if the linking
-		 *	context changes, we need to free the old
-		 *	event, and allocate a new one.
-		 *
-		 *	Freeing the event also removes it from the lst.
-		 */
-		if (unlikely(ev->linked_ctx != ctx)) {
-			talloc_free(ev);
-			goto new_event;
-		}
-
-		/*
-		 *	Event may have fired, in which case the event
-		 *	will no longer be in the event loop, so check
-		 *	if it's in the lst before extracting it.
-		 */
-		if (!fr_dlist_entry_in_list(&ev->entry)) {
-			int		ret;
-			char const	*err_file;
-			int		err_line;
-
-			ret = fr_lst_extract(el->times, ev);
-
-#ifndef NDEBUG
-			err_file = ev->file;
-			err_line = ev->line;
-#else
-			err_file = "not-available";
-			err_line = 0;
-#endif
-
-			/*
-			 *	Events MUST be in the lst (or the insertion list).
-			 */
-			if (!fr_cond_assert_msg(ret == 0,
-						"Event %p, lst_id %u, allocd %s[%d], was not found in the event "
-						"lst or insertion list when freed: %s", ev, ev->lst_id,
-						err_file, err_line, fr_strerror())) return -1;
-		}
-	}
-
-	ev->el = el;
-	ev->when = when;
-	ev->callback = callback;
-	ev->uctx = uctx;
-	ev->linked_ctx = ctx;
-	ev->parent = ev_p;
-#ifndef NDEBUG
-	ev->file = file;
-	ev->line = line;
-#endif
-
-	if (el->in_handler) {
-		/*
-		 *	Don't allow an event to be inserted
-		 *	into the deferred insertion list
-		 *	multiple times.
-		 */
-		if (!fr_dlist_entry_in_list(&ev->entry)) fr_dlist_insert_head(&el->ev_to_add, ev);
-	} else if (unlikely(fr_lst_insert(el->times, ev) < 0)) {
-		fr_strerror_const_push("Failed inserting event");
-		talloc_set_destructor(ev, NULL);
-		*ev_p = NULL;
-		talloc_free(ev);
-		return -1;
-	}
-
-	*ev_p = ev;
-
-	return 0;
-}
-
-/** Insert a timer event into an event list
- *
- * @note The talloc parent of the memory returned in ev_p must not be changed.
- *	 If the lifetime of the event needs to be bound to another context
- *	 this function should be called with the existing event pointed to by
- *	 ev_p.
- *
- * @param[in] ctx		to bind lifetime of the event to.
- * @param[in] el		to insert event into.
- * @param[in,out] ev_p		If not NULL modify this event instead of creating a new one.  This is a parent
- *				in a temporal sense, not in a memory structure or dependency sense.
- * @param[in] delta		In how many nanoseconds to wait before should we execute the event.
- * @param[in] callback		function to execute if the event fires.
- * @param[in] uctx		user data to pass to the event.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int _fr_event_timer_in(NDEBUG_LOCATION_ARGS
-		       TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev_p,
-		       fr_time_delta_t delta, fr_event_timer_cb_t callback, void const *uctx)
-{
-	return _fr_event_timer_at(NDEBUG_LOCATION_VALS
-				  ctx, el, ev_p, fr_time_add(el->time(), delta), callback, uctx);
-}
-
-/** Delete a timer event from the event list
- *
- * @param[in] ev_p	of the event being deleted.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_event_timer_delete(fr_event_timer_t const **ev_p)
-{
-	fr_event_timer_t *ev;
-	int ret;
-
-	if (unlikely(!*ev_p)) return 0;
-
-	ev = UNCONST(fr_event_timer_t *, *ev_p);
-	ret = talloc_free(ev);
-
-	/*
-	 *	Don't leave a garbage pointer value
-	 *	in the parent.
-	 */
-	if (likely(ret == 0)) *ev_p = NULL;
-	return 0;
-}
-
-/** Internal timestamp representing when the timer should fire
- *
- * @return When the timestamp should fire.
- */
-fr_time_t fr_event_timer_when(fr_event_timer_t const *ev)
-{
-	return ev->when;
-}
-
 /** Remove PID wait event from kevent if the fr_event_pid_t is freed
  *
  * @param[in] ev	to free.
@@ -2016,7 +1713,7 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 		struct kevent	evset;
 		int		waiting = 0;
 		int 		kq = kqueue();
-		fr_time_t	now, start = el->time(), end = fr_time_add(start, timeout);
+		fr_time_t	now, start = el->pub.tl->time(), end = fr_time_add(start, timeout);
 
 		if (unlikely(kq < 0)) goto force;
 
@@ -2058,7 +1755,7 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 		/*
 		 *	Keep draining process exits as they come in...
 		 */
-		while ((waiting > 0) && fr_time_gt(end, (now = el->time()))) {
+		while ((waiting > 0) && fr_time_gt(end, (now = el->pub.tl->time()))) {
 			struct kevent	kev;
 			int		ret;
 
@@ -2310,7 +2007,7 @@ int fr_event_pre_delete(fr_event_list_t *el, fr_event_status_cb_t callback, void
  *	- < 0 on error
  *	- 0 on success
  */
-int fr_event_post_insert(fr_event_list_t *el, fr_event_timer_cb_t callback, void *uctx)
+int fr_event_post_insert(fr_event_list_t *el, fr_event_post_cb_t callback, void *uctx)
 {
 	fr_event_post_t *post;
 
@@ -2332,7 +2029,7 @@ int fr_event_post_insert(fr_event_list_t *el, fr_event_timer_cb_t callback, void
  *	- < 0 on error
  *	- 0 on success
  */
-int fr_event_post_delete(fr_event_list_t *el, fr_event_timer_cb_t callback, void *uctx)
+int fr_event_post_delete(fr_event_list_t *el, fr_event_post_cb_t callback, void *uctx)
 {
 	fr_event_post_t *post, *next;
 
@@ -2352,56 +2049,6 @@ int fr_event_post_delete(fr_event_list_t *el, fr_event_timer_cb_t callback, void
 	return -1;
 }
 
-/** Run a single scheduled timer event
- *
- * @param[in] el	containing the timer events.
- * @param[in] when	Process events scheduled to run before or at this time.
- * @return
- *	- 0 no timer events fired.
- *	- 1 a timer event fired.
- */
-int fr_event_timer_run(fr_event_list_t *el, fr_time_t *when)
-{
-	fr_event_timer_cb_t	callback;
-	void			*uctx;
-	fr_event_timer_t	*ev;
-
-	if (unlikely(!el)) return 0;
-
-	if (fr_lst_num_elements(el->times) == 0) {
-		*when = fr_time_wrap(0);
-		return 0;
-	}
-
-	ev = fr_lst_peek(el->times);
-	if (!ev) {
-		*when = fr_time_wrap(0);
-		return 0;
-	}
-
-	/*
-	 *	See if it's time to do this one.
-	 */
-	if (fr_time_gt(ev->when, *when)) {
-		*when = ev->when;
-		return 0;
-	}
-
-	callback = ev->callback;
-	memcpy(&uctx, &ev->uctx, sizeof(uctx));
-
-	fr_assert(*ev->parent == ev);
-
-	/*
-	 *	Delete the event before calling it.
-	 */
-	fr_event_timer_delete(ev->parent);
-
-	callback(el, *when, uctx);
-
-	return 1;
-}
-
 /** Gather outstanding timer and file descriptor events
  *
  * @param[in] el	to process events for.
@@ -2418,7 +2065,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	fr_event_pre_t		*pre;
 	int			num_fd_events;
 	bool			timer_event_ready = false;
-	fr_event_timer_t	*ev;
+	fr_time_t		next;
 
 	el->num_fd_events = 0;
 
@@ -2435,20 +2082,19 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	 */
 	when = fr_time_delta_wrap(0);
 	wake = &when;
-	el->now = now;
 
 	/*
 	 *	See when we have to wake up.  Either now, if the timer
 	 *	events are in the past.  Or, we wait for a future
 	 *	timer event.
 	 */
-	ev = fr_lst_peek(el->times);
-	if (ev) {
-		if (fr_time_lteq(ev->when, el->now)) {
+	next = fr_timer_list_when(el->pub.tl);
+	if (fr_time_neq(next, fr_time_wrap(0))) {
+		if (fr_time_lteq(next, now)) {
 			timer_event_ready = true;
 
 		} else if (wait) {
-			when = fr_time_sub(ev->when, el->now);
+			when = fr_time_sub(next, now);
 
 		} /* else we're not waiting, leave "when == 0" */
 
@@ -2518,7 +2164,6 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	 *	If there are no FD events, we must have woken up from a timer
 	 */
 	if (!num_fd_events) {
-		el->now = fr_time_add(el->now, when);
 		if (wait) timer_event_ready = true;
 	}
 	/*
@@ -2532,6 +2177,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	return num_fd_events + timer_event_ready;
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static inline CC_HINT(always_inline)
 void event_callback(fr_event_list_t *el, fr_event_fd_t *ef, int *filter, int flags, int *fflags)
 {
@@ -2548,10 +2194,10 @@ void event_callback(fr_event_list_t *el, fr_event_fd_t *ef, int *filter, int fla
  */
 void fr_event_service(fr_event_list_t *el)
 {
+	fr_timer_list_t	*etl = el->pub.tl;
 	int			i;
 	fr_event_post_t		*post;
-	fr_time_t		when;
-	fr_event_timer_t	*ev;
+	fr_time_t		when, now;
 
 	if (unlikely(el->exit)) return;
 
@@ -2685,44 +2331,27 @@ void fr_event_service(fr_event_list_t *el)
 	 *	cause strange interaction effects, spurious calls
 	 *	to kevent, and busy loops.
 	 */
-	el->now = el->time();
+	now = etl->time();
 
 	/*
 	 *	Run all of the timer events.  Note that these can add
 	 *	new timers!
 	 */
-	if (fr_lst_num_elements(el->times) > 0) {
-		el->in_handler = true;
+	if (fr_time_neq(fr_timer_list_when(el->pub.tl), fr_time_wrap(0))) {
+		int ret;
 
-		do {
-			when = el->now;
-		} while (fr_event_timer_run(el, &when) == 1);
+		when = now;
 
-		el->in_handler = false;
-	}
-
-	/*
-	 *	New timers can be added while running the timer
-	 *	callback. Instead of being added to the main timer
-	 *	lst, they are instead added to the "to do" list.
-	 *	Once we're finished running the callbacks, we walk
-	 *	through the "to do" list, and add the callbacks to the
-	 *	timer lst.
-	 *
-	 *	Doing it this way prevents the server from running
-	 *	into an infinite loop.  The timer callback MAY add a
-	 *	new timer which is in the past.  The loop above would
-	 *	then immediately run the new callback, which could
-	 *	also add an event in the past...
-	 */
-	while ((ev = fr_dlist_head(&el->ev_to_add)) != NULL) {
-		(void)fr_dlist_remove(&el->ev_to_add, ev);
-		if (unlikely(fr_lst_insert(el->times, ev) < 0)) {
-			talloc_free(ev);
-			fr_assert_msg(0, "failed inserting lst event: %s", fr_strerror());	/* Die in debug builds */
+		ret = fr_timer_list_run(etl, &when);
+		if (!fr_cond_assert(ret >= 0)) {	/* catastrophic error, trigger event loop exit */
+			el->exit = 1;
+			return;
 		}
+
+		EVENT_DEBUG("%p - %s - Serviced %u timer(s)", el, __FUNCTION__, (unsigned int)ret);
 	}
-	el->now = el->time();
+
+	now = etl->time();
 
 	/*
 	 *	Run all of the post-processing events.
@@ -2730,7 +2359,7 @@ void fr_event_service(fr_event_list_t *el)
 	for (post = fr_dlist_head(&el->post_callbacks);
 	     post != NULL;
 	     post = fr_dlist_next(&el->post_callbacks, post)) {
-		post->callback(el, el->now, post->uctx);
+		post->callback(el, now, post->uctx);
 	}
 }
 
@@ -2769,7 +2398,7 @@ CC_HINT(flatten) int fr_event_loop(fr_event_list_t *el)
 
 	el->dispatch = true;
 	while (!el->exit) {
-		if (unlikely(fr_event_corral(el, el->time(), true)) < 0) break;
+		if (unlikely(fr_event_corral(el, el->pub.tl->time(), true)) < 0) break;
 		fr_event_service(el);
 	}
 
@@ -2793,10 +2422,6 @@ CC_HINT(flatten) int fr_event_loop(fr_event_list_t *el)
  */
 static int _event_list_free(fr_event_list_t *el)
 {
-	fr_event_timer_t const *ev;
-
-	while ((ev = fr_lst_peek(el->times)) != NULL) fr_event_timer_delete(&ev);
-
 	fr_event_list_reap_signal(el, fr_time_delta_wrap(0), SIGKILL);
 
 	talloc_free_children(el);
@@ -2916,13 +2541,12 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 		fr_strerror_const("Out of memory");
 		return NULL;
 	}
-	el->time = fr_time;
 	el->kq = -1;	/* So destructor can be used before kqueue() provides us with fd */
 	talloc_set_destructor(el, _event_list_free);
 
-	el->times = fr_lst_talloc_alloc(el, fr_event_timer_cmp, fr_event_timer_t, lst_id, 0);
-	if (!el->times) {
-		fr_strerror_const("Failed allocating event lst");
+	el->pub.tl = fr_timer_list_lst_alloc(el, NULL);
+	if (!el->pub.tl) {
+		fr_strerror_const("Failed allocating timer list");
 	error:
 		talloc_free(el);
 		return NULL;
@@ -2942,7 +2566,6 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 
 	fr_dlist_talloc_init(&el->pre_callbacks, fr_event_pre_t, entry);
 	fr_dlist_talloc_init(&el->post_callbacks, fr_event_post_t, entry);
-	fr_dlist_talloc_init(&el->ev_to_add, fr_event_timer_t, entry);
 	fr_dlist_talloc_init(&el->pid_to_reap, fr_event_pid_reap_t, entry);
 	fr_dlist_talloc_init(&el->fd_to_free, fr_event_fd_t, entry);
 	if (status) (void) fr_event_pre_insert(el, status, status_uctx);
@@ -2956,21 +2579,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 		goto error;
 	}
 
-#ifdef WITH_EVENT_DEBUG
-	fr_event_timer_in(el, el, &el->report, fr_time_delta_from_sec(EVENT_REPORT_FREQ), fr_event_report, NULL);
-#endif
-
 	return el;
-}
-
-/** Override event list time source
- *
- * @param[in] el	to set new time function for.
- * @param[in] func	to set.
- */
-void fr_event_list_set_time_func(fr_event_list_t *el, fr_event_time_source_t func)
-{
-	el->time = func;
 }
 
 /** Return whether the event loop has any active events
@@ -2978,165 +2587,9 @@ void fr_event_list_set_time_func(fr_event_list_t *el, fr_event_time_source_t fun
  */
 bool fr_event_list_empty(fr_event_list_t *el)
 {
-	return !fr_lst_num_elements(el->times) && !fr_rb_num_elements(el->fds);
+	return fr_time_eq(fr_timer_list_when(el->pub.tl), fr_time_wrap(0)) && (fr_rb_num_elements(el->fds) == 0);
 }
-
-#ifdef WITH_EVENT_DEBUG
-static const fr_time_delta_t decades[18] = {
-	{ 1 }, { 10 }, { 100 },
-	{ 1000 }, { 10000 }, { 100000 },
-	{ 1000000 }, { 10000000 }, { 100000000 },
-	{ 1000000000 }, { 10000000000 }, { 100000000000 },
-	{ 1000000000000 }, { 10000000000000 }, { 100000000000000 },
-	{ 1000000000000000 }, { 10000000000000000 }, { 100000000000000000 },
-};
-
-static const char *decade_names[18] = {
-	"1ns", "10ns", "100ns",
-	"1us", "10us", "100us",
-	"1ms", "10ms", "100ms",
-	"1s", "10s", "100s",
-	"1Ks", "10Ks", "100Ks",
-	"1Ms", "10Ms", "100Ms",	/* 1 year is 300Ms */
-};
-
-typedef struct {
-	fr_rb_node_t	node;
-	char const	*file;
-	int		line;
-	uint32_t	count;
-} fr_event_counter_t;
-
-static int8_t event_timer_location_cmp(void const *one, void const *two)
-{
-	fr_event_counter_t const	*a = one;
-	fr_event_counter_t const	*b = two;
-
-	CMP_RETURN(a, b, file);
-
-	return CMP(a->line, b->line);
-}
-
-
-/** Print out information about the number of events in the event loop
- *
- */
-void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
-{
-	fr_lst_iter_t		iter;
-	fr_event_timer_t const	*ev;
-	size_t			i;
-
-	size_t			array[NUM_ELEMENTS(decades)] = { 0 };
-	fr_rb_tree_t		*locations[NUM_ELEMENTS(decades)];
-	TALLOC_CTX		*tmp_ctx;
-	static pthread_mutex_t	print_lock = PTHREAD_MUTEX_INITIALIZER;
-
-	tmp_ctx = talloc_init_const("temporary stats");
-	if (!tmp_ctx) {
-	oom:
-		EVENT_DEBUG("Can't do report, out of memory");
-		talloc_free(tmp_ctx);
-		return;
-	}
-
-	for (i = 0; i < NUM_ELEMENTS(decades); i++) {
-		locations[i] = fr_rb_inline_alloc(tmp_ctx, fr_event_counter_t, node, event_timer_location_cmp, NULL);
-		if (!locations[i]) goto oom;
-	}
-
-	/*
-	 *	Show which events are due, when they're due,
-	 *	and where they were allocated
-	 */
-	for (ev = fr_lst_iter_init(el->times, &iter);
-	     ev != NULL;
-	     ev = fr_lst_iter_next(el->times, &iter)) {
-		fr_time_delta_t diff = fr_time_sub(ev->when, now);
-
-		for (i = 0; i < NUM_ELEMENTS(decades); i++) {
-			if ((fr_time_delta_cmp(diff, decades[i]) <= 0) || (i == NUM_ELEMENTS(decades) - 1)) {
-				fr_event_counter_t find = { .file = ev->file, .line = ev->line };
-				fr_event_counter_t *counter;
-
-				counter = fr_rb_find(locations[i], &find);
-				if (!counter) {
-					counter = talloc(locations[i], fr_event_counter_t);
-					if (!counter) goto oom;
-					counter->file = ev->file;
-					counter->line = ev->line;
-					counter->count = 1;
-					fr_rb_insert(locations[i], counter);
-				} else {
-					counter->count++;
-				}
-
-				array[i]++;
-				break;
-			}
-		}
-	}
-
-	pthread_mutex_lock(&print_lock);
-	EVENT_DEBUG("%p - Event list stats", el);
-	EVENT_DEBUG("    fd events            : %"PRIu64, fr_event_list_num_fds(el));
-	EVENT_DEBUG("    events last iter     : %u", el->num_fd_events);
-	EVENT_DEBUG("    num timer events     : %"PRIu64, fr_event_list_num_timers(el));
-
-	for (i = 0; i < NUM_ELEMENTS(decades); i++) {
-		fr_rb_iter_inorder_t	event_iter;
-		void			*node;
-
-		if (!array[i]) continue;
-
-		if (i == 0) {
-			EVENT_DEBUG("    events <= %5s      : %zu", decade_names[i], array[i]);
-		} else if (i == (NUM_ELEMENTS(decades) - 1)) {
-			EVENT_DEBUG("    events > %5s       : %zu", decade_names[i - 1], array[i]);
-		} else {
-			EVENT_DEBUG("    events %5s - %5s : %zu", decade_names[i - 1], decade_names[i], array[i]);
-		}
-
-		for (node = fr_rb_iter_init_inorder(&event_iter, locations[i]);
-		     node;
-		     node = fr_rb_iter_next_inorder(&event_iter)) {
-			fr_event_counter_t	*counter = talloc_get_type_abort(node, fr_event_counter_t);
-
-			EVENT_DEBUG("                         : %u allocd at %s[%d]",
-				    counter->count, counter->file, counter->line);
-		}
-	}
-	pthread_mutex_unlock(&print_lock);
-
-	fr_event_timer_in(el, el, &el->report, fr_time_delta_from_sec(EVENT_REPORT_FREQ), fr_event_report, uctx);
-	talloc_free(tmp_ctx);
-}
-
-#ifndef NDEBUG
-void fr_event_timer_dump(fr_event_list_t *el)
-{
-	fr_lst_iter_t		iter;
-	fr_event_timer_t 	*ev;
-	fr_time_t		now;
-
-	now = el->time();
-
-	EVENT_DEBUG("Time is now %"PRId64"", fr_time_unwrap(now));
-
-	for (ev = fr_lst_iter_init(el->times, &iter);
-	     ev;
-	     ev = fr_lst_iter_next(el->times, &iter)) {
-		(void)talloc_get_type_abort(ev, fr_event_timer_t);
-		EVENT_DEBUG("%s[%d]: %p time=%" PRId64 " (%c), callback=%p",
-			    ev->file, ev->line, ev, fr_time_unwrap(ev->when),
-			    fr_time_gt(now, ev->when) ? '<' : '>', ev->callback);
-	}
-}
-#endif
-#endif
-
 #ifdef TESTING
-
 /*
  *  cc -g -I .. -c rb.c -o rbtree.o && cc -g -I .. -c isaac.c -o isaac.o && cc -DTESTING -I .. -c event.c  -o event_mine.o && cc event_mine.o rbtree.o isaac.o -o event
  *
@@ -3202,13 +2655,13 @@ int main(int argc, char **argv)
 		array[i] = array[i - 1];
 		array[i] += event_rand() & 0xffff;
 
-		fr_event_timer_at(NULL, el, array[i], print_time, array[i]);
+		fr_timer_at(NULL, el, array[i], false, print_time, array[i]);
 	}
 
 	while (fr_event_list_num_timers(el)) {
 		now = el->time();
 		when = now;
-		if (!fr_event_timer_run(el, &when)) {
+		if (!fr_timer_run(el, &when)) {
 			int delay = (when - now) / 1000;	/* nanoseconds to microseconds */
 
 			printf("\tsleep %d microseconds\n", delay);

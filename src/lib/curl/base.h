@@ -90,7 +90,7 @@ do {\
  */
 typedef struct {
 	fr_event_list_t		*el;			//!< Event list servicing I/O events.
-	fr_event_timer_t const	*ev;			//!< Multi-Handle timer.
+	fr_timer_t		*ev;			//!< Multi-Handle timer.
 	uint64_t		transfers;		//!< How many transfers are current in progress.
 	CURLM			*mandle;		//!< The multi handle.
 } fr_curl_handle_t;

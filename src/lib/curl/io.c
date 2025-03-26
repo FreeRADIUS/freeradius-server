@@ -117,11 +117,11 @@ static inline void _fr_curl_io_demux(fr_curl_handle_t *mhandle, CURLM *mandle)
 
 /** libcurl's timer expired
  *
- * @param[in] el	the timer was inserted into.
+ * @param[in] tl	the timer was inserted into.
  * @param[in] now	The current time according to the event loop.
  * @param[in] uctx	The rlm_fr_curl_thread_t specific to this thread.
  */
-static void _fr_curl_io_timer_expired(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void _fr_curl_io_timer_expired(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	fr_curl_handle_t	*mhandle = talloc_get_type_abort(uctx, fr_curl_handle_t);
 	CURLM			*mandle = mhandle->mandle;
@@ -277,7 +277,7 @@ static int _fr_curl_io_timer_modify(CURLM *mandle, long timeout_ms, void *ctx)
 	fr_curl_handle_t	*mhandle = talloc_get_type_abort(ctx, fr_curl_handle_t);
 
 	if (timeout_ms < 0) {
-		if (fr_event_timer_delete(&mhandle->ev) < 0) {
+		if (fr_timer_delete(&mhandle->ev) < 0) {
 			PERROR("Failed deleting multi-handle timer");
 			return -1;
 		}
@@ -295,15 +295,16 @@ static int _fr_curl_io_timer_modify(CURLM *mandle, long timeout_ms, void *ctx)
 	 *  unpleasant recursive behavior that immediately calls another call to the callback
 	 *  with a zero timeout...
 	 *
-	 *  Setting a timeout of zero when calling fr_event_timer_in should result in the event
+	 *  Setting a timeout of zero when calling fr_timer_in should result in the event
 	 *  repeating at most twice during one iteration of the event loop.
 	 *
 	 *  In a previous version of this code we called curl_multi_socket_action immediately
 	 *  if timeout_ms was 0. It was observed that this lead to this callback being called
 	 *  ~665 times per request which is why we no longer do that.
 	 */
-	if (fr_event_timer_in(mhandle, mhandle->el, &mhandle->ev,
-			      fr_time_delta_from_msec(timeout_ms), _fr_curl_io_timer_expired, mhandle) < 0) return -1;
+	if (fr_timer_in(mhandle, mhandle->el->tl, &mhandle->ev,
+			fr_time_delta_from_msec(timeout_ms),
+			false, _fr_curl_io_timer_expired, mhandle) < 0) return -1;
 	return 0;
 }
 

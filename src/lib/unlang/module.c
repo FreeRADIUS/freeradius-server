@@ -36,7 +36,7 @@ RCSID("$Id$")
 #include "tmpl.h"
 
 static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame);
-static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_time_t now, void *ctx);
+static void unlang_module_event_retry_handler(UNUSED fr_timer_list_t *tl, fr_time_t now, void *ctx);
 
 /** Push a module or submodule onto the stack for evaluation
  *
@@ -387,8 +387,9 @@ unlang_action_t	unlang_module_yield_to_retry(request_t *request, module_method_t
 	if (!state->retry.config) {
 		fr_retry_init(&state->retry, fr_time(), retry_cfg);
 
-		if (fr_event_timer_at(state, unlang_interpret_event_list(request), &state->ev,
-				      state->retry.next, unlang_module_event_retry_handler, request) < 0) {
+		if (fr_timer_at(state, unlang_interpret_event_list(request)->tl, &state->ev,
+				state->retry.next,
+				false, unlang_module_event_retry_handler, request) < 0) {
 			RPEDEBUG("Failed inserting event");
 			return UNLANG_ACTION_FAIL;
 		}
@@ -685,12 +686,12 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 
 /** Call the callback registered for a retry event
  *
- * @param[in] el	the event timer was inserted into.
+ * @param[in] tl	the event timer was inserted into.
  * @param[in] now	The current time, as held by the event_list.
  * @param[in] ctx	the stack frame
  *
  */
-static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_time_t now, void *ctx)
+static void unlang_module_event_retry_handler(UNUSED fr_timer_list_t *tl, fr_time_t now, void *ctx)
 {
 	request_t			*request = talloc_get_type_abort(ctx, request_t);
 	unlang_stack_t			*stack = request->stack;
@@ -731,8 +732,8 @@ static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_tim
 		/*
 		 *	Reset the timer.
 		 */
-		if (fr_event_timer_at(state, unlang_interpret_event_list(request), &state->ev, state->retry.next,
-				      unlang_module_event_retry_handler, request) < 0) {
+		if (fr_timer_at(state, unlang_interpret_event_list(request)->tl, &state->ev, state->retry.next,
+				false, unlang_module_event_retry_handler, request) < 0) {
 			RPEDEBUG("Failed inserting event");
 			unlang_interpret_mark_runnable(request); /* and let the caller figure out what's up */
 		}
@@ -887,9 +888,9 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 
 			fr_retry_init(&state->retry, now, &frame->instruction->actions.retry);
 
-			if (fr_event_timer_at(state, unlang_interpret_event_list(request),
-					      &state->ev, state->retry.next,
-					      unlang_module_event_retry_handler, request) < 0) {
+			if (fr_timer_at(state, unlang_interpret_event_list(request)->tl,
+					&state->ev, state->retry.next,
+					false, unlang_module_event_retry_handler, request) < 0) {
 				RPEDEBUG("Failed inserting event");
 				goto fail;
 			}

@@ -302,7 +302,7 @@ unlang_action_t unlang_interpret_push_children(rlm_rcode_t *p_result, request_t 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static void instruction_timeout_handler(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx);
+static void instruction_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *ctx);
 
 /** Update the current result after each instruction, and after popping each stack frame
  *
@@ -408,8 +408,8 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 			if (fr_time_delta_ispos(instruction->actions.retry.mrd)) {
 				retry->timeout = fr_time_add(fr_time(), instruction->actions.retry.mrd);
 
-				if (fr_event_timer_at(retry, unlang_interpret_event_list(request), &retry->ev, retry->timeout,
-						      instruction_timeout_handler, request) < 0) {
+				if (fr_timer_at(retry, unlang_interpret_event_list(request)->tl, &retry->ev, retry->timeout,
+						false, instruction_timeout_handler, request) < 0) {
 					RPEDEBUG("Failed inserting event");
 					goto fail;
 				}
@@ -1268,7 +1268,7 @@ void unlang_interpret_signal(request_t *request, fr_signal_t action)
 	}
 }
 
-static void instruction_timeout_handler(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx)
+static void instruction_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *ctx)
 {
 	unlang_retry_t			*retry = talloc_get_type_abort(ctx, unlang_retry_t);
 	request_t			*request = talloc_get_type_abort(retry->request, request_t);
@@ -1445,7 +1445,7 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  * loop.  This means the request is always in a consistent state when
  * the timeout event fires, even if that's state is waiting on I/O.
  */
-static void unlang_cancel_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void unlang_cancel_event(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	request_t *request = talloc_get_type_abort(uctx, request_t);
 
@@ -1480,7 +1480,7 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 {
 	fr_value_box_t		*timeout;
 	fr_event_list_t		*el = unlang_interpret_event_list(request);
-	fr_event_timer_t const  **ev_p, **ev_p_og;
+	fr_timer_t  		**ev_p, **ev_p_og;
 	fr_value_box_t		*vb;
 	fr_time_t		when = fr_time_from_sec(0); /* Invalid clang complaints if we don't set this */
 
@@ -1492,24 +1492,24 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	ev_p = ev_p_og = request_data_get(request, (void *)unlang_cancel_xlat, 0);
 	if (ev_p) {
-		if (*ev_p) when = fr_event_timer_when(*ev_p);	/* *ev_p should never be NULL, really... */
+		if (*ev_p) when = fr_timer_when(*ev_p);	/* *ev_p should never be NULL, really... */
 	} else {
 		/*
 		 *	Must not be parented from the request
 		 *	as this is freed by request data.
 		 */
-		MEM(ev_p = talloc_zero(NULL, fr_event_timer_t const *));
+		MEM(ev_p = talloc_zero(NULL, fr_timer_t *));
 	}
 
-	if (unlikely(fr_event_timer_in(ev_p, el, ev_p,
-				       timeout ? timeout->vb_time_delta : fr_time_delta_from_sec(0),
-				       unlang_cancel_event, request) < 0)) {
+	if (unlikely(fr_timer_in(ev_p, el->tl, ev_p,
+		      timeout ? timeout->vb_time_delta : fr_time_delta_from_sec(0),
+	      false, unlang_cancel_event, request) < 0)) {
 		RPERROR("Failed inserting cancellation event");
 		talloc_free(ev_p);
 		return XLAT_ACTION_FAIL;
 	}
 	if (unlikely(request_data_add(request, (void *)unlang_cancel_xlat, 0,
-				      UNCONST(fr_event_timer_t **, ev_p), true, true, false) < 0)) {
+				      UNCONST(fr_timer_t **, ev_p), true, true, false) < 0)) {
 		RPERROR("Failed associating cancellation event with request");
 		talloc_free(ev_p);
 		return XLAT_ACTION_FAIL;

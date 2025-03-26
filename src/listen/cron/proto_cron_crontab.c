@@ -43,7 +43,7 @@ typedef struct {
 
 	proto_cron_crontab_t const      *inst;
 
-	fr_event_timer_t const		*ev;			//!< for writing statistics
+	fr_timer_t			*ev;			//!< for writing statistics
 
 	fr_listen_t			*parent;		//!< master IO handler
 
@@ -519,7 +519,7 @@ done:
  *	Called when tm.tm_sec == 0.  If it isn't zero, then it means
  *	that the timer is late, and we treat it as if tm.tm_sec == 0.
  */
-static void do_cron(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void do_cron(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	proto_cron_crontab_thread_t	*thread = uctx;
 	struct tm tm;
@@ -633,8 +633,8 @@ use_time:
 		      cf_section_name2(thread->inst->parent->server_cs), buffer, end - start);
 	}
 
-	if (fr_event_timer_at(thread, el, &thread->ev, fr_time_add(now, fr_time_delta_from_sec(end - start)),
-			      do_cron, thread) < 0) {
+	if (fr_timer_at(thread, tl, &thread->ev, fr_time_add(now, fr_time_delta_from_sec(end - start)),
+			false, do_cron, thread) < 0) {
 		fr_assert(0);
 	}
 
@@ -669,7 +669,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	thread->inst = inst;
 	thread->bootstrap = true;
 
-	do_cron(el, fr_time(), thread);
+	do_cron(el->tl, fr_time(), thread);
 }
 
 static char const *mod_name(fr_listen_t *li)

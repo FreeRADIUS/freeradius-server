@@ -50,7 +50,7 @@ fr_dict_attr_autoload_t subrequest_dict_attr[] = {
 /** Event handler to free a detached child
  *
  */
-static void unlang_detached_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void unlang_detached_max_request_time(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	request_t *request = talloc_get_type_abort(uctx, request_t);
 
@@ -74,7 +74,7 @@ int unlang_subrequest_lifetime_set(request_t *request)
 	vp = fr_pair_find_by_da(&request->control_pairs, NULL, request_attr_request_lifetime);
 	if (!vp || (vp->vp_uint32 > 0)) {
 		fr_time_delta_t when = fr_time_delta_wrap(0);
-		const fr_event_timer_t **ev_p;
+		fr_timer_t **ev_p;
 
 		if (!vp) {
 			when = fr_time_delta_add(when, fr_time_delta_from_sec(30)); /* default to 30s if not set */
@@ -94,8 +94,8 @@ int unlang_subrequest_lifetime_set(request_t *request)
 		ev_p = talloc_size(request, sizeof(*ev_p));
 		memset(ev_p, 0, sizeof(*ev_p));
 
-		if (fr_event_timer_in(request, unlang_interpret_event_list(request), ev_p, when,
-				      unlang_detached_max_request_time, request) < 0) {
+		if (fr_timer_in(request, unlang_interpret_event_list(request)->tl, ev_p, when,
+				false, unlang_detached_max_request_time, request) < 0) {
 			talloc_free(ev_p);
 			return -1;
 		}

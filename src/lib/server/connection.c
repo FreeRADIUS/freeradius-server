@@ -107,7 +107,7 @@ struct connection_s {
 	connection_shutdown_t shutdown;		//!< Signal the connection handle to start shutting down.
 	connection_failed_t	failed;			//!< Callback for 'failed' notification.
 
-	fr_event_timer_t const	*ev;			//!< State transition timer.
+	fr_timer_t		*ev;			//!< State transition timer.
 
 	fr_time_delta_t		connection_timeout;	//!< How long to wait in the
 							//!< #CONNECTION_STATE_CONNECTING state.
@@ -620,11 +620,11 @@ uint64_t connection_get_num_timed_out(connection_t const *conn)
 
 /** The requisite period of time has passed, try and re-open the connection
  *
- * @param[in] el	the time event occurred on.
+ * @param[in] tl	containing the timer event.
  * @param[in] now	The current time.
  * @param[in] uctx	The #connection_t the fd is associated with.
  */
-static void _reconnect_delay_done(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void _reconnect_delay_done(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	connection_t *conn = talloc_get_type_abort(uctx, connection_t);
 
@@ -658,7 +658,7 @@ static void connection_state_enter_closed(connection_t *conn)
 
 	STATE_TRANSITION(CONNECTION_STATE_CLOSED);
 
-	fr_event_timer_delete(&conn->ev);
+	fr_timer_delete(&conn->ev);
 
 	/*
 	 *	If there's a close callback, call it, so that the
@@ -689,11 +689,11 @@ static void connection_state_enter_closed(connection_t *conn)
  *
  * Connection wasn't opened within the configured period of time
  *
- * @param[in] el	the time event occurred on.
+ * @param[in] tl	timer list the event belonged to.
  * @param[in] now	The current time.
  * @param[in] uctx	The #connection_t the fd is associated with.
  */
-static void _connection_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void _connection_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	connection_t *conn = talloc_get_type_abort(uctx, connection_t);
 
@@ -745,8 +745,8 @@ static void connection_state_enter_shutdown(connection_t *conn)
 	 *	timeout period.
 	 */
 	if (fr_time_delta_ispos(conn->connection_timeout)) {
-		if (fr_event_timer_in(conn, conn->pub.el, &conn->ev,
-				      conn->connection_timeout, _connection_timeout, conn) < 0) {
+		if (fr_timer_in(conn, conn->pub.el->tl, &conn->ev,
+				conn->connection_timeout, false, _connection_timeout, conn) < 0) {
 			/*
 			 *	Can happen when the event loop is exiting
 			 */
@@ -777,7 +777,7 @@ static void connection_state_enter_failed(connection_t *conn)
 	/*
 	 *	Explicit error occurred, delete the connection timer
 	 */
-	fr_event_timer_delete(&conn->ev);
+	fr_timer_delete(&conn->ev);
 
 	/*
 	 *	Record what state the connection is currently in
@@ -856,8 +856,8 @@ static void connection_state_enter_failed(connection_t *conn)
 	case CONNECTION_STATE_SHUTDOWN:			/* Failed during shutdown */
 		if (fr_time_delta_ispos(conn->reconnection_delay)) {
 			DEBUG2("Delaying reconnection by %pVs", fr_box_time_delta(conn->reconnection_delay));
-			if (fr_event_timer_in(conn, conn->pub.el, &conn->ev,
-					      conn->reconnection_delay, _reconnect_delay_done, conn) < 0) {
+			if (fr_timer_in(conn, conn->pub.el->tl, &conn->ev,
+					conn->reconnection_delay, false, _reconnect_delay_done, conn) < 0) {
 				/*
 				 *	Can happen when the event loop is exiting
 				 */
@@ -927,7 +927,7 @@ static void connection_state_enter_halted(connection_t *conn)
 		BAD_STATE_TRANSITION(CONNECTION_STATE_HALTED);
 	}
 
-	fr_event_timer_delete(&conn->ev);
+	fr_timer_delete(&conn->ev);
 
 	STATE_TRANSITION(CONNECTION_STATE_HALTED);
 	WATCH_PRE(conn);
@@ -955,7 +955,7 @@ static void connection_state_enter_connected(connection_t *conn)
 
 	STATE_TRANSITION(CONNECTION_STATE_CONNECTED);
 
-	fr_event_timer_delete(&conn->ev);
+	fr_timer_delete(&conn->ev);
 	WATCH_PRE(conn);
 	if (conn->open) {
 		HANDLER_BEGIN(conn, conn->open);
@@ -1014,8 +1014,8 @@ static void connection_state_enter_connecting(connection_t *conn)
 	 *	set, then add the timer.
 	 */
 	if (fr_time_delta_ispos(conn->connection_timeout)) {
-		if (fr_event_timer_in(conn, conn->pub.el, &conn->ev,
-				      conn->connection_timeout, _connection_timeout, conn) < 0) {
+		if (fr_timer_in(conn, conn->pub.el->tl, &conn->ev,
+				conn->connection_timeout, false, _connection_timeout, conn) < 0) {
 			PERROR("Failed setting connection_timeout event, failing connection");
 
 			/*
@@ -1456,7 +1456,7 @@ static int _connection_free(connection_t *conn)
 	/*
 	 *	Explicitly cancel any pending events
 	 */
-	fr_event_timer_delete(&conn->ev);
+	fr_timer_delete(&conn->ev);
 
 	/*
 	 *	Don't allow the connection to be

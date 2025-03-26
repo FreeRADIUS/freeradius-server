@@ -141,8 +141,8 @@ typedef struct {
 	TALLOC_CTX		*log_ctx;			//!< Prevent unneeded memory allocation by keeping a
 								//!< permanent pool, to store log entries.
 	fr_dlist_head_t		queries;			//!< Outstanding queries on this connection.
-	fr_event_timer_t const	*read_ev;			//!< Polling event for reading query results.
-	fr_event_timer_t const	*write_ev;			//!< Polling event for sending queries.
+	fr_timer_t		*read_ev;			//!< Polling event for reading query results.
+	fr_timer_t		*write_ev;			//!< Polling event for sending queries.
 	uint			poll_interval;			//!< Interval between read polling.
 	uint			poll_count;			//!< How many consecutive polls had no available results.
 } rlm_sql_cassandra_conn_t;
@@ -455,7 +455,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 	}
 }
 
-static void sql_trunk_connection_read_poll(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void sql_trunk_connection_read_poll(fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	rlm_sql_cassandra_conn_t	*c = talloc_get_type_abort(uctx, rlm_sql_cassandra_conn_t);
 	cassandra_query_t		*cass_query, *next_query = NULL;
@@ -536,14 +536,14 @@ static void sql_trunk_connection_read_poll(UNUSED fr_event_list_t *el, UNUSED fr
 	 *	There are still outstanding queries, add another polling event
 	 */
 	if (fr_dlist_num_elements(&c->queries)) {
-		if (fr_event_timer_in(c, el, &c->read_ev, fr_time_delta_from_usec(c->poll_interval),
-				      sql_trunk_connection_read_poll, c) < 0) {
+		if (fr_timer_in(c, tl, &c->read_ev, fr_time_delta_from_usec(c->poll_interval),
+				false, sql_trunk_connection_read_poll, c) < 0) {
 			ERROR("Unable to insert polling event");
 		}
 	}
 }
 
-static void sql_trunk_connection_write_poll(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void sql_trunk_connection_write_poll(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 
@@ -558,22 +558,22 @@ static void sql_trunk_connection_write_poll(UNUSED fr_event_list_t *el, UNUSED f
  *	This "notify" callback sets up the appropriate polling events.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
-static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connection_t *conn, UNUSED fr_event_list_t *el,
+static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connection_t *conn, fr_event_list_t *el,
 					trunk_connection_event_t notify_on, UNUSED void *uctx)
 {
 	rlm_sql_cassandra_conn_t	*c = talloc_get_type_abort(conn->h, rlm_sql_cassandra_conn_t);
 
 	switch (notify_on) {
 	case TRUNK_CONN_EVENT_NONE:
-		if (c->read_ev) fr_event_timer_delete(&c->read_ev);
-		if (c->write_ev) fr_event_timer_delete(&c->write_ev);
+		if (c->read_ev) fr_timer_delete(&c->read_ev);
+		if (c->write_ev) fr_timer_delete(&c->write_ev);
 		return;
 
 	case TRUNK_CONN_EVENT_BOTH:
 	case TRUNK_CONN_EVENT_READ:
 		if (fr_dlist_num_elements(&c->queries)) {
-			if (fr_event_timer_in(c, el, &c->read_ev, fr_time_delta_from_usec(c->poll_interval),
-					      sql_trunk_connection_read_poll, c) < 0) {
+			if (fr_timer_in(c, el->tl, &c->read_ev, fr_time_delta_from_usec(c->poll_interval),
+					false, sql_trunk_connection_read_poll, c) < 0) {
 				ERROR("Unable to insert polling event");
 			}
 		}
@@ -582,8 +582,8 @@ static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connec
 		FALL_THROUGH;
 
 	case TRUNK_CONN_EVENT_WRITE:
-		if (fr_event_timer_in(c, el, &c->write_ev, fr_time_delta_from_usec(0),
-				      sql_trunk_connection_write_poll, tconn) < 0) {
+		if (fr_timer_in(c, el->tl, &c->write_ev, fr_time_delta_from_usec(0),
+				false, sql_trunk_connection_write_poll, tconn) < 0) {
 			ERROR("Unable to insert polling event");
 		}
 		return;

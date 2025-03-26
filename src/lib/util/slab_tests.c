@@ -6,7 +6,7 @@
  */
 #include <freeradius-devel/util/acutest.h>
 #include <freeradius-devel/util/acutest_helpers.h>
-
+#include <freeradius-devel/util/timer.h>
 #include "slab.h"
 
 typedef struct {
@@ -485,7 +485,7 @@ static void test_clearup_1(void)
 	fr_slab_config_t	slab_config = def_slab_config;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	fr_event_list_set_time_func(el, test_time);
+	fr_timer_list_set_time_func(el->tl, test_time);
 
 	slab_config.max_elements = 6;
 	test_slab_list = test_slab_list_alloc(NULL, el, &slab_config, NULL, NULL, NULL, true, false);
@@ -539,7 +539,7 @@ static void test_clearup_2(void)
 	fr_slab_config_t	slab_config = def_slab_config;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	fr_event_list_set_time_func(el, test_time);
+	fr_timer_list_set_time_func(el->tl, test_time);
 
 	slab_config.min_elements = 16;
 	slab_config.max_elements = 20;
@@ -604,7 +604,7 @@ static void test_clearup_3(void)
 	fr_slab_config_t	slab_config = def_slab_config;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	fr_event_list_set_time_func(el, test_time);
+	fr_timer_list_set_time_func(el->tl, test_time);
 
 	slab_config.min_elements = 0;
 	slab_config.max_elements = 20;
@@ -698,7 +698,7 @@ static void test_realloc(void)
 	fr_slab_config_t	slab_config = def_slab_config;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
-	fr_event_list_set_time_func(el, test_time);
+	fr_timer_list_set_time_func(el->tl, test_time);
 
 	slab_config.min_elements = 0;
 	slab_config.max_elements = 20;

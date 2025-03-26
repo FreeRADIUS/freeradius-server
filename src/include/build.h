@@ -262,11 +262,13 @@ do { \
 #ifndef NDEBUG
 #  define NDEBUG_LOCATION_ARGS			char const *file, int line,
 #  define NDEBUG_LOCATION_VALS			file, line,
+#  define NDEBUG_LOCATION_FMT			"%s[%d]: "
 #  define NDEBUG_LOCATION_EXP			__FILE__, __LINE__,
 #  define NDEBUG_LOCATION_NONNULL(_num)		((_num) + 2)
 #else
 #  define NDEBUG_LOCATION_ARGS
 #  define NDEBUG_LOCATION_VALS
+#  define NDEBUG_LOCATION_FMT			""
 #  define NDEBUG_LOCATION_EXP
 #  define NDEBUG_LOCATION_NONNULL(_num)		(_num)
 #endif

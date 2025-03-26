@@ -534,10 +534,10 @@ static int ldap_uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 /** Callback when LDAP query times out
  *
  */
-static void ldap_query_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void ldap_query_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	fr_ldap_query_t		*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
-	trunk_request_t	*treq;
+	trunk_request_t		*treq;
 	request_t		*request;
 
 	/*
@@ -822,8 +822,8 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		goto query_error;
 	}
 
-	if (fr_event_timer_in(query, unlang_interpret_event_list(request), &query->ev, handle_config->res_timeout,
-			      ldap_query_timeout, query) < 0) {
+	if (fr_timer_in(query, unlang_interpret_event_list(request)->tl, &query->ev, handle_config->res_timeout,
+			false, ldap_query_timeout, query) < 0) {
 		REDEBUG("Unable to set timeout for LDAP query");
 		trunk_request_signal_cancel(query->treq);
 		goto query_error;

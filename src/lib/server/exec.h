@@ -38,6 +38,7 @@ extern "C" {
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/timer.h>
 #include <sys/types.h>
 
 #ifdef __cplusplus
@@ -69,7 +70,7 @@ typedef struct {
 
 	int				stderr_fd;	//!< for producing error messages.
 
-	fr_event_timer_t const		*ev;		//!< for timing out the child
+	fr_timer_t			*ev;		//!< for timing out the child
 	fr_event_pid_t const   		*ev_pid;	//!< for cleaning up the process
 	fr_exec_fail_t 			failed;		//!< what kind of failure
 

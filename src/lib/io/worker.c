@@ -131,7 +131,7 @@ struct fr_worker_s {
 
 	fr_time_t		checked_timeout; //!< when we last checked the tails of the queues
 
-	fr_event_timer_t const	*ev_cleanup;	//!< timer for max_request_time
+	fr_timer_t		*ev_cleanup;	//!< timer for max_request_time
 
 	fr_worker_channel_t	*channel;	//!< list of channels
 };
@@ -195,7 +195,7 @@ static inline bool is_worker_thread(fr_worker_t const *worker)
 
 static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now);
 static void worker_send_reply(fr_worker_t *worker, request_t *request, bool do_not_respond, fr_time_t now);
-static void worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t when, void *uctx);
+static void worker_max_request_time(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t when, void *uctx);
 static void worker_max_request_timer(fr_worker_t *worker);
 
 /** Callback which handles a message being received on the worker side.
@@ -520,11 +520,11 @@ static void worker_stop_request(request_t **request_p)
  * thread more than max_request_time seconds ago.  In the interest of not adding a
  * timer for every packet, the requests are given a 1 second leeway.
  *
- * @param[in] el	the worker's event list
+ * @param[in] tl	the worker's timer list.
  * @param[in] when	the current time
  * @param[in] uctx	the fr_worker_t.
  */
-static void worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t when, void *uctx)
+static void worker_max_request_time(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t when, void *uctx)
 {
 	fr_time_t	now = fr_time();
 	request_t	*request;
@@ -575,8 +575,8 @@ static void worker_max_request_timer(fr_worker_t *worker)
 	cleanup = fr_time_add(request->async->recv_time, worker->config.max_request_time);
 
 	DEBUG2("Resetting cleanup timer to +%pV", fr_box_time_delta(worker->config.max_request_time));
-	if (fr_event_timer_at(worker, worker->el, &worker->ev_cleanup,
-			      cleanup, worker_max_request_time, worker) < 0) {
+	if (fr_timer_at(worker, worker->el->tl, &worker->ev_cleanup,
+			cleanup, false, worker_max_request_time, worker) < 0) {
 		ERROR("Failed inserting max_request_time timer");
 	}
 }

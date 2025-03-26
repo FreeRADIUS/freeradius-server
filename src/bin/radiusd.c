@@ -168,32 +168,32 @@ do { \
 	goto cleanup; \
 } while (0)
 
-static fr_event_timer_t const *fr_time_sync_ev = NULL;
+static fr_timer_t *fr_time_sync_ev = NULL;
 
-static void fr_time_sync_event(fr_event_list_t *el, UNUSED fr_time_t now, UNUSED void *uctx)
+static void fr_time_sync_event(fr_timer_list_t *tl, UNUSED fr_time_t now, UNUSED void *uctx)
 {
 	fr_time_delta_t when = fr_time_delta_from_sec(1);
 
-	(void) fr_event_timer_in(el, el, &fr_time_sync_ev, when, fr_time_sync_event, NULL);
+	(void) fr_timer_in(tl, tl, &fr_time_sync_ev, when, false, fr_time_sync_event, NULL);
 	(void) fr_time_sync();
 }
 
 #ifndef NDEBUG
 /** Encourage the server to exit after a period of time
  *
- * @param[in] el	The main loop.
+ * @param[in] tl	The main loop.
  * @param[in] now	Current time.  Should be 0, when adding the event.
  * @param[in] uctx	Pointer to a fr_time_delta_t indicating how long
  *			the server should run before exit.
  */
-static void fr_exit_after(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void fr_exit_after(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
-	static fr_event_timer_t const *ev;
+	static fr_timer_t *ev;
 
 	fr_time_delta_t	exit_after = *(fr_time_delta_t *)uctx;
 
 	if (fr_time_eq(now, fr_time_wrap(0))) {
-		if (fr_event_timer_in(el, el, &ev, exit_after, fr_exit_after, uctx) < 0) {
+		if (fr_timer_in(tl, tl, &ev, exit_after, false, fr_exit_after, uctx) < 0) {
 			PERROR("%s: Failed inserting exit event", program);
 		}
 		return;
@@ -978,9 +978,9 @@ int main(int argc, char *argv[])
 		DEBUG("Global memory protected");
 	}
 
-	fr_time_sync_event(main_loop_event_list(), fr_time(), NULL);
+	fr_time_sync_event(main_loop_event_list()->tl, fr_time(), NULL);
 #ifndef NDEBUG
-	if (fr_time_delta_ispos(exit_after)) fr_exit_after(main_loop_event_list(), fr_time_wrap(0), &exit_after);
+	if (fr_time_delta_ispos(exit_after)) fr_exit_after(main_loop_event_list()->tl, fr_time_wrap(0), &exit_after);
 #endif
 	/*
 	 *  Process requests until HUP or exit.

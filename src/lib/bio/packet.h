@@ -91,7 +91,7 @@ struct fr_bio_packet_s {
 
 	fr_bio_packet_cb_funcs_t cb;
 
-	fr_event_timer_t const	*ev;		//!< connection timeout
+	fr_timer_t		*ev;		//!< connection timeout
 
 	bool			connected;
 	bool			write_blocked;

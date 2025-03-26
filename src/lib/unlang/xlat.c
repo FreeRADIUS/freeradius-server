@@ -60,7 +60,7 @@ typedef struct {
 								///< of the execution.
 } unlang_frame_state_xlat_t;
 
-/** Wrap an #fr_event_timer_t providing data needed for unlang events
+/** Wrap an #fr_timer_t providing data needed for unlang events
  *
  */
 typedef struct {
@@ -73,7 +73,7 @@ typedef struct {
 	xlat_inst_t			*inst;			//!< xlat instance data.
 	xlat_thread_inst_t		*thread;		//!< Thread specific xlat instance.
 	void const			*rctx;			//!< rctx data to pass to callbacks.
-	fr_event_timer_t const		*ev;			//!< Event in this worker's event heap.
+	fr_timer_t			*ev;			//!< Event in this worker's event heap.
 } unlang_xlat_event_t;
 
 typedef struct {
@@ -84,7 +84,7 @@ typedef struct {
 	fr_unlang_xlat_retry_t		retry_cb;		//!< callback to run on timeout
 	void				*rctx;			//!< rctx data to pass to timeout callback
 
-	fr_event_timer_t const		*ev;			//!< retry timer just for this xlat
+	fr_timer_t			*ev;			//!< retry timer just for this xlat
 	fr_retry_t			retry;			//!< retry timers, etc.
 } unlang_xlat_retry_t;
 
@@ -97,7 +97,7 @@ typedef struct {
 static int _unlang_xlat_event_free(unlang_xlat_event_t *ev)
 {
 	if (ev->ev) {
-		(void) fr_event_timer_delete(&(ev->ev));
+		(void) fr_timer_delete(&(ev->ev));
 		return 0;
 	}
 
@@ -110,14 +110,14 @@ static int _unlang_xlat_event_free(unlang_xlat_event_t *ev)
 
 /** Call the callback registered for a timeout event
  *
- * @param[in] el	the event timer was inserted into.
+ * @param[in] tl	the event timer was inserted into.
  * @param[in] now	The current time, as held by the event_list.
  * @param[in] uctx	unlang_module_event_t structure holding callbacks.
  *
  */
-static void unlang_xlat_event_timeout_handler(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
+static void unlang_xlat_event_timeout_handler(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
-	unlang_xlat_event_t		*ev = talloc_get_type_abort(uctx, unlang_xlat_event_t);
+	unlang_xlat_event_t *ev = talloc_get_type_abort(uctx, unlang_xlat_event_t);
 
 	/*
 	 *	If the timeout's fired then the xlat must necessarily
@@ -173,8 +173,9 @@ int unlang_xlat_timeout_add(request_t *request,
 	ev->thread = xlat_thread_instance_find(state->exp);
 	ev->rctx = rctx;
 
-	if (fr_event_timer_at(request, unlang_interpret_event_list(request),
-			      &ev->ev, when, unlang_xlat_event_timeout_handler, ev) < 0) {
+	if (fr_timer_at(request, unlang_interpret_event_list(request)->tl,
+			&ev->ev, when,
+			false, unlang_xlat_event_timeout_handler, ev) < 0) {
 		RPEDEBUG("Failed inserting event");
 		talloc_free(ev);
 		return -1;
@@ -599,19 +600,19 @@ xlat_action_t unlang_xlat_yield(request_t *request,
  */
 static int _unlang_xlat_retry_free(unlang_xlat_retry_t *ev)
 {
-	if (ev->ev) (void) fr_event_timer_delete(&(ev->ev));
+	if (ev->ev) (void) fr_timer_delete(&(ev->ev));
 
 	return 0;
 }
 
 /** Call the callback registered for a timeout event
  *
- * @param[in] el	the event timer was inserted into.
+ * @param[in] tl	the event timer was inserted into.
  * @param[in] now	The current time, as held by the event_list.
  * @param[in] uctx	unlang_module_event_t structure holding callbacks.
  *
  */
-static void unlang_xlat_event_retry_handler(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
+static void unlang_xlat_event_retry_handler(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	unlang_xlat_retry_t	*ev = talloc_get_type_abort(uctx, unlang_xlat_retry_t);
 	request_t		*request = ev->request;
@@ -631,8 +632,8 @@ static void unlang_xlat_event_retry_handler(UNUSED fr_event_list_t *el, fr_time_
 		/*
 		 *	Reset the timer.
 		 */
-		if (fr_event_timer_at(ev, unlang_interpret_event_list(request), &ev->ev, ev->retry.next,
-				      unlang_xlat_event_retry_handler, request) < 0) {
+		if (fr_timer_at(ev, unlang_interpret_event_list(request)->tl, &ev->ev, ev->retry.next,
+				false, unlang_xlat_event_retry_handler, request) < 0) {
 			RPEDEBUG("Failed inserting event");
 			talloc_free(ev);
 			unlang_interpret_mark_runnable(request);
@@ -714,8 +715,9 @@ xlat_action_t unlang_xlat_yield_to_retry(request_t *request, xlat_func_t resume,
 
 	fr_retry_init(&ev->retry, fr_time(), retry_cfg);
 
-	if (fr_event_timer_at(request, unlang_interpret_event_list(request),
-			      &ev->ev, ev->retry.next, unlang_xlat_event_retry_handler, ev) < 0) {
+	if (fr_timer_at(request, unlang_interpret_event_list(request)->tl,
+			&ev->ev, ev->retry.next,
+			false, unlang_xlat_event_retry_handler, ev) < 0) {
 		RPEDEBUG("Failed inserting event");
 		talloc_free(ev);
 		return XLAT_ACTION_FAIL;

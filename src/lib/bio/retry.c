@@ -99,7 +99,7 @@ struct fr_bio_retry_s {
 	ssize_t			error;
 	bool			all_used;	//!< blocked due to no free entries
 
-	fr_event_timer_t const	*ev;		//!< we only need one timer event: next time we do something
+	fr_timer_t		*ev;		//!< we only need one timer event: next time we do something
 
 	/*
 	 *	The first item is cached here so that we can detect when it changes.  The insert / delete
@@ -124,8 +124,8 @@ struct fr_bio_retry_s {
 	FR_DLIST_HEAD(fr_bio_retry_list) free;	//!< free lists are better than memory fragmentation
 };
 
-static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx);
-static void fr_bio_retry_expiry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx);
+static void fr_bio_retry_timer(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx);
+static void fr_bio_retry_expiry_timer(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx);
 static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size);
 static ssize_t fr_bio_retry_save_write(fr_bio_retry_t *my, fr_bio_retry_entry_t *item, ssize_t rcode);
 
@@ -160,7 +160,7 @@ static int fr_bio_retry_expiry_timer_reset(fr_bio_retry_t *my)
 	/*
 	 *	Update the timer.  This should never fail.
 	 */
-	if (fr_event_timer_at(my, my->info.el, &my->ev, first->retry.end, fr_bio_retry_expiry_timer, my) < 0) return -1;
+	if (fr_timer_at(my, my->info.el->tl, &my->ev, first->retry.end, false, fr_bio_retry_expiry_timer, my) < 0) return -1;
 
 	my->next_retry_item = first;
 	return 0;
@@ -200,7 +200,7 @@ static int fr_bio_retry_timer_reset(fr_bio_retry_t *my)
 	/*
 	 *	Update the timer.  This should never fail.
 	 */
-	if (fr_event_timer_at(my, my->info.el, &my->ev, first->retry.next, fr_bio_retry_timer, my) < 0) return -1;
+	if (fr_timer_at(my, my->info.el->tl, &my->ev, first->retry.next, false, fr_bio_retry_timer, my) < 0) return -1;
 
 	my->next_retry_item = first;
 	return 0;
@@ -563,7 +563,7 @@ ssize_t fr_bio_retry_rewrite(fr_bio_t *bio, fr_bio_retry_entry_t *item, const vo
 	 *	when the socket isn't blocked.  But the caller might not pay attention to those issues.
 	 */
 	if (my->partial) return 0;
-	
+
 	/*
 	 *	There must be a next bio.
 	 */
@@ -627,7 +627,7 @@ static ssize_t fr_bio_retry_write_fatal(fr_bio_t *bio, UNUSED void *packet_ctx, 
 /** Run an expiry timer event.
  *
  */
-static void fr_bio_retry_expiry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
+static void fr_bio_retry_expiry_timer(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	fr_bio_retry_t *my = talloc_get_type_abort(uctx, fr_bio_retry_t);
 	fr_bio_retry_entry_t *item;
@@ -666,7 +666,7 @@ static void fr_bio_retry_expiry_timer(UNUSED fr_event_list_t *el, fr_time_t now,
 /** Run a timer event.  Usually to write out another packet.
  *
  */
-static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
+static void fr_bio_retry_timer(UNUSED fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	ssize_t rcode;
 	fr_bio_retry_t *my = talloc_get_type_abort(uctx, fr_bio_retry_t);
@@ -728,7 +728,7 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	 */
 	next = fr_bio_next(&my->bio);
 	fr_assert(next != NULL);
-	
+
 	/*
 	 *	The caller is trying to flush partial data.  But we don't have any partial data, so just call
 	 *	the next bio to flush it.
@@ -892,7 +892,7 @@ static ssize_t fr_bio_retry_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	fr_assert(item != NULL);
 	fr_assert(item->retry.replies == 0);
 	fr_assert(item != my->partial);
-       
+
 	/*
 	 *	Track when the "most recently sent" packet has a reply.  This metric is better than most
 	 *	others for judging the liveliness of the destination.
@@ -1017,7 +1017,7 @@ int fr_bio_retry_entry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
 	return 1;
 }
 
-/**  Set a per-packet retry config 
+/**  Set a per-packet retry config
  *
  *  This function should be called from the #fr_bio_retry_sent_t callback to set a unique retry timer for this
  *  packet.  If no retry configuration is set, then the main one from the alloc() function is used.
@@ -1197,4 +1197,3 @@ fr_bio_retry_entry_t *fr_bio_retry_item_reserve(fr_bio_t *bio)
 
 	return item;
 }
-

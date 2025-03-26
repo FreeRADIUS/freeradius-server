@@ -128,7 +128,7 @@ typedef struct {
 	fr_time_t		last_sent;		//!< last time we sent a packet.
 	fr_time_t		last_idle;		//!< last time we had nothing to do
 
-	fr_event_timer_t const	*zombie_ev;		//!< Zombie timeout.
+	fr_timer_t	*zombie_ev;		//!< Zombie timeout.
 
 	trunk_connection_t	*tconn;			//!< trunk connection
 } udp_handle_t;
@@ -148,7 +148,7 @@ struct udp_request_s {
 	uint8_t			*packet;		//!< Packet we write to the network.
 	size_t			packet_len;		//!< Length of the packet.
 
-	fr_event_timer_t const	*ev;			//!< timer for retransmissions
+	fr_timer_t	*ev;			//!< timer for retransmissions
 	fr_retry_t		retry;			//!< retransmission timers
 };
 
@@ -211,7 +211,7 @@ static void udp_request_reset(udp_handle_t *h, udp_request_t *u)
 	u->outstanding = false;
 	h->active--;
 
-	if (u->ev) (void)fr_event_timer_delete(&u->ev);
+	if (u->ev) (void)fr_timer_delete(&u->ev);
 
 	/*
 	 *	We've sent 255 packets, and received all replies.  Shut the connection down.
@@ -643,7 +643,7 @@ static int encode(udp_handle_t *h, request_t *request, udp_request_t *u)
 /** Revive a connection after "revive_interval"
  *
  */
-static void revive_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void revive_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	udp_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
@@ -655,7 +655,7 @@ static void revive_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, voi
 /** Mark a connection dead after "zombie_interval"
  *
  */
-static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void zombie_timeout(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	udp_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
@@ -672,8 +672,8 @@ static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	Revive the connection after a time.
 	 */
-	if (fr_event_timer_at(h, el, &h->zombie_ev,
-			      fr_time_add(now, h->inst->parent->revive_interval), revive_timeout, h) < 0) {
+	if (fr_timer_at(h, tl, &h->zombie_ev,
+			fr_time_add(now, h->inst->parent->revive_interval), false, revive_timeout, h) < 0) {
 		ERROR("Failed inserting revive timeout for connection");
 		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 	}
@@ -703,7 +703,7 @@ static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
  *	- true if the connection is zombie.
  *	- false if the connection is not zombie.
  */
-static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_time_t now, fr_time_t last_sent)
+static bool check_for_zombie(fr_timer_list_t *tl, trunk_connection_t *tconn, fr_time_t now, fr_time_t last_sent)
 {
 	udp_handle_t	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
 
@@ -733,8 +733,8 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 	WARN("%s - Entering Zombie state - connection %s", h->module_name, h->name);
 	trunk_connection_signal_inactive(tconn);
 
-	if (fr_event_timer_at(h, el, &h->zombie_ev, fr_time_add(now, h->inst->parent->zombie_period),
-			      zombie_timeout, h) < 0) {
+	if (fr_timer_at(h, tl, &h->zombie_ev, fr_time_add(now, h->inst->parent->zombie_period),
+			false, zombie_timeout, h) < 0) {
 		ERROR("Failed inserting zombie timeout for connection");
 		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 	}
@@ -747,9 +747,9 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
  *  Note that with TCP we don't actually retry on this particular connection, but the retry timer allows us to
  *  fail over from one connection to another when a connection fails.
  */
-static void request_retry(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void request_retry(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
-	trunk_request_t	*treq = talloc_get_type_abort(uctx, trunk_request_t);
+	trunk_request_t		*treq = talloc_get_type_abort(uctx, trunk_request_t);
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
 	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
 	request_t		*request = treq->request;
@@ -786,7 +786,7 @@ static void request_retry(fr_event_list_t *el, fr_time_t now, void *uctx)
 	r->rcode = RLM_MODULE_FAIL;
 	trunk_request_signal_complete(treq);
 
-	check_for_zombie(el, tconn, now, u->retry.start);
+	check_for_zombie(tl, tconn, now, u->retry.start);
 }
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
@@ -985,7 +985,7 @@ static void request_mux(fr_event_list_t *el,
 			h->last_sent = u->retry.start;
 			if (fr_time_lteq(h->first_sent, h->last_idle)) h->first_sent = h->last_sent;
 
-			if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_retry, treq) < 0) {
+			if (fr_timer_at(u, el->tl, &u->ev, u->retry.next, false, request_retry, treq) < 0) {
 				RERROR("Failed inserting retransmit timeout for connection");
 				trunk_request_signal_fail(treq);
 			}

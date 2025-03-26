@@ -176,7 +176,7 @@ struct trunk_connection_s {
 	/** @name Timers
 	 * @{
  	 */
-  	fr_event_timer_t const	*lifetime_ev;		//!< Maximum time this connection can be open.
+  	fr_timer_t	*lifetime_ev;		//!< Maximum time this connection can be open.
   	/** @} */
 };
 
@@ -270,7 +270,7 @@ struct trunk_s {
 	/** @name Timers
 	 * @{
  	 */
- 	fr_event_timer_t const	*manage_ev;		//!< Periodic connection management event.
+ 	fr_timer_t		*manage_ev;		//!< Periodic connection management event.
 	/** @} */
 
 	/** @name Log rate limiting entries
@@ -920,7 +920,7 @@ static void trunk_connection_enter_active(trunk_connection_t *tconn);
 
 static void trunk_rebalance(trunk_t *trunk);
 static void trunk_manage(trunk_t *trunk, fr_time_t now);
-static void _trunk_timer(fr_event_list_t *el, fr_time_t now, void *uctx);
+static void _trunk_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx);
 static void trunk_backlog_drain(trunk_t *trunk);
 
 /** Compare two protocol requests
@@ -3213,7 +3213,7 @@ static void trunk_connection_enter_draining_to_free(trunk_connection_t *tconn)
 {
 	trunk_t		*trunk = tconn->pub.trunk;
 
-	if (tconn->lifetime_ev) fr_event_timer_delete(&tconn->lifetime_ev);
+	if (tconn->lifetime_ev) fr_timer_delete(&tconn->lifetime_ev);
 
 	switch (tconn->pub.state) {
 	case TRUNK_CONN_ACTIVE:
@@ -3425,11 +3425,11 @@ static void _trunk_connection_on_shutdown(UNUSED connection_t *conn,
 
 /** Trigger a reconnection of the trunk connection
  *
- * @param[in] el	Event list the timer was inserted into.
+ * @param[in] tl	timer list the timer was inserted into.
  * @param[in] now	Current time.
  * @param[in] uctx	The tconn.
  */
-static void  _trunk_connection_lifetime_expire(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void  _trunk_connection_lifetime_expire(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 
@@ -3484,8 +3484,8 @@ static void _trunk_connection_on_connected(UNUSED connection_t *conn,
 	 *	connection periodically.
 	 */
 	if (fr_time_delta_ispos(trunk->conf.lifetime)) {
-		if (fr_event_timer_in(tconn, trunk->el, &tconn->lifetime_ev,
-				       trunk->conf.lifetime, _trunk_connection_lifetime_expire, tconn) < 0) {
+		if (fr_timer_in(tconn, trunk->el->tl, &tconn->lifetime_ev,
+				trunk->conf.lifetime, false, _trunk_connection_lifetime_expire, tconn) < 0) {
 			PERROR("Failed inserting connection reconnection timer event, halting connection");
 			connection_signal_shutdown(tconn->pub.conn);
 			return;
@@ -3562,7 +3562,7 @@ static void _trunk_connection_on_closed(UNUSED connection_t *conn,
 	/*
 	 *	Remove the reconnect event
 	 */
-	if (fr_time_delta_ispos(trunk->conf.lifetime)) fr_event_timer_delete(&tconn->lifetime_ev);
+	if (fr_time_delta_ispos(trunk->conf.lifetime)) fr_timer_delete(&tconn->lifetime_ev);
 
 	/*
 	 *	Remove the I/O events
@@ -4493,19 +4493,19 @@ static void trunk_manage(trunk_t *trunk, fr_time_t now)
 
 /** Event to periodically call the connection management function
  *
- * @param[in] el	this event belongs to.
+ * @param[in] tl	this event belongs to.
  * @param[in] now	current time.
  * @param[in] uctx	The trunk.
  */
-static void _trunk_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void _trunk_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	trunk_t *trunk = talloc_get_type_abort(uctx, trunk_t);
 
 	trunk_manage(trunk, now);
 
 	if (fr_time_delta_ispos(trunk->conf.manage_interval)) {
-		if (fr_event_timer_in(trunk, el, &trunk->manage_ev, trunk->conf.manage_interval,
-				      _trunk_timer, trunk) < 0) {
+		if (fr_timer_in(trunk, tl, &trunk->manage_ev, trunk->conf.manage_interval,
+			false, _trunk_timer, trunk) < 0) {
 			PERROR("Failed inserting trunk management event");
 			/* Not much we can do, hopefully the trunk will be freed soon */
 		}
@@ -4790,8 +4790,8 @@ int trunk_start(trunk_t *trunk)
 		 *	Insert the event timer to manage
 		 *	the interval between managing connections.
 		 */
-		if (fr_event_timer_in(trunk, trunk->el, &trunk->manage_ev, trunk->conf.manage_interval,
-				      _trunk_timer, trunk) < 0) {
+		if (fr_timer_in(trunk, trunk->el->tl, &trunk->manage_ev, trunk->conf.manage_interval,
+				false, _trunk_timer, trunk) < 0) {
 			PERROR("Failed inserting trunk management event");
 			return -1;
 		}
@@ -4830,7 +4830,8 @@ int trunk_connection_manage_schedule(trunk_t *trunk)
 {
 	if (!trunk->started || !trunk->managing_connections) return 0;
 
-	if (fr_event_timer_in(trunk, trunk->el, &trunk->manage_ev, fr_time_delta_wrap(0), _trunk_timer, trunk) < 0) {
+	if (fr_timer_in(trunk, trunk->el->tl, &trunk->manage_ev, fr_time_delta_wrap(0),
+			false, _trunk_timer, trunk) < 0) {
 		PERROR("Failed inserting trunk management event");
 		return -1;
 	}
@@ -4873,7 +4874,7 @@ static int _trunk_free(trunk_t *trunk)
 	 *	We really don't want this firing after
 	 *	we've freed everything.
 	 */
-	fr_event_timer_delete(&trunk->manage_ev);
+	fr_timer_delete(&trunk->manage_ev);
 
 	/*
 	 *	Now free the connections in each of the lists.

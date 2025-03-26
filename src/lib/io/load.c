@@ -81,7 +81,7 @@ struct fr_load_s {
 	bool			header;			//!< for printing statistics
 
 	fr_time_t		next;			//!< The next time we're supposed to send a packet
-	fr_event_timer_t const	*ev;
+	fr_timer_t		*ev;
 };
 
 fr_load_t *fr_load_generator_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_load_config_t *config,
@@ -126,7 +126,7 @@ static void fr_load_generator_send(fr_load_t *l, fr_time_t now, int count)
 	}
 }
 
-static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void load_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	fr_load_t *l = uctx;
 	fr_time_delta_t delta;
@@ -215,7 +215,7 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	Set the timer for the next packet.
 	 */
-	if (fr_event_timer_in(l, el, &l->ev, delta, load_timer, l) < 0) {
+	if (fr_timer_in(l, tl, &l->ev, delta, false, load_timer, l) < 0) {
 		l->state = FR_LOAD_STATE_DRAINING;
 		return;
 	}
@@ -240,7 +240,7 @@ int fr_load_generator_start(fr_load_t *l)
 	l->delta = fr_time_delta_div(fr_time_delta_from_sec(l->config->parallel), fr_time_delta_wrap(l->pps));
 	l->next = fr_time_add(l->step_start, l->delta);
 
-	load_timer(l->el, l->step_start, l);
+	load_timer(l->el->tl, l->step_start, l);
 	return 0;
 }
 
@@ -253,7 +253,7 @@ int fr_load_generator_stop(fr_load_t *l)
 {
 	if (!l->ev) return 0;
 
-	return fr_event_timer_delete(&l->ev);
+	return fr_timer_delete(&l->ev);
 }
 
 

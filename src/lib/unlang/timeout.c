@@ -33,12 +33,12 @@ typedef struct {
 	fr_time_delta_t				timeout;
 	request_t				*request;
 	rindent_t				indent;
-	fr_event_timer_t const			*ev;
+	fr_timer_t				*ev;
 
 	fr_value_box_list_t			result;
 } unlang_frame_state_timeout_t;
 
-static void unlang_timeout_handler(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx)
+static void unlang_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *ctx)
 {
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(ctx, unlang_frame_state_timeout_t);
 	request_t			*request = talloc_get_type_abort(state->request, request_t);
@@ -83,8 +83,8 @@ static unlang_action_t unlang_timeout_set(rlm_rcode_t *p_result, request_t *requ
 
 	timeout = fr_time_add(fr_time(), state->timeout);
 
-	if (fr_event_timer_at(state, unlang_interpret_event_list(request), &state->ev, timeout,
-			      unlang_timeout_handler, state) < 0) {
+	if (fr_timer_at(state, unlang_interpret_event_list(request)->tl, &state->ev, timeout,
+			false, unlang_timeout_handler, state) < 0) {
 		RPEDEBUG("Failed inserting event");
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_STOP_PROCESSING;

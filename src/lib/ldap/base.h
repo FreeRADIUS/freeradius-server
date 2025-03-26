@@ -404,7 +404,7 @@ typedef struct fr_ldap_thread_trunk_s {
 	fr_ldap_directory_t	*directory;		//!< The type of directory we're connected to.
 	trunk_t			*trunk;			//!< Connection trunk
 	fr_ldap_thread_t	*t;			//!< Thread this connection is associated with
-	fr_event_timer_t const	*ev;			//!< Event to close the thread when it has been idle.
+	fr_timer_t		*ev;			//!< Event to close the thread when it has been idle.
 } fr_ldap_thread_trunk_t;
 
 typedef struct fr_ldap_referral_s fr_ldap_referral_t;
@@ -456,7 +456,7 @@ struct fr_ldap_query_s {
 	trunk_request_t	*treq;				//!< Trunk request this query is associated with
 	fr_ldap_connection_t	*ldap_conn;		//!< LDAP connection this query is running on.
 
-	fr_event_timer_t const	*ev;			//!< Event for timing out the query
+	fr_timer_t		*ev;			//!< Event for timing out the query
 
 	char			**referral_urls;	//!< Referral results to follow
 	fr_dlist_head_t		referrals;		//!< List of parsed referrals
