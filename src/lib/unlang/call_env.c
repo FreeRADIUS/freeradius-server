@@ -388,18 +388,6 @@ int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules,
 	 */
 	if (call_env_attribute(rule->flags) ||
 	    ((quote == T_BARE_WORD) && call_env_bare_word_attribute(rule->flags))) {
-		/*
-		 *	For migration checks!
-		 */
-		if (check_config && main_config_migrate_option_get("call_env_forbid_ampersand")) {
-			char const *p = cf_pair_value(to_parse);
-
-			if (*p == '&') {
-				cf_log_err(to_parse, "Please remove '&' from the attribute name");
-				return -1;
-			}
-		}
-
 		if (tmpl_afrom_attr_str(ctx, NULL, &parsed_tmpl, cf_pair_value(to_parse), t_rules) <= 0) {
 			return -1;
 		}

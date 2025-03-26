@@ -1489,7 +1489,6 @@ void main_config_hup(main_config_t *config)
 }
 
 static fr_table_num_ordered_t config_arg_table[] = {
-	{ L("call_env_forbid_ampersand"), offsetof(main_config_t, call_env_forbid_ampersand) },
 	{ L("rewrite_update"),		 offsetof(main_config_t, rewrite_update) },
 	{ L("forbid_update"),		 offsetof(main_config_t, forbid_update) },
 	{ L("require_enum_prefix"),	 offsetof(main_config_t, require_enum_prefix) },
