@@ -47,11 +47,6 @@ static char const parse_spaces[] = "                                            
 #define PAIR_SPACE(_cs) ((_cs->depth + 1) * 2)
 #define SECTION_SPACE(_cs) (_cs->depth * 2)
 
-/*
- *	For migration.
- */
-extern bool tmpl_require_enum_prefix;
-
 void cf_pair_debug_log(CONF_SECTION const *cs, CONF_PAIR *cp, conf_parser_t const *rule)
 {
 	char const	*value;
@@ -1243,10 +1238,7 @@ static int cf_parse_tmpl_pass2(UNUSED CONF_SECTION *cs, tmpl_t **out, CONF_PAIR 
 			cf_log_err(cp, "Please remove '&' from the attribute name");
 			return -1;
 		}
-
-		if (tmpl_require_enum_prefix)  {
-			cf_log_warn(cp, "Please remove '&' from the attribute name");
-		}
+		cf_log_warn(cp, "Please remove '&' from the attribute name");
 		break;
 
 	case TMPL_TYPE_DATA:

@@ -61,8 +61,6 @@ RCSID("$Id$")
 
 #define UNLANG_IGNORE ((unlang_t *) -1)
 
-extern bool tmpl_require_enum_prefix;
-
 static unsigned int unlang_number = 1;
 
 /*
@@ -405,23 +403,6 @@ static void unlang_dump(unlang_t *instruction, int depth)
  */
 static int unlang_fixup_map(map_t *map, UNUSED void *ctx)
 {
-	CONF_PAIR *cp = cf_item_to_pair(map->ci);
-
-	/*
-	 *	Anal-retentive checks.
-	 */
-	if (!tmpl_require_enum_prefix && DEBUG_ENABLED3) {
-		if (tmpl_is_attr(map->lhs) && (map->lhs->name[0] != '&')) {
-			cf_log_warn(cp, "Please change attribute reference to '&%s %s ...'",
-				    map->lhs->name, fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
-		}
-
-		if (tmpl_is_attr(map->rhs) && (map->rhs->name[0] != '&')) {
-			cf_log_warn(cp, "Please change attribute reference to '... %s &%s'",
-				    fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
-		}
-	}
-
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_XLAT_UNRESOLVED:
@@ -472,21 +453,6 @@ static int unlang_fixup_map(map_t *map, UNUSED void *ctx)
 int unlang_fixup_update(map_t *map, void *ctx)
 {
 	CONF_PAIR *cp = cf_item_to_pair(map->ci);
-
-	/*
-	 *	Anal-retentive checks.
-	 */
-	if (!tmpl_require_enum_prefix && DEBUG_ENABLED3) {
-		if (tmpl_is_attr(map->lhs) && (map->lhs->name[0] != '&')) {
-			cf_log_warn(cp, "Please change attribute reference to '&%s %s ...'",
-				    map->lhs->name, fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
-		}
-
-		if (tmpl_is_attr(map->rhs) && (map->rhs->name[0] != '&')) {
-			cf_log_warn(cp, "Please change attribute reference to '... %s &%s'",
-				    fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
-		}
-	}
 
 	if (!ctx) {
 		/*
@@ -1302,21 +1268,6 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 	if (map->parent && (map->parent != parent_map)) parent_map = map->parent;
 
 	parent = tmpl_attr_tail_da(parent_map->lhs);
-
-	/*
-	 *	Anal-retentive checks.
-	 */
-	if (!tmpl_require_enum_prefix && DEBUG_ENABLED3) {
-		if (tmpl_is_attr(map->lhs) && (map->lhs->name[0] != '&')) {
-			cf_log_warn(cp, "Please change attribute reference to '&%s %s ...'",
-				    map->lhs->name, fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
-		}
-
-		if (tmpl_is_attr(map->rhs) && (map->rhs->name[0] != '&')) {
-			cf_log_warn(cp, "Please change attribute reference to '... %s &%s'",
-				    fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
-		}
-	}
 
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
@@ -2675,7 +2626,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 */
 	token = cf_section_name2_quote(cs);
 
-	if ((token == T_BARE_WORD) && tmpl_require_enum_prefix) {
+	if (token == T_BARE_WORD) {
 		slen = tmpl_afrom_attr_substr(gext, NULL, &gext->vpt,
 					      &FR_SBUFF_IN(name2, strlen(name2)),
 					      NULL,
@@ -2930,7 +2881,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		}
 
 		/*
-		 *	Bare word strings are attribute references when tmpl_require_enum_prefix=yes
+		 *	Bare word strings are attribute references
 		 */
 		if (tmpl_is_attr(vpt) || tmpl_is_attr_unresolved(vpt)) {
 		fail_attr:
@@ -2946,10 +2897,10 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		}
 
 		/*
-		 *	When tmpl_require_enum_prefix=yes, references to unresolved attributes
-		 *	are instead compiled as "bare word" strings.  Which we now forbid.
+		 *	References to unresolved attributes are forbidden.  They are no longer "bare word
+		 *	strings".
 		 */
-		if (tmpl_require_enum_prefix && (quote == T_BARE_WORD) && (tmpl_value_type(vpt) == FR_TYPE_STRING)) {
+		if ((quote == T_BARE_WORD) && (tmpl_value_type(vpt) == FR_TYPE_STRING)) {
 			goto fail_attr;
 		}
 
@@ -3992,9 +3943,9 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	fr_dict_attr_t const		*da = NULL;
 	fr_dict_enum_value_t const	*type_enum = NULL;
 
+	ssize_t				slen;
 	char 				*namespace = NULL;
 	char const			*packet_name = NULL;
-	char				*p = NULL;
 
 	tmpl_t				*vpt = NULL, *src_vpt = NULL, *dst_vpt = NULL;
 
@@ -4093,78 +4044,34 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	 *
 	 *	Or, bare word an require_enum_prefix means "attribute reference".
 	 */
-	if ((name2[0] == '&') || tmpl_require_enum_prefix) {
-		ssize_t slen;
-
-		slen = tmpl_afrom_attr_substr(parent, NULL, &vpt,
-					      &FR_SBUFF_IN(name2, talloc_array_length(name2) - 1),
-					      NULL, unlang_ctx->rules);
-		if (slen <= 0) {
-			cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing packet-type");
-			return NULL;
-		}
-
-		fr_assert(tmpl_is_attr(vpt));
-
-		/*
-		 *	Anything resembling an integer or string is
-		 *	OK.  Nothing else makes sense.
-		 */
-		switch (tmpl_attr_tail_da(vpt)->type) {
-		case FR_TYPE_INTEGER_EXCEPT_BOOL:
-		case FR_TYPE_STRING:
-			break;
-
-		default:
-			cf_log_err(cs, "Invalid data type for attribute %s.  "
-				   "Must be an integer type or string", name2 + 1);
-			talloc_free(vpt);
-			return NULL;
-		}
-
-		dict = unlang_ctx->rules->attr.dict_def;
-		packet_name = NULL;
-		goto get_packet_type;
+	slen = tmpl_afrom_attr_substr(parent, NULL, &vpt,
+				      &FR_SBUFF_IN(name2, talloc_array_length(name2) - 1),
+				      NULL, unlang_ctx->rules);
+	if (slen <= 0) {
+		cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing packet-type");
+		return NULL;
 	}
+
+	fr_assert(tmpl_is_attr(vpt));
 
 	/*
-	 *	foo.bar without '&' and NOT require_enum_prefix is fugly, we should disallow it.
+	 *	Anything resembling an integer or string is
+	 *	OK.  Nothing else makes sense.
 	 */
-	p = strchr(name2, '.');
-	if (!p) {
-		cf_log_warn(cs, "Please upgrade configuration to use '::%s' when changing packet types",
-			    name2);
+	switch (tmpl_attr_tail_da(vpt)->type) {
+	case FR_TYPE_INTEGER_EXCEPT_BOOL:
+	case FR_TYPE_STRING:
+		break;
 
-		dict = unlang_ctx->rules->attr.dict_def;
-		packet_name = name2;
-
-	} else {
-		cf_log_warn(cs, "Please upgrade configuration to use '@' when changing dictionaries");
-
-		/*
-		 *	subrequest foo.bar { ... }
-		 *
-		 *	Change to dictionary "foo", packet type "bar".
-		 */
-		MEM(namespace = talloc_strdup(parent, name2)); /* get a modifiable copy */
-
-		p = namespace + (p - name2);
-		*(p++) = '\0';
-		packet_name = p;
-
-		dict = fr_dict_by_protocol_name(namespace);
-		if (!dict) {
-			dict_ref = fr_dict_autoload_talloc(NULL, &dict, namespace);
-			if (!dict_ref) {
-				cf_log_err(cs, "Unknown namespace '%s'", namespace);
-				talloc_free(namespace);
-				return NULL;
-			}
-		}
-
-		WARN("Deprecated syntax 'subrequest %s ...'", name2);
-		WARN(" please switch to 'subrequest %s::%s ...", namespace, packet_name);
+	default:
+		cf_log_err(cs, "Invalid data type for attribute %s.  "
+			   "Must be an integer type or string", name2 + 1);
+		talloc_free(vpt);
+		return NULL;
 	}
+
+	dict = unlang_ctx->rules->attr.dict_def;
+	packet_name = NULL;
 
 	/*
 	 *	Use dict name instead of "namespace", because "namespace" can be omitted.

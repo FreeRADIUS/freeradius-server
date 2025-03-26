@@ -45,7 +45,6 @@ RCSID("$Id$")
 #  define XLAT_HEXDUMP(...)
 #endif
 
-extern const bool tmpl_require_enum_prefix;
 extern const bool xlat_func_bare_words;
 
 /** These rules apply to literal values and function arguments inside of an expansion
@@ -460,7 +459,7 @@ error:
  *
  */
 static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
-							       fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, tmpl_attr_prefix_t attr_prefix)
+							       fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	tmpl_attr_error_t	err;
 	tmpl_t			*vpt = NULL;
@@ -473,25 +472,11 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_attribute(xlat_exp_head_t *
 	XLAT_DEBUG("ATTRIBUTE <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
 
 	/*
-	 *	Suppress the prefix on new syntax.
-	 */
-	if (tmpl_require_enum_prefix && (attr_prefix == TMPL_ATTR_REF_PREFIX_YES)) {
-		attr_prefix = TMPL_ATTR_REF_PREFIX_AUTO;
-	}
-
-	/*
-	 *	attr_prefix is NO for %{User-Name}
-	 *
-	 *	attr_prefix is YES for %foo(&User-Name)
-	 *
-	 *	attr_prefix is YES for (&User-Name == "foo")
-	 *
-	 *	We also allow wildcards in the tmpls, ad we're being
-	 *	called from within a %{...} block.
+	 *	We are called from %{foo}.  So we don't use attribute prefixes.
 	 */
 	our_t_rules = *t_rules;
 	our_t_rules.attr.allow_wildcard = true;
-	our_t_rules.attr.prefix = attr_prefix;
+	our_t_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_NO;
 
 	fr_sbuff_marker(&m_s, in);
 
@@ -719,7 +704,7 @@ check_for_attr:
 		fr_sbuff_set(in, &m_s);		/* backtrack */
 		fr_sbuff_marker_release(&m_s);
 
-		if (xlat_tokenize_attribute(head, in, &attr_p_rules, t_rules, TMPL_ATTR_REF_PREFIX_NO) < 0) return -1;
+		if (xlat_tokenize_attribute(head, in, &attr_p_rules, t_rules) < 0) return -1;
 
 		if (!fr_sbuff_next_if_char(in, '}')) {
 			fr_strerror_const("Missing closing brace");
@@ -1070,7 +1055,7 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		 *	@todo - respect node->quote here, too.  Which also means updating the parser.
 		 */
 		if (node->quote == T_BARE_WORD) {
-			if (tmpl_require_enum_prefix && node->data.enumv &&
+			if (node->data.enumv &&
 			    (strncmp(node->fmt, "::", 2) == 0)) {
 				FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "::");
 			}
@@ -1101,7 +1086,7 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 			 *	OR when the value-box functions are
 			 *	updated.
 			 */
-			if (tmpl_require_enum_prefix && node->vpt->data.literal.enumv &&
+			if (node->vpt->data.literal.enumv &&
 			    (strncmp(node->fmt, "::", 2) == 0)) {
 				FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "::");
 			}
@@ -1149,25 +1134,12 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		 *	Can't have prefix YES if we're using the new flag.  The parser / tmpl alloc routines
 		 *	MUST have set this to prefix AUTO.
 		 */
-		fr_assert(!tmpl_require_enum_prefix || (node->vpt->rules.attr.prefix != TMPL_ATTR_REF_PREFIX_YES));
-
-		/*
-		 *	Parsing &User-Name or User-Name gets printed as &User-Name.
-		 *
-		 *	Parsing %{User-Name} gets printed as %{User-Name}
-		 */
-		if (node->vpt->rules.attr.prefix == TMPL_ATTR_REF_PREFIX_YES) {
-			fr_assert(!tmpl_require_enum_prefix);
-
-			if (node->vpt->name[0] != '&') FR_SBUFF_IN_CHAR_RETURN(out, '&');
-			FR_SBUFF_IN_STRCPY_RETURN(out, node->fmt);
-			goto done;
-		}
+		fr_assert(node->vpt->rules.attr.prefix != TMPL_ATTR_REF_PREFIX_YES);
 
 		/*
 		 *	No '&', print the name, BUT without any attribute prefix.
 		 */
-		if (tmpl_require_enum_prefix && !node->vpt->rules.attr.xlat) {
+		if (!node->vpt->rules.attr.xlat) {
 			char const *p = node->fmt;
 
 			if (*p == '&') p++;
@@ -1440,10 +1412,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			 *	tmpl.  And update the function arguments to say "we want a tmpl, not a
 			 *	string".
 			 */
-			if (spaces && !tmpl_require_enum_prefix && fr_sbuff_is_char(&our_in, '&')) {
-				slen = xlat_tokenize_attribute(node->group, &our_in, our_p_rules, t_rules, TMPL_ATTR_REF_PREFIX_YES);
-
-			} else if (spaces || xlat_func_bare_words) {
+			if (spaces || xlat_func_bare_words) {
 				/*
 				 *	Spaces - each argument is a bare word all by itself, OR an xlat thing all by itself.
 				 *

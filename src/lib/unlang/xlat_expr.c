@@ -39,8 +39,6 @@ RCSID("$Id$")
 #  define XLAT_DEBUG(...)
 #endif
 
-extern bool tmpl_require_enum_prefix;
-
 /*
  *	The new tokenizer accepts most things which are accepted by the old one.  Many of the errors will be
  *	different, though.
@@ -2668,7 +2666,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	/*
 	 *	A bare word which is NOT a known attribute.  That's an error.
 	 */
-	if (tmpl_require_enum_prefix && tmpl_is_data_unresolved(vpt)) {
+	if (tmpl_is_data_unresolved(vpt)) {
 		fr_assert(quote == T_BARE_WORD);
 		fr_strerror_const("Failed parsing input");
 		fr_sbuff_set(&our_in, &opand_m);
@@ -2752,7 +2750,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 			fr_assert(t_rules->attr.allow_unresolved);
 
 		} else if (tmpl_is_data_unresolved(vpt)) {
-			fr_assert(!tmpl_require_enum_prefix);
+			fr_assert(0);
 
 			fr_assert(quote == T_BARE_WORD);
 			fr_strerror_const("Failed parsing input");
@@ -2810,8 +2808,8 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 #ifndef NDEBUG
 		if (vpt->name[0] == '%') {
 			fr_assert(vpt->rules.attr.prefix == TMPL_ATTR_REF_PREFIX_NO);
-		} else if (!tmpl_require_enum_prefix) {
-			fr_assert(vpt->rules.attr.prefix == TMPL_ATTR_REF_PREFIX_YES);
+		} else {
+			fr_assert(vpt->rules.attr.prefix != TMPL_ATTR_REF_PREFIX_YES);
 		}
 #endif
 
@@ -3100,15 +3098,13 @@ redo:
 		tmpl_rules_t our_t_rules = *t_rules;
 
 		/*
-		 *	The terminal rules for expressions includes "-" and "+", both of which are allowed in
-		 *	enum names.  If we pass the enumv down to the next function, it will see
-		 *	"Access-Accept", and then only parse "Access".  Which is wrong.
+		 *	Pass the enumv down ONLY if the RHS name begins with "::".
 		 *
-		 *	For now, if we _don't_ have tmpl_require_enum_prefix, then we don't pass the enumv,
-		 *	and we somehow skip the entire enum name.  The name is then resolved later by
-		 *	something...
+		 *	Otherwise, the terminal rules for expressions includes "-" and "+", both of which are
+		 *	allowed in enum names.  If we pass the enumv down to the next function, it will see
+		 *	"Access-Accept", and then only parse "Access".  Which is wrong.
 		 */
-		if (tmpl_require_enum_prefix && (lhs->type == XLAT_TMPL) && tmpl_is_attr(lhs->vpt) &&
+		if ((lhs->type == XLAT_TMPL) && tmpl_is_attr(lhs->vpt) &&
 		    fr_sbuff_is_str_literal(&our_in, "::")) {
 			our_t_rules.enumv = tmpl_attr_tail_da(lhs->vpt);
 		}
@@ -3291,12 +3287,8 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 	 */
 	if (node->type == XLAT_TMPL) {
 		if (tmpl_is_data_unresolved(node->vpt)) {
-				if (!tmpl_require_enum_prefix) {
-					fr_strerror_const("Unexpected text - attribute names must be prefixed with '&'");
-				} else {
-					fr_strerror_const("Unknown attribute");
-				}
-				return -1;
+			fr_strerror_const("Unknown attribute");
+			return -1;
 		}
 
 		/*

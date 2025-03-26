@@ -2394,7 +2394,6 @@ static size_t command_max_buffer_size(command_result_t *result, command_file_ctx
 	RETURN_OK(snprintf(data, COMMAND_OUTPUT_MAX, "%ld", size));
 }
 
-extern bool tmpl_require_enum_prefix;
 extern bool xlat_func_bare_words;
 
 /** Set or clear migration flags.
@@ -2412,10 +2411,6 @@ static size_t command_migrate(command_result_t *result, command_file_ctx_t *cc,
 	if (strncmp(p, "xlat_new_functions", sizeof("xlat_new_functions") - 1) == 0) {
 		p += sizeof("xlat_new_functions") - 1;
 		out = &cc->tmpl_rules.xlat.new_functions;
-
-	} else if (strncmp(p, "tmpl_require_enum_prefix", sizeof("tmpl_require_enum_prefix") - 1) == 0) {
-		p += sizeof("tmpl_require_enum_prefix") - 1;
-		out = &tmpl_require_enum_prefix;
 
 	} else {
 		fr_strerror_const("Unknown migration flag");
@@ -3843,11 +3838,6 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'S':
-			if (strcmp(optarg, "require_enum_prefix=yes") == 0) {
-				tmpl_require_enum_prefix = true;
-				break;
-			}
-
 			fprintf(stderr, "Invalid option to -S\n");
 			EXIT_WITH_FAILURE;
 

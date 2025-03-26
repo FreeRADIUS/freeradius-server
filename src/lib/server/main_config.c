@@ -187,20 +187,11 @@ static const conf_parser_t thread_config[] = {
 /*
  *	Migration configuration.
  */
-extern bool tmpl_require_enum_prefix;
 bool xlat_func_bare_words = false;
 
 static const conf_parser_t migrate_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("rewrite_update", CONF_FLAG_HIDDEN, main_config_t, rewrite_update) },
 	{ FR_CONF_OFFSET_FLAGS("forbid_update", CONF_FLAG_HIDDEN, main_config_t, forbid_update) },
-
-	/*
-	 *	Do not add tmpl_require_enum_prefix here, as it is
-	 *	parsed too late to affect anything.  It must be passed
-	 *	as a command-line option via
-	 *
-	 *		-S v3_enum_names=yes
-	 */
 
 	CONF_PARSER_TERMINATOR
 };
@@ -1541,7 +1532,7 @@ int main_config_parse_option(char const *value)
 		fr_exit(1);
 	}
 
-	if (out == &main_config->require_enum_prefix) tmpl_require_enum_prefix = box.vb_bool;
+	if (out == &main_config->require_enum_prefix) {}
 	if (out == &main_config->xlat_func_bare_words) xlat_func_bare_words = box.vb_bool;
 
 	*out = box.vb_bool;

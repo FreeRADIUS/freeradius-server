@@ -47,8 +47,6 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-extern bool tmpl_require_enum_prefix;
-
 static fr_table_num_sorted_t const cond_quote_table[] = {
 	{ L("\""),	T_DOUBLE_QUOTED_STRING	},	/* Don't re-order, backslash throws off ordering */
 	{ L("'"),	T_SINGLE_QUOTED_STRING	},
@@ -207,9 +205,6 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 			/*
 			 *	If we parsed an attribute on the LHS, and the RHS looks like an enumerated
 			 *	value, then set the enumv.
-			 *
-			 *	@todo tmpl_require_enum_prefix - maybe just _always_ set enumv, because the
-			 *	caller shouldn't have set it?
 			 */
 			if (!rhs_rules->enumv && tmpl_is_attr(map->lhs) &&
 			    (value[0] == ':') && value[1] == ':') {
@@ -2792,10 +2787,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs, strlen(rhs)),
 					 T_BARE_WORD, value_parse_rules_unquoted[T_BARE_WORD], &my_rules);
 		if (slen <= 0) {
-			if (tmpl_require_enum_prefix) goto parse_as_attr;
-
-			REDEBUG3("Failed parsing right-hand side as generic data type.");
-			goto fail_rhs;
+			goto parse_as_attr;
 		}
 
 		/*
