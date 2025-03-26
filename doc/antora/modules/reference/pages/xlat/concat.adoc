@@ -1,4 +1,4 @@
-= %concat(<&ref:[idx]>, <delim>)
+= %concat(<ref:[idx]>, <delim>)
 
 Used to join two or more attributes, separated by an optional delimiter.
 

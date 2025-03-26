@@ -1,4 +1,4 @@
-= %explode(<&ref>, <delim>)
+= %explode(<ref>, <delim>)
 
 Split an string into multiple new strings based on a delimiter.
 

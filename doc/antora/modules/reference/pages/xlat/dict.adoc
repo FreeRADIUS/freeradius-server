@@ -5,7 +5,7 @@ The following functions perform lookups based on dictionary names and numbers.
 The functions are defined in the `dict` module.  It must be listed in
 the `mods-enabled/` directory in order for the expansions to work.
 
-== %concat(<&ref:[idx]>, <delim>)
+== %concat(<ref:[idx]>, <delim>)
 
 Used to join two or more attributes, separated by an optional delimiter.
 
@@ -47,7 +47,7 @@ foo += { "a", "c", "c", "d" } # abcd
 foo += control.Tmp-String-0[*]
 ----
 
-== %explode(<&ref>, <delim>)
+== %explode(<ref>, <delim>)
 
 Split an string into multiple new strings based on a delimiter.
 

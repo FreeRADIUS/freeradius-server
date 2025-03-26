@@ -19,7 +19,7 @@ This expansion has been removed.  Instead, just use `%{(integer) ...}` with math
 
 [source,unlang]
 ----
-reply.Reply-Message := "Value of Service-Type is %{(integer) &Service-Type}"
+reply.Reply-Message := "Value of Service-Type is %{(integer) Service-Type}"
 ----
 
 === +%pack(%{Attribute-Name}%{Attribute-Name}...)+
@@ -55,7 +55,7 @@ This expansion has been removed.  Instead, just use `%{(string) ...}` with an ex
 
 [source,unlang]
 ----
-reply.Reply-Message := "The printable version of Class is %{(string) &Class}"
+reply.Reply-Message := "The printable version of Class is %{(string) Class}"
 ----
 
 == %strlen( ... )

@@ -279,10 +279,10 @@ group {
     now := %time('request')
 
     #  We are this many seconds into one day
-    time_of_day := &now % (time_delta) 1d
+    time_of_day := now % (time_delta) 1d
 
     # calculate the start of today, and then add one day to that
-    tomorrow := &now - &time_of_day + (time_delta) 1d
+    tomorrow := now - time_of_day + (time_delta) 1d
 }
 ----
 
@@ -301,10 +301,10 @@ group {
     now := %time('request')
 
     #  We are this many seconds into one day
-    time_of_day := &now % (time_delta) 1d
+    time_of_day := now % (time_delta) 1d
 
     # calculate the start of today, and then add one day to that
-    tomorrow := &now - &time_of_day + (time_delta) 1d
+    tomorrow := now - time_of_day + (time_delta) 1d
 
     #  add in the time zone offset
     tomorrow += %time('offset')
