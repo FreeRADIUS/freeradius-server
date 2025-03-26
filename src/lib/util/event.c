@@ -1356,6 +1356,7 @@ static int _event_pid_free(fr_event_pid_t *ev)
 /** Evaluate a EVFILT_PROC event
  *
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - Public/private version of connection_t trips -fsanitize=function */
 static inline CC_HINT(always_inline)
 void event_pid_eval(fr_event_list_t *el, struct kevent *kev)
 {
@@ -2177,7 +2178,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	return num_fd_events + timer_event_ready;
 }
 
-CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private fr_event_list_t trips --fsanitize=function*/
 static inline CC_HINT(always_inline)
 void event_callback(fr_event_list_t *el, fr_event_fd_t *ef, int *filter, int flags, int *fflags)
 {
