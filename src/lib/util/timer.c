@@ -402,7 +402,7 @@ int _fr_timer_at(NDEBUG_LOCATION_ARGS
 
 		talloc_set_destructor(ev, _timer_free);
 	} else {
-		ev = UNCONST(fr_timer_t *, *ev_p);
+		ev = talloc_get_type_abort(UNCONST(fr_timer_t *, *ev_p), fr_timer_t);
 
 		EVENT_DEBUG("%p - " NDEBUG_LOCATION_FMT "Re-armed timer %p", tl, NDEBUG_LOCATION_VALS ev);
 
@@ -701,7 +701,7 @@ static int timer_list_lst_run(fr_timer_list_t *tl, fr_time_t *when)
 	int		fired = 0;
 
 	while (fr_lst_num_elements(tl->lst) > 0) {
-		ev = fr_lst_peek(tl->lst);
+		ev = talloc_get_type_abort(fr_lst_peek(tl->lst), fr_timer_t);
 
 		/*
 		 *	See if it's time to do this one.
@@ -760,6 +760,8 @@ static int timer_list_ordered_run(fr_timer_list_t *tl, fr_time_t *when)
 	unsigned int	fired = 0;
 
 	while ((ev = timer_head(&tl->ordered))) {
+		(void)talloc_get_type_abort(ev, fr_timer_t);
+
 		/*
 		 *	See if it's time to do this one.
 		 */
