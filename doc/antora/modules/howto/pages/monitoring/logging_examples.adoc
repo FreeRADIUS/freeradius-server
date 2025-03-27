@@ -1,0 +1,61 @@
+= Log Examples
+
+FreeRADIUS logging provides many sources of runtime service information that can be useful for understanding a problem.
+Issues are frequently evident in log files long before they present a problem in production.
+
+
+== Server log: /var/log/freeradius/radius.log
+
+This log contains global server events, such as attempts to add new clients, attempts to open new connections, slow requests and server faults.
+There are thousands of possible log entry messages, many of which are dynamically generated, and for the most part they are self-describing.
+Therefore only common log entry messages are documented.
+
+===  Being polled by the monitoring server
+
+Munin, a resource monitoring tool, is connecting to the freeradius process to retrieve the latest packet statistics.
+
+```
+... Info: ... adding new socket command file .../monitor.sock
+... Info: ... shutting down socket command file .../monitor.sock
+```
+
+===  Module opening a connection
+
+In this example, the sql_auth instance of the rlm_sql module is opening an additional connection to the database. Since the server was last restarted, nine connections have been opened (indicated by the connection number (8) which is based at zero).
+
+Currently 1 of 24 pending connection slots are being used. The 24 is the number of connections left until the connection pool has opened the maximum number of allowed connections.
+
+The 1 shows how many connections the server is trying to open at the same time. A high number here means that there’s likely been a large and sudden increase in load and that the server is trying to open lots of new connections simultaneously to cope with the sudden increase.
+
+```
+... Info: rlm_sql ...: Opening additional connection (8), 1 of 24 pending slots used
+```
+
+=== Module closing a connection
+
+The server recognized that there are surplus connections open to a given server and is therefore closing a spare connection.
+The way the server determines that there is a surplus is by concentrating new queries on as small a subset of the connection pool as possible and then closing connections that haven’t been used for a period.
+
+```
+... Info: rlm_ldap ...: Closing connection (1), from 7 unused connections
+
+```
+
+=== Request from unknown client
+
+This message states that the request was ignored since the client is unknown. If this client is a valid source of authentication and/or accounting requests then it should be added to the configuration.
+If the clients are added dynamically, e.g. from SQL (via the nas table) or a dynamic_clients file then it should be determined why the addition is failing.
+
+```
+... Error: Ignoring request to auth address * port 1812 bound to server \
+default from unknown client 203.0.113.7 port 54980 proto udp
+```
+
+=== Database locking issue
+The database encountered a deadlock while placing a lock on data to prevent conflicting updates or selects of duplicate/stale data. If this happens frequently then the database (or cluster) may be suffering from performance problems.
+
+```
+... ERROR: (1526654) sqlippool: ERROR: rlm_sql_mysql: \
+ERROR 1213 (Deadlock found when trying to get lock; \
+try restarting transaction): 40001
+```

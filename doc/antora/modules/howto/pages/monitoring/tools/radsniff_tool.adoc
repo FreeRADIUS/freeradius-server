@@ -1,0 +1,153 @@
+= Using radsniff
+
+The radsniff tool is extremely useful for debugging RADIUS packet flows, either by monitoring the live network interfaces or by processing a PCAP-based traffic dump.
+
+To see the different switches that can be used, see the xref:reference:man/radsniff.adoc[radsniff] man page included with this documentation.
+
+== Packet capture processing
+
+=== Live packet capture
+
+In it’s default mode radsniff will display incoming and outgoing RADIUS packets, one per line, annotated with timing information and “events”. To view your real-time transmission of packets, enter the following command:
+
+`root@radius# radsniff`
+
+For the first few seconds after entering the above command, you may see noreq events. These events occur because the request that solicited the response was sent before radsniff was started. If such events are seen a while after startup it most likely means that packets are not being seen because the capture is lossy which may happen in the event that the system is overloaded.
+
+.Normal Output
+
+```
+... (440) Access-Request Id 231 eth0:2.3.4.5:1812 -> 192.0.2.100:1812 +4.587
+... (441) Access-Accept Id 114 eth0:2.3.4.5:1812 <- 192.0.2.100:1812 +4.587 +0.101
+... (442) Access-Request Id 76 eth0:2.3.4.5:1812 -> 192.0.2.100:1812 +4.592
+... (443) Access-Request Id 74 eth0:2.3.4.5:1812 -> 192.0.2.100:1812 +4.601
+```
+
+Requests that do not receive a response will be marked with norsp.
+
+[NOTE]
+====
+For any servers using bonded interfaces, the -i bond<num> option must be used, otherwise radsniff marks all the packets as retransmitted, i.e. received once via the LACP member link and once via the bond interface. As well, servers using a VIP for the RADIUS service marks all packets as retransmitted unless -i <iface> is added referring to either the label for the VIP or the real interface the VIP is attached to.
+====
+
+== Viewing RADIUS attributes
+Attributes from the RADIUS packets can be shown using the -x option:
+
+`root@radius# radsniff -x`
+
+.RADIUS Attributes Display Example
+
+... (66) Access-Request Id 159 eth0:2.3.4.5:1812 -> 192.0.2.100:1812 +1.142
+User-Name = 'bob'
+CHAP-Password = 0x0128cd38aacd802092a8c46d5bb84f61ed
+NAS-IP-Address = 2.3.4.5
+NAS-Port = 17828
+Service-Type = Framed-User
+Framed-Protocol = PPP
+Calling-Station-Id ='30:b5:c2:4a:85:70'
+NAS-Identifier = 'BRAS-01'
+CHAP-Challenge = 0x84926cafcfb2446fabbce4b14d6d6337
+NAS-Port-Type = Ethernet
+Acct-Session-Id = 'd55c079771'
+NAS-Port-Id = 'MSAN-01 atm 0/1/2:3.4'
+Authenticator-Field = 0x84926cafcfb2446fabbce4b14d6d6337
+... (67) Access-Reject Id 146 eth0:2.3.4.5:1812 <- 192.0.2.100:1812 +1.152 +0.104
+Reply-Message ='Simultaneous use limit exceeded.'
+Authenticator-Field = 0x13ab6ed86c597041070250ae5dbcc920
+
+=== Live traffic statistics
+
+To view real-time traffic statistics (rate, latency, success rate) continuously, execute `radsniff -W` to capture statistics at timed or preset intervals:
+
+`root@radius# radsniff -W <sample_interval>`
+
+.Relevant counters
+[options = "1,3"]
+|===
+|Counter Name|Description
+
+|Access-Accept (Total)
+|Shows the current rate of Access-Accept packets
+
+|Accounting-Response (Total)
+|Shows the current rate for accounting packets.
+
+|Retransmits / Loss
+|Shows the number of requests that were sent but did not receive responses indicating that the RADIUS server is overwhelmed, most likely due to an authentication dependancy (e.g. SQL database, LDAP directory, credential cache) not responding in a timely manner.
+
+|RT(0)
+| means “retransmits 0”, i.e. the first time a request was sent it received a response. If requests are retransmitted these appear as RT(1), RT(2), RT(3), ... where the number after the initial RT shows how many times the request was retransmitted before it received a response.
+Lost means that the request never received a response.
+|===
+
+.Capture live stats on all interfaces output
+Muting stats for the next 5200 milliseconds (warmup)
+######### Stats Iteration 1 #########
+Interface capture rate:
+eth0 : 120.333/s
+lo : 0.000/s
+Stats muted because of warmup, or previous error
+######### Stats Iteration 2 #########
+Interface capture rate:
+eth0 : 129.333/s
+lo : 0.000/s
+Stats muted because of warmup, or previous error
+######### Stats Iteration 3 #########
+Interface capture rate:
+eth0 : 139.000/s
+lo : 0.000/s
+Access-Request counters:
+Total : 70.667/s
+Linked : 68.333/s
+Unlinked : 0.000/s
+Access-Request latency:
+High : 105.64ms
+Low : 0.108ms
+Average : 78.724ms
+MA : 78.724ms
+Access-Request retransmits & loss:
+RT (0) : 53.667/s
+Access-Accept counters:
+Total : 15.333/s
+Linked : 15.333/s
+Unlinked : 0.000/s
+Access-Accept latency:
+High : 0.439ms
+Low : 0.160ms
+Average : 0.384ms
+MA : 0.384ms
+Access-Reject counters:
+Total : 53.000/s
+Linked : 53.000/s
+Unlinked : 0.000/s
+Access-Reject latency:
+High : 1005.643ms
+Low : 1001.162ms
+Average : 1002.903ms
+MA : 1002.903ms
+
+
+== Filtering Requests
+
+The radsniff tool can filter the traffic looking for attributes with specific values.
+The attributes in the request filter below can be something like NAS-IP-Address or User-Name to filter for requests containing a specific client or user:
+
+* root@radius# radsniff -r 'User-Name==carol'
+* root@radius# radsniff -r 'User-Name==bob,NAS-IP-Address==2.3.4.5'
+
+Similarly, response attributes can be filtered with -R in which case replies are buffered until a reponse is seen or it times out.
+
+== Displaying specific attributes
+The radsniff output can be amended to display specific attributes using -l:
+
+root@radius# radsniff -l User-Name,NAS-IP-Address,Reply-Message
+
+Defaulting to capture on all interfaces
+noreq,1, ... ,,Access-Accept,eth0,192.0.2.100,1812,2.3.4.5,34633,86, \
+,,
+noreq,2, ... ,,Access-Reject,eth0,192.0.2.100,1812,2.3.4.5,77, \
+,,"Simultaneous use count exceeded"
+received,3, ... ,,Access-Request,eth0,2.3.4.5,1812,192.0.2.100,1812,207, \
+"bob",172.16.246.129,
+noreq,4, ... ,,Access-Reject,eth0,192.0.2.100,1812,2.3.4.5,1812,209, \
+,,"Subscriber carol not found"

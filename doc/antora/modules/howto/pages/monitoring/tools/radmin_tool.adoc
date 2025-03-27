@@ -1,0 +1,71 @@
+= Using radmin
+
+It's possible to retrieve debug logs from FreeRADIUS while it is running in normal multi-threaded mode by using the radmin tool. This has the benefit of not interrupting the normal operations of FreeRADIUS server. It also allows for selective logging of packets which match a specified criteria.
+
+== Getting Started
+
+Enter the following commang to launch radmin:
+
+`root@radius# radmin -f /var/run/freeradius/control/control.sock`
+
+At the radmin prompt, set the debug file. By default, it's located in the FreeRADIUS log directory /var/log/freeradius/:
+
+```
+radmin> debug file tmp/debug
+radmin> show debug file
+/var/log/freeradius/tmp/debug
+radmin>
+```
+
+Next, set a condition for the packets you want to capture in the debug logs. The debug logs will contain only the traffic type that you're investigating instead of all the traffic packets. The conditions are specified using FreeRADIUS unlang conditions.
+
+=== Debug Output using radmin set with Calling-Station-ID condition
+
+```
+radmin> debug condition'Calling-Station-Id == "aa-bb-cc-dd-ee-ff"'
+radmin> show debug condition
+(Calling-Station-Id == "aa-bb-cc-dd-ee-ff")
+```
+
+=== Debug Output using radmin set with User-Name condition
+
+`radmin> debug condition'User-Name =~ /^abc/'`
+
+=== Debug Output using radmin set with multiple conditions
+
+The current condition is the last one specified; to match multiple items, the criteria must be combined into one expression.
+
+```
+radmin> debug condition'(User-Name =~ /^abc/') || \
+(Calling-Station-Id == "aa-bb-cc-dd-ee-ff")'
+```
+
+Now you can see the debug output being written to the file specified:
+
+`root@radius# tail -F /var/log/freeradius/tmp/debug`
+
+[NOTE]
+====
+The debug logs can grow quickly and get very large on busy systems. Only run debugging when needed and watch the disk space carefully.
+====
+
+=== Stop the capture
+
+Once you've have captured the debug output, turn the capture off with the following command:
+
+```
+radmin> debug condition
+radmin> show debug condition
+```
+
+Wait a few seconds for any outstanding requests to complete and the last writes to the debug file.
+
+
+=== Clear debug file
+
+Next, Clear the debug file setting to complete your session.
+
+```
+radmin> debug file
+radmin> show debug file
+```

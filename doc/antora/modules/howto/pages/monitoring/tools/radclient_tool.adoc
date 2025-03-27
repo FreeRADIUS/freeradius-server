@@ -1,0 +1,63 @@
+= Using radclient
+
+Policy issues for basic authentication protocols such as PAP, CHAP and MSCHAP, as well as for accounting and CoA/Disconnect requests, can be investigated using the radclient command whilst the server is in debug mode.
+Firstly, create an authentication packet definition by specifying its attributes. For example:
+
+```
+nwkrad@radius-fe-01$ cat <<EOF > auth_request.txt
+Acct-Session-Id = "00000042"
+Service-Type = Framed-User
+Framed-Protocol = PPP
+Calling-Station-Id = "AA-BB-CC-DD-EE-FF"
+User-Name = "bob"
+User-Password = "testing123"
+NAS-Identifier = "nas01"
+NAS-IP-Address = 192.0.2.1
+NAS-Port = "12345"
+NAS-Port-Type = Virtual
+EOF
+```
+You will need to customise the above to reflect the attributes that are being sent by your NAS. You can passively determine the format of your RADIUS packets by running radsniff -x as root on the RADIUS server:
+`root@radius-fe-01# radsniff -x`
+
+Next, generate a RADIUS access request packet from this definition and send it to the RADIUS server by calling radclient with the auth option:
+```
+nwkrad@radius-fe-01$ cat auth_request.txt | \
+radclient -x 127.0.0.1 auth testing123
+```
+
+Carefully examine the output of the above command and the debug output from FreeRADIUS. Make any required changes in small careful steps, regularly committing the changes to versions control so that they can be reverted if necessary.
+
+The process for generating accounting requests is similar. Firstly, create the accounting packet definition:
+
+```
+nwkrad@radius-fe-01$ cat <<EOF > acct_request.txt
+Acct-Session-Id = "00000042"
+Acct-Status-Type = Interim
+Acct-Authentic = RADIUS
+Acct-Delay-Time = 0
+Acct-Input-Octets = 3656340066
+Acct-Output-Octets = 3424317634
+Acct-Session-Time = 1215315
+Acct-Input-Packets = 45922570
+Acct-Output-Packets = 74246191
+Acct-Input-Gigawords = 2
+Acct-Output-Gigawords = 22
+Calling-Station-Id = "AA-BB-CC-DD-EE-FF"
+Framed-Protocol = PPP
+Framed-IP-Address = 10.33.44.55
+User-Name = "bob"
+Hermod Retail - Operations guide 13
+Service-Type = Framed-User
+NAS-Identifier = "nas01"
+NAS-IP-Address = 192.0.2.1
+NAS-Port = "12345"
+NAS-Port-Type = Ethernet
+EOF
+```
+
+Then call radclient with the acct option to generate the actual accounting request:
+```
+nwkrad@radius-fe-01:~$ cat acct_request.txt | \
+radclient -x 127.0.0.1 acct testing123
+```

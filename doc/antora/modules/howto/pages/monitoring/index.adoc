@@ -3,13 +3,13 @@
 Any good systems administrator will want to know how well
 their systems are operating, both to catch issues before they
 become a serious problem, or for long term analysis.
+
 The term "monitoring" can encompass all kinds of watching how the
 system is working, from generating and watching logs, gathering
 statistics or ensuring that the service daemon is still running
 and serving requests.
 
-We break the different types of monitoring down into the following
-sections.
+Monitoring is organized into the following sections:
 
 == Service checking
 
@@ -20,45 +20,44 @@ Checking the running service can include the following:
 * Sending Status-Server RADIUS requests
 
 Within a proxy environment FreeRADIUS needs to know if upstream
-proxies are available. It can do this itself using the latter two
-options above.
+proxies are available. It can do this itself by issuing request as outlined in the options above.
 
 == Logging
 
 System logs are often the most critical part of a RADIUS system.
-They are necessary for the administrator to know who has logged in
+Logs are necessary for the administrator to know who has logged in
 and when, for debugging purposes such as when an end user cannot
 connect, and often for regulatory or compliance purposes.
 
-RADIUS server logs are also often used as a basic form of
-recording accounting requests, which are in and of themselves a
+FreeRADIUS server logs are also often used as a basic form of
+recording accounting requests, which are also a
 form of logging by the NAS. Getting correct logging systems
 operational is key to running an efficient and easy to maintain
-RADIUS server.
+FreeRADIUS server.
 
 FreeRADIUS has many options for being able to generate and store
 logs, including the following:
 
-* Main daemon logging, configured in `radiusd.conf`
-* Line-based text logging, using `rlm_linelog`
-* Detailed RADIUS packet logs, using `rlm_detail`
+* Main daemon logging, configured in xref:reference:raddb/radiusd.conf.adoc[`radiusd.conf`]
+* Line-based text logging, using xref:reference:raddb/mods-available/linelog.adoc[`rlm_linelog`]
+* Detailed RADIUS packet logs, using xref:reference:raddb/mods-available/detail.adoc[`rlm_detail`]
 
-As well as recording direct to disk, the above can be sent via a
+As well as recording direct to disk, the options above can be sent via a
 local syslog server, which opens up many opportunities for central
 logging.
 
 It is possible to integrate FreeRADIUS into other more complicated
 logging systems, some options may include:
 
-* To CSV files, for example via `rlm_linelog`
-* Writing entries to an SQL database using `rlm_sql`
+* To CSV files, for example via xref:reference:raddb/mods-available/linelog.adoc[`rlm_linelog`]
+* Writing entries to an SQL database using xref:reference:raddb/mods-available/sql.adoc[`rlm_sql`]
 * Into a log management system such as Elasticsearch or Graylog
 
 
 == Statistics gathering
 
 It is often useful to collect statistics from a running RADIUS
-server. These are often plotted on graphs to show current load or
+server. The data collected can be displayed on graphs to show current load or
 for trend analysis, as well as an indication of system operation.
 
 Statistics are usually gathered in two ways:
