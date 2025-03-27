@@ -1506,6 +1506,7 @@ do_read:
 		if (inst->app->priority) {
 			value = inst->app->priority(inst->app_instance, buffer, packet_len);
 			if (value <= 0) {
+				static fr_rate_limit_t bad_type;
 
 				/*
 				 *	@todo - unix sockets.  We need to use
@@ -1513,7 +1514,7 @@ do_read:
 				 *	listener?
 				 */
 				if (LOG_IGNORED_CLIENTS(inst)) {
-					RATE_LIMIT_LOCAL(&thread->rate_limit.bad_type, INFO,
+					RATE_LIMIT_LOCAL(thread ? &thread->rate_limit.bad_type : &bad_type, INFO,
 							 "proto_%s - ignoring packet from IP %pV. It is not configured as 'type = ...'",
 							 inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
 				}
@@ -1638,7 +1639,8 @@ do_read:
 			}
 
 			if (LOG_IGNORED_CLIENTS(inst)) {
-				RATE_LIMIT_LOCAL(&thread->rate_limit.unknown_client,
+				static fr_rate_limit_t unknown_client;
+				RATE_LIMIT_LOCAL(thread ? &thread->rate_limit.unknown_client : &unknown_client,
 						 ERROR, "proto_%s - Ignoring %s from IP address %pV - %s",
 						 inst->app_io->common.name, msg, fr_box_ipaddr(address.socket.inet.src_ipaddr),
 						 error);
@@ -1660,7 +1662,9 @@ have_client:
 	 */
 	if (accept_fd >= 0) {
 		if (!fr_io_connection_alloc(inst, thread, client, accept_fd, &address, NULL)) {
-			RATE_LIMIT_LOCAL(&thread->rate_limit.conn_alloc_failed,
+			static fr_rate_limit_t alloc_failed;
+
+			RATE_LIMIT_LOCAL(thread ? &thread->rate_limit.conn_alloc_failed : &alloc_failed,
 					 ERROR, "Failed to allocate connection from client %s", client->radclient->shortname);
 		}
 
@@ -1682,11 +1686,12 @@ have_client:
 		 *	"live" packets.
 		 */
 		if (!track) {
+			static 	fr_rate_limit_t tracking_failed;
 			bool	is_dup = false;
 
 			track = fr_io_track_add(client, &address, buffer, packet_len, recv_time, &is_dup);
 			if (!track) {
-				RATE_LIMIT_LOCAL(&thread->rate_limit.tracking_failed,
+				RATE_LIMIT_LOCAL(thread ? &thread->rate_limit.tracking_failed : &tracking_failed,
 						 ERROR, "Failed tracking packet from client %s - discarding it",
 						 client->radclient->shortname);
 				return 0;
@@ -1771,7 +1776,8 @@ have_client:
 			pending = fr_io_pending_alloc(connection, client, buffer, packet_len,
 						      track, priority);
 			if (!pending) {
-				RATE_LIMIT_LOCAL(&thread->rate_limit.alloc_failed,
+				static fr_rate_limit_t alloc_failed;
+				RATE_LIMIT_LOCAL(thread ? &thread->rate_limit.alloc_failed : &alloc_failed,
 						 ERROR, "proto_%s - Failed allocating space for dynamic client %pV - discarding packet",
 						 inst->app_io->common.name, fr_box_ipaddr(client->src_ipaddr));
 				goto discard;
