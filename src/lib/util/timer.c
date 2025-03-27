@@ -43,27 +43,27 @@ FR_DLIST_TYPEDEFS(timer, fr_timer_head_t, fr_timer_entry_t)
  *
  */
 typedef enum {
-	TIMER_LIST_TYPE_LST = 1,				//!< Self-sorting timer list based on a left leaning skeleton tree.
-	TIMER_LIST_TYPE_ORDERED = 2				//!< Strictly ordered list of events in a dlist.
+	TIMER_LIST_TYPE_LST = 1,			//!< Self-sorting timer list based on a left leaning skeleton tree.
+	TIMER_LIST_TYPE_ORDERED = 2			//!< Strictly ordered list of events in a dlist.
 } timer_list_type_t;
 
 /** An event timer list
  *
  */
 struct fr_timer_list_s {
-	struct fr_timer_list_pub_s	pub;			//!< Public interface to the event timer list.
+	struct fr_timer_list_pub_s	pub;		//!< Public interface to the event timer list.
 
 	union {
-		fr_lst_t			*lst;			//!< of timer events to be executed.
+		fr_lst_t		*lst;			//!< of timer events to be executed.
 		timer_head_t		ordered;		//!< A list of timer events to be executed.
 	};
 	timer_list_type_t		type;
-	bool				in_handler;		//!< Whether we're currently in a callback.
+	bool				in_handler;	//!< Whether we're currently in a callback.
 
 	timer_head_t	   	deferred;		//!< A list of timer events to be inserted, after
-								///< the current batch has been processed.
-								///< This prevents "busy" timer loops, where
-								///< other events may starve, or we may never exit.
+							///< the current batch has been processed.
+							///< This prevents "busy" timer loops, where
+							///< other events may starve, or we may never exit.
 
 	fr_timer_list_t		*parent;		//!< Parent list to insert event into (if any).
 	fr_timer_t		*parent_ev;		//!< Event in the parent's event loop.
@@ -77,28 +77,30 @@ struct fr_timer_list_s {
  *
  */
 struct fr_timer_s {
-	fr_time_t			when;			//!< When this timer should fire.
+	fr_time_t		when;			//!< When this timer should fire.
 
-	fr_timer_cb_t			callback;		//!< Callback to execute when the timer fires.
-	void const			*uctx;			//!< Context pointer to pass to the callback.
+	fr_timer_cb_t		callback;		//!< Callback to execute when the timer fires.
+	void const		*uctx;			//!< Context pointer to pass to the callback.
 
-	TALLOC_CTX			*linked_ctx;		//!< talloc ctx this event was bound to.
+	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
 
-	fr_timer_t 			**parent;		//!< A pointer to the parent structure containing the timer
-								///< event.
-	fr_lst_index_t			lst_idx;	     	//!< Where to store opaque lst data, not used for ordered lists.
+	fr_timer_t 		**parent;		//!< A pointer to the parent structure containing the timer
+							///< event.
 
-	fr_timer_entry_t  		entry;			//!< Entry in a list of timer events.
+	fr_timer_entry_t  	entry;			//!< Entry in a list of timer events.
+	union {
+		fr_dlist_t		ordered_entry;		//!< Entry in an ordered list of timer events.
+		fr_lst_index_t		lst_idx;	     	//!< Where to store opaque lst data, not used for ordered lists.
+	};
+	bool			free_on_fire;		//!< Whether to free the event when it fires.
 
-	bool				free_on_fire;		//!< Whether to free the event when it fires.
-
-	fr_timer_list_t   		*tl;			//!< The event list this timer is part of.
-								///< This is set to NULL when an event is disarmed,
-								///< but all other fields are left intact.
+	fr_timer_list_t   	*tl;			//!< The event list this timer is part of.
+							///< This is set to NULL when an event is disarmed,
+							///< but all other fields are left intact.
 
 #ifndef NDEBUG
-	char const			*file;			//!< Source file this event was last updated in.
-	int				line;			//!< Line this event was last updated on.
+	char const		*file;			//!< Source file this event was last updated in.
+	int			line;			//!< Line this event was last updated on.
 #endif
 };
 
@@ -694,9 +696,9 @@ CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private fr_timer_list
 static int timer_list_lst_run(fr_timer_list_t *tl, fr_time_t *when)
 {
 	fr_timer_cb_t	callback;
-	void			*uctx;
+	void		*uctx;
 	fr_timer_t	*ev;
-	int			fired = 0;
+	int		fired = 0;
 
 	while (fr_lst_num_elements(tl->lst) > 0) {
 		ev = fr_lst_peek(tl->lst);
@@ -753,9 +755,9 @@ CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private fr_timer_list
 static int timer_list_ordered_run(fr_timer_list_t *tl, fr_time_t *when)
 {
 	fr_timer_cb_t	callback;
-	void			*uctx;
+	void		*uctx;
 	fr_timer_t	*ev;
-	unsigned int		fired = 0;
+	unsigned int	fired = 0;
 
 	while ((ev = timer_head(&tl->ordered))) {
 		/*
@@ -782,7 +784,6 @@ static int timer_list_ordered_run(fr_timer_list_t *tl, fr_time_t *when)
 		 *	handles more cases.
 		 */
 		if (!fr_cond_assert(fr_timer_disarm(ev) == 0)) return -2;
-
 		EVENT_DEBUG("Running timer %p", ev);
 		if (ev->free_on_fire) talloc_free(ev);
 
