@@ -690,6 +690,7 @@ bool fr_timer_armed(fr_timer_t *ev)
  *	- 0 no timer events fired.
  *	- 1 a timer event fired.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private fr_timer_list_t trips --fsanitize=function*/
 static int timer_list_lst_run(fr_timer_list_t *tl, fr_time_t *when)
 {
 	fr_timer_cb_t	callback;
@@ -748,6 +749,7 @@ static int timer_list_lst_run(fr_timer_list_t *tl, fr_time_t *when)
  *	- 0 no timer events fired.
  *	- >0 number of timer event fired.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private fr_timer_list_t trips --fsanitize=function*/
 static int timer_list_ordered_run(fr_timer_list_t *tl, fr_time_t *when)
 {
 	fr_timer_cb_t	callback;
