@@ -3439,6 +3439,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 	ssize_t		data_used = 0;			/* How much data the last command wrote */
 	static char	path[PATH_MAX] = "";
 	command_line_range_t	*lr = NULL;
+	bool		opened_fp = false;
 
 	command_file_ctx_t	*cc;
 
@@ -3465,6 +3466,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 		}
 
 		filename = path;
+		opened_fp = true;
 	}
 
 	if (lines && !fr_dlist_empty(lines)) lr = fr_dlist_head(lines);
@@ -3578,7 +3580,8 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 	}
 
 finish:
-	if (fp && (fp != stdin)) fclose(fp);
+	/* The explicit check is to quiet clang_analyzer */
+	if (opened_fp) fclose(fp);
 
 	/*
 	 *	Free any residual resources we loaded.
