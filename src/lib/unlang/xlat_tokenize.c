@@ -1131,12 +1131,6 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		fr_assert(!node->flags.pure);
 
 		/*
-		 *	Can't have prefix YES if we're using the new flag.  The parser / tmpl alloc routines
-		 *	MUST have set this to prefix AUTO.
-		 */
-		fr_assert(node->vpt->rules.attr.prefix != TMPL_ATTR_REF_PREFIX_YES);
-
-		/*
 		 *	No '&', print the name, BUT without any attribute prefix.
 		 */
 		if (!node->vpt->rules.attr.xlat) {

@@ -317,7 +317,7 @@ static unlang_action_t mod_exec_oneshot_wait_resume(rlm_rcode_t *p_result, modul
 			};
 			tmpl_rules_t	rhs_rules = lhs_rules;
 
-			rhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_YES;
+			rhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_AUTO;
 			rhs_rules.attr.list_def = request_attr_request;
 			rhs_rules.at_runtime = true;
 			rhs_rules.xlat.runtime_el = unlang_interpret_event_list(request);

@@ -309,7 +309,7 @@ static unlang_action_t sql_get_map_list_resume(rlm_rcode_t *p_result, UNUSED int
 	map_t		*parent = NULL;
 	rlm_sql_t const	*inst = map_ctx->inst;
 
-	rhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_YES;
+	rhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_AUTO;
 	rhs_rules.attr.list_def = request_attr_request;
 
 	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;

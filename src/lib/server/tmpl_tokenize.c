@@ -1277,7 +1277,7 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 	 *	We need to rebuild the attribute name, to be the
 	 *	one we copied from the source list.
 	 */
-	slen = tmpl_print(&FR_SBUFF_OUT(attr, sizeof(attr)), vpt, TMPL_ATTR_REF_PREFIX_YES,
+	slen = tmpl_print(&FR_SBUFF_OUT(attr, sizeof(attr)), vpt, TMPL_ATTR_REF_PREFIX_AUTO,
 			  fr_value_escape_by_quote[list->quote]);
 	if (slen < 0) {
 		fr_strerror_printf("Serialized attribute too long.  Must be < "
@@ -1784,8 +1784,6 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	fr_dict_attr_err_t	dict_err;
 	fr_dict_attr_t const	*our_parent = parent;
 
-	fr_assert(at_rules->prefix != TMPL_ATTR_REF_PREFIX_YES);
-
 	fr_sbuff_marker(&m_s, name);
 
 	if (depth > FR_DICT_MAX_TLV_STACK) {
@@ -2243,8 +2241,6 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 
 	at_rules = &t_rules->attr;
 
-	fr_assert(at_rules->prefix != TMPL_ATTR_REF_PREFIX_YES);
-
 	if (err) *err = TMPL_ATTR_ERROR_NONE;
 
 	if (!fr_sbuff_extend(&our_name)) {
@@ -2447,9 +2443,6 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		fr_assert(ar != NULL);
 
 		if (tmpl_attr_is_list_attr(ar)) vpt->rules.attr.list_def = ar->ar_da;
-
-		fr_assert(vpt->rules.attr.prefix != TMPL_ATTR_REF_PREFIX_YES);
-
 	}
 
 	if (!tmpl_substr_terminal_check(&our_name, p_rules)) {
@@ -3353,8 +3346,6 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		slen = tmpl_afrom_time_delta(ctx, out, &our_in, p_rules);
 		if (slen > 0) goto done_bareword;
 		fr_assert(!*out);
-
-		fr_assert(t_rules->attr.prefix != TMPL_ATTR_REF_PREFIX_YES);
 
 		/*
 		 *	See if it's an attribute reference
@@ -5054,8 +5045,6 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 
 	fr_assert(tmpl_is_attr_unresolved(vpt) || tmpl_is_attr(vpt));
 
-	fr_assert(vpt->rules.attr.prefix != TMPL_ATTR_REF_PREFIX_YES);
-
 	/*
 	 *	Loop detection
 	 */
@@ -5838,8 +5827,6 @@ void tmpl_rules_child_init(TALLOC_CTX *ctx, tmpl_rules_t *out, tmpl_rules_t cons
 	/* don't set ->parent=parent, that is only for switching subrequest, etc. */
 
 	if (!tmpl_is_attr(vpt)) return;
-
-	fr_assert(vpt->rules.attr.prefix != TMPL_ATTR_REF_PREFIX_YES);
 
 	da = tmpl_attr_tail_da(vpt);
 
