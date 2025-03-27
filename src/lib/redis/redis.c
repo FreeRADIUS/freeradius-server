@@ -137,8 +137,9 @@ fr_redis_rcode_t fr_redis_command_status(fr_redis_conn_t *conn, redisReply *repl
  * @param[in] reply to print.
  * @param[in] request The current request.
  * @param[in] idx Response number.
+ * @param[in] status code from processing last reply.
  */
-void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *request, int idx)
+void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *request, int idx, fr_redis_rcode_t status)
 {
 	size_t i = 0;
 
@@ -146,7 +147,11 @@ void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *reques
 
 	switch (reply->type) {
 	case REDIS_REPLY_ERROR:
-		ROPTIONAL(REDEBUG, ERROR, "(%i) error   : %s", idx, reply->str);
+		if (status == REDIS_RCODE_MOVE) {
+			ROPTIONAL(RWARN, WARN, "(%i) warn    : %s", idx, reply->str);
+		} else {
+			ROPTIONAL(REDEBUG, ERROR, "(%i) error   : %s", idx, reply->str);
+		}
 		break;
 
 	case REDIS_REPLY_STATUS:
@@ -169,7 +174,7 @@ void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *reques
 		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) array[%zu]", idx, reply->elements);
 		for (i = 0; i < reply->elements; i++) {
 			if (request) RINDENT();
-			fr_redis_reply_print(lvl, reply->element[i], request, i);
+			fr_redis_reply_print(lvl, reply->element[i], request, i, status);
 			if (request) REXDENT();
 		}
 		break;

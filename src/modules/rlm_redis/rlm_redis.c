@@ -522,7 +522,7 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 */
 				if (reply->type != REDIS_REPLY_STRING) {
 					REDEBUG("Unexpected reply type after loading function");
-					fr_redis_reply_print(L_DBG_LVL_OFF, reply, request, 0);
+					fr_redis_reply_print(L_DBG_LVL_OFF, reply, request, 0, status);
 					goto script_load_failed;
 				}
 

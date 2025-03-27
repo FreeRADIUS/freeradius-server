@@ -151,7 +151,7 @@ static int rediswho_command(rlm_rediswho_t const *inst, request_t *request, char
 	/*
 	 *	Write the response to the debug log
 	 */
-	fr_redis_reply_print(L_DBG_LVL_2, reply, request, 0);
+	fr_redis_reply_print(L_DBG_LVL_2, reply, request, 0, status);
 
 	switch (reply->type) {
 	case REDIS_REPLY_ERROR:

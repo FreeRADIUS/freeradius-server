@@ -1867,7 +1867,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	fr_assert(state && state->node && state->node->pool);
 	fr_assert(conn && *conn);
 
-	if (*reply) fr_redis_reply_print(L_DBG_LVL_3, *reply, request, 0);
+	if (*reply) fr_redis_reply_print(L_DBG_LVL_3, *reply, request, 0, status);
 
  	ROPTIONAL(RDEBUG2, DEBUG2, "[%i] <<< Returned: %s",
  		  state->node->id, fr_table_str_by_value(redis_rcodes, status, "<UNKNOWN>"));

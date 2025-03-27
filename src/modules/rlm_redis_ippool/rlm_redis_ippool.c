@@ -627,7 +627,7 @@ static fr_redis_rcode_t ippool_script(redisReply **out, request_t *request, fr_r
 						     conn);
 		if (status == REDIS_RCODE_SUCCESS) {
 			if (RDEBUG_ENABLED3) for (i = 0; i < reply_cnt; i++) {
-				fr_redis_reply_print(L_DBG_LVL_3, replies[i], request, i);
+				fr_redis_reply_print(L_DBG_LVL_3, replies[i], request, i, status);
 			}
 
 			if (replies[3]->type != REDIS_REPLY_ARRAY) {

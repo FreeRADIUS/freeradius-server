@@ -413,7 +413,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 
 	RDEBUG3("Command results");
 	RINDENT();
-	if (RDEBUG_ENABLED3) for (i = 0; i < reply_cnt; i++) fr_redis_reply_print(L_DBG_LVL_3, replies[i], request, i);
+	if (RDEBUG_ENABLED3) for (i = 0; i < reply_cnt; i++) fr_redis_reply_print(L_DBG_LVL_3, replies[i], request, i, status);
 	fr_redis_pipeline_free(replies, reply_cnt);
 	REXDENT();
 
