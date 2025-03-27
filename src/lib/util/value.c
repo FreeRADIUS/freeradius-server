@@ -5877,8 +5877,6 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 	 *	into it.
 	 */
 	if (out == head_vb) {
-		out = head_vb;	/* sync up out and head_vb */
-
 		switch (type) {
 		case FR_TYPE_STRING:
 			/*
