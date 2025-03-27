@@ -1591,7 +1591,6 @@ static xlat_action_t xlat_func_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 typedef struct {
 	tmpl_t const		*vpt;		//!< the attribute reference
-	xlat_exp_head_t		*xlat;		//!< the xlat which needs expanding
 } xlat_exists_inst_t;
 
 typedef struct {
@@ -1600,22 +1599,22 @@ typedef struct {
 } xlat_exists_rctx_t;
 
 static xlat_arg_parser_t const xlat_func_exists_arg[] = {
-	{ .concat = true, .type = FR_TYPE_STRING },
+	{ .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
 /*
- *	We just print the xlat as-is.
+ *	We just print the node as-is.
  */
 static fr_slen_t xlat_expr_print_exists(fr_sbuff_t *out, xlat_exp_t const *node, void *instance, fr_sbuff_escape_rules_t const *e_rules)
 {
 	size_t	at_in = fr_sbuff_used_total(out);
 	xlat_exists_inst_t	*inst = instance;
 
-	if (inst->xlat) {
-		xlat_print(out, inst->xlat, e_rules);
+	if (inst->vpt) {
+		FR_SBUFF_IN_STRCPY_RETURN(out, inst->vpt->name);
 	} else {
-		xlat_print_node(out, node->call.args, xlat_exp_head(node->call.args), e_rules, 0);
+               xlat_print_node(out, node->call.args, xlat_exp_head(node->call.args), e_rules, 0);
 	}
 
 	return fr_sbuff_used_total(out) - at_in;
@@ -1627,22 +1626,29 @@ static fr_slen_t xlat_expr_print_exists(fr_sbuff_t *out, xlat_exp_t const *node,
 static int xlat_instantiate_exists(xlat_inst_ctx_t const *xctx)
 {
 	xlat_exists_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_exists_inst_t);
-	xlat_exp_t		*arg, *xlat;
+	xlat_exp_t		*arg, *node;
 
 	arg = xlat_exp_head(xctx->ex->call.args);
-	(void) fr_dlist_remove(&xctx->ex->call.args->dlist, arg);
 
 	fr_assert(arg->type == XLAT_GROUP);
-	xlat = xlat_exp_head(arg->group);
-
-	inst->xlat = talloc_steal(inst, arg->group);
-	talloc_free(arg);
+	node = xlat_exp_head(arg->group);
 
 	/*
-	 *	If it's an attribute, we can cache a reference to it.
+	 *	@todo - add an escape callback to this xlat
+	 *	registration, so that it can take untrusted inputs.
 	 */
-	if ((xlat->type == XLAT_TMPL) && (tmpl_contains_attr(xlat->vpt))) {
-		inst->vpt = xlat->vpt;
+	if ((node->type != XLAT_TMPL) || !tmpl_contains_attr(node->vpt)) {
+		fr_strerror_const("The %exists() function can only be used internally");
+		return -1;
+	}
+
+	inst->vpt = talloc_steal(inst, node->vpt);
+
+	/*
+	 *	Free the input arguments so that they don't get expanded.
+	 */
+	while ((arg = fr_dlist_pop_head(&xctx->ex->call.args->dlist)) != NULL) {
+		talloc_free(arg);
 	}
 
 	return 0;
@@ -1667,56 +1673,6 @@ static xlat_action_t xlat_attr_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_action_t xlat_exists_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					xlat_ctx_t const *xctx,
-					request_t *request, UNUSED fr_value_box_list_t *in)
-{
-	xlat_exists_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_exists_rctx_t);
-	ssize_t			slen;
-	tmpl_t			*vpt;
-	fr_value_box_t		*vb;
-	fr_sbuff_t		*agg;
-
-	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 256, 8192);
-
-	/*
-	 *	If the expansions fails, then we fail the entire thing.
-	 */
-	if (!rctx->last_success) {
-	fail:
-		talloc_free(rctx);
-		return XLAT_ACTION_FAIL;
-	}
-
-	/*
-	 *	Because we expanded the RHS ourselves, the "concat"
-	 *	flag to the RHS argument is ignored.  So we just
-	 *	concatenate it here.  We escape the various untrusted inputs.
-	 */
-	if (fr_value_box_list_concat_as_string(NULL, NULL, agg, &rctx->list, NULL, 0, NULL,
-					       FR_VALUE_BOX_LIST_FREE_BOX, 0, true) < 0) {
-		RPEDEBUG("Failed concatenating attribute name string");
-		return XLAT_ACTION_FAIL;
-	}
-
-	vb = fr_value_box_list_head(&rctx->list);
-
-	slen = tmpl_afrom_attr_str(ctx, NULL, &vpt, vb->vb_strvalue,
-				   &(tmpl_rules_t) {
-					   .attr = {
-						   .dict_def = request->dict,
-						   .request_def = &tmpl_request_def_current,
-						   .list_def = request_attr_request,
-						   .allow_unknown = false,
-						   .allow_unresolved = false,
-					   },
-				   });
-	if (slen <= 0) goto fail;
-
-	talloc_free(rctx);	/* no longer needed */
-	return xlat_attr_exists(ctx, out, request, vpt, true);
-}
-
 /** See if a named attribute exists
  *
  * Example:
@@ -1731,34 +1687,13 @@ static xlat_action_t xlat_func_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	xlat_exists_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_exists_inst_t);
-	xlat_exists_rctx_t	*rctx;
 
 	/*
 	 *	We return "true" if the attribute exists.  Otherwise we return "false".
-	 *
-	 *	Except for virtual attributes.  If we're testing for
-	 *	their existence, we always return "true".
 	 */
-	if (inst->vpt) {
-		return xlat_attr_exists(ctx, out, request, inst->vpt, false);
-	}
+	fr_assert(inst->vpt);
 
-	/*
-	 *	Expand the xlat into a string.
-	 */
-	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_exists_rctx_t));
-	fr_value_box_list_init(&rctx->list);
-
-	if (unlang_xlat_yield(request, xlat_exists_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) {
-	fail:
-		talloc_free(rctx);
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (unlang_xlat_push(ctx, &rctx->last_success, &rctx->list,
-			     request, inst->xlat, UNLANG_SUB_FRAME) < 0) goto fail;
-
-	return XLAT_ACTION_PUSH_UNLANG;
+	return xlat_attr_exists(ctx, out, request, inst->vpt, false);
 }
 
 #undef XLAT_REGISTER_BINARY_OP
