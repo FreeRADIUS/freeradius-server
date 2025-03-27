@@ -291,7 +291,7 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 
 #define ESCAPE(_arg, _vb, _arg_num) \
 do { \
-	if ((_arg)->func && (!(_vb)->safe_for || !fr_value_box_is_safe_for((_vb), (_arg)->safe_for) || (_arg)->always_escape)) { \
+	if ((_arg)->func && (!fr_value_box_is_safe_for((_vb), (_arg)->safe_for) || (_arg)->always_escape)) { \
 		if ((_arg)->func(request, _vb, (_arg)->uctx) < 0) { \
 			RPEDEBUG("Function \"%s\" failed escaping argument %u", name, _arg_num); \
 			return XLAT_ACTION_FAIL; \
