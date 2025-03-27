@@ -1356,7 +1356,7 @@ static int _event_pid_free(fr_event_pid_t *ev)
 /** Evaluate a EVFILT_PROC event
  *
  */
-CC_NO_UBSAN(function) /* UBSAN: false positive - Public/private version of connection_t trips -fsanitize=function */
+CC_NO_UBSAN(function) /* UBSAN: false positive - Public/private version of fr_event_list_t trips -fsanitize=function */
 static inline CC_HINT(always_inline)
 void event_pid_eval(fr_event_list_t *el, struct kevent *kev)
 {
@@ -2193,6 +2193,7 @@ void event_callback(fr_event_list_t *el, fr_event_fd_t *ef, int *filter, int fla
  *
  * @param[in] el containing events to service.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - Public/private version of fr_event_list_t trips -fsanitize=function */
 void fr_event_service(fr_event_list_t *el)
 {
 	fr_timer_list_t	*etl = el->pub.tl;
