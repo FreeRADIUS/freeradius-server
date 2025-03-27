@@ -1059,7 +1059,7 @@ fr_timer_list_t *fr_timer_list_ordered_alloc(TALLOC_CTX *ctx, fr_timer_list_t *p
 
 	if (unlikely((tl = timer_list_alloc(ctx, parent)) == NULL)) return NULL;
 
-	timer_talloc_init(&tl->ordered);
+	fr_dlist_talloc_init((fr_dlist_head_t *)&tl->ordered, fr_timer_t, ordered_entry);
 	tl->type = TIMER_LIST_TYPE_ORDERED;
 
 	return tl;
