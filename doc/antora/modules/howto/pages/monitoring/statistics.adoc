@@ -122,7 +122,7 @@ To show the statistics available, a few examples follow.
 
 === Global server authentications
 
-Using `FreeRADIUS-Statistics-Type = 0x01` requests stats about
+Using `FreeRADIUS-Statistics-Type = 0x01` requests statistics about
 authentications. Because, for example, no "Client" qualifier has
 been added (`0x20`) the numbers are global to the server.
 
@@ -290,8 +290,8 @@ Received Access-Accept Id 4 from 127.0.0.1:46c9 to 127.0.0.1:40676 length 596
 Data can be provided about each RADIUS client defined in the
 server. Note that this is for the client definition, not for each
 client that connects - if a client definition has a wide netmask
-and permits multiple clients to connect, the statistics will be
-aggregate for all clients using that definition.
+and permits multiple clients to connect, the statistics will be an
+aggregate sum for all clients using that definition.
 
 [NOTE]
 ====
