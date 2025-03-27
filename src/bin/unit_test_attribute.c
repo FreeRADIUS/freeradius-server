@@ -3542,7 +3542,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 					break;
 				}
 			}
-			break;
+			goto finish;
 
 		/*
 		 *	Fatal error parsing a command
