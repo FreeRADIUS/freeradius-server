@@ -1216,21 +1216,12 @@ static int map_value_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_
 
 	default:
 		/*
-		 *	Don't bother trying things which we know aren't attributes.
+		 *	Let the tmpl code determine if it's an attribute reference or else is a raw value.
 		 */
-		if ((t_rules->attr.prefix == TMPL_ATTR_REF_PREFIX_YES) && (*attr != '&')) {
-			slen = tmpl_afrom_substr(ctx, &map->lhs, &FR_SBUFF_IN(attr, talloc_array_length(attr) - 1), T_BARE_WORD, NULL, t_rules);
-			if (slen <= 0) goto marker;
-			break;
-		}
-
-		/*
-		 *	Else parse it as an attribute reference.
-		 */
-		slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, attr, t_rules);
+		slen = tmpl_afrom_substr(ctx, &map->lhs, &FR_SBUFF_IN(attr, talloc_array_length(attr) - 1), T_BARE_WORD, NULL, t_rules);
 		if (slen <= 0) goto marker;
 
-		if (tmpl_is_attr(map->lhs) && tmpl_attr_unknown_add(map->lhs) < 0) {
+		if (tmpl_is_attr(map->lhs) && (tmpl_attr_unknown_add(map->lhs) < 0)) {
 			fr_strerror_printf("Failed defining attribute %s", map->lhs->name);
 			goto error;
 		}
