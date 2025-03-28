@@ -813,10 +813,11 @@ static int timer_list_ordered_run(fr_timer_list_t *tl, fr_time_t *when)
 int fr_timer_list_run(fr_timer_list_t *tl, fr_time_t *when)
 {
 	int ret;
+	bool in_handler = tl->in_handler;	/* allow nested timer execution */
 
 	tl->in_handler = true;
 	ret = timer_funcs[tl->type].run(tl, when);
-	tl->in_handler = false;
+	tl->in_handler = in_handler;
 
 	/*
 	 *	Now we've executed all the pending events,
