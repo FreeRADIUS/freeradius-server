@@ -253,6 +253,26 @@ static void ordered_deferred_test(void)
 
 static void ordered_bad_inserts_test(void)
 {
+	fr_timer_list_t *tl;
+	fr_timer_t *event1 = NULL, *event2 = NULL;
+	bool event1_fired = false, event2_fired = false;
+	int ret;
+
+	tl = fr_timer_list_ordered_alloc(NULL, NULL);
+	TEST_CHECK(tl != NULL);
+	if (tl == NULL) return;
+
+	fr_timer_list_set_time_func(tl, basic_time);
+
+	ret = fr_timer_in(NULL, tl, &event1, fr_time_delta_from_sec(5), true, timer_cb, &event1_fired);
+	TEST_CHECK(ret == 0);
+
+	/*
+	 *	Should fail (wrong order)
+	 */
+	ret = fr_timer_in(NULL, tl, &event2, fr_time_delta_from_sec(1), true, timer_cb, &event2_fired);
+	TEST_CHECK(ret == -1);
+}
 
 }
 
