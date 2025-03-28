@@ -898,6 +898,7 @@ static int timer_list_lst_deferred(fr_timer_list_t *tl)
  */
 static int timer_list_ordered_deferred(fr_timer_list_t *tl)
 {
+	fr_timer_t *ev;
 #ifndef NDEBUG
 	{
 		fr_timer_t *head, *tail;
@@ -916,10 +917,12 @@ static int timer_list_ordered_deferred(fr_timer_list_t *tl)
 #endif
 
 	/*
-	 *	O(1) operation.  Much better than moving the
-	 *	events individually.
+	 *	Can't use timer_move_head as entry positions
+	 *	for the two lists are different.
 	 */
-	timer_move_head(&tl->ordered, &tl->deferred);
+	while ((ev = timer_pop_head((&tl->deferred)))) {
+		timer_insert_tail(&tl->ordered, ev);
+	}
 
 	return 0;
 }
