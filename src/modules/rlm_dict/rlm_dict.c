@@ -54,7 +54,6 @@ static int xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name
 					.attr = {
 						.dict_def = request->dict,
 						.list_def = request_attr_request,
-						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
 				}) <= 0) return -4;
 

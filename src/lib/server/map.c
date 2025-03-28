@@ -985,7 +985,6 @@ do_children:
 			 *	is used as the parsing context of the
 			 *	inner section.
 			 */
-			child_lhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_AUTO;
 			child_lhs_rules.attr.namespace = tmpl_attr_tail_da(map->lhs);
 
 			/*
@@ -1924,7 +1923,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 					   	.attr = {
 					   		.dict_def = request->dict,
 							.list_def = request_attr_request,
-				   			.prefix = TMPL_ATTR_REF_PREFIX_NO
 				   		}
 					   });
 		if (slen <= 0) {
@@ -2747,7 +2745,6 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		/*
 		 *	No enums here.
 		 */
-		fr_assert(my_rules.attr.prefix != TMPL_ATTR_REF_PREFIX_NO);
 		fr_assert(my_rules.attr.list_def == request_attr_request);
 
 	parse_as_attr:

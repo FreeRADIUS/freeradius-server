@@ -70,7 +70,6 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 					.dict_def = request->dict,
 					.request_def = tmpl_request(map->lhs),
 					.list_def = tmpl_list(map->lhs),
-					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				},
 				.xlat = {
 					.runtime_el = unlang_interpret_event_list(request),
@@ -344,7 +343,6 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 			.attr = {
 				.dict_def = request->dict,
 				.list_def = request_attr_request,
-				.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 			},
 			.xlat = {
 				.runtime_el = unlang_interpret_event_list(request),
@@ -456,7 +454,6 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 				.attr = {
 					.dict_def = request->dict,
 					.list_def = request_attr_request,
-					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				},
 				.xlat = {
 					.runtime_el = unlang_interpret_event_list(request),

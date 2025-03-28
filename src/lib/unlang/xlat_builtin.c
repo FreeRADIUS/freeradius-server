@@ -287,7 +287,6 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 						.dict_def = request->dict,
 						.list_def = request_attr_request,
 						.allow_wildcard = true,
-						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
 				}) <= 0) {
 		RPEDEBUG("Invalid input");
@@ -893,7 +892,6 @@ static xlat_action_t xlat_func_immutable_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_
 						.dict_def = request->dict,
 						.list_def = request_attr_request,
 						.allow_wildcard = true,
-						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
 				}) <= 0) {
 		RPEDEBUG("Invalid input");
@@ -1254,7 +1252,6 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		.attr = {
 			.dict_def = request->dict,
 			.list_def = request_attr_request,
-			.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 		},
 		.xlat = {
 			.runtime_el = unlang_interpret_event_list(request)
@@ -2399,7 +2396,6 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 						.dict_def = request->dict,
 						.list_def = request_attr_request,
 						.allow_wildcard = true,
-						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
 				}) <= 0) {
 		RPEDEBUG("Invalid input");
@@ -3974,7 +3970,6 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 						.dict_def = request->dict,
 						.list_def = request_attr_request,
 						.allow_wildcard = true,
-						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 					}
 				}) <= 0) {
 		RPEDEBUG("Failed parsing attribute reference");

@@ -270,7 +270,6 @@ static int pairlist_read_internal(TALLOC_CTX *ctx, fr_dict_t const *dict, char c
 	lhs_rules = (tmpl_rules_t) {
 		.attr = {
 			.dict_def = dict,
-			.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
 			.list_def = request_attr_request,
 			.list_presence = TMPL_ATTR_LIST_ALLOW,
 		},
@@ -280,7 +279,6 @@ static int pairlist_read_internal(TALLOC_CTX *ctx, fr_dict_t const *dict, char c
 	rhs_rules = (tmpl_rules_t) {
 		.attr = {
 			.dict_def = dict,
-			.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
 			.list_def = request_attr_request,
 			.list_presence = TMPL_ATTR_LIST_ALLOW,
 			.bare_word_enum = v3_compat,

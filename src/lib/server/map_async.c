@@ -322,7 +322,6 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 					   	.attr = {
 					   		.dict_def = request->dict,
 							.list_def = request_attr_request,
-				   			.prefix = TMPL_ATTR_REF_PREFIX_NO
 				   		}
 					   });
 		if (slen <= 0) {

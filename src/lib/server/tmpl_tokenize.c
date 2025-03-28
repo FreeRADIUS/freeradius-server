@@ -106,7 +106,6 @@ TMPL_REQUEST_REF_DEF(tmpl_request_def_parent, REQUEST_PARENT);
 #define CHECK_T_RULES do { \
 	if (!t_rules) { \
 		t_rules = &default_rules; \
-		default_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_AUTO; \
 	} \
   } while (0)
 
@@ -2254,8 +2253,6 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 *	We parsed the tmpl as User-Name, but NOT %{User-Name}.
 	 */
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, T_BARE_WORD, NULL, 0));
-	vpt->data.attribute.ref_prefix = TMPL_ATTR_REF_PREFIX_NO;
-	vpt->rules.attr.prefix = at_rules->prefix;
 
 	/*
 	 *	The "raw." prefix marks up the leaf attribute

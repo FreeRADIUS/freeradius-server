@@ -338,7 +338,6 @@ static void mod_vptuple(TALLOC_CTX *ctx, module_ctx_t const *mctx, request_t *re
 						.attr = {
 							.dict_def = request->dict,
 							.list_def = request_attr_reply,
-							.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
 						}
 					}) <= 0) {
 			PERROR("%s - Failed to find attribute %s.%s", funcname, list_name, s1);

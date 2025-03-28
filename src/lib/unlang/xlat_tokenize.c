@@ -476,7 +476,6 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_attribute(xlat_exp_head_t *
 	 */
 	our_t_rules = *t_rules;
 	our_t_rules.attr.allow_wildcard = true;
-	our_t_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_NO;
 
 	fr_sbuff_marker(&m_s, in);
 

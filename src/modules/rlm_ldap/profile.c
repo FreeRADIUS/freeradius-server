@@ -125,7 +125,6 @@ static unlang_action_t ldap_map_profile_resume(UNUSED rlm_rcode_t *p_result, UNU
 				.attr = {
 					.dict_def = request->dict,
 					.list_def = request_attr_request,
-					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				},
 				.xlat = {
 					.runtime_el = unlang_interpret_event_list(request),

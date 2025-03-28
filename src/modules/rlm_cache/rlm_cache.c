@@ -910,7 +910,6 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      	.attr = {
 				      		.dict_def = request->dict,
 						.list_def = request_attr_request,
-				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      	}
 				      });
 	if (slen <= 0) {

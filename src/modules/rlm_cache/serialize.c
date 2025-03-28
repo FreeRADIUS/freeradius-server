@@ -115,7 +115,6 @@ int cache_deserialize(request_t *request, rlm_cache_entry_t *c, fr_dict_t const 
 			.attr = {
 				.dict_def = dict,
 				.list_def = request_attr_request,
-				.prefix = TMPL_ATTR_REF_PREFIX_NO
 			},
 			.xlat = {
 				.runtime_el = unlang_interpret_event_list(request),

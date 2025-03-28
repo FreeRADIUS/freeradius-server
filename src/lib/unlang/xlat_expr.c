@@ -1738,7 +1738,6 @@ static xlat_action_t xlat_exists_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 						   .dict_def = request->dict,
 						   .request_def = &tmpl_request_def_current,
 						   .list_def = request_attr_request,
-						   .prefix = TMPL_ATTR_REF_PREFIX_AUTO,
 						   .allow_unknown = false,
 						   .allow_unresolved = false,
 					   },
@@ -2804,12 +2803,6 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 
 	} else if (tmpl_is_attr(node->vpt)) {
 		node->flags.pure = node->flags.can_purify = false;
-
-#ifndef NDEBUG
-		if (vpt->name[0] == '%') {
-			fr_assert(vpt->rules.attr.prefix == TMPL_ATTR_REF_PREFIX_NO);
-		}
-#endif
 
 	} else {
 		node->flags.pure = false;
