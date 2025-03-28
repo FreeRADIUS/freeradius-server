@@ -55,11 +55,11 @@ static void timer_cb(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	*fired = true;
 }
 
-static void basic_timer_list_tests(fr_timer_list_t *tl)
+static CC_HINT(nonnull) void basic_timer_list_tests(fr_timer_list_t *tl)
 {
 	fr_time_t now;
-	fr_timer_t *event1 = NULL, *event1a = NULL, *event2 = NULL, *event3 = NULL, *event4 = NULL;
-	bool event1_fired = false, event1a_fired = false, event2_fired = false, event3_fired = false, event4_fired = false;
+	fr_timer_t *event1 = NULL, *event1a = NULL, *event2 = NULL, *event3 = NULL, *event4 = NULL, *event5 = NULL, *event6 = NULL;
+	bool event1_fired = false, event1a_fired = false, event2_fired = false, event3_fired = false, event4_fired = false, event5_fired = false, event6_fired = false;
 	int ret;
 
 	/*
@@ -84,6 +84,15 @@ static void basic_timer_list_tests(fr_timer_list_t *tl)
 	TEST_CHECK(ret == 0);
 
 	/*
+	 *	Will be delete before it fires
+	 */
+	ret = fr_timer_in(NULL, tl, &event5, fr_time_delta_from_sec(4), true, timer_cb, &event5_fired);
+	TEST_CHECK(ret == 0);
+
+	ret = fr_timer_in(NULL, tl, &event6, fr_time_delta_from_sec(4), true, timer_cb, &event6_fired);
+	TEST_CHECK(ret == 0);
+
+	/*
 	 *	No events should have fired yet
 	 */
 	TEST_CHECK(fr_timer_list_run(tl, &fr_time_wrap(0)) == 0);
@@ -97,13 +106,54 @@ static void basic_timer_list_tests(fr_timer_list_t *tl)
 	TEST_CHECK(event1_fired == true);
 	TEST_CHECK(event1a_fired == true);
 	TEST_CHECK(event2_fired == false);
+	TEST_CHECK(event1 == NULL);
+	TEST_CHECK(event1a == NULL);
+
+	/*
+	 *	Second batch of events (single event)
+	 */
+	TEST_CHECK(fr_timer_list_run(tl, &now) == 1);
+	TEST_CHECK(event2 == NULL);
+	TEST_CHECK(event2_fired == true);
+	TEST_CHECK(event3_fired == false);
+	TEST_CHECK(event4_fired == false);
 
 	/*
 	 *	Now disarm event 4, so it doesn't fire
 	 */
 	TEST_CHECK(fr_timer_disarm(event4) == 0);
 
-	now = fr_time_from_sec(2);
+	now = fr_time_from_sec(3);
+	TEST_CHECK(fr_timer_list_run(tl, &now) == 1);
+
+	TEST_CHECK(event3 == NULL);
+	TEST_CHECK(event4 != NULL);
+	TEST_CHECK(event3_fired == true);
+	TEST_CHECK(event4_fired == false);
+
+	/*
+	 *	Now free event 5, so it doesn't fire
+	 */
+	TEST_CHECK(fr_timer_delete(&event5) == 0);
+
+	now = fr_time_from_sec(4);
+	TEST_CHECK(fr_timer_list_run(tl, &now) == 1);
+	TEST_CHECK(event5_fired == false);
+	TEST_CHECK(event6_fired == true);
+	TEST_CHECK(event5 == NULL);
+	TEST_CHECK(event6 == NULL);
+
+	/*
+	 *	Re-arm event 4
+	 */
+	now = fr_time_from_sec(4);
+	ret = fr_timer_at(NULL, tl, &event4, fr_time_from_sec(3), false, timer_cb, &event4_fired);
+	TEST_CHECK(ret == 0);
+	TEST_CHECK(fr_timer_list_run(tl, &now) == 1);
+	TEST_CHECK(event4_fired == true);
+	TEST_CHECK(event4 != NULL);
+
+	talloc_free(event4);	/* This needs to be freed before its parent stack memory goes out of scope */
 }
 
 static void lst_basic_test(void)
@@ -112,10 +162,52 @@ static void lst_basic_test(void)
 
 	tl = fr_timer_list_lst_alloc(NULL, NULL);
 	TEST_CHECK(tl != NULL);
+	if (tl == NULL) return;
 
 	fr_timer_list_set_time_func(tl, basic_time);
 
 	basic_timer_list_tests(tl);
+
+	talloc_free(tl);
+}
+
+typedef struct {
+	bool		*fired;
+	fr_timer_t	*event;
+} deferred_uctx_t;
+
+static void timer_cb_deferred(fr_timer_list_t *tl, fr_time_t now, void *uctx)
+{
+	deferred_uctx_t *ctx = (deferred_uctx_t *)uctx;
+
+	TEST_CHECK(fr_timer_at(NULL, tl, &ctx->event, now, true, timer_cb, ctx->fired) == 0);
+	TEST_CHECK(fr_timer_list_num_events(tl) == 1);
+
+	TEST_CHECK(fr_timer_list_run(tl, &now) == 0);	/* Event won't run immediately because we're in a callback */
+}
+
+static CC_HINT(nonnull) void deferred_timer_list_tests(fr_timer_list_t *tl)
+{
+	fr_time_t now;
+	fr_timer_t *event1 = NULL;
+	bool deferred_event_fired = false;
+
+	deferred_uctx_t ctx = { .fired = &deferred_event_fired, .event = NULL };
+
+	fr_timer_list_set_time_func(tl, basic_time);
+
+	now = fr_time_from_sec(1);
+	TEST_CHECK(fr_timer_at(NULL, tl, &event1, fr_time_from_sec(1), true, timer_cb_deferred, &ctx) == 0);
+
+	/*
+	 *	The inner fr_timer_list_run call moves the event from the deferred
+	 *	list into the lst, where it's immediately executed, which is why
+	 *	we get 2 events firing here.
+	 */
+	TEST_CHECK(fr_timer_list_run(tl, &now) == 2);
+	TEST_CHECK(deferred_event_fired == true);
+
+	now = fr_time_from_sec(1);
 }
 
 static void ordered_basic_test(void)
@@ -124,10 +216,39 @@ static void ordered_basic_test(void)
 
 	tl = fr_timer_list_ordered_alloc(NULL, NULL);
 	TEST_CHECK(tl != NULL);
+	if (tl == NULL) return;
 
 	fr_timer_list_set_time_func(tl, basic_time);
 
 	basic_timer_list_tests(tl);
+
+	talloc_free(tl);
+}
+
+static void lst_deferred_test(void)
+{
+	fr_timer_list_t *tl;
+
+	tl = fr_timer_list_lst_alloc(NULL, NULL);
+	TEST_CHECK(tl != NULL);
+	if (tl == NULL) return;
+
+	deferred_timer_list_tests(tl);
+
+	talloc_free(tl);
+}
+
+static void ordered_deferred_test(void)
+{
+	fr_timer_list_t *tl;
+
+	tl = fr_timer_list_ordered_alloc(NULL, NULL);
+	TEST_CHECK(tl != NULL);
+	if (tl == NULL) return;
+
+	deferred_timer_list_tests(tl);
+
+	talloc_free(tl);
 }
 
 static void ordered_bad_inserts_test(void)
@@ -148,8 +269,10 @@ static void ordered_nested(void)
 TEST_LIST = {
 	{ "lst_basic",		lst_basic_test },
 	{ "ordered_basic",		ordered_basic_test },
+	{ "lst_deferred",		lst_deferred_test },
+	{ "ordered_deferred",		ordered_deferred_test },
 	{ "ordered_bad_inserts",	ordered_bad_inserts_test },
-	{ "lst_nested",			lst_nested },
+	{ "lst_nested",		lst_nested },
 	{ "ordered_nested",		ordered_nested },
 	{ NULL }
 };
