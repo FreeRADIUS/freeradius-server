@@ -605,12 +605,14 @@ static int timer_ordered_disarm(fr_timer_t *ev)
  */
 int fr_timer_disarm(fr_timer_t *ev)
 {
-	fr_timer_list_t *tl = ev->tl;
+	fr_timer_list_t *tl;
 
-	if (!EVENT_ARMED(ev)) {
+	if (!ev || !EVENT_ARMED(ev)) {
 		EVENT_DEBUG("Asked to disarm inactive timer %p (noop)", ev);
 		return 0; /* Noop */
 	}
+
+	tl = ev->tl;
 
 	EVENT_DEBUG("Disarming timer %p", ev);
 

@@ -85,7 +85,7 @@ int			_fr_timer_in(NDEBUG_LOCATION_ARGS
 				     CC_HINT(nonnull(NDEBUG_LOCATION_NONNULL(2), NDEBUG_LOCATION_NONNULL(3), NDEBUG_LOCATION_NONNULL(6)));
 #define			fr_timer_in(...) _fr_timer_in(NDEBUG_LOCATION_EXP __VA_ARGS__)
 
-int			fr_timer_disarm(fr_timer_t *ev) CC_HINT(nonnull);	/* disarms but does not free */
+int			fr_timer_disarm(fr_timer_t *ev);			/* disarms but does not free */
 
 int			fr_timer_delete(fr_timer_t **ev_p) CC_HINT(nonnull);	/* disarms AND frees */
 
