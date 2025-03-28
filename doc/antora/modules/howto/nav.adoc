@@ -56,6 +56,12 @@
 **** xref:modules/sqlippool/populating.adoc[Generating IPs]
 **** xref:modules/sqlippool/insert.adoc[Inserting IPs into SQL]
 
+** xref:datastores/setup_datastores.adoc[Setting up Datastores]
+*** xref:datastores/ad_datastores.adoc[AD]
+*** xref:datastores/ldap_datastores.adoc[LDAP]
+*** xref:datastores/redis_datastores.adoc[REDIS]
+*** xref:datastores/sql_datastores.adoc[SQL]
+
 ** xref:protocols/index.adoc[Protocols]
 *** xref:protocols/dhcp/index.adoc[DHCP]
 **** xref:protocols/dhcp/prepare.adoc[Preparation]
