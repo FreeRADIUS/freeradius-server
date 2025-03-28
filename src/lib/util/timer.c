@@ -281,7 +281,7 @@ static inline CC_HINT(always_inline) int timer_list_parent_update(fr_timer_list_
 	/*
 	 *	Re-arm the timer
 	 */
-	return fr_timer_at(tl->parent, tl->parent, &tl->parent_ev,
+	return fr_timer_at(tl, tl->parent, &tl->parent_ev,
 			   ev->when, false, _parent_timer_cb, tl);
 }
 
