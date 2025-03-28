@@ -146,7 +146,23 @@ in the values produced by the dynamic expansion, so that they are treated as
 literal characters in the regular expression.
 
 To allow non-literals in dynamic elements of regular expressions, wrap any literal
-values or expansions in `%regex.safe(...)`.
+values or expansions in `%regex.escape(...)`.
+
+.Using regex.escape to perform escaping
+====
+[source,unlang]
+----
+local domain
+
+domain = %regex.escape("example.com")
+if (Stripped-User-Name =~ /domain$/) {
+    ...
+}
+----
+====
+
+
+If you want to _prevent_ escaping you can use `%regex.safe()` to indicate that the text is safe for use as-is, in regular expressions.
 
 .Using regex.safe to prevent escaping
 ====

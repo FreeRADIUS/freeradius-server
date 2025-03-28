@@ -229,7 +229,7 @@ void xlat_debug_attr_list(request_t *request, fr_pair_list_t const *list)
 	}
 }
 
-/** Common function to move boxes form input list to output list
+/** Common function to move boxes from input list to output list
  *
  * This can be used to implement safe_for functions, as the xlat framework
  * can be used for concatenation, casting, and marking up output boxes as
@@ -2737,6 +2737,28 @@ static xlat_action_t xlat_func_range(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static int CC_HINT(nonnull(2,3)) regex_xlat_escape(UNUSED request_t *request, fr_value_box_t *vb, UNUSED void *uctx)
+{
+	ssize_t				slen;
+	fr_sbuff_t			*out = NULL;
+	fr_value_box_entry_t		entry;
+
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&out, 256, 4096);
+
+	slen = fr_value_box_print(out, vb, &regex_escape_rules);
+	if (slen < 0) return -1;
+
+	entry = vb->entry;
+
+	fr_value_box_clear(vb);
+	fr_value_box_init(vb, FR_TYPE_STRING, NULL, false);
+	(void) fr_value_box_bstrndup(vb, vb, NULL, fr_sbuff_start(out), fr_sbuff_used(out), false);
+
+	vb->entry = entry;
+
+	return 0;
+}
+
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
 static xlat_arg_parser_t const xlat_func_regex_args[] = {
 	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_VOID },
@@ -4281,10 +4303,23 @@ do { \
 			XLAT_ARG_PARSER_TERMINATOR
 		};
 
+		static xlat_arg_parser_t const xlat_regex_escape_args[] = {
+			{ .type = FR_TYPE_STRING,
+			  .func = regex_xlat_escape, .safe_for = FR_REGEX_SAFE_FOR, .always_escape = true,
+			  .variadic = true, .concat = true },
+			XLAT_ARG_PARSER_TERMINATOR
+		};
+
 		if (unlikely((xlat = xlat_func_register(xlat_ctx, "regex.safe",
 							xlat_transparent, FR_TYPE_STRING)) == NULL)) return -1;
 		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 		xlat_func_args_set(xlat, xlat_regex_safe_args);
+		xlat_func_safe_for_set(xlat, FR_REGEX_SAFE_FOR);
+
+		if (unlikely((xlat = xlat_func_register(xlat_ctx, "regex.escape",
+							xlat_transparent, FR_TYPE_STRING)) == NULL)) return -1;
+		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
+		xlat_func_args_set(xlat, xlat_regex_escape_args);
 		xlat_func_safe_for_set(xlat, FR_REGEX_SAFE_FOR);
 	}
 
