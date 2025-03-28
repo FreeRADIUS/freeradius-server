@@ -69,7 +69,7 @@ struct fr_timer_list_s {
 	fr_timer_t		*parent_ev;		//!< Event in the parent's event loop.
 
 #ifdef WITH_EVENT_DEBUG
-	fr_timer_t		*report;		//!< Used to trigger periodict reports about the event timer list.
+	fr_timer_t		*report;		//!< Used to trigger periodic reports about the event timer list.
 #endif
 };
 
@@ -590,7 +590,7 @@ static int timer_ordered_disarm(fr_timer_t *ev)
 	if (!ev->tl) return 0;
 
 	/*
-	 *	This *MUST* be in the timer list if it has a non-NULL tl pointer.
+	 *	This *MUST* be in a timer list if it has a non-NULL tl pointer.
 	 */
 	if (unlikely(!fr_cond_assert(timer_in_list(&ev->tl->ordered, ev)))) return -1;
 
