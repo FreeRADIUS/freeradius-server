@@ -271,7 +271,7 @@ static inline CC_HINT(always_inline) int timer_list_parent_update(fr_timer_list_
 		/*
 		 *	Disables the timer in the parent, does not free the memory
 		 */
-		if (tl->parent) fr_timer_disarm(tl->parent_ev);
+		if (tl->parent) if (unlikely(fr_timer_disarm(tl->parent_ev) < 0)) return -1;
 		return 0;
 	}
 
