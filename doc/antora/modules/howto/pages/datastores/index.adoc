@@ -1,0 +1,26 @@
+= Datastores
+
+Datastores store data and are accessed by the FreeRADIUS server to retrieve that data. Datastores do not perform authentications and possess limited decision making capabilities.
+
+The key differences between RADIUS servers and datastores are the way they support policies and authentication. The role of a datastore is to provide data to a RADIUS server. The RADIUS server authenticates the user with a select authentication method on the retrieved data.
+
+When a RADIUS server authenticates a user or stores accounting data for that user, it reads from or writes to a datastore. User information (i.e., user name, password, credit amount) and session data (i.e., total session time and statistics for total traffic to and from the user) are stored on this datastore or directory. We use the term "datastore" to mean that some of the storage methods are not traditional databases, but they do still store data.
+
+
+== Setting up Datastores
+
+To set up a datastore, you'll need to install the software, configure the data storage location, and connect the datastore with FreeRADIUS. The main steps to complete are:
+
+* Install the datastore software and relevant tools to manage your information.
+* Create the storage location whether it's in the cloud, network, or local drive.
+* Provision the datastore and populate records.
+* Connect the datastore with FreeRADIUS.
+
+== Integrate Datastore with FreeRADIUS
+
+To configure a datastore with FreeRADIUS, you'll need to edit the FreeRADIUS configuration files and enable the relevant modules. This section outlines the supported datastores, how to connect, and implementations. See the following sub-sections for your specific datastore application instructions:
+
+* xref:datastores/ad.adoc[Active Directory]
+* xref:datastores/ldap.adoc[LDAP]
+* xref:datastores/redis.adoc[Redis]
+* xref:datastores/sql.adoc[SQL]
