@@ -940,6 +940,20 @@ static uint64_t timer_list_ordered_num_events(fr_timer_list_t *tl)
 	return timer_num_elements(&tl->ordered);
 }
 
+/** Disable all timers in a list
+ *
+ */
+int fr_timer_list_disarm(fr_timer_list_t *tl)
+{
+	fr_timer_t *ev;
+
+	while ((ev = timer_funcs[tl->type].head(tl))) {
+		if (unlikely(fr_timer_disarm(ev) < 0)) return -1;
+	}
+
+	return 0;
+}
+
 /** Return number of pending events
  *
  * @note This includes deferred events, i.e. those yet to be inserted into the main list
