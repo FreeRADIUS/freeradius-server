@@ -107,10 +107,6 @@ TMPL_REQUEST_REF_DEF(tmpl_request_def_parent, REQUEST_PARENT);
 	if (!t_rules) { \
 		t_rules = &default_rules; \
 		default_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_AUTO; \
-	} else if (t_rules->attr.prefix == TMPL_ATTR_REF_PREFIX_YES) { \
-		default_rules = *t_rules; \
-		default_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_AUTO; \
-		t_rules = &default_rules; \
 	} \
   } while (0)
 
@@ -2250,28 +2246,9 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	}
 
 	/*
-	 *	Check to see if we expect a reference prefix
+	 *	'&' prefix is ignored.
 	 */
-	switch (at_rules->prefix) {
-	case TMPL_ATTR_REF_PREFIX_YES:
-		fr_assert(0);
-		break;
-
-	case TMPL_ATTR_REF_PREFIX_AUTO:
-		/*
-		 *	'&' prefix can be there, but doesn't have to be
-		 */
-		(void) fr_sbuff_next_if_char(&our_name, '&');
-		break;
-
-	case TMPL_ATTR_REF_PREFIX_NO:
-		if (fr_sbuff_is_char(&our_name, '&')) {
-			fr_strerror_const("Attribute references used here must not have a '&' prefix");
-			if (err) *err = TMPL_ATTR_ERROR_BAD_PREFIX;
-			FR_SBUFF_ERROR_RETURN(&our_name);
-		}
-		break;
-	}
+	(void) fr_sbuff_next_if_char(&our_name, '&');
 
 	/*
 	 *	We parsed the tmpl as User-Name, but NOT %{User-Name}.
