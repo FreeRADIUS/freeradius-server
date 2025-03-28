@@ -77,4 +77,13 @@ totp {
 	#  Cannot be larger than `time_step`
 	#
 	lookback_interval = 30
+
+	#
+	#  time_offset:: A time offset to use from the current time.
+	#
+	#  Some tokens get severely out of sync with local time.  It is
+	#  possible to offset the definition of "now" for one token by setting
+	#  this to an attribute containing the offset.
+	#
+#	time_offset = 0
 }
