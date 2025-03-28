@@ -1017,7 +1017,7 @@ static fr_timer_list_t *timer_list_alloc(TALLOC_CTX *ctx, fr_timer_list_t *paren
 	}
 
 	timer_talloc_init(&tl->deferred);
-	if (tl->parent) {
+	if (parent) {
 		tl->parent = parent;
 		tl->pub.time = parent->pub.time;
 	} else {
