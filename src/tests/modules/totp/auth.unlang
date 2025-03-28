@@ -1,4 +1,5 @@
 string otp
+int32 time_offset
 
 control.TOTP.Secret := 'ONSWG4TFOQYTEMZUGU3DOOBZ'
 
@@ -20,6 +21,28 @@ TOTP.From-User := %exec('/usr/bin/oathtool', '--base32', '--totp', 'ONSWG4TFOQYT
 totp.authenticate
 
 if (!ok) {
+	test_fail
+}
+
+#
+#  Set a time offset and re-auth which will fail
+#
+time_offset := 600
+
+totp.authenticate {
+	reject = 1
+}
+if !(reject) {
+	test_fail
+}
+
+#
+#  Get the correct OTP for the time offset and re-auth
+#
+TOTP.From-User := %exec('/usr/bin/oathtool', '--base32', '--totp', 'ONSWG4TFOQYTEMZUGU3DOOBZ', '--now', %date(%{%l + 600}))
+
+totp.authenticate
+if !(ok) {
 	test_fail
 }
 
