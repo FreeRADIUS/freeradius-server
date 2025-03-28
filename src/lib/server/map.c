@@ -1459,7 +1459,7 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 	tmpl_attr_set_request_ref(map->lhs, rules->attr.request_def);
 	tmpl_attr_set_list(map->lhs, rules->attr.list_def);
 
-	tmpl_print(&buffer_sbuff, map->lhs, TMPL_ATTR_REF_PREFIX_AUTO, NULL);
+	tmpl_print(&buffer_sbuff, map->lhs, NULL);
 	tmpl_set_name(map->lhs, T_BARE_WORD, fr_sbuff_start(&buffer_sbuff), -1);
 
 	/*
@@ -2392,7 +2392,7 @@ ssize_t map_print(fr_sbuff_t *out, map_t const *map)
 		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "<%s>",
 					   fr_type_to_str(tmpl_rules_cast(map->lhs)));
 	}
-	FR_SBUFF_RETURN(tmpl_print_quoted, &our_out, map->lhs, TMPL_ATTR_REF_PREFIX_AUTO);
+	FR_SBUFF_RETURN(tmpl_print_quoted, &our_out, map->lhs);
 
 	/*
 	 *	Print separators and operator
@@ -2426,7 +2426,7 @@ ssize_t map_print(fr_sbuff_t *out, map_t const *map)
 	/*
 	 *	Print the RHS.
 	 */
-	FR_SBUFF_RETURN(tmpl_print_quoted, &our_out, map->rhs, TMPL_ATTR_REF_PREFIX_AUTO);
+	FR_SBUFF_RETURN(tmpl_print_quoted, &our_out, map->rhs);
 
 	FR_SBUFF_SET_RETURN(out, &our_out);
 }
@@ -2481,7 +2481,7 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
 		 *	the quoting based on the data type.
 		 */
 		fr_pair_aprint_value_quoted(request, &value, vp, quote);
-		tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->rhs, TMPL_ATTR_REF_PREFIX_AUTO, NULL);
+		tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->rhs, NULL);
 		rhs = talloc_typed_asprintf(request, "%s -> %s", buffer, value);
 	}
 		break;
@@ -2493,7 +2493,7 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
 
 	switch (map->lhs->type) {
 	case TMPL_TYPE_ATTR:
-		tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->lhs, TMPL_ATTR_REF_PREFIX_AUTO, NULL);
+		tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->lhs, NULL);
 		RDEBUG2("%s %s %s", buffer, fr_table_str_by_value(fr_tokens_table, vp ? vp->op : map->op, "<INVALID>"), rhs);
 		break;
 

@@ -1176,7 +1176,7 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 
 	switch (node->type) {
 	case XLAT_TMPL:
-		slen = tmpl_attr_print(out, node->vpt, TMPL_ATTR_REF_PREFIX_NO);
+		slen = tmpl_attr_print(out, node->vpt);
 		if (slen < 0) return slen;
 		break;
 

@@ -474,7 +474,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	fr_assert(tmpl_is_attr(map->lhs));
 	fr_assert(tmpl_is_data(map->rhs));
 
-	slen = tmpl_print(&key_buf_sbuff, map->lhs, TMPL_ATTR_REF_PREFIX_NO, NULL);
+	slen = tmpl_print(&key_buf_sbuff, map->lhs, NULL);
 	if (slen < 0) {
 		fr_strerror_printf("Key too long.  Must be < " STRINGIFY(sizeof(key_buf)) " "
 				   "bytes, got %zu bytes", (size_t)(slen * -1));

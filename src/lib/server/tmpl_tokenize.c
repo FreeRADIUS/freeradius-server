@@ -1277,7 +1277,7 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 	 *	We need to rebuild the attribute name, to be the
 	 *	one we copied from the source list.
 	 */
-	slen = tmpl_print(&FR_SBUFF_OUT(attr, sizeof(attr)), vpt, TMPL_ATTR_REF_PREFIX_AUTO,
+	slen = tmpl_print(&FR_SBUFF_OUT(attr, sizeof(attr)), vpt,
 			  fr_value_escape_by_quote[list->quote]);
 	if (slen < 0) {
 		fr_strerror_printf("Serialized attribute too long.  Must be < "
@@ -2274,11 +2274,10 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	}
 
 	/*
-	 *	We parsed the tmpl as &User-Name, or just User-Name, but NOT %{User-Name}.
-	 *	Mark it up as having a prefix.
+	 *	We parsed the tmpl as User-Name, but NOT %{User-Name}.
 	 */
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, T_BARE_WORD, NULL, 0));
-	vpt->data.attribute.ref_prefix = TMPL_ATTR_REF_PREFIX_YES;
+	vpt->data.attribute.ref_prefix = TMPL_ATTR_REF_PREFIX_NO;
 	vpt->rules.attr.prefix = at_rules->prefix;
 
 	/*
@@ -4649,18 +4648,12 @@ fr_slen_t tmpl_request_ref_list_print(fr_sbuff_t *out, FR_DLIST_HEAD(tmpl_reques
  *
  * @param[in] out		Where to write the presentation format #tmpl_t string.
  * @param[in] vpt		to print.
- * @param[in] ar_prefix		Whether to print the '&' at the beginning of attribute
- *				references.
- *				- TMPL_ATTR_REF_PREFIX_YES	- always print.
- *				- TMPL_ATTR_REF_PREFIX_NO	- never print.
- *				- TMPL_ATTR_REF_PREFIX_AUTO	- print if the original tmpl
- *								  was prefixed.
  * @return
  *	- >0 the number of bytes written to the out buffer.
  *	- 0 invalid argument.
  *	- <0 the number of bytes we would have needed to complete the print.
  */
-fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix)
+fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt)
 {
 	tmpl_attr_t		*ar = NULL;
 	fr_da_stack_t		stack;
@@ -4680,22 +4673,6 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 	default:
 		fr_assert(0);
 		return 0;
-	}
-
-	/*
-	 *	Suppress the prefix on new syntax.
-	 */
-	if (ar_prefix == TMPL_ATTR_REF_PREFIX_YES) {
-		ar_prefix = TMPL_ATTR_REF_PREFIX_AUTO;
-	}
-
-	/*
-	 *	Handle printing the request reference
-	 *	prefix.
-	 */
-	if ((ar_prefix == TMPL_ATTR_REF_PREFIX_YES) ||
-	    ((ar_prefix == TMPL_ATTR_REF_PREFIX_AUTO) && vpt->data.attribute.ref_prefix)) {
-		FR_SBUFF_IN_CHAR_RETURN(&our_out, '&');
 	}
 
 	/*
@@ -4863,12 +4840,6 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
  *
  * @param[out] out		Where to write the presentation format #tmpl_t string.
  * @param[in] vpt		to print.
- * @param[in] ar_prefix		Whether to print the '&' at the beginning of attribute
- *				references.
- *				- TMPL_ATTR_REF_PREFIX_YES	- always print.
- *				- TMPL_ATTR_REF_PREFIX_NO	- never print.
- *				- TMPL_ATTR_REF_PREFIX_AUTO	- print if the original tmpl
- *								  was prefixed.
  * @param[in] e_rules		Escaping rules used to print strings.
  * @return
  *	- >0 the number of bytes written to the out buffer.
@@ -4876,23 +4847,16 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
  *	- <0 the number of bytes we would have needed to complete the print.
  */
 fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
-		     tmpl_attr_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules)
+		     fr_sbuff_escape_rules_t const *e_rules)
 {
 	fr_sbuff_t	our_out = FR_SBUFF(out);
 
 	TMPL_VERIFY(vpt);
 
-	/*
-	 *	Suppress the prefix on new syntax.
-	 */
-	if (ar_prefix == TMPL_ATTR_REF_PREFIX_YES) {
-		ar_prefix = TMPL_ATTR_REF_PREFIX_AUTO;
-	}
-
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 	case TMPL_TYPE_ATTR:
-		FR_SBUFF_RETURN(tmpl_attr_print, &our_out, vpt, ar_prefix);
+		FR_SBUFF_RETURN(tmpl_attr_print, &our_out, vpt);
 		break;
 
 	case TMPL_TYPE_DATA:
@@ -4953,18 +4917,12 @@ fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
  *
  * @param[out] out		Where to write the presentation format #tmpl_t string.
  * @param[in] vpt		to print.
- * @param[in] ar_prefix		Whether to print the '&' at the beginning of attribute
- *				references.
- *				- TMPL_ATTR_REF_PREFIX_YES	- always print.
- *				- TMPL_ATTR_REF_PREFIX_NO	- never print.
- *				- TMPL_ATTR_REF_PREFIX_AUTO	- print if the original tmpl
- *								  was prefixed.
  * @return
  *	- >0 the number of bytes written to the out buffer.
  *	- 0 invalid argument.
  *	- <0 the number of bytes we would have needed to complete the print.
  */
-fr_slen_t tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix)
+fr_slen_t tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt)
 {
 	fr_sbuff_t our_out = FR_SBUFF(out);
 
@@ -4972,7 +4930,7 @@ fr_slen_t tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix
 
 	if (quote != '\0') FR_SBUFF_IN_CHAR_RETURN(&our_out, quote);
 	FR_SBUFF_RETURN(tmpl_print, &our_out, vpt,
-			ar_prefix, fr_value_escape_by_quote[vpt->quote]);
+			fr_value_escape_by_quote[vpt->quote]);
 	if (quote != '\0') FR_SBUFF_IN_CHAR_RETURN(&our_out, quote);
 
 	/*

@@ -1275,22 +1275,22 @@ fr_slen_t		tmpl_request_ref_list_print(fr_sbuff_t *out, FR_DLIST_HEAD(tmpl_reque
 static inline fr_slen_t tmpl_request_ref_list_aprint(TALLOC_CTX *ctx, char **out, FR_DLIST_HEAD(tmpl_request_list) const *rql)
 			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_request_ref_list_print, rql)
 
-fr_slen_t		tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix) CC_HINT(nonnull(1,2));
+fr_slen_t		tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt) CC_HINT(nonnull);
 
-static inline fr_slen_t tmpl_attr_aprint(TALLOC_CTX *ctx, char **out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix)
-			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_attr_print, vpt, ar_prefix)
+static inline fr_slen_t tmpl_attr_aprint(TALLOC_CTX *ctx, char **out, tmpl_t const *vpt)
+			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_attr_print, vpt)
 
 fr_slen_t		tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
-				   tmpl_attr_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules) CC_HINT(nonnull(1,2));
+				   fr_sbuff_escape_rules_t const *e_rules) CC_HINT(nonnull(1,2));
 
 static inline fr_slen_t tmpl_aprint(TALLOC_CTX *ctx, char **out, tmpl_t const *vpt,
-				    tmpl_attr_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules)
-			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_print, vpt, ar_prefix, e_rules)
+				    fr_sbuff_escape_rules_t const *e_rules)
+			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_print, vpt, e_rules)
 
-fr_slen_t		tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix) CC_HINT(nonnull);
+fr_slen_t		tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt) CC_HINT(nonnull);
 
-static inline fr_slen_t tmpl_aprint_quoted(TALLOC_CTX *ctx, char **out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix)
-			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_print_quoted, vpt, ar_prefix)
+static inline fr_slen_t tmpl_aprint_quoted(TALLOC_CTX *ctx, char **out, tmpl_t const *vpt)
+			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(tmpl_print_quoted, vpt)
 /** @} */
 
 /** @name Expand the tmpl, returning one or more values
