@@ -274,16 +274,124 @@ static void ordered_bad_inserts_test(void)
 	TEST_CHECK(ret == -1);
 }
 
+static void nested_test(fr_timer_list_t *tl_outer, fr_timer_list_t *tl_inner)
+{
+	fr_timer_t *event1_inner = NULL, *event2_inner = NULL;
+	bool event1_inner_fired = false, event2_inner_fired = false;
+	fr_time_t now;
+
+	int ret;
+
+	TEST_CHECK(fr_timer_list_num_events(tl_outer) == 0);
+
+	/*
+	 *	Should insert a single event into the outer list
+	 */
+	ret = fr_timer_in(NULL, tl_inner, &event1_inner, fr_time_delta_from_sec(1), true, timer_cb, &event1_inner_fired);
+	TEST_CHECK(ret == 0);
+
+	TEST_CHECK(fr_timer_list_num_events(tl_outer) == 1);
+	TEST_CHECK(fr_timer_list_num_events(tl_inner) == 1);
+
+	/*
+	 *	Disable the event, the outer event count should drop to 0
+	 */
+	TEST_CHECK(fr_timer_disarm(event1_inner) == 0);
+	TEST_CHECK(fr_timer_list_num_events(tl_outer) == 0);
+	TEST_CHECK(fr_timer_list_num_events(tl_inner) == 0);
+
+	/*
+	 *	Re-Enable the event
+	 */
+	ret = fr_timer_in(NULL, tl_inner, &event1_inner, fr_time_delta_from_sec(1), true, timer_cb, &event1_inner_fired);
+	TEST_CHECK(ret == 0);
+
+	TEST_CHECK(fr_timer_list_num_events(tl_outer) == 1);
+	TEST_CHECK(fr_timer_list_num_events(tl_inner) == 1);
+
+	ret = fr_timer_in(NULL, tl_inner, &event2_inner, fr_time_delta_from_sec(1), true, timer_cb, &event2_inner_fired);
+	TEST_CHECK(ret == 0);
+
+	TEST_CHECK(fr_timer_list_num_events(tl_outer) == 1);
+	TEST_CHECK(fr_timer_list_num_events(tl_inner) == 2);
+
+	now = fr_time_from_sec(1);
+
+	/*
+	 *	One event should fire, which should run all the events in the inner list
+	 */
+	TEST_CHECK(fr_timer_list_run(tl_outer, &now) == 1);
+	TEST_CHECK(event1_inner_fired == true);
+	TEST_CHECK(event2_inner_fired == true);
+
+	TEST_CHECK(fr_timer_list_num_events(tl_outer) == 0);
+	TEST_CHECK(fr_timer_list_num_events(tl_inner) == 0);
 }
 
 static void lst_nested(void)
 {
+	fr_timer_list_t *tl_outer, *tl_inner;
+	fr_timer_t *event1_inner = NULL;
+	int ret;
 
+	tl_outer = fr_timer_list_lst_alloc(NULL, NULL);
+	TEST_CHECK(tl_outer != NULL);
+	if (tl_outer == NULL) return;
+
+	tl_inner = fr_timer_list_lst_alloc(tl_outer, tl_outer);
+	TEST_CHECK(tl_inner != NULL);
+	if (tl_inner == NULL) return;
+
+	fr_timer_list_set_time_func(tl_outer, basic_time);
+	fr_timer_list_set_time_func(tl_inner, basic_time);
+
+	nested_test(tl_outer, tl_inner);
+
+	ret = fr_timer_in(NULL, tl_inner, &event1_inner, fr_time_delta_from_sec(1), true, timer_cb, NULL);
+	TEST_CHECK(ret == 0);
+
+	TEST_CHECK(fr_timer_list_num_events(tl_outer) == 1);
+	TEST_CHECK(fr_timer_list_num_events(tl_inner) == 1);
+
+	talloc_free(tl_inner);
+
+	TEST_CHECK(fr_timer_list_num_events(tl_outer) == 0);
+	TEST_CHECK(event1_inner == NULL);
+
+	talloc_free(tl_outer);
 }
 
 static void ordered_nested(void)
 {
+	fr_timer_list_t *tl_outer, *tl_inner;
+	fr_timer_t *event1_inner = NULL;
+	int ret;
 
+	tl_outer = fr_timer_list_ordered_alloc(NULL, NULL);
+	TEST_CHECK(tl_outer != NULL);
+	if (tl_outer == NULL) return;
+
+	tl_inner = fr_timer_list_ordered_alloc(tl_outer, tl_outer);
+	TEST_CHECK(tl_inner != NULL);
+	if (tl_inner == NULL) return;
+
+	fr_timer_list_set_time_func(tl_outer, basic_time);
+	fr_timer_list_set_time_func(tl_inner, basic_time);
+
+	nested_test(tl_outer, tl_inner);
+
+	ret = fr_timer_in(NULL, tl_inner, &event1_inner, fr_time_delta_from_sec(1), true, timer_cb, NULL);
+	TEST_CHECK(ret == 0);
+
+	TEST_CHECK(fr_timer_list_num_events(tl_outer) == 1);
+	TEST_CHECK(fr_timer_list_num_events(tl_inner) == 1);
+
+	talloc_free(tl_inner);
+
+	TEST_CHECK(fr_timer_list_num_events(tl_outer) == 0);
+	TEST_CHECK(event1_inner == NULL);
+
+	talloc_free(tl_outer);
 }
 
 TEST_LIST = {
