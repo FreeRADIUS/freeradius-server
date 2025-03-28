@@ -260,15 +260,6 @@ typedef struct tmpl_s tmpl_t;
 #  define _CONST
 #endif
 
-/** Specify whether attribute references require a prefix
- *
- */
-typedef enum {
-	TMPL_ATTR_REF_PREFIX_YES = 0,			//!< Attribute refs must have '&' prefix.
-	TMPL_ATTR_REF_PREFIX_NO,			//!< Attribute refs have no '&' prefix.
-	TMPL_ATTR_REF_PREFIX_AUTO			//!< Attribute refs may have a '&' prefix.
-} tmpl_attr_prefix_t;
-
 /** Specify whether attribute references can have a list (or parent) reference
  *
  */
@@ -308,9 +299,6 @@ struct tmpl_attr_rules_s {
 
 	fr_dict_attr_t const	*list_def;		//!< Default list to use with unqualified
 							///< attribute reference.
-
-	tmpl_attr_prefix_t	prefix;			//!< Whether the attribute reference requires
-							///< a prefix.
 
 	tmpl_attr_list_presence_t list_presence;	//!< Whether the attribute reference can
 							///< have a list, forbid it, or require it.
@@ -574,8 +562,6 @@ struct tmpl_s {
 						///< and TMPL_TYPE_REGEX_UNCOMPILED.
 
 		_CONST struct {
-			bool			ref_prefix;	//!< true if the reference was prefixed
-								///< with a '&'.
 			FR_DLIST_HEAD(tmpl_request_list)	rr;	//!< Request to search or insert in.
 			FR_DLIST_HEAD(tmpl_attr_list)		ar;	//!< Head of the attribute reference list.
 		} attribute;
