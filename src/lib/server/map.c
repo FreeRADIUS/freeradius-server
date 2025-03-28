@@ -502,52 +502,59 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 		our_lhs_rules = *lhs_rules;
 
 		/*
-		 *	Allow for ".foo" to refer to the current
-		 *	parents list.  Allow for "..foo" to refer to
-		 *	the grandparent list.
+		 *	Bare words on the LHS are always attributes.
+		 *
+		 *	It doesn't make sense to allow "5 = 4".  Or, "5 = NAS-Port".
+		 *
+		 *	The conditions do allow "5 == NAS-Port", but
+		 *	they use a different parser for that.
 		 */
-		if (our_lhs_rules.attr.prefix != TMPL_ATTR_REF_PREFIX_YES) {
-			/*
-			 *	Absolute references are from the root.
-			 */
-			if (!fr_sbuff_next_if_char(&our_in, '.')) {
-				parent = NULL;
-				goto lhs_root;
-			}
 
-			/*
-			 *	Relative references must have a parent.
-			 */
-			if (!parent) {
-				fr_strerror_const("Unexpected location for relative attribute - no parent attribute exists");
-				goto error;
-			}
+		/*
+		 *	Absolute references are from the root.
+		 */
+		if (!fr_sbuff_next_if_char(&our_in, '.')) {
+			parent = NULL;
 
-			/*
-			 *	Multiple '.' means "go to our parents parent".
-			 */
-			while (fr_sbuff_next_if_char(&our_in, '.')) {
-				if (!parent) {
-					fr_strerror_const("Too many '.' in relative reference");
-					goto error;
-				}
-				parent = parent->parent;
-			}
-
-			if (!parent) goto lhs_root;
-
-			/*
-			 *	Start looking in the correct parent, not in whatever we were handed.
-			 */
-			fr_assert(tmpl_is_attr(parent->lhs));
-			our_lhs_rules.attr.namespace = tmpl_attr_tail_da(parent->lhs);
-
+		lhs_root:
 			slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
 						      &map_parse_rules_bareword_quoted, &our_lhs_rules);
 			break;
 		}
 
-	lhs_root:
+		/*
+		 *	Allow for ".foo" to refer to the current
+		 *	parents list.  Allow for "..foo" to refer to
+		 *	the grandparent list.
+		 */
+
+		/*
+		 *	Relative references must have a parent.
+		 */
+		if (!parent) {
+			fr_strerror_const("Unexpected location for relative attribute - no parent attribute exists");
+			goto error;
+		}
+
+		/*
+		 *	Multiple '.' means "go to our parents parent".
+		 */
+		while (fr_sbuff_next_if_char(&our_in, '.')) {
+			if (!parent) {
+				fr_strerror_const("Too many '.' in relative reference");
+				goto error;
+			}
+			parent = parent->parent;
+		}
+
+		if (!parent) goto lhs_root;
+
+		/*
+		 *	Start looking in the correct parent, not in whatever we were handed.
+		 */
+		fr_assert(tmpl_is_attr(parent->lhs));
+		our_lhs_rules.attr.namespace = tmpl_attr_tail_da(parent->lhs);
+
 		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
 					      &map_parse_rules_bareword_quoted, &our_lhs_rules);
 		break;
