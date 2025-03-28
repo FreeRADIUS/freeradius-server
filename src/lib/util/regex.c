@@ -37,6 +37,38 @@ RCSID("$Id$")
 #endif
 #endif
 
+const fr_sbuff_escape_rules_t regex_escape_rules = {
+	.name = "regex",
+	.chr = '\\',
+	.subs = {
+		['$'] = '$',
+		['('] = '(',
+		['*'] = '*',
+		['+'] = '+',
+		['.'] = '.',
+		['/'] = '/',
+		['?'] = '?',
+		['['] = '[',
+		['\\'] = '\\',
+		['^'] = '^',
+		['`'] = '`',
+		['|'] = '|',
+		['\a'] = 'a',
+		['\b'] = 'b',
+		['\n'] = 'n',
+		['\r'] = 'r',
+		['\t'] = 't',
+		['\v'] = 'v'
+	},
+	.esc = {
+		SBUFF_CHAR_UNPRINTABLES_LOW,
+		SBUFF_CHAR_UNPRINTABLES_EXTENDED
+	},
+	.do_utf8 = true,
+	.do_oct = true
+};
+
+
 /*
  *######################################
  *#      FUNCTIONS FOR LIBPCRE2        #

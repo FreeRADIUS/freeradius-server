@@ -169,6 +169,8 @@ typedef struct {
 
 #define REGEX_FLAG_BUFF_SIZE	7
 
+extern const fr_sbuff_escape_rules_t regex_escape_rules;
+
 /** Unique safefor value to prevent escaping for regexes
  */
 #define FR_REGEX_SAFE_FOR ((uintptr_t)regex_exec)

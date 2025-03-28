@@ -557,37 +557,6 @@ static int xlat_instantiate_regex(xlat_inst_ctx_t const *xctx)
 }
 
 
-static const fr_sbuff_escape_rules_t regex_escape_rules = {
-	.name = "regex",
-	.chr = '\\',
-	.subs = {
-		['$'] = '$',
-		['('] = '(',
-		['*'] = '*',
-		['+'] = '+',
-		['.'] = '.',
-		['/'] = '/',
-		['?'] = '?',
-		['['] = '[',
-		['\\'] = '\\',
-		['^'] = '^',
-		['`'] = '`',
-		['|'] = '|',
-		['\a'] = 'a',
-		['\b'] = 'b',
-		['\n'] = 'n',
-		['\r'] = 'r',
-		['\t'] = 't',
-		['\v'] = 'v'
-	},
-	.esc = {
-		SBUFF_CHAR_UNPRINTABLES_LOW,
-		SBUFF_CHAR_UNPRINTABLES_EXTENDED
-	},
-	.do_utf8 = true,
-	.do_oct = true
-};
-
 static xlat_arg_parser_t const regex_op_xlat_args[] = {
 	{ .required = true, .type = FR_TYPE_STRING },
 	{ .concat = true, .type = FR_TYPE_STRING },
