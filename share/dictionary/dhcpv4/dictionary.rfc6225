@@ -1,0 +1,47 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC6225 - Dynamic Host Configuration Protocol Option for Coordinate-based
+#            Location Configuration Information
+#  $Id$
+#
+##############################################################################
+
+# 16 GeoConf Option
+ATTRIBUTE	GeoConf-Option				123	struct
+MEMBER		LaRes				bit[6]
+MEMBER		Latitude			bit[34] # 9 bits before, 25 after radix point
+MEMBER		LoRes				bit[6]
+MEMBER		Longitude			bit[34] # 9 bits before, 25 after radix point
+MEMBER		AType				bit[4]
+VALUE		AType			Meters	1
+VALUE		AType			Floors	2
+MEMBER		AltRes				bit[6]
+MEMBER		Altitude			bit[30] # 22 bits before, 8 after radix point
+MEMBER		Res				bit[5]
+MEMBER		Datum				bit[3]
+VALUE		Datum			WGS84	1
+VALUE		Datum			NAVD88	2
+VALUE		Datum			MLLW	3
+
+# 16 GeoLoc Option
+ATTRIBUTE	GeoLoc					144	struct
+MEMBER		LatUnc				bit[6]
+MEMBER		Latitude			bit[34] # 9 bits before, 25 after radix point
+MEMBER		LongUnc				bit[6]
+MEMBER		Longitude			bit[34] # 9 bits before, 25 after radix point
+MEMBER		AType				bit[4]
+VALUE		AType			Meters	1
+VALUE		AType			Floors	2
+MEMBER		AltUnc				bit[6]
+MEMBER		Altitude			bit[30] # 22 bits before, 8 after radix point
+MEMBER		Ver				bit[2]  # always 1
+MEMBER		Res				bit[3]
+MEMBER		Datum				bit[3]
+VALUE		Datum			WGS84	1
+VALUE		Datum			NAVD88	2
+VALUE		Datum			MLLW	3
+
