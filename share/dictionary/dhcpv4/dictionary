@@ -37,7 +37,6 @@ $INCLUDE dictionary.rfc3397
 $INCLUDE dictionary.rfc3442
 $INCLUDE dictionary.rfc3495
 $INCLUDE dictionary.rfc3679
-$INCLUDE dictionary.rfc3825
 $INCLUDE dictionary.rfc3925
 $INCLUDE dictionary.rfc4039
 $INCLUDE dictionary.rfc4280
@@ -57,6 +56,7 @@ $INCLUDE dictionary.rfc5969
 $INCLUDE dictionary.rfc5986
 $INCLUDE dictionary.rfc6011
 $INCLUDE dictionary.rfc6153
+$INCLUDE dictionary.rfc6225
 $INCLUDE dictionary.rfc6656
 $INCLUDE dictionary.rfc6731
 $INCLUDE dictionary.rfc6926
