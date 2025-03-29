@@ -1067,6 +1067,9 @@ void		fr_value_box_mark_unsafe(fr_value_box_t *box)
 
 void		fr_value_box_list_mark_safe_for(fr_value_box_list_t *list, fr_value_box_safe_for_t safe_for);
 
+void		fr_value_box_safety_copy(fr_value_box_t *out, fr_value_box_t const *in) CC_HINT(nonnull);
+void		fr_value_box_safety_merge(fr_value_box_t *out, fr_value_box_t const *in) CC_HINT(nonnull);
+
 static inline CC_HINT(nonnull, always_inline)
 bool fr_value_box_is_secret(fr_value_box_t const *box)
 {

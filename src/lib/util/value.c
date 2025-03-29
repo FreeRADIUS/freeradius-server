@@ -3542,6 +3542,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		dst->enumv = dst_enumv;
 
 		fr_value_box_hton(dst, &tmp);
+		fr_value_box_safety_copy(dst, src);
 		return 0;
 	}
 
@@ -3549,6 +3550,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 
 	dst->type = dst_type;
 	dst->enumv = dst_enumv;
+	fr_value_box_safety_copy(dst, src);
 
 	return 0;
 }
@@ -5790,6 +5792,9 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, bool *secret, fr_dbuff
 			slen = fr_dbuff_in_memcpy(&our_dbuff, sep, sep_len);
 			if (slen < 0) goto error;
 		}
+
+		if (tainted) *tainted |= vb->tainted;
+		if (secret) *secret |= vb->secret;
 	}
 
 	talloc_free(tmp_ctx);
@@ -6399,6 +6404,45 @@ void fr_value_box_list_mark_safe_for(fr_value_box_list_t *list, fr_value_box_saf
 		}
 	}
 }
+
+void fr_value_box_safety_copy(fr_value_box_t *out, fr_value_box_t const *in)
+{
+	out->safe_for = in->safe_for;
+	out->tainted = in->tainted;
+	out->secret = in->secret;
+}
+
+void fr_value_box_safety_merge(fr_value_box_t *out, fr_value_box_t const *in)
+{
+	/*
+	 *	If we're already at no safety, then we don't need to do anything.
+	 *
+	 *	Otherwise we update the safety only if we need to change it.
+	 */
+	if ((out->safe_for != FR_VALUE_BOX_SAFE_FOR_NONE) &&
+	    (out->safe_for != in->safe_for)) {
+		/*
+		 *	If the input is no safety, that's what we set.
+		 *
+		 *	If the current is any safety, then we copy over the input safety.
+		 *
+		 *	Otherwise the two values are different, so we just mash the output to no safety.
+		 */
+		if (in->safe_for == FR_VALUE_BOX_SAFE_FOR_NONE) {
+			out->safe_for = FR_VALUE_BOX_SAFE_FOR_NONE;
+
+		} else if (out->safe_for == FR_VALUE_BOX_SAFE_FOR_ANY) {
+			out->safe_for = in->safe_for;
+
+		} else {
+			out->safe_for = FR_VALUE_BOX_SAFE_FOR_NONE;
+		}
+	}
+
+	out->tainted |= in->tainted;
+	out->secret |= in->secret;
+}
+
 
 /** Check truthiness of values.
  *
