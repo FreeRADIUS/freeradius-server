@@ -155,7 +155,7 @@ values or expansions in `%regex.escape(...)`.
 local domain
 
 domain = %regex.escape("example.com")
-if (Stripped-User-Name =~ /domain$/) {
+if (Stripped-User-Name =~ /%{domain}$/) {
     ...
 }
 ----
