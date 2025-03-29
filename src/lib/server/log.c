@@ -268,9 +268,7 @@ inline bool log_rdebug_enabled(fr_log_lvl_t lvl, request_t const *request)
 {
 	if (!request->log.dst) return false;
 
-	if (lvl <= request->log.lvl) return true;
-
-	return false;
+	return (request->log.lvl >= lvl);
 }
 
 /** Cleanup the memory pool used by vlog_request
@@ -619,7 +617,7 @@ void log_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 
 	va_start(ap, fmt);
 	for (dst = request->log.dst; dst; dst = dst->next) {
-		if (lvl > dst->lvl) continue;
+		if ((lvl > request->log.lvl) && (lvl > dst->lvl)) continue;
 
 		dst->func(type, lvl, request, file, line, fmt, ap, dst->uctx);
 	}
