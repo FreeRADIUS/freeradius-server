@@ -5565,9 +5565,9 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		 */
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '{');
 		FR_SBUFF_RETURN(fr_value_box_list_concat_as_string,
-				NULL, NULL, &our_out, UNCONST(fr_value_box_list_t *, &data->vb_group),
+				NULL, &our_out, UNCONST(fr_value_box_list_t *, &data->vb_group),
 				", ", (sizeof(", ") - 1), e_rules,
-				0, 0, false);
+				FR_VALUE_BOX_LIST_NONE, FR_VALUE_BOX_SAFE_FOR_ANY, false);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '}');
 		break;
 
@@ -5624,9 +5624,7 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
  *
  * All boxes will be removed from the list.
  *
- * @param[out] tainted		If nonnull, will be set to true if any input boxes are tainted.
- *				bool pointed to must be initialised.
- * @param[out] secret		If nonnull, will be set to true if any input boxes are secret.
+ * @param[out] safety		if !NULL, the results of tainted / secret / safe_for will be stored here.
  * @param[out] sbuff		to write the result of the concatenation to.
  * @param[in] list		to concatenate.
  * @param[in] sep		Insert a separator between the values.
@@ -5636,6 +5634,7 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
  * @param[in] proc_action	What to do with the boxes in the list once
  *				they've been processed.
  * @param[in] safe_for		if value has this safe_for value, don't apply the escape rules.
+ *				for values which are escaped, mash the safe_for value to this.
  * @param[in] flatten		If true and we encounter a #FR_TYPE_GROUP,
  *				we concat the contents of its children together.
  *      			If false, the contents will be cast to #FR_TYPE_STRING.
@@ -5644,7 +5643,7 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
  *	- <0 how many additional bytes we would have needed to
  *	  concat the next box.
  */
-ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
+ssize_t fr_value_box_list_concat_as_string(fr_value_box_t *safety, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
 					   char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
 					   fr_value_box_list_action_t proc_action, fr_value_box_safe_for_t safe_for, bool flatten)
 {
@@ -5653,11 +5652,17 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff
 
 	if (fr_value_box_list_empty(list)) return 0;
 
+	if (fr_debug_lvl >= 4) fprintf(stderr, "CONCAT AS STRING");
+
 	fr_value_box_list_foreach(list, vb) {
+		fr_value_box_safe_for_t box_safe_for = vb->safe_for;
+
+		if (fr_debug_lvl >= 4) fr_value_box_debug(vb);
+
 		switch (vb->type) {
 		case FR_TYPE_GROUP:
 			if (!flatten) goto print;
-			slen = fr_value_box_list_concat_as_string(tainted, secret, &our_sbuff, &vb->vb_group,
+			slen = fr_value_box_list_concat_as_string(safety, &our_sbuff, &vb->vb_group,
 								  sep, sep_len, e_rules,
 								  proc_action, safe_for, flatten);
 			break;
@@ -5668,6 +5673,8 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff
 			 *	Copy the raw string over, if necessary with escaping.
 			 */
 			if (e_rules && (!fr_value_box_is_safe_for(vb, safe_for) || e_rules->do_oct || e_rules->do_hex)) {
+				box_safe_for = safe_for;
+
 				slen = fr_sbuff_in_escape(&our_sbuff, (char const *)vb->vb_strvalue, vb->vb_length, e_rules);
 			} else {
 				slen = fr_sbuff_in_bstrncpy(&our_sbuff, (char const *)vb->vb_strvalue, vb->vb_length);
@@ -5685,18 +5692,42 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff
 
 		default:
 		print:
+			/*
+			 *	If we escaped it, set the output safe_for value.
+			 */
+			if (e_rules) box_safe_for = safe_for;
 			slen = fr_value_box_print(&our_sbuff, vb, e_rules);
 			break;
 		}
-		if (slen < 0) {
-		error:
-			return slen;
-		}
+		if (slen < 0) return slen;
 
+		/*
+		 *	Add in the separator
+		 */
 		if (sep && fr_value_box_list_next(list, vb)) {
 			slen = fr_sbuff_in_bstrncpy(&our_sbuff, sep, sep_len);
-			if (slen < 0) goto error;
+			if (slen < 0) return slen;
 		}
+
+		/*
+		 *	Merge in the safety rules.
+		 */
+		if (!safety || (vb->type == FR_TYPE_GROUP)) continue;
+
+		/*
+		 *	We can't call fr_box_safety_merge(), as we may have escaped the input box.
+		 */
+		if ((safety->safe_for != FR_VALUE_BOX_SAFE_FOR_NONE) &&
+		    (safety->safe_for != box_safe_for)) {
+			if (safety->safe_for == FR_VALUE_BOX_SAFE_FOR_ANY) {
+				safety->safe_for = box_safe_for;
+			} else {
+				safety->safe_for = FR_VALUE_BOX_SAFE_FOR_NONE;
+			}
+		}
+
+		safety->tainted |= vb->tainted;
+		safety->secret |= vb->secret;
 	}
 
 	/*
@@ -5705,9 +5736,6 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff
 	 *	is still in a known state.
 	 */
 	fr_value_box_list_foreach_safe(list, vb) {
-		if (tainted && vb->tainted) *tainted = true;
-		if (secret && vb->secret) *secret = true;
-
 		if (vb_should_remove(proc_action)) fr_value_box_list_remove(list, vb);
 		if (vb_should_free_value(proc_action)) fr_value_box_clear_value(vb);
 		if (vb_should_free(proc_action)) talloc_free(vb);
@@ -5720,9 +5748,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff
  *
  * All boxes will be removed from the list.
  *
- * @param[out] tainted		If nonnull, will be set to true if any input boxes are tainted.
- *				bool pointed to must be initialised.
- * @param[out] secret		If nonnull, will be set to true if any input boxes are secret.
+ * @param[out] safety		if !NULL, the results of tainted / secret / safe_for will be stored here.
  * @param[out] dbuff		to write the result of the concatenation to.
  * @param[in] list		to concatenate.
  * @param[in] sep		Insert a separator between the values.
@@ -5737,7 +5763,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff
  *	- <0 how many additional bytes we would have needed to
  *	  concat the next box.
  */
-ssize_t fr_value_box_list_concat_as_octets(bool *tainted, bool *secret, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
+ssize_t fr_value_box_list_concat_as_octets(fr_value_box_t *safety, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
 					   uint8_t const *sep, size_t sep_len,
 					   fr_value_box_list_action_t proc_action, bool flatten)
 {
@@ -5751,7 +5777,7 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, bool *secret, fr_dbuff
 		switch (vb->type) {
 		case FR_TYPE_GROUP:
 			if (!flatten) goto cast;
-			slen = fr_value_box_list_concat_as_octets(tainted, secret, &our_dbuff, &vb->vb_group,
+			slen = fr_value_box_list_concat_as_octets(safety, &our_dbuff, &vb->vb_group,
 								  sep, sep_len,
 								  proc_action, flatten);
 			break;
@@ -5773,6 +5799,7 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, bool *secret, fr_dbuff
 				fr_value_box_t tmp_vb;
 
 				if (!tmp_ctx) tmp_ctx = talloc_pool(NULL, 1024);
+
 				/*
 				 *	Not equivalent to fr_value_box_to_network
 				 */
@@ -5798,8 +5825,7 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, bool *secret, fr_dbuff
 			if (slen < 0) goto error;
 		}
 
-		if (tainted) *tainted |= vb->tainted;
-		if (secret) *secret |= vb->secret;
+		fr_value_box_safety_merge(safety, vb);
 	}
 
 	talloc_free(tmp_ctx);
@@ -5810,9 +5836,6 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, bool *secret, fr_dbuff
 	 *	is still in a known state.
 	 */
 	fr_value_box_list_foreach_safe(list, vb) {
-		if (tainted && vb->tainted) *tainted = true;
-		if (secret && vb->secret) *secret = true;
-
 		if (vb_should_remove(proc_action)) fr_value_box_list_remove(list, vb);
 		if (vb_should_free_value(proc_action)) fr_value_box_clear_value(vb);
 		if (vb_should_free(proc_action)) talloc_free(vb);
@@ -5852,8 +5875,6 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 	fr_sbuff_uctx_talloc_t		sbuff_tctx;
 
 	fr_value_box_t			*head_vb = fr_value_box_list_head(list);
-	bool				tainted = false;
-	bool				secret = false;
 
 	fr_value_box_entry_t		entry;
 
@@ -5897,9 +5918,9 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			 *	Note that we don't convert 'octets' to a printable string
 			 *	here.  Doing so breaks the keyword tests.
 			 */
-			if (fr_value_box_list_concat_as_string(&tainted, &secret, &sbuff, list,
+			if (fr_value_box_list_concat_as_string(out, &sbuff, list,
 							       NULL, 0, NULL,
-							       FR_VALUE_BOX_LIST_REMOVE, 0, flatten) < 0) {
+							       FR_VALUE_BOX_LIST_REMOVE, FR_VALUE_BOX_SAFE_FOR_ANY, flatten) < 0) {
 				fr_strerror_printf("Concatenation exceeded max_size (%zu)", max_size);
 			error:
 				switch (type) {
@@ -5920,23 +5941,23 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			/*
 			 *	Concat the rest of the children...
 			 */
-			if (fr_value_box_list_concat_as_string(&tainted, &secret, &sbuff, list,
+			if (fr_value_box_list_concat_as_string(out, &sbuff, list,
 							       NULL, 0, NULL,
-							       proc_action, 0, flatten) < 0) {
+							       proc_action, FR_VALUE_BOX_SAFE_FOR_ANY, flatten) < 0) {
 				fr_value_box_list_insert_head(list, head_vb);
 				goto error;
 			}
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
 			if (vb_should_free_value(proc_action)) fr_value_box_clear_value(out);
-			if (fr_value_box_bstrndup(ctx, out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted) < 0) goto error;
+			if (fr_value_box_bstrndup(ctx, out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), out->tainted) < 0) goto error;
 			break;
 
 		case FR_TYPE_OCTETS:
-			if (fr_value_box_list_concat_as_octets(&tainted, &secret, &dbuff, list,
+			if (fr_value_box_list_concat_as_octets(out, &dbuff, list,
 							       NULL, 0,
 							       FR_VALUE_BOX_LIST_REMOVE, flatten) < 0) goto error;
 
-			if (fr_value_box_list_concat_as_octets(&tainted, &secret, &dbuff, list,
+			if (fr_value_box_list_concat_as_octets(out, &dbuff, list,
 							       NULL, 0,
 							       proc_action, flatten) < 0) {
 				fr_value_box_list_insert_head(list, head_vb);
@@ -5944,13 +5965,15 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			}
 			(void)fr_dbuff_trim_talloc(&dbuff, SIZE_MAX);
 			if (vb_should_free_value(proc_action)) fr_value_box_clear_value(out);
-			if (fr_value_box_memdup(ctx, out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), tainted) < 0) goto error;
+			if (fr_value_box_memdup(ctx, out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), out->tainted) < 0) goto error;
 			break;
 
 		default:
 			break;
 		}
+
 		fr_value_box_list_insert_head(list, out);
+
 	/*
 	 *	Merge all the boxes in the list into
 	 *	a single contiguous buffer.
@@ -5962,24 +5985,24 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 	} else {
 		switch (type) {
 		case FR_TYPE_STRING:
-			if (fr_value_box_list_concat_as_string(&tainted, &secret, &sbuff, list,
+			if (fr_value_box_list_concat_as_string(out, &sbuff, list,
 							       NULL, 0, NULL,
-							       proc_action, 0, flatten) < 0) goto error;
+							       proc_action, FR_VALUE_BOX_SAFE_FOR_ANY, flatten) < 0) goto error;
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
 
 			entry = out->entry;
-			if (fr_value_box_bstrndup(ctx, out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted) < 0) goto error;
+			if (fr_value_box_bstrndup(ctx, out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), out->tainted) < 0) goto error;
 			out->entry = entry;
 			break;
 
 		case FR_TYPE_OCTETS:
-			if (fr_value_box_list_concat_as_octets(&tainted, &secret, &dbuff, list,
+			if (fr_value_box_list_concat_as_octets(out, &dbuff, list,
 							       NULL, 0,
 							       proc_action, flatten) < 0) goto error;
 			(void)fr_dbuff_trim_talloc(&dbuff, SIZE_MAX);
 
 			entry = out->entry;
-			if (fr_value_box_memdup(ctx, out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), tainted) < 0) goto error;
+			if (fr_value_box_memdup(ctx, out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), out->tainted) < 0) goto error;
 			out->entry = entry;
 			break;
 
@@ -5987,7 +6010,6 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			break;
 		}
 	}
-	fr_value_box_set_secret(out, secret);
 
 	return 0;
 }
@@ -6034,6 +6056,7 @@ int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t escap
 	if (unlikely(ret < 0)) return ret;
 
 	vb->safe_for = safe_for;
+	vb->tainted = false;
 
 	return 0;
 }
@@ -6427,16 +6450,12 @@ void fr_value_box_safety_merge(fr_value_box_t *out, fr_value_box_t const *in)
 	if ((out->safe_for != FR_VALUE_BOX_SAFE_FOR_NONE) &&
 	    (out->safe_for != in->safe_for)) {
 		/*
-		 *	If the input is no safety, that's what we set.
+		 *	If the output is anything, then the input is more restrictive, so we switch to that.
 		 *
-		 *	If the current is any safety, then we copy over the input safety.
-		 *
-		 *	Otherwise the two values are different, so we just mash the output to no safety.
+		 *	Otherwise the values are different.  Either it's X/Y, or NONE/X, or X/NONE.  In which
+		 *	case the answer is always NONE.
 		 */
-		if (in->safe_for == FR_VALUE_BOX_SAFE_FOR_NONE) {
-			out->safe_for = FR_VALUE_BOX_SAFE_FOR_NONE;
-
-		} else if (out->safe_for == FR_VALUE_BOX_SAFE_FOR_ANY) {
+		if (out->safe_for == FR_VALUE_BOX_SAFE_FOR_ANY) {
 			out->safe_for = in->safe_for;
 
 		} else {
@@ -6524,8 +6543,16 @@ static void _fr_value_box_debug(fr_value_box_t const *vb, int depth, int idx)
 	fr_value_box_aprint(NULL, &value, vb, NULL);
 	if (idx >= 0) {
 		INFO_INDENT("[%d] (%s) %s", idx, fr_type_to_str(vb->type), value);
+		INFO_INDENT("          %s %s %lx",
+			    vb->secret ? "s" : "-",
+			    vb->tainted ? "t" : "-",
+			    vb->safe_for);
 	} else {
 		INFO_INDENT("(%s) %s", fr_type_to_str(vb->type), value);
+		INFO_INDENT("     %s %s %lx",
+			    vb->secret ? "s" : "-",
+			    vb->tainted ? "t" : "-",
+			    vb->safe_for);
 	}
 	talloc_free(value);
 }

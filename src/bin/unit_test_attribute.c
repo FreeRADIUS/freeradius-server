@@ -1351,6 +1351,7 @@ static size_t command_calc_nary(command_result_t *result, command_file_ctx_t *cc
 	}
 
 	out = talloc_zero(cc->tmp_ctx, fr_value_box_t);
+	fr_value_box_mark_safe_for(out, FR_VALUE_BOX_SAFE_FOR_ANY);
 
 	if (strncmp(p, "->", 2) != 0) RETURN_PARSE_ERROR(0);
 	p += 2;
