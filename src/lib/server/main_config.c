@@ -1524,7 +1524,7 @@ int main_config_parse_option(char const *value)
 
 	fr_value_box_init(&box, FR_TYPE_BOOL, NULL, false);
 	if (fr_value_box_from_str(NULL, &box, FR_TYPE_BOOL, NULL,
-				  p, strlen(p), NULL, false) < 0) {
+				  p, strlen(p), NULL) < 0) {
 		fr_perror("Invalid boolean \"%s\"", p);
 		fr_exit(1);
 	}

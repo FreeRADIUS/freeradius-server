@@ -242,7 +242,7 @@ static fr_slen_t ldap_filter_parse_filter(ldap_filter_t *node, fr_sbuff_t *sbuff
 	case LDAP_FILTER_OP_BIT_AND:
 	case LDAP_FILTER_OP_BIT_OR:
 		if (fr_value_box_from_str(node, node->value, FR_TYPE_UINT32, NULL,
-					  val_buffer, len, NULL, false) < 0) {
+					  val_buffer, len, NULL) < 0) {
 			fr_strerror_const("Failed parsing value for filter");
 			FR_SBUFF_ERROR_RETURN(sbuff);
 		}

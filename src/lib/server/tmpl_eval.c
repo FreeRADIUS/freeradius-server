@@ -611,7 +611,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 */
 		ret = fr_value_box_from_str(tmp_ctx, &tmp, src_type, NULL,
 					    result, (size_t)slen,
-					    NULL, false);
+					    NULL);
 		if (ret < 0) goto error;
 
 		fr_value_box_bstrndup_shallow(&value, NULL, tmp.vb_strvalue, tmp.vb_length, tmp.tainted);
@@ -641,7 +641,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 */
 		ret = fr_value_box_from_str(tmp_ctx, &tmp, src_type, NULL,
 					    result, (size_t)slen,
-					    NULL, false);
+					    NULL);
 		if (ret < 0) goto error;
 
 		fr_value_box_bstrndup_shallow(&value, NULL, tmp.vb_strvalue, tmp.vb_length, tmp.tainted);

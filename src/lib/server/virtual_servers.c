@@ -1297,7 +1297,7 @@ static int define_server_values(CONF_SECTION *cs, fr_dict_attr_t *parent)
 		/*
 		 *	@todo - unescape for double quoted strings.  Whoops.
 		 */
-		slen = fr_value_box_from_str(NULL, &box, da->type, da, value, len, NULL, false);
+		slen = fr_value_box_from_str(NULL, &box, da->type, da, value, len, NULL);
 		if (slen < 0) {
 			cf_log_err(cp, "Failed parsing value - %s", fr_strerror());
 			return -1;

@@ -2515,7 +2515,7 @@ static fr_slen_t tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 	vpt = tmpl_alloc_null(ctx);
 	if (fr_value_box_from_substr(vpt, &tmp,
 				     cast, allow_enum ? t_rules->enumv : NULL,
-				     &our_in, p_rules, false) < 0) {
+				     &our_in, p_rules) < 0) {
 		talloc_free(vpt);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
@@ -2690,7 +2690,7 @@ static fr_slen_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, T_BARE_WORD, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in)));
 	if (fr_value_box_from_substr(vpt, &vpt->data.literal, type, NULL,
 				     &FR_SBUFF_REPARSE(&our_in),
-				     NULL, false) < 0) {
+				     NULL) < 0) {
 		talloc_free(vpt);
 		goto error;
 	}
@@ -2807,7 +2807,7 @@ static fr_slen_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, T_BARE_WORD, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in)));
 	if (fr_value_box_from_substr(vpt, &vpt->data.literal, type, NULL,
 				     &FR_SBUFF_REPARSE(&our_in),
-				     NULL, false) < 0) {
+				     NULL) < 0) {
 		talloc_free(vpt);
 		goto error;
 	}
@@ -3916,7 +3916,7 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 			if (fr_value_box_from_str(vpt, &vpt->data.literal, type,
 						  enumv,
 						  unescaped, talloc_array_length(unescaped) - 1,
-						  NULL, false) < 0) return -1;
+						  NULL) < 0) return -1;
 		}
 		vpt->type = TMPL_TYPE_DATA;
 		vpt->quote = tmpl_cast_quote(vpt->quote, type, enumv,

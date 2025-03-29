@@ -99,7 +99,7 @@ static fr_sbuff_parse_rules_t const bareword_unquoted = {
 };
 
 
-static ssize_t fr_pair_value_from_substr(fr_pair_t *vp, fr_sbuff_t *in, bool tainted)
+static ssize_t fr_pair_value_from_substr(fr_pair_t *vp, fr_sbuff_t *in, UNUSED bool tainted)
 {
 	char quote;
 	ssize_t slen;
@@ -125,7 +125,7 @@ static ssize_t fr_pair_value_from_substr(fr_pair_t *vp, fr_sbuff_t *in, bool tai
 		quote = '\0';
 	}
 
-	slen = fr_value_box_from_substr(vp, &vp->data, vp->da->type, vp->da, in, rules, tainted);
+	slen = fr_value_box_from_substr(vp, &vp->data, vp->da->type, vp->da, in, rules);
 	if (slen < 0) {
 		fr_assert(slen >= -((ssize_t) 1 << 20));
 		return slen - (quote != 0);

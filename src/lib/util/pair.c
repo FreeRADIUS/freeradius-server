@@ -2589,7 +2589,7 @@ int fr_pair_value_copy(fr_pair_t *dst, fr_pair_t *src)
  *	- -1 on failure.
  */
 int fr_pair_value_from_str(fr_pair_t *vp, char const *value, size_t inlen,
-			   fr_sbuff_unescape_rules_t const *uerules, bool tainted)
+			   fr_sbuff_unescape_rules_t const *uerules, UNUSED bool tainted)
 {
 	/*
 	 *	This is not yet supported because the rest of the APIs
@@ -2614,8 +2614,7 @@ int fr_pair_value_from_str(fr_pair_t *vp, char const *value, size_t inlen,
 	 */
 	if (fr_value_box_from_str(vp, &vp->data, vp->vp_type, vp->da,
 				  value, inlen,
-				  uerules,
-				  tainted) < 0) return -1;
+				  uerules) < 0) return -1;
 
 	fr_assert(vp->data.safe_for == FR_VALUE_BOX_SAFE_FOR_NONE);
 

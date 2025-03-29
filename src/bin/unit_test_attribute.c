@@ -1076,8 +1076,7 @@ static size_t parse_typed_value(command_result_t *result, fr_value_box_t *box, c
 		sbuff = FR_SBUFF_IN(p, strlen(p));
 		slen = fr_value_box_from_substr(box, box, FR_TYPE_STRING, NULL,
 						&sbuff,
-						&value_parse_rules_double_quoted,
-						false);
+						&value_parse_rules_double_quoted);
 		if (slen < 0) {
 			RETURN_OK_WITH_ERROR();
 		}
@@ -1099,8 +1098,7 @@ static size_t parse_typed_value(command_result_t *result, fr_value_box_t *box, c
 
 		slen = fr_value_box_from_substr(box, box, type, NULL,
 						&sbuff,
-						&value_parse_rules_bareword_unquoted,
-						false);
+						&value_parse_rules_bareword_unquoted);
 		if (slen < 0) {
 			RETURN_OK_WITH_ERROR();
 		}
@@ -1807,8 +1805,7 @@ size_t command_encode_dns_label(command_result_t *result, command_file_ctx_t *cc
 
 		if (fr_value_box_from_str(box, box, FR_TYPE_STRING, NULL,
 					  p, strlen(p),
-					  &fr_value_unescape_double,
-					  false) < 0) {
+					  &fr_value_unescape_double) < 0) {
 			talloc_free(box);
 			RETURN_OK_WITH_ERROR();
 		}
@@ -2761,7 +2758,7 @@ static size_t command_value_box_normalise(command_result_t *result, command_file
 	box2 = talloc_zero(NULL, fr_value_box_t);
 	if (fr_value_box_from_str(box2, box2, type, NULL,
 				  data, slen,
-				  &fr_value_unescape_double, false) < 0) {
+				  &fr_value_unescape_double) < 0) {
 		talloc_free(box2);
 		talloc_free(box);
 		RETURN_OK_WITH_ERROR();

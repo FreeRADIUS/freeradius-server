@@ -269,7 +269,7 @@ static int dict_flag_default_value(fr_dict_attr_t **da_p, char const *value, UNU
 	if (!flags->default_value) return -1;
 
 	if (fr_value_box_from_str(flags->default_value, flags->default_value, (*da_p)->type, NULL,
-				  value, strlen(value), NULL, false) < 0) {
+				  value, strlen(value), NULL) < 0) {
 		fr_strerror_printf("Failed parsing 'value=...' - %s", fr_strerror());
 		return -1;
 	}

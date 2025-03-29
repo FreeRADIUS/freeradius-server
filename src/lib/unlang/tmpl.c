@@ -143,7 +143,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 		if (fr_value_box_from_str(state->ctx, box, type, NULL,
 					  fr_sbuff_start(&state->exec.stdout_buff),
 					  fr_sbuff_used(&state->exec.stdout_buff),
-					  NULL, true) < 0) {
+					  NULL) < 0) {
 			talloc_free(box);
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;

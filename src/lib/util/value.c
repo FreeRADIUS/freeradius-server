@@ -2393,7 +2393,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 					     src->vb_strvalue, src->vb_length,
-					     NULL, src->tainted);
+					     NULL);
 
 	CAST_IP_FIX_COMBO;
 
@@ -2510,7 +2510,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 					     src->vb_strvalue, src->vb_length,
-					     NULL, src->tainted);
+					     NULL);
 
 	CAST_IP_FIX_COMBO;
 
@@ -2631,7 +2631,7 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 					     src->vb_strvalue, src->vb_length,
-					     NULL, src->tainted);
+					     NULL);
 
 	CAST_IP_FIX_COMBO;
 
@@ -2745,7 +2745,7 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 					     src->vb_strvalue, src->vb_length,
-					     NULL, src->tainted);
+					     NULL);
 
 	CAST_IP_FIX_COMBO;
 
@@ -2844,7 +2844,7 @@ static inline int fr_value_box_cast_to_ethernet(TALLOC_CTX *ctx, fr_value_box_t 
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 					     src->vb_strvalue, src->vb_length,
-					     NULL, src->tainted);
+					     NULL);
 
 	case FR_TYPE_OCTETS:
 		return fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src);
@@ -2905,7 +2905,7 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 					     src->vb_strvalue, src->vb_length,
-					     NULL, src->tainted);
+					     NULL);
 
 	case FR_TYPE_OCTETS:
 		/*
@@ -3149,7 +3149,7 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 					     src->vb_strvalue, src->vb_length,
-					     NULL, src->tainted);
+					     NULL);
 
 	case FR_TYPE_OCTETS:
 		return fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src);
@@ -3524,7 +3524,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 */
 	if (src->type == FR_TYPE_STRING) return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 								      src->vb_strvalue, src->vb_length,
-								      NULL, src->tainted);
+								      NULL);
 
 	if (src->type == FR_TYPE_OCTETS) {
 		fr_value_box_t tmp;
@@ -4824,14 +4824,13 @@ fr_slen_t fr_value_box_from_numeric_substr(fr_value_box_t *dst, fr_type_t dst_ty
  * @param[in] dst_enumv		fr_dict_attr_t with string names for uint32 values.
  * @param[in] in		sbuff to read data from.
  * @param[in] rules		unescape and termination rules.
- * @param[in] tainted		Whether the value came from a trusted source.
  * @return
  *	- >0 on success.
  *	- <= 0 on parse error.
  */
 ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				 fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-				 fr_sbuff_t *in, fr_sbuff_parse_rules_t const *rules, bool tainted)
+				 fr_sbuff_t *in, fr_sbuff_parse_rules_t const *rules)
 {
 	static fr_sbuff_parse_rules_t	default_rules;
 	fr_sbuff_t			*unescaped = NULL;
@@ -4947,13 +4946,13 @@ parse:
 								  rules->terminals, rules->escapes) < 0)) {
 				return -1;
 			}
-			fr_value_box_bstrdup_buffer_shallow(NULL, dst, dst_enumv, buff, tainted);
+			fr_value_box_bstrdup_buffer_shallow(NULL, dst, dst_enumv, buff, false);
 		/*
 		 *	We already have an unescaped version, just use that
 		 */
 		} else {
 			fr_value_box_bstrndup(ctx, dst, dst_enumv,
-					      fr_sbuff_start(unescaped), fr_sbuff_used(unescaped), tainted);
+					      fr_sbuff_start(unescaped), fr_sbuff_used(unescaped), false);
 		}
 		FR_SBUFF_SET_RETURN(in, &our_in);
 
@@ -5003,14 +5002,14 @@ parse:
 					bin = talloc_zero_array(ctx, uint8_t, 0);
 				}
 
-				fr_value_box_memdup_buffer_shallow(NULL, dst, dst_enumv, bin, tainted);
+				fr_value_box_memdup_buffer_shallow(NULL, dst, dst_enumv, bin, false);
 			/*
 			 *	We already have an unescaped version, just use that
 			 */
 			} else {
 				fr_value_box_memdup(ctx, dst, dst_enumv,
 						    (uint8_t *)fr_sbuff_start(unescaped),
-						    fr_sbuff_used(unescaped), tainted);
+						    fr_sbuff_used(unescaped), false);
 			}
 			FR_SBUFF_SET_RETURN(in, &our_in);
 		}
@@ -5028,7 +5027,7 @@ parse:
 		 */
 		hex_len = fr_sbuff_adv_past_allowed(&our_in, SIZE_MAX, sbuff_char_class_hex, rules->terminals);
 		if (hex_len == 0) {
-			if (fr_value_box_memdup(ctx, dst, dst_enumv, (uint8_t[]){ 0x00 }, 0, tainted) < 0) return -1;
+			if (fr_value_box_memdup(ctx, dst, dst_enumv, (uint8_t[]){ 0x00 }, 0, false) < 0) return -1;
 			FR_SBUFF_SET_RETURN(in, &our_in);
 		}
 
@@ -5040,7 +5039,7 @@ parse:
 		/*
 		 *	Pre-allocate the bin buff and initialise the box
 		 */
-		if (fr_value_box_mem_alloc(ctx, &bin_buff, dst, dst_enumv, (hex_len >> 1), tainted) < 0) return -1;
+		if (fr_value_box_mem_alloc(ctx, &bin_buff, dst, dst_enumv, (hex_len >> 1), false) < 0) return -1;
 
 		/*
 		 *	Reset to the start of the hex string
@@ -5175,14 +5174,14 @@ parse:
 	case FR_TYPE_INT64:
 	case FR_TYPE_FLOAT32:
 	case FR_TYPE_FLOAT64:
-		return fr_value_box_from_numeric_substr(dst, dst_type, dst_enumv, in, rules, tainted);
+		return fr_value_box_from_numeric_substr(dst, dst_type, dst_enumv, in, rules, false);
 
 	case FR_TYPE_SIZE:
 		if (fr_size_from_str(&dst->datum.size, &our_in) < 0) return -1;
 		goto finish;
 
 	case FR_TYPE_BOOL:
-		fr_value_box_init(dst, dst_type, dst_enumv, tainted);
+		fr_value_box_init(dst, dst_type, dst_enumv, false);
 
 		/*
 		 *	Quoted boolean values are "yes", "no", "true", "false"
@@ -5247,7 +5246,7 @@ parse:
 			num = htonll(num);
 
 			FR_DBUFF_IN_MEMCPY_RETURN(&dbuff, ((uint8_t *) &num) + 2, sizeof(dst->vb_ether));
-			fr_value_box_ethernet_addr(dst, dst_enumv, &ether, tainted);
+			fr_value_box_ethernet_addr(dst, dst_enumv, &ether, false);
 
 			FR_SBUFF_SET_RETURN(in, &our_in);
 		}
@@ -5290,13 +5289,13 @@ parse:
 		fr_base16_decode(&err, &dbuff, &our_in, true);
 		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
 
-		fr_value_box_ethernet_addr(dst, dst_enumv, (fr_ethernet_t * const)fr_dbuff_start(&dbuff), tainted);
+		fr_value_box_ethernet_addr(dst, dst_enumv, (fr_ethernet_t * const)fr_dbuff_start(&dbuff), false);
 
 		FR_SBUFF_SET_RETURN(in, &our_in);
 	}
 
 	case FR_TYPE_TIME_DELTA:
-		fr_value_box_init(dst, FR_TYPE_TIME_DELTA, dst_enumv, tainted);
+		fr_value_box_init(dst, FR_TYPE_TIME_DELTA, dst_enumv, false);
 
 		slen = fr_time_delta_from_substr(&dst->datum.time_delta, &our_in,
 						 dst_enumv ? dst_enumv->flags.flag_time_res : FR_TIME_RES_SEC,
@@ -5306,7 +5305,7 @@ parse:
 
 	case FR_TYPE_NULL:
 		if (!rules->escapes && fr_sbuff_adv_past_str_literal(&our_in, "NULL")) {
-			fr_value_box_init(dst, dst_type, dst_enumv, tainted);
+			fr_value_box_init(dst, dst_type, dst_enumv, false);
 			FR_SBUFF_SET_RETURN(in, &our_in);
 		}
 
@@ -5377,7 +5376,8 @@ parse:
 
 finish:
 	dst->type = dst_type;
-	dst->tainted = tainted;
+	dst->tainted = false;
+	fr_value_box_mark_unsafe(dst);
 
 	/*
 	 *	Fixup enumvs
@@ -5391,12 +5391,12 @@ finish:
 ssize_t fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 			      char const *in, size_t inlen,
-			      fr_sbuff_unescape_rules_t const *erules, bool tainted)
+			      fr_sbuff_unescape_rules_t const *erules)
 {
 	ssize_t slen;
 	fr_sbuff_parse_rules_t prules = { .escapes = erules };
 
-	slen = fr_value_box_from_substr(ctx, dst, dst_type, dst_enumv, &FR_SBUFF_IN(in, inlen), &prules, tainted);
+	slen = fr_value_box_from_substr(ctx, dst, dst_type, dst_enumv, &FR_SBUFF_IN(in, inlen), &prules);
 	if (slen <= 0) return slen;
 
 	if (slen != (ssize_t)inlen) {

@@ -232,7 +232,7 @@ static bool duplicate_entry(CONF_SECTION *conf, rlm_csv_t *inst, rlm_csv_entry_t
 	e->key = fr_value_box_alloc_null(e);
 	if (!e->key) goto fail;
 
-	if (fr_value_box_from_str(e->key, e->key, type, NULL, p, strlen(p), NULL, false) < 0) {
+	if (fr_value_box_from_str(e->key, e->key, type, NULL, p, strlen(p), NULL) < 0) {
 		cf_log_err(conf, "Failed parsing key field in file %s line %d - %s", inst->filename, lineno,
 			   fr_strerror());
 	fail:
@@ -319,7 +319,7 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 			if (!e->key) goto fail;
 
 			if (fr_value_box_from_str(e->key, e->key, type, NULL,
-						  p, strlen(p), NULL, false) < 0) {
+						  p, strlen(p), NULL) < 0) {
 				cf_log_err(conf, "Failed parsing key field in file %s line %d - %s", inst->filename, lineno,
 					   fr_strerror());
 			fail:
@@ -342,7 +342,7 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 			fr_type_t type = inst->field_types[i];
 
 			if (fr_value_box_from_str(e, &box, type, NULL,
-						  p, strlen(p), NULL, false) < 0) {
+						  p, strlen(p), NULL) < 0) {
 				cf_log_err(conf, "Failed parsing field '%s' in file %s line %d - %s", inst->field_names[i],
 					   inst->filename, lineno, fr_strerror());
 				goto fail;

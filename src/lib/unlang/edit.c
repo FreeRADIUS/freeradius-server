@@ -1276,10 +1276,11 @@ static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *sta
 
 	erules = fr_value_unescape_by_quote[current->map->lhs->quote];
 
-	if (fr_value_box_from_str(dst, dst, da->type, da, box->vb_strvalue, box->vb_length, erules, box->tainted) < 0) {
+	if (fr_value_box_from_str(dst, dst, da->type, da, box->vb_strvalue, box->vb_length, erules) < 0) {
 		RWDEBUG("Failed converting result to '%s' - %s", fr_type_to_str(type), fr_strerror());
 		return -1;
 	}
+	fr_value_box_safety_copy_changed(dst, box);
 
 	fr_value_box_list_talloc_free(&current->lhs.result);
 	fr_value_box_list_insert_tail(&current->parent->rhs.result, dst);

@@ -126,7 +126,7 @@ void cf_pair_debug_log(CONF_SECTION const *cs, CONF_PAIR *cp, conf_parser_t cons
  */
 int cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, conf_parser_t const *rule)
 {
-	if (fr_value_box_from_str(ctx, out, rule->type, NULL, cp->value, talloc_array_length(cp->value) - 1, NULL, false) < 0) {
+	if (fr_value_box_from_str(ctx, out, rule->type, NULL, cp->value, talloc_array_length(cp->value) - 1, NULL) < 0) {
 		cf_log_perr(cp, "Invalid value \"%s\" for config item %s",
 			    cp->value, cp->attr);
 
@@ -150,6 +150,8 @@ int cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, co
 		}
 		if (fr_rule_file_exists(rule) && !cf_file_check(cp, false)) goto error;
 	}
+
+	fr_value_box_mark_safe_for(out, FR_VALUE_BOX_SAFE_FOR_ANY);
 
 	return 0;
 }

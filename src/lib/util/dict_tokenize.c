@@ -2371,7 +2371,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *dctx, char **argv, int 
 	/*
 	 *	Parse the value.
 	 */
-	if (fr_value_box_from_str(NULL, &value, parent->type, NULL, argv[2], strlen(argv[2]), NULL, false) < 0) {
+	if (fr_value_box_from_str(NULL, &value, parent->type, NULL, argv[2], strlen(argv[2]), NULL) < 0) {
 		fr_strerror_printf_push("Invalid value for STRUCT \"%s\"", argv[2]);
 		return -1;
 	}
@@ -2553,7 +2553,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *dctx, char **argv, int a
 
 	if (fr_value_box_from_str(NULL, &value, da->type, NULL,
 				  argv[2], strlen(argv[2]),
-				  NULL, false) < 0) {
+				  NULL) < 0) {
 		fr_strerror_printf_push("Invalid VALUE '%s' for attribute '%s' of data type '%s'",
 					argv[2],
 					da->name,

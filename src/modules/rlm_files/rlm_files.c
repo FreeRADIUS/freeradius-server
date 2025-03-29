@@ -350,7 +350,7 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 		 *	Has to be of the correct data type.
 		 */
 		if (fr_value_box_from_str(box, box, data_type, key_enum,
-					  entry->name, strlen(entry->name), NULL, false) < 0) {
+					  entry->name, strlen(entry->name), NULL) < 0) {
 			ERROR("%s[%d] Failed parsing key %s - %s",
 			      entry->filename, entry->lineno, entry->name, fr_strerror());
 			goto error;

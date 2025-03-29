@@ -1210,13 +1210,13 @@ void		fr_value_box_increment(fr_value_box_t *vb)
  */
 ssize_t		fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 					 fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-					 fr_sbuff_t *in, fr_sbuff_parse_rules_t const *rules, bool tainted)
+					 fr_sbuff_t *in, fr_sbuff_parse_rules_t const *rules)
 		CC_HINT(nonnull(2,5));
 
 ssize_t		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 				      char const *in, size_t inlen,
-				      fr_sbuff_unescape_rules_t const *erules, bool tainted)
+				      fr_sbuff_unescape_rules_t const *erules)
 		CC_HINT(nonnull(2,5));
 /** @} */
 

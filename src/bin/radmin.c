@@ -523,7 +523,7 @@ static int cmd_set_profile_status(UNUSED FILE *fp, FILE *fp_err, UNUSED void *ct
 
 	if (fr_value_box_from_str(NULL, &box, FR_TYPE_BOOL, NULL,
 				  info->argv[0], strlen(info->argv[0]),
-				  NULL, false) <= 0) {
+				  NULL) <= 0) {
 		fprintf(fp_err, "Failed setting profile status '%s' - %s\n", info->argv[0], fr_strerror());
 		return -1;
 	}

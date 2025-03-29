@@ -694,7 +694,7 @@ redo_multi:
 	info->argv[info->argc] = talloc_zero(info, fr_value_box_t);
 
 	ret = fr_value_box_from_str(info, info->argv[info->argc], type, NULL,
-				    state->token, state->token_len, NULL, false);
+				    state->token, state->token_len, NULL);
 	if (ret < 0) return ret;
 
 	info->argc++;
@@ -884,7 +884,7 @@ static int parse_option_definition(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tok
 
 	type = FR_TYPE_UINT32;
 	ret = fr_value_box_from_str(NULL, &box, type, NULL,
-				    state->token, state->token_len, NULL, false);
+				    state->token, state->token_len, NULL);
 	if (ret < 0) goto error;
 
 	/*

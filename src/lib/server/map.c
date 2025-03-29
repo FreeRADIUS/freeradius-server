@@ -725,7 +725,7 @@ parse_rhs:
 			 *	It MUST be the given data type, and it MAY be an enum name.
 			 */
 			slen = fr_value_box_from_substr(map, vb, rhs_rules->enumv->type, rhs_rules->enumv,
-							&our_in, p_rules, false);
+							&our_in, p_rules);
 			if (slen < 0) goto error;
 
 			if (tmpl_afrom_value_box(map, &map->rhs, vb, true) < 0) {
@@ -2686,7 +2686,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		 *	It MUST be the given data type.
 		 */
 		slen = fr_value_box_from_str(map, vb, my_rules.enumv->type, my_rules.enumv,
-					     rhs, strlen(rhs), NULL, false);
+					     rhs, strlen(rhs), NULL);
 		if (slen <= 0) goto error;
 
 		if (tmpl_afrom_value_box(map, &map->rhs, vb, true) < 0) {
