@@ -1270,8 +1270,8 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL));
-	vb->vb_int8 = 0;	/* Default fail value - changed to 1 on success */
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	vb->vb_bool = false;	/* Default fail value - changed to true on success */
 	fr_dcursor_append(out, vb);
 
 	switch (map->lhs->type) {
@@ -1306,7 +1306,7 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	talloc_free(map);
 	if (ret < 0) return XLAT_ACTION_FAIL;
 
-	vb->vb_int8 = 1;
+	vb->vb_bool = true;
 	return XLAT_ACTION_DONE;
 }
 
@@ -4296,7 +4296,7 @@ do { \
 
 	XLAT_REGISTER_PURE("bin", xlat_func_bin, FR_TYPE_OCTETS, xlat_func_bin_arg);
 	XLAT_REGISTER_PURE("hex", xlat_func_hex, FR_TYPE_STRING, xlat_func_hex_arg);
-	XLAT_REGISTER_PURE("map", xlat_func_map, FR_TYPE_INT8, xlat_func_map_arg);
+	XLAT_REGISTER_PURE("map", xlat_func_map, FR_TYPE_BOOL, xlat_func_map_arg);
 	XLAT_REGISTER_PURE("md4", xlat_func_md4, FR_TYPE_OCTETS, xlat_func_md4_arg);
 	XLAT_REGISTER_PURE("md5", xlat_func_md5, FR_TYPE_OCTETS, xlat_func_md5_arg);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)

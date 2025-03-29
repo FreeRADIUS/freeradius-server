@@ -8,7 +8,7 @@ string test_string
 
 test_string := "IA-PD.IAID = 11"
 
-if (!("%map(%{test_string})" == 1)) {
+if !%map(test_string) {
 	test_fail
 }
 

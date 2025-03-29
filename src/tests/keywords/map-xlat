@@ -9,7 +9,7 @@ request += {
 	NAS-Port-Id = "request.Vendor-Specific.Nokia-SR.MSAP-Interface += 'UNICAST_7360OLT4'"
 }
 
-if (!("%map(%{Filter-Id})" == 1)) {
+if !%map(Filter-Id) {
 	test_fail
 }
 
@@ -18,7 +18,7 @@ if (!(control.Filter-Id == 'testing123')) {
 }
 
 foreach thing (NAS-Port-Id[*]) {
-	if (%map(thing) != 1) {
+	if !%map(thing) {
 		test_fail
 	}
 }
