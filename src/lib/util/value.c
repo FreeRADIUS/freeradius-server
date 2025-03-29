@@ -2212,6 +2212,8 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 {
 	if (!fr_cond_assert(dst_type == FR_TYPE_STRING)) return -1;
 
+	fr_value_box_init(dst, FR_TYPE_STRING, dst_enumv, false);
+
 	switch (src->type) {
 	/*
 	 *	The presentation format of octets is hex
@@ -2258,6 +2260,8 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 					      fr_value_box_t const *src)
 {
 	if (!fr_cond_assert(dst_type == FR_TYPE_OCTETS)) return -1;
+
+	fr_value_box_init(dst, FR_TYPE_OCTETS, dst_enumv, false);
 
 	switch (src->type) {
 	/*
@@ -3140,6 +3144,7 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 		return fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src);
 
 	case FR_TYPE_INTEGER:
+		fr_value_box_init(dst, dst_type, dst_enumv, false);
 		return fr_value_box_cast_integer_to_integer(ctx, dst, dst_type, dst_enumv, src);
 
 	case FR_TYPE_IPV4_ADDR:
