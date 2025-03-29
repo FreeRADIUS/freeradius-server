@@ -38,6 +38,9 @@ typedef struct {
 	regex_t		*preg;		//!< Compiled pattern.
 #endif
 	fr_regmatch_t	*regmatch;	//!< Match vectors.
+
+	fr_value_box_safe_for_t	safe_for;
+	bool			secret;
 } fr_regcapture_t;
 
 /** Adds subcapture values to request data
@@ -53,8 +56,9 @@ typedef struct {
  *				reparented to the regcapture struct.
  * @param[in,out] regmatch	Pointers into value. May be set to NULL if
  *				reparented to the regcapture struct.
+ * @param[in] in		value-box which we matched against
  */
-void regex_sub_to_request(request_t *request, regex_t **preg, fr_regmatch_t **regmatch)
+void regex_sub_to_request(request_t *request, regex_t **preg, fr_regmatch_t **regmatch, fr_value_box_t const *in)
 {
 	fr_regcapture_t *old_rc, *new_rc;	/* lldb doesn't like bare new *sigh* */
 
@@ -73,6 +77,7 @@ void regex_sub_to_request(request_t *request, regex_t **preg, fr_regmatch_t **re
 
 	fr_assert(preg && *preg);
 	fr_assert(regmatch);
+	fr_assert(in);
 
 	DEBUG4("Adding %zu matches", (*regmatch)->used);
 
@@ -97,6 +102,8 @@ void regex_sub_to_request(request_t *request, regex_t **preg, fr_regmatch_t **re
 	 *	Steal match data
 	 */
 	new_rc->regmatch = talloc_steal(new_rc, *regmatch);
+	new_rc->safe_for = in->safe_for;
+	new_rc->secret = in->secret;
 	*regmatch = NULL;
 
 	request_data_talloc_add(request, request, REQUEST_DATA_REGEX, fr_regcapture_t, new_rc, true, false, false);
@@ -115,7 +122,7 @@ void regex_sub_to_request(request_t *request, regex_t **preg, fr_regmatch_t **re
  *	- 0 on success.
  *	- -1 on notfound.
  */
-int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32_t num)
+int regex_request_to_sub(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *request, uint32_t num)
 {
 	fr_regcapture_t		*rc;
 	char			*buff;
@@ -126,7 +133,6 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32
 	rc = request_data_reference(request, request, REQUEST_DATA_REGEX);
 	if (!rc) {
 		RDEBUG4("No subcapture data found");
-		*out = NULL;
 		return -1;
 	}
 	match_data = talloc_get_type_abort(rc->regmatch->match_data, pcre2_match_data);
@@ -142,22 +148,22 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32
 	 */
 	case PCRE2_ERROR_NOSUBSTRING:
 		RDEBUG4("%i/%zu Not found", num + 1, rc->regmatch->used);
-		*out = NULL;
 		return -1;
 
 	default:
 		if (ret < 0) {
-			*out = NULL;
 			return -1;
 		}
 
 		MEM(buff = talloc_array(ctx, char, ++len));	/* +1 for \0, it'll get reset by pcre2_substring */
 		pcre2_substring_copy_bynumber(match_data, num, (PCRE2_UCHAR *)buff, &len); /* can't error */
 
-		RDEBUG4("%i/%zu Found: %pV (%zu)", num + 1, rc->regmatch->used,
-			fr_box_strvalue_buffer(buff), talloc_array_length(buff) - 1);
+		fr_value_box_init(out, FR_TYPE_STRING, NULL, false);
+		fr_value_box_bstrndup_shallow(out, NULL, buff, len, false);
+		fr_value_box_mark_safe_for(out, rc->safe_for);
+		fr_value_box_set_secret(out, rc->secret);
 
-		*out = buff;
+		RDEBUG4("%i/%zu Found: %pV (%zu)", num + 1, rc->regmatch->used, out, out->vb_length);
 		break;
 	}
 
@@ -176,7 +182,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32
  *	- 0 on success.
  *	- -1 on notfound.
  */
-int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, request_t *request, char const *name)
+int regex_request_to_sub_named(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *request, char const *name)
 {
 	fr_regcapture_t		*rc;
 	char			*buff;
@@ -187,7 +193,6 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, request_t *request, 
 	rc = request_data_reference(request, request, REQUEST_DATA_REGEX);
 	if (!rc) {
 		RDEBUG4("No subcapture data found");
-		*out = NULL;
 		return -1;
 	}
 	match_data = rc->regmatch->match_data;
@@ -203,22 +208,20 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, request_t *request, 
 	 */
 	case PCRE2_ERROR_NOSUBSTRING:
 		RDEBUG4("No named capture group \"%s\"", name);
-		*out = NULL;
 		return -1;
 
 	default:
-		if (ret < 0) {
-			*out = NULL;
-			return -1;
-		}
+		if (ret < 0) return -1;
 
 		MEM(buff = talloc_array(ctx, char, ++len));	/* +1 for \0, it'll get reset by pcre2_substring */
 		pcre2_substring_copy_byname(match_data, (PCRE2_UCHAR const *)name, (PCRE2_UCHAR *)buff, &len); /* can't error */
 
-		RDEBUG4("Found \"%s\": %pV (%zu)", name,
-			fr_box_strvalue_buffer(buff), talloc_array_length(buff) - 1);
+		fr_value_box_init(out, FR_TYPE_STRING, NULL, false);
+		fr_value_box_bstrndup_shallow(out, NULL, buff, len, false);
+		fr_value_box_mark_safe_for(out, rc->safe_for);
+		fr_value_box_set_secret(out, rc->secret);
 
-		*out = buff;
+		RDEBUG4("Found \"%s\": %pV (%zu)", name, out, out->vb_length);
 		break;
 	}
 
@@ -237,7 +240,7 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, request_t *request, 
  *	- 0 on success.
  *	- -1 on notfound.
  */
-int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32_t num)
+int regex_request_to_sub(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *request, uint32_t num)
 {
 	fr_regcapture_t	*rc;
 	char const	*p;
@@ -246,7 +249,6 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32
 	rc = request_data_reference(request, request, REQUEST_DATA_REGEX);
 	if (!rc) {
 		RDEBUG4("No subcapture data found");
-		*out = NULL;
 		return -1;
 	}
 
@@ -262,22 +264,20 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32
 	 */
 	case PCRE_ERROR_NOSUBSTRING:
 		RDEBUG4("%i/%zu Not found", num + 1, rc->regmatch->used);
-		*out = NULL;
 		return -1;
 
 	default:
-		if (ret < 0) {
-			*out = NULL;
-			return -1;
-		}
+		if (ret < 0) return -1;
 
 		talloc_set_type(p, char);
-		p = talloc_steal(ctx, p);
+		talloc_steal(ctx, p);
 
-		RDEBUG4("%i/%zu Found: %pV (%zu)", num + 1, rc->regmatch->used,
-			fr_box_strvalue_buffer(p), talloc_array_length(p) - 1);
+		fr_value_box_init(out, FR_TYPE_STRING, NULL, false);
+		fr_value_box_bstrndup_shallow(out, NULL, p,  talloc_array_length(p) - 1, false);
+		fr_value_box_mark_safe_for(out, rc->safe_for);
+		fr_value_box_set_secret(out, rc->secret);
 
-		memcpy(out, &p, sizeof(*out));
+		RDEBUG4("%i/%zu Found: %pV (%zu)", num + 1, rc->regmatch->used, out, out->vb_length);
 		break;
 	}
 
@@ -296,7 +296,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32
  *	- 0 on success.
  *	- -1 on notfound.
  */
-int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, request_t *request, char const *name)
+int regex_request_to_sub_named(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *request, char const *name)
 {
 	fr_regcapture_t	*rc;
 	void		*rd;
@@ -306,7 +306,6 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, request_t *request, 
 	rd = request_data_reference(request, request, REQUEST_DATA_REGEX);
 	if (!rd) {
 		RDEBUG4("No subcapture data found");
-		*out = NULL;
 		return -1;
 	}
 
@@ -323,26 +322,20 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, request_t *request, 
 	 */
 	case PCRE_ERROR_NOSUBSTRING:
 		RDEBUG4("No named capture group \"%s\"", name);
-		*out = NULL;
 		return -1;
 
 	default:
-		if (ret < 0) {
-			*out = NULL;
-			return -1;
-		}
+		if (ret < 0) return -1;
 
-		/*
-		 *	Check libpcre really is using our overloaded
-		 *	memory allocation and freeing talloc wrappers.
-		 */
 		talloc_set_type(p, char);
 		talloc_steal(ctx, p);
 
-		RDEBUG4("Found \"%s\": %pV (%zu)", name,
-			fr_box_strvalue_buffer(p), talloc_array_length(p) - 1);
+		fr_value_box_init(out, FR_TYPE_STRING, NULL, false);
+		fr_value_box_bstrndup_shallow(out, NULL, p,  talloc_array_length(p) - 1, false);
+		fr_value_box_mark_safe_for(out, rc->safe_for);
+		fr_value_box_set_secret(out, rc->secret);
 
-		memcpy(out, &p, sizeof(*out));
+		RDEBUG4("Found \"%s\": %pV (%zu)", name, out, out->vb_length);
 
 		break;
 	}
@@ -362,7 +355,7 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, request_t *request, 
  *	- 0 on success.
  *	- -1 on notfound.
  */
-int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32_t num)
+int regex_request_to_sub(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *request, uint32_t num)
 {
 	fr_regcapture_t	*rc;
 	char 		*buff;
@@ -373,7 +366,6 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32
 	rc = request_data_reference(request, request, REQUEST_DATA_REGEX);
 	if (!rc) {
 		RDEBUG4("No subcapture data found");
-		*out = NULL;
 		return -1;
 	}
 	match_data = rc->regmatch->match_data;
@@ -385,7 +377,6 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32
 	 */
 	if ((num >= rc->regmatch->used) || (match_data[num].rm_eo == -1) || (match_data[num].rm_so == -1)) {
 		RDEBUG4("%i/%zu Not found", num + 1, rc->regmatch->used);
-		*out = NULL;
 		return -1;
 	}
 
@@ -399,9 +390,13 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, request_t *request, uint32
 	len = match_data[num].rm_eo - match_data[num].rm_so;
 
 	MEM(buff = talloc_bstrndup(ctx, start, len));
-	RDEBUG4("%i/%zu Found: %pV (%zu)", num + 1, rc->regmatch->used, fr_box_strvalue_buffer(buff), len);
 
-	*out = buff;
+	fr_value_box_init(out, FR_TYPE_STRING, NULL, false);
+	fr_value_box_bstrndup_shallow(out, NULL, buff, len, false);
+	fr_value_box_mark_safe_for(out, rc->safe_for);
+	fr_value_box_set_secret(out, rc->secret);
+
+	RDEBUG4("%i/%zu Found: %pV (%zu)", num + 1, rc->regmatch->used, out, out->vb_length);
 
 	return 0;
 }

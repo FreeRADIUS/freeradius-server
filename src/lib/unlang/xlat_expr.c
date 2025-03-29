@@ -596,6 +596,7 @@ static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, fr_va
 	fr_sbuff_t	*agg;
 	char const	*subject;
 	size_t		len;
+	fr_value_box_t	safety = {};
 
 	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 256, 8192);
 
@@ -611,18 +612,21 @@ static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, fr_va
 		if (vb->type == FR_TYPE_STRING) {
 			subject = vb->vb_strvalue;
 			len = vb->vb_length;
+			fr_value_box_safety_copy(&safety, vb);
 
 		} else {
 			fr_value_box_list_t	list;
 
 			fr_value_box_list_init(&list);
 			fr_value_box_list_insert_head(&list, vb);
+			fr_value_box_mark_safe_for(&safety, FR_VALUE_BOX_SAFE_FOR_ANY);
+
 			vb = NULL;
 
 			/*
 			 *	Concatenate everything, and escape untrusted inputs.
 			 */
-			if (fr_value_box_list_concat_as_string(NULL, agg, &list, NULL, 0, &regex_escape_rules,
+			if (fr_value_box_list_concat_as_string(&safety, agg, &list, NULL, 0, &regex_escape_rules,
 							       FR_VALUE_BOX_LIST_FREE_BOX, FR_REGEX_SAFE_FOR, true) < 0) {
 				RPEDEBUG("Failed concatenating regular expression string");
 				talloc_free(regmatch);
@@ -645,11 +649,11 @@ static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, fr_va
 			return XLAT_ACTION_FAIL;
 
 		case 0:
-			regex_sub_to_request(request, NULL, NULL);	/* clear out old entries */
+			regex_sub_to_request(request, NULL, NULL, NULL);	/* clear out old entries */
 			continue;
 
 		case 1:
-			regex_sub_to_request(request, preg, &regmatch);
+			regex_sub_to_request(request, preg, &regmatch, &safety);
 			talloc_free(vb);
 			goto done;
 

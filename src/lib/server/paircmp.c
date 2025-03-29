@@ -132,7 +132,7 @@ int paircmp_pairs(UNUSED request_t *request, fr_pair_t const *check, fr_pair_t *
 			/*
 			 *	Add in %{0}. %{1}, etc.
 			 */
-			regex_sub_to_request(request, &preg, &regmatch);
+			regex_sub_to_request(request, &preg, &regmatch, &vp->data);
 			ret = (slen == 1) ? 0 : -1;
 		} else {
 			ret = (slen != 1) ? 0 : -1;

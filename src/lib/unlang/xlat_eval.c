@@ -1261,23 +1261,18 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 
 #ifdef HAVE_REGEX
 		case XLAT_REGEX:
-		{
-			char *str = NULL;
-
 			XLAT_DEBUG("** [%i] %s(regex) - %%{%s}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
 
 			xlat_debug_log_expansion(request, node, NULL, __LINE__);
 			MEM(value = fr_value_box_alloc_null(ctx));
-			if (regex_request_to_sub(ctx, &str, request, node->regex_index) < 0) {
+			if (regex_request_to_sub(value, value, request, node->regex_index) < 0) {
 				talloc_free(value);
 				continue;
 			}
-			fr_value_box_bstrdup_buffer_shallow(NULL, value, NULL, str, false);
 
 			xlat_debug_log_result(request, node, value);
 			fr_dcursor_append(out, value);
-		}
 			continue;
 #endif
 

@@ -2805,17 +2805,14 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (!arg) {
 		fr_value_box_t	*vb;
-		char		*p;
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
-		if (regex_request_to_sub(vb, &p, request, 0) < 0) {
+		if (regex_request_to_sub(vb, vb, request, 0) < 0) {
 			REDEBUG2("No previous regex capture");
 			talloc_free(vb);
 			return XLAT_ACTION_FAIL;
 		}
 
-		fr_assert(p);
-		fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, p, false);
 		fr_dcursor_append(out, vb);
 
 		return XLAT_ACTION_DONE;
@@ -2830,7 +2827,6 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	{
 		fr_value_box_t	idx;
 		fr_value_box_t	*vb;
-		char		*p;
 
 		if (fr_value_box_list_next(in, in_head)) {
 			REDEBUG("Only one subcapture argument allowed");
@@ -2843,13 +2839,11 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		}
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
-		if (regex_request_to_sub(vb, &p, request, idx.vb_uint32) < 0) {
+		if (regex_request_to_sub(vb, vb, request, idx.vb_uint32) < 0) {
 			REDEBUG2("No previous numbered regex capture group");
 			talloc_free(vb);
 			return XLAT_ACTION_FAIL;
 		}
-		fr_assert(p);
-		fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, p, false);
 		fr_dcursor_append(out, vb);
 
 		return XLAT_ACTION_DONE;
@@ -2858,7 +2852,6 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	default:
 	{
 		fr_value_box_t	*vb;
-		char		*p;
 
 		/*
 		 *	Concatenate all input
@@ -2872,14 +2865,11 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		}
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
-		if (regex_request_to_sub_named(vb, &p, request, arg->vb_strvalue) < 0) {
+		if (regex_request_to_sub_named(vb, vb, request, arg->vb_strvalue) < 0) {
 			REDEBUG2("No previous named regex capture group");
 			talloc_free(vb);
 			return XLAT_ACTION_FAIL;
 		}
-
-		fr_assert(p);
-		fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, p, false);
 		fr_dcursor_append(out, vb);
 
 		return XLAT_ACTION_DONE;
