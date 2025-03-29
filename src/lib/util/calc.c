@@ -935,7 +935,9 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		memcpy(buf, a->vb_octets, a->vb_length);
 		memcpy(buf + a->vb_length, b->vb_octets, b->vb_length);
 
-		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
+		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, false);
+		fr_value_box_safety_copy(dst, a);
+		fr_value_box_safety_merge(dst, b);
 		break;
 
 	case T_SUB:
@@ -958,7 +960,8 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 		memcpy(buf, a->vb_strvalue, len);
 
-		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
+		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, false);
+		fr_value_box_safety_copy(dst, a);
 		break;
 
 	case T_AND:
@@ -975,7 +978,10 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 			buf[len] = a->vb_octets[len] & b->vb_octets[len];
 		}
 
-		fr_value_box_memdup_shallow(dst, dst->enumv, buf, a->vb_length, a->tainted | b->tainted);
+	set_result:
+		fr_value_box_memdup_shallow(dst, dst->enumv, buf, a->vb_length, false);
+		fr_value_box_safety_copy(dst, a);
+		fr_value_box_safety_merge(dst, b);
 		break;
 
 	case T_OR:
@@ -987,9 +993,7 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		for (len = 0; len < a->vb_length; len++) {
 			buf[len] = a->vb_octets[len] | b->vb_octets[len];
 		}
-
-		fr_value_box_memdup_shallow(dst, dst->enumv, buf, a->vb_length, a->tainted | b->tainted);
-		break;
+		goto set_result;
 
 	case T_XOR:
 		if (a->vb_length != b->vb_length) goto length_error;
@@ -1001,8 +1005,7 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 			buf[len] = a->vb_octets[len] ^ b->vb_octets[len];
 		}
 
-		fr_value_box_memdup_shallow(dst, dst->enumv, buf, a->vb_length, a->tainted | b->tainted);
-		break;
+		goto set_result;
 
 	case T_RSHIFT:
 		if (b->vb_uint32 > a->vb_length) return ERR_UNDERFLOW;
@@ -1013,7 +1016,8 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 		memcpy(buf, a->vb_octets, len);
 
-		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted);
+		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, false);
+		fr_value_box_safety_copy(dst, a);
 		break;
 
 	case T_LSHIFT:
@@ -1026,7 +1030,8 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 		memcpy(buf, a->vb_octets + b->vb_uint32, len);
 
-		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted);
+		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, false);
+		fr_value_box_safety_copy(dst, a);
 		break;
 
 	default:
@@ -1076,7 +1081,9 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		memcpy(buf + a->vb_length, b->vb_strvalue, b->vb_length);
 		buf[len] = '\0';
 
-		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
+		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, false);
+		fr_value_box_safety_copy(dst, a);
+		fr_value_box_safety_merge(dst, b);
 		break;
 
 	case T_XOR:		/* is prepend for strings */
@@ -1088,7 +1095,9 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		memcpy(buf + b->vb_length, a->vb_strvalue, a->vb_length);
 		buf[len] = '\0';
 
-		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
+		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, false);
+		fr_value_box_safety_copy(dst, a);
+		fr_value_box_safety_merge(dst, b);
 		break;
 
 	case T_SUB:
@@ -1101,7 +1110,7 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		}
 
 		if (memcmp(a->vb_strvalue + a->vb_length - b->vb_length, b->vb_strvalue, b->vb_length) != 0) {
-			fr_strerror_const("Suffix to remove is not a suffix of the input string");
+			fr_strerror_const("Right side of substract is not a suffix of the input string");
 			return -1;
 		}
 
@@ -1112,7 +1121,8 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		memcpy(buf, a->vb_strvalue, len);
 		buf[len] = '\0';
 
-		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
+		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, false);
+		fr_value_box_safety_copy(dst, a);
 		break;
 
 	case T_RSHIFT:
@@ -1125,7 +1135,8 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		memcpy(buf, a->vb_strvalue, len);
 		buf[len] = '\0';
 
-		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, a->tainted);
+		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, false);
+		fr_value_box_safety_copy(dst, a);
 		break;
 
 	case T_LSHIFT:
@@ -1139,7 +1150,8 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		memcpy(buf, a->vb_strvalue + b->vb_uint32, len);
 		buf[len] = '\0';
 
-		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, a->tainted);
+		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, false);
+		fr_value_box_safety_copy(dst, a);
 		break;
 
 	default:
@@ -1257,6 +1269,8 @@ static int calc_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		dst->vb_ip.af = AF_INET;
 		dst->vb_ip.addr.v4.s_addr = htonl(ntohl(a->vb_ip.addr.v4.s_addr) | b->vb_uint32);
 		dst->vb_ip.prefix = 32;
+		fr_value_box_safety_copy(dst, a);
+		fr_value_box_safety_merge(dst, b);
 		break;
 
 	default:
@@ -1279,7 +1293,7 @@ static int calc_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_valu
 			if (fr_value_box_cast(NULL, &one, FR_TYPE_UINT32, NULL, a) < 0) return -1;
 
 			a = &one;
-			swap(a,b);
+			swap(a, b);
 
 		} else if (fr_type_is_integer(b->type)) {
 			if (fr_value_box_cast(NULL, &two, FR_TYPE_UINT32, NULL, b) < 0) return -1;
@@ -1293,9 +1307,11 @@ static int calc_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_valu
 		switch (a->type) {
 		case FR_TYPE_IPV6_ADDR:
 			if (fr_value_box_cast(NULL, &tmp, FR_TYPE_IPV4_ADDR, NULL, a) < 0) return -1;
+			a = &tmp;
 			break;
 
 		case FR_TYPE_IPV4_ADDR:
+			fr_value_box_safety_copy(dst, a);
 			break;
 
 		default:
@@ -1435,7 +1451,7 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		/*
 		 *	For simplicity, make sure that the prefix is first.
 		 */
-		if (b->type == FR_TYPE_IPV6_PREFIX) swap(a,b);
+		if (b->type == FR_TYPE_IPV6_PREFIX) swap(a, b);
 
 		/*
 		 *	We can only add something to a prefix, and
@@ -1470,6 +1486,7 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		dst->vb_ip.af = AF_INET6;
 		dst->vb_ip.prefix = 0;
 		dst->vb_ip.scope_id = a->vb_ip.scope_id;
+		fr_value_box_safety_copy(dst, a);
 		break;
 
 	default:
@@ -1542,7 +1559,7 @@ static int calc_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_valu
 
 	switch (op) {
 	case T_AND:
-		fr_value_box_init(dst, FR_TYPE_IPV6_PREFIX, NULL, a->tainted | b->tainted);
+		fr_value_box_init(dst, FR_TYPE_IPV6_PREFIX, NULL, false);
 		pdst = (uint8_t *) &dst->vb_ip.addr.v6;
 
 		for (i = 0; i < 16; i++) {
@@ -1551,6 +1568,8 @@ static int calc_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_valu
 
 		dst->vb_ip.af = AF_INET6;
 		dst->vb_ip.prefix = prefix;
+		fr_value_box_safety_copy(dst, a);
+		fr_value_box_safety_merge(dst, b);
 		break;
 
 	default:
@@ -1627,6 +1646,9 @@ static int calc_float32(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		return ERR_INVALID;
 	}
 
+	fr_value_box_safety_copy(dst, a);
+	fr_value_box_safety_merge(dst, b);
+
 	return 0;
 
 }
@@ -1671,8 +1693,10 @@ static int calc_float64(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		return ERR_INVALID;
 	}
 
-	return 0;
+	fr_value_box_safety_copy(dst, a);
+	fr_value_box_safety_merge(dst, b);
 
+	return 0;
 }
 
 /*
@@ -1755,6 +1779,9 @@ static int calc_uint64(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 	 *	Once we're done, cast the result to the final data type.
 	 */
 	if (fr_value_box_cast(ctx, dst, dst->type, dst->enumv, &result) < 0) return -1;
+
+	fr_value_box_safety_copy(dst, a);
+	fr_value_box_safety_merge(dst, b);
 
 	return 0;
 }
@@ -1839,6 +1866,9 @@ static int calc_int64(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const
 	 *	Once we're done, cast the result to the final data type.
 	 */
 	if (fr_value_box_cast(ctx, dst, dst->type, dst->enumv, &result) < 0) return -1;
+
+	fr_value_box_safety_copy(dst, a);
+	fr_value_box_safety_merge(dst, b);
 
 	return 0;
 }
@@ -2519,7 +2549,10 @@ int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t op, 
 		return handle_result(dst->type, op, rcode);
 
 	} else if (op == T_COMPLEMENT) {
-		if (dst != src) fr_value_box_init(dst, src->type, src->enumv, src->tainted);
+		if (dst != src) {
+			fr_value_box_init(dst, src->type, src->enumv, false);
+			fr_value_box_safety_copy(dst, src);
+		}
 
 #undef COMP
 #define COMP(_type, _field) case FR_TYPE_ ## _type: dst->vb_ ##_field = (_field ## _t) ~src->vb_ ##_field; break
@@ -2616,6 +2649,11 @@ int fr_value_calc_list_cmp(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_li
 	int rcode;
 	bool invert = false;
 	bool a_empty, b_empty;
+
+	if (!fr_comparison_op[op]) {
+		fr_strerror_printf("Invalid operator '%s' passed to list comparison", fr_tokens[op]);
+		return -1;
+	}
 
 	/*
 	 *	v3 hack.  != really means !( ... == ... )

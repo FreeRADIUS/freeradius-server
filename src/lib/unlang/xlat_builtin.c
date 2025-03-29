@@ -1756,8 +1756,7 @@ static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 	fr_assert((size_t)elen <= alen);
-	fr_value_box_safety_copy(vb, in);
-	fr_value_box_mark_unsafe(vb);
+	fr_value_box_safety_copy_changed(vb, in);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -1815,8 +1814,7 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		MEM(fr_value_box_mem_realloc(vb, NULL, vb, declen) == 0);
 	}
 
-	fr_value_box_safety_copy(vb, in);
-	fr_value_box_mark_unsafe(vb);
+	fr_value_box_safety_copy_changed(vb, in);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -1862,7 +1860,7 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		end = p + len;
 
 		/*
-		 *	Look for 0x at the start of the string
+		 *	Look for 0x at the start of the string, and ignore if we see it.
 		 */
 		if ((p[0] == '0') && (p[1] == 'x')) {
 			p += 2;
@@ -1877,7 +1875,7 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		outlen = len / 2;
 
 		MEM(result = fr_value_box_alloc_null(ctx));
-		MEM(fr_value_box_mem_alloc(result, &bin, result, NULL, outlen, fr_value_box_list_tainted(args)) == 0);
+		MEM(fr_value_box_mem_alloc(result, &bin, result, NULL, outlen, false) == 0);
 		fr_base16_decode(&err, &FR_DBUFF_TMP(bin, outlen), &FR_SBUFF_IN(p, end - p), true);
 		if (err) {
 			REDEBUG2("Invalid hex string");
@@ -1885,6 +1883,7 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 
+		fr_value_box_safety_copy_changed(result, hex);
 		fr_dcursor_append(out, result);
 	}
 
@@ -1984,7 +1983,7 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_value_box_mark_safe_for(dst, FR_VALUE_BOX_SAFE_FOR_ANY);
 
 		if (fr_value_box_list_concat_as_string(dst, agg, args, NULL, 0, NULL,
-						       FR_VALUE_BOX_LIST_FREE_BOX, 0, true) < 0) {
+						       FR_VALUE_BOX_LIST_FREE_BOX, FR_VALUE_BOX_SAFE_FOR_ANY, true) < 0) {
 			RPEDEBUG("Failed concatenating string");
 			return XLAT_ACTION_FAIL;
 		}

@@ -2220,6 +2220,7 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 	 *	What we actually want here is the raw string
 	 */
 	case FR_TYPE_OCTETS:
+		fr_value_box_safety_copy(dst, src);
 		return fr_value_box_bstrndup(ctx, dst, dst_enumv,
 					     (char const *)src->vb_octets, src->vb_length, src->tainted);
 
@@ -2240,6 +2241,7 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 		fr_value_box_aprint(ctx, &str, src, NULL);
 		if (unlikely(!str)) return -1;
 
+		fr_value_box_safety_copy_changed(dst, src);
 		return fr_value_box_bstrdup_buffer_shallow(NULL, dst, dst_enumv, str, src->tainted);
 	}
 	}
@@ -2262,17 +2264,16 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	if (!fr_cond_assert(dst_type == FR_TYPE_OCTETS)) return -1;
 
 	fr_value_box_init(dst, FR_TYPE_OCTETS, dst_enumv, false);
+	fr_value_box_safety_copy_changed(dst, src);
 
 	switch (src->type) {
 	/*
 	 *	<string> (excluding terminating \0)
 	 */
 	case FR_TYPE_STRING:
-		if (fr_value_box_memdup(ctx, dst, dst_enumv,
-					(uint8_t const *)src->vb_strvalue, src->vb_length, src->tainted) < 0) {
-			return -1;
-		}
-		return 0;
+		fr_value_box_safety_copy(dst, src);
+		return fr_value_box_memdup(ctx, dst, dst_enumv,
+					   (uint8_t const *)src->vb_strvalue, src->vb_length, src->tainted);
 
 	case FR_TYPE_GROUP:
 		return fr_value_box_list_concat_in_place(ctx,
@@ -2386,6 +2387,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 	fr_type_t src_type = src->type;
 
 	fr_assert(dst_type == FR_TYPE_IPV4_ADDR);
+	fr_value_box_safety_copy_changed(dst, src);
 
 	switch (src_type) {
 	case FR_TYPE_STRING:
@@ -2500,7 +2502,9 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 						  fr_value_box_t const *src)
 {
 	fr_type_t src_type = src->type;
+
 	fr_assert(dst_type == FR_TYPE_IPV4_PREFIX);
+	fr_value_box_safety_copy_changed(dst, src);
 
 	switch (src_type) {
 	case FR_TYPE_STRING:
@@ -2619,7 +2623,9 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 
 	static_assert((sizeof(v4_v6_map) + sizeof(src->vb_ip.addr.v4)) <=
 		      sizeof(src->vb_ip.addr.v6), "IPv6 storage too small");
+
 	fr_assert(dst_type == FR_TYPE_IPV6_ADDR);
+	fr_value_box_safety_copy_changed(dst, src);
 
 	switch (src_type) {
 	case FR_TYPE_STRING:
@@ -2733,6 +2739,7 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 	fr_type_t src_type = src->type;
 
 	fr_assert(dst_type == FR_TYPE_IPV6_PREFIX);
+	fr_value_box_safety_copy_changed(dst, src);
 
 	switch (src_type) {
 	case FR_TYPE_STRING:
@@ -2831,6 +2838,7 @@ static inline int fr_value_box_cast_to_ethernet(TALLOC_CTX *ctx, fr_value_box_t 
 						fr_value_box_t const *src)
 {
 	fr_assert(dst_type == FR_TYPE_ETHERNET);
+	fr_value_box_safety_copy_changed(dst, src);
 
 	switch (src->type) {
 	case FR_TYPE_STRING:
@@ -2891,6 +2899,7 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
 					    fr_value_box_t const *src)
 {
 	fr_assert(dst_type == FR_TYPE_BOOL);
+	fr_value_box_safety_copy_changed(dst, src);
 
 	switch (src->type) {
 	case FR_TYPE_STRING:
@@ -2982,6 +2991,8 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 	uint64_t		tmp = 0;
 	size_t			len = fr_value_box_field_sizes[src->type];
 	int64_t			min;
+
+	fr_value_box_safety_copy_changed(dst, src);
 
 #define SIGN_BIT_HIGH(_int, _len)	((((uint64_t)1) << (((_len) << 3) - 1)) & (_int))
 #define SIGN_PROMOTE(_int, _len)	((_len) < sizeof(_int) ? \
@@ -3316,6 +3327,8 @@ static inline int fr_value_box_cast_to_float(UNUSED TALLOC_CTX *ctx, fr_value_bo
 
 	good_cast:
 		fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+		fr_value_box_safety_copy_changed(dst, src);
+
 		if (dst_type == FR_TYPE_FLOAT32) {
 			dst->vb_float32 = num;
 		} else {
@@ -3445,7 +3458,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			return -1;
 		}
 
-		dst->type = dst_type;
+		fr_value_box_safety_copy_changed(dst, src);
 		dst->enumv = dst_enumv;
 		dst->vb_date = fr_unix_time_wrap(fr_time_delta_unwrap(src->vb_time_delta));
 		return 0;
@@ -3467,7 +3480,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				return -1;
 			}
 
-			dst->type = dst_type;
+			fr_value_box_safety_copy_changed(dst, src);
 			dst->enumv = dst_enumv;
 			dst->vb_time_delta = fr_time_delta_wrap((int64_t) when);
 			return 0;
@@ -3553,9 +3566,8 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 
 	memcpy(&dst->datum, &src->datum, fr_value_box_field_sizes[src->type]);
 
-	dst->type = dst_type;
+	fr_value_box_safety_copy_changed(dst, src);
 	dst->enumv = dst_enumv;
-	fr_value_box_safety_copy(dst, src);
 
 	return 0;
 }
@@ -3813,9 +3825,10 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 			}
 
 			/*
-			 *	Populate it with the
-			 *      data from the original
-			 *	child.
+			 *	Populate it with the data from the original child.
+			 *
+			 *	We do NOT update the dst safety.  The individual boxes have safety.  A group
+			 *	doesn't.
 			 */
 			if (unlikely(fr_value_box_copy(new, new, child) < 0)) goto group_error;
 			fr_value_box_list_insert_tail(&dst->vb_group, new);
@@ -6433,15 +6446,35 @@ void fr_value_box_list_mark_safe_for(fr_value_box_list_t *list, fr_value_box_saf
 	}
 }
 
+/** Copy the safety values from one box to another.
+ *
+ */
 void fr_value_box_safety_copy(fr_value_box_t *out, fr_value_box_t const *in)
 {
+	if (out == in) return;
+
 	out->safe_for = in->safe_for;
 	out->tainted = in->tainted;
 	out->secret = in->secret;
 }
 
+/** Copy the safety values from one box to another.
+ *
+ *  But note that we have changed the output format, so we reset the "safe_for" value to NONE.
+ */
+void fr_value_box_safety_copy_changed(fr_value_box_t *out, fr_value_box_t const *in)
+{
+	out->safe_for = FR_VALUE_BOX_SAFE_FOR_NONE;
+	out->tainted = in->tainted;
+	out->secret = in->secret;
+}
+
+/** Merge safety results.
+ */
 void fr_value_box_safety_merge(fr_value_box_t *out, fr_value_box_t const *in)
 {
+	if (out == in) return;
+
 	/*
 	 *	If we're already at no safety, then we don't need to do anything.
 	 *
