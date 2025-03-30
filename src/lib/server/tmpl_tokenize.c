@@ -5829,5 +5829,6 @@ void tmpl_rules_debug(tmpl_rules_t const *rules)
 	FR_FAULT_LOG("\tenumv      = %s", rules->enumv ? rules->enumv->name : "");
 	FR_FAULT_LOG("\tcast       = %s", fr_type_to_str(rules->cast));
 	FR_FAULT_LOG("\tat_runtime = %u", rules->at_runtime);
+	FR_FAULT_LOG("\tliterals_safe_for = %lx", rules->literals_safe_for);
 
 }
