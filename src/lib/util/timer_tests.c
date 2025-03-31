@@ -272,6 +272,8 @@ static void ordered_bad_inserts_test(void)
 	 */
 	ret = fr_timer_in(NULL, tl, &event2, fr_time_delta_from_sec(1), true, timer_cb, &event2_fired);
 	TEST_CHECK(ret == -1);
+
+	talloc_free(tl);
 }
 
 static void nested_test(fr_timer_list_t *tl_outer, fr_timer_list_t *tl_inner)
