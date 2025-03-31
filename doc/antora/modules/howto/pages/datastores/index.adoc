@@ -20,7 +20,7 @@ To set up a datastore, you'll need to install the software, configure the data s
 
 To configure a datastore with FreeRADIUS, you'll need to edit the FreeRADIUS configuration files and enable the relevant modules. This section outlines the supported datastores, how to connect, and implementations. See the following sub-sections for your specific datastore application instructions:
 
-* xref:datastores/ad.adoc[Active Directory]
+* xref:datastores/ad/index.adoc[Active Directory]
 * xref:datastores/ldap.adoc[LDAP]
 * xref:datastores/redis.adoc[Redis]
 * xref:datastores/sql.adoc[SQL]
