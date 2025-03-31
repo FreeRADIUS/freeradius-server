@@ -2,14 +2,16 @@
 
 Microsoft Active Directory (AD) is a directory service that stores and manages user accounts, credentials, and other network resources within a domain. The AD server receives and processes access requests from the FreeRADIUS server. AD provides a centralized location for managing authentications and access by:
 
+The services manage network activities by:
+
 * authenticating users by verifying their identity and credentials, and
-* authorizating resource access to that user by applying policies to restrict access to data.
+* authorizating resource use by applying policies to restrict access to data.
 
 == What is it?
 
 When FreeRADIUS is integrated with Active Directory, the AD server functions as an “authentication oracle.” FreeRADIUS doesn’t store user credentials internally, but instead, passes these credentials to AD for verification.
 
-For PAP and MS-CHAP based authentications, FreeRADIUS uses tools such as Samba, including winbind, and the `ntlm_auth` helper program to communicate with the AD server. 
+For MS-CHAP based authentications, FreeRADIUS uses tools such as Samba, including winbind and the `ntlm_auth` helper program to communicate with the AD server. 
 
 === FreeRADIUS Active Directory Authentication Process
 

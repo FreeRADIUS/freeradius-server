@@ -1,28 +1,11 @@
-= Integrating with Active Directory (AD)
+== Configuring Authentication with Active Directory (AD)
 
-The main steps to integrate FreeRADIUS authentication with Active Directory are:
+Once the PAP authentication test has been successful, the next step for sites using Active Directory is to configure the system to perform user authentication against Active Directory. The clear-text passwords are unavailable through Active Directory, so we have to use Samba, and the ntlm_auth helper program. In this configuration, we are using Active Directory as an authentication oracle, and not as an LDAP database.
 
-. Install and configure Samba by editing the `smb.conf` file.
-. Configure FreeRADIUS by editing the relevent modules such as `ntlm_auth` and  ms-chap.
-. Join the FreeRADIUS server to the Active Directory domain.
-. Configure Samba to authenticate against Active Directory and test authentications using `winbind` and `ntlm`.
-. Configure FreeRADIUS to use the `ntlm_auth` module for authentication.
+Using ntlm_auth for PAP authentication may not work on recent versions of Samba and Active Directory. If so, just skip to the next section.
 
-After the PAP authentication has been successful, the next step for sites using Active Directory is to configure the system to perform user authentication against Active Directory. The clear-text passwords are unavailable through Active Directory, so we use Samba, and the `ntlm_auth` helper program. In this configuration, we are using Active Directory as an authentication oracle, and not as an LDAP database.
+Once Samba has been installed on your system, you should edit the smb.conf file, and configure the [global] section to point to your NT server, including hostname and NT domain.
 
-Samba uses the SMB protocol along with the winbind module to authenticate users against Active Directory. Users are verified using either the PAP or MS-CHAP authentication methods.
-
-Using `ntlm_auth` for PAP authentication may not work on recent versions of Samba and Active Directory. If you have this issue, proceed to the xref:datastores/ad/configure_ntlm_mschap.adoc[Configuring ntlm] section.
-
-== Configuring Samba
-
-Once Samba has been installed on your system, edit the `smb.conf` file, and update the [global] section to point to your NT server, including hostname and NT domain.
-
-=== Configure `/opt/samba/etc/smb.conf` file
-
-The example snippet shown below needs to be modified with your site parameters which includes updating the workgroup, security, and realm fields.
-
-```
 # workgroup = NT-Domain-Name
    workgroup = MYDOMAIN
 ...
@@ -33,64 +16,74 @@ The example snippet shown below needs to be modified with your site parameters w
    password server = nt-server-hostname.company.com
 ...
    realm = realm.company.com
-```
+For Samba 4, you also have to set the ntlm authconfiguration variable. It should be set to either yes, or to mschapv2-and-ntlmv2-only. This configuration needs to be set all participating Samba members, and also on (Samba4) AD-DC servers.
 
-Next, update the ntlm authconfiguration variable for Samba 4 to set the authentication protocol used between the FreeRADIUS and AD servers. This variable can be set to either `yes` or to `mschapv2-and-ntlmv2-only`. This configuration needs to be added to all participating Samba members, and also on (Samba4) AD Domain Controller (DC) servers.
-```
    ntlm auth = mschapv2-and-ntlmv2-only
 ...
-```
-=== Configure `/etc/krb5.conf` file
+You may also have to edit the /etc/krb5.conf file, to add an entry that points to the Active Directory Server. This is often not necessary, as Samba can just "figure it out" when Active Directory is also the main DNS server.
 
-Edit the `/etc/krb5.conf` file by adding an entry to point to the AD server.
-
-```
 [realms]
 ...
 realm.company.com = {
       kdc = nt-server-hostname.company.com
 }
 ...
-```
 
-If the Active Directory server is also the main DNS server, this previous step isn't necessary. Samba resolves the name from a local dns lookup and therefore may require setting `libdefaults` in the `/etc/krb5.conf` file:
+== Start the Samba and Kerberos servers, and as root join the domain:
 
-```
-[libdefaults]
-        default_realm = realm.company.com
-        dns_lookup_realm = false
-        dns_lookup_kdc = true
-```
-
-After all file updates are complete, start the Samba and Kerberos servers.
-
-== Join the domain as root:
-
-From a terminal window on the FreeRADIUS server, enter the command:
-
-`$ net join -U Administrator`
-
+$ net join -U Administrator
 Enter the administrator password at the prompt.
 
-== Verify user authentication
+Next, verify that a user in the domain can be authenticated:
 
-Authentication must be achieved using the `wbinfo` tool before FreeRADIUS will
-be able to successfully authenticate users performing a MS-CHAPv2 based method.
-
-.Example winbind
-```
 $ wbinfo -a user%password
-```
+You should see a number of lines of text, followed by authentication succeeded. The next step is to try the same login with the ntlm_auth program, which is what FreeRADIUS will be using:
 
-If authentication using winbind works, you'll see a number of lines of text, followed by an authentication succeeded message.
 
-The next step is to try the same login with the ntlm_auth program, which is what FreeRADIUS will be using:
-
-.Example ntlm_auth
-```
 $ ntlm_auth --request-nt-key --domain=MYDOMAIN --username=user --password=password
-```
+If all goes well, you should see authentication succeeding (NT_STATUS_OK). You may also see the NT_KEY output, which is needed in order for FreeRADIUS to perform MS-CHAP authentication.
 
-If authentication using `ntlm` works, you'll see authentication succeeding (NT_STATUS_OK). You may also see the `NT_KEY` output, which is needed in order for FreeRADIUS to perform MS-CHAP authentication.
+== Configuring FreeRADIUS to use ntlm_auth
+Once you have verified that Samba is installed and working correctly, and that the ntlm_auth program works, you can proceed with configuring FreeRADIUS to use ntlm_auth. For initial testing, we will be using the exec module, and will run the exact command line used above.
 
-Your next step is to configure FreeRADIUS to use xref:datastores/ad/ntlm_mschap.adoc[ntlm with MS-CHAP] to perform all user authentications.
+Create or edit the ntlm_auth module configuration. In version 2, this file should be saved as raddb/modules/ntlm_auth. In version 3, it should be saved as raddb/mods-enabled/ntlm_auth. The contents of the file are below, with the fields to edit in bold.
+
+        exec ntlm_auth {
+                wait = yes
+                program = "/path/to/ntlm_auth --request-nt-key --domain=MYDOMAIN --username=%{mschap:User-Name} --password=%{User-Password}"
+        }
+This configuration tells the server to run the ntlm_auth program with the user name and password obtained from the Access-Request. You will also have to list ntlm_auth in the authenticate sections of each the raddb/sites-enabled/default file, and of the raddb/sites-enabled/inner-tunnel file:
+
+authenticate {
+        ...
+        ntlm_auth
+        ...
+}
+and add the following text for testing purposes only to the top of the users file. In version 3, the "users" file has moved to raddb/mods-config/files/authorize.
+
+DEFAULT     Auth-Type = ntlm_auth
+This configuration says "for all users, if the authenticate method has not been set, set it to use the ntlm_auth program".
+
+Start the server using radiusd -X, and wait for the debugging text to stop scrolling by. If all goes well, you should see the following text:
+
+Ready to process requests.
+In another terminal window on the same machine, type the following command:
+
+$ radtest user password localhost 0 testing123
+If all goes well, you should see the server returning an Access-Accept message, and the window with radtest should print text similar to the following:
+
+rad_recv: Access-Accept packet from host 127.0.0.1 port 1812, length=20
+This text means that authentication succeeded. A few lines above this text, the debug output will also show the exact command line used to run ntlm_auth.
+
+== Configuring FreeRADIUS to use ntlm_auth for MS-CHAP
+Once you have the previous steps working, configuring FreeRADIUS to use ntlm_auth for MS-CHAP is simple. First, delete the testing entry used above from the users file, as leaving it in will break other authentication types. Then, find the mschap module in raddb/modules/mschap file, and look for the line containing ntlm_auth = . It is commented out by default, and should be uncommented, and edited to be as follows. As before, update the fields in bold to match your local configuration.
+
+ntlm_auth = "/path/to/ntlm_auth --request-nt-key --allow-mschapv2 --username=%{mschap:User-Name:-None} --domain=%{%{mschap:NT-Domain}:-MYDOMAIN} --challenge=%{mschap:Challenge:-00} --nt-response=%{mschap:NT-Response:-00}"
+Start the server and use radtest to send an MS-CHAP authentication request. You will need to have version 2.1.10 or later for this to work:
+
+$ radtest -t mschap bob hello localhost 0 testing123
+If everything goes well, you should see the server returning an Access-Accept message as above.
+
+If it does not work, double-check the password you entered on the supplicant against the password in Active Directory. If it still does not work, it might be a bug in Samba. Change your version of Samba, either by installing a fixed version, or by repeatedly down-grading it (and testing) until it works.
+
+If it does not work, then it is possible to test authentication with just the ntlm_auth command-line. Look at the FreeRADIUS debug output, and see the arguments passed to ntlm_auth. Copy and paste them to a command-line, and then use that command line for testing. This limited test is often simpler and faster than running a complex test with a full RADIUS server. When this limited test passes, then authentication with FreeRADIUS will work, too.
