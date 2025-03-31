@@ -766,6 +766,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	    (strcmp(ldap_url->lud_attrs[0], "*") == 0) || ldap_url->lud_attrs[1]) {
 		REDEBUG("Bad attributes list in LDAP URL. URL must specify exactly one attribute to retrieve");
 		ldap_free_urldesc(ldap_url);
+		return XLAT_ACTION_FAIL;
 	}
 
 	query = fr_ldap_search_alloc(unlang_interpret_frame_talloc_ctx(request),
