@@ -1,0 +1,82 @@
+= Active Directory (AD)
+
+Active Directory (AD) is a database and set of services that facilitates user access to network resources necessary for work.  The database (or directory) stores essential information about the environment, including user and computer details and access permissions.
+
+The services manage network activities by:
+
+* ensuring authentication by verifying user identity and credentials, and
+* authorization of resource use by restricting access to data.
+
+== What is it?
+
+When FreeRADIUS is integrated with Active Directory (AD), it functions as an “authentication oracle.” In this scenario, FreeRADIUS doesn’t store user credentials internally. Instead, it passes these credentials to AD for verification. For Microsoft-CHAP authentication, FreeRADIUS utilizes tools such as Samba and ntlm_auth. 
+
+=== FreeRADIUS Active Directory Authentication Process
+
+The authentication process flow of steps to authenticate radius clients is as follows:
+
+. FreeRADIUS receives a user name and a password with an MS-CHAP data wrapper
+. FreeRADIUS passes this information to Samba and asks for verification
+. Samba passes this information to Active Directory and asks for verification
+. Active Directory retrieves the stored password (in NT hash format) for that user
+. Active Directory applies MS-CHAP to the stored password
+. Active Directory compares the MS-CHAP data of the stored password against the submitted password and decides on access
+. Active Directory provides access information to Samba
+. Samba passes that access information to FreeRADIUS
+. FreeRADIUS provides access to the user
+
+== How to connect
+
+Some deployments use Active Directory services to use in mschap based authentications. The RADIUS server must alreay be up and running and basic authentication works (pap/chap). For a freeRADIUS server to fully leverage the AD server and relevant services, the RADIUS server must first be configured and then joined to the domain (or samba realm).
+
+Ensure the server is added to AD with net ads join.
+
+Add to the [global] section:
+ntlm auth = mschapv2-and-ntlmv2-only
+
+You need to configure Freeradius to use mschapv2 with ntlmv1 disabled globally by setting this in /mods-available/mschap:
+
+mschap {
+````
+.....
+
+ntlm_auth = "/path/to/ntlm_auth --allow-mschapv2 --request-nt-key
+--username=%{mschap:User-Name} --domain=WINDOWSDOMAIN
+--challenge=%{%{mschap:Challenge}:-00}
+--nt-response=%{%{mschap:NT-Response}:-00}"
+````
+OR using winbind
+````
+winbind_username = "%{mschap:User-Name}"
+winbind_domain = "%{mschap:NT-Domain}"}
+.....
+````
+
+The former should work without modification to freeradius, the latter requires freeradius to be built with winbind auth. For example: on Centos you will have to rebuild the rpm and add the winbind libraries to the ./configure path.
+
+This is all that is required to change from the "standard", well documented freeradius/AD integration for the integration.
+
+=== Testing
+
+If everything works as intended, you should see in the AD Domain Controller audit log something like this:
+
+{"timestamp": "some-date0", "type": "Authentication", "Authentication":
+{"version": {"major": 1, "minor": 0}, "status": "NT_STATUS_OK",
+"localAddress": "ipv4:xxx.xxx.xxx.xxx", "remoteAddress":
+"ipv4:xxx.xxx.xxx.xxx:58046", "serviceDescription": "SamLogon",
+"authDescription": "network", "clientDomain": "WINDOWSDOMAIN",
+"clientAccount": "some-user", "workstation": "\\\\SOME-HOST",
+"becameAccount": "some-user", "becameDomain": "WINDOWSDOMAIN",
+"becameSid": "SOME-SID", "mappedAccount": "some-user", "mappedDomain":
+"WINDOWSDOMAIN", "netlogonComputer": "SOME-HOST",
+"netlogonTrustAccount": "SOME-HOST$", "netlogonNegotiateFlags":
+"0x610FFFFF", "netlogonSecureChannelType": 2, "netlogonTrustAccountSid":
+"somesid, *"passwordType": "MSCHAPv2"*}}
+
+Without the "--allow-mschapv2" setting, you would see "passwordType":"NTLMv1"
+
+== Why use AD
+
+Active Directory serves as a centralized repository for user accounts and security policies, streamlining user management and access rights across the network. By integrating with AD, FreeRADIUS can leverage its robust security features, such as access control lists (ACLs), encryption, and auditing capabilities, to safeguard sensitive data and resources. FreeRADIUS is configured to authenticate users against Active Directory, ensuring that only authorized users gain access to network resources.
+
+== xref:active_directory.adoc[Setting up an AD Datastore]

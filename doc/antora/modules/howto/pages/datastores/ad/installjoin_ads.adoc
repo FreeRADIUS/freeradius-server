@@ -1,0 +1,152 @@
+= Join FreeRADIUS to AD Domain
+
+Some deployments use Active Directory services to use in mschap based authentications. The RADIUS server must alreay be up and running and basic authentication works (pap/chap). For a freeRADIUS server to fully leverage the AD server and relevant services, the RADIUS server must first be configured and then joined to the domain (or samba realm).
+
+
+ == Configuration of variables
+
+   Requires the following variables to be set by the including template:
+
+     - orch_minion: First orchestrator minion
+     - orch: Hostname of the orchestrator
+     - orch_fqdn: FQDN of the orchestrator
+     - host_exam: Example RADIUS authentication server hostname
+     - netbios_exam: Example netbios name for auth server host
+     - realm: Samba realm
+     - workgroup: Samba workgroup
+     - domains: List of domains mapping to the Kerberos realm
+     - dcs: List of AD domain controllers
+     - preferred: A preferred domain controller.
+                  Default: No preference ("password server = *")
+     - admin: DC acting as the Kerberos master. Default: First entry in dcs.
+     - join_user: User privileged to perform domain joins. Optional.
+     - join_server: DC to use for the join operation. Optional.
+
+
+== Install packages for AD integration
+
+{%- if g[orch_minion]['os_family'] == 'RedHat' %}
+{%-   set pkg = 'rpm' %}
+{%- elif g[orch_minion]['os_family'] == 'Debian' %}
+{%-   set pkg = 'deb' %}
+{%- endif %}
+
+{%- if admin is not defined or admin == '' %}
+{%-   set admin = dcs[0] %}
+{%- endif %}
+
+{%- if join_user is not defined or join_user == '' %}
+{%-   set join_user = '[ privileged user ]' %}
+{%- endif %}
+
+{%- set join_server_opt = '-S ' ~ join_server if join_server is defined else '' %}
+
+
+== Domain membership for MS-CHAPv2 based authentication
+
+A prerequisite for authenticating domain users via MS-CHAPv2 is that the RADIUS
+authentication servers have been successfully joined to the domain and winbind
+configured.
+
+[NOTE]
+====
+Establishing and maintaining each host's domain membership is the
+responsibility of the customer, so only an outline process is provided here.
+Configuration varies between organisations and over time, so an organisation's
+domain administrator should be consulted for details.
+====
+
+Perform the following manual steps on each authentication server...
+
+=== Install winbind as follows:
+
+{% if pkg == 'deb' %}
+    {{ host_exam }}# apt-get install -y samba winbind krb5-user
+{% elif pkg == 'rpm' %}
+    {{ host_exam }}# yum install -y samba-winbind krb5-workstation
+{% else %}
+{%-   set error = 'No instructions for this OS' + (0/0)|string %}
+{% endif %}
+
+== Configure `/etc/krb5.conf` as follows:
+
+```
+[libdefaults]
+        default_realm = {{ realm }}
+        dns_lookup_realm = false
+        dns_lookup_kdc = true
+
+[realms]
+        {{ realm }} = {
+{%- for d in dcs %}
+                kdc = {{ d }}
+{%- endfor %}
+                admin_server = {{ admin }}
+        }
+
+[domain_realm]
+{%- for d in domains %}
+        .{{ d }} = {{ realm }}
+        {{ d }} = {{ realm }}
+{%- endfor %}
+```
+
+=== Configure `/etc/samba/smb.conf` as follows:
+
+```
+[global]
+   netbios name = {{ netbios_exam }}
+   workgroup = {{ workgroup }}
+   server string = RADIUS server
+   dns proxy = no
+   security = ads
+   invalid users = root
+   unix password sync = no
+   pam password change = no
+
+   socket options = TCP_NODELAY
+   idmap uid = 16777216-33554431
+   idmap gid = 16777216-33554431
+   template shell = /bin/sh
+
+   winbind use default domain = no
+   winbind max domain connections = 10
+   winbind max clients = 1000
+{%- if preferred is defined %}
+   password server = {{ preferred }}, *
+{%- else %}
+   password server = *
+{%- endif %}
+   allow trusted domains = no
+   realm = {{ realm }}
+```
+
+== Join the host to the domain:
+
+    radius-auth1# net ads join -U {{ join_user }} {{ join_server_opt }}
+
+[NOTE]
+====
+ It is normal to receive an error message about failure to update DNS.
+====
+
+== Restart the winbind service:
+
+    radius-auth1# systemctl stop winbind
+    radius-auth1# systemctl start winbind
+
+A description of how to test and troubleshoot winbind is provided in the
+[Operations and troubleshooting guide](/doc/html/ops/operations.html) document.
+
+Authentication must be achieved using the `wbinfo` tool before FreeRADIUS will
+be able to successfully authenticate users performing a MS-CHAPv2 based method.
+
+If there are going to be password changes with freeradius ("your password has expired" - type - scenarios) You should probably also configure in /mods-available/mschap:
+
+passchange {
+ntlm_auth = "/path/to/ntlm_auth
+--helper-protocol=ntlm-change-password-1 --allow-mschapv2
+ntlm_auth_username = "username: %{mschap:User-Name}
+ntlm_auth_domain = "nt-domain: %{mschap:NT-Domain}"
+With the settings above it works correctly, so even if it is unnecessary, it doesn't break anything. It hasn't been tested without this option while denying ntlmv1 overall on the AD DC, but it is thought that it will work without it.
+

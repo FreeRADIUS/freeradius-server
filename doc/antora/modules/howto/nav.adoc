@@ -57,7 +57,8 @@
 **** xref:modules/sqlippool/insert.adoc[Inserting IPs into SQL]
 
 ** xref:datastores/index.adoc[Setting up Datastores]
-*** xref:datastores/ad.adoc[Active Directory]
+*** xref:datastores/ad/index.adoc[Active Directory]
+**** xref:datastores/ad/active_directory.adoc[Configure AD]
 *** xref:datastores/ldap.adoc[LDAP]
 *** xref:datastores/redis.adoc[Redis]
 *** xref:datastores/sql.adoc[SQL]
