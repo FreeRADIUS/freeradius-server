@@ -57,7 +57,10 @@
 **** xref:modules/sqlippool/insert.adoc[Inserting IPs into SQL]
 
 ** xref:datastores/index.adoc[Setting up Datastores]
-*** xref:datastores/ad.adoc[Active Directory]
+*** xref:datastores/ad/index.adoc[Active Directory]
+**** xref:datastores/ad/samba.adoc[Using Samba]
+**** xref:datastores/ad/ntlm_mschap.adoc[Configuring ntlm]
+**** xref:datastores/ad/winbind.adoc[Installing Winbind]
 *** xref:datastores/ldap.adoc[LDAP]
 *** xref:datastores/redis.adoc[Redis]
 *** xref:datastores/sql.adoc[SQL]
