@@ -6316,6 +6316,7 @@ void fr_value_box_list_taint(fr_value_box_list_t *head)
 
 	while ((vb = fr_value_box_list_next(head, vb))) {
 		if (fr_type_is_group(vb->type)) fr_value_box_list_taint(&vb->vb_group);
+		fr_value_box_mark_unsafe(vb);
 		vb->tainted = true;
 	}
 }

@@ -1,0 +1,45 @@
+#
+#  PRE: if
+#
+ipv4prefix prefix
+
+prefix = "192.0.2/24"
+
+if (%file.escape(%taint("../foobar")) != "_x2e_x2e_x2ffoobar") {
+	test_fail
+}
+
+if (%file.escape(%taint("./foobar")) != "_x2e_x2ffoobar") {
+	test_fail
+}
+
+if (%file.escape("foobar") != "foobar") {
+	test_fail
+}
+
+#
+#  / in mask
+#
+if %file.escape(prefix) != "192.0.2.0_x2f24" {
+	test_fail
+}
+
+#
+#  This file doesn't exist, and we should not succeed in deleting it.
+#
+if %file.rm("${confdir}/.nosuchfile") {
+	test_fail
+}
+
+if %file.escape("${confdir}") != "src/tests/keywords/" {
+	test_fail
+}
+
+#
+#  @todo -this fails due to API issues.  It outputs src_x2ftests_x2fkeywords_x2f_x2ffoo :(
+#
+#if %file.safe("${confdir}" + %taint('/foo')) != "src/tests/keywords/_x2ffoo" {
+#	test_fail
+#}
+
+success

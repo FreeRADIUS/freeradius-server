@@ -344,119 +344,114 @@ static const fr_sbuff_escape_rules_t xlat_filename_escape_dots = {
 	},
 };
 
-/** Escape the paths as necessary
- *
- *  @todo - just use an escape function which can escape individual arguments.
- */
-static ssize_t xlat_file_escape_path(fr_sbuff_t *in, fr_value_box_t *vb)
+#define FR_FILENAME_SAFE_FOR ((uintptr_t) filename_xlat_escape)
+
+static int CC_HINT(nonnull(2,3)) filename_xlat_escape(UNUSED request_t *request, fr_value_box_t *vb, UNUSED void *uctx)
 {
-	fr_sbuff_t our_in = FR_SBUFF(in);
-	fr_sbuff_t out;
-	char buffer[256];
+	fr_sbuff_t			*out = NULL;
+	fr_value_box_entry_t		entry;
 
-	if (vb->type == FR_TYPE_GROUP) {
-		fr_value_box_list_foreach(&vb->vb_group, box) {
-			if (xlat_file_escape_path(&our_in, box) < 0) return -1;
-		}
-
-		goto done;
-	}
-
-	fr_assert(fr_type_is_leaf(vb->type));
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&out, 256, 4096);
 
 	/*
-	 *	Untainted values get passed through, as do base integer types.
-	 */
-	if (!vb->tainted || (vb->type == FR_TYPE_OCTETS) || fr_type_is_integer(vb->type)) {
-		fr_value_box_print(&our_in, vb, NULL);
-		goto done;
-	}
-
-	/*
-	 *	If the tainted string has a leading '.', then escape _all_ periods in it.  This is so that we
-	 *	don't accidentally allow a "safe" value to end with '/', and then an "unsafe" value contains
-	 *	"..", and we now have a directory traversal attack.
+	 *	Integers are just numbers, so they don't need to be escaped.
 	 *
-	 *	The escape rules will escape '/' in unsafe strings, so there's no possibility for an unsafe
-	 *	string to either end with a '/', or to contain "/.." itself.
+	 *	Except that FR_TYPE_INTEGER includes 'date' and 'time_delta', which is annoying.
 	 *
-	 *	Allowing '.' in the middle of the string means we can have filenames based on realms, such as
-	 *	"log/aland@freeradius.org".
+	 *	'octets' get printed as hex, so they don't need to be escaped.
 	 */
-	if (vb->type == FR_TYPE_STRING) {
-		if (vb->vb_length == 0) goto done;
+	switch (vb->type) {
+	case FR_TYPE_BOOL:
+	case FR_TYPE_UINT8:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
+	case FR_TYPE_INT8:
+	case FR_TYPE_INT16:
+	case FR_TYPE_INT32:
+	case FR_TYPE_INT64:
+	case FR_TYPE_SIZE:
+	case FR_TYPE_OCTETS:
+		return 0;
 
+	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_NULL:
+	case FR_TYPE_VALUE_BOX:
+	case FR_TYPE_VOID:
+	case FR_TYPE_MAX:
+		fr_assert(0);
+		return -1;
+
+	case FR_TYPE_DATE:
+	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_FLOAT32:
+	case FR_TYPE_FLOAT64:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+		/*
+		 *	Printing prefixes etc. does NOT result in the escape function being called!  So
+		 *	instead, we cast the results to a string, and then escape the string.
+		 */
+		if (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0) return -1;
+
+		fr_value_box_print(out, vb, &xlat_filename_escape);
+		break;
+
+	case FR_TYPE_STRING:
+		/*
+		 *	Note that we set ".always_escape" in the function arguments, so that we get called for
+		 *	IP addresses.  Otherwise, the xlat evaluator and/or the list_concat_as_string
+		 *	functions won't call us.  And the expansion will return IP addresses with '/' in them.
+		 *	Which is not what we want.
+		 */
+		if (fr_value_box_is_safe_for(vb, FR_FILENAME_SAFE_FOR)) return 1;
+
+		/*
+		 *	If the tainted string has a leading '.', then escape _all_ periods in it.  This is so that we
+		 *	don't accidentally allow a "safe" value to end with '/', and then an "unsafe" value contains
+		 *	"..", and we now have a directory traversal attack.
+		 *
+		 *	The escape rules will escape '/' in unsafe strings, so there's no possibility for an unsafe
+		 *	string to either end with a '/', or to contain "/.." itself.
+		 *
+		 *	Allowing '.' in the middle of the string means we can have filenames based on realms, such as
+		 *	"log/aland@freeradius.org".
+		 */
 		if (vb->vb_strvalue[0] == '.') {
-			fr_value_box_print(&our_in, vb, &xlat_filename_escape_dots);
+			fr_value_box_print(out, vb, &xlat_filename_escape_dots);
 		} else {
-			fr_value_box_print(&our_in, vb, &xlat_filename_escape);
+			fr_value_box_print(out, vb, &xlat_filename_escape);
 		}
-		goto  done;
+
+		break;
 	}
 
-	/*
-	 *	Ethernet addresses have ':'.  IP prefixes have '/'.  Floats have '+' and '-' in them.
-	 *	Dates have pretty much all of that, plus spaces.
-	 *
-	 *	Lesson: print dates as %Y() or %l().
-	 *
-	 *	We use an intermediate buffer to print the type, and then copy it to the output
-	 *	buffer, escaping it along the way.
-	 */
-	out = FR_SBUFF_OUT(buffer, sizeof(buffer));
-	fr_value_box_print(&out, vb, NULL);
-	fr_sbuff_in_escape(&our_in, fr_sbuff_start(&out), fr_sbuff_used(&out), &xlat_filename_escape);
+	entry = vb->entry;
+	fr_value_box_clear(vb);
+	(void) fr_value_box_bstrndup(vb, vb, NULL, fr_sbuff_start(out), fr_sbuff_used(out), false);
+	vb->entry = entry;
 
-done:
-	FR_SBUFF_SET_RETURN(in, &our_in);
-}
-
-static const char *xlat_file_name(fr_value_box_t *vb)
-{
-	fr_sbuff_t	*path;
-
-	FR_SBUFF_TALLOC_THREAD_LOCAL(&path, 256, PATH_MAX + 1);
-
-	if (xlat_file_escape_path(path, vb) < 0) return NULL;
-
-	if (fr_sbuff_in_char(path, '\0') < 0) return NULL; /* file functions take NUL delimited strings */
-
-	return fr_sbuff_start(path);
+	return 0;
 }
 
 static xlat_arg_parser_t const xlat_func_file_name_args[] = {
-	{ .required = true, .type = FR_TYPE_STRING },
+	{ .required = true,  .concat = true, .type = FR_TYPE_STRING,
+	  .func = filename_xlat_escape, .safe_for = FR_FILENAME_SAFE_FOR, .always_escape = true },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
 static xlat_arg_parser_t const xlat_func_file_name_count_args[] = {
-	{ .required = true, .type = FR_TYPE_STRING },
+	{ .required = true,  .concat = true, .type = FR_TYPE_STRING,
+	  .func = filename_xlat_escape, .safe_for = FR_FILENAME_SAFE_FOR, .always_escape = true },
 	{ .required = false, .type = FR_TYPE_UINT32 },
 	XLAT_ARG_PARSER_TERMINATOR
 };
-
-
-static xlat_action_t xlat_func_file_escape(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					   UNUSED xlat_ctx_t const *xctx,
-					   UNUSED request_t *request, fr_value_box_list_t *args)
-{
-	fr_value_box_t *dst, *vb;
-	char const	*filename;
-
-	XLAT_ARGS(args, &vb);
-	filename = xlat_file_name(vb);
-	if (!filename) return XLAT_ACTION_FAIL;
-
-	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
-	if (fr_value_box_bstrndup(dst, dst, NULL, filename, strlen(filename), false) < 0) {
-		talloc_free(dst);
-		return XLAT_ACTION_FAIL;
-	}
-
-	fr_dcursor_append(out, dst);
-
-	return XLAT_ACTION_DONE;
-}
 
 
 static xlat_action_t xlat_func_file_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
@@ -468,8 +463,8 @@ static xlat_action_t xlat_func_file_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	struct stat	buf;
 
 	XLAT_ARGS(args, &vb);
-	filename = xlat_file_name(vb);
-	if (!filename) return XLAT_ACTION_FAIL;
+	fr_assert(vb->type == FR_TYPE_STRING);
+	filename = vb->vb_strvalue;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
@@ -482,7 +477,7 @@ static xlat_action_t xlat_func_file_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 static xlat_action_t xlat_func_file_head(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 UNUSED xlat_ctx_t const *xctx,
-					 request_t *request, fr_value_box_list_t *in)
+					 request_t *request, fr_value_box_list_t *args)
 {
 	fr_value_box_t *dst, *vb;
 	char const	*filename;
@@ -490,9 +485,9 @@ static xlat_action_t xlat_func_file_head(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	int		fd;
 	char		*p, buffer[256];
 
-	XLAT_ARGS(in, &vb);
-	filename = xlat_file_name(vb);
-	if (!filename) return XLAT_ACTION_FAIL;
+	XLAT_ARGS(args, &vb);
+	fr_assert(vb->type == FR_TYPE_STRING);
+	filename = vb->vb_strvalue;
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
@@ -540,15 +535,15 @@ static xlat_action_t xlat_func_file_head(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 static xlat_action_t xlat_func_file_size(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
-					   request_t *request, fr_value_box_list_t *in)
+					   request_t *request, fr_value_box_list_t *args)
 {
 	fr_value_box_t *dst, *vb;
 	char const	*filename;
 	struct stat	buf;
 
-	XLAT_ARGS(in, &vb);
-	filename = xlat_file_name(vb);
-	if (!filename) return XLAT_ACTION_FAIL;
+	XLAT_ARGS(args, &vb);
+	fr_assert(vb->type == FR_TYPE_STRING);
+	filename = vb->vb_strvalue;
 
 	if (stat(filename, &buf) < 0) {
 		REDEBUG3("Failed checking file %s - %s", filename, fr_syserror(errno));
@@ -566,20 +561,19 @@ static xlat_action_t xlat_func_file_size(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 static xlat_action_t xlat_func_file_tail(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 UNUSED xlat_ctx_t const *xctx,
-					 request_t *request, fr_value_box_list_t *in)
+					 request_t *request, fr_value_box_list_t *args)
 {
 	fr_value_box_t *dst, *vb, *num = NULL;
 	char const	*filename;
 	ssize_t		len;
-	size_t		count = 0;
 	off_t		offset;
 	int		fd;
-	int		n, r, stop = 2;
+	int		crlf, stop = 1;
 	char		*p, *end, *found, buffer[256];
 
-	XLAT_ARGS(in, &vb, &num);
-	filename = xlat_file_name(vb);
-	if (!filename) return XLAT_ACTION_FAIL;
+	XLAT_ARGS(args, &vb, &num);
+	fr_assert(vb->type == FR_TYPE_STRING);
+	filename = vb->vb_strvalue;
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
@@ -611,13 +605,15 @@ static xlat_action_t xlat_func_file_tail(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		close(fd);
 		return XLAT_ACTION_FAIL;
 	}
+	close(fd);
 
-	if (len == 0) {
-		found = buffer;	/* count is zero, so who cares */
-		goto done;
-	}
+	found = buffer;
+	end = buffer + len;
 
-	n = r = 0;		/* be agnostic over CR / LF */
+	/*
+	 *	No data, OR just one CR / LF, we print it all out.
+	 */
+	if (len <= 1) goto done;
 
 	/*
 	 *	Clamp number of lines to a reasonable value.  They
@@ -633,65 +629,108 @@ static xlat_action_t xlat_func_file_tail(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_assert(num->type == FR_TYPE_UINT32);
 
 		if (!num->vb_uint32) {
-			stop = 2;
-		} else if (num->vb_uint32 < 15) {
-			stop = num->vb_uint64 + 1;
+			stop = 1;
+
+		} else if (num->vb_uint32 <= 16) {
+			stop = num->vb_uint64;
+
 		} else {
 			stop = 16;
 		}
 	} else {
-		stop = 2;
+		stop = 1;
 	}
 
-	end = NULL;
-	found = NULL;
+	p = end - 1;
+	crlf = 0;
 
 	/*
-	 *	Nuke any trailing CR/LF
+	 *	Skip any trailing CRLF first.
 	 */
-	p = buffer + len - 1;
-	while (p >= buffer) {
-		if (*p == '\r') {
-			r++;
-
-			if (r == stop) break;
-
-			if (!end) end = p;
-
-		} else if (*p == '\n') {
-			n++;
-
-			if (n == stop) break;
-
-			if (!end) end = p;
-
-		} else {
-			if (!r) r++; /* if we didn't get a CR/LF at EOF, pretend we did */
-			if (!n) n++;
-
-			found = p;
+	while (p > buffer) {
+		/*
+		 *	Could be CRLF, or just LF.
+		 */
+		if (*p == '\n') {
+			end = p;
+			p--;
+			if (p == buffer) {
+				goto done;
+			}
+			if (*p >= ' ') {
+				break;
+			}
 		}
 
-		p--;
+		if (*p == '\r') {
+			end = p;
+			p--;
+			break;
+		}
+
+		/*
+		 *	We've found CR, LF, or CRLF.  The previous
+		 *	thing is either raw text, or is another CR/LF.
+		 */
+		break;
 	}
 
-	if (!end) end = buffer + len;
+	found = p;
 
-	/*
-	 *	The buffer was only one line of CR/LF.
-	 */
-	if (!found) {
-		found = buffer;
-		goto done;
+	while (p > buffer) {
+		crlf++;
+
+		/*
+		 *	If the current line is empty, we can stop.
+		 */
+		if ((crlf == stop) && (*found < ' ')) {
+			found++;
+			goto done;
+		}
+
+		while (*p >= ' ') {
+			found = p;
+			p--;
+			if (p == buffer) {
+				found = buffer;
+				goto done;
+			}
+		}
+		if (crlf == stop) {
+			break;
+		}
+
+		/*
+		 *	Check again for CRLF.
+		 */
+		if (*p == '\n') {
+			p--;
+			if (p == buffer) {
+				break;
+			}
+			if (*p >= ' ') {
+				continue;
+			}
+		}
+
+		if (*p == '\r') {
+			p--;
+			if (p == buffer) {
+				break;
+			}
+			continue;
+		}
 	}
-
-	count = (end - found);
 
 done:
-	close(fd);
+
+	/*
+	 *	@todo - return a _list_ of value-boxes, one for each line in the file.
+	 *	Which means chopping off each CRLF in the file
+	 */
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
-	if (fr_value_box_bstrndup(dst, dst, NULL, found, count, false) < 0) {
+	if (fr_value_box_bstrndup(dst, dst, NULL, found, (size_t) (end - found), false) < 0) {
 		talloc_free(dst);
 		return XLAT_ACTION_FAIL;
 	}
@@ -704,14 +743,14 @@ done:
 
 static xlat_action_t xlat_func_file_rm(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
-					   request_t *request, fr_value_box_list_t *in)
+					   request_t *request, fr_value_box_list_t *args)
 {
 	fr_value_box_t *dst, *vb;
 	char const	*filename;
 
-	XLAT_ARGS(in, &vb);
-	filename = xlat_file_name(vb);
-	if (!filename) return XLAT_ACTION_FAIL;
+	XLAT_ARGS(args, &vb);
+	fr_assert(vb->type == FR_TYPE_STRING);
+	filename = vb->vb_strvalue;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	fr_dcursor_append(out, dst);
@@ -4225,7 +4264,7 @@ do { \
 	XLAT_REGISTER_ARGS("cast", xlat_func_cast, FR_TYPE_VOID, xlat_func_cast_args);
 	XLAT_REGISTER_ARGS("concat", xlat_func_concat, FR_TYPE_STRING, xlat_func_concat_args);
 	XLAT_REGISTER_ARGS("explode", xlat_func_explode, FR_TYPE_STRING, xlat_func_explode_args);
-	XLAT_REGISTER_ARGS("file.escape", xlat_func_file_escape, FR_TYPE_STRING, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.escape", xlat_transparent, FR_TYPE_STRING, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("hmacmd5", xlat_func_hmac_md5, FR_TYPE_OCTETS, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("hmacsha1", xlat_func_hmac_sha1, FR_TYPE_OCTETS, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("integer", xlat_func_integer, FR_TYPE_VOID, xlat_func_integer_args);
