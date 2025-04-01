@@ -405,7 +405,7 @@ static size_t ldap_uri_scheme_table_len = NUM_ELEMENTS(ldap_uri_scheme_table);
 #define LDAP_URI_SAFE_FOR (fr_value_box_safe_for_t)fr_ldap_uri_escape_func
 
 static xlat_arg_parser_t const ldap_uri_escape_xlat_arg[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING, .safe_for = LDAP_URI_SAFE_FOR },
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -432,7 +432,7 @@ static xlat_action_t ldap_uri_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	If it's already safe, just copy it over.
 	 */
-	if (fr_value_box_is_safe_for(in_vb, LDAP_URI_SAFE_FOR)) {
+	if (fr_value_box_is_safe_for_only(in_vb, LDAP_URI_SAFE_FOR)) {
 		fr_value_box_copy(vb, vb, in_vb);
 
 		fr_dcursor_append(out, vb);
