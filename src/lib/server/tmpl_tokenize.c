@@ -2693,7 +2693,7 @@ static fr_slen_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	/*
 	 *	Zero out lower bits
 	 */
-	ipaddr = (addr[0] << 24) | (addr[1] << 16) | (addr[2] << 8) | addr[3];
+	ipaddr = (((uint32_t) addr[0]) << 24) | (((uint32_t) addr[1]) << 16) | (((uint32_t) addr[2]) << 8) | addr[3];
 	if (prefix < 32) {
 		ipaddr &= ~((uint32_t) 0) << (32 - prefix);
 	}
