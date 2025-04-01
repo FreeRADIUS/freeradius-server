@@ -822,8 +822,11 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, request_t
 				.runtime_el = unlang_interpret_event_list(request),
 			},
 			.at_runtime = true,
-			.escape.func = fr_ldap_box_escape,
-			.escape.safe_for = (fr_value_box_safe_for_t)fr_ldap_box_escape,
+			.escape.box_escape = (fr_value_box_escape_t) {
+				.func = fr_ldap_box_escape,
+				.safe_for = (fr_value_box_safe_for_t)fr_ldap_box_escape,
+				.always_escape = false,
+			},
 			.escape.mode = TMPL_ESCAPE_PRE_CONCAT,
 			.literals_safe_for = (fr_value_box_safe_for_t)fr_ldap_box_escape,
 			.cast = FR_TYPE_STRING,

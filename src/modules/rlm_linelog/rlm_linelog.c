@@ -209,12 +209,18 @@ typedef struct {
 	fr_value_box_t		*filename;		//!< File name, if output is to a file.
 } linelog_call_env_t;
 
+#define LINELOG_BOX_ESCAPE (fr_value_box_escape_t) { \
+			  .func = linelog_escape_func, \
+			  .safe_for = (fr_value_box_safe_for_t) linelog_escape_func, \
+			  .always_escape = false, \
+		  }
+
 static const call_env_method_t linelog_method_env = {
 	FR_CALL_ENV_METHOD_OUT(linelog_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("format", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_PARSE_ONLY| CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, linelog_call_env_t, log_src), .pair.escape.func = linelog_escape_func },
-		{ FR_CALL_ENV_OFFSET("reference",FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, linelog_call_env_t, log_ref), .pair.escape.func = linelog_escape_func },
-		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_head), .pair.escape.func = linelog_escape_func },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("format", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_PARSE_ONLY| CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, linelog_call_env_t, log_src), .pair.escape.box_escape = LINELOG_BOX_ESCAPE },
+		{ FR_CALL_ENV_OFFSET("reference",FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, linelog_call_env_t, log_ref), .pair.escape.box_escape = LINELOG_BOX_ESCAPE},
+		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_head), .pair.escape.box_escape = LINELOG_BOX_ESCAPE },
 		{ FR_CALL_ENV_SUBSECTION("file", NULL, CALL_ENV_FLAG_NONE,
 			((call_env_parser_t[]) {
 				{ FR_CALL_ENV_OFFSET("filename", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, filename),
@@ -228,7 +234,7 @@ static const call_env_method_t linelog_method_env = {
 static const call_env_method_t linelog_xlat_method_env = {
 	FR_CALL_ENV_METHOD_OUT(linelog_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_head), .pair.escape.func = linelog_escape_func },
+		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_head), .pair.escape.box_escape = LINELOG_BOX_ESCAPE },
 		{ FR_CALL_ENV_SUBSECTION("file", NULL, CALL_ENV_FLAG_NONE,
 			((call_env_parser_t[]) {
 				{ FR_CALL_ENV_OFFSET("filename", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, filename),
@@ -896,11 +902,14 @@ static int call_env_filename_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t cons
 	if (fr_table_value_by_str(linefr_log_dst_table, inst->log_dst_str, LINELOG_DST_INVALID) != LINELOG_DST_FILE) return 0;
 
 	our_rules = *t_rules;
-	our_rules.escape.func = (inst->file.escape) ? rad_filename_box_escape : rad_filename_box_make_safe;
-	our_rules.escape.safe_for = (inst->file.escape) ? (fr_value_box_safe_for_t)rad_filename_box_escape :
-						     (fr_value_box_safe_for_t)rad_filename_box_make_safe;
+	our_rules.escape.box_escape = (fr_value_box_escape_t) {
+		.func = (inst->file.escape) ? rad_filename_box_escape : rad_filename_box_make_safe,
+		.safe_for = (inst->file.escape) ? (fr_value_box_safe_for_t)rad_filename_box_escape :
+						     (fr_value_box_safe_for_t)rad_filename_box_make_safe,
+		.always_escape = false,
+	};
 	our_rules.escape.mode = TMPL_ESCAPE_PRE_CONCAT;
-	our_rules.literals_safe_for = our_rules.escape.safe_for;
+	our_rules.literals_safe_for = our_rules.escape.box_escape.safe_for;
 
 	if (tmpl_afrom_substr(ctx, &parsed,
 			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),

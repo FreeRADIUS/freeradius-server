@@ -131,9 +131,12 @@ static const call_env_method_t xlat_method_env = {
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_OFFSET("logfile", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_xlat_call_env_t, filename),
 		  .pair.escape = {
-			.func = rad_filename_box_make_safe,
-			.safe_for = (fr_value_box_safe_for_t)rad_filename_box_make_safe,
-			.mode = TMPL_ESCAPE_PRE_CONCAT
+			  .box_escape = (fr_value_box_escape_t) {
+				  .func = rad_filename_box_make_safe,
+				  .safe_for = (fr_value_box_safe_for_t)rad_filename_box_make_safe,
+				  .always_escape = false,
+			  },
+			  .mode = TMPL_ESCAPE_PRE_CONCAT
 		  },
 		  .pair.literals_safe_for = (fr_value_box_safe_for_t)rad_filename_box_make_safe,
 		},
@@ -1957,10 +1960,13 @@ static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, 
 	 *	Use filename safety escape functions
 	 */
 	our_rules = *t_rules;
-	our_rules.escape.func = rad_filename_box_make_safe;
-	our_rules.escape.safe_for = (fr_value_box_safe_for_t)rad_filename_box_make_safe;
+	our_rules.escape.box_escape = (fr_value_box_escape_t) {
+		.func = rad_filename_box_make_safe,
+		.safe_for = (fr_value_box_safe_for_t)rad_filename_box_make_safe,
+		.always_escape = false,
+	};
 	our_rules.escape.mode = TMPL_ESCAPE_PRE_CONCAT;
-	our_rules.literals_safe_for = our_rules.escape.safe_for;
+	our_rules.literals_safe_for = our_rules.escape.box_escape.safe_for;
 
 	MEM(parsed_env = call_env_parsed_add(ctx, out,
 					     &(call_env_parser_t){ FR_CALL_ENV_OFFSET("logfile", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_redundant_call_env_t, filename)}));
@@ -2026,12 +2032,15 @@ static int query_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tm
 	 */
 	our_rules = *t_rules;
 	our_rules.escape = (tmpl_escape_t) {
-		.func = sql_box_escape,
+		.box_escape = (fr_value_box_escape_t) {
+			.func = sql_box_escape,
+			.safe_for = SQL_SAFE_FOR,
+			.always_escape = false,
+		},
 		.uctx = { .func = { .uctx = inst, .alloc = sql_escape_uctx_alloc }, .type = TMPL_ESCAPE_UCTX_ALLOC_FUNC },
-		.safe_for = SQL_SAFE_FOR,
 		.mode = TMPL_ESCAPE_PRE_CONCAT,
 	};
-	our_rules.literals_safe_for = our_rules.escape.safe_for;
+	our_rules.literals_safe_for = our_rules.escape.box_escape.safe_for;
 
 	while ((to_parse = cf_pair_find_next(subcs, to_parse, "query"))) {
 		MEM(parsed_env = call_env_parsed_add(ctx, out,
@@ -2141,7 +2150,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		inst->sql_escape_func = sql_escape_func;
 		inst->sql_escape_arg = inst;
 	}
-	inst->box_escape_func = sql_box_escape;
+	inst->box_escape = (fr_value_box_escape_t) {
+		.func = sql_box_escape,
+		.safe_for = SQL_SAFE_FOR,
+		.always_escape = false,
+	};
 
 	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
 	if (!inst->ef) {
@@ -2360,9 +2373,12 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 	 *	Set the sql module instance data as the uctx for escaping
 	 *	and use the same "safe_for" as the sql module.
 	 */
-	our_rules.escape.func = sql_box_escape;
+	our_rules.escape.box_escape = (fr_value_box_escape_t) {
+		.func = sql_box_escape,
+		.safe_for = SQL_SAFE_FOR,
+		.always_escape = false,
+	};
 	our_rules.escape.uctx.func.uctx = inst;
-	our_rules.escape.safe_for = SQL_SAFE_FOR;
 	our_rules.literals_safe_for = SQL_SAFE_FOR;
 
 	if (tmpl_afrom_substr(ctx, &parsed_tmpl,

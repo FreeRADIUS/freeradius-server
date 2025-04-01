@@ -231,7 +231,7 @@ struct sql_inst {
 	rlm_sql_driver_t const	*driver;		//!< Driver's exported interface.
 
 	xlat_escape_legacy_t	sql_escape_func;
-	fr_value_box_escape_t	box_escape_func;
+	fr_value_box_escape_t	box_escape;
 	void			*sql_escape_arg;	//!< Instance specific argument to be passed to escape function.
 	unlang_function_t	query;
 	unlang_function_t	select;

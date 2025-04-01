@@ -640,10 +640,14 @@ static unlang_action_t CC_HINT(nonnull) mod_common(rlm_rcode_t *p_result, module
 
 /** Call SQL module box_escape_func to escape tainted values
  */
-static int sqlippool_box_escape(fr_value_box_t *vb, void *uctx) {
+static int sqlippool_box_escape(fr_value_box_t *vb, void *uctx)
+{
 	rlm_sql_escape_uctx_t	*ctx = talloc_get_type_abort(uctx, rlm_sql_escape_uctx_t);
 
-	return ctx->sql->box_escape_func(vb, uctx);
+	/*
+	 *	@todo - this function both checks vb->safe_for, AND sets vb->safe_for on escaping. :(
+	 */
+	return ctx->sql->box_escape.func(vb, uctx);
 }
 
 /** Custom parser for sqlippool call env
@@ -674,7 +678,7 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 	 *	and use the same "safe_for" as the sql module.
 	 */
 	our_rules.escape.uctx.func.uctx = sql;
-	our_rules.escape.safe_for = (fr_value_box_safe_for_t)sql->driver;
+	our_rules.escape.box_escape.safe_for = (fr_value_box_safe_for_t)sql->driver;
 	our_rules.literals_safe_for = (fr_value_box_safe_for_t)sql->driver;
 
 	if (tmpl_afrom_substr(ctx, &parsed_tmpl,
@@ -686,7 +690,11 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 }
 
 #define QUERY_ESCAPE .pair.escape = { \
-	.func = sqlippool_box_escape, \
+	.box_escape = (fr_value_box_escape_t) { \
+		.func = sqlippool_box_escape,	\
+		.safe_for = FR_VALUE_BOX_SAFE_FOR_NONE, \
+		.always_escape = true, \
+	}, \
 	.mode = TMPL_ESCAPE_PRE_CONCAT, \
 	.uctx = { .func = { .alloc = sql_escape_uctx_alloc }, .type = TMPL_ESCAPE_UCTX_ALLOC_FUNC }, \
 }, .pair.func = call_env_parse

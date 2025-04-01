@@ -206,7 +206,11 @@ static const call_env_method_t _var = { \
 							((call_env_parser_t[]) { \
 								{ FR_CALL_ENV_OFFSET("uri", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT, rlm_rest_call_env_t, request.uri), \
 										     .pair.escape = { \
-											.func = fr_uri_escape, \
+											.box_escape = (fr_value_box_escape_t) { \
+												.func = fr_uri_escape, \
+												.safe_for = CURL_URI_SAFE_FOR, \
+												.always_escape = true, \ /* required! */
+											}, \
 											.mode = TMPL_ESCAPE_PRE_CONCAT, \
 											.uctx = { \
 												.func = { \
@@ -215,7 +219,6 @@ static const call_env_method_t _var = { \
 												} , \
 												.type = TMPL_ESCAPE_UCTX_ALLOC_FUNC\
 											}, \
-											.safe_for = CURL_URI_SAFE_FOR \
 										      }, \
 										      .pair.literals_safe_for = CURL_URI_SAFE_FOR}, /* Do not concat */ \
 								REST_CALL_ENV_REQUEST_COMMON(_dflt_username, _dflt_password) \

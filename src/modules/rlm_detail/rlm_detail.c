@@ -387,11 +387,14 @@ static int call_env_filename_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t cons
 	tmpl_rules_t		our_rules;
 
 	our_rules = *t_rules;
-	our_rules.escape.func = (inst->escape) ? rad_filename_box_escape : rad_filename_box_make_safe;
-	our_rules.escape.safe_for = (inst->escape) ? (fr_value_box_safe_for_t)rad_filename_box_escape :
-						     (fr_value_box_safe_for_t)rad_filename_box_make_safe;
+	our_rules.escape.box_escape = (fr_value_box_escape_t) {
+		.func = (inst->escape) ? rad_filename_box_escape : rad_filename_box_make_safe,
+		.safe_for = (inst->escape) ? (fr_value_box_safe_for_t)rad_filename_box_escape :
+						     (fr_value_box_safe_for_t)rad_filename_box_make_safe,
+		.always_escape = false,
+	};
 	our_rules.escape.mode = TMPL_ESCAPE_PRE_CONCAT;
-	our_rules.literals_safe_for = our_rules.escape.safe_for;
+	our_rules.literals_safe_for = our_rules.escape.box_escape.safe_for;
 
 	if (tmpl_afrom_substr(ctx, &parsed,
 			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),

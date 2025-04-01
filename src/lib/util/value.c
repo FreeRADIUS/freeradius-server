@@ -5887,23 +5887,19 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
  * @note Applies recursively to the children of group boxes.
  *
  * @param[in] vb		to escape.
- * @param[in] escape		function to apply to the value box.
- * @param[in] safe_for		the escaped value to check value boxes again.
- *				box has an escaped value that matches, it will
- *				not be re-escaped.
+ * @param[in] escape		escape definition to apply to the value box.
  * @param[in] uctx		user context to pass to the escape function.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t escape,
-				 fr_value_box_safe_for_t safe_for, void *uctx)
+int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t const *escape, void *uctx)
 {
 	int ret;
 
 	switch (vb->type) {
 	case FR_TYPE_GROUP:
-		return fr_value_box_list_escape_in_place(&vb->vb_group, escape, safe_for, uctx);
+		return fr_value_box_list_escape_in_place(&vb->vb_group, escape, uctx);
 
 	case FR_TYPE_NULL:
 	case FR_TYPE_TLV:
@@ -5920,10 +5916,12 @@ int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t escap
 		break;
 	}
 
-	ret = escape(vb, uctx);
+	if (!escape->always_escape && fr_value_box_is_safe_for(vb, escape->safe_for)) return 0;
+
+	ret = escape->func(vb, uctx);
 	if (unlikely(ret < 0)) return ret;
 
-	vb->safe_for = safe_for;
+	vb->safe_for = escape->safe_for;
 	vb->tainted = false;
 
 	return 0;
@@ -5936,22 +5934,18 @@ int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t escap
  * @note on error, the list may be left in an inconsistent/partially escaped state.
  *
  * @param[in] list		to escape.
- * @param[in] escape		function to apply to the value box.
- * @param[in] safe_for		the escaped value to check value boxes again.
- *				box has an escaped value that matches, it will
- *				not be re-escaped.
+ * @param[in] escape		escape definition to apply to the value box.
  * @param[in] uctx		user context to pass to the escape function.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_escape_t escape,
-				      fr_value_box_safe_for_t safe_for, void *uctx)
+int fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_escape_t const *escape, void *uctx)
 {
 	int ret = 0;
 
 	fr_value_box_list_foreach(list, vb) {
-		ret = fr_value_box_escape_in_place(vb, escape, safe_for, uctx);
+		ret = fr_value_box_escape_in_place(vb, escape, uctx);
 		if (unlikely(ret < 0)) return ret;
 	}
 

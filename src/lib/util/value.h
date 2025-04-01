@@ -659,13 +659,17 @@ fr_value_box_t *_fr_value_box_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, fr_typ
   *	- 0 on success.
   *	- -1 on failure.
   */
-typedef int (*fr_value_box_escape_t)(fr_value_box_t *vb, void *uctx);
+typedef int (*fr_value_box_escape_func_t)(fr_value_box_t *vb, void *uctx);
 
-int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t escape,
-				 fr_value_box_safe_for_t escaped, void *uctx)
+typedef struct {
+	fr_value_box_escape_func_t	func;
+	fr_value_box_safe_for_t		safe_for;
+	bool				always_escape;
+} fr_value_box_escape_t;
+
+int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t const *escape, void *uctx)
 				 CC_HINT(nonnull(1,2));
-int fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_escape_t escape,
-				      fr_value_box_safe_for_t escaped, void *uctx)
+int fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_escape_t const *escape, void *uctx)
 				      CC_HINT(nonnull(1,2));
 /** @} */
 

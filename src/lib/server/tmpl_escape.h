@@ -78,11 +78,8 @@ typedef enum {
  *
  */
 typedef struct {
-	fr_value_box_escape_t		func;		//!< How to escape when returned from evaluation.
+	fr_value_box_escape_t		box_escape;    	//!< How to escape when returned from evaluation.
 							///< Currently only used for async evaluation.
-	fr_value_box_safe_for_t		safe_for;	//!< Value to set on boxes which have been escaped
-							///< by the #fr_value_box_escape_t function.
-
 	tmpl_escape_mode_t		mode;		//!< Whether to apply escape function after
 							///< concatenation, i.e. to the final output
 							///< of the tmpl.  If false, then the escaping
@@ -115,9 +112,9 @@ typedef struct {
 /** See if we should perform output escaping before concatenation
  *
  */
-#define tmpl_escape_pre_concat(_tmpl)	((_tmpl)->rules.escape.func && ((_tmpl)->rules.escape.mode == TMPL_ESCAPE_PRE_CONCAT))
+#define tmpl_escape_pre_concat(_tmpl)	((_tmpl)->rules.escape.box_escape.func && ((_tmpl)->rules.escape.mode == TMPL_ESCAPE_PRE_CONCAT))
 
 /** See if we should perform output escaping after concatenation
  *
  */
-#define tmpl_escape_post_concat(_tmpl)	((_tmpl)->rules.escape.func && ((_tmpl)->rules.escape.mode == TMPL_ESCAPE_POST_CONCAT))
+#define tmpl_escape_post_concat(_tmpl)	((_tmpl)->rules.escape.box_escape.func && ((_tmpl)->rules.escape.mode == TMPL_ESCAPE_POST_CONCAT))
