@@ -209,7 +209,7 @@ static const call_env_method_t _var = { \
 											.box_escape = (fr_value_box_escape_t) { \
 												.func = fr_uri_escape, \
 												.safe_for = CURL_URI_SAFE_FOR, \
-												.always_escape = true, \ /* required! */
+												.always_escape = true, /* required! */ \
 											}, \
 											.mode = TMPL_ESCAPE_PRE_CONCAT, \
 											.uctx = { \
