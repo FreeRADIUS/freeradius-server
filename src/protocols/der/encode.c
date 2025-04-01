@@ -328,7 +328,7 @@ static ssize_t fr_der_encode_bitstring(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, 
 		 *	Copy the work dbuff to the output dbuff
 		 */
 		fr_dbuff_set(&work_dbuff, &our_dbuff);
-		FR_DBUFF_IN_MEMCPY_RETURN(&our_dbuff, &work_dbuff, slen);
+		FR_DBUFF_IN_MEMCPY_RETURN(&our_dbuff, &work_dbuff, (size_t)slen);
 
 		return fr_dbuff_set(dbuff, &our_dbuff);
 	}
