@@ -5751,6 +5751,12 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 		return -1;
 	}
 
+	/*
+	 *	Exit quickly if the list is only one box of the correct type and
+	 *	out points at that box.
+	 */
+	if ((fr_value_box_list_num_elements(list) == 1) && (head_vb == out) && (head_vb->type == type)) return 0;
+
 	switch (type) {
 	case FR_TYPE_STRING:
 		if (unlikely(!fr_sbuff_init_talloc(ctx, &sbuff, &sbuff_tctx, 256, max_size))) return -1;
