@@ -103,7 +103,7 @@ static int rediswho_command(rlm_rediswho_t const *inst, request_t *request, char
 	int 			ret = -1;
 
 	fr_redis_cluster_state_t	state;
-	fr_redis_rcode_t		status;
+	fr_redis_rcode_t		status = REDIS_RCODE_ERROR;
 	redisReply		*reply = NULL;
 	int			s_ret;
 
