@@ -1068,6 +1068,7 @@ void		fr_value_box_mark_unsafe(fr_value_box_t *box)
 		CC_HINT(nonnull);
 
 #define		fr_value_box_is_safe_for(_box, _safe_for) ((_box->safe_for == (fr_value_box_safe_for_t)_safe_for) || (_box->safe_for == FR_VALUE_BOX_SAFE_FOR_ANY))
+#define		fr_value_box_is_safe_for_only(_box, _safe_for) (_box->safe_for == (fr_value_box_safe_for_t)_safe_for)
 
 void		fr_value_box_list_mark_safe_for(fr_value_box_list_t *list, fr_value_box_safe_for_t safe_for);
 
