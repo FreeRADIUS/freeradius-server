@@ -2870,53 +2870,6 @@ int fr_pair_value_bstrdup_buffer_shallow(fr_pair_t *vp, char const *src, bool ta
 	return ret;
 }
 
-/** Append bytes from a buffer to an existing "string" type value pair
- *
- * @param[in,out] vp	to update.
- * @param[in] src	data to copy.
- * @param[in] len	of data to copy.
- * @param[in] tainted	Whether the value came from a trusted source.
- * @return
- *	- 0 on success.
- * 	- -1 on failure.
- */
-int fr_pair_value_bstrn_append(fr_pair_t *vp, char const *src, size_t len, bool tainted)
-{
-	int ret;
-
-	if (!fr_cond_assert(vp->vp_type == FR_TYPE_STRING)) return -1;
-
-	ret = fr_value_box_bstrn_append(vp, &vp->data, src, len, tainted);
-	if (ret == 0) {
-		PAIR_VERIFY(vp);
-	}
-
-	return ret;
-}
-
-/** Append a talloced buffer to an existing "string" type value pair
- *
- * @param[in,out] vp	to update.
- * @param[in] src	a talloced nul terminated buffer.
- * @param[in] tainted	Whether the value came from a trusted source.
- * @return
- *	- 0 on success.
- * 	- -1 on failure.
- */
-int fr_pair_value_bstr_append_buffer(fr_pair_t *vp, char const *src, bool tainted)
-{
-	int ret;
-
-	if (!fr_cond_assert(vp->vp_type == FR_TYPE_STRING)) return -1;
-
-	ret = fr_value_box_bstr_append_buffer(vp, &vp->data, src, tainted);
-	if (ret == 0) {
-		PAIR_VERIFY(vp);
-	}
-
-	return ret;
-}
-
 /** Pre-allocate a memory buffer for a "octets" type value pair
  *
  * @note Will clear existing values (including buffers).
@@ -3067,53 +3020,6 @@ int fr_pair_value_memdup_buffer_shallow(fr_pair_t *vp, uint8_t const *src, bool 
 	return 0;
 }
 
-
-/** Append bytes from a buffer to an existing "octets" type value pair
- *
- * @param[in,out] vp	to update.
- * @param[in] src	data to copy.
- * @param[in] len	of data to copy.
- * @param[in] tainted	Whether the value came from a trusted source.
- * @return
- *	- 0 on success.
- * 	- -1 on failure.
- */
-int fr_pair_value_mem_append(fr_pair_t *vp, uint8_t *src, size_t len, bool tainted)
-{
-	int ret;
-
-	if (!fr_cond_assert(vp->vp_type == FR_TYPE_OCTETS)) return -1;
-
-	ret = fr_value_box_mem_append(vp, &vp->data, src, len, tainted);
-	if (ret == 0) {
-		PAIR_VERIFY(vp);
-	}
-
-	return ret;
-}
-
-/** Append a talloced buffer to an existing "octets" type value pair
- *
- * @param[in,out] vp	to update.
- * @param[in] src	data to copy.
- * @param[in] tainted	Whether the value came from a trusted source.
- * @return
- *	- 0 on success.
- * 	- -1 on failure.
- */
-int fr_pair_value_mem_append_buffer(fr_pair_t *vp, uint8_t *src, bool tainted)
-{
-	int ret;
-
-	if (!fr_cond_assert(vp->vp_type == FR_TYPE_OCTETS)) return -1;
-
-	ret = fr_value_box_mem_append_buffer(vp, &vp->data, src, tainted);
-	if (ret == 0) {
-		PAIR_VERIFY(vp);
-	}
-
-	return ret;
-}
 
 /** Return a const buffer for an enum type attribute
  *

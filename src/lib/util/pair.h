@@ -791,9 +791,6 @@ int		fr_pair_value_bstrndup_shallow(fr_pair_t *vp, char const *src, size_t len, 
 
 int		fr_pair_value_bstrdup_buffer_shallow(fr_pair_t *vp, char const *src, bool tainted) CC_HINT(nonnull);
 
-int		fr_pair_value_bstrn_append(fr_pair_t *vp, char const *src, size_t len, bool tainted) CC_HINT(nonnull(1));
-
-int		fr_pair_value_bstr_append_buffer(fr_pair_t *vp, char const *src, bool tainted) CC_HINT(nonnull);
  /** @} */
 
 /** @name Assign and manipulate octets strings
@@ -812,9 +809,6 @@ int		fr_pair_value_memdup_shallow(fr_pair_t *vp, uint8_t const *src, size_t len,
 
 int		fr_pair_value_memdup_buffer_shallow(fr_pair_t *vp, uint8_t const *src, bool tainted) CC_HINT(nonnull);
 
-int		fr_pair_value_mem_append(fr_pair_t *vp, uint8_t *src, size_t len, bool tainted) CC_HINT(nonnull(1));
-
-int		fr_pair_value_mem_append_buffer(fr_pair_t *vp, uint8_t *src, bool tainted) CC_HINT(nonnull);
  /** @} */
 
 /** @name Enum functions
