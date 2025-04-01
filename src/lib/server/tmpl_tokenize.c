@@ -2646,35 +2646,33 @@ static fr_slen_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 {
 	tmpl_t		*vpt;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
-	uint8_t		octet;
 	fr_type_t	type;
+	int		count;
+	uint32_t	ipaddr;
+	uint8_t		addr[4] = {}, prefix = 32;
 
-	/*
-	 *	Check for char sequence
-	 *
-	 *	xxx.xxx.xxx.xxx
-	 */
-	if (!(fr_sbuff_out(NULL, &octet, &our_in) && fr_sbuff_next_if_char(&our_in, '.') &&
-	      fr_sbuff_out(NULL, &octet, &our_in) && fr_sbuff_next_if_char(&our_in, '.') &&
-	      fr_sbuff_out(NULL, &octet, &our_in) && fr_sbuff_next_if_char(&our_in, '.') &&
-	      fr_sbuff_out(NULL, &octet, &our_in))) {
-	error:
-		FR_SBUFF_ERROR_RETURN(&our_in);
+	for (count = 0; count < 4; count++) {
+		if (!fr_sbuff_out(NULL, &addr[count], &our_in)) FR_SBUFF_ERROR_RETURN(&our_in);
+
+		if (count == 3) break;
+
+		if (fr_sbuff_next_if_char(&our_in, '.')) continue;
+
+		if (!fr_sbuff_is_char(&our_in, '/')) FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	/*
-	 *	If it has a trailing '/' then it's probably
-	 *	an IP prefix.
+	 *	If it has a trailing '/' then it's an IP prefix.
 	 */
 	if (fr_sbuff_next_if_char(&our_in, '/')) {
-		if (fr_sbuff_out(NULL, &octet, &our_in) < 0) {
+		if (fr_sbuff_out(NULL, &prefix, &our_in) < 0) {
 			fr_strerror_const("IPv4 CIDR mask malformed");
-			goto error;
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
-		if (octet > 32) {
+		if (prefix > 32) {
 			fr_strerror_const("IPv4 CIDR mask too high");
-			goto error;
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		type = FR_TYPE_IPV4_PREFIX;
@@ -2684,16 +2682,23 @@ static fr_slen_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 
 	if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
 		fr_strerror_const("Unexpected text after IPv4 string or prefix");
-		goto error;
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, T_BARE_WORD, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in)));
-	if (fr_value_box_from_substr(vpt, &vpt->data.literal, type, NULL,
-				     &FR_SBUFF_REPARSE(&our_in),
-				     NULL) < 0) {
-		talloc_free(vpt);
-		goto error;
+	fr_value_box_init(&vpt->data.literal, type, NULL, false);
+	vpt->data.literal.vb_ip.af = AF_INET;
+	vpt->data.literal.vb_ip.prefix = prefix;
+
+	/*
+	 *	Zero out lower bits
+	 */
+	ipaddr = (addr[0] << 24) | (addr[1] << 16) | (addr[2] << 8) | addr[3];
+	if (prefix < 32) {
+		ipaddr &= ~((uint32_t) 0) << (32 - prefix);
 	}
+	vpt->data.literal.vb_ip.addr.v4.s_addr = htonl(ipaddr);
+
 	*out = vpt;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);

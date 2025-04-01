@@ -3,7 +3,7 @@
 #
 ipv4prefix prefix
 
-prefix = "192.0.2/24"
+prefix = 192.0.2/24
 
 if (%file.escape(%taint("../foobar")) != "_x2e_x2e_x2ffoobar") {
 	test_fail

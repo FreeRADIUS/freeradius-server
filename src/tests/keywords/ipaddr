@@ -2,6 +2,7 @@
 #  PRE: if
 #
 ipaddr result_ipaddr
+ipv4prefix prefix
 
 if (!(NAS-IP-Address == 127.0.0.1)) {
 	test_fail
@@ -28,6 +29,19 @@ if (!(result_ipaddr == 127.0.0.3)) {
 # Decimal
 result_ipaddr := 2130706436
 if (!(result_ipaddr == 127.0.0.4)) {
+	test_fail
+}
+
+prefix = 192.0.2/24
+if "%{prefix}" != "192.0.2.0/24" {
+	test_fail
+}
+
+#
+#  And with extra bits, which are cleared out.
+#
+prefix = 192.0.2.2/24
+if "%{prefix}" != "192.0.2.0/24" {
 	test_fail
 }
 
