@@ -373,7 +373,7 @@ static void *rest_uri_part_escape_uctx_alloc(UNUSED request_t *request, void con
  */
 static int rest_uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 {
-	char				*escaped;
+	char	*escaped, *str;
 
 	escaped = curl_easy_escape(fr_curl_tmp_handle(), vb->vb_strvalue, vb->vb_length);
 	if (!escaped) return -1;
@@ -386,8 +386,8 @@ static int rest_uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 		return 0;
 	}
 
-	fr_value_box_clear_value(vb);
-	fr_value_box_strdup(vb, vb, NULL, escaped, vb->tainted);
+	str = talloc_typed_strdup(vb, escaped);
+	fr_value_box_strdup_shallow_replace(vb, str, strlen(str));
 
 	curl_free(escaped);
 
