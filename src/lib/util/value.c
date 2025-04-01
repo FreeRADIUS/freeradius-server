@@ -4112,7 +4112,7 @@ int fr_value_box_bstr_alloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr
 
 	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = str;
-	dst->vb_length = talloc_array_length(str) - 1;
+	dst->vb_length = len;
 
 	if (out) *out = str;
 
