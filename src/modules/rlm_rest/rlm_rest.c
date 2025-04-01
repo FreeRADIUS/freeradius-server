@@ -206,7 +206,7 @@ static const call_env_method_t _var = { \
 							((call_env_parser_t[]) { \
 								{ FR_CALL_ENV_OFFSET("uri", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT, rlm_rest_call_env_t, request.uri), \
 										     .pair.escape = { \
-											.box_escape = (fr_value_box_escape_t) { \
+											.box_escape = { \
 												.func = fr_uri_escape, \
 												.safe_for = CURL_URI_SAFE_FOR, \
 												.always_escape = true, /* required! */ \

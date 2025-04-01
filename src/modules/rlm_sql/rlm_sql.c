@@ -131,7 +131,7 @@ static const call_env_method_t xlat_method_env = {
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_OFFSET("logfile", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_xlat_call_env_t, filename),
 		  .pair.escape = {
-			  .box_escape = (fr_value_box_escape_t) {
+			  .box_escape = {
 				  .func = rad_filename_box_make_safe,
 				  .safe_for = (fr_value_box_safe_for_t)rad_filename_box_make_safe,
 				  .always_escape = false,

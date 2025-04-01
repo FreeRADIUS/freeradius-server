@@ -690,7 +690,7 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 }
 
 #define QUERY_ESCAPE .pair.escape = { \
-	.box_escape = (fr_value_box_escape_t) { \
+	.box_escape = { \
 		.func = sqlippool_box_escape,	\
 		.safe_for = FR_VALUE_BOX_SAFE_FOR_NONE, \
 		.always_escape = true, \

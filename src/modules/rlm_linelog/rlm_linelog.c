@@ -209,7 +209,7 @@ typedef struct {
 	fr_value_box_t		*filename;		//!< File name, if output is to a file.
 } linelog_call_env_t;
 
-#define LINELOG_BOX_ESCAPE (fr_value_box_escape_t) { \
+#define LINELOG_BOX_ESCAPE { \
 			  .func = linelog_escape_func, \
 			  .safe_for = (fr_value_box_safe_for_t) linelog_escape_func, \
 			  .always_escape = false, \

@@ -229,7 +229,7 @@ static const call_env_method_t authorize_method_env = {
 						{ FR_CALL_ENV_PARSE_ONLY_OFFSET("membership_filter", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_autz_call_env_t, group_filter),
 						  .pair.func = ldap_group_filter_parse,
 						  .pair.escape = {
-							  .box_escape = (fr_value_box_escape_t) {
+							  .box_escape = {
 								  .func = fr_ldap_box_escape,
 								  .safe_for = (fr_value_box_safe_for_t)fr_ldap_box_escape,
 								  .always_escape = false,
@@ -280,7 +280,7 @@ static const call_env_method_t xlat_memberof_method_env = {
 						{ FR_CALL_ENV_PARSE_ONLY_OFFSET("membership_filter", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_xlat_memberof_call_env_t, group_filter),
 						  .pair.func = ldap_group_filter_parse,
 						  .pair.escape = {
-							  .box_escape = (fr_value_box_escape_t) {
+							  .box_escape = {
 								  .func = fr_ldap_box_escape,
 								  .safe_for = (fr_value_box_safe_for_t)fr_ldap_box_escape,
 								  .always_escape = false,
