@@ -4,9 +4,10 @@
 # Rebuild this file with `make docker.rocky9.regen`
 #
 ARG from=rockylinux/rockylinux:9
-FROM ${from} as build
+FROM ${from} AS build
 
 RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-9
+
 
 #
 #  Install build tools
