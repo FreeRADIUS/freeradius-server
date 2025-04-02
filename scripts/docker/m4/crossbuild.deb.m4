@@ -7,7 +7,6 @@ ARG APT_OPTS="-y --option=Dpkg::options::=--force-unsafe-io --no-install-recomme
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-
 #
 #  Install add-apt-repository (may be needed for clang) and
 #  package development utilities
