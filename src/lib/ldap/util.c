@@ -112,12 +112,10 @@ int fr_ldap_box_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	fr_sbuff_t		sbuff;
 	fr_sbuff_uctx_talloc_t 	sbuff_ctx;
 	size_t			len;
-	fr_value_box_entry_t	entry;
 
-	if (fr_value_box_is_safe_for(vb, fr_ldap_box_escape)) return 0;
+	fr_assert(!fr_value_box_is_safe_for(vb, fr_ldap_box_escape));
 
 	if ((vb->type != FR_TYPE_STRING) && (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0)) {
-		fr_value_box_clear_value(vb);
 		return -1;
 	}
 
@@ -134,14 +132,9 @@ int fr_ldap_box_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	if (len == vb->vb_length) {
 		talloc_free(fr_sbuff_buff(&sbuff));
 	} else {
-		entry = vb->entry;
 		fr_sbuff_trim_talloc(&sbuff, len);
-		fr_value_box_clear_value(vb);
-		fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), vb->tainted);
-		vb->entry = entry;
+		fr_value_box_strdup_shallow_replace(vb, fr_sbuff_buff(&sbuff), len);
 	}
-
-	fr_value_box_mark_safe_for(vb, fr_ldap_box_escape);
 
 	return 0;
 }

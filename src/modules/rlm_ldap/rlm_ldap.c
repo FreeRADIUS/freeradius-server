@@ -531,8 +531,7 @@ static int ldap_uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	len = fr_ldap_uri_escape_func(NULL, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, NULL);
 
 	fr_sbuff_trim_talloc(&sbuff, len);
-	fr_value_box_clear_value(vb);
-	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), vb->tainted);
+	fr_value_box_strdup_shallow_replace(vb, fr_sbuff_buff(&sbuff), len);
 
 	return 0;
 }

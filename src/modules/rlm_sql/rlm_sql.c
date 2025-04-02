@@ -350,7 +350,6 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 	void				*arg = NULL;
 	rlm_sql_escape_uctx_t		*ctx = uctx;
 	rlm_sql_t const			*inst = talloc_get_type_abort_const(ctx->sql, rlm_sql_t);
-	fr_value_box_entry_t		entry;
 	rlm_sql_thread_t		*thread = talloc_get_type_abort(module_thread(inst->mi)->data, rlm_sql_thread_t);
 
 	/*
@@ -399,13 +398,8 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 	len = inst->sql_escape_func(request, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, arg);
 	if (len < 0) goto error;
 
-	/*
-	 *	fr_value_box_strdup_shallow resets the dlist entries - take a copy
-	 */
-	entry = vb->entry;
 	fr_sbuff_trim_talloc(&sbuff, len);
-	fr_value_box_clear_value(vb);
-	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), vb->tainted);
+	fr_value_box_strdup_shallow_replace(vb, fr_sbuff_buff(&sbuff), len);
 
 	/*
 	 *	Different databases have slightly different ideas as
@@ -414,7 +408,6 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 	 *	cross-contaminate "safe" values across databases.
 	 */
 	fr_value_box_mark_safe_for(vb, inst->driver);
-	vb->entry = entry;
 
 	return 0;
 }
