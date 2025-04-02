@@ -2799,11 +2799,8 @@ static int CC_HINT(nonnull(2,3)) regex_xlat_escape(UNUSED request_t *request, fr
 	if (slen < 0) return -1;
 
 	entry = vb->entry;
-
 	fr_value_box_clear(vb);
-	fr_value_box_init(vb, FR_TYPE_STRING, NULL, false);
 	(void) fr_value_box_bstrndup(vb, vb, NULL, fr_sbuff_start(out), fr_sbuff_used(out), false);
-
 	vb->entry = entry;
 
 	return 0;
