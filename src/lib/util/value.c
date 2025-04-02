@@ -5520,12 +5520,8 @@ ssize_t fr_value_box_list_concat_as_string(fr_value_box_t *safety, fr_sbuff_t *s
 
 	if (fr_value_box_list_empty(list)) return 0;
 
-	if (fr_debug_lvl >= 4) fprintf(stderr, "CONCAT AS STRING");
-
 	fr_value_box_list_foreach(list, vb) {
 		fr_value_box_safe_for_t box_safe_for = vb->safe_for;
-
-		if (fr_debug_lvl >= 4) fr_value_box_debug(vb);
 
 		switch (vb->type) {
 		case FR_TYPE_GROUP:
