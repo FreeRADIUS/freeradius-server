@@ -168,10 +168,10 @@ int rad_filename_box_make_safe(fr_value_box_t *vb, UNUSED void *uxtc)
 {
 	char			*escaped;
 	size_t			len;
-	fr_value_box_entry_t	entry;
 
 	if (vb->vb_length == 0) return 0;
-	if (vb->safe_for == (fr_value_box_safe_for_t)rad_filename_box_make_safe) return 0;
+
+	fr_assert(!fr_value_box_is_safe_for(vb, rad_filename_box_make_safe));
 
 	/*
 	 *	Allocate an output buffer, only ever the same or shorter than the input
@@ -180,11 +180,7 @@ int rad_filename_box_make_safe(fr_value_box_t *vb, UNUSED void *uxtc)
 
 	len = rad_filename_make_safe(NULL, escaped, (vb->vb_length + 1), vb->vb_strvalue, NULL);
 
-	entry = vb->entry;
-	fr_value_box_clear_value(vb);
-	fr_value_box_bstrndup(vb, vb, NULL, escaped, len, false);
-	vb->entry = entry;
-	talloc_free(escaped);
+	fr_value_box_strdup_shallow_replace(vb, escaped, len);
 
 	return 0;
 }
@@ -293,10 +289,10 @@ int rad_filename_box_escape(fr_value_box_t *vb, UNUSED void *uxtc)
 {
 	char			*escaped;
 	size_t			len;
-	fr_value_box_entry_t	entry;
 
 	if (vb->vb_length == 0) return 0;
-	if (vb->safe_for == (fr_value_box_safe_for_t)rad_filename_box_escape) return 0;
+
+	fr_assert(!fr_value_box_is_safe_for(vb, rad_filename_box_escape));
 
 	/*
 	 *	Allocate an output buffer, if every character is escaped,
@@ -314,11 +310,7 @@ int rad_filename_box_escape(fr_value_box_t *vb, UNUSED void *uxtc)
 		return 0;
 	}
 
-	entry = vb->entry;
-	fr_value_box_clear_value(vb);
-	fr_value_box_bstrndup(vb, vb, NULL, escaped, len, false);
-	vb->entry = entry;
-	talloc_free(escaped);
+	fr_value_box_strdup_shallow_replace(vb, escaped, len);
 
 	return 0;
 }
