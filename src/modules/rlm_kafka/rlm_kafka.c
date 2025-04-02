@@ -103,6 +103,19 @@ static const CONF_PARSER stats_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/*
+ *  It would be nice to have a/synchronous delivery be a property set for each
+ *  topic, but unfortunately this is not possible.
+ *
+ *  High-throughput asynchronous requires a sufficiently large linger.ms to
+ *  ensure batched message delivery.
+ *
+ *  Synchronous delivery requires linger.ms = 0 to avoid unnecessary delays.
+ *
+ *  However, linger.ms is a global property, and rd_kafka_flush() purges the
+ *  queue of all topics.
+ *
+ */
 static const CONF_PARSER module_config[] = {
 	{ "bootstrap-servers", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_kafka_t, bootstrap), NULL },
 	{ "topic", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_kafka_t, topic), NULL },
