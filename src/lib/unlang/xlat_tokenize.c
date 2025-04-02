@@ -1268,6 +1268,96 @@ static void xlat_safe_for(xlat_exp_head_t *head, fr_value_box_safe_for_t safe_fo
 }
 #endif
 
+static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, fr_sbuff_marker_t *m,
+				  fr_token_t quote,
+				  fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+{
+	ssize_t		slen;
+	fr_sbuff_t	our_in = FR_SBUFF(in);
+	xlat_exp_t	*node;
+
+	MEM(node = xlat_exp_alloc(ctx, XLAT_GROUP, NULL, 0));
+	node->quote = quote;
+
+	switch (quote) {
+	case T_BARE_WORD:
+		XLAT_DEBUG("ARGV bare word <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
+
+		/*
+		 *	@todo - do %{3} for regex.
+		 *
+		 *	@todo - peek ahead for attribute references.
+		 *
+		 *	@todo - peek ahead for values, if the input is alphanumeric + ".:" with no spaces,
+		 *	it's likely a value, and we can just tokenize the tmpl.  And then hoist the value-box.
+		 */
+
+		slen = xlat_tokenize_expression(node, &node->group, &our_in, p_rules, t_rules);
+		if (slen < 0) {
+		error:
+			talloc_free(node);
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
+		break;
+
+		/*
+		 *	"Double quoted strings may contain %{expansions}"
+		 */
+	case T_DOUBLE_QUOTED_STRING:
+		XLAT_DEBUG("ARGV double quotes <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
+
+		if (xlat_tokenize_input(node->group, &our_in,
+					&value_parse_rules_double_quoted, t_rules) < 0) goto error;
+		break;
+
+		/*
+		 *	'Single quoted strings get parsed as literal strings'
+		 */
+	case T_SINGLE_QUOTED_STRING:
+	{
+		char		*str;
+		xlat_exp_t	*child;
+
+		XLAT_DEBUG("ARGV single quotes <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
+
+		child = xlat_exp_alloc(node->group, XLAT_BOX, NULL, 0);
+		slen = fr_sbuff_out_aunescape_until(child, &str, &our_in, SIZE_MAX,
+						    value_parse_rules_single_quoted.terminals,
+						    value_parse_rules_single_quoted.escapes);
+		if (slen < 0) goto error;
+
+		xlat_exp_set_name_shallow(child, str);
+		fr_value_box_strdup(child, &child->data, NULL, str, false);
+		fr_value_box_mark_safe_for(&child->data, t_rules->literals_safe_for);	/* Literal values are treated as implicitly safe */
+		child->flags.constant = true;
+		fr_assert(child->flags.pure);
+		xlat_exp_insert_tail(node->group, child);
+	}
+	break;
+
+	/*
+	 *	`back quoted strings aren't supported`
+	 */
+	case T_BACK_QUOTED_STRING:
+		fr_strerror_const("Unexpected `...` string");
+		goto error;
+
+	default:
+		fr_assert(0);
+		goto error;
+	}
+
+	if ((quote != T_BARE_WORD) && !fr_sbuff_next_if_char(&our_in, fr_token_quote[quote])) { /* Quoting */
+		fr_strerror_const("Unterminated string");
+		fr_sbuff_set(&our_in, m);
+		FR_SBUFF_ERROR_RETURN(&our_in);
+	}
+
+	node->flags = node->group->flags;
+	*out = node;
+
+	FR_SBUFF_SET_RETURN(in, &our_in);
+}
 
 /** Tokenize an xlat expansion into a series of XLAT_TYPE_CHILD arguments
  *
@@ -1372,156 +1462,71 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		 */
 		if (!spaces) fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
-		/*
-		 *	Alloc a new node to hold the child nodes
-		 *	that make up the argument.
-		 */
-		MEM(node = xlat_exp_alloc(head, XLAT_GROUP, NULL, 0));
-
 		if (!spaces && !xlat_func_bare_words) {
 			quote = T_BARE_WORD;
+		} else {
+			fr_sbuff_out_by_longest_prefix(&slen, &quote, xlat_quote_table, &our_in, T_BARE_WORD);
+		}
+
+		if ((quote == T_BARE_WORD) && (spaces || xlat_func_bare_words)) {
+			MEM(node = xlat_exp_alloc(ctx, XLAT_GROUP, NULL, 0));
 			node->quote = quote;
-			goto tokenize_expression;
+
+			/*
+			 *	Spaces - each argument is a bare word all by itself, OR an xlat thing all by itself.
+			 *
+			 *	No spaces - each arugment is an expression, which can have embedded spaces.
+			 */
+			slen = xlat_tokenize_input(node->group, &our_in, our_p_rules, &arg_t_rules);
+
+		} else if ((quote == T_BARE_WORD) && fr_sbuff_is_char(&our_in, ')')) {
+			MEM(node = xlat_exp_alloc(ctx, XLAT_GROUP, NULL, 0));
+			node->quote = quote;
+
+			/*
+			 *	We've reached the end of the arguments, don't try to tokenize anything else.
+			 */
+			slen = 0;
+
+		} else {
+
+			slen = xlat_tokenize_word(head, &node, &our_in, &m, quote, our_p_rules, &arg_t_rules);
 		}
 
-		fr_sbuff_out_by_longest_prefix(&slen, &quote, xlat_quote_table, &our_in, T_BARE_WORD);
-		node->quote = quote;
+		if (slen < 0) {
+		error:
+			if (our_p_rules == &tmp_p_rules) talloc_const_free(our_p_rules->terminals);
+			talloc_free(head);
 
-		switch (quote) {
-		/*
-		 *	Barewords --may-contain=%{expansions}
-		 */
-		case T_BARE_WORD:
-			XLAT_DEBUG("ARGV bare word <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
-
-			/*
-			 *	&User-Name is an attribute reference
-			 *
-			 *	@todo - move '&' to be a _dcursor_. and not an attribute reference.
-			 *
-			 *	@todo - Perhaps &"foo" can dynamically create the string, and then pass it to
-			 *	the the tmpl tokenizer, and then pass the tmpl to the function.  Which also
-			 *	means that we need to be able to have a fr_value_box_t which holds a ptr to a
-			 *	tmpl.  And update the function arguments to say "we want a tmpl, not a
-			 *	string".
-			 */
-			if (spaces || xlat_func_bare_words) {
-				/*
-				 *	Spaces - each argument is a bare word all by itself, OR an xlat thing all by itself.
-				 *
-				 *	No spaces - each arugment is an expression, which can have embedded spaces.
-				 */
-				slen = xlat_tokenize_input(node->group, &our_in, our_p_rules, &arg_t_rules);
-
-			} else {
-			tokenize_expression:
-				if (fr_sbuff_is_char(&our_in, ')')) {
-					/*
-					 *	%foo()
-					 */
-					slen = 0;
-
-				} else {
-					slen = xlat_tokenize_expression(node, &node->group, &our_in, our_p_rules, &arg_t_rules);
-				}
-			}
-			if (slen < 0) {
-			error:
-				if (our_p_rules == &tmp_p_rules) talloc_const_free(our_p_rules->terminals);
-				talloc_free(head);
-
-				FR_SBUFF_ERROR_RETURN(&our_in);	/* error */
-			}
-
-			/*
-			 *	No data, but the argument was required.  Complain.
-			 */
-			if (!slen && arg->required) {
-				fr_strerror_printf("Missing required arg %u", argc);
-				goto error;
-			}
-
-			/*
-			 *	Validate the argument immediately on parsing it, and not later.
-			 */
-			if (arg->type == FR_TYPE_NULL) {
-				fr_strerror_printf("Too many arguments, expected %zu, got %d",
-						   (size_t) (arg - arg_start), argc);
-				goto error;
-			}
-
-			/*
-			 *	Ensure that the function args are correct.
-			 */
-			if (xlat_validate_function_arg(arg, node, argc) < 0) {
-				fr_sbuff_set(&our_in, &m);
-				goto error;
-			}
-			break;
-
-		/*
-		 *	"Double quoted strings may contain %{expansions}"
-		 */
-		case T_DOUBLE_QUOTED_STRING:
-			XLAT_DEBUG("ARGV double quotes <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
-
-			if (xlat_tokenize_input(node->group, &our_in,
-						&value_parse_rules_double_quoted, &arg_t_rules) < 0) goto error;
-			break;
-
-		/*
-		 *	'Single quoted strings get parsed as literal strings'
-		 */
-		case T_SINGLE_QUOTED_STRING:
-		{
-			char		*str;
-			xlat_exp_t	*child;
-
-			XLAT_DEBUG("ARGV single quotes <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
-
-			child = xlat_exp_alloc(node->group, XLAT_BOX, NULL, 0);
-			slen = fr_sbuff_out_aunescape_until(child, &str, &our_in, SIZE_MAX,
-							    value_parse_rules_single_quoted.terminals,
-							    value_parse_rules_single_quoted.escapes);
-			if (slen < 0) goto error;
-
-			xlat_exp_set_name_shallow(child, str);
-			fr_value_box_strdup(child, &child->data, NULL, str, false);
-			fr_value_box_mark_safe_for(&child->data, arg->safe_for);	/* Literal values are treated as implicitly safe */
-			child->flags.constant = true;
-			fr_assert(child->flags.pure);
-			xlat_exp_insert_tail(node->group, child);
+			FR_SBUFF_ERROR_RETURN(&our_in);	/* error */
 		}
-			break;
 
 		/*
-		 *	`back quoted strings aren't supported`
+		 *	No data, but the argument was required.  Complain.
 		 */
-		case T_BACK_QUOTED_STRING:
-			fr_strerror_const("Unexpected `...` string");
+		if (!slen && arg->required) {
+			fr_strerror_printf("Missing required arg %u", argc);
 			goto error;
-
-		default:
-			fr_assert(0);
-			break;
 		}
 
-		if ((quote != T_BARE_WORD) && !fr_sbuff_next_if_char(&our_in, fr_token_quote[quote])) { /* Quoting */
-			fr_strerror_const("Unterminated string");
+		/*
+		 *	Validate the argument immediately on parsing it, and not later.
+		 */
+		if (arg->type == FR_TYPE_NULL) {
+			fr_strerror_printf("Too many arguments, expected %zu, got %d",
+					   (size_t) (arg - arg_start), argc);
+			goto error;
+		}
+
+		/*
+		 *	Ensure that the function args are correct.
+		 */
+		if (xlat_validate_function_arg(arg, node, argc) < 0) {
 			fr_sbuff_set(&our_in, &m);
 			goto error;
 		}
 
 		xlat_exp_set_name(node, fr_sbuff_current(&m), fr_sbuff_behind(&m));
-
-		/*
-		 *	Assert that the parser has created things which are safe for the current argument.
-		 *
-		 *	@todo - function should be marked up with safe_for, and not each individual argument.
-		 */
-//		xlat_safe_for(node->group, arg->safe_for);
-
-		node->flags = node->group->flags;
 
 		xlat_exp_insert_tail(head, node);
 
