@@ -5918,12 +5918,18 @@ int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t const
 		break;
 	}
 
+	/*
+	 *	Don't do double escaping.
+	 */
 	if (!escape->always_escape && fr_value_box_is_safe_for(vb, escape->safe_for)) return 0;
 
 	ret = escape->func(vb, uctx);
 	if (unlikely(ret < 0)) return ret;
 
-	vb->safe_for = escape->safe_for;
+	/*
+	 *	'1' means that the function mashed the safe_for value, so we don't need to.
+	 */
+	if (!ret) vb->safe_for = escape->safe_for;
 	vb->tainted = false;
 
 	return 0;
