@@ -709,7 +709,7 @@ static int ldap_xlat_uri_parse(LDAPURLDesc **uri_parsed, char **host_out, bool *
 
 	if (fr_value_box_list_concat_in_place(uri, uri, &uri_in->vb_group,
 					      FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
-		REDEBUG("Failed concattenating input");
+		RPEDEBUG("Failed concatenating input");
 		goto error;
 	}
 
@@ -1121,7 +1121,7 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	uri = fr_value_box_list_head(&uri_components->vb_group);
 	if (fr_value_box_list_concat_in_place(uri, uri, &uri_components->vb_group,
 					      FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
-		REDEBUG("Failed concattenating input");
+		RPEDEBUG("Failed concatenating input");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -1373,7 +1373,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 
 	if (fr_value_box_list_concat_in_place(url_head, url_head, url, FR_TYPE_STRING,
 					      FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
-		REDEBUG("Failed concatenating input");
+		RPEDEBUG("Failed concatenating input");
 		RETURN_MODULE_FAIL;
 	}
 
@@ -2037,7 +2037,7 @@ static unlang_action_t user_modify_mod_build_resume(rlm_rcode_t *p_result, UNUSE
 				fr_value_box_t	*vb_head = fr_value_box_list_head(&vb->vb_group);
 				if (fr_value_box_list_concat_in_place(vb_head, vb_head, &vb->vb_group, FR_TYPE_STRING,
 								      FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
-					REDEBUG("Failed concattenating update value");
+					RPEDEBUG("Failed concatenating update value");
 					RETURN_MODULE_FAIL;
 				}
 				vb = vb_head;
@@ -2046,7 +2046,7 @@ static unlang_action_t user_modify_mod_build_resume(rlm_rcode_t *p_result, UNUSE
 
 			case FR_TYPE_FIXED_SIZE:
 				if (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0) {
-					REDEBUG("Failed casting update value");
+					RPEDEBUG("Failed casting update value");
 					RETURN_MODULE_FAIL;
 				}
 				goto populate_string;
