@@ -580,7 +580,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_func_args_set(xlat, json_encode_xlat_arg);
 
 	if (map_proc_register(mctx->mi->boot, inst, "json", mod_map_proc,
-			      mod_map_proc_instantiate, sizeof(rlm_json_jpath_cache_t), 0) < 0) return -1;
+			      mod_map_proc_instantiate, sizeof(rlm_json_jpath_cache_t), FR_VALUE_BOX_SAFE_FOR_ANY) < 0) return -1;
 	return 0;
 }
 

@@ -289,6 +289,16 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 {
 	fr_value_box_t *vb;
 
+	/*
+	 *	The funtion may be URI or SQL, which have different sub-types.  So we call the function if it
+	 *	is NOT marked as "globally safe for SQL", but the called function may check the more specific
+	 *	flag "safe for MySQL".  And then things which aren't safe for MySQL are escaped, and then
+	 *	marked as "safe for MySQL".
+	 *
+	 *	Unfortunately, this doesn't work right now.  The output value-boxes are always mashed to the
+	 *	global SAFE_FOR value.  Fixing this involves changing the escape function to return 1, which
+	 *	would then mean "I set the safe_for value, so you don't need to".
+	 */
 #define ESCAPE(_arg, _vb, _arg_num) \
 do { \
 	if ((_arg)->func && (!fr_value_box_is_safe_for((_vb), (_arg)->safe_for) || (_arg)->always_escape)) { \
@@ -1360,27 +1370,22 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 			 *	For tainted boxes perform the requested escaping
 			 */
 			while ((vb = fr_value_box_list_next(&result, vb))) {
-				fr_value_box_entry_t entry;
 				size_t len, real_len;
 				char *escaped;
 
-				if (!vb->tainted) continue;
+				if (fr_value_box_is_safe_for(vb, FR_VALUE_BOX_SAFE_FOR_ANY)) continue;
 
-				if (fr_value_box_cast_in_place(pool, vb, FR_TYPE_STRING, NULL) < 0) {
+				if (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0) {
 					RPEDEBUG("Failed casting result to string");
 					goto fail;
 				}
 
 				len = vb->vb_length * 3;
-				MEM(escaped = talloc_array(pool, char, len));
+				MEM(escaped = talloc_array(vb, char, len));
 				real_len = escape(request, escaped, len, vb->vb_strvalue, UNCONST(void *, escape_ctx));
 
-				entry = vb->entry;
-				fr_value_box_clear_value(vb);
-				fr_value_box_bstrndup(vb, vb, NULL, escaped, real_len, false);
-				vb->entry = entry;
-
-				talloc_free(escaped);
+				fr_value_box_strdup_shallow_replace(vb, escaped, real_len);
+				fr_value_box_mark_safe_for(vb, escape);
 			}
 		}
 
