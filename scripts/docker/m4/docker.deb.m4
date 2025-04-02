@@ -1,5 +1,5 @@
 ARG from=DOCKER_IMAGE
-FROM ${from} as build
+FROM ${from} AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 
