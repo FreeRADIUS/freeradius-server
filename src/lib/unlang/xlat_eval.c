@@ -295,18 +295,19 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 	 *	flag "safe for MySQL".  And then things which aren't safe for MySQL are escaped, and then
 	 *	marked as "safe for MySQL".
 	 *
-	 *	Unfortunately, this doesn't work right now.  The output value-boxes are always mashed to the
-	 *	global SAFE_FOR value.  Fixing this involves changing the escape function to return 1, which
-	 *	would then mean "I set the safe_for value, so you don't need to".
+	 *	If the escape function returns "0", then we set the safe_for value.  If the escape function
+	 *	returns "1", then it has set the safe_for value.
 	 */
 #define ESCAPE(_arg, _vb, _arg_num) \
 do { \
 	if ((_arg)->func && (!fr_value_box_is_safe_for((_vb), (_arg)->safe_for) || (_arg)->always_escape)) { \
-		if ((_arg)->func(request, _vb, (_arg)->uctx) < 0) { \
+		int escape_rcode; \
+		escape_rcode = (_arg)->func(request, _vb, (_arg)->uctx); \
+		if (escape_rcode < 0) { \
 			RPEDEBUG("Function \"%s\" failed escaping argument %u", name, _arg_num); \
 			return XLAT_ACTION_FAIL; \
 		} \
-		fr_value_box_mark_safe_for((_vb), (_arg)->safe_for); \
+		if (escape_rcode == 0) fr_value_box_mark_safe_for((_vb), (_arg)->safe_for);	\
 	} \
 } while (0)
 
