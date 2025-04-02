@@ -1280,34 +1280,24 @@ static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t 
 	node->quote = quote;
 
 	switch (quote) {
+	case T_SOLIDUS_QUOTED_STRING:
+		fr_strerror_const("Unexpected regular expression");
+		goto error;
+
 	case T_BARE_WORD:
-		XLAT_DEBUG("ARGV bare word <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
-
-		/*
-		 *	@todo - do %{3} for regex.
-		 *
-		 *	@todo - peek ahead for attribute references.
-		 *
-		 *	@todo - peek ahead for values, if the input is alphanumeric + ".:" with no spaces,
-		 *	it's likely a value, and we can just tokenize the tmpl.  And then hoist the value-box.
-		 */
-
-		slen = xlat_tokenize_expression(node, &node->group, &our_in, p_rules, t_rules);
-		if (slen < 0) {
-		error:
-			talloc_free(node);
-			FR_SBUFF_ERROR_RETURN(&our_in);
-		}
-		break;
+		fr_strerror_const("Internal sanity check failed in parser");
+	error:
+		talloc_free(node);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 
 		/*
 		 *	"Double quoted strings may contain %{expansions}"
 		 */
 	case T_DOUBLE_QUOTED_STRING:
+	case T_BACK_QUOTED_STRING:
 		XLAT_DEBUG("ARGV double quotes <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
 
-		if (xlat_tokenize_input(node->group, &our_in,
-					&value_parse_rules_double_quoted, t_rules) < 0) goto error;
+		if (xlat_tokenize_input(node->group, &our_in, p_rules, t_rules) < 0) goto error;
 		break;
 
 		/*
@@ -1333,14 +1323,7 @@ static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t 
 		fr_assert(child->flags.pure);
 		xlat_exp_insert_tail(node->group, child);
 	}
-	break;
-
-	/*
-	 *	`back quoted strings aren't supported`
-	 */
-	case T_BACK_QUOTED_STRING:
-		fr_strerror_const("Unexpected `...` string");
-		goto error;
+		break;
 
 	default:
 		fr_assert(0);
@@ -1479,18 +1462,28 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			 */
 			slen = xlat_tokenize_input(node->group, &our_in, our_p_rules, &arg_t_rules);
 
-		} else if ((quote == T_BARE_WORD) && fr_sbuff_is_char(&our_in, ')')) {
-			MEM(node = xlat_exp_alloc(ctx, XLAT_GROUP, NULL, 0));
-			node->quote = quote;
-
+		} else if (quote == T_BARE_WORD) {
 			/*
 			 *	We've reached the end of the arguments, don't try to tokenize anything else.
 			 */
-			slen = 0;
+			MEM(node = xlat_exp_alloc(ctx, XLAT_GROUP, NULL, 0));
+			node->quote = quote;
+
+			if (fr_sbuff_is_char(&our_in, ')')) {
+				slen = 0;
+
+			} else {
+				/*
+				 *	Parse a full expression as an argv, all the way to a terminal character.
+				 *	We use the input parse rules here.
+				 */
+				slen = xlat_tokenize_expression(node, &node->group, &our_in, our_p_rules, &arg_t_rules);
+				if (slen > 0) node->flags = node->group->flags;
+			}
 
 		} else {
 
-			slen = xlat_tokenize_word(head, &node, &our_in, &m, quote, our_p_rules, &arg_t_rules);
+			slen = xlat_tokenize_word(head, &node, &our_in, &m, quote, value_parse_rules_quoted[quote], &arg_t_rules);
 		}
 
 		if (slen < 0) {
@@ -1500,6 +1493,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 
 			FR_SBUFF_ERROR_RETURN(&our_in);	/* error */
 		}
+		fr_assert(node != NULL);
 
 		/*
 		 *	No data, but the argument was required.  Complain.
