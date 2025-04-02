@@ -357,7 +357,7 @@ static int mod_load(void)
 	if (unlikely((xlat = xlat_func_register(NULL, "client", xlat_client, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, xlat_client_args);
 
-	map_proc_register(NULL, NULL, "client", map_proc_client, NULL, 0, 0);
+	map_proc_register(NULL, NULL, "client", map_proc_client, NULL, 0, FR_VALUE_BOX_SAFE_FOR_ANY);
 
 	return 0;
 }
