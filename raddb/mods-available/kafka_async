@@ -58,14 +58,22 @@ kafka kafka_async {
 	}
 
 	#
-	#  A user-defined topic called by reference or by using its name (which may
-	#  be changed) in an xlat of either form:
+	#  Example of a user-defined topic called by reference from another
+	#  section, or by using its name (which may be changed) in an xlat of
+	#  either form:
 	#
+	#    - "%{kafka_async:custom-topic (<header-list>) &Key-Attr-Ref Remainder is the message}"
+	#    - "%{kafka_async:custom-topic (<header-list>)  Remainder is the message}", if no key
 	#    - "%{kafka_async:custom-topic &Key-Attr-Ref Remainder is the message}"
 	#    - "%{kafka_async:custom-topic  Remainder is the message}", if no key
 	#
-	#  The attribute referred to by &Key-Attr-Ref holds the Kafka message's key.
-	#  Notice two spaces leading the message in case there is no key.
+	#  The attribute referred to by the optional &Key-Attr-Ref holds the
+	#  Kafka message's key. Notice that it is replaced with a mandatory
+	#  space if there is no key.
+	#
+	#  <header-list> has the same format as the json_encode xlat. For
+	#  example `&request[*] !&User-Password` creates Kafka headers from all
+	#  attributes in the RADIUS request, except for `User-Password`.
 	#
 	topic-config custom-topic {
 
