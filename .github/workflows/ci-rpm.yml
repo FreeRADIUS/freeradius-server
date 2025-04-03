@@ -153,7 +153,7 @@ jobs:
     #  If the CI has failed and the branch is ci-debug then start a tmate
     #  session. SSH rendezvous point is emited continuously in the job output.
     #
-    - name: "Debug: Package dependancies for tmate"
+    - name: "Debug: Package dependencies for tmate"
       run: |
         dnf install -y xz
         ln -s /bin/true /bin/apt-get
@@ -170,7 +170,7 @@ jobs:
   #
   #  Perform "post-install" testing of the FR packages that we have just built
   #  in a clean environment consisting of only the base OS and package
-  #  dependancies
+  #  dependencies
   #
   rpm-test:
 
@@ -266,7 +266,7 @@ jobs:
     #
     #  See above comments for tmate
     #
-    - name: "Debug: Package dependancies for tmate"
+    - name: "Debug: Package dependencies for tmate"
       run: |
         dnf install -y xz
         ln -s /bin/true /bin/apt-get

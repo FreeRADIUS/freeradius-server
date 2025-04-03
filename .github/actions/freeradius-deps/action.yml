@@ -2,19 +2,19 @@ name: freeradius-deps
 
 inputs:
   use_docker:
-    desription: True if running in a Docker container
+    description: True if running in a Docker container
     default: false
   llvm_ver:
-    desription: Version of LLVM to use
+    description: Version of LLVM to use
     default: 18
   gcc_ver:
-    desription: Version of GCC to use
+    description: Version of GCC to use
     default: 14
   fuzzing:
-    desription: True if fuzzing is enabled
+    description: True if fuzzing is enabled
     default: false
   cc:
-    desription: Which CC to use
+    description: Which CC to use
     default: gcc
 
 
