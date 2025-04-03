@@ -65,6 +65,7 @@ RUN make -j$(nproc) deb
 #  Clean environment and run the server
 #
 FROM ${from}
+ARG APT_OPTS="-y --no-install-recommends"
 ARG DEBIAN_FRONTEND=noninteractive
 
 COPY --from=build /usr/local/src/repositories/*.deb /tmp/
@@ -73,7 +74,7 @@ COPY --from=build /usr/local/src/repositories/*.deb /tmp/
 #  We need curl to get the signing key
 #
 RUN apt-get update \
- && apt-get install $APT_OPTS curl \
+ && apt-get install $APT_OPTS ca-certificates curl \
  && apt-get clean \
  && rm -r /var/lib/apt/lists/*
 
