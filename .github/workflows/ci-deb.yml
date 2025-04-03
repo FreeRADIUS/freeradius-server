@@ -1,4 +1,4 @@
-name: FreeRADIUS Debian Packaging CI
+name: CI DEB
 
 on:
   push:
