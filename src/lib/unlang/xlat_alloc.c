@@ -39,7 +39,7 @@ xlat_exp_head_t *_xlat_exp_head_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx)
 	MEM(head = talloc_zero(ctx, xlat_exp_head_t));
 
 	fr_dlist_init(&head->dlist, xlat_exp_t, entry);
-	head->flags.pure = head->flags.can_purify = true;
+	head->flags.constant = head->flags.pure = head->flags.can_purify = true;
 #ifndef NDEBUG
 	head->file = file;
 	head->line = line;

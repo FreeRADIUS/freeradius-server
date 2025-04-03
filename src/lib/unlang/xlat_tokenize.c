@@ -1006,10 +1006,11 @@ static void _xlat_debug_head(xlat_exp_head_t const *head, int depth)
 
 	fr_assert(head != NULL);
 
-	INFO_INDENT("head flags = %s %s %s",
+	INFO_INDENT("head flags = %s %s %s %s",
 		    head->flags.needs_resolving ? "need_resolving," : "",
 		    head->flags.pure ? "pure" : "",
-		    head->flags.can_purify ? "can_purify" : "");
+		    head->flags.can_purify ? "can_purify" : "",
+		    head->flags.constant ? "constant" : "");
 
 	depth++;
 
