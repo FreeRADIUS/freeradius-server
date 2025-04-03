@@ -1,0 +1,82 @@
+= Configuring ntlm_auth
+
+Once you have verified that Samba is installed and working correctly, and that the `ntlm_auth` program works, you can proceed with configuring FreeRADIUS to use ntlm_auth. For initial testing, we use the exec module, and will run the exact command line used in the previous testing step.
+
+Edit the `ntlm_auth` module configuration which saved as raddb/mods-enabled/ntlm_auth. The example snippet shown below needs to be updated with your site parameters which includes the path and domain.
+
+```
+
+        exec ntlm_auth {
+                wait = yes
+                program = "/path/to/ntlm_auth --request-nt-key --domain=MYDOMAIN --username=%{mschap:User-Name} --password=%{User-Password}"
+        }
+```
+
+This configuration tells the server to run the ntlm_auth program with the user name and password obtained from the Access-Request. You will also have to list ntlm_auth in the authenticate sections of each the raddb/sites-enabled/default file, and of the raddb/sites-enabled/inner-tunnel file:
+
+```
+authenticate {
+        ...
+        ntlm_auth
+        ...
+}
+```
+
+== Testing `ntlm_auth`
+
+Add the following text for testing purposes only to the top of the users file. The "users" file is located at `raddb/mods-config/files/authorize`.
+
+```
+DEFAULT     Auth-Type = ntlm_auth
+```
+
+This configuration says "for all users, if the authenticate method has not been set, set it to use the `ntlm_auth` program".
+
+Start the server using `radiusd -X`, and wait for the debugging text to stop. If all goes well, you'll' see the following text:
+
+Ready to process requests.
+
+In another terminal window on the same machine, type the following command:
+
+`$ radtest user password localhost 0 testing123`
+
+If successful, you'll see the server returning an Access-Accept message, and the window with radtest prints text similar to the following:
+
+
+```
+rad_recv: Access-Accept packet from host 127.0.0.1 port 1812, length=20
+```
+
+This text means that authentication succeeded. A few lines above this text, the debug output will also show the exact command line used to run `ntlm_auth`.
+
+== Configuring FreeRADIUS to use `ntlm_auth` for MS-CHAP
+
+Once you have the previous steps working, configuring FreeRADIUS to use `ntlm_auth` for MS-CHAP is simple. First, delete the testing entry used above from the users file, as leaving it in will break other authentication types. Then, find the mschap module in raddb/modules/mschap file, and look for the line containing `ntlm_auth = `. It is commented out by default, and should be uncommented, and edited to be as follows. As before, update the fields in bold to match your local configuration.
+
+
+```
+ntlm_auth = "/path/to/ntlm_auth --request-nt-key --allow-mschapv2 --username=%{mschap:User-Name:-None} --domain=%{%{mschap:NT-Domain}:-MYDOMAIN} --challenge=%{mschap:Challenge:-00} --nt-response=%{mschap:NT-Response:-00}"
+```
+
+
+== Start the server and use radtest to send an MS-CHAP authentication request.
+
+`$ radtest -t mschap bob hello localhost 0 testing123`
+
+If everything goes well, you should see the server returning an Access-Accept message as above.
+
+If it does not work, double-check the password you entered on the supplicant against the password in Active Directory. If it still does not work, it might be a bug in Samba. Change your version of Samba, either by installing a fixed version, or by repeatedly down-grading it (and testing) until it works.
+
+If it does not work, then it is possible to test authentication with just the `ntlm_auth` command-line. Look at the FreeRADIUS debug output, and see the arguments passed to `ntlm_auth`. Copy and paste them to a command-line, and then use that command line for testing. This limited test is often simpler and faster than running a complex test with a full RADIUS server. When this limited test passes, then authentication with FreeRADIUS will work, too.
+
+== Password changes
+
+If there are going to be password changes with FreeRADIUS ("your password has expired" - type - scenarios) You should probably also configure in /mods-available/mschap:
+
+passchange {
+ntlm_auth = "/path/to/ntlm_auth
+--helper-protocol=ntlm-change-password-1 --allow-mschapv2
+ntlm_auth_username = "username: %{mschap:User-Name}
+ntlm_auth_domain = "nt-domain: %{mschap:NT-Domain}"
+
+With the settings above it works correctly, so even if it is unnecessary, it doesn't break anything. It hasn't been tested without this option while denying ntlmv1 overall on the AD DC, but it is thought that it will work without it.
