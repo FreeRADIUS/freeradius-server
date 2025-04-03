@@ -26,7 +26,7 @@ IMAGES:=$(sort $(patsubst $(DT)/%,%,$(wildcard $(DT)/*)))
 
 # Don't use the Docker cache if asked
 ifneq "$(NOCACHE)" ""
-    DOCKER_BUILD_OPTS += " --no-cache"
+    DOCKER_BUILD_OPTS += "--no-cache"
 endif
 
 # Docker image name prefix
