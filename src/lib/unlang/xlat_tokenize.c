@@ -1272,6 +1272,7 @@ static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t 
 				  fr_token_t quote,
 				  fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
+	int		triple = 1;
 	ssize_t		slen;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_exp_t	*node;
@@ -1279,16 +1280,60 @@ static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t 
 	MEM(node = xlat_exp_alloc(ctx, XLAT_GROUP, NULL, 0));
 	node->quote = quote;
 
+	/*
+	 *	Triple-quoted strings have different terminal conditions.
+	 */
 	switch (quote) {
 	case T_SOLIDUS_QUOTED_STRING:
 		fr_strerror_const("Unexpected regular expression");
-		goto error;
+		FR_SBUFF_ERROR_RETURN(&our_in);
+
+	default:
+		fr_assert(0);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 
 	case T_BARE_WORD:
-		fr_strerror_const("Internal sanity check failed in parser");
-	error:
-		talloc_free(node);
-		FR_SBUFF_ERROR_RETURN(&our_in);
+		break;
+
+	case T_DOUBLE_QUOTED_STRING:
+	case T_SINGLE_QUOTED_STRING:
+	case T_BACK_QUOTED_STRING:
+		p_rules = value_parse_rules_quoted[quote];
+
+		if (fr_sbuff_remaining(&our_in) >= 2) {
+			char const *p = fr_sbuff_current(&our_in);
+			char c = fr_token_quote[quote];
+
+			/*
+			 *	"""foo "quote" and end"""
+			 */
+			if ((p[0] == c) && (p[1] == c)) {
+				triple = 3;
+				(void) fr_sbuff_advance(&our_in, 2);
+				p_rules = value_parse_rules_3quoted[quote];
+			}
+		}
+
+		break;
+	}
+
+	switch (quote) {
+	case T_BARE_WORD:
+		MEM(node = xlat_exp_alloc(ctx, XLAT_TMPL, NULL, 0));
+
+		/*
+		 *	tmpl_afrom_substr does pretty much all the work of
+		 *	parsing the operand.  It pays attention to the cast on
+		 *	our_t_rules, and will try to parse any data there as
+		 *	of the correct type.
+		 */
+		slen = tmpl_afrom_substr(node, &node->vpt, &our_in, quote, p_rules, t_rules);
+		if (slen <= 0) {
+		error:
+			talloc_free(node);
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
+		goto done;
 
 		/*
 		 *	"Double quoted strings may contain %{expansions}"
@@ -1311,9 +1356,7 @@ static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t 
 		XLAT_DEBUG("ARGV single quotes <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
 
 		child = xlat_exp_alloc(node->group, XLAT_BOX, NULL, 0);
-		slen = fr_sbuff_out_aunescape_until(child, &str, &our_in, SIZE_MAX,
-						    value_parse_rules_single_quoted.terminals,
-						    value_parse_rules_single_quoted.escapes);
+		slen = fr_sbuff_out_aunescape_until(child, &str, &our_in, SIZE_MAX, p_rules->terminals, p_rules->escapes);
 		if (slen < 0) goto error;
 
 		xlat_exp_set_name_shallow(child, str);
@@ -1330,12 +1373,20 @@ static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t 
 		goto error;
 	}
 
-	if ((quote != T_BARE_WORD) && !fr_sbuff_next_if_char(&our_in, fr_token_quote[quote])) { /* Quoting */
-		fr_strerror_const("Unterminated string");
-		fr_sbuff_set(&our_in, m);
-		FR_SBUFF_ERROR_RETURN(&our_in);
-	}
+	/*
+	 *	Ensure that the string ends with the correct number of quotes.
+	 */
+	do {
+		if (!fr_sbuff_is_char(&our_in, fr_token_quote[quote])) {
+			fr_strerror_const("Unterminated string");
+				fr_sbuff_set(&our_in, m);
+				goto error;
+		}
 
+		fr_sbuff_advance(&our_in, 1);
+	} while (--triple > 0);
+
+done:
 	node->flags = node->group->flags;
 	*out = node;
 
@@ -1483,7 +1534,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 
 		} else {
 
-			slen = xlat_tokenize_word(head, &node, &our_in, &m, quote, value_parse_rules_quoted[quote], &arg_t_rules);
+			slen = xlat_tokenize_word(head, &node, &our_in, &m, quote, our_p_rules, &arg_t_rules);
 		}
 
 		if (slen < 0) {
