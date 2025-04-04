@@ -98,6 +98,9 @@ server.p12: server.crt
 	$(OPENSSL) pkcs12 -export -in server.crt -inkey server.key -out server.p12  -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
 	chmod g+r server.p12
 
+server.der: server.pem
+	$(OPENSSL) x509 -inform PEM -outform DER -in server.pem -out server.der
+
 server.pem: server.p12
 	$(OPENSSL) pkcs12 -in server.p12 -out server.pem -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
 	chmod g+r server.pem
