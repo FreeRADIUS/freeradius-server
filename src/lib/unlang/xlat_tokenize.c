@@ -799,7 +799,7 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 		if (slen > 0) {
 		do_value_box:
 			xlat_exp_set_name_shallow(node, str);
-			fr_value_box_strdup(node, &node->data, NULL, str, false);
+			fr_value_box_bstrndup(node, &node->data, NULL, str, talloc_array_length(str) - 1, false);
 			fr_value_box_mark_safe_for(&node->data, t_rules->literals_safe_for);
 			node->flags.constant = true;
 			fr_assert(node->flags.pure);
