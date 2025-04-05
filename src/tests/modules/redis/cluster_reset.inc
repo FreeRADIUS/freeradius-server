@@ -21,13 +21,13 @@ if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
 #
 #  Reset the cluster
 #
-%exec(%{clusterctrl}, stop)
-%exec(%{clusterctrl}, clean)
-%exec(%{clusterctrl}, start)
+%exec(%{clusterctrl}, 'stop')
+%exec(%{clusterctrl}, 'clean')
+%exec(%{clusterctrl}, 'start')
 
 # Sometimes redis just fails to start - without it we can't run
 # the tests - so just exit early.
-cmdresult = %exec(%{clusterctrl}, create)
+cmdresult = %exec(%{clusterctrl}, 'create')
 if (cmdresult == '') {
 	test_pass
 	handled
@@ -55,17 +55,17 @@ foreach i (%range(20)) {
 	#
 	if (%redis.remap(%{redisserver}:30001) == 'success') {
 		#  Hashes to Redis cluster node master 0 (1)
-		if ((%redis(SET, b, %{data1}) == 'OK') && \
-		    (%redis(SET, c, %{data2}) == 'OK') && \
-		    (%redis(SET, d, %{data3}) == 'OK')) {
+		if ((%redis('SET', 'b', %{data1}) == 'OK') && \
+		    (%redis('SET', 'c', %{data2}) == 'OK') && \
+		    (%redis('SET', 'd', %{data3}) == 'OK')) {
 			#
 			#  The actual node to keyslot mapping seems to be somewhat random
 			#  so we now need to figure out which slave each of those keys
 			#  ended up on.
 			#
-			if ((%redis("-@%redis.node(b, 1)", GET, b) == %{data1}) && \
-			    (%redis("-@%redis.node(c, 1)", GET, c) == %{data2}) && \
-			    (%redis("-@%redis.node(d, 1)", GET, d) == %{data3})) {
+			if ((%redis("-@%redis.node(b, 1)", 'GET', 'b') == data1) && \
+			    (%redis("-@%redis.node(c, 1)", 'GET', 'c') == data2) && \
+			    (%redis("-@%redis.node(d, 1)", 'GET', 'd') == data3)) {
 				break
 			}
 		}
