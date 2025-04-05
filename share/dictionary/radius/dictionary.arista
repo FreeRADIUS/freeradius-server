@@ -22,9 +22,34 @@ ATTRIBUTE	BlockMac				7	string
 ATTRIBUTE	UnblockMac				8	string
 ATTRIBUTE	PortFlap				9	integer
 ATTRIBUTE	Captive-Portal				10	string
+ATTRIBUTE	Segment-Id				11	string
+ATTRIBUTE	Origin-Identifier			12	string
+ATTRIBUTE	PeriodicIdentity			13	integer
+ATTRIBUTE	Dynamic-HostMode			14	integer
+ATTRIBUTE	DeviceType				15	integer
+ATTRIBUTE	Action					16	integer
+ATTRIBUTE	Device-Profiling			17	string
+ATTRIBUTE	Port-Shutdown				18	integer
+ATTRIBUTE	Mvrp					19	integer
+ATTRIBUTE	Tenant-Id				20	integer
+ATTRIBUTE	Interface-Profile			21	string
 
-VALUE	WebAuth				start			1
-VALUE	WebAuth				complete		2
+VALUE		WebAuth				start			1
+VALUE		WebAuth				complete		2
 
-END-VENDOR   Arista
+VALUE		PeriodicIdentity        	stop    		0
+VALUE		PeriodicIdentity        	start   		1
+
+VALUE		Dynamic-HostMode		disabled		0
+VALUE		Dynamic-HostMode		multi-host		1
+
+VALUE		DeviceType			none			0
+VALUE		DeviceType			phone			1
+
+VALUE		Action				reauthenticate		1
+
+VALUE		Mvrp				disable			0
+VALUE		Mvrp				enable			1
+
+END-VENDOR	Arista
 ALIAS		Arista					Vendor-Specific.Arista
