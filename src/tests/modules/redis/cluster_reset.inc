@@ -53,7 +53,7 @@ foreach i (%range(20)) {
 	#
 	#  Force a remap as the slaves don't show up in the cluster immediately
 	#
-	if (%redis.remap(%{redisserver}:30001) == 'success') {
+	if (%redis.remap("%{redisserver}:30001") == 'success') {
 		#  Hashes to Redis cluster node master 0 (1)
 		if ((%redis('SET', 'b', %{data1}) == 'OK') && \
 		    (%redis('SET', 'c', %{data2}) == 'OK') && \
@@ -63,9 +63,9 @@ foreach i (%range(20)) {
 			#  so we now need to figure out which slave each of those keys
 			#  ended up on.
 			#
-			if ((%redis("-@%redis.node(b, 1)", 'GET', 'b') == data1) && \
-			    (%redis("-@%redis.node(c, 1)", 'GET', 'c') == data2) && \
-			    (%redis("-@%redis.node(d, 1)", 'GET', 'd') == data3)) {
+			if ((%redis("-@%redis.node('b', 1)", 'GET', 'b') == data1) && \
+			    (%redis("-@%redis.node('c', 1)", 'GET', 'c') == data2) && \
+			    (%redis("-@%redis.node('d', 1)", 'GET', 'd') == data3)) {
 				break
 			}
 		}

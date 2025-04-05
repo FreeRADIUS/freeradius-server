@@ -19,7 +19,7 @@ testdata2 := "2-%randstr('aaaaaaaa')"
 testdata3 := "3-%randstr('aaaaaaaa')"
 
 #  Hashes to Redis cluster node master 1 (1)
-if (%redis(SET, b, %{testdata1}) == 'OK') {
+if (%redis('SET', 'b', %{testdata1}) == 'OK') {
 	test_pass
 } else {
 	test_fail

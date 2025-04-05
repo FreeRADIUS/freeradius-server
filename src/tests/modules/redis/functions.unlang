@@ -20,12 +20,12 @@ if (!(%redis.hello_world(0, %{dummy_string}) == 'hello world')) {
 	test_fail
 }
 
-if (!(%redis.concat_args_keys(1, foo, bar, baz) == 'foo,bar,baz')) {
+if (!(%redis.concat_args_keys(1, 'foo', 'bar', 'baz') == 'foo,bar,baz')) {
 	test_fail
 }
 
 # Concat with an empty argument.  This is a regression test
-if (!(%redis.concat_args_keys(1, foo, %{dummy_string}, baz) == 'foo,,baz')) {
+if (!(%redis.concat_args_keys(1, 'foo', %{dummy_string}, 'baz') == 'foo,,baz')) {
 	test_fail
 }
 
