@@ -9,14 +9,16 @@ if !(control.Password.Cleartext =~ /hell(o)(.*)/) {
 #
 #  Verify non-empty capture groups evaluate to true
 #
-if (!"%{1}") {
+#  Note that "%{1}" evaluates to an empty string!
+#
+if !%{1} {
 	test_fail
 }
 
 #
 #  Verify empty capture groups evaluate to false
 #
-if ("%{2}") {
+if %{2} {
 	test_fail
 }
 
@@ -27,7 +29,7 @@ if !(control.Password.Cleartext =~ /hello(.*)/) {
 #
 #  Check for stale capture group values
 #
-if ("%{1}") {
+if %{1} {
 	test_fail
 }
 
