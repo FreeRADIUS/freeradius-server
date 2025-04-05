@@ -663,11 +663,14 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 			 *
 			 *	We have to check this here, because the quote is part of the tmpl, and we call
 			 *	xlat_push(), which doesn't know about the quote.
+			 *
+			 *	@todo - we should really push the quote into the xlat, too.
 			 */
 			box = fr_value_box_list_head(&current->rhs.result);
 
 			if (!box) {
 				MEM(box = fr_value_box_alloc(state, FR_TYPE_STRING, NULL));
+				fr_value_box_strdup(box, box, NULL, "", false);
 				fr_value_box_list_insert_tail(&current->rhs.result, box);
 
 			} else if (fr_value_box_list_concat_in_place(box, box, &current->rhs.result, FR_TYPE_STRING,
