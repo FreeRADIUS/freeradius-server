@@ -1369,6 +1369,49 @@ static size_t command_calc_nary(command_result_t *result, command_file_ctx_t *cc
 	RETURN_OK(slen);
 }
 
+/** Perform casting
+ *
+ */
+static size_t command_cast(command_result_t *result, command_file_ctx_t *cc,
+			   char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	fr_value_box_t *a, *out;
+	size_t match_len;
+	fr_type_t type;
+	char const *p, *value, *end;
+	size_t slen;
+
+	a = talloc_zero(cc->tmp_ctx, fr_value_box_t);
+
+	p = in;
+	end = in + inlen;
+
+	match_len = parse_typed_value(result, a, &value, p, end - p);
+	if (match_len == 0) return 0; /* errors have already been updated */
+
+	p += match_len;
+	fr_skip_whitespace(p);
+
+	out = talloc_zero(cc->tmp_ctx, fr_value_box_t);
+
+	if (strncmp(p, "->", 2) != 0) RETURN_PARSE_ERROR(0);
+	p += 2;
+	fr_skip_whitespace(p);
+
+	type = fr_table_value_by_longest_prefix(&match_len, fr_type_table, p, end - p, FR_TYPE_MAX);
+	if (type == FR_TYPE_MAX) RETURN_PARSE_ERROR(0);
+	fr_value_box_init(out, type, NULL, false);
+
+	if (fr_value_box_cast(out, out, type, NULL, a) < 0) {
+		RETURN_OK_WITH_ERROR();
+	}
+
+	slen = fr_value_box_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), out, NULL);
+	if (slen <= 0) RETURN_OK_WITH_ERROR();
+
+	RETURN_OK(slen);
+}
+
 /** Change the working directory
  *
  */
@@ -3040,6 +3083,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 	{ L("calc_nary "), 	&(command_entry_t){
 					.func = command_calc_nary,
 					.usage = "calc_nary op <type1> <value1> <type2> <value2> ... -> <output-type>",
+					.description = "Perform calculations on value boxes",
+				}},
+	{ L("cast "),		&(command_entry_t){
+					.func = command_cast,
+					.usage = "cast (type) <value> -> <output-type>",
 					.description = "Perform calculations on value boxes",
 				}},
 	{ L("cd "),		&(command_entry_t){
