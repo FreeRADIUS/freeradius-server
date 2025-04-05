@@ -279,15 +279,19 @@ static inline void xlat_debug_log_result(request_t *request, xlat_exp_t const *n
  * @param[in] request	currently being processed
  * @param[in] name	of the function being called
  * @param[in] arg	specification of current argument
+ * @param[in] node	expansion for the current argument
  * @param[in] arg_num	number of current argument in the argument specifications
  * @return
  *	- XLAT_ACTION_DONE on success.
  *	- XLAT_ACTION_FAIL on failure.
  */
 static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_t *request,
-					   char const *name, xlat_arg_parser_t const *arg, unsigned int arg_num)
+					   char const *name, xlat_arg_parser_t const *arg, xlat_exp_t const *node, unsigned int arg_num)
 {
 	fr_value_box_t *vb;
+	bool concat = false;
+	bool quoted = false;
+	fr_type_t type;
 
 	/*
 	 *	The funtion may be URI or SQL, which have different sub-types.  So we call the function if it
@@ -311,21 +315,62 @@ do { \
 	} \
 } while (0)
 
+	/*
+	 *	See if we have to concatenate the results.
+	 *
+	 *	If the input xlat is more complicated expression, it's going to be a function, e.g.
+	 *
+	 *		1+2 --> %op_add(1,2).
+	 *
+	 *	And then we can't do escaping.  Note that this is also the case for
+	 *
+	 *		"foo" + User-Name --> %op_add("foo", User-Name)
+	 *
+	 *	Arguably, we DO want to escape User-Name, but not Foo.  Because "+" here is a special case.  :(
+	 */
+	if ((fr_dlist_num_elements(&node->group->dlist) == 1) && (xlat_exp_head(node->group)->quote != T_BARE_WORD)) {
+		quoted = concat = true;
+		type = FR_TYPE_STRING;
+
+	} else {
+		concat = arg->concat;
+		type = arg->type;
+	}
+
 	if (fr_value_box_list_empty(list)) {
+		/*
+		 *	The expansion resulted in no data, BUT the admin wants a string.  So we create an
+		 *	empty string.
+		 *
+		 *	i.e. If attribute 'foo' doesn't exist, then we have:
+		 *
+		 *		%{foo} --> nothing, because 'foo' doesn't exist
+		 *		"%{foo}" --> "", because we want a string, therefore the contents of the string are nothing.
+		 */
+		if (quoted) {
+			MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
+			fr_value_box_strdup(vb, vb, NULL, "", false);
+			fr_value_box_list_insert_tail(list, vb);
+
+			return XLAT_ACTION_DONE;
+		}
+
 		if (arg->required) {
 			REDEBUG("Function \"%s\" is missing required argument %u", name, arg_num);
 			return XLAT_ACTION_FAIL;
 		}
+
 		return XLAT_ACTION_DONE;
 	}
 
 	vb = fr_value_box_list_head(list);
+	fr_assert(node->type == XLAT_GROUP);
 
 	/*
 	 *	Concatenate child boxes, casting to desired type,
 	 *	then replace group vb with first child vb
 	 */
-	if (arg->concat) {
+	if (concat) {
 		if (arg->func) {
 			do ESCAPE(arg, vb, arg_num); while ((vb = fr_value_box_list_next(list, vb)));
 
@@ -333,13 +378,20 @@ do { \
 		}
 
 		if (fr_value_box_list_concat_in_place(ctx,
-						      vb, list, arg->type,
+						      vb, list, type,
 						      FR_VALUE_BOX_LIST_FREE, true,
 						      SIZE_MAX) < 0) {
-			RPEDEBUG("Function \"%s\" failed concatenating arguments to type %s", name, fr_type_to_str(arg->type));
+			RPEDEBUG("Function \"%s\" failed concatenating arguments to type %s", name, fr_type_to_str(type));
 			return XLAT_ACTION_FAIL;
 		}
 		fr_assert(fr_value_box_list_num_elements(list) <= 1);
+
+		/*
+		 *	Cast to the type we actually want.
+		 */
+		if ((arg->type != FR_TYPE_VOID) && (arg->type != type)) {
+			goto do_cast;
+		}
 
 		return XLAT_ACTION_DONE;
 	}
@@ -361,9 +413,10 @@ do { \
 		ESCAPE(arg, vb, arg_num);
 
 		if ((arg->type != FR_TYPE_VOID) && (vb->type != arg->type)) {
-		cast_error:
+		do_cast:
 			if (fr_value_box_cast_in_place(ctx, vb,
 						       arg->type, NULL) < 0) {
+			cast_error:
 				RPEDEBUG("Function \"%s\" failed to cast argument %u to type %s", name, arg_num, fr_type_to_str(arg->type));
 				return XLAT_ACTION_FAIL;
 			}
@@ -385,7 +438,7 @@ do { \
 		} while ((vb = fr_value_box_list_next(list, vb)));
 
 	/*
-	 *	If it's not a void type we still need to escape the values
+	 *	If it's a void type we still need to escape the values
 	 */
 	} else if (arg->func) {
 		do ESCAPE(arg, vb, arg_num); while ((vb = fr_value_box_list_next(list, vb)));
@@ -408,15 +461,17 @@ do { \
  * 				List will be modified in accordance to rules
  * 				provided in the args array.
  * @param[in] request		being processed.
- * @param[in] func		to call
+ * @param[in] node		which is a function
  */
 static inline CC_HINT(always_inline)
 xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list,
-				request_t *request, xlat_t const *func)
+				request_t *request, xlat_exp_t const *node)
 {
+	xlat_t const		*func = node->call.func;
 	xlat_arg_parser_t const	*arg_p = func->args;
+	xlat_exp_t     		*arg, *arg_next;
 	xlat_action_t		xa;
-	fr_value_box_t		*vb, *next;
+	fr_value_box_t		*vb, *vb_next;
 
 	/*
 	 *	No args registered for this xlat
@@ -435,6 +490,8 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list,
 	 */
 	case XLAT_INPUT_ARGS:
 		vb = fr_value_box_list_head(list);
+		arg = xlat_exp_head(node->call.args);
+
 		while (arg_p->type != FR_TYPE_NULL) {
 			/*
 			 *	Separate check to see if the group
@@ -467,8 +524,10 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list,
 			 *	pre-advance, in case the vb is replaced
 			 *	during processing.
 			 */
-			next = fr_value_box_list_next(list, vb);
-			xa = xlat_process_arg_list(ctx, &vb->vb_group, request, func->name, arg_p,
+			vb_next = fr_value_box_list_next(list, vb);
+			arg_next = xlat_exp_next(node->call.args, arg);
+
+			xa = xlat_process_arg_list(ctx, &vb->vb_group, request, func->name, arg_p, arg,
 						   (unsigned int)((arg_p - func->args) + 1));
 			if (xa != XLAT_ACTION_DONE) return xa;
 
@@ -550,11 +609,12 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list,
 
 		do_next:
 			if (arg_p->variadic) {
-				if (!next) break;
+				if (!vb_next) break;
 			} else {
 				arg_p++;
+				arg = arg_next;
 			}
-			vb = next;
+			vb = vb_next;
 		}
 		break;
 	}
@@ -983,7 +1043,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 *	the async function mucks with it.
 		 */
 		if (RDEBUG_ENABLED2) fr_value_box_list_acopy(unlang_interpret_frame_talloc_ctx(request), &result_copy, result);
-		xa = xlat_process_args(ctx, result, request, node->call.func);
+		xa = xlat_process_args(ctx, result, request, node);
 		if (xa == XLAT_ACTION_FAIL) {
 			fr_value_box_list_talloc_free(&result_copy);
 			return xa;
@@ -1052,9 +1112,6 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			VALUE_BOX_LIST_VERIFY(result);
 			fr_value_box_list_move(&arg->vb_group, result);
 		}
-
-//		xlat_debug_log_expansion(request, *in, NULL, __LINE__);
-//		xlat_debug_log_result(request, *in, arg);
 
 		VALUE_BOX_VERIFY(arg);
 
