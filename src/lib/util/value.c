@@ -55,6 +55,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/time.h>
 
 #include <math.h>
+#include <float.h>
 
 /** Sanity checks
  *
@@ -663,6 +664,53 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 	fr_value_box_list_entry_init(dst);
 }
 
+/** Compare two floating point numbers for equality.
+ *
+ *  We're not _quite_ supposed to use DBL_EPSILON here, and are instead supposed to choose our own epsilon.
+ *  But this is good enough for most purposed.
+ */
+static int8_t float_cmp(double a, double b)
+{
+	double sum, diff;
+
+	/*
+	 *	Handles the best cast scenario.
+	 */
+	if (a == b) return 0;
+
+	diff = fabs(a - b);
+
+	/*
+	 *	One of the numbers is zero.  The other might be close to zero, in which case it might as well
+	 *	be zero.
+	 *
+	 *	Otherwise, the non-zero number is far from zero, and we can just compare them.
+	 */
+	if ((fpclassify(a) == FP_ZERO) || (fpclassify(b) == FP_ZERO)) {
+	check:
+		if (diff < DBL_EPSILON) return 0;
+
+		return CMP(a, b);
+	}
+
+	/*
+	 *	Get the rough scale of the two numbers.
+	 */
+	sum = fabs(a) + fabs(b);
+
+	/*
+	 *	The two numbers are not zero, but both are close to it.
+	 */
+	if (sum < DBL_MIN) goto check;
+
+	/*
+	 *	Get the relative differences.  This check also handles overflow of sum.
+	 */
+	if ((diff / fmin(sum, DBL_MAX)) < DBL_EPSILON) return 0;
+
+	return CMP(a, b);
+}
+
 /** Compare two values
  *
  * @param[in] a Value to compare.
@@ -764,10 +812,10 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		return fr_time_delta_cmp(a->datum.time_delta, b->datum.time_delta);
 
 	case FR_TYPE_FLOAT32:
-		RETURN(float32);
+		return float_cmp(a->vb_float32, b->vb_float32);
 
 	case FR_TYPE_FLOAT64:
-		RETURN(float64);
+		return float_cmp(a->vb_float64, b->vb_float64);
 
 	case FR_TYPE_ETHERNET:
 		COMPARE(ether);
@@ -3099,7 +3147,7 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 
 		dst->vb_date = fr_unix_time_from_integer(&overflow, tmp, res);
 		if (overflow) {
-			fr_strerror_const("Input to data type would overflow");
+			fr_strerror_const("Input to date type would overflow");
 			return -1;
 		}
 	}
@@ -3287,12 +3335,18 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 
 		case FR_TYPE_TIME_DELTA: {
 			int64_t sec, nsec;
+			int64_t res = NSEC;
+			bool fail = false;
+
+			if (dst->enumv) res = fr_time_multiplier_by_res[dst->enumv->flags.flag_time_res];
 
 			sec = src->vb_float32;
-			sec *= NSEC;
-			nsec = ((src->vb_float32 * NSEC) - ((float) sec));
+			sec *= res;
+			nsec = ((src->vb_float32 * res) - ((double) sec));
 
-			dst->vb_time_delta = fr_time_delta_from_nsec(sec + nsec);
+			dst->vb_time_delta = fr_time_delta_from_integer(&fail, sec + nsec,
+									dst->enumv ? dst->enumv->flags.flag_time_res : FR_TIME_RES_NSEC);
+			if (fail) goto overflow;
 		}
 			break;
 
@@ -3350,9 +3404,6 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 			sec *= NSEC;
 			nsec = ((src->vb_float64 * NSEC) - ((double) sec));
 
-			/*
-			 *	@todo - respect time res
-			 */
 			dst->vb_date = fr_unix_time_from_nsec(sec + nsec);
 		}
 			break;

@@ -295,12 +295,15 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 	/*
 	 *	For floating point numbers, we pre-multiply by the time resolution, and then override the time
 	 *	resolution to indicate that no further scaling is necessary.
+	 *
+	 *	We check for overflow prior to multiplication, as doubles have ~53 bits of precision, while
+	 *	int64_t has 64 bits of precision.  That way the comparison is more likely to be accurate.
 	 */
 	if (do_float) {
-		f *= fr_time_multiplier_by_res[res];
-		if (f < (double) INT64_MIN) goto fail_overflow;
-		if (f > (double) INT64_MAX) goto fail_overflow;
+		if (f < ((double) INT64_MIN) / (double) fr_time_multiplier_by_res[res])  goto fail_overflow;
+		if (f > ((double) INT64_MAX) / (double) fr_time_multiplier_by_res[res]) goto fail_overflow;
 
+		f *= fr_time_multiplier_by_res[res];
 		res = FR_TIME_RES_NSEC;
 		integer = f;
 	}
