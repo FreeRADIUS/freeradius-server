@@ -216,15 +216,22 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 {
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 	int64_t			integer;	/* Whole units */
+	double			f;
 	fr_time_res_t		res;
+	bool			do_float;
 	bool			negative;
 	fr_sbuff_parse_error_t	sberr;
 	bool			overflow;
-	fr_time_delta_t		delta;		/* The delta we're building */
 	size_t			match_len;
 
 	negative = fr_sbuff_is_char(&our_in, '-');
+	do_float = false;
 
+	/*
+	 *	Look for:
+	 *
+	 *	<integer>[scale]
+	 */
 	if (fr_sbuff_out(&sberr, &integer, &our_in) < 0) {
 		char const *err;
 
@@ -232,146 +239,96 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 		if (sberr != FR_SBUFF_PARSE_ERROR_NOT_FOUND) {
 			err = fr_table_str_by_value(sbuff_parse_error_table, sberr, "<INVALID>");
 		} else {
-			err = "Invalid text, input should be an integer";
+			err = "Invalid text, input should be a number";
 		}
 
 		fr_strerror_printf("Failed parsing time_delta: %s", err);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
+
+	/*
+	 *	hh:mm:ss
+	 */
+	if (fr_sbuff_next_if_char(&our_in, ':')) goto do_timestamp;
+
+	/*
+	 *	If it's a fractional thing, then just parse it as a double.
+	 *
+	 *	<float>[scale]
+	 */
+	if (fr_sbuff_is_char(&our_in, '.')) {
+		our_in = FR_SBUFF(in);
+
+		if (fr_sbuff_out(&sberr, &f, &our_in) < 0) goto num_error;
+
+		do_float = true;
+	}
+
+	/*
+	 *	Now look for the time resolution.
+	 */
 	fr_sbuff_out_by_longest_prefix(&match_len, &res, fr_time_precision_table, &our_in, FR_TIME_RES_INVALID);
 
-	/*
-	 *	We now determine which one of the three formats
-	 *	we accept the string is in.
-	 *
-	 *	Either:
-	 *	- <integer>[<scale>]
-	 *	- <integer>.<fraction>[<scale>]
-	 *	- [hours:]minutes:seconds
-	 */
+	if (fr_sbuff_is_terminal(&our_in, tt)) {
+		if (match_len == 0) res = hint;
 
-	/*
-	 *	We have a fractional component
-	 *
-	 *	<integer>.<fraction>[<scale>]
-	 */
-	if (fr_sbuff_next_if_char(&our_in, '.')) {
-		fr_sbuff_marker_t	m_f;
-		size_t			f_len;
-		uint64_t		f = 0;	/* Fractional units */
-
-		/*
-		 *	Normalise as a positive integer
-		 */
-		if (negative) integer = -(integer);
-
-		/*
-		 *	Mark the start of the fractional component
-		 */
-		fr_sbuff_marker(&m_f, &our_in);
-
-		/*
-		 *	Leading zeros appear to mess up integer parsing
-		 */
-		fr_sbuff_adv_past_zeros(&our_in, SIZE_MAX, tt);
-
-		if (fr_sbuff_out(&sberr, &f, &our_in) < 0) {
-			/*
-			 *	Crappy workaround for <num>.0
-			 *
-			 *	Advancing past the leading zeros screws
-			 *	up the fractional parsing when the
-			 *	fraction is all zeros...
-			 */
-			if ((sberr != FR_SBUFF_PARSE_ERROR_NOT_FOUND) || !fr_sbuff_is_char(&m_f, '0')) goto num_error;
-		}
-
-		f_len = fr_sbuff_behind(&m_f);
-		if (f_len > 9) {
-			fr_strerror_const("Too much precision for time_delta");
-			fr_sbuff_set(&our_in, fr_sbuff_current(&m_f) + 10);
+	} else if (no_trailing) {
+	fail_trailing_data:
+		/* Got a qualifier but there is more text after it. */
+		if (res != FR_TIME_RES_INVALID) {
+			fr_strerror_const("Trailing data after time_delta");
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
+		fr_strerror_const("Invalid precision qualifier for time_delta");
+		FR_SBUFF_ERROR_RETURN(&our_in);
+
+	} else if (match_len == 0) {
 		/*
-		 *	Convert to nanoseconds
-		 *
-		 *      This can't overflow.
+		 *	There is trailing data, but we don't care about it.  Ensure that we have a time resolution.
 		 */
-		while (f_len < 9) {
-#ifdef STATIC_ANALYZER
-			// Coverity doesn't understand that the previous conditions prevent overflow.
-			if (f > UINT64_MAX / 10) break;
-#endif
-			f *= 10;
-			f_len++;
-		}
+		res = hint;
+	}
 
-		/*
-		 *	Look for a scale suffix
-		 */
-		fr_sbuff_out_by_longest_prefix(&match_len, &res, fr_time_precision_table, &our_in, FR_TIME_RES_INVALID);
+	fr_assert(res != FR_TIME_RES_INVALID);
 
-		if (no_trailing && !fr_sbuff_is_terminal(&our_in, tt)) {
-		trailing_data:
-			/* Got a qualifier but there's stuff after */
-			if (res != FR_TIME_RES_INVALID) {
-				fr_strerror_const("Trailing data after time_delta");
-				FR_SBUFF_ERROR_RETURN(&our_in);
-			}
-
-			fr_strerror_const("Invalid precision qualifier for time_delta");
-			FR_SBUFF_ERROR_RETURN(&our_in);
-		}
-
-		/* Scale defaults to hint */
-		if (res == FR_TIME_RES_INVALID) res = hint;
-
-		/*
-		 *	Subseconds was parsed as if it was nanoseconds.
-		 *      But instead it may be something else, so it should
-		 *	be truncated.
-		 *
-		 *	Note that this operation can't overflow.
-		 */
+	/*
+	 *	For floating point numbers, we pre-multiply by the time resolution, and then override the time
+	 *	resolution to indicate that no further scaling is necessary.
+	 */
+	if (do_float) {
 		f *= fr_time_multiplier_by_res[res];
-		f /= NSEC;
+		if (f < (double) INT64_MIN) goto fail_overflow;
+		if (f > (double) INT64_MAX) goto fail_overflow;
 
-		delta = fr_time_delta_from_integer(&overflow, integer, res);
-		if (overflow) {
-		overflow:
-			fr_strerror_printf("time_delta would %s", negative ? "underflow" : "overflow");
-			fr_sbuff_set_to_start(&our_in);
-			FR_SBUFF_ERROR_RETURN(&our_in);
-		}
+		res = FR_TIME_RES_NSEC;
+		integer = f;
+	}
 
-		{
-			int64_t tmp;
-
-			/*
-			 *	Add fractional and integral parts checking for overflow
-			 */
-			if (!fr_add(&tmp, fr_time_delta_unwrap(delta), f)) goto overflow;
-
-			/*
-			 *	Flip the sign back to negative
-			 */
-			if (negative) tmp = -(tmp);
-
-			*out = fr_time_delta_wrap(tmp);
-		}
-
-		FR_SBUFF_SET_RETURN(in, &our_in);
 	/*
-	 *	It's timestamp format
+	 *	We have a valid time scale.  Let's use that.
+	 */
+	*out = fr_time_delta_from_integer(&overflow, integer, res);
+	if (overflow) {
+	fail_overflow:
+		fr_strerror_printf("time_delta would %s", negative ? "underflow" : "overflow");
+		fr_sbuff_set_to_start(&our_in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
+
+	}
+	FR_SBUFF_SET_RETURN(in, &our_in);
+
+do_timestamp:
+	res = hint;
+
+	/*
+	 *	It's a timestamp format
 	 *
 	 *	[hours:]minutes:seconds
 	 */
-	} else if (fr_sbuff_next_if_char(&our_in, ':')) {
+	{
 		uint64_t		hours, minutes, seconds;
 		fr_sbuff_marker_t 	m1;
-
-		res = FR_TIME_RES_SEC;
 
 		fr_sbuff_marker(&m1, &our_in);
 
@@ -384,63 +341,56 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 			hours = 0;
 			minutes = negative ? -(integer) : integer;
 
-			if (minutes > UINT16_MAX) {
+			if (minutes > 60) {
 				fr_strerror_printf("minutes component of time_delta is too large");
 				fr_sbuff_set_to_start(&our_in);
 				FR_SBUFF_ERROR_RETURN(&our_in);
 			}
-		/*
-		 *	hours:minutes:seconds
-		 */
+
 		} else {
+			/*
+			 *	hours:minutes:seconds
+			 */
 			hours = negative ? -(integer) : integer;
 			minutes = seconds;
 
 			if (fr_sbuff_out(&sberr, &seconds, &our_in) < 0) goto num_error;
 
+			/*
+			 *	We allow >24 hours.  What the heck.
+			 */
 			if (hours > UINT16_MAX) {
 				fr_strerror_printf("hours component of time_delta is too large");
 				fr_sbuff_set_to_start(&our_in);
 				FR_SBUFF_ERROR_RETURN(&our_in);
 			}
 
-			if (minutes > UINT16_MAX) {
-				fr_strerror_printf("minutes component of time_delta is too large");
+			if (minutes > 60) {
+				fr_strerror_printf("minuts component of time_delta is too large");
+				FR_SBUFF_ERROR_RETURN(&m1);
+			}
+
+			if (seconds > 60) {
+				fr_strerror_printf("seconds component of time_delta is too large");
 				FR_SBUFF_ERROR_RETURN(&m1);
 			}
 		}
 
-		if (no_trailing && !fr_sbuff_is_terminal(&our_in, tt)) goto trailing_data;
+		if (no_trailing && !fr_sbuff_is_terminal(&our_in, tt)) goto fail_trailing_data;
 
 		/*
 		 *	Add all the components together...
 		 */
-		if (!fr_add(&integer, ((hours * 60) * 60) + (minutes * 60), seconds)) goto overflow;
+		if (!fr_add(&integer, ((hours * 60) * 60) + (minutes * 60), seconds)) goto fail_overflow;
 
 		/*
 		 *	Flip the sign back to negative
 		 */
 		if (negative) integer = -(integer);
-
-		*out = fr_time_delta_from_sec(integer);
-		FR_SBUFF_SET_RETURN(in, &our_in);
-	/*
-	 *	Nothing fancy here it's just a time delta as an integer
-	 *
-	 *	<integer>[<scale>]
-	 */
-	} else {
-		if (no_trailing && !fr_sbuff_is_terminal(&our_in, tt)) goto trailing_data;
-
-		/* Scale defaults to hint */
-		if (res == FR_TIME_RES_INVALID) res = hint;
-
-		/* Do the scale conversion */
-		*out = fr_time_delta_from_integer(&overflow, integer, res);
-		if (overflow) goto overflow;
-
-		FR_SBUFF_SET_RETURN(in, &our_in);
 	}
+
+	*out = fr_time_delta_from_sec(integer);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Create fr_time_delta_t from a string

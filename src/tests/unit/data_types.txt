@@ -32,7 +32,7 @@ value time_delta 2.4
 match 2.4
 
 value time_delta yes
-match Failed parsing time_delta: Invalid text, input should be an integer
+match Failed parsing time_delta: Invalid text, input should be a number
 
 value time_delta 1ms
 match 0.001
@@ -60,6 +60,9 @@ match 3600
 
 value time_delta 1d
 match 86400
+
+value time_delta 1.14285714w
+match 691199.998272
 
 #
 #  And negative numbers
@@ -247,4 +250,4 @@ encode-dns-label www_foo.com
 match Invalid character 0x5f in label
 
 count
-match 122
+match 124
