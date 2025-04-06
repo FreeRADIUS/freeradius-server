@@ -6425,25 +6425,37 @@ void fr_value_box_list_debug(fr_value_box_list_t const *head)
 static void _fr_value_box_debug(fr_value_box_t const *vb, int depth, int idx)
 {
 	char *value;
+	char buffer[64];
 
 	if (fr_type_is_structural(vb->type)) {
 		_fr_value_box_list_debug(&vb->vb_group, depth + 1);
 		return;
 	}
 
+	buffer[0] = '\0';
+	if (vb->type == FR_TYPE_TIME_DELTA) {
+		if (!vb->enumv) {
+			snprintf(buffer, sizeof(buffer), " (sec!) %" PRId64, fr_time_delta_unwrap(vb->vb_time_delta));
+		} else {
+			snprintf(buffer, sizeof(buffer), " (%s) %" PRId64,
+				 fr_table_str_by_value(fr_time_precision_table, vb->enumv->flags.flag_time_res, "?"),
+				 fr_time_delta_unwrap(vb->vb_time_delta));
+		}
+	}
+
 	fr_value_box_aprint(NULL, &value, vb, NULL);
 	if (idx >= 0) {
 		INFO_INDENT("[%d] (%s) %s", idx, fr_type_to_str(vb->type), value);
-		INFO_INDENT("          %s %s %lx",
+		INFO_INDENT("          %s %s %lx%s",
 			    vb->secret ? "s" : "-",
 			    vb->tainted ? "t" : "-",
-			    vb->safe_for);
+			    vb->safe_for, buffer);
 	} else {
 		INFO_INDENT("(%s) %s", fr_type_to_str(vb->type), value);
-		INFO_INDENT("     %s %s %lx",
+		INFO_INDENT("     %s %s %lx%s",
 			    vb->secret ? "s" : "-",
 			    vb->tainted ? "t" : "-",
-			    vb->safe_for);
+			    vb->safe_for, buffer);
 	}
 	talloc_free(value);
 }
