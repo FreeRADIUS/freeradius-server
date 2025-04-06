@@ -294,29 +294,7 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 	fr_type_t type;
 
 	/*
-	 *	The funtion may be URI or SQL, which have different sub-types.  So we call the function if it
-	 *	is NOT marked as "globally safe for SQL", but the called function may check the more specific
-	 *	flag "safe for MySQL".  And then things which aren't safe for MySQL are escaped, and then
-	 *	marked as "safe for MySQL".
-	 *
-	 *	If the escape function returns "0", then we set the safe_for value.  If the escape function
-	 *	returns "1", then it has set the safe_for value.
-	 */
-#define ESCAPE(_arg, _vb, _arg_num) \
-do { \
-	if ((_arg)->func && (!fr_value_box_is_safe_for((_vb), (_arg)->safe_for) || (_arg)->always_escape)) { \
-		int escape_rcode; \
-		escape_rcode = (_arg)->func(request, _vb, (_arg)->uctx); \
-		if (escape_rcode < 0) { \
-			RPEDEBUG("Function \"%s\" failed escaping argument %u", name, _arg_num); \
-			return XLAT_ACTION_FAIL; \
-		} \
-		if (escape_rcode == 0) fr_value_box_mark_safe_for((_vb), (_arg)->safe_for);	\
-	} \
-} while (0)
-
-	/*
-	 *	See if we have to concatenate the results.
+	 *	Now that we've escaped all of the input, see if we have to concatenate the results.
 	 *
 	 *	If the input xlat is more complicated expression, it's going to be a function, e.g.
 	 *
@@ -337,6 +315,9 @@ do { \
 		type = arg->type;
 	}
 
+	/*
+	 *	No data - nothing to do.
+	 */
 	if (fr_value_box_list_empty(list)) {
 		/*
 		 *	The expansion resulted in no data, BUT the admin wants a string.  So we create an
@@ -346,6 +327,8 @@ do { \
 		 *
 		 *		%{foo} --> nothing, because 'foo' doesn't exist
 		 *		"%{foo}" --> "", because we want a string, therefore the contents of the string are nothing.
+		 *
+		 *	Also note that an empty string satisfies a required argument.
 		 */
 		if (quoted) {
 			MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
@@ -363,28 +346,46 @@ do { \
 		return XLAT_ACTION_DONE;
 	}
 
+	/*
+	 *	The function may be URI or SQL, which have different sub-types.  So we call the function if it
+	 *	is NOT marked as "globally safe for SQL", but the called function may check the more specific
+	 *	flag "safe for MySQL".  And then things which aren't safe for MySQL are escaped, and then
+	 *	marked as "safe for MySQL".
+	 *
+	 *	If the escape function returns "0", then we set the safe_for value.  If the escape function
+	 *	returns "1", then it has set the safe_for value.
+	 */
+	if (arg->func) {
+		for (vb = fr_value_box_list_head(list);
+		     vb != NULL;
+		     vb = fr_value_box_list_next(list, vb)) {
+			fr_assert(vb->type != FR_TYPE_GROUP);
+
+			if (!fr_value_box_is_safe_for(vb, arg->safe_for) || arg->always_escape) {
+				int rcode;
+
+				rcode = arg->func(request, vb, arg->uctx);
+				if (rcode < 0) {
+					RPEDEBUG("Function \"%s\" failed escaping argument %u", name, arg_num);
+					return XLAT_ACTION_FAIL;
+				}
+				if (rcode == 0) fr_value_box_mark_safe_for(vb, arg->safe_for);
+			}
+		}
+	}
+
 	vb = fr_value_box_list_head(list);
 	fr_assert(node->type == XLAT_GROUP);
 
 	/*
-	 *	Concatenate child boxes, casting to desired type,
-	 *	then replace group vb with first child vb
+	 *	Concatenate child boxes, then to the desired type.
 	 */
 	if (concat) {
-		if (arg->func) {
-			do ESCAPE(arg, vb, arg_num); while ((vb = fr_value_box_list_next(list, vb)));
-
-			vb = fr_value_box_list_head(list);	/* Reset */
-		}
-
-		if (fr_value_box_list_concat_in_place(ctx,
-						      vb, list, type,
-						      FR_VALUE_BOX_LIST_FREE, true,
-						      SIZE_MAX) < 0) {
+		if (fr_value_box_list_concat_in_place(ctx, vb, list, type, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 			RPEDEBUG("Function \"%s\" failed concatenating arguments to type %s", name, fr_type_to_str(type));
 			return XLAT_ACTION_FAIL;
 		}
-		fr_assert(fr_value_box_list_num_elements(list) <= 1);
+		fr_assert(fr_value_box_list_num_elements(list) == 1);
 
 		/*
 		 *	Cast to the type we actually want.
@@ -410,12 +411,9 @@ do { \
 			return XLAT_ACTION_FAIL;
 		}
 
-		ESCAPE(arg, vb, arg_num);
-
 		if ((arg->type != FR_TYPE_VOID) && (vb->type != arg->type)) {
 		do_cast:
-			if (fr_value_box_cast_in_place(ctx, vb,
-						       arg->type, NULL) < 0) {
+			if (fr_value_box_cast_in_place(ctx, vb, arg->type, NULL) < 0) {
 			cast_error:
 				RPEDEBUG("Function \"%s\" failed to cast argument %u to type %s", name, arg_num, fr_type_to_str(arg->type));
 				return XLAT_ACTION_FAIL;
@@ -431,17 +429,10 @@ do { \
 	 */
 	if (arg->type != FR_TYPE_VOID) {
 		do {
- 			ESCAPE(arg, vb, arg_num);
 			if (vb->type == arg->type) continue;
 			if (fr_value_box_cast_in_place(ctx, vb,
 						       arg->type, NULL) < 0) goto cast_error;
 		} while ((vb = fr_value_box_list_next(list, vb)));
-
-	/*
-	 *	If it's a void type we still need to escape the values
-	 */
-	} else if (arg->func) {
-		do ESCAPE(arg, vb, arg_num); while ((vb = fr_value_box_list_next(list, vb)));
 	}
 
 #undef ESCAPE
@@ -1430,6 +1421,8 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 			while ((vb = fr_value_box_list_next(&result, vb))) {
 				size_t len, real_len;
 				char *escaped;
+
+				fr_assert(vb->type != FR_TYPE_GROUP);
 
 				if (fr_value_box_is_safe_for(vb, FR_VALUE_BOX_SAFE_FOR_ANY)) continue;
 
