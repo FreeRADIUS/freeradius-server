@@ -3224,6 +3224,161 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 		return 0;
 	}
 
+	case FR_TYPE_FLOAT32:
+		if (src->vb_float32 < (double) fr_value_box_integer_min[dst_type]) {
+		underflow:
+			fr_strerror_const("Source value for cast would underflow destination type");
+			return -1;
+		}
+
+		if (src->vb_float32 > (double) fr_value_box_integer_max[dst_type]) {
+		overflow:
+			fr_strerror_const("Source value for cast would overflow destination type");
+			return -1;
+		}
+
+		switch (dst_type) {
+		case FR_TYPE_UINT8:
+			dst->vb_uint8 = src->vb_float32;
+			break;
+
+		case FR_TYPE_UINT16:
+			dst->vb_uint16 = src->vb_float32;
+			break;
+
+		case FR_TYPE_UINT32:
+			dst->vb_uint32 = src->vb_float32;
+			break;
+
+		case FR_TYPE_UINT64:
+			dst->vb_uint64 = src->vb_float32;
+			break;
+
+		case FR_TYPE_INT8:
+			dst->vb_int8 = src->vb_float32;
+			break;
+
+		case FR_TYPE_INT16:
+			dst->vb_int16 = src->vb_float32;
+			break;
+
+		case FR_TYPE_INT32:
+			dst->vb_int32 = src->vb_float32;
+			break;
+
+		case FR_TYPE_INT64:
+			dst->vb_int64 = src->vb_float32;
+			break;
+
+		case FR_TYPE_SIZE:
+			dst->vb_size = src->vb_float32;
+			break;
+
+		case FR_TYPE_DATE: {
+			int64_t sec, nsec;
+
+			sec = src->vb_float32;
+			sec *= NSEC;
+			nsec = ((src->vb_float32 * NSEC) - ((float) sec));
+
+			dst->vb_date = fr_unix_time_from_nsec(sec + nsec);
+		}
+			break;
+
+		case FR_TYPE_TIME_DELTA: {
+			int64_t sec, nsec;
+
+			sec = src->vb_float32;
+			sec *= NSEC;
+			nsec = ((src->vb_float32 * NSEC) - ((float) sec));
+
+			dst->vb_time_delta = fr_time_delta_from_nsec(sec + nsec);
+		}
+			break;
+
+		default:
+			goto bad_cast;
+		}
+		return 0;
+
+	case FR_TYPE_FLOAT64:
+		if (src->vb_float64 < (double) fr_value_box_integer_min[dst_type]) goto underflow;
+
+		if (src->vb_float64 > (double) fr_value_box_integer_max[dst_type]) goto overflow;
+
+		switch (dst_type) {
+		case FR_TYPE_UINT8:
+			dst->vb_uint8 = src->vb_float64;
+			break;
+
+		case FR_TYPE_UINT16:
+			dst->vb_uint16 = src->vb_float64;
+			break;
+
+		case FR_TYPE_UINT32:
+			dst->vb_uint32 = src->vb_float64;
+			break;
+
+		case FR_TYPE_UINT64:
+			dst->vb_uint64 = src->vb_float64;
+			break;
+
+		case FR_TYPE_INT8:
+			dst->vb_int8 = src->vb_float64;
+			break;
+
+		case FR_TYPE_INT16:
+			dst->vb_int16 = src->vb_float64;
+			break;
+
+		case FR_TYPE_INT32:
+			dst->vb_int32 = src->vb_float64;
+			break;
+
+		case FR_TYPE_INT64:
+			dst->vb_int64 = src->vb_float64;
+			break;
+
+		case FR_TYPE_SIZE:
+			dst->vb_size = src->vb_float64;
+			break;
+
+		case FR_TYPE_DATE: {
+			int64_t sec, nsec;
+
+			sec = src->vb_float64;
+			sec *= NSEC;
+			nsec = ((src->vb_float64 * NSEC) - ((double) sec));
+
+			/*
+			 *	@todo - respect time res
+			 */
+			dst->vb_date = fr_unix_time_from_nsec(sec + nsec);
+		}
+			break;
+
+		case FR_TYPE_TIME_DELTA: {
+			int64_t sec, nsec;
+			int64_t res = NSEC;
+			bool fail = false;
+
+			if (dst->enumv) res = fr_time_multiplier_by_res[dst->enumv->flags.flag_time_res];
+
+			sec = src->vb_float64;
+			sec *= res;
+			nsec = ((src->vb_float64 * res) - ((double) sec));
+
+			dst->vb_time_delta = fr_time_delta_from_integer(&fail, sec + nsec,
+									dst->enumv ? dst->enumv->flags.flag_time_res : FR_TIME_RES_NSEC);
+			if (fail) goto overflow;
+		}
+			break;
+
+		default:
+			goto bad_cast;
+		}
+		return 0;
+
 	default:
 		break;
 	}
