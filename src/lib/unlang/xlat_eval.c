@@ -1366,6 +1366,78 @@ finish:
 	return xa;
 }
 
+static int xlat_sync_stringify(TALLOC_CTX *ctx, request_t *request, xlat_exp_head_t const *head, fr_value_box_list_t *list,
+			       xlat_escape_legacy_t escape, void const *escape_ctx)
+{
+	fr_value_box_t *vb, *box;
+	xlat_exp_t *node;
+
+	vb = fr_value_box_list_head(list);
+	if (!vb) return 0;
+
+	node = xlat_exp_head(head);
+	fr_assert(node != NULL);
+
+	do {
+		size_t len, real_len;
+		char *escaped;
+
+		/*
+		 *	Groups only come about because of quoted strings.
+		 */
+		if (node->type == XLAT_GROUP) {
+			fr_assert(vb->type == FR_TYPE_GROUP);
+			fr_assert(node->quote != T_BARE_WORD);
+
+			if (xlat_sync_stringify(vb, request, node->group, &vb->vb_group, escape, escape_ctx) < 0) return -1;
+
+			/*
+			 *	Replace the group wuth a fixed string.
+			 */
+			MEM(box = fr_value_box_alloc_null(ctx));
+
+			if (fr_value_box_cast(box, box, FR_TYPE_STRING, NULL, vb) < 0) return -1;
+
+			/*
+			 *	Remove the group, and replace it with the string.
+			 */
+			fr_value_box_list_insert_before(list, vb, box);
+			fr_value_box_list_remove(list, vb);
+			talloc_free(vb);
+			vb = box;
+
+			/*
+			 *	It's now safe, so we don't need to do anything else.
+			 */
+			fr_value_box_mark_safe_for(vb, escape);
+			goto next;
+		}
+
+		if (fr_value_box_is_safe_for(vb, escape)) goto next;
+
+		/*
+		 *	We cast EVERYTHING to a string and also escape everything.
+		 */
+		if (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0) {
+			return -1;
+		}
+
+		len = vb->vb_length * 3;
+		MEM(escaped = talloc_array(vb, char, len));
+		real_len = escape(request, escaped, len, vb->vb_strvalue, UNCONST(void *, escape_ctx));
+
+		fr_value_box_strdup_shallow_replace(vb, escaped, real_len);
+		fr_value_box_mark_safe_for(vb, escape);
+
+	next:
+		vb = fr_value_box_list_next(list, vb);
+		node = xlat_exp_next(head, node);
+
+	} while (node && vb);
+
+	return 0;
+}
+
 static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, xlat_exp_head_t const * const head,
 			      xlat_escape_legacy_t escape, void const *escape_ctx)
 {
@@ -1412,32 +1484,11 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 	}
 
 	if (!fr_value_box_list_empty(&result)) {
-		if (escape) {
-			fr_value_box_t *vb = NULL;
-
-			/*
-			 *	For tainted boxes perform the requested escaping
-			 */
-			while ((vb = fr_value_box_list_next(&result, vb))) {
-				size_t len, real_len;
-				char *escaped;
-
-				fr_assert(vb->type != FR_TYPE_GROUP);
-
-				if (fr_value_box_is_safe_for(vb, FR_VALUE_BOX_SAFE_FOR_ANY)) continue;
-
-				if (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0) {
-					RPEDEBUG("Failed casting result to string");
-					goto fail;
-				}
-
-				len = vb->vb_length * 3;
-				MEM(escaped = talloc_array(vb, char, len));
-				real_len = escape(request, escaped, len, vb->vb_strvalue, UNCONST(void *, escape_ctx));
-
-				fr_value_box_strdup_shallow_replace(vb, escaped, real_len);
-				fr_value_box_mark_safe_for(vb, escape);
-			}
+		/*
+		 *	Walk over the data recursively, escaping it, and converting quoted groups to strings.
+		 */
+		if (escape && (xlat_sync_stringify(pool, request, head, &result, escape, escape_ctx) < 0)) {
+			goto fail;
 		}
 
 		str = fr_value_box_list_aprint(ctx, &result, NULL, NULL);
