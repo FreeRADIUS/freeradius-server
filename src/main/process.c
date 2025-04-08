@@ -2780,7 +2780,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	 *	attribute in the reply.
 	 */
 	if (request->home_pool->affinity_group &&
-	    (request->packet->code == PW_CODE_ACCESS_REQUEST) &&
+	    (request->reply->code == PW_CODE_ACCESS_CHALLENGE) &&
 	    ((vp = fr_pair_find_by_num(request->reply->vps, PW_STATE, 0, TAG_ANY)) != NULL)) {
 		uint8_t *src;
 
