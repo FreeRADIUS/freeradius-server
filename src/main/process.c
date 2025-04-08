@@ -2779,7 +2779,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	 *	only for Access-Request, and only if there's a State
 	 *	attribute in the reply.
 	 */
-	if (request->home_pool->affinity_group &&
+	if (request->home_pool && request->home_pool->affinity_group &&
 	    (request->reply->code == PW_CODE_ACCESS_CHALLENGE) &&
 	    ((vp = fr_pair_find_by_num(request->reply->vps, PW_STATE, 0, TAG_ANY)) != NULL)) {
 		uint8_t *src;
