@@ -3554,8 +3554,9 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 			.attr = {
 				.dict_def = xr_rules.tr_rules->dict_def,
 				.list_def = request_attr_request,
-				.allow_unresolved = true,
-				.allow_unknown = true,
+				.allow_unresolved = false,
+				.allow_unknown = false,
+				.allow_wildcard = true,
 			},
 			.literals_safe_for = unlang_ctx->rules->literals_safe_for,
 		};
@@ -3583,6 +3584,8 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 			cf_log_err(cs, "Failed resolving condition - %s", fr_strerror());
 			return NULL;
 		}
+
+		fr_assert(!xlat_needs_resolving(head));
 
 		is_truthy = xlat_is_truthy(head, &value);
 

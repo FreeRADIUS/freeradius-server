@@ -1950,12 +1950,15 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 				fr_strerror_printf_push("Failed resolving attribute: %c%s%c",
 							fr_token_quote[node->quote], node->fmt, fr_token_quote[node->quote]);
 			}
+			return -1;
 		}
 
 		xlat_flags_merge(&our_flags, &node->flags);
 	}
 
 	head->flags = our_flags;
+
+	fr_assert(!head->flags.needs_resolving);
 
 	return 0;
 }
