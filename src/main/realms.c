@@ -1640,6 +1640,11 @@ static int server_pool_add(realm_config_t *rc,
 			}
 		}
 
+		if (!home) {
+			ERROR("Failed to find home server %s", value);
+			goto error;
+		}
+
 		if (home->affinity) {
 			if (home->virtual_server) {
 				ERROR("Home server %s is a virtual server, and cannot be used with 'affinity'", home->name);				
@@ -1667,11 +1672,6 @@ static int server_pool_add(realm_config_t *rc,
 			}
 
 			pool->affinity_group[home->affinity] = home;			
-		}
-
-		if (!home) {
-			ERROR("Failed to find home server %s", value);
-			goto error;
 		}
 
 		if (do_print) cf_log_info(cs, "\thome_server = %s", home->name);
