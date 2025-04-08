@@ -2774,6 +2774,24 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		return 0;
 	}
 
+	/*
+	 *	If we have affinity, then maybe update State.  But
+	 *	only for Access-Request, and only if there's a State
+	 *	attribute in the reply.
+	 */
+	if (request->home_pool->affinity_group &&
+	    (request->packet->code == PW_CODE_ACCESS_REQUEST) &&
+	    ((vp = fr_pair_find_by_num(request->reply->vps, PW_STATE, 0, TAG_ANY)) != NULL)) {
+		uint8_t *src;
+
+		src = talloc_array(vp, uint8_t, vp->vp_length + 1);
+		if (!src) return 0; 
+
+		src[0] = request->home_server->affinity;
+		memcpy(&src[1], vp->vp_octets, vp->vp_length);
+		fr_pair_value_memsteal(vp, src);
+	}
+
 	return 1;
 }
 

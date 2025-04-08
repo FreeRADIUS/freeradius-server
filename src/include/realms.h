@@ -82,6 +82,8 @@ typedef struct home_server {
 	fr_ipaddr_t		ipaddr;			//!< IP address of home server.
 	uint16_t		port;
 
+	uint32_t		affinity;		//!< for home server fail-over groups and EAP.
+
 	char const		*type_str;		//!< String representation of type.
 	home_type_t		type;			//!< Auth, Acct, CoA etc.
 
@@ -105,7 +107,7 @@ typedef struct home_server {
 	uint32_t		response_timeouts;
 	uint32_t		max_response_timeouts;
 	uint32_t		max_outstanding;	//!< Maximum outstanding requests.
-	uint32_t		currently_outstanding;
+	uint32_t		currently_outstanding;	
 
 	time_t			last_packet_sent;
 	time_t			last_packet_recv;
@@ -183,6 +185,8 @@ typedef struct home_pool_t {
 	int			in_fallback;
 	time_t			time_all_dead;
 	time_t			last_serviced;
+
+	home_server_t		**affinity_group;
 
 	int			num_home_servers;
 	home_server_t		*servers[1];

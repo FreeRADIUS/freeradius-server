@@ -532,6 +532,8 @@ static CONF_PARSER home_server_config[] = {
 	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_name), NULL },
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_password), NULL },
 
+	{ "affinity", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, affinity), NULL},
+
 #ifdef WITH_STATS
 	{ "historic_average_window", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ema.window), NULL },
 #endif
@@ -634,6 +636,8 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 	if (parent && strcmp(cf_section_name1(parent), "server") == 0) {
 		home->parent_server = cf_section_name2(parent);
 	}
+
+	FR_INTEGER_BOUND_CHECK("coa_mrt", home->affinity, <=, 255);
 }
 
 /** Insert a new home server into the various internal lookup trees
@@ -1636,6 +1640,35 @@ static int server_pool_add(realm_config_t *rc,
 			}
 		}
 
+		if (home->affinity) {
+			if (home->virtual_server) {
+				ERROR("Home server %s is a virtual server, and cannot be used with 'affinity'", home->name);				
+				goto error;
+			}
+
+			if (!pool->affinity_group) {
+				pool->affinity_group = talloc_zero_array(pool, home_server_t *, pool->num_home_servers);
+				if (!pool->affinity_group) {
+					ERROR("Out of memory");
+					goto error;
+				}
+			}
+
+			if (home->affinity >= (uint32_t) pool->num_home_servers) {
+				ERROR("Home server %s has invalid 'affinity' value %u.  It must be less than %u",
+				      home->name, home->affinity, home->affinity, pool->num_home_servers);
+				goto error;
+			}
+
+			if (pool->affinity_group[home->affinity]) {
+				ERROR("Home server %s has invalid 'affinity' value %u.  That value is already used by home server %s",
+				      home->name, home->affinity, pool->affinity_group[home->affinity]->name);
+				goto error;
+			}
+
+			pool->affinity_group[home->affinity] = home;			
+		}
+
 		if (!home) {
 			ERROR("Failed to find home server %s", value);
 			goto error;
@@ -1645,8 +1678,13 @@ static int server_pool_add(realm_config_t *rc,
 		pool->servers[num_home_servers++] = home;
 	} /* loop over home_server's */
 
-	if (pool->fallback && do_print) {
-		cf_log_info(cs, "\tfallback = %s", pool->fallback->name);
+	if (pool->fallback) {
+		if (do_print) cf_log_info(cs, "\tfallback = %s", pool->fallback->name);
+			
+		if (pool->affinity_group) {
+			ERROR("Cannot use home server pool 'fallback' when home server 'affinity' is set");
+			goto error;
+		}
 	}
 
 	if (!realm_pool_add(pool, cs)) goto error;
@@ -2770,7 +2808,7 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 }
 
 home_server_t *home_server_ldb(char const *realmname,
-			     home_pool_t *pool, REQUEST *request)
+			       home_pool_t *pool, REQUEST *request)
 {
 	int		start;
 	int		count;
@@ -2778,6 +2816,26 @@ home_server_t *home_server_ldb(char const *realmname,
 	home_server_t	*zombie = NULL;
 	VALUE_PAIR	*vp;
 	uint32_t	hash;
+
+	/*
+	 *	Over-ride the pool configuration if the pool is marked up as having affinity, AND the packet has a State attribute.
+	 */
+	if (pool->affinity_group &&
+	    (request->packet->code == PW_CODE_ACCESS_REQUEST) &&
+	    ((vp = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY)) != NULL) &&
+	    (vp->vp_length > 1) &&
+	    (vp->vp_octets[0] < (uint32_t) pool->num_home_servers) &&
+	    (pool->affinity_group[vp->vp_octets[0]] != NULL)) {
+		    found = pool->affinity_group[vp->vp_octets[0]];		    
+
+		    if (HOME_SERVER_IS_DEAD(found)) return NULL;
+
+		    /*
+		     *	Get rid of the extra octet that we added on the outbound proxying.
+		     */
+		    fr_pair_value_memcpy(vp, vp->vp_octets + 1, vp->vp_length - 1);
+		    return found;
+	}
 
 	/*
 	 *	Determine how to pick choose the home server.
