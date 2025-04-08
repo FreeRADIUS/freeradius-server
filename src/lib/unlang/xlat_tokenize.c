@@ -1333,9 +1333,6 @@ static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t 
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_exp_t	*node;
 
-	MEM(node = xlat_exp_alloc(ctx, XLAT_GROUP, NULL, 0));
-	node->quote = quote;
-
 	/*
 	 *	Triple-quoted strings have different terminal conditions.
 	 */
@@ -1349,11 +1346,15 @@ static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t 
 		FR_SBUFF_ERROR_RETURN(&our_in);
 
 	case T_BARE_WORD:
+		MEM(node = xlat_exp_alloc(ctx, XLAT_TMPL, NULL, 0));
 		break;
 
 	case T_DOUBLE_QUOTED_STRING:
 	case T_SINGLE_QUOTED_STRING:
 	case T_BACK_QUOTED_STRING:
+		MEM(node = xlat_exp_alloc(ctx, XLAT_GROUP, NULL, 0));
+		node->quote = quote;
+
 		p_rules = value_parse_rules_quoted[quote];
 
 		if (fr_sbuff_remaining(&our_in) >= 2) {
@@ -1375,8 +1376,6 @@ static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t 
 
 	switch (quote) {
 	case T_BARE_WORD:
-		MEM(node = xlat_exp_alloc(ctx, XLAT_TMPL, NULL, 0));
-
 		/*
 		 *	tmpl_afrom_substr does pretty much all the work of
 		 *	parsing the operand.  It pays attention to the cast on
@@ -1400,7 +1399,7 @@ static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t 
 	case T_BACK_QUOTED_STRING:
 		XLAT_DEBUG("ARGV double quotes <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
 
-		if (xlat_tokenize_input(node->group, &our_in, p_rules, t_rules) < 0) goto error;
+		if (xlat_tokenize_input(node->group, &our_in, p_rules, t_rules) < 0) goto error;		
 		break;
 
 		/*
@@ -1444,8 +1443,9 @@ static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t 
 		fr_sbuff_advance(&our_in, 1);
 	} while (--triple > 0);
 
+	node->flags = node->group->flags;	
+
 done:
-	node->flags = node->group->flags;
 	*out = node;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
