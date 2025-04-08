@@ -1371,6 +1371,8 @@ static int xlat_sync_stringify(TALLOC_CTX *ctx, request_t *request, xlat_exp_hea
 {
 	fr_value_box_t *vb, *box;
 	xlat_exp_t *node;
+	fr_value_box_safe_for_t safe_for_expected = escape ? (fr_value_box_safe_for_t) escape : FR_VALUE_BOX_SAFE_FOR_ANY;
+	fr_value_box_safe_for_t safe_for_mark = escape ? (fr_value_box_safe_for_t) escape : FR_VALUE_BOX_SAFE_FOR_NONE;
 
 	vb = fr_value_box_list_head(list);
 	if (!vb) return 0;
@@ -1409,11 +1411,13 @@ static int xlat_sync_stringify(TALLOC_CTX *ctx, request_t *request, xlat_exp_hea
 			/*
 			 *	It's now safe, so we don't need to do anything else.
 			 */
-			fr_value_box_mark_safe_for(vb, escape);
+			fr_value_box_mark_safe_for(vb, safe_for_mark);
 			goto next;
 		}
 
-		if (fr_value_box_is_safe_for(vb, escape)) goto next;
+		if (!escape) goto next;
+
+		if (fr_value_box_is_safe_for(vb, safe_for_expected)) goto next;
 
 		/*
 		 *	We cast EVERYTHING to a string and also escape everything.
@@ -1487,7 +1491,7 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 		/*
 		 *	Walk over the data recursively, escaping it, and converting quoted groups to strings.
 		 */
-		if (escape && (xlat_sync_stringify(pool, request, head, &result, escape, escape_ctx) < 0)) {
+		if (xlat_sync_stringify(pool, request, head, &result, escape, escape_ctx) < 0) {
 			goto fail;
 		}
 
