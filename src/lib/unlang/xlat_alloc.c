@@ -94,6 +94,10 @@ void _xlat_exp_set_type(NDEBUG_LOCATION_ARGS xlat_exp_t *node, xlat_type_t type)
 		node->call.args = _xlat_exp_head_alloc(NDEBUG_LOCATION_VALS node);
 		break;
 
+	case XLAT_BOX:
+		node->flags.constant = node->flags.pure = node->flags.can_purify = true;
+		break;
+
 	default:
 		break;
 	}
@@ -166,6 +170,10 @@ xlat_exp_t *_xlat_exp_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_type_t ty
 				   (in != NULL) + extra_hdrs,
 				   inlen + extra);
 	_xlat_exp_set_type(NDEBUG_LOCATION_VALS node, type);
+
+	if (type == XLAT_BOX) {
+		node->flags.constant = node->flags.pure = node->flags.can_purify = true;
+	}
 
 	if (!in) return node;
 
@@ -339,6 +347,16 @@ void xlat_exp_verify(xlat_exp_t const *node)
 		return;
 
 	case XLAT_FUNC:
+		xlat_exp_foreach(node->call.args, arg) {
+			fr_assert(arg->type == XLAT_GROUP);
+
+			/*
+			 *	We can't do this yet, because the old function argument parser doesn't do the
+			 *	right thing.
+			 */
+//			fr_assert(arg->quote == T_BARE_WORD);
+		}
+
 		xlat_exp_head_verify(node->call.args);
 		(void)talloc_get_type_abort_const(node->fmt, char);
 		return;
@@ -399,6 +417,12 @@ void xlat_exp_verify(xlat_exp_t const *node)
 #endif
 		return;
 	}
+
+	case XLAT_BOX:
+		fr_assert(node->flags.constant);
+		fr_assert(node->flags.pure);
+//		fr_assert(node->flags.can_purify);
+		break;
 
 	default:
 		break;

@@ -2095,7 +2095,6 @@ static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type, xlat_exp_t *
 	 *	number.
 	 */
 	MEM(node = xlat_exp_alloc(cast, XLAT_BOX, NULL, 0));
-	node->flags.constant = true;
 	{
 		char const *type_name = fr_table_str_by_value(fr_type_table, type, "<INVALID>");
 		xlat_exp_set_name(node, type_name, strlen(type_name));
@@ -2279,11 +2278,6 @@ static ssize_t tokenize_rcode(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	node->flags = func->flags; /* rcode is impure, but can be calculated statically */
 
 	MEM(arg = xlat_exp_alloc(node, XLAT_BOX, fr_sbuff_start(&our_in), slen));
-
-	/*
-	 *	Doesn't need resolving, isn't pure, doesn't need anything else.
-	 */
-	arg->flags = (xlat_flags_t) { };
 
 	/*
 	 *	We need a string for unit tests, but this should really be just a number.

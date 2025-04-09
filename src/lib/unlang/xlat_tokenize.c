@@ -1419,7 +1419,6 @@ static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t 
 		xlat_exp_set_name_shallow(child, str);
 		fr_value_box_strdup(child, &child->data, NULL, str, false);
 		fr_value_box_mark_safe_for(&child->data, t_rules->literals_safe_for);	/* Literal values are treated as implicitly safe */
-		child->flags.constant = true;
 		fr_assert(child->flags.pure);
 		xlat_exp_insert_tail(node->group, child);
 	}
