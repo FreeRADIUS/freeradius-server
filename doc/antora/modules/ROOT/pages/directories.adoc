@@ -1,6 +1,6 @@
 = Directories
 
-The directories in the server source are laid out ad follows:
+The directories in the server source are laid out as follows:
 
 == Documentation
 
