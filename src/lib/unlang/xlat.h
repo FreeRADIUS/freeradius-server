@@ -110,13 +110,13 @@ typedef struct xlat_s xlat_t;
  *
  */
 typedef struct {
-	bool			needs_resolving;//!< Needs pass2 resolution.
-	bool			pure;		//!< has no external side effects, true for BOX, LITERAL, and some functions
-	bool			impure_func;	//!< xlat contains an impure function
-	bool			can_purify;	//!< if the xlat has a pure function with pure arguments.
+	uint8_t    		needs_resolving : 1;	//!< Needs pass2 resolution.
+	uint8_t			pure : 1;		//!< has no external side effects, true for BOX, LITERAL, and some functions
+	uint8_t			impure_func : 1;	//!< xlat contains an impure function
+	uint8_t			can_purify : 1;		//!< if the xlat has a pure function with pure arguments.
 
-	bool			constant;	//!< xlat is just tmpl_attr_tail_data, or XLAT_BOX
-	bool			xlat;		//!< it's an xlat wrapper
+	uint8_t			constant : 1;		//!< xlat is just tmpl_attr_tail_data, or XLAT_BOX
+	uint8_t			xlat : 1;		//!< it's an xlat wrapper
 } xlat_flags_t;
 
 extern fr_table_num_sorted_t const xlat_action_table[];

@@ -161,7 +161,10 @@ struct xlat_exp_s {
 #endif
 
 	union {
-		xlat_exp_head_t	*group;		//!< children of a group
+		struct {
+			xlat_exp_head_t	*group;		//!< children of a group
+			uint8_t		hoist : 1;	//!< it's a group, but we need to hoist the results
+		};
 
 		/** An tmpl_t reference
 		 *

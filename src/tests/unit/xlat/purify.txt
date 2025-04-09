@@ -227,8 +227,11 @@ match "hello 3"
 xlat_purify "hello " + (string)%{1 + 2} + " bob"
 match "hello 3 bob"
 
+#
+#  @todo - xlat_purify doesn't hoist results.
+#
 xlat_purify "hello %{1 + 2} bob"
-match "hello %{3} bob"
+match "hello 3  bob"
 
 #
 #  New syntax!

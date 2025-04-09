@@ -1097,6 +1097,19 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		XLAT_DEBUG("** [%i] %s(child) - continuing %%{%s ...}", unlang_interpret_stack_depth(request), __FUNCTION__,
 			   node->fmt);
 
+		/*
+		 *	Hoist %{...} to its results.
+		 *
+		 *	There may be zero or more results.
+		 */
+		if (node->hoist) {
+			while ((arg = fr_value_box_list_pop_head(result)) != NULL) {
+				talloc_steal(ctx, arg);
+				fr_dcursor_insert(out, arg);
+			}
+			break;
+		}
+
 		MEM(arg = fr_value_box_alloc(ctx, FR_TYPE_GROUP, NULL));
 
 		if (!fr_value_box_list_empty(result)) {
@@ -1385,10 +1398,12 @@ static int xlat_sync_stringify(TALLOC_CTX *ctx, request_t *request, xlat_exp_hea
 		char *escaped;
 
 		/*
-		 *	Groups only come about because of quoted strings.
+		 *	Groups commonly are because of quoted strings.
+		 *
+		 *	However, we sometimes have a group because of %{...}, in which case the result is just
+		 *	a leaf value.
 		 */
-		if (node->type == XLAT_GROUP) {
-			fr_assert(vb->type == FR_TYPE_GROUP);
+		if ((node->type == XLAT_GROUP) && (vb->type == FR_TYPE_GROUP)) {
 			fr_assert(node->quote != T_BARE_WORD);
 
 			if (xlat_sync_stringify(vb, request, node->group, &vb->vb_group, escape, escape_ctx) < 0) return -1;

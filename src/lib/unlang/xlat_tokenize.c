@@ -601,17 +601,14 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 	/*
 	 *	It must be an expression.
 	 *
-	 *	We wrap the xlat in a tmpl, so that the result is just a value, and not wrapped in another
-	 *	XLAT_GROUP, which turns into a wrapper of FR_TYPE_GROUP in the value-box.
+	 *	We wrap the xlat in a group, and then mark the group to be hoisted.
 	 */
 	{
-		xlat_exp_head_t *child;
 		tmpl_rules_t my_rules;
 
 		fr_sbuff_set(in, &m_s);		/* backtrack to the start of the expression */
 
-		MEM(node = xlat_exp_alloc(head, XLAT_TMPL, NULL, 0));
-		MEM(node->vpt = tmpl_alloc(node, TMPL_TYPE_XLAT, T_BARE_WORD, "", 1));
+		MEM(node = xlat_exp_alloc(head, XLAT_GROUP, NULL, 0));
 
 		if (t_rules) {
 			my_rules = *t_rules;
@@ -620,7 +617,7 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 			t_rules = &my_rules;
 		}
 
-		ret = xlat_tokenize_expression(node->vpt, &child, in, &attr_p_rules, t_rules);
+		ret = xlat_tokenize_expression(node, &node->group, in, &attr_p_rules, t_rules);
 		if (ret <= 0) {
 			talloc_free(node);
 			return ret;
@@ -632,14 +629,15 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 		}
 
 		xlat_exp_set_name(node, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
-		tmpl_set_name_shallow(node->vpt, T_BARE_WORD, node->fmt, fr_sbuff_behind(&m_s));
+		node->flags = node->group->flags;
 
-		tmpl_set_xlat(node->vpt, child);
+		/*
+		 *	Print it as %{...}.  Then when we're evaluating a string, hoist the results.
+		 */
+		node->flags.xlat = true;
+		node->hoist = true;
+
 		xlat_exp_insert_tail(head, node);
-
-		child->flags.xlat = true;
-		node->flags = child->flags;
-		fr_assert(tmpl_xlat(node->vpt) != NULL);
 
 		(void) fr_sbuff_next(in); /* skip '}' */
 		return ret;
@@ -1038,6 +1036,8 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 
 	if (!node) return 0;
 
+	if (node->flags.xlat) FR_SBUFF_IN_CHAR_RETURN(out, '%', '{');
+
 	switch (node->type) {
 	case XLAT_GROUP:
 		if (node->quote != T_BARE_WORD) FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->quote]);
@@ -1046,7 +1046,12 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 
 		if (xlat_exp_next(head, node)) {
 			if (c) FR_SBUFF_IN_CHAR_RETURN(out, c);
-			FR_SBUFF_IN_CHAR_RETURN(out, ' ');      /* Add ' ' between args */
+
+			/*
+			 *	This thing is %{...}, and we don't print a space between the last argument
+			 *	and the '}'.
+			 */
+			if (!node->flags.xlat) FR_SBUFF_IN_CHAR_RETURN(out, ' ');      /* Add ' ' between args */
 		}
 		goto done;
 
@@ -1106,9 +1111,7 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 
 		if (tmpl_contains_xlat(node->vpt)) { /* xlat and exec */
 			if (node->vpt->quote == T_BARE_WORD) {
-				if (node->flags.xlat) FR_SBUFF_IN_CHAR_RETURN(out, '%', '{');
 				xlat_print(out, tmpl_xlat(node->vpt), NULL);
-				if (node->flags.xlat) FR_SBUFF_IN_CHAR_RETURN(out, '}');
 			} else {
 				FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->vpt->quote]);
 				xlat_print(out, tmpl_xlat(node->vpt), fr_value_escape_by_quote[node->quote]);
@@ -1215,6 +1218,8 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 	FR_SBUFF_IN_CHAR_RETURN(out, close);
 
 done:
+	if (node->flags.xlat) FR_SBUFF_IN_CHAR_RETURN(out, '}');
+
 	return fr_sbuff_used_total(out) - at_in;
 }
 
@@ -1930,6 +1935,8 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			 *	Or, convert them to data.
 			 */
 			if (tmpl_resolve(node->vpt, xr_rules->tr_rules) < 0) return -1;
+
+			if (xlat_tmpl_normalize(node) < 0) return -1;
 
 			node->flags.needs_resolving = false;
 			node->flags.pure = tmpl_is_data(node->vpt);
