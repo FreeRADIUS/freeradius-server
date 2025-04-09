@@ -2999,7 +2999,10 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 		xlat_debug_head(head);
 	}
 
-	(void) xlat_purify(head, NULL);
+	if (xlat_purify(head, NULL) < 0) {
+		fr_strerror_printf_push_head("ERROR purifying node - %s", fr_strerror());
+		goto return_error;
+	}
 
 	if (fr_debug_lvl > 2) {
 		DEBUG("After purify --------------------------------------------------");

@@ -34,7 +34,13 @@ match ERROR offset 4: Unexpected text after return code
 #  0 - 111 is smaller than zero, and Service-Type is uint32.
 #
 xlat_purify (Service-Type == 000-111)
-match (Service-Type == (0 - 111))
+match ERROR purifying node - Value underflows 'uint64' when calculating result.
+
+#
+#  @todo - this should really be hoisted
+#
+xlat_purify (Service-Type == '000-111')
+match (Service-Type == '000-111')
 
 xlat_purify (ok FOO handled)
 match ERROR offset 5: Invalid operator
@@ -110,7 +116,7 @@ xlat_purify (!"foo" == "bar")
 match ERROR offset 2: Operator '!' is only applied to the left hand side of the '==' operation, add (..) to evaluate the operation first
 
 xlat_purify ((!"foo") == "bar")
-match (!"foo" == "bar")
+match ERROR purifying node - Invalid boolean value.  Accepted values are "yes", "no", "true", "false" or any unquoted integer
 
 xlat_purify ((!"foo") == false)
 match true
@@ -247,18 +253,14 @@ match ERROR offset 13: Attribute 'X' not found.  Searched in: RADIUS, internal: 
 xlat_purify (ipaddr)127.0.0.1 == "127.0.0.1"
 match true
 
-# LHS is IPaddr, RHS is string (malformed IP address).
-# We can only fail this at run-time, as the MD4 output
-# _might_ just accidentally be well-formed an IP address?
 #
-# i.e. the MD4 function doesn't define itself as returning
-# fixed length, just "octets".
+#  The MD4 output isn't a valid IP address or prefix.
 #
 xlat_purify (ipaddr)127.0.0.1 == "%md4(' 127.0.0.1')"
-match (127.0.0.1 == "%md4(0x203132372e302e302e31)")
+match ERROR purifying node - Failed to parse IPv4 prefix string "/"
 
 xlat_purify (ipaddr)127.0.0.1 == %md4('127.0.0.1')
-match (127.0.0.1 == %md4(0x3132372e302e302e31))
+match ERROR purifying node - Invalid cast from octets to ipaddr.  Needed octet string of length 4, got 16
 
 xlat_purify (ipaddr)127.0.0.1 == %md4("SELECT user FROM table WHERE user='%{User-Name}'")
 match (127.0.0.1 == %md4("SELECT user FROM table WHERE user='%{User-Name}'"))
@@ -267,7 +269,7 @@ xlat_purify (ether) 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true
 
 xlat_purify (ether)00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')"
-match (00:11:22:33:44:55 == "%md4(0x30303a31313a32323a33333a34343a3535)")
+match ERROR purifying node - Missing separator, expected ':'
 
 xlat_purify (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
 match ERROR offset 9: Unknown attributes not allowed here
@@ -563,13 +565,8 @@ match ERROR offset 1: Attribute 'not' not found.  Searched in: RADIUS, internal:
 xlat_purify ('i have scary embedded things\000 inside me' == "i have scary embedded things\000 inside me")
 match false
 
-#
-#  'Unknown' attributes which are defined in the main dictionary
-#  should be resolved to their real names.
-# @todo - peephole - resolve it to something real
 xlat_purify 1 == 0x616263
-match (1 == 0x616263)
-#match (User-Name == 'abc')
+match ERROR purifying node - Invalid cast from octets to uint8.  Source length 3 is greater than destination type size 1
 
 # @todo - peephole - resolve it to something real
 #xlat_purify 26.11344.1 == 0x7f000001
@@ -760,4 +757,4 @@ xlat_purify (192.168.0.1 !== 192.168.0.2)
 match true
 
 count
-match 324
+match 326
