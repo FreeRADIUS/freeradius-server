@@ -1431,7 +1431,7 @@ static int xlat_sync_stringify(TALLOC_CTX *ctx, request_t *request, xlat_exp_hea
 		real_len = escape(request, escaped, len, vb->vb_strvalue, UNCONST(void *, escape_ctx));
 
 		fr_value_box_strdup_shallow_replace(vb, escaped, real_len);
-		fr_value_box_mark_safe_for(vb, escape);
+		fr_value_box_mark_safe_for(vb, safe_for_mark);
 
 	next:
 		vb = fr_value_box_list_next(list, vb);
