@@ -203,13 +203,7 @@ static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t
 			 *	Raw data can be hoisted to a value-box in this xlat node.
 			 */
 		} else if (tmpl_is_data(node->vpt)) {
-			tmpl_t *vpt = node->vpt;
-
-			fr_assert(tmpl_rules_cast(vpt) == FR_TYPE_NULL);
-
-			fr_value_box_steal(node, &node->data, tmpl_value(vpt));
-			talloc_free(vpt);
-			xlat_exp_set_type(node, XLAT_BOX);
+			xlat_exp_set_type(node, XLAT_BOX); /* also steals the data */
 			fr_value_box_mark_safe_for(&node->data, arg_p->safe_for);
 
 		} else {

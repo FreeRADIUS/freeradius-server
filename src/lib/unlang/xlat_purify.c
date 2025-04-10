@@ -146,10 +146,10 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 				 *	wrapper, which ensures that the entire sub-expression results in one
 				 *	output value.
 				 */
-				xlat_exp_set_type(node, XLAT_GROUP);
 				(void) talloc_steal(node, node->vpt->name);
+				xlat_exp_set_type(node, XLAT_GROUP); /* frees node->vpt */
 				(void) talloc_steal(node, xlat);
-				talloc_free(node->vpt);
+				talloc_free(node->group);
 				node->group = xlat;
 				break;
 			}

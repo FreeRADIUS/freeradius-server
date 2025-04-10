@@ -861,9 +861,6 @@ check:
 
 	xlat_exp_set_type(parent, XLAT_BOX);
 	fr_value_box_copy(parent, &parent->data, box);
-	parent->flags = (xlat_flags_t) { .pure = true, .constant = true, };
-
-	talloc_free_children(parent);
 
 	return true;
 }
@@ -1009,6 +1006,7 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
 		xlat_exp_set_name_shallow(node, name);
 	}
 
+	talloc_free(node->group);
 	node->group = group;
 	node->flags = group->flags;
 
@@ -2694,9 +2692,6 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		/*
 		 *	Convert the XLAT_TMPL to XLAT_BOX
 		 */
-		fr_value_box_steal(node, &node->data, tmpl_value(vpt));
-		xlat_exp_set_name_buffer(node, vpt->name);
-		talloc_free(vpt);
 		xlat_exp_set_type(node, XLAT_BOX);
 		goto done;
 

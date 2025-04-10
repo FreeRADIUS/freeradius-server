@@ -70,11 +70,43 @@ void _xlat_exp_set_type(NDEBUG_LOCATION_ARGS xlat_exp_t *node, xlat_type_t type)
 		TALLOC_FREE(node->group);
 		break;
 
-	case XLAT_FUNC:
 	case XLAT_FUNC_UNRESOLVED:
-		if (type != XLAT_FUNC) {
-			TALLOC_FREE(node->call.args); /* Just switching from unresolved to resolved */
-		} else goto done;
+		if (type == XLAT_FUNC) goto done;  /* Just switching from unresolved to resolved */
+		FALL_THROUGH;
+
+	case XLAT_FUNC:
+		TALLOC_FREE(node->call.args);
+		break;
+
+	case XLAT_TMPL:
+		if (node->vpt && (node->fmt == node->vpt->name)) (void) talloc_steal(node, node->fmt);
+
+		/*
+		 *	Converting a tmpl to a box.  If the tmpl is data, we can then just steal the contents
+		 *	of the box.
+		 */
+		if (type == XLAT_BOX) {
+			tmpl_t *vpt = node->vpt;
+
+			if (!vpt) break;
+				
+			fr_assert(tmpl_rules_cast(vpt) == FR_TYPE_NULL);
+
+			if (!tmpl_is_data(vpt)) {
+				talloc_free(vpt);
+				break;
+			}
+
+			/*
+			 *	Initialize the box from the tmpl data.  And then do NOT re-initialize the box
+			 *	later.
+			 */
+			fr_value_box_steal(node, &node->data, tmpl_value(vpt));
+			talloc_free(vpt);
+			goto done;
+		}
+
+		TALLOC_FREE(node->vpt);
 		break;
 
 	default:
@@ -96,6 +128,7 @@ void _xlat_exp_set_type(NDEBUG_LOCATION_ARGS xlat_exp_t *node, xlat_type_t type)
 
 	case XLAT_BOX:
 		node->flags.constant = node->flags.pure = node->flags.can_purify = true;
+		fr_value_box_init_null(&node->data);
 		break;
 
 	default:
@@ -170,6 +203,8 @@ xlat_exp_t *_xlat_exp_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_type_t ty
 				   (in != NULL) + extra_hdrs,
 				   inlen + extra);
 	_xlat_exp_set_type(NDEBUG_LOCATION_VALS node, type);
+
+	node->quote = T_BARE_WORD; /* ensure that this is always initialized */
 
 	if (type == XLAT_BOX) {
 		node->flags.constant = node->flags.pure = node->flags.can_purify = true;
