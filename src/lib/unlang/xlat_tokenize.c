@@ -1041,11 +1041,7 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		if (xlat_exp_next(head, node)) {
 			if (c) FR_SBUFF_IN_CHAR_RETURN(out, c);
 
-			/*
-			 *	This thing is %{...}, and we don't print a space between the last argument
-			 *	and the '}'.
-			 */
-			if (!node->flags.xlat) FR_SBUFF_IN_CHAR_RETURN(out, ' ');      /* Add ' ' between args */
+			if (head->is_argv) FR_SBUFF_IN_CHAR_RETURN(out, ' ');      /* Add ' ' between args */
 		}
 		goto done;
 
@@ -1531,6 +1527,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 	}
 
 	MEM(head = xlat_exp_head_alloc(ctx));
+	head->is_argv = true;
 
 	/*
 	 *	skip spaces at the beginning as we don't want them to become a whitespace literal.

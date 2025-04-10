@@ -189,7 +189,8 @@ struct xlat_exp_s {
 struct xlat_exp_head_s {
 	fr_dlist_head_t		dlist;
 	xlat_flags_t		flags;		//!< Flags that control resolution and evaluation.
-	bool			instantiated;	//!< temporary flag until we fix more things
+	uint8_t			instantiated : 1;  //!< temporary flag until we fix more things
+	uint8_t			is_argv : 1;	//!< this thing holds function arguments
 
 #ifndef NDEBUG
 	char const * _CONST	file;		//!< File where the xlat was allocated.

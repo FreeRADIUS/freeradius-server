@@ -124,6 +124,7 @@ void _xlat_exp_set_type(NDEBUG_LOCATION_ARGS xlat_exp_t *node, xlat_type_t type)
 	case XLAT_FUNC:
 	case XLAT_FUNC_UNRESOLVED:
 		node->call.args = _xlat_exp_head_alloc(NDEBUG_LOCATION_VALS node);
+		node->call.args->is_argv = true;
 		break;
 
 	case XLAT_BOX:
@@ -382,6 +383,8 @@ void xlat_exp_verify(xlat_exp_t const *node)
 		return;
 
 	case XLAT_FUNC:
+		fr_assert(node->call.args->is_argv);
+
 		xlat_exp_foreach(node->call.args, arg) {
 			fr_assert(arg->type == XLAT_GROUP);
 
