@@ -86,7 +86,7 @@ If a CA is not already in use for signing certificates then FreeRADIUS
 ships with scripts which can create a CA, server certificates, and client
 certificates.
 
-Full details of how to generate certificates can be found xref:reference:raddb/certs/index.adoc[here] and the corresponding `raddb\certs\Makefile`.
+Full details of how to generate certificates can be found xref:reference:raddb/certs/index.adoc[here] and the corresponding `raddb/certs/Makefile`.
 
 == Loading certificates onto the RADIUS servers
 
@@ -96,9 +96,9 @@ what the certificates are.
 
 The freeradius certificates required at a minimum are:
 
-* ca.pem: `~/raddb/certs/ca.pem`
-* server.pem: `~raddb/certs/server.pem`
-* server.key: `~/raddb/certs/server.key`
+* ca.pem: `raddb/certs/ca.pem`
+* server.pem: `raddb/certs/server.pem`
+* server.key: `raddb/certs/server.key`
 
 If additional certificates are needed for different EAP methods (e.g. EAP-PEAP
 using one server certificate and EAP-TLS using another) then generate and add the required certificates into this directory.
