@@ -1121,7 +1121,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	/*
 	 * prepare radiusd module to be loaded
 	 */
-	if (!inst->cext_compat || !main_module) {
+	if ((!inst->cext_compat || !main_module) && (python_instances == 0)) {
 		/*
 		 * This is ugly, but there is no other way to pass parameters to PyMODINIT_FUNC
 		 */
