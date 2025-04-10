@@ -1206,6 +1206,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	 */
 	if (!inst->cext_compat) {
 		inst->sub_interpreter = Py_NewInterpreter();
+		locked = true;
 	} else {
 		inst->sub_interpreter = main_interpreter;
 	}
