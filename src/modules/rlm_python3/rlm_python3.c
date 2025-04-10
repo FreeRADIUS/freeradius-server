@@ -701,7 +701,6 @@ static void python_interpreter_free(PyThreadState *interp)
 	PyEval_RestoreThread(interp);
 	PyThreadState_Swap(interp);
 	Py_EndInterpreter(interp);
-	PyEval_SaveThread();
 }
 
 /** Destroy a thread state
