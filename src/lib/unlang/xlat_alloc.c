@@ -89,7 +89,7 @@ void _xlat_exp_set_type(NDEBUG_LOCATION_ARGS xlat_exp_t *node, xlat_type_t type)
 			tmpl_t *vpt = node->vpt;
 
 			if (!vpt) break;
-				
+
 			fr_assert(tmpl_rules_cast(vpt) == FR_TYPE_NULL);
 
 			if (!tmpl_is_data(vpt)) {

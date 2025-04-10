@@ -159,6 +159,71 @@ bool const xlat_func_chars[UINT8_MAX + 1] = {
 };
 
 
+static int xlat_tmpl_normalize(xlat_exp_t *node)
+{
+	tmpl_t *vpt = node->vpt;
+
+	/*
+	 *	Any casting, etc. has to be taken care of in the xlat expression parser, and not here.
+	 */
+	fr_assert(tmpl_rules_cast(vpt) == FR_TYPE_NULL);
+
+	/*
+	 *	Add in unknown attributes, by defining them in the local dictionary.
+	 */
+	if (tmpl_is_attr(vpt)) {
+		if (tmpl_attr_unknown_add(vpt) < 0) {
+			fr_strerror_printf("Failed defining attribute %s", tmpl_attr_tail_da(vpt)->name);
+			return -1;
+		}
+
+		node->flags.constant = node->flags.pure = node->flags.can_purify = false;
+		return 0;
+	}
+
+#if 0
+	/*
+	 *	We have a nested xlat.  This is likely bad.  The caller SHOULD have checked for %{...}, and
+	 *	created an XLAT_GROUP, and then parsed that.
+	 */
+	if (tmpl_contains_xlat(vpt)) {
+		fr_assert(!tmpl_needs_resolving(vpt));
+		fr_assert(!tmpl_contains_regex(vpt));
+
+		return 0;
+	}
+#endif
+
+	if (!tmpl_contains_data(vpt)) {
+		fr_assert(!tmpl_needs_resolving(vpt));
+		fr_assert(!tmpl_contains_regex(vpt));
+
+		return 0;
+	}
+
+	if (tmpl_is_data_unresolved(vpt) && (tmpl_resolve(vpt, NULL) < 0)) return -1;
+
+	/*
+	 *	Hoist data to an XLAT_BOX instead of an XLAT_TMPL
+	 */
+	fr_assert(tmpl_is_data(vpt));
+
+	/*
+	 *	Print "true" and "false" instead of "yes" and "no".
+	 */
+	if ((tmpl_value_type(vpt) == FR_TYPE_BOOL) && !tmpl_value_enumv(vpt)) {
+		tmpl_value_enumv(vpt) = attr_expr_bool_enum;
+	}
+
+	/*
+	 *	Convert the XLAT_TMPL to XLAT_BOX
+	 */
+	xlat_exp_set_type(node, XLAT_BOX);
+
+	return 0;
+}
+
+
 static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t *arg, int argc)
 {
 	xlat_exp_t *node;
@@ -182,40 +247,17 @@ static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t
 	}
 
 	/*
-	 *	@todo - check arg_p->single, and complain.
+	 *	@todo - if arg->group->flags.constant AND there is more than one child, then concat in place,
+	 *	etc.
 	 */
-	if (xlat_exp_next(arg->group, node)) {
-		return 0;
-	}
 
 	/*
-	 *	Hoist constant factors.
+	 *	Do at least somewhat of a pass of normalizing the nodes, even if there are more than one.
 	 */
-	if (node->type == XLAT_TMPL) {
-		/*
-		 *	@todo - hoist the xlat, and then check the hoisted value again.
-		 *	However, there seem to be few cases where this is used?
-		 */
-		if (tmpl_is_xlat(node->vpt)) {
-			return 0;
+	xlat_exp_foreach(arg->group, child) {
+		if (child->type != XLAT_TMPL) continue;
 
-			/*
-			 *	Raw data can be hoisted to a value-box in this xlat node.
-			 */
-		} else if (tmpl_is_data(node->vpt)) {
-			xlat_exp_set_type(node, XLAT_BOX); /* also steals the data */
-			fr_value_box_mark_safe_for(&node->data, arg_p->safe_for);
-
-		} else {
-			fr_assert(!tmpl_is_data_unresolved(node->vpt));
-			fr_assert(!tmpl_contains_regex(node->vpt));
-
-			/*
-			 *	Can't cast the attribute / exec/ etc. to the expected data type of the
-			 *	argument, that has to happen at run-time.
-			 */
-			return 0;
-		}
+		if (xlat_tmpl_normalize(child) < 0) return -1;
 	}
 
 	/*
@@ -1263,61 +1305,6 @@ static void xlat_safe_for(xlat_exp_head_t *head, fr_value_box_safe_for_t safe_fo
 	}
 }
 #endif
-
-static int xlat_tmpl_normalize(xlat_exp_t *node)
-{
-	tmpl_t *vpt = node->vpt;
-
-	/*
-	 *	Any casting, etc. has to be taken care of in the xlat expression parser, and not here.
-	 */
-	fr_assert(tmpl_rules_cast(vpt) == FR_TYPE_NULL);
-
-	/*
-	 *	Add in unknown attributes, by defining them in the local dictionary.
-	 */
-	if (tmpl_is_attr(vpt)) {
-		if (tmpl_attr_unknown_add(vpt) < 0) {
-			fr_strerror_printf("Failed defining attribute %s", tmpl_attr_tail_da(vpt)->name);
-			return -1;
-		}
-
-		node->flags.pure = node->flags.can_purify = false;
-		return 0;
-	}
-
-	if (tmpl_is_data_unresolved(vpt) && (tmpl_resolve(vpt, NULL) < 0)) return -1;
-
-	/*
-	 *	Hoist data to an XLAT_BOX instead of an XLAT_TMPL
-	 */
-	if (tmpl_is_data(node->vpt)) {
-		/*
-		 *	Print "true" and "false" instead of "yes" and "no".
-		 */
-		if ((tmpl_value_type(vpt) == FR_TYPE_BOOL) && !tmpl_value_enumv(vpt)) {
-			tmpl_value_enumv(vpt) = attr_expr_bool_enum;
-		}
-
-		/*
-		 *	The name is set later, by the caller.
-		 */
-		fr_value_box_steal(node, &node->data, tmpl_value(vpt));
-		talloc_free(vpt);
-		xlat_exp_set_type(node, XLAT_BOX);
-
-		node->flags.pure = node->flags.can_purify = true;
-		return 0;
-	}
-
-	fr_assert(!tmpl_contains_regex(vpt));
-
-	/*
-	 *	We have a nested xlat.  This is likely bad.  The caller SHOULD have checked for %{...}, and
-	 *	created an XLAT_GROUP, and then parsed that.
-	 */
-	return 0;
-}
 
 static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, fr_sbuff_marker_t *m,
 				  fr_token_t quote,
