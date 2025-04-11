@@ -31,6 +31,115 @@ The following entries do almost the same on most NASs:
 
 The result is that the end user gets IP address 192.168.5.78 and that the whole network with IP addresses 192.168.5.64 - 195.64.5.79 is	routed over the PPP link to the user (see the RADIUS RFCs for the exact syntax of the Framed-Route attribute).
 
+== Debugging winbind (NTLM authentication failures)
+
+FreeRADIUS uses winbind to authenticate users against Microsoft Active Directory. If the service is not functioning then user authentication against Active Directory will fail.
+
+During fast re-authentication, the TLS session cache is used to resume a previous session without having to log in again. In this scenario, some users or devices seem to authenticate successfully but fails for others. In reality, all AD-based user authentication is failing.
+
+
+=== Testing winbind authentication
+
+*Method 1: Cleartext password*
+
+`su -s /bin/bash - {freeradius_user}`
+
+The response indicates “NetworkCleartext” authentication was successful. This type of authentication involves sending LM-Password and NT-Password hashes for immediate verification.
+
+`plaintext password authentication succeeded`
+
+*Method 2: Challenge/Response using NTLMv2*
+
+`wbinfo -a '<domain|realm>\<user>'%'<password>'`
+
+The response shows a successful challenge/response for NTLM authentication. The default setting `MSV1_0_ALLOW_MSVCHAPV2` flag is used in the request. The flag indicates that the payload is for MS-CHAPv2 purposes.
+
+`challenge/response password authentication succeeded`
+
+*Method 3: Challenge/Response using NTLMv1*
+
+The Domain Controller still accepts NTLMv1 authentication even if the NTLMv1 security session is “disabled” for security reasons.
+
+Challenge/response authentication using NTLMv1 can be done without setting the `MSV1_0_ALLOW_MSVCHAPV2` flag with the following command:
+
+`wbinfo --ntlmv1 -a '<domain|realm>\<user>'%'<password>'`
+
+NTLMv1 authentication fails if the DC is configured to only accept NTLMv2 authentication requests using NTLMv2 session security. The DC rejects the LM and NTLM authentication requests.
+
+=== Using the `mschap` module
+
+By default, The `mschap` module is configured to invoke the `ntlm_auth` helper program. To set the `MSV1_0_ALLOW_MSVCHAPV2` flag, pass `--allow-mschapv2` argument to the `mschap` module via the command line.
+
+If the `mschap` module is configured to  use `libwbclient` directly then changes are not necessary. The `MSV1_0_ALLOW_MSVCHAPV2` flag is set by default in `libwbclient`.
+
+[NOTE]
+
+====
+
+Samba and other documentation sources refer to the `--allow-mschapv2` and `--ntlmv2` (default) arguments to `ntlm_auth` and `wbinfo` (respectively) as using NTLMv2. This is misleading. The authentication is still NTLMv1, just with the `MSV1_0_ALLOW_MSVCHAPV2` flag set in the payload.
+
+====
+
+=== Error messages
+
+An error response returns if any of the `wbinfo` commands are unsuccessful. Also, winbind sends runtime logs to syslog as well as to /var/log/samba/log.winbindd.
+
+[cols="autowidth"]
+|===
+|Error Message|Description
+
+|`challenge/response password authentication failed`
+|The username and password combination supplied is incorrect.
+
+|`NT_STATUS_WRONG_PASSWORD (0xc000006a, authoritative=1)`
+|The username and password combination supplied is incorrect.
+
+|`Unable to contact winbind!: WBC_ERR_WINBIND_NOT_AVAILABLE`
+|Indicates that the winbind service has failed probably due to a configuration issue or lost connectivity.
+
+|`Domain not found: WBC_ERR_DOMAIN_NOT_FOUND`
+|Winbind doesn't know which domain to authenticate the user against or the domain name is incorrect.
+
+|No reponse
+|Indicates that the winbind service has failed probably due to a configuration issue or lost connectivity.
+
+|===
+
+==== Checks and Validations
+
+If the winbind service is failing, you need to investigate the cause and restart it. If winbind still can’t authenticate users, it may be an AD connection issue or a configuration problem.
+
+For instance, the trust relationship between the local machine and AD is no longer valid. Verify the trust relationship by entering the command:
+
+`radius_server# net ads testjoin`
+
+Success message indicates that the trust is still valid.
+
+`Join is OK`
+
+Verify the connection to a Domain Controller for the Active Directory with the following commands:
+
+[cols=""autowidth"]
+|===
+|Command|Result
+
+|`# su -s /bin/bash - {freeradius_user}`
+|`checking the NETLOGON for domain <domain> dc connection to \`
+
+|`# su -s /bin/bash - {freeradius_user}`
+|`checking the NETLOGON for domain <domain> dc connection to \
+ "<domain-controller-fqdn>" succeeded`
+
+|`$ wbinfo -p --ping-dc -t --online-status`
+|`Ping to winbindd succeeded`
+
+|`checking the trust secret for domain <domain> via RPC calls succeeded`
+|`BUILTIN : active connection
+    {{ radius_host \| upper }} : active connection
+    {{ domain }} : active connection`
+
+|===
+
 == Fragmentation issues
 
 802.1X authentication methods like EAP-TLS transmit large UDP packets that need IP fragmentation to reach their destination. If the network used for 802.1X mishandles IP fragments or has an issue with Path MTU Discovery (PMTUD), this issue shows up as unreliable or non-functional 802.1X authentication.
