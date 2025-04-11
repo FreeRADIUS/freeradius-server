@@ -3662,18 +3662,6 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 	if ((home->proto == IPPROTO_TCP) && home->tls) {
 		DEBUG("(TLS) Trying new outgoing proxy connection to %s", buffer);
 
-		/*
-		 *	Set SNI, if configured.
-		 *
-		 *	The OpenSSL API says the filename is "char
-		 *	const *", but some versions have it as "void
-		 *	*", without the "const".  So we un-const it
-		 *	here through various C magic.
-		 */
-		if (home->tls->client_hostname) {
-			(void) SSL_set_tlsext_host_name(sock->ssn->ssl, (void *) (uintptr_t) home->tls->client_hostname);
-		}
-
 #ifdef WITH_RADIUSV11
 		this->radiusv11 = home->tls->radiusv11;
 #endif

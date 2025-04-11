@@ -498,6 +498,18 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	}
 
 	/*
+	 *	Set SNI, if configured.
+	 *
+	 *	The OpenSSL API says the filename is "char
+	 *	const *", but some versions have it as "void
+	 *	*", without the "const".  So we un-const it
+	 *	here through various C magic.
+	 */
+	if (conf->client_hostname) {
+		(void) SSL_set_tlsext_host_name(ssn->ssl, (void *) (uintptr_t) conf->client_hostname);
+	}
+
+	/*
 	 *	Add the message callback to identify what type of
 	 *	message/handshake is passed
 	 */
