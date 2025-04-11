@@ -1,6 +1,7 @@
 FreeRADIUS 3.2.8 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	Configuration changes
 	* Replace dictionary.infinera with the correct one.
+	* Update dictionary.alteon
 
 	Feature improvements
 	* Add support for automated fuzzing.  This doesn't affect
@@ -14,6 +15,10 @@ FreeRADIUS 3.2.8 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	* Add kafka module.  See mods-available/kafka.
 	* Allow &control:Packet-SRC-IP-Address to be used when
 	  proxying needs a given source address.
+	* Change lower limit for reject_delay to 0.5s.  Apparently
+	  some NASes will panic and go crazy with a 1s reject_delay.
+	* Rate limit complaints when limiting new connections.
+	* Update raddb/certs/Makefile to support DER output.
 
 	Bug fixes
 	* Move assertion in thread / queue code, which only affects
@@ -27,6 +32,10 @@ FreeRADIUS 3.2.8 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	  CRL distribution points.  Fixes #5515
 	* Fix typo in rlm_cache which could cause crashes. Fixes #5522
 	* Be more forgiving about '%' in strings.  Fixes #5525.
+	* Move assertion in threading code.
+	* Fixes to interaction with python interpreter
+	* Don't crash when setting client hostname in RADIUS/TLS.
+	  Fixes #5552
 
 FreeRADIUS 3.2.7 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	Configuration changes
