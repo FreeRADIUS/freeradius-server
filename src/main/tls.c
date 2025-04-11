@@ -4801,6 +4801,8 @@ static int tls_realms_load(fr_tls_server_conf_t *conf)
 			ERROR("Failed inserting certificate file %s into hash table", buffer);
 			goto error;
 		}
+
+		DEBUG("(TLS) Loaded certificate file %s", buffer);
 	}
 
 	conf->realms = ht;
