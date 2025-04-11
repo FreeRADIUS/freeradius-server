@@ -78,6 +78,7 @@ typedef struct {
 typedef struct {
 	char const	*path;			//!< Path to search for python files in.
 	bool		path_include_default;	//!< Include the default python path in `path`
+	bool		verbose;		//!< Enable libpython verbose logging
 } libpython_global_config_t;
 
 /** Tracks a python module inst/thread state pair
@@ -103,6 +104,7 @@ static libpython_global_config_t libpython_global_config = {
 static conf_parser_t const python_global_config[] = {
 	{ FR_CONF_OFFSET("path", libpython_global_config_t, path) },
 	{ FR_CONF_OFFSET("path_include_default", libpython_global_config_t, path_include_default) },
+	{ FR_CONF_OFFSET("verbose", libpython_global_config_t, verbose) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1158,6 +1160,8 @@ static int libpython_init(void)
 	}
 
 	config.install_signal_handlers = 0;	/* Don't override signal handlers - noop on subs calls */
+
+	if (libpython_global_config.verbose) config.verbose = 1;	/* Enable libpython logging*/
 
 	LSAN_DISABLE(status = Py_InitializeFromConfig(&config));
 	if (PyStatus_Exception(status)) goto fail;
