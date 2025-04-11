@@ -25,7 +25,7 @@ condition User-Name[n] == "foo"
 match (User-Name[n] == "foo")
 
 condition User-Name[-1] == "foo"
-match ERROR offset 11: Invalid array index '-1'
+match ERROR offset 10: Invalid array index '-1'
 
 #
 #  tmpl_dcursor.c has an assert which fails if you try to use
@@ -36,7 +36,7 @@ match ERROR offset 11: Invalid array index '-1'
 #  @todo - feature - allow expressions in tmpl_attr_parse_filter(()
 #
 condition User-Name[(User-Name == 'bar')] == "foo"
-match ERROR offset 11: Invalid filter - cannot use filter on leaf attributes
+match ERROR offset 10: Invalid filter - cannot use filter on leaf attributes
 
 #
 #  The condition code doesn't allow Group-Thingy == { foo = bar }
@@ -52,7 +52,7 @@ match ERROR offset 11: Invalid filter - cannot use filter on leaf attributes
 #  @todo - feature - this error is misleading and wrong.
 #
 condition TLS-Certificate[(Common-Name == 'user@example.com')] == 'bar'
-match ERROR offset 1: Cannot use list references in condition
+match ERROR offset 0: Cannot use list references in condition
 
 count
 match 15

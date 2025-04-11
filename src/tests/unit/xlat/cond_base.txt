@@ -9,26 +9,26 @@ proto-dictionary radius
 
 # All IP address literals should be parsed as prefixes
 xlat_purify ("foo\
-match ERROR offset 2: Unterminated string
+match ERROR offset 1: Unterminated string
 
 xlat_purify ("foo
-match ERROR offset 2: Unterminated string
+match ERROR offset 1: Unterminated string
 
 xlat_purify ()
-match ERROR offset 2: Empty expressions are invalid
+match ERROR offset 1: Empty expressions are invalid
 
 xlat_purify (!)
-match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here
-
-xlat_purify (|| b)
 match ERROR offset 2: Zero length attribute name: Unresolved attributes are not allowed here
 
+xlat_purify (|| b)
+match ERROR offset 1: Zero length attribute name: Unresolved attributes are not allowed here
+
 xlat_purify ((ok || handled) foo)
-match ERROR offset 18: Invalid operator
+match ERROR offset 17: Invalid operator
 
 # escapes in names are illegal
 xlat_purify (ok\ foo || handled)
-match ERROR offset 4: Unexpected text after return code
+match ERROR offset 3: Unexpected text after return code
 
 #
 #  0 - 111 is smaller than zero, and Service-Type is uint32.
@@ -43,13 +43,13 @@ xlat_purify (Service-Type == '000-111')
 match (Service-Type == '000-111')
 
 xlat_purify (ok FOO handled)
-match ERROR offset 5: Invalid operator
+match ERROR offset 4: Invalid operator
 
 xlat_purify (ok !x handled)
-match ERROR offset 5: Invalid operator
+match ERROR offset 4: Invalid operator
 
 xlat_purify (ok =x handled)
-match ERROR offset 5: Invalid operator
+match ERROR offset 4: Invalid operator
 
 #
 # Re-enable when we have proper bareword xlat tokenization
@@ -79,7 +79,7 @@ match ERROR offset 5: Invalid operator
 #match !ok
 
 xlat_purify !!true
-match ERROR offset 2: Double operator is invalid
+match ERROR offset 1: Double operator is invalid
 
 #xlat_purify !(!ok)
 #match ok
@@ -107,13 +107,13 @@ match (!(User-Name == User-Password) || (Filter-Id == Reply-Message))
 #  '!' is higher precedence that '==', so the '!' applies just to the User-Name
 #
 xlat_purify (!User-Name == User-Password || Filter-Id == Reply-Message)
-match ERROR offset 2: Operator '!' is only applied to the left hand side of the '==' operation, add (..) to evaluate the operation first
+match ERROR offset 1: Operator '!' is only applied to the left hand side of the '==' operation, add (..) to evaluate the operation first
 
 #
 #  LHS is a boolean, which we then compare to a string
 #
 xlat_purify (!"foo" == "bar")
-match ERROR offset 2: Operator '!' is only applied to the left hand side of the '==' operation, add (..) to evaluate the operation first
+match ERROR offset 1: Operator '!' is only applied to the left hand side of the '==' operation, add (..) to evaluate the operation first
 
 xlat_purify ((!"foo") == "bar")
 match ERROR purifying node - Invalid boolean value.  Accepted values are "yes", "no", "true", "false" or any unquoted integer
@@ -131,27 +131,27 @@ match Passed in 63 characters, but only parsed 62 characters
 #  Truthy strings get omitted.
 #
 xlat_purify ('handled' && (Packet-Type == Access-Challenge))
-match ERROR offset 31: Attribute 'Access' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 30: Attribute 'Access' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat_purify (handled && (Packet-Type == Access-Challenge))
-match ERROR offset 29: Attribute 'Access' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 28: Attribute 'Access' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 # This is OK, without the braces
 xlat_purify 'handled' && Packet-Type == Access-Challenge
-match ERROR offset 29: Attribute 'Access' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 28: Attribute 'Access' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 # and this, though it's not a good idea.
 xlat_purify 'handled' &&&Packet-Type == Access-Challenge
-match ERROR offset 29: Attribute 'Access' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 28: Attribute 'Access' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat_purify reply == request
-match ERROR offset 1: Cannot use list references in condition
+match ERROR offset 0: Cannot use list references in condition
 
 xlat_purify reply == "hello"
-match ERROR offset 1: Cannot use list references in condition
+match ERROR offset 0: Cannot use list references in condition
 
 xlat_purify "hello" == reply
-match ERROR offset 12: Cannot use list references in condition
+match ERROR offset 11: Cannot use list references in condition
 
 
 #
@@ -164,7 +164,7 @@ xlat_purify User-Name != User-Password
 match (User-Name != User-Password)
 
 xlat_purify !User-Name != User-Password
-match ERROR offset 1: Operator '!' is only applied to the left hand side of the '!=' operation, add (..) to evaluate the operation first
+match ERROR offset 0: Operator '!' is only applied to the left hand side of the '!=' operation, add (..) to evaluate the operation first
 
 #
 #  We allow a cast for the existence check.  Why not?
@@ -177,7 +177,7 @@ xlat_purify (ipv6addr)::1
 match ::1
 
 xlat_purify (ipv6addr)"xxx"
-match ERROR offset 11: Failed to parse IPv6 address string "xxx"
+match ERROR offset 10: Failed to parse IPv6 address string "xxx"
 
 #
 #  Various casts
@@ -210,7 +210,7 @@ xlat_purify User-Name == 'bob'
 match (User-Name == 'bob')
 
 xlat_purify User-Name == bob
-match ERROR offset 14: Attribute 'bob' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 13: Attribute 'bob' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 # Integer (etc.) types must be "bare"
 xlat_purify Session-Timeout == 10
@@ -236,14 +236,14 @@ xlat_purify Event-Timestamp == 'January 1 2012'
 
 # literals are parsed when the conditions are parsed
 xlat_purify (integer)X == 1
-match ERROR offset 10: Attribute 'X' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 9: Attribute 'X' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  @todo - parsing - resolution is delayed, so we don't know where in the input
 #  string the RHS is.
 #
 xlat_purify NAS-Port == X
-match ERROR offset 13: Attribute 'X' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 12: Attribute 'X' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 #match ERROR offset 13: Failed parsing string as type 'uint32'
 
 #
@@ -272,7 +272,7 @@ xlat_purify (ether)00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')"
 match ERROR purifying node - Missing separator, expected ':'
 
 xlat_purify (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
-match ERROR offset 9: Unknown attributes not allowed here
+match ERROR offset 8: Unknown attributes not allowed here
 
 #
 #  Tests for boolean data types.
@@ -350,13 +350,13 @@ xlat_purify (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
 
 xlat_purify (ipaddr)127.0.0.1/327 == 127.0.0.1
-match ERROR offset 13: Unknown attributes not allowed here
+match ERROR offset 12: Unknown attributes not allowed here
 
 xlat_purify (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
 
 xlat_purify (/foo/)
-match ERROR offset 2: Unexpected regular expression
+match ERROR offset 1: Unexpected regular expression
 
 #
 #  Tests for (FOO).
@@ -413,7 +413,7 @@ match User-Name
 #  Forbidden data types in cast
 #
 xlat_purify ((vsa)"foo" == User-Name)
-match ERROR offset 2: Invalid data type 'vsa' in cast
+match ERROR offset 1: Invalid data type 'vsa' in cast
 
 #
 #  If the LHS is a cast to a type, and the RHS is an attribute
@@ -452,7 +452,7 @@ match (Acct-Input-Octets64 == reply.Callback-Id)
 #  Casting attributes of different size
 #
 xlat_purify (ipaddr)Acct-Input-Octets64 == Framed-IP-Address
-match ERROR offset 9: Cannot cast type 'uint64' to 'ipaddr'
+match ERROR offset 8: Cannot cast type 'uint64' to 'ipaddr'
 
 #
 #  LHS is a prefix, which _might_ be castable to an address
@@ -521,43 +521,43 @@ match (raw.26.24757.84.9.5.7 == 0x1a99)
 
 #  This one is really unknown
 xlat_purify 26.24757.84.9.5.15 == 0x1a99
-match ERROR offset 17: Unknown attributes not allowed here
+match ERROR offset 16: Unknown attributes not allowed here
 #match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.15 == 0x1a99
 
 #
 #  Invalid array references.
 #
 xlat_purify User-Name[a] == 'bob'
-match ERROR offset 11: Attribute 'a' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 10: Attribute 'a' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat_purify User-Name == Filter-Id[a]
-match ERROR offset 24: Attribute 'a' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 23: Attribute 'a' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  Bounds checks...
 #
 xlat_purify User-Name[1001] == 'bob'
-match ERROR offset 11: Invalid array index '1001' (should be between 0-1000)
+match ERROR offset 10: Invalid array index '1001' (should be between 0-1000)
 
 xlat_purify User-Name[-1] == 'bob'
-match ERROR offset 11: Invalid array index '-1'
+match ERROR offset 10: Invalid array index '-1'
 
 #
 #  attributes MUST be prefixed with '&'.
 #
 xlat_purify request.Foo == 'request.Foo'
-match ERROR offset 9: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 8: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 xlat_purify request.Foo == 'request.Foo'
-match ERROR offset 9: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 8: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
 #match ERROR offset 10: Attribute 'Foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat_purify not-a-list.User-Name == not-a-list.User-Name
-match ERROR offset 1: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 0: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 # . is a valid dictionary name attribute, so we can't error out in pass1
 xlat_purify not-a-packet.User-Name == not-a-packet.User-Name
-match ERROR offset 1: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 0: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  The LHS is a string with ASCII 5C 30 30 30 inside of it vs the RHS which should contain ASCII 0.
@@ -718,7 +718,7 @@ xlat_purify (User-Name == "bob") && (User-Password == "bob") && handled
 match ((User-Name == "bob") && (User-Password == "bob") && %expr.rcode('handled'))
 
 xlat_purify handledx
-match ERROR offset 1: Attribute 'handledx' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 0: Attribute 'handledx' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat_purify handled
 match %expr.rcode('handled')

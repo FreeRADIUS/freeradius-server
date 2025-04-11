@@ -7,13 +7,13 @@ xlat_purify User-Name !~ /^foo\nbar$/i
 match (User-Name !~ /^foo\nbar$/i)
 
 xlat_purify (User-Name =~ "handled")
-match ERROR offset 15: Expected regular expression
+match ERROR offset 14: Expected regular expression
 
 xlat_purify (User-Name == /foo/)
-match ERROR offset 15: Unexpected regular expression
+match ERROR offset 14: Unexpected regular expression
 
 xlat_purify User-Name =~ Filter-Id
-match ERROR offset 14: Expected regular expression
+match ERROR offset 13: Expected regular expression
 
 xlat_expr User-Name =~ (/foo/)
 match ERROR offset 14: Expected regular expression
@@ -31,13 +31,13 @@ xlat_purify User-Name =~ /bar/im
 match (User-Name =~ /bar/im)
 
 xlat_purify User-Name =~ /bar/ima
-match ERROR offset 21: Unsupported regex flag 'a'
+match ERROR offset 20: Unsupported regex flag 'a'
 
 xlat_purify User-Name =~ /bar/ii
-match ERROR offset 20: Duplicate regex flag 'i'
+match ERROR offset 19: Duplicate regex flag 'i'
 
 xlat_purify User-Name =~ /bar/iia
-match ERROR offset 20: Duplicate regex flag 'i'
+match ERROR offset 19: Duplicate regex flag 'i'
 
 #
 #  Escape the backslashes correctly
@@ -61,16 +61,16 @@ match ((string)NAS-Port =~ /%{Login-TCP-Port} foo/)
 #  to "string" before the regular expression is evaluated.
 #
 xlat_purify (integer)Filter-Id =~ /foo/
-match ERROR offset 1: Casts cannot be used with regular expressions
+match ERROR offset 0: Casts cannot be used with regular expressions
 
 xlat_purify Filter-Id =~ <integer>/foo/
-match ERROR offset 14: Expected regular expression
+match ERROR offset 13: Expected regular expression
 
 xlat_expr %{33}
 match ERROR offset 3: Invalid regex reference.  Must be in range 0-32
 
 xlat_purify User-Name == /foo/
-match ERROR offset 14: Unexpected regular expression
+match ERROR offset 13: Unexpected regular expression
 
 #
 #  single-quoted strings in regexes!
