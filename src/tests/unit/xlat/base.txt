@@ -59,7 +59,7 @@ match ERROR offset 2: Unexpected text after attribute reference
 #match ERROR offset 3: Unresolved attributes not allowed in expansions here
 
 xlat %{3
-match ERROR offset 3: Missing closing brace
+match ERROR offset 3: Missing closing brace '}'
 
 #
 #  Tests for xlat expansion
@@ -68,10 +68,13 @@ xlat %{Tunnel-Password}
 match %{Tunnel-Password}
 
 xlat %test_no_args('foo')
-match ERROR offset 19: Too many arguments, expected 0, got 1
+match ERROR offset 14: Too many arguments, expected 0, got 1
 
 xlat %test('bar')
 match %test('bar')
+
+xlat %test()
+match ERROR offset 6: Missing required arg 1
 
 xlat %{Tunnel-Password}
 match %{Tunnel-Password}
@@ -125,7 +128,7 @@ xlat %length()
 match %length()
 
 xlat %length(
-match ERROR offset 8: Missing closing brace
+match ERROR offset 8: Missing closing brace ')'
 
 xlat %length(1 + 2
 match ERROR offset 13: Missing ')' after argument 1
@@ -152,7 +155,7 @@ match ERROR offset 20: Attribute 'bar' not found.  Searched in: RADIUS, internal
 #  Empty and malformed expansions
 #
 xlat %{
-match ERROR offset 2: Missing closing brace
+match ERROR offset 2: Missing closing brace '}'
 
 xlat %{}
 match ERROR offset 2: Empty expressions are invalid
@@ -188,21 +191,20 @@ xlat %{foo bar}
 match ERROR offset 2: Attribute 'foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat %test(
-match ERROR offset 6: Missing closing brace
+match ERROR offset 6: Missing closing brace ')'
 
 xlat %test(%{User-Name)
-match ERROR offset 17: Missing closing brace
+match ERROR offset 17: Missing closing brace '}'
 
-# Discuss - Not sure the offset/message is correct here, but not sure if we can determine the correct offset either
 xlat %test(%{User-Name}
 match ERROR offset 18: Missing ')' after argument 1
 
 xlat %{myfirstxlat
-match ERROR offset 13: Missing closing brace
+match ERROR offset 13: Missing closing brace '}'
 
 # Issue seen in the wild that caused an SEGV during pass2
 xlat %{%{control.IP-Pool.Name}:%{reply.IP-Pool.Range}
-match ERROR offset 48: Missing closing brace
+match ERROR offset 48: Missing closing brace '}'
 
 #
 #  API to split xlat strings into argv-style arguments.
@@ -235,7 +237,7 @@ match [0]{ /bin/sh }, [1]{ "foo bar" }, [2]{ %{User-Name} %{Filter-Id} }
 #  to xlat_tokenize_expansion()
 #
 xlat_argv /bin/sh "foo bar" "%{User-Name} %{Filter-Id"
-match ERROR offset 45: Unexpected text after attribute reference
+match ERROR offset 44: Unexpected text after attribute reference
 
 # and text immediately after a variable expansion
 xlat_argv echo hello %{Filter-Id}:1234 world
@@ -263,7 +265,7 @@ match %rpad(User-Name, 5, 'x')
 #  so the "offset" is wrong.  It also doesn't say *which* string is wrong.  We'll fix that later.
 #
 xlat %rpad(User-Name, 'foo', 'x')
-match ERROR offset 16: Invalid argument 2 - Failed parsing string as type 'uint64'
+match ERROR offset 17: Invalid argument 2 - Failed parsing string as type 'uint64'
 
 #
 #  Argument quoting
@@ -295,4 +297,4 @@ xlat %md5('arg"')
 match %md5(0x61726722)
 
 count
-match 157
+match 159

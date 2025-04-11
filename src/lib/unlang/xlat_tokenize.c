@@ -389,7 +389,7 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 			fr_sbuff_next(in);
 
 			if (!fr_sbuff_next_if_char(in, ')')) {
-				fr_strerror_const("Missing ')'");
+				fr_strerror_const("Missing closing brace ')'");
 				return -1;
 			}
 
@@ -458,6 +458,8 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 		node->call.input_type = func->input_type;
 	}
 
+	fr_sbuff_marker_release(&m_s);
+
 	(void) fr_sbuff_next(in); /* skip the '(' */
 
 	/*
@@ -476,7 +478,7 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 	 */
 	if (xlat_tokenize_argv(node, &node->call.args, in, func,
 			       &xlat_function_arg_rules, t_rules, false) < 0) {
-error:
+	error:
 		talloc_free(node);
 		return -1;
 	}
@@ -484,7 +486,7 @@ error:
 	xlat_flags_merge(&node->flags, &node->call.args->flags);
 
 	if (!fr_sbuff_next_if_char(in, ')')) {
-		fr_strerror_const("Missing closing brace");
+		fr_strerror_const("Missing closing brace ')'");
 		goto error;
 	}
 
@@ -644,7 +646,7 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 	}
 
 	if (!fr_sbuff_extend(in)) {
-		fr_strerror_const("Missing closing brace");
+		fr_strerror_const("Missing closing brace '}'");
 		fr_sbuff_marker_release(&m_s);
 		return -1;
 	}
@@ -675,7 +677,7 @@ static CC_HINT(nonnull(1,2)) int xlat_tokenize_expansion(xlat_exp_head_t *head, 
 		}
 
 		if (!fr_sbuff_is_char(in, '}')) {
-			fr_strerror_const("Missing closing brace");
+			fr_strerror_const("Missing closing brace '}'");
 			return -1;
 		}
 
@@ -716,7 +718,7 @@ check_for_attr:
 	 *	e.g. '%{myfirstxlat'
 	 */
 	if (!fr_sbuff_extend(in)) {
-		fr_strerror_const("Missing closing brace");
+		fr_strerror_const("Missing closing brace '}'");
 		fr_sbuff_marker_release(&m_s);
 		return -1;
 	}
@@ -755,7 +757,7 @@ check_for_attr:
 		if (xlat_tokenize_attribute(head, in, &attr_p_rules, t_rules) < 0) return -1;
 
 		if (!fr_sbuff_next_if_char(in, '}')) {
-			fr_strerror_const("Missing closing brace");
+			fr_strerror_const("Missing closing brace '}'");
 			return -1;
 		}
 
@@ -1343,6 +1345,8 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 	switch (quote) {
 	case T_SOLIDUS_QUOTED_STRING:
 		fr_strerror_const("Unexpected regular expression");
+		fr_sbuff_advance(in, -1); /* to the actual '/' */
+		our_in = FR_SBUFF(in);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 
 	default:
@@ -1350,6 +1354,30 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 		FR_SBUFF_ERROR_RETURN(&our_in);
 
 	case T_BARE_WORD:
+#if 0
+		/*
+		 *	Avoid a bounce through tmpls for %{...} and %func()
+		 */
+		if (fr_sbuff_is_char(&our_in, '%')) {
+			xlat_exp_head_t *head = NULL;
+
+			MEM(head = xlat_exp_head_alloc(ctx));
+
+			slen = xlat_tokenize_input(head, &our_in, p_rules, t_rules);
+			if (slen <= 0) {
+				talloc_free(head);
+				FR_SBUFF_ERROR_RETURN(&our_in);
+			}
+
+			fr_assert(fr_dlist_num_elements(&head->dlist) == 1);
+
+			node = fr_dlist_pop_head(&head->dlist);
+			fr_assert(node != NULL);
+			(void) talloc_steal(ctx, node);
+			talloc_free(head);
+			goto done;
+		}
+#endif
 		break;
 
 	case T_DOUBLE_QUOTED_STRING:
@@ -1390,7 +1418,7 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 		 */
 		slen = tmpl_afrom_substr(node, &node->vpt, &our_in, quote, p_rules, t_rules);
 		if (slen <= 0) {
-			fr_sbuff_advance(&our_in, -slen); /* point to the correct offset */
+			fr_sbuff_advance(&our_in, -slen - 1); /* point to the correct offset */
 
 		error:
 			talloc_free(node);
@@ -1585,7 +1613,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 	/*
 	 *	skip spaces at the beginning as we don't want them to become a whitespace literal.
 	 */
-	fr_sbuff_adv_past_whitespace(in, SIZE_MAX, NULL);
+	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 	fr_sbuff_marker(&m, &our_in);
 	argc = 1;
 
@@ -1594,13 +1622,14 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		fr_token_t	quote;
 		size_t		len;
 
-		fr_sbuff_set(&m, &our_in);	/* Record start of argument */
 		arg_t_rules.literals_safe_for = arg->safe_for;
 
 		/*
 		 *	Whitespace isn't significant for comma-separated argvs
 		 */
 		if (!spaces) fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
+
+		fr_sbuff_set(&m, &our_in);	/* Record start of argument */
 
 		if (!spaces && !xlat_func_bare_words) {
 			quote = T_BARE_WORD;
@@ -1682,6 +1711,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		if (arg->type == FR_TYPE_NULL) {
 			fr_strerror_printf("Too many arguments, expected %zu, got %d",
 					   (size_t) (arg - arg_start), argc);
+			fr_sbuff_set(&our_in, &m);
 			goto error;
 		}
 
@@ -1786,7 +1816,6 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_exp_head_t	*head;
-
 
 	MEM(head = xlat_exp_head_alloc(ctx));
 	fr_strerror_clear();	/* Clear error buffer */

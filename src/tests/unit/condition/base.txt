@@ -14,10 +14,10 @@ match (request.User-Name == reply.User-Name)
 
 # All IP address literals should be parsed as prefixes
 condition ("foo\
-match ERROR offset 1: Unterminated string
+match ERROR offset 2: Unterminated string
 
 condition ("foo
-match ERROR offset 1: Unterminated string
+match ERROR offset 2: Unterminated string
 
 condition ()
 match ERROR offset 1: Empty expressions are invalid

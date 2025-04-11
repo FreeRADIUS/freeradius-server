@@ -49,13 +49,13 @@ match ERROR offset 18: Empty attribute reference
 
 # Discuss - Not sure the offset/message is correct here, but not sure if we can determine the correct offset either
 xlat %{%{User-Name} || 'foo'
-match ERROR offset 23: Missing closing brace
+match ERROR offset 23: Missing closing brace '}'
 
 xlat %{%{User-Name}:}
 match %{%{User-Name}:}
 
 xlat %{%{User-Name}:-"foo"}
-match ERROR offset 15: Old style alternation of %{...:-...} is no longer supported
+match ERROR offset 14: Old style alternation of %{...:-...} is no longer supported
 
 count
 match 35

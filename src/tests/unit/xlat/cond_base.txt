@@ -9,10 +9,10 @@ proto-dictionary radius
 
 # All IP address literals should be parsed as prefixes
 xlat_purify ("foo\
-match ERROR offset 1: Unterminated string
+match ERROR offset 2: Unterminated string
 
 xlat_purify ("foo
-match ERROR offset 1: Unterminated string
+match ERROR offset 2: Unterminated string
 
 xlat_purify ()
 match ERROR offset 1: Empty expressions are invalid
