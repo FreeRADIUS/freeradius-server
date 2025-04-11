@@ -181,7 +181,6 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 		return 0;
 	}
 
-#if 0
 	/*
 	 *	We have a nested xlat.  This is likely bad.  The caller SHOULD have checked for %{...}, and
 	 *	created an XLAT_GROUP, and then parsed that.
@@ -189,10 +188,8 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 	if (tmpl_contains_xlat(vpt)) {
 		fr_assert(!tmpl_needs_resolving(vpt));
 		fr_assert(!tmpl_contains_regex(vpt));
-
 		return 0;
 	}
-#endif
 
 	if (!tmpl_contains_data(vpt)) {
 		fr_assert(!tmpl_needs_resolving(vpt));

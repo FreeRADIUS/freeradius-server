@@ -378,7 +378,7 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 	fr_assert(node->type == XLAT_GROUP);
 
 	/*
-	 *	Concatenate child boxes, then to the desired type.
+	 *	Concatenate child boxes, then cast to the desired type.
 	 */
 	if (concat) {
 		if (fr_value_box_list_concat_in_place(ctx, vb, list, type, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {

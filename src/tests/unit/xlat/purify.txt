@@ -227,9 +227,6 @@ match "hello 3"
 xlat_purify "hello " + (string)%{1 + 2} + " bob"
 match "hello 3 bob"
 
-#
-#  @todo - xlat_purify doesn't hoist results.
-#
 xlat_purify "hello %{1 + 2} bob"
 match "hello 3 bob"
 
@@ -244,9 +241,6 @@ match 0xacbd18db4cc2f85cedef654fccc4a4d8
 xlat_purify %explode("a,b,c,d", ',')
 match "a""b""c""d"
 
-#
-# @todo - bare words should probably be disallowed
-#
 xlat_purify %md5('foo')
 match 0xacbd18db4cc2f85cedef654fccc4a4d8
 
