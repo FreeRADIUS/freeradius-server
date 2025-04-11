@@ -2973,7 +2973,7 @@ static const fr_sbuff_term_t operator_terms = FR_SBUFF_TERMS(
 static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 						   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, bool cond)
 {
-	ssize_t slen;
+	fr_slen_t slen;
 	fr_sbuff_parse_rules_t *bracket_rules = NULL;
 	fr_sbuff_parse_rules_t *terminal_rules = NULL;
 	tmpl_rules_t my_rules = { };
@@ -3014,7 +3014,7 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 
 	if (slen <= 0) {
 		talloc_free(head);
-		FR_SBUFF_ERROR_RETURN(in);
+		return slen;
 	}
 
 	if (!node) {

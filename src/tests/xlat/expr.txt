@@ -5,13 +5,13 @@
 #  @todo - this offset is way wrong
 #
 xlat_expr %file.exists()
-match ERROR offset 11 'Missing required arg 1'
+match ERROR offset 13 'Missing required arg 1'
 
 #
 #  Only one argument
 #
 xlat_expr %file.exists("foo", "bar")
-match ERROR offset 31 'Too many arguments, expected 1, got 2'
+match ERROR offset 19 'Too many arguments, expected 1, got 2'
 
 
 #-- we don't have a cast to string, and we don't have a tmpl where the cast

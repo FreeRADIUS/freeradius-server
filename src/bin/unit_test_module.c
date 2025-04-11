@@ -540,7 +540,7 @@ static bool do_xlats(fr_event_list_t *el, request_t *request, char const *filena
 							});
 			if (slen <= 0) {
 				talloc_free(xlat_ctx);
-				fr_sbuff_in_sprintf(&out, "ERROR offset %d '%s'", (int) -slen, fr_strerror());
+				fr_sbuff_in_sprintf(&out, "ERROR offset %d '%s'", (int) -slen - 1, fr_strerror());
 				continue;
 			}
 
