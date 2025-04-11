@@ -101,6 +101,7 @@ void _xlat_exp_set_type(NDEBUG_LOCATION_ARGS xlat_exp_t *node, xlat_type_t type)
 			 *	Initialize the box from the tmpl data.  And then do NOT re-initialize the box
 			 *	later.
 			 */
+			node->flags.constant = node->flags.pure = node->flags.can_purify = true;
 			fr_value_box_steal(node, &node->data, tmpl_value(vpt));
 			talloc_free(vpt);
 			goto done;
