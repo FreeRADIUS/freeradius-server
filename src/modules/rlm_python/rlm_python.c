@@ -1045,7 +1045,6 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	PYTHON_FUNC_DESTROY(post_auth);
 	PYTHON_FUNC_DESTROY(detach);
 
-	Py_XDECREF(inst->pythonconf_dict);
 	PyEval_SaveThread();
 
 	/*
