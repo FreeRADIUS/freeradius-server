@@ -934,14 +934,8 @@ static int python_interpreter_init(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static void python_interpreter_free(rlm_python_t *inst, PyThreadState *interp)
+static void python_interpreter_free(PyThreadState *interp)
 {
-	/*
-	 *	We incremented the reference count earlier
-	 *	during module initialisation.
-	 */
-	Py_XDECREF(inst->module);
-
 	PyEval_RestoreThread(interp);	/* Switches thread state and locks GIL */
 	Py_EndInterpreter(interp);	/* Destroys interpreter (GIL still locked) - sets thread state to NULL */
 	PyThreadState_Swap(global_interpreter);	/* Get a none-null thread state */
@@ -994,7 +988,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		case RLM_MODULE_REJECT:
 		error:
 			fr_cond_assert(PyEval_SaveThread() == inst->interpreter);
-			python_interpreter_free(inst, inst->interpreter);
+			python_interpreter_free(inst->interpreter);
 			return -1;
 
 		default:
@@ -1050,7 +1044,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	/*
 	 *	Free the module specific interpreter
 	 */
-	python_interpreter_free(inst, inst->interpreter);
+	python_interpreter_free(inst->interpreter);
 
 	return 0;
 }
