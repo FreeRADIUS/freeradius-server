@@ -413,8 +413,13 @@ match ERROR offset 1: Invalid data type 'vsa' in cast
 condition (string)"foo" == User-Name
 match ("foo" == User-Name)
 
+#
+#  @todo - This is no longer a tmpl, so the cast is a function.
+#  We should really add a "cast print" function which prints
+#  out the casts in the same format in which they are parsed.
+#
 condition (integer)"%md4(' 1 + 1')" < NAS-Port
-match ((uint32)"%md4(0x2031202b2031)" < NAS-Port)
+match (%cast(uint32, "%md4(0x2031202b2031)") < NAS-Port)
 
 condition Filter-Id == Framed-IP-Address
 match (Filter-Id == Framed-IP-Address)

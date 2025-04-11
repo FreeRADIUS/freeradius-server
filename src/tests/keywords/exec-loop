@@ -1,0 +1,22 @@
+#
+#  Test if we can do in-place exec
+#
+if (`/bin/bash -c "for i in {0..2} ; \
+do if [ -e nope/smtp_cc_request_1 ] \
+& [ -e nope/1 ] \
+& [ -e nope/2 ] \
+& [ -e nope/3 ] \
+& [ -e nope/4 ] \
+& [ -e nope/5 ] \
+& [ -e nope/6 ] ;\
+then \
+echo 'found' ;\
+else \
+echo 'failed' ;\
+break; \
+fi; sleep .1;\
+done ;"` != "failed") {
+	test_fail
+}
+
+success

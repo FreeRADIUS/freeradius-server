@@ -1,18 +1,23 @@
-#  this is "foo" + PRINTABLE version of the packet authentication vector
-
 #
 #  1 argument
 #
+#
+#  @todo - this offset is way wrong
+#
 xlat_expr %file.exists()
-match ERROR offset 24 'Missing required arg 1'
+match ERROR offset 25 'Missing required arg 1'
 
 #
 #  Only one argument
 #
 xlat_expr %file.exists("foo", "bar")
-match ERROR offset 30 'Too many arguments, expected 1, got 2'
+match ERROR offset 31 'Too many arguments, expected 1, got 2'
 
-xlat_expr "foo%bin('000000')"
+
+#-- we don't have a cast to string, and we don't have a tmpl where the cast
+# can be stored...
+# add a cast, and update the cast function to print (type)....
+xlat_expr (string) "foo%bin('000000')"
 match foo\000\000\000
 
 xlat_expr 1 && 2

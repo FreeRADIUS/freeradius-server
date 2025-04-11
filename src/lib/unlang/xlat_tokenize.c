@@ -96,8 +96,7 @@ static fr_sbuff_escape_rules_t const xlat_escape = {
 
 /** Parse rules for literal values inside of an expansion
  *
- * These rules are used to parse literals as arguments to functions and
- * on the RHS of alternations.
+ * These rules are used to parse literals as arguments to functions.
  *
  * The caller sets the literal parse rules for outside of expansions when they
  * call xlat_tokenize.
@@ -146,6 +145,7 @@ int xlat_tokenize_regex(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 
 	MEM(node = xlat_exp_alloc(head, XLAT_REGEX, fr_sbuff_current(m_s), fr_sbuff_behind(m_s)));
 	node->regex_index = num;
+
 	*out = node;
 
 	(void) fr_sbuff_advance(in, 1); /* must be '}' */
@@ -186,13 +186,20 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 	 *	created an XLAT_GROUP, and then parsed that.
 	 */
 	if (tmpl_contains_xlat(vpt)) {
-		fr_assert(!tmpl_needs_resolving(vpt));
+		xlat_exp_head_t *xlat = tmpl_xlat(vpt);
+
+		node->flags = xlat->flags;
+
+		node->flags.constant &= !tmpl_is_exec(vpt);
+
 		fr_assert(!tmpl_contains_regex(vpt));
 		return 0;
 	}
 
 	if (!tmpl_contains_data(vpt)) {
-		fr_assert(!tmpl_needs_resolving(vpt));
+		node->flags.needs_resolving = tmpl_needs_resolving(vpt);
+		node->flags.constant = node->flags.pure = node->flags.can_purify = false;
+
 		fr_assert(!tmpl_contains_regex(vpt));
 
 		return 0;
@@ -224,6 +231,17 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t *arg, int argc)
 {
 	xlat_exp_t *node;
+
+	fr_assert(arg->type == XLAT_GROUP);
+
+	/*
+	 *	"is_argv" does dual duty.  One, it causes xlat_print() to print spaces in between arguments.
+	 *
+	 *	Two, it is checked by xlat_frame_eval_repeat(), which then does NOT concatenate strings in
+	 *	place.  Instead, it just passes the strings though to xlat_process_arg_list().  Which calls
+	 *	xlat_arg_stringify(), and that does the escaping and final concatenation.
+	 */
+	arg->group->is_argv = (arg_p->func != NULL);
 
 	/*
 	 *	The caller doesn't care about the type, we don't do any validation.
@@ -863,7 +881,14 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 		 */
 		if (fr_sbuff_adv_past_str_literal(&our_in, "%{")) {
 			TALLOC_FREE(node); /* nope, couldn't use it */
+
 			if (xlat_tokenize_expansion(head, &our_in, t_rules) < 0) goto error;
+
+			if (fr_sbuff_is_str_literal(&our_in, ":-")) {
+				fr_strerror_const("Old style alternation of %{...:-...} is no longer supported");
+				goto error;
+			}
+
 		next:
 			fr_sbuff_marker_release(&m_s);
 			continue;
@@ -1303,9 +1328,9 @@ static void xlat_safe_for(xlat_exp_head_t *head, fr_value_box_safe_for_t safe_fo
 }
 #endif
 
-static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, fr_sbuff_marker_t *m,
-				  fr_token_t quote,
-				  fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+
+fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, fr_token_t quote,
+			     fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	int		triple = 1;
 	ssize_t		slen;
@@ -1325,15 +1350,11 @@ static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t 
 		FR_SBUFF_ERROR_RETURN(&our_in);
 
 	case T_BARE_WORD:
-		MEM(node = xlat_exp_alloc(ctx, XLAT_TMPL, NULL, 0));
 		break;
 
 	case T_DOUBLE_QUOTED_STRING:
 	case T_SINGLE_QUOTED_STRING:
 	case T_BACK_QUOTED_STRING:
-		MEM(node = xlat_exp_alloc(ctx, XLAT_GROUP, NULL, 0));
-		node->quote = quote;
-
 		p_rules = value_parse_rules_quoted[quote];
 
 		if (fr_sbuff_remaining(&our_in) >= 2) {
@@ -1349,12 +1370,18 @@ static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t 
 				p_rules = value_parse_rules_3quoted[quote];
 			}
 		}
-
 		break;
 	}
 
 	switch (quote) {
+		/*
+		 *	`foo` is a tmpl, and is NOT a group.
+		 */
+	case T_BACK_QUOTED_STRING:
 	case T_BARE_WORD:
+		MEM(node = xlat_exp_alloc(ctx, XLAT_TMPL, NULL, 0));
+		node->quote = quote;
+
 		/*
 		 *	tmpl_afrom_substr does pretty much all the work of
 		 *	parsing the operand.  It pays attention to the cast on
@@ -1363,22 +1390,66 @@ static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t 
 		 */
 		slen = tmpl_afrom_substr(node, &node->vpt, &our_in, quote, p_rules, t_rules);
 		if (slen <= 0) {
+			fr_sbuff_advance(&our_in, -slen); /* point to the correct offset */
+
 		error:
 			talloc_free(node);
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		if (xlat_tmpl_normalize(node) < 0) goto error;
-		goto done;
+
+		if (quote == T_BARE_WORD) goto done;
+
+		/*
+		 *	Exec.
+		 */
+		node->flags.constant = node->flags.pure = node->flags.can_purify = false;
+		break;
 
 		/*
 		 *	"Double quoted strings may contain %{expansions}"
 		 */
 	case T_DOUBLE_QUOTED_STRING:
-	case T_BACK_QUOTED_STRING:
+		MEM(node = xlat_exp_alloc(ctx, XLAT_GROUP, NULL, 0));
+		node->quote = quote;
+
 		XLAT_DEBUG("ARGV double quotes <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
 
-		if (xlat_tokenize_input(node->group, &our_in, p_rules, t_rules) < 0) goto error;		
+		if (xlat_tokenize_input(node->group, &our_in, p_rules, t_rules) < 0) goto error;
+
+		node->flags = node->group->flags;
+		node->hoist = true;
+
+		/*
+		 *	There's no expansion in the string.  Hoist the value-box.
+		 */
+		if (node->flags.constant) {
+			xlat_exp_t *child;
+
+			/*
+			 *	The list is either empty, or else it has one child, which is the constant
+			 *	node.
+			 */
+			if (fr_dlist_num_elements(&node->group->dlist) == 0) {
+				xlat_exp_set_type(node, XLAT_BOX);
+
+				fr_value_box_init(&node->data, FR_TYPE_STRING, NULL, false);
+
+			} else {
+				fr_assert(fr_dlist_num_elements(&node->group->dlist) == 1);
+
+				child = talloc_steal(ctx, xlat_exp_head(node->group));
+				talloc_free(node);
+				node = child;
+			}
+
+			fr_assert(node->type == XLAT_BOX);
+			fr_assert(node->flags.constant);
+			fr_assert(node->flags.pure);
+
+			node->quote = quote; /* not the same node! */
+		}
 		break;
 
 		/*
@@ -1387,25 +1458,25 @@ static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t 
 	case T_SINGLE_QUOTED_STRING:
 	{
 		char		*str;
-		xlat_exp_t	*child;
 
 		XLAT_DEBUG("ARGV single quotes <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
 
-		child = xlat_exp_alloc(node->group, XLAT_BOX, NULL, 0);
-		slen = fr_sbuff_out_aunescape_until(child, &str, &our_in, SIZE_MAX, p_rules->terminals, p_rules->escapes);
+		node = xlat_exp_alloc(ctx, XLAT_BOX, NULL, 0);
+		node->quote = quote;
+
+		slen = fr_sbuff_out_aunescape_until(node, &str, &our_in, SIZE_MAX, p_rules->terminals, p_rules->escapes);
 		if (slen < 0) goto error;
 
-		xlat_exp_set_name_shallow(child, str);
-		fr_value_box_strdup(child, &child->data, NULL, str, false);
-		fr_value_box_mark_safe_for(&child->data, t_rules->literals_safe_for);	/* Literal values are treated as implicitly safe */
-		fr_assert(child->flags.pure);
-		xlat_exp_insert_tail(node->group, child);
+		xlat_exp_set_name_shallow(node, str);
+		fr_value_box_strdup(node, &node->data, NULL, str, false);
+		fr_value_box_mark_safe_for(&node->data, t_rules->literals_safe_for);	/* Literal values are treated as implicitly safe */
+		fr_assert(node->flags.pure);
 	}
 		break;
 
 	default:
-		fr_assert(0);
-		goto error;
+		fr_strerror_const("Internal sanity check failed in tokenizing expansion word");
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	/*
@@ -1414,14 +1485,12 @@ static ssize_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t 
 	do {
 		if (!fr_sbuff_is_char(&our_in, fr_token_quote[quote])) {
 			fr_strerror_const("Unterminated string");
-				fr_sbuff_set(&our_in, m);
-				goto error;
+			fr_sbuff_set_to_start(&our_in);
+			goto error;
 		}
 
 		fr_sbuff_advance(&our_in, 1);
 	} while (--triple > 0);
-
-	node->flags = node->group->flags;	
 
 done:
 	*out = node;
@@ -1539,10 +1608,10 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			fr_sbuff_out_by_longest_prefix(&slen, &quote, xlat_quote_table, &our_in, T_BARE_WORD);
 		}
 
-		if ((quote == T_BARE_WORD) && (spaces || xlat_func_bare_words)) {
-			MEM(node = xlat_exp_alloc(ctx, XLAT_GROUP, NULL, 0));
-			node->quote = quote;
+		MEM(node = xlat_exp_alloc(ctx, XLAT_GROUP, NULL, 0));
+		node->quote = quote;
 
+		if ((quote == T_BARE_WORD) && (spaces || xlat_func_bare_words)) {
 			/*
 			 *	Spaces - each argument is a bare word all by itself, OR an xlat thing all by itself.
 			 *
@@ -1554,9 +1623,6 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			/*
 			 *	We've reached the end of the arguments, don't try to tokenize anything else.
 			 */
-			MEM(node = xlat_exp_alloc(ctx, XLAT_GROUP, NULL, 0));
-			node->quote = quote;
-
 			if (fr_sbuff_is_char(&our_in, ')')) {
 				slen = 0;
 
@@ -1566,12 +1632,28 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 				 *	We use the input parse rules here.
 				 */
 				slen = xlat_tokenize_expression(node, &node->group, &our_in, our_p_rules, &arg_t_rules);
-				if (slen > 0) node->flags = node->group->flags;
 			}
 
 		} else {
+			xlat_exp_t *child = NULL;
 
-			slen = xlat_tokenize_word(head, &node, &our_in, &m, quote, our_p_rules, &arg_t_rules);
+			slen = xlat_tokenize_word(node->group, &child, &our_in, quote, our_p_rules, &arg_t_rules);
+			if ((slen > 0) && child) {
+				if (child->type != XLAT_GROUP) {
+					xlat_exp_insert_tail(node->group, child);
+				} else {
+					xlat_exp_head_t *child_head = child->group;
+
+					/*
+					 *	Hoist the child, so we don't have groups of groups.
+					 *
+					 *	@todo - this is perhaps wrong?
+					 */
+					(void) talloc_steal(node, child_head);
+					talloc_free(node->group);
+					node->group = child_head;
+				}
+			}
 		}
 
 		if (slen < 0) {
@@ -1591,6 +1673,9 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			goto error;
 		}
 
+		fr_assert(node->type == XLAT_GROUP);
+		node->flags = node->group->flags;
+
 		/*
 		 *	Validate the argument immediately on parsing it, and not later.
 		 */
@@ -1608,7 +1693,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			goto error;
 		}
 
-		xlat_exp_set_name(node, fr_sbuff_current(&m), fr_sbuff_behind(&m));
+		if (!node->fmt) xlat_exp_set_name(node, fr_sbuff_current(&m), fr_sbuff_behind(&m));
 
 		xlat_exp_insert_tail(head, node);
 
@@ -1815,7 +1900,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 
 	our_flags = head->flags;
 	our_flags.needs_resolving = false;			/* We flip this if not all resolutions are successful */
-	our_flags.pure = true;					/* we flip this if the children are not pure */
+	our_flags.constant = our_flags.pure = true;		/* we flip this if the children are not pure */
 
 	xlat_exp_foreach(head, node) {
 		/*

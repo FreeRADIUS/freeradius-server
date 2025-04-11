@@ -74,12 +74,6 @@ static void xlat_func_append_arg(xlat_exp_t *head, xlat_exp_t *node, bool exists
 
 	fr_assert(head->type == XLAT_FUNC);
 
-	if (node->type == XLAT_GROUP) {
-		xlat_exp_insert_tail(head->call.args, node);
-		xlat_flags_merge(&head->flags, &head->call.args->flags);
-		return;
-	}
-
 	/*
 	 *	Wrap existence checks for attribute reference.
 	 */
@@ -87,6 +81,9 @@ static void xlat_func_append_arg(xlat_exp_t *head, xlat_exp_t *node, bool exists
 		node = xlat_exists_alloc(head, node);
 	}
 
+	/*
+	 *	Wrap it in a group.
+	 */
 	group = xlat_exp_alloc(head->call.args, XLAT_GROUP, NULL, 0);
 	group->quote = T_BARE_WORD;
 
@@ -989,7 +986,7 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
 	if (inst->argc > 1) return 0;
 
 	/*
-	 *	Only one argument left/  We can hoist the child into ourselves, and omit the logical operation.
+	 *	Only one argument left.  We can hoist the child into ourselves, and omit the logical operation.
 	 */
 	group = inst->argv[0];
 	fr_assert(group != NULL);
@@ -1060,8 +1057,8 @@ static xlat_action_t xlat_logical_process_arg(UNUSED TALLOC_CTX *ctx, UNUSED fr_
  */
 static bool xlat_logical_or(xlat_logical_rctx_t *rctx, fr_value_box_list_t const *in)
 {
-	fr_value_box_t *last = NULL;
-	bool ret = false;
+	fr_value_box_t	*last = NULL;
+	bool		ret = false;
 
 	/*
 	 *	Empty lists are !truthy.
@@ -1069,13 +1066,10 @@ static bool xlat_logical_or(xlat_logical_rctx_t *rctx, fr_value_box_list_t const
 	if (!fr_value_box_list_num_elements(in)) return false;
 
 	/*
-	 *	Loop over the input list.  If the box is a group, then do this recursively.
+	 *	Loop over the input list.  We CANNOT do groups.
 	 */
 	fr_value_box_list_foreach(in, box) {
-		if (fr_box_is_group(box)) {
-			if (!xlat_logical_or(rctx, &box->vb_group)) return false;
-			continue;
-		}
+		fr_assert(fr_type_is_leaf(box->type));
 
 		last = box;
 
@@ -1171,13 +1165,10 @@ static bool xlat_logical_and(xlat_logical_rctx_t *rctx, fr_value_box_list_t cons
 	if (!fr_value_box_list_num_elements(in)) return false;
 
 	/*
-	 *	Loop over the input list.  If the box is a group, then do this recursively.
+	 *	Loop over the input list.  We CANNOT do groups.
 	 */
 	fr_value_box_list_foreach(in, box) {
-		if (fr_box_is_group(box)) {
-			if (!xlat_logical_and(rctx, &box->vb_group)) return false;
-			continue;
-		}
+		fr_assert(fr_type_is_leaf(box->type));
 
 		/*
 		 *	Remember the last box we found.
@@ -2239,6 +2230,7 @@ static fr_slen_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_
 	node->flags.pure = !tmpl_contains_xlat(node->vpt);
 	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
 
+	XLAT_VERIFY(node);
 	*out = node;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -2305,7 +2297,6 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	tmpl_rules_t		our_t_rules;
 	tmpl_t			*vpt = NULL;
 	fr_token_t		quote;
-	int			triple = 1;
 	fr_type_t		cast_type;
 	fr_dict_attr_t const	*enumv;
 
@@ -2400,7 +2391,6 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	fr_sbuff_out_by_longest_prefix(&slen, &quote, expr_quote_table, &our_in, T_BARE_WORD);
 
 	switch (quote) {
-	default:
 	case T_BARE_WORD:
 		p_rules = bracket_rules;
 
@@ -2435,142 +2425,38 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 			fr_sbuff_set(&our_in, &opand_m);
 		}
 #endif /* HAVE_REGEX */
-
-		/*
-		 *	@todo - check if the input is %{...}, AND the contents are not exactly tmpl_attr_allowed_chars.
-		 *	If so, parse it here as a nested expression.  That way we avoid a bounce through:
-		 *
-		 *		tmpl_afrom_substr() ->
-		 *		xalt_tokenize() ->
-		 *		xlat_tokenize_input() ->
-		 *		xlat_tokenize_expansion() ->
-		 *		xlat_tokenize_expression()
-		 *
-		 *	Which is horribly inefficient.  It also means that we have xlats containing tmpls
-		 *	which then contain xlats.
-		 *
-		 *	If the content is exactly tmpl_attr_allowed_chars, then we can parse it either as a
-		 *	regex reference, OR as an attribute expansion.
-		 */
-		break;
-
-	case T_SOLIDUS_QUOTED_STRING:
-		fr_strerror_const("Unexpected regular expression");
-		fr_sbuff_set(&our_in, &opand_m);	/* Error points to the quoting char at the start of the string */
-		goto error;
-
-	case T_DOUBLE_QUOTED_STRING:
-	case T_SINGLE_QUOTED_STRING:
-		/*
-		 *	We want to force the output to be a string.
-		 */
-		if (cast_type == FR_TYPE_NULL) cast_type = FR_TYPE_STRING;
 		FALL_THROUGH;
 
-	case T_BACK_QUOTED_STRING:
-		p_rules = value_parse_rules_quoted[quote];
+	default:
+		slen = xlat_tokenize_word(head, &node, &our_in, quote, p_rules, &our_t_rules);
+		if (slen <= 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
-		/*
-		 *	Triple-quoted strings have different terminal conditions.
-		 */
-		if (fr_sbuff_remaining(&our_in) >= 2) {
-			char const *p = fr_sbuff_current(&our_in);
-			char c = fr_token_quote[quote];
-
-			/*
-			 *	"""foo "quote" and end"""
-			 */
-			if ((p[0] == c) && (p[1] == c)) {
-				triple = 3;
-				(void) fr_sbuff_advance(&our_in, 2);
-				p_rules = value_parse_rules_3quoted[quote];
-			}
-		}
-
+		fr_assert(node != NULL);
 		break;
 	}
 
 	/*
-	 *	Allocate the xlat node now so the talloc hierarchy is correct
+	 *	Cast value-box.
 	 */
-	MEM(node = xlat_exp_alloc(head, XLAT_TMPL, NULL, 0));
-
-	/*
-	 *	tmpl_afrom_substr does pretty much all the work of
-	 *	parsing the operand.  It pays attention to the cast on
-	 *	our_t_rules, and will try to parse any data there as
-	 *	of the correct type.
-	 */
-	slen = tmpl_afrom_substr(node, &vpt, &our_in, quote, p_rules, &our_t_rules);
-	if ((slen < 0) || ((slen == 0) && (quote == T_BARE_WORD))) {
-	error:
-		talloc_free(node);
-		FR_SBUFF_ERROR_RETURN(&our_in);
-	}
-
-	/*
-	 *	Add in unknown attributes, by defining them in the local dictionary.
-	 */
-	if (tmpl_is_attr(vpt) && (tmpl_attr_unknown_add(vpt) < 0)) {
-		fr_strerror_printf("Failed defining attribute %s", tmpl_attr_tail_da(vpt)->name);
-		fr_sbuff_set(&our_in, &opand_m);
-		goto error;
-	}
-
-	if (quote != T_BARE_WORD) {
-		/*
-		 *	Ensure that the string ends with the correct number of quotes.
-		 */
-		do {
-			if (!fr_sbuff_is_char(&our_in, fr_token_quote[quote])) {
-				fr_strerror_const("Unterminated string");
-				fr_sbuff_set(&our_in, &opand_m);
-				goto error;
+	if (node->type == XLAT_BOX) {
+		if (cast_type != FR_TYPE_NULL) {
+			if (node->data.type != cast_type) {
+				if (fr_value_box_cast_in_place(node, &node->data, cast_type, NULL) < 0) goto error;
 			}
 
-			fr_sbuff_advance(&our_in, 1);
-		} while (--triple > 0);
-
-		/*
-		 *	Quoted strings just get resolved now.
-		 *
-		 *	@todo - this means that things like
-		 *
-		 *		&Session-Timeout == '10'
-		 *
-		 *	are run-time errors, instead of load-time parse errors.
-		 *
-		 *	On the other hand, if people assign static strings to non-string
-		 *	attributes... they sort of deserve what they get.
-		 */
-		if (tmpl_is_data_unresolved(vpt) && (tmpl_resolve(vpt, NULL) < 0)) goto error;
-	} else {
-		/*
-		 *	Catch the old case of alternation :(
-		 */
-		char const *p;
-
-		fr_assert(talloc_array_length(vpt->name) > 1);
-
-		p = vpt->name + talloc_array_length(vpt->name) - 2;
-		if ((*p == ':') && fr_sbuff_is_char(&our_in, '-')) {
-			fr_sbuff_set(&our_in, fr_sbuff_current(&our_in) - 2);
-			fr_strerror_const("Alternation is no longer supported.  Use '%{a || b}' instead of '%{a:-b}'");
-			goto error;
+			cast_type = FR_TYPE_NULL;
 		}
 	}
 
-	fr_sbuff_skip_whitespace(&our_in);
-
 	/*
-	 *	A bare word which is NOT a known attribute.  That's an error.
+	 *	Something other than a tmpl, we can just return.
 	 */
-	if (tmpl_is_data_unresolved(vpt)) {
-		fr_assert(quote == T_BARE_WORD);
-		fr_strerror_const("Failed parsing input");
-		fr_sbuff_set(&our_in, &opand_m);
-		goto error;
+	if (node->type != XLAT_TMPL) {
+		xlat_exp_set_name(node, fr_sbuff_current(&opand_m), fr_sbuff_behind(&opand_m));
+		goto done;
 	}
+
+	vpt = node->vpt;
 
 	/*
 	 *	The tmpl has a cast, and it's the same as the explicit cast we were given, we can sometimes
@@ -2595,11 +2481,14 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 			 */
 			if (da) {
 				if (tmpl_cast_set(vpt, cast_type) < 0) {
+				error:
 					fr_sbuff_set(&our_in, &opand_m);
-					goto error;
-				} else {
-					cast_type = FR_TYPE_NULL;
+					talloc_free(node);
+					FR_SBUFF_ERROR_RETURN(&our_in);
 				}
+
+				cast_type = FR_TYPE_NULL;
+
 			} else { /* it's something like &reply. */
 				fr_assert(0);
 			}
@@ -2668,44 +2557,8 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	/*
 	 *	Assign the tmpl to the node.
 	 */
-	node->vpt = vpt;
-	node->quote = quote;
 	xlat_exp_set_name_shallow(node, vpt->name);
 
-	if (tmpl_is_data(node->vpt)) {
-		/*
-		 *	Print "true" and "false" instead of "yes" and "no".
-		 */
-		if ((tmpl_value_type(vpt) == FR_TYPE_BOOL) && !tmpl_value_enumv(vpt)) {
-			tmpl_value_enumv(vpt) = attr_expr_bool_enum;
-		}
-
-		node->flags.constant = true;
-		node->flags.pure = node->flags.can_purify = true;
-
-		/*
-		 *	Casts must have been handled above.
-		 */
-		fr_assert(cast_type == FR_TYPE_NULL);
-		fr_assert(tmpl_rules_cast(vpt) == FR_TYPE_NULL);
-
-		/*
-		 *	Convert the XLAT_TMPL to XLAT_BOX
-		 */
-		xlat_exp_set_type(node, XLAT_BOX);
-		goto done;
-
-	} else if (tmpl_contains_xlat(node->vpt)) {
-		node->flags = tmpl_xlat(vpt)->flags;
-
-	} else if (tmpl_is_attr(node->vpt)) {
-		node->flags.pure = node->flags.can_purify = false;
-
-	} else {
-		node->flags.pure = false;
-	}
-
-	node->flags.constant = node->flags.pure;
 	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
 
 	fr_assert(!tmpl_contains_regex(vpt));
@@ -2723,6 +2576,7 @@ done:
 
 	*out = node;
 
+	fr_sbuff_skip_whitespace(&our_in);
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
@@ -2976,7 +2830,6 @@ redo:
 			 *	be from an XLAT_TMPL to an XLAT_GROUP, which is still perhaps a bit of an
 			 *	improvement.
 			 */
-			fr_assert(0);
 			break;
 
 		}
@@ -3187,7 +3040,6 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 		}
 	}
 
-	XLAT_VERIFY(node);
 	xlat_exp_insert_tail(head, node);
 
 	*out = head;

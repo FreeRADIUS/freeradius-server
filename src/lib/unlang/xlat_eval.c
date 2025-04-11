@@ -272,6 +272,51 @@ static inline void xlat_debug_log_result(request_t *request, xlat_exp_t const *n
 	RDEBUG2("| --> %pV", result);
 }
 
+static int xlat_arg_stringify(request_t *request, xlat_arg_parser_t const *arg, xlat_exp_t const *node, fr_value_box_t *vb)
+{
+	int rcode;
+
+	if (vb->type == FR_TYPE_GROUP) {
+		fr_value_box_list_foreach(&vb->vb_group, child) {
+			if (xlat_arg_stringify(request, arg, NULL, child) < 0) return -1;
+		}
+
+		if (!node || (node->quote == T_BARE_WORD)) return 0;
+
+		fr_assert(node->type == XLAT_GROUP);
+
+		/*
+		 *	Empty lists are empty strings.
+		 */
+		if (!fr_value_box_list_head(&vb->vb_group)) {
+			fr_value_box_entry_t entry;
+
+			entry = vb->entry;
+			fr_value_box_init(vb, FR_TYPE_STRING, NULL, false);
+			fr_value_box_strdup(vb, vb, NULL, "", false);
+			vb->entry = entry;
+			return 0;
+		}
+
+		/*
+		 *	Mash all of the child value-box to a string.
+		 */
+		if (fr_value_box_list_concat_in_place(vb, vb, &vb->vb_group, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+			return -1;
+		}
+
+		return 0;
+	}
+
+	if (fr_value_box_is_safe_for(vb, arg->safe_for) && !arg->always_escape) return 0;
+
+	rcode = arg->func(request, vb, arg->uctx);
+	if (rcode != 0) return rcode;
+
+	fr_value_box_mark_safe_for(vb, arg->safe_for);
+	return 0;
+}
+
 /** Process an individual xlat argument value box group
  *
  * @param[in] ctx	to allocate any additional buffers in
@@ -359,17 +404,9 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 		for (vb = fr_value_box_list_head(list);
 		     vb != NULL;
 		     vb = fr_value_box_list_next(list, vb)) {
-			fr_assert(vb->type != FR_TYPE_GROUP);
-
-			if (!fr_value_box_is_safe_for(vb, arg->safe_for) || arg->always_escape) {
-				int rcode;
-
-				rcode = arg->func(request, vb, arg->uctx);
-				if (rcode < 0) {
-					RPEDEBUG("Function \"%s\" failed escaping argument %u", name, arg_num);
-					return XLAT_ACTION_FAIL;
-				}
-				if (rcode == 0) fr_value_box_mark_safe_for(vb, arg->safe_for);
+			if (xlat_arg_stringify(request, arg, node, vb) < 0) {
+				RPEDEBUG("Function \"%s\" failed escaping argument %u", name, arg_num);
+				return XLAT_ACTION_FAIL;
 			}
 		}
 	}
@@ -1103,6 +1140,31 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 *	There may be zero or more results.
 		 */
 		if (node->hoist) {
+			/*
+			 *	Mash quoted strings, UNLESS they're in a function argument.  In which case the argument parser
+			 *	will do escaping.
+			 *
+			 *	@todo - when pushing the xlat for expansion, also push the escaping rules.  In which case we can do escaping here.
+			 */
+			if ((node->quote != T_BARE_WORD) && !head->is_argv) {
+				if (!fr_value_box_list_head(result)) {
+					MEM(arg = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
+					fr_value_box_strdup(arg, arg, NULL, "", false);
+					fr_dcursor_insert(out, arg);
+					break;
+				}
+
+				/*
+				 *	Mash all of the child value-box to a string.
+				 */
+				arg = fr_value_box_list_head(result);
+				fr_assert(arg != NULL);
+
+				if (fr_value_box_list_concat_in_place(arg, arg, result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+					return -1;
+				}
+			}
+
 			while ((arg = fr_value_box_list_pop_head(result)) != NULL) {
 				talloc_steal(ctx, arg);
 				fr_dcursor_insert(out, arg);

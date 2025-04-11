@@ -454,6 +454,14 @@ void xlat_exp_verify(xlat_exp_t const *node)
 			return;
 		}
 #endif
+
+		if (tmpl_is_exec(node->vpt) || tmpl_is_exec_unresolved(node->vpt)) {
+			fr_assert(node->quote == T_BACK_QUOTED_STRING);
+			fr_assert(!node->flags.constant);
+			fr_assert(!node->flags.pure);
+			fr_assert(!node->flags.can_purify);
+		}
+
 		return;
 	}
 

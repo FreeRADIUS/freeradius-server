@@ -215,19 +215,19 @@ match [0]{ /bin/sh }, [1]{ %{User-Name} }
 
 # with quotes
 xlat_argv /bin/sh "foo" "%{User-Name}"
-match [0]{ /bin/sh }, [1]{ foo }, [2]{ %{User-Name} }
+match [0]{ /bin/sh }, [1]{ "foo" }, [2]{ %{User-Name} }
 
 # many spaces between arguments
 xlat_argv /bin/sh         "foo"       "%{User-Name}"
-match [0]{ /bin/sh }, [1]{ foo }, [2]{ %{User-Name} }
+match [0]{ /bin/sh }, [1]{ "foo" }, [2]{ %{User-Name} }
 
 # and spaces in quotes
 xlat_argv /bin/sh "foo bar" "%{User-Name}"
-match [0]{ /bin/sh }, [1]{ foo bar }, [2]{ %{User-Name} }
+match [0]{ /bin/sh }, [1]{ "foo bar" }, [2]{ %{User-Name} }
 
 # and multiple xlats inside of quotes
 xlat_argv /bin/sh "foo bar" "%{User-Name} %{Filter-Id}"
-match [0]{ /bin/sh }, [1]{ foo bar }, [2]{ %{User-Name} %{Filter-Id} }
+match [0]{ /bin/sh }, [1]{ "foo bar" }, [2]{ %{User-Name} %{Filter-Id} }
 
 # and errors
 #
@@ -235,7 +235,7 @@ match [0]{ /bin/sh }, [1]{ foo bar }, [2]{ %{User-Name} %{Filter-Id} }
 #  to xlat_tokenize_expansion()
 #
 xlat_argv /bin/sh "foo bar" "%{User-Name} %{Filter-Id"
-match ERROR offset 44: Unexpected text after attribute reference
+match ERROR offset 45: Unexpected text after attribute reference
 
 # and text immediately after a variable expansion
 xlat_argv echo hello %{Filter-Id}:1234 world

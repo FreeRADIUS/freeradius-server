@@ -431,7 +431,7 @@ match ("foo" == User-Name)
 #  ERROR: Failed casting 0x002ade8665c69219ca16bd108d92c8d5 to data type uint32: Invalid cast from octets to uint32.  Source length 16 is greater than destination type size 4
 #
 xlat_purify (integer)"%md4(' 1 + 1')" < NAS-Port
-match ((uint32)"0x002ade8665c69219ca16bd108d92c8d5" < NAS-Port)
+match ERROR purifying node - 
 
 #
 #  The string gets parsed as an IP address.

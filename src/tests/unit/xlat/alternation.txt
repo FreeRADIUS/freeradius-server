@@ -54,5 +54,8 @@ match ERROR offset 23: Missing closing brace
 xlat %{%{User-Name}:}
 match %{%{User-Name}:}
 
+xlat %{%{User-Name}:-"foo"}
+match ERROR offset 15: Old style alternation of %{...:-...} is no longer supported
+
 count
-match 33
+match 35
