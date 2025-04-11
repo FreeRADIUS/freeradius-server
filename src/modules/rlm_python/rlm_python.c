@@ -871,7 +871,7 @@ static PyObject *python_module_init(void)
 		PyModuleDef_HEAD_INIT,
 		.m_name = "freeradius",
 		.m_doc = "freeRADIUS python module",
-		.m_size = -1,
+		.m_size = 0,
 		.m_methods = module_methods
 	};
 
