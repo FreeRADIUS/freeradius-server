@@ -17,7 +17,7 @@ When upgrading the operating system and OpenSSL libraries it's crucial to unders
 
 == Server certificates
 
-Any RADIUS server performing TLS-based EAP must have a server certificate and associated key.  This certificate can be signed by a public CA which the end devices already trust, or it can be signed by a self-signed CA managed by the organization. If using a self-signed CA, configure the supplicant to trust the self-signed CA for EAP server authentication purposes. This is often done with a managed security policy.
+Any RADIUS server performing xref:reference:raddb/mods-available/eap.adoc[TLS-based EAP] must have a server certificate and associated key. This certificate can be signed by a public CA which the end devices already trust, or it can be signed by a self-signed CA managed by the organization. If using a self-signed CA, configure the supplicant to trust the self-signed CA for EAP server authentication purposes. This is often done with a managed security policy.
 
 It’s also possible that a supplicant is instructed to trust an “anchor” certificate in a chain of certificates. The server certificate in this chain has been signed by an intermediate CA certificate, which may have been signed by another CA certificate, and so on, up to a self-signed root CA certificate.
 
@@ -86,7 +86,7 @@ If a CA is not already in use for signing certificates then FreeRADIUS
 ships with scripts which can create a CA, server certificates, and client
 certificates.
 
-Full details of how to generate certificates can be found xref:reference:raddb/certs/index.adoc[here] and the corresponding `raddb/certs/Makefile`.
+See xref:reference:raddb/certs/index.adoc[Certificates] in the Configuration Files section on how to generate certificates and the corresponding `raddb/certs/Makefile` for more details.
 
 == Loading certificates onto the RADIUS servers
 
