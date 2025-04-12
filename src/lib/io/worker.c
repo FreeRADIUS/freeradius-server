@@ -803,11 +803,17 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	int			ret = -1;
 	request_t		*request;
 	TALLOC_CTX		*ctx;
-	fr_listen_t const	*listen;
+	fr_listen_t		*listen = cd->listen;
 
 	if (fr_minmax_heap_num_elements(worker->time_order) >= (uint32_t) worker->config.max_requests) goto nak;
 
-	ctx = request = request_alloc_external(NULL, NULL);
+	/*
+	 *	Receive a message to the worker queue, and decode it
+	 *	to a request.
+	 */
+	fr_assert(listen != NULL);
+
+	ctx = request = request_alloc_external(NULL, (&(request_init_args_t){ .namespace = listen->dict }));
 	if (!request) goto nak;
 
 	worker_request_init(worker, request, now);
@@ -821,22 +827,15 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	request->packet->timestamp = cd->request.recv_time; /* Legacy - Remove once everything looks at request->async */
 
 	/*
-	 *	Receive a message to the worker queue, and decode it
-	 *	to a request.
-	 */
-	fr_assert(cd->listen != NULL);
-
-	/*
 	 *	Update the transport-specific fields.
 	 */
 	request->async->channel = cd->channel.ch;
 
 	request->async->recv_time = cd->request.recv_time;
 
-	request->async->listen = cd->listen;
+	request->async->listen = listen;
 	request->async->packet_ctx = cd->packet_ctx;
 	request->async->priority = cd->priority;
-	listen = request->async->listen;
 
 	/*
 	 *	Now that the "request" structure has been initialized, go decode the packet.

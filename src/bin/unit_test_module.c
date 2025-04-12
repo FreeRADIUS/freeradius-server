@@ -190,35 +190,28 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 
 	static int	number = 0;
 
+	if (!dict_protocol) {
+		fr_strerror_printf_push("%s dictionary failed to load", PROTOCOL_NAME);
+		return NULL;
+	}
+
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_local_alloc_external(ctx, NULL);
+	request = request_local_alloc_external(ctx, (&(request_init_args_t){ .namespace = dict_protocol }));
 
-	/*
-	 *	FIXME - Should be less RADIUS centric, but everything
-	 *	else assumes RADIUS at the moment so we can fix this later.
-	 */
-	request->dict = dict_protocol;
-	if (!request->dict) {
-		fr_strerror_printf_push("%s dictionary failed to load", PROTOCOL_NAME);
+	request->packet = fr_packet_alloc(request, false);
+	if (!request->packet) {
+	oom:
+		fr_strerror_const("No memory");
 	error:
 		talloc_free(request);
 		return NULL;
 	}
-
-	request->packet = fr_packet_alloc(request, false);
-	if (!request->packet) {
-		fr_strerror_const("No memory");
-		goto error;
-	}
 	request->packet->timestamp = fr_time();
 
 	request->reply = fr_packet_alloc(request, false);
-	if (!request->reply) {
-		fr_strerror_const("No memory");
-		goto error;
-	}
+	if (!request->reply) goto oom;
 
 	request->client = client;
 	request->number = number++;
@@ -606,7 +599,7 @@ static request_t *request_clone(request_t *old, int number, CONF_SECTION *server
 {
 	request_t *request;
 
-	request = request_alloc_internal(NULL, NULL);
+	request = request_alloc_internal(NULL, (&(request_init_args_t){ .namespace = old->proto_dict }));
 	if (!request) return NULL;
 
 	if (!request->packet) request->packet = fr_packet_alloc(request, false);
@@ -621,7 +614,6 @@ static request_t *request_clone(request_t *old, int number, CONF_SECTION *server
 	unlang_call_push(request, server_cs, UNLANG_TOP_FRAME);
 
 	request->master_state = REQUEST_ACTIVE;
-	request->dict = old->dict;
 
 	return request;
 }

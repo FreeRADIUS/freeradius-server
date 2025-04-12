@@ -284,7 +284,7 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
 				&(tmpl_rules_t){
 					.attr = {
-						.dict_def = request->dict,
+						.dict_def = request->local_dict,
 						.list_def = request_attr_request,
 						.allow_wildcard = true,
 					}
@@ -933,7 +933,7 @@ static xlat_action_t xlat_func_immutable_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_
 	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
 				&(tmpl_rules_t){
 					.attr = {
-						.dict_def = request->dict,
+						.dict_def = request->local_dict,
 						.list_def = request_attr_request,
 						.allow_wildcard = true,
 					}
@@ -1294,7 +1294,7 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	tmpl_rules_t	attr_rules = {
 		.attr = {
-			.dict_def = request->dict,
+			.dict_def = request->local_dict,
 			.list_def = request_attr_request,
 		},
 		.xlat = {
@@ -1463,19 +1463,6 @@ static xlat_action_t xlat_eval_resume(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_
 	return xa;
 }
 
-typedef struct {
-	fr_dict_t const	*namespace;	//!< Namespace we use for evaluating runtime expansions
-} xlat_eval_inst_t;
-
-static int xlat_eval_instantiate(xlat_inst_ctx_t const *xctx)
-{
-	xlat_eval_inst_t *inst = talloc_get_type_abort(xctx->inst, xlat_eval_inst_t);
-
-	inst->namespace = xctx->ex->call.dict;
-
-	return 0;
-}
-
 static xlat_arg_parser_t const xlat_func_eval_arg[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -1486,11 +1473,9 @@ static xlat_arg_parser_t const xlat_func_eval_arg[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				    xlat_ctx_t const *xctx,
+				    UNUSED xlat_ctx_t const *xctx,
 				    request_t *request, fr_value_box_list_t *args)
 {
-	xlat_eval_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_eval_inst_t);
-
 	/*
 	 *	These are escaping rules applied to the
 	 *	input string. They're mostly here to
@@ -1528,7 +1513,7 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			  },
 			  &(tmpl_rules_t){
 				  .attr = {
-					  .dict_def = inst->namespace,
+					  .dict_def = request->local_dict,
 					  .list_def = request_attr_request,
 					  .allow_unknown = false,
 					  .allow_unresolved = false,
@@ -2443,7 +2428,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, in_head->vb_strvalue,
 				&(tmpl_rules_t){
 					.attr = {
-						.dict_def = request->dict,
+						.dict_def = request->local_dict,
 						.list_def = request_attr_request,
 						.allow_wildcard = true,
 					}
@@ -3912,7 +3897,7 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_test_point_pair_decode_t const	*tp_decode = *(void * const *)xctx->inst;
 
 	if (tp_decode->test_ctx) {
-		if (tp_decode->test_ctx(&decode_ctx, ctx, request->dict) < 0) {
+		if (tp_decode->test_ctx(&decode_ctx, ctx, request->proto_dict) < 0) {
 			return XLAT_ACTION_FAIL;
 		}
 	}
@@ -4033,7 +4018,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, in_head->vb_strvalue,
 				&(tmpl_rules_t){
 					.attr = {
-						.dict_def = request->dict,
+						.dict_def = request->proto_dict, /* we can't encode local attributes */
 						.list_def = request_attr_request,
 						.allow_wildcard = true,
 					}
@@ -4046,7 +4031,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Create the encoding context.
 	 */
 	if (tp_encode->test_ctx) {
-		if (tp_encode->test_ctx(&encode_ctx, vpt, request->dict) < 0) {
+		if (tp_encode->test_ctx(&encode_ctx, vpt, request->proto_dict) < 0) {
 			talloc_free(vpt);
 			return XLAT_ACTION_FAIL;
 		}
@@ -4062,7 +4047,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		/*
 		 *	Don't check the dictionaries.  By definition,
-		 *	vp->da->dict==request->dict, OR else we're
+		 *	vp->da->dict==request->proto_dict, OR else we're
 		 *	using the internal encoder and encoding a real
 		 *	protocol.
 		 *
@@ -4397,7 +4382,6 @@ do { \
 	XLAT_REGISTER_PURE("urlquote", xlat_func_urlquote, FR_TYPE_STRING, xlat_func_urlquote_arg);
 	XLAT_REGISTER_PURE("urlunquote", xlat_func_urlunquote, FR_TYPE_STRING, xlat_func_urlunquote_arg);
 	XLAT_REGISTER_PURE("eval", xlat_func_eval, FR_TYPE_VOID, xlat_func_eval_arg);
-	xlat_func_instantiate_set(xlat, xlat_eval_instantiate, xlat_eval_inst_t, NULL, NULL);
 
 	return xlat_register_expressions();
 }

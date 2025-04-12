@@ -748,6 +748,8 @@ fr_dict_t const		*fr_dict_by_protocol_num(unsigned int num);
 
 fr_dict_attr_t const	*fr_dict_unlocal(fr_dict_attr_t const *da) CC_HINT(nonnull);
 
+fr_dict_t const		*fr_dict_proto_dict(fr_dict_t const *dict) CC_HINT(nonnull);
+
 fr_dict_t const		*fr_dict_by_da(fr_dict_attr_t const *da) CC_HINT(nonnull);
 
 fr_dict_t const		*fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name);

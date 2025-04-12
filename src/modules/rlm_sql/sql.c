@@ -297,7 +297,7 @@ static unlang_action_t sql_get_map_list_resume(rlm_rcode_t *p_result, UNUSED int
 	fr_sql_map_ctx_t	*map_ctx = talloc_get_type_abort(uctx, fr_sql_map_ctx_t);
 	tmpl_rules_t		lhs_rules = (tmpl_rules_t) {
 		.attr = {
-			.dict_def = request->dict,
+			.dict_def = request->local_dict,
 			.list_def = map_ctx->list,
 			.list_presence = TMPL_ATTR_LIST_ALLOW
 		}

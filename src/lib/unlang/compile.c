@@ -4076,10 +4076,19 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	dict = unlang_ctx->rules->attr.dict_def;
 	packet_name = NULL;
 
+get_packet_type:
+	/*
+	 *	Local attributes cannot be used in a subrequest.  They belong to the parent.  Local attributes
+	 *	are NOT copied to the subrequest.
+	 *
+	 *	@todo - maybe we want to copy local variables, too?  But there may be multiple nested local
+	 *	variables, each with their own dictionary.
+	 */
+	dict = fr_dict_proto_dict(dict);
+
 	/*
 	 *	Use dict name instead of "namespace", because "namespace" can be omitted.
 	 */
-get_packet_type:
 	da = fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
 	if (!da) {
 		cf_log_err(cs, "No such attribute 'Packet-Type' in namespace '%s'", fr_dict_root(dict)->name);

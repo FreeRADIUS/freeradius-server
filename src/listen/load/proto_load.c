@@ -129,7 +129,6 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 {
 	proto_load_t const	*inst = talloc_get_type_abort_const(instance, proto_load_t);
 
-	request->dict = inst->dict;
 	request->packet->code = inst->code;
 
 	/*

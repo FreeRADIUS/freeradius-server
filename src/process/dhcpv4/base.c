@@ -400,7 +400,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	request->component = "dhcpv4";
 	request->module = NULL;
-	fr_assert(request->dict == dict_dhcpv4);
+	fr_assert(request->proto_dict == dict_dhcpv4);
 
 	UPDATE_STATE(packet);
 

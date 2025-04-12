@@ -250,7 +250,7 @@ static void CC_HINT(nonnull) status_check_alloc(bio_handle_t *h)
 
 	fr_assert(!h->status_u && !h->status_request);
 
-	MEM(request = request_local_alloc_external(h, NULL));
+	MEM(request = request_local_alloc_external(h, (&(request_init_args_t){ .namespace = dict_radius })));
 	MEM(u = talloc_zero(request, bio_request_t));
 	talloc_set_destructor(u, _bio_request_free);
 
@@ -2343,7 +2343,7 @@ static int mod_enqueue(bio_request_t **p_u, fr_retry_config_t const **p_retry_co
 		if (!request->parent) {
 			u->proxied = (request->client->cs != NULL);
 
-		} else if (!fr_dict_compatible(request->parent->dict, request->dict)) {
+		} else if (!fr_dict_compatible(request->parent->proto_dict, request->proto_dict)) {
 			u->proxied = false;
 
 		} else {

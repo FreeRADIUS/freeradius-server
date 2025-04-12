@@ -213,8 +213,8 @@ int unlang_interpret_push(request_t *request, unlang_t const *instruction,
 }
 
 typedef struct {
-	fr_dict_t const	*dict;
-	request_t	*request;
+	fr_dict_t const	*old_dict;     	//!< the previous dictionary for the request
+	request_t	*request;	//!< the request
 } unlang_variable_ref_t;
 
 static int _local_variables_free(unlang_variable_ref_t *ref)
@@ -228,13 +228,15 @@ static int _local_variables_free(unlang_variable_ref_t *ref)
 	vp = fr_pair_list_tail(&ref->request->local_pairs);
 	while (vp) {
 		prev = fr_pair_list_prev(&ref->request->local_pairs, vp);
-		if (vp->da->dict != ref->dict) {
+		if (vp->da->dict != ref->request->local_dict) {
 			break;
 		}
 
 		(void) fr_pair_delete(&ref->request->local_pairs, vp);
 		vp = prev;
 	}
+
+	ref->request->local_dict = ref->old_dict;
 
 	return 0;
 }
@@ -295,8 +297,9 @@ unlang_action_t unlang_interpret_push_children(rlm_rcode_t *p_result, request_t 
 	/*
 	 *	Set the destructor to clean up local variables.
 	 */
-	ref->dict = g->variables->dict;
 	ref->request = request;
+	ref->old_dict = request->local_dict;
+	request->local_dict = g->variables->dict;
 	talloc_set_destructor(ref, _local_variables_free);
 
 	return UNLANG_ACTION_PUSHED_CHILD;

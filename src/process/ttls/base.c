@@ -494,7 +494,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	request->component = "radius";
 	request->module = NULL;
-	fr_assert(request->dict == dict_radius);
+	fr_assert(request->proto_dict == dict_radius);
 
 	UPDATE_STATE(packet);
 

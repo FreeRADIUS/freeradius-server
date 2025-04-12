@@ -527,7 +527,7 @@ void status_code_add(process_dhcpv6_t const *inst, request_t *request, fr_value_
 	 *	Move the module failure messages upwards
 	 *	if requested to by the user.
 	 */
-	if (inst->move_failure_message_to_parent && request->parent && (request->parent->dict == request->dict)) {
+	if (inst->move_failure_message_to_parent && request->parent && (request->parent->proto_dict == request->proto_dict)) {
 		fr_pair_t const *prev = NULL;
 
 		while ((failure_message = fr_pair_find_by_da(&request->request_pairs,
@@ -724,7 +724,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	request->component = "dhcpv6";
 	request->module = NULL;
-	fr_assert(request->dict == dict_dhcpv6);
+	fr_assert(request->proto_dict == dict_dhcpv6);
 
 	UPDATE_STATE(packet);
 

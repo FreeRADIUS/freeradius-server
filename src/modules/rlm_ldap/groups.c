@@ -815,7 +815,7 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, request_t
 
 		t_rules = (tmpl_rules_t){
 			.attr = {
-				.dict_def = request->dict,
+				.dict_def = request->proto_dict,
 				.list_def = request_attr_request,
 			},
 			.xlat = {

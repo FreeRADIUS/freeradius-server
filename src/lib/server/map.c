@@ -1921,7 +1921,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &exp_lhs, attr_str,
 					   &(tmpl_rules_t){
 					   	.attr = {
-					   		.dict_def = request->dict,
+							.dict_def = request->local_dict,
 							.list_def = request_attr_request,
 				   		}
 					   });

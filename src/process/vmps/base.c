@@ -212,7 +212,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	request->component = "vmps";
 	request->module = NULL;
-	fr_assert(request->dict == dict_vmps);
+	fr_assert(request->proto_dict == dict_vmps);
 
 	UPDATE_STATE(packet);
 

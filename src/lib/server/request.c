@@ -31,8 +31,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/atexit.h>
 
-static request_init_args_t	default_args;
-
 static fr_dict_t const *dict_freeradius;
 
 extern fr_dict_autoload_t request_dict[];
@@ -198,7 +196,10 @@ static inline CC_HINT(always_inline) int request_detachable_init(request_t *chil
 static inline CC_HINT(always_inline) int request_child_init(request_t *child, request_t *parent)
 {
 	child->number = parent->child_number++;
-	if (!child->dict) child->dict = parent->dict;
+	if (!child->proto_dict) {
+		child->proto_dict = parent->proto_dict;
+		child->local_dict = parent->proto_dict;
+	}
 
 	if ((parent->seq_start == 0) || (parent->number == parent->seq_start)) {
 		child->name = talloc_typed_asprintf(child, "%s.%" PRIu64, parent->name, child->number);
@@ -243,16 +244,28 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
 						      request_t *request, request_type_t type,
 						      request_init_args_t const *args)
 {
+	fr_dict_t const *dict;
 
 	/*
 	 *	Sanity checks for different requests types
 	 */
 	switch (type) {
 	case REQUEST_TYPE_EXTERNAL:
+		fr_assert(args);
+
 		if (!fr_cond_assert_msg(!args->parent, "External requests must NOT have a parent")) return -1;
+
+		fr_assert(args->namespace);
+
+		dict = args->namespace;
 		break;
 
 	case REQUEST_TYPE_INTERNAL:
+		if (!args || !args->namespace) {
+			dict = fr_dict_internal();
+		} else {
+			dict = args->namespace;
+		}
 		break;
 
 	case REQUEST_TYPE_DETACHED:
@@ -267,10 +280,11 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
 #endif
 		.type = type,
 		.master_state = REQUEST_ACTIVE,
-		.dict = args->namespace,
+		.proto_dict = fr_dict_proto_dict(dict),
+		.local_dict = dict,
 		.component = "<pre-core>",
 		.flags = {
-			.detachable = args->detachable
+			.detachable = args && args->detachable,
 		},
 		.alloc_file = file,
 		.alloc_line = line
@@ -306,7 +320,7 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
 		 *	the any uninitialised lists and
 		 *	create them locally.
 		 */
-		memcpy(&request->pair_list, &args->pair_list, sizeof(request->pair_list));
+		if (args) memcpy(&request->pair_list, &args->pair_list, sizeof(request->pair_list));
 
 #define list_init(_ctx, _list) \
 	do { \
@@ -337,7 +351,7 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
 	 *	fields if this is going to be a
 	 *	child request.
 	 */
-	if (args->parent) {
+	if (args && args->parent) {
 		if (request_child_init(request, args->parent) < 0) return -1;
 
 		if (args->detachable) {
@@ -504,8 +518,6 @@ request_t *_request_alloc(char const *file, int line, TALLOC_CTX *ctx,
 	request_t		*request;
 	fr_dlist_head_t		*free_list;
 
-	if (!args) args = &default_args;
-
 	/*
 	 *	Setup the free list, or return the free
 	 *	list for this thread.
@@ -609,8 +621,6 @@ request_t *_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx,
 				request_type_t type, request_init_args_t const *args)
 {
 	request_t *request;
-
-	if (!args) args = &default_args;
 
 	request = request_alloc_pool(ctx);
 	if (request_init(file, line, request, type, args) < 0) return NULL;
@@ -813,6 +823,9 @@ void request_verify(char const *file, int line, request_t const *request)
 
 	fr_pair_list_verify(file, line, request->session_state_ctx, &request->session_state_pairs);
 	fr_pair_list_verify(file, line, request->local_ctx, &request->local_pairs);
+
+	fr_assert(request->proto_dict != NULL);
+	fr_assert(request->local_dict != NULL);
 
 	if (request->packet) {
 		packet_verify(file, line, request, request->packet, &request->request_pairs, "request");

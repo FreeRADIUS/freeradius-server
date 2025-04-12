@@ -90,7 +90,6 @@ static fr_dict_attr_t const *attr_packet_dst_port;
 static fr_dict_attr_t const *attr_packet_original_timestamp;
 static fr_dict_attr_t const *attr_packet_src_ip_address;
 static fr_dict_attr_t const *attr_packet_src_port;
-static fr_dict_attr_t const *attr_protocol;
 
 extern fr_dict_attr_autoload_t proto_detail_dict_attr[];
 fr_dict_attr_autoload_t proto_detail_dict_attr[] = {
@@ -99,7 +98,6 @@ fr_dict_attr_autoload_t proto_detail_dict_attr[] = {
 	{ .out = &attr_packet_original_timestamp, .name = "Packet-Original-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_ip_address, .name = "Net.Src.IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_port, .name = "Net.Src.Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_protocol, .name = "Protocol", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
 	{ NULL }
 };
@@ -227,7 +225,6 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 
 	RHEXDUMP3(data, data_len, "proto_detail decode packet");
 
-	request->dict = inst->dict;
 	request->packet->code = inst->code;
 
 	/*
@@ -280,7 +277,6 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		 */
 		if ((*p != '\0') && (*p != '\t')) {
 			REDEBUG("Malformed line %d", lineno);
-		error:
 			fr_dcursor_free_list(&cursor);
 			return -1;
 		}
@@ -355,7 +351,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		 */
 		root = (fr_pair_parse_t) {
 			.ctx = request->request_ctx,
-			.da = fr_dict_root(request->dict),
+			.da = fr_dict_root(request->proto_dict),
 			.list = &tmp_list,
 		};
 		relative = (fr_pair_parse_t) { };
@@ -381,12 +377,6 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 				request->packet->socket.inet.src_port = vp->vp_uint16;
 			} else if (vp->da == attr_packet_dst_port) {
 				request->packet->socket.inet.dst_port = vp->vp_uint16;
-			} else if (vp->da == attr_protocol) {
-				request->dict = fr_dict_by_protocol_num(vp->vp_uint32);
-				if (!request->dict) {
-					REDEBUG("Invalid protocol: %pP", vp);
-					goto error;
-				}
 			}
 		}
 

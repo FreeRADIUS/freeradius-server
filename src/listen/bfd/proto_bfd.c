@@ -150,13 +150,6 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	bfd_wrapper_t const    	*wrapper = (bfd_wrapper_t const *) data;
 	bfd_packet_t const     	*bfd = (bfd_packet_t const *) wrapper->packet;
 
-	/*
-	 *	Set the request dictionary so that we can do
-	 *	generic->protocol attribute conversions as
-	 *	the request runs through the server.
-	 */
-	request->dict = dict_bfd;
-
 	client = address->radclient;
 
 	/*

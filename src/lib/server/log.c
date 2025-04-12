@@ -860,7 +860,7 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
 	fr_pair_list_foreach(vps, vp) {
 		PAIR_VERIFY(vp);
 
-		if (!fr_dict_attr_common_parent(fr_dict_root(request->dict), vp->da, true)) continue;
+		if (!fr_dict_attr_common_parent(fr_dict_root(request->proto_dict), vp->da, true)) continue;
 
 		log_request_pair(lvl, request, parent, vp, prefix);
 	}

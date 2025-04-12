@@ -908,7 +908,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      NULL,
 				      &(tmpl_rules_t){
 				      	.attr = {
-				      		.dict_def = request->dict,
+						.dict_def = request->proto_dict,
 						.list_def = request_attr_request,
 				      	}
 				      });

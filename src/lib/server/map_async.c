@@ -320,7 +320,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &map_tmp.lhs, lhs_result_head->vb_strvalue,
 					   &(tmpl_rules_t){
 					   	.attr = {
-					   		.dict_def = request->dict,
+							.dict_def = request->local_dict,
 							.list_def = request_attr_request,
 				   		}
 					   });
@@ -709,7 +709,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		/*
 		 *	Parse the VPs from the RHS.
 		 */
-		fr_pair_list_afrom_box(ctx, &vp_head, request->dict, rhs_result_head);
+		fr_pair_list_afrom_box(ctx, &vp_head, request->proto_dict, rhs_result_head);
 		if (fr_pair_list_empty(&vp_head)) {
 			talloc_free(n);
 			RDEBUG2("No pairs returned by exec");

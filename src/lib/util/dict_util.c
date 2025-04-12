@@ -4958,7 +4958,7 @@ fr_dict_protocol_t const *fr_dict_protocol(fr_dict_t const *dict)
 }
 
 /*
- *	Get the real protocol dictionary behind the local one.
+ *	Get the real protocol namespace behind a local one.
  */
 fr_dict_attr_t const *fr_dict_unlocal(fr_dict_attr_t const *da)
 {
@@ -4971,6 +4971,16 @@ fr_dict_attr_t const *fr_dict_unlocal(fr_dict_attr_t const *da)
 	}
 
 	return da;
+}
+
+/*
+ *	Get the real protocol dictionary behind a local one.
+ */
+fr_dict_t const	*fr_dict_proto_dict(fr_dict_t const *dict)
+{
+	while (dict->next) dict = dict->next;
+
+	return dict;
 }
 
 int fr_dict_attr_set_group(fr_dict_attr_t **da_p)

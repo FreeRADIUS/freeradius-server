@@ -300,7 +300,7 @@ static unlang_action_t mod_exec_oneshot_wait_resume(rlm_rcode_t *p_result, modul
 			fr_sbuff_t	in = FR_SBUFF_IN(box->vb_strvalue, box->vb_length);
 			tmpl_rules_t	lhs_rules = (tmpl_rules_t) {
 				.attr = {
-					.dict_def = request->dict,
+					.dict_def = request->local_dict,
 					.list_def = tmpl_list(inst->output_list),
 					.list_presence = TMPL_ATTR_LIST_ALLOW,
 

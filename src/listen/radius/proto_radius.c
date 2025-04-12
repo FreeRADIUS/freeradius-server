@@ -205,13 +205,6 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 
 	fr_assert(data[0] < FR_RADIUS_CODE_MAX);
 
-	/*
-	 *	Set the request dictionary so that we can do
-	 *	generic->protocol attribute conversions as
-	 *	the request runs through the server.
-	 */
-	request->dict = dict_radius;
-
 	common_ctx = (fr_radius_ctx_t) {
 		.secret = client->secret,
 		.secret_length = talloc_array_length(client->secret) - 1,
@@ -679,7 +672,7 @@ static xlat_action_t packet_vector_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 {
 	fr_value_box_t	*vb;
 
-	if (request->dict != dict_radius) return XLAT_ACTION_FAIL;
+	if (request->proto_dict != dict_radius) return XLAT_ACTION_FAIL;
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, NULL));
 	if (fr_value_box_memdup(vb, vb, NULL, request->packet->vector, sizeof(request->packet->vector), true) < 0) {

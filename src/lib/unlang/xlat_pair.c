@@ -93,7 +93,7 @@ int xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
 {
 	int		decoded = 0;
 	fr_pair_t	*vp = NULL;
-	fr_dict_attr_t const *parent = fr_dict_root(request->dict);
+	fr_dict_attr_t const *parent = fr_dict_root(request->proto_dict);
 	fr_pair_list_t	head;
 
 	fr_pair_list_init(&head);

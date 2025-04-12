@@ -40,7 +40,7 @@ static unlang_action_t unlang_caller(rlm_rcode_t *p_result, request_t *request, 
 	/*
 	 *	No parent, or the dictionaries don't match.  Ignore it.
 	 */
-	if (!request->parent || (request->parent->dict != gext->dict)) {
+	if (!request->parent || (request->parent->proto_dict != gext->dict)) {
 		RDEBUG2("...");
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}

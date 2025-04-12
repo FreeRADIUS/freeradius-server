@@ -123,7 +123,7 @@ static unlang_action_t ldap_map_profile_resume(UNUSED rlm_rcode_t *p_result, UNU
 
 			tmpl_rules_t const parse_rules = {
 				.attr = {
-					.dict_def = request->dict,
+					.dict_def = request->proto_dict,
 					.list_def = request_attr_request,
 				},
 				.xlat = {

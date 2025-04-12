@@ -231,21 +231,7 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 			 */
 			if (!node->flags.pure) {
 				if (node->call.func->purify) {
-					fr_dict_t const *dict = request->dict;
-
-					/*
-					 *	Swap in the node specific dictionary.
-					 *
-					 *	The previous code stored the dictionary in the xlat_exp_head_t,
-					 *	and whilst this wasn't wrong, it was duplicative.
-					 *
-					 *	This allows future code to create inline definitions of local
-					 *	attributes, and have them work correctly, as more deeply nested
-					 *	expressions would swap in the correct dictionary.
-					 */
-					request->dict = node->call.dict;
 					if (node->call.func->purify(node, node->call.inst->data, request) < 0) return -1;
-					request->dict = dict;
 				} else {
 					if (xlat_purify_list_internal(node->call.args, request, T_BARE_WORD) < 0) return -1;
 				}
@@ -321,7 +307,7 @@ int xlat_purify(xlat_exp_head_t *head, unlang_interpret_t *intp)
 
 	if (!head->flags.can_purify) return 0;
 
-	request = request_alloc_internal(NULL, (&(request_init_args_t){ .namespace = fr_dict_internal() }));
+	request = request_alloc_internal(NULL, NULL);
 	if (!request) return -1;
 
 	if (intp) unlang_interpret_set(request, intp);

@@ -49,7 +49,7 @@ typedef struct {
 
 /*
  *	@todo - MULTI_PROTOCOL - make this protocol agnostic.
- *	Perhaps keep stats in a hash table by (request->dict, request->code) ?
+ *	Perhaps keep stats in a hash table by (request->proto_dict, request->code) ?
  */
 
 typedef struct {
@@ -173,7 +173,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_inc(rlm_rcode_t *p_result, mod
 	rlm_stats_data_t	*stats;
 	rlm_stats_data_t	mydata;
 
-	if (request->dict != dict_radius) {
+	if (request->proto_dict != dict_radius) {
 		RWARN("%s can only be called in RADIUS virtual servers", mctx->mi->name);
 		RETURN_MODULE_NOOP;
 	}
@@ -260,7 +260,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(rlm_rcode_t *p_result, mo
 	rlm_stats_data_t mydata;
 	uint64_t local_stats[NUM_ELEMENTS(inst->mutable->stats)];
 
-	if (request->dict != dict_radius) {
+	if (request->proto_dict != dict_radius) {
 		RWARN("%s can only be called in RADIUS virtual servers", mctx->mi->name);
 		RETURN_MODULE_NOOP;
 	}

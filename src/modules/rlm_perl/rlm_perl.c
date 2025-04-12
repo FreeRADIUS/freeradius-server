@@ -914,28 +914,28 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, 
 		fr_pair_list_init(&vps);
 		if (inst->replace.request &&
 		    (get_hv_content(request->request_ctx, request, rad_request_hv, &vps, "request",
-		    		    fr_dict_root(request->dict), true)) > 0) {
+				    fr_dict_root(request->proto_dict), true)) > 0) {
 			fr_pair_list_free(&request->request_pairs);
 			fr_pair_list_append(&request->request_pairs, &vps);
 		}
 
 		if (inst->replace.reply &&
 		    (get_hv_content(request->reply_ctx, request, rad_reply_hv, &vps, "reply",
-		    		    fr_dict_root(request->dict), true)) > 0) {
+				    fr_dict_root(request->proto_dict), true)) > 0) {
 			fr_pair_list_free(&request->reply_pairs);
 			fr_pair_list_append(&request->reply_pairs, &vps);
 		}
 
 		if (inst->replace.control &&
 		    (get_hv_content(request->control_ctx, request, rad_config_hv, &vps, "control",
-		    		    fr_dict_root(request->dict), true)) > 0) {
+				    fr_dict_root(request->proto_dict), true)) > 0) {
 			fr_pair_list_free(&request->control_pairs);
 			fr_pair_list_append(&request->control_pairs, &vps);
 		}
 
 		if (inst->replace.session &&
 		    (get_hv_content(request->session_state_ctx, request, rad_state_hv, &vps, "session-state",
-		    		    fr_dict_root(request->dict), true)) > 0) {
+				    fr_dict_root(request->proto_dict), true)) > 0) {
 			fr_pair_list_free(&request->session_state_pairs);
 			fr_pair_list_append(&request->session_state_pairs, &vps);
 		}

@@ -52,7 +52,7 @@ static int xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name
 	if (tmpl_afrom_attr_str(request, NULL, &vpt, name,
 				&(tmpl_rules_t){
 					.attr = {
-						.dict_def = request->dict,
+						.dict_def = request->proto_dict,
 						.list_def = request_attr_request,
 					}
 				}) <= 0) return -4;
@@ -81,7 +81,7 @@ static xlat_action_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t		*attr = fr_value_box_list_head(in);
 	fr_value_box_t		*vb;
 
-	da = fr_dict_attr_child_by_num(fr_dict_root(request->dict), attr->vb_uint32);
+	da = fr_dict_attr_child_by_num(fr_dict_root(request->proto_dict), attr->vb_uint32);
 	if (!da) {
 		REDEBUG("No attribute found with number %pV", attr);
 		return XLAT_ACTION_FAIL;
@@ -112,7 +112,7 @@ static xlat_action_t xlat_dict_attr_by_oid(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   request_t *request, fr_value_box_list_t *in)
 {
 	unsigned int		attr = 0;
-	fr_dict_attr_t const	*parent = fr_dict_root(request->dict);
+	fr_dict_attr_t const	*parent = fr_dict_root(request->proto_dict);
 	fr_dict_attr_t const	*da;
 	ssize_t			ret;
 	fr_value_box_t		*attr_vb = fr_value_box_list_head(in);

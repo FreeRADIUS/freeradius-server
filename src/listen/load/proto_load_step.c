@@ -260,13 +260,6 @@ static int mod_decode(void const *instance, request_t *request, UNUSED uint8_t *
 	fr_io_address_t const  	*address = track->address;
 
 	/*
-	 *	Set the request dictionary so that we can do
-	 *	generic->protocol attribute conversions as
-	 *	the request runs through the server.
-	 */
-	request->dict = inst->dict;
-
-	/*
 	 *	Hacks for now until we have a lower-level decode routine.
 	 */
 	if (inst->code) request->packet->code = inst->code;

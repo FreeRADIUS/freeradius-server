@@ -857,7 +857,7 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *req
 		}
 
 
-		da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), attr);
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(request->local_dict), attr);
 		if (!da) {
 			RWDEBUG("No such attribute '%s'", attr);
 			talloc_free(attr);
