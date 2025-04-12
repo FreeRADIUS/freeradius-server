@@ -1947,7 +1947,6 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 
 	if (!xr_rules) xr_rules = &xr_default;
 
-	our_flags = head->flags;
 	our_flags = XLAT_FLAGS_INIT;
 
 	xlat_exp_foreach(head, node) {
