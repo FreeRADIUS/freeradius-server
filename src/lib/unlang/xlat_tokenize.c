@@ -1338,6 +1338,9 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 	ssize_t		slen;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_exp_t	*node;
+#ifdef HAVE_REGEX
+	fr_sbuff_marker_t m_exp;
+#endif
 
 	/*
 	 *	Triple-quoted strings have different terminal conditions.
@@ -1354,9 +1357,34 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 		FR_SBUFF_ERROR_RETURN(&our_in);
 
 	case T_BARE_WORD:
+#ifdef HAVE_REGEX
+		fr_sbuff_marker(&m_exp, &our_in);
+
+		/*
+		 *	Regular expression expansions are %{...}
+		 */
+		if (fr_sbuff_adv_past_str_literal(&our_in, "%{")) {
+			int ret;
+			fr_sbuff_marker_t m_s;
+
+			fr_sbuff_marker(&m_s, &our_in);
+
+			ret = xlat_tokenize_regex(ctx, &node, &our_in, &m_s);
+			if (ret < 0) FR_SBUFF_ERROR_RETURN(&our_in);
+
+			if (ret == 1) goto done;
+
+			fr_sbuff_set(&our_in, &m_exp);
+		}
+#endif /* HAVE_REGEX */
+
 #if 0
 		/*
 		 *	Avoid a bounce through tmpls for %{...} and %func()
+		 *
+		 *	@todo	%{...}	  --> tokenize expression
+		 *		%foo(..)  --> tokenize_function_args (and have that function look for ()
+		 *		%Y or %Y() --> one letter
 		 */
 		if (fr_sbuff_is_char(&our_in, '%')) {
 			xlat_exp_head_t *head = NULL;

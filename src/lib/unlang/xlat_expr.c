@@ -2406,25 +2406,6 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 			*out = node;
 			FR_SBUFF_SET_RETURN(in, &our_in);
 		}
-
-#ifdef HAVE_REGEX
-		/*
-		 *	Regular expression expansions are %{...}
-		 */
-		if (fr_sbuff_adv_past_str_literal(&our_in, "%{")) {
-			int ret;
-			fr_sbuff_marker_t m_s;
-
-			fr_sbuff_marker(&m_s, &our_in);
-
-			ret = xlat_tokenize_regex(head, out, &our_in, &m_s);
-			if (ret < 0) FR_SBUFF_ERROR_RETURN(&our_in);
-
-			if (ret == 1) FR_SBUFF_SET_RETURN(in, &our_in);
-
-			fr_sbuff_set(&our_in, &opand_m);
-		}
-#endif /* HAVE_REGEX */
 		FALL_THROUGH;
 
 	default:
