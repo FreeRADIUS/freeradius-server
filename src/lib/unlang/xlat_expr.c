@@ -2066,6 +2066,7 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type, xlat_exp_t *child)
 {
 	xlat_exp_t *cast, *node;
+	char const *str;
 
 	/*
 	 *	Create a "cast" node.  The first argument is a UINT8 value-box of the cast type.  The RHS is
@@ -2083,11 +2084,11 @@ static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type, xlat_exp_t *
 	 *	to print the name of the type, and not the
 	 *	number.
 	 */
+	str = fr_type_to_str(type);
+	fr_assert(str != NULL);
+
 	MEM(node = xlat_exp_alloc(cast, XLAT_BOX, NULL, 0));
-	{
-		char const *type_name = fr_table_str_by_value(fr_type_table, type, "<INVALID>");
-		xlat_exp_set_name(node, type_name, strlen(type_name));
-	}
+	xlat_exp_set_name(node, str, strlen(str));
 
 	fr_value_box_init(&node->data, FR_TYPE_UINT8, attr_cast_base, false);
 	node->data.vb_uint8 = type;
@@ -2247,7 +2248,7 @@ static ssize_t tokenize_rcode(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	if (!fr_sbuff_is_terminal(&our_in, terminals)) {
 		if (!fr_dict_attr_allowed_chars[fr_sbuff_char(&our_in, '\0')]) {
 			fr_strerror_const("Unexpected text after return code");
-			return -slen;
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 		return 0;
 	}
@@ -2394,11 +2395,12 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		 *	Peek for rcodes.
 		 */
 		slen = tokenize_rcode(head, &node, &our_in, p_rules->terminals);
-		if (slen < 0) {
-			fr_sbuff_advance(&our_in, -slen);
-			FR_SBUFF_ERROR_RETURN(&our_in);
+		if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
+
+		if (slen > 0) {
+			fr_assert(node != NULL);
+			goto done;
 		}
-		if (slen > 0) goto done;
 		FALL_THROUGH;
 
 	default:
