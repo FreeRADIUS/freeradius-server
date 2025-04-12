@@ -81,6 +81,11 @@ static void xlat_func_append_arg(xlat_exp_t *head, xlat_exp_t *node, bool exists
 		node = xlat_exists_alloc(head, node);
 	}
 
+	if (!head->call.args) {
+		MEM(head->call.args = xlat_exp_head_alloc(head));
+		head->call.args->is_argv = true;
+	}
+
 	/*
 	 *	Wrap it in a group.
 	 */

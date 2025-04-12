@@ -188,15 +188,17 @@ static fr_slen_t xlat_fmt_print(fr_sbuff_t *out, xlat_exp_t const *node)
 		our_out = FR_SBUFF(out);
 		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%%%s(", node->call.func->name);
 
-		xlat_exp_foreach(node->call.args, arg) {
-			if ((first_done) && (node->call.func->input_type == XLAT_INPUT_ARGS)) {
-				FR_SBUFF_IN_CHAR_RETURN(&our_out, ',');
+		if (node->call.args) {
+			xlat_exp_foreach(node->call.args, arg) {
+				if (first_done && (node->call.func->args)) {
+					FR_SBUFF_IN_CHAR_RETURN(&our_out, ',');
+				}
+
+				slen = xlat_fmt_print(&our_out, arg);
+				if (slen < 0) return slen - fr_sbuff_used(&our_out);
+
+				first_done = true;
 			}
-
-			slen = xlat_fmt_print(&our_out, arg);
-			if (slen < 0) return slen - fr_sbuff_used(&our_out);
-
-			first_done = true;
 		}
 
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, ')');
@@ -507,144 +509,134 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list,
 	if (!func->args) return XLAT_ACTION_DONE;
 
 	/*
-	 *	xlat needs no input processing just return.
+	 *	Manage the arguments.
 	 */
-	switch (func->input_type) {
-	case XLAT_INPUT_UNPROCESSED:
-		return XLAT_ACTION_DONE;
+	vb = fr_value_box_list_head(list);
+	arg = xlat_exp_head(node->call.args);
 
-	/*
-	 *	xlat takes all input as a single vb.
-	 */
-	case XLAT_INPUT_ARGS:
-		vb = fr_value_box_list_head(list);
-		arg = xlat_exp_head(node->call.args);
-
-		while (arg_p->type != FR_TYPE_NULL) {
-			/*
-			 *	Separate check to see if the group
-			 *	box is there.  Check in
-			 *	xlat_process_arg_list verifies it
-			 *	has a value.
-			 */
-			if (!vb) {
-				if (arg_p->required) {
-				missing:
-					REDEBUG("Function \"%s\" is missing required argument %u",
-						 func->name, (unsigned int)((arg_p - func->args) + 1));
-					return XLAT_ACTION_FAIL;
-				}
-
-				/*
-				 *	The argument isn't required.  Just omit it.  xlat_func_args_set() enforces
-				 *	that optional arguments are at the end of the argument list.
-				 */
-				return XLAT_ACTION_DONE;
+	while (arg_p->type != FR_TYPE_NULL) {
+		/*
+		 *	Separate check to see if the group
+		 *	box is there.  Check in
+		 *	xlat_process_arg_list verifies it
+		 *	has a value.
+		 */
+		if (!vb) {
+			if (arg_p->required) {
+			missing:
+				REDEBUG("Function \"%s\" is missing required argument %u",
+					func->name, (unsigned int)((arg_p - func->args) + 1));
+				return XLAT_ACTION_FAIL;
 			}
 
 			/*
-			 *	Everything in the top level list should be
-			 *	groups
+			 *	The argument isn't required.  Just omit it.  xlat_func_args_set() enforces
+			 *	that optional arguments are at the end of the argument list.
 			 */
-			if (!fr_cond_assert(vb->type == FR_TYPE_GROUP)) return XLAT_ACTION_FAIL;
-
-			/*
-			 *	pre-advance, in case the vb is replaced
-			 *	during processing.
-			 */
-			vb_next = fr_value_box_list_next(list, vb);
-			arg_next = xlat_exp_next(node->call.args, arg);
-
-			xa = xlat_process_arg_list(ctx, &vb->vb_group, request, func->name, arg_p, arg,
-						   (unsigned int)((arg_p - func->args) + 1));
-			if (xa != XLAT_ACTION_DONE) return xa;
-
-			/*
-			 *	This argument doesn't exist.  That might be OK, or it may be a fatal error.
-			 */
-			if (fr_value_box_list_empty(&vb->vb_group)) {
-				/*
-				 *	Variadic rules deal with empty boxes differently...
-				 */
-				switch (arg_p->variadic) {
-				case XLAT_ARG_VARIADIC_EMPTY_SQUASH:
-					fr_value_box_list_talloc_free_head(list);
-					goto do_next;
-
-				case XLAT_ARG_VARIADIC_EMPTY_KEEP:
-					goto empty_ok;
-
-				case XLAT_ARG_VARIADIC_DISABLED:
-					break;
-				}
-
-				/*
-				 *	Empty groups for optional arguments are OK, we can just stop processing the list.
-				 */
-				if (!arg_p->required) {
-					/*
-					 *	If the caller doesn't care about the type, then we leave the
-					 *	empty group there.
-					 */
-					if (arg_p->type == FR_TYPE_VOID) goto do_next;
-
-					/*
-					 *	The caller does care about the type, and we don't have any
-					 *	matching data.  Omit this argument, and all arguments after it.
-					 *
-					 *	i.e. if the caller has 3 optional arguments, all
-					 *	FR_TYPE_UINT8, and the first one is missing, then we MUST
-					 *	either supply boxes all of FR_TYPE_UINT8, OR we supply nothing.
-					 *
-					 *	We can't supply a box of any other type, because the caller
-					 *	has declared that it wants FR_TYPE_UINT8, and is naively
-					 *	accessing the box as vb_uint8, hoping that it's being passed
-					 *	the right thing.
-					 */
-					fr_value_box_list_talloc_free_head(list);
-					break;
-				}
-
-				/*
-				 *	If the caller is expecting a particular type, then getting nothing is
-				 *	an error.
-				 *
-				 *	If the caller manually checks the input type, then we can leave it as
-				 *	an empty group.
-				 */
-				if (arg_p->type != FR_TYPE_VOID) goto missing;
-			}
-
-		empty_ok:
-			/*
-			 *	In some cases we replace the current argument with the head of the group.
-			 *
-			 *	xlat_process_arg_list() has already done concatenations for us.
-			 */
-			if (arg_p->single || arg_p->concat) {
-				fr_value_box_t *head = fr_value_box_list_pop_head(&vb->vb_group);
-
-				/*
-				 *	If we're meant to be smashing the argument
-				 *	to a single box, but the group was empty,
-				 *	add a null box instead so ordering is maintained
-				 *	for subsequent boxes.
-				 */
-				if (!head) head = fr_value_box_alloc_null(ctx);
-				fr_value_box_list_replace(list, vb, head);
-				talloc_free(vb);
-			}
-
-		do_next:
-			if (arg_p->variadic) {
-				if (!vb_next) break;
-			} else {
-				arg_p++;
-				arg = arg_next;
-			}
-			vb = vb_next;
+			return XLAT_ACTION_DONE;
 		}
-		break;
+
+		/*
+		 *	Everything in the top level list should be
+		 *	groups
+		 */
+		if (!fr_cond_assert(vb->type == FR_TYPE_GROUP)) return XLAT_ACTION_FAIL;
+
+		/*
+		 *	pre-advance, in case the vb is replaced
+		 *	during processing.
+		 */
+		vb_next = fr_value_box_list_next(list, vb);
+		arg_next = xlat_exp_next(node->call.args, arg);
+
+		xa = xlat_process_arg_list(ctx, &vb->vb_group, request, func->name, arg_p, arg,
+					   (unsigned int)((arg_p - func->args) + 1));
+		if (xa != XLAT_ACTION_DONE) return xa;
+
+		/*
+		 *	This argument doesn't exist.  That might be OK, or it may be a fatal error.
+		 */
+		if (fr_value_box_list_empty(&vb->vb_group)) {
+			/*
+			 *	Variadic rules deal with empty boxes differently...
+			 */
+			switch (arg_p->variadic) {
+			case XLAT_ARG_VARIADIC_EMPTY_SQUASH:
+				fr_value_box_list_talloc_free_head(list);
+				goto do_next;
+
+			case XLAT_ARG_VARIADIC_EMPTY_KEEP:
+				goto empty_ok;
+
+			case XLAT_ARG_VARIADIC_DISABLED:
+				break;
+			}
+
+			/*
+			 *	Empty groups for optional arguments are OK, we can just stop processing the list.
+			 */
+			if (!arg_p->required) {
+				/*
+				 *	If the caller doesn't care about the type, then we leave the
+				 *	empty group there.
+				 */
+				if (arg_p->type == FR_TYPE_VOID) goto do_next;
+
+				/*
+				 *	The caller does care about the type, and we don't have any
+				 *	matching data.  Omit this argument, and all arguments after it.
+				 *
+				 *	i.e. if the caller has 3 optional arguments, all
+				 *	FR_TYPE_UINT8, and the first one is missing, then we MUST
+				 *	either supply boxes all of FR_TYPE_UINT8, OR we supply nothing.
+				 *
+				 *	We can't supply a box of any other type, because the caller
+				 *	has declared that it wants FR_TYPE_UINT8, and is naively
+				 *	accessing the box as vb_uint8, hoping that it's being passed
+				 *	the right thing.
+				 */
+				fr_value_box_list_talloc_free_head(list);
+				break;
+			}
+
+			/*
+			 *	If the caller is expecting a particular type, then getting nothing is
+			 *	an error.
+			 *
+			 *	If the caller manually checks the input type, then we can leave it as
+			 *	an empty group.
+			 */
+			if (arg_p->type != FR_TYPE_VOID) goto missing;
+		}
+
+	empty_ok:
+		/*
+		 *	In some cases we replace the current argument with the head of the group.
+		 *
+		 *	xlat_process_arg_list() has already done concatenations for us.
+		 */
+		if (arg_p->single || arg_p->concat) {
+			fr_value_box_t *head = fr_value_box_list_pop_head(&vb->vb_group);
+
+			/*
+			 *	If we're meant to be smashing the argument
+			 *	to a single box, but the group was empty,
+			 *	add a null box instead so ordering is maintained
+			 *	for subsequent boxes.
+			 */
+			if (!head) head = fr_value_box_alloc_null(ctx);
+			fr_value_box_list_replace(list, vb, head);
+			talloc_free(vb);
+		}
+
+	do_next:
+		if (arg_p->variadic) {
+			if (!vb_next) break;
+		} else {
+			arg_p++;
+			arg = arg_next;
+		}
+		vb = vb_next;
 	}
 
 	return XLAT_ACTION_DONE;

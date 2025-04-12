@@ -282,7 +282,7 @@ static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t
 	return 0;
 }
 
-fr_slen_t xlat_validate_function_args(xlat_exp_t *node)
+int xlat_validate_function_args(xlat_exp_t *node)
 {
 	xlat_arg_parser_t const *arg_p;
 	xlat_exp_t		*arg = xlat_exp_head(node->call.args);
@@ -290,6 +290,29 @@ fr_slen_t xlat_validate_function_args(xlat_exp_t *node)
 
 	fr_assert(node->type == XLAT_FUNC);
 
+	/*
+	 *	Check the function definition against what the user passed in.
+	 */
+	if (!node->call.func->args) {
+		if (node->call.args) {
+			fr_strerror_const("Too many arguments to function call, expected 0");
+			return -1;
+		}
+
+		/*
+		 *	Function takes no arguments, and none were passed in.  There's nothing to verify.
+		 */
+		return 0;
+	}
+
+	if (!node->call.args) {
+		fr_strerror_const("Too few arguments to function call");
+		return -1;
+	}
+
+	/*
+	 *	The function both has arguments defined, and the user has supplied them.
+	 */
 	for (arg_p = node->call.func->args, i = 0; arg_p->type != FR_TYPE_NULL; arg_p++) {
 		if (!arg_p->required) break;
 
@@ -434,7 +457,6 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 		node->call.dict = t_rules->attr.dict_def;
 		node->flags = func->flags;
 		node->flags.impure_func = !func->flags.pure;
-		node->call.input_type = func->input_type;
 	}
 
 	fr_sbuff_marker_release(&m_s);
@@ -461,8 +483,10 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 		talloc_free(node);
 		return -1;
 	}
+	fr_assert(node->call.args != NULL);
 
 	xlat_flags_merge(&node->flags, &node->call.args->flags);
+	node->call.args->is_argv = true;
 
 	if (!fr_sbuff_next_if_char(in, ')')) {
 		fr_strerror_const("Missing closing brace ')'");
@@ -470,20 +494,13 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 	}
 
 	/*
-	 *	Validate the arguments.
+	 *	Set the flags.
 	 */
-	if (node->type == XLAT_FUNC) {
-		switch (node->call.input_type) {
-		case XLAT_INPUT_UNPROCESSED:
-			break;
-
-		case XLAT_INPUT_ARGS:
-			/*
-			 *	We might not be able to purify the function call, but perhaps we can purify the arguments to it.
-			 */
-			node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
-			break;
-		}
+	if ((node->type == XLAT_FUNC) && node->call.args) {
+		/*
+		 *	We might not be able to purify the function call, but perhaps we can purify the arguments to it.
+		 */
+		node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
 	}
 
 	xlat_exp_insert_tail(head, node);
@@ -1612,7 +1629,6 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 	}
 
 	MEM(head = xlat_exp_head_alloc(ctx));
-	head->is_argv = true;
 
 	/*
 	 *	skip spaces at the beginning as we don't want them to become a whitespace literal.
@@ -1973,22 +1989,9 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			node->call.dict = xr_rules->tr_rules->dict_def;
 
 			/*
-			 *	Check input arguments of our freshly
-			 *	resolved function
+			 *	Check input arguments of our freshly resolved function
 			 */
-			switch (node->call.func->input_type) {
-			case XLAT_INPUT_UNPROCESSED:
-				break;
-
-			case XLAT_INPUT_ARGS:
-				if (node->call.input_type != XLAT_INPUT_ARGS) {
-					fr_strerror_const("Function takes defined arguments and should "
-							  "be called using %func(args) syntax");
-					return -1;
-				}
-				if (xlat_validate_function_args(node) < 0) return -1;
-				break;
-			}
+			if (xlat_validate_function_args(node) < 0) return -1;
 
 			/*
 			 *	Add the freshly resolved function

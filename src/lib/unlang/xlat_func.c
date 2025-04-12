@@ -267,7 +267,6 @@ xlat_t *xlat_func_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, 
 		.name = talloc_typed_strdup(c, name),
 		.func = func,
 		.return_type = return_type,
-		.input_type = XLAT_INPUT_UNPROCESSED	/* set default - will be overridden if args are registered */
 	};
 
  	/*
@@ -379,7 +378,6 @@ int xlat_func_args_set(xlat_t *x, xlat_arg_parser_t const args[])
 		}
 	}
 	x->args = args;
-	x->input_type = XLAT_INPUT_ARGS;
 
 	return 0;
 }

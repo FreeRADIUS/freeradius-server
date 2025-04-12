@@ -124,11 +124,12 @@ void _xlat_exp_set_type(NDEBUG_LOCATION_ARGS xlat_exp_t *node, xlat_type_t type)
 		break;
 
 	case XLAT_FUNC:
-	case XLAT_FUNC_UNRESOLVED:
-		node->call.args = _xlat_exp_head_alloc(NDEBUG_LOCATION_VALS node);
-		node->call.args->is_argv = true;
-		node->flags = node->call.args->flags;
+		node->flags = XLAT_FLAGS_INIT;
 		node->flags.needs_resolving = (type == XLAT_FUNC_UNRESOLVED);
+		break;
+
+	case XLAT_FUNC_UNRESOLVED:
+		node->flags = (xlat_flags_t) { .needs_resolving = true };
 		break;
 
 	case XLAT_BOX:

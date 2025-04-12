@@ -89,7 +89,6 @@ typedef struct xlat_s {
 
 	xlat_flags_t		flags;			//!< various flags
 
-	xlat_input_type_t	input_type;		//!< Type of input used.
 	xlat_arg_parser_t const	*args;			//!< Definition of args consumed.
 
 	call_env_method_t const	*call_env_method;	//!< Optional tmpl expansions performed before calling the
@@ -138,8 +137,6 @@ typedef struct {
 
 	bool			ephemeral;		//!< Instance data is ephemeral (not inserted)
 							///< into the instance tree.
-	xlat_input_type_t	input_type;		//!< The input type used inferred from the
-							///< bracketing style.
 } xlat_call_t;
 
 /** An xlat expansion node

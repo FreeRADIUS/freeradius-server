@@ -208,22 +208,40 @@ static xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t const *func, xlat
 
 	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, func->name, strlen(func->name)));
 	node->call.func = func;
-	if (unlikely(xlat_copy(node, node->call.args, args) < 0)) {
-		talloc_free(node);
-		return NULL;
-	}
+
 	node->flags = func->flags;
 	node->flags.impure_func = !func->flags.pure;
-	xlat_flags_merge(&node->flags, &args->flags);
 
-	if (func->input_type == XLAT_INPUT_ARGS) {
-		xlat_arg_parser_t const	*arg_p;
-		xlat_exp_t		*arg = xlat_exp_head(node->call.args);
+	if (args) {
+		xlat_flags_merge(&node->flags, &args->flags);
 
 		/*
-		 *      The original tokenizing is done using the redundant xlat argument parser
-		 *      so the boxes haven't been marked up with the appropriate "safe for".
+		 *	If the function is pure, AND it's arguments are pure,
+		 *	then remember that we need to call a pure function.
 		 */
+		node->flags.can_purify = (func->flags.pure && args->flags.pure) | args->flags.can_purify;
+
+		MEM(node->call.args = xlat_exp_head_alloc(node));
+		node->call.args->is_argv = true;
+
+		if (unlikely(xlat_copy(node, node->call.args, args) < 0)) {
+			talloc_free(node);
+			return NULL;
+		}
+	}
+
+	/*
+	 *      The original tokenizing is done using the redundant xlat argument parser so the boxes need to
+	 *      have their "safe_for" value changed to the new one.
+	 */
+	if (func->args) {
+		xlat_arg_parser_t const	*arg_p;
+		xlat_exp_t		*arg;
+
+		fr_assert(args);
+
+		arg = xlat_exp_head(node->call.args);
+
 		for (arg_p = node->call.func->args; arg_p->type != FR_TYPE_NULL; arg_p++) {
 		        if (!arg) break;
 
@@ -234,12 +252,6 @@ static xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t const *func, xlat
 		        arg = xlat_exp_next(node->call.args, arg);
 		}
 	}
-
-	/*
-	 *	If the function is pure, AND it's arguments are pure,
-	 *	then remember that we need to call a pure function.
-	 */
-	node->flags.can_purify = (func->flags.pure && args->flags.pure) | args->flags.can_purify;
 
 	return node;
 }
@@ -273,7 +285,8 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 		 *	becomes an error when the user tries
 		 *	to use the redundant xlat.
 		 */
-		if (first->func->input_type != xrf->func->input_type) {
+		if ((!first->func->args && xrf->func->args) ||
+		    (first->func->args && !xrf->func->args)) {
 			cf_log_err(xr->cs, "Expansion functions \"%s\" and \"%s\" use different argument styles "
 				   "cannot be used in the same redundant section", first->func->name, xrf->func->name);
 		error:
@@ -291,17 +304,10 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 		MEM(node = xlat_exp_func_alloc(head, xrf->func, xctx->ex->call.args));
 		xlat_exp_insert_tail(head, node);
 
-		switch (xrf->func->input_type) {
-		case XLAT_INPUT_UNPROCESSED:
-			break;
-
-		case XLAT_INPUT_ARGS:
-			if (xlat_validate_function_args(node) < 0) {
-				PERROR("Invalid arguments for redundant expansion function \"%s\"",
-				       xrf->func->name);
-				goto error;
-			}
-			break;
+		if (xlat_validate_function_args(node) < 0) {
+			PERROR("Invalid arguments for redundant expansion function \"%s\"",
+			       xrf->func->name);
+			goto error;
 		}
 
 		/*
