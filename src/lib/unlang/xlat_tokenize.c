@@ -176,32 +176,11 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 			fr_strerror_printf("Failed defining attribute %s", tmpl_attr_tail_da(vpt)->name);
 			return -1;
 		}
-
-		node->flags.constant = node->flags.pure = node->flags.can_purify = false;
-		return 0;
-	}
-
-	/*
-	 *	We have a nested xlat.  This is likely bad.  The caller SHOULD have checked for %{...}, and
-	 *	created an XLAT_GROUP, and then parsed that.
-	 */
-	if (tmpl_contains_xlat(vpt)) {
-		xlat_exp_head_t *xlat = tmpl_xlat(vpt);
-
-		node->flags = xlat->flags;
-
-		node->flags.constant &= !tmpl_is_exec(vpt);
-
-		fr_assert(!tmpl_contains_regex(vpt));
 		return 0;
 	}
 
 	if (!tmpl_contains_data(vpt)) {
-		node->flags.needs_resolving = tmpl_needs_resolving(vpt);
-		node->flags.constant = node->flags.pure = node->flags.can_purify = false;
-
 		fr_assert(!tmpl_contains_regex(vpt));
-
 		return 0;
 	}
 
@@ -416,7 +395,7 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 			/*
 			 *	%% is pure.  Everything else is not.
 			 */
-			node->flags.pure = (node->fmt[0] == '%');
+			node->flags.constant = node->flags.pure = node->flags.can_purify = (node->fmt[0] == '%');
 
 			xlat_exp_insert_tail(head, node);
 			return 0;
@@ -449,7 +428,7 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 			return -1;
 		}
 		xlat_exp_set_type(node, XLAT_FUNC_UNRESOLVED);
-		node->flags.needs_resolving = true;	/* Needs resolution during pass2 */
+
 	} else {
 		node->call.func = func;
 		node->call.dict = t_rules->attr.dict_def;
@@ -499,6 +478,9 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 			break;
 
 		case XLAT_INPUT_ARGS:
+			/*
+			 *	We might not be able to purify the function call, but perhaps we can purify the arguments to it.
+			 */
 			node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
 			break;
 		}
@@ -558,19 +540,13 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_attribute(xlat_exp_head_t *
 			fr_sbuff_set(&our_in, &m_s);		/* Error at the start of the attribute */
 			goto error;
 		}
-
-		/*
-		 *	Try to resolve it later
-		 */
-		node->flags.needs_resolving = true;
 	}
 
 	/*
 	 *	Deal with normal attribute (or list)
 	 */
 	xlat_exp_set_type(node, XLAT_TMPL);
-	xlat_exp_set_name_shallow(node, vpt->name);
-	node->vpt = vpt;
+	xlat_exp_set_vpt(node, vpt);
 
 	/*
 	 *	Remember that it was %{User-Name}
@@ -579,11 +555,6 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_attribute(xlat_exp_head_t *
 	 *	pass without '&'.
 	 */
 	UNCONST(tmpl_attr_rules_t *, &vpt->rules.attr)->xlat = true;
-
-	/*
-	 *	Attributes and module calls aren't pure.
-	 */
-	node->flags.pure = false;
 
 	xlat_exp_insert_tail(head, node);
 
@@ -852,8 +823,6 @@ static CC_HINT(nonnull(1,2,4)) ssize_t xlat_tokenize_input(xlat_exp_head_t *head
 			xlat_exp_set_name_shallow(node, str);
 			fr_value_box_bstrndup(node, &node->data, NULL, str, talloc_array_length(str) - 1, false);
 			fr_value_box_mark_safe_for(&node->data, t_rules->literals_safe_for);
-			node->flags.constant = true;
-			fr_assert(node->flags.pure);
 
 			if (!escapes) {
 				XLAT_DEBUG("VALUE-BOX %s <-- %.*s", str,
@@ -1465,19 +1434,13 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 			talloc_free(node);
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
-
-		xlat_exp_set_name_shallow(node, node->vpt->name);
-		node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
+		xlat_exp_set_vpt(node, node->vpt); /* sets flags */
 
 		if (xlat_tmpl_normalize(node) < 0) goto error;
 
 		if (quote == T_BARE_WORD) goto done;
 
-		/*
-		 *	Exec.
-		 */
-		node->flags.constant = node->flags.pure = node->flags.can_purify = false;
-		break;
+		break;		/* exec - look for closing quote */
 
 		/*
 		 *	"Double quoted strings may contain %{expansions}"
@@ -1517,8 +1480,6 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 			}
 
 			fr_assert(node->type == XLAT_BOX);
-			fr_assert(node->flags.constant);
-			fr_assert(node->flags.pure);
 
 			node->quote = quote; /* not the same node! */
 		}
@@ -1542,7 +1503,6 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 		xlat_exp_set_name_shallow(node, str);
 		fr_value_box_strdup(node, &node->data, NULL, str, false);
 		fr_value_box_mark_safe_for(&node->data, t_rules->literals_safe_for);	/* Literal values are treated as implicitly safe */
-		fr_assert(node->flags.pure);
 	}
 		break;
 
@@ -1972,8 +1932,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 	if (!xr_rules) xr_rules = &xr_default;
 
 	our_flags = head->flags;
-	our_flags.needs_resolving = false;			/* We flip this if not all resolutions are successful */
-	our_flags.constant = our_flags.pure = true;		/* we flip this if the children are not pure */
+	our_flags = XLAT_FLAGS_INIT;
 
 	xlat_exp_foreach(head, node) {
 		/*
@@ -2072,7 +2031,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			if (xlat_tmpl_normalize(node) < 0) return -1;
 
 			node->flags.needs_resolving = false;
-			node->flags.pure = tmpl_is_data(node->vpt);
+			node->flags.constant = node->flags.pure = node->flags.can_purify = tmpl_is_data(node->vpt);
 			break;
 
 

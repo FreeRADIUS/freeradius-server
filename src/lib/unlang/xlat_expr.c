@@ -2223,12 +2223,8 @@ static fr_slen_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_
 		if (slen <= 0) goto error;
 	}
 
-	node->vpt = vpt;
 	node->quote = quote;
-	xlat_exp_set_name_shallow(node, vpt->name);
-
-	node->flags.pure = !tmpl_contains_xlat(node->vpt);
-	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
+	xlat_exp_set_vpt(node, vpt);
 
 	XLAT_VERIFY(node);
 	*out = node;

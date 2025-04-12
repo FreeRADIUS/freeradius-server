@@ -285,6 +285,8 @@ void		xlat_exp_set_name(xlat_exp_t *node, char const *fmt, size_t len) CC_HINT(n
 void		xlat_exp_set_name_shallow(xlat_exp_t *node, char const *fmt) CC_HINT(nonnull);
 void		xlat_exp_set_name_buffer(xlat_exp_t *node, char const *fmt) CC_HINT(nonnull);
 
+void		xlat_exp_set_vpt(xlat_exp_t *node, tmpl_t *vpt) CC_HINT(nonnull);
+
 /*
  *	xlat_func.c
  */

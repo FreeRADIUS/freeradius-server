@@ -119,6 +119,8 @@ typedef struct {
 	uint8_t			xlat : 1;		//!< it's an xlat wrapper
 } xlat_flags_t;
 
+#define XLAT_FLAGS_INIT ((xlat_flags_t) { .pure = true, .can_purify = true, .constant = true, })
+
 extern fr_table_num_sorted_t const xlat_action_table[];
 extern size_t xlat_action_table_len;
 
