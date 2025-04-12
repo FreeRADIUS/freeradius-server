@@ -936,13 +936,14 @@ static int python_interpreter_init(module_inst_ctx_t const *mctx)
 
 static void python_interpreter_free(rlm_python_t *inst, PyThreadState *interp)
 {
+	PyEval_RestoreThread(interp);	/* Switches thread state and locks GIL */
+
 	/*
 	 *	We incremented the reference count earlier
 	 *	during module initialisation.
 	 */
 	Py_XDECREF(inst->module);
 
-	PyEval_RestoreThread(interp);	/* Switches thread state and locks GIL */
 	Py_EndInterpreter(interp);	/* Destroys interpreter (GIL still locked) - sets thread state to NULL */
 	PyThreadState_Swap(global_interpreter);	/* Get a none-null thread state */
 	PyEval_SaveThread();		/* Unlock GIL */
