@@ -1466,6 +1466,9 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
+		xlat_exp_set_name_shallow(node, node->vpt->name);
+		node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
+
 		if (xlat_tmpl_normalize(node) < 0) goto error;
 
 		if (quote == T_BARE_WORD) goto done;

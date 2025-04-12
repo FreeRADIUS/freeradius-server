@@ -2402,10 +2402,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 			fr_sbuff_advance(&our_in, -slen);
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
-		if (slen > 0) {
-			*out = node;
-			FR_SBUFF_SET_RETURN(in, &our_in);
-		}
+		if (slen > 0) goto done;
 		FALL_THROUGH;
 
 	default:
@@ -2534,13 +2531,6 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 			fr_assert(0);
 		}
 	}
-
-	/*
-	 *	Assign the tmpl to the node.
-	 */
-	xlat_exp_set_name_shallow(node, vpt->name);
-
-	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
 
 	fr_assert(!tmpl_contains_regex(vpt));
 
