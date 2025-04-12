@@ -946,12 +946,22 @@ static size_t xlat_quote_table_len = NUM_ELEMENTS(xlat_quote_table);
 #define INFO_INDENT(_fmt, ...)  INFO("%*s"_fmt, depth * 2, " ", ## __VA_ARGS__)
 
 static void _xlat_debug_head(xlat_exp_head_t const *head, int depth);
-static void _xlat_debug_node(xlat_exp_t const *node, int depth)
+static void _xlat_debug_node(xlat_exp_t const *node, int depth, bool print_flags)
 {
 	INFO_INDENT("{ -- %s", node->fmt);
 #ifndef NDEBUG
 //	INFO_INDENT("  %s:%d", node->file, node->line);
 #endif
+
+	if (print_flags) {
+		INFO_INDENT("flags = %s %s %s %s %s",
+			    node->flags.needs_resolving ? "need_resolving" : "",
+			    node->flags.pure ? "pure" : "",
+			    node->flags.can_purify ? "can_purify" : "",
+			    node->flags.constant ? "constant" : "",
+			    node->flags.xlat ? "xlat" : "");
+	}
+
 	depth++;
 
 	if (node->quote != T_BARE_WORD) INFO_INDENT("quote = %c", fr_token_quote[node->quote]);
@@ -1055,7 +1065,7 @@ static void _xlat_debug_node(xlat_exp_t const *node, int depth)
 
 void xlat_debug(xlat_exp_t const *node)
 {
-	_xlat_debug_node(node, 0);
+	_xlat_debug_node(node, 0, true);
 }
 
 static void _xlat_debug_head(xlat_exp_head_t const *head, int depth)
@@ -1064,21 +1074,24 @@ static void _xlat_debug_head(xlat_exp_head_t const *head, int depth)
 
 	fr_assert(head != NULL);
 
-	INFO_INDENT("head flags = %s %s %s %s",
+	INFO_INDENT("head flags = %s %s %s %s %s",
 		    head->flags.needs_resolving ? "need_resolving," : "",
 		    head->flags.pure ? "pure" : "",
 		    head->flags.can_purify ? "can_purify" : "",
-		    head->flags.constant ? "constant" : "");
+		    head->flags.constant ? "constant" : "",
+		    head->flags.xlat ? "xlat" : "");
 
 	depth++;
 
 	xlat_exp_foreach(head, node) {
-		INFO_INDENT("[%d] flags = %s %s %s ", i++,
+		INFO_INDENT("[%d] flags = %s %s %s %s %s", i++,
 			    node->flags.needs_resolving ? "need_resolving" : "",
 			    node->flags.pure ? "pure" : "",
-			    node->flags.can_purify ? "can_purify" : "");
+			    node->flags.can_purify ? "can_purify" : "",
+			    node->flags.constant ? "constant" : "",
+			    node->flags.xlat ? "xlat" : "");
 
-		_xlat_debug_node(node, depth);
+		_xlat_debug_node(node, depth, false);
 	}
 }
 
