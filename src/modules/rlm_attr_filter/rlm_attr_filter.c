@@ -241,6 +241,34 @@ static unlang_action_t CC_HINT(nonnull) attr_filter_common(TALLOC_CTX *ctx, rlm_
 		fr_pair_list_init(&check_list);
 
 		while ((map = map_list_next(&pl->reply, map))) {
+			/*
+			 *	Special case for !*
+			 */
+			if (map->op == T_OP_CMP_FALSE) {
+				RWDEBUG("Unsupported operator '!*'");
+				continue;
+			}
+
+			/*
+			 *	Create an empty attribute.  This functionality is used by the attr_filter module.
+			 */
+			if (map->op == T_OP_CMP_TRUE) {
+				fr_pair_t *vp;
+
+				MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
+				vp->op = T_OP_CMP_TRUE;
+				fr_pair_append(&check_list, vp);
+				continue;
+			}
+
+			/*
+			 *	@todo - this use of map_to_vp is completely wrong.  Nothing else uses
+			 *	comparison operators for map_to_vp().  This module doesn't handle nested
+			 *	pairs, and dumps all pairs in one list no matter their depth.  It requires
+			 *	that map_to_vp() appends the pair, rather than respecting the operator.
+			 *
+			 *	i.e. it really only works for RADIUS. :(
+			 */
 			if (map_to_vp(ctx, &tmp_list, request, map, NULL) < 0) {
 				RPWARN("Failed parsing map %s for check item, skipping it", map->lhs->name);
 				continue;

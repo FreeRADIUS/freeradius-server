@@ -1412,6 +1412,11 @@ static int cache_verify(map_t *map, void *uctx)
 		return -1;
 	}
 
+	if (!fr_assignment_op[map->op]) {
+		cf_log_err(map->ci, "Invalid operator '%s'", fr_tokens[map->op]);
+		return -1;
+	}
+
 	return 0;
 }
 

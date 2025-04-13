@@ -1582,21 +1582,6 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 	fr_assert(tmpl_is_attr(map->lhs));
 
 	/*
-	 *	Special case for !*, we don't need to parse RHS as this is a unary operator.
-	 */
-	if (map->op == T_OP_CMP_FALSE) return 0;
-
-	/*
-	 *	Hoist this early, too.
-	 */
-	if (map->op == T_OP_CMP_TRUE) {
-		MEM(n = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
-		n->op = map->op;
-		fr_pair_append(out, n);
-		return 0;
-	}
-
-	/*
 	 *	If there's no RHS, then it MUST be an attribute, and
 	 *	it MUST be structural.  And it MAY have children.
 	 */
@@ -1879,6 +1864,14 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	MAP_VERIFY(map);
 	fr_assert(map->lhs != NULL);
 	fr_assert(map->rhs != NULL);
+
+	/*
+	 *	This function is called only when creating attributes.  It cannot be called for conditions.
+	 */
+	if (fr_comparison_op[map->op]) {
+		REDEBUG("Invalid operator in %s %s ...", map->lhs->name, fr_tokens[map->op]);
+		return -1;
+	}
 
 	tmp_ctx = talloc_pool(request, 1024);
 
