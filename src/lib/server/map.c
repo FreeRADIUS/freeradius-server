@@ -1502,9 +1502,10 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 {
 	int result;
 	char *expanded = NULL;
-	char answer[1024];
+	fr_pair_t *vp;
 	fr_pair_list_t *input_pairs = NULL;
 	fr_pair_list_t output_pairs;
+	char answer[1024];
 
 	fr_pair_list_init(&output_pairs);
 	fr_pair_list_free(out);
@@ -1536,27 +1537,16 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 		return -1;
 	}
 
-	switch (map->lhs->type) {
-	case TMPL_TYPE_ATTR:
-	{
-		fr_pair_t *vp;
-
-		MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
-		vp->op = map->op;
-		if (fr_pair_value_from_str(vp, answer, strlen(answer), &fr_value_unescape_single, false) < 0) {
-			RPEDEBUG("Failed parsing exec output");
-			talloc_free(&vp);
-			return -2;
-		}
-		fr_pair_append(out, vp);
-
-		return 0;
+	MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
+	vp->op = map->op;
+	if (fr_pair_value_from_str(vp, answer, strlen(answer), &fr_value_unescape_single, false) < 0) {
+		RPEDEBUG("Failed parsing exec output");
+		talloc_free(&vp);
+		return -2;
 	}
+	fr_pair_append(out, vp);
 
-	default:
-		fr_assert(0);
-		return -1;
-	}
+	return 0;
 }
 
 /** Convert a map to a #fr_pair_t
