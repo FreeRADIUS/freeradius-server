@@ -95,9 +95,6 @@ static fr_dict_attr_t const *attr_net_src_address;
 static fr_dict_attr_t const *attr_net_dst_address;
 static fr_dict_attr_t const *attr_net_src_port;
 static fr_dict_attr_t const *attr_net_dst_port;
-static fr_dict_attr_t const *attr_protocol;
-
-static fr_dict_attr_t const *attr_user_password;
 
 extern fr_dict_attr_autoload_t rlm_detail_dict_attr[];
 fr_dict_attr_autoload_t rlm_detail_dict_attr[] = {
@@ -106,9 +103,6 @@ fr_dict_attr_autoload_t rlm_detail_dict_attr[] = {
 	{ .out = &attr_net_dst_port, .name = "Net.Dst.Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_net_src_address, .name = "Net.Src.IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_net_src_port, .name = "Net.Src.Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
-	{ .out = &attr_protocol, .name = "Protocol", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-
-	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
 	{ NULL }
 };
@@ -270,11 +264,6 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 
 			if (da == attr_net) continue;
 		}
-
-		/*
-		 *	Don't print passwords in old format...
-		 */
-		if (compat && (vp->da == attr_user_password)) continue;
 
 		fr_pair_fprint(out, vp);
 	}
