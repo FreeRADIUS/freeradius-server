@@ -218,7 +218,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 		fr_dict_attr_t const *da;
 		char const *name = NULL;
 
-		da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), "Packet-Type");
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(request->proto_dict), "Packet-Type");
 		if (da) name = fr_dict_enum_name_by_value(da, fr_box_uint32(packet->code));
 
 		/*
@@ -279,12 +279,6 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 		fr_pair_fprint(out, vp);
 	}
 
-	/*
-	 *	Add the original protocol of the request, this should
-	 *	be used by the detail reader to set the default
-	 *	dictionary used for decoding.
-	 */
-//	WRITE("\t%s = %s", attr_protocol->name, fr_dict_root(request->dict)->name);
 	WRITE("\tTimestamp = %lu\n", (unsigned long) fr_time_to_sec(request->packet->timestamp));
 
 	WRITE("\n");
