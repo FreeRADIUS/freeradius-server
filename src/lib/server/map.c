@@ -1501,13 +1501,10 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t const *map)
 {
 	int result;
-	char *expanded = NULL;
 	fr_pair_t *vp;
 	fr_pair_list_t *input_pairs = NULL;
-	fr_pair_list_t output_pairs;
 	char answer[1024];
 
-	fr_pair_list_init(&output_pairs);
 	fr_pair_list_free(out);
 
 	MAP_VERIFY(map);
@@ -1516,6 +1513,11 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 	fr_assert(tmpl_is_exec(map->rhs));
 	fr_assert(tmpl_is_attr(map->lhs));
 
+	if (fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type)) {
+		REDEBUG("Cannot assign `exec` output to structural attribute %s", map->lhs->name);
+		return -1;
+	}
+
 	/*
 	 *	We always put the request pairs into the environment
 	 */
@@ -1523,20 +1525,22 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 
 	/*
 	 *	Automagically switch output type depending on our destination
-	 *	If dst is a list, then we create attributes from the output of the program
+	 *	@todo - If dst is a list, then we create attributes from the output of the program
 	 *	if dst is an attribute, then we create an attribute of that type and then
 	 *	call fr_pair_value_from_str on the output of the script.
 	 */
 	result = radius_exec_program_legacy(answer, sizeof(answer),
 				     request, map->rhs->name, input_pairs ? input_pairs : NULL,
 				     true, true, fr_time_delta_from_sec(EXEC_TIMEOUT));
-	talloc_free(expanded);
 	if (result != 0) {
 		REDEBUG("Exec failed with code (%i)", result);
-		fr_pair_list_free(&output_pairs);
 		return -1;
 	}
 
+	/*
+	 *	@todo - we completely ignore the operator here :( Arguably the caller should be calling ONLY
+	 *	the legacy pair move functions with the results of this function.
+	 */
 	MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
 	vp->op = map->op;
 	if (fr_pair_value_from_str(vp, answer, strlen(answer), &fr_value_unescape_single, false) < 0) {
