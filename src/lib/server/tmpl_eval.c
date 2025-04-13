@@ -364,7 +364,6 @@ ssize_t _tmpl_to_type(void *out,
 	 *	We should never be expanding these.
 	 */
 	case TMPL_TYPE_UNINITIALISED:
-	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_EXEC_UNRESOLVED:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 	case TMPL_TYPE_XLAT_UNRESOLVED:
@@ -695,7 +694,6 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	 *	We should never be expanding these.
 	 */
 	case TMPL_TYPE_UNINITIALISED:
-	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_EXEC_UNRESOLVED:
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_REGEX_UNCOMPILED:

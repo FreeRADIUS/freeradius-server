@@ -133,10 +133,6 @@ typedef enum tmpl_type_e {
 	 */
 	TMPL_TYPE_UNINITIALISED 	= 0x0000,
 
-	/** Has no value.  Usually a placeholder in a binary expression that's really a unary expression
-	 */
-	TMPL_TYPE_NULL			= 0x0001,
-
 	/** Value in native boxed format
 	 */
 	TMPL_TYPE_DATA			= 0x0002,
@@ -207,7 +203,6 @@ typedef enum tmpl_type_e {
  */
 #define tmpl_is_uninitialised(vpt) 		((vpt)->type == TMPL_TYPE_UNINITIALISED)
 
-#define tmpl_is_null(vpt) 			((vpt)->type == TMPL_TYPE_NULL)
 #define tmpl_is_data(vpt) 			((vpt)->type == TMPL_TYPE_DATA)
 
 #define tmpl_is_attr(vpt) 			((vpt)->type == TMPL_TYPE_ATTR)

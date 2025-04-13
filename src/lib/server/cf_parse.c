@@ -1256,7 +1256,6 @@ static int cf_parse_tmpl_pass2(UNUSED CONF_SECTION *cs, tmpl_t **out, CONF_PAIR 
 	case TMPL_TYPE_REGEX_UNCOMPILED:
 	case TMPL_TYPE_REGEX_XLAT:
 	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
-	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_MAX:
 		fr_assert(0);
 		/* Don't add default */

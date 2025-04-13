@@ -1971,18 +1971,14 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 *	0 to signify success. It may return "success", but still have no
 	 *	VPs to work with.
 	 */
-	if (!tmpl_is_null(map->rhs)) {
-		rcode = func(parent, &src_list, request, map, ctx);
-		if (rcode < 0) {
-			fr_assert(fr_pair_list_empty(&src_list));
-			goto finish;
-		}
-		if (fr_pair_list_empty(&src_list)) {
-			RDEBUG2("%.*s skipped: No values available", (int)map->lhs->len, map->lhs->name);
-			goto finish;
-		}
-	} else {
-		if (RDEBUG_ENABLED) map_debug_log(request, map, NULL);
+	rcode = func(parent, &src_list, request, map, ctx);
+	if (rcode < 0) {
+		fr_assert(fr_pair_list_empty(&src_list));
+		goto finish;
+	}
+	if (fr_pair_list_empty(&src_list)) {
+		RDEBUG2("%.*s skipped: No values available", (int)map->lhs->len, map->lhs->name);
+		goto finish;
 	}
 
 	/*
@@ -2428,7 +2424,7 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
 	if (!fr_cond_assert(map->lhs != NULL)) return;
 	if (!fr_cond_assert(map->rhs != NULL)) return;
 
-	fr_assert(vp || tmpl_is_null(map->rhs));
+	fr_assert(vp);
 
 	switch (map->rhs->type) {
 	/*
@@ -2469,10 +2465,6 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
 		tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->rhs, NULL);
 		rhs = talloc_typed_asprintf(request, "%s -> %s", buffer, value);
 	}
-		break;
-
-	case TMPL_TYPE_NULL:
-		rhs = talloc_typed_strdup(request, "ANY");
 		break;
 	}
 

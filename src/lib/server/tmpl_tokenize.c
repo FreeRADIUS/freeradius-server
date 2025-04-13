@@ -116,7 +116,6 @@ TMPL_REQUEST_REF_DEF(tmpl_request_def_parent, REQUEST_PARENT);
 fr_table_num_ordered_t const tmpl_type_table[] = {
 	{ L("uninitialised"),		TMPL_TYPE_UNINITIALISED		},
 
-	{ L("null"),			TMPL_TYPE_NULL			},
 	{ L("data"),			TMPL_TYPE_DATA			},
 
 	{ L("attr"),			TMPL_TYPE_ATTR			},
@@ -333,9 +332,6 @@ void tmpl_debug(tmpl_t const *vpt)
 	FR_FAULT_LOG("\tcast       : %s", fr_type_to_str(tmpl_rules_cast(vpt)));
 	FR_FAULT_LOG("\tquote      : %s", fr_table_str_by_value(fr_token_quotes_table, vpt->quote, "<INVALID>"));
 	switch (vpt->type) {
-	case TMPL_TYPE_NULL:
-		return;
-
 	case TMPL_TYPE_DATA:
 		FR_FAULT_LOG("\ttype       : %s", fr_type_to_str(tmpl_value_type(vpt)));
 		FR_FAULT_LOG("\tlen        : %zu", tmpl_value_length(vpt));
@@ -4341,7 +4337,6 @@ void tmpl_unresolve(tmpl_t *vpt)
 		fr_assert(0);
 		break;
 
-	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_DATA_UNRESOLVED:
 	case TMPL_TYPE_REGEX_UNCOMPILED:
 		break;
@@ -4851,7 +4846,6 @@ fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 		break;
 
 	case TMPL_TYPE_UNINITIALISED:
-	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_MAX:
 		fr_sbuff_terminate(out);
 		break;
@@ -5123,15 +5117,6 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 	 *  If they're still all zero, do TMPL_TYPE specific checks.
 	 */
 	switch (vpt->type) {
-	case TMPL_TYPE_NULL:
-		if ((nz = is_zeroed((uint8_t const *)&vpt->data, sizeof(vpt->data)))) {
-			HEX_MARKER1((uint8_t const *)&vpt->data, sizeof(vpt->data),
-				    nz - (uint8_t const *)&vpt->data, "non-zero memory", "");
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_NULL "
-					     "has non-zero bytes in its data union", file, line);
-		}
-		break;
-
 	case TMPL_TYPE_DATA_UNRESOLVED:
 		if (!vpt->data.unescaped) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA_UNRESOLVED "

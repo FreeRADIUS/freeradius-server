@@ -469,22 +469,6 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	}
 
 	/*
-	 *	Values used by unary operators should be literal ANY
-	 *
-	 *	We then free the template and alloc a NULL one instead.
-	 */
-	if ((map->op == T_OP_CMP_FALSE) && !tmpl_is_null(map->rhs)) {
-		if (!tmpl_is_data_unresolved(map->rhs) || (strcmp(map->rhs->name, "ANY") != 0)) {
-			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'",
-			     cf_filename(cp), cf_lineno(cp));
-		}
-
-		TALLOC_FREE(map->rhs);
-
-		map->rhs = tmpl_alloc(map, TMPL_TYPE_NULL, T_INVALID, NULL, 0);
-	}
-
-	/*
 	 *	Lots of sanity checks for insane people...
 	 */
 
