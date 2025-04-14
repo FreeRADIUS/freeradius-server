@@ -125,11 +125,11 @@ void _xlat_exp_set_type(NDEBUG_LOCATION_ARGS xlat_exp_t *node, xlat_type_t type)
 
 	case XLAT_FUNC:
 		node->flags = XLAT_FLAGS_INIT;
-		node->flags.needs_resolving = (type == XLAT_FUNC_UNRESOLVED);
 		break;
 
 	case XLAT_FUNC_UNRESOLVED:
-		node->flags = (xlat_flags_t) { .needs_resolving = true };
+		node->flags = XLAT_FLAGS_INIT;
+		node->flags.needs_resolving = true;
 		break;
 
 	case XLAT_BOX:
@@ -139,9 +139,21 @@ void _xlat_exp_set_type(NDEBUG_LOCATION_ARGS xlat_exp_t *node, xlat_type_t type)
 
 #ifdef HAVE_REGEX
 	case XLAT_REGEX:
-#endif
-	case XLAT_ONE_LETTER:
 		node->flags = (xlat_flags_t) {};
+		break;
+#endif
+
+	case XLAT_ONE_LETTER:
+		/*
+		 *	%% is pure.  Everything else is not.
+		 */
+		fr_assert(node->fmt);
+
+		if (node->fmt[0] != '%') {
+			node->flags = (xlat_flags_t) {};
+		} else {
+			node->flags = XLAT_FLAGS_INIT;
+		}
 		break;
 
 	default:
@@ -235,6 +247,11 @@ xlat_exp_t *_xlat_exp_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_type_t ty
 	return node;
 }
 
+/** Set the tmpl for a node, along with flags and the name.
+ *
+ * @param[in] node	to set fmt for.
+ * @param[in] vpt	the tmpl to set
+ */
 void xlat_exp_set_vpt(xlat_exp_t *node, tmpl_t *vpt)
 {
 	if (tmpl_contains_xlat(vpt)) {
@@ -250,6 +267,38 @@ void xlat_exp_set_vpt(xlat_exp_t *node, tmpl_t *vpt)
 	node->vpt = vpt;
 	xlat_exp_set_name_shallow(node, vpt->name);
 }
+
+/** Set the function for a node
+ *
+ * @param[in] node	to set fmt for.
+ * @param[in] func	to set
+ * @param[in] dict	the dictionary to set
+ */
+void xlat_exp_set_func(xlat_exp_t *node, xlat_t const *func, fr_dict_t const *dict)
+{
+	node->call.func = func;
+	node->call.dict = dict;
+	node->flags = func->flags;
+	node->flags.impure_func = !func->flags.pure;
+}
+
+void xlat_exp_finalize_func(xlat_exp_t *node)
+{
+	if (!node->call.args) return;
+
+	node->call.args->is_argv = true;
+
+	if (node->type == XLAT_FUNC_UNRESOLVED) return;
+
+	xlat_flags_merge(&node->flags, &node->call.args->flags);
+
+	/*
+	 *	We might not be able to purify the function call, but perhaps we can purify the arguments to it.
+	 */
+	node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
+	node->flags.impure_func = !node->call.func->flags.pure;
+}
+
 
 /** Set the format string for an xlat node
  *

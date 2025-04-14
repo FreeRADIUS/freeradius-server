@@ -159,6 +159,10 @@ bool const xlat_func_chars[UINT8_MAX + 1] = {
 };
 
 
+/** Normalize an xlat which contains a tmpl.
+ *
+ *  Constant data is turned into XLAT_BOX, and some other thingies are done.
+ */
 static int xlat_tmpl_normalize(xlat_exp_t *node)
 {
 	tmpl_t *vpt = node->vpt;
@@ -168,6 +172,10 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 	 */
 	fr_assert(tmpl_rules_cast(vpt) == FR_TYPE_NULL);
 
+	if (tmpl_is_attr_unresolved(node->vpt)) {
+		return 0;
+	}
+
 	/*
 	 *	Add in unknown attributes, by defining them in the local dictionary.
 	 */
@@ -176,6 +184,7 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 			fr_strerror_printf("Failed defining attribute %s", tmpl_attr_tail_da(vpt)->name);
 			return -1;
 		}
+
 		return 0;
 	}
 
@@ -406,19 +415,14 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 			XLAT_DEBUG("ONE-LETTER <-- %c", c);
 			node = xlat_exp_alloc_null(head);
 
-			xlat_exp_set_type(node, XLAT_ONE_LETTER);
 			xlat_exp_set_name(node, fr_sbuff_current(&m_s), 1);
+			xlat_exp_set_type(node, XLAT_ONE_LETTER); /* needs node->fmt to be set */
 
 			fr_sbuff_marker_release(&m_s);
 
 #ifdef STATIC_ANALYZER
 			if (!node->fmt) return -1;
 #endif
-
-			/*
-			 *	%% is pure.  Everything else is not.
-			 */
-			node->flags.constant = node->flags.pure = node->flags.can_purify = (node->fmt[0] == '%');
 
 			xlat_exp_insert_tail(head, node);
 			return 0;
@@ -453,10 +457,7 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 		xlat_exp_set_type(node, XLAT_FUNC_UNRESOLVED);
 
 	} else {
-		node->call.func = func;
-		node->call.dict = t_rules->attr.dict_def;
-		node->flags = func->flags;
-		node->flags.impure_func = !func->flags.pure;
+		xlat_exp_set_func(node, func, t_rules->attr.dict_def);
 	}
 
 	fr_sbuff_marker_release(&m_s);
@@ -483,25 +484,13 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 		talloc_free(node);
 		return -1;
 	}
-	fr_assert(node->call.args != NULL);
-
-	xlat_flags_merge(&node->flags, &node->call.args->flags);
-	node->call.args->is_argv = true;
 
 	if (!fr_sbuff_next_if_char(in, ')')) {
 		fr_strerror_const("Missing closing brace ')'");
 		goto error;
 	}
 
-	/*
-	 *	Set the flags.
-	 */
-	if ((node->type == XLAT_FUNC) && node->call.args) {
-		/*
-		 *	We might not be able to purify the function call, but perhaps we can purify the arguments to it.
-		 */
-		node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
-	}
+	xlat_exp_finalize_func(node);
 
 	xlat_exp_insert_tail(head, node);
 	return 0;
@@ -1942,6 +1931,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 {
 	static xlat_res_rules_t		xr_default;
 	xlat_flags_t			our_flags;
+	xlat_t				*func;
 
 	if (!head->flags.needs_resolving) return 0;			/* Already done */
 
@@ -1971,8 +1961,8 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			/*
 			 *	Try to find the function
 			 */
-			node->call.func = xlat_func_find(node->fmt, talloc_array_length(node->fmt) - 1);
-			if (!node->call.func) {
+			func = xlat_func_find(node->fmt, talloc_array_length(node->fmt) - 1);
+			if (!func) {
 				/*
 				 *	FIXME - Produce proper error with marker
 				 */
@@ -1985,7 +1975,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			}
 
 			xlat_exp_set_type(node, XLAT_FUNC);
-			node->call.dict = xr_rules->tr_rules->dict_def;
+			xlat_exp_set_func(node, func, xr_rules->tr_rules->dict_def);
 
 			/*
 			 *	Check input arguments of our freshly resolved function
@@ -2005,7 +1995,8 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			FALL_THROUGH;
 
 		/*
-		 *	A resolved function with unresolved args
+		 *	A resolved function with unresolved args.  We re-initialize the flags from the
+		 *	function definition, resolve the arguments, and update the flags.
 		 */
 		case XLAT_FUNC:
 			node->flags = node->call.func->flags;
@@ -2014,42 +2005,30 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 				void *inst = node->call.inst ? node->call.inst->data : NULL;
 
 				if (node->call.func->resolve(node, inst, xr_rules) < 0) return -1;
-			} else {
-				if (xlat_resolve(node->call.args, xr_rules) < 0) return -1;
-			}
 
-			xlat_flags_merge(&node->flags, &node->call.args->flags);
-			node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
-			node->flags.impure_func = !node->call.func->flags.pure;
+			} else if (node->call.args) {
+				if (xlat_resolve(node->call.args, xr_rules) < 0) return -1;
+
+			} /* else the function takes no arguments */
+
+			node->flags.needs_resolving = false;
+			xlat_exp_finalize_func(node);
 			break;
 
 		case XLAT_TMPL:
 			/*
-			 *	Double-quoted etc. strings may contain xlats, so we try to resolve them now.
-			 *	Or, convert them to data.
+			 *	Resolve any nested xlats in regexes, exec, or xlats.
 			 */
 			if (tmpl_resolve(node->vpt, xr_rules->tr_rules) < 0) return -1;
 
-			if (xlat_tmpl_normalize(node) < 0) return -1;
-
+			fr_assert(!tmpl_needs_resolving(node->vpt));
 			node->flags.needs_resolving = false;
-			node->flags.constant = node->flags.pure = node->flags.can_purify = tmpl_is_data(node->vpt);
+
+			if (xlat_tmpl_normalize(node) < 0) return -1;
 			break;
 
-
 		default:
-			fr_assert(0);	/* Should not have been marked as unresolved */
-			return -1;
-		}
-
-		if (node->flags.needs_resolving && !xr_rules->allow_unresolved) {
-			if (node->quote == T_BARE_WORD) {
-				fr_strerror_printf_push("Failed resolving attribute: %s",
-							node->fmt);
-			} else {
-				fr_strerror_printf_push("Failed resolving attribute: %c%s%c",
-							fr_token_quote[node->quote], node->fmt, fr_token_quote[node->quote]);
-			}
+			fr_assert(0);	/* boxes, one letter, etc. should not have been marked as unresolved */
 			return -1;
 		}
 

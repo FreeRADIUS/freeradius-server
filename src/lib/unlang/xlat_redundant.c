@@ -201,13 +201,14 @@ static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
  * @param[in] func	to call.
  * @param[in] args	Arguments to the function.  Will be copied,
  *			and freed when the new xlat node is freed.
+ * @param[in] dict	the dictionary
  */
-static xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t const *func, xlat_exp_head_t const *args)
+static xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t const *func, xlat_exp_head_t const *args, fr_dict_t const *dict)
 {
 	xlat_exp_t *node;
 
 	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, func->name, strlen(func->name)));
-	node->call.func = func;
+	xlat_exp_set_func(node, func, dict);
 
 	node->flags = func->flags;
 	node->flags.impure_func = !func->flags.pure;
@@ -266,6 +267,7 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 	xlat_redundant_inst_t		*xri = talloc_get_type_abort(xctx->inst, xlat_redundant_inst_t);
 	unsigned int			num = 0;
 	xlat_redundant_func_t const	*first;
+	fr_dict_t const			*dict = NULL;
 
 	MEM(xri->ex = talloc_array(xri, xlat_exp_head_t *, fr_dlist_num_elements(&xr->funcs)));
 	xri->xr = xr;
@@ -294,6 +296,16 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 			return -1;
 		}
 
+		if (!dict) {
+			dict = xctx->ex->call.dict;
+			fr_assert(dict != NULL);
+
+		} else if (dict != xctx->ex->call.dict) {
+			cf_log_err(xr->cs, "Expansion functions \"%s\" and \"%s\" use different dictionaries"
+				   "cannot be used in the same redundant section", first->func->name, xrf->func->name);
+			goto error;
+		}
+
 		/*
 		 *	We pass the current arguments in
 		 *	so that the instantiation functions
@@ -301,7 +313,7 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 		 *	correctly.
 		 */
 		MEM(head = xlat_exp_head_alloc(xri->ex));
-		MEM(node = xlat_exp_func_alloc(head, xrf->func, xctx->ex->call.args));
+		MEM(node = xlat_exp_func_alloc(head, xrf->func, xctx->ex->call.args, dict));
 		xlat_exp_insert_tail(head, node);
 
 		if (xlat_validate_function_args(node) < 0) {

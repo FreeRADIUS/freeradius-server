@@ -114,17 +114,24 @@ static xlat_exp_t *xlat_exists_alloc(TALLOC_CTX *ctx, xlat_exp_t *child)
 {
 	xlat_exp_t *node;
 
+	fr_assert(child->type == XLAT_TMPL);
+	fr_assert(tmpl_contains_attr(child->vpt));
+
 	/*
 	 *	Create an "exists" node.
 	 */
 	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, "exists", 6));
+	xlat_exp_set_name_shallow(node, child->vpt->name);
+
 	MEM(node->call.func = xlat_func_find("exists", 6));
 	fr_assert(node->call.func != NULL);
-	node->flags = node->call.func->flags;
 
-	fr_assert(child->type == XLAT_TMPL);
-	fr_assert(tmpl_contains_attr(child->vpt));
-	xlat_exp_set_name_shallow(node, child->vpt->name);
+	/*
+	 *	The attribute may need resolving, in which case we have to set the flag as appropriate.
+	 */
+	node->flags = (xlat_flags_t) { .needs_resolving = tmpl_needs_resolving(child->vpt)};
+
+	if (!node->flags.needs_resolving) node->call.dict = tmpl_attr_tail_da(child->vpt)->dict;
 
 	xlat_func_append_arg(node, child, false);
 
@@ -1796,6 +1803,7 @@ int xlat_register_expressions(void)
 	XLAT_REGISTER_BOOL("exists", xlat_func_exists, xlat_func_exists_arg, FR_TYPE_BOOL);
 	xlat_func_instantiate_set(xlat, xlat_instantiate_exists, xlat_exists_inst_t, NULL, NULL);
 	xlat_func_print_set(xlat, xlat_expr_print_exists);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 
 	if (unlikely((xlat = xlat_func_register(NULL, "rcode", xlat_func_rcode, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, xlat_func_rcode_arg);
@@ -2035,10 +2043,7 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	*out_c = c;
 
 	MEM(unary = xlat_exp_alloc(head, XLAT_FUNC, fr_tokens[func->token], strlen(fr_tokens[func->token])));
-	unary->call.func = func;
-	unary->call.dict = t_rules->attr.dict_def;
-	unary->flags = func->flags;
-	unary->flags.impure_func = !func->flags.pure;
+	xlat_exp_set_func(unary, func, t_rules->attr.dict_def);
 
 	if (tokenize_field(unary->call.args, &node, &our_in, p_rules, t_rules, bracket_rules, out_c, (c == '!')) <= 0) {
 		talloc_free(unary);
@@ -2891,10 +2896,7 @@ redo:
 	 *	Create the function node, with the LHS / RHS arguments.
 	 */
 	MEM(node = xlat_exp_alloc(head, XLAT_FUNC, fr_tokens[op], strlen(fr_tokens[op])));
-	node->call.func = func;
-	node->call.dict = t_rules->attr.dict_def;
-	node->flags = func->flags;
-	node->flags.impure_func = !func->flags.pure;
+	xlat_exp_set_func(node, func, t_rules->attr.dict_def);
 
 	xlat_func_append_arg(node, lhs, logical_ops[op] && cond);
 	xlat_func_append_arg(node, rhs, logical_ops[op] && cond);
