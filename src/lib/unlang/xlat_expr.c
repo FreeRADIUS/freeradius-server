@@ -2048,6 +2048,8 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 
 	MEM(unary = xlat_exp_alloc(head, XLAT_FUNC, fr_tokens[func->token], strlen(fr_tokens[func->token])));
 	xlat_exp_set_func(unary, func, t_rules->attr.dict_def);
+	MEM(unary->call.args = xlat_exp_head_alloc(unary));
+	unary->call.args->is_argv = true;
 
 	if (tokenize_field(unary->call.args, &node, &our_in, p_rules, t_rules, bracket_rules, out_c, (c == '!')) <= 0) {
 		talloc_free(unary);
