@@ -8,7 +8,7 @@ control.IP-Pool.Name := 'test_static_dynamic'
 #
 #  Add a static IP assigned to a calling station not in the request
 #
-%exec(./build/bin/local/rlm_redis_ippool_tool, -A, 192.168.0.10/32, -O, aa:bb:cc:dd:ee:ff, $ENV{REDIS_IPPOOL_TEST_SERVER}:30001, %{control.IP-Pool.Name}, 192.168.0.0)
+%exec('./build/bin/local/rlm_redis_ippool_tool', '-A', '192.168.0.10/32', '-O', 'aa:bb:cc:dd:ee:ff', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
 
 #
 #  Check allocation fails - pool only contains an address assigned to another owner
@@ -23,7 +23,7 @@ if (!notfound) {
 #
 #  Add a dynamic IP addresses
 #
-%exec(./build/bin/local/rlm_redis_ippool_tool, -a, 192.168.0.1/32, $ENV{REDIS_IPPOOL_TEST_SERVER}:30001, %{control.IP-Pool.Name}, 192.168.0.0)
+%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.0.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
 
 #
 #  Check allocation
