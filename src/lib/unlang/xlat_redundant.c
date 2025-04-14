@@ -195,6 +195,20 @@ static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_PUSH_UNLANG;
 }
 
+static void xlat_mark_safe_for(xlat_exp_head_t *head, fr_value_box_safe_for_t safe_for)
+{
+	xlat_exp_foreach(head, node) {
+		if (node->type == XLAT_BOX) {
+			fr_value_box_mark_safe_for(&node->data, safe_for);
+			continue;
+		}
+
+		if (node->type == XLAT_GROUP) {
+			xlat_mark_safe_for(node->group, safe_for);
+		}
+	}
+}
+
 /** Allocate an xlat node to call an xlat function
  *
  * @param[in] ctx	to allocate the new node in.
@@ -246,9 +260,7 @@ static xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t const *func, xlat
 		for (arg_p = node->call.func->args; arg_p->type != FR_TYPE_NULL; arg_p++) {
 		        if (!arg) break;
 
-		        xlat_exp_foreach(arg->group, child) {
-		                if (child->type == XLAT_BOX) fr_value_box_mark_safe_for(&child->data, arg_p->safe_for);
-		        }
+			xlat_mark_safe_for(arg->group, arg_p->safe_for);
 
 		        arg = xlat_exp_next(node->call.args, arg);
 		}
