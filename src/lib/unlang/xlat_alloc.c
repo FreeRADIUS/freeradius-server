@@ -280,6 +280,8 @@ void xlat_exp_set_func(xlat_exp_t *node, xlat_t const *func, fr_dict_t const *di
 	node->call.dict = dict;
 	node->flags = func->flags;
 	node->flags.impure_func = !func->flags.pure;
+
+	if (!dict) node->flags.needs_resolving = true;
 }
 
 void xlat_exp_finalize_func(xlat_exp_t *node)
