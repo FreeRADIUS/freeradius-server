@@ -396,10 +396,10 @@ ssize_t		xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, request_t *request,
 int		xlat_flatten_to_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_exp_head_t *head);
 
 fr_slen_t	xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
-					 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
+					 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules) CC_HINT(nonnull(1,2,3));
 
 fr_slen_t	xlat_tokenize_condition(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
-					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
+					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules) CC_HINT(nonnull(1,2,3));
 
 fr_slen_t 	xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
 				   xlat_t const *xlat, fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,

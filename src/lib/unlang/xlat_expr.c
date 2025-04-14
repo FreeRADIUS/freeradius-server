@@ -1944,11 +1944,15 @@ static const int precedence[T_TOKEN_LAST] = {
 static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 				   fr_token_t prev, fr_sbuff_parse_rules_t const *bracket_rules,
-				   fr_sbuff_parse_rules_t const *input_rules, bool cond);
+				   fr_sbuff_parse_rules_t const *input_rules, bool cond) CC_HINT(nonnull(1,2,3,4,5));
 
 static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-			      fr_sbuff_parse_rules_t const *bracket_rules, char *out_c, bool cond);
+			      fr_sbuff_parse_rules_t const *bracket_rules, char *out_c, bool cond) CC_HINT(nonnull(1,2,3,4,5));
+
+static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
+				fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
+				fr_sbuff_parse_rules_t const *bracket_rules, char *out_c, bool cond) CC_HINT(nonnull(1,2,3,4,5));
 
 static fr_table_num_sorted_t const expr_quote_table[] = {
 	{ L("\""),	T_DOUBLE_QUOTED_STRING	},	/* Don't re-order, backslash throws off ordering */
