@@ -74,15 +74,15 @@ python {
 	#  config { ... }::
 	#
 	#  You can define configuration items (and nested sub-sections) in python `config { ... }`
-	#  section. These items will be accessible in the Python script through `radiusd.config`
+	#  section. These items will be accessible in the Python script through `freeradius.config`
 	#  dict for instance:
 	#
 	#  e.g:
 	#
 	#  [source,python]
 	#  ----
-	#  radiusd.config['name']
-	#  radiusd.config['sub-config']['name']
+	#  freeradius.config['name']
+	#  freeradius.config['sub-config']['name']
 	#  ----
 	#
 #	config {
