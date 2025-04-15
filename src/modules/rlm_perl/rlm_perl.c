@@ -340,25 +340,25 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 	case SVt_IV:
 	/*	Integer or Reference */
 		if (SvROK(sv)) {
-			DEBUG3("Reference returned");
+			RDEBUG3("Reference returned");
 			if (perl_sv_to_vblist(ctx, list, request, SvRV(sv)) < 0) return -1;
 			break;
 		}
-		DEBUG3("Integer returned");
+		RDEBUG3("Integer returned");
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_INT32, NULL));
 		vb->vb_int32 = SvIV(sv);
 		break;
 
 	case SVt_NV:
 	/*	Float */
-		DEBUG3("Float returned");
+		RDEBUG3("Float returned");
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_FLOAT64, NULL));
 		vb->vb_float64 = SvNV(sv);
 		break;
 
 	case SVt_PV:
 	/*	String */
-		DEBUG3("String returned");
+		RDEBUG3("String returned");
 		tmp = SvPVutf8(sv, len);
 		MEM(vb = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_bstrndup(vb, vb, NULL, tmp, len, SvTAINTED(sv)) < 0) {
@@ -372,7 +372,7 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 	/*	Array */
 	{
 		SV	**av_sv;
-		DEBUG3("Array returned");
+		RDEBUG3("Array returned");
 		av = (AV*)sv;
 		sv_len = av_len(av);
 		for (i = 0; i <= sv_len; i++) {
@@ -388,7 +388,7 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 	/*	Hash */
 	{
 		SV	*hv_sv;
-		DEBUG3("Hash returned");
+		RDEBUG3("Hash returned");
 		hv = (HV*)sv;
 		for (i = hv_iterinit(hv); i > 0; i--) {
 			hv_sv = hv_iternextsv(hv, &tmp, &sv_len);
@@ -466,23 +466,52 @@ static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	{
+		ssize_t slen;
+		fr_sbuff_t *sbuff;
+
 		dSP;
 		ENTER;SAVETMPS;
 
 		PUSHMARK(SP);
 
+		FR_SBUFF_TALLOC_THREAD_LOCAL(&sbuff, 256, 16384);
+
 		fr_value_box_list_foreach(in, arg) {
+
 			fr_assert(arg->type == FR_TYPE_GROUP);
 			if (fr_value_box_list_empty(&arg->vb_group)) continue;
 
 			if (fr_value_box_list_num_elements(&arg->vb_group) == 1) {
 				child = fr_value_box_list_head(&arg->vb_group);
-				/*
-				 *	Single child value - add as scalar
-				 */
-				if (child->vb_length == 0) continue;
-				DEBUG3("Passing single value %pV", child);
-				sv = newSVpvn(child->vb_strvalue, child->vb_length);
+
+				switch (child->type) {
+				case FR_TYPE_STRING:
+					if (child->vb_length == 0) continue;
+
+					RDEBUG3("Passing single value %pV", child);
+					sv = newSVpvn(child->vb_strvalue, child->vb_length);
+					break;
+
+				case FR_TYPE_GROUP:
+					RDEBUG3("Ignoring nested group");
+					continue;
+
+				default:
+					/*
+					 *	@todo - turn over integers as strings.
+					 */
+					slen = fr_value_box_print(sbuff, child, NULL);
+					if (slen <= 0) {
+						RPEDEBUG("Failed printing sbuff");
+						continue;
+					}
+
+					RDEBUG3("Passing single value %pV", child);
+					sv = newSVpvn(fr_sbuff_start(sbuff), fr_sbuff_used(sbuff));
+					fr_sbuff_set_to_start(sbuff);
+					break;
+				}
+
 				if (child->tainted) SvTAINT(sv);
 				XPUSHs(sv_2mortal(sv));
 				continue;
@@ -493,7 +522,7 @@ static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			 */
 			av = newAV();
 			perl_vblist_to_av(av, &arg->vb_group);
-			DEBUG3("Passing list as array %pM", &arg->vb_group);
+			RDEBUG3("Passing list as array %pM", &arg->vb_group);
 			sv = newRV_inc((SV *)av);
 			XPUSHs(sv_2mortal(sv));
 		}
