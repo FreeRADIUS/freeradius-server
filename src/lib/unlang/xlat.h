@@ -145,6 +145,7 @@ typedef struct {
 	bool				required;	//!< Argument must be present, and non-empty.
 	bool				concat;		//!< Concat boxes together.
 	bool				single;		//!< Argument must only contain a single box
+	bool				will_escape;	//!< the function will do escaping and concatenation.
 	xlat_arg_parser_variadic_t	variadic;	//!< All additional boxes should be processed
 							///< using this definition.
 	bool				always_escape;	//!< Pass all arguments to escape function not just

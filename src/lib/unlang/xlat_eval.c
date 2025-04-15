@@ -297,6 +297,8 @@ static int xlat_arg_stringify(request_t *request, xlat_arg_parser_t const *arg, 
 			fr_value_box_init(vb, FR_TYPE_STRING, NULL, false);
 			fr_value_box_strdup(vb, vb, NULL, "", false);
 			vb->entry = entry;
+
+			fr_value_box_mark_safe_for(vb, arg->safe_for);
 			return 0;
 		}
 
@@ -307,6 +309,7 @@ static int xlat_arg_stringify(request_t *request, xlat_arg_parser_t const *arg, 
 			return -1;
 		}
 
+		fr_value_box_mark_safe_for(vb, arg->safe_for);
 		return 0;
 	}
 
@@ -341,7 +344,15 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 	fr_type_t type;
 
 	/*
-	 *	Now that we've escaped all of the input, see if we have to concatenate the results.
+	 *	The function does it's own escaping and concatenation.
+	 */
+	if (arg->will_escape) {
+		fr_assert(arg->type == FR_TYPE_STRING);
+		return XLAT_ACTION_DONE;
+	}
+
+	/*
+	 *	See if we have to concatenate multiple value-boxes into one output string / whatever.
 	 *
 	 *	If the input xlat is more complicated expression, it's going to be a function, e.g.
 	 *
