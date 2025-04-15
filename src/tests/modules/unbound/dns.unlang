@@ -57,7 +57,7 @@ if (Module-Failure-Message != "Can't resolve zero length host") {
 
 # Will return multiple records, though not in a defined sequence.
 # Each returned record is a pair of priority and host values.
-Filter-Id := %dns(example.com, 'MX')
+Filter-Id := %dns('example.com', 'MX')
 
 if !(((Filter-Id[0] == '10') && (Filter-Id[1] == 'mail.example.com') && (Filter-Id[2] == '20') && (Filter-Id[3] == 'mail2.example.com')) || ((Filter-Id[2] == '10') && (Filter-Id[3] == 'mail.example.com') && (Filter-Id[0] == '20') && (Filter-Id[1] == 'mail2.example.com'))) {
 	test_fail
@@ -65,7 +65,7 @@ if !(((Filter-Id[0] == '10') && (Filter-Id[1] == 'mail.example.com') && (Filter-
 
 # Just return a single record
 # As results are not in a specified order, it could be either.
-Filter-Id := %dns(example.com,MX,1)
+Filter-Id := %dns('example.com' ,'MX', 1)
 
 if !(((Filter-Id[0] == '10') && (Filter-Id[1] == 'mail.example.com')) || ((Filter-Id[0] == '20') && (Filter-Id[1] == 'mail2.example.com'))) {
 	test_fail
