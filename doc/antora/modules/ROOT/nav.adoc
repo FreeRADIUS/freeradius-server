@@ -13,6 +13,7 @@
 *** xref:trouble-shooting/client.adoc[Client Configuration]
 *** xref:trouble-shooting/connect_nas.adoc[Connectivity]
 *** xref:trouble-shooting/datastore.adoc[Datastores]
+** xref:customersupporttesting/testing1.adoc[Customer Support Testing]
 
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
