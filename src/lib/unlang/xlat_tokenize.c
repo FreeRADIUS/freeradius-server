@@ -229,7 +229,7 @@ static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t
 	 *	place.  Instead, it just passes the strings though to xlat_process_arg_list().  Which calls
 	 *	xlat_arg_stringify(), and that does the escaping and final concatenation.
 	 */
-	arg->group->is_argv = (arg_p->func != NULL);
+	arg->group->is_argv = (arg_p->func != NULL) | arg_p->will_escape;
 
 	/*
 	 *	The caller doesn't care about the type, we don't do any validation.
