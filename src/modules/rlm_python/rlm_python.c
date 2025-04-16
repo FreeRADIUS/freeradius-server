@@ -297,6 +297,32 @@ static rlm_python_t const *rlm_python_get_inst(void)
 	return p_state->inst;
 }
 
+/** Return the request associated with the current thread state
+ *
+ */
+static request_t *rlm_python_get_request(void)
+{
+	py_freeradius_state_t const *p_state;
+
+	p_state = rlm_python_state_obj();
+	if (unlikely(!p_state)) return NULL;
+
+	return p_state->request;
+}
+
+/** Set the request associated with the current thread state
+ *
+ */
+static void rlm_python_set_request(request_t *request)
+{
+	py_freeradius_state_t *p_state;
+
+	p_state = rlm_python_state_obj();
+	if (unlikely(!p_state)) return;
+
+	p_state->request = request;
+}
+
 /** Allow fr_log to be called from python
  *
  */
