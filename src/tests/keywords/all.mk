@@ -85,12 +85,6 @@ ifeq "${1}" "xlat-dhcpv4"
 $(OUTPUT)/${1}: $(BUILD_DIR)/lib/local/libfreeradius-dhcpv4.la $(BUILD_DIR)/lib/libfreeradius-dhcpv4.la
 endif
 endif
-
-#
-#  Use the new parser for things
-#
-$(OUTPUT)/${1}: NEW_COND += -S xlat_func_bare_words=no
-
 endef
 $(foreach x,$(FILES),$(eval $(call KEYWORD_TEST,$x)))
 
