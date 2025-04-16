@@ -485,6 +485,41 @@ static PyObject *py_freeradius_log(UNUSED PyObject *self, PyObject *args, PyObje
 	Py_RETURN_NONE;
 }
 
+/** Returns a specific instance of freeradius.Pair
+ *
+ * Called when a numeric index is used on a PairGroup or PairValue as part of an object getter
+ */
+static PyObject *py_freeradius_attribute_instance(PyObject *self, PyObject *attr)
+{
+	long			index;
+	py_freeradius_pair_t	*pair, *init_pair = (py_freeradius_pair_t *)self;
+
+	if (!PyLong_CheckExact(attr)) Py_RETURN_NONE;
+	index = PyLong_AsLong(attr);
+
+	if (index < 0) {
+		PyErr_SetString(PyExc_AttributeError, "Cannot use negative attribute instance values");
+		return NULL;
+	}
+	if (index == 0) return self;
+
+	if (fr_type_is_leaf(init_pair->da->type)) {
+		pair = PyObject_New(py_freeradius_pair_t, (PyTypeObject *)&py_freeradius_value_pair_def);
+	} else {
+		pair = PyObject_New(py_freeradius_pair_t, (PyTypeObject *)&py_freeradius_grouping_pair_def);
+	}
+	if (!pair) {
+		PyErr_SetString(PyExc_MemoryError, "Failed to allocate PyObject");
+		return NULL;
+	};
+	pair->parent = init_pair->parent;
+	Py_INCREF(init_pair->parent);
+	pair->da = init_pair->da;
+	pair->idx = index;
+	if (init_pair->vp) pair->vp = fr_pair_find_by_da_idx(fr_pair_parent_list(init_pair->vp), pair->da, (unsigned int)index);
+	return (PyObject *)pair;
+}
+
 /** Returns a freeradius.Pair
  *
  * Called when pair["attr"] or pair["attr"][n] is accessed.
