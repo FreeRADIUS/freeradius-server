@@ -230,6 +230,38 @@ static struct {
 /*
  *	radiusd Python functions
  */
+/** Return the module instance object associated with the thread state or interpreter state
+ *
+ */
+static inline CC_HINT(always_inline) py_freeradius_state_t *rlm_python_state_obj(void)
+{
+	PyObject *dict;
+
+	dict = PyThreadState_GetDict();	/* If this is NULL, we're dealing with the main interpreter */
+	if (!dict) {
+		PyObject *module;
+
+		module = PyState_FindModule(&py_freeradius_def);
+		if (unlikely(!module)) return NULL;
+
+		dict = PyModule_GetDict(module);
+		if (unlikely(!dict)) return NULL;
+	}
+
+	return (py_freeradius_state_t *)PyDict_GetItemString(dict, "__State");
+}
+
+/** Return the rlm_python instance associated with the current interpreter
+ *
+ */
+static rlm_python_t const *rlm_python_get_inst(void)
+{
+	py_freeradius_state_t const *p_state;
+
+	p_state = rlm_python_state_obj();
+	if (unlikely(!p_state)) return NULL;
+	return p_state->inst;
+}
 
 /** Allow fr_log to be called from python
  *
