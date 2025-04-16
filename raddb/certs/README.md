@@ -194,7 +194,7 @@ number, i.e. the actual EAP-TLS performance may be half of the
 number printed here.
 
 The reason is that EAP requires many round-trip packets, whereas
-`openssl speed rsa2028` only does RSA calculations, and nothing else.
+`openssl speed rsa2048` only does RSA calculations, and nothing else.
 
 
 ## Compatibility
