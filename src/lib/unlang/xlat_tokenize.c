@@ -250,25 +250,23 @@ static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t
 	}
 
 	/*
-	 *	@todo - if arg->group->flags.constant AND there is more than one child, then concat in place,
-	 *	etc.
+	 *	The argument is either ONE tmpl / value-box, OR is an
+	 *	xlat group which contains a double-quoted string.
 	 */
+	fr_assert(fr_dlist_num_elements(&arg->group->dlist) == 1);
 
 	/*
 	 *	Do at least somewhat of a pass of normalizing the nodes, even if there are more than one.
 	 */
-	xlat_exp_foreach(arg->group, child) {
-		if (child->type != XLAT_TMPL) continue;
-
-		if (xlat_tmpl_normalize(child) < 0) return -1;
+	if (node->type == XLAT_TMPL) {
+		return xlat_tmpl_normalize(node);
 	}
 
 	/*
-	 *	@todo - These checks are relatively basic.  We should do better checks, such as if the
-	 *	expected type is not string/octets, and the passed arguments are multiple things, then die?
-	 *
-	 *	If the node is pure, then we should arguably try to purify it now.
+	 *	@todo - probably move the double-quoted string "node->flags.constant" check here, to more
+	 *	clearly separate parsing from normalization.
 	 */
+
 	if (node->type != XLAT_BOX) {
 		return 0;
 	}
@@ -1326,9 +1324,7 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 	ssize_t		slen;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_exp_t	*node;
-#ifdef HAVE_REGEX
-	fr_sbuff_marker_t m_exp;
-#endif
+	fr_sbuff_marker_t m;
 
 	/*
 	 *	Triple-quoted strings have different terminal conditions.
@@ -1346,7 +1342,7 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 
 	case T_BARE_WORD:
 #ifdef HAVE_REGEX
-		fr_sbuff_marker(&m_exp, &our_in);
+		fr_sbuff_marker(&m, &our_in);
 
 		/*
 		 *	Regular expression expansions are %{...}
@@ -1362,7 +1358,7 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 
 			if (ret == 1) goto done;
 
-			fr_sbuff_set(&our_in, &m_exp);
+			fr_sbuff_set(&our_in, &m);
 		}
 #endif /* HAVE_REGEX */
 
@@ -1455,12 +1451,14 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 		MEM(node = xlat_exp_alloc(ctx, XLAT_GROUP, NULL, 0));
 		node->quote = quote;
 
+		fr_sbuff_marker(&m, &our_in);
 		XLAT_DEBUG("ARGV double quotes <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
 
 		if (xlat_tokenize_input(node->group, &our_in, p_rules, t_rules) < 0) goto error;
 
 		node->flags = node->group->flags;
 		node->hoist = true;
+		xlat_exp_set_name(node, fr_sbuff_current(&m), fr_sbuff_behind(&m));
 
 		/*
 		 *	There's no expansion in the string.  Hoist the value-box.
@@ -1476,6 +1474,7 @@ fr_slen_t xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, 
 				xlat_exp_set_type(node, XLAT_BOX);
 
 				fr_value_box_init(&node->data, FR_TYPE_STRING, NULL, false);
+				fr_value_box_strdup(node, &node->data, NULL, "", false);
 
 			} else {
 				fr_assert(fr_dlist_num_elements(&node->group->dlist) == 1);
@@ -1650,6 +1649,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		node->quote = quote;
 
 		if ((quote == T_BARE_WORD) && (spaces || xlat_func_bare_words)) {
+
 			/*
 			 *	Spaces - each argument is a bare word all by itself, OR an xlat thing all by itself.
 			 *
@@ -1677,20 +1677,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 
 			slen = xlat_tokenize_word(node->group, &child, &our_in, quote, our_p_rules, &arg_t_rules);
 			if ((slen > 0) && child) {
-				if (child->type != XLAT_GROUP) {
-					xlat_exp_insert_tail(node->group, child);
-				} else {
-					xlat_exp_head_t *child_head = child->group;
-
-					/*
-					 *	Hoist the child, so we don't have groups of groups.
-					 *
-					 *	@todo - this is perhaps wrong?
-					 */
-					(void) talloc_steal(node, child_head);
-					talloc_free(node->group);
-					node->group = child_head;
-				}
+				xlat_exp_insert_tail(node->group, child);
 			}
 		}
 
@@ -1724,6 +1711,8 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			goto error;
 		}
 
+		if (!node->fmt) xlat_exp_set_name(node, fr_sbuff_current(&m), fr_sbuff_behind(&m));
+
 		/*
 		 *	Ensure that the function args are correct.
 		 */
@@ -1731,8 +1720,6 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			fr_sbuff_set(&our_in, &m);
 			goto error;
 		}
-
-		if (!node->fmt) xlat_exp_set_name(node, fr_sbuff_current(&m), fr_sbuff_behind(&m));
 
 		xlat_exp_insert_tail(head, node);
 
