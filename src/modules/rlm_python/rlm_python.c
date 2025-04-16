@@ -761,6 +761,112 @@ del:
 	return 0;
 }
 
+/** Return a native Python object of the appropriate type for leaf pair objects
+ *
+ * Accessed as `request['attr'].value`
+ *
+ * `self` is the Python leaf pair object
+ */
+static PyObject *py_freeradius_pair_getvalue(PyObject *self, UNUSED void *closure)
+{
+	py_freeradius_pair_t	*own_self = (py_freeradius_pair_t *)self;
+	PyObject		*value = NULL;
+	fr_pair_t		*vp = own_self->vp;
+
+	if (!vp) Py_RETURN_NONE;
+
+	switch(vp->vp_type) {
+	case FR_TYPE_STRING:
+		value = PyUnicode_FromStringAndSize(vp->vp_strvalue, vp->vp_length);
+		break;
+
+	case FR_TYPE_OCTETS:
+		value = PyBytes_FromStringAndSize((char const *)vp->vp_octets, vp->vp_length);
+		break;
+
+	case FR_TYPE_BOOL:
+		value = PyBool_FromLong(vp->vp_bool);
+		break;
+
+	case FR_TYPE_UINT8:
+		value = PyLong_FromUnsignedLong(vp->vp_uint8);
+		break;
+
+	case FR_TYPE_UINT16:
+		value = PyLong_FromUnsignedLong(vp->vp_uint16);
+		break;
+
+	case FR_TYPE_UINT32:
+		value = PyLong_FromUnsignedLong(vp->vp_uint32);
+		break;
+
+	case FR_TYPE_UINT64:
+		value = PyLong_FromUnsignedLongLong(vp->vp_uint64);
+		break;
+
+	case FR_TYPE_INT8:
+		value = PyLong_FromLong(vp->vp_int8);
+		break;
+
+	case FR_TYPE_INT16:
+		value = PyLong_FromLong(vp->vp_int16);
+		break;
+
+	case FR_TYPE_INT32:
+		value = PyLong_FromLong(vp->vp_int32);
+		break;
+
+	case FR_TYPE_INT64:
+		value = PyLong_FromLongLong(vp->vp_int64);
+		break;
+
+	case FR_TYPE_FLOAT32:
+		value = PyFloat_FromDouble((double) vp->vp_float32);
+		break;
+
+	case FR_TYPE_FLOAT64:
+		value = PyFloat_FromDouble(vp->vp_float64);
+		break;
+
+	case FR_TYPE_SIZE:
+		value = PyLong_FromSize_t(vp->vp_size);
+		break;
+
+	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_DATE:
+	case FR_TYPE_IFID:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_ETHERNET:
+	{
+		ssize_t slen;
+		char buffer[1024];
+
+		slen = fr_value_box_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), &vp->data, NULL);
+		if (slen < 0) {
+		error:
+			PyErr_Format(PyExc_MemoryError, "Failed marshalling %s to Python value", vp->da->name);
+			return NULL;
+		}
+		value = PyUnicode_FromStringAndSize(buffer, (size_t)slen);
+	}
+		break;
+
+	case FR_TYPE_NON_LEAF:
+		fr_assert(0);
+		break;
+	}
+
+	if (value == NULL) goto error;
+
+	Py_INCREF(value);
+	return value;
+}
+
 /** Print out the current error
  *
  * Must be called with a valid thread state set
