@@ -167,6 +167,57 @@ static int fr_bio_fd_common_udp(int fd, fr_socket_t const *sock, fr_bio_fd_confi
 	}
 #endif
 
+	/*
+	 *	IPv4 fragments packets.  IPv6 does not.
+	 *
+	 *	Many systems set the "don't fragment" bit by default for IPv4.  This setting means that "too
+	 *	large" packets are silently discarded in the network.
+	 *
+	 *	Many local networks support UDP fragmentation, so we just send packets and hope for the best.
+	 *	In order to support local networks, we disable the "don't fragment" bit.
+	 *
+	 *	The wider Internet does not support UDP fragmentation.  This means that fragmented packets are
+	 *	silently discarded.
+	 *
+	 *	@todo - the correct way to handle this is to have a configuration flag which controls whether
+	 *	or not the "DF" bit is cleared.  The documentation can make it clear that this only works on
+	 *	local networks, AND only on connected datagrams.  The default should be to clear the DF bit.
+	 *
+	 *	We then need to update the UDP reading code to handle EMSGSIZE as a non-fatal error.  Since
+	 *	IPv6 will _always_ do PMTU discovery, we definitely need to handle this situation there.  So
+	 *	we might as well handle it for IPv4, too.
+	 */
+	if (sock->af == AF_INET) {
+#if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
+		/*
+		 *	Disable PMTU discovery.  On Linux, this also makes sure that the "don't
+		 *	fragment" flag is zero.
+		 */
+		{
+			int flag = IP_PMTUDISC_DONT;
+
+			if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &flag, sizeof(flag)) < 0) {
+				fr_strerror_printf("Failed setting IP_MTU_DISCOVER: %s", fr_syserror(errno));
+				return -1;
+			}
+		}
+#endif
+
+#if defined(IP_DONTFRAG)
+		/*
+		 *	Ensure that the "don't fragment" flag is zero.
+		 */
+		{
+			int off = 0;
+
+			if (setsockopt(fd, IPPROTO_IP, IP_DONTFRAG, &off, sizeof(off)) < 0) {
+				fr_strerror_printf("Failed setting IP_DONTFRAG: %s", fr_syserror(errno));
+				return -1;
+			}
+		}
+#endif
+	}
+
 	return fr_bio_fd_common_datagram(fd, sock, cfg);
 }
 
@@ -190,33 +241,6 @@ static int fr_bio_fd_server_tcp(int fd, UNUSED fr_socket_t const *sock)
  */
 static int fr_bio_fd_server_ipv4(int fd, fr_socket_t const *sock, fr_bio_fd_config_t const *cfg)
 {
-	int flag;
-
-#if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
-	/*
-	 *	Disable PMTU discovery.  On Linux, this also makes sure that the "don't
-	 *	fragment" flag is zero.
-	 */
-	flag = IP_PMTUDISC_DONT;
-
-	if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &flag, sizeof(flag)) < 0) {
-		fr_strerror_printf("Failed setting IP_MTU_DISCOVER: %s", fr_syserror(errno));
-		return -1;
-	}
-#endif
-
-#if defined(IP_DONTFRAG)
-	/*
-	 *	Ensure that the "don't fragment" flag is zero.
-	 */
-	flag = 0;
-
-	if (setsockopt(fd, IPPROTO_IP, IP_DONTFRAG, &flag, sizeof(flag)) < 0) {
-		fr_strerror_printf("Failed setting IP_DONTFRAG: %s", fr_syserror(errno));
-		return -1;
-	}
-#endif
-
 	/*
 	 *	And set up any UDP / TCP specific information.
 	 */

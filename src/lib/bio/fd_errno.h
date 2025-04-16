@@ -46,6 +46,16 @@ case EPIPE:
 	fr_bio_eof(&my->bio);
 	return 0;
 
+#ifdef FR_FD_BIO_EMSGSIZE
+	/*
+	 *	PMTU has been exceeded.  Return a generic IO error.
+	 *
+	 *	@todo - do this only for connected UDP sockets.
+	 */
+	case EMSGSIZE:
+		return fr_bio_error(IO);
+#endif
+
 default:
 	/*
 	 *	Some other error, it's fatal.
