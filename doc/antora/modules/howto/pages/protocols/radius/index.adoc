@@ -1,0 +1,6 @@
+= RADIUS Howto
+
+We have some pages here:
+
+* xref:protocols/radius/proxy_config.adoc[Proxy Configuration]
+* xref:protocols/radius/proxy_extensions.adoc[Proxy Extensions]

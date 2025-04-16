@@ -123,6 +123,6 @@ with the Traefik configuration or that FreeRADIUS is not accepting connection
 from the `traefik` host, which must be solved before continuing.
 
 Once proxied connections are working we are ready to
-xref:protocols/proxy/enable_proxy_protocol.adoc[enable the PROXY Protocol] on
+xref:protocols/radius/enable_proxy_protocol.adoc[enable the PROXY Protocol] on
 both Traefik and the RadSec server.
 

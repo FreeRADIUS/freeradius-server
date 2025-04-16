@@ -176,6 +176,6 @@ Do not proceed with any further steps until direct connections between the
 RadSec client and Radsec Server are working properly.
 
 Once things are working we are ready to
-xref:protocols/proxy/radsec_with_haproxy.adoc[configure HAproxy to proxy RadSec
-connections] or to xref:protocols/proxy/radsec_with_traefik.adoc[configure
+xref:protocols/radius/radsec_with_haproxy.adoc[configure HAproxy to proxy RadSec
+connections] or to xref:protocols/radius/radsec_with_traefik.adoc[configure
 Traefik to proxy RadSec connections].

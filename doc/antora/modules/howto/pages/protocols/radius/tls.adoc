@@ -119,8 +119,8 @@ distraction if used for by guide.
 
 This guide is organised into four parts that should be read in order:
 
-1. xref:protocols/proxy/enable_radsec.adoc[Enabling RadSec]
-2. xref:protocols/proxy/radsec_client.adoc[Configuring a test RadSec client]
-3. xref:protocols/proxy/radsec_with_haproxy.adoc[Proxying RadSec with HAproxy]
-4. xref:protocols/proxy/radsec_with_traefik.adoc[Proxying RadSec with Traefik]
-5. xref:protocols/proxy/enable_proxy_protocol.adoc[Enabling PROXY Protocol for RadSec]
+1. xref:protocols/radius/enable_radsec.adoc[Enabling RadSec]
+2. xref:protocols/radius/radsec_client.adoc[Configuring a test RadSec client]
+3. xref:protocols/radius/radsec_with_haproxy.adoc[Proxying RadSec with HAproxy]
+4. xref:protocols/radius/radsec_with_traefik.adoc[Proxying RadSec with Traefik]
+5. xref:protocols/radius/enable_proxy_protocol.adoc[Enabling PROXY Protocol for RadSec]

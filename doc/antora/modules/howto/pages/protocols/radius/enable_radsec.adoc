@@ -183,6 +183,6 @@ See [how to read the debug
 output](http://wiki.freeradius.org/radiusd-X) for instructions on
 reading amd understanding the debug output.
 
-The next step is to xref:protocols/proxy/radsec_client.adoc[configure
+The next step is to xref:protocols/radius/radsec_client.adoc[configure
 FreeRADIUS as a RadSec test client] so that we can verify that our
 RadSec server is working.
