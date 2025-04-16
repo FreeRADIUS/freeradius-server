@@ -88,7 +88,8 @@ typedef struct {
  * thread must have a PyThreadState per interpreter, to track execution.
  */
 typedef struct {
-	PyThreadState	*state;			//!< Module instance/thread specific state.
+	rlm_python_t const	*inst;		//!< Current module instance data.
+	PyThreadState		*state;		//!< Module instance/thread specific state.
 } rlm_python_thread_t;
 
 /** Additional fields for pairs
@@ -127,6 +128,7 @@ static PyThreadState		*global_interpreter;	//!< Our first interpreter.
 
 static rlm_python_t const	*current_inst = NULL;	//!< Used for communication with inittab functions.
 static CONF_SECTION		*current_conf;		//!< Used for communication with inittab functions.
+static rlm_python_thread_t	*current_t;		//!< Used for communicating with object init function.
 
 static PyObject *py_freeradius_log(UNUSED PyObject *self, PyObject *args, PyObject *kwds);
 
@@ -475,6 +477,19 @@ static PyObject *py_freeradius_log(UNUSED PyObject *self, PyObject *args, PyObje
 	fr_log(&default_log, type, __FILE__, __LINE__, "rlm_python (%s) - %s", inst->name, msg);
 
 	Py_RETURN_NONE;
+}
+
+static int py_freeradius_state_init(PyObject *self, UNUSED PyObject *args, UNUSED PyObject *kwds)
+{
+	py_freeradius_state_t	*our_self = (py_freeradius_state_t *)self;
+	rlm_python_t const	*inst;
+
+	fr_assert(current_inst);
+	our_self->t = current_t ? talloc_get_type_abort(current_t, rlm_python_thread_t) : NULL;	/*  May be NULL if this is the first interpreter */
+	our_self->inst = inst = current_t ? current_t->inst : current_inst;
+	DEBUG3("Populating __State data with %p/%p", our_self->inst, our_self->t);
+
+	return 0;
 }
 
 /** Returns a specific instance of freeradius.Pair
@@ -1887,18 +1902,52 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	PyThreadState		*state;
 	rlm_python_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
 	rlm_python_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_python_thread_t);
 
-	state = PyThreadState_New(inst->interpreter->interp);
-	if (!state) {
+	PyThreadState		*t_state;
+	PyObject		*t_dict;
+	PyObject		*p_state;
+
+	current_t = t;
+
+	t->inst = inst;
+	t_state = PyThreadState_New(inst->interpreter->interp);
+	if (!t_state) {
 		ERROR("Failed initialising local PyThreadState");
 		return -1;
 	}
 
-	DEBUG3("Initialised new thread state %p", state);
-	t->state = state;
+	PyEval_RestoreThread(t_state);	/* Switches thread state and locks GIL */
+	t_dict = PyThreadState_GetDict();
+	if (unlikely(!t_dict)) {
+		ERROR("Failed getting PyThreadState dictionary");
+	error:
+		PyEval_SaveThread();			/* Unlock GIL */
+		PyThreadState_Delete(t_state);
+
+		return -1;
+	}
+
+	/*
+	 *	Instantiate a new instance object which captures
+	 *	the global and thread instances, and associates
+	 *	them with the thread.
+	 */
+	p_state = PyObject_CallObject((PyObject *)&py_freeradius_state_def, NULL);
+	if (unlikely(!p_state)) {
+		ERROR("Failed instantiating module instance information object");
+		goto error;
+	}
+
+	if (unlikely(PyDict_SetItemString(t_dict, "__State", p_state) < 0)) {
+		ERROR("Failed setting module instance information in thread dict");
+		goto error;
+	}
+
+	DEBUG3("Initialised PyThreadState %p", t_state);
+	t->state = t_state;
+	PyEval_SaveThread();				/* Unlock GIL */
 
 	return 0;
 }
