@@ -109,6 +109,18 @@ typedef struct {
 	PyObject		*state;		//!< Session state list.
 } py_freeradius_request_t;
 
+/** Wrapper around a python instance
+ *
+ * This is added to the FreeRADIUS module to allow us to
+ * get at the global and thread local instance data.
+ */
+typedef struct {
+	PyObject_HEAD				//!< Common fields needed for every python object.
+	rlm_python_t const	*inst;		//!< Module instance.
+	rlm_python_thread_t	*t;		//!< Thread-specific python instance.
+	request_t		*request;	//!< Current request.
+} py_freeradius_state_t;
+
 static void			*python_dlhandle;
 static PyThreadState		*global_interpreter;	//!< Our first interpreter.
 
