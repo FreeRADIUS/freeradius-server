@@ -1573,7 +1573,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 	}
 	arg_t_rules = *t_rules;
 
-	if (spaces) {
+	if (unlikely(spaces)) {
 		fr_assert(p_rules != &xlat_function_arg_rules);
 		if (p_rules) {	/* only for tmpl_tokenize, and back-ticks */
 			fr_assert(p_rules->terminals);
@@ -1628,32 +1628,12 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 
 		arg_t_rules.literals_safe_for = arg->safe_for;
 
-		/*
-		 *	Whitespace isn't significant for comma-separated argvs
-		 */
-		if (!spaces) fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
-
+		fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 		fr_sbuff_set(&m, &our_in);	/* Record start of argument */
 
-		if (!spaces) {
-			quote = T_BARE_WORD;
-		} else {
-			fr_sbuff_out_by_longest_prefix(&slen, &quote, xlat_quote_table, &our_in, T_BARE_WORD);
-		}
+		MEM(node = xlat_exp_alloc(ctx, XLAT_GROUP, NULL, 0)); /* quote = T_BARE_WORD */
 
-		MEM(node = xlat_exp_alloc(ctx, XLAT_GROUP, NULL, 0));
-		node->quote = quote;
-
-		if ((quote == T_BARE_WORD) && spaces) {
-
-			/*
-			 *	Spaces - each argument is a bare word all by itself, OR an xlat thing all by itself.
-			 *
-			 *	No spaces - each arugment is an expression, which can have embedded spaces.
-			 */
-			slen = xlat_tokenize_input(node->group, &our_in, our_p_rules, &arg_t_rules);
-
-		} else if (quote == T_BARE_WORD) {
+		if (likely(!spaces)) {
 			/*
 			 *	We've reached the end of the arguments, don't try to tokenize anything else.
 			 */
@@ -1667,13 +1647,26 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 				 */
 				slen = xlat_tokenize_expression(node, &node->group, &our_in, our_p_rules, &arg_t_rules);
 			}
-
 		} else {
-			xlat_exp_t *child = NULL;
+			fr_sbuff_out_by_longest_prefix(&slen, &quote, xlat_quote_table, &our_in, T_BARE_WORD);
 
-			slen = xlat_tokenize_word(node->group, &child, &our_in, quote, our_p_rules, &arg_t_rules);
-			if ((slen > 0) && child) {
-				xlat_exp_insert_tail(node->group, child);
+			node->quote = quote;
+
+			if (quote == T_BARE_WORD) {
+				/*
+				 *	Each argument is a bare word all by itself, OR an xlat thing all by itself.
+				 */
+				slen = xlat_tokenize_input(node->group, &our_in, our_p_rules, &arg_t_rules);
+
+			} else {
+				xlat_exp_t *child = NULL;
+
+				slen = xlat_tokenize_word(node->group, &child, &our_in, quote, our_p_rules, &arg_t_rules);
+				if (child) {
+					fr_assert(slen > 0);
+
+					xlat_exp_insert_tail(node->group, child);
+				}
 			}
 		}
 
