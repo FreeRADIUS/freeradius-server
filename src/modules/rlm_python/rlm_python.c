@@ -1026,6 +1026,48 @@ static int py_freeradius_pair_setvalue(PyObject *self, PyObject *value, UNUSED v
 	return 0;
 }
 
+/** Return the string representation of a leaf pair node
+ *
+ * Called when the attribute is accessed in print() or str() or selective other
+ * magical Python contexts.
+ */
+static PyObject *py_freeradius_pair_str(PyObject *self) {
+	py_freeradius_pair_t	*own_self = (py_freeradius_pair_t *)self;
+	PyObject		*value = NULL;
+	fr_pair_t		*vp = own_self->vp;
+
+	if (!vp) return PyObject_Str(Py_None);
+
+	switch(vp->vp_type) {
+	case FR_TYPE_STRING:
+		value = PyUnicode_FromStringAndSize(vp->vp_strvalue, vp->vp_length);
+		break;
+
+	case FR_TYPE_NON_LEAF:
+		fr_assert(0);
+		break;
+
+	default:
+	{
+		ssize_t		slen;
+		char		buffer[1024];
+
+		slen = fr_value_box_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), &vp->data, NULL);
+		if (slen < 0) {
+		error:
+			PyErr_Format(PyExc_MemoryError, "Failed casting %s to Python string", vp->da->name);
+			return NULL;
+		}
+		value = PyUnicode_FromStringAndSize(buffer, (size_t)slen);
+	}
+		break;
+	}
+
+	if (value == NULL) goto error;
+
+	return value;
+}
+
 /** Print out the current error
  *
  * Must be called with a valid thread state set
