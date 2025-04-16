@@ -36,6 +36,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/lsan.h>
 
 #include <Python.h>
+#include <structmember.h>
 #include <frameobject.h> /* Python header not pulled in by default. */
 #include <libgen.h>
 #include <dlfcn.h>
@@ -128,6 +129,15 @@ static rlm_python_t const	*current_inst = NULL;	//!< Used for communication with
 static CONF_SECTION		*current_conf;		//!< Used for communication with inittab functions.
 
 static PyObject *py_freeradius_log(UNUSED PyObject *self, PyObject *args, PyObject *kwds);
+
+static int	py_freeradius_state_init(PyObject *self, UNUSED PyObject *args, UNUSED PyObject *kwds);
+
+static PyObject	*py_freeradius_pair_map_subscript(PyObject *self, PyObject *attr);
+static PyObject *py_freeradius_attribute_instance(PyObject *self, PyObject *attr);
+static int	py_freeradius_pair_map_set(PyObject* self, PyObject* attr, PyObject* value);
+static PyObject *py_freeradius_pair_getvalue(PyObject *self, void *closure);
+static int	py_freeradius_pair_setvalue(PyObject *self, PyObject *value, void *closure);
+static PyObject	*py_freeradius_pair_str(PyObject *self);
 
 static libpython_global_config_t libpython_global_config = {
 	.path = NULL,
@@ -227,6 +237,137 @@ static struct {
 #undef A
 
 	{ NULL, 0 },
+};
+
+/** The class which all pair types inherit from
+ *
+ */
+static PyTypeObject py_freeradius_pair_def = {
+	PyVarObject_HEAD_INIT(NULL, 0)
+	.tp_name = "freeradius.Pair",
+	.tp_doc = "An attribute value pair",
+	.tp_basicsize = sizeof(py_freeradius_pair_t),
+	.tp_itemsize = 0,
+	.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+	.tp_new = PyType_GenericNew,
+};
+
+/** How to access "value" attribute of a pair
+ *
+ */
+static PyGetSetDef py_freeradius_pair_getset[] = {
+	{
+		.name = "value",
+		.get = py_freeradius_pair_getvalue,
+		.set = py_freeradius_pair_setvalue,
+		.doc = "Pair value",
+		.closure = NULL
+	},
+	{ NULL }	/* Terminator */
+};
+
+/** Contains a value pair of a specific type
+ *
+ */
+static PyTypeObject py_freeradius_value_pair_def = {
+	PyVarObject_HEAD_INIT(NULL, 0)
+	.tp_name = "freeradius.ValuePair",
+	.tp_doc = "A value pair, i.e. one of the type string, integer, ipaddr etc...)",
+	.tp_flags = Py_TPFLAGS_DEFAULT,
+	.tp_base = &py_freeradius_pair_def,
+	.tp_getset = py_freeradius_pair_getset,
+	.tp_str = py_freeradius_pair_str,
+	.tp_as_mapping = &(PyMappingMethods) {
+		.mp_subscript = py_freeradius_attribute_instance,
+		.mp_ass_subscript = py_freeradius_pair_map_set,
+	}
+};
+
+/** Contains group attribute of a specific type
+ *
+ * Children of this attribute may be accessed using the map protocol
+ * i.e. foo['child-of-foo'].
+ *
+ */
+static PyTypeObject py_freeradius_grouping_pair_def = {
+	PyVarObject_HEAD_INIT(NULL, 0)
+	.tp_name = "freeradius.GroupingPair",
+	.tp_doc = "A grouping pair, i.e. one of the type group, tlv, vsa or vendor.  "
+	          "Children are accessible via the mapping protocol i.e. foo['child-of-foo]",
+	.tp_flags = Py_TPFLAGS_DEFAULT,
+	.tp_base = &py_freeradius_pair_def,
+	.tp_as_mapping = &(PyMappingMethods){
+		.mp_subscript = py_freeradius_pair_map_subscript,
+		.mp_ass_subscript = py_freeradius_pair_map_set,
+	}
+};
+
+/** Each instance contains a top level list (i.e. request, reply, control, session-state)
+ */
+static PyTypeObject py_freeradius_pair_list_def = {
+	PyVarObject_HEAD_INIT(NULL, 0)
+	.tp_name = "freeradius.PairList",
+	.tp_doc = "A list of objects of freeradius.GroupingPairList and freeradius.ValuePair",
+	.tp_flags = Py_TPFLAGS_DEFAULT,
+	.tp_base = &py_freeradius_pair_def,
+	.tp_as_mapping = &(PyMappingMethods){
+		.mp_subscript = py_freeradius_pair_map_subscript,
+		.mp_ass_subscript = py_freeradius_pair_map_set,
+	}
+};
+
+static PyMemberDef py_freeradius_request_attrs[] = {
+	{
+		.name = "request",
+		.type = T_OBJECT,
+		.offset = offsetof(py_freeradius_request_t, request),
+		.flags = READONLY,
+		.doc = "Pairs in the request list - received from the network"
+	},
+	{
+		.name = "reply",
+		.type = T_OBJECT,
+		.offset = offsetof(py_freeradius_request_t, reply),
+		.flags = READONLY,
+		.doc = "Pairs in the reply list - sent to the network"
+	},
+	{
+		.name = "control",
+		.type = T_OBJECT,
+		.offset = offsetof(py_freeradius_request_t, control),
+		.flags = READONLY,
+		.doc = "Pairs in the control list - control the behaviour of subsequently called modules"
+	},
+	{
+		.name = "session-state",
+		.type = T_OBJECT,
+		.offset = offsetof(py_freeradius_request_t, state),
+		.flags = READONLY,
+		.doc = "Pairs in the session-state list - persists for the length of the session"
+	},
+	{ NULL }	/* Terminator */
+};
+
+static PyTypeObject py_freeradius_request_def = {
+	PyVarObject_HEAD_INIT(NULL, 0)
+	.tp_name = "freeradius.Request",
+	.tp_doc = "freeradius request handle",
+	.tp_basicsize = sizeof(py_freeradius_request_t),
+	.tp_itemsize = 0,
+	.tp_flags = Py_TPFLAGS_DEFAULT,
+	.tp_new = PyType_GenericNew,
+	.tp_members = py_freeradius_request_attrs
+};
+
+static PyTypeObject py_freeradius_state_def = {
+	PyVarObject_HEAD_INIT(NULL, 0)
+	.tp_name = "freeradius.State",
+	.tp_doc = "Private state data",
+	.tp_basicsize = sizeof(py_freeradius_state_t),
+	.tp_itemsize = 0,
+	.tp_flags = Py_TPFLAGS_DEFAULT,
+	.tp_new = PyType_GenericNew,
+	.tp_init = py_freeradius_state_init
 };
 
 #ifndef _PyCFunction_CAST
