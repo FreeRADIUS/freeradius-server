@@ -118,6 +118,10 @@ static const conf_parser_t client_udp_sub_config[] = {
 
 	{ FR_CONF_OFFSET("interface", fr_bio_fd_config_t, interface) },
 
+#if (defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)) || defined(IP_DONTFRAG)
+	{ FR_CONF_OFFSET("exceed_mtu", fr_bio_fd_config_t, exceed_mtu), .dflt = "yes" },
+#endif
+
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff) },
 	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff) },
 
@@ -140,6 +144,10 @@ static const conf_parser_t client_udp_unconnected_sub_config[] = {
 
 	{ FR_CONF_OFFSET("src_port_start", fr_bio_fd_config_t, src_port_start) },
 	{ FR_CONF_OFFSET("src_port_end", fr_bio_fd_config_t, src_port_end) },
+
+#if (defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)) || defined(IP_DONTFRAG)
+	{ FR_CONF_OFFSET("exceed_mtu", fr_bio_fd_config_t, exceed_mtu), .dflt = "yes" },
+#endif
 
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff) },
 	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff) },
@@ -288,6 +296,10 @@ static const conf_parser_t server_udp_sub_config[] = {
 
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff) },
 	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff) },
+
+#if (defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)) || defined(IP_DONTFRAG)
+	{ FR_CONF_OFFSET("exceed_mtu", fr_bio_fd_config_t, exceed_mtu), .dflt = "yes" },
+#endif
 
 	CONF_PARSER_TERMINATOR
 };

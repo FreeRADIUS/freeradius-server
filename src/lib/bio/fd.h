@@ -111,6 +111,7 @@ typedef struct {
 
 	bool		async;		//!< is it async
 	bool		tcp_delay;	//!< We do tcp_nodelay by default.
+	bool		exceed_mtu;  	//!< Whether we allow packets which exceed the local MTU
 
 	/*
 	 *	Extra fields for conf_parser_t

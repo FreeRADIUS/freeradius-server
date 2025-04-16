@@ -179,15 +179,14 @@ static int fr_bio_fd_common_udp(int fd, fr_socket_t const *sock, fr_bio_fd_confi
 	 *	The wider Internet does not support UDP fragmentation.  This means that fragmented packets are
 	 *	silently discarded.
 	 *
-	 *	@todo - the correct way to handle this is to have a configuration flag which controls whether
-	 *	or not the "DF" bit is cleared.  The documentation can make it clear that this only works on
-	 *	local networks, AND only on connected datagrams.  The default should be to clear the DF bit.
+	 *	@todo - add more code to properly handle EMSGSIZE for PMTUD.  We can then also do
+	 *	getsockopt(fd,IP_MTU,&integer) to get the current path MTU.  It can only be used after the
+	 *	socket has been connected.  It should also be called after an EMSGSIZE error is returned.
 	 *
-	 *	We then need to update the UDP reading code to handle EMSGSIZE as a non-fatal error.  Since
-	 *	IPv6 will _always_ do PMTU discovery, we definitely need to handle this situation there.  So
-	 *	we might as well handle it for IPv4, too.
+	 *	getsockopt(fd,IP_MTU,&integer) can also be used for unconnected sockets, if we also set
+	 *	IP_RECVERR.  In which case the errors are put into an error queue.  This is only for Linux.
 	 */
-	if (sock->af == AF_INET) {
+	if ((sock->af == AF_INET) && cfg->exceed_mtu) {
 #if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
 		/*
 		 *	Disable PMTU discovery.  On Linux, this also makes sure that the "don't
