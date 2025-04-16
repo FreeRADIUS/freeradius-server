@@ -127,6 +127,8 @@ static PyThreadState		*global_interpreter;	//!< Our first interpreter.
 static rlm_python_t const	*current_inst = NULL;	//!< Used for communication with inittab functions.
 static CONF_SECTION		*current_conf;		//!< Used for communication with inittab functions.
 
+static PyObject *py_freeradius_log(UNUSED PyObject *self, PyObject *args, PyObject *kwds);
+
 static libpython_global_config_t libpython_global_config = {
 	.path = NULL,
 	.path_include_default = true
@@ -227,9 +229,41 @@ static struct {
 	{ NULL, 0 },
 };
 
+#ifndef _PyCFunction_CAST
+#define _PyCFunction_CAST(func) (PyCFunction)((void(*)(void))(func))
+#endif
+
 /*
- *	radiusd Python functions
+ *	freeradius Python functions
  */
+static PyMethodDef py_freeradius_methods[] = {
+	{ "log", _PyCFunction_CAST(py_freeradius_log), METH_VARARGS | METH_KEYWORDS,
+	  "freeradius.log(msg[, type, lvl])\n\n"
+	  "Print a message using the freeradius daemon's logging system.\n"
+	  "type should be one of the following constants:\n"
+	  "        freeradius.L_DBG\n"
+	  "        freeradius.L_INFO\n"
+	  "        freeradius.L_WARN\n"
+	  "        freeradius.L_ERR\n"
+	  "lvl should be one of the following constants:\n"
+	  "        freeradius.L_DBG_LVL_OFF\n"
+	  "        freeradius.L_DBG_LVL_1\n"
+	  "        freeradius.L_DBG_LVL_2\n"
+	  "        freeradius.L_DBG_LVL_3\n"
+	  "        freeradius.L_DBG_LVL_4\n"
+	  "        freeradius.L_DBG_LVL_MAX\n"
+	},
+	{ NULL, NULL, 0, NULL },
+};
+
+static PyModuleDef py_freeradius_def = {
+	PyModuleDef_HEAD_INIT,
+	.m_name = "freeradius",
+	.m_doc = "FreeRADIUS python module",
+	.m_size = 0,
+	.m_methods = py_freeradius_methods
+};
+
 /** Return the module instance object associated with the thread state or interpreter state
  *
  */
@@ -266,28 +300,23 @@ static rlm_python_t const *rlm_python_get_inst(void)
 /** Allow fr_log to be called from python
  *
  */
-static PyObject *mod_log(UNUSED PyObject *module, PyObject *args)
+static PyObject *py_freeradius_log(UNUSED PyObject *self, PyObject *args, PyObject *kwds)
 {
-	int status;
-	char *msg;
+	static char const	*kwlist[] = { "msg", "type", "lvl", NULL };
+	char			*msg;
+	int			type = L_DBG;
+	int			lvl = L_DBG_LVL_2;
+	rlm_python_t const	*inst = rlm_python_get_inst();
 
-	if (!PyArg_ParseTuple(args, "is", &status, &msg)) {
-		Py_RETURN_NONE;
-	}
+	if (fr_debug_lvl < lvl) Py_RETURN_NONE;	/* Don't bother parsing args */
 
-	fr_log(&default_log, status, __FILE__, __LINE__, "%s", msg);
+	if (!PyArg_ParseTupleAndKeywords(args, kwds, "s|ii", (char **)((uintptr_t)kwlist),
+					 &msg, &type, &lvl)) Py_RETURN_NONE;
+
+	fr_log(&default_log, type, __FILE__, __LINE__, "rlm_python (%s) - %s", inst->name, msg);
 
 	Py_RETURN_NONE;
 }
-
-static PyMethodDef module_methods[] = {
-	{ "log", &mod_log, METH_VARARGS,
-	  "freeradius.log(level, msg)\n\n" \
-	  "Print a message using the freeradius daemon's logging system. level should be one of the\n" \
-	  "following constants L_DBG, L_WARN, L_INFO, L_ERR, L_DBG_WARN, L_DBG_ERR, L_DBG_WARN_REQ, L_DBG_ERR_REQ\n"
-	},
-	{ NULL, NULL, 0, NULL },
-};
 
 /** Print out the current error
  *
@@ -933,17 +962,9 @@ static PyObject *python_module_init(void)
 {
 	PyObject		*module;
 
-	static struct PyModuleDef py_module_def = {
-		PyModuleDef_HEAD_INIT,
-		.m_name = "freeradius",
-		.m_doc = "freeRADIUS python module",
-		.m_size = 0,
-		.m_methods = module_methods
-	};
-
 	fr_assert(current_inst);
 
-	module = PyModule_Create(&py_module_def);
+	module = PyModule_Create(&py_freeradius_def);
 	if (!module) {
 		python_error_log(current_inst, NULL);
 		Py_RETURN_NONE;

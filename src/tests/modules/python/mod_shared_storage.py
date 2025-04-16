@@ -4,8 +4,8 @@ import shared
 
 def authorize(p):
     freeradius.log(
-        freeradius.L_DBG,
         "Python - shared_attribute=" + str(hasattr(shared, "shared_attribute")),
+        freeradius.L_DBG
     )
     if not hasattr(shared, "shared_attribute"):
         setattr(shared, "shared_attribute", True)
