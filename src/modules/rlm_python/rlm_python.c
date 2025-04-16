@@ -582,6 +582,185 @@ static PyObject *py_freeradius_pair_map_subscript(PyObject *self, PyObject *attr
 	return (PyObject *)pair;
 }
 
+/** Build out missing parent pairs when a leaf node is assigned a value.
+ *
+ */
+static fr_pair_t *py_freeradius_build_parents(PyObject *obj)
+{
+	py_freeradius_pair_t	*obj_pair = (py_freeradius_pair_t *)obj;
+	fr_pair_t		*parent = ((py_freeradius_pair_t *)obj_pair->parent)->vp;
+
+	if (!parent) {
+		parent = py_freeradius_build_parents(obj_pair->parent);
+		if (!parent) return NULL;
+	}
+
+	/*
+	 *	Asked to populate foo[n] - check that we have n instances already
+	 */
+	if (obj_pair->idx > 0) {
+		unsigned int count = fr_pair_count_by_da(&parent->vp_group, obj_pair->da);
+		if (count < obj_pair->idx) {
+			PyErr_Format(PyExc_AttributeError, "Attempt to set instance %d when only %d exist", index, count);
+			return NULL;
+		}
+	}
+	fr_pair_append_by_da(parent, &obj_pair->vp, &parent->vp_group, obj_pair->da);
+
+	return obj_pair->vp;
+}
+
+/**  Set the value of a pair
+ *
+ * Called with two Python syntaxes
+ *
+ *  - request['foo'] = 'baa'
+ *    `self` will be the parent object - either the list or parent structural object.
+ *    `attr` is the value in [].
+ *    `value` is what we want to set the pair to.
+ *
+ *   - request['foo'][n] = 'baa'
+ *     `self` will be the first instance of the attribute `foo`
+ *     `attr` will be the instance number
+ *     `value` is what we want to set the pair to.
+ *
+ * We expect `value` to be a UTF8 string object.
+ *
+ * Due to Python "magic" this is also called when `del request['foo']` happens - only with
+ * value as NULL.
+ */
+static int py_freeradius_pair_map_set(PyObject* self, PyObject* attr, PyObject* value)
+{
+	fr_pair_list_t		*list = NULL;
+	request_t		*request = rlm_python_get_request();
+	py_freeradius_pair_t	*our_self = (py_freeradius_pair_t *)self;
+	fr_pair_t		*vp = NULL;
+	char const		*vstr;
+	ssize_t			vlen;
+	bool			del = (value ? false : true);
+
+	if (value && !PyUnicode_CheckExact(value)) {
+		PyErr_Format(PyExc_AttributeError, "Invalid value type '%s'", ((PyTypeObject *)PyObject_Type(value))->tp_name);
+		return -1;
+	}
+
+	/*
+	 *	list['attr'] = 'value'
+	 *	Look up DA represented by 'attr' and find pair or create pair to update
+	 */
+	if (PyUnicode_CheckExact(attr)) {
+		char const		*attr_name;
+		ssize_t			len;
+		fr_dict_attr_t const	*da = NULL;
+
+		attr_name = PyUnicode_AsUTF8AndSize(attr, &len);
+
+		if (PyObject_IsInstance(self, (PyObject *)&py_freeradius_pair_list_def)) {
+			fr_dict_attr_search_by_name_substr(NULL, &da, request->proto_dict, &FR_SBUFF_IN(attr_name, len),
+							   NULL, true, false);
+		} else {
+			fr_dict_attr_by_name_substr(NULL, &da, our_self->da, &FR_SBUFF_IN(attr_name, len), NULL);
+		}
+
+		if (!da) {
+			PyErr_Format(PyExc_AttributeError, "Invalid attribute name %.*s", (int)len, attr_name);
+			return -1;
+		}
+
+		// `self` is the parent of the pair we're building - so we build parents to that point.
+		if (!our_self->vp) {
+			if (del) return 0;	// If we're deleting then no need to build parents.
+			our_self->vp = py_freeradius_build_parents(self);
+		}
+		if (!our_self->vp) return -1;
+
+		list = &our_self->vp->vp_group;
+
+		vp = fr_pair_find_by_da(list, NULL, da);
+		if (del) goto del;
+
+		if (!vp) {
+			if (fr_pair_append_by_da(fr_pair_list_parent(list), &vp, list, da) < 0) {
+				PyErr_Format(PyExc_MemoryError, "Failed to add attribute %s", da->name);
+				return -1;
+			}
+		} else {
+			fr_value_box_clear_value(&vp->data);
+		}
+
+	/*
+	 *	list['attr'][n] = 'value'
+	 *	Look for instance n, creating if necessary
+	 */
+	} else if (PyLong_CheckExact(attr)) {
+		long			index = PyLong_AsLong(attr);
+		py_freeradius_pair_t	*parent = (py_freeradius_pair_t *)our_self->parent;
+
+		if (index < 0) {
+			PyErr_SetString(PyExc_AttributeError, "Cannot use negative attribute instance values");
+			return -1;
+		}
+
+		if (!parent->vp) {
+			if (del) return 0;
+			parent->vp = py_freeradius_build_parents(our_self->parent);
+		}
+		if (!parent->vp) return -1;
+
+		list = &parent->vp->vp_group;
+
+		if (index == 0) {
+			if (!our_self->vp) {
+				if (fr_pair_append_by_da(fr_pair_list_parent(list), &our_self->vp, list, our_self->da) < 0) {
+					PyErr_Format(PyExc_MemoryError, "Failed to add attribute %s", our_self->da->name);
+					return -1;
+				}
+			} else {
+				fr_value_box_clear_value(&our_self->vp->data);
+			}
+			vp = our_self->vp;
+			if (del) goto del;
+		} else {
+			vp = fr_pair_find_by_da_idx(list, our_self->da, index);
+			if (del) goto del;
+			if (!vp) {
+				unsigned int	count = fr_pair_count_by_da(list, our_self->da);
+				if (count < index) {
+					PyErr_Format(PyExc_AttributeError, "Attempt to set instance %ld when only %d exist", index, count);
+					return -1;
+				}
+				if (fr_pair_append_by_da(fr_pair_list_parent(list), &vp, list, our_self->da) < 0) {
+					PyErr_Format(PyExc_MemoryError, "Failed to add attribute %s", our_self->da->name);
+					return -1;
+				}
+			}
+		}
+	} else {
+		PyErr_Format(PyExc_AttributeError, "Invalid object type '%s'", ((PyTypeObject *)PyObject_Type(attr))->tp_name);
+		return -1;
+	}
+
+	fr_assert(fr_type_is_leaf(vp->da->type));
+
+	vstr = PyUnicode_AsUTF8AndSize(value, &vlen);
+
+	if (fr_pair_value_from_str(vp, vstr, vlen, NULL, false) < 0) {
+		PyErr_Format(PyExc_AttributeError, "Failed setting '%s' = '%.*s", vp->da->name, (int)vlen, vstr);
+		fr_pair_delete(list, vp);
+		return -1;
+	}
+
+	RDEBUG2("set %pP", vp);
+	return 0;
+
+del:
+	if (vp) {
+		RDEBUG2("delete %pP", vp);
+		fr_pair_delete(list, vp);
+	}
+	return 0;
+}
+
 /** Print out the current error
  *
  * Must be called with a valid thread state set
