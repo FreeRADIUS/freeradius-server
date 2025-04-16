@@ -90,6 +90,25 @@ typedef struct {
 	PyThreadState	*state;			//!< Module instance/thread specific state.
 } rlm_python_thread_t;
 
+/** Additional fields for pairs
+ *
+ */
+typedef struct {
+	PyObject_HEAD				//!< Common fields needed for every python object.
+	fr_dict_attr_t const	*da;		//!< dictionary attribute for this pair.
+	fr_pair_t		*vp;		//!< Real FreeRADIUS pair for this Python pair.
+	unsigned int		idx;		//!< Instance index.
+	PyObject		*parent;	//!< Parent object of this pair.
+} py_freeradius_pair_t;
+
+typedef struct {
+	PyObject_HEAD				//!< Common fields needed for every python object.
+	PyObject		*request;	//!< Request list.
+	PyObject		*reply;		//!< Reply list.
+	PyObject		*control;	//!< Control list.
+	PyObject		*state;		//!< Session state list.
+} py_freeradius_request_t;
+
 static void			*python_dlhandle;
 static PyThreadState		*global_interpreter;	//!< Our first interpreter.
 
