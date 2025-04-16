@@ -485,6 +485,68 @@ static PyObject *py_freeradius_log(UNUSED PyObject *self, PyObject *args, PyObje
 	Py_RETURN_NONE;
 }
 
+/** Returns a freeradius.Pair
+ *
+ * Called when pair["attr"] or pair["attr"][n] is accessed.
+ * When pair["attr"] is accessed, `self` is `pair` - which is the list or a pair group object
+ * When pair["attr"][n] is accessed, `self` is pair["attr"]
+ *
+ * Either a group object or pair object will be returned.
+ */
+static PyObject *py_freeradius_pair_map_subscript(PyObject *self, PyObject *attr)
+{
+	py_freeradius_pair_t	*our_self = (py_freeradius_pair_t *)self;
+	char const		*attr_name;
+	ssize_t			len;
+	request_t		*request = rlm_python_get_request();
+	py_freeradius_pair_t	*pair;
+	fr_dict_attr_t const	*da;
+	fr_pair_list_t		*list = NULL;
+
+	/*
+	 *	If we have a numeric subscript, find the nth instance of the pair.
+	 */
+	if (PyLong_CheckExact(attr)) return py_freeradius_attribute_instance(self, attr);
+
+	if (!PyUnicode_CheckExact(attr)) {
+		PyErr_Format(PyExc_AttributeError, "Invalid type '%s' for map attribute",
+			  ((PyTypeObject *)PyObject_Type(attr))->tp_name);
+		return NULL;
+	}
+	attr_name = PyUnicode_AsUTF8AndSize(attr, &len);
+
+	if (PyObject_IsInstance(self, (PyObject *)&py_freeradius_pair_list_def)) {
+		fr_dict_attr_search_by_name_substr(NULL, &da, request->proto_dict, &FR_SBUFF_IN(attr_name, len),
+						   NULL, true, false);
+	} else {
+		fr_dict_attr_by_name_substr(NULL, &da, our_self->da, &FR_SBUFF_IN(attr_name, len), NULL);
+	}
+	if (our_self->vp) list = &our_self->vp->vp_group;
+
+	if (!da) {
+		PyErr_Format(PyExc_AttributeError, "Invalid attribute name '%.*s'", (int)len, attr_name);
+		return NULL;
+	}
+
+	if (fr_type_is_leaf(da->type)) {
+		pair = PyObject_New(py_freeradius_pair_t, (PyTypeObject *)&py_freeradius_value_pair_def);
+	} else {
+		pair = PyObject_New(py_freeradius_pair_t, (PyTypeObject *)&py_freeradius_grouping_pair_def);
+	}
+	if (!pair) {
+		PyErr_SetString(PyExc_MemoryError, "Failed to allocate PyObject");
+		return NULL;
+	};
+
+	pair->parent = self;
+	Py_INCREF(self);
+	pair->da = da;
+	pair->vp = list ? fr_pair_find_by_da(list, NULL, da) : NULL;
+	pair->idx = 0;
+
+	return (PyObject *)pair;
+}
+
 /** Print out the current error
  *
  * Must be called with a valid thread state set
