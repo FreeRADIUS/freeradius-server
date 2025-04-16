@@ -176,14 +176,6 @@ global_lib_autoinst_t const * const rlm_python_lib[] = {
  *	and the horrible hack of using a single interpreter
  *	for all instances of rlm_python will no longer be
  *	required.
- *
- *	As Python 3.x module initialisation is significantly
- *	different than Python 2.x initialisation,
- *	it'd be a pain to retain the cext_compat for
- *	Python 3 and as Python 3 users have the option of
- *	using as version of Python which fixes the underlying
- *	issue, we only support using a global interpreter
- *	for Python 2.7 and below.
  */
 
 /*
