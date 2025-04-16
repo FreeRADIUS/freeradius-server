@@ -48,6 +48,18 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 static uint32_t openssl_instance_count = 0;
 
+/** How big of a stack to allocate for aynsc fibres
+ */
+#define OPENSSL_ASYNC_STACK_SIZE	32768
+
+/** How big of a stack we allocate, rounded up to the nearest page size
+ */
+static size_t			openssl_stack_size;
+
+/** Cached page size
+ */
+static size_t			openssl_page_size;
+
 /** The context which holds any memory OpenSSL allocates
  *
  * This should be used to work around memory leaks in the OpenSSL.
@@ -378,18 +390,12 @@ static int fr_openssl_cleanup(UNUSED void *uctx)
 }
 
 #if OPENSSL_VERSION_NUMBER >= 0x30400000L
+
 static void *fr_openssl_stack_alloc(size_t *len)
 {
-	size_t page_size = (size_t)getpagesize();
 	void *stack;
 
-	/*
-	 *	OpenSSL uses 32K stacks by default
-	 *	Do that here, then add an extra page's worth of
-	 *	of memory at the end for poisoning.
-	 */
-	size_t stack_size = ROUND_UP_POW2(32768, page_size); /* Ensure this is a multiple of our page size */
-	if (posix_memalign(&stack, page_size, stack_size + page_size) != 0) {
+	if (posix_memalign(&stack, openssl_page_size, openssl_stack_size + openssl_page_size) != 0) {
 		fr_tls_log(NULL, "Failed allocating OpenSSL stack: %s", fr_syserror(errno));
 		return NULL;
 	}
@@ -397,25 +403,23 @@ static void *fr_openssl_stack_alloc(size_t *len)
 	/*
 	 *	Catch reads and writes going off the end of the stack.
 	 */
-	if (mprotect((uint8_t *)stack + stack_size, page_size, PROT_NONE) < 0) {
+	if (mprotect((uint8_t *)stack + openssl_stack_size, openssl_page_size, PROT_NONE) < 0) {
 		fr_tls_log(NULL, "Failed adding guard page to OpenSSL stack: %s", fr_syserror(errno));
 		free(stack);
 		return NULL;
 	}
-	*len = stack_size;
+	*len = openssl_stack_size;
 
 	return stack;
 }
 
 static void fr_openssl_stack_free(void *stack)
 {
-	size_t page_size = (size_t)getpagesize();
-
 	/*
 	 *	Remove the guard page.  If this failed, we can't continue
 	 *	as we'll have random protected memory chunks
 	 */
-	if (unlikely(mprotect(stack, page_size, PROT_READ | PROT_WRITE) < 0)) {
+	if (unlikely(mprotect((uint8_t *)stack + openssl_stack_size, openssl_page_size, PROT_READ | PROT_WRITE) < 0)) {
 		fr_assert_msg(0, "Uprotecting OpenSSL stack memory failed, can't continue: %s", fr_syserror(errno));
 		fr_exit(1);
 	}
@@ -434,6 +438,10 @@ int fr_openssl_init(void)
 		openssl_instance_count++;
 		return 0;
 	}
+
+	openssl_page_size = (size_t)getpagesize();
+	openssl_stack_size = ROUND_UP_POW2(OPENSSL_ASYNC_STACK_SIZE, openssl_page_size);
+
 
 	/*
 	 *	This will only fail if memory has already been allocated
