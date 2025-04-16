@@ -1,0 +1,5 @@
+if (%winbind.ping() != 'ok') {
+	test_fail
+}
+
+test_pass

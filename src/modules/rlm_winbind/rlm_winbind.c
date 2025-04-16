@@ -31,6 +31,9 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/unlang/xlat.h>
+#include <freeradius-devel/util/dcursor.h>
+#include <freeradius-devel/util/value.h>
 
 #include "rlm_winbind.h"
 #include "auth_wbclient_pap.h"
@@ -238,6 +241,10 @@ error:
 	return rcode;
 }
 
+static xlat_arg_parser_t const winbind_group_xlat_arg[] = {
+	{ .required = true, .type = FR_TYPE_STRING, .concat = true },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
 /** Check if the user is a member of a particular winbind group
  *
@@ -267,6 +274,71 @@ static xlat_action_t winbind_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const winbind_ping_xlat_arg[] = {
+	{ .required = false, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+
+/** Ping a specific domain
+ *
+ * Sends a noop style message to AD to check if winbind and AD are responsive.
+@verbatim
+%winbind.ping([<domain>])
+@endverbatim
+ */
+static xlat_action_t winbind_ping_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				       xlat_ctx_t const *xctx,
+				       request_t *request, fr_value_box_list_t *in)
+{
+	rlm_winbind_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_winbind_thread_t);
+	fr_value_box_t const	*domain = fr_value_box_list_head(in);
+	winbind_ctx_t		*wbctx;
+	char			*dc = NULL;
+ 	struct wbcAuthErrorInfo	*err_info = NULL;
+	wbcErr			err;
+	fr_value_box_t		*out_vb;
+	fr_time_t		then, now;
+
+	wbctx = winbind_slab_reserve(t->slab);
+	if (!wbctx) {
+		RERROR("Ping failed - Unable to get winbind context");
+		return XLAT_ACTION_FAIL;
+	}
+
+	then = fr_time();
+	/*
+	 *	Yes, this is a synchronous call, no, we can't set an explicit timeout
+	 */
+	err = wbcCtxPingDc2(wbctx->ctx, domain ? domain->vb_strvalue : NULL, &err_info, &dc);
+	now = fr_time();
+
+	MEM(out_vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
+	if (WBC_ERROR_IS_OK(err)) {
+		RDEBUG2("Ping succeeded to DC %s after %pVms", dc,
+			fr_box_time_delta_msec(fr_time_sub(now, then)));
+
+		MEM(out_vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
+		MEM(fr_value_box_strdup(out_vb, out_vb, NULL, "ok", false) == 0);
+	} else {
+		char const *err_str = wbcErrorString(err);
+
+		RERROR("Ping failed (%s) to DC %s after %pVms%s%s", err_str, dc,
+		       fr_box_time_delta_msec(fr_time_sub(now, then)),
+		       err_info->display_string ? " - " : "",
+		       err_info->display_string ? err_info->display_string : "");
+
+		MEM(fr_value_box_strdup(out_vb, out_vb, NULL, err_str, false) == 0);
+	}
+
+	if (dc) wbcFreeMemory(dc);
+	if (err_info) wbcFreeMemory(err_info);
+	winbind_slab_release(wbctx);
+
+	fr_dcursor_append(out, out_vb);
+
+	return XLAT_ACTION_DONE;
+}
 
 /*
  *	Free winbind context
@@ -290,12 +362,6 @@ static int winbind_ctx_alloc(winbind_ctx_t *wbctx, UNUSED void *uctx)
 	talloc_set_destructor(wbctx, _mod_ctx_free);
 	return 0;
 }
-
-static xlat_arg_parser_t const winbind_group_xlat_arg[] = {
-	{ .required = true, .type = FR_TYPE_STRING, .concat = true },
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
 
 /** Instantiate this module
  *
@@ -520,6 +586,13 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	xlat_func_args_set(xlat, winbind_group_xlat_arg);
 	xlat_func_call_env_set(xlat, &winbind_group_xlat_call_env);
+
+	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "ping", winbind_ping_xlat, FR_TYPE_STRING);
+	if (!xlat) {
+		cf_log_err(conf, "Failed registering ping expansion");
+		return -1;
+	}
+	xlat_func_args_set(xlat, winbind_ping_xlat_arg);
 
 	return 0;
 }
