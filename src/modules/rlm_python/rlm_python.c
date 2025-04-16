@@ -965,7 +965,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_python_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
 
 	if (python_interpreter_init(mctx) < 0) return -1;
-
+	inst->name = mctx->mi->name;
 	/*
 	 *	Switch to our module specific interpreter
 	 */
