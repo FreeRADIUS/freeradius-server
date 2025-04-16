@@ -45,8 +45,6 @@ RCSID("$Id$")
 #  define XLAT_HEXDUMP(...)
 #endif
 
-extern const bool xlat_func_bare_words;
-
 /** These rules apply to literal values and function arguments inside of an expansion
  *
  */
@@ -1606,14 +1604,12 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		 *	have to cast on the final _output_ of the expression, and we allow the _input_ pieces of the
 		 *	expression to be just about anything.
 		 */
-		if (!xlat_func_bare_words) {
-			arg_t_rules.enumv = NULL;
-			arg_t_rules.cast = FR_TYPE_NULL;
-			arg_t_rules.attr.namespace = NULL;
-			arg_t_rules.attr.request_def = NULL;
-			arg_t_rules.attr.list_def = request_attr_request;
-			arg_t_rules.attr.list_presence = TMPL_ATTR_LIST_ALLOW;
-		}
+		arg_t_rules.enumv = NULL;
+		arg_t_rules.cast = FR_TYPE_NULL;
+		arg_t_rules.attr.namespace = NULL;
+		arg_t_rules.attr.request_def = NULL;
+		arg_t_rules.attr.list_def = request_attr_request;
+		arg_t_rules.attr.list_presence = TMPL_ATTR_LIST_ALLOW;
 	}
 
 	MEM(head = xlat_exp_head_alloc(ctx));
@@ -1639,7 +1635,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 
 		fr_sbuff_set(&m, &our_in);	/* Record start of argument */
 
-		if (!spaces && !xlat_func_bare_words) {
+		if (!spaces) {
 			quote = T_BARE_WORD;
 		} else {
 			fr_sbuff_out_by_longest_prefix(&slen, &quote, xlat_quote_table, &our_in, T_BARE_WORD);
@@ -1648,7 +1644,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		MEM(node = xlat_exp_alloc(ctx, XLAT_GROUP, NULL, 0));
 		node->quote = quote;
 
-		if ((quote == T_BARE_WORD) && (spaces || xlat_func_bare_words)) {
+		if ((quote == T_BARE_WORD) && spaces) {
 
 			/*
 			 *	Spaces - each argument is a bare word all by itself, OR an xlat thing all by itself.

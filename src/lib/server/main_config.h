@@ -161,7 +161,6 @@ struct main_config_s {
 	 */
 	bool		rewrite_update;			//!< rewrite "update" to be new edit sections
 	bool		forbid_update;			//!< forbid "update" sections
-	bool		xlat_func_bare_words;		//!< %foo(0xabcdef) is string (yes) versus binary blob (no)
 };
 
 void			main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config);

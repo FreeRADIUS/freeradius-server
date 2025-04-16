@@ -187,8 +187,6 @@ static const conf_parser_t thread_config[] = {
 /*
  *	Migration configuration.
  */
-bool xlat_func_bare_words = false;
-
 static const conf_parser_t migrate_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("rewrite_update", CONF_FLAG_HIDDEN, main_config_t, rewrite_update) },
 	{ FR_CONF_OFFSET_FLAGS("forbid_update", CONF_FLAG_HIDDEN, main_config_t, forbid_update) },
