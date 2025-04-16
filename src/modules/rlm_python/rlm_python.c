@@ -27,7 +27,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX mctx->mi->name
+#define LOG_PREFIX inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
@@ -93,7 +93,7 @@ typedef struct {
 static void			*python_dlhandle;
 static PyThreadState		*global_interpreter;	//!< Our first interpreter.
 
-static module_ctx_t const	*current_mctx;		//!< Used for communication with inittab functions.
+static rlm_python_t const	*current_inst = NULL;	//!< Used for communication with inittab functions.
 static CONF_SECTION		*current_conf;		//!< Used for communication with inittab functions.
 
 static libpython_global_config_t libpython_global_config = {
@@ -230,7 +230,7 @@ static PyMethodDef module_methods[] = {
  *
  * Must be called with a valid thread state set
  */
-static void python_error_log(module_ctx_t const *mctx, request_t *request)
+static void python_error_log(rlm_python_t const *inst, request_t *request)
 {
 	PyObject *p_type = NULL, *p_value = NULL, *p_traceback = NULL, *p_str_1 = NULL, *p_str_2 = NULL;
 
@@ -283,6 +283,7 @@ failed:
 static void mod_vptuple(TALLOC_CTX *ctx, module_ctx_t const *mctx, request_t *request,
 			fr_pair_list_t *vps, PyObject *p_value, char const *funcname, char const *list_name)
 {
+	rlm_python_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
 	int		i;
 	Py_ssize_t	tuple_len;
 	tmpl_t		*dst;
@@ -374,6 +375,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, module_ctx_t const *mctx, request_t *re
  */
 static int mod_populate_vptuple(module_ctx_t const *mctx, request_t *request, PyObject *pp, fr_pair_t *vp)
 {
+	rlm_python_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
 	PyObject *attribute = NULL;
 	PyObject *value = NULL;
 
@@ -455,7 +457,7 @@ static int mod_populate_vptuple(module_ctx_t const *mctx, request_t *request, Py
 		if (slen < 0) {
 		error:
 			ROPTIONAL(REDEBUG, ERROR, "Failed marshalling %pP to Python value", vp);
-			python_error_log(mctx, request);
+			python_error_log(inst, request);
 			Py_XDECREF(attribute);
 			return -1;
 		}
@@ -510,6 +512,7 @@ static int mod_populate_vptuple(module_ctx_t const *mctx, request_t *request, Py
 static unlang_action_t do_python_single(rlm_rcode_t *p_result, module_ctx_t const *mctx,
 					request_t *request, PyObject *p_func, char const *funcname)
 {
+	rlm_python_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
 	fr_pair_t	*vp;
 	PyObject	*p_ret = NULL;
 	PyObject	*p_arg = NULL;
@@ -564,7 +567,7 @@ static unlang_action_t do_python_single(rlm_rcode_t *p_result, module_ctx_t cons
 	/* Call Python function. */
 	p_ret = PyObject_CallFunctionObjArgs(p_func, p_arg, NULL);
 	if (!p_ret) {
-		python_error_log(mctx, request); /* Needs valid thread with GIL */
+		python_error_log(inst, request); /* Needs valid thread with GIL */
 		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
@@ -627,7 +630,7 @@ static unlang_action_t do_python_single(rlm_rcode_t *p_result, module_ctx_t cons
 	}
 
 finish:
-	if (rcode == RLM_MODULE_FAIL) python_error_log(mctx, request);
+	if (rcode == RLM_MODULE_FAIL) python_error_log(inst, request);
 	Py_XDECREF(p_arg);
 	Py_XDECREF(p_ret);
 
@@ -690,6 +693,7 @@ static void python_function_destroy(python_func_def_t *def)
  */
 static int python_function_load(module_inst_ctx_t const *mctx, python_func_def_t *def)
 {
+	rlm_python_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
 	char const *funcname = "python_function_load";
 
 	if (def->module_name == NULL || def->function_name == NULL) return 0;
@@ -698,7 +702,7 @@ static int python_function_load(module_inst_ctx_t const *mctx, python_func_def_t
 	if (!def->module) {
 		ERROR("%s - Module '%s' load failed", funcname, def->module_name);
 	error:
-		python_error_log(MODULE_CTX_FROM_INST(mctx), NULL);
+		python_error_log(inst, NULL);
 		Py_XDECREF(def->function);
 		def->function = NULL;
 		Py_XDECREF(def->module);
@@ -726,7 +730,7 @@ static int python_function_load(module_inst_ctx_t const *mctx, python_func_def_t
  *	Parse a configuration section, and populate a dict.
  *	This function is recursively called (allows to have nested dicts.)
  */
-static int python_parse_config(module_inst_ctx_t const *mctx, CONF_SECTION *cs, int lvl, PyObject *dict)
+static int python_parse_config(rlm_python_t const *inst, CONF_SECTION *cs, int lvl, PyObject *dict)
 {
 	int		indent_section = (lvl * 4);
 	int		indent_item = (lvl + 1) * 4;
@@ -762,7 +766,7 @@ static int python_parse_config(module_inst_ctx_t const *mctx, CONF_SECTION *cs, 
 			MEM(sub_dict = PyDict_New());
 			(void)PyDict_SetItem(dict, p_key, sub_dict);
 
-			ret = python_parse_config(mctx, sub_cs, lvl + 1, sub_dict);
+			ret = python_parse_config(inst, sub_cs, lvl + 1, sub_dict);
 			if (ret < 0) break;
 		} else if (cf_item_is_pair(ci)) {
 			CONF_PAIR	*cp = cf_item_to_pair(ci);
@@ -809,9 +813,8 @@ static int python_parse_config(module_inst_ctx_t const *mctx, CONF_SECTION *cs, 
 /** Make the current instance's config available within the module we're initialising
  *
  */
-static int python_module_import_config(module_inst_ctx_t const *mctx, CONF_SECTION *conf, PyObject *module)
+static int python_module_import_config(rlm_python_t *inst, CONF_SECTION *conf, PyObject *module)
 {
-	rlm_python_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
 	CONF_SECTION *cs;
 
 	/*
@@ -824,14 +827,14 @@ static int python_module_import_config(module_inst_ctx_t const *mctx, CONF_SECTI
 	error:
 		Py_XDECREF(inst->pythonconf_dict);
 		inst->pythonconf_dict = NULL;
-		python_error_log(MODULE_CTX_FROM_INST(mctx), NULL);
+		python_error_log(inst, NULL);
 		return -1;
 	}
 
 	cs = cf_section_find(conf, "config", NULL);
 	if (cs) {
 		DEBUG("Inserting \"config\" section into python environment as radiusd.config");
-		if (python_parse_config(mctx, cs, 0, inst->pythonconf_dict) < 0) goto error;
+		if (python_parse_config(inst, cs, 0, inst->pythonconf_dict) < 0) goto error;
 	}
 
 	/*
@@ -845,14 +848,14 @@ static int python_module_import_config(module_inst_ctx_t const *mctx, CONF_SECTI
 /** Import integer constants into the module we're initialising
  *
  */
-static int python_module_import_constants(module_inst_ctx_t const *mctx, PyObject *module)
+static int python_module_import_constants(rlm_python_t const *inst, PyObject *module)
 {
 	size_t i;
 
 	for (i = 0; freeradius_constants[i].name; i++) {
 		if ((PyModule_AddIntConstant(module, freeradius_constants[i].name, freeradius_constants[i].value)) < 0) {
 			ERROR("Failed adding constant to module");
-			python_error_log(MODULE_CTX_FROM_INST(mctx), NULL);
+			python_error_log(inst, NULL);
 			return -1;
 		}
 	}
@@ -875,11 +878,11 @@ static PyObject *python_module_init(void)
 		.m_methods = module_methods
 	};
 
-	fr_assert(current_mctx);
+	fr_assert(current_inst);
 
 	module = PyModule_Create(&py_module_def);
 	if (!module) {
-		python_error_log(current_mctx, NULL);
+		python_error_log(current_inst, NULL);
 		Py_RETURN_NONE;
 	}
 
@@ -898,7 +901,7 @@ static int python_interpreter_init(module_inst_ctx_t const *mctx)
 	 *	called during interpreter initialisation
 	 *	it can get at the current instance config.
 	 */
-	current_mctx = MODULE_CTX_FROM_INST(mctx);
+	current_inst = inst;
 	current_conf = conf;
 
 	PyEval_RestoreThread(global_interpreter);
@@ -923,8 +926,8 @@ static int python_interpreter_init(module_inst_ctx_t const *mctx)
  		ERROR("Failed importing \"freeradius\" module into interpreter %p", inst->interpreter);
  		return -1;
  	}
-	if ((python_module_import_config(mctx, conf, module) < 0) ||
-	    (python_module_import_constants(mctx, module) < 0)) {
+	if ((python_module_import_config(inst, conf, module) < 0) ||
+	    (python_module_import_constants(inst, module) < 0)) {
 		Py_DECREF(module);
 		return -1;
 	}
