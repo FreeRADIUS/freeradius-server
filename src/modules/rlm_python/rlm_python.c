@@ -567,7 +567,7 @@ static unlang_action_t do_python_single(rlm_rcode_t *p_result, module_ctx_t cons
 	/* Call Python function. */
 	p_ret = PyObject_CallFunctionObjArgs(p_func, p_arg, NULL);
 	if (!p_ret) {
-		python_error_log(inst, request); /* Needs valid thread with GIL */
+		RERROR("Python function returned no value");
 		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
