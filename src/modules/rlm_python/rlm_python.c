@@ -867,6 +867,165 @@ static PyObject *py_freeradius_pair_getvalue(PyObject *self, UNUSED void *closur
 	return value;
 }
 
+/** Use a native Python object of the appropriate type to set a leaf pair
+ *
+ * Using Python syntax `request['attr'].value = object` or `request['attr'][n].value`
+ *
+ * `self` is the Python object representing the leaf node pair
+ */
+static int py_freeradius_pair_setvalue(PyObject *self, PyObject *value, UNUSED void *closure)
+{
+	py_freeradius_pair_t	*own_self = (py_freeradius_pair_t *)self;
+	fr_pair_t		*vp = own_self->vp;
+
+	/*
+	 *	The pair doesn't exist yet - so create it
+	 */
+	if (!vp) {
+		py_freeradius_pair_t	*parent = (py_freeradius_pair_t *)own_self->parent;
+		fr_pair_list_t		*list;
+		unsigned int		count;
+
+		if (!parent->vp) parent->vp = py_freeradius_build_parents(own_self->parent);
+		if (!parent->vp) return -1;
+
+		list = &parent->vp->vp_group;
+		count = fr_pair_count_by_da(list, own_self->da);
+		if (count < own_self->idx) {
+			PyErr_Format(PyExc_AttributeError, "Attempt to set instance %d when only %d exist", own_self->idx, count);
+			return -1;
+		}
+		fr_pair_append_by_da(fr_pair_list_parent(list), &vp, list, own_self->da);
+		own_self->vp = vp;
+	}
+
+	switch (vp->da->type) {
+	case FR_TYPE_STRING:
+	{
+		char const	*val;
+		ssize_t		len;
+		if (!PyUnicode_CheckExact(value)){
+		wrong_type:
+			PyErr_Format(PyExc_AttributeError, "Incorrect Python type '%s' for attribute type '%s'",
+				     ((PyTypeObject *)PyObject_Type(value))->tp_name, fr_type_to_str(vp->da->type));
+			return -1;
+		}
+		val = PyUnicode_AsUTF8AndSize(value, &len);
+		fr_value_box_clear_value(&vp->data);
+		fr_value_box_bstrndup(vp, &vp->data, NULL, val, len, false);
+	}
+		break;
+
+	case FR_TYPE_OCTETS:
+	{
+		uint8_t	*val;
+		ssize_t	len;
+		if (!PyObject_IsInstance(value, (PyObject *)&PyBytes_Type)) goto wrong_type;
+		PyBytes_AsStringAndSize(value, (char **)&val, &len);
+		fr_value_box_clear(&vp->data);
+		fr_value_box_memdup(vp, &vp->data, NULL, val, len, false);
+	}
+		break;
+
+	case FR_TYPE_BOOL:
+	case FR_TYPE_UINT8:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
+	case FR_TYPE_INT8:
+	case FR_TYPE_INT16:
+	case FR_TYPE_INT32:
+	case FR_TYPE_INT64:
+	case FR_TYPE_SIZE:
+	{
+		long long val;
+		if (!PyLong_CheckExact(value)) goto wrong_type;
+		val = PyLong_AsLongLong(value);
+
+		switch (vp->da->type) {
+		case FR_TYPE_BOOL:
+			vp->vp_bool = (bool)val;
+			break;
+		case FR_TYPE_UINT8:
+			vp->vp_uint8 = (uint8_t)val;
+			break;
+		case FR_TYPE_UINT16:
+			vp->vp_uint16 = (uint16_t)val;
+			break;
+		case FR_TYPE_UINT32:
+			vp->vp_uint32 = (uint32_t)val;
+			break;
+		case FR_TYPE_UINT64:
+			vp->vp_uint64 = (uint64_t)val;
+			break;
+		case FR_TYPE_INT8:
+			vp->vp_int8 = (int8_t)val;
+			break;
+		case FR_TYPE_INT16:
+			vp->vp_int16 = (int16_t)val;
+			break;
+		case FR_TYPE_INT32:
+			vp->vp_int32 = (int32_t)val;
+			break;
+		case FR_TYPE_INT64:
+			vp->vp_int64 = (int64_t)val;
+			break;
+		case FR_TYPE_SIZE:
+			vp->vp_size = (size_t)val;
+			break;
+		default:
+			fr_assert(0);
+		}
+	}
+		break;
+
+	case FR_TYPE_FLOAT32:
+	case FR_TYPE_FLOAT64:
+	{
+		double val;
+		if (!PyFloat_CheckExact(value)) goto wrong_type;
+		val = PyFloat_AsDouble(value);
+
+		if (vp->da->type == FR_TYPE_FLOAT32) {
+			vp->vp_float32 = (float)val;
+		} else {
+			vp->vp_float64 = val;
+		}
+	}
+		break;
+
+	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_DATE:
+	case FR_TYPE_IFID:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_ETHERNET:
+	{
+		char const	*val;
+		ssize_t		len;
+
+		if (!PyUnicode_CheckExact(value)) goto wrong_type;
+
+		val = PyUnicode_AsUTF8AndSize(value, &len);
+		if (fr_pair_value_from_str(vp, val, len, NULL, false) < 0) {
+			PyErr_Format(PyExc_AttributeError, "Failed parsing %.*s as %s", (int)len, val, fr_type_to_str(vp->da->type));
+			return -1;
+		}
+	}
+		break;
+
+	case FR_TYPE_NON_LEAF:
+		fr_assert(0);
+		break;
+	}
+
+	return 0;
+}
+
 /** Print out the current error
  *
  * Must be called with a valid thread state set
