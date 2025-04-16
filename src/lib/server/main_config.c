@@ -1491,7 +1491,6 @@ void main_config_hup(main_config_t *config)
 static fr_table_num_ordered_t config_arg_table[] = {
 	{ L("rewrite_update"),		 offsetof(main_config_t, rewrite_update) },
 	{ L("forbid_update"),		 offsetof(main_config_t, forbid_update) },
-	{ L("xlat_func_bare_words"),	 offsetof(main_config_t, xlat_func_bare_words) },
 };
 static size_t config_arg_table_len = NUM_ELEMENTS(config_arg_table);
 
@@ -1529,8 +1528,6 @@ int main_config_parse_option(char const *value)
 		fr_exit(1);
 	}
 
-	if (out == &main_config->xlat_func_bare_words) xlat_func_bare_words = box.vb_bool;
-
 	*out = box.vb_bool;
 
 	return 0;
@@ -1544,8 +1541,6 @@ bool main_config_migrate_option_get(char const *name)
 	size_t offset;
 
 	if (!main_config) return false;
-
-	if (strcmp(name, "use_new_conditions") == 0) return true; /* ignore this for migration */
 
 	offset = fr_table_value_by_substr(config_arg_table, name, strlen(name), 0);
 	if (!offset) return false;
