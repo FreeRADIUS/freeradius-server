@@ -35,11 +35,10 @@
  *  worker receives and processes.
  *
  *  When a packet is decoded, it is put into the "runnable" heap, and
- *  also into the "time_order" heap. The main loop fr_worker() then
- *  pulls new requests off of this heap and runs them.  The
- *  worker_check_timeouts() function also checks the tail of the
- *  "time_order" heap, and ages out requests which have been active
- *  for "too long".
+ *  also into the timeout sublist. The main loop fr_worker() then
+ *  pulls new requests off of this heap and runs them.  The main event
+ *  loop checks the head of the timeout sublist, and forcefully terminates
+ *  any requests which have been running for too long.
  *
  *  If a request is yielded, it is placed onto the yielded list in
  *  the worker "tracking" data structure.
@@ -63,6 +62,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/time_tracking.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/minmax_heap.h>
+#include <freeradius-devel/util/time.h>
+#include <freeradius-devel/util/timer.h>
 
 #include <stdalign.h>
 
@@ -111,7 +112,12 @@ struct fr_worker_s {
 	int			num_channels;	//!< actual number of channels
 
 	fr_heap_t      		*runnable;	//!< current runnable requests which we've spent time processing
-	fr_minmax_heap_t	*time_order;	//!< time ordered heap of requests
+
+	fr_timer_list_t		*timeout;		//!< Track when requests timeout using a dlist.
+	fr_timer_list_t		*timeout_custom;	//!< Track when requests timeout using an lst.
+							///< requests must always be in one of these lists.
+	fr_time_delta_t		max_request_time;	//!< maximum time a request can be processed
+
 	fr_rb_tree_t		*dedup;		//!< de-dup tree
 
 	fr_rb_tree_t		*listeners;    	//!< so we can cancel requests when a listener goes away
@@ -128,10 +134,6 @@ struct fr_worker_s {
 
 	bool			was_sleeping;	//!< used to suppress multiple sleep signals in a row
 	bool			exiting;	//!< are we exiting?
-
-	fr_time_t		checked_timeout; //!< when we last checked the tails of the queues
-
-	fr_timer_t		*ev_cleanup;	//!< timer for max_request_time
 
 	fr_worker_channel_t	*channel;	//!< list of channels
 };
@@ -195,8 +197,6 @@ static inline bool is_worker_thread(fr_worker_t const *worker)
 
 static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now);
 static void worker_send_reply(fr_worker_t *worker, request_t *request, bool do_not_respond, fr_time_t now);
-static void worker_max_request_time(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t when, void *uctx);
-static void worker_max_request_timer(fr_worker_t *worker);
 
 /** Callback which handles a message being received on the worker side.
  *
@@ -522,77 +522,63 @@ static void worker_stop_request(request_t **request_p)
  *
  * @param[in] tl	the worker's timer list.
  * @param[in] when	the current time
- * @param[in] uctx	the fr_worker_t.
+ * @param[in] uctx	the request_t timing out.
  */
-static void worker_max_request_time(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t when, void *uctx)
+static void _worker_request_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t when, void *uctx)
 {
-	fr_time_t	now = fr_time();
-	request_t	*request;
-	fr_worker_t	*worker = talloc_get_type_abort(uctx, fr_worker_t);
+	request_t	*request = talloc_get_type_abort(uctx, request_t);
 
 	/*
-	 *	Look at the oldest requests, and see if they need to
-	 *	be deleted.
+	 *	Waiting too long, delete it.
 	 */
-	while ((request = fr_minmax_heap_min_peek(worker->time_order)) != NULL) {
-		fr_time_t cleanup;
-
-		REQUEST_VERIFY(request);
-
-		cleanup = fr_time_add(request->async->recv_time, worker->config.max_request_time);
-		if (fr_time_gt(cleanup, now)) break;
-
-		/*
-		 *	Waiting too long, delete it.
-		 */
-		REDEBUG("Request has reached max_request_time - signalling it to stop");
-		(void) fr_minmax_heap_extract(worker->time_order, request);
-		worker_stop_request(&request);
-	}
-
-	/*
-	 *	Reset the max request timer.
-	 */
-	worker_max_request_timer(worker);
+	REDEBUG("Request has reached max_request_time - signalling it to stop");
+	worker_stop_request(&request);
 }
 
-/** See when we next need to service the time_order heap for "too old" packets
+/** Set, or re-set the request timer
  *
- * Inserts a timer into the event list will will trigger when the packet that
- * was received longest ago, would be older than max_request_time.
+ * Automatically moves requests between the timer lists (timeout, custom_timeout).
+ *
+ * Can be used to set the initial timeout, or extend the timeout of a request.
+ *
+ * @param[in] worker	the worker containing the timeout lists.
+ * @param[in] request	that we're timing out.
+ * @param[in] timeout	the timeout to set.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-static void worker_max_request_timer(fr_worker_t *worker)
+int fr_worker_request_timeout_set(fr_worker_t *worker, request_t *request, fr_time_delta_t timeout)
 {
-	fr_time_t	cleanup;
-	request_t	*request;
+	fr_timer_list_t *tl = fr_time_delta_eq(worker->config.max_request_time, timeout) ? worker->timeout : worker->timeout_custom;
 
-	/*
-	 *	No more requests, delete the timer.
-	 */
-	request = fr_minmax_heap_max_peek(worker->time_order);
-	if (!request) return;
+	fr_timer_disarm(request->timeout);	/* Remove the existing timer if there is one */
 
-	cleanup = fr_time_add(request->async->recv_time, worker->config.max_request_time);
-
-	DEBUG2("Resetting cleanup timer to +%pV", fr_box_time_delta(worker->config.max_request_time));
-	if (fr_timer_at(worker, worker->el->tl, &worker->ev_cleanup,
-			cleanup, false, worker_max_request_time, worker) < 0) {
-		ERROR("Failed inserting max_request_time timer");
+	if (unlikely(fr_timer_in(request, tl, &request->timeout, timeout,
+				 true, _worker_request_timeout, request) < 0)) {
+		RERROR("Failed to create request timeout timer");
+		return -1;
 	}
+
+	return 0;
 }
 
 /** Start time tracking for a request, and mark it as runnable.
  *
  */
-static void worker_request_time_tracking_start(fr_worker_t *worker, request_t *request, fr_time_t now)
+static int worker_request_time_tracking_start(fr_worker_t *worker, request_t *request, fr_time_t now)
 {
 	/*
 	 *	New requests are inserted into the time order heap in
 	 *	strict time priority.  Once they are in the list, they
 	 *	are only removed when the request is done / free'd.
 	 */
-	fr_assert(!fr_minmax_heap_entry_inserted(request->time_order_id));
-	(void) fr_minmax_heap_insert(worker->time_order, request);
+	fr_assert(!fr_timer_armed(request->timeout));
+
+	if (unlikely(fr_worker_request_timeout_set(worker, request, worker->config.max_request_time) < 0)) {
+		RERROR("Failed to set request timeout");
+		return -1;
+	}
 
 	/*
 	 *	Bootstrap the async state machine with the initial
@@ -606,7 +592,7 @@ static void worker_request_time_tracking_start(fr_worker_t *worker, request_t *r
 	fr_assert(!fr_heap_entry_inserted(request->runnable_id));
 	(void) fr_heap_insert(&worker->runnable, request);
 
-	if (!worker->ev_cleanup) worker_max_request_timer(worker);
+	return 0;
 }
 
 static void worker_request_time_tracking_end(fr_worker_t *worker, request_t *request, fr_time_t now)
@@ -616,7 +602,7 @@ static void worker_request_time_tracking_end(fr_worker_t *worker, request_t *req
 	fr_assert(worker->num_active > 0);
 	worker->num_active--;
 
-	if (fr_minmax_heap_entry_inserted(request->time_order_id)) (void) fr_minmax_heap_extract(worker->time_order, request);
+	TALLOC_FREE(request->timeout);	/* Disarm the reques timer */
 }
 
 /** Send a response packet to the network side
@@ -734,7 +720,7 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 
 	worker->stats.out++;
 
-	fr_assert(!fr_minmax_heap_entry_inserted(request->time_order_id));
+	fr_assert(!fr_timer_armed(request->timeout));
 	fr_assert(!fr_heap_entry_inserted(request->runnable_id));
 
 	fr_dlist_entry_unlink(&request->listen_entry);
@@ -798,6 +784,12 @@ void worker_request_name_number(request_t *request)
 	request->name = itoa_internal(request, request->number);
 }
 
+static inline CC_HINT(always_inline)
+uint32_t worker_num_requests(fr_worker_t *worker)
+{
+	return fr_timer_list_num_events(worker->timeout) + fr_timer_list_num_events(worker->timeout_custom);
+}
+
 static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now)
 {
 	int			ret = -1;
@@ -805,7 +797,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 	TALLOC_CTX		*ctx;
 	fr_listen_t		*listen = cd->listen;
 
-	if (fr_minmax_heap_num_elements(worker->time_order) >= (uint32_t) worker->config.max_requests) goto nak;
+	if (worker_num_requests(worker) >= (uint32_t) worker->config.max_requests) goto nak;
 
 	/*
 	 *	Receive a message to the worker queue, and decode it
@@ -973,16 +965,6 @@ static int8_t worker_runnable_cmp(void const *one, void const *two)
 }
 
 /**
- *  Track a request_t in the "time_order" heap.
- */
-static int8_t worker_time_order_cmp(void const *one, void const *two)
-{
-	request_t const *a = one, *b = two;
-
-	return fr_time_cmp(a->async->recv_time, b->async->recv_time);
-}
-
-/**
  *  Track a request_t in the "dedup" tree
  */
 static int8_t worker_dedup_cmp(void const *one, void const *two)
@@ -1010,8 +992,7 @@ static int8_t worker_dedup_cmp(void const *one, void const *two)
  */
 void fr_worker_destroy(fr_worker_t *worker)
 {
-	int i, count;
-	request_t *request;
+	int i, count, ret;
 
 //	WORKER_VERIFY;
 
@@ -1026,14 +1007,27 @@ void fr_worker_destroy(fr_worker_t *worker)
 	 *	events.
 	 */
 	count = 0;
-	while ((request = fr_minmax_heap_min_peek(worker->time_order)) != NULL) {
-		if (count < 10) {
-			DEBUG("Worker is exiting - telling request %s to stop", request->name);
-			count++;
-		}
-		worker_stop_request(&request);
+
+	/*
+	 *	Force the timeout event to fire for all requests that
+	 *	are still running.
+	 */
+	ret = fr_timer_list_force_run(worker->timeout);
+	if (unlikely(ret < 0)) {
+		fr_assert_msg(0, "Failed to force run the timeout list");
+	} else {
+		count += ret;
+	}
+
+	ret = fr_timer_list_force_run(worker->timeout_custom);
+	if (unlikely(ret < 0)) {
+		fr_assert_msg(0, "Failed to force run the custom timeout list");
+	} else {
+		count += ret;
 	}
 	fr_assert(fr_heap_num_elements(worker->runnable) == 0);
+
+	DEBUG("Worker is exiting - stopped %u requests", count);
 
 	/*
 	 *	Signal the channels that we're closing.
@@ -1157,7 +1151,7 @@ static void _worker_request_done_internal(request_t *request, UNUSED rlm_rcode_t
 	worker_request_time_tracking_end(worker, request, fr_time());
 
 	fr_assert(!fr_heap_entry_inserted(request->runnable_id));
-	fr_assert(!fr_minmax_heap_entry_inserted(request->time_order_id));
+	fr_assert(!fr_timer_armed(request->timeout));
 	fr_assert(!fr_dlist_entry_in_list(&request->async->entry));
 }
 
@@ -1166,10 +1160,8 @@ static void _worker_request_done_internal(request_t *request, UNUSED rlm_rcode_t
  * As the request has no parent, then there's nothing to free it
  * so we have to.
  */
-static void _worker_request_done_detached(request_t *request, UNUSED rlm_rcode_t rcode, void *uctx)
+static void _worker_request_done_detached(request_t *request, UNUSED rlm_rcode_t rcode, UNUSED void *uctx)
 {
-	fr_worker_t	*worker = talloc_get_type_abort(uctx, fr_worker_t);
-
 	/*
 	 *	No time tracking for detached requests
 	 *	so we don't need to call
@@ -1183,7 +1175,7 @@ static void _worker_request_done_detached(request_t *request, UNUSED rlm_rcode_t
 	 *	order heap, but we need to do that for
 	 *	detached requests.
 	 */
-	(void)fr_minmax_heap_extract(worker->time_order, request);
+	TALLOC_FREE(request->timeout);
 
 	fr_assert(!fr_dlist_entry_in_list(&request->async->entry));
 
@@ -1436,9 +1428,15 @@ nomem:
 		goto fail;
 	}
 
-	worker->time_order = fr_minmax_heap_talloc_alloc(worker, worker_time_order_cmp, request_t, time_order_id, 0);
-	if (!worker->time_order) {
-		fr_strerror_const("Failed creating time_order heap");
+	worker->timeout = fr_timer_list_ordered_alloc(worker, el->tl);
+	if (!worker->timeout) {
+		fr_strerror_const("Failed creating timeouts list");
+		goto fail;
+	}
+
+	worker->timeout_custom = fr_timer_list_lst_alloc(worker, el->tl);
+	if (!worker->timeout_custom) {
+		fr_strerror_const("Failed creating custom timeouts list");
 		goto fail;
 	}
 
@@ -1505,7 +1503,7 @@ void fr_worker(fr_worker_t *worker)
 		 */
 		wait_for_event = (fr_heap_num_elements(worker->runnable) == 0);
 		if (wait_for_event) {
-			if (worker->exiting && (fr_minmax_heap_num_elements(worker->time_order) == 0)) break;
+			if (worker->exiting && (worker_num_requests(worker) == 0)) break;
 
 			DEBUG4("Ready to process requests");
 		}

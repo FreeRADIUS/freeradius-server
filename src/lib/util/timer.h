@@ -116,7 +116,9 @@ bool			_fr_timer_armed(fr_timer_t *ev);
 /* Wrapper to avoid overhead of function call on NULL */
 #define			fr_timer_armed(_ev) ((_ev) && _fr_timer_armed(_ev))	/* returns true if the timer is armed */
 
-int			fr_timer_list_run(fr_timer_list_t *tl, fr_time_t *when) CC_HINT(nonnull);
+int			fr_timer_list_force_run(fr_timer_list_t *tl) CC_HINT(nonnull);
+
+int			fr_timer_list_run(fr_timer_list_t *tl, fr_time_t *when);
 
 int			fr_timer_list_disarm(fr_timer_list_t *tl) CC_HINT(nonnull);
 

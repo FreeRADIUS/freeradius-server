@@ -1494,14 +1494,13 @@ static void unlang_cancel_event(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now
 	request_t *request = talloc_get_type_abort(uctx, request_t);
 
 	RDEBUG2("Request canceled by dynamic timeout");
-
-	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
-
 	/*
 	 *	Cleans up the memory allocated to hold
 	 *	the pointer, not the event itself.
 	 */
 	talloc_free(request_data_get(request, (void *)unlang_cancel_xlat, 0));
+
+	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
 }
 
 static xlat_action_t unlang_cancel_never_run(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,

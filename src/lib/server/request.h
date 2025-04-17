@@ -234,8 +234,11 @@ struct request_s {
 	rlm_rcode_t		rcode;		//!< Last rcode returned by a module
 
 	fr_rb_node_t		dedup_node;	//!< entry in the deduplication tree.
+
 	fr_heap_index_t		runnable_id;	//!< entry in the heap of runnable packets
-	fr_heap_index_t		time_order_id;	//!< entry in the heap of time ordered packets
+
+	fr_timer_t		*timeout;	//!< Timer event for this request.  This tracks when we need to
+						///< forcefully terminate a request.
 
 	uint32_t		options;	//!< mainly for proxying EAP-MSCHAPv2.
 

@@ -68,6 +68,8 @@ typedef struct {
 	size_t		talloc_pool_size;	//!< for each request
 } fr_worker_config_t;
 
+int		fr_worker_request_timeout_set(fr_worker_t *worker, request_t *request, fr_time_delta_t timeout) CC_HINT(nonnull);
+
 fr_worker_t	*fr_worker_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const *name,
 				  fr_log_t const *logger, fr_log_lvl_t lvl, fr_worker_config_t *config) CC_HINT(nonnull(2,3,4));
 
