@@ -73,6 +73,13 @@ match ERROR offset 14: Too many arguments, expected 0, got 1
 xlat %test('bar')
 match %test('bar')
 
+#
+#  @todo - we now hoist the tmpl -> xlat -> tmpl to just a tmpl.  But
+#  we don't change the name of the parent group.  We may want to do that.
+#
+xlat %test(%{User-Name})
+match %test(%{User-Name})
+
 xlat %test()
 match ERROR offset 6: Missing required arg 1
 
@@ -297,4 +304,4 @@ xlat %md5('arg"')
 match %md5(0x61726722)
 
 count
-match 159
+match 161

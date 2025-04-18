@@ -3207,10 +3207,34 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
 			if (slen <= 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
-			if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
+			if (xlat_needs_resolving(head)) {
+				UNRESOLVED_SET(&type);
+				goto set_tmpl;
 
-			tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen, t_rules);
-			vpt->data.xlat.ex = head;
+			} else if (fr_dlist_num_elements(&head->dlist) == 1) {
+				xlat_exp_t *node = xlat_exp_head(head);
+				tmpl_t *hoisted;
+
+				if (node->type != XLAT_TMPL) goto set_tmpl;
+
+				/*
+				 *	We were asked to parse a tmpl.  But it turned out to be an xlat %{...}
+				 *
+				 *	If that xlat is identically a tmpl such as %{User-Name}, then we just
+				 *	hoist the tmpl to this node.  Otherwise at run time, we will have an
+				 *	extra bounce through the xlat code, for no real reason.
+				 */
+				hoisted = node->vpt;
+
+				(void) talloc_steal(ctx, hoisted);
+				talloc_free(vpt);
+				vpt = hoisted;
+
+			} else {
+			set_tmpl:
+				tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen, t_rules);
+				vpt->data.xlat.ex = head;
+			}
 
 			*out = vpt;
 
