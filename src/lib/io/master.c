@@ -39,7 +39,7 @@ typedef struct {
 
 	fr_trie_t			*trie;				//!< trie of clients
 	fr_heap_t			*pending_clients;		//!< heap of pending clients
-	fr_heap_t			*alive_clients;			//!< heap of active clients
+	fr_heap_t			*alive_clients;			//!< heap of active dynamic clients
 
 	fr_listen_t			*listen;			//!< The master IO path
 	fr_listen_t			*child;				//!< The child (app_io) IO path
@@ -1056,6 +1056,14 @@ static fr_io_client_t *client_alloc(TALLOC_CTX *ctx, fr_io_client_state_t state,
 	}
 
 	client->in_trie = true;
+
+	/*
+	 *	It's a static client.  Don't insert it into the list of alive clients, as those are only for
+	 *	dynamic clients.
+	 */
+	if (state == PR_CLIENT_STATIC) return client;
+
+	fr_assert(thread->alive_clients != NULL);
 
 	/*
 	 *	Track the live clients so that we can clean
