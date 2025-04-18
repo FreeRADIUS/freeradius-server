@@ -336,6 +336,7 @@ static int tls_log_request_bio_write_cb(BIO *bio, char const *in, int len)
 	fr_tls_log_bio_t	*lb = talloc_get_type_abort(BIO_get_data(bio), fr_tls_log_bio_t);
 	request_t		*request = talloc_get_type_abort(lb->request, request_t);
 	log_request_func_t	func;
+	fr_slen_t		slen;
 	char			*le;
 
 	/*
@@ -352,7 +353,16 @@ static int tls_log_request_bio_write_cb(BIO *bio, char const *in, int len)
 	 *	to aggregate it, then look for new line chars
 	 *	as an indication we need to print the line.
 	 */
-	if (fr_sbuff_in_bstrncpy(&lb->sbuff, in, len) < 0) return 0;
+	slen = fr_sbuff_in_bstrncpy(&lb->sbuff, in, len);
+	if (unlikely(slen < 0)) {
+		/*
+		 *	We failed to copy the data into the buffer
+		 *	so we can't do anything with it.
+		 */
+		REDEBUG2("Failed copying %u bytes into TLS log aggregation buffer, "
+			 "needed %zu more bytes", len, (size_t)(-(slen)));
+		return 0;
+	}
 
 	/*
 	 *	Split incoming data on new lines
