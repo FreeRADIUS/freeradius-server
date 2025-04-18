@@ -45,8 +45,6 @@ static inline void interpret_child_init(request_t *request)
 	intp->funcs.init_internal(request, intp->uctx);
 }
 
-void	unlang_interpret_request_stop(request_t *request);
-
 #ifdef __cplusplus
 }
 #endif

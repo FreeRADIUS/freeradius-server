@@ -55,7 +55,7 @@ static void unlang_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 	unlang_interpret_mark_runnable(request);
 
 	/*
-	 *	Signal all lower frames to exit.
+	 *	Signal all lower frames to exit, but the request can keep running.
 	 */
 	unlang_frame_signal(request, FR_SIGNAL_CANCEL, state->depth);
 	state->success = false;
@@ -63,8 +63,7 @@ static void unlang_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 	if (!state->instruction) return;
 
 	if (unlang_interpret_push_instruction(request, state->instruction, RLM_MODULE_FAIL, true) < 0) {
-		REDEBUG("Failed pushing timeout instruction - cancelling the request");
-		unlang_interpret_request_stop(request);
+		unlang_interpret_signal(request, FR_SIGNAL_CANCEL); /* also stops the request and does cleanups */
 	}
 }
 
