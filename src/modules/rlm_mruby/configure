@@ -4045,7 +4045,7 @@ smart_try_dir="$mruby_lib_dir /usr/lib"
 
 
 sm_lib_safe=`echo "mruby" | sed 'y%./+-%__p_%'`
-sm_func_safe=`echo "mrb_run" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "mrb_open" | sed 'y%./+-%__p_%'`
 
 if test "x" = "x"; then
   sm_pkg="${sm_lib_safe}"
@@ -4061,17 +4061,17 @@ smart_lib_dir="/usr/local/lib /opt/lib /usr/local/${sm_pkg}/lib  /opt/homebrew/l
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for mrb_run in -lmruby in $try" >&5
-printf %s "checking for mrb_run in -lmruby in $try... " >&6; }
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for mrb_open in -lmruby in $try" >&5
+printf %s "checking for mrb_open in -lmruby in $try... " >&6; }
   LIBS="-lmruby $old_LIBS"
   CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char mrb_run();
+extern char mrb_open();
 int
 main (void)
 {
-mrb_run()
+mrb_open()
   ;
   return 0;
 }
@@ -4098,16 +4098,16 @@ CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for mrb_run in -lmruby" >&5
-printf %s "checking for mrb_run in -lmruby... " >&6; }
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for mrb_open in -lmruby" >&5
+printf %s "checking for mrb_open in -lmruby... " >&6; }
 LIBS="-lmruby $old_LIBS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char mrb_run();
+extern char mrb_open();
 int
 main (void)
 {
-mrb_run()
+mrb_open()
   ;
   return 0;
 }
@@ -4131,17 +4131,17 @@ fi
 
 if test "x$smart_lib" = "x"; then
 for try in $smart_lib_dir; do
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for mrb_run in -lmruby in $try" >&5
-printf %s "checking for mrb_run in -lmruby in $try... " >&6; }
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for mrb_open in -lmruby in $try" >&5
+printf %s "checking for mrb_open in -lmruby in $try... " >&6; }
   LIBS="-lmruby $old_LIBS"
   CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char mrb_run();
+extern char mrb_open();
 int
 main (void)
 {
-mrb_run()
+mrb_open()
   ;
   return 0;
 }
@@ -4175,7 +4175,7 @@ SMART_LD_FOUND="$smart_ld_found"
 fi
 
 LIBS=$old_LIBS
-if test "x$ac_cv_lib_mruby_mrb_run" = "xyes"; then
+if test "x$ac_cv_lib_mruby_mrb_open" = "xyes"; then
 	mod_ldflags="${SMART_LIBS}"
 else
 	{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: mruby libraries not found. Use --with-mruby-lib-dir=<path>." >&5
