@@ -1217,204 +1217,77 @@ static void mod_vptuple(TALLOC_CTX *ctx, module_ctx_t const *mctx, request_t *re
 	radius_pairmove(request, vps, &tmp_list);
 }
 
-
-/*
- *	This is the core Python function that the others wrap around.
- *	Pass the value-pair print strings in a tuple.
+/** Create the Python object representing a pair list
+ *
  */
-static int mod_populate_vptuple(module_ctx_t const *mctx, request_t *request, PyObject *pp, fr_pair_t *vp)
+static inline CC_HINT(always_inline) PyObject *pair_list_alloc(request_t *request, fr_dict_attr_t const *list)
 {
-	rlm_python_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
-	PyObject *attribute = NULL;
-	PyObject *value = NULL;
+	PyObject		*py_list;
+	py_freeradius_pair_t	*our_list;
 
-	attribute = PyUnicode_FromString(vp->da->name);
-	if (!attribute) return -1;
-
-	switch (vp->vp_type) {
-	case FR_TYPE_STRING:
-		value = PyUnicode_FromStringAndSize(vp->vp_strvalue, vp->vp_length);
-		break;
-
-	case FR_TYPE_OCTETS:
-		value = PyBytes_FromStringAndSize((char const *)vp->vp_octets, vp->vp_length);
-		break;
-
-	case FR_TYPE_BOOL:
-		value = PyBool_FromLong(vp->vp_bool);
-		break;
-
-	case FR_TYPE_UINT8:
-		value = PyLong_FromUnsignedLong(vp->vp_uint8);
-		break;
-
-	case FR_TYPE_UINT16:
-		value = PyLong_FromUnsignedLong(vp->vp_uint16);
-		break;
-
-	case FR_TYPE_UINT32:
-		value = PyLong_FromUnsignedLong(vp->vp_uint32);
-		break;
-
-	case FR_TYPE_UINT64:
-		value = PyLong_FromUnsignedLongLong(vp->vp_uint64);
-		break;
-
-	case FR_TYPE_INT8:
-		value = PyLong_FromLong(vp->vp_int8);
-		break;
-
-	case FR_TYPE_INT16:
-		value = PyLong_FromLong(vp->vp_int16);
-		break;
-
-	case FR_TYPE_INT32:
-		value = PyLong_FromLong(vp->vp_int32);
-		break;
-
-	case FR_TYPE_INT64:
-		value = PyLong_FromLongLong(vp->vp_int64);
-		break;
-
-	case FR_TYPE_FLOAT32:
-		value = PyFloat_FromDouble((double) vp->vp_float32);
-		break;
-
-	case FR_TYPE_FLOAT64:
-		value = PyFloat_FromDouble(vp->vp_float64);
-		break;
-
-	case FR_TYPE_SIZE:
-		value = PyLong_FromSize_t(vp->vp_size);
-		break;
-
-	case FR_TYPE_TIME_DELTA:
-	case FR_TYPE_DATE:
-	case FR_TYPE_IFID:
-	case FR_TYPE_IPV6_ADDR:
-	case FR_TYPE_IPV6_PREFIX:
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_COMBO_IP_ADDR:
-	case FR_TYPE_COMBO_IP_PREFIX:
-	case FR_TYPE_ETHERNET:
-	{
-		ssize_t slen;
-		char buffer[256];
-
-		slen = fr_value_box_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), &vp->data, NULL);
-		if (slen < 0) {
-		error:
-			ROPTIONAL(REDEBUG, ERROR, "Failed marshalling %pP to Python value", vp);
-			python_error_log(inst, request);
-			Py_XDECREF(attribute);
-			return -1;
-		}
-		value = PyUnicode_FromStringAndSize(buffer, (size_t)slen);
-	}
-		break;
-
-	case FR_TYPE_NON_LEAF:
-	{
-		fr_pair_t	*child_vp;
-		int		child_len, i = 0;
-
-		child_len = fr_pair_list_num_elements(&vp->vp_group);
-		if (child_len == 0) {
-			Py_INCREF(Py_None);
-			value = Py_None;
-			break;
-		}
-
-		if ((value = PyTuple_New(child_len)) == NULL) goto error;
-
-		for (child_vp = fr_pair_list_head(&vp->vp_group);
-		     child_vp;
-		     child_vp = fr_pair_list_next(&vp->vp_group, child_vp), i++) {
-			PyObject *child_pp;
-
-			if ((child_pp = PyTuple_New(2)) == NULL) {
-				Py_DECREF(value);
-				goto error;
-			}
-
-			if (mod_populate_vptuple(mctx, request, child_pp, child_vp) == 0) {
-				PyTuple_SET_ITEM(value, i, child_pp);
-			} else {
-				Py_INCREF(Py_None);
-				PyTuple_SET_ITEM(value, i, Py_None);
-				Py_DECREF(child_pp);
-			}
-		}
-	}
-		break;
+	/*
+	 *	When handing instantiate and detach, there is no request
+	 */
+	if (!request) {
+		Py_INCREF(Py_None);
+		return Py_None;
 	}
 
-	if (value == NULL) goto error;
+	py_list = PyObject_CallObject((PyObject *)&py_freeradius_pair_list_def, NULL);
+	if (unlikely(!py_list)) return NULL;
 
-	PyTuple_SET_ITEM(pp, 0, attribute);
-	PyTuple_SET_ITEM(pp, 1, value);
-
-	return 0;
+	our_list = (py_freeradius_pair_t *)py_list;
+	our_list->da = list;
+	our_list->vp = fr_pair_list_parent(tmpl_list_head(request, list));
+	our_list->parent = NULL;
+	our_list->idx = 0;
+	return py_list;
 }
 
 static unlang_action_t do_python_single(rlm_rcode_t *p_result, module_ctx_t const *mctx,
 					request_t *request, PyObject *p_func, char const *funcname)
 {
+	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	rlm_python_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
-	fr_pair_t	*vp;
-	PyObject	*p_ret = NULL;
-	PyObject	*p_arg = NULL;
-	int		tuple_len;
-	rlm_rcode_t	rcode = RLM_MODULE_OK;
+
+	PyObject		*p_ret = NULL;
+	PyObject		*py_request;
+	py_freeradius_request_t	*our_request;
 
 	/*
-	 *	We will pass a tuple containing (name, value) tuples
-	 *	We can safely use the Python function to build up a
-	 *	tuple, since the tuple is not used elsewhere.
-	 *
-	 *	Determine the size of our tuple by walking through the packet.
-	 *	If request is NULL, pass None.
+	 *	Instantiate the request
 	 */
-	tuple_len = 0;
-	if (request != NULL) {
-		tuple_len = fr_pair_list_num_elements(&request->request_pairs);
+	py_request = PyObject_CallObject((PyObject *)&py_freeradius_request_def, NULL);
+	if (unlikely(!py_request)) {
+		python_error_log(inst, request);
+		RETURN_MODULE_FAIL;
 	}
 
-	if (tuple_len == 0) {
-		Py_INCREF(Py_None);
-		p_arg = Py_None;
-	} else {
-		int i = 0;
-		if ((p_arg = PyTuple_New(tuple_len)) == NULL) {
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-		}
+	our_request = (py_freeradius_request_t *)py_request;
+	rlm_python_set_request(request);
 
-		for (vp = fr_pair_list_head(&request->request_pairs);
-		     vp;
-		     vp = fr_pair_list_next(&request->request_pairs, vp), i++) {
-			PyObject *pp;
-
-			/* The inside tuple has two only: */
-			if ((pp = PyTuple_New(2)) == NULL) {
-				rcode = RLM_MODULE_FAIL;
-				goto finish;
-			}
-
-			if (mod_populate_vptuple(mctx, request, pp, vp) == 0) {
-				/* Put the tuple inside the container */
-				PyTuple_SET_ITEM(p_arg, i, pp);
-			} else {
-				Py_INCREF(Py_None);
-				PyTuple_SET_ITEM(p_arg, i, Py_None);
-				Py_DECREF(pp);
-			}
-		}
+	/*
+	 *	Create the list roots
+	 */
+	our_request->request = pair_list_alloc(request, request_attr_request);
+	if (unlikely(!our_request->request)) {
+	req_error:
+		Py_DECREF(py_request);
+		python_error_log(inst, request);
+		RETURN_MODULE_FAIL;
 	}
+
+	our_request->reply = pair_list_alloc(request, request_attr_reply);
+	if (unlikely(!our_request->reply)) goto req_error;
+
+	our_request->control = pair_list_alloc(request, request_attr_control);
+	if (unlikely(!our_request->control)) goto req_error;
+
+	our_request->state = pair_list_alloc(request, request_attr_state);
+	if (unlikely(!our_request->state)) goto req_error;
 
 	/* Call Python function. */
-	p_ret = PyObject_CallFunctionObjArgs(p_func, p_arg, NULL);
+	p_ret = PyObject_CallFunctionObjArgs(p_func, py_request, NULL);
 	if (!p_ret) {
 		RERROR("Python function returned no value");
 		rcode = RLM_MODULE_FAIL;
@@ -1479,9 +1352,11 @@ static unlang_action_t do_python_single(rlm_rcode_t *p_result, module_ctx_t cons
 	}
 
 finish:
+	rlm_python_set_request(NULL);
+
 	if (rcode == RLM_MODULE_FAIL) python_error_log(inst, request);
-	Py_XDECREF(p_arg);
 	Py_XDECREF(p_ret);
+	Py_XDECREF(py_request);
 
 	RETURN_MODULE_RCODE(rcode);
 }
