@@ -18,34 +18,18 @@
 /**
  * $Id$
  *
- * @file unlang/interpret_priv.h
- * @brief Private declarations for the unlang interpreter.
+ * @file unlang/timeout.h
+ * @brief Declarations for unlang timeouts
  *
- * @copyright 2021 The FreeRADIUS server project
+ * @copyright 2023 Network RADIUS SAS (legal@networkradius.com)
  */
-
-#include <freeradius-devel/util/event.h>
-#include <freeradius-devel/unlang/interpret.h>
-#include "interpret_priv.h"
+#include <freeradius-devel/server/request.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct unlang_interpret_s {
-	fr_event_list_t		*el;
-	unlang_request_func_t	funcs;
-	void			*uctx;
-};
-
-static inline void interpret_child_init(request_t *request)
-{
-	unlang_interpret_t *intp = unlang_interpret_get(request);
-
-	intp->funcs.init_internal(request, intp->uctx);
-}
-
-void	unlang_interpret_request_stop(request_t *request);
+int	unlang_timeout_section_push(request_t *request, CONF_SECTION *cs, fr_time_delta_t timeout) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

@@ -1113,7 +1113,6 @@ void unlang_interpret_request_done(request_t *request)
 	request->master_state = REQUEST_DONE;
 }
 
-static inline CC_HINT(always_inline)
 void unlang_interpret_request_stop(request_t *request)
 {
 	unlang_stack_t		*stack = request->stack;
