@@ -1129,94 +1129,6 @@ failed:
 	Py_XDECREF(p_traceback);
 }
 
-static void mod_vptuple(TALLOC_CTX *ctx, module_ctx_t const *mctx, request_t *request,
-			fr_pair_list_t *vps, PyObject *p_value, char const *funcname, char const *list_name)
-{
-	rlm_python_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
-	int		i;
-	Py_ssize_t	tuple_len;
-	tmpl_t		*dst;
-	fr_pair_t	*vp;
-	request_t	*current = request;
-	fr_pair_list_t	tmp_list;
-
-	fr_pair_list_init(&tmp_list);
-	/*
-	 *	If the Python function gave us None for the tuple,
-	 *	then just return.
-	 */
-	if (p_value == Py_None) return;
-
-	if (!PyTuple_CheckExact(p_value)) {
-		ERROR("%s - non-tuple passed to %s", funcname, list_name);
-		return;
-	}
-	/* Get the tuple tuple_len. */
-	tuple_len = PyTuple_GET_SIZE(p_value);
-	for (i = 0; i < tuple_len; i++) {
-		PyObject 	*p_tuple_element = PyTuple_GET_ITEM(p_value, i);
-		PyObject 	*p_str_1;
-		PyObject 	*p_str_2;
-		Py_ssize_t	pair_len;
-		char const	*s1;
-		char const	*s2;
-
-		if (!PyTuple_CheckExact(p_tuple_element)) {
-			ERROR("%s - Tuple element %d of %s is not a tuple", funcname, i, list_name);
-			continue;
-		}
-		/* Check if it's a pair */
-
-		pair_len = PyTuple_GET_SIZE(p_tuple_element);
-		if ((pair_len < 2) || (pair_len > 3)) {
-			ERROR("%s - Tuple element %d of %s is a tuple of size %zu. Must be 2 or 3",
-			      funcname, i, list_name, pair_len);
-			continue;
-		}
-
-		p_str_1 = PyTuple_GET_ITEM(p_tuple_element, 0);
-		p_str_2 = PyTuple_GET_ITEM(p_tuple_element, pair_len - 1);
-
-		if ((!PyUnicode_CheckExact(p_str_1)) || (!PyUnicode_CheckExact(p_str_2))) {
-			ERROR("%s - Tuple element %d of %s must be as (str, str)",
-			      funcname, i, list_name);
-			continue;
-		}
-		s1 = PyUnicode_AsUTF8(p_str_1);
-		s2 = PyUnicode_AsUTF8(p_str_2);
-
-		if (tmpl_afrom_attr_str(ctx, NULL, &dst, s1,
-					&(tmpl_rules_t){
-						.attr = {
-							.dict_def = request->proto_dict,
-							.list_def = request_attr_reply,
-						}
-					}) <= 0) {
-			PERROR("%s - Failed to find attribute %s.%s", funcname, list_name, s1);
-			continue;
-		}
-
-		if (tmpl_request_ptr(&current, tmpl_request(dst)) < 0) {
-			ERROR("%s - Attribute name %s.%s refers to outer request but not in a tunnel, skipping...",
-			      funcname, list_name, s1);
-			talloc_free(dst);
-			continue;
-		}
-
-		MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(dst)));
-		talloc_free(dst);
-
-		if (fr_pair_value_from_str(vp, s2, strlen(s2), NULL, false) < 0) {
-			DEBUG("%s - Failed: '%s.%s' = '%s'", funcname, list_name, s1, s2);
-		} else {
-			DEBUG("%s - '%s.%s' = '%s'", funcname, list_name, s1, s2);
-		}
-
-		fr_pair_append(&tmp_list, vp);
-	}
-	radius_pairmove(request, vps, &tmp_list);
-}
-
 /** Create the Python object representing a pair list
  *
  */
@@ -1301,43 +1213,10 @@ static unlang_action_t do_python_single(rlm_rcode_t *p_result, module_ctx_t cons
 	}
 
 	/*
-	 *	The function returns either:
-	 *  1. (returnvalue, replyTuple, configTuple), where
-	 *   - returnvalue is one of the constants RLM_*
-	 *   - replyTuple and configTuple are tuples of string
-	 *      tuples of size 2
-	 *
-	 *  2. the function return value alone
-	 *
-	 *  3. None - default return value is set
-	 *
-	 * xxx This code is messy!
+	 *  The function is expected to either return a return value
+	 *  or None, which results in the default return value.
 	 */
-	if (PyTuple_CheckExact(p_ret)) {
-		PyObject *p_tuple_int;
-
-		if (PyTuple_GET_SIZE(p_ret) != 3) {
-			ERROR("%s - Tuple must be (return, replyTuple, configTuple)", funcname);
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-		}
-
-		p_tuple_int = PyTuple_GET_ITEM(p_ret, 0);
-		if (!PyNumber_Check(p_tuple_int)) {
-			ERROR("%s - First tuple element not an integer", funcname);
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-		}
-		/* Now have the return value */
-		rcode = PyLong_AsLong(p_tuple_int);
-		/* Reply item tuple */
-		mod_vptuple(request->reply_ctx, mctx, request, &request->reply_pairs,
-			    PyTuple_GET_ITEM(p_ret, 1), funcname, "reply");
-		/* Config item tuple */
-		mod_vptuple(request->control_ctx, mctx, request, &request->control_pairs,
-			    PyTuple_GET_ITEM(p_ret, 2), funcname, "config");
-
-	} else if (PyNumber_Check(p_ret)) {
+	if (PyNumber_Check(p_ret)) {
 		/* Just an integer */
 		rcode = PyLong_AsLong(p_ret);
 
