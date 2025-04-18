@@ -390,7 +390,7 @@ static int tls_log_request_bio_write_cb(BIO *bio, char const *in, int len)
 	/*
 	 *	Clear out printed data
 	 */
-	fr_sbuff_shift(&lb->sbuff, fr_sbuff_used(&lb->logged_m));
+	fr_sbuff_shift(&lb->sbuff, fr_sbuff_used(&lb->logged_m), false);
 
 	return len;	/* Amount of data written */
 }
@@ -474,7 +474,7 @@ static int tls_log_global_bio_write_cb(BIO *bio, char const *in, int len)
 	/*
 	 *	Clear out printed data
 	 */
-	fr_sbuff_shift(&lb->sbuff, fr_sbuff_used(&lb->logged_m));
+	fr_sbuff_shift(&lb->sbuff, fr_sbuff_used(&lb->logged_m), false);
 
 	return len;	/* Amount of data written */
 }

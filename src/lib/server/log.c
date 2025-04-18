@@ -1027,7 +1027,7 @@ void log_request_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, 
 		/*
 		 *	Clear out the existing data
 		 */
-		fr_sbuff_shift(&sbuff, fr_sbuff_used(&m_start));
+		fr_sbuff_shift(&sbuff, fr_sbuff_used(&m_start), false);
 	}
 }
 

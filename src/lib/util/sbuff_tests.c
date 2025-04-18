@@ -1042,9 +1042,9 @@ static void test_talloc_extend_with_shift(void)
 	TEST_CHECK(fr_sbuff_init_talloc(NULL, &sbuff, &tctx, 4, 8) == &sbuff);
 	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff, "0123") == 4);
 	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff, "5678") == 4);
-	TEST_CHECK(fr_sbuff_shift(&sbuff, 4) == 4);
+	TEST_CHECK(fr_sbuff_shift(&sbuff, 4, false) == 4);
 	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff, "AAAA") == 4);
-	TEST_CHECK(fr_sbuff_shift(&sbuff, 8) == 8);
+	TEST_CHECK(fr_sbuff_shift(&sbuff, 8, false) == 8);
 	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff, "BBBBBBBB") == 8);
 
 	talloc_free(sbuff.buff);
