@@ -114,8 +114,6 @@ int		virtual_server_section_register(virtual_server_t *vs, virtual_server_compil
 
 section_name_t const **virtual_server_section_methods(virtual_server_t const *vs, section_name_t const *section) CC_HINT(nonnull);
 
-int		virtual_server_compile_sections(virtual_server_t const *vs, tmpl_rules_t const *rules) CC_HINT(nonnull);
-
 unlang_action_t	virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_frame) CC_HINT(nonnull);
 
 /** @name Parsing, bootstrap and instantiation

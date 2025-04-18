@@ -41,6 +41,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/unlang/compile.h>
 #include <freeradius-devel/unlang/function.h>
+#include <freeradius-devel/unlang/timeout.h>
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/master.h>
@@ -66,6 +67,9 @@ struct virtual_server_s {
 
 	fr_log_t			*log;			//!< log destination
 	char const			*log_name;		//!< name of log destination
+
+	fr_time_delta_t			timeout_delay;		//!< for timeout sections
+	void				*timeout_instruction;	//!< the timeout instruction
 };
 
 static fr_dict_t const *dict_freeradius;
@@ -931,6 +935,21 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 	return 0;
 }
 
+static unlang_mod_actions_t const mod_actions_timeout = {
+	.actions = {
+		[RLM_MODULE_REJECT]	= 3,
+		[RLM_MODULE_FAIL]	= 1,
+		[RLM_MODULE_OK]		= 4,
+		[RLM_MODULE_HANDLED]	= MOD_ACTION_RETURN,
+		[RLM_MODULE_INVALID]	= 2,
+		[RLM_MODULE_DISALLOW]	= 5,
+		[RLM_MODULE_NOTFOUND]	= 6,
+		[RLM_MODULE_NOOP]	= 8,
+		[RLM_MODULE_UPDATED]	= 7
+	},
+	.retry = RETRY_INIT,
+};
+
 /** Compile sections for a virtual server.
  *
  *  When the "proto_foo" module calls fr_app_process_instantiate(), it
@@ -943,7 +962,7 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
  * @param[in] vs	to to compile sections for.
  * @param[in] rules	to apply for pass1.
  */
-int virtual_server_compile_sections(virtual_server_t const *vs, tmpl_rules_t const *rules)
+static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t const *rules)
 {
 	virtual_server_compile_t const	*list = vs->process_module->compile_list;
 	void				*instance = vs->process_mi->data;
@@ -1086,6 +1105,36 @@ int virtual_server_compile_sections(virtual_server_t const *vs, tmpl_rules_t con
 			 */
 			found++;
 		}
+	}
+
+	/*
+	 *	A 'timeout' section applies to any request which is run through this virtual server.
+	 */
+	subcs = cf_section_find(server, "timeout", CF_IDENT_ANY);
+	if (subcs) {
+		int rcode;
+		void *instruction = NULL;
+		char const *value;
+		fr_value_box_t box;
+
+		value = cf_section_name2(subcs);
+		if (!value) {
+			cf_log_err(subcs, "Invalid 'timeout { ... }' section, it must define a timeout (time_delta)");
+			return -1;
+		}
+
+		if (fr_value_box_from_str(subcs, &box, FR_TYPE_TIME_DELTA, NULL, value, strlen(value), NULL) < 0) {
+			cf_log_perr(subcs, "Failed parsing timeout value for 'timeout { ... }' section");
+			return -1;
+		}
+
+	       	rcode = unlang_compile(vs, subcs, &mod_actions_timeout, rules, &instruction);
+		if (rcode < 0) return -1;
+
+		vs->timeout_delay = box.vb_time_delta;
+		vs->timeout_instruction = instruction;
+
+		found++;
 	}
 
 	return found;
