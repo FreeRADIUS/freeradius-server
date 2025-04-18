@@ -60,6 +60,8 @@ static void unlang_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 	unlang_frame_signal(request, FR_SIGNAL_CANCEL, state->depth);
 	state->success = false;
 
+	RINDENT_RESTORE(request, state);
+
 	if (!state->instruction) return;
 
 	if (unlang_interpret_push_instruction(request, state->instruction, RLM_MODULE_FAIL, true) < 0) {
@@ -72,8 +74,6 @@ static unlang_action_t unlang_timeout_resume_done(UNUSED rlm_rcode_t *p_result, 
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
 
 	if (!state->success) {
-		RINDENT_RESTORE(request, state);
-
 		RWDEBUG("Timeout exceeded");
 		return UNLANG_ACTION_FAIL;
 	}
@@ -149,14 +149,16 @@ static unlang_action_t unlang_timeout(rlm_rcode_t *p_result, request_t *request,
 /** When a timeout fires, run the given section.
  *
  * @param[in] request		to push timeout onto
- * @param[in] timeout		when to run the timeout
+ * @param[in] timeout      	when to run the timeout
  * @param[in] cs		section to run when the timeout fires.
+ * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
+ *				Set to UNLANG_SUB_FRAME if the interprer should continue.
  *
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int unlang_timeout_section_push(request_t *request, CONF_SECTION *cs, fr_time_delta_t timeout)
+int unlang_timeout_section_push(request_t *request, CONF_SECTION *cs, fr_time_delta_t timeout, bool top_frame)
 {
 	/** Static instruction for performing xlat evaluations
 	 *
@@ -185,6 +187,7 @@ int unlang_timeout_section_push(request_t *request, CONF_SECTION *cs, fr_time_de
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
 	unlang_t			*instruction;
+	fr_time_t			when;
 
 	/*
 	 *	Get the instruction we are supposed to run on timeout.
@@ -200,7 +203,7 @@ int unlang_timeout_section_push(request_t *request, CONF_SECTION *cs, fr_time_de
 	 *	Push a new timeout frame onto the stack
 	 */
 	if (unlang_interpret_push(request, &timeout_instruction,
-				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, true) < 0) return -1;
+				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, top_frame) < 0) return -1;
 	frame = &stack->frame[stack->depth];
 
 	/*
@@ -208,14 +211,22 @@ int unlang_timeout_section_push(request_t *request, CONF_SECTION *cs, fr_time_de
 	 */
 	MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_timeout_t));
 
+	RINDENT_SAVE(state, request);
+	state->depth = stack->depth;
+	state->request = request;
 	state->timeout = timeout;
 	state->instruction = instruction;
+	state->success = true;
 
-	if (unlang_timeout_set(&request->rcode, request, frame) != UNLANG_ACTION_PUSHED_CHILD) {
-		REDEBUG("Failed set timer for section %s { ... }",
-			cf_section_name1(cs));
+	when = fr_time_add(fr_time(), timeout);
+
+	if (fr_timer_at(state, unlang_interpret_event_list(request)->tl, &state->ev, when,
+			false, unlang_timeout_handler, state) < 0) {
+		RPEDEBUG("Failed setting timeout for section %s", cf_section_name1(cs));
 		return -1;
 	}
+
+	frame_repeat(frame, unlang_timeout_resume_done);
 
 	return 0;
 

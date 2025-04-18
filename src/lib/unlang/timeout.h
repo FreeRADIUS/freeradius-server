@@ -29,7 +29,7 @@
 extern "C" {
 #endif
 
-int	unlang_timeout_section_push(request_t *request, CONF_SECTION *cs, fr_time_delta_t timeout) CC_HINT(nonnull);
+int	unlang_timeout_section_push(request_t *request, CONF_SECTION *cs, fr_time_delta_t timeout, bool top_frame) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

@@ -70,6 +70,7 @@ struct virtual_server_s {
 
 	fr_time_delta_t			timeout_delay;		//!< for timeout sections
 	void				*timeout_instruction;	//!< the timeout instruction
+	CONF_SECTION			*timeout_cs;
 };
 
 static fr_dict_t const *dict_freeradius;
@@ -716,6 +717,17 @@ unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs,
 	}
 
 	/*
+	 *	Push a timeout after updating the log destination.
+	 */
+	if (server->timeout_cs) {
+		if (unlang_timeout_section_push(request, server->timeout_cs, server->timeout_delay, top_frame) < 0) {
+			return UNLANG_ACTION_FAIL;
+		}
+
+		top_frame = UNLANG_SUB_FRAME;
+	}
+
+	/*
 	 *	Bootstrap the stack with a module instance.
 	 */
 	if (unlang_module_push(&request->rcode, request, server->process_mi,
@@ -1133,6 +1145,7 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 
 		vs->timeout_delay = box.vb_time_delta;
 		vs->timeout_instruction = instruction;
+		vs->timeout_cs = subcs;
 
 		found++;
 	}
