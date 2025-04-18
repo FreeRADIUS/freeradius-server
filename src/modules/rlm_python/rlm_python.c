@@ -1718,14 +1718,96 @@ static int python_module_import_constants(rlm_python_t const *inst, PyObject *mo
 static PyObject *python_module_init(void)
 {
 	PyObject		*module;
+	PyObject		*p_state;
+	static pthread_mutex_t	init_lock = PTHREAD_MUTEX_INITIALIZER;
+	static bool		type_ready = false;
 
 	fr_assert(current_inst);
 
+	/*
+	 *	Only allow one thread at a time to do the module init.  This is
+	 *	out of an abundance of caution as it's unclear whether the
+	 *	reference counts on the various objects are thread safe.
+	 */
+	pthread_mutex_lock(&init_lock);
+
+	/*
+	 *	The type definitions are global, so we only need to call the
+	 *	init functions the first pass through.
+	*/
+
+	if (!type_ready) {
+		/*
+		 *	We need to initialise the definitions first
+		 *	this fills in any fields we didn't explicitly
+		 *	specify, and gets the structures ready for
+		 *	use by the python interpreter.
+		 */
+		if (PyType_Ready(&py_freeradius_pair_def) < 0) {
+		error:
+			pthread_mutex_unlock(&init_lock);
+			python_error_log(current_inst, NULL);
+			Py_RETURN_NONE;
+		}
+
+		if (PyType_Ready(&py_freeradius_value_pair_def) < 0) goto error;
+
+		if (PyType_Ready(&py_freeradius_grouping_pair_def) < 0) goto error;
+
+		if (PyType_Ready(&py_freeradius_pair_list_def) < 0) goto error;
+
+		if (PyType_Ready(&py_freeradius_request_def) < 0) goto error;
+
+		if (PyType_Ready(&py_freeradius_state_def) < 0) goto error;
+
+		type_ready = true;
+	}
+
+	/*
+	 *	The module is per-interpreter
+	 */
 	module = PyModule_Create(&py_freeradius_def);
 	if (!module) {
 		python_error_log(current_inst, NULL);
-		Py_RETURN_NONE;
+		goto error;
 	}
+
+	/*
+	 *	PyModule_AddObject steals ref on success, we we
+	 *	INCREF here to give it something to steal, else
+	 *	on free the refcount would go negative.
+	 *
+	 *	Note here we're creating a new instance of an
+	 *	object, not adding the object definition itself
+	 *	as there's no reason that a python script would
+	 *	ever need to create an instance object.
+	 *
+	 *	The instantiation function associated with the
+	 *	the __State object takes care of populating the
+	 *	instance data from globals and thread-specific
+	 *	variables.
+	 */
+	p_state = PyObject_CallObject((PyObject *)&py_freeradius_state_def, NULL);
+	Py_INCREF(&py_freeradius_state_def);
+
+	if (PyModule_AddObject(module, "__State", p_state) < 0) {
+		Py_DECREF(&py_freeradius_state_def);
+		Py_DECREF(module);
+		goto error;
+	}
+
+	/*
+	 *	For "Pair" we're inserting an object definition
+	 *	as opposed to the object instance we inserted
+	 *	for inst.
+	 */
+	Py_INCREF(&py_freeradius_pair_def);
+	if (PyModule_AddObject(module, "Pair", (PyObject *)&py_freeradius_pair_def) < 0) {
+		Py_DECREF(&py_freeradius_pair_def);
+		Py_DECREF(module);
+		goto error;
+	}
+	pthread_mutex_unlock(&init_lock);
 
 	return module;
 }
