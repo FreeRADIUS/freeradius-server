@@ -961,7 +961,7 @@ static void _xlat_debug_node(xlat_exp_t const *node, int depth, bool print_flags
 
 		if (tmpl_is_attr(node->vpt)) {
 			fr_assert(!node->flags.pure);
-			if (tmpl_attr_tail_da(node->vpt)) INFO_INDENT("attribute (%s)", tmpl_attr_tail_da(node->vpt)->name);
+			if (tmpl_attr_tail_da(node->vpt)) INFO_INDENT("tmpl attribute (%s)", tmpl_attr_tail_da(node->vpt)->name);
 			if (tmpl_attr_tail_num(node->vpt) != NUM_UNSPEC) {
 				FR_DLIST_HEAD(tmpl_request_list) const *list;
 				tmpl_request_t *rr = NULL;
