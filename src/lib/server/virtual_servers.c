@@ -1131,12 +1131,22 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 
 		value = cf_section_name2(subcs);
 		if (!value) {
-			cf_log_err(subcs, "Invalid 'timeout { ... }' section, it must define a timeout (time_delta)");
+			cf_log_err(subcs, "Invalid 'timeout { ... }' section, it must define a timeout value");
 			return -1;
 		}
 
 		if (fr_value_box_from_str(subcs, &box, FR_TYPE_TIME_DELTA, NULL, value, strlen(value), NULL) < 0) {
-			cf_log_perr(subcs, "Failed parsing timeout value for 'timeout { ... }' section");
+			cf_log_perr(subcs, "Failed parsing timeout value");
+			return -1;
+		}
+
+		if (fr_time_delta_cmp(box.vb_time_delta, fr_time_delta_from_sec(1)) < 0) {
+			cf_log_err(subcs, "Timeout value %pV too small - it should be >= 1s", &box);
+			return -1;
+		}
+
+		if (fr_time_delta_cmp(box.vb_time_delta, fr_time_delta_from_sec(30)) > 0) {
+			cf_log_err(subcs, "Timeout value %pV too large - it should be <= 30s", &box);
 			return -1;
 		}
 
