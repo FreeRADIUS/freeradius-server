@@ -1033,6 +1033,23 @@ static void test_talloc_extend_with_marker(void)
 	talloc_free(sbuff_0.buff);
 }
 
+static void test_talloc_extend_with_shift(void)
+{
+	fr_sbuff_t		sbuff;
+	fr_sbuff_uctx_talloc_t	tctx;
+
+	TEST_CASE("Intermix shift and extend");
+	TEST_CHECK(fr_sbuff_init_talloc(NULL, &sbuff, &tctx, 4, 8) == &sbuff);
+	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff, "0123") == 4);
+	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff, "5678") == 4);
+	TEST_CHECK(fr_sbuff_shift(&sbuff, 4) == 4);
+	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff, "AAAA") == 4);
+	TEST_CHECK(fr_sbuff_shift(&sbuff, 8) == 8);
+	TEST_CHECK(fr_sbuff_in_strcpy(&sbuff, "BBBBBBBB") == 8);
+
+	talloc_free(sbuff.buff);
+}
+
 static void test_file_extend(void)
 {
 	fr_sbuff_t	sbuff;
@@ -1596,6 +1613,7 @@ TEST_LIST = {
 	{ "fr_sbuff_talloc_extend_init_zero",	test_talloc_extend_init_zero },
 	{ "fr_sbuff_talloc_extend_multi_level",	test_talloc_extend_multi_level },
 	{ "fr_sbuff_talloc_extend_with_marker",	test_talloc_extend_with_marker },
+	{ "fr_sbuff_talloc_extend_with_shift",	test_talloc_extend_with_shift},
 	{ "fr_sbuff_file_extend",		test_file_extend },
 	{ "fr_sbuff_file_extend_max",		test_file_extend_max },
 
