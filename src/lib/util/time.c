@@ -227,6 +227,8 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 	negative = fr_sbuff_is_char(&our_in, '-');
 	do_float = false;
 
+	if (fr_sbuff_is_char(&our_in, '.')) goto is_float;
+
 	/*
 	 *	Look for:
 	 *
@@ -259,6 +261,7 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 	if (fr_sbuff_is_char(&our_in, '.')) {
 		our_in = FR_SBUFF(in);
 
+	is_float:
 		if (fr_sbuff_out(&sberr, &f, &our_in) < 0) goto num_error;
 
 		do_float = true;
