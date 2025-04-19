@@ -34,10 +34,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/module_rlm.h>
 
-#include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/server/cf_util.h>
-#include <freeradius-devel/util/time.h>
-#include <freeradius-devel/util/dict.h>
 
 #include <freeradius-devel/unlang/xlat_priv.h>
 

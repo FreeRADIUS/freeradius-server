@@ -30,9 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/exec_priv.h>
-#include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/util.h>
-#include <freeradius-devel/util/debug.h>
 
 #define MAX_ENVP 1024
 

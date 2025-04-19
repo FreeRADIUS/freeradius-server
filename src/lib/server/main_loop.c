@@ -37,7 +37,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
 
-#include <signal.h>
 #include <fcntl.h>
 
 #ifdef HAVE_SYS_WAIT_H

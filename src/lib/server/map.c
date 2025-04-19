@@ -32,20 +32,16 @@ RCSID("$Id$")
 #include <freeradius-devel/server/exec_legacy.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/paircmp.h>
-#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 
 #include <freeradius-devel/unlang/interpret.h>
 
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/pair_legacy.h>
-#include <freeradius-devel/util/misc.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
-#include <ctype.h>
 
 static fr_table_num_sorted_t const cond_quote_table[] = {
 	{ L("\""),	T_DOUBLE_QUOTED_STRING	},	/* Don't re-order, backslash throws off ordering */

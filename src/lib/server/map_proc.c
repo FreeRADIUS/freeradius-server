@@ -27,12 +27,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/map_proc.h>
-#include <freeradius-devel/server/map_proc_priv.h>
-#include <freeradius-devel/util/atexit.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/value.h>
-#include <freeradius-devel/util/talloc.h>
 
 static fr_rb_tree_t *map_proc_root = NULL;
 

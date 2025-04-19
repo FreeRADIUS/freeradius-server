@@ -25,11 +25,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/print.h>
-#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/value.h>
-#include <freeradius-devel/util/time.h>
 
 #include <fcntl.h>
 #ifdef HAVE_FEATURES_H

@@ -32,19 +32,14 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
-#include <freeradius-devel/util/misc.h>
 
-#include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/value.h>
 
 /*
  *	For xlat_exp_head_alloc(), because xlat_copy() doesn't create an output head.
  */
 #include <freeradius-devel/unlang/xlat_priv.h>
 
-#include <ctype.h>
 
 /** Define a global variable for specifying a default request reference
  *

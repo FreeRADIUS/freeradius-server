@@ -23,7 +23,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/trie.h>
 

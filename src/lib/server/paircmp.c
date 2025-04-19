@@ -31,10 +31,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/paircmp.h>
 #include <freeradius-devel/server/regex.h>
-#include <freeradius-devel/server/request.h>
 #include <freeradius-devel/unlang/xlat.h>
-#include <freeradius-devel/util/debug.h>
-#include <ctype.h>
 
 /** Compares check and vp by value.
  *

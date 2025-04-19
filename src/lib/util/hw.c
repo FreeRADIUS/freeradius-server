@@ -27,7 +27,6 @@
 #include <freeradius-devel/util/hw.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/strerror.h>
-#include <errno.h>
 
 #if defined(__APPLE__) || defined(__FreeBSD__)
 #include <sys/sysctl.h>

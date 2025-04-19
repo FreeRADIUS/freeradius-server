@@ -24,7 +24,6 @@
 RCSID("$Id$")
 #  define _PAIR_PRIVATE 1
 #  include <freeradius-devel/util/pair.h>
-#  include <freeradius-devel/util/tlist.h>
 #  define _INLINE
 FR_TLIST_FUNCS(fr_pair_order_list, fr_pair_t, order_entry)
 #else

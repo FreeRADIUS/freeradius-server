@@ -28,13 +28,9 @@ typedef struct fr_timer_list_s fr_timer_list_t;
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/event.h>
-#include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/timer.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/lst.h>
 #include <freeradius-devel/util/rb.h>
-#include <stdbool.h>
-#include <talloc.h>
 
 FR_DLIST_TYPES(timer)
 FR_DLIST_TYPEDEFS(timer, fr_timer_head_t, fr_timer_entry_t)

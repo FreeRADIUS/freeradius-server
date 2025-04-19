@@ -26,7 +26,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/pair_legacy.h>
-#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/regex.h>
 

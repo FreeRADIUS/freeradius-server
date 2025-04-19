@@ -30,9 +30,6 @@ static void test_init(void);
 
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/dict_test.h>
-#include <freeradius-devel/util/pair.h>
-#include <freeradius-devel/util/talloc.h>
 
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/request.h>

@@ -31,12 +31,9 @@ RCSID("$Id$")
 #include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/util/debug.h>
 
-#include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/syserror.h>
 
 #include <pthread.h>
-#include <ctype.h>
-#include <unistd.h>
 
 #define DL_INIT_CHECK fr_assert(dl_module_loader)
 

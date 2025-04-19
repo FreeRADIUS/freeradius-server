@@ -39,7 +39,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/perm.h>
-#include <freeradius-devel/util/types.h>
 
 static conf_parser_t conf_term = CONF_PARSER_TERMINATOR;
 static char const parse_spaces[] = "                                                                                                                                                                                                                                              ";

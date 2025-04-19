@@ -24,7 +24,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/htrie.h>
-#include <freeradius-devel/util/table.h>
 
 #define FUNC(_prefix, _op) ._op = (fr_htrie_ ##_op ## _t) fr_##_prefix##_## _op
 

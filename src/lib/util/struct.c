@@ -24,7 +24,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/struct.h>
-#include <freeradius-devel/util/encode.h>
 #include <freeradius-devel/io/pair.h>
 
 /** Convert a STRUCT to one or more VPs

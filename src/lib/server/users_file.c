@@ -34,7 +34,6 @@ RCSID("$Id$")
 
 #include <sys/stat.h>
 
-#include <ctype.h>
 #include <fcntl.h>
 
 static int pairlist_read_internal(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST_LIST *list,

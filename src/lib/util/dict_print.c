@@ -25,7 +25,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dict_priv.h>
 #include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/proto.h>
-#include <ctype.h>
 
 ssize_t fr_dict_attr_flags_print(fr_sbuff_t *out, fr_dict_t const *dict, fr_type_t type, fr_dict_attr_flags_t const *flags)
 {

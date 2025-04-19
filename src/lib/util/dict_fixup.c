@@ -25,10 +25,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/file.h>
-#include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/types.h>
-#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/value.h>
 
 #include "dict_fixup_priv.h"

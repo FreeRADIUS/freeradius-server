@@ -27,11 +27,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/trigger.h>
-#include <freeradius-devel/server/password.h>
-#include <freeradius-devel/server/packet.h>
-#include <freeradius-devel/unlang/xlat.h>
-#include <freeradius-devel/util/dict.h>
 
 /** Initialize src/lib/server/
  *

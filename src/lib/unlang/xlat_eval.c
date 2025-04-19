@@ -27,12 +27,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/types.h>
-#include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/value.h>
 
 static int instance_count = 0;
 

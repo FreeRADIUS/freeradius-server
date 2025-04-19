@@ -48,7 +48,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/value.h>
-#include <freeradius-devel/util/talloc.h>
 #include "edit.h"
 #include "calc.h"
 

@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/calc.h>
-#include <freeradius-devel/util/dict.h>
 
 static void xlat_value_list_to_xlat(xlat_exp_head_t *head, fr_value_box_list_t *list)
 {

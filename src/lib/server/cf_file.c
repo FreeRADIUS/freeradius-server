@@ -41,11 +41,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/md5.h>
-#include <freeradius-devel/util/syserror.h>
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
 #ifdef HAVE_DIRENT_H
 #  include <dirent.h>
@@ -59,7 +55,6 @@ RCSID("$Id$")
 #  include <sys/stat.h>
 #endif
 
-#include <ctype.h>
 #include <fcntl.h>
 
 #include <freeradius-devel/server/main_config.h>

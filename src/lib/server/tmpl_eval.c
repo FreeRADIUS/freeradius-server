@@ -36,14 +36,8 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/call.h>
 
 #include <freeradius-devel/util/atexit.h>
-#include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/edit.h>
-#include <freeradius-devel/util/token.h>
-#include <freeradius-devel/util/types.h>
 
-#include <talloc.h>
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;

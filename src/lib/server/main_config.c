@@ -27,36 +27,25 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
-#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/util.h>
 #include <freeradius-devel/server/virtual_servers.h>
 
-#include <freeradius-devel/unlang/xlat.h>
 
 #include <freeradius-devel/util/conf.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/hw.h>
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/sem.h>
-#include <freeradius-devel/util/token.h>
 #include <freeradius-devel/util/pair_legacy.h>
 
 #include <freeradius-devel/unlang/xlat_func.h>
 
-#include <sys/stat.h>
-#include <pwd.h>
-#include <grp.h>
 
-#include <unistd.h>
-#include <sys/types.h>
 
 #ifdef HAVE_SYSLOG_H
 #  include <syslog.h>

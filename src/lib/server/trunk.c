@@ -36,11 +36,9 @@ typedef struct trunk_s trunk_t;
 #define _TRUNK_PRIVATE 1
 #include <freeradius-devel/server/trunk.h>
 
-#include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/server/trigger.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/minmax_heap.h>
 
 #ifdef HAVE_STDATOMIC_H

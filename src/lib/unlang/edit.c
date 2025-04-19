@@ -27,7 +27,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/edit.h>
 #include <freeradius-devel/util/calc.h>
 #include <freeradius-devel/unlang/tmpl.h>

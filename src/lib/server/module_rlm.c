@@ -29,33 +29,19 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
-#include <freeradius-devel/server/cf_util.h>
 
 #include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/pair.h>
-#include <freeradius-devel/server/section.h>
-#include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/server/virtual_servers.h>
 
 #include <freeradius-devel/util/atexit.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/rb.h>
-#include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/token.h>
-#include <freeradius-devel/util/value.h>
 
 #include <freeradius-devel/unlang/compile.h>
 
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/xlat_redundant.h>
 
-#include <pthread.h>
 
 /** Lookup virtual module by name
  */
