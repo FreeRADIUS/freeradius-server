@@ -1725,6 +1725,19 @@ static bool compile_retry_section(unlang_mod_actions_t *actions, CONF_ITEM *ci)
 			return false;
 		}
 
+#define CLAMP(_name, _field, _limit) do { \
+			if (!fr_time_delta_ispos(actions->retry._field)) { \
+				cf_log_err(csi, "Invalid value for '" STRINGIFY(_name) " = %s' - value must be positive", \
+					   value); \
+				return false; \
+			} \
+			if (fr_time_delta_cmp(actions->retry._field, fr_time_delta_from_sec(_limit)) > 0) { \
+				cf_log_err(csi, "Invalid value for '" STRINGIFY(_name) " = %s' - value must be less than " STRINGIFY(_limit) "s", \
+					   value); \
+				return false; \
+		        } \
+	} while (0)
+
 		/*
 		 *	We don't use conf_parser_t here for various
 		 *	magical reasons.
@@ -1736,21 +1749,18 @@ static bool compile_retry_section(unlang_mod_actions_t *actions, CONF_ITEM *ci)
 					   name, value, fr_strerror());
 				return false;
 			}
+			CLAMP(initial_rtx_time, irt, 2);
 
 		} else if (strcmp(name, "max_rtx_time") == 0) {
 			if (fr_time_delta_from_str(&actions->retry.mrt, value, strlen(value), FR_TIME_RES_SEC) < 0) goto error;
 
-			if (!fr_time_delta_ispos(actions->retry.mrt)) {
-				cf_log_err(csi, "Invalid value for 'max_rtx_time = %s' - value must be positive",
-					   value);
-				return false;
-			}
+			CLAMP(max_rtx_time, mrt, 10);
 
 		} else if (strcmp(name, "max_rtx_count") == 0) {
 			unsigned long v = strtoul(value, 0, 0);
 
-			if (v > 65536) {
-				cf_log_err(csi, "Invalid value for 'max_rtx_count = %s' - value must be between 0 and 65536",
+			if (v > 10) {
+				cf_log_err(csi, "Invalid value for 'max_rtx_count = %s' - value must be between 0 and 10",
 					   value);
 				return false;
 			}
@@ -1760,11 +1770,7 @@ static bool compile_retry_section(unlang_mod_actions_t *actions, CONF_ITEM *ci)
 		} else if (strcmp(name, "max_rtx_duration") == 0) {
 			if (fr_time_delta_from_str(&actions->retry.mrd, value, strlen(value), FR_TIME_RES_SEC) < 0) goto error;
 
-			if (!fr_time_delta_ispos(actions->retry.mrd)) {
-				cf_log_err(csi, "Invalid value for 'max_rtx_duration = %s' - value must be positive",
-					   value);
-				return false;
-			}
+			CLAMP(max_rtx_duration, mrd, 20);
 
 		} else {
 			cf_log_err(csi, "Invalid item '%s' in 'retry' configuration.", name);
