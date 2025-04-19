@@ -40,7 +40,7 @@ static const CONF_PARSER module_config[] = {
 	{ "cisco_accounting_username_bug", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_t, mod_accounting_username_bug), "no" },
 	{ "allow_empty_identities", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_t, allow_empty_identities), NULL },
 	{ "max_sessions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_eap_t, max_sessions), "2048" },
-	{ "dedup_key", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_t, dedup_key), "" },
+	{ "dedup_key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_eap_t, dedup_key), "" },
 	CONF_PARSER_TERMINATOR
 };
 
