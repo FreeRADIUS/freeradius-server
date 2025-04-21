@@ -1,4 +1,4 @@
-== Configure common reply options
+= Configure Common Reply Options
 
 FreeRADIUS includes a powerful xref:index.adoc[policy language] called
 "unlang".
@@ -40,7 +40,7 @@ dhcp_common {
 }
 ----
 
-Note, FreeRADIUS has four main operators for assigning values to attributes:
+FreeRADIUS has four main operators for assigning values to attributes:
 
 `=`:: Add the attribute to the list, if and only if an attribute of the same
   name is not already present in that list.

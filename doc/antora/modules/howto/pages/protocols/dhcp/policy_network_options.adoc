@@ -1,4 +1,4 @@
-== Configure network-specific options and IP pool selection
+= Configure Network-Specific Options and IP Pool Selection
 
 In an environment where multiple networks (often VLANs) are in use, it is
 necessary to identify which network a client belongs to in order to assign an
@@ -147,7 +147,7 @@ with a key of `network` and no further filtering, so `Fall-Through`
 is set on that record in order that the other records will be tested
 to find subnet matches.
 
-=== Example packet processing
+== Example packet processing
 
 For our example, we consider a request arriving from a DHCP relay within
 10.10.0.0/16. In the absence of any specific DHCP subnet selection options in
@@ -172,7 +172,7 @@ allocation.
 The assigned IP address and network parameters will subsequently be returned in
 the DHCP reply.
 
-=== Testing the pool operation and network-specific options
+== Testing the pool operation and network-specific options
 
 Before proceeding further, you should test the operation of the IP pools and
 ensure that any network-specific reply attributes that you have configured are

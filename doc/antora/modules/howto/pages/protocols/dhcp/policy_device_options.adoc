@@ -1,4 +1,4 @@
-== Configure "device", "class" and "group" options
+= Configure "device", "class" and "group" options
 
 Beyond the global, network and subnet options already described, most sites
 will have a number of group or class based options, and have a requirement for
@@ -25,7 +25,7 @@ options.
 
 We describe some of these options in more detail.
 
-=== Directly in Policy
+== Directly in Policy
 
 Simple class options can be written directly into policy.  This is most
 suited to those options that rarely change and are based on attributes in the
@@ -104,7 +104,7 @@ if (DHCP-Client-Identifier && \
 }
 ----
 
-=== In Text Files
+== In Text Files
 
 The `files` module that has already been described for global, network and
 subnet options can also be used to apply options to groups of clients.
@@ -148,7 +148,7 @@ group2
        DHCP-LPR-Server := 192.168.20.200
 ----
 
-=== In the SQL Database
+== In the SQL Database
 
 Policy and files are both read during startup and editing them while
 FreeRADIUS is running will not result in any changes in behaviour.  If
@@ -276,7 +276,7 @@ dhcp_sql.authorize
 The file `policy.d/dhcp` contains a policy named `dhcp_policy_sql` which
 provides further worked examples for different types of option lookups.
 
-=== Testing "device", "class" and "group" options
+== Test "device", "class" and "group" options
 
 You should now test that any device-related options that you have configured
 using the various methods available are applied successfully by generating
