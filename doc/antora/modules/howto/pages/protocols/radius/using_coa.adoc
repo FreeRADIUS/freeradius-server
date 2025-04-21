@@ -1,0 +1,25 @@
+
+= Using CoA
+
+The Change of Authorization (CoA) functionality enables a RADIUS server to send messages to the Network Access Server (NAS) to change session settings after an initial authentication. FreeRADIUS supports Disconnect and CoA message types to effectively manage network access for all users. Disconnect messages resets one or more user sessions, whereas the CoA messages are used to dynamically change an active session's settings.
+
+
+== Benefits of CoA
+
+Using CoA messages within the RADIUS environment:
+
+* Allows RADIUS servers to dynamically update active sessions as access requirements change.
+
+* Disconnect and CoA message types provide more granular support to manage sessions for different users.
+
+* Easily perform session resets (disconnect) or grant different access levels to guests.
+
+== Orginating Packets
+
+The RADIUS server and the NAS exchange messages using UDP (default ports 1812/1813). The CoA or Disconnect message is generated and sent from the RADIUS server. The message is a RADIUS-formatted packet with the CoA-Request or Disconnect-Request and one or more attributes.
+
+If the request is malformed, or the request is missing attributes, the NAS 'quietly' ignores the request. See xref:reference:raddb/sites-available/originate-coa.adoc[CoA/Disconnect] for more details.
+
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

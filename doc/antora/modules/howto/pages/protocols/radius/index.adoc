@@ -1,6 +1,10 @@
 = RADIUS Howto
 
-We have some pages here:
+FreeRADIUS is a client-server protocol that provides authentication, authorization, and accounting services. Provisioned clients (i.e. the NAS)  transmit user information to FreeRADIUS servers. The server authenticates users and sets network access levels for connection requests. This information is returned to the client to complete the user's authorization. The level of access a user receives is dependent on your policies and what the client supplies.
 
+FreeRADIUS is packaged with the functionality to support these AAA processes. Some of these features include:
+
+* xref:reference:raddb/sites-available/originate-coa.adoc[CoA/Disconnect]
+** xref:protocols/radius/coa_examples.adoc[CoA Examples]
 * xref:protocols/radius/proxy_config.adoc[Proxy Configuration]
-* xref:protocols/radius/proxy_extensions.adoc[Proxy Extensions]
+** xref:protocols/radius/proxy_extensions.adoc[Proxy Extensions]
