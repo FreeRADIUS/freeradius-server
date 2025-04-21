@@ -5,7 +5,7 @@ import freeradius
 local = threading.local()
 
 
-def authorize(p):
+def recv(p):
     global local
     freeradius.log(
         "Python - threading.local.tls()=" + str(hasattr(local, "tls")), freeradius.L_DBG

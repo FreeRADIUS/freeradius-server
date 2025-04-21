@@ -2,7 +2,7 @@ import freeradius
 import shared
 
 
-def authorize(p):
+def recv(p):
     freeradius.log(
         "Python - shared_attribute=" + str(hasattr(shared, "shared_attribute")),
         freeradius.L_DBG

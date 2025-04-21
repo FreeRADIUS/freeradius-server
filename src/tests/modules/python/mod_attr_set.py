@@ -1,6 +1,6 @@
 import freeradius
 
-def authorize(p):
+def recv(p):
     p.reply["Reply-Message"] = "Value set by Python"
     p.control['NAS-IP-Address'] = '1.2.3.4'
     p.control['NAS-Port'] = '1'
@@ -14,12 +14,12 @@ def authenticate(p):
     p.control['Class'].value = b'goodbye'
     return freeradius.RLM_MODULE_OK
 
-def post_auth(p):
+def send(p):
     p.reply["Vendor-Specific"]["Cisco"]["AVPair"] = 'cisco=crazy'
     p.reply["Vendor-Specific"]["Cisco"]["AVPair"][1] = 'insane=syntax'
     return freeradius.RLM_MODULE_UPDATED
 
-def preacct(p):
+def recv_accounting_request(p):
     try:
         p.reply["Reply-Message"][5] = "This should not set"
     except:
