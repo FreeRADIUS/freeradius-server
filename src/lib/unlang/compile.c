@@ -2421,7 +2421,7 @@ static unlang_t *compile_try(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	CONF_SECTION *cs = cf_item_to_section(ci);
 	unlang_group_t *g;
 	unlang_t *c;
-	CONF_SECTION *next;
+	CONF_ITEM *next;
 
 	static unlang_ext_t const ext = {
 		.type = UNLANG_TYPE_TRY,
@@ -2442,8 +2442,11 @@ static unlang_t *compile_try(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 		return NULL;
 	}
 
-	next = cf_section_next(cf_item_to_section(cf_parent(cs)), cs);
-	if (!next || (strcmp(cf_section_name1(next), "catch") != 0)) {
+	next = cf_item_next(cf_parent(cs), ci);
+	while (next && cf_item_is_data(next)) next = cf_item_next(cf_parent(cs), next);
+
+	if (!next || !cf_item_is_section(next) ||
+	    (strcmp(cf_section_name1(cf_item_to_section(next)), "catch") != 0)) {
 		cf_log_err(cs, "'try' sections must be followed by a 'catch'");
 		return NULL;
 	}
@@ -2483,12 +2486,34 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	unlang_group_t *g;
 	unlang_t *c;
 	unlang_catch_t *ca;
+	CONF_ITEM *prev;
+	char const *name;
 
 	static unlang_ext_t const ext = {
 		.type = UNLANG_TYPE_CATCH,
 		.len = sizeof(unlang_catch_t),
 		.type_name = "unlang_catch_t",
 	};
+
+	prev = cf_item_prev(cf_parent(ci), ci);
+	while (prev && cf_item_is_data(prev)) prev = cf_item_prev(cf_parent(ci), prev);
+
+	if (!prev || !cf_item_is_section(prev)) {
+	fail:
+		cf_log_err(cs, "Found 'catch' section with no previous 'try'");
+		return NULL;
+	}
+
+	name = cf_section_name1(cf_item_to_section(prev));
+	fr_assert(name != NULL);
+
+	/*
+	 *	The previous thing has to be a section.  And it has to
+	 *	be either a "try" or a "catch".
+	 */
+	if ((strcmp(name, "try") != 0) && (strcmp(name, "catch") != 0)) {
+		goto fail;
+	}
 
 	g = group_allocate(parent, cs, &ext);
 	if (!g) return NULL;
@@ -2509,7 +2534,8 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 
 	} else {
 		int i;
-		char const *name = cf_section_name2(cs);
+
+		name = cf_section_name2(cs);
 
 		if (catch_argv(cs, ca, name) < 0) {
 			talloc_free(c);
