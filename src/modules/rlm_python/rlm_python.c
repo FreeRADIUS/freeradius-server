@@ -50,6 +50,9 @@ typedef struct {
 
 	char const	*module_name;		//!< String name of module.
 	char const	*function_name;		//!< String name of function in module.
+	char		*name1;			//!< Section name1 where this is called.
+	char		*name2;			//!< Section name2 where this is called.
+	fr_rb_node_t	node;			//!< Entry in tree of Python functions.
 } python_func_def_t;
 
 /** An instance of the rlm_python module
@@ -59,14 +62,12 @@ typedef struct {
 	char const	*name;			//!< Name of the module instance
 	PyThreadState	*interpreter;		//!< The interpreter used for this instance of rlm_python.
 	PyObject	*module;		//!< Local, interpreter specific module.
+	char const	*def_module_name;	//!< Default module for Python functions
+	fr_rb_tree_t	funcs;			//!< Tree of function calls found by call_env parser
+	bool		funcs_init;		//!< Has the tree been initialised.
 
 	python_func_def_t
 	instantiate,
-	authorize,
-	authenticate,
-	preacct,
-	accounting,
-	post_auth,
 	detach;
 
 	PyObject	*pythonconf_dict;	//!< Configuration parameters defined in the module
@@ -81,6 +82,10 @@ typedef struct {
 	bool		path_include_default;	//!< Include the default python path in `path`
 	bool		verbose;		//!< Enable libpython verbose logging
 } libpython_global_config_t;
+
+typedef struct {
+	python_func_def_t	*func;
+} python_call_env_t;
 
 /** Tracks a python module inst/thread state pair
  *
@@ -189,14 +194,11 @@ static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("func_" #x, rlm_python_t, x.function_name) },
 
 	A(instantiate)
-	A(authorize)
-	A(authenticate)
-	A(preacct)
-	A(accounting)
-	A(post_auth)
 	A(detach)
 
 #undef A
+
+	{ FR_CONF_OFFSET("module", rlm_python_t, def_module_name) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -398,6 +400,20 @@ static PyModuleDef py_freeradius_def = {
 	.m_size = 0,
 	.m_methods = py_freeradius_methods
 };
+
+/** How to compare two Python calls
+ *
+ */
+static int8_t python_func_def_cmp(void const *one, void const *two)
+{
+	python_func_def_t const *a = one, *b = two;
+	int ret;
+
+	ret = strcmp(a->name1, b->name1);
+	if (ret != 0) return CMP(ret, 0);
+	ret = strcmp(a->name2, b->name2);
+	return CMP(ret, 0);
+}
 
 /** Return the module instance object associated with the thread state or interpreter state
  *
@@ -1244,38 +1260,25 @@ finish:
  *
  * Will swap in thread state specific to module/thread.
  */
-static unlang_action_t do_python(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-				 request_t *request, PyObject *p_func, char const *funcname)
+static unlang_action_t mod_python(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_python_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_python_thread_t);
+	python_call_env_t	*func = talloc_get_type_abort(mctx->env_data, python_call_env_t);
 	rlm_rcode_t		rcode;
 
 	/*
 	 *	It's a NOOP if the function wasn't defined
 	 */
-	if (!p_func) RETURN_MODULE_NOOP;
+	if (!func->func->function) RETURN_MODULE_NOOP;
 
 	RDEBUG3("Using thread state %p/%p", mctx->mi->data, t->state);
 
 	PyEval_RestoreThread(t->state);	/* Swap in our local thread state */
-	do_python_single(&rcode, mctx, request, p_func, funcname);
+	do_python_single(&rcode, mctx, request, func->func->function, func->func->function_name);
 	(void)fr_cond_assert(PyEval_SaveThread() == t->state);
 
 	RETURN_MODULE_RCODE(rcode);
 }
-
-#define MOD_FUNC(x) \
-static unlang_action_t CC_HINT(nonnull) mod_##x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
-{ \
-	rlm_python_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_python_t); \
-	return do_python(p_result, mctx, request, inst->x.function, #x);\
-}
-
-MOD_FUNC(authenticate)
-MOD_FUNC(authorize)
-MOD_FUNC(preacct)
-MOD_FUNC(accounting)
-MOD_FUNC(post_auth)
 
 static void python_obj_destroy(PyObject **ob)
 {
@@ -1299,7 +1302,7 @@ static int python_function_load(module_inst_ctx_t const *mctx, python_func_def_t
 	rlm_python_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
 	char const *funcname = "python_function_load";
 
-	if (def->module_name == NULL || def->function_name == NULL) return 0;
+	if (def->module_name == NULL || (def->function_name == NULL && def->name1 == NULL)) return 0;
 
 	LSAN_DISABLE(def->module = PyImport_ImportModule(def->module_name));
 	if (!def->module) {
@@ -1314,7 +1317,19 @@ static int python_function_load(module_inst_ctx_t const *mctx, python_func_def_t
 		return -1;
 	}
 
+	/*
+	 *	Calls found by call_env parsing will have name1 set
+	 *	If name2 is set first look for <name1>_<name2> and fall back to <name1>
+	 */
+	if (!def->function_name) def->function_name = def->name2 ? talloc_asprintf(def, "%s_%s", def->name1, def->name2) : def->name1;
+
 	def->function = PyObject_GetAttrString(def->module, def->function_name);
+	if (!def->function && def->name2) {
+		PyErr_Clear();	// Since we're checking for another function, clear any errors.
+		talloc_const_free(def->function_name);
+		def->function_name = def->name1;
+		def->function = PyObject_GetAttrString(def->module, def->function_name);
+	}
 	if (!def->function) {
 		ERROR("%s - Function '%s.%s' is not found", funcname, def->module_name, def->function_name);
 		goto error;
@@ -1642,10 +1657,16 @@ static void python_interpreter_free(rlm_python_t *inst, PyThreadState *interp)
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_python_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
+	rlm_python_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
+	python_func_def_t	*func = NULL;
+	fr_rb_iter_inorder_t	iter;
+	CONF_PAIR		*cp;
+	char			*pair_name;
 
+	if (inst->interpreter) return 0;
 	if (python_interpreter_init(mctx) < 0) return -1;
 	inst->name = mctx->mi->name;
+	if (!inst->funcs_init) fr_rb_inline_init(&inst->funcs, python_func_def_t, node, python_func_def_cmp, NULL);
 	/*
 	 *	Switch to our module specific interpreter
 	 */
@@ -1656,12 +1677,49 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 */
 #define PYTHON_FUNC_LOAD(_x) if (python_function_load(mctx, &inst->_x) < 0) goto error
 	PYTHON_FUNC_LOAD(instantiate);
-	PYTHON_FUNC_LOAD(authenticate);
-	PYTHON_FUNC_LOAD(authorize);
-	PYTHON_FUNC_LOAD(preacct);
-	PYTHON_FUNC_LOAD(accounting);
-	PYTHON_FUNC_LOAD(post_auth);
 	PYTHON_FUNC_LOAD(detach);
+
+	/*
+	 *	Load all the Python functions found by the call_env parser.
+	 */
+	func = fr_rb_iter_init_inorder(&iter, &inst->funcs);
+	while (func) {
+		/*
+		 *	Check for mod_<name1>_<name2> or mod_<name1> config pairs.
+		 *	If neither exist, fall back to default Python module.
+		 */
+		if (func->name2) {
+			pair_name = talloc_asprintf(func, "mod_%s_%s", func->name1, func->name2);
+			cp = cf_pair_find(mctx->mi->conf, pair_name);
+			talloc_free(pair_name);
+			if (cp) goto found_mod;
+		}
+		pair_name = talloc_asprintf(func, "mod_%s", func->name1);
+		cp = cf_pair_find(mctx->mi->conf, pair_name);
+		talloc_free(pair_name);
+	found_mod:
+		func->module_name = cp ? cf_pair_value(cp) : inst->def_module_name;
+
+		/*
+		 *	Check for func_<name1>_<name2> or func_<name1> function overrides.
+		 *	Checks for Python functions <name1>_<name2> and <name1> are done
+		 *	in python_function_load.
+		 */
+		if (func->name2) {
+			pair_name = talloc_asprintf(func, "func_%s_%s", func->name1, func->name2);
+			cp = cf_pair_find(mctx->mi->conf, pair_name);
+			talloc_free(pair_name);
+			if (cp) goto found_func;
+		}
+		pair_name = talloc_asprintf(func, "func_%s", func->name1);
+		cp = cf_pair_find(mctx->mi->conf, pair_name);
+		talloc_free(pair_name);
+	found_func:
+		if (cp) func->function_name = cf_pair_value(cp);
+
+		if (python_function_load(mctx, func) < 0) goto error;
+		func = fr_rb_iter_next_inorder(&iter);
+	}
 
 	/*
 	 *	Call the instantiate function.
@@ -1693,7 +1751,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_python_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
+	rlm_python_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
+	python_func_def_t	*func = NULL;
+	fr_rb_iter_inorder_t	iter;
 
 	/*
 	 *	If we don't have a interpreter
@@ -1719,12 +1779,13 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
 	PYTHON_FUNC_DESTROY(instantiate);
-	PYTHON_FUNC_DESTROY(authorize);
-	PYTHON_FUNC_DESTROY(authenticate);
-	PYTHON_FUNC_DESTROY(preacct);
-	PYTHON_FUNC_DESTROY(accounting);
-	PYTHON_FUNC_DESTROY(post_auth);
 	PYTHON_FUNC_DESTROY(detach);
+
+	func = fr_rb_iter_init_inorder(&iter, &inst->funcs);
+	while (func) {
+		python_function_destroy(func);
+		func = fr_rb_iter_next_inorder(&iter);
+	}
 
 	PyEval_SaveThread();
 
@@ -1901,6 +1962,80 @@ static void libpython_free(void)
 }
 
 /*
+ *	Restrict automatic Python function names to lowercase characters, numbers and underscore
+ *	meaning that a module call in `recv Access-Request` will look for `recv_access_request`
+ */
+static void python_func_name_safe(char *name) {
+	char	*p;
+	size_t	i;
+
+	p = name;
+	for (i = 0; i < talloc_array_length(name); i++) {
+		*p = tolower(*p);
+		if (!strchr("abcdefghijklmnopqrstuvwxyz1234567890", *p)) *p = '_';
+		p++;
+	}
+}
+
+static int python_func_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, UNUSED tmpl_rules_t const *t_rules,
+			     UNUSED CONF_ITEM *ci, call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
+{
+	rlm_python_t		*inst = talloc_get_type_abort(cec->mi->data, rlm_python_t);
+	call_env_parsed_t	*parsed;
+	python_func_def_t	*func;
+	void			*found;
+
+	if (!inst->funcs_init) {
+		fr_rb_inline_init(&inst->funcs, python_func_def_t, node, python_func_def_cmp, NULL);
+		inst->funcs_init = true;
+	}
+
+	MEM(parsed = call_env_parsed_add(ctx, out,
+					 &(call_env_parser_t){
+						.name = "func",
+						.flags = CALL_ENV_FLAG_PARSE_ONLY,
+						.pair = {
+							.parsed = {
+								.offset = rule->pair.offset,
+								.type = CALL_ENV_PARSE_TYPE_VOID
+							}
+						}
+					 }));
+
+	MEM(func = talloc_zero(inst, python_func_def_t));
+	func->name1 = talloc_strdup(func, cec->asked->name1);
+	python_func_name_safe(func->name1);
+	if (cec->asked->name2) {
+		func->name2 = talloc_strdup(func, cec->asked->name2);
+		python_func_name_safe(func->name2);
+	}
+
+	if (fr_rb_find_or_insert(&found, &inst->funcs, func) < 0) {
+		talloc_free(func);
+		return -1;
+	}
+
+	/*
+	 *	If the function call is already in the tree, use that entry.
+	 */
+	if (found) {
+		talloc_free(func);
+		call_env_parsed_set_data(parsed, found);
+	} else {
+		call_env_parsed_set_data(parsed, func);
+	}
+	return 0;
+}
+
+static const call_env_method_t python_method_env = {
+	FR_CALL_ENV_METHOD_OUT(python_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_SUBSECTION_FUNC(CF_IDENT_ANY, CF_IDENT_ANY, CALL_ENV_FLAG_PARSE_MISSING, python_func_parse) },
+		CALL_ENV_TERMINATOR
+	}
+};
+
+/*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  *
@@ -1928,17 +2063,7 @@ module_rlm_t rlm_python = {
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
-			/*
-			 *	Hack to support old configurations
-			 */
-			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting },
-			{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate },
-			{ .section = SECTION_NAME("authorize", CF_IDENT_ANY), .method = mod_authorize },
-
-			{ .section = SECTION_NAME("recv", "accounting-request"), .method = mod_preacct },
-			{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize },
-
-			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth },
+			{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_python, .method_env = &python_method_env },
 			MODULE_BINDING_TERMINATOR
 		}
 	}
