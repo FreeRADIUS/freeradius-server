@@ -19,11 +19,10 @@
  * @file rlm_python.c
  * @brief Translates requests between the server an a python interpreter.
  *
- * @note Rewritten by Paul P. Komkoff Jr <i@stingr.net>.
+ * @note Rewritten by Nick Porter for FreeRADIUS v4
  *
  * @copyright 2000,2006,2015-2016 The FreeRADIUS server project
- * @copyright 2002 Miguel A.L. Paraz (mparaz@mparaz.com)
- * @copyright 2002 Imperium Technology, Inc.
+ * @copyright 2025 Network RADIUS SAS
  */
 RCSID("$Id$")
 
