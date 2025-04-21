@@ -1,4 +1,4 @@
-== Configure subnet-specific options for shared networks
+= Configure Subnet-Specific Options for Shared Networks
 
 In the case that shared-networks are in use, with the pool containing
 equally-valid IP addresses from multiple subnets, it is necessary to set the
@@ -101,7 +101,7 @@ subnet DHCP-Network-Subnet < 10.30.20.0/24
        DHCP-Router-Address := 10.30.20.1
 ----
 
-=== Example packet processing
+== Example packet processing
 
 For our example, we consider a request arriving from a DHCP relay within
 10.30.10.0/24. In the absence of any specific DHCP subnet selection options in
@@ -135,7 +135,7 @@ the pool name and network options.
 The assigned IP address, network and subnet parameters will subsequently be
 returned in the DHCP reply.
 
-=== Testing the subnet-specific options
+== Testing the subnet-specific options
 
 If you have set any subnet-specific reply parameters then you should test these
 before proceeding further.

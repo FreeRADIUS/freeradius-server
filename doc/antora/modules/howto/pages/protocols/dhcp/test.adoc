@@ -1,4 +1,4 @@
-== Testing the DHCP service
+= Test the DHCP Service
 
 We can verify that FreeRADIUS is providing a DHCP service using the
 `dhcpclient` tool that is included with the FreeRADIUS distribution.
@@ -25,8 +25,8 @@ DHCP-Client-Identifier := abc123
 EOF
 ----
 
-We can now generate this packet by invoking one of the following commands based
-on the current circumstances...
+We can generate this packet by invoking one of the following commands based
+on the current circumstances.
 
 From the host that is running the FreeRADIUS DHCP server:
 
@@ -60,7 +60,7 @@ address on the interface used by the dhcpclient tool to send the Discover
 packet.
 ====
 
-When one of the above commands is run, the tool with generate output such as
+When one of the above commands is run, the tool generates output such as
 the following which shows that the packet was sent and that it is now waiting
 for replies:
 
@@ -113,7 +113,7 @@ Each received DHCP response will generate output such as the following:
 Examine the DHCP response to ensure that it has the correct message type
 (`DHCP-Offer`, in this case), contains the temporary IP address that you
 configured earlier, i.e. `DHCP-Your-IP-Address = 1.2.3.4`, and any other
-expected reply parameters (which we configure later). You should also carefully
+expected reply parameters (which we configure later). Carefully
 examine the output of a FreeRADIUS debug session (`radius -X`) to ensure that
 the policy is being executed in the way that you expect and that no warnings
 are being generated.
@@ -126,18 +126,12 @@ DHCP parameters ("attributes") understood by FreeRADIUS.
 
 [WARNING]
 ====
-When you are done **remember** to remove the temporary edit that was made to
-the `dhcp` virtual server that provides the static IP assignment.
+When you are done testing, **remember** to remove the temporary edit that was made to the `dhcp` virtual server that provides the static IP assignment.
 ====
 
-=== Testing the DHCP policy
+== Testing the DHCP policy
 
 The remainder of this guide describes how to configure the IP address plan,
-setup the IP pools and define a DHCP policy. You should develop your policy by
-making small, incremental changes to the provided configuration and then test
-those changes with the approach described above, using `dhcpclient` and `radius -X`,
-modifying the sample DHCP packet as required. If you break the policy then
-revert the last change, attempt to understand what went wrong, and try
-something else.
+setup the IP pools and define a DHCP policy. It's recommended to develop your policy by making small, incremental changes to the provided configuration and then test those changes with the approach described above, using `dhcpclient` and `radius -X`, modifying the sample DHCP packet as required. If you break the policy then revert the last change, attempt to understand what went wrong, and try something else.
 
 Now xref:protocols/dhcp/policy.adoc[define the DHCP policy].
