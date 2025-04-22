@@ -14,9 +14,10 @@ catch [ rcodes ] {
 The `catch` statement runs a series of substatements in a block, but only if the previous xref:unlang/try.adoc[try] failed. 
 
 [ rcodes ]:: Zero or more module return codes.  The return codes can be `disallow`, `fail`, `invalid`, or `reject`.
++
+If the `catch` statement is after a xref:unlang/timeout.adoc[timeout] statement, then the `catch` will run only if the `timeout` section fails.  In this case, you must use `catch timeout { ... }`.  The `catch timeout` syntax is not allowed in any other situation.
 
-[ statements ]:: The `unlang` commands which will be executed.  A
-`catch` block can be empty.
+[ statements ]:: The `unlang` commands which will be executed.  A `catch` block can be empty.
 
 If no rcode is given the `catch` statement matches all of the codes listed above.  Otherwise, the `catch` statement matches one of the listed rcodes.
 
@@ -44,7 +45,7 @@ catch invalid {   # skipped after "catch fail" is run.
 }
 ----
 
-There is some overlap in functionality between `try` / xref:unlang/catch.adoc[catch] and xref:unlang/redundant.adoc[redundant].  The main difference is that a xref:unlang/catch.adoc[catch] statement can catch specific failure codes.
+There is some overlap in functionality between xref:unlang/try.adoc[try] / `catch` and xref:unlang/redundant.adoc[redundant].  The main difference is that a xref:unlang/catch.adoc[catch] statement can catch specific failure codes.
 
 The xref:unlang/redundant.adoc[redundant] statement should be used to run
 one of many similar modules.  For example, the xref:unlang/redundant.adoc[redundant] statement could be used to choose one of four different `sql` modules in a fail-over fashion.

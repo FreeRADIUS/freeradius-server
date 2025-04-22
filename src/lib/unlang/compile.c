@@ -2488,6 +2488,7 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	unlang_catch_t *ca;
 	CONF_ITEM *prev;
 	char const *name;
+	bool catching_timeout = false;
 
 	static unlang_ext_t const ext = {
 		.type = UNLANG_TYPE_CATCH,
@@ -2507,11 +2508,37 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	name = cf_section_name1(cf_item_to_section(prev));
 	fr_assert(name != NULL);
 
-	/*
-	 *	The previous thing has to be a section.  And it has to
-	 *	be either a "try" or a "catch".
-	 */
-	if ((strcmp(name, "try") != 0) && (strcmp(name, "catch") != 0)) {
+	if (strcmp(name, "timeout") == 0) {
+		CONF_ITEM *next;
+
+		name = cf_section_name2(cs);
+		if (!name || (strcmp(name, "timeout") != 0)) {
+			cf_log_err(cs, "Invalid 'catch' after a 'timeout' section");
+			return NULL;
+		}
+
+		/*
+		 *	Check that the next section is NOT a "catch".
+		 */
+		next = cf_item_next(cf_parent(ci), ci);
+		while (next && cf_item_is_data(next)) next = cf_item_next(cf_parent(ci), next);
+
+		if (next && cf_item_is_section(next) &&
+		    (strcmp(cf_section_name1(cf_item_to_section(next)), "catch") == 0)) {
+			cf_log_err(next, "Cannot have two 'catch' statements after a 'timeout' section");
+			return NULL;
+		}
+
+		/*
+		 *	We comp
+		 */
+		catching_timeout = true;
+
+	} else if ((strcmp(name, "try") != 0) && (strcmp(name, "catch") != 0)) {
+		/*
+		 *	The previous thing has to be a section.  And it has to
+		 *	be either a "try" or a "catch".
+		 */
 		goto fail;
 	}
 
@@ -2523,10 +2550,13 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 
 	ca = unlang_group_to_catch(g);
 
-	/*
-	 *	No arg2: catch all errors
-	 */
-	if (!cf_section_name2(cs)) {
+	if (catching_timeout) {
+		ca->timeout = catching_timeout;
+
+	} else if (!cf_section_name2(cs)) {
+		/*
+		 *	No arg2: catch errors
+		 */
 		ca->catching[RLM_MODULE_REJECT] = true;
 		ca->catching[RLM_MODULE_FAIL] = true;
 		ca->catching[RLM_MODULE_INVALID] = true;

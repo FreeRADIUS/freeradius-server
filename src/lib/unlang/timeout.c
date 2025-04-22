@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/timeout.h>
 #include "group_priv.h"
 #include "timeout_priv.h"
-#include "interpret_priv.h"
+#include "unlang_priv.h"
 
 typedef struct {
 	bool					success;
@@ -72,13 +72,36 @@ static void unlang_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 static unlang_action_t unlang_timeout_resume_done(UNUSED rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
+	unlang_t		*unlang;
 
-	if (!state->success) {
-		RWDEBUG("Timeout exceeded");
-		return UNLANG_ACTION_FAIL;
+	unlang = frame->instruction->next;
+
+	/*
+	 *	No timeout, we go to the next instruction.
+	 *
+	 *	Unless the next instruction is a "catch timeout", in which case we skip it.
+	 */
+	if (state->success) {
+		if (!unlang || (unlang->type != UNLANG_TYPE_CATCH)) {
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+
+		/*
+		 *	We skip the "catch" section if there's no timeout.
+		 */
+		return frame_set_next(frame, unlang->next);
 	}
 
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	RWDEBUG("Timeout exceeded");
+
+	/*
+	 *	If there's a next instruction, AND it's a "catch", then we catch the timeout.
+	 */
+	if (unlang && (unlang->type == UNLANG_TYPE_CATCH)) {
+		return frame_set_next(frame, unlang);
+	}
+
+	return UNLANG_ACTION_FAIL;
 }
 
 static unlang_action_t unlang_timeout_set(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
