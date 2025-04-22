@@ -54,8 +54,8 @@ typedef struct {
 	/*
 	 *	Internal state management
 	 */
-	fr_timer_t			*ev_timeout;		//!< when we time out for not receiving a packet
-	fr_timer_t			*ev_packet;		//!< for when we next send a packet
+	fr_timer_t			*timeout_ev;		//!< when we time out for not receiving a packet
+	fr_timer_t			*packet_ev;		//!< for when we next send a packet
 	fr_time_t			last_recv;		//!< last received packet
 	fr_time_t			next_recv;		//!< when we next expect to receive a packet
 	fr_time_t			last_sent;		//!< the last time we sent a packet

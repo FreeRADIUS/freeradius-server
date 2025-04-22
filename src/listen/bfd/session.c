@@ -105,8 +105,8 @@ static int bfd_stop_poll(bfd_session_t *session)
 	 *	re-set the timers.
 	 */
 	if (!session->remote_demand_mode) {
-		fr_assert(session->ev_timeout != NULL);
-		fr_assert(session->ev_packet != NULL);
+		fr_assert(session->timeout_ev != NULL);
+		fr_assert(session->packet_ev != NULL);
 
 		bfd_stop_control(session);
 		bfd_start_control(session);
@@ -812,12 +812,10 @@ static void bfd_start_packets(bfd_session_t *session)
 	uint64_t	jitter;
 	fr_timer_cb_t cb;
 
-	if (session->ev_packet) return;
-
 	/*
 	 *	Reset the timers.
 	 */
-	FR_TIMER_DISARM(session->ev_packet);
+	FR_TIMER_DISARM(session->packet_ev);
 
 	if (fr_time_delta_cmp(session->desired_min_tx_interval, session->remote_min_rx_interval) >= 0) {
 		interval = fr_time_delta_unwrap(session->desired_min_tx_interval);
@@ -860,7 +858,7 @@ static void bfd_start_packets(bfd_session_t *session)
 		cb = bfd_send_packet;
 	}
 
-	if (fr_timer_in(session, session->el->tl, &session->ev_packet,
+	if (fr_timer_in(session, session->el->tl, &session->packet_ev,
 			fr_time_delta_wrap(interval),
 			false, cb, session) < 0) {
 		fr_assert("Failed to insert event" == NULL);
@@ -998,7 +996,7 @@ static void bfd_set_timeout(bfd_session_t *session, fr_time_t when)
 
 	timeout = fr_time_add(when, delta);
 
-	if (fr_timer_at(session, session->el->tl, &session->ev_timeout,
+	if (fr_timer_at(session, session->el->tl, &session->timeout_ev,
 			timeout, false, bfd_detection_timeout, session) < 0) {
 		fr_assert("Failed to insert event" == NULL);
 	}
@@ -1010,8 +1008,8 @@ static void bfd_set_timeout(bfd_session_t *session, fr_time_t when)
  */
 static int bfd_stop_control(bfd_session_t *session)
 {
-	FR_TIMER_DISARM(session->ev_timeout);
-	FR_TIMER_DISARM(session->ev_packet);
+	FR_TIMER_DISARM(session->timeout_ev);
+	FR_TIMER_DISARM(session->packet_ev);
 	return 1;
 }
 
