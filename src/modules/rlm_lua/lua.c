@@ -337,9 +337,9 @@ static int _lua_pair_get(lua_State *L)
 	/*
 	 *	@fixme Packet list should be light user data too at some point
 	 */
-	fr_pair_dcursor_by_da_init(&cursor, &request->request_pairs, da);
+	vp = fr_pair_dcursor_by_da_init(&cursor, &request->request_pairs, da);
 
-	for (index = (int) lua_tointeger(L, -1); index >= 0; index--) {
+	for (index = (int) lua_tointeger(L, -1); index > 0; index--) {
 		vp = fr_dcursor_next(&cursor);
 		if (!vp) return 0;
 	}
@@ -386,11 +386,11 @@ static int _lua_pair_set(lua_State *L)
 	/*
 	 *	@fixme Packet list should be light user data too at some point
 	 */
-	fr_pair_dcursor_by_da_init(&cursor, &request->request_pairs, da);
+	vp = fr_pair_dcursor_by_da_init(&cursor, &request->request_pairs, da);
 
-	for (index = lua_tointeger(L, -2); index >= 0; index--) {
+	for (index = lua_tointeger(L, -2); index > 0; index--) {
 		vp = fr_dcursor_next(&cursor);
-		if (vp) break;
+		if (!vp) break;
 	}
 
 	/*
