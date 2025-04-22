@@ -1045,12 +1045,8 @@ static int _request_free(rs_request_t *request)
 		RS_ASSERT(ret);
 	}
 
-	if (request->event) {
-		ret = fr_timer_delete(&request->event);
-		if (ret < 0) {
-			fr_perror("Failed deleting timer");
-			RS_ASSERT(0 == 1);
-		}
+	if (fr_timer_armed(request->event)) {
+		FR_TIMER_DELETE(&request->event);
 	}
 
 	fr_packet_free(&request->packet);
@@ -1529,7 +1525,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				 */
 				fr_pair_list_free(&original->link_vps);
 				fr_packet_free(&original->linked);
-				fr_timer_delete(&original->event);
+				FR_TIMER_DELETE(&original->event);
 			/*
 			 *	...nope it's the first response to a request.
 			 */
@@ -1754,7 +1750,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			fr_pair_list_append(&original->expect_vps, &search.expect_vps);
 
 			/* Disarm the timer for the cleanup event for the original request */
-			fr_timer_delete(&original->event);
+			FR_TIMER_DELETE(&original->event);
 		/*
 		 *	...nope it's a new request.
 		 */

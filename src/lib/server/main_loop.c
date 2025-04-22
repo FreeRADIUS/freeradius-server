@@ -219,7 +219,7 @@ int main_loop_start(void)
 		if (under_systemd) {
 			INFO("Informing systemd we're stopping");
 			sd_notify(0, "STOPPING=1");
-			fr_timer_delete(&sd_watchdog_ev);
+			FR_TIMER_DELETE(&sd_watchdog_ev);
 		}
 	}
 #endif

@@ -179,8 +179,7 @@ static fr_event_update_t resume_read[] = {
 
 static int track_free(fr_io_track_t *track)
 {
-	if (track->ev) (void) fr_timer_delete(&track->ev);
-
+	if (fr_cond_assert_msg(fr_timer_delete(&track->ev) == 0, "failed deleting tracking timer")) return -1;
 	talloc_free_children(track);
 
 	fr_assert(track->client->packets > 0);
@@ -1189,7 +1188,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 		 *	struct while the packet is in the outbound
 		 *	queue.
 		 */
-		if (old->ev) (void) fr_timer_delete(&old->ev);
+		FR_TIMER_DISARM(old->ev);
 		return old;
 	}
 
@@ -1211,7 +1210,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 		if (!fr_rb_delete(client->table, old)) {
 			fr_assert(0);
 		}
-		if (old->ev) (void) fr_timer_delete(&old->ev);
+		FR_TIMER_DELETE(&old->ev);
 
 		talloc_set_destructor(old, track_free);
 
@@ -1817,8 +1816,11 @@ have_client:
 		 *	connection.  It's still in use, so we don't
 		 *	want to clean it up.
 		 */
-		if (client->ev) {
-			talloc_const_free(client->ev);
+		if (fr_timer_armed(client->ev)) {
+			if (fr_cond_assert_msg(fr_timer_delete(&client->ev) == 0,
+					       "failed deleting client timer")) {
+				return -1;
+			}
 			client->ready_to_delete = false;
 		}
 
@@ -2068,7 +2070,7 @@ static void client_expiry_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 		/*
 		 *	The timer is already set, don't do anything.
 		 */
-		if (client->ev) return;
+		if (fr_timer_armed(client->ev)) return;
 
 		switch (client->state) {
 		case PR_CLIENT_CONNECTED:

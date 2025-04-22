@@ -115,7 +115,7 @@ static void xlat_unbound_callback(void *mydata, int rcode, void *packet, int pac
 	 *	Request has completed remove timeout event and set
 	 *	async_id to 0 so ub_cancel() is not called when ur is freed
 	 */
-	if (ur->ev) (void)fr_timer_delete(&ur->ev);
+	FR_TIMER_DISARM(ur->ev);
 	ur->async_id = 0;
 
 	/*
@@ -274,7 +274,7 @@ static void xlat_unbound_signal(xlat_ctx_t const *xctx, request_t *request, UNUS
 {
 	unbound_request_t	*ur = talloc_get_type_abort(xctx->rctx, unbound_request_t);
 
-	if (ur->ev) (void)fr_timer_delete(&ur->ev);
+	FR_TIMER_DISARM(ur->ev);
 
 	RDEBUG2("Forcefully cancelling pending unbound request");
 }

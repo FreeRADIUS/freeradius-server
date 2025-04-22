@@ -655,7 +655,7 @@ static void connection_state_enter_closed(connection_t *conn)
 
 	STATE_TRANSITION(CONNECTION_STATE_CLOSED);
 
-	fr_timer_delete(&conn->ev);
+	FR_TIMER_DISARM(conn->ev);
 
 	/*
 	 *	If there's a close callback, call it, so that the
@@ -774,7 +774,7 @@ static void connection_state_enter_failed(connection_t *conn)
 	/*
 	 *	Explicit error occurred, delete the connection timer
 	 */
-	fr_timer_delete(&conn->ev);
+	FR_TIMER_DISARM(conn->ev);
 
 	/*
 	 *	Record what state the connection is currently in
@@ -924,7 +924,7 @@ static void connection_state_enter_halted(connection_t *conn)
 		BAD_STATE_TRANSITION(CONNECTION_STATE_HALTED);
 	}
 
-	fr_timer_delete(&conn->ev);
+	FR_TIMER_DISARM(conn->ev);
 
 	STATE_TRANSITION(CONNECTION_STATE_HALTED);
 	WATCH_PRE(conn);
@@ -952,7 +952,7 @@ static void connection_state_enter_connected(connection_t *conn)
 
 	STATE_TRANSITION(CONNECTION_STATE_CONNECTED);
 
-	fr_timer_delete(&conn->ev);
+	FR_TIMER_DISARM(conn->ev);
 	WATCH_PRE(conn);
 	if (conn->open) {
 		HANDLER_BEGIN(conn, conn->open);
@@ -1453,7 +1453,9 @@ static int _connection_free(connection_t *conn)
 	/*
 	 *	Explicitly cancel any pending events
 	 */
-	fr_timer_delete(&conn->ev);
+	if (!fr_cond_assert_msg(fr_timer_delete(&conn->ev) == 0, "failed deleting connection timer")) {
+		return -1;
+	}
 
 	/*
 	 *	Don't allow the connection to be

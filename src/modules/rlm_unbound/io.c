@@ -27,6 +27,7 @@ RCSID("$Id$")
 #define LOG_PREFIX "unbound"
 
 #include <freeradius-devel/server/log.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/syserror.h>
 
@@ -232,9 +233,7 @@ static void _unbound_io_service_errored(UNUSED fr_event_list_t *el,
 	 *	that it fired.  This is imperfect but unbound
 	 *	doesn't have a callback for receiving errors.
 	 */
-	if (fr_timer_delete(&ev->timer) < 0) {
-		PERROR("ubound event %p - Failed disarming timeout", ev);
-	}
+	FR_TIMER_DISARM(ev->timer);
 
 	ev->cb(-1, UB_EV_TIMEOUT, ev->uctx);	/* Call libunbound - pretend this is a timeout */
 }
@@ -347,9 +346,7 @@ static int _unbound_io_event_deactivate(struct ub_event *ub_ev)
 	if (ev->events & UB_EV_TIMEOUT) {
 		DEBUG4("unbound event %p - Disarming timeout", ev);
 
-		if (ev->timer && (fr_timer_delete(&ev->timer) < 0)) {
-			PERROR("ubound event %p - Failed disarming timeout", ev);
-
+		if (!fr_cond_assert_msg(fr_timer_disarm(ev->timer) == 0, "failed disarming timeout")) {
 			ret = -1;
 		}
 	}
@@ -382,9 +379,7 @@ static int _unbound_io_timer_modify(struct ub_event *ub_ev, UNUSED struct ub_eve
 		       ev, uctx, ev->uctx);
 		ev->uctx = uctx;
 	}
-	if (ev->timer && (fr_timer_delete(&ev->timer) < 0)) {
-		PERROR("ubound event %p - Failed disarming timeout", ev);
-
+	if (!fr_cond_assert_msg(fr_timer_disarm(ev->timer) == 0, "ubound event %p - Failed disarming timeout", ev)) {
 		ret = -1;	/* Continue ? */
 	}
 
@@ -414,11 +409,7 @@ static int _unbound_io_timer_deactivate(struct ub_event *ub_ev)
 
 	DEBUG4("unbound event %p - Disarming timeout", ev);
 
-	if (ev->timer && (fr_timer_delete(&ev->timer) < 0)) {
-		PERROR("unbound event %p - Failed disarming timeout", ev);
-
-		return -1;
-	}
+	if (!fr_cond_assert_msg(fr_timer_disarm(ev->timer) == 0, "failed disarming timeout")) return -1;
 
 	return 0;
 }

@@ -543,8 +543,8 @@ static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connec
 	uint			poll_interval = (query_ctx && query_ctx->type != SQL_QUERY_SELECT) ? c->query_interval : c->select_interval;
 	switch (notify_on) {
 	case TRUNK_CONN_EVENT_NONE:
-		if (c->read_ev) fr_timer_delete(&c->read_ev);
-		if (c->write_ev) fr_timer_delete(&c->write_ev);
+		FR_TIMER_DISARM(c->read_ev);
+		FR_TIMER_DISARM(c->write_ev);
 		return;
 
 	case TRUNK_CONN_EVENT_BOTH:

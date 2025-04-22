@@ -87,7 +87,21 @@ int			_fr_timer_in(NDEBUG_LOCATION_ARGS
 
 int			fr_timer_disarm(fr_timer_t *ev);			/* disarms but does not free */
 
+#define			FR_TIMER_DISARM(_ev) \
+			do { \
+				if (likely((_ev) != NULL) && unlikely(fr_timer_disarm(_ev) < 0)) { \
+					fr_assert_msg(0, "Failed to disarm timer %p", (_ev)); \
+				} \
+			} while (0)
+
 int			fr_timer_delete(fr_timer_t **ev_p) CC_HINT(nonnull);	/* disarms AND frees */
+
+#define			FR_TIMER_DELETE(_ev_p) \
+			do { \
+				if ((likely((*(_ev_p)) != NULL) && unlikely(fr_timer_delete(_ev_p) < 0))) { \
+					fr_assert_msg(0, "Failed to delete timer %p", (_ev_p)); \
+				} \
+			} while (0)
 
 fr_time_t		fr_timer_when(fr_timer_t *ev) CC_HINT(nonnull);
 

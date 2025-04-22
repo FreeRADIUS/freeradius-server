@@ -141,7 +141,7 @@ void fr_bio_packet_connected(fr_bio_t *bio)
 	/*
 	 *	Stop any connection timeout.
 	 */
-	if (my->ev) talloc_const_free(&my->ev);
+	FR_TIMER_DELETE(&my->ev);
 
 	/*
 	 *	Tell the application that the packet BIO is now usable.

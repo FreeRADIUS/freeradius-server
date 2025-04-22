@@ -232,7 +232,7 @@ static void status_check_reset(bio_handle_t *h, bio_request_t *u)
 	u->num_replies = 0;	/* Reset */
 	u->retry.start = fr_time_wrap(0);
 
-	if (u->ev) (void) fr_timer_delete(&u->ev);
+	FR_TIMER_DISARM(u->ev);
 
 	bio_request_reset(u);
 }
@@ -613,7 +613,12 @@ static int _bio_handle_free(bio_handle_t *h)
 
 	fr_assert(h->fd >= 0);
 
-	if (h->status_u) fr_timer_delete(&h->status_u->ev);
+	if (h->status_u) {
+		if (!fr_cond_assert_msg(fr_timer_delete(&h->status_u->ev) == 0,
+					"failed deleting status check timer")) {
+			return -1;
+		}
+	}
 
 	/*
 	 *	The connection code will take care of deleting the FD from the event loop.
@@ -874,12 +879,12 @@ static connection_state_t conn_failed(void *handle, connection_state_t state, UN
 		/*
 		 *	Reset the Status-Server checks.
 		 */
-		if (h->status_u && h->status_u->ev) (void) fr_timer_delete(&h->status_u->ev);
-	}
+		if (h->status_u) FR_TIMER_DISARM(h->status_u->ev);
 		break;
 
 	default:
 		break;
+	}
 	}
 
 	return CONNECTION_STATE_INIT;
@@ -1335,7 +1340,7 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 	/*
 	 *	If we're status checking OR already zombie, don't go to zombie
 	 */
-	if (h->status_checking || h->zombie_ev) return true;
+	if (h->status_checking || fr_timer_armed(h->zombie_ev)) return true;
 
 	if (fr_time_eq(now, fr_time_wrap(0))) now = fr_time();
 
@@ -2088,7 +2093,7 @@ static void request_cancel(UNUSED connection_t *conn, void *preq_to_reset,
 		 *	queued for sendmmsg but never actually
 		 *	sent.
 		 */
-		if (u->ev) (void) fr_timer_delete(&u->ev);
+		FR_TIMER_DISARM(u->ev);
 	}
 
 	/*
@@ -2106,7 +2111,7 @@ static void request_conn_release(connection_t *conn, void *preq_to_reset, UNUSED
 	bio_request_t		*u = preq_to_reset;
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
-	if (u->ev) (void)fr_timer_delete(&u->ev);
+	FR_TIMER_DISARM(u->ev);
 	bio_request_reset(u);
 
 	if (h->ctx.inst->mode == RLM_RADIUS_MODE_REPLICATE) return;
@@ -2245,9 +2250,12 @@ static int _bio_request_free(bio_request_t *u)
 	}
 #endif
 
-	fr_assert_msg(!u->ev, "bio_request_t freed with active timer");
+	fr_assert_msg(!fr_timer_armed(u->ev), "bio_request_t freed with active timer");
 
-	if (u->ev) (void) fr_timer_delete(&u->ev);
+	if (!fr_cond_assert_msg(fr_timer_delete(&u->ev) == 0,
+				"failed deleting request timer")) {
+		return -1;
+	}
 
 	fr_assert(u->rr == NULL);
 

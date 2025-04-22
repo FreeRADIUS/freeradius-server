@@ -817,7 +817,7 @@ static void bfd_start_packets(bfd_session_t *session)
 	/*
 	 *	Reset the timers.
 	 */
-	fr_timer_delete(&session->ev_packet);
+	FR_TIMER_DISARM(session->ev_packet);
 
 	if (fr_time_delta_cmp(session->desired_min_tx_interval, session->remote_min_rx_interval) >= 0) {
 		interval = fr_time_delta_unwrap(session->desired_min_tx_interval);
@@ -990,8 +990,6 @@ static void bfd_set_timeout(bfd_session_t *session, fr_time_t when)
 	uint64_t delay;
 	fr_time_delta_t delta;
 
-	fr_timer_delete(&session->ev_timeout);
-
 	delay = fr_time_delta_unwrap(session->detection_time);
 	delay *= session->detect_multi;
 
@@ -1012,8 +1010,8 @@ static void bfd_set_timeout(bfd_session_t *session, fr_time_t when)
  */
 static int bfd_stop_control(bfd_session_t *session)
 {
-	fr_timer_delete(&session->ev_timeout);
-	fr_timer_delete(&session->ev_packet);
+	FR_TIMER_DISARM(session->ev_timeout);
+	FR_TIMER_DISARM(session->ev_packet);
 	return 1;
 }
 
