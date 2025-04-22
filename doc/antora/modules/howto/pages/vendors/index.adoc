@@ -1,6 +1,10 @@
 = Vendors
 
-FreeRADIUS provides vendor-specific attributes and protocols to support many common vendors that include:
+FreeRADIUS supports vendor-specific attributes (VSAs), allowing vendors to extend RADIUS functionality beyond the basic IETF attributes. FreeRADIUS interprets the VSAs and uses them for authentication, authorization, and accounting processes.
+
+By using VSAs, vendors can include their proprietary information within the RADIUS packets. VSAs allow vendors to define specific behaviors or pass custom information. FreeRADIUS incorporates VSAs into its policies to implement vendor-specific logic allowing for more complex integrations.
+
+FreeRADIUS provides vendor-specific attributes for many vendors that include:
 
 * xref:vendors/ascend.adoc[Ascend]
 * xref:vendors/bay.adoc[Bay]
