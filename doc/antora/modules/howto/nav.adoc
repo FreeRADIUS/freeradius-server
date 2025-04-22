@@ -83,8 +83,8 @@
 **** xref:protocols/radius/proxy_config.adoc[Proxy configuration]
 ***** xref:protocols/radius/proxy_extensions.adoc[Proxy Extensions]
 
-** Security Certificates
-*** xref:os/letsencrypt.adoc[Using LetsEncrypt certificates]
+** xref:os/index.adoc[Security Certificates]
+*** xref:os/letsencrypt.adoc[LetsEncrypt]
 
 ** Vendors
 *** xref:vendors/ascend.adoc[Ascend]
