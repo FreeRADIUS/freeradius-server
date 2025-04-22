@@ -675,9 +675,9 @@ fr_time_t fr_timer_when(fr_timer_t *ev)
  *	- true if the event is armed.
  *	- false if the event is not armed.
  */
-bool fr_timer_armed(fr_timer_t *ev)
+bool _fr_timer_armed(fr_timer_t *ev)
 {
-	return ev && EVENT_ARMED(ev);
+	return EVENT_ARMED(ev);
 }
 
 /** Run all scheduled timer events in a lst

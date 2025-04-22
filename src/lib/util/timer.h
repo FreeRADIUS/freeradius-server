@@ -91,7 +91,10 @@ int			fr_timer_delete(fr_timer_t **ev_p) CC_HINT(nonnull);	/* disarms AND frees 
 
 fr_time_t		fr_timer_when(fr_timer_t *ev) CC_HINT(nonnull);
 
-bool			fr_timer_armed(fr_timer_t *ev);
+bool			_fr_timer_armed(fr_timer_t *ev);
+
+/* Wrapper to avoid overhead of function call on NULL */
+#define			fr_timer_armed(_ev) ((_ev) && _fr_timer_armed(_ev))	/* returns true if the timer is armed */
 
 int			fr_timer_list_run(fr_timer_list_t *tl, fr_time_t *when) CC_HINT(nonnull);
 
