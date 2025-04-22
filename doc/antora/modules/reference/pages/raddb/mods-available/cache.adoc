@@ -38,6 +38,9 @@ The current backend datastore used to store the cache entries are:
 | Driver                | Description
 | `rbtree`              | An in memory, non persistent rbtree based datastore.
                           Useful for caching data locally.
+| `htrie`               | An in memory, non persistent datastore which can use
+                          a hash table, rbtree or patricia trie store depending
+                          on the data type of the key.
 | `memcached`           | A non persistent "webscale" distributed datastore.
                           Useful if the cached data need to be shared between
                           a cluster of RADIUS servers.
@@ -53,6 +56,21 @@ NOTE: Some drivers accept specific options, to set them a config section with th
 the name as the driver should be added to the cache instance.
 
 Driver specific options are:
+
+
+
+### Htrie cache driver
+
+
+type:: Htrie backend type
+
+[options="header,autowidth"]
+|===
+| Option    | Description
+| `auto`    | The backend is automatically determined based on data type of the key
+| `hash`    | Use a hash table
+| `rb`      | Use an rbtree
+| `trie`    | Use a patricia trie
 
 
 
@@ -368,7 +386,7 @@ if (ok) {
   * This is evaluated before `Cache-TTL`, so entries being expired
 may first be merged.
   * All runtime configuration attributes will be removed from the
-`control.` list after any cache method is called.
+`control:` list after any cache method is called.
 ====
 
 
@@ -377,6 +395,9 @@ may first be merged.
 ```
 cache {
 #	driver = "rbtree"
+#	htrie {
+#		type = "auto"
+#	}
 #	memcached {
 #		options = "--SERVER=localhost"
 #		pool {
