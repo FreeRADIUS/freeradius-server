@@ -7,9 +7,11 @@ Instead, the `unlang` syntax allows for simple _if / then / else_
 checks, and attribute editing.  It does not support recursion,
 subroutines, or more complex flow controls.
 
-Where more complicated functionality is required, we recommend using
-the `lua`, `perl` or `python` modules.  Those modules allow the insertion of
-full-featured scripts at any point in the packet processing.
+If third party libraries are required which are only available in `lua`,
+`perl` or `python`, then FreeRADIUS includes modules which allow those
+languages to be called as part of packet processing.  We do not recommend
+writing general policy in these languages since it adds complexity and
+reduces performance.
 
 NOTE: The documentation is this directory is _reference_
 documentation.  That is, it describes the syntax of `unlang` keywords,
