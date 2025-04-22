@@ -145,6 +145,8 @@ void			unlang_interpret_set_thread_default(unlang_interpret_t *intp);
 
 unlang_interpret_t	*unlang_interpret_get_thread_default(void);
 
+int			unlang_interpret_set_timeout(request_t *request, fr_time_delta_t timeout) CC_HINT(nonnull);
+
 rlm_rcode_t		unlang_interpret(request_t *request, bool running) CC_HINT(hot);
 
 rlm_rcode_t		unlang_interpret_synchronous(fr_event_list_t *el, request_t *request);

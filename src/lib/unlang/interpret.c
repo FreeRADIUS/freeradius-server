@@ -303,7 +303,7 @@ unlang_action_t unlang_interpret_push_children(rlm_rcode_t *p_result, request_t 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static void instruction_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *ctx);
+static void instruction_retry_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *ctx);
 
 /** Update the current result after each instruction, and after popping each stack frame
  *
@@ -410,7 +410,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 				retry->timeout = fr_time_add(fr_time(), instruction->actions.retry.mrd);
 
 				if (fr_timer_at(retry, unlang_interpret_event_list(request)->tl, &retry->ev, retry->timeout,
-						false, instruction_timeout_handler, request) < 0) {
+						false, instruction_retry_handler, request) < 0) {
 					RPEDEBUG("Failed inserting event");
 					goto fail;
 				}
@@ -1269,7 +1269,7 @@ void unlang_interpret_signal(request_t *request, fr_signal_t action)
 	}
 }
 
-static void instruction_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *ctx)
+static void instruction_retry_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *ctx)
 {
 	unlang_retry_t			*retry = talloc_get_type_abort(ctx, unlang_retry_t);
 	request_t			*request = talloc_get_type_abort(retry->request, request_t);
@@ -1284,6 +1284,49 @@ static void instruction_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_ti
 	retry->state = FR_RETRY_MRD;
 	unlang_interpret_mark_runnable(request);
 }
+
+static void instruction_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *ctx)
+{
+	unlang_retry_t			*retry = talloc_get_type_abort(ctx, unlang_retry_t);
+	request_t			*request = talloc_get_type_abort(retry->request, request_t);
+
+	RDEBUG("Maximum timeout reached, signalling interpreter to stop the request.");
+
+	/*
+	 *	Stop the entire request.
+	 */
+	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
+}
+
+
+/** Set a timeout for a request.
+ *
+ *  The timeout is associated with the current stack frame.
+ *
+ */
+int unlang_interpret_set_timeout(request_t *request, fr_time_delta_t timeout)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_retry_t			*retry;
+
+	fr_assert(!frame->retry);
+	fr_assert(fr_time_delta_ispos(timeout));
+
+	frame->retry = retry = talloc_zero(frame, unlang_retry_t);
+	if (!frame->retry) return -1;
+
+	retry->request = request;
+	retry->depth = stack->depth;
+	retry->state = FR_RETRY_CONTINUE;
+	retry->count = 1;
+
+	retry->timeout = fr_time_add(fr_time(), timeout);
+
+	return fr_timer_at(retry, unlang_interpret_event_list(request)->tl, &retry->ev, retry->timeout,
+			   false, instruction_timeout_handler, request);
+}
+
 
 /** Return the depth of the request's stack
  *
