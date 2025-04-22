@@ -84,7 +84,7 @@
 ** Security Certificates
 *** xref:os/letsencrypt.adoc[Using LetsEncrypt certificates]
 
-** Vendors
+** xref:vendors/index.adoc[Vendors]
 *** xref:vendors/ascend.adoc[Ascend]
 *** xref:vendors/bay.adoc[Bay]
 *** xref:vendors/cisco.adoc[Cisco]

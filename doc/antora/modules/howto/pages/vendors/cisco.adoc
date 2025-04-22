@@ -2,21 +2,23 @@
 
 == Introduction
 
-Cisco NAS equipment has become quite popular of late, but being Cisco
-equipment running IOS, the configuration can be a bit non-obvious to the
+Cisco NAS equipment running IOS may, the configuration can be a bit non-obvious to the
 unfamiliar. This document aims to describe the most common configuration
 options to make your Ciscos interoperate with radius as you would expect
 a well-behaved NAS to do.
 
 ## Shell Access
-To use RADIUS to authenticate your inbound shell (telnet and ssh) connections you need to create an entry in your users file similar to the following
+To use RADIUS to authenticate your inbound shell (telnet and ssh) connections you need to create an entry in your users file similar to the following:
+
+```
 
     youruser   Cleartext-Password := "somepass"
                Service-Type = NAS-Prompt-User
+```
 
-This will let a user (called _youruser_) in for the first level of access to your Cisco. You will still need to **enable** to perform any configuration changes or anything requiring a higher level of access.
+This will let a user (called _youruser_) in for the first level of access to your Cisco. You still need to **enable** to perform any configuration changes or anything requiring a higher level of access.
 
-See Configuring Basic AAA on an Access Server(http://www.cisco.com/en/US/tech/tk59/technologies_tech_note09186a0080093c81.shtml) for more details.
+See Configuring Basic AAA on a http://www.cisco.com/en/US/tech/tk59/technologies_tech_note09186a0080093c81.shtml[Cisco Access Server] for more details.
 
 ## Enable Mode
 
@@ -28,8 +30,10 @@ If you type **enable 2**, it will send request for user '$enab2$', if you type *
 
 These user(s) needs to to be configured on your RADIUS server with the password you wish to use to allow enable access.
 
+```
     $enab15$   Cleartext-Password := "someadminpass"
                Service-Type = NAS-Prompt-User
+```
 
 ### Per User Privilege Level
 
@@ -37,25 +41,31 @@ You can also send the privilege level (enable mode is level 15) for individual u
 
 You can do this with an entry in your users file similar to the following
 
+```
     youruser   Cleartext-Password := "somepass"
                Service-Type = NAS-Prompt-User,
                cisco-avpair = "shell:priv-lvl=15"
+```
 
-For more information, see Cisco page "How to Assign Privilege Levels with TACACS+ and RADIUS (http://www.cisco.com/en/US/tech/tk59/technologies_tech_note09186a008009465c.shtml).
+For more information, see the http://www.cisco.com/en/US/tech/tk59/technologies_tech_note09186a008009465c.shtml[How to Assign Privilege Levels with TACACS+ and RADIUS] page.
 
 ### Command Authorization
 
 Cisco claims that there is a complete mapping scheme to translate TACACS+ expressions into Cisco-AVPair Vendor-Specific. This works for example with the priv-lvl attribute:
 
+```
   cisco-avpair = "shell:priv-lvl=15"
+```
 
-The two TACACS+ attributes "cmd" and "cmd-arg" would be needed for command authorization.There is a web page for [Cisco IOS](http://www.cisco.com/en/US/products/ps6350/products_configuration_guide_chapter09186a00804fe2d8.html) detailing which TACACS+ commands exist, and it suggests that
+The two TACACS+ attributes "cmd" and "cmd-arg" would be needed for command authorization. See the http://www.cisco.com/en/US/products/ps6350/products_configuration_guide_chapter09186a00804fe2d8.html[Cisco IOS] page detailing which TACACS+ commands exist, and suggests that
 
+```
   cisco-avpair = "shell:cmd=show"
+```
 
-would do the trick to authorize the "show" command. EXCEPT that there is a tiny note for the commands "cmd" and "cmd-arg" saying that they cannot be used for encapsulation in the Vendor-Specific space.
+would work to authorize the "show" command. However, there is a note for the commands "cmd" and "cmd-arg" stating that they cannot be used for encapsulation in the Vendor-Specific space.
 
-These two are the ONLY ones. Since it's just about parsing the string content of cisco-avpair at the router side, there is absolutely no technical reason why these two wouldn't go through. The only explanation then is that this is a deliberate step by Cisco to make sure that TACACS+ is "superior" to RADIUS by arbitrarily cutting down functionality.
+These two commands are the ONLY ones. Since it's just about parsing the string content of cisco-avpair at the router side, there is absolutely no technical reason why these two commands won't go through. The only explanation is that this is a deliberate design choice by Cisco ensuring that TACACS+ is "superior" to RADIUS by arbitrarily cutting down functionality.
 
 == IOS 12.x
 
@@ -75,7 +85,7 @@ aaa accounting network default start-stop group radius
 aaa processes 6
 ```
 
-this such configuration works very well with most radius servers. One of the
+This configuration works very well with most RADIUS servers. One of the
 more important configurations is:
 
 ```
@@ -87,13 +97,16 @@ until after an IP address has been assigned during the PPP negotiation
 process. This will supersede the need to enable the sending of Accounting-Request packets with
 _Acct-Status-Type = Interim-Update_, as described below for IOS versions 11.x
 
-NOTE: The above it will use the radius server to authenticate your
+[NOTE]
+====
+The above it will use the radius server to authenticate your
 inbound `telnet` connections. You will need to create an entry in your
 users file similar to the following to allow access:
 
 ```
 !root Password.Cleartext := "somepass" Service-Type = NAS-Prompt-User
 ```
+====
 
 This will let a user in for the first level of access to your Cisco. You
 will still need to `enable` (using the locally configured enable
@@ -108,11 +121,13 @@ need to enable the hidden command: `radius-server unique-ident <n>`
 
 .Minimum IOS: 12.1(4.1)T.
 
+```
 `Acct-Session-Id` should be unique and wrap after every 256 reboots.
+```
 
-NOTE: You must reboot after entering this command to take effect. If not, you
+You must reboot after entering this command to take effect. If not, you
 will observe after 10 minutes of entering this command, the following
-message.
+message:
 
 ```
 %RADIUS-3-IDENTFAIL: Save of unique accounting ident aborted.
@@ -120,7 +135,8 @@ message.
 
 == IOS 11.x
 
-For Cisco 11.1, you normally use:
+To get the Cisco (IOS 11.1) to talk to a radius server enter the following commands:
+
 
 ```
 aaa new-model
@@ -128,8 +144,6 @@ aaa authentication ppp radppp if-needed radius
 aaa authorization network radius none
 aaa accounting network wait-start radius
 ```
-
-to get the Cisco to talk to a radius server.
 
 == With IOS 11.3
 
@@ -153,13 +167,13 @@ aaa accounting network wait radius
 radius-server timeout 3
 ```
 
-To disable the Ascend style attributes (which is a VERY good idea!):
+To disable the Ascend style attributes (which is a VERY good idea):
 
 ```
 radius-server host X.Y.Z.A auth-port 1645 acct-port 1646
 ```
 
-To enable the Ascend style attributes (which we do NOT recommend!):
+To enable the Ascend style attributes (which we do NOT recommend):
 
 ```
 radius-server host X.Y.Z.A auth-port 1645 acct-port 1646 non-standard
@@ -183,7 +197,7 @@ one fixed address, add the following to your configuration:
 ip radius source-interface Loopback0
 ```
 
-and configure the loopback interface on your router as follows:
+Configure the loopback interface on your router as follows:
 
 ```
 interface Loopback0
@@ -202,37 +216,36 @@ address.
 
 IOS has a feature called the password-encryption service.
 
+```
     service password-encryption
     no service password-encryption
+```
 
-From the "Cisco Guide to Harden Cisco IOS Devices"(http://www.cisco.com/en/US/tech/tk648/tk361/technologies_tech_note09186a0080120f48.shtml#plane).
+From the http://www.cisco.com/en/US/tech/tk648/tk361/technologies_tech_note09186a0080120f48.shtml#plane[Cisco Guide to Harden Cisco IOS Devices].
 
 The actual encryption process occurs when the current configuration is written or when a password is configured. Password encryption is applied to all passwords, including username passwords, authentication key passwords, the privileged command password, console and virtual terminal line access passwords, and Border Gateway Protocol neighbor passwords. This command is primarily useful for keeping unauthorized individuals from viewing your password in your configuration file.
 
 When password encryption is enabled, the encrypted form of the passwords is displayed when a more system:running-config command is entered.
 
-**Caution This command does not provide a high level of network security. If you use this command, you should also take additional network security measures.**
+[CAUTION]
+====
+his command does not provide a high level of network security. If you use this command, you should also take additional network security measures.
+====
 
 Remember if your using password encryption, you **cannot** paste the encrypted password into the FreeRADIUS clients.conf file, It will not be the same shared secret.
 
 ## Nested Accounting
 
+```
     aaa accounting nested
-
+```
 results in sending a second accounting start message, possibly causing problems with total usage counters.  Cisco NAS devices issue an Accounting Start packet when the user is authenticated, and again when a PPP session is initiated.  They send an Accounting Stop packet at the end of the PPP session, and a second at the conclusion of the call (usually nearly simultaneously).  Because of this, programs such as RadiusReport may see this as two connections, and would account for approximately twice the total time used.  Not using this nested command causes the NAS device to send an Accounting Stop packet followed almost immediately by an Accounting Start packet when a PPP connection is chosen, eliminating the overlap.  This is particularly useful for those organizations interested in monitoring user usage accurately.
-More information about this process can be seen [here](http://www.cisco.com/en/US/docs/ios/12_1/security/command/reference/srdacct.html#wp1022328).
 
-
-== Credits
-
-* Original - Alan DeKok mailto:aland@freeradius.org[aland@freeradius.org]
-* 12.x Info - Chris Parker mailto:cparker@starnetusa.net[cparker@starnetusa.net] 2000-10-12
+More information about this process can be seen http://www.cisco.com/en/US/docs/ios/12_1/security/command/reference/srdacct.html#wp1022328[here].
 
 == More Information
 
-For more information, the following page on Cisco’s web site may help:
-
-http://www.cisco.com/univercd/cc/td/doc/product/access/acs_serv/vapp_dev/vsaig3.htm
+For more information, see the http://www.cisco.com/univercd/cc/td/doc/product/access/acs_serv/vapp_dev/vsaig3.htm[Cisco web site].
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
