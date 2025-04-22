@@ -277,10 +277,7 @@ static int _fr_curl_io_timer_modify(CURLM *mandle, long timeout_ms, void *ctx)
 	fr_curl_handle_t	*mhandle = talloc_get_type_abort(ctx, fr_curl_handle_t);
 
 	if (timeout_ms < 0) {
-		if (fr_timer_delete(&mhandle->ev) < 0) {
-			PERROR("Failed deleting multi-handle timer");
-			return -1;
-		}
+		if (!fr_cond_assert_msg(fr_timer_disarm(mhandle->ev) == 0, "Failed disarming curl timer")) return -1;
 		DEBUG3("multi-handle %p - Timer removed", mandle);
 		return 0;
 	}
