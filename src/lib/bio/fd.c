@@ -100,10 +100,7 @@ static int fr_bio_fd_destructor(fr_bio_fd_t *my)
 	fr_assert(!fr_bio_prev(&my->bio));
 	fr_assert(!fr_bio_next(&my->bio));
 
-	if (my->connect.ev) {
-		talloc_const_free(my->connect.ev);
-		my->connect.ev = NULL;
-	}
+	if (unlikely(fr_timer_delete(&my->connect.ev) < 0)) fr_assert_msg(0, "failed deleting connection timer");
 
 	if (my->connect.el) {
 		(void) fr_event_fd_delete(my->connect.el, my->info.socket.fd, FR_EVENT_FILTER_IO);
@@ -1207,10 +1204,7 @@ static void fr_bio_fd_el_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUSE
 
 	fr_assert(my->connect.success);
 
-	if (my->connect.ev) {
-		talloc_const_free(my->connect.ev);
-		my->connect.ev = NULL;
-	}
+	if (unlikely(fr_timer_delete(&my->connect.ev) < 0)) fr_assert_msg(0, "failed deleting connection timer");
 	my->connect.el = NULL;
 
 	/*
