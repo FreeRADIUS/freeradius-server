@@ -731,7 +731,6 @@ static void _lua_fr_request_register(lua_State *L, request_t *request)
 		fr_dcursor_t 	cursor;
 
 		/* Attribute list table */
-		fr_pair_list_sort(&request->request_pairs, fr_pair_cmp_by_da);
 		fr_pair_dcursor_init(&cursor, &request->request_pairs);
 
 		/*
