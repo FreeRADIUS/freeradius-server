@@ -10,7 +10,7 @@ This expansion has been removed.  Instead, just use `%{ ... }`.
 
 [source,unlang]
 ----
-reply.Reply-Message := "The 1 + 2 = %{1 + 2}"
+reply.Reply-Message := "The result of 1 + 2 = %{1 + 2}"
 ----
 
 == %integer(...)
@@ -24,26 +24,9 @@ reply.Reply-Message := "Value of Service-Type is %{(integer) Service-Type}"
 
 === +%pack(%{Attribute-Name}%{Attribute-Name}...)+
 
-Pack multiple multiple attributes and/or literals into a binary string.
-For best results, each attribute passed to `pack` should be fixed size.
-That is, not data type `octets` or `string` as the length of those values
-will not be encoded.
-
-See also the `unpack` module, which is the inverse to `pack`.
-
-.Return: _octets_
+This expansion has been removed.  Just convert the strings to octets, and concatenate them via `+`.
 
 .Example
-
-[source,unlang]
-----
-reply.Class := "%pack(%{reply.Framed-IP-Address}%{NAS-IP-Address}}"
-----
-
-It is easier to just use casting and string append:
-
-.Better example
-
 [source,unlang]
 ----
 reply.Class := (octets) Framed-IP-Address + (octets) NAS-IP-Address.
@@ -60,7 +43,7 @@ reply.Reply-Message := "The printable version of Class is %{(string) Class}"
 
 == %strlen( ... )
 
-This expansion is deprecated and will be removed.  Just use `%length(...)` instead.
+This expansion is deprecated and has been be removed.  Just use `%length(...)` instead.
 
 // Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
