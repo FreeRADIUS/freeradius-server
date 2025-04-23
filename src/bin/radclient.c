@@ -77,6 +77,7 @@ static uint16_t server_port = 0;
 static int packet_code = FR_RADIUS_CODE_UNDEFINED;
 static fr_ipaddr_t server_ipaddr;
 static int resend_count = 1;
+static int ignore_count = 0;
 static bool done = true;
 static bool print_filename = false;
 static bool blast_radius = false;
@@ -1519,6 +1520,11 @@ retry:
 		RDEBUG("%s response code %d", request->files->packets, reply->code);
 	}
 
+	if (request->tries < ignore_count) {
+		RDEBUG("Ignoring response %d due to -e ignore_count=%d", request->tries, ignore_count);
+		goto packet_done;
+	}
+
 	deallocate_id(request);
 	request->reply = reply;
 	reply = NULL;
@@ -1656,7 +1662,7 @@ int main(int argc, char **argv)
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
 
-	while ((c = getopt(argc, argv, "46bc:A:C:d:D:f:Fhi:n:o:p:P:r:sS:t:vx")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "46bc:A:C:d:D:e:f:Fhi:n:o:p:P:r:sS:t:vx")) != -1) switch (c) {
 		case '4':
 			force_af = AF_INET;
 			break;
@@ -1708,6 +1714,13 @@ int main(int argc, char **argv)
 		case 'd':
 			raddb_dir = optarg;
 			break;
+
+		case 'e':	/* magical extra stuff */
+			if (strncmp(optarg, "ignore_count=", 13) == 0) {
+				ignore_count = atoi(optarg + 13);
+				break;
+			}
+			usage();
 
 			/*
 			 *	packet,filter,coa_reply,coa_filter
