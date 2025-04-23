@@ -4208,19 +4208,49 @@ do { \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
 } while (0)
 
+#define XLAT_NEW(_x) xlat->replaced_with = _x
+
 	XLAT_REGISTER_ARGS("cast", xlat_func_cast, FR_TYPE_VOID, xlat_func_cast_args);
+
+	XLAT_REGISTER_ARGS("str.concat", xlat_func_concat, FR_TYPE_STRING, xlat_func_concat_args);
 	XLAT_REGISTER_ARGS("concat", xlat_func_concat, FR_TYPE_STRING, xlat_func_concat_args);
+	XLAT_NEW("str.concat");
+
+	XLAT_REGISTER_ARGS("str.split", xlat_func_explode, FR_TYPE_STRING, xlat_func_explode_args);
 	XLAT_REGISTER_ARGS("explode", xlat_func_explode, FR_TYPE_STRING, xlat_func_explode_args);
+	XLAT_NEW("str.split");
+
 	XLAT_REGISTER_ARGS("file.escape", xlat_transparent, FR_TYPE_STRING, xlat_func_file_name_args);
+
+	XLAT_REGISTER_ARGS("hmac.md5", xlat_func_hmac_md5, FR_TYPE_OCTETS, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("hmacmd5", xlat_func_hmac_md5, FR_TYPE_OCTETS, xlat_hmac_args);
+	XLAT_NEW("hmac.md5");
+
+	XLAT_REGISTER_ARGS("hmac.sha1", xlat_func_hmac_sha1, FR_TYPE_OCTETS, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("hmacsha1", xlat_func_hmac_sha1, FR_TYPE_OCTETS, xlat_hmac_args);
+	XLAT_NEW("hmac.sha1");
+
 	XLAT_REGISTER_ARGS("integer", xlat_func_integer, FR_TYPE_VOID, xlat_func_integer_args);
+	xlat->deprecated = true;
+
 	XLAT_REGISTER_ARGS("join", xlat_func_join, FR_TYPE_VOID, xlat_func_join_args);
 	XLAT_REGISTER_ARGS("ungroup", xlat_func_ungroup, FR_TYPE_VOID, xlat_func_join_args);
+	xlat->deprecated = true;
+
 	XLAT_REGISTER_ARGS("length", xlat_func_length, FR_TYPE_SIZE, xlat_func_length_args);
+
+	XLAT_REGISTER_ARGS("str.lpad", xlat_func_lpad, FR_TYPE_STRING, xlat_func_pad_args);
 	XLAT_REGISTER_ARGS("lpad", xlat_func_lpad, FR_TYPE_STRING, xlat_func_pad_args);
+	XLAT_NEW("str.lpad");
+
+	XLAT_REGISTER_ARGS("str.rpad", xlat_func_rpad, FR_TYPE_STRING, xlat_func_pad_args);
 	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, FR_TYPE_STRING, xlat_func_pad_args);
+	XLAT_NEW("str.rpad");
+
+	XLAT_REGISTER_ARGS("str.substr", xlat_func_substr, FR_TYPE_VOID, xlat_func_substr_args);
 	XLAT_REGISTER_ARGS("substr", xlat_func_substr, FR_TYPE_VOID, xlat_func_substr_args);
+	XLAT_NEW("str.substr");
+
 	XLAT_REGISTER_ARGS("ip.v4.netmask", xlat_func_subnet_netmask, FR_TYPE_IPV4_ADDR, xlat_func_subnet_args);
 	XLAT_REGISTER_ARGS("ip.v4.broadcast", xlat_func_subnet_broadcast, FR_TYPE_IPV4_ADDR, xlat_func_subnet_args);
 
@@ -4259,7 +4289,11 @@ do { \
 	XLAT_REGISTER_ARGS("base64.encode", xlat_func_base64_encode, FR_TYPE_STRING, xlat_func_base64_encode_arg);
 	XLAT_REGISTER_ARGS("base64.decode", xlat_func_base64_decode, FR_TYPE_OCTETS, xlat_func_base64_decode_arg);
 	XLAT_REGISTER_ARGS("rand", xlat_func_rand, FR_TYPE_UINT64, xlat_func_rand_arg);
+
+	XLAT_REGISTER_ARGS("str.rand", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
 	XLAT_REGISTER_ARGS("randstr", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
+	XLAT_NEW("str.rand");
+
 	XLAT_REGISTER_ARGS("range", xlat_func_range, FR_TYPE_UINT64, xlat_func_range_arg);
 
 	if (unlikely((xlat = xlat_func_register(xlat_ctx, "untaint", xlat_func_untaint, FR_TYPE_VOID)) == NULL)) return -1;
@@ -4283,8 +4317,14 @@ do { \
 	XLAT_REGISTER_PURE("bin", xlat_func_bin, FR_TYPE_OCTETS, xlat_func_bin_arg);
 	XLAT_REGISTER_PURE("hex", xlat_func_hex, FR_TYPE_STRING, xlat_func_hex_arg);
 	XLAT_REGISTER_PURE("map", xlat_func_map, FR_TYPE_BOOL, xlat_func_map_arg);
+	XLAT_REGISTER_PURE("hash.md4", xlat_func_md4, FR_TYPE_OCTETS, xlat_func_md4_arg);
 	XLAT_REGISTER_PURE("md4", xlat_func_md4, FR_TYPE_OCTETS, xlat_func_md4_arg);
+	XLAT_NEW("hash.md4");
+
+	XLAT_REGISTER_PURE("hash.md5", xlat_func_md5, FR_TYPE_OCTETS, xlat_func_md5_arg);
 	XLAT_REGISTER_PURE("md5", xlat_func_md5, FR_TYPE_OCTETS, xlat_func_md5_arg);
+	XLAT_NEW("hash.md4");
+
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
 	if (unlikely((xlat = xlat_func_register(xlat_ctx, "regex", xlat_func_regex, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, xlat_func_regex_args);
@@ -4317,35 +4357,57 @@ do { \
 		xlat_func_safe_for_set(xlat, FR_REGEX_SAFE_FOR);
 	}
 
-	XLAT_REGISTER_PURE("sha1", xlat_func_sha1, FR_TYPE_OCTETS, xlat_func_sha_arg);
+#define XLAT_REGISTER_HASH(_name, _func) do { \
+		XLAT_REGISTER_PURE("hash." _name, _func, FR_TYPE_OCTETS, xlat_func_sha_arg); \
+		XLAT_REGISTER_PURE(_name, _func, FR_TYPE_OCTETS, xlat_func_sha_arg); \
+		XLAT_NEW("hash." _name); \
+      	} while (0)
+
+	XLAT_REGISTER_HASH("sha1", xlat_func_sha1);
 
 #ifdef HAVE_OPENSSL_EVP_H
-	XLAT_REGISTER_PURE("sha2_224", xlat_func_sha2_224, FR_TYPE_OCTETS, xlat_func_sha_arg);
-	XLAT_REGISTER_PURE("sha2_256", xlat_func_sha2_256, FR_TYPE_OCTETS, xlat_func_sha_arg);
-	XLAT_REGISTER_PURE("sha2_384", xlat_func_sha2_384, FR_TYPE_OCTETS, xlat_func_sha_arg);
-	XLAT_REGISTER_PURE("sha2_512", xlat_func_sha2_512, FR_TYPE_OCTETS, xlat_func_sha_arg);
+	XLAT_REGISTER_HASH("sha2_224", xlat_func_sha2_224);
+	XLAT_REGISTER_HASH("sha2_256", xlat_func_sha2_256);
+	XLAT_REGISTER_HASH("sha2_384", xlat_func_sha2_384);
+	XLAT_REGISTER_HASH("sha2_512", xlat_func_sha2_512);
 
 #  ifdef HAVE_EVP_BLAKE2S256
-	XLAT_REGISTER_PURE("blake2s_256", xlat_func_blake2s_256, FR_TYPE_OCTETS, xlat_func_sha_arg);
+	XLAT_REGISTER_HASH("blake2s_256", xlat_func_blake2s_256);
 #  endif
 #  ifdef HAVE_EVP_BLAKE2B512
-	XLAT_REGISTER_PURE("blake2b_512", xlat_func_blake2b_512, FR_TYPE_OCTETS, xlat_func_sha_arg);
+	XLAT_REGISTER_HASH("blake2b_512", xlat_func_blake2b_512);
 #  endif
 
-	XLAT_REGISTER_PURE("sha3_224", xlat_func_sha3_224, FR_TYPE_OCTETS, xlat_func_sha_arg);
-	XLAT_REGISTER_PURE("sha3_256", xlat_func_sha3_256, FR_TYPE_OCTETS, xlat_func_sha_arg);
-	XLAT_REGISTER_PURE("sha3_384", xlat_func_sha3_384, FR_TYPE_OCTETS, xlat_func_sha_arg);
-	XLAT_REGISTER_PURE("sha3_512", xlat_func_sha3_512, FR_TYPE_OCTETS, xlat_func_sha_arg);
+	XLAT_REGISTER_HASH("sha3_224", xlat_func_sha3_224);
+	XLAT_REGISTER_HASH("sha3_256", xlat_func_sha3_256);
+	XLAT_REGISTER_HASH("sha3_384", xlat_func_sha3_384);
+	XLAT_REGISTER_HASH("sha3_512", xlat_func_sha3_512);
 #endif
 
 	XLAT_REGISTER_PURE("string", xlat_transparent, FR_TYPE_STRING, xlat_func_string_arg);
+	xlat->deprecated = true;
 	XLAT_REGISTER_PURE("strlen", xlat_func_strlen, FR_TYPE_SIZE, xlat_func_strlen_arg);
+	XLAT_NEW("length");
+	
 	XLAT_REGISTER_PURE("str.utf8", xlat_func_str_utf8, FR_TYPE_BOOL, xlat_func_str_utf8_arg);
 	XLAT_REGISTER_PURE("str.printable", xlat_func_str_printable, FR_TYPE_BOOL, xlat_func_str_printable_arg);
+
+	XLAT_REGISTER_PURE("str.lower", xlat_func_tolower, FR_TYPE_STRING, xlat_change_case_arg);
 	XLAT_REGISTER_PURE("tolower", xlat_func_tolower, FR_TYPE_STRING, xlat_change_case_arg);
+	XLAT_NEW("str.lower");
+
+	XLAT_REGISTER_PURE("str.upper", xlat_func_toupper, FR_TYPE_STRING, xlat_change_case_arg);
 	XLAT_REGISTER_PURE("toupper", xlat_func_toupper, FR_TYPE_STRING, xlat_change_case_arg);
+	XLAT_NEW("str.upper");
+
+	XLAT_REGISTER_PURE("url.quote", xlat_func_urlquote, FR_TYPE_STRING, xlat_func_urlquote_arg);
 	XLAT_REGISTER_PURE("urlquote", xlat_func_urlquote, FR_TYPE_STRING, xlat_func_urlquote_arg);
+	XLAT_NEW("url.quote");
+
+	XLAT_REGISTER_PURE("url.unquote", xlat_func_urlunquote, FR_TYPE_STRING, xlat_func_urlunquote_arg);
 	XLAT_REGISTER_PURE("urlunquote", xlat_func_urlunquote, FR_TYPE_STRING, xlat_func_urlunquote_arg);
+	XLAT_NEW("url.unquote");
+
 	XLAT_REGISTER_PURE("eval", xlat_func_eval, FR_TYPE_VOID, xlat_func_eval_arg);
 
 	return xlat_register_expressions();

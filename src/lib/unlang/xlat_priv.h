@@ -65,6 +65,8 @@ typedef struct xlat_s {
 	xlat_func_t		func;			//!< async xlat function (async unsafe).
 
 	bool			internal;		//!< If true, cannot be redefined.
+	bool			deprecated;		//!< this function was deprecated
+	char const		*replaced_with;		//!< this function was replaced with something else
 	fr_token_t		token;			//!< for expressions
 
 	module_inst_ctx_t	*mctx;			//!< Original module instantiation ctx if this
