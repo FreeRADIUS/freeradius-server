@@ -3005,28 +3005,6 @@ static xlat_arg_parser_t const xlat_func_string_arg[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-/** Print data as string, if possible.
- *
- * Concat and cast one or more input boxes to a single output box string.
- *
- * @ingroup xlat_functions
- */
-static xlat_action_t xlat_func_string(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
-				      UNUSED xlat_ctx_t const *xctx,
-				      UNUSED request_t *request, fr_value_box_list_t *in)
-{
-	fr_value_box_t	*in_head = fr_value_box_list_pop_head(in);
-
-	/*
-	 *	Casting and concat is done by arg processing
-	 *	so just move the value box to the output
-	 */
-	fr_dcursor_append(out, in_head);
-
-	return XLAT_ACTION_DONE;
-}
-
-
 static xlat_arg_parser_t const xlat_func_strlen_arg[] = {
 	{ .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -4360,7 +4338,7 @@ do { \
 	XLAT_REGISTER_PURE("sha3_512", xlat_func_sha3_512, FR_TYPE_OCTETS, xlat_func_sha_arg);
 #endif
 
-	XLAT_REGISTER_PURE("string", xlat_func_string, FR_TYPE_STRING, xlat_func_string_arg);
+	XLAT_REGISTER_PURE("string", xlat_transparent, FR_TYPE_STRING, xlat_func_string_arg);
 	XLAT_REGISTER_PURE("strlen", xlat_func_strlen, FR_TYPE_SIZE, xlat_func_strlen_arg);
 	XLAT_REGISTER_PURE("str.utf8", xlat_func_str_utf8, FR_TYPE_BOOL, xlat_func_str_utf8_arg);
 	XLAT_REGISTER_PURE("str.printable", xlat_func_str_printable, FR_TYPE_BOOL, xlat_func_str_printable_arg);
