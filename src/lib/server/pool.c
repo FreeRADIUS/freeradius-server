@@ -33,10 +33,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/debug.h>
 
-#include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/misc.h>
 
-#include <time.h>
 
 typedef struct fr_pool_connection_s fr_pool_connection_t;
 

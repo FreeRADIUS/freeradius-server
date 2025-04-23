@@ -28,13 +28,9 @@ typedef struct fr_timer_list_s fr_timer_list_t;
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/event.h>
-#include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/timer.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/lst.h>
 #include <freeradius-devel/util/rb.h>
-#include <stdbool.h>
-#include <talloc.h>
 
 FR_DLIST_TYPES(timer)
 FR_DLIST_TYPEDEFS(timer, fr_timer_head_t, fr_timer_entry_t)
@@ -271,7 +267,7 @@ static inline CC_HINT(always_inline) int timer_list_parent_update(fr_timer_list_
 		/*
 		 *	Disables the timer in the parent, does not free the memory
 		 */
-		if (tl->parent) if (unlikely(fr_timer_disarm(tl->parent_ev) < 0)) return -1;
+		if (tl->parent) FR_TIMER_DISARM_RETURN(tl->parent_ev);
 		return 0;
 	}
 
@@ -679,9 +675,9 @@ fr_time_t fr_timer_when(fr_timer_t *ev)
  *	- true if the event is armed.
  *	- false if the event is not armed.
  */
-bool fr_timer_armed(fr_timer_t *ev)
+bool _fr_timer_armed(fr_timer_t *ev)
 {
-	return ev && EVENT_ARMED(ev);
+	return EVENT_ARMED(ev);
 }
 
 /** Run all scheduled timer events in a lst
@@ -1011,7 +1007,7 @@ static int _timer_list_free(fr_timer_list_t *tl)
 		return -1;
 	}
 
-	if (tl->parent_ev) fr_timer_delete(&tl->parent_ev);
+	if (tl->parent_ev) if (unlikely(fr_timer_delete(&tl->parent_ev) < 0)) return -1;
 
 	while ((ev = timer_funcs[tl->type].head(tl))) {
 		if (talloc_free(ev) < 0) return -1;

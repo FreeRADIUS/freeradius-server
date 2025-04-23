@@ -30,9 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/exec_priv.h>
-#include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/util.h>
-#include <freeradius-devel/util/debug.h>
 
 #define MAX_ENVP 1024
 
@@ -717,7 +715,7 @@ void fr_exec_oneshot_cleanup(fr_exec_state_t *exec, int signal)
 		exec->pid = -1;
 	}
 
-	if (exec->ev) fr_timer_delete(&exec->ev);
+	FR_TIMER_DELETE(&exec->ev);
 }
 
 /*
@@ -771,7 +769,7 @@ static void exec_reap(fr_event_list_t *el, pid_t pid, int status, void *uctx)
 	}
 	exec->pid = -1;	/* pid_t is signed */
 
-	if (exec->ev) fr_timer_delete(&exec->ev);
+	FR_TIMER_DELETE(&exec->ev);
 
 	/*
 	 *	Process exit notifications (EV_PROC) and file
@@ -938,7 +936,7 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void
 			/*
 			 *	Child has already exited - unlang can resume
 			 */
-			if (exec->ev) fr_timer_delete(&exec->ev);
+			FR_TIMER_DELETE(&exec->ev);
 			unlang_interpret_mark_runnable(exec->request);
 		}
 	}

@@ -28,7 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/token.h>
 
-#include <ctype.h>
 
 fr_table_num_ordered_t const fr_tokens_table[] = {
 	{ L("=~"), 	T_OP_REG_EQ	}, /* order is important! */

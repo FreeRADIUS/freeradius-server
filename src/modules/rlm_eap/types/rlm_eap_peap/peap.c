@@ -498,7 +498,7 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 			goto finish;
 	}
 
-	MEM(child = unlang_subrequest_alloc(request, request->dict));
+	MEM(child = unlang_subrequest_alloc(request, request->proto_dict));
 	fr_assert(fr_pair_list_empty(&child->request_pairs));
 
 	switch (t->status) {

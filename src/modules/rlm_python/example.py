@@ -10,65 +10,36 @@ import freeradius
 
 def instantiate(p):
     print("*** instantiate ***")
-    print(p)
     # return 0 for success or -1 for failure
 
 
-def authorize(p):
-    print("*** authorize ***")
-    print("")
-    freeradius.log(freeradius.L_INFO, "*** log call in authorize ***")
-    print("")
-    print(p)
-    print("")
+def recv_access_request(p):
+    print("*** recv Access-Request ***")
+    freeradius.log("*** log call in authorize ***", freeradius.L_INFO)
+    print(p.request["User-Name"])
     print(freeradius.config)
-    print("")
     return freeradius.RLM_MODULE_OK
 
-
-def preacct(p):
-    print("*** preacct ***")
-    print(p)
+def authenticate(p):
+    print("*** authenticate ***")
+    print(p.request["User-Name"])
     return freeradius.RLM_MODULE_OK
 
+def send(p):
+    print("*** send ***")
+    print(p.reply["Packet-Type"])
+    return freeradius.RLM_MODULE_OK
+
+def recv_accounting_request(p):
+    print("*** recv Accounting-Request ***")
+    print(p.request["Acct-Session-Id"])
+    return freeradius.RLM_MODULE_OK
 
 def accounting(p):
     print("*** accounting ***")
-    freeradius.log(freeradius.L_INFO, "*** log call in accounting (0) ***")
-    print("")
-    print(p)
+    freeradius.log("*** log call in accounting (0) ***", freeradius.L_INFO)
+    print(p.request["User-Name"])
     return freeradius.RLM_MODULE_OK
-
-
-def pre_proxy(p):
-    print("*** pre_proxy ***")
-    print(p)
-    return freeradius.RLM_MODULE_OK
-
-
-def post_proxy(p):
-    print("*** post_proxy ***")
-    print(p)
-    return freeradius.RLM_MODULE_OK
-
-
-def post_auth(p):
-    print("*** post_auth ***")
-    print(p)
-    return freeradius.RLM_MODULE_OK
-
-
-def recv_coa(p):
-    print("*** recv_coa ***")
-    print(p)
-    return freeradius.RLM_MODULE_OK
-
-
-def send_coa(p):
-    print("*** send_coa ***")
-    print(p)
-    return freeradius.RLM_MODULE_OK
-
 
 def detach(p):
     print("*** goodbye from example.py ***")

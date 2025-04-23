@@ -33,14 +33,11 @@ RCSID("$Id$")
 #include <freeradius-devel/server/paircmp.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/pair_legacy.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
-#include <ctype.h>
 
 static inline vp_list_mod_t *list_mod_alloc(TALLOC_CTX *ctx)
 {
@@ -129,7 +126,7 @@ static inline vp_list_mod_t *list_mod_delete_afrom_map(TALLOC_CTX *ctx,
 
 	mod->lhs = mutated->lhs;
 	mod->op = T_OP_CMP_FALSE;	/* Means delete the LHS */
-	mod->rhs = tmpl_alloc(mod, TMPL_TYPE_NULL, T_BARE_WORD, NULL, 0);
+	mod->rhs = tmpl_alloc(mod, TMPL_TYPE_DATA, T_BARE_WORD, "ANY", 3);
 	if (!mod->rhs) {
 		talloc_free(n);
 		return NULL;
@@ -320,7 +317,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &map_tmp.lhs, lhs_result_head->vb_strvalue,
 					   &(tmpl_rules_t){
 					   	.attr = {
-					   		.dict_def = request->dict,
+							.dict_def = request->local_dict,
 							.list_def = request_attr_request,
 				   		}
 					   });
@@ -709,7 +706,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		/*
 		 *	Parse the VPs from the RHS.
 		 */
-		fr_pair_list_afrom_box(ctx, &vp_head, request->dict, rhs_result_head);
+		fr_pair_list_afrom_box(ctx, &vp_head, request->proto_dict, rhs_result_head);
 		if (fr_pair_list_empty(&vp_head)) {
 			talloc_free(n);
 			RDEBUG2("No pairs returned by exec");
@@ -865,7 +862,7 @@ static inline void map_list_mod_debug(request_t *request,
 	if (!fr_cond_assert(map->lhs != NULL)) return;
 	if (!fr_cond_assert(map->rhs != NULL)) return;
 
-	fr_assert(mod || tmpl_is_null(map->rhs));
+	fr_assert(mod);
 
 	if (vb && (vb->type == FR_TYPE_STRING)) quote = "\"";
 
@@ -891,10 +888,6 @@ static inline void map_list_mod_debug(request_t *request,
 
 	case TMPL_TYPE_ATTR:
 		rhs = fr_asprintf(request, "%s -> %s%pV%s", map->rhs->name, quote, vb, quote);
-		break;
-
-	case TMPL_TYPE_NULL:
-		rhs = talloc_typed_strdup(request, "ANY");
 		break;
 	}
 
@@ -940,24 +933,18 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	 *	Print debug information for the mods being applied
 	 */
 	while ((mod = map_list_next(&vlm->mod, mod))) {
-	    	fr_value_box_t *vb;
-
 		MAP_VERIFY(mod);
 
 		fr_assert(mod->lhs != NULL);
 		fr_assert(mod->rhs != NULL);
 
 		fr_assert(tmpl_is_attr(mod->lhs));
-		fr_assert(((mod->op == T_OP_CMP_FALSE) && tmpl_is_null(mod->rhs)) ||
-			   tmpl_is_data(mod->rhs));
 
 		/*
 		 *	map_list_mod_debug()
 		 */
 		if (RDEBUG_ENABLED2) {
-			vb = tmpl_value(mod->rhs);
-
-			map_list_mod_debug(request, map, mod, vb->type != FR_TYPE_NULL ? vb : NULL);
+			map_list_mod_debug(request, map, mod, tmpl_value(mod->rhs));
 		}
 	}
 	mod = map_list_head(&vlm->mod);	/* Reset */

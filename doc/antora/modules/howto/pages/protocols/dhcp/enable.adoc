@@ -1,11 +1,6 @@
-== Enabling the DHCP service
+= Enable the DHCP service
 
-A major difference between configuring FreeRADIUS as a DHCP server versus most
-other DHCP software such as ISC DHCP is that other software typically uses a
-single monolithic configuration file whereas FreeRADIUS has a collection of
-configuration files.  This reflects the modularity of FreeRADIUS; attempting to
-put the entire configuration in a single file would result in a very difficult
-to read configuration.
+A major difference between configuring FreeRADIUS as a DHCP server and other DHCP software, such as ISC DHCP, lies in the approach taken by FreeRADIUS. Unlike other software that uses a single, monolithic configuration file, FreeRADIUS has a collection of modular configuration files.  Attempting to consolidate the entire configuration into a single file would result in an extremely challenging task.
 
 The root of the FreeRADIUS configuration may be in a different location on the
 filesystem depending on how FreeRADIUS has been installed. This directory will
@@ -17,7 +12,7 @@ Pre-built packages will default to either `/etc/raddb` or
 `/etc/freeradius`.
 
 
-=== Enable the DHCP virtual server
+== Enable the DHCP virtual server
 
 The FreeRADIUS configuration separates each network service that it provides
 into "virtual servers". A number of sample virtual server definitions are
@@ -74,7 +69,7 @@ Their contents contain directives in the FreeRADIUS policy language, "unlang".
 Many examples are provided which have been carefully described.
 
 
-=== Enable SQL and IP pool modules
+== Enable SQL and IP pool modules
 
 FreeRADIUS has many modules to support different aspects of the functionality
 required for the network protocols it can process. The two of most significance
@@ -85,7 +80,7 @@ These should be symlinked or copied into `<raddb>/mods-enabled` in order to
 enable them.
 
 
-==== Configure the `dhcp_sql` module
+=== Configure the `dhcp_sql` module
 
 Add the `dhcp_sql` module to the active configuration:
 
@@ -128,7 +123,7 @@ will be stored.
 ====
 
 
-==== Configure the `dhcp_sqlippool` module
+=== Configure the `dhcp_sqlippool` module
 
 Add the `dhcp_sqlippool` module to the active configuration:
 
@@ -154,9 +149,9 @@ items are:
 `lease_duration`:: How long an IP is leased to the client in a DHCP ACK.
 
 
-=== Provision the database
+== Provision the database
 
-You should provision your database by creating a user for FreeRADIUS (matching
+Provision your database by creating a user for FreeRADIUS (matching
 the configuration that you have previously provided) and then loading the
 schema.  The procedure for doing this will vary according to the database
 server.
@@ -164,7 +159,7 @@ server.
 The schema, stored procedure definition and any additional setup scripts for
 your database are in `<raddb>/mods-config/sql/ippool-dhcp/{dialect}/`.
 
-=== Test FreeRADIUS startup
+== Test FreeRADIUS startup
 
 Once you have provisioned your schema, created a user account and granted
 access to the user, you should be able to start FreeRADIUS.
@@ -180,11 +175,12 @@ designated interface on port 67:
  udp    0       0       0.0.0.0%<interface>:67 ... users:(("radiusd",...))
 ==================================================================
 
-Note that if the database is inaccessible then FreeRADIUS will normally refuse
-to start.
+[NOTE]
+====
+If the database is inaccessible then FreeRADIUS will normally refuse
+to start. Refer to the xref:ROOT:debugging/radiusd_X.adoc[Debugging] section for more details about startup issues.
+====
 
-The FreeRADIUS wiki contains extensive information about debugging FreeRADIUS
-startup issues that we do not repeat in any detail here.
 
 Essentially, stop your init system from repeatedly trying to launch FreeRADIUS:
 

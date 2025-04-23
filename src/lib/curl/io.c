@@ -132,7 +132,7 @@ static void _fr_curl_io_timer_expired(UNUSED fr_timer_list_t *tl, UNUSED fr_time
 
 	ret = curl_multi_socket_action(mandle, CURL_SOCKET_TIMEOUT, 0, &running);
 	if (ret != CURLM_OK) {
-		ERROR("multi-handle %p - Servicing failed - %s (%i)", mandle, curl_multi_strerror(ret), ret);
+		ERROR("multi-handle %p - Servicing timer failed -%s (%i)", mandle, curl_multi_strerror(ret), ret);
 		return;
 	}
 
@@ -156,7 +156,7 @@ static inline void _fr_curl_io_service(fr_curl_handle_t *mhandle, int fd, int ev
 
 	ret = curl_multi_socket_action(mandle, fd, event, &running);
 	if (ret != CURLM_OK) {
-		ERROR("multi-handle %p - Servicing failed - %s (%i)", mandle, curl_multi_strerror(ret), ret);
+		ERROR("multi-handle %p - Servicing I/O failed - %s (%i)", mandle, curl_multi_strerror(ret), ret);
 		return;
 	}
 
@@ -277,10 +277,7 @@ static int _fr_curl_io_timer_modify(CURLM *mandle, long timeout_ms, void *ctx)
 	fr_curl_handle_t	*mhandle = talloc_get_type_abort(ctx, fr_curl_handle_t);
 
 	if (timeout_ms < 0) {
-		if (fr_timer_delete(&mhandle->ev) < 0) {
-			PERROR("Failed deleting multi-handle timer");
-			return -1;
-		}
+		FR_TIMER_DISARM_RETURN(mhandle->ev);
 		DEBUG3("multi-handle %p - Timer removed", mandle);
 		return 0;
 	}

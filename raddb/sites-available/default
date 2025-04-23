@@ -1009,7 +1009,7 @@ authenticate digest {
 }
 
 #
-#  ## PAM (Pluggable Authentication Modules) Authentication
+#  ### PAM (Pluggable Authentication Modules) Authentication
 #
 #  Authenticate with PAM (Pluggable Authentication Modules).
 #
@@ -1043,7 +1043,7 @@ authenticate ldap {
 }
 
 #
-#  EAP Authentication
+#  ### EAP Authentication
 #
 #  For EAP-MD5, EAP-MSCHAP, EAP-TLS, EAP-TTLS, EAP-PEAP, EAP-PWD, etc.
 #
@@ -1331,7 +1331,7 @@ send Access-Reject {
 
 ######################################################################
 #
-#  Accounting
+#  ## Accounting
 #
 #
 #  This section deals with receiving Accounting requests and
@@ -1339,6 +1339,8 @@ send Access-Reject {
 #
 ######################################################################
 
+#
+#  ### Receive Accounting-Request packets
 #
 #  An Accounting-Request packet has been received. Decide which
 #  accounting type to use.
@@ -1375,7 +1377,9 @@ recv Accounting-Request {
 #
 
 #
-#  Session start
+#  ## Sections for Acct-Status-Type
+#
+#  ### Session start
 #
 accounting Start {
 	#
@@ -1396,7 +1400,7 @@ accounting Start {
 }
 
 #
-#  Session stop
+#  ### Session stop
 #
 accounting Stop {
 	#
@@ -1426,7 +1430,7 @@ accounting Stop {
 }
 
 #
-#  Session is still alive
+#  ### Session is still alive
 #
 accounting Interim-Update {
 	#
@@ -1441,7 +1445,7 @@ accounting Interim-Update {
 }
 
 #
-#  The NAS has just booted up.
+#  ### The NAS has just booted up.
 #
 accounting Accounting-On {
 	#
@@ -1456,7 +1460,7 @@ accounting Accounting-On {
 }
 
 #
-#  The NAS is about to go down
+#  ### The NAS is about to shut down
 #
 accounting Accounting-Off {
 	#
@@ -1471,7 +1475,7 @@ accounting Accounting-Off {
 }
 
 #
-#  Session failed to do something
+#  ### The user session failed in some way
 #
 accounting Failed {
 
@@ -1491,7 +1495,7 @@ accounting Failed {
 #
 
 #
-#  Send Accounting-Response.
+#  ### Send Accounting-Response.
 #
 #  Log the accounting data before replying. If logging fails then
 #  the reply will not be sent, which means the NAS will send the
@@ -1529,4 +1533,40 @@ send Accounting-Response {
 	#
 	attr_filter.accounting_response
 }
+
+#
+#  ## Timeouts
+#
+#  A virtual server can have a `timeout` section.  The format and
+#  contents are the same as the `timeout` keyword.
+#
+#  This section limits the total processing time for a request.  The
+#  values given here should be less than `max_request_time`.
+#
+#  When a request reaches `max_request_time`, it is forcibly stopped.
+#  No further processing takes place.
+#
+#  When a request reaches the time specified in this `timeout` section,
+#  all normal processing is stopped.  The `timeout` section is then run.
+#
+#  This configuration allows the server to take action when a request
+#  is taking too long.  For example, it could write a failure message
+#  to a log file.
+#
+#  The `timeout` section can contain any `unlang` keyword, including
+#  `call`, and other `timeout` sections.  If you need to have a
+#  "timeout for the timeout", then just add anoither `timeout` section
+#  inside of this one.
+#
+#  Note that `max_request_time` still applies.  So the timeout value
+#  given here should be less than the value given by
+#  `max_request_time`.
+#
+#
+
+#	timeout 10s {
+#		do_logging_here
+#		...
+#	}
+
 }

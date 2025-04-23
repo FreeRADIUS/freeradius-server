@@ -1,0 +1,31 @@
+= CoA Examples
+
+Upon receiving a CoA or Disconect packet the server identifies all active
+sessions matching the provided User-Name and/or Acct-Session-Id attributes. The server sends a subrequest packet for every identified session to the correponding NAS.
+
+To disconnect a specific session of a user:
+```
+$ echo 'Acct-Session-Id = "769df3 312343"' | \
+    radclient 127.0.0.1 disconnect testing123
+```
+
+To disconnect all sessions belonging to a user:
+```
+$ cat <<EOF | radclient 127.0.0.1 disconnect testing123
+    User-Name = bob
+```
+
+To update the connection parameters of a specific session:
+```
+$ cat <<EOF | radclient 127.0.0.1 coa testing123
+    User-Name = bob
+    Acct-Session-Id = 769df3 312343
+```
+
+To update the connection parameters of all sessions belonging to a user:
+```
+$ cat <<EOF | radclient 127.0.0.1 coa testing123
+    User-Name = bob
+    Vendor-Specific.Cisco.AVPair = "subscriber:sub-qos-policy-out=q_out_uncapped"
+    EOF
+```

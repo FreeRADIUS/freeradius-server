@@ -1,70 +1,128 @@
-= rlm_python
+= Python
+== Introduction
 
-Python module for freeradius Copyright 2002 Miguel A Paraz
-mailto:mparaz@mparaz.com[mparaz@mparaz.com] Copyright 2002
-Imperium Technology, Inc.
+FreeRADIUS can call Python scripts in order to utilize third party libraries
+which are only available in Python, or to execute particularly complex
+policy.
 
-== Topics
+Requires Python 3.8 or later
 
-PURPOSE: To allow module writers to write modules in a high-level
-language, for implementation or for prototyping.
+== Global configuration
 
-REQUIRES: Python - tested with 2.2
+Due to limitations in Python, the search path for modules can only be
+set globally, rather than per module instance.
 
-BUILDING: ./configure –with-experimental-modules
+This is set in the Python xref:reference:raddb/global.d/python.adoc[global config].
 
-USAGE: Make your module available to the Python interpreter by either
-putting it in a standard location, or `EXPORT PYTHONPATH=$location'.
+== Module configuration
 
-BUGS: 1. Can’t compile statically (./configure –enable-shared=no) -
-causes SIGSEGV on the first malloc() in main().
+Each `rlm_python` module xref:reference:raddb/mods-available/python.adoc[instance]
+should set a `module` option which is the default Python module from which functions
+will be called.
 
-Design: 1. Support for all module functions. 2. One module per function
-allowed, for example, from experimental.conf:
+An `instantiate` and `detach` function can be defined to run code during server
+start up and shutdown.
+
+When `rlm_python` is called in a processing section, by default the function
+called is based on the section name. e.g. if the call is made in `recv Access-Request`
+then, `recv_access_request` will be called if it exists, otherwise `recv` will
+be called.
+
+In order to override the function being called, configuration options such as
+`func_recv_access_request` or `func_recv` can be used. e.g.
 
 ```
-python {
-    mod_instantiate = radiusd_test
-    func_instantiate = instantiate
+func_recv_access_request = authorize
+```
 
-    mod_authorize = radiusd_test
-    func_authorize = authorize
+could be used to use previous function names.
 
-    mod_accounting = radiusd_test
-    func_accounting = accounting
+In addition, the Python module can be changed on a per function basis with
+configuration options such as `mod_recv_access_request` or `mod_recv`.
 
-    mod_preacct = radiusd_test
-    func_preacct = preacct
+If `rlm_python` is called with a suffix, e.g.
 
-    mod_detach = radiusd_test
-    func_detach = detach
+```
+python.my_function
+```
 
+then, by default `my_function` will be called in the default module.  As with
+other calls the module can be specified with `mod_my_function` and the actual
+function with `func_my_function`.
+
+== Python function behaviour
+
+Each function is called with an object representing the request, which contains
+objects representing the attribute lists.
+
+Attributes can be accessed using Python dict syntax, e.g. `p.request['User-Name']`
+which is an object representing that attribute.
+
+When an attribute is referenced in string context (e.g. wrapped in `str()`) then
+the string representation of the attribute value will be returned.
+
+Each attribute object has a `value` which can be used to get or set its value in
+the appropriate native Python type based on the type of the attribute in the
+dictionary e.g.
+
+```
+p.reply['Class'].value = b'abc'
+```
+
+If functions returns None (plain `return' no return), this is treated as `ok`.
+
+Specific return codes can be accessed with pre-defined constants in the
+`freeradius` module. e.g.
+
+```
+return freeradius.RLM_MODULE_UPDATED
+```
+
+The Python `instantiation` function can return -1 to signal failure and abort
+startup.
+
+== `freeradius` Python module
+
+FreeRADIUS provides a module, `freeradius`, which can be used by any
+Python scripts used by `rlm_python`.
+
+This module provides:
+
+=== Constants
+
+Constants are provided for return codes and log level.
+
+The return code constants are all of the form `freeradius.RLM_MODULE_<RCODE>` e.g.
+`freeradius.RLM_MODULE_OK`.  Log level constants are of the form `freeradius.L_<level>`
+e.g. `freeradius.L_DBG`.
+
+In addition, if the module config contains a `config` subsection, that is
+parsed to form a dictionary e.g.
+
+```
+config {
+	name = "value"
 }
 ```
 
-* Different functions are wrappers around the same core.
-* `func_detach` is passed no parameters, returns module return value.
-* If functions returns None (plain `return' no return), default to
-RLM_OK
-* Python instantiation function can return -1 to signal failure and abort
-startup.
+will result in `freeradius.config['name']` having the vaule `value`.
 
-Available to module:
+=== Function
+
+The function `freeradius.log()` can be called to write log messages via the
+FreeRADIUS logging mechanisms.
 
 ```
-import radiusd
-radiusd.rad_log(radiusd.L_XXX, message_string)
-radiusd.RLM_XXX
+import freeradius
+freeradius.log(message_string, freeradius.L_XXX)
 ```
 
-== TODO
+Its arguments are:
 
-1. Do we need to support other pair operations beyond set (:=) ?
-2. Should we pass the value pair info as a dict and not a tuple? Faster?
-3. Give access to more radiusd variables like the dictionary. 3. Give
-access to other C functions. Let the Python module deal with the
-structures directly, instead of letting our C code do it afterwards.
-What’s a good way to represent this?
+  * The message to log
+  * (optional) log type (e.g. freeradius.L_DBG)
+  * (optional) log level - the FreeRADIUS debug level at which this message
+    should be logged. (e.g. L_DBG_LVL_2)
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

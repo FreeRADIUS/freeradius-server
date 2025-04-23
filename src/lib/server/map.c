@@ -32,20 +32,16 @@ RCSID("$Id$")
 #include <freeradius-devel/server/exec_legacy.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/paircmp.h>
-#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 
 #include <freeradius-devel/unlang/interpret.h>
 
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/pair_legacy.h>
-#include <freeradius-devel/util/misc.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
-#include <ctype.h>
 
 static fr_table_num_sorted_t const cond_quote_table[] = {
 	{ L("\""),	T_DOUBLE_QUOTED_STRING	},	/* Don't re-order, backslash throws off ordering */
@@ -1501,12 +1497,10 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t const *map)
 {
 	int result;
-	char *expanded = NULL;
-	char answer[1024];
+	fr_pair_t *vp;
 	fr_pair_list_t *input_pairs = NULL;
-	fr_pair_list_t output_pairs;
+	char answer[1024];
 
-	fr_pair_list_init(&output_pairs);
 	fr_pair_list_free(out);
 
 	MAP_VERIFY(map);
@@ -1515,6 +1509,11 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 	fr_assert(tmpl_is_exec(map->rhs));
 	fr_assert(tmpl_is_attr(map->lhs));
 
+	if (fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type)) {
+		REDEBUG("Cannot assign `exec` output to structural attribute %s", map->lhs->name);
+		return -1;
+	}
+
 	/*
 	 *	We always put the request pairs into the environment
 	 */
@@ -1522,41 +1521,32 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 
 	/*
 	 *	Automagically switch output type depending on our destination
-	 *	If dst is a list, then we create attributes from the output of the program
+	 *	@todo - If dst is a list, then we create attributes from the output of the program
 	 *	if dst is an attribute, then we create an attribute of that type and then
 	 *	call fr_pair_value_from_str on the output of the script.
 	 */
 	result = radius_exec_program_legacy(answer, sizeof(answer),
 				     request, map->rhs->name, input_pairs ? input_pairs : NULL,
 				     true, true, fr_time_delta_from_sec(EXEC_TIMEOUT));
-	talloc_free(expanded);
 	if (result != 0) {
 		REDEBUG("Exec failed with code (%i)", result);
-		fr_pair_list_free(&output_pairs);
 		return -1;
 	}
 
-	switch (map->lhs->type) {
-	case TMPL_TYPE_ATTR:
-	{
-		fr_pair_t *vp;
-
-		MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
-		vp->op = map->op;
-		if (fr_pair_value_from_str(vp, answer, strlen(answer), &fr_value_unescape_single, false) < 0) {
-			RPEDEBUG("Failed parsing exec output");
-			talloc_free(&vp);
-			return -2;
-		}
-		fr_pair_append(out, vp);
-
-		return 0;
+	/*
+	 *	@todo - we completely ignore the operator here :( Arguably the caller should be calling ONLY
+	 *	the legacy pair move functions with the results of this function.
+	 */
+	MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
+	vp->op = map->op;
+	if (fr_pair_value_from_str(vp, answer, strlen(answer), &fr_value_unescape_single, false) < 0) {
+		RPEDEBUG("Failed parsing exec output");
+		talloc_free(&vp);
+		return -2;
 	}
+	fr_pair_append(out, vp);
 
-	default:
-		fr_assert(0);
-		return -1;
-	}
+	return 0;
 }
 
 /** Convert a map to a #fr_pair_t
@@ -1586,21 +1576,6 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 	if (!fr_cond_assert(map->lhs != NULL)) return -1;
 
 	fr_assert(tmpl_is_attr(map->lhs));
-
-	/*
-	 *	Special case for !*, we don't need to parse RHS as this is a unary operator.
-	 */
-	if (map->op == T_OP_CMP_FALSE) return 0;
-
-	/*
-	 *	Hoist this early, too.
-	 */
-	if (map->op == T_OP_CMP_TRUE) {
-		MEM(n = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
-		n->op = map->op;
-		fr_pair_append(out, n);
-		return 0;
-	}
 
 	/*
 	 *	If there's no RHS, then it MUST be an attribute, and
@@ -1886,6 +1861,14 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	fr_assert(map->lhs != NULL);
 	fr_assert(map->rhs != NULL);
 
+	/*
+	 *	This function is called only when creating attributes.  It cannot be called for conditions.
+	 */
+	if (fr_comparison_op[map->op]) {
+		REDEBUG("Invalid operator in %s %s ...", map->lhs->name, fr_tokens[map->op]);
+		return -1;
+	}
+
 	tmp_ctx = talloc_pool(request, 1024);
 
 	/*
@@ -1921,7 +1904,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &exp_lhs, attr_str,
 					   &(tmpl_rules_t){
 					   	.attr = {
-					   		.dict_def = request->dict,
+							.dict_def = request->local_dict,
 							.list_def = request_attr_request,
 				   		}
 					   });
@@ -1984,18 +1967,14 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 *	0 to signify success. It may return "success", but still have no
 	 *	VPs to work with.
 	 */
-	if (!tmpl_is_null(map->rhs)) {
-		rcode = func(parent, &src_list, request, map, ctx);
-		if (rcode < 0) {
-			fr_assert(fr_pair_list_empty(&src_list));
-			goto finish;
-		}
-		if (fr_pair_list_empty(&src_list)) {
-			RDEBUG2("%.*s skipped: No values available", (int)map->lhs->len, map->lhs->name);
-			goto finish;
-		}
-	} else {
-		if (RDEBUG_ENABLED) map_debug_log(request, map, NULL);
+	rcode = func(parent, &src_list, request, map, ctx);
+	if (rcode < 0) {
+		fr_assert(fr_pair_list_empty(&src_list));
+		goto finish;
+	}
+	if (fr_pair_list_empty(&src_list)) {
+		RDEBUG2("%.*s skipped: No values available", (int)map->lhs->len, map->lhs->name);
+		goto finish;
 	}
 
 	/*
@@ -2441,7 +2420,7 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
 	if (!fr_cond_assert(map->lhs != NULL)) return;
 	if (!fr_cond_assert(map->rhs != NULL)) return;
 
-	fr_assert(vp || tmpl_is_null(map->rhs));
+	fr_assert(vp);
 
 	switch (map->rhs->type) {
 	/*
@@ -2482,10 +2461,6 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
 		tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->rhs, NULL);
 		rhs = talloc_typed_asprintf(request, "%s -> %s", buffer, value);
 	}
-		break;
-
-	case TMPL_TYPE_NULL:
-		rhs = talloc_typed_strdup(request, "ANY");
 		break;
 	}
 

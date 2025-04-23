@@ -17,6 +17,22 @@
 #  included in your module. If the module is called for a section which
 #  does not have a function defined, it will return `noop`.
 #
+#  NOTE: As of FreeRADIUS v4, the Python function names called when the `python`
+#  module is called are automatically derived from the section in which
+#  they are called.
+#
+#  e.g. if `python` is called in `recv Access-Request`, firstly a function
+#  `recv_access_request` will be looked for.  If that does not exist, then
+#  a function `recv` will be looked for.
+#
+#  This can be overridden by setting `func_recv_access_request` or `func_recv`
+#  to point to a different function name.
+#
+#  Similarly, `mod_recv_access_request` or `mod_recv` can be used to
+#  load the function from a module other than the one specified in the
+#  `module` option.
+
+#
 #  Please see the file global.d/python for server-global configuration
 #  items which control the Python path.
 #
@@ -64,25 +80,19 @@ python {
 	#
 #	func_detach = detach
 
-#	func_authorize = authorize
-#	func_authenticate = authenticate
-#	func_preacct = preacct
-#	func_accounting = accounting
-#	func_post_auth = post_auth
-
 	#
 	#  config { ... }::
 	#
 	#  You can define configuration items (and nested sub-sections) in python `config { ... }`
-	#  section. These items will be accessible in the Python script through `radiusd.config`
+	#  section. These items will be accessible in the Python script through `freeradius.config`
 	#  dict for instance:
 	#
 	#  e.g:
 	#
 	#  [source,python]
 	#  ----
-	#  radiusd.config['name']
-	#  radiusd.config['sub-config']['name']
+	#  freeradius.config['name']
+	#  freeradius.config['sub-config']['name']
 	#  ----
 	#
 #	config {

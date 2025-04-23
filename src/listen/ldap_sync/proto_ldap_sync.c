@@ -126,7 +126,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	ssize_t				ret;
 	fr_pair_t			*vp = NULL;
 
-	request->dict = dict_ldap_sync;
+	fr_assert(request->proto_dict == dict_ldap_sync);
 
 	fr_dbuff_init(&dbuff, data, data_len);
 
@@ -134,7 +134,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	 *	Extract attributes from the passed data
 	 */
 	ret = fr_internal_decode_list_dbuff(request->pair_list.request, &request->request_pairs,
-					   fr_dict_root(request->dict), &dbuff, NULL);
+					   fr_dict_root(request->proto_dict), &dbuff, NULL);
 	if (ret < 0) return -1;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_packet_type);

@@ -183,7 +183,8 @@ struct request_s {
 
 	uint64_t		seq_start;	//!< State sequence ID.  Stable identifier for a sequence of requests
 						//!< and responses.
-	fr_dict_t const		*dict;		//!< Dictionary of the protocol that this request belongs to.
+	fr_dict_t const		*proto_dict;   	//!< Dictionary of the protocol that this request belongs to.
+	fr_dict_t const		*local_dict;	//!< dictionary for local variables
 
 	fr_pair_t		*pair_root;	//!< Root attribute which contains the
 						///< other list attributes as children.

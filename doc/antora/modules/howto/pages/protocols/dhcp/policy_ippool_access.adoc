@@ -1,4 +1,4 @@
-== Configure access restrictions for pools
+= Configure Access Restrictions for Pools
 
 We can combine what we have learned in the preceeding sections to provide pools
 whose access is restricted in some way, for example to a particular class.
@@ -50,5 +50,8 @@ network DHCP-Network-Subnet < 10.99.99.0/24, \
        DHCP-Router-Address := 10.99.99.1
 ----
 
-Note that any number of additional filters can be added to the initial "check"
+[NOTE]
+====
+Any number of additional filters can be added to the initial "check"
 line to restrict matches to the network block.
+====

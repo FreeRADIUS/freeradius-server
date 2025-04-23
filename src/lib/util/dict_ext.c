@@ -24,7 +24,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/dict_priv.h>
-#include <freeradius-devel/util/dict_ext_priv.h>
 
 static fr_table_num_ordered_t const dict_attr_ext_table[] = {
 	{ L("name"),			FR_DICT_ATTR_EXT_NAME			},

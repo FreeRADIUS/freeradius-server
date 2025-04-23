@@ -32,19 +32,14 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
-#include <freeradius-devel/util/misc.h>
 
-#include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/value.h>
 
 /*
  *	For xlat_exp_head_alloc(), because xlat_copy() doesn't create an output head.
  */
 #include <freeradius-devel/unlang/xlat_priv.h>
 
-#include <ctype.h>
 
 /** Define a global variable for specifying a default request reference
  *
@@ -116,7 +111,6 @@ TMPL_REQUEST_REF_DEF(tmpl_request_def_parent, REQUEST_PARENT);
 fr_table_num_ordered_t const tmpl_type_table[] = {
 	{ L("uninitialised"),		TMPL_TYPE_UNINITIALISED		},
 
-	{ L("null"),			TMPL_TYPE_NULL			},
 	{ L("data"),			TMPL_TYPE_DATA			},
 
 	{ L("attr"),			TMPL_TYPE_ATTR			},
@@ -333,9 +327,6 @@ void tmpl_debug(tmpl_t const *vpt)
 	FR_FAULT_LOG("\tcast       : %s", fr_type_to_str(tmpl_rules_cast(vpt)));
 	FR_FAULT_LOG("\tquote      : %s", fr_table_str_by_value(fr_token_quotes_table, vpt->quote, "<INVALID>"));
 	switch (vpt->type) {
-	case TMPL_TYPE_NULL:
-		return;
-
 	case TMPL_TYPE_DATA:
 		FR_FAULT_LOG("\ttype       : %s", fr_type_to_str(tmpl_value_type(vpt)));
 		FR_FAULT_LOG("\tlen        : %zu", tmpl_value_length(vpt));
@@ -3211,10 +3202,34 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
 			if (slen <= 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
-			if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
+			if (xlat_needs_resolving(head)) {
+				UNRESOLVED_SET(&type);
+				goto set_tmpl;
 
-			tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen, t_rules);
-			vpt->data.xlat.ex = head;
+			} else if (fr_dlist_num_elements(&head->dlist) == 1) {
+				xlat_exp_t *node = xlat_exp_head(head);
+				tmpl_t *hoisted;
+
+				if (node->type != XLAT_TMPL) goto set_tmpl;
+
+				/*
+				 *	We were asked to parse a tmpl.  But it turned out to be an xlat %{...}
+				 *
+				 *	If that xlat is identically a tmpl such as %{User-Name}, then we just
+				 *	hoist the tmpl to this node.  Otherwise at run time, we will have an
+				 *	extra bounce through the xlat code, for no real reason.
+				 */
+				hoisted = node->vpt;
+
+				(void) talloc_steal(ctx, hoisted);
+				talloc_free(vpt);
+				vpt = hoisted;
+
+			} else {
+			set_tmpl:
+				tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen, t_rules);
+				vpt->data.xlat.ex = head;
+			}
 
 			*out = vpt;
 
@@ -4341,7 +4356,6 @@ void tmpl_unresolve(tmpl_t *vpt)
 		fr_assert(0);
 		break;
 
-	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_DATA_UNRESOLVED:
 	case TMPL_TYPE_REGEX_UNCOMPILED:
 		break;
@@ -4851,7 +4865,6 @@ fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 		break;
 
 	case TMPL_TYPE_UNINITIALISED:
-	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_MAX:
 		fr_sbuff_terminate(out);
 		break;
@@ -5123,15 +5136,6 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 	 *  If they're still all zero, do TMPL_TYPE specific checks.
 	 */
 	switch (vpt->type) {
-	case TMPL_TYPE_NULL:
-		if ((nz = is_zeroed((uint8_t const *)&vpt->data, sizeof(vpt->data)))) {
-			HEX_MARKER1((uint8_t const *)&vpt->data, sizeof(vpt->data),
-				    nz - (uint8_t const *)&vpt->data, "non-zero memory", "");
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_NULL "
-					     "has non-zero bytes in its data union", file, line);
-		}
-		break;
-
 	case TMPL_TYPE_DATA_UNRESOLVED:
 		if (!vpt->data.unescaped) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA_UNRESOLVED "

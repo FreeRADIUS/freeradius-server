@@ -50,16 +50,16 @@ xlat %{32}
 match %{32}
 
 xlat %{33}
-match ERROR offset 3: Invalid regex reference.  Must be in range 0-32
+match ERROR offset 2: Invalid regex reference.  Must be in range 0-32
 
 xlat %{3a}
-match ERROR offset 3: Unexpected text after attribute reference
+match ERROR offset 2: Unexpected text after attribute reference
 
 #xlat %{-3}
 #match ERROR offset 3: Unresolved attributes not allowed in expansions here
 
 xlat %{3
-match ERROR offset 4: Missing closing brace
+match ERROR offset 3: Missing closing brace '}'
 
 #
 #  Tests for xlat expansion
@@ -68,10 +68,20 @@ xlat %{Tunnel-Password}
 match %{Tunnel-Password}
 
 xlat %test_no_args('foo')
-match ERROR offset 20: Too many arguments, expected 0, got 1
+match ERROR offset 14: Too many arguments, expected 0, got 1
 
 xlat %test('bar')
 match %test('bar')
+
+#
+#  @todo - we now hoist the tmpl -> xlat -> tmpl to just a tmpl.  But
+#  we don't change the name of the parent group.  We may want to do that.
+#
+xlat %test(%{User-Name})
+match %test(%{User-Name})
+
+xlat %test()
+match ERROR offset 6: Missing required arg 1
 
 xlat %{Tunnel-Password}
 match %{Tunnel-Password}
@@ -125,10 +135,10 @@ xlat %length()
 match %length()
 
 xlat %length(
-match ERROR offset 9: Missing closing brace
+match ERROR offset 8: Missing closing brace ')'
 
 xlat %length(1 + 2
-match ERROR offset 14: Missing ')' after argument 1
+match ERROR offset 13: Missing ')' after argument 1
 
 xlat \"%t\tfoo\"
 match \"%t\tfoo\"
@@ -143,66 +153,65 @@ match \"foo %test('foo')\"
 #  Alternations
 #
 xlat %{%{foo} || %{bar}}
-match ERROR offset 5: Attribute 'foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 4: Attribute 'foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat %{%{User-Name} || %{bar}}
-match ERROR offset 21: Attribute 'bar' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 20: Attribute 'bar' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  Empty and malformed expansions
 #
 xlat %{
-match ERROR offset 3: Missing closing brace
+match ERROR offset 2: Missing closing brace '}'
 
 xlat %{}
-match ERROR offset 3: Empty expressions are invalid
+match ERROR offset 2: Empty expressions are invalid
 
 xlat %{:}
-match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here
+match ERROR offset 2: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat %{:bar}
-match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here
+match ERROR offset 2: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat %foo(' bar')
-match ERROR offset 2: Unresolved expansion functions are not allowed here
+match ERROR offset 1: Unresolved expansion functions are not allowed here
 
 xlat %{[}
-match ERROR offset 3: Missing attribute name
+match ERROR offset 2: Missing attribute name
 
 xlat %{[baz}
-match ERROR offset 3: Missing attribute name
+match ERROR offset 2: Missing attribute name
 
 xlat %{ }
-match ERROR offset 4: Zero length attribute name: Unresolved attributes are not allowed here
+match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat %{\t}
-match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here
+match ERROR offset 2: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat %{\n}
-match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here
+match ERROR offset 2: Zero length attribute name: Unresolved attributes are not allowed here
 
 xlat %{foo }
-match ERROR offset 3: Attribute 'foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 2: Attribute 'foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat %{foo bar}
-match ERROR offset 3: Attribute 'foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
+match ERROR offset 2: Attribute 'foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat %test(
-match ERROR offset 7: Missing closing brace
+match ERROR offset 6: Missing closing brace ')'
 
 xlat %test(%{User-Name)
-match ERROR offset 18: Missing closing brace
+match ERROR offset 17: Missing closing brace '}'
 
-# Discuss - Not sure the offset/message is correct here, but not sure if we can determine the correct offset either
 xlat %test(%{User-Name}
-match ERROR offset 19: Missing ')' after argument 1
+match ERROR offset 18: Missing ')' after argument 1
 
 xlat %{myfirstxlat
-match ERROR offset 14: Missing closing brace
+match ERROR offset 13: Missing closing brace '}'
 
 # Issue seen in the wild that caused an SEGV during pass2
 xlat %{%{control.IP-Pool.Name}:%{reply.IP-Pool.Range}
-match ERROR offset 49: Missing closing brace
+match ERROR offset 48: Missing closing brace '}'
 
 #
 #  API to split xlat strings into argv-style arguments.
@@ -211,23 +220,23 @@ xlat_argv /bin/sh %{User-Name}
 match [0]{ /bin/sh }, [1]{ %{User-Name} }
 
 xlat_argv /bin/sh "%{User-Name}"
-match [0]{ /bin/sh }, [1]{ %{User-Name} }
+match [0]{ /bin/sh }, [1]{ "%{User-Name}" }
 
 # with quotes
 xlat_argv /bin/sh "foo" "%{User-Name}"
-match [0]{ /bin/sh }, [1]{ foo }, [2]{ %{User-Name} }
+match [0]{ /bin/sh }, [1]{ "foo" }, [2]{ "%{User-Name}" }
 
 # many spaces between arguments
 xlat_argv /bin/sh         "foo"       "%{User-Name}"
-match [0]{ /bin/sh }, [1]{ foo }, [2]{ %{User-Name} }
+match [0]{ /bin/sh }, [1]{ "foo" }, [2]{ "%{User-Name}" }
 
 # and spaces in quotes
 xlat_argv /bin/sh "foo bar" "%{User-Name}"
-match [0]{ /bin/sh }, [1]{ foo bar }, [2]{ %{User-Name} }
+match [0]{ /bin/sh }, [1]{ "foo bar" }, [2]{ "%{User-Name}" }
 
 # and multiple xlats inside of quotes
 xlat_argv /bin/sh "foo bar" "%{User-Name} %{Filter-Id}"
-match [0]{ /bin/sh }, [1]{ foo bar }, [2]{ %{User-Name} %{Filter-Id} }
+match [0]{ /bin/sh }, [1]{ "foo bar" }, [2]{ "%{User-Name} %{Filter-Id}" }
 
 # and errors
 #
@@ -248,7 +257,7 @@ xlat %debug( 5)
 match %debug(5)
 
 xlat %debug("foo")
-match ERROR offset 8: Invalid argument 1 - Failed parsing string as type 'int8'
+match ERROR offset 7: Invalid argument 1 - Failed parsing string as type 'int8'
 
 #
 #  This is correct.
@@ -295,4 +304,4 @@ xlat %md5('arg"')
 match %md5(0x61726722)
 
 count
-match 157
+match 161

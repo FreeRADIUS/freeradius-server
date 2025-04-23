@@ -799,7 +799,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	request->component = "radius";
 	request->module = NULL;
-	fr_assert(request->dict == dict_radius);
+	fr_assert(request->proto_dict == dict_radius);
 
 	fr_assert(FR_RADIUS_PACKET_CODE_VALID(request->packet->code));
 
@@ -845,7 +845,7 @@ static xlat_action_t xlat_func_radius_secret_verify(TALLOC_CTX *ctx, fr_dcursor_
 
 	XLAT_ARGS(args, &secret);
 
-	if (request->dict != dict_radius) return XLAT_ACTION_FAIL;
+	if (request->proto_dict != dict_radius) return XLAT_ACTION_FAIL;
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 

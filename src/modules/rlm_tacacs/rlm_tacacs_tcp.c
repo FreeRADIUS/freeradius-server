@@ -211,7 +211,7 @@ static void udp_request_reset(udp_handle_t *h, udp_request_t *u)
 	u->outstanding = false;
 	h->active--;
 
-	if (u->ev) (void)fr_timer_delete(&u->ev);
+	FR_TIMER_DISARM(u->ev);
 
 	/*
 	 *	We've sent 255 packets, and received all replies.  Shut the connection down.

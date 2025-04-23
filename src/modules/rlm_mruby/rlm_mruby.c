@@ -361,7 +361,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vp
 		if (tmpl_afrom_attr_str(request, NULL, &dst, ckey,
 					&(tmpl_rules_t){
 						.attr = {
-							.dict_def = request->dict,
+							.dict_def = request->proto_dict,
 							.list_def = request_attr_reply,
 						}
 					}) <= 0) {

@@ -37,7 +37,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
 
-#include <signal.h>
 #include <fcntl.h>
 
 #ifdef HAVE_SYS_WAIT_H
@@ -220,7 +219,7 @@ int main_loop_start(void)
 		if (under_systemd) {
 			INFO("Informing systemd we're stopping");
 			sd_notify(0, "STOPPING=1");
-			fr_timer_delete(&sd_watchdog_ev);
+			FR_TIMER_DELETE(&sd_watchdog_ev);
 		}
 	}
 #endif

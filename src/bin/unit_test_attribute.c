@@ -1571,8 +1571,14 @@ static size_t command_condition_normalise(command_result_t *result, command_file
 	fr_skip_whitespace(in);
 
 	slen = xlat_tokenize_condition(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, inlen), NULL, &cc->tmpl_rules);
-	if (slen <= 0) {
-		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen);
+	if (slen == 0) {
+		fr_strerror_printf_push_head("ERROR failed to parse any input");
+		talloc_free(cs);
+		RETURN_OK_WITH_ERROR();
+	}
+
+	if (slen < 0) {
+		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen - 1);
 		talloc_free(cs);
 		RETURN_OK_WITH_ERROR();
 	}
@@ -2435,8 +2441,6 @@ static size_t command_max_buffer_size(command_result_t *result, command_file_ctx
 	RETURN_OK(snprintf(data, COMMAND_OUTPUT_MAX, "%ld", size));
 }
 
-extern bool xlat_func_bare_words;
-
 /** Set or clear migration flags.
  *
  */
@@ -2891,29 +2895,34 @@ static size_t command_write(command_result_t *result, command_file_ctx_t *cc,
 static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_t *cc,
 				     char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	ssize_t			dec_len;
+	ssize_t			slen;
 	xlat_exp_head_t		*head = NULL;
 	size_t			input_len = strlen(in), escaped_len;
 	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 
-	dec_len = xlat_tokenize(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), &p_rules,
-				&(tmpl_rules_t) {
-					.attr = {
-						.dict_def = dictionary_current(cc),
-						.list_def = request_attr_request,
-						.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
-					},
-					.xlat = cc->tmpl_rules.xlat,
-				});
-	if (dec_len <= 0) {
-		fr_strerror_printf_push_head("ERROR offset %d", (int) -dec_len);
+	slen = xlat_tokenize(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), &p_rules,
+			     &(tmpl_rules_t) {
+				     .attr = {
+					     .dict_def = dictionary_current(cc),
+					     .list_def = request_attr_request,
+					     .allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
+				     },
+				     .xlat = cc->tmpl_rules.xlat,
+			     });
+	if (slen == 0) {
+		fr_strerror_printf_push_head("ERROR failed to parse any input");
+		RETURN_OK_WITH_ERROR();
+	}
+
+	if (slen < 0) {
+		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen - 1);
 
 	return_error:
 		RETURN_OK_WITH_ERROR();
 	}
 
-	if (((size_t) dec_len != input_len)) {
-		fr_strerror_printf_push_head("offset %d 'Too much text'", (int) dec_len);
+	if (((size_t) slen != input_len)) {
+		fr_strerror_printf_push_head("offset %d 'Too much text'", (int) slen);
 		goto return_error;
 	}
 
@@ -2962,7 +2971,7 @@ static size_t command_xlat_expr(command_result_t *result, command_file_ctx_t *cc
 static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *cc,
 				     char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	ssize_t			dec_len;
+	ssize_t			slen;
 	xlat_exp_head_t		*head = NULL;
 	size_t			input_len = strlen(in), escaped_len;
 	tmpl_rules_t		t_rules = (tmpl_rules_t) {
@@ -2981,16 +2990,20 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 	}
 	t_rules.xlat.runtime_el = el;
 
-	dec_len = xlat_tokenize_expression(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), NULL, &t_rules);
-	if (dec_len <= 0) {
-		fr_strerror_printf_push_head("ERROR offset %d", (int) -dec_len);
+	slen = xlat_tokenize_expression(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), NULL, &t_rules);
+	if (slen == 0) {
+		fr_strerror_printf_push_head("ERROR failed to parse any input");
+		RETURN_OK_WITH_ERROR();
+	}
 
+	if (slen < 0) {
+		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen - 1);
 	return_error:
 		RETURN_OK_WITH_ERROR();
 	}
 
-	if (((size_t) dec_len != input_len)) {
-		fr_strerror_printf_push_head("Passed in %zu characters, but only parsed %zd characters", input_len, dec_len);
+	if (((size_t) slen != input_len)) {
+		fr_strerror_printf_push_head("Passed in %zu characters, but only parsed %zd characters", input_len, slen);
 		goto return_error;
 	}
 
@@ -3842,14 +3855,6 @@ int main(int argc, char *argv[])
 	default_log.dst = L_DST_STDOUT;
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
-
-	/*
-	 *	Migration option - it's enabled by default in
-	 *	src/lib/server/main_config.c, until we have time to
-	 *	update all of the default configuration files and
-	 *	tests.
-	 */
-	xlat_func_bare_words = false;
 
 	while ((c = getopt(argc, argv, "cd:D:F:fxMhpr:S:w:")) != -1) switch (c) {
 		case 'c':

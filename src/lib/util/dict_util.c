@@ -30,14 +30,9 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/dict_ext_priv.h>
 #include <freeradius-devel/util/dict_fixup_priv.h>
-#include <freeradius-devel/util/dict_ext.h>
-#include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
-#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/talloc.h>
 
 #ifdef HAVE_SYS_STAT_H
 #  include <sys/stat.h>
@@ -4958,7 +4953,7 @@ fr_dict_protocol_t const *fr_dict_protocol(fr_dict_t const *dict)
 }
 
 /*
- *	Get the real protocol dictionary behind the local one.
+ *	Get the real protocol namespace behind a local one.
  */
 fr_dict_attr_t const *fr_dict_unlocal(fr_dict_attr_t const *da)
 {
@@ -4971,6 +4966,16 @@ fr_dict_attr_t const *fr_dict_unlocal(fr_dict_attr_t const *da)
 	}
 
 	return da;
+}
+
+/*
+ *	Get the real protocol dictionary behind a local one.
+ */
+fr_dict_t const	*fr_dict_proto_dict(fr_dict_t const *dict)
+{
+	while (dict->next) dict = dict->next;
+
+	return dict;
 }
 
 int fr_dict_attr_set_group(fr_dict_attr_t **da_p)

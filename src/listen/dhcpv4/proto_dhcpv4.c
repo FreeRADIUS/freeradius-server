@@ -170,13 +170,6 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	fr_client_t const *client;
 	fr_packet_t *packet = request->packet;
 
-	/*
-	 *	Set the request dictionary so that we can do
-	 *	generic->protocol attribute conversions as
-	 *	the request runs through the server.
-	 */
-	request->dict = dict_dhcpv4;
-
 	RHEXDUMP3(data, data_len, "proto_dhcpv4 decode packet");
 
 	client = address->radclient;

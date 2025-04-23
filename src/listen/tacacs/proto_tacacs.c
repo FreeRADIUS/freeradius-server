@@ -161,13 +161,6 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 
 	RHEXDUMP3(data, data_len, "proto_tacacs decode packet");
 
-	/*
-	 *	Set the request dictionary so that we can do
-	 *	generic->protocol attribute conversions as
-	 *	the request runs through the server.
-	 */
-	request->dict = dict_tacacs;
-
 	client = address->radclient;
 
 	/*

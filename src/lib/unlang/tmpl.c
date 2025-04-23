@@ -28,7 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/value.h>
 #include "tmpl_priv.h"
 #include <signal.h>
 

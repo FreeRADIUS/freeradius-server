@@ -28,8 +28,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/request_data.h>
-#include <freeradius-devel/server/rcode.h>
-#include <freeradius-devel/unlang/call_env.h>
 
 #include "module_priv.h"
 

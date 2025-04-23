@@ -26,12 +26,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 
-#include <talloc.h>
-#include <stdatomic.h>
 
 static TALLOC_CTX *global_ctx;
 static _Thread_local TALLOC_CTX *thread_local_ctx;

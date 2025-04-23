@@ -1,7 +1,6 @@
 #include <freeradius-devel/util/acutest.h>
 #include <freeradius-devel/util/acutest_helpers.h>
 #include <freeradius-devel/util/syserror.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 
 #define TRUNK_TESTS 1

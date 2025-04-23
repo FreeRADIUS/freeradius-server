@@ -50,9 +50,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/base16.h>
-#include <freeradius-devel/util/dcursor.h>
 #include <freeradius-devel/util/size.h>
-#include <freeradius-devel/util/time.h>
 
 #include <math.h>
 #include <float.h>

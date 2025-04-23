@@ -26,10 +26,10 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/util/debug.h>
 
 #include <ctype.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
+#include <freeradius-devel/util/debug.h>
 #include "unlang_priv.h"	/* Fixme - Should create a proper semi-public interface for the interpret */
 
 /** State of an xlat expansion
@@ -96,10 +96,7 @@ typedef struct {
  */
 static int _unlang_xlat_event_free(unlang_xlat_event_t *ev)
 {
-	if (ev->ev) {
-		(void) fr_timer_delete(&(ev->ev));
-		return 0;
-	}
+	FR_TIMER_DELETE(&(ev->ev));
 
 	if (ev->fd >= 0) {
 		(void) fr_event_fd_delete(unlang_interpret_event_list(ev->request), ev->fd, FR_EVENT_FILTER_IO);
@@ -162,9 +159,7 @@ int unlang_xlat_timeout_add(request_t *request,
 
 	if (!state->event_ctx) MEM(state->event_ctx = talloc_zero(state, bool));
 
-	ev = talloc_zero(state->event_ctx, unlang_xlat_event_t);
-	if (unlikely(!ev)) return -1;
-
+	MEM(ev = talloc_zero(state->event_ctx, unlang_xlat_event_t));
 	ev->request = request;
 	ev->fd = -1;
 	ev->timeout = callback;
@@ -600,7 +595,7 @@ xlat_action_t unlang_xlat_yield(request_t *request,
  */
 static int _unlang_xlat_retry_free(unlang_xlat_retry_t *ev)
 {
-	if (ev->ev) (void) fr_timer_delete(&(ev->ev));
+	FR_TIMER_DELETE(&(ev->ev));
 
 	return 0;
 }
@@ -703,8 +698,7 @@ xlat_action_t unlang_xlat_yield_to_retry(request_t *request, xlat_func_t resume,
 
 	if (!state->event_ctx) MEM(state->event_ctx = talloc_zero(state, bool));
 
-	ev = talloc_zero(state->event_ctx, unlang_xlat_retry_t);
-	if (unlikely(!ev)) return XLAT_ACTION_FAIL;
+	MEM(ev = talloc_zero(state->event_ctx, unlang_xlat_retry_t));
 
 	ev->request = request;
 	fr_assert(state->exp->type == XLAT_FUNC);

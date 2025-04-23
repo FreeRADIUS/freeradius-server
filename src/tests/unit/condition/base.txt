@@ -20,20 +20,20 @@ condition ("foo
 match ERROR offset 2: Unterminated string
 
 condition ()
-match ERROR offset 2: Empty expressions are invalid
+match ERROR offset 1: Empty expressions are invalid
 
 condition (!)
-match ERROR offset 3: Zero length attribute name: Unresolved attributes are not allowed here
-
-condition (|| b)
 match ERROR offset 2: Zero length attribute name: Unresolved attributes are not allowed here
 
+condition (|| b)
+match ERROR offset 1: Zero length attribute name: Unresolved attributes are not allowed here
+
 condition ((ok || handled) foo)
-match ERROR offset 18: Invalid operator
+match ERROR offset 17: Invalid operator
 
 # escapes in names are illegal
 condition (ok\ foo || handled)
-match ERROR offset 4: Unexpected text after return code
+match ERROR offset 3: Unexpected text after return code
 
 #
 #  @todo - parsing - This is just a bare word comparison, and should be disallowed?
@@ -46,13 +46,13 @@ match (Service-Type == (0 - 111))
 #  so that it finds out which specific parse problem it is, and gives a better error message.
 #
 condition (ok FOO handled)
-match ERROR offset 5: Invalid operator
+match ERROR offset 4: Invalid operator
 
 condition (ok !x handled)
-match ERROR offset 5: Invalid operator
+match ERROR offset 4: Invalid operator
 
 condition (ok =x handled)
-match ERROR offset 5: Invalid operator
+match ERROR offset 4: Invalid operator
 
 #
 # Re-enable when we have proper bareword xlat tokenization
@@ -79,7 +79,7 @@ condition !(ok)
 match !%expr.rcode('ok')
 
 condition !!ok
-match ERROR offset 2: Double operator is invalid
+match ERROR offset 1: Double operator is invalid
 
 #
 # @todo - peephole - do optimization to get rid of double negation?
@@ -124,13 +124,13 @@ condition handled &&&Packet-Type == ::Access-Challenge
 match (%expr.rcode('handled') && (Packet-Type == ::Access-Challenge))
 
 condition reply == request
-match ERROR offset 1: Cannot use list references in condition
+match ERROR offset 0: Cannot use list references in condition
 
 condition reply == "hello"
-match ERROR offset 1: Cannot use list references in condition
+match ERROR offset 0: Cannot use list references in condition
 
 condition "hello" == reply
-match ERROR offset 12: Cannot use list references in condition
+match ERROR offset 11: Cannot use list references in condition
 
 condition User-Name == User-Password
 match (User-Name == User-Password)
@@ -152,13 +152,13 @@ match ((ipaddr)Filter-Id == Framed-IP-Address)
 #  user forces incompatible types, then that's an error.
 #
 condition (ipaddr)Filter-Id == (uint) Framed-IP-Address
-match ERROR offset 23: Attribute 'uint' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 22: Attribute 'uint' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 condition (ipaddr)Filter-Id == (uint32) Framed-IP-Address
 match ((ipaddr)Filter-Id == (uint32)Framed-IP-Address)
 
 condition (blerg)Filter-Id == "foo"
-match ERROR offset 2: Attribute 'blerg' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 1: Attribute 'blerg' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 #
 #  Normalize things
@@ -168,23 +168,23 @@ match (127.0.0.1 < Framed-IP-Address)
 
 # =* and !* are only for attrs / lists
 condition "foo" !* bar
-match ERROR offset 7: Invalid operator
+match ERROR offset 6: Invalid operator
 
 condition "foo" =* bar
-match ERROR offset 7: Invalid operator
+match ERROR offset 6: Invalid operator
 
 # existence checks don't need the RHS
 condition User-Name =* bar
-match ERROR offset 11: Invalid operator
+match ERROR offset 10: Invalid operator
 
 condition User-Name !* bar
-match ERROR offset 11: Invalid operator
+match ERROR offset 10: Invalid operator
 
 condition !User-Name =* bar
-match ERROR offset 12: Invalid operator
+match ERROR offset 11: Invalid operator
 
 condition !User-Name !* bar
-match ERROR offset 12: Invalid operator
+match ERROR offset 11: Invalid operator
 
 # redundant casts get squashed
 condition (ipaddr)Framed-IP-Address == 127.0.0.1
@@ -228,10 +228,10 @@ condition Event-Timestamp == 'January 1, 2012'
 
 # literals are parsed when the conditions are parsed
 condition (integer)X == 1
-match ERROR offset 10: Attribute 'X' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 9: Attribute 'X' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 condition NAS-Port == X
-match ERROR offset 13: Attribute 'X' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 12: Attribute 'X' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 #
 #  The RHS is a static string, so this gets mashed to a literal,
@@ -259,7 +259,7 @@ condition (ether) 00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')"
 match (00:11:22:33:44:55 == "%md4(0x30303a31313a32323a33333a34343a3535)")
 
 condition (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
-match ERROR offset 11: Unexpected text after attribute reference
+match ERROR offset 10: Unexpected text after attribute reference
 
 #
 #  Tests for boolean data types.
@@ -340,13 +340,13 @@ condition (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
 
 condition (ipaddr)127.0.0.1/327 == 127.0.0.1
-match ERROR offset 14: Parent type of nested attribute 0 must be of type "struct", "tlv", "vendor", "vsa" or "group", got "octets"
+match ERROR offset 13: Parent type of nested attribute 0 must be of type "struct", "tlv", "vendor", "vsa" or "group", got "octets"
 
 condition (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
 
 condition (/foo/)
-match ERROR offset 2: Unexpected regular expression
+match ERROR offset 1: Unexpected regular expression
 
 #
 #  Tests for (FOO).
@@ -379,7 +379,7 @@ condition ('a')
 match 'a'
 
 condition (a)
-match ERROR offset 2: Attribute 'a' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 1: Attribute 'a' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 #
 #  Module return codes are OK
@@ -403,7 +403,7 @@ match User-Name
 #  Forbidden data types in cast
 #
 condition ((vsa)"foo" == User-Name)
-match ERROR offset 2: Invalid data type 'vsa' in cast
+match ERROR offset 1: Invalid data type 'vsa' in cast
 
 #
 #  If the LHS is a cast to a type, and the RHS is an attribute
@@ -413,8 +413,13 @@ match ERROR offset 2: Invalid data type 'vsa' in cast
 condition (string)"foo" == User-Name
 match ("foo" == User-Name)
 
+#
+#  @todo - This is no longer a tmpl, so the cast is a function.
+#  We should really add a "cast print" function which prints
+#  out the casts in the same format in which they are parsed.
+#
 condition (integer)"%md4(' 1 + 1')" < NAS-Port
-match ((uint32)"%md4(0x2031202b2031)" < NAS-Port)
+match (%cast(uint32, "%md4(0x2031202b2031)") < NAS-Port)
 
 condition Filter-Id == Framed-IP-Address
 match (Filter-Id == Framed-IP-Address)
@@ -432,7 +437,7 @@ match (Acct-Input-Octets64 == reply.Session-Timeout)
 #  Casting attributes of different size
 #
 condition (ipaddr)Acct-Input-Octets64 == Framed-IP-Address
-match ERROR offset 9: Cannot cast type 'uint64' to 'ipaddr'
+match ERROR offset 8: Cannot cast type 'uint64' to 'ipaddr'
 
 #
 #  LHS is a prefix, which _might_ be castable to an address
@@ -468,7 +473,7 @@ match (User-Name[n] == "bob")
 #  Disallowed as it's an unknown attribute
 #
 condition Foo-Bar
-match ERROR offset 1: Attribute 'Foo-Bar' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 0: Attribute 'Foo-Bar' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 #  Same types are optimized
 #
@@ -512,19 +517,19 @@ match (26.24757.84.9.5.15 == 0x1a99)
 #  Invalid array references.
 #
 condition User-Name[a] == 'bob'
-match ERROR offset 11: Attribute 'a' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 10: Attribute 'a' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 condition User-Name == Filter-Id[a]
-match ERROR offset 24: Attribute 'a' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 23: Attribute 'a' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 #
 #  Bounds checks...
 #
 condition User-Name[1001] == 'bob'
-match ERROR offset 11: Invalid array index '1001' (should be between 0-1000)
+match ERROR offset 10: Invalid array index '1001' (should be between 0-1000)
 
 condition User-Name[-1] == 'bob'
-match ERROR offset 11: Invalid array index '-1'
+match ERROR offset 10: Invalid array index '-1'
 
 #
 #  Sometimes the attribute/condition parser needs to fallback to bare words
@@ -532,14 +537,14 @@ match ERROR offset 11: Invalid array index '-1'
 #  @todo - bare word - this is likely treating the LHS as an enum which is impossible here
 #
 condition request.Foo == 'request.Foo'
-match ERROR offset 9: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 8: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 # Bareword compared with bareword is true
 condition request.Foo+Bar == request.Foo+Bar
-match ERROR offset 9: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 8: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 condition request.Foo+Bar == 'request.Foo+Bar'
-match ERROR offset 9: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 8: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 condition request.User-Name+User-Password == 'request.Foo+Bar'
 match ((request.User-Name + User-Password) == 'request.Foo+Bar')
@@ -548,18 +553,18 @@ match ((request.User-Name + User-Password) == 'request.Foo+Bar')
 #  @todo - bare word - this is wrong
 #
 condition 'request.Foo+d' == request.Foo+Bar
-match ERROR offset 28: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 27: Attribute 'Foo' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 #  Attribute tags are not allowed for unknown attributes
 condition request.Tunnel-Password:0 == 0
-match ERROR offset 24: Unexpected text after attribute reference
+match ERROR offset 23: Unexpected text after attribute reference
 
 condition not-a-list:User-Name == not-a-list:User-Name
-match ERROR offset 1: Attribute 'not-a-list' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 0: Attribute 'not-a-list' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 # . is a valid dictionary name attribute, so we can't error out in pass1
 condition not-a-packet.User-Name == not-a-packet.User-Name
-match ERROR offset 1: Attribute 'not-a-packet' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 0: Attribute 'not-a-packet' not found in namespace 'internal': Unresolved attributes are not allowed here
 
 #
 #  The LHS is a string with ASCII 5C 30 30 30 inside of it vs the RHS which should contain ASCII 0.

@@ -1,0 +1,49 @@
+pmod8_set_attributes
+if (reply.Reply-Message != 'Value set by Python') {
+	test_fail
+}
+if (control.NAS-IP-Address != 1.2.3.4) {
+	test_fail
+}
+if (control.NAS-Port != 1) {
+	test_fail
+}
+if (control.Class != 'hello') {
+	test_fail
+}
+
+pmod8_set_attributes.authenticate
+if (control.Password.Cleartext != request.User-Password) {
+	test_fail
+}
+if (control.NAS-IP-Address != 10.0.0.10) {
+	test_fail
+}
+if (control.NAS-Port != 123) {
+	test_fail
+}
+if (control.Class != 'goodbye') {
+	test_fail
+}
+
+pmod8_set_attributes.send
+if (!updated) {
+	test_fail
+}
+if ((reply.Vendor-Specific.Cisco.AVPair != 'cisco=crazy') || (reply.Vendor-Specific.Cisco.AVPair[1] != 'insane=syntax')) {
+	test_fail
+}
+
+pmod8_set_attributes.recv.accounting-request
+if (Filter-Id != 'Index exception caught') {
+	test_fail
+}
+
+pmod8_set_attributes.accounting
+if ((Filter-Id != 'Conversion exception caught') || (Filter-Id[1] != 'Type exception caught')) {
+	test_fail
+}
+
+reply -= Vendor-Specific
+
+test_pass

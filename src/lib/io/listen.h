@@ -27,6 +27,7 @@ struct fr_listen {
 
 	int			fd;			//!< file descriptor for this socket - set by open
 	char const		*name;			//!< printable name for this socket - set by open
+	fr_dict_t const		*dict;			//!< dictionary for this listener
 
 	fr_app_io_t const	*app_io;		//!< I/O path functions.
 	void const    		*app_io_instance;	//!< I/O path configuration context.

@@ -129,6 +129,6 @@ accepting connection from the `haproxy` host, which must be solved
 before continuing.
 
 Once proxied connections are working we are ready to
-xref:protocols/proxy/enable_proxy_protocol.adoc[enable the PROXY
+xref:protocols/radius/enable_proxy_protocol.adoc[enable the PROXY
 Protocol] on both HAproxy and the RadSec server.
 

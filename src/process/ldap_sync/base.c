@@ -113,7 +113,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	request->component = "ldap_sync";
 	request->module = NULL;
-	fr_assert(request->dict == dict_ldap_sync);
+	fr_assert(request->proto_dict == dict_ldap_sync);
 
 	UPDATE_STATE(packet);
 

@@ -251,9 +251,10 @@ int fr_load_generator_start(fr_load_t *l)
  */
 int fr_load_generator_stop(fr_load_t *l)
 {
-	if (!l->ev) return 0;
+	if (!fr_timer_armed(l->ev)) return 0;
 
-	return fr_timer_delete(&l->ev);
+	FR_TIMER_DELETE_RETURN(&l->ev);
+	return 0;
 }
 
 

@@ -89,7 +89,6 @@ typedef struct xlat_s {
 
 	xlat_flags_t		flags;			//!< various flags
 
-	xlat_input_type_t	input_type;		//!< Type of input used.
 	xlat_arg_parser_t const	*args;			//!< Definition of args consumed.
 
 	call_env_method_t const	*call_env_method;	//!< Optional tmpl expansions performed before calling the
@@ -138,8 +137,6 @@ typedef struct {
 
 	bool			ephemeral;		//!< Instance data is ephemeral (not inserted)
 							///< into the instance tree.
-	xlat_input_type_t	input_type;		//!< The input type used inferred from the
-							///< bracketing style.
 } xlat_call_t;
 
 /** An xlat expansion node
@@ -161,7 +158,10 @@ struct xlat_exp_s {
 #endif
 
 	union {
-		xlat_exp_head_t	*group;		//!< children of a group
+		struct {
+			xlat_exp_head_t	*group;		//!< children of a group
+			uint8_t		hoist : 1;	//!< it's a group, but we need to hoist the results
+		};
 
 		/** An tmpl_t reference
 		 *
@@ -186,7 +186,8 @@ struct xlat_exp_s {
 struct xlat_exp_head_s {
 	fr_dlist_head_t		dlist;
 	xlat_flags_t		flags;		//!< Flags that control resolution and evaluation.
-	bool			instantiated;	//!< temporary flag until we fix more things
+	uint8_t			instantiated : 1;  //!< temporary flag until we fix more things
+	uint8_t			is_argv : 1;	//!< this thing holds function arguments
 
 #ifndef NDEBUG
 	char const * _CONST	file;		//!< File where the xlat was allocated.
@@ -281,6 +282,10 @@ void		xlat_exp_set_name(xlat_exp_t *node, char const *fmt, size_t len) CC_HINT(n
 void		xlat_exp_set_name_shallow(xlat_exp_t *node, char const *fmt) CC_HINT(nonnull);
 void		xlat_exp_set_name_buffer(xlat_exp_t *node, char const *fmt) CC_HINT(nonnull);
 
+void		xlat_exp_set_vpt(xlat_exp_t *node, tmpl_t *vpt) CC_HINT(nonnull);
+void		xlat_exp_set_func(xlat_exp_t *node, xlat_t const *func, fr_dict_t const *dict) CC_HINT(nonnull(1,2));
+void		xlat_exp_finalize_func(xlat_exp_t *node) CC_HINT(nonnull);
+
 /*
  *	xlat_func.c
  */
@@ -342,6 +347,9 @@ int		xlat_register_expressions(void);
  */
 ssize_t		xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t const *node,
 				fr_sbuff_escape_rules_t const *e_rules, char c);
+
+fr_slen_t	xlat_tokenize_word(TALLOC_CTX *ctx, xlat_exp_t **out, fr_sbuff_t *in, fr_token_t quote,
+				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

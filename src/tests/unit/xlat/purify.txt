@@ -228,7 +228,7 @@ xlat_purify "hello " + (string)%{1 + 2} + " bob"
 match "hello 3 bob"
 
 xlat_purify "hello %{1 + 2} bob"
-match "hello %{3} bob"
+match "hello 3 bob"
 
 #
 #  New syntax!
@@ -241,9 +241,6 @@ match 0xacbd18db4cc2f85cedef654fccc4a4d8
 xlat_purify %explode("a,b,c,d", ',')
 match "a""b""c""d"
 
-#
-# @todo - bare words should probably be disallowed
-#
 xlat_purify %md5('foo')
 match 0xacbd18db4cc2f85cedef654fccc4a4d8
 
@@ -254,11 +251,16 @@ xlat_purify %md5('%md5(foo)')
 match 0x5e153571422b69cf5c5f7ce5f03985b5
 
 #
+#  Constant string
+#
+xlat_purify %md5('%{User-Name}')
+match 0x892e91c7b175ab41826c9cb88eebf27a
+
+#
 #  This is a reference to the contents of User-Name
 #
 xlat_purify %md5(%{User-Name})
 match %md5(%{User-Name})
-
 
 xlat_purify %md5('foo')
 match 0xacbd18db4cc2f85cedef654fccc4a4d8
@@ -267,4 +269,4 @@ xlat_purify %md5("foo")
 match 0xacbd18db4cc2f85cedef654fccc4a4d8
 
 count
-match 120
+match 122

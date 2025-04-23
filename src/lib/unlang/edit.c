@@ -27,7 +27,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/edit.h>
 #include <freeradius-devel/util/calc.h>
 #include <freeradius-devel/unlang/tmpl.h>
@@ -129,7 +128,7 @@ static int tmpl_attr_from_result(TALLOC_CTX *ctx, map_t const *map, edit_result_
 	slen = tmpl_afrom_attr_str(ctx, NULL, &out->to_free, box->vb_strvalue,
 				   &(tmpl_rules_t){
 				   	.attr = {
-						.dict_def = request->dict,
+						.dict_def = request->local_dict,
 						.list_def = request_attr_request,
 					}
 				   });
@@ -328,7 +327,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 		 *	point.  The ones which aren't moved will get deleted in this function.
 		 */
 		da = tmpl_attr_tail_da(current->lhs.vpt);
-		if (fr_type_is_group(da->type)) da = fr_dict_root(request->dict);
+		if (fr_type_is_group(da->type)) da = fr_dict_root(request->proto_dict);
 
 		root = (fr_pair_parse_t) {
 			.ctx = current->ctx,

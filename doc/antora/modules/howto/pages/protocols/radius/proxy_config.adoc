@@ -1,0 +1,164 @@
+= Proxy
+
+Proxying has undergone significant changes in version 4. The proxy.conf file, which previously handled proxying, is deprecated. Instead, all proxying is managed through a new RADIUS client module called rlm_radius. This change moves proxying outside of the server’s core.
+
+However, configuring the server for proxying is now more verbose. The good news is that we have a complete RADIUS client providing greater flexibility.  This client is fully accessible from anywhere using unlang wherever it is needed.
+
+== Version 3 Example
+
+As a starting point, a version 3 proxy configuration resembles the following:
+
+The proxy.conf file defines individual servers to which proxies will be directed:
+
+*Proxy Server Example*
+```
+home_server remoteradius1 {
+    type = auth
+    ipaddr = radius1.network.example
+    port = 1812
+    secret = aS3cr3T
+}
+```
+
+The file defines server pools, which are used for redundancy and failover between remote RADIUS servers.
+
+*Server Pools Example*
+```
+home_server_pool remote_radius_failover {
+    type = fail-over
+    home_server = remoteradius1
+    home_server = remoteradius2
+    home_server = ...
+}
+```
+
+Finally, it contains realms, which are essentially just labels defining which home server or pools to use for proxying.
+
+*Realms Example*
+```
+realm network.example {
+    auth_pool = remote_radius_failover
+}
+```
+
+Proxying happens after the authorize {} section in a virtual server configuration. If the Proxy-to-Realm control attribute is set, the server looks for a realm of the same name in the proxy.conf file.
+
+*Proxy Example*
+
+```
+authorize {
+    preprocess
+    files
+    update control {
+        Proxy-to-Realm := "network.example"
+    }
+    pap
+}
+```
+
+All incoming requests here will be proxied. When the server gets to the end of authorize, it sees that Proxy-to-Realm is set to "network.example". It skips the authentication process and instead searches for the realm network.example in proxy.conf. From this lookup, the server determines it needs to use pool remote_radius_failover. This settings tells what home servers to use. The request will be sent off to one of them according to internal load-balancing or failover rules.
+
+There is no actual requirement that the realm names in proxy.conf are the same as the realms in the User-Name attribute of the incoming request. The names are only labels. However, keeping them the same can be convenient and easier for debugging. This is where the rlm_realm module comes in. It takes the incoming User-Name and extracts the realm from it, putting it into the Proxy-to-Realm attribute. The suffix is defined in the default configuration as an instantiation of rlm_realm that strips the realm after the @ in the User-Name.
+
+However, it does not matter how Proxy-to-Realm is set - by unlang or any other module - only that the server core uses this to choose the realm to proxy to.
+
+== Changes in version 4
+
+Version 4 is completely different in practice, though the concept is the same. The Proxy-to-Realm attribute is gone and as there is no longer any special hook in the server core to intercept the request before authentication and proxy instead. Therefore, the proxy.conf file is also gone - proxy servers are now defined simply as instances of the rlm_radius module. All hidden complexity of proxy pools, load-balancing or failover are now in the open in unlang. Proxying is simply an alternative form of authentication - it just happens to be remote, rather than on the local server.
+
+Therefore, rather than defining home servers in proxy.conf, home servers are created by new instances of rlm_radius.
+
+*Proxy server Example (using rlm_radius)*
+```
+radius remoteradius1 {
+    transport = udp
+    type = Access-Request
+    udp {
+        ipaddr = 192.0.2.1
+        port = 1812
+        secret = aS3cr3T
+    }
+}
+```
+
+To proxy an incoming request, we now define a new authentication type, for example proxy-network.example. This will act in the same way as the realm and home_server_pool options did previously in proxy.conf:
+
+```
+authenticate proxy-network.example {
+    redundant-load-balance {
+        remoteradius1
+        remoteradius2
+        ...
+    }
+}
+```
+
+At this stage, we are now just missing the final component, telling the server to proxy the request. The configuration is very similar to before, but instead of setting Proxy-to-Realm control attribute, we now just set Auth-Type:
+
+```
+recv Access-Request {
+    preprocess
+    files
+    update control {
+        Auth-Type := "proxy-network.example"
+    }
+    pap
+}
+```
+
+== Quick reference
+
+A general summary of configuration required to convert the proxy configuration from version 3 to version 4:
+
+* Create an instance of rlm_radius for each home server from proxy.conf.
+
+* Add a new authenticate section for each realm, which calls the appropriate home servers.
+
+* Update the new recv section (which replaces authorize) with unlang to set Auth-Type appropriately, rather than Proxy-to-Realm.
+
+== More complicated setups
+
+In larger configurations there may be a large number of home server pools, each of which is called from a number of realms. In version 4, policies can be used to maintain the same level of indirection.
+
+For example, say there were two home server pools, pool_a and pool_b, and twenty realms, ten of which used one pool, and ten the other. Listing the home servers of pool_a in ten realms, and the servers of pool_b in another ten realms, starts to lead to a lot of duplication.
+
+Instead, create a new policy file, raddb/policy.d/proxy and define two policies, proxy_pool_a and proxy_pool_b:
+
+```
+proxy_pool_a {
+    redundant-load-balance {
+        home_server_1
+        home_server_2
+        home_server_3
+        home_server_4
+        home_server_5
+    }
+}
+
+proxy_pool_b {
+    redundant-load-balance {
+        home_server_6
+        home_server_7
+        home_server_8
+    }
+}
+```
+
+Now, in the authenticate sections for each realm, just call the appropriate policy:
+```
+authenticate proxy-realm_1.example {
+    proxy_pool_a
+}
+
+authenticate proxy-realm_2.example {
+    proxy_pool_b
+}
+```
+
+The policies are now equivalent to the old home server pools in version 3, and the named authenticate sections are equivalent to realms.
+
+== Why this change was made
+
+This change was made in order to permit new features which were long requested in previous versions of the server. Due to design limitations, these features were impossible to implement.
+
+Please see the xref:howto:protocols/radius/proxy_extensions.adoc[Proxy Extensions] page for new proxy features. These include proxying to multiple destinations, failing over to local authentication if proxying fails, and more.

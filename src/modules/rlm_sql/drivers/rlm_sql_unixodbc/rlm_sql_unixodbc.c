@@ -114,9 +114,6 @@ static void _sql_connection_close(UNUSED fr_event_list_t *el, void *h, UNUSED vo
 {
 	rlm_sql_unixodbc_conn_t	*c = talloc_get_type_abort(h, rlm_sql_unixodbc_conn_t);
 
-	if (c->read_ev) fr_timer_delete(&c->read_ev);
-	if (c->write_ev) fr_timer_delete(&c->write_ev);
-
 	if (c->stmt) SQLFreeHandle(SQL_HANDLE_STMT, c->stmt);
 
 	if (c->dbc) {
@@ -457,8 +454,8 @@ static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connec
 	uint			poll_interval = (query_ctx && query_ctx->type != SQL_QUERY_SELECT) ? c->query_interval : c->select_interval;
 	switch (notify_on) {
 	case TRUNK_CONN_EVENT_NONE:
-		if (c->read_ev) fr_timer_delete(&c->read_ev);
-		if (c->write_ev) fr_timer_delete(&c->write_ev);
+		FR_TIMER_DISARM(c->read_ev);
+		FR_TIMER_DISARM(c->write_ev);
 		return;
 
 	case TRUNK_CONN_EVENT_BOTH:

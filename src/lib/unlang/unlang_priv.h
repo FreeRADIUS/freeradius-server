@@ -521,6 +521,25 @@ static inline void frame_repeat(unlang_stack_frame_t *frame, unlang_process_t pr
 	frame->process = process;
 }
 
+static inline unlang_action_t frame_set_next(unlang_stack_frame_t *frame, unlang_t *unlang)
+{
+	/*
+	 *	Clean up this frame now, so that stats, etc. will be
+	 *	processed using the correct frame.
+	 */
+	frame_cleanup(frame);
+
+	/*
+	 *	frame_next() will call cleanup *before* resetting the frame->instruction.
+	 *	but since the instruction is NULL, no duplicate cleanups will happen.
+	 *
+	 *	frame_next() will then set frame->instruction = frame->next, and everything will be OK.
+	 */
+	frame->instruction = NULL;
+	frame->next = unlang;
+	return UNLANG_ACTION_EXECUTE_NEXT;
+}
+
 /** @name Conversion functions for converting #unlang_t to its specialisations
  *
  * Simple conversions: #unlang_module_t and #unlang_group_t are subclasses of #unlang_t,

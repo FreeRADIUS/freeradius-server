@@ -33,7 +33,6 @@
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/syserror.h>
 
-#include <sys/stat.h>
 #include <fcntl.h>
 
 typedef struct {

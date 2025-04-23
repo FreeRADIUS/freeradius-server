@@ -8,7 +8,7 @@ control.IP-Pool.Name := 'test_alloc'
 #
 #  Add IP addresses
 #
-%exec(./build/bin/local/rlm_redis_ippool_tool, -a, 192.168.0.1/32, $ENV{REDIS_IPPOOL_TEST_SERVER}:30001, %{control.IP-Pool.Name}, 192.168.0.0)
+%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.0.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.0.0')
 
 #
 #  Check allocation
@@ -75,7 +75,7 @@ reply := {}
 #
 #  Add IP addresses
 #
-%exec(./build/bin/local/rlm_redis_ippool_tool, -a, 192.168.1.1/32, $ENV{REDIS_IPPOOL_TEST_SERVER}:30001, %{control.IP-Pool.Name}, 192.168.1.0)
+%exec('./build/bin/local/rlm_redis_ippool_tool', '-a', '192.168.1.1/32', '$ENV{REDIS_IPPOOL_TEST_SERVER}:30001', %{control.IP-Pool.Name}, '192.168.1.0')
 
 #
 #  Check we get the same lease, with the same lease time

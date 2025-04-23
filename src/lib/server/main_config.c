@@ -27,36 +27,25 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
-#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/util.h>
 #include <freeradius-devel/server/virtual_servers.h>
 
-#include <freeradius-devel/unlang/xlat.h>
 
 #include <freeradius-devel/util/conf.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/hw.h>
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/sem.h>
-#include <freeradius-devel/util/token.h>
 #include <freeradius-devel/util/pair_legacy.h>
 
 #include <freeradius-devel/unlang/xlat_func.h>
 
-#include <sys/stat.h>
-#include <pwd.h>
-#include <grp.h>
 
-#include <unistd.h>
-#include <sys/types.h>
 
 #ifdef HAVE_SYSLOG_H
 #  include <syslog.h>
@@ -187,8 +176,6 @@ static const conf_parser_t thread_config[] = {
 /*
  *	Migration configuration.
  */
-bool xlat_func_bare_words = false;
-
 static const conf_parser_t migrate_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("rewrite_update", CONF_FLAG_HIDDEN, main_config_t, rewrite_update) },
 	{ FR_CONF_OFFSET_FLAGS("forbid_update", CONF_FLAG_HIDDEN, main_config_t, forbid_update) },
@@ -1491,7 +1478,6 @@ void main_config_hup(main_config_t *config)
 static fr_table_num_ordered_t config_arg_table[] = {
 	{ L("rewrite_update"),		 offsetof(main_config_t, rewrite_update) },
 	{ L("forbid_update"),		 offsetof(main_config_t, forbid_update) },
-	{ L("xlat_func_bare_words"),	 offsetof(main_config_t, xlat_func_bare_words) },
 };
 static size_t config_arg_table_len = NUM_ELEMENTS(config_arg_table);
 
@@ -1529,8 +1515,6 @@ int main_config_parse_option(char const *value)
 		fr_exit(1);
 	}
 
-	if (out == &main_config->xlat_func_bare_words) xlat_func_bare_words = box.vb_bool;
-
 	*out = box.vb_bool;
 
 	return 0;
@@ -1544,8 +1528,6 @@ bool main_config_migrate_option_get(char const *name)
 	size_t offset;
 
 	if (!main_config) return false;
-
-	if (strcmp(name, "use_new_conditions") == 0) return true; /* ignore this for migration */
 
 	offset = fr_table_value_by_substr(config_arg_table, name, strlen(name), 0);
 	if (!offset) return false;

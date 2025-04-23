@@ -67,13 +67,6 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 //	proto_arp_t const	*inst = talloc_get_type_abort_const(instance, proto_arp_t);
 	fr_arp_packet_t	const	*arp;
 
-	/*
-	 *	Set the request dictionary so that we can do
-	 *	generic->protocol attribute conversions as
-	 *	the request runs through the server.
-	 */
-	request->dict = dict_arp;
-
 	if (fr_arp_decode(request->request_ctx, &request->request_pairs, data, data_len) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;

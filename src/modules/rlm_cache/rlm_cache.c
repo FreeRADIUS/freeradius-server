@@ -908,7 +908,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      NULL,
 				      &(tmpl_rules_t){
 				      	.attr = {
-				      		.dict_def = request->dict,
+						.dict_def = request->proto_dict,
 						.list_def = request_attr_request,
 				      	}
 				      });
@@ -1409,6 +1409,11 @@ static int cache_verify(map_t *map, void *uctx)
 
 	if (!tmpl_is_attr(map->lhs)) {
 		cf_log_err(map->ci, "Destination must be an attribute ref or a list");
+		return -1;
+	}
+
+	if (!fr_assignment_op[map->op]) {
+		cf_log_err(map->ci, "Invalid operator '%s'", fr_tokens[map->op]);
 		return -1;
 	}
 

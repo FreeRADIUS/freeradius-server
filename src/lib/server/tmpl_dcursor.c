@@ -30,9 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/exec_legacy.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
-#include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/edit.h>
 
 static inline CC_HINT(always_inline)

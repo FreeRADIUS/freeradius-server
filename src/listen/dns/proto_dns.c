@@ -145,13 +145,6 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	fr_dns_packet_t	const	*packet = (fr_dns_packet_t const *) data;
 	fr_dns_ctx_t		packet_ctx;
 
-	/*
-	 *	Set the request dictionary so that we can do
-	 *	generic->protocol attribute conversions as
-	 *	the request runs through the server.
-	 */
-	request->dict = dict_dns;
-
 	RHEXDUMP3(data, data_len, "proto_dns decode packet");
 
 	client = address->radclient;

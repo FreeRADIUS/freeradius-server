@@ -337,9 +337,9 @@ static int _lua_pair_get(lua_State *L)
 	/*
 	 *	@fixme Packet list should be light user data too at some point
 	 */
-	fr_pair_dcursor_by_da_init(&cursor, &request->request_pairs, da);
+	vp = fr_pair_dcursor_by_da_init(&cursor, &request->request_pairs, da);
 
-	for (index = (int) lua_tointeger(L, -1); index >= 0; index--) {
+	for (index = (int) lua_tointeger(L, -1); index > 0; index--) {
 		vp = fr_dcursor_next(&cursor);
 		if (!vp) return 0;
 	}
@@ -386,11 +386,11 @@ static int _lua_pair_set(lua_State *L)
 	/*
 	 *	@fixme Packet list should be light user data too at some point
 	 */
-	fr_pair_dcursor_by_da_init(&cursor, &request->request_pairs, da);
+	vp = fr_pair_dcursor_by_da_init(&cursor, &request->request_pairs, da);
 
-	for (index = lua_tointeger(L, -2); index >= 0; index--) {
+	for (index = lua_tointeger(L, -2); index > 0; index--) {
 		vp = fr_dcursor_next(&cursor);
-		if (vp) break;
+		if (!vp) break;
 	}
 
 	/*
@@ -544,7 +544,7 @@ static int _lua_pair_accessor_init(lua_State *L)
 		return -1;
 	}
 
-	da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), attr);
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(request->proto_dict), attr);
 	if (!da) {
 		REDEBUG("Unknown or invalid attribute name \"%s\"", attr);
 		return -1;
@@ -731,7 +731,6 @@ static void _lua_fr_request_register(lua_State *L, request_t *request)
 		fr_dcursor_t 	cursor;
 
 		/* Attribute list table */
-		fr_pair_list_sort(&request->request_pairs, fr_pair_cmp_by_da);
 		fr_pair_dcursor_init(&cursor, &request->request_pairs);
 
 		/*

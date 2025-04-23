@@ -765,7 +765,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 					 &(tmpl_rules_t){
 					 	.attr = {
 							.list_def = request_attr_request,
-					 		.dict_def = request->dict,
+							.dict_def = request->local_dict,
 					 		.allow_unknown = true,
 					 		.allow_unresolved = false,
 					 	},

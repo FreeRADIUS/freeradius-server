@@ -34,10 +34,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/module_rlm.h>
 
-#include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/server/cf_util.h>
-#include <freeradius-devel/util/time.h>
-#include <freeradius-devel/util/dict.h>
 
 #include <freeradius-devel/unlang/xlat_priv.h>
 
@@ -466,22 +462,6 @@ int unlang_fixup_update(map_t *map, void *ctx)
 		default:
 			break;
 		}
-	}
-
-	/*
-	 *	Values used by unary operators should be literal ANY
-	 *
-	 *	We then free the template and alloc a NULL one instead.
-	 */
-	if ((map->op == T_OP_CMP_FALSE) && !tmpl_is_null(map->rhs)) {
-		if (!tmpl_is_data_unresolved(map->rhs) || (strcmp(map->rhs->name, "ANY") != 0)) {
-			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'",
-			     cf_filename(cp), cf_lineno(cp));
-		}
-
-		TALLOC_FREE(map->rhs);
-
-		map->rhs = tmpl_alloc(map, TMPL_TYPE_NULL, T_INVALID, NULL, 0);
 	}
 
 	/*
@@ -1745,6 +1725,19 @@ static bool compile_retry_section(unlang_mod_actions_t *actions, CONF_ITEM *ci)
 			return false;
 		}
 
+#define CLAMP(_name, _field, _limit) do { \
+			if (!fr_time_delta_ispos(actions->retry._field)) { \
+				cf_log_err(csi, "Invalid value for '" STRINGIFY(_name) " = %s' - value must be positive", \
+					   value); \
+				return false; \
+			} \
+			if (fr_time_delta_cmp(actions->retry._field, fr_time_delta_from_sec(_limit)) > 0) { \
+				cf_log_err(csi, "Invalid value for '" STRINGIFY(_name) " = %s' - value must be less than " STRINGIFY(_limit) "s", \
+					   value); \
+				return false; \
+		        } \
+	} while (0)
+
 		/*
 		 *	We don't use conf_parser_t here for various
 		 *	magical reasons.
@@ -1756,21 +1749,18 @@ static bool compile_retry_section(unlang_mod_actions_t *actions, CONF_ITEM *ci)
 					   name, value, fr_strerror());
 				return false;
 			}
+			CLAMP(initial_rtx_time, irt, 2);
 
 		} else if (strcmp(name, "max_rtx_time") == 0) {
 			if (fr_time_delta_from_str(&actions->retry.mrt, value, strlen(value), FR_TIME_RES_SEC) < 0) goto error;
 
-			if (!fr_time_delta_ispos(actions->retry.mrt)) {
-				cf_log_err(csi, "Invalid value for 'max_rtx_time = %s' - value must be positive",
-					   value);
-				return false;
-			}
+			CLAMP(max_rtx_time, mrt, 10);
 
 		} else if (strcmp(name, "max_rtx_count") == 0) {
 			unsigned long v = strtoul(value, 0, 0);
 
-			if (v > 65536) {
-				cf_log_err(csi, "Invalid value for 'max_rtx_count = %s' - value must be between 0 and 65536",
+			if (v > 10) {
+				cf_log_err(csi, "Invalid value for 'max_rtx_count = %s' - value must be between 0 and 10",
 					   value);
 				return false;
 			}
@@ -1780,11 +1770,7 @@ static bool compile_retry_section(unlang_mod_actions_t *actions, CONF_ITEM *ci)
 		} else if (strcmp(name, "max_rtx_duration") == 0) {
 			if (fr_time_delta_from_str(&actions->retry.mrd, value, strlen(value), FR_TIME_RES_SEC) < 0) goto error;
 
-			if (!fr_time_delta_ispos(actions->retry.mrd)) {
-				cf_log_err(csi, "Invalid value for 'max_rtx_duration = %s' - value must be positive",
-					   value);
-				return false;
-			}
+			CLAMP(max_rtx_duration, mrd, 20);
 
 		} else {
 			cf_log_err(csi, "Invalid item '%s' in 'retry' configuration.", name);
@@ -2435,7 +2421,7 @@ static unlang_t *compile_try(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	CONF_SECTION *cs = cf_item_to_section(ci);
 	unlang_group_t *g;
 	unlang_t *c;
-	CONF_SECTION *next;
+	CONF_ITEM *next;
 
 	static unlang_ext_t const ext = {
 		.type = UNLANG_TYPE_TRY,
@@ -2456,8 +2442,11 @@ static unlang_t *compile_try(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 		return NULL;
 	}
 
-	next = cf_section_next(cf_item_to_section(cf_parent(cs)), cs);
-	if (!next || (strcmp(cf_section_name1(next), "catch") != 0)) {
+	next = cf_item_next(cf_parent(cs), ci);
+	while (next && cf_item_is_data(next)) next = cf_item_next(cf_parent(cs), next);
+
+	if (!next || !cf_item_is_section(next) ||
+	    (strcmp(cf_section_name1(cf_item_to_section(next)), "catch") != 0)) {
 		cf_log_err(cs, "'try' sections must be followed by a 'catch'");
 		return NULL;
 	}
@@ -2497,12 +2486,61 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	unlang_group_t *g;
 	unlang_t *c;
 	unlang_catch_t *ca;
+	CONF_ITEM *prev;
+	char const *name;
+	bool catching_timeout = false;
 
 	static unlang_ext_t const ext = {
 		.type = UNLANG_TYPE_CATCH,
 		.len = sizeof(unlang_catch_t),
 		.type_name = "unlang_catch_t",
 	};
+
+	prev = cf_item_prev(cf_parent(ci), ci);
+	while (prev && cf_item_is_data(prev)) prev = cf_item_prev(cf_parent(ci), prev);
+
+	if (!prev || !cf_item_is_section(prev)) {
+	fail:
+		cf_log_err(cs, "Found 'catch' section with no previous 'try'");
+		return NULL;
+	}
+
+	name = cf_section_name1(cf_item_to_section(prev));
+	fr_assert(name != NULL);
+
+	if (strcmp(name, "timeout") == 0) {
+		CONF_ITEM *next;
+
+		name = cf_section_name2(cs);
+		if (!name || (strcmp(name, "timeout") != 0)) {
+			cf_log_err(cs, "Invalid 'catch' after a 'timeout' section");
+			return NULL;
+		}
+
+		/*
+		 *	Check that the next section is NOT a "catch".
+		 */
+		next = cf_item_next(cf_parent(ci), ci);
+		while (next && cf_item_is_data(next)) next = cf_item_next(cf_parent(ci), next);
+
+		if (next && cf_item_is_section(next) &&
+		    (strcmp(cf_section_name1(cf_item_to_section(next)), "catch") == 0)) {
+			cf_log_err(next, "Cannot have two 'catch' statements after a 'timeout' section");
+			return NULL;
+		}
+
+		/*
+		 *	We comp
+		 */
+		catching_timeout = true;
+
+	} else if ((strcmp(name, "try") != 0) && (strcmp(name, "catch") != 0)) {
+		/*
+		 *	The previous thing has to be a section.  And it has to
+		 *	be either a "try" or a "catch".
+		 */
+		goto fail;
+	}
 
 	g = group_allocate(parent, cs, &ext);
 	if (!g) return NULL;
@@ -2512,10 +2550,13 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 
 	ca = unlang_group_to_catch(g);
 
-	/*
-	 *	No arg2: catch all errors
-	 */
-	if (!cf_section_name2(cs)) {
+	if (catching_timeout) {
+		ca->timeout = catching_timeout;
+
+	} else if (!cf_section_name2(cs)) {
+		/*
+		 *	No arg2: catch errors
+		 */
 		ca->catching[RLM_MODULE_REJECT] = true;
 		ca->catching[RLM_MODULE_FAIL] = true;
 		ca->catching[RLM_MODULE_INVALID] = true;
@@ -2523,7 +2564,8 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 
 	} else {
 		int i;
-		char const *name = cf_section_name2(cs);
+
+		name = cf_section_name2(cs);
 
 		if (catch_argv(cs, ca, name) < 0) {
 			talloc_free(c);
@@ -4076,10 +4118,19 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	dict = unlang_ctx->rules->attr.dict_def;
 	packet_name = NULL;
 
+get_packet_type:
+	/*
+	 *	Local attributes cannot be used in a subrequest.  They belong to the parent.  Local attributes
+	 *	are NOT copied to the subrequest.
+	 *
+	 *	@todo - maybe we want to copy local variables, too?  But there may be multiple nested local
+	 *	variables, each with their own dictionary.
+	 */
+	dict = fr_dict_proto_dict(dict);
+
 	/*
 	 *	Use dict name instead of "namespace", because "namespace" can be omitted.
 	 */
-get_packet_type:
 	da = fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
 	if (!da) {
 		cf_log_err(cs, "No such attribute 'Packet-Type' in namespace '%s'", fr_dict_root(dict)->name);

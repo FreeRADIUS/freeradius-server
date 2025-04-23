@@ -33,6 +33,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "log.h"
 #include "bio.h"
 
+#include <sys/mman.h>
 #include <openssl/conf.h>
 #include <openssl/provider.h>
 
@@ -42,8 +43,22 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/tls/engine.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/math.h>
+#include <freeradius-devel/util/syserror.h>
 
 static uint32_t openssl_instance_count = 0;
+
+/** How big of a stack to allocate for aynsc fibres
+ */
+#define OPENSSL_ASYNC_STACK_SIZE	32768
+
+/** How big of a stack we allocate, rounded up to the nearest page size
+ */
+static size_t			openssl_stack_size;
+
+/** Cached page size
+ */
+static size_t			openssl_page_size;
 
 /** The context which holds any memory OpenSSL allocates
  *
@@ -374,6 +389,44 @@ static int fr_openssl_cleanup(UNUSED void *uctx)
 	return 0;
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x30400000L
+
+static void *fr_openssl_stack_alloc(size_t *len)
+{
+	void *stack;
+
+	if (posix_memalign(&stack, openssl_page_size, openssl_stack_size + openssl_page_size) != 0) {
+		fr_tls_log(NULL, "Failed allocating OpenSSL stack: %s", fr_syserror(errno));
+		return NULL;
+	}
+
+	/*
+	 *	Catch reads and writes going off the end of the stack.
+	 */
+	if (mprotect((uint8_t *)stack + openssl_stack_size, openssl_page_size, PROT_NONE) < 0) {
+		fr_tls_log(NULL, "Failed adding guard page to OpenSSL stack: %s", fr_syserror(errno));
+		free(stack);
+		return NULL;
+	}
+	*len = openssl_stack_size;
+
+	return stack;
+}
+
+static void fr_openssl_stack_free(void *stack)
+{
+	/*
+	 *	Remove the guard page.  If this failed, we can't continue
+	 *	as we'll have random protected memory chunks
+	 */
+	if (unlikely(mprotect((uint8_t *)stack + openssl_stack_size, openssl_page_size, PROT_READ | PROT_WRITE) < 0)) {
+		fr_assert_msg(0, "Uprotecting OpenSSL stack memory failed, can't continue: %s", fr_syserror(errno));
+		fr_exit(1);
+	}
+	free(stack);
+}
+#endif
+
 /** Add all the default ciphers and message digests to our context.
  *
  * This should be called exactly once from main, before reading the main config
@@ -386,6 +439,10 @@ int fr_openssl_init(void)
 		return 0;
 	}
 
+	openssl_page_size = (size_t)getpagesize();
+	openssl_stack_size = ROUND_UP_POW2(OPENSSL_ASYNC_STACK_SIZE, openssl_page_size);
+
+
 	/*
 	 *	This will only fail if memory has already been allocated
 	 *	by OpenSSL.
@@ -394,6 +451,17 @@ int fr_openssl_init(void)
 		fr_tls_log(NULL, "Failed to set OpenSSL memory allocation functions.  fr_openssl_init() called too late");
 		return -1;
 	}
+
+	/*
+	 *	Setup custom memory allocators for allocating greenthread
+	 *	stacks, so we can add guard pages.
+	 */
+#if OPENSSL_VERSION_NUMBER >= 0x30400000L
+	if (ASYNC_set_mem_functions(fr_openssl_stack_alloc, fr_openssl_stack_free) != 1) {
+		fr_tls_log(NULL, "Failed to set OpenSSL async stack allocation functions");
+		return -1;
+	}
+#endif
 
 	/*
 	 *	NO_ATEXIT has no effect if init is done after

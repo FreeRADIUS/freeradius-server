@@ -35,15 +35,10 @@ RCSID("$Id$")
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/unlang/call.h>
 
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/misc.h>
-#include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/trie.h>
-#include <freeradius-devel/util/token.h>
 
-#include <ctype.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 

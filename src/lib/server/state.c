@@ -53,9 +53,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/listen.h>
 
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/md5.h>
-#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
 
 /** Holds a state value, and associated fr_pair_ts and data

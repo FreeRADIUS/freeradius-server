@@ -187,7 +187,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	request->component = "arp";
 	request->module = NULL;
-	fr_assert(request->dict == dict_arp);
+	fr_assert(request->proto_dict == dict_arp);
 
 	UPDATE_STATE(packet);
 

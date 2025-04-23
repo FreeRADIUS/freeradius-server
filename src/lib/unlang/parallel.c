@@ -275,7 +275,7 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 	for (i = 0; i < state->num_children; i++) {
 		fr_assert(state->children[i].instruction != NULL);
 		child = unlang_io_subrequest_alloc(request,
-						   request->dict, state->detach);
+						   request->proto_dict, state->detach);
 		child->packet->code = request->packet->code;
 
 		RDEBUG3("parallel - child %s (%d/%d) INIT",

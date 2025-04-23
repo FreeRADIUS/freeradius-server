@@ -951,7 +951,7 @@ static ssize_t fr_der_encode_utc_time(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, U
 	/*
 	 *	Remove the century from the year
 	 */
-	fr_sbuff_shift(&time_sbuff, 2);
+	fr_sbuff_shift(&time_sbuff, 2, false);
 
 	/*
 	 *	Trim the time string of any unwanted characters

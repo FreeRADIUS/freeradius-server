@@ -864,8 +864,7 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, trunk_connection_t *tc
 		/*
 		 *	Remove the timeout event
 		 */
-		if (query->ev) fr_timer_delete(&query->ev);
-
+		FR_TIMER_DELETE(&query->ev);
 		query->result = result;
 
 		/*

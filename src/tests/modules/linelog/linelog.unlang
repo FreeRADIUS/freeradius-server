@@ -219,7 +219,7 @@ if !(test_string == 'bob,olobobob') {
 	test_fail
 }
 
-test_integer := %exec('/bin/sh', '-c', "wc -l < $ENV{MODULE_TEST_DIR}/test_e.log")
+test_integer := %exec_wait('/bin/sh', '-c', "wc -l < $ENV{MODULE_TEST_DIR}/test_e.log")
 
 if !(test_integer == 3) {
 	test_fail

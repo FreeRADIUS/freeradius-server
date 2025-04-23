@@ -4,7 +4,7 @@ string test_string
 #  Sync calls should always return a zero length string
 #  because we don't wait for the response.
 #
-test_string := %exec('/bin/sh', '-c', 'echo hello')
+test_string := %exec_wait('/bin/sh', '-c', 'echo hello')
 if (test_string != 'hello') {
 	test_fail
 }
@@ -12,7 +12,7 @@ if (test_string != 'hello') {
 #
 #  @todo - list over-rides are not allowed!
 #
-control += %exec('/bin/sh', '-c', "echo Reply-Message := \'hello\'")
+control += %exec_wait('/bin/sh', '-c', "echo Reply-Message := \'hello\'")
 
 if (control.Reply-Message != 'hello') {
 	test_fail

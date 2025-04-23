@@ -24,8 +24,10 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/unlang/timeout.h>
 #include "group_priv.h"
 #include "timeout_priv.h"
+#include "unlang_priv.h"
 
 typedef struct {
 	bool					success;
@@ -36,6 +38,8 @@ typedef struct {
 	fr_timer_t				*ev;
 
 	fr_value_box_list_t			result;
+
+	unlang_t				*instruction;	//!< to run on timeout
 } unlang_frame_state_timeout_t;
 
 static void unlang_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *ctx)
@@ -51,24 +55,53 @@ static void unlang_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 	unlang_interpret_mark_runnable(request);
 
 	/*
-	 *	Signal all lower frames to exit.
+	 *	Signal all lower frames to exit, but the request can keep running.
 	 */
 	unlang_frame_signal(request, FR_SIGNAL_CANCEL, state->depth);
 	state->success = false;
+
+	RINDENT_RESTORE(request, state);
+
+	if (!state->instruction) return;
+
+	if (unlang_interpret_push_instruction(request, state->instruction, RLM_MODULE_FAIL, true) < 0) {
+		unlang_interpret_signal(request, FR_SIGNAL_CANCEL); /* also stops the request and does cleanups */
+	}
 }
 
 static unlang_action_t unlang_timeout_resume_done(UNUSED rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
+	unlang_t		*unlang;
 
-	if (!state->success) {
-		RINDENT_RESTORE(request, state);
+	unlang = frame->instruction->next;
 
-		RWDEBUG("Timeout exceeded");
-		return UNLANG_ACTION_FAIL;
+	/*
+	 *	No timeout, we go to the next instruction.
+	 *
+	 *	Unless the next instruction is a "catch timeout", in which case we skip it.
+	 */
+	if (state->success) {
+		if (!unlang || (unlang->type != UNLANG_TYPE_CATCH)) {
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+
+		/*
+		 *	We skip the "catch" section if there's no timeout.
+		 */
+		return frame_set_next(frame, unlang->next);
 	}
 
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	RWDEBUG("Timeout exceeded");
+
+	/*
+	 *	If there's a next instruction, AND it's a "catch", then we catch the timeout.
+	 */
+	if (unlang && (unlang->type == UNLANG_TYPE_CATCH)) {
+		return frame_set_next(frame, unlang);
+	}
+
+	return UNLANG_ACTION_FAIL;
 }
 
 static unlang_action_t unlang_timeout_set(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -136,6 +169,91 @@ static unlang_action_t unlang_timeout(rlm_rcode_t *p_result, request_t *request,
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
+/** When a timeout fires, run the given section.
+ *
+ * @param[in] request		to push timeout onto
+ * @param[in] timeout      	when to run the timeout
+ * @param[in] cs		section to run when the timeout fires.
+ * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
+ *				Set to UNLANG_SUB_FRAME if the interprer should continue.
+ *
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int unlang_timeout_section_push(request_t *request, CONF_SECTION *cs, fr_time_delta_t timeout, bool top_frame)
+{
+	/** Static instruction for performing xlat evaluations
+	 *
+	 */
+	static unlang_t timeout_instruction = {
+		.type = UNLANG_TYPE_TIMEOUT,
+		.name = "timeout",
+		.debug_name = "timeout",
+		.actions = {
+			.actions = {
+				[RLM_MODULE_REJECT]	= 0,
+				[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
+				[RLM_MODULE_OK]		= 0,
+				[RLM_MODULE_HANDLED]	= 0,
+				[RLM_MODULE_INVALID]	= 0,
+				[RLM_MODULE_DISALLOW]	= 0,
+				[RLM_MODULE_NOTFOUND]	= 0,
+				[RLM_MODULE_NOOP]	= 0,
+				[RLM_MODULE_UPDATED]	= 0
+			},
+			.retry = RETRY_INIT,
+		},
+	};
+
+	unlang_frame_state_timeout_t	*state;
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame;
+	unlang_t			*instruction;
+	fr_time_t			when;
+
+	/*
+	 *	Get the instruction we are supposed to run on timeout.
+	 */
+	instruction = (unlang_t *)cf_data_value(cf_data_find(cs, unlang_group_t, NULL));
+	if (!instruction) {
+		REDEBUG("Failed to find pre-compiled unlang for section %s { ... }",
+			cf_section_name1(cs));
+		return -1;
+	}
+
+	/*
+	 *	Push a new timeout frame onto the stack
+	 */
+	if (unlang_interpret_push(request, &timeout_instruction,
+				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, top_frame) < 0) return -1;
+	frame = &stack->frame[stack->depth];
+
+	/*
+	 *	Allocate its state, and set the timeout.
+	 */
+	MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_timeout_t));
+
+	RINDENT_SAVE(state, request);
+	state->depth = stack->depth;
+	state->request = request;
+	state->timeout = timeout;
+	state->instruction = instruction;
+	state->success = true;
+
+	when = fr_time_add(fr_time(), timeout);
+
+	if (fr_timer_at(state, unlang_interpret_event_list(request)->tl, &state->ev, when,
+			false, unlang_timeout_handler, state) < 0) {
+		RPEDEBUG("Failed setting timeout for section %s", cf_section_name1(cs));
+		return -1;
+	}
+
+	frame_repeat(frame, unlang_timeout_resume_done);
+
+	return 0;
+
+}
 
 void unlang_timeout_init(void)
 {

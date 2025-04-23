@@ -237,7 +237,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	request->component = "bfd";
 	request->module = NULL;
 
-	fr_assert(request->dict == dict_bfd);
+	fr_assert(request->proto_dict == dict_bfd);
 
 	wrapper = (bfd_wrapper_t const *) request->packet->data;
 

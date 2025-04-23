@@ -25,11 +25,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/print.h>
-#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/value.h>
-#include <freeradius-devel/util/time.h>
 
 #include <fcntl.h>
 #ifdef HAVE_FEATURES_H
@@ -236,7 +233,7 @@ void fr_log_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void 
 		/*
 		 *	Clear out the existing data
 		 */
-		fr_sbuff_shift(&sbuff, fr_sbuff_used(&m_start));
+		fr_sbuff_shift(&sbuff, fr_sbuff_used(&m_start), false);
 	}
 }
 

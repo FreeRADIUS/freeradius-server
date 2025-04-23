@@ -27,6 +27,7 @@ RCSID("$Id$")
 #define LOG_PREFIX "unbound"
 
 #include <freeradius-devel/server/log.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/syserror.h>
 
@@ -60,7 +61,7 @@ typedef struct {
 
 	unbound_io_event_base_t *ev_b;		//!< Event base this handle was created for.
 
-	fr_timer_t	*timer;		//!< Stores the pointer to the enabled timer for
+	fr_timer_t		*timer_ev;	//!< Stores the pointer to the enabled timer for
 						///< this event handled.  libunbound uses a single
 						///< handle for managing related FD events and
 						///< timers, which is weird, but ok...
@@ -232,9 +233,7 @@ static void _unbound_io_service_errored(UNUSED fr_event_list_t *el,
 	 *	that it fired.  This is imperfect but unbound
 	 *	doesn't have a callback for receiving errors.
 	 */
-	if (fr_timer_delete(&ev->timer) < 0) {
-		PERROR("ubound event %p - Failed disarming timeout", ev);
-	}
+	FR_TIMER_DISARM(ev->timer_ev);
 
 	ev->cb(-1, UB_EV_TIMEOUT, ev->uctx);	/* Call libunbound - pretend this is a timeout */
 }
@@ -307,7 +306,7 @@ static int _unbound_io_event_activate(struct ub_event *ub_ev, struct timeval *tv
 
 		DEBUG4("unbound event %p - Timeout in %pV seconds", ev, fr_box_time_delta(timeout));
 
-		if (fr_timer_in(ev, ev->ev_b->el->tl, &ev->timer,
+		if (fr_timer_in(ev, ev->ev_b->el->tl, &ev->timer_ev,
 				timeout, false, _unbound_io_service_timer_expired, ev) < 0) {
 			PERROR("unbound event %p - Failed adding timeout", ev);
 
@@ -347,11 +346,7 @@ static int _unbound_io_event_deactivate(struct ub_event *ub_ev)
 	if (ev->events & UB_EV_TIMEOUT) {
 		DEBUG4("unbound event %p - Disarming timeout", ev);
 
-		if (ev->timer && (fr_timer_delete(&ev->timer) < 0)) {
-			PERROR("ubound event %p - Failed disarming timeout", ev);
-
-			ret = -1;
-		}
+		FR_TIMER_DISARM_RETURN(ev->timer_ev);
 	}
 
 	ev->active = false;	/* Event is now inactive and can be modified */
@@ -382,17 +377,13 @@ static int _unbound_io_timer_modify(struct ub_event *ub_ev, UNUSED struct ub_eve
 		       ev, uctx, ev->uctx);
 		ev->uctx = uctx;
 	}
-	if (ev->timer && (fr_timer_delete(&ev->timer) < 0)) {
-		PERROR("ubound event %p - Failed disarming timeout", ev);
-
-		ret = -1;	/* Continue ? */
-	}
+	FR_TIMER_DISARM_RETURN(ev->timer_ev);
 
 	timeout = fr_time_delta_from_timeval(tv);
 
 	DEBUG4("unbound event %p - Timeout in %pV seconds", ev, fr_box_time_delta(timeout));
 
-	if (fr_timer_in(ev, ev->ev_b->el->tl, &ev->timer,
+	if (fr_timer_in(ev, ev->ev_b->el->tl, &ev->timer_ev,
 			timeout,
 			false, _unbound_io_service_timer_expired, ev) < 0) {
 		PERROR("unbound event %p - Failed adding timeout", ev);
@@ -414,11 +405,7 @@ static int _unbound_io_timer_deactivate(struct ub_event *ub_ev)
 
 	DEBUG4("unbound event %p - Disarming timeout", ev);
 
-	if (ev->timer && (fr_timer_delete(&ev->timer) < 0)) {
-		PERROR("unbound event %p - Failed disarming timeout", ev);
-
-		return -1;
-	}
+	FR_TIMER_DISARM_RETURN(ev->timer_ev);
 
 	return 0;
 }

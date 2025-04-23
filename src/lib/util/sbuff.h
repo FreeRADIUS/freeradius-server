@@ -595,7 +595,7 @@ do { \
 
 void	fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len);
 
-size_t	fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift);
+size_t	fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift, bool move_end);
 
 size_t	fr_sbuff_extend_file(fr_sbuff_extend_status_t *status, fr_sbuff_t *sbuff, size_t extension);
 

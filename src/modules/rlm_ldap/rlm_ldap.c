@@ -648,7 +648,7 @@ static fr_uri_part_t const ldap_dn_parts[] = {
 };
 
 static xlat_arg_parser_t const ldap_xlat_arg[] = {
-	{ .required = true, .type = FR_TYPE_STRING, .safe_for = LDAP_URI_SAFE_FOR },
+	{ .required = true, .type = FR_TYPE_STRING, .safe_for = LDAP_URI_SAFE_FOR, .will_escape = true, },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -1105,12 +1105,12 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	 */
 	if (is_dn) {
 		if (fr_uri_escape_list(&uri_components->vb_group, ldap_dn_parts, NULL) < 0) {
-			RPERROR("Failed to escape LDAP DN");
+			RPERROR("Failed to escape LDAP profile DN");
 			return XLAT_ACTION_FAIL;
 		}
 	} else {
 		if (fr_uri_escape_list(&uri_components->vb_group, ldap_uri_parts, NULL) < 0) {
-			RPERROR("Failed to escape LDAP URI");
+			RPERROR("Failed to escape LDAP profile URI");
 			return XLAT_ACTION_FAIL;
 		}
 	}
@@ -1361,13 +1361,13 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 	char			*host_url, *host = NULL;
 
 	if (fr_uri_escape_list(url, ldap_uri_parts, NULL) < 0) {
-		RPERROR("Failed to escape LDAP URI");
+		RPERROR("Failed to escape LDAP map URI");
 		RETURN_MODULE_FAIL;
 	}
 
 	url_head = fr_value_box_list_head(url);
 	if (!url_head) {
-		REDEBUG("LDAP URL cannot be (null)");
+		REDEBUG("LDAP URL cannot be empty");
 		RETURN_MODULE_FAIL;
 	}
 

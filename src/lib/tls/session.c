@@ -971,6 +971,13 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 	record_init(&tls_session->clean_out);
 
 	/*
+	 *	Prevent spurious errors on the thread local error
+	 *	stack causing SSL_get_error() to return SSL_ERROR_SSL
+	 *	instead of what of the SSL_ERROR_WANT_* values.
+	 */
+	ERR_clear_error();
+
+	/*
 	 *      Read (and decrypt) the tunneled data from the
 	 *      SSL session, and put it into the decrypted
 	 *      data buffer.
@@ -1056,6 +1063,11 @@ int fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session)
 	 *	contain the data to send to the client.
 	 */
 	if (tls_session->clean_in.used > 0) {
+		/*
+		 *	Ensure spurious errors aren't printed
+		 */
+		ERR_clear_error();
+
 		if (RDEBUG_ENABLED3) {
 			RHEXDUMP3(tls_session->clean_in.data, tls_session->clean_in.used,
 				 "TLS application data to encrypt (%zu bytes)", tls_session->clean_in.used);
@@ -1388,6 +1400,25 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 	RDEBUG3("(re-)entered state %s", __FUNCTION__);
 
 	/*
+	 *	Clear OpenSSL's thread local error stack.
+	 *
+	 *	Why do we need to do this here?  Although SSL_get_error
+	 *	takes an `SSL *`, which would make you _think_ it was
+	 *	operating on the error stack for that SSL, it will also
+	 *	return SSL_ERROR_SSL if there are any errors in the stack.
+	 *
+	 *	When operating normally SSL_read() can return < 0, to
+	 *	indicate it wants more data, or that we need to perform
+	 *	asynchronous processing.
+	 *
+	 *	If spurious errors have been left on the thread local
+	 *	stack they MUST be cleared before we can call SSL_get_error
+	 *	otherwise stale errors mask the async notifications
+	 *	and cause random handshake failures.
+	 */
+	ERR_clear_error();
+
+	/*
 	 *	Magic/More magic? Although SSL_read is normally
 	 *	used to read application data, it will also
 	 *	continue the TLS handshake.  Removing this call will
@@ -1633,8 +1664,29 @@ unlang_action_t fr_tls_session_async_handshake_push(request_t *request, fr_tls_s
 static int _fr_tls_session_free(fr_tls_session_t *session)
 {
 	if (session->ssl) {
+		/*
+		 *  The OpenSSL docs state:
+		 *
+		 *	SSL_shutdown() can be modified to only set the
+		 *	connection to "shutdown" state but not actually
+		 *	send the "close notify" alert messages, see
+		 *	SSL_CTX_set_quiet_shutdown(3). When "quiet shutdown"
+		 *	is enabled, SSL_shutdown() will always succeed and
+		 *	return 1.
+		 *
+		 *  This is only partially correct.  This call does mean
+		 *  we don't notify the other party, but the SSL_shutdown
+		 *  call can still fail if the handshake hasn't begun, leaving
+		 *  spurious errors on the thread local error stack.
+		 */
 		SSL_set_quiet_shutdown(session->ssl, 1);
-		SSL_shutdown(session->ssl);
+
+		/*
+		 *  Don't leave spurious errors raised by SSL_shutdown on
+		 *  the error stack.
+		 */
+		if (SSL_shutdown(session->ssl) != 1) ERR_clear_error();
+
 		SSL_free(session->ssl);
 		session->ssl = NULL;
 	}

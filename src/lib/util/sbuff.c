@@ -185,6 +185,8 @@ void fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len)
  * @param[in] sbuff	to shift.
  * @param[in] shift	the contents of the buffer this many bytes
  *			towards the start of the buffer.
+ * @param[in] move_end	If the buffer is used for reading, then this should be true
+ *			so we cannot read passed the end of valid data.
  * @return
  *	- 0 the shift failed due to constraining pointers.
  *	- >0 the number of bytes we managed to shift pointers
@@ -192,7 +194,7 @@ void fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len)
  *	  existing contents of the buffer, and fill the free
  *	  space at the end of the buffer with additional data.
  */
-size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
+size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift, bool move_end)
 {
 	fr_sbuff_t		*sbuff_i;
 	char			*buff, *end;		/* Current start */
@@ -243,7 +245,7 @@ size_t fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift)
 
 		sbuff_i->start -= min(max_shift, sbuff_i->start - buff);
 		sbuff_i->p -= max_shift;
-		sbuff_i->end -= max_shift;
+		if (move_end) sbuff_i->end -= max_shift;
 		sbuff_i->shifted += (max_shift - (start - sbuff_i->start));
 		for (m_i = sbuff_i->m; m_i; m_i = m_i->next) m_i->p -= max_shift;
 	}
@@ -303,7 +305,7 @@ size_t fr_sbuff_extend_file(fr_sbuff_extend_status_t *status, fr_sbuff_t *sbuff,
 		 *
 		 *	Note: p and markers are constraints here.
 		 */
-		fctx->shifted += fr_sbuff_shift(sbuff, shift);
+		fctx->shifted += fr_sbuff_shift(sbuff, shift, true);
 	}
 
 	available = fctx->buff_end - sbuff->end;

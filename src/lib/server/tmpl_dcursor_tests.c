@@ -41,7 +41,7 @@ static request_t *request_fake_alloc(void)
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_local_alloc_external(autofree, NULL);
+	request = request_local_alloc_external(autofree, (&(request_init_args_t){ .namespace = test_dict }));
 
 	request->packet = fr_packet_alloc(request, false);
 	TEST_CHECK(request->packet != NULL);

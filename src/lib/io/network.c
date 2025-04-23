@@ -238,6 +238,18 @@ int fr_network_listen_add(fr_network_t *nr, fr_listen_t *li)
 	fr_ring_buffer_t *rb;
 
 	/*
+	 *	Associate the protocol dictionary with the listener, so that the decode functions can check /
+	 *	use it.
+	 *
+	 *	A virtual server may start off with a "dictionary" block, and therefore define a local
+	 *	dictionary.  So the "root" dictionary of a virtual server may not be a protocol dict.
+	 */
+	fr_assert(li->server_cs != NULL);
+	li->dict = fr_dict_proto_dict(virtual_server_dict_by_cs(li->server_cs));
+
+	fr_assert(li->dict != NULL);
+
+	/*
 	 *	Skip a bunch of work if we're already in the network thread.
 	 */
 	if (is_network_thread(nr) && !li->needs_full_setup) {

@@ -27,7 +27,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_priv.h>
-#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/atexit.h>
@@ -501,17 +500,17 @@ CONF_ITEM *_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child)
 
 /** Return the next child of the CONF_ITEM
  *
- * @param[in] ci	to return children from.
+ * @param[in] parent	to return children from.
  * @param[in] curr	child to start searching from.
  * @return
  *	- The next #CONF_ITEM that's a child of cs.
  *	- NULL if no more #CONF_ITEM.
  */
-CONF_ITEM *_cf_item_next(CONF_ITEM const *ci, CONF_ITEM const *curr)
+CONF_ITEM *_cf_item_next(CONF_ITEM const *parent, CONF_ITEM const *curr)
 {
-	if (!ci) return NULL;
+	if (!parent) return NULL;
 
-	return fr_dlist_next(&ci->children, curr);
+	return fr_dlist_next(&parent->children, curr);
 }
 
 /** Return the next child of cs

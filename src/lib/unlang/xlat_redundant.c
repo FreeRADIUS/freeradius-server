@@ -29,15 +29,10 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
-#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/unlang/xlat.h>
 
-#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/rand.h>
-#include <freeradius-devel/util/rb.h>
-#include <freeradius-devel/util/sbuff.h>
 
 
 /*
@@ -195,51 +190,76 @@ static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_PUSH_UNLANG;
 }
 
+static void xlat_mark_safe_for(xlat_exp_head_t *head, fr_value_box_safe_for_t safe_for)
+{
+	xlat_exp_foreach(head, node) {
+		if (node->type == XLAT_BOX) {
+			fr_value_box_mark_safe_for(&node->data, safe_for);
+			continue;
+		}
+
+		if (node->type == XLAT_GROUP) {
+			xlat_mark_safe_for(node->group, safe_for);
+		}
+	}
+}
+
 /** Allocate an xlat node to call an xlat function
  *
  * @param[in] ctx	to allocate the new node in.
  * @param[in] func	to call.
  * @param[in] args	Arguments to the function.  Will be copied,
  *			and freed when the new xlat node is freed.
+ * @param[in] dict	the dictionary
  */
-static xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t const *func, xlat_exp_head_t const *args)
+static xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t const *func, xlat_exp_head_t const *args, fr_dict_t const *dict)
 {
 	xlat_exp_t *node;
 
 	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, func->name, strlen(func->name)));
-	node->call.func = func;
-	if (unlikely(xlat_copy(node, node->call.args, args) < 0)) {
-		talloc_free(node);
-		return NULL;
-	}
+	xlat_exp_set_func(node, func, dict);
+
 	node->flags = func->flags;
 	node->flags.impure_func = !func->flags.pure;
-	xlat_flags_merge(&node->flags, &args->flags);
 
-	if (func->input_type == XLAT_INPUT_ARGS) {
-		xlat_arg_parser_t const	*arg_p;
-		xlat_exp_t		*arg = xlat_exp_head(node->call.args);
+	if (args) {
+		xlat_flags_merge(&node->flags, &args->flags);
 
 		/*
-		 *      The original tokenizing is done using the redundant xlat argument parser
-		 *      so the boxes haven't been marked up with the appropriate "safe for".
+		 *	If the function is pure, AND it's arguments are pure,
+		 *	then remember that we need to call a pure function.
 		 */
-		for (arg_p = node->call.func->args; arg_p->type != FR_TYPE_NULL; arg_p++) {
-		        if (!arg) break;
+		node->flags.can_purify = (func->flags.pure && args->flags.pure) | args->flags.can_purify;
 
-		        xlat_exp_foreach(arg->group, child) {
-		                if (child->type == XLAT_BOX) fr_value_box_mark_safe_for(&child->data, arg_p->safe_for);
-		        }
+		MEM(node->call.args = xlat_exp_head_alloc(node));
+		node->call.args->is_argv = true;
 
-		        arg = xlat_exp_next(node->call.args, arg);
+		if (unlikely(xlat_copy(node, node->call.args, args) < 0)) {
+			talloc_free(node);
+			return NULL;
 		}
 	}
 
 	/*
-	 *	If the function is pure, AND it's arguments are pure,
-	 *	then remember that we need to call a pure function.
+	 *      The original tokenizing is done using the redundant xlat argument parser so the boxes need to
+	 *      have their "safe_for" value changed to the new one.
 	 */
-	node->flags.can_purify = (func->flags.pure && args->flags.pure) | args->flags.can_purify;
+	if (func->args) {
+		xlat_arg_parser_t const	*arg_p;
+		xlat_exp_t		*arg;
+
+		fr_assert(args);
+
+		arg = xlat_exp_head(node->call.args);
+
+		for (arg_p = node->call.func->args; arg_p->type != FR_TYPE_NULL; arg_p++) {
+		        if (!arg) break;
+
+			xlat_mark_safe_for(arg->group, arg_p->safe_for);
+
+		        arg = xlat_exp_next(node->call.args, arg);
+		}
+	}
 
 	return node;
 }
@@ -254,6 +274,7 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 	xlat_redundant_inst_t		*xri = talloc_get_type_abort(xctx->inst, xlat_redundant_inst_t);
 	unsigned int			num = 0;
 	xlat_redundant_func_t const	*first;
+	fr_dict_t const			*dict = NULL;
 
 	MEM(xri->ex = talloc_array(xri, xlat_exp_head_t *, fr_dlist_num_elements(&xr->funcs)));
 	xri->xr = xr;
@@ -273,12 +294,23 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 		 *	becomes an error when the user tries
 		 *	to use the redundant xlat.
 		 */
-		if (first->func->input_type != xrf->func->input_type) {
+		if ((!first->func->args && xrf->func->args) ||
+		    (first->func->args && !xrf->func->args)) {
 			cf_log_err(xr->cs, "Expansion functions \"%s\" and \"%s\" use different argument styles "
 				   "cannot be used in the same redundant section", first->func->name, xrf->func->name);
 		error:
 			talloc_free(xri->ex);
 			return -1;
+		}
+
+		if (!dict) {
+			dict = xctx->ex->call.dict;
+			fr_assert(dict != NULL);
+
+		} else if (dict != xctx->ex->call.dict) {
+			cf_log_err(xr->cs, "Expansion functions \"%s\" and \"%s\" use different dictionaries"
+				   "cannot be used in the same redundant section", first->func->name, xrf->func->name);
+			goto error;
 		}
 
 		/*
@@ -288,20 +320,13 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 		 *	correctly.
 		 */
 		MEM(head = xlat_exp_head_alloc(xri->ex));
-		MEM(node = xlat_exp_func_alloc(head, xrf->func, xctx->ex->call.args));
+		MEM(node = xlat_exp_func_alloc(head, xrf->func, xctx->ex->call.args, dict));
 		xlat_exp_insert_tail(head, node);
 
-		switch (xrf->func->input_type) {
-		case XLAT_INPUT_UNPROCESSED:
-			break;
-
-		case XLAT_INPUT_ARGS:
-			if (xlat_validate_function_args(node) < 0) {
-				PERROR("Invalid arguments for redundant expansion function \"%s\"",
-				       xrf->func->name);
-				goto error;
-			}
-			break;
+		if (xlat_validate_function_args(node) < 0) {
+			PERROR("Invalid arguments for redundant expansion function \"%s\"",
+			       xrf->func->name);
+			goto error;
 		}
 
 		/*

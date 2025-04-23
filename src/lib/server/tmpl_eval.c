@@ -36,14 +36,8 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/call.h>
 
 #include <freeradius-devel/util/atexit.h>
-#include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/edit.h>
-#include <freeradius-devel/util/token.h>
-#include <freeradius-devel/util/types.h>
 
-#include <talloc.h>
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
@@ -364,7 +358,6 @@ ssize_t _tmpl_to_type(void *out,
 	 *	We should never be expanding these.
 	 */
 	case TMPL_TYPE_UNINITIALISED:
-	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_EXEC_UNRESOLVED:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 	case TMPL_TYPE_XLAT_UNRESOLVED:
@@ -695,7 +688,6 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	 *	We should never be expanding these.
 	 */
 	case TMPL_TYPE_UNINITIALISED:
-	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_EXEC_UNRESOLVED:
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_REGEX_UNCOMPILED:

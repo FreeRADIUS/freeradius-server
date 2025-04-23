@@ -67,7 +67,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 
 			tmpl_rules_t	lhs_rules = {
 				.attr = {
-					.dict_def = request->dict,
+					.dict_def = request->local_dict,
 					.request_def = tmpl_request(map->lhs),
 					.list_def = tmpl_list(map->lhs),
 				},
@@ -79,7 +79,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 
 			tmpl_rules_t rhs_rules = {
 				.attr = {
-					.dict_def = request->dict
+					.dict_def = request->local_dict
 				},
 				.xlat = {
 					.runtime_el = lhs_rules.xlat.runtime_el,
@@ -341,7 +341,7 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 		int		count, i;
 		tmpl_rules_t const parse_rules = {
 			.attr = {
-				.dict_def = request->dict,
+				.dict_def = request->proto_dict,
 				.list_def = request_attr_request,
 			},
 			.xlat = {
@@ -452,7 +452,7 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 
 			tmpl_rules_t const parse_rules = {
 				.attr = {
-					.dict_def = request->dict,
+					.dict_def = request->proto_dict,
 					.list_def = request_attr_request,
 				},
 				.xlat = {

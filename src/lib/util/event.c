@@ -34,18 +34,15 @@ typedef struct fr_event_list_s fr_event_list_t;
 
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/event.h>
-#include <freeradius-devel/util/timer.h>
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/token.h>
 #include <freeradius-devel/util/atexit.h>
 
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include <pthread.h>
 
 #ifdef NDEBUG
 /*

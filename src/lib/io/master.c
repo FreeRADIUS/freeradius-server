@@ -39,7 +39,7 @@ typedef struct {
 
 	fr_trie_t			*trie;				//!< trie of clients
 	fr_heap_t			*pending_clients;		//!< heap of pending clients
-	fr_heap_t			*alive_clients;			//!< heap of active clients
+	fr_heap_t			*alive_clients;			//!< heap of active dynamic clients
 
 	fr_listen_t			*listen;			//!< The master IO path
 	fr_listen_t			*child;				//!< The child (app_io) IO path
@@ -179,8 +179,7 @@ static fr_event_update_t resume_read[] = {
 
 static int track_free(fr_io_track_t *track)
 {
-	if (track->ev) (void) fr_timer_delete(&track->ev);
-
+	FR_TIMER_DELETE_RETURN(&track->ev);
 	talloc_free_children(track);
 
 	fr_assert(track->client->packets > 0);
@@ -1058,6 +1057,14 @@ static fr_io_client_t *client_alloc(TALLOC_CTX *ctx, fr_io_client_state_t state,
 	client->in_trie = true;
 
 	/*
+	 *	It's a static client.  Don't insert it into the list of alive clients, as those are only for
+	 *	dynamic clients.
+	 */
+	if (state == PR_CLIENT_STATIC) return client;
+
+	fr_assert(thread->alive_clients != NULL);
+
+	/*
 	 *	Track the live clients so that we can clean
 	 *	them up.
 	 */
@@ -1181,7 +1188,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 		 *	struct while the packet is in the outbound
 		 *	queue.
 		 */
-		if (old->ev) (void) fr_timer_delete(&old->ev);
+		FR_TIMER_DISARM(old->ev);
 		return old;
 	}
 
@@ -1203,7 +1210,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 		if (!fr_rb_delete(client->table, old)) {
 			fr_assert(0);
 		}
-		if (old->ev) (void) fr_timer_delete(&old->ev);
+		FR_TIMER_DELETE(&old->ev);
 
 		talloc_set_destructor(old, track_free);
 
@@ -1708,6 +1715,11 @@ have_client:
 					return 0;
 				}
 
+				if (track->discard) {
+					DEBUG("Ignoring transmit from client %s - we previously received a newer / conflicting packet", client->radclient->shortname);
+					return 0;
+				}
+
 				if (!track->reply) {
 					fr_assert(!track->finished);
 					DEBUG("Ignoring retransmit from client %s - we are still processing the request", client->radclient->shortname);
@@ -1804,8 +1816,8 @@ have_client:
 		 *	connection.  It's still in use, so we don't
 		 *	want to clean it up.
 		 */
-		if (client->ev) {
-			talloc_const_free(client->ev);
+		if (fr_timer_armed(client->ev)) {
+			FR_TIMER_DELETE_RETURN(&client->ev);
 			client->ready_to_delete = false;
 		}
 
@@ -2055,7 +2067,7 @@ static void client_expiry_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 		/*
 		 *	The timer is already set, don't do anything.
 		 */
-		if (client->ev) return;
+		if (fr_timer_armed(client->ev)) return;
 
 		switch (client->state) {
 		case PR_CLIENT_CONNECTED:
@@ -2318,15 +2330,20 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	fr_client_t *radclient;
 	fr_listen_t *child;
 	fr_event_list_t *el;
+	char const *name;
 
 	get_inst(li, &inst, &thread, &connection, &child);
 
 	client = track->client;
 	if (connection) {
 		el = connection->el;
+		name = connection->name;
 	} else {
 		el = thread->el;
+		name = li->name;
 	}
+
+	DEBUG3("Processing reply for %s", name);
 
 	/*
 	 *	A fully defined client means that we just send the reply.
@@ -2337,15 +2354,13 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		track->finished = true;
 
 		/*
-		 *	The request later received a conflicting
-		 *	packet, so we discard this one.
+		 *	The request received a conflicting packet, so we
+		 *	discard this one.
 		 */
 		if (fr_time_neq(track->timestamp, request_time) || track->discard) {
 			fr_assert(track->packets > 0);
 			track->packets--;
-
-			DEBUG3("Suppressing reply as we have a newer packet");
-
+			DEBUG3("Suppressing reply as we have a newer / conflicing packet from the same source");
 			track->discard = true;
 			goto setup_timer;
 		}
@@ -2357,6 +2372,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	"do not respond" reply for a period of time.
 		 */
 		if ((buffer_len == 1) || track->do_not_respond) {
+			DEBUG3("Not sending response to request - it is marked as 'do not respond'");
 			track->do_not_respond = true;
 			goto setup_timer;
 		}
@@ -2368,6 +2384,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		packet_len = inst->app_io->write(child, track, request_time,
 						 buffer, buffer_len, written);
 		if (packet_len <= 0) {
+			ERROR("Failed writing the reply - not sending any response on %s", name);
 			track->discard = true;
 			packet_expiry_timer(el->tl, fr_time_wrap(0), track);
 			return packet_len;
@@ -2379,6 +2396,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	the expiry timer at that point.
 		 */
 		if ((size_t) packet_len < buffer_len) {
+			DEBUG3("Partial write (%zd < %zu)", packet_len, buffer_len);
 			return packet_len;
 		}
 
@@ -2386,7 +2404,10 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	We're not tracking duplicates, so just expire
 		 *	the packet now.
 		 */
-		if (!inst->app_io->track_duplicates) goto setup_timer;
+		if (!inst->app_io->track_duplicates) {
+			DEBUG3("Not tracking duplicates - expiring the request");
+			goto setup_timer;
+		}
 
 		/*
 		 *	Cache the reply packet if we're doing dedup.
@@ -2395,6 +2416,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	already filled out.  So we don't do that twice.
 		 */
 		if (!track->reply) {
+			DEBUG3("Caching reply");
 			MEM(track->reply = talloc_memdup(track, buffer, buffer_len));
 			track->reply_len = buffer_len;
 		}

@@ -501,7 +501,7 @@ finish:
 
 static xlat_arg_parser_t const rest_xlat_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_STRING },			/* HTTP Method */
-	{ .required = true, .safe_for = CURL_URI_SAFE_FOR, .type = FR_TYPE_STRING },	/* URL */
+	{ .required = true, .safe_for = CURL_URI_SAFE_FOR, .type = FR_TYPE_STRING, .will_escape = true },	/* URL */
 	{ .concat = true, .type = FR_TYPE_STRING },					/* Data */
 	{ .type = FR_TYPE_STRING },							/* Headers */
 	XLAT_ARG_PARSER_TERMINATOR

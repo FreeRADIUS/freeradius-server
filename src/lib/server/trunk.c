@@ -36,11 +36,10 @@ typedef struct trunk_s trunk_t;
 #define _TRUNK_PRIVATE 1
 #include <freeradius-devel/server/trunk.h>
 
-#include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/server/trigger.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/minmax_heap.h>
 
 #ifdef HAVE_STDATOMIC_H
@@ -3213,7 +3212,7 @@ static void trunk_connection_enter_draining_to_free(trunk_connection_t *tconn)
 {
 	trunk_t		*trunk = tconn->pub.trunk;
 
-	if (tconn->lifetime_ev) fr_timer_delete(&tconn->lifetime_ev);
+	FR_TIMER_DISARM(tconn->lifetime_ev);
 
 	switch (tconn->pub.state) {
 	case TRUNK_CONN_ACTIVE:
@@ -3562,7 +3561,7 @@ static void _trunk_connection_on_closed(UNUSED connection_t *conn,
 	/*
 	 *	Remove the reconnect event
 	 */
-	if (fr_time_delta_ispos(trunk->conf.lifetime)) fr_timer_delete(&tconn->lifetime_ev);
+	if (fr_time_delta_ispos(trunk->conf.lifetime)) FR_TIMER_DELETE(&tconn->lifetime_ev);
 
 	/*
 	 *	Remove the I/O events
@@ -4874,7 +4873,7 @@ static int _trunk_free(trunk_t *trunk)
 	 *	We really don't want this firing after
 	 *	we've freed everything.
 	 */
-	fr_timer_delete(&trunk->manage_ev);
+	FR_TIMER_DELETE_RETURN(&trunk->manage_ev);
 
 	/*
 	 *	Now free the connections in each of the lists.

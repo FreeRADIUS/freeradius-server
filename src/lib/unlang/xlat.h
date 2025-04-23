@@ -44,11 +44,6 @@ typedef enum {
 	XLAT_ACTION_FAIL			//!< An xlat function failed.
 } xlat_action_t;
 
-typedef enum {
-	XLAT_INPUT_UNPROCESSED,			//!< No input argument processing
-	XLAT_INPUT_ARGS				//!< Ingests a number of arguments
-} xlat_input_type_t;
-
 typedef struct xlat_inst_s xlat_inst_t;
 typedef struct xlat_thread_inst_s xlat_thread_inst_t;
 
@@ -110,14 +105,16 @@ typedef struct xlat_s xlat_t;
  *
  */
 typedef struct {
-	bool			needs_resolving;//!< Needs pass2 resolution.
-	bool			pure;		//!< has no external side effects, true for BOX, LITERAL, and some functions
-	bool			impure_func;	//!< xlat contains an impure function
-	bool			can_purify;	//!< if the xlat has a pure function with pure arguments.
+	uint8_t    		needs_resolving : 1;	//!< Needs pass2 resolution.
+	uint8_t			pure : 1;		//!< has no external side effects, true for BOX, LITERAL, and some functions
+	uint8_t			impure_func : 1;	//!< xlat contains an impure function
+	uint8_t			can_purify : 1;		//!< if the xlat has a pure function with pure arguments.
 
-	bool			constant;	//!< xlat is just tmpl_attr_tail_data, or XLAT_BOX
-	bool			xlat;		//!< it's an xlat wrapper
+	uint8_t			constant : 1;		//!< xlat is just tmpl_attr_tail_data, or XLAT_BOX
+	uint8_t			xlat : 1;		//!< it's an xlat wrapper
 } xlat_flags_t;
+
+#define XLAT_FLAGS_INIT ((xlat_flags_t) { .pure = true, .can_purify = true, .constant = true, })
 
 extern fr_table_num_sorted_t const xlat_action_table[];
 extern size_t xlat_action_table_len;
@@ -148,6 +145,7 @@ typedef struct {
 	bool				required;	//!< Argument must be present, and non-empty.
 	bool				concat;		//!< Concat boxes together.
 	bool				single;		//!< Argument must only contain a single box
+	bool				will_escape;	//!< the function will do escaping and concatenation.
 	xlat_arg_parser_variadic_t	variadic;	//!< All additional boxes should be processed
 							///< using this definition.
 	bool				always_escape;	//!< Pass all arguments to escape function not just
@@ -399,10 +397,10 @@ ssize_t		xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, request_t *request,
 int		xlat_flatten_to_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_exp_head_t *head);
 
 fr_slen_t	xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
-					 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
+					 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules) CC_HINT(nonnull(1,2,3));
 
 fr_slen_t	xlat_tokenize_condition(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
-					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
+					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules) CC_HINT(nonnull(1,2,3));
 
 fr_slen_t 	xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
 				   xlat_t const *xlat, fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
@@ -419,7 +417,7 @@ static inline fr_slen_t xlat_aprint(TALLOC_CTX *ctx, char **out, xlat_exp_head_t
 
 bool		xlat_is_truthy(xlat_exp_head_t const *head, bool *out);
 
-fr_slen_t	xlat_validate_function_args(xlat_exp_t *node);
+int		xlat_validate_function_args(xlat_exp_t *node);
 
 void		xlat_debug(xlat_exp_t const *node);
 

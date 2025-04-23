@@ -27,18 +27,14 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_parse.h>
-#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/main_loop.h>
 #include <freeradius-devel/server/request_data.h>
 #include <freeradius-devel/server/trigger.h>
 #include <freeradius-devel/unlang/function.h>
-#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/subrequest.h>
 #include <freeradius-devel/unlang/xlat.h>
 
-#include <freeradius-devel/util/atexit.h>
-#include <freeradius-devel/util/debug.h>
 
 #include <sys/wait.h>
 
@@ -92,8 +88,7 @@ xlat_action_t trigger_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	head = request_data_reference(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS);
 
-	da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict ? request->dict : fr_dict_internal()),
-				  in_head->vb_strvalue);
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(request->local_dict), in_head->vb_strvalue);
 	if (!da) {
 		ERROR("Unknown attribute \"%pV\"", in_head);
 		return XLAT_ACTION_FAIL;
@@ -386,7 +381,7 @@ int trigger_exec(unlang_interpret_t *intp,
 				  &FR_SBUFF_IN(trigger->command, talloc_array_length(trigger->command) - 1),
 				  NULL, NULL, &(tmpl_rules_t) {
 					  .attr = {
-						  .dict_def = request->dict,
+						  .dict_def = request->local_dict,
 						  .list_def = request_attr_request,
 						  .allow_unresolved = false,
 					  },

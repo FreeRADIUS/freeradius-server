@@ -464,7 +464,7 @@ static void sql_trunk_connection_read_poll(fr_timer_list_t *tl, UNUSED fr_time_t
 		switch (ret) {
 		case OCI_STILL_EXECUTING:
 			ROPTIONAL(RDEBUG3, DEBUG3, "Still awaiting response");
-			if (fr_timer_in(c, el, &c->read_ev,
+			if (fr_timer_in(c, tl, &c->read_ev,
 					fr_time_delta_from_usec(query_ctx->type == SQL_QUERY_SELECT ? c->select_interval : c->query_interval),
 					false, sql_trunk_connection_read_poll, c) < 0) {
 				ERROR("Unable to insert polling event");
@@ -504,7 +504,7 @@ static void sql_trunk_connection_read_poll(fr_timer_list_t *tl, UNUSED fr_time_t
 		ret = OCIBreak(c->ctx, c->error);
 		if (ret == OCI_STILL_EXECUTING) {
 			ROPTIONAL(RDEBUG3, DEBUG3, "Still awaiting response");
-			if (fr_timer_in(c, el, &c->read_ev, fr_time_delta_from_usec(query_ctx->type == SQL_QUERY_SELECT ? c->select_interval : c->query_interval),
+			if (fr_timer_in(c, tl, &c->read_ev, fr_time_delta_from_usec(query_ctx->type == SQL_QUERY_SELECT ? c->select_interval : c->query_interval),
 					false, sql_trunk_connection_read_poll, c) < 0) {
 				ERROR("Unable to insert polling event");
 			}
@@ -535,7 +535,7 @@ static void sql_trunk_connection_write_poll(UNUSED fr_timer_list_t *tl, UNUSED f
  *	This "notify" callback sets up the appropriate polling events.
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
-static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connection_t *conn, UNUSED fr_event_list_t *el,
+static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connection_t *conn, fr_event_list_t *el,
 					trunk_connection_event_t notify_on, UNUSED void *uctx)
 {
 	rlm_sql_oracle_conn_t	*c = talloc_get_type_abort(conn->h, rlm_sql_oracle_conn_t);
@@ -543,14 +543,14 @@ static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connec
 	uint			poll_interval = (query_ctx && query_ctx->type != SQL_QUERY_SELECT) ? c->query_interval : c->select_interval;
 	switch (notify_on) {
 	case TRUNK_CONN_EVENT_NONE:
-		if (c->read_ev) fr_timer_delete(&c->read_ev);
-		if (c->write_ev) fr_timer_delete(&c->write_ev);
+		FR_TIMER_DISARM(c->read_ev);
+		FR_TIMER_DISARM(c->write_ev);
 		return;
 
 	case TRUNK_CONN_EVENT_BOTH:
 	case TRUNK_CONN_EVENT_READ:
 		if (c->query_ctx) {
-			if (fr_timer_in(c, el, &c->read_ev, fr_time_delta_from_usec(poll_interval),
+			if (fr_timer_in(c, el->tl, &c->read_ev, fr_time_delta_from_usec(poll_interval),
 					false, sql_trunk_connection_read_poll, c) < 0) {
 				ERROR("Unable to insert polling event");
 			}
@@ -560,7 +560,7 @@ static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connec
 		FALL_THROUGH;
 
 	case TRUNK_CONN_EVENT_WRITE:
-		if (fr_timer_in(c, el, &c->write_ev, fr_time_delta_from_usec(0),
+		if (fr_timer_in(c, el->tl, &c->write_ev, fr_time_delta_from_usec(0),
 				false, sql_trunk_connection_write_poll, tconn) < 0) {
 			ERROR("Unable to insert polling event");
 		}

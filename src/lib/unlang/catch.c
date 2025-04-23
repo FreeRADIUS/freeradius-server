@@ -27,26 +27,6 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "catch_priv.h"
 
-static unlang_action_t cleanup(unlang_stack_frame_t *frame, unlang_t *unlang)
-{
-
-	/*
-	 *	Clean up this frame now, so that stats, etc. will be
-	 *	processed using the correct frame.
-	 */
-	frame_cleanup(frame);
-
-	/*
-	 *	frame_next() will call cleanup *before* resetting the frame->instruction.
-	 *	but since the instruction is NULL, no duplicate cleanups will happen.
-	 *
-	 *	frame_next() will then set frame->instruction = frame->next, and everything will be OK.
-	 */
-	frame->instruction = NULL;
-	frame->next = unlang;
-	return UNLANG_ACTION_EXECUTE_NEXT;
-}
-
 static unlang_action_t catch_skip_to_next(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_t		*unlang;
@@ -61,7 +41,7 @@ static unlang_action_t catch_skip_to_next(UNUSED rlm_rcode_t *p_result, UNUSED r
 		break;
 	}
 
-	return cleanup(frame, unlang);
+	return frame_set_next(frame, unlang);
 }
 
 static unlang_action_t unlang_catch(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -69,7 +49,7 @@ static unlang_action_t unlang_catch(rlm_rcode_t *p_result, request_t *request, u
 #ifndef NDEBUG
 	unlang_catch_t const *c = unlang_generic_to_catch(frame->instruction);
 
-	fr_assert(c->catching[*p_result]);
+	fr_assert(c->timeout || c->catching[*p_result]);
 #endif
 
 	/*
@@ -90,6 +70,11 @@ unlang_action_t unlang_interpret_skip_to_catch(rlm_rcode_t *p_result, request_t 
 
 	fr_assert(frame->instruction->type == UNLANG_TYPE_TRY);
 
+	/*
+	 *	'try' at the end of a block without 'catch' should have been caught by the compiler.
+	 */
+	fr_assert(frame->instruction->next);
+
 	for (unlang = frame->instruction->next;
 	     unlang != NULL;
 	     unlang = unlang->next) {
@@ -108,7 +93,7 @@ unlang_action_t unlang_interpret_skip_to_catch(rlm_rcode_t *p_result, request_t 
 
 	fr_assert(unlang != NULL);
 
-	return cleanup(frame, unlang);
+	return frame_set_next(frame, unlang);
 }
 
 void unlang_catch_init(void)

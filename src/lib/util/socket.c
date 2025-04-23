@@ -27,14 +27,12 @@
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/socket.h>
-#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/udpfromto.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/cap.h>
 
 #include <fcntl.h>
-#include <sys/socket.h>
 #include <ifaddrs.h>
 
 /** Resolve a named service to a port

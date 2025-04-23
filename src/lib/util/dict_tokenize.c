@@ -26,15 +26,9 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/defs.h>
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict_fixup_priv.h>
-#include <freeradius-devel/util/dict_priv.h>
-#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/rand.h>
-#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/table.h>
-#include <freeradius-devel/util/types.h>
-#include <freeradius-devel/util/value.h>
 
 #include <sys/stat.h>
 

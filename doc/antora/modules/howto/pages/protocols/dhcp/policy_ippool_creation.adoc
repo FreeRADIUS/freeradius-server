@@ -1,4 +1,4 @@
-=== Determine the IP pool plan
+= Determine the IP Pool Plan
 
 Except for cases where all IP allocation is performed using a mapping from the
 device MAC address to a fixed IP address, the DHCP configuration will involve
@@ -46,7 +46,7 @@ more granularity that their Layer 2 network, such as by considering device
 attributes ("class" membership in ISC parlance) or Option 82 circuit data.
 
 
-=== Populate the IP Pools
+== Populate the IP Pools
 
 By this stage you should have derived a list of pools, the IP address ranges
 contained therein, and the means of selecting the pool to use based on the

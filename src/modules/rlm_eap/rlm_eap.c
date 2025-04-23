@@ -795,7 +795,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 	MEM(eap_session->subrequest = unlang_subrequest_alloc(request,
 							      method->submodule->namespace ?
 							      *(method->submodule->namespace) :
-							      request->dict));
+							      request->proto_dict));
 
 	if (method->submodule->clone_parent_lists) {
 		if (fr_pair_list_copy(eap_session->subrequest->control_ctx,

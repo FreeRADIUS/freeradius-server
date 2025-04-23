@@ -23,7 +23,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/value.h>
 
 #include "uri.h"

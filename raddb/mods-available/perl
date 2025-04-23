@@ -13,10 +13,19 @@
 #  * Please see http://www.perl.org/docs.html for more information about the
 #  Perl language.
 #
-#  NOTE: Uncomment any `func_*` configuration items below which are
-#  included in your module. If the module is called for a section which
-#  does not have a function defined, it will return `noop`.
+#  NOTE: As of FreeRADIUS v4, the Perl subroutine names called when the `perl`
+#  module is called are automatically derived from the section in which
+#  they are called.
 #
+#  e.g. if `perl` is called in `recv Access-Request`, firstly a subroutine
+#  `recv_access_request` will be looked for.  If that does not exist, then
+#  a subroutine `recv` will be looked for.
+#
+#  This can be overridden by setting `func_recv_access_request` or `func_recv`
+#  to point to a different subroutine name.
+#
+#  In addition the option `func_detach` can be used to set a subroutine to call
+#  during shutdown.
 
 #
 #  ## Configuration Settings
@@ -78,17 +87,18 @@ perl {
 	perl_flags = "-T"
 
 	#
-	#  List of functions in the module to call. Uncomment and change if you
-	#  want to use function names other than the defaults.
+	#  func_detach:: Subroutine to call during server shutdown
 	#
-#	func_authenticate = authenticate
-#	func_authorize = authorize
-#	func_preacct = preacct
-#	func_accounting = accounting
-#	func_pre_proxy = pre_proxy
-#	func_post_proxy = post_proxy
-#	func_post_auth = post_auth
 #	func_detach = detach
+
+	#
+	#  Sample subroutine name overrides
+	#
+	#  These options cause the old FreeRADIUS v3 default subroutine
+	#  names to be used
+#	func_recv_access_request = authorize
+#	func_recv_accounting_request = preacct
+#	func_send = postauth
 
 	#
 	#  Control which attribute lists are replaced following calls to
