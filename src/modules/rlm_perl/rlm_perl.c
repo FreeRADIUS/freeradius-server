@@ -61,6 +61,17 @@ typedef struct {
 	bool	session;	//!< Should the session list be replaced after module call
 } rlm_perl_replace_t;
 
+typedef struct {
+	char const	*function_name;	//!< Name of the function being called
+	char		*name1;		//!< Section name1 where this is called
+	char		*name2;		//!< Section name2 where this is called
+	fr_rb_node_t	node;		//!< Node in tree of function calls.
+} perl_func_def_t;
+
+typedef struct {
+	perl_func_def_t	*func;
+} perl_call_env_t;
+
 /*
  *	Define a structure for our module configuration.
  *
@@ -72,13 +83,9 @@ typedef struct {
 	/* Name of the perl module */
 	char const	*module;
 
-	/* Name of the functions for each module method */
-	char const	*func_authorize;
-	char const	*func_authenticate;
-	char const	*func_accounting;
-	char const	*func_preacct;
-	char const	*func_detach;
-	char const	*func_post_auth;
+	fr_rb_tree_t	funcs;			//!< Tree of function calls found by call_env parser.
+	bool		funcs_init;		//!< Has the tree been initialised.
+	char const	*func_detach;		//!< Function to run when mod_detach is run.
 	char const	*perl_flags;
 	PerlInterpreter	*perl;
 	bool		perl_parsed;
@@ -104,18 +111,10 @@ static const conf_parser_t replace_config[] = {
 /*
  *	A mapping of configuration file names to internal variables.
  */
-#define RLM_PERL_CONF(_x) { FR_CONF_OFFSET("func_" STRINGIFY(_x), rlm_perl_t, func_##_x), \
-			   .data = NULL, .dflt = STRINGIFY(_x), .quote = T_INVALID }
-
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED, rlm_perl_t, module) },
 
-	RLM_PERL_CONF(authorize),
-	RLM_PERL_CONF(authenticate),
-	RLM_PERL_CONF(post_auth),
-	RLM_PERL_CONF(accounting),
-	RLM_PERL_CONF(preacct),
-	RLM_PERL_CONF(detach),
+	{ FR_CONF_OFFSET("func_detach", rlm_perl_t, func_detach), .data = NULL, .dflt = "detach", .quote = T_INVALID },
 
 	{ FR_CONF_OFFSET("perl_flags", rlm_perl_t, perl_flags) },
 
@@ -123,6 +122,22 @@ static const conf_parser_t module_config[] = {
 
 	CONF_PARSER_TERMINATOR
 };
+
+/** How to compare two Perl function calls
+ *
+ */
+static int8_t perl_func_def_cmp(void const *one, void const *two)
+{
+	perl_func_def_t const *a = one, *b = two;
+	int ret;
+
+	ret = strcmp(a->name1, b->name1);
+	if (ret != 0) return CMP(ret, 0);
+	if (!a->name2 && !b->name2) return 0;
+	if (!a->name2 || !b->name2) return a->name2 ? 1 : -1;
+	ret = strcmp(a->name2, b->name2);
+	return CMP(ret, 0);
+}
 
 /*
  * man perlembed
@@ -862,11 +877,11 @@ static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pai
  * 	Store all vps in hashes %RAD_CONFIG %RAD_REPLY %RAD_REQUEST
  *
  */
-static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
-			       PerlInterpreter *interp, char const *function_name)
+static unlang_action_t CC_HINT(nonnull) mod_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-
 	rlm_perl_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t);
+	perl_call_env_t		*func = talloc_get_type_abort(mctx->env_data, perl_call_env_t);
+	PerlInterpreter		*interp = ((rlm_perl_thread_t *)talloc_get_type_abort(mctx->thread, rlm_perl_thread_t))->perl;
 	fr_pair_list_t		vps;
 	int			ret=0, count;
 	STRLEN			n_a;
@@ -877,10 +892,9 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, 
 	HV			*rad_state_hv;
 
 	/*
-	 *	Radius has told us to call this function, but none
-	 *	is defined.
+	 *	call_env parsing will have established the function name to call.
 	 */
-	if (!function_name) RETURN_MODULE_FAIL;
+	fr_assert(func->func->function_name);
 
 	{
 		dTHXa(interp);
@@ -917,7 +931,7 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, 
 		 * PUTBACK;
 		 */
 
-		count = call_pv(function_name, G_SCALAR | G_EVAL | G_NOARGS);
+		count = call_pv(func->func->function_name, G_SCALAR | G_EVAL | G_NOARGS);
 
 		rlm_perl_request = NULL;
 
@@ -925,7 +939,7 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, 
 
 		if (SvTRUE(ERRSV)) {
 			REDEBUG("perl_embed:: module = %s , func = %s exit status= %s\n",
-			        inst->module, function_name, SvPV(ERRSV,n_a));
+			        inst->module, func->func->function_name, SvPV(ERRSV,n_a));
 			(void)POPs;
 			ret = RLM_MODULE_FAIL;
 		} else if (count == 1) {
@@ -972,21 +986,6 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, 
 
 	RETURN_MODULE_RCODE(ret);
 }
-
-#define RLM_PERL_FUNC(_x) \
-static unlang_action_t CC_HINT(nonnull) mod_##_x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
-{ \
-	rlm_perl_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t); \
-	return do_perl(p_result, mctx, request, \
-		       ((rlm_perl_thread_t *)talloc_get_type_abort(mctx->thread, rlm_perl_thread_t))->perl, \
-		       inst->func_##_x); \
-}
-
-RLM_PERL_FUNC(authorize)
-RLM_PERL_FUNC(authenticate)
-RLM_PERL_FUNC(post_auth)
-RLM_PERL_FUNC(preacct)
-RLM_PERL_FUNC(accounting)
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(shadow)
@@ -1054,6 +1053,24 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 	return 0;
 }
 
+/** Check if a given Perl subroutine exists
+ *
+ */
+static bool perl_func_exists(char const *func)
+{
+	char	*eval_str;
+	SV	*val;
+
+	/*
+	 *	Perl's "can" method checks if the object contains a subroutine of the given name.
+	 *	We expect referenced subroutines to be in the "main" namespace.
+	 */
+	eval_str = talloc_asprintf(NULL, "(main->can('%s') ? 1 : 0)", func);
+	val = eval_pv(eval_str, TRUE);
+	talloc_free(eval_str);
+	return SvIV(val) ? true : false;
+}
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -1070,7 +1087,12 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_perl_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t);
+	rlm_perl_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t);
+	perl_func_def_t		*func = NULL;
+	fr_rb_iter_inorder_t	iter;
+	CONF_PAIR		*cp;
+	char			*pair_name;
+
 	CONF_SECTION	*conf = mctx->mi->conf;
 	AV		*end_AV;
 
@@ -1136,6 +1158,54 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->perl_parsed = true;
 	perl_run(inst->perl);
+
+	/*
+	 *	The call_env parser has found all the places the module is called
+	 *	Check for config options which set the subroutine name, falling back to
+	 *	automatic subroutine names based on section name.
+	 */
+	if (!inst->funcs_init) fr_rb_inline_init(&inst->funcs, perl_func_def_t, node, perl_func_def_cmp, NULL);
+	func = fr_rb_iter_init_inorder(&iter, &inst->funcs);
+	while (func) {
+		/*
+		 *	Check for func_<name1>_<name2> or func_<name1> config pairs.
+		 */
+		if (func->name2) {
+			pair_name = talloc_asprintf(func, "func_%s_%s", func->name1, func->name2);
+			cp = cf_pair_find(mctx->mi->conf, pair_name);
+			talloc_free(pair_name);
+			if (cp) goto found_func;
+		}
+		pair_name = talloc_asprintf(func, "func_%s", func->name1);
+		cp = cf_pair_find(conf, pair_name);
+		talloc_free(pair_name);
+	found_func:
+		if (cp){
+			func->function_name = cf_pair_value(cp);
+			if (!perl_func_exists(func->function_name)) {
+				cf_log_err(cp, "Perl subroutine %s does not exist", func->function_name);
+				return -1;
+			}
+		/*
+		 *	If no pair was found, then use <name1>_<name2> or <name1> as the function to call.
+		 */
+		} else if (func->name2) {
+			func->function_name = talloc_asprintf(func, "%s_%s", func->name1, func->name2);
+			if (!perl_func_exists(func->function_name)) {
+				talloc_const_free(func->function_name);
+				goto name1_only;
+			}
+		} else {
+		name1_only:
+			func->function_name = func->name1;
+			if (!perl_func_exists(func->function_name)) {
+				cf_log_err(cp, "Perl subroutine %s does not exist", func->function_name);
+				return -1;
+			}
+		}
+
+		func = fr_rb_iter_next_inorder(&iter);
+	}
 
 	PL_endav = end_AV;
 
@@ -1240,6 +1310,79 @@ static void mod_unload(void)
 }
 
 /*
+ *	Restrict automatic Perl function names to lowercase characters, numbers and underscore
+ *	meaning that a module call in `recv Access-Request` will look for `recv_access_request`
+ */
+static void perl_func_name_safe(char *name) {
+	char	*p;
+	size_t	i;
+
+	p = name;
+	for (i = 0; i < talloc_array_length(name); i++) {
+		*p = tolower(*p);
+		if (!strchr("abcdefghijklmnopqrstuvwxyz1234567890", *p)) *p = '_';
+		p++;
+	}
+}
+
+static int perl_func_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, UNUSED tmpl_rules_t const *t_rules,
+			   UNUSED CONF_ITEM *ci, call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
+{
+	rlm_perl_t		*inst = talloc_get_type_abort(cec->mi->data, rlm_perl_t);
+	call_env_parsed_t	*parsed;
+	perl_func_def_t		*func;
+	void			*found;
+
+	if (!inst->funcs_init) {
+		fr_rb_inline_init(&inst->funcs, perl_func_def_t, node, perl_func_def_cmp, NULL);
+		inst->funcs_init = true;
+	}
+
+	MEM(parsed = call_env_parsed_add(ctx, out,
+					 &(call_env_parser_t){
+						.name = "func",
+						.flags = CALL_ENV_FLAG_PARSE_ONLY,
+						.pair = {
+							.parsed = {
+								.offset = rule->pair.offset,
+								.type = CALL_ENV_PARSE_TYPE_VOID
+							}
+						}
+					}));
+
+	MEM(func = talloc_zero(inst, perl_func_def_t));
+	func->name1 = talloc_strdup(func, cec->asked->name1);
+	perl_func_name_safe(func->name1);
+	if (cec->asked->name2) {
+		func->name2 = talloc_strdup(func, cec->asked->name2);
+		perl_func_name_safe(func->name2);
+	}
+	if (fr_rb_find_or_insert(&found, &inst->funcs, func) < 0) {
+		talloc_free(func);
+		return -1;
+	}
+
+	/*
+	*	If the function call is already in the tree, use that entry.
+	*/
+	if (found) {
+		talloc_free(func);
+		call_env_parsed_set_data(parsed, found);
+	} else {
+		call_env_parsed_set_data(parsed, func);
+	}
+	return 0;
+}
+
+static const call_env_method_t perl_method_env = {
+	FR_CALL_ENV_METHOD_OUT(perl_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_SUBSECTION_FUNC(CF_IDENT_ANY, CF_IDENT_ANY, CALL_ENV_FLAG_PARSE_MISSING, perl_func_parse) },
+		CALL_ENV_TERMINATOR
+	}
+};
+
+/*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  *
@@ -1268,17 +1411,7 @@ module_rlm_t rlm_perl = {
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
-			/*
-			 *	Hack to support old configurations
-			 */
-			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting	},
-			{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate },
-			{ .section = SECTION_NAME("authorize", CF_IDENT_ANY), .method = mod_authorize },
-
-			{ .section = SECTION_NAME("recv", "accounting-request"), .method = mod_preacct },
-			{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize },
-
-			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth },
+			{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_perl, .method_env = &perl_method_env },
 			MODULE_BINDING_TERMINATOR
 		}
 	}
