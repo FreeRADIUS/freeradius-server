@@ -4873,9 +4873,7 @@ static int _trunk_free(trunk_t *trunk)
 	 *	We really don't want this firing after
 	 *	we've freed everything.
 	 */
-	if (!fr_cond_assert_msg(fr_timer_delete(&trunk->manage_ev) == 0, "failed deleting trunk management event")) {
-		return -1;
-	}
+	FR_TIMER_DELETE_RETURN(&trunk->manage_ev);
 
 	/*
 	 *	Now free the connections in each of the lists.

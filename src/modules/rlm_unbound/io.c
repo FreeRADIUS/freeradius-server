@@ -346,9 +346,7 @@ static int _unbound_io_event_deactivate(struct ub_event *ub_ev)
 	if (ev->events & UB_EV_TIMEOUT) {
 		DEBUG4("unbound event %p - Disarming timeout", ev);
 
-		if (!fr_cond_assert_msg(fr_timer_disarm(ev->timer_ev) == 0, "failed disarming timeout")) {
-			ret = -1;
-		}
+		FR_TIMER_DISARM_RETURN(ev->timer_ev);
 	}
 
 	ev->active = false;	/* Event is now inactive and can be modified */
@@ -379,9 +377,7 @@ static int _unbound_io_timer_modify(struct ub_event *ub_ev, UNUSED struct ub_eve
 		       ev, uctx, ev->uctx);
 		ev->uctx = uctx;
 	}
-	if (!fr_cond_assert_msg(fr_timer_disarm(ev->timer_ev) == 0, "ubound event %p - Failed disarming timeout", ev)) {
-		ret = -1;	/* Continue ? */
-	}
+	FR_TIMER_DISARM_RETURN(ev->timer_ev);
 
 	timeout = fr_time_delta_from_timeval(tv);
 
@@ -409,7 +405,7 @@ static int _unbound_io_timer_deactivate(struct ub_event *ub_ev)
 
 	DEBUG4("unbound event %p - Disarming timeout", ev);
 
-	if (!fr_cond_assert_msg(fr_timer_disarm(ev->timer_ev) == 0, "failed disarming timeout")) return -1;
+	FR_TIMER_DISARM_RETURN(ev->timer_ev);
 
 	return 0;
 }

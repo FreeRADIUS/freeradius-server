@@ -613,12 +613,7 @@ static int _bio_handle_free(bio_handle_t *h)
 
 	fr_assert(h->fd >= 0);
 
-	if (h->status_u) {
-		if (!fr_cond_assert_msg(fr_timer_delete(&h->status_u->ev) == 0,
-					"failed deleting status check timer")) {
-			return -1;
-		}
-	}
+	if (h->status_u) FR_TIMER_DELETE_RETURN(&h->status_u->ev);
 
 	/*
 	 *	The connection code will take care of deleting the FD from the event loop.
@@ -2252,10 +2247,7 @@ static int _bio_request_free(bio_request_t *u)
 
 	fr_assert_msg(!fr_timer_armed(u->ev), "bio_request_t freed with active timer");
 
-	if (!fr_cond_assert_msg(fr_timer_delete(&u->ev) == 0,
-				"failed deleting request timer")) {
-		return -1;
-	}
+	FR_TIMER_DELETE_RETURN(&u->ev);
 
 	fr_assert(u->rr == NULL);
 

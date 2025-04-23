@@ -96,9 +96,7 @@ typedef struct {
  */
 static int _unlang_xlat_event_free(unlang_xlat_event_t *ev)
 {
-	if (!fr_cond_assert_msg(fr_timer_delete(&(ev->ev)) == 0, "failed freeing xlat event timer")) {
-		return -1;
-	}
+	FR_TIMER_DELETE(&(ev->ev));
 
 	if (ev->fd >= 0) {
 		(void) fr_event_fd_delete(unlang_interpret_event_list(ev->request), ev->fd, FR_EVENT_FILTER_IO);
@@ -597,9 +595,7 @@ xlat_action_t unlang_xlat_yield(request_t *request,
  */
 static int _unlang_xlat_retry_free(unlang_xlat_retry_t *ev)
 {
-	if (!fr_cond_assert_msg(fr_timer_delete(&(ev->ev)) == 0, "failed to deleting xlat retry timer")) {
-		return -1;
-	}
+	FR_TIMER_DELETE(&(ev->ev));
 
 	return 0;
 }

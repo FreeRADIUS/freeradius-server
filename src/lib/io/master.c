@@ -179,7 +179,7 @@ static fr_event_update_t resume_read[] = {
 
 static int track_free(fr_io_track_t *track)
 {
-	if (fr_cond_assert_msg(fr_timer_delete(&track->ev) == 0, "failed deleting tracking timer")) return -1;
+	FR_TIMER_DELETE_RETURN(&track->ev);
 	talloc_free_children(track);
 
 	fr_assert(track->client->packets > 0);
@@ -1817,10 +1817,7 @@ have_client:
 		 *	want to clean it up.
 		 */
 		if (fr_timer_armed(client->ev)) {
-			if (fr_cond_assert_msg(fr_timer_delete(&client->ev) == 0,
-					       "failed deleting client timer")) {
-				return -1;
-			}
+			FR_TIMER_DELETE_RETURN(&client->ev);
 			client->ready_to_delete = false;
 		}
 

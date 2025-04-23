@@ -267,7 +267,7 @@ static inline CC_HINT(always_inline) int timer_list_parent_update(fr_timer_list_
 		/*
 		 *	Disables the timer in the parent, does not free the memory
 		 */
-		if (tl->parent) if (unlikely(fr_timer_disarm(tl->parent_ev) < 0)) return -1;
+		if (tl->parent) FR_TIMER_DISARM_RETURN(tl->parent_ev);
 		return 0;
 	}
 
@@ -1007,7 +1007,7 @@ static int _timer_list_free(fr_timer_list_t *tl)
 		return -1;
 	}
 
-	if (tl->parent_ev) fr_timer_delete(&tl->parent_ev);
+	if (tl->parent_ev) if (unlikely(fr_timer_delete(&tl->parent_ev) < 0)) return -1;
 
 	while ((ev = timer_funcs[tl->type].head(tl))) {
 		if (talloc_free(ev) < 0) return -1;

@@ -1453,10 +1453,7 @@ static int _connection_free(connection_t *conn)
 	/*
 	 *	Explicitly cancel any pending events
 	 */
-	if (!fr_cond_assert_msg(fr_timer_delete(&conn->ev) == 0, "failed deleting connection timer")) {
-		return -1;
-	}
-
+	FR_TIMER_DELETE_RETURN(&conn->ev);
 	/*
 	 *	Don't allow the connection to be
 	 *	arbitrarily freed by a callback.
