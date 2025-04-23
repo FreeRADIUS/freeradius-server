@@ -1,8 +1,8 @@
-= Using radsniff
+= Radsniff
 
 The radsniff tool is extremely useful for debugging RADIUS packet flows, either by monitoring the live network interfaces or by processing a PCAP-based traffic dump.
 
-To see the different switches that can be used, see the xref:reference:man/radsniff.adoc[radsniff] man page included with this documentation.
+See the xref:reference:man/radsniff.adoc[radsniff] man page for more details.
 
 == Packet capture processing
 

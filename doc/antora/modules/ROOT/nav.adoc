@@ -1,7 +1,7 @@
 * xref:index.adoc[Introduction]
 ** xref:getstarted.adoc[Getting Started]
 *** xref:debugging/radiusd_X.adoc[Debugging]
-*** xref:debugging/startup.adoc[Startup]
+*** xref:debugging/startup.adoc[Startup ]
 *** xref:debugging/processing.adoc[Processing Packets]
 *** xref:gethelp.adoc[Getting Help]
 ** xref:bestpractices.adoc[Best Practices]

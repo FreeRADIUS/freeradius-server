@@ -15,9 +15,9 @@ Monitoring is organized into the following sections:
 
 Checking the running service can include the following:
 
-* Ensuring the daemon is still running, i.e. process monitoring
-* Sending regular RADIUS authentication or accounting requests and checking they are correctly responded to
-* Sending Status-Server RADIUS requests
+* Ensuring the daemon is still running, i.e. process monitoring.
+* Sending regular RADIUS authentication or accounting requests and checking they are correctly responded to.
+* Sending Status-Server RADIUS requests.
 
 Within a proxy environment FreeRADIUS needs to know if upstream
 proxies are available. It can do this itself by issuing request as outlined in the options above.
@@ -38,9 +38,9 @@ FreeRADIUS server.
 FreeRADIUS has many options for being able to generate and store
 logs, including the following:
 
-* Main daemon logging, configured in xref:reference:raddb/radiusd.conf.adoc[`radiusd.conf`]
-* Line-based text logging, using xref:reference:raddb/mods-available/linelog.adoc[`rlm_linelog`]
-* Detailed RADIUS packet logs, using xref:reference:raddb/mods-available/detail.adoc[`rlm_detail`]
+* Main daemon logging, configured in xref:reference:raddb/radiusd.conf.adoc[`radiusd.conf`].
+* Line-based text logging, using xref:reference:raddb/mods-available/linelog.adoc[`rlm_linelog`].
+* Detailed RADIUS packet logs, using xref:reference:raddb/mods-available/detail.adoc[`rlm_detail`].
 
 As well as recording direct to disk, the options above can be sent via a
 local syslog server, which opens up many opportunities for central
@@ -49,9 +49,9 @@ logging.
 It is possible to integrate FreeRADIUS into other more complicated
 logging systems, some options may include:
 
-* To CSV files, for example via xref:reference:raddb/mods-available/linelog.adoc[`rlm_linelog`]
-* Writing entries to an SQL database using xref:reference:raddb/mods-available/sql.adoc[`rlm_sql`]
-* Into a log management system such as Elasticsearch or Graylog
+* To CSV files, for example via xref:reference:raddb/mods-available/linelog.adoc[`rlm_linelog`].
+* Writing entries to an SQL database using xref:reference:raddb/mods-available/sql.adoc[`rlm_sql`].
+* Into a log management system such as Elasticsearch or Graylog.
 
 
 == Statistics gathering
@@ -62,5 +62,5 @@ for trend analysis, as well as an indication of system operation.
 
 Statistics are usually gathered in two ways:
 
-* FreeRADIUS xref:monitoring/statistics.adoc[internal statistics]
-* Analysing logs with some external tool
+* FreeRADIUS xref:optimization/monitoring/statistics.adoc[internal statistics].
+* Analyzing logs with some external tool.

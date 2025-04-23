@@ -1,7 +1,9 @@
-= Using radclient
+= Radclient
 
-Policy issues for basic authentication protocols such as PAP, CHAP and MSCHAP, as well as for accounting and CoA/Disconnect requests, can be investigated using the radclient command whilst the server is in debug mode.
-Firstly, create an authentication packet definition by specifying its attributes. For example:
+Policy issues for basic authentication protocols such as PAP, CHAP and MSCHAP, as well as for accounting and CoA/Disconnect requests, can be investigated using the radclient command while the server is in debug mode.
+First, create an authentication packet definition by specifying its attributes. See the xref:reference:man/radclient.adoc[radclient] man page for more details.
+
+For example:
 
 ```
 nwkrad@radius-fe-01$ cat <<EOF > auth_request.txt

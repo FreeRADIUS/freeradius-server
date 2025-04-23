@@ -1,4 +1,4 @@
-= Server statistics
+= Server Statistics
 
 FreeRADIUS collects statistics internally about certain operations
 it is doing, such as the number of authentication and accounting
@@ -6,7 +6,7 @@ requests, how many accepts and failures, and server queue lengths.
 These can be queried by sending a specially-crafted RADIUS
 `Status-Server` packet to a "status" virtual server.
 
-== Configuring the status virtual server
+== Configure the status virtual server
 
 The `status` virtual server is present in the default
 configuration, but needs to be enabled before it can be used. To
@@ -37,7 +37,7 @@ local host only.
 Having enabled and configured the status server, restart
 FreeRADIUS to make it active.
 
-== Querying the server
+== Query the server
 
 To get the current statistics from the server, send a RADIUS
 request of type `Status-Server` to the status port. Unless edited
