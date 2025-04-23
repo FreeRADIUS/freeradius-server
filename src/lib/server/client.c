@@ -438,8 +438,6 @@ static const conf_parser_t client_config[] = {
 
 	{ FR_CONF_OFFSET("nas_type", fr_client_t, nas_type) },
 
-	{ FR_CONF_OFFSET("track_connections", fr_client_t, use_connected) },
-
 	{ FR_CONF_OFFSET_IS_SET("require_message_authenticator", FR_TYPE_UINT32, 0, fr_client_t, require_message_authenticator),
 	  .func = cf_table_parse_int,
 	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_radius_require_ma_table, .len = &fr_radius_require_ma_table_len },
