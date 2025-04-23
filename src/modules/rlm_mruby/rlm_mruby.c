@@ -31,6 +31,17 @@ RCSID("$Id$")
 
 #include "rlm_mruby.h"
 
+typedef struct {
+	char const	*function_name;	//!< Name of the function being called
+	char		*name1;		//!< Section name1 where this is called
+	char		*name2;		//!< Section name2 where this is called
+	fr_rb_node_t	node;		//!< Node in tree of function calls.
+} mruby_func_def_t;
+
+typedef struct {
+	mruby_func_def_t	*func;
+} mruby_call_env_t;
+
 /*
  *	Define a structure for our module configuration.
  *
@@ -41,6 +52,9 @@ RCSID("$Id$")
 typedef struct {
 	char const *filename;
 	char const *module_name;
+
+	fr_rb_tree_t	funcs;			//!< Tree of function calls found by call_env parser.
+	bool		funcs_init;		//!< Has the tree been initialised.
 
 	mrb_state *mrb;
 
@@ -57,6 +71,22 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("module", rlm_mruby_t, module_name), .dflt = "Radiusd" },
 	CONF_PARSER_TERMINATOR
 };
+
+/** How to compare two Ruby function calls
+ *
+ */
+static int8_t mruby_func_def_cmp(void const *one, void const *two)
+{
+	mruby_func_def_t const *a = one, *b = two;
+	int ret;
+
+	ret = strcmp(a->name1, b->name1);
+	if (ret != 0) return CMP(ret, 0);
+	if (!a->name2 && !b->name2) return 0;
+	if (!a->name2 || !b->name2) return a->name2 ? 1 : -1;
+	ret = strcmp(a->name2, b->name2);
+	return CMP(ret, 0);
+}
 
 static mrb_value mruby_log(mrb_state *mrb, UNUSED mrb_value self)
 {
@@ -403,9 +433,10 @@ static inline int mruby_set_vps(request_t *request, mrb_state *mrb, mrb_value mr
 	return 0;
 }
 
-static unlang_action_t CC_HINT(nonnull) do_mruby(rlm_rcode_t *p_result, request_t *request, rlm_mruby_t const *inst,
-						 char const *function_name)
+static unlang_action_t CC_HINT(nonnull) mod_mruby(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
+	rlm_mruby_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_mruby_t);
+	mruby_call_env_t	*func = talloc_get_type_abort(mctx->env_data, mruby_call_env_t);
 	mrb_state *mrb = inst->mrb;
 	mrb_value mruby_request, mruby_result;
 
@@ -418,7 +449,7 @@ static unlang_action_t CC_HINT(nonnull) do_mruby(rlm_rcode_t *p_result, request_
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(class-varargs)
-	mruby_result = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), function_name, 1, mruby_request);
+	mruby_result = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), func->func->function_name, 1, mruby_request);
 DIAG_ON(class-varargs)
 DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
@@ -457,8 +488,8 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 				RETURN_MODULE_FAIL;
 			}
 
-			add_vp_tuple(request->reply_ctx, request, &request->reply_pairs, mrb, mrb_ary_entry(mruby_result, 1), function_name);
-			add_vp_tuple(request->control_ctx, request, &request->control_pairs, mrb, mrb_ary_entry(mruby_result, 2), function_name);
+			add_vp_tuple(request->reply_ctx, request, &request->reply_pairs, mrb, mrb_ary_entry(mruby_result, 1), func->func->function_name);
+			add_vp_tuple(request->control_ctx, request, &request->control_pairs, mrb, mrb_ary_entry(mruby_result, 2), func->func->function_name);
 			RETURN_MODULE_RCODE((rlm_rcode_t)mrb_int(mrb, mrb_ary_entry(mruby_result, 0)));
 
 		default:
@@ -467,22 +498,6 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 			RETURN_MODULE_FAIL;
 	}
 }
-
-
-#define RLM_MRUBY_FUNC(foo) static unlang_action_t CC_HINT(nonnull) mod_##foo(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
-	{ \
-		return do_mruby(p_result, \
-			       request,	\
-			       (rlm_mruby_t const *)mctx->mi->data, \
-			       #foo); \
-	}
-
-RLM_MRUBY_FUNC(authorize)
-RLM_MRUBY_FUNC(authenticate)
-RLM_MRUBY_FUNC(post_auth)
-RLM_MRUBY_FUNC(preacct)
-RLM_MRUBY_FUNC(accounting)
-
 
 /*
  *	Only free memory we allocated.  The strings allocated via
@@ -496,6 +511,79 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 
 	return 0;
 }
+
+/*
+ *	Restrict automatic Ruby function names to lowercase characters, numbers and underscore
+ *	meaning that a module call in `recv Access-Request` will look for `recv_access_request`
+ */
+static void mruby_func_name_safe(char *name) {
+	char	*p;
+	size_t	i;
+
+	p = name;
+	for (i = 0; i < talloc_array_length(name); i++) {
+		*p = tolower(*p);
+		if (!strchr("abcdefghijklmnopqrstuvwxyz1234567890", *p)) *p = '_';
+		p++;
+	}
+}
+
+static int mruby_func_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, UNUSED tmpl_rules_t const *t_rules,
+			    UNUSED CONF_ITEM *ci, call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
+{
+	rlm_mruby_t		*inst = talloc_get_type_abort(cec->mi->data, rlm_mruby_t);
+	call_env_parsed_t	*parsed;
+	mruby_func_def_t	*func;
+	void			*found;
+
+	if (!inst->funcs_init) {
+		fr_rb_inline_init(&inst->funcs, mruby_func_def_t, node, mruby_func_def_cmp, NULL);
+		inst->funcs_init = true;
+	}
+
+	MEM(parsed = call_env_parsed_add(ctx, out,
+					 &(call_env_parser_t){
+						.name = "func",
+						.flags = CALL_ENV_FLAG_PARSE_ONLY,
+						.pair = {
+							.parsed = {
+								.offset = rule->pair.offset,
+								.type = CALL_ENV_PARSE_TYPE_VOID
+							}
+						}
+					}));
+
+	MEM(func = talloc_zero(inst, mruby_func_def_t));
+	func->name1 = talloc_strdup(func, cec->asked->name1);
+	mruby_func_name_safe(func->name1);
+	if (cec->asked->name2) {
+		func->name2 = talloc_strdup(func, cec->asked->name2);
+		mruby_func_name_safe(func->name2);
+	}
+	if (fr_rb_find_or_insert(&found, &inst->funcs, func) < 0) {
+		talloc_free(func);
+		return -1;
+	}
+
+	/*
+	*	If the function call is already in the tree, use that entry.
+	*/
+	if (found) {
+		talloc_free(func);
+		call_env_parsed_set_data(parsed, found);
+	} else {
+		call_env_parsed_set_data(parsed, func);
+	}
+	return 0;
+}
+
+static const call_env_method_t mruby_method_env = {
+	FR_CALL_ENV_METHOD_OUT(mruby_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_SUBSECTION_FUNC(CF_IDENT_ANY, CF_IDENT_ANY, CALL_ENV_FLAG_PARSE_MISSING, mruby_func_parse) },
+		CALL_ENV_TERMINATOR
+	}
+};
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -519,17 +607,7 @@ module_rlm_t rlm_mruby = {
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
-			/*
-			 *	Hack to support old configurations
-			 */
-			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting	},
-			{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate },
-			{ .section = SECTION_NAME("authorize", CF_IDENT_ANY), .method = mod_authorize },
-
-			{ .section = SECTION_NAME("recv", "accounting-request"), .method = mod_preacct },
-			{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize },
-
-			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth },
+			{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_mruby, .method_env = &mruby_method_env },
 			MODULE_BINDING_TERMINATOR
 		}
 	}
