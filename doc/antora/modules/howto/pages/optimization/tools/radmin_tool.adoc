@@ -1,6 +1,6 @@
-= Using radmin
+= Radmin
 
-It's possible to retrieve debug logs from FreeRADIUS while it is running in normal multi-threaded mode by using the radmin tool. This has the benefit of not interrupting the normal operations of FreeRADIUS server. It also allows for selective logging of packets which match a specified criteria.
+It's possible to retrieve debug logs from FreeRADIUS while it is running in normal multi-threaded mode by using the radmin tool. This has the benefit of not interrupting the normal operations of FreeRADIUS server. It also allows for selective logging of packets which match a specified criteria. See the xref:reference:man/radmin.adoc[radmin] man page for more details.
 
 == Getting Started
 
