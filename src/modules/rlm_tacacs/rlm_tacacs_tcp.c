@@ -60,8 +60,6 @@ typedef struct {
 
 	bool			recv_buff_is_set;	//!< Whether we were provided with a recv_buf
 	bool			send_buff_is_set;	//!< Whether we were provided with a send_buf
-
-	trunk_conf_t		*trunk_conf;		//!< trunk configuration
 } rlm_tacacs_tcp_t;
 
 typedef struct {
@@ -69,6 +67,7 @@ typedef struct {
 
 	rlm_tacacs_tcp_t const	*inst;			//!< our instance
 
+	trunk_conf_t		trunk_conf;		//!< trunk configuration
 	trunk_t		*trunk;			//!< trunk handler
 } udp_thread_t;
 
@@ -1443,26 +1442,11 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 						.request_free = request_free
 					};
 
-	inst->trunk_conf = &inst->parent->trunk_conf;
-
-	inst->trunk_conf->req_pool_headers = 2;	/* One for the request, one for the buffer */
-	inst->trunk_conf->req_pool_size = sizeof(udp_request_t) + inst->max_packet_size;
-
 	thread->el = mctx->el;
 	thread->inst = inst;
 	thread->trunk = trunk_alloc(thread, mctx->el, &io_funcs,
-				       inst->trunk_conf, inst->parent->name, thread, false);
+				    &inst->parent->trunk_conf, inst->parent->name, thread, false);
 	if (!thread->trunk) return -1;
-
-	/*
-	 *	Empty secrets don't exist
-	 */
-	if (inst->secret && !*inst->secret) {
-		talloc_const_free(inst->secret);
-		inst->secret = NULL;
-	}
-
-	if (inst->secret) inst->secretlen = talloc_array_length(inst->secret) - 1;
 
 	return 0;
 }
@@ -1537,6 +1521,16 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		FR_INTEGER_BOUND_CHECK("send_buff", inst->send_buff, <=, (1 << 30));
 	}
 
+
+	/*
+	 *	Empty secrets don't exist
+	 */
+	if (inst->secret && !*inst->secret) {
+		talloc_const_free(inst->secret);
+		inst->secret = NULL;
+	}
+
+	if (inst->secret) inst->secretlen = talloc_array_length(inst->secret) - 1;
 
 	return 0;
 }
