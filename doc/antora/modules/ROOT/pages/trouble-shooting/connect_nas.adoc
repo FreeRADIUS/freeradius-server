@@ -38,19 +38,21 @@ FreeRADIUS uses winbind to authenticate users against Microsoft Active Directory
 During fast re-authentication, the TLS session cache is used to resume a previous session without having to log in again. In this scenario, some users or devices seem to authenticate successfully but fails for others. In reality, all AD-based user authentication is failing.
 
 
-=== Testing winbind authentication
+=== Test authentication
 
-*Method 1: Cleartext password*
+To determine any authentication issues, you first need to test and ensure that basic authentication is working. After a successful Cleartext password authentication, use `winbind` commands to verify the Challenge/Response authentication methods.
 
-`su -s /bin/bash - {freeradius_user}`
+*Method 1: Test basic authentication with cleartext password*
+
+`wbinfo -a '<domain|realm>\<user>'%'<password>'`
 
 The response indicates “NetworkCleartext” authentication was successful. This type of authentication involves sending LM-Password and NT-Password hashes for immediate verification.
 
 `plaintext password authentication succeeded`
 
-*Method 2: Challenge/Response using NTLMv2*
+*Method 2: Test Challenge/Response authentication with NTLMv2*
 
-`wbinfo -a '<domain|realm>\<user>'%'<password>'`
+`wbinfo -ntlmv2 -a '<domain|realm>\<user>'%'<password>'`
 
 The response shows a successful challenge/response for NTLM authentication. The default setting `MSV1_0_ALLOW_MSVCHAPV2` flag is used in the request. The flag indicates that the payload is for MS-CHAPv2 purposes.
 
@@ -73,16 +75,13 @@ By default, The `mschap` module is configured to invoke the `ntlm_auth` helper p
 If the `mschap` module is configured to  use `libwbclient` directly then changes are not necessary. The `MSV1_0_ALLOW_MSVCHAPV2` flag is set by default in `libwbclient`.
 
 [NOTE]
-
 ====
-
 Samba and other documentation sources refer to the `--allow-mschapv2` and `--ntlmv2` (default) arguments to `ntlm_auth` and `wbinfo` (respectively) as using NTLMv2. This is misleading. The authentication is still NTLMv1, just with the `MSV1_0_ALLOW_MSVCHAPV2` flag set in the payload.
-
 ====
 
 === Error messages
 
-An error response returns if any of the `wbinfo` commands are unsuccessful. Also, winbind sends runtime logs to syslog as well as to /var/log/samba/log.winbindd.
+An error response returns if any of the `wbinfo` commands are unsuccessful. Also, winbind sends runtime logs to syslog as well as to `/var/log/samba/log.winbindd`.
 
 [cols="autowidth"]
 |===
@@ -109,11 +108,18 @@ An error response returns if any of the `wbinfo` commands are unsuccessful. Also
 
 If the winbind service is failing, you need to investigate the cause and restart it. If winbind still can’t authenticate users, it may be an AD connection issue or a configuration problem.
 
-For instance, the trust relationship between the local machine and AD is no longer valid. Verify the trust relationship by entering the command:
+[NOTE]
+====
+To administer Samba servers/clients, e.g. verify network connections or workgroups, you must install the https://www.samba.org/~ab/output/htmldocs/manpages-3/net.8.html[Samba `net`] tool.
+====
 
-`radius_server# net ads testjoin`
+For instance, the trust relationship between the local machine and AD
+is no longer valid. Verify the trust relationship by entering the
+command:
 
-Success message indicates that the trust is still valid.
+`$ net ads testjoin`
+
+A success message indicates that the trust is still valid:
 
 `Join is OK`
 
@@ -123,20 +129,11 @@ Verify the connection to a Domain Controller for the Active Directory with the f
 |===
 |Command|Result
 
-|`# su -s /bin/bash - {freeradius_user}`
-|`checking the NETLOGON for domain <domain> dc connection to \`
+|`net ads testjoin`
+|`checking the NETLOGON for domain <domain> dc connection to "<domain-controller-fqdn>" succeeded`
 
-|`# su -s /bin/bash - {freeradius_user}`
-|`checking the NETLOGON for domain <domain> dc connection to \
- "<domain-controller-fqdn>" succeeded`
-
-|`$ wbinfo -p --ping-dc -t --online-status`
+|`wbinfo -p --ping-dc -t --online-status`
 |`Ping to winbindd succeeded`
-
-|`checking the trust secret for domain <domain> via RPC calls succeeded`
-|`BUILTIN : active connection
-    {{ radius_host \| upper }} : active connection
-    {{ domain }} : active connection`
 
 |===
 
