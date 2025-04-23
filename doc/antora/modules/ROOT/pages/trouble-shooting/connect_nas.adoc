@@ -38,9 +38,11 @@ FreeRADIUS uses winbind to authenticate users against Microsoft Active Directory
 During fast re-authentication, the TLS session cache is used to resume a previous session without having to log in again. In this scenario, some users or devices seem to authenticate successfully but fails for others. In reality, all AD-based user authentication is failing.
 
 
-=== Testing winbind authentication
+=== Test authentication
 
-*Method 1: Cleartext password*
+To determine any authentication issues, you first need to test and ensure that basic authentication is working. After a successful Cleartext password authentication, use `winbind` commands to verify the Challenge/Response authentication methods.
+
+*Method 1: Test basic authentication with cleartext password*
 
 `su -s /bin/bash - {freeradius_user}`
 
@@ -48,7 +50,7 @@ The response indicates “NetworkCleartext” authentication was successful. Thi
 
 `plaintext password authentication succeeded`
 
-*Method 2: Challenge/Response using NTLMv2*
+*Method 2: Test Challenge/Response authentication with NTLMv2*
 
 `wbinfo -a '<domain|realm>\<user>'%'<password>'`
 
@@ -73,11 +75,8 @@ By default, The `mschap` module is configured to invoke the `ntlm_auth` helper p
 If the `mschap` module is configured to  use `libwbclient` directly then changes are not necessary. The `MSV1_0_ALLOW_MSVCHAPV2` flag is set by default in `libwbclient`.
 
 [NOTE]
-
 ====
-
 Samba and other documentation sources refer to the `--allow-mschapv2` and `--ntlmv2` (default) arguments to `ntlm_auth` and `wbinfo` (respectively) as using NTLMv2. This is misleading. The authentication is still NTLMv1, just with the `MSV1_0_ALLOW_MSVCHAPV2` flag set in the payload.
-
 ====
 
 === Error messages
@@ -108,6 +107,11 @@ An error response returns if any of the `wbinfo` commands are unsuccessful. Also
 ==== Checks and Validations
 
 If the winbind service is failing, you need to investigate the cause and restart it. If winbind still can’t authenticate users, it may be an AD connection issue or a configuration problem.
+
+[NOTE]
+====
+To administer Samba servers/clients e.g. verify network connections or workgroups, you must install the https://www.samba.org/~ab/output/htmldocs/manpages-3/net.8.html[Samba `net`] tool.
+====
 
 For instance, the trust relationship between the local machine and AD is no longer valid. Verify the trust relationship by entering the command:
 
