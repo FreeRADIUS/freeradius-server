@@ -416,6 +416,8 @@ static int8_t python_func_def_cmp(void const *one, void const *two)
 
 	ret = strcmp(a->name1, b->name1);
 	if (ret != 0) return CMP(ret, 0);
+	if (!a->name2 && !b->name2) return 0;
+	if (!a->name2 || !b->name2) return a->name2 ? 1 : -1;
 	ret = strcmp(a->name2, b->name2);
 	return CMP(ret, 0);
 }
