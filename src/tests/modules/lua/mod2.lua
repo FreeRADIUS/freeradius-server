@@ -1,4 +1,4 @@
-function authorize()
+function recv()
 	if not type(fr.rcode) == "table" then
 		print("error: The 'fr.rcode.{}' should be table")
 		return fr.rcode.fail
