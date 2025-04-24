@@ -1647,7 +1647,7 @@ static int server_pool_add(realm_config_t *rc,
 
 		if (home->affinity) {
 			if (home->virtual_server) {
-				ERROR("Home server %s is a virtual server, and cannot be used with 'affinity'", home->name);				
+				ERROR("Home server %s is a virtual server, and cannot be used with 'affinity'", home->name);
 				goto error;
 			}
 
@@ -1671,7 +1671,7 @@ static int server_pool_add(realm_config_t *rc,
 				goto error;
 			}
 
-			pool->affinity_group[home->affinity] = home;			
+			pool->affinity_group[home->affinity] = home;
 		}
 
 		if (do_print) cf_log_info(cs, "\thome_server = %s", home->name);
@@ -1680,7 +1680,7 @@ static int server_pool_add(realm_config_t *rc,
 
 	if (pool->fallback) {
 		if (do_print) cf_log_info(cs, "\tfallback = %s", pool->fallback->name);
-			
+
 		if (pool->affinity_group) {
 			ERROR("Cannot use home server pool 'fallback' when home server 'affinity' is set");
 			goto error;
@@ -2826,7 +2826,7 @@ home_server_t *home_server_ldb(char const *realmname,
 	    (vp->vp_length > 1) &&
 	    (vp->vp_octets[0] < (uint32_t) pool->num_home_servers) &&
 	    (pool->affinity_group[vp->vp_octets[0]] != NULL)) {
-		    found = pool->affinity_group[vp->vp_octets[0]];		    
+		    found = pool->affinity_group[vp->vp_octets[0]];
 
 		    if (HOME_SERVER_IS_DEAD(found)) return NULL;
 
