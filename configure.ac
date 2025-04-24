@@ -39,6 +39,7 @@ dnl #############################################################
 RADIUSD_VERSION_MAJOR=`./version.sh major`
 RADIUSD_VERSION_MINOR=`./version.sh minor`
 RADIUSD_VERSION_INCRM=`./version.sh commit_depth`
+RADIUSD_DOC_VERSION=`grep version doc/antora/antora.yml | sed "s/version: '//;s/'//"`
 
 dnl #  To handle tarballs and GitHub downloads, we can also put the incremental
 dnl #  patch number in VERSION, or it gets set to FFFF.
@@ -61,11 +62,14 @@ AC_DEFINE_UNQUOTED([RADIUSD_VERSION], [${RADIUSD_VERSION}], [Version integer in 
 AC_DEFINE_UNQUOTED([RADIUSD_VERSION_MAJOR], [${RADIUSD_VERSION_MAJOR}], [Version integer in format <ma>])
 AC_DEFINE_UNQUOTED([RADIUSD_VERSION_MINOR], [${RADIUSD_VERSION_MINOR}], [Version integer in format <mi>])
 AC_DEFINE_UNQUOTED([RADIUSD_VERSION_INCRM], [${RADIUSD_VERSION_INCRM}], [Version integer in format <in>])
+AC_DEFINE_UNQUOTED([RADIUSD_DOC_VERSION], [${RADIUSD_DOC_VERSION}], [Version string used in the online documentation])
 
 AC_SUBST(RADIUSD_VERSION)
 AC_SUBST(RADIUSD_VERSION_MAJOR)
 AC_SUBST(RADIUSD_VERSION_MINOR)
 AC_SUBST(RADIUSD_VERSION_INCRM)
+AC_SUBST(RADIUSD_DOC_VERSION)
+
 
 dnl #############################################################
 dnl #

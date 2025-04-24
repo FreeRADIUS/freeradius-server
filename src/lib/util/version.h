@@ -84,6 +84,10 @@ extern "C" {
 #  define MAGIC_COMMIT(_x)	((uint32_t)((0x00000000ffffffff & (_x))))
 #endif
 
+#define DOC_ROOT_URL "https://www.freeradius.org/documentation/freeradius-server/" STRINGIFY(RADIUSD_DOC_VERSION)
+#define DOC_KEYWORD_URL(_x) DOC_ROOT_URL "/" STRINGIFY(_x) ".html"
+#define DOC_KEYWORD_REF(_x) "For more information, please see " DOC_KEYWORD_URL(_x)
+
 /*
  *	Version check.
  */

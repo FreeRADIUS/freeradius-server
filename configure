@@ -727,6 +727,7 @@ PANDOC_ENGINE
 PANDOC
 ASCIIDOCTOR
 GIT
+RADIUSD_DOC_VERSION
 RADIUSD_VERSION_INCRM
 RADIUSD_VERSION_MINOR
 RADIUSD_VERSION_MAJOR
@@ -2849,6 +2850,7 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 RADIUSD_VERSION_MAJOR=`./version.sh major`
 RADIUSD_VERSION_MINOR=`./version.sh minor`
 RADIUSD_VERSION_INCRM=`./version.sh commit_depth`
+RADIUSD_DOC_VERSION=`grep version doc/antora/antora.yml | sed "s/version: '//;s/'//"`
 
 if test "x$RADIUSD_VERSION_INCRM" = "x"; then
 	RADIUSD_VERSION_INCRM=`./version.sh incrm`
@@ -2874,6 +2876,11 @@ printf "%s\n" "#define RADIUSD_VERSION_MINOR ${RADIUSD_VERSION_MINOR}" >>confdef
 
 
 printf "%s\n" "#define RADIUSD_VERSION_INCRM ${RADIUSD_VERSION_INCRM}" >>confdefs.h
+
+
+printf "%s\n" "#define RADIUSD_DOC_VERSION ${RADIUSD_DOC_VERSION}" >>confdefs.h
+
+
 
 
 
