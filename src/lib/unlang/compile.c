@@ -4625,6 +4625,16 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		return NULL;
 	}
 
+	if (m->mmc.rlm->common.dict &&
+	    !fr_dict_compatible(*m->mmc.rlm->common.dict, unlang_ctx->rules->attr.dict_def)) {
+		cf_log_err(ci, "The '%s' module can only be used within a '%s' namespace.",
+			   m->mmc.rlm->common.name, fr_dict_root(*m->mmc.rlm->common.dict)->name);
+		cf_log_err(ci, "Please use the 'subrequest' keyword to change namespaces");
+		cf_log_err(ci, DOC_KEYWORD_REF(subrequest));
+		talloc_free(m);
+		return NULL;
+	}
+
 	c = unlang_module_to_generic(m);
 	c->parent = parent;
 	c->next = NULL;

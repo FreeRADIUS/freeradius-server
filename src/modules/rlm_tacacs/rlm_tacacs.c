@@ -258,6 +258,7 @@ module_rlm_t rlm_tacacs = {
 		.name		= "tacacs",
 		.inst_size	= sizeof(rlm_tacacs_t),
 		.config		= module_config,
+		.dict		= &dict_tacacs,
 
 		.onload		= mod_load,
 		.unload		= mod_unload,

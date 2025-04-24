@@ -1067,6 +1067,7 @@ module_rlm_t rlm_radius = {
 		.name		= "radius",
 		.inst_size	= sizeof(rlm_radius_t),
 		.config		= module_config,
+		.dict		= &dict_radius,
 
 		.onload		= mod_load,
 		.unload		= mod_unload,

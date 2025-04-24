@@ -196,6 +196,7 @@ struct module_s {
 	DL_MODULE_COMMON;					//!< Common fields for all loadable modules.
 
 	conf_parser_t const		*config;		//!< How to convert a CONF_SECTION to a module instance.
+	fr_dict_t const			**dict;			//!< _required_ dictionary for this module.
 
 	size_t				boot_size;		//!< Size of the module's bootstrap data.
 	char const			*boot_type;		//!< talloc type to assign to bootstrap data.
