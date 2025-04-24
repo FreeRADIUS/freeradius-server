@@ -605,7 +605,10 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		ret = fr_value_box_from_str(tmp_ctx, &tmp, src_type, NULL,
 					    result, (size_t)slen,
 					    NULL);
-		if (ret < 0) goto error;
+		if (ret < 0) {
+			RPEDEBUG("Failed parsing %.*s", (int) slen, result);
+			goto error;
+		}
 
 		fr_value_box_bstrndup_shallow(&value, NULL, tmp.vb_strvalue, tmp.vb_length, tmp.tainted);
 		to_cast = &value;
@@ -635,7 +638,10 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		ret = fr_value_box_from_str(tmp_ctx, &tmp, src_type, NULL,
 					    result, (size_t)slen,
 					    NULL);
-		if (ret < 0) goto error;
+		if (ret < 0) {
+			RPEDEBUG("Failed parsing %.*s", (int) slen, result);
+			goto error;
+		}
 
 		fr_value_box_bstrndup_shallow(&value, NULL, tmp.vb_strvalue, tmp.vb_length, tmp.tainted);
 		to_cast = &value;
@@ -647,6 +653,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 		ret = tmpl_find_vp(&vp, request, vpt);
 		if (ret < 0) {
+			RDEBUG("Failed finding attribute %s", vpt->name);
 			talloc_free(tmp_ctx);
 			return -2;
 		}
