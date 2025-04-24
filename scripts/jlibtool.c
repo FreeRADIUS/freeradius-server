@@ -2776,6 +2776,7 @@ static int run_mode(command_t *cmd)
 
 		if ((strcmp(q, "gdb") == 0) || (strcmp(q, "lldb") == 0)) {
 			setenv("DEBUGGER_ATTACHED", "yes", 1);
+			if (isatty(STDIN_FILENO)) cmd->timeout = 0;
 		}
 
 		rv = run_command(cmd, cmd->arglist);
