@@ -2375,6 +2375,7 @@ static unlang_t *compile_transaction(unlang_t *parent, unlang_compile_t *unlang_
 
 	if (cf_section_name2(cs) != NULL) {
 		cf_log_err(cs, "Unexpected argument to 'transaction' section");
+		cf_log_err(ci, DOC_KEYWORD_REF(transaction));
 		return NULL;
 	}
 
@@ -2434,12 +2435,14 @@ static unlang_t *compile_try(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	 */
 	if (!cf_item_next(cs, NULL)) {
 		cf_log_err(cs, "'try' sections cannot be empty");
+	print_url:
+		cf_log_err(ci, DOC_KEYWORD_REF(try));
 		return NULL;
 	}
 
 	if (cf_section_name2(cs) != NULL) {
 		cf_log_err(cs, "Unexpected argument to 'try' section");
-		return NULL;
+		goto print_url;
 	}
 
 	next = cf_item_next(cf_parent(cs), ci);
@@ -2448,7 +2451,7 @@ static unlang_t *compile_try(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	if (!next || !cf_item_is_section(next) ||
 	    (strcmp(cf_section_name1(cf_item_to_section(next)), "catch") != 0)) {
 		cf_log_err(cs, "'try' sections must be followed by a 'catch'");
-		return NULL;
+		goto print_url;
 	}
 
 	g = group_allocate(parent, cs, &ext);
@@ -2502,6 +2505,8 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	if (!prev || !cf_item_is_section(prev)) {
 	fail:
 		cf_log_err(cs, "Found 'catch' section with no previous 'try'");
+	print_url:
+		cf_log_err(ci, DOC_KEYWORD_REF(catch));
 		return NULL;
 	}
 
@@ -2514,7 +2519,7 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 		name = cf_section_name2(cs);
 		if (!name || (strcmp(name, "timeout") != 0)) {
 			cf_log_err(cs, "Invalid 'catch' after a 'timeout' section");
-			return NULL;
+			goto print_url;
 		}
 
 		/*
@@ -2526,12 +2531,9 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 		if (next && cf_item_is_section(next) &&
 		    (strcmp(cf_section_name1(cf_item_to_section(next)), "catch") == 0)) {
 			cf_log_err(next, "Cannot have two 'catch' statements after a 'timeout' section");
-			return NULL;
+			goto print_url;
 		}
 
-		/*
-		 *	We comp
-		 */
 		catching_timeout = true;
 
 	} else if ((strcmp(name, "try") != 0) && (strcmp(name, "catch") != 0)) {
@@ -2649,6 +2651,8 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
 		cf_log_err(cs, "You must specify a variable to switch over for 'switch'");
+	print_url:
+		cf_log_err(ci, DOC_KEYWORD_REF(switch));
 		return NULL;
 	}
 
@@ -2696,14 +2700,15 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	checks / casts against us.
 	 */
 	if (!pass2_fixup_tmpl(g, &gext->vpt, cf_section_to_item(cs), unlang_ctx->rules->attr.dict_def)) {
-	error:
 		talloc_free(g);
 		return NULL;
 	}
 
 	if (tmpl_is_list(gext->vpt)) {
 		cf_log_err(cs, "Cannot use list for 'switch' statement");
-		goto error;
+	error:
+		talloc_free(g);
+		goto print_url;
 	}
 
 	if (tmpl_contains_regex(gext->vpt)) {
@@ -2759,7 +2764,8 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 				  NULL);
 	if (!gext->ht) {
 		cf_log_err(cs, "Failed initializing internal data structures");
-		goto error;
+		talloc_free(g);
+		return NULL;
 	}
 
 	/*
@@ -2873,6 +2879,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 	if (!parent || (parent->type != UNLANG_TYPE_SWITCH)) {
 		cf_log_err(cs, "\"case\" statements may only appear within a \"switch\" section");
+		cf_log_err(ci, DOC_KEYWORD_REF(case));
 		return NULL;
 	}
 
@@ -2997,6 +3004,8 @@ static unlang_t *compile_timeout(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	name2 = cf_section_name2(cs);
 	if (!name2) {
 		cf_log_err(cs, "You must specify a time value for 'timeout'");
+	print_url:
+		cf_log_err(ci, DOC_KEYWORD_REF(timeout));
 		return NULL;
 	}
 
@@ -3041,14 +3050,15 @@ static unlang_t *compile_timeout(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		 *	Fixup the tmpl so that we know it's somewhat sane.
 		 */
 		if (!pass2_fixup_tmpl(gext, &vpt, cf_section_to_item(cs), unlang_ctx->rules->attr.dict_def)) {
-		error:
 			talloc_free(g);
 			return NULL;
 		}
 
 		if (tmpl_is_list(vpt)) {
 			cf_log_err(cs, "Cannot use list as argument for 'timeout' statement");
-			goto error;
+		error:
+			talloc_free(g);
+			goto print_url;
 		}
 
 		if (tmpl_contains_regex(vpt)) {
@@ -3104,6 +3114,8 @@ static unlang_t *compile_limit(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	name2 = cf_section_name2(cs);
 	if (!name2) {
 		cf_log_err(cs, "You must specify a value for 'limit'");
+	print_url:
+		cf_log_err(ci, DOC_KEYWORD_REF(limit));
 		return NULL;
 	}
 
@@ -3139,14 +3151,15 @@ static unlang_t *compile_limit(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	 *	Fixup the tmpl so that we know it's somewhat sane.
 	 */
 	if (!pass2_fixup_tmpl(gext, &vpt, cf_section_to_item(cs), unlang_ctx->rules->attr.dict_def)) {
-	error:
 		talloc_free(g);
 		return NULL;
 	}
 
 	if (tmpl_is_list(vpt)) {
 		cf_log_err(cs, "Cannot use list as argument for 'limit' statement");
-		goto error;
+	error:
+		talloc_free(g);
+		goto print_url;
 	}
 
 	if (tmpl_contains_regex(vpt)) {
@@ -3167,7 +3180,7 @@ static unlang_t *compile_limit(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 		 */
 		if (tmpl_cast_set(vpt, FR_TYPE_UINT32) < 0) {
 			cf_log_perr(cs, "Failed setting cast type");
-			goto error;
+			goto syntax_error;
 		}
 	}
 
@@ -3250,7 +3263,11 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	token = cf_section_name2_quote(cs);
 	if (token != T_BARE_WORD) {
 		cf_log_err(cs, "Data being looped over in 'foreach' must be an attribute reference or dynamic expansion, not a string");
-		goto fail;
+	print_ref:
+		cf_log_err(ci, DOC_KEYWORD_REF(foreach));
+	error:
+		talloc_free(g);
+		return NULL;
 	}
 
 	slen = tmpl_afrom_substr(g, &vpt,
@@ -3260,9 +3277,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 				 &t_rules);
 	if (!vpt) {
 		cf_canonicalize_error(cs, slen, "Failed parsing argument to 'foreach'", name2);
-	fail:
-		talloc_free(g);
-		return NULL;
+		goto error;
 	}
 
 	/*
@@ -3278,13 +3293,13 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		}
 
 		if (tmpl_attr_tail_num(vpt) != NUM_ALL) {
-			cf_log_err(cs, "MUST NOT use instance selectors in 'foreach'");
-			goto fail;
+			cf_log_err(cs, "Attribute references must be of the form ...%s[*]", tmpl_attr_tail_da(vpt)->name);
+			goto print_ref;
 		}
 
 	} else if (!tmpl_contains_xlat(vpt)) {
-		cf_log_err(cs, "Invalid contents in 'foreach (...)', it must be an attribute reference or a dynamic expansion");
-		goto fail;
+		cf_log_err(cs, "Invalid content in 'foreach (...)', it must be an attribute reference or a dynamic expansion");
+		goto print_ref;
 	}
 
 	gext = unlang_group_to_foreach(g);
@@ -3324,7 +3339,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	if (tmpl_is_xlat(vpt)) {
 		if (!type_name) {
 			cf_log_err(cs, "Dynamic expansions MUST specify a data type for the variable");
-			return NULL;
+			goto print_ref;
 		}
 
 		type = fr_table_value_by_str(fr_type_table, type_name, FR_TYPE_VOID);
@@ -3337,17 +3352,17 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 			if (fr_type_is_leaf(type)) goto get_name;
 
 			cf_log_err(cs, "Unable to determine return data type from dynamic expansion");
-			return NULL;
+			goto print_ref;
 		}
 
 		if (!fr_type_is_leaf(type)) {
 			cf_log_err(cs, "Dynamic expansions MUST specify a non-structural data type for the variable");
-			return NULL;
+			goto print_ref;
 		}
 
 		if ((key_type != FR_TYPE_VOID) && !fr_type_is_numeric(key_type)) {
 			cf_log_err(cs, "Invalid data type '%s' for 'key' variable - it should be numeric", fr_type_to_str(key_type));
-			return NULL;
+			goto print_ref;
 		}
 
 		goto get_name;
@@ -3356,7 +3371,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 		if ((key_type != FR_TYPE_VOID) && (key_type != FR_TYPE_STRING) && (key_type != FR_TYPE_UINT32)) {
 			cf_log_err(cs, "Invalid data type '%s' for 'key' variable - it should be 'string' or 'uint32'", fr_type_to_str(key_type));
-			return NULL;
+			goto print_ref;
 		}
 	}
 
@@ -3382,7 +3397,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		incompatible:
 			cf_log_err(cs, "Incompatible data types in foreach variable (%s), and reference %s being looped over (%s)",
 				   fr_type_to_str(type), da->name, fr_type_to_str(da->type));
-			goto fail;
+			goto print_ref;
 
 		} else if (fr_type_is_structural(type) && (type != da->type)) {
 			goto incompatible;
@@ -3395,16 +3410,16 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		 *	Define the local variables.
 		 */
 		g->variables = var = talloc_zero(g, unlang_variable_t);
-		if (!var) goto fail;
+		if (!var) goto error;
 
 		var->dict = fr_dict_protocol_alloc(unlang_ctx->rules->attr.dict_def);
-		if (!var->dict) goto fail;
+		if (!var->dict) goto error;
 
 		var->root = fr_dict_root(var->dict);
 
 		var->max_attr = 1;
 
-		if (define_local_variable(cf_section_to_item(cs), var, &t_rules, type, variable_name, da) < 0) goto fail;
+		if (define_local_variable(cf_section_to_item(cs), var, &t_rules, type, variable_name, da) < 0) goto error;
 
 		t_rules.attr.dict_def = var->dict;
 		t_rules.attr.namespace = NULL;
@@ -3419,7 +3434,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		 *	Define the local key variable.  Note that we don't copy any children.
 		 */
 		if (key_type != FR_TYPE_VOID) {
-			if (define_local_variable(cf_section_to_item(cs), var, &t_rules, key_type, key_name, NULL) < 0) goto fail;
+			if (define_local_variable(cf_section_to_item(cs), var, &t_rules, key_type, key_name, NULL) < 0) goto error;
 
 			gext->key = fr_dict_attr_by_name(NULL, var->root, key_name);
 			fr_assert(gext->key != NULL);
@@ -3448,14 +3463,15 @@ static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 		 *	affect a "foreach" loop outside of that
 		 *	policy.
 		 */
-		if (foreach->type == UNLANG_TYPE_POLICY) goto fail;
+		if (foreach->type == UNLANG_TYPE_POLICY) goto error;
 
 		if (foreach->type == UNLANG_TYPE_FOREACH) break;
 	}
 
 	if (!foreach) {
-	fail:
+	error:
 		cf_log_err(ci, "'break' can only be used in a 'foreach' section");
+		cf_log_err(ci, DOC_KEYWORD_REF(break));
 		return NULL;
 	}
 
@@ -3482,6 +3498,7 @@ static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	if (!subrequest) {
 		cf_log_err(ci, "'detach' can only be used inside of a 'subrequest' section.");
+		cf_log_err(ci, DOC_KEYWORD_REF(break));
 		return NULL;
 	}
 
@@ -3945,6 +3962,7 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 
 		} else {
 			cf_log_err(cs, "Invalid argument '%s'", name2);
+			cf_log_err(ci, DOC_KEYWORD_REF(parallel));
 			return NULL;
 		}
 
@@ -4019,6 +4037,8 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 
 	if (cf_section_name2_quote(cs) != T_BARE_WORD) {
 		cf_log_err(cs, "The arguments to 'subrequest' must be a name or an attribute reference");
+	print_url:
+		cf_log_err(ci, DOC_KEYWORD_REF(subrequest));
 		return NULL;
 	}
 
@@ -4094,7 +4114,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 				      NULL, unlang_ctx->rules);
 	if (slen <= 0) {
 		cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing packet-type");
-		return NULL;
+		goto print_url;
 	}
 
 	fr_assert(tmpl_is_attr(vpt));
@@ -4109,10 +4129,10 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 		break;
 
 	default:
+		talloc_free(vpt);
 		cf_log_err(cs, "Invalid data type for attribute %s.  "
 			   "Must be an integer type or string", name2 + 1);
-		talloc_free(vpt);
-		return NULL;
+		goto print_url;
 	}
 
 	dict = unlang_ctx->rules->attr.dict_def;
@@ -4138,7 +4158,7 @@ get_packet_type:
 		talloc_free(namespace);
 		talloc_free(vpt);
 		talloc_free(dict_ref);
-		return NULL;
+		goto print_url;
 	}
 
 	if (packet_name) {
@@ -4292,13 +4312,15 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	server = cf_section_name2(cs);
 	if (!server) {
 		cf_log_err(cs, "You MUST specify a server name for 'call <server> { ... }'");
+	print_url:
+		cf_log_err(ci, DOC_KEYWORD_REF(call));
 		return NULL;
 	}
 
 	type = cf_section_name2_quote(cs);
 	if (type != T_BARE_WORD) {
 		cf_log_err(cs, "The arguments to 'call' cannot be a quoted string or a dynamic value");
-		return NULL;
+		goto print_url;
 	}
 
 	vs = virtual_server_find(server);
@@ -4373,13 +4395,15 @@ static unlang_t *compile_caller(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	name = cf_section_name2(cs);
 	if (!name) {
 		cf_log_err(cs, "You MUST specify a protocol name for 'caller <protocol> { ... }'");
+	print_url:
+		cf_log_err(ci, DOC_KEYWORD_REF(caller));
 		return NULL;
 	}
 
 	type = cf_section_name2_quote(cs);
 	if (type != T_BARE_WORD) {
 		cf_log_err(cs, "The argument to 'caller' cannot be a quoted string or a dynamic value");
-		return NULL;
+		goto print_url;
 	}
 
 	dict = fr_dict_by_protocol_name(name);
@@ -4387,7 +4411,7 @@ static unlang_t *compile_caller(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		dict_ref = fr_dict_autoload_talloc(NULL, &dict, name);
 		if (!dict_ref) {
 			cf_log_perr(cs, "Unknown protocol '%s'", name);
-			return NULL;
+			goto print_url;
 		}
 	}
 
