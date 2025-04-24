@@ -1,0 +1,11 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = 'pbkfd2_sha1_389ds'
+User-Password = 'password'
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
