@@ -1661,7 +1661,7 @@ static int server_pool_add(realm_config_t *rc,
 
 			if (home->affinity >= (uint32_t) pool->num_home_servers) {
 				ERROR("Home server %s has invalid 'affinity' value %u.  It must be less than %u",
-				      home->name, home->affinity, home->affinity, pool->num_home_servers);
+				      home->name, home->affinity, pool->num_home_servers);
 				goto error;
 			}
 
