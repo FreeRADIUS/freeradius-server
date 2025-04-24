@@ -152,7 +152,6 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	talloc_free(our_name);
 
 	if (method == FR_EAP_METHOD_INVALID) {
-		talloc_free(our_name);
 		cf_log_err(ci, "Unknown EAP type %s", name);
 		return -1;
 	}
