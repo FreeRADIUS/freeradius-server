@@ -631,7 +631,7 @@ char const *fr_lua_version(lua_State *L)
  * @param[in] name		of function to check.
  * @returns 0 on success (function is present and correct), or -1 on failure.
  */
-static int fr_lua_check_func(module_inst_ctx_t const *mctx, lua_State *L, char const *name)
+int fr_lua_check_func(module_inst_ctx_t const *mctx, lua_State *L, char const *name)
 {
 	int ret;
 	int type;

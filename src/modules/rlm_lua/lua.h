@@ -68,6 +68,7 @@ int		fr_lua_init(lua_State **out, module_inst_ctx_t const *mctx);
 unlang_action_t fr_lua_run(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, char const *funcname);
 bool		fr_lua_isjit(lua_State *L);
 char const	*fr_lua_version(lua_State *L);
+int		fr_lua_check_func(module_inst_ctx_t const *mctx, lua_State *L, char const *name);
 
 /* util.c */
 void		fr_lua_util_jit_log_debug(char const *msg);
