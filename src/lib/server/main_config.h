@@ -65,7 +65,6 @@ struct main_config_s {
 
 	char const	*log_dir;
 	char const	*local_state_dir;
-	char const	*chroot_dir;
 
 	bool		reverse_lookups;
 	bool		hostname_lookups;

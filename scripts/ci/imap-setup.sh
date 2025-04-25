@@ -14,13 +14,13 @@ BUILDDIR="${BASEDIR}/build/ci/dovecot"
 CERTDIR="${BASEDIR}/raddb/certs/rsa"
 ETCDIR="${BUILDDIR}/etc"
 
-# Directories for running dovecot 
+# Directories for running dovecot
 RUNDIR="${BUILDDIR}/run"
 TLSRUNDIR="${BUILDDIR}/tls_run"
 MAILDIR="${ETCDIR}/dovecot_mail"
 LOGDIR="${BUILDDIR}/log"
 
-# Important files for running dovecot 
+# Important files for running dovecot
 CONF="${ETCDIR}/dovecot.conf"
 TLSCONF="${ETCDIR}/tls_dovecot.conf"
 PASSPATH="${ETCDIR}/dovecot.passwd"
@@ -51,7 +51,7 @@ touch  "${PASSPATH}"
 
 # Make sure there are log files
 touch "${LOGPATH}"
-touch "${LOGINFOPATH}" 
+touch "${LOGINFOPATH}"
 
 # Get primary group name
 if [ -z "${USER}" ]; then
@@ -72,7 +72,7 @@ openssl rsa -in "${BASEDIR}/raddb/certs/rsa/server.key" -passin 'pass:whatever' 
 rm -f ${PASSPATH}
 for i in {1..3}; do
 	PASS=$(doveadm -o stats_writer_socket_path= pw -p test${i} -s CRYPT)
-	echo "user${i}:${PASS}:::::: 
+	echo "user${i}:${PASS}::::::
 " >> "${PASSPATH}"
 done
 
@@ -95,7 +95,6 @@ base_dir = ${RUNDIR}
 service imap-login {
 	process_min_avail = 16
 	user = ${USER:-dovecot}
-	chroot =
 	inet_listener imap {
 		port = 1430
 	}
@@ -112,7 +111,6 @@ base_dir = ${TLSRUNDIR}
 service imap-login {
 	process_min_avail = 16
 	user = ${USER:-dovecot}
-	chroot =
 	inet_listener imap {
 		port = 1431
 	}

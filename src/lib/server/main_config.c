@@ -267,7 +267,6 @@ static const conf_parser_t security_config[] = {
 	{ FR_CONF_OFFSET_IS_SET("user", FR_TYPE_VOID, 0, main_config_t, uid), .func = cf_parse_uid },
 	{ FR_CONF_OFFSET_IS_SET("group", FR_TYPE_VOID, 0, main_config_t, gid), .func = cf_parse_gid },
 #endif
-	{ FR_CONF_OFFSET("chroot", main_config_t, chroot_dir) },
 	{ FR_CONF_OFFSET("allow_core_dumps", main_config_t, allow_core_dumps), .dflt = "no" },
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
@@ -610,8 +609,6 @@ static int mkdir_chown(int fd, char const *path, void *uctx)
 	return ret;
 }
 /*
- *  Do chroot, if requested.
- *
  *  Switch UID and GID to what is specified in the config file
  */
 static int switch_users(main_config_t *config, CONF_SECTION *cs)
@@ -635,7 +632,7 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 		return -1;
 	}
 
-	DEBUG("Parsing security rules to bootstrap UID / GID / chroot / etc.");
+	DEBUG("Parsing security rules to bootstrap UID / GID / etc.");
 	if (cf_section_parse(config, config, cs) < 0) {
 		fprintf(stderr, "%s: Error: Failed to parse user/group information.\n",
 			config->name);
@@ -643,11 +640,11 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 	}
 
 	/*
-	 *	Don't do chroot/setuid/setgid if we're in debugging
+	 *	Don't do setuid/setgid if we're in debugging
 	 *	as non-root.
 	 */
 	if (DEBUG_ENABLED && (getuid() != 0)) {
-		WARN("Ignoring configured UID / GID / chroot as we're running in debug mode");
+		WARN("Ignoring configured UID / GID as we're running in debug mode");
 		return 0;
 	}
 #ifdef HAVE_GRP_H
@@ -701,33 +698,6 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 	 */
 	cf_file_check_user(config->server_uid ? config->server_uid : (uid_t)-1,
 			   config->server_gid ? config->server_gid : (gid_t)-1);
-
-	/*
-	 *	Do chroot BEFORE changing UIDs.
-	 */
-	if (config->chroot_dir) {
-		if (chroot(config->chroot_dir) < 0) {
-			fprintf(stderr, "%s: Failed to perform chroot %s: %s",
-				config->name, config->chroot_dir, fr_syserror(errno));
-			return -1;
-		}
-
-		/*
-		 *	Note that we leave chdir alone.  It may be
-		 *	OUTSIDE of the root.  This allows us to read
-		 *	the configuration from "-d ./etc/raddb", with
-		 *	the chroot as "./chroot/" for example.  After
-		 *	the server has been loaded, it does a "cd
-		 *	${logdir}" below, so that core files (if any)
-		 *	go to a logging directory.
-		 *
-		 *	This also allows the configuration of the
-		 *	server to be outside of the chroot.  If the
-		 *	server is statically linked, then the only
-		 *	things needed inside of the chroot are the
-		 *	logging directories.
-		 */
-	}
 
 #ifdef HAVE_GRP_H
 	/*
@@ -1387,16 +1357,6 @@ int main_config_init(main_config_t *config)
 	if (unlikely((xlat = xlat_func_register(NULL, "config", xlat_config, FR_TYPE_STRING)) == NULL)) goto failure;
 	xlat_func_args_set(xlat, xlat_config_args);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
-
-	/*
-	 *	Ensure cwd is inside the chroot.
-	 */
-	if (config->chroot_dir) {
-		if (chdir(config->log_dir) < 0) {
-			ERROR("Failed to 'chdir %s' after chroot: %s", config->log_dir, fr_syserror(errno));
-			goto failure;
-		}
-	}
 
 	config->root_cs = cs;	/* Do this last to avoid dangling pointers on error */
 

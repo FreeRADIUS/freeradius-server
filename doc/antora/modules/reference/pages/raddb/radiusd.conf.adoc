@@ -396,37 +396,6 @@ There may be multiple methods of attacking on the server.  This
 section holds the configuration items which minimize the impact
 of those attacks
 
-
-chroot: directory where the server does "chroot".
-
-The chroot is done very early in the process of starting
-the server.  After the chroot has been performed it
-switches to the `user` listed below (which MUST be
-specified).  If `group` is specified, it switches to that
-group, too.  Any other groups listed for the specified
-`user` in `/etc/group` are also added as part of this
-process.
-
-The current working directory (chdir / cd) is left
-  *outside* of the `chroot` until all of the modules have been
-initialized.  This allows the `raddb` directory to be left
-outside of the `chroot`.  Once the modules have been
-initialized, it does a `chdir` to `${logdir}`.  This means
-that it should be impossible to break out of the chroot.
-
-If you are worried about security issues related to this
-use of chdir, then simply ensure that the `raddb` directory
-is inside of the chroot, and be sure to do `cd raddb`
-BEFORE starting the server.
-
-If the server is statically linked, then the only files
-that have to exist in the chroot are `${run_dir}` and
-`${logdir}`.  If you do the `cd raddb` as discussed above,
-then the `raddb` directory has to be inside of the `chroot`
-directory, too.
-
-
-
 user::
 group::
 
@@ -760,7 +729,6 @@ templates {
 	$INCLUDE template.d/
 }
 security {
-#	chroot = /path/to/chroot/directory
 #	user = radius
 #	group = radius
 	allow_core_dumps = no

@@ -49,7 +49,7 @@ decode the RADIUS protocol.
 ====
 The above example is a minimal configuration. In practise you will want to
 retain many of the HAproxy configuration items already present in the
-configuration (e.g. `log`, `chroot`, `user`, `group`), but these vary across
+configuration (e.g. `log`, `group`), but these vary across
 distributions. Other HTTP-related options that may already exist in the
 configuration will conflict with `mode tcp` (Layer 4 proxying) and should be
 removed if HAproxy complains about them.
@@ -131,4 +131,3 @@ before continuing.
 Once proxied connections are working we are ready to
 xref:protocols/radius/enable_proxy_protocol.adoc[enable the PROXY
 Protocol] on both HAproxy and the RadSec server.
-
