@@ -1,4 +1,4 @@
-= %explode(<ref>, <delim>)
+= %str.split(<ref>, <delim>)
 
 Split an string into multiple new strings based on a delimiter.
 
@@ -12,7 +12,7 @@ This expansion is the inverse of xref:xlat/concat.adoc[concat].
 ----
 control.Tmp-String-0 := "bob.toba@domain.com"
 
-control.Tmp-String-1 := "%explode(control.Tmp-String-0, '@')"
+control.Tmp-String-1 := "%str.split(control.Tmp-String-0, '@')"
 
 reply.Reply-Message := "Welcome %{control.Tmp-String-1[0]}"
 ----

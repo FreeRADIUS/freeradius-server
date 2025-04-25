@@ -735,7 +735,7 @@ for further information.
 
 == Xlat expansions
 
-xref:reference:xlat/index.adoc[xlat] expansions have been changed from syntax like `%{md5:...}` to `%md5(...)`.
+xref:reference:xlat/index.adoc[xlat] expansions have been changed from syntax like `%{md5:...}` to `%hash.md5(...)`.
 
 === Removed expansions
 

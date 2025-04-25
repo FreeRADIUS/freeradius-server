@@ -256,19 +256,19 @@ match true
 #
 #  The MD4 output isn't a valid IP address or prefix.
 #
-xlat_purify (ipaddr)127.0.0.1 == "%md4(' 127.0.0.1')"
+xlat_purify (ipaddr)127.0.0.1 == "%hash.md4(' 127.0.0.1')"
 match ERROR purifying node - Failed to parse IPv4 prefix string "/"
 
-xlat_purify (ipaddr)127.0.0.1 == %md4('127.0.0.1')
+xlat_purify (ipaddr)127.0.0.1 == %hash.md4('127.0.0.1')
 match ERROR purifying node - Invalid cast from octets to ipaddr.  Needed octet string of length 4, got 16
 
-xlat_purify (ipaddr)127.0.0.1 == %md4("SELECT user FROM table WHERE user='%{User-Name}'")
-match (127.0.0.1 == %md4("SELECT user FROM table WHERE user='%{User-Name}'"))
+xlat_purify (ipaddr)127.0.0.1 == %hash.md4("SELECT user FROM table WHERE user='%{User-Name}'")
+match (127.0.0.1 == %hash.md4("SELECT user FROM table WHERE user='%{User-Name}'"))
 
 xlat_purify (ether) 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true
 
-xlat_purify (ether)00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')"
+xlat_purify (ether)00:11:22:33:44:55 == "%hash.md4('00:11:22:33:44:55')"
 match ERROR purifying node - Missing separator, expected ':'
 
 xlat_purify (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
@@ -315,10 +315,10 @@ match true
 #
 #  MD4 hash is not equal to other things
 #
-xlat_purify ("foo" == "%md4(' foo')")
+xlat_purify ("foo" == "%hash.md4(' foo')")
 match false
 
-xlat_purify ("foo bar" == "%md4(' foo')")
+xlat_purify ("foo bar" == "%hash.md4(' foo')")
 match false
 
 xlat_purify ("foo" == "bar")
@@ -335,11 +335,11 @@ match false
 xlat_purify (User-Name == "bob")
 match (User-Name == "bob")
 
-xlat_purify (User-Name == %md4(' blah'))
+xlat_purify (User-Name == %hash.md4(' blah'))
 match (User-Name == 0x544924d05ec4481925ba3749a096a0a7)
 
 #  and without the double quotes.
-xlat_purify (User-Name == %md4(' blah'))
+xlat_purify (User-Name == %hash.md4(' blah'))
 match (User-Name == 0x544924d05ec4481925ba3749a096a0a7)
 
 xlat_purify (ipaddr)127.0.0.1 == 2130706433
@@ -430,7 +430,7 @@ match ("foo" == User-Name)
 #
 #  ERROR: Failed casting 0x002ade8665c69219ca16bd108d92c8d5 to data type uint32: Invalid cast from octets to uint32.  Source length 16 is greater than destination type size 4
 #
-xlat_purify (integer)"%md4(' 1 + 1')" < NAS-Port
+xlat_purify (integer)"%hash.md4(' 1 + 1')" < NAS-Port
 match ERROR purifying node - 
 
 #

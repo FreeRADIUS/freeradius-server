@@ -66,7 +66,7 @@ immediately.
 Set the random number to save.
 
 ```
-	session-state.challenge-string := "%randstr(n)"
+	session-state.challenge-string := "%str.rand(n)"
 	reply.Reply-Message := "Please enter %{session-state.challenge-string}: "
 
 ```

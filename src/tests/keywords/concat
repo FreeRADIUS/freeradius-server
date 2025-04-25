@@ -46,35 +46,35 @@ control -= NAS-Port[*]
 ok	# separate updates
 
 
-result_string := %concat(%{control.[*]}, ', ')
+result_string := %str.concat(%{control.[*]}, ', ')
 
 "%{result_string}"
 if (!(result_string == "bob, hello, ab c, de fg, 123")) {
 	test_fail
 }
 
-result_string := %concat(%{control.Calling-Station-Id[*]}, ', ')
+result_string := %str.concat(%{control.Calling-Station-Id[*]}, ', ')
 
 if (!(result_string == "ab c, de fg")) {
 	test_fail
 }
 
 # Empty separator
-result_string := %concat(%{control.Calling-Station-Id[*]})
+result_string := %str.concat(%{control.Calling-Station-Id[*]})
 
 if (!(result_string == "ab cde fg")) {
 	test_fail
 }
 
 # Single character separator
-result_string := %concat(%{control.Calling-Station-Id[*]}, ',')
+result_string := %str.concat(%{control.Calling-Station-Id[*]}, ',')
 
 if (!(result_string == "ab c,de fg")) {
 	test_fail
 }
 
 # Multi character separator not delimited
-result_string := %concat(%{control.Calling-Station-Id[*]}, '|-')
+result_string := %str.concat(%{control.Calling-Station-Id[*]}, '|-')
 
 if !(result_string == "ab c|-de fg") {
 	test_fail

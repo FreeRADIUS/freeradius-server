@@ -9,7 +9,7 @@ test_string := "hello"
 #
 #  MD5 HMAC with missing key should fail
 #
-result_octets := %hmacmd5(%{test_string}, ) # ERROR
+result_octets := %hmac.md5(%{test_string}, ) # ERROR
 if result_octets {
 	test_fail
 }

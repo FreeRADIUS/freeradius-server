@@ -147,7 +147,7 @@ server coa {
 		#
 		#  Split the string and split into pieces.
 		#
-		if ("%explode(control.user-session, '|')") {
+		if ("%str.split(control.user-session, '|')") {
 
 			foreach control.user-session {
 				#

@@ -90,8 +90,8 @@ match ERROR offset 2: Invalid regex reference.  Must be in range 0-32
 condition User-Name == /foo/
 match ERROR offset 13: Unexpected regular expression
 
-condition %md5("foo") =~ /foo/
-match ((string)%md5(0x666f6f) =~ /foo/)
+condition %hash.md5("foo") =~ /foo/
+match ((string)%hash.md5(0x666f6f) =~ /foo/)
 
 count
 match 50

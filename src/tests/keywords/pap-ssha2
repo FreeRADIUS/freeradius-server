@@ -24,7 +24,7 @@ salt := "5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK"	# 60 byte
 #  Hex encoded SSHA2-512 password
 #
 control += {
-	Password.With-Header = "{ssha512}%hex(%sha2_512(%{User-Password}%{salt}))%hex(%{salt})"
+	Password.With-Header = "{ssha512}%hex(%hash.sha2_512(%{User-Password}%{salt}))%hex(%{salt})"
 }
 
 pap.authorize
@@ -40,7 +40,7 @@ control := {}
 #
 #  Base64 encoded SSHA2-512 password
 #
-result_string := "%hex(%sha2_512(%{User-Password}%{salt}))%hex(%{salt})"
+result_string := "%hex(%hash.sha2_512(%{User-Password}%{salt}))%hex(%{salt})"
 
 # To Binary
 result_octets := "%bin(%{result_string})"
@@ -65,7 +65,7 @@ control := {}
 #
 #  Base64 of Base64 encoded SSHA2-512 password
 #
-result_string := "%hex(%sha2_512(%{User-Password}%{salt}))%hex(%{salt})"
+result_string := "%hex(%hash.sha2_512(%{User-Password}%{salt}))%hex(%{salt})"
 
 # To Binary
 result_octets := "%bin(%{result_string})"
@@ -90,7 +90,7 @@ control := {}
 #
 #  Base64 of SHA2-384 password (in SHA2-Password)
 #
-control.Password.SHA2 := %hex(%sha2_384(%{User-Password}))
+control.Password.SHA2 := %hex(%hash.sha2_384(%{User-Password}))
 
 pap.authorize
 pap.authenticate {
@@ -107,7 +107,7 @@ control := {
 #
 #  Base64 of SHA2-256 password (in SHA2-256-Password)
 #
-control.Password.SHA2-256 := "%hex(%sha2_256(%{User-Password}))"
+control.Password.SHA2-256 := "%hex(%hash.sha2_256(%{User-Password}))"
 
 pap.authorize
 pap.authenticate {
@@ -122,7 +122,7 @@ control := {}
 #
 #  Base64 of SHA2-224 password (in SHA2-224-Password - No hex armour)
 #
-control.Password.SHA2-224 := "%sha2_224(%{User-Password})"
+control.Password.SHA2-224 := "%hash.sha2_224(%{User-Password})"
 
 pap.authorize
 pap.authenticate {

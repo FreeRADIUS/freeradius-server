@@ -1,4 +1,4 @@
-= %tolower( ... )
+= %str.lower( ... )
 
 Dynamically expands the string and returns the lowercase version of
 it.
@@ -12,7 +12,7 @@ The lowercase operation is done using the current locale.
 [source,unlang]
 ----
 control.Tmp-String-0 := "CAIPIRINHA"
-reply.Reply-Message := "tolower of %{control.Tmp-String-0} is %tolower(%{control.Tmp-String-0})"
+reply.Reply-Message := "tolower of %{control.Tmp-String-0} is %str.lower(%{control.Tmp-String-0})"
 ----
 
 .Output

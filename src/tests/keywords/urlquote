@@ -15,37 +15,37 @@ test_string3 = '™œ¥¤'
 encoded_string2 := '%C2%B1%C2%A7%21%40%23%24%25%5E%26%2A%28%29%2B%3D%7B%5B%7D%5D%3A%3B%22%27%7C%5C%3C%2C%3E%3F%2F%60'
 encoded_string3 := '%E2%84%A2%C5%93%C2%A5%C2%A4'
 
-result_string = "%urlquote(%{test_string1})"
+result_string = "%url.quote(%{test_string1})"
 if (!(result_string == test_string1)) {
 	test_fail
 }
 
-result_string := "%urlunquote(%{test_string1})"
+result_string := "%url.unquote(%{test_string1})"
 if (!(result_string == test_string1)) {
 	test_fail
 }
 
-result_string := "%urlquote(%{test_string2})"
+result_string := "%url.quote(%{test_string2})"
 if (!(result_string == encoded_string2)) {
 	test_fail
 }
 
-result_string := "%urlquote(%{test_string3})"
+result_string := "%url.quote(%{test_string3})"
 if (!(result_string == encoded_string3)) {
 	test_fail
 }
 
-result_string := "%urlunquote(%{encoded_string2})"
+result_string := "%url.unquote(%{encoded_string2})"
 if (!(result_string == test_string2)) {
 	test_fail
 }
 
-result_string := "%urlunquote(%{encoded_string3})"
+result_string := "%url.unquote(%{encoded_string3})"
 if (!(result_string == test_string3)) {
 	test_fail
 }
 
-result_string := "%urlunquote('%%E, 123')"
+result_string := "%url.unquote('%%E, 123')"
 
 # Test decoding invalid encoded string
 if !(result_string == "") {

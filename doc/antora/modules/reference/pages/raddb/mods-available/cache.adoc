@@ -432,7 +432,7 @@ cache {
 	update {
 		reply.Reply-Message := reply.Reply-Message
 		reply.Reply-Message += "Cache last updated at %t"
-		reply.Class := "%randstr(ssssssssssssssssssssssssssssssss)"
+		reply.Class := "%str.rand(ssssssssssssssssssssssssssssssss)"
 	}
 }
 ```

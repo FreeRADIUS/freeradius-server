@@ -3,7 +3,7 @@ string result_string
 #
 #  Empty output on empty input
 #
-result_string := "%randstr(result_string)"
+result_string := "%str.rand(result_string)"
 if !(result_string == "") {
 	test_fail
 }
@@ -11,19 +11,19 @@ if !(result_string == "") {
 #
 #  Check length of output
 #
-result_string := "%randstr('nnn')"
+result_string := "%str.rand('nnn')"
 if (!(%length(result_string) == 3)) {
 	test_fail
 }
 
-result_string := %randstr('24a')
+result_string := %str.rand('24a')
 if (!(%length(result_string) == 24)) {
 	test_fail
 }
 #
 #  Check maximum repetition
 #
-result_string := %randstr('1030aa')
+result_string := %str.rand('1030aa')
 if (!(%length(result_string) == 1025)) {
 	test_fail
 }
@@ -31,7 +31,7 @@ if (!(%length(result_string) == 1025)) {
 #
 #  Check invalid character class
 #
-result_string := %randstr('G')
+result_string := %str.rand('G')
 
 if !(result_string == "") {
 	test_fail
@@ -40,7 +40,7 @@ if !(result_string == "") {
 #
 #  Check repetition of binary output
 #
-result_string := %randstr('10b')
+result_string := %str.rand('10b')
 if (!(%length(result_string) == 10)) {
 	test_fail
 }

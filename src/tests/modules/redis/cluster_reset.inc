@@ -8,9 +8,9 @@ string data2
 string data3
 string cmdresult
 
-data1 := "1-%randstr('aaaaaaaa')"
-data2 := "2-%randstr('aaaaaaaa')"
-data3 := "3-%randstr('aaaaaaaa')"
+data1 := "1-%str.rand('aaaaaaaa')"
+data2 := "2-%str.rand('aaaaaaaa')"
+data3 := "3-%str.rand('aaaaaaaa')"
 
 if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
 	clusterctrl := 'scripts/ci/redis-setup.sh'

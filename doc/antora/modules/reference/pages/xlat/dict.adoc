@@ -5,13 +5,13 @@ The following functions perform lookups based on dictionary names and numbers.
 The functions are defined in the `dict` module.  It must be listed in
 the `mods-enabled/` directory in order for the expansions to work.
 
-== %concat(<ref:[idx]>, <delim>)
+== %str.concat(<ref:[idx]>, <delim>)
 
 Used to join two or more attributes, separated by an optional delimiter.
 
 .Return: _string_
 
-In most cases, `%concat(...)` is only useful inside of a dynamically
+In most cases, `%str.concat(...)` is only useful inside of a dynamically
 expanded string.  If you need to concatenate strings together in a policy, just use `+`.
 
 .Example
@@ -25,8 +25,8 @@ control += {
 }
 
 reply += {
-    Reply-Message = "%concat(%{control.Tmp-String-0[*]}, ', ')"
-    Reply-Message = "%concat(%{control.Tmp-String-0[*]}, ',')"
+    Reply-Message = "%str.concat(%{control.Tmp-String-0[*]}, ', ')"
+    Reply-Message = "%str.concat(%{control.Tmp-String-0[*]}, ',')"
 }
 ----
 
@@ -47,11 +47,11 @@ foo += { "a", "c", "c", "d" } # abcd
 foo += control.Tmp-String-0[*]
 ----
 
-== %explode(<ref>, <delim>)
+== %str.split(<ref>, <delim>)
 
 Split an string into multiple new strings based on a delimiter.
 
-This expansion is the opposite of `%concat( ... )`.
+This expansion is the opposite of `%str.concat( ... )`.
 
 .Return: _the number exploded list of strings_.
 
@@ -61,7 +61,7 @@ This expansion is the opposite of `%concat( ... )`.
 ----
 control.Tmp-String-0 := "bob.toba@domain.com"
 
-control.Tmp-String-1 := "%explode(control.Tmp-String-0, '@')"
+control.Tmp-String-1 := "%str.split(control.Tmp-String-0, '@')"
 
 reply.Reply-Message := "Welcome %{control.Tmp-String-1[0]}"
 ----
@@ -72,7 +72,7 @@ reply.Reply-Message := "Welcome %{control.Tmp-String-1[0]}"
 Welcome bob.toba
 ```
 
-== %lpad(<string>, <val>, <char>)
+== %str.lpad(<string>, <val>, <char>)
 
 Left-pad a string.
 
@@ -84,7 +84,7 @@ Left-pad a string.
 ----
 control.Tmp-String-0 := "123"
 
-reply.Reply-Message := "Maximum should be %lpad(%{control.Tmp-String-0}, 11, '0')"
+reply.Reply-Message := "Maximum should be %str.lpad(%{control.Tmp-String-0}, 11, '0')"
 ----
 
 .Output
@@ -93,7 +93,7 @@ reply.Reply-Message := "Maximum should be %lpad(%{control.Tmp-String-0}, 11, '0'
 Maximum should be 00000000123
 ```
 
-== %rpad(<string>, <val>, <char>)
+== %str.rpad(<string>, <val>, <char>)
 
 Right-pad a string.
 
@@ -105,7 +105,7 @@ Right-pad a string.
 ----
 control.Tmp-String-0 := "123"
 
-reply.Reply-Message := "Maximum should be %rpad(%{control.Tmp-String-0}, 11, '0')"
+reply.Reply-Message := "Maximum should be %str.rpad(%{control.Tmp-String-0}, 11, '0')"
 ----
 
 .Output
@@ -134,7 +134,7 @@ reply.Reply-Message := "Serialize output: %pairs(control.[*])"
 Serialize output: Tmp-String-0 = "\"This is a string\", Tmp-String-0 = \"This is another one\""
 ```
 
-== %randstr( ...)
+== %str.rand( ...)
 
 Get random string built from character classes.
 
@@ -144,7 +144,7 @@ Get random string built from character classes.
 
 [source,unlang]
 ----
-reply.Reply-Message := "The random string output is %randstr(aaaaaaaa}"
+reply.Reply-Message := "The random string output is %str.rand(aaaaaaaa}"
 ----
 
 .Output
@@ -153,7 +153,7 @@ reply.Reply-Message := "The random string output is %randstr(aaaaaaaa}"
 The random string output is 4Uq0gPyG
 ```
 
-== %tolower( ... )
+== %str.lower( ... )
 
 Dynamically expands the string and returns the lowercase version of
 it. This definition is only available in version 2.1.10 and later.
@@ -165,7 +165,7 @@ it. This definition is only available in version 2.1.10 and later.
 [source,unlang]
 ----
 control.Tmp-String-0 := "CAIPIRINHA"
-reply.Reply-Message := "tolower of %{control.Tmp-String-0} is %tolower(%{control.Tmp-String-0})"
+reply.Reply-Message := "tolower of %{control.Tmp-String-0} is %str.lower(%{control.Tmp-String-0})"
 ----
 
 .Output
@@ -174,7 +174,7 @@ reply.Reply-Message := "tolower of %{control.Tmp-String-0} is %tolower(%{control
 tolower of CAIPIRINHA is caipirinha
 ```
 
-== %toupper( ... )
+== %str.upper( ... )
 
 Dynamically expands the string and returns the uppercase version of
 it. This definition is only available in version 2.1.10 and later.
@@ -186,7 +186,7 @@ it. This definition is only available in version 2.1.10 and later.
 [source,unlang]
 ----
 control.Tmp-String-0 := "caipirinha"
-reply.Reply-Message := "toupper of %{control.Tmp-String-0} is " + %toupper(%{control.Tmp-String-0})
+reply.Reply-Message := "toupper of %{control.Tmp-String-0} is " + %str.upper(%{control.Tmp-String-0})
 ----
 
 .Output

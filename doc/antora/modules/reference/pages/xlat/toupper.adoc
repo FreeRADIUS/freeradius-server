@@ -1,4 +1,4 @@
-= %toupper( ... )
+= %str.upper( ... )
 
 Dynamically expands the string and returns the uppercase version of
 it.
@@ -12,7 +12,7 @@ The uppercasecase operation is done using the current locale.
 [source,unlang]
 ----
 control.Tmp-String-0 := "caipirinha"
-reply.Reply-Message := "toupper of %{control.Tmp-String-0} is " + %toupper(%{control.Tmp-String-0})
+reply.Reply-Message := "toupper of %{control.Tmp-String-0} is " + %str.upper(%{control.Tmp-String-0})
 ----
 
 .Output

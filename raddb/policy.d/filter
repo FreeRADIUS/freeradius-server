@@ -37,7 +37,7 @@ filter_username {
 		#
 		#  reject mixed case e.g. "UseRNaMe"
 		#
-		#if (User-Name != %tolower(User-Name)) {
+		#if (User-Name != %str.lower(User-Name)) {
 		#	reject
 		#}
 
@@ -126,7 +126,7 @@ filter_password {
 		#  Because "\000" yields "zero length delimiter is not allowed"
 		#
 		delim = 0x00
-		tmp.User-Password := %explode(%{User-Password}, "%{delim}")
+		tmp.User-Password := %str.split(%{User-Password}, "%{delim}")
 
 		User-Password := tmp.User-Password[0]
 	}

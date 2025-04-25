@@ -82,7 +82,7 @@ reply.Reply-Message := "The value of %{control.Tmp-String-0} in hex is %hex(%{co
 The value of 12345 in hex is 3132333435
 ```
 
-== %urlquote( ... )
+== %url.quote( ... )
 
 Quote URL special characters.
 
@@ -94,7 +94,7 @@ Quote URL special characters.
 ----
 control.Tmp-String-0 := "http://example.org/"
 reply += {
-	Reply-Message = "The urlquote of %{control.Tmp-String-0} is %urlquote(%{control.Tmp-String-0})"
+	Reply-Message = "The urlquote of %{control.Tmp-String-0} is %url.quote(%{control.Tmp-String-0})"
 }
 ----
 
@@ -104,7 +104,7 @@ reply += {
 The urlquote of http://example.org/ is http%3A%2F%2Fexample.org%2F
 ```
 
-== %urlunquote( ... )
+== %url.unquote( ... )
 
 Unquote URL special characters.
 
@@ -116,7 +116,7 @@ Unquote URL special characters.
 ----
 control.Tmp-String-0 := "http%%3A%%2F%%2Fexample.org%%2F" # Attention for the double %.
 reply += {
-	Reply-Message = "The urlunquote of %{control.Tmp-String-0} is %urlunquote(%{control.Tmp-String-0})"
+	Reply-Message = "The urlunquote of %{control.Tmp-String-0} is %url.unquote(%{control.Tmp-String-0})"
 }
 ----
 

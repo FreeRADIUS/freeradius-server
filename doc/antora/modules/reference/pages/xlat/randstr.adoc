@@ -1,4 +1,4 @@
-= %randstr( <format> )
+= %str.rand( <format> )
 
 Get random string built from input character classes.
 
@@ -32,7 +32,7 @@ There is no `h` for "hex".  Instead, use `b` to create binary data, followed by 
 
 [source,unlang]
 ----
-reply.Reply-Message := "The random string output is %randstr(8a)"
+reply.Reply-Message := "The random string output is %str.rand(8a)"
 ----
 
 .Output

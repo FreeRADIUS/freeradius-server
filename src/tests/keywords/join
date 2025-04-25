@@ -30,13 +30,13 @@ debug_request
 #
 #  @todo - fix this...
 #
-result_string := %concat(%join(%{control.[*]}, request.Framed-IP-Address), '. ')
+result_string := %str.concat(%join(%{control.[*]}, request.Framed-IP-Address), '. ')
 
 if (!(result_string == "bob. hello. ab c. de fg. 123. 192.168.1.254")) {
 	test_fail
 }
 
-result_string := %concat(%join(control.Filter-Id[*], control.NAS-Port), ',')
+result_string := %str.concat(%join(control.Filter-Id[*], control.NAS-Port), ',')
 if (!(result_string == "ab c,de fg,123")) {
 	test_fail
 }

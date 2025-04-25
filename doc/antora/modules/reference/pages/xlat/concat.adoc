@@ -1,4 +1,4 @@
-= %concat(<ref:[idx]>, <delim>)
+= %str.concat(<ref:[idx]>, <delim>)
 
 Used to join two or more attributes, separated by an optional delimiter.
 
@@ -6,7 +6,7 @@ This expansion is the inverse of xref:xlat/explode.adoc[explode].
 
 .Return: _string_
 
-In most cases, `%concat(...)` is only useful inside of a dynamically
+In most cases, `%str.concat(...)` is only useful inside of a dynamically
 expanded string.  If you need to concatenate strings together in a policy, just use `+`.
 
 .Example
@@ -20,8 +20,8 @@ control += {
 }
 
 reply += {
-    Reply-Message = "%concat(%{control.Tmp-String-0[*]}, ', ')"
-    Reply-Message = "%concat(%{control.Tmp-String-0[*]}, ',')"
+    Reply-Message = "%str.concat(%{control.Tmp-String-0[*]}, ', ')"
+    Reply-Message = "%str.concat(%{control.Tmp-String-0[*]}, ',')"
 }
 ----
 

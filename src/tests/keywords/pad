@@ -8,38 +8,38 @@ test_string = "test"
 #
 #	rpad tests
 #
-if (!(%rpad(%{test_string}, 7) == "test   ")) {
+if (!(%str.rpad(%{test_string}, 7) == "test   ")) {
 	test_fail
 }
 
-if (!(%rpad(%{test_string}, 2) == "test")) {
+if (!(%str.rpad(%{test_string}, 2) == "test")) {
 	test_fail
 }
 
-if (!(%rpad(%{test_string}, 7, 'x') == "testxxx")) {
+if (!(%str.rpad(%{test_string}, 7, 'x') == "testxxx")) {
 	test_fail
 }
 
-if (!(%rpad(%{test_string}, 7, 'xy') == "testxyx")) {
+if (!(%str.rpad(%{test_string}, 7, 'xy') == "testxyx")) {
 	test_fail
 }
 
 #
 #	lpad tests
 #
-if (!(%lpad(%{test_string}, 7) == "   test")) {
+if (!(%str.lpad(%{test_string}, 7) == "   test")) {
 	test_fail
 }
 
-if (!(%lpad(%{test_string}, 2) == "test")) {
+if (!(%str.lpad(%{test_string}, 2) == "test")) {
 	test_fail
 }
 
-if (!(%lpad(%{test_string}, 7, 'x') == "xxxtest")) {
+if (!(%str.lpad(%{test_string}, 7, 'x') == "xxxtest")) {
 	test_fail
 }
 
-if (!(%lpad(%{test_string}, 7, 'xy') == "xyxtest")) {
+if (!(%str.lpad(%{test_string}, 7, 'xy') == "xyxtest")) {
 	test_fail
 }
 

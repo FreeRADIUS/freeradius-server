@@ -121,7 +121,7 @@ match 2
 xlat_purify Filter-Id
 match Filter-Id
 
-xlat_purify %md5('foo') + "bar"
+xlat_purify %hash.md5('foo') + "bar"
 match 0xacbd18db4cc2f85cedef654fccc4a4d8626172
 
 #  We can name the xlat's, tho we don't need to
@@ -235,37 +235,37 @@ match "hello 3 bob"
 #
 migrate xlat_new_functions = yes
 
-xlat_purify %md5('foo')
+xlat_purify %hash.md5('foo')
 match 0xacbd18db4cc2f85cedef654fccc4a4d8
 
-xlat_purify %explode("a,b,c,d", ',')
+xlat_purify %str.split("a,b,c,d", ',')
 match "a""b""c""d"
 
-xlat_purify %md5('foo')
+xlat_purify %hash.md5('foo')
 match 0xacbd18db4cc2f85cedef654fccc4a4d8
 
-xlat_purify %md5(%md5('foo'))
+xlat_purify %hash.md5(%hash.md5('foo'))
 match 0x47847ae721df523d6388aebc9c94d656
 
-xlat_purify %md5('%md5(foo)')
-match 0x5e153571422b69cf5c5f7ce5f03985b5
+xlat_purify %hash.md5('%hash.md5(foo)')
+match 0xb98c435f641b131d05637746d30c62db
 
 #
 #  Constant string
 #
-xlat_purify %md5('%{User-Name}')
+xlat_purify %hash.md5('%{User-Name}')
 match 0x892e91c7b175ab41826c9cb88eebf27a
 
 #
 #  This is a reference to the contents of User-Name
 #
-xlat_purify %md5(%{User-Name})
-match %md5(%{User-Name})
+xlat_purify %hash.md5(%{User-Name})
+match %hash.md5(%{User-Name})
 
-xlat_purify %md5('foo')
+xlat_purify %hash.md5('foo')
 match 0xacbd18db4cc2f85cedef654fccc4a4d8
 
-xlat_purify %md5("foo")
+xlat_purify %hash.md5("foo")
 match 0xacbd18db4cc2f85cedef654fccc4a4d8
 
 count

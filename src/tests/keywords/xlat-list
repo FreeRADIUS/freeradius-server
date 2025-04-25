@@ -31,7 +31,7 @@ if ("%{control.[*]}" != '192.0.2.1192.0.2.2') {
 request += {
 	NAS-IP-Address = %{control.[1]}
 	NAS-IP-Address = %{control.[0]}
-	Filter-Id	= %concat(%{control.[*]}, ',')
+	Filter-Id	= %str.concat(%{control.[*]}, ',')
 	NAS-Port = %{control.[#]}
 }
 

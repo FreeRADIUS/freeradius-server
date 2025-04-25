@@ -5,7 +5,7 @@ test_string := "hello"
 #
 #  SHA1 HMAC with missing key should fail
 #
-result_octets := %hmacsha1(%{test_string}, ) # ERROR
+result_octets := %hmac.sha1(%{test_string}, ) # ERROR
 if result_octets {
 	test_fail
 }

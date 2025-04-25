@@ -240,23 +240,23 @@ match ERROR offset 12: Attribute 'X' not found in namespace 'internal': Unresolv
 condition (ipaddr)127.0.0.1 == "127.0.0.1"
 match true
 
-condition (ipaddr)127.0.0.1 == "%md4(' 127.0.0.1')"
-match (127.0.0.1 == "%md4(0x203132372e302e302e31)")
+condition (ipaddr)127.0.0.1 == "%hash.md4(' 127.0.0.1')"
+match (127.0.0.1 == "%hash.md4(0x203132372e302e302e31)")
 
 #
 #  Bare %{...} is allowed.
 #
-condition (ipaddr)127.0.0.1 == %md4('127.0.0.1')
-match (127.0.0.1 == %md4(0x3132372e302e302e31))
+condition (ipaddr)127.0.0.1 == %hash.md4('127.0.0.1')
+match (127.0.0.1 == %hash.md4(0x3132372e302e302e31))
 
-condition (ipaddr)127.0.0.1 == %md4("SELECT user FROM table WHERE user='%{User-Name}'")
-match (127.0.0.1 == %md4("SELECT user FROM table WHERE user='%{User-Name}'"))
+condition (ipaddr)127.0.0.1 == %hash.md4("SELECT user FROM table WHERE user='%{User-Name}'")
+match (127.0.0.1 == %hash.md4("SELECT user FROM table WHERE user='%{User-Name}'"))
 
 condition (ether) 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true
 
-condition (ether) 00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')"
-match (00:11:22:33:44:55 == "%md4(0x30303a31313a32323a33333a34343a3535)")
+condition (ether) 00:11:22:33:44:55 == "%hash.md4('00:11:22:33:44:55')"
+match (00:11:22:33:44:55 == "%hash.md4(0x30303a31313a32323a33333a34343a3535)")
 
 condition (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
 match ERROR offset 10: Unexpected text after attribute reference
@@ -309,11 +309,11 @@ match true
 condition ('foo' == 'foo')
 match true
 
-condition ("foo" == "%md4(' foo')")
-match ("foo" == "%md4(0x20666f6f)")
+condition ("foo" == "%hash.md4(' foo')")
+match ("foo" == "%hash.md4(0x20666f6f)")
 
-condition ("foo bar" == "%md4(' foo')")
-match ("foo bar" == "%md4(0x20666f6f)")
+condition ("foo bar" == "%hash.md4(' foo')")
+match ("foo bar" == "%hash.md4(0x20666f6f)")
 
 condition ("foo" == "bar")
 match false
@@ -329,8 +329,8 @@ match false
 condition (User-Name == "bob")
 match (User-Name == "bob")
 
-condition (User-Name == "%md4(' blah')")
-match (User-Name == "%md4(0x20626c6168)")
+condition (User-Name == "%hash.md4(' blah')")
+match (User-Name == "%hash.md4(0x20626c6168)")
 
 condition (ipaddr)127.0.0.1 == 2130706433
 match true
@@ -418,8 +418,8 @@ match ("foo" == User-Name)
 #  We should really add a "cast print" function which prints
 #  out the casts in the same format in which they are parsed.
 #
-condition (integer)"%md4(' 1 + 1')" < NAS-Port
-match (%cast(uint32, "%md4(0x2031202b2031)") < NAS-Port)
+condition (integer)"%hash.md4(' 1 + 1')" < NAS-Port
+match (%cast(uint32, "%hash.md4(0x2031202b2031)") < NAS-Port)
 
 condition Filter-Id == Framed-IP-Address
 match (Filter-Id == Framed-IP-Address)

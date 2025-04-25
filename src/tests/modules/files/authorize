@@ -156,7 +156,7 @@ undo	Password.Cleartext := "hello"
 #  otherwise it's a compile-time error.
 #
 undo
-	Framed-IP-Address := "hello %md5('foo')"
+	Framed-IP-Address := "hello %hash.md5('foo')"
 
 #
 #  Test where additional checks uses the [*] filter
