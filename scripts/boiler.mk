@@ -349,8 +349,8 @@ endif
 define ANALYZE_C_CMDS
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(ECHO) SCAN $<
-	$(Q)$(strip ${ANALYZE.c} --analyze -Xanalyzer -analyzer-output=html -c $< -o $@ ${CPPFLAGS} \
-	    ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} $(addprefix -I,${SRC_INCDIRS}) ${SRC_DEFS} ${DEFS}) || (rm -f $@ && false)
+	$(Q)$(strip ${ANALYZE.c} --analyze -Xanalyzer -analyzer-output=html ${CPPFLAGS} \
+	    ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} $(addprefix -I,${SRC_INCDIRS}) ${SRC_DEFS} ${DEFS} -o $@ $<)  || (rm -f $@ && false)
 	$(Q)if $(ANALYZE_C_DUMP) && test -d "$@"; then \
 	    echo "Decode with:"; \
 	    echo -n "echo \""; \
