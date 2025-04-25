@@ -1344,8 +1344,8 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
  *	- NULL on error
  *	- fr_worker_t on success
  */
-fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const *name, fr_log_t const *logger, fr_log_lvl_t lvl,
-			      fr_worker_config_t *config)
+fr_worker_t *fr_worker_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, char const *name, fr_log_t const *logger, fr_log_lvl_t lvl,
+			     fr_worker_config_t *config)
 {
 	fr_worker_t *worker;
 

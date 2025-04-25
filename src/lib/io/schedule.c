@@ -219,7 +219,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	}
 
 
-	sw->worker = fr_worker_create(ctx, sw->el, worker_name, sc->log, sc->lvl, &sc->config->worker);
+	sw->worker = fr_worker_alloc(ctx, sw->el, worker_name, sc->log, sc->lvl, &sc->config->worker);
 	if (!sw->worker) {
 		PERROR("%s - Failed creating worker", worker_name);
 		goto fail;
@@ -501,7 +501,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			return NULL;
 		}
 
-		sc->single_worker = fr_worker_create(sc, el, "Worker", sc->log, sc->lvl, &sc->config->worker);
+		sc->single_worker = fr_worker_alloc(sc, el, "Worker", sc->log, sc->lvl, &sc->config->worker);
 		if (!sc->single_worker) {
 			PERROR("Failed creating worker");
 			if (unlikely(fr_network_destroy(sc->single_network) < 0)) {
