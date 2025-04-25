@@ -1,4 +1,4 @@
-= Inserting IPs into SQL
+= Insert IPs into SQL
 
 The `scripts/sql/align_sql_pools.pl` program is a helper script which
 generates the SQL commands to update the SQL IP pools in a database.
@@ -34,8 +34,8 @@ follows:
 psql radius -qtAc 'SELECT framedipaddress FROM radippool' > existing_ips.txt
 ----
 
-See the xref:modules/sqlippool/populating.adoc[Generating IPs for the
-pools] page for instructions on how to generate the list of IPs to
+See the xref:modules/sqlippool/populating.adoc[Generate IPs for the
+Pools] page for instructions on how to generate the list of IPs to
 modify.
 
 The output of this script is a sequence of SQL commands which update
