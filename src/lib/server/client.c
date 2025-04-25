@@ -886,7 +886,7 @@ fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *se
 	if (fr_time_delta_ispos(c->response_window)) {
 		FR_TIME_DELTA_BOUND_CHECK("response_window", c->response_window, >=, fr_time_delta_from_usec(1000));
 		FR_TIME_DELTA_BOUND_CHECK("response_window", c->response_window, <=, fr_time_delta_from_sec(60));
-		FR_TIME_DELTA_BOUND_CHECK("response_window", c->response_window, <=, main_config->max_request_time);
+		FR_TIME_DELTA_BOUND_CHECK("response_window", c->response_window, <=, main_config->worker.max_request_time);
 	}
 
 #ifdef WITH_TLS

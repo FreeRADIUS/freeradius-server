@@ -42,7 +42,7 @@ extern main_config_t const *main_config;		//!< Global configuration singleton.
 #include <freeradius-devel/server/tmpl.h>
 
 #include <freeradius-devel/util/dict.h>
-
+#include <freeradius-devel/io/worker.h>
 
 /** Main server configuration
  *
@@ -58,8 +58,7 @@ struct main_config_s {
 	bool		spawn_workers;			//!< Should the server spawn threads.
 	char const      *pid_file;			//!< Path to write out PID file.
 
-	fr_time_delta_t	max_request_time;		//!< How long a request can be processed for before
-							//!< timing out.
+	fr_worker_config_t	worker;			//!< Worker thread configuration.
 
 	bool		drop_requests;			//!< Administratively disable request processing.
 	bool		suppress_secrets;		//!< suppress secrets (or not)
@@ -92,10 +91,6 @@ struct main_config_s {
 	int32_t		syslog_facility;
 
 	char const	*dict_dir;			//!< Where to load dictionaries from.
-
-	size_t		talloc_pool_size;		//!< Size of pool to allocate to hold each #request_t.
-
-	uint32_t	max_requests;			//!< maximum number of requests outstanding
 
 	bool		write_pid;			//!< write the PID file
 

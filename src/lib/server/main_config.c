@@ -152,7 +152,7 @@ static const conf_parser_t resources[] = {
 	 *	the config item will *not* get printed out in debug mode, so that no one knows
 	 *	it exists.
 	 */
-	{ FR_CONF_OFFSET_TYPE_FLAGS("talloc_pool_size", FR_TYPE_SIZE, CONF_FLAG_HIDDEN, main_config_t, talloc_pool_size), .func = talloc_pool_size_parse },			/* DO NOT SET DEFAULT */
+	{ FR_CONF_OFFSET_TYPE_FLAGS("talloc_pool_size", FR_TYPE_SIZE, CONF_FLAG_HIDDEN, main_config_t, worker.talloc_pool_size), .func = talloc_pool_size_parse },			/* DO NOT SET DEFAULT */
 	{ FR_CONF_OFFSET_FLAGS("talloc_memory_report", CONF_FLAG_HIDDEN, main_config_t, talloc_memory_report) },						/* DO NOT SET DEFAULT */
 	CONF_PARSER_TERMINATOR
 };
@@ -211,11 +211,11 @@ static const conf_parser_t server_config[] = {
 	{ FR_CONF_OFFSET("panic_action", main_config_t, panic_action) },
 	{ FR_CONF_OFFSET("reverse_lookups", main_config_t, reverse_lookups), .dflt = "no", .func = reverse_lookups_parse },
 	{ FR_CONF_OFFSET("hostname_lookups", main_config_t, hostname_lookups), .dflt = "yes", .func = hostname_lookups_parse },
-	{ FR_CONF_OFFSET("max_request_time", main_config_t, max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME), .func = max_request_time_parse },
+	{ FR_CONF_OFFSET("max_request_time", main_config_t, worker.max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME), .func = max_request_time_parse },
 	{ FR_CONF_OFFSET("pidfile", main_config_t, pid_file), .dflt = "${run_dir}/radiusd.pid"},
 
 	{ FR_CONF_OFFSET_FLAGS("debug_level", CONF_FLAG_HIDDEN, main_config_t, debug_level), .dflt = "0" },
-	{ FR_CONF_OFFSET("max_requests", main_config_t, max_requests), .dflt = "0" },
+	{ FR_CONF_OFFSET("max_requests", main_config_t, worker.max_requests), .dflt = "0" },
 
 	{ FR_CONF_POINTER("log", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) log_config },
 
@@ -1061,7 +1061,7 @@ int main_config_init(main_config_t *config)
 	 *
 	 *	Which should be enough for many configurations.
 	 */
-	config->talloc_pool_size = 8 * 1024; /* default */
+	config->worker.talloc_pool_size = 8 * 1024; /* default */
 
 	cs = cf_section_alloc(NULL, NULL, "main", NULL);
 	if (!cs) return -1;

@@ -843,11 +843,8 @@ int main(int argc, char *argv[])
 		schedule->max_networks = config->max_networks;
 		schedule->stats_interval = config->stats_interval;
 
-		schedule->network.max_outstanding = config->max_requests;
-
-#define COPY(_x) schedule->worker._x = config->_x
-		COPY(max_requests);
-		COPY(max_request_time);
+		schedule->network.max_outstanding = config->worker.max_requests;
+		schedule->worker = config->worker;
 
 		/*
 		 *	Single server mode: use the global event list.
