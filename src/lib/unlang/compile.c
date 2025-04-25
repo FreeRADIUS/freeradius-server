@@ -3498,7 +3498,7 @@ static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	if (!subrequest) {
 		cf_log_err(ci, "'detach' can only be used inside of a 'subrequest' section.");
-		cf_log_err(ci, DOC_KEYWORD_REF(break));
+		cf_log_err(ci, DOC_KEYWORD_REF(detach));
 		return NULL;
 	}
 
