@@ -101,12 +101,20 @@ static fr_cmd_t *fr_command_find(fr_cmd_t **head, char const *name, fr_cmd_t ***
 {
 	fr_cmd_t *cmd, **where = head;
 
-	if (!head || !name) return NULL;
+	if (!head || !name) {
+		if (insert) *insert = head;
+		return NULL;
+	}
 
 	if (!*head) {
 		if (insert) *insert = head;
 		return NULL;
 	}
+
+	/*
+	 *	Ensure if we exit int he loop insert is initialised
+	 */
+	if (insert) *insert = NULL;
 
 	for (cmd = *head; cmd != NULL; cmd = cmd->next) {
 		int status;
