@@ -67,7 +67,7 @@ static inline CC_HINT(always_inline) void unlang_parallel_cancel_child(unlang_pa
 		break;
 
 	case CHILD_DONE:
-		fr_assert(!fr_heap_entry_inserted(child->runnable_id));
+		fr_assert(!fr_heap_entry_inserted(child->runnable));
 
 		/*
 		 *	Completed children just get freed
@@ -239,7 +239,7 @@ static unlang_action_t unlang_parallel_resume(rlm_rcode_t *p_result, request_t *
 	for (i = 0; i < state->num_children; i++) {
 		if (!state->children[i].request) continue;
 
-		fr_assert(!fr_heap_entry_inserted(state->children[i].request->runnable_id));
+		fr_assert(!fr_heap_entry_inserted(state->children[i].request->runnable));
 		TALLOC_FREE(state->children[i].request);
 	}
 

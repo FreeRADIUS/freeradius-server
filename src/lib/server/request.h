@@ -235,8 +235,6 @@ struct request_s {
 
 	fr_rb_node_t		dedup_node;	//!< entry in the deduplication tree.
 
-	fr_heap_index_t		runnable_id;	//!< entry in the heap of runnable packets
-
 	fr_timer_t		*timeout;	//!< Timer event for this request.  This tracks when we need to
 						///< forcefully terminate a request.
 
@@ -250,6 +248,8 @@ struct request_s {
 
 	fr_dlist_t		listen_entry;	//!< request's entry in the list for this listener / socket
 	fr_dlist_t		free_entry;	//!< Request's entry in the free list.
+	fr_heap_index_t		runnable;	//!< entry in the heap of runnable packets
+
 };				/* request_t typedef */
 
 /** Optional arguments for initialising requests

@@ -380,11 +380,11 @@ static int _request_free(request_t *request)
 		      request->alloc_file,
 		      request->alloc_line,
 		      request->name ? request->name : "(null)");
-	fr_assert_msg(!fr_heap_entry_inserted(request->runnable_id),
+	fr_assert_msg(!fr_heap_entry_inserted(request->runnable),
 		      "alloced %s:%i: %s still in the runnable heap ID %i",
 		      request->alloc_file,
 		      request->alloc_line,
-		      request->name ? request->name : "(null)", request->runnable_id);
+		      request->name ? request->name : "(null)", request->runnable);
 
 	RDEBUG3("Request freed (%p)", request);
 
@@ -420,7 +420,7 @@ static int _request_free(request_t *request)
 		memset(request, 0, sizeof(*request));
 		request->component = "free_list";
 #ifndef NDEBUG
-		request->runnable_id = FR_HEAP_INDEX_INVALID;
+		request->runnable = FR_HEAP_INDEX_INVALID;
 #endif
 
 		/*

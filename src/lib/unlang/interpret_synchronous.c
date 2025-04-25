@@ -158,7 +158,7 @@ static void _request_resume(request_t *request, UNUSED void *uctx)
 
 static bool _request_scheduled(request_t const *request, UNUSED void *uctx)
 {
-	return fr_heap_entry_inserted(request->runnable_id);
+	return fr_heap_entry_inserted(request->runnable);
 }
 
 /** Allocate a new temporary interpreter
@@ -169,7 +169,7 @@ static unlang_interpret_synchronous_t *unlang_interpret_synchronous_alloc(TALLOC
 	unlang_interpret_synchronous_t *intps;
 
 	MEM(intps = talloc_zero(ctx, unlang_interpret_synchronous_t));
-	MEM(intps->runnable = fr_heap_talloc_alloc(intps, fr_pointer_cmp, request_t, runnable_id, 0));
+	MEM(intps->runnable = fr_heap_talloc_alloc(intps, fr_pointer_cmp, request_t, runnable, 0));
 	if (el) {
 		intps->el = el;
 	} else {

@@ -589,7 +589,7 @@ static int worker_request_time_tracking_start(fr_worker_t *worker, request_t *re
 	fr_time_tracking_yield(&request->async->tracking, now);
 	worker->num_active++;
 
-	fr_assert(!fr_heap_entry_inserted(request->runnable_id));
+	fr_assert(!fr_heap_entry_inserted(request->runnable));
 	(void) fr_heap_insert(&worker->runnable, request);
 
 	return 0;
@@ -624,7 +624,7 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 	/*
 	 *	If we're sending a reply, then it's no longer runnable.
 	 */
-	fr_assert(!fr_heap_entry_inserted(request->runnable_id));
+	fr_assert(!fr_heap_entry_inserted(request->runnable));
 
 	if (send_reply) {
 		size = request->async->listen->app_io->default_reply_size;
@@ -721,7 +721,7 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, bool send
 	worker->stats.out++;
 
 	fr_assert(!fr_timer_armed(request->timeout));
-	fr_assert(!fr_heap_entry_inserted(request->runnable_id));
+	fr_assert(!fr_heap_entry_inserted(request->runnable));
 
 	fr_dlist_entry_unlink(&request->listen_entry);
 
@@ -1150,7 +1150,7 @@ static void _worker_request_done_internal(request_t *request, UNUSED rlm_rcode_t
 
 	worker_request_time_tracking_end(worker, request, fr_time());
 
-	fr_assert(!fr_heap_entry_inserted(request->runnable_id));
+	fr_assert(!fr_heap_entry_inserted(request->runnable));
 	fr_assert(!fr_timer_armed(request->timeout));
 	fr_assert(!fr_dlist_entry_in_list(&request->async->entry));
 }
@@ -1167,7 +1167,7 @@ static void _worker_request_done_detached(request_t *request, UNUSED rlm_rcode_t
 	 *	so we don't need to call
 	 *	worker_request_time_tracking_end.
 	 */
-	fr_assert(!fr_heap_entry_inserted(request->runnable_id));
+	fr_assert(!fr_heap_entry_inserted(request->runnable));
 
 	/*
 	 *	Normally worker_request_time_tracking_end
@@ -1245,7 +1245,7 @@ static void _worker_request_stop(request_t *request, void *uctx)
 	 *	yank it back out, so it's not "runnable"
 	 *	when we call request done.
 	 */
-	if (fr_heap_entry_inserted(request->runnable_id)) fr_heap_extract(&worker->runnable, request);
+	if (fr_heap_entry_inserted(request->runnable)) fr_heap_extract(&worker->runnable, request);
 }
 
 /** Request is now runnable
@@ -1282,7 +1282,7 @@ static void _worker_request_resume(request_t *request, UNUSED void *uctx)
  */
 static bool _worker_request_scheduled(request_t const *request, UNUSED void *uctx)
 {
-	return fr_heap_entry_inserted(request->runnable_id);
+	return fr_heap_entry_inserted(request->runnable);
 }
 
 /** Run a request
@@ -1315,7 +1315,7 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 	       ((request = fr_heap_pop(&worker->runnable)) != NULL)) {
 
 		REQUEST_VERIFY(request);
-		fr_assert(!fr_heap_entry_inserted(request->runnable_id));
+		fr_assert(!fr_heap_entry_inserted(request->runnable));
 
 		/*
 		 *	For real requests, if the channel is gone,
@@ -1422,7 +1422,7 @@ nomem:
 		goto fail;
 	}
 
-	worker->runnable = fr_heap_talloc_alloc(worker, worker_runnable_cmp, request_t, runnable_id, 0);
+	worker->runnable = fr_heap_talloc_alloc(worker, worker_runnable_cmp, request_t, runnable, 0);
 	if (!worker->runnable) {
 		fr_strerror_const("Failed creating runnable heap");
 		goto fail;
