@@ -338,7 +338,7 @@ int trigger_exec(unlang_interpret_t *intp,
 	/*
 	 *	Allocate a request to run asynchronously in the interpreter.
 	 */
-	request = request_alloc_internal(NULL, (&(request_init_args_t){ .detachable = true }));
+	request = request_local_alloc_internal(NULL, (&(request_init_args_t){ .detachable = true }));
 
 	/*
 	 *	Add the args to the request data, so they can be picked up by the

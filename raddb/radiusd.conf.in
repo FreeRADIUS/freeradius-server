@@ -167,47 +167,97 @@ pidfile = ${run_dir}/${name}.pid
 #
 
 #
-#  max_request_time:: The maximum time (in seconds) to handle a request.
+# request:: Configuration for request handling.
 #
-#  Requests which take more time than this to process may be killed, and
-#  a REJECT message is returned.
+# These items control how requests are allocated and processed.
 #
-#  WARNING: If you notice that requests take a long time to be handled,
-#  then this MAY INDICATE a bug in the server, in one of the modules
-#  used to handle a request, OR in your local configuration.
+# NOTE: Most of these configuration items are per-worker.  To get the
+# true number of requests you need to multiply the value by the number
+# of workers (or the number of cores).
 #
-#  This problem is most often seen when using an SQL database.  If it takes
-#  more than a second or two to receive an answer from the SQL database,
-#  then it probably means that you haven't indexed the database.  See your
-#  SQL server documentation for more information.
-#
-#  Useful range of values: `5` to `120`
-#
-max_request_time = 30
+request {
+	#
+	#  max:: The maximum number of requests which the server
+	#  keeps track of.  This should be at least `256` multiplied by the
+	#  number of clients.  e.g. With `4` clients, this number should be
+	#  `1024`.
+	#
+	#  If this number is too low, then when the server becomes busy,
+	#  it will not respond to any new requests, until the 'cleanup_delay'
+	#  time has passed, and it has removed the old requests.
+	#
+	#  If this number is set too high, then the server will use a bit more
+	#  memory for no real benefit.
+	#
+	#  If you aren't sure what it should be set to, it's better to set it
+	#  too high than too low.  Setting it to `1000` per client is probably
+	#  the highest it should be.
+	#
+	#  Unlike v3, this setting is per worker thread, and is not global to
+	#  the server.
+	#
+	#  Useful range of values: `256` to `infinity`
+	#
+	max = 16384
 
-#
-#  max_requests:: The maximum number of requests which the server
-#  keeps track of.  This should be at least `256` multiplied by the
-#  number of clients.  e.g. With `4` clients, this number should be
-#  `1024`.
-#
-#  If this number is too low, then when the server becomes busy,
-#  it will not respond to any new requests, until the 'cleanup_delay'
-#  time has passed, and it has removed the old requests.
-#
-#  If this number is set too high, then the server will use a bit more
-#  memory for no real benefit.
-#
-#  If you aren't sure what it should be set to, it's better to set it
-#  too high than too low.  Setting it to `1000` per client is probably
-#  the highest it should be.
-#
-#  Unlike v3, this setting is per worker thread, and is not global to
-#  the server.
-#
-#  Useful range of values: `256` to `infinity`
-#
-max_requests = 16384
+	#
+	#  timeout:: The maximum time (in seconds) to handle a request.
+	#
+	#  Requests which take more time than this to process may be killed, and
+	#  a REJECT message is returned.
+	#
+	#  WARNING: If you notice that requests take a long time to be handled,
+	#  then this MAY INDICATE a bug in the server, in one of the modules
+	#  used to handle a request, OR in your local configuration.
+	#
+	#  This problem is most often seen when using an SQL database.  If it takes
+	#  more than a second or two to receive an answer from the SQL database,
+	#  then it probably means that you haven't indexed the database.  See your
+	#  SQL server documentation for more information.
+	#
+	#  Useful range of values: `5` to `120`
+	#
+	timeout = 30
+
+	#
+	#  Instead of requests being freed at the end of processing, they can be
+	#  returned to a list of requests to reuse.
+	#
+	#  As with `request.max` reuse values apply on a per-worker basis, so the
+	#  true number of cached requests is `request.reuse.max * <num workers>`.
+	#
+	reuse {
+		#
+		#  min:: The minimum number of requests to keep in the reuse list.
+		#
+		min = 10
+
+		#
+		#  max:: The maximum number of reusable requests.
+		#
+		#  Any requests being processed by a worker beyond
+		#  this number will cause a temporary request to be allocated.
+		#  This is less efficient than the block allocation so
+		#  `max` should be set to reflect the number of outstanding
+		#  requests expected at peak load.
+		#
+		#  FIXME: Should likely default to request.max
+		#
+#		max = 100
+
+		#
+		#  cleanup_interval:: How often to free un-used requests.
+		#
+		#  Every `cleanup_interval` a cleanup routine runs which
+		#  will free any blocks of handles which are not in use,
+		#  ensuring that at least `min` handles are kept.
+		#
+		#  This ensures that the server's memory usage does not remain
+		#  permanently bloated after a load spike.
+		#
+		cleanup_interval = 30s
+	}
+}
 
 #
 #  reverse_lookups:: Log the names of clients or just their IP addresses

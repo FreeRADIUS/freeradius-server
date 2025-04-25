@@ -581,7 +581,7 @@ static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, eap_sess
 	/*
 	 *	Allocate a fake request_t structure.
 	 */
-	fake = request_alloc_internal(request, &(request_init_args_t){ .parent = request });
+	fake = request_local_alloc_internal(request, &(request_init_args_t){ .parent = request });
 	fr_assert(fr_pair_list_empty(&fake->request_pairs));
 
 	t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);

@@ -1137,11 +1137,11 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 			box.vb_time_delta = fr_time_delta_from_msec(10);
 		}
 
-		if (fr_time_delta_cmp(box.vb_time_delta, main_config->max_request_time) > 0) {
+		if (fr_time_delta_cmp(box.vb_time_delta, main_config->worker.max_request_time) > 0) {
 			cf_log_warn(subcs, "Timeout value %pV too large - limiting it to max_request_time of %pV",
-				    &box, fr_box_time_delta(main_config->max_request_time));
+				    &box, fr_box_time_delta(main_config->worker.max_request_time));
 
-			box.vb_time_delta = main_config->max_request_time;
+			box.vb_time_delta = main_config->worker.max_request_time;
 		}
 
 	       	rcode = unlang_compile(vs, subcs, &mod_actions_timeout, rules, &instruction);

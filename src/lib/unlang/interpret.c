@@ -1094,6 +1094,7 @@ void unlang_interpret_request_done(request_t *request)
 
 	intp = stack->intp;
 
+	request->master_state = REQUEST_DONE;
 	switch (request->type) {
 	case REQUEST_TYPE_EXTERNAL:
 		intp->funcs.done_external(request, stack->result, intp->uctx);
@@ -1107,8 +1108,6 @@ void unlang_interpret_request_done(request_t *request)
 		intp->funcs.done_detached(request, stack->result, intp->uctx);	/* Callback will usually free the request */
 		break;
 	}
-
-	request->master_state = REQUEST_DONE;
 }
 
 static inline CC_HINT(always_inline)

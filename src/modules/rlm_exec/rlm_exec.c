@@ -468,9 +468,9 @@ static int mob_instantiate(module_inst_ctx_t const *mctx)
 		/*
 		 *	Pick the shorter one
 		 */
-		inst->timeout = fr_time_delta_gt(main_config->max_request_time, fr_time_delta_from_sec(EXEC_TIMEOUT)) ?
+		inst->timeout = fr_time_delta_gt(main_config->worker.max_request_time, fr_time_delta_from_sec(EXEC_TIMEOUT)) ?
 						 fr_time_delta_from_sec(EXEC_TIMEOUT):
-						 main_config->max_request_time;
+						 main_config->worker.max_request_time;
 	}
 	else {
 		if (fr_time_delta_lt(inst->timeout, fr_time_delta_from_sec(1))) {
@@ -481,9 +481,9 @@ static int mob_instantiate(module_inst_ctx_t const *mctx)
 		/*
 		 *	Blocking a request longer than max_request_time isn't going to help anyone.
 		 */
-		if (fr_time_delta_gt(inst->timeout, main_config->max_request_time)) {
+		if (fr_time_delta_gt(inst->timeout, main_config->worker.max_request_time)) {
 			cf_log_err(conf, "Timeout '%pVs' is too large (maximum: %pVs)",
-				   fr_box_time_delta(inst->timeout), fr_box_time_delta(main_config->max_request_time));
+				   fr_box_time_delta(inst->timeout), fr_box_time_delta(main_config->worker.max_request_time));
 			return -1;
 		}
 	}

@@ -134,7 +134,7 @@ static request_t *request_from_internal(TALLOC_CTX *ctx)
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_alloc_internal(ctx, NULL);
+	request = request_local_alloc_internal(ctx, NULL);
 	if (!request->packet) request->packet = fr_packet_alloc(request, false);
 	if (!request->reply) request->reply = fr_packet_alloc(request, false);
 
@@ -599,7 +599,7 @@ static request_t *request_clone(request_t *old, int number, CONF_SECTION *server
 {
 	request_t *request;
 
-	request = request_alloc_internal(NULL, (&(request_init_args_t){ .namespace = old->proto_dict }));
+	request = request_local_alloc_internal(NULL, (&(request_init_args_t){ .namespace = old->proto_dict }));
 	if (!request) return NULL;
 
 	if (!request->packet) request->packet = fr_packet_alloc(request, false);
@@ -1064,7 +1064,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (count == 1) {
-		fr_timer_in(request, el->tl, &cancel_timer, config->max_request_time, false, cancel_request, request);
+		fr_timer_in(request, el->tl, &cancel_timer, config->worker.max_request_time, false, cancel_request, request);
 		unlang_interpret_synchronous(el, request);
 
 	} else {
@@ -1097,7 +1097,7 @@ int main(int argc, char *argv[])
 			}
 #endif
 
-			fr_timer_in(request, el->tl, &cancel_timer, config->max_request_time, false, cancel_request, request);
+			fr_timer_in(request, el->tl, &cancel_timer, config->worker.max_request_time, false, cancel_request, request);
 			unlang_interpret_synchronous(el, request);
 			talloc_free(request);
 

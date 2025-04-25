@@ -306,7 +306,7 @@ int xlat_purify(xlat_exp_head_t *head, unlang_interpret_t *intp)
 
 	if (!head->flags.can_purify) return 0;
 
-	request = request_alloc_internal(NULL, NULL);
+	request = request_local_alloc_internal(NULL, NULL);
 	if (!request) return -1;
 
 	if (intp) unlang_interpret_set(request, intp);

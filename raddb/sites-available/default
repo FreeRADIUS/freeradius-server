@@ -1541,9 +1541,9 @@ send Accounting-Response {
 #  contents are the same as the `timeout` keyword.
 #
 #  This section limits the total processing time for a request.  The
-#  values given here should be less than `max_request_time`.
+#  values given here should be less than `request.timeout`.
 #
-#  When a request reaches `max_request_time`, it is forcibly stopped.
+#  When a request reaches `request.timeout`, it is forcibly stopped.
 #  No further processing takes place.
 #
 #  When a request reaches the time specified in this `timeout` section,
@@ -1558,9 +1558,9 @@ send Accounting-Response {
 #  "timeout for the timeout", then just add anoither `timeout` section
 #  inside of this one.
 #
-#  Note that `max_request_time` still applies.  So the timeout value
+#  Note that `request.timeout` still applies.  So the timeout value
 #  given here should be less than the value given by
-#  `max_request_time`.
+#  `request.timeout`.
 #
 #
 

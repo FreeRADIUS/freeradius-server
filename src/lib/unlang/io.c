@@ -45,12 +45,12 @@ request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namesp
 	 */
 	fr_assert(fr_dict_proto_dict(namespace) == namespace);
 
-	child = request_alloc_internal(detachable ? NULL : parent,
-				       (&(request_init_args_t){
+	child = request_local_alloc_internal(detachable ? NULL : parent,
+					     (&(request_init_args_t){
 						.parent = parent,
 						.namespace = namespace,
 						.detachable = detachable
-				       }));
+					     }));
 	if (!child) return NULL;
 
 	/*

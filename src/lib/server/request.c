@@ -57,12 +57,6 @@ fr_dict_attr_autoload_t request_dict_attr[] = {
 	{ NULL }
 };
 
-/** The thread local free list
- *
- * Any entries remaining in the list will be freed when the thread is joined
- */
-static _Thread_local fr_dlist_head_t *request_free_list; /* macro */
-
 #ifndef NDEBUG
 static int _state_ctx_free(fr_pair_t *state)
 {
@@ -240,9 +234,9 @@ static inline CC_HINT(always_inline) int request_child_init(request_t *child, re
  * @param[in] type		of request to initialise.
  * @param[in] args		Other optional arguments.
  */
-static inline CC_HINT(always_inline) int request_init(char const *file, int line,
-						      request_t *request, request_type_t type,
-						      request_init_args_t const *args)
+int _request_init(char const *file, int line,
+		  request_t *request, request_type_t type,
+		  request_init_args_t const *args)
 {
 	fr_dict_t const *dict;
 
@@ -363,17 +357,25 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
 	} else {
 		request_log_init_orphan(request);
 	}
+
+	/*
+	 *	This is only used by src/lib/io/worker.c
+	 */
+	fr_dlist_entry_init(&request->listen_entry);
+
 	return 0;
 }
 
-/** Callback for freeing a request struct
+/** Callback for slabs to deinitialise the request
  *
- * @param[in] request		to free or return to the free list.
+ * Does not need to be called for local requests.
+ *
+ * @param[in] request		deinitialise
  * @return
- *	- 0 in the request was freed.
- *	- -1 if the request was inserted into the free list.
+ *	- 0 in the request was deinitialised.
+ *	- -1 if the request is in an unexpected state.
  */
-static int _request_free(request_t *request)
+int request_slab_deinit(request_t *request)
 {
 	fr_assert_msg(!fr_timer_armed(request->timeout),
 		      "alloced %s:%i: %s still in the  timeout sublist",
@@ -386,85 +388,25 @@ static int _request_free(request_t *request)
 		      request->alloc_line,
 		      request->name ? request->name : "(null)", request->runnable);
 
-	RDEBUG3("Request freed (%p)", request);
+	RDEBUG3("Request deinitialising (%p)", request);
 
-	/*
-	 *	Reinsert into the free list if it's not already
-	 *	in the free list.
-	 *
-	 *	If it *IS* already in the free list, then free it.
-	 */
-	if (unlikely(fr_dlist_entry_in_list(&request->free_entry))) {
-		fr_dlist_entry_unlink(&request->free_entry);	/* Don't trust the list head to be available */
-		goto really_free;
-	}
-
-	/*
-	 *	We keep a buffer of <active> + N requests per
-	 *	thread, to avoid spurious allocations.
-	 */
-	if (fr_dlist_num_elements(request_free_list) <= 256) {
-		fr_dlist_head_t		*free_list;
-
-		if (request->session_state_ctx) {
-			fr_assert(talloc_parent(request->session_state_ctx) != request);	/* Should never be directly parented */
-			TALLOC_FREE(request->session_state_ctx);				/* Not parented from the request */
-		}
-		free_list = request_free_list;
-
-		/*
-		 *	Reinitialise the request
-		 */
-		talloc_free_children(request);
-
-		memset(request, 0, sizeof(*request));
-		request->component = "free_list";
-#ifndef NDEBUG
-		request->runnable = FR_HEAP_INDEX_INVALID;
-#endif
-
-		/*
-		 *	Reinsert into the free list
-		 */
-		fr_dlist_insert_head(free_list, request);
-		request_free_list = free_list;
-
-		return -1;	/* Prevent free */
- 	}
-
-
-	/*
-	 *	Ensure anything that might reference the request is
-	 *	freed before it is.
-	 */
-	talloc_free_children(request);
-
-really_free:
 	/*
 	 *	state_ctx is parented separately.
 	 */
 	if (request->session_state_ctx) TALLOC_FREE(request->session_state_ctx);
 
+	/*
+	 *	Zero out everything.
+	 */
+	memset(request, 0, sizeof(*request));
+
 #ifndef NDEBUG
+	request->component = "free_list";
+	request->runnable = FR_HEAP_INDEX_INVALID;
 	request->magic = 0x01020304;	/* set the request to be nonsense */
 #endif
 
 	return 0;
-}
-
-/** Free any free requests when the thread is joined
- *
- */
-static int _request_free_list_free_on_exit(void *arg)
-{
-	fr_dlist_head_t *list = talloc_get_type_abort(arg, fr_dlist_head_t);
-	request_t		*request;
-
-	/*
-	 *	See the destructor for why this works
-	 */
-	while ((request = fr_dlist_head(list))) if (talloc_free(request) < 0) return -1;
-	return talloc_free(list);
 }
 
 static inline CC_HINT(always_inline) request_t *request_alloc_pool(TALLOC_CTX *ctx)
@@ -481,88 +423,9 @@ static inline CC_HINT(always_inline) request_t *request_alloc_pool(TALLOC_CTX *c
 	 *	and would have to be freed.
 	 */
 	MEM(request = talloc_pooled_object(ctx, request_t,
-					   1 + 					/* Stack pool */
-					   UNLANG_STACK_MAX + 			/* Stack Frames */
-					   2 + 					/* packets */
-					   10,					/* extra */
-					   (UNLANG_FRAME_PRE_ALLOC * UNLANG_STACK_MAX) +	/* Stack memory */
-					   (sizeof(fr_pair_t) * 5) +		/* pair lists and root*/
-					   (sizeof(fr_packet_t) * 2) +	/* packets */
-					   128					/* extra */
-					   ));
+					   REQUEST_POOL_HEADERS,
+					   REQUEST_POOL_SIZE));
 	fr_assert(ctx != request);
-
-	return request;
-}
-
-/** Create a new request_t data structure
- *
- * @param[in] file	where the request was allocated.
- * @param[in] line	where the request was allocated.
- * @param[in] ctx	to bind the request to.
- * @param[in] type	what type of request to alloc.
- * @param[in] args	Optional arguments.
- * @return
- *	- A request on success.
- *	- NULL on error.
- */
-request_t *_request_alloc(char const *file, int line, TALLOC_CTX *ctx,
-			  request_type_t type, request_init_args_t const *args)
-{
-	request_t		*request;
-	fr_dlist_head_t		*free_list;
-
-	/*
-	 *	Setup the free list, or return the free
-	 *	list for this thread.
-	 */
-	if (unlikely(!request_free_list)) {
-		MEM(free_list = talloc(NULL, fr_dlist_head_t));
-		fr_dlist_init(free_list, request_t, free_entry);
-		fr_atexit_thread_local(request_free_list, _request_free_list_free_on_exit, free_list);
-	} else {
-		free_list = request_free_list;
-	}
-
-	request = fr_dlist_head(free_list);
-	if (!request) {
-		/*
-		 *	Must be allocated with in the NULL ctx
-		 *	as chunk is returned to the free list.
-		 */
-		request = request_alloc_pool(NULL);
-		talloc_set_destructor(request, _request_free);
-	} else {
-		/*
-		 *	Remove from the free list, as we're
-		 *	about to use it!
-		 */
-		fr_dlist_remove(free_list, request);
-	}
-
-	if (request_init(file, line, request, type, args) < 0) {
-		talloc_free(request);
-		return NULL;
-	}
-
-	/*
-	 *	Initialise entry in free list
-	 */
-	fr_dlist_entry_init(&request->free_entry);	/* Needs to be initialised properly, else bad things happen */
-
-	/*
-	 *	This is only used by src/lib/io/worker.c
-	 */
-	fr_dlist_entry_init(&request->listen_entry);
-
-	/*
-	 *	Bind lifetime to a parent.
-	 *
-	 *	If the parent is freed the destructor
-	 *	will fire, and return the request
-	 *	to a "top level" free list.
-	 */
-	if (ctx) talloc_link_ctx(ctx, request);
 
 	return request;
 }
@@ -617,7 +480,7 @@ request_t *_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx,
 	request_t *request;
 
 	request = request_alloc_pool(ctx);
-	if (request_init(file, line, request, type, args) < 0) return NULL;
+	if (_request_init(file, line, request, type, args) < 0) return NULL;
 
 	talloc_set_destructor(request, _request_local_free);
 

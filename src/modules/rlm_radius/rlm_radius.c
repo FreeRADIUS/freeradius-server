@@ -941,7 +941,7 @@ check_others:
 	 *	have mrt=mrc=mrd = 0, which means "retransmit
 	 *	forever".  We allow that, with the restriction that
 	 *	the server core will automatically free the request at
-	 *	max_request_time.
+	 *	request.timeout.
 	 */
 	if (inst->allowed[FR_RADIUS_CODE_ACCOUNTING_REQUEST]) {
 		FR_TIME_DELTA_BOUND_CHECK("Accounting-Request.initial_rtx_time", inst->retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].irt, >=, fr_time_delta_from_sec(1));

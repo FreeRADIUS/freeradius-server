@@ -57,6 +57,32 @@ extern "C" {
 #  define REQUEST_MAGIC (0xdeadbeef)
 #endif
 
+/*
+ *	Stack pool +
+ *	Stack Frames +
+ *	packets +
+ *	extra
+ */
+#define REQUEST_POOL_HEADERS	( \
+					1 + \
+					UNLANG_STACK_MAX + \
+					2 + \
+					10 \
+				)
+
+/*
+ *	Stack memory +
+ *	pair lists and root +
+ *	packets +
+ *	extra
+ */
+#define REQUEST_POOL_SIZE	( \
+					(UNLANG_FRAME_PRE_ALLOC * UNLANG_STACK_MAX) + \
+					(sizeof(fr_pair_t) * 5) + \
+					(sizeof(fr_packet_t) * 2) + \
+					128 \
+				)
+
 typedef enum {
 	REQUEST_ACTIVE = 1,		//!< Request is active (running or runnable)
 	REQUEST_STOP_PROCESSING,	//!< Request has been signalled to stop
@@ -247,7 +273,6 @@ struct request_s {
 	int			alloc_line;	//!< Line the request was allocated on.
 
 	fr_dlist_t		listen_entry;	//!< request's entry in the list for this listener / socket
-	fr_dlist_t		free_entry;	//!< Request's entry in the free list.
 	fr_heap_index_t		runnable;	//!< entry in the heap of runnable packets
 
 };				/* request_t typedef */
@@ -289,28 +314,14 @@ typedef struct {
 #define RAD_REQUEST_OPTION_CTX	(1 << 1)
 #define RAD_REQUEST_OPTION_DETAIL (1 << 2)
 
-/** Allocate a new external request
- *
- * Use for requests produced by listeners
- *
- * @param[in] _ctx	Talloc ctx to bind the request to.
- * @param[in] _args	Optional arguments that control how the request is initialised.
- */
-#define		request_alloc_external(_ctx, _args) \
-		_request_alloc( __FILE__, __LINE__, (_ctx), REQUEST_TYPE_EXTERNAL, (_args))
+#define		request_init(_ctx, _type, _args) \
+		_request_init(__FILE__, __LINE__, _ctx, _type, _args)
 
-/** Allocate a new internal request
- *
- * Use for requests produced by modules and unlang
- *
- * @param[in] _ctx	Talloc ctx to bind the request to.
- * @param[in] _args	Optional arguments that control how the request is initialised.
- */
-#define		request_alloc_internal(_ctx, _args) \
-		_request_alloc( __FILE__, __LINE__, (_ctx), REQUEST_TYPE_INTERNAL, (_args))
+int		_request_init(char const *file, int line,
+			      request_t *request, request_type_t type,
+			      request_init_args_t const *args);
 
-request_t	*_request_alloc(char const *file, int line, TALLOC_CTX *ctx,
-				request_type_t type, request_init_args_t const *args);
+int		request_slab_deinit(request_t *request);
 
 /** Allocate a new external request outside of the request pool
  *

@@ -152,7 +152,6 @@ static const conf_parser_t resources[] = {
 	 *	the config item will *not* get printed out in debug mode, so that no one knows
 	 *	it exists.
 	 */
-	{ FR_CONF_OFFSET_TYPE_FLAGS("talloc_pool_size", FR_TYPE_SIZE, CONF_FLAG_HIDDEN, main_config_t, worker.talloc_pool_size), .func = talloc_pool_size_parse },			/* DO NOT SET DEFAULT */
 	{ FR_CONF_OFFSET_FLAGS("talloc_memory_report", CONF_FLAG_HIDDEN, main_config_t, talloc_memory_report) },						/* DO NOT SET DEFAULT */
 	CONF_PARSER_TERMINATOR
 };
@@ -194,6 +193,19 @@ static const conf_parser_t interpret_config[] = {
 };
 #endif
 
+static const conf_parser_t request_reuse_config[] = {
+	FR_SLAB_CONFIG_CONF_PARSER
+	CONF_PARSER_TERMINATOR
+};
+
+static const conf_parser_t request_config[] = {
+	{ FR_CONF_OFFSET("max", main_config_t, worker.max_requests), .dflt = "0" },
+	{ FR_CONF_OFFSET("timeout", main_config_t, worker.max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME), .func = max_request_time_parse },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("talloc_pool_size", FR_TYPE_SIZE, CONF_FLAG_HIDDEN, main_config_t, worker.reuse.child_pool_size), .func = talloc_pool_size_parse },			/* DO NOT SET DEFAULT */
+	{ FR_CONF_OFFSET_SUBSECTION("reuse", 0, main_config_t, worker.reuse, request_reuse_config) },
+	CONF_PARSER_TERMINATOR
+};
+
 static const conf_parser_t server_config[] = {
 	/*
 	 *	FIXME: 'prefix' is the ONLY one which should be
@@ -211,11 +223,11 @@ static const conf_parser_t server_config[] = {
 	{ FR_CONF_OFFSET("panic_action", main_config_t, panic_action) },
 	{ FR_CONF_OFFSET("reverse_lookups", main_config_t, reverse_lookups), .dflt = "no", .func = reverse_lookups_parse },
 	{ FR_CONF_OFFSET("hostname_lookups", main_config_t, hostname_lookups), .dflt = "yes", .func = hostname_lookups_parse },
-	{ FR_CONF_OFFSET("max_request_time", main_config_t, worker.max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME), .func = max_request_time_parse },
 	{ FR_CONF_OFFSET("pidfile", main_config_t, pid_file), .dflt = "${run_dir}/radiusd.pid"},
 
 	{ FR_CONF_OFFSET_FLAGS("debug_level", CONF_FLAG_HIDDEN, main_config_t, debug_level), .dflt = "0" },
-	{ FR_CONF_OFFSET("max_requests", main_config_t, worker.max_requests), .dflt = "0" },
+
+	{ FR_CONF_POINTER("request", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) request_config },
 
 	{ FR_CONF_POINTER("log", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) log_config },
 
@@ -228,6 +240,9 @@ static const conf_parser_t server_config[] = {
 #ifndef NDEBUG
 	{ FR_CONF_POINTER("interpret", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) interpret_config, .name2 = CF_IDENT_ANY },
 #endif
+
+	{ FR_CONF_DEPRECATED("max_requests", main_config_t, worker.max_requests) },
+	{ FR_CONF_DEPRECATED("max_request_time", main_config_t, worker.max_request_time) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -322,8 +337,8 @@ static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, void *parent,
 
 	memcpy(&value, out, sizeof(value));
 
-	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", value, >=, (size_t)(2 * 1024));
-	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", value, <=, (size_t)(1024 * 1024));
+	FR_SIZE_BOUND_CHECK("request.talloc_pool_size", value, >=, (size_t)(2 * 1024));
+	FR_SIZE_BOUND_CHECK("request.talloc_pool_size", value, <=, (size_t)(1024 * 1024));
 
 	memcpy(out, &value, sizeof(value));
 
@@ -340,8 +355,8 @@ static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent,
 
 	memcpy(&value, out, sizeof(value));
 
-	FR_TIME_DELTA_BOUND_CHECK("max_request_time", value, >=, fr_time_delta_from_sec(5));
-	FR_TIME_DELTA_BOUND_CHECK("max_request_time", value, <=, fr_time_delta_from_sec(120));
+	FR_TIME_DELTA_BOUND_CHECK("request.timeout", value, >=, fr_time_delta_from_sec(5));
+	FR_TIME_DELTA_BOUND_CHECK("request.timeout", value, <=, fr_time_delta_from_sec(120));
 
 	memcpy(out, &value, sizeof(value));
 
@@ -1055,13 +1070,6 @@ int main_config_init(main_config_t *config)
 	}
 #endif
 	INFO("Starting - reading configuration files ...");
-
-	/*
-	 *	About sizeof(request_t) + sizeof(fr_packet_t) * 2 + sizeof(fr_pair_t) * 400
-	 *
-	 *	Which should be enough for many configurations.
-	 */
-	config->worker.talloc_pool_size = 8 * 1024; /* default */
 
 	cs = cf_section_alloc(NULL, NULL, "main", NULL);
 	if (!cs) return -1;
