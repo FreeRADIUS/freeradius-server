@@ -2341,7 +2341,7 @@ static int mod_enqueue(bio_request_t **p_u, fr_retry_config_t const **p_retry_co
 	case RLM_RADIUS_MODE_XLAT_PROXY:
 	case RLM_RADIUS_MODE_PROXY:
 		if (!request->parent) {
-			u->proxied = (request->client->cs != NULL);
+			u->proxied = (request->client && request->client->cs != NULL);
 
 		} else if (!fr_dict_compatible(request->parent->proto_dict, request->proto_dict)) {
 			u->proxied = false;
