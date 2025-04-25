@@ -53,8 +53,12 @@
 
 *** xref:modules/sqlcounter/index.adoc[SQL-Counter]
 *** xref:modules/sqlippool/index.adoc[SQL-IP-Pool]
-**** xref:modules/sqlippool/populating.adoc[Generating IPs]
-**** xref:modules/sqlippool/insert.adoc[Inserting IPs into SQL]
+**** xref:modules/sqlippool/configure.adoc[Configuration]
+***** xref:modules/sqlippool/testing.adoc[Test Basic Setup]
+***** xref:modules/sqlippool/populating.adoc[Generate IPs for the Pools]
+***** xref:modules/sqlippool/insert.adoc[Insert IPs into SQL]
+**** xref:modules/sqlippool/recommendations.adoc[Recommendations]
+
 
 ** xref:datastores/index.adoc[Setting up Datastores]
 *** xref:datastores/ad/index.adoc[Active Directory]

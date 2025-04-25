@@ -1,0 +1,199 @@
+= Testing the Basic Setup
+
+Start by creating some text files holding the test request data based on the
+actual form of the contents of packets originating from the NAS.
+
+.Example RADIUS requests text files for testing SQL IP Pools
+=============================================
+
+.access-request.rad
+[source,config]
+----
+User-Name = bob
+User-Password = testing123
+Calling-Station-Id = 00:53:00:11:22:33
+NAS-Port = 12345
+NAS-IP-Address = 192.0.2.5
+----
+
+.accounting-start.rad
+[source,config]
+----
+Acct-Session-Id = 1000
+Acct-Status-Id = Start
+User-Name = bob
+User-Password = testing123
+Calling-Station-Id = 00:53:00:11:22:33
+NAS-Port = 12345
+NAS-IP-Address = 192.0.2.5
+Framed-IP-Address = ???.???.???.???
+----
+
+.accounting-alive.rad
+[source,config]
+----
+Acct-Session-Id = 1000
+Acct-Status-Id = Interim-Update
+User-Name = bob
+User-Password = testing123
+Calling-Station-Id = 00:53:00:11:22:33
+NAS-Port = 12345
+NAS-IP-Address = 192.0.2.5
+Framed-IP-Address = ???.???.???.???
+----
+
+.accounting-stop.rad
+[source,config]
+----
+Acct-Session-Id = 1000
+Acct-Status-Id = Interim-Update
+User-Name = bob
+User-Password = testing123
+Calling-Station-Id = 00:53:00:11:22:33
+NAS-Port = 12345
+NAS-IP-Address = 192.0.2.5
+Framed-IP-Address = ???.???.???.???
+----
+
+.accounting-on.rad
+[source,config]
+----
+Acct-Status-Id = On
+NAS-IP-Address = 192.0.2.5
+----
+
+.accounting-off.rad
+[source,config]
+----
+Acct-Status-Id = Off
+NAS-IP-Address = 192.0.2.5
+----
+
+=============================================
+
+Now run through a series of tests examining the effect on the `fr_ippool`
+tables at each stage to ensure that it matches the expected behaviour as
+described in the <<operation,Operation section>>.
+
+
+== Test initial authentication
+
+Send the Access Request to FreeRADIUS.
+
+[source,terminal]
+----
+cat access-request.rad | radclient -x 127.0.0.1 auth testing123
+Sent Access-Request Id 1 from 0.0.0.0:2000 to 127.0.0.1:1812 length 81
+	Password.Cleartext = "testing123"
+	User-Name = "bob"
+	User-Password = "testing123"
+	Calling-Station-Id = "00:53:00:11:22:33"
+	NAS-Port = 12345
+	NAS-IP-Address = 192.0.2.5
+Received Access-Accept Id 1 from 127.0.0.1:1812 to 0.0.0.0:2000 length 31
+	User-Name = "bob"
+	Framed-IP-Address = 192.0.2.10
+----
+
+Note that an IP address has been issued in the `Framed-IP-Address` of the
+reply.
+
+[TIP]
+====
+If you do no receive an IP address then start FreeRADIUS in debugging mode
+to determine where the process if failing as described in the
+https://wiki.freeradius.org/guide/radiusd-X[guide to debugging FreeRADIUS]. Do
+not proceed until you have resolved the IP allocation issue.
+====
+
+Check the status of the `fr_ippool` table.
+
+[source,terminal]
+----
+echo "SELECT * FROM fr_ippool WHERE gateway <> ''" | mysql radius
++----+-----------+------------+-------+-----------+---------------------+---------+
+| id | pool_name | address    | owner | gateway   | expiry_time         | status  |
++----+-----------+------------+-------+-----------+---------------------+---------+
+| 1  | internet  | 192.0.2.10 | bob   | 192.0.2.5 | 2020-01-01 10:10:10 | dynamic |
++----+-----------+------------+-------+-----------+---------------------+---------+
+1 rows in set (0.0030 sec)
+----
+
+For the entry matching the given IP address ensure that the IP allocation has
+been recorded correctly. Check that:
+
+. The `owner` matches the expected value of the unique identifier that you
+chose. Double check that values of this form will be unique across all of your
+devices.
+
+. The `expiry_time` is `lease_duration` seconds ahead of the time of the
+request (or some fixed value that you chose for the initial lease if you
+updated the default policy.)
+
+. The `gateway` has been provided. If not then you may need to
+reconfigure your NAS to provide this or instantiate this attribute from
+`Net.Src.IP` using an unlang policy in FreeRADIUS. Otherwise when
+the NAS reboots you will not be able to match the affected IP addresses to the
+device.
+
+Update your sample text files containing the accounting requests to include the
+allocated IP Address *before proceeding* with accounting packet testing.
+
+
+== Test Accounting Start
+
+[source,terminal]
+----
+cat accounting-start.rad | radclient -x 127.0.0.1 acct testing123
+----
+
+Check the status of the `fr_ippool` table.
+
+For the entry matching the given IP address ensure that *initial lease
+extension* is occurring by verifying that the `expiry_time` is in the future by
+`lease_duration` seconds from the time of the request.
+
+
+== Test Accounting Interim-Update
+
+[source,terminal]
+----
+cat accounting-alive.rad | radclient -x 127.0.0.1 acct testing123
+----
+
+Check the status of the `fr_ippool` table.
+
+For the entry matching the given IP address ensure that *IP address renewal* is
+occurring by verifying that the `expiry_time` is in the future by
+`lease_duration` seconds from the time of the request.
+
+
+== Test Accounting Stop
+
+[source,terminal]
+----
+cat accounting-stop.rad | radclient -x 127.0.0.1 acct testing123
+----
+
+Check the status of the `fr_ippool` table.
+
+For the entry matching the given IP address ensure that *IP address release* is
+occurring by verifying that the `expiry_time` is set prior to the current time
+or is null.
+
+
+== Additional tests
+
+* Repeat this authentication test with the same user to ensure that the same IP
+address is allocated for a re-authentication of an ongoing session.
+
+* Repeat the authentication test with multiple users to ensure that each user is
+assigned a unique IP address.
+
+* Test that `Accounting On/Off` packets clear all sessions owned by the NAS.
+
+* If you have already enabled a sticky IP policy then ensure that user
+and device data is not removed when an `Accounting Stop` (and `Accounting
+On/Off`) request is received. Ensure that users receive their previous IP
+address when they authenticate using a device whose recent session is
+disconnected.

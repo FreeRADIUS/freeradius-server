@@ -1,4 +1,4 @@
-= Generating IPs for the pools.
+= Generate IPs for the Pools
 
 The `scripts/sql/generate_pool_addresses.pl` file is a helper script
 for populating IP pools with address entries.
@@ -18,7 +18,7 @@ that make changes to the datastore. For example:
 generate_pool_addresses.pl ... | align_sql_pools.pl postgresql
 ----
 
-Once the IP addresses have been generated, 
+Once the IP addresses have been generated,
 
 == Use with a single address range
 
@@ -40,16 +40,19 @@ generate_pool_addresses.pl <pool_name> <range_start> <range_end> \
           [ <capacity> [ <existing_ips_file> ] ]
 ----
 
-NOTE: Sparse ranges are populated using a deterministic, pseudo-random
+[NOTE]
+====
+Sparse ranges are populated using a deterministic, pseudo-random
 function. This allows pools to be trivially extended without having to
 supply the existing contents using a file. If you require
 less-predictable randomness or a different random sequence then remove
-or modify the line calling srand(), below.
+or modify the line calling srand().
+====
 
 
-### Use with multiple pools and address ranges
+== Use with multiple pools and address ranges
 
-For more complex us, the script allows a set of pool definitions to be
+For more complex use cases, the script allows a set of pool definitions to be
 provided in a YAML file which describes a set of one or more pools, each
 containing a set of one or more ranges. The first argument in this case is
 always "yaml":
@@ -116,7 +119,7 @@ includes the pool_name and an IP address.
 
   Lines beginning with "#" are comments
 
-.Example of creating a fully populated IP range.
+.Create a fully populated IP range
 =============================================
 
 [source,shell]
@@ -125,11 +128,11 @@ generate_pool_addresses.pl main_pool 192.0.2.3 192.0.2.249
 ----
 
 Will create a pool from a full populated IPv4 range, i.e. all IPs in the
-range available for allocation).
+range available for allocation.
 =============================================
 
 
-.Example of creating a sparsely populated pool.
+.Create a sparsely populated pool
 =============================================
 
 [source,shell]
@@ -144,7 +147,7 @@ increasing the capacity of the range with:
 =============================================
 
 
-.Example of extending a previously populated pool.
+.Extend a previously populated pool
 =============================================
 
 [source,shell]
@@ -158,7 +161,7 @@ the random seed has been changed since the initial run.
 =============================================
 
 
-.Example of creating an IPv6 pool
+.Create an IPv6 pool
 =============================================
 
 [source,shell]
@@ -172,7 +175,7 @@ populating the range with 65536 (by default) addresses.
 =============================================
 
 
-.Example of extending a previously populated IPv6 pool.
+.Extend a previously populated IPv6 pool
 =============================================
 
 [source,shell]
@@ -189,7 +192,7 @@ that represent IPs which fall within range.
 =============================================
 
 
-.Example of creating pools from a YAML file.
+.Create pools from a YAML file
 =============================================
 
 [source,shell]
