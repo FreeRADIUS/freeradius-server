@@ -656,10 +656,6 @@ void request_verify(char const *file, int line, request_t const *request)
 
 	fr_assert(request->magic == REQUEST_MAGIC);
 
-	fr_fatal_assert_msg(talloc_get_size(request) == sizeof(request_t),
-			    "CONSISTENCY CHECK FAILED %s[%i]: expected request_t size of %zu bytes, got %zu bytes",
-			    file, line, sizeof(request_t), talloc_get_size(request));
-
 	(void)talloc_get_type_abort(request->request_ctx, fr_pair_t);
 	fr_pair_list_verify(file, line, request->request_ctx, &request->request_pairs);
 	(void)talloc_get_type_abort(request->reply_ctx, fr_pair_t);
