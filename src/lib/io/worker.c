@@ -1273,7 +1273,7 @@ static void _worker_request_runnable(request_t *request, void *uctx)
 static void _worker_request_yield(request_t *request, UNUSED void *uctx)
 {
 	RDEBUG3("Request yielded");
-	fr_time_tracking_yield(&request->async->tracking, fr_time());
+	if (likely(!request_is_detached(request))) fr_time_tracking_yield(&request->async->tracking, fr_time());
 }
 
 /** Interpreter is starting to work on request again
@@ -1282,7 +1282,7 @@ static void _worker_request_yield(request_t *request, UNUSED void *uctx)
 static void _worker_request_resume(request_t *request, UNUSED void *uctx)
 {
 	RDEBUG3("Request resuming");
-	fr_time_tracking_resume(&request->async->tracking, fr_time());
+	if (likely(!request_is_detached(request))) fr_time_tracking_resume(&request->async->tracking, fr_time());
 }
 
 /** Check if a request is scheduled
