@@ -302,7 +302,12 @@ struct unlang_stack_frame_s {
 								///< this priority will be compared with the one of the
 								///< frame lower in the stack to determine if the
 								///< result stored in the lower stack frame should
+	rindent_t		indent;				//!< Indent level of the request when the frame was
+								///< created.  This is used to restore the indent
+								///< level when the stack is being forcefully unwound.
 	uint8_t			uflags;				//!< Unwind markers
+
+
 #ifdef WITH_PERF
 	fr_time_tracking_t	tracking;			//!< track this instance of this instruction
 #endif
@@ -495,6 +500,13 @@ static inline void frame_pop(request_t *request, unlang_stack_t *stack)
 	 *	know how to _stop_ the retries after they've hit a timeout.
 	 */
 	TALLOC_FREE(frame->retry);
+
+	/*
+	 *	Ensure log indent is at the same level as it was when
+	 *	the frame was pushed.  This is important when we're
+	 *	unwinding the stack and forcefully cancelling calls.
+	 */
+	request->log.indent = frame->indent;
 
 	frame_cleanup(frame);
 

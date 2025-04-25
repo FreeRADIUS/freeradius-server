@@ -202,6 +202,7 @@ int unlang_interpret_push(request_t *request, unlang_t const *instruction,
 
 	frame->result = default_rcode;
 	frame->priority = -1;
+	frame->indent = request->log.indent;
 
 	if (!instruction) return 0;
 
