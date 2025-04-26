@@ -2848,7 +2848,7 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
 		if (regex_request_to_sub(vb, vb, request, idx.vb_uint32) < 0) {
-			REDEBUG2("No previous numbered regex capture group");
+			REDEBUG2("No previous numbered regex capture group '%u'", idx.vb_uint32);
 			talloc_free(vb);
 			return XLAT_ACTION_FAIL;
 		}
@@ -2874,7 +2874,7 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
 		if (regex_request_to_sub_named(vb, vb, request, arg->vb_strvalue) < 0) {
-			REDEBUG2("No previous named regex capture group");
+			REDEBUG2("No previous named regex capture group '%s'", arg->vb_strvalue);
 			talloc_free(vb);
 			return XLAT_ACTION_FAIL;
 		}
