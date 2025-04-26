@@ -85,8 +85,12 @@ xlat_expr (uint8) 1 << 8
 match 256
 
 # Cannot perform any operations for destination type ether
+#
+#  Except the error is printed out via RPEDEBUG, and is thus unavailable
+#  to the unit tests
+#
 xlat_expr 00:01:02:03:04:05 ^ 11:22:33:44:55:66
-match ERROR expanding xlat: Invalid operation on data types - 'ether' ^ 'ether'
+match ERROR expanding xlat: no error provided
 
 #
 #  NAS-IP-Address doesn't exist.

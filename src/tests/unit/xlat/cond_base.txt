@@ -33,8 +33,11 @@ match ERROR offset 3: Unexpected text after return code
 #
 #  0 - 111 is smaller than zero, and Service-Type is uint32.
 #
+#  Except the error is printed out via RPEDEBUG, and is thus unavailable
+#  to the unit tests
+#
 xlat_purify (Service-Type == 000-111)
-match ERROR purifying node - Value underflows 'uint64' when calculating result.
+match ERROR purifying node - 
 
 #
 #  @todo - this should really be hoisted
