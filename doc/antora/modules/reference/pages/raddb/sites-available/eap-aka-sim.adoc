@@ -566,7 +566,7 @@ The following facilitates may be useful when generating pseudonym
 values:
 
 - The encrypt expansions of the `rlm_cipher` module.
-- The `%3gpp_temporary_id_encrypt()` expansion.
+- The `%3gpp_temporary_id.encrypt()` expansion.
 - The `%str.rand()` expansion.
 
 NOTE: Add a `reply.Next-Pseudonym-Id` attribute in this section to

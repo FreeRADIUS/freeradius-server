@@ -12,7 +12,7 @@ if (%aka_sim_id_type(%{User-Name}) != 'permanent') {
 #  Encrypt the permanent ID
 #
 test_string := '1234567812345678'
-control.User-Name := %3gpp_temporary_id_encrypt(%{User-Name},%{test_string},6)
+control.User-Name := %3gpp_temporary_id.encrypt(%{User-Name},%{test_string},6)
 
 #
 #  Can we get the EAP method from the encrypted blob correctly?
@@ -31,7 +31,7 @@ if (%aka_sim_id_type(%{control.User-Name}) != 'pseudonym') {
 #
 #  We should refuse to re-encrypt an encrypted NAI
 #
-if %3gpp_temporary_id_encrypt(%{control.User-Name},%{test_string},6) {
+if %3gpp_temporary_id.encrypt(%{control.User-Name},%{test_string},6) {
 	test_fail
 }
 

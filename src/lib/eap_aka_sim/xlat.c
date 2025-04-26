@@ -154,7 +154,7 @@ static xlat_arg_parser_t const aka_sim_id_3gpp_temporary_id_key_index_xlat_args[
 /** Returns the key index from a 3gpp temporary id
  *
 @verbatim
-%3gpp_temporary_id_key_index(%{id_attr})
+%3gpp_temporary_id.key_index(%{id_attr})
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -192,7 +192,7 @@ static xlat_arg_parser_t aka_sim_3gpp_temporary_id_decrypt_xlat_args[] = {
 /** Decrypt a 3gpp temporary id
  *
  @verbatim
- %3gpp_temporary_id_decrypt(<id> <key>)
+ %3gpp_temporary_id.decrypt(<id> <key>)
  @endverbatim
  *
  * The pseudonym is in the format
@@ -335,7 +335,7 @@ static xlat_arg_parser_t aka_sim_3gpp_temporary_id_encrypt_xlat_args[] = {
 /** Encrypts a 3gpp pseudonym
  *
 @verbatim
-%3gpp_temporary_id_encrypt(<id>, <key>, <index>, [(pseudonym|fastauth)])
+%3gpp_temporary_id.encrypt(<id>, <key>, <index>, [(pseudonym|fastauth)])
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -509,10 +509,20 @@ int fr_aka_sim_xlat_func_register(void)
 	xlat_func_args_set(xlat, aka_sim_xlat_id_type_xlat_args);
 	if (unlikely((xlat = xlat_func_register(NULL, "3gpp_temporary_id_key_index", aka_sim_id_3gpp_temporary_id_key_index_xlat, FR_TYPE_UINT8)) == NULL)) return -1;
 	xlat_func_args_set(xlat, aka_sim_id_3gpp_temporary_id_key_index_xlat_args);
+	if (unlikely((xlat = xlat_func_register(NULL, "3gpp_temporary_id.key_index", aka_sim_id_3gpp_temporary_id_key_index_xlat, FR_TYPE_UINT8)) == NULL)) return -1;
+	xlat_func_args_set(xlat, aka_sim_id_3gpp_temporary_id_key_index_xlat_args);
+
 	if (unlikely((xlat = xlat_func_register(NULL, "3gpp_temporary_id_decrypt", aka_sim_3gpp_temporary_id_decrypt_xlat, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, aka_sim_3gpp_temporary_id_decrypt_xlat_args);
+
+	if (unlikely((xlat = xlat_func_register(NULL, "3gpp_temporary_id.decrypt", aka_sim_3gpp_temporary_id_decrypt_xlat, FR_TYPE_STRING)) == NULL)) return -1;
+	xlat_func_args_set(xlat, aka_sim_3gpp_temporary_id_decrypt_xlat_args);
+
 	if (unlikely((xlat = xlat_func_register(NULL, "3gpp_temporary_id_encrypt", aka_sim_3gpp_temporary_id_encrypt_xlat, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, aka_sim_3gpp_temporary_id_encrypt_xlat_args);
+	if (unlikely((xlat = xlat_func_register(NULL, "3gpp_temporary_id.encrypt", aka_sim_3gpp_temporary_id_encrypt_xlat, FR_TYPE_STRING)) == NULL)) return -1;
+	xlat_func_args_set(xlat, aka_sim_3gpp_temporary_id_encrypt_xlat_args);
+
 	aka_sim_xlat_refs = 1;
 
 	return 0;

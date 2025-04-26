@@ -1254,7 +1254,7 @@ require configuration for each user.
 
 The rlm_eap module provides the below functions to interact with the `3GPP` and `SIM` protocols.
 
-### %3gpp_temporary_id_decrypt('...)
+### %3gpp_temporary_id.decrypt('...)
 
 TODO
 
@@ -1273,7 +1273,7 @@ TODO
 TODO
 ```
 
-### %3gpp_temporary_id_encrypt(...)
+### %3gpp_temporary_id.encrypt(...)
 
 TODO
 
@@ -1292,7 +1292,7 @@ TODO
 TODO
 ```
 
-### %3gpp_temporary_id_key_index(...)
+### %3gpp_temporary_id.key_index(...)
 
 TODO
 
