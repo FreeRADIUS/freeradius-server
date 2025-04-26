@@ -101,16 +101,19 @@ $(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(sort $(FILES))) | $(OUTPUT)
 	${Q}touch $@
 	${Q}for x in $^; do \
 		y=`grep 'PRE: ' $$x | sed 's/.*://;s/  / /g;s, , $(BUILD_DIR)/tests/keywords/,g'`; \
+		out=`echo $$x | sed 's,src/,$(BUILD_DIR)/',`; \
 		if [ "$$y" != "" ]; then \
-			z=`echo $$x | sed 's,src/,$(BUILD_DIR)/',`; \
-			echo "$$z: $$y" >> $@; \
+			echo "$$out: $$y" >> $@; \
 			echo "" >> $@; \
 		fi; \
-		y=`grep 'PROTOCOL: ' $$x | sed 's/.*://;s/  / /g'`; \
+		y=`grep 'PROTOCOL: ' $$x | sed 's/^.*: //'`; \
 		if [ "$$y" != "" ]; then \
 			z=`echo $$x | sed 's,src/tests/keywords/,,;s/-/_/g'`; \
 			echo "UNIT_TEST_KEYWORD_ARGS.$$z=-p $$y" >> $@; \
 			echo "" >> $@; \
+			echo "$$out: src/tests/keywords/$$y.conf" >> $@; \
+		else \
+			echo "$$out: src/tests/keywords/radius.conf" >> $@; \
 		fi \
 	done
 
