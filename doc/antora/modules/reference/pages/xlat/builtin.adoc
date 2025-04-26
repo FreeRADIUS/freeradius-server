@@ -172,9 +172,9 @@ reply.Reply-Message := "You should wait for %nexttime(1h)s"
 You should wait for 2520s
 ```
 
-### %sub(<subject>, /<regex>/[flags], <replace>)
+### %str.subst(<subject>, <find>, <replace>)
 
-Substitute text just as easily as it can match it, even using regex patterns.
+Substitute text.
 
 .Return: _string_.
 
