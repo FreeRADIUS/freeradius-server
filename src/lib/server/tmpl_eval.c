@@ -557,15 +557,9 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 	TMPL_VERIFY(vpt);
 
+	fr_assert(!tmpl_needs_resolving(vpt));
+
 	switch (vpt->type) {
-	case TMPL_TYPE_DATA_UNRESOLVED:
-		RDEBUG4("EXPAND TMPL DATA UNRESOLVED");
-
-		fr_value_box_bstrndup_shallow(&value, NULL, vpt->name, vpt->len, false);
-		to_cast = &value;
-		needs_dup = true;
-		break;
-
 	case TMPL_TYPE_EXEC:
 	{
 		char *buff;
@@ -580,37 +574,6 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 			return slen;
 		}
 		fr_value_box_strtrim(tmp_ctx, &value);
-		to_cast = &value;
-	}
-		break;
-
-	case TMPL_TYPE_XLAT_UNRESOLVED:
-	{
-		fr_value_box_t	tmp;
-		fr_type_t	src_type = FR_TYPE_STRING;
-		char		*result;
-
-		RDEBUG4("EXPAND TMPL XLAT");
-
-		/* Error in expansion, this is distinct from zero length expansion */
-		slen = xlat_aeval(tmp_ctx, &result, request, vpt->name, escape, escape_ctx);
-		if (slen < 0) goto error;
-
-		/*
-		 *	Undo any of the escaping that was done by the
-		 *	xlat expansion function.
-		 *
-		 *	@fixme We need a way of signalling xlat not to escape things.
-		 */
-		ret = fr_value_box_from_str(tmp_ctx, &tmp, src_type, NULL,
-					    result, (size_t)slen,
-					    NULL);
-		if (ret < 0) {
-			RPEDEBUG("Failed parsing %.*s", (int) slen, result);
-			goto error;
-		}
-
-		fr_value_box_bstrndup_shallow(&value, NULL, tmp.vb_strvalue, tmp.vb_length, tmp.tainted);
 		to_cast = &value;
 	}
 		break;
@@ -700,6 +663,8 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	case TMPL_TYPE_REGEX_UNCOMPILED:
 	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_MAX:
 		fr_assert(0);
 		goto error;
