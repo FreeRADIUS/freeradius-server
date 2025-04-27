@@ -543,72 +543,60 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		       xlat_escape_legacy_t escape, void const *escape_ctx,
 		       fr_type_t dst_type)
 {
-	fr_value_box_t		*to_cast = NULL;
-	fr_value_box_t		from_cast;
+	fr_value_box_t		*vb_out, *vb_in = NULL;
+	fr_value_box_t		value = FR_VALUE_BOX_INITIALISER_NULL(value);
 
 	fr_pair_t		*vp = NULL;
-	fr_value_box_t		value = FR_VALUE_BOX_INITIALISER_NULL(value);
 	bool			needs_dup = false;
 
 	ssize_t			slen = -1;
 	int			ret;
 
-	TALLOC_CTX		*tmp_ctx = talloc_new(ctx);
+	TALLOC_CTX		*tmp_ctx = NULL;
+	char			*str = NULL;
 
 	TMPL_VERIFY(vpt);
 
 	fr_assert(!tmpl_needs_resolving(vpt));
+	fr_assert(!fr_type_is_structural(dst_type));
 
 	switch (vpt->type) {
 	case TMPL_TYPE_EXEC:
-	{
-		char *buff;
-
 		RDEBUG4("EXPAND TMPL EXEC");
 
-		MEM(fr_value_box_bstr_alloc(tmp_ctx, &buff, &value, NULL, 1024, true));
-		if (radius_exec_program_legacy(buff, 1024, request, vpt->name, NULL,
-					true, false, fr_time_delta_from_sec(EXEC_TIMEOUT)) != 0) {
+		MEM(tmp_ctx = talloc_new(ctx));
+
+		MEM(fr_value_box_bstr_alloc(tmp_ctx, &str, &value, NULL, 1024, true));
+		if (radius_exec_program_legacy(str, 1024, request, vpt->name, NULL,
+					       true, false, fr_time_delta_from_sec(EXEC_TIMEOUT)) != 0) {
 		error:
 			talloc_free(tmp_ctx);
 			return slen;
 		}
+
 		fr_value_box_strtrim(tmp_ctx, &value);
-		to_cast = &value;
-	}
+		vb_in = &value;
 		break;
 
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_REGEX_XLAT:
-	{
-		fr_value_box_t	tmp;
-		fr_type_t	src_type = FR_TYPE_STRING;
-		char		*result;
-
 		RDEBUG4("EXPAND TMPL XLAT STRUCT");
-		/* No EXPAND xlat here as the xlat code does it */
 
-		/* Error in expansion, this is distinct from zero length expansion */
-		slen = xlat_aeval_compiled(tmp_ctx, &result, request, tmpl_xlat(vpt), escape, escape_ctx);
+		MEM(tmp_ctx = talloc_new(ctx));
+
+		/*
+		 *	An error in expansion is distinct from zero
+		 *	length expansion.  Zero-length strings are
+		 *	permitted.
+		 */
+		slen = xlat_aeval_compiled(tmp_ctx, &str, request, tmpl_xlat(vpt), escape, escape_ctx);
 		if (slen < 0) goto error;
 
 		/*
-		 *	Undo any of the escaping that was done by the
-		 *	xlat expansion function.
-		 *
-		 *	@fixme We need a way of signalling xlat not to escape things.
+		 *	The output is a string which might get cast to something later.
 		 */
-		ret = fr_value_box_from_str(tmp_ctx, &tmp, src_type, NULL,
-					    result, (size_t)slen,
-					    NULL);
-		if (ret < 0) {
-			RPEDEBUG("Failed parsing %.*s", (int) slen, result);
-			goto error;
-		}
-
-		fr_value_box_bstrndup_shallow(&value, NULL, tmp.vb_strvalue, tmp.vb_length, tmp.tainted);
-		to_cast = &value;
-	}
+		fr_value_box_bstrndup_shallow(&value, NULL, str, (size_t) slen, false);
+		vb_in = &value;
 		break;
 
 	case TMPL_TYPE_ATTR:
@@ -623,35 +611,15 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 		fr_assert(vp);
 
-		to_cast = &vp->data;
-		switch (to_cast->type) {
-		case FR_TYPE_STRING:
-		case FR_TYPE_OCTETS:
-			fr_assert(to_cast->datum.ptr);
-			needs_dup = true;
-			break;
-
-		default:
-			break;
-		}
+		needs_dup = true;
+		vb_in = &vp->data;
 		break;
 
 	case TMPL_TYPE_DATA:
-	{
 		RDEBUG4("EXPAND TMPL DATA");
 
-		to_cast = UNCONST(fr_value_box_t *, tmpl_value(vpt));
-		switch (to_cast->type) {
-		case FR_TYPE_STRING:
-		case FR_TYPE_OCTETS:
-			fr_assert(to_cast->datum.ptr);
-			needs_dup = true;
-			break;
-
-		default:
-			break;
-		}
-	}
+		needs_dup = true;
+		vb_in = UNCONST(fr_value_box_t *, tmpl_value(vpt));
 		break;
 
 	/*
@@ -670,62 +638,97 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		goto error;
 	}
 
+	fr_assert(vb_in != NULL);
+	VALUE_BOX_VERIFY(vb_in);
+
 	/*
-	 *	Special case where we just copy the boxed value
-	 *	directly instead of casting it.
+	 *	If the output is a value-box, we might cast it using the tmpl cast.  When done, we just copy
+	 *	the value-box.
 	 */
 	if (dst_type == FR_TYPE_VALUE_BOX) {
-		fr_value_box_t	**vb_out = (fr_value_box_t **)out;
 		fr_type_t cast_type;
 
-		MEM(*vb_out = fr_value_box_alloc_null(ctx));
-
+		MEM(vb_out = fr_value_box_alloc_null(ctx));
 		cast_type = tmpl_rules_cast(vpt);
+
 		if (cast_type == FR_TYPE_NULL) {
-			ret = needs_dup ? fr_value_box_copy(*vb_out, *vb_out, to_cast) : fr_value_box_steal(*vb_out, *vb_out, to_cast);
+			if (needs_dup) {
+				fr_value_box_copy(vb_out, vb_out, vb_in);
+			} else {
+				fr_value_box_steal(vb_out, vb_out, vb_in);
+			}
+			talloc_free(tmp_ctx);
+
 		} else {
-			ret = fr_value_box_cast(ctx, *vb_out, cast_type, NULL, to_cast);
+			ret = fr_value_box_cast(vb_out, vb_out, cast_type, NULL, vb_in);
+			talloc_free(tmp_ctx);
+
+			if (ret < 0) {
+				talloc_free(vb_out);
+				dst_type = cast_type;
+
+			failed_cast:
+				RPEDEBUG("Failed casting input %pV to data type %s", vb_in, fr_type_to_str(dst_type));
+				goto error;
+			}
 		}
 
-		talloc_free(tmp_ctx);
-		if (ret < 0) {
-			RPEDEBUG("Failed copying data to output box");
-			TALLOC_FREE(*vb_out);
-			return -1;
-		}
-		VALUE_BOX_VERIFY(*vb_out);
+		VALUE_BOX_VERIFY(vb_out);
+		*(fr_value_box_t **) out = vb_out;
 		return 0;
 	}
 
 	/*
-	 *	Don't dup the buffers unless we need to.
+	 *	Cast the data to the correct type.  Which also allocates any variable sized buffers from the
+	 *	output ctx.
 	 */
-	if ((to_cast->type != dst_type) || needs_dup) {
-		ret = fr_value_box_cast(ctx, &from_cast, dst_type, NULL, to_cast);
-		if (ret < 0) goto error;
-	} else {
-		switch (to_cast->type) {
-		case FR_TYPE_OCTETS:
-		case FR_TYPE_STRING:
-			/*
-			 *	Ensure we don't free the output buffer when the
-			 *	tmp_ctx is freed.
-			 */
-			if (value.datum.ptr && (talloc_parent(value.datum.ptr) == tmp_ctx)) {
-				(void)talloc_reparent(tmp_ctx, ctx, value.datum.ptr);
-			}
-			break;
+	if (dst_type != vb_in->type) {		
+		if (vb_in == &value) {
+			fr_assert(tmp_ctx != NULL);
+			fr_assert(str != NULL);
+			fr_assert(dst_type != FR_TYPE_STRING); /* exec / xlat returned string in 'str' */
 
-		default:
-			break;
+			slen = fr_value_box_from_str(ctx, &value, dst_type, NULL, str, (size_t) slen, NULL);
+			if (slen < 0) {
+				fr_value_box_bstrndup_shallow(&value, NULL, str, (size_t) slen, false);
+				goto failed_cast;
+			}
+
+		} else {
+			ret = fr_value_box_cast(ctx, &value, dst_type, NULL, vb_in);
+			if (ret < 0) goto failed_cast;
 		}
-		fr_value_box_copy_shallow(NULL, &from_cast, to_cast);
-	}
+
+		/*
+		 *	The input data has been converted, and placed into value.
+		 */
+		vb_in = &value;
+
+	} else if (fr_type_is_variable_size(dst_type)) {
+		/*
+		 *	The output type is the same, but variable sized types need to be either duplicated, or
+		 *	reparented.
+		 */
+		if (needs_dup) {
+			fr_assert(vb_in != &value);
+
+			ret = fr_value_box_copy(ctx, &value, vb_in);
+			if (ret < 0) goto failed_cast;
+
+			vb_in = &value;
+		} else {
+			fr_assert(dst_type == FR_TYPE_STRING);
+			fr_assert(str != NULL);
+
+			(void) talloc_steal(ctx, str); /* ensure it's parented from the right context */
+			fr_assert(vb_in == &value);
+		}
+	} /* else the output type is a leaf, and is the same data type as the input */
 
 	RDEBUG4("Copying %zu bytes to %p from offset %zu",
 		fr_value_box_field_sizes[dst_type], *((void **)out), fr_value_box_offsets[dst_type]);
 
-	fr_value_box_memcpy_out(out, &from_cast);
+	fr_value_box_memcpy_out(out, vb_in);
 
 	/*
 	 *	Frees any memory allocated for temporary buffers
@@ -733,7 +736,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	 */
 	talloc_free(tmp_ctx);
 
-	return from_cast.vb_length;
+	return vb_in->vb_length;
 }
 
 /** Copy pairs matching a #tmpl_t in the current #request_t
