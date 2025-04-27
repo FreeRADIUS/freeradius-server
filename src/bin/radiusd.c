@@ -360,11 +360,14 @@ int main(int argc, char *argv[])
 			main_config_dict_dir_set(config, optarg);
 			break;
 
-#ifndef NDEBUG
 		case 'e':
+			/*
+			 *	For non-debug builds, accept '-e', but ignore it.
+			 */
+#ifndef NDEBUG
 			exit_after = fr_time_delta_from_sec(atoi(optarg));
-			break;
 #endif
+			break;
 
 		case 'f':
 			config->daemonize = false;
