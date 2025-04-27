@@ -101,8 +101,10 @@ sed -i -e 's/-Werror//' "${WPA_SUPPLICANT_DIR}/Makefile"
 
 # There is currently a code path incorrectly identified as a use-after-free by GCC on sid
 # Make that just a warning rather than a compilation failure
-if ! [ -z `lsb_release -d | grep sid` ]; then
-    export CFLAGS="-MMD -O2 -Wall -Wno-error=use-after-free -g"
+if which lsb_release > /dev/null 2>&1; then
+    if ! [ -z `lsb_release -d | grep sid` ]; then
+        export CFLAGS="-MMD -O2 -Wall -Wno-error=use-after-free -g"
+    fi
 fi
 
 if ! ${MAKE} -C "${WPA_SUPPLICANT_DIR}" -j8 eapol_test 1>&2 || [ ! -e "${WPA_SUPPLICANT_DIR}/eapol_test" ]; then
