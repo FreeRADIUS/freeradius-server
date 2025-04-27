@@ -1,8 +1,6 @@
 #
 # PRE: timeout
 #
-Tmp-String-0 := "xxx"
-
 
 #
 #  @todo - we have to add a leading '0' here, otherwise cf_file.c complains
