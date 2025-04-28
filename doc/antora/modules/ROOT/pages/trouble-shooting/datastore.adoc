@@ -13,40 +13,145 @@ There are a few things that the administrator should watch out for though:
 * An 'authtype CHAP' subcomponent should be added in the authenticate section of [[radiusd.conf]] which will contain the chap module.
 
 
-== Old FreeRADIUS SQL Queries and Table Structure
+== Recover SQL IP Pools
 
-Older versions of FreeRADIUS  (prior to 1.1.7) include support for logging 64-Bit counters to both the detail file and SQL modules but only the PostgreSQL module had this support configured by default.
+IP pool exhaustion occurs when all the IP addresses within a given pool are assigned. New devices or sessions can't complete the authentication process without an IP address. The risk of pool exhaustion increases if there is a 'bulk disconnect of sessions' event. The xref:modules/sqlippool/indes.adoc#accounting-stop[Accounting Stop] or xref:modules/sqlippool/indes.adoc#accounting-stop[Accounting On/Off] (in the case of a NAS reboot) requests aren't received on the FreeRADIUS server. The actively leased IP addresses become orphaned and don't get returned to the IP pool.
 
-The detail files will simply log two distinct Attributes (Acct-Input-Octets + Acct-Input-Gigawords and Acct-Output-Octets + Acct-Output-Gigawords).
+To prevent the pool from becoming exhausted, consider one of the following options:
 
-The PostgreSQL module stores the data as a 64-bit integer (BIGINT) in one column each: AcctInputOctets and AcctOutputOctets.
+  * Configure a *simultaneous use* policy to prevent the disconnected devices from reconnecting immediately. The device reconnects once the existing accounting session and the active IP lease expires.
 
-FreeRADIUS 1.1.7 and greater supports 64-bit counters in other SQL modules, with the same semantics as PostgreSQL.
+  * Use a *sticky IP address* policy to reallocate the previous IP addresses to the original sessions. The IP address assignment occurs  when the connection is re-established.
 
-The following procedure is recommended to enable proper support for 64-bit counters in FreeRADIUS 1.1.6 and earlier:
+There will be a short-term exhaustion of the pool’s capacity, which may impact device re-authentications. The original IP addresses associated with the affected sessions are still leased while new IP addresses are being allocated.
 
-=== Modify Database Schema
+This will last until the lease expiry times for the orphaned IP addresses have passed, up to the configured `lease_duration`.
 
-Firstly, modify the _radacct_ table schema to be able to store 64bit integers (or 19 digit numeric fields on databases not supporting BIGINT) in the AcctInputOctets and AcctOutputOctets columns using the `ALTER TABLE` command:
+It's possible to identify the orphaned IP addresses and release them in advance of their set expiry time restoring service faster.
 
-==== MySQL
+Differentiating orphaned IP addresses from leased IP addresses belonging to current sessions prevents duplicate IP address allocation. Manual modifications to lease expiry times often cause this issue. Be cautious when making manual interventions.
 
-	ALTER TABLE radacct CHANGE AcctInputOctets AcctInputOctets BIGINT(20);
-	ALTER TABLE radacct CHANGE AcctOutputOctets AcctOutputOctets BIGINT(20);
+The database schema contains a `radippool_expiry` view that renders a plot of
+active leases batched by minutes to expiry:
 
-==== Oracle
+```
+> SELECT * FROM radippool_expiry;
++-----------+----------------+---------------------+------+----------------------------------------------------+
+| pool_name | mins_to_expiry | first_expiry        | ct   | chart                                              |
++-----------+----------------+---------------------+------+----------------------------------------------------+
+| main      |             15 | 2021-06-03 02:45:26 |  560 | **********************                             |
+| main      |             16 | 2021-06-03 02:46:26 |  625 | ************************                           |
+| main      |             17 | 2021-06-03 02:46:26 |  643 | *************************                          |
+| main      |             18 | 2021-06-03 02:46:26 |  658 | *************************                          |
+| main      |             19 | 2021-06-03 02:46:26 |  640 | ************************                           |
 
-	ALTER TABLE radacct MODIFY (AcctInputOctets NUMERIC(19));
-	ALTER TABLE radacct MODIFY (AcctOutputOctets NUMERIC(19));
+[   Note the gap here. The IPs above are not receiving I-Us so their sessions are dead and can be released.    ]
 
-=== Modify FreeRADIUS Queries
+| main      |             41 | 2021-06-03 03:14:32 |  476 | ******************                                 |
+| main      |             42 | 2021-06-03 03:15:26 | 1067 | *****************************************          |
+| main      |             43 | 2021-06-03 03:16:26 | 1310 | ************************************************** |
+| main      |             44 | 2021-06-03 03:17:26 |  822 | *******************************                    |
+| main      |             45 | 2021-06-03 03:18:26 |  819 | *******************************                    |
+| main      |             46 | 2021-06-03 03:19:26 |  740 | ****************************                       |
+| main      |             47 | 2021-06-03 03:20:26 |  618 | ************************                           |
+| main      |             48 | 2021-06-03 03:21:26 |  565 | **********************                             |
+| main      |             49 | 2021-06-03 03:22:26 |  623 | ************************                           |
+| main      |             50 | 2021-06-03 03:23:26 |  647 | *************************                          |
+| main      |             51 | 2021-06-03 03:24:26 |  652 | *************************                          |
+| main      |             52 | 2021-06-03 03:25:26 |  641 | ************************                           |
+| main      |             53 | 2021-06-03 03:26:26 |  503 | *******************                                |
+| main      |             54 | 2021-06-03 03:27:26 |  518 | ********************                               |
+| main      |             55 | 2021-06-03 03:28:26 |  499 | *******************                                |
+| main      |             56 | 2021-06-03 03:29:26 |  495 | *******************                                |
+| main      |             57 | 2021-06-03 03:30:26 |  526 | ********************                               |
+| main      |             58 | 2021-06-03 03:31:26 |  544 | *********************                              |
+| main      |             59 | 2021-06-03 03:32:26 |  531 | ********************                               |
+| main      |             60 | 2021-06-03 03:33:26 |  458 | *****************                                  |
+| main      |             61 | 2021-06-03 03:34:26 |   63 | **                                                 |
++-----------+----------------+---------------------+------+----------------------------------------------------+
+```
 
-Secondly, modify the accounting queries in sql.conf to make the SQL database perform the computation that is required to merge the two values sent as attributes by the NAS into one single 64-bit integer stored in the database.
+Active sessions will receive periodic Accounting Interim-Update requests that
+will bump their `expiry_time` into the future. Abandoned sessions will receive
+no such treatment and their `expiry_time` will remain unmodified. At the point
+where the current time passes the `expiry_time` for an IP address it is
+considered to be free.
 
-All occurences of `'%{Acct-Input-Octets}'` need to be replaced with:
+It should therefore become clear over time which IP addresses belong to active
+sessions and which have been orphaned, however it will take at least the
+duration of the longest accounting update interval configured for the NASs for
+this to become clear.
 
-	'%{Acct-Input-Gigawords:-0}' << 32 | '%{Acct-Input-Octets:-0}'
+In the above example there is a gap in the `mins_to_expiry` that clearly
+differentiates the two cohorts. In practise, you must understand the
+functioning of the NASs (e.g. accounting interval), the configured
+`lease_duration` for the devices and have knowledge of the event that resulted
+in leases becoming abandoned in order to make an accurate determination.
 
-The same thing needs to be done for `'%{Acct-Output-Octets}'`:
+You may then be able to release the IP addresses by setting the `expiry_time`
+to `CURRENT_TIMESTAMP` where the lack of updates to the `expiry_time` indicates
+that the address is abandoned.
 
-	'%{Acct-Output-Gigawords:-0}' << 32 | '%{Acct-Output-Octets:-0}'
+The following provides a worked example that additionally verifies the
+`radippool` data against `radacct.acctupdatetime`...
+
+This query will show all active IP leases together with corresponding accounting data,
+sorted by time last Interim-Update was received:
+
+```
+> SELECT framedipaddress, username, expiry_time, radacctid, acctstarttime, acctupdatetime
+FROM radippool p LEFT OUTER JOIN radacct a using (framedipaddress, username)
+WHERE p.expiry_time > now() AND a.acctstoptime IS NULL
+ORDER BY acctupdatetime NULLS FIRST;
+
+ framedipaddress |   username       |     expiry_time     | radacctid |     acctstarttime      |     acctupdatetime
+-----------------+------------------+---------------------+-----------+------------------------+------------------------
+[ Addresses for authentications whose sessions did not start, or Accounting Start delayed, i.e. no radacct session. ]
+ 123.66.123.169  | Xht58gp6@example | 2021-03-09 07:29:24 |           |                        |
+ 123.66.120.200  | 3MzBcVDW@example | 2021-03-09 07:20:39 |           |                        |
+ 123.66.102.177  | mGDS4edR@example | 2021-03-09 07:20:56 |           |                        |
+...
+
+[ Addresses not received an interim update within the current interim update window. Update time is typically spread. ]
+ 123.66.95.62    | srSRNkSE@example | 2021-03-09 07:49:33 |  12563992 | 2021-03-09 04:39:32-10 | 2021-03-09 04:49:12-10
+ 123.66.77.62    | P4YSCrmX@example | 2021-03-09 07:49:33 |  12539400 | 2021-03-08 19:59:32-10 | 2021-03-09 04:49:36-10
+ 123.66.112.214  | zbBUEmsG@example | 2021-03-09 07:49:33 |  12544847 | 2021-03-08 22:09:31-10 | 2021-03-09 05:19:04-10
+ 123.50.123.89   | wufJbGL4@example | 2021-03-09 07:49:33 |  12552726 | 2021-03-09 00:59:31-10 | 2021-03-09 06:39:48-10
+...
+
+[ Addresses received interim update: Note cliff edge corresponding to start of current interim update window.  vvv ]
+ 123.185.168.166 | V5vDG6hq@example | 2021-03-09 07:49:33 |  12565868 | 2021-03-09 05:19:31-10 | 2021-03-09 06:49:32-10
+ 123.66.68.216   | Nr2mecCJ@example | 2021-03-09 07:49:33 |  12545572 | 2021-03-08 22:39:31-10 | 2021-03-09 06:49:32-10
+ 123.50.124.181  | J3W2Ej2t@example | 2021-03-09 07:49:33 |  12558988 | 2021-03-09 02:59:32-10 | 2021-03-09 06:49:32-10
+ 123.66.115.151  | 6Qvujqtx@example | 2021-03-09 07:49:33 |  12538411 | 2021-03-08 19:39:31-10 | 2021-03-09 06:49:32-10
+ 123.66.116.61   | jzKBv4Z@example  | 2021-03-09 07:49:33 |  12555330 | 2021-03-09 01:49:31-10 | 2021-03-09 06:49:32-10
+ 123.185.167.94  | JtxxH3f@example  | 2021-03-09 07:49:33 |  12555329 | 2021-03-09 01:49:31-10 | 2021-03-09 06:49:32-10
+ 123.66.122.226  | 1eRyexwe@example | 2021-03-09 07:49:33 |  12563103 | 2021-03-09 04:19:31-10 | 2021-03-09 06:49:33-10
+```
+
+Now construct a query that precisely matches only the IP addresses that you wish to release.
+
+Replace `[ XXXXX ]` with a cutoff time. Must be before the beginning of the
+current I-U window and perhaps earlier depending on how reliable you believe
+reception of recent accounting I-Us to have been.
+
+```
+SELECT framedipaddress, username, expiry_time, radacctid, acctstarttime, acctupdatetime
+FROM radippool p LEFT OUTER JOIN radacct a using (framedipaddress, username)
+WHERE p.expiry_time > now() AND a.acctstoptime IS NULL
+  AND acctupdatetime < [ XXXXX ]
+ORDER BY acctupdatetime NULLS FIRST;
+```
+
+Once you are satisfied that the results represent only those IP addreses not
+belonging to a current session that you intend to release, wrap the above query
+in an update:
+
+```
+UPDATE radippool SET expiry_time = NOW() WHERE framedipaddress IN (
+SELECT framedipaddress
+FROM radippool p LEFT OUTER JOIN radacct a using (framedipaddress, username)
+WHERE p.expiry_time > now() AND a.acctstoptime IS NULL
+  AND acctupdatetime < [ XXXXX ]
+);
+```
