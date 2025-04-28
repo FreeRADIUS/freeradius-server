@@ -1222,7 +1222,7 @@ static void _worker_request_done_detached(request_t *request, UNUSED rlm_rcode_t
 	 *	All other requests must be freed by the
 	 *	code which allocated them.
 	 */
-	request_slab_release(request);
+	talloc_free(request);
 }
 
 
