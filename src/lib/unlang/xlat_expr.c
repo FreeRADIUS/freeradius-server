@@ -1081,7 +1081,7 @@ static bool xlat_logical_or(xlat_logical_rctx_t *rctx, fr_value_box_list_t const
 	 *	Loop over the input list.  We CANNOT do groups.
 	 */
 	fr_value_box_list_foreach(in, box) {
-		fr_assert(fr_type_is_leaf(box->type));
+		fr_assert(fr_type_is_leaf(box->type) || fr_type_is_null(box->type));
 
 		last = box;
 
