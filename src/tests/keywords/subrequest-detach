@@ -12,6 +12,10 @@ subrequest ::Access-Request {
 		test_fail
 	}
 
+	# Ensure yield and resume behave as expected
+	# Detached requests do not use normal time tracking
+	%delay_10s(0s)
+
 	parent.Reply-Message = 'testing'
 
 	# As we're detached this failure doesn't do anything
