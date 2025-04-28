@@ -1212,6 +1212,10 @@ can be configured.
 Proxying will be done by setting `Auth-Type := example.com`, and
 defining the home servers in xref:reference:raddb/mods-available/radius.adoc[mods-available/radius].
 
+If you need to edit the request and/or the reply, you should use
+the `subrequest` keyword.  See the `subrequest` documentation
+for more information.
+
 
 ```
 #authenticate example.com {
@@ -1779,9 +1783,9 @@ A virtual server can have a `timeout` section.  The format and
 contents are the same as the `timeout` keyword.
 
 This section limits the total processing time for a request.  The
-values given here should be less than `max_request_time`.
+values given here should be less than `request.timeout`.
 
-When a request reaches `max_request_time`, it is forcibly stopped.
+When a request reaches `request.timeout`, it is forcibly stopped.
 No further processing takes place.
 
 When a request reaches the time specified in this `timeout` section,
@@ -1796,9 +1800,9 @@ The `timeout` section can contain any `unlang` keyword, including
 "timeout for the timeout", then just add anoither `timeout` section
 inside of this one.
 
-Note that `max_request_time` still applies.  So the timeout value
+Note that `request.timeout` still applies.  So the timeout value
 given here should be less than the value given by
-`max_request_time`.
+`request.timeout`.
 
 
 

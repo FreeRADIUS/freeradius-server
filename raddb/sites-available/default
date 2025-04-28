@@ -1077,6 +1077,10 @@ authenticate eap {
 #  Proxying will be done by setting `Auth-Type := example.com`, and
 #  defining the home servers in `mods-available/radius`.
 #
+#  If you need to edit the request and/or the reply, you should use
+#  the `subrequest` keyword.  See the `subrequest` documentation
+#  for more information.
+#
 
 #authenticate example.com {
 #	#

@@ -3,24 +3,39 @@
 .Syntax
 [source,unlang]
 ----
-subrequest <type> {
+subrequest [<type>] [<request-list>] [<reply-list>] {
     [ statements ]
 }
 ----
 
 The `subrequest` keyword creates a child request.  The child request
-is empty, and contains no attributes.  Attributes in the child can be
-copied from the parent via xref:unlang/edit.adoc[editing] statements.
+typically contains no attributes when it is created.  Attributes in
+the child `request` list can be copied from the parent via
+xref:unlang/edit.adoc[editing] statements.
+
+Similarly, when a `subrequest` is done, attributes from the child
+`reply` list can be copied back to the parent.  Note that this copying
+_must_ be done via xref:unlang/edit.adoc[editing] statements, and is
+not done automatically by the server.  This behavior is necessary in
+order to provide the simplest and most flexible functionality in the
+server.
+
 Please see the xref:unlang/list.adoc[list] syntax for a description of
 how to refer to parent requests.
 
 The `subrequest` keyword allows the server to receive one type of
-packet, and then to create a different type of packet.  For example,
-receive a RADIUS `Accounting-Request`, and then create a child
-`Disconnect-Request` to kick the user offline.  The `subrequest`
-keyword can also be used to change protocols.  For example, receive a
-DHCP `Discover` packet, and then send a RADIUS `Access-Request` packet
-to see if the MAC address is authorized.
+packet, and then to create a "child" packet, which can be different
+from the parent one.  For example, receive a RADIUS
+`Accounting-Request`, and then create a child `Disconnect-Request` to
+kick the user offline.  The `subrequest` keyword can also be used to
+change protocols.  For example, receive a DHCP `Discover` packet, and
+then send a RADIUS `Access-Request` packet to see if the MAC address
+is authorized.
+
+The `subrequest` keyword replaces the "pre-proxy", "post-proxy", and
+"originate CoA" functionality of v3.  Where v3 had a special syntax
+for a small numer of unique cases, v4 provides a general syntax which
+is useful in a wide range of situations.
 
 `subrequest` is most commonly used in conjunction with the
 xref:unlang/call.adoc[call] keyword to change packet types or
@@ -52,10 +67,22 @@ attribute.
 +
 When the _<type>_ field is an attribute reference, it is not
 possible to change the dictionary.
+
+<request-list>:: A reference to a list of attributes which will be used as the childs request list.
 +
-We do not suggest using attribute references.  The functionality will
-be removed in a future release, and will be replaced with full support
-for dynamic expansions.
+It may be omitted, in which case the child request list is empty.  It
+can be initialized by manually copying attributes from the parent
++
+If the _<request-list>_ is specified, then the _<reply-list>_ must
+also be specified.
++
+Note that this is a _reference_, and is not a copy.  Updates to the
+childs request list will be reflected in the named _<request-list>_.
+
+<reply-list>:: A reference to a list of attributes which will be used as the childs reply list.
++
+Note that this is a _reference_, and is not a copy.  Updates to the
+childs reply list will be reflected in the named _<reply-list>_.
 
 [ statements ]:: The `unlang` commands which will be executed.
 
@@ -67,15 +94,13 @@ the last statement that was executed.
 .Example
 [source,unlang]
 ----
-subrequest ::Disconnect-Request {
-    User-Name := parent.request.User-Name
-    NAS-IP-Address := parent.request.NAS-IP-Address
-    NAS-Port := parent.request.NAS-Port
-    Acct-Session-Id := parent.request.Acct-Session-Id
-
-    radius
+subrequest {
+	User-Name := parent.request.User-Name
+	...
+	detail
 }
 ----
+
 
 == Changing Protocols
 
@@ -99,9 +124,10 @@ subrequest @dhcpv4::Discover {
 
 The `subrequest` keyword is an generalization of functionality which
 was in version 3.  In previous versions of the server, child requests
-could be created only via the `update coa` syntax.  The `subrequest`
-keyword is much more powerful than the previous functionality.  It can
-be used anywhere, and can create any kind of packet.
+could be created only via syntax such as `update coa`.  The
+`subrequest` keyword is much more powerful than the previous
+functionality.  It can be used anywhere, and can create any kind of
+packet.
 
 The main purpose of a `subrequest` is to change packet types, or
 protocols.  For example, when a user is authenticated it is sometimes
@@ -165,10 +191,31 @@ from the parent, the parent can continue execution independently of
 the child.  However, once a child request is detached from the parent
 request, the child can no longer access any attributes in the parent.
 
-.Example
+See the sections below for more information, including examples.
+
+== Replacing v3 functionality
+
+This section describes how to implement some of the v3 functionality
+in v4.
+
+=== Originate CoA
+
+The "originate-coa" functionality in v3 can be replaced by a few lines
+of configuration in v4:
+
+.Example Originate a Disconnect-Request Message
 [source,unlang]
 ----
+#
+#  Create a child Disconnect-Request
+#
 subrequest ::Disconnect-Request {
+    #
+    #  Initialize any necessart fields.
+    #
+    #  Only copy the necessary fields here.  Some NASes
+    #  will complain if they see unfamiliar attributes!
+    #
     User-Name := parent.request.User-Name
     NAS-IP-Address := parent.request.NAS-IP-Address
     NAS-Port := parent.request.NAS-Port
@@ -178,6 +225,72 @@ subrequest ::Disconnect-Request {
     radius
 }
 ----
+
+=== Pre-Proxy and Post-Proxy
+
+The `pre-proxy` and `post-proxy` sections can be reimplemented with a
+few lines of configuration.
+
+The example shows how to:
+
+* Match a `User-Name` to a domain
+* Tell the server to authenticate the user via a specific authentication section
+* During authentication, create a subrequest
+* populate the child request from the parent request
+* run the "radius.example.com" module to proxy the request.  This module should be an instance of the `radius` module.
+* after proxying has succeeded (or failed) populate the parent reply from the child reply.
+
+The example shows how a xref:unlang/reference/try.adoc[try] /
+xref:unlang/reference/catch.adoc[catch] block can be used to process the different module return codes.
+
+.Example pre-proxy and post-proxy
+[source,unlang]
+----
+recv Access-Request {
+    ...
+    if (User-Name =~ /example\.com$/) {
+        control.Auth-Type := radius.example.com
+    }
+    ...
+}
+
+authenticate radius.example.com {
+    subrequest {
+        request := parent.request
+        # Edit the request here
+
+        try {
+            radius.example.com
+        }
+
+        # Access-Accept
+        catch ok {
+            # Edit the reply here
+            parent.reply := reply
+        }
+
+        # Access-Reject
+        catch reject {
+            # Edit the reply here
+            parent.reply := reply
+        }
+
+        # Access-Challenge
+        catch updated {
+            # Edit the reply here
+            parent.reply := reply
+        }
+
+        # No reply
+        catch fail {
+            ...
+        }
+    }
+}
+----
+
+
+===
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
