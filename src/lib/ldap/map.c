@@ -224,12 +224,19 @@ int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
 	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_DATA_UNRESOLVED:
+	case TMPL_TYPE_DATA:
 		break;
 
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 		cf_log_err(map->ci, "Unknown attribute %s", tmpl_attr_tail_unresolved(map->rhs));
 		return -1;
+
+	case TMPL_TYPE_DATA_UNRESOLVED:
+		if (tmpl_resolve(map->rhs, NULL) < 0) {
+			cf_log_err(map->ci, "Invalid data %s", map->rhs->name);
+			return -1;
+		}
+		break;
 
 	default:
 		cf_log_err(map->ci, "Right hand side of map must be an xlat, attribute, exec, or literal, not a %s",
