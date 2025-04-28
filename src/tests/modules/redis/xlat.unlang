@@ -1,0 +1,31 @@
+#
+#  Call redis commands as xlat
+#
+integer dummy_number
+$INCLUDE cluster_reset.inc
+
+%redis('SET', 'value1', 100)
+
+dummy_number = %redis('GET', 'value1')
+
+if (dummy_number != 100) {
+	test_fail
+}
+
+# Regression test - ensure that NULL returned by missing redis value
+# will cause fallback to alternation value
+dummy_number := %{%redis('GET', 'value2') || 200}
+if (dummy_number != 200) {
+	test_fail
+}
+
+%redis('HSET', 'hash1', 'foo', 'fooval', 'baa', 'baaval', 'baz', 300)
+
+# Ensure we can return multiple values
+control.Tmp-String-0 := %redis('HMGET', 'hash1', 'foo', 'baz', 'baa')
+
+if ((control.Tmp-String-0[0] != 'fooval') || (control.Tmp-String-0[1] != '300') || (control.Tmp-String-0[2] != 'baaval')) {
+	test_fail
+}
+
+test_pass
