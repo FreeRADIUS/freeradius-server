@@ -127,7 +127,6 @@ static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *req
 	if (gext && gext->vpt) {
 		uint32_t hash, start;
 		ssize_t slen;
-		char const *p = NULL;
 		char buffer[1024];
 
 		/*
@@ -169,13 +168,16 @@ static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *req
 			}
 
 		} else {
-			slen = tmpl_expand(&p, buffer, sizeof(buffer), request, gext->vpt);
-			if (slen < 0) {
-				REDEBUG("Failed expanding template");
-				goto randomly_choose;
-			}
+			uint8_t *octets = NULL;
 
-			hash = fr_hash(p, slen);
+			/*
+			 *	If the input is an IP address, prefix, etc., we don't need to convert it to a
+			 *	string.  We can just hash the raw data directly.
+			 */
+			slen = tmpl_expand(&octets, buffer, sizeof(buffer), request, gext->vpt);
+			if (slen <= 0) goto randomly_choose;
+
+			hash = fr_hash(octets, slen);
 
 			start = hash % g->num_children;
 		}
