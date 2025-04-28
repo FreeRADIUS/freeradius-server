@@ -37,13 +37,6 @@
 //#include "rlm_radius.h"
 #include "track.h"
 
-/*
- * Macro to simplify checking packets before calling decode(), so that
- * it gets a known valid length and no longer calls fr_radius_ok() itself.
- */
-#define check(_handle, _len_p) fr_radius_ok((_handle)->buffer, (size_t *)(_len_p), \
-					    (_handle)->ctx.inst->max_attributes, false, NULL)
-
 typedef struct {
 	char const		*module_name;	//!< the module that opened the connection
 	rlm_radius_t const	*inst;		//!< our instance
@@ -461,19 +454,13 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	 *	the response timer take care of progressing the
 	 *	connection attempt.
 	 */
-	if (slen < RADIUS_HEADER_LENGTH) {
-		ERROR("%s - Packet too short, expected at least %zu bytes got %zd bytes",
-		      h->ctx.module_name, (size_t)RADIUS_HEADER_LENGTH, slen);
-		return;
-	}
+	fr_assert(slen >= RADIUS_HEADER_LENGTH); /* checked in verify */
 
 	if (u->id != h->buffer[1]) {
 		ERROR("%s - Received response with incorrect or expired ID.  Expected %u, got %u",
 		      h->ctx.module_name, u->id, h->buffer[1]);
 		return;
 	}
-
-	if (!check(h, &slen)) return;
 
 	if (decode(h, &reply, &code,
 		   h, h->status_request, h->status_u, u->packet + RADIUS_AUTH_VECTOR_OFFSET,
@@ -1953,11 +1940,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 			return;
 		}
 
-		if (slen < RADIUS_HEADER_LENGTH) {
-			ERROR("%s - Packet too short, expected at least %zu bytes got %zd bytes",
-			      h->ctx.module_name, (size_t)RADIUS_HEADER_LENGTH, slen);
-			continue;
-		}
+		fr_assert(slen >= RADIUS_HEADER_LENGTH); /* checked in verify */
 
 		/*
 		 *	Note that we don't care about packet codes.  All
@@ -1977,14 +1960,8 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		fr_assert(u == treq->preq);
 
 		/*
-		 *	Validate and decode the incoming packet
+		 *	Decode the incoming packet.
 		 */
-
-		if (!check(h, &slen)) {
-			RWARN("Ignoring malformed packet");
-			continue;
-		}
-
 		reason = decode(request->reply_ctx, &reply, &code, h, request, u, rr->vector, h->buffer, (size_t)slen);
 		if (reason != DECODE_FAIL_NONE) continue;
 
