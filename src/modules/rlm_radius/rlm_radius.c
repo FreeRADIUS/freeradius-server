@@ -795,6 +795,15 @@ check_others:
 			cf_log_err(conf, "Cannot set 'filename' or 'path' when using 'mode=unconnected-replicate'");
 			return -1;
 		}
+
+		/*
+		 *	Unconnected replicate has to use UDP.
+		 */
+		if (inst->fd_config.socket_type != SOCK_DGRAM) {
+			cf_log_err(conf, "Cannot use TCP sockets with 'mode=unconnected-replicate'");
+			return -1;
+		}
+
 		FALL_THROUGH;
 
 	case RLM_RADIUS_MODE_REPLICATE:
