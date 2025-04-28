@@ -260,10 +260,10 @@ fr_type_t tmpl_expanded_type(tmpl_t const *vpt)
  * @param[out] buff		Expansion buffer, may be NULL except for the following types:
  *				- #TMPL_TYPE_EXEC
  *				- #TMPL_TYPE_XLAT
+ *				- input type non-string, output type string
  * @param[in] bufflen		Length of expansion buffer. Must be >= 2.
  * @param[in] request		Current request.
  * @param[in] vpt		to expand. Must be one of the following types:
- *				- #TMPL_TYPE_DATA_UNRESOLVED
  *				- #TMPL_TYPE_EXEC
  *				- #TMPL_TYPE_XLAT
  *				- #TMPL_TYPE_ATTR
@@ -281,83 +281,73 @@ ssize_t _tmpl_to_type(void *out,
 {
 	fr_value_box_t		value_to_cast = FR_VALUE_BOX_INITIALISER_NULL(value_to_cast);
 	fr_value_box_t		value_from_cast = FR_VALUE_BOX_INITIALISER_NULL(value_from_cast);
-	fr_value_box_t const	*to_cast = &value_to_cast;
-	fr_value_box_t const	*from_cast = &value_from_cast;
+	fr_value_box_t const	*to_cast;
+	fr_value_box_t const	*from_cast;
 
 	fr_pair_t		*vp = NULL;
-
-	fr_type_t		src_type = FR_TYPE_NULL;
 
 	ssize_t			slen = -1;	/* quiet compiler */
 
 	TMPL_VERIFY(vpt);
 
+	fr_assert(!tmpl_needs_resolving(vpt));
+	fr_assert(!fr_type_is_structural(dst_type));
+
 	fr_assert(!buff || (bufflen >= 2));
 
 	switch (vpt->type) {
-	case TMPL_TYPE_DATA_UNRESOLVED:
-		RDEBUG4("EXPAND TMPL UNRESOLVED");
-		fr_value_box_bstrndup_shallow(&value_to_cast, NULL, vpt->name, vpt->len, false);
-		src_type = FR_TYPE_STRING;
-		break;
-
 	case TMPL_TYPE_EXEC:
-	{
 		RDEBUG4("EXPAND TMPL EXEC");
 		if (!buff) {
-			fr_strerror_const("Missing expansion buffer for EXEC");
+			REDEBUG("Missing expansion buffer for exec");
 			return -1;
 		}
 
-		if (radius_exec_program_legacy((char *)buff, bufflen, request, vpt->name, NULL,
+		if (radius_exec_program_legacy((char *) buff, bufflen, request, vpt->name, NULL,
 					true, false, fr_time_delta_from_sec(EXEC_TIMEOUT)) != 0) return -1;
-		fr_value_box_strdup_shallow(&value_to_cast, NULL, (char *)buff, true);
-		src_type = FR_TYPE_STRING;
-	}
+
+		fr_value_box_strdup_shallow(&value_to_cast, NULL, (char *) buff, true);
+		to_cast = &value_to_cast;
 		break;
 
 	case TMPL_TYPE_XLAT:
-	{
 		RDEBUG4("EXPAND TMPL XLAT PARSED");
 
 		/* No EXPAND <xlat> here as the xlat code does it */
 
 		if (!buff) {
-			fr_strerror_const("Missing expansion buffer for XLAT_STRUCT");
+			REDEBUG("Missing expansion buffer for dynamic expansion");
 			return -1;
 		}
+
 		/* Error in expansion, this is distinct from zero length expansion */
-		slen = xlat_eval_compiled((char *)buff, bufflen, request, tmpl_xlat(vpt), NULL, NULL);
+		slen = xlat_eval_compiled((char *) buff, bufflen, request, tmpl_xlat(vpt), NULL, NULL);
 		if (slen < 0) return slen;
 
-		fr_value_box_bstrndup_shallow(&value_to_cast, NULL, (char *)buff, slen, true);
-		src_type = FR_TYPE_STRING;
-	}
+		fr_value_box_bstrndup_shallow(&value_to_cast, NULL, (char *) buff, slen, true);
+		to_cast = &value_to_cast;
 		break;
 
 	case TMPL_TYPE_ATTR:
-	{
-		int ret;
-
 		RDEBUG4("EXPAND TMPL ATTR");
-		ret = tmpl_find_vp(&vp, request, vpt);
-		if (ret < 0) return -2;
+		if (tmpl_find_vp(&vp, request, vpt) < 0) {
+			REDEBUG("Failed to find attribute %s", vpt->name);
+			return -2;
+		}
 
 		to_cast = &vp->data;
-		src_type = vp->vp_type;
-	}
 		break;
 
 	case TMPL_TYPE_DATA:
 		RDEBUG4("EXPAND TMPL DATA");
 		to_cast = tmpl_value(vpt);
-		src_type = tmpl_value_type(vpt);
 		break;
 
 	/*
 	 *	We should never be expanding these.
 	 */
 	case TMPL_TYPE_UNINITIALISED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
 	case TMPL_TYPE_EXEC_UNRESOLVED:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 	case TMPL_TYPE_XLAT_UNRESOLVED:
@@ -371,130 +361,61 @@ ssize_t _tmpl_to_type(void *out,
 	}
 
 	/*
-	 *	Deal with casts.
+	 *	Same type, just copy the value.
+	 *
+	 *	If the input is exec/xlat, then we can just copy the output ptr to the caller, as it's already
+	 *	pointing to "buff".
 	 */
-	switch (src_type) {
-	case FR_TYPE_STRING:
-		switch (dst_type) {
-		case FR_TYPE_STRING:
-		case FR_TYPE_OCTETS:
-			from_cast = to_cast;
-			break;
-
-		default:
-			break;
-		}
-		break;
-
-	case FR_TYPE_OCTETS:
-		switch (dst_type) {
-		/*
-		 *	Need to use the expansion buffer for this conversion as
-		 *	we need to add a \0 terminator.
-		 */
-		case FR_TYPE_STRING:
-			if (!buff) {
-				fr_strerror_const("Missing expansion buffer for octet->string cast");
-				return -1;
-			}
-			if (bufflen <= to_cast->vb_length) {
-				fr_strerror_printf("Expansion buffer too small.  "
-						   "Have %zu bytes, need %zu bytes", bufflen,
-						   to_cast->vb_length + 1);
-				return -1;
-			}
-			memcpy(buff, to_cast->vb_octets, to_cast->vb_length);
-			buff[to_cast->vb_length] = '\0';
-
-			fr_value_box_bstrndup_shallow(&value_from_cast, NULL,
-						      (char *)buff, to_cast->vb_length, true);
-			break;
-
-		/*
-		 *	Just copy the pointer.  Length does not include \0.
-		 */
-		case FR_TYPE_OCTETS:
-			from_cast = to_cast;
-			break;
-
-		default:
-			break;
-		}
-		break;
-
-	default:
-	{
-		int		ret;
-		TALLOC_CTX	*ctx;
-
-		/*
-		 *	Same type, just set from_cast to to_cast and copy the value.
-		 */
-		if (src_type == dst_type) {
-			from_cast = to_cast;
-			break;
-		}
-
-		MEM(ctx = talloc_new(request));
-
-		from_cast = &value_from_cast;
-
-		/*
-		 *	Data type conversion...
-		 */
-		ret = fr_value_box_cast(ctx, &value_from_cast, dst_type, NULL, to_cast);
-		if (ret < 0) goto error;
-
-
-		/*
-		 *	For the dynamic types we need to copy the output
-		 *	to the buffer.  Really we need a version of fr_value_box_cast
-		 *	that works with buffers, but it's not a high priority...
-		 */
-		switch (dst_type) {
-		case FR_TYPE_STRING:
-			if (!buff) {
-				fr_strerror_const("Missing expansion buffer to store cast output");
-			error:
-				talloc_free(ctx);
-				return -1;
-			}
-			if (from_cast->vb_length >= bufflen) {
-				fr_strerror_printf("Expansion buffer too small.  "
-						   "Have %zu bytes, need %zu bytes", bufflen,
-						   from_cast->vb_length + 1);
-				goto error;
-			}
-			memcpy(buff, from_cast->vb_strvalue, from_cast->vb_length);
-			buff[from_cast->vb_length] = '\0';
-
-			fr_value_box_bstrndup_shallow(&value_from_cast, NULL,
-						      (char *)buff, from_cast->vb_length, from_cast->tainted);
-			break;
-
-		case FR_TYPE_OCTETS:
-			if (!buff) {
-				fr_strerror_const("Missing expansion buffer to store cast output");
-				goto error;
-			}
-			if (from_cast->vb_length > bufflen) {
-				fr_strerror_printf("Expansion buffer too small.  "
-						   "Have %zu bytes, need %zu bytes", bufflen, from_cast->vb_length);
-				goto error;
-			}
-			memcpy(buff, from_cast->vb_octets, from_cast->vb_length);
-			fr_value_box_memdup_shallow(&value_from_cast, NULL,
-						    buff, from_cast->vb_length, from_cast->tainted);
-			break;
-
-		default:
-			break;
-		}
-
-		talloc_free(ctx);	/* Free any dynamically allocated memory from the cast */
-	}
+	if (to_cast->type == dst_type) {
+		from_cast = to_cast;
+		goto do_copy;
 	}
 
+	/*
+	 *	We need a buffer to hold ouput data which can be returned to the caller.
+	 */
+	if (fr_type_is_variable_size(dst_type) && !buff) {
+		REDEBUG("Missing expansion buffer for %s -> %s cast", fr_type_to_str(to_cast->type), fr_type_to_str(dst_type));
+		return -1;
+	}
+
+	/*
+	 *	Convert to the correct data type.
+	 */
+	if (fr_value_box_cast(request, &value_from_cast, dst_type, NULL, to_cast)) {
+		RPEDEBUG("Failed casting input %pV to data type %s", to_cast, fr_type_to_str(dst_type));
+		return -1;
+	}
+
+	from_cast = &value_from_cast;
+
+	/*
+	 *	If the output is a talloc'd buffer, then we have to copy it to "buff", so that we can return
+	 *	the pointer to the caller.
+	 */
+	if (fr_type_is_variable_size(dst_type)) {
+		size_t len = from_cast->vb_length + (dst_type == FR_TYPE_STRING);
+
+		if (bufflen < len) {
+			REDEBUG("Expansion buffer is too small.  Buffer is %zu bytes, and we need %zu bytes",
+				bufflen, len);
+		}
+
+		/*
+		 *	Copy the data to the buffer, and clear the alloc'd pointer.
+		 */
+		memcpy(buff, to_cast->vb_octets, len);
+		fr_value_box_clear(&value_from_cast);
+
+		/*
+		 *	"out" is a pointer to a char* or uint8_t*
+		 */
+		*(uint8_t **) out = buff;
+
+		return from_cast->vb_length;
+	}
+
+do_copy:
 	RDEBUG4("Copying %zu bytes to %p from offset %zu",
 		fr_value_box_field_sizes[dst_type], out, fr_value_box_offsets[dst_type]);
 
