@@ -605,6 +605,9 @@
 /* Posix-Style ctime_r */
 #undef POSIXSTYLE
 
+/* Version string used in the online documentation */
+#undef RADIUSD_DOC_VERSION
+
 /* Version integer in format <ma><mi><in> */
 #undef RADIUSD_VERSION
 
