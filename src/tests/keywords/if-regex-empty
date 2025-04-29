@@ -9,16 +9,16 @@ if !(control.Password.Cleartext =~ /hell(o)(.*)/) {
 #
 #  Verify non-empty capture groups evaluate to true
 #
-#  Note that "%{1}" evaluates to an empty string!
+#  Note that "%regex.match(1)" evaluates to an empty string!
 #
-if !%{1} {
+if !%regex.match(1) {
 	test_fail
 }
 
 #
 #  Verify empty capture groups evaluate to false
 #
-if %{2} {
+if %regex.match(2) {
 	test_fail
 }
 
@@ -29,7 +29,7 @@ if !(control.Password.Cleartext =~ /hello(.*)/) {
 #
 #  Check for stale capture group values
 #
-if %{1} {
+if %regex.match(1) {
 	test_fail
 }
 
@@ -37,7 +37,7 @@ if %{1} {
 #  Check assignment of regex null-match
 #
 if (control.Password.Cleartext =~ /hell(o)(.*)/) {
-	control.Filter-Id := "%{2}"
+	control.Filter-Id := "%regex.match(2)"
 }
 
 if (!control.Filter-Id) {

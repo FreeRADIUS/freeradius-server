@@ -148,8 +148,8 @@ match %cast(uint32, Service-Type)
 xlat_expr 5 + ()
 match ERROR offset 6: Empty expressions are invalid
 
-xlat_expr %{3}
-match %{3}
+xlat_expr %regex.match(3)
+match %regex.match(3)
 
 #
 #  These next two are arguably wrong.

@@ -8,9 +8,7 @@ control += {
 
 if (User-Name) {
 	foreach thing (control.Filter-Id[*]) {
-		if (thing =~ /(.*)/) {
-			control.Calling-Station-Id := %{1}
-		}
+		control.Calling-Station-Id := thing
 	}
 }
 
@@ -21,9 +19,7 @@ if (!(control.Calling-Station-Id == 'ssid=GHIJKL')) {
 control -= Calling-Station-Id[*]
 
 foreach thing (control.Filter-Id) {
-	if (thing =~ /(.*)/) {
-		control.Calling-Station-Id := %{1}
-	}
+	control.Calling-Station-Id := thing
 }
 
 if (!(control.Calling-Station-Id == 'ssid=GHIJKL')) {

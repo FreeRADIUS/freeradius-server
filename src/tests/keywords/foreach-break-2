@@ -12,7 +12,7 @@ control.User-Name := { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b
 
 foreach thing (control.User-Name) {
 	if (test_string =~ /([A-Z0-9\-]*)_%{thing}/) {
-		test_string := %{1}
+		test_string := %regex.match(1)
 		success
 		break
 	}

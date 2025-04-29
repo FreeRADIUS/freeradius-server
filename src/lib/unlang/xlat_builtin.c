@@ -2778,7 +2778,6 @@ static int CC_HINT(nonnull(2,3)) regex_xlat_escape(UNUSED request_t *request, fr
 	return 0;
 }
 
-#if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
 static xlat_arg_parser_t const xlat_func_regex_args[] = {
 	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -2858,6 +2857,7 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	default:
+#if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
 	{
 		fr_value_box_t	*vb;
 
@@ -2882,9 +2882,12 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		return XLAT_ACTION_DONE;
 	}
+#else
+	RDEBUG("Named regex captures are not supported (they require libpcre2)");
+	return XLAT_ACTION_FAIL;
+#endif
 	}
 }
-#endif
 
 static xlat_arg_parser_t const xlat_func_sha_arg[] = {
 	{ .concat = true, .type = FR_TYPE_OCTETS },
@@ -4332,7 +4335,6 @@ do { \
 	XLAT_REGISTER_PURE("md5", xlat_func_md5, FR_TYPE_OCTETS, xlat_func_md5_arg);
 	XLAT_NEW("hash.md4");
 
-#if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
 	if (unlikely((xlat = xlat_func_register(xlat_ctx, "regex.match", xlat_func_regex, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, xlat_func_regex_args);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
@@ -4340,7 +4342,6 @@ do { \
 	xlat_func_args_set(xlat, xlat_func_regex_args);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 	XLAT_NEW("regex.match");
-#endif
 
 	{
 		static xlat_arg_parser_t const xlat_regex_safe_args[] = {

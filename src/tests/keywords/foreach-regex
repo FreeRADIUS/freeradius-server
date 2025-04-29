@@ -9,7 +9,7 @@ cisco_prefix := "cisco"
 foreach value (Vendor-Specific.Cisco.AVPair) {
 	if (value  =~ /^%{cisco_prefix}=(.*)$/i) {
 		reply += {
-			Called-Station-Id = %{1}
+			Called-Station-Id = %regex.match(1)
 		}
 	}
 }
@@ -18,7 +18,7 @@ foreach value (Vendor-Specific.Cisco.AVPair) {
 foreach value (Vendor-Specific.Cisco.AVPair) {
 	if (value  =~ /^stupid=(.*)$/i) {
 		reply += {
-			Called-Station-Id = %{1}
+			Called-Station-Id = %regex.match(1)
 		}
 	}
 }

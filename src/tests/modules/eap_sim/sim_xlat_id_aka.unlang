@@ -50,7 +50,7 @@ if (result_string != User-Name) {
 #
 if (User-Name =~ /^[0-9](.*)/) {
 	request += {
-		User-Name = %{1}
+		User-Name = %regex.match(1)
 		EAP-Type = ::AKA
 	}
 }

@@ -45,7 +45,7 @@ xlat_purify (2 + 3) * 4 + 5
 match 25
 
 #
-#  Not the same as a regex %{3}, but we can't tell the difference here.
+#  Not the same as a regex %{1}, but we can't tell the difference here.
 #
 xlat_purify %{1 + 2}
 match 3

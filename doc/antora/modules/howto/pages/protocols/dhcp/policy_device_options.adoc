@@ -99,7 +99,7 @@ provided that it matches the given format:
 if (DHCP-Client-Identifier && \
         "%{string:DHCP-Client-Identifier}" =~ /^RAS([0-9])-site([A-Z])$/) {
     update reply {
-        DHCP-Boot-Filename := "rasboot-%{1}-%{2}.kpxe"
+        DHCP-Boot-Filename := "rasboot-%regex.match(1)-%regex.match(2).kpxe"
     }
 }
 ----
