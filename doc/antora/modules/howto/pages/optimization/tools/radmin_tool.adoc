@@ -4,7 +4,7 @@ It's possible to retrieve debug logs from FreeRADIUS while it is running in norm
 
 == Getting Started
 
-Enter the following commang to launch radmin:
+Enter the following command to launch radmin:
 
 `root@radius# radmin -f /var/run/freeradius/control/control.sock`
 
@@ -63,7 +63,7 @@ Wait a few seconds for any outstanding requests to complete and the last writes 
 
 === Clear debug file
 
-Next, Clear the debug file setting to complete your session.
+Next, clear the debug file setting to complete your session.
 
 ```
 radmin> debug file

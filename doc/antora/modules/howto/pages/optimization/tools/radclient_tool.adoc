@@ -1,7 +1,13 @@
 = Radclient
 
 Policy issues for basic authentication protocols such as PAP, CHAP and MSCHAP, as well as for accounting and CoA/Disconnect requests, can be investigated using the radclient command while the server is in debug mode.
+
+
+== Getting Started
+
 First, create an authentication packet definition by specifying its attributes. See the xref:reference:man/radclient.adoc[radclient] man page for more details.
+
+=== Create and send an authorization test packet
 
 For example:
 
@@ -30,7 +36,9 @@ radclient -x 127.0.0.1 auth testing123
 
 Carefully examine the output of the above command and the debug output from FreeRADIUS. Make any required changes in small careful steps, regularly committing the changes to versions control so that they can be reverted if necessary.
 
-The process for generating accounting requests is similar. Firstly, create the accounting packet definition:
+=== Create and send an accounting test packet
+
+The process for generating accounting requests is similar. First, create the accounting packet definition:
 
 ```
 nwkrad@radius-fe-01$ cat <<EOF > acct_request.txt
@@ -59,6 +67,7 @@ EOF
 ```
 
 Then call radclient with the acct option to generate the actual accounting request:
+
 ```
 nwkrad@radius-fe-01:~$ cat acct_request.txt | \
 radclient -x 127.0.0.1 acct testing123
