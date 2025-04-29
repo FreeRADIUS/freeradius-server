@@ -3548,8 +3548,7 @@ static unlang_t *compile_tmpl(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	char const	*p = cf_pair_attr(cp);
 	tmpl_t		*vpt;
 
-	ut = talloc_zero(parent, unlang_tmpl_t);
-
+	MEM(ut = talloc_zero(parent, unlang_tmpl_t));
 	c = unlang_tmpl_to_generic(ut);
 	c->parent = parent;
 	c->next = NULL;
