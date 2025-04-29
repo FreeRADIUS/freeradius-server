@@ -106,20 +106,20 @@ static char *stack_unwind_flag_dump(uint8_t unwind)
 	static __thread char buf[256];
 	size_t len;
 
-#define UNWIND_FLAG_DUMP(attrib) \
+#define UNWIND_FRAME_FLAG_DUMP(attrib) \
 	if (unwind & attrib) strcat(buf, #attrib" ")
 
 	snprintf(buf, sizeof(buf), "unwind=0x%x (", unwind);
 
-	UNWIND_FLAG_DUMP(UNWIND_FLAG_TOP_FRAME);
-	UNWIND_FLAG_DUMP(UNWIND_FLAG_BREAK_POINT);
-	UNWIND_FLAG_DUMP(UNWIND_FLAG_RETURN_POINT);
+	UNWIND_FRAME_FLAG_DUMP(UNWIND_FRAME_FLAG_TOP_FRAME);
+	UNWIND_FRAME_FLAG_DUMP(UNWIND_FRAME_FLAG_BREAK_POINT);
+	UNWIND_FRAME_FLAG_DUMP(UNWIND_FRAME_FLAG_RETURN_POINT);
 
 	len = strlen(buf);
 	if (buf[len - 1] == ' ') buf[len - 1] = '\0';    /* Trim trailing space */
 	strcat(buf, ")");
 
-#undef UNWIND_FLAG_DUMP
+#undef UNWIND_FRAME_FLAG_DUMP
 
 	return buf;
 }
@@ -197,7 +197,7 @@ int unlang_interpret_push(request_t *request, unlang_t const *instruction,
 	}
 	/* else frame->next MUST be NULL */
 
-	frame->uflags = UNWIND_FLAG_NONE;
+	frame->uflags = UNWIND_FRAME_FLAG_NONE;
 	if (top_frame) top_frame_set(frame);
 
 	frame->result = default_rcode;
@@ -487,7 +487,7 @@ finalize:
 	/*
 	 *	Not allowed in frame uflags...
 	 */
-	fr_assert(!(frame->uflags & UNWIND_FLAG_NO_CLEAR));
+	fr_assert(!(frame->uflags & UNWIND_FRAME_FLAG_NO_CLEAR));
 
 	/*
 	 *	If we are unwinding the stack due to a break / return,
@@ -497,7 +497,7 @@ finalize:
 		/*
 		 *	Continue unwinding...
 		 */
-		if (!(stack->unwind & frame->uflags) || (stack->unwind & UNWIND_FLAG_NO_CLEAR)) {
+		if (!(stack->unwind & frame->uflags) || (stack->unwind & UNWIND_FRAME_FLAG_NO_CLEAR)) {
 			RDEBUG4("** [%i] %s - unwinding current frame with (%s %d) - flags - stack (%i), frame (%i)",
 				stack->depth, __FUNCTION__,
 				fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
@@ -512,7 +512,7 @@ finalize:
 		 *	and the "NO_CLEAR" flag hasn't been set, then
 		 *	clear the unwind field so we stop unwinding.
 		 */
-		stack->unwind = UNWIND_FLAG_NONE;
+		stack->unwind = UNWIND_FRAME_FLAG_NONE;
 
 		RDEBUG4("** [%i] %s - unwind stop (%s %d) - flags - stack unwind (%i), frame uflags (%i)",
 			stack->depth, __FUNCTION__,
@@ -679,7 +679,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 			frame->result = *result;
 			frame->priority = *priority;
 			frame->next = NULL;
-			fr_assert(stack->unwind != UNWIND_FLAG_NONE);
+			fr_assert(stack->unwind != UNWIND_FRAME_FLAG_NONE);
 			return UNLANG_FRAME_ACTION_POP;
 
 		/*

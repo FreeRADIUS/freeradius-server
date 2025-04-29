@@ -336,57 +336,57 @@ extern unlang_op_t unlang_ops[];
 extern fr_table_num_sorted_t const mod_rcode_table[];
 extern size_t mod_rcode_table_len;
 
-#define UNWIND_FLAG_NONE		0x00			//!< No flags.
-#define UNWIND_FLAG_REPEAT		0x01			//!< Repeat the frame on the way up the stack.
-#define UNWIND_FLAG_TOP_FRAME		0x02			//!< are we the top frame of the stack?
-								///< If true, causes the interpreter to stop
-								///< interpreting and return, control then passes
-								///< to whatever called the interpreter.
-#define UNWIND_FLAG_BREAK_POINT		0x04			//!< 'break' stops here.
-#define UNWIND_FLAG_RETURN_POINT	0x08      		//!< 'return' stops here.
-#define UNWIND_FLAG_NO_CLEAR		0x10			//!< Keep unwinding, don't clear the unwind flag.
-#define UNWIND_FLAG_YIELDED		0x20			//!< frame has yielded
+#define UNWIND_FRAME_FLAG_NONE			0x00			//!< No flags.
+#define UNWIND_FRAME_FLAG_REPEAT		0x01			//!< Repeat the frame on the way up the stack.
+#define UNWIND_FRAME_FLAG_TOP_FRAME		0x02			//!< are we the top frame of the stack?
+									///< If true, causes the interpreter to stop
+									///< interpreting and return, control then passes
+									///< to whatever called the interpreter.
+#define UNWIND_FRAME_FLAG_BREAK_POINT		0x04			//!< 'break' stops here.
+#define UNWIND_FRAME_FLAG_RETURN_POINT		0x08      		//!< 'return' stops here.
+#define UNWIND_FRAME_FLAG_NO_CLEAR		0x10			//!< Keep unwinding, don't clear the unwind flag.
+#define UNWIND_FRAME_FLAG_YIELDED		0x20			//!< frame has yielded
 
-static inline void repeatable_set(unlang_stack_frame_t *frame)		{ frame->uflags |= UNWIND_FLAG_REPEAT; }
-static inline void top_frame_set(unlang_stack_frame_t *frame) 		{ frame->uflags |= UNWIND_FLAG_TOP_FRAME; }
-static inline void break_point_set(unlang_stack_frame_t *frame)		{ frame->uflags |= UNWIND_FLAG_BREAK_POINT; }
-static inline void return_point_set(unlang_stack_frame_t *frame)	{ frame->uflags |= UNWIND_FLAG_RETURN_POINT; }
-static inline void yielded_set(unlang_stack_frame_t *frame)		{ frame->uflags |= UNWIND_FLAG_YIELDED; }
+static inline void repeatable_set(unlang_stack_frame_t *frame)		{ frame->uflags |= UNWIND_FRAME_FLAG_REPEAT; }
+static inline void top_frame_set(unlang_stack_frame_t *frame) 		{ frame->uflags |= UNWIND_FRAME_FLAG_TOP_FRAME; }
+static inline void break_point_set(unlang_stack_frame_t *frame)		{ frame->uflags |= UNWIND_FRAME_FLAG_BREAK_POINT; }
+static inline void return_point_set(unlang_stack_frame_t *frame)	{ frame->uflags |= UNWIND_FRAME_FLAG_RETURN_POINT; }
+static inline void yielded_set(unlang_stack_frame_t *frame)		{ frame->uflags |= UNWIND_FRAME_FLAG_YIELDED; }
 
-static inline void repeatable_clear(unlang_stack_frame_t *frame)	{ frame->uflags &= ~UNWIND_FLAG_REPEAT; }
-static inline void top_frame_clear(unlang_stack_frame_t *frame)		{ frame->uflags &= ~UNWIND_FLAG_TOP_FRAME; }
-static inline void break_point_clear(unlang_stack_frame_t *frame)	{ frame->uflags &= ~UNWIND_FLAG_BREAK_POINT; }
-static inline void return_point_clear(unlang_stack_frame_t *frame) 	{ frame->uflags &= ~UNWIND_FLAG_RETURN_POINT; }
-static inline void yielded_clear(unlang_stack_frame_t *frame) 		{ frame->uflags &= ~UNWIND_FLAG_YIELDED; }
+static inline void repeatable_clear(unlang_stack_frame_t *frame)	{ frame->uflags &= ~UNWIND_FRAME_FLAG_REPEAT; }
+static inline void top_frame_clear(unlang_stack_frame_t *frame)		{ frame->uflags &= ~UNWIND_FRAME_FLAG_TOP_FRAME; }
+static inline void break_point_clear(unlang_stack_frame_t *frame)	{ frame->uflags &= ~UNWIND_FRAME_FLAG_BREAK_POINT; }
+static inline void return_point_clear(unlang_stack_frame_t *frame) 	{ frame->uflags &= ~UNWIND_FRAME_FLAG_RETURN_POINT; }
+static inline void yielded_clear(unlang_stack_frame_t *frame) 		{ frame->uflags &= ~UNWIND_FRAME_FLAG_YIELDED; }
 
-static inline bool is_repeatable(unlang_stack_frame_t const *frame)	{ return frame->uflags & UNWIND_FLAG_REPEAT; }
-static inline bool is_top_frame(unlang_stack_frame_t const *frame)	{ return frame->uflags & UNWIND_FLAG_TOP_FRAME; }
-static inline bool is_break_point(unlang_stack_frame_t const *frame)	{ return frame->uflags & UNWIND_FLAG_BREAK_POINT; }
-static inline bool is_return_point(unlang_stack_frame_t const *frame) 	{ return frame->uflags & UNWIND_FLAG_RETURN_POINT; }
-static inline bool is_yielded(unlang_stack_frame_t const *frame) 	{ return frame->uflags & UNWIND_FLAG_YIELDED; }
+static inline bool is_repeatable(unlang_stack_frame_t const *frame)	{ return frame->uflags & UNWIND_FRAME_FLAG_REPEAT; }
+static inline bool is_top_frame(unlang_stack_frame_t const *frame)	{ return frame->uflags & UNWIND_FRAME_FLAG_TOP_FRAME; }
+static inline bool is_break_point(unlang_stack_frame_t const *frame)	{ return frame->uflags & UNWIND_FRAME_FLAG_BREAK_POINT; }
+static inline bool is_return_point(unlang_stack_frame_t const *frame) 	{ return frame->uflags & UNWIND_FRAME_FLAG_RETURN_POINT; }
+static inline bool is_yielded(unlang_stack_frame_t const *frame) 	{ return frame->uflags & UNWIND_FRAME_FLAG_YIELDED; }
 
 static inline unlang_action_t unwind_to_break(unlang_stack_t *stack)
 {
-	stack->unwind = UNWIND_FLAG_BREAK_POINT | UNWIND_FLAG_TOP_FRAME;
+	stack->unwind = UNWIND_FRAME_FLAG_BREAK_POINT | UNWIND_FRAME_FLAG_TOP_FRAME;
 	return UNLANG_ACTION_UNWIND;
 }
 static inline unlang_action_t unwind_to_return(unlang_stack_t *stack)
 {
-	stack->unwind = UNWIND_FLAG_RETURN_POINT | UNWIND_FLAG_TOP_FRAME;
+	stack->unwind = UNWIND_FRAME_FLAG_RETURN_POINT | UNWIND_FRAME_FLAG_TOP_FRAME;
 	return UNLANG_ACTION_UNWIND;
 }
 static inline unlang_action_t unwind_all(unlang_stack_t *stack)
 {
-	stack->unwind = UNWIND_FLAG_TOP_FRAME | UNWIND_FLAG_NO_CLEAR;
+	stack->unwind = UNWIND_FRAME_FLAG_TOP_FRAME | UNWIND_FRAME_FLAG_NO_CLEAR;
 	return UNLANG_ACTION_UNWIND;
 }
 
-static inline bool is_stack_unwinding_to_top_frame(unlang_stack_t *stack)	{ return stack->unwind & UNWIND_FLAG_TOP_FRAME; }
-static inline bool is_stack_unwinding_to_break(unlang_stack_t *stack)		{ return stack->unwind & UNWIND_FLAG_BREAK_POINT; }
-static inline bool is_stack_unwinding_to_return(unlang_stack_t *stack)		{ return stack->unwind & UNWIND_FLAG_RETURN_POINT; }
-static inline void stack_unwind_top_frame_clear(unlang_stack_t *stack)		{ stack->unwind &= ~UNWIND_FLAG_TOP_FRAME; }
-static inline void stack_unwind_break_clear(unlang_stack_t *stack)		{ stack->unwind &= ~UNWIND_FLAG_BREAK_POINT; }
-static inline void stack_unwind_return_clear(unlang_stack_t *stack)		{ stack->unwind &= ~UNWIND_FLAG_RETURN_POINT; }
+static inline bool is_stack_unwinding_to_top_frame(unlang_stack_t *stack)	{ return stack->unwind & UNWIND_FRAME_FLAG_TOP_FRAME; }
+static inline bool is_stack_unwinding_to_break(unlang_stack_t *stack)		{ return stack->unwind & UNWIND_FRAME_FLAG_BREAK_POINT; }
+static inline bool is_stack_unwinding_to_return(unlang_stack_t *stack)		{ return stack->unwind & UNWIND_FRAME_FLAG_RETURN_POINT; }
+static inline void stack_unwind_top_frame_clear(unlang_stack_t *stack)		{ stack->unwind &= ~UNWIND_FRAME_FLAG_TOP_FRAME; }
+static inline void stack_unwind_break_clear(unlang_stack_t *stack)		{ stack->unwind &= ~UNWIND_FRAME_FLAG_BREAK_POINT; }
+static inline void stack_unwind_return_clear(unlang_stack_t *stack)		{ stack->unwind &= ~UNWIND_FRAME_FLAG_RETURN_POINT; }
 
 static inline unlang_stack_frame_t *frame_current(request_t *request)
 {
@@ -457,7 +457,7 @@ static inline void frame_cleanup(unlang_stack_frame_t *frame)
 	/*
 	 *	Don't clear top_frame flag, bad things happen...
 	 */
-	frame->uflags &= UNWIND_FLAG_TOP_FRAME;
+	frame->uflags &= UNWIND_FRAME_FLAG_TOP_FRAME;
 	if (frame->state) {
 		talloc_free_children(frame->state); /* *(ev->parent) = NULL in event.c */
 		TALLOC_FREE(frame->state);
