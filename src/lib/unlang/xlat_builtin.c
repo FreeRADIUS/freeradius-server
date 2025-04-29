@@ -2792,7 +2792,7 @@ static xlat_arg_parser_t const xlat_func_regex_args[] = {
 if ("foo" =~ /^(?<name>.*)/) {
         noop
 }
-%regex(name) == "foo"
+%regex.match(name) == "foo"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -4333,9 +4333,13 @@ do { \
 	XLAT_NEW("hash.md4");
 
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
+	if (unlikely((xlat = xlat_func_register(xlat_ctx, "regex.match", xlat_func_regex, FR_TYPE_STRING)) == NULL)) return -1;
+	xlat_func_args_set(xlat, xlat_func_regex_args);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 	if (unlikely((xlat = xlat_func_register(xlat_ctx, "regex", xlat_func_regex, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, xlat_func_regex_args);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
+	XLAT_NEW("regex.match");
 #endif
 
 	{

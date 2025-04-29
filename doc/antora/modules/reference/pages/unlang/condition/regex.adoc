@@ -119,7 +119,7 @@ matched. The expansions +
 
 When using libpcre[2], named capture groups may also be accessed using the
 built-in expansion +
-`%regex(<named capture group>)`.
+`%regex.match(<named capture group>)`.
 
 Please see the xref:xlat/builtin.adoc#_0_32[xlat documentation] for
 more information on regular expression matching.

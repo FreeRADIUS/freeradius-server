@@ -92,11 +92,11 @@ groups in the pattern.
 Every time a regular expression is evaluated, whether it matches or not,
 the numbered capture group values will be cleared.
 
-=== +%regex(<named capture group>}+
+=== +%regex.match(<named capture group>}+
 
 Return named subcapture value from the last regular expression evaluated.
 
-Results of named capture groups are available using the `%regex(<named capture
+Results of named capture groups are available using the `%regex.match(<named capture
 group>}` expansion. They will also be accessible using the numbered expansions
 described xref:xlat/builtin.adoc#_0_32[above].
 
