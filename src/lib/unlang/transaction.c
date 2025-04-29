@@ -44,7 +44,7 @@ static void unlang_transaction_signal(UNUSED request_t *request, unlang_stack_fr
 	 *	Ignore everything except cancel.
 	 */
 	if (action != FR_SIGNAL_CANCEL) return;
-	
+
 	fr_edit_list_abort(state->el);
 	state->el = NULL;
 }
@@ -67,7 +67,7 @@ static unlang_action_t unlang_transaction_final(rlm_rcode_t *p_result, UNUSED re
 	case RLM_MODULE_DISALLOW:
 		fr_edit_list_abort(state->el);
 		break;
-	
+
 	case RLM_MODULE_OK:
 	case RLM_MODULE_HANDLED:
 	case RLM_MODULE_NOOP:

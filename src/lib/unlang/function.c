@@ -62,7 +62,7 @@ static unlang_t function_instruction = {
 			[RLM_MODULE_UPDATED]	= 0
 		},
 		.retry = RETRY_INIT,
-	},
+	}
 };
 
 /** Generic signal handler
@@ -342,7 +342,7 @@ void unlang_function_init(void)
 				.interpret = unlang_function_call,
 				.signal = unlang_function_signal,
 				.dump = unlang_function_dump,
-				.debug_braces = false,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RETURN_POINT,
 			        .frame_state_size = sizeof(unlang_frame_state_func_t),
 				.frame_state_type = "unlang_frame_state_func_t",
 			   });

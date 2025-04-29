@@ -353,7 +353,6 @@ static void unlang_dump(unlang_t *instruction, int depth)
 		}
 			break;
 
-
 		case UNLANG_TYPE_CALL:
 		case UNLANG_TYPE_CALLER:
 		case UNLANG_TYPE_CASE:

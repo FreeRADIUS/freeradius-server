@@ -208,7 +208,7 @@ static unlang_action_t unlang_foreach_xlat_expanded(rlm_rcode_t *p_result, reque
 	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
 	fr_value_box_t *box;
 
-	if (!state->success) {	
+	if (!state->success) {
 		RDEBUG("Failed expanding 'foreach' list");
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
@@ -281,7 +281,7 @@ static void unlang_foreach_attr_key_update(UNUSED request_t *request, unlang_fra
 		if (tmpl_dcursor_print(&FR_SBUFF_IN(state->buffer, BUFFER_SIZE), &state->cc) > 0) {
 			fr_value_box_strdup(state->key, &state->key->data, NULL, state->buffer, false);
 		}
-		break;		
+		break;
 
 	default:
 		fr_assert(0);
@@ -520,7 +520,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 		}
 		fr_assert(state->key != NULL);
 	}
-			
+
 	if (tmpl_is_attr(gext->vpt)) {
 		MEM(state->buffer = talloc_array(state, char, BUFFER_SIZE));
 		return unlang_foreach_attr_init(p_result, request, frame, state);
