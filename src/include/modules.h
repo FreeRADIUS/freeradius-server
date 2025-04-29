@@ -168,6 +168,8 @@ rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request);
 int virtual_servers_load(CONF_SECTION *config);
 void virtual_servers_free(time_t when);
 
+int virtual_server_sanity_check(REQUEST *request);
+
 #ifdef __cplusplus
 }
 #endif

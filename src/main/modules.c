@@ -2294,3 +2294,66 @@ rlm_rcode_t process_send_coa(int send_coa_type, REQUEST *request)
 	return indexed_modcall(MOD_SEND_COA, send_coa_type, request);
 }
 #endif
+
+int virtual_server_sanity_check(REQUEST *request)
+{
+	virtual_server_t *server;
+
+	server = virtual_server_find(request->server);
+	if (!server) {
+		RDEBUG("No such virtual server \"%s\"", request->server);
+		return -1;
+	}
+
+	switch (request->packet->code) {
+	case PW_CODE_ACCESS_REQUEST:
+		if (!server->mc[MOD_AUTHORIZE] &&
+		    !server->mc[MOD_AUTHENTICATE] &&
+		    !server->mc[MOD_POST_AUTH]) {
+			REDEBUG("The virtual server %s is missing ALL of the 'authorize', 'authenticate', and 'post-auth' sections.", server->name);
+			REDEBUG("Please either update the 'listen' section so that it does not receive Access-Request packets,");
+			REDEBUG("or, add those sections back into the virtual server.");
+			RDEBUG("The server WILL NOT be able to process Access-Request packets until the configuration is fixed.");
+			return -1;
+		}
+		break;
+
+	case PW_CODE_ACCOUNTING_REQUEST:
+		if (!server->mc[MOD_PREACCT] &&
+		    !server->mc[MOD_ACCOUNTING]) {
+			REDEBUG("The virtual server %s is missing ALL of the 'preacct' and 'accounting' sections.", server->name);
+			REDEBUG("Please either update the 'listen' section so that it does not receive Accounting-Request packets,");
+			REDEBUG("or, add those sections back into the virtual server.");
+			RDEBUG("The server WILL NOT be able to process Accounting-Request packets until the configuration is fixed.");
+			return -1;
+		}
+		break;
+
+	case PW_CODE_COA_REQUEST:
+		if (!server->mc[MOD_RECV_COA] &&
+		    !server->mc[MOD_SEND_COA]) {
+			REDEBUG("The virtual server %s is missing ALL of the 'recv-coa' and 'send-coa' sections.", server->name);
+			REDEBUG("Please either update the 'listen' section so that it does not receive CoA-Request packets,");
+			REDEBUG("or, add those sections back into the virtual server.");
+			RDEBUG("The server WILL NOT be able to process CoA-Request packets until the configuration is fixed.");
+			return -1;
+		}
+		break;
+
+	case PW_CODE_DISCONNECT_REQUEST:
+		if (!server->mc[MOD_RECV_COA] &&
+		    !server->mc[MOD_SEND_COA]) {
+			REDEBUG("The virtual server %s is missing ALL of the 'recv-coa' and 'send-coa' sections.", server->name);
+			REDEBUG("Please either update the 'listen' section so that it does not receive Disconnect-Request packets,");
+			REDEBUG("or, add those sections back into the virtual server.");
+			RDEBUG("The server WILL NOT be able to process Disconnect-Request packets until the configuration is fixed.");
+			return -1;
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	return 0;
+}

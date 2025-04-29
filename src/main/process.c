@@ -2121,6 +2121,13 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 		request->server = NULL;
 	}
 
+	if (fr_debug_lvl) {
+		if (virtual_server_sanity_check(request) < 0) {
+			talloc_free(request);
+			return NULL;
+		}
+	}
+
 	request->root = &main_config;
 #ifdef WITH_TCP
 	request->listener->count++;
