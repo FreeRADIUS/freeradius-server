@@ -254,7 +254,7 @@ void		unlang_frame_perf_cleanup(unlang_stack_frame_t *frame);
 #define		unlang_frame_perf_cleanup(_x)
 #endif
 
-void	unlang_frame_signal(request_t *request, fr_signal_t action, int limit);
+void	unlang_stack_signal(request_t *request, fr_signal_t action, int limit);
 
 typedef struct {
 	request_t		*request;

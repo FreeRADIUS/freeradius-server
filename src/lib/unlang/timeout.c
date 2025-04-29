@@ -57,7 +57,7 @@ static void unlang_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 	/*
 	 *	Signal all lower frames to exit, but the request can keep running.
 	 */
-	unlang_frame_signal(request, FR_SIGNAL_CANCEL, state->depth);
+	unlang_stack_signal(request, FR_SIGNAL_CANCEL, state->depth);
 	state->success = false;
 
 	RINDENT_RESTORE(request, state);

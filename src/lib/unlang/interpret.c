@@ -1155,7 +1155,7 @@ void unlang_interpret_request_detach(request_t *request)
  * @param[in] action		to signal.
  * @param[in] limit		the frame at which to stop signaling.
  */
-void unlang_frame_signal(request_t *request, fr_signal_t action, int limit)
+void unlang_stack_signal(request_t *request, fr_signal_t action, int limit)
 {
 	unlang_stack_frame_t	*frame;
 	unlang_stack_t		*stack = request->stack;
@@ -1231,7 +1231,7 @@ void unlang_interpret_signal(request_t *request, fr_signal_t action)
 	 *	yet should have a stack depth of zero, so we don't
 	 *	need to do anything.
 	 */
-	if (stack && (stack->depth > 0)) unlang_frame_signal(request, action, 0);
+	if (stack && (stack->depth > 0)) unlang_stack_signal(request, action, 0);
 
 	switch (action) {
 	case FR_SIGNAL_CANCEL:
@@ -1279,7 +1279,7 @@ static void instruction_retry_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time
 	/*
 	 *	Signal all lower frames to exit.
 	 */
-	unlang_frame_signal(request, FR_SIGNAL_CANCEL, retry->depth);
+	unlang_stack_signal(request, FR_SIGNAL_CANCEL, retry->depth);
 
 	retry->state = FR_RETRY_MRD;
 	unlang_interpret_mark_runnable(request);
