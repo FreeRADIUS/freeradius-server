@@ -128,7 +128,7 @@ void unlang_limit_init(void)
 				.name = "limit",
 				.interpret = unlang_limit,
 				.signal = unlang_limit_signal,
-				.debug_braces = true,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 				.frame_state_size = sizeof(unlang_frame_state_limit_t),
 				.frame_state_type = "unlang_frame_state_limit_t",
 

@@ -295,8 +295,6 @@ static unlang_action_t unlang_foreach_attr_next(rlm_rcode_t *p_result, request_t
 	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
 	fr_pair_t			*vp;
 
-	if (is_stack_unwinding_to_break(request->stack)) return UNLANG_ACTION_CALCULATE_RESULT;
-
 	vp = fr_dcursor_current(&state->cursor);
 	fr_assert(vp != NULL);
 
@@ -478,11 +476,6 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 	unlang_foreach_t		*gext = unlang_group_to_foreach(g);
 	unlang_frame_state_foreach_t	*state;
 
-	/*
-	 *	Ensure any breaks terminate here...
-	 */
-	break_point_set(frame);
-
 	MEM(frame->state = state = talloc_zero(request->stack, unlang_frame_state_foreach_t));
 	talloc_set_destructor(state, _free_unlang_frame_state_foreach);
 
@@ -533,6 +526,10 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 
 static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
+	unlang_action_t			ua;
+	unlang_stack_t			*stack = request->stack;
+	unsigned int break_depth;
+
 	RDEBUG2("%s", unlang_ops[frame->instruction->type].name);
 
 	*p_result = frame->result;
@@ -541,7 +538,9 @@ static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, u
 	 *	Stop at the next break point, or if we hit
 	 *	the a top frame.
 	 */
-	return unwind_to_break(request->stack);
+	ua = unwind_to_break(&break_depth, request->stack);
+	repeatable_clear(&stack->frame[break_depth]);
+	return ua;
 }
 
 void unlang_foreach_init(void)
@@ -550,7 +549,7 @@ void unlang_foreach_init(void)
 			   &(unlang_op_t){
 				.name = "foreach",
 				.interpret = unlang_foreach,
-				.debug_braces = true
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_BREAK_POINT
 			   });
 
 	unlang_register(UNLANG_TYPE_BREAK,

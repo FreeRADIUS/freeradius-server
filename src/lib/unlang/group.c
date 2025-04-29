@@ -34,11 +34,6 @@ unlang_action_t unlang_group(rlm_rcode_t *p_result, request_t *request, unlang_s
 
 static unlang_action_t unlang_policy(rlm_rcode_t *result, request_t *request, unlang_stack_frame_t *frame)
 {
-	/*
-	 *	Ensure returns stop at the enclosing policy
-	 */
-	return_point_set(frame);
-
 	return unlang_group(result, request, frame);
 }
 
@@ -49,20 +44,20 @@ void unlang_group_init(void)
 			   &(unlang_op_t){
 				.name = "group",
 				.interpret = unlang_group,
-				.debug_braces = true
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
 			   });
 
 	unlang_register(UNLANG_TYPE_REDUNDANT,
 			   &(unlang_op_t){
 				.name = "redundant",
 				.interpret = unlang_group,
-				.debug_braces = true
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
 			   });
 
 	unlang_register(UNLANG_TYPE_POLICY,
 			   &(unlang_op_t){
 				.name = "policy",
 				.interpret = unlang_policy,
-				.debug_braces = true
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RETURN_POINT
 			   });
 }

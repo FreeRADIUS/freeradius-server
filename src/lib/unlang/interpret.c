@@ -38,7 +38,6 @@ RCSID("$Id$")
 static _Thread_local unlang_interpret_t *intp_thread_default;
 
 static fr_table_num_ordered_t const unlang_action_table[] = {
-	{ L("unwind"), 			UNLANG_ACTION_UNWIND },
 	{ L("calculate-result"),	UNLANG_ACTION_CALCULATE_RESULT },
 	{ L("next"),			UNLANG_ACTION_EXECUTE_NEXT },
 	{ L("pushed-child"),		UNLANG_ACTION_PUSHED_CHILD },
@@ -89,10 +88,13 @@ static void frame_dump(request_t *request, unlang_stack_frame_t *frame)
 	RDEBUG2("priority       %d", frame->priority);
 	RDEBUG2("top_frame      %s", is_top_frame(frame) ? "yes" : "no");
 	RDEBUG2("repeat         %s", is_repeatable(frame) ? "yes" : "no");
-	RDEBUG2("break_point    %s", is_break_point(frame) ? "yes" : "no");
-	RDEBUG2("return_point   %s", is_return_point(frame) ? "yes" : "no");
 	RDEBUG2("resumable      %s", is_yielded(frame) ? "yes" : "no");
+	RDEBUG2("cancelled      %s", is_cancelled(frame) ? "yes" : "no");
 
+	if (frame->instruction) {
+		RDEBUG2("break_point    %s", is_break_point(frame) ? "yes" : "no");
+		RDEBUG2("return_point   %s", is_return_point(frame) ? "yes" : "no");
+	}
 	/*
 	 *	Call the custom frame dump function
 	 */
@@ -101,42 +103,19 @@ static void frame_dump(request_t *request, unlang_stack_frame_t *frame)
 	REXDENT();
 }
 
-static char *stack_unwind_flag_dump(uint8_t unwind)
-{
-	static __thread char buf[256];
-	size_t len;
-
-#define UNWIND_FRAME_FLAG_DUMP(attrib) \
-	if (unwind & attrib) strcat(buf, #attrib" ")
-
-	snprintf(buf, sizeof(buf), "unwind=0x%x (", unwind);
-
-	UNWIND_FRAME_FLAG_DUMP(UNWIND_FRAME_FLAG_TOP_FRAME);
-	UNWIND_FRAME_FLAG_DUMP(UNWIND_FRAME_FLAG_BREAK_POINT);
-	UNWIND_FRAME_FLAG_DUMP(UNWIND_FRAME_FLAG_RETURN_POINT);
-
-	len = strlen(buf);
-	if (buf[len - 1] == ' ') buf[len - 1] = '\0';    /* Trim trailing space */
-	strcat(buf, ")");
-
-#undef UNWIND_FRAME_FLAG_DUMP
-
-	return buf;
-}
-
 static void stack_dump(request_t *request)
 {
 	int i;
 	unlang_stack_t *stack = request->stack;
 
-	RDEBUG2("----- Begin stack debug [depth %i, %s] -----", stack->depth, stack_unwind_flag_dump(stack->unwind));
+	RDEBUG2("----- Begin stack debug [depth %i] -----", stack->depth);
 	for (i = stack->depth; i >= 0; i--) {
 		unlang_stack_frame_t *frame = &stack->frame[i];
 
 		RDEBUG2("[%d] Frame contents", i);
 		frame_dump(request, frame);
 	}
-	RDEBUG2("----- End stack debug [depth %i, %s] -------", stack->depth, stack_unwind_flag_dump(stack->unwind));
+	RDEBUG2("----- End stack debug [depth %i] -------", stack->depth);
 }
 #define DUMP_STACK if (DEBUG_ENABLED5) stack_dump(request)
 #else
@@ -260,7 +239,7 @@ unlang_action_t unlang_interpret_push_children(rlm_rcode_t *p_result, request_t 
 	unlang_group_t		*g;
 	unlang_variable_ref_t	*ref;
 
-	fr_assert(unlang_ops[frame->instruction->type].debug_braces);
+	fr_assert(has_debug_braces(frame));
 
 	g = unlang_generic_to_group(frame->instruction);
 
@@ -330,11 +309,19 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 		fr_table_str_by_value(mod_rcode_table, *result, "<invalid>"),
 		*priority);
 
+	if (is_cancelled(frame)) {
+		RDEBUG4("** [%i] %s - frame is cancelled",
+			stack->depth, __FUNCTION__);
+		frame->result = *result;
+		frame->priority = *priority;
+		return UNLANG_FRAME_ACTION_POP;
+	}
+
 	/*
 	 *	Update request->rcode if the instruction says we should
 	 *	We don't care about priorities for this.
 	 */
-	if (unlang_ops[instruction->type].rcode_set) {
+	if (is_rcode_set(frame)) {
 		RDEBUG3("Setting rcode to '%s'",
 			fr_table_str_by_value(rcode_table, *result, "<INVALID>"));
 		request->rcode = *result;
@@ -484,46 +471,15 @@ finalize:
 			*priority);
 	}
 
-	/*
-	 *	Not allowed in frame uflags...
-	 */
-	fr_assert(!(frame->uflags & UNWIND_FRAME_FLAG_NO_CLEAR));
-
-	/*
-	 *	If we are unwinding the stack due to a break / return,
-	 *	then handle it now.
-	 */
-	if (stack->unwind) {
-		/*
-		 *	Continue unwinding...
-		 */
-		if (!(stack->unwind & frame->uflags) || (stack->unwind & UNWIND_FRAME_FLAG_NO_CLEAR)) {
-			RDEBUG4("** [%i] %s - unwinding current frame with (%s %d) - flags - stack (%i), frame (%i)",
-				stack->depth, __FUNCTION__,
-				fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
-				frame->priority, stack->unwind, frame->uflags);
-
-			return UNLANG_FRAME_ACTION_POP;
-		}
-
-		/*
-		 *	If we've been told to unwind, and we've hit
-		 *	the frame we should be unwinding to,
-		 *	and the "NO_CLEAR" flag hasn't been set, then
-		 *	clear the unwind field so we stop unwinding.
-		 */
-		stack->unwind = UNWIND_FRAME_FLAG_NONE;
-
-		RDEBUG4("** [%i] %s - unwind stop (%s %d) - flags - stack unwind (%i), frame uflags (%i)",
-			stack->depth, __FUNCTION__,
-			fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
-			frame->priority, stack->unwind, frame->uflags);
-	}
-
 	return frame->next ? UNLANG_FRAME_ACTION_NEXT : UNLANG_FRAME_ACTION_POP;
 }
 
 /** Evaluates all the unlang nodes in a section
+ *
+ * This function interprets a list of unlang instructions at a given level using the same
+ * stack frame, and pushes additional frames onto the stack as needed.
+ *
+ * This function can be seen as moving horizontally.
  *
  * @param[in] request		The current request.
  * @param[in] frame		The current stack frame.
@@ -545,7 +501,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 	 */
 	while (frame->instruction) {
 		unlang_t const		*instruction = frame->instruction;
-		unlang_action_t		ua = UNLANG_ACTION_UNWIND;
+		unlang_action_t		ua;
 		unlang_frame_action_t	fa;
 
 		DUMP_STACK;
@@ -598,7 +554,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 			return UNLANG_FRAME_ACTION_POP;
 		}
 
-		if (!is_repeatable(frame) && (unlang_ops[instruction->type].debug_braces)) {
+		if (!is_repeatable(frame) && has_debug_braces(frame)) {
 			RDEBUG2("%s {", instruction->debug_name);
 			RINDENT();
 		}
@@ -622,31 +578,32 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 */
 		repeatable_clear(frame);
 		unlang_frame_perf_resume(frame);
-		ua = frame->process(result, request, frame);
 
 		/*
-		 *	If this frame is breaking or returning
-		 *	frame then clear that unwind flag,
-		 *	it's been consumed by this call.
-		 *
-		 *	We leave the unwind flags for the eval
-		 *	call so that the process function knows
-		 *	that the stack is being unwound.
+		 *	catch plays games with the frame so we skip
+		 *	to the next catch section at a given depth,
+		 *	it's not safe to access frame->instruction
+		 *	after this point, and the cached instruction
+		 *	should be used instead.
 		 */
-		if (is_break_point(frame)) {
-			stack_unwind_break_clear(stack);
-			stack_unwind_top_frame_clear(stack);
-		}
-		if (is_return_point(frame)) {
-			stack_unwind_return_clear(stack);
-			stack_unwind_top_frame_clear(stack);
-		}
+		ua = frame->process(result, request, frame);
 
 		RDEBUG4("** [%i] %s << %s (%d)", stack->depth, __FUNCTION__,
 			fr_table_str_by_value(unlang_action_table, ua, "<INVALID>"), *priority);
 
 		fr_assert(*priority >= -1);
 		fr_assert(*priority <= MOD_PRIORITY_MAX);
+
+		/*
+		 *	If the frame is cancelled we ignore the
+		 *	return code of the process function and
+		 *	jump to calculate result (which tells us
+		 *	to start popping frames).  This is because
+		 *	the cancellation can be signalled
+		 *	asynchronously, and the process function
+		 *	may not be aware that it's happened.
+		 */
+		if (is_cancelled(frame)) goto calculate_result;
 
 		switch (ua) {
 		/*
@@ -669,18 +626,6 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 			unlang_frame_perf_yield(frame);
 			*result = frame->result;
 			return UNLANG_FRAME_ACTION_NEXT;
-
-		/*
-		 *	We're in a looping construct and need to stop
-		 *	execution of the current section.
-		 */
-		case UNLANG_ACTION_UNWIND:
-			if (*priority < 0) *priority = 0;
-			frame->result = *result;
-			frame->priority = *priority;
-			frame->next = NULL;
-			fr_assert(stack->unwind != UNWIND_FRAME_FLAG_NONE);
-			return UNLANG_FRAME_ACTION_POP;
 
 		/*
 		 *	Yield control back to the scheduler, or whatever
@@ -713,7 +658,8 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 *	the section rcode and priority.
 		 */
 		case UNLANG_ACTION_CALCULATE_RESULT:
-			if (unlang_ops[instruction->type].debug_braces) {
+		calculate_result:
+			if (has_debug_braces(instruction)) {
 				REXDENT();
 
 				/*
@@ -741,7 +687,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 				return UNLANG_FRAME_ACTION_POP;
 
 			case UNLANG_FRAME_ACTION_RETRY:
-				if (unlang_ops[instruction->type].debug_braces) {
+				if (has_debug_braces(instruction)) {
 					REXDENT();
 					RDEBUG2("} # retrying the same section");
 				}
@@ -756,7 +702,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 *	Execute the next instruction in this frame
 		 */
 		case UNLANG_ACTION_EXECUTE_NEXT:
-			if (unlang_ops[instruction->type].debug_braces) {
+			if (has_debug_braces(instruction)) {
 				REXDENT();
 				RDEBUG2("}");
 			}
@@ -775,6 +721,9 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 }
 
 /** Run the interpreter for a current request
+ *
+ * This function runs the interpreter for a request.  It deals with popping
+ * stack frames, and calaculating the final result for the frame.
  *
  * @param[in] request		to run.  If this is an internal request
  *				the request may be freed by the interpreter.
@@ -873,7 +822,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 			/*
 			 *	Close out the section we entered earlier
 			 */
-			if (unlang_ops[frame->instruction->type].debug_braces) {
+			if (has_debug_braces(frame)) {
 				REXDENT();
 
 				/*
@@ -893,6 +842,15 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 			 *	If we're done, merge the last stack->result / priority in.
 			 */
 			if (is_top_frame(frame)) break;	/* stop */
+
+			/*
+			 *	Carry on popping until we find something that shouldn't
+			 *	be cancelled.
+			 */
+			if (is_cancelled(frame)) {
+				fa = UNLANG_FRAME_ACTION_POP;
+				continue;
+			}
 
 			fa = result_calculate(request, frame, &stack->result, &stack->priority);
 
@@ -1140,16 +1098,23 @@ void unlang_interpret_request_detach(request_t *request)
 	intp->funcs.detach(request, intp->uctx);
 }
 
-/** Send a signal (usually stop) to a request
+/** Delivers a frame to one or more frames in the stack
  *
- * This is typically called via an "async" action, i.e. an action
- * outside of the normal processing of the request.
+ * This is typically called via an "async" action, i.e. an action outside
+ * of the normal processing of the request.
  *
- * If there is no #unlang_module_signal_t callback defined, the action is ignored.
+ * For FR_SIGNAL_CANCEL all frames are marked up for cancellation, but the
+ * cancellation is handled by the interpret.
  *
- * The signaling stops at the "limit" frame.  This is so that keywords
+ * Other signal types are delivered immediately, inrrespecitve of whether
+ * the request is currently being processed or not.
+ *
+ * Signaling stops at the "limit" frame.  This is so that keywords
  * such as "timeout" and "limit" can signal frames *lower* than theirs
  * to stop, but then continue with their own work.
+ *
+ * @note It's better (clearer) to use one of the unwind_* functions
+ *	unless the entire request is being cancelled.
  *
  * @param[in] request		The current request.
  * @param[in] action		to signal.
@@ -1166,21 +1131,12 @@ void unlang_stack_signal(request_t *request, fr_signal_t action, int limit)
 	fr_assert(stack->depth > 0);
 
 	/*
-	 *	Destructive signal where we clean each of the
-	 *	stack frames up in turn.
-	 *
-	 *	We do this to avoid possible free ordering
-	 *	issues where memory allocated by modules higher
-	 *	in the stack is used by modules lower in the
-	 *	stack.
+	 *	Does not complete the unwinding here, just marks
+	 *	up the frames for unwinding.  The request must
+	 *	be marked as runnable to complete the cancellation.
 	 */
 	if (action == FR_SIGNAL_CANCEL) {
-		for (i = depth; i > limit; i--) {
-			frame = &stack->frame[i];
-			if (frame->signal) frame->signal(request, frame, action);
-			frame_cleanup(frame);
-		}
-		stack->depth = i;
+		unwind_to_depth(stack, limit);
 		return;
 	}
 
@@ -1204,7 +1160,10 @@ void unlang_stack_signal(request_t *request, fr_signal_t action, int limit)
  * This is typically called via an "async" action, i.e. an action
  * outside of the normal processing of the request.
  *
- * If there is no #unlang_module_signal_t callback defined, the action is ignored.
+ * @note This does NOT immediately stop the request, it just deliveres
+ *	 signals, and in the case of a cancel, marks up frames for unwinding.
+ *	 The request must be marked as runnable, and executed by the
+ *	 interpreter to complete the cancellation.
  *
  * @param[in] request		The current request.
  * @param[in] action		to signal.
@@ -1500,15 +1459,7 @@ static void unlang_cancel_event(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now
 	 */
 	talloc_free(request_data_get(request, (void *)unlang_cancel_xlat, 0));
 
-	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
-}
-
-static xlat_action_t unlang_cancel_never_run(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-					     UNUSED xlat_ctx_t const *xctx,
-					     UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
-{
-	fr_assert_msg(0, "Should never be run");
-	return XLAT_ACTION_FAIL;
+	unwind_all(request->stack);
 }
 
 /** Allows a request to dynamically alter its own lifetime
@@ -1528,6 +1479,19 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_time_t		when = fr_time_from_sec(0); /* Invalid clang complaints if we don't set this */
 
 	XLAT_ARGS(args, &timeout);
+
+	/*
+	 *	No timeout means cancel immediately, so yield allowing
+	 *	the interpreter to run the event we added to cancel
+	 *	the request.
+	 *
+	 *	We call unlang_xlat_yield to keep the interpreter happy
+	 *	as it expects to see a resume function set.
+	 */
+	if (!timeout || fr_time_delta_eq(timeout->vb_time_delta, fr_time_delta_from_sec(0))) {
+		unwind_all(request->stack);
+		return XLAT_ACTION_DONE;
+	}
 
 	/*
 	 *	First see if we already have a timeout event
@@ -1556,18 +1520,6 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		RPERROR("Failed associating cancellation event with request");
 		talloc_free(ev_p);
 		return XLAT_ACTION_FAIL;
-	}
-
-	/*
-	 *	No timeout means cancel immediately, so yield allowing
-	 *	the interpreter to run the event we added to cancel
-	 *	the request.
-	 *
-	 *	We call unlang_xlat_yield to keep the interpreter happy
-	 *	as it expects to see a resume function set.
-	 */
-	if (!timeout || fr_time_delta_eq(timeout->vb_time_delta, fr_time_delta_from_sec(0))) {
-		return unlang_xlat_yield(request, unlang_cancel_never_run, NULL, 0, NULL);
 	}
 
 	if (ev_p_og) {

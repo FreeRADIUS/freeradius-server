@@ -253,8 +253,7 @@ void unlang_load_balance_init(void)
 			   &(unlang_op_t){
 				.name = "load-balance group",
 				.interpret = unlang_load_balance,
-				.rcode_set = true,
-				.debug_braces = true,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
 			        .frame_state_size = sizeof(unlang_frame_state_redundant_t),
 				.frame_state_type = "unlang_frame_state_redundant_t",
 			   });
@@ -263,8 +262,7 @@ void unlang_load_balance_init(void)
 			   &(unlang_op_t){
 				.name = "redundant-load-balance group",
 				.interpret = unlang_redundant_load_balance,
-				.rcode_set = true,
-				.debug_braces = true,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
 			        .frame_state_size = sizeof(unlang_frame_state_redundant_t),
 				.frame_state_type = "unlang_frame_state_redundant_t",
 			   });

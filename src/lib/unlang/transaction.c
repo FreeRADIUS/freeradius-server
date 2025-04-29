@@ -129,6 +129,6 @@ void unlang_transaction_init(void)
 				.signal = unlang_transaction_signal,
 				.frame_state_size = sizeof(unlang_frame_state_transaction_t),
 				.frame_state_type = "unlang_frame_state_transaction_t",
-				.debug_braces = true
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
 			   });
 }

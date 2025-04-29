@@ -45,6 +45,6 @@ void unlang_try_init(void)
 			   &(unlang_op_t){
 				.name = "try",
 				.interpret = unlang_try,
-				.debug_braces = true
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
 			   });
 }

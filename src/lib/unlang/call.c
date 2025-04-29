@@ -252,7 +252,6 @@ void unlang_call_init(void)
 			   &(unlang_op_t){
 				.name			= "call",
 				.interpret		= unlang_call_frame_init,
-				.rcode_set 		= true,
-				.debug_braces		= true,
+				.flag			= UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_DEBUG_BRACES
 			   });
 }

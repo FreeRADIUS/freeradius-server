@@ -106,7 +106,7 @@ void unlang_condition_init(void)
 			   &(unlang_op_t){
 				.name = "if",
 				.interpret = unlang_if,
-				.debug_braces = true,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 				.frame_state_size = sizeof(unlang_frame_state_cond_t),
 				.frame_state_type = "unlang_frame_state_cond_t",
 			   });
@@ -114,15 +114,15 @@ void unlang_condition_init(void)
 	unlang_register(UNLANG_TYPE_ELSE,
 			   &(unlang_op_t){
 				.name = "else",
-				.interpret = unlang_group,
-				.debug_braces = true
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+				.interpret = unlang_group
 			   });
 
 	unlang_register(UNLANG_TYPE_ELSIF,
 			   &(unlang_op_t){
 				.name = "elseif",
 				.interpret = unlang_if,
-				.debug_braces = true,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 				.frame_state_size = sizeof(unlang_frame_state_cond_t),
 				.frame_state_type = "unlang_frame_state_cond_t",
 			   });

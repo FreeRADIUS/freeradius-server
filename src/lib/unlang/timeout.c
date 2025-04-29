@@ -261,7 +261,7 @@ void unlang_timeout_init(void)
 			   &(unlang_op_t){
 				.name = "timeout",
 				.interpret = unlang_timeout,
-				.debug_braces = true,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 				.frame_state_size = sizeof(unlang_frame_state_timeout_t),
 				.frame_state_type = "unlang_frame_state_timeout_t",
 			   });

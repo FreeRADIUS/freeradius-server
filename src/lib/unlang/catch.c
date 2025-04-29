@@ -102,6 +102,6 @@ void unlang_catch_init(void)
 			   &(unlang_op_t){
 				.name = "catch",
 				.interpret = unlang_catch,
-				.debug_braces = true
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
 			   });
 }

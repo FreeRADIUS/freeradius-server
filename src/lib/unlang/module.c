@@ -661,10 +661,6 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 		request->module = state->previous_module;
 		break;
 
-	case UNLANG_ACTION_UNWIND:
-		request->module = state->previous_module;
-		break;
-
 	case UNLANG_ACTION_FAIL:
 		*p_result = RLM_MODULE_FAIL;
 		request->module = state->previous_module;
@@ -827,11 +823,6 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	fr_assert(state->thread != NULL);
 
 	/*
-	 *	Don't allow returning _through_ modules
-	 */
-	return_point_set(frame_current(request));
-
-	/*
 	 *	For logging unresponsive children.
 	 */
 	state->thread->total_calls++;
@@ -934,9 +925,6 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		}
 		break;
 
-	case UNLANG_ACTION_UNWIND:
-		break;
-
 	case UNLANG_ACTION_FAIL:
 	fail:
 		*p_result = RLM_MODULE_FAIL;
@@ -960,7 +948,7 @@ void unlang_module_init(void)
 			   &(unlang_op_t){
 				.name = "module",
 				.interpret = unlang_module,
-				.rcode_set = true,
+				.flag = UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_RETURN_POINT,
 				.signal = unlang_module_signal,
 				.frame_state_size = sizeof(unlang_frame_state_module_t),
 				.frame_state_type = "unlang_frame_state_module_t",

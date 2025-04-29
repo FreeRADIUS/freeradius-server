@@ -1545,6 +1545,7 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 static int define_local_variable(CONF_ITEM *ci, unlang_variable_t *var, tmpl_rules_t *t_rules, fr_type_t type, char const *name,
 				 fr_dict_attr_t const *ref);
 
+#define debug_braces(_type)	(unlang_ops[_type].flag & UNLANG_OP_FLAG_DEBUG_BRACES)
 
 /** Compile a variable definition.
  *
@@ -1558,7 +1559,7 @@ static int compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF
 	char const	*attr, *value;
 	unlang_group_t	*group;
 
-	fr_assert(unlang_ops[parent->type].debug_braces);
+	fr_assert(debug_braces(parent->type));
 
 	/*
 	 *	Enforce locations for local variables.
@@ -1949,7 +1950,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 
 	/*
 	 *	Over-riding the actions can be done in certain limited
-	 *	situations.  In other situations (e.g. "redundant", 
+	 *	situations.  In other situations (e.g. "redundant",
 	 *	"load-balance"), it doesn't make sense.
 	 *
 	 *	Note that this limitation also applies to "retry"
@@ -5318,7 +5319,7 @@ static void unlang_perf_dump(fr_log_t *log, unlang_t const *instruction, int dep
 		fr_log(log, L_DBG, file, line, "%.*s", depth, unlang_spaces);
 	}
 
-	if (unlang_ops[instruction->type].debug_braces) {
+	if (debug_braces(instruction->type)) {
 		fr_log(log, L_DBG, file, line, "%s { #", instruction->debug_name);
 	} else {
 		fr_log(log, L_DBG, file, line, "%s #", instruction->debug_name);
@@ -5337,7 +5338,7 @@ static void unlang_perf_dump(fr_log_t *log, unlang_t const *instruction, int dep
 		}
 	}
 
-	if (unlang_ops[instruction->type].debug_braces) {
+	if (debug_braces(instruction->type)) {
 		if (depth) {
 			fr_log(log, L_DBG, file, line, "%.*s", depth, unlang_spaces);
 		}

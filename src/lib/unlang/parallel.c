@@ -360,8 +360,6 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 		 *	done.
 		 */
 		} else {
-			unlang_stack_frame_t *child_frame;
-
 			if (unlang_function_push(child,
 		    				 NULL,
 		    				 unlang_parallel_child_done,
@@ -369,8 +367,6 @@ static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t 
 						 ~FR_SIGNAL_DETACH,
 		    				 UNLANG_TOP_FRAME,
 		    				 &state->children[i]) < 0) goto error;
-			child_frame = frame_current(child);
-			return_point_set(child_frame);		/* Don't unwind this frame */
 
 			state->children[i].num = i;
 			state->children[i].name = talloc_bstrdup(state, child->name);
@@ -497,7 +493,6 @@ void unlang_parallel_init(void)
 				.name = "parallel",
 				.interpret = unlang_parallel,
 				.signal = unlang_parallel_signal,
-				.rcode_set = true,
-				.debug_braces = true
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET
 			   });
 }

@@ -58,6 +58,6 @@ void unlang_caller_init(void)
 			   &(unlang_op_t){
 				.name = "caller",
 				.interpret = unlang_caller,
-				.debug_braces = true
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
 			   });
 }

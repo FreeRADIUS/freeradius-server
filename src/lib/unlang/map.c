@@ -383,13 +383,13 @@ void unlang_map_init(void)
 			   &(unlang_op_t){
 				.name = "update",
 				.interpret = unlang_update_state_init,
-				.debug_braces = true
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
 			   });
 
 	unlang_register(UNLANG_TYPE_MAP,
 			   &(unlang_op_t){
 				.name = "map",
-				.rcode_set = true,
+				.flag = UNLANG_OP_FLAG_RCODE_SET,
 				.interpret = unlang_map_state_init,
 				.frame_state_size = sizeof(unlang_frame_state_map_proc_t),
 				.frame_state_type = "unlang_frame_state_map_proc_t",

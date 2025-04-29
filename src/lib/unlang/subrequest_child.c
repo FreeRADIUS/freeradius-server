@@ -233,8 +233,6 @@ int unlang_subrequest_child_push_resume(request_t *child, unlang_frame_state_sub
 				 UNLANG_TOP_FRAME,
 				 state) < 0) return -1;
 
-	return_point_set(frame_current(child));	/* Stop return going through the resumption frame */
-
 	return 0;
 }
 

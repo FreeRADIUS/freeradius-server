@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include "group_priv.h"
 #include "switch_priv.h"
 
-static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_switch(UNUSED rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_t		*found;
 
@@ -141,13 +141,13 @@ void unlang_switch_init(void)
 			   &(unlang_op_t){
 				.name = "switch",
 				.interpret = unlang_switch,
-				.debug_braces = true
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
 			   });
 
 	unlang_register(UNLANG_TYPE_CASE,
 			   &(unlang_op_t){
 				.name = "case",
 				.interpret = unlang_case,
-				.debug_braces = true
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
 			   });
 }
