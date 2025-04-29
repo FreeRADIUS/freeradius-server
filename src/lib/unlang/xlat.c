@@ -827,7 +827,6 @@ void unlang_xlat_init(void)
 				.name = "xlat_eval",
 				.interpret = unlang_xlat,
 				.signal = unlang_xlat_signal,
-				.debug_braces = false,
 				.frame_state_size = sizeof(unlang_frame_state_xlat_t),
 				.frame_state_type = "unlang_frame_state_xlat_t",
 			   });
