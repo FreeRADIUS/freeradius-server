@@ -119,7 +119,6 @@ static unlang_action_t unlang_timeout_set(rlm_rcode_t *p_result, request_t *requ
 	if (fr_timer_at(state, unlang_interpret_event_list(request)->tl, &state->ev, timeout,
 			false, unlang_timeout_handler, state) < 0) {
 		RPEDEBUG("Failed inserting event");
-		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 

@@ -238,7 +238,6 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, un
 push:
 	if (unlang_xlat_push(state->ctx, NULL, &state->list, request, tmpl_xlat(ut->tmpl), false) < 0) {
 	fail:
-		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 

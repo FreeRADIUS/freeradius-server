@@ -143,7 +143,6 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 				if (unlang_tmpl_push(update_state, &update_state->lhs_result,
 						     request, map->lhs,
 						     NULL) < 0) {
-					*p_result = RLM_MODULE_FAIL;
 					return UNLANG_ACTION_STOP_PROCESSING;
 				}
 				return UNLANG_ACTION_PUSHED_CHILD;
@@ -151,7 +150,6 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 			case TMPL_TYPE_XLAT:
 				if (unlang_xlat_push(update_state, NULL, &update_state->lhs_result,
 						     request, tmpl_xlat(map->lhs), false) < 0) {
-					*p_result = RLM_MODULE_FAIL;
 					return UNLANG_ACTION_STOP_PROCESSING;
 				}
 				return UNLANG_ACTION_PUSHED_CHILD;
@@ -186,7 +184,6 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 			case TMPL_TYPE_EXEC:
 				if (unlang_tmpl_push(update_state, &update_state->rhs_result,
 						     request, map->rhs, NULL) < 0) {
-					*p_result = RLM_MODULE_FAIL;
 					return UNLANG_ACTION_STOP_PROCESSING;
 				}
 				return UNLANG_ACTION_PUSHED_CHILD;
@@ -194,7 +191,6 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 			case TMPL_TYPE_XLAT:
 				if (unlang_xlat_push(update_state, NULL, &update_state->rhs_result,
 						     request, tmpl_xlat(map->rhs), false) < 0) {
-					*p_result = RLM_MODULE_FAIL;
 					return UNLANG_ACTION_STOP_PROCESSING;
 				}
 				return UNLANG_ACTION_PUSHED_CHILD;
@@ -351,7 +347,6 @@ static unlang_action_t unlang_map_state_init(rlm_rcode_t *p_result, request_t *r
 	case TMPL_TYPE_EXEC:
 		if (unlang_tmpl_push(map_proc_state, &map_proc_state->src_result,
 				     request, inst->src, NULL) < 0) {
-			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
@@ -359,7 +354,6 @@ static unlang_action_t unlang_map_state_init(rlm_rcode_t *p_result, request_t *r
 	case TMPL_TYPE_XLAT:
 		if (unlang_xlat_push(map_proc_state, NULL, &map_proc_state->src_result,
 				     request, tmpl_xlat(inst->src), false) < 0) {
-			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;

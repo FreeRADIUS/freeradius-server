@@ -254,7 +254,6 @@ unlang_action_t unlang_interpret_push_children(rlm_rcode_t *p_result, request_t 
 	}
 
 	if (unlang_interpret_push(request, g->children, default_rcode, do_next_sibling, UNLANG_SUB_FRAME) < 0) {
-		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 

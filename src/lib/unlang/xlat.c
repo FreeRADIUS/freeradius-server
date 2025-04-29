@@ -345,7 +345,6 @@ static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *requ
 		 */
 		fr_value_box_list_talloc_free(&state->out);
 		if (unlang_xlat_push(state->ctx, state->success, &state->out, request, child, false) < 0) {
-			*p_result = RLM_MODULE_FAIL;
 			REXDENT();
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
@@ -410,7 +409,6 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request, un
 		 */
 		fr_value_box_list_talloc_free(&state->out);
 		if (unlang_xlat_push(state->ctx, state->success, &state->out, request, child, false) < 0) {
-			*p_result = RLM_MODULE_FAIL;
 			RINDENT_RESTORE(request, state);
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
@@ -528,7 +526,6 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
 		 */
 		fr_value_box_list_talloc_free(&state->out);
 		if (unlang_xlat_push(state->ctx, state->success, &state->out, request, child, false) < 0) {
-			*p_result = RLM_MODULE_FAIL;
 			RINDENT_RESTORE(request, state);
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}

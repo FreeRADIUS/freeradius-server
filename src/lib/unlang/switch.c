@@ -115,7 +115,6 @@ do_null_case:
 	if (!found) return UNLANG_ACTION_EXECUTE_NEXT;
 
 	if (unlang_interpret_push(request, found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
-		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
