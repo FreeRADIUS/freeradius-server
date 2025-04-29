@@ -1575,6 +1575,7 @@ static int compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF
 	case UNLANG_TYPE_LIMIT:
 	case UNLANG_TYPE_POLICY:
 	case UNLANG_TYPE_REDUNDANT:
+	case UNLANG_TYPE_SUBREQUEST:
 	case UNLANG_TYPE_LOAD_BALANCE:
 	case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
 		break;
