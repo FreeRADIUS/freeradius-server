@@ -97,14 +97,14 @@ typedef enum {
 
 DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
-	UNWIND_FRAME_FLAG_NONE			= 0x00,			//!< No flags.
-	UNWIND_FRAME_FLAG_REPEAT		= 0x01,			//!< Repeat the frame on the way up the stack.
-	UNWIND_FRAME_FLAG_TOP_FRAME		= 0x02,			//!< are we the top frame of the stack?
+	UNLANG_FRAME_FLAG_NONE			= 0x00,			//!< No flags.
+	UNLANG_FRAME_FLAG_REPEAT		= 0x01,			//!< Repeat the frame on the way up the stack.
+	UNLANG_FRAME_FLAG_TOP_FRAME		= 0x02,			//!< are we the top frame of the stack?
 									///< If true, causes the interpreter to stop
 									///< interpreting and return, control then passes
 									///< to whatever called the interpreter.
-	UNWIND_FRAME_FLAG_YIELDED		= 0x04,			//!< frame has yielded
-	UNWIND_FRAME_FLAG_CANCEL		= 0x08,			//!< This frame has been marked up for cancellation.
+	UNLANG_FRAME_FLAG_YIELDED		= 0x04,			//!< frame has yielded
+	UNLANG_FRAME_FLAG_CANCEL		= 0x08,			//!< This frame has been marked up for cancellation.
 } unlang_frame_flag_t;
 DIAG_ON(attributes)
 
@@ -322,7 +322,7 @@ struct unlang_stack_frame_s {
 	rindent_t		indent;				//!< Indent level of the request when the frame was
 								///< created.  This is used to restore the indent
 								///< level when the stack is being forcefully unwound.
-	unlang_frame_flag_t	uflags;				//!< Unwind flags
+	unlang_frame_flag_t	flag;				//!< Unwind flags
 
 #ifdef WITH_PERF
 	fr_time_tracking_t	tracking;			//!< track this instance of this instruction
@@ -352,20 +352,20 @@ extern unlang_op_t unlang_ops[];
 extern fr_table_num_sorted_t const mod_rcode_table[];
 extern size_t mod_rcode_table_len;
 
-static inline void repeatable_set(unlang_stack_frame_t *frame)			{ frame->uflags |= UNWIND_FRAME_FLAG_REPEAT; }
-static inline void top_frame_set(unlang_stack_frame_t *frame) 			{ frame->uflags |= UNWIND_FRAME_FLAG_TOP_FRAME; }
-static inline void yielded_set(unlang_stack_frame_t *frame)			{ frame->uflags |= UNWIND_FRAME_FLAG_YIELDED; }
-static inline void cancel_set(unlang_stack_frame_t *frame)			{ frame->uflags |= UNWIND_FRAME_FLAG_CANCEL; }
+static inline void repeatable_set(unlang_stack_frame_t *frame)			{ frame->flag |= UNLANG_FRAME_FLAG_REPEAT; }
+static inline void top_frame_set(unlang_stack_frame_t *frame) 			{ frame->flag |= UNLANG_FRAME_FLAG_TOP_FRAME; }
+static inline void yielded_set(unlang_stack_frame_t *frame)			{ frame->flag |= UNLANG_FRAME_FLAG_YIELDED; }
+static inline void cancel_set(unlang_stack_frame_t *frame)			{ frame->flag |= UNLANG_FRAME_FLAG_CANCEL; }
 
-static inline void repeatable_clear(unlang_stack_frame_t *frame)		{ frame->uflags &= ~UNWIND_FRAME_FLAG_REPEAT; }
-static inline void top_frame_clear(unlang_stack_frame_t *frame)			{ frame->uflags &= ~UNWIND_FRAME_FLAG_TOP_FRAME; }
-static inline void yielded_clear(unlang_stack_frame_t *frame) 			{ frame->uflags &= ~UNWIND_FRAME_FLAG_YIELDED; }
-static inline void cancel_clear(unlang_stack_frame_t *frame)			{ frame->uflags &= ~UNWIND_FRAME_FLAG_CANCEL; }
+static inline void repeatable_clear(unlang_stack_frame_t *frame)		{ frame->flag &= ~UNLANG_FRAME_FLAG_REPEAT; }
+static inline void top_frame_clear(unlang_stack_frame_t *frame)			{ frame->flag &= ~UNLANG_FRAME_FLAG_TOP_FRAME; }
+static inline void yielded_clear(unlang_stack_frame_t *frame) 			{ frame->flag &= ~UNLANG_FRAME_FLAG_YIELDED; }
+static inline void cancel_clear(unlang_stack_frame_t *frame)			{ frame->flag &= ~UNLANG_FRAME_FLAG_CANCEL; }
 
-static inline bool is_repeatable(unlang_stack_frame_t const *frame)		{ return frame->uflags & UNWIND_FRAME_FLAG_REPEAT; }
-static inline bool is_top_frame(unlang_stack_frame_t const *frame)		{ return frame->uflags & UNWIND_FRAME_FLAG_TOP_FRAME; }
-static inline bool is_yielded(unlang_stack_frame_t const *frame) 		{ return frame->uflags & UNWIND_FRAME_FLAG_YIELDED; }
-static inline bool is_cancelled(unlang_stack_frame_t const *frame) 		{ return frame->uflags & UNWIND_FRAME_FLAG_CANCEL; }
+static inline bool is_repeatable(unlang_stack_frame_t const *frame)		{ return frame->flag & UNLANG_FRAME_FLAG_REPEAT; }
+static inline bool is_top_frame(unlang_stack_frame_t const *frame)		{ return frame->flag & UNLANG_FRAME_FLAG_TOP_FRAME; }
+static inline bool is_yielded(unlang_stack_frame_t const *frame) 		{ return frame->flag & UNLANG_FRAME_FLAG_YIELDED; }
+static inline bool is_cancelled(unlang_stack_frame_t const *frame) 		{ return frame->flag & UNLANG_FRAME_FLAG_CANCEL; }
 
 static inline bool _instruction_has_debug_braces(unlang_t const *instruction)	{ return unlang_ops[instruction->type].flag & UNLANG_OP_FLAG_DEBUG_BRACES; }
 static inline bool _frame_has_debug_braces(unlang_stack_frame_t const *frame)	{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_DEBUG_BRACES; }
@@ -393,7 +393,7 @@ static inline unsigned int unlang_frame_by_flag(unlang_stack_t *stack, unlang_fr
 	for (i = stack->depth; i > 0; i--) {
 		unlang_stack_frame_t *frame = &stack->frame[i];
 
-		if (frame->uflags & flag) return i;
+		if (frame->flag & flag) return i;
 	}
 	return 0;
 }
@@ -434,7 +434,7 @@ static inline unlang_action_t unwind_to_depth(unlang_stack_t *stack, unsigned in
 
 	for (i = depth; i >= to_depth; i--) {
 		frame = &stack->frame[i];
-		frame->uflags |= UNWIND_FRAME_FLAG_CANCEL;
+		frame->flag |= UNLANG_FRAME_FLAG_CANCEL;
 	}
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
@@ -559,7 +559,7 @@ static inline void frame_cleanup(unlang_stack_frame_t *frame)
 	/*
 	 *	Don't clear top_frame flag, bad things happen...
 	 */
-	frame->uflags &= UNWIND_FRAME_FLAG_TOP_FRAME;
+	frame->flag &= UNLANG_FRAME_FLAG_TOP_FRAME;
 	if (frame->state) {
 		talloc_free_children(frame->state); /* *(ev->parent) = NULL in event.c */
 		TALLOC_FREE(frame->state);

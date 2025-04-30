@@ -176,7 +176,7 @@ int unlang_interpret_push(request_t *request, unlang_t const *instruction,
 	}
 	/* else frame->next MUST be NULL */
 
-	frame->uflags = UNWIND_FRAME_FLAG_NONE;
+	frame->flag = UNLANG_FRAME_FLAG_NONE;
 	if (top_frame) top_frame_set(frame);
 
 	frame->result = default_rcode;
