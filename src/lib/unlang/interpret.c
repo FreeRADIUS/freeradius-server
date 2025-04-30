@@ -1152,7 +1152,7 @@ void unlang_interpret_signal(request_t *request, fr_signal_t action)
 		/*
 		 *	If the request is yielded, mark it as runnable
 		 */
-		if (is_yielded(&stack->frame[stack->depth]) && !unlang_request_is_scheduled(request)) {
+		if (stack && is_yielded(&stack->frame[stack->depth]) && !unlang_request_is_scheduled(request)) {
 			unlang_interpret_mark_runnable(request);
 		}
 		break;
