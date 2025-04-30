@@ -1,0 +1,23 @@
+#
+#  PRE: if
+#
+string foo
+
+#
+#  Try returns noop - which is not caught
+#
+#  Regression test where there are no more sibilings for catch.
+#
+group {
+	try {
+		foo := "hello"
+	}
+	catch disallow {
+		test_fail
+	}
+	catch ok reject fail {
+		test_fail
+	}
+}
+
+success
