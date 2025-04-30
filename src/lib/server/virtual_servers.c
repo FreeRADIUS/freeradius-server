@@ -450,6 +450,7 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_IT
 		return -1;
 	}
 
+
 	/*
 	 *	Instance names are default.radius.udp.foo, or default.radius.udp
 	 */
@@ -475,6 +476,24 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_IT
 	listener->proto_mi = mi;
 	listener->proto_module = (fr_app_t const *)listener->proto_mi->module->exported;
 	cf_data_add(listener_cs, mi, "proto_module", false);
+
+	/*
+	 *	The listener doesn't have to contain a 'type = foo' configuration.  But if it does, there MUST
+	 *	also be a 'recv foo' section.
+	 */
+	for (cp = cf_pair_find(listener_cs, "type");
+	     cp != NULL;
+	     cp = cf_pair_find_next(listener_cs, cp, "type")) {
+		char const *type = cf_pair_value(cp);
+
+		if (!type) continue;
+
+		if (!cf_section_find(server_cs, "recv", type)) {
+			cf_log_err(cp, "Listener has 'type = %s', but there is no 'recv %s { ... }' section defined.",
+				   type, type);
+			return -1;
+		}
+	}
 
 	return 0;
 }
