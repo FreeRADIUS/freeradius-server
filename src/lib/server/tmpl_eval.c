@@ -281,8 +281,8 @@ ssize_t _tmpl_to_type(void *out,
 {
 	fr_value_box_t		value_to_cast = FR_VALUE_BOX_INITIALISER_NULL(value_to_cast);
 	fr_value_box_t		value_from_cast = FR_VALUE_BOX_INITIALISER_NULL(value_from_cast);
-	fr_value_box_t const	*to_cast;
-	fr_value_box_t const	*from_cast;
+	fr_value_box_t const	*to_cast = NULL;
+	fr_value_box_t const	*from_cast = NULL;
 
 	fr_pair_t		*vp = NULL;
 
