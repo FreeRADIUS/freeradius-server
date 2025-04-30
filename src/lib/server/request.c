@@ -266,6 +266,11 @@ int _request_init(char const *file, int line,
 		fr_assert_fail("Detached requests should start as type == REQUEST_TYPE_INTERNAL, "
 			       "args->detachable and be detached later");
 		return -1;
+
+	/* Quiet GCC */
+	default:
+		fr_assert_fail("Invalid request type");
+		return -1;
 	}
 
 	*request = (request_t){
