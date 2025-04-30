@@ -20,11 +20,6 @@ attribute reference.  The contents of _<value>_ are interpreted as a
 The time scale can be changed by appending `s`, `us`, `ms`, `ns`, etc. as
 with all uses of `time_delta` values.
 
-As a special case, a `timeout` section can be immediately followed by
-a xref:unlang/catch.adoc[catch] statement, as `catch timeout { ... }`.
-In that case, the xref:unlang/catch.adoc[catch] section is run when
-the `timeout` expires.
-
 .Example
 [source,unlang]
 ----
@@ -44,15 +39,15 @@ called.
 .Example using catch
 [source,unlang]
 ----
-timeout 4s {
-    sql
+try {
+    timeout 4s {
+        sql
+    }
 }
 catch timeout {
     detail
 }
 ----
-
-
 
 == Timeout with redundant
 
