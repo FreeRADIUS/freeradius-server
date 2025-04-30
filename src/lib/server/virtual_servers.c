@@ -444,10 +444,10 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_IT
 	 *	modules.  Create a unique name for them.
 	 */
 	cp = cf_pair_find(listener_cs, "transport");
-	if (cp && cf_pair_value(cp)) {
-		transport = cf_pair_value(cp);
-	} else {
-		transport = "generic";
+	if (!cp ||
+	    (transport = cf_pair_value(cp)) == NULL) {
+		cf_log_err(listener_cs, "Invalid 'listen' section - No 'transport = ...' definition was found.");
+		return -1;
 	}
 
 	/*

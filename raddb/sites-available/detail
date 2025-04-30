@@ -27,10 +27,16 @@ server detail {
 	#  says "load the detail file processor, and not the typical
 	#  RADIUS UDP / TCP socket IO.
 	#
-	listen detail {
+	listen detail {		
 		#
-		#  Overrides the default transport prefix set by
-		#  namespace and loads the detail reader code.
+		#  We read from files
+		#
+		transport = file
+
+		#
+		#  A special-case over-ride for detail files.  We are in the
+		#  RADIUS namespace, but we load a special handler for the detail
+		#  file
 		#
 		proto = detail
 
