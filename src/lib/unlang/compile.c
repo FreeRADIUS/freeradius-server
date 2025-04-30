@@ -2550,12 +2550,14 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
-	c->debug_name = c->name = cf_section_name1(cs);
-
 	ca = unlang_group_to_catch(g);
 
 	if (catching_timeout) {
 		ca->timeout = catching_timeout;
+	/*
+	 *	Want to log what we caught
+	 */
+	c->debug_name = c->name = talloc_typed_asprintf(c, "%s %s", cf_section_name1(cs), cf_section_name2(cs));
 
 	} else if (!cf_section_name2(cs)) {
 		/*
