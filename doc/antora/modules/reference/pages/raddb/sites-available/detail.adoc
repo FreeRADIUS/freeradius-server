@@ -27,19 +27,29 @@ following directory.
 
 ```
 
-The "listen" section MUST have a second name here, which
-says "load the detail file processor, and not the typical
-RADIUS UDP / TCP socket IO.
+This is the detail file listener.
 
 ```
 	listen detail {
 ```
 
-Overrides the default transport prefix set by
-namespace and loads the detail reader code.
+A special-case over-ride for detail files.  We are
+in the RADIUS namespace, but we load a special
+"detail" handler, instead of the generic RADIUS udp
+/ tcp transports.
+
+This configuration also enables "transport = file",
+which is not normally allowed for RADIUS.
 
 ```
-		proto = detail
+		handler = detail
+
+```
+
+We read from files
+
+```
+		transport = file
 
 ```
 

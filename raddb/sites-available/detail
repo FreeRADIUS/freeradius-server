@@ -23,22 +23,24 @@ server detail {
 	directory = ${radacctdir}/detail
 
 	#
-	#  The "listen" section MUST have a second name here, which
-	#  says "load the detail file processor, and not the typical
-	#  RADIUS UDP / TCP socket IO.
+	#  This is the detail file listener.
 	#
-	listen detail {		
+	listen detail {
+		#
+		#  A special-case over-ride for detail files.  We are
+		#  in the RADIUS namespace, but we load a special
+		#  "detail" handler, instead of the generic RADIUS udp
+		#  / tcp transports.
+		#
+		#  This configuration also enables "transport = file",
+		#  which is not normally allowed for RADIUS.
+		#
+		handler = detail
+
 		#
 		#  We read from files
 		#
 		transport = file
-
-		#
-		#  A special-case over-ride for detail files.  We are in the
-		#  RADIUS namespace, but we load a special handler for the detail
-		#  file
-		#
-		proto = detail
 
 		#
 		#  Types of packets we are reading.

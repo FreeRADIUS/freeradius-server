@@ -402,12 +402,13 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_IT
 	 *	listen section has one else it comes from the
 	 *	namespace of the virtual server.
 	 *
-	 *	The following results in proto_radius being loaded:
+	 *	The following results in proto_radius and proto_radius_udp being loaded:
 	 *
 	 *	server foo {
 	 *		namespace = radius
 	 *		listen {
-	 *
+	 *			transport = udp
+	 *			...
 	 *		}
 	 *	}
 	 *
@@ -416,7 +417,7 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_IT
 	 *	server foo {
 	 *		namespace = radius
 	 *		listen {
-	 *			proto = load
+	 *			handler = load
 	 *
 	 *		}
 	 *	}
@@ -426,7 +427,8 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_IT
 	 *	to be included in the server.
 	 *
 	 */
-	cp = cf_pair_find(listener_cs, "proto");
+	cp = cf_pair_find(listener_cs, "handler");
+	if (!cp) cp = cf_pair_find(listener_cs, "proto");
 	if (cp) {
 		protocol = cf_pair_value(cp);
 		if (!protocol) {

@@ -12,8 +12,7 @@ server load {
 
 ```
 
-Use `listen load { ... }` in any virtual server to do load
-testing against that server.
+This is the load testing listener.
 
 ```
 	listen load {
@@ -23,7 +22,7 @@ The main module is the proto module, even though we're
 operating in the RADIUS namespace.
 
 ```
-		proto = load
+		handler = load
 
 ```
 
