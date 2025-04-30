@@ -630,6 +630,19 @@ static inline void frame_repeat(unlang_stack_frame_t *frame, unlang_process_t pr
 static inline unlang_action_t frame_set_next(unlang_stack_frame_t *frame, unlang_t *unlang)
 {
 	/*
+	 *	We're skipping the remaining siblings, stop the
+	 *	interpreter from continuing and have it pop
+	 *	this frame, running cleanups normally.
+	 *
+	 *	We don't explicitly cleanup here, otherwise we
+	 *	end up doing it twice and bad things happen.
+	 */
+	if (!unlang) {
+		frame->next = NULL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	/*
 	 *	Clean up this frame now, so that stats, etc. will be
 	 *	processed using the correct frame.
 	 */
