@@ -22,6 +22,6 @@ catch ok reject fail {
 	if bar {
 		test_fail
 	}
-
-	success
 }
+
+success
