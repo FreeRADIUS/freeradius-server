@@ -588,16 +588,17 @@ static void compile_action_defaults(unlang_t *c, unlang_compile_t *unlang_ctx)
 	if (c->parent &&
 	    ((c->parent->type == UNLANG_TYPE_REDUNDANT) || (c->parent->type == UNLANG_TYPE_REDUNDANT_LOAD_BALANCE))) {
 		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-			if (i == RLM_MODULE_FAIL) {
+			switch (i) {
+			case RLM_MODULE_FAIL:
+			case RLM_MODULE_TIMEOUT:
 				if (!c->actions.actions[i]) {
 					c->actions.actions[i] = 1;
 				}
-
 				continue;
-			}
 
-			if (!c->actions.actions[i]) {
-				c->actions.actions[i] = MOD_ACTION_RETURN;
+			default:
+				if (!c->actions.actions[i]) c->actions.actions[i] = MOD_ACTION_RETURN;
+				break;
 			}
 		}
 
