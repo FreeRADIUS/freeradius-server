@@ -317,7 +317,18 @@ SEND(generic)
 		MEM(0);
 	}
 
-	if (cs) RDEBUG("Running '%s %s' from file %s", cf_section_name1(cs), cf_section_name2(cs), cf_filename(cs));
+	if (cs) {
+		RDEBUG("Running '%s %s' from file %s", cf_section_name1(cs), cf_section_name2(cs), cf_filename(cs));
+	} else {
+		char const *name;
+
+		name = fr_dict_enum_name_by_value(attr_packet_type, fr_box_uint32(request->reply->code));
+		if (name) {
+			RWDEBUG("No 'send %s { ... } section was found.", name);
+		} else {
+			RWDEBUG("No 'send %u { ... } section was found.", request->reply->code);
+		}
+	}
 
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->resume,
