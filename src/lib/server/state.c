@@ -380,6 +380,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	if (!old) {
 		too_many = (state->used_sessions == (uint32_t) state->max_sessions);
 		if (!too_many) state->used_sessions++;	/* preemptively increment whilst we hold the mutex */
+		memset(old_state, 0, sizeof(old_state));
 	} else {
 		old_tries = old->tries;
 		memcpy(old_state, old->state, sizeof(old_state));
