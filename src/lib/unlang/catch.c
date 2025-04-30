@@ -49,7 +49,7 @@ static unlang_action_t unlang_catch(rlm_rcode_t *p_result, request_t *request, u
 #ifndef NDEBUG
 	unlang_catch_t const *c = unlang_generic_to_catch(frame->instruction);
 
-	fr_assert(c->timeout || c->catching[*p_result]);
+	fr_assert(c->catching[*p_result]);
 #endif
 
 	/*

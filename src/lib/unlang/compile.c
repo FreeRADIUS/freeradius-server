@@ -2493,7 +2493,6 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	unlang_catch_t *ca;
 	CONF_ITEM *prev;
 	char const *name;
-	bool catching_timeout = false;
 
 	static unlang_ext_t const ext = {
 		.type = UNLANG_TYPE_CATCH,
@@ -2507,7 +2506,6 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	if (!prev || !cf_item_is_section(prev)) {
 	fail:
 		cf_log_err(cs, "Found 'catch' section with no previous 'try'");
-	print_url:
 		cf_log_err(ci, DOC_KEYWORD_REF(catch));
 		return NULL;
 	}
@@ -2515,30 +2513,7 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	name = cf_section_name1(cf_item_to_section(prev));
 	fr_assert(name != NULL);
 
-	if (strcmp(name, "timeout") == 0) {
-		CONF_ITEM *next;
-
-		name = cf_section_name2(cs);
-		if (!name || (strcmp(name, "timeout") != 0)) {
-			cf_log_err(cs, "Invalid 'catch' after a 'timeout' section");
-			goto print_url;
-		}
-
-		/*
-		 *	Check that the next section is NOT a "catch".
-		 */
-		next = cf_item_next(cf_parent(ci), ci);
-		while (next && cf_item_is_data(next)) next = cf_item_next(cf_parent(ci), next);
-
-		if (next && cf_item_is_section(next) &&
-		    (strcmp(cf_section_name1(cf_item_to_section(next)), "catch") == 0)) {
-			cf_log_err(next, "Cannot have two 'catch' statements after a 'timeout' section");
-			goto print_url;
-		}
-
-		catching_timeout = true;
-
-	} else if ((strcmp(name, "try") != 0) && (strcmp(name, "catch") != 0)) {
+	if ((strcmp(name, "try") != 0) && (strcmp(name, "catch") != 0)) {
 		/*
 		 *	The previous thing has to be a section.  And it has to
 		 *	be either a "try" or a "catch".
@@ -2550,16 +2525,14 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
-	ca = unlang_group_to_catch(g);
 
-	if (catching_timeout) {
-		ca->timeout = catching_timeout;
 	/*
 	 *	Want to log what we caught
 	 */
 	c->debug_name = c->name = talloc_typed_asprintf(c, "%s %s", cf_section_name1(cs), cf_section_name2(cs));
 
-	} else if (!cf_section_name2(cs)) {
+	ca = unlang_group_to_catch(g);
+	if (!cf_section_name2(cs)) {
 		/*
 		 *	No arg2: catch errors
 		 */

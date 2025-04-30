@@ -25,12 +25,14 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/unlang/timeout.h>
+#include <freeradius-devel/server/rcode.h>
 #include "group_priv.h"
 #include "timeout_priv.h"
+#include "mod_action.h"
 #include "unlang_priv.h"
 
 typedef struct {
-	bool					success;
+	bool					fired;
 	int					depth;
 	fr_time_delta_t				timeout;
 	request_t				*request;
@@ -46,62 +48,50 @@ static void unlang_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 {
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(ctx, unlang_frame_state_timeout_t);
 	request_t			*request = talloc_get_type_abort(state->request, request_t);
-
-	RDEBUG("Timeout reached, signalling interpreter to cancel child section.");
+	char const			*module;
 
 	/*
-	 *	Has to be done BEFORE cancelling the frames, as one might be yielded.
+	 *	Don't log in the context of the request
 	 */
-	unlang_interpret_mark_runnable(request);
+	module = request->module;
+	request->module = NULL;
+	RDEBUG("Timeout reached, signalling interpreter to cancel child section.");
+	request->module = module;
 
 	/*
-	 *	Signal all lower frames to exit, but the request can keep running.
+	 *	Signal all the frames upto, but not including the timeout
+	 *	frame to cancel.
+	 *
+	 *	unlang_timeout_resume_done then runs, and returns "timeout"
 	 */
 	unlang_stack_signal(request, FR_SIGNAL_CANCEL, state->depth);
-	state->success = false;
+	unlang_interpret_mark_runnable(request);
+	state->fired = true;
 
 	RINDENT_RESTORE(request, state);
 
 	if (!state->instruction) return;
 
-	if (unlang_interpret_push_instruction(request, state->instruction, RLM_MODULE_FAIL, true) < 0) {
+	/*
+	 *	Push something else onto the stack to execute.
+	 */
+	if (unlikely(unlang_interpret_push_instruction(request, state->instruction, RLM_MODULE_TIMEOUT, true) < 0)) {
 		unlang_interpret_signal(request, FR_SIGNAL_CANCEL); /* also stops the request and does cleanups */
 	}
 }
 
-static unlang_action_t unlang_timeout_resume_done(UNUSED rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_timeout_resume_done(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
-	unlang_t		*unlang;
-
-	unlang = frame->instruction->next;
 
 	/*
 	 *	No timeout, we go to the next instruction.
 	 *
 	 *	Unless the next instruction is a "catch timeout", in which case we skip it.
 	 */
-	if (state->success) {
-		if (!unlang || (unlang->type != UNLANG_TYPE_CATCH)) {
-			return UNLANG_ACTION_CALCULATE_RESULT;
-		}
+	if (!state->fired) return UNLANG_ACTION_CALCULATE_RESULT;
 
-		/*
-		 *	We skip the "catch" section if there's no timeout.
-		 */
-		return frame_set_next(frame, unlang->next);
-	}
-
-	RWDEBUG("Timeout exceeded");
-
-	/*
-	 *	If there's a next instruction, AND it's a "catch", then we catch the timeout.
-	 */
-	if (unlang && (unlang->type == UNLANG_TYPE_CATCH)) {
-		return frame_set_next(frame, unlang);
-	}
-
-	return UNLANG_ACTION_FAIL;
+	RETURN_MODULE_TIMEOUT;
 }
 
 static unlang_action_t unlang_timeout_set(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -123,7 +113,6 @@ static unlang_action_t unlang_timeout_set(rlm_rcode_t *p_result, request_t *requ
 	}
 
 	frame_repeat(frame, unlang_timeout_resume_done);
-	state->success = true;
 
 	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
 }
@@ -151,7 +140,11 @@ static unlang_action_t unlang_timeout(rlm_rcode_t *p_result, request_t *request,
 	g = unlang_generic_to_group(frame->instruction);
 	gext = unlang_group_to_timeout(g);
 
-	state->depth = stack->depth;
+	/*
+	 *	+1 so we don't mark the timeout frame as cancelled,
+	 *	we want unlang_timeout_resume_done to be called.
+	 */
+	state->depth = stack->depth + 1;
 	state->request = request;
 
 	if (!gext->vpt) {
@@ -238,11 +231,8 @@ int unlang_timeout_section_push(request_t *request, CONF_SECTION *cs, fr_time_de
 	state->request = request;
 	state->timeout = timeout;
 	state->instruction = instruction;
-	state->success = true;
 
-	when = fr_time_add(fr_time(), timeout);
-
-	if (fr_timer_at(state, unlang_interpret_event_list(request)->tl, &state->ev, when,
+	if (fr_timer_in(state, unlang_interpret_event_list(request)->tl, &state->ev, timeout,
 			false, unlang_timeout_handler, state) < 0) {
 		RPEDEBUG("Failed setting timeout for section %s", cf_section_name1(cs));
 		return -1;
@@ -257,11 +247,11 @@ int unlang_timeout_section_push(request_t *request, CONF_SECTION *cs, fr_time_de
 void unlang_timeout_init(void)
 {
 	unlang_register(UNLANG_TYPE_TIMEOUT,
-			   &(unlang_op_t){
+			&(unlang_op_t){
 				.name = "timeout",
 				.interpret = unlang_timeout,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
 				.frame_state_size = sizeof(unlang_frame_state_timeout_t),
 				.frame_state_type = "unlang_frame_state_timeout_t",
-			   });
+			});
 }

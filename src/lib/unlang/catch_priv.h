@@ -31,8 +31,6 @@ extern "C" {
 
 typedef struct {
 	unlang_group_t	group;
-
-	bool		timeout;			//!< are we catching a timeout
 	bool		catching[RLM_MODULE_NUMCODES];
 } unlang_catch_t;
 

@@ -1,0 +1,15 @@
+#
+# PRE: timeout
+#
+
+#
+#  @todo - we have to add a leading '0' here, otherwise cf_file.c complains
+#
+try {
+	timeout 0.1s {
+		delay_10s
+	}
+}
+catch timeout {
+	success
+}
