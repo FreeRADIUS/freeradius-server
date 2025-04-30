@@ -1528,6 +1528,7 @@ static fr_dict_t const *virtual_server_local_dict(CONF_SECTION *server_cs, fr_di
 int virtual_servers_open(fr_schedule_t *sc)
 {
 	size_t i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
+	int opened = 0;
 
 	fr_assert(virtual_servers);
 
@@ -1541,7 +1542,7 @@ int virtual_servers_open(fr_schedule_t *sc)
 		listeners = virtual_servers[i]->listeners;
 		listener_cnt = talloc_array_length(listeners);
 
-		for (j = 0; j < listener_cnt; j++) {
+		for (j = 0; j < listener_cnt; j++) {			
 			fr_virtual_listen_t *listener = listeners[j];
 
 			fr_assert(listener != NULL);
@@ -1578,6 +1579,7 @@ int virtual_servers_open(fr_schedule_t *sc)
 					return -1;
 				}
 
+				opened++;
 			}
 
 			/*
@@ -1586,6 +1588,12 @@ int virtual_servers_open(fr_schedule_t *sc)
 			 */
 			DEBUG3("Opened listener for %s", listener->proto_module->common.name);
 		}
+	}
+
+	if (!opened) {
+		ERROR("There are no 'listen' sections defined.");
+		ERROR("Refusing to start, as the server will never process any packets.");
+		return -1;
 	}
 
 	return 0;
