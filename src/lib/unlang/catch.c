@@ -81,17 +81,16 @@ unlang_action_t unlang_interpret_skip_to_catch(rlm_rcode_t *p_result, request_t 
 		unlang_catch_t const *c;
 
 		if (unlang->type != UNLANG_TYPE_CATCH) {
-			RWDEBUG2("Failed to 'catch' error %s",
+		not_caught:
+			RDEBUG3("No catch section for %s",
 				fr_table_str_by_value(mod_rcode_table, *p_result, "<invalid>"));
-			frame->next = unlang;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			return frame_set_next(frame, unlang);
 		}
 
 		c = unlang_generic_to_catch(unlang);
 		if (c->catching[*p_result]) break;
 	}
-
-	fr_assert(unlang != NULL);
+	if (!unlang) goto not_caught;
 
 	return frame_set_next(frame, unlang);
 }
