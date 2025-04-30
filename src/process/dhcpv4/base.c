@@ -155,6 +155,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
@@ -173,6 +174,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
@@ -192,6 +194,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_NAK,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_NAK,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_NAK,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
@@ -210,6 +213,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
@@ -229,6 +233,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_NAK,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_NAK,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_NAK,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
@@ -247,6 +252,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_NAK,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_NAK,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_NAK,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
@@ -266,6 +272,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
@@ -285,6 +292,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
@@ -304,6 +312,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_LEASE_UNASSIGNED,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
@@ -323,6 +332,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_LEASE_UNASSIGNED,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
@@ -342,6 +352,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
@@ -361,6 +372,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
@@ -380,6 +392,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =  FR_DHCP_DO_NOT_RESPOND
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,

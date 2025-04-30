@@ -36,7 +36,8 @@ unlang_mod_actions_t const mod_actions_authenticate = {
 		[RLM_MODULE_DISALLOW]	= MOD_ACTION_RETURN,
 		[RLM_MODULE_NOTFOUND]	= 1,
 		[RLM_MODULE_NOOP]	= 2,
-		[RLM_MODULE_UPDATED]	= 3
+		[RLM_MODULE_TIMEOUT]	= MOD_ACTION_RETURN,
+		[RLM_MODULE_UPDATED]	= 4
 	},
 	.retry = RETRY_INIT
 };
@@ -51,6 +52,7 @@ unlang_mod_actions_t const mod_actions_authorize = {
 		[RLM_MODULE_DISALLOW]	= MOD_ACTION_RETURN,
 		[RLM_MODULE_NOTFOUND]	= 1,
 		[RLM_MODULE_NOOP]	= 2,
+		[RLM_MODULE_TIMEOUT]	= MOD_ACTION_RETURN,
 		[RLM_MODULE_UPDATED]	= 4
 	},
 	.retry = RETRY_INIT,
@@ -66,6 +68,7 @@ unlang_mod_actions_t const mod_actions_preacct = {
 		[RLM_MODULE_DISALLOW]	= MOD_ACTION_RETURN,
 		[RLM_MODULE_NOTFOUND]	= 1,
 		[RLM_MODULE_NOOP]	= 2,
+		[RLM_MODULE_TIMEOUT]	= MOD_ACTION_RETURN,
 		[RLM_MODULE_UPDATED]	= 4
 	},
 	.retry = RETRY_INIT,
@@ -81,6 +84,7 @@ unlang_mod_actions_t const mod_actions_accounting = {
 		[RLM_MODULE_DISALLOW]	= MOD_ACTION_RETURN,
 		[RLM_MODULE_NOTFOUND]	= 1,
 		[RLM_MODULE_NOOP]	= 2,
+		[RLM_MODULE_TIMEOUT]	= MOD_ACTION_RETURN,
 		[RLM_MODULE_UPDATED]	= 4
 	},
 };
@@ -95,6 +99,7 @@ unlang_mod_actions_t const mod_actions_postauth = {
 		[RLM_MODULE_DISALLOW]	= MOD_ACTION_RETURN,
 		[RLM_MODULE_NOTFOUND]	= 1,
 		[RLM_MODULE_NOOP]	= 2,
+		[RLM_MODULE_TIMEOUT]	= MOD_ACTION_RETURN,
 		[RLM_MODULE_UPDATED]	= 4
 	},
 	.retry = RETRY_INIT

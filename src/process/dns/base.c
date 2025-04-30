@@ -599,6 +599,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_INVALID] =	FR_DNS_DO_NOT_RESPOND,
 			[RLM_MODULE_DISALLOW] =	FR_DNS_DO_NOT_RESPOND,
 			[RLM_MODULE_NOTFOUND] =	FR_DNS_DO_NOT_RESPOND,
+			[RLM_MODULE_TIMEOUT] =	FR_DNS_DO_NOT_RESPOND,
 		},
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,

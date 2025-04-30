@@ -85,6 +85,7 @@ fr_table_num_sorted_t const mod_rcode_table[] = {
 	{ L("notfound"),   RLM_MODULE_NOTFOUND	},
 	{ L("ok"),	   RLM_MODULE_OK	},
 	{ L("reject"),     RLM_MODULE_REJECT	},
+	{ L("timeout"),	   RLM_MODULE_TIMEOUT   },
 	{ L("updated"),    RLM_MODULE_UPDATED	}
 };
 size_t mod_rcode_table_len = NUM_ELEMENTS(mod_rcode_table);

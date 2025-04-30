@@ -199,6 +199,7 @@ int unlang_timeout_section_push(request_t *request, CONF_SECTION *cs, fr_time_de
 				[RLM_MODULE_DISALLOW]	= 0,
 				[RLM_MODULE_NOTFOUND]	= 0,
 				[RLM_MODULE_NOOP]	= 0,
+				[RLM_MODULE_TIMEOUT]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
 				[RLM_MODULE_UPDATED]	= 0
 			},
 			.retry = RETRY_INIT,
@@ -209,7 +210,6 @@ int unlang_timeout_section_push(request_t *request, CONF_SECTION *cs, fr_time_de
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
 	unlang_t			*instruction;
-	fr_time_t			when;
 
 	/*
 	 *	Get the instruction we are supposed to run on timeout.

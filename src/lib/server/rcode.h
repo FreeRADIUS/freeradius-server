@@ -47,6 +47,7 @@ typedef enum {
 	RLM_MODULE_NOTFOUND,				//!< User not found.
 	RLM_MODULE_NOOP,				//!< Module succeeded without doing anything.
 	RLM_MODULE_UPDATED,				//!< OK (pairs modified).
+	RLM_MODULE_TIMEOUT,				//!< Module (or section) timed out.
 	RLM_MODULE_NUMCODES,				//!< How many valid return codes there are.
 	RLM_MODULE_NOT_SET,				//!< Error resolving rcode (should not be
 							//!< returned by modules).
@@ -61,6 +62,7 @@ typedef enum {
 #define RETURN_MODULE_NOTFOUND		do { *p_result = RLM_MODULE_NOTFOUND; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
 #define RETURN_MODULE_NOOP		do { *p_result = RLM_MODULE_NOOP; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
 #define RETURN_MODULE_UPDATED		do { *p_result = RLM_MODULE_UPDATED; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_TIMEOUT		do { *p_result = RLM_MODULE_TIMEOUT; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
 #define RETURN_MODULE_RCODE(_rcode)	do { *p_result = (_rcode); return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
 
 extern fr_table_num_sorted_t const rcode_table[];
@@ -73,7 +75,8 @@ extern size_t rcode_table_len;
 	RLM_MODULE_REJECT:		\
 	case RLM_MODULE_FAIL:		\
 	case RLM_MODULE_INVALID:	\
-	case RLM_MODULE_DISALLOW
+	case RLM_MODULE_DISALLOW:	\
+	case RLM_MODULE_TIMEOUT
 
 #ifdef __cplusplus
 }

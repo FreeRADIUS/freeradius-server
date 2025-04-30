@@ -1241,6 +1241,9 @@ static unlang_action_t mod_map_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 	case LDAP_RESULT_BAD_DN:
 		goto finish;
 
+	case LDAP_RESULT_TIMEOUT:
+		goto finish;
+
 	default:
 		rcode = RLM_MODULE_FAIL;
 		goto finish;
@@ -1945,6 +1948,10 @@ static unlang_action_t user_modify_final(rlm_rcode_t *p_result, UNUSED int *prio
 	case LDAP_RESULT_BAD_DN:
 		RDEBUG2("User object \"%s\" not modified", usermod_ctx->dn);
 		rcode = RLM_MODULE_INVALID;
+		break;
+
+	case LDAP_RESULT_TIMEOUT:
+		rcode = RLM_MODULE_TIMEOUT;
 		break;
 
 	default:
