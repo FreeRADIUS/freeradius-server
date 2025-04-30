@@ -1543,11 +1543,14 @@ int virtual_servers_open(fr_schedule_t *sc)
 		listener_cnt = talloc_array_length(listeners);
 
 		for (j = 0; j < listener_cnt; j++) {			
+			int ret;
 			fr_virtual_listen_t *listener = listeners[j];
 
 			fr_assert(listener != NULL);
 			fr_assert(listener->proto_mi != NULL);
 			fr_assert(listener->proto_module != NULL);
+
+			fr_assert(listener->proto_module->open != NULL);
 
 			/*
 			 *	The socket is opened with app_instance,
@@ -1560,27 +1563,23 @@ int virtual_servers_open(fr_schedule_t *sc)
 			 *	Even then, proto_radius usually calls fr_master_io_listen() in order
 			 *	to create the fr_listen_t structure.
 			 */
-			if (listener->proto_module->open) {
-				int ret;
 
-				/*
-				 *	Sometimes the open function needs to modify instance
-				 *	data, so we need to temporarily remove the protection.
-				 */
-				module_instance_data_unprotect(listener->proto_mi);
-				ret = listener->proto_module->open(listener->proto_mi->data, sc,
-							           listener->proto_mi->conf);
-				module_instance_data_protect(listener->proto_mi);
-			   	if (unlikely(ret < 0)) {
-					cf_log_err(listener->proto_mi->conf,
-						   "Opening %s I/O interface failed",
-						   listener->proto_module->common.name);
-
-					return -1;
-				}
-
-				opened++;
+			/*
+			 *	Sometimes the open function needs to modify instance
+			 *	data, so we need to temporarily remove the protection.
+			 */
+			module_instance_data_unprotect(listener->proto_mi);
+			ret = listener->proto_module->open(listener->proto_mi->data, sc,
+							   listener->proto_mi->conf);
+			module_instance_data_protect(listener->proto_mi);
+			if (unlikely(ret < 0)) {
+				cf_log_err(listener->proto_mi->conf,
+					   "Failed opening listener %s",
+					   listener->proto_module->common.name);				
+				return -1;
 			}
+
+			opened++;
 
 			/*
 			 *	Socket information is printed out by
