@@ -231,8 +231,8 @@ static int _local_variables_free(unlang_variable_ref_t *ref)
  *	- UNLANG_ACTION_EXECUTE_NEXT do nothing, but just go to the next sibling instruction
  *	- UNLANG_ACTION_STOP_PROCESSING, fatal error, usually stack overflow.
  */
-unlang_action_t unlang_interpret_push_children(rlm_rcode_t *p_result, request_t *request,
-					      rlm_rcode_t default_rcode, bool do_next_sibling)
+unlang_action_t unlang_interpret_push_children(UNUSED rlm_rcode_t *p_result, request_t *request,
+					       rlm_rcode_t default_rcode, bool do_next_sibling)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];	/* Quiet static analysis */
@@ -522,36 +522,16 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		/*
 		 *	Failure testing!
 		 */
-		if (request->ins_max && (request->master_state != REQUEST_STOP_PROCESSING)) {
+		if (request->ins_max) {
 			request->ins_count++;
 
 			if (request->ins_count >= request->ins_max) {
 				RERROR("Failing request due to maximum instruction count %" PRIu64, request->ins_max);
 
 				unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
-				request->master_state = REQUEST_STOP_PROCESSING;
 			}
 		}
 #endif
-
-		/*
-		 *	unlang_interpret_signal() takes care of
-		 *	marking the requests as STOP on a CANCEL
-		 *	signal.
-		 */
-		if (request->master_state == REQUEST_STOP_PROCESSING) {
-		do_stop:
-			frame->result = RLM_MODULE_FAIL;
-			frame->priority = MOD_PRIORITY_MAX;
-
-			RDEBUG4("** [%i] %s - STOP current subsection with (%s %d)",
-				stack->depth, __FUNCTION__,
-				fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
-				frame->priority);
-
-			unwind_all(stack);
-			return UNLANG_FRAME_ACTION_POP;
-		}
 
 		if (!is_repeatable(frame) && has_debug_braces(frame)) {
 			RDEBUG2("%s {", instruction->debug_name);
@@ -605,12 +585,9 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		if (is_cancelled(frame)) goto calculate_result;
 
 		switch (ua) {
-		/*
-		 *	The request is now defunct, and we should not
-		 *	continue processing it.
-		 */
 		case UNLANG_ACTION_STOP_PROCESSING:
-			goto do_stop;
+			unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
+			goto calculate_result;
 
 		/*
 		 *	The operation resulted in additional frames
@@ -755,8 +732,6 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 	if (!running) intp->funcs.resume(request, intp->uctx);
 
 	for (;;) {
-		fr_assert(request->master_state != REQUEST_STOP_PROCESSING);
-
 		RDEBUG4("** [%i] %s - frame action %s", stack->depth, __FUNCTION__,
 			fr_table_str_by_value(unlang_frame_action_table, fa, "<INVALID>"));
 		switch (fa) {
@@ -768,11 +743,6 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 			fa = frame_eval(request, frame, &stack->result, &stack->priority);
 
 			if (fa != UNLANG_FRAME_ACTION_POP) continue;
-
-			/*
-			 *	We're supposed to stop processing.  Don't pop anything, just stop.
-			 */
-			if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_FAIL;
 
 			/*
 			 *	We were executing a frame, frame_eval()
@@ -805,6 +775,12 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 			 *	Head on back up the stack
 			 */
 			frame_pop(request, stack);
+
+			/*
+			 *	Transition back to the C stack
+			 */
+			if (is_top_frame(frame)) break;	/* stop */
+
 			frame = &stack->frame[stack->depth];
 			DUMP_STACK;
 
@@ -813,7 +789,8 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 			 *	or anything else that needs to be checked on the way
 			 *	back on up the stack.
 			 */
-			if (is_repeatable(frame)) {
+
+			if (!is_cancelled(frame) && is_repeatable(frame)) {
 				fa = UNLANG_FRAME_ACTION_NEXT;
 				continue;
 			}
@@ -835,20 +812,6 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 					RDEBUG2("} # %s (%s)", frame->instruction->debug_name,
 						fr_table_str_by_value(mod_rcode_table, stack->result, "<invalid>"));
 				}
-			}
-
-			/*
-			 *	If we're done, merge the last stack->result / priority in.
-			 */
-			if (is_top_frame(frame)) break;	/* stop */
-
-			/*
-			 *	Carry on popping until we find something that shouldn't
-			 *	be cancelled.
-			 */
-			if (is_cancelled(frame)) {
-				fa = UNLANG_FRAME_ACTION_POP;
-				continue;
 			}
 
 			fa = result_calculate(request, frame, &stack->result, &stack->priority);
@@ -1069,20 +1032,6 @@ void unlang_interpret_request_done(request_t *request)
 }
 
 static inline CC_HINT(always_inline)
-void unlang_interpret_request_stop(request_t *request)
-{
-	unlang_stack_t		*stack = request->stack;
-	unlang_interpret_t	*intp;
-
-	if (!fr_cond_assert(stack != NULL)) return;
-
-	intp = stack->intp;
-	intp->funcs.stop(request, intp->uctx);
-	request->log.indent.unlang = 0;			/* nothing unwinds the indentation stack */
-	request->master_state = REQUEST_STOP_PROCESSING;
-}
-
-static inline CC_HINT(always_inline)
 void unlang_interpret_request_detach(request_t *request)
 {
 	unlang_stack_t		*stack = request->stack;
@@ -1127,7 +1076,7 @@ void unlang_stack_signal(request_t *request, fr_signal_t action, int limit)
 
 	(void)talloc_get_type_abort(request, request_t);	/* Check the request hasn't already been freed */
 
-	fr_assert(stack->depth > 0);
+	fr_assert(stack->depth >= 1);
 
 	/*
 	 *	Does not complete the unwinding here, just marks
@@ -1148,7 +1097,7 @@ void unlang_stack_signal(request_t *request, fr_signal_t action, int limit)
 	 *	stack, as modules can push xlats and function
 	 *	calls.
 	 */
-	for (i = depth; i > limit; i--) {
+	for (i = depth; i >= limit; i--) {
 		frame = &stack->frame[i];
 		if (frame->signal) frame->signal(request, frame, action);
 	}
@@ -1160,9 +1109,10 @@ void unlang_stack_signal(request_t *request, fr_signal_t action, int limit)
  * outside of the normal processing of the request.
  *
  * @note This does NOT immediately stop the request, it just deliveres
- *	 signals, and in the case of a cancel, marks up frames for unwinding.
- *	 The request must be marked as runnable, and executed by the
- *	 interpreter to complete the cancellation.
+ *	 signals, and in the case of a cancel, marks up frames for unwinding
+ *	 and adds it to the runnable queue if it's yielded.
+ *
+ * @note This function should be safe to call anywhere.
  *
  * @param[in] request		The current request.
  * @param[in] action		to signal.
@@ -1189,28 +1139,22 @@ void unlang_interpret_signal(request_t *request, fr_signal_t action)
 	 *	yet should have a stack depth of zero, so we don't
 	 *	need to do anything.
 	 */
-	if (stack && (stack->depth > 0)) unlang_stack_signal(request, action, 0);
+	if (stack && (stack->depth > 0)) unlang_stack_signal(request, action, 1);
 
 	switch (action) {
 	case FR_SIGNAL_CANCEL:
 		/*
-		 *	Detach the request from the parent to cleanup
-		 *	any cross-request pointers.  This is a noop
-		 *	if the request is not detachable.
+		 *	Let anything that cares, know that the
+		 *	request was forcefully stopped.
 		 */
-		if (request_is_detachable(request)) unlang_interpret_request_detach(request);
+		request->master_state = REQUEST_STOP_PROCESSING;
 
 		/*
-		 *	Get the request into a consistent state,
-		 *	removing it from any runnable lists.
+		 *	If the request is yielded, mark it as runnable
 		 */
-		unlang_interpret_request_stop(request);
-
-		/*
-		 *	As the request is detached, we call the done_detached
-		 *	callback which should free the request.
-		 */
-		unlang_interpret_request_done(request);
+		if (is_yielded(&stack->frame[stack->depth]) && !unlang_request_is_scheduled(request)) {
+			unlang_interpret_mark_runnable(request);
+		}
 		break;
 
 	case FR_SIGNAL_DETACH:
@@ -1458,7 +1402,7 @@ static void unlang_cancel_event(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now
 	 */
 	talloc_free(request_data_get(request, (void *)unlang_cancel_xlat, 0));
 
-	unwind_all(request->stack);
+	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
 }
 
 /** Allows a request to dynamically alter its own lifetime
@@ -1488,7 +1432,7 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	as it expects to see a resume function set.
 	 */
 	if (!timeout || fr_time_delta_eq(timeout->vb_time_delta, fr_time_delta_from_sec(0))) {
-		unwind_all(request->stack);
+		unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
 		return XLAT_ACTION_DONE;
 	}
 
@@ -1721,7 +1665,6 @@ unlang_interpret_t *unlang_interpret_init(TALLOC_CTX *ctx,
 	fr_assert(funcs->done_external);
 
 	fr_assert(funcs->detach);
-	fr_assert(funcs->stop);
 	fr_assert(funcs->yield);
 	fr_assert(funcs->resume);
 	fr_assert(funcs->mark_runnable);

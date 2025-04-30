@@ -484,17 +484,6 @@ static inline unlang_action_t unwind_to_return(unsigned int *return_depth, unlan
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-/** Mark the entire stack as cancelled
- *
- * This cancels all frames in the stack ignoring the top frames.
- *
- * @param[in] stack	The current stack.
- */
-static inline void unwind_all(unlang_stack_t *stack)
-{
-	unwind_to_depth(stack, 1);
-}
-
 static inline unlang_stack_frame_t *frame_current(request_t *request)
 {
 	unlang_stack_t *stack = request->stack;

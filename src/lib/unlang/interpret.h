@@ -113,7 +113,6 @@ typedef struct {
 	unlang_request_done_t		done_detached;	//!< Function called when a detached request completes.
 
 	unlang_request_init_t		detach;		//!< Function called when a request is detached.
-	unlang_request_stop_t		stop;		//!< function called when a request is signalled to stop.
 	unlang_request_yield_t		yield;		//!< Function called when a request yields.
 	unlang_request_resume_t		resume;		//!< Function called when a request is resumed.
 	unlang_request_runnable_t	mark_runnable;	//!< Function called when a request needs to be

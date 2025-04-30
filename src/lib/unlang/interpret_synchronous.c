@@ -105,24 +105,6 @@ static void _request_detach(request_t *request, UNUSED void *uctx)
 	if (request_detach(request) < 0) RPEDEBUG("Failed detaching request");
 }
 
-/** Request has been stopped
- *
- * Clean up execution state
- */
-static void _request_stop(request_t *request, void *uctx)
-{
-	unlang_interpret_synchronous_t	*intps = uctx;
-
-	RDEBUG3("Synchronous request stopped");
-
-	/*
-	 *  The assumption here is that if the request
-	 *  not in the runnable queue, and it's not
-	 *  currently running, then it must be yielded.
-	 */
-	if (fr_heap_extract(&intps->runnable, request) < 0) intps->yielded--;
-}
-
 /** Request is now runnable
  *
  */
@@ -184,7 +166,6 @@ static unlang_interpret_synchronous_t *unlang_interpret_synchronous_alloc(TALLOC
 							.done_detached = _request_done_detached,
 
 							.detach = _request_detach,
-							.stop = _request_stop,
 							.yield = _request_yield,
 							.resume = _request_resume,
 							.mark_runnable = _request_runnable,

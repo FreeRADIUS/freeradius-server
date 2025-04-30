@@ -1166,13 +1166,12 @@ static void _worker_request_done_external(request_t *request, UNUSED rlm_rcode_t
 	 *
 	 *	This should never happen otherwise.
 	 */
-	if (unlikely((request->master_state == REQUEST_STOP_PROCESSING) &&
-		     !fr_channel_active(request->async->channel))) {
+	if (unlikely(!fr_channel_active(request->async->channel))) {
 		request_slab_release(request);
 		return;
 	}
 
-	worker_send_reply(worker, request, request->master_state != REQUEST_STOP_PROCESSING, now);
+	worker_send_reply(worker, request, !unlang_request_is_cancelled(request), now);
 	request_slab_release(request);
 }
 
@@ -1253,35 +1252,6 @@ static void _worker_request_detach(request_t *request, void *uctx)
 	}
 
 	return;
-}
-
-/** This is called by the interpreter when it wants to stop a request
- *
- * The idea is to get the request into the same state it would be in
- * if the interpreter had just finished with it.
- */
-static void _worker_request_stop(request_t *request, void *uctx)
-{
-	fr_worker_t	*worker = talloc_get_type_abort(uctx, fr_worker_t);
-
-	RDEBUG3("Cleaning up request execution state");
-
-	/*
-	 *	Make sure time tracking is always in a
-	 *	consistent state when we mark the request
-	 *	as done.
-	 */
-	if (request->async->tracking.state == FR_TIME_TRACKING_YIELDED) {
-		RDEBUG3("Forcing time tracking to running state, from yielded, for request stop");
-		fr_time_tracking_resume(&request->async->tracking, fr_time());
-	}
-
-	/*
-	 *	If the request is in the runnable queue
-	 *	yank it back out, so it's not "runnable"
-	 *	when we call request done.
-	 */
-	if (fr_heap_entry_inserted(request->runnable)) fr_heap_extract(&worker->runnable, request);
 }
 
 /** Request is now runnable
@@ -1497,7 +1467,6 @@ nomem:
 							.done_detached = _worker_request_done_detached,
 
 							.detach = _worker_request_detach,
-							.stop = _worker_request_stop,
 							.yield = _worker_request_yield,
 							.resume = _worker_request_resume,
 							.mark_runnable = _worker_request_runnable,
