@@ -905,6 +905,19 @@ data, instead of as hex strings.
 
 All data received from the network is marked `tainted` by default.
 
+=== rlm_python
+
+Rather than passing a tuple representing attributes in the `request`
+list, an object is passsed to Python functions representing the request.
+This object has members giving access to all the lists, for both
+accessing and setting attributes.
+
+The module now only expects a single return value representing the module
+`rcode` since attributes can be set directly within Python functions.
+
+See the xref:howto:modules/python/index.adoc[rlm_python] module documentation
+for more details.
+
 === rlm_radutmp
 
 The module has been removed.  Many Unix distributions have moved away
