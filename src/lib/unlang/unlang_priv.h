@@ -595,9 +595,18 @@ static inline void frame_pop(request_t *request, unlang_stack_t *stack)
 {
 	unlang_stack_frame_t *frame;
 
-	fr_assert(stack->depth > 1);
+	fr_assert(stack->depth >= 1);
 
 	frame = &stack->frame[stack->depth];
+
+	/*
+	 *	Signal the frame to get it back into a consistent state
+	 *	as we won't be calling the resume function.
+	 */
+	if (is_cancelled(frame)) {
+		if (frame->signal) frame->signal(request, frame, FR_SIGNAL_CANCEL);
+		repeatable_clear(frame);
+	}
 
 	/*
 	 *	We clean up the retries when we pop the frame, not
@@ -617,16 +626,7 @@ static inline void frame_pop(request_t *request, unlang_stack_t *stack)
 
 	frame_cleanup(frame);
 
-	frame = &stack->frame[--stack->depth];
-
-	/*
-	 *	Signal the frame to get it back into a consistent state
-	 *	as we won't be calling the resume function.
-	 */
-	if (is_cancelled(frame)) {
-		if (frame->signal) frame->signal(request, frame, FR_SIGNAL_CANCEL);
-		repeatable_clear(frame);
-	}
+	stack->depth--;
 }
 
 /** Mark the current stack frame up for repeat, and set a new process function
