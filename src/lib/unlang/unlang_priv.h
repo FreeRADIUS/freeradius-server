@@ -453,7 +453,10 @@ static inline unlang_action_t unwind_to_break(unsigned int *break_depth, unlang_
 	unsigned int depth;
 
 	depth = unlang_frame_by_op_flag(stack, UNLANG_OP_FLAG_BREAK_POINT);
-	if (depth == 0) return UNLANG_ACTION_CALCULATE_RESULT;
+	if (depth == 0) {
+		if (break_depth) *break_depth = stack->depth + 1;	/* Don't cancel any frames! */
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
 
 	unwind_to_depth(stack, depth + 1);	/* cancel UP TO the break point */
 
@@ -475,7 +478,10 @@ static inline unlang_action_t unwind_to_return(unsigned int *return_depth, unlan
 	unsigned int depth;
 
 	depth = unlang_frame_by_op_flag(stack, UNLANG_OP_FLAG_RETURN_POINT);
-	if (depth == 0) return UNLANG_ACTION_CALCULATE_RESULT;
+	if (depth == 0) {
+		if (return_depth) *return_depth = stack->depth + 1;	/* Don't cancel any frames! */
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
 
 	unwind_to_depth(stack, depth + 1);	/* cancel UP TO the break point */
 
