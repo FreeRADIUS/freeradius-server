@@ -42,11 +42,11 @@ typedef struct {
 	module_instance_t		*proto_mi;		//!< The proto_* module for a listen section.
 	fr_app_t const			*proto_module;		//!< Public interface to the proto_mi.
 								///< cached for convenience.
-} fr_virtual_listen_t;
+} virtual_server_listen_t;
 
 struct virtual_server_s {
 	CONF_SECTION			*server_cs;		//!< The server section.
-	fr_virtual_listen_t		**listeners;		//!< Listeners in this virtual server.
+	virtual_server_listen_t		**listeners;		//!< Listeners in this virtual server.
 
 	module_instance_t		*process_mi;		//!< The process_* module for a virtual server.
 								///< Contains the dictionary used by the virtual
@@ -142,7 +142,7 @@ static const conf_parser_t server_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("listen", FR_TYPE_VOID, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING | CONF_FLAG_MULTI,
 			 virtual_server_t, listeners),
 			 .name2 = CF_IDENT_ANY,
-			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
+			 .subcs_size = sizeof(virtual_server_listen_t), .subcs_type = "virtual_server_listen_t",
 			 .func = listen_parse },
 
 	{ FR_CONF_OFFSET("log", virtual_server_t, log_name), },
@@ -376,7 +376,7 @@ static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
  */
 static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
-	fr_virtual_listen_t	*listener = talloc_get_type_abort(out, fr_virtual_listen_t); /* Pre-allocated for us */
+	virtual_server_listen_t	*listener = talloc_get_type_abort(out, virtual_server_listen_t); /* Pre-allocated for us */
 	CONF_SECTION		*listener_cs = cf_item_to_section(ci);
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
 	CONF_PAIR		*namespace = cf_pair_find(server_cs, "namespace");
@@ -1565,15 +1565,15 @@ int virtual_servers_open(fr_schedule_t *sc)
 	fr_strerror_clear();
 
 	for (i = 0; i < server_cnt; i++) {
-		fr_virtual_listen_t	**listeners;
+		virtual_server_listen_t	**listeners;
 		size_t			j, listener_cnt;
 
 		listeners = virtual_servers[i]->listeners;
 		listener_cnt = talloc_array_length(listeners);
 
-		for (j = 0; j < listener_cnt; j++) {			
+		for (j = 0; j < listener_cnt; j++) {
 			int ret;
-			fr_virtual_listen_t *listener = listeners[j];
+			virtual_server_listen_t *listener = listeners[j];
 
 			fr_assert(listener != NULL);
 			fr_assert(listener->proto_mi != NULL);
@@ -1604,7 +1604,7 @@ int virtual_servers_open(fr_schedule_t *sc)
 			if (unlikely(ret < 0)) {
 				cf_log_err(listener->proto_mi->conf,
 					   "Failed opening listener %s",
-					   listener->proto_module->common.name);				
+					   listener->proto_module->common.name);
 				return -1;
 			}
 
