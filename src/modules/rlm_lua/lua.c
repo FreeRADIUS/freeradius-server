@@ -416,6 +416,12 @@ static int _lua_pair_setter(lua_State *L)
 	return 0;
 }
 
+/** Iterate over instances of a leaf attribute
+ *
+ * Each call returns with the value of the next instance of the attribute
+ * on the Lua stack, or nil, when there are no more instances.
+ *
+ */
 static int _lua_pair_iterator(lua_State *L)
 {
 	request_t	*request = fr_lua_util_get_request();
@@ -439,6 +445,9 @@ static int _lua_pair_iterator(lua_State *L)
 	return 1;
 }
 
+/** Initiate an iterator to return all the values of a given attribute
+ *
+ */
 static int _lua_pair_iterator_init(lua_State *L)
 {
 	request_t	*request = fr_lua_util_get_request();
@@ -461,6 +470,14 @@ static int _lua_pair_iterator_init(lua_State *L)
 	return 1;
 }
 
+/** Iterate over attributes in a list
+ *
+ * Each call returns with two values on the Lua stack
+ *  - the name of the next attribute
+ *  - the value of the next attribute, or an array of child attribute names
+ *
+ * or, nil is pushed to the stack when there are no more attributes in the list.
+ */
 static int _lua_list_iterator(lua_State *L)
 {
 	request_t	*request = fr_lua_util_get_request();
