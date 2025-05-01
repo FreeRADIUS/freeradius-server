@@ -447,27 +447,20 @@ static int _lua_pair_iterator(lua_State *L)
 
 static int _lua_pair_iterator_init(lua_State *L)
 {
-	request_t			*request = fr_lua_util_get_request();
+	request_t	*request = fr_lua_util_get_request();
+	fr_dcursor_t	*cursor;
+	fr_lua_pair_t	*pair_data;
 
-	fr_dcursor_t		*cursor;
-	fr_dict_attr_t const	*da;
-
-
-	/*
-	 *	This function should only be called as a closure.
-	 *	As we control the upvalues, we should assert on errors.
-	 */
-	fr_assert(lua_isuserdata(L, lua_upvalueindex(2)));
-
-	da = lua_touserdata(L, lua_upvalueindex(2));
-	fr_assert(da);
+	fr_assert(lua_isuserdata(L, lua_upvalueindex(1)));
+	pair_data = lua_touserdata(L, lua_upvalueindex(1));
+	fr_assert(pair_data);
 
 	cursor = (fr_dcursor_t*) lua_newuserdata(L, sizeof(fr_dcursor_t));
 	if (!cursor) {
 		REDEBUG("Failed allocating user data to hold cursor");
 		return -1;
 	}
-	fr_pair_dcursor_by_da_init(cursor, &request->request_pairs, da);	/* @FIXME: Shouldn't use list head */
+	fr_pair_dcursor_by_da_init(cursor, &pair_data->parent->vp->vp_group, pair_data->da);
 
 	lua_pushcclosure(L, _lua_pair_iterator, 1);
 
