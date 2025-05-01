@@ -477,21 +477,16 @@ static int _lua_pair_iterator_init(lua_State *L)
 
 static int _lua_list_iterator(lua_State *L)
 {
-	request_t			*request = fr_lua_util_get_request();
-
-	fr_dcursor_t		*cursor;
-	fr_pair_t		*vp;
+	request_t	*request = fr_lua_util_get_request();
+	fr_dcursor_t	*cursor;
+	fr_pair_t	*vp;
 
 	fr_assert(lua_isuserdata(L, lua_upvalueindex(1)));
 
 	cursor = lua_touserdata(L, lua_upvalueindex(1));
 	fr_assert(cursor);
 
-	/* Packet list should be light user data too at some point... */
 	vp = fr_dcursor_current(cursor);
-
-	/* Nested attributes are not currently supported */
-	while (vp && fr_type_is_structural(vp->da->type)) vp = fr_dcursor_next(cursor);
 	if(!vp) {
 		lua_pushnil(L);
 		return 1;
@@ -499,7 +494,21 @@ static int _lua_list_iterator(lua_State *L)
 
 	lua_pushstring(L, vp->da->name);
 
-	if (fr_lua_marshall(request, L, vp) < 0) return -1;
+	/*
+	 *	For structural attributes return an array of the child names
+	 */
+	if (fr_type_is_structural(vp->da->type)) {
+		fr_pair_t	*child = NULL;
+		unsigned int	i = 1;
+
+		lua_createtable(L, fr_pair_list_num_elements(&vp->vp_group), 0);
+		while ((child = fr_pair_list_next(&vp->vp_group, child))) {
+			lua_pushstring(L, child->da->name);
+			lua_rawseti(L, -2, i++);
+		}
+	} else {
+		if (fr_lua_marshall(request, L, vp) < 0) return -1;
+	}
 
 	fr_dcursor_next(cursor);
 
