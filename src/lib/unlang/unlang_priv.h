@@ -216,6 +216,7 @@ typedef enum CC_HINT(flag_enum) {
 	UNLANG_OP_FLAG_RCODE_SET	= 0x02,			//!< Set request->rcode to the result of this operation.
 	UNLANG_OP_FLAG_BREAK_POINT	= 0x04,			//!< Break point.
 	UNLANG_OP_FLAG_RETURN_POINT	= 0x08,			//!< Return point.
+	UNLANG_OP_FLAG_CONTINUE_POINT	= 0x10			//!< Continue point.
 } unlang_op_flag_t;
 
 /** An unlang operation
@@ -417,24 +418,6 @@ static inline unsigned int unlang_frame_by_op_flag(unlang_stack_t *stack, unlang
 	return 0;
 }
 
-/** Find the first frame with a given instruction
- *
- * @return
- *	- 0 if no frame has the op.
- *	- The index of the first frame with the op.
- */
-static inline unsigned int unlang_frame_by_type(unlang_stack_t *stack, unlang_type_t op)
-{
-	unsigned int	i;
-
-	for (i = stack->depth; i > 0; i--) {
-		unlang_stack_frame_t *frame = &stack->frame[i];
-
-		if (frame->instruction->type == op) return i;
-	}
-	return 0;
-}
-
 /** Mark up frames as cancelled so they're immediately popped by the interpreter
  *
  * @note We used to do this asynchronously, but now we may need to execute timeout sections
@@ -463,48 +446,27 @@ static inline unlang_action_t unwind_to_depth(unlang_stack_t *stack, unsigned in
  *
  * This cancels all frames up to the next "break" frame.
  *
- * @param[out] break_depth	Depth of the break point.
+ * @param[out] depth_p		Depth of the break || return || continue point.
  * @param[in] stack		The current stack.
+ * @param[in] flag		Flag to search for.  One of:
+ *				- UNLANG_OP_FLAG_BREAK_POINT
+ *				- UNLANG_OP_FLAG_RETURN_POINT
+ *				- UNLANG_OP_FLAG_CONTINUE_POINT
  * @return UNLANG_ACTION_CALCULATE_RESULT
  */
-static inline unlang_action_t unwind_to_break(unsigned int *break_depth, unlang_stack_t *stack)
+static inline unlang_action_t unwind_to_op_flag(unsigned int *depth_p, unlang_stack_t *stack, unlang_op_flag_t flag)
 {
 	unsigned int depth;
 
-	depth = unlang_frame_by_op_flag(stack, UNLANG_OP_FLAG_BREAK_POINT);
+	depth = unlang_frame_by_op_flag(stack, flag);
 	if (depth == 0) {
-		if (break_depth) *break_depth = stack->depth + 1;	/* Don't cancel any frames! */
+		if (depth_p) *depth_p = stack->depth + 1;	/* Don't cancel any frames! */
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	unwind_to_depth(stack, depth + 1);	/* cancel UP TO the break point */
 
-	if (break_depth) *break_depth = depth;
-
-	return UNLANG_ACTION_CALCULATE_RESULT;
-}
-
-/** Mark the entire stack as cancelled
- *
- * This cancels all frames up to the next "return" frame.
- *
- * @param[out] return_depth	Depth of the break point.
- * @param[in] stack		The current stack.
- * @return UNLANG_ACTION_CALCULATE_RESULT
- */
-static inline unlang_action_t unwind_to_return(unsigned int *return_depth, unlang_stack_t *stack)
-{
-	unsigned int depth;
-
-	depth = unlang_frame_by_op_flag(stack, UNLANG_OP_FLAG_RETURN_POINT);
-	if (depth == 0) {
-		if (return_depth) *return_depth = stack->depth + 1;	/* Don't cancel any frames! */
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	unwind_to_depth(stack, depth + 1);	/* cancel UP TO the break point */
-
-	if (return_depth) *return_depth = depth;
+	if (depth_p) *depth_p = depth;
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }

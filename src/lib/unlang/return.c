@@ -37,7 +37,7 @@ unlang_action_t unlang_return(rlm_rcode_t *p_result, request_t *request, unlang_
 	 *	Stop at the next return point, or if we hit
 	 *	the a top frame.
 	 */
-	return unwind_to_return(NULL, request->stack);
+	return unwind_to_op_flag(NULL, request->stack, UNLANG_OP_FLAG_RETURN_POINT);
 }
 
 void unlang_return_init(void)
