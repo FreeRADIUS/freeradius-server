@@ -1090,7 +1090,6 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 {
 	size_t len;
 	fr_io_track_t *track, *old;
-	fr_io_address_t *my_address;
 
 	*is_dup = false;
 
@@ -1098,16 +1097,20 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	 *	Allocate a new tracking structure.  Most of the time
 	 *	there are no duplicates, so this is fine.
 	 */
-	MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 1, sizeof(*track) + sizeof(track->address) + 64));
-	MEM(track->address = my_address = talloc_zero(track, fr_io_address_t));
+	if (client->connection) {
+		MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 1, sizeof(*track) + sizeof(track->address) + 64));
+		track->address = client->connection->address;
+	} else {
+		fr_io_address_t *my_address;
 
-	memcpy(my_address, address, sizeof(*address));
-	my_address->radclient = client->radclient;
+		MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 1, sizeof(*track) + 64));
+		MEM(track->address = my_address = talloc(track, fr_io_address_t));
+
+		*my_address = *address;
+		my_address->radclient = client->radclient;
+	}
 
 	track->client = client;
-	if (client->connection) {
-		track->address = client->connection->address;
-	}
 
 	track->timestamp = recv_time;
 	track->packets = 1;
