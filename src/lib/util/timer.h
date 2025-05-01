@@ -122,6 +122,8 @@ int			fr_timer_list_run(fr_timer_list_t *tl, fr_time_t *when);
 
 int			fr_timer_list_disarm(fr_timer_list_t *tl) CC_HINT(nonnull);
 
+int			fr_timer_list_arm(fr_timer_list_t *tl) CC_HINT(nonnull);
+
 uint64_t		fr_timer_list_num_events(fr_timer_list_t *tl) CC_HINT(nonnull);
 
 fr_time_t		fr_timer_list_when(fr_timer_list_t *tl) CC_HINT(nonnull);

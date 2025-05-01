@@ -1,0 +1,18 @@
+# PRE: foreach-break range
+#
+uint32 last
+
+foreach i (%range(10)) {
+	if (i < 8) {
+		last := i
+		continue
+	}
+
+	break
+}
+
+if (last != 7) {
+	test_fail
+}
+success
+

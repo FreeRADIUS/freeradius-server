@@ -55,6 +55,7 @@ struct fr_timer_list_s {
 	};
 	timer_list_type_t		type;
 	bool				in_handler;	//!< Whether we're currently in a callback.
+	bool				disarmed;	//!< the entire timer list is disarmed
 
 	timer_head_t	   	deferred;		//!< A list of timer events to be inserted, after
 							///< the current batch has been processed.
@@ -239,11 +240,15 @@ static int8_t timer_cmp(void const *a, void const *b)
  */
 static void _parent_timer_cb(UNUSED fr_timer_list_t *parent_tl, fr_time_t when, void *uctx)
 {
+	fr_timer_list_t *tl = talloc_get_type_abort(uctx, fr_timer_list_t);
+
+	fr_assert(!tl->disarmed);
+
 	/*
 	 *	We're in the parent timer, so we need to run the
 	 *	events in the child timer list.
 	 */
-	(void)fr_timer_list_run(talloc_get_type_abort(uctx, fr_timer_list_t), &when);
+	(void)fr_timer_list_run(tl, &when);
 }
 
 /** Utility function to update parent timers
@@ -260,6 +265,7 @@ static inline CC_HINT(always_inline) int timer_list_parent_update(fr_timer_list_
 	if (!tl->parent) return 0;
 
 	ev = timer_funcs[tl->type].head(tl);
+
 	/*
 	 *	No events, disarm the timer
 	 */
@@ -271,14 +277,34 @@ static inline CC_HINT(always_inline) int timer_list_parent_update(fr_timer_list_
 		return 0;
 	}
 
-	if (tl->parent_ev && EVENT_ARMED(tl->parent_ev) &&
-	    fr_time_eq(ev->when, tl->parent_ev->when)) return 0; /* noop */
+	/*
+	 *	We have an active event, we can suppress changes which have no effect.
+	 */
+	if (tl->parent_ev && EVENT_ARMED(tl->parent_ev)) {
+		fr_assert(!tl->disarmed); /* fr_timer_list_disarm() must disarm it */
+
+		if (fr_time_eq(ev->when, tl->parent_ev->when)) {
+			return 0;
+		}
+	}
 
 	/*
-	 *	Re-arm the timer
+	 *	This is a child list which is disabled.  Don't update the parent.
 	 */
-	return fr_timer_at(tl, tl->parent, &tl->parent_ev,
-			   ev->when, false, _parent_timer_cb, tl);
+	if (tl->disarmed) {
+		fr_assert(tl->parent);
+
+		fr_assert(!tl->parent_ev || !EVENT_ARMED(tl->parent_ev));
+		return 0;
+	}
+
+	/*
+	 *	The list is armed and the head has changed, so we change the event in the parent list.
+	 */
+	if (fr_timer_at(tl, tl->parent, &tl->parent_ev,
+		       ev->when, false, _parent_timer_cb, tl) < 0) return -1;
+
+	return 0;
 }
 
 /** Insert a timer event into a single event timer list
@@ -447,7 +473,7 @@ int _fr_timer_at(NDEBUG_LOCATION_ARGS
 		}
 	}
 
-	ev->tl = tl;	/* This indicates the event memory is bound to an avent loop */
+	ev->tl = tl;	/* This indicates the event memory is bound to an event loop */
 	ev->when = when;
 	ev->free_on_fire = free_on_fire;
 	ev->callback = callback;
@@ -955,18 +981,51 @@ static uint64_t timer_list_ordered_num_events(fr_timer_list_t *tl)
 	return timer_num_elements(&tl->ordered);
 }
 
-/** Disable all timers in a list
+/** Disarm a timer list
  *
+ * @param[in] tl	Timer list to disarm
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int fr_timer_list_disarm(fr_timer_list_t *tl)
 {
-	fr_timer_t *ev;
-
-	while ((ev = timer_funcs[tl->type].head(tl))) {
-		if (unlikely(fr_timer_disarm(ev) < 0)) return -1;
+	if (!tl->parent) {
+		fr_strerror_const("Timer list does not have a parent");
+		return -1;
 	}
 
+	tl->disarmed = true;
+
+	FR_TIMER_DISARM_RETURN(tl->parent_ev);
+
 	return 0;
+}
+
+/** Arm (or re-arm) a timer list
+ *
+ * @param[in] tl	Timer list to (re)-arm
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_timer_list_arm(fr_timer_list_t *tl)
+{
+	if (!tl->parent) {
+		fr_strerror_const("Timer list does not have a parent");
+		return -1;
+	}
+
+	if (!tl->disarmed) return 0;
+
+	tl->disarmed = false;
+
+	/*
+	 *	Run any timer events which were missed during the time that the list was disarmed.
+	 */
+	_parent_timer_cb(tl->parent, fr_time(), tl);
+
+	return timer_list_parent_update(tl);
 }
 
 /** Return number of pending events
