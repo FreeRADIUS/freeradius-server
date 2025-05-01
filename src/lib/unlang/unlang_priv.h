@@ -210,6 +210,7 @@ typedef void (*unlang_dump_t)(request_t *request, unlang_stack_frame_t *frame);
 
 typedef int (*unlang_thread_instantiate_t)(unlang_t const *instruction, void *thread_inst);
 
+DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
 	UNLANG_OP_FLAG_NONE		= 0x00,			//!< No flags.
 	UNLANG_OP_FLAG_DEBUG_BRACES	= 0x01,			//!< Print debug braces.
@@ -218,6 +219,7 @@ typedef enum CC_HINT(flag_enum) {
 	UNLANG_OP_FLAG_RETURN_POINT	= 0x08,			//!< Return point.
 	UNLANG_OP_FLAG_CONTINUE_POINT	= 0x10			//!< Continue point.
 } unlang_op_flag_t;
+DIAG_ON(attributes)
 
 /** An unlang operation
  *
