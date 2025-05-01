@@ -240,8 +240,8 @@ The example shows how to:
 * run the "radius.example.com" module to proxy the request.  This module should be an instance of the `radius` module.
 * after proxying has succeeded (or failed) populate the parent reply from the child reply.
 
-The example shows how a xref:unlang/reference/try.adoc[try] /
-xref:unlang/reference/catch.adoc[catch] block can be used to process the different module return codes.
+The example shows how a xref:unlang/try.adoc[try] /
+xref:unlang/catch.adoc[catch] block can be used to process the different module return codes.
 
 .Example pre-proxy and post-proxy
 [source,unlang]
