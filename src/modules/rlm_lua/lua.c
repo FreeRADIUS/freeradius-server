@@ -418,23 +418,16 @@ static int _lua_pair_setter(lua_State *L)
 
 static int _lua_pair_iterator(lua_State *L)
 {
-	request_t			*request = fr_lua_util_get_request();
-
-	fr_dcursor_t		*cursor;
-	fr_pair_t		*vp;
-
-	/*
-	 *	This function should only be called as a closure.
-	 *	As we control the upvalues, we should assert on errors.
-	 */
+	request_t	*request = fr_lua_util_get_request();
+	fr_dcursor_t	*cursor;
+	fr_pair_t	*vp;
 
 	fr_assert(lua_isuserdata(L, lua_upvalueindex(1)));
 
 	cursor = lua_touserdata(L, lua_upvalueindex(1));
 	fr_assert(cursor);
 
-	/* Packet list should be light user data too at some point... */
-	vp = fr_dcursor_next(cursor);
+	vp = fr_dcursor_current(cursor);
 	if (!vp) {
 		lua_pushnil(L);
 		return 1;
@@ -442,6 +435,7 @@ static int _lua_pair_iterator(lua_State *L)
 
 	if (fr_lua_marshall(request, L, vp) < 0) return -1;
 
+	fr_dcursor_next(cursor);
 	return 1;
 }
 
