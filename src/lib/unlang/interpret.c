@@ -93,9 +93,9 @@ static void frame_dump(request_t *request, unlang_stack_frame_t *frame)
 
 	if (frame->instruction) {
 		RDEBUG2("control        %s%s%s",
-			is_break_point(frame) ? "-" : "b",
-			is_return_point(frame) ? "-" : "r",
-			is_continue_point(frame) ? "-" : "c"
+			is_break_point(frame) ? "b" : "-",
+			is_return_point(frame) ? "r" : "-",
+			is_continue_point(frame) ? "c" : "-"
 			);
 	}
 	/*
