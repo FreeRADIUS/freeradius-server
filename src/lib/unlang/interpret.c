@@ -378,8 +378,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 		 *	then allocate the structure and set the timer.
 		 */
 		if (!retry) {
-			frame->retry = retry = talloc_zero(stack, unlang_retry_t);
-			if (!frame->retry) goto fail;
+			MEM(frame->retry = retry = talloc_zero(stack, unlang_retry_t));
 
 			retry->request = request;
 			retry->depth = stack->depth;
@@ -398,8 +397,9 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 
 				if (fr_timer_at(retry, unlang_interpret_event_list(request)->tl, &retry->ev, retry->timeout,
 						false, instruction_retry_handler, request) < 0) {
-					RPEDEBUG("Failed inserting event");
-					goto fail;
+					RPEDEBUG("Failed inserting retry event");
+					*result = RLM_MODULE_FAIL;
+					goto finalize;
 				}
 			}
 
@@ -408,7 +408,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 			 *	We've been told to stop doing retries,
 			 *	probably from a timeout.
 			 */
-			if (retry->state != FR_RETRY_CONTINUE) goto fail;
+			if (retry->state != FR_RETRY_CONTINUE) goto timeout;
 
 			/*
 			 *	Clamp it at the maximum count.
@@ -419,10 +419,10 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 				if (retry->count >= instruction->actions.retry.mrc) {
 					retry->state = FR_RETRY_MRC;
 
-					REDEBUG("Retries hit max_rtx_count (%u) - returning 'fail'", instruction->actions.retry.mrc);
+					REDEBUG("Retries hit max_rtx_count (%u) - returning 'timeout'", instruction->actions.retry.mrc);
 
-				fail:
-					*result = RLM_MODULE_FAIL;
+				timeout:
+					*result = RLM_MODULE_TIMEOUT;
 					goto finalize;
 				}
 			}
