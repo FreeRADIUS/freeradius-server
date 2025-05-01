@@ -381,6 +381,8 @@ static inline bool _frame_has_debug_braces(unlang_stack_frame_t const *frame)	{ 
 static inline bool is_rcode_set(unlang_stack_frame_t const *frame)		{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_RCODE_SET; }
 static inline bool is_break_point(unlang_stack_frame_t const *frame)		{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_BREAK_POINT; }
 static inline bool is_return_point(unlang_stack_frame_t const *frame) 		{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_RETURN_POINT; }
+static inline bool is_continue_point(unlang_stack_frame_t const *frame) 	{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_CONTINUE_POINT; }
+
 
 /** Find the first frame with a given flag
  *

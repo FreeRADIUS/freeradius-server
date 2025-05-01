@@ -92,8 +92,11 @@ static void frame_dump(request_t *request, unlang_stack_frame_t *frame)
 	RDEBUG2("cancelled      %s", is_cancelled(frame) ? "yes" : "no");
 
 	if (frame->instruction) {
-		RDEBUG2("break_point    %s", is_break_point(frame) ? "yes" : "no");
-		RDEBUG2("return_point   %s", is_return_point(frame) ? "yes" : "no");
+		RDEBUG2("control        %s%s%s",
+			is_break_point(frame) ? "-" : "b",
+			is_return_point(frame) ? "-" : "r",
+			is_continue_point(frame) ? "-" : "c"
+			);
 	}
 	/*
 	 *	Call the custom frame dump function
