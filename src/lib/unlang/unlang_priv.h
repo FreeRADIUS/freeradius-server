@@ -58,6 +58,7 @@ typedef enum {
 	UNLANG_TYPE_CASE,			//!< Case section (within a #UNLANG_TYPE_SWITCH).
 	UNLANG_TYPE_FOREACH,			//!< Foreach section.
 	UNLANG_TYPE_BREAK,			//!< Break statement (within a #UNLANG_TYPE_FOREACH or #UNLANG_TYPE_CASE).
+	UNLANG_TYPE_CONTINUE,			//!< Break statement (within a #UNLANG_TYPE_FOREACH).
 	UNLANG_TYPE_RETURN,			//!< Return statement.
 	UNLANG_TYPE_MAP,			//!< Mapping section (like #UNLANG_TYPE_UPDATE, but uses
 						//!< values from a #map_proc_t call).
@@ -412,6 +413,24 @@ static inline unsigned int unlang_frame_by_op_flag(unlang_stack_t *stack, unlang
 		unlang_stack_frame_t *frame = &stack->frame[i];
 
 		if (unlang_ops[frame->instruction->type].flag & flag) return i;
+	}
+	return 0;
+}
+
+/** Find the first frame with a given instruction
+ *
+ * @return
+ *	- 0 if no frame has the op.
+ *	- The index of the first frame with the op.
+ */
+static inline unsigned int unlang_frame_by_type(unlang_stack_t *stack, unlang_type_t op)
+{
+	unsigned int	i;
+
+	for (i = stack->depth; i > 0; i--) {
+		unlang_stack_frame_t *frame = &stack->frame[i];
+
+		if (frame->instruction->type == op) return i;
 	}
 	return 0;
 }

@@ -1,0 +1,36 @@
+= The continue statement
+
+.Syntax
+[source,unlang]
+----
+continue
+----
+
+The `continue` statement is used in a
+xref:unlang/foreach.adoc[foreach] loop, and will cause the interpret
+to skip execution of the rest of the statements in current loop
+iteration, and start the next iteration of the loop.  The `continue`
+statement cannot be used in any other location.
+
+In this example, a `continue` is used to exit a
+xref:unlang/foreach.adoc[foreach] loop when a particular condition
+matches.
+
+.Example of continue
+[source,unlang]
+----
+uint32 last
+
+foreach i (%range(10)) {
+	if (i < 8) {
+		last := i
+		continue
+	}
+
+	break
+}
+----
+
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

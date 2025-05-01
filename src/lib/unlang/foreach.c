@@ -543,6 +543,26 @@ static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, u
 	return ua;
 }
 
+static unlang_action_t unlang_continue(UNUSED rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_stack_t			*stack = request->stack;
+	unsigned int			depth;
+
+	RDEBUG2("%s", unlang_ops[frame->instruction->type].name);
+
+	depth = unlang_frame_by_type(stack, UNLANG_TYPE_FOREACH);
+	fr_assert(depth != 0);	/* this would be a problem with the compile phase */
+
+	/*
+	 *	Unwind to the child, and mark the child as "nope, we're not repeating it".  This will cause
+	 *	the interpreter to go to the next child.
+	 */
+	unwind_to_depth(stack, depth + 1);
+	repeatable_clear(&stack->frame[depth + 1]);
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
 void unlang_foreach_init(void)
 {
 	unlang_register(UNLANG_TYPE_FOREACH,
@@ -556,5 +576,11 @@ void unlang_foreach_init(void)
 			   &(unlang_op_t){
 				.name = "break",
 				.interpret = unlang_break,
+			   });
+
+	unlang_register(UNLANG_TYPE_CONTINUE,
+			   &(unlang_op_t){
+				.name = "continue",
+				.interpret = unlang_continue,
 			   });
 }

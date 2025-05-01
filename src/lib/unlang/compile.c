@@ -381,6 +381,7 @@ static void unlang_dump(unlang_t *instruction, int depth)
 			break;
 
 		case UNLANG_TYPE_BREAK:
+		case UNLANG_TYPE_CONTINUE:
 		case UNLANG_TYPE_DETACH:
 		case UNLANG_TYPE_RETURN:
 		case UNLANG_TYPE_TMPL:
@@ -3455,6 +3456,38 @@ static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	return compile_empty(parent, unlang_ctx, NULL, &break_ext);
 }
 
+static unlang_t *compile_continue(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	unlang_t *unlang;
+
+	static unlang_ext_t const break_ext = {
+		.type = UNLANG_TYPE_CONTINUE,
+		.len = sizeof(unlang_group_t),
+		.type_name = "unlang_group_t",
+	};
+
+	for (unlang = parent; unlang != NULL; unlang = unlang->parent) {
+		/*
+		 *	"continue" doesn't go past a return point.
+		 */
+		if ((unlang_ops[unlang->type].flag & UNLANG_OP_FLAG_RETURN_POINT) != 0) goto error;
+
+		if (unlang->type == UNLANG_TYPE_FOREACH) break;
+	}
+
+	if (!unlang) {
+	error:
+		cf_log_err(ci, "Invalid location for 'continue' - it can only be used inside 'foreach'");
+		cf_log_err(ci, DOC_KEYWORD_REF(break));
+		return NULL;
+	}
+
+	parent->closed = true;
+
+	return compile_empty(parent, unlang_ctx, NULL, &break_ext);
+}
+
+
 static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
 	unlang_t *subrequest;
@@ -4720,6 +4753,7 @@ static int unlang_section_keywords_len = NUM_ELEMENTS(unlang_section_keywords);
 
 static fr_table_ptr_sorted_t unlang_pair_keywords[] = {
 	{ L("break"),		(void *) compile_break },
+	{ L("continue"),	(void *) compile_continue },
 	{ L("detach"),		(void *) compile_detach },
 	{ L("return"), 		(void *) compile_return },
 };

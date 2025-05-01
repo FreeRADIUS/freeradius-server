@@ -13,17 +13,18 @@ looping, etc.
 [cols="30%,70%"]
 |=====
 | Keyword | Description
-| xref:unlang/break.adoc[break]     | Exit early from a `foreach` loop.
-| xref:unlang/case.adoc[case]       | Match inside of a `switch`.
+| xref:unlang/break.adoc[break]     | Exit early from a xref:unlang/foreach.adoc[foreach] loop.
+| xref:unlang/case.adoc[case]       | Match inside of a xref:unlang/switch.adoc[switch].
 | xref:unlang/catch.adoc[catch]     | catch an error from a previous "try"
-| xref:unlang/else.adoc[else]       | Do something when an `if` does not match.
-| xref:unlang/elsif.adoc[elsif]     | Check for condition when a previous `if` does not match.
+| xref:unlang/continue.adoc[continue] | Start the next iteration of a xref:unlang/foreach.adoc[foreach] loop
+| xref:unlang/else.adoc[else]       | Do something when a previous xref:unlang/if.adoc[if] does not match.
+| xref:unlang/elsif.adoc[elsif]     | Check for condition when a previous xref:unlang/if.adoc[if] does not match.
 | xref:unlang/foreach.adoc[foreach] | Loop over a list of attributes.
 | xref:unlang/if.adoc[if]           | Check for a condition, and execute a sub-policy if it matches.
 | xref:unlang/return.adoc[return]   | Immediately stop processing a section.
 | xref:unlang/switch.adoc[switch]   | Check for multiple values.
 | xref:unlang/transaction.adoc[transaction]   | Group operations into a transaction which can be reverted on failure.
-| xref:unlang/try.adoc[try]         | try / catch blocks
+| xref:unlang/try.adoc[try]         | Perform an operation, and ref:unlang/catch.adoc[catch] an error if it fails.
 |=====
 
 == Attribute Editing Keywords
