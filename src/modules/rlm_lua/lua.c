@@ -337,67 +337,81 @@ static int fr_lua_pair_parent_build(request_t *request, fr_lua_pair_t *pair_data
 /** Set an instance of an attribute
  *
  * @note Should only be present in the Lua environment as a closure.
- * @note Takes one upvalue - the fr_dict_attr_t to search for as light user data.
+ * @note Takes one upvalue - the fr_lua_pair_t representing this pair as user data.
  * @note Is called as an __newindex metamethod, so takes the table (can be ignored),
  *	 the field (an integer index value) and the new value.
  *
- * @param[in] L Lua interpreter.
+ * @param[in] L Lua state.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _lua_pair_set(lua_State *L)
+static int _lua_pair_setter(lua_State *L)
 {
-	module_ctx_t const	*mctx = fr_lua_util_get_mctx();
-	rlm_lua_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_lua_t);
 	request_t		*request = fr_lua_util_get_request();
-	fr_dcursor_t		cursor;
+	fr_lua_pair_t		*pair_data, *parent;
 	fr_dict_attr_t const	*da;
-	fr_pair_t		*vp = NULL, *new;
+	fr_pair_t		*vp;
 	lua_Integer		index;
-	bool			delete = false;
 
-	/*
-	 *	This function should only be called as a closure.
-	 *	As we control the upvalues, we should assert on errors.
-	 */
-	fr_assert(lua_islightuserdata(L, lua_upvalueindex(1)));
-
-	da = lua_touserdata(L, lua_upvalueindex(1));
-	fr_assert(da);
-
-	delete = lua_isnil(L, -1);
-
-	/*
-	 *	@fixme Packet list should be light user data too at some point
-	 */
-	vp = fr_pair_dcursor_by_da_init(&cursor, &request->request_pairs, da);
-
-	for (index = lua_tointeger(L, -2); index > 0; index--) {
-		vp = fr_dcursor_next(&cursor);
-		if (!vp) break;
+	if (!lua_isnumber(L, -2)) {
+		RERROR("Attempt to %s attribute \"%s\" table.", lua_isnil(L, -1) ? "delete" : "set value on", lua_tostring(L, -2));
+		RWARN("Values should be manipulated using <list>['<attr>'][idx] = <value> where idx is the attribute instance (starting at 1)");
+		return -1;
 	}
 
+	index = lua_tointeger(L, -2);
+	if (index < 1) {
+		RERROR("Invalid attribute index %ld", index);
+		return -1;
+	}
+
+	pair_data = lua_touserdata(L, lua_upvalueindex(1));
+	da = pair_data->da;
+
+	if (!fr_type_is_leaf(da->type)) {
+		RERROR("Values cannot be assigned to structural attribute \"%s\"", da->name);
+		return -1;
+	}
+	parent = pair_data->parent;
+
 	/*
-	 *	If the value of the Lua stack was nil, we delete the
-	 *	attribute the cursor is currently positioned at.
+	 *	If the value of the Lua stack was nil, we delete the attribute if it exists.
 	 */
-	if (delete) {
-		fr_dcursor_remove(&cursor);
+	if (lua_isnil(L, -1)) {
+		if (!pair_data->parent->vp) return 0;
+		vp = fr_pair_find_by_da_idx(&parent->vp->vp_group, da, index - 1);
+		if (!vp) return 0;
+		if (pair_data->vp == vp) pair_data->vp = NULL;
+		fr_pair_delete(&parent->vp->vp_group, vp);
 		return 0;
 	}
 
-	if (fr_lua_unmarshall(request->request_ctx, &new, inst, request, L, da) < 0) return -1;
+	if (!parent->vp) {
+		if (fr_lua_pair_parent_build(request, parent) < 0) return -1;
+	}
+
+	vp = fr_pair_find_by_da_idx(&parent->vp->vp_group, da, index - 1);
 
 	/*
-	 *	If there was already a VP at that index we replace it
-	 *	else we add a new VP to the list.
+	 *	Asked to add a pair we don't have - check we're not being asked
+	 *	to add a gap.
 	 */
-	if (vp) {
-		fr_dcursor_replace(&cursor, new);
-	} else {
-		fr_dcursor_append(&cursor, new);
+	if (!vp && (index > 1)) {
+		unsigned int count = fr_pair_count_by_da(&parent->vp->vp_group, da);
+		if (count < (index - 1)) {
+			RERROR("Attempt to set instance %ld when only %d exist", index, count);
+			return -1;
+		}
 	}
+
+	if (!vp) {
+		if (fr_pair_append_by_da(parent->vp, &vp, &parent->vp->vp_group, da) < 0) {
+			RERROR("Failed to create attribute %s", da->name);
+			return -1;
+		}
+	}
+	if (fr_lua_unmarshall(vp, &vp->data, request, L, da) < 0) return -1;
 
 	return 0;
 }
@@ -796,6 +810,10 @@ static void _lua_pair_init(lua_State *L, fr_pair_t *vp, fr_dict_attr_t const *da
 	lua_pushlightuserdata(L, pair_data);
 	lua_pushcclosure(L, _lua_pair_accessor, 1);
 	lua_setfield(L, -2, "__index");
+
+	lua_pushlightuserdata(L, pair_data);
+	lua_pushcclosure(L, _lua_pair_setter, 1);
+	lua_setfield(L, -2, "__newindex");
 	lua_setmetatable(L, -2);
 }
 
