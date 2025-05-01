@@ -318,47 +318,6 @@ static int fr_lua_unmarshall(TALLOC_CTX *ctx, fr_pair_t **out,
 	return 0;
 }
 
-/** Get an instance of an attribute
- *
- * @note Should only be present in the Lua environment as a closure.
- * @note Takes one upvalue - the fr_dict_attr_t to search for as light user data.
- * @note Is called as an __index metamethod, so takes the table (can be ignored)
- *	 and the field (an integer index value)
- *
- * @param[in] L Lua interpreter.
- * @return
- *	- 0 (no results) on success.
- *	- 1 on success with the fr_pair_t value on the stack.
- */
-static int _lua_pair_get(lua_State *L)
-{
-	request_t			*request = fr_lua_util_get_request();
-
-	fr_dcursor_t		cursor;
-	fr_dict_attr_t const	*da;
-	fr_pair_t		*vp = NULL;
-	int			index;
-
-	fr_assert(lua_islightuserdata(L, lua_upvalueindex(1)));
-
-	da = lua_touserdata(L, lua_upvalueindex(1));
-	fr_assert(da);
-
-	/*
-	 *	@fixme Packet list should be light user data too at some point
-	 */
-	vp = fr_pair_dcursor_by_da_init(&cursor, &request->request_pairs, da);
-
-	for (index = (int) lua_tointeger(L, -1); index > 0; index--) {
-		vp = fr_dcursor_next(&cursor);
-		if (!vp) return 0;
-	}
-
-	if (fr_lua_marshall(request, L, vp) < 0) return -1;
-
-	return 1;
-}
-
 /** Set an instance of an attribute
  *
  * @note Should only be present in the Lua environment as a closure.
@@ -546,58 +505,99 @@ static int _lua_list_iterator_init(lua_State *L)
 	return 1;
 }
 
-/** Initialise and return a new accessor table
+/** Get an attribute or an instance of an attribute
  *
+ * When called with a numeric index, it is the instance of the attribute
+ * which is being requested.
+ * Otherwise, the index is an attribute name.
  *
+ * @note Should only be present in the Lua environment as a closure.
+ * @note Takes one upvalue - the fr_lua_pair_t representing either this
+ *	 attribute in the case it is an index being requested, or the
+ *	 parent in the case an attribute is being requested.
+ * @note Is called as an __index metamethod, so takes the table (can be ignored)
+ *	 and the field (integer index for instance or string for attribute)
+ *
+ * @param[in] L Lua interpreter.
+ * @return
+ *	- -1 on failure.
+ *	- 0 (no results) on success.
+ *	- 1 on success with:
+ *	  - the fr_pair_t value on the stack for leaf values.
+ *	  - a lua table for structural items.
  */
-static int _lua_pair_accessor_init(lua_State *L)
+static int _lua_pair_accessor(lua_State *L)
 {
-	request_t		*request = fr_lua_util_get_request();
-	char const		*attr;
-	fr_dict_attr_t const	*da;
-	fr_dict_attr_t		*up;
+	request_t	*request = fr_lua_util_get_request();
+	fr_lua_pair_t	*pair_data;
+	fr_pair_t	*vp = NULL;
 
-	attr = lua_tostring(L, -1);
-	if (!attr) {
-		REDEBUG("Failed retrieving field name from lua stack");
-		return -1;
+	fr_assert(lua_isuserdata(L, lua_upvalueindex(1)));
+
+	pair_data = (fr_lua_pair_t *)lua_touserdata(L, lua_upvalueindex(1));
+
+	if (lua_isnumber(L, -1)) {
+		lua_Integer	index = lua_tointeger(L, -1);
+
+		if (index < 1) {
+			RERROR("Invalid attribute index %ld", index);
+			return -1;
+		}
+
+		if (!pair_data->parent || !pair_data->parent->vp) return 0;
+
+		if (index == 1 && pair_data->vp) {
+			vp = pair_data->vp;
+		} else {
+			// Lua array indexes are 1 based, not 0 based.
+			vp = fr_pair_find_by_da_idx(&pair_data->parent->vp->vp_group, pair_data->da, index - 1);
+			if (index == 1) pair_data->vp = vp;
+		}
+		/*
+		 *	Retrieving an instance of a leaf gives the actual attribute
+		 *	value (if it exists)
+		 */
+		if (fr_type_is_leaf(pair_data->da->type)) {
+			if (!vp) return 0;
+			if (fr_lua_marshall(request, L, vp) < 0) return -1;
+			return 1;
+		}
+
+		/*
+		 *	Retrieving a structural attribute returns a new table.
+		 */
+		lua_newtable(L);
+		_lua_pair_init(L, vp, pair_data->da, index, pair_data->parent);
+
+	} else {
+		fr_dict_attr_t const	*da;
+		char const		*attr = lua_tostring(L, -1);
+
+		if (!attr) {
+			RERROR("Failed retrieving field name from lua stack");
+			return -1;
+		}
+
+		da = fr_dict_attr_by_name(NULL, pair_data->da, attr);
+
+		/*
+		 *	Allow fallback to internal attributes if the parent is a group or dictionary root.
+		 */
+		if (!da && (fr_type_is_group(pair_data->da->type) || pair_data->da->flags.is_root)) {
+			da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), attr);
+		}
+
+		if (!da) {
+			RERROR("Unknown or invalid attribute name \"%s\"", attr);
+			return -1;
+		}
+
+		if (pair_data->vp) vp = fr_pair_find_by_da(&pair_data->vp->vp_group, NULL, da);
+		_lua_pair_init(L, vp, da, 1, pair_data);
+
+		lua_rawset(L, -3);		/* Cache the attribute manipulation object */
+		lua_getfield(L, -1, attr);	/* and return it */
 	}
-
-	da = fr_dict_attr_by_name(NULL, fr_dict_root(request->proto_dict), attr);
-	if (!da) {
-		REDEBUG("Unknown or invalid attribute name \"%s\"", attr);
-		return -1;
-	}
-	up = UNCONST(fr_dict_attr_t *, da);
-
-	/*
-	 *	Add the pairs method to the main table, this allows
-	 *	easy iteration over multiple values of the same
-	 *	attribute.
-	 *
-	 *	for v in request[User-Name].pairs() do
-	 */
-	lua_newtable(L);
-	lua_pushlightuserdata(L, &request->request_pairs);
-	lua_pushlightuserdata(L, up);
-	lua_pushcclosure(L, _lua_pair_iterator_init, 2);
-	lua_setfield(L, -2, "pairs");
-
-	/*
-	 *	Metatable methods for getting and setting
-	 */
-	lua_newtable(L);
-	lua_pushlightuserdata(L, up);
-	lua_pushcclosure(L, _lua_pair_get, 1);
-	lua_setfield(L, -2, "__index");
-
-	lua_pushlightuserdata(L, up);
-	lua_pushcclosure(L, _lua_pair_set, 1);
-	lua_setfield(L, -2, "__newindex");
-
-	lua_setmetatable(L, -2);
-	lua_settable(L, -3);		/* Cache the attribute manipulation object */
-	lua_getfield(L, -1, attr);	/* and return it */
 
 	return 1;
 }
@@ -778,7 +778,7 @@ static void _lua_pair_init(lua_State *L, fr_pair_t *vp, fr_dict_attr_t const *da
 	lua_newtable(L);	/* Metatable for index functions*/
 
 	lua_pushlightuserdata(L, pair_data);
-	lua_pushcclosure(L, _lua_pair_accessor_init, 1);
+	lua_pushcclosure(L, _lua_pair_accessor, 1);
 	lua_setfield(L, -2, "__index");
 	lua_setmetatable(L, -2);
 }
