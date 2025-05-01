@@ -40,6 +40,14 @@ RCSID("$Id$")
 #define RLM_LUA_STACK_SET()	int _fr_lua_stack_state = lua_gettop(L)
 #define RLM_LUA_STACK_RESET()	lua_settop(L, _fr_lua_stack_state)
 
+typedef struct fr_lua_pair_s fr_lua_pair_t;
+struct fr_lua_pair_s {
+	fr_dict_attr_t const	*da;
+	fr_pair_t		*vp;
+	unsigned int		idx;
+	fr_lua_pair_t		*parent;
+};
+
 DIAG_OFF(type-limits)
 /** Convert fr_pair_ts to Lua values
  *
