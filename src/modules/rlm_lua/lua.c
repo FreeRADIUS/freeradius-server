@@ -501,22 +501,26 @@ static int _lua_list_iterator(lua_State *L)
 	return 2;
 }
 
-/** Initialise a new top level list iterator
+/** Initialise a new structural iterator
  *
  */
 static int _lua_list_iterator_init(lua_State *L)
 {
-	request_t			*request = fr_lua_util_get_request();
-	fr_dcursor_t		*cursor;
+	request_t	*request = fr_lua_util_get_request();
+	fr_dcursor_t	*cursor;
+	fr_lua_pair_t	*pair_data;
+
+	fr_assert(lua_isuserdata(L, lua_upvalueindex(1)));
+	pair_data = lua_touserdata(L, lua_upvalueindex(1));
+	if (!pair_data->vp) return 0;
 
 	cursor = (fr_dcursor_t*) lua_newuserdata(L, sizeof(fr_dcursor_t));
 	if (!cursor) {
 		REDEBUG("Failed allocating user data to hold cursor");
 		return -1;
 	}
-	fr_pair_dcursor_init(cursor, &request->request_pairs);	/* @FIXME: Shouldn't use list head */
+	fr_pair_dcursor_init(cursor, &pair_data->vp->vp_group);
 
-	lua_pushlightuserdata(L, cursor);
 	lua_pushcclosure(L, _lua_list_iterator, 1);
 
 	return 1;
