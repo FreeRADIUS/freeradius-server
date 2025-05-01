@@ -528,7 +528,7 @@ error:
 		}
 		MEM(headers = talloc_strndup(NULL, q + 1, p - q - 1));
 		if (*headers && create_headers(request, headers, &hdrs) < 0) {
-			RDEBUG3("Failed to create headers");
+			REDEBUG("Failed to create headers");
 			talloc_free(headers);
 			goto error;
 		}
@@ -980,13 +980,13 @@ static rlm_rcode_t CC_HINT(nonnull) kafka_common(void *instance, REQUEST *reques
 	schema = cf_pair_value(cp);
 
 	if (radius_axlat(&message, request, schema, NULL, NULL) < 0) {
-		RDEBUG3("Failed to expand message schema");
+		REDEBUG("Failed to expand message schema");
 		return RLM_MODULE_FAIL;
 	}
 
 	if (section->key) {
 		if (radius_axlat(&key, request, section->key, NULL, NULL) < 0) {
-			RDEBUG3("Failed to expand key");
+			REDEBUG("Failed to expand key");
 			talloc_free(message);
 			return RLM_MODULE_FAIL;
 		}
@@ -994,7 +994,7 @@ static rlm_rcode_t CC_HINT(nonnull) kafka_common(void *instance, REQUEST *reques
 
 	if (section->headers) {
 		if (create_headers(request, section->headers, &hdrs) < 0) {
-			RDEBUG3("Failed to create headers");
+			REDEBUG("Failed to create headers");
 			talloc_free(message);
 			return RLM_MODULE_FAIL;
 		}
