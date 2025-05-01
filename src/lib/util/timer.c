@@ -40,7 +40,8 @@ FR_DLIST_TYPEDEFS(timer, fr_timer_head_t, fr_timer_entry_t)
  */
 typedef enum {
 	TIMER_LIST_TYPE_LST = 1,			//!< Self-sorting timer list based on a left leaning skeleton tree.
-	TIMER_LIST_TYPE_ORDERED = 2			//!< Strictly ordered list of events in a dlist.
+	TIMER_LIST_TYPE_ORDERED = 2,			//!< Strictly ordered list of events in a dlist.
+	TIMER_LIST_TYPE_SHARED = 3			//!< all events share one event callback
 } timer_list_type_t;
 
 /** An event timer list
@@ -52,6 +53,12 @@ struct fr_timer_list_s {
 	union {
 		fr_lst_t		*lst;			//!< of timer events to be executed.
 		timer_head_t		ordered;		//!< A list of timer events to be executed.
+		struct {
+			fr_rb_tree_t   		*rb;		//!< a tree of raw pointers
+			size_t			time_offset;   	//!< offset from uctx to the fr_time_t it contains
+			size_t			node_offset;   	//!< offset from uctx to the fr_rb_node it contains
+			fr_timer_cb_t		callback;	//!< the callback to run
+		} shared;
 	};
 	timer_list_type_t		type;
 	bool				in_handler;	//!< Whether we're currently in a callback.
@@ -106,6 +113,8 @@ FR_DLIST_FUNCS(timer, fr_timer_t, entry)
 #define CHECK_PARENT(_ev) \
 	fr_assert_msg(!(_ev)->parent || (*(_ev)->parent == ev), \
 		      "Event %p, allocd %s[%d], parent field points to %p", (_ev), (_ev)->file, (_ev)->line, *(_ev)->parent);
+
+#define TIMER_UCTX_TO_TIME(_tl, _x) (fr_time_t *)(((uintptr_t) (_x)) + (_tl)->shared.time_offset);
 
 /** Specialisation function to insert a timer
  *
@@ -174,6 +183,8 @@ typedef struct {
 
 #define EVENT_ARMED(_ev) ((_ev)->tl != NULL)
 
+static fr_time_t *timer_list_when(fr_timer_list_t *tl);
+
 static int timer_lst_insert_at(fr_timer_list_t *tl, fr_timer_t *ev);
 static int timer_ordered_insert_at(fr_timer_list_t *tl, fr_timer_t *ev);
 
@@ -181,7 +192,8 @@ static int timer_lst_disarm(fr_timer_t *ev);
 static int timer_ordered_disarm(fr_timer_t *ev);
 
 static int timer_list_lst_run(fr_timer_list_t *tl, fr_time_t *when);
-static int timer_list_ordered_run(fr_timer_list_t *tl, fr_time_t *when);
+static int timer_list_ordered_run(fr_timer_list_t *tl, fr_time_t *when)
+;static int timer_list_shared_run(fr_timer_list_t *tl, fr_time_t *when);
 
 static fr_timer_t *timer_list_lst_head(fr_timer_list_t *tl);
 static fr_timer_t *timer_list_ordered_head(fr_timer_list_t *tl);
@@ -191,6 +203,7 @@ static int timer_list_ordered_deferred(fr_timer_list_t *tl);
 
 static uint64_t timer_list_lst_num_events(fr_timer_list_t *tl);
 static uint64_t timer_list_ordered_num_events(fr_timer_list_t *tl);
+static uint64_t timer_list_shared_num_events(fr_timer_list_t *tl);
 
 /** Functions for performing operations on various types of timer list
  *
@@ -213,7 +226,16 @@ static timer_list_funcs_t const timer_funcs[] = {
 		.head = timer_list_ordered_head,
 		.deferred = timer_list_ordered_deferred,
 		.num_events = timer_list_ordered_num_events
-	}
+	},
+	[TIMER_LIST_TYPE_SHARED] = {
+//		.insert = timer_shared_insert_at,
+//		.disarm = timer_shared_disarm,
+
+		.run = timer_list_shared_run,
+//		.head = timer_list_shared_head,
+//		.deferred = timer_list_shared_deferred,
+		.num_events = timer_list_shared_num_events
+	},
 };
 
 /** Compare two timer events to see which one should occur first
@@ -231,6 +253,7 @@ static int8_t timer_cmp(void const *a, void const *b)
 
 	return fr_time_cmp(ev_a->when, ev_b->when);
 }
+
 
 /** This callback fires in the parent to execute events in this sublist
  *
@@ -260,16 +283,16 @@ static void _parent_timer_cb(UNUSED fr_timer_list_t *parent_tl, fr_time_t when, 
  */
 static inline CC_HINT(always_inline) int timer_list_parent_update(fr_timer_list_t *tl)
 {
-	fr_timer_t	*ev;
+	fr_time_t *when;
 
 	if (!tl->parent) return 0;
 
-	ev = timer_funcs[tl->type].head(tl);
+	when = timer_list_when(tl);
 
 	/*
 	 *	No events, disarm the timer
 	 */
-	if (!ev) {
+	if (!when) {
 		/*
 		 *	Disables the timer in the parent, does not free the memory
 		 */
@@ -283,7 +306,7 @@ static inline CC_HINT(always_inline) int timer_list_parent_update(fr_timer_list_
 	if (tl->parent_ev && EVENT_ARMED(tl->parent_ev)) {
 		fr_assert(!tl->disarmed); /* fr_timer_list_disarm() must disarm it */
 
-		if (fr_time_eq(ev->when, tl->parent_ev->when)) {
+		if (fr_time_eq(*when, tl->parent_ev->when)) {
 			return 0;
 		}
 	}
@@ -302,7 +325,7 @@ static inline CC_HINT(always_inline) int timer_list_parent_update(fr_timer_list_
 	 *	The list is armed and the head has changed, so we change the event in the parent list.
 	 */
 	if (fr_timer_at(tl, tl->parent, &tl->parent_ev,
-		       ev->when, false, _parent_timer_cb, tl) < 0) return -1;
+		       *when, false, _parent_timer_cb, tl) < 0) return -1;
 
 	return 0;
 }
@@ -400,6 +423,8 @@ int _fr_timer_at(NDEBUG_LOCATION_ARGS
 		 bool free_on_fire, fr_timer_cb_t callback, void const *uctx)
 {
 	fr_timer_t *ev;
+
+	fr_assert(tl->type != TIMER_LIST_TYPE_SHARED);
 
 	/*
 	 *	If there is an event, reuse it instead of freeing it
@@ -823,7 +848,51 @@ static int timer_list_ordered_run(fr_timer_list_t *tl, fr_time_t *when)
 	goto done;
 }
 
-/** Get the head of the timer list, the event may not be ready to fire
+/** Run all scheduled events in an ordered list
+ *
+ * @param[in] tl	containing the timer events.
+ * @param[in] when	Process events scheduled to run before or at this time.
+ *			- Set to 0 if no more events.
+ *			- Set to the next event time if there are more events.
+ * @return
+ *	- < 0 if we failed to updated the parent list.
+ *	- 0 no timer events fired.
+ *	- >0 number of timer event fired.
+ */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private fr_timer_list_t trips --fsanitize=function*/
+static int timer_list_shared_run(fr_timer_list_t *tl, fr_time_t *when)
+{
+	void		*uctx;
+	unsigned int	fired = 0;
+
+	while ((uctx = fr_rb_first(tl->shared.rb)) != NULL) {
+		fr_time_t const *next;
+
+		next = TIMER_UCTX_TO_TIME(tl, uctx);
+
+		/*
+		 *	See if it's time to do this one.
+		 */
+		if (fr_time_gt(*next, *when)) {
+			*when = *next;
+		done:
+			return fired;
+		}
+
+		fr_rb_remove(tl->shared.rb, uctx);
+
+		tl->shared.callback(tl, *when, uctx);
+
+		fired++;
+	}
+
+	*when = fr_time_wrap(0);
+
+	goto done;
+}
+
+
+/** Forcibly run all events in an event loop.
  *
  * This is used to forcefully run every event in the event loop.
  *
@@ -981,6 +1050,11 @@ static uint64_t timer_list_ordered_num_events(fr_timer_list_t *tl)
 	return timer_num_elements(&tl->ordered);
 }
 
+static uint64_t timer_list_shared_num_events(fr_timer_list_t *tl)
+{
+	return fr_rb_num_elements(tl->shared.rb);
+}
+
 /** Disarm a timer list
  *
  * @param[in] tl	Timer list to disarm
@@ -1043,6 +1117,29 @@ uint64_t fr_timer_list_num_events(fr_timer_list_t *tl)
 	return num + timer_num_elements(&tl->deferred);
 }
 
+static fr_time_t *timer_list_when(fr_timer_list_t *tl)
+{
+	fr_timer_t *ev;
+
+	switch (tl->type) {
+	default:
+		ev = timer_funcs[tl->type].head(tl);
+		if (ev) return &ev->when;
+		break;
+
+	case TIMER_LIST_TYPE_SHARED: {
+		void *uctx;
+
+		uctx = fr_rb_first(tl->shared.rb);
+		if (!uctx) break;
+
+		return TIMER_UCTX_TO_TIME(tl, uctx);
+	}
+	}
+
+	return NULL;
+}
+
 /** Return the time of the next event
  *
  * @param[in] tl	to get the next event time from.
@@ -1052,9 +1149,9 @@ uint64_t fr_timer_list_num_events(fr_timer_list_t *tl)
  */
 fr_time_t fr_timer_list_when(fr_timer_list_t *tl)
 {
-	fr_timer_t *ev = timer_funcs[tl->type].head(tl);
+	fr_time_t const *when = timer_list_when(tl);
 
-	if (ev) return ev->when;
+	if (when) return *when;
 
 	return fr_time_wrap(0);
 }
@@ -1087,8 +1184,15 @@ static int _timer_list_free(fr_timer_list_t *tl)
 
 	if (tl->parent_ev) if (unlikely(fr_timer_delete(&tl->parent_ev) < 0)) return -1;
 
-	while ((ev = timer_funcs[tl->type].head(tl))) {
-		if (talloc_free(ev) < 0) return -1;
+	switch (tl->type) {
+	default:
+		while ((ev = timer_funcs[tl->type].head(tl))) {
+			if (talloc_free(ev) < 0) return -1;
+		}
+		break;
+
+	case TIMER_LIST_TYPE_SHARED: /* the caller owns the memory for uctx */
+		break;
 	}
 
 	return 0;
@@ -1158,6 +1262,83 @@ fr_timer_list_t *fr_timer_list_ordered_alloc(TALLOC_CTX *ctx, fr_timer_list_t *p
 
 	return tl;
 }
+
+/** Allocate a new shared event timer list
+ *
+ * @param[in] ctx	to allocate the event timer list from.
+ * @param[in] parent	to insert the head timer event into.
+ * @param[in] cmp	comparison routine (smaller times are earlier)
+ * @param[in] callback  to run on timer event
+ * @param[in] node_offset offset from uctx to the fr_rb_node_t it contains
+ * @param[in] time_offset offset from uctx to the fr_time_t it contains
+ */
+fr_timer_list_t *fr_timer_list_shared_alloc(TALLOC_CTX *ctx, fr_timer_list_t *parent, fr_cmp_t cmp,
+					    fr_timer_cb_t callback, size_t node_offset, size_t time_offset)
+{
+	fr_timer_list_t *tl;
+
+	if (unlikely((tl = timer_list_alloc(ctx, parent)) == NULL)) return NULL;
+
+	tl->type = TIMER_LIST_TYPE_SHARED;
+
+	tl->shared.time_offset = time_offset;
+	tl->shared.node_offset = node_offset;
+	tl->shared.callback = callback;
+
+	tl->shared.rb = _fr_rb_alloc(tl, node_offset, NULL, cmp, NULL);
+	if (!tl->shared.rb) {
+		talloc_free(tl);
+		return NULL;
+	}
+
+	return tl;
+}
+
+/** Insert a uctx into a shared timer, and update the timer.
+ *
+ * @param[in] tl	Timer list to insert into.
+ * @param[in] uctx	to insert
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_timer_uctx_insert(fr_timer_list_t *tl, void *uctx)
+{
+	fr_assert(tl->type == TIMER_LIST_TYPE_SHARED);
+
+	if (!fr_rb_insert(tl->shared.rb, uctx)) return -1;
+
+	return timer_list_parent_update(tl);
+}
+
+/** Remove a uctx from a shared timer
+ *
+ * @param[in] tl	Timer list to insert into.
+ * @param[in] uctx	to remove
+ * @return
+ *	- 1 uctx was successfully removed
+ *	- 0 uctx wasn't in the list, nothing happened
+ *	- -1 uctx was removed, but the parent timer was not updated
+ */
+int fr_timer_uctx_remove(fr_timer_list_t *tl, void *uctx)
+{
+	fr_assert(tl->type == TIMER_LIST_TYPE_SHARED);
+
+	fr_rb_remove_by_inline_node(tl->shared.rb,
+				    (fr_rb_node_t *) (((uintptr_t) (uctx)) + tl->shared.node_offset));
+
+	if (timer_list_parent_update(tl) < 0) return -1;
+
+	return 1;
+}
+
+void *fr_timer_uctx_peek(fr_timer_list_t *tl)
+{
+	fr_assert(tl->type == TIMER_LIST_TYPE_SHARED);
+
+	return fr_rb_first(tl->shared.rb);
+}
+
 
 #if defined(WITH_EVENT_DEBUG) && !defined(NDEBUG)
 static const fr_time_delta_t decades[18] = {
@@ -1242,6 +1423,11 @@ void fr_timer_report(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	TALLOC_CTX		*tmp_ctx;
 	static pthread_mutex_t	print_lock = PTHREAD_MUTEX_INITIALIZER;
 
+	if (tl->type == TIMER_LIST_TYPE_SHARED) {
+		EVENT_DEBUG("Cannot (yet) do timer report for TIMER_LIST_TYPE_SHARED");
+		return;
+	}
+
 	tmp_ctx = talloc_init_const("temporary stats");
 	if (!tmp_ctx) {
 	oom:
@@ -1279,6 +1465,10 @@ void fr_timer_report(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 			if (_event_report_process(locations, array, now, ev) < 0) goto oom;
 		}
 		break;
+
+	case TIMER_LIST_TYPE_SHARED:
+		fr_assert(0);
+		return;
 	}
 
 	pthread_mutex_lock(&print_lock);
@@ -1346,6 +1536,14 @@ void fr_timer_dump(fr_timer_list_t *tl)
 		     ev = timer_next(&tl->ordered, ev)) {
 			(void)talloc_get_type_abort(ev, fr_timer_t);
 			TIMER_DUMP(ev);
+		}
+		break;
+
+	case TIMER_LIST_TYPE_SHARED:
+		EVENT_DEBUG("Dumping shared timer list");
+
+		fr_rb_inorder_foreach(tl->shared.rb, void, uctx) {
+			EVENT_DEBUG("time %" PRIu64" uctx %p", fr_time_unwrap(*TIMER_UCTX_TO_TIME(tl, uctx)));
 		}
 		break;
 	}

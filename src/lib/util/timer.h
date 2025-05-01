@@ -29,6 +29,7 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/util/time.h>
+#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/talloc.h>
 
 /*
@@ -116,6 +117,13 @@ bool			_fr_timer_armed(fr_timer_t *ev);
 /* Wrapper to avoid overhead of function call on NULL */
 #define			fr_timer_armed(_ev) ((_ev) && _fr_timer_armed(_ev))	/* returns true if the timer is armed */
 
+int			fr_timer_uctx_insert(fr_timer_list_t *tl, void *uctx) CC_HINT(nonnull);
+
+int			fr_timer_uctx_remove(fr_timer_list_t *tl, void *uctx) CC_HINT(nonnull);
+
+void			*fr_timer_uctx_peek(fr_timer_list_t *tl) CC_HINT(nonnull);
+
+
 int			fr_timer_list_force_run(fr_timer_list_t *tl) CC_HINT(nonnull);
 
 int			fr_timer_list_run(fr_timer_list_t *tl, fr_time_t *when);
@@ -133,6 +141,9 @@ void			fr_timer_list_set_time_func(fr_timer_list_t *tl, fr_event_time_source_t f
 fr_timer_list_t		*fr_timer_list_lst_alloc(TALLOC_CTX *ctx, fr_timer_list_t *parent);
 
 fr_timer_list_t		*fr_timer_list_ordered_alloc(TALLOC_CTX *ctx, fr_timer_list_t *parent);
+
+fr_timer_list_t		*fr_timer_list_shared_alloc(TALLOC_CTX *ctx, fr_timer_list_t *parent, fr_cmp_t cmp,
+						    fr_timer_cb_t callback, size_t node_offset, size_t time_offset) CC_HINT(nonnull);
 
 #ifdef WITH_EVENT_DEBUG
 void 			fr_timer_report(fr_timer_list_t *tl, fr_time_t now, void *uctx);
