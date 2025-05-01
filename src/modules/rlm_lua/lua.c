@@ -48,6 +48,8 @@ struct fr_lua_pair_s {
 	fr_lua_pair_t		*parent;
 };
 
+static void _lua_pair_init(lua_State *L, fr_pair_t *vp, fr_dict_attr_t const *da, unsigned int idx, fr_lua_pair_t *parent);
+
 DIAG_OFF(type-limits)
 /** Convert fr_pair_ts to Lua values
  *
@@ -733,6 +735,52 @@ static int fr_lua_get_field(lua_State *L, request_t *request, char const *field)
 	if (lua_isnil(L, -1)) goto does_not_exist;
 
 	return 0;
+}
+
+/** Initialise a table representing a pair
+ *
+ * After calling this function, a new table will be on the lua stack which represents the pair.
+ *
+ * The pair may not exist - e.g. when setting a new nested attribute, parent pairs may not
+ * have been created yet.  In that case, this holds the da and index of the instance which
+ * will be created when the leaf is assigned a value.
+ *
+ * @param[in] L		the lua state
+ * @param[in] vp	the actual pair instance being represented, if it already exists
+ * @param[in] da	dictionary attribute for this pair
+ * @param[in] idx	index of the attribute instance (starting at 1)
+ * @param[in] parent	lua userdata for the parent of this attribute.
+ */
+static void _lua_pair_init(lua_State *L, fr_pair_t *vp, fr_dict_attr_t const *da, unsigned int idx, fr_lua_pair_t *parent)
+{
+	fr_lua_pair_t	*pair_data;
+
+	lua_newtable(L);
+
+	/*
+	 *	The userdata associated with the meta functions
+	 *	__index and __newindex, and the .pairs() field.
+	 */
+	pair_data = lua_newuserdata(L, sizeof(fr_lua_pair_t));
+	*pair_data = (fr_lua_pair_t) {
+		.da = da,
+		.idx = idx,
+		.vp = vp,
+		.parent = parent
+	};
+	if (fr_type_is_structural(da->type)) {
+		lua_pushcclosure(L, _lua_list_iterator_init, 1);
+	} else {
+		lua_pushcclosure(L, _lua_pair_iterator_init, 1);
+	}
+	lua_setfield(L, -2, "pairs");
+
+	lua_newtable(L);	/* Metatable for index functions*/
+
+	lua_pushlightuserdata(L, pair_data);
+	lua_pushcclosure(L, _lua_pair_accessor_init, 1);
+	lua_setfield(L, -2, "__index");
+	lua_setmetatable(L, -2);
 }
 
 static void _lua_fr_request_register(lua_State *L, request_t *request)
