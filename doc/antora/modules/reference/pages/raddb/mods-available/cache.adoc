@@ -71,7 +71,7 @@ type:: Htrie backend type
 | `hash`    | Use a hash table
 | `rb`      | Use an rbtree
 | `trie`    | Use a patricia trie
-
+|===
 
 
 ### Memcached cache driver
