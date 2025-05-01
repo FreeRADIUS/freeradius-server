@@ -23,7 +23,6 @@ ifelse(
 	D_NAME, [debian11],	[p_SET([deb], [debian],	[11],	[bullseye],	[debian:bullseye])],
 	D_NAME, [debian12],	[p_SET([deb], [debian],	[12],	[bookworm],	[debian:bookworm])],
 	D_NAME, [debiansid],	[p_SET([deb], [debian],	[99],	[sid],		[debian:sid])],
-	D_NAME, [ubuntu18],	[p_SET([deb], [ubuntu],	[18],	[bionic],	[ubuntu:18.04])],
 	D_NAME, [ubuntu20],	[p_SET([deb], [ubuntu],	[20],	[focal],	[ubuntu:20.04])],
 	D_NAME, [ubuntu22],	[p_SET([deb], [ubuntu],	[22],	[jammy],	[ubuntu:22.04])],
 	D_NAME, [ubuntu24],	[p_SET([deb], [ubuntu],	[24],	[noble],	[ubuntu:24.04])],

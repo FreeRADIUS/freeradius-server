@@ -62,7 +62,6 @@ RUN ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime
 
 ifelse(ifelse(
 	D_NAME, `debian10', no,
-	D_NAME, `ubuntu18', no,
 	D_NAME, `ubuntu20', no,
 	yes), yes, `dnl
 ARG freerad_uid=101
