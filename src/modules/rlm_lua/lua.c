@@ -820,7 +820,7 @@ unlang_action_t fr_lua_run(rlm_rcode_t *p_result, module_ctx_t const *mctx, requ
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "Calling %s() in interpreter %p", funcname, L);
 
-	_lua_fr_request_register(L, request);
+	if (request) _lua_fr_request_register(L, request);
 
 	/*
 	 *	Get the function were going to be calling
