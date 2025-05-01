@@ -728,16 +728,10 @@ static void _lua_fr_request_register(lua_State *L, request_t *request)
 	lua_newtable(L);
 
 	if (request) {
-		fr_dcursor_t 	cursor;
-
-		/* Attribute list table */
-		fr_pair_dcursor_init(&cursor, &request->request_pairs);
-
 		/*
 		 *	Setup the environment
 		 */
-		lua_pushlightuserdata(L, &cursor);
-		lua_pushcclosure(L, _lua_list_iterator_init, 1);
+		lua_pushcclosure(L, _lua_list_iterator_init, 0);
 		lua_setfield(L, -2, "pairs");
 
 		lua_newtable(L);		/* Attribute list meta-table */
