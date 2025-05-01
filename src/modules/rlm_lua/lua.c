@@ -313,6 +313,27 @@ static int fr_lua_unmarshall(TALLOC_CTX *ctx, fr_value_box_t *out_vb, request_t 
 	return 0;
 }
 
+/** Build parent structural pairs needed when a leaf node is set
+ *
+ */
+static int fr_lua_pair_parent_build(request_t *request, fr_lua_pair_t *pair_data)
+{
+	if (!pair_data->parent->vp) {
+		if (fr_lua_pair_parent_build(request, pair_data->parent) < 0) return -1;
+	}
+	if (pair_data->idx > 1) {
+		unsigned int count = fr_pair_count_by_da(&pair_data->parent->vp->vp_group, pair_data->da);
+		if (count < (pair_data->idx - 1)) {
+			RERROR("Attempt to set instance %d when only %d exist", pair_data->idx, count);
+			return -1;
+		}
+	}
+
+	if (fr_pair_append_by_da(pair_data->parent->vp, &pair_data->vp,
+				 &pair_data->parent->vp->vp_group, pair_data->da) < 0) return -1;
+	return 0;
+}
+
 /** Set an instance of an attribute
  *
  * @note Should only be present in the Lua environment as a closure.
