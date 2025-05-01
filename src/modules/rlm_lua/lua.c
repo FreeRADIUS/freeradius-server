@@ -201,27 +201,23 @@ static int fr_lua_marshall(request_t *request, lua_State *L, fr_pair_t const *vp
 }
 DIAG_ON(type-limits)
 
-/** Convert Lua values to fr_pair_ts
+/** Use Lua values to populate a fr_value_box_t
  *
- * Convert Lua values back to fr_pair_ts. How the Lua value is converted is dependent
- * on the type of the DA.
+ * Convert Lua values to fr_value_box_t.  How the Lua value is converted is dependent
+ * on the type of the box.
  *
  * @param[in] ctx	To allocate new fr_pair_t in.
- * @param[out] out	Where to write a pointer to the new fr_pair_t.
- * @param[in] inst	the current instance.
+ * @param[out] out_vb	Value box to populate.
  * @param[in] request	the current request.
  * @param[in] L		Lua interpreter.
- * @param[in] da	specifying the type of attribute to create.
+ * @param[in] da	specifying the type of attribute the box represent.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int fr_lua_unmarshall(TALLOC_CTX *ctx, fr_pair_t **out,
-			     UNUSED rlm_lua_t const *inst, request_t *request, lua_State *L, fr_dict_attr_t const *da)
+static int fr_lua_unmarshall(TALLOC_CTX *ctx, fr_value_box_t *out_vb, request_t *request,
+			     lua_State *L, fr_dict_attr_t const *da)
 {
-	fr_pair_t *vp;
-
-	MEM(vp = fr_pair_afrom_da(ctx, da));
 	switch (lua_type(L, -1)) {
 	case LUA_TNUMBER:
 	{
@@ -238,7 +234,7 @@ static int fr_lua_unmarshall(TALLOC_CTX *ctx, fr_pair_t **out,
 		static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_float64) >= sizeof(double),
 			      "fr_value_box_t field smaller than return from lua_tonumber");
 
-		switch (vp->vp_type) {
+		switch (da->type) {
 		/*
 		 *	Preserve decimal precision.
 		 *
@@ -258,8 +254,8 @@ static int fr_lua_unmarshall(TALLOC_CTX *ctx, fr_pair_t **out,
 		}
 
 
-		if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, &vb) < 0) {
-			RPEDEBUG("Failed unmarshalling Lua number for \"%s\"", vp->da->name);
+		if (fr_value_box_cast(ctx, out_vb, da->type, da, &vb) < 0) {
+			RPEDEBUG("Failed unmarshalling Lua number for \"%s\"", da->name);
 			return -1;
 		}
 	}
@@ -279,8 +275,8 @@ static int fr_lua_unmarshall(TALLOC_CTX *ctx, fr_pair_t **out,
 
 		fr_value_box_bstrndup_shallow(&vb, NULL, p, len, true);
 
-		if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, &vb) < 0) {
-			RPEDEBUG("Failed unmarshalling Lua string for \"%s\"", vp->da->name);
+		if (fr_value_box_cast(ctx, out_vb, da->type, da, &vb) < 0) {
+			RPEDEBUG("Failed unmarshalling Lua string for \"%s\"", da->name);
 			return -1;
 		}
 	}
@@ -301,7 +297,7 @@ static int fr_lua_unmarshall(TALLOC_CTX *ctx, fr_pair_t **out,
 		if (!p) {
 			REDEBUG("Unmarshalling failed, user data was NULL");
 		}
-		fr_pair_value_memdup(vp, p, len, true);
+		fr_value_box_memdup(ctx, out_vb, da, p, len, true);
 	}
 		break;
 
@@ -314,7 +310,6 @@ static int fr_lua_unmarshall(TALLOC_CTX *ctx, fr_pair_t **out,
 	}
 	}
 
-	*out = vp;
 	return 0;
 }
 
