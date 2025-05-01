@@ -103,10 +103,10 @@
 **** xref:optimization/monitoring/statistics.adoc[Server Statistics]
 *** xref:tuning/performance-testing.adoc[Performance Testing]
 *** xref:optimization/tools/index.adoc[Tools]
-**** xref:optimization/tools/radclient_tool.adoc[Radclient]
-**** xref:optimization/tools/radmin_tool.adoc[Radmin]
-**** xref:optimization/tools/radsniff_tool.adoc[Radsniff]
-**** xref:optimization/tools/raduat_tool.adoc[Raduat]
+**** xref:optimization/tools/radclient.adoc[Radclient]
+**** xref:optimization/tools/radmin.adoc[Radmin]
+**** xref:optimization/tools/radsniff.adoc[Radsniff]
+**** xref:optimization/tools/raduat.adoc[Raduat]
 *** xref:tuning/tuning_guide.adoc[Tuning Guide]
 
 
