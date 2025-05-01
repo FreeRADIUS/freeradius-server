@@ -28,6 +28,7 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/build.h>
+#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/talloc.h>
 
 #include <stdint.h>
@@ -43,12 +44,6 @@ typedef struct fr_lst_s	fr_lst_t;
 typedef unsigned int fr_lst_index_t;
 
 typedef fr_lst_index_t	fr_lst_iter_t;
-
-/*
- *  Return a negative number to make a "precede" b.
- *  Return a positive number to make a "follow" b.
- */
-typedef int8_t (*fr_lst_cmp_t)(void const *a, void const *b);
 
 /** Creates an LST that can be used with non-talloced elements
  *
@@ -80,7 +75,7 @@ typedef int8_t (*fr_lst_cmp_t)(void const *a, void const *b);
 #define fr_lst_talloc_alloc(_ctx, _cmp, _talloc_type, _field, _init) \
 	_fr_lst_alloc(_ctx, _cmp, #_talloc_type, (size_t)offsetof(_talloc_type, _field), _init)
 
-fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, size_t offset, fr_lst_index_t init) CC_HINT(nonnull(2));
+fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_cmp_t cmp, char const *type, size_t offset, fr_lst_index_t init) CC_HINT(nonnull(2));
 
 /** Check if an entry is inserted into an LST.
  *

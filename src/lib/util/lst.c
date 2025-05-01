@@ -66,7 +66,7 @@ struct fr_lst_s {
 	pivot_stack_t	s;		//!< Stack of pivots, always with depth >= 1.
 	fr_fast_rand_t	rand_ctx;	//!< Seed for random choices.
 	char const	*type;		//!< Type of elements.
-	fr_lst_cmp_t	cmp;		//!< Comparator function.
+	fr_cmp_t	cmp;		//!< Comparator function.
 };
 
 static inline fr_lst_index_t stack_item(pivot_stack_t const *s, stack_index_t idx) CC_HINT(always_inline, nonnull);
@@ -219,7 +219,7 @@ void stack_set(pivot_stack_t *s, stack_index_t idx, fr_lst_index_t new_value)
 	s->data[idx] = new_value;
 }
 
-fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, size_t offset, fr_lst_index_t init)
+fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_cmp_t cmp, char const *type, size_t offset, fr_lst_index_t init)
 {
 	fr_lst_t	*lst;
 	pivot_stack_t	*s;
