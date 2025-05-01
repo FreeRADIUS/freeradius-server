@@ -790,23 +790,21 @@ static void _lua_fr_request_register(lua_State *L, request_t *request)
 	luaL_checktype(L, -1, LUA_TTABLE);
 
 	/* fr = { request {} } */
-	lua_newtable(L);
+	lua_pushstring(L, "request");
+	_lua_pair_init(L, fr_pair_list_parent(&request->request_pairs), fr_dict_root(request->proto_dict), 1, NULL);
+	lua_rawset(L, -3);
 
-	if (request) {
-		/*
-		 *	Setup the environment
-		 */
-		lua_pushcclosure(L, _lua_list_iterator_init, 0);
-		lua_setfield(L, -2, "pairs");
+	lua_pushstring(L, "reply");
+	_lua_pair_init(L, fr_pair_list_parent(&request->reply_pairs), fr_dict_root(request->proto_dict), 1, NULL);
+	lua_rawset(L, -3);
 
-		lua_newtable(L);		/* Attribute list meta-table */
-		lua_pushinteger(L, request_attr_request->attr);
-		lua_pushcclosure(L, _lua_pair_accessor_init, 1);
-		lua_setfield(L, -2, "__index");
-		lua_setmetatable(L, -2);
-	}
+	lua_pushstring(L, "control");
+	_lua_pair_init(L, fr_pair_list_parent(&request->control_pairs), fr_dict_root(request->proto_dict), 1, NULL);
+	lua_rawset(L, -3);
 
-	lua_setfield(L, -2, "request");
+	lua_pushstring(L, "session-state");
+	_lua_pair_init(L, fr_pair_list_parent(&request->session_state_pairs), fr_dict_root(request->proto_dict), 1, NULL);
+	lua_rawset(L, -3);
 }
 
 unlang_action_t fr_lua_run(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, char const *funcname)
