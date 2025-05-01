@@ -15,7 +15,7 @@ There are a few things that the administrator should watch out for though:
 
 == Recover SQL IP Pools
 
-IP pool exhaustion occurs when all the IP addresses within a given pool are assigned. New devices or sessions can't complete the authentication process without an IP address. The risk of pool exhaustion increases if there is a 'bulk disconnect of sessions' event. The xref:modules/sqlippool/indes.adoc#accounting-stop[Accounting Stop] or xref:modules/sqlippool/indes.adoc#accounting-stop[Accounting On/Off] (in the case of a NAS reboot) requests aren't received on the FreeRADIUS server. The actively leased IP addresses become orphaned and don't get returned to the IP pool.
+IP pool exhaustion occurs when all the IP addresses within a given pool are assigned. New devices or sessions can't complete the authentication process without an IP address. The risk of pool exhaustion increases if there is a 'bulk disconnect of sessions' event. The xref:howto:modules/sqlippool/index.adoc#accounting-stop[Accounting Stop] or xref:howto:modules/sqlippool/index.adoc#accounting-stop[Accounting On/Off] (in the case of a NAS reboot) requests aren't received on the FreeRADIUS server. The actively leased IP addresses become orphaned and don't get returned to the IP pool.
 
 To prevent the pool from becoming exhausted, consider one of the following options:
 
