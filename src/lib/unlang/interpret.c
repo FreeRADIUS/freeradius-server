@@ -735,37 +735,22 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 	if (!running) intp->funcs.resume(request, intp->uctx);
 
 	for (;;) {
+		fr_assert(stack->depth > 0);
+		fr_assert(stack->depth < UNLANG_STACK_MAX);
+
 		RDEBUG4("** [%i] %s - frame action %s", stack->depth, __FUNCTION__,
 			fr_table_str_by_value(unlang_frame_action_table, fa, "<INVALID>"));
 		switch (fa) {
 		case UNLANG_FRAME_ACTION_NEXT:	/* Evaluate the current frame */
-			fr_assert(stack->depth > 0);
-			fr_assert(stack->depth < UNLANG_STACK_MAX);
-
 			frame = &stack->frame[stack->depth];
 			fa = frame_eval(request, frame, &stack->result, &stack->priority);
 
 			if (fa != UNLANG_FRAME_ACTION_POP) continue;
-
-			/*
-			 *	We were executing a frame, frame_eval()
-			 *	indicated we should pop it, but we're now at
-			 *	a top_frame, so we need to break out of the loop
-			 *	and calculate the final result for this substack.
-			 *
-			 *	Note that we only stop on a top frame.
-			 *	If there's a return point such as in a
-			 *	policy, then the "return" causes a
-			 *	"pop" until the return point.  BUT we
-			 *	then continue execution with the next
-			 *	instruction.  And we don't return all
-			 *	of the way up the stack.
-			 */
-			if (is_top_frame(frame)) break;
-
 			continue;
 
 		case UNLANG_FRAME_ACTION_POP:		/* Pop this frame and check the one beneath it */
+		{
+			bool top_frame = is_top_frame(frame);
 			/*
 			 *	The result / priority is returned from the sub-section,
 			 *	and made into our current result / priority, as
@@ -782,7 +767,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 			/*
 			 *	Transition back to the C stack
 			 */
-			if (is_top_frame(frame)) break;	/* stop */
+			if (top_frame) break;	/* stop */
 
 			frame = &stack->frame[stack->depth];
 			DUMP_STACK;
@@ -842,6 +827,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 					frame->priority);
 			}
 			continue;
+		}
 
 		case UNLANG_FRAME_ACTION_YIELD:
 			/* Cannot yield from a nested call to unlang_interpret */
@@ -857,6 +843,8 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 		}
 		break;
 	}
+
+	fr_assert(stack->depth >= 0);
 
 	/*
 	 *	Nothing in this section, use the top frame stack->result.
@@ -887,7 +875,6 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 
 	stack->result = frame->result;
 
-	stack->depth--;
 	DUMP_STACK;
 
 	/*
