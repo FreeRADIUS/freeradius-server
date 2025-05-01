@@ -17,12 +17,14 @@ cannot be an attribute expansion, or an `xlat`
 xref:xlat/index.adoc[string].
 
 The keyword `default` can be used to specify the default action to
-take inside of a xref:unlang/switch.adoc[switch] statement.
+take inside of a xref:unlang/switch.adoc[switch] statement.  The older
+syntax of using `case { ... }` is deprecated, and will be removed un a
+future release.
 
-If no _<match>_ text is given, it means that the `case` statement is
-the "default" and will match all which is not matched by another
-`case` statement inside of the same xref:unlang/switch.adoc[switch].
-This syntax is deprecated, and will be removed in a future release.
+It is possible to xref:unlang/break.adoc[break] out of `case`
+statement.  Any xref:unlang/break.adoc[break] in a `case` statement
+will cause the interpreter to exit both the current `case` statement,
+and also the parent xref:unlang/switch.adoc[switch] statement.
 
 .Example
 [source,unlang]

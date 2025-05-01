@@ -147,6 +147,6 @@ void unlang_switch_init(void)
 			   &(unlang_op_t){
 				.name = "case",
 				.interpret = unlang_case,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_BREAK_POINT
 			   });
 }

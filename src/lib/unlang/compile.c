@@ -3426,7 +3426,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
-	unlang_t *foreach;
+	unlang_t *unlang;
 
 	static unlang_ext_t const break_ext = {
 		.type = UNLANG_TYPE_BREAK,
@@ -3434,21 +3434,18 @@ static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 		.type_name = "unlang_group_t",
 	};
 
-	for (foreach = parent; foreach != NULL; foreach = foreach->parent) {
+	for (unlang = parent; unlang != NULL; unlang = unlang->parent) {
 		/*
-		 *	A "break" inside of a "policy" is an error.
-		 *	We CANNOT allow "break" inside of a policy to
-		 *	affect a "foreach" loop outside of that
-		 *	policy.
+		 *	"break" doesn't go past a return point.
 		 */
-		if (foreach->type == UNLANG_TYPE_POLICY) goto error;
+		if ((unlang_ops[unlang->type].flag & UNLANG_OP_FLAG_RETURN_POINT) != 0) goto error;
 
-		if (foreach->type == UNLANG_TYPE_FOREACH) break;
+		if ((unlang_ops[unlang->type].flag & UNLANG_OP_FLAG_BREAK_POINT) != 0) break;
 	}
 
-	if (!foreach) {
+	if (!unlang) {
 	error:
-		cf_log_err(ci, "'break' can only be used in a 'foreach' section");
+		cf_log_err(ci, "Invalid location for 'break' - it can only be used inside 'foreach' or 'switch'");
 		cf_log_err(ci, DOC_KEYWORD_REF(break));
 		return NULL;
 	}

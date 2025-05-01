@@ -57,7 +57,7 @@ typedef enum {
 	UNLANG_TYPE_SWITCH,			//!< Switch section.
 	UNLANG_TYPE_CASE,			//!< Case section (within a #UNLANG_TYPE_SWITCH).
 	UNLANG_TYPE_FOREACH,			//!< Foreach section.
-	UNLANG_TYPE_BREAK,			//!< Break statement (within a #UNLANG_TYPE_FOREACH).
+	UNLANG_TYPE_BREAK,			//!< Break statement (within a #UNLANG_TYPE_FOREACH or #UNLANG_TYPE_CASE).
 	UNLANG_TYPE_RETURN,			//!< Return statement.
 	UNLANG_TYPE_MAP,			//!< Mapping section (like #UNLANG_TYPE_UPDATE, but uses
 						//!< values from a #map_proc_t call).
