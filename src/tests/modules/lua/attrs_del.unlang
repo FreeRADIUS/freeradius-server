@@ -1,0 +1,48 @@
+lua_attrs_del.del_from_root
+if (!updated) {
+	test_fail
+}
+if (User-Name) {
+	test_fail
+}
+
+lua_attrs_del.del_nested
+if (!updated) {
+	test_fail
+}
+if (Vendor-Specific.Cisco.AVPair[#] != 1) {
+	test_fail
+}
+if (Vendor-Specific.Cisco.AVPair != 'is=crazy') {
+	test_fail
+}
+
+lua_attrs_del.del_missing
+if (!noop) {
+	test_fail
+}
+if (NAS-Identifier) {
+	test_fail
+}
+
+lua_attrs_del.del_invalid {
+	fail = 1
+}
+if (!fail) {
+	test_fail
+}
+if (!User-Password) {
+	test_fail
+}
+
+lua_attrs_del.del_invalid_nested {
+	fail = 1
+}
+if (!fail) {
+	test_fail
+}
+if (!Vendor-Specific.Cisco) {
+	test_fail
+}
+
+test_pass
