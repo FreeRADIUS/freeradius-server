@@ -12,39 +12,34 @@ local function tprint (tbl, indent)
   end
 end
 
-function preacct()
-  print("example.lua/preacct()")
-  return fr.ok
+function recv_accounting_request()
+  print("example.lua/recv_accounting_request()")
+  return fr.rcode.ok
 end
 
 function accounting()
   print("example.lua/accounting()")
-  return fr.ok
+  return fr.rcode.ok
 end
 
-function post_auth()
-  print("example.lua/post_auth()")
-  return fr.ok
+function send()
+  print("example.lua/send()")
+  return fr.rcode.ok
 end
 
 function instantiate()
   print("example.lua/instantiate()")
-  return fr.ok
+  return fr.rcode.ok
 end
 
 function detach()
   print("example.lua/detach()")
-  return fr.ok
+  return fr.rcode.ok
 end
 
-function xlat()
-  print("example.lua/xlat()")
-  return fr.ok
-end
-
-function authenticate()
-  print("example.lua/authenticate()")
-  return fr.ok
+function recv_access_request()
+  print("example.lua/recv_access_request()")
+  return fr.rcode.ok
 end
 
 function authorize()
@@ -52,18 +47,14 @@ function authorize()
   -- example invocations --
   -------------------------
 
-  --tprint(get_attribute("user-name"))
-  --tprint(get_attribute("user-password"))
-  --tprint(get_attribute("tunnel-type", "2"))
-  --print(request['user-name'][0])
-  --print(request['user-name'].next_iter())
-  --print(request['user-name'].next_iter())
-  --tprint(request['user-name'])
-  --tprint(request['user-name'])
+  --print(fr.request['User-Name'][1])
+  --tprint(fr.request['User-Name'])
+  --fr.control['Password']['Cleartext'][1] = 'topsecret'
+  --fr.reply['Framed-IP-Address'][1] = '192.168.1.20'
 
   print("example.lua/authorize()")
   print("Request list contents:")
   tprint(fr.request, 2)
 
-  return fr.ok
+  return fr.rcode.ok
 end
