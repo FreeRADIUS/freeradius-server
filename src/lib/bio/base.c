@@ -143,8 +143,6 @@ int fr_bio_shutdown(fr_bio_t *bio)
 	fr_bio_t *this, *first;
 	fr_bio_common_t *my;
 
-	fr_assert(!fr_bio_prev(bio));
-
 	/*
 	 *	Find the first bio in the chain.
 	 */
