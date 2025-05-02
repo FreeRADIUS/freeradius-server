@@ -385,7 +385,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 			if (!inst->bootstrap && (errno == ENOENT)) {
 				WARN("Perhaps use the sqlite driver 'bootstrap' option to create the database file?");
 			}
-		
+
 			fr_strerror_printf("Cannot open \"%s\" in read/write mode - %s",
 					   inst->filename, fr_syserror(errno));
 		} else {
@@ -648,6 +648,9 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 	}
 
 	trunk_request_signal_reapable(treq);
+
+	/* If the query went into a backlog, the request will have yielded - so mark runnable just in case */
+	if (request) unlang_interpret_mark_runnable(request);
 }
 
 SQL_QUERY_RESUME
