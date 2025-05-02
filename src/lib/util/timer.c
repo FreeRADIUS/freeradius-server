@@ -55,6 +55,7 @@ struct fr_timer_list_s {
 		timer_head_t		ordered;		//!< A list of timer events to be executed.
 		struct {
 			fr_rb_tree_t   		*rb;		//!< a tree of raw pointers
+			fr_rb_tree_t   		*deferred;     	//!< a tree of deferred things
 			size_t			time_offset;   	//!< offset from uctx to the fr_time_t it contains
 			size_t			node_offset;   	//!< offset from uctx to the fr_rb_node it contains
 			fr_timer_cb_t		callback;	//!< the callback to run
@@ -200,6 +201,7 @@ static fr_timer_t *timer_list_ordered_head(fr_timer_list_t *tl);
 
 static int timer_list_lst_deferred(fr_timer_list_t *tl);
 static int timer_list_ordered_deferred(fr_timer_list_t *tl);
+static int timer_list_shared_deferred(fr_timer_list_t *tl);
 
 static uint64_t timer_list_lst_num_events(fr_timer_list_t *tl);
 static uint64_t timer_list_ordered_num_events(fr_timer_list_t *tl);
@@ -233,7 +235,7 @@ static timer_list_funcs_t const timer_funcs[] = {
 
 		.run = timer_list_shared_run,
 //		.head = timer_list_shared_head,
-//		.deferred = timer_list_shared_deferred,
+		.deferred = timer_list_shared_deferred,
 		.num_events = timer_list_shared_num_events
 	},
 };
@@ -938,7 +940,7 @@ int fr_timer_list_run(fr_timer_list_t *tl, fr_time_t *when)
 	 *
 	 *	The events don't need to be modified as they
 	 *	were initialised completely before being
-	 *	placed in the deffered list.
+	 *	placed in the deferred list.
 	 */
 	if (timer_num_elements(&tl->deferred) > 0) {
 		if (unlikely(timer_funcs[tl->type].deferred(tl) < 0)) return -1;
@@ -955,7 +957,7 @@ int fr_timer_list_run(fr_timer_list_t *tl, fr_time_t *when)
 	return ret;
 }
 
-/** Return the head of the event list
+/** Return the head of the lst
  *
  * @param[in] tl	to get the head of.
  * @return
@@ -979,7 +981,8 @@ static fr_timer_t *timer_list_ordered_head(fr_timer_list_t *tl)
 	return timer_head(&tl->ordered);
 }
 
-/** Insert a timer event into a the lst
+
+/** Move all deferred events into the lst
  *
  * @param[in] tl	to move events in.
  * @return
@@ -1039,6 +1042,28 @@ static int timer_list_ordered_deferred(fr_timer_list_t *tl)
 
 	return 0;
 }
+
+/** Move all deferred events into the shared list
+ *
+ * @param[in] tl	to move events in.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int timer_list_shared_deferred(fr_timer_list_t *tl)
+{
+	void *uctx;
+
+	while((uctx = fr_rb_first(tl->shared.deferred)) != NULL) {
+		fr_rb_remove_by_inline_node(tl->shared.deferred,
+					    (fr_rb_node_t *) (((uintptr_t) (uctx)) + tl->shared.node_offset));
+
+		fr_rb_insert(tl->shared.deferred, uctx);
+	}
+
+	return 0;
+}
+
 
 static uint64_t timer_list_lst_num_events(fr_timer_list_t *tl)
 {
@@ -1184,15 +1209,10 @@ static int _timer_list_free(fr_timer_list_t *tl)
 
 	if (tl->parent_ev) if (unlikely(fr_timer_delete(&tl->parent_ev) < 0)) return -1;
 
-	switch (tl->type) {
-	default:
-		while ((ev = timer_funcs[tl->type].head(tl))) {
-			if (talloc_free(ev) < 0) return -1;
-		}
-		break;
+	if (tl->type == TIMER_LIST_TYPE_SHARED) return 0;
 
-	case TIMER_LIST_TYPE_SHARED: /* the caller owns the memory for uctx */
-		break;
+	while ((ev = timer_funcs[tl->type].head(tl))) {
+		if (talloc_free(ev) < 0) return -1;
 	}
 
 	return 0;
@@ -1201,6 +1221,8 @@ static int _timer_list_free(fr_timer_list_t *tl)
 static fr_timer_list_t *timer_list_alloc(TALLOC_CTX *ctx, fr_timer_list_t *parent)
 {
 	fr_timer_list_t *tl;
+
+	fr_assert(!parent || (parent->type != TIMER_LIST_TYPE_SHARED));
 
 	tl = talloc_zero(ctx, fr_timer_list_t);
 	if (unlikely(tl == NULL)) {
@@ -1291,6 +1313,12 @@ fr_timer_list_t *fr_timer_list_shared_alloc(TALLOC_CTX *ctx, fr_timer_list_t *pa
 		return NULL;
 	}
 
+	tl->shared.deferred = _fr_rb_alloc(tl, node_offset, NULL, cmp, NULL);
+	if (!tl->shared.deferred) {
+		talloc_free(tl);
+		return NULL;
+	}
+
 	return tl;
 }
 
@@ -1306,6 +1334,12 @@ int fr_timer_uctx_insert(fr_timer_list_t *tl, void *uctx)
 {
 	fr_assert(tl->type == TIMER_LIST_TYPE_SHARED);
 
+	if (tl->in_handler) {
+		if (!fr_rb_insert(tl->shared.deferred, uctx)) return -1;
+
+		return 0;
+	}
+
 	if (!fr_rb_insert(tl->shared.rb, uctx)) return -1;
 
 	return timer_list_parent_update(tl);
@@ -1316,8 +1350,7 @@ int fr_timer_uctx_insert(fr_timer_list_t *tl, void *uctx)
  * @param[in] tl	Timer list to insert into.
  * @param[in] uctx	to remove
  * @return
- *	- 1 uctx was successfully removed
- *	- 0 uctx wasn't in the list, nothing happened
+ *	- 0 uctx was successfully removed.
  *	- -1 uctx was removed, but the parent timer was not updated
  */
 int fr_timer_uctx_remove(fr_timer_list_t *tl, void *uctx)
@@ -1327,9 +1360,7 @@ int fr_timer_uctx_remove(fr_timer_list_t *tl, void *uctx)
 	fr_rb_remove_by_inline_node(tl->shared.rb,
 				    (fr_rb_node_t *) (((uintptr_t) (uctx)) + tl->shared.node_offset));
 
-	if (timer_list_parent_update(tl) < 0) return -1;
-
-	return 1;
+	return timer_list_parent_update(tl);
 }
 
 void *fr_timer_uctx_peek(fr_timer_list_t *tl)
