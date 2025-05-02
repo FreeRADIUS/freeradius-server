@@ -2047,12 +2047,10 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void request_replicate_mux(UNUSED fr_event_list_t *el,
-			trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
+				  trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
 {
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 	trunk_request_t		*treq;
-	request_t		*request;
-	bio_request_t		*u;
 
 	if (unlikely(trunk_connection_pop_request(&treq, tconn) < 0)) return;
 
@@ -2061,16 +2059,7 @@ static void request_replicate_mux(UNUSED fr_event_list_t *el,
 	 */
 	if (!treq) return;
 
-	request = treq->request;
-
-	mod_write(request, treq, h);
-
-	/*
-	 *	We don't care about the reply, so the request is immediately finished.
-	 */
-	u = treq->preq;
-	u->rcode = RLM_MODULE_OK;
-	trunk_request_signal_complete(treq);
+	mod_write(treq->request, treq, h);
 }
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
@@ -2567,6 +2556,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 					    &inst->trunk_conf, inst->name, thread, false);
 		if (!thread->ctx.trunk) return -1;
 		return 0;
+
 	case RLM_RADIUS_MODE_REPLICATE:
 		/*
 		 *	We can replicate over TCP, but that uses trunks.
