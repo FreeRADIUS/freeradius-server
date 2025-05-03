@@ -200,7 +200,7 @@ void request_stats_final(REQUEST *request)
 		stats_time(&request->client->auth, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
-		stats_time(&listener->stats, request,
+		if (listener) stats_time(&listener->stats, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
 		break;
@@ -222,7 +222,7 @@ void request_stats_final(REQUEST *request)
 		stats_time(&request->client->acct, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
-		stats_time(&listener->stats, request,
+		if (listener) stats_time(&listener->stats, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
 		break;
@@ -236,7 +236,7 @@ void request_stats_final(REQUEST *request)
 		stats_time(&request->client->coa, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
-		stats_time(&listener->stats, request,
+		if (listener) stats_time(&listener->stats, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
 		break;
@@ -252,7 +252,7 @@ void request_stats_final(REQUEST *request)
 		stats_time(&request->client->dsc, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
-		stats_time(&listener->stats, request,
+		if (listener) stats_time(&listener->stats, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
 		break;
