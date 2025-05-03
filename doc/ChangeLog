@@ -19,13 +19,16 @@ FreeRADIUS 3.2.8 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	  some NASes will panic and go crazy with a 1s reject_delay.
 	* Rate limit complaints when limiting new connections.
 	* Update raddb/certs/Makefile to support DER output.
+	* Elapsed statistics for packets do not include proxy timers,
+	  which helps clarify where any issues are.
+	* Added kafka module.  See mods-available/kafka.
 
 	Bug fixes
 	* Move assertion in thread / queue code, which only affects
 	  debug builds.  Fixes #5512.
 	* Update CRL checks to avoid crash in some cases.  Fixes #5515
 	* More tweaks to the TEAP code.
-	* Allow building when OpenSSL is missing PSK.  Fixes $5520
+	* Allow building when OpenSSL is missing PSK.  Fixes #5520
 	* Move assertion so that it isn't triggered when the incoming
 	  queue is full, and the server is blocked.  Fixes #5512
 	* Fix crash when multiple certs are used along with
@@ -36,6 +39,12 @@ FreeRADIUS 3.2.8 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	* Fixes to interaction with python interpreter
 	* Don't crash when setting client hostname in RADIUS/TLS.
 	  Fixes #5552
+	* Ignore ".dpkg*" and ".rpm*" files when loading configuration
+	  directories.  Package managers can leave these around.
+	* Complain more loudly if all of the "authorize" etc. sections
+	  have been removed, but the server is still configured to
+	  process Access-Request packets.
+	*  Use OCIStmtPrepare2 to prepare Oracle queries. Fixes #5540
 
 FreeRADIUS 3.2.7 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	Configuration changes
