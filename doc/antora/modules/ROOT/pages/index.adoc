@@ -42,6 +42,61 @@ task-based results as follows:
 * xref:tutorials:new_user.adoc[Tutorials] explain real-world configurations through setups, debugging, and exercises.
 * xref:developers:index.adoc[Developers] outlines coding standards, raising defects, and using GitHub.
 
+== Why v4?
+
+It's obvious why a new major release is a good idea.  Perhaps a better question is "Why is v4 taking so long?"
+
+The original intention was to do a 3.1 release.  However, as we dug
+into the code, we realized that there were a large number of
+long-standing issues that we would like to solve.  As the core
+FreeRADIUS team is very small, this rework has taken a lot of time.
+
+The good news is that we have fixed pretty much all of the "weird"
+things which confused people in v3.  Here is a short list of the top
+things are confusing or weird in v3:
+
+* Access-Request packets were processed though an `authorize` section.  This naming goes back to 2001.
+* Run-time functions (dynamic expansions) had a syntax of `%{name: args...}`.  The reasons for this are many, but are no longer valid.
+* attributes cannot be assigned new values like normal programming languatges.  You have to use an `update` section.
+* Expressions are not supported.  You can't do `foo = 1 + 2`.  You have to do `update { foo = %{expr: 1 + 2} }`.  This is pretty terrible.
+* Proxying is welded into the server core, which makes it difficult to run policies around proxying.
+  * There is a `fallback` configuration, but this is specific to proxying, and doesn't use the normal module failover mechanisms
+  * It is impossible to send packets as a client, packets can only be proxied.  Except for `CoA-Request`, which has a magic `originate-coa` functionality.
+* Much of the configuration has special-purpose flags or settings for special cases.
+
+The result is that configuring the server is more difficult than it needs to be.  Those issues needed to be fixed.
+
+Here is a _complete_ list of oddities and weirdness in v4, as compared to most programming languages:
+
+* modules are run in-place.  i.e. they act like language keywords on their own.
+* the interpreter tracks xref:unlang/return_codes.adoc[return codes] for each instruction it runs.
+* function calls use a leading `%`, e.g. `%length('foo')`.
+
+That's it.
+
+The result is that the server is much easier to understand and
+configure.  But we're not done explaining the benefits of v4.
+
+While the documentation in v3 was pretty good, the documentation in v4
+is _complete_.  Every single xref:unlang/keywords.adoc[keyword] has
+its own documentation page.  Every single xref:xlat/index.adoc[dynamic
+expansion] function has its own documentation page.  Every single
+xref:raddb/index.adoc[configuration file] is _automatically_ converted
+to HTML and placed into the documentation tree.
+
+Plus, all of the documentation is organized and cross referenced.
+This means that it is easy to find documentation for anything that the
+server does, and the documentation explains exactly how that thing
+works.
+
+The documentation isn't perfect, of course.  We are still working on
+the xref:howto:index.adoc[How-To] documentation.  Some of those pages
+still contain documentation for v3, but they are being actively worked
+on.
+
+We hope that this discussion explains why v4 took so long.  We believe
+that the result is worth the wait.
+
 == What's new in FreeRADIUS v4
 
 FreeRADIUS v4 is in "alpha" right now.  If FreeRADIUS v4 works,
