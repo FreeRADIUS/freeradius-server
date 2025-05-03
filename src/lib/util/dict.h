@@ -21,6 +21,7 @@
  *
  * @copyright 2015 The FreeRADIUS server project
  */
+#include "lib/util/hash.h"
 RCSIDH(dict_h, "$Id$")
 
 #ifdef __cplusplus
@@ -817,11 +818,17 @@ fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr
 
 fr_dict_attr_t const	*fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
 
-fr_dict_enum_value_t		*fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value);
+typedef fr_hash_iter_t fr_dict_enum_iter_t;	/* Alias this in case we want to change it in future */
+
+fr_dict_enum_value_t const *fr_dict_enum_iter_init(fr_dict_attr_t const *da, fr_dict_enum_iter_t *iter);
+
+fr_dict_enum_value_t const *fr_dict_enum_iter_next(fr_dict_attr_t const *da, fr_dict_enum_iter_t *iter);
+
+fr_dict_enum_value_t const *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value);
 
 char const		*fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value);
 
-fr_dict_enum_value_t		*fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name, ssize_t len);
+fr_dict_enum_value_t const *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name, ssize_t len);
 
 fr_slen_t		fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t const *da, fr_sbuff_t *in);
 

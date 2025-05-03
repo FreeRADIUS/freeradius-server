@@ -1284,7 +1284,7 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 
 	while ((subcs = cf_section_find_next(server_cs, subcs, subcs_name, CF_IDENT_ANY))) {
 		char const	*name2;
-		fr_dict_enum_value_t	*dv;
+		fr_dict_enum_value_t const	*dv;
 
 		name2 = cf_section_name2(subcs);
 		if (!name2) {
@@ -1354,7 +1354,7 @@ static int define_server_values(CONF_SECTION *cs, fr_dict_attr_t *parent)
 		ssize_t slen, len;
 		char const *attr, *value;
 		CONF_PAIR *cp;
-		fr_dict_enum_value_t *dv;
+		fr_dict_enum_value_t const *dv;
 		fr_value_box_t box;
 
 		if (cf_item_is_section(ci)) {

@@ -99,9 +99,9 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 	switch (json_object_get_type(object)) {
 	case json_type_string:
 	{
-		char const	*value;
-		size_t		len;
-		fr_dict_enum_value_t	*found;
+		char const			*value;
+		size_t				len;
+		fr_dict_enum_value_t const	*found;
 
 		value = json_object_get_string(object);
 		len = json_object_get_string_len(object);
@@ -198,7 +198,7 @@ json_object *json_object_from_value_box(fr_value_box_t const *data)
 	 *	should be converted to string types.
 	 */
 	if (data->enumv) {
-		fr_dict_enum_value_t *enumv;
+		fr_dict_enum_value_t const *enumv;
 
 		enumv = fr_dict_enum_by_value(data->enumv, data);
 		if (enumv) return json_object_new_string(enumv->name);

@@ -196,13 +196,13 @@ static unlang_action_t mod_accounting_all(rlm_rcode_t *p_result, rlm_rediswho_t 
 
 static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rediswho_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rediswho_t);
-	CONF_SECTION		*conf = mctx->mi->conf;
-	rlm_rcode_t		rcode;
-	fr_pair_t		*vp;
-	fr_dict_enum_value_t	*dv;
-	CONF_SECTION		*cs;
-	char const		*insert, *trim, *expire;
+	rlm_rediswho_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rediswho_t);
+	CONF_SECTION			*conf = mctx->mi->conf;
+	rlm_rcode_t			rcode;
+	fr_pair_t			*vp;
+	fr_dict_enum_value_t const	*dv;
+	CONF_SECTION			*cs;
+	char const			*insert, *trim, *expire;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_acct_status_type);
 	if (!vp) {

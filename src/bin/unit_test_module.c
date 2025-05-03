@@ -357,7 +357,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 
 static void print_packet(FILE *fp, fr_packet_t *packet, fr_pair_list_t *list)
 {
-	fr_dict_enum_value_t *dv;
+	fr_dict_enum_value_t const *dv;
 	fr_log_t log;
 
 	(void) fr_log_init_fp(&log, fp);

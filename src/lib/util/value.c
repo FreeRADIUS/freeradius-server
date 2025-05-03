@@ -4906,8 +4906,8 @@ ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 *	Lookup any names before continuing
 	 */
 	if (dst_enumv && dst_enumv->flags.has_value) {
-		size_t			name_len;
-		fr_dict_enum_value_t	*enumv;
+		size_t				name_len;
+		fr_dict_enum_value_t const	*enumv;
 
 		/*
 		 *	@todo - allow enum names for IPv6 addresses and prefixes.  See also

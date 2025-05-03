@@ -39,29 +39,29 @@ extern HIDDEN fr_dict_attr_t const *attr_smb_account_ctrl;
 extern HIDDEN fr_dict_attr_t const *attr_smb_account_ctrl_text;
 
 typedef struct {
-	fr_dict_enum_value_t	*auth_type;
+	fr_dict_enum_value_t const	*auth_type;
 
-	bool			normify;
+	bool				normify;
 
-	bool			use_mppe;
-	bool			require_encryption;
-	bool			require_strong;
-	bool			with_ntdomain_hack;	/* this should be in another module */
+	bool				use_mppe;
+	bool				require_encryption;
+	bool				require_strong;
+	bool				with_ntdomain_hack;	/* this should be in another module */
 
-	char const		*ntlm_auth;
-	fr_time_delta_t		ntlm_auth_timeout;
-	char const		*ntlm_cpw;
+	char const			*ntlm_auth;
+	fr_time_delta_t			ntlm_auth_timeout;
+	char const			*ntlm_cpw;
 
-	bool			allow_retry;
-	char const		*retry_msg;
-	MSCHAP_AUTH_METHOD	method;
-	char const		*wb_username;
+	bool				allow_retry;
+	char const			*retry_msg;
+	MSCHAP_AUTH_METHOD		method;
+	char const			*wb_username;
 #ifdef WITH_AUTH_WINBIND
-	bool			wb_retry_with_normalised_username;
-	fr_slab_config_t	reuse;
+	bool				wb_retry_with_normalised_username;
+	fr_slab_config_t		reuse;
 #endif
 #ifdef __APPLE__
-	bool			open_directory;
+	bool				open_directory;
 #endif
 } rlm_mschap_t;
 

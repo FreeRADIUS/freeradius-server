@@ -46,7 +46,7 @@ USES_APPLE_DEPRECATED_API
 #include <membership.h>
 
 typedef struct {
-	fr_dict_enum_value_t		*auth_type;
+	fr_dict_enum_value_t const	*auth_type;
 } rlm_opendirectory_t;
 
 #ifndef HAVE_DECL_MBR_CHECK_SERVICE_MEMBERSHIP

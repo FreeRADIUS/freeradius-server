@@ -3107,7 +3107,7 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 	 *	If there's a valid enum name, then we use it.  Otherwise we leave name resolution to run time.
 	 */
 	if (t_rules->enumv) {
-		fr_dict_enum_value_t *dv;
+		fr_dict_enum_value_t const *dv;
 
 		dv = fr_dict_enum_by_name(t_rules->enumv, str, -1);
 		if (dv) {

@@ -71,8 +71,8 @@ static pthread_mutex_t fr_crypt_mutex = PTHREAD_MUTEX_INITIALIZER;
  *      be used as the instance handle.
  */
 typedef struct {
-	fr_dict_enum_value_t	*auth_type;
-	bool			normify;
+	fr_dict_enum_value_t const	*auth_type;
+	bool				normify;
 } rlm_pap_t;
 
 typedef unlang_action_t (*pap_auth_func_t)(rlm_rcode_t *p_result, rlm_pap_t const *inst, request_t *request, fr_pair_t const *, fr_value_box_t const *);

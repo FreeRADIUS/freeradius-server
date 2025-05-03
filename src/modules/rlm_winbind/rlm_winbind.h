@@ -4,16 +4,17 @@
 #include "config.h"
 #include <wbclient.h>
 #include <freeradius-devel/util/slab.h>
+#include <freeradius-devel/util/dict.h>
 
 /*
  *      Structure for the module configuration.
  */
 typedef struct {
-	fr_dict_enum_value_t	*auth_type;
+	fr_dict_enum_value_t const	*auth_type;
 
 	/* group config */
-	bool			group_add_domain;
-	fr_slab_config_t	reuse;
+	bool				group_add_domain;
+	fr_slab_config_t		reuse;
 } rlm_winbind_t;
 
 typedef struct {

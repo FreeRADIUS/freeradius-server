@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/call_env.h>
 
 typedef struct {
-	fr_dict_enum_value_t		*auth_type;
+	fr_dict_enum_value_t const	*auth_type;
 	size_t				min_challenge_len;
 } rlm_chap_t;
 

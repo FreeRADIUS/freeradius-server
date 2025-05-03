@@ -66,7 +66,7 @@ typedef struct {
 
 	rlm_eap_require_realm_t		require_realm;			//!< Whether we require the outer identity
 									///< to contain a realm.
-	fr_dict_enum_value_t		*auth_type;
+	fr_dict_enum_value_t const	*auth_type;
 
 	fr_randctx			rand_pool;			//!< Pool of random data.
 } rlm_eap_t;

@@ -21,6 +21,7 @@
  * @copyright 2000,2006 The FreeRADIUS server project
  * @copyright 2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
+#include "lib/util/hash.h"
 RCSID("$Id$")
 
 #define _DICT_PRIVATE 1
@@ -1871,7 +1872,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 		memcpy(&tmp, &enumv, sizeof(tmp));
 
 		if (!fr_hash_table_insert(ext->value_by_name, tmp)) {
-			fr_dict_enum_value_t *old;
+			fr_dict_enum_value_t const *old;
 
 			/*
 			 *	Suppress duplicates with the same
@@ -3340,6 +3341,47 @@ fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, un
 	return da;
 }
 
+/** Iterate over all enumeration values for an attribute
+ *
+ * @param[in] da		to iterate over.
+ * @param[in] iter		to use for iteration.
+ * @return
+ * 	- First #fr_dict_enum_value_t in the attribute.
+ * 	- NULL if no enumeration values exist.
+ */
+fr_dict_enum_value_t const *fr_dict_enum_iter_init(fr_dict_attr_t const *da, fr_dict_enum_iter_t *iter)
+{
+	fr_dict_attr_ext_enumv_t	*ext;
+
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+	if (!ext) {
+		fr_strerror_printf("%s has no enumeration values to iterate over", da->name);
+		return NULL;
+	}
+
+	return fr_hash_table_iter_init(ext->value_by_name, iter);
+}
+
+/* Iterate over next enumeration value for an attribute
+ *
+ * @param[in] da		to iterate over.
+ * @param[in] iter		to use for iteration.
+ * @return
+ * 	- Next #fr_dict_enum_value_t in the attribute.
+ * 	- NULL if no more enumeration values exist.
+ */
+fr_dict_enum_value_t const *fr_dict_enum_iter_next(fr_dict_attr_t const *da, fr_dict_enum_iter_t *iter)
+{
+	fr_dict_attr_ext_enumv_t	*ext;
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+	if (!ext) {
+		fr_strerror_printf("%s has no enumeration values to iterate over", da->name);
+		return NULL;
+	}
+
+	return fr_hash_table_iter_next(ext->value_by_name, iter);;
+}
+
 /** Lookup the structure representing an enum value in a #fr_dict_attr_t
  *
  * @param[in] da		to search in.
@@ -3348,7 +3390,7 @@ fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, un
  * 	- Matching #fr_dict_enum_value_t.
  * 	- NULL if no matching #fr_dict_enum_value_t could be found.
  */
-fr_dict_enum_value_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value)
+fr_dict_enum_value_t const *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value)
 {
 	fr_dict_attr_ext_enumv_t	*ext;
 
@@ -3383,7 +3425,7 @@ fr_dict_enum_value_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_b
  */
 char const *fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value)
 {
-	fr_dict_enum_value_t	*dv;
+	fr_dict_enum_value_t const *dv;
 
 	dv = fr_dict_enum_by_value(da, value);
 	if (!dv) return NULL;
@@ -3394,7 +3436,7 @@ char const *fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t 
 /*
  *	Get a value by its name, keyed off of an attribute.
  */
-fr_dict_enum_value_t *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name, ssize_t len)
+fr_dict_enum_value_t const *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name, ssize_t len)
 {
 	fr_dict_attr_ext_enumv_t	*ext;
 
@@ -4995,4 +5037,3 @@ int fr_dict_attr_set_group(fr_dict_attr_t **da_p)
 
 	return 0;
 }
-

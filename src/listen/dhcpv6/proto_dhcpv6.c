@@ -123,10 +123,10 @@ fr_dict_attr_autoload_t proto_dhcpv6_dict_attr[] = {
 static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 		      CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
-	proto_dhcpv6_t		*inst = talloc_get_type_abort(parent, proto_dhcpv6_t);
-	fr_dict_enum_value_t		*dv;
-	CONF_PAIR		*cp;
-	char const		*value;
+	proto_dhcpv6_t				*inst = talloc_get_type_abort(parent, proto_dhcpv6_t);
+	fr_dict_enum_value_t const		*dv;
+	CONF_PAIR				*cp;
+	char const				*value;
 
 	cp = cf_item_to_pair(ci);
 	value = cf_pair_value(cp);

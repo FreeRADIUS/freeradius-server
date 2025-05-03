@@ -686,11 +686,11 @@ do { \
 
 		case RADSNMP_SET:
 		{
-			char		value_buff[254];	/* RADIUS attribute length + 1 */
-			char		*value;
-			char		type_str[64];
-			char		*p;
-			fr_dict_enum_value_t	*type;
+			char				value_buff[254];	/* RADIUS attribute length + 1 */
+			char				*value;
+			char				type_str[64];
+			char				*p;
+			fr_dict_enum_value_t const	*type;
 
 			NEXT_LINE(line, buffer);	/* Should be the OID */
 			NEXT_LINE(value, value_buff);	/* Should be the value */

@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/md5.h>
 
 typedef struct {
-	fr_dict_enum_value_t		*auth_type;
+	fr_dict_enum_value_t const	*auth_type;
 } rlm_digest_t;
 
 static fr_dict_t const *dict_freeradius;
