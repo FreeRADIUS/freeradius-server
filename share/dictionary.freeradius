@@ -307,4 +307,14 @@ ATTRIBUTE	FreeRADIUS-Stats-Threads-Max		195	integer
 ATTRIBUTE	FreeRADIUS-Stats-Server-Src-IP-Address	196	ipaddr
 ATTRIBUTE	FreeRADIUS-Stats-Server-Src-IPv6-Address 197	ipaddr
 
+ATTRIBUTE	FreeRADIUS-Stats-Elapsed		 198	tlv
+ATTRIBUTE	FreeRADIUS-Stats-Elapsed-1us		 198.1	integer64
+ATTRIBUTE	FreeRADIUS-Stats-Elapsed-10us		 198.2	integer64
+ATTRIBUTE	FreeRADIUS-Stats-Elapsed-100us		 198.3	integer64
+ATTRIBUTE	FreeRADIUS-Stats-Elapsed-1ms		 198.4	integer64
+ATTRIBUTE	FreeRADIUS-Stats-Elapsed-10ms		 198.5	integer64
+ATTRIBUTE	FreeRADIUS-Stats-Elapsed-100ms		 198.6	integer64
+ATTRIBUTE	FreeRADIUS-Stats-Elapsed-1s		 198.7	integer64
+ATTRIBUTE	FreeRADIUS-Stats-Elapsed-10s		 198.8	integer64
+
 END-VENDOR FreeRADIUS

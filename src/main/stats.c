@@ -538,6 +538,17 @@ static void request_stats_addvp(REQUEST *request,
 		counter = *(uint64_t *) (((uint8_t *) stats) + table[i].offset);
 		vp->vp_integer = counter;
 	}
+
+	/*
+	 *	Add in count of elapsed times.
+	 */
+	for (i = 0; i < 8; i++) {
+		vp = radius_pair_create(request->reply, &request->reply->vps,
+					(198 + ((i + 1) << 8)), VENDORPEC_FREERADIUS);
+		if (!vp) continue;
+
+		vp->vp_integer64 = stats->elapsed[i];
+	}
 }
 
 static void stats_error(REQUEST *request, char const *msg)
