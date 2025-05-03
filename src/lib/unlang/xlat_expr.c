@@ -572,6 +572,13 @@ static xlat_arg_parser_t const regex_op_xlat_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
+static xlat_arg_parser_t const regex_search_xlat_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },  /* regex string */
+	{ .required = true, .concat = false, .type = FR_TYPE_STRING }, /* broken out things to match */
+	{ .required = false, .concat = true, .type = FR_TYPE_STRING }, /* flags */
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 
 /** Perform a regular expressions comparison between two operands
  *
@@ -593,7 +600,7 @@ static xlat_arg_parser_t const regex_op_xlat_args[] = {
  *	- 0 for "no match".
  *	- 1 for "match".
  */
-static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, fr_value_box_list_t *in, regex_t **preg,
+static xlat_action_t xlat_regex_do_op(TALLOC_CTX *ctx, request_t *request, fr_value_box_list_t *in, regex_t **preg,
 				      fr_dcursor_t *out, fr_token_t op)
 {
 	uint32_t	subcaptures;
@@ -719,7 +726,7 @@ static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			     tmpl_regex_flags(inst->xlat->vpt), true, true); /* flags, allow subcaptures, at runtime */
 	if (slen <= 0) return XLAT_ACTION_FAIL;
 
-	return xlat_regex_match(ctx, request, in, &preg, out, inst->op);
+	return xlat_regex_do_op(ctx, request, in, &preg, out, inst->op);
 }
 
 static xlat_action_t xlat_regex_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
@@ -737,7 +744,7 @@ static xlat_action_t xlat_regex_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (inst->regex) {
 		preg = tmpl_regex(inst->xlat->vpt);
 
-		return xlat_regex_match(ctx, request, in, &preg, out, op);
+		return xlat_regex_do_op(ctx, request, in, &preg, out, op);
 	}
 
 	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_regex_rctx_t));
@@ -765,6 +772,35 @@ static xlat_action_t xlat_func_ ## _name(TALLOC_CTX *ctx, fr_dcursor_t *out, \
 
 XLAT_REGEX_FUNC(reg_eq,  T_OP_REG_EQ)
 XLAT_REGEX_FUNC(reg_ne,  T_OP_REG_NE)
+
+static xlat_action_t xlat_func_regex_search(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					    UNUSED xlat_ctx_t const *xctx,
+					    request_t *request, fr_value_box_list_t *in)
+{
+	ssize_t			slen;
+	regex_t			*preg;
+	fr_value_box_t		*regex;
+	xlat_action_t		action;
+
+	RDEBUG("IN IS %pM", in);
+
+	regex = fr_value_box_list_pop_head(in);
+	fr_assert(regex);
+	fr_assert(regex->type == FR_TYPE_STRING);
+
+	slen = regex_compile(ctx, &preg, regex->vb_strvalue, regex->vb_length,
+			     NULL, true, true); /* flags, allow subcaptures, at runtime */
+	if (slen <= 0) {
+		RPEDEBUG("Failed parsing regular expression %pV", regex);
+		talloc_free(regex);
+		return XLAT_ACTION_FAIL;
+	}
+
+	action = xlat_regex_do_op(ctx, request, in, &preg, out, T_OP_REG_EQ);
+	talloc_free(regex);
+	talloc_free(preg);
+	return action;
+}
 
 typedef struct {
 	bool		stop_on_match;
@@ -1736,7 +1772,7 @@ do { \
 #undef XLAT_REGISTER_REGEX_OP
 #define XLAT_REGISTER_REGEX_OP(_op, _name) \
 do { \
-	if (unlikely((xlat = xlat_func_register(NULL, STRINGIFY(_name), xlat_func_ ## _name, FR_TYPE_VOID)) == NULL)) return -1; \
+	if (unlikely((xlat = xlat_func_register(NULL, STRINGIFY(_name), xlat_func_ ## _name, FR_TYPE_BOOL)) == NULL)) return -1; \
 	xlat_func_args_set(xlat, regex_op_xlat_args); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
 	xlat_func_instantiate_set(xlat, xlat_instantiate_regex, xlat_regex_inst_t, NULL, NULL); \
@@ -1786,6 +1822,10 @@ int xlat_register_expressions(void)
 
 	XLAT_REGISTER_REGEX_OP(T_OP_REG_EQ, reg_eq);
 	XLAT_REGISTER_REGEX_OP(T_OP_REG_NE, reg_ne);
+
+	if (unlikely((xlat = xlat_func_register(NULL, "regex.search", xlat_func_regex_search, FR_TYPE_BOOL)) == NULL)) return -1;
+	xlat_func_args_set(xlat, regex_search_xlat_args);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 
 	/*
 	 *	&&, ||

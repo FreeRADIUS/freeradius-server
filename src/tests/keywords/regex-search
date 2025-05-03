@@ -1,0 +1,28 @@
+#
+#  PRE: regex-lhs
+#
+string user
+string regex
+
+#
+#  Strings which are expanded in a regex have regex special
+#  characters escaped.  Because the input strings are unsafe.
+#
+user = "user@example.com"
+regex = "^([^@]+)@example.com"
+
+#
+#  @todo - no "flags" here yet.
+#
+if (!%regex.search(regex, user)) {
+	test_fail
+}
+
+#
+#  And this is the same as above.
+#
+if !(%{user =~ /%{regex}/}) {
+	test_fail
+}
+
+success

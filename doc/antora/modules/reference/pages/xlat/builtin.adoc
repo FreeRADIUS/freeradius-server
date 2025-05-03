@@ -83,6 +83,17 @@ Module rlm_exec.shell_escape = yes
 
 == Miscellaneous Expansions
 
+== %regex.search(pattern, string)
+
+Performs a regular expression search on _string_, using _pattern_.  If
+there are subgroups in _pattern_, the subgroups are available via a
+subsequent `%regex.match()`.  Each regular expression search (or
+xref:unlang/condition/regex.adoc[=~] operator) clears and list of
+matches in `%regex.match()`.
+
+This function is the same as using `%{string =~ /pattern/}`.  However,
+this function is included for completeness.
+
 === %regex.match(0)+..+%regex.match(32)
 
 `%regex.match(0)` expands to the portion of the subject that matched the last regular
