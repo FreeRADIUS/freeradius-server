@@ -58,8 +58,8 @@ fr_stats_t proxy_dsc_stats = FR_STATS_INIT;
 #endif
 #endif
 
-static void stats_time(fr_stats_t *stats, struct timeval *start,
-		       struct timeval *end)
+static void stats_time(fr_stats_t *stats, REQUEST *request,
+		       struct timeval *start, struct timeval *end)
 {
 	struct timeval diff;
 	uint32_t delay;
@@ -68,6 +68,28 @@ static void stats_time(fr_stats_t *stats, struct timeval *start,
 	    (end->tv_sec < start->tv_sec)) return;
 
 	rad_tv_sub(end, start, &diff);
+
+	/*
+	 *	Don't count proxy times as our packet processing
+	 *	times.  If the user wants to see how long it takes for
+	 *	packets to be processed, he should look at the proxy
+	 *	statistics.
+	 */
+	if (request && request->proxy && request->proxy_reply) {
+		struct timeval proxy, tmp;
+		rad_tv_sub(&request->proxy_reply->timestamp,
+			   &request->proxy->timestamp,
+			   &proxy);
+
+		/*
+		 *	This should always be smaller, but it doesn't
+		 *	hurt to check.
+		 */
+		if (timercmp(&proxy, &diff, <)) {
+			tmp = diff;
+			rad_tv_sub(&tmp, &proxy, &diff);
+		}
+	}
 
 	if (diff.tv_sec >= 10) {
 		stats->elapsed[7]++;
@@ -172,13 +194,13 @@ void request_stats_final(REQUEST *request)
 		/*
 		 *	FIXME: Do the time calculations once...
 		 */
-		stats_time(&radius_auth_stats,
+		stats_time(&radius_auth_stats, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
-		stats_time(&request->client->auth,
+		stats_time(&request->client->auth, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
-		stats_time(&listener->stats,
+		stats_time(&listener->stats, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
 		break;
@@ -194,10 +216,13 @@ void request_stats_final(REQUEST *request)
 #ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_RESPONSE:
 		INC_ACCT(total_responses);
-		stats_time(&radius_acct_stats,
+		stats_time(&radius_acct_stats, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
-		stats_time(&request->client->acct,
+		stats_time(&request->client->acct, request,
+			   &request->packet->timestamp,
+			   &request->reply->timestamp);
+		stats_time(&listener->stats, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
 		break;
@@ -208,7 +233,10 @@ void request_stats_final(REQUEST *request)
 		INC_COA(total_access_accepts);
 	  coa_stats:
 		INC_COA(total_responses);
-		stats_time(&request->client->coa,
+		stats_time(&request->client->coa, request,
+			   &request->packet->timestamp,
+			   &request->reply->timestamp);
+		stats_time(&listener->stats, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
 		break;
@@ -221,7 +249,10 @@ void request_stats_final(REQUEST *request)
 		INC_DSC(total_access_accepts);
 	  dsc_stats:
 		INC_DSC(total_responses);
-		stats_time(&request->client->dsc,
+		stats_time(&request->client->dsc, request,
+			   &request->packet->timestamp,
+			   &request->reply->timestamp);
+		stats_time(&listener->stats, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
 		break;
@@ -232,8 +263,9 @@ void request_stats_final(REQUEST *request)
 #endif
 
 		/*
-		 *	No response, it must have been a bad
-		 *	authenticator.
+		 *	No response, we did "do_not_respond", or the packet timed out.
+		 *
+		 *	This packet then isn't counted in the statistics for overall response times. :(
 		 */
 	case 0:
 		if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
@@ -297,10 +329,10 @@ void request_stats_final(REQUEST *request)
 		INC(total_access_accepts);
 	proxy_stats:
 		INC(total_responses);
-		stats_time(&proxy_auth_stats,
+		stats_time(&proxy_auth_stats, NULL,
 			   &request->proxy->timestamp,
 			   &request->proxy_reply->timestamp);
-		stats_time(&request->home_server->stats,
+		stats_time(&request->home_server->stats, NULL,
 			   &request->proxy->timestamp,
 			   &request->proxy_reply->timestamp);
 		break;
@@ -317,10 +349,10 @@ void request_stats_final(REQUEST *request)
 	case PW_CODE_ACCOUNTING_RESPONSE:
 		proxy_acct_stats.total_responses++;
 		request->home_server->stats.total_responses++;
-		stats_time(&proxy_acct_stats,
+		stats_time(&proxy_acct_stats, NULL,
 			   &request->proxy->timestamp,
 			   &request->proxy_reply->timestamp);
-		stats_time(&request->home_server->stats,
+		stats_time(&request->home_server->stats, NULL,
 			   &request->proxy->timestamp,
 			   &request->proxy_reply->timestamp);
 		break;
@@ -331,10 +363,10 @@ void request_stats_final(REQUEST *request)
 	case PW_CODE_COA_NAK:
 		proxy_coa_stats.total_responses++;
 		request->home_server->stats.total_responses++;
-		stats_time(&proxy_coa_stats,
+		stats_time(&proxy_coa_stats, NULL,
 			   &request->proxy->timestamp,
 			   &request->proxy_reply->timestamp);
-		stats_time(&request->home_server->stats,
+		stats_time(&request->home_server->stats, NULL,
 			   &request->proxy->timestamp,
 			   &request->proxy_reply->timestamp);
 		break;
@@ -343,10 +375,10 @@ void request_stats_final(REQUEST *request)
 	case PW_CODE_DISCONNECT_NAK:
 		proxy_dsc_stats.total_responses++;
 		request->home_server->stats.total_responses++;
-		stats_time(&proxy_dsc_stats,
+		stats_time(&proxy_dsc_stats, NULL,
 			   &request->proxy->timestamp,
 			   &request->proxy_reply->timestamp);
-		stats_time(&request->home_server->stats,
+		stats_time(&request->home_server->stats, NULL,
 			   &request->proxy->timestamp,
 			   &request->proxy_reply->timestamp);
 		break;
@@ -360,7 +392,6 @@ void request_stats_final(REQUEST *request)
 
  done:
 #endif /* WITH_PROXY */
-
 
 	if (request->max_time) {
 		switch (request->packet->code) {
