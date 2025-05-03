@@ -304,7 +304,7 @@ ATTRIBUTE	FreeRADIUS-Stats-Threads-Active		193	integer
 ATTRIBUTE	FreeRADIUS-Stats-Threads-Total		194	integer
 ATTRIBUTE	FreeRADIUS-Stats-Threads-Max		195	integer
 
-ATTRIBUTE	FreeRADIUS-Stats-Server-Src-IP-Address	176	ipaddr
-ATTRIBUTE	FreeRADIUS-Stats-Server-Src-IPv6-Address 177	ipaddr
+ATTRIBUTE	FreeRADIUS-Stats-Server-Src-IP-Address	196	ipaddr
+ATTRIBUTE	FreeRADIUS-Stats-Server-Src-IPv6-Address 197	ipaddr
 
 END-VENDOR FreeRADIUS
