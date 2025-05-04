@@ -115,6 +115,7 @@ static fr_dict_attr_t const *attr_pbkdf2;
 static fr_dict_attr_t const *attr_pbkdf2_sha1;
 static fr_dict_attr_t const *attr_pbkdf2_sha256;
 static fr_dict_attr_t const *attr_pbkdf2_sha512;
+static fr_dict_attr_t const *attr_pbkdf2_sha256_legacy;
 static fr_dict_attr_t const *attr_lm;
 static fr_dict_attr_t const *attr_nt;
 static fr_dict_attr_t const *attr_ns_mta_md5;
@@ -166,6 +167,7 @@ fr_dict_attr_autoload_t password_dict_attr[] = {
 	{ .out = &attr_pbkdf2_sha1, .name = "Password.PBKDF2-SHA1", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_pbkdf2_sha256, .name = "Password.PBKDF2-SHA256", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_pbkdf2_sha512, .name = "Password.PBKDF2-SHA512", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_pbkdf2_sha256_legacy, .name = "Password.PBKDF2-SHA256-LEGACY", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_lm, .name = "Password.LM", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_nt, .name = "Password.NT", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ns_mta_md5, .name = "Password.NS-MTA-MD5", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
@@ -215,6 +217,7 @@ static fr_table_num_sorted_t const password_header_table[] = {
 	{ L("{pbkdf2-sha1}"),			FR_PBKDF2_SHA1	},
 	{ L("{pbkdf2-sha256}"),			FR_PBKDF2_SHA256 },
 	{ L("{pbkdf2-sha512}"),			FR_PBKDF2_SHA512 },
+	{ L("{pbkdf2_sha256}"),			FR_PBKDF2_SHA256_LEGACY },
 
 #ifdef HAVE_OPENSSL_EVP_H
 	{ L("{sha224}"),			FR_SHA2	},
@@ -302,6 +305,10 @@ static password_info_t password_info[] = {
 	[FR_PBKDF2_SHA512]		= {
 						.type = PASSWORD_HASH_VARIABLE,
 						.da = &attr_pbkdf2_sha512
+					},
+	[FR_PBKDF2_SHA256_LEGACY]	= {
+						.type = PASSWORD_HASH_VARIABLE,
+						.da = &attr_pbkdf2_sha256_legacy
 					},
 	[FR_SHA1]			= {
 						.type = PASSWORD_HASH,

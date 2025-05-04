@@ -845,6 +845,88 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha512(rlm_rcode_
 
 	return pap_auth_pbkdf2_parse_digest(p_result, request, p, end - p, FR_SSHA2_512, '$', '$', false, password);
 }
+
+/*
+ *	389ds pbkdf2 legacy password with header {PBKDF2_SHA256}
+ *
+ *	this was the first implementation in 389ds using a fixed length struct as base64.
+ *	at some point it was the default scheme, although it's not recommened anymore.
+ *
+ *      content struct is
+ *      4 bytes iterations (value 8192)
+ *      64 bytes salt
+ *	256 bytes hash
+ */
+static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256_legacy(rlm_rcode_t *p_result,
+									     UNUSED rlm_pap_t const *inst,
+									     request_t *request,
+									     fr_pair_t const *known_good, fr_value_box_t const *password)
+{
+#define PBKDF2_SHA256_LEGACY_SALT_LENGTH 64
+#define PBKDF2_SHA256_LEGACY_ITERATIONS_LENGTH 4
+#define PBKDF2_SHA256_LEGACY_HASH_LENGTH 256
+#define PBKDF2_SHA256_LEGACY_TOTAL_LENGTH (PBKDF2_SHA256_LEGACY_ITERATIONS_LENGTH + PBKDF2_SHA256_LEGACY_SALT_LENGTH + PBKDF2_SHA256_LEGACY_HASH_LENGTH)
+#define PBKDF2_SHA256_LEGACY_ITERATIONS 8192
+#define PBKDF2_SHA256_LEGACY_B64_LENGTH (PBKDF2_SHA256_LEGACY_TOTAL_LENGTH * 4 / 3)
+
+	struct pbkdf2_bufs {
+		uint32_t	iterations;
+		uint8_t		salt[PBKDF2_SHA256_LEGACY_SALT_LENGTH];
+		uint8_t		hash[PBKDF2_SHA256_LEGACY_HASH_LENGTH];
+	};
+	struct pbkdf2_bufs 	pbkdf2_buf = { .iterations = PBKDF2_SHA256_LEGACY_ITERATIONS };
+
+	ssize_t		 	slen;
+	uint8_t const 		*p = known_good->vp_octets, *end = p + known_good->vp_length;
+
+	EVP_MD const		*evp_md = EVP_sha256();
+	size_t			digest_len = SHA256_DIGEST_LENGTH;
+	uint8_t			digest[SHA256_DIGEST_LENGTH];
+
+	if ((end - p) != PBKDF2_SHA256_LEGACY_B64_LENGTH) {
+		REDEBUG("Password.With-Header {PBKDF2_SHA256} has incorrect size %zd instead of %d.", known_good->vp_length, PBKDF2_SHA256_LEGACY_B64_LENGTH);
+		RETURN_MODULE_INVALID;
+	}
+
+	slen = fr_base64_decode(&FR_DBUFF_TMP((uint8_t *) &pbkdf2_buf, sizeof(pbkdf2_buf)),
+				&FR_SBUFF_IN((char const *) p, (char const *)end), false, false);
+
+	if (slen <= 0) {
+		RPEDEBUG("Failed decoding Password.PBKDF2 hash component");
+		RETURN_MODULE_INVALID;
+	}
+
+	if (slen != PBKDF2_SHA256_LEGACY_TOTAL_LENGTH) {
+		REDEBUG("Password.With-Header {PBKDF2_SHA256} has incorrect decoded size %zd instead of %d.", slen, PBKDF2_SHA256_LEGACY_TOTAL_LENGTH);
+		RETURN_MODULE_INVALID;
+	}
+
+	pbkdf2_buf.iterations = ntohl(pbkdf2_buf.iterations);
+
+	if (pbkdf2_buf.iterations != PBKDF2_SHA256_LEGACY_ITERATIONS) {
+		REDEBUG("Password.With-Header {PBKDF2_SHA256} has unexpected number of iterations %d instead of %d.", pbkdf2_buf.iterations, PBKDF2_SHA256_LEGACY_ITERATIONS);
+		RETURN_MODULE_INVALID;
+	}
+
+	if (PKCS5_PBKDF2_HMAC((char const *)password->vb_octets, (int)password->vb_length,
+			      (unsigned char const *)pbkdf2_buf.salt, (int)PBKDF2_SHA256_LEGACY_SALT_LENGTH,
+			      (int)pbkdf2_buf.iterations,
+			      evp_md,
+			      (int)digest_len, (unsigned char *)digest) == 0) {
+		fr_tls_log(request, "PBKDF2_SHA256 digest failure");
+		RETURN_MODULE_INVALID;
+	}
+
+	if (fr_digest_cmp(digest, pbkdf2_buf.hash, (size_t)digest_len) != 0) {
+		REDEBUG("PBKDF2_SHA256 digest does not match \"known good\" digest");
+		REDEBUG3("Salt       : %pH", fr_box_octets(pbkdf2_buf.salt, PBKDF2_SHA256_LEGACY_SALT_LENGTH));
+		REDEBUG3("Calculated : %pH", fr_box_octets(digest, digest_len));
+		REDEBUG3("Expected   : %pH", fr_box_octets(pbkdf2_buf.hash, PBKDF2_SHA256_LEGACY_HASH_LENGTH));
+		RETURN_MODULE_RCODE(RLM_MODULE_REJECT);
+	} else {
+		RETURN_MODULE_RCODE(RLM_MODULE_OK);
+	}
+}
 #endif
 
 static unlang_action_t CC_HINT(nonnull) pap_auth_nt(rlm_rcode_t *p_result,
@@ -972,9 +1054,10 @@ static const pap_auth_func_t auth_func_table[] = {
 
 #ifdef HAVE_OPENSSL_EVP_H
 	[FR_PBKDF2]	= pap_auth_pbkdf2,
-	[FR_PBKDF2_SHA1]	= pap_auth_pbkdf2_sha1,
-	[FR_PBKDF2_SHA256]	= pap_auth_pbkdf2_sha256,
-	[FR_PBKDF2_SHA512]	= pap_auth_pbkdf2_sha512,
+	[FR_PBKDF2_SHA1] = pap_auth_pbkdf2_sha1,
+	[FR_PBKDF2_SHA256] = pap_auth_pbkdf2_sha256,
+	[FR_PBKDF2_SHA512] = pap_auth_pbkdf2_sha512,
+	[FR_PBKDF2_SHA256_LEGACY] = pap_auth_pbkdf2_sha256_legacy,
 	[FR_SHA2]	= pap_auth_dummy,
 	[FR_SHA2_224]	= pap_auth_sha2_224,
 	[FR_SHA2_256]	= pap_auth_sha2_256,
