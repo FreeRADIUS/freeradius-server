@@ -12,9 +12,9 @@
 
 include::partial$unlang_start.adoc[]
 
-Look through the existing files in `etc/raddb/policy.d/*` and `man unlang`
-to get a feel for the unlang syntax and the tasks that policies can
-be used for.
+Look through the existing files in `etc/raddb/policy.d/*` and the rest
+of the documentation to get a feel for the unlang syntax and the tasks
+that policies can be used for.
 
 The basic structure of a policy is the policy name then a set of curly
 braces containing the body of the policy
@@ -49,7 +49,7 @@ Call this policy at the start of the `authorize {}` section of the
 `etc/raddb/sites-available/default` virtual server.
 
 All the information you need to create this policy is contained within
-`man unlang` pages and the examples in this exercise.
+documentation pages and the examples in this exercise.
 
 == Questions
 

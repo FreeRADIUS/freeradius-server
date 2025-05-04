@@ -236,8 +236,8 @@ static XS(XS_radiusd_log)
  *	This is a wrapper for xlat_aeval
  *	Now users are able to get data that is accessible only via xlat
  *	e.g. %client(...)
- *	Call syntax is radiusd::xlat(string), string will be handled the
- *	same way it is described in EXPANSIONS section of man unlang
+ *	Call syntax is radiusd::xlat(string), string will be handled as
+ *	a double-quoted string in the configuration files.
  */
 static XS(XS_radiusd_xlat)
 {

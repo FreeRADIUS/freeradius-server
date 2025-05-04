@@ -15,7 +15,6 @@
 #
 #  When this virtual server receives the request, the original
 #  attributes can be accessed as "outer.request", "outer.control", etc.
-#  See "man unlang" for more details.
 #
 
 #

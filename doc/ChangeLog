@@ -4,9 +4,6 @@ FreeRADIUS 4.0.0 Sun 10 Jul 2016 15:48:14 EDT urgency=medium
 	* "authorize", "authenticate", "preacct", etc.
 	  are no longer used.
 	* Dropped support for -i and -p flags in radiusd
-	* New "map" function in unlang.  See "man unlang".
-	* The "load-balance" and "redundant-load-balance"
-	  sections now accept a key.  See "man unlang".
 	* The EAP module tracks certificates in a different
 	  attribute list.  See the upgrade instructions.
 	* The EAP module produces much better messages
@@ -28,9 +25,3 @@ FreeRADIUS 4.0.0 Sun 10 Jul 2016 15:48:14 EDT urgency=medium
 	* Both the rlm_ldap map and xlat functions support server
 	  side sort control specifiers in their URLs.
 	* rlm_eap supports RSA/ECC key agility.
-
-	Bug fixes
-	* Attribute names in unlang MUST be prefixed with &
-	  This fixes a host of ambiguities when parsing.
-	* Added unit tests for dictionary parsing and
-	  restrictions on which attributes can appear where.

@@ -38,7 +38,7 @@ Each module prints out what it is doing, and why.  For example, the `suffix` mod
     (0) suffix: No such realm "NULL"
 ====
 
-The server core then prints out the "return code" of the module.  See `man unlang` for a deeper explanation of return codes.
+The server core then prints out the xref:unlang/return_codes.adoc[return code] of the module.
 
     (0)     [suffix] = noop
     (0)     [files] = noop
