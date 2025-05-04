@@ -1,0 +1,402 @@
+'\" t
+.\"     Title: unlang
+.\"    Author: Alan DeKok
+.\" Generator: Asciidoctor 2.0.23
+.\"      Date: 2025-05-04
+.\"    Manual: FreeRADIUS
+.\"    Source: FreeRADIUS
+.\"  Language: English
+.\"
+.TH "UNLANG" "5" "2025-05-04" "FreeRADIUS" "FreeRADIUS"
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH "NAME"
+unlang \- Unlang Policy Language
+.SH "DESCRIPTION"
+.sp
+The server supports a simple processing language called "Unlang",
+which is short for "un\-language". The original intention of using an
+"un\-language" was to avoid creating yet another programming language.
+Instead, the \f(CRunlang\fP syntax allows for simple \fIif / then / else\fP
+checks, and attribute editing.  It does not support recursion,
+functions, infinite loops, or a host of other normal language
+features.
+.SH "KEYWORDS"
+.sp
+The following tables list the keywords used in \f(CRUnlang\fP.  These keywords
+implement the "flow control" of the policies.
+.SH "FLOW CONTROL KEYWORDS"
+.sp
+The \fIflow control\fP keywords allow \fIif / then / else\fP checks, simple
+looping, etc.
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.B Table 1. Flow Control
+.TS
+allbox tab(:);
+ltB ltB.
+T{
+.sp
+Keyword
+T}:T{
+.sp
+Description
+T}
+.T&
+lt lt.
+T{
+.sp
+break
+T}:T{
+.sp
+Exit early from a foreach loop.
+T}
+T{
+.sp
+case
+T}:T{
+.sp
+Match inside of a switch.
+T}
+T{
+.sp
+catch
+T}:T{
+.sp
+catch an error from a previous "try"
+T}
+T{
+.sp
+continue
+T}:T{
+.sp
+Start the next iteration of a foreach loop
+T}
+T{
+.sp
+else
+T}:T{
+.sp
+Do something when a previous if does not match.
+T}
+T{
+.sp
+elsif
+T}:T{
+.sp
+Check for condition when a previous if does not match.
+T}
+T{
+.sp
+foreach
+T}:T{
+.sp
+Loop over a list of attributes.
+T}
+T{
+.sp
+if
+T}:T{
+.sp
+Check for a condition, and execute a sub\-policy if it matches.
+T}
+T{
+.sp
+return
+T}:T{
+.sp
+Immediately stop processing a section.
+T}
+T{
+.sp
+switch
+T}:T{
+.sp
+Check for multiple values.
+T}
+T{
+.sp
+transaction
+T}:T{
+.sp
+Group operations into a transaction which can be reverted on failure.
+T}
+T{
+.sp
+try
+T}:T{
+.sp
+Perform an operation, and ref:unlang/catch.adoc[catch] an error if it fails.
+T}
+.TE
+.sp
+.SH "ATTRIBUTE EDITING KEYWORDS"
+.sp
+The \fIattribute editing\fP keywords allow policies to add, delete, and
+modify attributes in any list or packet.
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.B Table 2. Attribute Editing
+.TS
+allbox tab(:);
+ltB ltB.
+T{
+.sp
+Keyword
+T}:T{
+.sp
+Description
+T}
+.T&
+lt lt.
+T{
+.sp
+map
+T}:T{
+.sp
+Map database fields to server attributes.
+T}
+T{
+.sp
+foo=bar
+T}:T{
+.sp
+Creating, modifying, and deleting attributes.
+T}
+T{
+.sp
+update
+T}:T{
+.sp
+DEPRECATED \- v3 compatible attribute editing.
+T}
+.TE
+.sp
+.SH "GROUPING KEYWORDS"
+.sp
+The \fIgrouping\fP keywords allow policies to be organized into groups,
+including fail\-over, load\-balancing, limits, etc.
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.B Table 3. Grouping and Limits
+.TS
+allbox tab(:);
+ltB ltB.
+T{
+.sp
+Keyword
+T}:T{
+.sp
+Description
+T}
+.T&
+lt lt.
+T{
+.sp
+group
+T}:T{
+.sp
+Group a series of statements.
+T}
+T{
+.sp
+load\-balance
+T}:T{
+.sp
+Define a load balancing group without fail\-over.
+T}
+T{
+.sp
+limit
+T}:T{
+.sp
+Limit the number of requests in a section
+T}
+T{
+.sp
+redundant
+T}:T{
+.sp
+Define a redundant group with fail\-over.
+T}
+T{
+.sp
+redundant\-load\-balance
+T}:T{
+.sp
+Define a redundant group with fail\-over and load balancing.
+T}
+T{
+.sp
+timeout
+T}:T{
+.sp
+Enforce a timeout for processing a section
+T}
+.TE
+.sp
+.SH "PARENT\-CHILD KEYWORDS"
+.sp
+The \fIparent\-child\fP keywords allow for creation of parent\-child
+relationships between requests.
+.sp
+For example, it is possible to create a child request, edit its
+attributes, and then proxy that packet to an external destination.
+This process must be specified manually, unlike in version 3, the
+child was created automatically when the \f(CRproxy\fP list was used.
+.sp
+The benefit of these new keywords is that it is now possible to
+control when child requests are created.  It is also possible to
+control whether or not the parent waits for the child to finish, or
+operates independently of the child.  It is also finally possible to
+have multiple child requests via the \f(CRparallel\fP keyword.
+.sp
+These new keywords can unfortunately make some simple configurations
+more complex than they would have been in version 3.  The trade\-off is
+that many complex configurations now become trivial, where they were
+impossible to create before.
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.B Table 4. Parent\-Child
+.TS
+allbox tab(:);
+ltB ltB.
+T{
+.sp
+Keyword
+T}:T{
+.sp
+Description
+T}
+.T&
+lt lt.
+T{
+.sp
+call
+T}:T{
+.sp
+Call one virtual server from another
+T}
+T{
+.sp
+caller
+T}:T{
+.sp
+Check if the request is from a parent \f(CRcall\fP
+T}
+T{
+.sp
+detach
+T}:T{
+.sp
+Detach a child from a parent
+T}
+T{
+.sp
+parallel
+T}:T{
+.sp
+Create multiple parallel child requests
+T}
+T{
+.sp
+subrequest
+T}:T{
+.sp
+Create a child request
+T}
+.TE
+.sp
+.SH "MODULE KEYWORDS"
+.sp
+The \fImodule\fP keywords refer pre\-packaged libraries that implement
+specific functionality, such as connecting to SQL, LDAP, etc.  The
+name used here is not the literal string \f(CRmodule\fP.  Instead, it is the
+name of an instance of a pre\-packaged module such as \f(CRsql\fP, or \f(CRldap\fP, or
+\f(CReap\fP.
+.sp
+The documentation below describes how to reference modules.  That is,
+how to use \f(CRsql\fP, etc. in the policies.  Please see the
+module configuration and the
+configuring modules howto
+pages for information on configuring and using the modules.
+.sp
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.B Table 5. Modules
+.TS
+allbox tab(:);
+ltB ltB.
+T{
+.sp
+Keyword
+T}:T{
+.sp
+Description
+T}
+.T&
+lt lt.
+T{
+.sp
+<module>
+T}:T{
+.sp
+Execute a named module, e.g., \f(CRsql\fP.
+T}
+T{
+.sp
+<module>.<method>
+T}:T{
+.sp
+Execute a particular method of a named module, e.g., \f(CRpap.authorize\fP
+T}
+T{
+.sp
+reject
+T}:T{
+.sp
+Built\-in modules, e.g., \f(CRreject\fP, or \f(CRok\fP, etc.
+T}
+.TE
+.sp
+.SH "SEE ALSO"
+.sp
+radiusd(8) radiusd.conf(5)
+.SH "AUTHOR"
+.sp
+The FreeRADIUS Server Project (\c
+.URL "https://freeradius.org" "" ")"
+.SH "AUTHOR"
+.sp
+Alan DeKok
