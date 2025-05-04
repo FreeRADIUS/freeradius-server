@@ -48,6 +48,8 @@ static void unlang_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 {
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(ctx, unlang_frame_state_timeout_t);
 	request_t			*request = talloc_get_type_abort(state->request, request_t);
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	char const			*module;
 
 	/*
@@ -65,7 +67,16 @@ static void unlang_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 	 *	unlang_timeout_resume_done then runs, and returns "timeout"
 	 */
 	unlang_stack_signal(request, FR_SIGNAL_CANCEL, state->depth);
-	unlang_interpret_mark_runnable(request);
+
+	/*
+	 *	If the frame is yielded (needs to be resumed), but was cancelled
+	 *	we now need to mark it runnable again so it's unwound.
+	 *
+	 *	If the frame _isn't_ cancelled, then it's non-cancellable and
+	 *	something else will run it to completion, and mark
+	 *	the request as complete.
+	 */
+	if (is_yielded(frame) && is_cancelled(frame)) unlang_interpret_mark_runnable(request);
 	state->fired = true;
 
 	RINDENT_RESTORE(request, state);

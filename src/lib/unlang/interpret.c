@@ -1073,10 +1073,7 @@ void unlang_stack_signal(request_t *request, fr_signal_t action, int limit)
 	 *	up the frames for unwinding.  The request must
 	 *	be marked as runnable to complete the cancellation.
 	 */
-	if (action == FR_SIGNAL_CANCEL) {
-		unwind_to_depth(stack, limit);
-		return;
-	}
+	if (action == FR_SIGNAL_CANCEL) unwind_to_depth(stack, limit);
 
 	/*
 	 *	Walk back up the stack, calling signal handlers

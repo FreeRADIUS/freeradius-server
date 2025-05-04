@@ -215,9 +215,10 @@ typedef enum CC_HINT(flag_enum) {
 	UNLANG_OP_FLAG_NONE		= 0x00,			//!< No flags.
 	UNLANG_OP_FLAG_DEBUG_BRACES	= 0x01,			//!< Print debug braces.
 	UNLANG_OP_FLAG_RCODE_SET	= 0x02,			//!< Set request->rcode to the result of this operation.
-	UNLANG_OP_FLAG_BREAK_POINT	= 0x04,			//!< Break point.
-	UNLANG_OP_FLAG_RETURN_POINT	= 0x08,			//!< Return point.
-	UNLANG_OP_FLAG_CONTINUE_POINT	= 0x10			//!< Continue point.
+	UNLANG_OP_FLAG_NO_CANCEL	= 0x04,			//!< Must not be cancelled.
+	UNLANG_OP_FLAG_BREAK_POINT	= 0x08,			//!< Break point.
+	UNLANG_OP_FLAG_RETURN_POINT	= 0x10,			//!< Return point.
+	UNLANG_OP_FLAG_CONTINUE_POINT	= 0x20			//!< Continue point.
 } unlang_op_flag_t;
 DIAG_ON(attributes)
 
@@ -381,6 +382,7 @@ static inline bool _frame_has_debug_braces(unlang_stack_frame_t const *frame)	{ 
 			unlang_stack_frame_t const *: _frame_has_debug_braces((unlang_stack_frame_t const *)(_thing)) \
 		   )
 static inline bool is_rcode_set(unlang_stack_frame_t const *frame)		{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_RCODE_SET; }
+static inline bool is_cancellable(unlang_stack_frame_t const *frame)		{ return !(unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_NO_CANCEL); }
 static inline bool is_break_point(unlang_stack_frame_t const *frame)		{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_BREAK_POINT; }
 static inline bool is_return_point(unlang_stack_frame_t const *frame) 		{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_RETURN_POINT; }
 static inline bool is_continue_point(unlang_stack_frame_t const *frame) 	{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_CONTINUE_POINT; }
@@ -440,6 +442,7 @@ static inline unlang_action_t unwind_to_depth(unlang_stack_t *stack, unsigned in
 
 	for (i = depth; i >= to_depth; i--) {
 		frame = &stack->frame[i];
+		if (!is_cancellable(frame)) continue;
 		frame->flag |= UNLANG_FRAME_FLAG_CANCEL;
 	}
 
@@ -582,8 +585,11 @@ static inline void frame_pop(request_t *request, unlang_stack_t *stack)
 	/*
 	 *	Signal the frame to get it back into a consistent state
 	 *	as we won't be calling the resume function.
+	 *
+	 *	If the frame was cancelled, the signal function will
+	 *	have already been called.
 	 */
-	if (is_cancelled(frame)) {
+	if (!is_cancelled(frame) && is_repeatable(frame)) {
 		if (frame->signal) frame->signal(request, frame, FR_SIGNAL_CANCEL);
 		repeatable_clear(frame);
 	}
