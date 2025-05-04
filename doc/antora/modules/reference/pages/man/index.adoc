@@ -18,5 +18,7 @@ A RADIUS-aware packet capture tool, xref:man/radsniff.adoc[radsniff].
 
 A simple summary of xref:man/unlang.adoc[unlang].
 
+The format of the xref:man/dictionary.adoc[dictionary] files.
+
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

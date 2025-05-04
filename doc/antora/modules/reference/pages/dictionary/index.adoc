@@ -3,12 +3,26 @@
 The `dictionary` files define names, numbers, and
 xref:type/index.adoc[data types] for use in the server.  In general,
 the dictionary files are defined by industry standard specifications,
-or by a vendor for their own equipment.  The dictionary files in the
-`share` directory _should not be edited_.  Editing those files will
-likely break the server.
+or by a vendor for their own equipment.
 
-Local dictionary definitions should be placed in the
-`raddb/dictionary` file.
+Each dictionary file contains a list of protocol-specific attributes
+and values, which the server uses to map between descriptive names and
+on-the-wire data.  The names have no meaning outside of the server,
+and (with rare exception) are never sent "on the wire" between server
+and clients.
+
+That is, editing the dictionaries will have _no effect_ on anything
+other than the server that is reading those files.  Adding new
+attributes to the dictionaries will have _no effect_ on clients, and
+will not make clients magically understand those attributes.  The
+dictionaries are solely for local administrator convenience, and are
+specific to each version of FreeRADIUS.
+
+The dictionary files in the `share` directory _should not be edited_.
+Editing those files will likely break the server.
+
+Instead, you can add local dictionary definitions in the
+xref:raddb/dictionary.adoc[raddb/dictionary] file.
 
 == Concepts and Background
 
@@ -24,13 +38,10 @@ the form `if concept 15 has value "foo", then do ...`.
 The dictionaries solve this problem by enabling the server to decode
 the magic numbers into humanly-readable names.  The administrator can
 then write policies of the form `if the User-Name has value "bob",
-then do...`.
+then do something ...`.
 
-These policies are much simpler to create and understand.
-
-NOTE: The use of "json over HTTP" for almost everything is a few decades
-newer than RADIUS, DHCP, etc.  Perhaps one day everyone will move to
-that.  Until then, we are stuck with the dictionaries.
+Policies using descriptive are much simpler to create and understand
+than policies using numbers.
 
 The dictionaries also enable the server to decode protocols using
 xref:type/index.adoc[data types], and then present that decoded data
@@ -147,7 +158,7 @@ xref:dictionary/attribute.adoc[ATTRIBUTE] and xref:dictionary/value.adoc[VALUE].
 | xref:dictionary/vendor.adoc[VENDOR]        | Define a name and number for a vendor
 |=====
 
-The following keywords still XXX
+The following keywords define logical nesting of attributes.
 
 .Dictionary Nesting Keywords
 [options="header"]
@@ -155,8 +166,8 @@ The following keywords still XXX
 |=====
 | xref:dictionary/begin-protocol.adoc[BEGIN-PROTOCOL]  | Begin defining a protocol dictionary
 | xref:dictionary/end-protocol.adoc[END-PROTOCOL]      | End a protocol dictionary
-| xref:dictionary/begin.adoc[BEGIN]            | Begin defining children of a `tlv` data type
-| xref:dictionary/end.adoc[END]                | End defining children of a `tlv` data type
+| xref:dictionary/begin.adoc[BEGIN]                    | Begin defining children of a structural data type
+| xref:dictionary/end.adoc[END]                        | End defining children of a structural data type
 | xref:dictionary/begin-vendor.adoc[BEGIN-VENDOR]      | Begin defining vendor-specific attributes
 | xref:dictionary/end-vendor.adoc[END-VENDOR]          | End defining vendor-specific attributes
 |=====
