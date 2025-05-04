@@ -5,13 +5,17 @@ which is short for "un-language". The original intention of using an
 "un-language" was to avoid creating yet another programming language.
 Instead, the `unlang` syntax allows for simple _if / then / else_
 checks, and attribute editing.  It does not support recursion,
-subroutines, or more complex flow controls.
+functions, infinite loops, or a host of other normal language
+features.
 
-If third party libraries are required which are only available in `lua`,
-`perl` or `python`, then FreeRADIUS includes modules which allow those
-languages to be called as part of packet processing.  We do not recommend
-writing general policy in these languages since it adds complexity and
-reduces performance.
+In some cases, a third party library is provided only in an
+interpreted language, e.g. xref:raddb/mods-available/lua.adoc[Lua],
+xref:raddb/mods-available/perl.adoc[Perl] or
+xref:raddb/mods-available/python.adoc[Python].  FreeRADIUS includes
+support for those languages via
+xref:raddb/mods-available/index.adoc[plug-in modules].  _We do not
+recommend writing general policy in these languages since it adds
+complexity and reduces performance_.
 
 NOTE: The documentation is this directory is _reference_
 documentation.  That is, it describes the syntax of `unlang` keywords,
