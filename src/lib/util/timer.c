@@ -115,7 +115,7 @@ FR_DLIST_FUNCS(timer, fr_timer_t, entry)
 	fr_assert_msg(!(_ev)->parent || (*(_ev)->parent == ev), \
 		      "Event %p, allocd %s[%d], parent field points to %p", (_ev), (_ev)->file, (_ev)->line, *(_ev)->parent);
 
-#define TIMER_UCTX_TO_TIME(_tl, _x) (fr_time_t *)(((uintptr_t) (_x)) + (_tl)->shared.time_offset);
+#define TIMER_UCTX_TO_TIME(_tl, _x) ((fr_time_t *)(((uintptr_t) (_x)) + (_tl)->shared.time_offset))
 
 /** Specialisation function to insert a timer
  *
@@ -1537,7 +1537,7 @@ void fr_timer_report(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 void fr_timer_dump(fr_timer_list_t *tl)
 {
 	fr_lst_iter_t		iter;
-	fr_timer_t 	*ev;
+	fr_timer_t 		*ev;
 	fr_time_t		now = tl->pub.time();	/* Get the current time */
 
 #define TIMER_DUMP(_ev) \
@@ -1574,8 +1574,8 @@ void fr_timer_dump(fr_timer_list_t *tl)
 		EVENT_DEBUG("Dumping shared timer list");
 
 		fr_rb_inorder_foreach(tl->shared.rb, void, uctx) {
-			EVENT_DEBUG("time %" PRIu64" uctx %p", fr_time_unwrap(*TIMER_UCTX_TO_TIME(tl, uctx)));
-		}
+			EVENT_DEBUG("time %" PRIu64" uctx %p", fr_time_unwrap(*TIMER_UCTX_TO_TIME(tl, uctx)), uctx);
+		}}
 		break;
 	}
 }
