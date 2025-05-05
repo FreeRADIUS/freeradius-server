@@ -141,6 +141,7 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 
 	request_t		*request;
 	fr_pair_t		*container = NULL;
+	fr_pair_t		*depth_pair;
 
 	cert = X509_STORE_CTX_get_current_cert(x509_ctx);
 	err = X509_STORE_CTX_get_error(x509_ctx);
@@ -176,6 +177,17 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		X509_STORE_CTX_set_error(x509_ctx, 0);
 		return 1;
 	}
+
+	/*
+	 *	Find or add the chain depth attribute and record the greatest depth we see + 1,
+	 *	as depth is zero based.
+	 */
+	if (unlikely(fr_pair_find_or_append_by_da(request->session_state_ctx, &depth_pair, &request->session_state_pairs,
+					 attr_tls_certificate_chain_depth) < 0)) {
+		RERROR("Failed to add certificate chain depth pair");
+		return 0;
+	}
+	if (depth_pair->vp_uint32 < ((uint32_t)depth) + 1) depth_pair->vp_uint32 = (uint32_t)depth + 1;
 
 	if (RDEBUG_ENABLED3) {
 		char		subject[2048];

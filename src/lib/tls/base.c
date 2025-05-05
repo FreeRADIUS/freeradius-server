@@ -110,6 +110,7 @@ fr_dict_attr_t const *attr_tls_certificate_x509v3_subject_key_identifier;
 fr_dict_attr_t const *attr_tls_certificate_x509v3_authority_key_identifier;
 fr_dict_attr_t const *attr_tls_certificate_x509v3_basic_constraints;
 
+fr_dict_attr_t const *attr_tls_certificate_chain_depth;
 fr_dict_attr_t const *attr_tls_client_error_code;
 fr_dict_attr_t const *attr_tls_ocsp_cert_valid;
 fr_dict_attr_t const *attr_tls_ocsp_next_update;
@@ -153,6 +154,7 @@ fr_dict_attr_autoload_t tls_dict_attr[] = {
 	{ .out = &attr_tls_certificate_x509v3_authority_key_identifier, .name = "TLS-Certificate.X509v3-Authority-Key-Identifier", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_tls_certificate_x509v3_basic_constraints, .name = "TLS-Certificate.X509v3-Basic-Constraints", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
+	{ .out = &attr_tls_certificate_chain_depth, .name = "TLS-Certificate-Chain-Depth", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_tls_client_error_code, .name = "TLS-Client-Error-Code", .type = FR_TYPE_UINT8, .dict = &dict_freeradius },
 	{ .out = &attr_tls_ocsp_cert_valid, .name = "TLS-OCSP-Cert-Valid", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_tls_ocsp_next_update, .name = "TLS-OCSP-Next-Update", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },

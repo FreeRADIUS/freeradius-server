@@ -50,6 +50,7 @@ extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_x509v3_subject_key_iden
 extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_x509v3_authority_key_identifier;
 extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_x509v3_basic_constraints;
 
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_chain_depth;
 extern HIDDEN fr_dict_attr_t const *attr_tls_client_error_code;
 extern HIDDEN fr_dict_attr_t const *attr_tls_ocsp_cert_valid;
 extern HIDDEN fr_dict_attr_t const *attr_tls_ocsp_next_update;
