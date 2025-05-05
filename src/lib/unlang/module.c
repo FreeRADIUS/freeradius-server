@@ -495,6 +495,16 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 
 	if (!state->signal) return;
 
+	if (action == FR_SIGNAL_CANCEL) {
+		/*
+		 *	Cancel the retry timer, if it is set.
+		 *
+		 *	Because cancellation functions and actual unwinding are done separately
+		 *	the retry timer can fire after the module has been cancelled.
+		 */
+		TALLOC_FREE(state->ev);
+	}
+
 	/*
 	 *	Async calls can't push anything onto the unlang stack, so we just use a local "caller" here.
 	 */
