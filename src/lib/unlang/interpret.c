@@ -1131,7 +1131,9 @@ void unlang_interpret_signal(request_t *request, fr_signal_t action)
 	 *	yet should have a stack depth of zero, so we don't
 	 *	need to do anything.
 	 */
-	if (stack && (stack->depth > 0)) unlang_stack_signal(request, action, 1);
+	if (!stack || stack->depth == 0) return;
+
+	unlang_stack_signal(request, action, 1);
 
 	switch (action) {
 	case FR_SIGNAL_CANCEL:
