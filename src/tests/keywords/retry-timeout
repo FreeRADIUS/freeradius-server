@@ -7,14 +7,15 @@
 #
 
 #
-#  The timeouts here are LONGER than the main "timeout" section.
+#  The timeouts here are LONGER than the "timeout" section.
 #
-test.retry {
-	retry {
-		initial_rtx_time = 2
-		max_rtx_duration = 3
-		max_rtx_count = 2
-		max_rtx_duration = 5
+timeout 0.2s {
+	test.retry {
+		retry {
+			initial_rtx_time = 0.1s
+			max_rtx_duration = 3
+			max_rtx_count = 2
+			max_rtx_duration = 5
+		}
 	}
 }
-

@@ -8,4 +8,4 @@ User-Password = "hello"
 #
 #  Expected answer - no answer!
 #
-Packet-Type == 0
+Packet-Type == ::Do-Not-Respond
