@@ -216,6 +216,11 @@ typedef enum CC_HINT(flag_enum) {
 	UNLANG_OP_FLAG_DEBUG_BRACES	= 0x01,			//!< Print debug braces.
 	UNLANG_OP_FLAG_RCODE_SET	= 0x02,			//!< Set request->rcode to the result of this operation.
 	UNLANG_OP_FLAG_NO_CANCEL	= 0x04,			//!< Must not be cancelled.
+								///< @Note Slightly confusingly, a cancellation signal
+								///< can still be delivered to a frame that is not
+								///< cancellable, but the frame won't be automatically
+								///< unwound.  This lets the frame know that cancellation
+								///< is desired, but can be ignored.
 	UNLANG_OP_FLAG_BREAK_POINT	= 0x08,			//!< Break point.
 	UNLANG_OP_FLAG_RETURN_POINT	= 0x10,			//!< Return point.
 	UNLANG_OP_FLAG_CONTINUE_POINT	= 0x20			//!< Continue point.

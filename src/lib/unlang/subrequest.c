@@ -299,7 +299,18 @@ int unlang_subrequest_op_init(void)
 				.name = "subrequest",
 				.interpret = unlang_subrequest_parent_init,
 				.signal = unlang_subrequest_signal_child,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
+				/*
+				 *	Frame can't be cancelled, because children need to
+				 *	write out status to the parent.  If we don't do this,
+				 *	then all children must be detachable and must detach
+				 *	so they don't try and write out status to a "done"
+				 *	parent.
+				 *
+				 *	It's easier to allow the child/parent relationship
+				 *	to end normally so that non-detachable requests are
+				 *	guaranteed the parent still exists.
+				 */
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_CANCEL,
 				.frame_state_size = sizeof(unlang_frame_state_subrequest_t),
 				.frame_state_type = "unlang_frame_state_subrequest_t",
 			});

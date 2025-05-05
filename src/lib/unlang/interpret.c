@@ -1083,6 +1083,11 @@ void unlang_stack_signal(request_t *request, fr_signal_t action, int limit)
 	 *	There may be multiple resumption points in the
 	 *	stack, as modules can push xlats and function
 	 *	calls.
+	 *
+	 *	Note: Slightly confusingly, a cancellation signal
+	 *	can still be delivered to a frame that is not
+	 *	cancellable, but the frame won't be automatically
+	 *	unwound.
 	 */
 	for (i = depth; i >= limit; i--) {
 		frame = &stack->frame[i];
@@ -1130,6 +1135,8 @@ void unlang_interpret_signal(request_t *request, fr_signal_t action)
 
 	switch (action) {
 	case FR_SIGNAL_CANCEL:
+	{
+		unlang_stack_frame_t *frame = &stack->frame[stack->depth];
 		/*
 		 *	Let anything that cares, know that the
 		 *	request was forcefully stopped.
@@ -1138,10 +1145,15 @@ void unlang_interpret_signal(request_t *request, fr_signal_t action)
 
 		/*
 		 *	If the request is yielded, mark it as runnable
+		 *
+		 *	If the request was _not_ cancelled, it means
+		 *	it's not cancellable, and we need to let the
+		 *	request progress normally.
 		 */
-		if (stack && is_yielded(&stack->frame[stack->depth]) && !unlang_request_is_scheduled(request)) {
+		if (stack && is_yielded(frame) && is_cancelled(frame) && !unlang_request_is_scheduled(request)) {
 			unlang_interpret_mark_runnable(request);
 		}
+	}
 		break;
 
 	case FR_SIGNAL_DETACH:
