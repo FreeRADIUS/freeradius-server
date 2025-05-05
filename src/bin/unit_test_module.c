@@ -33,12 +33,14 @@ RCSID("$Id$")
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/io/listen.h>
 
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/tls/version.h>
 
 #include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/radius/radius.h>
@@ -624,6 +626,67 @@ static void cancel_request(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t when, vo
 	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
 }
 
+fr_time_delta_t time_offset = fr_time_delta_wrap(0);
+
+/** Sythentic time source for tests
+ *
+ * This allows us to artificially advance time for tests.
+ */
+static fr_time_t _synthetic_time_source(void)
+{
+	return fr_time_add_delta_time(time_offset, fr_time());
+}
+static xlat_arg_parser_t const xlat_func_time_advance_args[] = {
+	{ .required = true, .type = FR_TYPE_TIME_DELTA, .single = true },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static fr_timer_t *time_advance_timer = NULL;
+
+static void time_advance_resume(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
+{
+	request_t *request = talloc_get_type_abort(uctx, request_t);
+	unlang_interpret_mark_runnable(request);
+}
+
+static xlat_action_t xlat_func_time_advance_resume(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+						   UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	fr_value_box_t *vb;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL));
+	vb->vb_time_delta = time_offset;
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+static xlat_action_t xlat_func_time_advance(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					    UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request, fr_value_box_list_t *in)
+{
+	fr_value_box_t *delta;
+
+	XLAT_ARGS(in, &delta);
+
+	RDEBUG("Time was %pV", fr_box_date(fr_time_to_unix_time(_synthetic_time_source())));
+
+	time_offset = fr_time_delta_add(time_offset, delta->vb_time_delta);
+
+	RDEBUG("Time now %pV (offset +%pV)", fr_box_date(fr_time_to_unix_time(_synthetic_time_source())), fr_box_time_delta(time_offset));
+
+	/*
+	 *	This ensures we take a pass through the timer list
+	 *	otherwise the time advances can be ignored.
+	 */
+	if (unlikely(fr_timer_in(NULL, unlang_interpret_event_list(request)->tl, &time_advance_timer, fr_time_delta_wrap(0), true, time_advance_resume, request) < 0)) {
+		RPERROR("Failed to add timer");
+		return XLAT_ACTION_FAIL;
+	}
+	unlang_xlat_yield(request, xlat_func_time_advance_resume, NULL, 0, NULL);
+
+	return XLAT_ACTION_YIELD;
+}
+
 /**
  *
  * @hidecallgraph
@@ -648,6 +711,8 @@ int main(int argc, char *argv[])
 	fr_dict_t		*dict = NULL;
 	fr_dict_t const		*dict_check;
 	char const 		*receipt_file = NULL;
+
+	xlat_t			*time_advance = NULL;
 
 	TALLOC_CTX		*autofree;
 	TALLOC_CTX		*thread_ctx;
@@ -884,6 +949,9 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
+	time_advance = xlat_func_register(NULL, "time.advance", xlat_func_time_advance, FR_TYPE_VOID);
+	xlat_func_args_set(time_advance, xlat_func_time_advance_args);
+
 	/*
 	 *	Ensure that we load the correct virtual server for the
 	 *	protocol, if necessary.
@@ -942,6 +1010,7 @@ int main(int argc, char *argv[])
 	 */
 	el = fr_event_list_alloc(NULL, NULL, NULL);
 	fr_assert(el != NULL);
+	fr_timer_list_set_time_func(el->tl, _synthetic_time_source);
 
 	/*
 	 *	Simulate thread specific instantiation
@@ -1164,6 +1233,7 @@ cleanup:
 #endif
 
 	map_proc_unregister("test-fail");
+	xlat_func_unregister("time.advance");
 
 	/*
 	 *	Free thread data
