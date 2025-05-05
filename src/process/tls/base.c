@@ -238,4 +238,5 @@ fr_process_module_t process_tls = {
 	.process	= mod_process,
 	.compile_list	= compile_list,
 	.dict		= &dict_tls,
+	.packet_type	= &attr_packet_type
 };

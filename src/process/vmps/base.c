@@ -272,4 +272,5 @@ fr_process_module_t process_vmps = {
 	.process	= mod_process,
 	.compile_list	= compile_list,
 	.dict		= &dict_vmps,
+	.packet_type	= &attr_packet_type
 };

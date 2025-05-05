@@ -1259,5 +1259,6 @@ fr_process_module_t process_dhcpv6 = {
 	},
 	.process	= mod_process,
 	.compile_list	= compile_list,
-	.dict		= &dict_dhcpv6
+	.dict		= &dict_dhcpv6,
+	.packet_type	= &attr_packet_type
 };

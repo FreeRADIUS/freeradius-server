@@ -57,6 +57,7 @@ typedef struct fr_process_module_s {
 	module_method_t			process;	//!< Process packets
 	virtual_server_compile_t const	*compile_list;	//!< list of processing sections
 	fr_dict_t const			**dict;		//!< pointer to local fr_dict_t *
+	fr_dict_attr_t const		**packet_type;	//!< Request packet types to look for finally sections for.
 } fr_process_module_t;
 
 /** Trace each state function as it's entered

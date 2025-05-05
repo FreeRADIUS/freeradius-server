@@ -240,4 +240,5 @@ fr_process_module_t process_ldap_sync = {
 	.process	= mod_process,
 	.compile_list	= compile_list,
 	.dict		= &dict_ldap_sync,
+	.packet_type	= &attr_packet_type
 };
