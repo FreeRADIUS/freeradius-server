@@ -39,25 +39,25 @@ RCSID("$Id$")
 #include <freeradius-devel/io/listen.h>
 
 typedef struct {
-	module_instance_t		*proto_mi;		//!< The proto_* module for a listen section.
-	fr_app_t const			*proto_module;		//!< Public interface to the proto_mi.
-								///< cached for convenience.
+	module_instance_t		*proto_mi;			//!< The proto_* module for a listen section.
+	fr_app_t const			*proto_module;			//!< Public interface to the proto_mi.
+									///< cached for convenience.
 } virtual_server_listen_t;
 
 struct virtual_server_s {
-	CONF_SECTION			*server_cs;		//!< The server section.
-	virtual_server_listen_t		**listeners;		//!< Listeners in this virtual server.
+	CONF_SECTION			*server_cs;			//!< The server section.
+	virtual_server_listen_t		**listeners;			//!< Listeners in this virtual server.
 
-	module_instance_t		*process_mi;		//!< The process_* module for a virtual server.
-								///< Contains the dictionary used by the virtual
-								///< server and the entry point for the state machine.
-	fr_process_module_t const	*process_module;	//!< Public interface to the process_mi.
-								///< cached for convenience.
+	module_instance_t		*process_mi;			//!< The process_* module for a virtual server.
+									///< Contains the dictionary used by the virtual
+									///< server and the entry point for the state machine.
+	fr_process_module_t const	*process_module;		//!< Public interface to the process_mi.
+									///< cached for convenience.
 
-	fr_rb_tree_t			*sections;		//!< List of sections that need to be compiled.
+	fr_rb_tree_t			*sections;			//!< List of sections that need to be compiled.
 
-	fr_log_t			*log;			//!< log destination
-	char const			*log_name;		//!< name of log destination
+	fr_log_t			*log;				//!< log destination
+	char const			*log_name;			//!< name of log destination
 
 	fr_time_delta_t			timeout_delay;		//!< for timeout sections
 	void				*timeout_instruction;	//!< the timeout instruction
