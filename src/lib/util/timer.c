@@ -718,7 +718,18 @@ int fr_timer_delete(fr_timer_t **ev_p)
  */
 fr_time_t fr_timer_when(fr_timer_t *ev)
 {
+	if (!fr_timer_armed(ev)) return fr_time_wrap(0);
 	return ev->when;
+}
+
+/** Return time delta between now and when the timer should fire
+ *
+ * @param[in] ev to get the time delta for.
+ */
+fr_time_delta_t fr_timer_remaining(fr_timer_t *ev)
+{
+	if (!fr_timer_armed(ev)) return fr_time_delta_wrap(0);
+	return fr_time_sub(ev->tl->pub.time(), ev->when);
 }
 
 /** Check if a timer event is armed

@@ -112,6 +112,8 @@ int			fr_timer_delete(fr_timer_t **ev_p) CC_HINT(nonnull);	/* disarms AND frees 
 
 fr_time_t		fr_timer_when(fr_timer_t *ev) CC_HINT(nonnull);
 
+fr_time_delta_t		fr_timer_remaining(fr_timer_t *ev) CC_HINT(nonnull);
+
 bool			_fr_timer_armed(fr_timer_t *ev);
 
 /* Wrapper to avoid overhead of function call on NULL */
