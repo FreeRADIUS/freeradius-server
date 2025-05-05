@@ -1168,6 +1168,8 @@ unlang_action_t tls_establish_session_push(request_t *request, fr_tls_conf_t *co
 	request_t	*child;
 	fr_pair_t	*vp;
 	unlang_action_t	ua;
+	uint8_t const	*session_id;
+	unsigned int	len;
 
 	MEM(child = unlang_subrequest_alloc(request, dict_tls));
 	request = child;
@@ -1177,6 +1179,12 @@ unlang_action_t tls_establish_session_push(request_t *request, fr_tls_conf_t *co
 	 */
 	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
 	vp->vp_uint32 = enum_tls_packet_type_establish_session->vb_uint32;
+
+	session_id = SSL_SESSION_get_id(tls_session->session, &len);
+	if (session_id && (len > 0)) {
+		MEM(pair_append_request(&vp, attr_tls_session_id) >= 0);
+		fr_pair_value_memdup(vp, session_id, len, false);
+	}
 
 	/*
 	 *	Allocate a child, and set it up to call
