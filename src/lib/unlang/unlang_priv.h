@@ -71,6 +71,7 @@ typedef enum {
 	UNLANG_TYPE_TRANSACTION,       		//!< transactions for editing lists
 	UNLANG_TYPE_TRY,       			//!< try / catch blocks
 	UNLANG_TYPE_CATCH,       		//!< catch a previous try
+	UNLANG_TYPE_FINALLY,			//!< run at the end of a virtual server.
 	UNLANG_TYPE_POLICY,			//!< Policy section.
 	UNLANG_TYPE_XLAT,			//!< Represents one level of an xlat expansion.
 	UNLANG_TYPE_TMPL,			//!< asynchronously expand a tmpl_t
@@ -734,6 +735,8 @@ void		unlang_call_init(void);
 void		unlang_caller_init(void);
 
 void		unlang_condition_init(void);
+
+void		unlang_finally_init(void);
 
 void		unlang_foreach_init(void);
 

@@ -9,6 +9,7 @@ SOURCES	:=	base.c \
 		condition.c \
 		detach.c \
 		edit.c \
+		finally.c \
 		foreach.c \
 		function.c \
 		group.c \

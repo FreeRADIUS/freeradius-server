@@ -358,6 +358,7 @@ static void unlang_dump(unlang_t *instruction, int depth)
 		case UNLANG_TYPE_CALLER:
 		case UNLANG_TYPE_CASE:
 		case UNLANG_TYPE_FOREACH:
+		case UNLANG_TYPE_FINALLY:
 		case UNLANG_TYPE_ELSE:
 		case UNLANG_TYPE_ELSIF:
 		case UNLANG_TYPE_GROUP:

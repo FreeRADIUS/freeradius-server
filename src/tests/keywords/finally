@@ -1,0 +1,22 @@
+call default-fin { }
+
+if Tmp-String-0 != 'bye-from-default-fin' {
+	test_fail
+}
+
+call packet-fin { }
+
+if Tmp-String-0 != 'bye-from-packet-fin' {
+	test_fail
+}
+
+call timeout-fin { }
+
+if Tmp-String-0 != 'bye-from-timeout-fin' {
+	test_fail
+}
+
+# Remove any response packet types the RADIUS process state machine added
+reply.Packet-Type := {}
+
+success

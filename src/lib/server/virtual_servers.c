@@ -29,14 +29,23 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/process.h>
+#include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/server/cf_util.h>
 
 #include <freeradius-devel/unlang/compile.h>
 #include <freeradius-devel/unlang/function.h>
-#include <freeradius-devel/unlang/timeout.h>
+#include <freeradius-devel/unlang/finally.h>
+#include <freeradius-devel/unlang/interpret.h>
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/master.h>
 #include <freeradius-devel/io/listen.h>
+
+#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/types.h>
+#include <freeradius-devel/util/value.h>
 
 typedef struct {
 	module_instance_t		*proto_mi;			//!< The proto_* module for a listen section.
@@ -59,9 +68,8 @@ struct virtual_server_s {
 	fr_log_t			*log;				//!< log destination
 	char const			*log_name;			//!< name of log destination
 
-	fr_time_delta_t			timeout_delay;		//!< for timeout sections
-	void				*timeout_instruction;	//!< the timeout instruction
-	CONF_SECTION			*timeout_cs;
+	void				**finally_by_packet_type;	//!< Finalise instruction by packet type.
+	void				*finally_default;		//!< Default finally instruction.
 };
 
 static fr_dict_t const *dict_freeradius;
@@ -689,16 +697,67 @@ static void server_signal_remove_log_destination(request_t *request, UNUSED fr_s
 	request_log_prepend(request, server->log, L_DBG_LVL_DISABLE);
 }
 
+/** Push a finally section onto the stack
+ *
+ * The finally instruction cannot be cancelled and will always execute as the stack is unwound.
+ *
+ * @param[in] request		request to push the finally section onto.
+ * @param[in] vs		virtual server to push the finally section for.
+ * @param[in,out] top_frame	mutate the top frame value to indicate that future
+ *				pushes should be subframes.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static inline CC_HINT(always_inline) int virtual_server_push_finally(request_t *request, virtual_server_t const *vs, bool *top_frame)
+{
+	/*
+	 *	Don't bother finding the packet type unless there
+	 *	are finally sections registered.
+	 */
+	if (vs->finally_by_packet_type) {
+		fr_pair_t	*vp = fr_pair_find_by_da(&request->request_pairs, NULL,
+							 *(vs->process_module->packet_type));
+		fr_value_box_t	key;
+		void		*instruction;
+
+		if (!vp) goto check_default;	/* No packet type found, still allow default finally section */
+
+		fr_value_box_cast(NULL, &key, FR_TYPE_UINT16, NULL, &vp->data);
+		fr_assert(key.type == FR_TYPE_UINT16);	/* Cast must succeed */
+
+		if (key.vb_uint16 >= talloc_array_length(vs->finally_by_packet_type) ||
+		    !(instruction = vs->finally_by_packet_type[key.vb_uint16])) goto check_default;
+
+		if (unlikely(unlang_finally_push_instruction(request, instruction,
+							     fr_time_delta_from_sec(5), *top_frame) < 0)) return -1;
+
+		*top_frame = UNLANG_SUB_FRAME;	/* switch to SUB_FRAME after the first instruction */
+
+		return 0;
+	}
+
+check_default:
+	if (vs->finally_default) {
+		if (unlikely(unlang_finally_push_instruction(request, vs->finally_default,
+							     fr_time_delta_from_sec(5), *top_frame) < 0)) return -1;
+
+		*top_frame = UNLANG_SUB_FRAME;	/* switch to SUB_FRAME after the first instruction */
+	}
+
+	return 0;
+}
+
 /** Set the request processing function.
  *
  *	Short-term hack
  */
 unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_frame)
 {
-	virtual_server_t *server;
+	virtual_server_t *vs;
 
-	server = cf_data_value(cf_data_find(server_cs, virtual_server_t, NULL));
-	if (!server) {
+	vs = cf_data_value(cf_data_find(server_cs, virtual_server_t, NULL));
+	if (!vs) {
 		cf_log_err(server_cs, "server_cs does not contain virtual server data");
 		return UNLANG_ACTION_FAIL;
 	}
@@ -716,8 +775,8 @@ unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs,
 	 *	However, if we're being reached from a "call" frame in the middle of the stack, then
 	 *	we do have to pop the log destination when we return.
 	 */
-	if (server->log) {
-		request_log_prepend(request, server->log, fr_debug_lvl);
+	if (vs->log) {
+		request_log_prepend(request, vs->log, fr_debug_lvl);
 
 		if (unlang_interpret_stack_depth(request) > 1) {
 			unlang_action_t action;
@@ -725,33 +784,23 @@ unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs,
 			action = unlang_function_push(request, NULL, /* don't call it immediately */
 						      server_remove_log_destination, /* but when we pop the frame */
 						      server_signal_remove_log_destination, FR_SIGNAL_CANCEL,
-						      top_frame, server);
+						      top_frame, vs);
 			if (action != UNLANG_ACTION_PUSHED_CHILD) return action;
 
-			/*
-			 *	The pushed function may be a top frame, but the virtual server
-			 *	we're about to push is now definitely a sub frame.
-			 */
-			top_frame = UNLANG_SUB_FRAME;
+			top_frame = UNLANG_SUB_FRAME;	/* switch to SUB_FRAME after the first instruction */
 		}
 	}
 
 	/*
-	 *	Push a timeout after updating the log destination.
+	 *	Push an uncancellable finally instruction to the stack.
 	 */
-	if (server->timeout_cs) {
-		if (unlang_timeout_section_push(request, server->timeout_cs, server->timeout_delay, top_frame) < 0) {
-			return UNLANG_ACTION_FAIL;
-		}
-
-		top_frame = UNLANG_SUB_FRAME;
-	}
+	if (virtual_server_push_finally(request, vs, &top_frame) < 0) return UNLANG_ACTION_FAIL;
 
 	/*
 	 *	Bootstrap the stack with a module instance.
 	 */
-	if (unlang_module_push(&request->rcode, request, server->process_mi,
-			       server->process_module->process, top_frame) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_module_push(&request->rcode, request, vs->process_mi,
+			       vs->process_module->process, top_frame) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -967,20 +1016,114 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 	return 0;
 }
 
-static unlang_mod_actions_t const mod_actions_timeout = {
-	.actions = {
-		[RLM_MODULE_REJECT]	= 3,
-		[RLM_MODULE_FAIL]	= 1,
-		[RLM_MODULE_OK]		= 4,
-		[RLM_MODULE_HANDLED]	= MOD_ACTION_RETURN,
-		[RLM_MODULE_INVALID]	= 2,
-		[RLM_MODULE_DISALLOW]	= 5,
-		[RLM_MODULE_NOTFOUND]	= 6,
-		[RLM_MODULE_NOOP]	= 8,
-		[RLM_MODULE_UPDATED]	= 7
-	},
-	.retry = RETRY_INIT,
-};
+static inline CC_HINT(always_inline) int virtual_server_compile_finally_sections(virtual_server_t *vs, tmpl_rules_t const *rules, int *found)
+{
+	static unlang_mod_actions_t const mod_actions_finally = {
+		.actions = {
+			[RLM_MODULE_REJECT]	= 3,
+			[RLM_MODULE_FAIL]	= 1,
+			[RLM_MODULE_OK]		= 4,
+			[RLM_MODULE_HANDLED]	= MOD_ACTION_RETURN,
+			[RLM_MODULE_INVALID]	= 2,
+			[RLM_MODULE_DISALLOW]	= 5,
+			[RLM_MODULE_NOTFOUND]	= 6,
+			[RLM_MODULE_NOOP]	= 8,
+			[RLM_MODULE_UPDATED]	= 7
+		},
+		.retry = RETRY_INIT,
+	};
+
+	fr_dict_attr_t const	*da = NULL;
+	fr_dict_attr_t const 	**da_p = vs->process_module->packet_type;
+	CONF_SECTION		*subcs;
+
+	if (da_p) {
+		da = *da_p;
+		fr_assert_msg(da != NULL, "Packet-Type attr not resolved");
+	}
+
+	/*
+	 *	Iterate over all the finally sections, trying to resolve
+	 *	the name2 to packet types.
+	 */
+	for (subcs = cf_section_find(vs->server_cs, "finally", CF_IDENT_ANY);
+	     subcs;
+	     subcs = cf_section_find_next(vs->server_cs, subcs, "finally", CF_IDENT_ANY)) {
+		char const			*packet_type = cf_section_name2(subcs);
+		fr_dict_enum_value_t const	*ev;
+		fr_value_box_t			key;
+		int				ret;
+		void				*instruction;
+
+		if (!cf_section_name2(subcs)) {
+			if (vs->finally_default) {
+				cf_log_err(subcs, "Duplicate 'finally { ... }' section");
+				return -1;
+			}
+
+			ret = unlang_compile(vs, subcs, &mod_actions_finally, rules, &instruction);
+			if (ret < 0) return -1;
+
+			vs->finally_default = instruction;
+			(*found)++;
+
+			continue;
+		}
+
+		/*
+		 *	FIXME: This would allow response packet types too
+		 *	We don't have anything that lists request/response
+		 *	types, so we can't check that here.
+		 */
+		ev = fr_dict_enum_by_name(da, packet_type, talloc_strlen(packet_type));
+		if (!ev) {
+			cf_log_err(subcs, "Invalid 'finally %s { ... }' section, "
+					"does not match any Packet-Type value", packet_type);
+			return -1;
+		}
+
+		/*
+		 *	This is... unlikely, as protocols usually use small
+		 *	packet types.
+		 */
+		if (!fr_type_is_integer_except_bool(ev->value->type)) {
+		forbid:
+			if (da) {
+				cf_log_err(subcs, "'finally %s { ... }' section, "
+					"not supported for this protocol.  %s is a %s", packet_type,
+					da->name, fr_type_to_str(ev->value->type));
+			} else {
+
+				cf_log_err(subcs, "'finally %s { ... }' section, "
+					"not supported for this protocol", packet_type);
+			}
+			return -1;
+		}
+
+		if (fr_value_box_cast(NULL, &key, FR_TYPE_UINT16, NULL, ev->value) < 0) {
+			goto forbid;
+		}
+
+		if (key.vb_uint16 > talloc_array_length(vs->finally_by_packet_type)) {
+			MEM(vs->finally_by_packet_type = talloc_realloc_zero(vs, vs->finally_by_packet_type,
+									     void *, key.vb_uint16 + 1));
+		}
+
+		if (vs->finally_by_packet_type[key.vb_uint16]) {
+			cf_log_err(subcs, "Duplicate 'finally %s { ... }' section", packet_type);
+			return -1;
+		}
+
+		ret = unlang_compile(vs, subcs, &mod_actions_finally, rules, &instruction);
+		if (ret < 0) return -1;
+
+		vs->finally_by_packet_type[key.vb_uint16] = instruction;
+
+		(*found)++;
+	}
+
+	return 0;
+}
 
 /** Compile sections for a virtual server.
  *
@@ -1140,47 +1283,13 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 	}
 
 	/*
-	 *	A 'timeout' section applies to any request which is run through this virtual server.
+	 *	Compile finally sections, these are special
+	 *	sections and always execute before the request
+	 *	exits from the virtual server.
 	 */
-	subcs = cf_section_find(server, "timeout", CF_IDENT_ANY);
-	if (subcs) {
-		int rcode;
-		void *instruction = NULL;
-		char const *value;
-		fr_value_box_t box;
-
-		value = cf_section_name2(subcs);
-		if (!value) {
-			cf_log_err(subcs, "Invalid 'timeout { ... }' section, it must define a timeout value");
-			return -1;
-		}
-
-		if (fr_value_box_from_str(subcs, &box, FR_TYPE_TIME_DELTA, NULL, value, strlen(value), NULL) < 0) {
-			cf_log_perr(subcs, "Failed parsing timeout value");
-			return -1;
-		}
-
-		if (fr_time_delta_cmp(box.vb_time_delta, fr_time_delta_from_msec(10)) < 0) {
-			cf_log_warn(subcs, "Timeout value %pV too small - it should be >= .01s", &box);
-
-			box.vb_time_delta = fr_time_delta_from_msec(10);
-		}
-
-		if (fr_time_delta_cmp(box.vb_time_delta, main_config->worker.max_request_time) > 0) {
-			cf_log_warn(subcs, "Timeout value %pV too large - limiting it to max_request_time of %pV",
-				    &box, fr_box_time_delta(main_config->worker.max_request_time));
-
-			box.vb_time_delta = main_config->worker.max_request_time;
-		}
-
-	       	rcode = unlang_compile(vs, subcs, &mod_actions_timeout, rules, &instruction);
-		if (rcode < 0) return -1;
-
-		vs->timeout_delay = box.vb_time_delta;
-		vs->timeout_instruction = instruction;
-		vs->timeout_cs = subcs;
-
-		found++;
+	if (unlikely(virtual_server_compile_finally_sections(vs, rules, &found) < 0)) {
+		cf_log_err(server, "Failed to compile finally sections");
+		return -1;
 	}
 
 	return found;
