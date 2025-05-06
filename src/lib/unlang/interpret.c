@@ -1036,6 +1036,20 @@ void unlang_interpret_request_detach(request_t *request)
 	intp->funcs.detach(request, intp->uctx);
 }
 
+void unlang_interpret_request_prioritise(request_t *request, uint32_t priority)
+{
+	unlang_stack_t		*stack = request->stack;
+	unlang_interpret_t	*intp;
+
+	if (!fr_cond_assert(stack != NULL)) return;
+
+	intp = stack->intp;
+
+	request->async->priority = priority;
+
+	if (intp->funcs.prioritise) intp->funcs.prioritise(request, intp->uctx);
+}
+
 /** Delivers a frame to one or more frames in the stack
  *
  * This is typically called via an "async" action, i.e. an action outside
@@ -1144,6 +1158,12 @@ void unlang_interpret_signal(request_t *request, fr_signal_t action)
 		 *	request was forcefully stopped.
 		 */
 		request->master_state = REQUEST_STOP_PROCESSING;
+
+		/*
+		 *	Give cancelled requests the highest priority
+		 *	to get them to release resources ASAP.
+		 */
+		unlang_interpret_request_prioritise(request, UINT32_MAX);
 
 		/*
 		 *	If the request is yielded, mark it as runnable

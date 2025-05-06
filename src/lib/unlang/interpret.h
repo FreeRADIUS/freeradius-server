@@ -88,6 +88,12 @@ typedef void (*unlang_request_runnable_t)(request_t *request, void *uctx);
  */
 typedef bool (*unlang_request_scheduled_t)(request_t const *request, void *uctx);
 
+/** Re-priotise the request in the runnable queue
+ *
+ * The new priority will be available in request->async->priority.
+ */
+typedef void (*unlang_request_prioritise_t)(request_t *request, void *uctx);
+
 /** External functions provided by the owner of the interpret
  *
  * These functions allow the event loop to signal the caller when a given
@@ -119,6 +125,8 @@ typedef struct {
 							///< added back to the runnable queue.
 	unlang_request_scheduled_t	scheduled;	//!< Function to check if a request is already
 							///< scheduled.
+	unlang_request_prioritise_t	prioritise;	//!< Function to re-priotise a request in the
+							///< runnable queue.
 } unlang_request_func_t;
 
 int			unlang_interpret_push_section(request_t *request, CONF_SECTION *cs,
@@ -159,6 +167,8 @@ bool			unlang_request_is_cancelled(request_t const *request);
 bool			unlang_request_is_done(request_t const *request);
 
 void			unlang_interpret_request_done(request_t *request);
+
+void			unlang_interpret_request_prioritise(request_t *request, uint32_t priority);
 
 void			unlang_interpret_mark_runnable(request_t *request);
 

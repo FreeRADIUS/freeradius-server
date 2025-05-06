@@ -169,7 +169,7 @@ static unlang_interpret_synchronous_t *unlang_interpret_synchronous_alloc(TALLOC
 							.yield = _request_yield,
 							.resume = _request_resume,
 							.mark_runnable = _request_runnable,
-							.scheduled = _request_scheduled
+							.scheduled = _request_scheduled,
 						},
 						intps));
 

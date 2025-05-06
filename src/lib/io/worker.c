@@ -1291,6 +1291,22 @@ static bool _worker_request_scheduled(request_t const *request, UNUSED void *uct
 	return fr_heap_entry_inserted(request->runnable);
 }
 
+/** Update a request's priority
+ *
+ */
+static void _worker_request_prioritise(request_t *request, void *uctx)
+{
+	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
+
+	RDEBUG3("Request priority changed");
+
+	/* Extract the request from the runnable queue _if_ it's in the runnable queue */
+	if (fr_heap_extract(&worker->runnable, request) < 0) return;
+
+	/* Reinsert it to re-evaluate its new priority */
+	fr_heap_insert(&worker->runnable, request);
+}
+
 /** Run a request
  *
  *  Until it either yields, or is done.
@@ -1471,7 +1487,8 @@ nomem:
 							.resume = _worker_request_resume,
 							.mark_runnable = _worker_request_runnable,
 
-							.scheduled = _worker_request_scheduled
+							.scheduled = _worker_request_scheduled,
+							.prioritise = _worker_request_prioritise
 					     },
 					     worker);
 	if (!worker->intp){
