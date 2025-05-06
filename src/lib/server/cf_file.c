@@ -75,6 +75,24 @@ static fr_table_num_sorted_t const conf_property_name[] = {
 };
 static size_t conf_property_name_len = NUM_ELEMENTS(conf_property_name);
 
+static fr_table_num_sorted_t const server_unlang_section[] = {
+	{ L("accounting"),	true },
+	{ L("add"),		true },
+	{ L("authenticate"),	true },
+	{ L("clear"),		true },
+	{ L("deny"),		true },
+	{ L("error"),		true },
+	{ L("establish"),	true },
+	{ L("finally"),		true },
+	{ L("load"),		true },
+	{ L("new"),		true },
+	{ L("recv"),		true },
+	{ L("send"),		true },
+	{ L("store"),		true },
+	{ L("verify"),		true },
+};
+static size_t server_unlang_section_len = NUM_ELEMENTS(server_unlang_section);
+
 typedef enum {
 	CF_STACK_FILE = 0,
 #ifdef HAVE_DIRENT_H
@@ -2795,19 +2813,7 @@ alloc_section:
 		 */
 	case CF_UNLANG_SERVER:
 		// git grep SECTION_NAME src/process/ src/lib/server/process.h | sed 's/.*SECTION_NAME("//;s/",.*//' | sort -u
-		if ((strcmp(css->name1, "accounting") == 0) ||
-		    (strcmp(css->name1, "add") == 0) ||
-		    (strcmp(css->name1, "authenticate") == 0) ||
-		    (strcmp(css->name1, "clear") == 0) ||
-		    (strcmp(css->name1, "deny") == 0) ||
-		    (strcmp(css->name1, "error") == 0) ||
-		    (strcmp(css->name1, "load") == 0) ||
-		    (strcmp(css->name1, "new") == 0) ||
-		    (strcmp(css->name1, "recv") == 0) ||
-		    (strcmp(css->name1, "send") == 0) ||
-		    (strcmp(css->name1, "store") == 0) ||
-		    (strcmp(css->name1, "establish") == 0) ||
-		    (strcmp(css->name1, "verify") == 0)) {
+		if (fr_table_value_by_str(server_unlang_section, css->name1, false)) {
 			css->unlang = CF_UNLANG_ALLOW;
 			css->allow_locals = true;
 			break;
