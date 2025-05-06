@@ -1105,7 +1105,16 @@ void unlang_stack_signal(request_t *request, fr_signal_t action, int limit)
 	 */
 	for (i = depth; i >= limit; i--) {
 		frame = &stack->frame[i];
-		if (frame->signal) frame->signal(request, frame, action);
+		if (frame->signal) {
+			frame->signal(request, frame, action);
+
+			/*
+			 *	Once the cancellation function has been
+			 *	called, the frame is no longer in a state
+			 *	where it can accept further signals.
+			 */
+			if (action == FR_SIGNAL_CANCEL) frame->signal = NULL;
+		}
 	}
 }
 
