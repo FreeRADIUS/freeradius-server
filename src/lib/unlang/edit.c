@@ -251,7 +251,7 @@ static int edit_create_lhs_vp(request_t *request, TALLOC_CTX *ctx, edit_map_t *c
 	vp = tmpl_dcursor_build_init(&err, ctx, &lhs_cc, &lhs_cursor, request, current->lhs.vpt, edit_list_pair_build, current);
 	tmpl_dcursor_clear(&lhs_cc);
 	if (!vp) {
-		RWDEBUG("Failed creating attribute %s", current->lhs.vpt->name);
+		RPEDEBUG("Failed creating attribute %s", current->lhs.vpt->name);
 		return -1;
 	}
 
@@ -752,7 +752,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 			 *	@todo - audit other uses of tmpl_attr_tail_da() and fr_pair_afrom_da() in this file.
 			 */
 			if (pair_append_by_tmpl_parent(current->parent->lhs.vp, &vp, list, current->lhs.vpt, true) < 0) {
-				RWDEBUG("Failed creating attribute %s", current->lhs.vpt->name);
+				RPEDEBUG("Failed creating attribute %s", current->lhs.vpt->name);
 				return -1;
 			}
 
