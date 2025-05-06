@@ -149,10 +149,13 @@ void	fr_ipaddr_get_scope_id(fr_ipaddr_t *ipaddr);
 int	fr_interface_to_ipaddr(char const *interface, fr_ipaddr_t *ipaddr, int af, bool link_local);
 
 int	fr_interface_to_ethernet(char const *interface, fr_ethernet_t *ethernet);
+
 /*
  *	Comparison
  */
 int8_t	fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
+
+int8_t	fr_sockaddr_cmp(struct sockaddr_storage const *a, struct sockaddr_storage const *b);
 
 /*
  *	Sockaddr conversion functions

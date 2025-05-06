@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <ifaddrs.h>
 #include <net/if_arp.h>
+#include <sys/un.h>
 
 /*
  *	Linux
@@ -1652,4 +1653,49 @@ int fr_interface_to_ethernet(char const *interface, fr_ethernet_t *ethernet)
 
 	freeifaddrs(list);
 	return ret;
+}
+
+
+int8_t fr_sockaddr_cmp(struct sockaddr_storage const *a, struct sockaddr_storage const *b)
+{
+	int8_t ret;
+
+	ret = CMP(a->ss_family, b->ss_family);
+	if (ret != 0) return 0;
+
+	switch (a->ss_family) {
+	case AF_INET:
+		ret = CMP(((struct sockaddr_in const *)a)->sin_port, ((struct sockaddr_in const *)b)->sin_port);
+		if (ret != 0) return ret;
+
+		ret = memcmp(&((struct sockaddr_in const *)a)->sin_addr,
+			     &((struct sockaddr_in const *)b)->sin_addr,
+			     sizeof(((struct sockaddr_in const *)a)->sin_addr));
+		return CMP(ret, 0);
+
+	case AF_INET6:
+		ret = CMP(((struct sockaddr_in6 const *)a)->sin6_port, ((struct sockaddr_in6 const *)b)->sin6_port);
+		if (ret != 0) return ret;
+
+		/*
+		 *	@todo - flow info?
+		 */
+
+		ret = CMP(((struct sockaddr_in6 const *)a)->sin6_scope_id, ((struct sockaddr_in6 const *)b)->sin6_scope_id);
+		if (ret != 0) return ret;
+
+		ret = memcmp(&((struct sockaddr_in6 const *)a)->sin6_addr,
+			     &((struct sockaddr_in6 const *)b)->sin6_addr,
+			     sizeof(((struct sockaddr_in6 const *)a)->sin6_addr));
+		return CMP(ret, 0);
+
+	case AF_LOCAL:
+		ret = strcmp(((struct sockaddr_un const *)a)->sun_path,
+			     ((struct sockaddr_un const *)b)->sun_path);
+		return CMP(ret, 0);
+
+	default:
+		fr_assert(0);
+		return 0;
+	}
 }
