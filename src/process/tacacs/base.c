@@ -642,7 +642,7 @@ RESUME(auth_pass)
 	// @todo - worry about user identity existing?
 
 	fr_state_discard(inst->auth.state_tree, request);
-	RETURN_MODULE_OK;
+	RETURN_MODULE_TRANSPARENT;
 }
 
 RESUME(auth_fail)
@@ -655,7 +655,7 @@ RESUME(auth_fail)
 	// and also for FAIL
 
 	fr_state_discard(inst->auth.state_tree, request);
-	RETURN_MODULE_OK;
+	RETURN_MODULE_TRANSPARENT;
 }
 
 RESUME(auth_restart)
@@ -665,7 +665,7 @@ RESUME(auth_restart)
 	PROCESS_TRACE;
 
 	fr_state_discard(inst->auth.state_tree, request);
-	RETURN_MODULE_OK;
+	RETURN_MODULE_TRANSPARENT;
 }
 
 RESUME(auth_get)
@@ -754,7 +754,7 @@ send_reply:
 		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_MODULE_TRANSPARENT;
 }
 
 RECV(auth_cont)

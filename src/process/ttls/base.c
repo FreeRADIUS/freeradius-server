@@ -408,7 +408,7 @@ RESUME(access_accept)
 	}
 
 	fr_state_discard(inst->auth.state_tree, request);
-	RETURN_MODULE_OK;
+	RETURN_MODULE_TRANSPARENT;
 }
 
 RESUME(access_reject)
@@ -418,7 +418,7 @@ RESUME(access_reject)
 	PROCESS_TRACE;
 
 	fr_state_discard(inst->auth.state_tree, request);
-	RETURN_MODULE_OK;
+	RETURN_MODULE_TRANSPARENT;
 }
 
 RESUME(access_challenge)
@@ -441,7 +441,7 @@ RESUME(access_challenge)
 	}
 
 	fr_assert(request->reply->code == FR_RADIUS_CODE_ACCESS_CHALLENGE);
-	RETURN_MODULE_OK;
+	RETURN_MODULE_TRANSPARENT;
 }
 
 RESUME(protocol_error)
