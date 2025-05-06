@@ -18,6 +18,7 @@
 **** xref:unlang/elsif.adoc[elsif]
 **** xref:unlang/expression.adoc[expressions]
 **** xref:unlang/filter.adoc[filter]
+**** xref:unlang/finally.adoc[finally]
 **** xref:unlang/foreach.adoc[foreach]
 **** xref:unlang/group.adoc[group]
 **** xref:unlang/if.adoc[if]
