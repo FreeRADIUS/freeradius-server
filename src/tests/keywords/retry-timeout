@@ -13,8 +13,8 @@ timeout 0.2s {
 	test.retry {
 		retry {
 			initial_rtx_time = 0.1s
-			max_rtx_duration = 3
-			max_rtx_count = 2
+			max_rtx_duration = 3s
+			max_rtx_count = 10
 			max_rtx_duration = 5
 		}
 	}
