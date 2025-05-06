@@ -440,13 +440,13 @@ static int8_t pair_sort_increasing(void const *a, void const *b)
 {
 	fr_pair_t const *my_a = a;
 	fr_pair_t const *my_b = b;
-	int rcode;
+	int8_t ret;
 
 	/*
 	 *	Deeper attributes come later in the list.
 	 */
-	rcode = CMP_PREFER_SMALLER(my_a->da->depth, my_b->da->depth);
-	if (rcode != 0) return rcode;
+	ret = CMP_PREFER_SMALLER(my_a->da->depth, my_b->da->depth);
+	if (ret != 0) return ret;
 
 	return CMP_PREFER_SMALLER(my_a->da->attr, my_b->da->attr);
 }
