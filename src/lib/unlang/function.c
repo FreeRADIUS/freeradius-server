@@ -342,7 +342,7 @@ void unlang_function_init(void)
 				.interpret = unlang_function_call,
 				.signal = unlang_function_signal,
 				.dump = unlang_function_dump,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RETURN_POINT,
+				.flag = UNLANG_OP_FLAG_RETURN_POINT,
 			        .frame_state_size = sizeof(unlang_frame_state_func_t),
 				.frame_state_type = "unlang_frame_state_func_t",
 			   });
