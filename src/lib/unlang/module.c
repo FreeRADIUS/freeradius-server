@@ -77,7 +77,8 @@ int unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 					[RLM_MODULE_DISALLOW]	= 0,
 					[RLM_MODULE_NOTFOUND]	= 0,
 					[RLM_MODULE_NOOP]	= 0,
-					[RLM_MODULE_UPDATED]	= 0
+					[RLM_MODULE_UPDATED]	= 0,
+					[RLM_MODULE_TIMEOUT]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
 				},
 				.retry = RETRY_INIT,
 			},
