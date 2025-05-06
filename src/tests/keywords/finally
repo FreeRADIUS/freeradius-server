@@ -1,3 +1,6 @@
+#
+#  PRE: call timeout
+#
 call default-fin { }
 
 if Tmp-String-0 != 'bye-from-default-fin' {
