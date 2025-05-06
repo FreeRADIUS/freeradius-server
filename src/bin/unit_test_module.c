@@ -1232,7 +1232,6 @@ cleanup:
 #endif
 
 	map_proc_unregister("test-fail");
-	xlat_func_unregister("time.advance");
 
 	/*
 	 *	Free thread data
