@@ -13,6 +13,7 @@
 *** xref:sbuff.adoc[String buffers] (`sbuff` s)
 *** xref:sbuff-parsing.adoc[Parsing with string buffers]
 *** xref:sbuff-ng.adoc[Sbuff issues]
+** xref:guidelines.adoc[Documentation Guidelines]
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
