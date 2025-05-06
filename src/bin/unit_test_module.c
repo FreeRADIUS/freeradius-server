@@ -706,7 +706,6 @@ int main(int argc, char *argv[])
 	fr_pair_list_t		filter_vps;
 	bool			xlat_only = false;
 	fr_event_list_t		*el = NULL;
-	fr_timer_t		*cancel_timer = NULL;
 	fr_client_t		*client = NULL;
 	fr_dict_t		*dict = NULL;
 	fr_dict_t const		*dict_check;
@@ -1133,7 +1132,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (count == 1) {
-		fr_timer_in(request, el->tl, &cancel_timer, config->worker.max_request_time, false, cancel_request, request);
+		fr_timer_in(request, el->tl, &request->timeout, config->worker.max_request_time, false, cancel_request, request);
 		unlang_interpret_synchronous(el, request);
 
 	} else {
@@ -1166,7 +1165,7 @@ int main(int argc, char *argv[])
 			}
 #endif
 
-			fr_timer_in(request, el->tl, &cancel_timer, config->worker.max_request_time, false, cancel_request, request);
+			fr_timer_in(request, el->tl, &request->timeout, config->worker.max_request_time, false, cancel_request, request);
 			unlang_interpret_synchronous(el, request);
 			talloc_free(request);
 
