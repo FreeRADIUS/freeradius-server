@@ -89,7 +89,7 @@ static void frame_dump(request_t *request, unlang_stack_frame_t *frame)
 	RDEBUG2("top_frame      %s", is_top_frame(frame) ? "yes" : "no");
 	RDEBUG2("repeat         %s", is_repeatable(frame) ? "yes" : "no");
 	RDEBUG2("resumable      %s", is_yielded(frame) ? "yes" : "no");
-	RDEBUG2("cancelled      %s", is_cancelled(frame) ? "yes" : "no");
+	RDEBUG2("unwind         %s", is_unwinding(frame) ? "yes" : "no");
 
 	if (frame->instruction) {
 		RDEBUG2("control        %s%s%s",
@@ -311,7 +311,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 		fr_table_str_by_value(mod_rcode_table, *result, "<invalid>"),
 		*priority);
 
-	if (is_cancelled(frame)) {
+	if (is_unwinding(frame)) {
 		RDEBUG4("** [%i] %s - frame is cancelled",
 			stack->depth, __FUNCTION__);
 		frame->result = *result;
@@ -585,7 +585,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 *	asynchronously, and the process function
 		 *	may not be aware that it's happened.
 		 */
-		if (is_cancelled(frame)) goto calculate_result;
+		if (is_unwinding(frame)) goto calculate_result;
 
 		switch (ua) {
 		case UNLANG_ACTION_STOP_PROCESSING:
@@ -778,7 +778,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 			 *	back on up the stack.
 			 */
 
-			if (!is_cancelled(frame) && is_repeatable(frame)) {
+			if (!is_unwinding(frame) && is_repeatable(frame)) {
 				fa = UNLANG_FRAME_ACTION_NEXT;
 				continue;
 			}
@@ -1181,7 +1181,7 @@ void unlang_interpret_signal(request_t *request, fr_signal_t action)
 		 *	it's not cancellable, and we need to let the
 		 *	request progress normally.
 		 */
-		if (stack && is_yielded(frame) && is_cancelled(frame) && !unlang_request_is_scheduled(request)) {
+		if (stack && is_yielded(frame) && is_unwinding(frame) && !unlang_request_is_scheduled(request)) {
 			unlang_interpret_mark_runnable(request);
 		}
 	}

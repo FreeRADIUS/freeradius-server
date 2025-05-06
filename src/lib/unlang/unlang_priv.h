@@ -106,7 +106,7 @@ typedef enum CC_HINT(flag_enum) {
 									///< interpreting and return, control then passes
 									///< to whatever called the interpreter.
 	UNLANG_FRAME_FLAG_YIELDED		= 0x04,			//!< frame has yielded
-	UNLANG_FRAME_FLAG_CANCEL		= 0x08,			//!< This frame has been marked up for cancellation.
+	UNLANG_FRAME_FLAG_UNWIND		= 0x08,			//!< This frame should be unwound without evaluation.
 } unlang_frame_flag_t;
 DIAG_ON(attributes)
 
@@ -366,17 +366,17 @@ extern size_t mod_rcode_table_len;
 static inline void repeatable_set(unlang_stack_frame_t *frame)			{ frame->flag |= UNLANG_FRAME_FLAG_REPEAT; }
 static inline void top_frame_set(unlang_stack_frame_t *frame) 			{ frame->flag |= UNLANG_FRAME_FLAG_TOP_FRAME; }
 static inline void yielded_set(unlang_stack_frame_t *frame)			{ frame->flag |= UNLANG_FRAME_FLAG_YIELDED; }
-static inline void cancel_set(unlang_stack_frame_t *frame)			{ frame->flag |= UNLANG_FRAME_FLAG_CANCEL; }
+static inline void unwind_set(unlang_stack_frame_t *frame)			{ frame->flag |= UNLANG_FRAME_FLAG_UNWIND; }
 
 static inline void repeatable_clear(unlang_stack_frame_t *frame)		{ frame->flag &= ~UNLANG_FRAME_FLAG_REPEAT; }
 static inline void top_frame_clear(unlang_stack_frame_t *frame)			{ frame->flag &= ~UNLANG_FRAME_FLAG_TOP_FRAME; }
 static inline void yielded_clear(unlang_stack_frame_t *frame) 			{ frame->flag &= ~UNLANG_FRAME_FLAG_YIELDED; }
-static inline void cancel_clear(unlang_stack_frame_t *frame)			{ frame->flag &= ~UNLANG_FRAME_FLAG_CANCEL; }
+static inline void unwind_clear(unlang_stack_frame_t *frame)			{ frame->flag &= ~UNLANG_FRAME_FLAG_UNWIND; }
 
 static inline bool is_repeatable(unlang_stack_frame_t const *frame)		{ return frame->flag & UNLANG_FRAME_FLAG_REPEAT; }
 static inline bool is_top_frame(unlang_stack_frame_t const *frame)		{ return frame->flag & UNLANG_FRAME_FLAG_TOP_FRAME; }
 static inline bool is_yielded(unlang_stack_frame_t const *frame) 		{ return frame->flag & UNLANG_FRAME_FLAG_YIELDED; }
-static inline bool is_cancelled(unlang_stack_frame_t const *frame) 		{ return frame->flag & UNLANG_FRAME_FLAG_CANCEL; }
+static inline bool is_unwinding(unlang_stack_frame_t const *frame) 		{ return frame->flag & UNLANG_FRAME_FLAG_UNWIND; }
 
 static inline bool _instruction_has_debug_braces(unlang_t const *instruction)	{ return unlang_ops[instruction->type].flag & UNLANG_OP_FLAG_DEBUG_BRACES; }
 static inline bool _frame_has_debug_braces(unlang_stack_frame_t const *frame)	{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_DEBUG_BRACES; }
@@ -449,7 +449,7 @@ static inline unlang_action_t unwind_to_depth(unlang_stack_t *stack, unsigned in
 	for (i = depth; i >= to_depth; i--) {
 		frame = &stack->frame[i];
 		if (!is_cancellable(frame)) continue;
-		frame->flag |= UNLANG_FRAME_FLAG_CANCEL;
+		unwind_set(frame);
 	}
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
@@ -595,7 +595,7 @@ static inline void frame_pop(request_t *request, unlang_stack_t *stack)
 	 *	If the frame was cancelled, the signal function will
 	 *	have already been called.
 	 */
-	if (!is_cancelled(frame) && is_repeatable(frame)) {
+	if (!is_unwinding(frame) && is_repeatable(frame)) {
 		if (frame->signal) frame->signal(request, frame, FR_SIGNAL_CANCEL);
 		repeatable_clear(frame);
 	}
