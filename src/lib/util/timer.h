@@ -117,7 +117,7 @@ fr_time_delta_t		fr_timer_remaining(fr_timer_t *ev) CC_HINT(nonnull);
 bool			_fr_timer_armed(fr_timer_t *ev);
 
 /* Wrapper to avoid overhead of function call on NULL */
-#define			fr_timer_armed(_ev) ((_ev) && _fr_timer_armed(_ev))	/* returns true if the timer is armed */
+static inline bool	fr_timer_armed(fr_timer_t *ev) { return ev && _fr_timer_armed(ev); }
 
 int			fr_timer_uctx_insert(fr_timer_list_t *tl, void *uctx) CC_HINT(nonnull);
 
