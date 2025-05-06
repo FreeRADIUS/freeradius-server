@@ -153,7 +153,7 @@ static int fr_bio_fd_common_udp(int fd, fr_socket_t const *sock, fr_bio_fd_confi
 	/*
 	 *	Servers re-use ports by default.  And clients, too, if they ask nicely.
 	 */
-	if (cfg->server || cfg->reuse_port) {
+	if (cfg->reuse_port) {
 		int on = 1;
 
 		/*
@@ -1048,6 +1048,26 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 				fr_strerror_const("Source and destination IP addresses are not from the same IP address family");
 				return -1;
 			}
+
+#ifdef SO_REUSEPORT
+			/*
+			 *	Connected UDP sockets really only matter when writing packets.  They allow the
+			 *	system to use write() instead of sendto().
+			 *
+			 *	However for reading packets, the kernel does NOT check the source IP.
+			 *	Instead, it just delivers any packet with the correct dst IP/port.  Even
+			 *	worse, if multiple sockets re-use the same dst IP/port, packets are delivered
+			 *	to a _random_ socket.
+			 *
+			 *	As a result, we cannot use wildcard sockets with SO_REUSEPORT, and UDP.
+			 */
+			if (cfg->reuse_port && (cfg->socket_type == SOCK_DGRAM) &&
+			    fr_ipaddr_is_inaddr_any(&my->info.socket.inet.dst_ipaddr)) { /* checks AF, so we're OK */
+				fr_strerror_const("Cannot set 'reuse_port' for connected UDP sockets with wildcard IP");
+				return -1;
+			}
+#endif
+
 			break;
 
 		case FR_BIO_FD_UNCONNECTED:

@@ -38,6 +38,9 @@ typedef struct fr_bio_fd_s {
 
 	fr_bio_fd_info_t  info;
 
+	struct sockaddr_storage		remote_sockaddr;	//!< for connected UDP sockets.
+	socklen_t			remote_sockaddr_len;
+
 	struct {
 		fr_bio_callback_t 	success;    	//!< for fr_bio_fd_connect()
 		fr_bio_callback_t 	error;	//!< for fr_bio_fd_connect()

@@ -171,20 +171,40 @@ retry:
  *  deliver packets which have been sent from _any_ port, even ones
  *  which don't match the address given in connect().
  *
- *  @todo - arguably this means that for connected UDP sockets, we
- *  should _only_ use this function when we can't use the udpfromto
- *  functionality.  And then if that's available, connected sockets
- *  should have a special read function which discards packets which
- *  are not from the connected source IP/port.
+ *  As a result, this function has to check the received remote IP
+ *  against the expected remote IP.  If they don't match, then we
+ *  can't accept the packet.
+ *
+ *  This ALSO means that we should NOT use connected UDP sockets when
+ *  the source IP address+port is reused via SO_REUSEPORT.
  */
 static ssize_t fr_bio_fd_read_connected_datagram(fr_bio_t *bio, UNUSED void *packet_ctx, void *buffer, size_t size)
 {
 	int tries = 0;
 	ssize_t rcode;
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
+	socklen_t salen;
+	struct sockaddr_storage sockaddr;
+
+#ifdef STATIC_ANALYZER
+	sockaddr = (struct sockaddr_storage) {};
+#endif
 
 retry:
-	rcode = read(my->info.socket.fd, buffer, size);
+	salen = sizeof(sockaddr);
+
+	rcode = recvfrom(my->info.socket.fd, buffer, size, 0, (struct sockaddr *) &sockaddr, &salen);
+	if (rcode > 0) {
+		fr_assert(salen == my->remote_sockaddr_len);
+		fr_assert(sockaddr.ss_family == my->remote_sockaddr.ss_family);
+		fr_assert((sockaddr.ss_family == AF_INET) || (sockaddr.ss_family == AF_INET6)); /* datagram unix is not supported */
+
+		/*
+		 *	Some _other_ client sent this socket a packet.  Ignore it.
+		 */
+		if (fr_sockaddr_cmp(&sockaddr, &my->remote_sockaddr) != 0) return 0;
+	}
+
 	if (rcode == 0) return rcode;
 
 #include "fd_read.h"
@@ -694,13 +714,16 @@ static ssize_t fr_bio_fd_try_connect(fr_bio_fd_t *my)
 {
         int tries = 0;
 	int rcode;
-        socklen_t salen;
-        struct sockaddr_storage sockaddr;
 
+	/*
+	 *	Save a "sockaddr" version of the address of the other end.
+	 */
 	if (my->info.socket.af != AF_LOCAL) {
-		rcode = fr_ipaddr_to_sockaddr(&sockaddr, &salen, &my->info.socket.inet.dst_ipaddr, my->info.socket.inet.dst_port);
+		rcode = fr_ipaddr_to_sockaddr(&my->remote_sockaddr, &my->remote_sockaddr_len,
+					      &my->info.socket.inet.dst_ipaddr, my->info.socket.inet.dst_port);
 	} else {
-		rcode = fr_filename_to_sockaddr((struct sockaddr_un *) &sockaddr, &salen, my->info.socket.unix.path);
+		rcode = fr_filename_to_sockaddr((struct sockaddr_un *) &my->remote_sockaddr, &my->remote_sockaddr_len,
+						my->info.socket.unix.path);
 	}
 
 	if (rcode < 0) {
@@ -711,7 +734,7 @@ static ssize_t fr_bio_fd_try_connect(fr_bio_fd_t *my)
         my->info.state = FR_BIO_FD_STATE_CONNECTING;
 
 retry:
-        if (connect(my->info.socket.fd, (struct sockaddr *) &sockaddr, salen) == 0) {
+        if (connect(my->info.socket.fd, (struct sockaddr *) &my->remote_sockaddr, my->remote_sockaddr_len) == 0) {
 		fr_bio_fd_set_open(my);
 
 		/*
