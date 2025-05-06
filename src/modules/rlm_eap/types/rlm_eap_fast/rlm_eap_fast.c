@@ -654,7 +654,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Read tls configuration, either from group given by 'tls'
 	 *	option, or from the eap-tls configuration.
 	 */
-	inst->tls_conf = eap_tls_conf_parse(conf, "tls");
+	inst->tls_conf = eap_tls_conf_parse(conf);
 
 	if (!inst->tls_conf) {
 		cf_log_err_by_child(conf, "tls", "Failed initializing SSL context");

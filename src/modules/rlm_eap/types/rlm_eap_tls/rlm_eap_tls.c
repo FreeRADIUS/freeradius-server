@@ -267,7 +267,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_eap_tls_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_tls_t);
 	CONF_SECTION	*conf = mctx->mi->conf;
 
-	inst->tls_conf = eap_tls_conf_parse(conf, "tls");
+	inst->tls_conf = eap_tls_conf_parse(conf);
 	if (!inst->tls_conf) {
 		cf_log_err(conf, "Failed initializing SSL context");
 		return -1;

@@ -201,4 +201,4 @@ eap_tls_session_t	*eap_tls_session_init(request_t *request, eap_session_t *eap_s
 					      SSL_CTX *ssl_ctx, bool client_cert) CC_HINT(nonnull);
 
 
-fr_tls_conf_t		*eap_tls_conf_parse(CONF_SECTION *cs, char const *key) CC_HINT(nonnull);
+fr_tls_conf_t		*eap_tls_conf_parse(CONF_SECTION *cs) CC_HINT(nonnull);

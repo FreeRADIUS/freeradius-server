@@ -1256,12 +1256,11 @@ skip_tls_version:
  * the TLS options from the 'tls' section.
  *
  * @param cs to derive the configuration from.
- * @param attr identifier for common TLS configuration.
  * @return
  *	- NULL on error.
  *	- A new fr_tls_conf_t on success.
  */
-fr_tls_conf_t *eap_tls_conf_parse(CONF_SECTION *cs, char const *attr)
+fr_tls_conf_t *eap_tls_conf_parse(CONF_SECTION *cs)
 {
 	char const 		*tls_conf_name;
 	CONF_PAIR		*cp;
@@ -1271,29 +1270,37 @@ fr_tls_conf_t *eap_tls_conf_parse(CONF_SECTION *cs, char const *attr)
 
 	parent = cf_item_to_section(cf_parent(cs));
 
-	cp = cf_pair_find(cs, attr);
+	/*
+	 *	tls = tls-common is a reference to the "tls-common" section in the parent EAP module configuration.
+	 */
+	cp = cf_pair_find(cs, "tls");
 	if (cp) {
 		tls_conf_name = cf_pair_value(cp);
 
 		tls_cs = cf_section_find(parent, TLS_CONFIG_SECTION, tls_conf_name);
 		if (!tls_cs) {
-			ERROR("Cannot find tls config \"%s\"", tls_conf_name);
-			return NULL;
+			CONF_ITEM *ci;
+
+			ci = cf_reference_item(cf_root(parent), parent, tls_conf_name);
+			if (!ci) {
+				cf_log_err(cp, "Cannot find tls configuration section '%s'",
+					   tls_conf_name);
+				return NULL;
+			}
+
+			if (!cf_item_is_section(ci)) {
+				cf_log_err(cp, "Invalid tls configuration reference '%s' - the result is not a configuration section",
+					tls_conf_name);
+				return NULL;
+			}
+
+			tls_cs = cf_item_to_section(ci);
 		}
 	} else {
-		/*
-		 *	If we can't find the section given by the 'attr', we
-		 *	fall-back to looking for the "tls" section, as in
-		 *	previous versions.
-		 *
-		 *	We don't fall back if the 'attr' is specified, but we can't
-		 *	find the section - that is just a config error.
-		 */
-		INFO("TLS section \"%s\" missing, trying to use legacy configuration", attr);
-		tls_cs = cf_section_find(parent, "tls", NULL);
+		cf_log_err(cs, "Cannot do TLS-based EAP method %s - missing 'tls = ...' configuration item",
+			   cf_section_name1(cs));
+		return NULL;
 	}
-
-	if (!tls_cs) return NULL;
 
 	tls_conf = fr_tls_conf_parse_server(tls_cs);
 	if (!tls_conf) return NULL;
@@ -1302,6 +1309,7 @@ fr_tls_conf_t *eap_tls_conf_parse(CONF_SECTION *cs, char const *attr)
 	 *	The EAP RFC's say 1020, but we're less picky.
 	 */
 	FR_INTEGER_BOUND_CHECK("fragment_size", tls_conf->fragment_size, >=, 100);
+
 	/*
 	 *	The maximum size for a RADIUS packet is 4096, but we're
 	 *	not just a RADIUS server.
