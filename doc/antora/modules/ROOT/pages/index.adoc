@@ -69,7 +69,7 @@ The result is that configuring the server is more difficult than it needs to be.
 Here is a _complete_ list of oddities and weirdness in v4, as compared to most programming languages:
 
 * modules are run in-place.  i.e. they act like language keywords on their own.
-* the interpreter tracks xref:unlang/return_codes.adoc[return codes] for each instruction it runs.
+* the interpreter tracks xref:reference:unlang/return_codes.adoc[return codes] for each instruction it runs.
 * function calls use a leading `%`, e.g. `%length('foo')`.
 
 That's it.
@@ -78,10 +78,10 @@ The result is that the server is much easier to understand and
 configure.  But we're not done explaining the benefits of v4.
 
 While the documentation in v3 was pretty good, the documentation in v4
-is _complete_.  Every single xref:unlang/keywords.adoc[keyword] has
-its own documentation page.  Every single xref:xlat/index.adoc[dynamic
+is _complete_.  Every single xref:reference:unlang/keywords.adoc[keyword] has
+its own documentation page.  Every single xref:reference:xlat/index.adoc[dynamic
 expansion] function has its own documentation page.  Every single
-xref:raddb/index.adoc[configuration file] is _automatically_ converted
+xref:reference:raddb/index.adoc[configuration file] is _automatically_ converted
 to HTML and placed into the documentation tree.
 
 Plus, all of the documentation is organized and cross referenced.
