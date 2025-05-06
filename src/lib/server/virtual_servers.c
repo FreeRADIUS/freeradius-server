@@ -374,7 +374,7 @@ static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
+static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	fr_virtual_listen_t	*listener = talloc_get_type_abort(out, fr_virtual_listen_t); /* Pre-allocated for us */
 	CONF_SECTION		*listener_cs = cf_item_to_section(ci);
@@ -382,8 +382,8 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_IT
 	CONF_PAIR		*namespace = cf_pair_find(server_cs, "namespace");
 
 	CONF_PAIR		*cp;
-	char const		*protocol, *transport, *name2;
-	char			*inst_name;
+	char const		*module, *name2, *p;
+	fr_sbuff_t		*agg;
 
 	module_instance_t	*mi;
 
@@ -398,82 +398,90 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_IT
 	}
 
 	/*
-	 *	Module name comes from the 'proto' pair if the
-	 *	listen section has one else it comes from the
-	 *	namespace of the virtual server.
+	 *	The module we load comes from the 'handler' or 'proto' configuration.  This configuration item
+	 *	allows us to have multi-protocol listen module, such as "detail".
 	 *
-	 *	The following results in proto_radius and proto_radius_udp being loaded:
-	 *
-	 *	server foo {
-	 *		namespace = radius
-	 *		listen {
-	 *			transport = udp
-	 *			...
-	 *		}
-	 *	}
-	 *
-	 *	The following results in proto_load being loaded:
-	 *
-	 *	server foo {
-	 *		namespace = radius
-	 *		listen {
-	 *			handler = load
-	 *
-	 *		}
-	 *	}
-	 *
-	 *	In this way the server behaves reasonably out
-	 *	of the box, but allows foreign or generic listeners
-	 *	to be included in the server.
-	 *
+	 *	If there isn't a multi-protocol listen module, then load the one for this namespace, such as
+	 *	"radius".
 	 */
 	cp = cf_pair_find(listener_cs, "handler");
 	if (!cp) cp = cf_pair_find(listener_cs, "proto");
 	if (cp) {
-		protocol = cf_pair_value(cp);
-		if (!protocol) {
+		module = cf_pair_value(cp);
+		if (!module) {
 			cf_log_err(cp, "Missing value");
 			return -1;
 		}
 	} else {
-		protocol = cf_pair_value(namespace);
+		module = cf_pair_value(namespace);
 	}
+
+	/*
+	 *	The proto modules go into a global tree, so we qualify their name (second name) with the name
+	 *	of the virtual server, followed by the transport, followed by any transport-specific
+	 *	configuration.
+	 */
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 64, MODULE_INSTANCE_LEN_MAX);
 
 	name2 = cf_section_name2(listener_cs);
 
 	/*
-	 *	As with almost everything else, the listeners are
-	 *	modules.  Create a unique name for them.
+	 *	A 'listen foo' in this virtual server helps it to be unique.  We load the "radius" module,
+	 *	instance "default.foo".  This naming scheme is a little counter-intuitive, but it is required
+	 *	due to the listen module list being global, and loading the leading module name e.g. "radius".
+	 *
+	 *	Since the virtual server names are unique, we don't have to qualify the listen section names
+	 *	by anything else.
+	 */
+	if (name2) {
+		/*
+		 *	We do some duplicate checks here, because that gives better errors than if we use the
+		 *	mangled names below.
+		 */
+		if (module_instance_name_valid(name2) < 0) {
+			cf_log_perr(listener_cs, "Invalid name in 'listen %s'", name2);
+			return -1;
+		}
+
+		/*
+		 *	Load "radius", instance "default.foo".
+		 */
+		FR_SBUFF_IN_CHAR_RETURN(agg, '.');
+		FR_SBUFF_IN_STRCPY_RETURN(agg, name2);
+	}
+
+	/*
+	 *	Further qualify the name by transport and port.  This helps it to be more unique.
 	 */
 	cp = cf_pair_find(listener_cs, "transport");
-	if (!cp ||
-	    (transport = cf_pair_value(cp)) == NULL) {
+	if (!cp || ((p = cf_pair_value(cp)) == NULL)) {
 		cf_log_err(listener_cs, "Invalid 'listen' section - No 'transport = ...' definition was found.");
 		return -1;
 	}
+	FR_SBUFF_IN_CHAR_RETURN(agg, '.');
+	FR_SBUFF_IN_STRCPY_RETURN(agg, p);
 
-
-	/*
-	 *	Instance names are default.radius.udp.foo, or default.radius.udp
-	 */
-	if (name2) {
-		MEM(inst_name = talloc_asprintf(ctx, "%s.%s.%s.%s", cf_section_name2(server_cs),
-						protocol, transport, name2));
-	} else {
-		MEM(inst_name = talloc_asprintf(ctx, "%s.%s.%s", cf_section_name2(server_cs),
-						protocol, transport));
+	cp = cf_pair_find(listener_cs, "port");
+	if (cp && ((p = cf_pair_value(cp)) != NULL)) {
+		FR_SBUFF_IN_CHAR_RETURN(agg, '.');
+		FR_SBUFF_IN_STRCPY_RETURN(agg, p);
 	}
 
-	if (module_instance_name_valid(inst_name) < 0) {
-	error:
-		cf_log_err(listener_cs, "Failed loading listen section.");
+	if (module_instance_name_valid(fr_sbuff_start(agg)) < 0) {
+		cf_log_perr(listener_cs, "Failed loading listen section.");
 		return -1;
 	}
-	mi = module_instance_alloc(proto_modules, NULL, DL_MODULE_TYPE_PROTO, protocol, inst_name, 0);
-	talloc_free(inst_name);
-	if (!mi) goto error;
 
-	if (unlikely(module_instance_conf_parse(mi, listener_cs) < 0)) goto error;
+	mi = module_instance_alloc(proto_modules, NULL, DL_MODULE_TYPE_PROTO, module, fr_sbuff_start(agg), 0);
+	if (!mi) {
+		cf_log_perr(listener_cs, "Failed creating listen section");
+		return -1;
+	}
+
+	if (unlikely(module_instance_conf_parse(mi, listener_cs) < 0)) {
+		cf_log_perr(listener_cs, "Failed parsing listen section");
+		return -1;
+	}
 
 	listener->proto_mi = mi;
 	listener->proto_module = (fr_app_t const *)listener->proto_mi->module->exported;
