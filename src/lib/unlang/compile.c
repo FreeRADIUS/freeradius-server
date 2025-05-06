@@ -4933,12 +4933,18 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		}
 
 		/*
-		 *	In-place xlat's via %{...}.
+		 *	In-place expansions.
 		 *
-		 *	This should really be removed from the server.
+		 *	@todo - allow only function calls, not %{...}
+		 *
+		 *	@todo don't create a tmpl.  Instead, create an
+		 *	xlat.  This functionality is needed for the in-place language functions via
+		 *
+		 *	language {{{
+		 *		...
+		 *	}}}
 		 */
-		if ((name[0] == '%') ||
-		    (cf_pair_attr_quote(cp) == T_BACK_QUOTED_STRING)) {
+		if (name[0] == '%') {
 			c = compile_tmpl(parent, unlang_ctx, cf_pair_to_item(cp));
 			goto allocate_number;
 		}
