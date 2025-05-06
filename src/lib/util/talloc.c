@@ -402,6 +402,32 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, size_t *end_
 	return pool;
 }
 
+/** Version of talloc_realloc which zeroes out freshly allocated memory
+ *
+ * @param[in] ctx	talloc ctx to allocate in.
+ * @param[in] ptr	the pointer to the old memory.
+ * @param[in] elem_size	the size of each element in the array.
+ * @param[in] count	the number of elements in the array.
+ * @param[in] name	the name of the new chunk.
+ * @return
+ *	- A pointer to the new memory.
+ *	- NULL on error.
+ */
+void *_talloc_realloc_zero(const void *ctx, void *ptr, size_t elem_size, unsigned count, const char *name)
+{
+    size_t old_size = talloc_get_size(ptr);
+    size_t new_size = elem_size * count;
+
+    void *new = _talloc_realloc_array(ctx, ptr, elem_size, count, name);
+    if (!new) return NULL;
+
+    if (new_size > old_size) {
+        memset((uint8_t *)new + old_size, 0, new_size - old_size);
+    }
+
+    return new;
+}
+
 /** Call talloc_memdup, setting the type on the new chunk correctly
  *
  * @param[in] ctx	The talloc context to hang the result off.

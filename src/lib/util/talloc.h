@@ -181,6 +181,11 @@ static inline TALLOC_CTX *_talloc_zero_pooled_object(const void *ctx,
 		talloc(_ctx, _type)
 #endif
 
+void		*_talloc_realloc_zero(const void *ctx, void *ptr, size_t elem_size, unsigned count, const char *name);
+
+#define talloc_realloc_zero(_ctx, _ptr, _type, _count) \
+    (_type *)_talloc_realloc_zero((_ctx), (_ptr), sizeof(_type), _count, #_type)
+
 /** @hidecallergraph */
 char		*talloc_typed_strdup(TALLOC_CTX *ctx, char const *p);
 
