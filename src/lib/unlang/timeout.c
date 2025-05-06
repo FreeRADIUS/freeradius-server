@@ -44,6 +44,17 @@ typedef struct {
 	unlang_t				*instruction;	//!< to run on timeout
 } unlang_frame_state_timeout_t;
 
+/** Immediately cancel the timeout if the frame is cancelled
+ */
+static void unlang_timeout_signal(UNUSED request_t *request, unlang_stack_frame_t *frame, fr_signal_t action)
+{
+	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
+
+	if (action == FR_SIGNAL_CANCEL) {
+		TALLOC_FREE(state->ev);
+	}
+}
+
 static void unlang_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *ctx)
 {
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(ctx, unlang_frame_state_timeout_t);
@@ -108,16 +119,13 @@ static unlang_action_t unlang_timeout_resume_done(UNUSED rlm_rcode_t *p_result, 
 static unlang_action_t unlang_timeout_set(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
-	fr_time_t timeout;
 
 	/*
 	 *	Save current indentation for the error path.
 	 */
 	RINDENT_SAVE(state, request);
 
-	timeout = fr_time_add(fr_time(), state->timeout);
-
-	if (fr_timer_at(state, unlang_interpret_event_list(request)->tl, &state->ev, timeout,
+	if (fr_timer_in(state, unlang_interpret_event_list(request)->tl, &state->ev, state->timeout,
 			false, unlang_timeout_handler, state) < 0) {
 		RPEDEBUG("Failed inserting event");
 		return UNLANG_ACTION_STOP_PROCESSING;
@@ -128,7 +136,7 @@ static unlang_action_t unlang_timeout_set(rlm_rcode_t *p_result, request_t *requ
 	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
 }
 
-static unlang_action_t unlang_timeout_xlat_done(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_timeout_done(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
 	fr_value_box_t			*box = fr_value_box_list_head(&state->result);
@@ -167,7 +175,7 @@ static unlang_action_t unlang_timeout(rlm_rcode_t *p_result, request_t *request,
 
 	if (unlang_tmpl_push(state, &state->result, request, gext->vpt, NULL) < 0) return UNLANG_ACTION_FAIL;
 
-	frame_repeat(frame, unlang_timeout_xlat_done);
+	frame_repeat(frame, unlang_timeout_done);
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -262,6 +270,7 @@ void unlang_timeout_init(void)
 				.name = "timeout",
 				.interpret = unlang_timeout,
 				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
+				.signal = unlang_timeout_signal,
 				.frame_state_size = sizeof(unlang_frame_state_timeout_t),
 				.frame_state_type = "unlang_frame_state_timeout_t",
 			});
