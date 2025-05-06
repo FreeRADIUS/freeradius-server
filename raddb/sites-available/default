@@ -717,8 +717,6 @@ server default {
 #  ### Receive Access-Request packets
 #
 recv Access-Request {
-     do_not_respond
-
 	#
 	#  Take a `User-Name`, and perform some checks on it, for
 	#  spaces and other invalid characters. If the `User-Name`
