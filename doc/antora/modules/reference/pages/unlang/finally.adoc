@@ -9,33 +9,36 @@ finally [<request-type>] {
 ----
 
 .Description
-The intent of the `finally { ... }` section is to allow any logging or cleanup
-to be peformed before the request exits the virtual server.  For example,
-if you wish to log all requests and responses that enter a virtual server,
-you could place a single call to `linelog` in the finally section.
+The `finally { ... }` section allows you to configure any logging or
+cleanup which is necessary before the request returns from the virtual
+server.  For example, if you wish to log all requests and responses
+that enter a virtual server, you could place a single call to
+`linelog` in the `finally` section.
 
-The `finally { ... }` section is executed last before a request exits a
-virtual server.  It is executed regardless of whether the request was
-accepted, rejected or timed out.
+The `finally { ... }` section is executed as the last thing before a
+request returns from a virtual server.  The `finally` sectiuon is
+_always_ executed, whether the request was accepted, rejected or it
+timed out.
 
-The `<request-type>` qualifier can be any valid request type for the protocol the
-virtual server implments.  If a no request-type-specific finally section
-is provided, the unqualified `finally { ... }` section is executed.
+The `<request-type>` qualifier can be any valid request type for
+current `namespace` of the virtual server.  If no there is no `finally
+_<request-type>_ { ... }` section, then the unqualified `finally {
+... }` section is run.
 
 .Example of using unqalified finally
 [source,unlang]
 ----
-# Executes first
+# Is processed first
 recv Access-Request {
     ...
 }
 
-# Executes second
+# Is processed second
 send Access-Accept {
     ...
 }
 
-# Executes third
+# Is processed last
 finally {
     linelog.log("Sending %{reply.Packet-Type} to %{NAS-IP-Address}")
 }
@@ -44,48 +47,61 @@ finally {
 .Example of using qualified finally
 [source,unlang]
 ----
-# Executes first
+# Is processed first
 recv Access-Request {
     ...
 }
 
-# Executes second
+# Is processed second
 send Access-Accept {
     ...
 }
 
-# Executes third
+# Is processed last, for all replies to Access-Request packets,
+# including "Do-Not-Respond"
 finally Access-Request {
     linelog.log("Sending %{reply.Packet-Type} in response to Access-Request to %{NAS-IP-Address}")
 }
 
-# Ignored for Access-Requests, would be called for Accounting-Requests
+# Is process last for all other packet types, including
+# Accounting-Request.
 finally {
     ...
 }
 ----
 
-== Rcodes
-=== Available to finally
-The rcode returned by the section executed immediately prior to finally is
-preserved, and can be checked within the finally section using
+== Return Codes
+
+Each `recv ... ` and `send ...` section finishes with a
+xref:unlang/return_codes[return code].  These return codes are
+available at the start of the `finally` section.
+
+Similarly, the `finally` section also ends with a
+xref:unlang/return_codes[return code], which is in some cases visible
+to a parent virtual server.
+
+=== At the start of "finally"
+
+Return codes can be checked within the `finally` section by using
 xref:unlang/condition/return_codes.adoc[return code expressions].
-This allows different behaviour based on the result of the protocol state
-machine.
+These checks allow the `finally` section to perform different actions
+based on the result of the protocol state machine.
 
 .Example of calling different modules based on the previous rcode
 [source,unlang]
 ----
-# Executes first
+# Is processed first
 recv Access-Request {
 	...
 }
 
+# Is processed second
 send Access-Accept {
 	ok
 }
 # returns `ok`
 
+# Is processed last
 finally {
     if (ok || updated) {
         linelog.log("Request succeeded")
@@ -95,37 +111,92 @@ finally {
 }
 ----
 
-=== Returned by finally
-The return code of `finally { ... }` sections will not modify the response packet
-type from the virtual server.  i.e. a `reject` rcode will not result an
-`Access-Reject` response being sent for RADIUS.  This is because `finally` sections
-run _after_ the protocol state machine as completed.
+=== At the end of "finally".
 
-If, however, a virtual server containing a `finally { ... }` section is called,
-the rcode returned by finally will be the rcode returned by the virtual server
-and the `call` keyword.
+Once a `finally` section is finished, it will result in a
+xref:unlang/return_codes[return code].  In most cases, this return
+code is discarded, and has no effect on any subsequent packet
+processing.
 
-== Timeouts
+That is, the return code of a `finally { ... }` section _will not
+modify the response packet type_ from the virtual server.  If
+`finally` returns `reject`, then _nothing will happen_, and the server
+will not send an `Access-Reject` response to an `Access-Accept`
+request.  This behavior is because `finally` section is run _after_
+the protocol state machine has completed.
 
-The `finally` section is executed even if the request times out.  Requests
-terminated by a timeout will have the `timeout` rcode set.  This condition
-can be checked with `if (timeout)` at the start of the section.
+However, the return code of a `finally` is available to a parent
+virtual server, when one virtual server uses
+xref:unlang/call.adoc[call] to run another virtual server.
+
+=== Timeouts
+
+The `finally` section is executed even if the request times out.
+Requests terminated by a timeout will return the `timeout`
+xref:unlang/return_codes[return code].  This condition can be checked
+with `if (timeout)` at the start of the `finally` section.
 
 [NOTE]
 ====
-Request passing through a `finally { ... }` section will artificially extend
-the lifetime of the request until the section completes.  To ensure
-the server remains responsive, any potentially long running module calls or
-xlat expansions should be wrapped in a xref:unlang/timeout.adoc[timeout] block.
+
+Request which are being processed in a `finally { ... }` section _will
+not stop_ until the `finally` section is done.  The `max_request_time`
+configuration applies only to normal processing of requests, and not
+to `finally` sections.  This behavior is necessary in order for the
+`finally` section to catch a `max_request_time` timeout.
 ====
+
+We recommend doing as little as possible in a `finally` section.
+Logging a short message to disk will be safe.  Logging complex
+messages to an SQL database or to a REST API will likely be
+problematic.  This issue is not because FreeRADIUS has any problem
+running the `sql` module in a `finally` section, it doesn't.  The
+`finally` section is just another processing section, and runs exactly
+the same as a `recv` or `send` section..
+
+The problem with running the `sql` module in the `finally` section is
+that there can be cascading chains of failure when something goes
+wrong.  For example, if the server is configured to use log
+`Accounting-Request` packets to SQL for both normal accounting
+processing, and in the `finally` section, what happens when the SQL
+databsase is slow, or has an issue?
+
+When the SQL database is slow, the `Accounting-Request` packet will
+fail to log anything to SQL time out.  When all processing for the
+`Accounting-Request` is done, the `finally` section will run, which
+will also try to log information to the same slow SQL database.  The
+result will be _doubled_ slow writes to SQL.
+
+In order to ensure that the server remains responsive, the `finally`
+section should contain as little as possible.  Any potentially long
+running module calls or dynamic expansions in a `finally` section
+should be wrapped in a xref:unlang/timeout.adoc[timeout] block:
+
+.Example of using timeout in finally
+[source,unlang]
+----
+...
+finally {
+    timeout 0.1s {
+        ...
+    }
+}
+----
+
+This configuration will ensure that the `finally` section is limited
+in how much time it spends processing a packet.
 
 == Subrequests
 
 Where xref:unlang/subrequest.adoc[subrequest] calls are used, the
-`finally { ... }` section in the parent will not be executed until the subrequest
-has completed.  Timeouts in `finally { ... }` sections in subrequests should be set
-appropriately short to ensure that the parent request isn't cancalled due to an
-excessively long running subrequest.
+`finally { ... }` section in the parent will not be run until the
+subrequest has finished.  However, a timeout in the parent will cause
+the child xref:unlang/subrequest.adoc[subrequest] to be forcibly
+stopped, but the childs `finally` section will still run.
+
+Timeouts in `finally { ... }` sections of subrequests should therfore
+be set extremely short, in order to ensure that the parent request
+isn't cancelled due to an excessively long running subrequest.
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
