@@ -942,6 +942,7 @@ static ssize_t cbor_decode_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb
 		slen = cbor_decode_int64(&fraction, &work_dbuff, FR_TYPE_TIME_DELTA);
 		if (slen < 0) return_slen;
 
+		if ((fraction < 0) || (fraction > scale)) fraction = 0;
 	} else {
 		scale = NSEC;
 		fraction = 0;
@@ -954,13 +955,15 @@ static ssize_t cbor_decode_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb
 		vb->vb_time_delta = fr_time_delta_min();
 
 	} else {
-		/*
-		 *	We don't worry too much about positive seconds and negative nanoseconds.
-		 *
-		 *	We also don't worry too much about overflow / underflow here.
-		 */
-		fraction += seconds * scale;
-		vb->vb_time_delta = fr_time_delta_wrap(fraction);
+		seconds *= scale;
+
+		if (seconds < 0) {
+			seconds -= fraction;
+		} else {
+			seconds += fraction;
+		}
+
+		vb->vb_time_delta = fr_time_delta_wrap(seconds);
 	}
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
