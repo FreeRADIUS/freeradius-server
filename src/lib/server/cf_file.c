@@ -3812,9 +3812,6 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 	while (*p) {
 		char *n1, *n2, *q;
 
-		ERROR("Parent %s %s at %d - %s",
-		      cf_section_name1(cs), cf_section_name2(cs), __LINE__, p);
-
 		n1 = p;
 		n2 = NULL;
 		q = p;
