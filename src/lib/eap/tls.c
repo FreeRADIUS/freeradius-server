@@ -1224,11 +1224,11 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 #define SET_TLS_VERSION(_type) \
 	if (tls_ ## _type) { \
 		int tls_version = 0; \
-		if (tls_ ## _type->vp_float32 >= (float) 1.2) { \
+		if (tls_ ## _type->vp_float32 >= (float) 1.3) { \
 			tls_version = TLS1_3_VERSION; \
-		} else if (tls_ ## _type->vp_float32 >= (float) 1.1) { \
+		} else if (tls_ ## _type->vp_float32 >= (float) 1.2) { \
 			tls_version = TLS1_2_VERSION; \
-		} else if (tls_ ## _type->vp_float32 >= (float) 1) { \
+		} else if (tls_ ## _type->vp_float32 >= (float) 1.1) { \
 			tls_version = TLS1_1_VERSION; \
 		} \
 		if (tls_version) { \
