@@ -1,0 +1,3 @@
+= RADIUS Servers
+
+A RADIUS server is a central authority that handles authentication, authorization, and accounting (AAA) for network access. It receives requests from network access servers (NASs) like wireless access points or VPN concentrators and determines whether a user should be granted access based on predefined policies and data stored in a datastore.

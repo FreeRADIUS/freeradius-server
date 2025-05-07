@@ -10,7 +10,7 @@ The protocol originally was designed by the well known terminal server manufactu
 
 === Radius Protocol dependencies
 
-UDP: RADIUS uses UDP as its underlying protocol. The registered UDP port for RADIUS traffic is 1812; the early deployment of RADIUS used UDP port 1645, which conflicted with the "datametrics" service.  When RADIUS is used for accounting rather than authentication and configuration, the registered UDP port is 1813; the early deployment used port 1646, which conflicted with the "sa-msg-port" service.
+RADIUS uses UDP as its underlying protocol. The registered UDP port for RADIUS traffic is 1812; the early deployment of RADIUS used UDP port 1645, which conflicted with the "datametrics" service.  When RADIUS is used for accounting rather than authentication and configuration, the registered UDP port is 1813; the early deployment used port 1646, which conflicted with the "sa-msg-port" service.
 
 == Authentication Protocols
 
@@ -31,104 +31,104 @@ Passwords may be stored in a DB in many forms. Clear-text, MD5 hashed, crypt'd, 
 |===
 |Protocol|Clear-text|NT hash|MD5 hash|Salted MD5 hash|SHA1 hash|Salted SHA1 hash|Unix Crypt
 |PAP
-|√
-|√
-|√
-|√
-|√
-|√
-|√
+| ✔️
+| ✔️
+| ✔️
+| ✔️
+| ✔️
+| ✔️
+| ✔️
 
 |CHAP
-|√
-|x
-|x
-|x
-|x
-|x
-|x
+| ✔️
+| ❌
+| ❌
+| ❌
+| ❌
+| ❌
+| ❌
 
 |Digest
-|√
-|x
-|x
-|x
-|x
-|x
-|x
+| ✔️
+| ❌
+| ❌
+| ❌
+| ❌
+| ❌
+| ❌
 
 |MSCHAP
-|√
-|√
-|x
-|x
-|x
-|x
-|x
+| ✔️
+| ✔️
+| ❌
+| ❌
+| ❌
+| ❌
+| ❌
 
 |PEAP
-|√
-|√
-|x
-|x
-|x
-|x
-|x
+| ✔️
+| ✔️
+| ❌
+| ❌
+| ❌
+| ❌
+| ❌
 
 |EA-MSCHAP2
-|√
-|√
-|x
-|x
-|x
-|x
-|x
+| ✔️
+| ✔️
+| ❌
+| ❌
+| ❌
+| ❌
+| ❌
 
 |Cisco-LEAP
-|√
-|√
-|x
-|x
-|x
-|x
-|x
+| ✔️
+| ✔️
+| ❌
+| ❌
+| ❌
+| ❌
+| ❌
 
 |EAP-GTC
-|√
-|√
-|√
-|√
-|√
-|√
-|√
+| ✔️
+| ✔️
+| ✔️
+| ✔️
+| ✔️
+| ✔️
+| ✔️
 
 |EAP-MD5
-|√
-|x
-|x
-|x
-|x
-|x
-|x
+| ✔️
+| ❌
+| ❌
+| ❌
+| ❌
+| ❌
+| ❌
 
 | EAP-MD5
-|√
-|x
-|x
-|x
-|x
-|x
-|x
+| ✔️
+| ❌
+| ❌
+| ❌
+| ❌
+| ❌
+| ❌
 
 |===
 
-Many people store passwords in their databases in hashed or encrypted form. They later decide that they need to support an authentication protocol that the above table shows is incompatible with their password storage method. They then ask "How can I make authentication protocol X work with passwords stored as Y?" The short answer is "you can't".
+Many people store passwords in their databases in hashed or encrypted form. They later decide that they need to support an authentication protocol that the above table shows is incompatible with their password storage method. They then ask "How can I make authentication protocol x work with passwords stored as Y?" The short answer is "you can't".
 
 The password hashes, and authentication protocols were designed to be incompatible. If the cell in the above table is red, then it's impossible to make the authentication protocol use that form of the password. Your only choices are to stop trying to use that authentication protocol, or to store the passwords in a form compatible with that authentication protocol. The last choice often means asking all users to change their passwords, unfortunately.
 
 == More Information
 
-Refer to xref:reference:dictionary/index.adoc[Attributes] for more protocol attribute details and https://www.iana.org/assignments/radius-types/radius-types.xhtml[RADIUS Packet Types].
+Refer to  xref:reference:dictionary/index.adoc[Attributes] for more protocol attribute details and https://www.iana.org/assignments/radius-types/radius-types.x html[RADIUS Packet Types].
 
 The relevant RFCs are:
 

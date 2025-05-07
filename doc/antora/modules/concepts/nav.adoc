@@ -1,9 +1,13 @@
 * xref:index.adoc[Concepts]
-** xref:overview.adoc[General]
+** xref:overview.adoc[Overview]
 *** xref:architecture.adoc[Architecture]
+**** xref:nas.adoc[Network Access Server (NAS)]
+**** xref:radius_servers.adoc[RADIUS Server]
+**** xref:database.adoc[Datastores]
 *** xref:authproto.adoc[Protocols]
-*** xref:database.adoc[Datastores]
+
 ** xref:aaa.adoc[AAA]
+*** xref:radius_sessions.adoc[RADIUS Sessions]
 *** xref:processing.adoc[Processing]
 ** Modules
 *** LDAP
