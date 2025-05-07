@@ -24,7 +24,12 @@
  */
 #include <freeradius-devel/server/state.h>
 #include "interpret_priv.h"
+#include "subrequest_priv.h"
 #include "subrequest_child_priv.h"
+
+typedef struct {
+	unlang_frame_state_subrequest_t *parent_state;
+} unlang_frame_state_subrequest_child_t;
 
 /** Holds a synthesised instruction that we insert into the parent request
  *
@@ -45,6 +50,31 @@ extern fr_dict_attr_autoload_t subrequest_dict_attr[];
 fr_dict_attr_autoload_t subrequest_dict_attr[] = {
 	{ .out = &request_attr_request_lifetime, .name = "Request-Lifetime", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ NULL }
+};
+
+
+static unlang_subrequest_t subrequest_child_instruction = {
+	.group = {
+		.self = {
+			.type = UNLANG_TYPE_SUBREQUEST_CHILD,
+			.name = "subrequest-child",
+			.debug_name = "subrequest-child",
+			.actions = {
+				.actions = {
+					[RLM_MODULE_REJECT]	= 0,
+					[RLM_MODULE_FAIL]	= 0,
+					[RLM_MODULE_OK]		= 0,
+					[RLM_MODULE_HANDLED]	= 0,
+					[RLM_MODULE_INVALID]	= 0,
+					[RLM_MODULE_DISALLOW]	= 0,
+					[RLM_MODULE_NOTFOUND]	= 0,
+					[RLM_MODULE_NOOP]	= 0,
+					[RLM_MODULE_UPDATED]	= 0
+				},
+				.retry = RETRY_INIT,
+			},
+		}
+	}
 };
 
 /** Event handler to free a detached child
@@ -109,9 +139,10 @@ int unlang_subrequest_lifetime_set(request_t *request)
  * This processes any detach signals the child receives
  * The child doesn't actually do the detaching
  */
-static void unlang_subrequest_child_signal(request_t *request, fr_signal_t action, UNUSED void *uctx)
+static void unlang_subrequest_child_signal(request_t *request, UNUSED unlang_stack_frame_t *frame, fr_signal_t action)
 {
-	unlang_frame_state_subrequest_t	*state;
+	unlang_frame_state_subrequest_child_t *state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_child_t);
+	unlang_frame_state_subrequest_t	*parent_state;
 
 	/*
 	 *	We're already detached so we don't
@@ -121,7 +152,7 @@ static void unlang_subrequest_child_signal(request_t *request, fr_signal_t actio
 	 */
 	if (!request->parent) return;
 
-	state = talloc_get_type_abort(frame_current(request->parent)->state, unlang_frame_state_subrequest_t);
+	parent_state = talloc_get_type_abort(state->parent_state, unlang_frame_state_subrequest_t);
 
 	/*
 	 *	Ignore signals which aren't detach, and ar
@@ -132,23 +163,21 @@ static void unlang_subrequest_child_signal(request_t *request, fr_signal_t actio
 		/*
 		 *	Place child's state back inside the parent
 		 */
-		if (state->session.enable) fr_state_store_in_parent(request,
-								    state->session.unique_ptr,
-								    state->session.unique_int);
+		if (parent_state->session.enable) fr_state_store_in_parent(request,
+									   parent_state->session.unique_ptr,
+									   parent_state->session.unique_int);
 
 		if (!fr_cond_assert(unlang_subrequest_lifetime_set(request) == 0)) {
 			REDEBUG("Child could not be detached");
 			return;
 		}
-		FALL_THROUGH;
 
-	case FR_SIGNAL_CANCEL:
 		RDEBUG3("Removing subrequest from parent, and marking parent as runnable");
 
 		/*
 		 *	Indicate to the parent there's no longer a child
 		 */
-		state->child = NULL;
+		parent_state->child = NULL;
 
 		/*
 		 *	Tell the parent to resume
@@ -156,6 +185,13 @@ static void unlang_subrequest_child_signal(request_t *request, fr_signal_t actio
 		unlang_interpret_mark_runnable(request->parent);
 		break;
 
+	/*
+	 *	This frame is not cancellable, so FR_SIGNAL_CANCEL
+	 *	does nothing.  If the child is cancelled in its
+	 *	entirety, then its stack will unwind up to this point
+	 *	and unlang_subrequest_child_done will mark the
+	 *	parent as runnable.  We don't need to do anything here.
+	 */
 	default:
 		return;
 	}
@@ -167,10 +203,10 @@ static void unlang_subrequest_child_signal(request_t *request, fr_signal_t actio
  * the child is done executing, it runs this to inform the parent
  * that its done.
  */
-static unlang_action_t unlang_subrequest_child_done(rlm_rcode_t *p_result,
-						    UNUSED int *p_priority, request_t *request, void *uctx)
+static unlang_action_t unlang_subrequest_child_done(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_frame_state_subrequest_t	*state;
+	unlang_frame_state_subrequest_child_t *state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_child_t);
+	unlang_frame_state_subrequest_t	*parent_state;
 
 	/*
 	 *	Child was detached, nothing more to do.
@@ -195,18 +231,18 @@ static unlang_action_t unlang_subrequest_child_done(rlm_rcode_t *p_result,
 	 *	i.e. don't move the get_type_abort call onto
 	 *	the same line as the state variable declaration.
 	 */
-	state = talloc_get_type_abort(uctx, unlang_frame_state_subrequest_t);
+	parent_state = talloc_get_type_abort(state->parent_state, unlang_frame_state_subrequest_t);
 
 	/*
 	 *	Place child state back inside the parent
 	 */
-	if (state->session.enable) fr_state_store_in_parent(request,
-							    state->session.unique_ptr,
-							    state->session.unique_int);
+	if (parent_state->session.enable) fr_state_store_in_parent(request,
+								   parent_state->session.unique_ptr,
+								   parent_state->session.unique_int);
 	/*
 	 *	Record the child's result
 	 */
-	if (state->p_result) *state->p_result = *p_result;
+	if (parent_state->p_result) *parent_state->p_result = *p_result;
 
 	/*
 	 *	Resume the parent
@@ -221,17 +257,20 @@ static unlang_action_t unlang_subrequest_child_done(rlm_rcode_t *p_result,
  * This is necessary so that the child informs its parent when it's done/detached
  * and so that the child responds to detach signals.
  */
-int unlang_subrequest_child_push_resume(request_t *child, unlang_frame_state_subrequest_t *state)
+int unlang_subrequest_child_push_resume(request_t *child, unlang_frame_state_subrequest_t *parent_state)
 {
-	/*
-	 *	Push a resume frame into the child
-	 */
-	if (unlang_function_push(child, NULL,
-				 unlang_subrequest_child_done,
-				 unlang_subrequest_child_signal,
-				 ~(FR_SIGNAL_DETACH | FR_SIGNAL_CANCEL),
-				 UNLANG_TOP_FRAME,
-				 state) < 0) return -1;
+	int ret;
+	unlang_frame_state_subrequest_child_t *state;
+	unlang_stack_frame_t *frame;
+
+	/* Sets up the frame for us to use immediately */
+	ret = unlang_interpret_push_instruction(child, &subrequest_child_instruction, RLM_MODULE_NOOP, true);
+	if (ret < 0) return -1;
+
+	frame = frame_current(child);
+	state = frame->state;
+	state->parent_state = parent_state;
+	repeatable_set(frame);	/* Run this on the way back up */
 
 	return 0;
 }
@@ -359,7 +398,7 @@ int unlang_subrequest_child_push(rlm_rcode_t *out, request_t *child,
 	state->free_child = free_child;
 
 	if (!fr_cond_assert_msg(stack_depth_current(child) == 0,
-				"Child stack depth must be 0 (not %d), when subrequest_child_push is called",
+				"Child stack depth must be 0 (not %d), when calling subrequest_child_push",
 				stack_depth_current(child))) return -1;
 
 	/*
@@ -429,6 +468,27 @@ int unlang_subrequest_child_op_init(void)
 			}
 		}
 	};
+
+	unlang_register(UNLANG_TYPE_SUBREQUEST_CHILD,
+			&(unlang_op_t){
+				.name = "subrequest-child",
+				.interpret = unlang_subrequest_child_done,
+				.signal = unlang_subrequest_child_signal,
+				/*
+				 *	Frame can't be cancelled, because children need to
+				 *	write out status to the parent.  If we don't do this,
+				 *	then all children must be detachable and must detach
+				 *	so they don't try and write out status to a "done"
+				 *	parent.
+				 *
+				 *	It's easier to allow the child/parent relationship
+				 *	to end normally so that non-detachable requests are
+				 *	guaranteed the parent still exists.
+				 */
+				.flag = UNLANG_OP_FLAG_NO_CANCEL,
+				.frame_state_size = sizeof(unlang_frame_state_subrequest_child_t),
+				.frame_state_type = "unlang_frame_state_subrequest_child_t"
+			});
 
 	return 0;
 }

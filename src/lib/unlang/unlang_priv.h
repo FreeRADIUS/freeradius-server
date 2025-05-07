@@ -63,6 +63,8 @@ typedef enum {
 	UNLANG_TYPE_MAP,			//!< Mapping section (like #UNLANG_TYPE_UPDATE, but uses
 						//!< values from a #map_proc_t call).
 	UNLANG_TYPE_SUBREQUEST,			//!< create a child subrequest
+	UNLANG_TYPE_SUBREQUEST_CHILD,		//!< a frame at the top of a child's request stack used to signal the
+						///< parent when the child is complete.
 	UNLANG_TYPE_DETACH,			//!< detach a child
 	UNLANG_TYPE_CALL,			//!< call another virtual server
 	UNLANG_TYPE_CALLER,			//!< conditionally check parent dictionary type
