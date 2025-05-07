@@ -8,7 +8,7 @@ uint32 result_integer
 #  different numbers of days involved.  Check hour / day / week
 #
 
-result_integer := "%{%nexttime('2h') - %nexttime('1h')}"
+result_integer := "%{%time.next('2h') - %time.next('1h')}"
 
 # We have a fudge factor of 1 second either way
 if ((result_integer < 3599) || (result_integer > 3601)) {
@@ -18,7 +18,7 @@ if ((result_integer < 3599) || (result_integer > 3601)) {
 #
 #  Day
 #
-result_integer := "%{%nexttime('3d') - %nexttime('1d')}"
+result_integer := "%{%time.next('3d') - %time.next('1d')}"
 if ((result_integer < 172799) || (result_integer > 172801)) {
 	test_fail
 }
@@ -26,7 +26,7 @@ if ((result_integer < 172799) || (result_integer > 172801)) {
 #
 #  Week
 #
-result_integer := "%{%nexttime('4w') - %nexttime('2w')}"
+result_integer := "%{%time.next('4w') - %time.next('2w')}"
 if ((result_integer < 1209599) || (result_integer > 1209601)) {
 	test_fail
 }

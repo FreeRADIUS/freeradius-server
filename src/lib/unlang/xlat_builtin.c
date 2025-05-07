@@ -1344,7 +1344,7 @@ static xlat_arg_parser_t const xlat_func_next_time_args[] = {
 
 /** Calculate number of seconds until the next n hour(s), day(s), week(s), year(s).
  *
- * For example, if it were 16:18 %nexttime(1h) would expand to 2520.
+ * For example, if it were 16:18 %time.next(1h) would expand to 2520.
  *
  * The envisaged usage for this function is to limit sessions so that they don't
  * cross billing periods. The output of the xlat should be combined with %rand() to create
@@ -1378,7 +1378,7 @@ static xlat_action_t xlat_func_next_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	num = strtoul(p, &q, 10);
 	if (!q || *q == '\0') {
-		REDEBUG("nexttime: <int> must be followed by period specifier (h|d|w|m|y)");
+		REDEBUG("<int> must be followed by time period (h|d|w|m|y)");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -1420,7 +1420,7 @@ static xlat_action_t xlat_func_next_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		break;
 
 	default:
-		REDEBUG("nexttime: Invalid period specifier '%c', must be h|d|w|m|y", *p);
+		REDEBUG("Invalid time period '%c', must be h|d|w|m|y", *p);
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -4281,7 +4281,11 @@ do { \
 	XLAT_REGISTER_ARGS("log.info", xlat_func_log_info, FR_TYPE_NULL, xlat_func_log_arg);
 	XLAT_REGISTER_ARGS("log.warn", xlat_func_log_warn, FR_TYPE_NULL, xlat_func_log_arg);
 	XLAT_REGISTER_ARGS("log.destination", xlat_func_log_dst, FR_TYPE_STRING, xlat_func_log_dst_args);
+
 	XLAT_REGISTER_ARGS("nexttime", xlat_func_next_time, FR_TYPE_UINT64, xlat_func_next_time_args);
+	XLAT_NEW("time.next");
+	XLAT_REGISTER_ARGS("time.next", xlat_func_next_time, FR_TYPE_UINT64, xlat_func_next_time_args);
+
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, FR_TYPE_STRING, xlat_func_pairs_args);
 
 	XLAT_REGISTER_ARGS("str.subst", xlat_func_subst, FR_TYPE_STRING, xlat_func_subst_args);
