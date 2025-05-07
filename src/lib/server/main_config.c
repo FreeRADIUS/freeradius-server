@@ -576,7 +576,7 @@ static xlat_action_t xlat_config(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	ci = cf_reference_item(main_config->root_cs, main_config->root_cs, in_head->vb_strvalue);
 	if (!ci || !cf_item_is_pair(ci)) {
-		REDEBUG("Config item \"%pV\" does not exist", in_head);
+		RPEDEBUG("Failed finding configuration item '%s'", in_head->vb_strvalue);
 		return XLAT_ACTION_FAIL;
 	}
 

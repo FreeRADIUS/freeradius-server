@@ -734,7 +734,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 
 		ci = cf_reference_item(NULL, inst->cs, p);
 		if (!ci) {
-			RDEBUG2("Path \"%s\" doesn't exist", p);
+			RPDEBUG2("Failed finding reference '%s'", p);
 			goto default_msg;
 		}
 

@@ -1833,9 +1833,14 @@ bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *action_
 			CONF_ITEM *subci;
 			char const *value = cf_pair_value(cp);
 
+			if (!value) {
+				cf_log_err(csi, "Missing reference string");
+				return false;
+			}
+
 			subci = cf_reference_item(cs, cf_root(cf_section_to_item(action_cs)), value);
 			if (!subci) {
-				cf_log_err(csi, "Unknown reference '%s'", value ? value : "<INVALID>");
+				cf_log_perr(csi, "Failed finding reference '%s'", value);
 				return false;
 			}
 

@@ -295,7 +295,7 @@ char const *cf_expand_variables(char const *cf, int lineno,
 			ci = cf_reference_item(parent_cs, outer_cs, name);
 			if (!ci) {
 				if (soft_fail) *soft_fail = true;
-				ERROR("%s[%d]: Reference \"${%s}\" not found", cf, lineno, name);
+				PERROR("%s[%d]: Failed finding reference \"${%s}\"", cf, lineno, name);
 				return NULL;
 			}
 
@@ -1215,8 +1215,8 @@ static int process_template(cf_stack_t *stack)
 
 	ci = cf_reference_item(parent_cs, templatecs, stack->buff[2]);
 	if (!ci || (ci->type != CONF_ITEM_SECTION)) {
-		ERROR("%s[%d]: No such template \"%s\" in the 'templates' section.",
-		      frame->filename, frame->lineno, stack->buff[2]);
+		PERROR("%s[%d]: Failed finding item \"%s\" in the 'templates' section.",
+		       frame->filename, frame->lineno, stack->buff[2]);
 		return -1;
 	}
 
@@ -3734,10 +3734,18 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 	CONF_PAIR		*cp;
 	CONF_SECTION		*next;
 	CONF_SECTION const	*cs = outer_cs;
-	char			name[8192];
-	char			*p;
+	char			name[8192], *p;
+	char const		*name2;
 
-	if (!ptr || (!parent_cs && !outer_cs)) return NULL;
+	if (!ptr || (!parent_cs && !outer_cs)) {
+		fr_strerror_const("Invalid argument");
+		return NULL;
+	}
+
+	if (!*ptr) {
+		fr_strerror_const("Empty string is invalid");
+		return NULL;
+	}
 
 	strlcpy(name, ptr, sizeof(name));
 
@@ -3752,7 +3760,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 		/*
 		 *	Just '.' means the current section
 		 */
-		if (*p == '\0') return cf_section_to_item(cs);
+		if (*p == '\0') return cf_section_to_item(cs); /* const issues */
 
 		/*
 		 *	..foo means "foo from the section
@@ -3765,95 +3773,190 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 			 *	.. means the section
 			 *	enclosing this section
 			 */
-			if (!*++p) return cf_section_to_item(cs);
+			if (!*++p) return cf_section_to_item(cs); /* const issues */
 		}
 
 		/*
-		 *	"foo.bar.baz" means "from the root"
+		 *	"foo.bar.baz" means "from the given root"
 		 */
 	} else if (strchr(p, '.') != NULL) {
-		if (!parent_cs) return NULL;
+		if (!parent_cs) {
+		missing_parent:
+			fr_strerror_const("Missing parent configuration section");
+			return NULL;
+		}
 		cs = parent_cs;
-	}
-
-	while (*p) {
-		char *q, *r;
-
-		r = strchr(p, '[');
-		q = strchr(p, '.');
-		if (!r && !q) break;
-
-		if (r && q > r) q = NULL;
-		if (q && q < r) r = NULL;
 
 		/*
-		 *	Split off name2.
+		 *	"foo" could be from the current section, either as a
+		 *	section or as a pair.
+		 *
+		 *	If that isn't found, search from the given root.
 		 */
-		if (r) {
-			q = strchr(r + 1, ']');
-			if (!q) return NULL; /* parse error */
+	} else {
+		next = cf_section_find(cs, p, NULL);
+		if (!next && cs->template) next = cf_section_find(cs->template, p, NULL);
+		if (next) return &(next->item);
 
+		cp = cf_pair_find(cs, p);
+		if (!cp && cs->template) cp = cf_pair_find(cs->template, p);
+		if (cp) return &(cp->item);
+
+		if (!parent_cs) goto missing_parent;
+		cs = parent_cs;
+	}
+
+	/*
+	 *	Chop the string into pieces, and look up the pieces.
+	 */
+	while (*p) {
+		char *n1, *n2, *q;
+
+		ERROR("Parent %s %s at %d - %s",
+		      cf_section_name1(cs), cf_section_name2(cs), __LINE__, p);
+
+		n1 = p;
+		n2 = NULL;
+		q = p;
+
+		fr_assert(*q);
+
+		/*
+		 *	Look for a terminating '.' or '[', to get name1 and possibly name2.
+		 */
+		while (*q != '\0') {
 			/*
-			 *	Points to foo[bar]xx: parse error,
-			 *	it should be foo[bar] or foo[bar].baz
+			 *	foo.bar -> return "foo"
 			 */
-			if (q[1] && q[1] != '.') return NULL;
-
-			*r = '\0';
-			*q = '\0';
-			next = cf_section_find(cs, p, r + 1);
-			if (!next && cs->template) next = cf_section_find(cs->template, p, r + 1);
-			*r = '[';
-			*q = ']';
-
-			/*
-			 *	Points to a named instance of a section.
-			 */
-			if (!q[1]) {
-				if (!next) return NULL;
-				return &(next->item);
+			if (*q == '.') {
+				*q++ = '\0'; /* leave 'q' after the '.' */
+				break;
 			}
 
-			q++;	/* ensure we skip the ']' and '.' */
+			/*
+			 *	name1 is anything up to '[' or EOS.
+			 */
+			if (*q != '[') {
+				q++;
+				continue;
+			}
 
-		} else {
-			*q = '\0';
-			next = cf_section_find(cs, p, NULL);
-			if (!next && cs->template) next = cf_section_find(cs->template, p, NULL);
-			*q = '.';
+			/*
+			 *	Found "name1[", look for "name2]" or "name2]."
+			 */
+			*q++ = '\0';
+			n2 = q;
+
+			while (*q != '\0') {
+				if (*q == '[') {
+					fr_strerror_const("Invalid reference, '[' cannot be used inside of a '[...]' block");
+					return NULL;
+				}
+
+				if (*q != ']') {
+					q++;
+					continue;
+				}
+
+				/*
+				 *	We've found the trailing ']'
+				 */
+				*q++ = '\0';
+
+				/*
+				 *	"name2]"
+				 */
+				if (!*q) break;
+
+				/*
+				 *	Must be "name2]."
+				 */
+				if (*q++ == '.') break;
+
+				fr_strerror_const("Invalid reference, ']' is not followed by '.'");
+				return NULL;
+			}
+
+			if (n2) break;
+
+			/*
+			 *	"name1[name2", but not "name1[name2]"
+			 */
+			fr_strerror_printf("Invalid reference after '%s', missing close ']'", n2);
+			return NULL;
+		}
+		p = q;		/* get it ready for the next round */
+
+		/*
+		 *	End of the string.  The thing could be a section with
+		 *	two names, a section with one name, or a pair.
+		 *
+		 *	And if we don't find the thing we're looking for here,
+		 *	check the template section.
+		 */
+		if (!*p) {
+			/*
+			 *	Two names, must be a section.
+			 */
+			if (n2) {
+				next = cf_section_find(cs, n1, n2);
+				if (!next && cs->template) next = cf_section_find(cs->template, n1, n2);
+				if (next) return &(next->item);
+
+			fail:
+				name2 = cf_section_name2(cs);
+				fr_strerror_printf("Parent section %s%s%s { ... } does not contain a %s %s { ... } configuration section",
+						   cf_section_name1(cs),
+						   name2 ? " " : "", name2 ? name2 : "",
+						   n1, n2);
+				return NULL;
+			}
+
+			/*
+			 *	One name, the final thing can be a section or a pair.
+			 */
+			next = cf_section_find(cs, n1, NULL);
+			if (!next && cs->template) next = cf_section_find(cs->template, n1, NULL);
+
+			if (next) return &(next->item);
+
+			cp = cf_pair_find(cs, n1);
+			if (!cp && cs->template) cp = cf_pair_find(cs->template, n1);
+			if (cp) return &(cp->item);
+
+			name2 = cf_section_name2(cs);
+			fr_strerror_printf("Parent section %s%s%s  { ... } does not contain a %s configuration item",
+					   cf_section_name1(cs),
+					   name2 ? " " : "", name2 ? name2 : "",
+					   n1);
+			return NULL;
 		}
 
-		if (!next) break; /* it MAY be a pair in this section! */
+		/*
+		 *	There's more to the string.  The thing we're looking
+		 *	for MUST be a configuration section.
+		 */
+		next = cf_section_find(cs, n1, n2);
+		if (!next && cs->template) next = cf_section_find(cs->template, n1, n2);
+		if (next) {
+			cs = next;
+			continue;
+		}
 
-		cs = next;
-		p = q + 1;
+		if (n2) goto fail;
+
+		name2 = cf_section_name2(cs);
+		fr_strerror_printf("Parent section %s%s%s { ... } does not contain a %s { ... } configuration section",
+				   cf_section_name1(cs),
+				   name2 ? " " : "", name2 ? name2 : "",
+				   n1);
+		return NULL;
 	}
-
-	if (!*p) return NULL;
-
-retry:
-	/*
-	 *	Find it in the current referenced
-	 *	section.
-	 */
-	cp = cf_pair_find(cs, p);
-	if (!cp && cs->template) cp = cf_pair_find(cs->template, p);
-	if (cp) {
-		cp->referenced = true;	/* conf pairs which are referenced count as used */
-		return &(cp->item);
-	}
-
-	next = cf_section_find(cs, p, NULL);
-	if (next) return &(next->item);
 
 	/*
-	 *	"foo" is "in the current section, OR in main".
+	 *	We've fallen off of the end of the string.  This should not have happened!
 	 */
-	if ((p == name) && (parent_cs != NULL) && (cs != parent_cs)) {
-		cs = parent_cs;
-		goto retry;
-	}
-
+	fr_strerror_const("Cannot parse reference");
 	return NULL;
 }
 
