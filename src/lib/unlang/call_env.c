@@ -454,7 +454,8 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 				CALL_ENV_DEBUG(cs, "%s: Calling subsection callback %p", name, rule_p->section.func);
 
 				if (rule_p->section.func(ctx, parsed, t_rules, cf_section_to_item(subcs), cec, rule_p) < 0) {
-					cf_log_perr(cs, "Failed parsing configuration section %s", rule_p->name);
+					cf_log_perr(cs, "Failed parsing configuration section %s",
+						    rule_p->name == CF_IDENT_ANY ? cf_section_name(cs) : rule_p->name);
 					talloc_free(call_env_parsed);
 					return -1;
 				}
@@ -471,7 +472,8 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 				while ((call_env_parsed = call_env_parsed_next(parsed, call_env_parsed))) {
 					CALL_ENV_DEBUG(subcs, "%s: Checking parsed env", name, rule_p->section.func);
 					if (call_env_parsed_valid(call_env_parsed, cf_section_to_item(subcs), rule_p) < 0) {
-						cf_log_err(cf_section_to_item(subcs), "Invalid data produced by %s", rule_p->name);
+						cf_log_err(cf_section_to_item(subcs), "Invalid data produced by %s",
+							   rule_p->name == CF_IDENT_ANY ? cf_section_name(cs) : rule_p->name);
 						return -1;
 					}
 				}
