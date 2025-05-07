@@ -260,6 +260,8 @@ static unlang_action_t unlang_subrequest_calculate_result(rlm_rcode_t *p_result,
  * i.e. after calling unlang_subrequest_child_push, the code in the parent
  * can call UNLANG_ACTION_PUSHED_CHILD, which will result in _this_ frame
  * being executed, and _this_ frame can yield.
+ *
+ * @note Called from the parent to start a child running.
  */
 unlang_action_t unlang_subrequest_child_run(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request,
 					    unlang_stack_frame_t *frame)
@@ -330,6 +332,8 @@ int unlang_subrequest_child_push(rlm_rcode_t *out, request_t *child,
 {
 	unlang_frame_state_subrequest_t	*state;
 	unlang_stack_frame_t		*frame;
+
+	fr_assert_msg(child->parent, "Child's request pointer must not be NULL when calling subrequest_child_push");
 
 	/*
 	 *	Push a new subrequest frame onto the stack
