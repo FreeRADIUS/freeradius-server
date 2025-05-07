@@ -711,7 +711,6 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
  */
 CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 {
-	unlang_frame_action_t	fa = UNLANG_FRAME_ACTION_NEXT;
 	rlm_rcode_t		rcode;
 
 	/*
@@ -720,6 +719,14 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 	unlang_stack_t		*stack = request->stack;
 	unlang_interpret_t	*intp = stack->intp;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];	/* Quiet static analysis */
+
+	/*
+	 *	This is needed to ensure that if a frame is marked
+	 *	for unwinding whilst the request is yielded, we
+	 *	unwind the cancelled frame correctly, instead of
+	 *	continuing.
+	 */
+	unlang_frame_action_t	fa = is_unwinding(frame) ? UNLANG_FRAME_ACTION_POP : UNLANG_FRAME_ACTION_NEXT;
 
 	stack->priority = -1;	/* Reset */
 
