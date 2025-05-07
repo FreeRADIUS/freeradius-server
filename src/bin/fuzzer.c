@@ -42,6 +42,7 @@ static bool			init = false;
 static dl_t			*dl = NULL;
 static dl_loader_t		*dl_loader;
 static fr_dict_protocol_t	*dl_proto;
+static TALLOC_CTX		*autofree = NULL;
 
 static fr_dict_t		*dict = NULL;
 
@@ -61,6 +62,8 @@ static void exitHandler(void)
 		dl->handle = NULL;
 	}
 	talloc_free(dl_loader);
+
+	talloc_free(autofree);
 
 	/*
 	 *	Ensure our atexit handlers run before any other
@@ -92,6 +95,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	char const		*proto    	= getenv("FR_LIBRARY_FUZZ_PROTOCOL");
 	char const		*dict_dir	= getenv("FR_DICTIONARY_DIR");
 	char const		*debug_lvl_str	= getenv("FR_DEBUG_LVL");
+	char const		*panic_action	= getenv("PANIC_ACTION");
 	char const		*p;
 #ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 	char			*dict_dir_to_free = NULL;
@@ -230,6 +234,15 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	 *	or statically linked to the library we're fuzzing...
 	 */
 	dl_proto = fuzzer_dict_init(RTLD_DEFAULT, proto);
+
+	if (panic_action) {
+		autofree = talloc_autofree_context();
+
+		if (fr_fault_setup(autofree, panic_action, (*argv)[0]) < 0) {
+			fr_perror("Failed initializing panic action");
+			fr_exit_now(EXIT_FAILURE);
+		}
+	}
 
 	init = true;
 
