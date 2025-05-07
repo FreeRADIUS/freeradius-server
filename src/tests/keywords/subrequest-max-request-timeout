@@ -1,0 +1,15 @@
+#
+#  PRE: subrequest timeout
+#
+
+# Set this early
+success
+
+timeout 100ms {
+	subrequest ::Access-Request {
+		%time.advance(500s)	# Smoke test, see if things explode
+		test_fail
+	}
+}
+
+test_fail
