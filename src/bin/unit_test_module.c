@@ -668,12 +668,6 @@ static xlat_action_t xlat_func_time_advance(UNUSED TALLOC_CTX *ctx, UNUSED fr_dc
 
 	XLAT_ARGS(in, &delta);
 
-	RDEBUG("Time was %pV", fr_box_date(fr_time_to_unix_time(_synthetic_time_source())));
-
-	time_offset = fr_time_delta_add(time_offset, delta->vb_time_delta);
-
-	RDEBUG("Time now %pV (offset +%pV)", fr_box_date(fr_time_to_unix_time(_synthetic_time_source())), fr_box_time_delta(time_offset));
-
 	/*
 	 *	This ensures we take a pass through the timer list
 	 *	otherwise the time advances can be ignored.
@@ -682,6 +676,13 @@ static xlat_action_t xlat_func_time_advance(UNUSED TALLOC_CTX *ctx, UNUSED fr_dc
 		RPERROR("Failed to add timer");
 		return XLAT_ACTION_FAIL;
 	}
+
+	RDEBUG("Time was %pV", fr_box_date(fr_time_to_unix_time(_synthetic_time_source())));
+
+	time_offset = fr_time_delta_add(time_offset, delta->vb_time_delta);
+
+	RDEBUG("Time now %pV (offset +%pV)", fr_box_date(fr_time_to_unix_time(_synthetic_time_source())), fr_box_time_delta(time_offset));
+
 	unlang_xlat_yield(request, xlat_func_time_advance_resume, NULL, 0, NULL);
 
 	return XLAT_ACTION_YIELD;
