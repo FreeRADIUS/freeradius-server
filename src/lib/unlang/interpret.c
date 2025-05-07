@@ -746,7 +746,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 			fa = frame_eval(request, frame, &stack->result, &stack->priority);
 
 			if (fa != UNLANG_FRAME_ACTION_POP) continue;
-			continue;
+			FALL_THROUGH;
 
 		case UNLANG_FRAME_ACTION_POP:		/* Pop this frame and check the one beneath it */
 		{
