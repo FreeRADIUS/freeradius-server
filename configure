@@ -5891,6 +5891,7 @@ then :
     ;;
   *)
     fuzzer=yes
+    CFLAGS="$CFLAGS -g3"
   esac
 
 fi

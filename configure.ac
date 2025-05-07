@@ -461,6 +461,8 @@ AC_ARG_ENABLE(fuzzer,
     ;;
   *)
     fuzzer=yes
+    CFLAGS="$CFLAGS -g3"
+    ;;
   esac ]
 )
 
