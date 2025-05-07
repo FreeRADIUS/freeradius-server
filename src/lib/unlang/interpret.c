@@ -1381,7 +1381,8 @@ void unlang_interpret_mark_runnable(request_t *request)
 	 *	runnable, before the parent request starts running.
 	 */
 	if (!is_yielded(frame) || scheduled) {
-		RDEBUG3("Not marking runnable due to%s%s",
+		RDEBUG3("Not marking request %s as runnable due to%s%s",
+			request->name,
 			!is_yielded(frame) ?
 			" it not being yielded " : "", scheduled ? " it already being scheduled" : "");
 		return;
