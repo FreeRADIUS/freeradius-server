@@ -129,6 +129,13 @@ jobs:
         echo "PATH=`brew --prefix python@3.10`/bin/:$PATH" >> $GITHUB_ENV
 
     #
+    #  Ensure Homebrew installed OpenSSL is used
+    #
+    - name: Set path for OpenSSL
+      run: |
+        echo "PATH=`brew --prefix openssl`/bin/:$PATH" >> $GITHUB_ENV
+
+    #
     #  Build using some alternative libraries
     #
     #    PCRE 2       -> PCRE 1
