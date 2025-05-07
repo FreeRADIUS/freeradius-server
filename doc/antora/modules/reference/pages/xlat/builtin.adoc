@@ -183,7 +183,30 @@ reply.Reply-Message := "You should wait for %time.next(1h)s"
 You should wait for 2520s
 ```
 
-### %str.subst(<subject>, <find>, <replace>)
+=== %time.now()
+
+Return the current time.  This time should be used for actions which
+involve the file system, or for actions which happen after the request
+has been received.
+
+=== %time.request()
+
+Return the time when the request was received.  This time should be
+used as the basis any actions which involve the "start time of the
+request".
+
+=== %time.offset()
+
+Return a `time_delta` of the current offset from UTC.  This offset can
+change while the server is running, due to daylight savings updates.
+
+=== %time.is_dst()
+
+Return a `bool` indicating whether or not the system is currently
+operating in daylight savings.
+
+
+=== %str.subst(<subject>, <find>, <replace>)
 
 Substitute text.
 

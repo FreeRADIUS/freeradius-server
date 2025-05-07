@@ -3608,6 +3608,106 @@ append:
 	return XLAT_ACTION_DONE;
 }
 
+/** Return the current time as a #FR_TYPE_DATE
+ *
+ *  Note that all operations are UTC.
+ *
+@verbatim
+%time.now()
+@endverbatim
+ *
+ * Example:
+@verbatim
+update reply {
+	&Reply-Message := "%{%time.now() - %time.request()}"
+}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_time_now(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					UNUSED xlat_ctx_t const *xctx,
+					UNUSED request_t *request, UNUSED fr_value_box_list_t *args)
+{
+	fr_value_box_t		*vb;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL));
+	vb->vb_date = fr_time_to_unix_time(fr_time());
+
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+/** Return the request receive time as a #FR_TYPE_DATE
+ *
+ *  Note that all operations are UTC.
+ *
+@verbatim
+%time.request()
+@endverbatim
+ *
+ * Example:
+@verbatim
+update reply {
+	&Reply-Message := "%{%time.now() - %time.request()}"
+}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_time_request(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					    UNUSED xlat_ctx_t const *xctx,
+					    request_t *request, UNUSED fr_value_box_list_t *args)
+{
+	fr_value_box_t		*vb;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL));
+	vb->vb_date = fr_time_to_unix_time(request->packet->timestamp);
+
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+
+/** Return the current time offset from gmt
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_time_offset(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					   UNUSED xlat_ctx_t const *xctx,
+					   UNUSED request_t *request, UNUSED fr_value_box_list_t *args)
+{
+	fr_value_box_t		*vb;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL));
+	vb->vb_time_delta = fr_time_gmtoff();
+
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+
+/** Return whether we are in daylight savings or not
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_time_is_dst(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					   UNUSED xlat_ctx_t const *xctx,
+					   UNUSED request_t *request, UNUSED fr_value_box_list_t *args)
+{
+	fr_value_box_t		*vb;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	vb->vb_bool = fr_time_is_dst();
+
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
 
 /** Change case of a string
  *
@@ -4268,6 +4368,13 @@ do { \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL); \
 } while (0)
 
+#undef XLAT_REGISTER_VOID
+#define XLAT_REGISTER_VOID(_xlat, _func, _return_type) \
+do { \
+	if (unlikely((xlat = xlat_func_register(xlat_ctx, _xlat, _func, _return_type)) == NULL)) return -1; \
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL); \
+} while (0)
+
 	XLAT_REGISTER_ARGS("debug", xlat_func_debug, FR_TYPE_INT8, xlat_func_debug_args);
 	XLAT_REGISTER_ARGS("debug_attr", xlat_func_debug_attr, FR_TYPE_NULL, xlat_func_debug_attr_args);
 	XLAT_REGISTER_ARGS("file.exists", xlat_func_file_exists, FR_TYPE_BOOL, xlat_func_file_name_args);
@@ -4299,6 +4406,11 @@ do { \
 #endif
 
 	XLAT_REGISTER_ARGS("time", xlat_func_time, FR_TYPE_VOID, xlat_func_time_args);
+	XLAT_REGISTER_VOID("time.now", xlat_func_time_now, FR_TYPE_DATE);
+	XLAT_REGISTER_VOID("time.request", xlat_func_time_request, FR_TYPE_DATE);
+	XLAT_REGISTER_VOID("time.offset", xlat_func_time_offset, FR_TYPE_TIME_DELTA);
+	XLAT_REGISTER_VOID("time.is_dst", xlat_func_time_is_dst, FR_TYPE_BOOL);
+
 	XLAT_REGISTER_ARGS("trigger", trigger_xlat, FR_TYPE_STRING, trigger_xlat_args);
 	XLAT_REGISTER_ARGS("base64.encode", xlat_func_base64_encode, FR_TYPE_STRING, xlat_func_base64_encode_arg);
 	XLAT_REGISTER_ARGS("base64.decode", xlat_func_base64_decode, FR_TYPE_OCTETS, xlat_func_base64_decode_arg);
