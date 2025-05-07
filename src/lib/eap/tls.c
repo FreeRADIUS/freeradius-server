@@ -1283,7 +1283,7 @@ fr_tls_conf_t *eap_tls_conf_parse(CONF_SECTION *cs)
 
 			ci = cf_reference_item(cf_root(parent), parent, tls_conf_name);
 			if (!ci) {
-				cf_log_err(cp, "Cannot find tls configuration section '%s'",
+				cf_log_perr(cp, "Cannot find tls configuration section from reference '%s'",
 					   tls_conf_name);
 				return NULL;
 			}
