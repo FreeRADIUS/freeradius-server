@@ -481,7 +481,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 			}
 
 			if (call_env_parse(ctx, parsed, name, t_rules, subcs, cec, rule_p->section.subcs) < 0) {
-				CALL_ENV_DEBUG(cs, "%s: Recursive call failed", name, rule_p->name);
+				CALL_ENV_DEBUG(cs, "%s: Recursive call failed", name);
 				return -1;
 			}
 			goto next;
