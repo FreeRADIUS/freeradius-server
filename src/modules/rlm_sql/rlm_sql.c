@@ -687,6 +687,7 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (fr_pair_value_from_str(vp, value, strlen(value), NULL, true) < 0) {
 		RPEDEBUG("Failed parsing value \"%pV\" for attribute %s",
 			 fr_box_strvalue_buffer(value), vp->da->name);
+		fr_pair_delete(out, vp);
 		return -1;
 	}
 
