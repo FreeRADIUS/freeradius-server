@@ -2707,6 +2707,16 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		goto error;
 	}
 
+	if (tmpl_is_xlat(gext->vpt)) {
+		xlat_exp_head_t *xlat = tmpl_xlat(gext->vpt);
+
+		if (xlat->flags.constant || xlat->flags.pure) {
+			cf_log_err(cs, "Cannot use constant data for 'switch' statement");
+			goto error;
+		}
+	}
+
+
 	if (tmpl_needs_resolving(gext->vpt)) {
 		cf_log_err(cs, "Cannot resolve key for 'switch' statement");
 		goto error;
