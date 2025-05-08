@@ -6,7 +6,7 @@ server eap-aka-prime {
 	}
 
 	recv Identity-Response {
-#		%debug_attr(session-state.)
+#		%pairs.debug(session-state.)
 		if (!session-state.Stripped-User-Name) {
 			reply.Any-ID-Req := yes
 			session-state.Stripped-User-Name := yes

@@ -102,7 +102,7 @@ done:
 }
 
 
-static xlat_arg_parser_t const xlat_func_debug_attr_args[] = {
+static xlat_arg_parser_t const xlat_func_pairs_debug_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
@@ -246,12 +246,12 @@ xlat_action_t xlat_transparent(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * Example:
 @verbatim
-%debug_attr(&request)
+%debug.attr(&request)
 @endverbatim
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+static xlat_action_t xlat_func_pairs_debug(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 					  UNUSED xlat_ctx_t const *xctx,
 					  request_t *request, fr_value_box_list_t *args)
 {
@@ -2378,7 +2378,7 @@ static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
-static xlat_arg_parser_t const xlat_func_pairs_args[] = {
+static xlat_arg_parser_t const xlat_func_pairs_print_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
@@ -2390,15 +2390,15 @@ static xlat_arg_parser_t const xlat_func_pairs_args[] = {
  *
  * Example:
 @verbatim
-%pairs(request.[*]) == 'User-Name = "foo"User-Password = "bar"'
-%concat(%pairs(request.[*]), ', ') == 'User-Name = "foo", User-Password = "bar"'
+%pairs.print.print(request.[*]) == 'User-Name = "foo"User-Password = "bar"'
+%concat(%pairs.print.print(request.[*]), ', ') == 'User-Name = "foo", User-Password = "bar"'
 @endverbatim
  *
  * @see #xlat_func_concat
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
+static xlat_action_t xlat_func_pairs_print(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     UNUSED xlat_ctx_t const *xctx,
 				     request_t *request, fr_value_box_list_t *args)
 {
@@ -4376,7 +4376,9 @@ do { \
 } while (0)
 
 	XLAT_REGISTER_ARGS("debug", xlat_func_debug, FR_TYPE_INT8, xlat_func_debug_args);
-	XLAT_REGISTER_ARGS("debug_attr", xlat_func_debug_attr, FR_TYPE_NULL, xlat_func_debug_attr_args);
+	XLAT_REGISTER_ARGS("debug_attr", xlat_func_pairs_debug, FR_TYPE_NULL, xlat_func_pairs_debug_args);
+	XLAT_NEW("pairs.debug");
+
 	XLAT_REGISTER_ARGS("file.exists", xlat_func_file_exists, FR_TYPE_BOOL, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.head", xlat_func_file_head, FR_TYPE_STRING, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.rm", xlat_func_file_rm, FR_TYPE_BOOL, xlat_func_file_name_args);
@@ -4393,7 +4395,11 @@ do { \
 	XLAT_NEW("time.next");
 	XLAT_REGISTER_ARGS("time.next", xlat_func_next_time, FR_TYPE_UINT64, xlat_func_next_time_args);
 
-	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, FR_TYPE_STRING, xlat_func_pairs_args);
+	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs_print, FR_TYPE_STRING, xlat_func_pairs_print_args);
+	XLAT_NEW("pairs.print");
+	XLAT_REGISTER_ARGS("pairs.print", xlat_func_pairs_print, FR_TYPE_STRING, xlat_func_pairs_print_args);
+
+	XLAT_REGISTER_ARGS("pairs.debug", xlat_func_pairs_debug, FR_TYPE_NULL, xlat_func_pairs_debug_args);
 
 	XLAT_REGISTER_ARGS("str.subst", xlat_func_subst, FR_TYPE_STRING, xlat_func_subst_args);
 #ifdef HAVE_REGEX_PCRE2
