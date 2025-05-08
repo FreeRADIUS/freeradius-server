@@ -1178,6 +1178,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 		if (client->state == PR_CLIENT_PENDING) {
 			DEBUG("Ignoring duplicate packet while client %s is still pending dynamic definition",
 			      client->radclient->shortname);
+			talloc_free(track);
 			return NULL;
 		}
 
