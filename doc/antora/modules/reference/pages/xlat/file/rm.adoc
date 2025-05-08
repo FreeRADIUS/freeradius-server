@@ -1,0 +1,20 @@
+= rm
+
+The `rm` function removes a file.  If the file exists and could be removed, it returns `true`.  Otherwise if the file does not exist, or if the file could not be removed, it returns `false.
+
+[#syntax]
+== Syntax
+
+`%file.rm(_string_)`
+
+.Return: _bool_
+
+.Removing a file
+====
+[source,unlang]
+----
+if (%file.size("/var/log/radius.log") > (((uint64)1) << 20)) {
+	%file.rm("/var/log/radius.log")
+}
+----
+====

@@ -1,0 +1,20 @@
+= Size
+
+The `size` function is used to calculate the size of a file on the filesystem.
+
+[#syntax]
+== Syntax
+
+`%file.size(_string_)`
+
+.Return: _uint64_
+
+.Checking the size of a file
+====
+[source,unlang]
+----
+if (%file.size("/var/log/radius.log") > (((uint64)1) << 20)) {
+	%log.info("The log file is getting large!")
+}
+----
+====
