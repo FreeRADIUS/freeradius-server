@@ -1336,6 +1336,8 @@ fr_type_t tmpl_data_type(tmpl_t const *vpt)
 {
 	if (tmpl_rules_cast(vpt) != FR_TYPE_NULL) return tmpl_rules_cast(vpt);
 
+	if (vpt->quote != T_BARE_WORD) return FR_TYPE_STRING;
+
 	if (tmpl_is_data(vpt)) return tmpl_value_type(vpt);
 
 	if (tmpl_is_attr(vpt)) return tmpl_attr_tail_da(vpt)->type;

@@ -1,0 +1,19 @@
+#
+# PRE: switch
+#
+
+switch "%str.substr(%{User-Name}, 0, 3)" {
+	case 'bob' {
+		success
+	}
+
+	case 'doug' {
+		Filter-Id := "doug"
+		test_fail
+	}
+
+	default {
+		Filter-Id := "default"
+		test_fail
+	}
+}

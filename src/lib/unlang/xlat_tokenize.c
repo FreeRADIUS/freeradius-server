@@ -2069,6 +2069,8 @@ fr_type_t xlat_data_type(xlat_exp_head_t const *head)
 
 	if (xlat_exp_next(head, node)) return FR_TYPE_NULL;
 
+	if (node->quote != T_BARE_WORD) return FR_TYPE_STRING;
+
 	if (node->type == XLAT_FUNC) {
 		return node->call.func->return_type;
 	}
