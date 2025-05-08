@@ -2732,6 +2732,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		fr_assert(type != FR_TYPE_NULL);
 		fr_assert(fr_type_is_leaf(type));
 
+	do_cast:
 		if (tmpl_cast_set(gext->vpt, type) < 0) {
 			cf_log_perr(cs, "Failed setting cast type");
 			goto error;
@@ -2743,7 +2744,10 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		 *	mash it all to string.
 		 */
 		type = tmpl_data_type(gext->vpt);
-		if (type == FR_TYPE_NULL) type = FR_TYPE_STRING;
+		if ((type == FR_TYPE_NULL) || (type == FR_TYPE_VOID)) {
+			type = FR_TYPE_STRING;
+			goto do_cast;
+		}
 	}
 
 	htype = fr_htrie_hint(type);
