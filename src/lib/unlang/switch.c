@@ -85,8 +85,6 @@ static unlang_action_t unlang_switch(UNUSED rlm_rcode_t *p_result, request_t *re
 		slen = tmpl_aexpand_type(unlang_interpret_frame_talloc_ctx(request), &box, FR_TYPE_VALUE_BOX,
 					 request, switch_gext->vpt);
 		if (slen < 0) goto find_null_case;
-
-		tmpl_debug(switch_gext->vpt);
 	} else if (!fr_cond_assert_msg(0, "Invalid tmpl type %s", tmpl_type_to_str(switch_gext->vpt->type))) {
 		return UNLANG_ACTION_FAIL;
 	}
