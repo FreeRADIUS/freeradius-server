@@ -87,8 +87,6 @@ static unlang_action_t unlang_switch(UNUSED rlm_rcode_t *p_result, request_t *re
 		if (slen < 0) goto find_null_case;
 
 		tmpl_debug(switch_gext->vpt);
-		ERROR("GOT DATA %s - %pV", fr_type_to_str(box->type), box);
-
 	} else if (!fr_cond_assert_msg(0, "Invalid tmpl type %s", tmpl_type_to_str(switch_gext->vpt->type))) {
 		return UNLANG_ACTION_FAIL;
 	}
