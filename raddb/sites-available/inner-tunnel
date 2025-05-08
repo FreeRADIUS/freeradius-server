@@ -32,7 +32,7 @@ server inner-tunnel {
 #  Do NOT do any PEAP tests.  It won't help.  Instead, concentrate
 #  on fixing the inner tunnel configuration.  DO NOTHING ELSE.
 #
-listen {
+listen innertunnel {
 	type = Access-Request
 	transport = udp
 
