@@ -211,7 +211,7 @@ static void bio_request_reset(bio_request_t *u)
 	 */
 	if (u->rr) radius_track_entry_release(&u->rr);
 
-	fr_assert(!u->ev);
+	fr_assert(!fr_timer_armed(u->ev));
 }
 
 /** Reset a status_check packet, ready to reuse

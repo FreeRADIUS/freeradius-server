@@ -1244,7 +1244,7 @@ static void request_fail(request_t *request, NDEBUG_UNUSED void *preq, void *rct
 	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
 #endif
 
-	fr_assert(!u->ev);	/* Dealt with by request_conn_release */
+	fr_assert(!fr_timer_armed(u->ev));	/* Dealt with by request_conn_release */
 
 	fr_assert(state != TRUNK_REQUEST_STATE_INIT);
 
