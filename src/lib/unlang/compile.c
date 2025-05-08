@@ -2658,7 +2658,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 */
 	token = cf_section_name2_quote(cs);
 
-	if (token == T_BARE_WORD) {
+	if ((token == T_BARE_WORD) && (name2[0] != '%')) {
 		slen = tmpl_afrom_attr_substr(gext, NULL, &gext->vpt,
 					      &FR_SBUFF_IN(name2, strlen(name2)),
 					      NULL,
