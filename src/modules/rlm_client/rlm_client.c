@@ -226,7 +226,7 @@ static xlat_arg_parser_t const xlat_client_args[] = {
  *
  * Example:
 @verbatim
-%client(foo, [<ipaddr>])
+%request.client(foo, [<ipaddr>])
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -355,6 +355,9 @@ static int mod_load(void)
 	xlat_t	*xlat;
 
 	if (unlikely((xlat = xlat_func_register(NULL, "client", xlat_client, FR_TYPE_STRING)) == NULL)) return -1;
+	xlat_func_args_set(xlat, xlat_client_args);
+
+	if (unlikely((xlat = xlat_func_register(NULL, "request.client", xlat_client, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, xlat_client_args);
 
 	map_proc_register(NULL, NULL, "client", map_proc_client, NULL, 0, FR_VALUE_BOX_SAFE_FOR_ANY);
