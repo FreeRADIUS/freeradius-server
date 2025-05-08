@@ -1098,12 +1098,12 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	 *	there are no duplicates, so this is fine.
 	 */
 	if (client->connection) {
-		MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 1, sizeof(*track) + sizeof(track->address) + 64));
+		MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 1, sizeof(*track) + 64));
 		track->address = client->connection->address;
 	} else {
 		fr_io_address_t *my_address;
 
-		MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 1, sizeof(*track) + 64));
+		MEM(track = talloc_zero_pooled_object(client, fr_io_track_t, 1, sizeof(*track) + sizeof(*track->address) + 64));
 		MEM(track->address = my_address = talloc(track, fr_io_address_t));
 
 		*my_address = *address;
