@@ -291,6 +291,11 @@ ATTRIBUTE	SSHA3-256-Password			1183	octets
 ATTRIBUTE	SSHA3-384-Password			1184	octets
 ATTRIBUTE	SSHA3-512-Password			1185	octets
 
+ATTRIBUTE	PBKDF2-SHA1-Password			1186	octets
+ATTRIBUTE	PBKDF2-SHA256-Password			1187	octets
+ATTRIBUTE	PBKDF2-SHA512-Password			1188	octets
+ATTRIBUTE	PBKDF2-SHA256-LEGACY-Password		1189	octets
+
 ATTRIBUTE	MS-CHAP-Peer-Challenge			1192	octets
 ATTRIBUTE	Home-Server-Name			1193	string
 ATTRIBUTE	Originating-Realm-Key			1194	string
