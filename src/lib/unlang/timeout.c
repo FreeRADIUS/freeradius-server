@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/unlang/timeout.h>
+#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/server/rcode.h>
 #include "group_priv.h"
 #include "timeout_priv.h"
@@ -87,7 +88,7 @@ static void unlang_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 	 *	something else will run it to completion, and mark
 	 *	the request as complete.
 	 */
-	if (is_yielded(frame) && is_unwinding(frame)) unlang_interpret_mark_runnable(request);
+	if (is_yielded(frame) && is_unwinding(frame) && !unlang_request_is_scheduled(request)) unlang_interpret_mark_runnable(request);
 	state->fired = true;
 
 	RINDENT_RESTORE(request, state);
