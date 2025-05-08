@@ -60,7 +60,6 @@ typedef struct {
 
 	bool				recv_buff_is_set;	//!< Whether we were provided with a recv_buff
 	bool				dynamic_clients;	//!< whether we have dynamic clients
-	bool				dedup_authenticator;	//!< dedup using the request authenticator
 
 	fr_client_list_t			*clients;		//!< local clients
 
@@ -90,7 +89,6 @@ static const conf_parser_t tcp_listen_config[] = {
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, proto_radius_tcp_t, recv_buff) },
 
 	{ FR_CONF_OFFSET("dynamic_clients", proto_radius_tcp_t, dynamic_clients) } ,
-	{ FR_CONF_OFFSET("accept_conflicting_packets", proto_radius_tcp_t, dedup_authenticator) } ,
 	{ FR_CONF_POINTER("networks", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) networks_config },
 
 	{ FR_CONF_OFFSET("max_packet_size", proto_radius_tcp_t, max_packet_size), .dflt = "4096" } ,

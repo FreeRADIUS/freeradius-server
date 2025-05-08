@@ -118,7 +118,6 @@ struct fr_client_s {
 	bool			dynamic;		//!< Whether the client was dynamically defined.
 	bool			active;			//!< for dynamic clients
 	bool			use_connected;		//!< do we use connected sockets for this client
-	bool			dedup_authenticator;	//!< more RADIUS stuff
 
 #ifdef WITH_TLS
 	bool			tls_required;		//!< whether TLS encryption is required.

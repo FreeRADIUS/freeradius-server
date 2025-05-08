@@ -419,7 +419,6 @@ static fr_client_t *radclient_clone(TALLOC_CTX *ctx, fr_client_t const *parent)
 	COPY_FIELD(cs);
 	COPY_FIELD(proto);
 	COPY_FIELD(active);
-	COPY_FIELD(dedup_authenticator);
 
 	COPY_FIELD(use_connected);
 
@@ -2590,7 +2589,6 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	COPY_FIELD(client, limit_proxy_state);
 	COPY_FIELD(client, limit_proxy_state_is_set);
 	COPY_FIELD(client, use_connected);
-	COPY_FIELD(client, dedup_authenticator);
 	COPY_FIELD(client, cs);
 
 	// @todo - fill in other fields?

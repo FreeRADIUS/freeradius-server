@@ -448,8 +448,6 @@ static const conf_parser_t client_config[] = {
 	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_radius_limit_proxy_state_table, .len = &fr_radius_limit_proxy_state_table_len },
 	  .dflt = "auto" },
 
-	{ FR_CONF_OFFSET("dedup_authenticator", fr_client_t, dedup_authenticator), .dflt = "yes" },
-
 	{ FR_CONF_OFFSET("response_window", fr_client_t, response_window) },
 
 	{ FR_CONF_POINTER("proto", FR_TYPE_STRING, 0, &hs_proto) },
