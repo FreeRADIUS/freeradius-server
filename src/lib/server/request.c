@@ -437,6 +437,8 @@ static inline CC_HINT(always_inline) request_t *request_alloc_pool(TALLOC_CTX *c
 
 static int _request_local_free(request_t *request)
 {
+	RDEBUG4("Local request freed (%p)", request);
+
 	/*
 	 *	Ensure anything that might reference the request is
 	 *	freed before it is.

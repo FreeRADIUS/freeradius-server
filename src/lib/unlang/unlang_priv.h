@@ -28,6 +28,7 @@
 #include <freeradius-devel/server/cf_util.h> /* Need CONF_* definitions */
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/time_tracking.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/io/listen.h>
@@ -63,7 +64,7 @@ typedef enum {
 	UNLANG_TYPE_MAP,			//!< Mapping section (like #UNLANG_TYPE_UPDATE, but uses
 						//!< values from a #map_proc_t call).
 	UNLANG_TYPE_SUBREQUEST,			//!< create a child subrequest
-	UNLANG_TYPE_SUBREQUEST_CHILD,		//!< a frame at the top of a child's request stack used to signal the
+	UNLANG_TYPE_CHILD_REQUEST,		//!< a frame at the top of a child's request stack used to signal the
 						///< parent when the child is complete.
 	UNLANG_TYPE_DETACH,			//!< detach a child
 	UNLANG_TYPE_CALL,			//!< call another virtual server
@@ -290,7 +291,6 @@ typedef struct {
 	request_t		*request;
 	int			depth;				//!< of this retry structure
 	fr_retry_state_t	state;
-	fr_time_t		timeout;
 	uint32_t       		count;
 	fr_timer_t		*ev;
 } unlang_retry_t;
@@ -757,8 +757,6 @@ void		unlang_return_init(void);
 void		unlang_parallel_init(void);
 
 int		unlang_subrequest_op_init(void);
-
-void		unlang_subrequest_op_free(void);
 
 void		unlang_detach_init(void);
 

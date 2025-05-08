@@ -4,13 +4,13 @@ subrequest ::Access-Request {
 	ok {
 		ok = 10
 	}
-	noop {
+	updated {
 		fail = 1
 	}
 }
 
 if (ok) {
 	success
-} elsif (noop) {
+} else {
 	test_fail
 }

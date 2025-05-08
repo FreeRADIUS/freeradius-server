@@ -302,7 +302,7 @@ static void unlang_dump(unlang_t *instruction, int depth)
 	for (c = instruction; c != NULL; c = c->next) {
 		switch (c->type) {
 		case UNLANG_TYPE_NULL:
-		case UNLANG_TYPE_SUBREQUEST_CHILD:
+		case UNLANG_TYPE_CHILD_REQUEST:
 		case UNLANG_TYPE_MAX:
 			fr_assert(0);
 			break;

@@ -579,8 +579,8 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 		RDEBUG2("No tunnel username (SSL resumption?)");
 	}
 
-	if (unlang_subrequest_child_push(&eap_session->submodule_rcode, child,
-					 &(unlang_subrequest_session_t){ .enable = true, .unique_ptr = child },
+	if (unlang_subrequest_child_push(child, &eap_session->submodule_rcode,
+					 child,
 					 false, UNLANG_SUB_FRAME) < 0) goto finish;
 	if (unlang_function_push(child, NULL, process_reply, NULL, 0,
 				 UNLANG_SUB_FRAME, eap_session) != UNLANG_ACTION_PUSHED_CHILD) goto finish;

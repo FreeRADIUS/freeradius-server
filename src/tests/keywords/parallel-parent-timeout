@@ -1,0 +1,29 @@
+#
+#  PRE: parallel
+#
+try {
+	timeout 1s {
+		parallel {
+			# This child should get cancelled by the parent
+			group {
+				delay_10s
+				parent.control.NAS-Port += 1
+				ok
+			}
+			# This child should complete
+			group {
+				parent.control.NAS-Port += 1
+				# Trigger the parent's timeout section so we don't have to wait
+				%time.advance(2s)
+				ok
+			}
+		}
+	}
+}
+catch timeout {
+	if (!(%{control.NAS-Port[#]} == 1)) {
+		test_fail
+	}
+
+	success
+}

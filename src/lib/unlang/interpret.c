@@ -22,15 +22,17 @@
  *
  * @copyright 2006-2016 The FreeRADIUS server project
  */
+
 RCSID("$Id$")
 
+#include <freeradius-devel/unlang/interpret.h>
+#include <freeradius-devel/util/timer.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include "interpret_priv.h"
 #include "module_priv.h"
-#include "parallel_priv.h"
 
 
 /** The default interpreter instance for this thread
@@ -396,9 +398,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 			 *	frame is cleaned up.
 			 */
 			if (fr_time_delta_ispos(instruction->actions.retry.mrd)) {
-				retry->timeout = fr_time_add(fr_time(), instruction->actions.retry.mrd);
-
-				if (fr_timer_at(retry, unlang_interpret_event_list(request)->tl, &retry->ev, retry->timeout,
+				if (fr_timer_in(retry, unlang_interpret_event_list(request)->tl, &retry->ev, instruction->actions.retry.mrd,
 						false, instruction_retry_handler, request) < 0) {
 					RPEDEBUG("Failed inserting retry event");
 					*result = RLM_MODULE_FAIL;
@@ -1028,6 +1028,11 @@ void unlang_interpret_request_done(request_t *request)
 	}
 }
 
+/** Tell the interpreter to detach the request
+ *
+ * This function should not be called directly use unlang_interpret_signal(request, FR_SIGNAL_DETACH) instead.
+ * This will ensure all frames on the request's stack receive the detach signal.
+ */
 static inline CC_HINT(always_inline)
 void unlang_interpret_request_detach(request_t *request)
 {
@@ -1260,9 +1265,7 @@ int unlang_interpret_set_timeout(request_t *request, fr_time_delta_t timeout)
 	retry->state = FR_RETRY_CONTINUE;
 	retry->count = 1;
 
-	retry->timeout = fr_time_add(fr_time(), timeout);
-
-	return fr_timer_at(retry, unlang_interpret_event_list(request)->tl, &retry->ev, retry->timeout,
+	return fr_timer_in(retry, unlang_interpret_event_list(request)->tl, &retry->ev, timeout,
 			   false, instruction_timeout_handler, request);
 }
 
@@ -1513,7 +1516,7 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 *	This can be useful for doing stacked
 		 *	cancellations in policy.
 		 */
-		vb->vb_time_delta = fr_time_sub(when, fr_time());
+		vb->vb_time_delta = fr_time_sub(when, unlang_interpret_event_list(request)->tl->time());
 		fr_dcursor_insert(out, vb);
 	}
 

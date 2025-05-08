@@ -71,7 +71,6 @@ static TALLOC_CTX *unlang_ctx = NULL;
 
 static int _unlang_global_free(UNUSED void *uctx)
 {
-	unlang_subrequest_op_free();
 	TALLOC_FREE(unlang_ctx);
 
 	return 0;

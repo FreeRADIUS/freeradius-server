@@ -1232,6 +1232,8 @@ static void _worker_request_detach(request_t *request, void *uctx)
 {
 	fr_worker_t	*worker = talloc_get_type_abort(uctx, fr_worker_t);
 
+	RDEBUG4("%s - Request detaching", __FUNCTION__);
+
 	if (request_is_detachable(request)) {
 		/*
 		*	End the time tracking...  We don't track detached requests,
@@ -1261,7 +1263,7 @@ static void _worker_request_runnable(request_t *request, void *uctx)
 {
 	fr_worker_t	*worker = uctx;
 
-	RDEBUG3("Request marked as runnable");
+	RDEBUG4("%s - Request marked as runnable", __FUNCTION__);
 	fr_heap_insert(&worker->runnable, request);
 }
 
@@ -1270,7 +1272,7 @@ static void _worker_request_runnable(request_t *request, void *uctx)
  */
 static void _worker_request_yield(request_t *request, UNUSED void *uctx)
 {
-	RDEBUG3("Request yielded");
+	RDEBUG4("%s - Request yielded", __FUNCTION__);
 	if (likely(!request_is_detached(request))) fr_time_tracking_yield(&request->async->tracking, fr_time());
 }
 
@@ -1279,7 +1281,7 @@ static void _worker_request_yield(request_t *request, UNUSED void *uctx)
  */
 static void _worker_request_resume(request_t *request, UNUSED void *uctx)
 {
-	RDEBUG3("Request resuming");
+	RDEBUG4("%s - Request resuming", __FUNCTION__);
 	if (likely(!request_is_detached(request))) fr_time_tracking_resume(&request->async->tracking, fr_time());
 }
 
@@ -1298,7 +1300,7 @@ static void _worker_request_prioritise(request_t *request, void *uctx)
 {
 	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
 
-	RDEBUG3("Request priority changed");
+	RDEBUG4("%s - Request priority changed", __FUNCTION__);
 
 	/* Extract the request from the runnable queue _if_ it's in the runnable queue */
 	if (fr_heap_extract(&worker->runnable, request) < 0) return;

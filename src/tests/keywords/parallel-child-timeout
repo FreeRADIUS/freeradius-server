@@ -1,0 +1,23 @@
+#
+#  PRE: parallel
+#
+try {
+	parallel {
+		timeout 1s {
+			%time.advance(2s)
+			parent.control.NAS-Port += 1
+		}
+		# Ensure a timeout in one child does not affect the other
+		group {
+			parent.control.NAS-Port += 1
+			ok
+		}
+	}
+}
+catch timeout {
+	if (!(%{control.NAS-Port[#]} == 1)) {
+		test_fail
+	}
+
+	success
+}

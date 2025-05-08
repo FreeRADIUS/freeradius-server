@@ -61,11 +61,8 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_t resume,
 	 *	Sets up a dispatch frame in the parent
 	 *	and a result processing frame in the child.
 	 */
-	if (unlang_subrequest_child_push(NULL, child,
-					 &(unlang_subrequest_session_t){
-						.enable = true,
-						.unique_ptr = tls_session
-					 },
+	if (unlang_subrequest_child_push(child, NULL,
+					 tls_session,
 					 true, UNLANG_SUB_FRAME) < 0) {
 		return UNLANG_ACTION_FAIL;
 	}

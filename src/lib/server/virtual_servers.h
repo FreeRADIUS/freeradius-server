@@ -24,12 +24,14 @@
  * @copyright 2019 The FreeRADIUS server project
  */
 
+#include <freeradius-devel/server/virtual_servers.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct virtual_server_s virtual_server_t;
+typedef struct virtual_server_compile_s virtual_server_compile_t;
 
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/server/cf_parse.h>
@@ -97,7 +99,7 @@ bool			listen_record(fr_listen_t *li) CC_HINT(nonnull);
 /** Processing sections which are allowed in this virtual server.
  *
  */
-typedef struct {
+struct virtual_server_compile_s {
 	section_name_t const			*section;	//!< Identifier for the section.
 	size_t					offset;		//!< where the CONF_SECTION pointer is written
 	bool					dont_cache;	//!< If true, the CONF_SECTION pointer won't be written
@@ -106,7 +108,7 @@ typedef struct {
 	unlang_mod_actions_t const		*actions;	//!< Default actions for this section.
 	section_name_t const			**methods;	//!< list of auxilliary module methods which are allowed in
 								///< if the main name doesn't match.
-} virtual_server_compile_t;
+};
 
 #define COMPILE_TERMINATOR { .section = NULL }
 

@@ -2011,12 +2011,7 @@ unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const 
 	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
 	vp->vp_uint32 = enum_tls_packet_type_new_session->vb_uint32;
 
-	if (unlang_subrequest_child_push(NULL, child,
-					&(unlang_subrequest_session_t){
-						.enable = true,
-						.unique_ptr = child->parent
-					},
-					true, UNLANG_SUB_FRAME) < 0) {
+	if (unlang_subrequest_child_push(child, NULL, child->parent, true, UNLANG_SUB_FRAME) < 0) {
 		return UNLANG_ACTION_FAIL;
 	}
 	if (unlang_function_push(child, NULL, tls_new_session_result, NULL, 0, UNLANG_SUB_FRAME, NULL) < 0) return UNLANG_ACTION_FAIL;

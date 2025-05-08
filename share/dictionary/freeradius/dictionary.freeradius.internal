@@ -247,7 +247,6 @@ VALUE	Listen-Socket-Type		coa			8
 
 ATTRIBUTE	Outer-Realm-Name			1251	string
 ATTRIBUTE	Inner-Realm-Name			1252	string
-ATTRIBUTE	Request-Lifetime			1253	integer
 ATTRIBUTE	Proto					1254	tlv
 
 #
