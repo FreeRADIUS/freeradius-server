@@ -392,22 +392,12 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
-static int mod_track_compare(void const *instance, UNUSED void *thread_instance, UNUSED fr_client_t *client,
+static int mod_track_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED fr_client_t *client,
 			     void const *one, void const *two)
 {
 	int ret;
-	proto_radius_tcp_t const *inst = talloc_get_type_abort_const(instance, proto_radius_tcp_t);
-
 	uint8_t const *a = one;
 	uint8_t const *b = two;
-
-	/*
-	 *	Do a better job of deduping input packet.
-	 */
-	if (inst->dedup_authenticator) {
-		ret = memcmp(a + 4, b + 4, RADIUS_AUTH_VECTOR_LENGTH);
-		if (ret != 0) return ret;
-	}
 
 	/*
 	 *	The tree is ordered by IDs, which are (hopefully)
