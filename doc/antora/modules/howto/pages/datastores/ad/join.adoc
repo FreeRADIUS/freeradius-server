@@ -51,7 +51,7 @@ configured.
 [NOTE]
 ====
 Establishing and maintaining each host's domain membership is the
-responsibility of the customer, so only an outline process is provided here.
+responsibility of the user, so only an outline process is provided here.
 Configuration varies between organisations and over time, so an organisation's
 domain administrator should be consulted for details.
 ====
@@ -149,4 +149,3 @@ ntlm_auth = "/path/to/ntlm_auth
 ntlm_auth_username = "username: %{mschap:User-Name}
 ntlm_auth_domain = "nt-domain: %{mschap:NT-Domain}"
 With the settings above it works correctly, so even if it is unnecessary, it doesn't break anything. It hasn't been tested without this option while denying ntlmv1 overall on the AD DC, but it is thought that it will work without it.
-
