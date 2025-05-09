@@ -892,7 +892,7 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256_legacy(rlm
 				&FR_SBUFF_IN((char const *) p, (char const *)end), false, false);
 
 	if (slen <= 0) {
-		RPEDEBUG("Failed decoding Password.PBKDF2 hash component");
+		RPEDEBUG("Failed decoding Password.With-Header {PBKDF2_SHA256}: \"%.*s\"", (int)(end -p), p);
 		RETURN_MODULE_INVALID;
 	}
 
