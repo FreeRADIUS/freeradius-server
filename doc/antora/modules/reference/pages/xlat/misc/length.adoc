@@ -1,0 +1,33 @@
+= %length( ... )
+
+The `length` function returns the size of the input as an integer.
+When the input is a string, then the output is identical to the
+`strlen` expansion.
+
+When the input is an attribute reference, the output is the size of
+the attributes data as encoded "on the wire".
+
+.Return: _size_
+
+.Determining the length of fixed and variable length attributes
+====
+[source,unlang]
+----
+Tmp-String-0 := "Caipirinha"
+Framed-IP-Address := 192.0.2.1
+
+reply += {
+	Reply-Message = "The length of %{control.Tmp-String-0} is %length(control.Tmp-String-0)"
+	Reply-Message = "The length of %{control.Framed-IP-Address} is %length(control.Framed-IP-Address)"
+}
+----
+
+.Output
+....
+The length of Caipirinha is 10
+The length of 192.168.0.2 is 4
+....
+====
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

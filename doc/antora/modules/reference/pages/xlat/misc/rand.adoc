@@ -1,0 +1,23 @@
+= %rand(<number>)
+
+Generate random number from `0` to `<number>-1`.
+
+.Return: _uint64_
+
+.Generating a random number between 0 and 511
+====
+[source,unlang]
+----
+reply.Reply-Message := "The random number is %rand(512)"
+----
+
+.Output
+
+```
+The random number is 347
+```
+====
+
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

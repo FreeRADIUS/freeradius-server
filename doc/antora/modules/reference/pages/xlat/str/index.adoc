@@ -9,7 +9,7 @@ The following functions perform string manipulation.
 | Function | Description
 | xref:xlat/str/concat.adoc[concat]     | Concatenate strings with delimiters
 | xref:xlat/str/split.adoc[split]       | Split a string based on delimiters
-| xref:xlat/builtin.adoc#length[Length] | Returns the size of the string (strlen)
+| xref:xlat/misc/misc.adoc#length[length] | Returns the size of the string (strlen)
 | xref:xlat/str/lpad.adoc[lpad]         | Left pad a string
 | xref:xlat/str/rpad.adoc[rpad]         | Right pad a string
 | xref:xlat/str/rand.adoc[rand]         | Return a random string based on input format
@@ -19,4 +19,3 @@ The following functions perform string manipulation.
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
-
