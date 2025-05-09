@@ -111,6 +111,7 @@ static const CONF_PARSER module_config[] = {
 	{ "safe-characters", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sql_config_t, allowed_chars), NULL },
 	{ "safe_characters", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, allowed_chars), "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
 	{ "auto_escape", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, driver_specific_escape), "no" },
+	{ "record_query_number", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, record_query_number), "no" },
 
 	/*
 	 *	This only works for a few drivers.
@@ -1396,6 +1397,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 	rlm_sql_handle_t	*handle = NULL;
 	int			sql_ret;
 	int			numaffected = 0;
+	int			query_number = 1;
 
 	CONF_ITEM		*item;
 	CONF_PAIR 		*pair;
@@ -1523,7 +1525,14 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		(inst->module->sql_finish_query)(handle, inst->config);
 		RDEBUG("%i record(s) updated", numaffected);
 
-		if (numaffected > 0) break;	/* A query succeeded, we're done! */
+		if (numaffected > 0) {
+			if (inst->config->record_query_number) {
+				VALUE_PAIR *vp = fr_pair_find_by_num(request->config, PW_SQL_QUERY_NUMBER, 0, 0);
+				if (!vp) vp = radius_pair_create(request, &request->config, PW_SQL_QUERY_NUMBER, 0);
+				vp->vp_integer = query_number;
+			}
+			break;	/* A query succeeded, we're done! */
+		}
 	next:
 		/*
 		 *  We assume all entries with the same name form a redundant
@@ -1552,6 +1561,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 			goto finish;
 		}
 
+		query_number ++;
 		RDEBUG("Trying next query...");
 	}
 

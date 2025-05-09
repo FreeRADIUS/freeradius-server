@@ -109,6 +109,7 @@ ATTRIBUTE	Module-Failure-Message			1076	string
 #		X99-Fast		1077	integer
 ATTRIBUTE	Rewrite-Rule				1078	string
 # SQL-Group is now dynamically created
+ATTRIBUTE	SQL-Query-Number			1079	integer
 ATTRIBUTE	Response-Packet-Type			1080	integer virtual
 ATTRIBUTE	Digest-HA1				1081	string
 ATTRIBUTE	MS-CHAP-Use-NTLM-Auth			1082	integer

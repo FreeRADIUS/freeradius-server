@@ -125,6 +125,9 @@ typedef struct sql_config {
 								//!< a fake stop packet, to terminate any
 								//!< stale sessions.
 
+	bool			record_query_number;		//!< Whether we should populate SQL-Query-Number
+								///< when an "acct_redundant" query succeeds
+
 	char const		*allowed_chars;			//!< Chars which done need escaping..
 	bool			driver_specific_escape;		//!< Use the driver specific SQL escape method
 	uint32_t		query_timeout;			//!< How long to allow queries to run for.
