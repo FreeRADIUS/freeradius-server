@@ -2,7 +2,7 @@
 
 Used to join two or more attributes, separated by an optional delimiter.
 
-This expansion is the inverse of xref:xlat/explode.adoc[explode].
+This expansion is the inverse of xref:xlat/str/explode.adoc[explode].
 
 .Return: _string_
 
@@ -42,5 +42,5 @@ foo += { "a", "c", "c", "d" } # abcd
 foo += control.Tmp-String-0[*]
 ----
 
-// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

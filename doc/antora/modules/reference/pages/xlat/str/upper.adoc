@@ -1,0 +1,24 @@
+= %str.upper( ... )
+
+Returns the uppercase version of the input.
+
+The uppercase operation is done using the current locale.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+control.Tmp-String-0 := "caipirinha"
+reply.Reply-Message := "uppercase of %{control.Tmp-String-0} is " + %str.upper(control.Tmp-String-0)
+----
+
+.Output
+
+```
+uppercase of caipirinha is CAIPIRINHA
+```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

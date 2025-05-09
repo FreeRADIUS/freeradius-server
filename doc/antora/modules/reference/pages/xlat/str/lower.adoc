@@ -1,0 +1,24 @@
+= %str.lower( ... )
+
+Returns the lowercase version of the input.
+
+The lowercase operation is done using the current locale.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+control.Tmp-String-0 := "CAIPIRINHA"
+reply.Reply-Message := "lowercase of %{control.Tmp-String-0} is %str.lower(control.Tmp-String-0)"
+----
+
+.Output
+
+```
+lowercase of CAIPIRINHA is caipirinha
+```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

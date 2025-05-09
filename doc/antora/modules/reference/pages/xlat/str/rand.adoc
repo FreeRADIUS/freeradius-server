@@ -26,13 +26,13 @@ preceded by an integer repetition count:
 | b         | binary data
 |=====
 
-There is no `h` for "hex".  Instead, use `b` to create binary data, followed by the `%hex(..)` function to convert it to hex.
+There is no `h` for "hex".  Instead, use `b` to create binary data, and then use the `%hex(..)` function to convert the output to hex.
 
-.Example
+.Example of a random string
 
 [source,unlang]
 ----
-reply.Reply-Message := "The random string output is %str.rand(8a)"
+reply.Reply-Message := "The random string output is %str.rand('8a')"
 ----
 
 .Output
@@ -41,5 +41,18 @@ reply.Reply-Message := "The random string output is %str.rand(8a)"
 The random string output is 4Uq0gPyG
 ```
 
-// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+.Example of conversion to hex
+
+[source,unlang]
+----
+reply.Reply-Message := "The random string output is %hex(%str.rand('1b'))"
+----
+
+.Output
+
+```
+The random string output is ad
+```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

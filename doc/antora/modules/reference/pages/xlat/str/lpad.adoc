@@ -19,5 +19,5 @@ reply.Reply-Message := "Maximum should be %str.lpad(%{control.Tmp-String-0}, 11,
 Maximum should be 00000000123
 ```
 
-// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
