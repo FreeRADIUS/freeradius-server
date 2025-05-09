@@ -1373,7 +1373,7 @@ fr_bio_fd_info_t const *fr_bio_fd_info(fr_bio_t *bio)
 
 /** Discard all reads from a UDP socket.
  */
-static ssize_t fr_bio_fd_read_discard(fr_bio_t *bio, UNUSED void *packet_ctx, void *buffer, size_t size)
+static ssize_t fr_bio_fd_read_discard_datagram(fr_bio_t *bio, UNUSED void *packet_ctx, void *buffer, size_t size)
 {
 	int tries = 0;
 	ssize_t rcode;
@@ -1382,6 +1382,29 @@ static ssize_t fr_bio_fd_read_discard(fr_bio_t *bio, UNUSED void *packet_ctx, vo
 retry:
 	rcode = read(my->info.socket.fd, buffer, size);
 	if (rcode >= 0) return 0; /* always return that we read no data */
+
+#undef flag_blocked
+#define flag_blocked read_blocked
+#include "fd_errno.h"
+
+	return fr_bio_error(IO);
+}
+
+/** Discard all reads from a TCP socket.
+ */
+static ssize_t fr_bio_fd_read_discard_stream(fr_bio_t *bio, UNUSED void *packet_ctx, void *buffer, size_t size)
+{
+	int tries = 0;
+	ssize_t rcode;
+	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
+
+retry:
+	rcode = read(my->info.socket.fd, buffer, size);
+	if (rcode > 0 ) return 0; /* always return that we read no data */
+	if (rcode == 0) {
+		fr_bio_eof(bio);
+		return 0;
+	}
 
 #undef flag_blocked
 #define flag_blocked read_blocked
@@ -1446,7 +1469,7 @@ int fr_bio_fd_write_only(fr_bio_t *bio)
 	 *	No matter what the possibilities above, we replace the read function with a "discard"
 	 *	function.
 	 */
-	my->bio.read = fr_bio_fd_read_discard;
+	my->bio.read = (my->info.socket.type == SOCK_DGRAM) ? fr_bio_fd_read_discard_datagram : fr_bio_fd_read_discard_stream;
 	return 0;
 }
 
