@@ -1,0 +1,20 @@
+= Built-In Expansions
+
+In addition to storing attribute references, the server has a number
+of built-in expansions.  These expansions act largely as functions
+which operate on inputs, and produce an output.
+
+.Builtin Functions
+[options="headers, autowidth]
+|===
+| *Function*				                                | *Description*
+| xref:xlat/builtin/attributes/attributes.adoc[Attributes]	| Attributes manipulation.
+| xref:xlat/builtin/miscellaneous/misc.adoc[Miscellaneous]	| Functions to executer regular expression search on string, using pattern.
+| xref:xlat/builtin/server-config/server-config.adoc[Server Configuration]		                                        | Manipulate variable(s) in the server configuration file.
+|===
+
+
+
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

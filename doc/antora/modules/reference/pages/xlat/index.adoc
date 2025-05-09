@@ -24,7 +24,7 @@ references, function calls, etc.  The table below gives more examples of expansi
 | xref:xlat/character.adoc[single character]        | Single character expansions.
 | xref:xlat/function.adoc[functions]                | Function call syntax.
 | xref:xlat/alternation.adoc[condition]             | Conditionally expand a string.
-| xref:xlat/builtin.adoc[built-in expansions]       | Functions as string length, tolower, etc...
+| xref:xlat/builtin/index.adoc[built-in expansions]       | Functions as string length, tolower, etc...
 |=====
 
 Expansions are used inside of

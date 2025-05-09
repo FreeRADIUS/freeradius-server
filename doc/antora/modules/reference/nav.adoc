@@ -95,7 +95,7 @@
 *** xref:xlat/str/index.adoc[String Handling]
 **** xref:xlat/str/concat.adoc[Concatenation]
 **** xref:xlat/str/explode.adoc[Split Strings]
-**** xref:xlat/builtin.adoc#length[Length]
+**** xref:xlat/builtin/miscellaneous/misc.adoc#length[Length]
 **** xref:xlat/str/lpad.adoc[Left Pad]
 **** xref:xlat/str/pairs.adoc[Print Attributes]
 **** xref:xlat/str/rpad.adoc[Right Pad]
@@ -103,7 +103,11 @@
 **** xref:xlat/str/tolower.adoc[Convert to Lowercase]
 **** xref:xlat/str/toupper.adoc[Convert to Uppercase]
 
-*** xref:xlat/builtin.adoc[Built-in Expansions]
+*** xref:xlat/builtin/index.adoc[Built-in Expansions]
+**** xref:xlat/builtin/attributes/attributes.adoc[Attributes]
+**** xref:xlat/builtin/miscellaneous/misc.adoc[Miscellaneous]
+**** xref:xlat/builtin/server-config/server-config.adoc[Server Configuration]
+
 *** xref:xlat/character.adoc[Single Letter Expansions]
 *** xref:xlat/attribute.adoc[Attribute References]
 

@@ -159,7 +159,7 @@ causes the values to be merged together, The resulting string is
 `"19216801"`.
 
 If you need to add text in between each list entry, see the
-`%str.concat()` function in the xref:xlat/builtin.adoc[built-in
+`%str.concat()` function in the xref:xlat/builtin/index.adoc[built-in
 expansions] list.
 
 .Example Creating multiple Attributes

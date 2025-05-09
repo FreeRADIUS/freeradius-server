@@ -27,7 +27,7 @@ language.  Policies allow the server to read information in databases,
 perform if / then / else checks, add content to replies, along with
 many other actions.
 
-When processing packets, it is possible to call functions or do string
+When processing packets, it's possible to call functions or do string
 manipulation with attribute contents.  The
 xref:xlat/index.adoc[dynamic expansion] documentation describes how
 this is done.

@@ -2,7 +2,7 @@
 
 The following are single letter expansions.
 
-The xref:xlat/builtin.adoc[builtin] `%time(...)` expansion and the
+The xref:xlat/builtin/miscellaneous/misc.adoc[builtin] `%time(...)` expansion and the
 xref:reference:raddb/mods-available/date.adoc[date] module should be used
 instead of these expansions.
 
@@ -34,7 +34,7 @@ unsigned decimal number, and returns an integer number of seconds
 since the Unix epoch.
 
 This expansion is only useful where the time resolution is in seconds.
-If more resolution is needed, the xref:xlat/builtin.adoc[builtin]
+If more resolution is needed, the xref:xlat/builtin/index.adoc[builtin]
 `%time(...)` expansion should be used instead.
 
 `%Y()`::

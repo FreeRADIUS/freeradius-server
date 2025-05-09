@@ -1,0 +1,52 @@
+= Attribute Manipulation
+
+== %length( ... )
+
+The `length` expansion returns the size of the input as an integer.
+When the input is a string, then the output is identical to the
+`strlen` expansion.
+
+When the input is an attribute reference, the output is the size of
+the attributes data as encoded "on the wire".
+
+.Return: _size_
+
+.Determining the length of fixed and variable length attributes
+====
+[source,unlang]
+----
+Tmp-String-0 := "Caipirinha"
+Framed-IP-Address := 192.0.2.1
+
+reply += {
+	Reply-Message = "The length of %{control.Tmp-String-0} is %length(control.Tmp-String-0)"
+	Reply-Message = "The length of %{control.Framed-IP-Address} is %length(control.Framed-IP-Address)"
+}
+----
+
+.Output
+....
+The length of Caipirinha is 10
+The length of 192.168.0.2 is 4
+....
+====
+
+== %rand(<number>)
+
+Generate random number from `0` to `<number>-1`.
+
+.Return: _uint64_
+
+.Generating a random number between 0 and 511
+====
+[source,unlang]
+----
+reply.Reply-Message := "The random number is %rand(512}"
+----
+
+.Output
+
+```
+The random number is 347
+```
+====
