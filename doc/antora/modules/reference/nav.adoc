@@ -69,6 +69,7 @@
 *** xref:type/string/unquoted.adoc[Unquoted Strings]
 
 ** xref:xlat/index.adoc[Dynamic Expansion]
+*** xref:xlat/all_xlats.adoc[Summary of Dynamic Expansions]
 *** xref:xlat/alternation.adoc[Alternation Syntax]
 *** xref:xlat/conversion.adoc[Data Conversion]
 *** xref:xlat/deprecated.adoc[Deprecated Functions]

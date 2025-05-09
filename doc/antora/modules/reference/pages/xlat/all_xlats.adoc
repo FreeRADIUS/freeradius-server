@@ -1,0 +1,44 @@
+= Summary of Dynamic Expansions
+
+
+
+== Built-In Expansions
+
+.Builtin Functions
+[options="headers, autowidth]
+|===
+| *Function*				                                | *Description*
+| xref:xlat/builtin/attributes/attributes.adoc[Attributes]	        | Attributes manipulation.
+| xref:xlat/builtin/miscellaneous/misc.adoc[Miscellaneous]	        | Functions to executer regular expression search on string, using pattern.
+| xref:xlat/builtin/server-config/server-config.adoc[Server Configuration]		                                                | Manipulate variable(s) in the server configuration file.
+|===
+
+
+.File Handling Functions
+[options="headers, autowidth]
+|===
+| *Function*				                        | *Description*
+| xref:reference:xlat/file/escape.adoc[escape]		        | Returns an escaped or safe version of the input string.
+| xref:xlat/file/exists.adoc[exists]		                | Checks to see if a file exists on the filesystem.
+| xref:xlat/file/head.adoc[head]		                | Returns the first line of the file.
+| xref:xlat/file/remove.adoc[size]		                | Removes a file from the filesystem.
+| xref:xlat/file/size.adoc[remove]		                | Calculates the size of a file.
+| xref:xlat/file/tail.adoc[tail]		                | Return the last line of a file or the last number(n) of lines of a file.
+|===
+
+== String Manipulation
+
+.String manipulation
+[options="header, autowidth"]
+|=====
+| *Function*                            | *Description*
+| xref:xlat/str/concat.adoc[concat]     | Concatenate strings with delimiters
+| xref:xlat/str/explode.adoc[explode]   | Split a string based on delimiters
+| xref:xlat/builtin/miscellaneous/misc.adoc#length[length] | Returns the size of the string (strlen)
+| xref:xlat/str/lpad.adoc[lpad]         | Left pad a string
+| xref:xlat/str/pairs.adoc[pairs]       | Serialize a list of attributes to a string
+| xref:xlat/str/rpad.adoc[rpad]         | Right pad a string
+| xref:xlat/str/randstr.adoc[randstr]   | Return a random string based on input format
+| xref:xlat/str/tolower.adoc[tolower]   | Convert the input string to lowercase.
+| xref:xlat/str/toupper.adoc[toupper]   | Convert the input string to uppercase
+|=====
