@@ -38,3 +38,9 @@ if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 0)) {
 else {
 	test_pass
 }
+
+if (!&control:SQL-Query-Number || (&control:SQL-Query-Number != 1)) {
+	test_fail
+} else {
+	test_pass
+}
