@@ -17,4 +17,8 @@ if (%sql("SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000000'")
 	test_fail
 }
 
+if (control.Query-Number != 1) {
+	test_fail
+}
+
 test_pass
