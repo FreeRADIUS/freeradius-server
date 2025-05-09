@@ -1,0 +1,18 @@
+noop {
+	# 0 gives greatest chance of overwrite
+	noop = 1
+}
+
+# Verify that checking the rcode doesn't _alter_ the rcode
+if (fail) {
+	test_fail
+}
+elsif (ok || updated) {
+	test_fail
+}
+# rcode should still be noop
+elsif (noop) {
+	success
+} else {
+	test_fail
+}

@@ -39,9 +39,10 @@ fr_table_num_sorted_t const rcode_table[] = {
 	{ L("invalid"),		RLM_MODULE_INVALID      },
 	{ L("noop"),		RLM_MODULE_NOOP	 	},
 	{ L("notfound"), 	RLM_MODULE_NOTFOUND     },
+	{ L("notset"),		RLM_MODULE_NOT_SET	},
 	{ L("ok"),		RLM_MODULE_OK	   	},
 	{ L("reject"),		RLM_MODULE_REJECT       },
 	{ L("timeout"),		RLM_MODULE_TIMEOUT	},
-	{ L("updated"),		RLM_MODULE_UPDATED      },
+	{ L("updated"),		RLM_MODULE_UPDATED      }
 };
 size_t rcode_table_len = NUM_ELEMENTS(rcode_table);
