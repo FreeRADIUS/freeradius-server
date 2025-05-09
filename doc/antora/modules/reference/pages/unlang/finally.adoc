@@ -162,10 +162,11 @@ processing, and in the `finally` section, what happens when the SQL
 databsase is slow, or has an issue?
 
 When the SQL database is slow, the `Accounting-Request` packet will
-fail to log anything to SQL time out.  When all processing for the
+fail to log anything to SQL and time out.  When all processing for the
 `Accounting-Request` is done, the `finally` section will run, which
 will also try to log information to the same slow SQL database.  The
-result will be _doubled_ slow writes to SQL.
+result will be _doubled_ slow writes to SQL, or requests that never
+complete.
 
 In order to ensure that the server remains responsive, the `finally`
 section should contain as little as possible.  Any potentially long
