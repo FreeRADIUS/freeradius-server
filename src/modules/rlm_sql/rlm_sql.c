@@ -52,6 +52,7 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 
 typedef struct {
 	fr_dict_attr_t const *group_da;
+	fr_dict_attr_t const *query_number_da;
 } rlm_sql_boot_t;
 
 static const conf_parser_t module_config[] = {
@@ -67,6 +68,7 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("cache_groups", rlm_sql_config_t, cache_groups) },
 	{ FR_CONF_OFFSET("read_profiles", rlm_sql_config_t, read_profiles), .dflt = "yes" },
 	{ FR_CONF_OFFSET("open_query", rlm_sql_config_t, connect_query) },
+	{ FR_CONF_OFFSET("query_number_attribute", rlm_sql_config_t, query_number_attribute) },
 
 	{ FR_CONF_OFFSET("safe_characters", rlm_sql_config_t, allowed_chars), .dflt = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
 
@@ -1812,7 +1814,15 @@ static unlang_action_t mod_sql_redundant_query_resume(rlm_rcode_t *p_result, UNU
 	TALLOC_FREE(query_ctx);
 	RDEBUG2("%i record(s) updated", numaffected);
 
-	if (numaffected > 0) RETURN_MODULE_OK;	/* A query succeeded, were done! */
+	if (numaffected > 0) {
+		if (inst->query_number_da) {
+			fr_pair_t	*vp;
+			pair_update_control(&vp, inst->query_number_da);
+			vp->vp_uint32 = redundant_ctx->query_no + 1;
+			RDEBUG2("control.%pP", vp);
+		}
+		RETURN_MODULE_OK;	/* A query succeeded, were done! */
+	}
 next:
 	/*
 	 *	Look to see if there are any more queries to expand
@@ -2094,6 +2104,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	point in making rlm_sql_boot_t available everywhere.
 	 */
 	inst->group_da = boot->group_da;
+	inst->query_number_da = boot->query_number_da;
 
 	inst->name = mctx->mi->name;	/* Need this for functions in sql.c */
 	inst->mi = mctx->mi;		/* For looking up thread instance data */
@@ -2243,6 +2254,35 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
 
 		xlat_func_args_set(xlat, sql_xlat_arg);
+	}
+
+	/*
+	 *	If we need to record which query from a redundant set succeeds, find / create the attribute to use.
+	 */
+	if (inst->config.query_number_attribute) {
+		boot->query_number_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius),
+							     inst->config.query_number_attribute);
+		if (!boot->query_number_da) {
+			if (fr_dict_attr_add_name_only(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
+			    inst->config.query_number_attribute, FR_TYPE_UINT32, NULL) < 0) {
+				ERROR("Failed defining query number attribute \"%s\"", inst->config.query_number_attribute);
+				return -1;
+			}
+
+			boot->query_number_da = fr_dict_attr_search_by_qualified_oid(NULL, dict_freeradius,
+										     inst->config.query_number_attribute,
+										     false, false);
+			if (!boot->query_number_da) {
+				ERROR("Failed resolving query number attribute \"%s\"", inst->config.query_number_attribute);
+				return -1;
+			}
+		} else {
+			if (boot->query_number_da->type != FR_TYPE_UINT32) {
+				ERROR("Query number attribute \"%s\" is type \"%s\", needs to be uint32",
+				      inst->config.query_number_attribute, fr_type_to_str(boot->query_number_da->type));
+				return -1;
+			}
+		}
 	}
 
 	/*

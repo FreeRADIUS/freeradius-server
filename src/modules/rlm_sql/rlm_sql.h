@@ -98,6 +98,10 @@ typedef struct {
 	char const		*connect_query;			//!< Query executed after establishing
 								//!< new connection.
 
+	char const		*query_number_attribute;	//!< Name of the attribute to populate with the
+								///< query number which succeeded when running a
+								///< series of redundant queries.
+
 	trunk_conf_t		trunk_conf;			//!< Configuration for trunk connections.
 } rlm_sql_config_t;
 
@@ -240,6 +244,7 @@ struct sql_inst {
 
 	char const		*name;			//!< Module instance name.
 	fr_dict_attr_t const	*group_da;		//!< Group dictionary attribute.
+	fr_dict_attr_t const	*query_number_da;	//!< Query number attribute.
 	module_instance_t const	*mi;			//!< Module instance data for thread lookups.
 };
 
