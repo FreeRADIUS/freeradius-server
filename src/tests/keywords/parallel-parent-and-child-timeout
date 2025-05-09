@@ -3,7 +3,7 @@
 #
 try {
 	parallel {
-		# This child should get cancelled by the parent
+		# This child should get cancelled by the timeout section
 		timeout 1s {
 			parallel {
 				group {
