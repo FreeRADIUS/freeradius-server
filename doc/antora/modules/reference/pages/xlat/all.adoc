@@ -7,13 +7,13 @@
 .Miscellaneous Functions
 [options="headers, autowidth]
 |===
-| *Function*				                                | *Description*
+| *Function*				            | *Description*
 | xref:xlat/misc/config.adoc[Server Configuration]  | Examine configuration items
 | xref:xlat/misc/length.adoc[length]	            | Get the length of data
 | xref:xlat/misc/misc.adoc[Miscellaneous]	    | Functions to execute regular expression search on string, using pattern.
 | xref:xlat/misc/pairs.adoc[pairs.print]	    | print attributes with name and value.
-| xref:xlat/misc/rand.adoc[rand]	            | random integers|
-===
+| xref:xlat/misc/rand.adoc[rand]	            | random integers
+|===
 
 
 .File Handling Functions
@@ -32,7 +32,7 @@
 
 .String manipulation
 [options="header, autowidth"]
-|=====
+|===
 | *Function*                            | *Description*
 | xref:xlat/str/concat.adoc[concat]     | Concatenate strings with delimiters
 | xref:xlat/str/split.adoc[split]       | Split a string based on delimiters
@@ -42,4 +42,4 @@
 | xref:xlat/str/rand.adoc[rand]         | Return a random string based on input format
 | xref:xlat/str/lower.adoc[lower]       | Convert the input string to lowercase.
 | xref:xlat/str/upper.adoc[upper]       | Convert the input string to uppercase
-|=====
+|===
