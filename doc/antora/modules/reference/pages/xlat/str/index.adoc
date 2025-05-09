@@ -1,0 +1,23 @@
+= String manipulation
+
+The following functions perform string manipulation.
+
+.String manipulation
+[options="header"]
+[cols="30%,70%"]
+|=====
+| Function | Description
+| xref:xlat/str/concat.adoc[concat]     | Concatenate strings with delimiters
+| xref:xlat/str/explode.adoc[explode]   | Split a string based on delimiters
+| xref:xlat/builtin.adoc#length[Length] | Returns the size of the string (strlen)
+| xref:xlat/str/lpad.adoc[lpad]         | Left pad a string
+| xref:xlat/str/pairs.adoc[pairs]       | Serialize a list of attributes to a string
+| xref:xlat/str/rpad.adoc[rpad]         | Right pad a string
+| xref:xlat/str/randstr.adoc[randstr]   | Return a random string based on input format
+| xref:xlat/str/tolower.adoc[tolower]   | Convert the input string to lowercase.
+| xref:xlat/str/toupper.adoc[toupper]   | Convert the input string to uppercase
+|=====
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
+

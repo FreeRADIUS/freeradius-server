@@ -2,7 +2,7 @@
 
 Split an string into multiple new strings based on a delimiter.
 
-This expansion is the inverse of xref:xlat/concat.adoc[concat].
+This expansion is the inverse of xref:xlat/str/concat.adoc[concat].
 
 .Return: _the list of strings_.
 
