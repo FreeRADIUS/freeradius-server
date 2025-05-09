@@ -112,7 +112,7 @@ static unlang_action_t unlang_timeout_resume_done(UNUSED rlm_rcode_t *p_result, 
 	 *
 	 *	Unless the next instruction is a "catch timeout", in which case we skip it.
 	 */
-	if (!state->fired) return UNLANG_ACTION_CALCULATE_RESULT;
+	if (!state->fired) return UNLANG_ACTION_EXECUTE_NEXT;	/* Don't modify the return code*/
 
 	RETURN_MODULE_TIMEOUT;
 }

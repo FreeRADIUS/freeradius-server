@@ -1,0 +1,26 @@
+# PRE: if if-else
+
+# This is a regression test.  We saw the request->rcode being lost after the first condition
+
+noop
+if (ok || notfound) {
+	test_fail
+} elsif (!noop) {
+	test_fail
+} elsif (noop) {
+	# Check nothing weird happens 
+	reschedule_notfound
+}
+
+if (!notfound) {
+	test_fail
+}
+
+notfound
+if (%expr.rcode('ok') || %expr.rcode('updated')) {
+	test_fail
+} elsif (!%expr.rcode('notfound')) {
+	test_fail
+}
+
+success

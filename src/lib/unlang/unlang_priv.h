@@ -570,7 +570,7 @@ static inline void frame_next(unlang_stack_t *stack, unlang_stack_frame_t *frame
 	frame_cleanup(frame);
 	frame->instruction = frame->next;
 
-	if (!frame->instruction) return;
+	if (!frame->instruction) return;	/* No siblings, need to pop instead */
 
 	frame->next = frame->instruction->next;
 

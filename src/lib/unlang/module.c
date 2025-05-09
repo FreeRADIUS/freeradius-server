@@ -677,9 +677,10 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 		request->module = state->previous_module;
 		break;
 
-	case UNLANG_ACTION_EXECUTE_NEXT:	/* Not valid */
-		fr_assert(0);
-		*p_result = RLM_MODULE_FAIL;
+	/*
+	 *	Module indicates we shouldn't process its rcode
+	 */
+	case UNLANG_ACTION_EXECUTE_NEXT:
 		break;
 	}
 
@@ -941,9 +942,10 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		*p_result = RLM_MODULE_FAIL;
 		break;
 
+	/*
+	 *	Module indicates we shouldn't process its rcode
+	 */
 	case UNLANG_ACTION_EXECUTE_NEXT:
-		fr_assert(0);
-		*p_result = RLM_MODULE_FAIL;
 		break;
 	}
 

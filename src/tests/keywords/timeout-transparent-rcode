@@ -1,0 +1,20 @@
+#
+# PRE: timeout
+#
+
+#
+#  If the timeout doesn't fire, the rcode should not change, and the
+#  timeout block should be transparent.
+#
+timeout 1s {
+	if (ok) {
+		test_fail
+	} elsif (reject) {
+		notfound
+	}
+}
+if (!notfound) {
+	test_fail
+}
+
+success
