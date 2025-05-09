@@ -1292,6 +1292,20 @@ static int virtual_server_compile_sections(virtual_server_t *vs, tmpl_rules_t co
 		return -1;
 	}
 
+	/*
+	 *	Didn't find any processing sections.  Note that we don't count "finally" sections here.  They
+	 *	are only run after the packet has been processed through the normal sections.  A virtual
+	 *	server with only a "finally" section doesn't make sense.
+	 *
+	 *	i.e. if people want to accept packets without responding, they need a "recv foo" section which
+	 *	contains a "do_not_respond" policy.
+	 */
+	if (!found) {
+		cf_log_err(server, "No processing sections are defined for this virtual server");
+		cf_log_err(server, "The server WILL NOT be able to process packets until the configuration is fixed");
+		return -1;
+	}
+
 	return found;
 }
 
