@@ -1,0 +1,80 @@
+= hash
+
+[#md5]
+== md5
+
+Dynamically expands the string and performs an MD5 hash on it. The
+result is binary data.
+
+[#syntax-md5]
+== Syntax
+
+`%hash.md5( ... )`
+
+.Return: _binary data_
+
+.Example MD5 hash
+
+[source,unlang]
+----
+control.Tmp-String-0 := "Caipirinha"
+reply += {
+    Reply-Message = "md5 of %{control.Tmp-String-0} is octal=%hash.md5(%{control.Tmp-String-0})"
+    Reply-Message = "md5 of %{control.Tmp-String-0} is hex=%hex(%hash.md5(%{control.Tmp-String-0}))"
+}
+----
+
+.Output
+
+```
+md5 of Caipirinha is octal=\024\204\013md||\230\243\3472\3703\330n\251
+md5 of Caipirinha is hex=14840b6d647c7c98a3e732f833d86ea9
+```
+
+=== Other Hashing Functions
+
+The following hashes are supported for all versions of OpenSSL.
+
+* `%md2( ... }`
+* `%hash.md4( ... }`
+* `%hash.md5( ... }`
+* `%sha1( ... }`
+* `%sha224( ... }`
+* `%sha256( ... }`
+* `%sha384( ... }`
+* `%sha512( ... }`
+
+The following hashes are supported for when OpenSSL 1.1.1 or greater
+is installed.  This version adds support for the `sha3` and `blake`
+families of digest functions.
+
+* `%hash.blake2s_256( ... )`
+* `%hash.blake2b_512( ... )`
+* `%hash.sha2_224( ... )`
+* `%hash.sha2_256( ... )`
+* `%hash.sha2_384( ... )`
+* `%hash.sha2_512( ... )`
+* `%hash.sha3_224( ... )`
+* `%hash.sha3_256( ... )`
+* `%hash.sha3_384( ... )`
+* `%hash.sha3_512( ... )`
+
+.Return: _octal_
+
+.Example
+
+[source,unlang]
+----
+control.Tmp-String-0 := "Caipirinha"
+reply += {
+    Reply-Message = "The md5 of %{control.Tmp-String-0} in octal is %hash.md5(%{control.Tmp-String-0}}"
+    Reply-Message = "The md5 of %{control.Tmp-String-0} in hex is %hex(%hash.md5(%{control.Tmp-String-0}}}"
+}
+----
+
+.Output
+
+```
+The md5 of Caipirinha in octal is \024\204\013md||\230\243\3472\3703\330n\251
+The md5 of Caipirinha in hex is 14840b6d647c7c98a3e732f833d86ea9
+```

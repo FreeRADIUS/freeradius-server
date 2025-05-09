@@ -1,0 +1,22 @@
+= Hashing
+
+The following functions perform hashing.
+
+Note that the server supports insecure hashing methods such as MD5 and
+SHA1.  These functions are here for historical compatibility and
+completeness.
+
+.Hashing Functions
+[options="headers, autowidth]
+|===
+| *Function*				                            | *Description*
+| xref:xlat/hashing/hash/hash.adoc[hash.md5]		    | Expands the string and does an `MD5` hash.
+| xref:xlat/hashing/hmac/hmac.adoc[hmac.md5]		    | Generates `HMAC-MD5` of a string.
+| xref:xlat/hashing/hmac/hmac.adoc[hmac.sha1]	        | Generates `HMAC-SHA1` of a string.
+|===
+
+
+
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

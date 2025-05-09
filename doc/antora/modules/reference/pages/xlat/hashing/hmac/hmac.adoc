@@ -1,0 +1,67 @@
+= hmac
+
+[#md5]
+== md5
+
+The `md5 hmac` function generates `HMAC-MD5` of string.
+
+[#syntax-md5]
+=== Syntax
+
+`%hmac.md5(<shared_key>, <string>)`
+
+.Return: _octal_
+
+.Example `HMAC-MD5`
+
+[source,unlang]
+----
+control.Tmp-String-0 := "mykey"
+control.Tmp-String-1 := "Caipirinha"
+reply.control.Tmp-Octets-0 := "%hmac.md5(%{control.Tmp-String-0} %{control.Tmp-String-1})"
+
+reply += {
+    Reply-Message = "The HMAC-MD5 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
+    Reply-Message = "The HMAC-MD5 of %{control.Tmp-String-1} in hex is %hex(control.Tmp-Octets-0)"
+}
+----
+
+.Output
+
+```
+The HMAC-MD5 of Caipirinha in octets is \317}\264@K\216\371\035\304\367\202,c\376\341\203
+The HMAC-MD5 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
+```
+
+[#sha1]
+== sha1
+
+The sha1 hmac function generates `HMAC-SHA1` of string.
+
+[#syntax-sha1]
+=== Syntax
+
+`%hmac.sha1(<shared_key>, <string>)`
+
+.Return: _octal_
+
+.Example `HMAC-SHA1`
+
+[source,unlang]
+----
+control.Tmp-String-0 := "mykey"
+control.Tmp-String-1 := "Caipirinha"
+control.Tmp-Octets-0 := "%hmac.sha1(%{control.Tmp-String-0}, %{control.Tmp-String-1})"
+
+reply += {
+    Reply-Message = "The HMAC-SHA1 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
+    Reply-Message = "The HMAC-SHA1 of %{control.Tmp-String-1} in hex is %hex(control.Tmp-Octets-0}"
+}
+----
+
+.Output
+
+```
+The HMAC-SHA1 of Caipirinha in octets is \311\007\212\234j\355\207\035\225\256\372ʙ>R\"\341\351O)
+The HMAC-SHA1 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
+```
