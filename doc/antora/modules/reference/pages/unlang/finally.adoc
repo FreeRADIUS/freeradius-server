@@ -72,7 +72,7 @@ finally {
 
 == Return Codes
 
-Each `recv ... ` and `send ...` section finishes with a
+Each `recv ...` and `send ...` section finishes with a
 xref:unlang/return_codes[return code].  These return codes are
 available at the start of the `finally` section.
 
@@ -118,7 +118,7 @@ xref:unlang/return_codes[return code].  In most cases, this return
 code is discarded, and has no effect on any subsequent packet
 processing.
 
-That is, the return code of a `finally { ... }` section _will not
+That is, the return code of a `finally` section _will not
 modify the response packet type_ from the virtual server.  If
 `finally` returns `reject`, then _nothing will happen_, and the server
 will not send an `Access-Reject` response to an `Access-Accept`
@@ -139,7 +139,7 @@ with `if (timeout)` at the start of the `finally` section.
 [NOTE]
 ====
 
-Request which are being processed in a `finally { ... }` section _will
+Request which are being processed in a `finally` section _will
 not stop_ until the `finally` section is done.  The `max_request_time`
 configuration applies only to normal processing of requests, and not
 to `finally` sections.  This behavior is necessary in order for the
@@ -189,12 +189,12 @@ in how much time it spends processing a packet.
 == Subrequests
 
 Where xref:unlang/subrequest.adoc[subrequest] calls are used, the
-`finally { ... }` section in the parent will not be run until the
+`finally` section in the parent will not be run until the
 subrequest has finished.  However, a timeout in the parent will cause
 the child xref:unlang/subrequest.adoc[subrequest] to be forcibly
 stopped, but the childs `finally` section will still run.
 
-Timeouts in `finally { ... }` sections of subrequests should therfore
+Timeouts in `finally` sections of subrequests should therfore
 be set extremely short, in order to ensure that the parent request
 isn't cancelled due to an excessively long running subrequest.
 
