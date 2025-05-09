@@ -79,7 +79,7 @@ You can just put math in-place, as with the following example:
 Filter-Id = "Adding %{NAS-Port} + 4 = %{NAS-Port + 4}"
 ----
 
-The old ``%{expr:...}` syntax will return an error in v4.  That functiuonality is no longer supported.
+The old ``%{expr:...}` syntax will return an error in v4.  That functionality is no longer supported.
 
 == Data Types
 

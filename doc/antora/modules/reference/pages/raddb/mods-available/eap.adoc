@@ -717,7 +717,7 @@ security, but are disabled by default.  The intent is to
 allow the server to work in the widest possible
 circumstances, while still being reasonably secure.  In the
 most common case (single EAP module, single server
-certificate), this configuratiuon is acceptable.
+certificate), this configuration is acceptable.
 
 However, we still recommend enabling all of the security
 configurations below.  If enabling them does not cause an

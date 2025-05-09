@@ -836,7 +836,7 @@ radius proxy {
 		#  will not be able to open any more outgoing
 		#  connections.x
 		#
-		#  These two configuratiuon items can only be used for
+		#  These two configuration items can only be used for
 		#  UDP sockets.
 		#
 		src_port_start = 10000

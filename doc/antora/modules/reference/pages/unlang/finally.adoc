@@ -16,7 +16,7 @@ that enter a virtual server, you could place a single call to
 `linelog` in the `finally` section.
 
 The `finally { ... }` section is executed as the last thing before a
-request returns from a virtual server.  The `finally` sectiuon is
+request returns from a virtual server.  The `finally` section is
 _always_ executed, whether the request was accepted, rejected or it
 timed out.
 

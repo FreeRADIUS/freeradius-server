@@ -725,7 +725,7 @@ When all ports in this range are used, the module
 will not be able to open any more outgoing
 connections.x
 
-These two configuratiuon items can only be used for
+These two configuration items can only be used for
 UDP sockets.
 
 
