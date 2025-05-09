@@ -724,11 +724,6 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	fr_assert(fd >= 0);
 
 	/*
-	 *	We normally read and write to the FD BIO.
-	 */
-	h->bio.read = h->bio.write = h->bio.fd;
-
-	/*
 	 *	Create a memory BIO for stream sockets.  We want to return only complete packets, and not
 	 *	partial packets.
 	 *
@@ -736,25 +731,24 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	 *	way we don't need a memory BIO for UDP sockets, but we can still add a verification layer for
 	 *	UDP sockets?
 	 */
-	if (h->ctx.fd_config.socket_type == SOCK_STREAM) {
-		h->bio.mem = fr_bio_mem_alloc(h, 8192, 0, h->bio.fd);
-		if (!h->bio.mem) {
-			PERROR("%s - Failed allocating memory buffer - ", h->ctx.module_name);
-			goto fail;
-		}
-
-		if (fr_bio_mem_set_verify(h->bio.mem, rlm_radius_verify, h, false) < 0) {
-			PERROR("%s - Failed setting validation callback - ", h->ctx.module_name);
-			goto fail;
-		}
-
-		/*
-		 *	For stream sockets, we read into the memory buffer, and then return only one packet at
-		 *	a time.
-		 */
-		h->bio.read = h->bio.mem;
-		h->bio.mem->uctx = h;
+	h->bio.mem = fr_bio_mem_alloc(h, (h->ctx.fd_config.socket_type == SOCK_DGRAM) ? 0 : h->ctx.inst->max_packet_size * 4,
+				      0, h->bio.fd);
+	if (!h->bio.mem) {
+		PERROR("%s - Failed allocating memory buffer - ", h->ctx.module_name);
+		goto fail;
 	}
+
+	if (fr_bio_mem_set_verify(h->bio.mem, rlm_radius_verify, h, (h->ctx.fd_config.socket_type == SOCK_DGRAM)) < 0) {
+		PERROR("%s - Failed setting validation callback - ", h->ctx.module_name);
+		goto fail;
+	}
+
+	/*
+	 *	Set the BIO read function to be the memory BIO, which will then call the packet verification
+	 *	routine.
+	 */
+	h->bio.read = h->bio.write = h->bio.mem;
+	h->bio.mem->uctx = h;
 
 	h->fd = fd;
 
@@ -2564,7 +2558,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		if (inst->fd_config.socket_type == SOCK_DGRAM) break;
 
 		thread->ctx.trunk = trunk_alloc(thread, mctx->el, &io_replicate_funcs,
-					    &inst->trunk_conf, inst->name, thread, false);
+						&inst->trunk_conf, inst->name, thread, false);
 		if (!thread->ctx.trunk) return -1;
 		return 0;
 
