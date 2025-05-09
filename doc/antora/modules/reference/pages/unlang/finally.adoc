@@ -152,7 +152,7 @@ messages to an SQL database or to a REST API will likely be
 problematic.  This issue is not because FreeRADIUS has any problem
 running the `sql` module in a `finally` section, it doesn't.  The
 `finally` section is just another processing section, and runs exactly
-the same as a `recv` or `send` section..
+the same as a `recv` or `send` section.
 
 The problem with running the `sql` module in the `finally` section is
 that there can be cascading chains of failure when something goes
