@@ -14,7 +14,7 @@ For example, the "unsafe" string `user@freeradius.org/..` will turn into the fil
 | xref:xlat/file/exists.adoc[exists]		        | Checks to see if a file exists on the filesystem.
 | xref:xlat/file/head.adoc[head]	                | Returns the first line of the file.
 | xref:xlat/file/rm.adoc[rm]	                	| Removes a file from the filesystem.
-| xref:xlat/file/size.adoc[size]		        | Calculates the size of a file.
+| xref:xlat/file/size.adoc[size]		        | Returns the size of a file.
 | xref:xlat/file/tail.adoc[tail]		        | Return the last line of a file or the last number(n) of lines of a file.
 |===
 

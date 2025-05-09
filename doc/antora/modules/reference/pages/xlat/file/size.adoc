@@ -1,6 +1,6 @@
 = Size
 
-The `size` function is used to calculate the size of a file on the filesystem.
+The `size` function returns the size (in bytes) of the given file.
 
 [#syntax]
 == Syntax
