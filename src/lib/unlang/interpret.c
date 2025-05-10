@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include "interpret_priv.h"
+#include "unlang_priv.h"
 #include "module_priv.h"
 
 
@@ -306,6 +307,21 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 	unlang_t const	*instruction = frame->instruction;
 	unlang_stack_t	*stack = request->stack;
 
+	if (is_unwinding(frame)) {
+		RDEBUG4("** [%i] %s - unwinding frame", stack->depth, __FUNCTION__);
+		return UNLANG_FRAME_ACTION_POP;
+	}
+
+	/*
+	 *	Don't calculate a new return code for the frame, just skip
+	 *	to the next instruction.
+	 */
+	if (*result == RLM_MODULE_NOT_SET) {
+		RDEBUG4("** [%i] %s - skipping frame, no result set",
+			stack->depth, __FUNCTION__);
+		return UNLANG_FRAME_ACTION_NEXT;
+	}
+
 	RDEBUG4("** [%i] %s - have (%s %d) module returned (%s %d)",
 		stack->depth, __FUNCTION__,
 		fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
@@ -313,17 +329,12 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 		fr_table_str_by_value(mod_rcode_table, *result, "<invalid>"),
 		*priority);
 
-	if (is_unwinding(frame)) {
-		RDEBUG4("** [%i] %s - frame is cancelled",
-			stack->depth, __FUNCTION__);
-		frame->result = *result;
-		frame->priority = *priority;
-		return UNLANG_FRAME_ACTION_POP;
-	}
-
 	/*
 	 *	Update request->rcode if the instruction says we should
 	 *	We don't care about priorities for this.
+	 *
+	 *	This is the field that's evaluated in unlang conditions
+	 *	like `if (ok)`.
 	 */
 	if (is_rcode_set(frame)) {
 		RDEBUG3("Setting rcode to '%s'",
@@ -332,14 +343,16 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 	}
 
 	/*
-	 *	Don't set action or priority if we don't have one.
+	 *	Deal with special priorities which indicate we need
+	 *	to do something in addition to modifying the frame's
+	 *	rcode.
 	 */
-	if (*result == RLM_MODULE_NOT_SET) return UNLANG_FRAME_ACTION_NEXT;
-
+	switch (instruction->actions.actions[*result]) {
 	/*
-	 *	The child's action says return.  Do so.
+	 *	The child's prioriy value indicates we
+	 *	should return from this frame.
 	 */
-	if (instruction->actions.actions[*result] == MOD_ACTION_RETURN) {
+	case MOD_ACTION_RETURN:
 		if (*priority < 0) *priority = 0;
 
 		RDEBUG4("** [%i] %s - action says to return with (%s %d)",
@@ -349,13 +362,17 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 		frame->result = *result;
 		frame->priority = *priority;
 		return UNLANG_FRAME_ACTION_POP;
-	}
 
 	/*
-	 *	If "reject", break out of the loop and return
-	 *	reject.
+	 *	Reject means we should return, but
+	 *	with a reject rcode.  This allows the
+	 *	user to change normally positive rcodes
+	 *	into negative ones.
+	 *
+	 *	They could also just check the rcode
+	 *	after the module returns...
 	 */
-	if (instruction->actions.actions[*result] == MOD_ACTION_REJECT) {
+	case MOD_ACTION_REJECT:
 		if (*priority < 0) *priority = 0;
 
 		RDEBUG4("** [%i] %s - action says to return with (%s %d)",
@@ -365,12 +382,9 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 		frame->result = RLM_MODULE_REJECT;
 		frame->priority = *priority;
 		return UNLANG_FRAME_ACTION_POP;
-	}
 
-	/*
-	 *	The instruction says it should be retried from the beginning.
-	 */
-	if (instruction->actions.actions[*result] == MOD_ACTION_RETRY) {
+	case MOD_ACTION_RETRY:
+	{
 		unlang_retry_t *retry = frame->retry;
 
 		RDEBUG4("** [%i] %s - action says to retry with",
@@ -443,6 +457,9 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 		unlang_frame_perf_cleanup(frame);
 		frame_state_init(stack, frame);
 		return UNLANG_FRAME_ACTION_RETRY;
+	default:
+		break;
+	}
 	}
 
 finalize:
@@ -473,6 +490,10 @@ finalize:
 			*priority);
 	}
 
+	/*
+	 *	Determine if we should continue processing siblings
+	 *	or pop the frame ending the section.
+	 */
 	return frame->next ? UNLANG_FRAME_ACTION_NEXT : UNLANG_FRAME_ACTION_POP;
 }
 
@@ -510,6 +531,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 
 		fr_assert(instruction->debug_name != NULL); /* if this happens, all bets are off. */
 		fr_assert(unlang_ops[instruction->type].interpret != NULL);
+		fr_assert(frame->process != NULL);
 
 		REQUEST_VERIFY(request);
 
@@ -536,19 +558,16 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		}
 #endif
 
-		if (!is_repeatable(frame) && has_debug_braces(frame)) {
-			RDEBUG2("%s {", instruction->debug_name);
-			RINDENT();
-		}
-
 		/*
-		 *	Execute an operation
+		 *	We're not re-entering this frame, this is the first
+		 *	time we're evaluating this instruction, so we should
+		 *	print debug braces and indent.
 		 */
-		RDEBUG4("** [%i] %s >> %s", stack->depth, __FUNCTION__,
-			unlang_ops[instruction->type].name);
-
-		fr_assert(frame->process != NULL);
-
+		if (!is_repeatable(frame)) {
+			if (has_debug_braces(frame)) {
+				RDEBUG2("%s {", instruction->debug_name);
+				RINDENT();
+			}
 		/*
 		 *	Clear the repeatable flag so this frame
 		 *	won't get executed again unless it specifically
@@ -558,7 +577,16 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 *	process function to indicate that the frame
 		 *	should be evaluated again.
 		 */
-		repeatable_clear(frame);
+		} else {
+			repeatable_clear(frame);
+		}
+
+		/*
+		 *	Execute an operation
+		 */
+		RDEBUG4("** [%i] %s >> %s", stack->depth, __FUNCTION__,
+			unlang_ops[instruction->type].name);
+
 		unlang_frame_perf_resume(frame);
 
 		/*
@@ -579,18 +607,21 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		/*
 		 *	If the frame is cancelled we ignore the
 		 *	return code of the process function and
-		 *	jump to calculate result (which tells us
-		 *	to start popping frames).  This is because
-		 *	the cancellation can be signalled
-		 *	asynchronously, and the process function
-		 *	may not be aware that it's happened.
+		 *	pop the frame.  We'll keep popping
+		 *	frames until we hit a non-cancelled frame
+		 *	or the top frame.
 		 */
 		if (is_unwinding(frame)) goto calculate_result;
 
 		switch (ua) {
 		case UNLANG_ACTION_STOP_PROCESSING:
+			/*
+			 *	This marks all the cancellable
+			 *	frames with the unwind flag,
+			 *	and starts popping them.
+			 */
 			unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
-			goto calculate_result;
+			return UNLANG_FRAME_ACTION_POP;
 
 		/*
 		 *	The operation resulted in additional frames
@@ -638,6 +669,18 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 */
 		case UNLANG_ACTION_CALCULATE_RESULT:
 		calculate_result:
+			/*
+			 *	Print the debug brace _with_ the rcode, because
+			 *	we're calculating the result.
+			 *
+			 *	UNLANG_ACTION_EXECUTE_NEXT prints the braces
+			 *	without the rcode, because we don't calculate
+			 *	a new rcode.
+			 *
+			 *	Note: These are closing brackets for an item
+			 *	_within_ a section.  unlang_interpret()
+			 *	handles brackets for the section itself.
+			 */
 			if (has_debug_braces(instruction)) {
 				REXDENT();
 
@@ -663,7 +706,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 			fa = result_calculate(request, frame, result, priority);
 			switch (fa) {
 			case UNLANG_FRAME_ACTION_POP:
-				return UNLANG_FRAME_ACTION_POP;
+				goto pop;
 
 			case UNLANG_FRAME_ACTION_RETRY:
 				if (has_debug_braces(instruction)) {
@@ -691,6 +734,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		frame_next(stack, frame);
 	}
 
+pop:
 	RDEBUG4("** [%i] %s - done current subsection with (%s %d)",
 		stack->depth, __FUNCTION__,
 		fr_table_str_by_value(mod_rcode_table, frame->result, "<invalid>"),
