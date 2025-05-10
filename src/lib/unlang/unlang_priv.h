@@ -328,7 +328,7 @@ struct unlang_stack_frame_s {
 	unlang_retry_t		*retry;				//!< if the frame is being retried.
 
 	rlm_rcode_t 		result;				//!< The result from executing the instruction.
-	int			priority;			//!< Result priority.  When we pop this stack frame
+	unlang_mod_action_t	priority;			//!< Result priority.  When we pop this stack frame
 								///< this priority will be compared with the one of the
 								///< frame lower in the stack to determine if the
 								///< result stored in the lower stack frame should
@@ -348,7 +348,7 @@ struct unlang_stack_frame_s {
 typedef struct {
 	unlang_interpret_t	*intp;				//!< Interpreter that the request is currently
 								///< associated with.
-	int			priority;			//!< Current priority.
+	unlang_mod_action_t	priority;			//!< Current priority.
 	rlm_rcode_t		result;				//!< The current stack rcode.
 	int			depth;				//!< Current depth we're executing at.
 	uint8_t			unwind;				//!< Unwind to this frame if it exists.

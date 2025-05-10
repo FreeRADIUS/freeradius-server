@@ -292,17 +292,20 @@ static void instruction_retry_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time
 
 /** Update the current result after each instruction, and after popping each stack frame
  *
+ *
+ * @note When called in frame_eval, result and priority are the frame
+ *
  * @param[in] request		The current request.
  * @param[in] frame		The current stack frame.
- * @param[in,out] result	The current section result.
- * @param[in,out] priority	The current section priority.
+ * @param[in,out] result	The current section or stack result.
+ * @param[in,out] priority	The current section or stack priority.
  * @return
  *	- UNLANG_FRAME_ACTION_NEXT	evaluate more instructions.
  *	- UNLANG_FRAME_ACTION_POP	the final result has been calculated for this frame.
  */
 static inline CC_HINT(always_inline)
 unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t *frame,
-				       rlm_rcode_t *result, int *priority)
+				       rlm_rcode_t *result, unlang_mod_action_t *priority)
 {
 	unlang_t const	*instruction = frame->instruction;
 	unlang_stack_t	*stack = request->stack;
@@ -795,7 +798,6 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 		case UNLANG_FRAME_ACTION_NEXT:	/* Evaluate the current frame */
 			frame = &stack->frame[stack->depth];
 			fa = frame_eval(request, frame, &stack->result, &stack->priority);
-
 			if (fa != UNLANG_FRAME_ACTION_POP) continue;
 			FALL_THROUGH;
 
