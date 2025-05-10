@@ -25,6 +25,9 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/tmpl_dcursor.h>
+#include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/unlang/action.h>
+#include <freeradius-devel/unlang/unlang_priv.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include "foreach_priv.h"
@@ -182,10 +185,7 @@ next:
 	state->index++;
 
 	box = fr_dcursor_next(&state->cursor);
-	if (!box) {
-		*p_result = frame->result;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	if (!box) return UNLANG_ACTION_EXECUTE_NEXT;	/* Don't change the section rcode */
 
 	if (unlang_foreach_xlat_key_update(request, state) < 0) goto next;
 
@@ -200,7 +200,7 @@ next:
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 
@@ -233,13 +233,12 @@ next:
 		goto next;
 	}
 
-	frame->process = unlang_foreach_xlat_next;
-	repeatable_set(frame);
+	frame_repeat(frame, unlang_foreach_xlat_next);
 
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 
@@ -324,11 +323,10 @@ static unlang_action_t unlang_foreach_attr_next(rlm_rcode_t *p_result, request_t
 next:
 	vp = fr_dcursor_next(&state->cursor);
 	if (!vp) {
-		*p_result = frame->result;
 #ifndef NDEBUG
 		fr_assert(state->indent == request->log.indent.unlang);
 #endif
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
 	unlang_foreach_attr_key_update(request, state);
@@ -375,7 +373,7 @@ next:
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 /*
@@ -435,9 +433,8 @@ next:
 			vp = fr_dcursor_next(&state->cursor);
 			if (vp) goto next;
 
-			*p_result = frame->result;
 			fr_assert(state->indent == request->log.indent.unlang);
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			return UNLANG_ACTION_EXECUTE_NEXT;
 		}
 
 		if (unlang_foreach_pair_copy(state->value, vp, vp->da) < 0) {
@@ -469,7 +466,7 @@ next:
 	/*
 	 *	Push the child, and go process it.
 	 */
-	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 
@@ -535,7 +532,13 @@ static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, u
 
 	RDEBUG2("%s", unlang_ops[frame->instruction->type].name);
 
-	*p_result = frame->result;
+	/*
+	 *	As we're unwinding intermediary frames we
+	 *	won't be taking their rcodes or priorities
+	 *	into account.  We do however want to record
+	 *	the current section rcode.
+	 */
+	*p_result = frame->result.rcode;
 
 	/*
 	 *	Stop at the next break point, or if we hit

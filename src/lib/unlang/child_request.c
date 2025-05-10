@@ -125,7 +125,7 @@ static void unlang_child_request_signal(request_t *request, UNUSED unlang_stack_
  * the child is done executing, it runs this to inform the parent
  * that its done.
  */
-static unlang_action_t unlang_child_request_done(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_child_request_done(UNUSED rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_child_request_t *state = talloc_get_type_abort(frame->state, unlang_frame_state_child_request_t);
 	unlang_child_request_t *cr = state->cr; /* Can't use talloc_get_type_abort, may be an array element */
@@ -154,8 +154,8 @@ static unlang_action_t unlang_child_request_done(rlm_rcode_t *p_result, request_
 		 *	child be used to control the rcode of
 		 *	the parallel keyword.
 		 */
-		cr->result.rcode = *p_result;
-		cr->result.priority = frame->priority;
+		cr->result.rcode = frame->result.rcode;
+		cr->result.priority = frame->result.priority;
 		if (cr->result.p_result) *(cr->result.p_result) = cr->result.rcode;
 		break;
 
@@ -302,7 +302,7 @@ int unlang_child_request_op_init(void)
 				 *	to end normally so that non-detachable requests are
 				 *	guaranteed the parent still exists.
 				 */
-				.flag = UNLANG_OP_FLAG_NO_CANCEL,
+				.flag = UNLANG_OP_FLAG_NO_FORCE_UNWIND,
 				.frame_state_size = sizeof(unlang_frame_state_child_request_t),
 				.frame_state_type = "unlang_frame_state_child_request_t"
 			});

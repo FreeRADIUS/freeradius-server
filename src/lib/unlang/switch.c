@@ -24,6 +24,7 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/server/rcode.h>
 #include "group_priv.h"
 #include "switch_priv.h"
 
@@ -110,7 +111,7 @@ do_null_case:
 	 */
 	if (!found) return UNLANG_ACTION_EXECUTE_NEXT;
 
-	if (unlang_interpret_push(request, found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
+	if (unlang_interpret_push(request, found, RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 

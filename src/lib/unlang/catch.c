@@ -24,6 +24,7 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/server/rcode.h>
 #include "unlang_priv.h"
 #include "catch_priv.h"
 
@@ -57,7 +58,7 @@ static unlang_action_t unlang_catch(rlm_rcode_t *p_result, request_t *request, u
 	 */
 	frame_repeat(frame, catch_skip_to_next);
 
-	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 

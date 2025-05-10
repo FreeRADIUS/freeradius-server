@@ -140,6 +140,8 @@ static unlang_action_t unlang_parallel_resume(rlm_rcode_t *p_result, request_t *
 	fr_assert(state->num_runnable == 0);
 
 	for (i = 0; i < state->num_children; i++) {
+		unlang_stack_frame_t *child_frame;
+
 		if (state->children[i].state != CHILD_EXITED) continue;
 
 		REQUEST_VERIFY(state->children[i].request);
@@ -150,8 +152,10 @@ static unlang_action_t unlang_parallel_resume(rlm_rcode_t *p_result, request_t *
 
 		state->children[i].state = CHILD_DONE;
 
-		priority = ((unlang_stack_t *)state->children[i].request->stack)->priority;
-		result = ((unlang_stack_t *)state->children[i].request->stack)->result;
+		child_frame = frame_current(state->children[i].request);
+
+		priority = child_frame->result.priority;
+		result = child_frame->result.rcode;
 
 		/*
 		 *	Return isn't allowed to make it back
@@ -390,6 +394,6 @@ void unlang_parallel_init(void)
 				.name = "parallel",
 				.interpret = unlang_parallel,
 				.signal = unlang_parallel_signal,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_CANCEL
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_FORCE_UNWIND
 			   });
 }

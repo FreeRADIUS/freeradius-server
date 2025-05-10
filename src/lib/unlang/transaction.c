@@ -94,7 +94,7 @@ static unlang_action_t unlang_transaction(rlm_rcode_t *p_result, request_t *requ
 
 	frame_repeat(frame, unlang_transaction_final);
 
-	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 fr_edit_list_t *unlang_interpret_edit_list(request_t *request)

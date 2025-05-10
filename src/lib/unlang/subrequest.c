@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/unlang/action.h>
 #include "unlang_priv.h"
 #include "interpret_priv.h"
@@ -119,8 +120,11 @@ static unlang_action_t unlang_subrequest_parent_resume(rlm_rcode_t *p_result, re
 	RDEBUG3("subrequest completeed with rcode %s",
 		fr_table_str_by_value(mod_rcode_table, cr->result.rcode, "<invalid>"));
 
+	/*
+	 *	FIXME - We should pass in priority
+	 */
 	*p_result = cr->result.rcode;
-	frame->priority = cr->result.priority;
+	frame->result.priority = cr->result.priority;
 
 	/*
 	 *	If there's a no destination tmpl, we're done.
@@ -263,7 +267,7 @@ static unlang_action_t unlang_subrequest_init(rlm_rcode_t *p_result, request_t *
 	 *	Push the first instruction the child's
 	 *	going to run.
 	 */
-	if (unlang_interpret_push(child, g->children, frame->result,
+	if (unlang_interpret_push(child, g->children, RLM_MODULE_NOT_SET,
 				  UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) goto fail;
 
 	/*
@@ -320,7 +324,7 @@ static unlang_action_t unlang_subrequest_child_done(rlm_rcode_t *p_result, UNUSE
 	}
 
 	if (cr->result.p_result) *cr->result.p_result = cr->result.rcode;
-	cr->result.priority = frame->priority;
+	cr->result.priority = frame->result.priority;
 
 	/*
 	 *	We can free the child here as we're its parent
@@ -531,7 +535,7 @@ int unlang_subrequest_op_init(void)
 				 *	to end normally so that non-detachable requests are
 				 *	guaranteed the parent still exists.
 				 */
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_CANCEL,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_FORCE_UNWIND,
 				.frame_state_size = sizeof(unlang_child_request_t),
 				.frame_state_type = "unlang_child_request_t",
 			});

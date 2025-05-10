@@ -37,9 +37,11 @@ extern "C" {
  * There's also the keyword "reject", represented here by MOD_ACTION_REJECT
  * to cause an immediate reject. */
 typedef enum {
-	MOD_ACTION_RETURN = -1,
-	MOD_ACTION_REJECT = -2,
+	MOD_ACTION_NOT_SET = -4,
 	MOD_ACTION_RETRY = -3,
+	MOD_ACTION_REJECT = -2,
+	MOD_ACTION_RETURN = -1,
+
 
 	MOD_PRIORITY_MIN = 0,
 	MOD_PRIORITY_1 = 1,

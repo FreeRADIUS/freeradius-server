@@ -1631,7 +1631,6 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 
 	RINDENT_RESTORE(request, state);
 
-	*p_result = RLM_MODULE_NOOP;
 	if (state->success) *state->success = true;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }

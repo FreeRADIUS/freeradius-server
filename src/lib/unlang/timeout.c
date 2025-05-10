@@ -134,7 +134,7 @@ static unlang_action_t unlang_timeout_set(rlm_rcode_t *p_result, request_t *requ
 
 	frame_repeat(frame, unlang_timeout_resume_done);
 
-	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 static unlang_action_t unlang_timeout_done(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)

@@ -24,6 +24,7 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/pair.h>
 
@@ -57,7 +58,7 @@ static unlang_action_t unlang_call_children(rlm_rcode_t *p_result, request_t *re
 	 *      Push the contents of the call { } section onto the stack.
 	 *      This gets executed after the server returns.
 	 */
-	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 
