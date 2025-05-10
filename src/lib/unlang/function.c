@@ -94,7 +94,12 @@ static unlang_action_t unlang_function_call_repeat(rlm_rcode_t *p_result, reques
 	caller = request->module;
 	request->module = NULL;
 	RDEBUG4("Calling repeat function %p (%s)", state->repeat, state->repeat_name);
-	ua = state->repeat(p_result, &frame->priority, request, state->uctx);
+
+	/*
+	 *	FIXME: The full scratch rcode/priority should be passed in
+	 *	and then passed to this function.
+	 */
+	ua = state->repeat(p_result, &frame->result.priority, request, state->uctx);
 	request->module = caller;
 
 	return ua;
@@ -120,7 +125,7 @@ static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *re
 	request->module = NULL;
 
 	RDEBUG4("Calling function %p (%s)", state->func, state->func_name);
-	ua = state->func(p_result, &frame->priority, request, state->uctx);
+	ua = state->func(p_result, &frame->result.priority, request, state->uctx);
 	switch (ua) {
 	case UNLANG_ACTION_STOP_PROCESSING:
 		break;

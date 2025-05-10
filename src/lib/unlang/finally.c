@@ -162,7 +162,7 @@ void unlang_finally_init(void)
 			&(unlang_op_t){
 				.name = "finally",
 				.interpret = unlang_finally,
-				.flag = UNLANG_OP_FLAG_NO_CANCEL,	/* No debug braces, the thing that's pushed in unlang finally should have braces */
+				.flag = UNLANG_OP_FLAG_NO_FORCE_UNWIND,	/* No debug braces, the thing that's pushed in unlang finally should have braces */
 				.frame_state_size = sizeof(unlang_frame_state_finally_t),
 				.frame_state_type = "unlang_frame_state_finally_t",
 			});

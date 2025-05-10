@@ -216,18 +216,18 @@ typedef int (*unlang_thread_instantiate_t)(unlang_t const *instruction, void *th
 
 DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
-	UNLANG_OP_FLAG_NONE		= 0x00,			//!< No flags.
-	UNLANG_OP_FLAG_DEBUG_BRACES	= 0x01,			//!< Print debug braces.
-	UNLANG_OP_FLAG_RCODE_SET	= 0x02,			//!< Set request->rcode to the result of this operation.
-	UNLANG_OP_FLAG_NO_CANCEL	= 0x04,			//!< Must not be cancelled.
-								///< @Note Slightly confusingly, a cancellation signal
-								///< can still be delivered to a frame that is not
-								///< cancellable, but the frame won't be automatically
-								///< unwound.  This lets the frame know that cancellation
-								///< is desired, but can be ignored.
-	UNLANG_OP_FLAG_BREAK_POINT	= 0x08,			//!< Break point.
-	UNLANG_OP_FLAG_RETURN_POINT	= 0x10,			//!< Return point.
-	UNLANG_OP_FLAG_CONTINUE_POINT	= 0x20			//!< Continue point.
+	UNLANG_OP_FLAG_NONE			= 0x00,			//!< No flags.
+	UNLANG_OP_FLAG_DEBUG_BRACES		= 0x01,			//!< Print debug braces.
+	UNLANG_OP_FLAG_RCODE_SET		= 0x02,			//!< Set request->rcode to the result of this operation.
+	UNLANG_OP_FLAG_NO_FORCE_UNWIND		= 0x04,			//!< Must not be cancelled.
+									///< @Note Slightly confusingly, a cancellation signal
+									///< can still be delivered to a frame that is not
+									///< cancellable, but the frame won't be automatically
+									///< unwound.  This lets the frame know that cancellation
+									///< is desired, but can be ignored.
+	UNLANG_OP_FLAG_BREAK_POINT		= 0x08,			//!< Break point.
+	UNLANG_OP_FLAG_RETURN_POINT		= 0x10,			//!< Return point.
+	UNLANG_OP_FLAG_CONTINUE_POINT		= 0x20			//!< Continue point.
 } unlang_op_flag_t;
 DIAG_ON(attributes)
 
@@ -295,6 +295,12 @@ typedef struct {
 	fr_timer_t		*ev;
 } unlang_retry_t;
 
+typedef struct {
+	rlm_rcode_t 		rcode;				//!< The current rcode, from executing the instruction
+								///< or merging the result from a frame.
+	unlang_mod_action_t	priority;			//!< The priority or action for that rcode.
+} unlang_result_t;
+
 /** Our interpreter stack, as distinct from the C stack
  *
  * We don't call the modules recursively.  Instead we iterate over a list of #unlang_t and
@@ -325,13 +331,16 @@ struct unlang_stack_frame_s {
 	 */
 	void			*state;
 
+	/** Running priority and rcode associated with the stack
+	 *
+	 * If this frame is cancelled, the rcode and priority are not merged into
+	 * the frame above and are discarded.
+	 */
+	unlang_result_t		result;
+
 	unlang_retry_t		*retry;				//!< if the frame is being retried.
 
-	rlm_rcode_t 		result;				//!< The result from executing the instruction.
-	unlang_mod_action_t	priority;			//!< Result priority.  When we pop this stack frame
-								///< this priority will be compared with the one of the
-								///< frame lower in the stack to determine if the
-								///< result stored in the lower stack frame should
+
 	rindent_t		indent;				//!< Indent level of the request when the frame was
 								///< created.  This is used to restore the indent
 								///< level when the stack is being forcefully unwound.
@@ -348,8 +357,15 @@ struct unlang_stack_frame_s {
 typedef struct {
 	unlang_interpret_t	*intp;				//!< Interpreter that the request is currently
 								///< associated with.
-	unlang_mod_action_t	priority;			//!< Current priority.
-	rlm_rcode_t		result;				//!< The current stack rcode.
+
+	unlang_result_t		scratch;			//!< This holds the current rcode and
+								///< priority for the current instruction.
+								///< It's located in the stack struct because
+								///< we only need it for the current frame
+								///< executing, and we need it to persist
+								///< across yields.  It should be reset for
+								///< each new instruction executed.
+
 	int			depth;				//!< Current depth we're executing at.
 	uint8_t			unwind;				//!< Unwind to this frame if it exists.
 								///< This is used for break and return.
@@ -390,7 +406,7 @@ static inline bool _frame_has_debug_braces(unlang_stack_frame_t const *frame)	{ 
 			unlang_stack_frame_t const *: _frame_has_debug_braces((unlang_stack_frame_t const *)(_thing)) \
 		   )
 static inline bool is_rcode_set(unlang_stack_frame_t const *frame)		{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_RCODE_SET; }
-static inline bool is_cancellable(unlang_stack_frame_t const *frame)		{ return !(unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_NO_CANCEL); }
+static inline bool is_cancellable(unlang_stack_frame_t const *frame)		{ return !(unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_NO_FORCE_UNWIND); }
 static inline bool is_break_point(unlang_stack_frame_t const *frame)		{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_BREAK_POINT; }
 static inline bool is_return_point(unlang_stack_frame_t const *frame) 		{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_RETURN_POINT; }
 static inline bool is_continue_point(unlang_stack_frame_t const *frame) 	{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_CONTINUE_POINT; }

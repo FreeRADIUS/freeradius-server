@@ -31,7 +31,13 @@ unlang_action_t unlang_return(rlm_rcode_t *p_result, request_t *request, unlang_
 {
 	RDEBUG2("%s", unlang_ops[frame->instruction->type].name);
 
-	*p_result = frame->result;
+	/*
+	 *	As we're unwinding intermediary frames we
+	 *	won't be taking their rcodes or priorities
+	 *	into account.  We do however want to record
+	 *	the current section rcode.
+	 */
+	*p_result = frame->result.rcode;
 
 	/*
 	 *	Stop at the next return point, or if we hit

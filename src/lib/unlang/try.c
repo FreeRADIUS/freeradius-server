@@ -36,7 +36,7 @@ static unlang_action_t unlang_try(rlm_rcode_t *p_result, request_t *request, unl
 	 */
 	frame_repeat(frame, unlang_interpret_skip_to_catch);
 
-	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 void unlang_try_init(void)

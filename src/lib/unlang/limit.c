@@ -24,6 +24,7 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/server/rcode.h>
 #include "group_priv.h"
 #include "limit_priv.h"
 
@@ -75,7 +76,7 @@ static unlang_action_t unlang_limit_enforce(rlm_rcode_t *p_result, request_t *re
 
 	frame_repeat(frame, unlang_limit_resume_done);
 
-	action = unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_STOP);
+	action = unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP);
 
 	state->thread->active_callers += (action == UNLANG_ACTION_PUSHED_CHILD);
 

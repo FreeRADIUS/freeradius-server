@@ -264,7 +264,7 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 		 *	frame->result will be overwritten
 		 *	anyway when we return.
 		 */
-		stack->result = frame->result = default_rcode;
+		*p_result = default_rcode;
 		state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
 		return resume(p_result,

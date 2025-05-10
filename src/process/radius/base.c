@@ -459,7 +459,7 @@ RESUME(auth_type)
 		[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT,
 	};
 
-	rlm_rcode_t			rcode = *p_result;
+	rlm_rcode_t			rcode = unlang_interpret_stack_result(request);
 	fr_pair_t			*vp;
 	fr_process_state_t const	*state;
 
