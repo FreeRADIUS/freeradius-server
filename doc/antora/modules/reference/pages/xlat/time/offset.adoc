@@ -1,0 +1,7 @@
+= %time.offset()
+
+Return a `time_delta` of the current offset from UTC.  This offset can
+change while the server is running, due to daylight savings updates.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

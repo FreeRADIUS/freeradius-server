@@ -1,0 +1,8 @@
+= %time.request()
+
+Return the time when the request was received.  This time should be
+used as the basis any actions which involve the "start time of the
+request".
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

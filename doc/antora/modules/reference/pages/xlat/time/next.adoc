@@ -1,0 +1,24 @@
+= %time.next(<time>)
+
+Calculate number of seconds until next n hour, day, week, or year.
+
+.Return: _string_
+
+.Example
+
+With the current time at 16:18:00, `%time.next(1h)` will expand to
+`2520`, which is 42 minutes times sixty seconds.
+
+[source,unlang]
+----
+reply.Reply-Message := "You should wait for %time.next(1h)s"
+----
+
+.Output
+
+```
+You should wait for 2520s
+```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -1,10 +1,10 @@
 = Single Letter Expansions
 
-The following are single letter expansions.
+The following are single letter expansions related to time functions.
 
-The `%time(...)` function and the
-xref:reference:raddb/mods-available/date.adoc[date] module should be used
-instead of these expansions.
+The other `%time(...)` functions and the
+xref:reference:raddb/mods-available/date.adoc[date] module should be
+used instead of these expansions.
 
 
 == Current Time
