@@ -142,14 +142,14 @@ typedef enum {
  *
  */
 typedef struct {
-	bool				required;	//!< Argument must be present, and non-empty.
-	bool				concat;		//!< Concat boxes together.
-	bool				single;		//!< Argument must only contain a single box
-	bool				will_escape;	//!< the function will do escaping and concatenation.
+	uint8_t				required : 1;	//!< Argument must be present, and non-empty.
+	uint8_t				concat : 1;    	//!< Concat boxes together.
+	uint8_t				single : 1;    	//!< Argument must only contain a single box
+	uint8_t				will_escape : 1;   //!< the function will do escaping and concatenation.
+	uint8_t				always_escape : 1;  //!< Pass all arguments to escape function not just
+							    ///< tainted ones.
 	xlat_arg_parser_variadic_t	variadic;	//!< All additional boxes should be processed
 							///< using this definition.
-	bool				always_escape;	//!< Pass all arguments to escape function not just
-							///< tainted ones.
 	fr_type_t			type;		//!< Type to cast argument to.
 	xlat_escape_func_t		func;		//!< Function to handle tainted values.
 	fr_value_box_safe_for_t		safe_for;	//!< Escaped value to set for boxes processed by
