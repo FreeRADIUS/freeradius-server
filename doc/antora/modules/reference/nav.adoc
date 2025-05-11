@@ -84,7 +84,8 @@
 **** xref:xlat/file/tail.adoc[tail]
 
 *** xref:xlat/function.adoc[Function Syntax]
-*** xref:xlat/hash.adoc[Hashing]
+*** xref:xlat/hash.adoc[Hash / Digests]
+*** xref:xlat/hmac.adoc[HMAC]
 
 *** xref:xlat/interpreter.adoc[Interpreter State and Debugging]
 *** xref:xlat/log.adoc[Logging Functions]

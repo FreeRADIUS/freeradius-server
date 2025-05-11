@@ -1,6 +1,17 @@
 = Summary of Dynamic Expansions
 
 
+.File Handling Functions
+[options="headers, autowidth]
+|===
+| *Function*				            | *Description*
+| xref:reference:xlat/file/escape.adoc[escape]	    | Returns an escaped or safe version of the input string.
+| xref:xlat/file/exists.adoc[exists]		    | Checks to see if a file exists on the filesystem.
+| xref:xlat/file/head.adoc[head]		    | Returns the first line of the file.
+| xref:xlat/file/rm.adoc[rm]			    | Removes a file from the filesystem.
+| xref:xlat/file/size.adoc[remove]		    | Returns the size of a file.
+| xref:xlat/file/tail.adoc[tail]		    | Return the last line of a file or the last number(n) of lines of a file.
+|===
 
 == Miscellaneous Functions
 
@@ -13,19 +24,6 @@
 | xref:xlat/misc/misc.adoc[Miscellaneous]	    | Functions to execute regular expression search on string, using pattern.
 | xref:xlat/misc/pairs.adoc[pairs.print]	    | print attributes with name and value.
 | xref:xlat/misc/rand.adoc[rand]	            | random integers
-|===
-
-
-.File Handling Functions
-[options="headers, autowidth]
-|===
-| *Function*				            | *Description*
-| xref:reference:xlat/file/escape.adoc[escape]	    | Returns an escaped or safe version of the input string.
-| xref:xlat/file/exists.adoc[exists]		    | Checks to see if a file exists on the filesystem.
-| xref:xlat/file/head.adoc[head]		    | Returns the first line of the file.
-| xref:xlat/file/rm.adoc[rm]			    | Removes a file from the filesystem.
-| xref:xlat/file/size.adoc[remove]		    | Returns the size of a file.
-| xref:xlat/file/tail.adoc[tail]		    | Return the last line of a file or the last number(n) of lines of a file.
 |===
 
 == String Manipulation
