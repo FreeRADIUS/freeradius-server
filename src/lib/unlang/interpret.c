@@ -260,7 +260,7 @@ unlang_action_t unlang_interpret_push_children(UNUSED rlm_rcode_t *p_result, req
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
-	if (unlang_interpret_push(request, g->children, default_rcode, do_next_sibling, UNLANG_SUB_FRAME) < 0) {
+	if (unlang_interpret_push(request, g->children, FRAME_CONF(default_rcode, UNLANG_SUB_FRAME), do_next_sibling) < 0) {
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
@@ -971,7 +971,7 @@ static unlang_group_t empty_group = {
 /** Push a configuration section onto the request stack for later interpretation.
  *
  */
-int unlang_interpret_push_section(request_t *request, CONF_SECTION *cs, rlm_rcode_t default_rcode, bool top_frame)
+int unlang_interpret_push_section(request_t *request, CONF_SECTION *cs, unlang_frame_conf_t const *conf)
 {
 	unlang_t	*instruction = NULL;
 
@@ -988,13 +988,13 @@ int unlang_interpret_push_section(request_t *request, CONF_SECTION *cs, rlm_rcod
 		}
 	}
 
-	return unlang_interpret_push_instruction(request, instruction, default_rcode, top_frame);
+	return unlang_interpret_push_instruction(request, instruction, conf);
 }
 
 /** Push an instruction onto the request stack for later interpretation.
  *
  */
-int unlang_interpret_push_instruction(request_t *request, void *instruction, rlm_rcode_t default_rcode, bool top_frame)
+int unlang_interpret_push_instruction(request_t *request, void *instruction, unlang_frame_conf_t const *conf)
 {
 	unlang_stack_t	*stack = request->stack;
 
@@ -1006,8 +1006,7 @@ int unlang_interpret_push_instruction(request_t *request, void *instruction, rlm
 	 *	Push the default action, and the instruction which has
 	 *	no action.
 	 */
-	if (unlang_interpret_push(request,
-				  instruction, default_rcode, UNLANG_NEXT_SIBLING, top_frame) < 0) {
+	if (unlang_interpret_push(request, instruction, conf, UNLANG_NEXT_SIBLING) < 0) {
 		return -1;
 	}
 

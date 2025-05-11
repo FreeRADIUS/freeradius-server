@@ -1748,7 +1748,7 @@ int unlang_edit_push(request_t *request, bool *success, fr_edit_list_t *el, map_
 	 *	Push a new edit frame onto the stack
 	 */
 	if (unlang_interpret_push(request, unlang_edit_to_generic(edit),
-				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, false) < 0) return -1;
+				  FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) return -1;
 
 	frame = &stack->frame[stack->depth];
 	state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);

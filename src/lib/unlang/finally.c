@@ -71,7 +71,8 @@ static unlang_action_t unlang_finally(UNUSED rlm_rcode_t *p_result, request_t *r
 		}
 	}
 
-	if (unlikely(unlang_interpret_push_instruction(request, state->instruction, RLM_MODULE_NOOP, UNLANG_SUB_FRAME) < 0)) {
+	if (unlikely(unlang_interpret_push_instruction(request, state->instruction,
+						       FRAME_CONF(RLM_MODULE_NOOP, UNLANG_SUB_FRAME)) < 0)) {
 		unlang_interpret_signal(request, FR_SIGNAL_CANCEL); /* also stops the request and does cleanups */
 	}
 
@@ -139,7 +140,7 @@ int unlang_finally_push_instruction(request_t *request, void *instruction, fr_ti
 	 *	timer expires.
 	 */
 	if (unlang_interpret_push(request, &finally_instruction,
-				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, top_frame) < 0) return -1;
+				  FRAME_CONF(RLM_MODULE_NOT_SET, top_frame), UNLANG_NEXT_STOP) < 0) return -1;
 	frame = &stack->frame[stack->depth];
 
 	/*

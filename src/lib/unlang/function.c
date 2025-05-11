@@ -295,7 +295,7 @@ unlang_action_t _unlang_function_push(request_t *request,
 	 *	Push module's function
 	 */
 	if (unlang_interpret_push(request, &function_instruction,
-				  RLM_MODULE_NOOP, UNLANG_NEXT_STOP, top_frame) < 0) return UNLANG_ACTION_FAIL;
+				  FRAME_CONF(RLM_MODULE_NOOP, top_frame), UNLANG_NEXT_STOP) < 0) return UNLANG_ACTION_FAIL;
 
 	frame = &stack->frame[stack->depth];
 

@@ -231,7 +231,8 @@ static int unlang_child_request_stack_init(unlang_child_request_t *cr)
 	};
 
 	/* Sets up the frame for us to use immediately */
-	if (unlikely(unlang_interpret_push_instruction(child, &inform_parent, RLM_MODULE_NOOP, true) < 0)) {
+	if (unlikely(unlang_interpret_push_instruction(child, &inform_parent,
+						       FRAME_CONF(RLM_MODULE_NOOP, true)) < 0)) {
 		return -1;
 	}
 

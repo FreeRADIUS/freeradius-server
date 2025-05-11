@@ -111,7 +111,7 @@ do_null_case:
 	 */
 	if (!found) return UNLANG_ACTION_EXECUTE_NEXT;
 
-	if (unlang_interpret_push(request, found, RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
+	if (unlang_interpret_push(request, found, FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) {
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 

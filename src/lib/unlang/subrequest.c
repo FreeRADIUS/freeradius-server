@@ -267,8 +267,9 @@ static unlang_action_t unlang_subrequest_init(rlm_rcode_t *p_result, request_t *
 	 *	Push the first instruction the child's
 	 *	going to run.
 	 */
-	if (unlang_interpret_push(child, g->children, RLM_MODULE_NOT_SET,
-				  UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) goto fail;
+	if (unlang_interpret_push(child, g->children,
+				  FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME),
+				  UNLANG_NEXT_SIBLING) < 0) goto fail;
 
 	/*
 	 *	Finally, setup the function that will be
@@ -466,7 +467,7 @@ int unlang_subrequest_child_push(request_t *child,
 	 *	completed.
 	 */
 	if (unlang_interpret_push(child->parent, &subrequest_instruction,
-				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, top_frame) < 0) {
+				  FRAME_CONF(RLM_MODULE_NOT_SET, top_frame), UNLANG_NEXT_STOP) < 0) {
 		return -1;
 	}
 
