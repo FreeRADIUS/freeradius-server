@@ -1,9 +1,6 @@
 octets cbor
 string foo
 
-#
-#  @todo - this should be a dcursor
-#
 cbor = %cbor.encode('User-Name')
 
 #

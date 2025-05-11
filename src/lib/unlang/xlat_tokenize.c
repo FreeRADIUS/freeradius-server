@@ -213,7 +213,9 @@ static int xlat_tmpl_normalize(xlat_exp_t *node)
 	return 0;
 }
 
-
+/**  Validate and sanity check function arguments.
+ *
+ */
 static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t *arg, int argc)
 {
 	xlat_exp_t *node;
@@ -229,21 +231,65 @@ static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t
 	 */
 	arg->group->is_argv = (arg_p->func != NULL) | arg_p->will_escape;
 
-	/*
-	 *	The caller doesn't care about the type, we don't do any validation.
-	 *
-	 *	@todo - maybe check single / required?
-	 */
-	if (arg_p->type == FR_TYPE_VOID) {
-		return 0;
-	}
-
 	node = xlat_exp_head(arg->group);
 
 	if (!node) {
 		if (!arg_p->required) return 0;
 
 		fr_strerror_const("Missing argument");
+		return -1;
+	}
+
+	/*
+	 *	The caller doesn't care about the type, we don't do any validation.
+	 */
+	if (arg_p->type == FR_TYPE_VOID) {
+		if (!arg_p->cursor) return 0;
+
+		if (node->type == XLAT_BOX) {
+		check_box:
+			if (node->data.type != FR_TYPE_STRING) {
+				fr_strerror_printf("Cursor must be a string attribute reference, not %s",
+						   fr_type_to_str(node->data.type));
+				return -1;
+			}
+
+			return 0;
+		}
+
+		/*
+		 *	The expression parser should not allow anything else here.
+		 */
+		fr_assert((node->type == XLAT_TMPL) || (node->type == XLAT_GROUP));
+
+		/*
+		 *	Func, etc.
+		 */
+		if (node->type != XLAT_TMPL) return 0;
+
+		if (tmpl_rules_cast(node->vpt) != FR_TYPE_NULL) {
+			fr_strerror_const("Cursor cannot have cast");
+			return -1;
+		}
+
+		if (xlat_tmpl_normalize(node) < 0) return -1;
+
+		if (node->type == XLAT_BOX) goto check_box;
+
+		if (!tmpl_is_attr(node->vpt)) {
+			fr_strerror_printf("Invalid argument - expected attribute reference");
+			return -1;
+		}
+
+		/*
+		 *	@todo - in xlat_frame_eval(), push the vpt pointer?  We don't want the _values_ of the
+		 *	referenced attributes, we want a cursor which walks over the referenced attributes.
+		 *
+		 *	Except that the xlat_frame_eval_repeat() doesn't have access to the arg list, so it
+		 *	can't check that we want a tmpl / cursor.  Maybe hack that by restricting the cursor
+		 *	argument to the first one, or the first + variadic of the same type.
+		 */
+		fr_strerror_const("Please use strings for references - unquoted strings are not yet supported");
 		return -1;
 	}
 
@@ -1691,7 +1737,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		node->flags = node->group->flags;
 
 		/*
-		 *	Validate the argument immediately on parsing it, and not later.
+		 *	Check number of arguments.
 		 */
 		if (arg->type == FR_TYPE_NULL) {
 			fr_strerror_printf("Too many arguments, expected %zu, got %d",

@@ -4046,7 +4046,7 @@ static int protocol_xlat_instantiate(xlat_inst_ctx_t const *mctx)
 }
 
 static xlat_arg_parser_t const protocol_encode_xlat_args[] = {
-	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	{ .required = true, .single = true, .cursor = true, .allow_wildcard = true, .type = FR_TYPE_VOID, .safe_for = FR_VALUE_BOX_SAFE_FOR_ANY },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -4065,10 +4065,8 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					  xlat_ctx_t const *xctx,
 					  request_t *request, fr_value_box_list_t *args)
 {
-	tmpl_t		*vpt;
 	fr_pair_t	*vp;
-	fr_dcursor_t	cursor;
-	tmpl_dcursor_ctx_t	cc;
+	fr_dcursor_t	*cursor;
 	bool		tainted = false;
 	fr_value_box_t	*encoded;
 
@@ -4083,24 +4081,14 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	memcpy(&tp_encode, xctx->inst, sizeof(tp_encode)); /* const issues */
 
-	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, in_head->vb_strvalue,
-				&(tmpl_rules_t){
-					.attr = {
-						.dict_def = request->proto_dict, /* we can't encode local attributes */
-						.list_def = request_attr_request,
-						.allow_wildcard = true,
-					}
-				}) <= 0) {
-		RPEDEBUG("Failed parsing attribute reference");
-		return XLAT_ACTION_FAIL;
-	}
+	fr_value_box_debug(in_head);
+	cursor = fr_value_box_get_void_type(in_head, fr_dcursor_t);
 
 	/*
 	 *	Create the encoding context.
 	 */
 	if (tp_encode->test_ctx) {
-		if (tp_encode->test_ctx(&encode_ctx, vpt, request->proto_dict) < 0) {
-			talloc_free(vpt);
+		if (tp_encode->test_ctx(&encode_ctx, cursor, request->proto_dict) < 0) {
 			return XLAT_ACTION_FAIL;
 		}
 	}
@@ -4108,9 +4096,9 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Loop over the attributes, encoding them.
 	 */
-	for (vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
+	for (vp = fr_dcursor_current(cursor);
 	     vp != NULL;
-	     vp = fr_dcursor_next(&cursor)) {
+	     vp = fr_dcursor_next(cursor)) {
 		if (vp->da->flags.internal) continue;
 
 		/*
@@ -4125,20 +4113,15 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 *	their value is true.
 		 */
 
-		len = tp_encode->func(&FR_DBUFF_TMP(p, end), &cursor, encode_ctx);
+		len = tp_encode->func(&FR_DBUFF_TMP(p, end), cursor, encode_ctx);
 		if (len < 0) {
 			RPEDEBUG("Protocol encoding failed");
-			tmpl_dcursor_clear(&cc);
-			talloc_free(vpt);
 			return XLAT_ACTION_FAIL;
 		}
 
 		tainted |= vp->vp_tainted;
 		p += len;
 	}
-
-	tmpl_dcursor_clear(&cc);
-	talloc_free(vpt);
 
 	/*
 	 *	Pass the options string back to the caller.

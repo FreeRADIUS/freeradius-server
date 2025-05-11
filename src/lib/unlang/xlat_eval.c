@@ -27,6 +27,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
 static int instance_count = 0;
@@ -436,14 +437,7 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 		}
 		fr_assert(fr_value_box_list_num_elements(list) == 1);
 
-		/*
-		 *	Cast to the type we actually want.
-		 */
-		if ((arg->type != FR_TYPE_VOID) && (arg->type != type)) {
-			goto do_cast;
-		}
-
-		return XLAT_ACTION_DONE;
+		goto check_types;
 	}
 
 	/*
@@ -460,8 +454,13 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 			return XLAT_ACTION_FAIL;
 		}
 
-		if ((arg->type != FR_TYPE_VOID) && (vb->type != arg->type)) {
-		do_cast:
+	check_types:
+		if (arg->type == FR_TYPE_VOID) goto do_void;
+
+		/*
+		 *	Cast to the correct type if necessary.
+		 */
+		if (vb->type != arg->type) {
 			if (fr_value_box_cast_in_place(ctx, vb, arg->type, NULL) < 0) {
 			cast_error:
 				RPEDEBUG("Function \"%s\" failed to cast argument %u to type %s", name, arg_num, fr_type_to_str(arg->type));
@@ -482,6 +481,51 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 			if (fr_value_box_cast_in_place(ctx, vb,
 						       arg->type, NULL) < 0) goto cast_error;
 		} while ((vb = fr_value_box_list_next(list, vb)));
+
+	} else {
+		tmpl_t *vpt;
+		tmpl_dcursor_ctx_t *cc;
+		fr_dcursor_t *cursor;
+
+	do_void:
+		if (!arg->cursor) return XLAT_ACTION_DONE;
+
+		/*
+		 *	Cursor names have to be strings, which are completely safe.
+		 */
+		if (vb->type != FR_TYPE_STRING) {
+			REDEBUG("Expected attribute reference as string, not %s", fr_type_to_str(vb->type));
+			return XLAT_ACTION_FAIL;
+		}
+
+#if 1
+		if (!fr_value_box_is_safe_for(vb, FR_VALUE_BOX_SAFE_FOR_ANY)) {
+			fr_value_box_debug(vb);
+			REDEBUG("Refusing to reference attribute from unsafe data");
+			return XLAT_ACTION_FAIL;
+		}
+#endif
+
+		if (tmpl_afrom_attr_str(ctx, NULL, &vpt, vb->vb_strvalue,
+					&(tmpl_rules_t){
+						.attr = {
+							.dict_def = request->proto_dict, /* we can't encode local attributes */
+							.list_def = request_attr_request,
+							.allow_wildcard = arg->allow_wildcard,
+						}
+					}) <= 0) {
+			RPEDEBUG("Failed parsing attribute reference");
+			return XLAT_ACTION_FAIL;
+		}
+
+		MEM(cc = talloc(vb, tmpl_dcursor_ctx_t));
+		MEM(cursor = talloc(vb, fr_dcursor_t));
+
+		tmpl_dcursor_init(NULL, NULL, cc, cursor, request, vpt);
+		fr_value_box_clear_value(vb);
+		fr_value_box_set_void_type(vb, cursor, fr_dcursor_t); /* asserts that the ptr has the specified type */
+
+		talloc_set_destructor(cc, _tmpl_dcursor_clear);
 	}
 
 #undef ESCAPE

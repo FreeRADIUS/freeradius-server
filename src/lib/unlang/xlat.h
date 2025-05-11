@@ -145,6 +145,8 @@ typedef struct {
 	uint8_t				required : 1;	//!< Argument must be present, and non-empty.
 	uint8_t				concat : 1;    	//!< Concat boxes together.
 	uint8_t				single : 1;    	//!< Argument must only contain a single box
+	uint8_t				cursor : 1;    	//!< Argument is an attribute reference, we pass a cursor to the function
+	uint8_t				allow_wildcard : 1; //!< For parsing the cursor
 	uint8_t				will_escape : 1;   //!< the function will do escaping and concatenation.
 	uint8_t				always_escape : 1;  //!< Pass all arguments to escape function not just
 							    ///< tainted ones.
