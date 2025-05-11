@@ -4728,6 +4728,22 @@ void fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr
 	dst->vb_length = talloc_array_length(src);
 }
 
+/*
+ *	Assign a void* value to the data type
+ */
+void _fr_value_box_set_void_type(fr_value_box_t *dst, void *ptr)
+{
+	fr_value_box_init(dst, FR_TYPE_VOID, NULL, false);
+	dst->datum.ptr = ptr;
+}
+
+void *_fr_value_box_get_void_type(fr_value_box_t *dst)
+{
+	fr_assert(dst->type == FR_TYPE_VOID);
+	return dst->datum.ptr;
+}
+
+
 /** Increment a boxed value
  *
  * Implements safe integer overflow.
@@ -5646,6 +5662,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 	case FR_TYPE_NULL:
 		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "NULL");
 		break;
+
 	/*
 	 *	Don't add default here
 	 */
@@ -5654,10 +5671,13 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 	case FR_TYPE_VSA:		/* Not a box type */
 	case FR_TYPE_VENDOR:		/* Not a box type */
 	case FR_TYPE_VALUE_BOX:
-	case FR_TYPE_VOID:
 	case FR_TYPE_MAX:
 		(void)fr_cond_assert(0);
 		return 0;
+
+	case FR_TYPE_VOID:
+		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "..."); /* @todo - cache and then print the data type? */
+		break;
 	}
 
 done:

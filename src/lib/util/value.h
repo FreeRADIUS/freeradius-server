@@ -1198,6 +1198,14 @@ void		fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, f
 void		fr_value_box_increment(fr_value_box_t *vb)
 		CC_HINT(nonnull);
 
+
+
+#define		fr_value_box_set_void_type(_dst, _ptr, _type) _fr_value_box_set_void_type(_dst, talloc_get_type_abort(_ptr, _type))
+void		_fr_value_box_set_void_type(fr_value_box_t *dst, void *ptr);
+
+#define		fr_value_box_get_void_type(_dst, _type) talloc_get_type_abort(_fr_value_box_get_void_type(_dst), _type)
+void		*_fr_value_box_get_void_type(fr_value_box_t *dst);
+
 /** @name Parsing
  *
  * @{
