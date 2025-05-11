@@ -929,7 +929,7 @@ void xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
 {
 	xlat_thread_inst_t *t = xlat_thread_instance_find(exp);
 
-	signal(XLAT_CTX(exp->call.inst, t->data, t->mctx, NULL, rctx), request, action);
+	signal(XLAT_CTX(exp->call.inst, t->data, exp, t->mctx, NULL, rctx), request, action);
 }
 
 static xlat_action_t xlat_null_resume(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
@@ -975,11 +975,11 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	VALUE_BOX_LIST_VERIFY(result);
 
 	if (node->type != XLAT_FUNC) {
-		xa = resume(ctx, out, XLAT_CTX(NULL, NULL, NULL, NULL, rctx), request, result);
+		xa = resume(ctx, out, XLAT_CTX(NULL, NULL, NULL, NULL, NULL, rctx), request, result);
 	} else {
 		xlat_thread_inst_t *t;
 		t = xlat_thread_instance_find(node);
-		xa = resume(ctx, out, XLAT_CTX(node->call.inst->data, t->data, t->mctx, NULL, rctx), request, result);
+		xa = resume(ctx, out, XLAT_CTX(node->call.inst->data, t->data, node, t->mctx, NULL, rctx), request, result);
 		VALUE_BOX_LIST_VERIFY(result);
 
 		RDEBUG2("| %%%s(...)", node->call.func->name);
@@ -1077,7 +1077,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		VALUE_BOX_LIST_VERIFY(result);
 		xa = node->call.func->func(ctx, out,
-					   XLAT_CTX(node->call.inst->data, t->data, t->mctx, env_data, NULL),
+					   XLAT_CTX(node->call.inst->data, t->data, node, t->mctx, env_data, NULL),
 					   request, result);
 		VALUE_BOX_LIST_VERIFY(result);
 

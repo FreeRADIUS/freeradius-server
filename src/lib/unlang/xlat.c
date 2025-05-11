@@ -126,6 +126,7 @@ static void unlang_xlat_event_timeout_handler(UNUSED fr_timer_list_t *tl, fr_tim
 	 */
 	ev->timeout(XLAT_CTX(ev->inst->data,
 			     ev->thread->data,
+			     NULL,
 			     ev->thread->mctx, NULL,
 			     UNCONST(void *, ev->rctx)),
 			     ev->request, now);
@@ -617,6 +618,7 @@ static void unlang_xlat_event_retry_handler(UNUSED fr_timer_list_t *tl, fr_time_
 		 */
 		ev->retry_cb(XLAT_CTX(ev->inst->data,
 				      ev->thread->data,
+				      NULL,
 				      ev->thread->mctx, NULL,
 				      UNCONST(void *, ev->rctx)),
 			     ev->request, &ev->retry);
@@ -648,6 +650,7 @@ static void unlang_xlat_event_retry_handler(UNUSED fr_timer_list_t *tl, fr_time_
 	 */
 	ev->retry_cb(XLAT_CTX(ev->inst->data,
 			      ev->thread->data,
+			      NULL,
 			      ev->thread->mctx, NULL,
 			      UNCONST(void *, ev->rctx)),
 		     ev->request, &ev->retry);
