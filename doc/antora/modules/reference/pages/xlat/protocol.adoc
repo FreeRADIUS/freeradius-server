@@ -69,15 +69,18 @@ It returns the raw encoded data
 
 [source,unlang]
 ----
-%dhcpv4.encode("Relay-Agent-Information.Circuit-Id = 0xabcdef, Relay-Agent-Information.Remote-Id = 0x010203040506")
-%radius.encode("User-Name = 'ABCD'")
-Tmp-Octets-1 := %dhcpv4.encode(request.Relay-Agent-Information.[*])
+octets data
+
+reply := {
+      User-Name = 'ABCD'
+}
+
+data = %radius.encode(reply)
 ----
 
 .Output
 
 ```
-0x520d0103abcdef0206010203040506
 0x010641424344
 ```
 
