@@ -503,6 +503,12 @@ void tmpl_dcursor_clear(tmpl_dcursor_ctx_t *cc)
 	TALLOC_FREE(cc->pool);
 }
 
+int _tmpl_dcursor_clear(tmpl_dcursor_ctx_t *cc)
+{
+	tmpl_dcursor_clear(cc);
+	return 0;
+}
+
 /** Simple pair building callback for use with tmpl_dcursors
  *
  * Which always appends the new pair to the tail of the list
