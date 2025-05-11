@@ -304,7 +304,11 @@ static int xlat_arg_stringify(request_t *request, xlat_arg_parser_t const *arg, 
 			return -1;
 		}
 
-		fr_value_box_mark_safe_for(vb, arg->safe_for);
+		/*
+		 *	Do NOT mark this as safe for anything.  The inputs could have come from anywhere.
+		 *
+		 *	The arg->safe_for value is set ONLY after the data has been escaped.
+		 */
 		return 0;
 	}
 
