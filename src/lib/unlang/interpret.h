@@ -129,12 +129,27 @@ typedef struct {
 							///< runnable queue.
 } unlang_request_func_t;
 
-int			unlang_interpret_push_section(request_t *request, CONF_SECTION *cs,
-					      	      rlm_rcode_t default_action, bool top_frame)
+/** Configuration structure to make it easier to pass configuration options to initialise the frame with
+ */
+typedef struct {
+	bool				top_frame;		//!< Is this the top frame?
+	bool				no_rcode;		//!< Don't set the rcode when the frame is popped.
+	rlm_rcode_t			default_rcode;		//!< The default return code for the frame.
+	unlang_mod_action_t		default_priority;	//!< The default priority for the frame.
+} unlang_frame_conf_t;
+
+#define FRAME_CONF(_default_rcode, _top_frame)		\
+	&(unlang_frame_conf_t){				\
+		.top_frame = (_top_frame),		\
+		.no_rcode = false,			\
+		.default_rcode = (_default_rcode),	\
+		.default_priority = MOD_ACTION_NOT_SET \
+	}
+
+int			unlang_interpret_push_section(request_t *request, CONF_SECTION *cs, unlang_frame_conf_t const *conf)
 						      CC_HINT(warn_unused_result);
 
-int			unlang_interpret_push_instruction(request_t *request, void *instruction,
-						  	  rlm_rcode_t default_rcode, bool top_frame)
+int			unlang_interpret_push_instruction(request_t *request, void *instruction, unlang_frame_conf_t const *conf)
 						  	  CC_HINT(warn_unused_result);
 
 unlang_interpret_t	*unlang_interpret_init(TALLOC_CTX *ctx,

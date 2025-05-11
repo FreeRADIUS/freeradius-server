@@ -311,9 +311,9 @@ static unlang_action_t unlang_parallel(rlm_rcode_t *p_result, request_t *request
 		 *	subsection within the parallel block.
 		 */
 		if (unlang_interpret_push(child,
-					  instruction, RLM_MODULE_FAIL,
-					  UNLANG_NEXT_STOP,
-					  state->detach ? UNLANG_TOP_FRAME : UNLANG_SUB_FRAME) < 0) goto error;
+					  instruction,
+					  FRAME_CONF(RLM_MODULE_FAIL, state->detach ? UNLANG_TOP_FRAME : UNLANG_SUB_FRAME),
+					  UNLANG_NEXT_STOP) < 0) goto error;
 	}
 
 	/*

@@ -716,7 +716,7 @@ static inline unlang_t *unlang_tmpl_to_generic(unlang_tmpl_t const *p)
  * @{
  */
 int		unlang_interpret_push(request_t *request, unlang_t const *instruction,
-				      rlm_rcode_t default_rcode, bool do_next_sibling, bool top_frame)
+				      unlang_frame_conf_t const *conf, bool do_next_sibling)
 				      CC_HINT(warn_unused_result);
 
 unlang_action_t	unlang_interpret_push_children(rlm_rcode_t *p_result, request_t *request,

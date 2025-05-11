@@ -95,7 +95,7 @@ int unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 	 *	Push a new module frame onto the stack
 	 */
 	if (unlang_interpret_push(request, unlang_module_to_generic(mc),
-				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, top_frame) < 0) {
+				  FRAME_CONF(RLM_MODULE_NOT_SET, top_frame), UNLANG_NEXT_STOP) < 0) {
 		return -1;
 	}
 
@@ -280,7 +280,7 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 	(void) unlang_module_yield(request, resume, signal, sigmask, rctx);
 
 	if (unlang_interpret_push_section(request, subcs,
-					  default_rcode, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_STOP_PROCESSING;
+					  FRAME_CONF(default_rcode, UNLANG_SUB_FRAME)) < 0) return UNLANG_ACTION_STOP_PROCESSING;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }

@@ -208,7 +208,7 @@ unlang_action_t unlang_call_push(request_t *request, CONF_SECTION *server_cs, bo
 	 *	Push a new call frame onto the stack
 	 */
 	if (unlang_interpret_push(request, unlang_call_to_generic(c),
-				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, top_frame) < 0) {
+				  FRAME_CONF(RLM_MODULE_NOT_SET, top_frame), UNLANG_NEXT_STOP) < 0) {
 		talloc_free(c);
 		return UNLANG_ACTION_FAIL;
 	}
