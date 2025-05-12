@@ -84,6 +84,10 @@ typedef enum {
 	FR_TYPE_VOID,				//!< User data.  Should be a talloced chunk
 						///< assigned to the ptr value of the union.
 
+	FR_TYPE_VALUE_BOX_CURSOR,   		//!< cursor over a #fr_value_box_t
+
+	FR_TYPE_PAIR_CURSOR,   			//!< cursor over a #fr_pair_t
+
 	FR_TYPE_MAX				//!< Number of defined data types.
 } fr_type_t;
 
@@ -265,6 +269,8 @@ typedef enum {
 #define FR_TYPE_INTERNAL_DEF(_beg, _mid, _end) \
 	_beg(FR_TYPE_VALUE_BOX) \
 	_mid(FR_TYPE_VOID) \
+	_mid(FR_TYPE_VALUE_BOX_CURSOR) \
+	_mid(FR_TYPE_PAIR_CURSOR) \
 	_end(FR_TYPE_MAX)
 
 /** Types which do not represent leaf values

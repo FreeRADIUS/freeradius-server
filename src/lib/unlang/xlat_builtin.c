@@ -4077,7 +4077,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	memcpy(&tp_encode, xctx->inst, sizeof(tp_encode)); /* const issues */
 
-	cursor = fr_value_box_get_void_type(in_head, fr_dcursor_t);
+	cursor = fr_value_box_get_cursor(in_head);
 
 	/*
 	 *	Create the encoding context.

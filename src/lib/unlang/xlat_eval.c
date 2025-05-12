@@ -523,7 +523,7 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 
 		tmpl_dcursor_init(NULL, NULL, cc, cursor, request, vpt);
 		fr_value_box_clear_value(vb);
-		fr_value_box_set_void_type(vb, cursor, fr_dcursor_t); /* asserts that the ptr has the specified type */
+		fr_value_box_set_cursor(vb, FR_TYPE_PAIR_CURSOR, cursor, vpt->name);
 
 		talloc_set_destructor(cc, _tmpl_dcursor_clear);
 	}

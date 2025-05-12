@@ -121,6 +121,9 @@ static char const *fr_type_to_c_type[] = {
 	[FR_TYPE_VALUE_BOX]			= "fr_value_box_t",
 	[FR_TYPE_VOID]				= "void *",
 
+	[FR_TYPE_VALUE_BOX_CURSOR]    		= "fr_dcursor_t *",
+	[FR_TYPE_PAIR_CURSOR]			= "fr_dcursor_t *",
+
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
 };
 
@@ -160,6 +163,9 @@ static size_t const fr_type_to_c_size[] = {
 	[FR_TYPE_SIZE]				= sizeof(size_t),
 	[FR_TYPE_VALUE_BOX]			= sizeof(fr_value_box_t),
 	[FR_TYPE_VOID]				= sizeof(void *),
+
+	[FR_TYPE_VALUE_BOX_CURSOR]     		= sizeof(void *),
+	[FR_TYPE_PAIR_CURSOR]	       		= sizeof(void *),
 
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
 };

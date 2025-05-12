@@ -111,6 +111,11 @@ typedef union {
 		size_t		length;						//!< Only these types are variable length.
 	};
 
+	struct {
+		void 		       * _CONST	cursor;			//!< cursors
+		char const     	       * _CONST	name;			//!< name of the current cursor
+	};
+
 	/*
 	*	Fixed length values
 	*/
@@ -281,6 +286,9 @@ typedef enum {
 #define vb_time_delta				datum.time_delta
 
 #define vb_length				datum.length
+
+#define vb_cursor				datum.cursor
+#define vb_cursor_name				datum.name
 /** @} */
 
 /** @name Argument boxing macros
@@ -1200,11 +1208,9 @@ void		fr_value_box_increment(fr_value_box_t *vb)
 
 
 
-#define		fr_value_box_set_void_type(_dst, _ptr, _type) _fr_value_box_set_void_type(_dst, talloc_get_type_abort(_ptr, _type))
-void		_fr_value_box_set_void_type(fr_value_box_t *dst, void *ptr);
+void		fr_value_box_set_cursor(fr_value_box_t *dst, fr_type_t type, void *ptr, char const *name) CC_HINT(nonnull);
 
-#define		fr_value_box_get_void_type(_dst, _type) talloc_get_type_abort(_fr_value_box_get_void_type(_dst), _type)
-void		*_fr_value_box_get_void_type(fr_value_box_t *dst);
+#define		fr_value_box_get_cursor(_dst) talloc_get_type_abort((_dst)->vb_cursor, fr_dcursor_t)
 
 /** @name Parsing
  *
