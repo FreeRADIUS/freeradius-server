@@ -159,6 +159,8 @@ typedef struct {
 	void				*uctx;		//!< Argument to pass to escape callback.
 } xlat_arg_parser_t;
 
+#define XLAT_ARG_PARSER_CURSOR { .required = true, .single = true, .cursor = true, .allow_wildcard = true, .type = FR_TYPE_VOID, .safe_for = FR_VALUE_BOX_SAFE_FOR_ANY }
+
 typedef struct {
 	tmpl_res_rules_t const	*tr_rules;	//!< tmpl resolution rules.
 	bool			allow_unresolved; //!< If false, all resolution steps must be completed

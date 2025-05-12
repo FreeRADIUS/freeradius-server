@@ -4046,7 +4046,7 @@ static int protocol_xlat_instantiate(xlat_inst_ctx_t const *mctx)
 }
 
 static xlat_arg_parser_t const protocol_encode_xlat_args[] = {
-	{ .required = true, .single = true, .cursor = true, .allow_wildcard = true, .type = FR_TYPE_VOID, .safe_for = FR_VALUE_BOX_SAFE_FOR_ANY },
+	XLAT_ARG_PARSER_CURSOR,
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
