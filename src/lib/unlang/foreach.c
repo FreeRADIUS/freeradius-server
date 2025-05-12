@@ -117,6 +117,8 @@ static int unlang_foreach_pair_copy(fr_pair_t *to, fr_pair_t *from, fr_dict_attr
 			continue;
 		}
 
+		fr_assert(fr_type_is_structural(vp->vp_type));
+
 		if (unlang_foreach_pair_copy(child, vp, vp->da) < 0) return -1;
 	}
 
@@ -313,6 +315,8 @@ static unlang_action_t unlang_foreach_attr_next(rlm_rcode_t *p_result, request_t
 			 */
 		}
 	} else {
+		fr_assert(fr_type_is_structural(vp->vp_type));
+
 		/*
 		 *	@todo - copy the pairs back?
 		 */

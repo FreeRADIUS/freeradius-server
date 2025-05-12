@@ -215,6 +215,8 @@ ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_p
 		fr_pair_t *child;
 		fr_dcursor_t cursor;
 
+		fr_assert(fr_type_is_structural(vp->vp_type));
+
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '{', ' ');
 		for (child = fr_pair_dcursor_init(&cursor, &vp->vp_group);
 		     child != NULL;

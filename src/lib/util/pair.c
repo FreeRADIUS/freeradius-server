@@ -208,6 +208,8 @@ static inline CC_HINT(always_inline) void pair_init_from_da(fr_pair_t *vp, fr_di
 		memset(&vp->data, 0xff, sizeof(vp->data));
 #endif
 
+		fr_assert(fr_type_is_structural(da->type));
+
 		/*
 		 *	Make sure that the pad field is initialized.
 		 */
@@ -327,7 +329,7 @@ int fr_pair_reinit_from_da(fr_pair_list_t *list, fr_pair_t *vp, fr_dict_attr_t c
 
 		if ((da->type != vp->vp_type) && (fr_value_box_cast_in_place(vp, &vp->data, da->type, da) < 0)) return -1;
 	} else {
-		fr_assert(fr_type_is_leaf(vp->vp_type) || (fr_pair_list_num_elements(&vp->vp_group) == 0));
+		fr_assert(fr_type_is_leaf(vp->vp_type) || (fr_type_is_structural(vp->vp_type) && (fr_pair_list_num_elements(&vp->vp_group) == 0)));
 
 		fr_value_box_init(&vp->data, da->type, da, false);
 	}
@@ -1051,6 +1053,8 @@ fr_pair_t *fr_pair_list_iter_leaf(fr_pair_list_t *list, fr_pair_t *vp)
 
 	next_sibling:
 		if (fr_type_is_leaf(vp->vp_type)) return vp;
+
+		fr_assert(fr_type_is_structural(vp->vp_type));
 
 		vp = fr_pair_list_iter_leaf(&vp->vp_group, NULL);
 		if (vp) return vp;
@@ -2283,12 +2287,16 @@ bool fr_pair_immutable(fr_pair_t const *vp)
 {
 	if (fr_type_is_leaf(vp->vp_type)) return vp->vp_immutable;
 
+	fr_assert(fr_type_is_structural(vp->vp_type));
+
 	fr_pair_list_foreach(&vp->vp_group, child) {
 		if (fr_type_is_leaf(child->vp_type)) {
 			if (child->vp_immutable) return true;
 
 			continue;
 		}
+
+		fr_assert(fr_type_is_structural(vp->vp_type));
 
 		if (fr_pair_immutable(child)) return true;
 	}
@@ -3510,6 +3518,8 @@ static void fprintf_pair_list(FILE *fp, fr_pair_list_t const *list, int depth)
 			continue;
 		}
 
+		fr_assert(fr_type_is_structural(vp->vp_type));
+
 		fprintf(fp, "%s = {\n", vp->da->name);
 		fprintf_pair_list(fp, &vp->vp_group, depth + 1);
 		fprintf(fp, "%.*s}\n", depth, spaces);
@@ -3531,6 +3541,8 @@ void fr_fprintf_pair(FILE *fp, char const *msg, fr_pair_t const *vp)
 	if (fr_type_is_leaf(vp->vp_type)) {
 		fr_fprintf(fp, "%s %s %pV\n", vp->da->name, fr_tokens[vp->op], &vp->data);
 	} else {
+		fr_assert(fr_type_is_structural(vp->vp_type));
+
 		fprintf(fp, "%s = {\n", vp->da->name);
 		fprintf_pair_list(fp, &vp->vp_group, 1);
 		fprintf(fp, "}\n");

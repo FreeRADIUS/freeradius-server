@@ -534,8 +534,12 @@ static PyObject *py_freeradius_attribute_instance(PyObject *self, PyObject *attr
 
 	if (fr_type_is_leaf(init_pair->da->type)) {
 		pair = PyObject_New(py_freeradius_pair_t, (PyTypeObject *)&py_freeradius_value_pair_def);
-	} else {
+
+	} else if (fr_type_is_struct(init_pair->da->type)) {
 		pair = PyObject_New(py_freeradius_pair_t, (PyTypeObject *)&py_freeradius_grouping_pair_def);
+	} else {
+		PyErr_SetString(PyExc_AttributeError, "Unsupported data type");
+		return NULL;
 	}
 	if (!pair) {
 		PyErr_SetString(PyExc_MemoryError, "Failed to allocate PyObject");
@@ -594,8 +598,11 @@ static PyObject *py_freeradius_pair_map_subscript(PyObject *self, PyObject *attr
 
 	if (fr_type_is_leaf(da->type)) {
 		pair = PyObject_New(py_freeradius_pair_t, (PyTypeObject *)&py_freeradius_value_pair_def);
-	} else {
+	} else if (fr_type_is_structural(da->type)) {
 		pair = PyObject_New(py_freeradius_pair_t, (PyTypeObject *)&py_freeradius_grouping_pair_def);
+	} else {
+		PyErr_SetString(PyExc_AttributeError, "Unsupported data type");
+		return NULL;
 	}
 	if (!pair) {
 		PyErr_SetString(PyExc_MemoryError, "Failed to allocate PyObject");

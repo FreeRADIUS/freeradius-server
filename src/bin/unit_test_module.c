@@ -124,6 +124,8 @@ static void pair_mutable(fr_pair_t *vp)
 		return;
 	}
 
+	fr_assert(fr_type_is_structural(vp->vp_type));
+
 	fr_pair_list_foreach(&vp->vp_group, child) {
 		pair_mutable(child);
 	}

@@ -1031,6 +1031,8 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	if (fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type)) {
 		if (apply_edits_to_leaf(request, state, current) < 0) return -1;
 	} else {
+		fr_assert(fr_type_is_structural(tmpl_attr_tail_da(current->lhs.vpt)->type));
+
 		if (apply_edits_to_list(request, state, current) < 0) return -1;
 	}
 
@@ -1093,6 +1095,8 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 		child->check_lhs = check_lhs_value;
 		child->expanded_lhs = expanded_lhs_value;
 	} else {
+		fr_assert(fr_type_is_structural(tmpl_attr_tail_da(current->lhs.vpt)->type));
+
 		child->ctx = current->lhs.vp ? (TALLOC_CTX *) current->lhs.vp : (TALLOC_CTX *) child;
 		child->check_lhs = check_lhs_nested;
 		child->expanded_lhs = expanded_lhs_attribute;
@@ -1311,6 +1315,8 @@ static int check_lhs_nested(request_t *request, unlang_frame_state_edit_t *state
 	if (fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type)) {
 		return expand_rhs(request, state, current);
 	}
+
+	fr_assert(fr_type_is_structural(tmpl_attr_tail_da(current->lhs.vpt)->type));
 
 	/*
 	 *	We have a parent, so we know that attribute exist.  Which means that we don't need to call a

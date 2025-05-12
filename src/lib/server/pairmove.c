@@ -562,6 +562,8 @@ int radius_legacy_map_apply(request_t *request, map_t const *map, fr_edit_list_t
 			if (fr_type_is_leaf(vp->vp_type)) {
 				if (fr_edit_list_save_pair_value(el, vp) < 0) return -1;
 			} else {
+				fr_assert(fr_type_is_structural(vp->vp_type));
+
 				if (fr_edit_list_free_pair_children(el, vp) < 0) return -1;
 			}
 			break;

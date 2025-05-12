@@ -601,6 +601,8 @@ static int _lua_pair_accessor(lua_State *L)
 			return 1;
 		}
 
+		fr_assert(fr_type_is_structural(pair_data->da->type));
+
 		/*
 		 *	Retrieving a structural attribute returns a new table.
 		 */

@@ -192,6 +192,8 @@ static int detail_recurse(FILE *out, fr_hash_table_t *ht, fr_pair_list_t *list)
 			continue;
 		}
 
+		fr_assert(fr_type_is_structural(vp->vp_type));
+
 		if (detail_recurse(out, ht, &vp->vp_group) < 0) return -1;
 	}
 
@@ -286,6 +288,8 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 
 			continue;
 		}
+
+		fr_assert(fr_type_is_structural(vp->vp_type));
 
 		if (detail_recurse(out, ht, &vp->vp_group) < 0) goto fail;
 	}

@@ -1715,6 +1715,8 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 		goto done;
 	}
 
+	fr_assert(fr_type_is_structural(da->type));
+
 	switch (da->type) {
 		/*
 		 *	All of these are essentially the same.
