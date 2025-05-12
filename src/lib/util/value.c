@@ -3712,11 +3712,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	/*
 	 *	Invalid types for casting (should have been caught earlier)
 	 */
-	case FR_TYPE_VALUE_BOX:
-	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_NULL:
-	case FR_TYPE_VOID:
-	case FR_TYPE_MAX:
+	case FR_TYPE_NON_LEAF:
 		fr_strerror_printf("Invalid cast from %s to %s.  Invalid destination type",
 				   fr_type_to_str(src->type),
 				   fr_type_to_str(dst_type));
@@ -4044,9 +4040,7 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
-	case FR_TYPE_VALUE_BOX:
-	case FR_TYPE_VOID:
-	case FR_TYPE_MAX:
+	case FR_TYPE_INTERNAL:
 		fr_strerror_printf("Cannot copy data type '%s'", fr_type_to_str(src->type));
 		return -1;
 	}
@@ -6132,9 +6126,7 @@ int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t const
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
-	case FR_TYPE_VALUE_BOX:
-	case FR_TYPE_VOID:
-	case FR_TYPE_MAX:
+	case FR_TYPE_INTERNAL:
 		fr_strerror_printf("Cannot escape data type '%s'", fr_type_to_str(vb->type));
 		return -1;
 

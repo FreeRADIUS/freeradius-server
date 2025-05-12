@@ -256,6 +256,17 @@ typedef enum {
 	FR_TYPE_VARIABLE_SIZE_DEF(_mid, _mid, _mid) \
 	FR_TYPE_NUMERIC_DEF(_mid, _mid, _end)
 
+/** Types which are internal, and should not be used for real data.
+ *
+ * - Boxes (can represent any type)
+ * - Void (opaque types)
+ * - Invalid values
+ */
+#define FR_TYPE_INTERNAL_DEF(_beg, _mid, _end) \
+	_beg(FR_TYPE_VALUE_BOX) \
+	_mid(FR_TYPE_VOID) \
+	_end(FR_TYPE_MAX)
+
 /** Types which do not represent leaf values
  *
  * - Structural
@@ -265,11 +276,10 @@ typedef enum {
  * - Invalid values
  */
 #define FR_TYPE_NON_LEAF_DEF(_beg, _mid, _end) \
-	_beg(FR_TYPE_VALUE_BOX) \
-	_mid(FR_TYPE_VOID) \
-	_mid(FR_TYPE_NULL) \
-	_mid(FR_TYPE_MAX) \
+	_beg(FR_TYPE_NULL) \
+	FR_TYPE_INTERNAL_DEF(_mid, _mid, _mid) \
 	FR_TYPE_STRUCTURAL_DEF(_mid, _mid, _end)
+
 /** @} */
 
 /** @name Macros that emit multiple case statements to group types
@@ -296,6 +306,7 @@ typedef enum {
 #define FR_TYPE_STRUCTURAL			FR_TYPE_STRUCTURAL_DEF(CASE_BEG, CASE_MID, CASE_END)
 #define FR_TYPE_LEAF				FR_TYPE_LEAF_DEF(CASE_BEG, CASE_MID, CASE_END)
 #define FR_TYPE_NON_LEAF			FR_TYPE_NON_LEAF_DEF(CASE_BEG, CASE_MID, CASE_END)
+#define FR_TYPE_INTERNAL			FR_TYPE_INTERNAL_DEF(CASE_BEG, CASE_MID, CASE_END)
 /** @} */
 
 /** @name Bool arrays that group types

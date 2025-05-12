@@ -361,11 +361,7 @@ static int CC_HINT(nonnull(2,3)) filename_xlat_escape(UNUSED request_t *request,
 	case FR_TYPE_OCTETS:
 		return 0;
 
-	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_NULL:
-	case FR_TYPE_VALUE_BOX:
-	case FR_TYPE_VOID:
-	case FR_TYPE_MAX:
+	case FR_TYPE_NON_LEAF:
 		fr_assert(0);
 		return -1;
 
