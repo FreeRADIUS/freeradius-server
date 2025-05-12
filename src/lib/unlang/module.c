@@ -845,10 +845,46 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	 */
 	if (fr_time_delta_ispos(frame->instruction->actions.retry.irt)) now = fr_time();
 
+	/*
+	 *	Pre-allocate an rctx for the module, if it has one.
+	 */
+	fr_assert_msg(state->rctx == NULL, "rctx should be NULL for initial module call");
+	{
+		size_t size = 0;
+		char const *type;
+
+		/*
+		 *	Use the module method binding's rctx size in preference
+		 *	to the one set for the module as a whole.
+		 */
+		if (m->mmc.mmb.rctx_size) {
+			size = m->mmc.mmb.rctx_size;
+			type = m->mmc.mmb.rctx_type;
+		/*
+		 *	Use the rctx from the module_t
+		 *
+		 *	The module is still fine to allocate the rctx itself
+		 *	in the first module method call.
+		 */
+		} else if(m->mmc.mi->exported->rctx_size) {
+			size = m->mmc.mi->exported->rctx_size;
+			type = m->mmc.mi->exported->rctx_type;
+		}
+
+		if (size > 0) {
+			MEM(state->rctx = talloc_zero_array(state, uint8_t, size));
+			if (!type) {
+				talloc_set_name(state->rctx, "%s_rctx_t", m->mmc.mi->name);
+			} else {
+				talloc_set_name_const(state->rctx, type);
+			}
+		}
+	}
+
 	request->module = m->mmc.mi->name;
 	safe_lock(m->mmc.mi);	/* Noop unless instance->mutex set */
 	ua = m->mmc.mmb.method(&state->rcode,
-			       MODULE_CTX(m->mmc.mi, state->thread->data, state->env_data, NULL),
+			       MODULE_CTX(m->mmc.mi, state->thread->data, state->env_data, state->rctx),
 			       request);
 	safe_unlock(m->mmc.mi);
 
