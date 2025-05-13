@@ -50,26 +50,6 @@ static mrb_value mruby_request_session_state(mrb_state *mrb, mrb_value self)
 	return mrb_iv_get(mrb, self, mrb_intern_cstr(mrb, "@session_state"));
 }
 
-static mrb_value mruby_request_proxy_request(mrb_state *mrb, mrb_value self)
-{
-	mrb_sym sym = mrb_intern_cstr(mrb, "@proxy_request");
-	if (mrb_iv_defined(mrb, self, sym)) {
-		return mrb_iv_get(mrb, self, sym);
-	} else {
-		return mrb_ary_new_capa(mrb, 0);
-	}
-}
-
-static mrb_value mruby_request_proxy_reply(mrb_state *mrb, mrb_value self)
-{
-	mrb_sym sym = mrb_intern_cstr(mrb, "@proxy_reply");
-	if (mrb_iv_defined(mrb, self, sym)) {
-		return mrb_iv_get(mrb, self, sym);
-	} else {
-		return mrb_ary_new_capa(mrb, 0);
-	}
-}
-
 struct RClass *mruby_request_class(mrb_state *mrb, struct RClass *parent)
 {
 	struct RClass *request;
@@ -82,8 +62,6 @@ struct RClass *mruby_request_class(mrb_state *mrb, struct RClass *parent)
 	mrb_define_method(mrb, request, "reply", mruby_request_reply, MRB_ARGS_NONE());
 	mrb_define_method(mrb, request, "control", mruby_request_control, MRB_ARGS_NONE());
 	mrb_define_method(mrb, request, "session_state", mruby_request_session_state, MRB_ARGS_NONE());
-	mrb_define_method(mrb, request, "proxy_request", mruby_request_proxy_request, MRB_ARGS_NONE());
-	mrb_define_method(mrb, request, "proxy_reply", mruby_request_proxy_reply, MRB_ARGS_NONE());
 
 	return request;
 }
