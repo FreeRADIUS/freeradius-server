@@ -161,11 +161,16 @@ static void mruby_parse_config(mrb_state *mrb, CONF_SECTION *cs, int lvl, mrb_va
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_mruby_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_mruby_t);
-	mrb_state *mrb;
-	CONF_SECTION *cs;
-	FILE *f;
-	mrb_value status;
+	rlm_mruby_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_mruby_t);
+	fr_rb_iter_inorder_t	iter;
+	mruby_func_def_t	*func = NULL;
+	mrb_state		*mrb;
+	CONF_SECTION		*cs;
+	FILE			*f;
+	mrb_value		status;
+	char			*pair_name;
+	CONF_PAIR		*cp;
+	mrb_value		func_sym;
 
 	mrb = inst->mrb = mrb_open();
 	if (!mrb) {
@@ -229,6 +234,52 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	if (mrb_undef_p(status)) {
 		ERROR("Parsing file failed");
 		return -1;
+	}
+
+	if (!inst->funcs_init) fr_rb_inline_init(&inst->funcs, mruby_func_def_t, node, mruby_func_def_cmp, NULL);
+	func = fr_rb_iter_init_inorder(&iter, &inst->funcs);
+	while (func) {
+		/*
+		 *	Check for func_<name1>_<name2> or func_<name1> config pairs.
+		 */
+		if (func->name2) {
+			pair_name = talloc_asprintf(func, "func_%s_%s", func->name1, func->name2);
+			cp = cf_pair_find(mctx->mi->conf, pair_name);
+			talloc_free(pair_name);
+			if (cp) goto found_func;
+		}
+		pair_name = talloc_asprintf(func, "func_%s", func->name1);
+		cp = cf_pair_find(mctx->mi->conf, pair_name);
+		talloc_free(pair_name);
+	found_func:
+		if (cp){
+			func->function_name = cf_pair_value(cp);
+			func_sym = mrb_check_intern_cstr(mrb, func->function_name);
+			if (mrb_nil_p(func_sym)) {
+				cf_log_err(cp, "mruby function %s does not exist", func->function_name);
+				return -1;
+			}
+		/*
+		 *	If no pair was found, then use <name1>_<name2> or <name1> as the function to call.
+		 */
+		} else if (func->name2) {
+			func->function_name = talloc_asprintf(func, "%s_%s", func->name1, func->name2);
+			func_sym = mrb_check_intern_cstr(mrb, func->function_name);
+			if (mrb_nil_p(func_sym)) {
+				talloc_const_free(func->function_name);
+				goto name1_only;
+			}
+		} else {
+		name1_only:
+			func->function_name = func->name1;
+			func_sym = mrb_check_intern_cstr(mrb, func->function_name);
+			if (mrb_nil_p(func_sym)) {
+				cf_log_err(cp, "mruby function %s does not exist", func->function_name);
+				return -1;
+			}
+		}
+
+		func = fr_rb_iter_next_inorder(&iter);
 	}
 
 	status = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), "instantiate", 0);
