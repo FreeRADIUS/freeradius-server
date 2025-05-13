@@ -503,6 +503,59 @@ void tmpl_dcursor_clear(tmpl_dcursor_ctx_t *cc)
 	TALLOC_FREE(cc->pool);
 }
 
+/** Initialize a #tmpl_dcursor_t into a #fr_value_box_t
+ *
+ *  The #tmpl_dcursor_ctx_t and #tmpl_dcursor_t are associated with the
+ *  input value-box, and will be freed when the value-box is freed.
+ *
+ * @param[out] err		May be NULL if no error code is required.
+ *				Will be set to:
+ *				- 0 on success.
+ *				- -1 if no matching #fr_pair_t could be found.
+ *				- -2 if list could not be found (doesn't exist in current #request_t).
+ *				- -3 if context could not be found (no parent #request_t available).
+ * @param[in] vb		Where the #tmpl_dursor_t is stored.  MUST be talloc'd
+ * @param[in] request		the current request.
+ * @param[in] vpt		specifying the #fr_pair_t type or list to iterate over.
+ * @return
+ *	- First #fr_pair_t specified by the #tmpl_t.
+ *	- NULL if no matching #fr_pair_t found, and NULL on error.
+ *
+ * @see tmpl_cursor_next
+ */
+fr_pair_t *tmpl_dcursor_value_box_init(int *err, fr_value_box_t *vb, request_t *request, tmpl_t const *vpt)
+{
+	tmpl_dcursor_ctx_t *cc;
+	fr_dcursor_t *cursor;
+	fr_pair_t *vp;
+
+	MEM(cc = talloc(vb, tmpl_dcursor_ctx_t));
+	MEM(cursor = talloc(vb, fr_dcursor_t));
+
+	/*
+	 *	The cursor can return something, nothing (-1), or no list (-2) or no context (-3).  Of
+	 *	these, only the last two are actually errors.
+	 *
+	 *	"no matching pair" is a valid answer, and can be passed to the function.
+	 */
+	vp = tmpl_dcursor_init(err, vb, cc, cursor, request, vpt);
+	if (!vp) {
+		if (!err) return NULL;
+
+		if (*err == -1) {
+			RWDEBUG("Cursor %s returned no attributes", vpt->name);
+		} else {
+			RPEDEBUG("Failed initializing cursor");
+		}
+
+		return NULL;
+	}
+
+	fr_value_box_set_cursor(vb, FR_TYPE_PAIR_CURSOR, cursor, vpt->name);
+	return vp;
+}
+
+
 /** Simple pair building callback for use with tmpl_dcursors
  *
  * Which always appends the new pair to the tail of the list

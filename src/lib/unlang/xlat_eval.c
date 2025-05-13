@@ -496,8 +496,6 @@ check_non_leaf:
 	{
 		int err;
 		tmpl_t *vpt;
-		tmpl_dcursor_ctx_t *cc;
-		fr_dcursor_t *cursor;
 
 		/*
 		 *	Cursor names have to be strings, which are completely safe.
@@ -526,8 +524,6 @@ check_non_leaf:
 		}
 
 		fr_value_box_clear_value(vb);
-		MEM(cc = talloc(vb, tmpl_dcursor_ctx_t));
-		MEM(cursor = talloc(vb, fr_dcursor_t));
 
 		/*
 		 *	The cursor can return something, nothing (-1), or no list (-2) or no context (-3).  Of
@@ -535,16 +531,8 @@ check_non_leaf:
 		 *
 		 *	"no matching pair" is a valid answer, and can be passed to the function.
 		 */
-		(void) tmpl_dcursor_init(&err, vb, cc, cursor, request, vpt);
-		if (err < 0) {
-			if (err < -1) {
-				RPEDEBUG("Failed initializing cursor");
-				return XLAT_ACTION_FAIL;
-			}
-
-			RWDEBUG("Cursor %s returned no attributes", vpt->name);
-		}
-		fr_value_box_set_cursor(vb, FR_TYPE_PAIR_CURSOR, cursor, vpt->name);
+		(void) tmpl_dcursor_value_box_init(&err, vb, request, vpt);
+		if (err < -1) return XLAT_ACTION_FAIL;
 	}
 
 #undef ESCAPE
