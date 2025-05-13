@@ -3926,6 +3926,10 @@ void fr_value_box_clear_value(fr_value_box_t *data)
 	case FR_TYPE_NULL:
 		return;
 
+	case FR_TYPE_PAIR_CURSOR:
+		talloc_free(data->vb_cursor);
+		break;
+
 	default:
 		break;
 	}
