@@ -190,6 +190,7 @@ struct xlat_exp_head_s {
 	xlat_flags_t		flags;		//!< Flags that control resolution and evaluation.
 	uint8_t			instantiated : 1;  //!< temporary flag until we fix more things
 	uint8_t			is_argv : 1;	//!< this thing holds function arguments
+	uint8_t			cursor : 1;	//!< otherwise it's too hard to pass xlat_arg_parser_t to the evaluation function.
 
 #ifndef NDEBUG
 	char const * _CONST	file;		//!< File where the xlat was allocated.

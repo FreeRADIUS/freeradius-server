@@ -285,15 +285,11 @@ static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t
 		}
 
 		/*
-		 *	@todo - in xlat_frame_eval(), push the vpt pointer?  We don't want the _values_ of the
-		 *	referenced attributes, we want a cursor which walks over the referenced attributes.
-		 *
-		 *	Except that the xlat_frame_eval_repeat() doesn't have access to the arg list, so it
-		 *	can't check that we want a tmpl / cursor.  Maybe hack that by restricting the cursor
-		 *	argument to the first one, or the first + variadic of the same type.
+		 *	Bare attribute references are allowed, but are marked up as "return a cursor to this
+		 *	thing, don't return a value".
 		 */
-		fr_strerror_const("Please use strings for references - unquoted strings are not yet supported");
-		return -1;
+		arg->group->cursor = true;
+		return 0;
 	}
 
 	/*

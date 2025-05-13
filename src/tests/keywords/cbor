@@ -34,4 +34,12 @@ if (User-Name != "bob") {
 	test_fail
 }
 
+#
+#  The cursor as an attribute reference, and not as a string.
+#
+cbor := %cbor.encode(User-Name)
+if (cbor != 0x9fa10163626f62ff) {
+	test_fail
+}
+
 success

@@ -489,9 +489,14 @@ check_non_leaf:
 	if (arg->type == FR_TYPE_VOID) return XLAT_ACTION_DONE;
 
 	/*
-	 *	We have a cursor.
+	 *	We already have a pair cursor, the argument was an attribute reference.
 	 */
-	fr_assert(arg->type == FR_TYPE_PAIR_CURSOR);
+	if (vb->type == FR_TYPE_PAIR_CURSOR) return XLAT_ACTION_DONE;
+
+	/*
+	 *	If the argument is a pair
+	 */
+	fr_assert(vb->type != FR_TYPE_PAIR_CURSOR);
 
 	{
 		int err;
@@ -1305,6 +1310,25 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 	*child = NULL;
 
 	if (!*in) return XLAT_ACTION_DONE;
+
+	/*
+	 *	An attribute reference which is a cursor just gets a
+	 *	value-box of cursor returned.  That is filled in
+	 *	later.
+	 */
+	if (unlikely(head && head->cursor)) {
+		int err;
+
+		fr_assert((*in)->type == XLAT_TMPL);
+
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_PAIR_CURSOR, NULL));
+
+		(void) tmpl_dcursor_value_box_init(&err, value, request, (*in)->vpt);
+		if (err < -1) return XLAT_ACTION_FAIL;
+
+		fr_dcursor_append(out, value);
+		goto finish;
+	}
 
 	XLAT_DEBUG("** [%i] %s >> entered", unlang_interpret_stack_depth(request), __FUNCTION__);
 
