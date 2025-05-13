@@ -339,6 +339,7 @@ static inline int xlat_arg_parser_validate(xlat_t *x, xlat_arg_parser_t const *a
 	switch (arg->type) {
 	case FR_TYPE_LEAF:
 	case FR_TYPE_VOID:
+	case FR_TYPE_PAIR_CURSOR:
 		break;
 
 	default:

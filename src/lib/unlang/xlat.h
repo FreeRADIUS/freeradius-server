@@ -145,7 +145,6 @@ typedef struct {
 	uint8_t				required : 1;	//!< Argument must be present, and non-empty.
 	uint8_t				concat : 1;    	//!< Concat boxes together.
 	uint8_t				single : 1;    	//!< Argument must only contain a single box
-	uint8_t				cursor : 1;    	//!< Argument is an attribute reference, we pass a cursor to the function
 	uint8_t				allow_wildcard : 1; //!< For parsing the cursor
 	uint8_t				will_escape : 1;   //!< the function will do escaping and concatenation.
 	uint8_t				always_escape : 1;  //!< Pass all arguments to escape function not just
@@ -159,7 +158,7 @@ typedef struct {
 	void				*uctx;		//!< Argument to pass to escape callback.
 } xlat_arg_parser_t;
 
-#define XLAT_ARG_PARSER_CURSOR { .required = true, .single = true, .cursor = true, .allow_wildcard = true, .type = FR_TYPE_VOID, .safe_for = FR_VALUE_BOX_SAFE_FOR_ANY }
+#define XLAT_ARG_PARSER_CURSOR { .required = true, .single = true, .allow_wildcard = true, .type = FR_TYPE_PAIR_CURSOR, .safe_for = FR_VALUE_BOX_SAFE_FOR_ANY }
 
 typedef struct {
 	tmpl_res_rules_t const	*tr_rules;	//!< tmpl resolution rules.

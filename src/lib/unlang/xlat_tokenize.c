@@ -243,9 +243,12 @@ static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t
 	/*
 	 *	The caller doesn't care about the type, we don't do any validation.
 	 */
-	if (arg_p->type == FR_TYPE_VOID) {
-		if (!arg_p->cursor) return 0;
+	if (arg_p->type == FR_TYPE_VOID) return 0;
 
+	/*
+	 *	A cursor should be (for now) a named string.
+	 */
+	if (arg_p->type == FR_TYPE_PAIR_CURSOR) {
 		if (node->type == XLAT_BOX) {
 		check_box:
 			if (node->data.type != FR_TYPE_STRING) {

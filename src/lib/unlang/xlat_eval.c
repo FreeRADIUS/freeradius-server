@@ -455,7 +455,7 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 		}
 
 	check_types:
-		if (arg->type == FR_TYPE_VOID) goto do_void;
+		if (!fr_type_is_leaf(arg->type)) goto check_non_leaf;
 
 		/*
 		 *	Cast to the correct type if necessary.
@@ -475,20 +475,29 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 	 *	We're neither concatenating nor do we only expect a single value,
 	 *	cast all child values to the required type.
 	 */
-	if (arg->type != FR_TYPE_VOID) {
+	if (fr_type_is_leaf(arg->type)) {
 		do {
 			if (vb->type == arg->type) continue;
 			if (fr_value_box_cast_in_place(ctx, vb,
 						       arg->type, NULL) < 0) goto cast_error;
 		} while ((vb = fr_value_box_list_next(list, vb)));
 
-	} else {
+		return XLAT_ACTION_DONE;
+	}
+
+check_non_leaf:
+	if (arg->type == FR_TYPE_VOID) return XLAT_ACTION_DONE;
+
+	/*
+	 *	We have a cursor.
+	 */
+	fr_assert(arg->type == FR_TYPE_PAIR_CURSOR);
+
+	{
+		int err;
 		tmpl_t *vpt;
 		tmpl_dcursor_ctx_t *cc;
 		fr_dcursor_t *cursor;
-
-	do_void:
-		if (!arg->cursor) return XLAT_ACTION_DONE;
 
 		/*
 		 *	Cursor names have to be strings, which are completely safe.
@@ -498,13 +507,11 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 			return XLAT_ACTION_FAIL;
 		}
 
-#if 1
 		if (!fr_value_box_is_safe_for(vb, FR_VALUE_BOX_SAFE_FOR_ANY)) {
 			fr_value_box_debug(vb);
 			REDEBUG("Refusing to reference attribute from unsafe data");
 			return XLAT_ACTION_FAIL;
 		}
-#endif
 
 		if (tmpl_afrom_attr_str(ctx, NULL, &vpt, vb->vb_strvalue,
 					&(tmpl_rules_t){
@@ -518,14 +525,26 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 			return XLAT_ACTION_FAIL;
 		}
 
+		fr_value_box_clear_value(vb);
 		MEM(cc = talloc(vb, tmpl_dcursor_ctx_t));
 		MEM(cursor = talloc(vb, fr_dcursor_t));
 
-		tmpl_dcursor_init(NULL, NULL, cc, cursor, request, vpt);
-		fr_value_box_clear_value(vb);
-		fr_value_box_set_cursor(vb, FR_TYPE_PAIR_CURSOR, cursor, vpt->name);
+		/*
+		 *	The cursor can return something, nothing (-1), or no list (-2) or no context (-3).  Of
+		 *	these, only the last two are actually errors.
+		 *
+		 *	"no matching pair" is a valid answer, and can be passed to the function.
+		 */
+		(void) tmpl_dcursor_init(&err, vb, cc, cursor, request, vpt);
+		if (err < 0) {
+			if (err < -1) {
+				RPEDEBUG("Failed initializing cursor");
+				return XLAT_ACTION_FAIL;
+			}
 
-		talloc_set_destructor(cc, _tmpl_dcursor_clear);
+			RWDEBUG("Cursor %s returned no attributes", vpt->name);
+		}
+		fr_value_box_set_cursor(vb, FR_TYPE_PAIR_CURSOR, cursor, vpt->name);
 	}
 
 #undef ESCAPE
