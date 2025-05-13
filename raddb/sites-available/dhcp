@@ -257,17 +257,6 @@ recv Inform {
 	ok
 }
 
-#
-#  For Windows 7 boxes
-#
-#recv Inform {
-#	reply.Net.Dst.Port = 67
-#	reply.Message-Type = Ack
-#	reply.Server-Identifier = "%{Net.Dst.IP}"
-#	reply.Site-specific-28 = 0x0a00
-#	ok
-#}
-
 recv Release {
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and release the IP.
