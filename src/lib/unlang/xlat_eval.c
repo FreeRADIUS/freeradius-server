@@ -534,10 +534,10 @@ check_non_leaf:
 		 *	The cursor can return something, nothing (-1), or no list (-2) or no context (-3).  Of
 		 *	these, only the last two are actually errors.
 		 *
-		 *	"no matching pair" is a valid answer, and can be passed to the function.
+		 *	"no matching pair" returns _no_ cursor, and not an empty cursor.
 		 */
 		(void) tmpl_dcursor_value_box_init(&err, vb, request, vpt);
-		if (err < -1) return XLAT_ACTION_FAIL;
+		if (err < 0) return XLAT_ACTION_FAIL;
 	}
 
 #undef ESCAPE
