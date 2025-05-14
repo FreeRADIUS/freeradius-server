@@ -106,19 +106,19 @@ from directly-connected clients on the local LAN (192.168.20/24):
 
 [source,config]
 ----
-network Pool-Name := "local"
-        DHCP-Domain-Name := "example.org",
-        DHCP-Subnet-Mask := 255.255.255.0,
-        DHCP-Router-Address := 192.168.20.1,
-        DHCP-Domain-Name-Server := 192.168.20.2,
+network IP-Pool.Name := "local"
+        Domain-Name := "example.org",
+        Subnet-Mask := 255.255.255.0,
+        Router-Address := 192.168.20.1,
+        Domain-Name-Server := 192.168.20.2,
         Fall-Through := yes
 
-network DHCP-Network-Subnet < 10.10.0.0/16, Pool-Name := "remote"
-        DHCP-Subnet-Mask := 255.0.0.0,
-        DHCP-Router-Address := 10.10.0.1,
-        DHCP-Domain-Name-Server := 10.10.0.2,
-        DHCP-Domain-Name-Server += 10.10.0.3,
-        DHCP-IP-Address-Lease-Time := 7200
+network Network-Subnet < 10.10.0.0/16, IP-Pool.Name := "remote"
+        Subnet-Mask := 255.0.0.0,
+        Router-Address := 10.10.0.1,
+        Domain-Name-Server := 10.10.0.2,
+        Domain-Name-Server += 10.10.0.3,
+        IP-Address-Lease-Time := 7200
 ----
 
 Each block in the file starts with a line beginning with the key to be matched.
@@ -128,8 +128,8 @@ candidate during the search.
 
 There may be further filtering of the candidates in the form of `<Attribute>
 <op> <Value>`.  In the case of the second block we match the
-`DHCP-Network-Subnet` to an enclosing subnet with
-`DHCP-Network-Subnet < <subnet>`.  Additional filters could be added as
+`Network-Subnet` to an enclosing subnet with
+`Network-Subnet < <subnet>`.  Additional filters could be added as
 required, comma separated.
 
 Following the filters on the first line, attributes in the `control` list can
@@ -184,23 +184,23 @@ packets for devices with different MAC addresses and/or Client Identifiers.
 [source,shell]
 ----
 cat <<EOF > dhcp-packet-1.txt
-DHCP-Message-Type := DHCP-Discover
-DHCP-Client-Hardware-Address := 02:01:11:11:11:11
-DHCP-Client-Identifier := device1
+Message-Type := Discover
+Client-Hardware-Address := 02:01:11:11:11:11
+Client-Identifier := device1
 EOF
 ----
 
 [source,shell]
 ----
 cat <<EOF > dhcp-packet-2.txt
-DHCP-Message-Type := DHCP-Discover
-DHCP-Client-Hardware-Address := 02:01:22:22:22:22
-DHCP-Client-Identifier := device2
+Message-Type := Discover
+Client-Hardware-Address := 02:01:22:22:22:22
+Client-Identifier := device2
 EOF
 ----
 
 Generate these packets as show previously using the dhcpclient tool and look
-for `DHCP-Your-IP-Address` in the DHCP responses to determine the IP address
+for `Your-IP-Address` in the DHCP responses to determine the IP address
 that has been offered.
 
 Ensure that the DHCP Offer responses contain unique IP addresses. Ensure that
@@ -224,10 +224,10 @@ from a host within each individual network:
 [source,shell]
 ----
 cat <<EOF > dhcp-packet-network-10.10.10.0.txt
-DHCP-Message-Type := DHCP-Discover
-DHCP-Client-Hardware-Address := 02:01:aa:bb:cc:dd
-DHCP-Client-Identifier := abc123
-DHCP-Subnet-Selection-Option := 10.10.10.0
+Message-Type := Discover
+Client-Hardware-Address := 02:01:aa:bb:cc:dd
+Client-Identifier := abc123
+Subnet-Selection-Option := 10.10.10.0
 EOF
 ----
 

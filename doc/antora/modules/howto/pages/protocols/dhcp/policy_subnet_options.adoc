@@ -86,19 +86,19 @@ file might then look something like this:
 [source,config]
 ----
 network
-        DHCP-Domain-Name := "example.org",
+        Domain-Name := "example.org",
         Fall-Through := yes
 
-network DHCP-Network-Subnet < 10.30.0.0/16, Pool-Name := "bigdept"
-        DHCP-Domain-Name-Server := 10.10.0.2,
-        DHCP-Domain-Name-Server += 10.10.0.3,
-        DHCP-IP-Address-Lease-Time := 7200
+network Network-Subnet < 10.30.0.0/16, IP-Pool.Name := "bigdept"
+        Domain-Name-Server := 10.10.0.2,
+        Domain-Name-Server += 10.10.0.3,
+        IP-Address-Lease-Time := 7200
 
-subnet DHCP-Network-Subnet < 10.30.10.0/24
-       DHCP-Router-Address := 10.30.10.1
+subnet Network-Subnet < 10.30.10.0/24
+       Router-Address := 10.30.10.1
 
-subnet DHCP-Network-Subnet < 10.30.20.0/24
-       DHCP-Router-Address := 10.30.20.1
+subnet Network-Subnet < 10.30.20.0/24
+       Router-Address := 10.30.20.1
 ----
 
 == Example packet processing
@@ -153,10 +153,10 @@ DHCP parameters correspond to the IP address that has been offered.
  Waiting for DHCP replies for: 5.000000
  ----------------------------------------------------------------------
  ...
- DHCP-Your-IP-Address = 10.0.10.50
- DHCP-Router-Address = 10.0.10.1
- DHCP-Broadcast-Address = 10.0.10.255
- DHCP-Subnet-Mask = 255.255.255.255
+ Your-IP-Address = 10.0.10.50
+ Router-Address = 10.0.10.1
+ Broadcast-Address = 10.0.10.255
+ Subnet-Mask = 255.255.255.255
 ==================================================
 
 
@@ -168,10 +168,10 @@ DHCP parameters correspond to the IP address that has been offered.
  Waiting for DHCP replies for: 5.000000
  ----------------------------------------------------------------------
  ...
- DHCP-Your-IP-Address = 10.99.99.50
- DHCP-Router-Address = 10.99.99.1
- DHCP-Broadcast-Address = 10.99.99.255
- DHCP-Subnet-Mask = 255.255.255.255
+ Your-IP-Address = 10.99.99.50
+ Router-Address = 10.99.99.1
+ Broadcast-Address = 10.99.99.255
+ Subnet-Mask = 255.255.255.255
 ==================================================
 
 

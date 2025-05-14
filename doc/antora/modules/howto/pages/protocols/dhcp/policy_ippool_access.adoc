@@ -45,9 +45,9 @@ should included in the `<raddb>/mods-config/files/dhcp` configuration file:
 
 [source,config]
 ----
-network DHCP-Network-Subnet < 10.99.99.0/24, \
-           DHCP-Group-Name == "printers", Pool-Name := "printers-pool"
-       DHCP-Router-Address := 10.99.99.1
+network Network-Subnet < 10.99.99.0/24, \
+           Group-Name == "printers", IP-Pool.Name := "printers-pool"
+       Router-Address := 10.99.99.1
 ----
 
 [NOTE]
