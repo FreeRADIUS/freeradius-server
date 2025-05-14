@@ -188,7 +188,7 @@ typedef struct {
  *
  * @return an action for the interpreter to perform.
  */
-typedef unlang_action_t (*unlang_process_t)(rlm_rcode_t *p_result, request_t *request,
+typedef unlang_action_t (*unlang_process_t)(unlang_result_t *p_result, request_t *request,
 					    unlang_stack_frame_t *frame);
 
 /** Function to call if the request was signalled
@@ -295,12 +295,6 @@ typedef struct {
 	fr_timer_t		*ev;
 } unlang_retry_t;
 
-typedef struct {
-	rlm_rcode_t 		rcode;				//!< The current rcode, from executing the instruction
-								///< or merging the result from a frame.
-	unlang_mod_action_t	priority;			//!< The priority or action for that rcode.
-} unlang_result_t;
-
 /** Our interpreter stack, as distinct from the C stack
  *
  * We don't call the modules recursively.  Instead we iterate over a list of #unlang_t and
@@ -395,6 +389,7 @@ static inline bool is_repeatable(unlang_stack_frame_t const *frame)		{ return fr
 static inline bool is_top_frame(unlang_stack_frame_t const *frame)		{ return frame->flag & UNLANG_FRAME_FLAG_TOP_FRAME; }
 static inline bool is_yielded(unlang_stack_frame_t const *frame) 		{ return frame->flag & UNLANG_FRAME_FLAG_YIELDED; }
 static inline bool is_unwinding(unlang_stack_frame_t const *frame) 		{ return frame->flag & UNLANG_FRAME_FLAG_UNWIND; }
+static inline bool is_private_result(unlang_stack_frame_t const *frame)		{ return !(frame->result_p == &frame->section_result); }
 
 static inline bool _instruction_has_debug_braces(unlang_t const *instruction)	{ return unlang_ops[instruction->type].flag & UNLANG_OP_FLAG_DEBUG_BRACES; }
 static inline bool _frame_has_debug_braces(unlang_stack_frame_t const *frame)	{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_DEBUG_BRACES; }
@@ -516,6 +511,29 @@ static inline int stack_depth_current(request_t *request)
 	return stack->depth;
 }
 
+/** Initialise the result fields in a frame
+ *
+ * @param[in] result_p	Where to write the result of executing the instruction in the frame.
+ *			If NULL, the result will be written to frame->result, and evaluated
+			automatically by the interpeter when the frame is advanced or popped.
+ * @param[in] frame	Frame to set the result for.
+ */
+static inline void frame_result_set(unlang_result_t *result_p, unlang_stack_frame_t *frame)
+{
+	frame->result_p = result_p ? result_p : &frame->scratch_result;
+	frame->scratch_result.rcode = RLM_MODULE_NOT_SET;
+	frame->scratch_result.priority = MOD_ACTION_NOT_SET;
+}
+
+/** Initialise memory and instruction for a frame when a new instruction is to be evaluated
+ *
+ * @note We don't change result_p here, we only reset the scratch values.  This is because
+ *	 Whatever pushed the frame onto the stack generally wants the aggregate result of
+ *	 the complete section, not just the first instruction.
+ *
+ * @param[in] stack	the current request stack.
+ * @param[in] frame	frame to initialise
+ */
 static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t *frame)
 {
 	unlang_t const	*instruction = frame->instruction;
@@ -526,6 +544,12 @@ static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t 
 
 	op = &unlang_ops[instruction->type];
 	name = op->frame_state_type ? op->frame_state_type : __location__;
+
+	/*
+	 *	Reset for each instruction
+	 */
+	frame->scratch_result.rcode = RLM_MODULE_NOT_SET;
+	frame->scratch_result.priority = MOD_ACTION_NOT_SET;
 
 	frame->process = op->interpret;
 	frame->signal = op->signal;
@@ -590,6 +614,12 @@ static inline void frame_next(unlang_stack_t *stack, unlang_stack_frame_t *frame
 
 	frame->next = frame->instruction->next;
 
+	/*
+	 *	We _may_ want to take a new result_p value in future but
+	 *	for now default to the scratch result.  Generally the thing
+	 *	advancing the frame is within this library, and doesn't
+	 *	need custom behaviour for rcodes.
+	 */
 	frame_state_init(stack, frame);
 }
 
@@ -715,11 +745,11 @@ static inline unlang_t *unlang_tmpl_to_generic(unlang_tmpl_t const *p)
  *
  * @{
  */
-int		unlang_interpret_push(request_t *request, unlang_t const *instruction,
+int		unlang_interpret_push(unlang_result_t *p_result, request_t *request, unlang_t const *instruction,
 				      unlang_frame_conf_t const *conf, bool do_next_sibling)
 				      CC_HINT(warn_unused_result);
 
-unlang_action_t	unlang_interpret_push_children(rlm_rcode_t *p_result, request_t *request,
+unlang_action_t unlang_interpret_push_children(unlang_result_t *p_result, request_t *request,
 					       rlm_rcode_t default_rcode, bool do_next_sibling)
 					       CC_HINT(warn_unused_result);
 

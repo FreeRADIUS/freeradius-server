@@ -54,11 +54,11 @@ static connection_t *sql_trunk_connection_alloc(trunk_connection_t *tconn, fr_ev
 }
 
 #define SQL_QUERY_RESUME \
-static unlang_action_t sql_query_resume(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx) \
+static unlang_action_t sql_query_resume(unlang_result_t *p_result, UNUSED request_t *request, void *uctx) \
 { \
 	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t); \
-	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL; \
-	RETURN_MODULE_OK; \
+	if (query_ctx->rcode != RLM_SQL_OK) RETURN_UNLANG_FAIL; \
+	RETURN_UNLANG_OK; \
 }
 
 #define SQL_QUERY_FAIL \

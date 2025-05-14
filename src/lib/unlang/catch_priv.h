@@ -34,7 +34,7 @@ typedef struct {
 	bool		catching[RLM_MODULE_NUMCODES];
 } unlang_catch_t;
 
-unlang_action_t unlang_interpret_skip_to_catch(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame);
+unlang_action_t unlang_interpret_skip_to_catch(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame);
 
 /** Cast a group structure to the transaction keyword extension
  *

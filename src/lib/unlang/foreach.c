@@ -176,7 +176,7 @@ static int unlang_foreach_xlat_key_update(request_t *request, unlang_frame_state
 }
 
 
-static unlang_action_t unlang_foreach_xlat_next(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_foreach_xlat_next(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
 	fr_value_box_t *box;
@@ -200,26 +200,24 @@ next:
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	return unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(NULL, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 
-static unlang_action_t unlang_foreach_xlat_expanded(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_foreach_xlat_expanded(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
 	fr_value_box_t *box;
 
 	if (!state->success) {
 		RDEBUG("Failed expanding 'foreach' list");
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_FAIL;
 	}
 
 	box = fr_dcursor_init(&state->cursor, fr_value_box_list_dlist_head(&state->list));
 	if (!box) {
 	done:
-		*p_result = RLM_MODULE_NOOP;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_NOOP;
 	}
 
 	fr_value_box_clear_value(&state->value->data);
@@ -238,27 +236,25 @@ next:
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	return unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(NULL, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 
 /*
  *	Loop over an xlat expansion
  */
-static unlang_action_t unlang_foreach_xlat_init(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame,
+static unlang_action_t unlang_foreach_xlat_init(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame,
 						unlang_frame_state_foreach_t *state)
 {
 	fr_value_box_list_init(&state->list);
 
 	if (unlang_xlat_push(state, &state->success, &state->list, request, tmpl_xlat(state->vpt), false) < 0) {
 		REDEBUG("Failed starting expansion of %s", state->vpt->name);
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if (unlang_foreach_xlat_key_update(request, state) < 0) {
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_FAIL;
 	}
 
   	frame->process = unlang_foreach_xlat_expanded;
@@ -290,7 +286,7 @@ static void unlang_foreach_attr_key_update(UNUSED request_t *request, unlang_fra
 	}
 }
 
-static unlang_action_t unlang_foreach_attr_next(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_foreach_attr_next(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
 	fr_pair_t			*vp;
@@ -341,8 +337,7 @@ next:
 
 		if (fr_pair_list_copy(state->value, &state->value->vp_group, &vp->vp_group) < 0) {
 			REDEBUG("Failed copying members of %s", state->value->da->name);
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			RETURN_UNLANG_FAIL;
 		}
 
 	} else if (fr_type_is_structural(vp->vp_type)) {
@@ -352,8 +347,7 @@ next:
 
 		if (unlang_foreach_pair_copy(state->value, vp, vp->da) < 0) {
 			REDEBUG("Failed copying children of %s", state->value->da->name);
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			RETURN_UNLANG_FAIL;
 		}
 
 	} else {
@@ -373,13 +367,13 @@ next:
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	return unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(NULL, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 /*
  *	Loop over an attribute
  */
-static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame,
+static unlang_action_t unlang_foreach_attr_init(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame,
 						unlang_frame_state_foreach_t *state)
 {
 	fr_pair_t			*vp;
@@ -390,8 +384,7 @@ static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t
 	vp = tmpl_dcursor_init(NULL, NULL, &state->cc, &state->cursor, request, state->vpt);
 	if (!vp) {
 		tmpl_dcursor_clear(&state->cc);
-		*p_result = RLM_MODULE_NOOP;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_NOOP;
 	}
 
 	/*
@@ -403,8 +396,7 @@ static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t
 			REDEBUG("Cannot do nested 'foreach' loops over the same attribute %pP", vp);
 		fail:
 			tmpl_dcursor_clear(&state->cc);
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			RETURN_UNLANG_FAIL;
 		}
 
 		vp->vp_edit = true;
@@ -454,8 +446,7 @@ next:
 		 */
 		if (!vp) {
 			tmpl_dcursor_clear(&state->cc);
-			*p_result = RLM_MODULE_NOOP;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			RETURN_UNLANG_NOOP;
 		}
 	}
 
@@ -466,11 +457,11 @@ next:
 	/*
 	 *	Push the child, and go process it.
 	 */
-	return unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(NULL, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 
-static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_foreach(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_foreach_t		*gext = unlang_group_to_foreach(g);
@@ -498,8 +489,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 	 */
 	if (fr_pair_append_by_da(request->local_ctx, &state->value, &request->local_pairs, gext->value) < 0) {
 		REDEBUG("Failed creating %s", gext->value->name);
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_FAIL;
 	}
 	fr_assert(state->value != NULL);
 
@@ -508,8 +498,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 
 		if (fr_pair_append_by_da(request->local_ctx, &state->key, &request->local_pairs, gext->key) < 0) {
 			REDEBUG("Failed creating %s", gext->key->name);
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			RETURN_UNLANG_FAIL;
 		}
 		fr_assert(state->key != NULL);
 	}
@@ -524,7 +513,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 	return unlang_foreach_xlat_init(p_result, request, frame, state);
 }
 
-static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_break(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_action_t			ua;
 	unlang_stack_t			*stack = request->stack;
@@ -538,7 +527,7 @@ static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, u
 	 *	into account.  We do however want to record
 	 *	the current section rcode.
 	 */
-	*p_result = frame->result.rcode;
+	*p_result = frame->section_result;
 
 	/*
 	 *	Stop at the next break point, or if we hit
@@ -549,7 +538,7 @@ static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, u
 	return ua;
 }
 
-static unlang_action_t unlang_continue(UNUSED rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_continue(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_stack_t			*stack = request->stack;
 

@@ -842,8 +842,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
  *
  * Called if the ldap membership xlat is used and the user DN is not already known
  */
-static unlang_action_t ldap_group_xlat_user_find(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
-						    request_t *request, void *uctx)
+static unlang_action_t ldap_group_xlat_user_find(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_group_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(uctx, ldap_group_xlat_ctx_t);
 
@@ -877,17 +876,16 @@ static void ldap_group_xlat_cancel(UNUSED request_t *request, UNUSED fr_signal_t
  *
  * This is called after each async lookup is completed
  */
-static unlang_action_t ldap_group_xlat_results(rlm_rcode_t *p_result, UNUSED int *priority,
-						  request_t *request, void *uctx)
+static unlang_action_t ldap_group_xlat_results(unlang_result_t *p_result, request_t *request, void *uctx)
 {
-	ldap_group_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(uctx, ldap_group_xlat_ctx_t);
+	ldap_group_xlat_ctx_t		*xlat_ctx = talloc_get_type_abort(uctx, ldap_group_xlat_ctx_t);
 	rlm_ldap_t const		*inst = xlat_ctx->inst;
 	rlm_rcode_t			rcode = RLM_MODULE_NOTFOUND;
 
 	switch (xlat_ctx->status) {
 	case GROUP_XLAT_FIND_USER:
 		if (!xlat_ctx->dn) xlat_ctx->dn = rlm_find_user_dn_cached(request);
-		if (!xlat_ctx->dn) RETURN_MODULE_FAIL;
+		if (!xlat_ctx->dn) return UNLANG_ACTION_FAIL;
 
 		if (inst->group.obj_membership_filter) {
 			REPEAT_LDAP_MEMBEROF_XLAT_RESULTS;
@@ -919,7 +917,7 @@ static unlang_action_t ldap_group_xlat_results(rlm_rcode_t *p_result, UNUSED int
 	}
 
 finish:
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /** Process the results of evaluating LDAP group membership
@@ -1029,7 +1027,7 @@ static xlat_action_t ldap_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ct
 
 	if (unlang_xlat_yield(request, ldap_group_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) goto error;
 
-	if (unlang_function_push(request, xlat_ctx->dn ? NULL : ldap_group_xlat_user_find,
+	if (unlang_function_push(NULL, request, xlat_ctx->dn ? NULL : ldap_group_xlat_user_find,
 				 ldap_group_xlat_results, ldap_group_xlat_cancel, ~FR_SIGNAL_CANCEL,
 				 UNLANG_SUB_FRAME, xlat_ctx) < 0) goto error;
 
@@ -1218,12 +1216,11 @@ static int ldap_map_verify(CONF_SECTION *cs, UNUSED void const *mod_inst, UNUSED
 /** Process the results of an LDAP map query
  *
  * @param[out] p_result	Result of applying the map.
- * @param[in] priority	Unused.
  * @param[in] request	Current request.
  * @param[in] uctx	Map context.
  * @return One of UNLANG_ACTION_*
  */
-static unlang_action_t mod_map_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t mod_map_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_map_ctx_t		*map_ctx = talloc_get_type_abort(uctx, ldap_map_ctx_t);
 	fr_ldap_query_t		*query = map_ctx->query;
@@ -1313,7 +1310,7 @@ static unlang_action_t mod_map_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 	}
 
 finish:
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /**  Ensure map context is properly cleared up
@@ -1426,7 +1423,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 	if (host) ldap_memfree(host);
 	if (!ttrunk) goto fail;
 
-	if (unlang_function_push(request, NULL, mod_map_resume, NULL, 0,
+	if (unlang_function_push(NULL, request, NULL, mod_map_resume, NULL, 0,
 				 UNLANG_SUB_FRAME, map_ctx) != UNLANG_ACTION_PUSHED_CHILD) goto fail;
 
 	return fr_ldap_trunk_search(map_ctx, &map_ctx->query, request, ttrunk, ldap_url->lud_dn,
@@ -1512,7 +1509,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 /** Start LDAP authorization with async lookup of user DN
  *
  */
-static unlang_action_t mod_authorize_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t mod_authorize_start(UNUSED unlang_result_t *p_result,
 					   request_t *request, void *uctx)
 {
 	ldap_autz_ctx_t	*autz_ctx = talloc_get_type_abort(uctx, ldap_autz_ctx_t);
@@ -1535,12 +1532,11 @@ static unlang_action_t mod_authorize_start(UNUSED rlm_rcode_t *p_result, UNUSED 
  * Hence, each state may fall through to the next.
  *
  * @param p_result	Result of current authorization.
- * @param priority	Unused.
  * @param request	Current request.
  * @param uctx		Current authorization context.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t mod_authorize_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_autz_ctx_t		*autz_ctx = talloc_get_type_abort(uctx, ldap_autz_ctx_t);
 	rlm_ldap_t const	*inst = talloc_get_type_abort_const(autz_ctx->inst, rlm_ldap_t);
@@ -1552,13 +1548,13 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 	/*
 	 *	If a previous async call returned one of the "failure" results just return.
 	 */
-	switch (*p_result) {
+	switch (p_result->rcode) {
 	case RLM_MODULE_REJECT:
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_HANDLED:
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_DISALLOW:
-		rcode = *p_result;
+		rcode = p_result->rcode;
 		goto finish;
 
 	default:
@@ -1570,7 +1566,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		/*
 		 *	If a user entry has been found the current rcode will be OK
 		 */
-		if (*p_result != RLM_MODULE_OK) return UNLANG_ACTION_CALCULATE_RESULT;
+		if (p_result->rcode != RLM_MODULE_OK) return UNLANG_ACTION_CALCULATE_RESULT;
 
 		autz_ctx->entry = ldap_first_entry(handle, autz_ctx->query->result);
 		if (!autz_ctx->entry) {
@@ -1678,8 +1674,8 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		 *	The result of the eDirectory user bind will be in p_result.
 		 *	Anything other than RLM_MODULE_OK is a failure.
 		 */
-		if (*p_result != RLM_MODULE_OK) {
-			rcode = *p_result;
+		if (p_result->rcode != RLM_MODULE_OK) {
+			rcode = p_result->rcode;
 			goto finish;
 		}
 
@@ -1818,7 +1814,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 finish:
 	talloc_free(autz_ctx);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /** Clear up when cancelling a mod_authorize call
@@ -1900,7 +1896,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	autz_ctx->call_env = call_env;
 	autz_ctx->status = LDAP_AUTZ_FIND;
 
-	if (unlang_function_push(request, mod_authorize_start, mod_authorize_resume, mod_authorize_cancel,
+	if (unlang_function_push(NULL, request, mod_authorize_start, mod_authorize_resume, mod_authorize_cancel,
 				 ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, autz_ctx) < 0) RETURN_MODULE_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
@@ -1909,8 +1905,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 /** Perform async lookup of user DN if required for user modification
  *
  */
-static unlang_action_t user_modify_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
-					 request_t *request, void *uctx)
+static unlang_action_t user_modify_start(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(uctx, ldap_user_modify_ctx_t);
 
@@ -1933,7 +1928,7 @@ static void user_modify_cancel(UNUSED request_t *request, UNUSED fr_signal_t act
 /** Handle results of user modification.
  *
  */
-static unlang_action_t user_modify_final(rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t user_modify_final(unlang_result_t *p_result,
 					 request_t *request, void *uctx)
 {
 	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(uctx, ldap_user_modify_ctx_t);
@@ -1960,10 +1955,10 @@ static unlang_action_t user_modify_final(rlm_rcode_t *p_result, UNUSED int *prio
 	}
 
 	talloc_free(usermod_ctx);
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
-static unlang_action_t user_modify_mod_build_resume(rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t user_modify_mod_build_resume(unlang_result_t *p_result,
 						    request_t *request, void *uctx)
 {
 	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(uctx, ldap_user_modify_ctx_t);
@@ -2014,7 +2009,7 @@ static unlang_action_t user_modify_mod_build_resume(rlm_rcode_t *p_result, UNUSE
 		REDEBUG("Operator '%s' is not supported for LDAP modify operations",
 			fr_table_str_by_value(fr_tokens_table, mod->op, "<INVALID>"));
 
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	if (mod->op == T_OP_CMP_FALSE) {
@@ -2045,7 +2040,7 @@ static unlang_action_t user_modify_mod_build_resume(rlm_rcode_t *p_result, UNUSE
 				if (fr_value_box_list_concat_in_place(vb_head, vb_head, &vb->vb_group, FR_TYPE_STRING,
 								      FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 					RPEDEBUG("Failed concatenating update value");
-					RETURN_MODULE_FAIL;
+					return UNLANG_ACTION_FAIL;
 				}
 				vb = vb_head;
 				goto populate_string;
@@ -2054,7 +2049,7 @@ static unlang_action_t user_modify_mod_build_resume(rlm_rcode_t *p_result, UNUSE
 			case FR_TYPE_FIXED_SIZE:
 				if (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0) {
 					RPEDEBUG("Failed casting update value");
-					RETURN_MODULE_FAIL;
+					return UNLANG_ACTION_FAIL;
 				}
 				goto populate_string;
 
@@ -2084,16 +2079,16 @@ static unlang_action_t user_modify_mod_build_resume(rlm_rcode_t *p_result, UNUSE
 next:
 	usermod_ctx->current_mod++;
 	if (usermod_ctx->current_mod < usermod_ctx->num_mods) {
-		if (unlang_function_repeat_set(request, user_modify_mod_build_resume) < 0) RETURN_MODULE_FAIL;
+		if (unlang_function_repeat_set(request, user_modify_mod_build_resume) < 0) RETURN_UNLANG_FAIL;
 		if (unlang_tmpl_push(usermod_ctx, &usermod_ctx->expanded, request,
-			     usermod_ctx->call_env->mod[usermod_ctx->current_mod]->tmpl, NULL) < 0) RETURN_MODULE_FAIL;
+			     usermod_ctx->call_env->mod[usermod_ctx->current_mod]->tmpl, NULL) < 0) RETURN_UNLANG_FAIL;
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
 	modify = usermod_ctx->mod_p;
 
-	if (unlang_function_push(request, NULL, user_modify_final, user_modify_cancel, ~FR_SIGNAL_CANCEL,
-				 UNLANG_SUB_FRAME, usermod_ctx) < 0) RETURN_MODULE_FAIL;
+	if (unlang_function_push(NULL, request, NULL, user_modify_final, user_modify_cancel, ~FR_SIGNAL_CANCEL,
+				 UNLANG_SUB_FRAME, usermod_ctx) < 0) RETURN_UNLANG_FAIL;
 
 	return fr_ldap_trunk_modify(usermod_ctx, &usermod_ctx->query, request, usermod_ctx->ttrunk,
 				    usermod_ctx->dn, modify, NULL, NULL);
@@ -2102,7 +2097,7 @@ next:
 /** Take the retrieved user DN and launch the async tmpl expansion of mod_values.
  *
  */
-static unlang_action_t user_modify_resume(rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t user_modify_resume(unlang_result_t *p_result,
 					  request_t *request, void *uctx)
 {
 	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(uctx, ldap_user_modify_ctx_t);
@@ -2116,7 +2111,7 @@ static unlang_action_t user_modify_resume(rlm_rcode_t *p_result, UNUSED int *pri
 	if (!usermod_ctx->dn) {
 	fail:
 		talloc_free(usermod_ctx);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -2177,7 +2172,7 @@ static unlang_action_t CC_HINT(nonnull) mod_modify(rlm_rcode_t *p_result, module
 
 	usermod_ctx->dn = rlm_find_user_dn_cached(request);
 
-	if (unlang_function_push(request, usermod_ctx->dn ? NULL : user_modify_start, user_modify_resume,
+	if (unlang_function_push(NULL, request, usermod_ctx->dn ? NULL : user_modify_start, user_modify_resume,
 				 NULL, 0, UNLANG_SUB_FRAME, usermod_ctx) < 0) goto error;
 
 	return UNLANG_ACTION_PUSHED_CHILD;

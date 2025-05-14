@@ -376,7 +376,7 @@ int fr_ldap_sasl_bind_auth_send(fr_ldap_sasl_ctx_t *sasl_ctx, int *msgid,
 /** Yield interpreter after enqueueing sasl auth bind
  *
  */
-static unlang_action_t ldap_async_sasl_bind_auth_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t ldap_async_sasl_bind_auth_start(UNUSED unlang_result_t *p_result,
 						       UNUSED request_t *request, UNUSED void *uctx)
 {
 	return UNLANG_ACTION_YIELD;
@@ -400,12 +400,11 @@ static void ldap_async_sasl_bind_auth_cancel(request_t *request, UNUSED fr_signa
 /** Handle the return code from parsed LDAP results to set the module rcode
  *
  * @param[out] p_result	Where to write return code.
- * @param[in] priority	Unused.
  * @param[in] request	being processed.
  * @param[in] uctx	bind auth ctx.
  * @return	unlang action.
  */
-static unlang_action_t ldap_async_sasl_bind_auth_results(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t ldap_async_sasl_bind_auth_results(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	fr_ldap_bind_auth_ctx_t	*bind_auth_ctx = talloc_get_type_abort(uctx, fr_ldap_bind_auth_ctx_t);
 	fr_ldap_sasl_ctx_t	*sasl_ctx = bind_auth_ctx->sasl_ctx;
@@ -465,26 +464,26 @@ static unlang_action_t ldap_async_sasl_bind_auth_results(rlm_rcode_t *p_result, 
 
 	switch (ret) {
 	case LDAP_PROC_SUCCESS:
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 
 	case LDAP_PROC_NOT_PERMITTED:
-		RETURN_MODULE_DISALLOW;
+		RETURN_UNLANG_DISALLOW;
 
 	case LDAP_PROC_REJECT:
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 
 	case LDAP_PROC_BAD_DN:
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 
 	case LDAP_PROC_NO_RESULT:
-		RETURN_MODULE_NOTFOUND;
+		RETURN_UNLANG_NOTFOUND;
 
 	default:
 		if (ldap_conn) {
 			RPERROR("LDAP connection returned an error - restarting the connection");
 			fr_ldap_state_error(ldap_conn);
 		}
-		RETURN_MODULE_FAIL;
+		return UNLANG_ACTION_FAIL;
 	}
 }
 
@@ -552,7 +551,8 @@ unlang_action_t fr_ldap_sasl_bind_auth_async(request_t *request, fr_ldap_thread_
 		return UNLANG_ACTION_FAIL;
 	}
 
-	return unlang_function_push(request,
+	return unlang_function_push(NULL,
+				    request,
 				    ldap_async_sasl_bind_auth_start,
 				    ldap_async_sasl_bind_auth_results,
 				    ldap_async_sasl_bind_auth_cancel,

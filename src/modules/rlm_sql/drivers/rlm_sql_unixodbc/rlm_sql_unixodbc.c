@@ -482,7 +482,7 @@ static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connec
 SQL_QUERY_FAIL
 SQL_QUERY_RESUME
 
-static unlang_action_t sql_select_query_resume(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t sql_select_query_resume(unlang_result_t *p_result, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	rlm_sql_unixodbc_conn_t *conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_unixodbc_conn_t);
@@ -490,14 +490,14 @@ static unlang_action_t sql_select_query_resume(rlm_rcode_t *p_result, UNUSED int
 	SQLLEN			len;
 	SQLRETURN		ret = SQL_STILL_EXECUTING;
 
-	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
+	if (query_ctx->rcode != RLM_SQL_OK) RETURN_UNLANG_FAIL;
 
 	while (ret == SQL_STILL_EXECUTING) {
 		ret = SQLNumResultCols(conn->stmt, &conn->colcount);
 	}
 	if (sql_check_error(ret, SQL_HANDLE_STMT, conn->stmt)) {
 		query_ctx->rcode = RLM_SQL_ERROR;
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/* Reserving memory for result */
@@ -512,7 +512,7 @@ static unlang_action_t sql_select_query_resume(rlm_rcode_t *p_result, UNUSED int
 		SQLBindCol(conn->stmt, i, SQL_C_CHAR, (SQLCHAR *)conn->row[i - 1], len, &conn->ind[i - 1]);
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
@@ -555,7 +555,7 @@ static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNU
 	return RLM_SQL_OK;
 }
 
-static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t sql_fetch_row(unlang_result_t *p_result, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	rlm_sql_unixodbc_conn_t *conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_unixodbc_conn_t);
@@ -569,11 +569,11 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	}
 	if (ret == SQL_NO_DATA_FOUND) {
 		query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
 	query_ctx->rcode = sql_check_error(ret, SQL_HANDLE_STMT, conn->stmt);
-	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
+	if (query_ctx->rcode != RLM_SQL_OK) RETURN_UNLANG_FAIL;
 
 	/*
 	 *	If the field is NULL, then SQLFetch doesn't touch pointer, so set it here
@@ -585,7 +585,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	query_ctx->row = conn->row;
 
 	query_ctx->rcode = RLM_SQL_OK;
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)

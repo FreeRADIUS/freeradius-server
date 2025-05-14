@@ -458,7 +458,7 @@ static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNU
 	return RLM_SQL_OK;
 }
 
-static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t sql_fetch_row(unlang_result_t *p_result, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	int			status, i = 0;
@@ -478,7 +478,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	if (sql_check_error(conn->db, status) != RLM_SQL_OK) {
 	error:
 		query_ctx->rcode = RLM_SQL_ERROR;
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -486,7 +486,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	 */
 	if (status == SQLITE_DONE) {
 		query_ctx->rcode =  RLM_SQL_NO_MORE_ROWS;
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
 	/*
@@ -543,7 +543,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	}
 
 	query_ctx->rcode = RLM_SQL_OK;
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)

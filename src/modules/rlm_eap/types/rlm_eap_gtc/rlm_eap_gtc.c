@@ -43,6 +43,10 @@ typedef struct {
 	fr_dict_enum_value_t const	*auth_type;
 } rlm_eap_gtc_t;
 
+typedef struct {
+	unlang_result_t		section_result;
+} rlm_eap_gtc_rctx_t;
+
 static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("challenge", rlm_eap_gtc_t, challenge), .dflt = "Password: " },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("auth_type", FR_TYPE_VOID, 0, rlm_eap_gtc_t, auth_type), .func = auth_type_parse,  .dflt = "pap" },
@@ -101,12 +105,13 @@ static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
  */
 static unlang_action_t gtc_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,  request_t *request)
 {
-	rlm_rcode_t	rcode;
+	rlm_eap_gtc_rctx_t *rctx = talloc_get_type_abort(mctx->rctx, rlm_eap_gtc_rctx_t);
+	rlm_rcode_t	rcode = rctx->section_result.rcode;
 
-	eap_session_t	*eap_session = mctx->rctx;
+	eap_session_t	*eap_session = eap_session_get(request->parent);
 	eap_round_t	*eap_round = eap_session->this_round;
 
-	rcode = unlang_interpret_stack_result(request);
+	rcode = unlang_interpret_scratch_result(request);
 
 	if (rcode != RLM_MODULE_OK) {
 		eap_round->request->code = FR_EAP_CODE_FAILURE;
@@ -123,6 +128,7 @@ static unlang_action_t gtc_resume(rlm_rcode_t *p_result, module_ctx_t const *mct
 static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_gtc_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_gtc_t);
+	rlm_eap_gtc_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, rlm_eap_gtc_rctx_t);
 
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_round_t		*eap_round = eap_session->this_round;
@@ -171,7 +177,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		RETURN_MODULE_FAIL;
 	}
 
-	return unlang_module_yield_to_section(p_result, request, unlang, RLM_MODULE_FAIL, gtc_resume, NULL, 0, eap_session);
+	return unlang_module_yield_to_section(&rctx->section_result, request, unlang, RLM_MODULE_FAIL, gtc_resume, NULL, 0, rctx);
 }
 
 
@@ -224,7 +230,8 @@ rlm_eap_submodule_t rlm_eap_gtc = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "eap_gtc",
-		.inst_size	= sizeof(rlm_eap_gtc_t),
+		MODULE_INST(rlm_eap_gtc_t),
+		MODULE_RCTX(rlm_eap_gtc_rctx_t),
 		.config		= submodule_config,
 	},
 	.provides	= { FR_EAP_METHOD_GTC },

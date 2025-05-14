@@ -250,8 +250,8 @@ struct sql_inst {
 
 unlang_action_t	sql_get_map_list(request_t *request, fr_sql_map_ctx_t *map_ctx, trunk_t *trunk);
 void 		rlm_sql_query_log(rlm_sql_t const *inst, char const *filename, char const *query) CC_HINT(nonnull);
-unlang_action_t rlm_sql_trunk_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
-unlang_action_t rlm_sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
+unlang_action_t rlm_sql_trunk_query(unlang_result_t *p_result, request_t *request, void *uctx);
+unlang_action_t rlm_sql_fetch_row(unlang_result_t *p_result, request_t *request, void *uctx);
 void		rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, fr_sql_query_t *query_ctx, bool force_debug);
 fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);
 

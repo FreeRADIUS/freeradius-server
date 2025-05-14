@@ -160,13 +160,11 @@ finish:
 /** Submit LDAP extended operation to retrieve Universal Password
  *
  * @param p_result	Result of current operation.
- * @param priority	Unused.
  * @param request	Current request.
  * @param uctx		eDir lookup context.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t ldap_edir_get_password_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
-						    void *uctx)
+static unlang_action_t ldap_edir_get_password_start(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_edir_ctx_t	*edir_ctx = talloc_get_type_abort(uctx, ldap_edir_ctx_t);
 	return fr_ldap_trunk_extended(edir_ctx, &edir_ctx->query, request, edir_ctx->ttrunk,
@@ -176,13 +174,11 @@ static unlang_action_t ldap_edir_get_password_start(UNUSED rlm_rcode_t *p_result
 /** Handle results of retrieving Universal Password
  *
  * @param p_result	Result of current operation.
- * @param priority	Unused.
  * @param request	Current request.
  * @param uctx		eDir lookup context.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t ldap_edir_get_password_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
-						     void *uctx)
+static unlang_action_t ldap_edir_get_password_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_edir_ctx_t *edir_ctx = talloc_get_type_abort(uctx, ldap_edir_ctx_t);
 	fr_ldap_query_t	*query = edir_ctx->query;
@@ -267,7 +263,7 @@ finish:
 		rcode = RLM_MODULE_FAIL;
 	}
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /** Cancel an in progress Universal Password lookup
@@ -318,7 +314,7 @@ unlang_action_t fr_ldap_edir_get_password(request_t *request, char const *dn, fr
 		return UNLANG_ACTION_FAIL;
 	}
 
-	return unlang_function_push(request, ldap_edir_get_password_start, ldap_edir_get_password_resume,
+	return unlang_function_push(NULL, request, ldap_edir_get_password_start, ldap_edir_get_password_resume,
 				    ldap_edir_get_password_cancel, ~FR_SIGNAL_CANCEL,
 				    UNLANG_SUB_FRAME, edir_ctx);
 }

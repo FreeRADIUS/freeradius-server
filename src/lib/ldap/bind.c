@@ -236,8 +236,7 @@ int fr_ldap_bind_async(fr_ldap_connection_t *c,
 /** Yield interpreter after queueing LDAP bind
  *
  */
-static unlang_action_t ldap_async_auth_bind_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
-						  UNUSED request_t *request, UNUSED void *uctx)
+static unlang_action_t ldap_async_auth_bind_start(UNUSED unlang_result_t *p_result, UNUSED request_t *request, UNUSED void *uctx)
 {
 	return UNLANG_ACTION_YIELD;
 }
@@ -245,7 +244,7 @@ static unlang_action_t ldap_async_auth_bind_start(UNUSED rlm_rcode_t *p_result, 
 /** Handle the return code from parsed LDAP results to set the module rcode
  *
  */
-static unlang_action_t ldap_async_auth_bind_results(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t ldap_async_auth_bind_results(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	fr_ldap_bind_auth_ctx_t	*bind_auth_ctx = talloc_get_type_abort(uctx, fr_ldap_bind_auth_ctx_t);
 	fr_ldap_bind_ctx_t	*bind_ctx = bind_auth_ctx->bind_ctx;
@@ -291,7 +290,7 @@ static unlang_action_t ldap_async_auth_bind_results(rlm_rcode_t *p_result, UNUSE
 		talloc_free(bind_auth_ctx);
 	}
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /** Signal an outstanding LDAP bind request to cancel
@@ -361,7 +360,8 @@ unlang_action_t fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *th
 		return UNLANG_ACTION_FAIL;
 	}
 
-	return unlang_function_push(request,
+	return unlang_function_push(NULL,
+				    request,
 				    ldap_async_auth_bind_start,
 				    ldap_async_auth_bind_results,
 				    ldap_async_auth_bind_cancel,

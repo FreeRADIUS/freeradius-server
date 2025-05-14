@@ -55,7 +55,7 @@ static void unlang_limit_signal(UNUSED request_t *request, unlang_stack_frame_t 
 	}
 }
 
-static unlang_action_t unlang_limit_resume_done(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_limit_resume_done(UNUSED unlang_result_t *p_result, UNUSED request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_limit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_limit_t);
 
@@ -64,7 +64,7 @@ static unlang_action_t unlang_limit_resume_done(UNUSED rlm_rcode_t *p_result, UN
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_limit_enforce(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_limit_enforce(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_limit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_limit_t);
 	unlang_action_t			action;
@@ -76,14 +76,14 @@ static unlang_action_t unlang_limit_enforce(rlm_rcode_t *p_result, request_t *re
 
 	frame_repeat(frame, unlang_limit_resume_done);
 
-	action = unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP);
+	action = unlang_interpret_push_children(NULL, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP);
 
 	state->thread->active_callers += (action == UNLANG_ACTION_PUSHED_CHILD);
 
 	return action;
 }
 
-static unlang_action_t unlang_limit_xlat_done(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_limit_xlat_done(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_limit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_limit_t);
 	fr_value_box_t			*box = fr_value_box_list_head(&state->result);
@@ -96,7 +96,7 @@ static unlang_action_t unlang_limit_xlat_done(rlm_rcode_t *p_result, request_t *
 	return unlang_limit_enforce(p_result, request, frame);
 }
 
-static unlang_action_t unlang_limit(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_limit(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g;
 	unlang_limit_t			*gext;

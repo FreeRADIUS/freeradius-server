@@ -98,13 +98,13 @@ static void unlang_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t 
 	/*
 	 *	Push something else onto the stack to execute.
 	 */
-	if (unlikely(unlang_interpret_push_instruction(request, state->instruction,
+	if (unlikely(unlang_interpret_push_instruction(NULL, request, state->instruction,
 						       FRAME_CONF(RLM_MODULE_TIMEOUT, true)) < 0)) {
 		unlang_interpret_signal(request, FR_SIGNAL_CANCEL); /* also stops the request and does cleanups */
 	}
 }
 
-static unlang_action_t unlang_timeout_resume_done(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_timeout_resume_done(unlang_result_t *p_result, UNUSED request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
 
@@ -115,10 +115,10 @@ static unlang_action_t unlang_timeout_resume_done(UNUSED rlm_rcode_t *p_result, 
 	 */
 	if (!state->fired) return UNLANG_ACTION_EXECUTE_NEXT;	/* Don't modify the return code*/
 
-	RETURN_MODULE_TIMEOUT;
+	RETURN_UNLANG_TIMEOUT;
 }
 
-static unlang_action_t unlang_timeout_set(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_timeout_set(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
 
@@ -135,10 +135,10 @@ static unlang_action_t unlang_timeout_set(rlm_rcode_t *p_result, request_t *requ
 
 	frame_repeat(frame, unlang_timeout_resume_done);
 
-	return unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(NULL, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
-static unlang_action_t unlang_timeout_done(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_timeout_done(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
 	fr_value_box_t			*box = fr_value_box_list_head(&state->result);
@@ -151,7 +151,7 @@ static unlang_action_t unlang_timeout_done(rlm_rcode_t *p_result, request_t *req
 	return unlang_timeout_set(p_result, request, frame);
 }
 
-static unlang_action_t unlang_timeout(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_timeout(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g;
 	unlang_timeout_t		*gext;
@@ -238,7 +238,7 @@ int unlang_timeout_section_push(request_t *request, CONF_SECTION *cs, fr_time_de
 	/*
 	 *	Push a new timeout frame onto the stack
 	 */
-	if (unlang_interpret_push(request, &timeout_instruction,
+	if (unlang_interpret_push(NULL, request, &timeout_instruction,
 				  FRAME_CONF(RLM_MODULE_NOT_SET, top_frame), UNLANG_NEXT_STOP) < 0) return -1;
 	frame = &stack->frame[stack->depth];
 

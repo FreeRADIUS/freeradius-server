@@ -32,21 +32,21 @@
 extern "C" {
 #endif
 
+#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/signal.h>
 
 /** A generic function pushed by a module or xlat to functions deeper in the C call stack to create resumption points
  *
- * @param[in] p_result		The module return code.
- * @param[in] priority		for the return code.
+ * @param[in] p_result		The module return code and priority.
  * @param[in] request		The current request.
  * @param[in,out] uctx		Provided by whatever pushed the function.  Is opaque to the
  *				interpreter, but should be usable by the function.
  *				All input (args) and output will be done using this structure.
  * @return an #unlang_action_t.
  */
-typedef unlang_action_t (*unlang_function_t)(rlm_rcode_t *p_result, int *priority, request_t *request, void *uctx);
+typedef unlang_action_t (*unlang_function_t)(unlang_result_t *p_result, request_t *request, void *uctx);
 
 /** Function to call if the request was signalled
  *
@@ -96,6 +96,7 @@ int		_unlang_function_repeat_set(request_t *request, unlang_function_t repeat, c
  * These can be pushed by any other type of unlang op to allow a submodule or function
  * deeper in the C call stack to establish a new resumption point.
  *
+ * @param[in] _reuslt_p		Where to write the result.
  * @param[in] _request		The current request.
  * @param[in] _func		to call going up the stack.
  * @param[in] _repeat		function to call going back down the stack (may be NULL).
@@ -108,13 +109,13 @@ int		_unlang_function_repeat_set(request_t *request, unlang_function_t repeat, c
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
  *	- UNLANG_ACTION_FAIL on failure.
  */
-#define		unlang_function_push(_request, _func, _repeat, _signal, _sigmask, _top_frame, _uctx) \
-		_unlang_function_push(_request, \
+#define		unlang_function_push(_result_p, _request, _func, _repeat, _signal, _sigmask, _top_frame, _uctx) \
+		_unlang_function_push(_result_p, _request, \
 				      _func, STRINGIFY(_func), \
 				      _repeat, STRINGIFY(_repeat), \
 				      _signal, _sigmask, STRINGIFY(_signal), \
 				      _top_frame, _uctx)
-unlang_action_t	_unlang_function_push(request_t *request,
+unlang_action_t	_unlang_function_push(unlang_result_t *p_result, request_t *request,
 				      unlang_function_t func, char const *func_name,
 				      unlang_function_t repeat, char const *repeat_name,
 				      unlang_function_signal_t signal, fr_signal_t sigmask, char const *signal_name,

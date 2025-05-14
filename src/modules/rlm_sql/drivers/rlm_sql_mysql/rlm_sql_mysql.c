@@ -536,7 +536,7 @@ static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNU
 	return RLM_SQL_OK;
 }
 
-static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t sql_fetch_row(unlang_result_t *p_result, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	rlm_sql_mysql_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_mysql_conn_t);
@@ -553,9 +553,9 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		query_ctx->rcode = sql_check_error(conn->sock, 0);
 		if (query_ctx->rcode == RLM_SQL_OK) {
 			query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
-			RETURN_MODULE_OK;
+			RETURN_UNLANG_OK;
 		}
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	TALLOC_FREE(query_ctx->row);		/* Clear previous row set */
@@ -564,7 +564,7 @@ retry_fetch_row:
 	row = mysql_fetch_row(conn->result);
 	if (!row) {
 		query_ctx->rcode = sql_check_error(conn->sock, 0);
-		if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
+		if (query_ctx->rcode != RLM_SQL_OK) RETURN_UNLANG_FAIL;
 
 		mysql_free_result(conn->result);
 		conn->result = NULL;
@@ -577,19 +577,19 @@ retry_fetch_row:
 			}
 		} else if (ret > 0) {
 			query_ctx->rcode = sql_check_error(NULL, ret);
-			if (query_ctx->rcode == RLM_SQL_OK) RETURN_MODULE_OK;
-			RETURN_MODULE_FAIL;
+			if (query_ctx->rcode == RLM_SQL_OK) RETURN_UNLANG_OK;
+			RETURN_UNLANG_FAIL;
 		}
 		/* If ret is -1 then there are no more rows */
 
 		query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
 	num_fields = mysql_field_count(conn->sock);
 	if (!num_fields) {
 		query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
  	field_lens = mysql_fetch_lengths(conn->result);
@@ -601,7 +601,7 @@ retry_fetch_row:
 	}
 
 	query_ctx->rcode = RLM_SQL_OK;
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
@@ -1079,24 +1079,24 @@ static void sql_request_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_
 SQL_QUERY_FAIL
 SQL_QUERY_RESUME
 
-static unlang_action_t sql_select_query_resume(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t sql_select_query_resume(unlang_result_t *p_result, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 
-	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
+	if (query_ctx->rcode != RLM_SQL_OK) RETURN_UNLANG_FAIL;
 
 	if (query_ctx->status == SQL_QUERY_RETURNED) {
 		trunk_request_requeue(query_ctx->treq);
 
 		if (unlang_function_repeat_set(request, sql_select_query_resume) < 0) {
 			query_ctx->rcode = RLM_SQL_ERROR;
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		return UNLANG_ACTION_YIELD;
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /** Allocate the argument used for the SQL escape function

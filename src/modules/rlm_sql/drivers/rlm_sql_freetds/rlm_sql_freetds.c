@@ -581,7 +581,7 @@ static int sql_affected_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t 
 	return (conn->rows_affected);
 }
 
-static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t sql_fetch_row(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	rlm_sql_freetds_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_freetds_conn_t);
@@ -605,11 +605,11 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		}
 
 		query_ctx->rcode = RLM_SQL_RECONNECT;
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 
 	case CS_END_DATA:
 		query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 
 	case CS_SUCCEED:
 		/*
@@ -637,19 +637,19 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		}
 
 		query_ctx->rcode = RLM_SQL_OK;
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 
 	case CS_ROW_FAIL:
 		ROPTIONAL(RERROR, ERROR, "recoverable failure fetching row data");
 
 		query_ctx->rcode = RLM_SQL_RECONNECT;
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 
 	default:
 		ROPTIONAL(RERROR, ERROR, "unexpected returncode from ct_fetch");
 
 		query_ctx->rcode = RLM_SQL_ERROR;
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 }
 

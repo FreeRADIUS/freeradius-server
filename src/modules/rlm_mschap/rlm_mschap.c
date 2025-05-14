@@ -1911,7 +1911,7 @@ static unlang_action_t CC_HINT(nonnull) mschap_process_v2_response(rlm_rcode_t *
 /** Complete mschap authentication after any tmpls have been expanded.
  *
  */
-static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t mod_authenticate_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	mschap_auth_ctx_t	*auth_ctx = talloc_get_type_abort(uctx, mschap_auth_ctx_t);
 	mschap_auth_call_env_t	*env_data = talloc_get_type_abort(auth_ctx->env_data, mschap_auth_call_env_t);
@@ -1931,11 +1931,11 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 		 */
 		if (!auth_ctx->nt_password) {
 			REDEBUG("Missing Password.NT - required for change password request");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 		if (!env_data->chap_nt_enc_pw) {
 			REDEBUG("chap_nt_enc_pw option is not set - required for change password request");
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 
 		mschap_process_cpw_request(&rcode, inst, request, auth_ctx);
@@ -2052,21 +2052,20 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 	} /* else we weren't asked to use MPPE */
 
 finish:
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /** When changing passwords using the ntlm_auth helper, evaluate the domain tmpl
  *
  */
-static unlang_action_t mod_authenticate_domain_tmpl_push(rlm_rcode_t *p_result, UNUSED int *priority,
-							 request_t *request, void *uctx)
+static unlang_action_t mod_authenticate_domain_tmpl_push(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	mschap_auth_ctx_t	*auth_ctx = talloc_get_type_abort(uctx, mschap_auth_ctx_t);
 	mschap_auth_call_env_t	*env_data = talloc_get_type_abort(auth_ctx->env_data, mschap_auth_call_env_t);
 
 	fr_value_box_list_init(&auth_ctx->cpw_ctx->cpw_domain);
 	if (unlang_tmpl_push(auth_ctx, &auth_ctx->cpw_ctx->cpw_domain, request,
-			     env_data->ntlm_cpw_domain, NULL) < 0) RETURN_MODULE_FAIL;
+			     env_data->ntlm_cpw_domain, NULL) < 0) RETURN_UNLANG_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -2319,7 +2318,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		case AUTH_INTERNAL:
 #ifdef WITH_TLS
 			if (mschap_new_pass_decrypt(request, auth_ctx) < 0) RETURN_MODULE_FAIL;
-			if (unlang_function_push(request, NULL,  mod_authenticate_resume, NULL, 0,
+			if (unlang_function_push(NULL, request, NULL,  mod_authenticate_resume, NULL, 0,
 						 UNLANG_SUB_FRAME, auth_ctx) < 0) RETURN_MODULE_FAIL;
 
 			fr_value_box_list_init(&auth_ctx->cpw_ctx->local_cpw_result);
@@ -2337,7 +2336,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 				RETURN_MODULE_FAIL;
 			}
 
-			if (unlang_function_push(request, env_data->ntlm_cpw_domain ? mod_authenticate_domain_tmpl_push : NULL,
+			if (unlang_function_push(NULL, request, env_data->ntlm_cpw_domain ? mod_authenticate_domain_tmpl_push : NULL,
 						 mod_authenticate_resume, NULL, 0,
 						 UNLANG_SUB_FRAME, auth_ctx) < 0) RETURN_MODULE_FAIL;
 
@@ -2350,7 +2349,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
-	return mod_authenticate_resume(p_result, NULL, request, auth_ctx);
+	return unlang_function_push(NULL, request, mod_authenticate_resume, NULL, NULL, 0, UNLANG_SUB_FRAME, 0);
 }
 
 /*

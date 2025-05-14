@@ -353,7 +353,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	 *	New async listeners
 	 */
 	request->async = talloc_zero(request, fr_async_t);
-	unlang_call_push(request, server_cs, UNLANG_TOP_FRAME);
+	unlang_call_push(NULL, request, server_cs, UNLANG_TOP_FRAME);
 
 	return request;
 }
@@ -615,7 +615,7 @@ static request_t *request_clone(request_t *old, int number, CONF_SECTION *server
 	request->number = number;
 	request->name = talloc_typed_asprintf(request, "%" PRIu64, request->number);
 
-	unlang_call_push(request, server_cs, UNLANG_TOP_FRAME);
+	unlang_call_push(NULL, request, server_cs, UNLANG_TOP_FRAME);
 
 	request->master_state = REQUEST_ACTIVE;
 

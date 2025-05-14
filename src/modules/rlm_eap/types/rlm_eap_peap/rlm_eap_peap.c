@@ -110,7 +110,7 @@ static unlang_action_t process_rcode(rlm_rcode_t *p_result, module_ctx_t const *
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
-	switch (eap_session->submodule_rcode) {
+	switch (eap_session->submodule_result.rcode) {
 	case RLM_MODULE_REJECT:
 		eap_tls_fail(request, eap_session);
 		break;
@@ -162,7 +162,7 @@ static unlang_action_t process_rcode(rlm_rcode_t *p_result, module_ctx_t const *
 		break;
 	}
 
-	RETURN_MODULE_RCODE(eap_session->submodule_rcode);
+	RETURN_MODULE_RCODE(eap_session->submodule_result.rcode);
 }
 
 static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -246,7 +246,7 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	/*
 	 *	Process the PEAP portion of the request.
 	 */
-	return eap_peap_process(&eap_session->submodule_rcode, request, eap_session, tls_session);
+	return eap_peap_process(&eap_session->submodule_result, request, eap_session, tls_session);
 }
 
 /*

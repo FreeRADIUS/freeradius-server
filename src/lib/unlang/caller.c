@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include "caller_priv.h"
 #include "group_priv.h"
 
-static unlang_action_t unlang_caller(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_caller(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_caller_t			*gext = unlang_group_to_caller(g);

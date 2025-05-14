@@ -95,7 +95,7 @@ static void unlang_subrequest_signal(UNUSED request_t *request, unlang_stack_fra
 /** Parent being resumed after a child completes
  *
  */
-static unlang_action_t unlang_subrequest_parent_resume(rlm_rcode_t *p_result, request_t *request,
+static unlang_action_t unlang_subrequest_parent_resume(UNUSED unlang_result_t *p_result, request_t *request,
 						       unlang_stack_frame_t *frame)
 {
 	unlang_group_t				*g = unlang_generic_to_group(frame->instruction);
@@ -121,12 +121,6 @@ static unlang_action_t unlang_subrequest_parent_resume(rlm_rcode_t *p_result, re
 		fr_table_str_by_value(mod_rcode_table, cr->result.rcode, "<invalid>"));
 
 	/*
-	 *	FIXME - We should pass in priority
-	 */
-	*p_result = cr->result.rcode;
-	frame->result.priority = cr->result.priority;
-
-	/*
 	 *	If there's a no destination tmpl, we're done.
 	 */
 	if (!child->reply) {
@@ -150,9 +144,8 @@ static unlang_action_t unlang_subrequest_parent_resume(rlm_rcode_t *p_result, re
 		vp = tmpl_dcursor_build_init(NULL, request, &cc, &cursor, request, gext->dst, tmpl_dcursor_pair_build, NULL);
 		if (!vp) {
 			RPDEBUG("Discarding subrequest attributes - Failed allocating groups");
-			*p_result = RLM_MODULE_FAIL;
 			tmpl_dcursor_clear(&cc);
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			return UNLANG_ACTION_FAIL;
 		}
 
 		MEM(fr_pair_list_copy(vp, &vp->vp_group, &child->reply_pairs) >= 0);
@@ -167,7 +160,7 @@ static unlang_action_t unlang_subrequest_parent_resume(rlm_rcode_t *p_result, re
 /** Allocates a new subrequest and initialises it
  *
  */
-static unlang_action_t unlang_subrequest_init(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_subrequest_init(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_child_request_t	*cr = talloc_get_type_abort(frame->state, unlang_child_request_t);
 	request_t		*child;
@@ -185,18 +178,13 @@ static unlang_action_t unlang_subrequest_init(rlm_rcode_t *p_result, request_t *
 	 *	Initialize the state
 	 */
 	g = unlang_generic_to_group(frame->instruction);
-	if (!g->num_children) {
-		*p_result = RLM_MODULE_NOOP;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	if (!g->num_children) RETURN_UNLANG_NOOP;
 
 	gext = unlang_group_to_subrequest(g);
 	child = unlang_io_subrequest_alloc(request, gext->dict, UNLANG_DETACHABLE);
 	if (!child) {
 	fail:
-		*p_result = cr->result.rcode = RLM_MODULE_FAIL;
-		if (cr->result.p_result) *cr->result.p_result = *p_result;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		return UNLANG_ACTION_FAIL;
 	}
 	/*
 	 *	Set the packet type.
@@ -261,13 +249,13 @@ static unlang_action_t unlang_subrequest_init(rlm_rcode_t *p_result, request_t *
 	 *	frame->instruction should be consistent
 	 *	as it's allocated by the unlang compiler.
 	 */
-	if (unlang_child_request_init(cr, cr, child, NULL, NULL, frame->instruction, false) < 0) goto fail;
+	if (unlang_child_request_init(cr, cr, child, p_result, NULL, frame->instruction, false) < 0) goto fail;
 
 	/*
 	 *	Push the first instruction the child's
 	 *	going to run.
 	 */
-	if (unlang_interpret_push(child, g->children,
+	if (unlang_interpret_push(NULL, child, g->children,
 				  FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME),
 				  UNLANG_NEXT_SIBLING) < 0) goto fail;
 
@@ -315,17 +303,22 @@ request_t *unlang_subrequest_alloc(request_t *parent, fr_dict_t const *namespace
  *
  * @note Only executes if unlang_subrequest_child_push was called, not with the normal subrequest keyword.
  */
-static unlang_action_t unlang_subrequest_child_done(rlm_rcode_t *p_result, UNUSED request_t *request,
+static unlang_action_t unlang_subrequest_child_done(unlang_result_t *p_result, UNUSED request_t *request,
 						    unlang_stack_frame_t *frame)
 {
 	unlang_child_request_t		*cr = talloc_get_type_abort(frame->state, unlang_child_request_t);
 
+	/*
+	 *	Default to NOOP
+	 */
 	if (cr->result.rcode == RLM_MODULE_NOT_SET) {
-		*p_result = cr->result.rcode = RLM_MODULE_NOOP;
+		cr->result.rcode = RLM_MODULE_NOOP;
+		if (cr->p_result) {
+			*cr->p_result = cr->result;
+		} else {
+			*p_result = cr->result;
+		}
 	}
-
-	if (cr->result.p_result) *cr->result.p_result = cr->result.rcode;
-	cr->result.priority = frame->result.priority;
 
 	/*
 	 *	We can free the child here as we're its parent
@@ -353,7 +346,7 @@ static unlang_action_t unlang_subrequest_child_done(rlm_rcode_t *p_result, UNUSE
  *
  * @note Called from the parent to start a child running.
  */
-unlang_action_t unlang_subrequest_child_run(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request,
+unlang_action_t unlang_subrequest_child_run(UNUSED unlang_result_t *p_result, UNUSED request_t *request,
 					    unlang_stack_frame_t *frame)
 {
 	unlang_child_request_t		*cr = talloc_get_type_abort(frame->state, unlang_child_request_t);
@@ -425,7 +418,7 @@ unlang_action_t unlang_subrequest_child_run(UNUSED rlm_rcode_t *p_result, UNUSED
  */
 
 int unlang_subrequest_child_push(request_t *child,
-				 rlm_rcode_t *p_result, void const *unique_session_ptr, bool free_child, bool top_frame)
+				 unlang_result_t *p_result, void const *unique_session_ptr, bool free_child, bool top_frame)
 {
 	unlang_child_request_t	*cr;
 	unlang_stack_frame_t	*frame;
@@ -466,7 +459,7 @@ int unlang_subrequest_child_push(request_t *child,
 	 *	This frame executes once the subrequest has
 	 *	completed.
 	 */
-	if (unlang_interpret_push(child->parent, &subrequest_instruction,
+	if (unlang_interpret_push(NULL, child->parent, &subrequest_instruction,
 				  FRAME_CONF(RLM_MODULE_NOT_SET, top_frame), UNLANG_NEXT_STOP) < 0) {
 		return -1;
 	}

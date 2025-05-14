@@ -26,10 +26,11 @@
 extern "C" {
 #endif
 
+#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/cf_util.h>
 
-unlang_action_t unlang_call_push(request_t *request, CONF_SECTION *server_cs, bool top_frame) CC_HINT(nonnull);
+unlang_action_t unlang_call_push(unlang_result_t *p_result, request_t *request, CONF_SECTION *server_cs, bool top_frame) CC_HINT(nonnull(2,3));
 
 CONF_SECTION *unlang_call_current(request_t *request);
 

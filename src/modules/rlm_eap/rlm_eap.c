@@ -412,13 +412,13 @@ static void mod_authenticate_cancel(module_ctx_t const *mctx, request_t *request
  *				- RLM_MODULE_OK		if this round succeeded.
  *				- RLM_MODULE_HANDLED	if we're done with this round.
  *				- RLM_MODULE_REJECT	if the user should be rejected.
- * @param[in] request	The current request.
- * @param[in] mctx	module calling ctx.
- * @param[in] eap_session the EAP session
- * @param[in] result	the input result from the submodule
+ * @param[in] request		The current request.
+ * @param[in] mctx		module calling ctx.
+ * @param[in] eap_session 	the EAP session
+ * @param[in] submodule_result	the input result from the submodule
  */
 static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
-					       request_t *request, eap_session_t *eap_session, rlm_rcode_t result)
+					       request_t *request, eap_session_t *eap_session, unlang_result_t *submodule_result)
 {
 	rlm_rcode_t	rcode;
 	fr_pair_t	*next, *vp;
@@ -443,7 +443,7 @@ static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result, UNUSED mod
 	/*
 	 *	The submodule failed.  Die.
 	 */
-	switch (result) {
+	switch (submodule_result->rcode) {
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_INVALID:
 		eap_fail(eap_session);
@@ -520,7 +520,7 @@ static unlang_action_t mod_authenticate_result_async(rlm_rcode_t *p_result, modu
 {
 	eap_session_t	*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
 
-	return mod_authenticate_result(p_result, mctx, request, eap_session, eap_session->submodule_rcode);
+	return mod_authenticate_result(p_result, mctx, request, eap_session, &eap_session->submodule_result);
 }
 
 /** Basic tests to determine if an identity is a valid NAI
@@ -826,7 +826,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 	 *	This must be done before pushing frames onto
 	 *	the child's stack.
 	 */
-	if (unlang_subrequest_child_push(eap_session->subrequest, &eap_session->submodule_rcode,
+	if (unlang_subrequest_child_push(eap_session->subrequest, &eap_session->submodule_result,
 					 eap_session,
 					 false, UNLANG_SUB_FRAME) < 0) {
 	child_fail:

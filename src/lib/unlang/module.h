@@ -33,6 +33,7 @@ extern "C" {
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/subrequest.h>
 #include <freeradius-devel/unlang/tmpl.h>
 
@@ -79,13 +80,13 @@ typedef void (*unlang_module_fd_event_t)(module_ctx_t const *mctx, request_t *re
  */
 typedef void (*unlang_module_signal_t)(module_ctx_t const *mctx, request_t *request, fr_signal_t action);
 
-int		unlang_module_push(rlm_rcode_t *p_result, request_t *request,
+int		unlang_module_push(unlang_result_t *p_result, request_t *request,
 				   module_instance_t *module_instance, module_method_t method, bool top_frame)
 				   CC_HINT(warn_unused_result) CC_HINT(nonnull(2,3,4));
 
 int		unlang_module_set_resume(request_t *request, module_method_t resume);
 
-unlang_action_t	unlang_module_yield_to_section(rlm_rcode_t *p_result,
+unlang_action_t	unlang_module_yield_to_section(unlang_result_t *p_result,
 					       request_t *request, CONF_SECTION *subcs,
 					       rlm_rcode_t default_rcode,
 					       module_method_t resume,

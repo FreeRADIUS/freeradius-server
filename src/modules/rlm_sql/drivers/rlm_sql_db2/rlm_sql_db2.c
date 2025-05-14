@@ -201,7 +201,7 @@ static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNU
 	return RLM_SQL_OK;
 }
 
-static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t sql_fetch_row(unlang_result_t *p_Result, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	int			i;
@@ -217,7 +217,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	/* advance cursor */
 	if (SQLFetch(conn->stmt) == SQL_NO_DATA_FOUND) {
 		query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
 	MEM(row = (rlm_sql_row_t)talloc_zero_array(query_ctx, char *, c + 1));
@@ -235,7 +235,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	query_ctx->row = row;
 
 	query_ctx->rcode = RLM_SQL_OK;
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
