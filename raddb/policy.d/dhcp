@@ -3,8 +3,8 @@ dhcp_common {
 	#  The contents here are invented.  Change them!
 	#  Lease time is referencing the lease time set in the
 	#  named module instance configuration
-	reply.Domain-Name-Server = 127.0.0.1
-	reply.Domain-Name-Server = 127.0.0.2
+	reply.Domain-Name-Server := 127.0.0.1
+	reply += { Domain-Name-Server = 127.0.0.2 }
 	reply.Subnet-Mask = 255.255.255.0
 	reply.Router-Address = 192.0.2.1
 	reply.IP-Address-Lease-Time = 7200
