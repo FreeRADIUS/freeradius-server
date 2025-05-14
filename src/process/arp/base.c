@@ -24,6 +24,7 @@
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/arp/arp.h>
+#include <freeradius-devel/unlang/interpret.h>
 
 static fr_dict_t const *dict_arp;
 
@@ -79,7 +80,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT] =  FR_ARP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.section_offset = PROCESS_CONF_OFFSET(request),
@@ -97,7 +98,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT] =  FR_ARP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = PROCESS_CONF_OFFSET(reply),
@@ -116,7 +118,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT] =  FR_ARP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.section_offset = PROCESS_CONF_OFFSET(reverse_request),
@@ -134,7 +136,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT] =  FR_ARP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = PROCESS_CONF_OFFSET(reverse_reply),
@@ -155,7 +158,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND] =	FR_ARP_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT] =  FR_ARP_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_HANDLED,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = PROCESS_CONF_OFFSET(do_not_respond),
@@ -247,7 +251,8 @@ fr_process_module_t process_arp = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "arp",
-		.inst_size	= sizeof(process_arp_t)
+		MODULE_INST(process_arp_t),
+		MODULE_RCTX(process_rctx_t)
 	},
 	.process	= mod_process,
 	.compile_list	= compile_list,

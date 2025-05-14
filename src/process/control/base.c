@@ -22,7 +22,7 @@
  * @copyright 2020 Network RADIUS SAS (legal@networkradius.com)
  */
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/process.h>
+#include <freeradius-devel/server/process_types.h>
 #include <freeradius-devel/util/debug.h>
 
 static fr_dict_t const *dict_freeradius;

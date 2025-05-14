@@ -30,6 +30,7 @@ extern "C" {
 
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/unlang/mod_action.h>
 #include <freeradius-devel/unlang/action.h>
 
 #define UNLANG_TOP_FRAME (true)
@@ -129,13 +130,24 @@ typedef struct {
 							///< runnable queue.
 } unlang_request_func_t;
 
+typedef struct {
+	rlm_rcode_t 			rcode;			//!< The current rcode, from executing the instruction
+								///< or merging the result from a frame.
+	unlang_mod_action_t		priority;		//!< The priority or action for that rcode.
+} unlang_result_t;
+
 /** Configuration structure to make it easier to pass configuration options to initialise the frame with
  */
 typedef struct {
 	bool				top_frame;		//!< Is this the top frame?
-	bool				no_rcode;		//!< Don't set the rcode when the frame is popped.
 	rlm_rcode_t			default_rcode;		//!< The default return code for the frame.
+								///< This needs to be specified separately
+								///< from p_result, because we may be passing
+								///< in NULL for p_result.
 	unlang_mod_action_t		default_priority;	//!< The default priority for the frame.
+								///< This needs to be specified separately
+								///< from p_result, because we may be passing
+								///< in NULL for p_result.
 } unlang_frame_conf_t;
 
 #define FRAME_CONF(_default_rcode, _top_frame)		\
@@ -143,7 +155,7 @@ typedef struct {
 		.top_frame = (_top_frame),		\
 		.no_rcode = false,			\
 		.default_rcode = (_default_rcode),	\
-		.default_priority = MOD_ACTION_NOT_SET \
+		.default_priority = MOD_ACTION_NOT_SET  \
 	}
 
 int			unlang_interpret_push_section(request_t *request, CONF_SECTION *cs, unlang_frame_conf_t const *conf)

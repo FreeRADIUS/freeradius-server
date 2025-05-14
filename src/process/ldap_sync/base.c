@@ -23,6 +23,7 @@
  */
 #define LOG_PREFIX "process_ldap_sync"
 
+#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/ldap/sync.h>
@@ -125,34 +126,34 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 static fr_process_state_t const process_state[] = {
 	[ FR_LDAP_SYNC_CODE_PRESENT ] = {
 		.default_reply = FR_LDAP_SYNC_CODE_ENTRY_RESPONSE,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.section_offset = offsetof(process_ldap_sync_sections_t, recv_present),
 	},
 	[ FR_LDAP_SYNC_CODE_ADD ] = {
 		.default_reply = FR_LDAP_SYNC_CODE_ENTRY_RESPONSE,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.section_offset = offsetof(process_ldap_sync_sections_t, recv_add)
 	},
 	[ FR_LDAP_SYNC_CODE_DELETE ] = {
 		.default_reply = FR_LDAP_SYNC_CODE_ENTRY_RESPONSE,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.section_offset = offsetof(process_ldap_sync_sections_t, recv_delete),
 	},
 	[ FR_LDAP_SYNC_CODE_MODIFY ] = {
 		.default_reply = FR_LDAP_SYNC_CODE_ENTRY_RESPONSE,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.section_offset = offsetof(process_ldap_sync_sections_t, recv_modify),
 	},
 	[ FR_LDAP_SYNC_CODE_ENTRY_RESPONSE ] = {
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
 	},
@@ -165,30 +166,30 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_TIMEOUT]  = FR_LDAP_SYNC_CODE_COOKIE_LOAD_FAIL
 		},
 		.default_reply = FR_LDAP_SYNC_CODE_COOKIE_LOAD_RESPONSE,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.section_offset = offsetof(process_ldap_sync_sections_t, load_cookie),
 	},
 	[ FR_LDAP_SYNC_CODE_COOKIE_LOAD_RESPONSE ] = {
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
 	},
 	[ FR_LDAP_SYNC_CODE_COOKIE_LOAD_FAIL ] = {
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic
 	},
 	[ FR_LDAP_SYNC_CODE_COOKIE_STORE ] = {
 		.default_reply = FR_LDAP_SYNC_CODE_COOKIE_STORE_RESPONSE,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.section_offset = offsetof(process_ldap_sync_sections_t, store_cookie),
 	},
 	[ FR_LDAP_SYNC_CODE_COOKIE_STORE_RESPONSE ] = {
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
 	}
@@ -234,7 +235,8 @@ fr_process_module_t process_ldap_sync = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "process_ldap_sync",
-		.inst_size	= sizeof(process_ldap_sync_t),
+		MODULE_INST(process_ldap_sync_t),
+		MODULE_RCTX(process_rctx_t)
 	},
 
 	.process	= mod_process,

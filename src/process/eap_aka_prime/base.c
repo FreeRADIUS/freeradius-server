@@ -32,7 +32,7 @@
 #include <freeradius-devel/eap_aka_sim/attrs.h>
 #include <freeradius-devel/eap_aka_sim/state_machine.h>
 #include <freeradius-devel/server/virtual_servers.h>
-#include <freeradius-devel/server/process.h>
+#include <freeradius-devel/server/process_types.h>
 
 static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("network_name", eap_aka_sim_process_conf_t, network_name ) },

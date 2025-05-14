@@ -22,6 +22,7 @@
  * @copyright 2021 The FreeRADIUS server project.
  * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
+#include "lib/server/rcode.h"
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <freeradius-devel/radius/radius.h>
@@ -132,14 +133,14 @@ typedef struct {
 } process_radius_sections_t;
 
 typedef struct {
-	fr_time_delta_t	session_timeout;	//!< Maximum time between the last response and next request.
-	uint32_t	max_session;		//!< Maximum ongoing session allowed.
+	fr_time_delta_t			session_timeout;//!< Maximum time between the last response and next request.
+	uint32_t			max_session;	//!< Maximum ongoing session allowed.
 
-	uint8_t       	state_server_id;	//!< Sets a specific byte in the state to allow the
-						//!< authenticating server to be identified in packet
-						//!<captures.
+	uint8_t       			state_server_id;//!< Sets a specific byte in the state to allow the
+							//!< authenticating server to be identified in packet
+							//!<captures.
 
-	fr_state_tree_t	*state_tree;		//!< State tree to link multiple requests/responses.
+	fr_state_tree_t			*state_tree;	//!< State tree to link multiple requests/responses.
 } process_radius_auth_t;
 
 typedef struct {
@@ -154,7 +155,8 @@ typedef struct {
 typedef struct {
 	fr_value_box_list_head_t	proxy_state;	//!< These need to be copied into the response in exactly
 							///< the same order as they were added.
-} process_radius_request_pairs_t;
+	unlang_result_t			result;
+} process_radius_rctx_t;
 
 #define FR_RADIUS_PROCESS_CODE_VALID(_x) (FR_RADIUS_PACKET_CODE_VALID(_x) || (_x == FR_RADIUS_CODE_DO_NOT_RESPOND))
 
@@ -163,6 +165,7 @@ typedef struct {
 #define PROCESS_CODE_DO_NOT_RESPOND	FR_RADIUS_CODE_DO_NOT_RESPOND
 #define PROCESS_PACKET_CODE_VALID	FR_RADIUS_PROCESS_CODE_VALID
 #define PROCESS_INST			process_radius_t
+#define PROCESS_RCTX			process_radius_rctx_t
 #define PROCESS_CODE_DYNAMIC_CLIENT	FR_RADIUS_CODE_ACCESS_ACCEPT
 #include <freeradius-devel/server/process.h>
 
@@ -233,18 +236,16 @@ static void radius_packet_debug(request_t *request, fr_packet_t *packet, fr_pair
  *
  */
 static inline CC_HINT(always_inline)
-process_radius_request_pairs_t *radius_request_pairs_store(request_t *request)
+void radius_request_pairs_store(request_t *request, process_radius_rctx_t *rctx)
 {
-	fr_pair_t			*proxy_state;
-	process_radius_request_pairs_t	*rctx;
+	fr_pair_t		*proxy_state;
 
 	/*
 	 *	Don't bother allocing the struct if there's no proxy state to store
 	 */
 	proxy_state = fr_pair_find_by_da(&request->request_pairs, NULL, attr_proxy_state);
-	if (!proxy_state) return 0;
+	if (!proxy_state) return;
 
-	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), process_radius_request_pairs_t));
 	fr_value_box_list_init(&rctx->proxy_state);
 
 	/*
@@ -257,15 +258,11 @@ process_radius_request_pairs_t *radius_request_pairs_store(request_t *request)
 		MEM((proxy_state_value = fr_value_box_acopy(rctx, &proxy_state->data)));
 		fr_value_box_list_insert_tail(&rctx->proxy_state, proxy_state_value);
 	} while ((proxy_state = fr_pair_find_by_da(&request->request_pairs, proxy_state, attr_proxy_state)));
-
-	return rctx;
 }
 
 static inline CC_HINT(always_inline)
-void radius_request_pairs_to_reply(request_t *request, process_radius_request_pairs_t *rctx)
+void radius_request_pairs_to_reply(request_t *request, process_radius_rctx_t *rctx)
 {
-	if (!rctx) return;
-
 	/*
 	 *	Proxy-State is a link-level signal between RADIUS
 	 *	client and server.  RFC 2865 Section 5.33 says that
@@ -303,11 +300,7 @@ void radius_request_pairs_to_reply(request_t *request, process_radius_request_pa
  */
 RECV(generic_radius_request)
 {
-	module_ctx_t			our_mctx = *mctx;
-
-	fr_assert_msg(!mctx->rctx, "rctx not expected here");
-	our_mctx.rctx = radius_request_pairs_store(request);
-	mctx = &our_mctx;	/* Our mutable mctx */
+	radius_request_pairs_store(request, mctx->rctx);
 
 	return CALL_RECV(generic);
 }
@@ -317,7 +310,7 @@ RECV(generic_radius_request)
  */
 RESUME(generic_radius_response)
 {
-	if (mctx->rctx) radius_request_pairs_to_reply(request, talloc_get_type_abort(mctx->rctx, process_radius_request_pairs_t));
+	radius_request_pairs_to_reply(request, talloc_get_type_abort(mctx->rctx, process_radius_rctx_t));
 
 	return CALL_RESUME(send_generic);
 }
@@ -342,10 +335,10 @@ RESUME(auth_type);
 
 RESUME(access_request)
 {
-	rlm_rcode_t			rcode = *p_result;
+	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_pair_t			*vp;
 	CONF_SECTION			*cs;
-	fr_dict_enum_value_t const		*dv;
+	fr_dict_enum_value_t const	*dv;
 	fr_process_state_t const	*state;
 	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_radius_t);
 
@@ -441,7 +434,7 @@ RESUME(access_request)
 	 *	And continue with sending the generic reply.
 	 */
 	RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(cs), cf_filename(cs));
-	return unlang_module_yield_to_section(p_result, request,
+	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_NOOP, resume_auth_type,
 					      NULL, 0, mctx->rctx);
 }
@@ -459,7 +452,7 @@ RESUME(auth_type)
 		[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT,
 	};
 
-	rlm_rcode_t			rcode = unlang_interpret_stack_result(request);
+	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_pair_t			*vp;
 	fr_process_state_t const	*state;
 
@@ -610,12 +603,9 @@ RESUME(access_challenge)
  */
 RECV(accounting_request)
 {
-	module_ctx_t			our_mctx = *mctx;
 	fr_pair_t			*acct_delay, *event_timestamp;
 
-	fr_assert_msg(!mctx->rctx, "rctx not expected here");
-	our_mctx.rctx = radius_request_pairs_store(request);
-	mctx = &our_mctx;	/* Our mutable mctx */
+	radius_request_pairs_store(request, mctx->rctx);
 
 	/*
 	 *	Acct-Delay-Time is horrific.  Its existence in a packet means that any retransmissions can't
@@ -657,7 +647,7 @@ RESUME(acct_type)
 		[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_DO_NOT_RESPOND,
 	};
 
-	rlm_rcode_t			rcode = *p_result;
+	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_process_state_t const	*state;
 
 	PROCESS_TRACE;
@@ -687,7 +677,7 @@ RESUME(acct_type)
 
 RESUME(accounting_request)
 {
-	rlm_rcode_t			rcode = *p_result;
+	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_pair_t			*vp;
 	CONF_SECTION			*cs;
 	fr_dict_enum_value_t const	*dv;
@@ -733,7 +723,7 @@ RESUME(accounting_request)
 	 *
 	 *	And continue with sending the generic reply.
 	 */
-	return unlang_module_yield_to_section(p_result, request,
+	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_NOOP, resume_acct_type,
 					      NULL, 0, mctx->rctx);
 }
@@ -931,7 +921,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_access_request,
 		.resume = resume_access_request,
 		.section_offset = offsetof(process_radius_sections_t, access_request),
@@ -944,7 +934,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_access_accept,
 		.section_offset = offsetof(process_radius_sections_t, access_accept),
@@ -957,7 +948,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_REJECT,
 		.send = send_generic,
 		.resume = resume_access_reject,
 		.section_offset = offsetof(process_radius_sections_t, access_reject),
@@ -970,7 +962,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_access_challenge,
 		.section_offset = offsetof(process_radius_sections_t, access_challenge),
@@ -990,7 +983,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_accounting_request,
 		.resume = resume_accounting_request,
 		.section_offset = offsetof(process_radius_sections_t, accounting_request),
@@ -1004,7 +997,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_generic_radius_response,
 		.section_offset = offsetof(process_radius_sections_t, accounting_response),
@@ -1022,7 +1016,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.section_offset = offsetof(process_radius_sections_t, status_server),
@@ -1040,7 +1034,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_COA_NAK,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic_radius_request,
 		.resume = resume_recv_generic,
 		.section_offset = offsetof(process_radius_sections_t, coa_request),
@@ -1053,7 +1047,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_COA_NAK,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_generic_radius_response,
 		.section_offset = offsetof(process_radius_sections_t, coa_ack),
@@ -1066,7 +1061,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_COA_NAK,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_NOTFOUND,
 		.send = send_generic,
 		.resume = resume_generic_radius_response,
 		.section_offset = offsetof(process_radius_sections_t, coa_nak),
@@ -1084,7 +1080,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_DISCONNECT_NAK,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.section_offset = offsetof(process_radius_sections_t, disconnect_request),
@@ -1097,7 +1093,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_DISCONNECT_NAK,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_generic_radius_response,
 		.section_offset = offsetof(process_radius_sections_t, disconnect_ack),
@@ -1110,7 +1107,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_DISCONNECT_NAK,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_NOTFOUND,
 		.send = send_generic,
 		.resume = resume_generic_radius_response,
 		.section_offset = offsetof(process_radius_sections_t, disconnect_nak),
@@ -1123,7 +1121,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_protocol_error,
 		.section_offset = offsetof(process_radius_sections_t, protocol_error),
@@ -1142,7 +1141,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_HANDLED,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_radius_sections_t, do_not_respond),
@@ -1247,7 +1247,8 @@ fr_process_module_t process_radius = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "radius",
 		.config		= config,
-		.inst_size	= sizeof(process_radius_t),
+		MODULE_INST(process_radius_t),
+		MODULE_RCTX(process_radius_rctx_t),
 
 		.onload		= mod_load,
 		.unload		= mod_unload,
