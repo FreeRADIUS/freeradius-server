@@ -4613,12 +4613,15 @@ static CONF_SECTION *virtual_module_find_cs(CONF_ITEM *ci, UNUSED char const *re
 	*policy = true;
 
 	/*
-	 *	"foo.authorize" means "load policy "foo" as method "authorize".
+	 *	"foo.authorize" means "load policy 'foo.authorize' or 'foo'"
+	 *	as method "authorize".
 	 *
-	 *	And bail out if there's no policy "foo".
+	 *	And bail out if there's no policy "foo.authorize" or "foo".
 	 */
 	if (method_name) {
-		subcs = cf_section_find(cs, virtual_name, NULL);
+		snprintf(buffer, sizeof(buffer), "%s.%s", virtual_name, method_name);
+		subcs = cf_section_find(cs, buffer, NULL);
+		if (!subcs) subcs = cf_section_find(cs, virtual_name, NULL);
 		if (!subcs) return NULL;
 
 		goto check_for_loop;
