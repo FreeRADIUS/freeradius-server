@@ -4576,18 +4576,17 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx
  * @param[in] virtual_name	Virtual module name e.g. foo.
  * @param[in] method_name	Method override (may be NULL) or the method
  *				name e.g. authorize.
+ * @param[in] unlang_ctx	Unlang context this call is being compiled in.
  * @param[out] policy		whether or not this thing was a policy
  * @return the CONF_SECTION specifying the virtual module.
  */
-static CONF_SECTION *virtual_module_find_cs(CONF_ITEM *ci,
-					    UNUSED char const *real_name, char const *virtual_name, char const *method_name,
-					    bool *policy)
+static CONF_SECTION *virtual_module_find_cs(CONF_ITEM *ci, UNUSED char const *real_name, char const *virtual_name,
+					    char const *method_name, unlang_compile_t *unlang_ctx, bool *policy)
 {
 	CONF_SECTION *cs, *subcs, *conf_root;
 	CONF_ITEM *loop;
-#if 0
 	char buffer[256];
-#endif
+
 	*policy = false;
 	conf_root = cf_root(ci);
 
@@ -4626,18 +4625,19 @@ static CONF_SECTION *virtual_module_find_cs(CONF_ITEM *ci,
 	}
 
 	/*
-	 *	"foo" means "look for foo.component" first, to allow
-	 *	method overrides.  If that's not found, just look for
+	 *	"foo" means "look for foo.name1.name2" first, to allow
+	 *	method overrides.  If that's not found, look for
+	 *	"foo.name1" and if that's not found just look for
 	 *	a policy "foo".
-	 *
-	 *	FIXME - This has been broken since we switched to named
-	 *	module sections. We should take the name1/name2 from the
-	 *	unlang ctx and use that to form the name we search for.
 	 */
-#if 0
-	snprintf(buffer, sizeof(buffer), "%s.%s", virtual_name, comp2str[method]);
-#endif
-	subcs = cf_section_find(cs, virtual_name, NULL);
+	snprintf(buffer, sizeof(buffer), "%s.%s.%s", virtual_name, unlang_ctx->section_name1, unlang_ctx->section_name2);
+	subcs = cf_section_find(cs, buffer, NULL);
+
+	if (!subcs) {
+		snprintf(buffer, sizeof(buffer), "%s.%s", virtual_name, unlang_ctx->section_name1);
+		subcs = cf_section_find(cs, buffer, NULL);
+	}
+
 	if (!subcs) subcs = cf_section_find(cs, virtual_name, NULL);
 	if (!subcs) return NULL;
 
@@ -5024,7 +5024,7 @@ check_for_module:
 	 */
 	p = strrchr(name, '.');
 	if (!p) {
-		subcs = virtual_module_find_cs(ci, name, name, NULL, &policy);
+		subcs = virtual_module_find_cs(ci, name, name, NULL, unlang_ctx, &policy);
 	} else {
 		char buffer[256];
 
@@ -5032,7 +5032,7 @@ check_for_module:
 		buffer[p - name] = '\0';
 
 		subcs = virtual_module_find_cs(ci, name,
-					       buffer, buffer + (p - name) + 1, &policy);
+					       buffer, buffer + (p - name) + 1, unlang_ctx, &policy);
 	}
 
 	/*
