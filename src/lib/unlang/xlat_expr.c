@@ -360,8 +360,8 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	any existing enum alone.
 	 */
 	if (enumv) dst->enumv = enumv;
-
 	fr_dcursor_append(out, dst);
+
 	VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
 	return XLAT_ACTION_DONE;
 }
@@ -391,6 +391,55 @@ static xlat_arg_parser_t const binary_cmp_xlat_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
+/*
+ *	@todo - arguably this function should process its own arguments, like logical_or.
+ *
+ *	That way it can return XLAT_ACTION_FAIL if either argument fails to be found,
+ *	or if the comparison matches, it returns the RHS value.  This behavior will
+ *	let us to multiple comparisons, like:
+ *
+ *		if (0 < x < 5) ...
+ *
+ *	Which is then syntactic sugar for
+ *
+ *		if ((0 < x) < 5) ...
+ *
+ *	That means the comparisons no longer return "bool", so if we
+ *	want to do this, the change has to be made before v4 is
+ *	released.
+ *
+ *	Other operators like "+=" would return their LHS value.  But in order to do that, we would have to
+ *	update the expression parser to allow in-place edits, and that may be a fair bit of work.
+ *
+ *	It also lets us do more interesting selectors, such as:
+ *
+ *		foo || (0 < x)
+ *
+ *	which if "foo" doesn't exist, evaluates the RHS, and then returns "x" only if x is greater than zero.
+ *	This short-hand can remove a lot of complex / nested "if" conditions.
+ *
+ *	It could also allow us to do better attribute filtering:
+ *
+ *		foo := (0 < foo < 5)
+ *
+ *	Which ensures that "foo" has value only 1..4.
+ *
+ *	It would be nice to have a syntax for "self", so we could instead do:
+ *
+ *		foo := (0 < $$ < 5)
+ *
+ *	Which could then also be used inside of attribute selectors:
+ *
+ *		foreach foo (Vendor-Specific.Cisco.AVPair[$$ =~ /^x/]) { ...
+ *
+ *	and now that we have pair cursors as value-boxes, this becomes a lot easier.
+ *	"$$" then becomes syntactic sugar for "the pair at the current cursor".
+ *
+ *	It also means tracking somehow the value of $$ in the interpreter?  Maybe as a short-hand, just update
+ *	the #request_t to add a #fr_pair_t of the current cursor value.  This is a horrible hack, but would be
+ *	easy to do.  It doesn't allow nested cursors, but whatever.  The syntax for that would be hard to get
+ *	right.
+ */
 static xlat_action_t xlat_cmp_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 UNUSED xlat_ctx_t const *xctx,
 				 UNUSED request_t *request, fr_value_box_list_t *in,
