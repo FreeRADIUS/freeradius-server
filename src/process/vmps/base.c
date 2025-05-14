@@ -81,7 +81,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.section_offset = PROCESS_CONF_OFFSET(join_request),
@@ -99,7 +99,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = PROCESS_CONF_OFFSET(join_response),
@@ -118,7 +119,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_generic,
 		.section_offset = PROCESS_CONF_OFFSET(reconfirm_request),
@@ -136,7 +137,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT] =	FR_PACKET_TYPE_VALUE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = PROCESS_CONF_OFFSET(reconfirm_response),
@@ -156,7 +158,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_VMPS_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT]	= FR_VMPS_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = PROCESS_CONF_OFFSET(do_not_respond),
@@ -267,7 +269,8 @@ fr_process_module_t process_vmps = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "vmps",
-		.inst_size	= sizeof(process_vmps_t)
+		MODULE_INST(process_vmps_t),
+		MODULE_RCTX(process_rctx_t)
 	},
 	.process	= mod_process,
 	.compile_list	= compile_list,

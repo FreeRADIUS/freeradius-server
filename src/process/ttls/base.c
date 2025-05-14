@@ -217,7 +217,7 @@ RESUME(auth_type);
 
 RESUME(access_request)
 {
-	rlm_rcode_t			rcode = *p_result;
+	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_pair_t			*vp;
 	CONF_SECTION			*cs;
 	fr_dict_enum_value_t const	*dv;
@@ -278,7 +278,7 @@ RESUME(access_request)
 	 *	And continue with sending the generic reply.
 	 */
 	RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(cs), cf_filename(cs));
-	return unlang_module_yield_to_section(p_result, request,
+	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_NOOP, resume_auth_type,
 					      NULL, 0, mctx->rctx);
 }
@@ -296,7 +296,7 @@ RESUME(auth_type)
 		[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT,
 	};
 
-	rlm_rcode_t			rcode = *p_result;
+	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_pair_t			*vp;
 	fr_process_state_t const	*state;
 
@@ -544,7 +544,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_access_request,
 		.section_offset = offsetof(process_ttls_sections_t, access_request),
@@ -557,7 +557,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_access_accept,
 		.section_offset = offsetof(process_ttls_sections_t, access_accept),
@@ -570,7 +571,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_REJECT,
 		.send = send_generic,
 		.resume = resume_access_reject,
 		.section_offset = offsetof(process_ttls_sections_t, access_reject),
@@ -583,7 +585,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_ACCESS_REJECT,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_access_challenge,
 		.section_offset = offsetof(process_ttls_sections_t, access_challenge),
@@ -598,7 +601,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT] = FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_FAIL,
 		.send = send_generic,
 		.resume = resume_protocol_error,
 		.section_offset = offsetof(process_ttls_sections_t, protocol_error),
@@ -617,7 +621,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_HANDLED,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_ttls_sections_t, do_not_respond),
@@ -669,7 +674,8 @@ fr_process_module_t process_ttls = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "ttls",
 		.config		= config,
-		.inst_size	= sizeof(process_ttls_t),
+		MODULE_INST(process_ttls_t),
+		MODULE_RCTX(process_rctx_t),
 
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate
