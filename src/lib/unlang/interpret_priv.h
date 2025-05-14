@@ -26,7 +26,6 @@
 
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/unlang/interpret.h>
-#include "interpret_priv.h"
 
 #ifdef __cplusplus
 extern "C" {
