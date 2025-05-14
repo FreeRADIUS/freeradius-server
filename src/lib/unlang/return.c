@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "return_priv.h"
 
-unlang_action_t unlang_return(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+unlang_action_t unlang_return(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	RDEBUG2("%s", unlang_ops[frame->instruction->type].name);
 
@@ -37,7 +37,7 @@ unlang_action_t unlang_return(rlm_rcode_t *p_result, request_t *request, unlang_
 	 *	into account.  We do however want to record
 	 *	the current section rcode.
 	 */
-	*p_result = frame->result.rcode;
+	*p_result = frame->section_result;
 
 	/*
 	 *	Stop at the next return point, or if we hit

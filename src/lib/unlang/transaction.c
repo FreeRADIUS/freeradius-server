@@ -52,7 +52,7 @@ static void unlang_transaction_signal(UNUSED request_t *request, unlang_stack_fr
 /** Commit a successful transaction.
  *
  */
-static unlang_action_t unlang_transaction_final(rlm_rcode_t *p_result, UNUSED request_t *request,
+static unlang_action_t unlang_transaction_final(unlang_result_t *p_result, UNUSED request_t *request,
 						unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_transaction_t *state = talloc_get_type_abort(frame->state,
@@ -60,7 +60,7 @@ static unlang_action_t unlang_transaction_final(rlm_rcode_t *p_result, UNUSED re
 
 	fr_assert(state->el != NULL);
 
-	switch (*p_result) {
+	switch (p_result->rcode) {
 	case RLM_MODULE_REJECT:
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_INVALID:
@@ -83,7 +83,7 @@ static unlang_action_t unlang_transaction_final(rlm_rcode_t *p_result, UNUSED re
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_transaction(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_transaction(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_transaction_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_transaction_t);
 	fr_edit_list_t *parent;
@@ -94,7 +94,7 @@ static unlang_action_t unlang_transaction(rlm_rcode_t *p_result, request_t *requ
 
 	frame_repeat(frame, unlang_transaction_final);
 
-	return unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(NULL, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 fr_edit_list_t *unlang_interpret_edit_list(request_t *request)

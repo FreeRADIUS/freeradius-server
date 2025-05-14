@@ -50,7 +50,7 @@ typedef struct {
 /** Process the results of an async user lookup
  *
  */
-static unlang_action_t ldap_find_user_async_result(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t ldap_find_user_async_result(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_user_find_ctx_t	*user_ctx = talloc_get_type_abort(uctx, ldap_user_find_ctx_t);
 	fr_ldap_query_t		*query = user_ctx->query;
@@ -68,10 +68,10 @@ static unlang_action_t ldap_find_user_async_result(rlm_rcode_t *p_result, UNUSED
 	 *	DNs can now be dynamic, so a BAD DN often means the same thing as an empty result
 	 */
 	case LDAP_RESULT_BAD_DN:
-		RETURN_MODULE_NOTFOUND;
+		RETURN_UNLANG_NOTFOUND;
 
 	default:
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	cnt = ldap_count_entries(query->ldap_conn->handle, query->result);
@@ -89,7 +89,7 @@ static unlang_action_t ldap_find_user_async_result(rlm_rcode_t *p_result, UNUSED
 			ldap_memfree(dn);
 		}
 		REXDENT();
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	entry = ldap_first_entry(query->ldap_conn->handle, query->result);
@@ -98,7 +98,7 @@ static unlang_action_t ldap_find_user_async_result(rlm_rcode_t *p_result, UNUSED
 		REDEBUG("Failed retrieving entry: %s",
 			ldap_err2string(ldap_errno));
 
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	dn = ldap_get_dn(query->ldap_conn->handle, entry);
@@ -106,7 +106,7 @@ static unlang_action_t ldap_find_user_async_result(rlm_rcode_t *p_result, UNUSED
 		ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 		REDEBUG("Retrieving object DN from entry failed: %s", ldap_err2string(ldap_errno));
 
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 	fr_ldap_util_normalise_dn(dn, dn);
 
@@ -117,7 +117,7 @@ static unlang_action_t ldap_find_user_async_result(rlm_rcode_t *p_result, UNUSED
 	ldap_memfree(dn);
 	if (user_ctx->out) *user_ctx->out = user_ctx->query;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /** Cancel a user search
@@ -176,7 +176,7 @@ unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst
 	};
 
 	if (filter) user_ctx->filter = filter->vb_strvalue;
-	if (unlang_function_push(request, NULL, ldap_find_user_async_result, ldap_find_user_async_cancel,
+	if (unlang_function_push(NULL, request, NULL, ldap_find_user_async_result, ldap_find_user_async_cancel,
 				 ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, user_ctx) < 0) {
 		talloc_free(user_ctx);
 		return UNLANG_ACTION_FAIL;

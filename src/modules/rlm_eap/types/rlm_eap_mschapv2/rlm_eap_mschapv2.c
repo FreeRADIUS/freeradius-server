@@ -40,8 +40,12 @@ typedef struct {
 	bool			with_ntdomain_hack;
 	bool			send_error;
 	char const		*identity;
-	fr_dict_enum_value_t		*auth_type;
+	fr_dict_enum_value_t	*auth_type;
 } rlm_eap_mschapv2_t;
+
+typedef struct {
+	unlang_result_t		section_result;
+} rlm_eap_mschapv2_rctx_t;
 
 static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("with_ntdomain_hack", rlm_eap_mschapv2_t, with_ntdomain_hack), .dflt = "no" },
@@ -278,17 +282,16 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 
 static unlang_action_t mschap_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	eap_session_t			*eap_session = mctx->rctx;
+	rlm_eap_mschapv2_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, rlm_eap_mschapv2_rctx_t);
+	eap_session_t			*eap_session = eap_session_get(request->parent);
 	mschapv2_opaque_t		*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
 	eap_round_t			*eap_round = eap_session->this_round;
 	fr_pair_list_t			response;
  	rlm_eap_mschapv2_t const	*inst = mctx->mi->data;
-	rlm_rcode_t			rcode;
+	rlm_rcode_t			rcode = rctx->section_result.rcode;
 	fr_pair_t *parent;
 
 	fr_pair_list_init(&response);
-
-	rcode = unlang_interpret_stack_result(request);
 
 	/*
 	 *	Delete MPPE keys & encryption policy.  We don't
@@ -370,6 +373,7 @@ static unlang_action_t mschap_resume(rlm_rcode_t *p_result, module_ctx_t const *
 static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_mschapv2_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_mschapv2_t);
+	rlm_eap_mschapv2_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, rlm_eap_mschapv2_rctx_t);
 	request_t			*parent = request->parent;
 	eap_session_t			*eap_session = eap_session_get(parent);
 	mschapv2_opaque_t		*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
@@ -610,7 +614,7 @@ packet_ready:
 		RETURN_MODULE_FAIL;
 	}
 
-	return unlang_module_yield_to_section(p_result, request, unlang, RLM_MODULE_FAIL, mschap_resume, NULL, 0, eap_session);
+	return unlang_module_yield_to_section(&rctx->section_result, request, unlang, RLM_MODULE_FAIL, mschap_resume, NULL, 0, rctx);
 }
 
 /*
@@ -618,7 +622,7 @@ packet_ready:
  */
 static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	request_t			*parent = request->parent;
+	request_t		*parent = request->parent;
 	eap_session_t		*eap_session = eap_session_get(parent);
 	fr_pair_t		*auth_challenge;
 	fr_pair_t		*peer_challenge;
@@ -728,7 +732,8 @@ rlm_eap_submodule_t rlm_eap_mschapv2 = {
 	.common = {
 		.name		= "eap_mschapv2",
 		.magic		= MODULE_MAGIC_INIT,
-		.inst_size	= sizeof(rlm_eap_mschapv2_t),
+		MODULE_INST(rlm_eap_mschapv2_t),
+		MODULE_RCTX(rlm_eap_mschapv2_rctx_t),
 		.config		= submodule_config,
 		.instantiate	= mod_instantiate,	/* Create new submodule instance */
 	},

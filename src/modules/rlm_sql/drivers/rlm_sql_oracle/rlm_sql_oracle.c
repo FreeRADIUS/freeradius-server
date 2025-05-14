@@ -571,7 +571,7 @@ static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connec
 SQL_QUERY_FAIL
 SQL_QUERY_RESUME
 
-static unlang_action_t sql_select_query_resume(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t sql_select_query_resume(unlang_result_t *p_result, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	rlm_sql_oracle_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_oracle_conn_t);
@@ -582,7 +582,7 @@ static unlang_action_t sql_select_query_resume(rlm_rcode_t *p_result, UNUSED int
 	OCIDefine		*define;
 	ub2			dtype, dsize;
 
-	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
+	if (query_ctx->rcode != RLM_SQL_OK) RETURN_UNLANG_FAIL;
 
 	/*
 	 *	We only need to do this once per result set, because
@@ -665,13 +665,13 @@ static unlang_action_t sql_select_query_resume(rlm_rcode_t *p_result, UNUSED int
 	conn->ind = ind;
 
 	query_ctx->rcode = RLM_SQL_OK;
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 
  error:
 	talloc_free(row);
 
 	query_ctx->rcode = RLM_SQL_ERROR;
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 
 static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
@@ -727,7 +727,7 @@ static int sql_num_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const
 	return rows;
 }
 
-static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t sql_fetch_row(unlang_result_t *p_result, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	int			status = OCI_STILL_EXECUTING;
@@ -737,7 +737,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		ERROR("Socket not connected");
 
 		query_ctx->rcode = RLM_SQL_RECONNECT;
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	query_ctx->row = NULL;
@@ -749,22 +749,22 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		query_ctx->row = conn->row;
 
 		query_ctx->rcode = RLM_SQL_OK;
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
 	if (status == OCI_NO_DATA) {
 		query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
 	if (status == OCI_ERROR) {
 		ERROR("fetch failed in sql_fetch_row");
 		query_ctx->rcode = sql_check_reconnect(conn);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	query_ctx->rcode = RLM_SQL_ERROR;
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 
 static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)

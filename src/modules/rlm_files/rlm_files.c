@@ -398,7 +398,7 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 /** Lookup the expanded key value in files data.
  *
  */
-static unlang_action_t CC_HINT(nonnull) mod_files_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t CC_HINT(nonnull) mod_files_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	rlm_files_env_t		*env = talloc_get_type_abort(uctx, rlm_files_env_t);
 	PAIR_LIST_LIST const	*user_list;
@@ -414,10 +414,12 @@ static unlang_action_t CC_HINT(nonnull) mod_files_resume(rlm_rcode_t *p_result, 
 
 	if (!key_vb) {
 		RERROR("Missing key value");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
-	if (!tree && !default_list) RETURN_MODULE_NOOP;
+	if (!tree && !default_list) {
+		RETURN_UNLANG_NOOP;
+	}
 
 	RDEBUG2("%s - Looking for key \"%pV\"", env->name, key_vb);
 
@@ -520,7 +522,7 @@ redo:
 					RPWARN("Failed parsing map for check item %s, skipping it", map->lhs->name);
 				fail:
 					fr_edit_list_abort(child);
-					RETURN_MODULE_FAIL;
+					RETURN_UNLANG_FAIL;
 				}
 
 				if (!rcode) {
@@ -614,11 +616,12 @@ redo:
 	 */
 	if (!found) {
 		fr_edit_list_abort(child);
-		RETURN_MODULE_NOOP; /* on to the next module */
+		RETURN_UNLANG_NOOP;
 	}
 
 	fr_edit_list_commit(child);
-	RETURN_MODULE_OK;
+
+	RETURN_UNLANG_OK;
 }
 
 /** Initiate a files data lookup
@@ -639,7 +642,7 @@ static unlang_action_t CC_HINT(nonnull) mod_files(rlm_rcode_t *p_result, module_
 	/*
 	 *	Set mod_files_resume as the repeat function
 	 */
-	if (unlang_function_push(request, NULL, mod_files_resume, NULL, 0, UNLANG_SUB_FRAME, env) < 0) RETURN_MODULE_FAIL;
+	if (unlang_function_push(NULL, request, NULL, mod_files_resume, NULL, 0, UNLANG_SUB_FRAME, env) < 0) RETURN_MODULE_FAIL;
 
 	/*
 	 *	Push evaluation of the key tmpl onto the stack

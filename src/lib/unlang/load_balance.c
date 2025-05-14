@@ -31,7 +31,7 @@
 
 #define unlang_redundant_load_balance unlang_load_balance
 
-static unlang_action_t unlang_load_balance_next(rlm_rcode_t *p_result, request_t *request,
+static unlang_action_t unlang_load_balance_next(unlang_result_t *p_result, request_t *request,
 						unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_redundant_t	*redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
@@ -73,7 +73,7 @@ static unlang_action_t unlang_load_balance_next(rlm_rcode_t *p_result, request_t
 		 *	If the current child says "return", then do
 		 *	so.
 		 */
-		if (redundant->child->actions.actions[*p_result] == MOD_ACTION_RETURN) {
+		if (redundant->child->actions.actions[p_result->rcode] == MOD_ACTION_RETURN) {
 			/* DON'T change p_result, as it is taken from the child */
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
@@ -82,7 +82,8 @@ static unlang_action_t unlang_load_balance_next(rlm_rcode_t *p_result, request_t
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	if (unlang_interpret_push(request, redundant->child, FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) {
+	if (unlang_interpret_push(NULL, request, redundant->child,
+				  FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) {
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
@@ -104,7 +105,7 @@ static unlang_action_t unlang_load_balance_next(rlm_rcode_t *p_result, request_t
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_redundant_t	*redundant;
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
@@ -112,10 +113,7 @@ static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *req
 
 	uint32_t count = 0;
 
-	if (!g->num_children) {
-		*p_result = RLM_MODULE_NOOP;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	if (!g->num_children) RETURN_UNLANG_NOOP;
 
 	gext = unlang_group_to_load_balance(g);
 
@@ -228,7 +226,7 @@ static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *req
 	 *	Plain "load-balance".  Just do one child.
 	 */
 	if (frame->instruction->type == UNLANG_TYPE_LOAD_BALANCE) {
-		if (unlang_interpret_push(request, redundant->found,
+		if (unlang_interpret_push(NULL, request, redundant->found,
 					  FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) {
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}

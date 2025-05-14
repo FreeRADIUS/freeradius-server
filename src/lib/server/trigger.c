@@ -141,29 +141,29 @@ typedef struct {
 	fr_time_delta_t		timeout;	//!< How long the trigger has to run.
 } fr_trigger_t;
 
-static unlang_action_t trigger_done(rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t trigger_done(unlang_result_t *p_result,
 				    request_t *request, void *rctx)
 {
 	fr_trigger_t	*trigger = talloc_get_type_abort(rctx, fr_trigger_t);
 
 	if (trigger->exec.status == 0) {
 		RDEBUG2("Trigger \"%s\" done", trigger->command);
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
 	RERROR("Trigger \"%s\" failed", trigger->command);
 
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 
-static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t trigger_resume(UNUSED unlang_result_t *p_result,
 				      request_t *request, void *rctx)
 {
 	fr_trigger_t	*trigger = talloc_get_type_abort(rctx, fr_trigger_t);
 
 	if (fr_value_box_list_empty(&trigger->args)) {
 		RERROR("Failed trigger \"%s\" - did not expand to anything", trigger->command);
-		RETURN_MODULE_FAIL;
+		return UNLANG_ACTION_FAIL;
 	}
 
 	/*
@@ -177,7 +177,7 @@ static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 	                  false, NULL, trigger->timeout) < 0) {
 	fail:
 		RPERROR("Failed running trigger \"%s\"", trigger->command);
-		RETURN_MODULE_FAIL;
+		return UNLANG_ACTION_FAIL;
 	}
 
 	/*
@@ -194,14 +194,16 @@ static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 	return UNLANG_ACTION_YIELD;
 }
 
-static unlang_action_t trigger_run(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t trigger_run(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	fr_trigger_t	*trigger = talloc_get_type_abort(uctx, fr_trigger_t);
 
 	RDEBUG("Running trigger \"%s\"", trigger->command);
 
 	if (unlang_xlat_push(request, NULL, &trigger->args, request,
-			     trigger->xlat, UNLANG_SUB_FRAME) < 0) RETURN_MODULE_FAIL;
+			     trigger->xlat, UNLANG_SUB_FRAME) < 0) {
+		RETURN_UNLANG_FAIL;
+	}
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -421,7 +423,7 @@ int trigger_exec(unlang_interpret_t *intp,
 		return -1;
 	}
 
-	if (unlang_function_push(request, trigger_run, trigger_resume,
+	if (unlang_function_push(NULL, request, trigger_run, trigger_resume,
 				 NULL, 0, UNLANG_TOP_FRAME, trigger) < 0) goto error;
 
 	if (!intp) {

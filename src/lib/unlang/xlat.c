@@ -230,7 +230,7 @@ static int unlang_xlat_push_internal(TALLOC_CTX *ctx, bool *p_success, fr_value_
 	/*
 	 *	Push a new xlat eval frame onto the stack
 	 */
-	if (unlang_interpret_push(request, &xlat_instruction,
+	if (unlang_interpret_push(NULL, request, &xlat_instruction,
 				  FRAME_CONF(RLM_MODULE_NOT_SET, top_frame), UNLANG_NEXT_STOP) < 0) return -1;
 	frame = &stack->frame[stack->depth];
 
@@ -306,7 +306,7 @@ int unlang_xlat_push_node(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t 
 	return unlang_xlat_push_internal(ctx, p_success, out, request, NULL, node, UNLANG_TOP_FRAME);
 }
 
-static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_xlat_repeat(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_action_t			xa;
@@ -365,14 +365,14 @@ static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *requ
 
 	case XLAT_ACTION_DONE:
 		if (state->success) *state->success = true;
-		*p_result = RLM_MODULE_OK;
+		p_result->rcode = RLM_MODULE_OK;
 		REXDENT();
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_FAIL:
 	fail:
 		if (state->success) *state->success = false;
-		*p_result = RLM_MODULE_FAIL;
+		p_result->rcode = RLM_MODULE_FAIL;
 		REXDENT();
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -387,7 +387,7 @@ static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *requ
  * Calls the xlat interpreter and translates its wants and needs into
  * unlang_action_t codes.
  */
-static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_xlat(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_action_t			xa;
@@ -429,14 +429,14 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request, un
 
 	case XLAT_ACTION_DONE:
 		if (state->success) *state->success = true;
-		*p_result = RLM_MODULE_OK;
+		p_result->rcode = RLM_MODULE_OK;
 		RINDENT_RESTORE(request, state);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_FAIL:
 	fail:
 		if (state->success) *state->success = false;
-		*p_result = RLM_MODULE_FAIL;
+		p_result->rcode = RLM_MODULE_FAIL;
 		RINDENT_RESTORE(request, state);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -485,7 +485,7 @@ static void unlang_xlat_signal(request_t *request, unlang_stack_frame_t *frame, 
  *	  operations need to be performed.
  *	- UNLANG_ACTION_CALCULATE_RESULT if done.
  */
-static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_xlat_resume(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_action_t			xa;
@@ -507,7 +507,7 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
 
 	case XLAT_ACTION_DONE:
 		if (state->success) *state->success = true;
-		*p_result = RLM_MODULE_OK;
+		p_result->rcode = RLM_MODULE_OK;
 		RINDENT_RESTORE(request, state);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -534,7 +534,7 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
 
 	case XLAT_ACTION_FAIL:
 		if (state->success) *state->success = false;
-		*p_result = RLM_MODULE_FAIL;
+		p_result->rcode = RLM_MODULE_FAIL;
 		RINDENT_RESTORE(request, state);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	/* DON'T SET DEFAULT */
@@ -542,7 +542,7 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
 
 	fr_assert(0);		/* Garbage xlat action */
 
-	*p_result = RLM_MODULE_FAIL;
+	p_result->rcode = RLM_MODULE_FAIL;
 	RINDENT_RESTORE(request, state);
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }

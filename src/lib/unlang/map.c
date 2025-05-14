@@ -69,7 +69,7 @@ typedef struct {
  *	- UNLANG_ACTION_CALCULATE_RESULT changes were applied.
  *	- UNLANG_ACTION_PUSHED_CHILD async execution of an expansion is required.
  */
-static unlang_action_t list_mod_apply(rlm_rcode_t *p_result, request_t *request)
+static unlang_action_t list_mod_apply(unlang_result_t *p_result, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -95,14 +95,12 @@ static unlang_action_t list_mod_apply(rlm_rcode_t *p_result, request_t *request)
 		if (!fr_cond_assert(ret == 0)) {
 			TALLOC_FREE(frame->state);
 
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			return UNLANG_ACTION_FAIL;
 		}
 	}
 
 done:
-	*p_result = RLM_MODULE_NOOP;
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	RETURN_UNLANG_NOOP;
 }
 
 /** Create a list of modifications to apply to one or more fr_pair_t lists
@@ -115,7 +113,7 @@ done:
  *	- UNLANG_ACTION_CALCULATE_RESULT changes were applied.
  *	- UNLANG_ACTION_PUSHED_CHILD async execution of an expansion is required.
  */
-static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t list_mod_create(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_update_t	*update_state = talloc_get_type_abort(frame->state, unlang_frame_state_update_t);
 	map_t				*map;
@@ -163,9 +161,7 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 			error:
 				TALLOC_FREE(frame->state);
 				repeatable_clear(frame);
-				*p_result = RLM_MODULE_FAIL;
-
-				return UNLANG_ACTION_CALCULATE_RESULT;
+				return UNLANG_ACTION_FAIL;
 			}
 			FALL_THROUGH;
 
@@ -252,7 +248,7 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
  * If one map fails in the evaluation phase, no more maps are processed, and the current
  * result is discarded.
  */
-static unlang_action_t unlang_update_state_init(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_update_state_init(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_map_t			*gext = unlang_group_to_map(g);
@@ -278,7 +274,7 @@ static unlang_action_t unlang_update_state_init(rlm_rcode_t *p_result, request_t
 	return list_mod_create(p_result, request, frame);
 }
 
-static unlang_action_t map_proc_resume(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request,
+static unlang_action_t map_proc_resume(UNUSED unlang_result_t *p_result, UNUSED request_t *request,
 #ifdef WITH_VERIFY_PTR
 				       unlang_stack_frame_t *frame
 #else
@@ -293,7 +289,7 @@ static unlang_action_t map_proc_resume(UNUSED rlm_rcode_t *p_result, UNUSED requ
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t map_proc_apply(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t map_proc_apply(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_map_t			*gext = unlang_group_to_map(g);
@@ -305,10 +301,10 @@ static unlang_action_t map_proc_apply(rlm_rcode_t *p_result, request_t *request,
 
 	VALUE_BOX_LIST_VERIFY(&map_proc_state->src_result);
 	frame_repeat(frame, map_proc_resume);
-	return map_proc(p_result, request, gext->proc_inst, &map_proc_state->src_result);
+	return map_proc(&p_result->rcode, request, gext->proc_inst, &map_proc_state->src_result);
 }
 
-static unlang_action_t unlang_map_state_init(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_map_state_init(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_map_t			*gext = unlang_group_to_map(g);
@@ -338,8 +334,7 @@ static unlang_action_t unlang_map_state_init(rlm_rcode_t *p_result, request_t *r
 				 request, inst->src, NULL, NULL) < 0) {
 			REDEBUG("Failed expanding map src");
 		error:
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			RETURN_UNLANG_FAIL;
 		}
 		fr_value_box_list_insert_head(&map_proc_state->src_result, src_result);
 		break;

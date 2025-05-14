@@ -1570,7 +1570,7 @@ static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit
  *	- UNLANG_ACTION_CALCULATE_RESULT changes were applied.
  *	- UNLANG_ACTION_PUSHED_CHILD async execution of an expansion is required.
  */
-static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t process_edit(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
 
@@ -1604,9 +1604,8 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 				if (state->ours) fr_edit_list_abort(state->el);
 				TALLOC_FREE(frame->state);
 				repeatable_clear(frame);
-				*p_result = RLM_MODULE_FAIL;
 
-				return UNLANG_ACTION_CALCULATE_RESULT;
+				RETURN_UNLANG_FAIL;
 			}
 
 			if (rcode == 1) {
@@ -1682,7 +1681,7 @@ static void edit_state_init_internal(request_t *request, unlang_frame_state_edit
  * If one map fails in the evaluation phase, no more maps are processed, and the current
  * result is discarded.
  */
-static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_edit_state_init(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_edit_t			*edit = unlang_generic_to_edit(frame->instruction);
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
@@ -1747,7 +1746,7 @@ int unlang_edit_push(request_t *request, bool *success, fr_edit_list_t *el, map_
 	/*
 	 *	Push a new edit frame onto the stack
 	 */
-	if (unlang_interpret_push(request, unlang_edit_to_generic(edit),
+	if (unlang_interpret_push(NULL, request, unlang_edit_to_generic(edit),
 				  FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) return -1;
 
 	frame = &stack->frame[stack->depth];

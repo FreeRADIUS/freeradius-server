@@ -23,7 +23,6 @@
  * @copyright 2018 The FreeRADIUS server project
  * @copyright 2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/server/modpriv.h>
@@ -33,7 +32,7 @@ RCSID("$Id$")
 
 #include "tmpl.h"
 
-static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame);
+static unlang_action_t unlang_module_resume(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame);
 static void unlang_module_event_retry_handler(UNUSED fr_timer_list_t *tl, fr_time_t now, void *ctx);
 
 /** Push a module or submodule onto the stack for evaluation
@@ -48,7 +47,7 @@ static void unlang_module_event_retry_handler(UNUSED fr_timer_list_t *tl, fr_tim
  *	- 0 on success.
  *	- -1 on failure.
  */
-int unlang_module_push(rlm_rcode_t *p_result, request_t *request,
+int unlang_module_push(unlang_result_t *p_result, request_t *request,
 		       module_instance_t *mi, module_method_t method, bool top_frame)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -94,7 +93,7 @@ int unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 	/*
 	 *	Push a new module frame onto the stack
 	 */
-	if (unlang_interpret_push(request, unlang_module_to_generic(mc),
+	if (unlang_interpret_push(p_result, request, unlang_module_to_generic(mc),
 				  FRAME_CONF(RLM_MODULE_NOT_SET, top_frame), UNLANG_NEXT_STOP) < 0) {
 		return -1;
 	}
@@ -102,7 +101,6 @@ int unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 	frame = &stack->frame[stack->depth];
 	state = frame->state;
 	*state = (unlang_frame_state_module_t){
-		.p_result = p_result,
 		.thread = module_thread(mi)
 	};
 
@@ -244,7 +242,7 @@ unlang_action_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_list_t
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
+unlang_action_t unlang_module_yield_to_section(unlang_result_t *p_result,
 					       request_t *request, CONF_SECTION *subcs,
 					       rlm_rcode_t default_rcode,
 					       module_method_t resume,
@@ -260,14 +258,22 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 		m = unlang_generic_to_module(frame->instruction);
 
 		/*
-		 *	Be transparent to the resume function.
-		 *	frame->result will be overwritten
-		 *	anyway when we return.
+		 *	Pretend as if we called the section
+		 *	and used the default rcode value.
 		 */
-		*p_result = default_rcode;
+		frame->scratch_result.rcode = default_rcode;
+
 		state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
-		return resume(p_result,
+		/*
+		 *	We must pass a pointer to the scratch
+		 *	rcode here, as we're pretending we're
+		 *	executing the resume function using the
+		 *	interpreter, which means it must modify
+		 *	the scratch result for the frame, and
+		 *	_NOT_ what was passed in for p_result.
+		 */
+		return resume(&frame->scratch_result.rcode,
 			      MODULE_CTX(m->mmc.mi, module_thread(m->mmc.mi)->data,
 			      		 state->env_data, rctx),
 			      request);
@@ -279,7 +285,7 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 	 */
 	(void) unlang_module_yield(request, resume, signal, sigmask, rctx);
 
-	if (unlang_interpret_push_section(request, subcs,
+	if (unlang_interpret_push_section(p_result, request, subcs,
 					  FRAME_CONF(default_rcode, UNLANG_SUB_FRAME)) < 0) return UNLANG_ACTION_STOP_PROCESSING;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
@@ -536,23 +542,20 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 /** Cleanup after a module completes
  *
  */
-static unlang_action_t unlang_module_done(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_module_done(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
-	rlm_rcode_t			rcode = state->rcode_set ? state->rcode : *p_result;
 
 #ifndef NDEBUG
 	fr_assert(state->unlang_indent == request->log.indent.unlang);
 #endif
 
-	fr_assert(rcode >= RLM_MODULE_REJECT);
-	fr_assert(rcode < RLM_MODULE_NOT_SET);
+	fr_assert(p_result->rcode >= RLM_MODULE_REJECT);
+	fr_assert(p_result->rcode < RLM_MODULE_NOT_SET);
 
 	RDEBUG("%s (%s)", frame->instruction->name ? frame->instruction->name : "",
-	       fr_table_str_by_value(mod_rcode_table, rcode, "<invalid>"));
+	       fr_table_str_by_value(mod_rcode_table, p_result->rcode, "<invalid>"));
 
-	if (state->p_result) *state->p_result = rcode;	/* Inform our caller if we have one */
-	*p_result = rcode;
 	request->module = state->previous_module;
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
@@ -561,7 +564,7 @@ static unlang_action_t unlang_module_done(rlm_rcode_t *p_result, request_t *requ
 /** Cleanup after a yielded module completes
  *
  */
-static unlang_action_t unlang_module_resume_done(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_module_resume_done(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
@@ -575,22 +578,12 @@ static unlang_action_t unlang_module_resume_done(rlm_rcode_t *p_result, request_
  * This is called _after_ the module first yields, and again after any
  * other yields.
  */
-static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_module_resume(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 	unlang_module_t			*m = unlang_generic_to_module(frame->instruction);
 	module_method_t			resume;
 	unlang_action_t			ua;
-
-	/*
-	 *	Update the rcode from any child calls that
-	 *	may have been performed. The module still
-	 *	has a chance to override this rcode if it
-	 *	wants, but process modules in particular
-	 *	expect to see the result of child
-	 *	evaluations available to them in p_result.
-	 */
-	state->rcode = *p_result < RLM_MODULE_NUMCODES ? *p_result : RLM_MODULE_NOOP;
 
 	fr_assert(state->resume != NULL);
 
@@ -607,8 +600,8 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	 *	Lock is noop unless instance->mutex is set.
 	 */
 	safe_lock(m->mmc.mi);
-	ua = resume(&state->rcode, MODULE_CTX(m->mmc.mi, state->thread->data,
-					      state->env_data, state->rctx), request);
+	ua = resume(&p_result->rcode, MODULE_CTX(m->mmc.mi, state->thread->data,
+						 state->env_data, state->rctx), request);
 	safe_unlock(m->mmc.mi);
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) ua = UNLANG_ACTION_STOP_PROCESSING;
@@ -616,10 +609,10 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	switch (ua) {
 	case UNLANG_ACTION_STOP_PROCESSING:
 		RWARN("Module %s or worker signalled to stop processing request", m->mmc.mi->name);
-		if (state->p_result) *state->p_result = state->rcode;
 		state->thread->active_callers--;
-		*p_result = state->rcode;
 		request->module = state->previous_module;
+		p_result->rcode = RLM_MODULE_NOT_SET;
+		p_result->priority = MOD_ACTION_NOT_SET;
 		return UNLANG_ACTION_STOP_PROCESSING;
 
 	case UNLANG_ACTION_YIELD:
@@ -653,7 +646,6 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 		 */
 		if (!state->resume) {
 			frame_repeat(frame, unlang_module_resume_done);
-			state->rcode_set = false;	/* Preserve the child rcode */
 		} else {
 			repeatable_set(frame);
 		}
@@ -673,7 +665,7 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 		break;
 
 	case UNLANG_ACTION_FAIL:
-		*p_result = RLM_MODULE_FAIL;
+		p_result->rcode = RLM_MODULE_FAIL;
 		request->module = state->previous_module;
 		break;
 
@@ -771,15 +763,14 @@ static void unlang_module_event_retry_handler(UNUSED fr_timer_list_t *tl, fr_tim
 	unlang_interpret_mark_runnable(request);
 }
 
-static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_module(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_module_t			*m;
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 	unlang_action_t			ua;
 	fr_time_t			now = fr_time_wrap(0);
 
-	*p_result = state->rcode = RLM_MODULE_NOOP;
-	state->rcode_set = true;
+	p_result->rcode = RLM_MODULE_NOOP;
 	state->previous_module = request->module;
 
 #ifndef NDEBUG
@@ -795,13 +786,11 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	RDEBUG4("[%i] %s - %s (%s)", stack_depth_current(request), __FUNCTION__,
 		m->mmc.mi->module->exported->name, m->mmc.mi->name);
 
-	state->p_result = NULL;
-
 	/*
 	 *	Return administratively configured return code
 	 */
 	if (m->mmc.mi->force) {
-		state->rcode = m->mmc.mi->code;
+		p_result->rcode = m->mmc.mi->code;
 		ua = UNLANG_ACTION_CALCULATE_RESULT;
 		goto done;
 	}
@@ -825,7 +814,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		/*
 		 *	Fail the module call on callenv failure
 		 */
-		if (state->env_result != CALL_ENV_SUCCESS) RETURN_MODULE_FAIL;
+		if (state->env_result != CALL_ENV_SUCCESS) return UNLANG_ACTION_FAIL;
 	}
 
 	/*
@@ -883,7 +872,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 
 	request->module = m->mmc.mi->name;
 	safe_lock(m->mmc.mi);	/* Noop unless instance->mutex set */
-	ua = m->mmc.mmb.method(&state->rcode,
+	ua = m->mmc.mmb.method(&p_result->rcode,
 			       MODULE_CTX(m->mmc.mi, state->thread->data, state->env_data, state->rctx),
 			       request);
 	safe_unlock(m->mmc.mi);
@@ -897,8 +886,6 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	 */
 	case UNLANG_ACTION_STOP_PROCESSING:
 		RWARN("Module %s became unblocked", m->mmc.mi->name);
-		if (state->p_result) *state->p_result = state->rcode;
-		*p_result = state->rcode;
 		request->module = state->previous_module;
 		return UNLANG_ACTION_STOP_PROCESSING;
 
@@ -952,7 +939,6 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		 */
 		if (!state->resume) {
 			frame_repeat(frame, unlang_module_done);
-			state->rcode_set = false;	/* Preserve the child rcode */
 		} else {
 			repeatable_set(frame);
 		}
@@ -975,7 +961,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 
 	case UNLANG_ACTION_FAIL:
 	fail:
-		*p_result = RLM_MODULE_FAIL;
+		p_result->rcode = RLM_MODULE_FAIL;
 		break;
 
 	/*
@@ -997,7 +983,14 @@ void unlang_module_init(void)
 			   &(unlang_op_t){
 				.name = "module",
 				.interpret = unlang_module,
-				.flag = UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_RETURN_POINT,
+				/*
+				 *	- UNLANG_OP_FLAG_RCODE_SET
+				 *	  Set request->rcode to be the rcode from the module.
+				 *	- UNLANG_OP_FLAG_RETURN_POINT
+				 *	  Set the return point to be the module.
+				 */
+				.flag = UNLANG_OP_FLAG_RCODE_SET |
+					UNLANG_OP_FLAG_RETURN_POINT,
 				.signal = unlang_module_signal,
 				.frame_state_size = sizeof(unlang_frame_state_module_t),
 				.frame_state_type = "unlang_frame_state_module_t",

@@ -30,7 +30,7 @@ RCSID("$Id$")
 
 #include "call_priv.h"
 
-static unlang_action_t unlang_call_resume(UNUSED rlm_rcode_t *p_result, request_t *request,
+static unlang_action_t unlang_call_resume(UNUSED unlang_result_t *p_result, request_t *request,
 					  unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
@@ -49,7 +49,7 @@ static unlang_action_t unlang_call_resume(UNUSED rlm_rcode_t *p_result, request_
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_call_children(rlm_rcode_t *p_result, request_t *request,
+static unlang_action_t unlang_call_children(UNUSED unlang_result_t *p_result, request_t *request,
 					    unlang_stack_frame_t *frame)
 {
 	frame_repeat(frame, unlang_call_resume);
@@ -58,11 +58,11 @@ static unlang_action_t unlang_call_children(rlm_rcode_t *p_result, request_t *re
 	 *      Push the contents of the call { } section onto the stack.
 	 *      This gets executed after the server returns.
 	 */
-	return unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(NULL, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 
-static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *request,
+static unlang_action_t unlang_call_frame_init(unlang_result_t *p_result, request_t *request,
 					      unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g;
@@ -91,8 +91,7 @@ static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *
 			REDEBUG("No such value '%u' of attribute 'Packet-Type' for server %s",
 				request->packet->code, cf_section_name2(gext->server_cs));
 		error:
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			RETURN_UNLANG_FAIL;
 		}
 		type_enum = fr_dict_enum_by_value(packet_type_vp->da, &packet_type_vp->data);
 		if (!type_enum) goto bad_packet_type;
@@ -145,7 +144,7 @@ static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *
  *
  * This should be used instead of virtual_server_push in the majority of the code
  */
-unlang_action_t unlang_call_push(request_t *request, CONF_SECTION *server_cs, bool top_frame)
+unlang_action_t unlang_call_push(unlang_result_t *p_result, request_t *request, CONF_SECTION *server_cs, bool top_frame)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_call_t			*c;
@@ -207,7 +206,7 @@ unlang_action_t unlang_call_push(request_t *request, CONF_SECTION *server_cs, bo
 	/*
 	 *	Push a new call frame onto the stack
 	 */
-	if (unlang_interpret_push(request, unlang_call_to_generic(c),
+	if (unlang_interpret_push(p_result, request, unlang_call_to_generic(c),
 				  FRAME_CONF(RLM_MODULE_NOT_SET, top_frame), UNLANG_NEXT_STOP) < 0) {
 		talloc_free(c);
 		return UNLANG_ACTION_FAIL;

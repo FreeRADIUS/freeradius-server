@@ -125,7 +125,7 @@ static void unlang_child_request_signal(request_t *request, UNUSED unlang_stack_
  * the child is done executing, it runs this to inform the parent
  * that its done.
  */
-static unlang_action_t unlang_child_request_done(UNUSED rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_child_request_done(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_child_request_t *state = talloc_get_type_abort(frame->state, unlang_frame_state_child_request_t);
 	unlang_child_request_t *cr = state->cr; /* Can't use talloc_get_type_abort, may be an array element */
@@ -147,16 +147,7 @@ static unlang_action_t unlang_child_request_done(UNUSED rlm_rcode_t *p_result, r
 						 cr->config.session_unique_ptr,
 						 cr->num);
 		}
-
-		/*
-		 *	Record the child's result and the last
-		 *	priority. For parallel, this lets one
-		 *	child be used to control the rcode of
-		 *	the parallel keyword.
-		 */
-		cr->result.rcode = frame->result.rcode;
-		cr->result.priority = frame->result.priority;
-		if (cr->result.p_result) *(cr->result.p_result) = cr->result.rcode;
+		if (cr->p_result) *cr->p_result = cr->result;
 		break;
 
 	case CHILD_CANCELLED:
@@ -231,7 +222,7 @@ static int unlang_child_request_stack_init(unlang_child_request_t *cr)
 	};
 
 	/* Sets up the frame for us to use immediately */
-	if (unlikely(unlang_interpret_push_instruction(child, &inform_parent,
+	if (unlikely(unlang_interpret_push_instruction(&cr->result, child, &inform_parent,
 						       FRAME_CONF(RLM_MODULE_NOOP, true)) < 0)) {
 		return -1;
 	}
@@ -264,7 +255,7 @@ static int unlang_child_request_stack_init(unlang_child_request_t *cr)
  *	- -1 on failure.
  */
 int unlang_child_request_init(TALLOC_CTX *ctx, unlang_child_request_t *out, request_t *child,
-			      rlm_rcode_t *p_result, unsigned int *sibling_count, void const *unique_session_ptr, bool free_child)
+			      unlang_result_t *p_result, unsigned int *sibling_count, void const *unique_session_ptr, bool free_child)
 {
 	*out = (unlang_child_request_t){
 		.name = talloc_bstrdup(ctx, child->name),
@@ -276,10 +267,7 @@ int unlang_child_request_init(TALLOC_CTX *ctx, unlang_child_request_t *out, requ
 			.session_unique_ptr = unique_session_ptr,
 			.free_child = free_child
 		},
-		.result = {
-			.p_result = p_result,
-			.rcode = RLM_MODULE_NOT_SET
-		}
+		.p_result = p_result
 	};
 
 	return unlang_child_request_stack_init(out);

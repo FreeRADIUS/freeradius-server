@@ -22,6 +22,7 @@
  *
  * @copyright 2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
+#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/server/request.h>
 
 #ifdef __cplusplus
@@ -77,15 +78,16 @@ typedef struct {
 		bool			free_child;
 	} config;
 
-	struct {
-		rlm_rcode_t		rcode;			//!< Where to store the result of the child.
-		rlm_rcode_t		*p_result;		//!< If not NULL, write the rcode here too.
-		int			priority;		//!< Priority of the highest frame on the stack of the child.
-	} result;
+	unlang_result_t			*p_result;		//!< Pointer to the result of the child request.
+								///< This is a pointer to the parent's result, and
+								///< should be used to store the result of the child.
+	unlang_result_t			result;			//!< The result of the child request.  This is a copy of the
+								///< parent's result, and should be used to store the result
+								///< of the child.
 } unlang_child_request_t;
 
 int		unlang_child_request_init(TALLOC_CTX *ctx, unlang_child_request_t *out, request_t *child,
-					  rlm_rcode_t *p_result, unsigned int *sibling_count, void const *unique_session_ptr, bool free_child);
+					  unlang_result_t *p_result, unsigned int *sibling_count, void const *unique_session_ptr, bool free_child);
 
 int		unlang_child_request_op_init(void);
 

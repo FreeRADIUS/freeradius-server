@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "catch_priv.h"
 
-static unlang_action_t catch_skip_to_next(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t catch_skip_to_next(UNUSED unlang_result_t *p_result, UNUSED request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_t		*unlang;
 
@@ -45,12 +45,12 @@ static unlang_action_t catch_skip_to_next(UNUSED rlm_rcode_t *p_result, UNUSED r
 	return frame_set_next(frame, unlang);
 }
 
-static unlang_action_t unlang_catch(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_catch(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 #ifndef NDEBUG
 	unlang_catch_t const *c = unlang_generic_to_catch(frame->instruction);
 
-	fr_assert(c->catching[*p_result]);
+	fr_assert(!c->catching[p_result->rcode]);
 #endif
 
 	/*
@@ -58,14 +58,14 @@ static unlang_action_t unlang_catch(rlm_rcode_t *p_result, request_t *request, u
 	 */
 	frame_repeat(frame, catch_skip_to_next);
 
-	return unlang_interpret_push_children(p_result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(NULL, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 
 /** Skip ahead to a particular "catch" instruction.
  *
  */
-unlang_action_t unlang_interpret_skip_to_catch(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+unlang_action_t unlang_interpret_skip_to_catch(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_t		*unlang;
 
@@ -84,12 +84,12 @@ unlang_action_t unlang_interpret_skip_to_catch(rlm_rcode_t *p_result, request_t 
 		if (unlang->type != UNLANG_TYPE_CATCH) {
 		not_caught:
 			RDEBUG3("No catch section for %s",
-				fr_table_str_by_value(mod_rcode_table, *p_result, "<invalid>"));
+				fr_table_str_by_value(mod_rcode_table, p_result->rcode, "<invalid>"));
 			return frame_set_next(frame, unlang);
 		}
 
 		c = unlang_generic_to_catch(unlang);
-		if (c->catching[*p_result]) break;
+		if (c->catching[p_result->rcode]) break;
 	}
 	if (!unlang) goto not_caught;
 

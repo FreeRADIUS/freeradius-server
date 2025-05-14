@@ -27,6 +27,7 @@
 RCSIDH(lib_eap_aka_sim_state_machine_h, "$Id$")
 
 #include <freeradius-devel/eap_aka_sim/base.h>
+#include <freeradius-devel/unlang/interpret.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,6 +44,8 @@ struct eap_aka_sim_session_s {
 
 	module_method_t			next;				//!< Resumption function to call after
 									///< executing common code.
+
+	unlang_result_t			result;				//!< The result of the last unlang section we evaluted.
 
 	eap_type_t			type;				//!< Either FR_TYPE_AKA, or FR_TYPE_AKA_PRIME.
 
@@ -212,4 +215,3 @@ unlang_action_t eap_aka_sim_state_machine_process(rlm_rcode_t *p_result, module_
 #ifdef __cplusplus
 }
 #endif
-

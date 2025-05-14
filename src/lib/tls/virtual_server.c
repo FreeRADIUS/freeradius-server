@@ -71,7 +71,7 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_t resume,
 	 *	Setup a function to execute after the
 	 *	subrequest completes.
 	 */
-	if (unlang_function_push(child, NULL, resume,
+	if (unlang_function_push(NULL, child, NULL, resume,
 				 NULL, 0, UNLANG_SUB_FRAME, tls_session) < 0) return UNLANG_ACTION_FAIL;
 
 	/*
@@ -80,7 +80,7 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_t resume,
 	 *	call into the subrequest to run the section
 	 *	specified by Packet-Type.
 	 */
-	if (unlang_call_push(child, conf->virtual_server, UNLANG_SUB_FRAME) < 0) {
+	if (unlang_call_push(NULL, child, conf->virtual_server, UNLANG_SUB_FRAME) < 0) {
 		request_detach(child);
 		return UNLANG_ACTION_FAIL;
 	}

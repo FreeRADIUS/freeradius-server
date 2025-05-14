@@ -44,6 +44,7 @@ RCSID("$Id$")
 #define STATE(_x) static inline unlang_action_t state_ ## _x(rlm_rcode_t *p_result, \
 							     module_ctx_t const *mctx, \
 							     request_t *request)
+
 #define STATE_GUARD(_x)	static unlang_action_t guard_ ## _x(rlm_rcode_t *p_result, \
 							    module_ctx_t const *mctx, \
 							    request_t *request)
@@ -52,9 +53,25 @@ RCSID("$Id$")
 							       module_ctx_t const *mctx, \
 							       request_t *request)
 
+#define STATE_NO_RESULT(_x) \
+	static inline unlang_action_t state_ ## _x(UNUSED rlm_rcode_t *p_result, \
+						   module_ctx_t const *mctx, \
+						   request_t *request)
+
+#define STATE_GUARD_NO_RESULT(_x) \
+	static unlang_action_t guard_ ## _x(UNUSED rlm_rcode_t *p_result, \
+					    module_ctx_t const *mctx, \
+					    request_t *request)
+
+#define RESUME_NO_RESULT(_x) \
+	static inline unlang_action_t resume_ ## _x(UNUSED rlm_rcode_t *p_result, \
+						    module_ctx_t const *mctx, \
+						    request_t *request)
+
+
 #define STATE_TRANSITION(_x) guard_ ## _x(p_result, mctx, request)
 
-#define CALL_SECTION(_x)	unlang_module_yield_to_section(p_result, \
+#define CALL_SECTION(_x)	unlang_module_yield_to_section(&eap_aka_sim_session->result, \
 					      		       request, \
 							       inst->actions._x, \
 							       RLM_MODULE_NOOP, \
@@ -133,10 +150,10 @@ static void mod_signal(module_ctx_t const *mctx, request_t *request, UNUSED fr_s
  */
 #define SECTION_RCODE_IGNORED \
 do { \
-	switch (unlang_interpret_stack_result(request)) { \
+	switch (unlang_interpret_scratch_result(request)) { \
 	case RLM_MODULE_USER_SECTION_REJECT: \
 		RWDEBUG("Ignoring rcode (%s)", \
-			fr_table_str_by_value(rcode_table, unlang_interpret_stack_result(request), "<invalid>")); \
+			fr_table_str_by_value(rcode_table, unlang_interpret_scratch_result(request), "<invalid>")); \
 		break; \
 	default: \
 		break; \
@@ -149,7 +166,7 @@ do { \
 #define SECTION_RCODE_PROCESS \
 do { \
 	if (after_authentication(eap_aka_sim_session)) { \
-		switch (unlang_interpret_stack_result(request)) { \
+		switch (unlang_interpret_scratch_result(request)) { \
 		case RLM_MODULE_REJECT:	 \
 		case RLM_MODULE_DISALLOW: \
 			eap_aka_sim_session->failure_type = FR_NOTIFICATION_VALUE_TEMPORARILY_DENIED; \
@@ -165,10 +182,10 @@ do { \
 			break; \
 		} \
 	} else { \
-		switch (unlang_interpret_stack_result(request)) { \
+		switch (unlang_interpret_scratch_result(request)) { \
 		case RLM_MODULE_USER_SECTION_REJECT: \
 			REDEBUG("Section rcode (%s) indicates we should reject the user", \
-		        	fr_table_str_by_value(rcode_table, unlang_interpret_stack_result(request), "<INVALID>")); \
+		        	fr_table_str_by_value(rcode_table, unlang_interpret_scratch_result(request), "<INVALID>")); \
 			return STATE_TRANSITION(common_failure_notification); \
 		default: \
 			break; \
@@ -631,7 +648,7 @@ RESUME(store_session)
 {
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(mctx->rctx, eap_aka_sim_session_t);
 
-	switch (unlang_interpret_stack_result(request)) {
+	switch (unlang_interpret_scratch_result(request)) {
 	/*
 	 *	Store failed.  Don't send fastauth id
 	 */
@@ -659,7 +676,7 @@ RESUME(store_pseudonym)
 	fr_pair_t			*vp;
 	fr_pair_t			*new;
 
-	switch (unlang_interpret_stack_result(request)) {
+	switch (unlang_interpret_scratch_result(request)) {
 	/*
 	 *	Store failed.  Don't send pseudonym
 	 */
@@ -671,7 +688,7 @@ RESUME(store_pseudonym)
 		break;
 	}
 
-	unlang_interpret_stack_result_set(request, RLM_MODULE_NOOP); /* Needed because we may call resume functions directly */
+	unlang_interpret_scratch_result_set(request, RLM_MODULE_NOOP); /* Needed because we may call resume functions directly */
 
 	pair_delete_request(attr_eap_aka_sim_next_pseudonym);
 
@@ -809,7 +826,7 @@ static unlang_action_t session_and_pseudonym_store(rlm_rcode_t *p_result, module
 
 	eap_aka_sim_session->next = next;
 
-	unlang_interpret_stack_result_set(request, RLM_MODULE_NOOP); /* Needed because we may call resume functions directly */
+	unlang_interpret_scratch_result_set(request, RLM_MODULE_NOOP); /* Needed because we may call resume functions directly */
 
 	vp = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_eap_aka_sim_next_pseudonym);
 	if (vp) {
@@ -923,7 +940,7 @@ static unlang_action_t session_and_pseudonym_clear(rlm_rcode_t *p_result, module
 
 	eap_aka_sim_session->next = next;
 
-	unlang_interpret_stack_result_set(request, RLM_MODULE_NOOP); /* Needed because we may call resume functions directly */
+	unlang_interpret_scratch_result_set(request, RLM_MODULE_NOOP); /* Needed because we may call resume functions directly */
 
 	/*
 	 *	Clear out pseudonyms (if we sent one)
@@ -1280,6 +1297,7 @@ RESUME(recv_common_failure_notification_ack)
 STATE(common_failure_notification)
 {
 	eap_aka_sim_process_conf_t	*inst = talloc_get_type_abort(mctx->mi->data, eap_aka_sim_process_conf_t);
+	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(mctx->rctx, eap_aka_sim_session_t);
 	fr_pair_t			*subtype_vp = NULL;
 
 	subtype_vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_aka_sim_subtype);
@@ -1484,11 +1502,11 @@ RESUME(send_eap_success)
 	 *	the send EAP-Success { ... } section.
 	 */
 	if (eap_aka_sim_session->send_result_ind) {
-		switch (unlang_interpret_stack_result(request)) {
+		switch (unlang_interpret_scratch_result(request)) {
 		case RLM_MODULE_USER_SECTION_REJECT:
 			RWDEBUG("Ignoring rcode (%s) from send EAP-Success { ... } "
 				"as we already sent a Success-Notification",
-				fr_table_str_by_value(rcode_table, unlang_interpret_stack_result(request), "<invalid>"));
+				fr_table_str_by_value(rcode_table, unlang_interpret_scratch_result(request), "<invalid>"));
 			RWDEBUG("If you need to force a failure, return an error code from "
 				"send Success-Notification { ... }");
 			break;
@@ -1519,9 +1537,10 @@ RESUME(send_eap_success)
 /** Enter EAP-SUCCESS state
  *
  */
-STATE_GUARD(eap_success)
+STATE_GUARD_NO_RESULT(eap_success)
 {
-	eap_aka_sim_process_conf_t *inst = talloc_get_type_abort(mctx->mi->data, eap_aka_sim_process_conf_t);
+	eap_aka_sim_process_conf_t	*inst = talloc_get_type_abort(mctx->mi->data, eap_aka_sim_process_conf_t);
+	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(mctx->rctx, eap_aka_sim_session_t);
 
 	STATE_SET(eap_success);
 
@@ -1548,10 +1567,11 @@ RESUME(recv_common_success_notification_ack)
  *
  * - Call 'recv Success-Notification-Ack { ... }'
  */
-STATE(common_success_notification)
+STATE_NO_RESULT(common_success_notification)
 {
 	eap_aka_sim_process_conf_t *inst = talloc_get_type_abort(mctx->mi->data, eap_aka_sim_process_conf_t);
-
+	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(mctx->rctx,
+									     eap_aka_sim_session_t);
 	/*
 	 *  	Because the server uses the AT_NOTIFICATION code "Success" (32768) to
 	 *	indicate that the EAP exchange has completed successfully, the EAP
@@ -1626,10 +1646,11 @@ RESUME(send_common_success_notification)
 /** Enter the SUCCESS-NOTIFICATION state
  *
  */
-STATE_GUARD(common_success_notification)
+STATE_GUARD_NO_RESULT(common_success_notification)
 {
 	eap_aka_sim_process_conf_t *inst = talloc_get_type_abort(mctx->mi->data, eap_aka_sim_process_conf_t);
-
+	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(mctx->rctx,
+									     eap_aka_sim_session_t);
 	STATE_SET(common_success_notification);
 
 	return CALL_SECTION(send_common_success_notification);
@@ -1904,7 +1925,7 @@ RESUME(send_common_reauthentication_request)
 {
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(mctx->rctx, eap_aka_sim_session_t);
 
-	switch (unlang_interpret_stack_result(request)) {
+	switch (unlang_interpret_scratch_result(request)) {
 	/*
 	 *	Failed getting the values we need for resumption
 	 *	Request a different identity.
@@ -1921,7 +1942,7 @@ RESUME(send_common_reauthentication_request)
 		case AKA_SIM_ANY_ID_REQ:
 			RDEBUG2("Previous section returned (%s), clearing reply attributes and "
 				"requesting additional identity",
-				fr_table_str_by_value(rcode_table, unlang_interpret_stack_result(request), "<INVALID>"));
+				fr_table_str_by_value(rcode_table, unlang_interpret_scratch_result(request), "<INVALID>"));
 			fr_pair_list_free(&request->reply_pairs);
 			eap_aka_sim_session->id_req = AKA_SIM_FULLAUTH_ID_REQ;
 
@@ -1974,7 +1995,7 @@ RESUME(load_pseudonym)
 		return eap_aka_sim_session->next(p_result, mctx, request);
 	}
 
-	switch (unlang_interpret_stack_result(request)) {
+	switch (unlang_interpret_scratch_result(request)) {
 	/*
 	 *	Failed resolving the pseudonym
 	 *	request a different identity.
@@ -1987,7 +2008,7 @@ RESUME(load_pseudonym)
 		case AKA_SIM_FULLAUTH_ID_REQ:
 			RDEBUG2("Previous section returned (%s), clearing reply attributes and "
 				"requesting additional identity",
-				fr_table_str_by_value(rcode_table, unlang_interpret_stack_result(request), "<INVALID>"));
+				fr_table_str_by_value(rcode_table, unlang_interpret_scratch_result(request), "<INVALID>"));
 			fr_pair_list_free(&request->reply_pairs);
 			eap_aka_sim_session->id_req = AKA_SIM_FULLAUTH_ID_REQ;
 			return STATE_TRANSITION(common_identity);
@@ -2033,7 +2054,7 @@ RESUME(load_session)
 	 */
 	if (!inst->actions.load_session) goto reauthenticate;
 
-	switch (unlang_interpret_stack_result(request)) {
+	switch (unlang_interpret_scratch_result(request)) {
 	/*
 	 *	Failed getting the values we need for resumption
 	 *	Request a different identity.
@@ -2050,7 +2071,7 @@ RESUME(load_session)
 		case AKA_SIM_ANY_ID_REQ:
 			RDEBUG2("Previous section returned (%s), clearing reply attributes and "
 				"requesting additional identity",
-				fr_table_str_by_value(rcode_table, unlang_interpret_stack_result(request), "<INVALID>"));
+				fr_table_str_by_value(rcode_table, unlang_interpret_scratch_result(request), "<INVALID>"));
 			fr_pair_list_free(&request->reply_pairs);
 			eap_aka_sim_session->id_req = AKA_SIM_FULLAUTH_ID_REQ;
 			return STATE_TRANSITION(common_identity);
@@ -2086,7 +2107,7 @@ RESUME(load_session)
 /** Enter the REAUTHENTICATION state
  *
  */
-STATE_GUARD(common_reauthentication)
+STATE_GUARD_NO_RESULT(common_reauthentication)
 {
 	eap_aka_sim_process_conf_t *inst = talloc_get_type_abort(mctx->mi->data, eap_aka_sim_process_conf_t);
 	eap_aka_sim_session_t	*eap_aka_sim_session = talloc_get_type_abort(mctx->rctx, eap_aka_sim_session_t);
@@ -2811,7 +2832,7 @@ RESUME(recv_aka_identity_response)
 	 *	what they set.
 	 */
 	user_set_id_req = identity_req_set_by_user(request, eap_aka_sim_session);
-	if ((unlang_interpret_stack_result(request) == RLM_MODULE_NOTFOUND) || user_set_id_req) {
+	if ((unlang_interpret_scratch_result(request) == RLM_MODULE_NOTFOUND) || user_set_id_req) {
 		if (!user_set_id_req) {
 			switch (eap_aka_sim_session->last_id_req) {
 			case AKA_SIM_ANY_ID_REQ:
@@ -2833,7 +2854,7 @@ RESUME(recv_aka_identity_response)
 
 			}
 			RDEBUG2("Previous section returned (%s), requesting next most permissive identity (%s)",
-				fr_table_str_by_value(rcode_table, unlang_interpret_stack_result(request), "<INVALID>"),
+				fr_table_str_by_value(rcode_table, unlang_interpret_scratch_result(request), "<INVALID>"),
 				fr_table_str_by_value(fr_aka_sim_id_request_table,
 						      eap_aka_sim_session->id_req, "<INVALID>"));
 		}
@@ -2930,7 +2951,7 @@ STATE(aka_identity)
 		crypto_identity_set(request, eap_aka_sim_session,
 				    (uint8_t const *)id->vp_strvalue, id->vp_length);
 
-		return unlang_module_yield_to_section(p_result,
+		return unlang_module_yield_to_section(&eap_aka_sim_session->result,
 						      request,
 						      inst->actions.recv_aka_identity_response ?
 						      		inst->actions.recv_aka_identity_response:
@@ -3024,7 +3045,7 @@ RESUME(send_aka_identity_request)
 /** Enter the AKA-IDENTITY state
  *
  */
-STATE_GUARD(aka_identity)
+STATE_GUARD_NO_RESULT(aka_identity)
 {
 	eap_aka_sim_process_conf_t	*inst = talloc_get_type_abort(mctx->mi->data, eap_aka_sim_process_conf_t);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(mctx->rctx, eap_aka_sim_session_t);
@@ -3036,7 +3057,7 @@ STATE_GUARD(aka_identity)
 	 *	then run that, otherwise just run the normal
 	 *	identity request section.
 	 */
-	return unlang_module_yield_to_section(p_result,
+	return unlang_module_yield_to_section(&eap_aka_sim_session->result,
 					      request,
 					      inst->actions.send_aka_identity_request ?
 							inst->actions.send_aka_identity_request:
@@ -3079,7 +3100,7 @@ RESUME(recv_sim_start_response)
 	 *	what they set.
 	 */
 	user_set_id_req = identity_req_set_by_user(request, eap_aka_sim_session);
-	if ((unlang_interpret_stack_result(request) == RLM_MODULE_NOTFOUND) || user_set_id_req) {
+	if ((unlang_interpret_scratch_result(request) == RLM_MODULE_NOTFOUND) || user_set_id_req) {
 		if (!user_set_id_req) {
 			switch (eap_aka_sim_session->last_id_req) {
 			case AKA_SIM_NO_ID_REQ:	/* Should not happen */
@@ -3104,7 +3125,7 @@ RESUME(recv_sim_start_response)
 				return STATE_TRANSITION(common_failure_notification);
 			}
 			RDEBUG2("Previous section returned (%s), requesting next most permissive identity (%s)",
-				fr_table_str_by_value(rcode_table, unlang_interpret_stack_result(request), "<INVALID>"),
+				fr_table_str_by_value(rcode_table, unlang_interpret_scratch_result(request), "<INVALID>"),
 				fr_table_str_by_value(fr_aka_sim_id_request_table,
 						      eap_aka_sim_session->id_req, "<INVALID>"));
 		}
@@ -3268,7 +3289,7 @@ STATE(sim_start)
 			}
 		}
 
-		return unlang_module_yield_to_section(p_result,
+		return unlang_module_yield_to_section(&eap_aka_sim_session->result,
 						      request,
 						      inst->actions.recv_sim_start_response?
 						      		inst->actions.recv_sim_start_response:
@@ -3394,14 +3415,14 @@ RESUME(send_sim_start)
 /** Enter the SIM-START state
  *
  */
-STATE_GUARD(sim_start)
+STATE_GUARD_NO_RESULT(sim_start)
 {
 	eap_aka_sim_process_conf_t *inst = talloc_get_type_abort(mctx->mi->data, eap_aka_sim_process_conf_t);
 	eap_aka_sim_session_t	   *eap_aka_sim_session = talloc_get_type_abort(mctx->rctx, eap_aka_sim_session_t);
 
 	STATE_SET(sim_start);
 
-	return unlang_module_yield_to_section(p_result,
+	return unlang_module_yield_to_section(&eap_aka_sim_session->result,
 					      request,
 					      inst->actions.send_sim_start_request ?
 					      		inst->actions.send_sim_start_request:
@@ -3548,10 +3569,10 @@ RESUME(recv_common_identity_response)
 	 *	always negotiate down.
 	 */
 	if (!identity_req_set_by_user(request, eap_aka_sim_session)) {
-		if (unlang_interpret_stack_result(request) == RLM_MODULE_NOTFOUND) {
+		if (unlang_interpret_scratch_result(request) == RLM_MODULE_NOTFOUND) {
 			eap_aka_sim_session->id_req = AKA_SIM_ANY_ID_REQ;
 			RDEBUG2("Previous section returned (%s), requesting additional identity (%s)",
-				fr_table_str_by_value(rcode_table, unlang_interpret_stack_result(request), "<INVALID>"),
+				fr_table_str_by_value(rcode_table, unlang_interpret_scratch_result(request), "<INVALID>"),
 				fr_table_str_by_value(fr_aka_sim_id_request_table,
 						      eap_aka_sim_session->id_req, "<INVALID>"));
 		} else if (inst->request_identity != AKA_SIM_NO_ID_REQ) {

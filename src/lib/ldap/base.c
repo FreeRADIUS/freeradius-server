@@ -614,8 +614,7 @@ static void ldap_trunk_search_results_debug(request_t *request, fr_ldap_query_t 
 /** Handle the return code from parsed LDAP results to set the module rcode
  *
  */
-static unlang_action_t ldap_trunk_query_results(rlm_rcode_t *p_result, UNUSED int *priority,
-						request_t *request, void *uctx)
+static unlang_action_t ldap_trunk_query_results(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	fr_ldap_query_t		*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
 
@@ -626,14 +625,14 @@ static unlang_action_t ldap_trunk_query_results(rlm_rcode_t *p_result, UNUSED in
 
 	case LDAP_RESULT_SUCCESS:
 		if (DEBUG_ENABLED3 && query->type == LDAP_REQUEST_SEARCH) ldap_trunk_search_results_debug(request, query);
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 
 	case LDAP_RESULT_BAD_DN:
 	case LDAP_RESULT_NO_RESULT:
-		RETURN_MODULE_NOTFOUND;
+		RETURN_UNLANG_NOTFOUND;
 
 	default:
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 }
 
@@ -728,7 +727,7 @@ unlang_action_t fr_ldap_trunk_search(TALLOC_CTX *ctx,
 		return UNLANG_ACTION_FAIL;
 	}
 
-	action = unlang_function_push(request, NULL, ldap_trunk_query_results,
+	action = unlang_function_push(NULL, request, NULL, ldap_trunk_query_results,
 				      ldap_trunk_query_cancel, ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, query);
 
 	if (action == UNLANG_ACTION_FAIL) goto error;
@@ -774,7 +773,7 @@ unlang_action_t fr_ldap_trunk_modify(TALLOC_CTX *ctx,
 		return UNLANG_ACTION_FAIL;
 	}
 
-	action = unlang_function_push(request, NULL, ldap_trunk_query_results, ldap_trunk_query_cancel,
+	action = unlang_function_push(NULL, request, NULL, ldap_trunk_query_results, ldap_trunk_query_cancel,
 				      ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, query);
 
 	if (action == UNLANG_ACTION_FAIL) goto error;
@@ -901,7 +900,7 @@ unlang_action_t fr_ldap_trunk_extended(TALLOC_CTX *ctx,
 		return UNLANG_ACTION_FAIL;
 	}
 
-	action = unlang_function_push(request, NULL, ldap_trunk_query_results, ldap_trunk_query_cancel,
+	action = unlang_function_push(NULL, request, NULL, ldap_trunk_query_results, ldap_trunk_query_cancel,
 				      ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, query);
 
 	if (action == UNLANG_ACTION_FAIL) goto error;

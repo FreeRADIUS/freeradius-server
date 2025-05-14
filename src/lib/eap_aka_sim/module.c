@@ -59,7 +59,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 						[RLM_MODULE_UPDATED]	= FR_EAP_CODE_FAILURE
 					};
 	eap_code_t			code;
-	rlm_rcode_t			rcode = unlang_interpret_stack_result(request);
+	rlm_rcode_t			rcode = unlang_interpret_scratch_result(request);
 	fr_aka_sim_ctx_t		encode_ctx;
 	uint8_t	const			*request_hmac_extra = NULL;
 	size_t				request_hmac_extra_len = 0;

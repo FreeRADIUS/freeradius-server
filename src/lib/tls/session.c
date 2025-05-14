@@ -1147,7 +1147,7 @@ static void fr_tls_session_alert_send(request_t *request, fr_tls_session_t *sess
  *
  * As this is just a logging session, it's result doesn't affect the parent.
  */
-static unlang_action_t tls_establish_session_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t tls_establish_session_result(UNUSED unlang_result_t *p_result,
 						    UNUSED request_t *request, UNUSED void *uctx)
 {
 	return UNLANG_ACTION_CALCULATE_RESULT;
@@ -1202,7 +1202,7 @@ unlang_action_t tls_establish_session_push(request_t *request, fr_tls_conf_t *co
 /** Finish off a handshake round, possibly adding attributes to the request
  *
  */
-static unlang_action_t tls_session_async_handshake_done_round(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t tls_session_async_handshake_done_round(UNUSED unlang_result_t *p_result,
 							      request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
@@ -1392,14 +1392,13 @@ static void tls_session_async_handshake_signal(UNUSED request_t *request, UNUSED
  * This function may be called multiple times, once after every asynchronous request.
  *
  * @param[in,out] p_result	UNUSED.
- * @param[out] priority		UNUSED
  * @param[in] request		The current request.
  * @param[in] uctx		#fr_tls_session_t to continue.
  * @return
  *	- UNLANG_ACTION_CALCULATE_RESULT - We're done with this round.
  *	- UNLANG_ACTION_PUSHED_CHILD - Need to perform more asynchronous actions.
  */
-static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, int *priority,
+static unlang_action_t tls_session_async_handshake_cont(unlang_result_t *p_result,
 							request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
@@ -1568,7 +1567,7 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 		 */
 		if (fr_tls_log_io_error(request,
 					err, "SSL_read (%s)", __FUNCTION__) < 0) goto error;
-		return tls_session_async_handshake_done_round(p_result, priority, request, uctx);
+		return tls_session_async_handshake_done_round(p_result, request, uctx);
 	}
 }
 
@@ -1582,14 +1581,13 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
  * it multiple times, once after every async action.
  *
  * @param[in,out] p_result	UNUSED.
- * @param[out] priority		UNUSED
  * @param[in] request		The current request.
  * @param[in] uctx		#fr_tls_session_t to continue.
  * @return
  *	- UNLANG_ACTION_CALCULATE_RESULT - We're done with this round.
  *	- UNLANG_ACTION_PUSHED_CHILD - Need to perform more asynchronous actions.
  */
-static unlang_action_t tls_session_async_handshake(rlm_rcode_t *p_result, int *priority,
+static unlang_action_t tls_session_async_handshake(unlang_result_t *p_result,
 						   request_t *request, void *uctx)
 {
 	fr_tls_session_t *tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
@@ -1635,7 +1633,7 @@ static unlang_action_t tls_session_async_handshake(rlm_rcode_t *p_result, int *p
 		record_init(&tls_session->dirty_in);
 	}
 
-	return tls_session_async_handshake_cont(p_result, priority, request, uctx);	/* Must unbind request, possibly asynchronously */
+	return tls_session_async_handshake_cont(p_result, request, uctx);	/* Must unbind request, possibly asynchronously */
 }
 
 /** Push a handshake call onto the stack
@@ -1655,7 +1653,8 @@ static unlang_action_t tls_session_async_handshake(rlm_rcode_t *p_result, int *p
  */
 unlang_action_t fr_tls_session_async_handshake_push(request_t *request, fr_tls_session_t *tls_session)
 {
-	return unlang_function_push(request,
+	return unlang_function_push(NULL,
+				    request,
 				    tls_session_async_handshake,
 				    NULL,
 				    tls_session_async_handshake_signal,
@@ -1987,7 +1986,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	return tls_session;
 }
 
-static unlang_action_t tls_new_session_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, UNUSED void *uctx)
+static unlang_action_t tls_new_session_result(UNUSED unlang_result_t *p_result, request_t *request, UNUSED void *uctx)
 {
 	request_t	*parent = request->parent;
 
@@ -2014,9 +2013,9 @@ unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const 
 	if (unlang_subrequest_child_push(child, NULL, child->parent, true, UNLANG_SUB_FRAME) < 0) {
 		return UNLANG_ACTION_FAIL;
 	}
-	if (unlang_function_push(child, NULL, tls_new_session_result, NULL, 0, UNLANG_SUB_FRAME, NULL) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_function_push(NULL, child, NULL, tls_new_session_result, NULL, 0, UNLANG_SUB_FRAME, NULL) < 0) return UNLANG_ACTION_FAIL;
 
-	if (unlang_call_push(child, tls_conf->virtual_server, UNLANG_SUB_FRAME) < 0) {
+	if (unlang_call_push(NULL, child, tls_conf->virtual_server, UNLANG_SUB_FRAME) < 0) {
 		return UNLANG_ACTION_FAIL;
 	}
 	return UNLANG_ACTION_PUSHED_CHILD;

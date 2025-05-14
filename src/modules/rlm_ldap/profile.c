@@ -52,8 +52,7 @@ typedef struct {
 /** Process the results of a profile lookup
  *
  */
-static unlang_action_t ldap_map_profile_resume(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
-					       void *uctx)
+static unlang_action_t ldap_map_profile_resume(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_profile_ctx_t	*profile_ctx = talloc_get_type_abort(uctx, ldap_profile_ctx_t);
 	fr_ldap_query_t		*query = profile_ctx->query;
@@ -229,7 +228,7 @@ unlang_action_t rlm_ldap_map_profile(fr_ldap_result_code_t *ret, int *applied,
 	};
 	if (ret) *ret = LDAP_RESULT_ERROR;
 
-	if (unlang_function_push(request, NULL, ldap_map_profile_resume, ldap_map_profile_cancel,
+	if (unlang_function_push(NULL, request, NULL, ldap_map_profile_resume, ldap_map_profile_cancel,
 				 ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, profile_ctx) < 0) {
 		talloc_free(profile_ctx);
 		return UNLANG_ACTION_FAIL;

@@ -81,7 +81,7 @@ static void unlang_function_signal(request_t *request,
 	state->signal(request, action, state->uctx);
 }
 
-static unlang_action_t unlang_function_call_repeat(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_function_call_repeat(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_action_t			ua;
 	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
@@ -99,7 +99,7 @@ static unlang_action_t unlang_function_call_repeat(rlm_rcode_t *p_result, reques
 	 *	FIXME: The full scratch rcode/priority should be passed in
 	 *	and then passed to this function.
 	 */
-	ua = state->repeat(p_result, &frame->result.priority, request, state->uctx);
+	ua = state->repeat(p_result, request, state->uctx);
 	request->module = caller;
 
 	return ua;
@@ -111,7 +111,7 @@ static unlang_action_t unlang_function_call_repeat(rlm_rcode_t *p_result, reques
  * @param[in] request		The current request.
  * @param[in] frame		The current frame.
  */
-static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_function_call(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_action_t			ua;
 	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
@@ -125,7 +125,7 @@ static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *re
 	request->module = NULL;
 
 	RDEBUG4("Calling function %p (%s)", state->func, state->func_name);
-	ua = state->func(p_result, &frame->result.priority, request, state->uctx);
+	ua = state->func(p_result, request, state->uctx);
 	switch (ua) {
 	case UNLANG_ACTION_STOP_PROCESSING:
 		break;
@@ -266,6 +266,8 @@ int _unlang_function_repeat_set(request_t *request, unlang_function_t repeat, ch
  * These can be pushed by any other type of unlang op to allow a submodule or function
  * deeper in the C call stack to establish a new resumption point.
  *
+ * @param[in] p_result		Where to write the result of the function evaluation.
+ *
  * @param[in] request		The current request.
  * @param[in] func		to call going up the stack.
  * @param[in] func_name		Name of the function call (for debugging).
@@ -281,7 +283,8 @@ int _unlang_function_repeat_set(request_t *request, unlang_function_t repeat, ch
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
  *	- UNLANG_ACTION_FAIL on failure.
  */
-unlang_action_t _unlang_function_push(request_t *request,
+unlang_action_t _unlang_function_push(unlang_result_t *p_result,
+				      request_t *request,
 				      unlang_function_t func, char const *func_name,
 				      unlang_function_t repeat, char const *repeat_name,
 				      unlang_function_signal_t signal, fr_signal_t sigmask, char const *signal_name,
@@ -294,7 +297,7 @@ unlang_action_t _unlang_function_push(request_t *request,
 	/*
 	 *	Push module's function
 	 */
-	if (unlang_interpret_push(request, &function_instruction,
+	if (unlang_interpret_push(p_result, request, &function_instruction,
 				  FRAME_CONF(RLM_MODULE_NOOP, top_frame), UNLANG_NEXT_STOP) < 0) return UNLANG_ACTION_FAIL;
 
 	frame = &stack->frame[stack->depth];

@@ -29,7 +29,7 @@ RCSID("$Id$")
 /** Signal a child to detach
  *
  */
-static unlang_action_t unlang_detach(rlm_rcode_t *p_result, request_t *request, UNUSED unlang_stack_frame_t *frame)
+static unlang_action_t unlang_detach(unlang_result_t *p_result, request_t *request, UNUSED unlang_stack_frame_t *frame)
 {
 	/*
 	 *	Signal all frames in the child's stack
@@ -41,10 +41,10 @@ static unlang_action_t unlang_detach(rlm_rcode_t *p_result, request_t *request, 
 	 *	Detach failed...
 	 */
 	if (unlikely(request->parent != NULL)) {
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_FAIL;
 	}
 
+	p_result->rcode = RLM_MODULE_NOT_SET;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 

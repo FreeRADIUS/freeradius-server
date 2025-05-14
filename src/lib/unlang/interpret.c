@@ -971,7 +971,7 @@ static unlang_group_t empty_group = {
 /** Push a configuration section onto the request stack for later interpretation.
  *
  */
-int unlang_interpret_push_section(request_t *request, CONF_SECTION *cs, unlang_frame_conf_t const *conf)
+int unlang_interpret_push_section(unlang_result_t *p_result, request_t *request, CONF_SECTION *cs, unlang_frame_conf_t const *conf)
 {
 	unlang_t	*instruction = NULL;
 
@@ -988,13 +988,13 @@ int unlang_interpret_push_section(request_t *request, CONF_SECTION *cs, unlang_f
 		}
 	}
 
-	return unlang_interpret_push_instruction(request, instruction, conf);
+	return unlang_interpret_push_instruction(p_result, request, instruction, conf);
 }
 
 /** Push an instruction onto the request stack for later interpretation.
  *
  */
-int unlang_interpret_push_instruction(request_t *request, void *instruction, unlang_frame_conf_t const *conf)
+int unlang_interpret_push_instruction(unlang_result_t *p_result, request_t *request, void *instruction, unlang_frame_conf_t const *conf)
 {
 	unlang_stack_t	*stack = request->stack;
 
@@ -1006,7 +1006,7 @@ int unlang_interpret_push_instruction(request_t *request, void *instruction, unl
 	 *	Push the default action, and the instruction which has
 	 *	no action.
 	 */
-	if (unlang_interpret_push(request, instruction, conf, UNLANG_NEXT_SIBLING) < 0) {
+	if (unlang_interpret_push(p_result, request, instruction, conf, UNLANG_NEXT_SIBLING) < 0) {
 		return -1;
 	}
 
@@ -1042,8 +1042,11 @@ void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
 	 *	like too low level to make into a tuneable.
 	 */
 	MEM(stack = talloc_zero_pooled_object(ctx, unlang_stack_t, UNLANG_STACK_MAX, 128));	/* 128 bytes per state */
-	stack->scratch.rcode = RLM_MODULE_NOT_SET;
-	stack->scratch.priority = MOD_ACTION_NOT_SET;
+	stack->frame[0].result_p = &stack->frame[0].section_result;
+	stack->frame[0].scratch_result.rcode = RLM_MODULE_NOT_SET;
+	stack->frame[0].scratch_result.priority = MOD_ACTION_NOT_SET;
+	stack->frame[0].section_result.rcode = RLM_MODULE_NOT_SET;
+	stack->frame[0].section_result.priority = MOD_ACTION_NOT_SET;
 
 	return stack;
 }
@@ -1063,15 +1066,15 @@ void unlang_interpret_request_done(request_t *request)
 	request->master_state = REQUEST_DONE;
 	switch (request->type) {
 	case REQUEST_TYPE_EXTERNAL:
-		intp->funcs.done_external(request, frame_current(request)->result.rcode, intp->uctx);
+		intp->funcs.done_external(request, frame_current(request)->section_result.rcode, intp->uctx);
 		break;
 
 	case REQUEST_TYPE_INTERNAL:
-		intp->funcs.done_internal(request, frame_current(request)->result.rcode, intp->uctx);
+		intp->funcs.done_internal(request, frame_current(request)->section_result.rcode, intp->uctx);
 		break;
 
 	case REQUEST_TYPE_DETACHED:
-		intp->funcs.done_detached(request, frame_current(request)->result.rcode, intp->uctx);	/* Callback will usually free the request */
+		intp->funcs.done_detached(request, frame_current(request)->section_result.rcode, intp->uctx);	/* Callback will usually free the request */
 		break;
 	}
 }

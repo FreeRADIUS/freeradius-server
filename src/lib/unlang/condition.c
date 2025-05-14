@@ -34,7 +34,7 @@ typedef struct {
 								///< of the execution.
 } unlang_frame_state_cond_t;
 
-static unlang_action_t unlang_if_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_if_resume(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_cond_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_cond_t);
 	fr_value_box_t			*box = fr_value_box_list_head(&state->out);
@@ -84,7 +84,7 @@ static unlang_action_t unlang_if_resume(rlm_rcode_t *p_result, request_t *reques
 	return unlang_group(p_result, request, frame);
 }
 
-static unlang_action_t unlang_if(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_if(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_cond_t			*gext = unlang_group_to_cond(g);

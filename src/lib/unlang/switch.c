@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include "group_priv.h"
 #include "switch_priv.h"
 
-static unlang_action_t unlang_switch(UNUSED rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_switch(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_t		*found;
 
@@ -111,7 +111,7 @@ do_null_case:
 	 */
 	if (!found) return UNLANG_ACTION_EXECUTE_NEXT;
 
-	if (unlang_interpret_push(request, found, FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) {
+	if (unlang_interpret_push(NULL, request, found, FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) {
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
@@ -119,14 +119,11 @@ do_null_case:
 }
 
 
-static unlang_action_t unlang_case(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_case(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_group_t		*g = unlang_generic_to_group(frame->instruction);
 
-	if (!g->children) {
-		*p_result = RLM_MODULE_NOOP;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	if (!g->children) RETURN_UNLANG_NOOP;
 
 	return unlang_group(p_result, request, frame);
 }
