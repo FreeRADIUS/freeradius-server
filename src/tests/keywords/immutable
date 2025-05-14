@@ -18,8 +18,8 @@ if !(NAS-Port == 1813) {
 #
 #  Mark it as immutable.  The value shouldn't change.
 #
-%immutable('request.NAS-Port[*]')
-if !(NAS-Port == 1813) {
+%pairs.immutable(request.NAS-Port[*])
+if (NAS-Port != 1813) {
 	test_fail
 }
 
@@ -29,7 +29,7 @@ if !(NAS-Port == 1813) {
 transaction {
 	NAS-Port += 1
 }
-if !(NAS-Port == 1813) {
+if (NAS-Port != 1813) {
 	test_fail
 }
 
@@ -37,7 +37,7 @@ if !(NAS-Port == 1813) {
 #  We can't delete it.  Deletion is a noop
 #
 request -= NAS-Port[*]
-if !(NAS-Port == 1813) {
+if (NAS-Port != 1813) {
 	test_fail
 }
 
@@ -45,12 +45,12 @@ if !(NAS-Port == 1813) {
 #  We can copy the immutable value.  The copy is mutable.
 #
 test_integer := NAS-Port
-if !(test_integer == 1813) {
+if (test_integer != 1813) {
 	test_fail
 }
 
 test_integer += 1
-if !(test_integer == 1814) {
+if (test_integer != 1814) {
 	test_fail
 }
 
@@ -61,7 +61,7 @@ request += {
 	NAS-Port = 6809
 }
 
-if !(NAS-Port[1] == 6809) {
+if (NAS-Port[1] != 6809) {
 	test_fail
 }
 
@@ -70,7 +70,7 @@ if !(NAS-Port[1] == 6809) {
 #  ones, and leave the _immutable_ ones in place.
 #
 request -= NAS-Port[*]
-if !(NAS-Port == 1813) {
+if (NAS-Port != 1813) {
 	test_fail
 }
 

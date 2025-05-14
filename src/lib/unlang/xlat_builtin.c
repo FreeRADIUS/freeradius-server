@@ -102,8 +102,8 @@ done:
 }
 
 
-static xlat_arg_parser_t const xlat_func_pairs_debug_args[] = {
-	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+static xlat_arg_parser_t const xlat_pair_cursor_args[] = {
+	XLAT_ARG_PARSER_CURSOR,
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -256,42 +256,24 @@ static xlat_action_t xlat_func_pairs_debug(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 					  request_t *request, fr_value_box_list_t *args)
 {
 	fr_pair_t		*vp;
-	fr_dcursor_t		cursor;
-	tmpl_dcursor_ctx_t	cc;
-	tmpl_t			*vpt;
-	fr_value_box_t		*attr;
-	char const		*fmt;
+	fr_dcursor_t		*cursor;
+	fr_value_box_t		*in_head;
 
-	XLAT_ARGS(args, &attr);
+	XLAT_ARGS(args, &in_head);
 
 	if (!RDEBUG_ENABLED2) return XLAT_ACTION_DONE;	/* NOOP if debugging isn't enabled */
 
-	fmt = attr->vb_strvalue;
+	cursor = fr_value_box_get_cursor(in_head);
 
-	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
-				&(tmpl_rules_t){
-					.attr = {
-						.dict_def = request->local_dict,
-						.list_def = request_attr_request,
-						.allow_wildcard = true,
-					}
-				}) <= 0) {
-		RPEDEBUG("Invalid input");
-		return XLAT_ACTION_FAIL;
-	}
-
-	RIDEBUG("Attributes matching \"%s\"", fmt);
+	RDEBUG("Attributes matching \"%s\"", in_head->vb_cursor_name);
 
 	RINDENT();
-	for (vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
+	for (vp = fr_dcursor_current(cursor);
 	     vp;
-	     vp = fr_dcursor_next(&cursor)) {
-		xlat_debug_attr_vp(request, vp, vpt);
+	     vp = fr_dcursor_next(cursor)) {
+		xlat_debug_attr_vp(request, vp, NULL); /* @todo - pass in vpt, too, via the vb_cursor stuff */
 	}
-	tmpl_dcursor_clear(&cc);
 	REXDENT();
-
-	talloc_free(vpt);
 
 	return XLAT_ACTION_DONE;
 }
@@ -884,59 +866,36 @@ static xlat_action_t xlat_func_explode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_arg_parser_t const xlat_func_immutable_attr_args[] = {
-	{ .required = true, .single = true, .type = FR_TYPE_STRING },
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
 /** Mark one or more attributes as immutable
  *
  * Example:
 @verbatim
-%immutable(&request.State[*])
+%pairs.immutable(request.State[*])
 @endverbatim
  *
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_immutable_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-					  UNUSED xlat_ctx_t const *xctx,
-					  request_t *request, fr_value_box_list_t *args)
+					      UNUSED xlat_ctx_t const *xctx,
+					      request_t *request, fr_value_box_list_t *args)
 {
 	fr_pair_t		*vp;
-	fr_dcursor_t		cursor;
-	tmpl_dcursor_ctx_t	cc;
-	tmpl_t			*vpt;
-	fr_value_box_t		*attr;
-	char const		*fmt;
+	fr_dcursor_t		*cursor;
+	fr_value_box_t		*in_head;
 
-	XLAT_ARGS(args, &attr);
+	XLAT_ARGS(args, &in_head);
 
-	fmt = attr->vb_strvalue;
+	cursor = fr_value_box_get_cursor(in_head);
 
-	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
-				&(tmpl_rules_t){
-					.attr = {
-						.dict_def = request->local_dict,
-						.list_def = request_attr_request,
-						.allow_wildcard = true,
-					}
-				}) <= 0) {
-		RPEDEBUG("Invalid input");
-		return XLAT_ACTION_FAIL;
-	}
-
-	RIDEBUG("Attributes matching \"%s\"", fmt);
+	RDEBUG("Attributes matching \"%s\"", in_head->vb_cursor_name);
 
 	RINDENT();
-	for (vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
+	for (vp = fr_dcursor_current(cursor);
 	     vp;
-	     vp = fr_dcursor_next(&cursor)) {
+	     vp = fr_dcursor_next(cursor)) {
 		fr_pair_set_immutable(vp);
 	}
-	tmpl_dcursor_clear(&cc);
 	REXDENT();
-
-	talloc_free(vpt);
 
 	return XLAT_ACTION_DONE;
 }
@@ -2374,11 +2333,6 @@ static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
-static xlat_arg_parser_t const xlat_func_pairs_print_args[] = {
-	{ .required = true, .single = true, .type = FR_TYPE_STRING },
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
 /** Encode attributes as a series of string attribute/value pairs
  *
  * This is intended to serialize one or more attributes as a comma
@@ -2386,7 +2340,7 @@ static xlat_arg_parser_t const xlat_func_pairs_print_args[] = {
  *
  * Example:
 @verbatim
-%pairs.print.print(request.[*]) == 'User-Name = "foo"User-Password = "bar"'
+%pairs.print(request.[*]) == 'User-Name = "foo"User-Password = "bar"'
 %concat(%pairs.print.print(request.[*]), ', ') == 'User-Name = "foo", User-Password = "bar"'
 @endverbatim
  *
@@ -2395,49 +2349,35 @@ static xlat_arg_parser_t const xlat_func_pairs_print_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_pairs_print(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				     UNUSED xlat_ctx_t const *xctx,
-				     request_t *request, fr_value_box_list_t *args)
+					   UNUSED xlat_ctx_t const *xctx,
+					   request_t *request, fr_value_box_list_t *args)
 {
-	tmpl_t			*vpt = NULL;
-	fr_dcursor_t		cursor;
-	tmpl_dcursor_ctx_t	cc;
+	fr_pair_t		*vp;
+	fr_dcursor_t		*cursor;
 	fr_value_box_t		*vb;
 	fr_value_box_t		*in_head;
 
-	fr_pair_t *vp;
-
 	XLAT_ARGS(args, &in_head);
 
-	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, in_head->vb_strvalue,
-				&(tmpl_rules_t){
-					.attr = {
-						.dict_def = request->local_dict,
-						.list_def = request_attr_request,
-						.allow_wildcard = true,
-					}
-				}) <= 0) {
-		RPEDEBUG("Invalid input");
-		return XLAT_ACTION_FAIL;
-	}
+	cursor = fr_value_box_get_cursor(in_head);
 
-	for (vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
+	for (vp = fr_dcursor_current(cursor);
 	     vp;
-	     vp = fr_dcursor_next(&cursor)) {
+	     vp = fr_dcursor_next(cursor)) {
 		char *buff;
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
 		if (unlikely(fr_pair_aprint(vb, &buff, NULL, vp) < 0)) {
 			RPEDEBUG("Failed printing pair");
 			talloc_free(vb);
-			tmpl_dcursor_clear(&cc);
 			return XLAT_ACTION_FAIL;
 		}
 
 		fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, buff, false);
 		fr_dcursor_append(out, vb);
+
+		VALUE_BOX_VERIFY(vb);
 	}
-	tmpl_dcursor_clear(&cc);
-	talloc_free(vpt);
 
 	return XLAT_ACTION_DONE;
 }
@@ -4041,11 +3981,6 @@ static int protocol_xlat_instantiate(xlat_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static xlat_arg_parser_t const protocol_encode_xlat_args[] = {
-	XLAT_ARG_PARSER_CURSOR,
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
 /** Encode protocol attributes / options
  *
  * Returns octet string created from the provided pairs
@@ -4164,7 +4099,7 @@ static int xlat_protocol_register_by_name(dl_t *dl, char const *name)
 		if (xlat_func_find(buffer, -1)) return 1;
 
 		if (unlikely((xlat = xlat_func_register(NULL, buffer, protocol_encode_xlat, FR_TYPE_OCTETS)) == NULL)) return -1;
-		xlat_func_args_set(xlat, protocol_encode_xlat_args);
+		xlat_func_args_set(xlat, xlat_pair_cursor_args);
 		/* coverity[suspicious_sizeof] */
 		xlat_func_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_encode_t *, NULL, tp_encode);
 		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
@@ -4354,7 +4289,7 @@ do { \
 } while (0)
 
 	XLAT_REGISTER_ARGS("debug", xlat_func_debug, FR_TYPE_INT8, xlat_func_debug_args);
-	XLAT_REGISTER_ARGS("debug_attr", xlat_func_pairs_debug, FR_TYPE_NULL, xlat_func_pairs_debug_args);
+	XLAT_REGISTER_ARGS("debug_attr", xlat_func_pairs_debug, FR_TYPE_NULL, xlat_pair_cursor_args);
 	XLAT_NEW("pairs.debug");
 
 	XLAT_REGISTER_ARGS("file.exists", xlat_func_file_exists, FR_TYPE_BOOL, xlat_func_file_name_args);
@@ -4362,7 +4297,11 @@ do { \
 	XLAT_REGISTER_ARGS("file.rm", xlat_func_file_rm, FR_TYPE_BOOL, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.size", xlat_func_file_size, FR_TYPE_UINT64, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.tail", xlat_func_file_tail, FR_TYPE_STRING, xlat_func_file_name_count_args);
-	XLAT_REGISTER_ARGS("immutable", xlat_func_immutable_attr, FR_TYPE_NULL, xlat_func_immutable_attr_args);
+
+	XLAT_REGISTER_ARGS("immutable", xlat_func_immutable_attr, FR_TYPE_NULL, xlat_pair_cursor_args);
+	XLAT_NEW("pairs.immutable");
+	XLAT_REGISTER_ARGS("pairs.immutable", xlat_func_immutable_attr, FR_TYPE_NULL, xlat_pair_cursor_args);
+
 	XLAT_REGISTER_ARGS("log.debug", xlat_func_log_debug, FR_TYPE_NULL, xlat_func_log_arg);
 	XLAT_REGISTER_ARGS("log.err", xlat_func_log_err, FR_TYPE_NULL, xlat_func_log_arg);
 	XLAT_REGISTER_ARGS("log.info", xlat_func_log_info, FR_TYPE_NULL, xlat_func_log_arg);
@@ -4373,11 +4312,11 @@ do { \
 	XLAT_NEW("time.next");
 	XLAT_REGISTER_ARGS("time.next", xlat_func_next_time, FR_TYPE_UINT64, xlat_func_next_time_args);
 
-	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs_print, FR_TYPE_STRING, xlat_func_pairs_print_args);
+	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs_print, FR_TYPE_STRING, xlat_pair_cursor_args);
 	XLAT_NEW("pairs.print");
-	XLAT_REGISTER_ARGS("pairs.print", xlat_func_pairs_print, FR_TYPE_STRING, xlat_func_pairs_print_args);
+	XLAT_REGISTER_ARGS("pairs.print", xlat_func_pairs_print, FR_TYPE_STRING, xlat_pair_cursor_args);
 
-	XLAT_REGISTER_ARGS("pairs.debug", xlat_func_pairs_debug, FR_TYPE_NULL, xlat_func_pairs_debug_args);
+	XLAT_REGISTER_ARGS("pairs.debug", xlat_func_pairs_debug, FR_TYPE_NULL, xlat_pair_cursor_args);
 
 	XLAT_REGISTER_ARGS("str.subst", xlat_func_subst, FR_TYPE_STRING, xlat_func_subst_args);
 #ifdef HAVE_REGEX_PCRE2
