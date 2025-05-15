@@ -813,6 +813,26 @@ static XS(XS_pairs_STORE)
 	XSRETURN(0);
 }
 
+/** Called when an array entry's existence is tested
+ *
+ */
+static XS(XS_pairs_EXISTS)
+{
+	dXSARGS;
+	unsigned int	idx = SvUV(ST(1));
+	fr_pair_t	*vp;
+	fr_perl_pair_t	*parent;
+
+	GET_PAIR_MAGIC(2)
+
+	parent = pair_data->parent;
+	if (!parent->vp) XSRETURN_NO;
+
+	vp = fr_pair_find_by_da_idx(&parent->vp->vp_group, pair_data->da, idx);
+	if (vp) XSRETURN_YES;
+	XSRETURN_NO;
+}
+
 static void xs_init(pTHX)
 {
 	char const *file = __FILE__;
@@ -840,6 +860,7 @@ static void xs_init(pTHX)
 	 */
 	newXS("freeradiuspairs::FETCH", XS_pairs_FETCH, "rlm_perl");
 	newXS("freeradiuspairs::STORE", XS_pairs_STORE, "rlm_perl");
+	newXS("freeradiuspairs::EXISTS", XS_pairs_EXISTS, "rlm_perl");
 }
 
 /** Convert a list of value boxes to a Perl array for passing to subroutines
