@@ -7,14 +7,14 @@ Print attributes with name and value.
 Note that there is no "parse string into pairs" function.  Instead,
 you can simply assign the string to a structural attribute (`group`,
 `tlv`, etc.) and the string will be parsed as assigning a value to a
-given attribute.
+given attribute.  e.g. `reply += "User-Name := 'hello'"`.
 
 .Example
 
 [source,unlang]
 ----
 control.Tmp-String-0 := { "This is a string", "This is another one" }
-reply.Reply-Message := "Serialize output: %pairs.print('control.[*]')"
+reply.Reply-Message := "Serialize output: %pairs.print(control.[*])"
 ----
 
 .Output

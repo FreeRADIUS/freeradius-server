@@ -114,45 +114,6 @@ reply.Reply-Message := "Maximum should be %str.rpad(%{control.Tmp-String-0}, 11,
 Maximum should be 12300000000
 ```
 
-== %pairs(<list>.[*])
-
-Serialize attributes as comma-delimited string.
-
-.Return: _string_
-
-.Example
-
-[source,unlang]
-----
-control.Tmp-String-0 := { "This is a string", "This is another one" }
-reply.Reply-Message := "Serialize output: %pairs(control.[*])"
-----
-
-.Output
-
-```
-Serialize output: Tmp-String-0 = "\"This is a string\", Tmp-String-0 = \"This is another one\""
-```
-
-== %str.rand( ...)
-
-Get random string built from character classes.
-
-.Return: _string_
-
-.Example
-
-[source,unlang]
-----
-reply.Reply-Message := "The random string output is %str.rand(aaaaaaaa}"
-----
-
-.Output
-
-```
-The random string output is 4Uq0gPyG
-```
-
 == %str.lower( ... )
 
 Dynamically expands the string and returns the lowercase version of

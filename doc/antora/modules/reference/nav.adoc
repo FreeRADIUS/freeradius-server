@@ -95,8 +95,12 @@
 **** xref:xlat/misc/config.adoc[Server Configuration]
 **** xref:xlat/misc/length.adoc[length]
 **** xref:xlat/misc/misc.adoc[Miscellaneous]
-**** xref:xlat/misc/pairs.adoc[pairs.print]
 **** xref:xlat/misc/rand.adoc[rand]
+
+*** xref:xlat/pairs/index.adoc[Pairs]
+**** xref:xlat/pairs/debug.adoc[Write to debug output]
+**** xref:xlat/pairs/immutable.adoc[Mark as immutable]
+**** xref:xlat/pairs/print.adoc[Print to string]
 
 *** xref:xlat/str/index.adoc[String Handling]
 **** xref:xlat/str/concat.adoc[Concatenation]

@@ -22,8 +22,18 @@
 | xref:xlat/misc/config.adoc[Server Configuration]  | Examine configuration items
 | xref:xlat/misc/length.adoc[length]	            | Get the length of data
 | xref:xlat/misc/misc.adoc[Miscellaneous]	    | Functions to execute regular expression search on string, using pattern.
-| xref:xlat/misc/pairs.adoc[pairs.print]	    | print attributes with name and value.
 | xref:xlat/misc/rand.adoc[rand]	            | random integers
+|===
+
+== Pair Manipulation
+
+.Pair Manipulation
+[options="headers, autowidth]
+|===
+| *Function*					| *Description*
+| xref:xlat/pairs/debug.adoc[debug]  		| Print attributes to the debug output
+| xref:xlat/pairs/immutable.adoc[immutable]     | Mark attributes as immutable (cannot be changed)
+| xref:xlat/pairs/print.adoc[print]		| Print attribute name and value to string
 |===
 
 == String Manipulation
