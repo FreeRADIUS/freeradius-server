@@ -5672,7 +5672,11 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 			 *	a few more things inside of a "[...]"
 			 *	block.
 			 */
-			if (*p == quote) {
+			if (*p == '[') {
+				if (quote != '[') {
+					return_P("Invalid location for '['");
+				}
+
 				p++;
 
 				/*
