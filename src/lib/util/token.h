@@ -153,7 +153,6 @@ fr_token_t	gettoken(char const **ptr, char *buf, int buflen, bool unescape);
 fr_token_t	getop(char const **ptr);
 fr_token_t	getstring(char const **ptr, char *buf, int buflen, bool unescape);
 char const	*fr_token_name(int);
-ssize_t		fr_skip_string(char const *start, char const *end);
 
 #ifdef __cplusplus
 }

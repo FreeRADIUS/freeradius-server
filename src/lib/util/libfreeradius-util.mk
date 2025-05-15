@@ -80,6 +80,7 @@ SOURCES		:= \
 		   sem.c \
 		   sha1.c \
 		   size.c \
+		   skip.c \
 		   snprintf.c \
 		   socket.c \
 		   stats.c \

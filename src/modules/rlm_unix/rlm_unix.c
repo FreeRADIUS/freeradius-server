@@ -31,6 +31,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/util/skip.h>
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 

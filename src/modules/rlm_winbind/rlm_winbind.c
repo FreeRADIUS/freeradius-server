@@ -33,6 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/util/dcursor.h>
+#include <freeradius-devel/util/skip.h>
 #include <freeradius-devel/util/value.h>
 
 #include "rlm_winbind.h"

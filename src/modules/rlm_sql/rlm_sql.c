@@ -36,6 +36,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/skip.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/xlat_func.h>

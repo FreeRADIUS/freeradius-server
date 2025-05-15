@@ -50,7 +50,7 @@ typedef struct request_s request_t;
 #include <freeradius-devel/util/dns.h>
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/log.h>
-#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/skip.h>
 #include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/util/syserror.h>

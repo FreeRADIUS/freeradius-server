@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/util/time.h>
-#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/skip.h>
 
 int64_t const fr_time_multiplier_by_res[] = {
 	[FR_TIME_RES_NSEC]	= 1,

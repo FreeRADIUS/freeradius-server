@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/skip.h>
 
 #include <freeradius-devel/server/map_proc.h>
 
