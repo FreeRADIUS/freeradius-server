@@ -833,6 +833,26 @@ static XS(XS_pairs_EXISTS)
 	XSRETURN_NO;
 }
 
+/** Called when an array entry is deleted
+ *
+ */
+static XS(XS_pairs_DELETE)
+{
+	dXSARGS;
+	unsigned int	idx = SvUV(ST(1));
+	fr_pair_t	*vp;
+	fr_perl_pair_t	*parent;
+
+	GET_PAIR_MAGIC(2)
+
+	parent = pair_data->parent;
+	if (!parent->vp) XSRETURN(0);
+
+	vp = fr_pair_find_by_da_idx(&parent->vp->vp_group, pair_data->da, idx);
+	if (vp) fr_pair_delete(&parent->vp->vp_group, vp);
+	XSRETURN(0);
+}
+
 static void xs_init(pTHX)
 {
 	char const *file = __FILE__;
@@ -861,6 +881,7 @@ static void xs_init(pTHX)
 	newXS("freeradiuspairs::FETCH", XS_pairs_FETCH, "rlm_perl");
 	newXS("freeradiuspairs::STORE", XS_pairs_STORE, "rlm_perl");
 	newXS("freeradiuspairs::EXISTS", XS_pairs_EXISTS, "rlm_perl");
+	newXS("freeradiuspairs::DELETE", XS_pairs_DELETE, "rlm_perl");
 }
 
 /** Convert a list of value boxes to a Perl array for passing to subroutines
