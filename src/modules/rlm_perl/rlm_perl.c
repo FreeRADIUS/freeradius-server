@@ -853,6 +853,19 @@ static XS(XS_pairs_DELETE)
 	XSRETURN(0);
 }
 
+/** Called when Perl wants the size of a tied array
+ *
+ * The stack contains just the tied SV
+ */
+static XS(XS_pairs_FETCHSIZE)
+{
+	dXSARGS;
+	GET_PAIR_MAGIC(1)
+
+	if (!pair_data->parent->vp) XSRETURN_UV(0);
+	XSRETURN_UV(fr_pair_count_by_da(&pair_data->parent->vp->vp_group, pair_data->da));
+}
+
 static void xs_init(pTHX)
 {
 	char const *file = __FILE__;
@@ -882,6 +895,7 @@ static void xs_init(pTHX)
 	newXS("freeradiuspairs::STORE", XS_pairs_STORE, "rlm_perl");
 	newXS("freeradiuspairs::EXISTS", XS_pairs_EXISTS, "rlm_perl");
 	newXS("freeradiuspairs::DELETE", XS_pairs_DELETE, "rlm_perl");
+	newXS("freeradiuspairs::FETCHSIZE", XS_pairs_FETCHSIZE, "rlm_perl");
 }
 
 /** Convert a list of value boxes to a Perl array for passing to subroutines
