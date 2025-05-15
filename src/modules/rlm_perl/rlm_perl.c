@@ -450,6 +450,48 @@ static XS(XS_pairlist_STORE)
 	XSRETURN(0);
 }
 
+/** Called to test the existence of a key in a tied hash
+ *
+ * The stack contains
+ *  - the tied SV
+ *  - the key to check for
+ */
+static XS(XS_pairlist_EXISTS)
+{
+	dXSARGS;
+	char			*attr;
+	fr_dict_attr_t const	*da;
+	STRLEN			len, i = 0;
+
+	GET_PAIR_MAGIC(2)
+
+	attr = (char *) SvPV(ST(1), len);
+	while (i < len) {
+		if (!isdigit(attr[i])) break;
+		i++;
+	}
+
+	/*
+	 *	Numeric key - check for an instance of the attribute
+	 */
+	if (i == len) {
+		unsigned int	idx = SvIV(ST(1));
+		if (pair_data->parent->vp) {
+			if (fr_pair_find_by_da_idx(&pair_data->parent->vp->vp_group, pair_data->da, idx)) XSRETURN_YES;
+		}
+		XSRETURN_NO;
+	}
+
+	if (!pair_data->vp) XSRETURN_NO;
+
+	da = perl_attr_lookup(pair_data, attr);
+	if (!da) XSRETURN_NO;
+
+	if(fr_pair_find_by_da(&pair_data->vp->vp_group, NULL, da)) XSRETURN_YES;
+
+	XSRETURN_NO;
+}
+
 /** Functions to implement subroutines required for a tied array
  *
  * Leaf attributes are represented by tied arrays to allow multiple instances.
@@ -574,6 +616,7 @@ static void xs_init(pTHX)
 	 */
 	newXS("freeradiuspairlist::FETCH", XS_pairlist_FETCH, "rlm_perl");
 	newXS("freeradiuspairlist::STORE", XS_pairlist_STORE, "rlm_perl");
+	newXS("freeradiuspairlist::EXISTS", XS_pairlist_EXISTS, "rlm_perl");
 	/*
 	 *	The freeradiuspairs package implements functions required
 	 *	for a tied array handling leaf attributes.
