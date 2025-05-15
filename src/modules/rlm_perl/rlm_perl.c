@@ -492,6 +492,44 @@ static XS(XS_pairlist_EXISTS)
 	XSRETURN_NO;
 }
 
+/** Called when functions like keys() want the first key in a tied hash
+ *
+ * The stack contains just the tied SV
+ */
+static XS(XS_pairlist_FIRSTKEY)
+{
+	dXSARGS;
+	fr_pair_t	*vp;
+
+	GET_PAIR_MAGIC(1)
+	if (!pair_data->vp) XSRETURN_EMPTY;
+
+	vp = fr_pair_dcursor_init(&pair_data->cursor, &pair_data->vp->vp_group);
+	ST(0) = sv_2mortal(newSVpv(vp->da->name, vp->da->name_len));
+	XSRETURN(1);
+}
+
+/** Called by functions like keys() which iterate over the keys in a tied hash
+ *
+ * The stack contains
+ *  - the tied SV
+ *  - the previous key
+ */
+static XS(XS_pairlist_NEXTKEY)
+{
+	dXSARGS;
+	fr_pair_t	*vp;
+
+	GET_PAIR_MAGIC(2)
+	if (!pair_data->vp) XSRETURN_EMPTY;
+
+	vp = fr_dcursor_next(&pair_data->cursor);
+	if (!vp) XSRETURN_EMPTY;
+
+	ST(0) = sv_2mortal(newSVpv(vp->da->name, vp->da->name_len));
+	XSRETURN(1);
+}
+
 /** Functions to implement subroutines required for a tied array
  *
  * Leaf attributes are represented by tied arrays to allow multiple instances.
@@ -617,6 +655,8 @@ static void xs_init(pTHX)
 	newXS("freeradiuspairlist::FETCH", XS_pairlist_FETCH, "rlm_perl");
 	newXS("freeradiuspairlist::STORE", XS_pairlist_STORE, "rlm_perl");
 	newXS("freeradiuspairlist::EXISTS", XS_pairlist_EXISTS, "rlm_perl");
+	newXS("freeradiuspairlist::FIRSTKEY", XS_pairlist_FIRSTKEY, "rlm_perl");
+	newXS("freeradiuspairlist::NEXTKEY", XS_pairlist_NEXTKEY, "rlm_perl");
 	/*
 	 *	The freeradiuspairs package implements functions required
 	 *	for a tied array handling leaf attributes.
