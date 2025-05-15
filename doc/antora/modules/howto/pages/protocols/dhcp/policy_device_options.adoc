@@ -44,6 +44,9 @@ subclass "pxeclient" "iPXE" {
 }
 ----
 
+See also the xref:raddb/mods-available/isc_dhcp.adoc[isc_dhcp] module,
+which can read a subset of the ISC DHCP configuration files.
+
 Or the equivalent Kea configuration:
 
 [source,isckea]
@@ -78,7 +81,7 @@ above:
 
 [source,unlang]
 ----
-if (User-Class && %substring(User-Class, 0, 4) == 'iPXE') {
+if (User-Class && %str.subst(User-Class, 0, 4) == 'iPXE') {
     reply.Boot-Filename := 'http://my.web.server/boot_script.php'
 } else {
     reply.Boot-Filename := 'undionly.kpxe'

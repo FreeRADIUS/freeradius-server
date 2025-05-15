@@ -30,27 +30,20 @@ applicable to all clients in this policy.
 [source,unlang]
 ----
 dhcp_common {
-    reply.Domain-Name-Server := 8.8.8.8
-    reply += { Domain-Name-Server = 8.8.4.4 }
-    reply.Subnet-Mask = 255.255.255.0
-    reply.Router-Address = 192.0.2.1
-    ...
+    reply = {
+        Domain-Name-Server = { 8.8.8.8, 8.8.4.4 }
+        Subnet-Mask = 255.255.255.0
+        Router-Address = 192.0.2.1
+        ...
+    }
 }
 ----
 
-FreeRADIUS has four main operators for assigning values to attributes:
+See the xref:unlang/edit.adoc[edit] documentation for instructions on
+creating and editing attributes.
 
-`=`:: Add the attribute to the list, if and only if an attribute of the same
-  name is not already present in that list.
-`:=`:: Add the attribute to the list.  If any attribute of the same name is
-  already present in that list it is replaced with the new one.
-`+=`:: Add the attribute to the tail of the list, even if attributes of the
-  same name are already present in the list.
-`^=`:: Add the attribute to the head of the list, even if attributes of the
-  same name are already present in the list.
-
-These operators allow for attributes to be set to default values and then
-overwritten, e.g. setting a default lease time, but then overwriting it for
+These edit operation allow for attributes to be set to default values and then
+overwritten, e.g. setting a default lease time, but then later overwriting it for
 a particular group of clients.
 
 Attributes in the `control` list are not returned in the DHCP reply packets
