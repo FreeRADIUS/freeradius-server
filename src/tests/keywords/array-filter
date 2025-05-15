@@ -1,0 +1,26 @@
+#
+#  PRE: if
+#
+#  Tests for dereferencing the Nth attribute
+#
+request += {
+	Class = 0x01020304,
+	Class = 0x05060708,
+	Class = 0x090a0b0c,
+}
+
+reply.NAS-Port = 0
+
+if (0) {
+
+foreach octets foo (request.[(Class != 0x05060708)]) {
+	%pairs.debug(foo)
+
+	reply.Filter-Id += "class is " + %hex(foo)
+	reply.NAS-Port += 1
+}
+} else {
+
+	# this don't work.
+	reply.Proxy-State := request.[(. == 0x01020304)]	# ERROR
+}

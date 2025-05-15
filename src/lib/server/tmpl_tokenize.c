@@ -1410,23 +1410,28 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		fr_sbuff_parse_rules_t p_rules;
 		fr_sbuff_term_t const filter_terminals = FR_SBUFF_TERMS(L("]"));
 
+
+		tmp = FR_SBUFF(&our_name);
+		t_rules = (tmpl_rules_t) {};
+		t_rules.attr = *at_rules;
+
 		/*
 		 *	Unspecified child, we can create a filter starting from the children.
 		 *
 		 *	@todo - When parsing the condition, we need to ensure that the condition contains a
 		 *	reference to the current cursor, and we need to decide what that syntax is.
 		 */
-		if ((ar->type != TMPL_ATTR_TYPE_UNSPEC) &&
-		    (!ar->ar_da || !fr_type_is_structural(ar->ar_da->type))) {
-			fr_strerror_printf("Invalid filter - cannot use filter on leaf attributes");
-			ar->ar_num = 0;
-			goto error;
-		}
+		if (ar->type == TMPL_ATTR_TYPE_UNSPEC) {
+			t_rules.attr.namespace = fr_dict_root(at_rules->dict_def);
 
-		tmp = FR_SBUFF(&our_name);
-		t_rules = (tmpl_rules_t) {};
-		t_rules.attr = *at_rules;
-		t_rules.attr.namespace = ar->ar_da; /* @todo - parent? */
+		} else {
+			if (!ar->ar_da || !fr_type_is_structural(ar->ar_da->type)) {
+				fr_strerror_printf("Invalid filter - cannot use filter on leaf attributes");
+				ar->ar_num = 0;
+				goto error;
+			}
+			t_rules.attr.namespace = ar->ar_da;
+		}
 
 		p_rules = (fr_sbuff_parse_rules_t) {
 			.terminals = &filter_terminals,
