@@ -530,6 +530,33 @@ static XS(XS_pairlist_NEXTKEY)
 	XSRETURN(1);
 }
 
+/** Called to delete a key from a tied hash
+ *
+ * The stack contains
+ *  - the tied SV
+ *  - the key being deleted
+ */
+static XS(XS_pairlist_DELETE)
+{
+	dXSARGS;
+	char			*attr;
+	fr_dict_attr_t const	*da;
+	fr_pair_t		*vp;
+
+	GET_PAIR_MAGIC(2)
+	attr = SvPV(ST(1), PL_na);
+
+	da = perl_attr_lookup(pair_data, attr);
+	if (!da) XSRETURN(0);
+	if (!pair_data->vp) XSRETURN(0);
+
+	vp = fr_pair_find_by_da(&pair_data->vp->vp_group, NULL, da);
+
+	if (vp) fr_pair_delete(&pair_data->vp->vp_group, vp);
+
+	XSRETURN(0);
+}
+
 /** Functions to implement subroutines required for a tied array
  *
  * Leaf attributes are represented by tied arrays to allow multiple instances.
@@ -657,6 +684,8 @@ static void xs_init(pTHX)
 	newXS("freeradiuspairlist::EXISTS", XS_pairlist_EXISTS, "rlm_perl");
 	newXS("freeradiuspairlist::FIRSTKEY", XS_pairlist_FIRSTKEY, "rlm_perl");
 	newXS("freeradiuspairlist::NEXTKEY", XS_pairlist_NEXTKEY, "rlm_perl");
+	newXS("freeradiuspairlist::DELETE", XS_pairlist_DELETE, "rlm_perl");
+
 	/*
 	 *	The freeradiuspairs package implements functions required
 	 *	for a tied array handling leaf attributes.
