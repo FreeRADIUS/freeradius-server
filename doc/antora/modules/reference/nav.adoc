@@ -75,6 +75,8 @@
 *** xref:xlat/conversion.adoc[Data Conversion]
 *** xref:xlat/deprecated.adoc[Deprecated Functions]
 
+*** xref:mods-available/dict.adoc[Dictionary Handling]
+
 *** xref:xlat/file/index.adoc[File Handling]
 **** xref:reference:xlat/file/escape.adoc[escape]
 **** xref:xlat/file/exists.adoc[exists]
