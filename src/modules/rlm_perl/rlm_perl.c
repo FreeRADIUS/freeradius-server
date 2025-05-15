@@ -426,6 +426,30 @@ static XS(XS_pairlist_FETCH)
 	XSRETURN(1);
 }
 
+/** Called when a hash value is set / updated
+ *
+ * This is not allowed - only leaf node arrays can have values set
+ */
+static XS(XS_pairlist_STORE)
+{
+	dXSARGS;
+	char			*attr;
+	fr_dict_attr_t const	*da;
+
+	GET_PAIR_MAGIC(3)
+
+	attr = (char *) SvPV(ST(1), PL_na);
+	da = perl_attr_lookup(pair_data, attr);
+	if (!da) XSRETURN(0);
+
+	if (fr_type_is_leaf(da->type)) {
+		croak("Cannot set value of array of \"%s\" values.  Use array index to set a specific instance.", da->name);
+	} else {
+		croak("Cannot set values of structural object %s", da->name);
+	}
+	XSRETURN(0);
+}
+
 /** Functions to implement subroutines required for a tied array
  *
  * Leaf attributes are represented by tied arrays to allow multiple instances.
@@ -549,6 +573,7 @@ static void xs_init(pTHX)
 	 *	for a tied hash handling structural attributes.
 	 */
 	newXS("freeradiuspairlist::FETCH", XS_pairlist_FETCH, "rlm_perl");
+	newXS("freeradiuspairlist::STORE", XS_pairlist_STORE, "rlm_perl");
 	/*
 	 *	The freeradiuspairs package implements functions required
 	 *	for a tied array handling leaf attributes.
