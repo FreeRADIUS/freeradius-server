@@ -110,6 +110,11 @@ struct fr_perl_pair_s {
 	fr_dcursor_t		cursor;		//!< Cursor used for iterating over the keys of a tied hash.
 };
 
+/*
+ *	Dummy Magic Virtual Table used to ensure we retrieve the correct magic data
+ */
+static MGVTBL rlm_perl_vtbl = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
 static void *perl_dlhandle;		//!< To allow us to load perl's symbols into the global symbol table.
 
 static const conf_parser_t replace_config[] = {
@@ -276,6 +281,129 @@ static XS(XS_radiusd_xlat)
 	XSRETURN(1);
 }
 
+/** Convenience macro for fetching C data associated with tied hash / array and validating stack size
+ *
+ */
+#define GET_PAIR_MAGIC(count) MAGIC *mg = mg_findext(ST(0), PERL_MAGIC_ext, &rlm_perl_vtbl); \
+	fr_perl_pair_t *pair_data; \
+	if (unlikely(items < count)) { \
+		croak("Expected %d stack entries, got %d", count, items); \
+		XSRETURN_UNDEF; \
+	} \
+	if (!mg) { \
+		croak("Failed to find Perl magic value"); \
+		XSRETURN_UNDEF; \
+	} \
+	pair_data = (fr_perl_pair_t *)mg->mg_ptr;
+
+/** Functions to implement subroutines required for a tied array
+ *
+ * Leaf attributes are represented by tied arrays to allow multiple instances.
+ */
+
+static int perl_value_marshal(fr_pair_t *vp, SV **value)
+{
+	switch(vp->vp_type) {
+	case FR_TYPE_STRING:
+		*value = sv_2mortal(newSVpvn(vp->vp_strvalue, vp->vp_length));
+		break;
+
+	case FR_TYPE_OCTETS:
+		*value = sv_2mortal(newSVpvn((char const *)vp->vp_octets, vp->vp_length));
+		break;
+
+#define PERLUINT(_size)	case FR_TYPE_UINT ## _size: \
+		*value = sv_2mortal(newSVuv(vp->vp_uint ## _size)); \
+		break;
+	PERLUINT(8)
+	PERLUINT(16)
+	PERLUINT(32)
+	PERLUINT(64)
+
+#define PERLINT(_size)	case FR_TYPE_INT ## _size: \
+		*value = sv_2mortal(newSViv(vp->vp_int ## _size)); \
+		break;
+	PERLINT(8)
+	PERLINT(16)
+	PERLINT(32)
+	PERLINT(64)
+
+	case FR_TYPE_BOOL:
+		*value = sv_2mortal(newSVuv(vp->vp_bool));
+		break;
+
+	case FR_TYPE_FLOAT32:
+		*value = sv_2mortal(newSVnv(vp->vp_float32));
+		break;
+
+	case FR_TYPE_FLOAT64:
+		*value = sv_2mortal(newSVnv(vp->vp_float64));
+		break;
+
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_IFID:
+	case FR_TYPE_DATE:
+	case FR_TYPE_TIME_DELTA:
+	{
+		char	buff[128];
+		ssize_t	slen;
+
+		slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buff, sizeof(buff)), vp, T_BARE_WORD);
+		if (slen < 0) {
+			croak("Cannot convert %s to Perl type, insufficient buffer space",
+				fr_type_to_str(vp->vp_type));
+			return -1;
+		}
+
+		*value = sv_2mortal(newSVpv(buff, slen));
+	}
+		break;
+
+	/* Only leaf nodes should be able to call this */
+	default:
+		fr_assert(0);
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Called to retrieve the value of an array entry
+ *
+ * In our case, retrieve the value of a specific instance of a leaf attribute
+ *
+ * The stack contains
+ *  - the tied SV
+ *  - the index to retrieve
+ *
+ * The magic data will hold the DA of the attribute.
+ */
+static XS(XS_pairs_FETCH)
+{
+	dXSARGS;
+	unsigned int		idx = SvUV(ST(1));
+	fr_pair_t		*vp = NULL;
+	fr_perl_pair_t		*parent;
+
+	GET_PAIR_MAGIC(2)
+
+	parent = pair_data->parent;
+	if (!parent->vp) XSRETURN_UNDEF;
+
+	if (idx == 0) vp = pair_data->vp;
+	if (!vp) vp = fr_pair_find_by_da_idx(&parent->vp->vp_group, pair_data->da, idx);
+	if (!vp) XSRETURN_UNDEF;
+
+	if (perl_value_marshal(vp, &ST(0)) < 0) XSRETURN(0);
+	XSRETURN(1);
+}
+
 static void xs_init(pTHX)
 {
 	char const *file = __FILE__;
@@ -285,6 +413,12 @@ static void xs_init(pTHX)
 
 	newXS("radiusd::log",XS_radiusd_log, "rlm_perl");
 	newXS("radiusd::xlat",XS_radiusd_xlat, "rlm_perl");
+
+	/*
+	 *	The freeradiuspairs package implements functions required
+	 *	for a tied array handling leaf attributes.
+	 */
+	newXS("freeradiuspairs::FETCH", XS_pairs_FETCH, "rlm_perl");
 }
 
 /** Convert a list of value boxes to a Perl array for passing to subroutines
