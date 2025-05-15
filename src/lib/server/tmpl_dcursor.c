@@ -185,15 +185,17 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 
 		num = box.vb_uint8;
 
-	} else if (!ar_filter_is_num(ar)) {
+	} else if (ar_filter_is_cond(ar)) {
 		request_t *request = cc->request;
 
-		RDEBUG("Attribute filter is unsupported");
+		RDEBUG("Conditions in array references are unsupported");
 		vp = NULL;
 		pop = true;
 		goto done;
 
 	} else {
+		fr_assert(ar_filter_is_num(ar));
+
 		num = ar->ar_num;
 	}
 
