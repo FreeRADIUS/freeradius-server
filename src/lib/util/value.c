@@ -3575,7 +3575,6 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 		      fr_value_box_t const *src)
 {
-	if (!fr_cond_assert(dst_type != FR_TYPE_NULL)) return -1;
 	if (!fr_cond_assert(src != dst)) return -1;
 	if (!fr_cond_assert(src->type != FR_TYPE_NULL)) return -1;
 
@@ -3710,7 +3709,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		break;		/* use generic string/octets stuff below */
 
 	/*
-	 *	Invalid types for casting (should have been caught earlier)
+	 *	Invalid types for casting (were caught earlier)
 	 */
 	case FR_TYPE_NON_LEAF:
 		fr_strerror_printf("Invalid cast from %s to %s.  Invalid destination type",
