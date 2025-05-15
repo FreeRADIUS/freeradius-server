@@ -33,13 +33,13 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <freeradius-devel/util/base16.h>
+#include <freeradius-devel/util/skip.h>
 
 
 /*
  *	For xlat_exp_head_alloc(), because xlat_copy() doesn't create an output head.
  */
 #include <freeradius-devel/unlang/xlat_priv.h>
-
 
 /** Define a global variable for specifying a default request reference
  *
@@ -1411,32 +1411,13 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		fr_sbuff_term_t const filter_terminals = FR_SBUFF_TERMS(L("]"));
 
 		/*
-		 *	For now, we don't allow filtering on leaf values. e.g.
+		 *	Unspecified child, we can create a filter starting from the children.
 		 *
-		 *		&User-Name[(&User-Name == foo)]
-		 *
-		 *	@todo - find some sane way of allowing this, without mangling the xlat expression
-		 *	parser too badly.  The simplest way is likely to just parse the expression, and then
-		 *	walk over it, complaining if it contains attribute references other than &User-Name.
-		 *
-		 *	Anything else is likely too hard.
-		 *
-		 *	We also want to disallow basic conditions like "true" or "false".  The conditions
-		 *	should only be using attribute references, and those attribute references should be
-		 *	limited to certain attributes.
-		 *
-		 *	And if the filter attribute is a TLV, the condition code complains with 'Nesting types
-		 *	such as groups or TLVs cannot be used in condition comparisons'.  This is reasonable,
-		 *	as we can't currently compare things like;
-		 *
-		 *		&Group-Thingy == { &foo = bar }
-		 *
-		 *	Which would involve creating the RHS list, doing an element-by-element comparison, and
-		 *	then returning.
-		 *
-		 *	In order to fix that, we have to
+		 *	@todo - When parsing the condition, we need to ensure that the condition contains a
+		 *	reference to the current cursor, and we need to decide what that syntax is.
 		 */
-		if (!ar->ar_da || !fr_type_is_structural(ar->ar_da->type)) {
+		if ((ar->type != TMPL_ATTR_TYPE_UNSPEC) &&
+		    (!ar->ar_da || !fr_type_is_structural(ar->ar_da->type))) {
 			fr_strerror_printf("Invalid filter - cannot use filter on leaf attributes");
 			ar->ar_num = 0;
 			goto error;
@@ -1458,7 +1439,10 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		slen = xlat_tokenize_condition(ar, &ar->ar_cond, &tmp, &p_rules, &t_rules);
 		if (slen < 0) goto error;
 
-		fr_assert(!xlat_impure_func(ar->ar_cond));
+		if (xlat_impure_func(ar->ar_cond)) {
+			fr_strerror_const("Condition in attribute index cannot depend on functions which call external databases");
+			goto error;
+		}
 
 		ar->ar_filter_type = TMPL_ATTR_FILTER_TYPE_CONDITION;
 		fr_sbuff_set(&our_name, &tmp);	/* Advance name _AFTER_ doing checks */
@@ -1490,7 +1474,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		/*
 		 *	Check if it's an expression.
 		 */
-		slen = xlat_tokenize_expression(ar, &ar->ar_cond, &tmp, &p_rules, &t_rules);
+		slen = xlat_tokenize_expression(ar, &ar->ar_expr, &tmp, &p_rules, &t_rules);
 		if (slen < 0) goto error;
 
 		if (xlat_impure_func(ar->ar_expr)) {
@@ -5318,6 +5302,10 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 }
 #endif
 
+static const bool array_terminal[UINT8_MAX + 1] = {
+	[ ']' ] = true,
+};
+
 #define return_P(_x) fr_strerror_const(_x);goto return_p
 
 /** Preparse a string in preparation for passing it to tmpl_afrom_substr()
@@ -5685,6 +5673,18 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 				 */
 				if ((*p == '#') || (*p == '*') || (*p == 'n')) {
 					p++;
+
+				} else if (*p == '(') {
+					ssize_t slen;
+					bool eol = false;
+
+					slen = fr_skip_condition(p, end, array_terminal, &eol);
+					if (slen < 0) {
+						p += -slen;
+						return -(p - in);
+					}
+					p += slen;
+					continue;
 
 				} else {
 					/*
