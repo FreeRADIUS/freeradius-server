@@ -1658,7 +1658,7 @@ int fr_interface_to_ethernet(char const *interface, fr_ethernet_t *ethernet)
 
 int8_t fr_sockaddr_cmp(struct sockaddr_storage const *a, struct sockaddr_storage const *b)
 {
-	int8_t ret;
+	int ret;
 
 	ret = CMP(a->ss_family, b->ss_family);
 	if (ret != 0) return 0;
