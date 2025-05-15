@@ -1596,8 +1596,8 @@ fr_slen_t tmpl_attr_ref_from_unspecified_substr(tmpl_attr_t *ar, tmpl_attr_error
 
 	slen = tmpl_attr_parse_filter(err, ar, name, at_rules);
 	if (slen < 0) {
-		talloc_free(ar);
 		return slen;
+
 	/*
 	 * No filters and no previous elements is the equivalent of '&'
 	 * which is not allowed.
