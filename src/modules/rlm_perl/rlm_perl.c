@@ -98,6 +98,18 @@ typedef struct {
 	PerlInterpreter		*perl;	//!< Thread specific perl interpreter.
 } rlm_perl_thread_t;
 
+/*
+ *	C structure associated with tied hashes and arrays
+ */
+typedef struct fr_perl_pair_s fr_perl_pair_t;
+struct fr_perl_pair_s {
+	fr_dict_attr_t const	*da;		//!< Dictionary attribute associated with hash / array.
+	fr_pair_t		*vp;		//!< Real pair associated with the hash / array, if it exists.
+	unsigned int		idx;		//!< Instance number.
+	fr_perl_pair_t		*parent;	//!< Parent attribute data.
+	fr_dcursor_t		cursor;		//!< Cursor used for iterating over the keys of a tied hash.
+};
+
 static void *perl_dlhandle;		//!< To allow us to load perl's symbols into the global symbol table.
 
 static const conf_parser_t replace_config[] = {
