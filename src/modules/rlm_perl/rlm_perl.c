@@ -665,6 +665,154 @@ static XS(XS_pairs_FETCH)
 	XSRETURN(1);
 }
 
+/** Build parent structural pairs needed when a leaf node is set
+ *
+ */
+static int fr_perl_pair_parent_build(fr_perl_pair_t *pair_data)
+{
+	fr_perl_pair_t	*parent = pair_data->parent;
+	if (!parent->vp) {
+		/*
+		 *	When building parent with idx > 0, it's "parent" is the
+		 *	first instance of the attribute - so if that's not there
+		 *	we don't have any.
+		 */
+		if (pair_data->idx > 0) {
+		none_exist:
+			croak("Attempt to set instance %d when none exist", pair_data->idx);
+			return -1;
+		}
+		if (fr_perl_pair_parent_build(parent) < 0) return -1;
+	}
+
+	if (pair_data->idx > 0) {
+		unsigned int count;
+
+		if (!parent->parent->vp) goto none_exist;
+		count = fr_pair_count_by_da(&parent->parent->vp->vp_group, pair_data->da);
+		if (count < pair_data->idx) {
+			croak("Attempt to set instance %d when only %d exist", pair_data->idx, count);
+			return -1;
+		}
+		parent = parent->parent;
+	}
+
+	if (fr_pair_append_by_da(parent->vp, &pair_data->vp, &parent->vp->vp_group, pair_data->da) < 0) return -1;
+	return 0;
+}
+
+/** Convert a Perl SV to a pair value.
+ *
+ */
+static int perl_value_unmarshal(fr_pair_t *vp, SV *value)
+{
+	char	*val;
+	STRLEN	len;
+
+	switch (vp->vp_type) {
+	case FR_TYPE_STRING:
+		val = SvPV(value, len);
+		fr_pair_value_clear(vp);
+		fr_pair_value_bstrndup(vp, val, len, true);
+		break;
+
+	case FR_TYPE_OCTETS:
+		val = SvPV(value, len);
+		fr_pair_value_clear(vp);
+		fr_pair_value_memdup(vp, (uint8_t const *)val, len, true);
+		break;
+
+#define PERLSETUINT(_size)	case FR_TYPE_UINT ## _size: \
+	vp->vp_uint ## _size = SvUV(value); \
+	break;
+	PERLSETUINT(8)
+	PERLSETUINT(16)
+	PERLSETUINT(32)
+	PERLSETUINT(64)
+
+#define PERLSETINT(_size)	case FR_TYPE_INT ## _size: \
+	vp->vp_int ## _size = SvIV(value); \
+	break;
+	PERLSETINT(8)
+	PERLSETINT(16)
+	PERLSETINT(32)
+	PERLSETINT(64)
+
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_IFID:
+	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_DATE:
+		val = SvPV(value, len);
+		if (fr_pair_value_from_str(vp, val, len, NULL, false) < 0) {
+			croak("Failed populating pair");
+			return -1;
+		}
+		break;
+
+	default:
+		fr_assert(0);
+		break;
+	}
+
+	return 0;
+}
+
+/** Called when an array value is set / updated
+ *
+ * The stack contains
+ *  - the tied SV
+ *  - the index being updated
+ *  - the value being assigned
+ */
+static XS(XS_pairs_STORE)
+{
+	dXSARGS;
+	unsigned int		idx = SvUV(ST(1));
+	fr_pair_t		*vp;
+	fr_perl_pair_t		*parent;
+
+	GET_PAIR_MAGIC(3)
+
+	fr_assert(fr_type_is_leaf(pair_data->da->type));
+
+	parent = pair_data->parent;
+
+	if (!parent->vp) {
+		/*
+		 *	Trying to set something other than the first instance when
+		 *	the parent doesn't exist is invalid.
+		 */
+		if (idx > 0) {
+			croak("Attempting to set instance %d when none exist", idx);
+			XSRETURN(0);
+		}
+
+		if(fr_perl_pair_parent_build(parent) < 0) XSRETURN(0);
+	}
+
+	vp = fr_pair_find_by_da_idx(&parent->vp->vp_group, pair_data->da, idx);
+	if (!vp) {
+		if (idx > 0) {
+			unsigned int count = fr_pair_count_by_da(&pair_data->parent->vp->vp_group, pair_data->da);
+			if (count < idx) {
+				croak("Attempt to set instance %d when only %d exist", idx, count);
+				XSRETURN(0);
+			}
+		}
+		fr_pair_append_by_da(parent->vp, &vp, &parent->vp->vp_group, pair_data->da);
+	}
+
+	perl_value_unmarshal(vp, ST(2));
+
+	XSRETURN(0);
+}
+
 static void xs_init(pTHX)
 {
 	char const *file = __FILE__;
@@ -691,6 +839,7 @@ static void xs_init(pTHX)
 	 *	for a tied array handling leaf attributes.
 	 */
 	newXS("freeradiuspairs::FETCH", XS_pairs_FETCH, "rlm_perl");
+	newXS("freeradiuspairs::STORE", XS_pairs_STORE, "rlm_perl");
 }
 
 /** Convert a list of value boxes to a Perl array for passing to subroutines
