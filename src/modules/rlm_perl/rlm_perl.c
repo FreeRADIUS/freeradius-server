@@ -281,6 +281,25 @@ static XS(XS_radiusd_xlat)
 	XSRETURN(1);
 }
 
+/** Helper function for turning hash keys into dictionary attributes
+ *
+ */
+static inline fr_dict_attr_t const *perl_attr_lookup(fr_perl_pair_t *pair_data, char const *attr)
+{
+	fr_dict_attr_t const *da = fr_dict_attr_by_name(NULL, pair_data->da, attr);
+
+	/*
+	 *	Allow fallback to internal attributes if the parent is a group or dictionary root.
+	 */
+	if (!da && (fr_type_is_group(pair_data->da->type) || pair_data->da->flags.is_root)) {
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), attr);
+	}
+
+	if (!da) croak("Unknown or invalid attribute name \"%s\"", attr);
+
+	return da;
+}
+
 /** Convenience macro for fetching C data associated with tied hash / array and validating stack size
  *
  */
@@ -295,6 +314,117 @@ static XS(XS_radiusd_xlat)
 		XSRETURN_UNDEF; \
 	} \
 	pair_data = (fr_perl_pair_t *)mg->mg_ptr;
+
+/** Functions to implement subroutines required for a tied hash
+ *
+ * All structural components of attributes are represented by tied hashes
+ */
+
+/** Called when fetching hash values
+ *
+ * The stack contains
+ *  - the tied SV
+ *  - the hash key being requested
+ *
+ * When a numeric key is requested, we treat that as in instruction to find
+ * a specific instance of the key of the parent.
+ *
+ * Whilst this is a bit odd, the alternative would be for every attribute to
+ * be returned as an array so you would end up with crazy syntax like
+ *   p{'request'}{'Vendor-Specific'}[0]{'Cisco'}[0]{'AVPair}[0]
+ */
+static XS(XS_pairlist_FETCH)
+{
+	dXSARGS;
+	char			*attr;
+	fr_dict_attr_t const	*da;
+	fr_pair_t		*vp = NULL;
+	STRLEN			len, i = 0;
+	int			idx = 0;
+
+	GET_PAIR_MAGIC(2)
+
+	attr = (char *) SvPV(ST(1), len);
+
+	/*
+	 *	Check if our key is entirely numeric.
+	 */
+	while (i < len) {
+		if (!isdigit(attr[i])) break;
+		i++;
+	}
+	if (i == len) {
+		idx = SvIV(ST(1));
+		da = pair_data->da;
+		if (pair_data->parent->vp) vp = fr_pair_find_by_da_idx(&pair_data->parent->vp->vp_group, da, idx);
+	} else {
+		da = perl_attr_lookup(pair_data, attr);
+		if (!da) XSRETURN_UNDEF;
+		if (pair_data->vp) vp = fr_pair_find_by_da(&pair_data->vp->vp_group, NULL, da);
+	}
+
+	switch(da->type) {
+	/*
+	 *	Leaf attributes are returned as an array with magic
+	 */
+	case FR_TYPE_LEAF:
+	{
+		AV		*pair_av;
+		SV		*pair_tie;
+		HV		*frpair_stash;
+		fr_perl_pair_t	child_pair_data;
+
+		frpair_stash = gv_stashpv("freeradiuspairs", GV_ADD);
+		pair_av = newAV();
+		pair_tie = newRV_noinc((SV *)newAV());
+		sv_bless(pair_tie, frpair_stash);
+		sv_magic(MUTABLE_SV(pair_av), MUTABLE_SV((GV *)pair_tie), PERL_MAGIC_tied, NULL, 0);
+		SvREFCNT_dec(pair_tie);
+
+		child_pair_data = (fr_perl_pair_t) {
+			.vp = vp,
+			.da = da,
+			.parent = pair_data
+		};
+		sv_magicext((SV *)pair_tie, 0, PERL_MAGIC_ext, &rlm_perl_vtbl, (char *)&child_pair_data, sizeof(child_pair_data));
+		ST(0) = sv_2mortal(newRV((SV *)pair_av));
+	}
+		break;
+
+	/*
+	 *	Structural attributes are returned as a hash with magic
+	 */
+	case FR_TYPE_STRUCTURAL:
+	{
+		HV		*struct_hv;
+		SV		*struct_tie;
+		HV		*frpair_stash;
+		fr_perl_pair_t	child_pair_data;
+
+		frpair_stash = gv_stashpv("freeradiuspairlist", GV_ADD);
+		struct_hv = newHV();
+		struct_tie = newRV_noinc((SV *)newHV());
+		sv_bless(struct_tie, frpair_stash);
+		hv_magic(struct_hv, (GV *)struct_tie, PERL_MAGIC_tied);
+		SvREFCNT_dec(struct_tie);
+
+		child_pair_data = (fr_perl_pair_t) {
+			.vp = vp,
+			.da = da,
+			.parent = pair_data,
+			.idx = idx
+		};
+		sv_magicext((SV *)struct_tie, 0, PERL_MAGIC_ext, &rlm_perl_vtbl, (char *)&child_pair_data, sizeof(child_pair_data));
+		ST(0) = sv_2mortal(newRV((SV *)struct_hv));
+	}
+		break;
+
+	default:
+		fr_assert(0);
+	}
+
+	XSRETURN(1);
+}
 
 /** Functions to implement subroutines required for a tied array
  *
@@ -414,6 +544,11 @@ static void xs_init(pTHX)
 	newXS("radiusd::log",XS_radiusd_log, "rlm_perl");
 	newXS("radiusd::xlat",XS_radiusd_xlat, "rlm_perl");
 
+	/*
+	 *	The freeradiuspairlist package implements functions required
+	 *	for a tied hash handling structural attributes.
+	 */
+	newXS("freeradiuspairlist::FETCH", XS_pairlist_FETCH, "rlm_perl");
 	/*
 	 *	The freeradiuspairs package implements functions required
 	 *	for a tied array handling leaf attributes.
