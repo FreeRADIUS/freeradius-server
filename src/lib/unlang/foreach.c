@@ -60,19 +60,18 @@ typedef struct {
  *	Brute-force things instead of doing it the "right" way.
  *
  *	We would ideally like to have the local variable be a ref to the current vp from the cursor.  However,
- *	that isn't (yet) supported.  In order to support that, we would likely have to add a new data type
- *	FR_TYPE_DCURSOR, and put the cursor into in vp->vp_ptr.  We would then have to update a lot of things:
+ *	that isn't (yet) supported.  We do have #FR_TYPE_PAIR_CURSOR, but there is no way to save the cursor,
+ *	or address it.  See also xlat_expr.c for notes on using '$$' to refer to a cursor.  Maybe we need a
+ *	new magic "list", which is called "cursor", or "self"?  That way we can also address parent cursors?
  *
- *	- the foreach code has to put the dcursor into state->value->vp_ptr.
- *	- the pair code (all of it, perhaps) has to check for "is this thing a cursor), and if so
- *	  return the next pair from the cursor instead of the given pair.  This is a huge change.
- *	- update all of the pair / value-box APIs to handle the new data type
- *	- check performance, etc, and that nothing else breaks.
- *	- also need to ensure that the pair with the cursor _cannot_ be copied, as that would add two
- *	  refs to the cursor.
- *	- if we're lucky, we could perhaps _instead_ update only the tmpl code, but the cursor
- *	  still has to be in the pair.
- *	- we can update tmpl_eval_pair(), because that's what's used in the xlat code.  That gets us all
+ *	In order to support that, we would have to update a lot of things:
+ *
+ *	- the foreach code has not just create a local attribute, but mark up that attribute as it's really a cursor".
+ *	- maybe we also need to put the cursor into its own stack frame?  Or have it as a common field
+ *	  in every frame?
+ *	- the tmpl code has to be updated so that when you reference a "cursor attribute", it finds the cursor,
+ *	  and edits the pair associated with the cursor
+ *	- update tmpl_eval_pair(), because that's what's used in the xlat code.  That gets us all
  *	  references to the _source_ VP.
  *	- we also have to update the edit.c code, which calls tmpl_dcursor_init() to get pairs from
  *	  a tmpl_t of type ATTR.
