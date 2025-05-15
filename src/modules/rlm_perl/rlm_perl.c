@@ -1153,6 +1153,31 @@ static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pai
 	return ret;
 }
 
+/** Create a Perl tied hash representing a pair list
+ *
+ */
+static void perl_pair_list_tie(HV *parent, HV *frpair_stash, char const *name, fr_pair_t *vp, fr_dict_attr_t const *da)
+{
+	HV		*list_hv;
+	SV		*list_tie;
+	fr_perl_pair_t	pair_data;
+
+	list_hv = newHV();
+	list_tie = newRV_noinc((SV *)newHV());
+	sv_bless(list_tie, frpair_stash);
+	hv_magic(list_hv, (GV *)list_tie, PERL_MAGIC_tied);
+	SvREFCNT_dec(list_tie);
+
+	pair_data = (fr_perl_pair_t) {
+		.vp = vp,
+		.da = da
+	};
+
+	sv_magicext((SV *)list_tie, 0, PERL_MAGIC_ext, &rlm_perl_vtbl, (char *)&pair_data, sizeof(pair_data));
+
+	(void)hv_store(parent, name, strlen(name), newRV_inc((SV *)list_hv), 0);
+}
+
 /*
  * 	Call the function_name inside the module
  * 	Store all vps in hashes %RAD_CONFIG %RAD_REPLY %RAD_REQUEST
@@ -1171,6 +1196,8 @@ static unlang_action_t CC_HINT(nonnull) mod_perl(rlm_rcode_t *p_result, module_c
 	HV			*rad_config_hv;
 	HV			*rad_request_hv;
 	HV			*rad_state_hv;
+	HV			*frpair_stash;
+	HV			*fr_packet;
 
 	/*
 	 *	call_env parsing will have established the function name to call.
@@ -1193,6 +1220,21 @@ static unlang_action_t CC_HINT(nonnull) mod_perl(rlm_rcode_t *p_result, module_c
 		rad_request_hv = get_hv("RAD_REQUEST", 1);
 		rad_state_hv = get_hv("RAD_STATE", 1);
 
+		/* Get the stash for the freeradiuspairlist package */
+		frpair_stash = gv_stashpv("freeradiuspairlist", GV_ADD);
+
+		/* New hash to hold the pair list roots and pass to the Perl subroutine */
+		fr_packet = newHV();
+
+		perl_pair_list_tie(fr_packet, frpair_stash, "request",
+				   fr_pair_list_parent(&request->request_pairs), fr_dict_root(request->proto_dict));
+		perl_pair_list_tie(fr_packet, frpair_stash, "reply",
+				   fr_pair_list_parent(&request->reply_pairs), fr_dict_root(request->proto_dict));
+		perl_pair_list_tie(fr_packet, frpair_stash, "control",
+				   fr_pair_list_parent(&request->control_pairs), fr_dict_root(request->proto_dict));
+		perl_pair_list_tie(fr_packet, frpair_stash, "session-state",
+				   fr_pair_list_parent(&request->session_state_pairs), fr_dict_root(request->proto_dict));
+
 		perl_store_vps(request, &request->request_pairs, rad_request_hv, "RAD_REQUEST", true);
 		perl_store_vps(request, &request->reply_pairs, rad_reply_hv, "RAD_REPLY", true);
 		perl_store_vps(request, &request->control_pairs, rad_config_hv, "RAD_CONFIG", true);
@@ -1204,15 +1246,10 @@ static unlang_action_t CC_HINT(nonnull) mod_perl(rlm_rcode_t *p_result, module_c
 		rlm_perl_request = request;
 
 		PUSHMARK(SP);
-		/*
-		 * This way %RAD_xx can be pushed onto stack as sub parameters.
-		 * XPUSHs( newRV_noinc((SV *)rad_request_hv) );
-		 * XPUSHs( newRV_noinc((SV *)rad_reply_hv) );
-		 * XPUSHs( newRV_noinc((SV *)rad_config_hv) );
-		 * PUTBACK;
-		 */
+		XPUSHs( sv_2mortal(newRV((SV *)fr_packet)) );
+		PUTBACK;
 
-		count = call_pv(func->func->function_name, G_SCALAR | G_EVAL | G_NOARGS);
+		count = call_pv(func->func->function_name, G_SCALAR | G_EVAL );
 
 		rlm_perl_request = NULL;
 
@@ -1229,7 +1266,6 @@ static unlang_action_t CC_HINT(nonnull) mod_perl(rlm_rcode_t *p_result, module_c
 				ret = RLM_MODULE_FAIL;
 			}
 		}
-
 
 		PUTBACK;
 		FREETMPS;
