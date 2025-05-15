@@ -187,6 +187,10 @@ void fr_log_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void 
 		return;
 	}
 
+#ifdef STATIC_ANALYZER
+	buffer[0] = '\0';
+#endif
+
 	fr_sbuff_init_out(&sbuff, buffer, sizeof(buffer));
 	fr_sbuff_marker(&m_start, &sbuff);
 	fr_sbuff_marker(&m_end, &sbuff);
