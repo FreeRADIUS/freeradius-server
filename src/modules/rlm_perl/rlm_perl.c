@@ -866,6 +866,50 @@ static XS(XS_pairs_FETCHSIZE)
 	XSRETURN_UV(fr_pair_count_by_da(&pair_data->parent->vp->vp_group, pair_data->da));
 }
 
+/** Called when attempting to set the size of an array
+ *
+ * We don't allow expanding the array this way, but will allow deleting pairs
+ *
+ * The stack contains
+ *  - the tied SV
+ *  - the requested size of the array
+ */
+static XS(XS_pairs_STORESIZE)
+{
+	dXSARGS;
+	unsigned int	count, req_size = SvUV(ST(1));
+	fr_pair_t	*vp, *prev;
+	fr_perl_pair_t	*parent;
+	GET_PAIR_MAGIC(2)
+
+	parent = pair_data->parent;
+	if (!parent->vp) {
+		if (req_size > 0) {
+			croak("Unable to set attribute instance count");
+		}
+		XSRETURN(0);
+	}
+
+	count = fr_pair_count_by_da(&parent->vp->vp_group, pair_data->da);
+	if (req_size > count) {
+		croak("Increasing attribute instance count not supported");
+		XSRETURN(0);
+	}
+
+	/*
+	 *	As req_size is 1 based and the attribute instance count is
+	 *	0 based, searching for instance `req_size` will give the first
+	 *	pair to delete.
+	 */
+	vp = fr_pair_find_by_da_idx(&parent->vp->vp_group, pair_data->da, req_size);
+	while (vp) {
+		prev = fr_pair_list_prev(&parent->vp->vp_group, vp);
+		fr_pair_delete(&parent->vp->vp_group, vp);
+		vp = fr_pair_find_by_da(&parent->vp->vp_group, prev, pair_data->da);
+	}
+	XSRETURN(0);
+}
+
 static void xs_init(pTHX)
 {
 	char const *file = __FILE__;
@@ -896,6 +940,7 @@ static void xs_init(pTHX)
 	newXS("freeradiuspairs::EXISTS", XS_pairs_EXISTS, "rlm_perl");
 	newXS("freeradiuspairs::DELETE", XS_pairs_DELETE, "rlm_perl");
 	newXS("freeradiuspairs::FETCHSIZE", XS_pairs_FETCHSIZE, "rlm_perl");
+	newXS("freeradiuspairs::STORESIZE", XS_pairs_STORESIZE, "rlm_perl");
 }
 
 /** Convert a list of value boxes to a Perl array for passing to subroutines
