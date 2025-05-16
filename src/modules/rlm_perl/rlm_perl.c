@@ -940,6 +940,32 @@ static XS(XS_pairs_PUSH)
 	XSRETURN(0);
 }
 
+/** Called when values are popped off a tied array
+ *
+ * The stack contains just the tied SV
+ */
+static XS(XS_pairs_POP)
+{
+	dXSARGS;
+	fr_pair_t	*vp;
+	fr_perl_pair_t	*parent;
+
+	GET_PAIR_MAGIC(1)
+
+	fr_assert(fr_type_is_leaf(pair_data->da->type));
+
+	parent = pair_data->parent;
+	if (!parent->vp) XSRETURN(0);
+
+	vp = fr_pair_find_last_by_da(&parent->vp->vp_group, NULL, pair_data->da);
+	if (!vp) XSRETURN(0);
+
+	if (perl_value_marshal(vp, &ST(0)) < 0) XSRETURN(0);
+
+	fr_pair_remove(&parent->vp->vp_group, vp);
+	XSRETURN(1);
+}
+
 static void xs_init(pTHX)
 {
 	char const *file = __FILE__;
@@ -972,6 +998,7 @@ static void xs_init(pTHX)
 	newXS("freeradiuspairs::FETCHSIZE", XS_pairs_FETCHSIZE, "rlm_perl");
 	newXS("freeradiuspairs::STORESIZE", XS_pairs_STORESIZE, "rlm_perl");
 	newXS("freeradiuspairs::PUSH", XS_pairs_PUSH, "rlm_perl");
+	newXS("freeradiuspairs::POP", XS_pairs_POP, "rlm_perl");
 }
 
 /** Convert a list of value boxes to a Perl array for passing to subroutines
