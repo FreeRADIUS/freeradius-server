@@ -2637,7 +2637,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	if (inst->handle_config.tls_min_version_str) {
-		if (strcmp(inst->handle_config.tls_min_version_str, "1.2") == 0) {
+		if (strcmp(inst->handle_config.tls_min_version_str, "1.3") == 0) {
+			inst->tls_min_version = LDAP_OPT_X_TLS_PROTOCOL_TLS1_3;
+
+		} else if (strcmp(inst->handle_config.tls_min_version_str, "1.2") == 0) {
 			inst->handle_config.tls_min_version = LDAP_OPT_X_TLS_PROTOCOL_TLS1_2;
 
 		} else if (strcmp(inst->handle_config.tls_min_version_str, "1.1") == 0) {
