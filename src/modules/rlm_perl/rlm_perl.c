@@ -55,13 +55,6 @@ extern char **environ;
 #endif
 
 typedef struct {
-	bool	request;	//!< Should the request list be replaced after module call
-	bool	reply;		//!< Should the reply list be replaced after module call
-	bool	control;	//!< Should the control list be replaced after module call
-	bool	session;	//!< Should the session list be replaced after module call
-} rlm_perl_replace_t;
-
-typedef struct {
 	char const	*function_name;	//!< Name of the function being called
 	char		*name1;		//!< Section name1 where this is called
 	char		*name2;		//!< Section name2 where this is called
@@ -89,7 +82,6 @@ typedef struct {
 	char const	*perl_flags;
 	PerlInterpreter	*perl;
 	bool		perl_parsed;
-	rlm_perl_replace_t	replace;
 	HV		*rad_perlconf_hv;	//!< holds "config" items (perl %RAD_PERLCONF hash).
 
 } rlm_perl_t;
@@ -117,14 +109,6 @@ static MGVTBL rlm_perl_vtbl = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
 static void *perl_dlhandle;		//!< To allow us to load perl's symbols into the global symbol table.
 
-static const conf_parser_t replace_config[] = {
-	{ FR_CONF_OFFSET("request", rlm_perl_replace_t, request) },
-	{ FR_CONF_OFFSET("reply", rlm_perl_replace_t, reply) },
-	{ FR_CONF_OFFSET("control", rlm_perl_replace_t, control) },
-	{ FR_CONF_OFFSET("session", rlm_perl_replace_t, session) },
-	CONF_PARSER_TERMINATOR
-};
-
 /*
  *	A mapping of configuration file names to internal variables.
  */
@@ -134,8 +118,6 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("func_detach", rlm_perl_t, func_detach), .data = NULL, .dflt = "detach", .quote = T_INVALID },
 
 	{ FR_CONF_OFFSET("perl_flags", rlm_perl_t, perl_flags) },
-
-	{ FR_CONF_OFFSET_SUBSECTION("replace", 0, rlm_perl_t, replace, replace_config) },
 
 	CONF_PARSER_TERMINATOR
 };
