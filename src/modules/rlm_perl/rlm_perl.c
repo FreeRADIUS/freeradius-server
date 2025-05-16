@@ -1574,10 +1574,6 @@ static unlang_action_t CC_HINT(nonnull) mod_perl(rlm_rcode_t *p_result, module_c
 	int			ret=0, count;
 	STRLEN			n_a;
 
-	HV			*rad_reply_hv;
-	HV			*rad_config_hv;
-	HV			*rad_request_hv;
-	HV			*rad_state_hv;
 	HV			*frpair_stash;
 	HV			*fr_packet;
 
@@ -1597,11 +1593,6 @@ static unlang_action_t CC_HINT(nonnull) mod_perl(rlm_rcode_t *p_result, module_c
 		ENTER;
 		SAVETMPS;
 
-		rad_reply_hv = get_hv("RAD_REPLY", 1);
-		rad_config_hv = get_hv("RAD_CONFIG", 1);
-		rad_request_hv = get_hv("RAD_REQUEST", 1);
-		rad_state_hv = get_hv("RAD_STATE", 1);
-
 		/* Get the stash for the freeradiuspairlist package */
 		frpair_stash = gv_stashpv("freeradiuspairlist", GV_ADD);
 
@@ -1616,11 +1607,6 @@ static unlang_action_t CC_HINT(nonnull) mod_perl(rlm_rcode_t *p_result, module_c
 				   fr_pair_list_parent(&request->control_pairs), fr_dict_root(request->proto_dict));
 		perl_pair_list_tie(fr_packet, frpair_stash, "session-state",
 				   fr_pair_list_parent(&request->session_state_pairs), fr_dict_root(request->proto_dict));
-
-		perl_store_vps(request, &request->request_pairs, rad_request_hv, "RAD_REQUEST", true);
-		perl_store_vps(request, &request->reply_pairs, rad_reply_hv, "RAD_REPLY", true);
-		perl_store_vps(request, &request->control_pairs, rad_config_hv, "RAD_CONFIG", true);
-		perl_store_vps(request, &request->session_state_pairs, rad_state_hv, "RAD_STATE", true);
 
 		/*
 		 * Store pointer to request structure globally so radiusd::xlat works
