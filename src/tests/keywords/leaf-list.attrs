@@ -1,0 +1,9 @@
+Packet-Type = Discover
+
+Domain-Name-Server == 127.0.0.1
+Domain-Name-Server == 127.0.0.2
+Subnet-Mask == 255.255.255.0
+Router-Address == 192.0.2.1
+IP-Address-Lease-Time == 7200
+Result-Status == "success"
+Packet-Type == Offer

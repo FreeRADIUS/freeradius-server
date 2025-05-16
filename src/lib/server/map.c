@@ -1007,23 +1007,48 @@ do_children:
 				}
 			}
 
-			/*
-			 *	This prints out any relevant error
-			 *	messages.  We MAY want to print out
-			 *	additional ones, but that might get
-			 *	complex and confusing.
-			 *
-			 *	We call out internal _map_afrom_cs()
-			 *	function, in order to pass in the
-			 *	correct parent map.
-			 */
-			if (_map_afrom_cs(map, &child_list, map, cf_item_to_section(ci),
-					 &child_lhs_rules, rhs_rules, validate, uctx, max, false, edit) < 0) {
-				map_list_talloc_free(&child_list);
-				talloc_free(map);
-				goto error;
+			if (fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type)) {
+				/*
+				 *	This prints out any relevant error
+				 *	messages.  We MAY want to print out
+				 *	additional ones, but that might get
+				 *	complex and confusing.
+				 *
+				 *	We call out internal _map_afrom_cs()
+				 *	function, in order to pass in the
+				 *	correct parent map.
+				 */
+				if (_map_afrom_cs(map, &child_list, map, cf_item_to_section(ci),
+						  &child_lhs_rules, rhs_rules, validate, uctx, max, false, edit) < 0) {
+				fail:
+					map_list_talloc_free(&child_list);
+					talloc_free(map);
+					goto error;
+				}
+				map_list_move(&map->child, &child_list);
+			} else {
+				fr_assert(fr_type_is_leaf(tmpl_attr_tail_da(map->lhs)->type));
+
+				/*
+				 *	&foo := { a, b, c }
+				 *
+				 *	@todo - maybe lhs_rules?  But definitely not child_lhs_rules.
+				 *
+				 *	@todo - this code is taken from compile_edit_section(), we might want
+				 *	to just move that code here, for fewer special cases.
+				 */
+				if (map_list_afrom_cs(map, &child_list, cf_item_to_section(ci), rhs_rules, NULL, NULL, max) < 0) {
+					goto fail;
+				}
+
+				if ((map->op != T_OP_SET) && !map_list_num_elements(&child_list)) {
+					cf_log_err(cs, "Cannot use operator '%s' for assigning empty list to '%s' data type.",
+						   fr_tokens[map->op], fr_type_to_str(tmpl_attr_tail_da(map->lhs)->type));
+					goto fail;
+				}
+
+				map_list_move(&map->child, &child_list);
 			}
-			map_list_move(&map->child, &child_list);
 
 			MAP_VERIFY(map);
 			goto next;
@@ -1064,6 +1089,7 @@ do_children:
 		}
 
 		if (map_afrom_cp(parent_ctx, &map, parent, cp, &child_lhs_rules, our_rhs_rules, edit) < 0) {
+			fr_assert(0);
 			cf_log_err(ci, "Failed creating map from '%s = %s'",
 				   cf_pair_attr(cp), cf_pair_value(cp));
 			goto error;
@@ -1285,6 +1311,7 @@ static int _map_list_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, C
 		fr_assert(cp != NULL);
 
 		if (map_value_afrom_cp(parent_ctx, &map, parent, cp, t_rules) < 0) {
+			fr_assert(0);
 			cf_log_err(ci, "Failed creating map from '%s'", cf_pair_attr(cp));
 			goto error;
 		}
