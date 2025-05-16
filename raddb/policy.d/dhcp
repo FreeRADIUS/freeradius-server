@@ -6,7 +6,7 @@ dhcp_common {
 	#  named module instance configuration
 	#
 
-	reply = {
+	reply += {
 		Domain-Name-Server = { 127.0.0.1, 127.0.0.2 }
 		Subnet-Mask = 255.255.255.0
 		Router-Address = 192.0.2.1
