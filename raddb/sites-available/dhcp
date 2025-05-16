@@ -180,7 +180,6 @@ recv Discover {
 }
 
 recv Request {
-     files_dhcp
 
 	#  The DHCP Server Identifier is set here since it is returned in OFFERs
 	control.Server-Identifier = 192.0.2.1
