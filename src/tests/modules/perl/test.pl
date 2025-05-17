@@ -1,9 +1,6 @@
 use strict;
 use warnings;
 
-# Bring the global hashes into the package scope
-our (%RAD_REQUEST, %RAD_REPLY, %RAD_CONFIG, %RAD_STATE);
-
 #
 # This the remapping of return values
 #
@@ -46,125 +43,45 @@ use constant {
 #		...
 #	}
 
-
-# Function to handle authorize
 sub authorize {
-	# For debugging purposes only
-#	log_request_attributes();
-
-	# Here's where your authorization code comes
-	# You can call another function from here:
-	test_call();
+	my $p = shift();
 
 	return RLM_MODULE_OK;
 }
 
 # Function to handle authenticate
 sub authenticate {
-	# For debugging purposes only
-	log_request_attributes();
+	my $p = shift();
 
-	if ($RAD_REQUEST{'User-Name'} =~ /^baduser/i) {
+	# For debugging purposes only
+	log_request_attributes($p);
+
+	if ($p->{'request'}{'User-Name'}[0] =~ /^baduser/i) {
 		# Reject user and tell him why
-		$RAD_REPLY{'Reply-Message'} = "Denied access by rlm_perl function";
+		$p->{'reply'}{'Reply-Message'}[0] = "Denied access by rlm_perl function";
 		# For testing return NOTFOUND - returning REJECT immediately rejects the packet so fails the test
 		return RLM_MODULE_NOTFOUND;
 	} else {
 		# Accept user and set some attribute
-		if (&radiusd::xlat("%request.client(group)") eq 'UltraAllInclusive') {
+		if (&radiusd::xlat("%request.client('group')") eq 'UltraAllInclusive') {
 			# User called from NAS with unlim plan set, set higher limits
-			$RAD_REPLY{'Vendor-Specific'}{'Cisco'}{'h323-credit-amount'} = "1000000";
-			$RAD_REPLY{'Filter-Id'} = 'Everything'
+			$p->{'reply'}{'Vendor-Specific'}{'Cisco'}{'h323-credit-amount'}[0] = "1000000";
+			$p->{'reply'}{'Filter-Id'}[0] = 'Everything'
 		} else {
 			# Check we received two values for Cisco.AVPair
-			if ($RAD_REQUEST{'Vendor-Specific'}{'Cisco'}{'AVPair'}[1] ne 'is=crazy') {
+			if ($p->{'request'}{'Vendor-Specific'}{'Cisco'}{'AVPair'}[1] ne 'is=crazy') {
 				return RLM_MODULE_DISALLOW;
 			}
-			if ($RAD_REQUEST{'Class'} ne 'abcdef') {
+			if ($p->{'request'}{'Class'}[0] ne 'abcdef') {
 				return RLM_MODULE_REJECT;
 			}
-			$RAD_REPLY{'Vendor-Specific'}{'Cisco'}{'h323-credit-amount'} = "100";
-			$RAD_REPLY{'Filter-Id'} = 'Hello '.$RAD_REQUEST{'Net'}{'Src'}{'IP'}.' '.$RAD_REQUEST{'Vendor-Specific'}{'3GPP2'}{'Remote-IP'}[1]{'Address'};
-			$RAD_REQUEST{'User-Name'} = 'tim';
-			$RAD_CONFIG{'NAS-Identifier'} = 'dummy';
+			$p->{'reply'}{'Vendor-Specific'}{'Cisco'}{'h323-credit-amount'}[0] = "100";
+			$p->{'reply'}{'Filter-Id'}[0] = 'Hello '.$p->{'request'}{'Net'}{'Src'}{'IP'}[0].' '.$p->{'request'}{'Vendor-Specific'}{'3GPP2'}{'Remote-IP'}{1}{'Address'}[0];
+			$p->{'request'}{'User-Name'}[0] = 'tim';
+			$p->{'control'}{'NAS-Identifier'}[0] = 'dummy';
 		}
 		return RLM_MODULE_OK;
 	}
-}
-
-# Function to handle preacct
-sub preacct {
-	# For debugging purposes only
-#	log_request_attributes();
-
-	return RLM_MODULE_OK;
-}
-
-# Function to handle accounting
-sub accounting {
-	# For debugging purposes only
-#	log_request_attributes();
-
-	# You can call another subroutine from here
-	test_call();
-
-	return RLM_MODULE_OK;
-}
-
-# Function to handle pre_proxy
-sub pre_proxy {
-	# For debugging purposes only
-#	log_request_attributes();
-
-	return RLM_MODULE_OK;
-}
-
-# Function to handle post_proxy
-sub post_proxy {
-	# For debugging purposes only
-#	log_request_attributes();
-
-	return RLM_MODULE_OK;
-}
-
-# Function to handle post_auth
-sub post_auth {
-	# For debugging purposes only
-#	log_request_attributes();
-
-	return RLM_MODULE_OK;
-}
-
-# Function to handle xlat
-sub xlat {
-	# For debugging purposes only
-#	log_request_attributes();
-
-	# Loads some external perl and evaluate it
-	my ($filename,$a,$b,$c,$d) = @_;
-	radiusd::log(L_DBG, "From xlat $filename");
-	radiusd::log(L_DBG,"From xlat $a $b $c $d");
-	open(my $FH, '<', $filename) or die "open '$filename' $!";
-	local($/) = undef;
-	my $sub = <$FH>;
-	close $FH;
-	my $eval = qq{ sub handler{ $sub;} };
-	eval $eval; ## no critic
-	eval {main->handler;};
-}
-
-# Function to handle detach
-sub detach {
-	# For debugging purposes only
-#	log_request_attributes();
-}
-
-#
-# Some functions that can be called from other functions
-#
-
-sub test_call {
-	# Some code goes here
 }
 
 sub log_attributes {
@@ -183,8 +100,6 @@ sub log_attributes {
 					radiusd::log(L_DBG, ' 'x$indent . "$_ = $attr");
 				}
 			}
-		} else {
-			radiusd::log(L_DBG, ' 'x$indent . "$_ = $hash{$_}");
 		}
 	}
 }
@@ -192,6 +107,7 @@ sub log_attributes {
 sub log_request_attributes {
 	# This shouldn't be done in production environments!
 	# This is only meant for debugging!
-	radiusd::log(L_DBG, "RAD_REQUEST:");
-	log_attributes(\%RAD_REQUEST, 2);
+	my $p = shift();
+	radiusd::log(L_DBG, "request:");
+	log_attributes(\%{$p->{'request'}}, 2);
 }

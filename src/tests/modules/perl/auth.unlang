@@ -31,12 +31,12 @@ if (reply.Vendor-Specific.Cisco.h323-credit-amount != 100) {
 if (reply.Filter-Id != 'Hello 127.0.0.1 172.16.1.1') {
 	test_fail
 }
-# Verify that the change to the request and control lists are
-# not copied back.
-if (User-Name != 'bob') {
+
+# Verify that the request and control list changes have worked.
+if (User-Name != 'tim') {
 	test_fail
 }
-if (control.NAS-Identifier) {
+if (control.NAS-Identifier != 'dummy') {
 	test_fail
 }
 
