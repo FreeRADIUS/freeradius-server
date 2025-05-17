@@ -103,6 +103,6 @@ fr_pair_t *tmpl_dcursor_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, fr_d
 #define tmpl_dcursor_build_init(_err, _ctx, _cc, _cursor, _request, _vpt, _build, _uctx) \
 	_tmpl_dcursor_init(_err, _ctx, _cc, _cursor, _request, _vpt, _build, _uctx)
 
-fr_pair_t *tmpl_dcursor_value_box_init(int *err, fr_value_box_t *vb, request_t *request, tmpl_t const *vpt) CC_HINT(nonnull(2,3,4));
+fr_pair_t *tmpl_dcursor_value_box_init(int *err, TALLOC_CTX *ctx, fr_value_box_t *vb, request_t *request, tmpl_t const *vpt) CC_HINT(nonnull(2,3,4));
 
 ssize_t	tmpl_dcursor_print(fr_sbuff_t *out, tmpl_dcursor_ctx_t const *cc);

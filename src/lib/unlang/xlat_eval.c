@@ -536,7 +536,7 @@ check_non_leaf:
 		 *
 		 *	"no matching pair" returns _no_ cursor, and not an empty cursor.
 		 */
-		(void) tmpl_dcursor_value_box_init(&err, vb, request, vpt);
+		(void) tmpl_dcursor_value_box_init(&err, vb, vb, request, vpt);
 		if (err < 0) return XLAT_ACTION_FAIL;
 	}
 
@@ -1323,7 +1323,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_PAIR_CURSOR, NULL));
 
-		(void) tmpl_dcursor_value_box_init(&err, value, request, (*in)->vpt);
+		(void) tmpl_dcursor_value_box_init(&err, value, value, request, (*in)->vpt);
 		if (err < -1) return XLAT_ACTION_FAIL;
 
 		fr_dcursor_append(out, value);

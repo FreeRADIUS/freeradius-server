@@ -516,7 +516,8 @@ void tmpl_dcursor_clear(tmpl_dcursor_ctx_t *cc)
  *				- -1 if no matching #fr_pair_t could be found.
  *				- -2 if list could not be found (doesn't exist in current #request_t).
  *				- -3 if context could not be found (no parent #request_t available).
- * @param[in] vb		Where the #tmpl_dursor_t is stored.  MUST be talloc'd
+ * @param[in] ctx		Where the cursor will be allocated from
+ * @param[in] vb		Where the #tmpl_dursor_t is stored.
  * @param[in] request		the current request.
  * @param[in] vpt		specifying the #fr_pair_t type or list to iterate over.
  * @return
@@ -525,14 +526,14 @@ void tmpl_dcursor_clear(tmpl_dcursor_ctx_t *cc)
  *
  * @see tmpl_cursor_next
  */
-fr_pair_t *tmpl_dcursor_value_box_init(int *err, fr_value_box_t *vb, request_t *request, tmpl_t const *vpt)
+fr_pair_t *tmpl_dcursor_value_box_init(int *err, TALLOC_CTX *ctx, fr_value_box_t *vb, request_t *request, tmpl_t const *vpt)
 {
 	tmpl_dcursor_ctx_t *cc;
 	fr_dcursor_t *cursor;
 	fr_pair_t *vp;
 
-	MEM(cc = talloc(vb, tmpl_dcursor_ctx_t));
-	MEM(cursor = talloc(vb, fr_dcursor_t));
+	MEM(cc = talloc(ctx, tmpl_dcursor_ctx_t));
+	MEM(cursor = talloc(ctx, fr_dcursor_t));
 
 	/*
 	 *	The cursor can return something, nothing (-1), or no list (-2) or no context (-3).  Of
@@ -540,7 +541,7 @@ fr_pair_t *tmpl_dcursor_value_box_init(int *err, fr_value_box_t *vb, request_t *
 	 *
 	 *	"no matching pair" is a valid answer, and can be passed to the function.
 	 */
-	vp = tmpl_dcursor_init(err, vb, cc, cursor, request, vpt);
+	vp = tmpl_dcursor_init(err, cc, cc, cursor, request, vpt);
 	if (!vp) {
 		if (!err) return NULL;
 
