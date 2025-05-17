@@ -207,10 +207,10 @@ static void rlm_perl_close_handles(void **handles)
 
 /*
  *	This is wrapper for fr_log
- *	Now users can call radiusd::log(level,msg) which is the same
+ *	Now users can call freeradius::log(level,msg) which is the same
  *	as calling fr_log from C code.
  */
-static XS(XS_radiusd_log)
+static XS(XS_freeradius_log)
 {
 	dXSARGS;
 	if (items !=2)
@@ -235,10 +235,10 @@ static XS(XS_radiusd_log)
  *	This is a wrapper for xlat_aeval
  *	Now users are able to get data that is accessible only via xlat
  *	e.g. %request.client(...)
- *	Call syntax is radiusd::xlat(string), string will be handled as
+ *	Call syntax is freeradius::xlat(string), string will be handled as
  *	a double-quoted string in the configuration files.
  */
-static XS(XS_radiusd_xlat)
+static XS(XS_freeradius_xlat)
 {
 	dXSARGS;
 	char *in_str;
@@ -1011,8 +1011,8 @@ static void xs_init(pTHX)
 	/* DynaLoader is a special case */
 	newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
 
-	newXS("radiusd::log",XS_radiusd_log, "rlm_perl");
-	newXS("radiusd::xlat",XS_radiusd_xlat, "rlm_perl");
+	newXS("freeradius::log",XS_freeradius_log, "rlm_perl");
+	newXS("freeradius::xlat",XS_freeradius_xlat, "rlm_perl");
 
 	/*
 	 *	The freeradiuspairlist package implements functions required

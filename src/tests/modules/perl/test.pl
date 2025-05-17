@@ -63,7 +63,7 @@ sub authenticate {
 		return RLM_MODULE_NOTFOUND;
 	} else {
 		# Accept user and set some attribute
-		if (&radiusd::xlat("%request.client('group')") eq 'UltraAllInclusive') {
+		if (&freeradius::xlat("%request.client('group')") eq 'UltraAllInclusive') {
 			# User called from NAS with unlim plan set, set higher limits
 			$p->{'reply'}{'Vendor-Specific'}{'Cisco'}{'h323-credit-amount'}[0] = "1000000";
 			$p->{'reply'}{'Filter-Id'}[0] = 'Everything'
@@ -89,15 +89,15 @@ sub log_attributes {
 	my $indent = $_[1];
 	for (keys %hash) {
 		if (ref $hash{$_} eq 'HASH') {
-			radiusd::log(L_DBG, ' 'x$indent . "$_ =>");
+			freeradius::log(L_DBG, ' 'x$indent . "$_ =>");
 			log_attributes($hash{$_}, $indent + 2);
 		} elsif (ref $hash{$_} eq 'ARRAY') {
 			foreach my $attr (@{$hash{$_}}) {
 				if (ref $attr eq 'HASH') {
-					radiusd::log(L_DBG, ' 'x$indent . "$_ =>");
+					freeradius::log(L_DBG, ' 'x$indent . "$_ =>");
 					log_attributes($attr, $indent + 2);
 				} else {
-					radiusd::log(L_DBG, ' 'x$indent . "$_ = $attr");
+					freeradius::log(L_DBG, ' 'x$indent . "$_ = $attr");
 				}
 			}
 		}
@@ -108,6 +108,6 @@ sub log_request_attributes {
 	# This shouldn't be done in production environments!
 	# This is only meant for debugging!
 	my $p = shift();
-	radiusd::log(L_DBG, "request:");
+	freeradius::log(L_DBG, "request:");
 	log_attributes(\%{$p->{'request'}}, 2);
 }
