@@ -2126,7 +2126,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 				rcode = paircmp_pairs(request, vp, dst);
 				if (rcode == 0) {
 					dst = fr_dcursor_remove(&dst_list);
-					talloc_free(&dst);
+					talloc_free(dst);
 					found = true;
 				}
 			}
@@ -2147,7 +2147,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 				rcode = paircmp_pairs(request, vp, dst);
 				if (rcode == 0) {
 					dst = fr_dcursor_remove(&dst_list);
-					talloc_free(&dst);
+					talloc_free(dst);
 					found = true;
 				}
 			}
