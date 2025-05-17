@@ -2233,7 +2233,7 @@ bool fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filter
 			 *	For every other operator we require the match to be present
 			 */
 			while ((match = fr_pair_list_next(list, match))) {
-				if (fr_pair_matches_da(match, check->da)) break;
+				if (match->da == check->da) break;
 			}
 			if (!match) {
 				if (check->op == T_OP_CMP_FALSE) continue;
@@ -2431,7 +2431,7 @@ int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
 	     vp = fr_pair_list_next(from, vp)) {
 		PAIR_VERIFY_WITH_LIST(from, vp);
 
-		if (!fr_pair_matches_da(vp, da)) continue;
+		if (vp->da != da) continue;
 
 		cnt++;
 		new_vp = fr_pair_copy(ctx, vp);
