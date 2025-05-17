@@ -698,12 +698,12 @@ decode_options:
 /** DHCPV6-specific iterator
  *
  */
-void *fr_dhcpv6_next_encodable(fr_dlist_head_t *list, void *current, void *uctx)
+void *fr_dhcpv6_next_encodable(fr_dcursor_t *cursor, void *current, void *uctx)
 {
 	fr_pair_t	*c = current;
 	fr_dict_t	*dict = talloc_get_type_abort(uctx, fr_dict_t);
 
-	while ((c = fr_dlist_next(list, c))) {
+	while ((c = fr_dlist_next(cursor->dlist, c))) {
 		PAIR_VERIFY(c);
 		if (c->da->dict != dict || c->da->flags.internal) continue;
 		if (c->vp_type == FR_TYPE_BOOL && !c->vp_bool) continue;

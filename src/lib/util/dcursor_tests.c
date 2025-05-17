@@ -11,9 +11,9 @@ typedef struct {
         fr_dlist_head_t head;
 } test_item_list_t;
 
-static void *test_iter(fr_dlist_head_t *list, void *current, UNUSED void *uctx)
+static void *test_iter(fr_dcursor_t *cursor, void *current, UNUSED void *uctx)
 {
-	return fr_dlist_next(list, current);
+	return fr_dlist_next(cursor->dlist, current);
 }
 
 /** @hidecallergraph */
@@ -1580,12 +1580,12 @@ typedef struct {
 	char	val;
 } item_filter;
 
-static void *iter_name_check(fr_dlist_head_t *list, void *current, void *uctx)
+static void *iter_name_check(fr_dcursor_t *cursor, void *current, void *uctx)
 {
 	test_item_t	*c = current;
 	item_filter	*f = uctx;
 
-	while((c = fr_dlist_next(list, c))) {
+	while((c = fr_dlist_next(cursor->dlist, c))) {
 		if (c->name[f->pos] == f->val) break;
 	}
 

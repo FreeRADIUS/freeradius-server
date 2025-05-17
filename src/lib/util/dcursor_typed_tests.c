@@ -20,9 +20,9 @@ FR_DCURSOR_DLIST_TYPES(test_dcursor, test_list, test_item_t)
 
 FR_DCURSOR_FUNCS(test_dcursor, test_list, test_item_t)
 
-static test_item_t *test_iter(FR_DLIST_HEAD(test_list) *list, test_item_t *current, UNUSED void *uctx)
+static test_item_t *test_iter(fr_dcursor_t *cursor, test_item_t *current, UNUSED void *uctx)
 {
-	return test_list_next(list, current);
+	return test_list_next((FR_DLIST_HEAD(test_list) *) cursor->dlist, current);
 }
 
 static void test_init_null_item(void)
@@ -1485,11 +1485,11 @@ typedef struct {
 	char	val;
 } item_filter;
 
-static test_item_t *iter_name_check(FR_DLIST_HEAD(test_list) *list, test_item_t *current, void *uctx)
+static test_item_t *iter_name_check(fr_dcursor_t *cursor, test_item_t *current, void *uctx)
 {
 	item_filter	*f = uctx;
 
-	while ((current = test_list_next(list, current))) {
+	while ((current = test_list_next((FR_DLIST_HEAD(test_list) *) cursor->dlist, current))) {
 		if (current->name[f->pos] == f->val) break;
 	}
 

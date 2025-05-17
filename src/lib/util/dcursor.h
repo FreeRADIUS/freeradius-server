@@ -39,7 +39,7 @@ typedef struct fr_dcursor_s fr_dcursor_t;
 
 /** Callback for implementing custom iterators
  *
- * @param[in] list	head of the dlist.
+ * @param[in] cursor	the cursor
  * @param[in] to_eval	the next item in the list.  Iterator should check to
  *			see if it matches the iterator's filter, and if it doesn't
  *			iterate over the items until one is found that does.
@@ -48,22 +48,22 @@ typedef struct fr_dcursor_s fr_dcursor_t;
  *	- to_eval if to_eval matched, or a subsequent attribute if that matched.
  *	- NULL if no more matching attributes were found.
  */
-typedef void *(*fr_dcursor_iter_t)(fr_dlist_head_t *list, void *to_eval, void *uctx);
+typedef void *(*fr_dcursor_iter_t)(fr_dcursor_t *cursor, void *to_eval, void *uctx);
 
 /** Callback for performing additional actions on insert
  *
- * @param[in] list	head of the dlist.
+ * @param[in] cursor	the cursor
  * @param[in] to_insert	The item being inserted into the cursor.
  * @param[in] uctx	passed to #fr_dcursor_init.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*fr_dcursor_insert_t)(fr_dlist_head_t *list, void *to_insert, void *uctx);
+typedef int (*fr_dcursor_insert_t)(fr_dcursor_t *cursor, void *to_insert, void *uctx);
 
 /** Callback for performing additional actions on removal
  *
- * @param[in] list	head of the dlist.
+ * @param[in] cursor	the cursor
  * @param[in] to_delete	The item being removed from the cursor.
  * @param[in] uctx	passed to #fr_dcursor_init.
  * @return
@@ -71,7 +71,7 @@ typedef int (*fr_dcursor_insert_t)(fr_dlist_head_t *list, void *to_insert, void 
  *	- 1 on success if the callback has done the list removal.
  *	- -1 on failure.
  */
-typedef int (*fr_dcursor_remove_t)(fr_dlist_head_t *list, void *to_delete, void *uctx);
+typedef int (*fr_dcursor_remove_t)(fr_dcursor_t *cursor, void *to_delete, void *uctx);
 
 /** Copy callback for duplicating complex dcursor state
  *
@@ -92,7 +92,7 @@ typedef bool (*fr_dcursor_eval_t)(void const *item, void const *uctx);
 
 struct fr_dcursor_s {
 	fr_dlist_head_t		*dlist;		//!< Head of the doubly linked list being iterated over.
-	void			*current;	//!< The current item in the dlist.
+	void			*current;	//!< The current item in the cursor
 
 	fr_dcursor_iter_t	iter;		//!< Iterator function.
 	fr_dcursor_iter_t	peek;		//!< Distinct "peek" function.  This is sometimes necessary
@@ -166,7 +166,7 @@ static inline void *dcursor_next(fr_dcursor_t *cursor, fr_dcursor_iter_t iter, v
 	if (!current) {
 		if (cursor->at_end) return NULL;				/* At tail of the list */
 
-		next = iter(cursor->dlist, NULL, cursor->iter_uctx);
+		next = iter(cursor, NULL, cursor->iter_uctx);
 		VALIDATE(next);
 		return next;
 	}
@@ -175,7 +175,7 @@ static inline void *dcursor_next(fr_dcursor_t *cursor, fr_dcursor_iter_t iter, v
 	/*
 	 *	The iterator will advance to the next matching entry.
 	 */
-	next = iter(cursor->dlist, current, cursor->iter_uctx);
+	next = iter(cursor, current, cursor->iter_uctx);
 	VALIDATE(next);
 
 	return next;
@@ -358,7 +358,7 @@ static inline void *fr_dcursor_set_current(fr_dcursor_t *cursor, void *item)
 
 	if (!item ||
 	    !fr_dlist_in_list(cursor->dlist, item) ||
-	    (cursor->iter && !cursor->iter(cursor->dlist, item, cursor->iter_uctx))) return NULL;
+	    (cursor->iter && !cursor->iter(cursor, item, cursor->iter_uctx))) return NULL;
 
 	return dcursor_current_set(cursor, item);
 }
@@ -383,7 +383,7 @@ static inline int fr_dcursor_prepend(fr_dcursor_t *cursor, void *v)
 
 	VALIDATE(v);
 
-	if (cursor->insert) if ((ret = cursor->insert(cursor->dlist, v, cursor->mod_uctx)) < 0) return ret;
+	if (cursor->insert) if ((ret = cursor->insert(cursor, v, cursor->mod_uctx)) < 0) return ret;
 
 	/*
 	 *	Insert at the head of the list
@@ -413,7 +413,7 @@ static inline int fr_dcursor_append(fr_dcursor_t *cursor, void *v)
 
 	VALIDATE(v);
 
-	if (cursor->insert) if ((ret = cursor->insert(cursor->dlist, v, cursor->mod_uctx)) < 0) return ret;
+	if (cursor->insert) if ((ret = cursor->insert(cursor, v, cursor->mod_uctx)) < 0) return ret;
 
 	fr_dlist_insert_tail(cursor->dlist, v);
 
@@ -447,7 +447,7 @@ static inline int fr_dcursor_insert(fr_dcursor_t *cursor, void *v)
 		return 0;
 	}
 
-	if (cursor->insert) if ((ret = cursor->insert(cursor->dlist, v, cursor->mod_uctx)) < 0) return ret;
+	if (cursor->insert) if ((ret = cursor->insert(cursor, v, cursor->mod_uctx)) < 0) return ret;
 
 	fr_dlist_insert_after(cursor->dlist, cursor->current, v);
 
@@ -492,7 +492,7 @@ static inline void *fr_dcursor_remove(fr_dcursor_t *cursor)
 	VALIDATE(v);
 
 	if (cursor->remove) {
-		i = cursor->remove(cursor->dlist, v, cursor->mod_uctx);
+		i = cursor->remove(cursor, v, cursor->mod_uctx);
 		if (i < 0) return NULL;
 	}
 
@@ -636,7 +636,7 @@ static inline void *fr_dcursor_replace(fr_dcursor_t *cursor, void *r)
 		return NULL;
 	}
 
-	if (cursor->remove) if (cursor->remove(cursor->dlist, v, cursor->mod_uctx) < 0) return NULL;
+	if (cursor->remove) if (cursor->remove(cursor, v, cursor->mod_uctx) < 0) return NULL;
 
 	fr_dlist_replace(cursor->dlist, cursor->current, r);
 
@@ -644,7 +644,7 @@ static inline void *fr_dcursor_replace(fr_dcursor_t *cursor, void *r)
 	 *	Fixup current pointer.
 	 */
 	if (cursor->iter) {
-		dcursor_current_set(cursor, cursor->iter(cursor->dlist, r, cursor->iter_uctx));	/* Verify r matches */
+		dcursor_current_set(cursor, cursor->iter(cursor, r, cursor->iter_uctx));	/* Verify r matches */
 	} else {
 		dcursor_current_set(cursor, r);			/* Current becomes replacement */
 	}
@@ -899,10 +899,10 @@ DIAG_OFF(unused-function)
  */
 #define FR_DCURSOR_DLIST_TYPES(_name, _list_name, _element_type) \
 	typedef struct { fr_dcursor_t dcursor; } FR_DCURSOR(_name); \
-	typedef _element_type *(*FR_DCURSOR_ITER(_name))(FR_DLIST_HEAD(_list_name) *list, _element_type *to_eval, void *uctx); \
+	typedef _element_type *(*FR_DCURSOR_ITER(_name))(fr_dcursor_t *cursor, _element_type *to_eval, void *uctx); \
 	typedef bool (*FR_DCURSOR_EVAL(_name))(_element_type const *item, void const *uctx); \
-	typedef int (*FR_DCURSOR_INSERT(_name))(FR_DLIST_HEAD(_list_name) *list, FR_DLIST_ENTRY(_list_name) *to_insert, void *uctx); \
-	typedef int (*FR_DCURSOR_REMOVE(_name))(FR_DLIST_HEAD(_list_name) *list, FR_DLIST_ENTRY(_list_name) *to_delete, void *uctx); \
+	typedef int (*FR_DCURSOR_INSERT(_name))(fr_dcursor_t *cursor, FR_DLIST_ENTRY(_list_name) *to_insert, void *uctx); \
+	typedef int (*FR_DCURSOR_REMOVE(_name))(fr_dcursor_t *cursor, FR_DLIST_ENTRY(_list_name) *to_delete, void *uctx); \
 	typedef void (*FR_DCURSOR_COPY(_name))(FR_DCURSOR(_name) *out, FR_DCURSOR(_name) const *in);
 
 /** Define type specific wrapper functions for dcursors

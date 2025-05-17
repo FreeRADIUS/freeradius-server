@@ -619,7 +619,7 @@ int fr_pair_raw_afrom_pair(fr_pair_t *vp, uint8_t const *data, size_t data_len)
 
 /** Iterate over pairs with a specified da
  *
- * @param[in] list	to iterate over.
+ * @param[in] cursor	to iterate over
  * @param[in] current	The fr_pair_t cursor->current.  Will be advanced and checked to
  *			see if it matches the specified fr_dict_attr_t.
  * @param[in] uctx	The fr_dict_attr_t to search for.
@@ -627,12 +627,12 @@ int fr_pair_raw_afrom_pair(fr_pair_t *vp, uint8_t const *data, size_t data_len)
  *	- Next matching fr_pair_t.
  *	- NULL if not more matching fr_pair_ts could be found.
  */
-static void *fr_pair_iter_next_by_da(fr_dlist_head_t *list, void *current, void *uctx)
+static void *fr_pair_iter_next_by_da(fr_dcursor_t *cursor, void *current, void *uctx)
 {
 	fr_pair_t	*c = current;
 	fr_dict_attr_t	*da = uctx;
 
-	while ((c = fr_dlist_next(list, c))) {
+	while ((c = fr_dlist_next(cursor->dlist, c))) {
 		PAIR_VERIFY(c);
 		if (c->da == da) break;
 	}
@@ -642,7 +642,7 @@ static void *fr_pair_iter_next_by_da(fr_dlist_head_t *list, void *current, void 
 
 /** Iterate over pairs which are decedents of the specified da
  *
- * @param[in] list	to iterate over.
+ * @param[in] cursor	to iterate over.
  * @param[in] current	The fr_pair_t cursor->current.  Will be advanced and checked to
  *			see if it matches the specified fr_dict_attr_t.
  * @param[in] uctx	The fr_dict_attr_t to search for.
@@ -650,12 +650,12 @@ static void *fr_pair_iter_next_by_da(fr_dlist_head_t *list, void *current, void 
  *	- Next matching fr_pair_t.
  *	- NULL if not more matching fr_pair_ts could be found.
  */
-static void *fr_pair_iter_next_by_ancestor(fr_dlist_head_t *list, void *current, void *uctx)
+static void *fr_pair_iter_next_by_ancestor(fr_dcursor_t *cursor, void *current, void *uctx)
 {
 	fr_pair_t	*c = current;
 	fr_dict_attr_t	*da = uctx;
 
-	while ((c = fr_dlist_next(list, c))) {
+	while ((c = fr_dlist_next(cursor->dlist, c))) {
 		PAIR_VERIFY(c);
 		if (fr_dict_attr_common_parent(da, c->da, true)) break;
 	}
@@ -968,18 +968,18 @@ fr_pair_t *fr_pair_list_parent(fr_pair_list_t const *list)
 
 /** Keep attr tree and sublists synced on cursor insert
  *
- * @param[in] list	Underlying order list from the fr_pair_list_t.
+ * @param[in] cursor	the cursor being modified
  * @param[in] to_insert	fr_pair_t being inserted.
  * @param[in] uctx	fr_pair_list_t containing the order list.
  * @return
  *	- 0 on success.
  */
-static int _pair_list_dcursor_insert(fr_dlist_head_t *list, void *to_insert, UNUSED void *uctx)
+static int _pair_list_dcursor_insert(fr_dcursor_t *cursor, void *to_insert, UNUSED void *uctx)
 {
 	fr_pair_t *vp = to_insert;
 	fr_tlist_head_t *tlist;
 
-	tlist = fr_tlist_head_from_dlist(list);
+	tlist = fr_tlist_head_from_dlist(cursor->dlist);
 
 	/*
 	 *	Mark the pair as inserted into the list.
@@ -993,13 +993,13 @@ static int _pair_list_dcursor_insert(fr_dlist_head_t *list, void *to_insert, UNU
 
 /** Keep attr tree and sublists synced on cursor removal
  *
- * @param[in] list	Underlying order list from the fr_pair_list_t.
+ * @param[in] cursor	the cursor being modified
  * @param[in] to_remove	fr_pair_t being removed.
  * @param[in] uctx	fr_pair_list_t containing the order list.
  * @return
  *	- 0 on success.
  */
-static int _pair_list_dcursor_remove(NDEBUG_UNUSED fr_dlist_head_t *list, void *to_remove, UNUSED void *uctx)
+static int _pair_list_dcursor_remove(NDEBUG_UNUSED fr_dcursor_t *cursor, void *to_remove, UNUSED void *uctx)
 {
 	fr_pair_t *vp = to_remove;
 	fr_pair_list_t *parent = fr_pair_parent_list(vp);
@@ -1007,7 +1007,7 @@ static int _pair_list_dcursor_remove(NDEBUG_UNUSED fr_dlist_head_t *list, void *
 #ifndef NDEBUG
 	fr_tlist_head_t *tlist;
 
-	tlist = fr_tlist_head_from_dlist(list);
+	tlist = fr_tlist_head_from_dlist(cursor->dlist);
 
 	while (parent && (tlist != vp->order_entry.entry.list_head)) {
 		tlist = &parent->order.head;
@@ -1025,7 +1025,7 @@ static int _pair_list_dcursor_remove(NDEBUG_UNUSED fr_dlist_head_t *list, void *
 
 	PAIR_VERIFY(vp);
 
-	if (&parent->order.head.dlist_head == list) return 0;
+	if (&parent->order.head.dlist_head == cursor->dlist) return 0;
 
 	fr_pair_remove(parent, vp);
 	return 1;
@@ -1195,7 +1195,7 @@ fr_pair_t *_fr_pair_dcursor_by_ancestor_init(fr_dcursor_t *cursor,
 
 /** Iterate over pairs
  *
- * @param[in] list	to iterate over.
+ * @param[in] cursor	to iterate over.
  * @param[in] current	The fr_value_box_t cursor->current.  Will be advanced and checked to
  *			see if it matches the specified fr_dict_attr_t.
  * @param[in] uctx	unused
@@ -1203,7 +1203,7 @@ fr_pair_t *_fr_pair_dcursor_by_ancestor_init(fr_dcursor_t *cursor,
  *	- Next matching fr_pair_t.
  *	- NULL if not more matching fr_pair_ts could be found.
  */
-static void *_fr_pair_iter_next_value(fr_dlist_head_t *list, void *current, UNUSED void *uctx)
+static void *_fr_pair_iter_next_value(fr_dcursor_t *cursor, void *current, UNUSED void *uctx)
 {
 	fr_pair_t *vp;
 
@@ -1214,7 +1214,7 @@ static void *_fr_pair_iter_next_value(fr_dlist_head_t *list, void *current, UNUS
 		PAIR_VERIFY(vp);
 	}
 
-	while ((vp = fr_dlist_next(list, vp))) {
+	while ((vp = fr_dlist_next(cursor->dlist, vp))) {
 		PAIR_VERIFY(vp);
 		if (fr_type_is_leaf(vp->vp_type)) return &vp->data;
 	}
@@ -1259,7 +1259,7 @@ fr_value_box_t *fr_pair_dcursor_value_init(fr_dcursor_t *cursor)
 
 /** Iterate over pairs
  *
- * @param[in] list	to iterate over.
+ * @param[in] cursor	to iterate over.
  * @param[in] current	The fr_value_box_t cursor->current.  Will be advanced and checked to
  *			see if it matches the specified fr_dict_attr_t.
  * @param[in] uctx	The parent dcursor
@@ -1267,7 +1267,7 @@ fr_value_box_t *fr_pair_dcursor_value_init(fr_dcursor_t *cursor)
  *	- Next matching fr_pair_t.
  *	- NULL if not more matching fr_pair_ts could be found.
  */
-static void *_fr_pair_iter_next_dcursor_value(UNUSED fr_dlist_head_t *list, void *current, void *uctx)
+static void *_fr_pair_iter_next_dcursor_value(UNUSED fr_dcursor_t *cursor, void *current, void *uctx)
 {
 	fr_pair_t *vp;
 	fr_dcursor_t *parent = uctx;

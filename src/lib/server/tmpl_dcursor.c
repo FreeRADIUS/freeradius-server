@@ -42,19 +42,19 @@ void _tmpl_cursor_pool_init(tmpl_dcursor_ctx_t *cc)
  *
  * A dcursor iterator function for matching attributes
  *
- * @param[in] list	being traversed.
+ * @param[in] cursor	being traversed.
  * @param[in] curr	item in the list to start tests from.
  * @param[in] uctx	Context for evaluation - in this instance a #tmpl_dcursor_nested_t
  * @return
  *	- the next matching attribute
  *	- NULL if none found
  */
-static void *_tmpl_cursor_child_next(fr_dlist_head_t *list, void *curr, void *uctx)
+static void *_tmpl_cursor_child_next(fr_dcursor_t *cursor, void *curr, void *uctx)
 {
 	tmpl_dcursor_nested_t	*ns = uctx;
 	fr_pair_t		*vp = curr;
 
-	while ((vp = fr_dlist_next(list, vp))) {
+	while ((vp = fr_dlist_next(cursor->dlist, vp))) {
 		if (fr_dict_attr_cmp(ns->ar->ar_da, vp->da) == 0) break;
 	}
 
@@ -271,7 +271,7 @@ done:
 	return vp;
 }
 
-static void *_tmpl_cursor_next(UNUSED fr_dlist_head_t *list, void *curr, void *uctx)
+static void *_tmpl_cursor_next(UNUSED fr_dcursor_t *cursor, void *curr, void *uctx)
 {
 	tmpl_dcursor_ctx_t	*cc = uctx;
 	tmpl_t const		*vpt = cc->vpt;
