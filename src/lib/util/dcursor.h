@@ -245,6 +245,7 @@ static inline void *fr_dcursor_head(fr_dcursor_t *cursor)
 		return dcursor_current_set(cursor, dcursor_next(cursor, cursor->iter, NULL));
 	}
 
+	fr_assert(cursor->dlist);
 	return dcursor_current_set(cursor, fr_dlist_head(cursor->dlist));
 }
 
@@ -272,6 +273,7 @@ static inline void *fr_dcursor_tail(fr_dcursor_t *cursor)
 		return dcursor_current_set(cursor, current);
 	}
 
+	fr_assert(cursor->dlist);
 	return dcursor_current_set(cursor, fr_dlist_tail(cursor->dlist));
 }
 
@@ -664,6 +666,8 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
 {
 	void *v;
 
+	fr_assert(!cursor->is_const);
+
 	if (fr_dlist_empty(cursor->dlist)) return;	/* noop */
 
 	do {
@@ -805,6 +809,8 @@ void _fr_dcursor_list_reinit(fr_dcursor_t *cursor, fr_dlist_head_t const *head, 
 static inline void fr_dcursor_free_item(fr_dcursor_t *cursor)
 {
 	if (!cursor) return;
+
+	fr_assert(!cursor->is_const);
 
 	talloc_free(fr_dcursor_remove(cursor));
 }
