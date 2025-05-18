@@ -743,8 +743,8 @@ void *_fr_dcursor_init(fr_dcursor_t *cursor, fr_dlist_head_t const *head,
 		.iter = iter,
 		.peek = peek ? peek : iter,
 		.iter_uctx = UNCONST(void *, iter_uctx),
-		.insert = insert,
-		.remove = remove,
+		.insert = is_const ? NULL : insert,
+		.remove = is_const ? NULL : remove,
 		.mod_uctx = UNCONST(void *, mod_uctx),
 		.is_const = is_const
 	};
