@@ -53,7 +53,7 @@ static void unlang_transaction_signal(UNUSED request_t *request, unlang_stack_fr
 /** Commit a successful transaction.
  *
  */
-static unlang_action_t unlang_transaction_final(unlang_result_t *p_result, UNUSED request_t *request,
+static unlang_action_t unlang_transaction_final(UNUSED unlang_result_t *p_result, UNUSED request_t *request,
 						unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_transaction_t *state = talloc_get_type_abort(frame->state,
@@ -61,7 +61,11 @@ static unlang_action_t unlang_transaction_final(unlang_result_t *p_result, UNUSE
 
 	fr_assert(state->el != NULL);
 
-	switch (p_result->rcode) {
+	/*
+	 *	p_result contains OUR result, we want the section
+	 *	result from what was just executed on the stack.
+	 */
+	switch (unlang_interpret_result(request)) {
 	case RLM_MODULE_REJECT:
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_INVALID:
@@ -73,6 +77,7 @@ static unlang_action_t unlang_transaction_final(unlang_result_t *p_result, UNUSE
 	case RLM_MODULE_HANDLED:
 	case RLM_MODULE_NOOP:
 	case RLM_MODULE_UPDATED:
+	case RLM_MODULE_NOT_SET:
 		fr_edit_list_commit(state->el);
 		break;
 
