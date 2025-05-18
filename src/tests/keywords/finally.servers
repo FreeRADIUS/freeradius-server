@@ -31,16 +31,15 @@ server timeout-fin {
 	namespace = radius
 
 	recv Access-Request {
-		timeout 0.1 {
-			%time.advance(1s)
-		}
+		# Trigger the overall timeout for the test binary
+		%time.advance(61s)
 		ok
 	}
 
 	finally {
 		if (timeout) {
 			Tmp-String-0 := 'bye-from-timeout-fin'
-			ok
+			success
 		} else {
 			fail
 		}
