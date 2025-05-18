@@ -65,9 +65,10 @@ static unlang_action_t unlang_catch(UNUSED unlang_result_t *p_result, request_t 
 /** Skip ahead to a particular "catch" instruction.
  *
  */
-unlang_action_t unlang_interpret_skip_to_catch(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+unlang_action_t unlang_interpret_skip_to_catch(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_t		*unlang;
+	rlm_rcode_t		rcode = unlang_interpret_result(request);
 
 	fr_assert(frame->instruction->type == UNLANG_TYPE_TRY);
 
@@ -84,12 +85,12 @@ unlang_action_t unlang_interpret_skip_to_catch(unlang_result_t *p_result, reques
 		if (unlang->type != UNLANG_TYPE_CATCH) {
 		not_caught:
 			RDEBUG3("No catch section for %s",
-				fr_table_str_by_value(mod_rcode_table, p_result->rcode, "<invalid>"));
+				fr_table_str_by_value(mod_rcode_table, rcode, "<invalid>"));
 			return frame_set_next(frame, unlang);
 		}
 
 		c = unlang_generic_to_catch(unlang);
-		if (c->catching[p_result->rcode]) break;
+		if (c->catching[rcode]) break;
 	}
 	if (!unlang) goto not_caught;
 
