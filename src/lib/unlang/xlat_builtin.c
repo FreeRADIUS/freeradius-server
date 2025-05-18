@@ -2785,7 +2785,7 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (regex_request_to_sub(vb, vb, request, idx.vb_uint32) < 0) {
 			REDEBUG2("No previous numbered regex capture group '%u'", idx.vb_uint32);
 			talloc_free(vb);
-			return XLAT_ACTION_FAIL;
+			return XLAT_ACTION_DONE;
 		}
 		fr_dcursor_append(out, vb);
 
@@ -4439,7 +4439,7 @@ do { \
 	xlat->deprecated = true;
 	XLAT_REGISTER_PURE("strlen", xlat_func_strlen, FR_TYPE_SIZE, xlat_func_strlen_arg);
 	XLAT_NEW("length");
-	
+
 	XLAT_REGISTER_PURE("str.utf8", xlat_func_str_utf8, FR_TYPE_BOOL, xlat_func_str_utf8_arg);
 	XLAT_REGISTER_PURE("str.printable", xlat_func_str_printable, FR_TYPE_BOOL, xlat_func_str_printable_arg);
 
