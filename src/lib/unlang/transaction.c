@@ -65,11 +65,13 @@ static unlang_action_t unlang_transaction_final(UNUSED unlang_result_t *p_result
 	 *	p_result contains OUR result, we want the section
 	 *	result from what was just executed on the stack.
 	 */
-	switch (unlang_interpret_result(request)) {
+	switch (state->result.rcode) {
 	case RLM_MODULE_REJECT:
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_DISALLOW:
+	case RLM_MODULE_NOTFOUND:
+	case RLM_MODULE_TIMEOUT:
 		fr_edit_list_abort(state->el);
 		break;
 
@@ -81,10 +83,16 @@ static unlang_action_t unlang_transaction_final(UNUSED unlang_result_t *p_result
 		fr_edit_list_commit(state->el);
 		break;
 
-	default:
+	case RLM_MODULE_NUMCODES:	/* Do not add default: */
 		fr_assert(0);
 		return UNLANG_ACTION_FAIL;
 	}
+
+	/*
+	 *	Allow the interpreter to access
+	 *	the result of the child section
+	 */
+	*p_result = state->result;
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
@@ -100,7 +108,7 @@ static unlang_action_t unlang_transaction(UNUSED unlang_result_t *p_result, requ
 
 	frame_repeat(frame, unlang_transaction_final);
 
-	return unlang_interpret_push_children(NULL, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(&state->result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 fr_edit_list_t *unlang_interpret_edit_list(request_t *request)
