@@ -1,0 +1,5 @@
+Packet-Type = Access-Request
+
+Result-Status == success
+# This should probably be Do-Not-Respond
+Packet-Type == Access-Reject
