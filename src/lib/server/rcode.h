@@ -77,14 +77,6 @@ typedef enum {
 #define RETURN_UNLANG_TIMEOUT		do { p_result->rcode= RLM_MODULE_TIMEOUT; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
 #define RETURN_UNLANG_RCODE(_rcode)	do { p_result->rcode = (_rcode); return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
 
-/** Don't modify the current rcode
- */
-#define RETURN_MODULE_TRANSPARENT	do { \
-						rlm_rcode_t _rcode = *p_result; \
-						*p_result = _rcode; \
-						return UNLANG_ACTION_CALCULATE_RESULT; \
-					} while (0)
-
 extern fr_table_num_sorted_t const rcode_table[];
 extern size_t rcode_table_len;
 

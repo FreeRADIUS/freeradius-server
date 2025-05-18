@@ -540,7 +540,7 @@ RESUME(auth_type)
 	return state->send(p_result, mctx, request);
 }
 
-RESUME(access_accept)
+RESUME_FLAG(access_accept,UNUSED,)
 {
 	fr_pair_t			*vp;
 	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_radius_t);
@@ -564,10 +564,10 @@ RESUME(access_accept)
 
 	fr_state_discard(inst->auth.state_tree, request);
 	radius_request_pairs_to_reply(request, mctx->rctx);
-	RETURN_MODULE_TRANSPARENT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-RESUME(access_reject)
+RESUME_FLAG(access_reject,UNUSED,)
 {
 	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_radius_t);
 
@@ -575,7 +575,7 @@ RESUME(access_reject)
 
 	fr_state_discard(inst->auth.state_tree, request);
 	radius_request_pairs_to_reply(request, mctx->rctx);
-	RETURN_MODULE_TRANSPARENT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 RESUME(access_challenge)
@@ -596,7 +596,7 @@ RESUME(access_challenge)
 
 	fr_assert(request->reply->code == FR_RADIUS_CODE_ACCESS_CHALLENGE);
 	radius_request_pairs_to_reply(request, mctx->rctx);
-	RETURN_MODULE_TRANSPARENT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 /** A wrapper around recv generic which stores fields from the request
