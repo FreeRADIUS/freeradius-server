@@ -539,6 +539,11 @@ static void _worker_request_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t
 	 */
 	REDEBUG("Request has reached max_request_time - signalling it to stop");
 	worker_stop_request(&request);
+
+	/*
+	 *	This ensures the finally section can run timeout specific policies
+	 */
+	request->rcode = RLM_MODULE_TIMEOUT;
 }
 
 /** Set, or re-set the request timer
