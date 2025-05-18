@@ -22,7 +22,6 @@
  * @copyright 2021 The FreeRADIUS server project.
  * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
-#include "lib/server/rcode.h"
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <freeradius-devel/radius/radius.h>
@@ -32,6 +31,7 @@
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/state.h>
+#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/unlang/xlat.h>
 

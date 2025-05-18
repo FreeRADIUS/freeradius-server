@@ -24,13 +24,13 @@
  * @copyright 2013 Network RADIUS SAS (legal@networkradius.com)
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
-#include "lib/server/rcode.h"
-#include "lib/unlang/action.h"
 RCSID("$Id$")
 
 USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/unlang/action.h>
 
 #define LOG_PREFIX "rlm_ldap groups"
 

@@ -21,7 +21,6 @@
  *
  * @copyright 2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#include "lib/unlang/xlat.h"
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
@@ -30,6 +29,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/xlat_func.h>
+#include <freeradius-devel/unlang/xlat.h>
 
 #include <ctype.h>
 
