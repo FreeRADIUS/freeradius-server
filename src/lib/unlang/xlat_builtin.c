@@ -2790,7 +2790,7 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (regex_request_to_sub(vb, vb, request, idx.vb_uint32) < 0) {
 			REDEBUG2("No previous numbered regex capture group '%u'", idx.vb_uint32);
 			talloc_free(vb);
-			return XLAT_ACTION_FAIL;
+			return XLAT_ACTION_DONE;
 		}
 		fr_dcursor_append(out, vb);
 
