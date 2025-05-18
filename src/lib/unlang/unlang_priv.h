@@ -325,12 +325,27 @@ struct unlang_stack_frame_s {
 	 */
 	void			*state;
 
-	/** Running priority and rcode associated with the stack
-	 *
-	 * If this frame is cancelled, the rcode and priority are not merged into
-	 * the frame above and are discarded.
-	 */
-	unlang_result_t		result;
+	unlang_result_t		section_result;			//!< The aggregate result of executing all siblings
+								///< in this section.  This will be merged with the
+								///< higher stack frame's rcode when the frame is popped.
+								///< If the rcode is set to RLM_MODULE_NOT_SET when
+								///< the frame is popped, then the rcode of the frame
+								///< does not modify the rcode of the frame above it.
+
+	unlang_result_t		scratch_result;			//!< The result of executing the current instruction.
+								///< This will be set to RLM_MODULE_NOT_SET, and
+								///< MOD_ACTION_NOT_SET when a new instruction is set
+								///< for the frame.  If result_p does not point to this
+								///< field, the rcode and priority returned will be
+								///< left as NOT_SET and will be ignored.
+								///< This values here will persist between yields.
+
+	unlang_result_t		*result_p;			//!< Where to write the result of executing the current
+								///< instruction.  Will either point to `scratch_result`,
+								///< OR if the parent does not want its rcode to be updated
+								///< by a child it pushed for evaluation, it will point to
+								///< memory in the parent's frame state, so that the parent
+								///< can manually process the rcode.
 
 	unlang_retry_t		*retry;				//!< if the frame is being retried.
 
@@ -338,7 +353,10 @@ struct unlang_stack_frame_s {
 	rindent_t		indent;				//!< Indent level of the request when the frame was
 								///< created.  This is used to restore the indent
 								///< level when the stack is being forcefully unwound.
-	unlang_frame_flag_t	flag;				//!< Unwind flags
+
+	unlang_frame_flag_t	flag;				//!< Flags that mark up the frame for various things
+								///< such as being the point where break, return or
+								///< continue stop, or for forced unwinding.
 
 #ifdef WITH_PERF
 	fr_time_tracking_t	tracking;			//!< track this instance of this instruction
@@ -351,14 +369,6 @@ struct unlang_stack_frame_s {
 typedef struct {
 	unlang_interpret_t	*intp;				//!< Interpreter that the request is currently
 								///< associated with.
-
-	unlang_result_t		scratch;			//!< This holds the current rcode and
-								///< priority for the current instruction.
-								///< It's located in the stack struct because
-								///< we only need it for the current frame
-								///< executing, and we need it to persist
-								///< across yields.  It should be reset for
-								///< each new instruction executed.
 
 	int			depth;				//!< Current depth we're executing at.
 	uint8_t			unwind;				//!< Unwind to this frame if it exists.
