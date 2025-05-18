@@ -61,29 +61,34 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			  fr_da_stack_t *da_stack, unsigned int depth,
 			  fr_dcursor_t *cursor, void *encode_ctx);
 
-/** Evaluation function for EAP-AKA-encodability
+/** Implements the iterator for EAP-AKA
  *
- * @param item	pointer to a fr_pair_t
- * @param uctx	context
- *
- * @return true if the underlying fr_pair_t is EAP_AKA encodable, false otherwise
+ * @param[in] cursor	to iterate over.
+ * @param[in] current	The fr_pair_t cursor->current.  Will be advanced and checked to
+ *			see if it matches the specified fr_dict_t.
+ * @param[in] uctx	The fr_dict_t to search for.
+ * @return
+ *	- Next matching fr_pair_t.
+ *	- NULL if not more matching fr_pair_ts could be found.
  */
-static bool is_eap_aka_encodable(void const *item, UNUSED void const *uctx)
+static void *fr_eap_aka_sim_next_encodable(fr_dcursor_t *cursor, void *current, UNUSED void *uctx)
 {
-	fr_pair_t const		*vp = item;
+	fr_pair_t	*c = current;
+	fr_dict_t	*dict = talloc_get_type_abort(uctx, fr_dict_t);
 
-	if (!vp) return false;
-	if (vp->da->flags.internal) return false;
+	while ((c = fr_dlist_next(cursor->dlist, c))) {
+		PAIR_VERIFY(c);
 
-	/*
-	 *	Bool attribute presence is 'true' in SIM
-	 *	and absence is 'false'
-	 */
-	if ((vp->vp_type == FR_TYPE_BOOL) && (vp->vp_bool == false)) return false;
+		/*
+		 *	Bool attribute presence is 'true' in SIM
+		 *	and absence is 'false'
+		 */
+		if ((c->vp_type == FR_TYPE_BOOL) && (c->vp_bool == false)) continue;
 
-	if (vp->da->dict != dict_eap_aka_sim) return false;
+		if ((c->da->dict == dict) && (!c->da->flags.internal)) break;
+	}
 
-	return true;
+	return c;
 }
 
 /** Add an IV to a packet
@@ -489,7 +494,7 @@ done:
 	/*
 	 *	Rebuilds the TLV stack for encoding the next attribute
 	 */
-	vp = fr_dcursor_filter_next(cursor, is_eap_aka_encodable, encode_ctx);
+	vp = fr_dcursor_next(cursor);
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -817,7 +822,7 @@ ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *en
 	fr_dbuff_marker(&m, &work_dbuff);
 	if (!cursor) return PAIR_ENCODE_FATAL_ERROR;
 
-	vp = fr_dcursor_filter_current(cursor, is_eap_aka_encodable, encode_ctx);
+	vp = fr_dcursor_current(cursor);
 	if (!vp) return 0;
 
 	PAIR_VERIFY(vp);
@@ -829,7 +834,7 @@ ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *en
 	}
 
 	if (vp->da->attr == FR_MAC) {
-		fr_dcursor_filter_next(cursor, is_eap_aka_encodable, encode_ctx);
+		fr_dcursor_next(cursor);
 		return 0;
 	}
 	/*
@@ -897,7 +902,7 @@ ssize_t fr_aka_sim_encode(request_t *request, fr_pair_list_t *to_encode, void *e
 	 *	Group attributes with similar lineages together
 	 */
 	fr_pair_list_sort(to_encode, fr_pair_cmp_by_parent_num);
-	if (fr_pair_dcursor_init(&cursor, to_encode) == vp) {
+	if (fr_pair_dcursor_iter_init(&cursor, to_encode, fr_eap_aka_sim_next_encodable, dict_eap_aka_sim) == vp) {
 		fr_dcursor_next(&cursor);	/* Skip subtype if it came out first */
 	}
 
@@ -909,7 +914,7 @@ ssize_t fr_aka_sim_encode(request_t *request, fr_pair_list_t *to_encode, void *e
 	/*
 	 *	Fast path, we just need to encode a subtype
 	 */
-	if (!do_hmac && !fr_dcursor_filter_current(&cursor, is_eap_aka_encodable, packet_ctx)) {
+	if (!do_hmac && !fr_dcursor_current(&cursor)) {
 		MEM(buff = talloc_array(eap_packet, uint8_t, 3));
 
 		buff[0] = subtype;	/* SIM or AKA subtype */
@@ -1067,17 +1072,20 @@ static int encode_test_ctx_sim_rfc4186(void **out, TALLOC_CTX *ctx, UNUSED fr_di
 extern fr_test_point_pair_encode_t sim_tp_encode;
 fr_test_point_pair_encode_t sim_tp_encode = {
 	.test_ctx	= encode_test_ctx_sim,
-	.func		= fr_aka_sim_encode_pair
+	.func		= fr_aka_sim_encode_pair,
+	.next_encodable	= fr_eap_aka_sim_next_encodable,
 };
 
 extern fr_test_point_pair_encode_t aka_tp_encode;
 fr_test_point_pair_encode_t aka_tp_encode = {
 	.test_ctx	= encode_test_ctx_aka,
-	.func		= fr_aka_sim_encode_pair
+	.func		= fr_aka_sim_encode_pair,
+	.next_encodable	= fr_eap_aka_sim_next_encodable,
 };
 
 extern fr_test_point_pair_encode_t sim_tp_encode_rfc4186;
 fr_test_point_pair_encode_t sim_tp_encode_rfc4186 = {
 	.test_ctx	= encode_test_ctx_sim_rfc4186,
-	.func		= fr_aka_sim_encode_pair
+	.func		= fr_aka_sim_encode_pair,
+	.next_encodable	= fr_eap_aka_sim_next_encodable,
 };
