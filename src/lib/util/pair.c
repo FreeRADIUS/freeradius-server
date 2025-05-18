@@ -1269,12 +1269,11 @@ static void *_fr_pair_iter_next_dcursor_value(UNUSED fr_dcursor_t *cursor, void 
 	if (!current) {
 		vp = fr_dcursor_current(parent);
 		if (!vp) return NULL;
-
-		PAIR_VERIFY(vp);
-		return &vp->data;
+		goto check;
 	}
 
 	while ((vp = fr_dcursor_next(parent))) {
+	check:
 		PAIR_VERIFY(vp);
 
 		if (fr_type_is_leaf(vp->vp_type)) return &vp->data;
