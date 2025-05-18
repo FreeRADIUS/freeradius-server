@@ -104,7 +104,7 @@ typedef struct {
 	fr_pair_list_t	client_id;
 	fr_pair_list_t	server_id;
 	unlang_result_t	result;
-} process_dhcpv6_client_fields_t;
+} process_dhcpv6_rctx_t;
 
 /** Records fields from the original relay-request so we have a known good copy
  */
@@ -176,7 +176,7 @@ fr_dict_enum_autoload_t process_dhcpv6_dict_enum[] = {
 #define PROCESS_CODE_DO_NOT_RESPOND	FR_DHCPV6_DO_NOT_RESPOND
 #define PROCESS_PACKET_CODE_VALID	FR_DHCPV6_PROCESS_CODE_VALID
 #define PROCESS_INST			process_dhcpv6_t
-#define PROCESS_RCTX			process_dhcpv6_client_fields_t
+#define PROCESS_RCTX			process_dhcpv6_rctx_t
 #define PROCESS_CODE_DYNAMIC_CLIENT	FR_DHCPV6_REPLY
 
 /*
@@ -327,24 +327,22 @@ static void dhcpv6_packet_debug(request_t *request, fr_packet_t const *packet, f
  *
  */
 static inline CC_HINT(always_inline)
-process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, bool expect_server_id)
+int dhcpv6_client_fields_store(request_t *request, process_dhcpv6_rctx_t *rctx, bool expect_server_id)
 {
 	fr_pair_t			*transaction_id;
-	process_dhcpv6_client_fields_t	*rctx;
 
 	transaction_id = fr_pair_find_by_da(&request->request_pairs, NULL, attr_transaction_id);
 	if (!transaction_id) {
 		REDEBUG("Missing Transaction-ID");
-		return NULL;
+		return -1;
 	}
 
 	if (transaction_id->vp_length != DHCPV6_TRANSACTION_ID_LEN) {
 		REDEBUG("Invalid Transaction-ID, expected len %u, got len %zu",
 			DHCPV6_TRANSACTION_ID_LEN, transaction_id->vp_length);
-		return NULL;
+		return -1;
 	}
 
-	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), process_dhcpv6_client_fields_t));
 	rctx->transaction_id = fr_pair_copy(rctx, transaction_id);
 
 	fr_pair_list_init(&rctx->client_id);
@@ -360,7 +358,7 @@ process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, b
 		REDEBUG("Error copying Client-ID");
 	error:
 		talloc_free(rctx);
-		return NULL;
+		return -1;
 
 	case 0:
 		REDEBUG("Missing Client-ID");
@@ -391,7 +389,7 @@ process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, b
 		break;
 	}
 
-	return rctx;
+	return 0;
 }
 
 /** Validate a solicit/rebind/confirm message
@@ -405,12 +403,11 @@ RECV(for_any_server)
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
 	process_dhcpv6_t const		*inst = mctx->mi->data;
-	process_dhcpv6_client_fields_t	*rctx = NULL;
+	process_dhcpv6_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, process_dhcpv6_rctx_t);
 
 	PROCESS_TRACE;
 
-	rctx = dhcpv6_client_fields_store(request, false);
-	if (!rctx) RETURN_MODULE_INVALID;
+	if (dhcpv6_client_fields_store(request, rctx, false) < 0) RETURN_MODULE_INVALID;
 
 	UPDATE_STATE_CS(packet);
 
@@ -440,12 +437,11 @@ RECV(for_this_server)
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
 	process_dhcpv6_t const		*inst = mctx->mi->data;
-	process_dhcpv6_client_fields_t	*rctx;
+	process_dhcpv6_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, process_dhcpv6_rctx_t);
 
 	PROCESS_TRACE;
 
-	rctx = dhcpv6_client_fields_store(request, true);
-	if (!rctx) RETURN_MODULE_INVALID;
+	if (dhcpv6_client_fields_store(request, rctx, true) < 0) RETURN_MODULE_INVALID;
 
 	UPDATE_STATE_CS(packet);
 
@@ -583,7 +579,7 @@ void status_code_add(process_dhcpv6_t const *inst, request_t *request, fr_value_
 RESUME(send_to_client)
 {
 	process_dhcpv6_t		*inst = talloc_get_type_abort(mctx->mi->data, process_dhcpv6_t);
-	process_dhcpv6_client_fields_t	*fields = talloc_get_type_abort(mctx->rctx, process_dhcpv6_client_fields_t);
+	process_dhcpv6_rctx_t	*fields = talloc_get_type_abort(mctx->rctx, process_dhcpv6_rctx_t);
 	fr_process_state_t const	*state;
 
 
@@ -1261,7 +1257,7 @@ fr_process_module_t process_dhcpv6 = {
 		.name		= "dhcpv6",
 		.config		= dhcpv6_process_config,
 		MODULE_INST(process_dhcpv6_t),
-		MODULE_RCTX(process_dhcpv6_client_fields_t),
+		MODULE_RCTX(process_dhcpv6_rctx_t),
 
 		.instantiate	= mod_instantiate
 	},
