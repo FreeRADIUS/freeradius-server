@@ -816,7 +816,13 @@ int unlang_xlat_eval_type(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_type_t type, f
 	return 0;
 }
 
+static void unlang_xlat_dump(request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
+	xlat_exp_t const		*exp = state->exp;
 
+	if (exp) RDEBUG("expression     %s", exp->fmt);
+}
 /** Register xlat operation with the interpreter
  *
  */
@@ -827,6 +833,7 @@ void unlang_xlat_init(void)
 				.name = "xlat_eval",
 				.interpret = unlang_xlat,
 				.signal = unlang_xlat_signal,
+				.dump = unlang_xlat_dump,
 				.frame_state_size = sizeof(unlang_frame_state_xlat_t),
 				.frame_state_type = "unlang_frame_state_xlat_t",
 			   });
