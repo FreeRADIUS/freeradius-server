@@ -114,20 +114,13 @@ finally {
 === At the end of "finally".
 
 Once a `finally` section is finished, it will result in a
-xref:unlang/return_codes[return code].  In most cases, this return
-code is discarded, and has no effect on any subsequent packet
-processing.
+xref:unlang/return_codes[return code].  This result is immediately
+discarded, and the rcode from the virtual server itself will
+be passed back if it is being called with the xref:unlang/call[call]
+keyword.
 
-That is, the return code of a `finally` section _will not
-modify the response packet type_ from the virtual server.  If
-`finally` returns `reject`, then _nothing will happen_, and the server
-will not send an `Access-Reject` response to an `Access-Accept`
-request.  This behavior is because `finally` section is run _after_
-the protocol state machine has completed.
-
-However, the return code of a `finally` is available to a parent
-virtual server, when one virtual server uses
-xref:unlang/call.adoc[call] to run another virtual server.
+This is done to simplify correct handling of `finally` sections in
+nested calls to virtual servers.
 
 === Timeouts
 

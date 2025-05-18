@@ -626,6 +626,7 @@ static void cancel_request(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t when, vo
 {
 	request_t	*request = talloc_get_type_abort(uctx, request_t);
 	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
+	request->rcode = RLM_MODULE_TIMEOUT;
 }
 
 fr_time_delta_t time_offset = fr_time_delta_wrap(0);
