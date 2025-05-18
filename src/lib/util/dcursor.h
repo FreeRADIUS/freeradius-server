@@ -678,32 +678,6 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
 
 /** Initialise a cursor with a custom iterator
  *
- * @param[in] _cursor		to initialise.
- * @param[in] _list		to iterate over.
- * @param[in] _iter		function.
- * @param[in] _peek		function.  If NULL _iter will be used for peeking.
- * @param[in] _iter_uctx	_iter function _uctx.
- * @param[in] _insert		function.
- * @param[in] _remove		function.
- * @param[in] _mod_uctx		_insert and _remove function _uctx.
- * @return
- *	- NULL if _head does not point to any items, or the iterator matches no items
- *	  in the current list.
- *	- The first item returned by the iterator.
- */
-#define fr_dcursor_iter_mod_init(_cursor, _list, _iter, _peek, _iter_uctx, _insert, _remove, _mod_uctx) \
-	_fr_dcursor_init(_cursor, \
-			 _list, \
-			 _iter, \
-			 _peek, \
-			 _iter_uctx, \
-			 _insert, \
-			 _remove, \
-			 _mod_uctx, \
-			 IS_CONST(fr_dlist_head_t *, _list))
-
-/** Initialise a cursor with a custom iterator
- *
  * @param[in] _cursor	to initialise.
  * @param[in] _head	of item list.
  * @param[in] _iter	function.
@@ -932,23 +906,6 @@ DIAG_OFF(unused-function) \
 							   (fr_dcursor_iter_t)peek, \
 							   iter_uctx, \
 							   NULL, NULL, NULL, \
-							   IS_CONST(FR_DLIST_HEAD(_list_name) *, head)); } \
-\
-	static inline CC_HINT(nonnull(1,2)) _element_type *_name ## _iter_mod_init(FR_DCURSOR(_name) *dcursor, \
-										   FR_DLIST_HEAD(_list_name) *head, \
-										   FR_DCURSOR_ITER(_name) iter, \
-										   FR_DCURSOR_ITER(_name) peek, \
-										   void const *iter_uctx, \
-										   FR_DCURSOR_INSERT(_name) insert, \
-										   FR_DCURSOR_REMOVE(_name) remove, \
-										   void const *mod_uctx) \
-		{ return (_element_type *)_fr_dcursor_init(&dcursor->dcursor, &head->head, \
-							   (fr_dcursor_iter_t)iter, \
-							   (fr_dcursor_iter_t)peek, \
-							   iter_uctx, \
-							   (fr_dcursor_insert_t)insert, \
-							   (fr_dcursor_remove_t)remove, \
-							   mod_uctx, \
 							   IS_CONST(FR_DLIST_HEAD(_list_name) *, head)); } \
 \
 	static inline CC_HINT(nonnull) _element_type *_name ## _current(FR_DCURSOR(_name) *dcursor) \
