@@ -153,15 +153,24 @@ typedef struct {
 #define FRAME_CONF(_default_rcode, _top_frame)		\
 	&(unlang_frame_conf_t){				\
 		.top_frame = (_top_frame),		\
-		.no_rcode = false,			\
 		.default_rcode = (_default_rcode),	\
 		.default_priority = MOD_ACTION_NOT_SET  \
 	}
 
-int			unlang_interpret_push_section(request_t *request, CONF_SECTION *cs, unlang_frame_conf_t const *conf)
+#define FRAME_CONF_NO_RCODE(_default_rcode, _top_frame)	\
+	&(unlang_frame_conf_t){				\
+		.top_frame = (_top_frame),		\
+		.default_rcode = (_default_rcode),	\
+		.default_priority = MOD_ACTION_NOT_SET	\
+	}
+
+
+int			unlang_interpret_push_section(unlang_result_t *p_result, request_t *request,
+						      CONF_SECTION *cs, unlang_frame_conf_t const *conf)
 						      CC_HINT(warn_unused_result);
 
-int			unlang_interpret_push_instruction(request_t *request, void *instruction, unlang_frame_conf_t const *conf)
+int			unlang_interpret_push_instruction(unlang_result_t *p_result, request_t *request,
+							  void *instruction, unlang_frame_conf_t const *conf)
 						  	  CC_HINT(warn_unused_result);
 
 unlang_interpret_t	*unlang_interpret_init(TALLOC_CTX *ctx,
@@ -205,9 +214,15 @@ void			unlang_interpret_signal(request_t *request, fr_signal_t action);
 
 int			unlang_interpret_stack_depth(request_t *request);
 
-rlm_rcode_t		unlang_interpret_stack_result(request_t *request);
+rlm_rcode_t		unlang_interpret_scratch_result(request_t *request);
 
-void			unlang_interpret_stack_result_set(request_t *request, rlm_rcode_t code);
+unlang_mod_action_t	unlang_interpret_scratch_priority(request_t *request);
+
+void			unlang_interpret_scratch_result_set(request_t *request, rlm_rcode_t code);
+
+rlm_rcode_t		unlang_interpret_result(request_t *request);
+
+unlang_mod_action_t	unlang_interpret_priority(request_t *request);
 
 TALLOC_CTX		*unlang_interpret_frame_talloc_ctx(request_t *request);
 
