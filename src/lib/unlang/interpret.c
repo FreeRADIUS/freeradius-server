@@ -508,6 +508,34 @@ finalize:
 	return frame->next ? UNLANG_FRAME_ACTION_NEXT : UNLANG_FRAME_ACTION_POP;
 }
 
+static inline CC_HINT(always_inline) void instruction_done_debug(request_t *request, unlang_stack_frame_t *frame, unlang_t const *instruction)
+{
+	if (has_debug_braces(instruction)) {
+		REXDENT();
+
+		/*
+		 *	If we're at debug level 1, don't emit the closing
+		 *	brace as the opening brace wasn't emitted.
+		 *
+		 *	Not a typo, we don't want to print the scratch_result
+		 *	here, aka the ones the section actually returned,
+		 *	vs the section result, which may have just been left
+		 *	at defaults.
+		 */
+		if (RDEBUG_ENABLED && !RDEBUG_ENABLED2) {
+			RDEBUG("# %s %s%s%s", frame->instruction->debug_name,
+				frame->result_p == &frame->section_result ? "(" : "))",
+				fr_table_str_by_value(mod_rcode_table, frame->result_p->rcode, "<invalid>"),
+				frame->result_p == &frame->section_result ? "(" : "))");
+		} else {
+			RDEBUG2("} # %s %s%s%s", frame->instruction->debug_name,
+				frame->result_p == &frame->section_result ? "(" : "((",
+				fr_table_str_by_value(mod_rcode_table, frame->result_p->rcode, "<invalid>"),
+				frame->result_p == &frame->section_result ? ")" : "))");
+		}
+	}
+}
+
 /** Evaluates all the unlang nodes in a section
  *
  * This function interprets a list of unlang instructions at a given level using the same
@@ -698,21 +726,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 			 *	_within_ a section.  unlang_interpret()
 			 *	handles brackets for the section itself.
 			 */
-			if (has_debug_braces(instruction)) {
-				REXDENT();
 
-				/*
-				 *	If we're at debug level 1, don't emit the closing
-				 *	brace as the opening brace wasn't emitted.
-				 */
-				if (RDEBUG_ENABLED && !RDEBUG_ENABLED2) {
-					RDEBUG("# %s (%s)", instruction->debug_name,
-					       fr_table_str_by_value(mod_rcode_table, scratch->rcode, "<invalid>"));
-				} else {
-					RDEBUG2("} # %s (%s)", instruction->debug_name,
-						fr_table_str_by_value(mod_rcode_table, scratch->rcode, "<invalid>"));
-				}
-			}
 
 			fa = result_calculate(request, frame, scratch);
 
@@ -720,6 +734,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 			 *	Scratch priority and rcode now consumed
 			 */
 			RESULT_RESET(scratch);
+			instruction_done_debug(request, frame, instruction);
 
 			switch (fa) {
 			case UNLANG_FRAME_ACTION_POP:
@@ -862,23 +877,12 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 			/*
 			 *	Close out the section we entered earlier
 			 */
-			if (has_debug_braces(frame)) {
-				REXDENT();
-
-				/*
-				 *	If we're at debug level 1, don't emit the closing
-				 *	brace as the opening brace wasn't emitted.
-				 */
-				if (RDEBUG_ENABLED && !RDEBUG_ENABLED2) {
-					RDEBUG("# %s (%s)", frame->instruction->debug_name,
-					       fr_table_str_by_value(mod_rcode_table, section_result.rcode, "<invalid>"));
-				} else {
-					RDEBUG2("} # %s (%s)", frame->instruction->debug_name,
-						fr_table_str_by_value(mod_rcode_table, section_result.rcode, "<invalid>"));
-				}
-			}
 
 			fa = result_calculate(request, frame, &section_result);
+			/*
+			 *	Close out the section we entered earlier
+			 */
+			instruction_done_debug(request, frame, frame->instruction);
 
 			/*
 			 *	If we're continuing after popping a frame
