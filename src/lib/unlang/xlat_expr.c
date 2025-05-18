@@ -1214,16 +1214,6 @@ static xlat_action_t xlat_logical_or_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	bool			match;
 
 	/*
-	 *	If one of the expansions fails, then we fail the
-	 *	entire thing.
-	 */
-	if (!rctx->last_success) {
-		talloc_free(rctx->box);
-		talloc_free(rctx);
-		return XLAT_ACTION_FAIL;
-	}
-
-	/*
 	 *	Recursively check groups.  i.e. we effectively flatten each list.
 	 *
 	 *	(a, b, c) || (d, e, f) == a || b || c || d || e || f
@@ -1317,16 +1307,6 @@ static xlat_action_t xlat_logical_and_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	xlat_logical_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_logical_inst_t);
 	xlat_logical_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_logical_rctx_t);
 	bool			match;
-
-	/*
-	 *	If one of the expansions fails, then we fail the
-	 *	entire thing.
-	 */
-	if (!rctx->last_success) {
-		talloc_free(rctx->box);
-		talloc_free(rctx);
-		return XLAT_ACTION_FAIL;
-	}
 
 	/*
 	 *	Recursively check groups.  i.e. we effectively flatten each list.
