@@ -1,5 +1,5 @@
 #
-#  PRE: if
+#  PRE: if try
 #
 string foo
 string bar
@@ -23,6 +23,7 @@ group {
 		if bar {
 			test_fail
 		}
+		ok
 	}
 }
 
