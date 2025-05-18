@@ -22,6 +22,7 @@
  * @copyright 2021 The FreeRADIUS server project.
  * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
+#include "lib/unlang/action.h"
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <freeradius-devel/radius/radius.h>
@@ -385,7 +386,7 @@ RESUME(auth_type)
 	return state->send(p_result, mctx, request);
 }
 
-RESUME(access_accept)
+RESUME_FLAG(access_accept, UNUSED,)
 {
 	fr_pair_t			*vp;
 	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_ttls_t);
@@ -408,17 +409,17 @@ RESUME(access_accept)
 	}
 
 	fr_state_discard(inst->auth.state_tree, request);
-	RETURN_MODULE_TRANSPARENT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-RESUME(access_reject)
+RESUME_FLAG(access_reject, UNUSED,)
 {
 	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_ttls_t);
 
 	PROCESS_TRACE;
 
 	fr_state_discard(inst->auth.state_tree, request);
-	RETURN_MODULE_TRANSPARENT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 RESUME(access_challenge)
@@ -441,7 +442,7 @@ RESUME(access_challenge)
 	}
 
 	fr_assert(request->reply->code == FR_RADIUS_CODE_ACCESS_CHALLENGE);
-	RETURN_MODULE_TRANSPARENT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 RESUME(protocol_error)

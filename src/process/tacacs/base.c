@@ -636,7 +636,7 @@ RESUME(auth_type)
 	return state->send(p_result, mctx, request);
 }
 
-RESUME(auth_pass)
+RESUME_FLAG(auth_pass, UNUSED,)
 {
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 
@@ -645,10 +645,10 @@ RESUME(auth_pass)
 	// @todo - worry about user identity existing?
 
 	fr_state_discard(inst->auth.state_tree, request);
-	RETURN_MODULE_TRANSPARENT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-RESUME(auth_fail)
+RESUME_FLAG(auth_fail, UNUSED,)
 {
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 
@@ -658,17 +658,17 @@ RESUME(auth_fail)
 	// and also for FAIL
 
 	fr_state_discard(inst->auth.state_tree, request);
-	RETURN_MODULE_TRANSPARENT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-RESUME(auth_restart)
+RESUME_FLAG(auth_restart, UNUSED,)
 {
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 
 	PROCESS_TRACE;
 
 	fr_state_discard(inst->auth.state_tree, request);
-	RETURN_MODULE_TRANSPARENT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 RESUME(auth_get)
@@ -757,7 +757,7 @@ send_reply:
 		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
 	}
 
-	RETURN_MODULE_TRANSPARENT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 RECV(auth_cont)
