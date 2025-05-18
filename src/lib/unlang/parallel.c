@@ -168,12 +168,14 @@ static unlang_action_t unlang_parallel_resume(unlang_result_t *p_result, request
 		 *	Do priority over-ride.
 		 */
 		if (cr->result.priority > p_result->priority) {
-			p_result->rcode = cr->result.rcode;
-
-			RDEBUG4("** [%i] %s - over-riding result from higher priority to (%s %d)",
+			RDEBUG4("** [%i] %s - overwriting existing result (%s %d) from higher priority to (%s %d)",
 				stack_depth_current(request), __FUNCTION__,
 				fr_table_str_by_value(mod_rcode_table, p_result->rcode, "<invalid>"),
-				p_result->priority);
+				p_result->priority,
+				fr_table_str_by_value(mod_rcode_table, cr->result.rcode, "<invalid>"),
+				cr->result.priority);
+			p_result->rcode = cr->result.rcode;
+			p_result->priority = cr->result.priority;
 		}
 	}
 
@@ -221,8 +223,8 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 	}
 
 	(void) talloc_set_type(state, unlang_parallel_state_t);
-	state->result = RLM_MODULE_FAIL;
-	state->priority = -1;				/* as-yet unset */
+	state->result = RLM_MODULE_NOOP;
+	state->priority = MOD_ACTION_NOT_SET;				/* as-yet unset */
 	state->detach = gext->detach;
 	state->clone = gext->clone;
 	state->num_children = g->num_children;
@@ -300,7 +302,7 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 		 */
 		if (unlang_interpret_push(NULL, child,
 					  instruction,
-					  FRAME_CONF(RLM_MODULE_FAIL, state->detach ? UNLANG_TOP_FRAME : UNLANG_SUB_FRAME),
+					  FRAME_CONF(RLM_MODULE_NOOP, state->detach ? UNLANG_TOP_FRAME : UNLANG_SUB_FRAME),
 					  UNLANG_NEXT_STOP) < 0) goto error;
 	}
 
