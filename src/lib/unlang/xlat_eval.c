@@ -28,6 +28,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
+#include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/unlang/mod_action.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
 static int instance_count = 0;
@@ -1622,7 +1624,7 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 			      xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	fr_value_box_list_t	result;
-	bool			success = false;
+	unlang_result_t		unlang_result = { .rcode = RLM_MODULE_NOT_SET, .priority = MOD_ACTION_NOT_SET };
 	TALLOC_CTX		*pool = talloc_new(NULL);
 	rlm_rcode_t		rcode;
 	char			*str;
@@ -1636,7 +1638,7 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 	/*
 	 *	Use the unlang stack to evaluate the xlat.
 	 */
-	if (unlang_xlat_push(pool, &success, &result, request, head, UNLANG_TOP_FRAME) < 0) {
+	if (unlang_xlat_push(pool, &unlang_result, &result, request, head, UNLANG_TOP_FRAME) < 0) {
 	fail:
 		talloc_free(pool);
 		return -1;
@@ -1655,7 +1657,7 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 
 	switch (rcode) {
 	default:
-		if (!success) goto fail;
+		if (!XLAT_RESULT_SUCCESS(&unlang_result)) goto fail;
 		break;
 
 	case RLM_MODULE_REJECT:

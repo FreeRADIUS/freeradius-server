@@ -92,7 +92,7 @@ unlang_action_t	unlang_module_yield_to_section(unlang_result_t *p_result,
 					       module_method_t resume,
 					       unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx);
 
-unlang_action_t	unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+unlang_action_t	unlang_module_yield_to_xlat(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_list_t *out,
 					    request_t *request, xlat_exp_head_t const *xlat,
 					    module_method_t resume,
 					    unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx);

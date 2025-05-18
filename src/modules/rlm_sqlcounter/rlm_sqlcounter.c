@@ -249,7 +249,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 }
 
 typedef struct {
-	bool			last_success;
+	unlang_result_t		last_result;
 	fr_value_box_list_t	result;
 	rlm_sqlcounter_t	*inst;
 	sqlcounter_call_env_t	*env;
@@ -436,7 +436,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	}
 
 	fr_value_box_list_init(&rctx->result);
-	if (unlang_xlat_push(rctx, &rctx->last_success, &rctx->result, request, env->query_xlat, UNLANG_SUB_FRAME) < 0) goto error;
+	if (unlang_xlat_push(rctx, &rctx->last_result, &rctx->result, request, env->query_xlat, UNLANG_SUB_FRAME) < 0) goto error;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }

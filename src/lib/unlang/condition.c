@@ -30,8 +30,7 @@ RCSID("$Id$")
 typedef struct {
 	fr_value_box_list_t	out;				//!< Head of the result of a nested
 								///< expansion.
-	bool			success;			//!< If set, where to record the result
-								///< of the execution.
+	unlang_result_t		result;				//!< Store the result of unlang expressions.
 } unlang_frame_state_cond_t;
 
 static unlang_action_t unlang_if_resume(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -107,7 +106,7 @@ static unlang_action_t unlang_if(unlang_result_t *p_result, request_t *request, 
 
 	fr_value_box_list_init(&state->out);
 
-	if (unlang_xlat_push(state, &state->success, &state->out,
+	if (unlang_xlat_push(state, &state->result, &state->out,
 			     request, gext->head, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;

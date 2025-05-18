@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 
 #include <ctype.h>
+#include <freeradius-devel/unlang/mod_action.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/debug.h>
 #include "unlang_priv.h"	/* Fixme - Should create a proper semi-public interface for the interpret */
@@ -56,7 +57,7 @@ typedef struct {
 	fr_signal_t		sigmask;			//!< Signals to block
 	void			*rctx;				//!< for resume / signal
 
-	bool			*success;			//!< If set, where to record the result
+	unlang_result_t		*p_result;			//!< If set, where to record the result
 								///< of the execution.
 } unlang_frame_state_xlat_t;
 
@@ -185,8 +186,8 @@ int unlang_xlat_timeout_add(request_t *request,
 /** Push a pre-compiled xlat onto the stack for evaluation
  *
  * @param[in] ctx		To allocate value boxes and values in.
- * @param[out] p_success	If set, and execution succeeds, true will be written
- *				here.  If execution fails, false will be written.
+ * @param[out] p_result		If set, rcodes and priorities will be written here and
+ *				not evaluated by the unlang interpreter.
  * @param[out] out		Where to write the result of the expansion.
  * @param[in] request		to push xlat onto.
  * @param[in] xlat		head of list
@@ -197,7 +198,7 @@ int unlang_xlat_timeout_add(request_t *request,
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int unlang_xlat_push_internal(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+static int unlang_xlat_push_internal(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_list_t *out,
 				     request_t *request, xlat_exp_head_t const *xlat, xlat_exp_t *node, bool top_frame)
 {
 	/** Static instruction for performing xlat evaluations
@@ -230,7 +231,7 @@ static int unlang_xlat_push_internal(TALLOC_CTX *ctx, bool *p_success, fr_value_
 	/*
 	 *	Push a new xlat eval frame onto the stack
 	 */
-	if (unlang_interpret_push(NULL, request, &xlat_instruction,
+	if (unlang_interpret_push(p_result, request, &xlat_instruction,
 				  FRAME_CONF(RLM_MODULE_NOT_SET, top_frame), UNLANG_NEXT_STOP) < 0) return -1;
 	frame = &stack->frame[stack->depth];
 
@@ -240,7 +241,7 @@ static int unlang_xlat_push_internal(TALLOC_CTX *ctx, bool *p_success, fr_value_
 	MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_xlat_t));
 	state->head = xlat;
 	state->exp = node;
-	state->success = p_success;
+	state->p_result = p_result;
 	state->ctx = ctx;
 
 	if (node) switch (node->type) {
@@ -269,8 +270,6 @@ static int unlang_xlat_push_internal(TALLOC_CTX *ctx, bool *p_success, fr_value_
 /** Push a pre-compiled xlat onto the stack for evaluation
  *
  * @param[in] ctx		To allocate value boxes and values in.
- * @param[out] p_success	If set, and execution succeeds, true will be written
- *				here.  If execution fails, false will be written.
  * @param[out] out		Where to write the result of the expansion.
  * @param[in] request		to push xlat onto.
  * @param[in] xlat		to evaluate.
@@ -280,18 +279,18 @@ static int unlang_xlat_push_internal(TALLOC_CTX *ctx, bool *p_success, fr_value_
  *	- 0 on success.
  *	- -1 on failure.
  */
-int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+int unlang_xlat_push(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_list_t *out,
 		     request_t *request, xlat_exp_head_t const *xlat, bool top_frame)
 {
 	(void) talloc_get_type_abort_const(xlat, xlat_exp_head_t);
 
-	return unlang_xlat_push_internal(ctx, p_success, out, request, xlat, xlat_exp_head(xlat), top_frame);
+	return unlang_xlat_push_internal(ctx, p_result, out, request, xlat, xlat_exp_head(xlat), top_frame);
 }
 
 /** Push a pre-compiled xlat onto the stack for evaluation
  *
  * @param[in] ctx		To allocate value boxes and values in.
- * @param[out] p_success	If set, and execution succeeds, true will be written
+ * @param[out] p_result		If set, and execution succeeds, true will be written
  *				here.  If execution fails, false will be written.
  * @param[out] out		Where to write the result of the expansion.
  * @param[in] request		to push xlat onto.
@@ -300,10 +299,10 @@ int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int unlang_xlat_push_node(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+int unlang_xlat_push_node(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_list_t *out,
 			  request_t *request, xlat_exp_t *node)
 {
-	return unlang_xlat_push_internal(ctx, p_success, out, request, NULL, node, UNLANG_TOP_FRAME);
+	return unlang_xlat_push_internal(ctx, p_result, out, request, NULL, node, UNLANG_TOP_FRAME);
 }
 
 static unlang_action_t unlang_xlat_repeat(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -345,7 +344,7 @@ static unlang_action_t unlang_xlat_repeat(unlang_result_t *p_result, request_t *
 		 *	multiple sibling nodes.
 		 */
 		fr_value_box_list_talloc_free(&state->out);
-		if (unlang_xlat_push(state->ctx, state->success, &state->out, request, child, false) < 0) {
+		if (unlang_xlat_push(state->ctx, p_result, &state->out, request, child, false) < 0) {
 			REXDENT();
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
@@ -364,14 +363,12 @@ static unlang_action_t unlang_xlat_repeat(unlang_result_t *p_result, request_t *
 		return UNLANG_ACTION_YIELD;
 
 	case XLAT_ACTION_DONE:
-		if (state->success) *state->success = true;
 		p_result->rcode = RLM_MODULE_OK;
 		REXDENT();
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_FAIL:
 	fail:
-		if (state->success) *state->success = false;
 		p_result->rcode = RLM_MODULE_FAIL;
 		REXDENT();
 		return UNLANG_ACTION_CALCULATE_RESULT;
@@ -387,7 +384,7 @@ static unlang_action_t unlang_xlat_repeat(unlang_result_t *p_result, request_t *
  * Calls the xlat interpreter and translates its wants and needs into
  * unlang_action_t codes.
  */
-static unlang_action_t unlang_xlat(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_xlat(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_action_t			xa;
@@ -409,7 +406,7 @@ static unlang_action_t unlang_xlat(unlang_result_t *p_result, request_t *request
 		 *	multiple sibling nodes.
 		 */
 		fr_value_box_list_talloc_free(&state->out);
-		if (unlang_xlat_push(state->ctx, state->success, &state->out, request, child, false) < 0) {
+		if (unlang_xlat_push(state->ctx, NULL, &state->out, request, child, false) < 0) {
 			RINDENT_RESTORE(request, state);
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
@@ -428,14 +425,12 @@ static unlang_action_t unlang_xlat(unlang_result_t *p_result, request_t *request
 		return UNLANG_ACTION_YIELD;
 
 	case XLAT_ACTION_DONE:
-		if (state->success) *state->success = true;
 		p_result->rcode = RLM_MODULE_OK;
 		RINDENT_RESTORE(request, state);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_FAIL:
 	fail:
-		if (state->success) *state->success = false;
 		p_result->rcode = RLM_MODULE_FAIL;
 		RINDENT_RESTORE(request, state);
 		return UNLANG_ACTION_CALCULATE_RESULT;
@@ -506,7 +501,6 @@ static unlang_action_t unlang_xlat_resume(unlang_result_t *p_result, request_t *
 		return UNLANG_ACTION_YIELD;
 
 	case XLAT_ACTION_DONE:
-		if (state->success) *state->success = true;
 		p_result->rcode = RLM_MODULE_OK;
 		RINDENT_RESTORE(request, state);
 		return UNLANG_ACTION_CALCULATE_RESULT;
@@ -526,14 +520,13 @@ static unlang_action_t unlang_xlat_resume(unlang_result_t *p_result, request_t *
 		 *	multiple sibling nodes.
 		 */
 		fr_value_box_list_talloc_free(&state->out);
-		if (unlang_xlat_push(state->ctx, state->success, &state->out, request, child, false) < 0) {
+		if (unlang_xlat_push(state->ctx, state->p_result, &state->out, request, child, false) < 0) {
 			RINDENT_RESTORE(request, state);
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case XLAT_ACTION_FAIL:
-		if (state->success) *state->success = false;
 		p_result->rcode = RLM_MODULE_FAIL;
 		RINDENT_RESTORE(request, state);
 		return UNLANG_ACTION_CALCULATE_RESULT;
@@ -734,18 +727,18 @@ xlat_action_t unlang_xlat_yield_to_retry(request_t *request, xlat_func_t resume,
  */
 int unlang_xlat_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, xlat_exp_head_t const *xlat)
 {
-	bool	success = false;
+	unlang_result_t result = { .rcode = RLM_MODULE_NOT_SET, .priority = MOD_ACTION_NOT_SET };
 
 	if (xlat->flags.impure_func) {
 		fr_strerror_const("Expansion requires async operations");
 		return -1;
 	}
 
-	if (unlang_xlat_push(ctx, &success, out, request, xlat, UNLANG_TOP_FRAME) < 0) return -1;
+	if (unlang_xlat_push(ctx, &result, out, request, xlat, UNLANG_TOP_FRAME) < 0) return -1;
 
 	(void) unlang_interpret(request, UNLANG_REQUEST_RUNNING);
 
-	if (!success) return -1;
+	if (!XLAT_RESULT_SUCCESS(&result)) return -1;
 
 	return 0;
 }
