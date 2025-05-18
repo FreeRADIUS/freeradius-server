@@ -49,7 +49,7 @@ typedef struct {
 	uint32_t		index;				//!< for xlat results
 	char			*buffer;			//!< for key values
 
-	bool			success;			//!< for xlat expansion
+	unlang_result_t		exp_result;			//!< for xlat expansion
 	fr_value_box_list_t	list;				//!< value box list for looping over xlats
 
 	tmpl_dcursor_ctx_t	cc;				//!< tmpl cursor state
@@ -209,7 +209,7 @@ static unlang_action_t unlang_foreach_xlat_expanded(unlang_result_t *p_result, r
 	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
 	fr_value_box_t *box;
 
-	if (!state->success) {
+	if (!XLAT_RESULT_SUCCESS(&state->exp_result)) {
 		RDEBUG("Failed expanding 'foreach' list");
 		RETURN_UNLANG_FAIL;
 	}
@@ -248,7 +248,7 @@ static unlang_action_t unlang_foreach_xlat_init(unlang_result_t *p_result, reque
 {
 	fr_value_box_list_init(&state->list);
 
-	if (unlang_xlat_push(state, &state->success, &state->list, request, tmpl_xlat(state->vpt), false) < 0) {
+	if (unlang_xlat_push(state, &state->exp_result, &state->list, request, tmpl_xlat(state->vpt), false) < 0) {
 		REDEBUG("Failed starting expansion of %s", state->vpt->name);
 		RETURN_UNLANG_FAIL;
 	}

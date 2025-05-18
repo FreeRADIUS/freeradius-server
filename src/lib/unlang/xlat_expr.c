@@ -503,7 +503,7 @@ typedef struct {
 } xlat_regex_inst_t;
 
 typedef struct {
-	bool			last_success;
+	unlang_result_t		last_result;
 	fr_value_box_list_t	list;
 } xlat_regex_rctx_t;
 
@@ -753,7 +753,7 @@ static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	If the expansions fails, then we fail the entire thing.
 	 */
-	if (!rctx->last_success) {
+	if (!XLAT_RESULT_SUCCESS(&rctx->last_result)) {
 		talloc_free(rctx);
 		return XLAT_ACTION_FAIL;
 	}
@@ -805,7 +805,7 @@ static xlat_action_t xlat_regex_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (unlang_xlat_push(ctx, &rctx->last_success, &rctx->list,
+	if (unlang_xlat_push(ctx, &rctx->last_result, &rctx->list,
 			     request, tmpl_xlat(inst->xlat->vpt), UNLANG_SUB_FRAME) < 0) goto fail;
 
 	return XLAT_ACTION_PUSH_UNLANG;
@@ -860,7 +860,7 @@ typedef struct {
 
 typedef struct {
 	TALLOC_CTX		*ctx;
-	bool			last_success;
+	unlang_result_t		last_result;
 	fr_value_box_t		*box;		//!< output value-box
 	int			current;
 	fr_value_box_list_t	list;
@@ -1132,7 +1132,7 @@ static xlat_action_t xlat_logical_process_arg(UNUSED TALLOC_CTX *ctx, UNUSED fr_
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (unlang_xlat_push(rctx, &rctx->last_success, &rctx->list,
+	if (unlang_xlat_push(rctx, &rctx->last_result, &rctx->list,
 			     request, inst->argv[rctx->current], UNLANG_SUB_FRAME) < 0) goto fail;
 
 	return XLAT_ACTION_PUSH_UNLANG;

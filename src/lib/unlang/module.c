@@ -164,7 +164,7 @@ int unlang_module_set_resume(request_t *request, module_method_t resume)
  * will then call the module resumption frame, allowing the module to continue execution.
  *
  * @param[in] ctx		To allocate talloc value boxes and values in.
- * @param[out] p_success	Whether xlat evaluation was successful.
+ * @param[out] p_result		Whether xlat evaluation was successful.
  * @param[out] out		Where to write the result of the expansion.
  * @param[in] request		The current request.
  * @param[in] exp		XLAT expansion to evaluate.
@@ -175,7 +175,7 @@ int unlang_module_set_resume(request_t *request, module_method_t resume)
  * @return
  *	- UNLANG_ACTION_PUSHED_CHILD
  */
-unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_list_t *out,
 					    request_t *request, xlat_exp_head_t const *exp,
 					    module_method_t resume,
 					    unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx)
@@ -189,7 +189,7 @@ unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, fr
 	/*
 	 *	Push the xlat function
 	 */
-	if (unlang_xlat_push(ctx, p_success, out, request, exp, false) < 0) return UNLANG_ACTION_STOP_PROCESSING;
+	if (unlang_xlat_push(ctx, p_result, out, request, exp, false) < 0) return UNLANG_ACTION_STOP_PROCESSING;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }

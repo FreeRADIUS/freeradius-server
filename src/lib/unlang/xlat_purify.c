@@ -27,6 +27,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/unlang/mod_action.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/calc.h>
 
@@ -65,7 +66,7 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, fr_token_t quote)
 {
 	int rcode;
-	bool success;
+	unlang_result_t result = { .rcode = RLM_MODULE_NOT_SET, .priority = MOD_ACTION_NOT_SET };
 	fr_value_box_list_t list;
 	xlat_flags_t our_flags;
 	xlat_exp_t *node, *next;
@@ -254,8 +255,8 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 			 */
 			fr_assert(node->flags.pure);
 			fr_value_box_list_init(&list);
-			success = false;
-			if (unlang_xlat_push_node(head, &success, &list, request, node) < 0) {
+			result.rcode = RLM_MODULE_NOT_SET;
+			if (unlang_xlat_push_node(head, &result, &list, request, node) < 0) {
 				return -1;
 			}
 
@@ -264,7 +265,7 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 			 */
 
 			(void) unlang_interpret_synchronous(NULL, request);
-			if (!success) return -1;
+			if (!XLAT_RESULT_SUCCESS(&result)) return -1;
 
 			/*
 			 *	The function call becomes a GROUP of boxes

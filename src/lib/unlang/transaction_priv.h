@@ -38,6 +38,7 @@ typedef struct {
  */
 typedef struct {
 	fr_edit_list_t		*el;		//!< my edit list
+	unlang_result_t		result;
 } unlang_frame_state_transaction_t;
 
 /** Cast a group structure to the transaction keyword extension
