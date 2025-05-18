@@ -25,9 +25,10 @@
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/signal.h>
+#include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/unlang/mod_action.h>
+#include <freeradius-devel/util/talloc.h>
 
-#include "lib/server/rcode.h"
-#include "lib/util/talloc.h"
 #include "unlang_priv.h"
 #include "child_request_priv.h"
 

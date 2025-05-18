@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/server/rcode.h>
 #include "transaction.h"
 #include "transaction_priv.h"
 

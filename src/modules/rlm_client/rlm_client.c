@@ -23,10 +23,10 @@
  * @copyright 2008 Alan DeKok (aland@deployingradius.com)
  * @copyright 2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#include "lib/server/cf_util.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/util/debug.h>

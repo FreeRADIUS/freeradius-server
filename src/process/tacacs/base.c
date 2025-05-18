@@ -23,14 +23,12 @@
  * @copyright 2020 The FreeRADIUS server project.
  * @copyright 2020 Network RADIUS SAS (legal@networkradius.com)
  */
-
-
-#include "lib/server/rcode.h"
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/master.h>
 #include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/state.h>
+#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/tacacs/tacacs.h>
 #include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/util/debug.h>

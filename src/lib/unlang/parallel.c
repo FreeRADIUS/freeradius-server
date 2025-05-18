@@ -34,6 +34,7 @@ RCSID("$Id$")
 
 #include "action.h"
 #include "interpret.h"
+#include "mod_action.h"
 #include "subrequest.h"
 #include "interpret_priv.h"
 #include "unlang_priv.h"

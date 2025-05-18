@@ -25,10 +25,12 @@
 
 RCSID("$Id$")
 
+#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/timer.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/mod_action.h>
 

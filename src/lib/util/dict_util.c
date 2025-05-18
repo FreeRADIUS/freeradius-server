@@ -21,7 +21,6 @@
  * @copyright 2000,2006 The FreeRADIUS server project
  * @copyright 2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#include "lib/util/hash.h"
 RCSID("$Id$")
 
 #define _DICT_PRIVATE 1
@@ -31,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/dict_ext_priv.h>
 #include <freeradius-devel/util/dict_fixup_priv.h>
+#include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/syserror.h>
