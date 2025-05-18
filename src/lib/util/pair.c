@@ -1093,8 +1093,6 @@ next_parent_sibling:
 
 /** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
  *
- * Filters can be applied later with fr_dcursor_filter_set.
- *
  * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
  *
  * @param[out] cursor	to initialise.
@@ -1116,8 +1114,6 @@ fr_pair_t *_fr_pair_dcursor_iter_init(fr_dcursor_t *cursor, fr_pair_list_t const
 }
 
 /** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
- *
- * Filters can be applied later with fr_dcursor_filter_set.
  *
  * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
  *
@@ -1241,8 +1237,6 @@ static fr_dlist_head_t value_dlist = {
 
 /** Initialises a special dcursor over a #fr_pair_list_t, but which returns #fr_value_box_t
  *
- * Filters can be applied later with fr_dcursor_filter_set.
- *
  * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
  * @note - the list cannot be modified, and structural attributes are not returned.
  *
@@ -1291,10 +1285,8 @@ static void *_fr_pair_iter_next_dcursor_value(UNUSED fr_dcursor_t *cursor, void 
 
 /** Initialises a special dcursor over another cursor which returns #fr_pair_t, but we return #fr_value_box_t
  *
- * Filters can be applied later with fr_dcursor_filter_set.
- *
  * @note - the list cannot be modified, and structural attributes are not returned.
-  *
+ *
  * @param[out] cursor	to initialise.
  * @param[in] parent	to iterate over
  * @return
@@ -3382,8 +3374,6 @@ void fr_pair_list_tainted(fr_pair_list_t *list)
 }
 
 /** Evaluation function for matching if vp matches a given da
- *
- * Can be used as a filter function for fr_dcursor_filter_next()
  *
  * @param item	pointer to a fr_pair_t
  * @param uctx	da to match

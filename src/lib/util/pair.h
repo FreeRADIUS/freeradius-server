@@ -554,8 +554,6 @@ fr_pair_t	*fr_pair_list_iter_leaf(fr_pair_list_t *list, fr_pair_t *vp);
 
 /** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
  *
- * Filters can be applied later with fr_dcursor_filter_set.
- *
  * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
  *
  * @param[out] _cursor	to initialise.
@@ -578,8 +576,6 @@ fr_pair_t	*_fr_pair_dcursor_iter_init(fr_dcursor_t *cursor, fr_pair_list_t const
 
 /** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
  *
- * Filters can be applied later with fr_dcursor_filter_set.
- *
  * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
  *
  * @param[out] _cursor	to initialise.
@@ -596,8 +592,6 @@ fr_pair_t	*_fr_pair_dcursor_init(fr_dcursor_t *cursor, fr_pair_list_t const *lis
 				       bool is_const) CC_HINT(nonnull);
 
 /** Initializes a child dcursor from a parent cursor, with an iteration function.
- *
- * Filters can be applied later with fr_dcursor_filter_set.
  *
  * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
  *
