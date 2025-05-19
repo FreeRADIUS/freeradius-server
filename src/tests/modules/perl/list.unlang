@@ -21,6 +21,33 @@ if (Filter-Id != 'Secondary' || Filter-Id[#] != 1 ) {
 	test_fail
 }
 
+# Check we can't set a value on a tied hash
+perl.set_on_hash {
+	fail = 1
+}
+if (!fail) {
+	test_fail
+}
+
+# Check that setting an attribute instance more than one beyond the existing fails
+perl.set_beyond_limit {
+	fail = 1
+}
+if (!fail) {
+	test_fail
+}
+if (reply.Reply-Message[3] != 'Will set') {
+	test_fail
+}
+
+# Check that setting an invalid attribute fails
+perl.invalid_attr {
+	fail = 1
+}
+if (!fail) {
+	test_fail
+}
+
 reply := {}
 
 test_pass

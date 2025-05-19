@@ -128,6 +128,22 @@ sub array_ops {
 	return RLM_MODULE_OK;
 }
 
+sub set_on_hash {
+	my $p = shift();
+	$p->{'reply'}{'User-Name'} = 'bob';
+}
+
+sub set_beyond_limit {
+	my $p = shift();
+	$p->{'reply'}{'Reply-Message'}[3] = 'Will set';
+	$p->{'reply'}{'Reply-Message'}[10] = 'Will not set';
+}
+
+sub invalid_attr {
+	my $p = shift();
+	$p->{'reply'}{'Invalid-Attr'}[0] = 'Hello';
+}
+
 sub log_attributes {
 	my %hash = %{$_[0]};
 	my $indent = $_[1];
