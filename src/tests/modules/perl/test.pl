@@ -84,6 +84,50 @@ sub authenticate {
 	}
 }
 
+sub array_ops {
+	my $p = shift();
+
+	if ($#{$p->{'request'}{'Vendor-Specific'}{'Cisco'}{'AVPair'}} != 1) {
+		freeradius::log(L_ERR, 'Incorrect $# value');
+		return RLM_MODULE_REJECT;
+	}
+
+	if (!exists $p->{'request'}{'Vendor-Specific'}{'Cisco'}{'AVPair'}[1]) {
+		freeradius::log(L_ERR, 'Failed to find request.Vendor-Specific.Cisco.AVPair[1]');
+		return RLM_MODULE_REJECT;
+	}
+
+	if (defined $p->{'request'}{'Vendor-Specific'}{'Cisco'}{'AVPair'}[2]) {
+		freeradius::log(L_ERR, 'Found request.Vendor-Specific.Cisco.AVPair[2]');
+		return RLM_MODULE_REJECT;
+	}
+
+	push(@{$p->{'reply'}{'Reply-Message'}}, ('Hello', 'There'));
+	unshift(@{$p->{'reply'}{'Reply-Message'}}, 'Firstly');
+
+	my $mac = pop(@{$p->{'request'}{'Calling-Station-Id'}});
+	if ($mac ne 'aa:bb:cc:dd:ee:ff') {
+		freeradius::log(L_ERR, 'Incorrect Calling-Station-Id: ' . $mac);
+		return RLM_MODULE_REJECT;
+	}
+
+	my $cisco = pop(@{$p->{'request'}{'Vendor-Specific'}{'Cisco'}{'AVPair'}});
+
+	if ($cisco ne 'is=crazy') {
+		freeradius::log(L_ERR, 'Invalid value for last Cisco.AVPair: ' . $cisco);
+		return RLM_MODULE_REJECT;
+	}
+
+	my $filter = shift(@{$p->{'request'}{'Filter-Id'}});
+
+	if ($filter ne 'Initial') {
+		freeradius::log(L_ERR, 'Invalid value for first Filter: ' . $filter);
+		return RLM_MODULE_REJECT;
+	}
+
+	return RLM_MODULE_OK;
+}
+
 sub log_attributes {
 	my %hash = %{$_[0]};
 	my $indent = $_[1];

@@ -1,0 +1,26 @@
+# Check array operators on lists
+perl.array_ops
+
+# push and unshift should have created these
+if (reply.Reply-Message != 'Firstly' || reply.Reply-Message[1] != 'Hello' || reply.Reply-Message[2] != 'There') {
+	test_fail
+}
+
+# The module should have removed Calling-Station-Id with pop
+if (Calling-Station-Id) {
+	test_fail
+}
+
+# The second Cisco.AVPair should have been popped
+if (Vendor-Specific.Cisco.AVPair[1]) {
+	test_fail
+}
+
+# The first Filter-Id should have been shifted
+if (Filter-Id != 'Secondary' || Filter-Id[#] != 1 ) {
+	test_fail
+}
+
+reply := {}
+
+test_pass
