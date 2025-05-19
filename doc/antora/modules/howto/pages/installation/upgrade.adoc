@@ -905,6 +905,22 @@ data, instead of as hex strings.
 
 All data received from the network is marked `tainted` by default.
 
+Rather than using the global hashes `%RAD_REQUEST` etc, Perl subroutines
+called by FreeRADIUS during packet processing are passed a hash ref
+representing the packet being processed.
+
+This hash ref contains four hashes representing the attribute lists.
+
+Manipulating the values of attributes is now done directly from the
+Perl subroutines e.g.
+
+```
+$p->{'reply'}{'foo'}[0] = 'baa'
+```
+
+Will set the value of `reply.foo` to `"baa"`, creating the pair if
+needed.
+
 === rlm_python
 
 Rather than passing a tuple representing attributes in the `request`
