@@ -9,7 +9,7 @@ Obsoletes:    freeradius < %{version}
 Conflicts:    radiusd-livingston radiusd-cistron icradius
 Url:          http://www.freeradius.org/
 Summary:      Very Highly Configurable Radius Server
-Source:       ftp://ftp.freeradius.org/pub/freeradius/%{name}-%{version}.tar.bz2
+Source:       https://www.freeradius.org/ftp/pub/freeradius/%{name}-%{version}.tar.bz2
 Source90:     %{name}-rpmlintrc
 Source104:    %{name}-tmpfiles.conf
 PreReq:       %{_sbindir}/useradd %{_sbindir}/groupadd
