@@ -1747,22 +1747,22 @@ static int sql_redundant_ctx_free(sql_redundant_ctx_t *to_free)
 	return 0;
 }
 
-static unlang_action_t mod_sql_redundant_resume(unlang_result_t *p_result, request_t *request, void *uctx);
+static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
 
 /** Resume function called after executing an SQL query in a redundant list of queries.
  *
+ * @param p_result	Result of current module call.
+ * @param mctx		Current module ctx.
  * @param request	Current request.
- * @param uctx		Current redundant sql context.
  * @return one of the RLM_MODULE_* values.
  */
-static unlang_action_t mod_sql_redundant_query_resume(unlang_result_t *p_result, request_t *request, void *uctx)
+static unlang_action_t mod_sql_redundant_query_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	sql_redundant_ctx_t		*redundant_ctx = talloc_get_type_abort(uctx, sql_redundant_ctx_t);
+	sql_redundant_ctx_t		*redundant_ctx = talloc_get_type_abort(mctx->rctx, sql_redundant_ctx_t);
 	sql_redundant_call_env_t	*call_env = redundant_ctx->call_env;
 	rlm_sql_t const			*inst = redundant_ctx->inst;
 	fr_sql_query_t			*query_ctx = redundant_ctx->query_ctx;
 	int				numaffected = 0;
-	tmpl_t				*next_query;
 
 	RDEBUG2("SQL query returned: %s", fr_table_str_by_value(sql_rcode_description_table, query_ctx->rcode, "<INVALID>"));
 
@@ -1783,13 +1783,13 @@ static unlang_action_t mod_sql_redundant_query_resume(unlang_result_t *p_result,
 	 *	so we do not need to call fr_pool_connection_release.
 	 */
 	case RLM_SQL_RECONNECT:
-		RETURN_UNLANG_FAIL;
+		RETURN_MODULE_FAIL;
 
 	/*
 	 *	Query was invalid, this is a terminal error.
 	 */
 	case RLM_SQL_QUERY_INVALID:
-		RETURN_UNLANG_INVALID;
+		RETURN_MODULE_INVALID;
 
 	/*
 	 *	Driver found an error (like a unique key constraint violation)
@@ -1813,11 +1813,11 @@ static unlang_action_t mod_sql_redundant_query_resume(unlang_result_t *p_result,
 	if (numaffected > 0) {
 		if (inst->query_number_da) {
 			fr_pair_t	*vp;
-			if (unlikely(pair_update_control(&vp, inst->query_number_da) < 0)) RETURN_UNLANG_FAIL;
+			if (unlikely(pair_update_control(&vp, inst->query_number_da) < 0)) RETURN_MODULE_FAIL;
 			vp->vp_uint32 = redundant_ctx->query_no + 1;
 			RDEBUG2("control.%pP", vp);
 		}
-		RETURN_UNLANG_OK;	/* A query succeeded, were done! */
+		RETURN_MODULE_OK;	/* A query succeeded, were done! */
 	}
 next:
 	/*
@@ -1825,10 +1825,9 @@ next:
 	 */
 	talloc_free(query_ctx);
 	redundant_ctx->query_no++;
-	if (redundant_ctx->query_no >= talloc_array_length(call_env->query)) RETURN_UNLANG_NOOP;
-	next_query = call_env->query[redundant_ctx->query_no];
-	if (unlang_function_repeat_set(request, mod_sql_redundant_resume) < 0) RETURN_UNLANG_FAIL;
-	if (unlang_tmpl_push(redundant_ctx, &redundant_ctx->query, request, next_query, NULL) < 0) RETURN_UNLANG_FAIL;
+	if (redundant_ctx->query_no >= talloc_array_length(call_env->query)) RETURN_MODULE_NOOP;
+	if (unlang_module_yield(request, mod_sql_redundant_resume, NULL, 0, redundant_ctx) < 0) RETURN_MODULE_FAIL;
+	if (unlang_tmpl_push(redundant_ctx, &redundant_ctx->query, request, call_env->query[redundant_ctx->query_no], NULL) < 0) RETURN_MODULE_FAIL;
 
 	RDEBUG2("Trying next query...");
 
@@ -1839,18 +1838,18 @@ next:
 /** Resume function called after expansion of next query in a redundant list of queries
  *
  * @param p_result	Result of current module call.
+ * @param mctx		Current module ctx.
  * @param request	Current request.
- * @param uctx		Current redundant sql context.
  * @return one of the RLM_MODULE_* values.
  */
-static unlang_action_t mod_sql_redundant_resume(unlang_result_t *p_result, request_t *request, void *uctx)
+static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	sql_redundant_ctx_t		*redundant_ctx = talloc_get_type_abort(uctx, sql_redundant_ctx_t);
+	sql_redundant_ctx_t		*redundant_ctx = talloc_get_type_abort(mctx->rctx, sql_redundant_ctx_t);
 	sql_redundant_call_env_t	*call_env = redundant_ctx->call_env;
 	rlm_sql_t const			*inst = redundant_ctx->inst;
 
 	redundant_ctx->query_vb = fr_value_box_list_pop_head(&redundant_ctx->query);
-	if (!redundant_ctx->query_vb) RETURN_UNLANG_FAIL;
+	if (!redundant_ctx->query_vb) RETURN_MODULE_FAIL;
 
 	if ((call_env->filename.type == FR_TYPE_STRING) && (call_env->filename.vb_length > 0)) {
 		rlm_sql_query_log(inst, call_env->filename.vb_strvalue, redundant_ctx->query_vb->vb_strvalue);
@@ -1859,7 +1858,7 @@ static unlang_action_t mod_sql_redundant_resume(unlang_result_t *p_result, reque
 	MEM(redundant_ctx->query_ctx = fr_sql_query_alloc(redundant_ctx, inst, request, redundant_ctx->trunk,
 							  redundant_ctx->query_vb->vb_strvalue, SQL_QUERY_OTHER));
 
-	if (unlang_function_repeat_set(request, mod_sql_redundant_query_resume) < 0) RETURN_UNLANG_FAIL;
+	unlang_module_yield(request, mod_sql_redundant_query_resume, NULL, 0, redundant_ctx);
 
 	return unlang_function_push(NULL, request, inst->query, NULL, NULL, 0, UNLANG_SUB_FRAME, redundant_ctx->query_ctx);
 }
@@ -1896,13 +1895,10 @@ static unlang_action_t CC_HINT(nonnull) mod_sql_redundant(rlm_rcode_t *p_result,
 
 	sql_set_user(inst, request, &call_env->user);
 
-	if (unlang_function_push(NULL, request, NULL, mod_sql_redundant_resume, NULL, 0,
-				 UNLANG_SUB_FRAME, redundant_ctx) < 0) RETURN_MODULE_FAIL;
-
 	fr_value_box_list_init(&redundant_ctx->query);
-	if (unlang_tmpl_push(redundant_ctx, &redundant_ctx->query, request, *call_env->query, NULL) < 0) RETURN_MODULE_FAIL;
 
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return unlang_module_yield_to_tmpl(request, &redundant_ctx->query, request, *call_env->query,
+					   NULL, mod_sql_redundant_resume, NULL, 0, redundant_ctx);
 }
 
 static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
