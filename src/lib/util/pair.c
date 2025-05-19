@@ -1631,7 +1631,7 @@ int fr_pair_update_by_da_parent(fr_pair_t *parent, fr_pair_t **out,
 	 */
 	} else if (!fr_type_is_group(parent->da->type)) {
 		fr_strerror_printf("Expected parent \"%s\" to be an ancestor of \"%s\" or a group.  "
-				   "But it is not an acestor and is of type %s", parent->da->name, da->name,
+				   "But it is not an ancestor and is of type %s", parent->da->name, da->name,
 				   fr_type_to_str(parent->da->type));
 		return -2;
 	} else {
