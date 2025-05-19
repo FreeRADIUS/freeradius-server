@@ -21,6 +21,21 @@ if (Filter-Id != 'Secondary' || Filter-Id[#] != 1 ) {
 	test_fail
 }
 
+Vendor-Specific.3GPP2.Remote-IP = { Address = 192.168.1.1, Mask = 24 }
+request.Vendor-Specific.3GPP2 += { Remote-IP = { Address = 172.16.1.1, Mask = 16 } }
+
+perl.hash_ops
+
+# Another instance of Vendor-Specific.3GPP2.Remote-IP should have been added
+if (Vendor-Specific.3GPP2.Remote-IP[2].Address != 10.0.0.12) {
+	test_fail
+}
+
+# The whole Cisco VSA should have been removed.
+if (Vendor-Specific.Cisco) {
+	test_fail
+}
+
 # Check we can't set a value on a tied hash
 perl.set_on_hash {
 	fail = 1

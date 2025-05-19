@@ -128,6 +128,23 @@ sub array_ops {
 	return RLM_MODULE_OK;
 }
 
+sub hash_ops {
+	my $p = shift();
+
+	log_request_attributes($p);
+
+	if (!exists $p->{'request'}{'Vendor-Specific'}) {
+		freeradius::log(L_ERR, 'Couldn\'t find Vendor-Specific');
+		return RLM_MODULE_REJECT;
+	}
+
+	$p->{'request'}{'Vendor-Specific'}{'3GPP2'}{'Remote-IP'}{2}{'Address'}[0] = '10.0.0.12';
+
+	delete $p->{'request'}{'Vendor-Specific'}{'Cisco'};
+
+	return RLM_MODULE_OK;
+}
+
 sub set_on_hash {
 	my $p = shift();
 	$p->{'reply'}{'User-Name'} = 'bob';
