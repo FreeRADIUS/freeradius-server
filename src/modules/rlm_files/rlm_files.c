@@ -398,9 +398,9 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 /** Lookup the expanded key value in files data.
  *
  */
-static unlang_action_t CC_HINT(nonnull) mod_files_resume(unlang_result_t *p_result, request_t *request, void *uctx)
+static unlang_action_t CC_HINT(nonnull) mod_files_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_files_env_t		*env = talloc_get_type_abort(uctx, rlm_files_env_t);
+	rlm_files_env_t		*env = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 	PAIR_LIST_LIST const	*user_list;
 	PAIR_LIST const 	*user_pl, *default_pl;
 	bool			found = false, trie = false;
@@ -414,11 +414,11 @@ static unlang_action_t CC_HINT(nonnull) mod_files_resume(unlang_result_t *p_resu
 
 	if (!key_vb) {
 		RERROR("Missing key value");
-		RETURN_UNLANG_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	if (!tree && !default_list) {
-		RETURN_UNLANG_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	RDEBUG2("%s - Looking for key \"%pV\"", env->name, key_vb);
@@ -522,7 +522,7 @@ redo:
 					RPWARN("Failed parsing map for check item %s, skipping it", map->lhs->name);
 				fail:
 					fr_edit_list_abort(child);
-					RETURN_UNLANG_FAIL;
+					RETURN_MODULE_FAIL;
 				}
 
 				if (!rcode) {
@@ -616,12 +616,12 @@ redo:
 	 */
 	if (!found) {
 		fr_edit_list_abort(child);
-		RETURN_UNLANG_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	fr_edit_list_commit(child);
 
-	RETURN_UNLANG_OK;
+	RETURN_MODULE_OK;
 }
 
 /** Initiate a files data lookup
@@ -632,23 +632,15 @@ redo:
  * First we push the tmpl onto the stack for evaluation, then the lookup
  * is done in mod_files_resume.
  */
-static unlang_action_t CC_HINT(nonnull) mod_files(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_files(UNUSED rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_files_env_t		*env = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 
 	fr_value_box_list_init(&env->values);
 	env->name = mctx->mi->name;
 
-	/*
-	 *	Set mod_files_resume as the repeat function
-	 */
-	if (unlang_function_push(NULL, request, NULL, mod_files_resume, NULL, 0, UNLANG_SUB_FRAME, env) < 0) RETURN_MODULE_FAIL;
-
-	/*
-	 *	Push evaluation of the key tmpl onto the stack
-	 */
-	if (unlang_tmpl_push(env, &env->values, request, env->data->key_tmpl, NULL) < 0) RETURN_MODULE_FAIL;
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return unlang_module_yield_to_tmpl(env, &env->values, request, env->data->key_tmpl,
+					   NULL, mod_files_resume, NULL, 0, NULL);
 }
 
 /** Custom call_env parser for loading files data
