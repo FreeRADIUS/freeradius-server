@@ -1818,7 +1818,7 @@ static unlang_action_t mod_sql_redundant_query_resume(rlm_rcode_t *p_result, UNU
 	if (numaffected > 0) {
 		if (inst->query_number_da) {
 			fr_pair_t	*vp;
-			pair_update_control(&vp, inst->query_number_da);
+			if (unlikely(pair_update_control(&vp, inst->query_number_da) < 0)) RETURN_MODULE_FAIL;
 			vp->vp_uint32 = redundant_ctx->query_no + 1;
 			RDEBUG2("control.%pP", vp);
 		}
