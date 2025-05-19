@@ -952,6 +952,7 @@ int main(int argc, char *argv[])
 	}
 
 	time_advance = xlat_func_register(NULL, "time.advance", xlat_func_time_advance, FR_TYPE_VOID);
+	if (!time_advance) EXIT_WITH_FAILURE;
 	xlat_func_args_set(time_advance, xlat_func_time_advance_args);
 
 	/*
