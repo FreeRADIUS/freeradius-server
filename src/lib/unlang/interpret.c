@@ -837,7 +837,6 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 			RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,
 				fr_table_str_by_value(mod_rcode_table, scratch->rcode, "<invalid>"),
 				scratch->priority);
-			DUMP_STACK;
 			return UNLANG_FRAME_ACTION_YIELD;
 
 		/*
@@ -900,8 +899,6 @@ pop:
 		fr_table_str_by_value(mod_rcode_table, frame->result_p->rcode, "<invalid>"),
 		frame->result_p->priority,
 		frame->result_p == &(frame->section_result) ? "will set higher frame rcode" : "will NOT set higher frame rcode (result_p)");
-
-	DUMP_STACK;
 
 	return UNLANG_FRAME_ACTION_POP;
 }
@@ -1158,8 +1155,6 @@ int unlang_interpret_push_instruction(unlang_result_t *p_result, request_t *requ
 	}
 
 	RDEBUG4("** [%i] %s - substack begins", stack->depth, __FUNCTION__);
-
-	DUMP_STACK;
 
 	return 0;
 }
