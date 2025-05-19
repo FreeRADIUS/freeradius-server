@@ -735,7 +735,7 @@ done:
  * will be looked up in the global table.
  *
  */
-static int fr_lua_get_field(lua_State *L, request_t *request, char const *field)
+static int fr_lua_get_field(module_ctx_t const *mctx, lua_State *L, request_t *request, char const *field)
 {
 	char buff[512];
 	char const *p = field, *q;
@@ -745,7 +745,11 @@ static int fr_lua_get_field(lua_State *L, request_t *request, char const *field)
 		lua_getglobal(L, p);
 		if (lua_isnil(L, -1)) {
 		does_not_exist:
-			REMARKER(field, p - field, "Field does not exist");
+			if (request) {
+				REMARKER(field, p - field, "Field does not exist");
+			} else {
+				EMARKER(field, p - field, "Field does not exist");
+			}
 			return -1;
 		}
 		return 0;
@@ -753,7 +757,7 @@ static int fr_lua_get_field(lua_State *L, request_t *request, char const *field)
 
 	if ((size_t) (q - p) >= sizeof(buff)) {
 	too_long:
-		REDEBUG("Field name too long, expected < %zu, got %zu", q - p, sizeof(buff));
+		ROPTIONAL(REDEBUG, ERROR, "Field name too long, expected < %zu, got %zu", q - p, sizeof(buff));
 		return -1;
 	}
 
@@ -867,7 +871,7 @@ unlang_action_t fr_lua_run(rlm_rcode_t *p_result, module_ctx_t const *mctx, requ
 	/*
 	 *	Get the function were going to be calling
 	 */
-	if (fr_lua_get_field(L, request, funcname) < 0) {
+	if (fr_lua_get_field(mctx, L, request, funcname) < 0) {
 error:
 		fr_lua_util_set_mctx(NULL);
 		fr_lua_util_set_request(NULL);
