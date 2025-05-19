@@ -275,13 +275,19 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 
 	request->listener = listener;
 	request->client = client;
-	request->packet = rad_recv(NULL, listener->fd, 0x02); /* MSG_PEEK */
+
+	request->packet = rad_alloc(request, false);
 	if (!request->packet) {				/* badly formed, etc */
 		talloc_free(request);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		goto unknown;
 	}
-	(void) talloc_steal(request, request->packet);
+	request->packet->src_ipaddr = *ipaddr;
+	request->packet->src_port = src_port;
+	request->packet->dst_ipaddr = sock->my_ipaddr;
+	request->packet->dst_port = sock->my_port;
+	request->packet->proto = sock->proto;
+
 	request->reply = rad_alloc_reply(request, request->packet);
 	if (!request->reply) {
 		talloc_free(request);
