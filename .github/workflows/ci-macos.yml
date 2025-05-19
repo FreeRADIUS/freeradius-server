@@ -93,7 +93,7 @@ jobs:
           libidn \
           libmemcached \
           libyubikey \
-          llvm@14 \
+          llvm@18 \
           luajit \
           mariadb \
           make \
@@ -119,7 +119,7 @@ jobs:
     #
     - name: Set path for clang
       run: |
-        echo "PATH=`brew --prefix`/opt/llvm@14/bin/:$PATH" >> $GITHUB_ENV
+        echo "PATH=`brew --prefix`/opt/llvm@18/bin/:$PATH" >> $GITHUB_ENV
 
     #
     #  Ensure Python 3.10 is used

@@ -135,4 +135,4 @@ runs:
       if: ${{ runner.os == 'macOS' }}
       shell: bash
       run: |
-        echo "PATH=`brew --prefix`/opt/llvm@14/bin/:$PATH" >> $GITHUB_ENV
+        echo "PATH=`brew --prefix`/opt/llvm@18/bin/:$PATH" >> $GITHUB_ENV
