@@ -22,8 +22,6 @@ The FreeRADIUS source may be obtained from a number of locations:
 
 * Download the latest version of the FreeRADIUS source from
   https://www.freeradius.org/releases/[the FreeRADIUS web site]; or
-* download directly from the
-  ftp://ftp.freeradius.org/pub/freeradius/[FreeRADIUS FTP site]; or
 * download from
   https://github.com/FreeRADIUS/freeradius-server/[GitHub].
 
