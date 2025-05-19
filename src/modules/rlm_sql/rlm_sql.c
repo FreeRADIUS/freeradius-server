@@ -1831,7 +1831,7 @@ next:
 	talloc_free(query_ctx);
 	redundant_ctx->query_no++;
 	if (redundant_ctx->query_no >= talloc_array_length(call_env->query)) RETURN_MODULE_NOOP;
-	next_query = *(tmpl_t **)((uint8_t *)call_env->query + sizeof(void *) * redundant_ctx->query_no);
+	next_query = call_env->query[redundant_ctx->query_no];
 	if (unlang_function_repeat_set(request, mod_sql_redundant_resume) < 0) RETURN_MODULE_FAIL;
 	if (unlang_tmpl_push(redundant_ctx, &redundant_ctx->query, request, next_query, NULL) < 0) RETURN_MODULE_FAIL;
 
