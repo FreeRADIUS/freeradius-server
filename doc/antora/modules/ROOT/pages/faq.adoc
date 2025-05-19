@@ -48,7 +48,7 @@ Yes. You can find it on the official http://www.freeradius.org/[FreeRADIUS] site
 
 === Can I build and install FreeRADIUS from source?
 
-Yes. The source is available at ftp://ftp.freeradius.org/pub/radius/[ftp] or on https://github.com/FreeRADIUS/freeradius-server[github]. See the xref:howto:installation/source.adoc[instructions] on how to build FreeRADIUS.
+Yes. The source is available on https://github.com/FreeRADIUS/freeradius-server[github]. See the xref:howto:installation/source.adoc[instructions] on how to build FreeRADIUS.
 
 === Does FreeRADIUS Support IPv6?
 
