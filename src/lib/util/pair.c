@@ -1454,8 +1454,8 @@ void fr_pair_replace(fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp)
  * @param[in] ctx	to allocate new #fr_pair_t in.
  * @param[out] out	Pair we allocated.  May be NULL if the caller doesn't
  *			care about manipulating the fr_pair_t.
- * @param[in,out] list	in search and insert into.
- * @param[in] da	of attribute to update.
+ * @param[in,out] list	in which to append the pair.
+ * @param[in] da	of attribute to create.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -1481,8 +1481,8 @@ int fr_pair_append_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list,
  * @param[in] ctx	to allocate new #fr_pair_t in.
  * @param[out] out	Pair we allocated.  May be NULL if the caller doesn't
  *			care about manipulating the fr_pair_t.
- * @param[in,out] list	in search and insert into.
- * @param[in] da	of attribute to update.
+ * @param[in,out] list	in which to prepend the pair.
+ * @param[in] da	of attribute to create.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
