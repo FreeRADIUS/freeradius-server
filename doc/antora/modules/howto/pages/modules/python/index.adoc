@@ -69,6 +69,24 @@ dictionary e.g.
 p.reply['Class'].value = b'abc'
 ```
 
+Nested attributes are accessed with syntax of the form
+
+```
+p.request['foo']['baa']['baz']
+```
+
+Where there are multiple instances of an attribute, as with `unlang`, by
+default the first instance is returned.
+
+To access other instances of an attribute add a numeric key e.g.
+
+```
+p.request['foo'][2]
+p.reply['baa'][1]['baz']
+```
+
+are the equivalent of `request.foo[2]` and `reply.baa[1].baz` in `unlang`.
+
 If functions returns None (plain `return' no return), this is treated as `ok`.
 
 Specific return codes can be accessed with pre-defined constants in the
