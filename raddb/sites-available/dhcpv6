@@ -282,7 +282,7 @@ send Advertise {
 	#
 	#  All replies MUST include a Server-ID option
 	#
-	reply.Server-ID.DUID = UUID
+	reply.Server-ID.DUID = ::UUID
 	reply.Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
 }
 
@@ -297,7 +297,7 @@ send Offer {
 	#
 	#  All replies MUST include a Server-ID option
 	#
-	reply.Server-ID.DUID = UUID
+	reply.Server-ID.DUID = ::UUID
 	reply.Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
 }
 
@@ -316,7 +316,7 @@ send Reply {
 	#
 	#  All replies MUST include a Server-ID option
 	#
-	reply.Server-ID.DUID = UUID
+	reply.Server-ID.DUID = ::UUID
 	reply.Server-ID.DUID.UUID.Value := 0x00000000000000000000000000000000
 }
 
