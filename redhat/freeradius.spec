@@ -197,7 +197,7 @@ This package should be used as a base for a site local package
 to configure the FreeRADIUS server.
 
 %package common
-Summary: Main utility library, protocol libraries, and dictionaries
+Summary: Main FreeRADIUS utility library, protocol libraries, and dictionaries
 
 %description common
 Provides the main utility library, protocol libraries, and the dictionaries
@@ -322,7 +322,7 @@ Internal support library for FreeRADIUS modules using hiredis, required by all m
 # END 3rd party utility library packages
 #
 %package brotli
-Summary: Brotli compression and decompression
+Summary: Brotli compression and decompression for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: brotli
