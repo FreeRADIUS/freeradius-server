@@ -49,7 +49,7 @@ server dhcpv6 {
 	#  testing will not affect production systems.  This value should
 	#  be changed to `547` for production use.
 	#
-	port = 547
+	port = 5470
 
 	#
 	#  ### The listen section
