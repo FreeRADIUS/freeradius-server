@@ -997,7 +997,10 @@ static XS(XS_pairs_UNSHIFT)
 	}
 
 	while (i < items) {
-		fr_pair_prepend_by_da(parent->vp, &vp, &parent->vp->vp_group, pair_data->da);
+		if (unlikely(fr_pair_prepend_by_da(parent->vp, &vp, &parent->vp->vp_group, pair_data->da) < 0)) {
+			croak("Failed adding attribute %s", pair_data->da->name);
+			break;
+		}
 		if (perl_value_unmarshal(vp, ST(i++)) < 0) break;
 	}
 
