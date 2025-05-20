@@ -19,6 +19,7 @@ usage() {
 	echo "        -x                  Enable debug output" >&2
 	echo "        -4                  Use IPv4 for the NAS address (default)" >&2
 	echo "        -6                  Use IPv6 for the NAS address" >&2
+	echo "        -b                  Mandate checks for Blast RADIUS (this is not set by default)." >&2
 	exit 1
 }
 
@@ -53,6 +54,10 @@ do
 	-6) 
 		OPTIONS="$OPTIONS -6"
 		NAS_ADDR_ATTR="NAS-IPv6-Address"
+		shift
+		;;
+	-b)
+		OPTIONS="$OPTIONS -b"
 		shift
 		;;
 	-d) 
