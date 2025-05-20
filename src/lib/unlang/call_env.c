@@ -84,6 +84,7 @@ call_env_result_t call_env_result(TALLOC_CTX *ctx, request_t *request, void *out
 	 *	Concatenate multiple boxes if needed
 	 */
 	if ((call_env_concat(env->rule->flags) || call_env_attribute(env->rule->flags)) &&
+	    (env->rule->pair.cast_type != FR_TYPE_VOID) &&
 	    fr_value_box_list_concat_in_place(vb, vb, tmpl_expanded, env->rule->pair.cast_type,
 					      FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0 ) {
 		RPEDEBUG("Failed concatenating values for %s", env->rule->name);
