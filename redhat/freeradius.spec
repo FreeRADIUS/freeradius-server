@@ -36,7 +36,7 @@ License: GPLv2+ and LGPLv2+
 Group: System Environment/Daemons
 URL: http://www.freeradius.org/
 
-Source0: ftp://ftp.freeradius.org/pub/radius/freeradius-server-%{version}.tar.bz2
+Source0: https://www.freeradius.org/ftp/pub/radius/freeradius-server-%{version}.tar.bz2
 %if %{?_unitdir:1}%{!?_unitdir:0}
 Source100: radiusd.service
 Source104: freeradius-tmpfiles-conf

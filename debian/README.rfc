@@ -2,7 +2,7 @@ These are the relevant RFC's that normally ship with freeradius.  However,
 we have now decided that useful things like RFC's are not free enough, and
 so we can't ship them in Debian main.  They are all available from the
 original freeradius tarball, available at
-ftp://ftp.freeradius.org/pub/radius/
+https://www.freeradius.org/ftp/pub/radius/
 and from
 http://www.rfc-editor.org/
 
