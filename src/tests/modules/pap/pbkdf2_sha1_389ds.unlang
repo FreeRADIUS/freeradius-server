@@ -3,7 +3,7 @@ if ("${feature.tls}" == no) {
 	return
 }
 
-if (User-Name == 'pbkfd2_sha1_389ds') {
+if (User-Name == 'pbkdf2_sha1_389ds') {
 	control.Password.PBKDF2 := '{PBKDF2-SHA1}10000$13QEHaJHNKHjlJEXX3ddjG2PpUjx1a83$dzrOWMeLso6J/K+evi4eZbOMcOk='
 
 	pap.authorize
