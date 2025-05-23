@@ -42,12 +42,14 @@ fr_dict_autoload_t process_dhcpv4_dict[] = {
 static fr_dict_attr_t const *attr_message_type;
 static fr_dict_attr_t const *attr_yiaddr;
 static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_dhcp_option_82;
 
 extern fr_dict_attr_autoload_t process_dhcpv4_dict_attr[];
 fr_dict_attr_autoload_t process_dhcpv4_dict_attr[] = {
 	{ .out = &attr_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
 	{ .out = &attr_yiaddr, .name = "Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv4},
+	{ .out = &attr_dhcp_option_82, .name = "Relay-Agent-Information", .type = FR_TYPE_TLV, .dict = &dict_dhcpv4 },
 	{ NULL }
 };
 
@@ -130,7 +132,7 @@ typedef struct {
 #define PROCESS_CODE_DYNAMIC_CLIENT	FR_DHCP_ACK
 #include <freeradius-devel/server/process.h>
 
-RESUME(check_yiaddr)
+RESUME(check_offer_ack_options)
 {
 	fr_pair_t *vp;
 
@@ -138,6 +140,20 @@ RESUME(check_yiaddr)
 	if (!vp) {
 		REDEBUG("%s packet does not have YIADDR.  The client will not receive an IP address.",
 			dhcp_message_types[request->reply->code]);
+	}
+
+	/*
+	 *	RFC3046 says:
+	 *	DHCP servers claiming to support the Relay Agent Information option
+	 *	SHALL echo the entire contents of the Relay Agent Information option
+	 *	in all replies.
+	 */
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_dhcp_option_82);
+	if (vp) {
+		fr_pair_t 	*reply_vp;
+		int		ret;
+		MEM((ret = pair_update_reply(&reply_vp, attr_dhcp_option_82)) >= 0);
+		if (ret == 0) fr_pair_list_copy(reply_vp, &reply_vp->vp_group, &vp->vp_group);
 	}
 
 	return CALL_RESUME(send_generic);
@@ -179,7 +195,7 @@ static fr_process_state_t const process_state[] = {
 		.rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
 		.send = send_generic,
-		.resume = resume_check_yiaddr,
+		.resume = resume_check_offer_ack_options,
 		.section_offset = PROCESS_CONF_OFFSET(offer),
 	},
 
@@ -238,7 +254,7 @@ static fr_process_state_t const process_state[] = {
 		.rcode = RLM_MODULE_NOOP,
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
 		.send = send_generic,
-		.resume = resume_check_yiaddr,
+		.resume = resume_check_offer_ack_options,
 		.section_offset = PROCESS_CONF_OFFSET(ack),
 	},
 	[FR_DHCP_NAK] = {
