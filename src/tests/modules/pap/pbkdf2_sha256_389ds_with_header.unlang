@@ -3,7 +3,7 @@ if ("${feature.tls}" == no) {
 	return
 }
 
-if (User-Name == 'pbkfd2_sha256_389ds_with_header') {
+if (User-Name == 'pbkdf2_sha256_389ds_with_header') {
 	update control {
 		Password-With-Header := '{PBKDF2-SHA256}10000$Y79u61tRN/dthaamikuxU/1PkOSprfbN$stej1qVq0CjglfdkLmwW2C94Hr5WQ20Nj6bIRumMy+E='
 	}
