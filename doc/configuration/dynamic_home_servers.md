@@ -198,7 +198,7 @@ authorize {
 				update control {
 					# you can add a parameter for the NAPTR tag to look up, e.g. "aaa+auth:radius.tls.tcp" (RFC7585, OpenRoaming)
 					# if the third parameter is omitted, it defaults to "x-eduroam:radius.tls"
-					&Temp-Home-Server-String := `%{config:confdir}/mods-config/realm/freeradius-naptr-to-home-server.sh -d %{config:confdir} %{1}`
+					&Temp-Home-Server-String := "%{exec:%{config:confdir}/mods-config/realm/freeradius-naptr-to-home-server.sh -d %{config:confdir} %{1}}"
 				}
 				if ("%{control:Temp-Home-Server-String}" == "" ) {
 					reject
