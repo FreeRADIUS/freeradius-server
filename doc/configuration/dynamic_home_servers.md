@@ -35,6 +35,10 @@ Each file must:
 
 Ensure the `sites-available/control-socket` virtual server is enabled, and `radmin` has read/write access. This is mandatory for runtime server management.
 
+```bash
+ln -s /etc/freeradius/sites-available/control-socket /etc/freeradius/sites-enabled/control-socket
+```
+
 ---
 
 ## Adding a New Home Server Dynamically
