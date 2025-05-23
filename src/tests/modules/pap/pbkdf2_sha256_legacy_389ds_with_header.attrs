@@ -2,7 +2,7 @@
 #  Input packet
 #
 Packet-Type = Access-Request
-User-Name = 'pbkfd2_sha1_389ds_with_header'
+User-Name = 'pbkdf2_sha256_legacy_389ds_with_header'
 User-Password = 'password'
 
 #
