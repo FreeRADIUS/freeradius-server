@@ -143,23 +143,23 @@ authorize {
 		switch "%{home_server_dynamic:%{1}}" {
 			case "1" {
 				update control {
-					Home-Server-Name := "%{1}"
+					&Home-Server-Name := "%{1}"
 				}
 			}
 			case "0" {
 				update control {
-					Proxy-To-Realm := "%{1}"
+					&Proxy-To-Realm := "%{1}"
 				}
 			}
 			case {
 				update control {
-					&Temp-Home-Server-String := "%{dpd_exec:/etc/freeradius/mods-config/realm/freeradius-naptr-to-home-server.sh -d %{config:confdir} -t %{1}}"
+					&Temp-Home-Server-String := "%{dpd_exec:%{config:confdir}/mods-config/realm/freeradius-naptr-to-home-server.sh -d %{config:confdir} %{1}}"
 				}
 				if ("%{control:Temp-Home-Server-String}" == "") {
 					reject
 				} else {
 					update control {
-						Home-Server-Name := "%{1}"
+						&Home-Server-Name := "%{1}"
 					}
 				}
 			}
