@@ -113,8 +113,7 @@ exec dpd_exec {
 	wait = yes
 	input_pairs = &request
 	shell_escape = yes
-	timeout = 10
-	program = "%{config:confdir}/mods-config/realm/freeradius-naptr-to-home-server.sh -d %{config:confdir} %{regex:User-Name:^.*@(.*)$:\1}"
+	timeout = 3
 }
 ```
 
@@ -150,7 +149,7 @@ authorize {
 			}
 			case {
 				update control {
-					Temp-Home-Server-String := "%{dpd_exec}"
+					&Temp-Home-Server-String := "%{dpd_exec:/etc/freeradius/mods-config/realm/freeradius-naptr-to-home-server.sh -d %{config:confdir} -t %{1}}"
 				}
 				if ("%{control:Temp-Home-Server-String}" == "") {
 					reject
