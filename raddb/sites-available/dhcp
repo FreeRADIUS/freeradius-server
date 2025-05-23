@@ -155,22 +155,6 @@ recv Discover {
 #	control.IP-Pool.Name := "local"
 #	sqlippool
 
-	#  Set the type of packet to send in reply.
-	#
-	#  The server will look at the Message-Type attribute to
-	#  determine which type of packet to send in reply. Common
-	#  values would be Offer, Ack or NAK. See
-	#  dictionary.dhcp for all the possible values.
-	#
-	#  Do-Not-Respond can be used to tell the server to not
-	#  respond.
-	#
-	#  In the event that Message-Type is not set then the
-	#  server will fall back to determining the type of reply
-	#  based on the rcode of this section.
-
-#	reply.Message-Type = ::Offer
-
 	#  If Message-Type is not set, returning "ok" or
 	#  "updated" from this section will respond with a Offer
 	#  message.
@@ -189,9 +173,6 @@ recv Request {
 	    request.Server-Identifier != control.Server-Identifier) {
 	        do_not_respond
 	}
-
-	#  Response packet type. See Discover section above.
-#	reply.Message-Type = ::Ack
 
 	#  Call a policy (defined in policy.d/dhcp) to set common reply attributes
 	dhcp_common
