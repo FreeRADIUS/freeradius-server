@@ -1,7 +1,7 @@
 #
 #  Input packet
 #
-User-Name = 'pbkfd2_sha256_389ds'
+User-Name = 'pbkdf2_sha256_389ds_with_header'
 User-Password = 'password'
 
 #

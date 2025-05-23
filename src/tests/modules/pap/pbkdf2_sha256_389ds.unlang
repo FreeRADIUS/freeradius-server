@@ -3,7 +3,7 @@ if ("${feature.tls}" == no) {
 	return
 }
 
-if (User-Name == 'pbkfd2_sha256_389ds') {
+if (User-Name == 'pbkdf2_sha256_389ds') {
 	update control {
 		&PBKDF2-Password := '{PBKDF2-SHA256}10000$9JjBuTTp9OCwANVzqUrq0QUvXnmDUJrm$f8Jrky2bX3z5eQ2SghxA38QSJ2PQwNenecmV4e4Ejyw='
 	}
