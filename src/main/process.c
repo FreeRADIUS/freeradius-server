@@ -1495,7 +1495,7 @@ static void request_finish(REQUEST *request, int action)
 	else if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
 		if (request->reply->code == 0) {
 			vp = fr_pair_find_by_num(request->config, PW_AUTH_TYPE, 0, TAG_ANY);
-			if (!vp || (vp->vp_integer != 5)) {
+			if (!vp) {
 				RDEBUG2("There was no response configured: "
 					"rejecting request");
 			}
