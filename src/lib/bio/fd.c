@@ -164,19 +164,6 @@ retry:
  *  where a read of zero on a steam socket means "EOF".
  *
  *  Connected sockets do _not_ update per-packet contexts.
- *
- *  Note that for UDP, connect() only affects the sending path.  It
- *  means that the application can call send() without specifying IP
- *  addresses.  But when the application calls recv(), the OS will
- *  deliver packets which have been sent from _any_ port, even ones
- *  which don't match the address given in connect().
- *
- *  As a result, this function has to check the received remote IP
- *  against the expected remote IP.  If they don't match, then we
- *  can't accept the packet.
- *
- *  This ALSO means that we should NOT use connected UDP sockets when
- *  the source IP address+port is reused via SO_REUSEPORT.
  */
 static ssize_t fr_bio_fd_read_connected_datagram(fr_bio_t *bio, UNUSED void *packet_ctx, void *buffer, size_t size)
 {
@@ -199,12 +186,12 @@ retry:
 		fr_assert(sockaddr.ss_family == my->remote_sockaddr.ss_family);
 		fr_assert((sockaddr.ss_family == AF_INET) || (sockaddr.ss_family == AF_INET6)); /* datagram unix is not supported */
 
-		/*
-		 *	Some _other_ client sent this socket a packet.  Ignore it.
-		 */
-		if (fr_sockaddr_cmp(&sockaddr, &my->remote_sockaddr) != 0) return 0;
+		return rcode;
 	}
 
+	/*
+	 *	We do NOT call fr_bio_eof(), as 0 just means "no more data".
+	 */
 	if (rcode == 0) return rcode;
 
 #include "fd_read.h"
