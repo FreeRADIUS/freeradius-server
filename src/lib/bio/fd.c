@@ -908,86 +908,9 @@ int fr_bio_fd_init_common(fr_bio_fd_t *my)
 	return 0;
 }
 
-/** Return an fd on read()
- *
- *  With packet_ctx containing information about the socket.
- */
-static ssize_t fr_bio_fd_read_accept(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
-{
-	int fd, tries = 0;
-	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
-	socklen_t salen;
-	struct sockaddr_storage sockaddr;
-
-	if (size < sizeof(int)) return fr_bio_error(BUFFER_TOO_SMALL);
-
-	salen = sizeof(sockaddr);
-
-retry:
-#ifdef __linux__
-	/*
-	 *	Set these flags immediately on the new socket.
-	 */
-	fd = accept4(my->info.socket.fd, (struct sockaddr *) &sockaddr, &salen, SOCK_NONBLOCK | SOCK_CLOEXEC);
-#else
-	fd = accept(my->info.socket.fd, (struct sockaddr *) &sockaddr, &salen);
-#endif
-	if (fd >= 0) {
-		fr_bio_fd_packet_ctx_t *addr = fr_bio_fd_packet_ctx(my, packet_ctx);
-
-		ADDR_INIT;
-
-		(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.src_ipaddr, &addr->socket.inet.src_port,
-					       &sockaddr, salen);
-
-		addr->socket.inet.dst_ipaddr = my->info.socket.inet.src_ipaddr;
-		addr->socket.inet.dst_port = my->info.socket.inet.src_port;
-		addr->socket.fd = fd; /* might as well! */
-
-		*(int *) buffer = fd;
-		return sizeof(int);
-	}
-
-	switch (errno) {
-	case EINTR:
-		/*
-		 *	Try a few times before giving up.
-		 */
-		tries++;
-		if (tries <= my->max_tries) goto retry;
-		return 0;
-
-		/*
-		 *	We can ignore these errors.
-		 */
-	case ECONNABORTED:
-#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
-	case EWOULDBLOCK:
-#endif
-	case EAGAIN:
-#ifdef EPERM
-	case EPERM:
-#endif
-#ifdef ETIMEDOUT
-	case ETIMEDOUT:
-#endif
-		return 0;
-
-	default:
-		/*
-		 *	Some other error, it's fatal.
-		 */
-		fr_bio_shutdown(&my->bio);
-		break;
-	}
-
-	return fr_bio_error(IO);
-}
-
-
 int fr_bio_fd_init_listen(fr_bio_fd_t *my)
 {
-	my->bio.read = fr_bio_fd_read_accept;
+	my->bio.read = fr_bio_null_read;
 	my->bio.write = fr_bio_null_write;
 
 	if (listen(my->info.socket.fd, 8) < 0) {
