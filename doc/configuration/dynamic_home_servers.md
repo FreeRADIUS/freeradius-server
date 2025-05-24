@@ -141,14 +141,14 @@ chmod +x /etc/freeradius/mods-config/realm/freeradius-naptr-to-home-server.sh
 authorize {
 	if ("%{User-Name}" =~ /@(.*)$/i) {
 		switch "%{home_server_dynamic:%{1}}" {
-			case "1" {
-				update control {
-					&Home-Server-Name := "%{1}"
-				}
-			}
 			case "0" {
 				update control {
 					&Proxy-To-Realm := "%{1}"
+				}
+			}
+			case "1" {
+				update control {
+					&Home-Server-Name := "%{1}"
 				}
 			}
 			case {
