@@ -1422,7 +1422,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		 *	reference to the current cursor, and we need to decide what that syntax is.
 		 */
 		if (ar->type == TMPL_ATTR_TYPE_UNSPEC) {
-			t_rules.attr.namespace = fr_dict_root(at_rules->dict_def);
+			if (at_rules->dict_def) t_rules.attr.namespace = fr_dict_root(at_rules->dict_def);
 
 		} else {
 			if (!ar->ar_da || !fr_type_is_structural(ar->ar_da->type)) {
