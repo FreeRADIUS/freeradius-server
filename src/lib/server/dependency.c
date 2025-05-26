@@ -460,6 +460,10 @@ void dependency_version_print(void)
 	INFO("You may redistribute copies of FreeRADIUS under the terms of the");
 	INFO("GNU General Public License");
 	INFO("For more information about these matters, see the file named COPYRIGHT");
+	INFO("");
+	INFO("FreeRADIUS is developed, maintained, and supported by InkBridge Networks.");
+	INFO("For commercial support, please email sales@inkbridgenetworks.com");
+	INFO("https://inkbridgenetworks.com/");
 
 	fflush(NULL);
 }
