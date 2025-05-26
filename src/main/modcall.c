@@ -1779,7 +1779,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, rlm_components_t c
 	if (rcode < 0) return NULL; /* message already printed */
 	if (!head) {
 		cf_log_err_cs(cs, "'update' sections cannot be empty");
-		return NULL;
+		cf_log_err_cs(cs, DOC_KEYWORD_REF(update));
 	}
 
 	g = talloc_zero(parent, modgroup);
@@ -1822,12 +1822,14 @@ static modcallable *do_compile_modswitch (modcallable *parent, rlm_components_t 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
 		cf_log_err_cs(cs, "You must specify a variable to switch over for 'switch'");
+	print_url:
+		cf_log_err_cs(cs, DOC_KEYWORD_REF(switch));
 		return NULL;
 	}
 
 	if (!cf_item_find_next(cs, NULL)) {
 		cf_log_err_cs(cs, "'switch' statements cannot be empty");
-		return NULL;
+		goto print_url;
 	}
 
 	/*
@@ -1850,7 +1852,7 @@ static modcallable *do_compile_modswitch (modcallable *parent, rlm_components_t 
 		talloc_free(spaces);
 		talloc_free(text);
 
-		return NULL;
+		goto print_url;
 	}
 
 	/*
@@ -1860,7 +1862,7 @@ static modcallable *do_compile_modswitch (modcallable *parent, rlm_components_t 
 
 	if (vpt->type == TMPL_TYPE_LIST) {
 		cf_log_err_cs(cs, "Syntax error: Cannot switch over list '%s'", name2);
-		return NULL;
+		goto print_url;
 	}
 
 	/*
@@ -1887,7 +1889,7 @@ static modcallable *do_compile_modswitch (modcallable *parent, rlm_components_t 
 
 			cf_log_err(ci, "\"switch\" sections can only have \"case\" subsections");
 			talloc_free(vpt);
-			return NULL;
+			goto print_url;
 		}
 
 		subcs = cf_item_to_section(ci);	/* can't return NULL */
@@ -1896,7 +1898,7 @@ static modcallable *do_compile_modswitch (modcallable *parent, rlm_components_t 
 		if (strcmp(name1, "case") != 0) {
 			cf_log_err(ci, "\"switch\" sections can only have \"case\" subsections");
 			talloc_free(vpt);
-			return NULL;
+			goto print_url;
 		}
 
 		name2 = cf_section_name2(subcs);
@@ -1908,7 +1910,7 @@ static modcallable *do_compile_modswitch (modcallable *parent, rlm_components_t 
 
 			cf_log_err(ci, "Cannot have two 'default' case statements");
 			talloc_free(vpt);
-			return NULL;
+			goto print_url;
 		}
 	}
 
@@ -1964,6 +1966,7 @@ static modcallable *do_compile_modcase(modcallable *parent, rlm_components_t com
 			talloc_free(spaces);
 			talloc_free(text);
 
+			cf_log_err_cs(cs, DOC_KEYWORD_REF(case));
 			return NULL;
 		}
 
@@ -2031,6 +2034,8 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 
 	if (!cf_item_find_next(cs, NULL)) {
 		cf_log_err_cs(cs, "'foreach' blocks cannot be empty");
+	print_url:
+		cf_log_err_cs(cs, DOC_KEYWORD_REF(forach));
 		return NULL;
 	}
 
@@ -2054,7 +2059,7 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 		talloc_free(spaces);
 		talloc_free(text);
 
-		return NULL;
+		goto print_url;
 	}
 
 	/*
@@ -2065,7 +2070,7 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 
 	if ((vpt->type != TMPL_TYPE_ATTR) && (vpt->type != TMPL_TYPE_LIST)) {
 		cf_log_err_cs(cs, "MUST use attribute or list reference in 'foreach'");
-		return NULL;
+		goto print_url;
 	}
 
 	/*
@@ -2105,6 +2110,7 @@ static modcallable *do_compile_modbreak(modcallable *parent,
 
 	if (!cs) {
 		cf_log_err(ci, "'break' can only be used in a 'foreach' section");
+		cf_log_err_cs(cs, DOC_KEYWORD_REF(break));
 		return NULL;
 	}
 
@@ -2364,6 +2370,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			*modname = name2;
 
 			if (!all_children_are_modules(cs, modrefname)) {
+				cf_log_err_cs(cs, DOC_KEYWORD_REF(redundant));
 				return NULL;
 			}
 
@@ -2375,6 +2382,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			*modname = name2;
 
 			if (!all_children_are_modules(cs, modrefname)) {
+				cf_log_err_cs(cs, DOC_KEYWORD_REF(load-balance));
 				return NULL;
 			}
 
@@ -2386,6 +2394,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			*modname = name2;
 
 			if (!all_children_are_modules(cs, modrefname)) {
+				cf_log_err_cs(cs, DOC_KEYWORD_REF(redundant-load-balance));
 				return NULL;
 			}
 
@@ -2397,6 +2406,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		} else 	if (strcmp(modrefname, "if") == 0) {
 			if (!cf_section_name2(cs)) {
 				cf_log_err(ci, "'if' without condition");
+				cf_log_err_cs(cs, DOC_KEYWORD_REF(if));
 				return NULL;
 			}
 
@@ -2414,11 +2424,13 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			    ((parent->type == MOD_LOAD_BALANCE) ||
 			     (parent->type == MOD_REDUNDANT_LOAD_BALANCE))) {
 				cf_log_err(ci, "'elsif' cannot be used in this section");
+				cf_log_err_cs(cs, DOC_KEYWORD_REF(elsif));
 				return NULL;
 			}
 
 			if (!cf_section_name2(cs)) {
 				cf_log_err(ci, "'elsif' without condition");
+				cf_log_err_cs(cs, DOC_KEYWORD_REF(elsif));
 				return NULL;
 			}
 
@@ -2432,11 +2444,13 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			    ((parent->type == MOD_LOAD_BALANCE) ||
 			     (parent->type == MOD_REDUNDANT_LOAD_BALANCE))) {
 				cf_log_err(ci, "'else' cannot be used in this section section");
+				cf_log_err_cs(cs, DOC_KEYWORD_REF(else));
 				return NULL;
 			}
 
 			if (cf_section_name2(cs)) {
 				cf_log_err(ci, "Cannot have conditions on 'else'");
+				cf_log_err_cs(cs, DOC_KEYWORD_REF(else));
 				return NULL;
 			}
 
@@ -2517,6 +2531,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	if (strcmp(modrefname, "return") == 0) {
 		if (!cf_item_is_pair(ci)) {
 			cf_log_err(ci, "Invalid use of 'return' as section name.");
+			cf_log_err_cs(cs, DOC_KEYWORD_REF(return));
 			return NULL;
 		}
 

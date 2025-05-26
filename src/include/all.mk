@@ -96,6 +96,10 @@ src/include/features.h: src/include/features-h src/include/autoconf.h
 	@cp $< $@
 	@grep "^#define[ ]*WITH_" src/include/autoconf.h >> $@
 	@grep "^#define[ ]*RADIUSD_VERSION" src/include/autoconf.h >> $@
+	@echo '#define DOC_ROOT_URL "https://www.freeradius.org/documentation/freeradius-server/" RADIUSD_VERSION_STRING' >> $@
+	@echo '#define DOC_KEYWORD_URL(_x) DOC_ROOT_URL "/unlang/" STRINGIFY(_x) ".html"' >> $@
+	@echo '#define DOC_KEYWORD_REF(_x) "For more information, please see " DOC_KEYWORD_URL(_x)' >> $@
+
 
 #
 #  Use the SED script we built earlier to make permanent substitutions
