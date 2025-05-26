@@ -69,14 +69,12 @@
 *** xref:type/string/unquoted.adoc[Unquoted Strings]
 
 ** xref:xlat/index.adoc[Dynamic Expansion]
-*** xref:xlat/all.adoc[list of Built-in Functions]
+*** xref:xlat/all.adoc[Summary of Built-in Functions]
 *** xref:xlat/alternation.adoc[Alternation Syntax]
 *** xref:xlat/attribute.adoc[Attribute References]
 *** xref:xlat/conversion.adoc[Data Conversion]
 *** xref:xlat/deprecated.adoc[Deprecated Functions]
-
-*** xref:mods-available/dict.adoc[Dictionary Handling]
-
+*** xref:xlat/dict.adoc[Dictionary Handling]
 *** xref:xlat/file/index.adoc[File Handling]
 **** xref:reference:xlat/file/escape.adoc[escape]
 **** xref:xlat/file/exists.adoc[exists]
@@ -100,7 +98,7 @@
 **** xref:xlat/misc/rand.adoc[rand]
 
 *** xref:xlat/pairs/index.adoc[Pairs]
-**** xref:xlat/pairs/debug.adoc[Write to debug output]
+**** xref:xlat/interpreter.adoc#debug_xlat[Write to debug output]
 **** xref:xlat/pairs/immutable.adoc[Mark as immutable]
 **** xref:xlat/pairs/print.adoc[Print to string]
 
@@ -116,7 +114,7 @@
 
 *** xref:xlat/time/index.adoc[Time Management]
 **** xref:xlat/time/character.adoc[Single Character]
-**** xref:xlat/time/generic.adoc[Generic]                 
+**** xref:xlat/time/generic.adoc[Generic]
 **** xref:xlat/time/is_dst.adoc[Daylight Savings]
 **** xref:xlat/time/now.adoc[Now]
 **** xref:xlat/time/offset.adoc[UTC Offset]

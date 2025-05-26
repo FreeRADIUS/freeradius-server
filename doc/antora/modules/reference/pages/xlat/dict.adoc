@@ -2,7 +2,7 @@
 
 The following functions perform lookups based on dictionary names and numbers.
 
-The functions are defined in the `dict` module.  It must be listed in
+The functions are defined in the xref:raddb/mods-available/dict.adoc[`dict` module].  It must be listed in
 the `mods-enabled/` directory in order for the expansions to work.
 
 == %str.concat(<ref:[idx]>, <delim>)

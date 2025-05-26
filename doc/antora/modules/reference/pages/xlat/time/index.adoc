@@ -8,12 +8,12 @@ including daylight savings and UTC offset.
 [cols="30%,70%"]
 |=====
 | Function | Description
-| xref:xlat/time/character.adoc[character] | Single character expansions
-| xref:xlat/time/generic.adoc[time]        | Generic (too complex) time function
+| xref:xlat/time/character.adoc[character] | Single character expansions.
+| xref:xlat/time/generic.adoc[time]        | Generic (too complex) time function.
 | xref:xlat/time/is_dst.adoc[is_dst]       | Is the system running in DST?
-| xref:xlat/time/now.adoc[now]             | Return the current time
-| xref:xlat/time/offset.adoc[offset]       | Return UTC offset
-| xref:xlat/time/request.adoc[request]     | Return the time when the request was received.
+| xref:xlat/time/now.adoc[now]             | Return the current time.
+| xref:xlat/time/offset.adoc[offset]       | Return UTC offset.
+| xref:xlat/time/request.adoc[request]     | Return the time when the request. was received.
 |=====
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

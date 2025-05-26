@@ -134,7 +134,7 @@ the module is configured with `pedantic = true`
 | omapi-port UINT16
 | pid-file-name STRING
 | remote-port UINT16
-|==
+|===
 
 
 
