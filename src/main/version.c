@@ -639,6 +639,7 @@ void version_print(void)
 	INFO("");
 	INFO("FreeRADIUS is developed, maintained, and supported by InkBridge Networks.");
 	INFO("For commercial support, please email sales@inkbridgenetworks.com");
+	INFO("https://inkbridgenetworks.com/");
 
 	fflush(NULL);
 }
