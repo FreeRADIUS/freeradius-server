@@ -2110,7 +2110,7 @@ static modcallable *do_compile_modbreak(modcallable *parent,
 
 	if (!cs) {
 		cf_log_err(ci, "'break' can only be used in a 'foreach' section");
-		cf_log_err_cs(cs, DOC_KEYWORD_REF(break));
+		cf_log_err(ci, DOC_KEYWORD_REF(break));
 		return NULL;
 	}
 
@@ -2406,7 +2406,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		} else 	if (strcmp(modrefname, "if") == 0) {
 			if (!cf_section_name2(cs)) {
 				cf_log_err(ci, "'if' without condition");
-				cf_log_err_cs(cs, DOC_KEYWORD_REF(if));
+				cf_log_err(ci, DOC_KEYWORD_REF(if));
 				return NULL;
 			}
 
@@ -2424,13 +2424,13 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			    ((parent->type == MOD_LOAD_BALANCE) ||
 			     (parent->type == MOD_REDUNDANT_LOAD_BALANCE))) {
 				cf_log_err(ci, "'elsif' cannot be used in this section");
-				cf_log_err_cs(cs, DOC_KEYWORD_REF(elsif));
+				cf_log_err(ci, DOC_KEYWORD_REF(elsif));
 				return NULL;
 			}
 
 			if (!cf_section_name2(cs)) {
 				cf_log_err(ci, "'elsif' without condition");
-				cf_log_err_cs(cs, DOC_KEYWORD_REF(elsif));
+				cf_log_err(ci, DOC_KEYWORD_REF(elsif));
 				return NULL;
 			}
 
@@ -2450,7 +2450,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 			if (cf_section_name2(cs)) {
 				cf_log_err(ci, "Cannot have conditions on 'else'");
-				cf_log_err_cs(cs, DOC_KEYWORD_REF(else));
+				cf_log_err(ci, DOC_KEYWORD_REF(else));
 				return NULL;
 			}
 
@@ -2531,7 +2531,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	if (strcmp(modrefname, "return") == 0) {
 		if (!cf_item_is_pair(ci)) {
 			cf_log_err(ci, "Invalid use of 'return' as section name.");
-			cf_log_err_cs(cs, DOC_KEYWORD_REF(return));
+			cf_log_err(ci, DOC_KEYWORD_REF(return));
 			return NULL;
 		}
 
