@@ -190,7 +190,7 @@ int eap_fast_decrypt(uint8_t const *ciphertext, size_t ciphertext_len,
 	/* Clean up */
 	EVP_CIPHER_CTX_free(ctx);
 
-	if (ret < 0) return -1;
+	if (ret == 0) return -1;
 
 	/* Success */
 	plaintext_len += len;
