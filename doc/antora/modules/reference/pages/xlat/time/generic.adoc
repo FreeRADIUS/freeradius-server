@@ -41,7 +41,7 @@ server cannot support them all.
 
 [NOTE]
 ====
-This expansion should be used in preference to the xref:xlat/character.adoc[single letter expansions] `%l`.  That expansion returns integer seconds, and is not suitable for millisecond or microsecond resolution.
+This expansion should be used in preference to the xref:xlat/time/character.adoc[single letter expansions] `%l`.  That expansion returns integer seconds, and is not suitable for millisecond or microsecond resolution.
 ====
 
 Due to limitations in the underlying time functions (both system and

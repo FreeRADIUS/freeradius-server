@@ -4,7 +4,7 @@ The following functions perform HMAC calculations.
 
 All of the hash functions take a key, along with arbitrary data, and turn binary data as `octet`s.
 
-= %hmac.md5(<shared_key>, <string>)
+== %hmac.md5(<shared_key>, <string>)
 
 Generate `HMAC-MD5` of string.
 

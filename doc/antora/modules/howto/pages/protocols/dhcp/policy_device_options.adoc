@@ -44,7 +44,7 @@ subclass "pxeclient" "iPXE" {
 }
 ----
 
-See also the xref:raddb/mods-available/isc_dhcp.adoc[isc_dhcp] module,
+See also the xref:reference:raddb/mods-available/isc_dhcp.adoc[isc_dhcp] module,
 which can read a subset of the ISC DHCP configuration files.
 
 Or the equivalent Kea configuration:

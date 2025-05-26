@@ -2,11 +2,12 @@
 
 The following functions allow inspection and/or manipulation of the `unlang` interpreter as it is running.
 
+<<debug_xlat>>
 == Debug Functions
 
 The following functions allow changing the debug level, or printing out specific lists of attributes.
 
-=== %debug(<level>)
+== %debug(<level>)
 
 Dynamically change the debug level to something high, recording the old level.
 
@@ -42,7 +43,7 @@ recv Access-Request {
 ...
 ```
 
-=== %debug_attr(<list:[index]>)
+=== `%debug_attr(<list:[index]>)`
 
 Print to debug output all instances of current attribute, or all attributes in a list.
 expands to a zero-length string.
