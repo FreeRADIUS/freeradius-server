@@ -185,8 +185,6 @@ retry:
 		fr_assert(salen == my->remote_sockaddr_len);
 		fr_assert(sockaddr.ss_family == my->remote_sockaddr.ss_family);
 		fr_assert((sockaddr.ss_family == AF_INET) || (sockaddr.ss_family == AF_INET6)); /* datagram unix is not supported */
-
-		return rcode;
 	}
 
 	/*
