@@ -1,0 +1,24 @@
+= RADIUS System Components
+
+RADIUS is a network protocol, a system that defines rules and conventions for communication between network devices. Like many protocols, RADIUS uses a client-server model. A RADIUS client (also called a Network Access Server (NAS) ) sends requests to a RADIUS server. The RADIUS server then processes the
+request and sends back a response.
+
+Common NAS products include wireless access points such as the Linksys WRT54G and dial-up equipment commonly available from large network manufacturers. Common RADIUS server products include Cisco ACS, Microsoft IAS, Juniper, Open Systems Radiator, and FreeRADIUS.
+
+The RADIUS protocol shares the general concept of client-server communication with many other protocols such as HTTP and SMTP, the specifics of RADIUS communications differ. This section describes the RADIUS system in more detail, including the specific roles of the NAS, the server, and datastores such as MySQL and Lightweight Directory Access Protocol (LDAP).
+
+This section describes the RADIUS system in more detail, including the specific roles of the NAS, the server, and datastores such as MySQL and Lightweight Directory Access Protocol (LDAP).
+
+.Examples of System Components
+[opts="headers, autowidth"]
+|===
+| *Component*             | *Description*                  | *Examples*
+| User or a device        | Requests access to the network.| Laptop, tablet, modem, mobile, or VOIP phone.
+| Network Access Server (NAS)| Provides access to the network for the user or device.                                                    | Switch, wireless access point (WAP), or VPN terminator.
+| Authentication Server   | Receives authentication requests from the NAS and returns authentication results to the NAS. Optionally requests user and configuration information from the datastore. The server may also
+return configuration parameters to the NAS. Receives accounting information from the NAS.                                              | FreeRADIUS, Radiator, Network Policy Server (NPS), or an Internet Authentication Service (IAS).
+| Optional datastore such as a database or directory containing user authentication and authorisation information.| RADIUS server communicates with the datastore using a database API or LDAP.                | SQL Database, Kerberos Service Server, or an LDAP Directory.
+|===
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

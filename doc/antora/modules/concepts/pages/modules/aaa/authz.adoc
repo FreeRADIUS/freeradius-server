@@ -1,0 +1,41 @@
+= Authorisation
+
+Authorisation is the process of finding and returning information
+about what the user is allowed to do.  For example, finding out what
+kind of authentication methods they are allowed to run, and what VLAN
+the user should be placed into.
+
+Authorisation modules generally "get data" from somewhere,
+e.g. `ldap`, `sql`, `files`, etc.
+
+The authentication method is usually determined when the server gets
+the users credentials from a database.  Once the credentials are
+available, the server can authenticate the user.
+
+Authorisation refers to the process of determining what permissions are granted to the user. For example, the user may or may not be permitted certain kinds of network access or allowed to issue certain commands.
+
+The NAS sends a “request” - a packet of information about the user - and the RADIUS server either grants or denies authorisation based solely on information in the “request” sent by the NAS.In each case, the RADIUS server manages the authorisation policy and the NAS enforces the policy.
+
+The NAS “request” is really a set of statements. For example, the NAS may send the RADIUS server a “request” containing the following user information:
+
+```
+“user name is Bob”
+“password is Hello”
+“ip address is 192.02.34”
+```
+
+Once the server receives the request, it uses that information to figure out what properties the user should have (i.e. “Bob” is saying he/she has IP address 192.0.2.34, do the server records contradict this statement?).
+The server then sends a reply to the NAS. The reply contains a series of statements about what properties the user should have:
+
+```
+"user name is Bob"
+"ip address is 192.0.2.78"
+```
+
+[NOTE]
+====
+The RADIUS server can’t request further information from the NAS. In contrast with SQL systems, RADIUS is limited in that it cannot make complicated queries. In SQL, queries such as "SELECT name from table where ipaddress = 192.02.34" are common. RADIUS does not have that capability. Instead, RADIUS
+only makes statements about what is, and what should be.
+====
+
+Upon receipt of a reply from the server, the NAS tries to enforce those properties on the user. properties cannot be enforced, the NAS closes the connection.

@@ -9,7 +9,7 @@ test_integer := "%debug(4)"
 # Check debug level is now 4
 if (!(%debug(3) == 4)) {
 	test_fail
-}
+}:q
 
 # Call with NULL arg, should report current level
 if (!(%debug(dummy_string) == 3)) {
