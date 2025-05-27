@@ -1,0 +1,14 @@
+= %pairs.debug(<list>.[*])
+
+Write the referenced attributes as formatted text to the current debug
+output.
+
+.Example
+
+[source,unlang]
+----
+%pairs.debug(control.[*])
+----
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -1,0 +1,19 @@
+= %pairs.immutable(<list>.[*])
+
+Mark the referenced attributes as being _immutable_.
+
+Once attributes are marked `immutable`, they cannot be deleted, and
+their values cannot be changed.
+
+The `immutable` setting has limitations, as some modules do not
+respect the `immutable` flag.
+
+.Example
+
+[source,unlang]
+----
+%pairs.immutable(control.[*])
+----
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
