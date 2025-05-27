@@ -197,7 +197,7 @@ exec dpd_exec {
 Enable it:
 
 ```bash
-ln -s ../mods-available/dpd_exec ../mods-enabled/
+ln -s ../mods-available/dpd_exec ../mods-enabled/dpd_exec
 ```
 
 Ensure the script is executable:
