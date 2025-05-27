@@ -190,10 +190,25 @@ rlm_rcode_t process_post_auth(UNUSED int postauth_type, UNUSED REQUEST *request)
 	return RLM_MODULE_FAIL;
 }
 
-
 fr_event_list_t *radius_event_list_corral(UNUSED event_corral_t hint)
 {
 	return NULL;
+}
+
+/*
+ *	These are shared with threads.c, and nothing else.
+ */
+void request_free(REQUEST *request) CC_HINT(nonnull);
+void request_done(REQUEST *request, int original) CC_HINT(nonnull);
+
+void request_free(UNUSED REQUEST *request)
+{
+	/* do nothing */
+}
+
+void request_done(UNUSED REQUEST *request, UNUSED int original)
+{
+	/* do nothing */
 }
 
 static void NEVER_RETURNS usage(void)
@@ -694,7 +709,7 @@ static void generate_triplets(RADIUS_PACKET *packet, VALUE_PAIR *ki, uint8_t con
 		char buffer[33];	/* 32 hexits (16 bytes) + 1 */
 
 		for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
-			ess.keys.rand[idx][i] = ch[(idx * EAPSIM_RAND_SIZE) + i];
+			ess.keys.rand[idx][i] = ch ? ch[(idx * EAPSIM_RAND_SIZE) + i] : 0;
 		}
 
 		/*

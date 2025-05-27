@@ -25,7 +25,7 @@ MemoryLimit=2G
 # Ensure the daemon can still write its pidfile after it drops
 # privileges. Combination of options that work on a variety of
 # systems. Test very carefully if you alter these lines.
-RuntimeDirectory=freeradius
+RuntimeDirectory=freeradius freeradius/tmp
 RuntimeDirectoryMode=0775
 # This does not work on Debian Jessie:
 User=freerad
@@ -43,8 +43,13 @@ ExecReload=/bin/kill -HUP $MAINPID
 #  Don't elevate privileges after starting
 NoNewPrivileges=true
 
+# Control socket virtual servers typically create files in
+# the runtime directory.  If this is not kept, FreeRADIUS can't
+# be started in debug mode if those virtual servers are enabled.
+RuntimeDirectoryPreserve=yes
+
 # Allow binding to secure ports, broadcast addresses, and raw interfaces.
-#CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_BROADCAST CAP_NET_RAW CAP_SETUID CAP_SETGID CAP_CHOWN CAP_DAC_OVERRIDE
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_BROADCAST CAP_NET_RAW CAP_SETUID CAP_SETGID CAP_CHOWN CAP_DAC_OVERRIDE
 
 # Private /tmp that isn't shared by other processes
 PrivateTmp=true

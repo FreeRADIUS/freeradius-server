@@ -19,3 +19,10 @@ sample shell script which creates home servers.
 
 This directory also has a `tls.conf` file which contains site-specific
 TLS configuration for home servers.
+
+The `tls.conf` file contains a `limit` section.  That section can be
+used to control idle timeouts, lifetimes, etc. for outgoing TLS
+connections.
+
+When all TLS connections to a dynamic home server are closed, the home
+server is automatically deleted.

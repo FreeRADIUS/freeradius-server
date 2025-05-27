@@ -4,7 +4,7 @@
 # Rebuild this file with `make docker.ubuntu20.regen`
 #
 ARG from=ubuntu:20.04
-FROM ${from} as build
+FROM ${from} AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 

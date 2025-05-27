@@ -152,6 +152,7 @@ typedef void (*sig_t)(int);
 #define TAG_VALID(x)		((x) > 0 && (x) < 0x20)
 #define TAG_VALID_ZERO(x)	((x) < 0x20)
 #define TAG_ANY			INT8_MIN
+#define TAG_VALUE		(INT8_MIN + 1)
 #define TAG_NONE		0
 /** Check if tags are equal
  *
@@ -257,8 +258,7 @@ typedef union value_data {
 	uint32_t		integer;			//!< 32bit unsigned integer.
 	struct in_addr		ipaddr;				//!< IPv4 Address.
 	uint32_t		date;				//!< Date (32bit Unix timestamp).
-	size_t			filter[32/sizeof(size_t)];	//!< Ascend binary format a packed data
-								//!< structure.
+	uint8_t			*filter;			//!< ascend data filter
 
 	uint8_t			ifid[8];			//!< IPv6 interface ID (should be struct?).
 	struct in6_addr		ipv6addr;			//!< IPv6 Address.
@@ -410,6 +410,11 @@ typedef struct radius_packet {
 #ifdef WITH_RADIUSV11
 	bool			radiusv11;
 #endif
+	bool			tls;		//!< uses secure transport
+
+	bool			message_authenticator;
+	bool			proxy_state;
+	bool			eap_message;
 } RADIUS_PACKET;
 
 typedef enum {
@@ -527,6 +532,13 @@ DICT_VENDOR	*dict_vendorbyvalue(int vendor);
 /* radius.c */
 int		rad_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
 bool		rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason);
+
+/*
+ *	1 == require_ma
+ *	2 == msg_peek
+ *	4 == limit_proxy_state
+ *	8 == require_ma for Access-* replies and Protocol-Error
+ */
 RADIUS_PACKET	*rad_recv(TALLOC_CTX *ctx, int fd, int flags);
 ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, int *code);
 void		rad_recv_discard(int sockfd);
@@ -635,6 +647,7 @@ VALUE_PAIR	*fr_cursor_remove(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
 void		fr_pair_delete_by_num(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t tag);
 void		fr_pair_delete_by_da(VALUE_PAIR **first, DICT_ATTR const *da);
+void		fr_pair_delete(VALUE_PAIR **first, VALUE_PAIR *vp);
 void		fr_pair_add(VALUE_PAIR **, VALUE_PAIR *);
 void		fr_pair_prepend(VALUE_PAIR **, VALUE_PAIR *);
 void		fr_pair_replace(VALUE_PAIR **first, VALUE_PAIR *add);
@@ -720,7 +733,7 @@ extern bool	fr_dns_lookups;	/* do IP -> hostname lookups? */
 extern bool	fr_hostname_lookups; /* do hostname -> IP lookups? */
 extern int	fr_debug_lvl;	/* 0 = no debugging information */
 extern uint32_t	fr_max_attributes; /* per incoming packet */
-#define	FR_MAX_PACKET_CODE (52)
+#define	FR_MAX_PACKET_CODE (53)
 extern char const *fr_packet_codes[FR_MAX_PACKET_CODE];
 #define is_radius_code(_x) ((_x > 0) && (_x < FR_MAX_PACKET_CODE))
 extern FILE	*fr_log_fp;
@@ -795,7 +808,7 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
 
 #ifdef WITH_ASCEND_BINARY
 /* filters.c */
-int		ascend_parse_filter(value_data_t *out, char const *value, size_t len);
+int		ascend_parse_filter(TALLOC_CTX *ctx, value_data_t *out, char const *value, size_t len);
 void		print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, int8_t quote);
 #endif /*WITH_ASCEND_BINARY*/
 
@@ -915,6 +928,7 @@ rbnode_t	*rbtree_find(rbtree_t *tree, void const *data);
 void		*rbtree_finddata(rbtree_t *tree, void const *data);
 uint32_t	rbtree_num_elements(rbtree_t *tree);
 void		*rbtree_node2data(rbtree_t *tree, rbnode_t *node);
+void		*rbtree_first(rbtree_t *tree);
 
 /*
  *	The callback should be declared as:
@@ -945,6 +959,7 @@ int		fr_fifo_push(fr_fifo_t *fi, void *data);
 void		*fr_fifo_pop(fr_fifo_t *fi);
 void		*fr_fifo_peek(fr_fifo_t *fi);
 unsigned int	fr_fifo_num_elements(fr_fifo_t *fi);
+bool		fr_fifo_full(fr_fifo_t *fi);
 
 /*
  *	socket.c
@@ -957,6 +972,12 @@ int		fr_socket_wait_for_connect(int sockfd, struct timeval *timeout);
 #ifdef __cplusplus
 }
 #endif
+
+typedef enum {
+	FR_BOOL_FALSE = 0,
+	FR_BOOL_TRUE,
+	FR_BOOL_AUTO,
+} fr_bool_auto_t;
 
 #include <freeradius-devel/packet.h>
 

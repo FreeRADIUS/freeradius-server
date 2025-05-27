@@ -7,6 +7,13 @@ ARG from=centos:7
 FROM ${from} as build
 
 #
+#  CentOS 7 is now EOL, so we need to fix up the repo source
+#
+RUN sed -i "s/^mirrorlist/#mirrorlist/g" /etc/yum.repos.d/CentOS-*
+RUN sed -i "s|#\s*baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
+
+
+#
 #  Install devtools like make and git and the EPEL
 #  repository for freetds and hiredis
 #
@@ -18,6 +25,8 @@ RUN yum install -y rpmdevtools openssl epel-release git procps yum-utils \
 #  Install GCC that has the requisite support for C11 keywords and atomics
 #
 RUN yum install -y centos-release-scl
+RUN sed -i "s/^mirrorlist/#mirrorlist/g" /etc/yum.repos.d/CentOS-*
+RUN sed -i "s|#\s*baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
 RUN yum install -y devtoolset-8-gcc devtoolset-8-gcc-c++
 ENV CC=/opt/rh/devtoolset-8/root/usr/bin/gcc
 

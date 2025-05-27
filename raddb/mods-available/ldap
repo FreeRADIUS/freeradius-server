@@ -129,9 +129,24 @@ ldap {
 		control:Password-With-Header	+= 'userPassword'
 #		control:NT-Password		:= 'ntPassword'
 #		reply:Reply-Message		:= 'radiusReplyMessage'
-#		reply:Tunnel-Type		:= 'radiusTunnelType'
-#		reply:Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
-#		reply:Tunnel-Private-Group-ID	:= 'radiusTunnelPrivategroupId'
+
+		#
+		#  These attributes take tags.  The tag can be place
+		#  on the left-hand side, as is done elsewhere in the
+		#  server.
+		#
+		#  Or, the special tag ":V" can be used, in which case
+		#  the value read from LDAP should begin with the tag
+		#  number, which is surrounded by ':'  e.g.
+		#
+		#	:1:foo
+		#
+		#  If the value does not begin with a tag in the above
+		#  format, then the tag is set to zero (0).
+		#
+#		reply:Tunnel-Type:V		:= 'radiusTunnelType'
+#		reply:Tunnel-Medium-Type:V	:= 'radiusTunnelMediumType'
+#		reply:Tunnel-Private-Group-ID:V	:= 'radiusTunnelPrivategroupId'
 
 		#  Where only a list is specified as the RADIUS attribute,
 		#  the value of the LDAP attribute is parsed as a valuepair

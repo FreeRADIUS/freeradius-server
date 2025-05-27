@@ -1,0 +1,13 @@
+#
+#  Input packet
+#
+User-Name = "bob"
+User-Password = "hello"
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Accept
+Tunnel-Assignment-Id:1 == "foo"
+Tunnel-Assignment-Id:2 == "bar"
+

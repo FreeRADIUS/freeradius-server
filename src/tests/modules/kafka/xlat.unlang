@@ -1,0 +1,197 @@
+#
+#  Call from accounting, configured as regular topic
+#
+kafka.accounting
+if (&Module-Failure-Message) {
+	test_fail
+}
+
+
+#
+#  Call from authorize, configured with custom published name
+#
+kafka.authorize
+if (&Module-Failure-Message) {
+	test_fail
+}
+
+
+#
+#  Call from post-auth, configured as reference to accounting
+#
+kafka.accounting
+if (&Module-Failure-Message) {
+	test_fail
+}
+
+
+#
+#  Message with key
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:custom-topic &User-Name Test mmessage}"
+if (&Module-Failure-Message) {
+	test_fail
+}
+
+
+#
+#  Message with key and headers
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:custom-topic (&NAS-IP-Address) &User-Name Test mmessage}"
+if (&Module-Failure-Message) {
+	test_fail
+}
+
+
+#
+#  Bare message, with no key
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:custom-topic  Test message}"
+if (&Module-Failure-Message) {
+	test_fail
+}
+
+
+#
+#  Bare message with headers, but no key
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:custom-topic (&NAS-IP-Address)  Test message}"
+if (&Module-Failure-Message) {
+	test_fail
+}
+
+
+#
+#  No key and empty message is useless, but still acceptable to Kafka
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:custom-topic  }"
+if (&Module-Failure-Message) {
+	test_fail
+}
+
+
+#
+#  Missing topic
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka: &User-Name Topic is missing here}"
+if (!(&Module-Failure-Message[*] == "Kafka xlat must begin with a topic, optionally followed by headers, then the payload")) {
+	test_fail
+}
+
+
+#
+#  Lone topic
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:custom-topic}"
+if (!(&Module-Failure-Message[*] == "Kafka xlat must begin with a topic, optionally followed by headers, then the payload")) {
+	test_fail
+}
+
+
+#
+#  Lone topic and headers
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:custom-topic (&NAS-IP-Address)}"
+if (!(&Module-Failure-Message[*] == "Kafka xlat must begin with a topic, optionally followed by headers, then the payload")) {
+	test_fail
+}
+
+
+#
+#  Headers missing closing parenthesis
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:custom-topic (&NAS-IP-Address  Test message}"
+if (!(&Module-Failure-Message[*] == "Header list is missing closing parenthesis)")) {
+	test_fail
+}
+
+
+#
+#  Topic with no payload
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:custom-topic }"
+if (!(&Module-Failure-Message[*] == "Kafka xlat must begin with a topic, optionally followed by headers, then the payload")) {
+	test_fail
+}
+
+
+#
+#  Topic and headers with no payload
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:custom-topic (&NAS-IP-Address)}"
+if (!(&Module-Failure-Message[*] == "Kafka xlat must begin with a topic, optionally followed by headers, then the payload")) {
+	test_fail
+}
+
+
+#
+#  Nonsense payload
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:custom-topic Test message not preceeded by Key-Attr-Ref or two spaces}"
+if (!(&Module-Failure-Message[*] == "Kafka payload must begin with an attribute reference or a space")) {
+	test_fail
+}
+
+
+#
+#  Nonsense payload, with headers
+#
+update {
+	&Module-Failure-Message !* ANY
+}
+
+"%{kafka:custom-topic (&NAS-IP-Address) Test message not preceeded by Key-Attr-Ref or two spaces}"
+if (!(&Module-Failure-Message[*] == "Kafka payload must begin with an attribute reference or a space")) {
+	test_fail
+}
+
+
+test_pass

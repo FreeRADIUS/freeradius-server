@@ -115,6 +115,9 @@ int rlm_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 			vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 			rad_assert(vp);
 
+			vp->op = map->op;
+			vp->tag = map->lhs->tmpl_tag;
+
 			if (fr_pair_value_from_str(vp, self->values[i]->bv_val, self->values[i]->bv_len) < 0) {
 				char *escaped;
 
@@ -126,7 +129,6 @@ int rlm_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 				continue;
 			}
 
-			vp->op = map->op;
 			fr_cursor_insert(&cursor, vp);
 
 			/*

@@ -652,6 +652,7 @@ ac_header_c_list=
 enable_option_checking=no
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+MANSKIP
 STATIC_MODULES
 USE_STATIC_LIBS
 USE_SHARED_LIBS
@@ -677,10 +678,12 @@ DIRNAME
 AUTOHEADER
 AUTOCONF
 ACLOCAL
+LAST
 RUSERS
 SNMPWALK
 SNMPGET
 openssl_version_check_config
+WITH_RADLAST
 WITH_DHCP
 modconfdir
 dictdir
@@ -785,6 +788,7 @@ with_threads
 with_tcp
 with_vmps
 with_dhcp
+with_radlast
 with_static_modules
 with_shared_libs
 with_modules
@@ -1490,6 +1494,7 @@ Optional Packages:
   --with-tcp              compile in TCP support. (default=yes)
   --with-vmps             compile in VMPS support. (default=yes)
   --with-dhcp             compile in DHCP support. (default=yes)
+  --with-radlast          install radlast
   --with-static-modules=QUOTED-MODULE-LIST
   --with-shared-libs      build dynamic libraries and link against them.
                           (default=yes)
@@ -6796,6 +6801,26 @@ printf "%s\n" "#define WITH_DHCP 1" >>confdefs.h
 fi
 
 
+
+MANSKIP=
+WITH_RADLAST=
+
+# Check whether --with-radlast was given.
+if test ${with_radlast+y}
+then :
+  withval=$with_radlast;  case "$withval" in
+  yes)
+    WITH_RADLAST=yes
+    ;;
+  *)
+    WITH_RADLAST=no
+  esac
+
+fi
+
+
+
+
 STATIC_MODULES=
 
 # Check whether --with-static_modules was given.
@@ -7259,6 +7284,58 @@ else
 printf "%s\n" "no" >&6; }
 fi
 
+
+
+
+if test "x$WITH_RADLAST" = "x"; then
+  # Extract the first word of "last", so it can be a program name with args.
+set dummy last; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_prog_LAST+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  if test -n "$LAST"; then
+  ac_cv_prog_LAST="$LAST" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_prog_LAST="yes"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  test -z "$ac_cv_prog_LAST" && ac_cv_prog_LAST="no"
+fi
+fi
+LAST=$ac_cv_prog_LAST
+if test -n "$LAST"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $LAST" >&5
+printf "%s\n" "$LAST" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+
+  WITH_RADLAST="$LAST"
+fi
+if test "x$WITH_RADLAST" != "xyes"; then
+  MANSKIP="$MANSKIP man/man1/radlast.1"
+fi
 
 
 missing_dir=`cd $ac_aux_dir && pwd`
@@ -7854,7 +7931,7 @@ then :
   test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
 
 else $as_nop
-  as_fn_error $? "-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or ftp://ftp.freeradius.org/pub/radius/contrib/libsem.tar.gz" "$LINENO" 5
+  as_fn_error $? "-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or https://www.freeradius.org/ftp/pub/radius/contrib/libsem.tar.gz" "$LINENO" 5
 
 fi
 
@@ -12415,7 +12492,7 @@ printf "%s\n" "$ax_cv_cc_weverything_flag" >&6; }
           fsanitizeflags=
 
         if test "x$fuzzer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
-                fsanitizeflags="$fsanitizeflags,fuzzer"
+                fsanitizeflags="$fsanitizeflags,fuzzer-no-link"
   fi
 
         if test "x$address_sanitizer" = "xyes"; then
@@ -14670,7 +14747,8 @@ USE_STATIC_LIBS="yes"
 
 
 
-ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/main/radsniff.mk ./src/main/checkrad ./src/main/radlast ./src/main/radtest ./scripts/rc.radiusd ./scripts/cron/radiusd.cron.daily ./scripts/cron/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/radrelay.conf ./raddb/radiusd.conf"
+
+ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/main/radsniff.mk ./src/main/radlast.mk ./src/main/checkrad ./src/main/radlast ./src/main/radtest ./scripts/rc.radiusd ./scripts/cron/radiusd.cron.daily ./scripts/cron/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/radrelay.conf ./raddb/radiusd.conf"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -15370,6 +15448,7 @@ do
     "./Make.inc") CONFIG_FILES="$CONFIG_FILES ./Make.inc" ;;
     "./src/include/build-radpaths-h") CONFIG_FILES="$CONFIG_FILES ./src/include/build-radpaths-h" ;;
     "./src/main/radsniff.mk") CONFIG_FILES="$CONFIG_FILES ./src/main/radsniff.mk" ;;
+    "./src/main/radlast.mk") CONFIG_FILES="$CONFIG_FILES ./src/main/radlast.mk" ;;
     "./src/main/checkrad") CONFIG_FILES="$CONFIG_FILES ./src/main/checkrad" ;;
     "./src/main/radlast") CONFIG_FILES="$CONFIG_FILES ./src/main/radlast" ;;
     "./src/main/radtest") CONFIG_FILES="$CONFIG_FILES ./src/main/radtest" ;;

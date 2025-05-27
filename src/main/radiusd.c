@@ -361,6 +361,18 @@ int main(int argc, char *argv[])
 	INFO("%s", fr_debug_state_to_msg(fr_debug_state));
 
 	/*
+	 *	Track configuration versions.  This lets us know if the configuration changed.
+	 */
+	if (rad_debug_lvl) {
+		uint8_t digest[16];
+
+		cf_md5_final(digest);
+
+		INFO("Configuration version: %02x%02x-%02x%02x-%02x%02x-%02x%02x",
+		     digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7]);
+	}
+
+	/*
 	 *  Check for vulnerabilities in the version of libssl were linked against.
 	 */
 #if defined(HAVE_OPENSSL_CRYPTO_H) && defined(ENABLE_OPENSSL_VERSION_CHECK)
@@ -773,6 +785,7 @@ static void sig_fatal(int sig)
 			radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
 			break;
 		}
+		fr_strerror_printf(NULL); /* clear old errors */
 		/* FALL-THROUGH */
 
 	default:

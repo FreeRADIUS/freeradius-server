@@ -1013,14 +1013,14 @@ ntlm_auth_err:
 				return -1;
 			}
 
-			if (!EVP_CIPHER_CTX_set_key_length(ctx, nt_password->vp_length)) {
-				REDEBUG("Failed setting key length");
-				goto error;
-			}
-
 			if (!EVP_EncryptInit_ex(ctx, EVP_rc4(), NULL, nt_password->vp_octets, NULL)) {
 				REDEBUG("Failed setting key value");
 				goto error;;
+			}
+
+			if (!EVP_CIPHER_CTX_set_key_length(ctx, nt_password->vp_length)) {
+				REDEBUG("Failed setting key length");
+				goto error;
 			}
 
 			if (!EVP_EncryptUpdate(ctx, nt_pass_decrypted, &ntlen, new_nt_password, ntlen)) {
@@ -1743,7 +1743,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 			nt_password->vp_octets = p = talloc_array(nt_password, uint8_t, nt_password->vp_length);
 
 			if (mschap_ntpwdhash(p, password->vp_strvalue) < 0) {
-				RERROR("Failed generating NT-Password");
+				RERROR("Failed generating NT-Password - %s", fr_strerror());
 				return RLM_MODULE_FAIL;
 			}
 		} else if (auth_method == AUTH_INTERNAL) {

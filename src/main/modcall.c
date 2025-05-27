@@ -1096,6 +1096,12 @@ calculate_result:
 	}
 
 	if (entry->unwind == MOD_RETURN) {
+		if ((entry->c->type == MOD_GROUP && main_config.group_stop_return) ||
+		    (entry->c->type == MOD_POLICY && main_config.policy_stop_return)) {
+			entry->unwind = 0;
+			goto next_sibling;
+		}
+
 		goto finish;
 	}
 
@@ -1682,9 +1688,54 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 				}
 				talloc_free(vpt);
 
-			} else if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
-				cf_log_err(map->ci, "%s", fr_strerror());
-				return -1;
+			} else if (map->lhs->tmpl_tag != TAG_VALUE) {
+			do_cast:
+				if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
+					cf_log_err(map->ci, "%s", fr_strerror());
+					return -1;
+				}
+
+			} else if (map->rhs->name[0] != ':') {
+				map->lhs->tmpl_tag = TAG_NONE; /* no tag, just do the cast */
+				goto do_cast;
+
+			} else {
+				ssize_t ret;
+				long num;
+				char const *p = map->rhs->name;
+				char *end;
+				vp_tmpl_t *vpt;
+
+				num = strtol(p + 1, &end, 10);
+				if ((num > 0x1f) || (num < 0)) {
+					cf_log_err(map->ci, "Invalid tag value '%li' (should be between 0-31)", num);
+					return -1;
+				}
+
+				if (*end && (*end != ':')) {
+					cf_log_err(map->ci, "Invalid tag is missing trailing ':'");
+					return -1;
+				}
+
+				map->lhs->tmpl_tag = num;
+				vpt = map->rhs;
+				vpt->tmpl_data_type = map->lhs->tmpl_da->type;
+
+				/*
+				 *	Just to tmpl_cast_in_place()
+				 *	ourselves, rather than mucking
+				 *	with strings.
+				 */
+				ret = value_data_from_str(vpt, &vpt->tmpl_data_value,
+							  &vpt->tmpl_data_type, map->lhs->tmpl_da,
+							  end + 1, strlen(end + 1), '\0');
+				if (ret < 0) {
+					cf_log_err(map->ci, "%s", fr_strerror());
+					return -1;
+				}
+
+				vpt->type = TMPL_TYPE_DATA;
+				vpt->tmpl_data_length = (size_t) ret;
 			}
 
 			/*

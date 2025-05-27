@@ -58,8 +58,8 @@ fr_stats_t proxy_dsc_stats = FR_STATS_INIT;
 #endif
 #endif
 
-static void stats_time(fr_stats_t *stats, struct timeval *start,
-		       struct timeval *end)
+static void stats_time(fr_stats_t *stats, REQUEST *request,
+		       struct timeval *start, struct timeval *end)
 {
 	struct timeval diff;
 	uint32_t delay;
@@ -68,6 +68,28 @@ static void stats_time(fr_stats_t *stats, struct timeval *start,
 	    (end->tv_sec < start->tv_sec)) return;
 
 	rad_tv_sub(end, start, &diff);
+
+	/*
+	 *	Don't count proxy times as our packet processing
+	 *	times.  If the user wants to see how long it takes for
+	 *	packets to be processed, he should look at the proxy
+	 *	statistics.
+	 */
+	if (request && request->proxy && request->proxy_reply) {
+		struct timeval proxy, tmp;
+		rad_tv_sub(&request->proxy_reply->timestamp,
+			   &request->proxy->timestamp,
+			   &proxy);
+
+		/*
+		 *	This should always be smaller, but it doesn't
+		 *	hurt to check.
+		 */
+		if (timercmp(&proxy, &diff, <)) {
+			tmp = diff;
+			rad_tv_sub(&tmp, &proxy, &diff);
+		}
+	}
 
 	if (diff.tv_sec >= 10) {
 		stats->elapsed[7]++;
@@ -91,51 +113,65 @@ static void stats_time(fr_stats_t *stats, struct timeval *start,
 void request_stats_final(REQUEST *request)
 {
 	rad_listen_t *listener;
+	RADCLIENT *client;
 
-	if (request->master_state == REQUEST_COUNTED) return;
+	if ((request->options & RAD_REQUEST_OPTION_STATS) != 0) return;
 
-	if (!request->listener) return;
-	if (!request->client) return;
-
-	if ((request->listener->type != RAD_LISTEN_NONE) &&
-#ifdef WITH_ACCOUNTING
-	    (request->listener->type != RAD_LISTEN_ACCT) &&
-#endif
-#ifdef WITH_COA
-	    (request->listener->type != RAD_LISTEN_COA) &&
-#endif
-	    (request->listener->type != RAD_LISTEN_AUTH)) return;
+	/*
+	 *	This packet was originated by the server, and not
+	 *	received from a client.  It's a status-server or home
+	 *	server "ping" packet.  So we ignore it for statistics
+	 *	purposes.
+	 */
+	if (!request->packet) return;
 
 	/* don't count statistic requests */
-	if (request->packet->code == PW_CODE_STATUS_SERVER)
+	if (request->packet->code == PW_CODE_STATUS_SERVER) {
 		return;
+	}
+
+	listener = request->listener;
+	if (listener) switch (listener->type) {
+		case RAD_LISTEN_NONE:
+#ifdef WITH_ACCOUNTING
+		case RAD_LISTEN_ACCT:
+#endif
+#ifdef WITH_COA
+		case RAD_LISTEN_COA:
+#endif
+		case RAD_LISTEN_AUTH:
+			break;
+
+		default:
+			return;
+	}
 
 	/*
 	 *	Deal with TCP / TLS issues.  The statistics are kept in the parent socket.
 	 */
-	listener = request->listener;
-	if (listener->parent) listener = listener->parent;
+	if (listener && listener->parent) listener = listener->parent;
+	client = request->client;
 
 #undef INC_AUTH
-#define INC_AUTH(_x) radius_auth_stats._x++;listener->stats._x++;request->client->auth._x++;
+#define INC_AUTH(_x) radius_auth_stats._x++;if (listener) listener->stats._x++;if (client) client->auth._x++;
 
 #undef INC_ACCT
 #ifdef WITH_ACCOUNTING
-#define INC_ACCT(_x) radius_acct_stats._x++;listener->stats._x++;request->client->acct._x++
+#define INC_ACCT(_x) radius_acct_stats._x++;if (listener) listener->stats._x++;if (client) client->acct._x++
 #else
 #define INC_ACCT(_x)
 #endif
 
 #undef INC_COA
 #ifdef WITH_COA
-#define INC_COA(_x) radius_coa_stats._x++;listener->stats._x++;request->client->coa._x++
+#define INC_COA(_x) radius_coa_stats._x++;if (listener) listener->stats._x++;if (client) client->coa._x++
 #else
 #define INC_COA(_x)
 #endif
 
 #undef INC_DSC
 #ifdef WITH_DSC
-#define INC_DSC(_x) radius_dsc_stats._x++;listener->stats._x++;request->client->dsc._x++
+#define INC_DSC(_x) radius_dsc_stats._x++;if (listener) listener->stats._x++;if (client) client->dsc._x++
 #else
 #define INC_DSC(_x)
 #endif
@@ -148,7 +184,7 @@ void request_stats_final(REQUEST *request)
 	 *	deleted, because only the main server thread calls
 	 *	this function, which makes it thread-safe.
 	 */
-	if (request->reply && (request->packet->code != PW_CODE_STATUS_SERVER)) switch (request->reply->code) {
+	if (request->reply) switch (request->reply->code) {
 	case PW_CODE_ACCESS_ACCEPT:
 		INC_AUTH(total_access_accepts);
 
@@ -158,13 +194,13 @@ void request_stats_final(REQUEST *request)
 		/*
 		 *	FIXME: Do the time calculations once...
 		 */
-		stats_time(&radius_auth_stats,
+		stats_time(&radius_auth_stats, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
-		stats_time(&request->client->auth,
+		stats_time(&request->client->auth, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
-		stats_time(&listener->stats,
+		if (listener) stats_time(&listener->stats, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
 		break;
@@ -180,10 +216,13 @@ void request_stats_final(REQUEST *request)
 #ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_RESPONSE:
 		INC_ACCT(total_responses);
-		stats_time(&radius_acct_stats,
+		stats_time(&radius_acct_stats, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
-		stats_time(&request->client->acct,
+		stats_time(&request->client->acct, request,
+			   &request->packet->timestamp,
+			   &request->reply->timestamp);
+		if (listener) stats_time(&listener->stats, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
 		break;
@@ -194,7 +233,10 @@ void request_stats_final(REQUEST *request)
 		INC_COA(total_access_accepts);
 	  coa_stats:
 		INC_COA(total_responses);
-		stats_time(&request->client->coa,
+		stats_time(&request->client->coa, request,
+			   &request->packet->timestamp,
+			   &request->reply->timestamp);
+		if (listener) stats_time(&listener->stats, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
 		break;
@@ -207,7 +249,10 @@ void request_stats_final(REQUEST *request)
 		INC_DSC(total_access_accepts);
 	  dsc_stats:
 		INC_DSC(total_responses);
-		stats_time(&request->client->dsc,
+		stats_time(&request->client->dsc, request,
+			   &request->packet->timestamp,
+			   &request->reply->timestamp);
+		if (listener) stats_time(&listener->stats, request,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
 		break;
@@ -218,8 +263,9 @@ void request_stats_final(REQUEST *request)
 #endif
 
 		/*
-		 *	No response, it must have been a bad
-		 *	authenticator.
+		 *	No response, we did "do_not_respond", or the packet timed out.
+		 *
+		 *	This packet then isn't counted in the statistics for overall response times. :(
 		 */
 	case 0:
 		if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
@@ -276,17 +322,17 @@ void request_stats_final(REQUEST *request)
 	if (!request->proxy_reply) goto done;	/* simplifies formatting */
 
 #undef INC
-#define INC(_x) proxy_auth_stats._x += request->num_proxied_responses; request->home_server->stats._x += request->num_proxied_responses;
+#define INC(_x) proxy_auth_stats._x += request->num_proxied_responses;request->home_server->stats._x += request->num_proxied_responses;
 
 	switch (request->proxy_reply->code) {
 	case PW_CODE_ACCESS_ACCEPT:
 		INC(total_access_accepts);
 	proxy_stats:
 		INC(total_responses);
-		stats_time(&proxy_auth_stats,
+		stats_time(&proxy_auth_stats, NULL,
 			   &request->proxy->timestamp,
 			   &request->proxy_reply->timestamp);
-		stats_time(&request->home_server->stats,
+		stats_time(&request->home_server->stats, NULL,
 			   &request->proxy->timestamp,
 			   &request->proxy_reply->timestamp);
 		break;
@@ -303,10 +349,10 @@ void request_stats_final(REQUEST *request)
 	case PW_CODE_ACCOUNTING_RESPONSE:
 		proxy_acct_stats.total_responses++;
 		request->home_server->stats.total_responses++;
-		stats_time(&proxy_acct_stats,
+		stats_time(&proxy_acct_stats, NULL,
 			   &request->proxy->timestamp,
 			   &request->proxy_reply->timestamp);
-		stats_time(&request->home_server->stats,
+		stats_time(&request->home_server->stats, NULL,
 			   &request->proxy->timestamp,
 			   &request->proxy_reply->timestamp);
 		break;
@@ -317,10 +363,10 @@ void request_stats_final(REQUEST *request)
 	case PW_CODE_COA_NAK:
 		proxy_coa_stats.total_responses++;
 		request->home_server->stats.total_responses++;
-		stats_time(&proxy_coa_stats,
+		stats_time(&proxy_coa_stats, NULL,
 			   &request->proxy->timestamp,
 			   &request->proxy_reply->timestamp);
-		stats_time(&request->home_server->stats,
+		stats_time(&request->home_server->stats, NULL,
 			   &request->proxy->timestamp,
 			   &request->proxy_reply->timestamp);
 		break;
@@ -329,10 +375,10 @@ void request_stats_final(REQUEST *request)
 	case PW_CODE_DISCONNECT_NAK:
 		proxy_dsc_stats.total_responses++;
 		request->home_server->stats.total_responses++;
-		stats_time(&proxy_dsc_stats,
+		stats_time(&proxy_dsc_stats, NULL,
 			   &request->proxy->timestamp,
 			   &request->proxy_reply->timestamp);
-		stats_time(&request->home_server->stats,
+		stats_time(&request->home_server->stats, NULL,
 			   &request->proxy->timestamp,
 			   &request->proxy_reply->timestamp);
 		break;
@@ -347,10 +393,7 @@ void request_stats_final(REQUEST *request)
  done:
 #endif /* WITH_PROXY */
 
-
 	if (request->max_time) {
-		RADCLIENT *client = request->client;
-
 		switch (request->packet->code) {
 		case PW_CODE_ACCESS_REQUEST:
 			FR_STATS_INC(auth, unresponsive_child);
@@ -376,7 +419,7 @@ void request_stats_final(REQUEST *request)
 		}
 	}
 
-	request->master_state = REQUEST_COUNTED;
+	request->options |= RAD_REQUEST_OPTION_STATS;
 }
 
 typedef struct fr_stats2vp {
@@ -495,6 +538,17 @@ static void request_stats_addvp(REQUEST *request,
 		counter = *(uint64_t *) (((uint8_t *) stats) + table[i].offset);
 		vp->vp_integer = counter;
 	}
+
+	/*
+	 *	Add in count of elapsed times.
+	 */
+	for (i = 0; i < 8; i++) {
+		vp = radius_pair_create(request->reply, &request->reply->vps,
+					(198 + ((i + 1) << 8)), VENDORPEC_FREERADIUS);
+		if (!vp) continue;
+
+		vp->vp_integer64 = stats->elapsed[i];
+	}
 }
 
 static void stats_error(REQUEST *request, char const *msg)
@@ -611,7 +665,7 @@ void request_stats_reply(REQUEST *request)
 		fr_ipaddr_t ipaddr;
 		VALUE_PAIR *server_ip, *server_port = NULL;
 		RADCLIENT *client = NULL;
-		RADCLIENT_LIST *cl = NULL;
+		RADCLIENT_LIST *cl =  NULL;
 
 		/*
 		 *	See if we need to look up the client by server
@@ -625,6 +679,10 @@ void request_stats_reply(REQUEST *request)
 				ipaddr.af = AF_INET;
 				ipaddr.ipaddr.ip4addr.s_addr = server_ip->vp_ipaddr;
 				cl = listener_find_client_list(&ipaddr, server_port->vp_integer, IPPROTO_UDP);
+
+#ifdef WITH_TCP
+				if (!cl) cl = listener_find_client_list(&ipaddr, server_port->vp_integer, IPPROTO_TCP);
+#endif
 
 				/*
 				 *	Not found: don't do anything
@@ -640,6 +698,10 @@ void request_stats_reply(REQUEST *request)
 					ipaddr.af = AF_INET6;
 					ipaddr.ipaddr.ip6addr = server_ip->vp_ipv6addr;
 					cl = listener_find_client_list(&ipaddr, server_port->vp_integer, IPPROTO_UDP);
+
+#ifdef WITH_TCP
+					if (!cl) cl = listener_find_client_list(&ipaddr, server_port->vp_integer, IPPROTO_TCP);
+#endif
 
 					/*
 					 *	Not found: don't do anything
@@ -835,8 +897,8 @@ void request_stats_reply(REQUEST *request)
 	if (((flag->vp_integer & 0x80) != 0) &&		/* home-server */
 	    ((flag->vp_integer & 0x03) != 0)) {		/* auth or accounting */
 		home_server_t *home;
-		VALUE_PAIR *server_ip, *server_port;
-		fr_ipaddr_t ipaddr;
+		VALUE_PAIR *server_ip, *server_port, *server_src_ip;
+		fr_ipaddr_t ipaddr, src_ipaddr;
 
 		server_port = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_PORT, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (!server_port) {
@@ -867,12 +929,32 @@ void request_stats_reply(REQUEST *request)
 			return;
 		}
 
+		memset(&src_ipaddr, 0, sizeof(src_ipaddr));
+		src_ipaddr.af = ipaddr.af;
+
+		if (ipaddr.af == AF_INET) {
+			server_src_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_SRC_IP_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
+			if (server_src_ip) {
+				src_ipaddr.prefix = 32;
+				src_ipaddr.ipaddr.ip4addr.s_addr = server_src_ip->vp_ipaddr;
+			}
+#ifdef AF_INET6
+		} else if (ipaddr.af == AF_INET6) {
+			server_src_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_SRC_IPV6_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
+			if (server_src_ip) {
+				src_ipaddr.af = AF_INET6;
+				src_ipaddr.ipaddr.ip6addr = server_src_ip->vp_ipv6addr;
+#endif	/* AF_INET6 */
+			}
+		}
+
+
 		/*
 		 *	Not found: don't do anything
 		 */
-		home = home_server_find(&ipaddr, server_port->vp_integer, IPPROTO_UDP);
+		home = home_server_find_bysrc(&ipaddr, server_port->vp_integer, IPPROTO_UDP, &src_ipaddr);
 #ifdef WITH_TCP
-		if (!home) home = home_server_find(&ipaddr, server_port->vp_integer, IPPROTO_TCP);
+		if (!home) home = home_server_find_bysrc(&ipaddr, server_port->vp_integer, IPPROTO_TCP, &src_ipaddr);
 #endif
 		if (!home) {
 			stats_error(request, "Failed to find home server IP");

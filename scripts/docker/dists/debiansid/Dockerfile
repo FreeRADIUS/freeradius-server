@@ -4,7 +4,7 @@
 # Rebuild this file with `make docker.debiansid.regen`
 #
 ARG from=debian:sid
-FROM ${from} as build
+FROM ${from} AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 

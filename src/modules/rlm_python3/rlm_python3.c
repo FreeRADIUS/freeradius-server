@@ -90,6 +90,7 @@ static CONF_PARSER module_config[] = {
 #undef A
 
         { "python_path", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, python_path), NULL },
+	{ "python_path_mode", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, python_path_mode_str), "append" },
         { "cext_compat", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, cext_compat), "yes" },
         { "pass_all_vps", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, pass_all_vps), "no" },
         { "pass_all_vps_dict", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, pass_all_vps_dict), "no" },
@@ -131,6 +132,19 @@ static struct {
 #undef A
 
 	{ NULL, 0 },
+};
+
+typedef enum {
+	PYTHON_PATH_MODE_APPEND,
+	PYTHON_PATH_MODE_PREPEND,
+	PYTHON_PATH_MODE_OVERWRITE
+} py_path_mode;
+
+FR_NAME_NUMBER const python_path_mode[] = {
+	{ "append",	PYTHON_PATH_MODE_APPEND    },
+	{ "prepend",	PYTHON_PATH_MODE_PREPEND   },
+	{ "overwrite",	PYTHON_PATH_MODE_OVERWRITE },
+	{ NULL, -1 }
 };
 
 /*
@@ -204,12 +218,12 @@ static void python_error_log(void)
 		return;
 	}
 
-	if (((pStr1 = PyObject_Str(pExcType)) != NULL) && 
+	if (((pStr1 = PyObject_Str(pExcType)) != NULL) &&
 	    ((pStr2 = PyObject_Str(pExcValue)) != NULL)) {
 		ERROR("%s:%d, Exception type: %s, Exception value: %s", __func__, __LINE__, PyUnicode_AsUTF8(pStr1), PyUnicode_AsUTF8(pStr2));
 		Py_DECREF(pStr1);
 		Py_DECREF(pStr2);
-	} 
+	}
 
 	if (pExcTraceback) {
 		PyObject *pRepr = PyObject_Repr(pExcTraceback);
@@ -346,11 +360,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		}
 
 		vp->op = op;
-
-		/*
-		 *	@todo - use tmpl_cast_to_vp() instead ???
-		 */
-		if (vp->da->flags.has_tag) vp->tag = dst.tmpl_tag;
+		vp->tag = dst.tmpl_tag;
 
 		if (fr_pair_value_from_str(vp, s2, -1) < 0) {
 			DEBUG("%s - Failed: '%s:%s' %s '%s'", funcname, list_name, s1,
@@ -389,7 +399,7 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 			python_error_log();
 			PyErr_Clear();
 		}
-		
+
 		return -1;
 	}
 
@@ -691,7 +701,6 @@ static void python_interpreter_free(PyThreadState *interp)
 	PyEval_RestoreThread(interp);
 	PyThreadState_Swap(interp);
 	Py_EndInterpreter(interp);
-	PyEval_SaveThread();
 }
 
 /** Destroy a thread state
@@ -1036,7 +1045,12 @@ static void *dlopen_libpython(int flags)
 /*
  * creates a module "radiusd"
  */
+#if PY_MINOR_VERSION >= 9
+PyMODINIT_FUNC PyInit_radiusd(void);
+PyMODINIT_FUNC PyInit_radiusd(void)
+#else
 static PyMODINIT_FUNC PyInit_radiusd(void)
+#endif
 {
 	CONF_SECTION *cs;
 	/*
@@ -1106,7 +1120,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	/*
 	 * prepare radiusd module to be loaded
 	 */
-	if (!inst->cext_compat || !main_module) {
+	if ((!inst->cext_compat || !main_module) && (python_instances == 0)) {
 		/*
 		 * This is ugly, but there is no other way to pass parameters to PyMODINIT_FUNC
 		 */
@@ -1169,12 +1183,16 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 
 #if PY_VERSION_HEX <= 0x030a0000
 		Py_InitializeEx(0);			/* Don't override signal handlers - noop on subs calls */
+#if PY_VERSION_HEX <= 0x03060000
 		PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
+#endif
 #endif
 		main_interpreter = PyThreadState_Get();	/* Store reference to the main interpreter */
 		locked = true;
 	}
+#if PY_VERSION_HEX < 0x03090000
 	rad_assert(PyEval_ThreadsInitialized());
+#endif
 
 	/*
 	 *	Increment the reference counter
@@ -1187,6 +1205,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	 */
 	if (!inst->cext_compat) {
 		inst->sub_interpreter = Py_NewInterpreter();
+		locked = true;
 	} else {
 		inst->sub_interpreter = main_interpreter;
 	}
@@ -1210,25 +1229,38 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		if (inst->python_path) {
 			char *p, *path;
 			PyObject *sys = PyImport_ImportModule("sys");
-			PyObject *sys_path = PyObject_GetAttrString(sys, "path");
+			PyObject *sys_path;
+			Py_ssize_t i = 0;
 
 			memcpy(&p, &inst->python_path, sizeof(path));
 
+			if (inst->python_path_mode == PYTHON_PATH_MODE_OVERWRITE) {
+				sys_path = PyList_New(0);
+			} else {
+				sys_path = PyObject_GetAttrString(sys, "path");
+			}
+
 			for (path = strtok(p, ":"); path != NULL; path = strtok(NULL, ":")) {
+#if PY_VERSION_HEX > 0x03000000
+				wchar_t *py_path;
+
 #if PY_VERSION_HEX > 0x03050000
-				wchar_t *py_path;
-
 				MEM(py_path = Py_DecodeLocale(path, NULL));
-				PyList_Append(sys_path, PyUnicode_FromWideChar(py_path, -1));
-				PyMem_RawFree(py_path);
-#elif PY_VERSION_HEX > 0x03000000
-				wchar_t *py_path;
-
+#else
 				MEM(py_path = _Py_char2wchar(path, NULL));
-				PyList_Append(sys_path, PyUnicode_FromWideChar(py_path, -1));
+#endif
+				if (inst->python_path_mode == PYTHON_PATH_MODE_PREPEND) {
+					PyList_Insert(sys_path, i++, PyUnicode_FromWideChar(py_path, -1));
+				} else {
+					PyList_Append(sys_path, PyUnicode_FromWideChar(py_path, -1));
+				}
 				PyMem_RawFree(py_path);
 #else
-				PyList_Append(sys_path, PyLong_FromString(path));
+				if (inst->python_path_mode == PYTHON_PATH_PREPEND) {
+					PyList_Insert(sys_path, i++, PyLong_FromString(path));
+				} ekse {
+					PyList_Append(sys_path, PyLong_FromString(path));
+				}
 #endif
 			}
 
@@ -1267,6 +1299,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
+	inst->python_path_mode = fr_str2int(python_path_mode, inst->python_path_mode_str, -1);
+	if (inst->python_path_mode < 0) {
+		cf_log_err_cs(conf, "Invalid 'python_path_mode' value \"%s\", expected 'append', "
+			      "'prepend' or 'overwrite'", inst->python_path_mode_str);
+		return -1;
+	}
+
 	/*
 	 *	Load the python code required for this module instance
 	 */
@@ -1299,9 +1338,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	PYTHON_FUNC_LOAD(detach);
 
 	/*
-	 *	Call the instantiate function only if the function and module is set.
+	 *	Call the instantiate function only if the function and module is set and we're not doing a config check.
 	 */
-	if (inst->instantiate.module_name && inst->instantiate.function_name) {
+	if (!check_config && inst->instantiate.module_name && inst->instantiate.function_name) {
 
 		code = do_python_single(NULL, inst->instantiate.function, "instantiate", inst->pass_all_vps, inst->pass_all_vps_dict);
 		if (code < 0) {
@@ -1326,7 +1365,7 @@ static int mod_detach(void *instance)
 	 */
 	PyEval_RestoreThread(inst->sub_interpreter);
 
-	if (inst->detach.function) ret = do_python_single(NULL, inst->detach.function, "detach", inst->pass_all_vps, inst->pass_all_vps_dict);
+	if (!check_config && inst->detach.function) ret = do_python_single(NULL, inst->detach.function, "detach", inst->pass_all_vps, inst->pass_all_vps_dict);
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
 	PYTHON_FUNC_DESTROY(instantiate);
@@ -1366,7 +1405,7 @@ static int mod_detach(void *instance)
 	if (!inst->cext_compat) python_interpreter_free(inst->sub_interpreter);
 
 	if ((--python_instances) == 0) {
-		PyThreadState_Swap(main_interpreter); /* Swap to the main thread */
+		PyEval_RestoreThread(main_interpreter); /* Swap to the main thread */
 		Py_Finalize();
 		dlclose(python_dlhandle);
 	}

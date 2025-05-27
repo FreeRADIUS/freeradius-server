@@ -1382,6 +1382,9 @@ int rlm_ldap_global_init(rlm_ldap_t *inst)
 				WARN("!! There may be random issues with TLS connections due to this conflict.");
 				WARN("!! The server may also crash.");
 				WARN("!! See https://wiki.freeradius.org/modules/Rlm_ldap for more information.");
+				WARN("!!");
+				WARN("!! Perhaps also see https://ltb-project.org/download.html");
+				WARN("!! Which may have a pre-build package of libldap which links to OpenSSL.");
 				WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			}
 #if defined(LDAP_OPT_X_TLS_CTX) && defined(HAVE_OPENSSL_SSL_H)

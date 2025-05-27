@@ -64,6 +64,21 @@ else
 			AC_MSG_RESULT(no)
 		])
 
+	AC_MSG_CHECKING([for PGRES_TUPLES_CHUNK])
+	AC_COMPILE_IFELSE(
+		[AC_LANG_PROGRAM([#include <libpq-fe.h>], [[
+			if (PGRES_TUPLES_CHUNK) return 0;
+			return 1;
+		]])],
+		[
+			AC_DEFINE([HAVE_PGRES_TUPLES_CHUNK], [1],
+				[Whether the PGRES_TUPLES_CHUNK constant is defined])
+			AC_MSG_RESULT(yes)
+		],
+		[
+			AC_MSG_RESULT(no)
+		])
+
 	AC_MSG_CHECKING([for PGRES_COPY_BOTH])
 	AC_COMPILE_IFELSE(
 		[AC_LANG_PROGRAM([#include <libpq-fe.h>], [[

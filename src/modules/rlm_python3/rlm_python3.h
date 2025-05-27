@@ -21,6 +21,8 @@ typedef struct rlm_python_t {
 	char const	*name;			//!< Name of the module instance
 	PyThreadState	*sub_interpreter;	//!< The main interpreter/thread used for this instance.
 	char const	*python_path;		//!< Path to search for python files in.
+	char const	*python_path_mode_str;	//!< How to use the value of `python_path`.
+	int		python_path_mode;
 	PyObject	*module;		//!< Local, interpreter specific module, containing
 						//!< FreeRADIUS functions.
 	bool		cext_compat;		//!< Whether or not to create sub-interpreters per module

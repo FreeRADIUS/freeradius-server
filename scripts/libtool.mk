@@ -24,43 +24,34 @@ else
     Q=
 endif
 
-# Add these rules only when LIBTOOL is being used.
-ifneq "${LIBTOOL}" ""
-
-    # clang on OSX sometimes doesn't know where things are. <sigh>
-    ifeq "$(findstring darwin,$(HOSTINFO))" "darwin"
+# clang on OSX sometimes doesn't know where things are. <sigh>
+ifeq "$(findstring darwin,$(HOSTINFO))" "darwin"
 	JLIBTOOL_DEFS += -L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
-    endif
+endif
 
-# JLIBTOOL - check if we're using the local (fast) jlibtool, rather
-#   than the GNU (slow) libtool shell script.  If so, add rules
-#   to build it.
+JLIBTOOL := ${BUILD_DIR}/make/jlibtool
 
-ifeq "${LIBTOOL}" "JLIBTOOL"
-    JLIBTOOL := ${BUILD_DIR}/make/jlibtool
+# Add a rule to build jlibtool BEFORE any other targets.  This
+# means that we can use it to build the later targets.
+all install: ${JLIBTOOL}
 
-    # Add a rule to build jlibtool BEFORE any other targets.  This
-    # means that we can use it to build the later targets.
-    all install: ${JLIBTOOL}
-
-    # Note that we need to use a compilation rule that does NOT
-    # include referencing ${LIBTOOL}, as we don't have a jlibtool
-    # binary!
-    ${JLIBTOOL}: ${top_makedir}/jlibtool.c
+# Note that we need to use a compilation rule that does NOT
+# include referencing ${LIBTOOL}, as we don't have a jlibtool
+# binary!
+${JLIBTOOL}: ${top_makedir}/jlibtool.c
 	$(Q)mkdir -p $(dir $@)
 	$(Q)echo CC jlibtool.c
 	$(Q)${CC} $< -o $@ ${JLIBTOOL_DEFS}
 
-    clean: jlibtool_clean
+clean: jlibtool_clean
 
-    .PHONY: jlibtool_clean
-    jlibtool_clean:
+.PHONY: jlibtool_clean
+jlibtool_clean:
 	$(Q)rm -f ${JLIBTOOL}
 
-    # Tell GNU Make to use this value, rather than anything specified
-    # on the command line.
-    override LIBTOOL := ${JLIBTOOL}
-endif    # else we're not using jlibtool
+# Tell GNU Make to use this value, rather than anything specified
+# on the command line.
+override LIBTOOL := ${JLIBTOOL}
 
 # When using libtool, it produces a '.libs' directory.  Ensure that it
 # is removed on "make clean", too.
@@ -238,6 +229,3 @@ define ADD_LIBTOOL_TARGET
     endif
 
 endef
-
-
-endif

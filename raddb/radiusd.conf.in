@@ -291,6 +291,27 @@ hostname_lookups = no
 #proxy_dedup_window = 1
 
 #
+#  Unlang behavior options
+#
+unlang {
+	#
+	#  By default, the "return" keyword will cause the current process
+	#  section to complete.  These two options allow "return" to be
+	#  used to just exit "group" sections or "policy" sections
+	#
+	#  Setting this to yes, will cause "return" within a group to
+	#  exit the group but continue processing after that.
+	#
+#	group_stop_return = no
+
+	#
+	#  Setting this to yes, will cause "return" within a policy to
+	#  exit the policy but continue processing after that.
+	#
+#	policy_stop_return = no
+}
+
+#
 #  Logging section.  The various "log_*" configuration items
 #  will eventually be moved here.
 #
@@ -578,9 +599,12 @@ security {
 	#  rejects will be sent at 'cleanup_delay' time, when the request
 	#  is deleted from the internal cache of requests.
 	#
+	#  Some equipment is known to retry aggressively if the delay is about
+	#  one second.
+	#
 	#  This number can be a decimal, e.g. 3.4
 	#
-	#  Useful ranges: 1 to 5
+	#  Useful ranges: 0.5 to 5
 	reject_delay = 1
 
 	#
@@ -602,6 +626,195 @@ security {
 	#  See also raddb/sites-available/status
 	#
 	status_server = yes
+
+	#
+	#  Global configuration for requiring Message-Authenticator in
+	#  all Access-* packets sent over UDP or TCP.  This flag is
+	#  ignored for TLS.
+	#
+	#  The number one way to protect yourself from the BlastRADIUS
+	#  attack is to update all RADIUS servers, and then set this
+	#  flag to "yes".  If all RADIUS servers are updated, and if
+	#  all of them have this flag set to "yes" for all clients,
+	#  then your network is safe.  You can then upgrade the
+	#  clients when it is convenient, instead of rushing the
+	#  upgrades.
+	#
+	#  This flag sets the global default for all clients and home
+	#  servers.  It can be over-ridden in an individual client or
+	#  home_server definition by adding the same flag to that
+	#  section with an appropriate value.
+	#
+	#  All upgraded RADIUS implementations should send
+	#  Message-Authenticator in all Access-Request, Access-Accept,
+	#  Access-Reject, and Access-Challenge packets.  Once all
+	#  systems are upgraded, setting this flag to "yes" is the
+	#  best protection from the attack.
+	#
+	#  The possible values and meanings for
+	#  "require_message_authenticator" are;
+	#
+	#  * "no" - allow Access-* packet which do not contain
+	#    Message-Authenticator
+	#
+	#    For a client, if this flag is set to "no", then the
+	#    "limit_proxy_state" flag, below, is also checked.
+	#
+	#    For a home_server, if this flag is set to "no", then the
+	#    Access-Accept, Access-Reject, and Access-Challenge
+	#    packets do not need to contain Message-Authenticator.
+	#
+	#    The only reason to set this flag to "no" is when the
+	#    RADIUS client or home server has not been updated.  It is
+	#    always safer to set this flag "no" in the individual
+	#    client or home_server definition.  The global flag SHOULD
+	#    still be set to a safe value: "yes".
+	#
+	#    WARNING: Setting this flag and the "limit_proxy_state"
+	#    flag to "no" will allow MITM attackers to create fake
+	#    Access-Accept packets to the NAS!  At least one of them
+	#    MUST be set to "yes" for the system to have any
+	#    protection against the attack.
+	#
+	#  * "yes" - Require that all Access-* packets (client and
+	#    home_server) contain Message-Authenticator.  If a packet
+	#    does not contain Message-Authenticator, then it is
+	#    discarded.
+	#
+	#  * "auto" - Automatically determine the value of the flag,
+	#    based on the first packet received from that client or
+	#    home_server.
+	#
+	#    If the packet does not contain Message-Authenticator,
+	#    then the value of the flag is automatically switched to
+	#    "no".
+	#
+	#    If the packet contains Message-Authenticator but not
+	#    EAP-Message, then the value of the flag is automatically
+	#    switched to "yes".  The server has to check for
+	#    EAP-Message, because the previous RFCs require that the
+	#    packet contains Message-Authenticator when it also
+	#    contains EAP-Message.  So having a Message-Authenticator
+	#    in those packets doesn't give the server enough
+	#    information to determined if the client or home_server
+	#    has been updated.
+	#
+	#    If the packet contains Message-Authenticator and
+	#    EAP-Message, then the flag is left at the "auto" value.
+	#
+	#    WARNING: This switch is done for the first packet
+	#    received from that client or home server.  The change
+	#    does NOT persist across server restarts.  You MUST change
+	#    the to "yes" manually, in order to make a permanent
+	#    change to the configuration.
+	#
+	#    WARNING: If there are multiple NASes with the same source
+	#    IP and client definitions, BUT the NASes have different
+	#    behavior, then this flag WILL LIKELY BREAK YOUR NETWORK.
+	#
+	#    That is, when there are multiple different RADIUS clients
+	#    behind one NATed IP address, then these security settings
+	#    have to be set to allow the MOST INSECURE packets to be
+	#    processed.  This is a terrible idea, and will leave your
+	#    network vulnerable to the attack.  Please upgrade all
+	#    clients immediately.
+	#
+	#    The only solution to that rare configuration is to set
+	#    this flag to "no", in which case the network will work,
+	#    but will be vulnerable to the attack.
+	#
+	require_message_authenticator = auto
+
+	#
+	#  Global configuration for limiting the combination of
+	#  Proxy-State and Message-Authenticator.  This flag only
+	#  applies to Access-Request packets sent from a client, over
+	#  UDP or TCP.  This flag is ignored for TLS.
+	#
+	#  This flag sets the global default for all clients.  It can
+	#  be over-ridden in an individual client definition by adding
+	#  the same flag to that section with an appropriate value.
+	#
+	#  If "require_message_authenticator" is set to "yes", this
+	#  configuration item is ignored.
+	#
+	#  If "require_message_authenticator" is set to "no", this
+	#  configuration item is checked.
+	#
+	#  The possible values and meanings for "limit_proxy_state" are;
+	#
+	#  * "no" - allow any Access-Request packets from the client,
+	#    even packets which contain the BlastRADIUS attack.
+	#    Please be aware that in this configuration the server
+	#    will complain for EVERY packet which it receives.
+	#
+	#    The only reason to set this flag to "no" is when the
+	#    client is a proxy, AND it does not send
+	#    Message-Authenticator in Access-Request packets.  Even
+	#    then, the best approach to fix the issue is to (1) update
+	#    the proxy to send Message-Authenticator, and if that
+	#    can't be done, then (2) set this flag to "no", but ONLY
+	#    for that one client.  The global flag SHOULD still be set
+	#    to a safe value: "yes".
+	#
+	#    WARNING: Setting both this flag and the
+	#    "require_message_authenticator" flag to "no" will allow
+	#    MITM attackers to spoof Access-Request packets, and then
+	#    to create fake Access-Accept packets to the NAS!  At
+	#    least one of these configuration items MUST be set to
+	#    "yes" for the system to have any protection against the
+	#    attack.
+	#
+	#  * "yes" - Allow Access-Request packets without
+	#    Message-Authenticator, but only when they do not contain
+	#    Proxy-State.  Packets which contain Proxy-State MUST also
+	#    contain Message-Authenticator, otherwise they are
+	#    discarded.
+	#
+	#    This setting is safe for most NASes, GGSNs, BRAS, etc.
+	#    Most regular RADIUS clients do not send Proxy-State
+	#    attributes for Access-Request packets that they originate.
+	#    However some aggregators (e.g. Wireless LAN Controllers)
+	#    may act as a RADIUS proxy for requests from their cohort
+	#    of managed devices, and in such cases will provide a
+	#    Proxy-State attribute. For those systems, you _must_ look
+	#    at the actual packets to determine what to do. It may be
+	#    that the only way to fix the vulnerability is to upgrade
+	#    the WLC, and set "require_message_authenticator" to "yes".
+	#
+	#  * "auto" - Automatically determine the value of the flag,
+	#    based on the first Access-Request packet received from
+	#    that client.
+	#
+	#    If the packet contains Proxy-State but no
+	#    Message-Authenticator, then the value of the flag is
+	#    automatically switched to "no".
+	#
+	#    For all other situations, the value of the flag is
+	#    automatically switched to "yes".
+	#
+	#    WARNING: This switch is done for the first packet
+	#    received from that client.  The change does NOT persist
+	#    across server restarts.  You MUST change the to "yes"
+	#    manually, in order to make a permanent change to the
+	#    configuration.
+	#
+	#    WARNING: If there are multiple NASes with the same source
+	#    IP and client definitions, BUT the NASes have different
+	#    behavior, then this flag WILL LIKELY BREAK YOUR NETWORK.
+	#
+	#    That is, when there are multiple different RADIUS clients
+	#    behind one NATed IP address, then these security settings
+	#    have to be set to allow the MOST INSECURE packets to be
+	#    processed.  This is a terrible idea, and will leave your
+	#    network vulnerable to the attack.  Please upgrade all
+	#    clients immediately.
+	#
+	#    The only solution to that rare configuration is to set
+	#    this flag to "no", in which case the network will work,
+	#    but will be vulnerable to the attack.
+	#
+	limit_proxy_state = auto
 
 @openssl_version_check_config@
 }

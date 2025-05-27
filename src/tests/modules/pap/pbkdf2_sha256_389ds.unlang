@@ -1,0 +1,17 @@
+if ("${feature.tls}" == no) {
+	test_pass
+	return
+}
+
+if (User-Name == 'pbkdf2_sha256_389ds') {
+	update control {
+		&PBKDF2-Password := '{PBKDF2-SHA256}10000$9JjBuTTp9OCwANVzqUrq0QUvXnmDUJrm$f8Jrky2bX3z5eQ2SghxA38QSJ2PQwNenecmV4e4Ejyw='
+	}
+	pap.authorize
+	pap.authenticate
+	if (!ok) {
+		test_fail
+	} else {
+		test_pass
+	}
+}

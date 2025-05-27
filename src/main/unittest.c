@@ -72,6 +72,23 @@ void request_inject(UNUSED REQUEST *request)
 	/* do nothing */
 }
 
+/*
+ *	These are shared with threads.c, and nothing else.
+ */
+void request_free(REQUEST *request) CC_HINT(nonnull);
+void request_done(REQUEST *request, int original) CC_HINT(nonnull);
+
+void request_free(UNUSED REQUEST *request)
+{
+	/* do nothing */
+}
+
+void request_done(UNUSED REQUEST *request, UNUSED int original)
+{
+	/* do nothing */
+}
+
+
 #ifdef WITH_RADIUSV11
 int fr_radiusv11_client_init(UNUSED fr_tls_server_conf_t *tls);
 

@@ -53,11 +53,17 @@ INCLUDE		= -I. -Isrc \
 		  -include src/freeradius-devel/features.h \
 		  -include src/freeradius-devel/radpaths.h
 CFLAGS		= $(INCLUDE) -fno-strict-aliasing @CFLAGS@
+
+#
+#  To quiet modern compilers.  We're not going to fix warnings in the v3.2.x branch.
+#
+#CFLAGS		+= -Wno-unsafe-buffer-usage -Wno-extra-semi-stmt -Wno-format -Wno-reserved-macro-identifier \
+#		   -Wno-reserved-identifier -Wno-switch-default -Wno-implicit-fallthrough
+
 CPPFLAGS	= @CPPFLAGS@
 LIBPREFIX	= @LIBPREFIX@
 EXEEXT		= @EXEEXT@
 
-LIBTOOL		= JLIBTOOL
 ACLOCAL		= @ACLOCAL@
 AUTOCONF	= @AUTOCONF@
 AUTOHEADER	= @AUTOHEADER@
@@ -66,6 +72,7 @@ INSTALL_PROGRAM	= ${INSTALL}
 INSTALL_DATA	= ${INSTALL} -m 644
 INSTALL_SCRIPT	= ${INSTALL_PROGRAM}
 INSTALLSTRIP	= @INSTALLSTRIP@
+MANSKIP         = @MANSKIP@
 
 #
 #  Linker arguments for libraries searched for by the main

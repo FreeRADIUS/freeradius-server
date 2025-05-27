@@ -9,6 +9,7 @@ on:
 env:
   PANIC_ACTION: "gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
   ALT_OPENSSL: "3.0.8"
+  ALT_OPENSSL_PATH: "/old/3.0"
   CI: 1
   GH_ACTIONS: 1
   DEBIAN_FRONTEND: noninteractive
@@ -55,10 +56,10 @@ jobs:
 # docker  - the docker image name, if containers are being used
 # name    - used in the job name only
 #
-          - runs_on: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-20.04' }}"
-            docker: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'docker.internal.networkradius.com/self-hosted' || 'ubuntu:20.04' }}"
-            name: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self' || 'gh' }}-ubuntu20"
-            code: "ubuntu2004"
+          - runs_on: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-24.04' }}"
+            docker: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'docker.internal.networkradius.com/self-hosted' || 'ubuntu:24.04' }}"
+            name: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self' || 'gh' }}-ubuntu24"
+            code: "ubuntu2404"
 
         env:
           - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_ALT: no,  REPRODUCIBLE: no,  SANITIZER: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc-lean           }
@@ -154,6 +155,7 @@ jobs:
         libpcre3-dev \
         libperl-dev \
         libpq-dev \
+        librdkafka-dev \
         libreadline-dev \
         libruby \
         libsnmp-dev \
@@ -166,7 +168,6 @@ jobs:
         libyubikey-dev \
         lintian \
         pbuilder \
-        python-dev \
         python3-dev \
         ruby-dev \
         snmp \
@@ -174,10 +175,12 @@ jobs:
         quilt
 
     - name: Install LLVM 15 for 20.04
-      if: ${{ matrix.os.code == 'ubuntu2004' && matrix.env.CC == 'clang' }}
+      if: ${{ matrix.os.code == 'ubuntu2404' && matrix.env.CC == 'clang' }}
       run: |
-        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
-        sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-15 main"
+        install -d -m 0755 -o root -g root /etc/apt/keyrings
+        wget -O /etc/apt/keyrings/llvm-snapshot.asc https://apt.llvm.org/llvm-snapshot.gpg.key
+        echo "deb [signed-by=/etc/apt/keyrings/llvm-snapshot.asc] http://apt.llvm.org/focal/ llvm-toolchain-focal-15 main" | sudo tee /etc/apt/sources.list.d/llvm-toolchain.list
+        sudo apt-get update
         sudo apt-get install ${APT_OPTS} clang-15 llvm-15 gdb libclang-rt-15-dev
         sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-15 60 && sudo update-alternatives --set clang /usr/bin/clang-15
         sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-15 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-15
@@ -191,39 +194,41 @@ jobs:
     #  Build using some alternative libraries
     #
     #    MIT Kerberos -> HEIMDAL Kerberos
-    #    OpenSSL 1.0  -> OpenSSL 3.0
     #
-    - name: 'Fetch OpenSSL 3.0 SHA'
-      id: opensslshasum
-      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      run: |
-        wget -qO- http://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/shasum=/p' >> $GITHUB_OUTPUT
+    #  Now runners are Ubuntu 24, OpenSSL 3.0 is default
+    #  The sections below are left for future testing with other versions.
+    #
+#    - name: 'Fetch OpenSSL 3.0 SHA'
+#      id: opensslshasum
+#      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+#      run: |
+#        wget -qO- http://www.openssl.org/source/$ALT_OPENSSL_PATH/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/shasum=/p' >> $GITHUB_OUTPUT
 
-    - name: 'Restore OpenSSL 3.0 from the cache'
-      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      uses: actions/cache@v4
-      id: openssl-cache
-      with:
-        path: /opt/openssl/
-        key: openssl3-${{ steps.opensslshasum.outputs.shasum }}
+#    - name: 'Restore OpenSSL 3.0 from the cache'
+#      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+#      uses: actions/cache@v4
+#      id: openssl-cache
+#      with:
+#        path: /opt/openssl/
+#        key: openssl3-${{ steps.opensslshasum.outputs.shasum }}
 
-    - name: 'Build OpenSSL 3.0 (if cache stale)'
-      if: ${{ matrix.env.LIBS_ALT == 'yes' && steps.openssl-cache.outputs.cache-hit != 'true' }}
-      run: |
-        cd ~
-        wget https://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz
-        tar xzf openssl-$ALT_OPENSSL.tar.gz
-        cd openssl-$ALT_OPENSSL
-        ./Configure --prefix=/opt/openssl --openssldir=.
-        make -j `nproc`
-        make install
+#    - name: 'Build OpenSSL 3.0 (if cache stale)'
+#      if: ${{ matrix.env.LIBS_ALT == 'yes' && steps.openssl-cache.outputs.cache-hit != 'true' }}
+#      run: |
+#        cd ~
+#        wget https://www.openssl.org/source/$ALT_OPENSSL_PATH/openssl-$ALT_OPENSSL.tar.gz
+#        tar xzf openssl-$ALT_OPENSSL.tar.gz
+#        cd openssl-$ALT_OPENSSL
+#        ./Configure --prefix=/opt/openssl --openssldir=.
+#        make -j `nproc`
+#        make install
 
     - name: Use alternative libraries
       if: ${{ matrix.env.LIBS_ALT == 'yes' }}
       run: |
-        echo /opt/openssl/lib64 | sudo tee /etc/ld.so.conf.d/openssl3.conf >/dev/null
-        sudo ldconfig
         sudo apt-get install ${APT_OPTS} heimdal-dev
+#        echo /opt/openssl/lib64 | sudo tee /etc/ld.so.conf.d/openssl3.conf >/dev/null
+#        sudo ldconfig
 
     - name: Show versions
       run: |
@@ -266,6 +271,8 @@ jobs:
             # memory leak in rlm_{ldap,rest} and problems in perl+llvm
             rm -rf src/tests/modules/ldap/
             rm -rf src/tests/modules/rest/
+            # Spurious leak that is not detected with "-m", i.e. not calling dlclose on the module
+            rm -rf src/tests/modules/kafka/
         else
             enable_sanitizers=""
             extra_cflags=""
@@ -299,9 +306,9 @@ jobs:
     - name: Add OpenResty repository
       shell: bash
       run: |
-        wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
-        echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
-
+        install -d -m 0755 -o root -g root /etc/apt/keyrings
+        wget -O /etc/apt/keyrings/openresty.asc https://openresty.org/package/pubkey.gpg
+        echo "deb [signed-by=/etc/apt/keyrings/openresty.asc] http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
         sudo apt-get update
 
     - name: Setup git

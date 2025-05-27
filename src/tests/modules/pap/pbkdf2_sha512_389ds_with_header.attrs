@@ -1,0 +1,10 @@
+#
+#  Input packet
+#
+User-Name = 'pbkdf2_sha512_389ds_with_header'
+User-Password = 'password'
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Accept

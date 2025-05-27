@@ -95,10 +95,10 @@ jobs:
         key: hostapd-${{ matrix.env.NAME }}-${{ env.HOSTAPD_GIT_TAG }}-v1
 
     # Debian sid defaults to gcc12 which fails to build eapol_test
-    - name: Install GCC 10 for eapol_test build
+    - name: Install GCC 11 for eapol_test build
       run: |
-        apt-get install -y --no-install-recommends gcc-10
-        update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 60 && update-alternatives --set gcc /usr/bin/gcc-10
+        apt-get install -y --no-install-recommends gcc-11
+        update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 60 && update-alternatives --set gcc /usr/bin/gcc-11
       if: ${{ matrix.env.OS == 'debian:sid' }}
 
     - name: Build eapol_test

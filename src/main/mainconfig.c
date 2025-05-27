@@ -73,6 +73,8 @@ static char const *gid_name = NULL;
 static char const *chroot_dir = NULL;
 static bool allow_core_dumps = false;
 static char const *radlog_dest = NULL;
+static char const *require_message_authenticator = NULL;
+static char const *limit_proxy_state = NULL;
 
 /*
  *	These are not used anywhere else..
@@ -87,7 +89,55 @@ static bool		do_colourise = false;
 
 static char const	*radius_dir = NULL;	//!< Path to raddb directory
 
+#ifndef HAVE_KQUEUE
 static uint32_t		max_fds = 0;
+#endif
+
+static const FR_NAME_NUMBER fr_bool_auto_names[] = {
+	{ "false",	FR_BOOL_FALSE     },
+	{ "no",		FR_BOOL_FALSE     },
+	{ "0",		FR_BOOL_FALSE     },
+
+	{ "true",	FR_BOOL_TRUE      },
+	{ "yes",       	FR_BOOL_TRUE      },
+	{ "1",		FR_BOOL_TRUE      },
+
+	{ "auto",	FR_BOOL_AUTO      },
+
+	{ NULL,	0 }
+};
+
+/*
+ *	Get decent values for false / true / auto
+ */
+int fr_bool_auto_parse(CONF_PAIR *cp, fr_bool_auto_t *out, char const *str)
+{
+	int value;
+
+	/*
+	 *	Don't change anything.
+	 */
+	if (!str) return 0;
+
+	value = fr_str2int(fr_bool_auto_names, str, -1);
+	if (value >= 0) {
+		*out = value;
+		return 0;
+	}
+
+	/*
+	 *	This should never happen, as the defaults are in the
+	 *	source code.  If there's no CONF_PAIR, and there's a
+	 *	parse error, then the source code is wrong.
+	 */
+	if (!cp) {
+		fprintf(stderr, "%s: Error - Invalid value in configuration", main_config.name);
+		return -1;
+	}
+
+	cf_log_err(cf_pair_to_item(cp), "Invalid value for \"%s\"", cf_pair_attr(cp));
+	return -1;
+}
 
 /**********************************************************************
  *
@@ -162,6 +212,8 @@ static const CONF_PARSER security_config[] = {
 	{ "max_attributes",  FR_CONF_POINTER(PW_TYPE_INTEGER, &fr_max_attributes), STRINGIFY(0) },
 	{ "reject_delay",  FR_CONF_POINTER(PW_TYPE_TIMEVAL, &main_config.reject_delay), STRINGIFY(0) },
 	{ "status_server", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.status_server), "no"},
+	{ "require_message_authenticator", FR_CONF_POINTER(PW_TYPE_STRING, &require_message_authenticator), "auto"},
+	{ "limit_proxy_state", FR_CONF_POINTER(PW_TYPE_STRING, &limit_proxy_state), "auto"},
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	{ "allow_vulnerable_openssl", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.allow_vulnerable_openssl), "no"},
 #endif
@@ -175,6 +227,15 @@ static const CONF_PARSER resources[] = {
 	 *	it exists.
 	 */
 	{ "talloc_pool_size", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.talloc_pool_size), NULL },
+	CONF_PARSER_TERMINATOR
+};
+
+static const CONF_PARSER unlang_config[] = {
+	/*
+	 *	Unlang behaviour options
+	 */
+	{ "group_stop_return", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.group_stop_return), "no" },
+	{ "policy_stop_return", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.policy_stop_return), "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -230,6 +291,8 @@ static const CONF_PARSER server_config[] = {
 	{ "log_stripped_names", FR_CONF_POINTER(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, &log_stripped_names), NULL },
 
 	{  "security", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) security_config },
+
+	{  "unlang", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) unlang_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -870,6 +933,8 @@ int main_config_init(void)
 	if (!main_config.dictionary_dir) {
 		main_config.dictionary_dir = DICTDIR;
 	}
+	main_config.require_ma = FR_BOOL_AUTO;
+	main_config.limit_proxy_state = FR_BOOL_AUTO;
 
 	/*
 	 *	About sizeof(REQUEST) + sizeof(RADIUS_PACKET) * 2 + sizeof(VALUE_PAIR) * 400
@@ -951,6 +1016,11 @@ do {\
 		cf_section_add(cs, subcs);
 	}
 	version_init_numbers(subcs);
+
+	/*
+	 *	Track the status of the configuration.
+	 */
+	if (rad_debug_lvl) cf_md5_init();
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", radius_dir, main_config.name);
@@ -1144,11 +1214,15 @@ do {\
 	FR_INTEGER_COND_CHECK("max_request_time", main_config.max_request_time,
 			      (main_config.max_request_time != 0), 100);
 
+#ifndef USEC
+#define USEC (1000000)
+#endif
+
 	/*
 	 *	reject_delay can be zero.  OR 1 though 10.
 	 */
 	if ((main_config.reject_delay.tv_sec != 0) || (main_config.reject_delay.tv_usec != 0)) {
-		FR_TIMEVAL_BOUND_CHECK("reject_delay", &main_config.reject_delay, >=, 1, 0);
+		FR_TIMEVAL_BOUND_CHECK("reject_delay", &main_config.reject_delay, >=, 0, USEC / 2);
 	}
 
 	FR_INTEGER_BOUND_CHECK("proxy_dedup_window", main_config.proxy_dedup_window, <=, 10);
@@ -1168,6 +1242,23 @@ do {\
 	 */
 	main_config.init_delay.tv_sec = 0;
 	main_config.init_delay.tv_usec = 2* (1000000 / 3);
+
+	{
+		CONF_PAIR *cp = NULL;
+
+		subcs = cf_section_sub_find(cs, "security");
+		if (subcs) cp = cf_pair_find(subcs, "require_message_authenticator");
+		if (fr_bool_auto_parse(cp, &main_config.require_ma, require_message_authenticator) < 0) {
+			cf_file_free(cs);
+			return -1;
+		}
+
+		if (subcs) cp = cf_pair_find(subcs, "limit_proxy_state");
+		if (fr_bool_auto_parse(cp, &main_config.limit_proxy_state, limit_proxy_state) < 0) {
+			cf_file_free(cs);
+			return -1;
+		}
+	}
 
 #ifndef HAVE_KQUEUE
 	/*

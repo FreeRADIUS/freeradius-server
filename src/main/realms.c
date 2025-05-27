@@ -403,6 +403,14 @@ static ssize_t xlat_home_server_dynamic(UNUSED void *instance, REQUEST *request,
 	}
 
 	home = home_server_byname(name, type);
+
+	/*
+	 *	If we're looking for an auth / acct homeserver, allow for auth+acct
+	 */
+	if (!home && ((type == HOME_TYPE_AUTH) || (type == HOME_TYPE_ACCT))) {
+		home = home_server_byname(name, HOME_TYPE_AUTH_ACCT);
+	}
+
 	if (!home) {
 		*out = '\0';
 		return 0;
@@ -481,8 +489,11 @@ static CONF_PARSER home_server_recv_coa[] = {
 
 #endif
 
+static const char *require_message_authenticator = NULL;
+
 static CONF_PARSER home_server_config[] = {
 	{ "nonblock", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, home_server_t, nonblock), "no" },
+	{ "require_message_authenticator", FR_CONF_POINTER(PW_TYPE_STRING| PW_TYPE_IGNORE_DEFAULT, &require_message_authenticator), NULL },
 	{ "ipaddr", FR_CONF_OFFSET(PW_TYPE_COMBO_IP_ADDR, home_server_t, ipaddr), NULL },
 	{ "ipv4addr", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, home_server_t, ipaddr), NULL },
 	{ "ipv6addr", FR_CONF_OFFSET(PW_TYPE_IPV6_ADDR, home_server_t, ipaddr), NULL },
@@ -520,6 +531,8 @@ static CONF_PARSER home_server_config[] = {
 
 	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_name), NULL },
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_password), NULL },
+
+	{ "affinity", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, affinity), NULL},
 
 #ifdef WITH_STATS
 	{ "historic_average_window", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ema.window), NULL },
@@ -623,6 +636,8 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 	if (parent && strcmp(cf_section_name1(parent), "server") == 0) {
 		home->parent_server = cf_section_name2(parent);
 	}
+
+	FR_INTEGER_BOUND_CHECK("coa_mrt", home->affinity, <=, 255);
 }
 
 /** Insert a new home server into the various internal lookup trees
@@ -638,7 +653,7 @@ static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
 		return false;
 	}
 
-	if (!home->virtual_server && !rbtree_insert(home_servers_byaddr, home)) {
+	if (!home->virtual_server && !home->dynamic && !rbtree_insert(home_servers_byaddr, home)) {
 		rbtree_deletebydata(home_servers_byname, home);
 		cf_log_err_cs(cs, "Internal error %d adding home server %s", __LINE__, home->log_name);
 		return false;
@@ -680,7 +695,7 @@ bool realm_home_server_add(home_server_t *home)
 		return false;
 	}
 
-	if (!home->virtual_server && (rbtree_finddata(home_servers_byaddr, home) != NULL)) {
+	if (!home->virtual_server && !home->dynamic && (rbtree_finddata(home_servers_byaddr, home) != NULL)) {
 		char buffer[INET6_ADDRSTRLEN + 3];
 
 		inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr, buffer, sizeof(buffer));
@@ -786,12 +801,19 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	home->cs = cs;
 	home->state = HOME_STATE_UNKNOWN;
 	home->proto = IPPROTO_UDP;
+	home->require_ma = main_config.require_ma;
+
+	require_message_authenticator = false;
 
 	/*
 	 *	Parse the configuration into the home server
 	 *	struct.
 	 */
 	if (cf_section_parse(cs, home, home_server_config) < 0) goto error;
+
+	if (fr_bool_auto_parse(cf_pair_find(cs, "require_message_authenticator"), &home->require_ma, require_message_authenticator) < 0) {
+		goto error;
+	}
 
 	/*
 	 *	It has an IP address, it must be a remote server.
@@ -960,7 +982,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		home->proto = proto;
 	}
 
-	if (!home->virtual_server && rbtree_finddata(home_servers_byaddr, home)) {
+	if (!home->virtual_server && !home->dynamic && rbtree_finddata(home_servers_byaddr, home)) {
 		cf_log_err_cs(cs, "Duplicate home server");
 		goto error;
 	}
@@ -1121,6 +1143,11 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		 */
 		if (tls) {
 			int rcode;
+
+			/*
+			 *	We don't require this for TLS connections.
+			 */
+			home->require_ma = false;
 
 			home->tls = tls_client_conf_parse(tls);
 			if (!home->tls) {
@@ -1618,12 +1645,46 @@ static int server_pool_add(realm_config_t *rc,
 			goto error;
 		}
 
+		if (home->affinity) {
+			if (home->virtual_server) {
+				ERROR("Home server %s is a virtual server, and cannot be used with 'affinity'", home->name);
+				goto error;
+			}
+
+			if (!pool->affinity_group) {
+				pool->affinity_group = talloc_zero_array(pool, home_server_t *, pool->num_home_servers);
+				if (!pool->affinity_group) {
+					ERROR("Out of memory");
+					goto error;
+				}
+			}
+
+			if (home->affinity >= (uint32_t) pool->num_home_servers) {
+				ERROR("Home server %s has invalid 'affinity' value %u.  It must be less than %u",
+				      home->name, home->affinity, pool->num_home_servers);
+				goto error;
+			}
+
+			if (pool->affinity_group[home->affinity]) {
+				ERROR("Home server %s has invalid 'affinity' value %u.  That value is already used by home server %s",
+				      home->name, home->affinity, pool->affinity_group[home->affinity]->name);
+				goto error;
+			}
+
+			pool->affinity_group[home->affinity] = home;
+		}
+
 		if (do_print) cf_log_info(cs, "\thome_server = %s", home->name);
 		pool->servers[num_home_servers++] = home;
 	} /* loop over home_server's */
 
-	if (pool->fallback && do_print) {
-		cf_log_info(cs, "\tfallback = %s", pool->fallback->name);
+	if (pool->fallback) {
+		if (do_print) cf_log_info(cs, "\tfallback = %s", pool->fallback->name);
+
+		if (pool->affinity_group) {
+			ERROR("Cannot use home server pool 'fallback' when home server 'affinity' is set");
+			goto error;
+		}
 	}
 
 	if (!realm_pool_add(pool, cs)) goto error;
@@ -2481,6 +2542,11 @@ int realms_init(CONF_SECTION *config)
 	     cs = cf_subsection_find_next(config, cs, "realm")) {
 		if (!realm_add(rc, cs)) {
 		error:
+			/*
+			 *	realm_config is freed by realms_free()
+			 *	so if rc == realm_config set it to NULL here.
+			 */
+			if (rc == realm_config) rc = NULL;
 			realms_free();
 			/*
 			 *	Must be called after realms_free as home_servers
@@ -2538,7 +2604,7 @@ int realms_init(CONF_SECTION *config)
 		dir = opendir(rc->directory);
 		if (!dir) {
 			cf_log_err_cs(config, "Error reading directory %s: %s",
-				      rc->directory, fr_syserror(errno));				      
+				      rc->directory, fr_syserror(errno));
 			goto error;
 		}
 
@@ -2555,7 +2621,7 @@ int realms_init(CONF_SECTION *config)
 			 *	Skip the TLS configuration.
 			 */
 			if (strcmp(dp->d_name, "tls.conf") == 0) continue;
-		
+
 			/*
 			 *	Check for valid characters
 			 */
@@ -2742,7 +2808,7 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 }
 
 home_server_t *home_server_ldb(char const *realmname,
-			     home_pool_t *pool, REQUEST *request)
+			       home_pool_t *pool, REQUEST *request)
 {
 	int		start;
 	int		count;
@@ -2750,6 +2816,26 @@ home_server_t *home_server_ldb(char const *realmname,
 	home_server_t	*zombie = NULL;
 	VALUE_PAIR	*vp;
 	uint32_t	hash;
+
+	/*
+	 *	Over-ride the pool configuration if the pool is marked up as having affinity, AND the packet has a State attribute.
+	 */
+	if (pool->affinity_group &&
+	    (request->packet->code == PW_CODE_ACCESS_REQUEST) &&
+	    ((vp = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY)) != NULL) &&
+	    (vp->vp_length > 1) &&
+	    (vp->vp_octets[0] < (uint32_t) pool->num_home_servers) &&
+	    (pool->affinity_group[vp->vp_octets[0]] != NULL)) {
+		    found = pool->affinity_group[vp->vp_octets[0]];
+
+		    if (HOME_SERVER_IS_DEAD(found)) return NULL;
+
+		    /*
+		     *	Get rid of the extra octet that we added on the outbound proxying.
+		     */
+		    fr_pair_value_memcpy(vp, vp->vp_octets + 1, vp->vp_length - 1);
+		    return found;
+	}
 
 	/*
 	 *	Determine how to pick choose the home server.
@@ -3132,11 +3218,12 @@ home_pool_t *home_pool_byname(char const *name, int type)
 	return rbtree_finddata(home_pools_byname, &mypool);
 }
 
+
 int home_server_afrom_file(char const *filename)
 {
 	CONF_SECTION *cs, *subcs;
 	char const *p;
-	home_server_t *home;
+	home_server_t *home, *old;
 
 	if (!realm_config->dynamic) {
 		fr_strerror_printf("Must set \"dynamic = true\" in proxy.conf for dynamic home servers to work");
@@ -3177,14 +3264,22 @@ int home_server_afrom_file(char const *filename)
 
 	home->dynamic = true;
 
-	if (home->virtual_server) {
-		fr_strerror_printf("Dynamic home_server '%s' cannot have 'server = %s' configuration item", p, home->virtual_server);
+#ifdef WITH_TLS
+	/*
+	 *	All of the other code assumes that only TLS sockets
+	 *	have child listeners.  See listen.c for references to
+	 *	...->listeners, which are all inside of blocks which
+	 *	check for TLS.
+	 */
+	if (!home->tls) {
+		fr_strerror_printf("Dynamic home_server '%s' does not use TLS - ignoring it.", p);
 		talloc_free(home);
 		goto error;
 	}
+#endif
 
-	if (home->dual) {
-		fr_strerror_printf("Dynamic home_server '%s' is missing 'type', or it is set to 'auth+acct'.  Please specify 'type = auth' or 'type = acct', etc.", p);
+	if (home->virtual_server) {
+		fr_strerror_printf("Dynamic home_server '%s' cannot have 'server = %s' configuration item", p, home->virtual_server);
 		talloc_free(home);
 		goto error;
 	}
@@ -3197,8 +3292,88 @@ int home_server_afrom_file(char const *filename)
 	}
 #endif
 
+	old = home_server_byname(home->name, home->type);
+	if (old) {
+		if (!old->dynamic) {
+			fr_strerror_printf("Cannot replace static home server %s with a dynamic one",
+					   home->name);
+			talloc_free(home);
+			goto error;
+		}
+
+#ifdef WITH_TLS
+		if (!old->tls) {
+			fr_strerror_printf("Cannot replace non-TLS home server %s with a dynamic one",
+					   home->name);
+			talloc_free(home);
+			goto error;
+		}
+#endif
+
+#if 0
+		/*
+		 *	The fr_socket_client_tcp() and fr_socket() functions may change the
+		 *	source IP, i.e. * -> 192.168...., due to issues like FreeBSD jails.
+		 */
+		if (memcmp(&old->src_ipaddr, &home->src_ipaddr, sizeof(home->src_ipaddr)) != 0) {
+			fr_strerror_printf("Cannot change source IP for dynamic home server %s.",
+					   home->name);
+			talloc_free(home);
+			goto error;
+		}
+#endif
+
+		if (old->ipaddr.af != home->ipaddr.af) {
+			fr_strerror_printf("Cannot change IP address families for dynamic home server %s.",
+					   home->name);
+			talloc_free(home);
+			goto error;
+		}
+
+		/*
+		 *	No other thread is writing to it, as we're running in the master thread.  So this
+		 *	memcpy is safe.
+		 *
+		 *	@todo - extend the lifetime?
+		 */
+		if (memcmp(&old->ipaddr, &home->ipaddr, sizeof(home->ipaddr)) == 0) {
+			talloc_free(home);
+			return 0;
+		}
+
+		/*
+		 *	Change the destination IP to the new one.
+		 *
+		 *	This isn't thread-safe.  :(
+		 */
+		switch (old->ipaddr.af) {
+		case AF_INET:
+			old->ipaddr.ipaddr.ip4addr.s_addr = home->ipaddr.ipaddr.ip4addr.s_addr;
+			break;
+
+		case AF_INET6:
+			memcpy(&old->ipaddr.ipaddr.ip6addr.s6_addr,
+			       &home->ipaddr.ipaddr.ip6addr.s6_addr,
+			       sizeof(old->ipaddr.ipaddr.ip6addr.s6_addr));
+			break;
+
+		default:
+			fr_strerror_printf("Bad address family");
+			talloc_free(home);
+			return -1;
+		}
+
+		talloc_free(home);
+		return 0;
+	}
+
+	/*
+	 *	@todo - find the original one.  If it already exists,
+	 *	just change the IP address?
+	 */
+
 	if (!realm_home_server_add(home)) {
-		fr_strerror_printf("Failed adding home_server to the internal data structures");
+		fr_strerror_printf("Failed adding dynamic server");
 		talloc_free(home);
 		goto error;
 	}
@@ -3206,7 +3381,7 @@ int home_server_afrom_file(char const *filename)
 	return 0;
 }
 
-int home_server_delete(char const *name, char const *type_name)
+int home_server_delete_byname(char const *name, char const *type_name)
 {
 	home_server_t *home;
 	int type;
@@ -3236,13 +3411,24 @@ int home_server_delete(char const *name, char const *type_name)
 		return -1;
 	}
 
+	return home_server_delete(home);
+}
+
+int home_server_delete(home_server_t *home)
+{
 	if (!home->dynamic) {
-		fr_strerror_printf("Cannot delete static home_server %s", p);
+		fr_strerror_printf("Cannot delete static home_server %s", home->name);
 		return -1;
 	}
 
+#ifdef WITH_TLS
+	if (rbtree_num_elements(home->listeners) > 0) {
+		fr_strerror_printf("Cannot delete dynaic home_server %s - it still has open sockets", home->name);
+		return -1;
+	}
+#endif
+
 	(void) rbtree_deletebydata(home_servers_byname, home);
-	(void) rbtree_deletebydata(home_servers_byaddr, home);
 #ifdef WITH_STATS
 	(void) rbtree_deletebydata(home_servers_bynumber, home);
 #endif

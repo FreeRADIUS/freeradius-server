@@ -190,11 +190,29 @@ listen {
 	      #  If no packets have been received over the connection for
 	      #  this time, the connection will be closed.
 	      #
+	      #  In general, the client should close connections when
+	      #  they are idle.  This setting is here just to make
+	      #  sure that bad clients do not leave connections open
+	      #  for days.
+	      #
+	      #  If an idle timeout is set for only a "client" or a
+	      #  "listen" section, that timeout is used.
+	      #
+	      #  If an idle timeout is set for both a "client" and a
+	      #  "listen" section, then the smaller timeout is used.
+	      #
 	      #  Setting this to 0 means "no timeout".
 	      #
 	      #  We STRONGLY RECOMMEND that you set an idle timeout.
 	      #
-	      idle_timeout = 30
+	      #  Systems with many incoming connections (500+) should
+	      #  set this value to a lower number.  There are only a
+	      #  limited number of usable file descriptors (usually
+	      #  1024) due to Posix API issues.  If many sockets are
+	      #  idle, it can prevent the server from opening new
+	      #  connections.
+	      #
+	      idle_timeout = 900
 	}
 }
 
@@ -681,6 +699,7 @@ accounting {
 	#  recorded from the corresponding Access-Accept
 	#  use it only if your NAS boxes do not support CUI themselves
 #	cui
+
 	#
 	#  Create a 'detail'ed log of the packets.
 	#  Note that accounting requests which are proxied
@@ -690,8 +709,9 @@ accounting {
 
 	#  Update the wtmp file
 	#
-	#  If you don't use "radlast", you can delete this line.
-	unix
+	#  If you don't use "radlast" (becoming obsolete and no longer
+	#  available on all systems), you can delete this line.
+#	unix
 
 	#
 	#  For Simultaneous-Use tracking.
@@ -1080,9 +1100,31 @@ post-auth {
 #  stage.  This stage can re-write the request, or decide to
 #  cancel the proxy.
 #
+#  Before this section is run, the request list is copied to the
+#  proxy list.  The proxied packet can be edited by examining
+#  or changing attributes in the proxy list.
+#
 #  Only a few modules currently have this method.
 #
 pre-proxy {
+	#  Some supplicants will aggressively retry after an Access-Reject,
+	#  contrary to standards. You can avoid sending excessive load to home
+	#  servers that based on recent history is likely to only result in
+	#  further authentication failures by calling the proxy_rate_limit
+	#  module here and in the post-proxy section.
+	#
+	#  If a request is send too soon after a home server returned an
+	#  Access-Reject, then instead of proxying a request a Access-Reject
+	#  will be returned.
+	#
+	#  The principle is to expend a small amount of resources at the edge
+	#  (an in-memory cache of recent rejects for calling stations) to
+	#  defend the limited processing and network resources at the core.
+	#
+	#  The strategy can be tuned in the module configuration.
+	#
+#	proxy_rate_limit
+
 	# Before proxing the request add an Operator-Name attribute identifying
 	# if the operator-name is found for this client.
 	# No need to uncomment this if you have already enabled this in
@@ -1114,6 +1156,11 @@ pre-proxy {
 #  to a home server, the request may be massaged here, in the
 #  post-proxy stage.
 #
+#  Before this section is run, all attributes in the reply list
+#  are deleted.  This section can then examine or edit the
+#  proxy_reply list.  Once this section is finished, the attributes
+#  in the proxy_reply list are copied to the reply list.
+#
 post-proxy {
 
 	#  If you want to have a log of replies from a home server,
@@ -1126,17 +1173,21 @@ post-proxy {
 #	attr_filter.post-proxy
 
 	#
-	#  If you are proxying LEAP, you MUST configure the EAP
-	#  module, and you MUST list it here, in the post-proxy
-	#  stage.
+	#  The EAP module will perform some validation of proxied EAP
+	#  packets.  Malformed EAP packets will be rejected, and will
+	#  not be proxied.
 	#
-	#  You MUST also use the 'nostrip' option in the 'realm'
-	#  configuration.  Otherwise, the User-Name attribute
-	#  in the proxied request will not match the user name
-	#  hidden inside of the EAP packet, and the end server will
-	#  reject the EAP request.
+	#  This configuration is most useful to prevent bad
+	#  supplicants or APs from attacking the proxies and home
+	#  servers.
 	#
-	eap
+#	eap
+
+	#  If proxied requests are to be rate limited, then the
+	#  proxy_rate_limit module must be called here to maintain a
+	#  record of proxy responses.
+	#
+#	proxy_rate_limit
 
 	#
 	#  If the server tries to proxy a request and fails, then the

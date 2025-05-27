@@ -51,6 +51,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
+#define LOG_PREFIX "TLS"
+
 static void dump_hex(char const *msg, uint8_t const *data, size_t data_len)
 {
 	size_t i;
@@ -72,8 +74,9 @@ static void dump_hex(char const *msg, uint8_t const *data, size_t data_len)
 static void tls_socket_close(rad_listen_t *listener)
 {
 	listen_socket_t *sock = listener->data;
+	REQUEST *request = sock->request;
 
-	SSL_shutdown(sock->ssn->ssl);
+	if (!sock->client_closed) SSL_shutdown(sock->ssn->ssl);
 
 	listener->status = RAD_LISTEN_STATUS_EOL;
 	listener->tls = NULL; /* parent owns this! */
@@ -81,7 +84,7 @@ static void tls_socket_close(rad_listen_t *listener)
 	/*
 	 *	Tell the event handler that an FD has disappeared.
 	 */
-	DEBUG("(TLS) Closing connection");
+	ROPTIONAL(RDEBUG3, DEBUG3, "(TLS) Closing connection");
 	radius_update_listener(listener);
 
 	/*
@@ -125,7 +128,6 @@ static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener)
 
 
 		ERROR("(TLS) Error writing to socket: %s", fr_syserror(errno));
-
 		tls_socket_close(listener);
 		return -1;
 	}
@@ -150,15 +152,34 @@ static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener)
 	return 0;
 }
 
+static int try_connect(rad_listen_t *listener);
+
 static void tls_write_available(UNUSED fr_event_list_t *el, UNUSED int fd, void *ctx)
 {
 	rad_listen_t *listener = ctx;
 	listen_socket_t *sock = listener->data;
 
+	/*
+	 *	Try to connect once the socket has become writeable.
+	 */
+	if (!sock->ssn->connected) {
+		int rcode;
+
+		rcode = try_connect(listener);
+		if (rcode <= 0) {
+			tls_socket_close(listener);
+			return;
+		}
+
+		if (!sock->ssn->connected) {
+			return;
+		}
+	}
+
 	proxy_listener_thaw(listener);
 
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
-	(void) tls_socket_write(listener);
+	if (sock->ssn->dirty_out.used) (void) tls_socket_write(listener);
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 }
 
@@ -247,7 +268,7 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 	 *	Let's see if the PROXY line is well-formed.
 	 */
 	if ((eol - p) < 14) goto invalid_data;
-	
+
 	/*
 	 *	We only support TCP4 and TCP6.
 	 */
@@ -360,7 +381,7 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 	} else {
 		sock->ssn->dirty_in.used = 0;
 	}
-		
+
 	/*
 	 *	It's no longer a PROXY protocol, but just straight TLS.
 	 */
@@ -373,11 +394,11 @@ static int tls_socket_recv(rad_listen_t *listener)
 {
 	bool doing_init = false, already_read = false;
 	ssize_t rcode;
+	size_t data_len;
 	RADIUS_PACKET *packet;
 	REQUEST *request;
 	listen_socket_t *sock = listener->data;
 	fr_tls_status_t status;
-	RADCLIENT *client = sock->client;
 
 	if (!sock->packet) {
 		sock->packet = rad_alloc(sock, false);
@@ -486,13 +507,22 @@ static int tls_socket_recv(rad_listen_t *listener)
 		goto check_for_setup;
 	}
 
+	/*
+	 *	Is there already enough application data in the buffer for the
+	 *	next RADIUS packet?
+	 */
+	if (sock->ssn->clean_out.used >= 20 &&
+	    ((int) sock->ssn->clean_out.used) >= ((sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3])) {
+		goto read_application_data;
+	}
+
 	if (!already_read) {
 		rcode = read(request->packet->sockfd,
 			     sock->ssn->dirty_in.data,
 			     sizeof(sock->ssn->dirty_in.data));
 		if ((rcode < 0) && (errno == ECONNRESET)) {
 		do_close:
-			DEBUG("(TLS) Closing socket from client port %u", sock->other_port);
+			RDEBUG("(TLS) Closing socket from client port %u", sock->other_port);
 			tls_socket_close(listener);
 			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 			return 0;
@@ -508,6 +538,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		 */
 		if (rcode == 0) {
 			RDEBUG("(TLS) Client has closed the TCP connection");
+			sock->client_closed = true;
 			goto do_close;
 		}
 
@@ -643,6 +674,7 @@ get_application_data:
 	 */
 	if (sock->state != LISTEN_TLS_RUNNING) {
 		RDEBUG3("(TLS) Holding application data until setup is complete");
+		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 		return 0;
 	}
 
@@ -656,17 +688,25 @@ read_application_data:
 	 *	If the packet is a complete RADIUS packet, return it to
 	 *	the caller.  Otherwise...
 	 */
-	if ((sock->ssn->clean_out.used < 20) ||
-	    (((sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3]) != (int) sock->ssn->clean_out.used)) {
-		RDEBUG("(TLS) Received bad packet: Length %zd contents %d",
-		       sock->ssn->clean_out.used,
-		       (sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3]);
-		goto do_close;
+	if (sock->ssn->clean_out.used < 20) {
+		RDEBUG3("(TLS) Received partial packet (have %zu, want >=20), waiting for more.",
+			sock->ssn->clean_out.used);
+		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+		return 0;
 	}
 
+	if (((int) sock->ssn->clean_out.used) < ((sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3])) {
+		RDEBUG3("(TLS) Received partial packet (have %zu, want %u), waiting for more.",
+			sock->ssn->clean_out.used, (sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3]);
+		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+		return 0;
+	}
+
+	data_len = (sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3];
+
 	packet = sock->packet;
-	packet->data = talloc_array(packet, uint8_t, sock->ssn->clean_out.used);
-	packet->data_len = sock->ssn->clean_out.used;
+	packet->data = talloc_array(packet, uint8_t, data_len);
+	packet->data_len = data_len;
 	sock->ssn->record_minus(&sock->ssn->clean_out, packet->data, packet->data_len);
 	packet->vps = NULL;
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
@@ -674,6 +714,7 @@ read_application_data:
 #ifdef WITH_RADIUSV11
 	packet->radiusv11 = sock->radiusv11;
 #endif
+	packet->tls = true;
 
 	if (!rad_packet_ok(packet, 0, NULL)) {
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -709,11 +750,8 @@ read_application_data:
 		}
 	}
 
-	FR_STATS_INC(auth, total_requests);
-
 	return 1;
 }
-
 
 int dual_tls_recv(rad_listen_t *listener)
 {
@@ -852,6 +890,16 @@ redo:
 		}
 	}
 
+	/*
+	 *	If there is enough remaining application data in the buffer for another
+	 *	RADIUS packet, re-run tls_socket_recv() to process it.
+	 */
+	if (sock->ssn->clean_out.used >= 20 &&
+	    ((int) sock->ssn->clean_out.used) >= ((sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3])) {
+		DEBUG3("(TLS) %ld bytes of application data remaining", sock->ssn->clean_out.used);
+		goto redo;
+	}
+
 	return 1;
 }
 
@@ -868,37 +916,40 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == dual_tls_send);
 
-	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
-
 	/*
-	 *	See if the policies allowed this connection.
+	 *	If the socket is vaguely alive, then write to it.
+	 *	Otherwise it's dead, and we don't do anything.
 	 */
-	if (sock->state == LISTEN_TLS_CHECKING) {
-		if (request->reply->code != PW_CODE_ACCESS_ACCEPT) {
-			RDEBUG("(TLS) Connection checks failed - closing connection");
-			listener->status = RAD_LISTEN_STATUS_EOL;
-			listener->tls = NULL; /* parent owns this! */
+	switch (listener->status) {
+	case RAD_LISTEN_STATUS_KNOWN:
+	case RAD_LISTEN_STATUS_FROZEN:
+	case RAD_LISTEN_STATUS_PAUSE:
+	case RAD_LISTEN_STATUS_RESUME:
+		break;
 
-			/*
-			 *	Tell the event handler that an FD has disappeared.
-			 */
-			radius_update_listener(listener);
-			return 0;
-		}
-
-		/*
-		 *	Resume reading from the listener.
-		 */
-		RDEBUG("(TLS) Connection checks succeeded - continuing with normal reads");
-		listener->status = RAD_LISTEN_STATUS_RESUME;
-		radius_update_listener(listener);
-
-		rad_assert(sock->request->packet != request->packet);
-
-		sock->state = LISTEN_TLS_SETUP;
-		(void) dual_tls_recv(listener);
+	case RAD_LISTEN_STATUS_INIT:
+	case RAD_LISTEN_STATUS_EOL:
+	case RAD_LISTEN_STATUS_REMOVE_NOW:
 		return 0;
 	}
+
+	/*
+	 *	We're trying to send a reply to the "check
+	 *	client connection" packet.  Instead, just
+	 *	finish the session setup.
+	 */
+	if (sock->state == LISTEN_TLS_SETUP) {
+		RDEBUG("(TLS) Finishing session setup");
+		return 0;
+	}
+
+	/*
+	 *	The code in rad_status_server() looks for this state,
+	 *	and either swaps it to LISTEN_TLS_SETUP, or else
+	 *	changes listener->status to EOL.  As a result, this
+	 *	state should never be reachable in the send() routine.
+	 */
+	fr_assert(sock->state != LISTEN_TLS_CHECKING);
 
 	/*
 	 *	Accounting reject's are silently dropped.
@@ -1028,10 +1079,11 @@ int dual_tls_send_coa_request(rad_listen_t *listener, REQUEST *request)
 }
 #endif
 
-static int try_connect(listen_socket_t *sock)
+static int try_connect(rad_listen_t *this)
 {
 	int ret;
 	time_t now;
+	listen_socket_t *sock = this->data;
 
 	now = time(NULL);
 	if ((sock->opened + sock->connect_timeout) < now) {
@@ -1047,10 +1099,12 @@ static int try_connect(listen_socket_t *sock)
 			return -1;
 
 		case SSL_ERROR_WANT_READ:
+			if (this->blocked) proxy_listener_thaw(this);
 			DEBUG3("(TLS) SSL_connect() returned WANT_READ");
 			return 2;
 
 		case SSL_ERROR_WANT_WRITE:
+			proxy_listener_freeze(this, tls_write_available);
 			DEBUG3("(TLS) SSL_connect() returned WANT_WRITE");
 			return 2;
 		}
@@ -1086,7 +1140,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 	listen_socket_t *sock = listener->data;
 
 	if (!sock->ssn->connected) {
-		rcode = try_connect(sock);
+		rcode = try_connect(listener);
 		if (rcode <= 0) return rcode;
 
 		if (rcode == 2) return 0; /* more negotiation needed */
@@ -1250,18 +1304,21 @@ int proxy_tls_recv(rad_listen_t *listener)
 
 	rad_assert(sock->ssn != NULL);
 
-	DEBUG3("Proxy SSL socket has data to read");
+	DEBUG3("(TLS) Proxy socket has data to read");
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
 	data_len = proxy_tls_read(listener);
 	if (data_len < 0) {
 		tls_socket_close(listener);
 		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
-		DEBUG("Closing TLS socket to home server");
+		DEBUG("(TLS) Closing connection to home server");
 		return 0;
 	}
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
-	if (data_len == 0) return 0; /* not done yet */
+	if (data_len == 0) {
+		DEBUG3("(TLS) Proxy socket read no data from the network");
+		return 0; /* not done yet */
+	}
 
 	data = sock->data;
 
@@ -1289,6 +1346,7 @@ int proxy_tls_recv(rad_listen_t *listener)
 	}
 
 #endif
+	packet->tls = true;
 
 	/*
 	 *	FIXME: Client MIB updates?
@@ -1376,6 +1434,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	 *	if there's no packet, encode it here.
 	 */
 	if (!request->proxy->data) {
+		request->reply->tls = true;
 		request->proxy_listener->proxy_encode(request->proxy_listener,
 						      request);
 	}
@@ -1384,7 +1443,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 
 	if (!sock->ssn->connected) {
 		PTHREAD_MUTEX_LOCK(&sock->mutex);
-		rcode = try_connect(sock);
+		rcode = try_connect(listener);
 		if (rcode <= 0) {
 			tls_socket_close(listener);
 			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
@@ -1512,6 +1571,8 @@ int proxy_tls_send_reply(rad_listen_t *listener, REQUEST *request)
 
 	if ((listener->status != RAD_LISTEN_STATUS_INIT &&
 	    (listener->status != RAD_LISTEN_STATUS_KNOWN))) return 0;
+
+	request->reply->tls = true;
 
 	/*
 	 *	Pack the VPs

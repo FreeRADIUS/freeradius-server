@@ -690,6 +690,12 @@ eap {
 			#  You should also delete all of the files
 			#  in the directory when the server starts.
 			#
+			#  Note that, on Linux systems with systemd, the
+			#  /tmp directory may be restricted. In this case
+			#  it may be best to use `${run_dir}/tmp` here
+			#  and create the temporary directory with the
+			#  systemd `RuntimeDirectory` unit option.
+			#
 		#	tmpdir = /tmp/radiusd
 
 			#  The command used to verify the client cert.
@@ -1142,12 +1148,64 @@ eap {
 	#
 	#  The TEAP module implements the EAP-TEAP protocol
 	#
+	#  Note that for Windows:
+	#
+	#  * "machine" authentication is ALWAYS EAP-TLS.
+	#  * "user" authentication is almost always EAP-MSCHAPv2,
+	#    except when Windows is configured for "smartcard"
+	#    authentication.
+	#
+	#  If you configure FreeRADIUS to do anything else, then
+	#  Windows will either fail, or will just return one of the
+	#  methods listed above.
+	#
 	#teap {
 		#  Point to the common TLS configuration
 		#
 	#	tls = tls-common
 
 	#	default_eap_type = mschapv2
+
+		#
+		#  Set the EAP type for user / machine authentication.
+		#
+		#  If set, these values over-ride "default_eap_type"
+		#
+		#  These values can be over-ridden at run time by setting
+		#
+		#	&session-state:TEAP-Type-User = ...
+		#
+		#  and
+		#	&session-state:TEAP-Type-Machine = ...
+		#
+		#  The values for those attributes are the same as for EAP-Type.
+		#
+		#  Note that if you try to use "EAP-Type := TEAP" in the
+		#  "inner-tunnel" virtual server, it will not work.
+		#
+		#
+		#  PASSWORDS
+		#
+		#  Some supplicants support password authentication inside of
+		#  TEAP.  This can be configured automatically by setting
+		#
+		#	identity_type = "user"
+		#
+		#  and then not setting "default_eap_type" or
+		#  "user_eap_type".  The TEAP module will then
+		#  automatically initiate password authentication.
+		#
+		#  The user credentials are placed into the User-Name
+		#  and User-Password attributes inside of the
+		#  "inner-tunnel" virtual server.  These attributes
+		#  are not sent in TEAP, but are created by the module
+		#  from the Basic-Password-Auth-Resp TLV which is in TEAP.
+		#
+		#  Supported authentication methods inside of TEAP are
+		#  EAP-TLS, EAP-MSCHAPv2, and PAP.
+		#
+#		user_eap_type = mschapv2
+#		machine_eap_type = tls
 
 		#  If 'cipher_list' is set here, it will over-ride the
 		#  'cipher_list' configuration from the 'tls-common'
@@ -1163,25 +1221,34 @@ eap {
 		#
 	#	cipher_list = "ALL:!EXPORT:!eNULL:!SSLv2"
 
-		#  PAC lifetime in seconds (default: seven days)
-		#
-	#	pac_lifetime = 604800
-
 		#  Authority ID of the server
 		#
-		#  If you are running a cluster of RADIUS servers, you should make
-		#  the value chosen here (and for "pac_opaque_key") the same on all
-		#  your RADIUS servers.  This value should be unique to your
-		#  installation.  We suggest using a domain name.
+		#  If you are running a cluster of RADIUS servers, you
+		#  should make the value chosen here the same on all
+		#  your RADIUS servers.  This value should be unique
+		#  to your installation.  We suggest using a domain
+		#  name.
 		#
 	#	authority_identity = "1234"
 
-		#  PAC Opaque encryption key (must be exactly 32 bytes in size)
+
 		#
-		#  This value MUST be secret, and MUST be generated using
-		#  a secure method, such as via 'openssl rand -hex 32'
+		#  Automatically go through the workflow of first machine, then user
+		#  authentication.
 		#
-	#	pac_opaque_key = "0123456789abcdef0123456789ABCDEF"
+		#  allowed values:  	"machine,user"
+		#  	   		"user,machine"
+		#			"user"
+		#			"machine"
+		#
+		#  If this isn't set, then TEAP likely won't work.
+		#
+		#  This configuration sets &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type with the
+		#  relevant values.  The TEAP module then picks those values, in order, to authenticate the
+		#  chosen identity.  You can set &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type
+		#  manually, but that is substantially more complicated.
+		#
+	#	identity_types = "machine,user"
 
 		#  Same as for TTLS, PEAP, etc.
 		#

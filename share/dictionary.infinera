@@ -1,12 +1,66 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 #
-VENDOR		Infinera			8708
+VENDOR		Infinera			21296
 
-BEGIN-VENDOR	Infinera
+BEGIN-VENDOR Infinera
 
-ATTRIBUTE	Infinera-User-Category			1	string
-ATTRIBUTE	Infinera-ENM-User-Category		2	string
+ATTRIBUTE	Infinera-User-Priv-SA			1	integer
+ATTRIBUTE	Infinera-User-Priv-NA			2	integer
+ATTRIBUTE	Infinera-User-Priv-NE			3	integer
+ATTRIBUTE	Infinera-User-Priv-PR			4	integer
+ATTRIBUTE	Infinera-User-Priv-TT			5	integer
+ATTRIBUTE	Infinera-User-Priv-MA			6	integer
+ATTRIBUTE	Infinera-User-Priv-RA			7	integer
+ATTRIBUTE	Infinera-User-Priv-EA			8	integer
+ATTRIBUTE	Infinera-User-SessionTimeout		17	integer
+ATTRIBUTE	Infinera-User-LockedOut			18	integer
+ATTRIBUTE	Infinera-User-CanUseResSession		19	integer
+ATTRIBUTE	Infinera-User-MgtType-EMS		33	integer
+ATTRIBUTE	Infinera-User-MgtType-GNM		34	integer
+ATTRIBUTE	Infinera-User-MgtType-TL1		35	integer
+ATTRIBUTE	Infinera-User-MgtType-CLI		36	integer
+ATTRIBUTE	Infinera-User-MgtType-NETCONF		37	integer
+ATTRIBUTE	Infinera-Rsvd-Str-Attribute1		240	string
+ATTRIBUTE	Infinera-Rsvd-Str-Attribute2		241	string
+ATTRIBUTE	Infinera-Rsvd-Int-Attribute1		249	integer
+ATTRIBUTE	Infinera-Rsvd-Int-Attribute2		250	integer
 
-END-VENDOR      Infinera
+VALUE	Infinera-User-Priv-NE		Non-Privileged		0
+VALUE	Infinera-User-Priv-NE		Privileged		1
+
+VALUE	Infinera-User-Priv-PR		Non-Privileged		0
+VALUE	Infinera-User-Priv-PR		Privileged		1
+
+VALUE	Infinera-User-Priv-TT		Non-Privileged		0
+VALUE	Infinera-User-Priv-TT		Privileged		1
+
+VALUE	Infinera-User-Priv-MA		Non-Privileged		0
+VALUE	Infinera-User-Priv-MA		Privileged		1
+
+VALUE	Infinera-User-Priv-RA		Non-Privileged		0
+VALUE	Infinera-User-Priv-RA		Privileged		1
+
+VALUE	Infinera-User-Priv-EA		Non-Privileged		0
+VALUE	Infinera-User-Priv-EA		Privileged		1
+
+VALUE	Infinera-User-CanUseResSession	No			0
+VALUE	Infinera-User-CanUseResSession	Can-Yes			1
+
+VALUE	Infinera-User-MgtType-EMS	Disallowed		0
+VALUE	Infinera-User-MgtType-EMS	Allowed			1
+
+VALUE	Infinera-User-MgtType-GNM	Disallowed		0
+VALUE	Infinera-User-MgtType-GNM	Allowed			1
+
+VALUE	Infinera-User-MgtType-TL1	Disallowed		0
+VALUE	Infinera-User-MgtType-TL1	Allowed			1
+
+VALUE	Infinera-User-MgtType-CLI	Disallowed		0
+VALUE	Infinera-User-MgtType-CLI	Allowed			1
+
+VALUE	Infinera-User-MgtType-NETCONF	Disallowed		0
+VALUE	Infinera-User-MgtType-NETCONF	Allowed			1
+
+END-VENDOR               Infinera

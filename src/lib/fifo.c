@@ -119,6 +119,13 @@ unsigned int fr_fifo_num_elements(fr_fifo_t *fi)
 	return fi->num;
 }
 
+bool fr_fifo_full(fr_fifo_t *fi)
+{
+	if (!fi) return true;
+
+	return (fi->num >= fi->max);
+}
+
 #ifdef TESTING
 
 /*

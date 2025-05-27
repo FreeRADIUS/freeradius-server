@@ -5,7 +5,38 @@
 #
 #  Execute external programs
 #
-#  This module is useful only for 'xlat'.  To use it,
+# == Don't use this module.
+#
+#  We provide this module for the _extremely rare_ case when it is
+#  useful.  The main utility of the module is for testing, and for
+#  doing some unusual things which aren't possible via any other
+#  method.
+#
+#  It can be appealing to just ignore `unlang`, and run `exec`
+#  everywhere.  This kind of configuration can be written quickly,
+#  means that you don't need to spend any time understanding the
+#  server configuration.  This process is generally more effort than
+#  it is worth.
+#
+#  The biggest problem with `exec` is that it is slow.  Very, very,
+#  very, slow.  We have tested the server at 80K Access-Requests per
+#  second (to OpenLDAP) on low-end hardware.  This is fast enough to
+#  run a major ISP.
+#
+#  In contrast, when each Access-Request causes an `exec` script to be
+#  run, the rate of access-Request can drop by a factor of 100 or
+#  more.  It is not unusual for the server to max out at a few hundred
+#  authentications per second when running multiple scripts per packet.
+#
+#  The server has sufficient functionality that it is essentially
+#  never necessary to `exec` and external script.  Please use the
+#  built-in functionality of the server; it is hundreds of times
+#  faster than running a script, and it is designed to process
+#  packets.  An external script is worse, by nearly all possible
+#  standards of measurement.
+#
+#
+#  This module is mainly for dynamic expansions.  To use it,
 #  put 'exec' into the 'instantiate' section.  You can then
 #  do dynamic translation of attributes like:
 #

@@ -4,7 +4,7 @@
 # Rebuild this file with `make docker.debian10.regen`
 #
 ARG from=debian:buster
-FROM ${from} as build
+FROM ${from} AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 

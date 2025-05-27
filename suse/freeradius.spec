@@ -1,5 +1,5 @@
 Name:         freeradius-server
-Version:      3.2.5
+Version:      3.2.8
 Release:      0
 License:      GPLv2 ; LGPLv2.1
 Group:        Productivity/Networking/Radius/Servers
@@ -9,7 +9,7 @@ Obsoletes:    freeradius < %{version}
 Conflicts:    radiusd-livingston radiusd-cistron icradius
 Url:          http://www.freeradius.org/
 Summary:      Very Highly Configurable Radius Server
-Source:       ftp://ftp.freeradius.org/pub/freeradius/%{name}-%{version}.tar.bz2
+Source:       https://www.freeradius.org/ftp/pub/freeradius/%{name}-%{version}.tar.bz2
 Source90:     %{name}-rpmlintrc
 Source104:    %{name}-tmpfiles.conf
 PreReq:       %{_sbindir}/useradd %{_sbindir}/groupadd
@@ -138,7 +138,7 @@ export LDFLAGS="-pie"
 		--disable-developer \
 		--with-experimental-modules \
 		--with-udpfromto \
-%if 0%{?suse_version} <= 920 
+%if 0%{?suse_version} <= 920
 		--without-rlm_sql_mysql \
 		--without-rlm_krb5 \
 %endif

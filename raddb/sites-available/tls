@@ -426,6 +426,10 @@ listen {
 		#
 		#  Require a client certificate.
 		#
+		#  If you set this to "no", then any client can
+		#  connect anonymously.  This is bad, and is likely
+		#  not what you want.
+		#
 		require_client_cert = yes
 
 		#
@@ -449,7 +453,14 @@ listen {
 			#
 			#  You should also delete all of the files
 			#  in the directory when the server starts.
-	#     		tmpdir = /tmp/radiusd
+			#
+			#  Note that, on Linux systems with systemd, the
+			#  /tmp directory may be restricted. In this case
+			#  it may be best to use `${run_dir}/tmp` here
+			#  and create the temporary directory with the
+			#  systemd `RuntimeDirectory` unit option.
+			#
+	#		tmpdir = /tmp/radiusd
 
 			#  The command used to verify the client cert.
 			#  We recommend using the OpenSSL command-line
@@ -463,7 +474,7 @@ listen {
 			#  in PEM format.  This file is automatically
 			#  deleted by the server when the command
 			#  returns.
-	#    		client = "/path/to/openssl verify -CApath ${..ca_path} %{TLS-Client-Cert-Filename}"
+	#		client = "/path/to/openssl verify -CApath ${..ca_path} %{TLS-Client-Cert-Filename}"
 		}
 
 		#
@@ -554,6 +565,10 @@ home_server tls {
 	#
 #	nonblock = yes
 
+	#
+	#  The TLS settings used by the proxy (i.e. RADIUS client)
+	#  when it connects to a home server.
+	#
 	tls {
 		#
 		#  Similarly to HTTP, the client can use Server Name

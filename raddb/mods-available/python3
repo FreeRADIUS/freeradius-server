@@ -15,6 +15,17 @@ python3 {
 	#
 #	python_path="${modconfdir}/${.:name}:/another_path/to/python_files"
 
+	# How to use "python_path"
+	#
+	#  - "append" - append to system path
+	#  - "prepend" - prepend to the system path
+	#  - "overwrite" - overwrite the system path
+	#
+	#  Note: Take care when using "prepend" - the paths searched
+	#  should not be writeable by any un-trusted users or services
+	#  to avoid overriding standard functionality with malicious code.
+#	python_path_mode = append
+
 	module = example
 
 	# Pass all VPS lists as a 6-tuple to the callbacks

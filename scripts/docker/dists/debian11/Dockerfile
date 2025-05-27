@@ -4,7 +4,7 @@
 # Rebuild this file with `make docker.debian11.regen`
 #
 ARG from=debian:bullseye
-FROM ${from} as build
+FROM ${from} AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 

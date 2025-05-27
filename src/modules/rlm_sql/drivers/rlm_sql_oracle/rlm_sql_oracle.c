@@ -115,22 +115,23 @@ static int sql_check_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	char errbuff[512];
 
-	if (sql_prints_error(errbuff, sizeof(errbuff), handle, config) < 0) goto unknown;
+	if (sql_prints_error(errbuff, sizeof(errbuff), handle, config) < 0) {
+		ERROR("rlm_sql_oracle: OCI_SERVER_NORMAL");
+		return -1;
+	}
 
 	if (strstr(errbuff, "ORA-03113") || strstr(errbuff, "ORA-03114")) {
 		ERROR("rlm_sql_oracle: OCI_SERVER_NOT_CONNECTED");
 		return RLM_SQL_RECONNECT;
 	}
 
-unknown:
-	ERROR("rlm_sql_oracle: OCI_SERVER_NORMAL");
+	ERROR("rlm_sql_oracle: error %s", errbuff);
 	return -1;
 }
 
 static int _sql_socket_destructor(rlm_sql_oracle_conn_t *conn)
 {
 	if (conn->ctx) OCILogoff(conn->ctx, conn->error);
-	if (conn->query) OCIHandleFree((dvoid *)conn->query, OCI_HTYPE_STMT);
 	if (conn->error) OCIHandleFree((dvoid *)conn->error, OCI_HTYPE_ERROR);
 	if (conn->env) OCIHandleFree((dvoid *)conn->env, OCI_HTYPE_ENV);
 
@@ -160,16 +161,6 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 */
 	if (OCIHandleAlloc((dvoid *)conn->env, (dvoid **)&conn->error, OCI_HTYPE_ERROR, 0, NULL)) {
 		ERROR("rlm_sql_oracle: Couldn't init Oracle ERROR handle (OCIHandleAlloc())");
-
-		return RLM_SQL_ERROR;
-	}
-
-	/*
-	 *	Allocate handles for select and update queries
-	 */
-	if (OCIHandleAlloc((dvoid *)conn->env, (dvoid **)&conn->query, OCI_HTYPE_STMT, 0, NULL)) {
-		ERROR("rlm_sql_oracle: Couldn't init Oracle query handles: %s",
-		      (sql_prints_error(errbuff, sizeof(errbuff), handle, config) == 0) ? errbuff : "unknown");
 
 		return RLM_SQL_ERROR;
 	}
@@ -217,8 +208,8 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 		return RLM_SQL_RECONNECT;
 	}
 
-	if (OCIStmtPrepare(conn->query, conn->error, oracle_query, strlen(query),
-			   OCI_NTV_SYNTAX, OCI_DEFAULT)) {
+	if (OCIStmtPrepare2(conn->ctx, &conn->query, conn->error, oracle_query, strlen(query),
+			   NULL, 0, OCI_NTV_SYNTAX, OCI_DEFAULT)) {
 		ERROR("rlm_sql_oracle: prepare failed in sql_query");
 
 		return RLM_SQL_ERROR;
@@ -257,8 +248,8 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 
 	memcpy(&oracle_query, &query, sizeof(oracle_query));
 
-	if (OCIStmtPrepare(conn->query, conn->error, oracle_query, strlen(query), OCI_NTV_SYNTAX,
-			   OCI_DEFAULT)) {
+	if (OCIStmtPrepare2(conn->ctx, &conn->query, conn->error, oracle_query, strlen(query),
+			    NULL, 0, OCI_NTV_SYNTAX, OCI_DEFAULT)) {
 		ERROR("rlm_sql_oracle: prepare failed in sql_select_query");
 
 		return RLM_SQL_ERROR;
@@ -437,6 +428,7 @@ static sql_rcode_t sql_finish_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_
 
 	if (OCIStmtRelease(conn->query, conn->error, NULL, 0, OCI_DEFAULT) != OCI_SUCCESS ) {
 		ERROR("OCI release failed in sql_finish_query");
+		(void) sql_check_error(handle, config);
 		return RLM_SQL_ERROR;
 	}
 
@@ -452,7 +444,8 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_
 	conn->col_count = 0;
 
 	if (OCIStmtRelease (conn->query, conn->error, NULL, 0, OCI_DEFAULT) != OCI_SUCCESS ) {
-		ERROR("OCI release failed in sql_finish_query");
+		ERROR("OCI release failed in sql_finish_select_query");
+		(void) sql_check_error(handle, config);
 		return RLM_SQL_ERROR;
 	}
 

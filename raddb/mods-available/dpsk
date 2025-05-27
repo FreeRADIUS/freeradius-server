@@ -69,7 +69,7 @@ dpsk {
 	#
 	#  The cache is keyed by (supplicant MAC + SSID)
 	#
-	#  The cache entry is the PSK-Identity and Pre-Sharedd-Key,
+	#  The cache entry is the PSK-Identity and Pre-Shared-Key,
 	#  and/or the PMK which are used to verify the information in
 	#  the Access-Request.
 	#
@@ -127,9 +127,10 @@ dpsk {
 	#  NOTE: Tests show that the module can do ~100K PSK / DPSK
 	#  checks per second.  This means that if you have 10,000
 	#  users and 10 packets a second, the system will be 100% busy
-	#  checking PSKs.
+	#  checking PSKs.  Similarly, of you have 100K DPSKs in the file,
+	#  the one packet will take 1 second of CPU time to verify!
 	#
-	#  As a result, the DPSK functionality is scales poorly.  It
+	#  As a result, the DPSK functionality scales poorly.  It
 	#  should be used only with a small number of PSKs (100s
 	#  perhaps), and only at low packet rates.  If the server is
 	#  getting 1000 packets per second, then it can only handle
@@ -140,6 +141,11 @@ dpsk {
 	#  when the server restarts.  As a result, the combination of
 	#  number of PSKs and packet rates should be kept as low as
 	#  possible.
+	#
+	#  The filename is dynamically expanded, so it can reference
+	#  other attributes.  This expansion lets you split up DPSK
+	#  files by location, which can drastically reduce the overall
+	#  search space, and thus the CPU requirements.
 	#
 #	filename = "${modconfdir}/${..:name}/psk.csv"
 }

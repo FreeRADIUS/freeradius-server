@@ -145,8 +145,9 @@ char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
   "47",
   "48",
   "49",
-  "IP-Address-Allocate",
-  "IP-Address-Release",			//!< 50
+  "IP-Address-Allocate",		//!< 50
+  "IP-Address-Release",
+  "Protocol-Error",
 };
 
 
@@ -862,6 +863,7 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
+	case PW_TYPE_ABINARY:
 		data = vp->data.ptr;
 		if (!data) return 0;
 		break;
@@ -871,7 +873,6 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	case PW_TYPE_IPV6_ADDR:
 	case PW_TYPE_IPV6_PREFIX:
 	case PW_TYPE_IPV4_PREFIX:
-	case PW_TYPE_ABINARY:
 	case PW_TYPE_ETHERNET:	/* just in case */
 		data = (uint8_t const *) &vp->data;
 		break;
@@ -1819,6 +1820,14 @@ int rad_vp2attr(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 	return rad_vp2vsa(packet, original, secret, pvp, start, room);
 }
 
+static const bool code2ma[FR_MAX_PACKET_CODE] = {
+	[ PW_CODE_ACCESS_REQUEST ] = true,
+	[ PW_CODE_ACCESS_ACCEPT ] = true,
+	[ PW_CODE_ACCESS_REJECT ] = true,
+	[ PW_CODE_ACCESS_CHALLENGE ] = true,
+	[ PW_CODE_STATUS_SERVER ] = true,
+	[ PW_CODE_PROTOCOL_ERROR ] = true,
+};
 
 /** Encode a packet
  *
@@ -1831,6 +1840,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	uint16_t		total_length;
 	int			len;
 	VALUE_PAIR const	*reply;
+	bool			seen_ma = false;
 
 	/*
 	 *	A 4K packet, aligned on 64-bits.
@@ -1883,6 +1893,12 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		id = htonl(id);
 		memcpy(hdr->vector, &id, sizeof(id));
 		memset(hdr->vector + sizeof(id), 0, sizeof(hdr->vector) - sizeof(id));
+
+		/*
+		 *	We don't encode Message-Authenticator
+		 */
+		seen_ma = true;
+		packet->offset = -1;
 	} else
 #endif
 	{
@@ -1907,6 +1923,27 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *	Hmm... this may be slower than just doing a small
 	 *	memcpy.
 	 */
+
+	/*
+	 *	Always add Message-Authenticator for replies to
+	 *	Access-Request packets, and for all Access-Accept,
+	 *	Access-Reject, Access-Challenge.
+	 *
+	 *	It must be the FIRST attribute in the packet.
+	 */
+	if (!packet->tls &&
+	    ((code2ma[packet->code]) || (original && code2ma[original->code]))) {
+		seen_ma = true;
+
+		packet->offset = RADIUS_HDR_LEN;
+
+		ptr[0] = PW_MESSAGE_AUTHENTICATOR;
+		ptr[1] = 18;
+		memset(ptr + 2, 0, 16);
+
+		ptr += 18;
+		total_length += 18;
+	}
 
 	/*
 	 *	Loop over the reply attributes for the packet.
@@ -1943,15 +1980,6 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 
 #ifdef WITH_RADIUSV11
 		/*
-		 *	Do not encode Message-Authenticator for RADIUS/1.1
-		 */
-		if (packet->radiusv11 && (reply->da->vendor == 0) && (reply->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
-			reply = reply->next;
-			continue;
-		}
-
-
-		/*
 		 *	Do not encode Original-Packet-Code for RADIUS/1.1
 		 */
 		if (packet->radiusv11 && reply->da->vendor == ((unsigned int) PW_EXTENDED_ATTRIBUTE_1 << 24) && (reply->da->attr == 4)) {
@@ -1984,15 +2012,13 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	length and initial value.
 		 */
 		if (!reply->da->vendor && (reply->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
-#ifdef WITH_RADIUSV11
 			/*
-			 *	RADIUSV11 does not encode or verify Message-Authenticator.
+			 *	We have already encoded the Message-Authenticator, don't do it again.
 			 */
-			if (packet->radiusv11) {
+			if (seen_ma) {
 				reply = reply->next;
 				continue;
 			}
-#endif
 
 			if (room < 18) break;
 
@@ -2510,6 +2536,8 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	char			host_ipaddr[128];
 #ifndef WITH_RADIUSV11_ONLY
 	bool			require_ma = false;
+	bool			limit_proxy_state = false;
+	bool			seen_proxy_state = false;
 	bool			seen_ma = false;
 	bool			eap = false;
 	bool			non_eap = false;
@@ -2559,15 +2587,23 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	}
 
 	/*
-	 *	Message-Authenticator is required in Status-Server
-	 *	packets, otherwise they can be trivially forged.
+	 *	If the caller requires Message-Authenticator, then set
+	 *	the flag.
+	 *
+	 *	We also require Message-Authenticator if the packet
+	 *	code is Status-Server.
+	 *
+	 *	If we're receiving packets from a proxy socket, then
+	 *	require Message-Authenticator for Access-* replies,
+	 *	and for Protocol-Error.
 	 */
-	if (hdr->code == PW_CODE_STATUS_SERVER) require_ma = true;
+	require_ma = ((flags & 0x01) != 0) || (hdr->code == PW_CODE_STATUS_SERVER) || (((flags & 0x08) != 0) && code2ma[hdr->code]);
 
 	/*
-	 *	It's also required if the caller asks for it.
+	 *	We only limit Proxy-State if we're not requiring
+	 *	Message-Authenticator.
 	 */
-	if (flags) require_ma = true;
+	limit_proxy_state = ((flags & 0x04) != 0) && !require_ma;
 
 	/*
 	 *	Repeat the length checks.  This time, instead of
@@ -2723,12 +2759,18 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 		case PW_EAP_MESSAGE:
 			require_ma = true;
 			eap = true;
+			packet->eap_message = true;
 			break;
 
 		case PW_USER_PASSWORD:
 		case PW_CHAP_PASSWORD:
 		case PW_ARAP_PASSWORD:
 			non_eap = true;
+			break;
+
+		case PW_PROXY_STATE:
+			seen_proxy_state = true;
+			packet->proxy_state = true;
 			break;
 
 		case PW_MESSAGE_AUTHENTICATOR:
@@ -2749,6 +2791,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 				goto finish;
 			}
 			seen_ma = true;
+			packet->message_authenticator = true;
 			break;
 		}
 #endif
@@ -2813,7 +2856,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	    !packet->radiusv11 &&
 #endif
 	    !seen_ma) {
-		FR_DEBUG_STRERROR_PRINTF("Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute",
+		FR_DEBUG_STRERROR_PRINTF("Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute.  You may need to set \"require_message_authenticator = no\" in the configuration.",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
@@ -2822,6 +2865,18 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	}
 
 #ifndef WITH_RADIUSV11_ONLY
+	/*
+	 *	The client is a NAS which shouldn't send Proxy-State, but it did!
+	 */
+	if (limit_proxy_state && seen_proxy_state && !seen_ma) {
+		FR_DEBUG_STRERROR_PRINTF("Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute, but still has one or more Proxy-State attributes",
+			   inet_ntop(packet->src_ipaddr.af,
+				     &packet->src_ipaddr.ipaddr,
+				     host_ipaddr, sizeof(host_ipaddr)));
+		failure = DECODE_FAIL_MA_MISSING;
+		goto finish;
+	}
+
 	if (eap && non_eap) {
 		FR_DEBUG_STRERROR_PRINTF("Bad packet from host %s:  Packet contains EAP-Message and non-EAP authentication attribute",
 			   inet_ntop(packet->src_ipaddr.af,
@@ -4133,7 +4188,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		break;
 
 	case PW_TYPE_ABINARY:
-		if (datalen > sizeof(vp->vp_filter)) goto raw;
+		if (datalen < 32) goto raw;
 		break;
 
 	case PW_TYPE_INTEGER:
@@ -4346,10 +4401,7 @@ alloc_raw:
 		break;
 
 	case PW_TYPE_ABINARY:
-		if (vp->vp_length > sizeof(vp->vp_filter)) {
-			vp->vp_length = sizeof(vp->vp_filter);
-		}
-		memcpy(vp->vp_filter, data, vp->vp_length);
+		fr_pair_value_memcpy(vp, data, vp->vp_length);
 		break;
 
 	case PW_TYPE_BYTE:
@@ -4543,6 +4595,7 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
+	case PW_TYPE_ABINARY:
 		memcpy(out, &vp->data.ptr, sizeof(*out));
 		break;
 
@@ -4554,7 +4607,6 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 	case PW_TYPE_IPV6_ADDR:
 	case PW_TYPE_IPV6_PREFIX:
 	case PW_TYPE_IPV4_PREFIX:
-	case PW_TYPE_ABINARY:
 	case PW_TYPE_ETHERNET:
 	case PW_TYPE_COMBO_IP_ADDR:
 	case PW_TYPE_COMBO_IP_PREFIX:
@@ -5143,26 +5195,36 @@ void fr_rand_seed(void const *data, size_t size)
 	 */
 	if (!fr_rand_initialized) {
 		int fd;
+		uint8_t *p = (uint8_t *) &fr_rand_pool.randrsl[0];
+		uint8_t *end = p + sizeof(&fr_rand_pool.randrsl);
 
 		memset(&fr_rand_pool, 0, sizeof(fr_rand_pool));
 
 		fd = open("/dev/urandom", O_RDONLY);
 		if (fd >= 0) {
-			size_t total;
-			ssize_t this;
+			ssize_t rcode;
 
-			total = 0;
-			while (total < sizeof(fr_rand_pool.randrsl)) {
-				this = read(fd, fr_rand_pool.randrsl,
-					    sizeof(fr_rand_pool.randrsl) - total);
-				if ((this < 0) && (errno != EINTR)) break;
-				if (this > 0) total += this;
+			while (p < end) {
+				rcode = read(fd, p, (size_t) (end - p));
+				if ((rcode < 0) && (errno != EINTR)) break;
+				if (rcode > 0) p += rcode;
 			}
 			close(fd);
 		} else {
-			fr_rand_pool.randrsl[0] = fd;
-			fr_rand_pool.randrsl[1] = time(NULL);
-			fr_rand_pool.randrsl[2] = errno;
+			/*
+			 *	Initialize the pool based on microseconds.
+			 */
+			gettimeofday((struct timeval *) &fr_rand_pool.randrsl[0], NULL);
+			memcpy(&fr_rand_pool.randrsl[64], &p, sizeof(p));
+
+			/*
+			 *	Churn the pool, so that the next
+			 *	initialization isn't done from a pool
+			 *	which is nearly all zeros.
+			 */
+			fr_randinit(&fr_rand_pool, 1);
+			memcpy(fr_rand_pool.randrsl, fr_rand_pool.randmem, sizeof(fr_rand_pool.randrsl));
+			gettimeofday((struct timeval *) &fr_rand_pool.randrsl[32], NULL);
 		}
 
 		fr_randinit(&fr_rand_pool, 1);

@@ -1,10 +1,11 @@
-.TH RADCLIENT 1 "22 March 2019" "" "FreeRADIUS Daemon"
+.TH RADCLIENT 1 "21 May 2024" "" "FreeRADIUS Daemon"
 .SH NAME
 radclient - send packets to a RADIUS server, show reply
 .SH SYNOPSIS
 .B radclient
 .RB [ \-4 ]
 .RB [ \-6 ]
+.RB [ \-b ]
 .RB [ \-c
 .IR count ]
 .RB [ \-d
@@ -52,6 +53,13 @@ automatically encrypted before the packet is sent to the server.
 Use IPv4 (default)
 .IP \-6
 Use IPv6
+.IP \-b
+Enforce the Blast RADIUS checks.  All replies to an Access-Request packet
+must contain a Message-Authenticator as the first attribute.
+
+For compatibility with old servers, this flag is not set by default.
+However, radclient still checks for the Blast RADIUS signature, and
+discards packets which match the attack.
 .IP \-c\ \fIcount\fP
 Send each packet \fIcount\fP times.
 .IP \-d\ \fIraddb_directory\fP

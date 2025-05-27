@@ -62,13 +62,16 @@ replace it with an empty file.
 
 ### The Control Socket
 
-The virtual server `sites-enabled/control` *must* be enabled for
+The virtual server `sites-enabled/control-socket` *must* be enabled for
 dynamic home servers to work.  The `radmin` program *must* have
 read/write permission in order for dynamic home servers to work.
 
-Please see that `sites-enabled/control` file for information on
+Please see that `sites-enabled/control-socket` file for information on
 configuring that virtual server.
 
+```bash
+ln -s /etc/freeradius/sites-available/control-socket /etc/freeradius/sites-enabled/control-socket
+```
 
 ## Starting FreeRADIUS
 
@@ -174,33 +177,56 @@ The return values are:
 * `0` - the home server exists, and is statically defined.
 * `1` - the home server exists, and is dynamically defined
 
-```
-authorize {
-	...
-	if (User-Name =~ /@(.*)$/) {
-		switch "%{home_server_dynamic:%{1}}" {
-			case "1" {
-				# Proxy to this one particular home server
-				update control {
-					&Home-Server-Name := "%{1}"
-				}
-			}
+#### Dynamic DNS Provisioning (DPD) via `dpd_exec`
 
+To automate adding home servers via DNS discovery, configure an `exec` module named `dpd_exec`.
+
+##### 1. Define `mods-available/dpd_exec`
+
+```freeradius
+exec dpd_exec {
+	wait = yes
+	input_pairs = &request
+	shell_escape = yes
+	timeout = 3
+}
+```
+
+> This has to be done this way because this script requires `wait = yes`, exec by default doesn't, and we need to execute a custom program.
+
+Enable it:
+
+```bash
+ln -s ../mods-available/dpd_exec ../mods-enabled/
+```
+
+Ensure the script is executable:
+
+```bash
+chmod +x /etc/freeradius/mods-config/realm/freeradius-naptr-to-home-server.sh
+```
+
+##### 2. Use in `authorize` section
+
+```freeradius
+authorize {
+	if ("%{User-Name}" =~ /@(.*)$/i) {
+		switch "%{home_server_dynamic:%{1}}" {
 			case "0" {
-				# Proxy with home server pool, failover, etc.
 				update control {
 					&Proxy-To-Realm := "%{1}"
 				}
 			}
-
-			case {
-				# no home server exists, ask DNS
+			case "1" {
 				update control {
-					# you can add a parameter for the NAPTR tag to look up, e.g. "aaa+auth:radius.tls.tcp" (RFC7585, OpenRoaming)
-					# if the third parameter is omitted, it defaults to "x-eduroam:radius.tls"
-					&Temp-Home-Server-String := `%{config:confdir}/mods-config/realm/freeradius-naptr-to-home-server.sh -d %{config:confdir} %{1}`
+					&Home-Server-Name := "%{1}"
 				}
-				if ("%{control:Temp-Home-Server-String}" == "" ) {
+			}
+			case {
+				update control {
+					&Temp-Home-Server-String := "%{dpd_exec:%{config:confdir}/mods-config/realm/freeradius-naptr-to-home-server.sh -d %{config:confdir} %{1}}"
+				}
+				if ("%{control:Temp-Home-Server-String}" == "") {
 					reject
 				} else {
 					update control {
@@ -210,7 +236,6 @@ authorize {
 			}
 		}
 	}
-	...
 }
 ```
 

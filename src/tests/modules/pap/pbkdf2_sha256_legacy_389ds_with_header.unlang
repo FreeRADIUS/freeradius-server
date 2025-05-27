@@ -1,0 +1,17 @@
+if ("${feature.tls}" == no) {
+	test_pass
+	return
+}
+
+if (User-Name == 'pbkdf2_sha256_legacy_389ds_with_header') {
+	update control {
+		Password-With-Header := '{PBKDF2_SHA256}AAAgAC8OScrYDwaJYr29/qoQ/bcEf+WsQmkZjIFLSIKm1lxzNOSGPQEkueb1J5mWQy8a17m+UAM5jFKKuktMWSTDag9LNVfHTwHocrIsi4GGLf+PSn/eA3+lu5JHVXQo49gbZ+SALQ90cOvor+v+/xa4Q1VPUr42PuvmsdQln6i9jm/j9tVkO06W+CJXvTiCpR+oHiog9v/3s6bHUrWvwNksUe2r2d+MV5IaNdnil7P39qr1BxiKtDiG4d6HyI5aq1VEhJBg6S5ITYQ9iPlDbpoy2MHDLZHNqQduAVnwJuKuHVU3dU+VkynHWm3nGa2hfeV/bD8F8+WYehgL7bJndEzECx1QKuAZO+lK92vIMbZArdMvU6WRjncVlgoJbZtko6tFp1Ew+0VMVX+b6dGED0L391crdsudrTO+/fvU66xH515L'
+	}
+	pap.authorize
+	pap.authenticate
+	if (!ok) {
+		test_fail
+	} else {
+		test_pass
+	}
+}

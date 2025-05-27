@@ -54,6 +54,9 @@ pid_t rad_waitpid(pid_t pid, int *status)
 }
 #endif
 
+/* Dummy config to allow linking to modcall */
+main_config_t main_config;
+
 rlm_rcode_t indexed_modcall(UNUSED rlm_components_t comp, UNUSED int idx, UNUSED REQUEST *request)
 {
 	return RLM_MODULE_OK;

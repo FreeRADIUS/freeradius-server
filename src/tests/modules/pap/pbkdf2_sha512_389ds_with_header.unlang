@@ -1,0 +1,17 @@
+if ("${feature.tls}" == no) {
+	test_pass
+	return
+}
+
+if (User-Name == 'pbkdf2_sha512_389ds_with_header') {
+	update control {
+		Password-With-Header := '{PBKDF2-SHA512}10000$N3A054iTXUWq4pN2r/2WuCdRFn6ZJ1G+$5MlwC7KpKbXvjIuCaMaDKYmXSVwbUsgzmovEx73cmuuuA1Vet3IOnV5Mj7nZhb9Y4VlDfT6XLJt0xJlBGWESjw=='
+	}
+	pap.authorize
+	pap.authenticate
+	if (!ok) {
+		test_fail
+	} else {
+		test_pass
+	}
+}

@@ -1005,8 +1005,9 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	 *	Allocate a fake REQUEST structure.
 	 */
 	fake = request_alloc_fake(request);
-
 	rad_assert(!fake->packet->vps);
+
+	fake->eap_inner_tunnel = true;
 
 	/*
 	 *	Add the tunneled attributes to the fake request.

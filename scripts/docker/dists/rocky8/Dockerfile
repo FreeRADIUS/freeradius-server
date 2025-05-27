@@ -4,7 +4,8 @@
 # Rebuild this file with `make docker.rocky8.regen`
 #
 ARG from=rockylinux/rockylinux:8
-FROM ${from} as build
+FROM ${from} AS build
+
 
 #
 #  Install yum
@@ -59,7 +60,9 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 
 #  Enable EPEL repository for freetds and hiredis
+
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+
 
 #  Enable powertools repo
 RUN yum config-manager --enable powertools
@@ -107,6 +110,7 @@ FROM ${from}
 
 COPY --from=build /root/rpms /tmp/
 
+
 #
 #  Install yum
 #
@@ -122,8 +126,8 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 > /etc/yum.repos.d/ltb-project.repo \
     && rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 
-
 #  EPEL repository for freetds and hiredis
+
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
     && yum install -y dnf-utils \
     && yum config-manager --enable powertools \

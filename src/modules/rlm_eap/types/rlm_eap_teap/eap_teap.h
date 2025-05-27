@@ -46,6 +46,13 @@ RCSIDH(eap_teap_h, "$Id$")
 #define EAP_TEAP_TLV_RESULT_SUCCESS		1
 #define EAP_TEAP_TLV_RESULT_FAILURE		2
 
+#define EAP_TEAP_IDENTITY_TYPE_USER		1
+#define EAP_TEAP_IDENTITY_TYPE_MACHINE		2
+
+#define PW_EAP_TEAP_TLV_IDENTITY_TYPE (PW_FREERADIUS_EAP_TEAP_TLV | (EAP_TEAP_TLV_IDENTITY_TYPE << 8))
+#define PW_EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ (PW_FREERADIUS_EAP_TEAP_TLV | (EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ << 8))
+#define PW_EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP (PW_FREERADIUS_EAP_TEAP_TLV | (EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP << 8))
+
 typedef enum eap_teap_stage_t {
 	TLS_SESSION_HANDSHAKE = 0,
 	AUTHENTICATION,
@@ -59,114 +66,6 @@ typedef enum eap_teap_auth_type {
 	EAP_TEAP_PROVISIONING_AUTH,
 	EAP_TEAP_NORMAL_AUTH
 } eap_teap_auth_type_t;
-
-typedef enum eap_teap_pac_info_attr_type_t {
-	PAC_INFO_PAC_KEY = 1,	// 1
-	PAC_INFO_PAC_OPAQUE,	// 2
-	PAC_INFO_PAC_LIFETIME,	// 3
-	PAC_INFO_A_ID,		// 4
-	PAC_INFO_I_ID,		// 5
-	PAC_INFO_PAC_RESERVED6,	// 6
-	PAC_INFO_A_ID_INFO,	// 7
-	PAC_INFO_PAC_ACK,	// 8
-	PAC_INFO_PAC_INFO,	// 9
-	PAC_INFO_PAC_TYPE,	// 10
-	PAC_INFO_MAX
-} eap_teap_pac_info_attr_type_t;
-
-typedef enum eap_teap_pac_type_t {
-	PAC_TYPE_TUNNEL = 1,	// 1
-	PAC_TYPE_MACHINE_AUTH,	// 2
-	PAC_TYPE_USER_AUTHZ,	// 3
-	PAC_TYPE_MAX
-} eap_teap_pac_type_t;
-
-#define PAC_KEY_LENGTH		32
-#define PAC_A_ID_LENGTH		16
-#define PAC_I_ID_LENGTH		16
-#define PAC_A_ID_INFO_LENGTH	32
-
-/*
- *	11 - PAC TLV
- */
-typedef struct eap_teap_pac_attr_hdr_t {
-	uint16_t			type;
-	uint16_t			length;
-} CC_HINT(__packed__) eap_teap_pac_attr_hdr_t;
-
-/*
- *	11.1 - Key
- */
-typedef struct eap_teap_pac_attr_key_t {
-	eap_teap_pac_attr_hdr_t		hdr;
-	uint8_t				data[1];
-} CC_HINT(__packed__) eap_teap_pac_attr_key_t;
-
-/*
- *	11.2 - Opaque
- */
-typedef struct eap_teap_pac_attr_opaque_t {
-	eap_teap_pac_attr_hdr_t		hdr;
-	uint8_t				data[1];
-} CC_HINT(__packed__) eap_teap_pac_attr_opaque_t;
-
-/*
- *	11.3 and 11.9.3 - lifetime
- */
-typedef struct eap_teap_pac_attr_lifetime_t {
-	eap_teap_pac_attr_hdr_t		hdr;
-	uint32_t			data;	// secs since epoch
-} CC_HINT(__packed__) eap_teap_pac_attr_lifetime_t;
-
-/*
- *	11.4 and 11.9.4 - A-ID
- */
-typedef struct eap_teap_pac_attr_a_id_t {
-	eap_teap_pac_attr_hdr_t		hdr;
-	uint8_t				data[1];
-} CC_HINT(__packed__) eap_teap_pac_attr_a_id_t;
-
-/*
- *	11.5 and 11.9.5 - I-ID
- */
-typedef struct eap_teap_pac_attr_i_id_t {
-	eap_teap_pac_attr_hdr_t		hdr;
-	uint8_t				data[1];
-} CC_HINT(__packed__) eap_teap_pac_attr_i_id_t;
-
-/*
- *	11.7 and 11.9.7 - A-ID-Info
- */
-typedef struct eap_teap_pac_attr_a_id_info_t {
-	eap_teap_pac_attr_hdr_t		hdr;
-	uint8_t				data[1];
-} CC_HINT(__packed__) eap_teap_pac_attr_a_id_info_t;
-
-/*
- *	11.8 - Acknowledgement
- */
-typedef struct eap_teap_pac_pac_attr_acknowlegement_t {
-	eap_teap_pac_attr_hdr_t		hdr;
-	uint16_t			data; /* 1 = success, 2 = failure */
-} CC_HINT(__packed__) eap_teap_pac_pac_attr_acknowlegement_t;
-
-/*
- *	11.9 - Info
- *
- *	MUST contain A-ID (4), A-ID-Info (7), and PAC-Type (10).  MAY contain others.
- */
-typedef struct eap_teap_pac_pac_attr_info_t {
-	eap_teap_pac_attr_hdr_t		hdr;
-	uint8_t				data[1]; /* sub TLVs */
-} CC_HINT(__packed__) eap_teap_pac_pac_attr_info_t;
-
-/*
- *	11.10 and 11.9.10 - PAC Type
- */
-typedef struct eap_teap_pac_attr_pac_type_t {
-	eap_teap_pac_attr_hdr_t		hdr;
-	uint16_t			data; /* 1 = Tunnel-PAC */
-} CC_HINT(__packed__) eap_teap_pac_attr_pac_type_t;
 
 /* RFC 7170, Section 4.2.13 - Crypto-Binding TLV */
 typedef struct eap_tlv_crypto_binding_tlv_t {
@@ -182,7 +81,7 @@ typedef struct eap_tlv_crypto_binding_tlv_t {
 typedef enum eap_teap_tlv_type_t {
 	EAP_TEAP_TLV_RESERVED_0 = 0,		// 0
 	EAP_TEAP_TLV_AUTHORITY,  		// 1
-	EAP_TEAP_TLV_IDENTITY,  		// 2
+	EAP_TEAP_TLV_IDENTITY_TYPE,  		// 2
 	EAP_TEAP_TLV_RESULT,     		// 3
 	EAP_TEAP_TLV_NAK,        		// 4
 	EAP_TEAP_TLV_ERROR,      		// 5
@@ -216,6 +115,13 @@ typedef struct teap_imck_t {
 	uint8_t		simck[EAP_TEAP_SIMCK_LEN];
 	uint8_t		cmk[EAP_TEAP_CMK_LEN];
 } CC_HINT(__packed__) teap_imck_t;
+
+typedef struct {
+	bool		required;
+	bool		sent;
+	uint8_t		received;
+} teap_auth_t;
+
 typedef struct teap_tunnel_t {
 	VALUE_PAIR	*username;
 	VALUE_PAIR	*state;
@@ -229,6 +135,11 @@ typedef struct teap_tunnel_t {
 	int			mode;
 	eap_teap_stage_t	stage;
 
+	int			num_identities;
+	uint16_t		identity_types[2];
+
+	teap_auth_t		auths[3]; /* so we can index by Identity-Type */
+
 	int			imckc;
 	bool			imck_emsk_available;
 	struct teap_imck_t	imck_msk;
@@ -238,21 +149,11 @@ typedef struct teap_tunnel_t {
 	uint8_t			emsk[EAP_TEAP_EMSK_LEN];
 
 	int			default_method;
-
-	uint32_t		pac_lifetime;
-	char const		*authority_identity;
-	uint8_t const 		*a_id;
-	uint8_t const 		*pac_opaque_key;
-
-	struct {
-		uint8_t			*key;
-		eap_teap_pac_type_t	type;
-		uint32_t		expires;
-		bool			expired;
-		bool			send;
-	}			pac;
+	int			eap_method[3];
 
 	bool			result_final;
+	bool			auto_chain;		//!< do we automatically chain identities
+	bool			sent_basic_password;
 
 #ifdef WITH_PROXY
 	bool		proxy_tunneled_request_as_eap;	//!< Proxy tunneled session as EAP, or as de-capsulated

@@ -176,10 +176,16 @@ typedef struct main_config {
 
 	bool		exiting;			//!< are we exiting?
 
+	fr_bool_auto_t 	require_ma;			//!< global configuration for all clients and home servers
+
+	fr_bool_auto_t 	limit_proxy_state;     		//!< global configuration for all clients
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	char const	*allow_vulnerable_openssl;	//!< The CVE number of the last security issue acknowledged.
 #endif
+
+	bool		group_stop_return;		//!< "return" stops at end of group
+	bool		policy_stop_return;		//!< "return" stops at end of policy
 } main_config_t;
 
 #if defined(WITH_VERIFY_PTR)
@@ -196,9 +202,9 @@ typedef struct main_config {
 typedef enum {
 	REQUEST_ACTIVE = 1,
 	REQUEST_STOP_PROCESSING,
-	REQUEST_COUNTED
+	REQUEST_TO_FREE,			//!< in the queue, and the queue should free it
 } rad_master_state_t;
-#define REQUEST_MASTER_NUM_STATES (REQUEST_COUNTED + 1)
+#define REQUEST_MASTER_NUM_STATES (REQUEST_STOP_PROCESSING + 1)
 
 typedef enum {
 	REQUEST_QUEUED = 1,
@@ -282,6 +288,7 @@ struct rad_request {
 	bool			max_time;	//!< did we hit max time?
 
 	bool			in_request_hash;
+	bool			eap_inner_tunnel;
 #ifdef WITH_PROXY
 	bool			in_proxy_hash;
 
@@ -322,6 +329,7 @@ struct rad_request {
 #define RAD_REQUEST_OPTION_COA		(1 << 0)
 #define RAD_REQUEST_OPTION_CTX 		(1 << 1)
 #define RAD_REQUEST_OPTION_CANCELLED	(1 << 2)
+#define RAD_REQUEST_OPTION_STATS	(1 << 3)
 
 #define SECONDS_PER_DAY		86400
 #define MAX_REQUEST_TIME	30
@@ -370,7 +378,8 @@ typedef enum {
 	RADIUS_SIGNAL_SELF_EXIT		= (1 << 2),
 	RADIUS_SIGNAL_SELF_DETAIL	= (1 << 3),
 	RADIUS_SIGNAL_SELF_NEW_FD	= (1 << 4),
-	RADIUS_SIGNAL_SELF_MAX		= (1 << 5)
+	RADIUS_SIGNAL_SELF_EVENT_UPDATE	= (1 << 5),
+	RADIUS_SIGNAL_SELF_MAX		= (1 << 6)
 } radius_signal_t;
 /*
  *	Function prototypes.
@@ -540,6 +549,7 @@ int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char con
 /* threads.c */
 int	thread_pool_init(CONF_SECTION *cs, bool *spawn_flag);
 void	thread_pool_stop(void);
+void	thread_pool_free(void);
 int	thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
 pid_t	rad_fork(void);
 pid_t	rad_waitpid(pid_t pid, int *status);
@@ -566,6 +576,8 @@ int main_config_init(void);
 int main_config_free(void);
 void main_config_hup(void);
 void hup_logfile(void);
+
+int	fr_bool_auto_parse(CONF_PAIR *cp, fr_bool_auto_t *out, char const *str);
 
 /* listen.c */
 void listen_free(rad_listen_t **head);

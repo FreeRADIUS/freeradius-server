@@ -125,6 +125,9 @@ typedef struct sql_config {
 								//!< a fake stop packet, to terminate any
 								//!< stale sessions.
 
+	bool			record_query_number;		//!< Whether we should populate SQL-Query-Number
+								///< when an "acct_redundant" query succeeds
+
 	char const		*allowed_chars;			//!< Chars which done need escaping..
 	bool			driver_specific_escape;		//!< Use the driver specific SQL escape method
 	uint32_t		query_timeout;			//!< How long to allow queries to run for.
@@ -194,7 +197,7 @@ typedef struct rlm_sql_module_t {
 	char const	*name;
 	int		flags;
 
-	sql_rcode_t (*mod_instantiate)(CONF_SECTION *conf, rlm_sql_config_t *config);
+	int (*mod_instantiate)(CONF_SECTION *conf, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
 	sql_rcode_t (*sql_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query);
@@ -252,7 +255,7 @@ int		sql_dict_init(rlm_sql_handle_t *handle);
 void 		CC_HINT(nonnull (1, 2, 4)) rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t *section, char const *query);
 sql_rcode_t	CC_HINT(nonnull (1, 3, 4)) rlm_sql_select_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
 sql_rcode_t	CC_HINT(nonnull (1, 3, 4)) rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
-int		rlm_sql_fetch_row(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle);
+sql_rcode_t	rlm_sql_fetch_row(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle);
 void		rlm_sql_print_error(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t *handle, bool force_debug);
 int		sql_set_user(rlm_sql_t *inst, REQUEST *request, char const *username);
 #endif

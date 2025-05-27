@@ -1,9 +1,177 @@
-FreeRADIUS 3.2.5 Wed 29 May 2024 12:00:00 EDT urgency=low
+FreeRADIUS 3.2.8 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	Configuration changes
+	* Replace dictionary.infinera with the correct one.
+	* Update dictionary.alteon
 
 	Feature improvements
+	* Add support for automated fuzzing.  This doesn't affect
+	  normal operations, but it does allow for testing of the
+	  RADIUS decoder.
+	* Allow tagged attributes to use ":V" as a tag in some cases.
+	  The tag is then read from the value which is being assigned
+	  to the attribute.  This functionality is allowed in 'update'
+	  sections, including 'update' in module configurations.
+	  See mods-available/ldap for an example.
+	* Add kafka module.  See mods-available/kafka.
+	* Allow &control:Packet-SRC-IP-Address to be used when
+	  proxying needs a given source address.
+	* Change lower limit for reject_delay to 0.5s.  Apparently
+	  some NASes will panic and go crazy with a 1s reject_delay.
+	* Rate limit complaints when limiting new connections.
+	* Update raddb/certs/Makefile to support DER output.
+	* Elapsed statistics for packets do not include proxy timers,
+	  which helps clarify where any issues are.
+	* Added kafka module.  See mods-available/kafka.
 
 	Bug fixes
+	* Move assertion in thread / queue code, which only affects
+	  debug builds.  Fixes #5512.
+	* Update CRL checks to avoid crash in some cases.  Fixes #5515
+	* More tweaks to the TEAP code.
+	* Allow building when OpenSSL is missing PSK.  Fixes #5520
+	* Move assertion so that it isn't triggered when the incoming
+	  queue is full, and the server is blocked.  Fixes #5512
+	* Fix crash when multiple certs are used along with
+	  CRL distribution points.  Fixes #5515
+	* Fix typo in rlm_cache which could cause crashes. Fixes #5522
+	* Be more forgiving about '%' in strings.  Fixes #5525.
+	* Move assertion in threading code.
+	* Fixes to interaction with python interpreter
+	* Don't crash when setting client hostname in RADIUS/TLS.
+	  Fixes #5552
+	* Ignore ".dpkg*" and ".rpm*" files when loading configuration
+	  directories.  Package managers can leave these around.
+	* Complain more loudly if all of the "authorize" etc. sections
+	  have been removed, but the server is still configured to
+	  process Access-Request packets.
+	*  Use OCIStmtPrepare2 to prepare Oracle queries. Fixes #5540
+
+FreeRADIUS 3.2.7 Fri 31 Jan 2025 12:00:00 UTC urgency=low
+	Configuration changes
+	* The dpsk module now supports dynamic expansion of the
+	  "filename" parameter.
+	* radiusd.conf now contains an "unlang" section, which
+	  controls new behavior for the "return" statement.
+	* New configuration parameters for TEAP which makes it
+	  much easier to configure.  See the "teap" section of
+	  the "eap" module.
+	* Change idle timeout for incoming radsec connections, to
+	  better match behavior of radsecproxy.
+	* python2 and rlm_couchbase are no longer available in the
+	  alpine docker image.
+	* utmp files are becoming obsolete due to 32-bit time. unix/radwtmp
+	  have been commented out in the default config and "radlast" is
+	  no longer installed if "last" is not present on the system.
+
+	Feature improvements
+	* Print MD5 hash of the configuration files in debug mode.
+	  This helps people track configuration changes.
+	* Add support for IPv6 to "abinary" type.  The fields
+	  are the same as for "ip", but use "ipv6", and IPv6
+	  formatted addresses.
+	* Update radclient to make it clear that Message-Authenticator
+	  is added to all Access-Request packets, even if the
+	  input file does not contain it.
+	* Add support for Subject AltName URI.  Closes #5450.
+	* Add python_path_mode option to python3 module.
+	* Relax checks on OpenSSL minor versions for OpenSSL 3.x.
+	* Add API for deleting dynamic home servers.
+	* set SO_KEEPALIVE on outbound sockets, so firewalls are
+	  less likly to close TCP connections.
+	* Allow querying of statistics when home_server has
+	  src_ipaddr set.  See FreeRADIUS-Stats-Server-Src-IP-Address.
+	  Fixes #5483
+	* Update dictionary "man" page.  Fixes #4346.
+	* Change jlibtool to use --show-config, to avoid conflicts with
+	  clang --config.  Fixes #5442.
+	* RADIUS/TLS clients now support a "tls' subsection.  For
+	  connections from this client, this section is used in preference
+	  to the "listen" TLS settings.  This allows a server to easily
+	  present different identities to different clients.
+	* RADIUS/TLS has been updated for TLS-PSK and TLS 1.3.  Tested with
+	  radsecproxy.
+
+	Bug fixes
+	* For EAP-TLS, send TLS start without a length field.
+	  Some clients refuse to do EAP-TLS when this field exists.
+	* Avoid blocking TLS sockets on corner cases during session
+	  setup.
+	* Update home server stats
+	* Correct error message about untrusted certs.  Fixes #5466.
+	* Use PyEval_RestoreThread to swap to main thread.
+	  Fixes #5111
+	* Don't run Python detach function on config check
+	* Fix a number of issues with TLS connections and
+	  "check_client_connections = yes".
+	* Be more careful about managing the incoming queue when databases
+	  block the server.  The server will still be unable to make
+	  progress, but it should crash less.  Whether or not this is a
+	  good thing is unknown.
+	* Better handler single-character expansions.  Fixes #2216.
+	* Correct calculation of EAP length in pre-proxy.  Fixes #5486.
+	* Don't segfault when using detail listeners. Fixes #5485
+	* Add check for Couchbase v2, rlm_couchbase won't build on v3.
+
+FreeRADIUS 3.2.6 Sat 24 Aug 2024 12:00:00 UTC urgency=low
+	Configuration changes
+	* require_message_authenticator=auto and limit_proxy_state=auto
+	  are not applied for wildcard clients.  This likely will
+	  leave your network in an insecure state.  Upgrade all clients!
+
+	Feature improvements
+	* Allow for "auth+acct" dynamic home servers.
+	* Allow for setting "Home-Server-Pool", etc. for proxying
+	  accounting packets, just like authentication packets.
+	* Fix spelling in starent SN[1]-Subscriber-Acct-Mode attribute
+	  value. Patch from John Thacker.
+	* Update dictionary.iea. Patch from John Thacker.
+	* Add warning for secrets that are too short.
+	* More debugging for SSL ciphers. Patch from Nick Porter.
+	* Update 3GPP dictionary. Patch from Nick Porter.
+	* Fix ZTE dictionary.
+	* Make radsecret more portable and avoid extra dependencies.
+	* Add timestamp for Client-Lost so we don't think it's 1970. Patch
+	  from Alexander Clouter. #5353
+
+	Bug fixes
+	* Dynamic clients now inherit require_message_authenticator
+	  and limit_proxy_state from dynamic client {...} definition.
+	* Fix radsecret build rules to better support parallel builds.
+	* Checkpoint systems should be reconfigured for the BlastRADIUS
+	  attack: https://support.checkpoint.com/results/sk/sk182516
+	  The Checkpoint systems drop packets containing Message-Authenticator,
+	  which violates the RFCs and is completely ridiculous.
+	* Fix duplicate CoA packet issue. #5397
+	* Several fixes in the event code
+	* Don't leak memory in rlm_sql_sqlite. #5392
+	* Don't stop processing RadSec data too early.
+
+FreeRADIUS 3.2.5 Tue 09 Jul 2024 12:00:00 UTC urgency=high
+	Configuration changes
+	* BlastRADIUS mitigations have been added to the "security"
+	  section.  See "require_message_authenticator" and also
+	  "limit_proxy_state".
+	* BlastRADIUS mitigations have been added to radclient.
+	  See "man radclient", and the "-b" option.
+
+	Feature improvements
+	* TOTP now supports TOTP-Time-Offset for tokens with times that
+	  are out of sync.  See mods-available/totp
+	* radclient now supports forcing the Request Authenticator and ID
+	  for Access-Request packets.
+	* Update dictionary.3gpp.
+	* Update advice on shared secrets, including suggesting a secure
+	  method for generating useful secrets.
+
+	Bug fixes
+	* Allow proxying by pool / home server name to work with auth+acct servers
+	* Fix OpenSSL API usage which sometimes caused crash in MS-CHAP
+	  Previously it would either always crash immediately, or never crash.
+	* Fix packet statistics.  Stop double counting some packets,
+	  and track packet statistics even if a socket is closed.
+	* Reverted patch in TTLS which broke compatibility with some systems.
+	* Don't crash in debug mode when multiple intermediate certs are used
+	  Patch from Alexander Chernikov.
 
 FreeRADIUS 3.2.4 Wed 29 May 2024 12:00:00 EDT urgency=low
 	Configuration changes

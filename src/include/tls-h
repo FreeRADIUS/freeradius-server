@@ -152,8 +152,11 @@ typedef struct _tls_session_t {
 							//!< If set to no then only the first fragment contains length.
 	int		peap_flag;
 
-	VALUE_PAIR	*outer_tlvs;			//!< only for TEAP, and only for the first fragment.
-	uint8_t		*outer_tlvs_octets;		//!< only for TEAP, needed for Crypto-Binding TLV
+	VALUE_PAIR	*outer_tlvs_server;		//!< only for TEAP, and only for the first packert.
+	uint8_t		*outer_tlvs_octets_server;	//!< only for TEAP, needed for Crypto-Binding TLV
+
+	VALUE_PAIR	*outer_tlvs_peer;		//!< only for TEAP, and only for the first packet.
+	uint8_t		*outer_tlvs_octets_peer;	//!< only for TEAP, needed for Crypto-Binding TLV
 
 	size_t		tls_record_in_total_len;	//!< How long the peer indicated the complete tls record
 							//!< would be.
@@ -305,6 +308,10 @@ void 		cbtls_info(SSL const *s, int where, int ret);
 void 		cbtls_msg(int write_p, int msg_version, int content_type, void const *buf, size_t len, SSL *ssl,
 			  void *arg);
 int		cbtls_verify(int ok, X509_STORE_CTX *ctx);
+#ifdef PSK_MAX_IDENTITY_LEN
+unsigned int	psk_server_callback(SSL *ssl, const char *identity, unsigned char *psk, unsigned int max_psk_len);
+#endif
+int		cbtls_psk_find_session(SSL *ssl, const unsigned char *id, size_t idlen, SSL_SESSION **sess);
 
 /* threads.c */
 int		tls_mutexes_init(void);

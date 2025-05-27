@@ -491,37 +491,19 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *z) {
 	rbtree_delete_internal(tree, z, false);
 }
 
-/** Delete a node from the tree, based on given data, which MUST have come from rbtree_finddata().
- *
- *
- */
-bool rbtree_deletebydata(rbtree_t *tree, void const *data)
-{
-	rbnode_t *node = rbtree_find(tree, data);
-
-	if (!node) return false;
-
-	rbtree_delete(tree, node);
-
-	return true;
-}
-
-
 /** Find an element in the tree, returning the data, not the node
  *
  */
-rbnode_t *rbtree_find(rbtree_t *tree, void const *data)
+static rbnode_t *rbtree_find_internal(rbtree_t *tree, void const *data)
 {
 	rbnode_t *current;
 
-	PTHREAD_MUTEX_LOCK(tree);
 	current = tree->root;
 
 	while (current != NIL) {
 		int result = tree->compare(data, current->data);
 
 		if (result == 0) {
-			PTHREAD_MUTEX_UNLOCK(tree);
 			return current;
 		} else {
 			current = (result < 0) ?
@@ -529,9 +511,41 @@ rbnode_t *rbtree_find(rbtree_t *tree, void const *data)
 		}
 	}
 
-	PTHREAD_MUTEX_UNLOCK(tree);
 	return NULL;
 }
+
+rbnode_t *rbtree_find(rbtree_t *tree, void const *data)
+{
+	rbnode_t *node;
+
+	PTHREAD_MUTEX_LOCK(tree);
+	node = rbtree_find_internal(tree, data);
+	PTHREAD_MUTEX_UNLOCK(tree);
+
+	return node;
+}
+
+/** Delete a node from the tree, based on given data, which MUST have come from rbtree_finddata().
+ *
+ *
+ */
+bool rbtree_deletebydata(rbtree_t *tree, void const *data)
+{
+	rbnode_t *node;
+
+	PTHREAD_MUTEX_LOCK(tree);
+	node = rbtree_find_internal(tree, data);
+	if (!node) {
+		PTHREAD_MUTEX_UNLOCK(tree);
+		return false;
+	}
+
+	rbtree_delete_internal(tree, node, true);
+	PTHREAD_MUTEX_UNLOCK(tree);
+
+	return true;
+}
+
 
 /** Find the user data.
  *
@@ -741,4 +755,28 @@ void *rbtree_node2data(UNUSED rbtree_t *tree, rbnode_t *node)
 	if (!node) return NULL;
 
 	return node->data;
+}
+
+void *rbtree_first(rbtree_t *tree)
+{
+	rbnode_t *x;
+	void *data;
+
+	PTHREAD_MUTEX_LOCK(tree);
+	x = tree->root;
+
+	if (x == NIL) {
+		PTHREAD_MUTEX_UNLOCK(tree);
+		return NULL;
+	}
+
+	/*
+	 *	First node is the leftmost
+	 */
+	while (x->left != NIL) x = x->left;
+
+	data = x->data;
+	PTHREAD_MUTEX_UNLOCK(tree);
+
+	return data;
 }

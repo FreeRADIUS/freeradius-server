@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH dictionary 5 "12 Jun 2015"
+.TH dictionary 5 "05 Jan 2025"
 .SH NAME
 dictionary \- RADIUS dictionary file
 .SH DESCRIPTION
@@ -89,8 +89,20 @@ recommended.
 
 The options are:
 
+     array        Multiple values are packed into one attribute.
+     concat	  Multiple attributes should be concatenated
      encrypt=#    set encryption type 1, 2, or 3.
      has_tag      The attribute can have an RFC 2868 style tag
+     secret	  A value which should not be printed in debug mode
+     virtual      The attribute is special to the server.
+
+The "array" flag is only used for DHCP.  It indicates that a DHCP
+option can contain an array of multiple values.
+
+The "concat" flags indicates that when multiple attributes are present
+in a packet, the contents should be concatenated together to get the
+final contents.  Similarly, when encoding packets, a long value should
+be split into multiple attributes.
 
 The "encrypt" flag marks the attribute as being encrypted with one of
 three possible methods.  "1" means that the attribute is encrypted
@@ -104,6 +116,14 @@ The "has_tag" flag marks the attribute as being permitted to have a
 tag, as defined in \fIRFC2868\fP.  The purpose of the tag is to allow
 grouping of attributes for tunneled users.  See \fIRFC2868\fP for
 more details.
+
+The "secret" flag indicates that the value should not be printed in
+normal debug mode.  The value will be printed when the debug level
+is 3 or higher.
+
+The "virtual" flag is for the server, and indicates that the attribute
+does not really exist.  Instead, the value is taken from an internal
+callback.
 
 When the server receives an encoded attribute in a RADIUS packet, it
 looks up that attribute by number in the dictionary, and uses the

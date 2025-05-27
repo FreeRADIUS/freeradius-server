@@ -289,7 +289,7 @@ authenticate {
 #  or rlm_sql module can handle this.
 #  The rlm_sql module is *much* faster
 session {
-	radutmp
+#	radutmp
 
 	#
 	#  See "Simultaneous Use Checking Queries" in `mods-config/sql/main/$driver/queries.conf`

@@ -14,11 +14,12 @@ Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  libldap2-dev,
  libpam0g-dev,
  libpcap-dev,
- libpcre3-dev,
+ libpcre3-dev | quilt,
  libperl-dev,
  default-libmysqlclient-dev | libmysqlclient-dev,
  libpq-dev,
  libreadline-dev,
+ librdkafka-dev,
  libsasl2-dev,
  libsqlite3-dev,
  libssl-dev,
@@ -209,6 +210,13 @@ Architecture: any
 Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
 Description: Yubikey module for FreeRADIUS server
  This package is required to add Yubikey functionality to the
+ FreeRADIUS server.
+
+Package: freeradius-kafka
+Architecture: any
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: Kafka producer module for FreeRADIUS server
+ This package is required to add Kafka producer functionality to the
  FreeRADIUS server.
 
 Package: freeradius-dbg

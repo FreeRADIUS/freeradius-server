@@ -1,0 +1,150 @@
+kafka kafka_async {
+	bootstrap-servers = "localhost:9092"
+
+	#
+	#  This initialises an asynchronous instance of the kafka module.
+	#
+	#  When running asynchronously, calls to this module return as soon as
+	#  the message is enqueued in the local in-memory queue, with delivery
+	#  being attempted by a background thread according to the settings
+	#  specified below.
+	#
+	#  WARNING: This has consequences for event durability, for example
+	#  acknowledged accounting events will be lost if the process crashes
+	#  with events remaining in the local queue.
+	#
+	#  It can be enabled alongside the synchronous instance to support
+	#  messages with different durability strategies, for example:
+	#
+	#    Acct Stop: Call kafka instance (synchronous) => slow, durable
+	#    Acct I-U:  Call kafka_async instance         => fast, not durable
+	#
+	asynchronous = yes
+
+	global-config {
+
+		#
+		#  Local resources can be capped here
+		#
+		#queue.buffering.max.messages = 1000000
+		#queue.buffering.max.kbytes = 10000000
+
+		#
+		#  How long a request should wait in the queue in the hope of
+		#  batching requests for transmission. The default is not to
+		#  wait (0), but batching can result in significant performance
+		#  gains with asynchronous delivery.
+		#
+		linger.ms = 10
+
+		#
+		#  There are many additional topic parameters that can be used
+		#  (with careful consideration) described in the "Global
+		#  configuration properties" here:
+		#
+		#  https://docs.confluent.io/platform/current/clients/librdkafka/html/md_CONFIGURATION.html
+		#
+		#message.max.bytes = 1048576
+		#socket.send.buffer.bytes = 100000000
+		#socket.receive.buffer.bytes = 100000000
+		#sasl.mechanism = "SCRAM-SHA-512"
+		#security.protocol = "SASL_SSL"
+		#ssl.ca.location = "${cadir}"
+		#sasl.username = "kafkauser"
+		#sasl.password = "kafkapass"
+		#  ...
+		#
+
+	}
+
+	#
+	#  Example of a user-defined topic called by reference from another
+	#  section, or by using its name (which may be changed) in an xlat of
+	#  either form:
+	#
+	#    - "%{kafka_async:custom-topic (<header-list>) &Key-Attr-Ref Remainder is the message}"
+	#    - "%{kafka_async:custom-topic (<header-list>)  Remainder is the message}", if no key
+	#    - "%{kafka_async:custom-topic &Key-Attr-Ref Remainder is the message}"
+	#    - "%{kafka_async:custom-topic  Remainder is the message}", if no key
+	#
+	#  The attribute referred to by the optional &Key-Attr-Ref holds the
+	#  Kafka message's key. Notice that it is replaced with a mandatory
+	#  space if there is no key.
+	#
+	#  <header-list> has the same format as the json_encode xlat. For
+	#  example `&request[*] !&User-Password` creates Kafka headers from all
+	#  attributes in the RADIUS request, except for `User-Password`.
+	#
+	topic-config custom-topic {
+
+		#
+		#  The message durabily strategy: Number of acks required by all
+		#  in-sync replicas. Default of "-1" means all must have acked.
+		#
+		#request.required.acks = -1
+
+		#
+		#  How long a message can remain undelivered in the local
+		#  in-memory queue before it is timed out.
+		#
+		#  Default is determined by librdclient, typically 5 mins.
+		#
+		#  Set higher than the maximum broker outage that you need to
+		#  tollerate without losing events.
+		#
+		#message.timeout.ms = 3600000
+
+		#
+		#  There are many additional topic parameters that can be used
+		#  (with careful consideration) described in the "Topic
+		#  configuration properties" here:
+		#
+		#  https://docs.confluent.io/platform/current/clients/librdkafka/html/md_CONFIGURATION.html
+		#
+		#  ...
+		#
+
+	}
+
+	#
+	#  Topic used by calls from an accounting section
+	#
+	topic-config accounting {
+
+		#
+		#  You may either provide topic configuration parameters
+		#  or reference an existing topic (declared above this) to
+		#  reuse it.
+		#
+		#reference = custom-topic
+
+	}
+
+	#
+	#  Topic used by calls from an authorize section
+	#
+	topic-config authorize {
+
+		#
+		#  Used to set the topic name to something other than the
+		#  section from which it was called.
+		#
+		#name = "radius.auth_request"
+
+	}
+
+	#
+	#  Topic used by calls from a post-auth section
+	#
+	topic-config post-auth {
+		#name = "radius.auth_result"
+		#request.required.acks = 2
+	}
+
+
+#	statistics {
+#		file = /tmp/kafka_async_stats.json
+#	}
+
+	$INCLUDE ${modconfdir}/kafka/messages-json.conf
+}

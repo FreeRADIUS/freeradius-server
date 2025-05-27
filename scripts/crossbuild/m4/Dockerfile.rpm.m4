@@ -1,6 +1,14 @@
 ARG from=DOCKER_IMAGE
 FROM ${from} as build
 
+ifelse(OS_VER, 7, `dnl
+#
+#  CentOS 7 is now EOL, so we need to fix up the repo source
+#
+RUN sed -i "s/^mirrorlist/#mirrorlist/g" /etc/yum.repos.d/CentOS-*
+RUN sed -i "s|#\s*baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
+')dnl
+
 ifelse(OS_VER, `9', `dnl
 #
 #  Install yum
@@ -21,6 +29,8 @@ ifelse(OS_VER, `7', `dnl
 #  Install GCC that has the requisite support for C11 keywords and atomics
 #
 RUN yum install -y centos-release-scl
+RUN sed -i "s/^mirrorlist/#mirrorlist/g" /etc/yum.repos.d/CentOS-*
+RUN sed -i "s|#\s*baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
 RUN yum install -y devtoolset-8-gcc devtoolset-8-gcc-c++
 ENV CC=/opt/rh/devtoolset-8/root/usr/bin/gcc
 

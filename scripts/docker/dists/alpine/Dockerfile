@@ -3,8 +3,8 @@
 #
 # Rebuild this file with `make docker.alpine.regen`
 #
-ARG from=alpine:3.13
-FROM ${from} as build
+ARG from=alpine:3.21
+FROM ${from} AS build
 
 #
 #  Install build tools
@@ -44,9 +44,9 @@ RUN apk add linux-headers
 RUN apk add pcre-dev libidn-dev krb5-dev samba-dev curl-dev json-c-dev
 RUN apk add openldap-dev unbound-dev
 # languages
-RUN apk add ruby-dev perl-dev python2-dev python3-dev
+RUN apk add ruby-dev perl-dev python3-dev
 # databases
-RUN apk add hiredis-dev libmemcached-dev gdbm-dev libcouchbase-dev
+RUN apk add hiredis-dev libmemcached-dev gdbm-dev
 # sql
 RUN apk add postgresql-dev mariadb-dev unixodbc-dev sqlite-dev
 
@@ -80,8 +80,8 @@ RUN apk update \
     && apk add libcurl json-c libldap hiredis sqlite-dev \
 #RUN apk add libidn krb5
 #RUN apk add unbound-libs
-#RUN apk add ruby-libs perl python2-dev python3-dev
-#RUN apk add libmemcached gdbm libcouchbase
+#RUN apk add ruby-libs perl python3-dev
+#RUN apk add libmemcached gdbm
 #RUN apk add postgresql-dev mariadb-dev unixodbc-dev
     \
     && ln -s /opt/etc/raddb /etc/raddb

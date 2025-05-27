@@ -96,6 +96,10 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ "{ssha384}",		PW_SSHA2_384_PASSWORD },
 	{ "{ssha512}",		PW_SSHA2_512_PASSWORD },
 	{ "{x-pbkdf2}",		PW_PBKDF2_PASSWORD },
+	{ "{pbkdf2-sha1}",	PW_PBKDF2_SHA1_PASSWORD },
+	{ "{pbkdf2-sha256}",	PW_PBKDF2_SHA256_PASSWORD },
+	{ "{pbkdf2-sha512}",	PW_PBKDF2_SHA512_PASSWORD },
+	{ "{pbkdf2_sha256}",	PW_PBKDF2_SHA256_LEGACY_PASSWORD },
 #endif
 	{ "{sha}",		PW_SHA_PASSWORD },
 	{ "{ssha}",		PW_SSHA_PASSWORD },
@@ -857,10 +861,9 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t *inst, REQUEST *req
  *	- RLM_MODULE_REJECT
  *	- RLM_MODULE_OK
  */
-static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *request, const uint8_t *str, size_t len,
-								 const FR_NAME_NUMBER hash_names[],
-								 char scheme_sep, char iter_sep, char salt_sep,
-								 bool iter_is_base64, VALUE_PAIR const *password)
+static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse_digest(REQUEST *request, const uint8_t *str, size_t len,
+									int digest_type, char iter_sep, char salt_sep,
+									bool iter_is_base64, VALUE_PAIR const *password)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_INVALID;
 
@@ -868,7 +871,6 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *reques
 	ssize_t			slen;
 
 	EVP_MD const		*evp_md;
-	int			digest_type;
 	size_t			digest_len;
 
 	uint32_t		iterations;
@@ -878,36 +880,12 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *reques
 	uint8_t			hash[EVP_MAX_MD_SIZE];
 	uint8_t			digest[EVP_MAX_MD_SIZE];
 
-	char 			hash_token[128];
-
-	RDEBUG2("Comparing with \"known-good\" PBKDF2-Password");
-
-	if (len <= 1) {
-		REDEBUG("PBKDF2-Password is too short");
-		goto finish;
-	}
-
 	/*
-	 *	Parse PBKDF string = {hash_algorithm}<scheme_sep><iterations><iter_sep>b64(<salt>)<salt_sep>b64(<hash>)
+	 *	Parse PBKDF string for given digest = <iterations><iter_sep>b64(<salt>)<salt_sep>b64(<hash>)
 	 */
 	p = str;
 	end = p + len;
 
-	q = memchr(p, scheme_sep, end - p);
-	if (!q) {
-		REDEBUG("PBKDF2-Password has no component separators");
-		goto finish;
-	}
-
-	if ((q-p) >= (int)sizeof(hash_token)) {
-		REDEBUG("PBKDF2-Password has invalid hash token");
-		goto finish;
-	}
-
-	memcpy(hash_token, (char const *)p, (q - p));
-	hash_token[q - p] = '\0';
-
-	digest_type = fr_str2int(hash_names, hash_token, -1);
 	switch (digest_type) {
 	case PW_SSHA1_PASSWORD:
 		evp_md = EVP_sha1();
@@ -957,11 +935,9 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *reques
 #  endif
 
 	default:
-		REDEBUG("Unknown PBKDF2 hash method \"%.*s\"", (int)(q - p), p);
+		REDEBUG("Unknown PBKDF2 digest type \"%id\"", digest_type);
 		goto finish;
 	}
-
-	p = q + 1;
 
 	if (((end - p) < 1) || !(q = memchr(p, iter_sep, end - p))) {
 		REDEBUG("PBKDF2-Password missing iterations component");
@@ -1085,6 +1061,65 @@ finish:
 	return rcode;
 }
 
+/** Validates Crypt::PBKDF2 LDAP format strings
+ *
+ * @param[in] request	The current request.
+ * @param[in] str	Raw PBKDF2 string.
+ * @param[in] len	Length of string.
+ * @return
+ *	- RLM_MODULE_REJECT
+ *	- RLM_MODULE_OK
+ */
+static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *request, const uint8_t *str, size_t len,
+								 const FR_NAME_NUMBER hash_names[],
+								 char scheme_sep, char iter_sep, char salt_sep,
+								 bool iter_is_base64, VALUE_PAIR const *password)
+{
+	rlm_rcode_t		rcode = RLM_MODULE_INVALID;
+
+	uint8_t const		*p, *q, *end;
+	int			digest_type;
+
+	char 			hash_token[128];
+
+	RDEBUG2("Comparing with \"known-good\" PBKDF2-Password");
+
+	if (len <= 1) {
+		REDEBUG("PBKDF2-Password is too short");
+		goto finish;
+	}
+
+	/*
+	 *	Parse PBKDF string = {hash_algorithm}<scheme_sep><iterations><iter_sep>b64(<salt>)<salt_sep>b64(<hash>)
+	 */
+	p = str;
+	end = p + len;
+
+	q = memchr(p, scheme_sep, end - p);
+	if (!q) {
+		REDEBUG("PBKDF2-Password has no component separators");
+		goto finish;
+	}
+
+	if ((q-p) >= (int)sizeof(hash_token)) {
+		REDEBUG("PBKDF2-Password has invalid hash token");
+		goto finish;
+	}
+
+	memcpy(hash_token, (char const *)p, (q - p));
+	hash_token[q - p] = '\0';
+
+	digest_type = fr_str2int(hash_names, hash_token, -1);
+
+	p = q + 1;
+
+	return pap_auth_pbkdf2_parse_digest(request, p, end - p, digest_type, iter_sep, salt_sep, iter_is_base64, password);
+
+finish:
+
+	return rcode;
+}
+
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *password)
 {
 	uint8_t const *p = password->vp_octets, *q, *end = p + password->vp_length;
@@ -1099,20 +1134,30 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(UNUSED rlm_pap_t *inst, REQU
 
 	/*
 	 *	If it doesn't begin with a $ assume
-	 *	It's Crypt::PBKDF2 LDAP format
+	 *	it's Crypt::PBKDF2 LDAP format
 	 *
 	 *	{X-PBKDF2}<digest>:<b64 rounds>:<b64_salt>:<b64_hash>
+	 *
+	 *	or 389ds LDAP format
+	 *
+	 *	{PBKDF2-SHA512}<round>$<b64_salt>$<b64_hash>
 	 */
 	if (*p != '$') {
-		/*
-		 *	Strip the header if it's present
-		 */
-		if (*p == '{') {
-			q = memchr(p, '}', end - p);
-			p = q + 1;
+		if ((size_t)(end - p) >= sizeof("{PBKDF2-") && (memcmp(p, "{PBKDF2-", sizeof("{PBKDF2-") - 1) == 0)) {
+			p += sizeof("{PBKDF2-") - 1;
+			return pap_auth_pbkdf2_parse(request, p, end - p,
+						     pbkdf2_passlib_names, '}', '$', '$', false, request->password);
+		} else {
+			/*
+			 *	Strip the header if it's present
+			 */
+			if (*p == '{') {
+				q = memchr(p, '}', end - p);
+				p = q + 1;
+			}
+			return pap_auth_pbkdf2_parse(request, p, end - p,
+						     pbkdf2_crypt_names, ':', ':', ':', true, request->password);
 		}
-		return pap_auth_pbkdf2_parse(request, p, end - p,
-					     pbkdf2_crypt_names, ':', ':', ':', true, request->password);
 	}
 
 	/*
@@ -1143,6 +1188,132 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(UNUSED rlm_pap_t *inst, REQU
 
 	return RLM_MODULE_INVALID;
 }
+
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_sha1(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *password)
+{
+	uint8_t const *p = password->vp_octets, *end = p + password->vp_length;
+
+	rad_assert(request->password != NULL);
+	rad_assert(request->password->da->attr == PW_USER_PASSWORD);
+
+	if ((end - p) < 2) {
+		REDEBUG("Password-With-Header {PBKDF2-SHA1} too short");
+		return RLM_MODULE_INVALID;
+	}
+
+	return pap_auth_pbkdf2_parse_digest(request, p, end - p, PW_SSHA1_PASSWORD, '$', '$', false, request->password);
+}
+
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *password)
+{
+	uint8_t const *p = password->vp_octets, *end = p + password->vp_length;
+
+	rad_assert(request->password != NULL);
+	rad_assert(request->password->da->attr == PW_USER_PASSWORD);
+
+	if ((end - p) < 2) {
+		REDEBUG("Password-With-Header {PBKDF2-SHA256} too short");
+		return RLM_MODULE_INVALID;
+	}
+
+	return pap_auth_pbkdf2_parse_digest(request, p, end - p, PW_SSHA2_256_PASSWORD, '$', '$', false, request->password);
+}
+
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_sha512(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *password)
+{
+	uint8_t const *p = password->vp_octets, *end = p + password->vp_length;
+
+	rad_assert(request->password != NULL);
+	rad_assert(request->password->da->attr == PW_USER_PASSWORD);
+
+	if ((end - p) < 2) {
+		REDEBUG("Password-With-Header {PBKDF2-SHA512} too short");
+		return RLM_MODULE_INVALID;
+	}
+
+	return pap_auth_pbkdf2_parse_digest(request, p, end - p, PW_SSHA2_512_PASSWORD, '$', '$', false, request->password);
+}
+
+/*
+ *	389ds pbkdf2 legacy password with header {PBKDF2_SHA256}
+ *
+ *	this was the first implementation in 389ds using a fixed length struct as base64.
+ *	at some point it was the default scheme, although it's not recommened anymore.
+ *
+ *      content struct is
+ *      4 bytes iterations (value 8192)
+ *      64 bytes salt
+ *	256 bytes hash
+ */
+static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256_legacy(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *password)
+{
+#define PBKDF2_SHA256_LEGACY_SALT_LENGTH 64
+#define PBKDF2_SHA256_LEGACY_ITERATIONS_LENGTH 4
+#define PBKDF2_SHA256_LEGACY_HASH_LENGTH 256
+#define PBKDF2_SHA256_LEGACY_TOTAL_LENGTH (PBKDF2_SHA256_LEGACY_ITERATIONS_LENGTH + PBKDF2_SHA256_LEGACY_SALT_LENGTH + PBKDF2_SHA256_LEGACY_HASH_LENGTH)
+#define PBKDF2_SHA256_LEGACY_ITERATIONS 8192
+#define PBKDF2_SHA256_LEGACY_B64_LENGTH (PBKDF2_SHA256_LEGACY_TOTAL_LENGTH * 4 / 3)
+
+	struct pbkdf2_bufs {
+		uint32_t	iterations;
+		uint8_t		salt[PBKDF2_SHA256_LEGACY_SALT_LENGTH];
+		uint8_t		hash[PBKDF2_SHA256_LEGACY_HASH_LENGTH];
+		uint8_t		padding[1]; /* extra padding because fr_base64_decode incorrectly determines minimal size */
+	};
+	struct pbkdf2_bufs 	pbkdf2_buf = { .iterations = PBKDF2_SHA256_LEGACY_ITERATIONS };
+
+	ssize_t			slen;
+	uint8_t const 		*p = password->vp_octets, *end = p + password->vp_length;
+
+	EVP_MD const		*evp_md = EVP_sha256();
+	size_t			digest_len = SHA256_DIGEST_LENGTH;
+	uint8_t			digest[SHA256_DIGEST_LENGTH];
+
+	rad_assert(request->password != NULL);
+	rad_assert(request->password->da->attr == PW_USER_PASSWORD);
+
+	if ((end - p) != PBKDF2_SHA256_LEGACY_B64_LENGTH) {
+		REDEBUG("Password-With-Header {PBKDF2_SHA256} has incorrect size %zd instead of %d.", password->vp_length, PBKDF2_SHA256_LEGACY_B64_LENGTH);
+		return RLM_MODULE_INVALID;
+	}
+
+	(void)fr_strerror();
+	slen = fr_base64_decode((uint8_t *)&pbkdf2_buf, sizeof(pbkdf2_buf), (char const *)p, end - p);
+
+	if (slen <= 0) {
+		REDEBUG("Failed decoding Password-With-Header {PBKDF2_SHA256}: \"%.*s\"", (int)(end - p), p);
+		return RLM_MODULE_INVALID;
+	}
+
+	if (slen != PBKDF2_SHA256_LEGACY_TOTAL_LENGTH) {
+		REDEBUG("Password-With-Header {PBKDF2_SHA256} has incorrect decoded size %zd instead of %d.", slen, PBKDF2_SHA256_LEGACY_TOTAL_LENGTH);
+		return RLM_MODULE_INVALID;
+	}
+
+	pbkdf2_buf.iterations = ntohl(pbkdf2_buf.iterations);
+
+	if (pbkdf2_buf.iterations != PBKDF2_SHA256_LEGACY_ITERATIONS) {
+		REDEBUG("Password-With-Header {PBKDF2_SHA256} has unexpected number of iterations %d instead of %d.", pbkdf2_buf.iterations, PBKDF2_SHA256_LEGACY_ITERATIONS);
+		return RLM_MODULE_INVALID;
+	}
+
+	if (PKCS5_PBKDF2_HMAC((char const *)request->password->vp_octets, (int)request->password->vp_length,
+			      (unsigned char const *)pbkdf2_buf.salt, (int)PBKDF2_SHA256_LEGACY_SALT_LENGTH,
+			      (int)pbkdf2_buf.iterations,
+			      evp_md,
+			      (int)digest_len, (unsigned char *)digest) == 0) {
+		REDEBUG("PBKDF2_SHA256 digest failure");
+		return RLM_MODULE_INVALID;
+	}
+
+	if (rad_digest_cmp(digest, pbkdf2_buf.hash, (size_t)digest_len) != 0) {
+		REDEBUG("PBKDF2_SHA256 digest does not match \"known good\" digest");
+		return RLM_MODULE_REJECT;
+	} else {
+		return RLM_MODULE_OK;
+	}
+}
+
 #endif
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
@@ -1343,6 +1514,22 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 		case PW_PBKDF2_PASSWORD:
 			auth_func = &pap_auth_pbkdf2;
+			break;
+
+		case PW_PBKDF2_SHA1_PASSWORD:
+			auth_func = &pap_auth_pbkdf2_sha1;
+			break;
+
+		case PW_PBKDF2_SHA256_PASSWORD:
+			auth_func = &pap_auth_pbkdf2_sha256;
+			break;
+
+		case PW_PBKDF2_SHA512_PASSWORD:
+			auth_func = &pap_auth_pbkdf2_sha512;
+			break;
+
+		case PW_PBKDF2_SHA256_LEGACY_PASSWORD:
+			auth_func = &pap_auth_pbkdf2_sha256_legacy;
 			break;
 #endif
 

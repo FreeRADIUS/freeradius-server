@@ -259,6 +259,29 @@ void fr_pair_delete_by_da(VALUE_PAIR **first, DICT_ATTR const *da)
 	}
 }
 
+/** Delete matching pair
+ *
+ * @param[in,out] first VP in list.
+ * @param[in] vp to delete
+ */
+void fr_pair_delete(VALUE_PAIR **first, VALUE_PAIR *vp)
+{
+	VALUE_PAIR *i, *next;
+	VALUE_PAIR **last = first;
+
+	for(i = *first; i; i = next) {
+		VERIFY_VP(i);
+		next = i->next;
+		if (i == vp) {
+			*last = next;
+			talloc_free(i);
+			break;
+		} else {
+			last = &i->next;
+		}
+	}
+}
+
 /** Add a VP to the end of the list.
  *
  * Locates the end of 'first', and links an additional VP 'add' at the end.
@@ -1273,9 +1296,84 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 	type = vp->da->type;
 
 	/*
+	 *	We MIGHT get the tag from the value.  But it's not guaranteed.
+	 *
+	 *	:tag:value
+	 *
+	 *	@todo - the current parser requires that strings are NOT quoted.
+	 */
+	if (vp->tag == TAG_VALUE) {
+		char const *p = value;
+		char const *end = value + inlen;
+
+		vp->tag = 0;
+
+		/*
+		 *	No data or no ':' prefix, there's no tag.
+		 */
+		if ((inlen == 0) || (*p != ':')) goto parse_value;
+		p++;
+
+		/*
+		 *	Input is just ':', that's invalid.
+		 */
+		if (p == end) {
+		missing_tag:
+			fr_strerror_printf("Value has tag prefix ':', but the tag is missing or malformed");
+			return -1;
+		}
+
+		/*
+		 *	:x is invalid.
+		 */
+		if (!((*p >= 0) && (*p <= '9'))) {
+		invalid_chars:
+			fr_strerror_printf("Value has invalid characters in tag");
+			return -1;
+		}
+		vp->tag = *p - '0';
+		p++;
+
+		/*
+		 *	:1 is invalid.
+		 */
+		if (p == end) goto done_tag;
+
+		/*
+		 *	:1: is a valid tag, with perhaps an empty string.
+		 */
+		if (*p == ':') {
+			p++;
+			goto done_tag;
+		}
+
+		/*
+		 *	Tags are 0..31
+		 */
+		if (!((*p >= 0) && (*p <= '9'))) goto invalid_chars;
+
+		vp->tag *= 10;
+		vp->tag += *p - '0';
+
+		if (vp->tag >= 0x20) goto invalid_chars;
+		p++;
+
+		/*
+		 *	Tags must end with another ':'
+		 */
+		if ((p == end) || (*p != ':')) goto missing_tag;
+		p++;
+
+	done_tag:
+		value = p;
+		inlen = (size_t) (end - p);
+	}
+
+	/*
 	 *	We presume that the input data is from a double quoted
 	 *	string, and needs escaping
 	 */
+parse_value:
 	ret = value_data_from_str(vp, &vp->data, &type, vp->da, value, inlen, '"');
 	if (ret < 0) return -1;
 
@@ -1522,7 +1620,10 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 			 if (tc && !*tc && TAG_VALID_ZERO(tag))
 				 *ts = '\0';
 			 else tag = TAG_ANY;
+		 } else if (ts[1] == 'V') {
+			 tag = TAG_VALUE;
 		 } else {
+		 invalid_tag:
 			 fr_strerror_printf("Invalid tag for attribute %s", attribute);
 			 return NULL;
 		 }
@@ -1540,6 +1641,11 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		return vp;
 	}
 
+	/*
+	 *	Can only use tags when the DA says that it supports tags.
+	 */
+	if (!da->flags.has_tag && found_tag) goto invalid_tag;
+
 	/*      Check for a tag in the 'Merit' format of:
 	 *      :Tag:Value.  Print an error if we already found
 	 *      a tag in the Attribute.
@@ -1547,7 +1653,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 
 	if (value && (*value == ':' && da->flags.has_tag)) {
 		/* If we already found a tag, this is invalid */
-		if(found_tag) {
+		if(found_tag && (tag != TAG_VALUE)) {
 			fr_strerror_printf("Duplicate tag %s for attribute %s",
 				   value, da->name);
 			DEBUG("Duplicate tag %s for attribute %s\n",
@@ -1707,7 +1813,8 @@ do_add:
  */
 int fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value)
 {
-	char *raw;
+	char *str;
+	char const *q;
 
 	/*
 	 *	valuepair should not already have a value.
@@ -1717,14 +1824,36 @@ int fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value)
 		return -1;
 	}
 
-	raw = talloc_typed_strdup(vp, value);
-	if (!raw) {
+	/*
+	 *	No '%', OR '%' is at the end of the string.  Just set
+	 *	the value from the string.
+	 */
+	q = strchr(value, '%');
+	while (true) {
+		if (!q || !q[1]) return fr_pair_value_from_str(vp, value, -1);
+
+		if (q[1] == '{') goto do_xlat; /* very common */
+
+		if (strchr("%cdelmntCDGHIMSTYv", q[1])) goto do_xlat;
+
+		/*
+		 *	"%?" either gets ignored by the xlat parser,
+		 *	or results in an error where it can't expand
+		 *	the string.  For our purposes, we skip them,
+		 *	to allow more strings to be treated "as-is"
+		 */
+		q = strchr(q + 1, '%');
+	}
+
+do_xlat:
+	str = talloc_typed_strdup(vp, value);
+	if (!str) {
 		fr_strerror_printf("Out of memory");
 		return -1;
 	}
 
 	vp->type = VT_XLAT;
-	vp->value.xlat = raw;
+	vp->value.xlat = str;
 	vp->vp_length = 0;
 
 	return 0;
@@ -1882,11 +2011,32 @@ FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
 		 *	Only report as double quoted if it contained valid
 		 *	a valid xlat expansion.
 		 */
+		raw->quote = T_SINGLE_QUOTED_STRING;
 		p = strchr(raw->r_opand, '%');
-		if (p && (p[1] == '{')) {
-			raw->quote = quote;
-		} else {
-			raw->quote = T_SINGLE_QUOTED_STRING;
+
+		while (p) {
+			/*
+			 *	%{...}
+			 */
+			if (p[1] == '{') {
+				raw->quote = T_DOUBLE_QUOTED_STRING;
+				break;
+			}
+
+			/*
+			 *	Single-character expansions.  See src/main/xlat.c
+			 */
+			if (strchr("cdelmntCDGHIMSTYv", p[1])) {
+				raw->quote = T_DOUBLE_QUOTED_STRING;
+				break;
+			}
+
+			/*
+			 *	Skip %%
+			 */
+			if (p[1] == '%') p++;
+
+			p = strchr(p + 1, '%');
 		}
 
 		break;
@@ -1951,6 +2101,14 @@ FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR 
 		}
 		if (last_token == T_INVALID) break;
 
+		/*
+		 *	Mark double-quoted strings as being expanded,
+		 *	but only if they contain a '%' character.
+		 *
+		 *	Note that this check is a bit too narrow, but
+		 *	most of the time it avoids marking the string
+		 *	for expansion.
+		 */
 		if (raw.quote == T_DOUBLE_QUOTED_STRING) {
 			vp = fr_pair_make(ctx, NULL, raw.l_opand, NULL, raw.op);
 			if (!vp) {

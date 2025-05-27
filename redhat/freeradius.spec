@@ -1,11 +1,13 @@
 %bcond_with rlm_yubikey
 %bcond_without ldap
+%bcond_with radlast
 # %%bcond_with experimental_modules
 
 %{!?_with_rlm_cache_memcached: %global _without_rlm_cache_memcached --without-rlm_cache_memcached}
 %{!?_with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
 %{!?_with_rlm_eap_tnc: %global _without_rlm_eap_tnc --without-rlm_eap_tnc}
 %{!?_with_rlm_yubikey: %global _without_rlm_yubikey --without-rlm_yubikey}
+%{!?_with_radlast: %global _without_radlast --without-radlast}
 %{?_without_ldap: %global _without_libfreeradius_ldap --without-libfreeradius-ldap}
 %{?el7: %global _without_rlm_eap_teap --without-rlm_eap_teap}
 
@@ -31,13 +33,13 @@
 
 Summary: High-performance and highly configurable free RADIUS server
 Name: freeradius
-Version: 3.2.5
+Version: 3.2.8
 Release: 1%{?dist}
 License: GPLv2+ and LGPLv2+
 Group: System Environment/Daemons
 URL: http://www.freeradius.org/
 
-Source0: ftp://ftp.freeradius.org/pub/radius/freeradius-server-%{version}.tar.bz2
+Source0: https://www.freeradius.org/ftp/pub/radius/freeradius-server-%{version}.tar.bz2
 %if %{?_unitdir:1}%{!?_unitdir:0}
 Source100: radiusd.service
 Source104: freeradius-tmpfiles-conf
@@ -358,6 +360,17 @@ BuildRequires: ykclient-devel >= 2.10
 This plugin provides YubiCloud support for the FreeRADIUS server project.
 %endif
 
+%if 0%{?rhel} >= 8
+%package kafka
+Summary: Kafka producer support for FreeRADIUS
+Group: System Environment/Daemons
+Requires: %{name} = %{version}-%{release}
+Requires: librdkafka
+BuildRequires: librdkafka-devel
+
+%description kafka
+This plugin provides Kafka producer support for the FreeRADIUS server project.
+%endif
 
 %prep
 %setup -q -n freeradius-server-%{version}
@@ -428,6 +441,8 @@ export LDFLAGS="-Wl,--build-id"
         %{?_without_rlm_cache_memcached} \
         %{?_without_libwbclient} \
         %{?_without_libfreeradius_ldap} \
+        %{?_with_radlast} \
+        %{?_without_radlast} \
 #        --with-modules="rlm_wimax" \
 
 make %_smp_mflags
@@ -660,6 +675,7 @@ fi
 %{_libdir}/freeradius/rlm_pap.so
 %{_libdir}/freeradius/rlm_passwd.so
 %{_libdir}/freeradius/rlm_preprocess.so
+%{_libdir}/freeradius/rlm_proxy_rate_limit.so
 %{_libdir}/freeradius/rlm_radutmp.so
 %{_libdir}/freeradius/rlm_realm.so
 %{_libdir}/freeradius/rlm_replicate.so
@@ -699,7 +715,7 @@ fi
 %dir %attr(770,root,radiusd) %{_sysconfdir}/raddb/certs
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/README.md
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/Makefile
-%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/bootstrap
+%attr(750,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/bootstrap
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/xpextensions
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/*.cnf
 %dir %attr(770,root,radiusd) %{_sysconfdir}/raddb/certs/realms
@@ -726,6 +742,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/preprocess/*
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/unbound
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/unbound/*
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/kafka
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/kafka/*
 %if %{?el6:0}%{!?el6:1}
 %if 0%{?rhel} <= 8
 %dir %attr(750,root,radiusd) %{_sysconfdir}/raddb/mods-config/python
@@ -843,7 +861,9 @@ fi
 /usr/bin/radclient
 /usr/bin/radcrypt
 /usr/bin/radeapclient
+%if %{?_with_radlast:1}%{!?_with_radlast:0}
 /usr/bin/radlast
+%endif
 /usr/bin/radtest
 /usr/bin/radsecret
 /usr/bin/radsniff
@@ -858,7 +878,9 @@ fi
 %doc %{_mandir}/man1/rad_counter.1.gz
 %doc %{_mandir}/man1/radclient.1.gz
 %doc %{_mandir}/man1/radeapclient.1.gz
+%if %{?_with_radlast:1}%{!?_with_radlast:0}
 %doc %{_mandir}/man1/radlast.1.gz
+%endif
 %doc %{_mandir}/man8/radsqlrelay.8.gz
 %doc %{_mandir}/man1/radtest.1.gz
 %doc %{_mandir}/man1/radwho.1.gz
@@ -955,6 +977,12 @@ fi
 %files yubikey
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_yubikey.so
+%endif
+
+%if 0%{?rhel} >= 8
+%files kafka
+%defattr(-,root,root)
+%{_libdir}/freeradius/rlm_kafka.so
 %endif
 
 %changelog

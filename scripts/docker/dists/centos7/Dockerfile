@@ -4,7 +4,13 @@
 # Rebuild this file with `make docker.centos7.regen`
 #
 ARG from=centos:7
-FROM ${from} as build
+FROM ${from} AS build
+
+#
+#  CentOS 7 is now EOL, so we need to fix up the repo source
+#
+RUN sed -i "s/^mirrorlist/#mirrorlist/g" /etc/yum.repos.d/CentOS-*
+RUN sed -i "s|#\s*baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
 
 
 
@@ -54,7 +60,17 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 
 #  Enable EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+
+RUN echo $'[epel]\n\
+name=Extra Packages for Enterprise Linux 7 - $basearch\n\
+metalink=https://mirrors.fedoraproject.org/metalink?repo=epel-7&arch=$basearch&infra=$infra&content=$contentdir\n\
+failovermethod=priority\n\
+enabled=1\n\
+gpgcheck=1\n\
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7'\
+> /etc/yum.repos.d/epel.repo
+RUN rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
+
 
 #
 #  Install build dependencies
@@ -96,6 +112,12 @@ FROM ${from}
 
 COPY --from=build /root/rpms /tmp/
 
+#
+#  CentOS 7 is now EOL, so we need to fix up the repo source
+#
+RUN sed -i "s/^mirrorlist/#mirrorlist/g" /etc/yum.repos.d/CentOS-*
+RUN sed -i "s|#\s*baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
+
 
 # Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
 RUN echo $'[ltb-project]\n\
@@ -107,9 +129,17 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 > /etc/yum.repos.d/ltb-project.repo \
     && rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 
-
 #  EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm \
+
+RUN echo $'[epel]\n\
+name=Extra Packages for Enterprise Linux 7 - $basearch\n\
+metalink=https://mirrors.fedoraproject.org/metalink?repo=epel-7&arch=$basearch&infra=$infra&content=$contentdir\n\
+failovermethod=priority\n\
+enabled=1\n\
+gpgcheck=1\n\
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7'\
+> /etc/yum.repos.d/epel.repo
+RUN rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7 \
     \
     && yum install -y /tmp/*.rpm
 

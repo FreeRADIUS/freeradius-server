@@ -285,7 +285,7 @@ char const *fr_dlerror(void)
 	return dlerror();
 }
 
-static int virtual_server_idx(char const *name)
+static uint32_t virtual_server_idx(char const *name)
 {
 	uint32_t hash;
 
@@ -298,11 +298,11 @@ static int virtual_server_idx(char const *name)
 
 static virtual_server_t *virtual_server_find(char const *name)
 {
-	rlm_rcode_t rcode;
+	uint32_t hash;
 	virtual_server_t *server;
 
-	rcode = virtual_server_idx(name);
-	for (server = virtual_servers[rcode];
+	hash = virtual_server_idx(name);
+	for (server = virtual_servers[hash];
 	     server != NULL;
 	     server = server->next) {
 		if (!name && !server->name) break;
@@ -317,6 +317,7 @@ static virtual_server_t *virtual_server_find(char const *name)
 static int _virtual_server_free(virtual_server_t *server)
 {
 	if (server->components) rbtree_free(server->components);
+
 	return 0;
 }
 
@@ -345,7 +346,7 @@ void virtual_servers_free(time_t when)
 			 */
 			if ((when == 0) ||
 			    ((server->created < when) && server->can_free)) {
-				*last = server->next;
+				*last = next;
 				talloc_free(server);
 			} else {
 				last = &(server->next);
@@ -1252,9 +1253,10 @@ static int load_byserver(CONF_SECTION *cs)
 	bool found;
 	char const *name = cf_section_name2(cs);
 	rbtree_t *components;
-	virtual_server_t *server = NULL;
+	virtual_server_t *server = NULL, *old;
 	indexed_modcallable *c;
 	bool is_bare;
+	uint32_t hash;
 
 	if (name) {
 		cf_log_info(cs, "server %s { # from file %s",
@@ -1466,27 +1468,19 @@ static int load_byserver(CONF_SECTION *cs)
 	}
 
 	/*
-	 *	Now that it is OK, insert it into the list.
+	 *	Mark the existing (i.e. old) server as no longer used.
 	 *
-	 *	This is thread-safe...
+	 *	Do this _before_ adding the new virtual server.
 	 */
-	comp = virtual_server_idx(name);
-	server->next = virtual_servers[comp];
-	virtual_servers[comp] = server;
+	old = virtual_server_find(name);
+	if (old) old->can_free = true;
 
 	/*
-	 *	Mark OLDER ones of the same name as being unused.
+	 *	Insert the new server at the head of the list.
 	 */
-	server = server->next;
-	while (server) {
-		if ((!name && !server->name) ||
-		    (name && server->name &&
-		     (strcmp(server->name, name) == 0))) {
-			server->can_free = true;
-			break;
-		}
-		server = server->next;
-	}
+	hash = virtual_server_idx(name);
+	server->next = virtual_servers[hash];
+	virtual_servers[hash] = server;
 
 	return 0;
 }
@@ -2300,3 +2294,66 @@ rlm_rcode_t process_send_coa(int send_coa_type, REQUEST *request)
 	return indexed_modcall(MOD_SEND_COA, send_coa_type, request);
 }
 #endif
+
+int virtual_server_sanity_check(REQUEST *request)
+{
+	virtual_server_t *server;
+
+	server = virtual_server_find(request->server);
+	if (!server) {
+		RDEBUG("No such virtual server \"%s\"", request->server);
+		return -1;
+	}
+
+	switch (request->packet->code) {
+	case PW_CODE_ACCESS_REQUEST:
+		if (!server->mc[MOD_AUTHORIZE] &&
+		    !server->mc[MOD_AUTHENTICATE] &&
+		    !server->mc[MOD_POST_AUTH]) {
+			REDEBUG("The virtual server %s is missing ALL of the 'authorize', 'authenticate', and 'post-auth' sections.", server->name);
+			REDEBUG("Please either update the 'listen' section so that it does not receive Access-Request packets,");
+			REDEBUG("or, add those sections back into the virtual server.");
+			RDEBUG("The server WILL NOT be able to process Access-Request packets until the configuration is fixed.");
+			return -1;
+		}
+		break;
+
+	case PW_CODE_ACCOUNTING_REQUEST:
+		if (!server->mc[MOD_PREACCT] &&
+		    !server->mc[MOD_ACCOUNTING]) {
+			REDEBUG("The virtual server %s is missing ALL of the 'preacct' and 'accounting' sections.", server->name);
+			REDEBUG("Please either update the 'listen' section so that it does not receive Accounting-Request packets,");
+			REDEBUG("or, add those sections back into the virtual server.");
+			RDEBUG("The server WILL NOT be able to process Accounting-Request packets until the configuration is fixed.");
+			return -1;
+		}
+		break;
+
+	case PW_CODE_COA_REQUEST:
+		if (!server->mc[MOD_RECV_COA] &&
+		    !server->mc[MOD_SEND_COA]) {
+			REDEBUG("The virtual server %s is missing ALL of the 'recv-coa' and 'send-coa' sections.", server->name);
+			REDEBUG("Please either update the 'listen' section so that it does not receive CoA-Request packets,");
+			REDEBUG("or, add those sections back into the virtual server.");
+			RDEBUG("The server WILL NOT be able to process CoA-Request packets until the configuration is fixed.");
+			return -1;
+		}
+		break;
+
+	case PW_CODE_DISCONNECT_REQUEST:
+		if (!server->mc[MOD_RECV_COA] &&
+		    !server->mc[MOD_SEND_COA]) {
+			REDEBUG("The virtual server %s is missing ALL of the 'recv-coa' and 'send-coa' sections.", server->name);
+			REDEBUG("Please either update the 'listen' section so that it does not receive Disconnect-Request packets,");
+			REDEBUG("or, add those sections back into the virtual server.");
+			RDEBUG("The server WILL NOT be able to process Disconnect-Request packets until the configuration is fixed.");
+			return -1;
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	return 0;
+}

@@ -567,6 +567,25 @@ if test "x$WITH_DHCP" = "xyes"; then
 fi
 AC_SUBST(WITH_DHCP)
 
+
+dnl #
+dnl #  extra argument: --with-radlast
+dnl #
+MANSKIP=
+WITH_RADLAST=
+AC_ARG_WITH(radlast,
+[  --with-radlast          install radlast],
+[ case "$withval" in
+  yes)
+    WITH_RADLAST=yes
+    ;;
+  *)
+    WITH_RADLAST=no
+  esac ]
+)
+AC_SUBST(WITH_RADLAST)
+
+
 dnl #
 dnl #  Allow the user to specify a list of modules to be linked
 dnl #  statically to the server.
@@ -858,6 +877,19 @@ fi
 
 AC_PATH_PROG(RUSERS, rusers, /usr/bin/rusers)
 
+
+dnl #
+dnl #  radlast depends on last
+dnl #
+if test "x$WITH_RADLAST" = "x"; then
+  AC_CHECK_PROG(LAST, last, yes, no)
+  WITH_RADLAST="$LAST"
+fi
+if test "x$WITH_RADLAST" != "xyes"; then
+  MANSKIP="$MANSKIP man/man1/radlast.1"
+fi
+
+
 dnl #
 dnl #  FIXME This is truly gross.
 dnl #
@@ -1017,7 +1049,7 @@ else
 
   AC_SEARCH_LIBS(sem_init, pthread sem posix4 rt semaphore,
     [],
-    [AC_MSG_ERROR([[-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or ftp://ftp.freeradius.org/pub/radius/contrib/libsem.tar.gz]])]
+    [AC_MSG_ERROR([[-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or https://www.freeradius.org/ftp/pub/radius/contrib/libsem.tar.gz]])]
   )
 fi
 
@@ -1958,7 +1990,7 @@ if test "x$developer" = "xyes"; then
     dnl #
     dnl #  -fsanitize=fuzzer  - Build with fuzzer support
     dnl #
-    fsanitizeflags="$fsanitizeflags,fuzzer"
+    fsanitizeflags="$fsanitizeflags,fuzzer-no-link"
   fi
 
   dnl #
@@ -2625,11 +2657,13 @@ AC_SUBST(USE_SHARED_LIBS)
 USE_STATIC_LIBS="yes"
 AC_SUBST(USE_STATIC_LIBS)
 AC_SUBST(STATIC_MODULES)
+AC_SUBST(MANSKIP)
 
 AC_CONFIG_FILES([\
   ./Make.inc \
   ./src/include/build-radpaths-h \
   ./src/main/radsniff.mk \
+  ./src/main/radlast.mk \
   ./src/main/checkrad \
   ./src/main/radlast \
   ./src/main/radtest \

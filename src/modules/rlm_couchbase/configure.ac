@@ -180,6 +180,22 @@ if test "x$ac_cv_header_libcouchbase_couchbase_h" != "xyes"; then
 	FR_MODULE_FAIL([couchbase.h])
 fi
 
+dnl # lcb_t is in couchbase v2, so if the system is v3 we can't build
+
+AC_MSG_CHECKING([for lcb_t in couchbase.h])
+AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM([#include <libcouchbase/couchbase.h>], [[
+		lcb_t *instance;
+	]])],
+	[
+		AC_MSG_RESULT(yes)
+	],
+	[
+		AC_MSG_RESULT(no)
+		FR_MODULE_FAIL([lcb_t(couchbase-2.x)])
+	])
+
+
 dnl ############################################################
 dnl # Check for libcouchbase libraries
 dnl ############################################################

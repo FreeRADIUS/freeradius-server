@@ -62,6 +62,12 @@ time_t fr_start_time = (time_t)-1;
 static rbtree_t *pl = NULL;
 static fr_event_list_t *el = NULL;
 
+/*
+ *	These are shared with threads.c, and nothing else.
+ */
+void request_free(REQUEST *request) CC_HINT(nonnull);
+void request_done(REQUEST *request, int original) CC_HINT(nonnull);
+
 fr_event_list_t *radius_event_list_corral(UNUSED event_corral_t hint) {
 	/* Currently we do not run a second event loop for modules. */
 	return el;
@@ -100,7 +106,7 @@ static char const *master_state_names[REQUEST_MASTER_NUM_STATES] = {
 	"?",
 	"active",
 	"stop-processing",
-	"counted"
+	"in-queue-waiting-to-free",
 };
 
 static char const *child_state_names[REQUEST_CHILD_NUM_STATES] = {
@@ -306,7 +312,7 @@ static bool we_are_master(void)
 #define FINAL_STATE(_x) NO_CHILD_THREAD; request->component = "<" #_x ">"; request->module = ""; request->child_state = _x
 
 
-static void event_new_fd(rad_listen_t *this);
+static void event_new_fd(void *ctx);
 
 /*
  *	We need mutexes around the event FD list *only* in certain
@@ -396,7 +402,6 @@ STATE_MACHINE_DECL(request_ping) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_response_delay) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_cleanup_delay) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_running) CC_HINT(nonnull);
-STATE_MACHINE_DECL(request_done) CC_HINT(nonnull);
 
 STATE_MACHINE_DECL(proxy_no_reply) CC_HINT(nonnull);
 STATE_MACHINE_DECL(proxy_running) CC_HINT(nonnull);
@@ -590,13 +595,22 @@ static void request_timer(void *ctx)
  *	request.  If there is a parent, free the parent INSTEAD of the
  *	request.
  */
-static void request_free(REQUEST *request)
+void request_free(REQUEST *request)
 {
 	void *ptr;
 
 	rad_assert(request->ev == NULL);
 	rad_assert(!request->in_request_hash);
 	rad_assert(!request->in_proxy_hash);
+
+	/*
+	 *	Don't free requests which are in the queue.  The code
+	 *	in threads.c will take care of doing that.
+	 */
+	if (request->child_state == REQUEST_QUEUED) {
+		request->master_state = REQUEST_TO_FREE;
+		return;
+	}
 
 	if ((request->options & RAD_REQUEST_OPTION_CTX) == 0) {
 		talloc_free(request);
@@ -622,12 +636,19 @@ void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_h
 
 	listener->blocked = true;
 
-	if (fr_event_fd_write_handler(el, 0, listener->fd, write_handler, listener) < 0) {
+	if (listener->status == RAD_LISTEN_STATUS_INIT) {
+		listen_socket_t *sock = listener->data;
+
+		sock->write_handler = write_handler;
+
+	} else if (fr_event_fd_write_handler(el, 0, listener->fd, write_handler, listener) <= 0) {
 		ERROR("Fatal error freezing socket: %s", fr_strerror());
 		fr_exit(1);
 	}
 
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+
+	if (!we_are_master()) radius_signal_self(RADIUS_SIGNAL_SELF_EVENT_UPDATE);
 }
 
 void proxy_listener_thaw(rad_listen_t *listener)
@@ -641,12 +662,14 @@ void proxy_listener_thaw(rad_listen_t *listener)
 
 	listener->blocked = false;
 
-	if (fr_event_fd_write_handler(el, 0, listener->fd, NULL, listener) < 0) {
+	if (fr_event_fd_write_handler(el, 0, listener->fd, NULL, listener) <= 0) {
 		ERROR("Fatal error freezing socket: %s", fr_strerror());
 		fr_exit(1);
 	}
 
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+
+	if (!we_are_master()) radius_signal_self(RADIUS_SIGNAL_SELF_EVENT_UPDATE);
 }
 #endif	/* WITH_TLS */
 
@@ -678,7 +701,7 @@ static void proxy_reply_too_late(REQUEST *request)
  *	}
  *  \enddot
  */
-static void request_done(REQUEST *request, int original)
+void request_done(REQUEST *request, int original)
 {
 	struct timeval now, when;
 	int action = original;
@@ -793,7 +816,17 @@ static void request_done(REQUEST *request, int original)
 	case FR_ACTION_DONE:
 #ifdef HAVE_PTHREAD_H
 		/*
-		 *	If the child is still running, leave it alone.
+		 *	If the child is still queued or running, don't
+		 *	mark it as DONE.
+		 *
+		 *	For queued requests, the request_free()
+		 *	function will mark up the request so that the
+		 *	queue will free it.
+		 *
+		 *	For running requests, the child thread will
+		 *	eventually call request_done().  A timer in
+		 *	the master thread will then take care of
+		 *	cleaning up the request.
 		 */
 		if (spawn_flag && (request->child_state <= REQUEST_RUNNING)) {
 			break;
@@ -1006,6 +1039,12 @@ static void request_cleanup_delay_init(REQUEST *request)
 #ifdef HAVE_PTHREAD_H
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 #endif
+
+		/*
+		 *	Set the statistics immediately if we can.
+		 */
+		request_stats_final(request);
+
 		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 		return;
 	}
@@ -1258,6 +1297,9 @@ static void request_cleanup_delay(REQUEST *request, int action)
 #ifdef DEBUG_STATE_MACHINE
 			if (rad_debug_lvl) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
 #endif
+
+			request_stats_final(request);
+
 			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 			return;
 		} /* else it's time to clean up */
@@ -1685,7 +1727,7 @@ static void request_running(REQUEST *request, int action)
 					       child_state_names[request->child_state],
 					       child_state_names[REQUEST_DONE]);
 #endif
-			FINAL_STATE(REQUEST_DONE);
+			request_done(request, FR_ACTION_DONE);
 			break;
 		}
 
@@ -1995,6 +2037,7 @@ skip_dup:
 		/*
 		 *	Don't do delayed reject.  Oh well.
 		 */
+		request->child_state = REQUEST_DONE;
 		request_free(request);
 		return 1;
 	}
@@ -2076,6 +2119,13 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 		request->server = listener->server;
 	} else {
 		request->server = NULL;
+	}
+
+	if (fr_debug_lvl) {
+		if (virtual_server_sanity_check(request) < 0) {
+			talloc_free(request);
+			return NULL;
+		}
 	}
 
 	request->root = &main_config;
@@ -2731,6 +2781,24 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		return 0;
 	}
 
+	/*
+	 *	If we have affinity, then maybe update State.  But
+	 *	only for Access-Request, and only if there's a State
+	 *	attribute in the reply.
+	 */
+	if (request->home_pool && request->home_pool->affinity_group &&
+	    (request->reply->code == PW_CODE_ACCESS_CHALLENGE) &&
+	    ((vp = fr_pair_find_by_num(request->reply->vps, PW_STATE, 0, TAG_ANY)) != NULL)) {
+		uint8_t *src;
+
+		src = talloc_array(vp, uint8_t, vp->vp_length + 1);
+		if (!src) return 0; 
+
+		src[0] = request->home_server->affinity;
+		memcpy(&src[1], vp->vp_octets, vp->vp_length);
+		fr_pair_value_memsteal(vp, src);
+	}
+
 	return 1;
 }
 
@@ -2789,8 +2857,23 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 *	server core, but I guess we can fix that later.
 	 */
 	if (!request->proxy_reply) {
+		decode_fail_t reason;
+
+		/*
+		 *	If the home server configuration requires a Message-Authenticator, then set the flag,
+		 *	but only if the proxied packet is Access-Request or Status-Sercer.
+		 *
+		 *	The realms.c file already clears require_ma for TLS connections.
+		 */
+		bool require_ma = (request->home_server->require_ma == FR_BOOL_TRUE) && (request->proxy->code == PW_CODE_ACCESS_REQUEST);
+
 		if (!request->home_server) {
 			proxy_reply_too_late(request);
+			return 0;
+		}
+
+		if (!rad_packet_ok(packet, require_ma, &reason)) {
+			DEBUG("Ignoring invalid packet - %s", fr_strerror());
 			return 0;
 		}
 
@@ -2798,6 +2881,53 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 			       request->home_server->secret) != 0) {
 			DEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
 			return 0;
+		}
+
+		/*
+		 *	BlastRADIUS checks.  We're running in the main
+		 *	listener thread, so there's no conflict
+		 *	checking or setting these fields.
+		 */
+		if ((request->proxy->code == PW_CODE_ACCESS_REQUEST) &&
+#ifdef WITH_TLS
+		    !request->home_server->tls &&
+#endif
+		    !packet->eap_message) {
+			if (request->home_server->require_ma == FR_BOOL_AUTO) {
+				if (!packet->message_authenticator) {
+					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+					RERROR("BlastRADIUS check: Received response to Access-Request without Message-Authenticator.");
+					RERROR("Setting \"require_message_authenticator = false\" for home_server %s", request->home_server->name);
+					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+					RERROR("UPGRADE THE HOME SERVER AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
+					RERROR("Once the home_server is upgraded, set \"require_message_authenticator = true\" for home_server %s.", request->home_server->name);
+					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+					request->home_server->require_ma = FR_BOOL_FALSE;
+				} else {
+					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+					RERROR("BlastRADIUS check: Received response to Access-Request with Message-Authenticator.");
+					RERROR("Setting \"require_message_authenticator = true\" for home_server %s", request->home_server->name);
+					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+					RERROR("It looks like the home server has been updated to protect from the BlastRADIUS attack.");
+					RERROR("Please set \"require_message_authenticator = true\" for home_server %s", request->home_server->name);
+					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+					request->home_server->require_ma = FR_BOOL_TRUE;
+				}
+
+			} else if (fr_debug_lvl && (request->home_server->require_ma == FR_BOOL_FALSE) && !packet->message_authenticator) {
+				/*
+				 *	If it's "no" AND we don't have a Message-Authenticator, then complain on every packet.
+				 */
+				RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+				RDEBUG("BlastRADIUS check: Received packet without Message-Authenticator from home_server %s", request->home_server->name);
+				RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+				RDEBUG("The packet does not contain Message-Authenticator, which is a security issue");
+				RDEBUG("UPGRADE THE HOME SERVER AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
+				RDEBUG("Once the home server is upgraded, set \"require_message_authenticator = true\" for home_server %s", request->home_server->name);
+				RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			}
 		}
 	}
 
@@ -3217,7 +3347,7 @@ static int request_will_proxy(REQUEST *request)
 	} else if (((vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY)) != NULL) ||
 		   ((vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY)) != NULL)) {
 		uint16_t dst_port;
-		fr_ipaddr_t dst_ipaddr;
+		fr_ipaddr_t dst_ipaddr, src_ipaddr;
 
 		memset(&dst_ipaddr, 0, sizeof(dst_ipaddr));
 
@@ -3254,6 +3384,28 @@ static int request_will_proxy(REQUEST *request)
 			dst_port = vp->vp_integer;
 		}
 
+		if (((vp = fr_pair_find_by_num(request->config, PW_PACKET_SRC_IP_ADDRESS, 0, TAG_ANY)) != NULL) ||
+		    ((vp = fr_pair_find_by_num(request->config, PW_PACKET_SRC_IPV6_ADDRESS, 0, TAG_ANY)) != NULL)) {
+			if (((dst_ipaddr.af == AF_INET) && (vp->da->attr != PW_PACKET_SRC_IP_ADDRESS)) ||
+			    ((dst_ipaddr.af == AF_INET6) && (vp->da->attr != PW_PACKET_SRC_IPV6_ADDRESS))) {
+				REDEBUG("Cannot mix IPv4 and IPv6 source and destination addresses");
+				return 0;
+			}
+			if (vp->da->attr == PW_PACKET_SRC_IP_ADDRESS) {
+				src_ipaddr.af = AF_INET;
+				src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+				src_ipaddr.prefix = 32;
+			} else {
+				src_ipaddr.af = AF_INET6;
+				memcpy(&src_ipaddr.ipaddr.ip6addr, &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+				src_ipaddr.prefix = 128;
+			}
+			home = home_server_find_bysrc(&dst_ipaddr, dst_port, IPPROTO_UDP, &src_ipaddr);
+			if (!home) home_server_find_bysrc(&dst_ipaddr, dst_port, IPPROTO_TCP, &src_ipaddr);
+			if (!home) goto no_home;
+			goto found_home;
+		}
+
 		/*
 		 *	Find the home server.
 		 */
@@ -3261,13 +3413,14 @@ static int request_will_proxy(REQUEST *request)
 		if (!home) home = home_server_find(&dst_ipaddr, dst_port, IPPROTO_TCP);
 		if (!home) {
 			char buffer[256];
-
+		no_home:
 			RWDEBUG("No such home server %s port %u",
 				inet_ntop(dst_ipaddr.af, &dst_ipaddr.ipaddr, buffer, sizeof(buffer)),
 				(unsigned int) dst_port);
 			return 0;
 		}
 
+	found_home:
 		/*
 		 *	The home server is alive (or may be alive).
 		 *	Send the packet to the IP.
@@ -5465,8 +5618,9 @@ static int proxy_eol_cb(void *ctx, void *data)
 }
 #endif	/* WITH_PROXY */
 
-static void event_new_fd(rad_listen_t *this)
+static void event_new_fd(void *ctx)
 {
+	rad_listen_t *this = talloc_get_type_abort(ctx, rad_listen_t);
 	char buffer[1024];
 	listen_socket_t *sock = NULL;
 
@@ -5622,11 +5776,28 @@ static void event_new_fd(rad_listen_t *this)
 		/*
 		 *	All sockets: add the FD to the event handler.
 		 */
+#ifdef WITH_TLS
 	insert_fd:
+#endif
 		if (fr_event_fd_insert(el, 0, this->fd,
 				       event_socket_handler, this)) {
 			this->status = RAD_LISTEN_STATUS_KNOWN;
+
+#ifdef WITH_TLS
+			if (this->type == RAD_LISTEN_DETAIL) {
+				return;
+			}
+
+			sock = this->data;
+			if (!sock->write_handler) return;
+
+			if (fr_event_fd_write_handler(el, 0, this->fd, sock->write_handler, this)) {
+				sock->write_handler = NULL;
+				return;
+			}
+#else
 			return;
+#endif
 		}
 
 		/*
@@ -5644,12 +5815,27 @@ static void event_new_fd(rad_listen_t *this)
 		goto listener_is_eol;
 	} /* end of INIT */
 
+#ifdef WITH_TLS
+	/*
+	 *	We're doing TLS connection checks.  Don't read normal packets.
+	 */
 	if (this->status == RAD_LISTEN_STATUS_PAUSE) {
 		fr_event_fd_delete(el, 0, this->fd);
 		return;
 	}
 
-	if (this->status == RAD_LISTEN_STATUS_RESUME) goto insert_fd;
+	/*
+	 *	TLS connection checks are done.  Read the pending
+	 *	packet, then add the listener to the event loop.
+	 */
+	if (this->status == RAD_LISTEN_STATUS_RESUME) {
+		this->status = RAD_LISTEN_STATUS_KNOWN;
+
+		fr_assert(this->tls);
+		(void) this->recv(this);
+		goto insert_fd;
+	}
+#endif
 
 #ifdef WITH_TCP
 	/*
@@ -5680,7 +5866,6 @@ static void event_new_fd(rad_listen_t *this)
 			return;
 		}
 
-		fr_event_fd_delete(el, 0, this->fd);
 		this->status = RAD_LISTEN_STATUS_REMOVE_NOW;
 	}
 #endif	/* WITH_TCP */
@@ -5756,6 +5941,7 @@ static void event_new_fd(rad_listen_t *this)
 	if (this->status == RAD_LISTEN_STATUS_REMOVE_NOW) {
 		int devnull;
 
+		fr_event_fd_delete(el, 0, this->fd);
 		this->dead = true;
 
 		/*
@@ -5831,6 +6017,23 @@ static void event_new_fd(rad_listen_t *this)
 				fr_assert(home->listeners);
 
 				(void) rbtree_deletebydata(home->listeners, this);
+
+				/*
+				 *	This home server is dynamic, and has no open connections.  Delete it.
+				 *
+				 *	@todo - have a separate lifetime for dynamic home servers.  i.e. the
+				 *	home server will stick around for a period of time, even if it has no
+				 *	open connections.
+				 *
+				 *	And then after that lifetime, we refresh the home server?
+				 */
+				if (home->dynamic && (rbtree_num_elements(home->listeners) == 0)) {
+					if (home_server_delete(home) < 0) {
+						ERROR("Fatal error removing dynamic home server - %s",
+						      fr_strerror());
+						fr_exit(1);
+					}
+				}
 			}
 #endif
 
@@ -5875,6 +6078,7 @@ static void event_new_fd(rad_listen_t *this)
 		 *	Wait until all requests using this socket are done.
 		 */
 	wait_some_more:
+		fr_event_fd_delete(el, 0, this->fd);
 		listener_free_cb(this);
 #endif	/* WITH_TCP */
 	}
@@ -5976,6 +6180,20 @@ static void handle_signal_self(int flag)
 		FD_MUTEX_UNLOCK(&fd_mutex);
 	}
 #endif
+
+	/*
+	 *	Signal the event loop that we had an update from
+	 *	another thread.
+	 *
+	 *	We don't actually do anything here, we just want the
+	 *	main even loop to wake up from select(), and update
+	 *	the list of FDs it needs to read/write.
+	 */
+	if ((flag & RADIUS_SIGNAL_SELF_EVENT_UPDATE) != 0) {
+		/*
+		 *	Do nothing.
+		 */
+	}
 }
 
 #ifndef HAVE_PTHREAD_H
@@ -6354,14 +6572,6 @@ static int proxy_delete_cb(UNUSED void *ctx, void *data)
 	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
 #endif
 
-	/*
-	 *	If it's queued we can't delete it from the queue.
-	 *
-	 *	Otherwise, it's OK to delete it.  Even RUNNING, because
-	 *	that will get caught by the check above.
-	 */
-	if (request->child_state == REQUEST_QUEUED) return 0;
-
 	request->in_proxy_hash = false;
 
 	if (!request->in_request_hash) {
@@ -6387,9 +6597,25 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 	/*
 	 *	Not done, or the child thread is still processing it.
 	 */
-	if (request->child_state < REQUEST_RESPONSE_DELAY) return 0; /* continue */
+	switch (request->child_state) {
+	default:
+	case REQUEST_QUEUED:
+	case REQUEST_RESPONSE_DELAY:
+	case REQUEST_CLEANUP_DELAY:
+	case REQUEST_DONE:
+		break;
+
+	case REQUEST_RUNNING:
+	case REQUEST_PROXIED:
+		return 0;
+	}
 
 #ifdef HAVE_PTHREAD_H
+	/*
+	 *	The request is being processed by a child thread.
+	 *	This should never happen, but perhaps race condition
+	 *	could cause this to be set?
+	 */
 	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
 #endif
 
@@ -6426,6 +6652,16 @@ void radius_event_free(void)
 {
 	ASSERT_MASTER;
 
+#ifdef HAVE_PTHREAD_H
+	/*
+	 *	Stop all threads from processing requests.  Do this
+	 *	before trying to clean up or free outstanding requests.
+	 */
+	if (spawn_flag) {
+		thread_pool_stop();
+	}
+#endif
+
 #ifdef WITH_PROXY
 	/*
 	 *	There are requests in the proxy hash that aren't
@@ -6444,7 +6680,7 @@ void radius_event_free(void)
 		 *	ensure that all of the threads have exited.
 		 */
 #ifdef HAVE_PTHREAD_H
-		thread_pool_stop();
+		thread_pool_free();
 #endif
 
 		/*

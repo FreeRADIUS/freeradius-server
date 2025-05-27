@@ -97,6 +97,12 @@ home_server example-coa {
 	#  secret in a "client" section.
 	secret = testing1234
 
+	#
+	#  All of the rest of the home_server configuration items can
+	#  go here, including src_ipaddr,
+	#  require_message_authenticator, etc.
+	#
+
 	#  CoA specific parameters.  See raddb/proxy.conf for details.
 	coa {
 		irt = 2

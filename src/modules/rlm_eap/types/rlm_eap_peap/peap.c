@@ -826,6 +826,9 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 	case PEAP_STATUS_WAIT_FOR_SOH_RESPONSE:
 		fake = request_alloc_fake(request);
 		rad_assert(!fake->packet->vps);
+
+		fake->eap_inner_tunnel = true;
+
 		eapsoh_verify(fake, fake->packet, data + header, data_len - header);
 		setup_fake_request(request, fake, t);
 
@@ -919,8 +922,9 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 	}
 
 	fake = request_alloc_fake(request);
-
 	rad_assert(!fake->packet->vps);
+
+	fake->eap_inner_tunnel = true;
 
 	switch (t->status) {
 		/*

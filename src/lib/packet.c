@@ -723,6 +723,8 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	 */
 
 	id = fd = -1;
+	if (request->id >= 0 && request->id < 256)
+		id = request->id;
 	start_i = fr_rand() & SOCKOFFSET_MASK;
 
 #define ID_i ((i + start_i) & SOCKOFFSET_MASK)
@@ -830,6 +832,18 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		/*
 		 *	Otherwise, this socket is OK to use.
 		 */
+
+		/*
+		 *	An explicit ID was requested
+		 */
+
+		if (id != -1) {
+			if  ((ps->id[(id >> 3) & 0x1f] & (1 << (id & 0x07))) != 0) continue;
+
+			ps->id[(id >> 3) & 0x1f] |= (1 << (id & 0x07));
+			fd = i;
+			break;
+		}
 
 		/*
 		 *	Look for a free Id, starting from a random number.
@@ -1076,7 +1090,7 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 	 *	This really belongs in a utility library
 	 */
 	if (is_radius_code(packet->code)) {
-		fprintf(fp, "%s %s Id %i from %s%s%s:%x to %s%s%s:%u length %zu\n",
+		fprintf(fp, "%s %s Id %i from %s%s%s:%u to %s%s%s:%u length %zu\n",
 		        received ? "Received" : "Sent",
 		        fr_packet_codes[packet->code],
 		        packet->id,
@@ -1094,7 +1108,7 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 		        packet->dst_port,
 		        packet->data_len);
 	} else {
-		fprintf(fp, "%s code %u Id %i from %s%s%s:%u to %s%s%s:%i length %zu\n",
+		fprintf(fp, "%s code %u Id %i from %s%s%s:%u to %s%s%s:%u length %zu\n",
 		        received ? "Received" : "Sent",
 		        packet->code,
 		        packet->id,

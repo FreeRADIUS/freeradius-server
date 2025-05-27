@@ -71,6 +71,8 @@ typedef struct home_server {
 	bool			dual;			//!< One of a pair of homeservers on consecutive ports.
 	bool			dynamic;		//!< is this a dynamically added home server?
 	bool			nonblock;		//!< Enable a socket non-blocking to the home server.
+	fr_bool_auto_t	       	require_ma;		//!< for all replies to Access-Request and Status-Server
+
 #ifdef WITH_COA_TUNNEL
 	bool			recv_coa;		//!< receive CoA packets, too
 #endif
@@ -79,6 +81,8 @@ typedef struct home_server {
 
 	fr_ipaddr_t		ipaddr;			//!< IP address of home server.
 	uint16_t		port;
+
+	uint32_t		affinity;		//!< for home server fail-over groups and EAP.
 
 	char const		*type_str;		//!< String representation of type.
 	home_type_t		type;			//!< Auth, Acct, CoA etc.
@@ -103,7 +107,7 @@ typedef struct home_server {
 	uint32_t		response_timeouts;
 	uint32_t		max_response_timeouts;
 	uint32_t		max_outstanding;	//!< Maximum outstanding requests.
-	uint32_t		currently_outstanding;
+	uint32_t		currently_outstanding;	
 
 	time_t			last_packet_sent;
 	time_t			last_packet_recv;
@@ -182,6 +186,8 @@ typedef struct home_pool_t {
 	time_t			time_all_dead;
 	time_t			last_serviced;
 
+	home_server_t		**affinity_group;
+
 	int			num_home_servers;
 	home_server_t		*servers[1];
 } home_pool_t;
@@ -228,7 +234,8 @@ home_server_t	*home_server_bynumber(int number);
 home_pool_t	*home_pool_byname(char const *name, int type);
 
 int		home_server_afrom_file(char const *filename);
-int		home_server_delete(char const *name, char const *type);
+int		home_server_delete_byname(char const *name, char const *type);
+int		home_server_delete(home_server_t *home);
 
 #ifdef __cplusplus
 }

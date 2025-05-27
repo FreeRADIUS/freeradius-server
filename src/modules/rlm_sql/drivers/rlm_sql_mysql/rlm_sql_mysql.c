@@ -34,12 +34,10 @@ RCSID("$Id$")
 #include "config.h"
 
 #ifdef HAVE_MYSQL_MYSQL_H
-#  include <mysql/mysql_version.h>
 #  include <mysql/errmsg.h>
 #  include <mysql/mysql.h>
 #  include <mysql/mysqld_error.h>
 #elif defined(HAVE_MYSQL_H)
-#  include <mysql_version.h>
 #  include <errmsg.h>
 #  include <mysql.h>
 #  include <mysqld_error.h>
@@ -301,14 +299,18 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 
 	mysql_options(&(conn->db), MYSQL_READ_DEFAULT_GROUP, "freeradius");
 
+#if MYSQL_VERSION_ID < 80034
 	/*
 	 *	We need to know about connection errors, and are capable
 	 *	of reconnecting automatically.
+	 *
+	 *	This deprecated as of 8.0.34.
 	 */
 	{
 		int reconnect = 0;
 		mysql_options(&(conn->db), MYSQL_OPT_RECONNECT, &reconnect);
 	}
+#endif
 
 	if (config->query_timeout) {
 		unsigned int connect_timeout = config->query_timeout;
@@ -387,6 +389,9 @@ static sql_rcode_t sql_check_error(MYSQL *server, int client_errno)
 	if (sql_errno > 0) switch (sql_errno) {
 	case CR_SERVER_GONE_ERROR:
 	case CR_SERVER_LOST:
+#ifdef ER_CLIENT_INTERACTION_TIMEOUT
+	case ER_CLIENT_INTERACTION_TIMEOUT:
+#endif
 	case -1:
 		return RLM_SQL_RECONNECT;
 
@@ -431,6 +436,14 @@ static sql_rcode_t sql_check_error(MYSQL *server, int client_errno)
 	case ER_BAD_NULL_ERROR:			/* Column '%s' cannot be null */
 	case ER_NON_UNIQ_ERROR:			/* Column '%s' in %s is ambiguous */
 		return RLM_SQL_QUERY_INVALID;
+
+	/*
+	 *	Constraints errors that signify no data returned.
+	 *
+	 *	This is considered OK as the caller may look for the next result set.
+	 */
+	case ER_SP_FETCH_NO_DATA:
+		return RLM_SQL_OK;
 
 	}
 
@@ -546,9 +559,12 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 
 	/*
 	 *  Check pointer before de-referencing it.
+	 *  Lack of conn->result is either an error, or no result returned.
 	 */
 	if (!conn->result) {
-		return RLM_SQL_RECONNECT;
+		rcode = sql_check_error(conn->sock, 0);
+		if (rcode == RLM_SQL_OK) return RLM_SQL_NO_MORE_ROWS;
+		return rcode;
 	}
 
 	TALLOC_FREE(handle->row);		/* Clear previous row set */
@@ -698,6 +714,8 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	if (error && (error[0] != '\0')) {
 		error = talloc_asprintf(ctx, "ERROR %u (%s): %s", mysql_errno(conn->sock), error,
 					mysql_sqlstate(conn->sock));
+	} else {
+		error = NULL;
 	}
 
 	/*
@@ -736,8 +754,8 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	if (error) {
 		out[i].type = L_ERR;
 		out[i].msg = error;
+		i++;
 	}
-	i++;
 
 	return i;
 }

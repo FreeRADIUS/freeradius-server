@@ -99,7 +99,18 @@ rest {
 	#  Additional HTTP headers may be specified with control:REST-HTTP-Header.
 	#  The values of those attributes should be in the format:
 	#
-	#    control:REST-HTTP-Header := "<HTTP attribute>: <value>"
+	#	control:REST-HTTP-Header := "<HTTP attribute>: <value>"
+	#
+	#  You should set this attribute before calling the rest module,
+	#  via something like the following example.  Note that you MUST
+	#  update the HTTP attribute and key value to whatever is needed on
+	#  your local system.  The values given in this example are likely
+	#  to not work for your system.
+	#
+	#	update control {
+	#		&REST-HTTP-Header := "x-api-key: abcdefsupersecret"
+	#	}
+	#	rest
 	#
 	#  The control:REST-HTTP-Header attributes will be consumed
 	#  (i.e. deleted) after each call to the rest module, and each
@@ -191,6 +202,12 @@ rest {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=authenticate"
 		method = 'get'
 		tls = ${..tls}
+
+		#
+		#  Note that you CANNOT set 'username' or 'password'
+		#  here.  When doing user authentication, the module
+		#  uses the User-Name and User-Password.
+		#
 	}
 
 	#  Preacct/Accounting/Post-auth/Pre-Proxy/Post-Proxy

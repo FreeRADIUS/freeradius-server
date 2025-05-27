@@ -10,8 +10,8 @@ LOCAL_SITES :=		$(addprefix raddb/sites-enabled/,$(DEFAULT_SITES))
 DEFAULT_MODULES :=	always attr_filter chap date \
 			detail detail.log digest dynamic_clients eap \
 			echo exec expiration expr files linelog logintime \
-			mschap ntlm_auth pap passwd preprocess radutmp realm \
-			replicate soh sradutmp totp unix unpack utf8
+			mschap ntlm_auth pap passwd preprocess proxy_rate_limit \
+			radutmp realm replicate soh sradutmp totp unix unpack utf8
 
 ifneq "$(OPENSSL_LIBS)" ""
 DEFAULT_MODULE	+=	dpsk

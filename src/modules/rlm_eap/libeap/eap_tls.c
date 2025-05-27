@@ -1,4 +1,3 @@
-
 /*
  * eap_tls.c
  *
@@ -102,7 +101,36 @@ tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_SSN, (void *)ssn);
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_TALLOC, handler);
 
+	/*
+	 *	It makes no sense to do session resumption for TLS
+	 */
+	if (request->parent && request->parent->eap_inner_tunnel) {
+		ssn->allow_session_resumption = false;
+	}
+
 	return talloc_steal(handler, ssn); /* ssn */
+}
+
+/*
+   The S flag is set only within the EAP-TLS start message
+   sent from the EAP server to the peer.
+*/
+int eaptls_start(EAP_DS *eap_ds, int peap_flag)
+{
+       EAPTLS_PACKET   reply;
+
+       reply.code = FR_TLS_START;
+       reply.length = TLS_HEADER_LEN + 1/*flags*/;
+
+       reply.flags = peap_flag;
+       reply.flags = SET_START(reply.flags);
+
+       reply.data = NULL;
+       reply.dlen = 0;
+
+       eaptls_compose(eap_ds, &reply);
+
+       return 1;
 }
 
 /** Send an EAP-TLS success
@@ -249,8 +277,8 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn, bool start)
 	 *	This is included in the first fragment, and then never
 	 *	afterwards.
 	 */
-	if (start && ssn->outer_tlvs) {
-		for (vp = fr_cursor_init(&cursor, &ssn->outer_tlvs);
+	if (start && ssn->outer_tlvs_server) {
+		for (vp = fr_cursor_init(&cursor, &ssn->outer_tlvs_server);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if (vp->da->type != PW_TYPE_OCTETS) {
@@ -309,15 +337,15 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn, bool start)
 
 	if (obit) {
 		nlen = 0;
-		for (vp = fr_cursor_init(&cursor, &ssn->outer_tlvs);
+		for (vp = fr_cursor_init(&cursor, &ssn->outer_tlvs_server);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if (vp->da->type != PW_TYPE_OCTETS) continue;
 			nlen += sizeof(ohdr) + vp->vp_length;
 		}
 
-		ssn->outer_tlvs_octets = talloc_array(ssn, uint8_t, olen);
-		if (!ssn->outer_tlvs_octets) return 0;
+		ssn->outer_tlvs_octets_server = talloc_array(ssn, uint8_t, olen);
+		if (!ssn->outer_tlvs_octets_server) return 0;
 
 		nlen = htonl(nlen);
 		memcpy(reply.data + lbit, &nlen, sizeof(nlen));
@@ -331,7 +359,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn, bool start)
 	 */
 	if (obit) {
 		olen = 0;
-		for (vp = fr_cursor_init(&cursor, &ssn->outer_tlvs);
+		for (vp = fr_cursor_init(&cursor, &ssn->outer_tlvs_server);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if (vp->da->type != PW_TYPE_OCTETS) continue;
@@ -345,9 +373,9 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn, bool start)
 			ohdr[1] = htons(vp->vp_length);
 
 			/* use by Crypto-Binding TLV */
-			memcpy(ssn->outer_tlvs_octets + olen, ohdr, sizeof(ohdr));
+			memcpy(ssn->outer_tlvs_octets_server + olen, ohdr, sizeof(ohdr));
 			olen += sizeof(ohdr);
-			memcpy(ssn->outer_tlvs_octets + olen, vp->vp_octets, vp->vp_length);
+			memcpy(ssn->outer_tlvs_octets_server + olen, vp->vp_octets, vp->vp_length);
 			olen += vp->vp_length;
 
 			memcpy(reply.data + lbit + obit + size, ohdr, sizeof(ohdr));
@@ -414,6 +442,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	eaptls_packet_t		*eaptls_packet, *eaptls_prev = NULL;
 	REQUEST			*request = handler->request;
 	size_t			frag_len;
+	uint32_t		olen = 0;
 
 	/*
 	 *	We don't check ANY of the input parameters.  It's all
@@ -476,6 +505,21 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 */
 	frag_len = eap_ds->response->length -
 		   (EAP_HEADER_LEN + (TLS_LENGTH_INCLUDED(eaptls_packet->flags) ? 6 : 2));
+
+	/*
+	 *	Get the total length of Outer TLVs.
+	 */
+	if (TLS_OUTER_TLV_INCLUDED(eaptls_packet->flags)) {
+		uint8_t const *p = eaptls_packet->data;
+
+		p += TLS_LENGTH_INCLUDED(eaptls_packet->flags) << 2;
+
+		memcpy(&olen, p, sizeof(olen));
+		olen = ntohl(olen);
+
+		fr_assert((4 + olen) <= frag_len); /* already checked in eap_vp2packet */
+		frag_len -= (olen + 4);
+	}
 
 	/*
 	 *	The L bit (length included) is set to indicate the
@@ -568,6 +612,18 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		tls_session->tls_record_in_recvd_len = frag_len;
 		RDEBUG2("(TLS) EAP Got all data (%zu bytes)", frag_len);
 		return FR_TLS_LENGTH_INCLUDED;
+
+	} else if (TLS_OUTER_TLV_INCLUDED(eaptls_packet->flags)) {
+		if (handler->trips > 1) {
+			REDEBUG("(TLS) EAP Peer set 'O' bit after initial TEAP fragment");
+			return FR_TLS_INVALID;
+		}
+
+		tls_session->tls_record_in_total_len = frag_len;
+		tls_session->tls_record_in_recvd_len = frag_len;
+
+		RDEBUG2("(TLS) EAP Got first and final fragment (%zu bytes)", frag_len);
+		return FR_TLS_FIRST_FRAGMENT;
 	}
 
 	/*
@@ -579,8 +635,8 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 *	this must be the final record fragment
 	 */
 	if ((eaptls_prev && TLS_MORE_FRAGMENTS(eaptls_prev->flags)) && !TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
-		RDEBUG2("(TLS) EAP Got final fragment (%zu bytes)", frag_len);
 		tls_session->tls_record_in_recvd_len += frag_len;
+		RDEBUG2("(TLS) EAP Got final fragment (%zu bytes) total %zu", frag_len, tls_session->tls_record_in_recvd_len);
 		if (tls_session->tls_record_in_recvd_len != tls_session->tls_record_in_total_len) {
 			RWDEBUG("(TLS) EAP Total received record fragments (%zu bytes), does not equal expected "
 				"expected data length (%zu bytes)",
@@ -640,12 +696,14 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
  *  packet including the Code, Identifir, Length, Type, and TLS data
  *  fields.
  */
-static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_status_t status)
+static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_status_t *status_p, tls_session_t *tls_session)
 {
 	EAPTLS_PACKET	*tlspacket;
 	uint32_t	data_len = 0;
-	uint32_t	obit = 0;
+	uint32_t	skip = 0;
+	uint32_t	chop = 0;
 	uint8_t		*data = NULL;
+	fr_tls_status_t status = *status_p;
 
 	if (status == FR_TLS_INVALID) return NULL;
 
@@ -680,6 +738,38 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 	tlspacket->flags = eap_ds->response->type.data[0];
 
 	/*
+	 *	Skip extra fields in the header, depending on the flags.
+	 */
+	skip = TLS_OUTER_TLV_INCLUDED(tlspacket->flags) << 2;
+	skip += TLS_LENGTH_INCLUDED(tlspacket->flags) << 2;
+
+	/*
+	 *	'O' without 'L'.  It's the first fragment, but also the last one.
+	 *
+	 *	@todo - cache and save the outer client TLVs.  We need
+	 *	them to calculate the TEAP Crypto-Binding TLV.
+	 */
+	if (TLS_OUTER_TLV_INCLUDED(tlspacket->flags)) {
+		uint8_t const *p;
+
+		if (!TLS_LENGTH_INCLUDED(tlspacket->flags)) {
+			*status_p = FR_TLS_OK;
+		}
+
+		p = eap_ds->response->type.data + 1;
+		p += TLS_LENGTH_INCLUDED(tlspacket->flags) << 2;
+
+		memcpy(&chop, p, sizeof(chop));
+		chop = ntohl(chop);
+
+		tls_session->outer_tlvs_octets_peer = talloc_memdup(tls_session,
+								    eap_ds->response->type.data + eap_ds->response->type.length - chop,
+								    chop);
+
+		fr_assert(tls_session->outer_tlvs_octets_peer != NULL);
+	}
+
+	/*
 	 *	eaptls_verify() ensures that all of the flags are correct.
 	 */
 	switch (status) {
@@ -693,27 +783,14 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 	 *	length should solve the problem.
 	 */
 	case FR_TLS_FIRST_FRAGMENT:
-		obit = TLS_OUTER_TLV_INCLUDED(tlspacket->flags) << 2;
-
-		/*
-		 *	@todo - decode outer TLVs, too
-		 */
-
-		/* FALL-THROUGH */
-
 	case FR_TLS_LENGTH_INCLUDED:
 	case FR_TLS_MORE_FRAGMENTS_WITH_LENGTH:
-		eap_ds->response->type.data += 4 + obit;
-		eap_ds->response->type.length -= 4 + obit;
-
-		/* FALL-THROUGH */
-
-		/*
-		 *	Data length is implicit, from the EAP header.
-		 */
 	case FR_TLS_MORE_FRAGMENTS:
 	case FR_TLS_OK:
-		data_len = eap_ds->response->type.length - 1;
+		eap_ds->response->type.data += skip;
+		eap_ds->response->type.length -= skip;
+
+		data_len = eap_ds->response->type.length - 1 - chop;
 		data = eap_ds->response->type.data + 1;
 		break;
 
@@ -957,7 +1034,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	/*
 	 *	Extract the TLS packet from the buffer.
 	 */
-	if ((tlspacket = eaptls_extract(request, handler->eap_ds, status)) == NULL) {
+	if ((tlspacket = eaptls_extract(request, handler->eap_ds, &status, tls_session)) == NULL) {
 		REDEBUG("(TLS) EAP Failed extracting TLS packet from EAP-Message");
 		status = FR_TLS_FAIL;
 		goto done;

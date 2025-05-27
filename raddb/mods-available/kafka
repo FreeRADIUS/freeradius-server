@@ -1,0 +1,127 @@
+kafka {
+	bootstrap-servers = "localhost:9092"
+
+	#
+	#  This initialises the default, synchronous instance of the kafka
+	#  module which has robust event durability semantics.
+	#
+	#  The module adds the message to the local in-memory queue and then
+	#  waits upon a delivery report indicating that it was removed, i.e.
+	#  either successfully delivered to the brokers or not.
+	#
+
+	global-config {
+
+		#
+		#  There are many global parameters that can be used (with
+		#  careful consideration) described in the "Global
+		#  configuration properties" here:
+		#
+		#  https://docs.confluent.io/platform/current/clients/librdkafka/html/md_CONFIGURATION.html
+		#
+		#message.max.bytes = 1048576
+		#socket.send.buffer.bytes = 100000000
+		#socket.receive.buffer.bytes = 100000000
+		#sasl.mechanism = "SCRAM-SHA-512"
+		#security.protocol = "SASL_SSL"
+		#ssl.ca.location = "${cadir}"
+		#sasl.username = "kafkauser"
+		#sasl.password = "kafkapass"
+		#  ...
+		#
+
+	}
+
+	#
+	#  Example of a user-defined topic called by reference from another
+	#  section, or by using its name (which may be changed) in an xlat of
+	#  either form:
+	#
+	#    - "%{kafka:custom-topic (<header-list>) &Key-Attr-Ref Remainder is the message}"
+	#    - "%{kafka:custom-topic (<header-list>)  Remainder is the message}", if no key
+	#    - "%{kafka:custom-topic &Key-Attr-Ref Remainder is the message}"
+	#    - "%{kafka:custom-topic  Remainder is the message}", if no key
+	#
+	#  The attribute referred to by the optional &Key-Attr-Ref holds the
+	#  Kafka message's key. Notice that it is replaced with a mandatory
+	#  space if there is no key.
+	#
+	#  <header-list> has the same format as the json_encode xlat. For
+	#  example `&request[*] !&User-Password` creates Kafka headers from all
+	#  attributes in the RADIUS request, except for `User-Password`.
+	#
+	topic-config custom-topic {
+
+		#
+		#  The message durabily strategy: Number of acks required by all
+		#  in-sync replicas. Default of "-1" means all must have acked.
+		#
+		#request.required.acks = -1
+
+		#
+		#  How long a message can remain undelivered in the local
+		#  in-memory queue before it is timed out.
+		#
+		#  For synchronous delivery, the default local queue is set to
+		#  25 sec. It should be some value less than max_request_time
+		#  to avoid blocking the server indefinately in the event of
+		#  delivery problems.
+		#
+		#message.timeout.ms = 25000
+
+		#
+		#  There are many additional topic parameters that can be used
+		#  (with careful consideration) described in the "Topic
+		#  configuration properties" here:
+		#
+		#  https://docs.confluent.io/platform/current/clients/librdkafka/html/md_CONFIGURATION.html
+		#
+		#  ...
+		#
+
+	}
+
+	#
+	#  Topic used by calls from an accounting section
+	#
+	topic-config accounting {
+
+		#
+		#  You may either provide topic configuration parameters
+		#  or reference an existing topic (declared above this) to
+		#  reuse it.
+		#
+		#reference = custom-topic
+
+	}
+
+	#
+	#  Topic used by calls from an authorize section
+	#
+	topic-config authorize {
+
+		#
+		#  Used to set the topic name to something other than the
+		#  section from which it was called.
+		#
+		#name = "radius.auth_request"
+
+	}
+
+	#
+	#  Topic used by calls from a post-auth section
+	#
+	topic-config post-auth {
+		#name = "radius.auth_result"
+		#request.required.acks = 2
+	}
+
+	#
+	#  Uncomment to generate producer statistics
+	#
+#	statistics {
+#		file = /tmp/kafka_stats.json
+#	}
+
+	$INCLUDE ${modconfdir}/kafka/messages-json.conf
+}

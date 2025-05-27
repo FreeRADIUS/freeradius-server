@@ -1,0 +1,6 @@
+kafka.accounting
+if (!ok) {
+	test_fail
+}
+
+test_pass

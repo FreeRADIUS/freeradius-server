@@ -279,13 +279,19 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 
 	request->listener = listener;
 	request->client = client;
-	request->packet = rad_recv(NULL, listener->fd, 0x02); /* MSG_PEEK */
+
+	request->packet = rad_alloc(request, false);
 	if (!request->packet) {				/* badly formed, etc */
 		talloc_free(request);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		goto unknown;
 	}
-	(void) talloc_steal(request, request->packet);
+	request->packet->src_ipaddr = *ipaddr;
+	request->packet->src_port = src_port;
+	request->packet->dst_ipaddr = sock->my_ipaddr;
+	request->packet->dst_port = sock->my_port;
+	request->packet->proto = sock->proto;
+
 	request->reply = rad_alloc_reply(request, request->packet);
 	if (!request->reply) {
 		talloc_free(request);
@@ -530,6 +536,143 @@ int rad_status_server(REQUEST *request)
 	return 0;
 }
 
+static void blastradius_checks(RADIUS_PACKET *packet, RADCLIENT *client)
+{
+	if (client->require_ma == FR_BOOL_TRUE) return;
+
+	if (client->require_ma == FR_BOOL_AUTO) {
+		if (!packet->message_authenticator) {
+			ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			ERROR("BlastRADIUS check: Received packet without Message-Authenticator.");
+			ERROR("Setting \"require_message_authenticator = false\" for client %s", client->shortname);
+			ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			ERROR("UPGRADE THE CLIENT AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
+			ERROR("Once the client is upgraded, set \"require_message_authenticator = true\" for  client %s", client->shortname);
+			ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			client->require_ma = FR_BOOL_FALSE;
+
+			/*
+			 *	And fall through to the
+			 *	limit_proxy_state checks, which might
+			 *	complain again.  Oh well, maybe that
+			 *	will make people read the messages.
+			 */
+
+		} else if (packet->eap_message) {
+			/*
+			 *	Don't set it to "true" for packets
+			 *	with EAP-Message.  It's already
+			 *	required there, and we might get a
+			 *	non-EAP packet with (or without)
+			 *	Message-Authenticator
+			 */
+			return;
+
+		} else if (((client->src_ipaddr.af == AF_INET) &&
+			    (client->src_ipaddr.prefix != 32)) ||
+			   ((client->src_ipaddr.af == AF_INET6) &&
+			    (client->src_ipaddr.prefix != 128))) {
+			/*
+			 *	Don't change it from "auto" for wildcard clients.
+			 */
+			return;
+
+		} else {
+
+			ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			ERROR("BlastRADIUS check: Received packet with Message-Authenticator.");
+			ERROR("Setting \"require_message_authenticator = true\" for client %s", client->shortname);
+			ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			ERROR("It looks like the client has been updated to protect from the BlastRADIUS attack.");
+			ERROR("Please set \"require_message_authenticator = true\" for client %s", client->shortname);
+			ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+			client->require_ma = FR_BOOL_TRUE;
+			return;
+		}
+
+	}
+
+	/*
+	 *	If all of the checks are turned off, then complain for every packet we receive.
+	 */
+	if (client->limit_proxy_state == FR_BOOL_FALSE) {
+		/*
+		 *	We have a Message-Authenticator, and it's valid.  We don't need to compain.
+		 */
+		if (packet->message_authenticator) return;
+
+		if (!fr_debug_lvl) return; /* easier than checking for each line below */
+
+		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		DEBUG("BlastRADIUS check: Received packet without Message-Authenticator.");
+		DEBUG("YOU MUST SET \"require_message_authenticator = true\", or");
+		DEBUG("YOU MUST SET \"limit_proxy_state = true\" for client %s", client->shortname);
+		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		DEBUG("The packet does not contain Message-Authenticator, which is a security issue");
+		DEBUG("UPGRADE THE CLIENT AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
+		DEBUG("Once the client is upgraded, set \"require_message_authenticator = true\" for client %s", client->shortname);
+		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		return;
+	}
+
+	/*
+	 *	Don't complain here.  rad_packet_ok() will instead
+	 *	complain about every packet with Proxy-State but which
+	 *	is missing Message-Authenticator.
+	 */
+	if (client->limit_proxy_state == FR_BOOL_TRUE) {
+		return;
+	}
+
+	if (packet->proxy_state && !packet->message_authenticator) {
+		ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		ERROR("BlastRADIUS check: Received packet with Proxy-State, but without Message-Authenticator.");
+		ERROR("This is either a BlastRADIUS attack, OR");
+		ERROR("the client is a proxy RADIUS server which has not been upgraded.");
+		ERROR("Setting \"limit_proxy_state = false\" for client %s", client->shortname);
+		ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		ERROR("UPGRADE THE CLIENT AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
+		ERROR("Once the client is upgraded, set \"require_message_authenticator = true\" for client %s", client->shortname);
+		ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+		client->limit_proxy_state = FR_BOOL_FALSE;
+
+	} else if (((client->src_ipaddr.af == AF_INET) &&
+		    (client->src_ipaddr.prefix != 32)) ||
+		   ((client->src_ipaddr.af == AF_INET6) &&
+		    (client->src_ipaddr.prefix != 128))) {
+		/*
+		 *	Don't change it from "auto" for wildcard clients.
+		 */
+		return;
+
+	} else {
+		client->limit_proxy_state = FR_BOOL_TRUE;
+
+		ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		if (!packet->proxy_state) {
+			ERROR("BlastRADIUS check: Received packet without Proxy-State.");
+		} else {
+			ERROR("BlastRADIUS check: Received packet with Proxy-State and Message-Authenticator.");
+		}
+
+		ERROR("Setting \"limit_proxy_state = true\" for client %s", client->shortname);
+		ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+		if (!packet->message_authenticator) {
+			ERROR("The packet does not contain Message-Authenticator, which is a security issue.");
+			ERROR("UPGRADE THE CLIENT AS YOUR NETWORK MAY BE VULNERABLE TO THE BLASTRADIUS ATTACK.");
+			ERROR("Once the client is upgraded, set \"require_message_authenticator = true\" for client %s", client->shortname);
+		} else {
+			ERROR("The packet contains Message-Authenticator.");
+			if (!packet->eap_message) ERROR("The client has likely been upgraded to protect from the attack.");
+			ERROR("Please set \"require_message_authenticator = true\" for client %s", client->shortname);
+		}
+		ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+	}
+}
+
 #ifdef WITH_TCP
 static int dual_tcp_recv(rad_listen_t *listener)
 {
@@ -606,6 +749,21 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	switch (packet->code) {
 	case PW_CODE_ACCESS_REQUEST:
 		if (listener->type != RAD_LISTEN_AUTH) goto bad_packet;
+
+		/*
+		 *	Enforce BlastRADIUS checks on TCP, too.
+		 */
+		if (!rad_packet_ok(packet, (client->require_ma == FR_BOOL_TRUE) | ((client->limit_proxy_state == FR_BOOL_TRUE) << 2), NULL)) {
+			FR_STATS_INC(auth, total_malformed_requests);
+			rad_free(&sock->packet);
+			return 0;
+		}
+
+		/*
+		 *	Perform BlastRADIUS checks and warnings.
+		 */
+		if (packet->code == PW_CODE_ACCESS_REQUEST) blastradius_checks(packet, client);
+
 		FR_STATS_INC(auth, total_requests);
 		fun = rad_authenticate;
 		break;
@@ -718,7 +876,7 @@ static int tls_sni_callback(SSL *ssl, UNUSED int *al, void *arg)
 	 *	one.
 	 */
 	if (r) (void) SSL_set_SSL_CTX(ssl, r->ctx);
-		
+
 	/*
 	 *	Set an attribute saying which server has been selected.
 	 */
@@ -999,7 +1157,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		switch (listener->tls->radiusv11) {
 		case FR_RADIUSV11_FORBID:
 			if (client->radiusv11 == FR_RADIUSV11_REQUIRE) {
-				INFO("Ignoring new connection as client is marked as 'radiusv11 = require', and this socket has 'radiusv11 = forbid'");
+				RATE_LIMIT(INFO("Ignoring new connection from client %s it is marked as 'radiusv11 = require', and this socket has 'radiusv11 = forbid'", client->shortname));
 				close(newfd);
 				return 0;
 			}
@@ -1013,7 +1171,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 
 		case FR_RADIUSV11_REQUIRE:
 			if (client->radiusv11 == FR_RADIUSV11_FORBID) {
-				INFO("Ignoring new connection as client is marked as 'radiusv11 = forbid', and this socket has 'radiusv11 = require'");
+				RATE_LIMIT(INFO("Ignoring new connection from client %s as it is marked as 'radiusv11 = forbid', and this socket has 'radiusv11 = require'", client->shortname));
 				close(newfd);
 				return 0;
 			}
@@ -1032,7 +1190,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		/*
 		 *	FIXME: Print client IP/port, and server IP/port.
 		 */
-		INFO("Ignoring new connection due to client max_connections (%d)", client->limit.max_connections);
+		RATE_LIMIT(INFO("Ignoring new connection from client %s due to client max_connections (%d)", client->shortname, client->limit.max_connections));
 		close(newfd);
 		return 0;
 	}
@@ -1043,12 +1201,10 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		/*
 		 *	FIXME: Print client IP/port, and server IP/port.
 		 */
-		INFO("Ignoring new connection due to socket max_connections");
+		RATE_LIMIT(INFO("Ignoring new connection from client %s due to socket max_connections (%d)", client->shortname, sock->limit.num_connections));
 		close(newfd);
 		return 0;
 	}
-	client->limit.num_connections++;
-	sock->limit.num_connections++;
 
 	/*
 	 *	Add the new listener.  We require a new context here,
@@ -1057,6 +1213,12 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	 */
 	this = listen_alloc(NULL, listener->type);
 	if (!this) return -1;
+
+	/*
+	 *	Now that we've opened a connection, increment the reference count.
+	 */
+	client->limit.num_connections++;
+	sock->limit.num_connections++;
 
 	/*
 	 *	Copy everything, including the pointer to the socket
@@ -1113,6 +1275,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		this->recv = dual_tcp_recv;
 
 #ifdef WITH_TLS
+		if (client->tls) this->tls = client->tls;
 		if (this->tls) {
 			this->recv = dual_tls_recv;
 			this->send = dual_tls_send;
@@ -1904,8 +2067,6 @@ static int stats_socket_recv(rad_listen_t *listener)
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
 
-	FR_STATS_INC(auth, total_requests);
-
 	if (rcode < 20) {	/* RADIUS_HDR_LEN */
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		FR_STATS_INC(auth, total_malformed_requests);
@@ -1952,7 +2113,6 @@ static int stats_socket_recv(rad_listen_t *listener)
 	return 1;
 }
 #endif
-
 
 /*
  *	Check if an incoming request is "ok"
@@ -2029,13 +2189,18 @@ static int auth_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(ctx, listener->fd, client->message_authenticator);
+	packet = rad_recv(ctx, listener->fd, (client->require_ma == FR_BOOL_TRUE) | ((client->limit_proxy_state == FR_BOOL_TRUE) << 2));
 	if (!packet) {
 		FR_STATS_INC(auth, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		talloc_free(ctx);
 		return 0;
 	}
+
+	/*
+	 *	Perform BlastRADIUS checks and warnings.
+	 */
+	if (packet->code == PW_CODE_ACCESS_REQUEST) blastradius_checks(packet, client);
 
 #ifdef __APPLE__
 #ifdef WITH_UDPFROMTO
@@ -2425,7 +2590,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(ctx, listener->fd, client->message_authenticator);
+	packet = rad_recv(ctx, listener->fd, (client->require_ma == FR_BOOL_TRUE));
 	if (!packet) {
 		FR_STATS_INC(coa, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -3451,6 +3616,10 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 	if (home->proto == IPPROTO_TCP) {
 		this->recv = proxy_socket_tcp_recv;
 
+#ifdef WITH_TLS
+		this->nonblock |= home->nonblock;
+#endif
+
 		/*
 		 *	FIXME: connect() is blocking!
 		 *	We do this with the proxy mutex locked, which may
@@ -3459,7 +3628,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		this->fd = fr_socket_client_tcp(&home->src_ipaddr,
 						&home->ipaddr, home->port,
 #ifdef WITH_TLS
-						!this->nonblock
+						this->nonblock
 #else
 						false
 #endif
@@ -3484,27 +3653,38 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 
 
 #ifdef WITH_TCP
+#ifdef SO_KEEPALIVE
+	if (home->proto == IPPROTO_TCP) {
+		int on = 1;
+
+		if (setsockopt(this->fd, SOL_SOCKET, SO_KEEPALIVE, &on, sizeof(on)) < 0) {
+			ERROR("(TLS) Failed to set SO_KEEPALIVE: %s", fr_syserror(errno));
+			goto error;
+		}
+	}
+#endif
+
 #ifdef WITH_TLS
 	if ((home->proto == IPPROTO_TCP) && home->tls) {
 		DEBUG("(TLS) Trying new outgoing proxy connection to %s", buffer);
-
-		/*
-		 *	Set SNI, if configured.
-		 *
-		 *	The OpenSSL API says the filename is "char
-		 *	const *", but some versions have it as "void
-		 *	*", without the "const".  So we un-const it
-		 *	here through various C magic.
-		 */
-		if (home->tls->client_hostname) {
-			(void) SSL_set_tlsext_host_name(sock->ssn->ssl, (void *) (uintptr_t) home->tls->client_hostname);
-		}
 
 #ifdef WITH_RADIUSV11
 		this->radiusv11 = home->tls->radiusv11;
 #endif
 
-		this->nonblock |= home->nonblock;
+#ifdef TCP_NODELAY
+		/*
+		 *	Also set TCP_NODELAY, to force the data to be written quickly.
+		 */
+		if (sock->proto == IPPROTO_TCP) {
+			int on = 1;
+
+			if (setsockopt(this->fd, SOL_TCP, TCP_NODELAY, &on, sizeof(on)) < 0) {
+				ERROR("(TLS) Failed to set TCP_NODELAY: %s", fr_syserror(errno));
+				goto error;
+			}
+		}
+#endif
 
 		/*
 		 *	Set non-blocking if it's configured.
@@ -3522,22 +3702,9 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 				goto error;
 			}
 
-#ifdef TCP_NODELAY
-			/*
-			 *	Also set TCP_NODELAY, to force the data to be written quickly.
-			 */
-			if (sock->proto == IPPROTO_TCP) {
-				int on = 1;
-
-				if (setsockopt(this->fd, SOL_TCP, TCP_NODELAY, &on, sizeof(on)) < 0) {
-					ERROR("(TLS) Failed to set TCP_NODELAY: %s", fr_syserror(errno));
-					goto error;
-				}
-			}
-#endif
 		} else {
 			/*
-			 *	Only set timeouts when the socket is nonblocking.  This allows blocking
+			 *	Only set timeouts when the socket is blocking.  This allows blocking
 			 *	sockets to still time out when the underlying socket is dead.
 			 */
 #ifdef SO_RCVTIMEO
@@ -3662,6 +3829,9 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		error:
 			close(this->fd);
 			home->last_failed_open = now;
+#ifdef WITH_TLS
+			if (home->listeners && this->nonblock) rbtree_deletebydata(home->listeners, this);
+#endif
 			listen_free(&this);
 			return NULL;
 		}
