@@ -42,18 +42,18 @@ listen {
     type = auth
     virtual_server = one
 }
-    
+
 listen {
     ipaddr = 192.0.2.2
     port = 1812
     type = auth
     virtual_server = two
 }
-    
+
 server one {
     ...
 }
-    
+
 server two {
     ...
 }
@@ -65,7 +65,7 @@ received on the IP address `192.0.2.2`, they will be processed through
 the `server two` virtual server.
 
 The contents of the `server one` and `server two` sections are
-`authorize`, `authenticate`, etc. sections used to process packets in
+`authorise`, `authenticate`, etc. sections used to process packets in
 version 1.x.
 
 Client based
@@ -84,7 +84,7 @@ listen {
     # no server section is defined here
     clients = disambiguate
 }
-    
+
 clients disambiguate {
     client one {
         ipaddr = 192.0.2.4

@@ -1,0 +1,43 @@
+= What is FreeRADIUS?
+
+FreeRADIUS is the most popular and the most widely deployed open source RADIUS server in the world.
+It serves as the basis for multiple commercial offerings, and it supplies the authentication, authorisation, and accounting (AAA) needs of many Fortune 500 companies and Tier 1 ISPs. It is also widely used by the academic community (i.e., eduroam, the world-wide roaming access service developed for the international research and education community, utilises FreeRADIUS software).
+
+FreeRADIUS was started in August 1999 by Alan DeKok and Miquel van Smoorenburg. Miquel had previously written the Cistron RADIUS server software, which had been widely adopted when the Livingston server was no longer in service. FreeRADIUS was developed using a modular design, to encourage more active community involvement.
+
+== Features
+
+More authentication types are supported by FreeRADIUS than by any other open source server. For example, FreeRADIUS is the only open source RADIUS server to support Extensible Authentication Protocol (EAP).
+
+FreeRADIUS is also the only open source RADIUS server to support virtual servers. The use of virtual servers means that complex implementations are simplified. Ongoing support and maintenance costs for network administrators are greatly reduced. FreeRADIUS's ability to support virtual servers
+gives it a huge advantage over the competition.
+
+== Modularity
+
+The modular design protocol makes FreeRADIUS easy to understand. The modular interface also simplifies adding or removing modules. If a feature is not needed for a configuration, the module is removed with a simple edit of the configuration file. Once the module is removed, it does not affect server performance, memory use, or security. This flexibility enables the server to run on platforms ranging from embedded systems to multi-core machines with gigabytes of RAM.
+
+The server core does the basic RADIUS and network handling. Almost everyother feature is managed with a module. This modular design increases the flexibility of the policy language. The policy language can execute multiple modules in any order, allowing for highly customizable workflows. Each module handles a specific, isolated task such as authentication, logging, or database access.
+
+For example, each of the authentication methods (PAP,CHAP, MS-CHAP, TOTP, and EAP) are individual modules. Similarly, each database connector (SQL,Redis, LDAP, etc.) are individual modules. In many cases, no code changes to the server core have to be made in order to support complex new functionality.
+
+This modular design streamlines development, testing, and enhances the system’s adaptability to new requirements or technologies.
+
+== Scalability
+
+A single FreeRADIUS server is easily reconfigured to handle a wide range of workloads, from just a few requests per second to thousands—by adjusting a few default settings. This adaptability makes FreeRADIUS suitable for both small deployments and very large organisations, including those with over 10 million customers who rely on it for authentication, authorization, and accounting (AAA) services.
+
+A single FreeRADIUS server can transition from handling one request every few seconds to processing thousands of requests per second. These varied workloads are handled by changing a few default settings. FreeRADIUS is suitable for both small deployments and very large organisations, including those with over 10 million customers.  Often, only a single FreeRADIUS server is required to fulfill an organisation's requirements for their AAA services.
+
+While many commercial severs offer different versions of their software to handle different needs, only the latest version of FreeRADIUS provides better performance, more realms, more RADIUS clients, and more features, with no need to purchase additional product licenses.
+
+== Features
+
+* Complete support for https://datatracker.ietf.org/doc/html/rfc2865[RFC 2865] and https://datatracker.ietf.org/doc/html/rfc2866[RFC 2866] attributes.
+* Authentication Protocol supports for:
+** EAP or protocol/EAP with EAP-MD5, EAP-SIM, EAP-TLS, EAP-TTLS.
+** EAP-PEAP or protocol/EAP-PEAP.
+** Cisco LEAP or protocol/LEAP and EAP sub-types.
+* Vendor Specific Attributes for over a hundred vendors including BinTec, Foundry, Cisco, Juniper, Lucent/Ascend, HP ProCurve, Microsoft, USR/3Com.
+* All known RADIUS clients.
+* Flexible configurations using attribute pairs.
+* Supports virtual servers.
