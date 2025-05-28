@@ -1,0 +1,4 @@
+TARGETNAME	:= rlm_crl
+
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= $(TARGETNAME).c
