@@ -748,7 +748,7 @@ bool fr_rb_delete(fr_rb_tree_t *tree, void const *data)
 
 	if (unlikely(node->being_freed)) return true;
 
-	delete_internal(tree, node, true);
+	delete_internal(tree, node, tree->data_free);
 
 	return true;
 }
