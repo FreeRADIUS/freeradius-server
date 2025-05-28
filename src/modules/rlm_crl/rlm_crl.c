@@ -115,7 +115,7 @@ typedef enum {
 static const call_env_method_t crl_env = {
 	FR_CALL_ENV_METHOD_OUT(rlm_crl_env_t),
 	.env = (call_env_parser_t[]){
-		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("crl", FR_TYPE_OCTETS, 0, rlm_crl_env_t, exp )},
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("crl", FR_TYPE_OCTETS, CALL_ENV_FLAG_REQUIRED, rlm_crl_env_t, exp )},
 		{ FR_CALL_ENV_OFFSET("serial", FR_TYPE_STRING, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_SINGLE, rlm_crl_env_t, serial),
 					 .pair.dflt = "session-state.TLS-Certificate.Serial", .pair.dflt_quote = T_BARE_WORD },
 		{ FR_CALL_ENV_OFFSET("cdp", FR_TYPE_STRING, CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE| CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_MULTI, rlm_crl_env_t, cdp),
