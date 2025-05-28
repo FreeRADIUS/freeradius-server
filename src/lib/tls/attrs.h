@@ -49,6 +49,7 @@ extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_x509v3_extended_key_usa
 extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_x509v3_subject_key_identifier;
 extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_x509v3_authority_key_identifier;
 extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_x509v3_basic_constraints;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_x509v3_crl_distribution_points;
 
 extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_chain_depth;
 extern HIDDEN fr_dict_attr_t const *attr_tls_client_error_code;
