@@ -293,8 +293,10 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 
 	default:
 		REDEBUG("Too many CRL values returned, failing");
-		goto fail;
+		break;
 	}
+
+	goto fail;
 }
 
 static unlang_action_t crl_by_url(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
