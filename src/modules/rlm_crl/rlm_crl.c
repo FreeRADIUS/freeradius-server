@@ -362,11 +362,19 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_crl_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_crl_t);
 
-	MEM(inst->mutable = talloc_zero(inst, rlm_crl_mutable_t));
+	MEM(inst->mutable = talloc_zero(NULL, rlm_crl_mutable_t));
 	MEM(inst->mutable->crls = fr_rb_inline_talloc_alloc(inst->mutable, crl_entry_t, node, crl_cmp, crl_free));
 	pthread_mutex_init(&inst->mutable->mutex, NULL);
 	talloc_set_destructor(inst->mutable, mod_mutable_free);
 
+	return 0;
+}
+
+static int mod_detach(module_detach_ctx_t const *mctx)
+{
+	rlm_crl_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_crl_t);
+
+	talloc_free(inst->mutable);
 	return 0;
 }
 
@@ -376,6 +384,7 @@ module_rlm_t rlm_crl = {
 		.magic		= MODULE_MAGIC_INIT,
 		.inst_size	= sizeof(rlm_crl_t),
 		.instantiate	= mod_instantiate,
+		.detach		= mod_detach,
 		.name		= "crl",
 	},
 	.method_group = {
