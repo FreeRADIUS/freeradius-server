@@ -335,7 +335,7 @@ static unlang_action_t crl_by_url(rlm_rcode_t *p_result, module_ctx_t const *mct
 
 			fr_value_box_list_init(&rctx->crl_data);
 
-			MEM(pair_append_request(&vp, attr_crl_cdp_url) == 0);
+			MEM(pair_update_request(&vp, attr_crl_cdp_url) >= 0);
 			MEM(fr_value_box_copy(vp, &vp->data, rctx->cdp_url) == 0);
 
 			return unlang_module_yield_to_tmpl(rctx, &rctx->crl_data, request, env->exp,
