@@ -1,0 +1,28 @@
+#  -*- text -*-
+#
+#
+#  $Id$
+
+#######################################################################
+#
+#  = CRL Module
+#
+#  The `crl` module provides CRL checking of TLS certificates.
+#
+#  Its primary use case is within the `verify certificate` processing
+#  section of the `tls-session` virtual server when verifying client
+#  certificates during EAP-TLS.
+#
+
+#
+#  ## Configuration Settings
+#
+crl {
+	#
+	#  crl:: Expansion used to retrieve a CRL.
+	#
+	#  The CRL distribution point URI will be in the
+	#  attribute `CRL.CDP-URL` when this expansion is performed.
+	#
+	crl = %rest('GET', "%uri.safe(%{CRL.CDP-URL})")
+}
