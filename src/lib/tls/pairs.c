@@ -34,7 +34,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/server/pair.h>
 
 #include "attrs.h"
-#include "base.h"
 #include "bio.h"
 #include "log.h"
 #include "session.h"
@@ -201,6 +200,8 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	 */
 	{
 		ASN1_INTEGER const *serial = NULL;
+		unsigned char *der;
+		int len;
 
 		serial = X509_get0_serialNumber(cert);
 		if (!serial) {
@@ -208,8 +209,10 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 			goto error;
 		}
 
+		len = i2d_ASN1_INTEGER(serial, NULL);	/* get length */
 		MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_serial) == 0);
-		MEM(fr_pair_value_memdup(vp, serial->data, serial->length, true) == 0);
+		MEM(fr_pair_value_mem_alloc(vp, &der, len, false) == 0);
+		i2d_ASN1_INTEGER(serial, &der);
 	}
 
 	/*
