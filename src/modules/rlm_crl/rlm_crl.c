@@ -305,7 +305,7 @@ static unlang_action_t crl_by_url(rlm_rcode_t *p_result, module_ctx_t const *mct
 	rlm_crl_env_t *env = talloc_get_type_abort(mctx->env_data, rlm_crl_env_t);
 	rlm_crl_rctx_t *rctx = mctx->rctx;
 
-	if (!rctx) talloc_zero(unlang_interpret_frame_talloc_ctx(request), rlm_crl_rctx_t);
+	if (!rctx) rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), rlm_crl_rctx_t);
 
 	pthread_mutex_lock(&inst->mutable->mutex);
 
