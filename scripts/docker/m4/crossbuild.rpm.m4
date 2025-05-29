@@ -1,5 +1,5 @@
 ARG from=DOCKER_IMAGE
-FROM ${from} as build
+FROM ${from} AS build
 
 #
 #  Install devtools like make and git and the EPEL

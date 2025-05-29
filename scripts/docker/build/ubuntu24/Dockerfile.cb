@@ -4,7 +4,7 @@
 # Rebuild this file with `make crossbuild.ubuntu24.regen`
 #
 ARG from=ubuntu:24.04
-FROM ${from} as build
+FROM ${from} AS build
 
 SHELL ["/usr/bin/nice", "-n", "5", "/usr/bin/ionice", "-c", "3", "/bin/sh", "-x", "-c"]
 
@@ -12,14 +12,11 @@ ARG APT_OPTS="-y --option=Dpkg::options::=--force-unsafe-io --no-install-recomme
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-
 #
-#  Install add-apt-repository (may be needed for clang) and
-#  package development utilities
+#  Install build tools
 #
 RUN apt-get update && \
     apt-get install $APT_OPTS \
-        software-properties-common \
         devscripts \
         equivs \
         git \
@@ -37,8 +34,8 @@ RUN apt-get update && \
 #  Set up NetworkRADIUS extras repository
 #
 RUN install -d -o root -g root -m 0755 /etc/apt/keyrings && \
-    wget -O /etc/apt/keyrings/packages.networkradius.com.asc "https://packages.networkradius.com/pgp/packages%40networkradius.com" && \
-    echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/ubuntu/noble noble main" > /etc/apt/sources.list.d/networkradius-extras.list && \
+    wget -qO- https://packages.networkradius.com/pgp/packages%40networkradius.com | tee /etc/apt/trusted.gpg.d/packages.networkradius.com.asc && \
+    echo "deb http://packages.networkradius.com/extras/ubuntu/noble noble main" > /etc/apt/sources.list.d/networkradius-extras.list && \
     apt-get update
 
 
@@ -48,6 +45,7 @@ RUN install -d -o root -g root -m 0755 /etc/apt/keyrings && \
 RUN apt-get install $APT_OPTS \
         g++ \
         llvm clang lldb
+
 
 
 
