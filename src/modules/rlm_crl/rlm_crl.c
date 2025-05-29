@@ -222,10 +222,16 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 	crl->crl = d2i_X509_CRL(NULL, (const unsigned char **)&our_data, talloc_array_length(our_data));
 	if (crl->crl == NULL) {
 		fr_tls_strerror_printf("Failed to parse CRL from %s", url);
+	error:
 		talloc_free(crl);
 		return NULL;
 	}
 	talloc_set_destructor(crl, _crl_entry_free);
+
+	if (!fr_rb_insert(inst->mutable->crls, crl)) {
+		ERROR("Failed to insert CRL into tree of CRLs");
+		goto error;
+	}
 	fr_timer_in(crl, tl, &crl->ev, inst->force_expiry, false, crl_expire, crl);
 	crl->ev = NULL;
 
