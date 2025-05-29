@@ -232,6 +232,7 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 		ERROR("Failed to insert CRL into tree of CRLs");
 		goto error;
 	}
+	crl->inst = inst;
 	fr_timer_in(crl, tl, &crl->ev, inst->force_expiry, false, crl_expire, crl);
 	crl->ev = NULL;
 
