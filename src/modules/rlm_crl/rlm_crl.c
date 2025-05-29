@@ -217,7 +217,7 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 	uint8_t const	*our_data = data;
 	crl_entry_t	*crl;
 
-	MEM(crl = talloc_zero(inst, crl_entry_t));
+	MEM(crl = talloc_zero(inst->mutable->crls, crl_entry_t));
 	crl->cdp_url = talloc_bstrdup(crl, url);
 	crl->crl = d2i_X509_CRL(NULL, (const unsigned char **)&our_data, talloc_array_length(our_data));
 	if (crl->crl == NULL) {
