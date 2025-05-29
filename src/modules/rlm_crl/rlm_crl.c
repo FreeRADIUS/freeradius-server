@@ -178,10 +178,10 @@ static crl_ret_t crl_check_entry(crl_entry_t *crl_entry, request_t *request, uin
 	ret = X509_CRL_get0_by_serial(crl_entry->crl, &revoked, asn1_serial);
 	ASN1_INTEGER_free(asn1_serial);
 	switch (ret) {
+	/* The docs describe 0 as "failure" - but that means "failed to find"*/
 	case 0:
-		fr_tls_strerror_printf("Failed checking serial number against CRL %s", crl_entry->cdp_url);
-		RPERROR("Returning fail");
-		return CRL_ERROR;
+		RDEBUG3("Certificate not in CRL");
+		return CRL_ENTRY_NOT_FOUND;
 
 	case 1:
 		RDEBUG2("Certificate revoked by %s", crl_entry->cdp_url);
