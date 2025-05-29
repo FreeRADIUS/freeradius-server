@@ -73,7 +73,7 @@ typedef struct {
 	char const 			*cdp_url;			//!< The URL of the CRL.
 	fr_timer_t 			*ev;				//!< When to expire the CRL
 	fr_rb_node_t			node;				//!< The node in the tree
-	rlm_crl_t			*inst;				//!< The instance of the CRL module.
+	rlm_crl_t const			*inst;				//!< The instance of the CRL module.
 } crl_entry_t;
 
 typedef struct {
