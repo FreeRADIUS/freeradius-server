@@ -43,6 +43,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/module.h>
 
 #include <freeradius-devel/tls/strerror.h>
+#include <freeradius-devel/tls/utils.h>
 
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
@@ -223,6 +224,9 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 {
 	uint8_t const	*our_data = data;
 	crl_entry_t	*crl;
+	time_t		next_update;
+	fr_time_t	now = fr_time();
+	fr_time_delta_t	expiry_time;
 
 	MEM(crl = talloc_zero(inst->mutable->crls, crl_entry_t));
 	crl->cdp_url = talloc_bstrdup(crl, url);
@@ -235,12 +239,23 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 	}
 	talloc_set_destructor(crl, _crl_entry_free);
 
+	if (fr_tls_utils_asn1time_to_epoch(&next_update, X509_CRL_get0_nextUpdate(crl->crl)) < 0) {
+		fr_tls_strerror_printf("Failed to parse nextUpdate from CRL");
+		goto error;
+	}
+
 	if (!fr_rb_insert(inst->mutable->crls, crl)) {
 		ERROR("Failed to insert CRL into tree of CRLs");
 		goto error;
 	}
 	crl->inst = inst;
-	fr_timer_in(crl, tl, &crl->ev, inst->force_expiry, false, crl_expire, crl);
+
+	expiry_time = fr_time_sub(fr_time_from_sec(next_update), now);
+	if (inst->force_expiry_is_set &&
+	    (fr_time_delta_cmp(expiry_time, inst->force_expiry) > 0)) expiry_time = inst->force_expiry;
+
+	DEBUG3("CRL from %s will expire in %pVs", url, fr_box_time_delta(expiry_time));
+	fr_timer_in(crl, tl, &crl->ev, expiry_time, false, crl_expire, crl);
 
 	return crl;
 }
