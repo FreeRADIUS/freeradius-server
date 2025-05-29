@@ -143,7 +143,7 @@ static void crl_expire(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, UNUSED 
 
 	DEBUG2("CRL associated with CDP %s expired", crl->cdp_url);
 	pthread_mutex_lock(&crl->inst->mutable->mutex);
-	fr_rb_remove(crl->inst->mutable->crls, &crl->node);
+	fr_rb_remove(crl->inst->mutable->crls, crl);
 	pthread_mutex_unlock(&crl->inst->mutable->mutex);
 }
 
