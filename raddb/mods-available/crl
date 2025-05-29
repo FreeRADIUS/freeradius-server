@@ -25,4 +25,12 @@ crl {
 	#  attribute `CRL.CDP-URL` when this expansion is performed.
 	#
 	crl = %rest('GET', "%uri.safe(%{CRL.CDP-URL})")
+
+	#
+	#  force_expiry:: Maximum time between expiring CRLs
+	#
+	#  If the `nextUpdate` attribute of a CRL is closer than this interval
+	#  then that will be used as the point that the CRL is expired.
+	#
+#	force_expiry = 7d
 }

@@ -64,6 +64,7 @@ typedef struct {
 typedef struct {
 	CONF_SECTION    		*virtual_server;		//!< Virtual server to use when retrieving CRLs
 	fr_time_delta_t			force_expiry;			//!< Force expiry of CRLs after this time
+	bool				force_expiry_is_set;
 	rlm_crl_mutable_t		*mutable;			//!< Mutable data that's shared between all threads.
 } rlm_crl_t;
 
@@ -80,6 +81,11 @@ typedef struct {
 	fr_value_box_t			*cdp_url;			//!< The URL we're currently attempting to load.
 	fr_value_box_list_t		crl_data;			//!< Data from CRL expansion.
 } rlm_crl_rctx_t;
+
+static conf_parser_t module_config[] = {
+	{ FR_CONF_OFFSET_IS_SET("force_expiry", FR_TYPE_TIME_DELTA, 0, rlm_crl_t, force_expiry) },
+	CONF_PARSER_TERMINATOR
+};
 
 static fr_dict_t const *dict_freeradius;
 
@@ -393,6 +399,7 @@ module_rlm_t rlm_crl = {
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach,
 		.name		= "crl",
+		.config		= module_config,
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
