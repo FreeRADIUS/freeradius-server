@@ -44,6 +44,7 @@ static fr_dict_attr_t const *attr_net_dst;
 static fr_dict_attr_t const *attr_net_dst_ip;
 static fr_dict_attr_t const *attr_net_dst_port;
 static fr_dict_attr_t const *attr_net_timestamp;
+static fr_dict_attr_t const *attr_net_interface;
 
 extern fr_dict_attr_autoload_t util_packet_dict_attr[];
 fr_dict_attr_autoload_t util_packet_dict_attr[] = {
@@ -55,6 +56,7 @@ fr_dict_attr_autoload_t util_packet_dict_attr[] = {
 	{ .out = &attr_net_dst_ip, .name = "Net.Dst.IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_net_dst_port, .name = "Net.Dst.Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ .out = &attr_net_timestamp, .name = "Net.Timestamp", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
+	{ .out = &attr_net_interface, .name = "Net.Interface", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ NULL }
 };
@@ -89,6 +91,9 @@ static int inet2pairs(TALLOC_CTX *ctx, fr_pair_list_t *list,
 int fr_packet_pairs_from_packet(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_packet_t const *packet)
 {
 	fr_pair_t *vp, *net, *tlv;
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
+	char if_name[IFNAMSIZ];
+#endif
 
 	/*
 	 *	Net
@@ -115,6 +120,16 @@ int fr_packet_pairs_from_packet(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_packet
 	if (fr_pair_find_or_append_by_da(net, &vp, &net->vp_group, attr_net_timestamp) < 0) return -1;
 	vp->vp_date = fr_time_to_unix_time(packet->timestamp);
 	fr_pair_set_immutable(vp);
+
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
+	/*
+	 *	Interface
+	 */
+	if (!packet->socket.inet.ifindex) return 0;
+	if (fr_pair_find_or_append_by_da(net, &vp, &net->vp_group, attr_net_interface) < 0) return -1;
+	fr_ifname_from_ifindex(if_name, packet->socket.inet.ifindex);
+	fr_value_box_strdup(vp, &vp->data, NULL, if_name, false);
+#endif
 
 	return 0;
 }

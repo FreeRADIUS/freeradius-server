@@ -83,6 +83,7 @@ ATTRIBUTE	IP					.1.1	combo-ip
 ATTRIBUTE	Port					.1.2	uint16
 ATTRIBUTE	Dst					.2	tlv clone=.Src
 ATTRIBUTE	Timestamp				.3	date
+ATTRIBUTE	Interface				.4	string
 
 #
 #
