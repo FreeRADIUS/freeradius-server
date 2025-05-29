@@ -151,6 +151,7 @@ static void crl_expire(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, UNUSED 
 	pthread_mutex_lock(&crl->inst->mutable->mutex);
 	fr_rb_remove(crl->inst->mutable->crls, crl);
 	pthread_mutex_unlock(&crl->inst->mutable->mutex);
+	talloc_free(crl);
 }
 
 /** Make sure we don't lock up the server if a request is cancelled
