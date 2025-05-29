@@ -273,7 +273,10 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 		crl_entry = crl_entry_create(inst, unlang_interpret_event_list(request)->tl,
 				       rctx->cdp_url->vb_strvalue,
 				       fr_value_box_list_head(&rctx->crl_data)->vb_octets);
-		if (!crl_entry) goto fail;
+		if (!crl_entry) {
+			RPERROR("Failed to process returned CRL data");
+			goto fail;
+		}
 
 		switch (crl_check_entry(crl_entry, request, env->serial.vb_octets)) {
 		case CRL_ENTRY_FOUND:
