@@ -77,6 +77,7 @@ typedef struct {
 	ASN1_INTEGER			*crl_num;			//!< The CRL number.
 	fr_timer_t 			*ev;				//!< When to expire the CRL
 	fr_rb_node_t			node;				//!< The node in the tree
+	fr_value_box_list_t		delta_urls;			//!< URLs from which a delta CRL can be retrieved.
 	rlm_crl_t const			*inst;				//!< The instance of the CRL module.
 } crl_entry_t;
 
@@ -232,6 +233,7 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 	fr_time_t	now = fr_time();
 	fr_time_delta_t	expiry_time;
 	int		i;
+	STACK_OF(DIST_POINT)	*dps;
 
 	MEM(crl = talloc_zero(inst->mutable->crls, crl_entry_t));
 	crl->cdp_url = talloc_bstrdup(crl, url);
@@ -256,6 +258,34 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 		goto error;
 	}
 	crl->inst = inst;
+
+	/*
+	 *	Check if this CRL has a Freshest CRL extension - the list of URIs to get deltas from
+	 */
+	fr_value_box_list_init(&crl->delta_urls);
+	if ((dps = X509_CRL_get_ext_d2i(crl->crl, NID_freshest_crl, NULL, NULL))) {
+		DIST_POINT		*dp;
+		STACK_OF(GENERAL_NAME)	*names;
+		GENERAL_NAME		*name;
+		int			j;
+		fr_value_box_t		*vb;
+
+		for (i = 0; i < sk_DIST_POINT_num(dps); i++) {
+			dp = sk_DIST_POINT_value(dps, i);
+			names = dp->distpoint->name.fullname;
+			for (j = 0; j < sk_GENERAL_NAME_num(names); j++) {
+				name = sk_GENERAL_NAME_value(names, j);
+				if (name->type != GEN_URI) continue;
+				MEM(vb = fr_value_box_alloc_null(crl));
+				fr_value_box_bstrndup(vb, vb, NULL,
+						      (char const *)ASN1_STRING_get0_data(name->d.uniformResourceIdentifier),
+						      ASN1_STRING_length(name->d.uniformResourceIdentifier), true);
+				DEBUG3("CRL references delta URI %pV", vb);
+				fr_value_box_list_insert_tail(&crl->delta_urls, vb);
+			}
+		}
+		CRL_DIST_POINTS_free(dps);
+	}
 
 	expiry_time = fr_time_delta_sub(fr_time_sub(fr_time_from_sec(next_update), now), inst->early_refresh);
 	if (inst->force_expiry_is_set &&
