@@ -74,6 +74,7 @@ typedef struct {
 typedef struct {
 	X509_CRL			*crl;				//!< The CRL.
 	char const 			*cdp_url;			//!< The URL of the CRL.
+	ASN1_INTEGER			*crl_num;			//!< The CRL number.
 	fr_timer_t 			*ev;				//!< When to expire the CRL
 	fr_rb_node_t			node;				//!< The node in the tree
 	rlm_crl_t const			*inst;				//!< The instance of the CRL module.
@@ -215,6 +216,7 @@ static crl_ret_t crl_check_serial(fr_rb_tree_t *crls, request_t *request, char c
 static int _crl_entry_free(crl_entry_t *crl_entry)
 {
 	X509_CRL_free(crl_entry->crl);
+	if (crl_entry->crl_num) ASN1_INTEGER_free(crl_entry->crl_num);
 	return 0;
 }
 
@@ -229,6 +231,7 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 	time_t		next_update;
 	fr_time_t	now = fr_time();
 	fr_time_delta_t	expiry_time;
+	int		i;
 
 	MEM(crl = talloc_zero(inst->mutable->crls, crl_entry_t));
 	crl->cdp_url = talloc_bstrdup(crl, url);
@@ -240,6 +243,8 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 		return NULL;
 	}
 	talloc_set_destructor(crl, _crl_entry_free);
+
+	crl->crl_num = X509_CRL_get_ext_d2i(crl->crl, NID_crl_number, &i, NULL);
 
 	if (fr_tls_utils_asn1time_to_epoch(&next_update, X509_CRL_get0_nextUpdate(crl->crl)) < 0) {
 		fr_tls_strerror_printf("Failed to parse nextUpdate from CRL");
