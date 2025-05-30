@@ -66,6 +66,7 @@ typedef struct {
 	CONF_SECTION    		*virtual_server;		//!< Virtual server to use when retrieving CRLs
 	fr_time_delta_t			force_expiry;			//!< Force expiry of CRLs after this time
 	bool				force_expiry_is_set;
+	fr_time_delta_t			early_refresh;			//!< Time interval before nextUpdate to refresh
 	rlm_crl_mutable_t		*mutable;			//!< Mutable data that's shared between all threads.
 } rlm_crl_t;
 
@@ -85,6 +86,7 @@ typedef struct {
 
 static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_IS_SET("force_expiry", FR_TYPE_TIME_DELTA, 0, rlm_crl_t, force_expiry) },
+	{ FR_CONF_OFFSET("early_refresh", rlm_crl_t, early_refresh) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -250,7 +252,7 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 	}
 	crl->inst = inst;
 
-	expiry_time = fr_time_sub(fr_time_from_sec(next_update), now);
+	expiry_time = fr_time_delta_sub(fr_time_sub(fr_time_from_sec(next_update), now), inst->early_refresh);
 	if (inst->force_expiry_is_set &&
 	    (fr_time_delta_cmp(expiry_time, inst->force_expiry) > 0)) expiry_time = inst->force_expiry;
 

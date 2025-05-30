@@ -33,4 +33,9 @@ crl {
 	#  then that will be used as the point that the CRL is expired.
 	#
 #	force_expiry = 7d
+
+	#
+	#  early_refresh:: Time before `nextUpdate` which the CRL will be refreshed
+	#
+	early_refresh = 1h
 }
