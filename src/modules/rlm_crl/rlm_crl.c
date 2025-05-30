@@ -111,7 +111,8 @@ fr_dict_attr_autoload_t rlm_crl_dict_attr[] = {
 };
 
 typedef struct {
-	tmpl_t				*exp;				//!< The xlat expansion use to retrieve the CRL.
+	tmpl_t				*http_exp;			//!< The xlat expansion used to retrieve the CRL via http://
+	tmpl_t				*ldap_exp;			//!< The xlat expansion used to retrieve the CRL via ldap://
 	fr_value_box_t			serial;				//!< The serial to check
 	fr_value_box_list_head_t	*cdp; 				//!< The CRL distribution points
 } rlm_crl_env_t;
@@ -126,7 +127,16 @@ typedef enum {
 static const call_env_method_t crl_env = {
 	FR_CALL_ENV_METHOD_OUT(rlm_crl_env_t),
 	.env = (call_env_parser_t[]){
-		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("crl", FR_TYPE_OCTETS, CALL_ENV_FLAG_REQUIRED, rlm_crl_env_t, exp )},
+		{ FR_CALL_ENV_SUBSECTION("source", NULL, CALL_ENV_FLAG_SUBSECTION | CALL_ENV_FLAG_PARSE_MISSING,
+			((call_env_parser_t[]) {
+				{ FR_CALL_ENV_SUBSECTION("dynamic", NULL, CALL_ENV_FLAG_SUBSECTION | CALL_ENV_FLAG_PARSE_MISSING,
+				((call_env_parser_t[]) {
+					{ FR_CALL_ENV_PARSE_ONLY_OFFSET("http", FR_TYPE_OCTETS, CALL_ENV_FLAG_REQUIRED, rlm_crl_env_t, http_exp )},
+					{ FR_CALL_ENV_PARSE_ONLY_OFFSET("ldap", FR_TYPE_OCTETS, CALL_ENV_FLAG_NONE, rlm_crl_env_t, ldap_exp )},
+					CALL_ENV_TERMINATOR
+				}))},
+				CALL_ENV_TERMINATOR
+			}))},
 		{ FR_CALL_ENV_OFFSET("serial", FR_TYPE_STRING, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_SINGLE, rlm_crl_env_t, serial),
 					 .pair.dflt = "session-state.TLS-Certificate.Serial", .pair.dflt_quote = T_BARE_WORD },
 		{ FR_CALL_ENV_OFFSET("cdp", FR_TYPE_STRING, CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE| CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_MULTI, rlm_crl_env_t, cdp),
@@ -400,13 +410,27 @@ static unlang_action_t crl_by_url(rlm_rcode_t *p_result, module_ctx_t const *mct
 		case CRL_NOT_FOUND:
 		{
 			fr_pair_t *vp;
+			tmpl_t *vpt;
 
 			fr_value_box_list_init(&rctx->crl_data);
 
 			MEM(pair_update_request(&vp, attr_crl_cdp_url) >= 0);
 			MEM(fr_value_box_copy(vp, &vp->data, rctx->cdp_url) == 0);
 
-			return unlang_module_yield_to_tmpl(rctx, &rctx->crl_data, request, env->exp,
+			if (strncmp(rctx->cdp_url->vb_strvalue, "http", 4) == 0) {
+				vpt = env->http_exp;
+			} else if (strncmp(rctx->cdp_url->vb_strvalue, "ldap", 4) == 0) {
+				if (!env->ldap_exp) {
+					RERROR("CRL URI requires LDAP, but the crl module ldap expansion is not configured");
+					RETURN_MODULE_INVALID;
+				}
+				vpt = env->ldap_exp;
+			} else {
+				RERROR("Unsupported URI scheme in CRL URI %pV", rctx->cdp_url);
+				RETURN_MODULE_FAIL;
+			}
+
+			return unlang_module_yield_to_tmpl(rctx, &rctx->crl_data, request, vpt,
 							   NULL, crl_process_cdp_data, crl_signal, 0, rctx);
 		}
 		}

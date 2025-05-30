@@ -19,12 +19,32 @@
 #
 crl {
 	#
-	#  crl:: Expansion used to retrieve a CRL.
+	#  source:: Where CRLs will be loaded from
 	#
-	#  The CRL distribution point URI will be in the
-	#  attribute `CRL.CDP-URL` when this expansion is performed.
-	#
-	crl = %rest('GET', "%uri.safe(%{CRL.CDP-URL})")
+	source {
+		#
+		#  dynamic:: Expansions for CRLs loaded dynamically from URIs in certificates
+		#
+		#  The CRL distribution point URI will be in the
+		#  attribute `CRL.CDP-URL` when this expansion is performed.
+		#
+		dynamic {
+			#
+			#  http:: Expansion to use when URI scheme is http
+			#
+			#  The `rest` module must be enabled to support this
+			#
+			http = %rest('GET', "%uri.safe(%{CRL.CDP-URL})")
+
+			#
+			#  ldap:: Expansion to use when URI scheme is ldap
+			#
+			#  If any CRLs need to be retrieved by LDAP queries
+			#  then configure and enable the `ldap` module to
+			#  support this.
+#			ldap = %ldap(%ldap.uri.safe("%{CRL.CDP-URL}"))
+		}
+	}
 
 	#
 	#  force_expiry:: Maximum time between expiring CRLs
