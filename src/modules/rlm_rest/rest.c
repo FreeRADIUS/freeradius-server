@@ -65,7 +65,8 @@ const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIES] = {
 	REST_HTTP_BODY_UNSUPPORTED,		// REST_HTTP_BODY_XML
 	REST_HTTP_BODY_UNSUPPORTED,		// REST_HTTP_BODY_YAML
 	REST_HTTP_BODY_INVALID,			// REST_HTTP_BODY_HTML
-	REST_HTTP_BODY_PLAIN			// REST_HTTP_BODY_PLAIN
+	REST_HTTP_BODY_PLAIN,			// REST_HTTP_BODY_PLAIN
+	REST_HTTP_BODY_PLAIN			// REST_HTTP_BODY_CRL
 };
 
 /*
@@ -144,6 +145,7 @@ size_t http_method_table_len = NUM_ELEMENTS(http_method_table);
  * @see fr_table_str_by_value
  */
 fr_table_num_sorted_t const http_body_type_table[] = {
+	{ L("crl"),					REST_HTTP_BODY_CRL		},
 	{ L("html"),					REST_HTTP_BODY_HTML		},
 	{ L("invalid"),					REST_HTTP_BODY_INVALID		},
 	{ L("json"),					REST_HTTP_BODY_JSON		},
@@ -188,6 +190,7 @@ size_t http_auth_table_len = NUM_ELEMENTS(http_auth_table);
  */
 fr_table_num_sorted_t const http_content_type_table[] = {
 	{ L("application/json"),			REST_HTTP_BODY_JSON		},
+	{ L("application/x-pkcs7-crl"),			REST_HTTP_BODY_CRL		},
 	{ L("application/x-www-form-urlencoded"),	REST_HTTP_BODY_POST		},
 	{ L("application/x-yaml"),			REST_HTTP_BODY_YAML		},
 	{ L("application/yaml"),			REST_HTTP_BODY_YAML		},
