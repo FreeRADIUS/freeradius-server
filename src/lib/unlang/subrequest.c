@@ -38,7 +38,11 @@ RCSID("$Id$")
 /** Send a signal from parent request to subrequest
  *
  */
-static void unlang_subrequest_signal(UNUSED request_t *request, unlang_stack_frame_t *frame, fr_signal_t action)
+static void unlang_subrequest_signal(
+#ifndef NDEBUG
+				     UNUSED
+#endif
+				     request_t *request, unlang_stack_frame_t *frame, fr_signal_t action)
 {
 	unlang_child_request_t		*cr = talloc_get_type_abort(frame->state, unlang_child_request_t);
 	request_t			*child = talloc_get_type_abort(cr->request, request_t);
@@ -53,6 +57,7 @@ static void unlang_subrequest_signal(UNUSED request_t *request, unlang_stack_fra
 		return;
 
 	default:
+		fr_assert_msg(unlang_request_is_scheduled(request), "Parent cannot be runnable if child has not completed");
 		break;
 	}
 
