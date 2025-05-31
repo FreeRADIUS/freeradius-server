@@ -194,7 +194,7 @@ static void frame_dump(request_t *request, unlang_stack_frame_t *frame)
 	RDEBUG2("scr_priority   %d", frame->scratch_result.priority);
 	RDEBUG2("top_frame      %s", is_top_frame(frame) ? "yes" : "no");
 	RDEBUG2("repeat         %s", is_repeatable(frame) ? "yes" : "no");
-	RDEBUG2("resumable      %s", is_yielded(frame) ? "yes" : "no");
+	RDEBUG2("yielded        %s", is_yielded(frame) ? "yes" : "no");
 	RDEBUG2("unwind         %s", is_unwinding(frame) ? "yes" : "no");
 
 	if (frame->instruction) {
@@ -1385,6 +1385,10 @@ void unlang_interpret_signal(request_t *request, fr_signal_t action)
 		 *	If the request was _not_ cancelled, it means
 		 *	it's not cancellable, and we need to let the
 		 *	request progress normally.
+		 *
+		 *	A concrete example of this, is the parent of
+		 *	subrequests, which must not continue until
+		 *	the subrequest is done.
 		 */
 		if (stack && is_yielded(frame) && is_unwinding(frame) && !unlang_request_is_scheduled(request)) {
 			unlang_interpret_mark_runnable(request);
