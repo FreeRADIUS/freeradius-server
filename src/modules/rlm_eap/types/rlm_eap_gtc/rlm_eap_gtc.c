@@ -111,8 +111,7 @@ static unlang_action_t gtc_resume(rlm_rcode_t *p_result, module_ctx_t const *mct
 	eap_session_t	*eap_session = eap_session_get(request->parent);
 	eap_round_t	*eap_round = eap_session->this_round;
 
-	rcode = unlang_interpret_scratch_result(request);
-
+	rcode = rctx->section_result.rcode;
 	if (rcode != RLM_MODULE_OK) {
 		eap_round->request->code = FR_EAP_CODE_FAILURE;
 		RETURN_MODULE_RCODE(rcode);

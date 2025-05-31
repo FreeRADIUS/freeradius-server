@@ -43,8 +43,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 {
 	eap_aka_sim_module_conf_t	*inst = talloc_get_type_abort(mctx->mi->data, eap_aka_sim_module_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
-	eap_aka_sim_mod_session_t	*mod_session = talloc_get_type_abort(eap_session->opaque,
-										eap_aka_sim_mod_session_t);
+	eap_aka_sim_mod_session_t	*mod_session = talloc_get_type_abort(eap_session->opaque, eap_aka_sim_mod_session_t);
 	fr_pair_t			*subtype_vp;
 
 	static eap_code_t		rcode_to_eap_code[RLM_MODULE_NUMCODES] = {
@@ -59,7 +58,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 						[RLM_MODULE_UPDATED]	= FR_EAP_CODE_FAILURE
 					};
 	eap_code_t			code;
-	rlm_rcode_t			rcode = unlang_interpret_scratch_result(request);
+	rlm_rcode_t			rcode = mod_session->virtual_server_result.rcode;
 	fr_aka_sim_ctx_t		encode_ctx;
 	uint8_t	const			*request_hmac_extra = NULL;
 	size_t				request_hmac_extra_len = 0;
@@ -440,7 +439,7 @@ done:
 	 */
 	(void)unlang_module_yield(request, mod_encode, NULL, 0, NULL);
 
-	if (virtual_server_push(request, inst->virtual_server, UNLANG_SUB_FRAME) < 0) {
+	if (virtual_server_push(&mod_session->virtual_server_result, request, inst->virtual_server, UNLANG_SUB_FRAME) < 0) {
 		unlang_interpet_frame_discard(request);
 		RETURN_MODULE_FAIL;
 	}
