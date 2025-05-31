@@ -45,6 +45,7 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/action.h>
+#include <freeradius-devel/unlang/map.h>
 
 #include <ldap.h>
 #include "rlm_ldap.h"
@@ -1305,14 +1306,20 @@ static int ldap_map_verify(CONF_SECTION *cs, UNUSED void const *mod_inst, UNUSED
 
 /** Process the results of an LDAP map query
  *
- * @param[out] p_result	Result of applying the map.
- * @param[in] request	Current request.
- * @param[in] uctx	Map context.
+ * @param[out] p_result	Result of map expansion:
+ *			- #RLM_MODULE_NOOP no rows were returned.
+ *			- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
+ *			- #RLM_MODULE_FAIL if an error occurred.
+ * @param[in] mpctx module map ctx.
+ * @param[in,out] request The current request.
+ * @param[in] url LDAP url specifying base DN and filter.
+ * @param[in] maps Head of the map list.
  * @return One of UNLANG_ACTION_*
  */
-static unlang_action_t mod_map_resume(unlang_result_t *p_result, request_t *request, void *uctx)
+static unlang_action_t mod_map_resume(unlang_result_t *p_result, map_ctx_t const *mpctx, request_t *request,
+				      UNUSED fr_value_box_list_t *url, UNUSED map_list_t const *maps)
 {
-	ldap_map_ctx_t		*map_ctx = talloc_get_type_abort(uctx, ldap_map_ctx_t);
+	ldap_map_ctx_t		*map_ctx = talloc_get_type_abort(mpctx->rctx, ldap_map_ctx_t);
 	fr_ldap_query_t		*query = map_ctx->query;
 	fr_ldap_map_exp_t	*expanded = &map_ctx->expanded;
 	rlm_rcode_t		rcode = RLM_MODULE_NOTFOUND;
@@ -1512,8 +1519,7 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
 	if (host) ldap_memfree(host);
 	if (!ttrunk) goto fail;
 
-	if (unlang_function_push(NULL, request, NULL, mod_map_resume, NULL, 0,
-				 UNLANG_SUB_FRAME, map_ctx) != UNLANG_ACTION_PUSHED_CHILD) goto fail;
+	if (unlikely(unlang_map_yield(request, mod_map_resume, NULL, 0, map_ctx) != UNLANG_ACTION_YIELD)) goto fail;
 
 	return fr_ldap_trunk_search(map_ctx, &map_ctx->query, request, ttrunk, ldap_url->lud_dn,
 				    ldap_url->lud_scope, ldap_url->lud_filter, map_ctx->expanded.attrs,
