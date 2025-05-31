@@ -444,20 +444,19 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
  *			- #RLM_MODULE_NOOP no rows were returned or columns matched.
  *			- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *			- #RLM_MODULE_FAIL if a fault occurred.
- * @param mod_inst	unused.
- * @param proc_inst	cached jpath sequences.
+ * @param mpctx		Call context for the map processor, containing the jpath cache.
  * @param request	The current request.
  * @param json		JSON string to parse.
  * @param maps		Head of the map list.
  * @return UNLANG_ACTION_CALCULATE_RESULT
  */
-static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, UNUSED void const *mod_inst, void *proc_inst, request_t *request,
+static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *mpctx, request_t *request,
 				    fr_value_box_list_t *json, map_list_t const *maps)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_UPDATED;
 	struct json_tokener		*tok;
 
-	rlm_json_jpath_cache_t		*cache = proc_inst;
+	rlm_json_jpath_cache_t const	*cache = mpctx->mpi;
 	map_t const			*map = NULL;
 
 	rlm_json_jpath_to_eval_t	to_eval;
@@ -467,7 +466,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, UNUSED void const *mo
 
 	if (!json_head) {
 		REDEBUG("JSON map input cannot be (null)");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if (fr_value_box_list_concat_in_place(request,
@@ -475,13 +474,13 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, UNUSED void const *mo
 					      FR_VALUE_BOX_LIST_FREE, true,
 					      SIZE_MAX) < 0) {
 		REDEBUG("Failed concatenating input");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 	json_str = json_head->vb_strvalue;
 
 	if ((talloc_array_length(json_str) - 1) == 0) {
 		REDEBUG("JSON map input length must be > 0");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	tok = json_tokener_new();
@@ -548,7 +547,7 @@ finish:
 	json_object_put(to_eval.root);
 	json_tokener_free(tok);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)

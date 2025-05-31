@@ -592,11 +592,11 @@ static int map_proc_verify(CONF_SECTION *cs, UNUSED void const *mod_inst, UNUSED
 	return 0;
 }
 
-static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, UNUSED void const *mod_inst, UNUSED void *proc_inst,
+static unlang_action_t mod_map_proc(unlang_result_t *p_result, UNUSED map_ctx_t const *mpctx,
 				    UNUSED request_t *request, UNUSED fr_value_box_list_t *src,
 				    UNUSED map_list_t const *maps)
 {
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 
 static request_t *request_clone(request_t *old, int number, CONF_SECTION *server_cs)

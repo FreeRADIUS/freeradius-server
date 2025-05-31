@@ -46,21 +46,29 @@ typedef struct map_proc_inst map_proc_inst_t;
 extern "C" {
 #endif
 
+/** Temporary structure to hold arguments for map calls
+ *
+ */
+typedef struct {
+	void			*rctx;		//!< Resume ctx that a module previously set.
+	void const		*moi;		//!< Map module instance.
+	void const		*mpi;		//!< Map processor instance.
+} map_ctx_t;
+
 /** Function to evaluate the src string and map the result to server attributes
  *
  * @param[out] p_result		Result of applying the map:
  *	- #RLM_MODULE_NOOP - If no data available for given src, or no mappings matched available data.
  *	- #RLM_MODULE_UPDATED - If new pairs were added to the request.
  *	- #RLM_MODULE_FAIL - If an error occurred performing the mapping.
- * @param[in] mod_inst		Instance of the module that registered the map_proc.
- * @param[in] proc_inst		Map proc data created by #map_proc_instantiate_t.
+ * @param[in] mpctx		Call ctx for the map processor.
  * @param[in] request		The current request.
  * @param[in,out] result	Input data for the map processor.  May be consumed by the
  *				map processor.
  * @param[in] maps		Head of the list of maps to process.
  * @return one of UNLANG_ACTION_*
  */
-typedef unlang_action_t (*map_proc_func_t)(rlm_rcode_t *p_result, void const *mod_inst, void *proc_inst, request_t *request,
+typedef unlang_action_t (*map_proc_func_t)(unlang_result_t *p_result, map_ctx_t const *mpctx, request_t *request,
 					   fr_value_box_list_t *result, map_list_t const *maps);
 
 /** Allocate new instance data for a map processor
@@ -89,9 +97,6 @@ int		map_proc_unregister(char const *name);
 
 map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
 				      CONF_SECTION *cs, tmpl_t const *src, map_list_t const *maps);
-
-unlang_action_t	map_proc(rlm_rcode_t *p_result, request_t *request, map_proc_inst_t const *inst, fr_value_box_list_t *src);
-
 #ifdef __cplusplus
 }
 #endif
