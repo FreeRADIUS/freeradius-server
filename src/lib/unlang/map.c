@@ -28,8 +28,9 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/map.h>
 #include <freeradius-devel/unlang/tmpl.h>
-
+#include <freeradius-devel/unlang/map.h>
 
 #include "map_priv.h"
 
@@ -43,22 +44,40 @@ typedef enum {
  *
  */
 typedef struct {
-	fr_dcursor_t		maps;				//!< Cursor of maps to evaluate.
+	fr_dcursor_t			maps;			//!< Cursor of maps to evaluate.
 
-	fr_dlist_head_t		vlm_head;			//!< Head of list of VP List Mod.
+	fr_dlist_head_t			vlm_head;		//!< Head of list of VP List Mod.
 
-	fr_value_box_list_t	lhs_result;			//!< Result of expanding the LHS
-	fr_value_box_list_t	rhs_result;			//!< Result of expanding the RHS.
+	fr_value_box_list_t		lhs_result;		//!< Result of expanding the LHS
+	fr_value_box_list_t		rhs_result;		//!< Result of expanding the RHS.
 
-	unlang_update_state_t	state;				//!< What we're currently doing.
+	unlang_update_state_t		state;			//!< What we're currently doing.
 } unlang_frame_state_update_t;
 
 /** State of a map block
  *
  */
 typedef struct {
-	fr_value_box_list_t	src_result;			//!< Result of expanding the map source.
+	fr_value_box_list_t		src_result;		//!< Result of expanding the map source.
+
+	/** @name Resumption and signalling
+	 * @{
+ 	 */
+	void				*rctx;			//!< for resume / signal
+	map_proc_func_t			resume;			//!< resumption handler
+	unlang_map_signal_t		signal;			//!< for signal handlers
+	fr_signal_t			sigmask;		//!< Signals to block.
+
+	/** @} */
 } unlang_frame_state_map_proc_t;
+
+/** Wrapper to create a map_ctx_t as a compound literal
+ *
+ * @param[in] _mod_inst	of the module being called.
+ * @param[in] _map_inst	of the map being called.
+ * @param[in] _rctx	Resume ctx (if any).
+ */
+#define MAP_CTX(_mod_inst, _map_inst, _rctx) &(map_ctx_t){ .moi = _mod_inst, .mpi = _map_inst, .rctx = _rctx }
 
 /** Apply a list of modifications on one or more fr_pair_t lists.
  *
@@ -274,7 +293,7 @@ static unlang_action_t unlang_update_state_init(unlang_result_t *p_result, reque
 	return list_mod_create(p_result, request, frame);
 }
 
-static unlang_action_t map_proc_resume(UNUSED unlang_result_t *p_result, UNUSED request_t *request,
+static unlang_action_t map_proc_resume(unlang_result_t *p_result, request_t *request,
 #ifdef WITH_VERIFY_PTR
 				       unlang_stack_frame_t *frame
 #else
@@ -282,11 +301,68 @@ static unlang_action_t map_proc_resume(UNUSED unlang_result_t *p_result, UNUSED 
 #endif
 				      )
 {
-#ifdef WITH_VERIFY_PTR
+	unlang_frame_state_map_proc_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_map_proc_t);
 	unlang_frame_state_map_proc_t	*map_proc_state = talloc_get_type_abort(frame->state, unlang_frame_state_map_proc_t);
+	map_proc_func_t			resume;
+	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
+	unlang_map_t			*gext = unlang_group_to_map(g);
+	map_proc_inst_t			*inst = gext->proc_inst;
+	unlang_action_t			ua = UNLANG_ACTION_CALCULATE_RESULT;
+
+#ifdef WITH_VERIFY_PTR
 	VALUE_BOX_LIST_VERIFY(&map_proc_state->src_result);
 #endif
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	resume = state->resume;
+	state->resume = NULL;
+
+	/*
+	 *	Call any map resume function
+	 */
+	if (resume) ua = resume(p_result, MAP_CTX(inst->proc->mod_inst, inst->data, state->rctx),
+				request, &map_proc_state->src_result, inst->maps);
+	return ua;
+}
+
+/** Yield a request back to the interpreter from within a module
+ *
+ * This passes control of the request back to the unlang interpreter, setting
+ * callbacks to execute when the request is 'signalled' asynchronously, or whatever
+ * timer or I/O event the module was waiting for occurs.
+ *
+ * @note The module function which calls #unlang_module_yield should return control
+ *	of the C stack to the unlang interpreter immediately after calling #unlang_module_yield.
+ *	A common pattern is to use ``return unlang_module_yield(...)``.
+ *
+ * @param[in] request		The current request.
+ * @param[in] resume		Called on unlang_interpret_mark_runnable().
+ * @param[in] signal		Called on unlang_action().
+ * @param[in] sigmask		Set of signals to block.
+ * @param[in] rctx		to pass to the callbacks.
+ * @return
+ *	- UNLANG_ACTION_YIELD.
+ */
+unlang_action_t unlang_map_yield(request_t *request,
+				 map_proc_func_t resume, unlang_map_signal_t signal, fr_signal_t sigmask, void *rctx)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_map_proc_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_map_proc_t);
+
+	REQUEST_VERIFY(request);	/* Check the yielded request is sane */
+
+	state->rctx = rctx;
+	state->resume = resume;
+	state->signal = signal;
+	state->sigmask = sigmask;
+
+	/*
+	 *	We set the repeatable flag here,
+	 *	so that the resume function is always
+	 *	called going back up the stack.
+	 */
+	frame_repeat(frame, map_proc_resume);
+
+	return UNLANG_ACTION_YIELD;
 }
 
 static unlang_action_t map_proc_apply(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -301,7 +377,9 @@ static unlang_action_t map_proc_apply(unlang_result_t *p_result, request_t *requ
 
 	VALUE_BOX_LIST_VERIFY(&map_proc_state->src_result);
 	frame_repeat(frame, map_proc_resume);
-	return map_proc(&p_result->rcode, request, gext->proc_inst, &map_proc_state->src_result);
+
+	return inst->proc->evaluate(p_result, MAP_CTX(inst->proc->mod_inst, inst->data, NULL),
+				    request, &map_proc_state->src_result, inst->maps);
 }
 
 static unlang_action_t unlang_map_state_init(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)

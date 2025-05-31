@@ -108,15 +108,14 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request
  *				- #RLM_MODULE_NOOP no rows were returned.
  *				- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *				- #RLM_MODULE_FAIL if an error occurred.
- * @param[in] mod_inst		NULL.
- * @param[in] proc_inst		NULL.
+ * @param[in] mpctx		NULL
  * @param[in] request		The current request.
  * @param[in] client_override	If NULL, use the current client, else use the client matching
  *				the ip given.
  * @param[in] maps		Head of the map list.
  * @return UNLANG_ACTION_CALCULATE_RESULT
  */
-static unlang_action_t map_proc_client(rlm_rcode_t *p_result, UNUSED void const *mod_inst, UNUSED void *proc_inst,
+static unlang_action_t map_proc_client(unlang_result_t *p_result, UNUSED map_ctx_t const *mpctx,
 				       request_t *request, fr_value_box_list_t *client_override, map_list_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
@@ -138,7 +137,7 @@ static unlang_action_t map_proc_client(rlm_rcode_t *p_result, UNUSED void const 
 						      FR_VALUE_BOX_LIST_FREE, true,
 						      SIZE_MAX) < 0) {
 			REDEBUG("Failed concatenating input data");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 		client_str = client_override_head->vb_strvalue;
 
@@ -173,7 +172,7 @@ static unlang_action_t map_proc_client(rlm_rcode_t *p_result, UNUSED void const 
 		client = client_from_request(request);
 		if (!client) {
 			REDEBUG("No client associated with this request");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 	}
 	uctx.cs = client->cs;
@@ -213,7 +212,7 @@ static unlang_action_t map_proc_client(rlm_rcode_t *p_result, UNUSED void const 
 	REXDENT();
 
 finish:
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 static xlat_arg_parser_t const xlat_client_args[] = {

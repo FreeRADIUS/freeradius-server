@@ -1429,17 +1429,16 @@ static int map_ctx_free(ldap_map_ctx_t *map_ctx)
  *			- #RLM_MODULE_NOOP no rows were returned.
  *			- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *			- #RLM_MODULE_FAIL if an error occurred.
- * @param[in] mod_inst #rlm_ldap_t
- * @param[in] proc_inst unused.
+ * @param[in] mpctx module map ctx.
  * @param[in,out] request The current request.
  * @param[in] url LDAP url specifying base DN and filter.
  * @param[in] maps Head of the map list.
  * @return UNLANG_ACTION_CALCULATE_RESULT
  */
-static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst, UNUSED void *proc_inst, request_t *request,
+static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *mpctx, request_t *request,
 				    fr_value_box_list_t *url, map_list_t const *maps)
 {
-	rlm_ldap_t const	*inst = talloc_get_type_abort_const(mod_inst, rlm_ldap_t);
+	rlm_ldap_t const	*inst = talloc_get_type_abort_const(mpctx->mpi, rlm_ldap_t);
 	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread(inst->mi)->data, fr_ldap_thread_t);
 
 	LDAPURLDesc		*ldap_url;
@@ -1452,24 +1451,24 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 
 	if (fr_uri_escape_list(url, ldap_uri_parts, NULL) < 0) {
 		RPERROR("Failed to escape LDAP map URI");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	url_head = fr_value_box_list_head(url);
 	if (!url_head) {
 		REDEBUG("LDAP URL cannot be empty");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if (fr_value_box_list_concat_in_place(url_head, url_head, url, FR_TYPE_STRING,
 					      FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 		RPEDEBUG("Failed concatenating input");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if (!ldap_is_ldap_url(url_head->vb_strvalue)) {
 		REDEBUG("Map query string does not look like a valid LDAP URI");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	MEM(map_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_map_ctx_t));
@@ -1481,7 +1480,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 		RPEDEBUG("Parsing LDAP URL failed - %s", fr_ldap_url_err_to_str(ldap_url_ret));
 	fail:
 		talloc_free(map_ctx);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 	ldap_url = map_ctx->ldap_url;
 

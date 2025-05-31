@@ -202,15 +202,6 @@ typedef struct {
 	sql_group_ctx_t		*group_ctx;	//!< Context used for retrieving user group membership.
 } sql_autz_ctx_t;
 
-/** Context for SQL maps
- *
- */
-typedef struct {
-	rlm_sql_t const		*inst;
-	map_list_t const	*maps;
-	fr_sql_query_t		*query_ctx;
-} sql_map_ctx_t;
-
 typedef struct {
 	fr_value_box_t		user;		//!< Expansion of sql_user_name.
 	fr_value_box_t		filename;	//!< File name to write SQL logs to.
@@ -716,17 +707,21 @@ static int sql_map_verify(CONF_SECTION *cs, UNUSED void const *mod_inst, UNUSED 
 
 /** Process the results of an SQL map query
  *
- * @param[out] p_result	Result of applying the map.
- * @param[in] request	Current request.
- * @param[in] uctx	Map context.
- * @return One of UNLANG_ACTION_*
+ * @param p_result	Result of map expansion:
+ *			- #RLM_MODULE_NOOP no rows were returned or columns matched.
+ *			- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
+ *			- #RLM_MODULE_FAIL if a fault occurred.
+ * @param mpctx		Map context, containing the module instance.
+ * @param request	The current request.
+ * @param query		string to execute.
+ * @param maps		Head of the map list.
+ * @return UNLANG_ACTION_CALCULATE_RESULT
  */
-static unlang_action_t mod_map_resume(unlang_result_t *p_result, request_t *request, void *uctx)
+static unlang_action_t mod_map_resume(unlang_result_t *p_result, map_ctx_t const *mpctx, request_t *request,
+				      UNUSED fr_value_box_list_t *query, map_list_t const *maps)
 {
-	sql_map_ctx_t		*map_ctx = talloc_get_type_abort(uctx, sql_map_ctx_t);
-	fr_sql_query_t		*query_ctx = map_ctx->query_ctx;
-	map_list_t const	*maps = map_ctx->maps;
-	rlm_sql_t const		*inst = map_ctx->inst;
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(mpctx->rctx, fr_sql_query_t);
+	rlm_sql_t const		*inst = mpctx->moi;
 	map_t const		*map;
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	sql_rcode_t		ret;
@@ -843,7 +838,7 @@ static unlang_action_t mod_map_resume(unlang_result_t *p_result, request_t *requ
 
 finish:
 	talloc_free(fields);
-	talloc_free(map_ctx);
+	talloc_free(query_ctx);
 
 	RETURN_UNLANG_RCODE(rcode);
 }
@@ -854,20 +849,19 @@ finish:
  *			- #RLM_MODULE_NOOP no rows were returned or columns matched.
  *			- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *			- #RLM_MODULE_FAIL if a fault occurred.
- * @param mod_inst #rlm_sql_t instance.
- * @param proc_inst Instance data for this specific mod_proc call (unused).
- * @param request The current request.
- * @param query string to execute.
- * @param maps Head of the map list.
+ * @param mpctx		Map context, containing the module instance.
+ * @param request	The current request.
+ * @param query		string to execute.
+ * @param maps		Head of the map list.
  * @return UNLANG_ACTION_CALCULATE_RESULT
  */
-static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst, UNUSED void *proc_inst, request_t *request,
-				    fr_value_box_list_t *query, map_list_t const *maps)
+static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *mpctx, request_t *request,
+				    fr_value_box_list_t *query, UNUSED map_list_t const *maps)
 {
-	rlm_sql_t const		*inst = talloc_get_type_abort_const(mod_inst, rlm_sql_t);
+	rlm_sql_t const		*inst = talloc_get_type_abort_const(mpctx->moi, rlm_sql_t);
 	rlm_sql_thread_t	*thread = talloc_get_type_abort(module_thread(inst->mi)->data, rlm_sql_thread_t);
 	fr_value_box_t		*query_head = fr_value_box_list_head(query);
-	sql_map_ctx_t		*map_ctx;
+	fr_sql_query_t		*query_ctx = NULL;
 	fr_value_box_t		*vb = NULL;
 	rlm_sql_escape_uctx_t	*escape_uctx = NULL;
 
@@ -875,7 +869,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 
 	if (!query_head) {
 		REDEBUG("Query cannot be (null)");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	while ((vb = fr_value_box_list_next(query, vb))) {
@@ -889,22 +883,14 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 					      FR_VALUE_BOX_LIST_FREE, true,
 					      SIZE_MAX) < 0) {
 		RPEDEBUG("Failed concatenating input string");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
-	MEM(map_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), sql_map_ctx_t));
-	*map_ctx = (sql_map_ctx_t) {
-		.inst = inst,
-		.maps = maps,
-	};
+	query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request,
+				       thread->trunk, query_head->vb_strvalue, SQL_QUERY_SELECT);
 
-	MEM(map_ctx->query_ctx = fr_sql_query_alloc(map_ctx, inst, request,
-						    thread->trunk, query_head->vb_strvalue, SQL_QUERY_SELECT));
-
-	if (unlang_function_push(NULL, request, NULL, mod_map_resume, NULL, 0,
-				 UNLANG_SUB_FRAME, map_ctx) != UNLANG_ACTION_PUSHED_CHILD) RETURN_MODULE_FAIL;
-
-	return unlang_function_push(NULL, request, inst->select, NULL, NULL, 0, UNLANG_SUB_FRAME, map_ctx->query_ctx);
+	if (unlang_map_yield(request, mod_map_resume, NULL, 0, query_ctx) != UNLANG_ACTION_YIELD) RETURN_UNLANG_FAIL;
+	return unlang_function_push(NULL, request, inst->select, NULL, NULL, 0, UNLANG_SUB_FRAME, query_ctx);
 }
 
 /** xlat escape function for drivers which do not provide their own
