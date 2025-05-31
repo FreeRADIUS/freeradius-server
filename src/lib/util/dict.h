@@ -21,7 +21,7 @@
  *
  * @copyright 2015 The FreeRADIUS server project
  */
-#include "lib/util/hash.h"
+
 RCSIDH(dict_h, "$Id$")
 
 #ifdef __cplusplus
@@ -32,6 +32,7 @@ extern "C" {
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/ext.h>
+#include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/table.h>
