@@ -507,17 +507,15 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
  * The caller should assume the request is no longer viable after calling
  * this function.
  *
- * @param[in] request_p	Pointer to the request to cancel.
- *			Will be set to NULL.
+ * @param[in] request	request to cancel.  The request may still run to completion.
  */
-static void worker_stop_request(request_t **request_p)
+static void worker_stop_request(request_t *request)
 {
 	/*
 	 *	Also marks the request as done and runs
 	 *	the internal/external callbacs.
 	 */
-	unlang_interpret_signal(*request_p, FR_SIGNAL_CANCEL);
-	*request_p = NULL;
+	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
 }
 
 /** Enforce max_request_time
@@ -538,7 +536,7 @@ static void _worker_request_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t
 	 *	Waiting too long, delete it.
 	 */
 	REDEBUG("Request has reached max_request_time - signalling it to stop");
-	worker_stop_request(&request);
+	worker_stop_request(request);
 
 	/*
 	 *	This ensures the finally section can run timeout specific policies
@@ -962,7 +960,7 @@ nak:
 		 */
 		RWARN("Got conflicting packet for request (%" PRIu64 "), telling old request to stop", old->number);
 
-		worker_stop_request(&old);
+		worker_stop_request(old);
 		worker->stats.dropped++;
 
 	insert_new:
@@ -1351,7 +1349,7 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 		 *	just stop the request and free it.
 		 */
 		if (request->async->channel && !fr_channel_active(request->async->channel)) {
-			worker_stop_request(&request);
+			worker_stop_request(request);
 			return;
 		}
 
