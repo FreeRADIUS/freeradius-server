@@ -214,12 +214,6 @@ void			unlang_interpret_signal(request_t *request, fr_signal_t action);
 
 int			unlang_interpret_stack_depth(request_t *request);
 
-rlm_rcode_t		unlang_interpret_scratch_result(request_t *request);
-
-unlang_mod_action_t	unlang_interpret_scratch_priority(request_t *request);
-
-void			unlang_interpret_scratch_result_set(request_t *request, rlm_rcode_t code);
-
 rlm_rcode_t		unlang_interpret_result(request_t *request);
 
 unlang_mod_action_t	unlang_interpret_priority(request_t *request);

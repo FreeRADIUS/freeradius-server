@@ -1478,36 +1478,6 @@ int unlang_interpret_stack_depth(request_t *request)
  * @param[in] request	The current request.
  * @return the current rcode for the frame.
  */
-rlm_rcode_t unlang_interpret_scratch_result(request_t *request)
-{
-	return frame_current(request)->scratch_result.rcode;
-}
-
-/** Get the last instruction priority OR the last frame that was popped
- *
- * @param[in] request	The current request.
- * @return the current rcode for the frame.
- */
-unlang_mod_action_t unlang_interpret_scratch_priority(request_t *request)
-{
-	return frame_current(request)->scratch_result.priority;
-}
-
-/** Overwrite the current stack rcode
- *
- * @param[in] request	The current request.
- * @param[in] rcode	to set.
- */
-void unlang_interpret_scratch_result_set(request_t *request, rlm_rcode_t rcode)
-{
-	frame_current(request)->scratch_result.rcode = rcode;
-}
-
-/** Get the last instruction result OR the last frame that was popped
- *
- * @param[in] request	The current request.
- * @return the current rcode for the frame.
- */
 rlm_rcode_t unlang_interpret_result(request_t *request)
 {
 	return frame_current(request)->result_p->rcode;
