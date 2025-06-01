@@ -103,7 +103,8 @@ int		_unlang_function_repeat_set(request_t *request, unlang_function_t repeat, c
  * @note By default the rcodes from functions will be discarded.  This can be altered on a per-function
  *       basis by the func or repeat functions setting result_p->priority to a non-zero value.
  *	 Results can also be collected by passing in a non-NULL _result_p pointer.
- *	 You may disagree with this behaviour, but you're wrong.
+ *	 You can also pass the result of unlang_interpret_result(request) to make the function frame
+ *	 transparent, and evaluate the rcodes with the priorities of the current frame.
  *
  * @param[in] _result_p		Where to write the result.
  * @param[in] _request		The current request.
