@@ -1508,7 +1508,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 
 	RDEBUG2("Login attempt as \"%s\"", auth_ctx->dn);
 
-	return fr_ldap_bind_auth_async(request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password);
+	return fr_ldap_bind_auth_async(p_result, request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password);
 }
 
 /** Start LDAP authorization with async lookup of user DN
@@ -1669,7 +1669,7 @@ static unlang_action_t mod_authorize_resume(unlang_result_t *p_result, request_t
 			 */
 			REPEAT_MOD_AUTHORIZE_RESUME;
 			autz_ctx->status = LDAP_AUTZ_POST_EDIR;
-			return fr_ldap_bind_auth_async(request, thread, autz_ctx->dn, password->vp_strvalue);
+			return fr_ldap_bind_auth_async(p_result, request, thread, autz_ctx->dn, password->vp_strvalue);
 		}
 		goto skip_edir;
 
