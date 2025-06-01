@@ -156,7 +156,9 @@ static void ldap_find_user_async_cancel(UNUSED request_t *request, UNUSED fr_sig
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
  *	- UNLANG_ACTION_FAIL on failure.
  */
-unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst, request_t *request,
+unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx,
+					 unlang_result_t *p_result,
+					 rlm_ldap_t const *inst, request_t *request,
 					 fr_value_box_t *base, fr_value_box_t *filter,
 					 fr_ldap_thread_trunk_t *ttrunk, char const *attrs[], fr_ldap_query_t **query_out)
 {
@@ -176,8 +178,12 @@ unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst
 	};
 
 	if (filter) user_ctx->filter = filter->vb_strvalue;
-	if (unlang_function_push(NULL, request, NULL, ldap_find_user_async_result, ldap_find_user_async_cancel,
-				 ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, user_ctx) < 0) {
+	if (unlang_function_push(/* ldap_find_user_async_result sets an rcode based on the search result */ p_result,
+				 request,
+				 NULL,
+				 ldap_find_user_async_result,
+				 ldap_find_user_async_cancel, ~FR_SIGNAL_CANCEL,
+				 UNLANG_SUB_FRAME, user_ctx) < 0) {
 		talloc_free(user_ctx);
 		return UNLANG_ACTION_FAIL;
 	}
