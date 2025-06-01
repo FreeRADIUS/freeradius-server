@@ -583,6 +583,10 @@ unlang_action_t eap_peap_process(unlang_result_t *p_result, request_t *request,
 		RDEBUG2("No tunnel username (SSL resumption?)");
 	}
 
+	/*
+	 *	Set the child up for execution.  This represents
+	 *	a pseudo protocol inside of PEAPs inner EAP method.
+	 */
 	if (unlang_subrequest_child_push(&eap_session->submodule_result, child,
 					 child,
 					 false, UNLANG_SUB_FRAME) < 0) goto finish;
@@ -591,13 +595,22 @@ unlang_action_t eap_peap_process(unlang_result_t *p_result, request_t *request,
 	 *	Setup a function in thie child to process the
 	 *	result of the subrequest.
 	 */
-	if (unlang_function_push(NULL, child, NULL, process_reply, NULL, 0,
+	if (unlang_function_push(/* sets priority */ NULL,
+				 child,
+				 NULL,
+				 /*
+				  *	Run in the child after the virtual sever executes.
+				  *	This sets the rcode for the subrequest, which is
+				  *	written to eap_session->submodule_result.
+				  */
+				 process_reply,
+				 NULL, 0,
 				 UNLANG_SUB_FRAME, eap_session) != UNLANG_ACTION_PUSHED_CHILD) goto finish;
 
 	/*
 	 *	Run inner tunnel in the context of the child
 	 */
-	if (eap_virtual_server(child, eap_session, t->server_cs) == UNLANG_ACTION_FAIL) {
+	if (unlikely(eap_virtual_server(child, eap_session, t->server_cs) == UNLANG_ACTION_FAIL)) {
 		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
