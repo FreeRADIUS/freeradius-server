@@ -275,13 +275,18 @@ static int eap_peap_check_tlv(request_t *request, uint8_t const *data, size_t da
  */
 static unlang_action_t process_reply(unlang_result_t *p_result, request_t *request, UNUSED void *uctx)
 {
-	eap_session_t		*eap_session = eap_session_get(request->parent);
+	eap_session_t		*eap_session = talloc_get_type_abort(uctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 	fr_pair_list_t		vps;
 	peap_tunnel_t		*t = tls_session->opaque;
 	request_t		*parent = request->parent;
 	fr_packet_t		*reply = request->reply;
+
+	/*
+	 *	Bubble this rcode up to become the result of the subrequest
+	 */
+	p_result->priority = MOD_PRIORITY_MAX;
 
 	if (RDEBUG_ENABLED2) {
 
@@ -578,17 +583,31 @@ unlang_action_t eap_peap_process(unlang_result_t *p_result, request_t *request,
 		RDEBUG2("No tunnel username (SSL resumption?)");
 	}
 
-	if (unlang_subrequest_child_push(child, &eap_session->submodule_result,
+	if (unlang_subrequest_child_push(&eap_session->submodule_result, child,
 					 child,
 					 false, UNLANG_SUB_FRAME) < 0) goto finish;
+
+	/*
+	 *	Setup a function in thie child to process the
+	 *	result of the subrequest.
+	 */
 	if (unlang_function_push(NULL, child, NULL, process_reply, NULL, 0,
 				 UNLANG_SUB_FRAME, eap_session) != UNLANG_ACTION_PUSHED_CHILD) goto finish;
 
 	/*
-	 *	Call authentication recursively, which will
-	 *	do PAP, CHAP, MS-CHAP, etc.
+	 *	Run inner tunnel in the context of the child
 	 */
-	return eap_virtual_server(child, eap_session, t->server_cs);
+	if (eap_virtual_server(child, eap_session, t->server_cs) == UNLANG_ACTION_FAIL) {
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
+
+	/*
+	 *	We now yield to the subrequest.  unlang_subrequest_child_push
+	 *	pushed a new frame in the context of the parent which'll start
+	 *	the subrequest.
+	 */
+	return UNLANG_ACTION_PUSHED_CHILD;
 
 finish:
 	if (child) request_detach(child);
