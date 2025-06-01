@@ -96,7 +96,16 @@ int		_unlang_function_repeat_set(request_t *request, unlang_function_t repeat, c
  * These can be pushed by any other type of unlang op to allow a submodule or function
  * deeper in the C call stack to establish a new resumption point.
  *
- * @param[in] _reuslt_p		Where to write the result.
+ * @note If you're pushing a function onto the stack to resume execution in a module, you're probably
+ *	 doing it wrong.  Use unlang_module_yield() instead, and change the process function for the
+ *	 module.
+ *
+ * @note By default the rcodes from functions will be discarded.  This can be altered on a per-function
+ *       basis by the func or repeat functions setting result_p->priority to a non-zero value.
+ *	 Results can also be collected by passing in a non-NULL _result_p pointer.
+ *	 You may disagree with this behaviour, but you're wrong.
+ *
+ * @param[in] _result_p		Where to write the result.
  * @param[in] _request		The current request.
  * @param[in] _func		to call going up the stack.
  * @param[in] _repeat		function to call going back down the stack (may be NULL).
