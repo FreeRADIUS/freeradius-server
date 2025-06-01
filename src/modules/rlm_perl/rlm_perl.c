@@ -1442,7 +1442,7 @@ static void perl_pair_list_tie(HV *parent, HV *frpair_stash, char const *name, f
  * 	Store all vps in hashes %RAD_CONFIG %RAD_REPLY %RAD_REQUEST
  *
  */
-static unlang_action_t CC_HINT(nonnull) mod_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_perl(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_perl_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t);
 	perl_call_env_t		*func = talloc_get_type_abort(mctx->env_data, perl_call_env_t);
@@ -1516,7 +1516,7 @@ static unlang_action_t CC_HINT(nonnull) mod_perl(rlm_rcode_t *p_result, module_c
 		LEAVE;
 	}
 
-	RETURN_MODULE_RCODE(ret);
+	RETURN_UNLANG_RCODE(ret);
 }
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)

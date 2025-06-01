@@ -584,7 +584,7 @@ static int radius_fixups(rlm_radius_t const *inst, request_t *request)
 /** Send packets outbound.
  *
  */
-static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_radius_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_radius_t);
 	bio_thread_t		*thread = talloc_get_type_abort(mctx->thread, bio_thread_t);
@@ -595,13 +595,13 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 
 	if (!request->packet->code) {
 		REDEBUG("You MUST specify a packet code");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if ((request->packet->code >= FR_RADIUS_CODE_MAX) ||
 	    !fr_time_delta_ispos(inst->retry[request->packet->code].irt)) { /* can't be zero */
 		REDEBUG("Invalid packet code %u", request->packet->code);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -611,13 +611,13 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	if ((inst->mode == RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) ||
 	    (inst->mode == RLM_RADIUS_MODE_XLAT_PROXY)) {
 		REDEBUG("When using 'mode = unconnected-*', this module cannot be used in-place.  Instead, it must be called via a function call");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	client = client_from_request(request);
 	if (client && client->dynamic && !client->active) {
 		REDEBUG("Cannot proxy packets which define dynamic clients");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -628,8 +628,8 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	 *	the request...
 	 */
 	rcode = mod_enqueue(&u, &retry_config, inst, thread->ctx.trunk, request);
-	if (rcode == 0) RETURN_MODULE_NOOP;
-	if (rcode < 0) RETURN_MODULE_FAIL;
+	if (rcode == 0) RETURN_UNLANG_NOOP;
+	if (rcode < 0) RETURN_UNLANG_FAIL;
 
 	return unlang_module_yield_to_retry(request, mod_resume, mod_retry, mod_signal, 0, u, retry_config);
 }

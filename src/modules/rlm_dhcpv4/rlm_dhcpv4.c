@@ -112,23 +112,23 @@ static void dhcpv4_queue_resume(bool sent, void *rctx)
 	unlang_interpret_mark_runnable(d->request);
 }
 
-static unlang_action_t dhcpv4_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t dhcpv4_resume(unlang_result_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	rlm_dhcpv4_delay_t *d = talloc_get_type_abort(mctx->rctx, rlm_dhcpv4_delay_t);
 
 	if (!d->sent) {
 		talloc_free(d);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	talloc_free(d);
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /** Send packets outbound.
  *
  */
-static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_dhcpv4_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_dhcpv4_thread_t);
 	ssize_t			data_len;
@@ -147,7 +147,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_gateway_ip_address);
 	if (!vp) {
 		REDEBUG("Relayed packets MUST have a Gateway-IP-Address attribute");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -196,7 +196,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	vp = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_net_dst_ip);
 	if (!vp || (vp->vp_ip.af != AF_INET)) {
 		RDEBUG("No control.Net.Dst.IP, cannot relay packet");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	/*
@@ -205,7 +205,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	data_len = fr_dhcpv4_encode(t->buffer, t->buffer_size, original, code, xid, &request->request_pairs);
 	if (data_len <= 0) {
 		RPEDEBUG("Failed encoding DHCPV4 request");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -224,7 +224,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	FR_PROTO_HEX_DUMP(t->buffer, data_len, "DHCPv4");
 
 	d = talloc_zero(request, rlm_dhcpv4_delay_t);
-	if (!d) RETURN_MODULE_FAIL;
+	if (!d) RETURN_UNLANG_FAIL;
 
 	*d = (rlm_dhcpv4_delay_t) {
 		.request = request,
@@ -241,11 +241,11 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	rcode = fr_udp_queue_write(d, t->uq, t->buffer, data_len, &vp->vp_ip, port, d);
 	if (rcode > 0) {
 		talloc_free(d);
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 	if (rcode < 0) {
 		talloc_free(d);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	return unlang_module_yield(request, dhcpv4_resume, NULL, 0, d);

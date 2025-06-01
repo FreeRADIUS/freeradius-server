@@ -102,7 +102,7 @@ static void imap_io_module_signal(module_ctx_t const *mctx, request_t *request, 
  *	It checks if the response was CURLE_OK
  *	If it wasn't we returns REJECT, if it was we returns OK
 */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(unlang_result_t *p_result, module_ctx_t const *mctx,
 								request_t *request)
 {
 	rlm_imap_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_imap_t);
@@ -126,16 +126,16 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_r
 		switch(result) {
 		case CURLE_PEER_FAILED_VERIFICATION:
 		case CURLE_LOGIN_DENIED:
-			RETURN_MODULE_REJECT;
+			RETURN_UNLANG_REJECT;
 		default:
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 	}
 
 	if (tls->extract_cert_attrs) fr_curl_response_certinfo(request, randle);
 
 	imap_slab_release(randle);
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /*
@@ -149,7 +149,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_r
  *	Then it queues the request and yields until a response is given
  *	When it responds, mod_authenticate_resume is called.
  */
-static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_imap_thread_t       *t = talloc_get_type_abort(mctx->thread, rlm_imap_thread_t);
 
@@ -162,22 +162,22 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	if (!password) {
 		RDEBUG2("Attribute \"User-Password\" is required for authentication");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	if (password->vp_length == 0) {
 		RDEBUG2("\"User-Password\" must not be empty");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	randle = imap_slab_reserve(t->slab);
 	if (!randle){
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_USERNAME, username->vp_strvalue);
@@ -186,7 +186,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) {
 	error:
 		imap_slab_release(randle);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	return unlang_module_yield(request, mod_authenticate_resume, imap_io_module_signal, ~FR_SIGNAL_CANCEL, randle);

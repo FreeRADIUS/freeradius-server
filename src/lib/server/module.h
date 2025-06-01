@@ -42,6 +42,7 @@ typedef struct module_list_s			module_list_t;
 #include <freeradius-devel/server/module_ctx.h>
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/unlang/interpret.h>
 
 DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
@@ -65,7 +66,7 @@ DIAG_ON(attributes)
  * @param[in] request		to process.
  * @return the appropriate rcode.
  */
-typedef unlang_action_t (*module_method_t)(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
+typedef unlang_action_t (*module_method_t)(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request);
 
 /** Module instantiation callback
  *

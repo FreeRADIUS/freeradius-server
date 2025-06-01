@@ -58,7 +58,7 @@ typedef struct {
 /*
  *	decrypt.c - Decryption functions
  */
-unlang_action_t rlm_yubikey_decrypt(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+unlang_action_t rlm_yubikey_decrypt(unlang_result_t *p_result, module_ctx_t const *mctx,
 				    request_t *request, char const *passcode);
 
 /*
@@ -68,7 +68,7 @@ int rlm_yubikey_ykclient_init(CONF_SECTION *conf, rlm_yubikey_t *inst);
 
 int rlm_yubikey_ykclient_detach(rlm_yubikey_t *inst);
 
-unlang_action_t rlm_yubikey_validate(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+unlang_action_t rlm_yubikey_validate(unlang_result_t *p_result, module_ctx_t const *mctx,
 				     request_t *request, char const *passcode);
 
 extern HIDDEN fr_dict_attr_t const *attr_auth_type;

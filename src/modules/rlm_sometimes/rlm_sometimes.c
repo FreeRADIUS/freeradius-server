@@ -71,7 +71,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 /*
  *	A lie!  It always returns!
  */
-static unlang_action_t sometimes_return(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
+static unlang_action_t sometimes_return(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request,
 					fr_packet_t *packet, fr_packet_t *reply)
 {
 	rlm_sometimes_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_sometimes_t);
@@ -82,12 +82,12 @@ static unlang_action_t sometimes_return(rlm_rcode_t *p_result, module_ctx_t cons
 	/*
 	 *	Set it to NOOP and the module will always do nothing
 	 */
-	if (inst->rcode == RLM_MODULE_NOOP) RETURN_MODULE_RCODE(inst->rcode);
+	if (inst->rcode == RLM_MODULE_NOOP) RETURN_UNLANG_RCODE(inst->rcode);
 
 	/*
 	 *	Hash based on the given key.  Usually User-Name.
 	 */
-	if (tmpl_find_vp(&vp, request, inst->key) < 0) RETURN_MODULE_NOOP;
+	if (tmpl_find_vp(&vp, request, inst->key) < 0) RETURN_UNLANG_NOOP;
 
 	switch (vp->vp_type) {
 	case FR_TYPE_OCTETS:
@@ -96,7 +96,7 @@ static unlang_action_t sometimes_return(rlm_rcode_t *p_result, module_ctx_t cons
 		break;
 
 	case FR_TYPE_STRUCTURAL:
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 
 	default:
 		hash = fr_hash(&vp->data.datum, fr_value_box_field_sizes[vp->vp_type]);
@@ -108,7 +108,7 @@ static unlang_action_t sometimes_return(rlm_rcode_t *p_result, module_ctx_t cons
 	value /= (1 << 16);
 	value *= 100;
 
-	if (value > inst->percentage) RETURN_MODULE_NOOP;
+	if (value > inst->percentage) RETURN_UNLANG_NOOP;
 
 	/*
 	 *	If we're returning "handled", then set the packet
@@ -139,15 +139,15 @@ static unlang_action_t sometimes_return(rlm_rcode_t *p_result, module_ctx_t cons
 		}
 	}
 
-	RETURN_MODULE_RCODE(inst->rcode);
+	RETURN_UNLANG_RCODE(inst->rcode);
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_sometimes_packet(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_sometimes_packet(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	return sometimes_return(p_result, mctx, request, request->packet, request->reply);
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_sometimes_reply(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_sometimes_reply(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	return sometimes_return(p_result, mctx, request, request->reply, NULL);
 }

@@ -21,6 +21,7 @@
  *
  * @copyright 2023 Network RADIUS SAS (legal@networkradius.com)
  */
+#include "lib/unlang/action.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/io/application.h>
@@ -149,23 +150,22 @@ static void mod_tacacs_signal(module_ctx_t const *mctx, request_t *request, fr_s
 /** Send packets outbound.
  *
  */
-static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_tacacs_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_tacacs_t);
-	rlm_rcode_t		rcode;
 	unlang_action_t		ua;
 
 	void			*rctx = NULL;
 
 	if (!FR_TACACS_PACKET_CODE_VALID(request->packet->code)) {
 		REDEBUG("Invalid packet code %d", request->packet->code);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if (!inst->allowed[request->packet->code]) {
 		REDEBUG("Packet code %s is disallowed by the configuration",
 		       fr_tacacs_packet_names[request->packet->code]);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -175,11 +175,11 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	 *	return another code which indicates what happened to
 	 *	the request...
 	 */
-	ua = inst->io->enqueue(&rcode, &rctx, inst->io_submodule->data,
+	ua = inst->io->enqueue(p_result, &rctx, inst->io_submodule->data,
 			       module_thread(inst->io_submodule)->data, request);
 	if (ua != UNLANG_ACTION_YIELD) {
 		fr_assert(rctx == NULL);
-		RETURN_MODULE_RCODE(rcode);
+		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	return unlang_module_yield(request, inst->io->resume, mod_tacacs_signal, 0, rctx);

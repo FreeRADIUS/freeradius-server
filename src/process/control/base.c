@@ -44,9 +44,9 @@ fr_dict_attr_autoload_t process_control_dict_attr[] = {
 	{ NULL }
 };
 
-static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t mod_process(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 
 extern fr_process_module_t process_control;

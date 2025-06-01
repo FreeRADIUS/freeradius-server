@@ -66,13 +66,13 @@ fr_dict_attr_autoload_t rlm_eap_tls_dict_attr[] = {
 	{ NULL }
 };
 
-static unlang_action_t mod_handshake_done(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
+static unlang_action_t mod_handshake_done(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx,
 					  UNUSED request_t *request)
 {
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
-static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t		*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
@@ -100,7 +100,7 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 					  "client EAP encryption",
 					  sizeof("client EAP encryption") - 1);
 
-		if (eap_tls_success(request, eap_session, &prf_label) < 0) RETURN_MODULE_FAIL;
+		if (eap_tls_success(request, eap_session, &prf_label) < 0) RETURN_UNLANG_FAIL;
 
 		/*
 		 *	Result is always OK, even if we fail to persist the
@@ -128,7 +128,7 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	 *	do nothing.
 	 */
 	case EAP_TLS_HANDLED:
-		RETURN_MODULE_HANDLED;
+		RETURN_UNLANG_HANDLED;
 
 	/*
 	 *	Handshake is done, proceed with decoding tunneled
@@ -138,7 +138,7 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 		REDEBUG("Received unexpected tunneled data after successful handshake");
 		eap_tls_fail(request, eap_session);
 
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 
 	/*
 	 *	Anything else: fail.
@@ -148,7 +148,7 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	 */
 	default:
 		fr_tls_cache_deny(request, tls_session);
-		*p_result = RLM_MODULE_REJECT;
+		p_result->rcode = RLM_MODULE_REJECT;
 
 		/*
 		 *	We'll jump back to the caller
@@ -162,7 +162,7 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static unlang_action_t mod_handshake_process(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
+static unlang_action_t mod_handshake_process(UNUSED unlang_result_t *p_result, UNUSED module_ctx_t const *mctx,
 					     request_t *request)
 {
 	eap_session_t		*eap_session = eap_session_get(request->parent);
@@ -178,7 +178,7 @@ static unlang_action_t mod_handshake_process(UNUSED rlm_rcode_t *p_result, UNUSE
 	return eap_tls_process(request, eap_session);
 }
 
-static unlang_action_t mod_session_init_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_session_init_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_tls_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_tls_t);
 	rlm_eap_tls_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_eap_tls_thread_t);
@@ -203,7 +203,7 @@ static unlang_action_t mod_session_init_resume(rlm_rcode_t *p_result, module_ctx
 	 *	EAP-TLS always requires a client certificate.
 	 */
 	eap_session->opaque = eap_tls_session = eap_tls_session_init(request, eap_session, t->ssl_ctx, client_cert);
-	if (!eap_tls_session) RETURN_MODULE_FAIL;
+	if (!eap_tls_session) RETURN_UNLANG_FAIL;
 
 	eap_tls_session->include_length = inst->include_length;
 
@@ -213,18 +213,18 @@ static unlang_action_t mod_session_init_resume(rlm_rcode_t *p_result, module_ctx
 	 */
 	if (eap_tls_start(request, eap_session) < 0) {
 		talloc_free(eap_tls_session);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	eap_session->process = mod_handshake_process;
 
-	RETURN_MODULE_HANDLED;
+	RETURN_UNLANG_HANDLED;
 }
 
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static unlang_action_t mod_session_init(UNUSED rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_session_init(UNUSED unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_tls_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_tls_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);

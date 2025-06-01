@@ -287,7 +287,7 @@ static xlat_action_t xlat_client(TALLOC_CTX *ctx, fr_dcursor_t *out,
 /*
  *	Find the client definition.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	size_t		length;
 	char const	*value;
@@ -302,31 +302,31 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	if ((request->packet->socket.inet.src_port != 0) || (!fr_pair_list_empty(&request->request_pairs)) ||
 	    (request->parent != NULL)) {
 		REDEBUG("Improper configuration");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	client = client_from_request(request);
 	if (!client || !client->cs) {
 		REDEBUG("Unknown client definition");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	cp = cf_pair_find(client->cs, "directory");
 	if (!cp) {
 		REDEBUG("No directory configuration in the client");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	value = cf_pair_value(cp);
 	if (!value) {
 		REDEBUG("No value given for the directory entry in the client");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	length = strlen(value);
 	if (length > (sizeof(buffer) - 256)) {
 		REDEBUG("Directory name too long");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	memcpy(buffer, value, length + 1);
@@ -335,10 +335,10 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	/*
 	 *	Read the buffer and generate the client.
 	 */
-	if (!client->server) RETURN_MODULE_FAIL;
+	if (!client->server) RETURN_UNLANG_FAIL;
 
 	client = client_read(buffer, client->server_cs, true);
-	if (!client) RETURN_MODULE_FAIL;
+	if (!client) RETURN_UNLANG_FAIL;
 
 	/*
 	 *	Replace the client.  This is more than a bit of a
@@ -346,7 +346,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	 */
 	request->client = client;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 static int mod_load(void)

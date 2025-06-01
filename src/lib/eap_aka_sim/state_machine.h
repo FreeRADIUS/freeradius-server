@@ -210,7 +210,7 @@ typedef struct {
 	eap_aka_sim_actions_t		actions;			//!< Pre-compiled virtual server sections.
 } eap_aka_sim_process_conf_t;
 
-unlang_action_t eap_aka_sim_state_machine_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
+unlang_action_t eap_aka_sim_state_machine_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request);
 
 #ifdef __cplusplus
 }

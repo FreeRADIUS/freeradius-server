@@ -732,12 +732,12 @@ RESUME(accounting_request)
 // @todo - send canned responses like in v3?
 RECV(status_server)
 {
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 
 RESUME(status_server)
 {
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 #endif
 
@@ -779,7 +779,7 @@ RESUME(protocol_error)
 	return CALL_RESUME(send_generic);
 }
 
-static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const *state;
 
@@ -797,7 +797,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	if (!state->recv) {
 		REDEBUG("Invalid packet type (%u)", request->packet->code);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	radius_packet_debug(request, request->packet, &request->request_pairs, true);

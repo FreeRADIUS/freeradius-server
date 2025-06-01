@@ -273,7 +273,7 @@ unlang_action_t unlang_module_yield_to_section(unlang_result_t *p_result,
 		 *	the scratch result for the frame, and
 		 *	_NOT_ what was passed in for p_result.
 		 */
-		return resume(&frame->scratch_result.rcode,
+		return resume(&frame->scratch_result,
 			      MODULE_CTX(m->mmc.mi, module_thread(m->mmc.mi)->data,
 			      		 state->env_data, rctx),
 			      request);
@@ -325,7 +325,7 @@ void unlang_module_retry_now(module_ctx_t const *mctx, request_t *request)
 /** Cancel the retry timer on resume
  *
  */
-static unlang_action_t unlang_module_retry_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t unlang_module_retry_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -600,8 +600,8 @@ static unlang_action_t unlang_module_resume(unlang_result_t *p_result, request_t
 	 *	Lock is noop unless instance->mutex is set.
 	 */
 	safe_lock(m->mmc.mi);
-	ua = resume(&p_result->rcode, MODULE_CTX(m->mmc.mi, state->thread->data,
-						 state->env_data, state->rctx), request);
+	ua = resume(p_result, MODULE_CTX(m->mmc.mi, state->thread->data,
+		    state->env_data, state->rctx), request);
 	safe_unlock(m->mmc.mi);
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) ua = UNLANG_ACTION_STOP_PROCESSING;
@@ -872,7 +872,7 @@ static unlang_action_t unlang_module(unlang_result_t *p_result, request_t *reque
 
 	request->module = m->mmc.mi->name;
 	safe_lock(m->mmc.mi);	/* Noop unless instance->mutex set */
-	ua = m->mmc.mmb.method(&p_result->rcode,
+	ua = m->mmc.mmb.method(p_result,
 			       MODULE_CTX(m->mmc.mi, state->thread->data, state->env_data, state->rctx),
 			       request);
 	safe_unlock(m->mmc.mi);

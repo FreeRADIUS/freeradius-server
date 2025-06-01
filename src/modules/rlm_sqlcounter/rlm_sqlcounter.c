@@ -264,7 +264,7 @@ typedef struct {
  * Otherwise, optionally populate a reply attribute with the value of `limit` - `counter` and return RLM_MODULE_UPDATED.
  * If no reply attribute is set, return RLM_MODULE_OK.
  */
-static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_authorize_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	sqlcounter_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, sqlcounter_rctx_t);
 	rlm_sqlcounter_t	*inst = rctx->inst;
@@ -303,7 +303,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, module_ctx_t 
 		REDEBUG2("Rejecting user, %s value (%" PRIu64 ") is less than counter value (%" PRIu64 ")",
 			 inst->limit_attr->name, limit->vp_uint64, counter);
 
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 
 	res = limit->vp_uint64 - counter;
@@ -353,28 +353,28 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, module_ctx_t 
 			if (fr_value_box_cmp(&vb, &existing) == 1) {
 				RDEBUG2("Leaving existing %s value of %pV" , env->reply_attr->name,
 					&vp->data);
-				RETURN_MODULE_OK;
+				RETURN_UNLANG_OK;
 			}
 		}
 			break;
 
 		case -1:	/* alloc failed */
 			REDEBUG("Error allocating attribute %s", env->reply_attr->name);
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 
 		default:	/* request or list unavailable */
 			RDEBUG2("List or request context not available for %s, skipping...", env->reply_attr->name);
-			RETURN_MODULE_OK;
+			RETURN_UNLANG_OK;
 		}
 
 		fr_value_box_cast(vp, &vp->data, vp->data.type, NULL, &vb);
 
 		RDEBUG2("%pP", vp);
 
-		RETURN_MODULE_UPDATED;
+		RETURN_UNLANG_UPDATED;
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /** Check the value of a `counter` retrieved from an SQL query with a `limit`
@@ -383,7 +383,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, module_ctx_t 
  * the query is tokenized as an xlat call to the relevant SQL module and then
  * pushed on the stack for evaluation.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlcounter_t);
 	sqlcounter_call_env_t	*env = talloc_get_type_abort(mctx->env_data, sqlcounter_call_env_t);
@@ -405,7 +405,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (tmpl_find_vp(&limit, request, inst->limit_attr) < 0) {
 		RWDEBUG2("Couldn't find %s, doing nothing...", inst->limit_attr->name);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	/*
@@ -413,13 +413,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 */
 	if (tmpl_find_or_add_vp(&vp, request, inst->start_attr) < 0) {
 		REDEBUG("Couldn't create %s", inst->start_attr->name);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 	vp->vp_uint64 = fr_time_to_sec(inst->last_reset);
 
 	if (tmpl_find_or_add_vp(&vp, request, inst->end_attr) < 0) {
 		REDEBUG2("Couldn't create %s", inst->end_attr->name);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 	vp->vp_uint64 = fr_time_to_sec(inst->reset_time);
 
@@ -433,7 +433,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	if (unlang_module_yield(request, mod_authorize_resume, NULL, 0, rctx) != UNLANG_ACTION_YIELD) {
 	error:
 		talloc_free(rctx);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	fr_value_box_list_init(&rctx->result);

@@ -205,7 +205,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
  *	Pull the users password from where-ever, and add it to
  *	the given vp list.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	char const	*name;
 	char const	*encrypted_pass;
@@ -224,13 +224,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	 *	a User-Name attribute.
 	 */
 	username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
-	if (!username) RETURN_MODULE_NOOP;
+	if (!username) RETURN_UNLANG_NOOP;
 
 	name = username->vp_strvalue;
 	encrypted_pass = NULL;
 
 	if ((pwd = getpwnam(name)) == NULL) {
-		RETURN_MODULE_NOTFOUND;
+		RETURN_UNLANG_NOTFOUND;
 	}
 	encrypted_pass = pwd->pw_passwd;
 
@@ -246,7 +246,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	 */
 	if ((!encrypted_pass) || (strlen(encrypted_pass) < 10)) {
 		if ((spwd = getspnam(name)) == NULL) {
-			RETURN_MODULE_NOTFOUND;
+			RETURN_UNLANG_NOTFOUND;
 		}
 		encrypted_pass = spwd->sp_pwdp;
 	}
@@ -258,7 +258,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	 */
 	if (strcmp(pwd->pw_shell, DENY_SHELL) == 0) {
 		REDEBUG("Invalid shell", name);
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 #endif
 
@@ -276,7 +276,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	endusershell();
 	if (!shell) {
 		REDEBUG("[%s]: invalid shell [%s]", name, pwd->pw_shell);
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 #endif
 
@@ -287,7 +287,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	if (spwd && spwd->sp_lstchg > 0 && spwd->sp_max >= 0 &&
 	    (fr_time_to_sec(request->packet->timestamp) / 86400) > (spwd->sp_lstchg + spwd->sp_max)) {
 		REDEBUG("[%s]: password has expired", name);
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 	/*
 	 *      Check if account has expired.
@@ -295,7 +295,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	if (spwd && spwd->sp_expire > 0 &&
 	    (fr_time_to_sec(request->packet->timestamp) / 86400) > spwd->sp_expire) {
 		REDEBUG("[%s]: account has expired", name);
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 #endif
 
@@ -306,7 +306,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	if ((pwd->pw_expire > 0) &&
 	    (fr_time_to_sec(request->packet->timestamp) > pwd->pw_expire)) {
 		REDEBUG("[%s]: password has expired", name);
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 #endif
 
@@ -316,12 +316,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	 *	FIXME: Maybe add Auth-Type := Accept?
 	 */
 	if (encrypted_pass[0] == 0)
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 
 	MEM(pair_update_control(&vp, attr_crypt_password) >= 0);
 	fr_pair_value_strdup(vp, encrypted_pass, false);
 
-	RETURN_MODULE_UPDATED;
+	RETURN_UNLANG_UPDATED;
 }
 
 

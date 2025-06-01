@@ -1286,14 +1286,14 @@ static void request_free(UNUSED request_t *request, void *preq_to_free, UNUSED v
 /** Resume execution of the request, returning the rcode set during trunk execution
  *
  */
-static unlang_action_t mod_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t mod_resume(unlang_result_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	udp_result_t	*r = talloc_get_type_abort(mctx->rctx, udp_result_t);
 	rlm_rcode_t	rcode = r->rcode;
 
 	talloc_free(r);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_signal_t action)
@@ -1369,7 +1369,7 @@ static int _udp_result_free(udp_result_t *r)
 }
 #endif
 
-static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, UNUSED void *instance, void *thread, request_t *request)
+static unlang_action_t mod_enqueue(unlang_result_t *p_result, void **rctx_out, UNUSED void *instance, void *thread, request_t *request)
 {
 	udp_thread_t			*t = talloc_get_type_abort(thread, udp_thread_t);
 	udp_result_t			*r;
@@ -1380,7 +1380,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, UNUSE
 	fr_assert(FR_TACACS_PACKET_CODE_VALID(request->packet->code));
 
 	treq = trunk_request_alloc(t->trunk, request);
-	if (!treq) RETURN_MODULE_FAIL;
+	if (!treq) RETURN_UNLANG_FAIL;
 
 	MEM(r = talloc_zero(request, udp_result_t));
 #ifndef NDEBUG
@@ -1403,7 +1403,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, UNUSE
 		trunk_request_free(&treq);		/* Return to the free list */
 	fail:
 		talloc_free(r);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*

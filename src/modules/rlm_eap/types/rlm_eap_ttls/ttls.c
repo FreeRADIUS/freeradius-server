@@ -482,7 +482,7 @@ static int vp2diameter(request_t *request, fr_tls_session_t *tls_session, fr_pai
 /*
  *	Use a reply packet to determine what to do.
  */
-static unlang_action_t process_reply(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t process_reply(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t		*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
@@ -544,7 +544,7 @@ static unlang_action_t process_reply(rlm_rcode_t *p_result, module_ctx_t const *
 	case FR_RADIUS_CODE_ACCESS_REJECT:
 		REDEBUG("Got tunneled Access-Reject");
 		eap_tls_fail(request, eap_session);
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 
 	/*
 	 *	Handle Access-Challenge, but only if we
@@ -572,7 +572,7 @@ static unlang_action_t process_reply(rlm_rcode_t *p_result, module_ctx_t const *
 	default:
 		REDEBUG("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
 		eap_tls_fail(request, eap_session);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 
@@ -589,10 +589,10 @@ static unlang_action_t process_reply(rlm_rcode_t *p_result, module_ctx_t const *
 	}
 
 	eap_tls_request(request, eap_session);
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
-unlang_action_t eap_ttls_success(rlm_rcode_t *p_result, request_t *request, eap_session_t *eap_session)
+unlang_action_t eap_ttls_success(unlang_result_t *p_result, request_t *request, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
@@ -604,13 +604,13 @@ unlang_action_t eap_ttls_success(rlm_rcode_t *p_result, request_t *request, eap_
 	/*
 	 *	Success: Automatically return MPPE keys.
 	 */
-	if (eap_tls_success(request, eap_session, &prf_label) < 0) RETURN_MODULE_FAIL;
+	if (eap_tls_success(request, eap_session, &prf_label) < 0) RETURN_UNLANG_FAIL;
 
 	/*
 	 *	Result is always OK, even if we fail to persist the
 	 *	session data.
 	 */
-	*p_result = RLM_MODULE_OK;
+	p_result->rcode = RLM_MODULE_OK;
 
 	/*
 	 *	Write the session to the session cache
@@ -631,7 +631,7 @@ unlang_action_t eap_ttls_success(rlm_rcode_t *p_result, request_t *request, eap_
 /*
  *	Process the "diameter" contents of the tunneled data.
  */
-unlang_action_t eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
+unlang_action_t eap_ttls_process(unlang_result_t *p_result, request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
 	fr_pair_t		*vp = NULL;
 	ttls_tunnel_t		*t;
@@ -657,7 +657,7 @@ unlang_action_t eap_ttls_process(request_t *request, eap_session_t *eap_session,
 	if (data_len == 0) {
 		if (t->authenticated) {
 			RDEBUG2("Got ACK, and the user was already authenticated");
-			return eap_ttls_success(&request->rcode, request, eap_session);
+			return eap_ttls_success(p_result, request, eap_session);
 		} /* else no session, no data, die. */
 
 		/*

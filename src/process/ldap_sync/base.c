@@ -102,7 +102,7 @@ typedef struct {
 #include <freeradius-devel/server/process.h>
 
 
-static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const	*state;
 

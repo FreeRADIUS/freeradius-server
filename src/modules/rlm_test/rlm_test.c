@@ -198,7 +198,7 @@ fr_dict_attr_autoload_t rlm_test_dict_attr[] = {
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_test_thread_t *t = mctx->thread;
 
@@ -223,53 +223,53 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	REXDENT();
 	REDEBUG4("RDEBUG4 error message");
 
-	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_UNLANG_FAIL;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /*
  *	Authenticate the user with the given password.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	rlm_test_thread_t *t = mctx->thread;
 
-	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_UNLANG_FAIL;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /*
  *	Massage the request before recording it or proxying it
  */
-static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_preacct(unlang_result_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	rlm_test_thread_t *t = mctx->thread;
 
-	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_UNLANG_FAIL;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /*
  *	Write accounting information to this modules database.
  */
-static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(unlang_result_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	rlm_test_thread_t *t = mctx->thread;
 
-	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_UNLANG_FAIL;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /*
  *	Write accounting information to this modules database.
  */
-static unlang_action_t CC_HINT(nonnull) mod_return(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_return(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 static void mod_retry_signal(module_ctx_t const *mctx, request_t *request, fr_signal_t action);
@@ -277,17 +277,17 @@ static void mod_retry_signal(module_ctx_t const *mctx, request_t *request, fr_si
 /** Continue after marked runnable
  *
  */
-static unlang_action_t mod_retry_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_retry_resume(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	RDEBUG("Test called main retry handler - that's a failure");
 
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 
 /** Continue after FR_SIGNAL_RETRY
  *
  */
-static unlang_action_t mod_retry_resume_retry(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_retry_resume_retry(UNUSED unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	RDEBUG("Test retry");
 
@@ -297,11 +297,11 @@ static unlang_action_t mod_retry_resume_retry(UNUSED rlm_rcode_t *p_result, UNUS
 /** Continue after FR_SIGNAL_TIMEOUT
  *
  */
-static unlang_action_t mod_retry_resume_timeout(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_retry_resume_timeout(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	RDEBUG("Test timed out as expected");
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 static void mod_retry_signal(UNUSED module_ctx_t const *mctx, request_t *request, fr_signal_t action)
@@ -331,7 +331,7 @@ static void mod_retry_signal(UNUSED module_ctx_t const *mctx, request_t *request
 /*
  *	Test retries
  */
-static unlang_action_t CC_HINT(nonnull) mod_retry(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_retry(UNUSED unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	return unlang_module_yield(request, mod_retry_resume, mod_retry_signal, 0, NULL);
 }

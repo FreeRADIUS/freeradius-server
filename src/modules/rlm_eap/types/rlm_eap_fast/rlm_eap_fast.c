@@ -382,7 +382,7 @@ error:
 	return 1;
 }
 
-static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_handshake_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t		*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
@@ -413,7 +413,7 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	 *	do nothing.
 	 */
 	case EAP_TLS_HANDLED:
-		RETURN_MODULE_HANDLED;
+		RETURN_UNLANG_HANDLED;
 
 	/*
 	 *	Handshake is done, proceed with decoding tunneled
@@ -426,7 +426,7 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	 *	Anything else: fail.
 	 */
 	default:
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -441,7 +441,7 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	switch (eap_fast_process(request, eap_session, tls_session)) {
 	case FR_RADIUS_CODE_ACCESS_REJECT:
 		eap_tls_fail(request, eap_session);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 
 		/*
 		 *	Access-Challenge, continue tunneled conversation.
@@ -449,13 +449,13 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 		fr_tls_session_send(request, tls_session);
 		eap_tls_request(request, eap_session);
-		RETURN_MODULE_HANDLED;
+		RETURN_UNLANG_HANDLED;
 
 	/*
 	 *	Success.
 	 */
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
-		if (eap_tls_success(request, eap_session, NULL) < 0) RETURN_MODULE_FAIL;
+		if (eap_tls_success(request, eap_session, NULL) < 0) RETURN_UNLANG_FAIL;
 
 		/*
 		 *	@todo - generate MPPE keys, which have their own magical deriviation.
@@ -465,7 +465,7 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 		 *	Result is always OK, even if we fail to persist the
 		 *	session data.
 		 */
-		*p_result = RLM_MODULE_OK;
+		p_result->rcode = RLM_MODULE_OK;
 
 		/*
 		 *	Write the session to the session cache
@@ -488,7 +488,7 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	 *	will proxy it, rather than returning an EAP packet.
 	 */
 	case FR_RADIUS_CODE_STATUS_CLIENT:
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 
 	default:
 		break;
@@ -498,13 +498,13 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	 *	Something we don't understand: Reject it.
 	 */
 	eap_tls_fail(request, eap_session);
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static unlang_action_t mod_handshake_process(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
+static unlang_action_t mod_handshake_process(UNUSED unlang_result_t *p_result, UNUSED module_ctx_t const *mctx,
 					     request_t *request)
 {
 	eap_session_t		*eap_session = eap_session_get(request->parent);
@@ -523,7 +523,7 @@ static unlang_action_t mod_handshake_process(UNUSED rlm_rcode_t *p_result, UNUSE
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_session_init(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_fast_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_eap_fast_t);
 	rlm_eap_fast_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_eap_fast_thread_t);
@@ -548,7 +548,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	}
 
 	eap_session->opaque = eap_tls_session = eap_tls_session_init(request, eap_session, thread->ssl_ctx, client_cert);
-	if (!eap_tls_session) RETURN_MODULE_FAIL;
+	if (!eap_tls_session) RETURN_UNLANG_FAIL;
 
 	tls_session = eap_tls_session->tls_session;
 
@@ -586,7 +586,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 			    &tls_session->clean_in, tls_session->clean_in.used,
 			    tls_session->clean_in.used) < 0) {
 		talloc_free(tls_session);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	tls_session->record_init(&tls_session->clean_in);
@@ -595,10 +595,10 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 
 	if (!SSL_set_session_ticket_ext_cb(tls_session->ssl, _session_ticket, tls_session)) {
 		RERROR("Failed setting SSL session ticket callback");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
-	RETURN_MODULE_HANDLED;
+	RETURN_UNLANG_HANDLED;
 }
 
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)

@@ -45,7 +45,7 @@ static conf_parser_t submodule_config[] = {
 
 extern rlm_eap_submodule_t rlm_eap_aka;
 
-static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_session_init(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_mod_session_t	*mod_session;

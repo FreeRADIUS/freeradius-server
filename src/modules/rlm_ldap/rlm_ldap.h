@@ -266,18 +266,18 @@ void rlm_ldap_check_reply(request_t *request, rlm_ldap_t const *inst, char const
 /*
  *	groups.c - Group membership functions.
  */
-unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx,
+unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx,
 					   char const *attr);
 
-unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx);
+unlang_action_t rlm_ldap_cacheable_groupobj(unlang_result_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx);
 
-unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, request_t *request,
+unlang_action_t rlm_ldap_check_groupobj_dynamic(unlang_result_t *p_result, request_t *request,
 						ldap_group_xlat_ctx_t *xlat_ctx);
 
-unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result, request_t *request,
+unlang_action_t rlm_ldap_check_userobj_dynamic(unlang_result_t *p_result, request_t *request,
 					       ldap_group_xlat_ctx_t *xlat_ctx);
 
-unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
+unlang_action_t rlm_ldap_check_cached(unlang_result_t *p_result,
 				      rlm_ldap_t const *inst, request_t *request, fr_value_box_t const *check);
 
 unlang_action_t rlm_ldap_map_profile(fr_ldap_result_code_t *ret, int *applied,

@@ -277,7 +277,7 @@ static void sigtran_client_signal(module_ctx_t const *mctx, UNUSED request_t *re
 	txn->ctx.request = NULL;	/* remove the link to the (now dead) request */
 }
 
-static unlang_action_t sigtran_client_map_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t sigtran_client_map_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	sigtran_transaction_t			*txn = talloc_get_type_abort(mctx->rctx, sigtran_transaction_t);
 	rlm_rcode_t				rcode;
@@ -392,7 +392,7 @@ static unlang_action_t sigtran_client_map_resume(rlm_rcode_t *p_result, module_c
 	}
 	talloc_free(txn);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /** Create a MAP_SEND_AUTH_INFO request
@@ -403,7 +403,7 @@ static unlang_action_t sigtran_client_map_resume(rlm_rcode_t *p_result, module_c
  * @param conn		current connection.
  * @param fd		file descriptor on which the transaction is done
  */
-unlang_action_t sigtran_client_map_send_auth_info(rlm_rcode_t *p_result, rlm_sigtran_t const *inst, request_t *request,
+unlang_action_t sigtran_client_map_send_auth_info(unlang_result_t *p_result, rlm_sigtran_t const *inst, request_t *request,
 				  		  sigtran_conn_t const *conn, int fd)
 {
 	sigtran_transaction_t			*txn;
@@ -423,7 +423,7 @@ unlang_action_t sigtran_client_map_send_auth_info(rlm_rcode_t *p_result, rlm_sig
 		ERROR("Failed retrieving version");
 	error:
 		talloc_free(txn);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	switch (req->version) {

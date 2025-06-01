@@ -397,7 +397,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  * @param[in] mctx		Module instance data.
  * @param[in] request		The current request.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_winbind_t);
 	winbind_autz_call_env_t	*env = talloc_get_type_abort(mctx->env_data, winbind_autz_call_env_t);
@@ -407,18 +407,18 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	if (!vp) {
 		REDEBUG2("No %s found in the request; not doing winbind authentication.",
 			 tmpl_attr_tail_da(env->password)->name);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup Winbind authentication",
 		     mctx->mi->name, mctx->mi->name);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
-	if (!module_rlm_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_MODULE_NOOP;
+	if (!module_rlm_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_UNLANG_NOOP;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 
@@ -428,7 +428,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
  * @param[in] mctx		Module instance data.
  * @param[in] request		The current request
  */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	winbind_auth_call_env_t	*env = talloc_get_type_abort(mctx->env_data, winbind_auth_call_env_t);
 	rlm_winbind_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_winbind_thread_t);
@@ -438,7 +438,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (env->password.vb_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -457,10 +457,10 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (do_auth_wbclient_pap(request, env, t) == 0) {
 		RDEBUG2("User authenticated successfully using winbind");
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
-	RETURN_MODULE_REJECT;
+	RETURN_UNLANG_REJECT;
 }
 
 static const call_env_method_t winbind_autz_method_env = {

@@ -306,7 +306,7 @@ static long od_check_passwd(request_t *request, char const *uname, char const *p
  *	Check the users password against the standard UNIX
  *	password table.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	int		ret;
 	long		odResult = eDSAuthFailed;
@@ -321,12 +321,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	if (!password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -334,7 +334,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (password->vp_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -375,14 +375,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		return ret;
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 
 /*
  *	member of the radius group?
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_opendirectory_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_opendirectory_t);
 	struct passwd			*userdata = NULL;
@@ -403,7 +403,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
 	if (!username) {
 		RDEBUG2("OpenDirectory requires a User-Name attribute");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	/* resolve SACL */
@@ -415,7 +415,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		err = mbr_gid_to_uuid(gid, guid_sacl);
 		if (err != 0) {
 			REDEBUG("The group \"%s\" does not have a GUID", kRadiusSACLName);
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 	}
 
@@ -434,12 +434,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 			groupdata = getgrnam(client->community);
 			if (!groupdata) {
 				REDEBUG("The group \"%s\" does not exist on this system", client->community);
-				RETURN_MODULE_FAIL;
+				RETURN_UNLANG_FAIL;
 			}
 			err = mbr_gid_to_uuid(groupdata->gr_gid, guid_nasgroup);
 			if (err != 0) {
 				REDEBUG("The group \"%s\" does not have a GUID", client->community);
-				RETURN_MODULE_FAIL;
+				RETURN_UNLANG_FAIL;
 			}
 		}
 	}
@@ -473,19 +473,19 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (uuid_is_null(uuid)) {
 		REDEBUG("Could not get the user's uuid");
-		RETURN_MODULE_NOTFOUND;
+		RETURN_UNLANG_NOTFOUND;
 	}
 
 	if (!uuid_is_null(guid_sacl)) {
 		err = mbr_check_service_membership(uuid, kRadiusServiceName, &ismember);
 		if (err != 0) {
 			REDEBUG("Failed to check group membership");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		if (ismember == 0) {
 			REDEBUG("User is not authorized");
-			RETURN_MODULE_DISALLOW;
+			RETURN_UNLANG_DISALLOW;
 		}
 	}
 
@@ -493,12 +493,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		err = mbr_check_membership_refresh(uuid, guid_nasgroup, &ismember);
 		if (err != 0) {
 			REDEBUG("Failed to check group membership");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		if (ismember == 0) {
 			REDEBUG("User is not authorized");
-			RETURN_MODULE_DISALLOW;
+			RETURN_UNLANG_DISALLOW;
 		}
 	}
 
@@ -506,12 +506,12 @@ setup_auth_type:
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup OpenDirectory authentication",
 		     mctx->mi->name, mctx->mi->name);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
-	if (!module_rlm_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_MODULE_NOOP;
+	if (!module_rlm_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_UNLANG_NOOP;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
