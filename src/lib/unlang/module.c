@@ -170,7 +170,9 @@ int unlang_module_set_resume(request_t *request, module_method_t resume)
  * @param[in] exp		XLAT expansion to evaluate.
  * @param[in] resume		function to call when the XLAT expansion is complete.
  * @param[in] signal		function to call if a signal is received.
- * @param[in] sigmask		Signals to block.
+ * @param[in] sigmask		Set of signals to block.  For example if we wanted to only allow
+ *				FR_SIGNAL_CANCEL, we'd pass ~FR_SIGNAL_CANCEL to block the other
+ *				signals.
  * @param[in] rctx		to pass to the resume() and signal() callbacks.
  * @return
  *	- UNLANG_ACTION_PUSHED_CHILD
@@ -217,7 +219,9 @@ unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, unlang_result_t *p_
  *				types of xlats.
  * @param[in] resume		function to call when the XLAT expansion is complete.
  * @param[in] signal		function to call if a signal is received.
- * @param[in] sigmask		Signals to block.
+ * @param[in] sigmask		Set of signals to block.  For example if we wanted to only allow
+ *				FR_SIGNAL_CANCEL, we'd pass ~FR_SIGNAL_CANCEL to block the other
+ *				signals.
  * @param[in] rctx		to pass to the resume() and signal() callbacks.
  * @return
  *	- UNLANG_ACTION_PUSHED_CHILD
@@ -356,7 +360,9 @@ static unlang_action_t unlang_module_retry_resume(unlang_result_t *p_result, mod
  * @param[in] resume		Called on unlang_interpret_mark_runnable().
  * @param[in] retry		Called on when a retry timer hits
  * @param[in] signal		Called on unlang_action().
- * @param[in] sigmask		Set of signals to block.
+ * @param[in] sigmask		Set of signals to block.  For example if we wanted to only allow
+ *				FR_SIGNAL_CANCEL, we'd pass ~FR_SIGNAL_CANCEL to block the other
+ *				signals.
  * @param[in] rctx		to pass to the callbacks.
  * @param[in] retry_cfg		to set up the retries
  * @return
@@ -417,7 +423,9 @@ unlang_action_t	unlang_module_yield_to_retry(request_t *request, module_method_t
  * @param[in] request		The current request.
  * @param[in] resume		Called on unlang_interpret_mark_runnable().
  * @param[in] signal		Called on unlang_action().
- * @param[in] sigmask		Set of signals to block.
+ * @param[in] sigmask		Set of signals to block.  For example if we wanted to only allow
+ *				FR_SIGNAL_CANCEL, we'd pass ~FR_SIGNAL_CANCEL to block the other
+ *				signals.
  * @param[in] rctx		to pass to the callbacks.
  * @return
  *	- UNLANG_ACTION_YIELD.
