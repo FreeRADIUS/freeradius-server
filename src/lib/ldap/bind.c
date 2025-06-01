@@ -307,6 +307,14 @@ static void ldap_async_auth_bind_cancel(request_t *request, UNUSED fr_signal_t a
 
 /** Initiate an async LDAP bind for authentication
  *
+ * @param[out] p_result		Where to write the result of the bind operation.
+ *				If this is NULL, the rcode result will be discarded.
+ *				- LDAP_PROC_SUCCES = RLM_MODULE_OK,
+ *				- LDAP_PROC_NOT_PERMITTED = RLM_MODULE_DISALLOW,
+ *				- LDAP_PROC_REJECT = RLM_MODULE_REJECT,
+ *				- LDAP_PROC_BAD_DN = RLM_MODULE_INVALID,
+ *				- LDAP_PROC_NO_RESULT = RLM_MODULE_NOTFOUND
+ *				- * = RLM_MODULE_FAIL.
  * @param[in] request		this bind relates to.
  * @param[in] thread		whose connection the bind should be performed on.
  * @param[in] bind_dn		Identity to bind with.
@@ -315,12 +323,12 @@ static void ldap_async_auth_bind_cancel(request_t *request, UNUSED fr_signal_t a
  *	- 0 on success.
  *	- -1 on failure.
  */
-unlang_action_t fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, char const *bind_dn, char const *password)
+unlang_action_t fr_ldap_bind_auth_async(unlang_result_t *p_result, request_t *request, fr_ldap_thread_t *thread, char const *bind_dn, char const *password)
 {
 	fr_ldap_bind_auth_ctx_t	*bind_auth_ctx;
-	trunk_request_t	*treq;
+	trunk_request_t		*treq;
 	fr_ldap_thread_trunk_t	*ttrunk = fr_thread_ldap_bind_trunk_get(thread);
-	trunk_enqueue_t	ret;
+	trunk_enqueue_t		ret;
 
 	if (!ttrunk) {
 		ERROR("Failed to get trunk connection for LDAP bind");
@@ -360,7 +368,7 @@ unlang_action_t fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *th
 		return UNLANG_ACTION_FAIL;
 	}
 
-	return unlang_function_push(NULL,
+	return unlang_function_push(p_result,
 				    request,
 				    ldap_async_auth_bind_start,
 				    ldap_async_auth_bind_results,
