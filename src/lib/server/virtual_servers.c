@@ -781,9 +781,11 @@ unlang_action_t virtual_server_push(unlang_result_t *p_result, request_t *reques
 		if (unlang_interpret_stack_depth(request) > 1) {
 			unlang_action_t action;
 
-			action = unlang_function_push(NULL, request, NULL, /* don't call it immediately */
-						      server_remove_log_destination, /* but when we pop the frame */
-						      server_signal_remove_log_destination, FR_SIGNAL_CANCEL,
+			action = unlang_function_push(unlang_interpret_result(request),	/* transparent */
+						      request,
+						      NULL, 				/* don't call it immediately */
+						      server_remove_log_destination, 	/* but when we pop the frame */
+						      server_signal_remove_log_destination, ~(FR_SIGNAL_CANCEL),
 						      top_frame, vs);
 			if (action != UNLANG_ACTION_PUSHED_CHILD) return action;
 
