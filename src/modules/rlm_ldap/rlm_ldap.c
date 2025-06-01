@@ -1978,23 +1978,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 					&autz_ctx->query);
 }
 
-/** Perform async lookup of user DN if required for user modification
- *
- */
-static unlang_action_t user_modify_start(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
-{
-	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(uctx, ldap_user_modify_ctx_t);
-
-	return rlm_ldap_find_user_async(usermod_ctx, usermod_ctx->inst, request, &usermod_ctx->call_env->user_base,
-		&usermod_ctx->call_env->user_filter, usermod_ctx->ttrunk, NULL, NULL);
-}
-
 /** Cancel an in progress user modification.
  *
  */
-static void user_modify_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
+static void user_modify_cancel(module_ctx_t const *mctx, UNUSED request_t *request, UNUSED fr_signal_t action)
 {
-	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(uctx, ldap_user_modify_ctx_t);
+	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(mctx->rctx, ldap_user_modify_ctx_t);
 
 	if (!usermod_ctx->query || !usermod_ctx->query->treq) return;
 
@@ -2004,10 +1993,9 @@ static void user_modify_cancel(UNUSED request_t *request, UNUSED fr_signal_t act
 /** Handle results of user modification.
  *
  */
-static unlang_action_t user_modify_final(unlang_result_t *p_result,
-					 request_t *request, void *uctx)
+static unlang_action_t CC_HINT(nonnull) user_modify_final(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(uctx, ldap_user_modify_ctx_t);
+	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(mctx->rctx, ldap_user_modify_ctx_t);
 	fr_ldap_query_t		*query = usermod_ctx->query;
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 
@@ -2034,10 +2022,9 @@ static unlang_action_t user_modify_final(unlang_result_t *p_result,
 	RETURN_UNLANG_RCODE(rcode);
 }
 
-static unlang_action_t user_modify_mod_build_resume(unlang_result_t *p_result,
-						    request_t *request, void *uctx)
+static unlang_action_t CC_HINT(nonnull) user_modify_mod_build_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(uctx, ldap_user_modify_ctx_t);
+	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(mctx->rctx, ldap_user_modify_ctx_t);
 	ldap_usermod_call_env_t	*call_env = usermod_ctx->call_env;
 	LDAPMod			**modify;
 	ldap_mod_tmpl_t		*mod;
@@ -2154,17 +2141,20 @@ static unlang_action_t user_modify_mod_build_resume(unlang_result_t *p_result,
 
 next:
 	usermod_ctx->current_mod++;
+
+	/*
+	 *	Keep calling until we've completed all the modifications
+	 */
 	if (usermod_ctx->current_mod < usermod_ctx->num_mods) {
-		if (unlang_function_repeat_set(request, user_modify_mod_build_resume) < 0) RETURN_UNLANG_FAIL;
+		if (unlang_module_yield(request, user_modify_mod_build_resume, NULL, 0, usermod_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
 		if (unlang_tmpl_push(usermod_ctx, &usermod_ctx->expanded, request,
-			     usermod_ctx->call_env->mod[usermod_ctx->current_mod]->tmpl, NULL) < 0) RETURN_UNLANG_FAIL;
+				     usermod_ctx->call_env->mod[usermod_ctx->current_mod]->tmpl, NULL) < 0) RETURN_UNLANG_FAIL;
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
 	modify = usermod_ctx->mod_p;
 
-	if (unlang_function_push(NULL, request, NULL, user_modify_final, user_modify_cancel, ~FR_SIGNAL_CANCEL,
-				 UNLANG_SUB_FRAME, usermod_ctx) < 0) RETURN_UNLANG_FAIL;
+	if (unlang_module_yield(request, user_modify_final, user_modify_cancel, ~FR_SIGNAL_CANCEL, usermod_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
 
 	return fr_ldap_trunk_modify(usermod_ctx, &usermod_ctx->query, request, usermod_ctx->ttrunk,
 				    usermod_ctx->dn, modify, NULL, NULL);
@@ -2173,10 +2163,9 @@ next:
 /** Take the retrieved user DN and launch the async tmpl expansion of mod_values.
  *
  */
-static unlang_action_t user_modify_resume(unlang_result_t *p_result,
-					  request_t *request, void *uctx)
+static unlang_action_t CC_HINT(nonnull) user_modify_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(uctx, ldap_user_modify_ctx_t);
+	ldap_user_modify_ctx_t	*usermod_ctx = talloc_get_type_abort(mctx->rctx, ldap_user_modify_ctx_t);
 
 	/*
 	 *	If an LDAP search was used to find the user DN
@@ -2197,7 +2186,8 @@ static unlang_action_t user_modify_resume(unlang_result_t *p_result,
 	MEM(usermod_ctx->mod_s = talloc_array(usermod_ctx, LDAPMod, usermod_ctx->num_mods));
 	fr_value_box_list_init(&usermod_ctx->expanded);
 
-	if (unlang_function_repeat_set(request, user_modify_mod_build_resume) < 0) goto fail;
+	if (unlang_module_yield(request, user_modify_mod_build_resume, NULL, 0, usermod_ctx) == UNLANG_ACTION_FAIL) goto fail;
+;
 	if (unlang_tmpl_push(usermod_ctx, &usermod_ctx->expanded, request,
 			     usermod_ctx->call_env->mod[0]->tmpl, NULL) < 0) goto fail;
 
@@ -2212,10 +2202,8 @@ static unlang_action_t user_modify_resume(unlang_result_t *p_result,
  */
 static unlang_action_t CC_HINT(nonnull) mod_modify(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_ldap_t);
+	rlm_ldap_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_ldap_t);
 	ldap_usermod_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, ldap_usermod_call_env_t);
-
-	rlm_rcode_t		rcode = RLM_MODULE_FAIL;
 	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread(inst->mi)->data, fr_ldap_thread_t);
 	ldap_user_modify_ctx_t	*usermod_ctx = NULL;
 
@@ -2247,15 +2235,27 @@ static unlang_action_t CC_HINT(nonnull) mod_modify(unlang_result_t *p_result, mo
 	}
 
 	usermod_ctx->dn = rlm_find_user_dn_cached(request);
+	/*
+	 *	Find the user first
+	 */
+	if (!usermod_ctx->dn) {
+		/* Pushes a frame for user resolution */
+		if (rlm_ldap_find_user_async(usermod_ctx, usermod_ctx->inst, request,
+					     &usermod_ctx->call_env->user_base,
+					     &usermod_ctx->call_env->user_filter,
+					     usermod_ctx->ttrunk, NULL, NULL) == UNLANG_ACTION_FAIL) {
+			RETURN_UNLANG_FAIL;
+		}
 
-	if (unlang_function_push(NULL, request, usermod_ctx->dn ? NULL : user_modify_start, user_modify_resume,
-				 NULL, 0, UNLANG_SUB_FRAME, usermod_ctx) < 0) goto error;
+		if (unlang_module_yield(request, user_modify_resume, NULL, 0, usermod_ctx) == UNLANG_ACTION_FAIL) {
+			talloc_free(usermod_ctx);
+			RETURN_UNLANG_FAIL;
+		}
 
-	return UNLANG_ACTION_PUSHED_CHILD;
+		return UNLANG_ACTION_PUSHED_CHILD;
+	}
 
-error:
-	TALLOC_FREE(usermod_ctx);
-	RETURN_UNLANG_RCODE(rcode);
+	return user_modify_resume(p_result, mctx, request);
 }
 
 /** Detach from the LDAP server and cleanup internal state.
