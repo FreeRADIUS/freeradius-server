@@ -1653,7 +1653,7 @@ static unlang_action_t tls_session_async_handshake(unlang_result_t *p_result,
  */
 unlang_action_t fr_tls_session_async_handshake_push(request_t *request, fr_tls_session_t *tls_session)
 {
-	return unlang_function_push(NULL,
+	return unlang_function_push(/* discard, result is written to tls_session->result */ NULL,
 				    request,
 				    tls_session_async_handshake,
 				    NULL,
@@ -2013,7 +2013,12 @@ unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const 
 	if (unlang_subrequest_child_push(NULL, child, child->parent, true, UNLANG_SUB_FRAME) < 0) {
 		return UNLANG_ACTION_FAIL;
 	}
-	if (unlang_function_push(NULL, child, NULL, tls_new_session_result, NULL, 0, UNLANG_SUB_FRAME, NULL) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_function_push(/* discard, eap_tls_session->state holds result */ NULL,
+				 child,
+				 NULL,
+				 tls_new_session_result,
+				 NULL, 0,
+				 UNLANG_SUB_FRAME, NULL) < 0) return UNLANG_ACTION_FAIL;
 
 	if (unlang_call_push(NULL, child, tls_conf->virtual_server, UNLANG_SUB_FRAME) < 0) {
 		return UNLANG_ACTION_FAIL;
