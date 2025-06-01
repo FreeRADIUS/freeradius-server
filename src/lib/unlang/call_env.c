@@ -280,7 +280,12 @@ parse_only:
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	return unlang_function_push(NULL, request, call_env_expand_start, call_env_expand_repeat, NULL, 0, UNLANG_SUB_FRAME,
+	return unlang_function_push(/* discard, result is provided in env_result */ NULL,
+				    request,
+				    call_env_expand_start,
+				    call_env_expand_repeat,
+				    NULL, 0,
+				    UNLANG_SUB_FRAME,
 				    call_env_rctx);
 }
 
@@ -306,7 +311,12 @@ unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_re
 	call_env_rctx->call_env = call_env;
 	fr_value_box_list_init(&call_env_rctx->tmpl_expanded);
 
-	return unlang_function_push(NULL, request, call_env_expand_start, call_env_expand_repeat, NULL, 0, UNLANG_SUB_FRAME,
+	return unlang_function_push(/* discard, result is provided in env_result */NULL,
+				    request,
+				    call_env_expand_start,
+				    call_env_expand_repeat,
+				    NULL,
+				    0, UNLANG_SUB_FRAME,
 				    call_env_rctx);
 }
 
