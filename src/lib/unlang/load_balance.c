@@ -38,10 +38,7 @@ static unlang_action_t unlang_load_balance_next(unlang_result_t *p_result, reque
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 
 #ifdef STATIC_ANALYZER
-	if (!redundant->found) {
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	if (!redundant->found) RETURN_UNLANG_FAIL;
 #endif
 	/*
 	 *	Set up the first round versus subsequent ones.

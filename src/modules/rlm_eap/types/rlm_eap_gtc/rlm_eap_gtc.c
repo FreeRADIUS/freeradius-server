@@ -106,7 +106,7 @@ static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 static unlang_action_t gtc_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,  request_t *request)
 {
 	rlm_eap_gtc_rctx_t *rctx = talloc_get_type_abort(mctx->rctx, rlm_eap_gtc_rctx_t);
-	rlm_rcode_t	rcode = rctx->section_result.rcode;
+	rlm_rcode_t	rcode;
 
 	eap_session_t	*eap_session = eap_session_get(request->parent);
 	eap_round_t	*eap_round = eap_session->this_round;
