@@ -927,7 +927,7 @@ static inline CC_HINT(always_inline) unlang_action_t eap_tls_handshake_push(requ
 	/*
 	 *	Will run after the handshake round completes
 	 */
-	if (unlang_function_push(NULL,
+	if (unlang_function_push(/* discard, sets eap_tls_session->state */ NULL,
 				 request,
 				 NULL,
 				 eap_tls_handshake_resume,
