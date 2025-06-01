@@ -976,7 +976,7 @@ static unlang_action_t ldap_group_xlat_results(unlang_result_t *p_result, reques
 	switch (xlat_ctx->status) {
 	case GROUP_XLAT_FIND_USER:
 		if (!xlat_ctx->dn) xlat_ctx->dn = rlm_find_user_dn_cached(request);
-		if (!xlat_ctx->dn) return UNLANG_ACTION_FAIL;
+		if (!xlat_ctx->dn) RETURN_UNLANG_FAIL;
 
 		if (inst->group.obj_membership_filter) {
 			REPEAT_LDAP_MEMBEROF_XLAT_RESULTS;
@@ -2135,7 +2135,7 @@ static unlang_action_t user_modify_mod_build_resume(unlang_result_t *p_result,
 				if (fr_value_box_list_concat_in_place(vb_head, vb_head, &vb->vb_group, FR_TYPE_STRING,
 								      FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 					RPEDEBUG("Failed concatenating update value");
-					return UNLANG_ACTION_FAIL;
+					RETURN_UNLANG_FAIL;
 				}
 				vb = vb_head;
 				goto populate_string;
@@ -2144,7 +2144,7 @@ static unlang_action_t user_modify_mod_build_resume(unlang_result_t *p_result,
 			case FR_TYPE_FIXED_SIZE:
 				if (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0) {
 					RPEDEBUG("Failed casting update value");
-					return UNLANG_ACTION_FAIL;
+					RETURN_UNLANG_FAIL;
 				}
 				goto populate_string;
 

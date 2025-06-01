@@ -54,7 +54,7 @@ typedef enum {
 } rlm_rcode_t;
 
 #define RETURN_UNLANG_REJECT		do { p_result->rcode = RLM_MODULE_REJECT; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
-#define RETURN_UNLANG_FAIL		do { p_result->rcode = RLM_MODULE_FAIL; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_UNLANG_FAIL		do { p_result->rcode = RLM_MODULE_FAIL; return UNLANG_ACTION_FAIL; } while (0)
 #define RETURN_UNLANG_OK		do { p_result->rcode = RLM_MODULE_OK; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
 #define RETURN_UNLANG_HANDLED		do { p_result->rcode = RLM_MODULE_HANDLED; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
 #define RETURN_UNLANG_INVALID		do { p_result->rcode = RLM_MODULE_INVALID; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
