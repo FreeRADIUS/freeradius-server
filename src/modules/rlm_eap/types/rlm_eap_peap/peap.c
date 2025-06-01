@@ -538,7 +538,7 @@ unlang_action_t eap_peap_process(unlang_result_t *p_result, request_t *request,
 		eap_peap_inner_to_pairs(child->request_ctx, &child->request_pairs,
 					eap_round, data, data_len);
 		if (fr_pair_list_empty(&child->request_pairs)) {
-			talloc_free(child);
+			TALLOC_FREE(child);
 			RDEBUG2("Unable to convert tunneled EAP packet to internal server data structures");
 			rcode = RLM_MODULE_REJECT;
 			goto finish;
@@ -610,7 +610,15 @@ unlang_action_t eap_peap_process(unlang_result_t *p_result, request_t *request,
 	return UNLANG_ACTION_PUSHED_CHILD;
 
 finish:
-	if (child) request_detach(child);
+	if (child) {
+		/*
+		 *	We can't just free the child, we need to detach it
+		 *	and then let the interpreter to unwind and eventually
+		 *	free the request.
+		 */
+		request_detach(child);
+		unlang_interpret_signal(child, FR_SIGNAL_CANCEL);
+	}
 
 	RETURN_UNLANG_RCODE(rcode);
 }
