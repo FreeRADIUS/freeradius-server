@@ -644,7 +644,9 @@ unlang_frame_action_t result_pop(request_t *request, unlang_stack_frame_t *frame
 	 *	was MOD_ACTION_NOT_SET, but there are no concrete use
 	 *	cases for this yet.
 	 */
-	our_result.priority = frame->instruction->actions.actions[result->rcode];
+	if (result->rcode != RLM_MODULE_NOT_SET) {
+		our_result.priority = frame->instruction->actions.actions[result->rcode];
+	}
 
 	RDEBUG4("** [%i] %s - using instruction priority for higher frame (%s, %d)",
 		stack->depth, __FUNCTION__,
