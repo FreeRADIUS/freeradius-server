@@ -268,7 +268,8 @@ unlang_action_t rlm_sql_trunk_query(unlang_result_t *p_result, request_t *reques
 		 *	state of the trunk request to reapable - so in that case don't
 		 *	yield (in sql_trunk_query_start)
 		 */
-		if (unlang_function_push(NULL, request,
+		if (unlang_function_push(/* allow the caller of rlm_sql_trunk_query to get at the rcode */p_result,
+					 request,
 					 query_ctx->treq->state == TRUNK_REQUEST_STATE_REAPABLE ?
 					 	NULL : sql_trunk_query_start,
 					 query_ctx->type == SQL_QUERY_SELECT ?
@@ -340,7 +341,7 @@ static unlang_action_t sql_get_map_list_resume(unlang_result_t *p_result, reques
 /** Submit the query to get any user / group check or reply pairs
  *
  */
-unlang_action_t sql_get_map_list(request_t *request, fr_sql_map_ctx_t *map_ctx, trunk_t *trunk)
+unlang_action_t sql_get_map_list(unlang_result_t *p_result, request_t *request, fr_sql_map_ctx_t *map_ctx, trunk_t *trunk)
 {
 	rlm_sql_t const	*inst = map_ctx->inst;
 
@@ -349,9 +350,21 @@ unlang_action_t sql_get_map_list(request_t *request, fr_sql_map_ctx_t *map_ctx, 
 	MEM(map_ctx->query_ctx = fr_sql_query_alloc(map_ctx->ctx, inst, request, trunk,
 						    map_ctx->query->vb_strvalue, SQL_QUERY_SELECT));
 
-	if (unlang_function_push(NULL, request, NULL, sql_get_map_list_resume, NULL, 0, UNLANG_SUB_FRAME, map_ctx) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_function_push(p_result,
+				 request,
+				 NULL,
+				 sql_get_map_list_resume,
+				 NULL, 0,
+				 UNLANG_SUB_FRAME,
+				 map_ctx) < 0) return UNLANG_ACTION_FAIL;
 
-	return unlang_function_push(NULL, request, inst->select, NULL, NULL, 0, UNLANG_SUB_FRAME, map_ctx->query_ctx);
+	return unlang_function_push(/* discard, sql_get_map_list_resume uses query_ctx->rcode */ NULL,
+				    request,
+				    inst->select,
+				    NULL,
+				    NULL, 0,
+				    UNLANG_SUB_FRAME,
+				    map_ctx->query_ctx);
 }
 
 /*
