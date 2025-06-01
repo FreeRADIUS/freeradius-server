@@ -1605,21 +1605,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	return fr_ldap_bind_auth_async(p_result, request, auth_ctx->thread, auth_ctx->dn, auth_ctx->password);
 }
 
-/** Start LDAP authorization with async lookup of user DN
- *
- */
-static unlang_action_t mod_authorize_start(UNUSED unlang_result_t *p_result,
-					   request_t *request, void *uctx)
-{
-	ldap_autz_ctx_t	*autz_ctx = talloc_get_type_abort(uctx, ldap_autz_ctx_t);
-	return rlm_ldap_find_user_async(autz_ctx, autz_ctx->inst, request, &autz_ctx->call_env->user_base,
-					&autz_ctx->call_env->user_filter, autz_ctx->ttrunk, autz_ctx->expanded.attrs,
-					&autz_ctx->query);
-}
-
 #define REPEAT_MOD_AUTHORIZE_RESUME \
-	if (unlang_function_repeat_set(request, mod_authorize_resume) < 0) do { \
-		result.rcode = RLM_MODULE_FAIL; \
+	if (unlang_module_set_resume(request, mod_authorize_resume) < 0) do { \
+		p_result->rcode = RLM_MODULE_FAIL; \
 		goto finish; \
 	} while (0)
 
@@ -1631,34 +1619,19 @@ static unlang_action_t mod_authorize_start(UNUSED unlang_result_t *p_result,
  * Hence, each state may fall through to the next.
  *
  * @param p_result	Result of current authorization.
+ * @param mctx		Module context.
  * @param request	Current request.
- * @param uctx		Current authorization context.
- * @return One of the RLM_MODULE_* values.
+ * @return An rcode.
  */
-static unlang_action_t mod_authorize_resume(unlang_result_t *p_result, request_t *request, void *uctx)
+static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	ldap_autz_ctx_t		*autz_ctx = talloc_get_type_abort(uctx, ldap_autz_ctx_t);
+	ldap_autz_ctx_t		*autz_ctx = talloc_get_type_abort(mctx->rctx, ldap_autz_ctx_t);
 	rlm_ldap_t const	*inst = talloc_get_type_abort_const(autz_ctx->inst, rlm_ldap_t);
 	ldap_autz_call_env_t	*call_env = talloc_get_type_abort(autz_ctx->call_env, ldap_autz_call_env_t);
 	int			ldap_errno;
-	unlang_result_t		result = { .rcode = RLM_MODULE_OK };
 	LDAP			*handle = fr_ldap_handle_thread_local();
 
-	/*
-	 *	If a previous async call returned one of the "failure" results just return.
-	 */
-	switch (p_result->rcode) {
-	case RLM_MODULE_REJECT:
-	case RLM_MODULE_FAIL:
-	case RLM_MODULE_HANDLED:
-	case RLM_MODULE_INVALID:
-	case RLM_MODULE_DISALLOW:
-		result.rcode = p_result->rcode;
-		goto finish;
-
-	default:
-		break;
-	}
+	p_result->rcode = RLM_MODULE_OK;
 
 	switch (autz_ctx->status) {
 	case LDAP_AUTZ_FIND:
@@ -1689,7 +1662,7 @@ static unlang_action_t mod_authorize_resume(unlang_result_t *p_result, request_t
 				break;
 
 			case LDAP_ACCESS_DISALLOWED:
-				result.rcode = RLM_MODULE_DISALLOW;
+				p_result->rcode = RLM_MODULE_DISALLOW;
 				goto finish;
 			}
 		}
@@ -1699,23 +1672,23 @@ static unlang_action_t mod_authorize_resume(unlang_result_t *p_result, request_t
 		 */
 		if ((inst->group.cacheable_dn || inst->group.cacheable_name) && (inst->group.userobj_membership_attr)) {
 			REPEAT_MOD_AUTHORIZE_RESUME;
-			if (rlm_ldap_cacheable_userobj(&result, request, autz_ctx,
+			if (rlm_ldap_cacheable_userobj(p_result, request, autz_ctx,
 						       inst->group.userobj_membership_attr) == UNLANG_ACTION_PUSHED_CHILD) {
 				autz_ctx->status = LDAP_AUTZ_GROUP;
 				return UNLANG_ACTION_PUSHED_CHILD;
 			}
-			if (result.rcode != RLM_MODULE_OK) goto finish;
+			if (p_result->rcode != RLM_MODULE_OK) goto finish;
 		}
 		FALL_THROUGH;
 
 	case LDAP_AUTZ_GROUP:
 		if (inst->group.cacheable_dn || inst->group.cacheable_name) {
 			REPEAT_MOD_AUTHORIZE_RESUME;
-			if (rlm_ldap_cacheable_groupobj(&result, request, autz_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
+			if (rlm_ldap_cacheable_groupobj(p_result, request, autz_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
 				autz_ctx->status = LDAP_AUTZ_POST_GROUP;
 				return UNLANG_ACTION_PUSHED_CHILD;
 			}
-			if (result.rcode != RLM_MODULE_OK) goto finish;
+			if (p_result->rcode != RLM_MODULE_OK) goto finish;
 		}
 		FALL_THROUGH;
 
@@ -1752,7 +1725,7 @@ static unlang_action_t mod_authorize_resume(unlang_result_t *p_result, request_t
 
 			if (!password) {
 				REDEBUG("Failed to find control.Password.Cleartext");
-				result.rcode = RLM_MODULE_FAIL;
+				p_result->rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
 
@@ -1773,10 +1746,7 @@ static unlang_action_t mod_authorize_resume(unlang_result_t *p_result, request_t
 		 *	The result of the eDirectory user bind will be in p_result.
 		 *	Anything other than RLM_MODULE_OK is a failure.
 		 */
-		if (p_result->rcode != RLM_MODULE_OK) {
-			result.rcode = p_result->rcode;
-			goto finish;
-		}
+		break;
 
 	}
 	FALL_THROUGH;
@@ -1790,7 +1760,7 @@ static unlang_action_t mod_authorize_resume(unlang_result_t *p_result, request_t
 			RDEBUG2("Processing user attributes");
 			RINDENT();
 			if (fr_ldap_map_do(request, NULL, inst->valuepair_attr,
-					   &autz_ctx->expanded, autz_ctx->entry) > 0) result.rcode = RLM_MODULE_UPDATED;
+					   &autz_ctx->expanded, autz_ctx->entry) > 0) p_result->rcode = RLM_MODULE_UPDATED;
 			REXDENT();
 			rlm_ldap_check_reply(request, inst, autz_ctx->dlinst->name, call_env->expect_password->vb_bool, autz_ctx->ttrunk);
 		}
@@ -1808,7 +1778,7 @@ static unlang_action_t mod_authorize_resume(unlang_result_t *p_result, request_t
 						   inst->profile.obj_scope, call_env->default_profile.vb_strvalue, &autz_ctx->expanded);
 			switch (ret) {
 			case UNLANG_ACTION_FAIL:
-				result.rcode = RLM_MODULE_FAIL;
+				p_result->rcode = RLM_MODULE_FAIL;
 				goto finish;
 
 			case UNLANG_ACTION_PUSHED_CHILD:
@@ -1826,7 +1796,7 @@ static unlang_action_t mod_authorize_resume(unlang_result_t *p_result, request_t
 		 *	Did we jump back her after applying the default profile?
 		 */
 		if (autz_ctx->status == LDAP_AUTZ_POST_DEFAULT_PROFILE) {
-			result.rcode = RLM_MODULE_UPDATED;
+			p_result->rcode = RLM_MODULE_UPDATED;
 		}
 		/*
 		 *	Apply a SET of user profiles.
@@ -1884,7 +1854,7 @@ static unlang_action_t mod_authorize_resume(unlang_result_t *p_result, request_t
 		 */
 		if (autz_ctx->profile_value) {
 			TALLOC_FREE(autz_ctx->profile_value);
-			result.rcode = RLM_MODULE_UPDATED;	/* We're back here after applying a profile successfully */
+			p_result->rcode = RLM_MODULE_UPDATED;	/* We're back here after applying a profile successfully */
 		}
 
 		if (autz_ctx->profile_values && autz_ctx->profile_values[autz_ctx->value_idx]) {
@@ -1896,7 +1866,7 @@ static unlang_action_t mod_authorize_resume(unlang_result_t *p_result, request_t
 						   inst->profile.obj_scope, autz_ctx->call_env->profile_filter.vb_strvalue, &autz_ctx->expanded);
 			switch (ret) {
 			case UNLANG_ACTION_FAIL:
-				result.rcode = RLM_MODULE_FAIL;
+				p_result->rcode = RLM_MODULE_FAIL;
 				goto finish;
 
 			case UNLANG_ACTION_PUSHED_CHILD:
@@ -1913,15 +1883,15 @@ static unlang_action_t mod_authorize_resume(unlang_result_t *p_result, request_t
 finish:
 	talloc_free(autz_ctx);
 
-	RETURN_UNLANG_RCODE(result.rcode);
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 /** Clear up when cancelling a mod_authorize call
  *
  */
-static void mod_authorize_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
+static void mod_authorize_cancel(module_ctx_t const *mctx, UNUSED request_t *request, UNUSED fr_signal_t action)
 {
-	ldap_autz_ctx_t	*autz_ctx = talloc_get_type_abort(uctx, ldap_autz_ctx_t);
+	ldap_autz_ctx_t	*autz_ctx = talloc_get_type_abort(mctx->rctx, ldap_autz_ctx_t);
 
 	if (autz_ctx->query && autz_ctx->query->treq) trunk_request_signal_cancel(autz_ctx->query->treq);
 }
@@ -1995,10 +1965,17 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 	autz_ctx->call_env = call_env;
 	autz_ctx->status = LDAP_AUTZ_FIND;
 
-	if (unlang_function_push(NULL, request, mod_authorize_start, mod_authorize_resume, mod_authorize_cancel,
-				 ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, autz_ctx) < 0) RETURN_UNLANG_FAIL;
+	if (unlikely(unlang_module_yield(request,
+					 mod_authorize_resume,
+					 mod_authorize_cancel, ~FR_SIGNAL_CANCEL,
+					 autz_ctx) != UNLANG_ACTION_YIELD)) {
+		talloc_free(autz_ctx);
+		RETURN_UNLANG_FAIL;
+	}
 
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return rlm_ldap_find_user_async(autz_ctx, autz_ctx->inst, request, &autz_ctx->call_env->user_base,
+					&autz_ctx->call_env->user_filter, autz_ctx->ttrunk, autz_ctx->expanded.attrs,
+					&autz_ctx->query);
 }
 
 /** Perform async lookup of user DN if required for user modification
