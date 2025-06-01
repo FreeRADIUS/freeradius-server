@@ -332,13 +332,13 @@ unlang_action_t fr_ldap_bind_auth_async(unlang_result_t *p_result, request_t *re
 
 	if (!ttrunk) {
 		ERROR("Failed to get trunk connection for LDAP bind");
-		return UNLANG_ACTION_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	treq = trunk_request_alloc(ttrunk->trunk, request);
 	if (!treq) {
 		ERROR ("Failed to allocate trunk request for LDAP bind");
-		return UNLANG_ACTION_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	MEM(bind_auth_ctx = talloc(treq, fr_ldap_bind_auth_ctx_t));
@@ -365,7 +365,7 @@ unlang_action_t fr_ldap_bind_auth_async(unlang_result_t *p_result, request_t *re
 	default:
 		ERROR("Failed to enqueue bind request");
 		trunk_request_free(&treq);
-		return UNLANG_ACTION_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	return unlang_function_push(p_result,
