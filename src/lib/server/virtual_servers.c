@@ -752,7 +752,7 @@ check_default:
  *
  *	Short-term hack
  */
-unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_frame)
+unlang_action_t virtual_server_push(unlang_result_t *p_result, request_t *request, CONF_SECTION *server_cs, bool top_frame)
 {
 	virtual_server_t *vs;
 
@@ -799,7 +799,7 @@ unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs,
 	/*
 	 *	Bootstrap the stack with a module instance.
 	 */
-	if (unlang_module_push(NULL, request, vs->process_mi,
+	if (unlang_module_push(p_result, request, vs->process_mi,
 			       vs->process_module->process, top_frame) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
