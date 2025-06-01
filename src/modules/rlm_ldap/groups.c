@@ -396,7 +396,9 @@ static unlang_action_t ldap_cacheable_userobj_resolve(unlang_result_t *p_result,
 	 */
 	if (*group_ctx->dn) {
 		if (unlang_function_repeat_set(request, ldap_cacheable_userobj_resolve) < 0) RETURN_UNLANG_FAIL;
-		if (unlang_function_push(NULL, request, ldap_group_dn2name_start, ldap_group_dn2name_resume,
+		if (unlang_function_push(p_result, request,
+					 ldap_group_dn2name_start,
+					 ldap_group_dn2name_resume,
 					 ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
 					 UNLANG_SUB_FRAME, group_ctx) < 0) RETURN_UNLANG_FAIL;
 		return UNLANG_ACTION_PUSHED_CHILD;
@@ -407,7 +409,9 @@ static unlang_action_t ldap_cacheable_userobj_resolve(unlang_result_t *p_result,
 	 */
 	if (*group_ctx->group_name) {
 		if (unlang_function_repeat_set(request, ldap_cacheable_userobj_resolve) < 0) RETURN_UNLANG_FAIL;
-		if (unlang_function_push(NULL, request, ldap_group_name2dn_start, ldap_group_name2dn_resume,
+		if (unlang_function_push(p_result, request,
+					 ldap_group_name2dn_start,
+					 ldap_group_name2dn_resume,
 					 ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
 					 UNLANG_SUB_FRAME, group_ctx) < 0) RETURN_UNLANG_FAIL;
 		return UNLANG_ACTION_PUSHED_CHILD;
