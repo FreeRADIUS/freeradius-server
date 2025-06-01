@@ -1528,6 +1528,15 @@ unlang_mod_action_t unlang_interpret_priority(request_t *request)
 	return frame_current(request)->result_p->priority;
 }
 
+/** Get the last instruction result OR the last frame that was popped
+ *
+ * @param[in] request	The current request.
+ * @return the current result for the frame.
+ */
+unlang_result_t *unlang_interpret_result(request_t *request)
+{
+	return frame_current(request)->result_p;
+}
 
 /** Return whether a request is currently scheduled
  *

@@ -218,6 +218,8 @@ rlm_rcode_t		unlang_interpret_rcode(request_t *request);
 
 unlang_mod_action_t	unlang_interpret_priority(request_t *request);
 
+unlang_result_t		*unlang_interpret_result(request_t *request);
+
 TALLOC_CTX		*unlang_interpret_frame_talloc_ctx(request_t *request);
 
 int			unlang_interpret_init_global(TALLOC_CTX *ctx);
