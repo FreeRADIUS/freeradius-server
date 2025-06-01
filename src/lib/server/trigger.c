@@ -423,8 +423,11 @@ int trigger_exec(unlang_interpret_t *intp,
 		return -1;
 	}
 
-	if (unlang_function_push(NULL, request, trigger_run, trigger_resume,
-				 NULL, 0, UNLANG_TOP_FRAME, trigger) < 0) goto error;
+	if (unlang_function_push(/* discarded */ NULL,
+				 request,
+				 trigger_run, trigger_resume,
+				 NULL, 0,
+				 UNLANG_TOP_FRAME, trigger) < 0) goto error;
 
 	if (!intp) {
 		/*
