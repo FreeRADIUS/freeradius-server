@@ -1606,7 +1606,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 }
 
 #define REPEAT_MOD_AUTHORIZE_RESUME \
-	if (unlang_module_set_resume(request, mod_authorize_resume) < 0) do { \
+	if (unlang_module_yield(request, mod_authorize_resume, NULL, 0, autz_ctx) == UNLANG_ACTION_FAIL) do { \
 		p_result->rcode = RLM_MODULE_FAIL; \
 		goto finish; \
 	} while (0)

@@ -429,6 +429,7 @@ unlang_action_t	unlang_module_yield_to_retry(request_t *request, module_method_t
  * @param[in] rctx		to pass to the callbacks.
  * @return
  *	- UNLANG_ACTION_YIELD.
+ *	- UNLANG_ACTION_FAIL if this is not a module frame.
  */
 unlang_action_t unlang_module_yield(request_t *request,
 				    module_method_t resume, unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx)
@@ -438,6 +439,11 @@ unlang_action_t unlang_module_yield(request_t *request,
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
 	REQUEST_VERIFY(request);	/* Check the yielded request is sane */
+
+	if (frame->instruction->type != UNLANG_TYPE_MODULE) {
+		fr_assert_msg(0, "unlang_module_yield called on a non-module frame");
+		return UNLANG_ACTION_FAIL;
+	}
 
 	state->rctx = rctx;
 	state->resume = resume;
