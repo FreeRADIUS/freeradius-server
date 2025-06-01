@@ -613,8 +613,9 @@ static void ldap_trunk_search_results_debug(request_t *request, fr_ldap_query_t 
 
 /** Handle the return code from parsed LDAP results to set the module rcode
  *
+ * @note This function sets no rcode, the result of query is available in query->ret.
  */
-static unlang_action_t ldap_trunk_query_results(unlang_result_t *p_result, request_t *request, void *uctx)
+static unlang_action_t ldap_trunk_query_results(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	fr_ldap_query_t		*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
 
@@ -625,14 +626,10 @@ static unlang_action_t ldap_trunk_query_results(unlang_result_t *p_result, reque
 
 	case LDAP_RESULT_SUCCESS:
 		if (DEBUG_ENABLED3 && query->type == LDAP_REQUEST_SEARCH) ldap_trunk_search_results_debug(request, query);
-		RETURN_UNLANG_OK;
-
-	case LDAP_RESULT_BAD_DN:
-	case LDAP_RESULT_NO_RESULT:
-		RETURN_UNLANG_NOTFOUND;
+		FALL_THROUGH;
 
 	default:
-		RETURN_UNLANG_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;	/* result is actually discarded, all callers should use query->ret */
 	}
 }
 
@@ -692,7 +689,8 @@ do { \
 /** Run an async search LDAP query on a trunk connection
  *
  * @param[in] ctx		to allocate the query in.
- * @param[out] out		that has been allocated.
+ * @param[out] out		Query that has been allocated.
+ *				Result is available in (*out)->ret.
  * @param[in] request		this query relates to.
  * @param[in] ttrunk		to submit the query to.
  * @param[in] base_dn		for the search.
@@ -706,7 +704,8 @@ do { \
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
  */
 unlang_action_t fr_ldap_trunk_search(TALLOC_CTX *ctx,
-				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+				     fr_ldap_query_t **out,
+				     request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				     char const *base_dn, int scope, char const *filter, char const * const *attrs,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
@@ -727,8 +726,12 @@ unlang_action_t fr_ldap_trunk_search(TALLOC_CTX *ctx,
 		return UNLANG_ACTION_FAIL;
 	}
 
-	action = unlang_function_push(NULL, request, NULL, ldap_trunk_query_results,
-				      ldap_trunk_query_cancel, ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, query);
+	action = unlang_function_push(/* discard, result is written to query->ret */NULL,
+				      request,
+				      NULL,
+				      ldap_trunk_query_results,
+				      ldap_trunk_query_cancel, ~FR_SIGNAL_CANCEL,
+				      UNLANG_SUB_FRAME, query);
 
 	if (action == UNLANG_ACTION_FAIL) goto error;
 
@@ -740,7 +743,8 @@ unlang_action_t fr_ldap_trunk_search(TALLOC_CTX *ctx,
 /** Run an async modification LDAP query on a trunk connection
  *
  * @param[in] ctx		to allocate the query in.
- * @param[out] out		that has been allocated.
+ * @param[out] out		Query that has been allocated.
+ *				Result is available in (*out)->ret.
  * @param[in] request		this query relates to.
  * @param[in] ttrunk		to submit the query to.
  * @param[in] dn		of the object being modified.
@@ -773,8 +777,12 @@ unlang_action_t fr_ldap_trunk_modify(TALLOC_CTX *ctx,
 		return UNLANG_ACTION_FAIL;
 	}
 
-	action = unlang_function_push(NULL, request, NULL, ldap_trunk_query_results, ldap_trunk_query_cancel,
-				      ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, query);
+	action = unlang_function_push(/* discard, result is written to query->ret */ NULL,
+				      request,
+				      NULL,
+				      ldap_trunk_query_results,
+				      ldap_trunk_query_cancel, ~FR_SIGNAL_CANCEL,
+				      UNLANG_SUB_FRAME, query);
 
 	if (action == UNLANG_ACTION_FAIL) goto error;
 
@@ -868,6 +876,7 @@ fr_ldap_rcode_t fr_ldap_delete_async(int *msgid, request_t *request, fr_ldap_con
  *
  * @param[in] ctx		to allocate the query in.
  * @param[out] out		that has been allocated.
+ *				Result is available in (*out)->ret.
  * @param[in] request		this query relates to.
  * @param[in] ttrunk		to submit the query to.
  * @param[in] reqoid		OID of extended operation.
@@ -900,8 +909,12 @@ unlang_action_t fr_ldap_trunk_extended(TALLOC_CTX *ctx,
 		return UNLANG_ACTION_FAIL;
 	}
 
-	action = unlang_function_push(NULL, request, NULL, ldap_trunk_query_results, ldap_trunk_query_cancel,
-				      ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, query);
+	action = unlang_function_push(/* discard, result is written to query->ret */ NULL,
+				      request,
+				      NULL,
+				      ldap_trunk_query_results,
+				      ldap_trunk_query_cancel, ~FR_SIGNAL_CANCEL,
+				      UNLANG_SUB_FRAME, query);
 
 	if (action == UNLANG_ACTION_FAIL) goto error;
 
