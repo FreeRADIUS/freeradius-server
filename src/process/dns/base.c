@@ -398,7 +398,7 @@ RESUME(recv_request)
 	dns_rcode_add(&rcode, request, state->dns_rcode[RESULT_RCODE]);
 
 #ifdef __clang_analyzer__
-	if (!rcode) RETURN_UNLANG_FAIL;
+	if (!rcode) RETURN_MODULE_FAIL;
 #endif
 
 	/*
