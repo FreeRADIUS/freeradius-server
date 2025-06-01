@@ -225,7 +225,7 @@ static int sqlippool_alloc_ctx_free(ippool_alloc_ctx_t *to_free)
 	return 0;
 }
 
-#define REPEAT_MOD_ALLOC_RESUME if (unlang_module_yield(request, mod_alloc_resume, NULL, 0, mctx->rctx) < 0) RETURN_UNLANG_FAIL
+#define REPEAT_MOD_ALLOC_RESUME if (unlang_module_yield(request, mod_alloc_resume, NULL, 0, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL
 #define SUBMIT_QUERY(_query_str, _new_status, _type, _function) do { \
 	alloc_ctx->status = _new_status; \
 	REPEAT_MOD_ALLOC_RESUME; \

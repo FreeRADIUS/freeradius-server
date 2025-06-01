@@ -430,7 +430,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 		.limit = limit
 	};
 
-	if (unlang_module_yield(request, mod_authorize_resume, NULL, 0, rctx) != UNLANG_ACTION_YIELD) {
+	if (unlang_module_yield(request, mod_authorize_resume, NULL, 0, rctx) == UNLANG_ACTION_FAIL) {
 	error:
 		talloc_free(rctx);
 		RETURN_UNLANG_FAIL;

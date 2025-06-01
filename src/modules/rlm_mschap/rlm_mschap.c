@@ -2305,7 +2305,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 #ifdef WITH_TLS
 			if (mschap_new_pass_decrypt(request, auth_ctx) < 0) RETURN_UNLANG_FAIL;
 
-			if (unlang_module_yield(request, mod_authenticate_resume, NULL, 0, auth_ctx) != UNLANG_ACTION_YIELD) {
+			if (unlang_module_yield(request, mod_authenticate_resume, NULL, 0, auth_ctx) == UNLANG_ACTION_FAIL) {
 				RETURN_UNLANG_FAIL;
 			}
 
@@ -2327,7 +2327,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 			/*
 			 *	Run the resumption function where we're done with:
 			 */
-			if (unlang_module_yield(request, mod_authenticate_resume, NULL, 0, auth_ctx) != UNLANG_ACTION_YIELD) {
+			if (unlang_module_yield(request, mod_authenticate_resume, NULL, 0, auth_ctx) == UNLANG_ACTION_FAIL) {
 				RETURN_UNLANG_FAIL;
 			};
 
