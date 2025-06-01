@@ -56,8 +56,11 @@ static void unlang_subrequest_signal(
 		RDEBUG3("subrequest is cancelled - Not sending signal to child");
 		return;
 
+	case CHILD_RUNNABLE:
+		fr_assert_msg(!unlang_request_is_scheduled(request), "Parent cannot be runnable if child has not completed");
+		break;
+
 	default:
-		fr_assert_msg(unlang_request_is_scheduled(request), "Parent cannot be runnable if child has not completed");
 		break;
 	}
 
