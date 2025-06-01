@@ -50,16 +50,24 @@ static unlang_t function_instruction = {
 	.name = "function",
 	.debug_name = "function",
 	.actions = {
+		/*
+		 *	By default, functions don't change the section rcode.
+		 *	We can't make generalisations about what the intent
+		 *	of the function callbacks are, so isntead of having
+		 *	implicit, confusing behaviour, we always discard the
+		 *	rcode UNLESS the function explicitly sets it.
+		 */
 		.actions = {
-			[RLM_MODULE_REJECT]	= 0,
-			[RLM_MODULE_FAIL]	= 0,
-			[RLM_MODULE_OK]		= 0,
-			[RLM_MODULE_HANDLED]	= 0,
-			[RLM_MODULE_INVALID]	= 0,
-			[RLM_MODULE_DISALLOW]	= 0,
-			[RLM_MODULE_NOTFOUND]	= 0,
-			[RLM_MODULE_NOOP]	= 0,
-			[RLM_MODULE_UPDATED]	= 0
+			[RLM_MODULE_REJECT]	= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_FAIL]	= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_OK]		= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_HANDLED]	= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_INVALID]	= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_DISALLOW]	= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_NOTFOUND]	= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_NOOP]	= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_UPDATED]	= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_TIMEOUT]	= MOD_ACTION_NOT_SET
 		},
 		.retry = RETRY_INIT,
 	}

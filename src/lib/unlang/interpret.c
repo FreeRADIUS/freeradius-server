@@ -455,23 +455,25 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 	 *	This is the field that's evaluated in unlang conditions
 	 *	like `if (ok)`.
 	 */
-	if (frame->instruction && is_rcode_set(frame) && (request->rcode != result->rcode)) {
-		RDEBUG3("Setting request->rcode to '%s'",
-			fr_table_str_by_value(rcode_table, result->rcode, "<INVALID>"));
-		request->rcode = result->rcode;
-	}
+	if (frame->instruction) {
+		if (is_rcode_set(frame) && (request->rcode != result->rcode)) {
+			RDEBUG3("Setting request->rcode to '%s'",
+				fr_table_str_by_value(rcode_table, result->rcode, "<INVALID>"));
+			request->rcode = result->rcode;
+		}
 
-	/*
-	 *	The array holds a default priority for this return
-	 *	code.  Grab it in preference to any unset priority.
-	 */
-	if (result->priority == MOD_ACTION_NOT_SET) {
-		result->priority = instruction->actions.actions[result->rcode];
+		/*
+		*	The array holds a default priority for this return
+		*	code.  Grab it in preference to any unset priority.
+		*/
+		if (result->priority == MOD_ACTION_NOT_SET) {
+			result->priority = instruction->actions.actions[result->rcode];
 
-		RDEBUG4("** [%i] %s - using default instruction priority for %s, %d",
-			stack->depth, __FUNCTION__,
-			fr_table_str_by_value(mod_rcode_table, result->rcode, "<invalid>"),
-			result->priority);
+			RDEBUG4("** [%i] %s - using default instruction priority for %s, %d",
+				stack->depth, __FUNCTION__,
+				fr_table_str_by_value(mod_rcode_table, result->rcode, "<invalid>"),
+				result->priority);
+		}
 	}
 
 	/*
