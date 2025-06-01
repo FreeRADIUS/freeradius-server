@@ -110,6 +110,8 @@ static unlang_action_t process_rcode(rlm_rcode_t *p_result, module_ctx_t const *
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
+	RDEBUG3("Tunneled request complete");
+
 	switch (eap_session->submodule_result.rcode) {
 	case RLM_MODULE_REJECT:
 		eap_tls_fail(request, eap_session);
