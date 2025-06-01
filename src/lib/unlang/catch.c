@@ -68,7 +68,7 @@ static unlang_action_t unlang_catch(UNUSED unlang_result_t *p_result, request_t 
 unlang_action_t unlang_interpret_skip_to_catch(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_t		*unlang;
-	rlm_rcode_t		rcode = unlang_interpret_result(request);
+	rlm_rcode_t		rcode = unlang_interpret_rcode(request);
 
 	fr_assert(frame->instruction->type == UNLANG_TYPE_TRY);
 

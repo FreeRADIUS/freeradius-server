@@ -1513,7 +1513,7 @@ int unlang_interpret_stack_depth(request_t *request)
  * @param[in] request	The current request.
  * @return the current rcode for the frame.
  */
-rlm_rcode_t unlang_interpret_result(request_t *request)
+rlm_rcode_t unlang_interpret_rcode(request_t *request)
 {
 	return frame_current(request)->result_p->rcode;
 }
