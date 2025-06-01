@@ -37,6 +37,9 @@
  *
  * This function will setup a TLS subrequest to run a virtual server section.
  *
+ * @note FIXME - The result of these callback sections are ignored... We may
+ *       want to change this in the future.
+ *
  * @param[out] child		to run as a subrequest of the parent.
  * @param[in] resume		Function to call after the virtual server
  *      			finishes processing the request. uctx will
@@ -71,8 +74,13 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_t resume,
 	 *	Setup a function to execute after the
 	 *	subrequest completes.
 	 */
-	if (unlang_function_push(NULL, child, NULL, resume,
-				 NULL, 0, UNLANG_SUB_FRAME, tls_session) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_function_push(/* discard, the failure of these callbacks does not affect the handshake */NULL,
+				 child,
+				 NULL,
+				 resume,
+				 NULL,
+				 0, UNLANG_SUB_FRAME,
+				 tls_session) < 0) return UNLANG_ACTION_FAIL;
 
 	/*
 	 *	Now the child and parent stacks are both
