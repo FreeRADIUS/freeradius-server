@@ -228,8 +228,12 @@ unlang_action_t rlm_ldap_map_profile(fr_ldap_result_code_t *ret, int *applied,
 	};
 	if (ret) *ret = LDAP_RESULT_ERROR;
 
-	if (unlang_function_push(NULL, request, NULL, ldap_map_profile_resume, ldap_map_profile_cancel,
-				 ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, profile_ctx) < 0) {
+	if (unlang_function_push(/* discard, ldap_map_profile_resume doesn't appear to return an rcode */ NULL,
+				 request,
+				 NULL,
+				 ldap_map_profile_resume,
+				 ldap_map_profile_cancel, ~FR_SIGNAL_CANCEL,
+				 UNLANG_SUB_FRAME, profile_ctx) < 0) {
 		talloc_free(profile_ctx);
 		return UNLANG_ACTION_FAIL;
 	}

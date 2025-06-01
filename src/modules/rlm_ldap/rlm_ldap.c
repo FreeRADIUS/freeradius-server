@@ -1118,9 +1118,13 @@ static xlat_action_t ldap_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ct
 
 	if (unlang_xlat_yield(request, ldap_group_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) goto error;
 
-	if (unlang_function_push(NULL, request, xlat_ctx->dn ? NULL : ldap_group_xlat_user_find,
-				 ldap_group_xlat_results, ldap_group_xlat_cancel, ~FR_SIGNAL_CANCEL,
-				 UNLANG_SUB_FRAME, xlat_ctx) < 0) goto error;
+	if (unlang_function_push(/* discard, ldap_group_xlat_resume just looks at xlat_ctx to see if things succeeded */ NULL,
+				 request,
+				 xlat_ctx->dn ? NULL : ldap_group_xlat_user_find,
+				 ldap_group_xlat_results,
+				 ldap_group_xlat_cancel, ~FR_SIGNAL_CANCEL,
+				 UNLANG_SUB_FRAME,
+				 xlat_ctx) < 0) goto error;
 
 	return XLAT_ACTION_PUSH_UNLANG;
 }
