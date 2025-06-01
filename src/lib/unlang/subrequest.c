@@ -425,8 +425,7 @@ unlang_action_t unlang_subrequest_child_run(UNUSED unlang_result_t *p_result, UN
  *	- -1 on failure.
  */
 
-int unlang_subrequest_child_push(request_t *child,
-				 unlang_result_t *p_result, void const *unique_session_ptr, bool free_child, bool top_frame)
+int unlang_subrequest_child_push(unlang_result_t *p_result, request_t *child, void const *unique_session_ptr, bool free_child, bool top_frame)
 {
 	unlang_child_request_t	*cr;
 	unlang_stack_frame_t	*frame;

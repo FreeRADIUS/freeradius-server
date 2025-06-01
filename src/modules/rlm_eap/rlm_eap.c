@@ -826,7 +826,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 	 *	This must be done before pushing frames onto
 	 *	the child's stack.
 	 */
-	if (unlang_subrequest_child_push(eap_session->subrequest, &eap_session->submodule_result,
+	if (unlang_subrequest_child_push(&eap_session->submodule_result, eap_session->subrequest,
 					 eap_session,
 					 false, UNLANG_SUB_FRAME) < 0) {
 	child_fail:
