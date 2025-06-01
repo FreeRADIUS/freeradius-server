@@ -840,7 +840,7 @@ int		fr_ldap_conn_directory_alloc_async(fr_ldap_connection_t *ldap_conn);
 /*
  *	edir.c - Edirectory integrations
  */
-unlang_action_t	fr_ldap_edir_get_password(request_t *request, char const *dn,
+unlang_action_t	fr_ldap_edir_get_password(unlang_result_t *p_result, request_t *request, char const *dn,
 					  fr_ldap_thread_trunk_t *ttrunk, fr_dict_attr_t const *password_da);
 
 char const	*fr_ldap_edir_errstr(int code);
@@ -912,7 +912,8 @@ int		fr_ldap_sasl_bind_auth_send(fr_ldap_sasl_ctx_t *sasl_ctx,
 					    int *msgid,
 					    fr_ldap_connection_t *ldap_conn);
 
-unlang_action_t	fr_ldap_sasl_bind_auth_async(request_t *request,
+unlang_action_t	fr_ldap_sasl_bind_auth_async(unlang_result_t *p_result,
+					     request_t *request,
 					     fr_ldap_thread_t *thread,
 					     char const *mechs,
 					     char const *identity,

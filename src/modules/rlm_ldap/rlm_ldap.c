@@ -1585,10 +1585,10 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 #ifdef WITH_SASL
 		RDEBUG2("Login attempt using identity \"%pV\"", &call_env->user_sasl_authname);
 
-		return fr_ldap_sasl_bind_auth_async(request, auth_ctx->thread, call_env->user_sasl_mech.vb_strvalue,
-						 call_env->user_sasl_authname.vb_strvalue,
-						 auth_ctx->password, call_env->user_sasl_proxy.vb_strvalue,
-						 call_env->user_sasl_realm.vb_strvalue);
+		return fr_ldap_sasl_bind_auth_async(p_result, request, auth_ctx->thread, call_env->user_sasl_mech.vb_strvalue,
+						    call_env->user_sasl_authname.vb_strvalue,
+						    auth_ctx->password, call_env->user_sasl_proxy.vb_strvalue,
+						    call_env->user_sasl_realm.vb_strvalue);
 #else
 		RDEBUG("Configuration item 'sasl.mech' is not supported.  "
 		       "The linked version of libldap does not provide ldap_sasl_bind( function");
@@ -1734,7 +1734,7 @@ static unlang_action_t mod_authorize_resume(unlang_result_t *p_result, request_t
 			 */
 			REPEAT_MOD_AUTHORIZE_RESUME;
 			autz_ctx->status = LDAP_AUTZ_EDIR_BIND;
-			return fr_ldap_edir_get_password(request, autz_ctx->dn, autz_ctx->ttrunk,
+			return fr_ldap_edir_get_password(p_result, request, autz_ctx->dn, autz_ctx->ttrunk,
 							 attr_cleartext_password);
 		}
 		FALL_THROUGH;
