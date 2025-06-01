@@ -455,25 +455,23 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 	 *	This is the field that's evaluated in unlang conditions
 	 *	like `if (ok)`.
 	 */
-	if (frame->instruction) {
-		if (is_rcode_set(frame) && (request->rcode != result->rcode)) {
-			RDEBUG3("Setting request->rcode to '%s'",
-				fr_table_str_by_value(rcode_table, result->rcode, "<INVALID>"));
-			request->rcode = result->rcode;
-		}
+	if (is_rcode_set(frame) && (request->rcode != result->rcode)) {
+		RDEBUG3("Setting request->rcode to '%s'",
+			fr_table_str_by_value(rcode_table, result->rcode, "<INVALID>"));
+		request->rcode = result->rcode;
+	}
 
-		/*
-		*	The array holds a default priority for this return
-		*	code.  Grab it in preference to any unset priority.
-		*/
-		if (result->priority == MOD_ACTION_NOT_SET) {
-			result->priority = instruction->actions.actions[result->rcode];
+	/*
+	*	The array holds a default priority for this return
+	*	code.  Grab it in preference to any unset priority.
+	*/
+	if (result->priority == MOD_ACTION_NOT_SET) {
+		result->priority = instruction->actions.actions[result->rcode];
 
-			RDEBUG4("** [%i] %s - using default instruction priority for %s, %d",
-				stack->depth, __FUNCTION__,
-				fr_table_str_by_value(mod_rcode_table, result->rcode, "<invalid>"),
-				result->priority);
-		}
+		RDEBUG4("** [%i] %s - using default instruction priority for %s, %d",
+			stack->depth, __FUNCTION__,
+			fr_table_str_by_value(mod_rcode_table, result->rcode, "<invalid>"),
+			result->priority);
 	}
 
 	/*
@@ -1170,6 +1168,36 @@ int unlang_interpret_push_instruction(unlang_result_t *p_result, request_t *requ
  */
 void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
 {
+	/*
+	 *	Should never be evaluated, is just here to reduce
+	 *	branches, so we don't need to check for frame->instruction.
+	 */
+	static unlang_t unlang_instruction = {
+		.debug_name = "top",
+		.actions = {
+			/*
+			*	By default, functions don't change the section rcode.
+			*	We can't make generalisations about what the intent
+			*	of the function callbacks are, so isntead of having
+			*	implicit, confusing behaviour, we always discard the
+			*	rcode UNLESS the function explicitly sets it.
+			*/
+			.actions = {
+				[RLM_MODULE_REJECT]	= MOD_ACTION_NOT_SET,
+				[RLM_MODULE_FAIL]	= MOD_ACTION_NOT_SET,
+				[RLM_MODULE_OK]		= MOD_ACTION_NOT_SET,
+				[RLM_MODULE_HANDLED]	= MOD_ACTION_NOT_SET,
+				[RLM_MODULE_INVALID]	= MOD_ACTION_NOT_SET,
+				[RLM_MODULE_DISALLOW]	= MOD_ACTION_NOT_SET,
+				[RLM_MODULE_NOTFOUND]	= MOD_ACTION_NOT_SET,
+				[RLM_MODULE_NOOP]	= MOD_ACTION_NOT_SET,
+				[RLM_MODULE_UPDATED]	= MOD_ACTION_NOT_SET,
+				[RLM_MODULE_TIMEOUT]	= MOD_ACTION_NOT_SET
+			},
+			.retry = RETRY_INIT
+		}
+	};
+
 	unlang_stack_t *stack;
 
 	/*
@@ -1191,6 +1219,7 @@ void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
 	stack->frame[0].scratch_result.priority = MOD_ACTION_NOT_SET;
 	stack->frame[0].section_result.rcode = RLM_MODULE_NOT_SET;
 	stack->frame[0].section_result.priority = MOD_ACTION_NOT_SET;
+	stack->frame[0].instruction = &unlang_instruction;	/* The top frame has no instruction, so we use a dummy one */
 
 	return stack;
 }
