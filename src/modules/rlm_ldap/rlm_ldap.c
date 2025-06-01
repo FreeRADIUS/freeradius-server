@@ -941,7 +941,10 @@ static unlang_action_t ldap_group_xlat_user_find(UNUSED unlang_result_t *p_resul
 
 	xlat_ctx->basedn = &xlat_ctx->env_data->user_base;
 
-	return rlm_ldap_find_user_async(xlat_ctx, xlat_ctx->inst, request, xlat_ctx->basedn, xlat_ctx->filter,
+	return rlm_ldap_find_user_async(xlat_ctx,
+					/* discard, only used by xlats */NULL,
+					xlat_ctx->inst, request,
+					xlat_ctx->basedn, xlat_ctx->filter,
 					xlat_ctx->ttrunk, xlat_ctx->attrs, &xlat_ctx->query);
 }
 
@@ -1037,7 +1040,7 @@ static xlat_arg_parser_t const ldap_group_xlat_arg[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t ldap_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
-	 				request_t *request, fr_value_box_list_t *in)
+	 			     request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t			*vb = NULL, *group_vb = fr_value_box_list_pop_head(in);
 	rlm_ldap_t const		*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_ldap_t);
@@ -1140,7 +1143,7 @@ typedef struct {
  *
  */
 static xlat_action_t ldap_profile_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
-					    UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+					      UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	ldap_xlat_profile_ctx_t		*xlat_ctx = talloc_get_type_abort(xctx->rctx, ldap_xlat_profile_ctx_t);
 	fr_value_box_t			*vb;
@@ -1631,7 +1634,21 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 	int			ldap_errno;
 	LDAP			*handle = fr_ldap_handle_thread_local();
 
-	p_result->rcode = RLM_MODULE_OK;
+	/*
+	 *	If a previous async call returned one of the "failure" results just return.
+	 */
+	switch (p_result->rcode) {
+	case RLM_MODULE_REJECT:
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_HANDLED:
+	case RLM_MODULE_INVALID:
+	case RLM_MODULE_DISALLOW:
+		goto finish;
+
+	default:
+		p_result->rcode = RLM_MODULE_OK;
+		break;
+	}
 
 	switch (autz_ctx->status) {
 	case LDAP_AUTZ_FIND:
@@ -1973,7 +1990,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 		RETURN_UNLANG_FAIL;
 	}
 
-	return rlm_ldap_find_user_async(autz_ctx, autz_ctx->inst, request, &autz_ctx->call_env->user_base,
+	return rlm_ldap_find_user_async(autz_ctx, p_result,
+					autz_ctx->inst, request, &autz_ctx->call_env->user_base,
 					&autz_ctx->call_env->user_filter, autz_ctx->ttrunk, autz_ctx->expanded.attrs,
 					&autz_ctx->query);
 }
@@ -2240,7 +2258,9 @@ static unlang_action_t CC_HINT(nonnull) mod_modify(unlang_result_t *p_result, mo
 	 */
 	if (!usermod_ctx->dn) {
 		/* Pushes a frame for user resolution */
-		if (rlm_ldap_find_user_async(usermod_ctx, usermod_ctx->inst, request,
+		if (rlm_ldap_find_user_async(usermod_ctx,
+					     p_result,
+					     usermod_ctx->inst, request,
 					     &usermod_ctx->call_env->user_base,
 					     &usermod_ctx->call_env->user_filter,
 					     usermod_ctx->ttrunk, NULL, NULL) == UNLANG_ACTION_FAIL) {
