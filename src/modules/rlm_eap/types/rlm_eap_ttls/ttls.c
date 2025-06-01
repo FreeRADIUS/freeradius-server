@@ -627,7 +627,6 @@ unlang_action_t eap_ttls_success(unlang_result_t *p_result, request_t *request, 
 	return fr_tls_cache_pending_push(request, tls_session);
 }
 
-
 /*
  *	Process the "diameter" contents of the tunneled data.
  */
@@ -757,7 +756,14 @@ unlang_action_t eap_ttls_process(unlang_result_t *p_result, request_t *request, 
 		if (chbind_code != FR_RADIUS_CODE_ACCESS_ACCEPT) return UNLANG_ACTION_FAIL;
 	}
 
-	(void) unlang_module_yield(request, process_reply, NULL, 0, eap_session);
+	/*
+	 *	For this round, when the virtual server returns
+	 *	we run the process reply function.
+	 */
+	if (unlikely(unlang_module_yield(request, process_reply, NULL, 0, eap_session) != UNLANG_ACTION_YIELD)) {
+		return UNLANG_ACTION_FAIL;
+	}
+
 	/*
 	 *	Call authentication recursively, which will
 	 *	do PAP, CHAP, MS-CHAP, etc.
