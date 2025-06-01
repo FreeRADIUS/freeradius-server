@@ -557,7 +557,6 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	char const		*p;
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	fr_sql_query_t		*query_ctx = NULL;
-	unlang_result_t		p_result;
 	unlang_action_t		query_ret = UNLANG_ACTION_CALCULATE_RESULT;
 
 	if (call_env->filename.type == FR_TYPE_STRING && call_env->filename.vb_length > 0) {
@@ -582,7 +581,9 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 						   thread->trunk, arg->vb_strvalue, SQL_QUERY_OTHER));
 
 		unlang_xlat_yield(request, sql_xlat_query_resume, NULL, 0, query_ctx);
-		query_ret = inst->query(&p_result, request, query_ctx);
+
+		/* Modify current frame's rcode directly */
+		query_ret = inst->query(unlang_interpret_result(request), request, query_ctx);
 		if (query_ret == UNLANG_ACTION_PUSHED_CHILD) return XLAT_ACTION_PUSH_UNLANG;
 
 		return sql_xlat_query_resume(ctx, out, &(xlat_ctx_t){.rctx = query_ctx, .inst = inst}, request, in);
@@ -652,7 +653,6 @@ static xlat_action_t sql_modify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ct
 	rlm_sql_thread_t	*thread = talloc_get_type_abort(xctx->mctx->thread, rlm_sql_thread_t);
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	fr_sql_query_t		*query_ctx = NULL;
-	unlang_result_t		p_result;
 
 	if (call_env->filename.type == FR_TYPE_STRING && call_env->filename.vb_length > 0) {
 		rlm_sql_query_log(inst, call_env->filename.vb_strvalue, arg->vb_strvalue);
@@ -662,7 +662,8 @@ static xlat_action_t sql_modify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ct
 					   thread->trunk, arg->vb_strvalue, SQL_QUERY_OTHER));
 
 	unlang_xlat_yield(request, sql_xlat_query_resume, NULL, 0, query_ctx);
-	if (inst->query(&p_result, request, query_ctx) == UNLANG_ACTION_PUSHED_CHILD) return XLAT_ACTION_PUSH_UNLANG;
+	/* Write out the result directly to this frame's rcode */
+	if (inst->query(unlang_interpret_result(request), request, query_ctx) == UNLANG_ACTION_PUSHED_CHILD) return XLAT_ACTION_PUSH_UNLANG;
 
 	return sql_xlat_query_resume(ctx, out, &(xlat_ctx_t){.rctx = query_ctx, .inst = inst}, request, in);
 }
