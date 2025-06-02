@@ -2258,6 +2258,11 @@ static unlang_action_t CC_HINT(nonnull) mod_modify(unlang_result_t *p_result, mo
 	 *	Find the user first
 	 */
 	if (!usermod_ctx->dn) {
+		if (unlang_module_yield(request, user_modify_resume, NULL, 0, usermod_ctx) == UNLANG_ACTION_FAIL) {
+			talloc_free(usermod_ctx);
+			RETURN_UNLANG_FAIL;
+		}
+
 		/* Pushes a frame for user resolution */
 		if (rlm_ldap_find_user_async(usermod_ctx,
 					     p_result,
@@ -2265,11 +2270,6 @@ static unlang_action_t CC_HINT(nonnull) mod_modify(unlang_result_t *p_result, mo
 					     &usermod_ctx->call_env->user_base,
 					     &usermod_ctx->call_env->user_filter,
 					     usermod_ctx->ttrunk, NULL, NULL) == UNLANG_ACTION_FAIL) {
-			RETURN_UNLANG_FAIL;
-		}
-
-		if (unlang_module_yield(request, user_modify_resume, NULL, 0, usermod_ctx) == UNLANG_ACTION_FAIL) {
-			talloc_free(usermod_ctx);
 			RETURN_UNLANG_FAIL;
 		}
 
