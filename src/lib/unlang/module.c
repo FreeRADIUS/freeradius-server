@@ -436,7 +436,7 @@ unlang_action_t unlang_module_yield(request_t *request,
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+	unlang_frame_state_module_t	*state;
 
 	REQUEST_VERIFY(request);	/* Check the yielded request is sane */
 
@@ -444,6 +444,8 @@ unlang_action_t unlang_module_yield(request_t *request,
 		fr_assert_msg(0, "unlang_module_yield called on a non-module frame");
 		return UNLANG_ACTION_FAIL;
 	}
+
+	state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
 	state->rctx = rctx;
 	state->resume = resume;
