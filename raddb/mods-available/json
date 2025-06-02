@@ -80,6 +80,17 @@ json {
 #			enum_as_integer = no
 
 			#
+			#  dates_as_integer:: output dates as seconds since the
+			#  epoch
+			#
+			#  Where an attribute is a date, the textual
+			#  representation of the date will normally be output.
+			#  Enable this option to force the date to be rendered
+			#  as seconds since the epoch instead.
+			#
+#			dates_as_integer = no
+
+			#
 			#  always_string:: force all values to be strings
 			#
 			#  Integer values are normally written to the JSON

@@ -63,9 +63,10 @@ void json_object_put_assert(json_object *obj)
  * @param[in] vp VALUE_PAIR to convert.
  * @param[in] always_string create all values as strings
  * @param[in] enum_as_int output enum attribute values as integers not strings
+ * @param[in] dates_as_int output date values as seconds since the epoch
  * @return Newly allocated JSON object, or NULL on error
  */
-json_object *json_object_from_attr_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool always_string, bool enum_as_int)
+json_object *json_object_from_attr_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool always_string, bool enum_as_int, bool dates_as_int)
 {
 	char buf[2048];
 	ssize_t len;
@@ -107,6 +108,11 @@ json_object *json_object_from_attr_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, 
 		}
 	}
 
+	/*
+	 *  We handle dates as epoch seconds here and dates as strings later.
+	 */
+	if (vp->da->type == PW_TYPE_DATE && dates_as_int)
+		return json_object_new_int(vp->vp_date);
 
 	/*
 	 *  If always_string is set then we print everything to a string and
@@ -229,7 +235,7 @@ static int json_afrom_value_pair(TALLOC_CTX *ctx, json_object **out,
 	fr_assert(vp);
 	fr_assert(inst);
 
-	MEM(obj = json_object_from_attr_value(ctx, vp, inst->always_string, inst->enum_as_int));
+	MEM(obj = json_object_from_attr_value(ctx, vp, inst->always_string, inst->enum_as_int, inst->dates_as_int));
 
 	*out = obj;
 	return is_enum;
@@ -300,6 +306,10 @@ bool fr_json_format_verify(rlm_json_t const *inst, bool verbose)
 		}
 		if (inst->enum_as_int) {
 			if (verbose) WARN("'enum_as_int' not valid in output_mode 'array_of_names' and will be ignored");
+			ret = false;
+		}
+		if (inst->dates_as_int) {
+			if (verbose) WARN("'dates_as_int' not valid in output_mode 'array_of_names' and will be ignored");
 			ret = false;
 		}
 		if (inst->always_string) {

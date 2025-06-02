@@ -6,6 +6,7 @@ Filter-Id = "f1"
 Filter-Id += "f2"
 NAS-Port = 999
 Service-Type = Login-User
+Event-Timestamp = 1234
 
 #
 #  Expected answer
