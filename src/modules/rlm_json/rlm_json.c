@@ -48,6 +48,7 @@ static CONF_PARSER const json_format_attr_config[] = {
 static CONF_PARSER const json_format_value_config[] = {
 	{ "single_value_as_array", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_json_t, value_as_array), "no" },
 	{ "enum_as_integer", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_json_t, enum_as_int), "no" },
+	{ "dates_as_integer", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_json_t, dates_as_int), "no" },
 	{ "always_string", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_json_t, always_string), "no" },
 
 	CONF_PARSER_TERMINATOR

@@ -18,7 +18,7 @@ update control {
 }
 
 
-if (&control:Tmp-String-1 != '{"User-Name":{"type":"string","value":"john"},"Filter-Id":{"type":"string","value":["f1","f2"]},"NAS-Port":{"type":"integer","value":999},"Service-Type":{"type":"integer","value":"Login-User"}}') {
+if (&control:Tmp-String-1 != '{"User-Name":{"type":"string","value":"john"},"Filter-Id":{"type":"string","value":["f1","f2"]},"NAS-Port":{"type":"integer","value":999},"Service-Type":{"type":"integer","value":"Login-User"},"Event-Timestamp":{"type":"date","value":"Jan  1 1970 00:20:34 UTC"}}') {
 	test_fail
 }
 
@@ -35,7 +35,7 @@ if (&control:Tmp-String-1 != &control:Tmp-String-7 || \
 	test_fail
 }
 
-if (&control:Tmp-String-5 != '{"User-Name":{"type":"string","value":"john"},"NAS-Port":{"type":"integer","value":999},"Service-Type":{"type":"integer","value":"Login-User"}}') {
+if (&control:Tmp-String-5 != '{"User-Name":{"type":"string","value":"john"},"NAS-Port":{"type":"integer","value":999},"Service-Type":{"type":"integer","value":"Login-User"},"Event-Timestamp":{"type":"date","value":"Jan  1 1970 00:20:34 UTC"}}') {
 	test_fail
 }
 
@@ -65,11 +65,11 @@ update control {
 	&Tmp-String-2 := "%{json_object_ex_encode:&request:[*]}"
 }
 
-if (&control:Tmp-String-1 != '{"User-Name":{"type":"string","value":"john"},"Filter-Id":{"type":"string","value":["f1","f2"]},"NAS-Port":{"type":"integer","value":999},"Service-Type":{"type":"integer","value":"Login-User"}}') {
+if (&control:Tmp-String-1 != '{"User-Name":{"type":"string","value":"john"},"Filter-Id":{"type":"string","value":["f1","f2"]},"NAS-Port":{"type":"integer","value":999},"Service-Type":{"type":"integer","value":"Login-User"},"Event-Timestamp":{"type":"date","value":"Jan  1 1970 00:20:34 UTC"}}') {
 	test_fail
 }
 
-if (&control:Tmp-String-2 != '{"pf:User-Name":{"type":"string","value":["john"]},"pf:Filter-Id":{"type":"string","value":["f1","f2"]},"pf:NAS-Port":{"type":"integer","value":["999"]},"pf:Service-Type":{"type":"integer","value":["1"]}}') {
+if (&control:Tmp-String-2 != '{"pf:User-Name":{"type":"string","value":["john"]},"pf:Filter-Id":{"type":"string","value":["f1","f2"]},"pf:NAS-Port":{"type":"integer","value":["999"]},"pf:Service-Type":{"type":"integer","value":["1"]},"pf:Event-Timestamp":{"type":"date","value":[1234]}}') {
 	test_fail
 }
 
@@ -97,11 +97,11 @@ update control {
 	&Tmp-String-2 := "%{json_object_simple_ex_encode:&request:[*]}"
 }
 
-if (&control:Tmp-String-1 != '{"User-Name":"john","Filter-Id":["f1","f2"],"NAS-Port":999,"Service-Type":"Login-User"}') {
+if (&control:Tmp-String-1 != '{"User-Name":"john","Filter-Id":["f1","f2"],"NAS-Port":999,"Service-Type":"Login-User","Event-Timestamp":"Jan  1 1970 00:20:34 UTC"}') {
 	test_fail
 }
 
-if (&control:Tmp-String-2 != '{"pf:User-Name":["john"],"pf:Filter-Id":["f1","f2"],"pf:NAS-Port":["999"],"pf:Service-Type":["1"]}') {
+if (&control:Tmp-String-2 != '{"pf:User-Name":["john"],"pf:Filter-Id":["f1","f2"],"pf:NAS-Port":["999"],"pf:Service-Type":["1"],"pf:Event-Timestamp":[1234]}') {
 	test_fail
 }
 
@@ -129,11 +129,11 @@ update control {
 	&Tmp-String-2 := "%{json_array_ex_encode:&request:[*]}"
 }
 
-if (&control:Tmp-String-1 != '[{"name":"User-Name","type":"string","value":"john"},{"name":"Filter-Id","type":"string","value":"f1"},{"name":"Filter-Id","type":"string","value":"f2"},{"name":"NAS-Port","type":"integer","value":999},{"name":"Service-Type","type":"integer","value":"Login-User"}]') {
+if (&control:Tmp-String-1 != '[{"name":"User-Name","type":"string","value":"john"},{"name":"Filter-Id","type":"string","value":"f1"},{"name":"Filter-Id","type":"string","value":"f2"},{"name":"NAS-Port","type":"integer","value":999},{"name":"Service-Type","type":"integer","value":"Login-User"},{"name":"Event-Timestamp","type":"date","value":"Jan  1 1970 00:20:34 UTC"}]') {
 	test_fail
 }
 
-if (&control:Tmp-String-2 != '[{"name":"pf:User-Name","type":"string","value":["john"]},{"name":"pf:Filter-Id","type":"string","value":["f1","f2"]},{"name":"pf:NAS-Port","type":"integer","value":["999"]},{"name":"pf:Service-Type","type":"integer","value":["1"]}]') {
+if (&control:Tmp-String-2 != '[{"name":"pf:User-Name","type":"string","value":["john"]},{"name":"pf:Filter-Id","type":"string","value":["f1","f2"]},{"name":"pf:NAS-Port","type":"integer","value":["999"]},{"name":"pf:Service-Type","type":"integer","value":["1"]},{"name":"pf:Event-Timestamp","type":"date","value":[1234]}]') {
 	test_fail
 }
 
@@ -161,11 +161,11 @@ update control {
 	&Tmp-String-2 := "%{json_array_names_ex_encode:&request:[*]}"
 }
 
-if (&control:Tmp-String-1 != '["User-Name","Filter-Id","Filter-Id","NAS-Port","Service-Type"]') {
+if (&control:Tmp-String-1 != '["User-Name","Filter-Id","Filter-Id","NAS-Port","Service-Type","Event-Timestamp"]') {
 	test_fail
 }
 
-if (&control:Tmp-String-2 != '["pf:User-Name","pf:Filter-Id","pf:Filter-Id","pf:NAS-Port","pf:Service-Type"]') {
+if (&control:Tmp-String-2 != '["pf:User-Name","pf:Filter-Id","pf:Filter-Id","pf:NAS-Port","pf:Service-Type","pf:Event-Timestamp"]') {
 	test_fail
 }
 
@@ -193,11 +193,11 @@ update control {
 	&Tmp-String-2 := "%{json_array_values_ex_encode:&request:[*]}"
 }
 
-if (&control:Tmp-String-1 != '["john","f1","f2",999,"Login-User"]') {
+if (&control:Tmp-String-1 != '["john","f1","f2",999,"Login-User","Jan  1 1970 00:20:34 UTC"]') {
 	test_fail
 }
 
-if (&control:Tmp-String-2 != '["john","f1","f2","999","1"]') {
+if (&control:Tmp-String-2 != '["john","f1","f2","999","1",1234]') {
 	test_fail
 }
 

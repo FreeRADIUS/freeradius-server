@@ -78,6 +78,7 @@ typedef struct {
 	char const		*attr_prefix;	//!< Prefix to add to all attribute names
 	bool			value_as_array;	//!< Use JSON array for multiple attribute values.
 	bool			enum_as_int;	//!< Output enums as value, not their string representation.
+	bool			dates_as_int;	//!< Output dates as epoch seconds, not their string representation.
 	bool			always_string;	//!< Output all data types as strings.
 
 
@@ -90,7 +91,7 @@ typedef struct {
 } rlm_json_t;
 
 
-json_object	*json_object_from_attr_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool always_string, bool enum_as_int);
+json_object	*json_object_from_attr_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool always_string, bool enum_as_int, bool dates_as_int);
 void		fr_json_version_print(void);
 char		*fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR *vps,
 					 rlm_json_t const *format);
