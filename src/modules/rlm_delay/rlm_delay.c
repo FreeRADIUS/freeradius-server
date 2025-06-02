@@ -126,7 +126,7 @@ static int delay_add(request_t *request, fr_time_t *resume_at, fr_time_t now,
 static unlang_action_t mod_delay_return(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_delay_retry_t *yielded = talloc_get_type_abort(mctx->rctx, rlm_delay_retry_t);
-	rlm_delay_t *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_delay_t);
+	rlm_delay_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_delay_t);
 
 	/*
 	 *	Print how long the delay *really* was.
