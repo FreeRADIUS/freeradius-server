@@ -120,14 +120,14 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_lua_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_lua_t);
-	rlm_rcode_t ret = 0;
+	unlang_result_t result;
 
 	/*
 	 *	May be NULL if fr_lua_init failed
 	 */
 	if (inst->interpreter) {
 		if (inst->func_detach) {
-			fr_lua_run(&ret,
+			fr_lua_run(&result,
 				   MODULE_CTX(mctx->mi,
 					      &(rlm_lua_thread_t){
 							.interpreter = inst->interpreter
@@ -138,7 +138,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 		lua_close(inst->interpreter);
 	}
 
-	return ret;
+	return 0;
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
@@ -148,7 +148,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	fr_rb_iter_inorder_t	iter;
 	CONF_PAIR		*cp;
 	char			*pair_name;
-	rlm_rcode_t		rcode;
+	unlang_result_t		result;
 
 	/*
 	 *	Get an instance global interpreter to use with various things...
@@ -208,7 +208,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	if (inst->func_instantiate) {
-		fr_lua_run(&rcode,
+		fr_lua_run(&result,
 			   MODULE_CTX(mctx->mi,
 			   	      &(rlm_lua_thread_t){
 						.interpreter = inst->interpreter
