@@ -52,11 +52,11 @@ endef
 $(BUILD_DIR)/tests/modules/%: src/tests/modules/%.unlang $(BUILD_DIR)/tests/modules/%.attrs $(TESTBINDIR)/unittest | build.raddb
 	@mkdir -p $(dir $@)
 	@echo MODULE-TEST $(lastword $(subst /, ,$(dir $@))) $(basename $(notdir $@))
-	@if ! MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TESTBIN)/unittest -D share -d src/tests/modules/ -i $@.attrs -f $@.attrs -xxx > $@.log 2>&1; then \
+	@if ! LANG=C TZ=UTC MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TESTBIN)/unittest -D share -d src/tests/modules/ -i $@.attrs -f $@.attrs -xxx > $@.log 2>&1; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TESTBIN)/unittest -D share -d src/tests/modules/ -i $@.attrs -f $@.attrs -xx; \
+			echo LANG=C TZ=UTC MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TESTBIN)/unittest -D share -d src/tests/modules/ -i $@.attrs -f $@.attrs -xx; \
 			exit 1; \
 		fi; \
 		FOUND=$$(grep ^$< $@.log | head -1 | sed 's/:.*//;s/.*\[//;s/\].*//'); \
@@ -64,7 +64,7 @@ $(BUILD_DIR)/tests/modules/%: src/tests/modules/%.unlang $(BUILD_DIR)/tests/modu
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TESTBIN)/unittest -D share -d src/tests/modules/ -i $@.attrs -f $@.attrs -xx; \
+			echo LANG=C TZ=UTC MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TESTBIN)/unittest -D share -d src/tests/modules/ -i $@.attrs -f $@.attrs -xx; \
 			exit 1; \
 		fi \
 	fi
