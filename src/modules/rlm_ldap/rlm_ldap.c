@@ -942,7 +942,7 @@ static unlang_action_t ldap_group_xlat_user_find(UNUSED unlang_result_t *p_resul
 	xlat_ctx->basedn = &xlat_ctx->env_data->user_base;
 
 	return rlm_ldap_find_user_async(xlat_ctx,
-					/* discard, only used by xlats */NULL,
+					/* discard, this function is only used by xlats */NULL,
 					xlat_ctx->inst, request,
 					xlat_ctx->basedn, xlat_ctx->filter,
 					xlat_ctx->ttrunk, xlat_ctx->attrs, &xlat_ctx->query);
@@ -962,19 +962,24 @@ static void ldap_group_xlat_cancel(UNUSED request_t *request, UNUSED fr_signal_t
 
 #define REPEAT_LDAP_MEMBEROF_XLAT_RESULTS \
 	if (unlang_function_repeat_set(request, ldap_group_xlat_results) < 0) do { \
-		result.rcode = RLM_MODULE_FAIL; \
-		goto finish; \
+		RETURN_UNLANG_FAIL; \
 	} while (0)
 
 /** Run the state machine for the LDAP membership xlat
  *
  * This is called after each async lookup is completed
+ *
+ * Will stop early, and set p_result to unlang_result
  */
 static unlang_action_t ldap_group_xlat_results(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_group_xlat_ctx_t		*xlat_ctx = talloc_get_type_abort(uctx, ldap_group_xlat_ctx_t);
 	rlm_ldap_t const		*inst = xlat_ctx->inst;
-	unlang_result_t			result = { .rcode = RLM_MODULE_NOTFOUND };
+
+	/*
+	 *	Check to see if rlm_ldap_check_groupobj_dynamic or rlm_ldap_check_userobj_dynamic failed
+	 */
+	if (p_result->rcode == RLM_MODULE_FAIL) return UNLANG_ACTION_CALCULATE_RESULT;
 
 	switch (xlat_ctx->status) {
 	case GROUP_XLAT_FIND_USER:
@@ -983,7 +988,7 @@ static unlang_action_t ldap_group_xlat_results(unlang_result_t *p_result, reques
 
 		if (inst->group.obj_membership_filter) {
 			REPEAT_LDAP_MEMBEROF_XLAT_RESULTS;
-			if (rlm_ldap_check_groupobj_dynamic(&result, request, xlat_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
+			if (rlm_ldap_check_groupobj_dynamic(p_result, request, xlat_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
 				xlat_ctx->status = GROUP_XLAT_MEMB_FILTER;
 				return UNLANG_ACTION_PUSHED_CHILD;
 			}
@@ -991,14 +996,11 @@ static unlang_action_t ldap_group_xlat_results(unlang_result_t *p_result, reques
 		FALL_THROUGH;
 
 	case GROUP_XLAT_MEMB_FILTER:
-		if (xlat_ctx->found) {
-			result.rcode = RLM_MODULE_OK;
-			goto finish;
-		}
+		if (xlat_ctx->found) RETURN_UNLANG_OK;
 
 		if (inst->group.userobj_membership_attr) {
 			REPEAT_LDAP_MEMBEROF_XLAT_RESULTS;
-			if (rlm_ldap_check_userobj_dynamic(&result, request, xlat_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
+			if (rlm_ldap_check_userobj_dynamic(p_result, request, xlat_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
 				xlat_ctx->status = GROUP_XLAT_MEMB_ATTR;
 				return UNLANG_ACTION_PUSHED_CHILD;
 			}
@@ -1006,12 +1008,11 @@ static unlang_action_t ldap_group_xlat_results(unlang_result_t *p_result, reques
 		FALL_THROUGH;
 
 	case GROUP_XLAT_MEMB_ATTR:
-		if (xlat_ctx->found) result.rcode = RLM_MODULE_OK;
+		if (xlat_ctx->found) RETURN_UNLANG_OK;
 		break;
 	}
 
-finish:
-	RETURN_UNLANG_RCODE(result.rcode);
+	RETURN_UNLANG_NOTFOUND;
 }
 
 /** Process the results of evaluating LDAP group membership
@@ -1021,7 +1022,7 @@ static xlat_action_t ldap_group_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, 
 					    UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	ldap_group_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(xctx->rctx, ldap_group_xlat_ctx_t);
-	fr_value_box_t			*vb;
+	fr_value_box_t		*vb;
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
 	vb->vb_bool = xlat_ctx->found;
@@ -1121,13 +1122,13 @@ static xlat_action_t ldap_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ct
 
 	if (unlang_xlat_yield(request, ldap_group_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) goto error;
 
-	if (unlang_function_push(/* discard, ldap_group_xlat_resume just looks at xlat_ctx to see if things succeeded */ NULL,
-				 request,
-				 xlat_ctx->dn ? NULL : ldap_group_xlat_user_find,
-				 ldap_group_xlat_results,
-				 ldap_group_xlat_cancel, ~FR_SIGNAL_CANCEL,
-				 UNLANG_SUB_FRAME,
-				 xlat_ctx) < 0) goto error;
+	if (unlang_function_push_with_result(NULL,
+					     request,
+					     xlat_ctx->dn ? NULL : ldap_group_xlat_user_find,
+					     ldap_group_xlat_results,
+					     ldap_group_xlat_cancel, ~FR_SIGNAL_CANCEL,
+					     UNLANG_SUB_FRAME,
+					     xlat_ctx) < 0) goto error;
 
 	return XLAT_ACTION_PUSH_UNLANG;
 }

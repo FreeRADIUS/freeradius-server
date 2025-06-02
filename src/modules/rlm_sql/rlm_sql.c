@@ -594,12 +594,12 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	unlang_xlat_yield(request, sql_xlat_select_resume, NULL, 0, query_ctx);
 
-	if (unlang_function_push(/* discard, sql_xlat_select_resume just uses query_ctx->rcode */ NULL,
-				 request,
-				 inst->select,
-				 NULL,
-				 NULL, 0,
-				 UNLANG_SUB_FRAME, query_ctx) == UNLANG_ACTION_FAIL) return XLAT_ACTION_FAIL;
+	if (unlang_function_push_with_result(/* discard, sql_xlat_select_resume just uses query_ctx->rcode */ NULL,
+					     request,
+					     inst->select,
+					     NULL,
+					     NULL, 0,
+					     UNLANG_SUB_FRAME, query_ctx) == UNLANG_ACTION_FAIL) return XLAT_ACTION_FAIL;
 	return XLAT_ACTION_PUSH_UNLANG;
 }
 
@@ -628,12 +628,12 @@ static xlat_action_t sql_fetch_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t 
 					   thread->trunk, arg->vb_strvalue, SQL_QUERY_SELECT));
 
 	unlang_xlat_yield(request, sql_xlat_select_resume, NULL, 0, query_ctx);
-	if (unlang_function_push(/* discard, sql_xlat_select_resume just uses query_ctx->rcode */NULL,
-				 request,
-				 inst->select,
-				 NULL,
-				 NULL, 0,
-				 UNLANG_SUB_FRAME, query_ctx) != UNLANG_ACTION_PUSHED_CHILD) return XLAT_ACTION_FAIL;
+	if (unlang_function_push_with_result(/* discard, sql_xlat_select_resume just uses query_ctx->rcode */NULL,
+					     request,
+					     inst->select,
+					     NULL,
+					     NULL, 0,
+					     UNLANG_SUB_FRAME, query_ctx) != UNLANG_ACTION_PUSHED_CHILD) return XLAT_ACTION_FAIL;
 	return XLAT_ACTION_PUSH_UNLANG;
 }
 
@@ -904,13 +904,13 @@ static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *
 				       thread->trunk, query_head->vb_strvalue, SQL_QUERY_SELECT);
 
 	if (unlang_map_yield(request, mod_map_resume, NULL, 0, query_ctx) != UNLANG_ACTION_YIELD) RETURN_UNLANG_FAIL;
-	return unlang_function_push(/* discard, mod_map_resume just uses query_ctx->rcode */ NULL,
-				    request,
-				    inst->select,
-				    NULL,
-				    NULL,
-				    0, UNLANG_SUB_FRAME,
-				    query_ctx);
+	return unlang_function_push_with_result(/* discard, mod_map_resume just uses query_ctx->rcode */ NULL,
+						request,
+						inst->select,
+						NULL,
+						NULL,
+						0, UNLANG_SUB_FRAME,
+						query_ctx);
 }
 
 /** xlat escape function for drivers which do not provide their own
@@ -1109,20 +1109,20 @@ static unlang_action_t sql_get_grouplist(unlang_result_t *p_result, sql_group_ct
 	MEM(group_ctx->query_ctx = fr_sql_query_alloc(group_ctx, inst, request, trunk,
 						      group_ctx->query->vb_strvalue, SQL_QUERY_SELECT));
 
-	if (unlang_function_push(/* sql_get_grouplist_resume translates the query_ctx->rocde into a module rcode */p_result,
-				 request,
+	if (unlang_function_push_with_result(/* sql_get_grouplist_resume translates the query_ctx->rocde into a module rcode */p_result,
+					     request,
 				 NULL,
 				 sql_get_grouplist_resume,
 				 NULL,
 				 0, UNLANG_SUB_FRAME,
 				 group_ctx) < 0) return UNLANG_ACTION_FAIL;
 
-	return unlang_function_push(/* discard, sql_get_grouplist_resume translates rcodes */NULL,
-				    request,
-				    inst->select,
-				    NULL,
-				    NULL, 0,
-				    UNLANG_SUB_FRAME, group_ctx->query_ctx);
+	return unlang_function_push_with_result(/* discard, sql_get_grouplist_resume translates rcodes */NULL,
+						request,
+						inst->select,
+						NULL,
+						NULL, 0,
+						UNLANG_SUB_FRAME, group_ctx->query_ctx);
 }
 
 typedef struct {
@@ -1877,13 +1877,13 @@ static unlang_action_t mod_sql_redundant_resume(unlang_result_t *p_result, modul
 							  redundant_ctx->query_vb->vb_strvalue, SQL_QUERY_OTHER));
 
 	unlang_module_yield(request, mod_sql_redundant_query_resume, NULL, 0, redundant_ctx);
-	return unlang_function_push(/* discard, mod_sql_redundant_query_resume uses query_ctx->rcode*/ NULL,
-				    request,
-				    inst->query,
-				    NULL,
-				    NULL,
-				    0, UNLANG_SUB_FRAME,
-				    redundant_ctx->query_ctx);
+	return unlang_function_push_with_result(/* discard, mod_sql_redundant_query_resume uses query_ctx->rcode*/ NULL,
+						request,
+						inst->query,
+						NULL,
+						NULL,
+						0, UNLANG_SUB_FRAME,
+						redundant_ctx->query_ctx);
 }
 
 /**  Generic module call for failing between a bunch of queries.

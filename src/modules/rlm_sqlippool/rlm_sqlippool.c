@@ -233,7 +233,7 @@ static int sqlippool_alloc_ctx_free(ippool_alloc_ctx_t *to_free)
 	query_ctx->type = _type; \
 	query_ctx->status = SQL_QUERY_PREPARED; \
 	alloc_ctx->query = query; \
-	return unlang_function_push(p_result, request, sql->_function, NULL, NULL, 0, UNLANG_SUB_FRAME, query_ctx); \
+	return unlang_function_push_with_result(p_result, request, sql->_function, NULL, NULL, 0, UNLANG_SUB_FRAME, query_ctx); \
 } while (0)
 
 /** Resume function called after each IP allocation query is expanded
@@ -532,13 +532,13 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(unlang_result_t *p_result, mod
 
 	if ((env->begin.type == FR_TYPE_STRING) && env->begin.vb_length) {
 		alloc_ctx->query_ctx->query_str = env->begin.vb_strvalue;
-		return unlang_function_push(/* mod_alloc_resume looks at frame result */ p_result,
-					    request,
-					    sql->query,
-					    NULL,
-					    NULL, 0,
-					    UNLANG_SUB_FRAME,
-					    alloc_ctx->query_ctx);
+		return unlang_function_push_with_result(/* mod_alloc_resume looks at frame result */ p_result,
+							request,
+							sql->query,
+							NULL,
+							NULL, 0,
+							UNLANG_SUB_FRAME,
+							alloc_ctx->query_ctx);
 	}
 
 	return UNLANG_ACTION_PUSHED_CHILD;
@@ -595,13 +595,13 @@ static unlang_action_t mod_common_free_resume(unlang_result_t *p_result, module_
 
 	common_ctx->query_ctx->query_str = common_ctx->env->update.vb_strvalue;
 	query_ctx->status = SQL_QUERY_PREPARED;
-	return unlang_function_push(/* mod_common_update_resume uses frame rcode */p_result,
-				    request,
-				    sql->query,
-				    NULL,
-				    NULL, 0,
-				    UNLANG_SUB_FRAME,
-				    query_ctx);
+	return unlang_function_push_with_result(/* mod_common_update_resume uses frame rcode */p_result,
+						request,
+						sql->query,
+						NULL,
+						NULL, 0,
+						UNLANG_SUB_FRAME,
+						query_ctx);
 }
 
 /** Common function used by module methods which perform an optional "free" then "update"
@@ -640,13 +640,13 @@ static unlang_action_t CC_HINT(nonnull) mod_common(unlang_result_t *p_result, mo
 			talloc_free(common_ctx);
 			RETURN_UNLANG_FAIL;
 		}
-		return unlang_function_push(/* mod_common_free_resume looks at frame result */ NULL,
-					    request,
-					    sql->query,
-					    NULL,
-					    NULL, 0,
-					    UNLANG_SUB_FRAME,
-					    common_ctx->query_ctx);
+		return unlang_function_push_with_result(/* mod_common_free_resume looks at frame result */ NULL,
+							request,
+							sql->query,
+							NULL,
+							NULL, 0,
+							UNLANG_SUB_FRAME,
+							common_ctx->query_ctx);
 	}
 
 	common_ctx->query_ctx->query_str = env->update.vb_strvalue;
@@ -655,13 +655,13 @@ static unlang_action_t CC_HINT(nonnull) mod_common(unlang_result_t *p_result, mo
 		talloc_free(common_ctx);
 		RETURN_UNLANG_FAIL;
 	}
-	return unlang_function_push(/* mod_common_update_resume looks at frame result */ p_result,
-				    request,
-				    sql->query,
-				    NULL,
-				    NULL, 0,
-				    UNLANG_SUB_FRAME,
-				    common_ctx->query_ctx);
+	return unlang_function_push_with_result(/* mod_common_update_resume looks at frame result */ p_result,
+						request,
+						sql->query,
+						NULL,
+						NULL, 0,
+						UNLANG_SUB_FRAME,
+						common_ctx->query_ctx);
 }
 
 /** Call SQL module box_escape_func to escape tainted values

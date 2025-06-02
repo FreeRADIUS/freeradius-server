@@ -441,13 +441,13 @@ unlang_action_t eap_virtual_server(request_t *request, eap_session_t *eap_sessio
 				  attr_packet_type) < 0) return UNLANG_ACTION_FAIL;
 	vp->vp_uint32 = FR_RADIUS_CODE_ACCESS_REQUEST;
 
-	if (unlang_function_push(/* transparent */ unlang_interpret_result(request),
-				 request,
-				 NULL,
-				 eap_virtual_server_resume,
-				 NULL, 0,
-				 UNLANG_SUB_FRAME,
-				 eap_session) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_function_push_with_result(/* transparent */ unlang_interpret_result(request),
+					     request,
+					     NULL,
+					     eap_virtual_server_resume,
+					     NULL, 0,
+					     UNLANG_SUB_FRAME,
+					     eap_session) < 0) return UNLANG_ACTION_FAIL;
 
 	if (unlang_call_push(NULL, request, server_cs, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
 

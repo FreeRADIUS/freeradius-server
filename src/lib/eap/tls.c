@@ -803,8 +803,7 @@ ignore_length:
  *	- eap_tls_session->state = EAP_TLS_ESTABLISHED if the handshake
  *	  completed successfully, and there's no more data to send.
  */
-static unlang_action_t eap_tls_handshake_resume(UNUSED unlang_result_t *p_result,
-						request_t *request, void *uctx)
+static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 {
 	eap_session_t		*eap_session = talloc_get_type_abort(uctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
@@ -927,11 +926,12 @@ static inline CC_HINT(always_inline) unlang_action_t eap_tls_handshake_push(requ
 	/*
 	 *	Will run after the handshake round completes
 	 */
-	if (unlang_function_push(/* discard, sets eap_tls_session->state */ NULL,
-				 request,
+	if (unlang_function_push(request,
 				 NULL,
 				 eap_tls_handshake_resume,
-				 NULL, 0, UNLANG_SUB_FRAME, eap_session) < 0) return UNLANG_ACTION_FAIL;
+				 NULL,
+				 0, UNLANG_SUB_FRAME,
+				 eap_session) < 0) return UNLANG_ACTION_FAIL;
 
 	if (fr_tls_session_async_handshake_push(request, tls_session) < 0) return UNLANG_ACTION_FAIL;
 

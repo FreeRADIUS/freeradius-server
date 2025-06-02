@@ -268,15 +268,15 @@ unlang_action_t rlm_sql_trunk_query(unlang_result_t *p_result, request_t *reques
 		 *	state of the trunk request to reapable - so in that case don't
 		 *	yield (in sql_trunk_query_start)
 		 */
-		if (unlang_function_push(/* allow the caller of rlm_sql_trunk_query to get at the rcode */p_result,
-					 request,
-					 query_ctx->treq->state == TRUNK_REQUEST_STATE_REAPABLE ?
-					 	NULL : sql_trunk_query_start,
-					 query_ctx->type == SQL_QUERY_SELECT ?
-					 	query_ctx->inst->driver->sql_select_query_resume :
-						query_ctx->inst->driver->sql_query_resume,
-					 sql_trunk_query_cancel, ~FR_SIGNAL_CANCEL,
-					 UNLANG_SUB_FRAME, query_ctx) < 0) RETURN_UNLANG_FAIL;
+		if (unlang_function_push_with_result(/* allow the caller of rlm_sql_trunk_query to get at the rcode */p_result,
+						     request,
+						     query_ctx->treq->state == TRUNK_REQUEST_STATE_REAPABLE ?
+							NULL : sql_trunk_query_start,
+						     query_ctx->type == SQL_QUERY_SELECT ?
+							query_ctx->inst->driver->sql_select_query_resume :
+							query_ctx->inst->driver->sql_query_resume,
+						     sql_trunk_query_cancel, ~FR_SIGNAL_CANCEL,
+						     UNLANG_SUB_FRAME, query_ctx) < 0) RETURN_UNLANG_FAIL;
 		p_result->rcode = RLM_MODULE_OK;
 		return UNLANG_ACTION_PUSHED_CHILD;
 
@@ -350,21 +350,21 @@ unlang_action_t sql_get_map_list(unlang_result_t *p_result, request_t *request, 
 	MEM(map_ctx->query_ctx = fr_sql_query_alloc(map_ctx->ctx, inst, request, trunk,
 						    map_ctx->query->vb_strvalue, SQL_QUERY_SELECT));
 
-	if (unlang_function_push(p_result,
-				 request,
-				 NULL,
-				 sql_get_map_list_resume,
-				 NULL, 0,
-				 UNLANG_SUB_FRAME,
-				 map_ctx) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_function_push_with_result(p_result,
+					     request,
+					     NULL,
+					     sql_get_map_list_resume,
+					     NULL, 0,
+					     UNLANG_SUB_FRAME,
+					    map_ctx) < 0) return UNLANG_ACTION_FAIL;
 
-	return unlang_function_push(/* discard, sql_get_map_list_resume uses query_ctx->rcode */ NULL,
-				    request,
-				    inst->select,
-				    NULL,
-				    NULL, 0,
-				    UNLANG_SUB_FRAME,
-				    map_ctx->query_ctx);
+	return unlang_function_push_with_result(/* discard, sql_get_map_list_resume uses query_ctx->rcode */ NULL,
+						request,
+						inst->select,
+						NULL,
+						NULL, 0,
+						UNLANG_SUB_FRAME,
+						map_ctx->query_ctx);
 }
 
 /*

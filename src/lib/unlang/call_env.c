@@ -128,12 +128,12 @@ typedef struct {
 	void					**data;			//!< Final destination structure for value boxes.
 } call_env_rctx_t;
 
-static unlang_action_t call_env_expand_repeat(unlang_result_t *p_result, request_t *request, void *uctx);
+static unlang_action_t call_env_expand_repeat(request_t *request, void *uctx);
 
 /** Start the expansion of a call environment tmpl.
  *
  */
-static unlang_action_t call_env_expand_start(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
+static unlang_action_t call_env_expand_start(request_t *request, void *uctx)
 {
 	call_env_rctx_t	*call_env_rctx = talloc_get_type_abort(uctx, call_env_rctx_t);
 	TALLOC_CTX	*ctx;
@@ -239,8 +239,7 @@ static unlang_action_t call_env_expand_start(UNUSED unlang_result_t *p_result, r
  *
  * If there are more tmpls to expand, push the next expansion.
  */
-static unlang_action_t call_env_expand_repeat(UNUSED unlang_result_t *p_result,
-					      request_t *request, void *uctx)
+static unlang_action_t call_env_expand_repeat(request_t *request, void *uctx)
 {
 	void			*out = NULL, *tmpl_out = NULL;
 	call_env_rctx_t		*call_env_rctx = talloc_get_type_abort(uctx, call_env_rctx_t);
@@ -280,12 +279,11 @@ parse_only:
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	return unlang_function_push(/* discard, result is provided in env_result */ NULL,
-				    request,
+	return unlang_function_push(request,
 				    call_env_expand_start,
 				    call_env_expand_repeat,
-				    NULL, 0,
-				    UNLANG_SUB_FRAME,
+				    NULL,
+				    0, UNLANG_SUB_FRAME,
 				    call_env_rctx);
 }
 
@@ -311,8 +309,7 @@ unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_re
 	call_env_rctx->call_env = call_env;
 	fr_value_box_list_init(&call_env_rctx->tmpl_expanded);
 
-	return unlang_function_push(/* discard, result is provided in env_result */NULL,
-				    request,
+	return unlang_function_push(request,
 				    call_env_expand_start,
 				    call_env_expand_repeat,
 				    NULL,

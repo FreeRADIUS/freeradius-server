@@ -411,8 +411,7 @@ int fr_tls_verify_cert_chain(request_t *request, SSL *ssl)
 /** Process the result of `verify certificate { ... }`
  *
  */
-static unlang_action_t tls_verify_client_cert_result(UNUSED unlang_result_t *p_result,
-						     request_t *request, void *uctx)
+static unlang_action_t tls_verify_client_cert_result(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	fr_pair_t		*vp, *next;

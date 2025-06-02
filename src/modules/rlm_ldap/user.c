@@ -178,12 +178,12 @@ unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx,
 	};
 
 	if (filter) user_ctx->filter = filter->vb_strvalue;
-	if (unlang_function_push(/* ldap_find_user_async_result sets an rcode based on the search result */ p_result,
-				 request,
-				 NULL,
-				 ldap_find_user_async_result,
-				 ldap_find_user_async_cancel, ~FR_SIGNAL_CANCEL,
-				 UNLANG_SUB_FRAME, user_ctx) < 0) {
+	if (unlang_function_push_with_result(/* ldap_find_user_async_result sets an rcode based on the search result */ p_result,
+					     request,
+					     NULL,
+					     ldap_find_user_async_result,
+					     ldap_find_user_async_cancel, ~FR_SIGNAL_CANCEL,
+					     UNLANG_SUB_FRAME, user_ctx) < 0) {
 		talloc_free(user_ctx);
 		return UNLANG_ACTION_FAIL;
 	}

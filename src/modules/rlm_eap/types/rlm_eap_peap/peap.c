@@ -283,9 +283,6 @@ static unlang_action_t process_reply(unlang_result_t *p_result, request_t *reque
 	request_t		*parent = request->parent;
 	fr_packet_t		*reply = request->reply;
 
-	/*
-	 *	Bubble this rcode up to become the result of the subrequest
-	 */
 	p_result->priority = MOD_PRIORITY_MAX;
 
 	if (RDEBUG_ENABLED2) {
@@ -595,17 +592,17 @@ unlang_action_t eap_peap_process(unlang_result_t *p_result, request_t *request,
 	 *	Setup a function in thie child to process the
 	 *	result of the subrequest.
 	 */
-	if (unlang_function_push(/* sets priority */ NULL,
-				 child,
-				 NULL,
-				 /*
-				  *	Run in the child after the virtual sever executes.
-				  *	This sets the rcode for the subrequest, which is
-				  *	written to eap_session->submodule_result.
-				  */
-				 process_reply,
-				 NULL, 0,
-				 UNLANG_SUB_FRAME, eap_session) != UNLANG_ACTION_PUSHED_CHILD) goto finish;
+	if (unlang_function_push_with_result(NULL,
+				 	     child,
+					     NULL,
+					     /*
+					      *	Run in the child after the virtual sever executes.
+					      *	This sets the rcode for the subrequest, which is
+					      *	written to eap_session->submodule_result.
+					      */
+					     process_reply,
+					     NULL, 0,
+					     UNLANG_SUB_FRAME, eap_session) != UNLANG_ACTION_PUSHED_CHILD) goto finish;
 
 	/*
 	 *	Run inner tunnel in the context of the child

@@ -316,12 +316,12 @@ unlang_action_t fr_ldap_edir_get_password(unlang_result_t *p_result,
 		RETURN_UNLANG_FAIL;
 	}
 
-	return unlang_function_push(p_result,
-				    request,
-				    ldap_edir_get_password_start,
-				    ldap_edir_get_password_resume,
-				    ldap_edir_get_password_cancel, ~FR_SIGNAL_CANCEL,
-				    UNLANG_SUB_FRAME, edir_ctx);
+	return unlang_function_push_with_result(p_result,
+						request,
+						ldap_edir_get_password_start,
+						ldap_edir_get_password_resume,
+						ldap_edir_get_password_cancel, ~FR_SIGNAL_CANCEL,
+						UNLANG_SUB_FRAME, edir_ctx);
 }
 
 char const *fr_ldap_edir_errstr(int code)

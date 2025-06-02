@@ -553,11 +553,11 @@ unlang_action_t fr_ldap_sasl_bind_auth_async(unlang_result_t *p_result,
 		RETURN_UNLANG_FAIL;
 	}
 
-	return unlang_function_push(p_result,
-				    request,
-				    ldap_async_sasl_bind_auth_start,
-				    ldap_async_sasl_bind_auth_results,
-				    ldap_async_sasl_bind_auth_cancel,
-				    ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME,
-				    bind_auth_ctx);
+	return unlang_function_push_with_result(p_result,
+						request,
+						ldap_async_sasl_bind_auth_start,
+						ldap_async_sasl_bind_auth_results,
+						ldap_async_sasl_bind_auth_cancel,
+						~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME,
+						bind_auth_ctx);
 }

@@ -141,23 +141,21 @@ typedef struct {
 	fr_time_delta_t		timeout;	//!< How long the trigger has to run.
 } fr_trigger_t;
 
-static unlang_action_t trigger_done(unlang_result_t *p_result,
-				    request_t *request, void *rctx)
+static unlang_action_t trigger_done(request_t *request, void *rctx)
 {
 	fr_trigger_t	*trigger = talloc_get_type_abort(rctx, fr_trigger_t);
 
 	if (trigger->exec.status == 0) {
 		RDEBUG2("Trigger \"%s\" done", trigger->command);
-		RETURN_UNLANG_OK;
+		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	RERROR("Trigger \"%s\" failed", trigger->command);
 
-	RETURN_UNLANG_FAIL;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t trigger_resume(UNUSED unlang_result_t *p_result,
-				      request_t *request, void *rctx)
+static unlang_action_t trigger_resume(request_t *request, void *rctx)
 {
 	fr_trigger_t	*trigger = talloc_get_type_abort(rctx, fr_trigger_t);
 
@@ -194,7 +192,7 @@ static unlang_action_t trigger_resume(UNUSED unlang_result_t *p_result,
 	return UNLANG_ACTION_YIELD;
 }
 
-static unlang_action_t trigger_run(unlang_result_t *p_result, request_t *request, void *uctx)
+static unlang_action_t trigger_run(request_t *request, void *uctx)
 {
 	fr_trigger_t	*trigger = talloc_get_type_abort(uctx, fr_trigger_t);
 
@@ -202,7 +200,7 @@ static unlang_action_t trigger_run(unlang_result_t *p_result, request_t *request
 
 	if (unlang_xlat_push(request, NULL, &trigger->args, request,
 			     trigger->xlat, UNLANG_SUB_FRAME) < 0) {
-		RETURN_UNLANG_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	return UNLANG_ACTION_PUSHED_CHILD;
@@ -423,11 +421,12 @@ int trigger_exec(unlang_interpret_t *intp,
 		return -1;
 	}
 
-	if (unlang_function_push(/* discarded */ NULL,
-				 request,
-				 trigger_run, trigger_resume,
+	if (unlang_function_push(request,
+				 trigger_run,
+				 trigger_resume,
 				 NULL, 0,
-				 UNLANG_TOP_FRAME, trigger) < 0) goto error;
+				 UNLANG_TOP_FRAME,
+				 trigger) < 0) goto error;
 
 	if (!intp) {
 		/*

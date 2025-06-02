@@ -51,7 +51,7 @@
  *      - 0 on success.
  *	- -1 on failure.
  */
-unlang_action_t fr_tls_call_push(request_t *child, unlang_function_t resume,
+unlang_action_t fr_tls_call_push(request_t *child, unlang_function_no_result_t resume,
 				 fr_tls_conf_t *conf, fr_tls_session_t *tls_session,
 #ifdef NDEBUG
 				 UNUSED
@@ -74,8 +74,7 @@ unlang_action_t fr_tls_call_push(request_t *child, unlang_function_t resume,
 	 *	Setup a function to execute after the
 	 *	subrequest completes.
 	 */
-	if (unlang_function_push(/* discard, the failure of these callbacks does not affect the handshake */NULL,
-				 child,
+	if (unlang_function_push(child,
 				 NULL,
 				 resume,
 				 NULL,
