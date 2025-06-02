@@ -1186,9 +1186,7 @@ int fr_ldap_init(void)
 	 *
 	 *	See: https://github.com/arr2036/ldapperf/issues/2
 	 */
-	ldap_initialize(&ldap_global_handle, "");
-
-	if (!ldap_global_handle) {
+	if (ldap_initialize(&ldap_global_handle, "") != LDAP_SUCCESS) {
 		ERROR("Failed initialising global LDAP handle");
 		return -1;
 	}
