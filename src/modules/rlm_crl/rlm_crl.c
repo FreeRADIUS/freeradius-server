@@ -87,6 +87,7 @@ typedef struct {
 typedef struct {
 	fr_value_box_t			*cdp_url;			//!< The URL we're currently attempting to load.
 	fr_value_box_list_t		crl_data;			//!< Data from CRL expansion.
+	fr_value_box_list_t		missing_crls;			//!< CRLs missing from the tree
 } rlm_crl_rctx_t;
 
 static conf_parser_t module_config[] = {
@@ -347,6 +348,36 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 	return crl;
 }
 
+static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
+
+/** Yield to a tmpl to retrieve CRL data
+ *
+ */
+static unlang_action_t crl_tmpl_yield(rlm_rcode_t *p_result, request_t *request, rlm_crl_env_t *env, rlm_crl_rctx_t *rctx)
+{
+	fr_pair_t	*vp;
+	tmpl_t		*vpt;
+
+	MEM(pair_update_request(&vp, attr_crl_cdp_url) >= 0);
+	MEM(fr_value_box_copy(vp, &vp->data, rctx->cdp_url) == 0);
+
+	if (strncmp(rctx->cdp_url->vb_strvalue, "http", 4) == 0) {
+		vpt = env->http_exp;
+	} else if (strncmp(rctx->cdp_url->vb_strvalue, "ldap", 4) == 0) {
+		if (!env->ldap_exp) {
+			RERROR("CRL URI requires LDAP, but the crl module ldap expansion is not configured");
+			RETURN_MODULE_INVALID;
+		}
+		vpt = env->ldap_exp;
+	} else {
+		RERROR("Unsupported URI scheme in CRL URI %pV", rctx->cdp_url);
+		RETURN_MODULE_FAIL;
+	}
+
+	return unlang_module_yield_to_tmpl(rctx, &rctx->crl_data, request, vpt,
+					   NULL, crl_process_cdp_data, crl_signal, 0, rctx);
+}
+
 static unlang_action_t crl_by_url(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
 
 /** Process the response from evaluating the cdp_url -> crl_data expansion
@@ -361,7 +392,15 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 
 	switch (fr_value_box_list_num_elements(&rctx->crl_data)) {
 	case 0:
-		REDEBUG("No CRL data returned, failing");
+		REDEBUG("No CRL data returned from %pV, failing", rctx->cdp_url);
+	again:
+		talloc_free(rctx->cdp_url);
+
+		/*
+		 *	If there are more URIs to try, push a new tmpl to expand.
+		 */
+		rctx->cdp_url = fr_value_box_list_pop_head(&rctx->missing_crls);
+		if (rctx->cdp_url) return crl_tmpl_yield(p_result, request, env, rctx);
 	fail:
 		pthread_mutex_unlock(&inst->mutable->mutex);
 		fr_value_box_list_talloc_free(&rctx->crl_data);
@@ -377,7 +416,7 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 				       fr_value_box_list_head(&rctx->crl_data)->vb_octets);
 		if (!crl_entry) {
 			RPERROR("Failed to process returned CRL data");
-			goto fail;
+			goto again;
 		}
 
 		switch (crl_check_entry(crl_entry, request, env->serial.vb_octets)) {
@@ -422,63 +461,55 @@ static unlang_action_t crl_by_url(rlm_rcode_t *p_result, module_ctx_t const *mct
 	rlm_crl_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_crl_t);
 	rlm_crl_env_t *env = talloc_get_type_abort(mctx->env_data, rlm_crl_env_t);
 	rlm_crl_rctx_t *rctx = mctx->rctx;
+	rlm_rcode_t	rcode = RLM_MODULE_NOOP;
 
 	if (!rctx) rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), rlm_crl_rctx_t);
+	fr_value_box_list_init(&rctx->missing_crls);
 
 	pthread_mutex_lock(&inst->mutable->mutex);
 
 	/*
-	 *	Fast path when we have all the CRLs
+	 *	Fast path when we have a CRL.
+	 *	All distribution points are considered equivalent, so check if
+	 *	if we have any of them before attempting to fetch missing ones.
 	 */
-	while ((rctx->cdp_url = fr_value_box_list_next(env->cdp, rctx->cdp_url))) {
+	while ((rctx->cdp_url = fr_value_box_list_pop_head(env->cdp))) {
 		switch (crl_check_serial(inst->mutable->crls, request,
 				 rctx->cdp_url->vb_strvalue, env->serial.vb_octets)) {
 		case CRL_ENTRY_FOUND:
-			pthread_mutex_unlock(&inst->mutable->mutex);
-			RETURN_MODULE_REJECT;
+			rcode = RLM_MODULE_REJECT;
+			break;
 
 		case CRL_ENTRY_NOT_FOUND:
+			rcode = RLM_MODULE_OK;
+			break;
+
 		case CRL_ERROR:
 			continue;
 
-		/*
-		 *	Need to convert the cdp_url to a CRL entry
-		 *
-		 *	We yield to an expansion to allow this to happen, then parse the CRL data
-		 *	and check if the serial has an entry in the CRL.
-		 */
 		case CRL_NOT_FOUND:
-		{
-			fr_pair_t *vp;
-			tmpl_t *vpt;
-
-			fr_value_box_list_init(&rctx->crl_data);
-
-			MEM(pair_update_request(&vp, attr_crl_cdp_url) >= 0);
-			MEM(fr_value_box_copy(vp, &vp->data, rctx->cdp_url) == 0);
-
-			if (strncmp(rctx->cdp_url->vb_strvalue, "http", 4) == 0) {
-				vpt = env->http_exp;
-			} else if (strncmp(rctx->cdp_url->vb_strvalue, "ldap", 4) == 0) {
-				if (!env->ldap_exp) {
-					RERROR("CRL URI requires LDAP, but the crl module ldap expansion is not configured");
-					RETURN_MODULE_INVALID;
-				}
-				vpt = env->ldap_exp;
-			} else {
-				RERROR("Unsupported URI scheme in CRL URI %pV", rctx->cdp_url);
-				RETURN_MODULE_FAIL;
-			}
-
-			return unlang_module_yield_to_tmpl(rctx, &rctx->crl_data, request, vpt,
-							   NULL, crl_process_cdp_data, crl_signal, 0, rctx);
-		}
+			fr_value_box_list_insert_tail(&rctx->missing_crls, rctx->cdp_url);
+			rcode = RLM_MODULE_NOTFOUND;
+			continue;
 		}
 	}
 
-	pthread_mutex_unlock(&inst->mutable->mutex);
+	if (rcode != RLM_MODULE_NOTFOUND) {
+		pthread_mutex_unlock(&inst->mutable->mutex);
+		RETURN_MODULE_RCODE(rcode);
+	}
 
-	RETURN_MODULE_OK;
+	/*
+	 *	Need to convert a missing cdp_url to a CRL entry
+	 *
+	 *	We yield to an expansion to allow this to happen, then parse the CRL data
+	 *	and check if the serial has an entry in the CRL.
+	 */
+	fr_value_box_list_init(&rctx->crl_data);
+
+	rctx->cdp_url = fr_value_box_list_pop_head(&rctx->missing_crls);
+
+	return crl_tmpl_yield(p_result, request, env, rctx);
 }
 
 static int mod_mutable_free(rlm_crl_mutable_t *mutable)
