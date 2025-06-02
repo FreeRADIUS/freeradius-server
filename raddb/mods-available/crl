@@ -58,4 +58,21 @@ crl {
 	#  early_refresh:: Time before `nextUpdate` which the CRL will be refreshed
 	#
 	early_refresh = 1h
+
+	#
+	#  ca_file:: File containing trusted CA, used to sign CRLs
+	#
+	#  This can reference the setting in the `eap` module, but in that
+	#  case, the eap module must be instantiate before the `crl` module
+	#  by adding it to the list of explicitly instantiated modules
+	#  in `radiusd.conf`
+	#
+#	ca_file = ${modules.eap.tls-config[tls-common].ca_file}
+	ca_file = ${cadir}/rsa/ca.pem
+
+	#
+	#  ca_path:: Directory containing trusted CAs, used to sign CRLs
+	#
+#	ca_path = ${modules.eap.tls-config[tls-common].ca_path}
+	ca_path = ${cadir}
 }

@@ -67,6 +67,9 @@ typedef struct {
 	fr_time_delta_t			force_expiry;			//!< Force expiry of CRLs after this time
 	bool				force_expiry_is_set;
 	fr_time_delta_t			early_refresh;			//!< Time interval before nextUpdate to refresh
+	char const			*ca_file;			//!< File containing certs for verifying CRL signatures.
+	char const			*ca_path;			//!< Directory containing certs for verifying CRL signatures.
+	X509_STORE			*verify_store;			//!< Store of certificates to verify CRL signatures.
 	rlm_crl_mutable_t		*mutable;			//!< Mutable data that's shared between all threads.
 } rlm_crl_t;
 
@@ -89,6 +92,8 @@ typedef struct {
 static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_IS_SET("force_expiry", FR_TYPE_TIME_DELTA, 0, rlm_crl_t, force_expiry) },
 	{ FR_CONF_OFFSET("early_refresh", rlm_crl_t, early_refresh) },
+	{ FR_CONF_OFFSET("ca_file", rlm_crl_t, ca_file) },
+	{ FR_CONF_OFFSET("ca_path", rlm_crl_t, ca_path) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -244,6 +249,9 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 	fr_time_delta_t	expiry_time;
 	int		i;
 	STACK_OF(DIST_POINT)	*dps;
+	X509_STORE_CTX	*verify_ctx = NULL;
+	X509_OBJECT	*xobj;
+	EVP_PKEY	*pkey;
 
 	MEM(crl = talloc_zero(inst->mutable->crls, crl_entry_t));
 	crl->cdp_url = talloc_bstrdup(crl, url);
@@ -252,9 +260,40 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 		fr_tls_strerror_printf("Failed to parse CRL from %s", url);
 	error:
 		talloc_free(crl);
+		if (verify_ctx) X509_STORE_CTX_free(verify_ctx);
 		return NULL;
 	}
 	talloc_set_destructor(crl, _crl_entry_free);
+
+	verify_ctx = X509_STORE_CTX_new();
+        if (!verify_ctx || !X509_STORE_CTX_init(verify_ctx, inst->verify_store, NULL, NULL)) {
+		fr_tls_strerror_printf("Error initialising X509 store");
+            	goto error;
+        }
+
+        xobj = X509_STORE_CTX_get_obj_by_subject(verify_ctx, X509_LU_X509,
+                                                 X509_CRL_get_issuer(crl->crl));
+        if (!xobj) {
+		fr_tls_strerror_printf("CRL issuer certificate not in trusted store");
+		goto error;
+        }
+        pkey = X509_get_pubkey(X509_OBJECT_get0_X509(xobj));
+        X509_OBJECT_free(xobj);
+        if (!pkey) {
+		fr_tls_strerror_printf("Error getting CRL issuer public key");
+		goto error;
+        }
+        i = X509_CRL_verify(crl->crl, pkey);
+        EVP_PKEY_free(pkey);
+
+	if (i < 0) {
+		fr_tls_strerror_printf("Could not verify CRL signature");
+		goto error;
+	}
+        if (i == 0) {
+		fr_tls_strerror_printf("CRL certificate signature failed");
+		goto error;
+	}
 
 	crl->crl_num = X509_CRL_get_ext_d2i(crl->crl, NID_crl_number, &i, NULL);
 
@@ -304,6 +343,7 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 	DEBUG3("CRL from %s will expire in %pVs", url, fr_box_time_delta(expiry_time));
 	fr_timer_in(crl, tl, &crl->ev, expiry_time, false, crl_expire, crl);
 
+	X509_STORE_CTX_free(verify_ctx);
 	return crl;
 }
 
@@ -459,6 +499,20 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	pthread_mutex_init(&inst->mutable->mutex, NULL);
 	talloc_set_destructor(inst->mutable, mod_mutable_free);
 
+	if (!inst->ca_file && !inst->ca_path) {
+		cf_log_err(mctx->mi->conf, "Missing ca_file / ca_path option.  One or other (or both) must be specified.");
+		return -1;
+	}
+
+	inst->verify_store = X509_STORE_new();
+	if (!X509_STORE_load_locations(inst->verify_store, inst->ca_file, inst->ca_path)) {
+		cf_log_err(mctx->mi->conf, "Failed reading Trusted root CA file \"%s\" and path \"%s\"",
+			   inst->ca_file, inst->ca_path);
+		return -1;
+	}
+
+	X509_STORE_set_purpose(inst->verify_store, X509_PURPOSE_SSL_CLIENT);
+
 	return 0;
 }
 
@@ -466,6 +520,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_crl_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_crl_t);
 
+	if (inst->verify_store) X509_STORE_free(inst->verify_store);
 	talloc_free(inst->mutable);
 	return 0;
 }
