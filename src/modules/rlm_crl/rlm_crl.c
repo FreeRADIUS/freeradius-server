@@ -487,8 +487,8 @@ static int mod_mutable_free(rlm_crl_mutable_t *mutable)
 	return 0;
 }
 
-/*
- *	(Re-)read radiusd.conf into memory.
+/**	Instantiate the module
+ *
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
