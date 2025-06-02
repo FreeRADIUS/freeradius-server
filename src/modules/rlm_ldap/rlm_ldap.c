@@ -2276,7 +2276,12 @@ static unlang_action_t CC_HINT(nonnull) mod_modify(unlang_result_t *p_result, mo
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
-	return user_modify_resume(p_result, mctx, request);
+	{
+		module_ctx_t our_mctx = *mctx;
+		our_mctx.rctx = usermod_ctx;
+
+		return user_modify_resume(p_result, &our_mctx, request);
+	}
 }
 
 /** Detach from the LDAP server and cleanup internal state.
