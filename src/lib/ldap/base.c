@@ -615,7 +615,7 @@ static void ldap_trunk_search_results_debug(request_t *request, fr_ldap_query_t 
  *
  * @note This function sets no rcode, the result of query is available in query->ret.
  */
-static unlang_action_t ldap_trunk_query_results(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
+static unlang_action_t ldap_trunk_query_results(request_t *request, void *uctx)
 {
 	fr_ldap_query_t		*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
 
@@ -726,12 +726,12 @@ unlang_action_t fr_ldap_trunk_search(TALLOC_CTX *ctx,
 		return UNLANG_ACTION_FAIL;
 	}
 
-	action = unlang_function_push(/* discard, result is written to query->ret */NULL,
-				      request,
+	action = unlang_function_push(request,
 				      NULL,
 				      ldap_trunk_query_results,
 				      ldap_trunk_query_cancel, ~FR_SIGNAL_CANCEL,
-				      UNLANG_SUB_FRAME, query);
+				      UNLANG_SUB_FRAME,
+				      query);
 
 	if (action == UNLANG_ACTION_FAIL) goto error;
 
@@ -777,12 +777,12 @@ unlang_action_t fr_ldap_trunk_modify(TALLOC_CTX *ctx,
 		return UNLANG_ACTION_FAIL;
 	}
 
-	action = unlang_function_push(/* discard, result is written to query->ret */ NULL,
-				      request,
+	action = unlang_function_push(request,
 				      NULL,
 				      ldap_trunk_query_results,
 				      ldap_trunk_query_cancel, ~FR_SIGNAL_CANCEL,
-				      UNLANG_SUB_FRAME, query);
+				      UNLANG_SUB_FRAME,
+				      query);
 
 	if (action == UNLANG_ACTION_FAIL) goto error;
 
@@ -909,12 +909,12 @@ unlang_action_t fr_ldap_trunk_extended(TALLOC_CTX *ctx,
 		return UNLANG_ACTION_FAIL;
 	}
 
-	action = unlang_function_push(/* discard, result is written to query->ret */ NULL,
-				      request,
+	action = unlang_function_push(request,
 				      NULL,
 				      ldap_trunk_query_results,
 				      ldap_trunk_query_cancel, ~FR_SIGNAL_CANCEL,
-				      UNLANG_SUB_FRAME, query);
+				      UNLANG_SUB_FRAME,
+				      query);
 
 	if (action == UNLANG_ACTION_FAIL) goto error;
 

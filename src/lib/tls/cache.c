@@ -348,7 +348,7 @@ static void tls_cache_delete_request(SSL_SESSION *sess)
 
 /** Process the result of `load session { ... }`
  */
-static unlang_action_t tls_cache_load_result(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
+static unlang_action_t tls_cache_load_result(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	fr_tls_cache_t		*tls_cache = tls_session->cache;
@@ -457,8 +457,7 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 
 /** Process the result of `store session { ... }`
  */
-static unlang_action_t tls_cache_store_result(UNUSED unlang_result_t *p_result,
-					      request_t *request, void *uctx)
+static unlang_action_t tls_cache_store_result(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	fr_tls_cache_t		*tls_cache = tls_session->cache;
@@ -593,8 +592,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 
 /** Process the result of `clear session { ... }`
  */
-static unlang_action_t tls_cache_clear_result(UNUSED unlang_result_t *p_result,
-					      request_t *request, void *uctx)
+static unlang_action_t tls_cache_clear_result(request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
 	fr_tls_cache_t		*tls_cache = tls_session->cache;

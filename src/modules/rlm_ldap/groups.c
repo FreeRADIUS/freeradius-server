@@ -396,11 +396,12 @@ static unlang_action_t ldap_cacheable_userobj_resolve(unlang_result_t *p_result,
 	 */
 	if (*group_ctx->dn) {
 		if (unlang_function_repeat_set(request, ldap_cacheable_userobj_resolve) < 0) RETURN_UNLANG_FAIL;
-		if (unlang_function_push(/* both start and resume provide an rcode */p_result, request,
-					 ldap_group_dn2name_start,
-					 ldap_group_dn2name_resume,
-					 ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
-					 UNLANG_SUB_FRAME, group_ctx) < 0) RETURN_UNLANG_FAIL;
+		if (unlang_function_push_with_result(/* both start and resume provide an rcode */p_result, request,
+						     ldap_group_dn2name_start,
+						     ldap_group_dn2name_resume,
+						     ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
+						     UNLANG_SUB_FRAME,
+						     group_ctx) < 0) RETURN_UNLANG_FAIL;
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
@@ -409,11 +410,12 @@ static unlang_action_t ldap_cacheable_userobj_resolve(unlang_result_t *p_result,
 	 */
 	if (*group_ctx->group_name) {
 		if (unlang_function_repeat_set(request, ldap_cacheable_userobj_resolve) < 0) RETURN_UNLANG_FAIL;
-		if (unlang_function_push(/* both start and resume provide an rcode */p_result, request,
-					 ldap_group_name2dn_start,
-					 ldap_group_name2dn_resume,
-					 ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
-					 UNLANG_SUB_FRAME, group_ctx) < 0) RETURN_UNLANG_FAIL;
+		if (unlang_function_push_with_result(/* both start and resume provide an rcode */p_result, request,
+						     ldap_group_name2dn_start,
+						     ldap_group_name2dn_resume,
+						     ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
+						     UNLANG_SUB_FRAME,
+						     group_ctx) < 0) RETURN_UNLANG_FAIL;
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
@@ -544,12 +546,12 @@ unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t 
 	 */
 	if ((name_p != group_ctx->group_name) || (dn_p != group_ctx->group_dn)) {
 		group_ctx->attrs[0] = inst->group.obj_name_attr;
-		if (unlang_function_push(p_result, request,
-					 ldap_cacheable_userobj_resolve,
-					 NULL,
-					 ldap_group_userobj_cancel,
-					 ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME,
-					 group_ctx) < 0) {
+		if (unlang_function_push_with_result(p_result, request,
+						     ldap_cacheable_userobj_resolve,
+						     NULL,
+						     ldap_group_userobj_cancel,
+						     ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME,
+						     group_ctx) < 0) {
 			talloc_free(group_ctx);
 			RETURN_UNLANG_FAIL;
 		}
@@ -714,13 +716,13 @@ unlang_action_t rlm_ldap_cacheable_groupobj(unlang_result_t *p_result, request_t
 	group_ctx->base_dn = &autz_ctx->call_env->group_base;
 	fr_value_box_list_init(&group_ctx->expanded_filter);
 
-	if (unlang_function_push(p_result,
-				 request,
-				 ldap_cacheable_groupobj_start,
-				 ldap_cacheable_groupobj_resume,
-				 ldap_group_groupobj_cancel, ~FR_SIGNAL_CANCEL,
-				 UNLANG_SUB_FRAME,
-				 group_ctx) < 0) {
+	if (unlang_function_push_with_result(p_result,
+					     request,
+					     ldap_cacheable_groupobj_start,
+					     ldap_cacheable_groupobj_resume,
+					     ldap_group_groupobj_cancel, ~FR_SIGNAL_CANCEL,
+					     UNLANG_SUB_FRAME,
+					     group_ctx) < 0) {
 	error:
 		talloc_free(group_ctx);
 		RETURN_UNLANG_FAIL;
@@ -841,13 +843,13 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(unlang_result_t *p_result, reque
 		group_ctx->base_dn = &xlat_ctx->env_data->group_base;
 	}
 
-	if (unlang_function_push(p_result,
-				 request,
-				 ldap_cacheable_groupobj_start,
-				 ldap_check_groupobj_resume,
-				 ldap_group_groupobj_cancel, ~FR_SIGNAL_CANCEL,
-				 UNLANG_SUB_FRAME,
-				 group_ctx) < 0) {
+	if (unlang_function_push_with_result(p_result,
+					     request,
+					     ldap_cacheable_groupobj_start,
+					     ldap_check_groupobj_resume,
+					     ldap_group_groupobj_cancel, ~FR_SIGNAL_CANCEL,
+					     UNLANG_SUB_FRAME,
+					     group_ctx) < 0) {
 	error:
 		talloc_free(group_ctx);
 		RETURN_UNLANG_FAIL;
@@ -861,10 +863,10 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(unlang_result_t *p_result, reque
 /** Initiate resolving a group DN to its name
  *
  */
-static unlang_action_t ldap_dn2name_start (unlang_result_t *p_result, request_t *request, void *uctx)
+static unlang_action_t ldap_dn2name_start(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_group_userobj_dyn_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_dyn_ctx_t);
-	ldap_group_xlat_ctx_t	*xlat_ctx = group_ctx->xlat_ctx;
+	ldap_group_xlat_ctx_t		*xlat_ctx = group_ctx->xlat_ctx;
 	rlm_ldap_t const		*inst = xlat_ctx->inst;
 
 	if (!inst->group.obj_name_attr) {
@@ -909,8 +911,7 @@ static unlang_action_t ldap_check_userobj_start(UNUSED unlang_result_t *p_result
 /** Process the results of evaluating a user object when checking group membership
  *
  */
-static unlang_action_t ldap_check_userobj_resume(UNUSED unlang_result_t *p_result,
-						 request_t *request, void *uctx)
+static unlang_action_t ldap_check_userobj_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_group_userobj_dyn_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_userobj_dyn_ctx_t);
 	ldap_group_xlat_ctx_t		*xlat_ctx = talloc_get_type_abort(group_ctx->xlat_ctx, ldap_group_xlat_ctx_t);
@@ -921,6 +922,17 @@ static unlang_action_t ldap_check_userobj_resume(UNUSED unlang_result_t *p_resul
 	bool				value_is_dn = false;
 	fr_value_box_t			*group = xlat_ctx->group;
 	char				*value_name = NULL;
+
+	/*
+	 *	Something we pushed failed early
+	 */
+	switch (p_result->rcode) {
+	case RLM_MODULE_USER_SECTION_REJECT:
+		return UNLANG_ACTION_CALCULATE_RESULT;
+
+	default:
+		break;
+	}
 
 	/*
 	 *	If group_ctx->values is not populated, this is the first call
@@ -1067,12 +1079,14 @@ static unlang_action_t ldap_check_userobj_resume(UNUSED unlang_result_t *p_resul
 
 				if (unlang_function_repeat_set(request, ldap_check_userobj_resume) < 0) RETURN_UNLANG_FAIL;
 
-				return unlang_function_push(/* discard, ldap_check_userobj_resume looks at the query result */ NULL,
-							    request,
-							    ldap_dn2name_start,
-							    NULL,
-							    ldap_dn2name_cancel, ~FR_SIGNAL_CANCEL,
-							    UNLANG_SUB_FRAME, group_ctx);
+				/* Need to push this for the custom cancellation function */
+				return unlang_function_push_with_result(p_result,
+									request,
+									ldap_dn2name_start,
+									NULL,
+									ldap_dn2name_cancel, ~FR_SIGNAL_CANCEL,
+									UNLANG_SUB_FRAME,
+									group_ctx);
 			}
 
 			if (((talloc_array_length(group_ctx->group_name) - 1) == value->bv_len) &&
@@ -1096,12 +1110,13 @@ static unlang_action_t ldap_check_userobj_resume(UNUSED unlang_result_t *p_resul
 
 			if (unlang_function_repeat_set(request, ldap_check_userobj_resume) < 0) RETURN_UNLANG_FAIL;
 
-			return unlang_function_push(/* discard, ldap_check_userobj_resume gets result from group_ctx */ NULL,
-						    request,
-						    ldap_dn2name_start,
-						    NULL,
-						    ldap_dn2name_cancel, ~FR_SIGNAL_CANCEL,
-						    UNLANG_SUB_FRAME, group_ctx);
+			/* Need to push this for the custom cancellation function */
+			return unlang_function_push_with_result(p_result,
+								request,
+								ldap_dn2name_start,
+								NULL,
+								ldap_dn2name_cancel, ~FR_SIGNAL_CANCEL,
+								UNLANG_SUB_FRAME, group_ctx);
 		}
 
 		fr_assert(0);
@@ -1150,12 +1165,13 @@ unlang_action_t rlm_ldap_check_userobj_dynamic(unlang_result_t *p_result, reques
 	 *	can be checked.
 	 *	If not then a query is needed to retrieve the user object.
 	 */
-	if (unlang_function_push(/* ldap_check_userobj_resume provides an rcode result */p_result,
-				 request,
-				 xlat_ctx->query ? NULL : ldap_check_userobj_start,
-				 ldap_check_userobj_resume,
-				 ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
-				 UNLANG_SUB_FRAME, group_ctx) < 0) {
+	if (unlang_function_push_with_result(p_result,
+					     request,
+					     xlat_ctx->query ? NULL : ldap_check_userobj_start,
+					     ldap_check_userobj_resume,
+					     ldap_group_userobj_cancel, ~FR_SIGNAL_CANCEL,
+					     UNLANG_SUB_FRAME,
+					     group_ctx) < 0) {
 		talloc_free(group_ctx);
 		RETURN_UNLANG_FAIL;
 	}

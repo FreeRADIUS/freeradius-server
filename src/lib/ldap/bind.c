@@ -368,11 +368,11 @@ unlang_action_t fr_ldap_bind_auth_async(unlang_result_t *p_result, request_t *re
 		RETURN_UNLANG_FAIL;
 	}
 
-	return unlang_function_push(p_result,
-				    request,
-				    ldap_async_auth_bind_start,
-				    ldap_async_auth_bind_results,
-				    ldap_async_auth_bind_cancel,
-				    ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME,
-				    bind_auth_ctx);
+	return unlang_function_push_with_result(p_result,
+						request,
+						ldap_async_auth_bind_start,
+						ldap_async_auth_bind_results,
+						ldap_async_auth_bind_cancel,
+						~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME,
+						bind_auth_ctx);
 }

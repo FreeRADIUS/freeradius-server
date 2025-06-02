@@ -227,6 +227,7 @@ typedef struct {
 	fr_ldap_thread_trunk_t		*ttrunk;
 	fr_ldap_query_t			*query;
 	ldap_group_xlat_status_t	status;
+	unlang_result_t			result;
 	bool				found;
 } ldap_group_xlat_ctx_t;
 
