@@ -127,7 +127,8 @@ typedef enum {
 	CRL_ERROR = -1,							//!< Unspecified error ocurred.
 	CRL_ENTRY_NOT_FOUND = 0,					//!< Serial not found in this CRL.
 	CRL_ENTRY_FOUND = 1,						//!< Serial was found in this CRL.
-	CRL_NOT_FOUND = 2,						//!< No CRL found, need to load it from the CDP URL
+	CRL_ENTRY_REMOVED = 2,						//!< Serial was "un-revoked" in this delta CRL.
+	CRL_NOT_FOUND = 3,						//!< No CRL found, need to load it from the CDP URL
 } crl_ret_t;
 
 static const call_env_method_t crl_env = {
@@ -210,8 +211,8 @@ static crl_ret_t crl_check_entry(crl_entry_t *crl_entry, request_t *request, uin
 		return CRL_ENTRY_FOUND;
 
 	case 2:
-		RDEBUG2("Remove from CRL?");
-		return CRL_ENTRY_NOT_FOUND;
+		RDEBUG3("Certificate un-revoked by %s", crl_entry->cdp_url);
+		return CRL_ENTRY_REMOVED;
 	}
 
 	return CRL_ERROR;
@@ -427,12 +428,13 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 		case CRL_ENTRY_NOT_FOUND:
 			/*
 			 *	We have a CRL, but the serial is not in it.
-			 *	check the rest of the CDPs, then return OK.
 			 */
+
+		case CRL_ENTRY_REMOVED:
 			pthread_mutex_unlock(&inst->mutable->mutex);
 			fr_value_box_list_talloc_free(&rctx->crl_data);	/* Free the raw CRL data */
 			pair_delete_request(attr_crl_cdp_url);
-			return crl_by_url(p_result, mctx, request);
+			RETURN_MODULE_OK;
 
 		case CRL_ERROR:
 			goto fail;
@@ -481,6 +483,7 @@ static unlang_action_t crl_by_url(rlm_rcode_t *p_result, module_ctx_t const *mct
 			break;
 
 		case CRL_ENTRY_NOT_FOUND:
+		case CRL_ENTRY_REMOVED:
 			rcode = RLM_MODULE_OK;
 			break;
 
