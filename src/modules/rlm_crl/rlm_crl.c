@@ -555,6 +555,7 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 		}
 
 		if (rctx->status != CRL_CHECK_DELTA) ret = crl_check_entry(crl_entry, request, env->serial.vb_octets);
+	check_return:
 		switch (ret) {
 		case CRL_ENTRY_FOUND:
 			pthread_mutex_unlock(&inst->mutable->mutex);
@@ -568,7 +569,9 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 			 */
 			if (rctx->status == CRL_CHECK_FETCH_DELTA) {
 				RDEBUG3("Certificate not in delta CRL, checking base CRL");
+				rctx->status = CRL_CHECK_BASE;
 				ret = crl_check_entry(rctx->base_crl, request, env->serial.vb_octets);
+				goto check_return;
 			}
 			FALL_THROUGH;
 
