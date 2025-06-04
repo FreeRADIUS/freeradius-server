@@ -55,6 +55,13 @@ crl {
 #	force_expiry = 7d
 
 	#
+	#  force_delta_expiry:: Maximum time between expiring delta CRLs
+	#
+	#  This overrides `force_expiry` for delta CRLs.
+	#
+#	force_delta_expiry = 1d
+
+	#
 	#  early_refresh:: Time before `nextUpdate` which the CRL will be refreshed
 	#
 	early_refresh = 1h
