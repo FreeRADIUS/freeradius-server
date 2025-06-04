@@ -42,6 +42,12 @@ crl {
 			#  If any CRLs need to be retrieved by LDAP queries
 			#  then configure and enable the `ldap` module to
 			#  support this.
+			#
+			#  If the URIs in CRL distribution points do not include
+			#  an LDAP host (i.e. they start ldap:///) then the
+			#  ldap module must be configured with the correct
+			#  server details to fetch the CRL from
+			#
 #			ldap = %ldap(%ldap.uri.safe("%{CRL.CDP-URL}"))
 		}
 	}
