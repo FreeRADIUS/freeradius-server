@@ -84,10 +84,18 @@ typedef struct {
 	rlm_crl_t const			*inst;				//!< The instance of the CRL module.
 } crl_entry_t;
 
+/** A status used to track which CRL is being checked */
+typedef enum {
+	CRL_CHECK_BASE = 0,						//!< The base CRL is being checked
+	CRL_CHECK_FETCH_DELTA,						//!< The delta CRL is being fetched
+	CRL_CHECK_DELTA							//!< The delta CRL exists and is being checked
+} crl_check_status_t;
+
 typedef struct {
 	fr_value_box_t			*cdp_url;			//!< The URL we're currently attempting to load.
 	fr_value_box_list_t		crl_data;			//!< Data from CRL expansion.
 	fr_value_box_list_t		missing_crls;			//!< CRLs missing from the tree
+	crl_check_status_t		status;				//!< Status of the current CRL check.
 } rlm_crl_rctx_t;
 
 static conf_parser_t module_config[] = {
