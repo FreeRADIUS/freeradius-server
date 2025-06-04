@@ -448,7 +448,7 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 			goto fail;
 
 		/*
-		 *	This should be return by crl_check_entry because we provided the entry!
+		 *	This should never be returned by crl_check_entry because we provided the entry!
 		 */
 		case CRL_NOT_FOUND:
 			fr_assert(0);
