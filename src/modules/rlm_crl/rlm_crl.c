@@ -181,10 +181,20 @@ static void crl_free(void *data)
 static void crl_expire(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, UNUSED void *uctx)
 {
 	crl_entry_t	*crl = talloc_get_type_abort(uctx, crl_entry_t);
+	crl_entry_t	*delta, find;
+	fr_value_box_t	*vb = NULL;
 
 	DEBUG2("CRL associated with CDP %s expired", crl->cdp_url);
 	pthread_mutex_lock(&crl->inst->mutable->mutex);
 	fr_rb_remove(crl->inst->mutable->crls, crl);
+	while ((vb = fr_value_box_list_next(&crl->delta_urls, vb))) {
+		find.cdp_url = vb->vb_strvalue;
+		delta = fr_rb_find(crl->inst->mutable->crls, &find);
+		if (!delta) continue;
+		DEBUG2("Expiring delta CRL from %s due to expired base CRL", delta->cdp_url);
+		fr_rb_remove(crl->inst->mutable->crls, delta);
+		talloc_free(delta);
+	}
 	pthread_mutex_unlock(&crl->inst->mutable->mutex);
 	talloc_free(crl);
 }
