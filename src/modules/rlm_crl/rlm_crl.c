@@ -93,6 +93,7 @@ typedef enum {
 
 typedef struct {
 	fr_value_box_t			*cdp_url;			//!< The URL we're currently attempting to load.
+	crl_entry_t			*base_crl;			//!< The base CRL relating to the delta currently being fetched.
 	fr_value_box_list_t		crl_data;			//!< Data from CRL expansion.
 	fr_value_box_list_t		missing_crls;			//!< CRLs missing from the tree
 	crl_check_status_t		status;				//!< Status of the current CRL check.
@@ -250,7 +251,8 @@ static int _crl_entry_free(crl_entry_t *crl_entry)
  *
  * @note Must be called with the mutex held.
  */
-static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl, char const *url, uint8_t const *data)
+static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl, char const *url, uint8_t const *data,
+				     crl_entry_t *base_crl)
 {
 	uint8_t const	*our_data = data;
 	crl_entry_t	*crl;
@@ -307,6 +309,28 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 
 	crl->crl_num = X509_CRL_get_ext_d2i(crl->crl, NID_crl_number, &i, NULL);
 
+	/*
+	 *	If we're passed a base_crl, then this is a delta - check the delta
+	 *	relates to the correct base.
+	 */
+	if (base_crl) {
+		ASN1_INTEGER *base_num = X509_CRL_get_ext_d2i(crl->crl, NID_delta_crl, &i, NULL);
+		if (!base_num) {
+			fr_tls_strerror_printf("Delta CRL missing Delta CRL Indicator extension");
+			goto error;
+		}
+		if (ASN1_INTEGER_cmp(base_num, base_crl->crl_num) != 0) {
+			fr_tls_strerror_printf("Delta CRL referrs to incorrect base CRL number");
+			ASN1_INTEGER_free(base_num);
+			goto error;
+		}
+		ASN1_INTEGER_free(base_num);
+		if (ASN1_INTEGER_cmp(crl->crl_num, base_crl->crl_num) < 0) {
+			fr_tls_strerror_printf("Delta CRL number is less than base CRL number");
+			goto error;
+		}
+	}
+
 	if (fr_tls_utils_asn1time_to_epoch(&next_update, X509_CRL_get0_nextUpdate(crl->crl)) < 0) {
 		fr_tls_strerror_printf("Failed to parse nextUpdate from CRL");
 		goto error;
@@ -322,7 +346,7 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 	 *	Check if this CRL has a Freshest CRL extension - the list of URIs to get deltas from
 	 */
 	fr_value_box_list_init(&crl->delta_urls);
-	if ((dps = X509_CRL_get_ext_d2i(crl->crl, NID_freshest_crl, NULL, NULL))) {
+	if (!base_crl && (dps = X509_CRL_get_ext_d2i(crl->crl, NID_freshest_crl, NULL, NULL))) {
 		DIST_POINT		*dp;
 		STACK_OF(GENERAL_NAME)	*names;
 		GENERAL_NAME		*name;
@@ -422,7 +446,7 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 
 		crl_entry = crl_entry_create(inst, unlang_interpret_event_list(request)->tl,
 				       rctx->cdp_url->vb_strvalue,
-				       fr_value_box_list_head(&rctx->crl_data)->vb_octets);
+				       fr_value_box_list_head(&rctx->crl_data)->vb_octets, rctx->base_crl);
 		if (!crl_entry) {
 			RPERROR("Failed to process returned CRL data");
 			goto again;
