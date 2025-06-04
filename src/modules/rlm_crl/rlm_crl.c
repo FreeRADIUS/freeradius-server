@@ -233,14 +233,15 @@ static crl_ret_t crl_check_entry(crl_entry_t *crl_entry, request_t *request, uin
 /** Resolve a cdp_url to a CRL entry, and check serial against it, if it exists
  *
  */
-static crl_ret_t crl_check_serial(fr_rb_tree_t *crls, request_t *request, char const *cdp_url, uint8_t const *serial)
+static crl_ret_t crl_check_serial(fr_rb_tree_t *crls, request_t *request, char const *cdp_url, uint8_t const *serial,
+				  crl_entry_t **found)
 {
-	crl_entry_t	*found, find = { .cdp_url = cdp_url};
+	crl_entry_t	find = { .cdp_url = cdp_url};
 
-	found = fr_rb_find(crls, &find);
-	if (found == NULL) return CRL_NOT_FOUND;
+	*found = fr_rb_find(crls, &find);
+	if (*found == NULL) return CRL_NOT_FOUND;
 
-	return crl_check_entry(found, request, serial);
+	return crl_check_entry(*found, request, serial);
 }
 
 static int _crl_entry_free(crl_entry_t *crl_entry)
@@ -551,6 +552,7 @@ static unlang_action_t crl_by_url(rlm_rcode_t *p_result, module_ctx_t const *mct
 	rlm_crl_env_t *env = talloc_get_type_abort(mctx->env_data, rlm_crl_env_t);
 	rlm_crl_rctx_t *rctx = mctx->rctx;
 	rlm_rcode_t	rcode = RLM_MODULE_NOOP;
+	crl_entry_t	*found;
 
 	if (!rctx) rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), rlm_crl_rctx_t);
 	fr_value_box_list_init(&rctx->missing_crls);
@@ -563,8 +565,8 @@ static unlang_action_t crl_by_url(rlm_rcode_t *p_result, module_ctx_t const *mct
 	 *	if we have any of them before attempting to fetch missing ones.
 	 */
 	while ((rctx->cdp_url = fr_value_box_list_pop_head(env->cdp))) {
-		switch (crl_check_serial(inst->mutable->crls, request,
-				 rctx->cdp_url->vb_strvalue, env->serial.vb_octets)) {
+		switch (crl_check_serial(inst->mutable->crls, request, rctx->cdp_url->vb_strvalue,
+					 env->serial.vb_octets, &found)) {
 		case CRL_ENTRY_FOUND:
 			rcode = RLM_MODULE_REJECT;
 			break;
