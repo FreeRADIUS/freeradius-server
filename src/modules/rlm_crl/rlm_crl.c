@@ -427,8 +427,16 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 
 /** Yield to a tmpl to retrieve CRL data
  *
+ * @param request	the current request.
+ * @param env		the call_env for this module call.
+ * @param rctx		the resume ctx for this module call.
+ *
+ * @returns
+ *  - 1 - new tmpl pushed.
+ *  - 0 - no tmpl pushed, soft fail.
+ *  - -1 - no tmpl pushed, hard fail
  */
-static unlang_action_t crl_tmpl_yield(rlm_rcode_t *p_result, request_t *request, rlm_crl_env_t *env, rlm_crl_rctx_t *rctx)
+static int crl_tmpl_yield(request_t *request, rlm_crl_env_t *env, rlm_crl_rctx_t *rctx)
 {
 	fr_pair_t	*vp;
 	tmpl_t		*vpt;
@@ -440,17 +448,18 @@ static unlang_action_t crl_tmpl_yield(rlm_rcode_t *p_result, request_t *request,
 		vpt = env->http_exp;
 	} else if (strncmp(rctx->cdp_url->vb_strvalue, "ldap", 4) == 0) {
 		if (!env->ldap_exp) {
-			RERROR("CRL URI requires LDAP, but the crl module ldap expansion is not configured");
-			RETURN_MODULE_INVALID;
+			RWARN("CRL URI %pV requires LDAP, but the crl module ldap expansion is not configured", rctx->cdp_url);
+			return 0;
 		}
 		vpt = env->ldap_exp;
 	} else {
 		RERROR("Unsupported URI scheme in CRL URI %pV", rctx->cdp_url);
-		RETURN_MODULE_FAIL;
+		return -1;
 	}
 
-	return unlang_module_yield_to_tmpl(rctx, &rctx->crl_data, request, vpt,
-					   NULL, crl_process_cdp_data, crl_signal, 0, rctx);
+	if (unlang_module_yield_to_tmpl(rctx, &rctx->crl_data, request, vpt,
+					NULL, crl_process_cdp_data, crl_signal, 0, rctx) < 0) return -1;
+	return 1;
 }
 
 static unlang_action_t crl_by_url(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
@@ -476,7 +485,16 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 		 *	If there are more URIs to try, push a new tmpl to expand.
 		 */
 		rctx->cdp_url = fr_value_box_list_pop_head(&rctx->missing_crls);
-		if (rctx->cdp_url) return crl_tmpl_yield(p_result, request, env, rctx);
+		if (rctx->cdp_url) {
+			switch (crl_tmpl_yield(request, env, rctx)) {
+			case 0:
+				goto again;
+			case 1:
+				return UNLANG_ACTION_PUSHED_CHILD;
+			default:
+				break;
+			}
+		}
 	fail:
 		pthread_mutex_unlock(&inst->mutable->mutex);
 		fr_value_box_list_talloc_free(&rctx->crl_data);
@@ -653,9 +671,18 @@ static unlang_action_t crl_by_url(rlm_rcode_t *p_result, module_ctx_t const *mct
 fetch_missing:
 	fr_value_box_list_init(&rctx->crl_data);
 
+again:
 	rctx->cdp_url = fr_value_box_list_pop_head(&rctx->missing_crls);
 
-	return crl_tmpl_yield(p_result, request, env, rctx);
+	switch (crl_tmpl_yield(request, env, rctx)) {
+	case 0:
+		goto again;
+	case 1:
+		return UNLANG_ACTION_PUSHED_CHILD;
+	default:
+		pthread_mutex_unlock(&inst->mutable->mutex);
+		RETURN_MODULE_FAIL;
+	}
 }
 
 static int mod_mutable_free(rlm_crl_mutable_t *mutable)
