@@ -989,6 +989,7 @@ fi
 %{_libdir}/freeradius/rlm_chap.so
 %{_libdir}/freeradius/rlm_cipher.so
 %{_libdir}/freeradius/rlm_client.so
+%{_libdir}/freeradius/rlm_crl.so
 %{_libdir}/freeradius/rlm_csv.so
 %{_libdir}/freeradius/rlm_date.so
 %{_libdir}/freeradius/rlm_delay.so
