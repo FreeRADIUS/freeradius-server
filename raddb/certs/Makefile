@@ -28,7 +28,7 @@ export OPENSSL_CONF
 #
 ######################################################################
 .PHONY: all
-all: index.txt serial dh ca server client ocsp
+all: index.txt crlnumber serial dh ca server client ocsp
 
 .PHONY: client
 client: rsa/client.pem ecc/client.pem rsa/client.crt ecc/client.crt
@@ -357,6 +357,9 @@ ecc/inner-server.vrfy: ecc/ca.pem
 ######################################################################
 index.txt:
 	@touch index.txt
+
+crlnumber:
+	@echo '01' > crlnumber
 
 serial:
 	@echo '01' > serial
