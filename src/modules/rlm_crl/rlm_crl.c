@@ -144,6 +144,7 @@ typedef enum {
 	CRL_MISSING_DELTA = 4,						//!< Need to load a delta CRL to supplement this CRL.
 } crl_ret_t;
 
+#ifdef WITH_TLS
 static const call_env_method_t crl_env = {
 	FR_CALL_ENV_METHOD_OUT(rlm_crl_env_t),
 	.env = (call_env_parser_t[]){
@@ -690,12 +691,14 @@ static int mod_mutable_free(rlm_crl_mutable_t *mutable)
 	pthread_mutex_destroy(&mutable->mutex);
 	return 0;
 }
+#endif
 
 /**	Instantiate the module
  *
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
+#ifdef WITH_TLS
 	rlm_crl_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_crl_t);
 
 	MEM(inst->mutable = talloc_zero(NULL, rlm_crl_mutable_t));
@@ -718,14 +721,24 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	X509_STORE_set_purpose(inst->verify_store, X509_PURPOSE_SSL_CLIENT);
 
 	return 0;
+#else
+	cf_log_err(mctx->mi->conf, "rlm_crl requires OpenSSL");
+	return -1;
+#endif
 }
 
-static int mod_detach(module_detach_ctx_t const *mctx)
+static int mod_detach(
+#ifndef WITH_TLS
+		      UNUSED
+#endif
+		      module_detach_ctx_t const *mctx)
 {
+#ifdef WITH_TLS
 	rlm_crl_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_crl_t);
 
 	if (inst->verify_store) X509_STORE_free(inst->verify_store);
 	talloc_free(inst->mutable);
+#endif
 	return 0;
 }
 
@@ -739,10 +752,12 @@ module_rlm_t rlm_crl = {
 		.name		= "crl",
 		.config		= module_config,
 	},
+#ifdef WITH_TLS
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
 			{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = crl_by_url, .method_env = &crl_env },
 			MODULE_BINDING_TERMINATOR
 		}
 	}
+#endif
 };
