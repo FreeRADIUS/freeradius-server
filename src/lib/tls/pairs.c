@@ -125,6 +125,12 @@ static bool tls_session_pairs_from_crl(fr_pair_list_t *pair_list, TALLOC_CTX *ct
 		dp = sk_DIST_POINT_value(dps, i);
 		names = dp->distpoint->name.fullname;
 
+		/*
+		 *	We only want CRL distribution points that cover all reasons,
+		 *	so ignore any where reasons are set.
+		 */
+		if (dp->reasons) continue;
+
 		for (j = 0; j < sk_GENERAL_NAME_num(names); j++) {
 			name = sk_GENERAL_NAME_value(names, j);
 
