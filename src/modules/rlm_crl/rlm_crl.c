@@ -141,6 +141,7 @@ typedef enum {
 	CRL_ENTRY_FOUND = 1,						//!< Serial was found in this CRL.
 	CRL_ENTRY_REMOVED = 2,						//!< Serial was "un-revoked" in this delta CRL.
 	CRL_NOT_FOUND = 3,						//!< No CRL found, need to load it from the CDP URL
+	CRL_MISSING_DELTA = 4,						//!< Need to load a delta CRL to supplement this CRL.
 } crl_ret_t;
 
 static const call_env_method_t crl_env = {
@@ -236,10 +237,33 @@ static crl_ret_t crl_check_entry(crl_entry_t *crl_entry, request_t *request, uin
 static crl_ret_t crl_check_serial(fr_rb_tree_t *crls, request_t *request, char const *cdp_url, uint8_t const *serial,
 				  crl_entry_t **found)
 {
-	crl_entry_t	find = { .cdp_url = cdp_url};
+	crl_entry_t	*delta, find = { .cdp_url = cdp_url};
+	fr_value_box_t	*vb = NULL;
+	crl_ret_t	ret = CRL_NOT_FOUND;
 
 	*found = fr_rb_find(crls, &find);
 	if (*found == NULL) return CRL_NOT_FOUND;
+
+	/*
+	 *	First check the delta if it should exist
+	 */
+	while ((vb = fr_value_box_list_next(&(*found)->delta_urls, vb))) {
+		find.cdp_url = vb->vb_strvalue;
+		delta = fr_rb_find(crls, &find);
+		if (delta) {
+			ret = crl_check_entry(delta, request, serial);
+
+			/*
+			 *	An entry found in a delta overrides the base CRL
+			 */
+			if (ret != CRL_ENTRY_NOT_FOUND) return ret;
+			break;
+		} else {
+			ret = CRL_MISSING_DELTA;
+		}
+	}
+
+	if (ret == CRL_MISSING_DELTA) return ret;
 
 	return crl_check_entry(*found, request, serial);
 }
@@ -530,6 +554,7 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 		/*
 		 *	This should never be returned by crl_check_entry because we provided the entry!
 		 */
+		case CRL_MISSING_DELTA:
 		case CRL_NOT_FOUND:
 			fr_assert(0);
 			goto fail;
@@ -583,6 +608,24 @@ static unlang_action_t crl_by_url(rlm_rcode_t *p_result, module_ctx_t const *mct
 			fr_value_box_list_insert_tail(&rctx->missing_crls, rctx->cdp_url);
 			rcode = RLM_MODULE_NOTFOUND;
 			continue;
+
+		case CRL_MISSING_DELTA:
+		{
+			/*
+			 *	We found a base CRL, but it has a delta which
+			 *	was not found.  Populate the "missing" list with
+			 *	the CDP for the delta and go get it.
+			 */
+			fr_value_box_t	*vb = NULL, *delta_uri;
+			rctx->base_crl = found;
+			rctx->status = CRL_CHECK_FETCH_DELTA;
+			fr_value_box_list_talloc_free(&rctx->missing_crls);
+			while ((vb = fr_value_box_list_next(&found->delta_urls, vb))) {
+				delta_uri = fr_value_box_acopy(rctx, vb);
+				fr_value_box_list_insert_tail(&rctx->missing_crls, delta_uri);
+			}
+			goto fetch_missing;
+		}
 		}
 	}
 
@@ -597,6 +640,7 @@ static unlang_action_t crl_by_url(rlm_rcode_t *p_result, module_ctx_t const *mct
 	 *	We yield to an expansion to allow this to happen, then parse the CRL data
 	 *	and check if the serial has an entry in the CRL.
 	 */
+fetch_missing:
 	fr_value_box_list_init(&rctx->crl_data);
 
 	rctx->cdp_url = fr_value_box_list_pop_head(&rctx->missing_crls);
