@@ -429,6 +429,7 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 	rlm_crl_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_crl_t);
 	rlm_crl_env_t *env = talloc_get_type_abort(mctx->env_data, rlm_crl_env_t);
 	rlm_crl_rctx_t *rctx = talloc_get_type_abort(mctx->rctx, rlm_crl_rctx_t);
+	crl_ret_t	ret = CRL_NOT_FOUND;
 
 	switch (fr_value_box_list_num_elements(&rctx->crl_data)) {
 	case 0:
@@ -450,16 +451,57 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 	case 1:
 	{
 		crl_entry_t *crl_entry;
+		fr_value_box_t	*crl_data = fr_value_box_list_pop_head(&rctx->crl_data);
 
 		crl_entry = crl_entry_create(inst, unlang_interpret_event_list(request)->tl,
-				       rctx->cdp_url->vb_strvalue,
-				       fr_value_box_list_head(&rctx->crl_data)->vb_octets, rctx->base_crl);
+					     rctx->cdp_url->vb_strvalue,
+					     crl_data->vb_octets, rctx->base_crl);
+		talloc_free(crl_data);
 		if (!crl_entry) {
 			RPERROR("Failed to process returned CRL data");
 			goto again;
 		}
 
-		switch (crl_check_entry(crl_entry, request, env->serial.vb_octets)) {
+		/*
+		 *	We've successfully loaded a URI - so we can clear the list of missing crls
+		 *	This can then be re-used to hold missing delta CRLs if needed.
+		 */
+		fr_value_box_list_talloc_free(&rctx->missing_crls);
+
+		if (fr_value_box_list_num_elements(&crl_entry->delta_urls) > 0) {
+			crl_entry_t	*delta, find;
+			fr_value_box_t	*vb = NULL, *delta_uri;
+
+			rctx->status = CRL_CHECK_DELTA;
+			while ((vb = fr_value_box_list_next(&crl_entry->delta_urls, vb))) {
+				find.cdp_url = vb->vb_strvalue;
+				delta = fr_rb_find(inst->mutable->crls, &find);
+				if (delta) {
+					ret = crl_check_entry(delta, request, env->serial.vb_octets);
+					/*
+					 *	The delta contained an entry for this serial - so this
+					 *	is the return status.
+					 */
+					if (ret != CRL_ENTRY_NOT_FOUND) break;
+				} else {
+					delta_uri = fr_value_box_acopy(rctx, vb);
+					fr_value_box_list_insert_tail(&rctx->missing_crls, delta_uri);
+				}
+			}
+
+			/*
+			 *	None of the delta CRL URIs were found, so go and get one.
+			 *	The list of URIs to fetch will now be in rctx->missing_crls
+			 */
+			if (ret == CRL_NOT_FOUND) {
+				rctx->status = CRL_CHECK_FETCH_DELTA;
+				rctx->base_crl = crl_entry;
+				goto again;
+			}
+		}
+
+		if (rctx->status != CRL_CHECK_DELTA) ret = crl_check_entry(crl_entry, request, env->serial.vb_octets);
+		switch (ret) {
 		case CRL_ENTRY_FOUND:
 			pthread_mutex_unlock(&inst->mutable->mutex);
 			RETURN_MODULE_REJECT;
@@ -467,11 +509,17 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 		case CRL_ENTRY_NOT_FOUND:
 			/*
 			 *	We have a CRL, but the serial is not in it.
+			 *
+			 *	If this was after fetching a delta, go check the base
 			 */
+			if (rctx->status == CRL_CHECK_FETCH_DELTA) {
+				RDEBUG3("Certificate not in delta CRL, checking base CRL");
+				ret = crl_check_entry(rctx->base_crl, request, env->serial.vb_octets);
+			}
+			FALL_THROUGH;
 
 		case CRL_ENTRY_REMOVED:
 			pthread_mutex_unlock(&inst->mutable->mutex);
-			fr_value_box_list_talloc_free(&rctx->crl_data);	/* Free the raw CRL data */
 			pair_delete_request(attr_crl_cdp_url);
 			RETURN_MODULE_OK;
 
