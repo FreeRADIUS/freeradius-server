@@ -1703,6 +1703,37 @@ ssize_t fr_sbuff_in_escape_buffer(fr_sbuff_t *sbuff, char const *in, fr_sbuff_es
 	return fr_sbuff_in_escape(sbuff, in, talloc_array_length(in) - 1, e_rules);
 }
 
+/** Concat an array of strings (NULL terminated), with a string separator
+ *
+ * @param[out] out	Where to write the resulting string.
+ * @param[in] array	of strings to concat.
+ * @param[in] sep	to insert between elements.  May be NULL.
+ * @return
+ *      - >= 0 on success - length of the string created.
+ *	- <0 on failure.  How many bytes we would need.
+ */
+fr_slen_t fr_sbuff_in_array(fr_sbuff_t *out, char const * const *array, char const *sep)
+{
+	fr_sbuff_t		our_out = FR_SBUFF(out);
+	char const * const *	p;
+	fr_sbuff_escape_rules_t	e_rules = {
+					.name = __FUNCTION__,
+					.chr = '\\'
+				};
+
+	if (sep) e_rules.subs[(uint8_t)*sep] = *sep;
+
+	for (p = array; *p; p++) {
+		if (*p) FR_SBUFF_RETURN(fr_sbuff_in_escape, &our_out, *p, strlen(*p), &e_rules);
+
+		if (sep && p[1]) {
+			FR_SBUFF_RETURN(fr_sbuff_in_strcpy, &our_out, sep);
+		}
+	}
+
+	FR_SBUFF_SET_RETURN(out, &our_out);
+}
+
 /** Return true and advance past the end of the needle if needle occurs next in the sbuff
  *
  * @param[in] sbuff		to search in.
