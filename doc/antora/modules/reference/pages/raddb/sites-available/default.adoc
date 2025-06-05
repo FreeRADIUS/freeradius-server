@@ -27,8 +27,7 @@ in via PAP, CHAP, MS-CHAP, etc.  You should so test the server via
 Please read "man radiusd" before editing this file.  See the
 section titled DEBUGGING.  It outlines a method where you can
 quickly obtain the configuration you want, without running into
-trouble.  See also "man unlang", which documents the format of this
-file.  And finally, the debug output can be complex. Please read
+trouble. And finally, the debug output can be complex. Please read
 https://wiki.freeradius.org/radiusd-X[debugging] to understand that output.
 
 The best way to configure the server for your local system is to
@@ -1779,8 +1778,8 @@ Filter attributes from the accounting response.
 
 ## Timeouts
 
-A virtual server can have a `timeout` section.  The format and
-contents are the same as the `timeout` keyword.
+A virtual server can have a `catch timeout` section.  The format and
+contents are the same as the normal `catch timeout`.
 
 This section limits the total processing time for a request.  The
 values given here should be less than `request.timeout`.
@@ -1807,7 +1806,7 @@ given here should be less than the value given by
 
 
 ```
-#	timeout 10s {
+#	catch timeout {
 #		do_logging_here
 #		...
 #	}
