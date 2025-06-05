@@ -954,6 +954,8 @@ int		fr_ldap_server_config_check(fr_ldap_config_t *handle_config, char const *se
 
 char const	*fr_ldap_url_err_to_str(int ldap_url_err);
 
+void		fr_ldap_entry_dump(LDAPMessage *entry);
+
 int		fr_ldap_box_escape(fr_value_box_t *vb, UNUSED void *uctx);
 
 int		fr_ldap_filter_to_tmpl(TALLOC_CTX *ctx, tmpl_rules_t const *t_rules, char const **sub, size_t sublen,
