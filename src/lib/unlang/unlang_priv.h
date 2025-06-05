@@ -384,6 +384,8 @@ extern unlang_op_t unlang_ops[];
 
 extern fr_table_num_sorted_t const mod_rcode_table[];
 extern size_t mod_rcode_table_len;
+extern fr_table_num_sorted_t const mod_action_table[];
+extern size_t mod_action_table_len;
 
 static inline void repeatable_set(unlang_stack_frame_t *frame)			{ frame->flag |= UNLANG_FRAME_FLAG_REPEAT; }
 static inline void top_frame_set(unlang_stack_frame_t *frame) 			{ frame->flag |= UNLANG_FRAME_FLAG_TOP_FRAME; }
@@ -416,6 +418,13 @@ static inline bool is_break_point(unlang_stack_frame_t const *frame)		{ return u
 static inline bool is_return_point(unlang_stack_frame_t const *frame) 		{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_RETURN_POINT; }
 static inline bool is_continue_point(unlang_stack_frame_t const *frame) 	{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_CONTINUE_POINT; }
 
+/** @name Debug functions
+ *
+ * @{
+ */
+void stack_dump(request_t *request);
+void stack_dump_with_actions(request_t *request);
+/** @} */
 
 /** Find the first frame with a given flag
  *

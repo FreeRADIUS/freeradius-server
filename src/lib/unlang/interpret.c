@@ -158,7 +158,25 @@ static void instruction_dump(request_t *request, unlang_t const *instruction)
 	REXDENT();
 }
 
-static void frame_dump(request_t *request, unlang_stack_frame_t *frame)
+static void actions_dump(request_t *request, unlang_t const *instruction)
+{
+	char buffer[20];
+	int i;
+
+	RDEBUG2("actions");
+	RINDENT();
+	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+		snprintf(buffer, sizeof(buffer), "%d", instruction->actions.actions[i]);
+
+		RDEBUG2("%s: %s",
+			fr_table_str_by_value(mod_rcode_table, i, "<invalid>"),
+			fr_table_str_by_value(mod_action_table, instruction->actions.actions[i], buffer),
+			instruction->actions.actions[i]);
+	}
+	REXDENT();
+}
+
+static void frame_dump(request_t *request, unlang_stack_frame_t *frame, bool with_actions)
 {
 	unlang_op_t	*op = NULL;
 
@@ -205,16 +223,16 @@ static void frame_dump(request_t *request, unlang_stack_frame_t *frame)
 			is_continue_point(frame) ? "c" : "-"
 			);
 	}
+	if (with_actions) actions_dump(request, frame->instruction);
 
 	/*
 	 *	Call the custom frame dump function
 	 */
 	if (op && op->dump) op->dump(request, frame);
-
 	REXDENT();
 }
 
-static void stack_dump(request_t *request)
+static void stack_dump_body(request_t *request, bool with_actions)
 {
 	int i;
 	unlang_stack_t *stack = request->stack;
@@ -224,9 +242,19 @@ static void stack_dump(request_t *request)
 	for (i = stack->depth; i >= 0; i--) {
 		unlang_stack_frame_t *frame = &stack->frame[i];
 		RDEBUG2("[%d] Frame contents", i);
-		frame_dump(request, frame);
+		frame_dump(request, frame, with_actions);
 	}
 	RDEBUG2("----- End stack debug [depth %i] -------", stack->depth);
+}
+
+void stack_dump(request_t *request)
+{
+	stack_dump_body(request, false);
+}
+
+void stack_dump_with_actions(request_t *request)
+{
+	stack_dump_body(request, true);
 }
 #define DUMP_STACK if (DEBUG_ENABLED5) stack_dump(request)
 #else

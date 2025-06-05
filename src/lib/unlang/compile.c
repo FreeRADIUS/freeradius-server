@@ -76,19 +76,27 @@ static fr_rb_tree_t *unlang_instruction_tree = NULL;
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */
 fr_table_num_sorted_t const mod_rcode_table[] = {
-	{ L("..."),        RLM_MODULE_NOT_SET	},
-	{ L("disallow"),   RLM_MODULE_DISALLOW	},
-	{ L("fail"),       RLM_MODULE_FAIL	},
-	{ L("handled"),    RLM_MODULE_HANDLED	},
-	{ L("invalid"),    RLM_MODULE_INVALID	},
-	{ L("noop"),       RLM_MODULE_NOOP	},
-	{ L("notfound"),   RLM_MODULE_NOTFOUND	},
-	{ L("ok"),	   RLM_MODULE_OK	},
-	{ L("reject"),     RLM_MODULE_REJECT	},
-	{ L("timeout"),	   RLM_MODULE_TIMEOUT   },
-	{ L("updated"),    RLM_MODULE_UPDATED	}
+	{ L("..."),        	RLM_MODULE_NOT_SET	},
+	{ L("disallow"),   	RLM_MODULE_DISALLOW	},
+	{ L("fail"),       	RLM_MODULE_FAIL		},
+	{ L("handled"),    	RLM_MODULE_HANDLED	},
+	{ L("invalid"),    	RLM_MODULE_INVALID	},
+	{ L("noop"),       	RLM_MODULE_NOOP		},
+	{ L("notfound"),   	RLM_MODULE_NOTFOUND	},
+	{ L("ok"),	   	RLM_MODULE_OK		},
+	{ L("reject"),     	RLM_MODULE_REJECT	},
+	{ L("timeout"),	   	RLM_MODULE_TIMEOUT	},
+	{ L("updated"),    	RLM_MODULE_UPDATED	}
 };
 size_t mod_rcode_table_len = NUM_ELEMENTS(mod_rcode_table);
+
+fr_table_num_sorted_t const mod_action_table[] = {
+	{ L("..."),		MOD_ACTION_NOT_SET	},
+	{ L("reject"),		MOD_ACTION_REJECT	},
+	{ L("retry"),		MOD_ACTION_RETRY	},
+	{ L("return"),		MOD_ACTION_RETURN	}
+};
+size_t mod_action_table_len = NUM_ELEMENTS(mod_action_table);
 
 typedef struct {
 	virtual_server_t const		*vs;			//!< Virtual server we're compiling in the context of.
