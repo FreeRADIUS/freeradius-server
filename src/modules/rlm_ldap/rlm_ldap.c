@@ -562,6 +562,92 @@ static void ldap_query_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now,
 	unlang_interpret_mark_runnable(request);
 }
 
+static xlat_arg_parser_t const ldap_uri_attr_option_xlat_arg[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Modify an LDAP URI to append an option to all attributes
+ *
+ * This is for the corner case where a URI is provided by a third party system
+ * and needs amending before being used. e.g. a CRL distribution point extracted
+ * from a certificate may need the "binary" option appending to the attribute
+ * being requested.
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t ldap_xlat_uri_attr_option(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+	 				       request_t *request, fr_value_box_list_t *in)
+{
+	fr_value_box_t		*uri, *option_vb;
+	char			*attrs_fixed, **attr, port[6];
+	char const		*option;
+	LDAPURLDesc		*ldap_url;
+	fr_value_box_t		*vb;
+	int			ret;
+
+	XLAT_ARGS(in, &uri, &option_vb);
+
+	if (option_vb->vb_length < 1) {
+		RERROR("LDAP attriubte option must not be blank");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (!ldap_is_ldap_url(uri->vb_strvalue)) {
+		REDEBUG("String passed does not look like an LDAP URL");
+		return XLAT_ACTION_FAIL;
+	}
+
+	ret = ldap_url_parse(uri->vb_strvalue, &ldap_url);
+	if (ret != LDAP_URL_SUCCESS){
+		RPEDEBUG("Parsing LDAP URL failed - %s", fr_ldap_url_err_to_str(ret));
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	No attributes, just return what was presented.
+	 */
+	if (!ldap_url->lud_attrs || !ldap_url->lud_attrs[0] || !*ldap_url->lud_attrs[0]) {
+		fr_value_box_list_remove(in, uri);
+		talloc_steal(ctx, uri);
+		fr_dcursor_append(out, uri);
+		goto done;
+	}
+
+	if (option_vb->vb_strvalue[0] != ';') {
+		option = talloc_asprintf(option_vb, ";%s", option_vb->vb_strvalue);
+	} else {
+		option = option_vb->vb_strvalue;
+	}
+
+	vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL);
+	attrs_fixed = talloc_strdup(vb, "");
+
+	attr = ldap_url->lud_attrs;
+	while (*attr) {
+		attrs_fixed = talloc_strdup_append(attrs_fixed, *attr);
+		if (!strstr(*attr, option)) attrs_fixed = talloc_strdup_append(attrs_fixed, option);
+		attr++;
+		if (*attr) attrs_fixed = talloc_strdup_append(attrs_fixed, ",");
+	}
+
+	snprintf(port, sizeof(port), "%d", ldap_url->lud_port);
+	fr_value_box_asprintf(vb, vb, NULL, uri->tainted, "%s://%s%s%s/%s?%s?%s?%s",
+			      ldap_url->lud_scheme,
+			      ldap_url->lud_host ? ldap_url->lud_host : "",
+			      ldap_url->lud_host ? ":" : "",
+			      ldap_url->lud_host ? port : "",
+			      ldap_url->lud_dn, attrs_fixed,
+			      fr_table_str_by_value(fr_ldap_scope, ldap_url->lud_scope, ""),
+			      ldap_url->lud_filter ? ldap_url->lud_filter : "");
+
+	fr_dcursor_append(out, vb);
+done:
+	ldap_free_urldesc(ldap_url);
+	return XLAT_ACTION_DONE;
+}
+
 /** Callback when resuming after async ldap query is completed
  *
  */
@@ -2755,6 +2841,10 @@ static int mod_load(void)
 
 	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.uri.unescape", ldap_uri_unescape_xlat, FR_TYPE_STRING)))) return -1;
 	xlat_func_args_set(xlat, ldap_uri_unescape_xlat_arg);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
+
+	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.uri.attr_option", ldap_xlat_uri_attr_option, FR_TYPE_STRING)))) return -1;
+	xlat_func_args_set(xlat, ldap_uri_attr_option_xlat_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 
 	return 0;
