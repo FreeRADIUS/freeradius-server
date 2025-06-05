@@ -1986,7 +1986,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 	if (unlikely(unlang_module_yield(request,
 					 mod_authorize_resume,
 					 mod_authorize_cancel, ~FR_SIGNAL_CANCEL,
-					 autz_ctx) != UNLANG_ACTION_YIELD)) {
+					 autz_ctx) == UNLANG_ACTION_FAIL)) {
 		talloc_free(autz_ctx);
 		RETURN_UNLANG_FAIL;
 	}
