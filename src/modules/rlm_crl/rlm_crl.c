@@ -418,7 +418,9 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 	}
 
 	DEBUG3("CRL from %s will expire in %pVs", url, fr_box_time_delta(expiry_time));
-	fr_timer_in(crl, tl, &crl->ev, expiry_time, false, crl_expire, crl);
+	if (fr_timer_in(crl, tl, &crl->ev, expiry_time, false, crl_expire, crl) <0) {
+		ERROR("Failed to set timer to expire CRL");
+	}
 
 	X509_STORE_CTX_free(verify_ctx);
 	return crl;
