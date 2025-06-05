@@ -1002,6 +1002,30 @@ ldap {
 #  "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
 #  ```
 #
+#  ### %ldap.uri.attr_option(...)
+#
+#  Add an option to all attribute referenced in an LDAP URI.
+#
+#  This is for the corner case where a URI is provided by a third party system
+#  and needs amending before being used. e.g. a CRL distribution point extracted
+#  from a certificate may need the "binary" option appending to the attribute
+#  being requested.
+#
+#  .Return: _string_
+#
+#  .Example
+#
+#  [source,unlang]
+#  ---
+#  my-uri := "ldap:///cn=cdp1,ou=pki,dc=example,dc=com?certificateRevocationList?base?objectClass=cRLDistributionPoint"
+#  reply.Reply-Message := %ldap.uri.attr_option(my-uri, 'binary')
+#
+#  .Output
+#
+#  ```
+#  "ldap:///cn=cdp1,ou=pki,dc=example,dc=com?certificateRevocationList;binary?base?objectClass=cRLDistributionPoint"
+#  ```
+#
 #  ### %ldap.group(...)
 #
 #  Check whether the current user is a member of a the given group.  If the attribute
