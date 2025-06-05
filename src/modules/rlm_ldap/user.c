@@ -59,6 +59,11 @@ static unlang_action_t ldap_find_user_async_result(unlang_result_t *p_result, re
 	char			*dn;
 	fr_pair_t		*vp;
 
+	/*
+	 *	Make the result available to the query
+	 */
+	if (user_ctx->out) *user_ctx->out = user_ctx->query;
+
 	switch (query->ret) {
 	case LDAP_RESULT_SUCCESS:
 		break;
@@ -115,7 +120,6 @@ static unlang_action_t ldap_find_user_async_result(unlang_result_t *p_result, re
 	MEM(pair_update_control(&vp, attr_ldap_userdn) >= 0);
 	fr_pair_value_strdup(vp, dn, false);
 	ldap_memfree(dn);
-	if (user_ctx->out) *user_ctx->out = user_ctx->query;
 
 	RETURN_UNLANG_OK;
 }
