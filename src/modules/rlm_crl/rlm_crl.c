@@ -684,6 +684,10 @@ again:
 	case 0:
 		goto again;
 	case 1:
+		/*
+		 *	The lock is released after the pushed tmpl result is handled
+		 */
+		/* coverity[missing_unlock] */
 		return UNLANG_ACTION_PUSHED_CHILD;
 	default:
 		pthread_mutex_unlock(&inst->mutable->mutex);
