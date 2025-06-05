@@ -948,8 +948,8 @@ static unlang_action_t ldap_check_userobj_resume(unlang_result_t *p_result, requ
 
 		group_ctx->values = ldap_get_values_len(query->ldap_conn->handle, entry, inst->group.userobj_membership_attr);
 		if (!group_ctx->values) {
-			RDEBUG2("No group membership attribute(s) found in user object");
-			RETURN_UNLANG_FAIL;
+			RDEBUG2("Group membership attribute %s not found in user object", inst->group.userobj_membership_attr);
+			RETURN_UNLANG_REJECT;
 		}
 
 		/*
