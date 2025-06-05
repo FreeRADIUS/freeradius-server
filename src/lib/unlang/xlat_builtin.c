@@ -2817,7 +2817,7 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (regex_request_to_sub_named(vb, vb, request, arg->vb_strvalue) < 0) {
 			REDEBUG2("No previous named regex capture group '%s'", arg->vb_strvalue);
 			talloc_free(vb);
-			return XLAT_ACTION_FAIL;
+			return XLAT_ACTION_DONE;	/* NOT an error, just an empty result */
 		}
 		fr_dcursor_append(out, vb);
 
