@@ -1647,7 +1647,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		goto finish;
 
 	default:
-		p_result->rcode = RLM_MODULE_OK;
 		break;
 	}
 
