@@ -161,6 +161,7 @@
 
 *** xref:raddb/mods-available/doc/authentication.adoc[Authentication]
 **** xref:raddb/mods-available/chap.adoc[CHAP module]
+**** xref:raddb/mods-available/crl.adoc[CRL]
 **** xref:raddb/mods-available/digest.adoc[Digest]
 **** xref:raddb/mods-available/eap.adoc[EAP]
 **** xref:raddb/mods-available/eap_inner.adoc[EAP/Inner]

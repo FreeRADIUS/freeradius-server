@@ -1,0 +1,96 @@
+
+
+
+
+= CRL Module
+
+The `crl` module provides CRL checking of TLS certificates.
+
+Its primary use case is within the `verify certificate` processing
+section of the `tls-session` virtual server when verifying client
+certificates during EAP-TLS.
+
+
+
+## Configuration Settings
+
+
+source:: Where CRLs will be loaded from
+
+
+dynamic:: Expansions for CRLs loaded dynamically from URIs in certificates
+
+The CRL distribution point URI will be in the
+attribute `CRL.CDP-URL` when this expansion is performed.
+
+
+http:: Expansion to use when URI scheme is http
+
+The `rest` module must be enabled to support this
+
+
+
+ldap:: Expansion to use when URI scheme is ldap
+
+If any CRLs need to be retrieved by LDAP queries
+then configure and enable the `ldap` module to
+support this.
+
+If the URIs in CRL distribution points do not include
+an LDAP host (i.e. they start ldap:///) then the
+ldap module must be configured with the correct
+server details to fetch the CRL from
+
+
+
+force_expiry:: Maximum time between expiring CRLs
+
+If the `nextUpdate` attribute of a CRL is closer than this interval
+then that will be used as the point that the CRL is expired.
+
+
+
+force_delta_expiry:: Maximum time between expiring delta CRLs
+
+This overrides `force_expiry` for delta CRLs.
+
+
+
+early_refresh:: Time before `nextUpdate` which the CRL will be refreshed
+
+
+
+ca_file:: File containing trusted CA, used to sign CRLs
+
+This can reference the setting in the `eap` module, but in that
+case, the eap module must be instantiate before the `crl` module
+by adding it to the list of explicitly instantiated modules
+in `radiusd.conf`
+
+
+
+ca_path:: Directory containing trusted CAs, used to sign CRLs
+
+
+== Default Configuration
+
+```
+crl {
+	source {
+		dynamic {
+			http = %rest('GET', "%uri.safe(%{CRL.CDP-URL})")
+#			ldap = %ldap(%ldap.uri.safe("%{CRL.CDP-URL}"))
+		}
+	}
+#	force_expiry = 7d
+#	force_delta_expiry = 1d
+	early_refresh = 1h
+#	ca_file = ${modules.eap.tls-config[tls-common].ca_file}
+	ca_file = ${cadir}/rsa/ca.pem
+#	ca_path = ${modules.eap.tls-config[tls-common].ca_path}
+	ca_path = ${cadir}
+}
+```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
