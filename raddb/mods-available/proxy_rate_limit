@@ -90,4 +90,10 @@ proxy_rate_limit {
 	#  the entry is expired.
 	#
 	idle_timeout = 10
+
+	#
+	#  The suppression period.  If a client retransmits during this time,
+	#  the rate limiting will start, and the proxy will send a reject.
+	#
+	window = 1
 }
