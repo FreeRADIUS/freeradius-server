@@ -1640,11 +1640,36 @@ static void request_finish(REQUEST *request, int action)
 		 *	adding their own reject delay, which would
 		 *	result in N*reject_delays being applied.
 		 */
-		if (request->proxy && (!request->proxy_reply || request->proxy->dst_port != 0)) {
+		if (request->proxy && !request->root->delay_proxy_rejects &&
+		    (!request->proxy_reply || request->proxy->dst_port != 0)) {
 			request->response_delay.tv_sec = 0;
 			request->response_delay.tv_usec = 0;
 		}
 #endif
+
+		/*
+		 *	We want to delay for AT LEAST the delay.  We
+		 *	don't want to ADD in the delay.
+		 */
+		if ((request->response_delay.tv_sec != 0) ||
+		    (request->response_delay.tv_usec != 0)) {
+			struct timeval when;
+
+			/*
+			 *	if ((received time + delay) < now) {
+			 *		send packet
+			 *	else
+			 *		delay = (received time + delay) - now
+			 */
+			timeradd(&request->packet->timestamp, &request->response_delay, &when);
+
+			if (timercmp(&when, &request->reply->timestamp, <=)) {
+				request->response_delay.tv_sec = 0;
+				request->response_delay.tv_usec = 0;
+			} else {
+				timersub(&when, &request->reply->timestamp, &request->response_delay);
+			}
+		}
 	}
 
 	/*

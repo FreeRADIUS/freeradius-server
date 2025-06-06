@@ -133,6 +133,7 @@ typedef struct main_config {
 	bool		proxy_requests;			//!< Toggle to enable/disable proxying globally.
 #endif
 	struct timeval	reject_delay;			//!< How long to wait before sending an Access-Reject.
+	bool		delay_proxy_rejects;		//!< do we delay proxied rejects
 	bool		status_server;			//!< Whether to respond to status-server messages.
 
 

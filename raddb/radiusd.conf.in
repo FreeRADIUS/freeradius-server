@@ -589,9 +589,18 @@ security {
 
 	#
 	#  reject_delay: When sending an Access-Reject, it can be
-	#  delayed for a few seconds.  This may help slow down a DoS
-	#  attack.  It also helps to slow down people trying to brute-force
-	#  crack a users password.
+	#  delayed for a short period of time.  This may help slow
+	#  down a DoS attack.  It also helps to slow down people
+	#  trying to brute-force crack a users password.
+	#
+	#  The reject will be sent no earlier then "recieve time + delay".
+	#  This configuration will not _add_ a fixed delay, it makes sure
+	#  that the time between Access-Request and Access-Reject is
+	#  _at least_ the given reject_delay value.
+	#
+	#  i.e. if "reject_delay = 1", and the server takes 4 seconds to
+	#  query an SQL database, then the reject has already been delayed
+	#  for 4 seconds.
 	#
 	#  Setting this number to 0 means "send rejects immediately"
 	#
@@ -606,6 +615,11 @@ security {
 	#
 	#  Useful ranges: 0.5 to 5
 	reject_delay = 1
+
+	#
+	#  Do we apply reject delays to proxied packets, too?
+	#
+#	delay_proxy_rejects = no
 
 	#
 	#  status_server: Whether or not the server will respond
