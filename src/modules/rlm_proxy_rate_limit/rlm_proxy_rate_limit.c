@@ -190,29 +190,28 @@ static rlm_proxy_rate_limit_table_t* derive_key_and_table(rlm_proxy_rate_limit_t
  *	Check whether we have recently seen repeated Access-Rejects for this username
  *      and calling station, and if this is a new request then issue an Access-Reject
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void * instance, REQUEST *request)
+static int CC_HINT(nonnull) mod_common(void * instance, REQUEST *request)
 {
 	rlm_proxy_rate_limit_t		*inst = instance;
 	char				key[512];
 	size_t				key_len = sizeof(key);
 	rlm_proxy_rate_limit_table_t	*table;
 	rlm_proxy_rate_limit_entry_t	*entry, my_entry;
-	VALUE_PAIR			*vp;
 
 	if (!(table = derive_key_and_table(inst, request, key, &key_len)))
-		return RLM_MODULE_OK;
+		return 0;
 
 	my_entry.key = key;
 	my_entry.key_len = key_len;
 	entry = rbtree_finddata(table->tree, &my_entry);
 
 	if (!entry)
-		return RLM_MODULE_OK;
+		return 0;
 
 	if (entry->expires <= request->timestamp) {
 		RDEBUG3("Rate limit entry %.*s (%d) has expired", 6, entry->key, entry->table->id);
 		rbtree_deletebydata(table->tree, entry);
-		return RLM_MODULE_OK;
+		return 0;
 	};
 
 	/*
@@ -224,7 +223,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void * instance, REQUEST *requ
 	 *	retransmissions.
 	 */
 	if (!entry->active || entry->last_id == request->packet->id)
-		return RLM_MODULE_OK;
+		return 0;
 
 	RDEBUG("Active rate limit entry %.*s (%d) matched for new request. Cancelling proxy "
 		"and sending Access-Reject. Instance %d.", 6, entry->key, entry->table->id, entry->count);
@@ -252,6 +251,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void * instance, REQUEST *requ
 
 	entry->last_request = request->timestamp;
 	entry->count++;
+	return -1;
+}
+
+static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void * instance, REQUEST *request)
+{
+	VALUE_PAIR			*vp;
+
+	if (mod_common(instance, request) == 0) return RLM_MODULE_NOOP;
 
 	/*
 	 *  This new request arrived within the suppression interval. Don't proxy but
@@ -269,7 +276,21 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void * instance, REQUEST *requ
 		REDEBUG("Failed creating Reply-Message");
 
 	return RLM_MODULE_FAIL;
+}
 
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void * instance, REQUEST *request)
+{
+	VALUE_PAIR			*vp;
+
+	if (mod_common(instance, request) == 0) return RLM_MODULE_NOOP;
+
+	fr_pair_list_free(&request->reply->vps);
+
+	vp = pair_make_reply("Reply-Message", "Proxy rate limit exceeded", T_OP_EQ);
+	if (!vp)
+		REDEBUG("Failed creating Reply-Message");
+
+	return RLM_MODULE_REJECT;
 }
 
 /*
@@ -506,6 +527,7 @@ module_t rlm_proxy_rate_limit = {
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,
 	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PRE_PROXY]		= mod_pre_proxy,
 		[MOD_POST_PROXY]	= mod_post_proxy,
 	},

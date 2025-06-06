@@ -57,6 +57,14 @@
 #		...
 #	}
 #
+#  The module can also be listed in the "authorize" section.  Listing
+#  it there as the first module allows the server to reject bad
+#  packets as quickly as possible, while doing zero additional work
+#  for policies, database lookups, etc.
+#
+#  If it is listed in the "authorize" section, then it should not be
+#  listed in the "pre-proxy" section.
+#
 
 #
 #  The module configuration.

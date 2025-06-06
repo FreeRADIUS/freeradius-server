@@ -33,6 +33,8 @@ FreeRADIUS 3.2.8 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	* Add delay_proxy_rejects, and ensure that reject_delay
 	  will delay for at least that time, and does not always
 	  add a delay.
+	* The proxy_rate_limit module can now be listed in the
+	  "authorize" section.
 
 	Bug fixes
 	* Move assertion in thread / queue code, which only affects
