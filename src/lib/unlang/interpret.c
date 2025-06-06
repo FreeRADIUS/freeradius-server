@@ -625,7 +625,7 @@ finalize:
 	 *	We're higher or equal to previous priority, remember this
 	 *	return code and priority.
 	 */
-	if (result->priority > frame_result->priority) {
+	if (result->priority >= frame_result->priority) {
 		RDEBUG4("** [%i] %s - overwriting existing result (%s %d) with higher priority (%s %d)",
 			stack->depth, __FUNCTION__,
 			fr_table_str_by_value(mod_rcode_table, frame_result->rcode, "<invalid>"),
@@ -650,14 +650,7 @@ finalize:
  *
  * The logic here is very similar to result_eval(), with two important differences:
  * - The priority of the lower frame is ignored, and the default priority of the higher frame is used.
- * - The rcode from the lower frame is ignored if the higher frame's instruction has
- *   UNLANG_OP_FLAG_NO_CHILD_RCODE_MERGE set.  This is used when a module, or similar, wants to push
- *   another instruction onto the stack fpr evaluation, but doesn't want the rcode from that operation to
- *   affect the rcode of its frame.  This is used is many places such as for tmpl evaluation, section
- *   evaluation for process state machines, etc... This behaviour is somewhat similar to the top_frame
- *   frame flag, but instead of represeting a divider in the stack which causes unlang_interpret to
- *   return, it just prevents result propegation upwards, and lets the instruction handle rcode
- *   interpretation.
+ *   Unless the higher frame's priority is MOD_ACTION_NOT_SET, in which case the lower frame's priority is used.
  */
 static inline CC_HINT(always_inline)
 unlang_frame_action_t result_pop(request_t *request, unlang_stack_frame_t *frame, unlang_result_t *result)
