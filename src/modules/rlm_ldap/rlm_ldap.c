@@ -1453,7 +1453,7 @@ static int map_ctx_free(ldap_map_ctx_t *map_ctx)
 static unlang_action_t mod_map_proc(unlang_result_t *p_result, map_ctx_t const *mpctx, request_t *request,
 				    fr_value_box_list_t *url, map_list_t const *maps)
 {
-	rlm_ldap_t const	*inst = talloc_get_type_abort_const(mpctx->mpi, rlm_ldap_t);
+	rlm_ldap_t const	*inst = talloc_get_type_abort_const(mpctx->moi, rlm_ldap_t);
 	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread(inst->mi)->data, fr_ldap_thread_t);
 
 	LDAPURLDesc		*ldap_url;
