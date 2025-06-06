@@ -597,7 +597,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Check we're the only process using this config.
 	 */
-	if (!config->allow_multiple_procs) {
+	if (!config->allow_multiple_procs && !check_config) {
 		switch (main_config_exclusive_proc(config)) {
 		case 0:		/* No other processes running */
 			break;
