@@ -33,8 +33,10 @@ USES_APPLE_DEPRECATED_API
 #define LOG_PREFIX handle_config->name
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/ldap/base.h>
 #include <freeradius-devel/unlang/function.h>
+#include <freeradius-devel/util/sbuff.h>
 
 LDAP *ldap_global_handle;			//!< Hack for OpenLDAP libldap global initialisation.
 
@@ -555,12 +557,24 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 	 */
 	memcpy(&search_attrs, &attrs, sizeof(attrs));
 
-	if (filter) {
-		ROPTIONAL(RDEBUG2, DEBUG2, "Performing search in \"%s\" with filter \"%s\", scope \"%s\"", dn, filter,
-			  fr_table_str_by_value(fr_ldap_scope, scope, "<INVALID>"));
-	} else {
-		ROPTIONAL(RDEBUG2, DEBUG2, "Performing unfiltered search in \"%s\", scope \"%s\"", dn,
-			  fr_table_str_by_value(fr_ldap_scope, scope, "<INVALID>"));
+	if ((request && RDEBUG_ENABLED2) || DEBUG_ENABLED2) {
+		fr_sbuff_t *log_msg;
+
+		FR_SBUFF_TALLOC_THREAD_LOCAL(&log_msg, 128, SIZE_MAX);
+
+		fr_sbuff_in_sprintf(log_msg, "Performing search in \"%s\"", dn);
+		if (filter) {
+			fr_sbuff_in_sprintf(log_msg, " with filter \"%s\"", filter);
+		} else {
+			fr_sbuff_in_strcpy_literal(log_msg, " with no filter");
+		}
+		fr_sbuff_in_sprintf(log_msg, ", scope \"%s\"",
+				    fr_table_str_by_value(fr_ldap_scope, scope, "<INVALID>"));
+		if (attrs) {
+			fr_sbuff_in_strcpy(log_msg, ", attrs ");
+			fr_sbuff_in_array(log_msg, attrs, ", ");
+		}
+		ROPTIONAL(RDEBUG2, DEBUG2, "%s", fr_sbuff_start(log_msg));
 	}
 
 	if (ldap_search_ext(pconn->handle, dn, scope, filter, search_attrs,
