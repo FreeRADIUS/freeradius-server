@@ -457,6 +457,8 @@ unlang_action_t unlang_function_push_common(unlang_result_t *p_result,
 	REPEAT(state) = repeat;
 	state->repeat_name = repeat_name;
 
+	if (repeat) repeatable_set(frame); /* execute on the way back up */
+
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
@@ -506,7 +508,6 @@ unlang_action_t _unlang_function_push_with_result(unlang_result_t *p_result,
 	frame = frame_current(request);
 	if (!func && repeat) {
 		frame->process = call_with_result_repeat;
-		repeatable_set(frame);				/* execute on the way back up */
 	} else {
 		frame->process = call_with_result;
 	}
@@ -557,7 +558,6 @@ unlang_action_t _unlang_function_push_no_result(request_t *request,
 	frame = frame_current(request);
 	if (!func && repeat) {
 		frame->process = call_no_result_repeat;
-		repeatable_set(frame);				/* execute on the way back up */
 	}
 
 	/* frame->process = call_no_result - This is the default, we don't need to set it again */
