@@ -910,6 +910,8 @@ static unlang_action_t ldap_check_userobj_start(UNUSED unlang_result_t *p_result
 
 /** Process the results of evaluating a user object when checking group membership
  *
+ * Any information relating to the user's group memberships should be evailable in the group_ctx
+ * structure before this is called.
  */
 static unlang_action_t ldap_check_userobj_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
@@ -922,17 +924,6 @@ static unlang_action_t ldap_check_userobj_resume(unlang_result_t *p_result, requ
 	bool				value_is_dn = false;
 	fr_value_box_t			*group = xlat_ctx->group;
 	char				*value_name = NULL;
-
-	/*
-	 *	Something we pushed failed early
-	 */
-	switch (p_result->rcode) {
-	case RLM_MODULE_USER_SECTION_REJECT:
-		return UNLANG_ACTION_CALCULATE_RESULT;
-
-	default:
-		break;
-	}
 
 	/*
 	 *	If group_ctx->values is not populated, this is the first call
@@ -948,7 +939,7 @@ static unlang_action_t ldap_check_userobj_resume(unlang_result_t *p_result, requ
 
 		group_ctx->values = ldap_get_values_len(query->ldap_conn->handle, entry, inst->group.userobj_membership_attr);
 		if (!group_ctx->values) {
-			RDEBUG2("Group membership attribute %s not found in user object", inst->group.userobj_membership_attr);
+			RDEBUG2("User object contains no group membership information", inst->group.userobj_membership_attr);
 			RETURN_UNLANG_REJECT;
 		}
 
