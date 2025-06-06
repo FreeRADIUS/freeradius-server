@@ -20,8 +20,19 @@ FreeRADIUS 3.2.8 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	* Rate limit complaints when limiting new connections.
 	* Update raddb/certs/Makefile to support DER output.
 	* Elapsed statistics for packets do not include proxy timers,
-	  which helps clarify where any issues are.
+	  which helps clarify where any issues are.  The total time
+	  is still available by adding "our" time to the "proxy" time.
 	* Added kafka module.  See mods-available/kafka.
+	* json module can now print dates as integers.
+	  See mods-available/json
+	* The debug output now points to the online documentation
+	  in many cases, when there are syntax errors in the
+	  configuration.
+	* Add support for 389ds password hashes.  Patch from
+	  Gerald Vogt.
+	* Add delay_proxy_rejects, and ensure that reject_delay
+	  will delay for at least that time, and does not always
+	  add a delay.
 
 	Bug fixes
 	* Move assertion in thread / queue code, which only affects
@@ -44,7 +55,8 @@ FreeRADIUS 3.2.8 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	* Complain more loudly if all of the "authorize" etc. sections
 	  have been removed, but the server is still configured to
 	  process Access-Request packets.
-	*  Use OCIStmtPrepare2 to prepare Oracle queries. Fixes #5540
+	* Use OCIStmtPrepare2 to prepare Oracle queries. Fixes #5540
+	* Allow dynamic clients with TCP listeners.
 
 FreeRADIUS 3.2.7 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	Configuration changes
