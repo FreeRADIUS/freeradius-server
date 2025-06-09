@@ -26,7 +26,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/util/debug.h>
 
 #include "rlm_mruby.h"
@@ -274,92 +273,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	return 0;
-}
-
-static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, mrb_state *mrb, mrb_value value, char const *function_name)
-{
-	int i;
-	fr_pair_list_t tmp_list;
-
-	fr_pair_list_init(&tmp_list);
-
-	for (i = 0; i < RARRAY_LEN(value); i++) {
-		mrb_value	tuple = mrb_ary_entry(value, i);
-		mrb_value	key, val;
-		char const	*ckey, *cval;
-		fr_pair_t	*vp;
-		tmpl_t	*dst;
-		fr_token_t	op = T_OP_EQ;
-
-		/* This tuple should be an array of length 2 */
-		if (mrb_type(tuple) != MRB_TT_ARRAY) {
-			REDEBUG("add_vp_tuple, %s: non-array passed at index %i", function_name, i);
-			continue;
-		}
-
-		if (RARRAY_LEN(tuple) != 2 && RARRAY_LEN(tuple) != 3) {
-			REDEBUG("add_vp_tuple, %s: array with incorrect length passed at index "
-				"%i, expected 2 or 3, got %"PRId64, function_name, i, RARRAY_LEN(tuple));
-			continue;
-		}
-
-		key = mrb_ary_entry(tuple, 0);
-		val = mrb_ary_entry(tuple, -1);
-		if (mrb_type(key) != MRB_TT_STRING) {
-			REDEBUG("add_vp_tuple, %s: tuple element %i must have a string as first element", function_name, i);
-			continue;
-		}
-
-		ckey = mrb_str_to_cstr(mrb, key);
-		cval = mrb_str_to_cstr(mrb, mrb_obj_as_string(mrb, val));
-		if (ckey == NULL || cval == NULL) {
-			REDEBUG("%s: string conv failed", function_name);
-			continue;
-		}
-
-
-		if (RARRAY_LEN(tuple) == 3) {
-			if (mrb_type(mrb_ary_entry(tuple, 1)) != MRB_TT_STRING) {
-				REDEBUG("Invalid type for operator, expected string, falling back to =");
-			} else {
-				char const *cop = mrb_str_to_cstr(mrb, mrb_ary_entry(tuple, 1));
-				if (!(op = fr_table_value_by_str(fr_tokens_table, cop, 0))) {
-					REDEBUG("Invalid operator: %s, falling back to =", cop);
-					op = T_OP_EQ;
-				}
-			}
-		}
-		DEBUG("%s: %s %s %s", function_name, ckey, fr_table_str_by_value(fr_tokens_table, op, "="), cval);
-
-		if (tmpl_afrom_attr_str(request, NULL, &dst, ckey,
-					&(tmpl_rules_t){
-						.attr = {
-							.dict_def = request->proto_dict,
-							.list_def = request_attr_reply,
-						}
-					}) <= 0) {
-			ERROR("Failed to find attribute %s", ckey);
-			continue;
-		}
-
-		if (tmpl_request_ptr(&request, tmpl_request(dst)) < 0) {
-			ERROR("Attribute name %s refers to outer request but not in a tunnel, skipping...", ckey);
-			talloc_free(dst);
-			continue;
-		}
-
-		MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(dst)));
-		talloc_free(dst);
-
-		if (fr_pair_value_from_str(vp, cval, strlen(cval), NULL, false) < 0) {
-			REDEBUG("%s: %s = %s failed", function_name, ckey, cval);
-		} else {
-			DEBUG("%s: %s = %s OK", function_name, ckey, cval);
-		}
-
-		fr_pair_append(&tmp_list, vp);
-	}
-	radius_pairmove(request, vps, &tmp_list);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_mruby(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
