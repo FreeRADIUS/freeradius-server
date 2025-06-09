@@ -65,3 +65,60 @@ struct RClass *mruby_request_class(mrb_state *mrb, struct RClass *parent)
 
 	return request;
 }
+
+/*
+ *	Structures used to identify C data types in mruby pointers
+ */
+static const struct mrb_data_type mruby_inst_type = {
+	.struct_name = "Inst",
+	.dfree = NULL
+};
+
+static const struct mrb_data_type mruby_request_type = {
+	.struct_name = "Request",
+	.dfree = NULL
+};
+
+static const struct mrb_data_type mruby_dict_attr_type = {
+	.struct_name = "DictAttr",
+	.dfree = NULL
+};
+
+static const struct mrb_data_type mruby_value_pair_type = {
+	.struct_name = "ValuePair",
+	.dfree = NULL
+};
+
+static const struct mrb_data_type mruby_ruby_pair_type = {
+	.struct_name = "RubyPair",
+	.dfree = NULL
+};
+
+/*
+ *	Helper functions to return C data type pointers as mruby values
+ */
+mrb_value mruby_inst_object(mrb_state *mrb, struct RClass *klass, rlm_mruby_t const *inst)
+{
+	return mrb_obj_value(Data_Wrap_Struct(mrb, klass, &mruby_inst_type, UNCONST(void *, inst)));
+}
+
+mrb_value mruby_request_object(mrb_state *mrb, struct RClass *klass, request_t *request)
+{
+	return mrb_obj_value(Data_Wrap_Struct(mrb, klass, &mruby_request_type, (void *)request));
+}
+
+mrb_value mruby_dict_attr_object(mrb_state *mrb, struct RClass *klass, fr_dict_attr_t const *da)
+{
+	return mrb_obj_value(Data_Wrap_Struct(mrb, klass, &mruby_dict_attr_type, UNCONST(void *,da)));
+}
+
+mrb_value mruby_value_pair_object(mrb_state *mrb, struct RClass *klass, fr_pair_t *vp)
+{
+	return mrb_obj_value(Data_Wrap_Struct(mrb, klass, &mruby_value_pair_type, (void *)vp));
+}
+
+static mrb_value mruby_ruby_pair_object(mrb_state *mrb, struct RClass *klass, mruby_pair_t *pair)
+{
+	return mrb_obj_value(Data_Wrap_Struct(mrb, klass, &mruby_ruby_pair_type, (void *)pair));
+}
+

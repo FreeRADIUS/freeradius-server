@@ -32,8 +32,11 @@ DIAG_OFF(documentation)
 #include <mruby/numeric.h>
 #include <mruby/string.h>
 #include <mruby/variable.h>
+#include <mruby/data.h>
 DIAG_ON(documentation)
 DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+#include <freeradius-devel/server/base.h>
+
 typedef struct {
 	char const *filename;
 	char const *module_name;
@@ -49,3 +52,7 @@ typedef struct {
 } rlm_mruby_t;
 
 struct RClass *mruby_request_class(mrb_state *mrb, struct RClass *parent);
+mrb_value mruby_inst_object(mrb_state *mrb, struct RClass *klass, rlm_mruby_t const *inst);
+mrb_value mruby_request_object(mrb_state *mrb, struct RClass *klass, request_t *request);
+mrb_value mruby_value_pair_object(mrb_state *mrb, struct RClass *klass, fr_pair_t *vp);
+mrb_value mruby_dict_attr_object(mrb_state *mrb, struct RClass *klass, fr_dict_attr_t const *da);
