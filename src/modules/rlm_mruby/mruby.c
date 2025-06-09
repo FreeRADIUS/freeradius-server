@@ -433,6 +433,32 @@ static mrb_value mruby_value_pair_set(mrb_state *mrb, mrb_value self)
 	return mrb_nil_value();
 }
 
+/** Delete a value pair from mruby
+ *
+ * The ruby method expects an optional argument - the instance number
+ */
+static mrb_value mruby_value_pair_del(mrb_state *mrb, mrb_value self)
+{
+	mruby_pair_t	*pair;
+	mrb_int		idx = 0;
+	fr_pair_t	*vp = NULL;
+
+	pair = (mruby_pair_t *)DATA_PTR(self);
+	if (!pair) mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to retrieve C data");
+
+	mrb_get_args(mrb, "|i", &idx);
+
+	if (!pair->parent->vp) return mrb_nil_value();
+
+	if (idx == pair->idx) vp = pair->vp;
+	if (!vp) vp = fr_pair_find_by_da_idx(&pair->parent->vp->vp_group, pair->da, idx);
+	if (!vp) return mrb_nil_value();
+
+	fr_pair_delete(&pair->parent->vp->vp_group, vp);
+	if (idx == pair->idx) pair->vp = NULL;
+	return mrb_nil_value();
+}
+
 /** Implement mruby method_missing functionality to find child pairs
  *
  */
@@ -576,6 +602,7 @@ struct RClass *mruby_pair_class(mrb_state *mrb, struct RClass *parent)
 	mrb_define_method(mrb, pair, "initialize", mruby_pair_init, MRB_ARGS_ARG(5,1));
 	mrb_define_method(mrb, pair, "get", mruby_value_pair_get, MRB_ARGS_OPT(1));
 	mrb_define_method(mrb, pair, "set", mruby_value_pair_set, MRB_ARGS_ARG(1,1));
+	mrb_define_method(mrb, pair, "del", mruby_value_pair_del, MRB_ARGS_OPT(1));
 
 	return pair;
 }
