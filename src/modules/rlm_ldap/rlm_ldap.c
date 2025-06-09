@@ -621,7 +621,7 @@ static xlat_action_t ldap_xlat_uri_attr_option(TALLOC_CTX *ctx, fr_dcursor_t *ou
 		option = option_vb->vb_strvalue;
 	}
 
-	vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL);
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
 	attrs_fixed = talloc_strdup(vb, "");
 
 	attr = ldap_url->lud_attrs;
