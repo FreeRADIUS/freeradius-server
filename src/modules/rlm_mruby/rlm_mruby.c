@@ -500,6 +500,7 @@ static unlang_action_t CC_HINT(nonnull) mod_mruby(rlm_rcode_t *p_result, module_
 	mruby_session_state = mrb_obj_new(mrb, inst->mruby_pair_list, 5, args);
 	mrb_iv_set(mrb, mruby_packet, mrb_intern_cstr(mrb, "@session_state"), mruby_session_state);
 
+	RDEBUG2("Calling %s", func->func->function_name);
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(class-varargs)
 	mruby_result = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), func->func->function_name, 1, mruby_packet);
