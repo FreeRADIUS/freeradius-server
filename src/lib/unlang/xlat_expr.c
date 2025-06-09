@@ -315,12 +315,16 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Each argument is a FR_TYPE_GROUP, with one or more elements in a list.
 	 */
 	a = fr_value_box_list_head(in);
+	if (!a) {
+		REDEBUG("Left argument to %s is missing", fr_tokens[op]);
+		return XLAT_ACTION_FAIL;
+	}
+
 	b = fr_value_box_list_next(in, a);
-
-	if (!a && !b) return XLAT_ACTION_FAIL;
-
-	fr_assert(!a || (a->type == FR_TYPE_GROUP));
-	fr_assert(!b || (b->type == FR_TYPE_GROUP));
+	if (!b) {
+		REDEBUG("Right argument to %s is missing", fr_tokens[op]);
+		return XLAT_ACTION_FAIL;
+	}
 
 	fr_assert(!fr_comparison_op[op]);
 
@@ -452,9 +456,16 @@ static xlat_action_t xlat_cmp_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Each argument is a FR_TYPE_GROUP, with one or more elements in a list.
 	 */
 	a = fr_value_box_list_head(in);
-	b = fr_value_box_list_next(in, a);
+	if (!a) {
+		REDEBUG("Left argument to %s is missing", fr_tokens[op]);
+		return XLAT_ACTION_FAIL;
+	}
 
-	if (!a || !b) return XLAT_ACTION_FAIL;
+	b = fr_value_box_list_next(in, a);
+	if (!b) {
+		REDEBUG("Right argument to %s is missing", fr_tokens[op]);
+		return XLAT_ACTION_FAIL;
+	}
 
 	fr_assert(a->type == FR_TYPE_GROUP);
 	fr_assert(b->type == FR_TYPE_GROUP);

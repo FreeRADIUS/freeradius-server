@@ -40,6 +40,19 @@ static unlang_action_t unlang_if_resume(rlm_rcode_t *p_result, request_t *reques
 	fr_value_box_t			*box = fr_value_box_list_head(&state->out);
 	bool				value;
 
+	/*
+	 *	Something in the conditional evaluation failed.
+	 */
+	if (!state->success) {
+		unlang_group_t *g = unlang_generic_to_group(frame->instruction);
+		unlang_cond_t  *gext = unlang_group_to_cond(g);
+
+		REDEBUG2("... failed to evaluate condition ...");
+
+		if (!gext->has_else) RETURN_MODULE_FAIL;
+		return UNLANG_ACTION_EXECUTE_NEXT;
+	}
+
 	if (!box) {
 		value = false;
 

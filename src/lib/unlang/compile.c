@@ -3615,6 +3615,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 
 	unlang_group_t		*g;
 	unlang_cond_t		*gext;
+	CONF_ITEM		*ci;
 
 	xlat_exp_head_t		*head = NULL;
 	bool			is_truthy = false, value = false;
@@ -3644,7 +3645,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 				.allow_unresolved = false,
 				.allow_unknown = false,
 				.allow_wildcard = true,
-			},
+		},
 			.literals_safe_for = unlang_ctx->rules->literals_safe_for,
 		};
 
@@ -3707,6 +3708,25 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	gext->head = head;
 	gext->is_truthy = is_truthy;
 	gext->value = value;
+
+	ci = cf_section_to_item(cs);
+	while ((ci = cf_item_next(parent->ci, ci)) != NULL) {
+		if (cf_item_is_data(ci)) continue;
+
+		break;
+	}
+
+	/*
+	 *	If there's an 'if' without an 'else', then remember that.
+	 */
+	if (ci && cf_item_is_section(ci)) {
+		char const *name;
+
+		name = cf_section_name1(cf_item_to_section(ci));
+		fr_assert(name != NULL);
+
+		gext->has_else = (strcmp(name, "else") == 0) || (strcmp(name, "elsif") == 0);
+	}
 
 	return c;
 }

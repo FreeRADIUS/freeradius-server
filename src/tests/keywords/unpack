@@ -25,7 +25,7 @@ test_octets := 0x000001020304
 result_integer := %unpack(%{test_octets}, 4, 'uint16')
 
 # Octets 4 and 5 == 0x0304 == 772
-if ~(result_integer == 772) {
+if (result_integer != 772) {
 	test_fail
 }
 
