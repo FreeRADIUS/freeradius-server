@@ -532,7 +532,7 @@ static CONF_PARSER home_server_config[] = {
 	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_name), NULL },
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_password), NULL },
 
-	{ "affinity", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, affinity), NULL},
+	{ "affinity_id", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, affinity), NULL},
 
 #ifdef WITH_STATS
 	{ "historic_average_window", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ema.window), NULL },
@@ -637,7 +637,7 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 		home->parent_server = cf_section_name2(parent);
 	}
 
-	FR_INTEGER_BOUND_CHECK("affinity", home->affinity, <=, 255);
+	FR_INTEGER_BOUND_CHECK("affinity_id", home->affinity, <=, 255);
 }
 
 /** Insert a new home server into the various internal lookup trees
