@@ -132,3 +132,66 @@ static mrb_value mruby_ruby_pair_object(mrb_state *mrb, struct RClass *klass, mr
 	return mrb_obj_value(Data_Wrap_Struct(mrb, klass, &mruby_ruby_pair_type, (void *)pair));
 }
 
+/** Associate C structure with Ruby object representing a pair
+ *
+ * Will be called with 5 or 6 arguments
+ *  - a pointer to the module instance
+ *  - a pointer to the request
+ *  - a pointer to the dictionary attribute for the pair
+ *  - the instance number of the pair
+ *  - a pointer to the real pair (if it exists)
+ *  - (optional) the parent pair C structure
+ */
+static mrb_value mruby_pair_init(mrb_state *mrb, mrb_value self)
+{
+	mruby_pair_t		*pair, *parent = NULL;
+	rlm_mruby_t const	*inst;
+	request_t		*request;
+	fr_dict_attr_t const	*da;
+	mrb_int			idx;
+	fr_pair_t		*vp;
+
+	mrb_get_args(mrb, "dddid|d",
+		     &inst, &mruby_inst_type,
+		     &request, &mruby_request_type,
+		     &da, &mruby_dict_attr_type,
+		     &idx,
+		     &vp, &mruby_value_pair_type,
+		     &parent, &mruby_ruby_pair_type);
+
+	/*
+	 *	Apparently `initialize` can be called more than once in some
+	 *	scenarios, so it is best practice to clear up any old data first
+	 */
+	pair = (mruby_pair_t *)DATA_PTR(self);
+	if (pair) talloc_free(pair);
+
+	/*
+	 *	The C data is talloced off frame ctx so we free correctly.
+	 */
+	pair = talloc(unlang_interpret_frame_talloc_ctx(request), mruby_pair_t);
+	mrb_data_init(self, pair, &mruby_value_pair_type);
+
+	*pair = (mruby_pair_t) {
+		.inst = inst,
+		.request = request,
+		.da = da,
+		.idx = idx,
+		.vp = vp,
+		.parent = parent
+	};
+
+	return self;
+}
+
+struct RClass *mruby_pair_list_class(mrb_state *mrb, struct RClass *parent)
+{
+	struct RClass *pair_list;
+
+	pair_list = mrb_define_class_under(mrb, parent, "PairList", mrb->object_class);
+	MRB_SET_INSTANCE_TT(pair_list, MRB_TT_DATA);
+
+	mrb_define_method(mrb, pair_list, "initialize", mruby_pair_init, MRB_ARGS_ARG(5,1));
+	return pair_list;
+}
+
