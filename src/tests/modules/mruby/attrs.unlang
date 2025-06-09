@@ -1,0 +1,60 @@
+mruby.fetch_root
+if (!ok) {
+	test_fail
+}
+
+mruby.fetch_nested
+if (!ok) {
+	test_fail
+}
+
+mruby.set_simple
+if (!ok) {
+	test_fail
+}
+if (NAS-Identifier != 'Test NAS') {
+	test_fail
+}
+
+mruby.overwrite_simple
+if (!ok) {
+	test_fail
+}
+if (User-Name != 'john') {
+	test_fail
+}
+
+mruby.set_nested
+if (!updated) {
+	test_fail
+}
+if (control.Vendor-Specific.Cisco.AVPair != 'very=special') {
+	test_fail
+}
+if (Vendor-Specific.3GPP2.DNS-Server.Secondary-IP-Address != 1.1.1.1) {
+	test_fail
+}
+if (Vendor-Specific.3GPP2.DNS-Server[1].Primary-IP-Address != 10.9.8.7) {
+	test_fail
+}
+if (Vendor-Specific.Cisco.AVPair[2] != 'top=secret') {
+	test_fail
+}
+
+mruby.overwrite_nested
+if (!updated) {
+	test_fail
+}
+if (Vendor-Specific.Cisco.AVPair[1] != 'silly=idea') {
+	test_fail
+}
+if (Vendor-Specific.3GPP2.DNS-Server[1].Primary-IP-Address != 1.2.3.4) {
+	test_fail
+}
+
+mruby.list_pairs
+if (!noop) {
+	test_fail
+}
+
+test_pass

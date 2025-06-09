@@ -1,0 +1,28 @@
+mruby.del_from_root
+if (!updated) {
+	test_fail
+}
+if (User-Name) {
+	test_fail
+}
+
+mruby.del_nested
+if (!updated) {
+	test_fail
+}
+if (Vendor-Specific.Cisco.AVPair[#] != 1) {
+	test_fail
+}
+if (Vendor-Specific.Cisco.AVPair != 'is=crazy') {
+	test_fail
+}
+
+mruby.del_missing
+if (!noop) {
+	test_fail
+}
+if (NAS-Identifier) {
+	test_fail
+}
+
+test_pass
