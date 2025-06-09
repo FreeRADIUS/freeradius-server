@@ -637,7 +637,7 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 		home->parent_server = cf_section_name2(parent);
 	}
 
-	FR_INTEGER_BOUND_CHECK("coa_mrt", home->affinity, <=, 255);
+	FR_INTEGER_BOUND_CHECK("affinity", home->affinity, <=, 255);
 }
 
 /** Insert a new home server into the various internal lookup trees
