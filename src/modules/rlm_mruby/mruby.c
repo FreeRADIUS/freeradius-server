@@ -195,3 +195,14 @@ struct RClass *mruby_pair_list_class(mrb_state *mrb, struct RClass *parent)
 	return pair_list;
 }
 
+struct RClass *mruby_pair_class(mrb_state *mrb, struct RClass *parent)
+{
+	struct RClass *pair;
+
+	pair = mrb_define_class_under(mrb, parent, "Pair", mrb->object_class);
+	MRB_SET_INSTANCE_TT(pair, MRB_TT_DATA);
+
+	mrb_define_method(mrb, pair, "initialize", mruby_pair_init, MRB_ARGS_ARG(5,1));
+
+	return pair;
+}

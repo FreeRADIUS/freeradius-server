@@ -202,6 +202,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->mruby_request = mruby_request_class(mrb, inst->mruby_module);
 
 	inst->mruby_pair_list = mruby_pair_list_class(mrb, inst->mruby_module);
+	inst->mruby_pair = mruby_pair_class(mrb, inst->mruby_module);
+
 	inst->mruby_ptr = mrb_define_class_under(mrb, inst->mruby_module, "Ptr", mrb->object_class);
 	MRB_SET_INSTANCE_TT(inst->mruby_ptr, MRB_TT_DATA);
 
