@@ -25,6 +25,16 @@
 
 #include "rlm_mruby.h"
 
+typedef struct mruby_pair_s mruby_pair_t;
+struct mruby_pair_s {
+	rlm_mruby_t const	*inst;		//!< Module instance.  Needed for access to classes
+	request_t		*request;	//!< Current request
+	fr_dict_attr_t const	*da;		//!< Dictionary attribute for this pair.
+	fr_pair_t		*vp;		//!< Real pair if it exists.
+	unsigned int		idx;		//!< Instance index.
+	mruby_pair_t		*parent;	//!< Parent pair.
+};
+
 static mrb_value mruby_request_frconfig(mrb_state *mrb, mrb_value self)
 {
 	return mrb_iv_get(mrb, self, mrb_intern_cstr(mrb, "@frconfig"));
