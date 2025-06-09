@@ -204,6 +204,97 @@ static mrb_value mruby_pair_list_keys(mrb_state *mrb, mrb_value self)
 	return keys;
 }
 
+/** Convert a pair value to a suitable mruby value type
+ *
+ */
+static mrb_value mruby_pair_value_to_ruby(mrb_state *mrb, request_t *request, fr_pair_t *vp)
+{
+	switch(vp->vp_type){
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+		return mrb_str_new(mrb, vp->vp_ptr, vp->vp_length);
+
+	case FR_TYPE_BOOL:
+		return vp->vp_bool ? mrb_obj_value(mrb->true_class) : mrb_obj_value(mrb->false_class);
+
+	case FR_TYPE_UINT8:
+		return mrb_int_value(mrb, vp->vp_uint8);
+	case FR_TYPE_UINT16:
+		return mrb_int_value(mrb, vp->vp_uint16);
+	case FR_TYPE_UINT32:
+		return mrb_int_value(mrb, vp->vp_uint32);
+	case FR_TYPE_UINT64:
+		return mrb_int_value(mrb, vp->vp_uint64);
+	case FR_TYPE_INT8:
+		return mrb_int_value(mrb, vp->vp_int8);
+	case FR_TYPE_INT16:
+		return mrb_int_value(mrb, vp->vp_int16);
+	case FR_TYPE_INT32:
+		return mrb_int_value(mrb, vp->vp_int32);
+	case FR_TYPE_INT64:
+		return mrb_int_value(mrb, vp->vp_int64);
+	case FR_TYPE_SIZE:
+		return mrb_int_value(mrb, vp->vp_size);
+
+	case FR_TYPE_FLOAT32:
+		return mrb_float_value(mrb, vp->vp_float32);
+	case FR_TYPE_FLOAT64:
+		return mrb_float_value(mrb, vp->vp_float64);
+
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_IFID:
+	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_DATE:
+	{
+		char		*in;
+		size_t		len;
+		mrb_value	value;
+
+		len = fr_value_box_aprint(request, &in, &vp->data, NULL);
+		value = mrb_str_new(mrb, in, len);
+		talloc_free(in);
+		return value;
+	}
+
+	default:
+		fr_assert(0);
+		break;
+	}
+}
+
+/** Get a pair value from mruby
+ *
+ * The mruby method can take an optional argument to specify the instance number
+ */
+static mrb_value mruby_value_pair_get(mrb_state *mrb, mrb_value self)
+{
+	mruby_pair_t	*pair;
+	request_t	*request;
+	mrb_int		idx = 0;
+	fr_pair_t	*vp = NULL;
+
+	pair = (mruby_pair_t *)DATA_PTR(self);
+	if (!pair) mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to retrieve C data");
+	request = pair->request;
+
+	if (mrb_get_argc(mrb) > 0) {
+		if (mrb_get_args(mrb, "|i", &idx) < 1) mrb_raise(mrb, E_ARGUMENT_ERROR, "Invalid argument");
+	}
+
+	if (idx == pair->idx) vp = pair->vp;
+	if (!vp && pair->parent && pair->parent->vp) vp = fr_pair_find_by_da_idx(&pair->parent->vp->vp_group, pair->da, idx);
+
+	if (!vp) return mrb_nil_value();
+
+	return mruby_pair_value_to_ruby(mrb, request, vp);
+}
+
 struct RClass *mruby_pair_list_class(mrb_state *mrb, struct RClass *parent)
 {
 	struct RClass *pair_list;
@@ -224,6 +315,7 @@ struct RClass *mruby_pair_class(mrb_state *mrb, struct RClass *parent)
 	MRB_SET_INSTANCE_TT(pair, MRB_TT_DATA);
 
 	mrb_define_method(mrb, pair, "initialize", mruby_pair_init, MRB_ARGS_ARG(5,1));
+	mrb_define_method(mrb, pair, "get", mruby_value_pair_get, MRB_ARGS_OPT(1));
 
 	return pair;
 }
