@@ -266,6 +266,7 @@ static mrb_value mruby_pair_value_to_ruby(mrb_state *mrb, request_t *request, fr
 		fr_assert(0);
 		break;
 	}
+	return mrb_nil_value();
 }
 
 /** Get a pair value from mruby
@@ -295,6 +296,144 @@ static mrb_value mruby_value_pair_get(mrb_state *mrb, mrb_value self)
 	return mruby_pair_value_to_ruby(mrb, request, vp);
 }
 
+/** Build parent structural pairs needed when a leaf node is set
+ *
+ */
+static void mruby_pair_parent_build(mrb_state *mrb, mruby_pair_t *pair)
+{
+	mruby_pair_t	*parent = pair->parent;
+	if (!parent->vp) mruby_pair_parent_build(mrb, parent);
+
+	if (pair->idx > 0) {
+		unsigned int count = fr_pair_count_by_da(&parent->vp->vp_group, pair->da);
+		if (count < pair->idx) mrb_raisef(mrb, E_ARGUMENT_ERROR,
+						  "Attempt to set instance %d when only %d exist", pair->idx, count);
+	}
+
+	if (fr_pair_append_by_da(parent->vp, &pair->vp, &parent->vp->vp_group, pair->da) < 0) {
+		mrb_raisef(mrb, E_RUNTIME_ERROR, "Failed adding %s", pair->da->name);
+	}
+}
+
+/** Convert a ruby value to a fr_pair_t value
+ *
+ */
+static void mruby_roby_to_pair_value(mrb_state *mrb, mrb_value *value, fr_pair_t *vp)
+{
+	switch (vp->vp_type) {
+	case FR_TYPE_STRING:
+		*value = mrb_obj_as_string(mrb, *value);
+		fr_pair_value_clear(vp);
+		fr_pair_value_bstrndup(vp, RSTRING_PTR(*value), RSTRING_LEN(*value), true);
+		break;
+
+	case FR_TYPE_OCTETS:
+		*value = mrb_obj_as_string(mrb, *value);
+		fr_pair_value_clear(vp);
+		fr_pair_value_memdup(vp, (uint8_t *)RSTRING_PTR(*value), RSTRING_LEN(*value), true);
+		break;
+
+#define RUBYSETINT(_size)	case FR_TYPE_INT ## _size: \
+	if (mrb_type(*value) != MRB_TT_INTEGER) mrb_raise(mrb, E_ARGUMENT_ERROR, "Integer value required"); \
+	vp->vp_int ## _size = mrb_integer(*value); \
+	break;
+	RUBYSETINT(8)
+	RUBYSETINT(16)
+	RUBYSETINT(32)
+	RUBYSETINT(64)
+
+#define RUBYSETUINT(_size)	case FR_TYPE_UINT ## _size: \
+	if (mrb_type(*value) != MRB_TT_INTEGER) mrb_raise(mrb, E_ARGUMENT_ERROR, "Integer value required"); \
+	vp->vp_uint ## _size = mrb_integer(*value); \
+	break;
+	RUBYSETUINT(8)
+	RUBYSETUINT(16)
+	RUBYSETUINT(32)
+	RUBYSETUINT(64)
+
+#define RUBYSETFLOAT(_size)	case FR_TYPE_FLOAT ## _size: \
+	switch (mrb_type(*value)) { \
+	case MRB_TT_FLOAT: \
+		vp->vp_float ## _size = mrb_float(*value); \
+		break; \
+	case MRB_TT_INTEGER: \
+		vp->vp_float ## _size = mrb_integer(*value); \
+		break; \
+	default: \
+		mrb_raise(mrb, E_ARGUMENT_ERROR, "Float or integer value required"); \
+	} \
+	break;
+	RUBYSETFLOAT(32)
+	RUBYSETFLOAT(64)
+
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_IFID:
+	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_DATE:
+		*value = mrb_obj_as_string(mrb, *value);
+		if (fr_pair_value_from_str(vp, RSTRING_PTR(*value), RSTRING_LEN(*value), NULL, false) < 0) {
+			mrb_raise(mrb, E_RUNTIME_ERROR, "Failed populating pair");
+		}
+		break;
+
+	default:
+		fr_assert(0);
+		break;
+	}
+}
+
+/** Set a value pair from mruby
+ *
+ * The ruby method expects one or two arguments
+ *   - the value to assign to the pair
+ *   - (optional) instance number
+ */
+static mrb_value mruby_value_pair_set(mrb_state *mrb, mrb_value self)
+{
+	mruby_pair_t	*pair;
+	mrb_value	value;
+	mrb_int		idx = 0;
+	fr_pair_t	*vp = NULL;
+	request_t	*request;
+
+	pair = (mruby_pair_t *)DATA_PTR(self);
+	if (!pair) mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to retrieve C data");
+
+	request = pair->request;
+	/*
+	 *	We use "o" (object) for the first argument type so we can
+	 *	accept strings and numbers, according to the pair type.
+	 */
+	mrb_get_args(mrb, "o|i", &value, &idx);
+
+	if (!pair->parent->vp) mruby_pair_parent_build(mrb, pair->parent);
+
+	if (idx == pair->idx) vp = pair->vp;
+	if (!vp) vp = fr_pair_find_by_da_idx(&pair->parent->vp->vp_group, pair->da, idx);
+	if (!vp) {
+		if (idx > 0) {
+			unsigned int count = fr_pair_count_by_da(&pair->parent->vp->vp_group, pair->da);
+			if (count < idx) mrb_raisef(mrb, E_ARGUMENT_ERROR,
+						    "Attempt to set instance %d when only %d exist", idx, count);
+		}
+
+		if (fr_pair_append_by_da(pair->parent->vp, &vp, &pair->parent->vp->vp_group, pair->da) < 0) {
+			mrb_raisef(mrb, E_RUNTIME_ERROR, "Failed adding %s", pair->da->name);
+		}
+	}
+
+	mruby_roby_to_pair_value(mrb, &value, vp);
+
+	RDEBUG2("%pP", vp);
+	return mrb_nil_value();
+}
+
 struct RClass *mruby_pair_list_class(mrb_state *mrb, struct RClass *parent)
 {
 	struct RClass *pair_list;
@@ -316,6 +455,7 @@ struct RClass *mruby_pair_class(mrb_state *mrb, struct RClass *parent)
 
 	mrb_define_method(mrb, pair, "initialize", mruby_pair_init, MRB_ARGS_ARG(5,1));
 	mrb_define_method(mrb, pair, "get", mruby_value_pair_get, MRB_ARGS_OPT(1));
+	mrb_define_method(mrb, pair, "set", mruby_value_pair_set, MRB_ARGS_ARG(1,1));
 
 	return pair;
 }
