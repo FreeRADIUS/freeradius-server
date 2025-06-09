@@ -34,5 +34,18 @@ DIAG_OFF(documentation)
 #include <mruby/variable.h>
 DIAG_ON(documentation)
 DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+typedef struct {
+	char const *filename;
+	char const *module_name;
+
+	fr_rb_tree_t	funcs;			//!< Tree of function calls found by call_env parser.
+	bool		funcs_init;		//!< Has the tree been initialised.
+
+	mrb_state *mrb;
+
+	struct RClass *mruby_module;
+	struct RClass *mruby_request;
+	mrb_value mrubyconf_hash;
+} rlm_mruby_t;
 
 struct RClass *mruby_request_class(mrb_state *mrb, struct RClass *parent);

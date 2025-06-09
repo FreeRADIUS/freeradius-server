@@ -43,27 +43,6 @@ typedef struct {
 } mruby_call_env_t;
 
 /*
- *	Define a structure for our module configuration.
- *
- *	These variables do not need to be in a structure, but it's
- *	a lot cleaner to do so, and a pointer to the structure can
- *	be used as the instance handle.
- */
-typedef struct {
-	char const *filename;
-	char const *module_name;
-
-	fr_rb_tree_t	funcs;			//!< Tree of function calls found by call_env parser.
-	bool		funcs_init;		//!< Has the tree been initialised.
-
-	mrb_state *mrb;
-
-	struct RClass *mruby_module;
-	struct RClass *mruby_request;
-	mrb_value mrubyconf_hash;
-} rlm_mruby_t;
-
-/*
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
