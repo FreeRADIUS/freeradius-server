@@ -266,6 +266,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		func = fr_rb_iter_next_inorder(&iter);
 	}
 
+	if (mrb_nil_p(mrb_check_intern_cstr(mrb, "instantiate"))) return 0;
+
 	status = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), "instantiate", 0);
 	if (mrb_undef_p(status)) {
 		ERROR("Running instantiate failed");
