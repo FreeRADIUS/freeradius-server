@@ -434,6 +434,125 @@ static mrb_value mruby_value_pair_set(mrb_state *mrb, mrb_value self)
 	return mrb_nil_value();
 }
 
+/** Implement mruby method_missing functionality to find child pairs
+ *
+ */
+static mrb_value mruby_pair_list_missing(mrb_state *mrb, mrb_value self)
+{
+	mruby_pair_t		*pair;
+	request_t		*request;
+	mrb_sym			attr;
+	mrb_value		*args = NULL, mruby_pair, pair_args[6], argv;
+	mrb_int			argc = 0, len;
+	int			i;
+	size_t			idx = 0, child_idx = 0;
+	char			*attr_name, *child_attr_name = NULL;
+	fr_dict_attr_t const	*da, *child_da;
+	fr_pair_t		*vp = NULL;
+
+	pair = (mruby_pair_t *)DATA_PTR(self);
+	if (!pair) mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to retrieve C data");
+	request = pair->request;
+
+	if (fr_type_is_leaf(pair->da->type)) mrb_raisef(mrb, E_RUNTIME_ERROR, "%s is a leaf attribute so has no children",
+							pair->da->name);
+	mrb_get_args(mrb, "n|*!", &attr, &args, &argc);
+
+	if (argc > 3) mrb_raise(mrb, E_ARGUMENT_ERROR, "Maximum three arguments allowed");
+
+	/*
+	 *	Parse any provided arguments.  We allow
+	 *	 * int			- instance of attribute
+	 *	 * str			- child attribute name
+	 *	 * int, str		- instance of parent and child attribute name
+	 *	 * str, int		- child attribute and its instance
+	 *	 * int, str, int	- instance of parent, child attribute name and instance
+	 *
+	 *	This is to allow for attribute names which begin with a number (e.g. 3GPP2 VSA) which is not
+	 *	allowed in mruby method names.
+	 *
+	 *	p.request.vendor_specific("3gpp2") gets the pair request.Vendor-Specific.3GPP2
+	 */
+	for (i = 0; i < argc; i++) {
+		argv = args[i];
+		switch (mrb_type(argv)) {
+		case MRB_TT_INTEGER:
+			if (i == 0) {
+				idx = mrb_integer(argv);
+			} else {
+				if (!child_attr_name) mrb_raise(mrb, E_ARGUMENT_ERROR, "Child attribute instance must follow attribute name");
+				child_idx = mrb_integer(argv);
+			}
+			break;
+
+		case MRB_TT_STRING:
+			if (child_attr_name) mrb_raise(mrb, E_ARGUMENT_ERROR, "Only one child attribute name allowed");
+			child_attr_name = mrb_str_to_cstr(mrb, argv);
+			break;
+
+		default:
+			mrb_raise(mrb, E_ARGUMENT_ERROR, "Arguments can only be integer (attribute instance), or string (attribute name)");
+		}
+	}
+
+	attr_name = talloc_strdup(request, mrb_sym_name_len(mrb, attr, &len));
+	for (i = 0; i < len; i++) {
+		if (attr_name[i] == '_') attr_name[i] = '-';
+	}
+
+	da = fr_dict_attr_by_name(NULL, pair->da, attr_name);
+
+	/*
+	 *	Allow fallback to internal attributes if the parent is a group or dictionary root.
+	 */
+	if (!da && (fr_type_is_group(pair->da->type) || pair->da->flags.is_root)) {
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), attr_name);
+	}
+
+	if (!da) mrb_raisef(mrb, E_ARGUMENT_ERROR, "Unknown or invalid attriubte name \"%s\"", attr_name);
+
+	if (pair->vp) vp = fr_pair_find_by_da_idx(&pair->vp->vp_group, da, idx);
+
+	pair_args[0] = mruby_inst_object(mrb, pair->inst->mruby_ptr, pair->inst);
+	pair_args[1] = mruby_request_object(mrb, pair->inst->mruby_ptr, request);
+	pair_args[2] = mruby_dict_attr_object(mrb, pair->inst->mruby_ptr, da);
+	pair_args[3] = mrb_int_value(mrb, idx);
+	pair_args[4] = mruby_value_pair_object(mrb, pair->inst->mruby_ptr, vp);
+	pair_args[5] = mruby_ruby_pair_object(mrb, pair->inst->mruby_ptr, pair);
+
+	mruby_pair = mrb_obj_new(mrb, fr_type_is_leaf(da->type) ? pair->inst->mruby_pair : pair->inst->mruby_pair_list,
+				 6, pair_args);
+
+	/*
+	 *	No child attr name in the arguments, so return the pair
+	 */
+	if (!child_attr_name) return mruby_pair;
+
+	for (i = 0; i < (int)strlen(child_attr_name); i++) {
+		if (child_attr_name[i] == '_') child_attr_name[i] = '-';
+	}
+
+	child_da = fr_dict_attr_by_name(NULL, da, child_attr_name);
+
+	if (!child_da && fr_type_is_group(da->type)) {
+		child_da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), attr_name);
+	}
+
+	if (!child_da) mrb_raisef(mrb, E_ARGUMENT_ERROR, "Unknown or invalid attriubte name \"%s\"", attr_name);
+
+	if (vp) vp = fr_pair_find_by_da_idx(&vp->vp_group, child_da, child_idx);
+
+	pair = (mruby_pair_t *)DATA_PTR(mruby_pair);
+	pair_args[2] = mruby_dict_attr_object(mrb, pair->inst->mruby_ptr, child_da);
+	pair_args[3] = mrb_boxing_int_value(mrb, child_idx);
+	pair_args[4] = mruby_value_pair_object(mrb, pair->inst->mruby_ptr, vp);
+	pair_args[5] = mruby_ruby_pair_object(mrb, pair->inst->mruby_ptr, pair);
+
+	mruby_pair = mrb_obj_new(mrb, fr_type_is_leaf(da->type) ? pair->inst->mruby_pair : pair->inst->mruby_pair_list, 6, pair_args);
+
+	return mruby_pair;
+}
+
 struct RClass *mruby_pair_list_class(mrb_state *mrb, struct RClass *parent)
 {
 	struct RClass *pair_list;
@@ -443,6 +562,8 @@ struct RClass *mruby_pair_list_class(mrb_state *mrb, struct RClass *parent)
 
 	mrb_define_method(mrb, pair_list, "initialize", mruby_pair_init, MRB_ARGS_ARG(5,1));
 	mrb_define_method(mrb, pair_list, "keys", mruby_pair_list_keys, MRB_ARGS_REQ(0));
+	mrb_define_method(mrb, pair_list, "method_missing", mruby_pair_list_missing, MRB_ARGS_OPT(1));
+
 	return pair_list;
 }
 
