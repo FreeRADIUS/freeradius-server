@@ -433,6 +433,36 @@ static mrb_value mruby_value_pair_set(mrb_state *mrb, mrb_value self)
 	return mrb_nil_value();
 }
 
+/** Append an instance of a value pair from mruby
+ *
+ * The ruby method expects one argument - the value to assign to the pair
+ */
+static mrb_value mruby_value_pair_append(mrb_state *mrb, mrb_value self)
+{
+	mruby_pair_t	*pair;
+	mrb_value	value;
+	fr_pair_t	*vp = NULL;
+	request_t	*request;
+
+	pair = (mruby_pair_t *)DATA_PTR(self);
+	if (!pair) mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to retrieve C data");
+
+	request = pair->request;
+
+	mrb_get_args(mrb, "o", &value);
+
+	if (!pair->parent->vp) mruby_pair_parent_build(mrb, pair->parent);
+
+	if (fr_pair_append_by_da(pair->parent->vp, &vp, &pair->parent->vp->vp_group, pair->da) < 0) {
+		mrb_raisef(mrb, E_RUNTIME_ERROR, "Failed adding %s", pair->da->name);
+	}
+
+	mruby_roby_to_pair_value(mrb, &value, vp);
+
+	RDEBUG2("%pP", vp);
+	return mrb_nil_value();
+}
+
 /** Delete a value pair from mruby
  *
  * The ruby method expects an optional argument - the instance number
@@ -603,6 +633,7 @@ struct RClass *mruby_pair_class(mrb_state *mrb, struct RClass *parent)
 	mrb_define_method(mrb, pair, "get", mruby_value_pair_get, MRB_ARGS_OPT(1));
 	mrb_define_method(mrb, pair, "set", mruby_value_pair_set, MRB_ARGS_ARG(1,1));
 	mrb_define_method(mrb, pair, "del", mruby_value_pair_del, MRB_ARGS_OPT(1));
+	mrb_define_method(mrb, pair, "append", mruby_value_pair_append, MRB_ARGS_REQ(1));
 
 	return pair;
 }
