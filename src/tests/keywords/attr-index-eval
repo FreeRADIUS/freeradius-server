@@ -19,9 +19,9 @@ if (foo != "b") {
 	test_fail
 }
 
-ref = "1 + 2"
+ref := "1 + 2"
 
-foo = %eval(ref)
+foo := %eval(ref)
 
 if (foo != 3) {
 	test_fail
