@@ -47,7 +47,7 @@ typedef struct {
  */
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED, rlm_mruby_t, filename) },
-	{ FR_CONF_OFFSET("module", rlm_mruby_t, module_name), .dflt = "Radiusd" },
+	{ FR_CONF_OFFSET("module", rlm_mruby_t, module_name), .dflt = "FreeRADIUS" },
 	CONF_PARSER_TERMINATOR
 };
 
