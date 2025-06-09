@@ -276,99 +276,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static int mruby_vps_to_array(request_t *request, mrb_value *out, mrb_state *mrb, fr_pair_list_t *vps)
-{
-	mrb_value	res;
-	fr_pair_t	*vp;
-
-	res = mrb_ary_new(mrb);
-	for (vp = fr_pair_list_head(vps); vp; vp = fr_pair_list_next(vps, vp)) {
-		mrb_value	tmp, key, val, to_cast;
-
-		tmp = mrb_ary_new_capa(mrb, 2);
-		key = mrb_str_new(mrb, vp->da->name, strlen(vp->da->name));
-
-		/*
-		 *	The only way to create floats, doubles, bools etc,
-		 *	is to feed mruby the string representation and have
-		 *	it convert to its internal types.
-		 */
-		switch (vp->vp_type) {
-		case FR_TYPE_STRING:
-		case FR_TYPE_OCTETS:
-			to_cast = mrb_str_new(mrb, vp->vp_ptr, vp->vp_length);
-			break;
-
-		case FR_TYPE_BOOL:
-#ifndef NDEBUG
-			to_cast = mrb_nil_value();	/* Not needed but clang flags it */
-#endif
-			break;
-
-		default:
-		{
-			char	*in;
-			size_t	len;
-
-			len = fr_value_box_aprint(request, &in, &vp->data, NULL);
-			to_cast = mrb_str_new(mrb, in, len);
-			talloc_free(in);
-		}
-			break;
-		}
-
-		switch (vp->vp_type) {
-		case FR_TYPE_STRING:
-		case FR_TYPE_OCTETS:
-		case FR_TYPE_IPV4_ADDR:
-		case FR_TYPE_IPV4_PREFIX:
-		case FR_TYPE_IPV6_ADDR:
-		case FR_TYPE_IPV6_PREFIX:
-		case FR_TYPE_IFID:
-		case FR_TYPE_ETHERNET:
-		case FR_TYPE_COMBO_IP_ADDR:
-		case FR_TYPE_COMBO_IP_PREFIX:
-			val = to_cast;		/* No conversions required */
-			break;
-
-		case FR_TYPE_BOOL:
-			val = vp->vp_bool ? mrb_obj_value(mrb->true_class) : mrb_obj_value(mrb->false_class);
-			break;
-
-		case FR_TYPE_UINT8:
-		case FR_TYPE_UINT16:
-		case FR_TYPE_UINT32:
-		case FR_TYPE_UINT64:
-		case FR_TYPE_INT8:
-		case FR_TYPE_INT16:
-		case FR_TYPE_INT32:
-		case FR_TYPE_INT64:
-		case FR_TYPE_DATE:
-		case FR_TYPE_TIME_DELTA:
-		case FR_TYPE_SIZE:
-			val = mrb_convert_type(mrb, to_cast, MRB_TT_FIXNUM, "Fixnum", "to_int");
-			break;
-
-		case FR_TYPE_FLOAT32:
-		case FR_TYPE_FLOAT64:
-			val = mrb_convert_type(mrb, to_cast, MRB_TT_FLOAT, "Float", "to_f");
-			break;
-
-		case FR_TYPE_NON_LEAF:
-			fr_assert(0);
-			return -1;
-		}
-
-		mrb_ary_push(mrb, tmp, key);
-		mrb_ary_push(mrb, tmp, val);
-		mrb_ary_push(mrb, res, tmp);
-
-		*out = res;
-	}
-
-	return 0;
-}
-
 static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, mrb_state *mrb, mrb_value value, char const *function_name)
 {
 	int i;
@@ -453,20 +360,6 @@ static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vp
 		fr_pair_append(&tmp_list, vp);
 	}
 	radius_pairmove(request, vps, &tmp_list);
-}
-
-static inline int mruby_set_vps(request_t *request, mrb_state *mrb, mrb_value mruby_request,
-				char const *list_name, fr_pair_list_t *vps)
-{
-	mrb_value res;
-
-	memset(&res, 0, sizeof(res));	/* clang scan */
-
-	if (mruby_vps_to_array(request, &res, mrb, vps) < 0) return -1;
-
-	mrb_iv_set(mrb, mruby_request, mrb_intern_cstr(mrb, list_name), res);
-
-	return 0;
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_mruby(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
