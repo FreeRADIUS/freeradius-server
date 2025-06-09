@@ -107,7 +107,7 @@ typedef struct home_server {
 	uint32_t		response_timeouts;
 	uint32_t		max_response_timeouts;
 	uint32_t		max_outstanding;	//!< Maximum outstanding requests.
-	uint32_t		currently_outstanding;	
+	uint32_t		currently_outstanding;
 
 	time_t			last_packet_sent;
 	time_t			last_packet_recv;
