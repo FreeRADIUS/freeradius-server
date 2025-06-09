@@ -400,50 +400,14 @@ DIAG_OFF(class-varargs)
 DIAG_ON(class-varargs)
 DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
-	/* Two options for the return value:
-	 * - a fixnum: convert to rlm_rcode_t, and return that
-	 * - an array: this should have exactly three items in it. The first one
-	 *             should be a fixnum, this will once again be converted to
-	 *             rlm_rcode_t and eventually returned. The other two items
-	 *             should be arrays. The items of the first array should be
-	 *             merged into reply, the second array into control.
+	/*
+	 *	The return should be a fixnum, which is converted to rlm_rcode_t
 	 */
-	switch (mrb_type(mruby_result)) {
-		/* If it is a Fixnum: return that value */
-		case MRB_TT_FIXNUM:
-			RETURN_MODULE_RCODE((rlm_rcode_t)mrb_int(mrb, mruby_result));
+	if (mrb_type(mruby_result) == MRB_TT_FIXNUM) RETURN_MODULE_RCODE((rlm_rcode_t)mrb_int(mrb, mruby_result));
 
-		case MRB_TT_ARRAY:
-			/* Must have exactly three items */
-			if (RARRAY_LEN(mruby_result) != 3) {
-				ERROR("Expected array to have exactly three values, got %" PRId64 " instead", RARRAY_LEN(mruby_result));
-				RETURN_MODULE_FAIL;
-			}
-
-			/* First item must be a Fixnum, this will be the return type */
-			if (mrb_type(mrb_ary_entry(mruby_result, 0)) != MRB_TT_FIXNUM) {
-				ERROR("Expected first array element to be a Fixnum, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mrb_ary_entry(mruby_result, 0))));
-				RETURN_MODULE_FAIL;
-			}
-
-			/* Second and third items must be Arrays, these will be the updates for reply and control */
-			if (mrb_type(mrb_ary_entry(mruby_result, 1)) != MRB_TT_ARRAY) {
-				ERROR("Expected second array element to be an Array, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mrb_ary_entry(mruby_result, 1))));
-				RETURN_MODULE_FAIL;
-			} else if (mrb_type(mrb_ary_entry(mruby_result, 2)) != MRB_TT_ARRAY) {
-				ERROR("Expected third array element to be an Array, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mrb_ary_entry(mruby_result, 2))));
-				RETURN_MODULE_FAIL;
-			}
-
-			add_vp_tuple(request->reply_ctx, request, &request->reply_pairs, mrb, mrb_ary_entry(mruby_result, 1), func->func->function_name);
-			add_vp_tuple(request->control_ctx, request, &request->control_pairs, mrb, mrb_ary_entry(mruby_result, 2), func->func->function_name);
-			RETURN_MODULE_RCODE((rlm_rcode_t)mrb_int(mrb, mrb_ary_entry(mruby_result, 0)));
-
-		default:
-			/* Invalid return type */
-			ERROR("Expected return to be a Fixnum or an Array, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mruby_result)));
-			RETURN_MODULE_FAIL;
-	}
+	/* Invalid return type */
+	RERROR("Expected return to be a Fixnum, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mruby_result)));
+	RETURN_MODULE_FAIL;
 }
 
 /*
