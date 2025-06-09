@@ -66,7 +66,6 @@ struct RClass *mruby_request_class(mrb_state *mrb, struct RClass *parent)
 
 	request = mrb_define_class_under(mrb, parent, "Request", mrb->object_class);
 
-	/* FIXME: Use attr_reader (if available) */
 	mrb_define_method(mrb, request, "frconfig", mruby_request_frconfig, MRB_ARGS_NONE());
 	mrb_define_method(mrb, request, "request", mruby_request_request, MRB_ARGS_NONE());
 	mrb_define_method(mrb, request, "reply", mruby_request_reply, MRB_ARGS_NONE());

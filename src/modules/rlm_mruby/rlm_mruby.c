@@ -473,19 +473,36 @@ static unlang_action_t CC_HINT(nonnull) mod_mruby(rlm_rcode_t *p_result, module_
 {
 	rlm_mruby_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_mruby_t);
 	mruby_call_env_t	*func = talloc_get_type_abort(mctx->env_data, mruby_call_env_t);
-	mrb_state *mrb = inst->mrb;
-	mrb_value mruby_request, mruby_result;
+	mrb_state		*mrb = inst->mrb;
+	mrb_value		mruby_packet, mruby_result, mruby_request, mruby_reply, mruby_control, mruby_session_state;
+	mrb_value		args[5];
 
-	mruby_request = mrb_obj_new(mrb, inst->mruby_request, 0, NULL);
-	mrb_iv_set(mrb, mruby_request, mrb_intern_cstr(mrb, "@frconfig"), inst->mrubyconf_hash);
-	mruby_set_vps(request, mrb, mruby_request, "@request", &request->request_pairs);
-	mruby_set_vps(request, mrb, mruby_request, "@reply", &request->reply_pairs);
-	mruby_set_vps(request, mrb, mruby_request, "@control", &request->control_pairs);
-	mruby_set_vps(request, mrb, mruby_request, "@session_state", &request->session_state_pairs);
+	mruby_packet = mrb_obj_new(mrb, inst->mruby_request, 0, NULL);
+	mrb_iv_set(mrb, mruby_packet, mrb_intern_cstr(mrb, "@frconfig"), inst->mrubyconf_hash);
+
+	args[0] = mruby_inst_object(mrb, inst->mruby_ptr, inst);
+	args[1] = mruby_request_object(mrb, inst->mruby_ptr, request);
+	args[2] = mruby_dict_attr_object(mrb, inst->mruby_ptr, fr_dict_root(request->proto_dict));
+	args[3] = mrb_int_value(mrb, 0);
+	args[4] = mruby_value_pair_object(mrb, inst->mruby_ptr, fr_pair_list_parent(&request->request_pairs));
+	mruby_request = mrb_obj_new(mrb, inst->mruby_pair_list, 5, args);
+	mrb_iv_set(mrb, mruby_packet, mrb_intern_cstr(mrb, "@request"), mruby_request);
+
+	args[4] = mruby_value_pair_object(mrb, inst->mruby_ptr, fr_pair_list_parent(&request->reply_pairs));
+	mruby_reply = mrb_obj_new(mrb, inst->mruby_pair_list, 5, args);
+	mrb_iv_set(mrb, mruby_packet, mrb_intern_cstr(mrb, "@reply"), mruby_reply);
+
+	args[4] = mruby_value_pair_object(mrb, inst->mruby_ptr, fr_pair_list_parent(&request->control_pairs));
+	mruby_control = mrb_obj_new(mrb, inst->mruby_pair_list, 5, args);
+	mrb_iv_set(mrb, mruby_packet, mrb_intern_cstr(mrb, "@control"), mruby_control);
+
+	args[4] = mruby_value_pair_object(mrb, inst->mruby_ptr, fr_pair_list_parent(&request->session_state_pairs));
+	mruby_session_state = mrb_obj_new(mrb, inst->mruby_pair_list, 5, args);
+	mrb_iv_set(mrb, mruby_packet, mrb_intern_cstr(mrb, "@session_state"), mruby_session_state);
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(class-varargs)
-	mruby_result = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), func->func->function_name, 1, mruby_request);
+	mruby_result = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), func->func->function_name, 1, mruby_packet);
 DIAG_ON(class-varargs)
 DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
