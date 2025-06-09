@@ -589,6 +589,10 @@ static xlat_action_t ldap_xlat_uri_attr_option(TALLOC_CTX *ctx, fr_dcursor_t *ou
 
 	XLAT_ARGS(in, &uri, &option_vb);
 
+#ifdef STATIC_ANALYZER
+	if (!option_vb) return XLAT_ACTION_FAIL;
+#endif
+
 	if (option_vb->vb_length < 1) {
 		RERROR("LDAP attriubte option must not be blank");
 		return XLAT_ACTION_FAIL;
