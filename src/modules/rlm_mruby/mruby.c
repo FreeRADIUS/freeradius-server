@@ -184,6 +184,26 @@ static mrb_value mruby_pair_init(mrb_state *mrb, mrb_value self)
 	return self;
 }
 
+/** Fetch the list of children of a list
+ *
+ */
+static mrb_value mruby_pair_list_keys(mrb_state *mrb, mrb_value self)
+{
+	mruby_pair_t	*pair;
+	mrb_value	keys, key;
+	fr_pair_t	*vp = NULL;
+
+	pair = (mruby_pair_t *)DATA_PTR(self);
+	if (!pair) mrb_raise(mrb, E_RUNTIME_ERROR, "Failed to retrieve C data");
+
+	keys = mrb_ary_new(mrb);
+	for (vp = fr_pair_list_head(&pair->vp->vp_group); vp; vp = fr_pair_list_next(&pair->vp->vp_group, vp)) {
+		key = mrb_str_new(mrb, vp->da->name, strlen(vp->da->name));
+		mrb_ary_push(mrb, keys, key);
+	}
+	return keys;
+}
+
 struct RClass *mruby_pair_list_class(mrb_state *mrb, struct RClass *parent)
 {
 	struct RClass *pair_list;
@@ -192,6 +212,7 @@ struct RClass *mruby_pair_list_class(mrb_state *mrb, struct RClass *parent)
 	MRB_SET_INSTANCE_TT(pair_list, MRB_TT_DATA);
 
 	mrb_define_method(mrb, pair_list, "initialize", mruby_pair_init, MRB_ARGS_ARG(5,1));
+	mrb_define_method(mrb, pair_list, "keys", mruby_pair_list_keys, MRB_ARGS_REQ(0));
 	return pair_list;
 }
 
