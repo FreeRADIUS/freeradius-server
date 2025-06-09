@@ -48,6 +48,7 @@ typedef struct {
 
 	struct RClass *mruby_module;
 	struct RClass *mruby_request;
+	struct RClass *mruby_ptr;
 	mrb_value mrubyconf_hash;
 } rlm_mruby_t;
 
