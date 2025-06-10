@@ -2,7 +2,7 @@
 
 # frozen_string_literal: true
 
-module Radiusd
+module FreeRADIUS
     def self.instantiate
         log(L_DBG, "Running ruby instantiate")
         return RLM_MODULE_OK
@@ -16,7 +16,7 @@ module Radiusd
         log(L_WARN, "Authorize: #{p.request.user_name.get.inspect}")
 	p.reply.framed_mtu.set(1500)
 	p.control.password.cleartext.set('hello')
-        return [RLM_MODULE_UPDATED, reply, control]
+        return RLM_MODULE_UPDATED
     end
     def self.send_access_accept(p)
         log(L_DBG, "Running ruby send_access_accept")
