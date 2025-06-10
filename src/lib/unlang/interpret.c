@@ -254,7 +254,7 @@ unlang_action_t unlang_interpret_push_children(UNUSED rlm_rcode_t *p_result, req
 	 *	and can be empty.
 	 */
 	if (!g->children) {
-		RDEBUG2("<ignoring empty subsection>");
+		RDEBUG2("... ignoring empty subsection ...");
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
