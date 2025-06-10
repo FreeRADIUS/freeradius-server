@@ -777,8 +777,8 @@ touch $RPM_BUILD_ROOT/var/log/radius/radius.log
 %__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/lua
 %endif
 
-%if %{without rlm_ruby}
-%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/ruby
+%if %{without rlm_mruby}
+%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/mruby
 %endif
 %if %{without rlm_sql_oracle}
 %__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
@@ -1314,7 +1314,7 @@ fi
 %endif
 
 %if %{with rlm_lua}
-%files ruby
+%files lua
 %defattr(-,root,root,750)
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/lua
 %{_libdir}/freeradius/rlm_lua.so
@@ -1323,7 +1323,7 @@ fi
 %if %{with rlm_mruby}
 %files ruby
 %defattr(-,root,root,750)
-%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/ruby
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/mruby
 %{_libdir}/freeradius/rlm_mruby.so
 %endif
 
