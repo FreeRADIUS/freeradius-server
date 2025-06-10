@@ -85,7 +85,7 @@ if (%redis('EXISTS', "{%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}") 
 }
 
 # Check the ZSCORE
-if (%redis('ZSCORE', "{%{control.IP-Pool.Name}%}:pool", %{reply.Framed-IP-Address}) <= %l) {
+if (%redis('ZSCORE', "{%{control.IP-Pool.Name}}:pool", "%{reply.Framed-IP-Address}") <= %l) {
 	test_fail
 }
 
