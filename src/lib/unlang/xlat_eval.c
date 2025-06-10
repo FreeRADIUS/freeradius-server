@@ -226,7 +226,29 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 	 *	well as the original fmt string.
 	 */
 	if ((node->type == XLAT_FUNC) && !xlat_is_literal(node->call.args)) {
-		RDEBUG2("| %%%s(%pM)", node->call.func->name, args);
+		fr_token_t token = node->call.func->token;
+
+		if ((token == T_INVALID) || (!fr_comparison_op[token] && !fr_binary_op[token])) {
+			RDEBUG2("| %%%s(%pM)", node->call.func->name, args);
+		} else {
+			fr_value_box_t *a, *b;
+
+			a = fr_value_box_list_head(args);
+			b = fr_value_box_list_next(args, a);
+
+			RDEBUG2("| (%pV %s %pV)", a, fr_tokens[node->call.func->token], b);
+
+#ifndef NDEBUG
+			if (a && b) {
+				a = fr_value_box_list_next(args, b);
+				if (a) {
+					RDEBUG2("| ... ??? %pV", a);
+					fr_assert(0);
+				}
+			}
+#endif
+
+		}
 	} else {
 		fr_sbuff_t *agg;
 
