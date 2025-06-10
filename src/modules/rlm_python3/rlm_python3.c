@@ -1183,7 +1183,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 
 #if PY_VERSION_HEX <= 0x030a0000
 		Py_InitializeEx(0);			/* Don't override signal handlers - noop on subs calls */
-#if PY_VERSION_HEX <= 0x03060000
+#if PY_VERSION_HEX < 0x03070000
 		PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
 #endif
 #endif
