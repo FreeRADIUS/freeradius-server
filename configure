@@ -719,6 +719,7 @@ build_vendor
 build_cpu
 build
 RADIUSD_VERSION_COMMIT
+allow_core_dumps
 ANTORA
 GRAPHVIZ_DOT
 DOXYGEN
@@ -3313,6 +3314,9 @@ fi
 if test "x$developer" = "xyes"; then
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Enabling developer build implicitly, disable with --disable-developer" >&5
 printf "%s\n" "$as_me: Enabling developer build implicitly, disable with --disable-developer" >&6;}
+  allow_core_dumps="yes"
+else
+  allow_core_dumps="no"
 fi
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking build commit" >&5
