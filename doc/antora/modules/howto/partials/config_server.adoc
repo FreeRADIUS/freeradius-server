@@ -1,3 +1,5 @@
+=Configure Server
+
 Changing the server configuration should be done via the following
 steps:
 
@@ -21,7 +23,7 @@ steps:
     -   read the *entire* debug output, looking for words like `error`
         or `warning`. These messages usually contain descriptions of
         what went wrong, and suggestions for how it can be fixed.
-        See xref:debugging/radiusd_X.adoc[an explanation of the debug output] for more details;
+        See xref:ROOT:debugging/radiusd_X.adoc[an explanation of the debug output]
     -   try replacing your configuration with a saved copy of a "known
         working" configuration, and start again. This process can clean
         up errors caused by temporary edits, or edits that you have

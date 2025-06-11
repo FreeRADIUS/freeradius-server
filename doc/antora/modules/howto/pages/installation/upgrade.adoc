@@ -1,4 +1,4 @@
-= Upgrading from v3 to v4
+= Upgrade from v3 to v4
 
 The configuration for v4 is _somewhat_ compatible with the v3
 configuration. It should be possible to reuse most of a v3

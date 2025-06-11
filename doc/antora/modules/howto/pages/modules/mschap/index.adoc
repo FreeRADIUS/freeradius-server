@@ -1,5 +1,7 @@
 = rlm_mschap
 
+include::ROOT:partial$v3_warning.adoc[]
+
 The mschap module provides support for `MS-CHAPv1` and `MS-CHAPv2`, which is
 a common authentication mechanisms for Microsoft clients.
 
