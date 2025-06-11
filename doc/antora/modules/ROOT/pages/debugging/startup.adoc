@@ -1,5 +1,7 @@
 # Startup text
 
+include::ROOT:partial$v3_warning.adoc[]
+
 We start the server with *`-X`*.  This option gives us the best combination of useful output, and readable output.  Adding more `-x` gives *more complex output*,  not *more useful output*.
 
     $ radiusd -X 2>&1 | tee debugfile

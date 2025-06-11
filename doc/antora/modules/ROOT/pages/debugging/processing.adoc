@@ -1,4 +1,6 @@
-# Packet Processing
+# Processing Packets
+
+include::ROOT:partial$v3_warning.adoc[]
 
 Each line (or most of them) of the packet processing output starts with a request number, e.g. `(0)`.  This number lets you track debug messages which are all for one packet.  Messages from different packets may be inter-mingled, due to threading or proxying.  Prefixing the messages with a number allows the messages to be easily differentiated.
 
@@ -6,7 +8,8 @@ Each line (or most of them) of the packet processing output starts with a reques
 
 The first message for a packet tells you what type of packet was received, what it's RADIUS ID is, and the source / destination IP / port information.
 
-    (0) Received Access-Request Id 104 from 127.0.0.1:33278 to 127.0.0.1:1812 length 73
+    (0) Received Access-Request Id 104 from 127.0.0.1:33278 to 127.0.0.1:1812
+    length 73
 
 After that, it prints out all of the attributes which were received in the packet.
 [%collapsible]

@@ -98,7 +98,8 @@ include::partial$add_client.adoc[]
 
 ## Configure the Server
 
-  include::partial$config_server.adoc[]
+include::partial$config_server.adoc[]
+
 
 [WARNING]
 ====

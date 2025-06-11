@@ -1,5 +1,8 @@
 = A simple pre-paid example
 
+include::ROOT:partial$v3_warning.adoc[]
+
+
 *Goal:* To implement a simple "prepaid" functionality in the server.
 
 *Time:* 15-25 minutes

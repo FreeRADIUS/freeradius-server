@@ -1,4 +1,4 @@
-= Configuring a Module
+= Configure Modules
 
 The configuration files in
 xref:reference:raddb/mods-available/index.adoc[mods-available/] file describe

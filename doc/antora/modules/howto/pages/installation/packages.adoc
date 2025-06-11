@@ -1,5 +1,7 @@
 == Install from packages
 
+include::ROOT:partial$v3_warning.adoc[]
+
 https://www.inkbridgenetworks.com/[InkBridge Networks] provides pre-built binary packages of FreeRADIUS for common Linux distributions. This is the recommended installation method when packages are available for your system.
 
 The official https://packages.inkbridgenetworks.com/[InkBridge Networks

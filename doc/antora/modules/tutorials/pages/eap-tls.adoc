@@ -1,5 +1,7 @@
 = EAP-TLS: Certificate-based authentication
 
+include::ROOT:partial$v3_warning.adoc[]
+
 *Goal:* To configure the server to use the EAP-TLS authentication
 protocol and to send and receive test packets.
 

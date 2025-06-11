@@ -1,5 +1,7 @@
 = Module Fail-Over
 
+include::ROOT:partial$v3_warning.adoc[]
+
 *Goal:* To configure the server to use a "backup" module if a
 "primary" module fails.
 

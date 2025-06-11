@@ -1,5 +1,7 @@
 = Extensible Authentication Protocol (EAP)
 
+include::ROOT:partial$v3_warning.adoc[]
+
 == Introduction
 
 Extensible Authentication Protocol(EAP), `RFC 3748`, is an authentication
