@@ -37,6 +37,13 @@ ifneq "$(RUN_SLOW_TESTS)" "1"
 endif
 
 #
+#  Don't run crl tests if there's no SSL
+#
+ifeq "$(OPENSSL_LIBS)" ""
+  FILES_SKIP += $(filter crl/%,$(FILES))
+endif
+
+#
 #  Figure out what to do with the module.
 #
 define MODULE_FILTER
