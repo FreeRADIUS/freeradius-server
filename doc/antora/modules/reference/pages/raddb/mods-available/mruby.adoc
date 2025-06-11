@@ -108,7 +108,7 @@ module:: Name of the loaded module.
 ```
 mruby {
 	filename = "${modconfdir}/${.name}/example.rb"
-	module = "Radiusd"
+	module = "FreeRADIUS"
 }
 ```
 

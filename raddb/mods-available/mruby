@@ -107,5 +107,5 @@ mruby {
 	#
 	#  module:: Name of the loaded module.
 	#
-	module = "Radiusd"
+	module = "FreeRADIUS"
 }
