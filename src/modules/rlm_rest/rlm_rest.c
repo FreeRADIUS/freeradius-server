@@ -1154,9 +1154,6 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, conf_parser
  * Resets all options associated with a CURL handle, and frees any headers
  * associated with it.
  *
- * Calls rest_read_ctx_free and rest_response_free to free any memory used by
- * context data.
- *
  * @param[in] randle to cleanup.
  * @param[in] uctx unused.
  */
