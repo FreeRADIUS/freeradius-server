@@ -221,7 +221,7 @@ static crl_ret_t crl_check_entry(crl_entry_t *crl_entry, request_t *request, uin
 		return CRL_ENTRY_NOT_FOUND;
 
 	case 1:
-		RDEBUG2("Certificate revoked by %s", crl_entry->cdp_url);
+		REDEBUG2("Certificate revoked by %s", crl_entry->cdp_url);
 		return CRL_ENTRY_FOUND;
 
 	case 2:
