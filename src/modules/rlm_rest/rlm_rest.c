@@ -1341,19 +1341,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-/** Initialises libcurl.
- *
- * Allocates global variables and memory required for libcurl to function.
- * MUST only be called once per module instance.
- *
- * mod_unload must not be called if mod_load fails.
- *
- * @see mod_unload
- *
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
 static int mod_load(void)
 {
 	/* developer sanity */
