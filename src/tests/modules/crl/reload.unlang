@@ -11,6 +11,8 @@ prepare_cnf
 
 create_client_cert
 
+build_crl
+
 read_cert_serial
 
 session-state.TLS-Certificate.Serial = %bin(serial)
@@ -34,6 +36,8 @@ if (!ok) {
 #  Now revoke the cert and update the crl
 #
 revoke_client_cert
+
+build_crl
 
 crl {
 	reject = 1

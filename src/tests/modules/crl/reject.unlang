@@ -13,6 +13,8 @@ create_client_cert
 
 revoke_client_cert
 
+build_crl
+
 read_cert_serial
 
 session-state.TLS-Certificate.Serial = %bin(serial)
