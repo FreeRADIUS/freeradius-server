@@ -359,13 +359,21 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 			goto error;
 		}
 		if (ASN1_INTEGER_cmp(base_num, base_crl->crl_num) != 0) {
-			fr_tls_strerror_printf("Delta CRL referrs to incorrect base CRL number");
+			uint64_t delta_base, crl_num;
+			ASN1_INTEGER_get_uint64(&delta_base, base_num);
+			ASN1_INTEGER_get_uint64(&crl_num, base_crl->crl_num);
+			fr_tls_strerror_printf("Delta CRL referrs to base CRL number %"PRIu64", current base is %"PRIu64,
+						delta_base, crl_num);
 			ASN1_INTEGER_free(base_num);
 			goto error;
 		}
 		ASN1_INTEGER_free(base_num);
 		if (ASN1_INTEGER_cmp(crl->crl_num, base_crl->crl_num) < 0) {
-			fr_tls_strerror_printf("Delta CRL number is less than base CRL number");
+			uint64_t delta_num, crl_num;
+			ASN1_INTEGER_get_uint64(&delta_num, crl->crl_num);
+			ASN1_INTEGER_get_uint64(&crl_num, base_crl->crl_num);
+			fr_tls_strerror_printf("Delta CRL number %"PRIu64" is less than base CRL number %"PRIu64,
+						delta_num, crl_num);
 			goto error;
 		}
 	}
