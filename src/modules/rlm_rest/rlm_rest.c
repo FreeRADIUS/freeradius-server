@@ -27,27 +27,14 @@ RCSID("$Id$")
 #include <freeradius-devel/curl/xlat.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cf_parse.h>
-#include <freeradius-devel/server/cf_util.h>
 
 #include <freeradius-devel/server/global_lib.h>
-#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/server/tmpl_escape.h>
-#include <freeradius-devel/server/pairmove.h>
-#include <freeradius-devel/server/log.h>
-#include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/uri.h>
-#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <freeradius-devel/unlang/xlat.h>
-
-#include <curl/curl.h>
-
-#include <talloc.h>
 
 #include "rest.h"
 
