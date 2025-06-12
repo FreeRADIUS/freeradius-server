@@ -190,6 +190,7 @@ size_t http_auth_table_len = NUM_ELEMENTS(http_auth_table);
  */
 fr_table_num_sorted_t const http_content_type_table[] = {
 	{ L("application/json"),			REST_HTTP_BODY_JSON		},
+	{ L("application/pkix-crl"),			REST_HTTP_BODY_CRL		},
 	{ L("application/x-pkcs7-crl"),			REST_HTTP_BODY_CRL		},
 	{ L("application/x-www-form-urlencoded"),	REST_HTTP_BODY_POST		},
 	{ L("application/x-yaml"),			REST_HTTP_BODY_YAML		},
