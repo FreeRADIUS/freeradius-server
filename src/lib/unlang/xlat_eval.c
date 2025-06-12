@@ -889,8 +889,8 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		/*
 		 *	@todo - we probably should remove this now that we have FR_TYPE_DATE with scaling.
 		 */
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL));
-		value->datum.uint32 = fr_time_to_msec(request->packet->timestamp) % 1000;
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
+		value->datum.uint64 = (uint64_t)fr_time_to_usec(request->packet->timestamp) % 1000000;
 		break;
 
 	case 'S': /* Request timestamp in SQL format */
