@@ -12,7 +12,7 @@ The following sections describe each part of the AAA solution, and how each one 
 
 == AAA request handling
 
-AAA request handling refers to the process by which a system manages xref:modules/aaa/authn.adoc[authentication], xref:modules/aaa/authz.adoc[authorisation], and xref:modules/aaa/acct.adoc[accounting] (AAA) services for users accessing computer resources or network services. This process involves verifying user identities, granting access based on permissions, and tracking their activities for auditing or billing purposes.
+AAA request handling refers to the process by which a system manages xref:aaa/authn.adoc[authentication], xref:aaa/authz.adoc[authorisation], and xref:aaa/acct.adoc[accounting] (AAA) services for users accessing computer resources or network services. This process involves verifying user identities, granting access based on permissions, and tracking their activities for auditing or billing purposes.
 
 Normally there are two steps in processing an authentication request
 coming from a NAS in FreeRADIUS: authorisation and authentication.

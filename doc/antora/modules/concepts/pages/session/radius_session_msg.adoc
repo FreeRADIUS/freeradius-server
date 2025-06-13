@@ -101,7 +101,7 @@ Information such as “use LDAP server X”, or “remember that the user is in 
 
 Server-side attributes are presented using the same format as standard or vendor RADIUS attributes. This format gives the administrator the same control over internal aspects of the server behavior as over the server external responses. The server-side attribute information can be retrieved as part of one policy and checked later as part of another policy. For example, the policy can say “use LDAP server X for this request” and “respond with attribute X, value Y”.
 
-=== xref:modules/session/processing.adoc[Processing Requests]
+=== xref:session/processing.adoc[Processing Requests]
 
 The server processes requests through local site policy. That policy is used to examine the request, the request attributes, and the attribute values. The server then builds a reply message using responses (determined by local policy) such as time of day restrictions, group access limitations, and IP address allocation. The processing stage may include keeping track of <<server-attr,server-side attributes>>. FreeRADIUS maintains these attribute lists for every request.
 
