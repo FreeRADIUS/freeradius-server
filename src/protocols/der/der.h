@@ -27,10 +27,7 @@
  */
 
 #include <freeradius-devel/build.h>
-#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/value.h>
-
-extern HIDDEN fr_dict_t const *dict_der;
 
 /** Enumeration describing the data types in a DER encoded structure
  */

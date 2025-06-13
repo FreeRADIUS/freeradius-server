@@ -38,6 +38,7 @@
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/dict_ext.h>
 
+#include "attrs.h"
 #include "der.h"
 
 typedef struct {
