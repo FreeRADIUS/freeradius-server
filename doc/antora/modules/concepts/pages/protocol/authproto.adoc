@@ -2,15 +2,15 @@
 
 == RADIUS Protocol
 
-RADIUS is a protocol for remote user Authorization, Authentication, and Accounting. Its primary use is for Internet Service Providers, though it may as well be used on any network that needs a centralized authentication and/or accounting service for its workstations.
+RADIUS is a protocol for remote user Authorisation, Authentication, and Accounting. It's very important for Internet Service Providers, and any network that needs a centralized authentication and/or accounting services for its infrastructure.
 
 RADIUS is often used in larger Wi-Fi (wireless) networks for authentication purposes, replacing the simple shared key methods which are uncomfortable if a Wi-Fi network reaches a specific size.
 
 The protocol originally was designed by the well known terminal server manufacturer Livingston for use with their Portmaster series of terminal servers. Since then it has been implemented by hundreds other vendors and has a become an Internet Standard RFC. The DIAMETER protocol is the designated successor, but RADIUS is still commonly used today.
 
-=== Radius Protocol dependencies
+=== RADIUS Protocol Dependencies
 
-UDP: RADIUS uses UDP as its underlying protocol. The registered UDP port for RADIUS traffic is 1812; the early deployment of RADIUS used UDP port 1645, which conflicted with the "datametrics" service.  When RADIUS is used for accounting rather than authentication and configuration, the registered UDP port is 1813; the early deployment used port 1646, which conflicted with the "sa-msg-port" service.
+RADIUS uses UDP as its underlying protocol. The registered UDP port for RADIUS traffic is 1812 for authentication and configuration. The early deployment of RADIUS used UDP port 1645, which conflicted with the "datametrics" service.  When RADIUS is used for accounting  the registered UDP port is 1813. The earlier RADIUS version used port 1646, which conflicted with the "sa-msg-port" service.
 
 == Authentication Protocols
 
@@ -25,100 +25,102 @@ Authentication protocols used in RADIUS are not always compatible with the way t
 
 === Authentication Protocol and Password Compatibility
 
-Passwords may be stored in a DB in many forms. Clear-text, MD5 hashed, crypt'd, NT hash, or other methods are all commonly used. Authentication protocols used in RADIUS are not always compatible with the way the passwords have been stored. The following table shows which protocol is compatible with what kind of password.
+Passwords may be stored in a datastore in many forms. Clear-text, MD5 hashed, crypt'd, NT hash, or other methods are all commonly used. Authentication protocols used in RADIUS are not always compatible with the way the passwords have been stored. The following table shows which protocol is compatible with what kind of password.
 
+[#Proto-Password-Compat]
+.Protocol Password Compatibility
 [cols="2,1,1,1,1,1,1,1"]
 |===
-|Protocol|Clear-text|NT hash|MD5 hash|Salted MD5 hash|SHA1 hash|Salted SHA1 hash|Unix Crypt
-|PAP
-|√
-|√
-|√
-|√
-|√
-|√
-|√
+|*Protocol*|*Clear-text*|*NT hash*|*MD5 hash*|*Salted MD5 hash*|*SHA1 hash*|*Salted SHA1 hash*|*Unix Crypt*
+|*PAP*
+|   ✔️
+|   ✔️
+|   ✔️
+|   ✔️
+|   ✔️
+|   ✔️
+|   ✔️
 
-|CHAP
-|√
-|x
-|x
-|x
-|x
-|x
-|x
+|*CHAP*
+|   ✔️
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
 
-|Digest
-|√
-|x
-|x
-|x
-|x
-|x
-|x
+|*Digest*
+|   ✔️
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
 
-|MSCHAP
-|√
-|√
-|x
-|x
-|x
-|x
-|x
+|*MSCHAP*
+|   ✔️
+|   ✔️
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
 
-|PEAP
-|√
-|√
-|x
-|x
-|x
-|x
-|x
+|*PEAP*
+|   ✔️
+|   ✔️
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
 
-|EA-MSCHAP2
-|√
-|√
-|x
-|x
-|x
-|x
-|x
+|*EA-MSCHAP2*
+|   ✔️
+|   ✔️
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
 
-|Cisco-LEAP
-|√
-|√
-|x
-|x
-|x
-|x
-|x
+|*Cisco-LEAP*
+|   ✔️
+|   ✔️
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
 
-|EAP-GTC
-|√
-|√
-|√
-|√
-|√
-|√
-|√
+|*EAP-GTC*
+|   ✔️
+|   ✔️
+|   ✔️
+|   ✔️
+|   ✔️
+|   ✔️
+|   ✔️
 
-|EAP-MD5
-|√
-|x
-|x
-|x
-|x
-|x
-|x
+|*EAP-MD5*
+|   ✔️
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
 
-| EAP-MD5
-|√
-|x
-|x
-|x
-|x
-|x
-|x
+|*EAP-PWD*
+|   ✔️
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ✔️
+|   ✔️
 
 |===
 

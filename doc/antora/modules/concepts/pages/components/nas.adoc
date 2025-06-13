@@ -1,9 +1,7 @@
 = Network Access Server
 
-== Overview
-
 A Network Access Server (NAS) is a system that provides access to
-a network. In some cases also known as a Terminal Server or Remote
+a network. In some cases, it's also known as a Terminal Server or Remote
 Access Server (RAS).
 
 The NAS is meant to act as a gateway to guard access to a
@@ -54,12 +52,10 @@ RADIUS by providing error handling and inter-domain
 communications which is starting to be implimented in some high
 end NAS.
 
-== See Also
+== More Information
 
--   RFC 2881 (Network Access Server Requirements Next Generation NAS
-    Model, July 2000)
--   RFC 2882 (Network Access Servers Requirements: Extended RADIUS
-    Practices, July 2000)
+-   https://datatracker.ietf.org/doc/html/rfc2881[RFC 2881] Network Access Server Requirements Next Generation NAS Model
+-   https://datatracker.ietf.org/doc/html/rfc2881[RFC 2882] Network Access Servers Requirements: Extended RADIUS Practices
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

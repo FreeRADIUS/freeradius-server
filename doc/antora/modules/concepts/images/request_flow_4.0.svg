@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xl="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:dc="http://purl.org/dc/elements/1.1/" viewBox="59 133 1045 425" width="1045" height="425">
+  <defs/>
+  <g id="Canvas_1" fill="none" stroke="none" fill-opacity="1" stroke-opacity="1" stroke-dasharray="none">
+    <title>Canvas 1</title>
+    <rect fill="white" x="59" y="133" width="1045" height="425"/>
+    <g id="Canvas_1_Layer_1">
+      <title>Layer 1</title>
+      <g id="Group_2">
+        <g id="Group_3">
+          <g id="Graphic_108">
+            <rect x="566.6254" y="280.2199" width="92.69787" height="25.49048" fill="#f6ffec"/>
+          </g>
+          <g id="Graphic_107">
+            <rect x="566.6254" y="280.2199" width="92.69787" height="25.49048" stroke="#6c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_106">
+            <title>Text</title>
+            <text transform="translate(592.6863 267.77043)" fill="black">
+              <tspan font-family="Helvetica" font-size="10" fill="black" x="0" y="22" xml:space="preserve">module x</tspan>
+            </text>
+          </g>
+          <g id="Graphic_105">
+            <path d="M 659.3233 323.87535 L 666.4768 323.87535 L 685.0566 323.87535 C 688.443 323.87535 691.1882 321.61773 691.1882 318.83284 L 691.1882 295.632 L 691.1882 289.74907" stroke="#b70000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_104">
+            <rect x="566.6254" y="304.75748" width="92.69787" height="25.49048" fill="#f6ffec"/>
+          </g>
+          <g id="Graphic_103">
+            <rect x="566.6254" y="304.75748" width="92.69787" height="25.49048" stroke="#6c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_102">
+            <title>Text</title>
+            <text transform="translate(592.6863 292.308)" fill="black">
+              <tspan font-family="Helvetica" font-size="10" fill="black" x="0" y="22" xml:space="preserve">module y</tspan>
+            </text>
+          </g>
+          <g id="Line_100">
+            <line x1="181.34992" y1="252.46627" x2="217.58175" y2="252.46627" stroke="#00c0c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_99">
+            <title>Text</title>
+            <text transform="translate(59.78833 170.49867)" fill="black">
+              <tspan font-family="Helvetica" font-size="14" fill="black" x="0" y="31" xml:space="preserve">server {}</tspan>
+            </text>
+          </g>
+          <g id="Graphic_95">
+            <path d="M 319.6725 252.46626 L 325.7019 252.46626 C 329.08828 252.46626 331.83348 254.72386 331.83348 257.50877 L 331.83348 257.9323 C 331.83348 260.7172 329.08828 262.9748 325.7019 262.9748 L 222.2432 262.9748 C 218.85682 262.9748 216.11162 265.23242 216.11162 268.0173 L 216.11162 273.62894 C 216.11162 276.41384 218.85682 278.67145 222.2432 278.67145 L 244.50597 278.67145 L 246.54983 278.67145" stroke="#00c0c0" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2.0,2.0" stroke-width="1"/>
+          </g>
+          <g id="Graphic_94">
+            <path d="M 319.6725 252.46626 L 325.7019 252.46626 C 329.08828 252.46626 331.83348 254.72386 331.83348 257.50877 L 331.83348 257.9323 C 331.83348 260.7172 329.08828 262.9748 325.7019 262.9748 L 222.2432 262.9748 C 218.85682 262.9748 216.11162 265.23242 216.11162 268.0173 L 216.11162 297.4518 C 216.11162 300.2367 218.85682 302.4943 222.2432 302.4943 L 244.50597 302.4943 L 246.54983 302.4943" stroke="#00c0c0" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2.0,2.0" stroke-width="1"/>
+          </g>
+          <g id="Graphic_93">
+            <path d="M 319.6725 252.46626 L 325.7019 252.46626 C 329.08828 252.46626 331.83348 254.72386 331.83348 257.50877 L 331.83348 257.9323 C 331.83348 260.7172 329.08828 262.9748 325.7019 262.9748 L 222.2432 262.9748 C 218.85682 262.9748 216.11162 265.23242 216.11162 268.0173 L 216.11162 321.2747 C 216.11162 324.0596 218.85682 326.3172 222.2432 326.3172 L 244.50597 326.3172 L 246.54983 326.3172" stroke="#00c0c0" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2.0,2.0" stroke-width="1"/>
+          </g>
+          <g id="Graphic_92">
+            <rect x="488.4116" y="237.33874" width="92.69787" height="100.05609" fill="#6c0"/>
+          </g>
+          <g id="Graphic_91">
+            <rect x="488.4116" y="237.33874" width="92.69787" height="100.05609" stroke="#6c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_90">
+            <title>Text</title>
+            <text transform="translate(503.11207 228.53547)" fill="black">
+              <tspan font-family="Helvetica" font-size="10" fill="black" x="0" y="22" xml:space="preserve">Authenticate {}</tspan>
+            </text>
+          </g>
+          <g id="Graphic_89">
+            <rect x="566.6254" y="328.58037" width="92.69787" height="25.49048" fill="#f6ffec"/>
+          </g>
+          <g id="Graphic_88">
+            <rect x="566.6254" y="328.58037" width="92.69787" height="25.49048" stroke="#6c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_87">
+            <title>Text</title>
+            <text transform="translate(592.6863 316.13088)" fill="black">
+              <tspan font-family="Helvetica" font-size="10" fill="black" x="0" y="22" xml:space="preserve">module z</tspan>
+            </text>
+          </g>
+          <g id="Graphic_86">
+            <rect x="488.4116" y="313.57195" width="92.69787" height="25.49048" fill="#dfffd1"/>
+          </g>
+          <g id="Graphic_85">
+            <rect x="488.4116" y="313.57195" width="92.69787" height="25.49048" stroke="#6c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_84">
+            <title>Text</title>
+            <text transform="translate(503.3494 301.12247)" fill="black">
+              <tspan font-family="Helvetica" font-size="10" fill="black" x="0" y="22" xml:space="preserve">Auth-Type z {}</tspan>
+            </text>
+          </g>
+          <g id="Graphic_83">
+            <path d="M 403.1365 302.4943 L 415.29744 302.4943 L 454.0844 302.4943 C 457.04417 302.4943 459.4435 300.52113 459.4435 298.08708 L 459.4435 293.67984 L 459.4435 283.71395 C 459.4435 280.92905 462.1887 278.67145 465.5751 278.67145 L 476.25064 278.67145 L 478.2945 278.67145" stroke="#6c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Line_82">
+            <line x1="404.21507" y1="302.4943" x2="478.2945" y2="302.4943" stroke="#6c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_81">
+            <path d="M 659.3233 299.3378 L 671.48425 299.3378 L 685.35836 299.3378 C 688.5781 299.3378 691.1882 297.19127 691.1882 294.54343 L 691.1882 289.74907 L 691.1882 283.71395 C 691.1882 280.92905 693.9334 278.67145 697.3198 278.67145 L 765.9315 278.67145 L 767.9753 278.67145" stroke="#b70000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_78">
+            <path d="M 967.9782 237.33873 L 1043.0056 237.33873 C 1051.8802 237.33873 1059.0828 244.11586 1059.0828 252.46626 C 1059.0828 260.81665 1051.8802 267.5938 1043.0056 267.5938 L 967.9782 267.5938 C 959.1036 267.5938 951.9009 260.81665 951.9009 252.46626 C 951.9009 244.11586 959.1036 237.33873 967.9782 237.33873" fill="white"/>
+          </g>
+          <g id="Graphic_77">
+            <path d="M 967.9782 237.33873 L 1043.0056 237.33873 C 1051.8802 237.33873 1059.0828 244.11586 1059.0828 252.46626 C 1059.0828 260.81665 1051.8802 267.5938 1043.0056 267.5938 L 967.9782 267.5938 C 959.1036 267.5938 951.9009 260.81665 951.9009 252.46626 C 951.9009 244.11586 959.1036 237.33873 967.9782 237.33873" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_76">
+            <title>Text</title>
+            <text transform="translate(970.7482 227.27153)" fill="black">
+              <tspan font-family="Helvetica" font-size="10" fill="black" x="0" y="22" xml:space="preserve">Listener proto a</tspan>
+            </text>
+          </g>
+          <g id="Line_75">
+            <line x1="841.8222" y1="252.46626" x2="941.7838" y2="252.46626" stroke="#d39925" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_74">
+            <path d="M 659.3233 347.6982 L 666.4768 347.6982 L 685.0566 347.6982 C 688.443 347.6982 691.1882 345.4406 691.1882 342.6557 L 691.1882 295.632 L 691.1882 289.74907" stroke="#b70000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_73">
+            <path d="M 908.4488 278.67145 L 920.6098 278.67145 L 924.6681 278.67145 C 926.9095 278.67145 928.7265 277.17718 928.7265 275.33393 L 928.7265 263.5439 L 928.7265 256.99492 C 928.7265 254.4938 931.1919 252.46626 934.2332 252.46626 L 939.74 252.46626 L 941.7838 252.46626" stroke="#b70000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_72">
+            <title>Text</title>
+            <text transform="translate(927.0315 473.5108)" fill="black">
+              <tspan font-family="Helvetica" font-size="9" fill="black" x="0" y="20" xml:space="preserve">Author Arran Cudbard-Bell</tspan>
+              <tspan font-family="Helvetica" font-size="9" fill="black" x="0" y="31" xml:space="preserve">Copyright 2025 The FreeRADIUS project</tspan>
+              <tspan font-family="Helvetica" font-size="9" fill="black" x="0" y="42" xml:space="preserve">Creative commons license CC BY</tspan>
+            </text>
+          </g>
+          <g id="Graphic_70">
+            <path d="M 402.6111 302.4943 L 414.77206 302.4943 L 453.31194 302.4943 C 456.6983 302.4943 459.4435 304.75192 459.4435 307.53683 L 459.4435 315.95424 L 459.4435 321.2747 C 459.4435 324.0596 462.1887 326.3172 465.5751 326.3172 L 476.25064 326.3172 L 478.2945 326.3172" stroke="#6c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_69">
+            <path d="M 349.3648 278.67145 L 356.5183 278.67145 L 366.4077 278.67145 C 369.79406 278.67145 372.53926 280.92905 372.53926 283.71395 L 372.53926 294.51365 L 372.53926 298.504 C 372.53926 300.70778 374.71165 302.4943 377.39143 302.4943 L 481.2581 302.4943 L 488.4116 302.4943" stroke="#6c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_68">
+            <path d="M 749.84855 252.46626 L 742.69504 252.46626 L 682.8357 252.46626 C 679.4493 252.46626 676.70414 254.72386 676.70414 257.50877 L 676.70414 301.6605 L 676.70414 337.1202 C 676.70414 339.44277 674.4147 341.3256 671.5905 341.3256 L 666.4768 341.3256 L 659.3233 341.3256" stroke="#d39925" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_67">
+            <path d="M 659.3233 292.96516 L 666.4768 292.96516 L 671.5905 292.96516 C 674.4147 292.96516 676.70414 291.08234 676.70414 288.75976 L 676.70414 280.2199 L 676.70414 257.50877 C 676.70414 254.72386 679.4493 252.46626 682.8357 252.46626 L 742.69504 252.46626 L 749.84855 252.46626" stroke="#d39925" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_66">
+            <rect x="488.4116" y="289.74908" width="92.69787" height="25.49048" fill="#dfffd1"/>
+          </g>
+          <g id="Graphic_65">
+            <rect x="488.4116" y="289.74908" width="92.69787" height="25.49048" stroke="#6c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_64">
+            <title>Text</title>
+            <text transform="translate(503.3494 277.2996)" fill="black">
+              <tspan font-family="Helvetica" font-size="10" fill="black" x="0" y="22" xml:space="preserve">Auth-Type y {}</tspan>
+            </text>
+          </g>
+          <g id="Graphic_63">
+            <rect x="488.4116" y="265.9262" width="92.69787" height="25.49048" fill="#dfffd1"/>
+          </g>
+          <g id="Graphic_62">
+            <rect x="488.4116" y="265.9262" width="92.69787" height="25.49048" stroke="#6c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_61">
+            <title>Text</title>
+            <text transform="translate(503.3494 253.47672)" fill="black">
+              <tspan font-family="Helvetica" font-size="10" fill="black" x="0" y="22" xml:space="preserve">Auth-Type x {}</tspan>
+            </text>
+          </g>
+          <g id="Graphic_57">
+            <path d="M 90.2453 237.33874 L 165.27263 237.33874 C 174.1473 237.33874 181.34992 244.11587 181.34992 252.46627 C 181.34992 260.81666 174.1473 267.5938 165.27263 267.5938 L 90.2453 267.5938 C 81.370635 267.5938 74.16801 260.81666 74.16801 252.46627 C 74.16801 244.11587 81.370635 237.33874 90.2453 237.33874" fill="white"/>
+          </g>
+          <g id="Graphic_56">
+            <path d="M 90.2453 237.33874 L 165.27263 237.33874 C 174.1473 237.33874 181.34992 244.11587 181.34992 252.46627 C 181.34992 260.81666 174.1473 267.5938 165.27263 267.5938 L 90.2453 267.5938 C 81.370635 267.5938 74.16801 260.81666 74.16801 252.46627 C 74.16801 244.11587 81.370635 237.33874 90.2453 237.33874" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_55">
+            <title>Text</title>
+            <text transform="translate(93.01531 227.27154)" fill="black">
+              <tspan font-family="Helvetica" font-size="10" fill="black" x="0" y="22" xml:space="preserve">Listener proto a</tspan>
+            </text>
+          </g>
+          <g id="Graphic_54">
+            <path d="M 749.84855 252.46626 L 742.69504 252.46626 L 682.8357 252.46626 C 679.4493 252.46626 676.70414 254.72386 676.70414 257.50877 L 676.70414 301.6605 L 676.70414 313.29732 C 676.70414 315.6199 674.4147 317.50272 671.5905 317.50272 L 666.4768 317.50272 L 659.3233 317.50272" stroke="#d39925" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_50">
+            <path d="M 841.8222 252.46626 L 846.8136 252.46626 C 850.7732 252.46626 853.9832 255.10606 853.9832 258.36242 C 853.9832 261.6188 850.7732 264.2586 846.8136 264.2586 L 743.4032 264.2586 C 738.5636 264.2586 734.6403 267.48502 734.6403 271.46502 C 734.6403 275.445 738.5636 278.67145 743.4032 278.67145 L 765.9315 278.67145 L 767.9753 278.67145" stroke="#b70000" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2.0,2.0" stroke-width="1"/>
+          </g>
+          <g id="Graphic_49">
+            <rect x="778.0924" y="265.9262" width="130.35637" height="25.49048" fill="#b70000"/>
+          </g>
+          <g id="Graphic_48">
+            <rect x="778.0924" y="265.9262" width="130.35637" height="25.49048" stroke="#b70000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_47">
+            <title>Text</title>
+            <text transform="translate(788.5172 253.47672)" fill="white">
+              <tspan font-family="Helvetica" font-size="10" fill="white" x="0" y="22" xml:space="preserve">Post-Auth-Type Reject {}</tspan>
+            </text>
+          </g>
+          <g id="Graphic_46">
+            <rect x="749.84855" y="237.33873" width="91.97367" height="30.255055" fill="#d39925"/>
+          </g>
+          <g id="Graphic_45">
+            <rect x="749.84855" y="237.33873" width="91.97367" height="30.255055" stroke="#d39925" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_44">
+            <title>Text</title>
+            <text transform="translate(769.1508 227.27153)" fill="black">
+              <tspan font-family="Helvetica" font-size="10" fill="black" x="0" y="22" xml:space="preserve">Post-Auth {}</tspan>
+            </text>
+          </g>
+          <g id="Graphic_33">
+            <path d="M 349.3648 302.4943 L 356.5026 302.4943 L 409.727 302.4943 C 413.10594 302.4943 415.8451 302.5849 415.8451 302.6966 L 415.8451 305.47438 L 415.8451 305.7104" stroke="#6c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_32">
+            <path d="M 349.3648 326.3172 L 356.5183 326.3172 L 366.4077 326.3172 C 369.79406 326.3172 372.53926 324.0596 372.53926 321.2747 L 372.53926 315.95424 L 372.53926 307.53683 C 372.53926 304.75192 375.28447 302.4943 378.67084 302.4943 L 481.2581 302.4943 L 488.4116 302.4943" stroke="#6c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_31">
+            <path d="M 319.6725 252.46626 L 329.38085 252.46626 L 409.8598 252.46626 C 413.2462 252.46626 415.9914 254.72386 415.9914 257.50877 L 415.9914 280.2199 L 415.9914 297.4518 C 415.9914 300.2367 418.7366 302.4943 422.12297 302.4943 L 478.70327 302.4943 L 480.7471 302.4943" stroke="#6c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_30">
+            <title>Text</title>
+            <text transform="translate(78.70116 493.7554)" fill="black">
+              <tspan font-family="Helvetica" font-size="9" fill="black" x="0" y="20" xml:space="preserve">Reject path is followed if the rcode set for a section when the request leaves, is not ok or fail</tspan>
+            </text>
+          </g>
+          <g id="Graphic_18">
+            <rect x="256.66694" y="265.9262" width="92.69787" height="25.49048" fill="#d0e6da"/>
+          </g>
+          <g id="Graphic_17">
+            <rect x="256.66694" y="265.9262" width="92.69787" height="25.49048" stroke="#00c0c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_16">
+            <title>Text</title>
+            <text transform="translate(271.60474 253.47672)" fill="black">
+              <tspan font-family="Helvetica" font-size="10" fill="black" x="0" y="22" xml:space="preserve">Autz-Type a {}</tspan>
+            </text>
+          </g>
+          <g id="Graphic_15">
+            <rect x="256.66694" y="289.74908" width="92.69787" height="25.49048" fill="#d0e6da"/>
+          </g>
+          <g id="Graphic_14">
+            <rect x="256.66694" y="289.74908" width="92.69787" height="25.49048" stroke="#00c0c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_13">
+            <title>Text</title>
+            <text transform="translate(271.60474 277.2996)" fill="black">
+              <tspan font-family="Helvetica" font-size="10" fill="black" x="0" y="22" xml:space="preserve">Autz-Type b {}</tspan>
+            </text>
+          </g>
+          <g id="Graphic_12">
+            <rect x="256.66694" y="313.57195" width="92.69787" height="25.49048" fill="#d0e6da"/>
+          </g>
+          <g id="Graphic_11">
+            <rect x="256.66694" y="313.57195" width="92.69787" height="25.49048" stroke="#00c0c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_10">
+            <title>Text</title>
+            <text transform="translate(271.8855 301.12248)" fill="black">
+              <tspan font-family="Helvetica" font-size="10" fill="black" x="0" y="22" xml:space="preserve">Autz-Type c {}</tspan>
+            </text>
+          </g>
+          <g id="Graphic_6">
+            <rect x="227.69885" y="237.33873" width="91.97367" height="30.255055" fill="#00c0c0"/>
+          </g>
+          <g id="Graphic_5">
+            <rect x="227.69885" y="237.33873" width="91.97367" height="30.255055" stroke="#00c0c0" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_4">
+            <title>Text</title>
+            <text transform="translate(247.83363 227.27153)" fill="black">
+              <tspan font-family="Helvetica" font-size="10" fill="black" x="0" y="22" xml:space="preserve">Authorize {}</tspan>
+            </text>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
