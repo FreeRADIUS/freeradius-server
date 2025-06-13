@@ -124,6 +124,8 @@ fr_dict_attr_t const *attr_tls_session_cipher_suite;
 fr_dict_attr_t const *attr_tls_session_version;
 fr_dict_attr_t const *attr_tls_session_resume_type;
 
+fr_dict_attr_t const *attr_module_failure_message;
+
 fr_dict_attr_t const *attr_tls_packet_type;
 fr_dict_attr_t const *attr_tls_session_data;
 fr_dict_attr_t const *attr_tls_session_id;
@@ -168,6 +170,8 @@ fr_dict_attr_autoload_t tls_dict_attr[] = {
 	{ .out = &attr_tls_session_cipher_suite, .name = "TLS-Session-Cipher-Suite", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_tls_session_version, .name = "TLS-Session-Version", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_tls_session_resume_type, .name = "TLS-Session-Resume-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+
+	{ .out = &attr_module_failure_message, .name = "Module-Failure-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	/*
 	 *	Eventually all TLS attributes will be in the TLS dictionary
