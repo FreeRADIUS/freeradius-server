@@ -41,10 +41,6 @@
 #include "attrs.h"
 #include "der.h"
 
-typedef struct {
-	uint8_t *tmp_ctx;
-} fr_der_decode_ctx_t;
-
 #define IS_DER_TAG_CONTINUATION(_tag) (((_tag) & DER_TAG_CONTINUATION) == DER_TAG_CONTINUATION)
 #define IS_DER_TAG_CONSTRUCTED(_tag) (((_tag) & 0x20) == 0x20)
 #define IS_DER_LEN_MULTI_BYTE(_len) (((_len) & DER_LEN_MULTI_BYTE) == DER_LEN_MULTI_BYTE)
@@ -2689,7 +2685,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *
 	test_ctx = talloc_zero(ctx, fr_der_decode_ctx_t);
 	if (!test_ctx) return -1;
 
-	test_ctx->tmp_ctx	  = talloc(test_ctx, uint8_t);
+	test_ctx->tmp_ctx	  = talloc_new(test_ctx);
 
 	*out = test_ctx;
 

@@ -113,6 +113,9 @@ typedef struct {
 	bool			is_choice : 1;		//!< DER name "choice".
 } fr_der_attr_flags_t;
 
+typedef struct {
+	TALLOC_CTX	*tmp_ctx;		//!< ctx under which temporary data will be allocated
+} fr_der_decode_ctx_t;
 
 static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const *da)
 {
