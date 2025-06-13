@@ -42,7 +42,6 @@
 
 typedef struct {
 	uint8_t *tmp_ctx;
-	bool	 oid_value_pairs;
 } fr_der_decode_ctx_t;
 
 #define IS_DER_TAG_CONTINUATION(_tag) (((_tag) & DER_TAG_CONTINUATION) == DER_TAG_CONTINUATION)
@@ -2690,7 +2689,6 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *
 	if (!test_ctx) return -1;
 
 	test_ctx->tmp_ctx	  = talloc(test_ctx, uint8_t);
-	test_ctx->oid_value_pairs = false;
 
 	*out = test_ctx;
 
