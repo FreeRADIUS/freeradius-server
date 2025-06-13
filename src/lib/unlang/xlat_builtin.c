@@ -51,6 +51,11 @@ RCSID("$Id$")
 static char const hextab[] = "0123456789abcdef";
 static TALLOC_CTX *xlat_ctx;
 
+typedef struct {
+	fr_test_point_pair_decode_t	*tp_decode;
+	fr_dict_t const			*dict;		//!< Restrict xlat to this namespace
+} protocol_decode_xlat_uctx_t;
+
 /*
  *	Regular xlat functions
  */
@@ -3898,7 +3903,14 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	int					decoded;
 	fr_value_box_t				*vb;
 	void					*decode_ctx = NULL;
-	fr_test_point_pair_decode_t const	*tp_decode = *(void * const *)xctx->inst;
+	protocol_decode_xlat_uctx_t const	*decode_uctx = talloc_get_type_abort(*(void * const *)xctx->inst, protocol_decode_xlat_uctx_t);
+	fr_test_point_pair_decode_t const	*tp_decode = decode_uctx->tp_decode;
+
+	if (decode_uctx->dict && decode_uctx->dict != request->proto_dict) {
+		REDEBUG2("Can't call %%%s() when in %s namespace", xctx->ex->call.func->name,
+			 fr_dict_root(request->proto_dict)->name);
+		return XLAT_ACTION_FAIL;
+	}
 
 	if (tp_decode->test_ctx) {
 		if (tp_decode->test_ctx(&decode_ctx, ctx, request->proto_dict) < 0) {
@@ -4063,10 +4075,11 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static int xlat_protocol_register_by_name(dl_t *dl, char const *name)
+static int xlat_protocol_register_by_name(dl_t *dl, char const *name, fr_dict_t const *dict)
 {
 	fr_test_point_pair_decode_t *tp_decode;
 	fr_test_point_pair_encode_t *tp_encode;
+	protocol_decode_xlat_uctx_t *decode_uctx;
 	xlat_t *xlat;
 	char buffer[256+32];
 
@@ -4083,8 +4096,11 @@ static int xlat_protocol_register_by_name(dl_t *dl, char const *name)
 
 		if (unlikely((xlat = xlat_func_register(NULL, buffer, protocol_decode_xlat, FR_TYPE_UINT32)) == NULL)) return -1;
 		xlat_func_args_set(xlat, protocol_decode_xlat_args);
+		decode_uctx = talloc(xlat, protocol_decode_xlat_uctx_t);
+		decode_uctx->tp_decode = tp_decode;
+		decode_uctx->dict = dict;
 		/* coverity[suspicious_sizeof] */
-		xlat_func_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_decode_t *, NULL, tp_decode);
+		xlat_func_instantiate_set(xlat, protocol_xlat_instantiate, protocol_decode_xlat_uctx_t *, NULL, decode_uctx);
 		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 	}
 
@@ -4125,7 +4141,7 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 		*p = tolower((uint8_t) *p);
 	}
 
-	return xlat_protocol_register_by_name(dl, name);
+	return xlat_protocol_register_by_name(dl, name, dict != fr_dict_internal() ? dict : NULL);
 }
 
 static dl_loader_t *cbor_loader = NULL;
@@ -4140,7 +4156,7 @@ static int xlat_protocol_register_cbor(void)
 	dl = dl_by_name(cbor_loader, "libfreeradius-cbor", NULL, false);
 	if (!dl) return 0;
 
-	if (xlat_protocol_register_by_name(dl, "cbor") < 0) return -1;
+	if (xlat_protocol_register_by_name(dl, "cbor", NULL) < 0) return -1;
 
 	return 0;
 }
@@ -4439,7 +4455,7 @@ do { \
 	xlat->deprecated = true;
 	XLAT_REGISTER_PURE("strlen", xlat_func_strlen, FR_TYPE_SIZE, xlat_func_strlen_arg);
 	XLAT_NEW("length");
-	
+
 	XLAT_REGISTER_PURE("str.utf8", xlat_func_str_utf8, FR_TYPE_BOOL, xlat_func_str_utf8_arg);
 	XLAT_REGISTER_PURE("str.printable", xlat_func_str_printable, FR_TYPE_BOOL, xlat_func_str_printable_arg);
 
