@@ -30,6 +30,9 @@ RCSID("$Id$")
 #ifdef HAVE_SYS_UIO_H
 #  include <sys/uio.h>
 #endif
+#ifdef HAVE_NET_IF_DL_H
+#  include <net/if_dl.h>
+#endif
 
 #include <fcntl.h>
 
@@ -130,6 +133,14 @@ int udpfromto_init(int s, int af)
 		 */
 		proto = IPPROTO_IP;
 		flag = IP_RECVDSTADDR;
+
+		/*
+		 *	Where Linux uses IP_PKTINFO for both IP and interface
+		 *	information, BSD uses IP_RECVDSTADDR and IP_RECVIF
+		 */
+#    ifdef IP_RECVIF
+		if (setsockopt(s, proto, IP_RECVIF, &opt, sizeof(opt)) != 0) return -1;
+#    endif
 #  else
 		return -1;
 #  endif
@@ -334,7 +345,26 @@ DIAG_ON(sign-compare)
 
 			*to_len = sizeof(struct sockaddr_in);
 
+#ifdef   IP_RECVIF
+			continue;
+#else
 			break;
+#endif
+		}
+#endif
+
+#ifdef IP_RECVIF
+		if ((cmsg->cmsg_level == IPPROTO_IP) &&
+		    (cmsg->cmsg_type == IP_RECVIF)) {
+			struct sockaddr_dl *sd = (struct sockaddr_dl *) CMSG_DATA(cmsg);
+
+			if (ifindex) *ifindex = sd->sdl_index;
+
+#ifdef   IP_RECVDSTADDR
+			continue;
+#else
+			break;
+#endif
 		}
 #endif
 
