@@ -1406,17 +1406,21 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	if (ip) {
 		packet->socket.inet.src_ipaddr.af = AF_INET;
 		packet->socket.inet.src_ipaddr.addr.v4.s_addr = ip->ip_src.s_addr;
+		packet->socket.inet.src_ipaddr.prefix = 32;
 
 		packet->socket.inet.dst_ipaddr.af = AF_INET;
 		packet->socket.inet.dst_ipaddr.addr.v4.s_addr = ip->ip_dst.s_addr;
+		packet->socket.inet.dst_ipaddr.prefix = 32;
 	} else {
 		packet->socket.inet.src_ipaddr.af = AF_INET6;
 		memcpy(packet->socket.inet.src_ipaddr.addr.v6.s6_addr, ip6->ip_src.s6_addr,
 		       sizeof(packet->socket.inet.src_ipaddr.addr.v6.s6_addr));
+		packet->socket.inet.src_ipaddr.prefix = 128;
 
 		packet->socket.inet.dst_ipaddr.af = AF_INET6;
 		memcpy(packet->socket.inet.dst_ipaddr.addr.v6.s6_addr, ip6->ip_dst.s6_addr,
 		       sizeof(packet->socket.inet.dst_ipaddr.addr.v6.s6_addr));
+		packet->socket.inet.dst_ipaddr.prefix = 128;
 	}
 
 	packet->socket.inet.src_port = ntohs(udp->src);
