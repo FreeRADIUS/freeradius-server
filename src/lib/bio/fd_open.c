@@ -696,7 +696,7 @@ static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, UNUSED fr_bio_fd_con
 		break;
 	}
 
-	fr_strerror_printf("Failed setting IP_BOUND_IF: %s", fr_syserror(errno));
+	if (rcode < 0) fr_strerror_printf("Failed setting IP_BOUND_IF: %s", fr_syserror(errno));
 	return rcode;
 }
 #else
