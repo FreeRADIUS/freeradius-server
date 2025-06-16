@@ -1011,14 +1011,15 @@ static int send_one_packet(fr_bio_packet_t *client, rc_request_t *request)
 			 *	Request Authenticator otherwise.
 			 */
 			challenge = fr_pair_find_by_da(&request->request_pairs, NULL, attr_chap_challenge);
-			if (challenge && (challenge->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
+			if (challenge && (challenge->vp_length >= 7)) {
 				vector = challenge->vp_octets;
 			} else {
 				vector = request->packet->vector;
 			}
 
 			fr_chap_encode(buffer,
-				       fr_rand() & 0xff, vector, RADIUS_AUTH_VECTOR_LENGTH,
+				       fr_rand() & 0xff, vector,
+				       challenge ? challenge->vp_length : RADIUS_AUTH_VECTOR_LENGTH,
 				       request->password->vp_strvalue,
 				       request->password->vp_length);
 			fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
