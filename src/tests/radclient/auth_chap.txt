@@ -1,0 +1,6 @@
+#
+#	ARGV: -s
+#
+User-Name = "chap-test",
+Chap-Password = "topsecret"
+CHAP-Challenge = 0x000102030405060708090a0b0c0d0e0f10111213
