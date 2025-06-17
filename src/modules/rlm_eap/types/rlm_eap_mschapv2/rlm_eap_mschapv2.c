@@ -278,9 +278,9 @@ static int eap_mschapv2_compose(rlm_eap_mschapv2_t const *inst, request_t *reque
 }
 
 
-static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
+static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request);
 
-static unlang_action_t mschap_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mschap_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_mschapv2_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, rlm_eap_mschapv2_rctx_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
@@ -309,14 +309,14 @@ static unlang_action_t mschap_resume(rlm_rcode_t *p_result, module_ctx_t const *
 	if (rcode == RLM_MODULE_OK) {
 		if (fr_pair_list_copy_by_da(data, &response, &parent->vp_group, attr_ms_chap2_success, 0) < 0) {
 			RPERROR("Failed copying %s", attr_ms_chap2_success->name);
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		data->code = FR_EAP_MSCHAPV2_SUCCESS;
 	} else if (inst->send_error) {
 		if (fr_pair_list_copy_by_da(data, &response, &parent->vp_group, attr_ms_chap_error, 0) < 0) {
 			RPERROR("Failed copying %s", attr_ms_chap_error->name);
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 		if (!fr_pair_list_empty(&response)) {
 			int n, err, retry;
@@ -346,7 +346,7 @@ static unlang_action_t mschap_resume(rlm_rcode_t *p_result, module_ctx_t const *
 		data->code = FR_EAP_MSCHAPV2_FAILURE;
 	} else {
 		eap_round->request->code = FR_EAP_CODE_FAILURE;
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 
 	/*
@@ -354,7 +354,7 @@ static unlang_action_t mschap_resume(rlm_rcode_t *p_result, module_ctx_t const *
 	 */
 	if (fr_pair_list_empty(&response)) {
 		REDEBUG("No %s or %s attributes were found", attr_ms_chap2_success->name, attr_ms_chap_error->name);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -364,13 +364,13 @@ static unlang_action_t mschap_resume(rlm_rcode_t *p_result, module_ctx_t const *
 	eap_mschapv2_compose(eap_session->inst, request, eap_session, fr_pair_list_head(&response));
 	fr_pair_list_free(&response);
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /*
  *	Authenticate a previously sent challenge.
  */
-static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_mschapv2_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_mschapv2_t);
 	rlm_eap_mschapv2_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, rlm_eap_mschapv2_rctx_t);
@@ -385,7 +385,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	uint8_t				*p;
 	size_t				length;
 
-	if (!fr_cond_assert(eap_session->inst)) RETURN_MODULE_FAIL;
+	if (!fr_cond_assert(eap_session->inst)) RETURN_UNLANG_FAIL;
 
 	/*
 	 *	Sanity check the response.
@@ -393,7 +393,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	if (eap_round->response->length < 6) {
 		REDEBUG("Response too short, expected at least 6 bytes, got %zu bytes",
 			eap_round->response->length);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	ccode = eap_round->response->type.data[0];
@@ -467,12 +467,12 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 		 */
 		if (ccode != FR_EAP_MSCHAPV2_FAILURE) {
 			REDEBUG("Sent FAILURE expecting FAILURE but got %d", ccode);
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 
 failure:
 		eap_round->request->code = FR_EAP_CODE_FAILURE;
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 
 	case FR_EAP_MSCHAPV2_SUCCESS:
 		/*
@@ -504,10 +504,10 @@ failure:
 
 		case FR_EAP_MSCHAPV2_ACK:
 			MEM(fr_pair_list_copy(parent->reply_ctx, &parent->reply_pairs, &data->reply) >= 0);
-			RETURN_MODULE_OK;
+			RETURN_UNLANG_OK;
 		}
 		REDEBUG("Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 
 	case FR_EAP_MSCHAPV2_CHALLENGE:
 		if (ccode == FR_EAP_MSCHAPV2_FAILURE) goto failure;
@@ -517,7 +517,7 @@ failure:
 		 */
 		if (ccode != FR_EAP_MSCHAPV2_RESPONSE) {
 			REDEBUG("Sent CHALLENGE expecting RESPONSE but got %d", ccode);
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 		/* authentication happens below */
 		break;
@@ -525,7 +525,7 @@ failure:
 	default:
 		/* should never happen */
 		REDEBUG("Unknown state %d", data->code);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 
@@ -539,7 +539,7 @@ failure:
 	 */
 	if (eap_round->response->length < (4 + 1 + 1 + 1 + 2 + 1)) {
 		REDEBUG("Response is too short");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -556,7 +556,7 @@ failure:
 	if ((eap_round->response->type.data[4] != 49) &&
 	    (eap_round->response->type.data[4] != 16)) {
 		REDEBUG("Response is of incorrect length %d", eap_round->response->type.data[4]);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -566,7 +566,7 @@ failure:
 	length = fr_nbo_to_uint16(eap_round->response->type.data + 2);
 	if ((length < (5 + 49)) || (length > (256 + 5 + 49))) {
 		REDEBUG("Response contains contradictory length %zu %d", length, 5 + 49);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -611,7 +611,7 @@ packet_ready:
 	if (!unlang) {
 		RDEBUG2("authenticate %s { ... } sub-section not found.",
 			inst->auth_type->name);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	return unlang_module_yield_to_section(&rctx->section_result, request, unlang, RLM_MODULE_FAIL, mschap_resume, NULL, 0, rctx);
@@ -620,7 +620,7 @@ packet_ready:
 /*
  *	Initiate the EAP-MSCHAPV2 session by sending a challenge to the peer.
  */
-static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_session_init(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	request_t		*parent = request->parent;
 	eap_session_t		*eap_session = eap_session_get(parent);
@@ -632,13 +632,13 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	int			i;
 	bool			created_auth_challenge;
 
-	if (!fr_cond_assert(mctx->mi->data)) RETURN_MODULE_FAIL;
+	if (!fr_cond_assert(mctx->mi->data)) RETURN_UNLANG_FAIL;
 
 	/*
 	 *	We're looking for attributes that should come
 	 *	from the EAP-TTLS submodule.
 	 */
-	if (!fr_cond_assert(parent)) RETURN_MODULE_FAIL;
+	if (!fr_cond_assert(parent)) RETURN_UNLANG_FAIL;
 
 	/*
 	 *	Keep track of the challenge and the state we are in.
@@ -703,7 +703,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	 */
 	eap_session->process = mod_process;
 
-	RETURN_MODULE_HANDLED;
+	RETURN_UNLANG_HANDLED;
 }
 
 /*

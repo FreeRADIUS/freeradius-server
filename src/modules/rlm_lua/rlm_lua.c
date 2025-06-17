@@ -77,7 +77,7 @@ static int8_t lua_func_def_cmp(void const *one, void const *two)
 	return CMP(ret, 0);
 }
 
-static unlang_action_t mod_lua(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_lua(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	lua_call_env_t	*func = talloc_get_type_abort(mctx->env_data, lua_call_env_t);
 	return fr_lua_run(p_result, mctx, request, func->func->function_name);

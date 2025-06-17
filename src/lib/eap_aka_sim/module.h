@@ -81,7 +81,7 @@ typedef struct {
 	fr_aka_sim_ctx_t	ctx;
 } eap_aka_sim_mod_session_t;
 
-unlang_action_t		eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
+unlang_action_t		eap_aka_sim_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request);
 
 #ifdef __cplusplus
 }

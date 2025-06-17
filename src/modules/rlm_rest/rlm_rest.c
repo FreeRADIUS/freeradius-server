@@ -617,7 +617,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_signal, ~FR_SIGNAL_CANCEL, rctx);
 }
 
-static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_authorize_result(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
@@ -694,7 +694,7 @@ static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t 
 finish:
 	rest_slab_release(handle);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /*
@@ -703,7 +703,7 @@ finish:
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
@@ -714,23 +714,23 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (!section->name) {
 		RDEBUG2("No authorize section configured");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	handle = rest_slab_reserve(t->slab);
-	if (!handle) RETURN_MODULE_FAIL;
+	if (!handle) RETURN_UNLANG_FAIL;
 
 	ret = rlm_rest_perform(mctx, section, handle, request);
 	if (ret < 0) {
 		rest_slab_release(handle);
 
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	return unlang_module_yield(request, mod_authorize_result, rest_io_module_signal, ~FR_SIGNAL_CANCEL, handle);
 }
 
-static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result,
+static unlang_action_t mod_authenticate_result(unlang_result_t *p_result,
 					       module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
@@ -808,13 +808,13 @@ static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result,
 finish:
 	rest_slab_release(handle);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /*
  *	Authenticate the user with the given password.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
@@ -826,7 +826,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 	if (!section->name) {
 		RDEBUG2("No authentication section configured");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	/*
@@ -835,12 +835,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (!call_env->request.username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	if (!call_env->request.password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -848,7 +848,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (call_env->request.password->vb_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -861,19 +861,19 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	}
 
 	handle = rest_slab_reserve(t->slab);
-	if (!handle) RETURN_MODULE_FAIL;
+	if (!handle) RETURN_UNLANG_FAIL;
 
 	ret = rlm_rest_perform(mctx, section, handle, request);
 	if (ret < 0) {
 		rest_slab_release(handle);
 
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	return unlang_module_yield(request, mod_authenticate_result, rest_io_module_signal, ~FR_SIGNAL_CANCEL, handle);
 }
 
-static unlang_action_t mod_accounting_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_accounting_result(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
@@ -918,13 +918,13 @@ static unlang_action_t mod_accounting_result(rlm_rcode_t *p_result, module_ctx_t
 finish:
 	rest_slab_release(handle);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /*
  *	Send accounting info to a REST API endpoint
  */
-static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
@@ -935,23 +935,23 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 
 	if (!section->name) {
 		RDEBUG2("No accounting section configured");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	handle = rest_slab_reserve(t->slab);
-	if (!handle) RETURN_MODULE_FAIL;
+	if (!handle) RETURN_UNLANG_FAIL;
 
 	ret = rlm_rest_perform(mctx, section, handle, request);
 	if (ret < 0) {
 		rest_slab_release(handle);
 
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	return unlang_module_yield(request, mod_accounting_result, rest_io_module_signal, ~FR_SIGNAL_CANCEL, handle);
 }
 
-static unlang_action_t mod_post_auth_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_post_auth_result(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
@@ -996,13 +996,13 @@ static unlang_action_t mod_post_auth_result(rlm_rcode_t *p_result, module_ctx_t 
 finish:
 	rest_slab_release(handle);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /*
  *	Send post-auth info to a REST API endpoint
  */
-static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
@@ -1013,17 +1013,17 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 
 	if (!section->name) {
 		RDEBUG2("No post-auth section configured");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	handle = rest_slab_reserve(t->slab);
-	if (!handle) RETURN_MODULE_FAIL;
+	if (!handle) RETURN_UNLANG_FAIL;
 
 	ret = rlm_rest_perform(mctx, section, handle, request);
 	if (ret < 0) {
 		rest_slab_release(handle);
 
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	return unlang_module_yield(request, mod_post_auth_result, rest_io_module_signal, ~FR_SIGNAL_CANCEL, handle);

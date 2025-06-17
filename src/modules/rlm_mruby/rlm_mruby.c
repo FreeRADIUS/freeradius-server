@@ -277,7 +277,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_mruby(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_mruby(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_mruby_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_mruby_t);
 	mruby_call_env_t	*func = talloc_get_type_abort(mctx->env_data, mruby_call_env_t);
@@ -318,11 +318,11 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 	/*
 	 *	The return should be a fixnum, which is converted to rlm_rcode_t
 	 */
-	if (mrb_type(mruby_result) == MRB_TT_FIXNUM) RETURN_MODULE_RCODE((rlm_rcode_t)mrb_int(mrb, mruby_result));
+	if (mrb_type(mruby_result) == MRB_TT_FIXNUM) RETURN_UNLANG_RCODE((rlm_rcode_t)mrb_int(mrb, mruby_result));
 
 	/* Invalid return type */
 	RERROR("Expected return to be a Fixnum, got %s instead", RSTRING_PTR(mrb_obj_as_string(mrb, mruby_result)));
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 
 /*

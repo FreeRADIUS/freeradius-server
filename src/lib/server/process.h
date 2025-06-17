@@ -141,11 +141,11 @@ do { \
 
 #define UPDATE_STATE(_x) state = &process_state_ ## _x [request->_x->code]
 
-#define RECV(_x) static inline unlang_action_t recv_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-#define SEND(_x) static inline unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-#define SEND_NO_RESULT(_x) static inline unlang_action_t send_ ## _x(UNUSED rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-#define RESUME(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-#define RESUME_FLAG(_x, _p_result_flag, _mctx_flag) static inline unlang_action_t resume_ ## _x(_p_result_flag rlm_rcode_t *p_result, _mctx_flag module_ctx_t const *mctx, request_t *request)
+#define RECV(_x) static inline unlang_action_t recv_ ## _x(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
+#define SEND(_x) static inline unlang_action_t send_ ## _x(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
+#define SEND_NO_RESULT(_x) static inline unlang_action_t send_ ## _x(UNUSED unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
+#define RESUME(_x) static inline unlang_action_t resume_ ## _x(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
+#define RESUME_FLAG(_x, _p_result_flag, _mctx_flag) static inline unlang_action_t resume_ ## _x(_p_result_flag unlang_result_t *p_result, _mctx_flag module_ctx_t const *mctx, request_t *request)
 
 /** Returns the current rcode then resets it for the next module call
  *
@@ -172,7 +172,7 @@ static inline CC_HINT(always_inline) unlang_result_t *process_result_reset(unlan
  * @return			Result of the method call.
  */
 static inline CC_HINT(always_inline)
-unlang_action_t process_with_rctx(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+unlang_action_t process_with_rctx(unlang_result_t *p_result, module_ctx_t const *mctx,
 				  request_t *request, module_method_t method, void *rctx)
 {
 	module_ctx_t our_mctx = *mctx;
@@ -206,7 +206,7 @@ unlang_action_t process_with_rctx(rlm_rcode_t *p_result, module_ctx_t const *mct
 #define CALL_SEND_TYPE(_x) call_send_type(process_state_reply[(request->reply->code = _x)].send, p_result, mctx, request)
 
 static inline unlang_action_t call_send_type(module_method_t send, \
-					     rlm_rcode_t *p_result, module_ctx_t const *mctx,
+					     unlang_result_t *p_result, module_ctx_t const *mctx,
 					     request_t *request)
 {
 	/*
@@ -236,7 +236,7 @@ RECV(generic)
 		} else {
 			REDEBUG("Invalid packet type (%u)", request->packet->code);
 		}
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 
@@ -389,7 +389,7 @@ RESUME(send_generic)
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 	switch (state->packet_type[rcode]) {
 	case 0:			/* don't change the reply */
-		*p_result = state->result_rcode;
+		p_result->rcode = state->result_rcode;
 		break;
 
 	default:
@@ -419,7 +419,7 @@ RESUME(send_generic)
 							      cs, state->default_rcode, state->send,
 							      NULL, 0, mctx->rctx);
 		}
-		*p_result = state->result_rcode;
+		p_result->rcode = state->result_rcode;
 
 		fr_assert(!state->packet_type[rcode] || (state->packet_type[rcode] == request->reply->code));
 		break;
@@ -435,7 +435,7 @@ RESUME(send_generic)
 			       fr_table_str_by_value(rcode_table, rcode, "<INVALID>"));
 		}
 		request->reply->code = PROCESS_CODE_DO_NOT_RESPOND;
-		*p_result = state->result_rcode;
+		p_result->rcode = state->result_rcode;
 		break;
 #endif
 	}
@@ -449,7 +449,7 @@ RESUME(send_generic)
 	 */
 	if (request->reply->code == PROCESS_CODE_DO_NOT_RESPOND) {
 		RDEBUG("Not sending reply to client");
-		*p_result = RLM_MODULE_HANDLED;
+		p_result->rcode = RLM_MODULE_HANDLED;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 #endif
@@ -460,7 +460,7 @@ RESUME(send_generic)
 #ifdef PROCESS_CODE_DYNAMIC_CLIENT
 RESUME_FLAG(new_client_done,,UNUSED)
 {
-	*p_result = RLM_MODULE_OK;
+	p_result->rcode = RLM_MODULE_OK;
 
 	request->reply->timestamp = fr_time();
 
@@ -495,7 +495,7 @@ RESUME(new_client)
 	request->module = NULL;
 
 	if (!cs) {
-		*p_result = RLM_MODULE_OK;
+		p_result->rcode = RLM_MODULE_OK;
 		request->reply->timestamp = fr_time();
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -506,7 +506,7 @@ RESUME(new_client)
 					      NULL, 0, mctx->rctx);
 }
 
-static inline unlang_action_t new_client(UNUSED rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static inline unlang_action_t new_client(UNUSED unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	CONF_SECTION			*cs;
 	PROCESS_INST const		*inst = mctx->mi->data;

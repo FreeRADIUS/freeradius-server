@@ -123,7 +123,7 @@ static int delay_add(request_t *request, fr_time_t *resume_at, fr_time_t now,
 /** Called resume_at the delay is complete, and we're running from the interpreter
  *
  */
-static unlang_action_t mod_delay_return(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_delay_return(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_delay_retry_t *yielded = talloc_get_type_abort(mctx->rctx, rlm_delay_retry_t);
 	rlm_delay_t *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_delay_t);
@@ -138,10 +138,10 @@ static unlang_action_t mod_delay_return(rlm_rcode_t *p_result, module_ctx_t cons
 	 *	Be transparent, don't alter the rcode
 	 */
 	if (inst->rcode == RLM_MODULE_NOT_SET) return UNLANG_ACTION_EXECUTE_NEXT;
-	RETURN_MODULE_RCODE(inst->rcode);
+	RETURN_UNLANG_RCODE(inst->rcode);
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_delay(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_delay_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_delay_t);
 	fr_time_delta_t		delay;
@@ -152,7 +152,7 @@ static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_
 		if (tmpl_aexpand_type(request, &delay, FR_TYPE_TIME_DELTA,
 				      request, inst->delay) < 0) {
 			RPEDEBUG("Failed parsing %s as delay time", inst->delay->name);
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		/*
@@ -184,7 +184,7 @@ static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_
 	 */
 	if (delay_add(request, &resume_at, yielded->when, delay,
 		      inst->force_reschedule, inst->relative) != 0) {
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	RDEBUG3("Current time %pVs, resume time %pVs",

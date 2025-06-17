@@ -620,7 +620,7 @@ typedef struct {
 	bool			with_delim;	//!< Whether to add a delimiter
 } rlm_linelog_rctx_t;
 
-static unlang_action_t CC_HINT(nonnull) mod_do_linelog_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_do_linelog_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_linelog_t);
 	linelog_call_env_t const	*call_env = talloc_get_type_abort(mctx->env_data, linelog_call_env_t);
@@ -632,7 +632,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog_resume(rlm_rcode_t *p_res
 	vector_len = fr_value_box_list_num_elements(&rctx->expanded);
 	if (vector_len == 0) {
 		RDEBUG2("No data to write");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	/*
@@ -646,7 +646,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog_resume(rlm_rcode_t *p_res
 		default:
 			if (unlikely(fr_value_box_cast_in_place(rctx, vb, FR_TYPE_STRING, vb->enumv) < 0)) {
 				REDEBUG("Failed casting value to string");
-				RETURN_MODULE_FAIL;
+				RETURN_UNLANG_FAIL;
 			}
 			FALL_THROUGH;
 
@@ -673,7 +673,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog_resume(rlm_rcode_t *p_res
 		}
 	}
 
-	RETURN_MODULE_RCODE(linelog_write(inst, call_env, request, vector, vector_len, rctx->with_delim) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_OK);
+	RETURN_UNLANG_RCODE(linelog_write(inst, call_env, request, vector, vector_len, rctx->with_delim) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_OK);
 }
 
 /** Write a linelog message
@@ -687,7 +687,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog_resume(rlm_rcode_t *p_res
  * @param[in] mctx	module calling context.
  * @param[in] request	The current request.
  */
-static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_do_linelog(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_linelog_t);
 	linelog_call_env_t const	*call_env = talloc_get_type_abort(mctx->env_data, linelog_call_env_t);
@@ -703,7 +703,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 
 	if (!call_env->log_src && !call_env->log_ref) {
 		cf_log_err(conf, "A 'format', or 'reference' configuration item must be set to call this module");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	buff[0] = '.';	/* force to be in current section (by default) */
@@ -729,7 +729,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 		 */
 		if (buff[2] == '.') {
 			REDEBUG("Invalid path \"%s\"", p);
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		ci = cf_reference_item(NULL, inst->cs, p);
@@ -740,7 +740,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 
 		if (!cf_item_is_pair(ci)) {
 			REDEBUG("Path \"%s\" resolves to a section (should be a pair)", p);
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		cp = cf_item_to_pair(ci);
@@ -777,12 +777,12 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 					 });
 		if (!vpt) {
 			REMARKER(tmpl_str, -slen, "%s", fr_strerror());
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 		if (tmpl_resolve(vpt, NULL) < 0) {
 			RPERROR("Runtime resolution of tmpl failed");
 			talloc_free(vpt);
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 		vpt_p = vpt;
 	} else {
@@ -792,7 +792,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 		 */
 		if (!call_env->log_src) {
 			RDEBUG2("No default message configured");
-			RETURN_MODULE_NOOP;
+			RETURN_UNLANG_NOOP;
 		}
 		/*
 		 *	Use the pre-parsed format template
@@ -866,7 +866,7 @@ build_vector:
 		talloc_free(vpt);
 		talloc_free(vector);
 
-		RETURN_MODULE_RCODE(rcode);
+		RETURN_UNLANG_RCODE(rcode);
 	}
 
 	/*

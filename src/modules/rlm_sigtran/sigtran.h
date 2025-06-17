@@ -257,7 +257,7 @@ int	sigtran_client_link_up(sigtran_conn_t const **out, sigtran_conn_conf_t const
 
 int	sigtran_client_link_down(sigtran_conn_t const **conn);
 
-unlang_action_t sigtran_client_map_send_auth_info(rlm_rcode_t *p_result, rlm_sigtran_t const *inst, request_t *request,
+unlang_action_t sigtran_client_map_send_auth_info(unlang_result_t *p_result, rlm_sigtran_t const *inst, request_t *request,
 				  		  sigtran_conn_t const *conn, int fd);
 
 /*

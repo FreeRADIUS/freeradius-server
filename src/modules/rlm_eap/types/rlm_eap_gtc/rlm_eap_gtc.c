@@ -73,7 +73,7 @@ fr_dict_attr_autoload_t rlm_eap_gtc_dict_attr[] = {
 	{ NULL }
 };
 
-static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
+static unlang_action_t mod_session_init(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request);
 
 /** Translate a string auth_type into an enumeration value
  *
@@ -103,7 +103,7 @@ static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 /*
  *	Keep processing the Auth-Type until it doesn't return YIELD.
  */
-static unlang_action_t gtc_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,  request_t *request)
+static unlang_action_t gtc_resume(unlang_result_t *p_result, module_ctx_t const *mctx,  request_t *request)
 {
 	rlm_eap_gtc_rctx_t *rctx = talloc_get_type_abort(mctx->rctx, rlm_eap_gtc_rctx_t);
 	rlm_rcode_t	rcode;
@@ -114,17 +114,17 @@ static unlang_action_t gtc_resume(rlm_rcode_t *p_result, module_ctx_t const *mct
 	rcode = rctx->section_result.rcode;
 	if (rcode != RLM_MODULE_OK) {
 		eap_round->request->code = FR_EAP_CODE_FAILURE;
-		RETURN_MODULE_RCODE(rcode);
+		RETURN_UNLANG_RCODE(rcode);
 	}
 
 	eap_round->request->code = FR_EAP_CODE_SUCCESS;
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /*
  *	Authenticate a previously sent challenge.
  */
-static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_gtc_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_gtc_t);
 	rlm_eap_gtc_rctx_t	*rctx = talloc_get_type_abort(mctx->rctx, rlm_eap_gtc_rctx_t);
@@ -146,7 +146,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	if (eap_round->response->length <= 4) {
 		REDEBUG("Corrupted data");
 		eap_round->request->code = FR_EAP_CODE_FAILURE;
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -156,7 +156,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	if (eap_round->response->type.length > 128) {
 		REDEBUG("Response is too large to understand");
 		eap_round->request->code = FR_EAP_CODE_FAILURE;
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -173,7 +173,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		RDEBUG2("authenticate %s { ... } sub-section not found.",
 			inst->auth_type->name);
 		eap_round->request->code = FR_EAP_CODE_FAILURE;
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	return unlang_module_yield_to_section(&rctx->section_result, request, unlang, RLM_MODULE_FAIL, gtc_resume, NULL, 0, rctx);
@@ -183,7 +183,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 /*
  *	Initiate the EAP-GTC session by sending a challenge to the peer.
  */
-static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_session_init(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	eap_session_t	*eap_session = eap_session_get(request->parent);
 	char		challenge_str[1024];
@@ -192,7 +192,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	rlm_eap_gtc_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_gtc_t);
 
 	if (xlat_eval(challenge_str, sizeof(challenge_str), request, inst->challenge, NULL, NULL) < 0) {
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	length = strlen(challenge_str);
@@ -203,7 +203,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	eap_round->request->code = FR_EAP_CODE_REQUEST;
 
 	eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length);
-	if (!eap_round->request->type.data) RETURN_MODULE_FAIL;
+	if (!eap_round->request->type.data) RETURN_UNLANG_FAIL;
 
 	memcpy(eap_round->request->type.data, challenge_str, length);
 	eap_round->request->type.length = length;
@@ -217,7 +217,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	 */
 	eap_session->process = mod_process;
 
-	RETURN_MODULE_HANDLED;
+	RETURN_UNLANG_HANDLED;
 }
 
 /*

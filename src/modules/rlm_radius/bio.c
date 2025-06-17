@@ -2271,14 +2271,14 @@ static void request_complete(request_t *request, NDEBUG_UNUSED void *preq, void 
 /** Resume execution of the request, returning the rcode set during trunk execution
  *
  */
-static unlang_action_t mod_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t mod_resume(unlang_result_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	bio_request_t	*u = talloc_get_type_abort(mctx->rctx, bio_request_t);
 	rlm_rcode_t	rcode = u->rcode;
 
 	talloc_free(u);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 static void do_signal(rlm_radius_t const *inst, bio_request_t *u, request_t *request, fr_signal_t action);

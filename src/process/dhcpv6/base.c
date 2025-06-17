@@ -407,7 +407,7 @@ RECV(for_any_server)
 
 	PROCESS_TRACE;
 
-	if (dhcpv6_client_fields_store(request, rctx, false) < 0) RETURN_MODULE_INVALID;
+	if (dhcpv6_client_fields_store(request, rctx, false) < 0) RETURN_UNLANG_INVALID;
 
 	UPDATE_STATE_CS(packet);
 
@@ -441,7 +441,7 @@ RECV(for_this_server)
 
 	PROCESS_TRACE;
 
-	if (dhcpv6_client_fields_store(request, rctx, true) < 0) RETURN_MODULE_INVALID;
+	if (dhcpv6_client_fields_store(request, rctx, true) < 0) RETURN_UNLANG_INVALID;
 
 	UPDATE_STATE_CS(packet);
 
@@ -603,7 +603,7 @@ RESUME(send_to_client)
 	 */
 	if (unlikely(restore_field(request, &fields->transaction_id) < 0)) {
 	fail:
-		*p_result = RLM_MODULE_FAIL;
+		p_result->rcode = RLM_MODULE_FAIL;
 		return CALL_RESUME(send_generic);
 	}
 	if (unlikely(restore_field_list(request, &fields->client_id) < 0)) goto fail;
@@ -666,7 +666,7 @@ RECV(from_relay)
 	process_dhcpv6_relay_fields_t	*rctx = NULL;
 
 	rctx = dhcpv6_relay_fields_store(request);
-	if (!rctx) RETURN_MODULE_INVALID;
+	if (!rctx) RETURN_UNLANG_INVALID;
 
 	UPDATE_STATE_CS(packet);
 
@@ -696,7 +696,7 @@ RESUME(send_to_relay)
 	 */
 	if (unlikely(restore_field(request, &fields->hop_count) < 0)) {
 	fail:
-		*p_result = RLM_MODULE_FAIL;
+		p_result->rcode = RLM_MODULE_FAIL;
 		return CALL_RESUME(send_generic);
 	}
 	if (unlikely(restore_field(request, &fields->link_address) < 0)) goto fail;
@@ -711,7 +711,7 @@ RESUME(send_to_relay)
 /** Main dispatch function
  *
  */
-static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const *state;
 
@@ -728,7 +728,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	if (!state->recv) {
 		REDEBUG("Invalid packet type (%u)", request->packet->code);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	dhcpv6_packet_debug(request, request->packet, &request->request_pairs, true);

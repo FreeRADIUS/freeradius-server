@@ -186,7 +186,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 /*
  *	Common attr_filter checks
  */
-static unlang_action_t CC_HINT(nonnull) attr_filter_common(TALLOC_CTX *ctx, rlm_rcode_t *p_result,
+static unlang_action_t CC_HINT(nonnull) attr_filter_common(TALLOC_CTX *ctx, unlang_result_t *p_result,
 							   module_ctx_t const *mctx, request_t *request,
 							   fr_pair_list_t *list)
 {
@@ -201,11 +201,11 @@ static unlang_action_t CC_HINT(nonnull) attr_filter_common(TALLOC_CTX *ctx, rlm_
 
 	slen = tmpl_expand(&keyname, buffer, sizeof(buffer), request, inst->key);
 	if (slen < 0) {
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 	if ((keyname == buffer) && is_truncated((size_t)slen, sizeof(buffer))) {
 		REDEBUG("Key too long, expected < " STRINGIFY(sizeof(buffer)) " bytes, got %zi bytes", slen);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -371,7 +371,7 @@ static unlang_action_t CC_HINT(nonnull) attr_filter_common(TALLOC_CTX *ctx, rlm_
 	 */
 	if (!found) {
 		fr_assert(fr_pair_list_empty(&output));
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	/*
@@ -380,10 +380,10 @@ static unlang_action_t CC_HINT(nonnull) attr_filter_common(TALLOC_CTX *ctx, rlm_
 	fr_pair_list_free(list);
 	fr_pair_list_append(list, &output);
 
-	RETURN_MODULE_UPDATED;
+	RETURN_UNLANG_UPDATED;
 }
 
-#define RLM_AF_FUNC(_x, _y) static unlang_action_t CC_HINT(nonnull) mod_##_x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
+#define RLM_AF_FUNC(_x, _y) static unlang_action_t CC_HINT(nonnull) mod_##_x(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request) \
 	{ \
 		return attr_filter_common(request->_y##_ctx, p_result, mctx, request, &request->_y##_pairs); \
 	}

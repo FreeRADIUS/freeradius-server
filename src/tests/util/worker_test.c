@@ -96,7 +96,7 @@ static NEVER_RETURNS void usage(void)
 static rlm_rcode_t test_process(UNUSED void const *inst, request_t *request, fr_io_action_t action)
 {
 	MPRINT1("\t\tPROCESS --- request %"PRIu64" action %d\n", request->number, action);
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 static int test_decode(UNUSED void const *instance, request_t *request, uint8_t *const data, size_t data_len)

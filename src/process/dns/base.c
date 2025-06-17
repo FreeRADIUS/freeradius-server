@@ -364,7 +364,7 @@ RECV(request)
 	PROCESS_TRACE;
 
 	rctx = dns_fields_store(request);
-	if (!rctx) RETURN_MODULE_INVALID;
+	if (!rctx) RETURN_UNLANG_INVALID;
 
 	return CALL_RECV_RCTX(generic, rctx);
 }
@@ -398,7 +398,7 @@ RESUME(recv_request)
 	dns_rcode_add(&rcode, request, state->dns_rcode[RESULT_RCODE]);
 
 #ifdef __clang_analyzer__
-	if (!rcode) RETURN_MODULE_FAIL;
+	if (!rcode) RETURN_UNLANG_FAIL;
 #endif
 
 	/*
@@ -469,7 +469,7 @@ RESUME(send_response)
 
 /** Entry point into the state machine
  */
-static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const *state;
 
@@ -486,7 +486,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	if (!state->recv) {
 		REDEBUG("Invalid packet type (%u)", request->packet->code);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	dns_packet_debug(request, request->packet, &request->request_pairs, true);
