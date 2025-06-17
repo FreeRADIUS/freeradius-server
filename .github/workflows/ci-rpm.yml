@@ -17,6 +17,7 @@ jobs:
         env:
           - { NAME: "rocky-8",   OS: "rockylinux/rockylinux:8" }
           - { NAME: "rocky-9",   OS: "rockylinux/rockylinux:9" }
+          - { NAME: "rocky-10",  OS: "rockylinux/rockylinux:10" }
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -71,8 +72,8 @@ jobs:
         dnf config-manager --enable PowerTools || :
         dnf config-manager --enable powertools || :
 
-    - name: Enable Code Ready Builer on Rocky 9.
-      if: ${{ matrix.env.NAME == 'rocky-9' }}
+    - name: Enable Code Ready Builer on Rocky 9 / 10.
+      if: ${{ matrix.env.NAME == 'rocky-9' || matrix.env.NAME == 'rocky-10' }}
       run: |
         dnf install -y yum-utils
         dnf config-manager --enable crb
@@ -182,6 +183,7 @@ jobs:
         env:
           - { NAME: "rocky-8",   OS: "rockylinux/rockylinux:8" }
           - { NAME: "rocky-9",   OS: "rockylinux/rockylinux:9" }
+          - { NAME: "rocky-10",  OS: "rockylinux/rockylinux:10" }
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -216,8 +218,8 @@ jobs:
         dnf config-manager --enable PowerTools || :
         dnf config-manager --enable powertools || :
 
-    - name: Enable Code Ready Builer on Rocky 9.
-      if: ${{ matrix.env.NAME == 'rocky-9' }}
+    - name: Enable Code Ready Builer on Rocky 9 / 10.
+      if: ${{ matrix.env.NAME == 'rocky-9' || matrix.env.NAME == 'rocky-10' }}
       run: |
         dnf install -y yum-utils
         dnf config-manager --enable crb
