@@ -986,8 +986,10 @@ static unlang_action_t ldap_group_xlat_results(unlang_result_t *p_result, reques
 		if (!xlat_ctx->dn) xlat_ctx->dn = rlm_find_user_dn_cached(request);
 		if (!xlat_ctx->dn) RETURN_UNLANG_FAIL;
 
+		RDEBUG3("Entered GROUP_XLAT_FIND_USER with user DN \"%s\"", xlat_ctx->dn);
 		if (inst->group.obj_membership_filter) {
 			REPEAT_LDAP_MEMBEROF_XLAT_RESULTS;
+			RDEBUG3("Checking for user in group objects");
 			if (rlm_ldap_check_groupobj_dynamic(p_result, request, xlat_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
 				xlat_ctx->status = GROUP_XLAT_MEMB_FILTER;
 				return UNLANG_ACTION_PUSHED_CHILD;
@@ -998,6 +1000,7 @@ static unlang_action_t ldap_group_xlat_results(unlang_result_t *p_result, reques
 	case GROUP_XLAT_MEMB_FILTER:
 		if (xlat_ctx->found) RETURN_UNLANG_OK;
 
+		RDEBUG3("Entered GROUP_XLAT_MEMB_FILTER with user DN \"%s\"", xlat_ctx->dn);
 		if (inst->group.userobj_membership_attr) {
 			REPEAT_LDAP_MEMBEROF_XLAT_RESULTS;
 			if (rlm_ldap_check_userobj_dynamic(p_result, request, xlat_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
@@ -1008,6 +1011,7 @@ static unlang_action_t ldap_group_xlat_results(unlang_result_t *p_result, reques
 		FALL_THROUGH;
 
 	case GROUP_XLAT_MEMB_ATTR:
+		RDEBUG3("Entered GROUP_XLAT_MEMB_ATTR with user DN \"%s\"", xlat_ctx->dn);
 		if (xlat_ctx->found) RETURN_UNLANG_OK;
 		break;
 	}
