@@ -424,7 +424,8 @@ static crl_entry_t *crl_entry_create(rlm_crl_t const *inst, fr_timer_list_t *tl,
 	return crl;
 }
 
-static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
+static unlang_action_t CC_HINT(nonnull) crl_process_cdp_data(unlang_result_t *p_result, module_ctx_t const *mctx,
+							     request_t *request);
 
 /** Yield to a tmpl to retrieve CRL data
  *
@@ -463,13 +464,14 @@ static int crl_tmpl_yield(request_t *request, rlm_crl_env_t *env, rlm_crl_rctx_t
 	return 1;
 }
 
-static unlang_action_t crl_by_url(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
+static unlang_action_t crl_by_url(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request);
 
 /** Process the response from evaluating the cdp_url -> crl_data expansion
  *
  * This is the resumption function when we yield to get CRL data associated with a URL
  */
-static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) crl_process_cdp_data(unlang_result_t *p_result, module_ctx_t const *mctx,
+							     request_t *request)
 {
 	rlm_crl_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_crl_t);
 	rlm_crl_env_t *env = talloc_get_type_abort(mctx->env_data, rlm_crl_env_t);
@@ -500,7 +502,7 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 		pthread_mutex_unlock(&inst->mutable->mutex);
 		fr_value_box_list_talloc_free(&rctx->crl_data);
 		pair_delete_request(attr_crl_cdp_url);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 
 	case 1:
 	{
@@ -559,7 +561,7 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 		switch (ret) {
 		case CRL_ENTRY_FOUND:
 			pthread_mutex_unlock(&inst->mutable->mutex);
-			RETURN_MODULE_REJECT;
+			RETURN_UNLANG_REJECT;
 
 		case CRL_ENTRY_NOT_FOUND:
 			/*
@@ -578,7 +580,7 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 		case CRL_ENTRY_REMOVED:
 			pthread_mutex_unlock(&inst->mutable->mutex);
 			pair_delete_request(attr_crl_cdp_url);
-			RETURN_MODULE_OK;
+			RETURN_UNLANG_OK;
 
 		case CRL_ERROR:
 			goto fail;
@@ -603,7 +605,7 @@ static unlang_action_t crl_process_cdp_data(rlm_rcode_t *p_result, module_ctx_t 
 	goto fail;
 }
 
-static unlang_action_t crl_by_url(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) crl_by_url(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_crl_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_crl_t);
 	rlm_crl_env_t *env = talloc_get_type_abort(mctx->env_data, rlm_crl_env_t);
@@ -663,7 +665,7 @@ static unlang_action_t crl_by_url(rlm_rcode_t *p_result, module_ctx_t const *mct
 
 	if (rcode != RLM_MODULE_NOTFOUND) {
 		pthread_mutex_unlock(&inst->mutable->mutex);
-		RETURN_MODULE_RCODE(rcode);
+		RETURN_UNLANG_RCODE(rcode);
 	}
 
 	/*
@@ -689,7 +691,7 @@ again:
 		return UNLANG_ACTION_PUSHED_CHILD;
 	default:
 		pthread_mutex_unlock(&inst->mutable->mutex);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 }
 
