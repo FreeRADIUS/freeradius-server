@@ -30,6 +30,7 @@ ifelse(
 	D_NAME, [centos8],	[p_SET([rpm], [centos],	[8],	[8],		[centos:8])],
 	D_NAME, [rocky8],	[p_SET([rpm], [rocky],	[8],	[8],		[rockylinux/rockylinux:8])],
 	D_NAME, [rocky9],	[p_SET([rpm], [rocky],	[9],	[9],		[rockylinux/rockylinux:9])],
+	D_NAME, [rocky10],	[p_SET([rpm], [rocky],	[10],	[10],		[rockylinux/rockylinux:10])],
 	[errprint(error: OS 'D_NAME' not defined[,] see __file__
 )m4exit(1)]
 )

@@ -22,6 +22,9 @@ RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-rockyofficial
 ifelse(OS_VER, 9, `dnl
 RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-9
 ')
+ifelse(OS_VER, 10, `dnl
+RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
+')
 #
 #  Install build tools
 #
@@ -95,7 +98,7 @@ RUN yum config-manager --enable powertools
 #  Enable epel-testing, currently needed for hiredis-devel
 RUN yum config-manager --enable epel-testing
 ')dnl
-ifelse(OS_VER, 9, `
+ifelse(ifelse(OS_VER, 9, yes, OS_VER, 10, yes, no), yes, `
 #  Enable Code Ready Builder repo (CentOS powertools equivalent)
 RUN yum install -y yum-utils
 RUN yum config-manager --enable crb
@@ -189,7 +192,7 @@ ifelse(OS_VER, 7, `    \', `dnl
 ifelse(OS_VER, 8, `dnl
     && yum config-manager --enable powertools \
 ')dnl
-ifelse(OS_VER, 9, `dnl
+ifelse(ifelse(OS_VER, 9, yes, OS_VER, 10, yes, no), yes, `dnl
     && yum config-manager --enable crb \
 ')dnl
     && yum config-manager --enable epel-testing

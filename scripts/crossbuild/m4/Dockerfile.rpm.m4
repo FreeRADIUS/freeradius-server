@@ -9,7 +9,7 @@ RUN sed -i "s/^mirrorlist/#mirrorlist/g" /etc/yum.repos.d/CentOS-*
 RUN sed -i "s|#\s*baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
 ')dnl
 
-ifelse(OS_VER, `9', `dnl
+ifelse(ifelse(OS_VER, 9, yes, OS_VER, 10, yes, no), yes, `dnl
 #
 #  Install yum
 #
@@ -51,7 +51,7 @@ RUN yum config-manager --set-enabled powertools
 RUN yum install -y gcc-toolset-9
 ')dnl
 
-ifelse(OS_VER, `9', `dnl
+ifelse(ifelse(OS_VER, 9, yes, OS_VER, 10, yes, no), yes, `dnl
 RUN yum config-manager --set-enabled crb
 ')dnl
 
