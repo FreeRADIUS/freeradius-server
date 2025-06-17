@@ -1360,6 +1360,11 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	tmpl_dcursor_ctx_t	cc;
 	fr_dcursor_t		cursor;
 
+	if (!current->lhs.success) {
+		RDEBUG("Failed expanding %s ...", map->lhs->name);
+		return -1;
+	}
+
 	current->lhs.create = false;
 	current->lhs.vp = NULL;
 
