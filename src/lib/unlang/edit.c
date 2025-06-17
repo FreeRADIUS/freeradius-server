@@ -51,6 +51,7 @@ typedef struct {
 	tmpl_t const		*vpt;			//!< expanded tmpl
 	tmpl_t			*to_free;		//!< tmpl to free.
 	bool			create;			//!< whether we need to create the VP
+	bool			success;		//!< did the xlat succeed?
 	fr_pair_t		*vp;			//!< VP referenced by tmpl.
 	fr_pair_t		*vp_parent;		//!< parent of the current VP
 	fr_pair_list_t		pair_list;		//!< for structural attributes
@@ -165,7 +166,7 @@ static int tmpl_to_values(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
 		return 1;
 
 	case TMPL_TYPE_XLAT:
-		if (unlang_xlat_push(ctx, NULL, &out->result, request, tmpl_xlat(vpt), false) < 0) return -1;
+		if (unlang_xlat_push(ctx, &out->success, &out->result, request, tmpl_xlat(vpt), false) < 0) return -1;
 		return 1;
 
 	default:
@@ -972,6 +973,15 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 {
 	map_t const *map = current->map;
 
+	if (!current->rhs.success) {
+		if (map->rhs) {
+			RDEBUG("Failed expanding ... %s", map->rhs->name);
+		} else {
+			RDEBUG("Failed assigning to %s", map->lhs->name);
+		}
+		return -1;
+	}
+
 	XDEBUG("%s map %s %s ...", __FUNCTION__, map->lhs->name, fr_tokens[map->op]);
 
 	/*
@@ -1571,6 +1581,8 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 			} else {
 				XDEBUG("MAP %s ... %s", state->current->map->lhs->name, state->current->map->rhs->name);
 			}
+
+			state->current->lhs.success = state->current->rhs.success = true;
 
 			rcode = state->current->func(request, state, state->current);
 			if (rcode < 0) {
