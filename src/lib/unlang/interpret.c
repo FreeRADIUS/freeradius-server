@@ -1019,7 +1019,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 			 *	the result is being consumed by a module.
 			 */
 			if (private_result) {
-				fa = UNLANG_FRAME_ACTION_NEXT;
+				fa = is_unwinding(frame) ? UNLANG_FRAME_ACTION_POP : UNLANG_FRAME_ACTION_NEXT;
 			/*
 			 *	Merge lower frame into higher frame.
 			 *
