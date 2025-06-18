@@ -283,8 +283,7 @@ static unlang_action_t call_no_result(UNUSED unlang_result_t *p_result, request_
 
 		case UNLANG_ACTION_FAIL:
 		no_action_fail:
-			fr_assert_msg(0, "Function %s (%p) is not allowed to indicate failure via UNLANG_ACTION_FAIL",
-				      state->func_name, state->func.nres);
+			fr_assert_msg(0, "Function is not allowed to indicate failure via UNLANG_ACTION_FAIL");
 			ua = UNLANG_ACTION_CALCULATE_RESULT;
 			break;
 
