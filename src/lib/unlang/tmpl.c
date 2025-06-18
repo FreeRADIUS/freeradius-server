@@ -302,6 +302,12 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 	frame = &stack->frame[stack->depth];
 	state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 
+	/*
+	 *	Set the frame as repeatable so that multiple tmpls can
+	 *	be pushed on the stack before returning UNLANG_ACTION_PUSHED_CHILD
+	 */
+	repeatable_set(frame);
+
 	*state = (unlang_frame_state_tmpl_t) {
 		.out = out,
 		.ctx = ctx,
