@@ -22,15 +22,17 @@ put substantial effort into writing the documentation for this release.
 Everything in the server is fully documented, and there are many
 `how-to` guides available.
 
+include::ROOT:partial$externaldoc.adoc[]
+
 The documentation is split into sections by subject area, oganized by
 desired outcome. At a high level, the subject areas describe:
 
 * xref:concepts:index.adoc[Concepts] and introduction for newcomers.
-* xref:installation:index.adoc[Installing] and xref:installation:upgrade.adoc[upgrading] FreeRADIUS.
+* xref:installation:index.adoc[Install] and xref:installation:upgrade.adoc[Upgrade] FreeRADIUS.
 * The syntax of the xref:unlang:index.adoc[unlang] processing language.
-* The xref:raddb:index.adoc[configuration files] located in `/etc/raddb/`, or `/etc/freeradius/`
-* Various xref:howto:index.adoc[how-to] guides.
-* xref:developers:index.adoc[Developer documentation].
+* The https://github.com/FreeRADIUS/freeradius-server/tree/v3.2.x/raddb[configuration files][Configuration] files located in `/etc/raddb/`, or `/etc/freeradius/`
+* Various xref:howto:index.adoc[Howto] guides.
+* xref:developers:index.adoc[Developers] documentation.
 
 This organization means that for example, the `ldap` module will have
 documention located in multiple places. We feel that organizing the
@@ -59,23 +61,21 @@ major version upgrade.
 == Getting Started with FreeRADIUS
 
 FreeRADIUS can be installed using the pre-built packages available
-from http://packages.networkradius.com[Network RADIUS,
-window="_blank"]. That page contains packages for all common OS
-distributions.  New packages are available as soon as a new version
-has been released.  Packages for older releases are also available for
-historical purposes.
+from https://packages.inkbridgenetworks.com/[InkBridge Networks]. That page contains packages for all common OS distributions.  New packages are available as soon as a new version has been released.  Packages for older releases are also available for historical purposes.
 
 FreeRADIUS can also be installed from the source code.  Please see the
-xref:installation:index.adoc[installation guide] for instructions.
+xref:installation:index.adoc[Installation Guide] for instructions.
 
-WARNING: Many Operating System distributions ship versions of FreeRADIUS
+[WARNING]
+====
+Many Operating System distributions ship versions of FreeRADIUS
 which are years out of date. Those versions may contain bugs which have
 been fixed in newer releases. We recommend using the
-http://packages.networkradius.com[Network RADIUS, window="_blank"] packages where
-possible.
+https://packages.inkbridgenetworks.com/[InkBridge Networks] packages where possible.
+====
 
 Administrators who are new to FreeRADIUS should read the
-xref:concepts:index.adoc[concepts section] as it describes the concepts behind
+xref:concepts:index.adoc[Concepts section] as it describes the concepts behind
 FreeRADIUS. It is vital for newcomers to understand these concepts, as the rest
 of the documentation assumes familiarity with them.
 
@@ -83,16 +83,11 @@ A detailed xref:unlang:index.adoc[unlang] reference guide is also available.
 This section describes the syntax and functionality of the keywords,
 data types, etc. used in the `unlang` processing language.
 
-All of the xref:raddb:index.adoc[configuration files] are available in
-hypertext format. In can often be easier to read the configuration files
-in a nicely formatted version, instead of as a fixed-width font in a
-text editor.
+All of the https://github.com/FreeRADIUS/freeradius-server/tree/v3.2.x/raddb[configuration files] are available in GitHub.
 
-For specific problem solving, we recommend the xref:howto:index.adoc[how-to]
-guides. These guides give instructions for reaching high-level goals, or
-for configuring and testing individual xref:howto:modules/index.adoc[modules].
+For specific problem solving, we recommend the xref:howto:index.adoc[Howto] and https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/raddb/sites-available/tls[TLS Config] and https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/raddb/sites-available/README[Virtual Server] guides. These guides give instructions for reaching high-level goals, or for configuring and testing individual https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/raddb/mods-available/README.rst[modules].
 
-There is also xref:developers:index.adoc[developer documentation]. This section
+There is also xref:developers:index.adoc[Developers]documentation. This section
 documents the APIs for developers. Most people can ignore it.
 
 == Debugging
@@ -115,8 +110,8 @@ debug output. In many cases, those messages describe exactly what is
 going wrong, and how to fix it.
 
 For further details, about the debug output see the
-http://wiki.freeradius.org/radiusd-X[radiusd-X, window="_blank"] page on the
-http://wiki.freeradius.org[wiki, window="_blank"].
+refer to the https://www.freeradius.org/documentation/freeradius-server/3.2.8/radiusd_x.html[debug output] page on the
+http://www.freeradius.org[freeradius org] website.
 
 == Getting Help
 
@@ -129,9 +124,9 @@ https://github.com/FreeRADIUS/freeradius-server/[GitHub, window="_blank"], quest
 posted there will not be answered.
 
 Before posting to the list, please read the
-http://wiki.freeradius.org/list-help[list help, window="_blank"] page. That page explains
+https://www.freeradius.org/documentation/freeradius-server/3.2.8/radiusd_x.html[debugging] page. That page explains
 how to run the server in debugging mode; how to understand the debug
 output; and what information to post to the list.
 
 Commercial support for FreeRADIUS is available from
-https://networkradius.com/freeradius-support/[Network RADIUS, window="_blank"].
+https://packages.inkbridgenetworks.com/[InkBridge Networks].
