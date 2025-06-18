@@ -1,0 +1,4 @@
+[WARNING]
+====
+Some of the following information on this page is located on other external sites. You may be redirected to https://github.com/FreeRADIUS[FreeRADIUS Project] Github or the https://github.com/FreeRADIUS[FreeRADIUS] website.
+====

@@ -12,6 +12,8 @@ read the "known good" password from LDAP, and then use that
 information to authenticate the user.  It is almost always wrong to
 use the LDAP "bind as user" method for authenticating users.
 
+include::ROOT:partial$externaldoc.adoc[]
+
 The only caveat to the above recommendation is Active Directory.  For
 "security" reasons, Active Directory will not return the "known good"
 password to FreeRADIUS over a standard LDAP query.  Therefore when
@@ -20,8 +22,8 @@ Active Directory is used, the choices are:
 PAP::
 Use "bind as user"
 
-MS-CHAP::
-Use xref:raddb:mods-available/ntlm_auth.adoc[`ntlm`] or xref:raddb:mods-available/winbind.adoc[`winbind`].
+https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/raddb/mods-available/mschap[MS-CHAP::]
+Use https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/raddb/mods-available/ntlm_auth[`ntlm`] and https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/raddb/mods-available/mschap[`winbind`] configuration.
 
 Due to the limitations of Active Directory, There are unfortunately no
 other possible choices.
@@ -32,11 +34,11 @@ The credentials (username *and* password) for FreeRADIUS to use to
 connect to your LDAP server(s) should be secure.  We make the
 following recommendations for LDAP "best practices" security.
 
-* Create a dedicated account for use by FreeRADIUS
+* Create a dedicated account for use by FreeRADIUS.
 
-* Ensure that this account does not have administrator access
+* Ensure that this account does not have administrator access.
 
-* Ensure that this account is read-only, and has no write permissions
+* Ensure that this account is read-only, and has no write permissions.
 
 * Start by using 'simple authentication' instead of
   https://en.wikipedia.org/wiki/Simple_Authentication_and_Security_Layer[SASL].
@@ -44,7 +46,7 @@ following recommendations for LDAP "best practices" security.
   authentication' has been verified to work.
 
 * Use TLS for connecting between FreeRADIUS and the LDAP server.  See
-  the `tls` sub-section of the default `ldap` module for instructions
+  the `tls` sub-section of the default `ldap` module for instructions.
 
 * When storing RADIUS user profiles (quotas, `Simultaneous-Use` flags,
   access time restrictions, etc) in LDAP, the LDAP schema
@@ -58,7 +60,7 @@ methods.  Note that we say _compatible_, and not _supports_.  LDAP
 servers are databases, and do not support authentication protocols
 such as CHAP, MS-CHAP, or EAP.
 
-PAP::
+https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/raddb/mods-available/pap[PAP::]
 The user supplies a `User-Password` (plaintext or EAP-TTLS/PAP)
 +
 FreeRADIUS reads the "known good" password from LDAP, and compares
@@ -71,13 +73,13 @@ FreeRADIUS uses that password to "bind as the user" to LDAP, using the
 supplied `User-Name` and `User-Password.  If the bind is successfull,
 the user is authenticated.  Otherwise, authentication fails.
 
-CHAP::
+https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/raddb/mods-available/chap[CHAP::]
 The user supplies a `CHAP` password attribute.
 +
 FreeRADIUS reads the "known good" password from LDAP in cleartext, and
 compares that to what the user entered.
 
-MS-CHAP::
+https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/raddb/mods-available/mschap[MS-CHAP::]
 The user supplies a `MS-CHAP` password attribute.  Either as
 MS-CHAPv2, or as PEAP/MSCHAPv2, or as EAP-TTLS/MS-CHAPv2.
 +
@@ -94,7 +96,7 @@ involves giving the FreeRADIUS "read-only" user permission to read the
 `userPassword` field.
 
 Again, the best method is to test authentication is with the
-xref:howto:modules/ldap/ldapsearch/index.adoc[ldapsearch] tool.
+https://www.freeradius.org/documentation/freeradius-server/4.0.0/howto/modules/ldap/ldapsearch/index.html[ldapsearch] tool.
 These tests *must* be run prior to configuring FreeRADIUS.  We strongly
 recommend having the LDAP database return the `userPassword` field to
 FreeRADIUS, so that FreeRADIUS can authenticate the user.
@@ -109,9 +111,9 @@ more detail.
 If the `userPassword` field is returned from LDAP to FreeRADIUS, that
 information can be stored in a number of different formats:
 
-* the value can be cleartext
-* the value can be prepended with a string enclosed by braces, such as with `{crypt}` or `{ssha3}`.
-* the value can be have a suffix of `::`, in which case the password is generally a https://en.wikipedia.org/wiki/Base64[base64] encoded version of the real password
+* The value can be cleartext.
+* The value can be prepended with a string enclosed by braces, such as with `{crypt}` or `{ssha3}`.
+* The value can be have a suffix of `::`, in which case the password is generally a https://en.wikipedia.org/wiki/Base64[base64] encoded version of the real password.
 
 TIP: Base64 values can be decoded via the command: `printf "%s"
 "VALUE" | base64 -d`
@@ -121,7 +123,7 @@ formats.  There is sufficient information in the password values to
 determine what format it is in (base64, binary, or text), and what
 password "encryption" mechanism has been used (crypt, MD5, SHA, SSHA2,
 SHA3, etc).  All that is necessary is that the
-xref:raddb:mods-available/ldap.adoc[ldap module] be configured to map
+https://github.com/FreeRADIUS/freeradius-server/tree/v3.2.x/raddb/mods-available/ldap[ldap module] be configured to map
 the `userPassword` LDAP field to the `&control.Password.With-Header`
 attribute in FreeRADIUS.  FreeRADIUS will then "do the right thing" to
 authenticate the user.
@@ -129,7 +131,7 @@ authenticate the user.
 This mapping is done in the default module configuration.  There are
 no additional changes required for FreeRADIUS to correctly read and
 decode the `userPassword` field from LDAP.  Please see the
-xref:raddb:mods-available/pap.adoc[pap module] for a full list of
+https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/raddb/mods-available/pap[pap module] for a full list of
 supported password "encryption" formats.
 
 == Additional Considerations
@@ -199,5 +201,4 @@ policies on the user accounts can still be applied even after
 integrating with RADIUS. Also, you can make use of the intruder lockout
 facility of eDirectory by logging the failed logins into eDirectory.
 
-For configuration information please refer to the Novell documentation
-https://www.netiq.com/documentation/edir_radius/
+For configuration information please refer to the https://www.netiq.com/documentation/edir_radius/[Novell documentation].
