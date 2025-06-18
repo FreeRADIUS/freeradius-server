@@ -1674,11 +1674,6 @@ typedef struct {
 	tmpl_t const		*vpt;		//!< the attribute reference
 } xlat_exists_inst_t;
 
-typedef struct {
-	bool			last_success;
-	fr_value_box_list_t	list;
-} xlat_exists_rctx_t;
-
 static xlat_arg_parser_t const xlat_func_exists_arg[] = {
 	{ .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
