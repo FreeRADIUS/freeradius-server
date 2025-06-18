@@ -158,7 +158,7 @@ static void instruction_dump(request_t *request, unlang_t const *instruction)
 	REXDENT();
 }
 
-static void actions_dump(request_t *request, unlang_t const *instruction)
+static void CC_HINT(nonnull) actions_dump(request_t *request, unlang_t const *instruction)
 {
 	char buffer[20];
 	int i;
@@ -222,8 +222,8 @@ static void frame_dump(request_t *request, unlang_stack_frame_t *frame, bool wit
 			is_return_point(frame) ? "r" : "-",
 			is_continue_point(frame) ? "c" : "-"
 			);
+		if (with_actions) actions_dump(request, frame->instruction);
 	}
-	if (with_actions) actions_dump(request, frame->instruction);
 
 	/*
 	 *	Call the custom frame dump function
