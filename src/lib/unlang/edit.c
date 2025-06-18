@@ -51,7 +51,7 @@ typedef struct {
 	tmpl_t const		*vpt;			//!< expanded tmpl
 	tmpl_t			*to_free;		//!< tmpl to free.
 	bool			create;			//!< whether we need to create the VP
-	bool			success;		//!< did the xlat succeed?
+	unlang_result_t		success;		//!< did the xlat succeed?
 	fr_pair_t		*vp;			//!< VP referenced by tmpl.
 	fr_pair_t		*vp_parent;		//!< parent of the current VP
 	fr_pair_list_t		pair_list;		//!< for structural attributes
@@ -973,7 +973,7 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 {
 	map_t const *map = current->map;
 
-	if (!current->rhs.success) {
+	if (current->rhs.success.rcode == RLM_MODULE_FAIL) {
 		if (map->rhs) {
 			RDEBUG("Failed expanding ... %s", map->rhs->name);
 		} else {
@@ -1360,7 +1360,7 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	tmpl_dcursor_ctx_t	cc;
 	fr_dcursor_t		cursor;
 
-	if (!current->lhs.success) {
+	if (current->lhs.success.rcode == RLM_MODULE_FAIL) {
 		RDEBUG("Failed expanding %s ...", map->lhs->name);
 		return -1;
 	}
@@ -1587,7 +1587,7 @@ static unlang_action_t process_edit(unlang_result_t *p_result, request_t *reques
 				XDEBUG("MAP %s ... %s", state->current->map->lhs->name, state->current->map->rhs->name);
 			}
 
-			state->current->lhs.success = state->current->rhs.success = true;
+			state->current->lhs.success.rcode = state->current->rhs.success.rcode = RLM_MODULE_OK;
 
 			rcode = state->current->func(request, state, state->current);
 			if (rcode < 0) {
