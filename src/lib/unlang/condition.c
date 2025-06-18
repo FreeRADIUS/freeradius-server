@@ -42,7 +42,7 @@ static unlang_action_t unlang_if_resume(unlang_result_t *p_result, request_t *re
 	/*
 	 *	Something in the conditional evaluation failed.
 	 */
-	if (!state->success) {
+	if (state->result.rcode == RLM_MODULE_FAIL) {
 		unlang_group_t *g = unlang_generic_to_group(frame->instruction);
 		unlang_cond_t  *gext = unlang_group_to_cond(g);
 
