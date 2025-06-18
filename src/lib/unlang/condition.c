@@ -48,7 +48,7 @@ static unlang_action_t unlang_if_resume(unlang_result_t *p_result, request_t *re
 
 		REDEBUG2("... failed to evaluate condition ...");
 
-		if (!gext->has_else) RETURN_MODULE_FAIL;
+		if (!gext->has_else) RETURN_UNLANG_FAIL;
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
