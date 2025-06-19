@@ -82,7 +82,7 @@ static int find_result_p_location(result_p_location_t *location, void **chunk, r
 
 	for (i = 0; i <= (unsigned int)stack->depth; i++) {
 		frame = &stack->frame[i];
-		if ((ptr >= (void *)frame->state) &&
+		if (frame->state && (ptr >= (void *)frame->state) &&
 		    (ptr < ((void *)((uint8_t *)frame->state + talloc_get_size(frame->state))))) {
 			*location = RESULT_P_LOCATION_STATE;
 			*chunk = frame->state;
