@@ -95,6 +95,8 @@ static void unlang_child_request_signal(request_t *request, UNUSED unlang_stack_
 		 */
 		repeatable_clear(frame);
 
+		frame->result_p = &frame->scratch_result;
+
 		/*
 		 *	Tell the parent to resume if all the request's siblings are done
 		 */
