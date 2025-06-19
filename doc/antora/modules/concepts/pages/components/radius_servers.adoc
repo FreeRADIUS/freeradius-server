@@ -1,0 +1,37 @@
+= RADIUS Server
+
+A RADIUS server is a central authority that handles authentication, authorisation, and accounting (AAA) for network access. The server receives requests from network access servers (NASs) like wireless access points or VPN concentrators and determines whether a user should be granted access based on predefined policies and data stored in a datastore.
+
+The RADIUS server is usually a software application running on a self-contained server. A physical device such as RADIUS appliances, with simplified maintenance and management interfaces, are also used. In either scenario, the server waits for a request from an NAS, processes or forwards the request, and then returns a response to the NAS. The response can contain authorisation policies or an acknowledgment of accounting data received.
+
+A single RADIUS server can receive and process many simultaneous access requests from numerous types of NASs (such as ADSL, dial-up, or VPN concentrators) in many different locations. A single server may also
+access flat files, SQL databases, LDAP directories, or other RADIUS servers. In order to make a decision regarding an access request, the RADIUS server must first use information from many sources.
+
+Once the server makes a decision, it returns a response to the NAS. The NAS may enforce the policy in that response, or it may ignore it altogether. The server is not aware if the NAS has received its response, or if the NAS is obeying the instructions in that response. Since it is customary for the NAS to log very little information about what has been received or how server responses are processed, it is very difficult to create and debug local site policies.
+
+The RADIUS server has no control over what the NAS does with a response.
+Consider the following analogy to help illustrate the point: a Human Resources (HR) department acts like a RADIUS server, by setting policies, and a security guard acts like the NAS in a network, by carrying out those HR department policies.
+
+In this example, the company policy is that when an employee is fired, HR notifies security and removes building access from that employee. The security guard is then responsible for ensuring the fired employee no longer accesses the company building. If one day an employee gets fired (similar to a user
+being denied access) and the HR department informs the security guard that the employee is no longer free to come and go (similar to the RADIUS server decision sent to the NAS), it is then up to the security guard at the company front desk to perform the task of refusing entry to the fired employee (similar to the NAS enforcing system access in a network). In the network, the NAS enforces system access. The RADIUS server does little more than offer advice to the NAS.
+
+[#policy]
+== RADIUS Server Policies
+
+The RADIUS server processes an NAS request based on the following criteria:
+
+* Contents of the NAS request.
+* Information available locally to the RADUS server (flat files, SQL, LDAP).
+
+This processing criteria limits the server ability to perform more complex authentication scenarios. The server can't negotiate with a NAS to request more information. The server uses the initial information that the NAS sends and returns either an acknowledgment or a non-acknowledgment.
+
+The RADIUS server has no control over the content of the request that the NAS sends. When the RADIUS server receives the request from the NAS, it uses local policies to decide how best to respond to the NAS request. The policies may be simple, such as “accept anyone with a correct user name and password”. More complex policies may be “allow basic users to request premium services in
+non-premium hours, except for Sundays and holidays, if their payment status is current”.
+
+In all cases, the policies must be designed, implemented, and deployed by the network administrator because policies are based on the contents of the NAS requests. Often, the NAS documentation doesn't describe the content of the NAS requests. The only way for a network administrator to determine the NAS request content is to set up a test network.
+
+Test logins will result in the receipt of requests by the server. The administrator can examine these requests to determine their content and create policies that look for those specific sets of attributes. Once
+the policy is created, the server then uses that information to make decisions.
+This process becomes more complex when different NAS elements send the same information in different formats.
+
+For example, RADIUS has no MAC address data type, which means that the MAC address is sent as ASCII strings. Some NAS elements send a MAC address in the format of “00:01:02:03:04:05”, while others use the format “00-01-02-03-04-05”. The fact that these differences are not documented makes policy creation very difficult.In most cases, the administrator has to resort to trial and error methods to determine how to implement policies.
