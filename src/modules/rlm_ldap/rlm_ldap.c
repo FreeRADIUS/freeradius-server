@@ -1795,8 +1795,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 			unlang_action_t	ret;
 
 			REPEAT_MOD_AUTHORIZE_RESUME;
-			ret = rlm_ldap_map_profile(NULL, NULL, inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
-						   inst->profile.obj_scope, call_env->default_profile.vb_strvalue, &autz_ctx->expanded);
+			ret = rlm_ldap_map_profile(NULL, NULL, inst, request, autz_ctx->ttrunk,
+						   call_env->default_profile.vb_strvalue,
+						   inst->profile.obj_scope, NULL, &autz_ctx->expanded);
 			switch (ret) {
 			case UNLANG_ACTION_FAIL:
 				p_result->rcode = RLM_MODULE_FAIL;
