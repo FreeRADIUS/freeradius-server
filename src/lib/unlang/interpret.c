@@ -1287,10 +1287,23 @@ void unlang_interpret_request_detach(request_t *request)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_interpret_t	*intp;
+	unlang_stack_frame_t	*frame;
+	int			i;
 
 	if (!fr_cond_assert(stack != NULL)) return;
 
 	if (!request_is_detachable(request)) return;
+
+	/*
+	 *	Detached requests can't send results back to the parent
+	 *	so ensure that all frames not using the section result are
+	 *	using the scratch result.
+	 */
+	for (i = stack->depth; i >= 0; i--) {
+		frame = &stack->frame[i];
+		if (frame->result_p == &frame->section_result) continue;
+		frame->result_p = &frame->scratch_result;
+	}
 
 	intp = stack->intp;
 
