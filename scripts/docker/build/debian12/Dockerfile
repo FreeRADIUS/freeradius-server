@@ -4,7 +4,7 @@
 # Rebuild this file with `make docker.debian12.regen`
 #
 ARG from=debian:bookworm
-FROM ${from} as build
+FROM ${from} AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 

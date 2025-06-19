@@ -4,7 +4,7 @@
 # Rebuild this file with `make docker.rocky10.regen`
 #
 ARG from=rockylinux/rockylinux:10
-FROM ${from} as build
+FROM ${from} AS build
 
 
 
