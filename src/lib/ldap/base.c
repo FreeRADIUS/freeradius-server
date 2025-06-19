@@ -562,17 +562,17 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 
 		FR_SBUFF_TALLOC_THREAD_LOCAL(&log_msg, 128, SIZE_MAX);
 
-		fr_sbuff_in_sprintf(log_msg, "Performing search in \"%s\"", dn);
+		(void) fr_sbuff_in_sprintf(log_msg, "Performing search in \"%s\"", dn);
 		if (filter) {
-			fr_sbuff_in_sprintf(log_msg, " with filter \"%s\"", filter);
+			(void) fr_sbuff_in_sprintf(log_msg, " with filter \"%s\"", filter);
 		} else {
-			fr_sbuff_in_strcpy_literal(log_msg, " with no filter");
+			(void) fr_sbuff_in_strcpy_literal(log_msg, " with no filter");
 		}
-		fr_sbuff_in_sprintf(log_msg, ", scope \"%s\"",
-				    fr_table_str_by_value(fr_ldap_scope, scope, "<INVALID>"));
+		(void) fr_sbuff_in_sprintf(log_msg, ", scope \"%s\"",
+					   fr_table_str_by_value(fr_ldap_scope, scope, "<INVALID>"));
 		if (attrs) {
-			fr_sbuff_in_strcpy(log_msg, ", attrs ");
-			fr_sbuff_in_array(log_msg, attrs, ", ");
+			(void) fr_sbuff_in_strcpy(log_msg, ", attrs ");
+			(void) fr_sbuff_in_array(log_msg, attrs, ", ");
 		}
 		ROPTIONAL(RDEBUG2, DEBUG2, "%s", fr_sbuff_start(log_msg));
 	}
