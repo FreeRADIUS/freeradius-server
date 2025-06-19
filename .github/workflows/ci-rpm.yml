@@ -32,7 +32,8 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",       "DIST": "rocky"  },
+              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",       "DIST": "rocky",   "VERSION": 9   },
+              { "NAME": "rocky-10", "OS": "rockylinux/rockylinux:10",      "DIST": "rocky",   "VERSION": 10  },
             ]
           }
         EOF
@@ -41,7 +42,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",       "DIST": "rocky"  }
+              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",       "DIST": "rocky",   "VERSION": 9   }
             ]
           }
         EOF
@@ -78,10 +79,9 @@ jobs:
         dnf config-manager --enable powertools || :
         dnf config-manager --enable crb || :
 
-    - name: Enable EPEL for Rocky Linux 9
-      if: ${{ matrix.env.NAME == 'rocky-9' }}
+    - name: Enable EPEL for Rocky Linux
       run: |
-        dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+        dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-${{ matrix.env.VERSION }}.noarch.rpm
 
     # For pkill
     - name: Enable procps-ng
@@ -207,10 +207,9 @@ jobs:
         dnf config-manager --enable powertools || :
         dnf config-manager --enable crb || :
 
-    - name: Enable EPEL for Rocky Linux 9
-      if: ${{ matrix.env.NAME == 'rocky-9' }}
+    - name: Enable EPEL for Rocky Linux
       run: |
-        dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+        dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-${{ matrix.env.VERSION }}.noarch.rpm
 
     # For pkill
     - name: Enable procps-ng
