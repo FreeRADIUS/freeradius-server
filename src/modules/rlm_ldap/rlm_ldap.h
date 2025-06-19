@@ -202,6 +202,7 @@ typedef struct {
 	char			*profile_value;
 	char const		*dn;
 	ldap_access_state_t	access_state;		//!< What state a user's account is in.
+	rlm_rcode_t		rcode;			//!< What rcode we'll finally respond with.
 } ldap_autz_ctx_t;
 
 /** State list for xlat evaluation of LDAP group membership

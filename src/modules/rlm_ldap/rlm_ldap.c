@@ -1781,7 +1781,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 			RDEBUG2("Processing user attributes");
 			RINDENT();
 			if (fr_ldap_map_do(request, NULL, inst->valuepair_attr,
-					   &autz_ctx->expanded, autz_ctx->entry) > 0) p_result->rcode = RLM_MODULE_UPDATED;
+					   &autz_ctx->expanded, autz_ctx->entry) > 0) autz_ctx->rcode = RLM_MODULE_UPDATED;
 			REXDENT();
 			rlm_ldap_check_reply(request, inst, autz_ctx->dlinst->name, call_env->expect_password->vb_bool, autz_ctx->ttrunk);
 		}
@@ -1816,9 +1816,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		/*
 		 *	Did we jump back her after applying the default profile?
 		 */
-		if (autz_ctx->status == LDAP_AUTZ_POST_DEFAULT_PROFILE) {
-			p_result->rcode = RLM_MODULE_UPDATED;
-		}
+		if (autz_ctx->status == LDAP_AUTZ_POST_DEFAULT_PROFILE) autz_ctx->rcode = RLM_MODULE_UPDATED;
+
 		/*
 		 *	Apply a SET of user profiles.
 		 */
@@ -1875,7 +1874,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		 */
 		if (autz_ctx->profile_value) {
 			TALLOC_FREE(autz_ctx->profile_value);
-			p_result->rcode = RLM_MODULE_UPDATED;	/* We're back here after applying a profile successfully */
+			autz_ctx->rcode = RLM_MODULE_UPDATED;	/* We're back here after applying a profile successfully */
 		}
 
 		if (autz_ctx->profile_values && autz_ctx->profile_values[autz_ctx->value_idx]) {
@@ -1900,6 +1899,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		}
 		break;
 	}
+
+	p_result->rcode = autz_ctx->rcode;
 
 finish:
 	talloc_free(autz_ctx);
@@ -1985,6 +1986,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 	autz_ctx->inst = inst;
 	autz_ctx->call_env = call_env;
 	autz_ctx->status = LDAP_AUTZ_FIND;
+	autz_ctx->rcode = RLM_MODULE_OK;
 
 	if (unlikely(unlang_module_yield(request,
 					 mod_authorize_resume,
