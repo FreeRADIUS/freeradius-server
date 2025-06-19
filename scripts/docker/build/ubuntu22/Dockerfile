@@ -4,15 +4,23 @@
 # Rebuild this file with `make docker.ubuntu22.regen`
 #
 ARG from=ubuntu:22.04
-FROM ${from} as build
+FROM ${from} AS build
+
+ARG APT_OPTS="-y --no-install-recommends"
 
 ARG DEBIAN_FRONTEND=noninteractive
 
 #
 #  Install build tools
 #
-RUN apt-get update
-RUN apt-get install -y devscripts equivs git quilt gcc curl
+RUN apt-get update \
+ && apt-get install $APT_OPTS \
+        devscripts \
+        equivs \
+        git \
+        quilt \
+        gcc \
+        curl
 
 #
 #  Set up NetworkRADIUS extras repository
@@ -57,6 +65,7 @@ RUN make -j$(nproc) deb
 #  Clean environment and run the server
 #
 FROM ${from}
+ARG APT_OPTS="-y --no-install-recommends"
 ARG DEBIAN_FRONTEND=noninteractive
 
 COPY --from=build /usr/local/src/repositories/*.deb /tmp/
@@ -65,7 +74,7 @@ COPY --from=build /usr/local/src/repositories/*.deb /tmp/
 #  We need curl to get the signing key
 #
 RUN apt-get update \
- && apt-get install -y curl \
+ && apt-get install $APT_OPTS ca-certificates curl \
  && apt-get clean \
  && rm -r /var/lib/apt/lists/*
 
@@ -85,7 +94,6 @@ RUN groupadd -g ${freerad_gid} -r freerad \
  && apt-get install -y /tmp/*.deb \
  && apt-get clean \
  && rm -r /var/lib/apt/lists/* /tmp/*.deb \
-    \
  && ln -s /etc/freeradius /etc/raddb
 
 WORKDIR /

@@ -29,7 +29,7 @@ Each directory has several dockerfiles:
 As with any Dockerfile you'll first need to build the image:
 
 ```bash
-cd scripts/docker/build-<os_name>
+cd scripts/docker/build/<os_name>
 docker build -f Dockerfile.deps -t freeradius/<os_name>-deps .
 ```
 
