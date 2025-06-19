@@ -89,6 +89,8 @@ unlang_action_t unlang_interpret_skip_to_catch(UNUSED unlang_result_t *p_result,
 			return frame_set_next(frame, unlang);
 		}
 
+		if (rcode >= RLM_MODULE_NUMCODES) continue;
+
 		c = unlang_generic_to_catch(unlang);
 		if (c->catching[rcode]) break;
 	}
