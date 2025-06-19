@@ -808,6 +808,7 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 	eap_session_t		*eap_session = talloc_get_type_abort(uctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(eap_tls_session->tls_session, fr_tls_session_t);
+	unlang_action_t		ret = UNLANG_ACTION_CALCULATE_RESULT;
 
 	switch (tls_session->result) {
 	case FR_TLS_RESULT_IN_PROGRESS:
@@ -858,9 +859,9 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 		}
 
 		/*
-		 *	Always returns UNLANG_ACTION_CALCULATE_RESULT
+		 *	Returns UNLANG_ACTION_PUSHED_CHILD unless something has failed
 		 */
-		(void) fr_tls_session_async_handshake_push(request, tls_session);
+		ret = fr_tls_session_async_handshake_push(request, tls_session);
 		if (tls_session->result != FR_TLS_RESULT_SUCCESS) {
 			REDEBUG("TLS receive handshake failed during operation");
 			fr_tls_cache_deny(request, tls_session);
@@ -908,7 +909,7 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 	eap_tls_session->state = EAP_TLS_FAIL;
 
 finish:
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return ret;
 }
 
 /** Push functions to continue the handshake asynchronously
