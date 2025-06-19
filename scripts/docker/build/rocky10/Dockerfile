@@ -6,15 +6,13 @@
 ARG from=rockylinux/rockylinux:10
 FROM ${from} AS build
 
-
+RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
 
 #
 #  Install build tools
 #
 RUN dnf groupinstall -y "Development Tools"
-
 RUN dnf install -y rpmdevtools openssl dnf-utils
-
 
 #
 #  Set up NetworkRADIUS extras repository
@@ -52,6 +50,10 @@ RUN git clean -fdxx \
 
 #  Enable EPEL repository for freetds and hiredis
 RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+
+#  Enable Code Ready Builder repo (CentOS powertools equivalent)
+RUN dnf install -y dnf-utils
+RUN dnf config-manager --enable crb
 
 #
 #  Install build dependencies
@@ -109,6 +111,9 @@ RUN rpm --import https://packages.networkradius.com/pgp/packages@networkradius.c
 #  Other requirements
 #
 
+#  Needed for mysql-libs
+RUN dnf install -y dnf-utils
+RUN dnf config-manager --enable crb
 
 #  EPEL repository for freetds and hiredis
 RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm \

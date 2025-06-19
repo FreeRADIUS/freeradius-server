@@ -14,8 +14,7 @@ RUN dnf update -y
 RUN dnf install -y rpmdevtools openssl epel-release git procps dnf-utils \
 	rsync dnf-plugins-core
 
-
-
+RUN dnf config-manager --set-enabled crb
 
 #
 #  Documentation build dependencies
@@ -67,7 +66,7 @@ WORKDIR freeradius-server
 RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[4-9]*\.[0-9x]*\.x|master)$");\
 	do \
 		git checkout $i; \
-		[ -e redhat/freeradius.spec ] && dnf builddep  -y redhat/freeradius.spec; \
+		[ -e redhat/freeradius.spec ] && dnf builddep -y redhat/freeradius.spec; \
 	done
 
 #

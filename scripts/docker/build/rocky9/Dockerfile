@@ -8,14 +8,11 @@ FROM ${from} AS build
 
 RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-9
 
-
 #
 #  Install build tools
 #
 RUN dnf groupinstall -y "Development Tools"
-
 RUN dnf install -y rpmdevtools openssl dnf-utils
-
 
 #
 #  Set up NetworkRADIUS extras repository
@@ -114,7 +111,7 @@ RUN rpm --import https://packages.networkradius.com/pgp/packages@networkradius.c
 #  Other requirements
 #
 
-#  Needed for mysql-libs on Rocky 9
+#  Needed for mysql-libs
 RUN dnf install -y dnf-utils
 RUN dnf config-manager --enable crb
 
