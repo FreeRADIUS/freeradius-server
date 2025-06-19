@@ -866,7 +866,7 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 			REDEBUG("TLS receive handshake failed during operation");
 			fr_tls_cache_deny(request, tls_session);
 			eap_tls_session->state = EAP_TLS_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			return ret;
 		}
 	}
 #endif
