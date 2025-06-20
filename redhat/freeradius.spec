@@ -331,6 +331,15 @@ BuildRequires: brotli-devel
 %description brotli
 This module adds brotli compression and decompression support to FreeRADIUS.
 
+%package ftp
+Summary: FTP support for FreeRADIUS
+Group: System Environment/Daemons
+Requires: %{name}%{?_isa} = %{version}-%{release}
+Requires: freeradius-libfreeradius-curl = %{version}
+
+%description ftp
+This plugin provides the ability to retrieve files from FTP URIs for the FreeRADIUS server project.
+
 %package imap
 Summary: IMAP support for FreeRADIUS
 Group: System Environment/Daemons
@@ -1240,6 +1249,10 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_cache_memcached.so
 %endif
+
+%files ftp
+%defattr(-,root,root)
+%{_libdir}/freeradius/rlm_ftp.so
 
 %files imap
 %defattr(-,root,root)
