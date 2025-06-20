@@ -162,7 +162,7 @@ static const call_env_method_t crl_env = {
 			}))},
 		{ FR_CALL_ENV_OFFSET("serial", FR_TYPE_STRING, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_SINGLE, rlm_crl_env_t, serial),
 					 .pair.dflt = "session-state.TLS-Certificate.Serial", .pair.dflt_quote = T_BARE_WORD },
-		{ FR_CALL_ENV_OFFSET("cdp", FR_TYPE_STRING, CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE| CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_MULTI, rlm_crl_env_t, cdp),
+		{ FR_CALL_ENV_OFFSET("cdp", FR_TYPE_STRING, CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE| CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_MULTI | CALL_ENV_FLAG_NULLABLE, rlm_crl_env_t, cdp),
 					 .pair.dflt = "session-state.TLS-Certificate.X509v3-CRL-Distribution-Points[*]", .pair.dflt_quote = T_BARE_WORD },
 		CALL_ENV_TERMINATOR
 	},
@@ -620,6 +620,8 @@ static unlang_action_t CC_HINT(nonnull) crl_by_url(unlang_result_t *p_result, mo
 	rlm_crl_rctx_t *rctx = mctx->rctx;
 	rlm_rcode_t	rcode = RLM_MODULE_NOOP;
 	crl_entry_t	*found;
+
+	if (fr_value_box_list_num_elements(env->cdp) == 0) RETURN_UNLANG_NOOP;
 
 	if (!rctx) rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), rlm_crl_rctx_t);
 	fr_value_box_list_init(&rctx->missing_crls);
