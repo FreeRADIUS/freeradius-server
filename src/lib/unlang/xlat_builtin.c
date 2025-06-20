@@ -710,6 +710,60 @@ done:
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_file_cat_args[] = {
+	{ .required = true,  .concat = true, .type = FR_TYPE_STRING,
+	  .func = filename_xlat_escape, .safe_for = FR_FILENAME_SAFE_FOR, .always_escape = true },
+	{ .required = true, .type = FR_TYPE_UINT32, .single = true },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static xlat_action_t xlat_func_file_cat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					UNUSED xlat_ctx_t const *xctx,
+					request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t	*dst, *vb, *max_size;
+	char const	*filename;
+	ssize_t		len;
+	int		fd;
+	struct stat	buf;
+	uint8_t		*buffer;
+
+	XLAT_ARGS(args, &vb, &max_size);
+	fr_assert(vb->type == FR_TYPE_STRING);
+	filename = vb->vb_strvalue;
+
+	if (stat(filename, &buf) < 0) {
+		RPERROR("Failed checking file %s - %s", filename, fr_syserror(errno));
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (buf.st_size > max_size->vb_uint32) {
+		RPERROR("File larger than specified maximum (%"PRIu64" vs %d)", buf.st_size, max_size->vb_uint32);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fd = open(filename, O_RDONLY);
+	if (fd < 0) {
+		RPERROR("Failed opening file %s - %s", filename, fr_syserror(errno));
+		return XLAT_ACTION_FAIL;
+	}
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, false));
+	fr_value_box_mem_alloc(dst, &buffer, dst, NULL, buf.st_size, true);
+
+	len = read(fd, buffer, buf.st_size);
+	if (len < 0) {
+		RPERROR("Failed reading file %s - %s", filename, fr_syserror(errno));
+		talloc_free(dst);
+		close(fd);
+		return XLAT_ACTION_FAIL;
+	}
+	close(fd);
+
+	fr_dcursor_append(out, dst);
+
+	return XLAT_ACTION_DONE;
+}
 
 static xlat_action_t xlat_func_file_rm(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
@@ -4313,6 +4367,7 @@ do { \
 	XLAT_REGISTER_ARGS("file.rm", xlat_func_file_rm, FR_TYPE_BOOL, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.size", xlat_func_file_size, FR_TYPE_UINT64, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.tail", xlat_func_file_tail, FR_TYPE_STRING, xlat_func_file_name_count_args);
+	XLAT_REGISTER_ARGS("file.cat", xlat_func_file_cat, FR_TYPE_OCTETS, xlat_func_file_cat_args);
 
 	XLAT_REGISTER_ARGS("immutable", xlat_func_immutable_attr, FR_TYPE_NULL, xlat_pair_cursor_args);
 	XLAT_NEW("pairs.immutable");

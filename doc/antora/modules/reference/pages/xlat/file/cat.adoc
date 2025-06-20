@@ -1,0 +1,22 @@
+= Cat
+
+The `cat` function returns the contents of a file.
+
+The function takes a second argument, which is the maximum number of bytes which should be returned.
+
+[#syntax]
+== Syntax
+
+`%file.cat(_string_, [ _uint32_ ])`
+
+.Return: _octets_
+
+.Returning the contents of a file
+====
+[source,unlang]
+----
+octets crl
+
+crl := %file.cat('/etc/ssl/certs/ca.crl')
+----
+====
