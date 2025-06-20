@@ -713,7 +713,7 @@ done:
 static xlat_arg_parser_t const xlat_func_file_cat_args[] = {
 	{ .required = true,  .concat = true, .type = FR_TYPE_STRING,
 	  .func = filename_xlat_escape, .safe_for = FR_FILENAME_SAFE_FOR, .always_escape = true },
-	{ .required = true, .type = FR_TYPE_UINT32, .single = true },
+	{ .required = true, .type = FR_TYPE_SIZE, .single = true },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -732,19 +732,19 @@ static xlat_action_t xlat_func_file_cat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(vb->type == FR_TYPE_STRING);
 	filename = vb->vb_strvalue;
 
-	if (stat(filename, &buf) < 0) {
+	fd = open(filename, O_RDONLY);
+	if (fd < 0) {
+		RPERROR("Failed opening file %s - %s", filename, fr_syserror(errno));
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (fstat(fd, &buf) < 0) {
 		RPERROR("Failed checking file %s - %s", filename, fr_syserror(errno));
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (buf.st_size > max_size->vb_uint32) {
-		RPERROR("File larger than specified maximum (%"PRIu64" vs %d)", buf.st_size, max_size->vb_uint32);
-		return XLAT_ACTION_FAIL;
-	}
-
-	fd = open(filename, O_RDONLY);
-	if (fd < 0) {
-		RPERROR("Failed opening file %s - %s", filename, fr_syserror(errno));
+	if ((size_t)buf.st_size > max_size->vb_size) {
+		RPERROR("File larger than specified maximum (%"PRIu64" vs %zu)", buf.st_size, max_size->vb_size);
 		return XLAT_ACTION_FAIL;
 	}
 
