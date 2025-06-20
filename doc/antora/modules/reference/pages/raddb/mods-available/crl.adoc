@@ -43,6 +43,14 @@ server details to fetch the CRL from
 
 
 
+ftp:: Expansion to use when URI scheme is ftp
+
+If any CRLs need to be retrieved by FTP GET calls
+then configure and enable the `ftp` module to
+support this.
+
+
+
 force_expiry:: Maximum time between expiring CRLs
 
 If the `nextUpdate` attribute of a CRL is closer than this interval
@@ -80,6 +88,7 @@ crl {
 		dynamic {
 			http = %rest('GET', "%uri.safe(%{CRL.CDP-URL})")
 #			ldap = %ldap(%ldap.uri.safe("%{CRL.CDP-URL}"))
+#			ftp = %ftp.get(%uri.safe("%{CRL.CDP-URL}"))
 		}
 	}
 #	force_expiry = 7d

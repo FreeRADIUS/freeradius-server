@@ -131,6 +131,7 @@ fr_dict_attr_autoload_t rlm_crl_dict_attr[] = {
 typedef struct {
 	tmpl_t				*http_exp;			//!< The xlat expansion used to retrieve the CRL via http://
 	tmpl_t				*ldap_exp;			//!< The xlat expansion used to retrieve the CRL via ldap://
+	tmpl_t				*ftp_exp;			//!< The xlat expansion used to retrieve the CRL via ftp://
 	fr_value_box_t			serial;				//!< The serial to check
 	fr_value_box_list_head_t	*cdp; 				//!< The CRL distribution points
 } rlm_crl_env_t;
@@ -154,6 +155,7 @@ static const call_env_method_t crl_env = {
 				((call_env_parser_t[]) {
 					{ FR_CALL_ENV_PARSE_ONLY_OFFSET("http", FR_TYPE_OCTETS, CALL_ENV_FLAG_REQUIRED, rlm_crl_env_t, http_exp )},
 					{ FR_CALL_ENV_PARSE_ONLY_OFFSET("ldap", FR_TYPE_OCTETS, CALL_ENV_FLAG_NONE, rlm_crl_env_t, ldap_exp )},
+					{ FR_CALL_ENV_PARSE_ONLY_OFFSET("ftp", FR_TYPE_OCTETS, CALL_ENV_FLAG_NONE, rlm_crl_env_t, ftp_exp )},
 					CALL_ENV_TERMINATOR
 				}))},
 				CALL_ENV_TERMINATOR
@@ -454,6 +456,12 @@ static int crl_tmpl_yield(request_t *request, rlm_crl_env_t *env, rlm_crl_rctx_t
 			return 0;
 		}
 		vpt = env->ldap_exp;
+	} else if (strncmp(rctx->cdp_url->vb_strvalue, "ftp", 3) == 0) {
+		if (!env->ftp_exp) {
+			RWARN("CRL URI %pV requires FTP, but the crl module ftp expansion is not configured", rctx->cdp_url);
+			return 0;
+		}
+		vpt = env->ftp_exp;
 	} else {
 		RERROR("Unsupported URI scheme in CRL URI %pV", rctx->cdp_url);
 		return -1;

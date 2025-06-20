@@ -49,6 +49,15 @@ crl {
 			#  server details to fetch the CRL from
 			#
 #			ldap = %ldap(%ldap.uri.safe("%{CRL.CDP-URL}"))
+
+			#
+			#  ftp:: Expansion to use when URI scheme is ftp
+			#
+			#  If any CRLs need to be retrieved by FTP GET calls
+			#  then configure and enable the `ftp` module to
+			#  support this.
+			#
+#			ftp = %ftp.get(%uri.safe("%{CRL.CDP-URL}"))
 		}
 	}
 
