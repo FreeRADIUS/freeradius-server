@@ -197,7 +197,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_
 		 */
 		packet->dst_ipaddr = home->ipaddr;
 		packet->dst_port = home->port;
-		memset(&packet->src_ipaddr, 0, sizeof(packet->src_ipaddr));
+		packet->src_ipaddr = home->src_ipaddr;
 		packet->src_port = 0;
 
 		/*
