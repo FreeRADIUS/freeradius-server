@@ -530,10 +530,10 @@ unexpected:
 	 */
 	if (status) {
 		if (status == EAP_TEAP_TLV_RESULT_FAILURE) {
-			if (!error) {
+			if (error) {
 				REDEBUG("Phase 2: Received Result TLV from peer which indicates failure with error %u.  Rejecting request.", error);
 			} else {
-				REDEBUG("Phase 2: Received Result from peer which indicates failure.  Rejecting request.");
+				REDEBUG("Phase 2: Received Result TLV from peer which indicates failure.  Rejecting request.");
 			}
 			return 0;
 		}
