@@ -1,54 +1,71 @@
 = Documentation Guidelines
 
-What we want to present to our readers is a set of documentation that has the same look and feel throughout the entire documentation. This includes matching the same 'look and feel' as what the readers get on the corporate website or within the source docs.
+What we want to present to our readers is a set of documentation that has the same look and feel throughout the entire documentation. This includes matching the same 'look and feel' to what the readers get on the corporate website or within the source docs.
 
 == InkBridge Style Guide
 
 The CSS files manages the base settings of fonts, colours, layout etc. Changes can be made in the file when global changes are required.
-Headers/footers handled by separate files and used to update the branding and relevant info.
+Headers/footers are handled by separate files and used to update the branding and relevant info.
 
 === Accessibility
 
+Accessible documents ensures equal information access for everyone and improves the user experience. Accessible design benefits all users by making information clearer and easier to understand. This means making documents usable by assistive technologies and navigable for all users.
+
 Ensure information is accessible (tables, lists) and annotated correctly.
-Diagrams/Table require titles (future work) and some call-outs (i.e. Architecture diagram).
+Diagrams/Table require titles and some call-outs where required. (i.e. Architecture diagram). Other suggestions are outlined in this document that include fonts, spacing, headings, etc.
 
 === Capitalization
 
 The TOC is Title Case.
-Title Case on titles and top level subsection titles (H1 and H2 levels). The navigation panels will render
-All other headings (H3-6) are Sentence case to.
+Title Case on titles and top level subsection titles (H1 and H2 levels).
+The navigation panels should render the same title heading (H1/H2) as the selected page(s).
+All other headings (H3-6) are Sentence case.
 
 === Font
+
+Use a clear font that legible on-screen and large enough so it's easy to read (accessible). Generally a non-serif font is best for screens and works in PDFs (if required)
 
 It's advisable to remove CAPS BECAUSE IT SEEMS LIKE WE’RE ALWAYS YELLING AT OUR READERS - use bold to emphasize or italics (sparingly). Use CAPS for all acronyms such as TCP/IP, EAP etc.
 
 === Formatting
 
-Try to use *bold* to emphasize the information  the italics with bold - less brain context switching to decipher italic.
+Try to use *bold* to emphasize the information rather than italics; there's  less brain "context switching" to decipher the fonts bold versus italic.
 All programming snippets must be formatted as `code` or `code blocks`.
+
+Code blocks using source such as ruby, html, shell (zsh, bash) colourises the text. Since there are so many sources, we've opted to remove them and keep text in the `code` or `code block` black.
 
 === Grammar
 
-Use simple words (less than 5-6 syllables).
-Shorten sentences or break into 2 sentences to ensure conciseness. See style guides below for more details.
+Use simple words (less than 5-6 syllables). Substitute/remove formal words not recommended for software docs. Check <<terms>> section for more information on recommended words and terms.
+Shorten sentences or break into 2 sentences to ensure conciseness.
 
 === Landing Pages
 
-All landing pages (H1 top level sections) need introductory paragraph and explanation of what each section contains.
+All landing pages (H1 top level sections) need introductory paragraph and explanation of what the section contains.
 
 Add xrefs to all the subsections contained in theis section on the top level landing page. Users can select a topic from main page while reading or use the navigation panel on left side.
 
-Ensure all pages are left-justified (irregular right edge)
+=== Layout
+
+Ensure all pages are left-justified (irregular right edge) makes the document more accessible and increases readability. Avoid centre-justification.
+
+CSS files control the margins and page size.
 
 === Localization
 
 Remove as many gerunds (words ending in *ing*) as possible - english doesn't translate the words easily and these verbs are confusing to readers who's first language is not english.
 
-Check convoluted text or run-on sentencces with xref:https://hemingwayapp.com/[Hemingway] or xref:https://app.grammarly.com/[Grammarly] editors. The reading level needs to be Grade 9 to ensure that the document is readable, and every user (stupid or not) can understand what they're reading on the first pass.
+Check convoluted text or run-on sentencces with xref:https://hemingwayapp.com/[Hemingway] or xref:https://app.grammarly.com/[Grammarly] editors. The reading level needs to be Grade 9 to ensure that the document is readable, and every user (limited inteliigence or not) can understand what they're reading on the first pass.
 
 === Numbers
 
-Numbers like 1,2,3,...up 9 are written as words. Numbers starting at 10+  are written out in numerals. This is *not* to `code` or `coding blocks`.
+Numbers like 1,2,3,...up 9 are written as words.
+Numbers starting at 10+  are written out in numerals.
+
+[NOTE]
+====
+This is *not* applicable for `code` or `coding blocks`. These numbers need to stay in their native formats.
+====
 Decimals numbers need to only be 2 significant digits.
 
 See xref:https://procomm.ieee.org/using-numbers-in-technical-documents-2/[IEEE expressing numbers] in documentation for more guidance.
@@ -62,14 +79,14 @@ Use ordered list for tasks or steps.
 
 === Spacing 
 
-All Headings all have a line space after them before the first paragraph.
-H1, H2, H3 headings need 2 line breaks before the following paragraph - TO DO the CSS file and update heading spacing as a global change.
+All Headings have a line space after them before the first paragraph.
+H1 and H2 headings need 2 line breaks before the following paragraph - TO DO the CSS file and update heading spacing as a global change.
 Spacing of 1 line between paragraphs. 
 Only one space at the end of a sentence is required.
 
 === Spelling
 
-International English - z is used instead of s in words like authorization vs authorization.  By matching/spelling our words as the same supporting docs like RFCs, websites, and the software, our readers' comphrehension. The reader's not trying to decode what terms are the same or if 2 terms spelt differently mean the same thing such as  authorise versus authorize.
+International English - s is used instead of z in words like authorisation vs authorization.  By matching/spelling our words the same as supporting docs, e.g. company website or FR software, our readers' comphrehension increases. The reader isn't decoding what terms are if splet the same, or if 2 terms spelt differently mean the same thing. An example is authorise versus authorize.
 
 === Tables
 
@@ -77,21 +94,15 @@ Put information in tables where applicable to increase readability / scanning. U
 
 === Tone
 
-Friendly and informal* for users that need to feel comfortable when accessing information. The informal tone allows the use of contractions.
+*Friendly* and *informal* for users that need to feel comfortable when accessing information. The informal tone allows the use of contractions.
 
 Remove all slang terms, remove rhetorical questions. Replace humongous words with smaller easily translated items. Check other style guides (Chicago/Google/Apple/Microsoft) for anything else not covered by this page.
-MS Tips is a good reference for technical documentation and localization.
+https://learn.microsoft.com/en-us/style-guide/global-communications/writing-tips[MS Tips] is a good reference for technical documentation and localization.
 
 === Xrefs
 
 RFCs need to be x-ref’d and no dash between RFC and xxxx digits. For example,
 xref:https://datatracker.ietf.org/doc/html/rfc2865[RFC 2345]
-
-== Terminology
-
-The following tables indicate what are good or bad terms to use in our  documentation (developer doc-in-code or customer-facing).
-
-include::partial$terminology.adoc[]
 
 == Recommendations
 
@@ -107,3 +118,22 @@ Use the built in functions and templates from ascidoc to standardize output rend
 
 Add partials for any chunk repeated more that twice throughout the docs Some examples are the mailing and RFC lists that are repeated multiple time throughout the doc.
 Any diagram or image that is required in more than one place needs to be placed in a partials directory.
+
+[#terms]
+== Terminology
+
+International English, or Global English, is the standard form of English used for global communication. Using global english prioritizes clarity and simplicity for non-native speakers in international contexts. Seamless communication between speakers from diverse linguistic backgrounds are possible.
+
+To ensure effective communication, consider the following:
+
+* Simplify language and avoid complex constructions.
+
+* Write for translation, simpler words are easy to localize and understand.
+
+* Use clear, short sentences and avoid ambiguous language.
+
+* Try using standard expressions and avoid phrasal verbs, gerunds, and colloquialisms.
+
+* Standardize dates, phone numbers, and addresses. 
+
+include::partial$terminology.adoc[]
