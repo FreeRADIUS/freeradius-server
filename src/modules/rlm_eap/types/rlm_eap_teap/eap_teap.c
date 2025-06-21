@@ -300,6 +300,20 @@ static void eap_teap_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 	RANDFILL(cbb->binding.nonce);
 	cbb->binding.nonce[sizeof(cbb->binding.nonce) - 1] &= ~0x01; /* RFC 7170, Section 4.2.13 */
 
+	/*
+	 *	RFC7170bis:
+	 *
+	 *	> The Nonce field is 32 octets.  It contains a 256-bit nonce that is
+	 *	> temporally unique, used for Compound-MAC key derivation at each
+	 *	> end.  The nonce in a request MUST have its least significant bit
+	 *	> set to zero (0), and the nonce in a response MUST have the same
+	 *	> value as the request nonce except the least significant bit MUST
+	 *	> be set to one (1).
+	 *
+	 *	Uh.... it looks like we don't do this?  The Nonce
+	 *	field is actually not used for anything in RFC7170, either.
+	 */
+
 	outer_tlvs = &cbb->outer_tlvs[0];
 
 	if (tls_session->outer_tlvs_octets_server) {
