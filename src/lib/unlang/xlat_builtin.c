@@ -740,12 +740,14 @@ static xlat_action_t xlat_func_file_cat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	if (fstat(fd, &buf) < 0) {
 		RPERROR("Failed checking file %s - %s", filename, fr_syserror(errno));
+	fail:
+		close(fd);
 		return XLAT_ACTION_FAIL;
 	}
 
 	if ((size_t)buf.st_size > max_size->vb_size) {
 		RPERROR("File larger than specified maximum (%"PRIu64" vs %zu)", buf.st_size, max_size->vb_size);
-		return XLAT_ACTION_FAIL;
+		goto fail;
 	}
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, false));
@@ -755,8 +757,7 @@ static xlat_action_t xlat_func_file_cat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (len < 0) {
 		RPERROR("Failed reading file %s - %s", filename, fr_syserror(errno));
 		talloc_free(dst);
-		close(fd);
-		return XLAT_ACTION_FAIL;
+		goto fail;
 	}
 	close(fd);
 
