@@ -110,7 +110,7 @@ $(OUTPUT)/%: $(DIR)/%.unlang $(TEST_BIN_DIR)/unit_test_module | build.raddb
 	@echo "MODULE-TEST $(TEST)"
 	${Q}mkdir -p $(dir $@)
 	${Q}cp $(if $(wildcard $(basename $<).attrs),$(basename $<).attrs,src/tests/modules/default-input.attrs) $@.attrs
-	${Q}if ! MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< TEST="$(TEST)" $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xxx > "$@.log" 2>&1 || ! test -f "$@"; then \
+	${Q}if ! MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< TEST="$(TEST)" OUTPUT_DIR=$(dir $@) $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xxx > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			if grep 'LeakSanitizer has encountered a fatal error' $@.log 2>&1 > /dev/null; then \
 				echo "MODULE-TEST $(TEST) - ignoring LeakSanitizer fatal error."; \
@@ -118,7 +118,7 @@ $(OUTPUT)/%: $(DIR)/%.unlang $(TEST_BIN_DIR)/unit_test_module | build.raddb
 			fi; \
 			cat "$@.log"; \
 			echo "# $@.log"; \
-			echo "MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
+			echo "MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< OUTPUT_DIR=$(dir $@) $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
 			exit 1; \
 		fi; \
 		FOUND=$$(grep -E 'Error : $<' $@.log | head -1 | sed 's/.*\[//;s/\].*//'); \
@@ -126,7 +126,7 @@ $(OUTPUT)/%: $(DIR)/%.unlang $(TEST_BIN_DIR)/unit_test_module | build.raddb
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat "$@.log"; \
 			echo "# $@.log"; \
-			echo "MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
+			echo "MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< OUTPUT_DIR=$(dir $@) $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
 			exit 1; \
 		else \
 			touch "$@"; \
