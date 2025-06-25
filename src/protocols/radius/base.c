@@ -556,11 +556,32 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		goto finish;
 	}
 
-	/*
-	 *	Message-Authenticator is required in Status-Server
-	 *	packets, otherwise they can be trivially forged.
-	 */
-	if (packet[0] == FR_RADIUS_CODE_STATUS_SERVER) require_message_authenticator = true;
+	switch (packet[0]) {
+		/*
+		 *	Message-Authenticator is required in Status-Server
+		 *	packets, otherwise they can be trivially forged.
+		 */
+	case FR_RADIUS_CODE_STATUS_SERVER:
+		require_message_authenticator = true;
+		break;
+
+		/*
+		 *	Message-Authenticator may or may not be
+		 *	required for Access-* packets.
+		 */
+	case FR_RADIUS_CODE_ACCESS_REQUEST:
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_ACCESS_REJECT:
+		break;
+
+		/*
+		 *	Message-Authenticator is not required for all other packets.
+		 */
+	default:
+		require_message_authenticator = false;
+		break;
+	}
 
 	/*
 	 *	Repeat the length checks.  This time, instead of
