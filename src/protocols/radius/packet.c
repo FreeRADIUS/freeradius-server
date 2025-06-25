@@ -43,7 +43,7 @@ typedef struct {
 /*
  *	Some messages get printed out only in debugging mode.
  */
-#define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf_push
+#define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf
 
 
 /** Encode a packet
