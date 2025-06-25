@@ -134,6 +134,7 @@ typedef struct {
 
 	CONF_SECTION	*parent;		//!< which started this file
 	CONF_SECTION	*current;		//!< sub-section we're reading
+	CONF_SECTION   	*at_reference;		//!< was this thing an @foo ?
 
 	int		braces;
 	bool		from_dir;		//!< this file was read from $include foo/
@@ -2179,7 +2180,12 @@ static int parse_input(cf_stack_t *stack)
 		 */
 		if (!cf_template_merge(parent, parent->template)) return -1;
 
-		frame->current = cf_item_to_section(parent->item.parent);
+		if (frame->at_reference) {
+			frame->current = frame->at_reference;
+			frame->at_reference = NULL;
+		} else {
+			frame->current = cf_item_to_section(parent->item.parent);
+		}
 
 		ptr++;
 		stack->ptr = ptr;
@@ -2461,8 +2467,90 @@ check_for_eol:
 alloc_section:
 	parent->allow_locals = false;
 
-	css = cf_section_alloc(parent, parent, buff[1], value);
+	/*
+	 *	@policy foo { ...}
+	 *
+	 *	Means "add foo to the policy section".  And if
+	 *	policy{} doesn't exist, create it, and then mark up
+	 *	policy{} with a flag "we need to merge it", so that
+	 *	when we read the actual policy{}, we merge the
+	 *	contents together, instead of creating a second
+	 *	policy{}.
+	 *
+	 *	@todo - allow for '.' in @.ref  Or at least test it. :(
+	 *
+	 *	@todo - allow for two section names @ref foo bar {...}
+	 *
+	 *	@todo - maybe we can use this to overload things in
+	 *	virtual servers, and in modules?
+	 */
+	if (buff[1][0] == '@') {
+		CONF_ITEM *ci;
+		CONF_SECTION *root;
+		char const *name = &buff[1][1];
+
+		if (!value) {
+			ERROR("%s[%d]: Missing section name for reference", frame->filename, frame->lineno);
+			return -1;
+		}
+
+		root = cf_root(parent);
+
+		ci = cf_reference_item(root, parent, name);
+		if (!ci) {
+			if (name[1] == '.') {
+				PERROR("%s[%d]: Failed finding reference \"%s\"", frame->filename, frame->lineno, name);
+				return -1;
+			}
+
+			css = cf_section_alloc(root, root, name, NULL);
+			if (!css) goto oom;
+
+			cf_filename_set(css, frame->filename);
+			cf_lineno_set(css, frame->lineno);
+			css->name2_quote = name2_token;
+			css->unlang = CF_UNLANG_NONE;
+			css->allow_locals = false;
+			css->at_reference = true;
+			parent = css;
+
+			/*
+			 *	Copy this code from below. :(
+			 */
+			if (cf_item_to_section(parent->item.parent) == root) {
+				if (strcmp(css->name1, "server") == 0) css->unlang = CF_UNLANG_SERVER;
+				if (strcmp(css->name1, "policy") == 0) css->unlang = CF_UNLANG_POLICY;
+				if (strcmp(css->name1, "modules") == 0) css->unlang = CF_UNLANG_MODULES;
+				if (strcmp(css->name1, "templates") == 0) css->unlang = CF_UNLANG_CAN_HAVE_UPDATE;
+			}
+
+		} else {
+			if (!cf_item_is_section(ci)) {
+				ERROR("%s[%d]: Reference \"%s\" is not a section", frame->filename, frame->lineno, name);
+				return -1;
+			}
+		}
+
+		frame->at_reference = frame->current;
+		name2_token = T_BARE_WORD;
+
+		css = cf_section_alloc(parent, parent, value, NULL);
+	} else {
+		/*
+		 *	Check if there's already an auto-created
+		 *	section of this name.  If so, just use that
+		 *	section instead of allocating a new one.
+		 */
+		css = cf_section_find(parent, buff[1], value);
+		if (css && css->at_reference) {
+			css->at_reference = false;
+		} else {
+			css = cf_section_alloc(parent, parent, buff[1], value);
+		}
+	}
+
 	if (!css) {
+	oom:
 		ERROR("%s[%d]: Failed allocating memory for section",
 		      frame->filename, frame->lineno);
 		return -1;
