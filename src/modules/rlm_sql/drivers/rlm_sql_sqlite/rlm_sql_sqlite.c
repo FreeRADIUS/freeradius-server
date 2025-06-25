@@ -642,6 +642,12 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 		return;
 	}
 
+	/*
+	 *	Set the query status to > 0 so that freeing the query_ctx
+	 *	will tidy up correctly.
+	 */
+	query_ctx->status = SQL_QUERY_SUBMITTED;
+
 	if (query_ctx->type == SQL_QUERY_OTHER) {
 		status = sqlite3_step(sql_conn->statement);
 		query_ctx->rcode = sql_check_error(sql_conn->db, status);
