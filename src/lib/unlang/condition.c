@@ -46,7 +46,7 @@ static unlang_action_t unlang_if_resume(unlang_result_t *p_result, request_t *re
 		unlang_group_t *g = unlang_generic_to_group(frame->instruction);
 		unlang_cond_t  *gext = unlang_group_to_cond(g);
 
-		REDEBUG2("... failed to evaluate condition ...");
+		RDEBUG2("... failed to evaluate condition ...");
 
 		if (!gext->has_else) RETURN_UNLANG_FAIL;
 		return UNLANG_ACTION_EXECUTE_NEXT;
