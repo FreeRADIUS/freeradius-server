@@ -24,23 +24,9 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/pair.h>
-#include <freeradius-devel/util/value.h>
-#include <freeradius-devel/util/time.h>
-#include <freeradius-devel/util/rb.h>
-#include <freeradius-devel/util/timer.h>
-
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/rcode.h>
-#include <freeradius-devel/server/signal.h>
-#include <freeradius-devel/server/pair.h>
-#include <freeradius-devel/server/log.h>
-
 #include <freeradius-devel/unlang/call_env.h>
-#include <freeradius-devel/unlang/action.h>
-#include <freeradius-devel/unlang/interpret.h>
-#include <freeradius-devel/unlang/module.h>
 
 #include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/tls/utils.h>
