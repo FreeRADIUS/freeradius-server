@@ -399,7 +399,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 		talloc_free(c);
 		return CONNECTION_STATE_FAILED;
 	}
-	status = sqlite3_busy_timeout(c->db, fr_time_delta_to_sec(config->query_timeout));
+	status = sqlite3_busy_timeout(c->db, fr_time_delta_to_msec(config->query_timeout));
 	if (sql_check_error(c->db, status) != RLM_SQL_OK) {
 		sql_print_error(c->db, status, "Failed setting busy timeout");
 		goto error;
