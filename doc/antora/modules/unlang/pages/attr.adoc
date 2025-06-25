@@ -1,9 +1,15 @@
 = &Attribute References
 
+Attributes may be referenced via the following syntax:
+
 .Syntax
 [source,unlang]
 ----
-[&]Attribute-Name
+&Attribute-Name
+&Attribute-Name:TAG
+&Attribute-Name[NUM]
+&<list>:Attribute-Name
+&<list>:Attribute-Name:TAG[NUM]
 ----
 
 The `&Attribute-Name` operator returns a reference to the named
@@ -39,6 +45,9 @@ looks in the input packet list for the named attribute.
 
 == Array References
 
+Finding a particular attribute from multiple instances can be done via
+an array reference.
+
 .Syntax
 [source,unlang]
 ----
@@ -58,10 +67,33 @@ etc.
 &reply:NAS-IP-Address[2]
 ----
 
+== Other Array indexes
+
+The array syntax can be used for a few special cases, too.
+
+.Syntax
+[source,unlang]
+----
+&Attribute-Name[#]
+&Attribute-Name[*]
+&Attribute-Name[n]
+----
+
+These extra fields have the following definitions:
+
+`#`::
+Returns an integer which is the number of instances of this attribute.
+
+`*`::
+Returns all of the instances of the given attribute.  This syntax can only be used in a xref:xlat/index.adoc[string expansion].  It will return all of the values of the attribute, separated by commas.
+
+`n`::
+Returns the last instance of the given attribute.
+
 == Removing ambuguity from the configuration files
 
-The server does not use the `&` character to distinguish attribute names
-from other strings.  
+In most cases, the server uses the `&` character to distinguish
+attribute names from other strings.
 
 Without the `&`, it is more difficult to parse the configuration file
 clearly. You could interpret a string as `hello-there`
@@ -73,5 +105,5 @@ now easily distinguishable from literal strings.  The use of the leading
 `&` character is highly recommended.
 
 
-// Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.
