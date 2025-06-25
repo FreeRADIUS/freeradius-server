@@ -644,7 +644,11 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 	if (query_ctx->type == SQL_QUERY_OTHER) {
 		status = sqlite3_step(sql_conn->statement);
 		query_ctx->rcode = sql_check_error(sql_conn->db, status);
-		if (query_ctx->rcode == RLM_SQL_ERROR) goto error;
+		if (query_ctx->rcode == RLM_SQL_ERROR) {
+			(void) sqlite3_finalize(sql_conn->statement);
+			sql_conn->statement = NULL;
+			goto error;
+		}
 	}
 
 	trunk_request_signal_reapable(treq);
