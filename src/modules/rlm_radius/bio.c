@@ -545,6 +545,9 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	DEBUG3("Encoded packet");
 	HEXDUMP3(u->packet, u->packet_len, NULL);
 
+	fr_assert(u->packet != NULL);
+	fr_assert(u->packet_len >= RADIUS_HEADER_LENGTH);
+
 	slen = fr_bio_write(h->bio.write, NULL, u->packet, u->packet_len);
 
 	if (slen == fr_bio_error(IO_WOULD_BLOCK)) goto blocked;
@@ -1583,6 +1586,9 @@ static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h
 	packet_len = u->packet_len;
 
 do_write:
+	fr_assert(packet != NULL);
+	fr_assert(packet_len >= RADIUS_HEADER_LENGTH);
+
 	slen = fr_bio_write(h->bio.write, NULL, packet, packet_len);
 
 	/*
