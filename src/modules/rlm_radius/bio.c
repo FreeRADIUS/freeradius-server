@@ -663,7 +663,7 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
 		return FR_BIO_VERIFY_WANT_MORE;
 	}
 
-#define REQUIRE_MA(_h) (((_h)->ctx.inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) || (_h)->ctx.inst->received_message_authenticator)
+#define REQUIRE_MA(_h) (((_h)->ctx.inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) || *(_h)->ctx.inst->received_message_authenticator)
 
 	/*
 	 *	See if we need to discard the packet.
