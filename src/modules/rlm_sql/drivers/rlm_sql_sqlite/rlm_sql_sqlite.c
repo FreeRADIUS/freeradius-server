@@ -96,6 +96,7 @@ static sql_rcode_t sql_error_to_rcode(int status)
 	case SQLITE_FULL:
 	case SQLITE_MISMATCH:
 	case SQLITE_BUSY:	/* Can be caused by database locking */
+	WARN("SQLite reported error %d: %s", status, sqlite3_errstr(status));
 		return RLM_SQL_ERROR;
 
 	/*
