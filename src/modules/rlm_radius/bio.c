@@ -667,11 +667,25 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
 
 	/*
 	 *	See if we need to discard the packet.
+	 *
+	 *	@todo - rate limit these messages, and find a way to associate them with a request, or even
+	 *	the logging destination of the module.
 	 */
-	if (!fr_radius_ok(data, size, h->ctx.inst->max_attributes, REQUIRE_MA(h), &failure)) {
+	if (!fr_radius_ok(data, size, h->ctx.inst->max_attributes, REQUIRE_MA(h), &failure)) {		
 		if (failure == DECODE_FAIL_UNKNOWN_PACKET_CODE) return FR_BIO_VERIFY_DISCARD;
 
 		PERROR("%s - Connection %s received bad packet", h->ctx.module_name, h->ctx.fd_info->name);
+
+		if (failure == DECODE_FAIL_MA_MISSING) {
+			if (h->ctx.inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) {
+				ERROR("We are configured with 'require_message_authenticator = true'");
+			} else {
+				ERROR("We previously received a packet from this client which included a Message-Authenticator attribute");
+			}
+
+			if (h->ctx.fd_config.socket_type == SOCK_DGRAM) return FR_BIO_VERIFY_DISCARD;
+
+		}
 
 		return FR_BIO_VERIFY_ERROR_CLOSE;
 	}
