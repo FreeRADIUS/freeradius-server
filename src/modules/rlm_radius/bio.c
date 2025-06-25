@@ -1222,7 +1222,7 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 	 */
 	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) h->ctx.radius_ctx.secret,
 			   h->ctx.radius_ctx.secret_length) < 0) {
-		RERROR("Failed signing packet");
+		RPERROR("Failed signing packet");
 		goto error;
 	}
 
@@ -2668,7 +2668,7 @@ static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	 *	Sign it.
 	 */
 	if (fr_radius_sign(buffer, NULL, (uint8_t const *) radius_ctx.secret, radius_ctx.secret_length) < 0) {
-		RERROR("Failed signing packet");
+		RPERROR("Failed signing packet");
 		return XLAT_ACTION_FAIL;
 	}
 
