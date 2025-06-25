@@ -28,8 +28,10 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/section.h>
 #include <freeradius-devel/server/main_config.h>
+#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/interpret.h>
@@ -122,18 +124,19 @@ call_env_result_t call_env_result(TALLOC_CTX *ctx, request_t *request, void *out
  */
 typedef struct {
 	call_env_result_t			*result;		//!< Where to write the return code of callenv expansion.
+	unlang_result_t				expansion_result;	//!< The result of calling the call env expansions functions.
 	call_env_t const			*call_env;		//!< Call env being expanded.
 	call_env_parsed_t const			*last_expanded;		//!< The last expanded tmpl.
 	fr_value_box_list_t			tmpl_expanded;		//!< List to write value boxes to as tmpls are expanded.
 	void					**data;			//!< Final destination structure for value boxes.
 } call_env_rctx_t;
 
-static unlang_action_t call_env_expand_repeat(request_t *request, void *uctx);
+static unlang_action_t call_env_expand_repeat(UNUSED unlang_result_t *p_result, request_t *request, void *uctx);
 
 /** Start the expansion of a call environment tmpl.
  *
  */
-static unlang_action_t call_env_expand_start(request_t *request, void *uctx)
+static unlang_action_t call_env_expand_start(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	call_env_rctx_t	*call_env_rctx = talloc_get_type_abort(uctx, call_env_rctx_t);
 	TALLOC_CTX	*ctx;
@@ -239,12 +242,20 @@ static unlang_action_t call_env_expand_start(request_t *request, void *uctx)
  *
  * If there are more tmpls to expand, push the next expansion.
  */
-static unlang_action_t call_env_expand_repeat(request_t *request, void *uctx)
+static unlang_action_t call_env_expand_repeat(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	void			*out = NULL, *tmpl_out = NULL;
 	call_env_rctx_t		*call_env_rctx = talloc_get_type_abort(uctx, call_env_rctx_t);
 	call_env_parsed_t	const *env;
 	call_env_result_t	result;
+
+	/*
+	 *	Something went wrong expanding the call env
+	 *	return fail.
+	 *
+	 *	The module should not be executed.
+	 */
+	if (call_env_rctx->expansion_result.rcode == RLM_MODULE_FAIL) return UNLANG_ACTION_FAIL;
 
 	env = call_env_rctx->last_expanded;
 	if (!env) return UNLANG_ACTION_CALCULATE_RESULT;
@@ -279,12 +290,13 @@ parse_only:
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	return unlang_function_push(request,
-				    call_env_expand_start,
-				    call_env_expand_repeat,
-				    NULL,
-				    0, UNLANG_SUB_FRAME,
-				    call_env_rctx);
+	return unlang_function_push_with_result(&call_env_rctx->expansion_result,
+						request,
+						call_env_expand_start,
+						call_env_expand_repeat,
+						NULL,
+						0, UNLANG_SUB_FRAME,
+						call_env_rctx);
 }
 
 /** Initialise the expansion of a call environment
@@ -309,12 +321,13 @@ unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_re
 	call_env_rctx->call_env = call_env;
 	fr_value_box_list_init(&call_env_rctx->tmpl_expanded);
 
-	return unlang_function_push(request,
-				    call_env_expand_start,
-				    call_env_expand_repeat,
-				    NULL,
-				    0, UNLANG_SUB_FRAME,
-				    call_env_rctx);
+	return unlang_function_push_with_result(&call_env_rctx->expansion_result,
+						request,
+						call_env_expand_start,
+						call_env_expand_repeat,
+						NULL,
+						0, UNLANG_SUB_FRAME,
+						call_env_rctx);
 }
 
 /** Allocates a new call env parsed struct
