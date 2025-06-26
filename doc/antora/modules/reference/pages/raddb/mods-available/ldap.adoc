@@ -797,6 +797,17 @@ binds which there can be on a single thread.
 
 
 
+## Policy Over-rides
+
+The following policy ensures that every call to the `ldap` module
+will time out within a short period of time.
+
+The policy name here should be the same as the module name.
+Reusing the same name means that this policy will be used instead
+of the module.
+
+
+
 ## Expansions
 
 The `rlm_ldap` module provides the following xlat functions.
@@ -941,6 +952,7 @@ The object can be expressed either as an LDAP URI or a DN.
 my_profile = 'cn=profile1,ou=profiles,dc=example,dc=com'
 %ldap.profile(my_profile)
 ----
+
 
 == Default Configuration
 
@@ -1087,6 +1099,11 @@ ldap {
 		max = 1000
 	}
 }
+#@policy ldap {
+#	timeout 1s {
+#		ldap
+#	}
+#}
 ```
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

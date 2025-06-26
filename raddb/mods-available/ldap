@@ -942,6 +942,23 @@ ldap {
 }
 
 #
+#  ## Policy Over-rides
+#
+#  The following policy ensures that every call to the `ldap` module
+#  will time out within a short period of time.
+#
+#  The policy name here should be the same as the module name.
+#  Reusing the same name means that this policy will be used instead
+#  of the module.
+#
+#@policy ldap {
+#	timeout 1s {
+#		ldap
+#	}
+#}
+
+
+#
 #  ## Expansions
 #
 #  The `rlm_ldap` module provides the following xlat functions.
@@ -1086,3 +1103,4 @@ ldap {
 #  my_profile = 'cn=profile1,ou=profiles,dc=example,dc=com'
 #  %ldap.profile(my_profile)
 #  ----
+
