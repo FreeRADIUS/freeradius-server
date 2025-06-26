@@ -81,12 +81,17 @@ server radsec {
 			ca_file = ${cadir}/ca.pem
 
 			#
-			#  For DH cipher suites to work, you have to
-			#  run OpenSSL to create the DH file first:
+			#  You can create the DH parameters by running the
+			#  following command:
 			#
-			#  	openssl dhparam -out certs/dh 1024
+			#  	openssl dhparam -out certs/dh 2048
 			#
-			dh_file = ${certdir}/dh
+			#  The DH parameters will usually be ignored in FIPS mode.
+			#
+			#  If this file isn't specified, then OpenSSL will
+			#  automatically set the correct DH parameters.
+			#
+#			dh_file = ${certdir}/dh
 
 			#
 			#  If your system doesn't have /dev/urandom,

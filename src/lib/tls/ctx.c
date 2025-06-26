@@ -961,7 +961,17 @@ post_ca:
 	/*
 	 *	Load dh params
 	 */
-	if (conf->dh_file && (ctx_dh_params_load(ctx, UNCONST(char *, conf->dh_file)) < 0)) goto error;
+	if (conf->dh_file) {
+		if (ctx_dh_params_load(ctx, UNCONST(char *, conf->dh_file)) < 0) goto error;
+	} else {
+		/*
+		 *	Tell OpenSSL to automatically set the DH
+		 *	parameters based on the the size of the key
+		 *	associated with the certificate, or for PSK,
+		 *	with the negotiated symmetric cipher key.
+		 */
+		SSL_CTX_set_dh_auto(ctx, 1);
+	}
 
 	/*
 	 *	Setup session caching

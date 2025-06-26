@@ -79,7 +79,7 @@ ca_file:: See the `eap` module for common configuration explanation.
 
 
 
-dh_file::
+dh_file:: See xref:reference:raddb/mods-available/eap.adoc[mods-available/eap]
 
 
 
@@ -157,7 +157,7 @@ eap inner-eap {
 			private_key_file = ${certdir}/rsa/server.key
 		}
 		ca_file = ${cadir}/rsa/ca.pem
-		dh_file = ${certdir}/dh
+#		dh_file = ${certdir}/dh
 #		random_file = /dev/urandom
 		fragment_size = 16384
 #		check_crl = yes
