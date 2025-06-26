@@ -133,6 +133,16 @@ int fr_bio_free(fr_bio_t *bio)
 	return talloc_free(bio);
 }
 
+static ssize_t fr_bio_shutdown_read(UNUSED fr_bio_t *bio, UNUSED void *packet_ctx, UNUSED void *buffer, UNUSED size_t size)
+{
+	return fr_bio_error(SHUTDOWN);
+}
+
+static ssize_t fr_bio_shutdown_write(UNUSED fr_bio_t *bio, UNUSED void *packet_ctx, UNUSED void const *buffer, UNUSED size_t size)
+{
+	return fr_bio_error(SHUTDOWN);
+}
+
 /** Shut down a set of BIOs
  *
  *  We shut down the BIOs from the top to the bottom.  This gives the TLS BIO an opportunity to
@@ -164,6 +174,9 @@ int fr_bio_shutdown(fr_bio_t *bio)
 		 */
 		my->priv_cb.shutdown(&my->bio);
 		my->priv_cb.shutdown = NULL;
+
+		my->bio.read = fr_bio_shutdown_read;
+		my->bio.write = fr_bio_shutdown_write;
 	}
 
 	/*
