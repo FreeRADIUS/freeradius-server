@@ -902,6 +902,52 @@ the connection.
 
 
 
+
+## Policy Over-rides
+
+The proxy policy overrides enables functionality similar to the
+version 3 pre/post-proxy sections.
+
+
+
+Create a subrequest which we can edit.  When the subrequest
+section is done,
+
+
+Initialize the proxied packet from the request.
+
+This is the "pre-proxy" section.
+
+
+
+Run the "radius proxy" module noted above.
+
+
+
+Edit the reply from the home server here.
+
+This is the "post-proxy" section.
+
+Note that the Proxy-State attributes have already
+been deleted from the reply, so you don't need to
+do that here.  Those attributes are not needed by
+anyone for anything, and confuse things if they're
+copied to the original request.  The `radius`
+module therefore deletes them, to make your life
+easier.
+
+
+
+Like v3, remove all pre-existing attributes in the
+original reply, and replace them with the reply
+from the home server.
+
+It is also possible to copy over some, or none of
+the attributes in the reply from the home server.
+The configuration here is just an example, and can
+be edited.
+
+
 == Default Configuration
 
 ```
@@ -1045,6 +1091,13 @@ radius proxy {
 			per_connection_target = 255
 			free_delay = 10
 		}
+	}
+}
+@policy proxy {
+	subrequest {
+		request := parent.request
+		proxy
+		parent.reply := reply
 	}
 }
 ```
