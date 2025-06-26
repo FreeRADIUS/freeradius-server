@@ -191,10 +191,7 @@ static ssize_t fr_bio_mem_read_verify_stream(fr_bio_t *bio, void *packet_ctx, vo
 		 *	See if there are valid packets in the buffer.
 		 */
 		rcode = fr_bio_mem_call_verify(bio, packet_ctx, &want);
-		if (rcode < 0) {
-			rcode = fr_bio_error(VERIFY);
-			goto fail;
-		}
+		if (rcode < 0) return fr_bio_error(VERIFY);
 
 		/*
 		 *	There's at least one valid packet, return it.
@@ -234,14 +231,13 @@ static ssize_t fr_bio_mem_read_verify_stream(fr_bio_t *bio, void *packet_ctx, vo
 
 		/*
 		 *	We've tried to make room and failed.  Which means that the buffer is full, AND there
-		 *	still isn't a complete packet in the buffer.  This is therefore a fatal error.  The
+		 *	still isn't a complete packet in the buffer.  This is therefore an error.  The
 		 *	application has not supplied us with enough read_buffer space to store a complete
 		 *	packet.
+		 *
+		 *	@todo - allow the application to increase the size of the buffer.
 		 */
-		if (!room) {
-			rcode = fr_bio_error(BUFFER_FULL);
-			goto fail;
-		}
+		if (!room) return fr_bio_error(BUFFER_FULL);
 	}
 
 	/*
@@ -252,6 +248,11 @@ static ssize_t fr_bio_mem_read_verify_stream(fr_bio_t *bio, void *packet_ctx, vo
 	fr_assert(p != NULL);	/* otherwise room would be zero */
 
 	rcode = next->read(next, packet_ctx, p, room);
+
+	/*
+	 *	No data was read from the next bio, we still don't have a packet.  Return nothing.
+	 */
+	if (rcode == 0) return 0;
 
 	/*
 	 *	The next bio returned some data.  See if it's a valid packet.
@@ -266,10 +267,7 @@ static ssize_t fr_bio_mem_read_verify_stream(fr_bio_t *bio, void *packet_ctx, vo
 		 *	See if there are valid packets in the buffer.
 		 */
 		rcode = fr_bio_mem_call_verify(bio, packet_ctx, &want);
-		if (rcode < 0) {
-			rcode = fr_bio_error(VERIFY);
-			goto fail;
-		}
+		if (rcode < 0) return fr_bio_error(VERIFY);
 
 		/*
 		 *	There's at least one valid packet, return it.
@@ -284,18 +282,10 @@ static ssize_t fr_bio_mem_read_verify_stream(fr_bio_t *bio, void *packet_ctx, vo
 	}
 
 	/*
-	 *	No data was read from the next bio, we still don't have a packet.  Return nothing.
+	 *	The other BIO returned an error.  It could be transient or permanent.  Return that to the
+	 *	application.  If the error is permanent, then the other BIO is responsible for shutting down
+	 *	the BIO chain.
 	 */
-	if (rcode == 0) return 0;
-
-	/*
-	 *	The next bio returned an error either when our buffer was empty, or else it had only a partial
-	 *	packet in it.  We can no longer read full packets from this BIO, and we can't read from the
-	 *	next one, either.  So shut down the BIO completely.
-	 */
-fail:
-	bio->read = fr_bio_fail_read;
-	bio->write = fr_bio_fail_write;
 	return rcode;
 }
 
@@ -315,6 +305,15 @@ static ssize_t fr_bio_mem_read_verify_datagram(fr_bio_t *bio, void *packet_ctx, 
 	fr_assert(next != NULL);
 
 	rcode = next->read(next, packet_ctx, buffer, size);
+
+	/*
+	 *	No data was read from the next bio, we still don't have a packet.  Return nothing.
+	 */
+	if (rcode == 0) return 0;
+
+	/*
+	 *	We have some data.
+	 */
 	if (rcode > 0) {
 		size_t want = rcode;
 
@@ -351,23 +350,15 @@ static ssize_t fr_bio_mem_read_verify_datagram(fr_bio_t *bio, void *packet_ctx, 
 			break;
 		}
 
-		rcode = fr_bio_error(VERIFY);
-		goto fail;
+		fr_bio_shutdown(bio);
+		return fr_bio_error(VERIFY);
 	}
 
 	/*
-	 *	No data was read from the next bio, we still don't have a packet.  Return nothing.
+	 *	The other BIO returned an error.  It could be transient or permanent.  Return that to the
+	 *	application.  If the error is permanent, then the other BIO is responsible for shutting down
+	 *	the BIO chain.
 	 */
-	if (rcode == 0) return 0;
-
-	/*
-	 *	The next bio returned an error.  Whatever it is, it's fatal.  We can read from the memory
-	 *	buffer until it's empty, but we can no longer write to the memory buffer.  Any data written to
-	 *	the buffer is lost.
-	 */
-fail:
-	bio->read = fr_bio_mem_read_eof;
-	bio->write = fr_bio_null_write;
 	return rcode;
 }
 
@@ -685,6 +676,10 @@ static int fr_bio_mem_call_verify(fr_bio_t *bio, void *packet_ctx, size_t *size)
 		}
 	}
 
+	/*
+	 *	A fatal error.  Shut down the entire BIO chain.
+	 */
+	fr_bio_shutdown(bio);
 	return -1;
 }
 
