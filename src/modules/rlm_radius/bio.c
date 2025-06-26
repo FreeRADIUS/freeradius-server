@@ -682,10 +682,9 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
 			} else {
 				ERROR("We previously received a packet from this client which included a Message-Authenticator attribute");
 			}
-
-			if (h->ctx.fd_config.socket_type == SOCK_DGRAM) return FR_BIO_VERIFY_DISCARD;
-
 		}
+
+		if (h->ctx.fd_config.socket_type == SOCK_DGRAM) return FR_BIO_VERIFY_DISCARD;
 
 		return FR_BIO_VERIFY_ERROR_CLOSE;
 	}
