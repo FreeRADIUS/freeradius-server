@@ -228,6 +228,9 @@ char const *fr_bio_strerror(ssize_t error)
 	case fr_bio_error(BUFFER_TOO_SMALL):
 		return "Output buffer is too small to cache the data";
 
+	case fr_bio_error(SHUTDOWN):
+		return "The IO handler is not available.  It has been shut down due to a previous error";
+
 	default:
 		return "<unknown>";
 	}
