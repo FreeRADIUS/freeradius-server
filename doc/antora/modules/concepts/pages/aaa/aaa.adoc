@@ -1,0 +1,33 @@
+= Authorization, Authentication, and Accounting (AAA)
+
+RADIUS is one of a number of Authentication, Authorization, and Accounting (AAA) protocols. Other examples of AAA protocols include TACACS+ and Diameter. AAA defines an architecture that authenticates and grants Authorization to users and accounts for their activity. When AAA is not used, the network architecture is "open", where anyone can gain access and do anything, without any tracking. The open network architecture is commonly used in small businesses, where access to an office can be physically controlled. The open network architecture is poorly suited to ISPs, where access needs to be strictly controlled and accounted for.
+
+It is possible to incorporate only a portion of AAA in a system. For example, if a company is not concerned about billing users for their network usage, they may decide to both authenticate and authorise users, but ignore user activity and not deal with accounting. Similarly, a monitoring system will look for unusual user activity (accounting), but may delegate the authentication and Authorization decisions to another part of the network.
+
+Without AAA, a network administrator would have to statically configure a network. Even in the earliest days of dialup access, network administrators found a static model inadequate. AAA ensures the flexibility of network policies. AAA also gives network administrators the ability to move systems; without AAA, they would have to clearly define connectivity options.
+
+Today, the proliferation of mobile devices, diverse network consumers, and varied network access methods combine to create an environment that places greater demands on AAA. AAA has a part to play in almost all the ways we access a network: wireless hotspots use AAA for security; partitioned networks require AAA to enforce access; all forms of remote access use AAA to authorise remote users.
+
+The following sections describe each part of the AAA solution, and how each one works.
+
+== AAA request handling
+
+AAA request handling refers to the process by which a system manages xref:aaa/authn.adoc[authentication], xref:aaa/authz.adoc[Authorization], and xref:aaa/acct.adoc[accounting] (AAA) services for users accessing computer resources or network services. This process involves verifying user identities, granting access based on permissions, and tracking their activities for auditing or billing purposes.
+
+Normally there are two steps in processing an authentication request
+coming from a NAS in FreeRADIUS: Authorization and authentication.
+If we use FreeRADIUS as a proxy to re-send the request to another
+RADIUS server there will be additional steps.
+
+=== Authentication vs. Authorization
+
+The following analogy illustrates the difference between Authentication and Authorization:
+
+Imagine you are driving a car and you are stopped by a police officer. The officer asks you to provide a piece of identification to identify yourself. You could, for example, use your passport, driver’s license, or ID card to prove or *authenticate* who you are. In terms of the RADIUS protocol, the authentication process identifies the user as someone who is allowed to access the network.
+
+The police officer may also ask you to prove that you are authorized to drive. In this case, there is only one document - a driver’s license - that proves that you are permitted or *authorized* to drive a car.
+
+The Authorization process combines the policy on the RADIUS server and the information in the request from the NAS. The NAS may add additional information to the request, such as the user’s Media Access Control (MAC) address. The NAS sends the information to the server, where an Authorization decision is made.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

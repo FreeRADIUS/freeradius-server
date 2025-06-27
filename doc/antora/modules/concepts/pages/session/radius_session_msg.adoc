@@ -1,0 +1,127 @@
+= Messages
+
+A RADIUS session message consists of a single User Datagram Protocol (UDP) packet, containing a short header followed by the authentication, authorisation, or accounting data.
+
+== Message Attributes
+
+Each message contains a list of Attribute Value Pairs (AVPs), commonly referred to as attributes. These attributes carry information from the NAS to the server or virtual proxy server and from the server to the NAS. Common attributes include items such as user name, password, IP address, and NAS address; each
+attribute contains only one of these items. An attribute can also contain sub-attributes, for grouping purposes.
+
+For a complete list of standardized attributes, see the http://freeradius.org/rfc/attributes.html[FreeRADIUS RFC Attributes] for more details.
+Each client and server supports only a limited set of attributes. In some cases, attributes may not be supported because the server or NAS software may have been written before a standard was published, or the software may not support that particular functionality.
+
+Consult the software vendor documentation to determine what attributes are supported. If the documentation doesn't contain this information, the select attributes are probably not supported. Contact the vendor for additional information.
+
+In addition to standardized attributes, vendors can extend RADIUS with vendor-specific attributes (VSAs). Using VSAs means that the vendor can rapidly add functionality without having to do a time-consuming standardisation process.
+In order to be useful in the RADIUS client protocol, however, VSAs must be defined on the RADIUS server. Because VSAs are non-standardized attributes, it is difficult to discover any information about them. In addition, they are all vendor-specific (only work on that vendor’s products). Thus, defining VSAs for
+RADIUS server use may be difficult.
+
+== Attribute Types
+
+Basic RADIUS attribute types are defined in http://tools.ietf.org/html/rfc2865[RFC 2865]. Since the original implementation and standardisation, additional attribute types have been also defined.
+
+.RADIUS Attribute Types
+[options="headers, autowidth"]
+|===
+| *Type*                | *Format*                       | *Description*
+| integer               | Value between 0 - 4294967295   | Unsigned 32-bit integer.
+| ipaddr                | x.x.x.x                        | IPv4 address
+| date                  | 10 digit epoch time (xxxxxxxxxx)| Unix timestamp in seconds since January 1, 1970 GMT.
+| string                | Variable-length string field   | Used by FreeRADIUS for printable text strings.
+| octet                 | Variable-length string field   | Used by FreeRADIUS for binary data.
+| ifid                  | x.x.x.x.x.x.x.x                | IPv6 interface ID (host portion).
+| ipv6addr              | x.x.x.x.x.x.x.x                | IPv6 address.
+| ipv6prefix            | Value between 0 - 128          | IPv6prefix.
+| byte                  | Single-byte integer            | Supported in FreeRADIUS > v2.
+Value between 0 - 255.
+| short                 | Two-byte integer               | Supported in FreeRADIUS > v3.
+Values between 0 - 65535, integer64, 8-byte integer.
+|===
+
+See xref:unlang:type/index.adoc[data types of attributes] for a more details.
+
+== https://github.com/FreeRADIUS/freeradius-server/tree/v3.2.x/share[Attribute Definition Dictionaries]
+
+FreeRADIUS contains over 100 dictionaries, which hold nearly 5000 attribute definitions.
+
+Unlike text-based protocols such as SMTP or HTTP, RADIUS is a binary protocol; therefore, although attributes are commonly referred to by name (for example, “User-Name”), these names have no meaning in the protocol. Data (i.e., “User-Name”) are encoded in a message as a binary header with binary data, and not as text strings.
+
+Dictionary files are used to map between the names used by people and the binary data in the RADIUS packets.
+
+The packets sent by the NAS contain attributes that have a number, a length, and binary data. By contrast, a dictionary file consists of a list of entries with name, number, and data type.
+
+The server uses the dictionaries to interpret the binary data as follows: the server searches the dictionaries to match the number from the packet, and the corresponding data type in the dictionary entry is then used by the server to interpret the binary data in the packet. The name within the dictionary entry appears in all logs and debug messages, in order to present the attribute in a form that is understandable to people.
+
+This process also works in reverse: the server uses the dictionaries to encode a string (i.e., “User-Name = Bob”) as “number, length, binary data” in a packet.
+
+For example, a server may receive a packet that contains the number 1 and some binary data. The server would not be able to decode these attributes without knowing if the binary data were in the form of a string, an IP address, or an integer. The corresponding dictionary entry may state: the number ‘1’ is called
+‘User-Name’ and it is in the form ‘string’. This information (i.e., form = ‘string’), contained in the dictionary entry, allows the server to successfully decode the packet.
+
+Adding new attributes to RADIUS software is made simpler through the use of dictionaries, as they allow the administrator to create new mappings without upgrading the software.
+
+Vendors can define new attributes in the dictionary without changing any of the server or client source code. These new attributes can then be incorporated in policy decisions or logged in an accounting record.Vendors can also define new functionality for their equipment by publishing a new dictionary file.
+Server support for an NAS can easily be added by writing the correct dictionary file for that NAS.
+
+There is no direct connection between the NAS and the dictionary files, as the dictionary files reside only on the server. For example, if names are edited in a local dictionary file, there is no effect on any other NAS or RADIUS server, because these names appear only in the local dictionary file. The RADIUS packets remain in binary format and contain only numbers, not names.
+
+[NOTE]
+====
+Editing attribute names in a local dictionary file does not effect any other NAS or RADIUS server. Only the attribute numbers are encoded and sent in RADIUS packets.
+
+The NAS and server may use different dictionaries, which may cause problems if they are not coordinated (a set of data may be interpreted differently by the NAS and the server, i.e., as a string by the NAS and an IP address by the server)
+====
+
+Since the attribute names are not sent in RADIUS packets, the dictionaries are limited to the local server and to the policy implemented by that server.
+In this respect, NAS implementations are much simpler than server implementations. Each NAS “looks” in the RADIUS packet for what it “understands” and ignores everything else. In contrast, each RADIUS server
+is presented with all of the information from every NAS in the RADIUS deployment. Each RADIUS server must be capable of “understanding” the functionality and configure-ability of every attribute that is
+necessary to authenticate or authorise the users.
+
+== Dictionary File Format
+
+It is very important to use the correct dictionaries. If the wrong dictionaries are used, the server may not properly interpret local configuration, or generate the correct response for the NAS.
+
+If the server does not have access to the correct vendor-specific attributes and dictionaries, it cannot correctly process any VSAs it receives for that vendor.
+
+[NOTE]
+====
+Servers must have access to a vendor dictionary to understand vendor attributes.
+====
+
+Some servers may not contain all the necessary dictionary files because each vendor defines their own dictionaries and release schedule. If a server does not include dictionaries for a particular vendor, contact that vendor, and not the organisation that supplied the RADIUS server.
+
+[#server-attr]
+=== Server-side Attributes
+
+Server-side attributes are attributes that control the server’s behavior. It is frequently necessary to define these server-side attributes, while ensuring that information pertaining to server-side attributes never
+gets sent through the network in a RADIUS message. Server-side attributes should not be included in RADIUS messages, since these attributes are internal to server implementation.
+
+Definitions for server-side attributes may vary by server vendor, or may vary even from one version of the same server to another. Only FreeRADIUS definitions for internal attributes are referenced in this document. Those definitions are generally the same across all versions of the server, but other vendors may have different implementations.
+
+Information such as “use LDAP server X”, or “remember that the user is in group Y” should be used to create local policy. This information should be stored in server-side attributes (also known as “non-protocol attributes”).
+
+Server-side attributes are presented using the same format as standard or vendor RADIUS attributes. This format gives the administrator the same control over internal aspects of the server behavior as over the server external responses. The server-side attribute information can be retrieved as part of one policy and checked later as part of another policy. For example, the policy can say “use LDAP server X for this request” and “respond with attribute X, value Y”.
+
+=== xref:session/processing.adoc[Processing Requests]
+
+The server processes requests through local site policy. That policy is used to examine the request, the request attributes, and the attribute values. The server then builds a reply message using responses (determined by local policy) such as time of day restrictions, group access limitations, and IP address allocation. The processing stage may include keeping track of <<server-attr,server-side attributes>>. FreeRADIUS maintains these attribute lists for every request.
+
+.Attribute Lists and Details
+
+[cols="1,2"]
+|===
+|*Attribute List*|*Description*
+
+|`request`
+|Attributes taken from the received packet.
+
+|`reply`
+|Attributes which will be sent in the reply.
+
+|`control`
+|Attributes used to control how the server operates.  These are never sent in a packet.
+
+|`session-state`
+|Attributes which are saved and restored across multiple request / reply exchanges.
+|===
+
+See the xref:unlang:list.adoc[Attribute Lists] reference documentation for more details.

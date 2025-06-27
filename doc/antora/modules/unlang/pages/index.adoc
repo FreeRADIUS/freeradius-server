@@ -11,12 +11,15 @@ Where more complicated functionality is required, we recommend using
 the `lua`, `perl` or `python` modules.  Those modules allow the insertion of
 full-featured scripts at any point in the packet processing.
 
-NOTE: The documentation is this directory is _reference_
+[NOTE]
+====
+The documentation is this directory is *reference*
 documentation.  That is, it describes the syntax of `unlang` keywords,
 using minimal examples.  The reference documentation does not,
-however, describe _when_ to use the keywords, or _how_ to create
-policies. Please see the xref:howto:index.adoc[howto] directory for
-more in-depth "how to" guides.
+however, describe *when* to use the keywords, or *how* to create
+policies. Please see the xref:howto:index.adoc[Howto] section for
+more in-depth "howto" guides.
+====
 
 The documentation is organized so that each item is on its own page.
 The page beings with a description of the item, followed by some text
@@ -57,7 +60,7 @@ if ((&User-Name == "bob") && (&Calling-Station-Id == "00:01:03:04:05")) {
 
 == Update Statements
 
-xref:update.adoc[update] statements are used to edit attributes and
+xref:update.adoc[Update] statements are used to edit attributes and
 lists of attributes.
 
 Most request packets will result in reply packets that contain

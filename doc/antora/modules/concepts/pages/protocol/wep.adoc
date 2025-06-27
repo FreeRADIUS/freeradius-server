@@ -1,0 +1,88 @@
+
+== Overview
+
+*Wired Equivalent Privacy (WEP)* is a scheme that is part of the IEEE 802.11 wireless networking standard to secure IEEE 802.11 wireless computer network (also known as Wi-Fi networks). Because a wireless network broadcasts messages using radio, it is particularly susceptible to eavesdropping. WEP was intended to provide comparable confidentiality to a traditional wired local area network|network (in particular it doesn't protect users of the network from each other), hence the name. Several serious weaknesses were identified by cryptanalysts, and WEP was superseded by Wi-Fi Protected Access (WPA) in 2003, and then by the full IEEE 802.11i standard (also known as WPA2) in 2004. Despite the weaknesses, WEP provides a level of security that can deter casual snooping.
+
+== Details
+
+WEP is part of the IEEE 802.11 standard ratified in September 1999. WEP uses the stream cipher RC4 for confidentiality and the CRC-32 checksum for integrity.
+
+Standard 64-bit WEP uses a 40-bit encryption|40 bit key, which is concatenated to a 24-bit initialization vector (IV) to form the RC4 traffic key.  At the time that the original WEP standard was being drafted, US Government export of cryptography limited the keysize. Once the restrictions were lifted, all of the major manufacturers eventually implemented an extended 128-bit WEP protocol using a 104-bit key size. 
+A 128-bit WEP key is almost always entered by users as a string of 26 Hexadecimal (Hex) characters (0-9 and A-F).  Each character represents 4 bits of the key. 4 * 26 = 104 bits.  Adding the 24-bit IV brings us what we call a "128-bit WEP key". A 256-bit WEP system is available from some vendors, and as with the above-mentioned system, 24 bits of that is for the I.V., leaving 232 actual bits for protection.  This is typically entered as 58 Hexadecimal characters. (58 * 4 = 232 bits) + 24 I.V. bits = 256 bits of WEP protection. 
+
+Key size is not the only major security limitation in WEP. Cryptanalysis a longer key requires interception of more packets, but there are active attacks that stimulate the necessary traffic. There are other weaknesses in WEP, including the possibility of IV collisions and altered packets, that are not helped at all by a longer key. See stream cipher attack.
+
+== Flaws
+
+Because RC4 is a stream cipher, the same traffic key must never be used twice. The purpose of an IV, which is transmitted as plaintext, is to prevent any repetition, but a 24-bit IV is not long enough to ensure this on a busy network. The way the IV was used also opened WEP to a [[related key attack]]. For a 24-bit IV, there is a 50% probability the same IV will repeat after 5000 packets. 
+
+Many WEP systems require a key in hexadecimal format. Some users choose keys that spell words in the limited 0-9, A-F hex character set, for example _C0DE C0DE C0DE C0DE_. Such keys are often easily guessed.
+
+In August 2001, Scott Fluhrer, Itzik Mantin, and Adi Shamir published a cryptanalysis of WEP that exploits the way the RC4 cipher and IV is used in WEP, resulting in a passive attack that can recover the RC4 key (cryptography) after eavesdropping on the network (depending on the network traffic (the number of packets you can inspect) the length could be from 10 minutes to indefinitely (if there is no data being sent at all)). There are also ways to force the traffic onto the network which is rejected, but packets are sent and thus can also be inspected to find the key. The attack was soon implemented, and automated tools have since been released. It is possible to perform the attack with a personal computer, off-the-shelf hardware and freely-available software. 
+
+Cam-Winget et al. (2003) surveyed a variety of shortcomings in WEP. They write "_Experiments in the field indicate that, with proper equipment, it is practical to eavesdrop on WEP-protected networks from distances of a mile or more from the target._" They also reported two generic weaknesses:
+* the use of WEP was optional, resulting in many installations never even activating it, and 
+* WEP did not include a key management protocol, relying instead on a single shared key amongst users.
+
+In 2005, a group from the U.S. Federal Bureau of Investigation gave a demonstration where they cracked a WEP-protected network in 3 minutes using publicly available tools.<ref>http://www.tomsnetworking.com/2005/03/31/the_feds_can_own_your_wlan_too/</ref>
+
+In 2006, Bittau, Handley and Lackey showed that the 802.11 protocol itself can be used against WEP to enable earlier attacks that were previously thought impractical.  After eavesdropping a single packet, an attacker can rapidly bootstrap to be able to transmit arbitrary data.  Then the eavesdropped packet can be decrypted a byte at a time (by transmitting about 128 packets per byte to decrypt) to discover the local network IP addresses.  Finally if the 802.11 network is connected to the Internet, the attacker can use 802.11 fragmentation to replay eavesdropped packets while crafting a new IP header on to them.  The access point can then be used to decrypt these packets and relay them on to a buddy on the Internet, allowing real-time decryption of WEP traffic within a minute of eavesdropping the first packet.
+
+== Remedies
+
+=== WEP2
+
+A stopgap enhancement to WEP, implementable on _some_ (not all) hardware not able to handle WPA/WPA2, based on:
+* Enlarged IV value
+* Enforced 128-bit encryption
+However, WEP2 remains vulnerable to known WEP attacks -- at most it will just slow an attacker down a bit -- and thus shouldn't really be considered more secure than WEP.
+
+=== WEPplus 
+
+Also known as WEP+.  A proprietary enhancement to WEP by Agere Systems (formerly a subsidiary of Lucent Technologies) that enhances WEP security by avoiding "weak IVs".  It is only completely effective when WEPplus is used at _both ends_ of the wireless connection. As this cannot easily be enforced, it remains serious limitation.  It is possible that successful attacks against WEPplus will eventually be found. It also does not necessarily prevent Replay attack|replay attacks.
+
+=== WPA/WPA2 
+
+The most widely recommended solution to WEP security problems is to switch to WPA or WPA2. Either is much more secure than WEP. Some old WiFi access points might need to be replaced to do this or have their operating system, in flash memory, upgraded; however, replacements are relatively inexpensive. Another alternative is to use a tunneling protocol, such as IPsec, although that only protects traffic streams, not the network itself.
+
+== References
+
+* Nikita Borisov, Ian Goldberg, David Wagner, "Intercepting mobile communications: the insecurity of 802.11." MOBICOM 2001, pp180&ndash;189.
+* Nancy Cam-Winget, Russell Housley, David Wagner, Jesse Walker: Security flaws in 802.11 data link protocols. Communications of the ACM 46(5): 35-39 (2003)
+* Scott R. Fluhrer, Itsik Mantin, Adi Shamir, "Weaknesses in the Key Scheduling Algorithm of RC4". Selected Areas in Cryptography 2001: pp1&ndash;24.
+* Andrea Bittau, Mark Handley, Joshua Lackey, "The Final Nail in WEP's Coffin", IEEE Symposium on Security and Privacy (Oakland) 2006.
+* Update: Stepping Up Your WLAN Security (http://www.networkmagazineindia.com/200112/focus3.htm 802.11b)
+* Wireless LAN Deployment and Security Basics (http://www.extremetech.com/article2/0,1697,1157728,00.asp)
+* An Inductive Chosen Plaintext Attack against WEP/WEP2 (http://www.cs.umd.edu/~waa/attack/v3dcmnt.htm)
+* [http://www.starkrealities.com/wireless003.html It Came Out of the Sky -- WEP2, Credibility Zero]
+* [http://www.agere.com/NEWS/PRESS2001/111201b.html Agere Systems press release]
+** [http://www.proxim.com/learn/library/whitepapers/wireless_security.pdf Wireless Network Security] ([[Proxim Wireless]] white paper)
+* Weak IVs
+** [http://www.cs.virginia.edu/sammyg/CS551/node16.html Weak IV Attack]
+** [http://www.informit.com/guides/content.asp?g=security&seqNum=85&rl=1 WPA Part 2: Weak IV's]
+** [http://airsnort.shmoo.com/faq.html Frequently Asked Questions About AirSnort]
+* [http://www.cs.virginia.edu/sammyg/CS551/node18.html Replay Attack]
+
+==External links==
+
+*[http://www.profit42.com/index.php/2006/08/02/92/ This simple but detailled guide describes how to crack wep step by step]
+*[http://www.isaac.cs.berkeley.edu/isaac/wep-faq.html (In)Security of the WEP algorithm]
+*[http://www.drizzle.com/~aboba/IEEE/rc4_ksaproc.pdf Weaknesses in the Key Scheduling Algorithm of RC4]
+*[http://www.cs.virginia.edu/sammyg/CS551/node12.html WEP Weaknesses]
+*[http://www.cs.umd.edu/~waa/wireless.html List of security problems with WEP]
+*[http://securityfocus.com/infocus/1814 WEP: Dead Again, Part 1 (Dec. 14, 2004)]
+*[http://securityfocus.com/infocus/1824 WEP: Dead Again, Part 2 (Mar. 8, 2005)]
+*[http://www.tomsnetworking.com/Sections-article111.php The Feds can own your WLAN too : TomsNetworking]
+* Humphrey Cheung, How to crack WEP, [http://www.tomsnetworking.com/Sections-article118.php part one], [http://www.tomsnetworking.com/Sections-article120.php part two], [http://www.tomsnetworking.com/Sections-article124.php part three] May/June 2005.
+
+
+*Several software tools are available to compute and recover WEP keys by passively monitoring transmissions.
+**[http://www.tuto-fr.com/tutoriaux/crack-wep/fichiers/wlan/en-index.php aircrack]
+**[[aircrack-ng|Aircrack-ng (aircrack-ng is the next generation of aircrack)]]
+**[http://airsnort.shmoo.com/ AirSnort]
+**[http://sourceforge.net/projects/wepcrack WEPCrack]
+**[http://sourceforge.net/projects/weplab Weplab]
+**[http://kismac.binaervarianz.de/ KisMAC]
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

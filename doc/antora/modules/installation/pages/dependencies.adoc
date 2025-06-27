@@ -1,4 +1,4 @@
-= FreeRADIUS Dependencies
+= Dependencies
 
 Some external dependencies must be installed before building or
 running FreeRADIUS. For version 3, the core depends on one
@@ -17,8 +17,8 @@ particular module to be skipped.
 
 === libtalloc
 
-Talloc is a memory allocation library available at
-https://talloc.samba.org/talloc/doc/html/index.html
+Talloc is a memory allocation library available on the
+https://talloc.samba.org/talloc/doc/html/index.html[Samba] website.
 
 *OSX*
 

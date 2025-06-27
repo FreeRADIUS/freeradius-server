@@ -1,0 +1,13 @@
+= Accounting
+
+Accounting refers to the recording of resources a user consumes during the time they are on the network. The information gathered can include the amount of system time used, the amount of data sent, or the quantity of data received by the user during a session.
+
+During a network session, the NAS periodically sends an accounting of user activity to the server. This accounting is a summary, and the collected data is used for billing purposes.
+
+ISPs are a large consumer of accounting data, because each user is billed for every minute of network access. However, corporations have not, historically, relied on network accounting information gathered by RADIUS because employees were not traditionally billed for network access. As their need for ongoing
+network monitoring increases, though, so does the need to store and process accounting information.
+
+The accounting summary sent by the NAS to the server does not include detailed information such as web sites visited or even how many bytes were transferred using a particular protocol (SMTP, HTTP, and so forth). That type of detailed information is only available to the NAS, and it does not send that data to the
+server.
+
+If detailed information about user activity is required, network administrators can obtain it through other protocols such as sFlow or NetFlow. Network administrators may find it difficult to tie the pieces together to get a more comprehensive understanding of user activity.
