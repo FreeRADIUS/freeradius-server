@@ -2529,6 +2529,19 @@ alloc_section:
 				ERROR("%s[%d]: Reference \"%s\" is not a section", frame->filename, frame->lineno, name);
 				return -1;
 			}
+
+			/*
+			 *	Set the new parent and ensure we're
+			 *	not creating a duplicate section.
+			 */
+			parent = cf_item_to_section(ci);
+			css = cf_section_find(parent, value, NULL);
+			if (css) {
+				ERROR("%s[%d]: Reference \"%s\" already contains a \"%s\" section at %s[%d]",
+				      frame->filename, frame->lineno, name, value,
+				      css->item.filename, css->item.lineno);
+				return -1;
+			}
 		}
 
 		frame->at_reference = frame->current;
