@@ -22,6 +22,9 @@ ATTRIBUTE	rsaEncryption				1.2.840.113549.1.1.1	null    is_oid_leaf
 
 ATTRIBUTE	sha256WithRSAEncryption			1.2.840.113549.1.1.11	null    is_oid_leaf
 
+ATTRIBUTE	pkcs-9					1.2.840.113549.1.9	sequence
+ATTRIBUTE	emailAddress				1.2.840.113549.1.9.1	string  is_oid_leaf
+
 ATTRIBUTE	identified-organization			1.3	sequence
 ATTRIBUTE	dod					1.3.6	sequence
 ATTRIBUTE	internet				1.3.6.1	sequence
