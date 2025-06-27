@@ -1,0 +1,149 @@
+= Protocols
+
+== RADIUS Protocol
+
+RADIUS is a protocol for remote user Authorisation, Authentication, and Accounting. It's very important for Internet Service Providers, and any network that needs a centralized authentication and/or accounting services for its infrastructure.
+
+RADIUS is often used in larger Wi-Fi (wireless) networks for authentication purposes, replacing the simple shared key methods which are uncomfortable if a Wi-Fi network reaches a specific size.
+
+The protocol originally was designed by the well known terminal server manufacturer Livingston for use with their Portmaster series of terminal servers. Since then it has been implemented by hundreds other vendors and has a become an Internet Standard RFC. The DIAMETER protocol is the designated successor, but RADIUS is still commonly used today.
+
+=== RADIUS Protocol Dependencies
+
+RADIUS uses UDP as its underlying protocol. The registered UDP port for RADIUS traffic is 1812 for authentication and configuration. The early deployment of RADIUS used UDP port 1645, which conflicted with the "datametrics" service.  When RADIUS is used for accounting  the registered UDP port is 1813. The earlier RADIUS version used port 1646, which conflicted with the "sa-msg-port" service.
+
+== Authentication Protocols
+
+In order for RADIUS authentication to work, user passwords need to be stored in a format that is understood by the authentication protocol used by the client. Many protocols integrated with RADIUS include:
+
+* PAP
+* CHAP
+* MS-CHAP
+* EAP
+
+Authentication protocols used in RADIUS are not always compatible with the way the passwords have been stored. The following table shows which protocol is compatible with what kind of password.
+
+=== Authentication Protocol and Password Compatibility
+
+Passwords may be stored in a datastore in many forms. Clear-text, MD5 hashed, crypt'd, NT hash, or other methods are all commonly used. Authentication protocols used in RADIUS are not always compatible with the way the passwords have been stored. The following table shows which protocol is compatible with what kind of password.
+
+[#Proto-Password-Compat]
+.Protocol Password Compatibility
+[cols="2,1,1,1,1,1,1,1"]
+|===
+|*Protocol*|*Clear-text*|*NT hash*|*MD5 hash*|*Salted MD5 hash*|*SHA1 hash*|*Salted SHA1 hash*|*Unix Crypt*
+|*PAP*
+|   ✔️
+|   ✔️
+|   ✔️
+|   ✔️
+|   ✔️
+|   ✔️
+|   ✔️
+
+|*CHAP*
+|   ✔️
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+
+|*Digest*
+|   ✔️
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+
+|*MSCHAP*
+|   ✔️
+|   ✔️
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+
+|*PEAP*
+|   ✔️
+|   ✔️
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+
+|*EA-MSCHAP2*
+|   ✔️
+|   ✔️
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+
+|*Cisco-LEAP*
+|   ✔️
+|   ✔️
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+
+|*EAP-GTC*
+|   ✔️
+|   ✔️
+|   ✔️
+|   ✔️
+|   ✔️
+|   ✔️
+|   ✔️
+
+|*EAP-MD5*
+|   ✔️
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+
+|*EAP-PWD*
+|   ✔️
+|   ❌
+|   ❌
+|   ❌
+|   ❌
+|   ✔️
+|   ✔️
+
+|===
+
+Many people store passwords in their databases in hashed or encrypted form. They later decide that they need to support an authentication protocol that the above table shows is incompatible with their password storage method. They then ask "How can I make authentication protocol X work with passwords stored as Y?" The short answer is "you can't".
+
+The password hashes, and authentication protocols were designed to be incompatible. If the cell in the above table is red, then it's impossible to make the authentication protocol use that form of the password. Your only choices are to stop trying to use that authentication protocol, or to store the passwords in a form compatible with that authentication protocol. The last choice often means asking all users to change their passwords, unfortunately.
+
+== More Information
+
+Refer to https://github.com/FreeRADIUS/freeradius-server/tree/v3.2.x/share[Attributes] for more protocol attribute details and https://www.iana.org/assignments/radius-types/radius-types.xhtml[RADIUS Packet Types].
+
+The relevant RFCs are:
+
+* https://datatracker.ietf.org/doc/html/rfc2867[RFC 2867] RADIUS Accounting Modifications for Tunnel Protocol Support
+
+* https://datatracker.ietf.org/doc/html/rfc2868[RFC 2868] RADIUS Attributes for Tunnel Protocol Support
+
+* https://datatracker.ietf.org/doc/html/rfc2869[RFC 2869] RADIUS Extensions
+
+* https://datatracker.ietf.org/doc/html/rfc3758[RFC 3748] Extensible Authentication Protocol (EAP)
+
+* https://datatracker.ietf.org/doc/html/rfc3579[RFC 3579] RADIUS (Remote Authentication Dial In User Service) Support For Extensible Authentication Protocol (EAP)
+
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

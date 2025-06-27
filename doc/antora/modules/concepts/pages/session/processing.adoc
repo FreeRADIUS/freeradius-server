@@ -1,0 +1,126 @@
+= Processing
+
+The server processes requests through local site policy. That policy is used to examine the request, the request attributes, and the attribute values. The server then builds a reply message using responses (determined by local policy) such as time of day restrictions, group access limitations, and IP address
+allocation. The processing stage may include keeping track of <<server-attr,server-side attributes>>.
+
+== How things work in RADIUS
+
+The client sends the server a RADIUS authentication request. You don't decide what's in the request, the client does.  The server doesn't decide what's in the request, the client does.  The client is 100% responsible for everything in the request.
+
+
+.FreeRADIUS v3 Request Flow
+image:request_flow.svg[Process Flow railroad diagram].
+
+=== Summary of the Request Flow Steps
+
+. An end-user tries to access a network through a RADIUS client such as a wireless access point. 
+. The RADIUS client sends a request to the RADIUS server along with the user's credentials.
+. The RADIUS server verifies the user's credentials against its datastore (flat file, SQL, LDAP, etc.). 
+. If authentication passes, the server returns configuration details (including authorisation) to the client. The client can now grant network access to the end-user 
+. If the authentication fails, the server denies access, and the RADIUS client informs the end-user.
+
+
+Users new to RADIUS, AAA, or EAP are encouraged to read the standards listed below. This documentation provides you with a solid foundation in RADIUS concepts and EAP at a protocol level.
+
+- https://datatracker.ietf.org/doc/html/rfc2865[RFC 2865] - Remote Authentication Dial In User Service (RADIUS)
+- https://datatracker.ietf.org/doc/html/rfc2866[RFC 2866] - RADIUS Accounting
+
+- https://datatracker.ietf.org/doc/html/rfc3748[RFC 3748] - Extensible Authentication Protocol (EAP)
+- https://datatracker.ietf.org/doc/html/rfc2865[RFC 3579] - RADIUS Support For Extensible Authentication Protocol (EAP)
+
+
+== Request Processing
+
+When the server processes requests, it manages four xref:unlang:list.adoc[attribute lists]. All of these lists are available to all modules.  All of these lists are available in xref:unlang:index.adoc[Unlang]
+
+.Attribute Lists and Details
+
+[cols="1,2"]
+|===
+|*Attribute List*|*Description*
+
+|`request`
+|Attributes taken from the received packet.
+
+|`reply`
+|Attributes which will be sent in the reply.
+
+|`control`
+|Attributes used to control how the server operates.  These are never sent in a packet.
+
+|`session-state`
+|Attributes which are saved and restored across multiple request / reply exchanges.
+|===
+
+
+
+== Select an Auth-Type - authorise {}
+
+The RADIUS server looks at the request and says:
+
+> Hmmm... can I deal with this request?
+
+The answer to that depends on what authentication types are enabled in the server, what the server can look up in a datastore, and what is in the request.
+
+The server starts querying the modules in the authorise section:
+
+> Unix module, can you handle this one?
+
+> Pap module, can you handle this one?
+
+> Mschap module, can you handle this one?
+
+At some point, one of the modules will say:
+
+>  Yes, I see something in the request I recognize.  I can do something!
+
+The module does this by looking for key attributes in the received request, such as MS-CHAP-Challenge (for mschap), or CHAP-Challenge (for chap), or EAP-Message (for eap). Or it may just assume it needs to add something to every request.
+
+If the module thinks has a possibility of authenticating the user, it'll say:
+
+> I can't authenticate this user now (I was just told to authorise them i.e. set the Auth-Type),
+> but my pal in the Authenticate section can!
+> Hey, set the Auth-Type to me!
+
+TThe module performs no action if it doesn't recognize anything in the request.  If the module knows it doesn't need to do lookups, the module also does nothing.
+
+== Authenticate a user - authenticate {}
+
+At the end of the authorise process, the server checks if the Auth-Type has been set by a module.
+
+If no module sets the Auth-Type, the server immediately rejects the request.
+
+For example, the client sends a request with a User-Password attribute, and pap is enabled. The pap module then sets the ``Auth-Type = pap``.
+
+During this authenticate process, the server calls the pap module again:
+
+> I see a User-Password, which is what the user entered.
+> That's nice, but I need to compare it with something.
+> Ah! Another module added the "known good" password for this user in authorise!
+
+Next, the server compares the local "known good" password to the password as entered by the user.  This is how authentication works.
+
+The "known good" password comes from another module.  The pap module just does PAP authentication, and nothing more.  The benefit of this approach is that the "known good" password can come from the 'users' file, SQL, LDAP, ``/etc/passwd``, or any external program.
+
+For this example, the ldap module is listed in the authorise section. It will have run and checked:
+
+> Hmm... Can I find a "known good" password for this user?
+
+If so, it will have added the "known good" password to the request, so that another module in authenticate can use it.
+
+== Insufficient information
+
+But WAIT! What if the client sends a MSCHAP request? What does the RADIUS server say then?
+
+> Well, this difficult and not the same as previous request
+> That client has made this difficult. I'm limited by some constraints!
+
+In this case, the mschap module looks at the request, and finds the MS-CHAP attributes.  It sets the *Auth-Type* to itself (mschap).  A database module (such as LDAP, above) gets the "known good" password, and adds it to the request.  The mschap module is then run for authentication.  It looks for either a clear text password or nt-hash. See an explanation for this limitation is explained in the xref:protocol/authproto.adoc#Proto-Password-Compat[Protocol Password Compatibilty] table. If one of those hasn't been added by a database, the mschap module says:
+
+> Sorry, I can't authenticate the user,
+> because I don't have the information I need to validate MSCHAP.
+
+But now the server has run out of options! Its only choice was mschap because that's what the client sent in the request.  The mschap module can't do anything because you didn't give it a useful "known good" password . So the server has no choice but to reject the request.  The MSCHAP data might be correct, but the server has no way to know that.  So it replies with a reject.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -1,14 +1,14 @@
-== Install from packages
+= Install from packages
 
 Network RADIUS provide pre-built binary packages of FreeRADIUS for
 common Linux distributions. This is the recommended installation
 method when packages are available for your system.
 
-The official http://packages.networkradius.com[Network RADIUS
+The official https://packages.inkbridgenetworks.com/[InkBridge Networks
 packages] page contains recent FreeRADIUS packages and
 installation instructions.
 
-=== Distribution-supplied packages
+== Distribution-supplied packages
 
 While many Operating System distributions ship FreeRADIUS
 packages, the versions they include are often years out of date.

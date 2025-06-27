@@ -1,0 +1,61 @@
+= Network Access Server
+
+A Network Access Server (NAS) is a system that provides access to
+a network. In some cases, it's also known as a Terminal Server or Remote
+Access Server (RAS).
+
+The NAS is meant to act as a gateway to guard access to a
+protected resource. This can be anything from a telephone network,
+to printers, to the Internet.
+
+The client connects to the NAS. The NAS then connects to another
+resource asking whether the client's supplied credentials are
+valid. Based on that answer the NAS then allows or disallows
+access to the protected resource.
+
+The NAS contains no information about what clients can connect or
+what credentials are valid. All the NAS does is send the
+credentials the client supplied to a resource which does know how
+to process the credentials.
+
+== Examples
+
+The above translates into different implementations for different uses.
+Here are some examples.
+
+-   The most common use would be for access to the Internet. A
+    user opens their browser. The NAS detects that the user is not
+    currently authorized to have access to the Internet, so the NAS
+    prompts the user for their username and password. The user
+    supplies them and sends them back to the NAS. The NAS then uses
+    RADIUS to connect to an AAA server (in this case,
+    it is running FreeRADIUS) and passes off the
+    username and password to the FreeRADIUS server. The FreeRADIUS
+    server searches through its resources and finds that the
+    credentials are valid and notifies the NAS they are valid. The NAS
+    then grants the user access to the internet.
+
+-   Another use of a NAS would be in VoIP.  However,
+    instead of using a username and password, many times a phone
+    number or IP Address are used. If the phone number is a valid
+    customer then the call can be completed. Other uses might be if
+    the phone number has long distance access or is a telephone card
+    and has minutes left.
+
+== Associated Protocols
+
+Although not required, NAS are almost exclusively used with
+AAA servers. Of the AAA protocols available,
+RADIUS tends to be the most widely used.
+DIAMETER is a new protocol which extends on
+RADIUS by providing error handling and inter-domain
+communications which is starting to be implimented in some high
+end NAS.
+
+== More Information
+
+-   https://datatracker.ietf.org/doc/html/rfc2881[RFC 2881] Network Access Server Requirements Next Generation NAS Model
+-   https://datatracker.ietf.org/doc/html/rfc2881[RFC 2882] Network Access Servers Requirements: Extended RADIUS Practices
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

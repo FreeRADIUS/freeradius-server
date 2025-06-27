@@ -1,0 +1,22 @@
+Please see the following for a description of the FreeRADIUS mailing lists. For normal discussion of the server and how to use it, subscribe to the FreeRADIUS user-list. Only subscribe to the development list if you are interested in writing software for the new server.
+
+
+[cols="1,3"]
+|===
+|Mailing List|Description
+
+|mailto:freeradius-announce@lists.freeradius.org[freeradius-announce]
+|Announcements about FreeRADIUS, including new versions and security issues, are made here.
+
+|mailto:freeradius-users@lists.freeradius.org[freeradius-users]
+|This list is for all users of FreeRADIUS and deals with general questions related to FreeRADIUS.
+
+|mailto:freeradius-devel@lists.freeradius.org[freeradius-devel]
+|This list is for developers who are writing code for FreeRADIUS. The content is highly technical and is not suited to the average user. If you looking to contribute code, please join this list.
+
+|https://lists.freeradius.org/pipermail/freeradius-users/[User Mailing List Archive]
+|An archive of all previous posts and emails from the users' email list.
+
+|https://lists.freeradius.org/pipermail/freeradius-devel/[Developer Mailing List Archive]
+|An archive of all previous posts and emails from the developement users' email list.
+|===
