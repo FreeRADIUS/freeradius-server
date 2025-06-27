@@ -2153,20 +2153,40 @@ static int parse_input(cf_stack_t *stack)
 
 	/*
 	 *	Catch end of a subsection.
+	 *
+	 *	frame->current is the new thing we just created.
+	 *	frame->parent is the parent of the current frame
+	 *	frame->at_reference is the original frame->current, before the @reference
+	 *	parent is the parent we started with when we started this section.
 	 */
 	if (*ptr == '}') {
 		/*
-		 *	We're already at the parent section
-		 *	which loaded this file.  We cannot go
-		 *	back up another level.
+		 *	No pushed braces means that we're already in
+		 *      the parent section which loaded this file.  We
+		 *      cannot go back up another level.
 		 *
-		 *	This limitation means that we cannot
-		 *	put half of a CONF_SECTION in one
-		 *	file, and then the second half in
-		 *	another file.  That's fine.
+		 *      This limitation means that we cannot put half
+		 *      of a CONF_SECTION in one file, and then the
+		 *      second half in another file.  That's fine.
 		 */
-		if (parent == frame->parent) {
+		if (frame->braces == 0) {
 			return parse_error(stack, ptr, "Too many closing braces");
+		}
+
+		/*
+		 *	Reset the current and parent to the original
+		 *	section, before we were parsing the
+		 *	@reference.
+		 */
+		if (frame->at_reference) {
+			frame->current = frame->parent = frame->at_reference;
+			frame->at_reference = NULL;
+
+		} else {
+			/*
+			 *	Go back up one section, because we can.
+			 */
+			frame->current = frame->parent = cf_item_to_section(frame->current->item.parent);
 		}
 
 		fr_assert(frame->braces > 0);
@@ -2179,13 +2199,6 @@ static int parse_input(cf_stack_t *stack)
 		 *	sub-sections, etc.
 		 */
 		if (!cf_template_merge(parent, parent->template)) return -1;
-
-		if (frame->at_reference) {
-			frame->current = frame->at_reference;
-			frame->at_reference = NULL;
-		} else {
-			frame->current = cf_item_to_section(parent->item.parent);
-		}
 
 		ptr++;
 		stack->ptr = ptr;
@@ -2544,7 +2557,12 @@ alloc_section:
 			}
 		}
 
-		frame->at_reference = frame->current;
+		/*
+		 *	We're processing a section.  The @reference is
+		 *	OUTSIDE of this section.
+		 */
+		fr_assert(frame->current == frame->parent);
+		frame->at_reference = frame->parent;
 		name2_token = T_BARE_WORD;
 
 		css = cf_section_alloc(parent, parent, value, NULL);
