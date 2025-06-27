@@ -1,0 +1,138 @@
+= Authentication with LDAP
+
+LDAP servers function primarily as databases that store user credentials and related information. They do not implement or handle authentication protocols themselves.
+
+The RADIUS server handles the authentication protocols such as `PAP`, `CHAP`, or `MS-CHAP`.  The LDAP server is a backend accessed by the RADIUS server to verify user credentials. The LDAP module interacts with these protocols by retrieving and comparing data. The RADIUS server performs the authentication logic, not the LDAP server.
+
+The LDAP module is compatible a few different kinds of authentication
+methods.  Note that we say _compatible_, and not _supports_.  LDAP
+servers are databases, and do not support authentication protocols.
+
+PAP::
+The user supplies a `User-Password` (plaintext or EAP-TTLS/PAP)
++
+FreeRADIUS reads the "known good" password from LDAP, and compares
+that to what the user entered.
+
+Bind as user::
+The user supplies a `User-Password` (plaintext or EAP-TTLS/PAP)
++
+FreeRADIUS uses that password to "bind as the user" to LDAP, using the
+supplied `User-Name` and `User-Password.  If the bind is successfull,
+the user is authenticated.  Otherwise, authentication fails.
+
+CHAP::
+The user supplies a `CHAP` password attribute.
++
+FreeRADIUS reads the "known good" password from LDAP in cleartext, and
+compares that to what the user entered.
+
+MS-CHAP::
+The user supplies a `MS-CHAP` password attribute.  Either as
+MS-CHAPv2, or as PEAP/MSCHAPv2, or as EAP-TTLS/MS-CHAPv2.
++
+FreeRADIUS reads the "known good" password from LDAP in cleartext, or
+as an NT hash, and compares that to what the user entered.
+
+All of above authentication methods other than "bind as user" require
+that FreeRADIUS obtain the `userPassword` field from LDAP.  If that
+field is not returned to FreeRADIUS, then normal authentication is
+impossible.  Either FreeRADIUS has to be configured to use "bind as
+user" for authentication, or the LDAP database has to be updated to
+return the `userPassword` field to FreeRADIUS.  This change usually
+involves giving the FreeRADIUS "read-only" user permission to read the
+`userPassword` field.
+
+Again, the best method is to test authentication is with the
+ldap search tool. These tests *must* be
+run prior to configuring FreeRADIUS.  We strongly recommend having the
+LDAP database return the `userPassword` field to FreeRADIUS, so that
+FreeRADIUS can authenticate the user.
+
+We recommend that the passwords be stored in LDAP as
+cleartext.  Otherwise, the only authentication methods that will work
+are PAP and EAP-TTLS/PAP.  The next section explains these issues in
+more detail.
+
+== Password Storage Methods
+
+If the `userPassword` field is returned from LDAP to FreeRADIUS, that
+information can be stored in a number of different formats:
+
+* the value can be cleartext
+* the value can be prepended with a string enclosed by braces, such as with `{crypt}` or `{ssha3}`.
+* the value can be have a suffix of `::`, in which case the password is generally a https://en.wikipedia.org/wiki/Base64[base64] encoded version of the real password
+
+TIP: Base64 values can be decoded via the command: `printf "%s"
+"VALUE" | base64 -d`
+
+FreeRADIUS is capable of understanding and parsing all of the above
+formats.  There is sufficient information in the password values to
+determine what format it is in (base64, binary, or text), and what
+password "encryption" mechanism has been used (crypt, MD5, SHA, SSHA2,
+SHA3, etc).  All that is necessary is that the
+https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/raddb/mods-available/ldap[ldap module] be configured to map
+the `userPassword` LDAP field to the `control.Password-With-Header`
+attribute in FreeRADIUS.  FreeRADIUS will then "do the right thing" to
+authenticate the user.
+
+This mapping is done in the default module configuration.  There are
+no additional changes required for FreeRADIUS to correctly read and
+decode the `userPassword` field from LDAP.  Please see the
+https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/man/man5/rlm_pap.5[pap module] for a full list of
+supported password "encryption" formats.
+
+== Additional Considerations
+
+There are some major caveats with the above authentication methods.
+The first is that we *strongly recommend* against using "bind as
+user".  This process is slow, and causes unnecessary churn in the
+connections used to contact the LDAP server.  Further, the "bind as
+user" process works _only_ when a `User-Password attribute exists in
+the request.  If any other authentication type is used in the request,
+then the "bind as user" _will not work_.  There is no amount of
+"fixing" things or configuration changes which will make it work.
+
+The second caveat is that the `CHAP` authentication type works _only_
+when a "clear text" password is stored in the LDAP database.  The
+`CHAP` calclulations are designed around having access to the "clear
+text" password.  It is impossible to use any "encrypted" or "hashed"
+passwords with `CHAP`.
+
+The third caveat is that the `MS-CHAP` authentication type works
+_only_ when a "clear text" password or "NT hashed" passwords which are
+stored in the LDAP database.  The `MS-CHAP` calculations are designed
+around having access to "known good" passwords in those formats.  It
+is impossible to use any other kind of "encrypted" or "hashed"
+passwords with `MS-CHAP`.
+
+The final caveat is that when the LDAP database contains "encrypted"
+or "hashed" passwords, the _only_ authentication type which is
+compatible with those passwords is PAP.  i.e. when the `User-Password`
+is supplied to FreeRADIUS.
+
+For recommendations on password storage methods in LDAP, please see
+the LDAP
+https://openldap.org/doc/admin24/security.html#Password%20Storage[password
+storage] page.  Please note that the recommendations there are made
+for LDAP security, and pay no attention to the caveats described
+above.  When both RADIUS and LDAP are used together, then the
+requirements of _both_ systems must be met in order for them to work
+together.  In many cases, a naive approach to LDAP security will
+prevent RADIUS from working.
+
+The issue of a database storing passwords in clear-text has to be
+balanced against the users sending clear-text passwords in
+authentication protocols.  While those passwords are protected by TLS
+(EAP-TTLS) or by RADIUS (in it's own "encryption" mechanism), it is
+generally better to use a stronger authentication method than just
+PAP.
+
+In the end, there is no perfect solution to security requirements.
+The choice may be either to give up on using a particular
+authentication method, or to relax the security requirements on LDAP
+and on password storage.  The final decision as to which choice is
+best can only be made by a local administrator.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

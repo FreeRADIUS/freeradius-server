@@ -1,0 +1,63 @@
+*Protected Extensible Authentication Protocol*, *Protected EAP*, or simply *PEAP* (pronounced *peep*), is a method to securely transmit authentication information, including passwords, over wireless LANs. It was jointly developed by Microsoft, RSA Security and Cisco.
+It is an IETF open standard.
+
+PEAP is **not** an encryption protocol; as with other EAP types it only authenticates a client into a network. 
+
+PEAP uses only server-side public key certificates to authenticate clients by creating an encrypted SSL/TLS tunnel between the client and the authentication server, which protects the ensuing exchange of authentication information from casual inspection.
+
+PEAP is similar in design to EAP-TTLS, requiring only a server-side PKI certificate to create a secure TLS tunnel to protect user authentication.
+
+As of May of 2005, there were two PEAP sub-types certified for the updated WPA and WPA2 standard. They are:
+
+* PEAPv0/EAP-MSCHAPv2
+* PEAPv1/EAP-GTC
+
+== Types
+
+=== PEAPv0/EAP-MSCHAPv2
+
+PEAPv0/EAP-MSCHAPv2 is the most common form of PEAP in use, and what is usually referred to as PEAP. 
+
+Behind EAP-TLS, PEAPv0/EAP-MSCHAPv2 is the second most widely supported EAP standard in the world. There are client and server implementations of it from various vendors, including support in all recent releases from Microsoft, Apple and Cisco.
+Other implementations exist such as AEGIS from Meetinghouse and xsupplicant from the Open1x.org project.
+
+=== PEAPv1/EAP-GTC
+
+PEAPv1/EAP-GTC was created by Cisco as an alternative to PEAPv0/EAP-MSCHAPv2. It allows the use of an inner authentication protocol other than Microsoft’s MSCHAPv2.
+
+Even though Microsoft co-invented the PEAP standard, Microsoft never added support for PEAPv1 in general, which means PEAPv1/EAP-GTC has no native Windows OS support.
+
+Since Cisco has always favored the use of its own less secure proprietary LEAP and EAP-FAST protocols over PEAP and markets them as simpler certificate-less solutions, standardized PEAP is rarely promoted by Cisco.
+
+Cisco stands to gain a monopoly in the access point market if LEAP or EAP-FAST is universally adopted. As a result, most Cisco customers run Cisco's proprietary LEAP or EAP-FAST authentication protocols due to their promotion by Cisco. With no interest from Microsoft to support PEAPv1 and little interest from Cisco to promote PEAP in general, PEAPv1 authentication is rarely used. There is no native OS support for this EAP protocol.
+
+Note: The PEAP standard was created by Microsoft, Cisco, and RSA after EAP-TTLS had already come on the market. Even with its late start, Microsoft’s and Cisco’s size allowed them to quickly overtake EAP-TTLS in the market.
+
+Microsoft and Cisco parted ways when Microsoft only supported the PEAPv0 standard while Cisco supported both PEAPv0 and PEAPv1. PEAPv0 and PEAPv1 both refer to the outer authentication method and is the mechanism that creates the secure TLS tunnel to protect subsequent authentication transactions while EAP-MSCHAPv2, EAP-GTC, and EAP-SIM refer to the inner authentication method which facilitates user or device authentication.
+
+From Cisco’s perspective, PEAPv0 supports inner EAP methods EAP-MSCHAPv2 and EAP-SIM while PEAPv1 supports inner EAP methods EAP-GTC and EAP-SIM.
+
+Since Microsoft only supports PEAPv0 and doesn’t support PEAPv1, Microsoft simply calls PEAPv0 PEAP without the v0 or v1 designator. Another difference between Microsoft and Cisco is that Microsoft only supports PEAPv0/EAP-MSCHAPv2 mode but not PEAPv0/EAP-SIM mode.
+
+=== PEAP-EAP-TLS
+
+Microsoft supports another form of PEAPv0 (which Microsoft calls PEAP-EAP-TLS) that Cisco and other third-party server and client software don’t support. PEAP-EAP-TLS does require a client-side digital certificate located on the client’s hard drive or a more secure smartcard. PEAP-EAP-TLS is very similar in operation to the original EAP-TLS but provides slightly more protection due to the fact that portions of the client certificate that are unencrypted in EAP-TLS are encrypted in PEAP-EAP-TLS. 
+
+Since few third-party clients and servers support PEAP-EAP-TLS, users should probably avoid it unless they only intend to use Microsoft desktop clients and servers.
+
+Ultimately, PEAPv0/EAP-MSCHAPv2 is the only form of PEAP that most people will ever know. PEAP is so successful in the market place that even Funk Software, the inventor and backer of EAP-TTLS, had no choice but to support PEAP in their server and client software for wireless networks.
+
+== References
+
+* Understanding the updated WPA and WPA2 standards(http://blogs.zdnet.com/Ou/index.php?p=67)
+
+== External links
+
+* draft-josefsson-pppext-eap-tls-eap(http://www.potaroo.net/ietf/idref/draft-josefsson-pppext-eap-tls-eap/) - The PEAP protocol specifications
+
+== See Also
+
+* EAP
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

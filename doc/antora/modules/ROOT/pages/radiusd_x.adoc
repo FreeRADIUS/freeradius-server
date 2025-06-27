@@ -1,6 +1,6 @@
-# How to use `radiusd -X` (debug mode)
+# `radiusd -X` 
 
-This page explains how to read the output of `radiusd -X`.
+This page explains How to use how use `radiusd` in debug mode and how to read the output of `radiusd -X` (debug mode).
 
 The first part of the debug output is the *startup* text.  Once the server is started, it prints `Ready to receive requests`.  The next part of the debug output is the *packet processing* text.  Both parts need to be read (and posted to the list!) in order to solve issues.
 
@@ -578,7 +578,7 @@ The `suffix` module splits the `User-Name` into a `Stripped-User-Name` and `Real
     (2) suffix: Adding Stripped-User-Name = "bob"
     (2) suffix: Adding Realm = "int"
     (2) suffix: Proxying request from user bob to realm int
-    (2) suffix: Preparing to proxy authentication request to realm "int" 
+    (2) suffix: Preparing to proxy authentication request to realm "int"
     (2)     [suffix] = updated
     (2)     [files] = noop
     (2)   } # authorize = updated
@@ -637,7 +637,7 @@ Because this is a proxied request, it now runs the `post-proxy` section of the `
     (2)       if ("%{debug_attr:reply:}" == '') {
     (2)       Attributes matching "reply:"
     (2)         EXPAND %{debug_attr:reply:}
-    (2)            --> 
+    (2)            -->
     (2)         if ("%{debug_attr:reply:}" == '')  -> TRUE
     (2)         if ("%{debug_attr:reply:}" == '')  {
     (2)           [noop] = noop
