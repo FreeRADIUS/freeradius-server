@@ -147,3 +147,9 @@ char	const *fr_der_tag_to_str(fr_der_tag_t tag);
 
 int	fr_der_global_init(void);
 void	fr_der_global_free(void);
+
+/*
+ *	decode.c
+ */
+ssize_t	fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+				 fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx);

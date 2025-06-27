@@ -73,9 +73,6 @@ typedef struct {
  *	- 0 no bytes decoded.
  *	- < 0 on error.  May be the offset (as a negative value) where the error occurred.
  */
-static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-					fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
 static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent, fr_dbuff_t *in,
 				    bool const allowed_chars[], fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull(1,2,3,4,6));
 
@@ -2362,8 +2359,8 @@ static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	return fr_dbuff_set(in, &our_in);
 }
 
-static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-					fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx)
+ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+				 fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx)
 {
 	fr_dbuff_t	     our_in = FR_DBUFF(in);
 	fr_der_tag_decode_t const *func;
