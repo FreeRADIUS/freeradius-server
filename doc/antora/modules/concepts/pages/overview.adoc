@@ -1,0 +1,75 @@
+= Overview
+
+A RADIUS (Remote Authentication Dial In User Service) server offers authentication, authorisation, and accounting (AAA) services for network access.  A Network Access Servers (NAS) sends authentication and accounting requests to a RADIUS server. The server then verifies user credentials and returns configuration details to the NAS. The NAS either grants or denies network access to the end-user or device.
+
+The key concepts of any RADIUS include:
+
+* *Centralized AAA*: RADIUS servers manage network access by verifying user credentials, granting access rights, and tracking user activity. 
+
+* *Client-Server Protocol*: RADIUS uses a client-server protocol. Network Access Servers are RADIUS clients that send requests to the RADIUS server. 
+
+* *Background Process*: RADIUS servers run as background processes or daemons on UNIX systems. 
+
+* *User Credentials:* The server stores or can access user account information and verifies authentication requests. 
+
+* *Configuration Details*: The RADIUS server sends details to the client, enabling it to grant or deny network access. 
+
+== What is RADIUS?
+
+RADIUS is a network protocol that defines rules and conventions for communication between network devices for remote user authentication and accounting. Commonly used by Internet Service Providers (ISPs), cellular network
+providers, and corporate and educational networks, the RADIUS protocol serves three primary functions:
+
+* Authenticates users or devices before allowing them access to a network.
+* Authorises those users or devices for specific network services.
+* Accounts for and tracks the usage of those services.
+
+=== History
+
+In 1991, Merit Network, a non-profit internet provider, required a creative way to manage dial-in access to various Points-Of-Presence (POPs) across its network. In response to this need, RADIUS was created by Livingston Enterprises.
+When RADIUS was created, network access systems were distributed across a wide area and were run by multiple independent organisations. Central administrators wanted to prevent security and scalability issues, and therefore didn't want to distribute user names and passwords. Instead, they wanted the remote access servers to contact a central server to authorise access to the requested system or service.
+
+[NOTE]
+====
+A remote access server (RAS) is often called a Network Access Server (NAS),  Network Access Client (NAC), or simply client.
+====
+
+In response to contact from the remote access server, the central server would return a “success” or “failure” message, and the remote machines would enforce this response for each end-user. This process ensures that authentication decisions are centralized, while enforcement happens at the network edge, maintaining both security and scalability in the system.
+
+The goal of RADIUS was to create a central location for user authentication, wherein users from many locations could request network access.
+The simplicity, efficiency, and usability of the RADIUS system led to its widespread adoption by network equipment vendors. RADIUS evolved into an industry and Internet Engineering Task Force (IETF) standard as outlined in https://datatracker.ietf.org/doc/html/rfc2865[RFC 2865].
+
+=== Customers
+
+Many types of businesses and organisations use the RADIUS protocol for their authentication and accounting needs. Some examples of RADIUS customers are:
+
+* Cellular network providers with millions of users.
+* Small to large ISPs to authenticate users connecting to the internet.
+* Enterprise networks implementing Network Access Control (NAC) using 802.1x or to manage access to their internal networks and VPNs.
+* Wireless networks in educational institutions and campuses.
+
+=== Benefits
+
+The RADIUS client-server architecture is an open and scalable solution. RADIUS supports a wide range of environments and can grow to handle increased demand. Its adoption by many vendors ensures compatibility with a variety of products and systems. Organizations configure RADIUS to work with various security systems, including legacy solutions. Any RADIUS client-protocol-supporting communications device can interact with a RADIUS server, simplifying integration.
+
+The RADIUS authentication mechanisms enable organizations to integrate their existing security technologies. RADIUS architecture offers authentication and authorisation services to any supported security component. Additionally, the central server can integrate with a separate authentication mechanism. RADIUS extends beyond network access devices and terminal servers. ISPs integrating RADIUS leverage their infrastructure to provide Virtual Private Network (VPN) services.
+
+The distributive nature of RADIUS separates security processes from the communications processes. This design provides a single centralized information store for authorisation and authentication information. Centralization reduces the administrative burden of providing adequate access control for remote users.
+
+[NOTE]
+====
+The authentication server manages the security processes. The network access server (NAS) handles the communication processes.
+====
+
+If high availability is not a priority, redundancy is not necessary. All RADIUS-compatible hardware on the network can derive authentication services from a single server.
+
+In summary, the RADIUS client-server protocol provides these advantages:
+
+* An open and scalable solution.
+* Broad support by a large vendor base.
+* Easy modification.
+* Separation of security and communication processes.
+* Adaptable to most security systems.
+* Workable with any communication device that supports RADIUS client protocol.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

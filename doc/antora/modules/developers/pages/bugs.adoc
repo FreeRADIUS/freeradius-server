@@ -2,8 +2,8 @@
 
 == Introduction
 
-The FreeRADIUS web site is at https://freeradius.org/, and most
-information referenced in this document can be found there.
+The https://freeradius.org/[FreeRADIUS website] contains most of the
+information referenced in this document.
 
 This document is primarily for non-developers of the FreeRADIUS
 server. If you are able to patch the code to work correctly, then
@@ -15,10 +15,10 @@ the place for you!
 
 Where the server terminates ungracefully due to a bus error,
 segmentation violation, or other memory error, you should create a new
-issue in the issue tracker https://bugs.freeradius.org/, including
+issue in the https://freeradius.org/[issue tracker], including
 information from the debugging sections below.
 
-For any other issues, you should first discuss them on the
+For any other issues, first post and discuss them on the
 https://freeradius.org/support/[FreeRADIUS users list], to
 see if anyone can reproduce them. Often there’s a simple explanation of
 why the server behaves as it does, and it’s not necessarily a bug in the
@@ -29,8 +29,8 @@ If the behavior is correct but confusing, we think that’s a bug too, and
 you should file a bug against our documentation.
 
 For more information about the users list, the lists’ archives and the
-faq, please visit https://www.freeradius.org/list/users.html Please make
-sure to READ and RESPECT the house-rules. You will get much better
+faq, please visit https://www.freeradius.org/list/users.html[FreeRADIUS org]. Please make
+sure to *read* and *respect* the house-rules. You will get much better
 response and much faster if you do!
 
 == Core dumps

@@ -1,0 +1,77 @@
+== Overview
+
+*Wi-Fi Protected Access* (*WPA* and *WPA2*) is a class of systems to secure wireless (Wi-Fi) computer networks. It was created in response to several serious weaknesses researchers had found in the previous system, Wired Equivalent Privacy (WEP). WPA implements the majority of the IEEE 802.11i standard, and was intended as an intermediate measure to take the place of WEP while 802.11i was prepared. WPA is designed to work with all wireless network interface cards, but not necessarily with first generation wireless access points. WPA2 implements the full standard, but will not work with some older network cards. Both provide good security, with two significant issues:
+
+* either WPA or WPA2  must be enabled and chosen in preference to WEP. WEP is usually presented as the first security choice in most installation instructions.
+* in the "Personal" mode, the most likely choice for homes and small offices, a passphrase is required that, for full security, must be longer than the typical 6 to 8 character passwords users are taught to employ.
+
+== History
+
+WPA was created by the The Wi-Fi Alliance, an industry trade group, which owns the trademark to the Wi-Fi name and certifies devices that carry that name.
+
+WPA is designed for use with an IEEE 802.1X authentication server, which distributes different keys to each user; however, it can also be used in a less secure *"pre-shared key" (PSK)* mode, where every user is given the same passphrase. The design of WPA is based on a Draft 3 of the IEEE 802.11i standard.
+
+The Wi-Fi Alliance created WPA to enable introduction of standard-based secure wireless network products prior to the IEEE 802.11i group finishing its work. The Wi-Fi Alliance at the time already anticipated the WPA2 certification based on the final draft of the IEEE 802.11i standard, therefore the tags on the frame fields (Information Elements or IEs) are intentionally made different from 802.11i to avoid the confusion in unified WPA/WPA2 implementations.
+
+Data is encrypted using the RC4 (cipher), with a 128-bit key and a 48-bit initialization vector (IV). One major improvement in WPA over WEP is the Temporal Key Integrity Protocol (TKIP), which dynamically changes keys as the system is used. When combined with the much larger IV, this defeats the well-known related-key attack on WEP.
+
+In addition to authentication and encryption, WPA also provides vastly improved payload integrity. The cyclic redundancy check (CRC) used in WEP is inherently insecure; it is possible to alter the payload and update the message CRC without knowing the WEP key.  A more secure message authentication code (usually known as a MAC, but here termed a *MIC* for "Message Integrity Code") is used in WPA, an algorithm named "Michael". The MIC used in WPA includes a frame counter, which prevents replay attack being executed;
+
+By increasing the size of the keys and IVs, reducing the number of packets sent with related keys, and adding a secure message verification system, WPA makes breaking into a Wireless LAN far more difficult. The Michael algorithm was the strongest that WPA designers could come up with that would still work with most older network cards. Due to inevitable weaknesses of Michael, WPA includes special countermeasure mechanism that detects the attempt to break TKIP and temporarily blocks communications with the attacker.
+
+== WPA2
+
+WPA2 implements the mandatory elements of 802.11i. In particular, in addition to TKIP and the Michael algorithm, it introduces a new Advanced Encryption Standard based algorithm, CCMP, that is considered fully secure. Official support for WPA2 in Microsoft Windows XP was rolled out on 1 May 2005. Driver upgrades for network cards may be required. Apple Computer supports WPA2 on all AirPort Extreme-enabled Apple Macintosh, the AirPort Extreme Base Station, and the AirPort Express. Firmware upgrades needed are included in AirPort 4.2, released July 14, 2005. Note that from March 13, 2006, WPA2 certification is mandatory for all new devices wishing to be Wi-Fi certified.
+
+== Security in pre-shared key mode
+
+Pre-shared key mode (PSK, also known as *personal* mode) is designed for home and small office networks that cannot afford the cost and complexity of an 802.1X authentication server. Each user must enter a passphrase to access the network. The passphrase may be from 8 to 63 ASCII characters or 64 hexadecimal digits (256 bits). If you choose to use the ASCII characters, a Hash_function|hash function reduces it from 504 bits (63 characters * 8 bits/character) to 256 bits (using also the SSID). The passphrase may be stored on the user's computer at their discretion under most operating systems to avoid re-entry. The passphrase must remain stored in the Wi-Fi access point.
+
+Security is strengthened by employing a PBKDF2 key derivation function. However, the weak passphrases users typically employ are vulnerable to password cracking attack. Password cracking can be defeated by using a passphrase of at least 5 Diceware words or 14 completely random letters with WPA and WPA2. For maximum strength, 8 Diceware words or 22 random characters should be employed. Passphrases should be changed at regular intervals, or whenever an individual with access is no longer authorized to use the network or when a device configured to use the network is lost or compromised.
+
+Some consumer chip manufacturers have attempted to bypass weak passphrase choice by adding a method of automatically generating and distributing strong keys through a software or hardware interface that uses an external method of adding a new Wi-Fi adapter or appliance to a network. These methods include pushing a button (Broadcom and Buffalo AirStation One-Touch Secure System]) and entering a short challenge phrase through software (Atheros). The Wi-Fi Alliance is currently working on standardisation of this approach as part of its Simple Configuration effort.
+
+== EAP types under WPA- and WPA2- Enterprise
+
+The Wi-Fi alliance has announced the inclusion of additional EAP (Extensible Authentication Protocol) types to its certification programs for WPA- and WPA2- Enterprise.  This was to ensure that WPA-Enterprise certified products can interoperate with one another.  Previously, only EAP-TLS (Transport Layer Security) was certified by the Wi-Fi alliance.
+
+The EAP types now included in the certification program are:
+
+* EAP-TLS (previously tested)
+* EAP-TTLS/MSCHAPv2
+* PEAPv0/EAP-MSCHAPv2
+* PEAPv1/EAP-GTC
+* EAP-SIM
+
+Other EAP types may be supported by 802.1X clients and servers developed by specific firms. This certification is an attempt for popular EAP types to interoperate; their failure to do so is currently one of the major issues preventing rollout of 802.1X on heterogeneous networks.
+
+== See also
+
+* WAPI —<!-- controversial--> Chinese National Standard for wireless LAN security.
+* tinyPEAP — a small-footprint RADIUS server designed to load into a wireless access point
+* FreeRADIUS - a free [[open source]] RADIUS server
+* Radiuz — a "cooperative WiFi network" that provides free RADIUS service for WPA-Enterprise compatible routers
+* SecureMyWiFi — Service that provides WPA/WPA2-Enterprise security with User/Network Management Interface.
+* SecureEasySetup — a technology developed by Broadcom to easily set up wireless LANs with WPA
+
+== References
+
+* Wi-Fi Alliance. (2003). Wi-Fi Protected Access: Strong, standards-based, interoperable security for today’s Wi-Fi networks. Retrieved March 1, 2004 from http://www.wifialliance.com/OpenSection/pdf/Whitepaper_Wi-Fi_Security4-29-03.pdf
+* Wi-Fi Alliance. (2004). Wi-Fi Protected Access&trade; security sees strong adoption: Wi-Fi Alliance takes strong position by requiring WPA security for product certification. Retrieved January 5, 2004 from http://www.wi-fi.org/opensection/ReleaseDisplay.asp?TID=4&ItemID=165&StrYear=2004&strmonth=2
+* Weakness in Passphrase Choice in WPA Interface, by Robert Moskowitz. Retrieved March 2, 2004 from http://wifinetnews.com/archives/002452.html
+* Press Release about new EAP types supported under WPA-Enterprise from http://www.wi-fi.org/OpenSection/ReleaseDisplay.asp?TID=4&ItemID=205&StrYear=2005&strmonth=4
+
+== External links
+
+* Wi-Fi Alliance's WPA page (http://www.wi-fi.org/opensection/protected_access.asp)
+* Wi-Fi Alliance's Interoperability Certificate page (http://www.wi-fi.org/opensection/certification-certificate.asp)
+* Network Configuration with WPA (http://www.wi-fiplanet.com/tutorials/article.php/3552826)
+* Apple Airport and Wi-Fi Network Security (http://theworld.com/~reinhold/airport.html)
+* EAP types supported under WPA-Enterprise (http://www.wi-fi.org/OpenSection/eap.asp)
+* Linux WPA/WPA2/IEEE 802.1X Supplicant (http://hostap.epitest.fi/wpa_supplicant/)
+* SmithMicro Quicklink Mobile Software (http://www.smithmicro.com/default.tpl?sku=QLMWA0EE&group=product_full)
+* Steve Gibson's Perfect Passwords(https://www.grc.com/passwords/)
+* GRC's Ultra High Security Password Generators(http://darkvoice.dyndns.org/wlankeygen/ Online WEP-/WPA-Key Generator)
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

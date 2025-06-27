@@ -1,7 +1,7 @@
-= Upgrading from v2 to v3
+= Upgrade to v3
 
-The configuration for 3.0 is *largely* compatible with the 2.x.x
-configuration.  However, it is NOT possible to simply use the 2.x.x
+The configuration for version 3 is *largely* compatible with the version 2
+configuration.  However, it is NOT possible to simply use the v2
 configuration as-is.  Instead, you should re-create it.
 
 == Security
@@ -64,7 +64,7 @@ server are placed in the `mods-enabled/` directory.  All of the
 modules in that directory will be loaded.  This means that the
 `instantiate` section of radiusd.conf is less important.  The only
 reason to list a module in the `instantiate` section is to force
-ordering when the modules are loaded. 
+ordering when the modules are loaded.
 
 Modules can be enabled by creating a soft link.  For module `foo`, do:
 
@@ -340,8 +340,8 @@ if (userlock) {
 	}
 }
 ----
-  
-  
+
+
 === rlm_unix
 
 The `unix` module does not have an `authenticate` section.  So you
@@ -374,13 +374,13 @@ to get them being processed.
 
 Instances of rlm_date register an xlat method which can translate
 integer and date values to an arbitrarily formatted date time
-string, or an arbitrarily formated time string to an integer, 
+string, or an arbitrarily formated time string to an integer,
 depending on the attribute type passed.
 
 
 === rlm_rest
 
-The `rest` module is used to translate RADIUS requests into 
+The `rest` module is used to translate RADIUS requests into
 RESTfull HTTP requests. Currently supported body types are JSON
 and POST.
 
@@ -403,12 +403,12 @@ All integers are assumed to be in network byte order.
 === rlm_yubikey
 
 The `yubikey` module can be used to forward yubikey OTP token
-values to a Yubico validation server, or decrypt the token 
+values to a Yubico validation server, or decrypt the token
 using a PSK.
 
 
 == Deleted Modules
- 
+
 The following modules have been deleted, and are no longer supported
 in Version 3.  If you are using one of these modules, your
 configuration can probably be changed to not need it.  Otherwise email

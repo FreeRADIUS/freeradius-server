@@ -1,0 +1,29 @@
+= RESOURCES
+
+== Primary Sites
+
+* *https://www.freeradius.org/[FreeRADIUS]*
+* *https://www.inkbridgenetworks.com/[Inkbridge Networks]*
+
+== Mailing lists
+
+include::ROOT:partial$mailinglist.adoc[]
+
+== RFCs
+
+* http://www.freeradius.org/rfc/[Related RFCs and Drafts]
+
+* https://datatracker.ietf.org/doc/html/rfc2865[RFC 2865] Remote Authentication Dial In User Service (RADIUS)
+* https://datatracker.ietf.org/doc/html/rfc2866[RFC 2866] RADIUS Accounting
+* https://datatracker.ietf.org/doc/html/rfc2867[RFC 2867] RADIUS Accounting Modifications for Tunnel Protocol Support
+* https://datatracker.ietf.org/doc/html/rfc2868[RFC 2868] RADIUS Attributes for Tunnel Protocol Support
+* https://datatracker.ietf.org/doc/html/rfc2869[RFC 2869] RADIUS Extensions
+* https://datatracker.ietf.org/doc/html/rfc3758[RFC 3748] Extensible Authentication Protocol (EAP)
+* https://datatracker.ietf.org/doc/html/rfc3579[RFC 3579] - RADIUS (Remote Authentication Dial In User Service) Support For Extensible Authentication Protocol (EAP)
+
+== Related RADIUS Sites
+* *https://www.iana.org/assignments/radius-types/radius-types.xhtml[RADIUS Packet Types]*
+
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -1,0 +1,31 @@
+= RADIUS
+
+RADIUS is a protocol for remote user Authorisation, Authentication and Accounting. Its primary use is for Internet Service Providers, though it may as well be used on any network that needs a centralized authentication and/or accounting service for its workstations.
+
+RADIUS is often used in larger Wi-Fi (wireless) networks for authentication purposes, replacing the simple shared key methods which are uncomfortable if a Wi-Fi network reaches a specific size.
+
+The protocol originally was designed by the well known terminal server manufacturer Livingston for use with their Portmaster series of terminal servers. Since then it has been implemented by hundreds other vendors and has a become an Internet Standard RFC.
+
+The DIAMETER protocol is the designated successor, but RADIUS is still commonly used today.
+
+== Protocol dependencies
+
+UDP: RADIUS uses UDP as its underlying protocol. The registered UDP port for RADIUS traffic is 1812; the early deployment of RADIUS used UDP port 1645, which conflicted with the "datametrics" service.  When RADIUS is used for accounting rather than authentication and configuration, the registered UDP port is 1813; the early deployment used port 1646, which conflicted with the "sa-msg-port" service.
+
+== External links
+
+* RFC 2865 Remote Authentication Dial In User Service (RADIUS)
+* RFC 2866 RADIUS Accounting
+* RFC 2867 RADIUS Accounting Modifications for Tunnel Protocol Support
+* RFC 2868 RADIUS Attributes for Tunnel Protocol Support
+* RFC 2869 RADIUS Extensions
+* RADIUS attributes and packet type codes
+
+== See Also
+
+* FreeRADIUS
+* RADIUS-Clients
+* Other RADIUS Servers
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

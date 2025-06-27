@@ -1,0 +1,4 @@
+[NOTE]
+====
+Some of the information on this page is located on external sites. You may be redirected to https://github.com/FreeRADIUS[FreeRADIUS Project GitHub], https://www.freeradius.org/[FreeRADIUS org], or the https://www.inkbridgenetworks.com/[InkBridge Networks] websites. Other external references may also be used such as vendor or technical sites.
+====

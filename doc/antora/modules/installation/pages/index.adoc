@@ -2,7 +2,7 @@
 
 FreeRADIUS is available from multiple sources:
 
-* Official xref:packages.adoc[Network RADIUS packages]
+* Official xref:packages.adoc[InkBridge Networks] FreeRADIUS packages
 * xref:source.adoc[Source code]
 * Many Operating System distributions
 

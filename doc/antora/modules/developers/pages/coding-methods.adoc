@@ -18,7 +18,7 @@ If someone _really_ hates you, you’ll be forced to debug un-commented code tha
 someone else wrote. You don’t want to do that.
 
 For FreeRADIUS, use doxygen `@`-style comments so you get the
-benefits of the developer documentation site, https://doc.freeradius.org/.
+benefits of the developer documentation https://doc.freeradius.org/[site].
 
 == Give things reasonable names
 
@@ -77,11 +77,9 @@ If the programmer had bothered to check for a `NULL` fp (error
 condition), then they could have produced a descriptive error message
 instead of having the program core dump.
 
-== Core dumps are for weenies
+== Core dumps are *ineffectual*
 
-If your program core dumps accidentally, you’re a bad programmer. You don’t know
-what your program is doing, or what it’s supposed to be doing when anything goes
-wrong.
+If your program core dumps accidentally, it's an indication of bad or weak programming. You don’t know what your program is doing, or what it’s supposed to be doing when anything goes wrong.
 
 If it hits an `assert()` and calls `abort()`, you’re a genius. You’ve thought
 ahead to what _might_ go wrong, and put in an assertion to ensure that it fails

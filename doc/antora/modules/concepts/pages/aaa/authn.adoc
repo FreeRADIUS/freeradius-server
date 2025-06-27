@@ -1,0 +1,22 @@
+= Authentication
+
+Authentication refers to the process of validating the identity of the user by matching the credentials supplied by the user (for example, name, password) to those configured on the AAA server (for example, name, password). If the credentials match, the user is authenticated and gains access to the network. If
+the credentials do not match, authentication fails, and network access is denied.
+
+Authentication can also fail if user credentials are entered incorrectly. For example, site policy may allow a user network access from an on-site location using a cleartext password. However, if the same password is entered by the user from a remote location, access may be denied.
+
+An ISP can also choose to deny network access to authenticated users if the users’ account has been suspended. An administrator can choose to permit limited network access to unknown users, as well. For example, an administrator can provide access to an area where the user can purchase additional network
+connectivity. This last example is most often seen in for-pay WiFi hotspots.
+
+Authentication is simply a process of comparing user’s credentials in request with the "known good" credentials retrieved from a database. Authentication usually deals with password encryption. The modules `pap`, `chap`, `mschap`, etc. do authentication.
+
+Some modules do both authentication and limited authorisation. For
+example, the `mschap` module authenticates MS-CHAP credentials, but it
+may also be used as an authorisation module, which verifies that
+request contains `MS-CHAP` related attribute.  If so, the module
+instructs the server to use `mschap` for authentication, too
+
+These dual modules are usually related to protocol-specific
+attributes, such as the `pap` module for the `User-Password`
+attribute, `chap` for `CHAP-Password`, `mschap` for `MS-CHAP-*`, etc.
+
