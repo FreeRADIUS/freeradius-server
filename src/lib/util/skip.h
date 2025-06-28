@@ -51,6 +51,8 @@ extern "C" {
 
 ssize_t		fr_skip_string(char const *start, char const *end) CC_HINT(nonnull(1));
 
+ssize_t		fr_skip_brackets(char const *start, char const *end, char end_quote);
+
 ssize_t		fr_skip_xlat(char const *start, char const *end) CC_HINT(nonnull(1));
 
 ssize_t		fr_skip_condition(char const *start, char const *end, bool const terminal[static UINT8_MAX + 1],
