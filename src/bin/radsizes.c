@@ -3,6 +3,7 @@
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/cf_priv.h>
+#include <freeradius-devel/unlang/unlang_priv.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/tlist.h>
@@ -40,6 +41,11 @@ int main(UNUSED int argc, UNUSED char **argv)
 	SIZEOF(tmpl_attr_rules_t);
 	SIZEOF(tmpl_rules_t);
 	SIZEOF(tmpl_xlat_rules_t);
+
+	SIZEOF(unlang_t);
+	SIZEOF(unlang_group_t);
+	SIZEOF(unlang_thread_t);
+	SIZEOF(unlang_stack_frame_t);
 
 	SIZEOF(xlat_call_t);
 	SIZEOF(xlat_exp_t);
