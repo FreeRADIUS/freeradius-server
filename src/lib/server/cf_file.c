@@ -2029,6 +2029,7 @@ static CONF_ITEM *process_switch(cf_stack_t *stack)
 {
 	size_t		match_len;
 	fr_type_t	type = FR_TYPE_NULL;
+	fr_token_t	name2_quote = T_BARE_WORD;
 	CONF_SECTION	*css;
 	char const	*ptr = stack->ptr;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
@@ -2067,6 +2068,14 @@ static CONF_ITEM *process_switch(cf_stack_t *stack)
 		fr_skip_whitespace(ptr);
 	}
 
+	/*
+	 *	Get the argument to the switch statement
+	 */
+	if (cf_get_token(parent, &ptr, &name2_quote, stack->buff[1], stack->bufsize,
+			 frame->filename, frame->lineno) < 0) {
+		return NULL;
+	}
+
 	css = cf_section_alloc(parent, parent, "switch", NULL);
 	if (!css) {
 		ERROR("%s[%d]: Failed allocating memory for section",
@@ -2076,17 +2085,9 @@ static CONF_ITEM *process_switch(cf_stack_t *stack)
 
 	cf_filename_set(css, frame->filename);
 	cf_lineno_set(css, frame->lineno);
-	css->name2_quote = T_BARE_WORD;
+	css->name2_quote = name2_quote;
 	css->unlang = CF_UNLANG_ALLOW;
 	css->allow_locals = true;
-
-	/*
-	 *	Get the argument to the switch statement
-	 */
-	if (cf_get_token(parent, &ptr, &css->name2_quote, stack->buff[1], stack->bufsize,
-			 frame->filename, frame->lineno) < 0) {
-		return NULL;
-	}
 
 	fr_skip_whitespace(ptr);
 
