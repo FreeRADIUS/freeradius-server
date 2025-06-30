@@ -91,6 +91,8 @@ ATTRIBUTE	Sub-Deactivate-Service			63	string
 ATTRIBUTE	DHCP-Subscriber-Id			65	string
 ATTRIBUTE	DHCPv6-Link-Address			66	string
 
+ATTRIBUTE	DHCPv4-Option-To-AAA			90	string
+
 ATTRIBUTE	sip-conf-id				100	string
 ATTRIBUTE	h323-credit-amount			101	string
 ATTRIBUTE	h323-credit-time			102	string
