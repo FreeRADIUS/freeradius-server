@@ -90,13 +90,17 @@ server dynamic_clients {
 			max_connections = 256
 
 			#
-			#  Free a dynamic client, or close a
-			#  connection if it does not receive
+			#  Close a connection if it does not receive
 			#  a packet within this time.
 			#
 			#  Useful range of values: 5 to 600
 			#
 			idle_timeout = 60.0
+
+			#
+			#  Time after which idle dynamic clients are deleted.
+			#
+			dynamic_timeout = 600.0
 
 			#
 			#  nak_lifetime:: Time for which blocked
