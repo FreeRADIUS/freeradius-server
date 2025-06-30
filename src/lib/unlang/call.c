@@ -250,8 +250,14 @@ void unlang_call_init(void)
 {
 	unlang_register(UNLANG_TYPE_CALL,
 			   &(unlang_op_t){
-				.name			= "call",
-				.interpret		= unlang_call_frame_init,
-				.flag			= UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_DEBUG_BRACES
+				.name		= "call",
+				.flag		= UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_DEBUG_BRACES,
+				.type		= UNLANG_TYPE_CALL,
+
+				.interpret	= unlang_call_frame_init,
+
+
+				.unlang_size	= sizeof(unlang_call_t),
+				.unlang_name	= "unlang_call_t",
 			   });
 }

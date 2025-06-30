@@ -139,17 +139,6 @@ struct unlang_s {
 	unlang_mod_actions_t	actions;	//!< Priorities, etc. for the various return codes.
 };
 
-/** Describes how to allocate an #unlang_group_t with additional memory keyword specific data
- *
- */
-typedef struct {
-	unlang_type_t		type;		//!< Keyword.
-	size_t			len;		//!< Total length of the unlang_group_t + specialisation struct.
-	unsigned		pool_headers;	//!< How much additional space to allocate for chunk headers.
-	size_t			pool_len;	//!< How much additional space to allocate for extensions.
-	char const		*type_name;	//!< Talloc type name.
-} unlang_ext_t;
-
 typedef struct {
 	fr_dict_t		*dict;		//!< our dictionary
 	fr_dict_attr_t const	*root;		//!< the root of our dictionary
@@ -237,13 +226,21 @@ DIAG_ON(attributes)
  * will return an #unlang_action_t, which determines what the interpreter does next.
  */
 typedef struct {
-	char const		*name;				//!< Name of the operation.
+	char const		*name;				//!< Name of the keyword
+	unlang_type_t		type;				//!< enum value for the keyword
 
 	unlang_process_t	interpret;     			//!< Function to interpret the keyword
 
 	unlang_signal_t		signal;				//!< Function to signal stop / dup / whatever
 
 	unlang_dump_t		dump;				//!< Dump additional information about the frame state.
+
+	size_t			unlang_size;			//!< Total length of the unlang_t + specialisation struct.
+	char const		*unlang_name;			//!< Talloc type name for the unlang_t
+
+	unsigned		pool_headers;			//!< How much additional space to allocate for chunk headers.
+	size_t			pool_len;			//!< How much additional space to allocate for chunks
+
 
 	unlang_thread_instantiate_t thread_instantiate;		//!< per-thread instantiation function
 	size_t			thread_inst_size;

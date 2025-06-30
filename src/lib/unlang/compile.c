@@ -131,7 +131,7 @@ void compile_copy_context(unlang_compile_t *dst, unlang_compile_t const *src)
 #define UPDATE_CTX2 compile_copy_context(&unlang_ctx2, unlang_ctx)
 
 
-static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs, unlang_ext_t const *ext);
+static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs, unlang_type_t type);
 
 static char const unlang_spaces[] = "                                                                                                                                                                                                                                                                ";
 
@@ -553,20 +553,23 @@ int unlang_fixup_update(map_t *map, void *ctx)
 }
 
 
-static unlang_group_t *group_allocate(unlang_t *parent, CONF_SECTION *cs, unlang_ext_t const *ext)
+static unlang_group_t *group_allocate(unlang_t *parent, CONF_SECTION *cs, unlang_type_t type)
 {
 	unlang_group_t	*g;
 	unlang_t	*c;
 	TALLOC_CTX	*ctx;
+	unlang_op_t const *op = &unlang_ops[type];
 
 	ctx = parent;
 	if (!ctx) ctx = cs;
 
+	fr_assert(op->unlang_size > 0);
+
 	/*
 	 *	All the groups have a common header
 	 */
-	g = (unlang_group_t *)_talloc_zero_pooled_object(ctx, ext->len, ext->type_name,
-							 ext->pool_headers, ext->pool_len);
+	g = (unlang_group_t *)_talloc_zero_pooled_object(ctx, op->unlang_size, op->unlang_name,
+							 op->pool_headers, op->pool_len);
 	if (!g) return NULL;
 
 	g->children = NULL;
@@ -575,7 +578,7 @@ static unlang_group_t *group_allocate(unlang_t *parent, CONF_SECTION *cs, unlang
 
 	c = unlang_group_to_generic(g);
 	c->parent = parent;
-	c->type = ext->type;
+	c->type = type;
 	c->ci = CF_TO_ITEM(cs);
 
 	return g;
@@ -695,12 +698,6 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 
 	tmpl_rules_t		t_rules;
 
-	static unlang_ext_t const map_ext = {
-		.type = UNLANG_TYPE_MAP,
-		.len = sizeof(unlang_map_t),
-		.type_name = "unlang_map_t"
-	};
-
 	/*
 	 *	The RHS is NOT resolved in the context of the LHS.
 	 */
@@ -721,7 +718,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	}
 	t_rules.literals_safe_for = map_proc_literals_safe_for(proc);
 
-	g = group_allocate(parent, cs, &map_ext);
+	g = group_allocate(parent, cs, UNLANG_TYPE_MAP);
 	if (!g) return NULL;
 
 	gext = unlang_group_to_map(g);
@@ -1145,12 +1142,6 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	tmpl_rules_t		t_rules;
 
-	static unlang_ext_t const update_ext = {
-		.type = UNLANG_TYPE_UPDATE,
-		.len = sizeof(unlang_map_t),
-		.type_name = "unlang_map_t"
-	};
-
 	if (main_config_migrate_option_get("forbid_update")) {
 		cf_log_err(cs, "The use of 'update' sections is forbidden by the server configuration");
 		return NULL;
@@ -1172,7 +1163,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	t_rules.attr.allow_wildcard = true;
 	RULES_VERIFY(&t_rules);
 
-	g = group_allocate(parent, cs, &update_ext);
+	g = group_allocate(parent, cs, UNLANG_TYPE_UPDATE);
 	if (!g) return NULL;
 
 	gext = unlang_group_to_map(g);
@@ -1908,7 +1899,7 @@ bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *action_
 	return true;
 }
 
-static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs, unlang_ext_t const *ext)
+static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs, unlang_type_t type)
 {
 	unlang_group_t *g;
 	unlang_t *c;
@@ -1918,12 +1909,12 @@ static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	 *	*interpreter* type is GROUP, even if the *debug names*
 	 *	are something else.
 	 */
-	g = group_allocate(parent, cs, ext);
+	g = group_allocate(parent, cs, type);
 	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
 	if (!cs) {
-		c->name = unlang_ops[ext->type].name;
+		c->name = unlang_ops[type].name;
 		c->debug_name = c->name;
 
 	} else {
@@ -2242,8 +2233,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 /*
  *	Generic "compile a section with more unlang inside of it".
  */
-static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				 unlang_ext_t const *ext)
+static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs, unlang_type_t type)
 {
 	unlang_group_t	*g;
 	unlang_t	*c;
@@ -2255,7 +2245,7 @@ static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	/*
 	 *	We always create a group, even if the section is empty.
 	 */
-	g = group_allocate(parent, cs, ext);
+	g = group_allocate(parent, cs, type);
 	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
@@ -2271,7 +2261,7 @@ static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	Make sure to tell the user that we're running a
 	 *	policy, and not anything else.
 	 */
-	if (ext->type == UNLANG_TYPE_POLICY) {
+	if (type == UNLANG_TYPE_POLICY) {
 		MEM(c->debug_name = talloc_typed_asprintf(c, "policy %s", name1));
 
 	} else if (!name2) {
@@ -2287,15 +2277,9 @@ static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
-	static unlang_ext_t const group = {
-		.type = UNLANG_TYPE_GROUP,
-		.len = sizeof(unlang_group_t),
-		.type_name = "unlang_group_t",
-	};
-
 	if (!cf_item_next(ci, NULL)) return UNLANG_IGNORE;
 
-	return compile_section(parent, unlang_ctx, cf_item_to_section(ci), &group);
+	return compile_section(parent, unlang_ctx, cf_item_to_section(ci), UNLANG_TYPE_GROUP);
 }
 
 static fr_table_num_sorted_t transaction_keywords[] = {
@@ -2386,12 +2370,6 @@ static unlang_t *compile_transaction(unlang_t *parent, unlang_compile_t *unlang_
 	unlang_t *c;
 	unlang_compile_t unlang_ctx2;
 
-	static unlang_ext_t const transaction = {
-		.type = UNLANG_TYPE_TRANSACTION,
-		.len = sizeof(unlang_transaction_t),
-		.type_name = "unlang_transaction_t",
-	};
-
 	if (cf_section_name2(cs) != NULL) {
 		cf_log_err(cs, "Unexpected argument to 'transaction' section");
 		cf_log_err(ci, DOC_KEYWORD_REF(transaction));
@@ -2415,7 +2393,7 @@ static unlang_t *compile_transaction(unlang_t *parent, unlang_compile_t *unlang_
 	unlang_ctx2.actions.actions[RLM_MODULE_INVALID] = MOD_ACTION_RETURN;
 	unlang_ctx2.actions.actions[RLM_MODULE_DISALLOW] = MOD_ACTION_RETURN;
 
-	g = group_allocate(parent, cs, &transaction);
+	g = group_allocate(parent, cs, UNLANG_TYPE_TRANSACTION);
 	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
@@ -2443,12 +2421,6 @@ static unlang_t *compile_try(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	unlang_t *c;
 	CONF_ITEM *next;
 
-	static unlang_ext_t const ext = {
-		.type = UNLANG_TYPE_TRY,
-		.len = sizeof(unlang_try_t),
-		.type_name = "unlang_try_t",
-	};
-
 	/*
 	 *	The transaction is empty, ignore it.
 	 */
@@ -2473,7 +2445,7 @@ static unlang_t *compile_try(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 		goto print_url;
 	}
 
-	g = group_allocate(parent, cs, &ext);
+	g = group_allocate(parent, cs, UNLANG_TYPE_TRY);
 	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
@@ -2511,12 +2483,6 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	CONF_ITEM *prev;
 	char const *name;
 
-	static unlang_ext_t const ext = {
-		.type = UNLANG_TYPE_CATCH,
-		.len = sizeof(unlang_catch_t),
-		.type_name = "unlang_catch_t",
-	};
-
 	prev = cf_item_prev(cf_parent(ci), ci);
 	while (prev && cf_item_is_data(prev)) prev = cf_item_prev(cf_parent(ci), prev);
 
@@ -2538,7 +2504,7 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 		goto fail;
 	}
 
-	g = group_allocate(parent, cs, &ext);
+	g = group_allocate(parent, cs, UNLANG_TYPE_CATCH);
 	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
@@ -2627,14 +2593,6 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	fr_type_t		type;
 	fr_htrie_type_t		htype;
 
-	static unlang_ext_t const switch_ext = {
-		.type = UNLANG_TYPE_SWITCH,
-		.len = sizeof(unlang_switch_t),
-		.type_name = "unlang_switch_t",
-		.pool_headers = TMPL_POOL_DEF_HEADERS,
-		.pool_len = TMPL_POOL_DEF_LEN
-	};
-
 	/*
 	 *	We allow unknown attributes here.
 	 */
@@ -2652,7 +2610,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
-	g = group_allocate(parent, cs, &switch_ext);
+	g = group_allocate(parent, cs, UNLANG_TYPE_SWITCH);
 	if (!g) return NULL;
 
 	gext = unlang_group_to_switch(g);
@@ -2872,12 +2830,6 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	tmpl_t			*vpt = NULL;
 	tmpl_rules_t		t_rules;
 
-	static unlang_ext_t const case_ext = {
-		.type = UNLANG_TYPE_CASE,
-		.len = sizeof(unlang_case_t),
-		.type_name = "unlang_case_t",
-	};
-
 	/*
 	 *	We allow unknown attributes here.
 	 */
@@ -2969,7 +2921,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 *	will silently skip the match, and then fall through to
 	 *	the "default" statement.
 	 */
-	c = compile_section(parent, unlang_ctx, cs, &case_ext);
+	c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_CASE);
 	if (!c) {
 		talloc_free(vpt);
 		return NULL;
@@ -3000,12 +2952,6 @@ static unlang_t *compile_timeout(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	tmpl_t			*vpt = NULL;
 	fr_token_t		token;
 
-	static unlang_ext_t const timeout_ext = {
-		.type = UNLANG_TYPE_TIMEOUT,
-		.len = sizeof(unlang_timeout_t),
-		.type_name = "unlang_timeout_t",
-	};
-
 	/*
 	 *	Timeout <time ref>
 	 */
@@ -3019,7 +2965,7 @@ static unlang_t *compile_timeout(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
-	g = group_allocate(parent, cs, &timeout_ext);
+	g = group_allocate(parent, cs, UNLANG_TYPE_TIMEOUT);
 	if (!g) return NULL;
 
 	gext = unlang_group_to_timeout(g);
@@ -3086,7 +3032,7 @@ static unlang_t *compile_timeout(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	/*
 	 *	Compile the contents of a "timeout".
 	 */
-	c = compile_section(parent, unlang_ctx, cs, &timeout_ext);
+	c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_TIMEOUT);
 	if (!c) return NULL;
 
 	g = unlang_generic_to_group(c);
@@ -3110,12 +3056,6 @@ static unlang_t *compile_limit(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	ssize_t			slen;
 	tmpl_rules_t		t_rules;
 
-	static unlang_ext_t const limit_ext = {
-		.type = UNLANG_TYPE_LIMIT,
-		.len = sizeof(unlang_limit_t),
-		.type_name = "unlang_limit_t",
-	};
-
 	/*
 	 *	limit <number>
 	 */
@@ -3129,7 +3069,7 @@ static unlang_t *compile_limit(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 
 	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
-	g = group_allocate(parent, cs, &limit_ext);
+	g = group_allocate(parent, cs, UNLANG_TYPE_LIMIT);
 	if (!g) return NULL;
 
 	gext = unlang_group_to_limit(g);
@@ -3195,7 +3135,7 @@ static unlang_t *compile_limit(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	/*
 	 *	Compile the contents of a "limit".
 	 */
-	c = compile_section(parent, unlang_ctx, cs, &limit_ext);
+	c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_LIMIT);
 	if (!c) return NULL;
 
 	g = unlang_generic_to_group(c);
@@ -3228,14 +3168,6 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	tmpl_rules_t		t_rules;
 	unlang_compile_t	unlang_ctx2;
 
-	static unlang_ext_t const foreach_ext = {
-		.type = UNLANG_TYPE_FOREACH,
-		.len = sizeof(unlang_foreach_t),
-		.type_name = "unlang_foreach_t",
-		.pool_headers = TMPL_POOL_DEF_HEADERS,
-		.pool_len = TMPL_POOL_DEF_LEN
-	};
-
 	/*
 	 *	Ignore empty "foreach" blocks, and don't even sanity check their arguments.
 	 */
@@ -3257,7 +3189,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	/*
 	 *	Allocate a group for the "foreach" block.
 	 */
-	g = group_allocate(parent, cs, &foreach_ext);
+	g = group_allocate(parent, cs, UNLANG_TYPE_FOREACH);
 	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
@@ -3458,12 +3390,6 @@ static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 {
 	unlang_t *unlang;
 
-	static unlang_ext_t const break_ext = {
-		.type = UNLANG_TYPE_BREAK,
-		.len = sizeof(unlang_group_t),
-		.type_name = "unlang_group_t",
-	};
-
 	for (unlang = parent; unlang != NULL; unlang = unlang->parent) {
 		/*
 		 *	"break" doesn't go past a return point.
@@ -3482,18 +3408,12 @@ static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 
 	parent->closed = true;
 
-	return compile_empty(parent, unlang_ctx, NULL, &break_ext);
+	return compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_BREAK);
 }
 
 static unlang_t *compile_continue(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
 	unlang_t *unlang;
-
-	static unlang_ext_t const break_ext = {
-		.type = UNLANG_TYPE_CONTINUE,
-		.len = sizeof(unlang_group_t),
-		.type_name = "unlang_group_t",
-	};
 
 	for (unlang = parent; unlang != NULL; unlang = unlang->parent) {
 		/*
@@ -3513,19 +3433,13 @@ static unlang_t *compile_continue(unlang_t *parent, unlang_compile_t *unlang_ctx
 
 	parent->closed = true;
 
-	return compile_empty(parent, unlang_ctx, NULL, &break_ext);
+	return compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_CONTINUE);
 }
 
 
 static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
 	unlang_t *subrequest;
-
-	static unlang_ext_t const detach_ext = {
-		.type = UNLANG_TYPE_DETACH,
-		.len = sizeof(unlang_group_t),
-		.type_name = "unlang_group_t",
-	};
 
 	for (subrequest = parent;
 	     subrequest != NULL;
@@ -3548,17 +3462,11 @@ static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		return NULL;
 	}
 
-	return compile_empty(parent, unlang_ctx, NULL, &detach_ext);
+	return compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_DETACH);
 }
 
 static unlang_t *compile_return(unlang_t *parent, unlang_compile_t *unlang_ctx, UNUSED CONF_ITEM const *ci)
 {
-	static unlang_ext_t const return_ext = {
-		.type = UNLANG_TYPE_RETURN,
-		.len = sizeof(unlang_group_t),
-		.type_name = "unlang_group_t",
-	};
-
 	/*
 	 *	These types are all parallel, and therefore can have a "return" in them.
 	 */
@@ -3573,7 +3481,7 @@ static unlang_t *compile_return(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		break;
 	}
 
-	return compile_empty(parent, unlang_ctx, NULL, &return_ext);
+	return compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_RETURN);
 }
 
 static unlang_t *compile_tmpl(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci)
@@ -3616,8 +3524,7 @@ static const fr_sbuff_term_t if_terminals = FR_SBUFF_TERMS(
 	L("{"),
 );
 
-static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				       unlang_ext_t const *ext)
+static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs, unlang_type_t type)
 {
 	unlang_t		*c;
 
@@ -3634,7 +3541,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	};
 
 	if (!cf_section_name2(cs)) {
-		cf_log_err(cs, "'%s' without condition", unlang_ops[ext->type].name);
+		cf_log_err(cs, "'%s' without condition", unlang_ops[type].name);
 		return NULL;
 	}
 
@@ -3691,7 +3598,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 		 */
 		if (is_truthy && !value) {
 			cf_log_debug_prefix(cs, "Skipping contents of '%s' as it is always 'false'",
-					    unlang_ops[ext->type].name);
+					    unlang_ops[type].name);
 
 			/*
 			 *	Free the children, which frees any xlats,
@@ -3700,10 +3607,10 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 			 *
 			 *	However, we still need to cache the conditions, as they will be accessed at run-time.
 			 */
-			c = compile_empty(parent, unlang_ctx, cs, ext);
+			c = compile_empty(parent, unlang_ctx, cs, type);
 			cf_section_free_children(cs);
 		} else {
-			c = compile_section(parent, unlang_ctx, cs, ext);
+			c = compile_section(parent, unlang_ctx, cs, type);
 		}
 	}
 
@@ -3741,46 +3648,24 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 
 static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
-	static unlang_ext_t const if_ext = {
-		.type = UNLANG_TYPE_IF,
-		.len = sizeof(unlang_cond_t),
-		.type_name = "unlang_cond_t",
-		.pool_headers = 1 + 1 + (TMPL_POOL_DEF_HEADERS * 2),
-		.pool_len = sizeof(map_t) + (TMPL_POOL_DEF_LEN * 2)
-	};
-
-	return compile_if_subsection(parent, unlang_ctx, cf_item_to_section(ci), &if_ext);
+	return compile_if_subsection(parent, unlang_ctx, cf_item_to_section(ci), UNLANG_TYPE_IF);
 }
 
 static unlang_t *compile_elsif(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
-	static unlang_ext_t const elsif_ext = {
-		.type = UNLANG_TYPE_ELSIF,
-		.len = sizeof(unlang_cond_t),
-		.type_name = "unlang_cond_t",
-		.pool_headers = 1 + 1 + (TMPL_POOL_DEF_HEADERS * 2),
-		.pool_len = sizeof(map_t) + (TMPL_POOL_DEF_LEN * 2)
-	};
-
-	return compile_if_subsection(parent, unlang_ctx, cf_item_to_section(ci), &elsif_ext);
+	return compile_if_subsection(parent, unlang_ctx, cf_item_to_section(ci), UNLANG_TYPE_ELSIF);
 }
 
 static unlang_t *compile_else(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
 	CONF_SECTION *cs = cf_item_to_section(ci);
 
-	static unlang_ext_t const else_ext = {
-		.type = UNLANG_TYPE_ELSE,
-		.len = sizeof(unlang_group_t),
-		.type_name = "unlang_group_t"
-	};
-
 	if (cf_section_name2(cs)) {
 		cf_log_err(cs, "'else' cannot have a condition");
 		return NULL;
 	}
 
-	return compile_section(parent, unlang_ctx, cs, &else_ext);
+	return compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_ELSE);
 }
 
 /*
@@ -3842,19 +3727,13 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 	CONF_SECTION			*cs = cf_item_to_section(ci);
 	unlang_t			*c;
 
-	static unlang_ext_t const	redundant_ext = {
-						.type = UNLANG_TYPE_REDUNDANT,
-						.len = sizeof(unlang_group_t),
-						.type_name = "unlang_group_t"
-					};
-
 	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
 	if (!validate_limited_subsection(cs, cf_section_name1(cs))) {
 		return NULL;
 	}
 
-	c = compile_section(parent, unlang_ctx, cs, &redundant_ext);
+	c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_REDUNDANT);
 	if (!c) return NULL;
 
 	/*
@@ -3865,7 +3744,7 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 }
 
 static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-						 unlang_ext_t const *ext)
+						 unlang_type_t type)
 {
 	char const			*name2;
 	unlang_t			*c;
@@ -3885,13 +3764,13 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 	 *	No children?  Die!
 	 */
 	if (!cf_item_next(cs, NULL)) {
-		cf_log_err(cs, "%s sections cannot be empty", unlang_ops[ext->type].name);
+		cf_log_err(cs, "%s sections cannot be empty", unlang_ops[type].name);
 		return NULL;
 	}
 
 	if (!validate_limited_subsection(cs, cf_section_name1(cs))) return NULL;
 
-	c = compile_section(parent, unlang_ctx, cs, ext);
+	c = compile_section(parent, unlang_ctx, cs, type);
 	if (!c) return NULL;
 
 	g = unlang_generic_to_group(c);
@@ -3910,18 +3789,18 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 	}
 
 	if (name2) {
-		fr_token_t type;
+		fr_token_t quote;
 		ssize_t slen;
 
 		/*
 		 *	Create the template.  All attributes and xlats are
 		 *	defined by now.
 		 */
-		type = cf_section_name2_quote(cs);
+		quote = cf_section_name2_quote(cs);
 		gext = unlang_group_to_load_balance(g);
 		slen = tmpl_afrom_substr(gext, &gext->vpt,
 					 &FR_SBUFF_IN(name2, strlen(name2)),
-					 type,
+					 quote,
 					 NULL,
 					 &t_rules);
 		if (!gext->vpt) {
@@ -3961,25 +3840,13 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 
 static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
-	static unlang_ext_t const load_balance_ext = {
-		.type = UNLANG_TYPE_LOAD_BALANCE,
-		.len = sizeof(unlang_load_balance_t),
-		.type_name = "unlang_load_balance_t"
-	};
-
-	return compile_load_balance_subsection(parent, unlang_ctx, cf_item_to_section(ci), &load_balance_ext);
+	return compile_load_balance_subsection(parent, unlang_ctx, cf_item_to_section(ci), UNLANG_TYPE_LOAD_BALANCE);
 }
 
 
 static unlang_t *compile_redundant_load_balance(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
-	static unlang_ext_t const redundant_load_balance_ext = {
-		.type = UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,
-		.len = sizeof(unlang_load_balance_t),
-		.type_name = "unlang_load_balance_t"
-	};
-
-	return compile_load_balance_subsection(parent, unlang_ctx, cf_item_to_section(ci), &redundant_load_balance_ext);
+	return compile_load_balance_subsection(parent, unlang_ctx, cf_item_to_section(ci), UNLANG_TYPE_REDUNDANT_LOAD_BALANCE);
 }
 
 static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
@@ -3993,12 +3860,6 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 
 	bool				clone = true;
 	bool				detach = false;
-
-	static unlang_ext_t const 	parallel_ext = {
-						.type = UNLANG_TYPE_PARALLEL,
-						.len = sizeof(unlang_parallel_t),
-						.type_name = "unlang_parallel_t"
-					};
 
 	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
@@ -4032,7 +3893,7 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 		return NULL;
 	}
 
-	c = compile_section(parent, unlang_ctx, cs, &parallel_ext);
+	c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_PARALLEL);
 	if (!c) return NULL;
 
 	g = unlang_generic_to_group(c);
@@ -4067,14 +3928,6 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	char const			*packet_name = NULL;
 
 	tmpl_t				*vpt = NULL, *src_vpt = NULL, *dst_vpt = NULL;
-
-	static unlang_ext_t const 	subrequest_ext = {
-						.type = UNLANG_TYPE_SUBREQUEST,
-						.len = sizeof(unlang_subrequest_t),
-						.type_name = "unlang_subrequest_t",
-						.pool_headers = (TMPL_POOL_DEF_HEADERS * 3),
-						.pool_len = (TMPL_POOL_DEF_LEN * 3)
-					};
 
 	/*
 	 *	subrequest { ... }
@@ -4314,7 +4167,7 @@ get_packet_type:
 	/*
 	 *	Compile the subsection with a *different* default dictionary.
 	 */
-	c = compile_section(parent, &unlang_ctx2, cs, &subrequest_ext);
+	c = compile_section(parent, &unlang_ctx2, cs, UNLANG_TYPE_SUBREQUEST);
 	if (!c) return NULL;
 
 	/*
@@ -4358,12 +4211,6 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	CONF_SECTION			*server_cs;
 	fr_dict_t const			*dict;
 	fr_dict_attr_t const		*attr_packet_type;
-
-	static unlang_ext_t const 	call_ext = {
-						.type = UNLANG_TYPE_CALL,
-						.len = sizeof(unlang_call_t),
-						.type_name = "unlang_call_t",
-					};
 
 	server = cf_section_name2(cs);
 	if (!server) {
@@ -4410,7 +4257,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		return NULL;
 	}
 
-	c = compile_section(parent, unlang_ctx, cs, &call_ext);
+	c = compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_CALL);
 	if (!c) return NULL;
 
 	/*
@@ -4441,12 +4288,6 @@ static unlang_t *compile_caller(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	tmpl_rules_t			parent_rules, t_rules;
 
 	fr_dict_autoload_talloc_t	*dict_ref = NULL;
-
-	static unlang_ext_t const 	caller_ext = {
-						.type = UNLANG_TYPE_CALLER,
-						.len = sizeof(unlang_caller_t),
-						.type_name = "unlang_caller_t",
-					};
 
 	name = cf_section_name2(cs);
 	if (!name) {
@@ -4488,7 +4329,7 @@ static unlang_t *compile_caller(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	unlang_ctx2.section_name1 = "caller";
 	unlang_ctx2.section_name2 = name;
 
-	c = compile_section(parent, &unlang_ctx2, cs, &caller_ext);
+	c = compile_section(parent, &unlang_ctx2, cs, UNLANG_TYPE_CALLER);
 	if (!c) {
 		talloc_free(dict_ref);
 		return NULL;
@@ -4526,18 +4367,6 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx
 	unlang_compile_t		unlang_ctx2;
 	unlang_t			*c;
 
-	static unlang_ext_t const 	policy_ext = {
-						.type = UNLANG_TYPE_POLICY,
-						.len = sizeof(unlang_group_t),
-						.type_name = "unlang_group_t",
-					};
-
-	static unlang_ext_t const 	group_ext = {
-						.type = UNLANG_TYPE_GROUP,
-						.len = sizeof(unlang_group_t),
-						.type_name = "unlang_group_t",
-					};
-
 	/*
 	 *	module.c takes care of ensuring that this is:
 	 *
@@ -4572,7 +4401,7 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx
 		 *	group foo { ...
 		 */
 		c = compile_section(parent, &unlang_ctx2, subcs,
-				    policy ? &policy_ext : &group_ext);
+				    policy ? UNLANG_TYPE_POLICY : UNLANG_TYPE_GROUP);
 	}
 	if (!c) return NULL;
 	fr_assert(c != UNLANG_IGNORE);
@@ -5134,11 +4963,6 @@ int unlang_compile(virtual_server_t const *vs,
 	tmpl_rules_t			my_rules;
 	char const			*name1, *name2;
 	CONF_DATA const			*cd;
-	static unlang_ext_t const 	group_ext = {
-						.type = UNLANG_TYPE_GROUP,
-						.len = sizeof(unlang_group_t),
-						.type_name = "unlang_group_t",
-	};
 
 	/*
 	 *	Don't compile it twice, and don't print out debug
@@ -5173,7 +4997,7 @@ int unlang_compile(virtual_server_t const *vs,
 				.actions = *actions,
 				.rules = rules
 			    },
-			    cs, &group_ext);
+			    cs, UNLANG_TYPE_GROUP);
 	if (!c) return -1;
 
 	if (DEBUG_ENABLED4) unlang_dump(c, 2);

@@ -449,15 +449,26 @@ void unlang_map_init(void)
 	unlang_register(UNLANG_TYPE_UPDATE,
 			   &(unlang_op_t){
 				.name = "update",
+				.type = UNLANG_TYPE_UPDATE,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+
 				.interpret = unlang_update_state_init,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
+
+				.unlang_size = sizeof(unlang_map_t),
+				.unlang_name = "unlang_map_t",
 			   });
 
 	unlang_register(UNLANG_TYPE_MAP,
 			   &(unlang_op_t){
 				.name = "map",
+				.type = UNLANG_TYPE_MAP,
 				.flag = UNLANG_OP_FLAG_RCODE_SET,
+
 				.interpret = unlang_map_state_init,
+
+				.unlang_size = sizeof(unlang_map_t),
+				.unlang_name = "unlang_map_t",
+
 				.frame_state_size = sizeof(unlang_frame_state_map_proc_t),
 				.frame_state_type = "unlang_frame_state_map_proc_t",
 			   });

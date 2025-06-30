@@ -51,6 +51,11 @@ void unlang_return_init(void)
 	unlang_register(UNLANG_TYPE_RETURN,
 			   &(unlang_op_t){
 				.name = "return",
+				.type = UNLANG_TYPE_RETURN,
+
 				.interpret = unlang_return,
+
+				.unlang_size = sizeof(unlang_group_t),
+				.unlang_name = "unlang_group_t",
 			   });
 }

@@ -56,6 +56,11 @@ void unlang_detach_init(void)
 	unlang_register(UNLANG_TYPE_DETACH,
 			&(unlang_op_t){
 				.name = "detach",
+				.type = UNLANG_TYPE_DETACH,
+
 				.interpret = unlang_detach,
-			});
+
+				.unlang_size = sizeof(unlang_group_t),
+				.unlang_name = "unlang_group_t",	
+		});
 }

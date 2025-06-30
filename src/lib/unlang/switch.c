@@ -133,14 +133,29 @@ void unlang_switch_init(void)
 	unlang_register(UNLANG_TYPE_SWITCH,
 			   &(unlang_op_t){
 				.name = "switch",
+				.type = UNLANG_TYPE_SWITCH,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+
 				.interpret = unlang_switch,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
+					
+
+				.unlang_size = sizeof(unlang_switch_t),
+				.unlang_name = "unlang_switch_t",
+
+				.pool_headers = TMPL_POOL_DEF_HEADERS,
+				.pool_len = TMPL_POOL_DEF_LEN
 			   });
+
 
 	unlang_register(UNLANG_TYPE_CASE,
 			   &(unlang_op_t){
 				.name = "case",
+				.type = UNLANG_TYPE_CASE,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_BREAK_POINT,
+
 				.interpret = unlang_case,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_BREAK_POINT
+
+				.unlang_size = sizeof(unlang_case_t),
+				.unlang_name = "unlang_case_t",
 			   });
 }

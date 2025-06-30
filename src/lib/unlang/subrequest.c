@@ -523,8 +523,8 @@ int unlang_subrequest_op_init(void)
 	unlang_register(UNLANG_TYPE_SUBREQUEST,
 			&(unlang_op_t){
 				.name = "subrequest",
-				.interpret = unlang_subrequest_init,
-				.signal = unlang_subrequest_signal,
+				.type = UNLANG_TYPE_SUBREQUEST,
+
 				/*
 				 *	Frame can't be cancelled, because children need to
 				 *	write out status to the parent.  If we don't do this,
@@ -537,6 +537,16 @@ int unlang_subrequest_op_init(void)
 				 *	guaranteed the parent still exists.
 				 */
 				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_FORCE_UNWIND,
+
+				.interpret = unlang_subrequest_init,
+				.signal = unlang_subrequest_signal,
+
+
+				.unlang_size = sizeof(unlang_subrequest_t),
+				.unlang_name = "unlang_subrequest_t",
+				.pool_headers = (TMPL_POOL_DEF_HEADERS * 3),
+				.pool_len = (TMPL_POOL_DEF_LEN * 3),
+
 				.frame_state_size = sizeof(unlang_child_request_t),
 				.frame_state_type = "unlang_child_request_t",
 			});

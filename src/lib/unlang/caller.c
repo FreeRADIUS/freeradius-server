@@ -57,7 +57,12 @@ void unlang_caller_init(void)
 	unlang_register(UNLANG_TYPE_CALLER,
 			   &(unlang_op_t){
 				.name = "caller",
+				.type = UNLANG_TYPE_CALLER,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+
 				.interpret = unlang_caller,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
+
+				.unlang_size = sizeof(unlang_caller_t),
+				.unlang_name = "unlang_caller_t",
 			   });
 }

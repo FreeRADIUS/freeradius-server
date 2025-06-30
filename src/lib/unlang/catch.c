@@ -104,7 +104,12 @@ void unlang_catch_init(void)
 	unlang_register(UNLANG_TYPE_CATCH,
 			   &(unlang_op_t){
 				.name = "catch",
+				.type = UNLANG_TYPE_CATCH,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+
 				.interpret = unlang_catch,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
+
+				.unlang_size = sizeof(unlang_catch_t),
+				.unlang_name = "unlang_catch_t",
 			   });
 }

@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include "unlang_priv.h"
+#include "try_priv.h"
 #include "catch_priv.h"
 
 static unlang_action_t unlang_try(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -44,7 +45,12 @@ void unlang_try_init(void)
 	unlang_register(UNLANG_TYPE_TRY,
 			   &(unlang_op_t){
 				.name = "try",
+				.type = UNLANG_TYPE_TRY,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+
 				.interpret = unlang_try,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
+
+				.unlang_size = sizeof(unlang_try_t),
+				.unlang_name = "unlang_try_t",
 			   });
 }

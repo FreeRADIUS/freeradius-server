@@ -44,21 +44,36 @@ void unlang_group_init(void)
 	unlang_register(UNLANG_TYPE_GROUP,
 			   &(unlang_op_t){
 				.name = "group",
+				.type = UNLANG_TYPE_GROUP,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+
 				.interpret = unlang_group,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
+
+				.unlang_size = sizeof(unlang_group_t),
+				.unlang_name = "unlang_group_t",
 			   });
 
 	unlang_register(UNLANG_TYPE_REDUNDANT,
 			   &(unlang_op_t){
 				.name = "redundant",
+				.type = UNLANG_TYPE_REDUNDANT,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+
 				.interpret = unlang_group,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
+
+				.unlang_size = sizeof(unlang_group_t),
+				.unlang_name = "unlang_group_t",
 			   });
 
 	unlang_register(UNLANG_TYPE_POLICY,
 			   &(unlang_op_t){
 				.name = "policy",
+				.type = UNLANG_TYPE_POLICY,
+				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RETURN_POINT,
+
 				.interpret = unlang_policy,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RETURN_POINT
-			   });
+
+				.unlang_size = sizeof(unlang_group_t),
+				.unlang_name = "unlang_group_t",	
+		   });
 }
