@@ -70,3 +70,12 @@ files files_accounting {
 #	key = "%{Stripped-User-Name || User-Name}"
 	filename = ${modconfdir}/files/accounting
 }
+
+#
+#  ## An instance of the `files` module for authorizing access for WiFi clients
+#  ## via their MAC address
+#  ## Based on https://wiki.freeradius.org/guide/Mac-Auth
+#
+files authorized_macs {
+	key = "%{Calling-Station-ID}"
+}
