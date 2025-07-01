@@ -11,8 +11,11 @@ RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
 #
 #  Install build tools
 #
-RUN dnf groupinstall -y "Development Tools"
-RUN dnf install -y rpmdevtools openssl dnf-utils
+RUN dnf update -y
+RUN dnf install -y rpmdevtools openssl epel-release git procps dnf-utils \
+	rsync dnf-plugins-core
+
+RUN dnf config-manager --set-enabled crb
 
 #
 #  Set up NetworkRADIUS extras repository
@@ -43,17 +46,6 @@ COPY . .
 #
 RUN git clean -fdxx \
  && git reset --hard HEAD
-
-#
-#  Other requirements
-#
-
-#  Enable EPEL repository for freetds and hiredis
-RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
-
-#  Enable Code Ready Builder repo (CentOS powertools equivalent)
-RUN dnf install -y dnf-utils
-RUN dnf config-manager --enable crb
 
 #
 #  Install build dependencies
