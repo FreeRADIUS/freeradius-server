@@ -183,6 +183,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_clear(unlang_result_t *p_result
 	if ((known_good->vp_length != password->vb_length) ||
 	    (fr_digest_cmp(known_good->vp_octets, password->vb_octets, known_good->vp_length) != 0)) {
 		REDEBUG("Cleartext password does not match \"known good\" password");
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Password   : %pV", password);
 		REDEBUG3("Expected   : %pV", &known_good->data);
 		RETURN_UNLANG_REJECT;
@@ -246,6 +247,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_md5(unlang_result_t *p_result,
 
 	if (fr_digest_cmp(digest, known_good->vp_octets, known_good->vp_length) != 0) {
 		REDEBUG("MD5 digest does not match \"known good\" digest");
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Password   : %pV", password);
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, MD5_DIGEST_LENGTH));
 		REDEBUG3("Expected   : %pH", fr_box_octets(known_good->vp_octets, MD5_DIGEST_LENGTH));
@@ -279,6 +281,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_smd5(unlang_result_t *p_result,
 	 */
 	if (fr_digest_cmp(digest, known_good->vp_octets, MD5_DIGEST_LENGTH) != 0) {
 		REDEBUG("SMD5 digest does not match \"known good\" digest");
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Password   : %pV", password);
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, MD5_DIGEST_LENGTH));
 		REDEBUG3("Expected   : %pH", fr_box_octets(known_good->vp_octets, MD5_DIGEST_LENGTH));
@@ -306,6 +309,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_sha1(unlang_result_t *p_result,
 
 	if (fr_digest_cmp(digest, known_good->vp_octets, known_good->vp_length) != 0) {
 		REDEBUG("SHA1 digest does not match \"known good\" digest");
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Password   : %pV", password);
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, SHA1_DIGEST_LENGTH));
 		REDEBUG3("Expected   : %pH", fr_box_octets(known_good->vp_octets, SHA1_DIGEST_LENGTH));
@@ -335,6 +339,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_ssha1(unlang_result_t *p_result
 
 	if (fr_digest_cmp(digest, known_good->vp_octets, SHA1_DIGEST_LENGTH) != 0) {
 		REDEBUG("SSHA digest does not match \"known good\" digest");
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Password   : %pV", password);
 		REDEBUG3("Salt       : %pH", fr_box_octets(known_good->vp_octets + SHA1_DIGEST_LENGTH,
 							   known_good->vp_length - SHA1_DIGEST_LENGTH));
@@ -366,6 +371,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_evp_md(unlang_result_t *p_resul
 
 	if (fr_digest_cmp(digest, known_good->vp_octets, known_good->vp_length) != 0) {
 		REDEBUG("%s digest does not match \"known good\" digest", name);
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Password   : %pV", password);
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, digest_len));
 		REDEBUG3("Expected   : %pH", &known_good->data);
@@ -399,6 +405,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_evp_md_salted(unlang_result_t *
 	 */
 	if (fr_digest_cmp(digest, known_good->vp_octets, (size_t)digest_len) != 0) {
 		REDEBUG("%s digest does not match \"known good\" digest", name);
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Password   : %pV", password);
 		REDEBUG3("Salt       : %pH",
 			 fr_box_octets(known_good->vp_octets + digest_len, known_good->vp_length - digest_len));
@@ -653,6 +660,7 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse_digest(unla
 
 	if (fr_digest_cmp(digest, hash, (size_t)digest_len) != 0) {
 		REDEBUG("PBKDF2 digest does not match \"known good\" digest");
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Salt       : %pH", fr_box_octets(salt, salt_len));
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, digest_len));
 		REDEBUG3("Expected   : %pH", fr_box_octets(hash, slen));
@@ -920,6 +928,7 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256_legacy(unl
 
 	if (fr_digest_cmp(digest, pbkdf2_buf.hash, (size_t)digest_len) != 0) {
 		REDEBUG("PBKDF2_SHA256 digest does not match \"known good\" digest");
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Salt       : %pH", fr_box_octets(pbkdf2_buf.salt, PBKDF2_SHA256_LEGACY_SALT_LENGTH));
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, digest_len));
 		REDEBUG3("Expected   : %pH", fr_box_octets(pbkdf2_buf.hash, PBKDF2_SHA256_LEGACY_HASH_LENGTH));
@@ -956,6 +965,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_nt(unlang_result_t *p_result,
 
 	if (fr_digest_cmp(digest, known_good->vp_octets, known_good->vp_length) != 0) {
 		REDEBUG("NT digest does not match \"known good\" digest");
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, sizeof(digest)));
 		REDEBUG3("Expected   : %pH", &known_good->data);
 		RETURN_UNLANG_REJECT;
