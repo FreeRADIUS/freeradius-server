@@ -88,6 +88,8 @@ ATTRIBUTE	Cisco-Sub-Deactivate-Service		63	string
 ATTRIBUTE	Cisco-DHCP-Subscriber-Id		65	string
 ATTRIBUTE	Cisco-DHCPv6-Link-Address		66	string
 
+ATTRIBUTE	Cisco-DHCPv4-Option-To-AAA		90	string
+
 ATTRIBUTE	sip-conf-id				100	string
 ATTRIBUTE	h323-credit-amount			101	string
 ATTRIBUTE	h323-credit-time			102	string
