@@ -141,6 +141,25 @@ typedef struct {
 
 /** Execute a trigger - call an executable to process an event
  *
+ * A trigger ties a state change (e.g. connection up) in a module to an action
+ * (e.g. send an SNMP trap) defined in raqddb/triggers.conf or in the trigger
+ * section of a module, and can be created with one call to trigger_exec().
+ *
+ * The trigger_exec function expands the configuration item, and runs the given
+ * function (exec, sql insert, etc.) asynchronously, allowing the server to
+ * keep processing packets while the action is being taken.
+ *
+ * The name of each trigger is based on the module or portion of the server
+ * which runs the trigger, and is usually taken from the state when the module
+ * has a state change.
+ *
+ * Triggers are separate from logs, because log messages are generally
+ * informational, are not time sensitive, and usually require log files to be
+ * parsed and filtered in order to find relevant information.
+ *
+ * In contrast, triggers are something specific which the administrator needs
+ * to be notified about immediately and can't wait to post-process a log file.
+ *
  * @note Calls to this function will be ignored if #trigger_exec_init has not been called.
  *
  * @param[in] intp		Interpreter to run the trigger with.  If this is NULL the
