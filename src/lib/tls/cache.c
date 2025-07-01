@@ -742,6 +742,15 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	 *	resumption.
 	 */
 	tls_session = fr_tls_session(ssl);
+
+	/*
+	 *	If the session is TLS 1.3, then resumption will be handled by a
+	 *	session ticket.  However, if this callback is defined, it still
+	 *	gets called.
+	 *	To avoid unnecessary entries in the stateful cache just return.
+	 */
+	if (tls_session->info.version == TLS1_3_VERSION) return 0;
+
 	request = fr_tls_session_request(tls_session->ssl);
 	tls_cache = tls_session->cache;
 
