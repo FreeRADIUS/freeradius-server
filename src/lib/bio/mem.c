@@ -683,15 +683,6 @@ static int fr_bio_mem_call_verify(fr_bio_t *bio, void *packet_ctx, size_t *size)
 	return -1;
 }
 
-/*
- *	The application can read from the BIO until EOF, but cannot write to it.
- */
-static void fr_bio_mem_shutdown(fr_bio_t *bio)
-{
-	bio->read = fr_bio_mem_read_eof;
-	bio->write = fr_bio_null_write;
-}
-
 /** Allocate a memory buffer bio for either reading or writing.
  */
 static bool fr_bio_mem_buf_alloc(fr_bio_mem_t *my, fr_bio_buf_t *buf, size_t size)
@@ -784,7 +775,6 @@ fr_bio_t *fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size,
 		 *	just doing packet verification/
 		 */
 		my->priv_cb.eof = fr_bio_mem_eof;
-		my->priv_cb.shutdown = fr_bio_mem_shutdown;
 	}
 
 	fr_bio_chain(&my->bio, next);
@@ -823,7 +813,6 @@ fr_bio_t *fr_bio_mem_source_alloc(TALLOC_CTX *ctx, size_t write_size, fr_bio_t *
 	/*
 	 *	@todo - have write pause / write resume callbacks?
 	 */
-	my->priv_cb.shutdown = fr_bio_mem_shutdown;
 
 	fr_bio_chain(&my->bio, next);
 

@@ -167,16 +167,14 @@ int fr_bio_shutdown(fr_bio_t *bio)
 	for (/* nothing */; this != NULL; this = fr_bio_next(this)) {
 		my = (fr_bio_common_t *) this;
 
-		if (!my->priv_cb.shutdown) continue;
-
-		/*
-		 *	The EOF handler said it's NOT at EOF, so we stop processing here.
-		 */
-		my->priv_cb.shutdown(&my->bio);
-		my->priv_cb.shutdown = NULL;
+		if (my->priv_cb.shutdown) {
+			my->priv_cb.shutdown(&my->bio);
+			my->priv_cb.shutdown = NULL;
+		}
 
 		my->bio.read = fr_bio_shutdown_read;
 		my->bio.write = fr_bio_shutdown_write;
+		talloc_set_destructor(my, NULL);
 	}
 
 	/*
