@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/subrequest.h>
 #include <freeradius-devel/unlang/xlat.h>
+#include <freeradius-devel/unlang/tmpl.h>
 
 
 #include <sys/wait.h>
@@ -132,81 +133,11 @@ bool trigger_enabled(void)
 }
 
 typedef struct {
-	char			*command;	//!< Name of the trigger.
-	xlat_exp_head_t		*xlat;		//!< xlat representation of the trigger args.
 	fr_value_box_list_t	args;		//!< Arguments to pass to the trigger exec.
 	fr_value_box_list_t	out;		//!< result of the xlap (which we ignore)
 	unlang_result_t		result;		//!< the result of expansion
-
-	fr_exec_state_t		exec;		//!< Used for asynchronous execution.
-	fr_time_delta_t		timeout;	//!< How long the trigger has to run.
+	int			exec_status;
 } fr_trigger_t;
-
-static unlang_action_t trigger_done(request_t *request, void *rctx)
-{
-	fr_trigger_t	*trigger = talloc_get_type_abort(rctx, fr_trigger_t);
-
-	if (trigger->exec.status == 0) {
-		RDEBUG2("Trigger \"%s\" done", trigger->command);
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	RERROR("Trigger \"%s\" failed", trigger->command);
-
-	return UNLANG_ACTION_CALCULATE_RESULT;
-}
-
-static unlang_action_t trigger_resume(request_t *request, void *rctx)
-{
-	fr_trigger_t	*trigger = talloc_get_type_abort(rctx, fr_trigger_t);
-
-	if (fr_value_box_list_empty(&trigger->args)) {
-		RERROR("Failed trigger \"%s\" - did not expand to anything", trigger->command);
-		return UNLANG_ACTION_FAIL;
-	}
-
-	/*
-	 *	fr_exec_oneshot just calls request_resume when it's
-	 *	done.
-	 */
-	if (fr_exec_oneshot(request, &trigger->exec, request,
-	                  &trigger->args,
-	                  NULL, false, true,
-	                  false,
-	                  false, NULL, trigger->timeout) < 0) {
-	fail:
-		RPERROR("Failed running trigger \"%s\"", trigger->command);
-		return UNLANG_ACTION_FAIL;
-	}
-
-	/*
-	 *	Swap out the repeat function so that when we're
-	 *      resumed the code path in the interpreter pops
-	 *      the frame.  If we don't do this trigger_run just
-	 *	gets called repeatedly.
-	 */
-	if (unlang_function_repeat_set(request, trigger_done) < 0) {
-		fr_exec_oneshot_cleanup(&trigger->exec, SIGKILL);
-		goto fail;
-	}
-
-	return UNLANG_ACTION_YIELD;
-}
-
-static unlang_action_t trigger_run(request_t *request, void *uctx)
-{
-	fr_trigger_t	*trigger = talloc_get_type_abort(uctx, fr_trigger_t);
-
-	RDEBUG("Running trigger \"%s\"", trigger->command);
-
-	if (unlang_xlat_push(request, NULL, &trigger->args, request,
-			     trigger->xlat, UNLANG_SUB_FRAME) < 0) {
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	return UNLANG_ACTION_PUSHED_CHILD;
-}
-
 
 /** Execute a trigger - call an executable to process an event
  *
@@ -238,6 +169,11 @@ int trigger_exec(unlang_interpret_t *intp,
 	request_t		*request;
 	fr_trigger_t		*trigger;
 	ssize_t			slen;
+
+	fr_event_list_t		*el;
+	xlat_exp_head_t		*xlat;
+	tmpl_rules_t		t_rules;
+	fr_token_t		quote;
 
 	/*
 	 *	noop if trigger_exec_init was never called, or if
@@ -373,83 +309,128 @@ int trigger_exec(unlang_interpret_t *intp,
 	MEM(trigger = talloc_zero(request, fr_trigger_t));
 	fr_value_box_list_init(&trigger->args);
 	fr_value_box_list_init(&trigger->out);
-	trigger->command = talloc_strdup(trigger, value);
-	trigger->timeout = fr_time_delta_from_sec(5);	/* @todo - Should be configurable? */
 
-	if (value[0] != '/') {
-		slen = unlang_xlat_push_string(trigger, &trigger->result, &trigger->out, request, value);
-		if (slen < 0) goto parse_error; /* can't be zero! */
+	el = unlang_interpret_event_list(request);
+	if (!el) el = main_loop_event_list();
+
+	t_rules = (tmpl_rules_t) {
+		.attr = {
+			.dict_def = request->local_dict, /* we can use local attributes */
+			.list_def = request_attr_request,
+		},
+		.xlat = {
+						     .runtime_el = el,
+		},
+		.at_runtime = true,
+	};
+
+	quote = cf_pair_value_quote(cp);
+
+	/*
+	 *	Parse the xlat as appropriate.
+	 */
+	if (quote != T_BACK_QUOTED_STRING) {
+		slen = xlat_tokenize(trigger, &xlat, &FR_SBUFF_IN(value, talloc_array_length(value) - 1), NULL, &t_rules);
 	} else {
-		slen = xlat_tokenize_argv(trigger, &trigger->xlat,
-					  &FR_SBUFF_IN(trigger->command, talloc_array_length(trigger->command) - 1),
-					  NULL, NULL, &(tmpl_rules_t) {
-					  .attr = {
-						  .dict_def = request->local_dict,
-						  .list_def = request_attr_request,
-						  .allow_unresolved = false,
-					  },
-					  }, true);
-		if (slen <= 0) {
-			char *spaces, *text;
+		slen = xlat_tokenize_argv(trigger, &xlat, &FR_SBUFF_IN(value, talloc_array_length(value) - 1), NULL, NULL, &t_rules, true);
+	}
+	if (slen <= 0) {
+		char *spaces, *text;
 
-		parse_error:
-			fr_canonicalize_error(trigger, &spaces, &text, slen, trigger->command);
+		fr_canonicalize_error(trigger, &spaces, &text, slen, value);
 
-			cf_log_err(cp, "Failed parsing trigger command");
-			cf_log_err(cp, "%s", text);
-			cf_log_perr(cp, "%s^", spaces);
+		cf_log_err(cp, "Failed parsing trigger command");
+		cf_log_err(cp, "%s", text);
+		cf_log_perr(cp, "%s^", spaces);
 
+		talloc_free(request);
+		talloc_free(spaces);
+		talloc_free(text);
+		return -1;
+	}
+
+	fr_assert(xlat != NULL);
+
+	if (quote != T_BACK_QUOTED_STRING) {
+		if (unlang_xlat_push(trigger, &trigger->result, &trigger->out, request, xlat, true) < 0) {
+		fail_expand:
+			DEBUG("Failed expanding trigger - %s", fr_strerror());
 			talloc_free(request);
-			talloc_free(spaces);
-			talloc_free(text);
 			return -1;
+		}
+	} else {
+		tmpl_t *vpt;
+
+		/*
+		 *	We need back-ticks, because it's just so much
+		 *	easier than anything else.
+		 *
+		 *	@todo - define %exec.string() function, which
+		 *	splits the string, and THEN expands it.  That
+		 *	would be much simpler than this stuff.
+		 */
+		MEM(vpt = tmpl_alloc(trigger, TMPL_TYPE_EXEC, quote, value, talloc_array_length(value)));
+		tmpl_set_xlat(vpt, xlat);
+
+		if (unlang_tmpl_push(trigger, &trigger->out, request, vpt,
+				     &(unlang_tmpl_args_t) {
+					     .type = UNLANG_TMPL_ARGS_TYPE_EXEC,
+					     .exec = {
+						     .status_out = &trigger->exec_status,
+						     .timeout = fr_time_delta_from_sec(1),
+					     },
+				     }) < 0) {
+			goto fail_expand;
 		}
 	}
 
 	/*
-	 *	If we're not running it locally use the default
-	 *	interpreter for the thread.
+	 *	An interpreter was passed in, we can run the expansion
+	 *	asynchronously in that interpreter.  And then the
+	 *	worker cleans up the detached request.
 	 */
 	if (intp) {
 		unlang_interpret_set(request, intp);
+
+		/*
+		 *	Don't allow the expansion to run for a long time.
+		 *
+		 *	@todo - make the timeout configurable.
+		 */
+		if (unlang_interpret_set_timeout(request, fr_time_delta_from_sec(1)) < 0) {
+			DEBUG("Failed setting timeout on trigger %s", value);
+			talloc_free(request);
+			return -1;
+		}
+
 		if (unlang_subrequest_child_push_and_detach(request) < 0) {
-		error:
 			PERROR("Running trigger failed");
 			talloc_free(request);
 			return -1;
 		}
-	}
-
-	if (trigger->xlat) {
-		if (xlat_finalize(trigger->xlat, intp ? unlang_interpret_event_list(request) : main_loop_event_list()) < 0) {
-			fr_strerror_const("Failed performing ephemeral instantiation for xlat");
-			talloc_free(request);
-			return -1;
-		}
-
-		if (unlang_function_push(request,
-					 trigger_run,
-					 trigger_resume,
-					 NULL, 0,
-					 UNLANG_TOP_FRAME,
-					 trigger) < 0) goto error;
-	}
-
-	if (!intp) {
+	} else {
 		/*
-		 *	Wait for the exec to finish too,
-		 *	so where there are global events
-		 *	the request processes don't race
-		 *	with something like the server
-		 *	shutting down.
+		 *	No interpreter, we MUST be running from the
+		 *	main loop.  We then run the expansion
+		 *	synchronously.  This allows the expansion /
+		 *	notification to finish before the server shuts
+		 *	down.
+		 *
+		 *	If the expansion was async, then it may be
+		 *	possible for the server to exit before the
+		 *	expansion finishes.  Arguably the worker
+		 *	thread should ensure that the server doesn't
+		 *	exit until all requests have acknowledged that
+		 *	they've exited.
+		 *
+		 *	But those exits may be advisory.  i.e. "please
+		 *	finish the request".  This one here is
+		 *	mandatary to finish before the server exits.
 		 */
 		unlang_interpret_synchronous(NULL, request);
 		talloc_free(request);
 	}
 
-	/*
-	 *	Otherwise the worker cleans up the request request.
-	 */
 	return 0;
 }
 

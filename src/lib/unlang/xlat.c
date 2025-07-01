@@ -305,46 +305,6 @@ int unlang_xlat_push_node(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_b
 	return unlang_xlat_push_internal(ctx, p_result, out, request, NULL, node, UNLANG_TOP_FRAME);
 }
 
-/** Tokenize a string,and push the resulting xlat onto the stack for evaluation
- *
- * @param[in] ctx		To allocate value boxes and values in.
- * @param[out] p_result		If set, and execution succeeds, true will be written
- *				here.  If execution fails, false will be written.
- * @param[out] out		Where to write the result of the expansion.
- * @param[in] request		to push xlat onto.
- * @param[in] string		to tokenize and evaluate.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int unlang_xlat_push_string(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_list_t *out,
-			    request_t *request, char const *string)
-{
-	fr_slen_t	slen;
-	xlat_exp_head_t *xlat;
-	fr_event_list_t	*el;
-
-	el = unlang_interpret_event_list(request);
-	if (!el) el = main_loop_event_list();
-
-	slen = xlat_tokenize(ctx, &xlat, &FR_SBUFF_IN(string, strlen(string)), NULL,
-			  &(tmpl_rules_t) {
-				  .attr = {
-					  .dict_def = request->local_dict, /* we can use local attributes */
-					  .list_def = request_attr_request,
-				  },
-				  .xlat = {
-					  .runtime_el = el,
-				  },
-				  .at_runtime = true,
-			  });
-	if (slen <= 0) {
-		return slen;
-	}
-
-	return unlang_xlat_push_internal(ctx, p_result, out, request, xlat, xlat_exp_head(xlat), UNLANG_TOP_FRAME);
-}
-
 static unlang_action_t unlang_xlat_repeat(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
