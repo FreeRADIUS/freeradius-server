@@ -506,6 +506,10 @@ int		unlang_xlat_push(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_l
 				 request_t *request, xlat_exp_head_t const *head, bool top_frame)
 				 CC_HINT(warn_unused_result);
 
+int		unlang_xlat_push_string(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_list_t *out,
+					request_t *request, char const *string)
+					CC_HINT(warn_unused_result);
+
 int		unlang_xlat_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 				 request_t *request, xlat_exp_head_t const *head)
 				 CC_HINT(warn_unused_result);

@@ -135,6 +135,8 @@ typedef struct {
 	char			*command;	//!< Name of the trigger.
 	xlat_exp_head_t		*xlat;		//!< xlat representation of the trigger args.
 	fr_value_box_list_t	args;		//!< Arguments to pass to the trigger exec.
+	fr_value_box_list_t	out;		//!< result of the xlap (which we ignore)
+	unlang_result_t		result;		//!< the result of expansion
 
 	fr_exec_state_t		exec;		//!< Used for asynchronous execution.
 	fr_time_delta_t		timeout;	//!< How long the trigger has to run.
@@ -370,31 +372,38 @@ int trigger_exec(unlang_interpret_t *intp,
 
 	MEM(trigger = talloc_zero(request, fr_trigger_t));
 	fr_value_box_list_init(&trigger->args);
+	fr_value_box_list_init(&trigger->out);
 	trigger->command = talloc_strdup(trigger, value);
 	trigger->timeout = fr_time_delta_from_sec(5);	/* @todo - Should be configurable? */
 
-	slen = xlat_tokenize_argv(trigger, &trigger->xlat,
-				  &FR_SBUFF_IN(trigger->command, talloc_array_length(trigger->command) - 1),
-				  NULL, NULL, &(tmpl_rules_t) {
+	if (value[0] != '/') {
+		slen = unlang_xlat_push_string(trigger, &trigger->result, &trigger->out, request, value);
+		if (slen < 0) goto parse_error; /* can't be zero! */
+	} else {
+		slen = xlat_tokenize_argv(trigger, &trigger->xlat,
+					  &FR_SBUFF_IN(trigger->command, talloc_array_length(trigger->command) - 1),
+					  NULL, NULL, &(tmpl_rules_t) {
 					  .attr = {
 						  .dict_def = request->local_dict,
 						  .list_def = request_attr_request,
 						  .allow_unresolved = false,
 					  },
-				  }, true);
-	if (slen <= 0) {
-		char *spaces, *text;
+					  }, true);
+		if (slen <= 0) {
+			char *spaces, *text;
 
-		fr_canonicalize_error(trigger, &spaces, &text, slen, trigger->command);
+		parse_error:
+			fr_canonicalize_error(trigger, &spaces, &text, slen, trigger->command);
 
-		cf_log_err(cp, "Failed parsing trigger command");
-		cf_log_err(cp, "%s", text);
-		cf_log_perr(cp, "%s^", spaces);
+			cf_log_err(cp, "Failed parsing trigger command");
+			cf_log_err(cp, "%s", text);
+			cf_log_perr(cp, "%s^", spaces);
 
-		talloc_free(request);
-		talloc_free(spaces);
-		talloc_free(text);
-		return -1;
+			talloc_free(request);
+			talloc_free(spaces);
+			talloc_free(text);
+			return -1;
+		}
 	}
 
 	/*
@@ -411,18 +420,20 @@ int trigger_exec(unlang_interpret_t *intp,
 		}
 	}
 
-	if (xlat_finalize(trigger->xlat, intp ? unlang_interpret_event_list(request) : main_loop_event_list()) < 0) {
-		fr_strerror_const("Failed performing ephemeral instantiation for xlat");
-		talloc_free(request);
-		return -1;
-	}
+	if (trigger->xlat) {
+		if (xlat_finalize(trigger->xlat, intp ? unlang_interpret_event_list(request) : main_loop_event_list()) < 0) {
+			fr_strerror_const("Failed performing ephemeral instantiation for xlat");
+			talloc_free(request);
+			return -1;
+		}
 
-	if (unlang_function_push(request,
-				 trigger_run,
-				 trigger_resume,
-				 NULL, 0,
-				 UNLANG_TOP_FRAME,
-				 trigger) < 0) goto error;
+		if (unlang_function_push(request,
+					 trigger_run,
+					 trigger_resume,
+					 NULL, 0,
+					 UNLANG_TOP_FRAME,
+					 trigger) < 0) goto error;
+	}
 
 	if (!intp) {
 		/*
