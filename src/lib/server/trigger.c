@@ -41,8 +41,7 @@ RCSID("$Id$")
 /** Whether triggers are enabled globally
  *
  */
-static bool			triggers_init;
-static CONF_SECTION const	*trigger_exec_main, *trigger_exec_subcs;
+static CONF_SECTION const	*trigger_cs;
 static fr_rb_tree_t		*trigger_last_fired_tree;
 static pthread_mutex_t		*trigger_mutex;
 
@@ -76,17 +75,17 @@ xlat_action_t trigger_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t		*in_head = fr_value_box_list_head(in);
 	fr_value_box_t		*vb;
 
-	if (!triggers_init) {
+	if (!trigger_cs) {
 		ERROR("Triggers are not enabled");
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (!request_data_reference(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME)) {
+	if (!request_data_reference(request, &trigger_cs, REQUEST_INDEX_TRIGGER_NAME)) {
 		ERROR("trigger xlat may only be used in a trigger command");
 		return XLAT_ACTION_FAIL;
 	}
 
-	head = request_data_reference(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS);
+	head = request_data_reference(request, &trigger_cs, REQUEST_INDEX_TRIGGER_ARGS);
 
 	da = fr_dict_attr_by_name(NULL, fr_dict_root(request->local_dict), in_head->vb_strvalue);
 	if (!da) {
@@ -129,7 +128,7 @@ static int8_t _trigger_last_fired_cmp(void const *one, void const *two)
  */
 bool trigger_enabled(void)
 {
-	return triggers_init;
+	return (trigger_cs != NULL);
 }
 
 typedef struct {
@@ -228,8 +227,6 @@ static unlang_action_t trigger_run(request_t *request, void *uctx)
 int trigger_exec(unlang_interpret_t *intp,
 		 CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_list_t *args)
 {
-	CONF_SECTION const	*subcs;
-
 	CONF_ITEM		*ci;
 	CONF_PAIR		*cp;
 
@@ -241,19 +238,30 @@ int trigger_exec(unlang_interpret_t *intp,
 	ssize_t			slen;
 
 	/*
-	 *	noop if trigger_exec_init was never called
+	 *	noop if trigger_exec_init was never called, or if
+	 *	we're just checking the configuration.
 	 */
-	if (!triggers_init) return 0;
+	if (!trigger_cs || check_config) return 0;
 
 	/*
-	 *	Use global "trigger" section if no local config is given.
+	 *	A module can have a local "trigger" section.  In which
+	 *	case that is used in preference to the global one.
+	 *
+	 *	@todo - we should really allow triggers via @trigger,
+	 *	so that all of the triggers are in one location.  And
+	 *	then we can have different triggers for different
+	 *	module instances.
 	 */
-	if (!cs) {
-		cs = trigger_exec_main;
-		attr = name;
-	} else {
+	if (cs) {
+		CONF_SECTION const *subcs;
+
+		subcs = cf_section_find(cs, "trigger", NULL);
+		if (!subcs) goto use_global;
+
 		/*
-		 *	Try to use pair name, rather than reference.
+		 *	If a local trigger{...} section exists, then
+		 *	use the local part of the name, rather than
+		 *	the full path.
 		 */
 		attr = strrchr(name, '.');
 		if (attr) {
@@ -261,22 +269,21 @@ int trigger_exec(unlang_interpret_t *intp,
 		} else {
 			attr = name;
 		}
+	} else {
+	use_global:
+		cs = trigger_cs;
+		attr = name;
 	}
 
 	/*
-	 *	Find local "trigger" subsection.  If it isn't found,
-	 *	try using the global "trigger" section, and reset the
-	 *	reference to the full path, rather than the sub-path.
+	 *	Find the trigger.  Note that we do NOT allow searching
+	 *	from the root of the tree.  Triggers MUST be in a
+	 *	trigger{...} section.
 	 */
-	subcs = cf_section_find(cs, "trigger", NULL);
-	if (!subcs && trigger_exec_main && (cs != trigger_exec_main)) {
-		subcs = trigger_exec_subcs;
-		attr = name;
-	}
-	if (!subcs) return -1;
-
-	ci = cf_reference_item(subcs, trigger_exec_main, attr);
+	ci = cf_reference_item(cs, cs, attr);
 	if (!ci) {
+		if (cs != trigger_cs) goto use_global; /* not found locally, try to find globally */
+
 		DEBUG3("Failed finding trigger '%s'", attr);
 		return -1;
 	}
@@ -291,16 +298,9 @@ int trigger_exec(unlang_interpret_t *intp,
 
 	value = cf_pair_value(cp);
 	if (!value) {
-		ERROR("Trigger has no value: %s", name);
+		DEBUG3("Trigger has no value: %s", name);
 		return -1;
 	}
-
-	/*
-	 *	Don't do any real work if we're checking the
-	 *	configuration.  i.e. don't run "start" or "stop"
-	 *	triggers on "radiusd -XC".
-	 */
-	if (check_config) return 0;
 
 	/*
 	 *	Perform periodic rate_limiting.
@@ -330,6 +330,8 @@ int trigger_exec(unlang_interpret_t *intp,
 
 		/*
 		 *	Send the rate_limited traps at most once per second.
+		 *
+		 *	@todo - make this configurable for longer periods of time.
 		 */
 		if (fr_time_to_sec(found->last_fired) == fr_time_to_sec(now)) return -1;
 		found->last_fired = now;
@@ -356,20 +358,14 @@ int trigger_exec(unlang_interpret_t *intp,
 			return -1;
 		}
 
-		if (request_data_add(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS, local_args,
+		if (request_data_add(request, &trigger_cs, REQUEST_INDEX_TRIGGER_ARGS, local_args,
 				      false, false, false) < 0) goto args_error;
 	}
 
-	{
-		void *name_tmp;
-
-		memcpy(&name_tmp, &name, sizeof(name_tmp));
-
-		if (request_data_add(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME,
-				     name_tmp, false, false, false) < 0) {
-			talloc_free(request);
-			return -1;
-		}
+	if (request_data_add(request, &trigger_cs, REQUEST_INDEX_TRIGGER_NAME,
+			     UNCONST(char *, name), false, false, false) < 0) {
+		talloc_free(request);
+		return -1;
 	}
 
 	MEM(trigger = talloc_zero(request, fr_trigger_t));
@@ -522,10 +518,8 @@ static int _trigger_exec_init(void *cs_arg)
 		return -1;
 	}
 
-	trigger_exec_main = cs;
-	trigger_exec_subcs = cf_section_find(cs, "trigger", NULL);
-
-	if (!trigger_exec_subcs) {
+	trigger_cs = cf_section_find(cs, "trigger", NULL);
+	if (!trigger_cs) {
 		WARN("trigger { ... } subsection not found, triggers will be disabled");
 		return 0;
 	}
@@ -537,7 +531,6 @@ static int _trigger_exec_init(void *cs_arg)
 	trigger_mutex = talloc(talloc_null_ctx(), pthread_mutex_t);
 	pthread_mutex_init(trigger_mutex, 0);
 	talloc_set_destructor(trigger_mutex, _mutex_free);
-	triggers_init = true;
 
 	return 0;
 }
