@@ -856,17 +856,18 @@ static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)
 
 			RDEBUG("(TLS) EAP Sending final Commitment Message.");
 			tls_session->record_from_buff(&tls_session->clean_in, "\0", 1);
-		}
+		} else {
 
-		/*
-		 *	Returns UNLANG_ACTION_PUSHED_CHILD unless something has failed
-		 */
-		ret = fr_tls_session_async_handshake_push(request, tls_session);
-		if (tls_session->result != FR_TLS_RESULT_SUCCESS) {
-			REDEBUG("TLS receive handshake failed during operation");
-			fr_tls_cache_deny(request, tls_session);
-			eap_tls_session->state = EAP_TLS_FAIL;
-			return ret;
+			/*
+			 *	Returns UNLANG_ACTION_PUSHED_CHILD unless something has failed
+			 */
+			ret = fr_tls_session_async_handshake_push(request, tls_session);
+			if (tls_session->result != FR_TLS_RESULT_SUCCESS) {
+				REDEBUG("TLS receive handshake failed during operation");
+				fr_tls_cache_deny(request, tls_session);
+				eap_tls_session->state = EAP_TLS_FAIL;
+				return ret;
+			}
 		}
 	}
 #endif
