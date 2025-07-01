@@ -259,28 +259,22 @@ static const call_env_method_t rest_call_env_xlat = { \
 };
 
 fr_dict_t const *dict_freeradius;
-static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_rest_dict[];
 fr_dict_autoload_t rlm_rest_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 
 fr_dict_attr_t const *attr_rest_http_body;
 fr_dict_attr_t const *attr_rest_http_header;
 fr_dict_attr_t const *attr_rest_http_status_code;
-static fr_dict_attr_t const *attr_user_name;
-static fr_dict_attr_t const *attr_user_password;
 
 extern fr_dict_attr_autoload_t rlm_rest_dict_attr[];
 fr_dict_attr_autoload_t rlm_rest_dict_attr[] = {
 	{ .out = &attr_rest_http_body, .name = "REST-HTTP-Body", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_rest_http_header, .name = "REST-HTTP-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_rest_http_status_code, .name = "REST-HTTP-Status-Code", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
 
