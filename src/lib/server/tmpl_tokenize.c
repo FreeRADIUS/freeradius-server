@@ -827,7 +827,7 @@ void tmpl_set_escape(tmpl_t *vpt, tmpl_escape_t const *escape)
  */
 void tmpl_set_xlat(tmpl_t *vpt, xlat_exp_head_t *xlat)
 {
-	fr_assert(vpt->type == TMPL_TYPE_XLAT);
+	fr_assert((vpt->type == TMPL_TYPE_XLAT) || (vpt->type == TMPL_TYPE_EXEC));
 
 	tmpl_xlat(vpt) = xlat;
 }
