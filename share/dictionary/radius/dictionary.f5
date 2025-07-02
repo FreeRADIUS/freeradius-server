@@ -6,7 +6,7 @@
 #
 #	F5 VSAs
 #
-#	https://support.f5.com/csp/article/K14324
+#	https://my.f5.com/manage/s/article/K14324
 #
 #	$Id$
 #
@@ -25,6 +25,13 @@ ATTRIBUTE	LTM-User-Context-2			11	integer
 ATTRIBUTE	LTM-User-Info-1				12	string
 ATTRIBUTE	LTM-User-Info-2				13	string
 ATTRIBUTE	LTM-Audit-Msg				14	string
+
+ATTRIBUTE	F5-F5OS-UID					21	integer
+ATTRIBUTE	F5-F5OS-GID					22	integer
+ATTRIBUTE	F5-F5OS-HOMEDIR				23	string
+ATTRIBUTE	F5-F5OS-SHELL				24	string
+ATTRIBUTE	F5-F5OS-USERINFO			25	string
+ATTRIBUTE	F5-F5OS-SECONDARYGIDS		26	string
 
 VALUE	LTM-User-Role			Administrator		0
 VALUE	LTM-User-Role			Resource-Admin		20
@@ -49,6 +56,13 @@ VALUE	LTM-User-Role-Universal		Enabled			1
 
 VALUE	LTM-User-Console		Disabled		0
 VALUE	LTM-User-Console		Enabled			1
+
+VALUE	F5-F5OS-GID			admin				9000
+VALUE	F5-F5OS-GID			operator			9001
+VALUE	F5-F5OS-GID			user				9002
+VALUE	F5-F5OS-GID			resource-admin		9003
+VALUE	F5-F5OS-GID			superuser			9004
+VALUE	F5-F5OS-GID			tenant-console		9100
 
 END-VENDOR   F5
 ALIAS		F5					Vendor-Specific.F5
