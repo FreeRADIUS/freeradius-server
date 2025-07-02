@@ -1851,6 +1851,8 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_exp_head_t	*head;
 
+	fr_assert(!t_rules || !t_rules->at_runtime || (t_rules->xlat.runtime_el != NULL));
+
 	MEM(head = xlat_exp_head_alloc(ctx));
 	fr_strerror_clear();	/* Clear error buffer */
 
