@@ -1,10 +1,21 @@
-ALIAS	F5-LTM-User-Role                        	26.3375.1
-ALIAS	F5-LTM-User-Role-Universal              	26.3375.2
-ALIAS	F5-LTM-User-Partition                   	26.3375.3
-ALIAS	F5-LTM-User-Console                     	26.3375.4
-ALIAS	F5-LTM-User-Shell                       	26.3375.5
-ALIAS	F5-LTM-User-Context-1                   	26.3375.10
-ALIAS	F5-LTM-User-Context-2                   	26.3375.11
-ALIAS	F5-LTM-User-Info-1                      	26.3375.12
-ALIAS	F5-LTM-User-Info-2                      	26.3375.13
-ALIAS	F5-LTM-Audit-Msg                        	26.3375.14
+# -*- text -*-
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+ALIAS		F5-LTM-User-Role			26.3375.1
+ALIAS		F5-LTM-User-Role-Universal		26.3375.2
+ALIAS		F5-LTM-User-Partition			26.3375.3
+ALIAS		F5-LTM-User-Console			26.3375.4
+ALIAS		F5-LTM-User-Shell			26.3375.5
+ALIAS		F5-LTM-User-Context-1			26.3375.10
+ALIAS		F5-LTM-User-Context-2			26.3375.11
+ALIAS		F5-LTM-User-Info-1			26.3375.12
+ALIAS		F5-LTM-User-Info-2			26.3375.13
+ALIAS		F5-LTM-Audit-Msg			26.3375.14
+
+ALIAS		F5-F5OS-UID				26.3375.21
+ALIAS		F5-F5OS-GID				26.3375.22
+ALIAS		F5-F5OS-HOMEDIR				26.3375.23
+ALIAS		F5-F5OS-SHELL				26.3375.24
+ALIAS		F5-F5OS-USERINFO			26.3375.25
+ALIAS		F5-F5OS-SECONDARYGIDS			26.3375.26
