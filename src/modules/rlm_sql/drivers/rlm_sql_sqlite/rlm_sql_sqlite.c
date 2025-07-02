@@ -640,7 +640,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 	error:
 		query_ctx->status = SQL_QUERY_FAILED;
 		trunk_request_signal_fail(treq);
-		return;
+		goto finish;
 	}
 
 	/*
@@ -661,6 +661,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 
 	trunk_request_signal_reapable(treq);
 
+finish:
 	/* If the query went into a backlog, the request will have yielded - so mark runnable just in case */
 	if (request) unlang_interpret_mark_runnable(request);
 }
