@@ -1506,11 +1506,15 @@ int unlang_interpret_set_timeout(request_t *request, fr_time_delta_t timeout)
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_retry_t			*retry;
+	TALLOC_CTX			*frame_ctx;
 
 	fr_assert(!frame->retry);
 	fr_assert(fr_time_delta_ispos(timeout));
 
-	frame->retry = retry = talloc_zero(frame, unlang_retry_t);
+	frame_ctx = frame->state;
+	if (!frame_ctx) frame_ctx = stack;
+
+	frame->retry = retry = talloc_zero(frame_ctx, unlang_retry_t);
 	if (!frame->retry) return -1;
 
 	retry->request = request;

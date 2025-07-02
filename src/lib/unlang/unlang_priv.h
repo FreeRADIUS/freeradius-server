@@ -612,6 +612,7 @@ static inline void frame_cleanup(unlang_stack_frame_t *frame)
 	 *	Don't clear top_frame flag, bad things happen...
 	 */
 	frame->flag &= UNLANG_FRAME_FLAG_TOP_FRAME;
+	TALLOC_FREE(frame->retry);
 	if (frame->state) {
 		talloc_free_children(frame->state); /* *(ev->parent) = NULL in event.c */
 		TALLOC_FREE(frame->state);
