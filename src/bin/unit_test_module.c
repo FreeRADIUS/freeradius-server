@@ -944,6 +944,13 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	Needed for the triggers.  Which are always run-time expansions.
+	 */
+	if (main_loop_init() < 0) {
+		PERROR("Failed initialising main event loop");
+		EXIT_WITH_FAILURE;
+	}
+	/*
 	 *	Initialise the interpreter, registering operations.
 	 *      This initialises
 	 */
@@ -1010,9 +1017,9 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Create a dummy event list
+	 *	Get the main event list.
 	 */
-	el = fr_event_list_alloc(NULL, NULL, NULL);
+	el = main_loop_event_list();
 	fr_assert(el != NULL);
 	fr_timer_list_set_time_func(el->tl, _synthetic_time_source);
 
@@ -1256,10 +1263,7 @@ cleanup:
 	 */
 	if (el) fr_event_list_reap_signal(el, fr_time_delta_from_sec(5), SIGKILL);
 
-	/*
-	 *	Free the event list.
-	 */
-	talloc_free(el);
+	main_loop_free();
 
 	/*
 	 *	Ensure all thread local memory is cleaned up
