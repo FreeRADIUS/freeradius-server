@@ -845,7 +845,6 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uc
 		fr_assert_fail("%u tracking entries still allocated at conn close", h->tt->num_requests);
 	}
 
-	fr_bio_shutdown(h->bio.fd);
 	fr_bio_shutdown(h->bio.mem);
 
 	DEBUG4("Freeing handle %p", handle);
