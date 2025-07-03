@@ -782,9 +782,7 @@ static unlang_t *unlang_compile_foreach(unlang_t *parent, unlang_compile_ctx_t *
 		}
 	}
 
-	if (!unlang_compile_children(g, &unlang_ctx2, true)) return NULL;
-
-	return c;
+	return unlang_compile_children(g, &unlang_ctx2);
 }
 
 

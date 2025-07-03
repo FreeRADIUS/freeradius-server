@@ -190,7 +190,7 @@ static unlang_t *unlang_compile_catch(unlang_t *parent, unlang_compile_ctx_t *un
 	/*
 	 *	@todo - Else parse and limit the things we catch
 	 */
-	return unlang_compile_children(g, unlang_ctx, true);
+	return unlang_compile_children(g, unlang_ctx);
 }
 
 void unlang_catch_init(void)

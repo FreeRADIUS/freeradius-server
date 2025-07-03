@@ -824,8 +824,6 @@ static unlang_t *unlang_compile_update(unlang_t *parent, unlang_compile_ctx_t *u
 
 	if (!pass2_fixup_update(g, unlang_ctx->rules)) goto error;
 
-	unlang_compile_action_defaults(c, unlang_ctx);
-
 	return c;
 }
 
@@ -1051,8 +1049,6 @@ static unlang_t *unlang_compile_map(unlang_t *parent, unlang_compile_ctx_t *unla
 	 *	"bootstrap" phase, so that it's always available here.
 	 */
 	if (!pass2_fixup_map_rhs(g, unlang_ctx->rules)) goto error;
-
-	unlang_compile_action_defaults(c, unlang_ctx);
 
 	return c;
 }

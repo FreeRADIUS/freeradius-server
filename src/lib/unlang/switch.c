@@ -514,8 +514,6 @@ static unlang_t *unlang_compile_switch(unlang_t *parent, unlang_compile_ctx_t *u
 		g->num_children++;
 	}
 
-	unlang_compile_action_defaults(c, unlang_ctx); /* why is this here???? */
-
 	return c;
 }
 

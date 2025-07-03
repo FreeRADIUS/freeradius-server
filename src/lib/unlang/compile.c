@@ -484,7 +484,11 @@ unlang_group_t *unlang_group_allocate(unlang_t *parent, CONF_SECTION *cs, unlang
 	return g;
 }
 
-void unlang_compile_action_defaults(unlang_t *c, unlang_compile_ctx_t *unlang_ctx)
+/**  Update a compiled unlang_t with the default actions.
+ *
+ *  Don't over-ride any actions which have been set.
+ */
+static void compile_set_default_actions(unlang_t *c, unlang_compile_ctx_t *unlang_ctx)
 {
 	int i;
 
@@ -500,7 +504,8 @@ void unlang_compile_action_defaults(unlang_t *c, unlang_compile_ctx_t *unlang_ct
 	 *	have RETURN for all actions except fail.  But THEIR children are normal.
 	 */
 	if (c->parent &&
-	    ((c->parent->type == UNLANG_TYPE_REDUNDANT) || (c->parent->type == UNLANG_TYPE_REDUNDANT_LOAD_BALANCE))) {
+	    ((c->parent->type == UNLANG_TYPE_REDUNDANT) ||
+	     (c->parent->type == UNLANG_TYPE_REDUNDANT_LOAD_BALANCE))) {
 		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
 			switch (i) {
 			case RLM_MODULE_FAIL:
@@ -520,7 +525,7 @@ void unlang_compile_action_defaults(unlang_t *c, unlang_compile_ctx_t *unlang_ct
 	}
 
 	/*
-	 *	Set the default actions, if they haven't already been
+	 *	Set the default actions if they haven't already been
 	 *	set.
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
@@ -681,8 +686,6 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_ctx_t *un
 
 	map_list_init(&edit->maps);
 
-	unlang_compile_action_defaults(c, unlang_ctx);
-
 	/*
 	 *	Allocate the map and initialize it.
 	 */
@@ -824,8 +827,6 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_ctx_t *unlan
 	c->ci = CF_TO_ITEM(cp);
 
 	map_list_init(&edit->maps);
-
-	unlang_compile_action_defaults(c, unlang_ctx);
 
 	op = cf_pair_operator(cp);
 	if ((op == T_OP_CMP_TRUE) || (op == T_OP_CMP_FALSE)) {
@@ -1229,7 +1230,7 @@ bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *action_
 	return true;
 }
 
-unlang_t *unlang_compile_empty(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_SECTION *cs, unlang_type_t type)
+unlang_t *unlang_compile_empty(unlang_t *parent, UNUSED unlang_compile_ctx_t *unlang_ctx, CONF_SECTION *cs, unlang_type_t type)
 {
 	unlang_group_t *g;
 	unlang_t *c;
@@ -1260,7 +1261,6 @@ unlang_t *unlang_compile_empty(unlang_t *parent, unlang_compile_ctx_t *unlang_ct
 		}
 	}
 
-	unlang_compile_action_defaults(c, unlang_ctx);
 	return c;
 }
 
@@ -1321,7 +1321,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 }
 
 
-unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlang_ctx_in, bool set_action_defaults)
+unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlang_ctx_in)
 {
 	CONF_ITEM	*ci = NULL;
 	unlang_t	*c, *single;
@@ -1373,6 +1373,7 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 			if (fr_list_assignment_op[cf_section_name2_quote(subcs)]) {
 				single = compile_edit_section(c, unlang_ctx, subcs);
 				if (!single) {
+				fail:
 					talloc_free(c);
 					return NULL;
 				}
@@ -1381,11 +1382,7 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 			}
 
 			if (strcmp(name, "actions") == 0) {
-				if (!compile_action_subsection(c, g->cs, subcs)) {
-					talloc_free(c);
-					return NULL;
-				}
-
+				if (!compile_action_subsection(c, g->cs, subcs)) goto fail;
 				continue;
 			}
 
@@ -1400,8 +1397,7 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 				if (!was_if) {
 					cf_log_err(ci, "Invalid location for '%s'.  There is no preceding "
 						   "'if' or 'elsif' statement", name);
-					talloc_free(c);
-					return NULL;
+					goto fail;
 				}
 
 				/*
@@ -1432,8 +1428,7 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 			single = compile_item(c, unlang_ctx, ci);
 			if (!single) {
 				cf_log_err(ci, "Failed to parse \"%s\" subsection", cf_section_name1(subcs));
-				talloc_free(c);
-				return NULL;
+				goto fail;
 			}
 
 			goto add_child;
@@ -1445,10 +1440,7 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 			 *	Variable definition.
 			 */
 			if (cf_pair_operator(cp) == T_OP_CMP_TRUE) {
-				if (compile_variable(c, unlang_ctx, cp, &t_rules) < 0) {
-					talloc_free(c);
-					return NULL;
-				}
+				if (compile_variable(c, unlang_ctx, cp, &t_rules) < 0) goto fail;
 
 				single = UNLANG_IGNORE;
 				goto add_child;
@@ -1458,8 +1450,7 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 				single = compile_item(c, unlang_ctx, ci);
 				if (!single) {
 					cf_log_err(ci, "Invalid keyword \"%s\".", cf_pair_attr(cp));
-					talloc_free(c);
-					return NULL;
+					goto fail;
 				}
 
 				goto add_child;
@@ -1470,16 +1461,12 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 			 *	tells us what it is, and we don't really care if there's a leading '&'.
 			 */
 			single = compile_edit_pair(c, unlang_ctx, cp);
-			if (!single) {
-				talloc_free(c);
-				return NULL;
-			}
+			if (!single) goto fail;
 
 			goto add_child;
 		} else {
 			cf_log_err(ci, "Asked to compile unknown conf type");
-			talloc_free(c);
-			return NULL;
+			goto fail;
 		}
 
 	add_child:
@@ -1550,12 +1537,6 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 		}
 	}
 
-	/*
-	 *	Set the default actions, if they haven't already been
-	 *	set by an "actions" section above.
-	 */
-	if (set_action_defaults) unlang_compile_action_defaults(c, unlang_ctx);
-
 	return c;
 }
 
@@ -1601,7 +1582,7 @@ unlang_t *unlang_compile_section(unlang_t *parent, unlang_compile_ctx_t *unlang_
 		MEM(c->debug_name = talloc_typed_asprintf(c, "%s %s", name1, name2));
 	}
 
-	return unlang_compile_children(g, unlang_ctx, true);
+	return unlang_compile_children(g, unlang_ctx);
 }
 
 
@@ -1636,7 +1617,6 @@ static unlang_t *compile_tmpl(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx
 	}
 	ut->tmpl = vpt;	/* const issues */
 
-	unlang_compile_action_defaults(c, unlang_ctx);
 	return c;
 }
 
@@ -1896,11 +1876,6 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_ctx_t *unlang_c
 	c->actions = m->mmc.mi->actions;
 
 	/*
-	 *	Add in the default actions for this section.
-	 */
-	unlang_compile_action_defaults(c, unlang_ctx);
-
-	/*
 	 *	Parse the method environment for this module / method
 	 */
 	if (m->mmc.mmb.method_env) {
@@ -2073,26 +2048,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx
 			}
 
 			c = op->compile(parent, unlang_ctx, ci);
-		allocate_number:
-			if (!c) return NULL;
-			if (c == UNLANG_IGNORE) return UNLANG_IGNORE;
-
-			c->number = unlang_number++;
-
-			/*
-			 *	Only insert the per-thread allocation && instantiation if it's used.
-			 */
-			op = &unlang_ops[c->type];
-			if (!op->thread_inst_size) return c;
-
-			if (!fr_rb_insert(unlang_instruction_tree, c)) {
-				cf_log_err(ci, "Instruction \"%s\" number %u has conflict with previous one.",
-					   c->debug_name, c->number);
-				talloc_free(c);
-				return NULL;
-			}
-
-			return c;
+			goto allocate_number;
 		}
 
 		/* else it's something like sql { fail = 1 ...} */
@@ -2106,23 +2062,28 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx
 		 */
 		CONF_PAIR *cp = cf_item_to_pair(ci);
 
-		name = cf_pair_attr(cp);
-		op = name_to_op(name);
-
-		/*
-		 *	Forbid section keywords as pair names, e.g. bare "update"
-		 */
-		if (op && ((op->flag & UNLANG_OP_FLAG_SINGLE_WORD) == 0)) {
-			cf_log_err(ci, "Syntax error after keyword '%s' - missing '{'", name);
-			return NULL;
-		}
-
 		/*
 		 *	We cannot have assignments or actions here.
 		 */
 		if (cf_pair_value(cp) != NULL) {
-			cf_log_err(ci, "Entry is not a reference to a module");
+			cf_log_err(ci, "Invalid assignment");
 			return NULL;
+		}
+
+		name = cf_pair_attr(cp);
+		op = name_to_op(name);
+
+		if (op) {
+			/*
+			 *	Forbid section keywords as pair names, e.g. bare "update"
+			 */
+			if ((op->flag & UNLANG_OP_FLAG_SINGLE_WORD) == 0) {
+				cf_log_err(ci, "Syntax error after keyword '%s' - missing '{'", name);
+				return NULL;
+			}
+
+			c = op->compile(parent, unlang_ctx, ci);
+			goto allocate_number;
 		}
 
 		/*
@@ -2142,12 +2103,10 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx
 			goto allocate_number;
 		}
 
-		if (!op) goto check_for_module;
+		goto check_for_module;
 
-		c = op->compile(parent, unlang_ctx, ci);
-		goto allocate_number;
 	} else {
-		cf_log_err(ci, "Asked to compile unknown conf type");
+		cf_log_err(ci, "Asked to compile unknown configuration item");
 		return NULL;	/* who knows what it is... */
 	}
 
@@ -2237,15 +2196,37 @@ check_for_module:
 	 */
 	UPDATE_CTX2;
 	c = compile_module(parent, &unlang_ctx2, ci, realname);
-	if (c) goto allocate_number;
+	if (!c) {
+		if (ignore_notfound) {
+			cf_log_warn(ci, "Ignoring \"%s\" as the \"%s\" module is not enabled, "
+				    "or the method does not exist", name, realname);
+			return UNLANG_IGNORE;
+		}
 
-	if (ignore_notfound) {
-		cf_log_warn(ci, "Ignoring \"%s\" as the \"%s\" module is not enabled, "
-			    "or the method does not exist", name, realname);
-		return UNLANG_IGNORE;
+		return NULL;
 	}
 
-	return NULL;
+allocate_number:
+	if (!c) return NULL;
+	if (c == UNLANG_IGNORE) return UNLANG_IGNORE;
+
+	c->number = unlang_number++;
+	compile_set_default_actions(c, unlang_ctx);
+
+	/*
+	 *	Only insert the per-thread allocation && instantiation if it's used.
+	 */
+	op = &unlang_ops[c->type];
+	if (!op->thread_inst_size) return c;
+
+	if (!fr_rb_insert(unlang_instruction_tree, c)) {
+		cf_log_err(ci, "Instruction \"%s\" number %u has conflict with previous one.",
+			   c->debug_name, c->number);
+		talloc_free(c);
+		return NULL;
+	}
+
+	return c;
 }
 
 /** Compile an unlang section for a virtual server
@@ -2260,7 +2241,7 @@ check_for_module:
  *	- -1 on error.
  */
 int unlang_compile(virtual_server_t const *vs,
-		   CONF_SECTION *cs, unlang_mod_actions_t const * actions, tmpl_rules_t const *rules, void **instruction)
+		   CONF_SECTION *cs, unlang_mod_actions_t const *actions, tmpl_rules_t const *rules, void **instruction)
 {
 	unlang_t			*c;
 	tmpl_rules_t			my_rules;

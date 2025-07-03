@@ -221,7 +221,7 @@ unlang_t *unlang_compile_empty(unlang_t *parent, unlang_compile_ctx_t *unlang_ct
 
 unlang_t *unlang_compile_section(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_SECTION *cs, unlang_type_t type);
 
-unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlang_ctx_in, bool set_action_defaults);
+unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlang_ctx);
 
 unlang_group_t *unlang_group_allocate(unlang_t *parent, CONF_SECTION *cs, unlang_type_t type);
 
@@ -229,12 +229,6 @@ int unlang_define_local_variable(CONF_ITEM *ci, unlang_variable_t *var, tmpl_rul
 				 fr_dict_attr_t const *ref);
 
 bool unlang_compile_limit_subsection(CONF_SECTION *cs, char const *name);
-
-/*
- *	@todo - arguably this should be part of the core compiler, and
- *	never called by any keyword.
- */
-void unlang_compile_action_defaults(unlang_t *c, unlang_compile_ctx_t *unlang_ctx);
 
 /*
  *	@todo - These functions should be made private once all of they keywords have been moved to foo(args) syntax.

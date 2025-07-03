@@ -77,7 +77,7 @@ static unlang_t *unlang_compile_try(unlang_t *parent, unlang_compile_ctx_t *unla
 	c = unlang_group_to_generic(g);
 	c->debug_name = c->name = cf_section_name1(cs);
 
-	return unlang_compile_children(g, unlang_ctx, true);
+	return unlang_compile_children(g, unlang_ctx);
 }
 
 

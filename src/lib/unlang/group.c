@@ -49,7 +49,6 @@ static unlang_t *unlang_compile_group(unlang_t *parent, unlang_compile_ctx_t *un
 static unlang_t *unlang_compile_redundant(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
 {
 	CONF_SECTION			*cs = cf_item_to_section(ci);
-	unlang_t			*c;
 
 	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
@@ -57,14 +56,11 @@ static unlang_t *unlang_compile_redundant(unlang_t *parent, unlang_compile_ctx_t
 		return NULL;
 	}
 
-	c = unlang_compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_REDUNDANT);
-	if (!c) return NULL;
+	if (cf_section_name2(cs) != NULL) {
+		cf_log_warn(cs, "Ignoring name for 'redundant' section");
+	}
 
-	/*
-	 *	We no longer care if "redundant" sections have a name.  If they do, it's ignored.
-	 */
-
-	return c;
+	return unlang_compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_REDUNDANT);
 }
 
 

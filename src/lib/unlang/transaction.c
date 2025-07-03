@@ -235,8 +235,23 @@ static unlang_t *unlang_compile_transaction(unlang_t *parent, unlang_compile_ctx
 
 	if (!transaction_ok(cs)) return NULL;
 
+	g = unlang_group_allocate(parent, cs, UNLANG_TYPE_TRANSACTION);
+	if (!g) return NULL;
+
+	c = unlang_group_to_generic(g);
+	c->debug_name = c->name = cf_section_name1(cs);
+
 	/*
-	 *	Any failure is return, not continue.
+	 *	The default for a failed transaction is to continue to
+	 *	the next instruction on failure.
+	 */
+	c->actions.actions[RLM_MODULE_FAIL] = 1;
+	c->actions.actions[RLM_MODULE_INVALID] = 1;
+	c->actions.actions[RLM_MODULE_DISALLOW] = 1;
+
+	/*
+	 *	For the children of this keyword, any failure is
+	 *	return, not continue.
 	 */
 	unlang_compile_ctx_copy(&unlang_ctx2, unlang_ctx);
 
@@ -245,25 +260,7 @@ static unlang_t *unlang_compile_transaction(unlang_t *parent, unlang_compile_ctx
 	unlang_ctx2.actions.actions[RLM_MODULE_INVALID] = MOD_ACTION_RETURN;
 	unlang_ctx2.actions.actions[RLM_MODULE_DISALLOW] = MOD_ACTION_RETURN;
 
-	g = unlang_group_allocate(parent, cs, UNLANG_TYPE_TRANSACTION);
-	if (!g) return NULL;
-
-	c = unlang_group_to_generic(g);
-	c->debug_name = c->name = cf_section_name1(cs);
-
-	if (!unlang_compile_children(g, &unlang_ctx2, false)) return NULL;
-
-	/*
-	 *	The default for a failed transaction is to continue on
-	 *	failure.
-	 */
-	if (!c->actions.actions[RLM_MODULE_FAIL])     c->actions.actions[RLM_MODULE_FAIL] = 1;
-	if (!c->actions.actions[RLM_MODULE_INVALID])  c->actions.actions[RLM_MODULE_INVALID] = 1;
-	if (!c->actions.actions[RLM_MODULE_DISALLOW]) c->actions.actions[RLM_MODULE_DISALLOW] = 1;
-
-	unlang_compile_action_defaults(c, unlang_ctx); /* why is this here???? */
-
-	return c;
+	return unlang_compile_children(g, &unlang_ctx2);
 }
 
 void unlang_transaction_init(void)
