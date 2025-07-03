@@ -1,0 +1,110 @@
+= EAP-TLS: Certificate-based authentication
+
+*Goal:* To configure the server to use the EAP-TLS authentication
+protocol and to send and receive test packets.
+
+*Time:* 20-35 minutes.
+
+*Files:*
+
+- `etc/raddb/mods-available/eap`
+- `scripts/certs.sh`
+- `etc/raddb/certs/`
+
+EAP-TLS is an authentication protocol that uses a TLS session, along
+with client and server certificates, to authenticate a user. You
+should now verify that the `rlm_eap_tls` module was built and installed
+by executing:
+
+[source, bash]
+--------------------------------------
+$ ls -l usr/lib64/freeradius/rlm_eap*
+--------------------------------------
+
+Use the directory where the FreeRADIUS libraries were installed.
+
+You should see not only files like `rlm_eap.so`, but also
+`rlm_eap_md5.so` and `rlm_eap_tls.so`. If you do not see those files,
+you will have to install them now. If necessary, you may have to
+re-build the server, as follows:
+
+[source, bash]
+---------------------------------------------------------------
+$ ./configure --prefix=$HOME/freeradius/ \
+              --with-openssl-include-dir=/usr/local/ssl/include \
+              --with-openssl-lib-dir=/usr/local/ssl/lib
+$ make
+$ make install
+---------------------------------------------------------------
+
+This exercise has insufficient room to describe how to debug any
+configuration, build, or installation problems with the `rlm_eap_tls`
+module. For the remainder of this exercise, we will assume that the
+driver is installed in the appropriate library directory.
+
+By default, the server creates a set of test certificates inside of the
+`raddb` directory, called `certs`. This directory contains sample server
+and client certificates, along with a demonstration certificate
+authority. These certificates may be used for this exercise, but should
+not be used in any live deployment of the server.
+
+You now edit the `etc/raddb/mods-available/eap` file to enable
+the `tls`. You should also set the configuration entry `default_eap_type`
+to `tls`.
+
+Start the server and verify that the `tls` module was loaded and that
+the server is `Ready to process requests`.
+
+This exercise does not cover how to configure EAP-TLS on the wireless
+client, nor how to set up a wireless access point to perform EAP-TLS. We
+suggest that the you consult the documentation for your wireless
+client software for details on this process.
+
+The wireless client will require the client certificate from the
+`raddb/certs` directory.
+
+Once the wireless client has been configured to enable EAP-TLS,
+you should perform a test authentication to the server. If all goes well,
+the server, AP, and wireless client should exchange multiple RADIUS
+`Access-Request` and `Access-Challenge` packets. This process should take
+a few seconds, and you should wait until it is done. If all goes
+well, the final packet from the server should be an `Access-Accept` and
+should contain the `MS-MPPE-Recv-Key` and `MS-MPPE-Send-Key` attributes.
+
+Verify that the authentication succeeded by using the `ping` command to
+see if the wireless client now has network access.
+
+== Further considerations
+
+EAP-TLS is an authentication protocol and nothing more. As such, the
+wireless client will still need to obtain an IP address. This address
+may be configured statically, or it may be obtained through DHCP.
+
+A benefit of EAP-TLS over EAP-MD5 is that it supports the creation of
+dynamic WEP keys. These keys are more secure than statically configured
+WEP keys and do not require administrator interaction to configure
+them. However, they are not perfectly secure, and we recommend that the
+server be configured to send a `Session-Timeout` attribute in the RADIUS
+`Access-Accept` packet in order to force the user to re-authenticate
+periodically, which will create new dynamic WEP keys.
+
+An issue with EAP-TLS is that it requires a client certificate. For
+secure authentication that does not require client certificates, see
+the EAP-TTLS and EAP-PEAP protocols.
+
+	Configuring the wireless client (usually a laptop or notebook
+computer) to perform EAP-TLS may be difficult. Windows (since Windows XP)
+ships with an EAP-PEAP client, which may influence any decision about
+which wireless authentication protocol to use.
+
+== Questions
+
+1.  What other benefits does EAP-TLS have over EAP-MD5?
+2.  What happens to the user's password when they use EAP-TLS?
+3.  Would you use EAP-TLS in a large deployment? If so, why? If not, why
+not?
+4.  What is the purpose of the `MS-MPPE-Recv-Key` and `MS-MPPE-Send-Key`
+attributes in the final `Access-Accept` packet?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -1,0 +1,69 @@
+= Proxy Fail-over
+
+
+
+*Goal:* To configure a "backup" home server that is used when the
+"primary" home server fails.
+
+*Time:* 15-25 minutes
+
+*Files:*
+
+- `etc/raddb/proxy.conf`
+- `etc/raddb/clients.conf`
+
+*Diagram:*
+
+image::proxy_backup_server.svg[Fig. Proxy Backup Server]
+
+For this exercise, you should find a group of other willing
+FreeRADIUS users!
+
+Divide yourselves into groups of three. One person (user 1) will
+operate the RADIUS server for "realm1" and the others will be operate
+the RADIUS server for "realm2".
+
+Each user will configure their realm in the `proxy.conf` file to
+be a "local" realm. user 1 will also configure two entries in the
+`proxy.conf` file for "realm2", one entry for each of the other
+partner's RADIUS servers. user 1 will configure the realms to "strip"
+the realm name from the incoming request.
+
+The two group for "realm2" should also configure their
+`clients.conf` file to permit user 1’s RADIUS server to act as a client,
+as given in the exercise in xref:new_client.adoc[New Clients].
+Each user operating "realm2" should pick a different shared
+secret to use with user 1.
+
+Once the servers have been configured, the group should collectively
+observe user 1 sending the following requests to their server:
+- bob@realm1.sh
+- bob@realm2.sh
+
+The group should verify that the expected authentication requests
+sent to the server for "realm1" are handled locally, as in the
+exercise in xref:proxy.adoc[Proxy].
+
+The group should then verify that the expected requests sent to
+the server for "realm1" are proxied to a server for "realm2". The
+group should send multiple requests to the server for "realm1" that are
+proxied to a server for "realm2", and they should verify that all of
+the requests are proxied to the same home server for "realm2".
+
+The group should then stop the "realm2" server that responded
+to that request, and they should repeat the request to "realm1". The
+group should observe the resulting behavior of the server for "realm1".
+
+If time permits, the group may switch roles, so that users have the
+opportunity to set up a proxy and a home server.
+
+== Questions
+
+1.  Which server for "realm2" is picked by "realm1"? Why?
+2.  Would the server for "realm1" ever again try to send packets to
+the "realm2" server that has been stopped? If so, when? If not,
+why not?
+3.  What would happen if both servers for "realm2" failed?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

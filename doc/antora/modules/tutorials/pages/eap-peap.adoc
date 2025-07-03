@@ -1,0 +1,82 @@
+= EAP-PEAP: Tunneled authentication
+
+*Goal:* To configure the server to use the EAP-PEAP authentication
+protocol and to send and receive test packets.
+
+*Time:* 20-35 minutes.
+
+*File:*
+
+- `etc/raddb/mods-available/eap`
+
+*Diagram:*
+
+image::peap_packet.svg[Fig. PEAP Packet]
+
+When started with the `radiusd -X` command, the server automatically creates
+certificates for use with PEAP. In a normal installation, there should
+be little or no action required to enable PEAP.
+
+Start the server, and verify that the `peap` module was loaded and that
+the server is `Ready to process requests`.
+
+This exercise does not cover how to configure EAP-PEAP on the wireless
+client nor how to set up a wireless access point to perform EAP-PEAP.
+We suggest that you consults the documentation for your
+wireless client software for details on this process.
+
+For the initial testing of EAP-PEAP, we recommend using
+`EAP-MSCHAPv2` on the wireless client as the tunneled authentication
+protocol. You should check that the `mschap` module is configured in the
+`raddb/modules` directory. The `mschapv2` module performs EAP-MSCHAPv2
+authentication and is contained in the `eap` section of the
+`raddb/eap.conf`. While these authentication methods are similar, they
+are not identical. Both modules need to be configured for EAP-PEAP to
+work.
+
+Test PEAP ``inner tunnel'' authentication via the following command:
+
+[source, bash]
+--------------------------------------------------------------
+$ radtest -t mschap 127.0.0.1:18120 USER PASSWORD 0 testing123
+--------------------------------------------------------------
+
+Once the wireless client has been configured to enable EAP-PEAP,
+you should perform a test authentication to the server. If all goes well,
+the server, AP, and wireless client should exchange multiple RADIUS
+`Access-Request` and `Access-Challenge` packets. This process should take
+a few seconds, and you should wait until it is done. If all goes well,
+the final packet from the server should be an `Access-Accept` and should
+contain the `MS-MPPE-Recv-Key` and `MS-MPPE-Send-Key` attributes.
+
+Verify that the authentication succeeded by using the `ping` command to
+see if the wireless client now has network access.
+
+== Further Considerations
+
+Different wireless clients may implement different tunneled
+authentication protocols inside of EAP-PEAP. These clients may not be
+compatible with all RADIUS servers. FreeRADIUS has only been tested
+using EAP-MSCHAPv2 as the tunneled authentication protocol. Other
+protocols may require source code changes to work.
+
+If there are issues getting EAP-PEAP to work on Windows, the following
+registry setting may be useful
+
+------------------------------------------------------------------
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Tracing\RASTLS\EnableTracing
+------------------------------------------------------------------
+
+Set the above key to value ``1''. A file `RASTLS.LOG` will be created
+and will contain the requested tracing information.
+
+== Questions
+
+1.  How does EAP-PEAP compare with EAP-TTLS?
+2.  What authentication protocols may be carried inside of the TLS
+tunnel for EAP-PEAP?
+3.  Would you use EAP-PEAP in a large deployment? If so, why? If not,
+why not?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

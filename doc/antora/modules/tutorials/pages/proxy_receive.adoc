@@ -1,0 +1,78 @@
+= Configuring a server to send and receive proxy requests
+
+
+
+*Goal:* To configure the server to proxy packets to a remote (home)
+RADIUS server and to receive packets from another proxy server.
+
+*Time:* 15-25 minutes
+
+*Files:*
+
+- `etc/raddb/proxy.conf`
+- `etc/raddb/clients.conf`
+
+For this exercise, the users will be divided into groups of two. One
+user will be named "realm1" and the other will be named
+"realm2".
+
+Each user will configure two realms in the `proxy.conf` file. One of the
+user's assigned realms will be authenticated by the local RADIUS
+server. The other realm will be proxied to the RADIUS server
+administered by the other user. Both realms will be configured to
+"strip" the realm name from the incoming request.
+
+User 1:
+
+realm1 is local
+
+realm2 gets proxied to the server running as "realm2".
+
+User 2:
+
+realm1 gets proxied to the server running as "realm1".
+
+realm2 is local
+
+The users should also configure each other's server as a RADIUS
+client, as given in the exercise in xref:new_client.adoc[New Clients].
+
+The entry from the exercise in xref:new_user.adoc[New User] for user "bob" in
+the file, will be used in this exercise.
+
+The example packets `bob.sh`, `bob@realm1.sh`, and `bob@realm2.sh` may
+be used in this exercise.
+
+Each user should test that authentication requests from "bob" to
+their RADIUS server should result in authentication accept replies and
+that the request was not forwarded to the other RADIUS server.
+
+Each user should test that authentication requests for their own
+realm (User 1: "bob@realm1", User 2: "bob@realm2") to their
+RADIUS server should result in authentication accept replies and that
+the request was not forwarded to the other RADIUS server.
+
+Each user in turn should then attempt authentication using the other
+user's realm (User 1: "bob@realm2", User 2: "bob@realm1"),
+to their local RADIUS server.
+
+Each in turn should verify that authentication requests for their
+realm sent to the other user's RADIUS server results in an
+authentication reject.
+
+User 2 should then stop his server. User 1 should then attempt an
+authentication request to his server where the request would normally
+be proxied. Both users should examine the debug logs of User 1’s
+RADIUS client and server in order to observe what the server's resulting behavior
+will be.
+
+== Questions
+
+1.  Why is it necessary for each server to mark some realms as local?
+2.  What would happen if each user did not configure the other RADIUS
+server in the "raddb/clients.conf" file?
+3.  What would happen if each user did not configure the realms to
+"strip" the realm from the proxied requests?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

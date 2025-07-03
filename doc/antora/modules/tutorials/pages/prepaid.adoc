@@ -1,0 +1,46 @@
+= A simple pre-paid example
+
+
+
+
+*Goal:* To implement a simple "prepaid" functionality in the server.
+
+*Time:* 15-25 minutes
+
+*Files:*
+
+- `etc/raddb/mods-available/counter`
+
+Many system administrators wish to implement "prepaid" billing for
+their systems. In this exercise, we will configure the server to use a
+simple "prepaid" scheme, wherein all users will be permitted to log in
+for only one hour a day.
+
+Read `etc/raddb/mods-available/counter` and look for the `counter daily` instance
+The documentation for the module consists solely of the comments in
+`etc/raddb/mods-available/counter`, so those comments should be read carefully.
+Search the rest of the configuration file for references to the `daily` module
+and un-comment any references you find.
+
+Add an entry that sets the `Max-Daily-Session`
+to have the value 3600 to the top of the file. Start the server, and test it with the `bob.sh`
+script. Note that unlike previous responses from the server, this one
+contains a `Session-Timeout` attribute with value 3600.
+
+Wait five to ten seconds, and then use the `bob-acct-stop.sh` script to
+tell the server that user "bob" has logged off. Observe that the `counter`
+module is called and that this module updates the user's login time. Now send the
+server another login request (`bob.sh`), and observe that the
+"Session-Timeout" attribute has a value less than 3600. The value
+should be near 3600. This value depends on the length of time passed
+between when the server is started and when the `bob-acct-stop.sh` script is run.
+
+== Questions
+
+1.  How would you configure the server to obtain the daily access limits
+from an SQL database?
+2.  Why is it useful to enforce time-based restrictions on users, in
+addition to enforcing `Simultaneous-Use`?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

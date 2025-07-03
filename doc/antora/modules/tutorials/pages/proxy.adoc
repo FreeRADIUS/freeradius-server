@@ -1,0 +1,61 @@
+= Configuring a server to proxy requests
+
+
+
+*Goal:* To configure the server to proxy packets to a remote (home)
+RADIUS server and to perform test authentications against both the
+proxy server and the home server.
+
+*Time:* 15-25 minutes
+
+*File:*
+
+- `etc/raddb/proxy.conf`
+
+*Diagram:*
+
+image::access-request-proxy.svg[Fig. Proxy]
+
+For this exercise, you will configure a RADIUS server to proxy
+requests to a home RADIUS server that is run by another user
+(the uber user)).
+
+You will configure a realm, called "realm1" in the
+`raddb/proxy.conf` file. This realm will be proxied to the RADIUS server
+administered by the uber user, who will supply the IP address, port,
+and shared secret used by their RADIUS server. The entry for the home
+server in `proxy.conf` will be configured to "strip" the realm name
+from the incoming request.
+
+The entry from the exercise in
+xref:new_user.adoc[New User] for user "bob", in the
+"users" file will be used in this exercise.
+
+The example packets `bob.sh` and `bob@realm1.sh` may be used in this
+exercise.
+
+You should verify that authentication requests for user "bob"
+to their RADIUS server result in authentication accept replies and that
+the request was not forwarded to the home RADIUS server. You
+should then use the `bob@realm1.sh` script to attempt an authentication
+request to their RADIUS server, which will then be proxied to the home
+server.
+
+Once you have verified that authentication requests are proxied
+to the home server and that you have received an authentication accept, the
+uber user will halt the home server. The users should then
+re-attempt the `bob@realm1.sh` authentication request to their server.
+They should then observe the resulting behavior of their server, as it
+attempts to proxy to a home server that does not respond.
+
+== Questions
+
+1.  How would you configure "proxy.conf" so that "realm1" was not
+proxied, but was instead handled by the local RADIUS server?
+2.  Will it make any difference for the home server if the request sent
+to the proxy contains CHAP-Password instead of User-Password?
+3.  Since the User-Password is encrypted with the RADIUS shared secret,
+what happens to it when a request is proxied?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

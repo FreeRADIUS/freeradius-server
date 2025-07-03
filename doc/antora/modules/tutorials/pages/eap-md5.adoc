@@ -1,0 +1,66 @@
+= Other protocols within RADIUS: EAP-MD5
+
+*Goal:* To configure the server to use the EAP-MD5 authentication
+protocol and to send and receive test packets.
+
+*Time:* 10-15 minutes.
+
+*File:*
+
+- `etc/raddb/mods-available/eap`
+
+*Diagram:*
+
+image::eap-md5.svg[Fig. EAP-MD5]
+
+*Programs*: radtest
+
+For this exercise, your are assumed to have previously worked
+through and be familiar with the exercise in xref:new_user.adoc[New User] for
+user "bob".
+
+While RADIUS is an authentication protocol in its own right, other
+authentication protocols are also used in the network. One such protocol
+is the Extensible Authentication Protocol (EAP). It originally was
+designed to be used in PPP, but has been more widely used in recent
+deployments.
+
+EAP is a protocol that is intended to carry other authentication
+protocols. It does not carry authorization information like RADIUS, so it
+therefore has a more limited application. One of the most common uses for
+EAP is for wireless authentication. In this exercise, we will configure
+and test the EAP-MD5 sub-type of EAP.
+
+`raddb/mods-available/eap` has a configuration section for the `eap`
+module. The EAP sub-types are configured inside of that section. By
+default, the server ships with the EAP-MD5 module enabled, and with the
+EAP module initiating EAP-MD5 for all RADIUS requests containing EAP.
+
+You should now read the appropriate section of the `raddb/mods-available/eap`
+file, to verify that the `eap` module is configured and that the `md5`
+sub-module of the `eap` module is configured.
+
+The sample packet `eap-md5.sh` may now be used to test EAP-MD5
+authentication. The server output should be examined to follow the
+EAP-MD5 authentication process, and that output should be compared to the
+schematic diagram
+
+image::eap-md5.svg[Fig. EAP-MD5]
+
+== Questions
+
+1.  In which of the following sections is the `eap` module used?
+authorize, authenticate, and accounting.
+2.  Which of those sections do not reference the `eap`
+module? Why?
+3.  What is the difference (if any) between the server output for this
+test and the diagram below? Why is there a difference?
+image::eap_md5.svg[Fig. EAP-MD5]
+4.  Why do we test EAP-MD5 before testing other EAP types?
+5.  How is the EAP protocol carried within a RADIUS packet?
+6.  Why is the Message-Authenticator attribute required when using EAP?
+7.  What security issues exist with EAP-MD5?
+8.  Why is EAP-MD5 disabled in newer operating systems?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

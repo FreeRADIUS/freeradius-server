@@ -1,0 +1,9 @@
+[TIP]
+====
+For this tutorial you should start with an empty authorization section
+(`recv Access-Request { ... }` or in ≤ v3.2.x `authorize { ... }`)
+in the virtual server you're using to process requests.
+====
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

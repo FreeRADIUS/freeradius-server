@@ -1,0 +1,114 @@
+= Module Fail-Over
+
+
+
+*Goal:* To configure the server to use a "backup" module if a
+"primary" module fails.
+
+*Time:* 15-25 minutes
+
+*Files:*
+
+- `etc/raddb/mods-available/detail`
+- `usr/share/doc/freeradius*/configurable_failover`
+- `/var/log/radius/radacct/detail1`
+- `/var/log/radius/radacct/detail2`
+
+When the server uses an external database to find user authentication
+information or to log accounting requests, that database may sometimes
+fail temporarily. This situation is similar to the situation seen in the exercise
+in xref:proxy_failover.adoc[Proxy Failover], where proxied
+requests "fail-over" to a backup RADIUS server when the primary
+RADIUS server does not respond.
+
+In this exercise, we will configure the server to use two "databases"
+(here, detail files) for recording accounting data. We will simulate the
+failure of one database by changing the file permissions on the first
+detail file, and we will verify that accounting requests are logged to the
+second detail file.
+
+The first step is to configure the server to have two instances of the
+`detail` module. The following information should be added to the
+`etc/raddb/mods-available/detail` file:
+
+--------------------------------------------------
+detail detail1 {
+	filename = ${radacctdir}/detail1
+	permissions = 0600
+}
+
+detail detail2 {
+	filename = ${radacctdir}/detail2
+	permissions = 0600
+}
+--------------------------------------------------
+
+In the file `configurable_failover` in the documentation directory,
+there is a section titled "More Complex Configurations". This section contains a
+sample entry for the "accounting" section of `etc/raddb/sites-available/default`.
+The sample entry is a "group" with configurable fail-over between two modules named
+`detail1` and `detail2`. Copy the "group" section to the start of the
+`accounting` section in your `etc/raddb/sites-available/default` file.
+
+Now start the server and verify that it is `Ready to process requests.`
+
+Send the server a sample accounting packet (`bob-acct-start.sh`). Verify
+that the client receives an accounting response packet and that the
+server is using the `detail1` module to log the request.
+
+Verify that the `detail1` file contains the accounting request by
+examining it:
+
+[source, bash]
+-----------------------------------------------
+$ more /var/log/radius/radacct/detail1
+-----------------------------------------------
+
+Also, verify that the `detail2` module is not referenced in the
+debugging messages of the server when the request is processed. Check
+that the `detail2` file does not exist:
+
+[source, bash]
+---------------------------------------------
+$ ls /var/log/radius/radacct/detail2
+---------------------------------------------
+
+The command should fail with an error like "file not found."
+
+Now, simulate a database failure by changing the permissions on the
+file so that the server may not access it:
+
+[source, bash]
+----------------------------------------------------
+$ chmod a-w /var/log/radius/radacct/detail1
+----------------------------------------------------
+
+Send the server another accounting packet ( `bob-acct-stop.sh`).
+
+Verify that the client receives an accounting response packet, that
+the `detail1` module fails, and that the server is using the `detail2`
+module to log the request.
+
+Verify that the `detail1` file does not contain the accounting request
+by examining it:
+
+[source, bash]
+-----------------------------------------------
+$ more /var/log/radius/radacct/detail1
+-----------------------------------------------
+
+Verify that the `detail2` file exists, and that it contains the accounting
+request:
+
+[source, bash]
+-----------------------------------------------
+$ more /var/log/radius/radacct/detail2
+-----------------------------------------------
+
+== Questions
+
+1.  Could the configuration for the "group" section containing the
+"detail1" and "detail2" modules be simplified? If so, how?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -1,0 +1,124 @@
+= Accounting Requests
+
+*Goal*: To send the server accounting requests and to have the server
+log the accounting requests.
+
+*Time:* 20-30 minutes
+
+*Files:*
+
+- `/var/radacct/127.0.0.1/detail*`
+
+*Modules:* detail
+
+In addition to authorization and authentication, one of the primary roles of a
+RADIUS server is to record accounting information supplied by an NAS. In this
+exercise, you should create accounting requests to send to the server and see what
+the server does with those requests. This process simulates the actions taken by
+an NAS when a user logs in.
+
+Use the entry in the file from the exercise in
+xref:new_user.adoc[New User] for user "bob".
+
+You may create accounting packets by hand for this exercise, but we suggest that
+the follow test packets from the `exercises/packets` directory be used in this
+exercise:
+
+[source, bash]
+-----------------
+bob-login-one.sh
+bob-acct-start.sh
+bob-acct-stop.sh
+-----------------
+
+If you do create accounting packets by hand, then the attributes listed in the
+above scripts should be used as a guide.
+
+First, run the `bob-login-one.sh` script.
+
+Observe that the server has replied with an authentication accept to an
+authentication request for user "bob", who has logged in on a particular NAS
+port.
+
+If the server does not reply with an authentication accept, then check the
+attributes in the test packet and the file entry.
+
+You should now read the `man` pages for the `radwho` and `radlast` programs. Run
+each program in turn:
+
+[source, bash]
+---------
+$ radwho
+$ radlast
+---------
+
+Observe that both programs do not report user "bob" as being logged in.
+
+Now run the `bob-acct-start.sh` script, and observe the response of the server.
+You should see output containing lines similar to the following:
+
+-----------------------------------------------------------------------------------
+(0) Received Accounting-Request packet from host 127.0.0.1 port 57470, id=35, length=53
+(0) 	User-Name = 'bob'
+(0) 	Acct-Status-Type = Start
+(0) 	Acct-Session-Id = '01020304'
+(0) 	NAS-IP-Address = 127.0.0.1
+(0) 	NAS-Port = 501
+(0) # Executing section preacct from file /etc/raddb/sites-enabled/default
+(0)   preacct {
+(0)   [preprocess] = ok
+-----------------------------------------------------------------------------------
+
+Other modules that should be referenced for "accounting" are the
+"preprocess", "suffix", "detail", and "sql" modules. We
+will work through the operation of these modules in a moment.
+
+Now, run the `radwho` and `radlast` programs again:
+
+[source, bash]
+---------
+$ radwho
+$ radlast
+---------
+
+Observe that both programs now see "bob" as being logged in.
+
+To tell the server that user "bob" has logged out, run the `bob-acct-stop.sh`
+script. Observe the server output, and then run `radwho` and `radlast` again.
+
+The `radwho` program should not display any logged-in users. The `radlast`
+program should now display both the last login time and the last logout time for
+user "bob".
+
+Now run the `bob-acct-stop.sh` program again. Observe how the server's output
+differs from the previous accounting stop packet.
+
+You should now read the `man` pages for the rlm_unix, rlm_radutmp, and
+rlm_unix modules, along with their configuration entries in
+`raddb/mods-available/radutmp` and `raddb/mods-available/unix`.
+
+In short, the "unix" module manages the database used by the `radlast`
+command. The "radutmp" module manages a separate database, which is used by
+the `radwho` command.
+
+The "detail" module simply logs every accounting request to a file in a simple
+textual format.
+
+== Questions
+
+1.  Why do accounting messages require less configuration of the server
+than authentication methods?
+2.  Why is the "detail" module useful?
+3.  Where is the "detail" file located? Why is the "detail" file in this location? Where is it configured?
+4.  What parts of the servers manage user session information?
+5.  What module other than "radutmp" can manage user session
+information?
+6.  Why is it useful to record which users are currently logged in?
+7.  What attributes that are found in the accounting request are not found in the
+authentication request? Why?
+8.  Which attributes are required to be in an accounting request?
+9.  What error message is produced on the second accounting stop, and
+why is it produced?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

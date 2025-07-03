@@ -1,0 +1,34 @@
+= The Administration CLI
+
+*Goal:* To understand how to use the `radmin` command.
+
+*Time:* 20-30 minutes
+
+*File:*
+
+- `etc/raddb/sites-enabled/control-socket`
+
+*`man` page:* radmin, raddebug
+
+The `radmin` command is an interactive command-line interface (CLI) to
+the internals of the server. It can be used to monitor statistics, to
+show the current configuration, and to change the configuration.
+
+Check that the control socket is enabled, and start the server in
+debugging mode. Connect to the control socket via `radmin`. Type `help`,
+and read the output. Use `radtest` to send the server packets, and see
+how the statistics change.
+
+== Questions
+
+1.  How can you modify the `control-socket` file so that you can change
+the server configuration?
+2.  What happens when you disable a module and try to authenticate a
+user?
+3.  How can you run a command from the shell without starting the
+`radmin` command?
+4.  Can you start the server in non-debugging mode (`radiusd -f`), and
+still see the debugging output? How?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

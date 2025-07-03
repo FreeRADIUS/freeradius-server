@@ -1,0 +1,176 @@
+= Communicating with an SQL database
+
+
+
+*Goal:* To configure the server to communicate with an SQL database.
+
+*Time:* 25-40 minutes.
+
+*File:*
+
+- `etc/raddb/mods-available/sql`
+- `etc/raddb/mods-config/sql/main/*`
+
+In addition to the file, the server may obtain user configuration
+information from an SQL database. In this exercise, you will
+configure the server to communicate with an SQL database. you
+will configure the schema for the SQL server, and will populate that
+schema with a sample entry similar to that for the exercise in
+xref:new_user.adoc[New User].
+
+There are a number of reasons why user information may be stored in an
+SQL database, rather than the file. While the file is adequate for a
+small number of users, it does not scale well to millions of users, and
+it may not be updated by general non-RADIUS tools. In contrast, SQL
+databases are designed to store millions of records, to have fast
+queries and retrievals, and there are many third-party tools for
+maintaining and updating the databases.
+
+The SQL schema used by FreeRADIUS is designed to mirror the users file.
+Each SQL dialect has its own set of schema and configuration files.
+They are located in the `raddb/mods-config/sql/main/<dialect>` directory.
+
+The schema is defined by the "schema.sql" file, and the queries are
+defined by the `queries.conf` file.
+
+The main configuration for the SQL module is `raddb/mods-available/sql`
+it will `$INCLUDE` the appropriate "queries.conf" file for the dialect
+chosen.
+
+You should now read the configuration file for the SQL database which you
+use.
+
+[TIP]
+========================================================================
+Unless there is a pre-configured database available we recommend the
+sqlite driver be used. If the sqlite specific stanzas are uncommented
+in `raddb/mods-available/sql` it will automatically bootstrap a new
+database using the bundled schema.
+========================================================================
+
+The first step is to configure the server to use the SQL module, and to
+communicate with the SQL database. Edit the `radiusd.conf` file, and
+look for the `instantiate` section. Inside of that section, add one line
+containing the word `sql`, as follows:
+
+------------------------------------------
+instantiate {
+        sql     # start up the SQL module.
+}
+------------------------------------------
+
+This tells the server to look for, and use, the `sql` module when the
+server starts. Note that since the `sql` module is not listed in any of
+the "authorize", "authenticate", etc. sections, it will not be used
+in to process any authentication requests, or accounting requests. For
+now, we are interested solely in making the FreeRADIUS server
+communicate with the SQL server.
+
+Open `raddb/mods-available/sql` verify that the first few configuration
+entries are correct. That is, the "server", "login", and "password"
+entries should be set up correctly for your local SQL database.
+
+If using sqlite, these entries can be left commented out as they're not
+required, but you should uncomment the `sqlite {}` section and the
+configuration items within that section.
+
+FreeRADIUS uses the `rlm_sql` module to interface with the SQL
+databases. You should check that this module is installed by doing:
+
+[source, bash]
+--------------------------------------
+$ ls -l usr/lib64/freeradius/rlm_sql*
+--------------------------------------
+
+(Or, the directory wherever the FreeRADIUS libraries were installed.)
+
+You should see not only files like "rlm_sql.so", but also
+"rlm_sql_mysql.so", or "rlm_sql_sqlite.so". If you do not see
+"rlm_sql.so", or you do not see the sub-module which interfaces with
+your SQL server, you will have to install it now. You may do this by
+going to the rlm_sql subdirectory, and building the module:
+
+[source, bash]
+------------------------
+$ cd freeradius-server/src/modules/rlm_sql
+$ ./configure
+$ make
+$ make install
+------------------------
+
+This exercise has insufficient room to describe how to debug any
+configuration, build, or installation problems with the SQL drivers. For
+the remainder of this exercise, we will assume that the driver is
+installed in the appropriate library directory.
+
+Once you have verified that the SQL driver exists, have enabled the module
+by creating a symlink from `raddb/mods-available/sql` to
+`raddb/mods-enabled/sql` and you have configured the appropriate sql dialect,
+you should start the server as usual:
+
+------------
+$ radiusd -X
+------------
+
+If all has gone well, the server should print out the normal "Ready to
+process requests" message. Scroll up in your terminal window, and there
+should be messages from the `sql` module, such as:
+
+--------------
+rlm_sql_sqlite: Database doesn't exist, creating it and loading schema
+rlm_sql_sqlite: Executing SQL statements from file "/etc/raddb/mods-config/sql/main/sqlite/schema.sql"
+rlm_sql (sql): Driver rlm_sql_sqlite (module rlm_sql_sqlite) loaded and linked
+rlm_sql (sql): Attempting to connect to database "radius"
+rlm_sql (sql): Initialising connection pool
+   pool {
+   	start = 5
+   	min = 4
+   	max = 100
+   	spare = 3
+   	uses = 0
+   	lifetime = 0
+   	cleanup_interval = 30
+   	idle_timeout = 60
+   	retry_delay = 1
+   	spread = no
+   }
+rlm_sql (sql): Opening additional connection (0)
+rlm_sql_sqlite: Opening SQLite database "/tmp/freeradius.db"
+rlm_sql (sql): Opening additional connection (1)
+rlm_sql_sqlite: Opening SQLite database "/tmp/freeradius.db"
+rlm_sql (sql): Opening additional connection (2)
+rlm_sql_sqlite: Opening SQLite database "/tmp/freeradius.db"
+rlm_sql (sql): Opening additional connection (3)
+rlm_sql_sqlite: Opening SQLite database "/tmp/freeradius.db"
+rlm_sql (sql): Opening additional connection (4)
+rlm_sql_sqlite: Opening SQLite database "/tmp/freeradius.db"
+--------------
+
+These messages indicate that the server was able to load the `sql`
+module, and that the `sql` module was able to communicate with the SQL
+server.
+
+If there is a problem with shared libraries, or with access permissions
+to the SQL database, then an error message will be printed, and the
+server will not start properly. The FreeRADIUS FAQ and the
+`radiusd.conf` file, entry "libdir", contain information as to how to
+fix shared library issues.
+
+If there are issues connecting to the database you should verify manually
+that you can connect to the SQL database using the given "server",
+"login", and "password". The SQL database should come with a test
+client which may be used to perform this test.
+
+Now stop the server. The next exercise will be to add the schema to the
+database, and to populate it with a test entry.
+
+== Questions
+
+1.  Why is it important to test SQL connectivity, independently of
+testing the ability to obtain user configuration from an SQL database?
+2.  Why are there different configuration files for each SQL server?
+3.  What additional benefits, not mentioned here, do SQL databases have
+over the files module?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

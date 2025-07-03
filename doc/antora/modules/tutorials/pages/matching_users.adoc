@@ -1,0 +1,64 @@
+= Matching entries in the users file
+
+*Goal:* To configure multiple entries for a user in the "users" file
+and to validate the server's configuration by sending test packets to
+exercise the new entries.
+
+*Time:* 30-45 minutes.
+
+Now that we have verified that we can add a simple entry to the file, we
+will try more complex configurations.
+
+In this exercise, we will add three configuration entries for a user
+named "bob" with clear-text password "hello". The three entries are
+related as follows:
+
+* The first will configure user "bob" with password "hello". It will
+configure a reply message in an appropriate attribute. This
+configuration entry will cause the server to continue processing the
+file.
+* The second entry will configure user "bob" and will match only when
+"bob" is asking to use PPP. The configuration entry should add the
+appropriate attributes to the reply, to allow "bob" to use PPP and to
+assign him the IP address 192.168.10.12. This entry should also cause
+the server to continue processing the file.
+* The last entry will configure any user asking for "framed" service,
+and will assign them a default route of 192.168.10.1 with netmask of
+255.255.255.0.
+
+We suggest that you approach the problem by configuring each of the
+three entries in isolation. That is, add one entry, then create and send test
+packets until the server responds with the attributes you expect. Then,
+comment out the first entry and repeat the process for the second
+entry. Do the same for the third entry. Once all entries work in
+isolation, uncomment the first two and verify that the combination of
+entries behaves as expected.
+
+Test the server with username "bob" and password "hello". Use the
+debug output of the server to see which entries in the file were
+matched. You may use `radclient` or the `bob.sh` script to send the
+packets. In that case, save the packets into a file, and use the "-f"
+parameter to radclient to tell it which file to read.
+
+Perform other authentication tests, adding the appropriate attributes to
+the request sent by the RADIUS client. Continue until you have packets
+that will match:
+
+* entries 1 and 2, but not 3.
+* entries 1 and 3, but not 2.
+* entries 1, 2, and 3.
+
+Save copies of the packets.
+
+== Questions
+
+1.  What is the difference between the Framed-Route and Framed-Routing
+Attributes?
+2.  What is the Framed-IP-Netmask attribute used for?
+3.  What are potential pitfalls with the entry 2? That is, the entry
+meets the requirements, but do the requirements fit the needs of the
+network?
+4.  How does this kind of simple configuration scale to many users?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

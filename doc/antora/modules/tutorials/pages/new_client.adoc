@@ -1,0 +1,62 @@
+= Adding a new client to the server
+
+*Goal:* To permit an additional RADIUS client to communicate with the
+server.
+
+*Time:* 5-10 minutes.
+
+*File:*
+
+- `etc/raddb/clients.conf`
+
+The RADIUS server will only communicate with known clients. This
+restriction is for security, so that unknown machines on the Internet
+cannot probe the RADIUS server with test packets.
+
+In FreeRADIUS, the `clients.conf` file lists the clients that are
+permitted to send requests to the server. Take some time to read this file and
+the included comments.
+
+Configure the server with the the IP address of the new client and a
+shared secret. If the server is already running, stop it.
+
+Start the server
+
+[source, bash]
+------------
+$ radiusd -X
+------------
+
+Send a Status-Server packet from the new client to the server, using the
+correct IP address, port, and shared secret.
+
+Verify that the server saw the packet. Also verify that the client saw
+the response.
+
+Some common problems are:
+
+* not using the correct port in the client software
+* not using the the correct shared secret in the client software
+* the server responds to the client from an address that is different from the one to which the client sent the request.
+
+The first two problems can be solved by configuring the client with the
+correct information. The last problem is seen when the client does not
+see the response from the server, or when the server gives an error message about an
+invalid response.
+
+If the server responds to the packet and the client accepts the
+response, then the test was successful, and the server may be halted.
+
+== Questions
+
+1.  What happens when the server receives a packet from a machine not
+listed in "clients.conf"?
+2.  Why does the client not accept the response from the server when
+that response originates from another IP address?
+3.  Why does the server have to be re-started when the "clients.conf"
+file is edited?
+4.  What are the other fields in a client entry, and what are they used
+for?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

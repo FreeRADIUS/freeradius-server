@@ -1,0 +1,127 @@
+= Further dynamic translation
+
+*Goal:* To use dynamic translation of strings to perform inter-module
+references.
+
+*Time:* 20-35 minutes.
+
+*Files:*
+
+- `etc/raddb/radiusd.conf`
+- `etc/raddb/users`
+
+Run-time variables in the server may include more than simple references to
+attributes in packets. The server supports the ability to perform complex
+inter-module queries, which significantly extends its usefulness. In this
+exercise, we will work through a number of different examples of configuring
+inter-module calls.
+
+To start, open `raddb/mods-available/exec` and read the sample configuration for
+the `exec` module. Then, edit the users file to add the following entry at the
+top:
+
+-------------------------------------------------------------------------------
+bob Password.Cleartext := "hello"
+    Callback-Id = "%exec('/bin/echo', "Hello, there")
+-------------------------------------------------------------------------------
+
+The `echo` program may be in `/usr/bin/echo`, depending on your local system. On
+many systems you can use the following command:
+
+[source, bash]
+------------
+$ which echo
+------------
+
+This will tell you the full pathname of the `echo` command. Use that pathname in
+the file entry.
+
+Start the server and send it a test packet for user `bob`. The debug output of
+the server should print messages similar to the following.
+
+-------------------------------------------------------------------------------
+(0)  files : users: Matched entry bob at line 1
+Executing: /bin/echo Hello, there:
+Program returned code (0) and output 'Hello, there'
+(0)  files : EXPAND %exec('/bin/echo', "Hello, there")
+(0)  files :    --> Hello, there
+(0)   [files] = ok
+-------------------------------------------------------------------------------
+
+These message indicate that the first entry in the file (at line 1) was used to
+match the incoming request.
+
+The `exec` xlat function was then used to perform the dynamic translation of the
+string, which resulted in a call to the `rlm_exec` module.
+
+That module called the `Exec-Program` function of the server to execute a
+program, and finally, the `exec` xlat function returned the string "Hello
+there".
+
+That text was then sent back to the RADIUS client in the `Callback-Id`
+attribute, which was not quoted above.
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
+Another dynamic translation string function is the `expr` module. It performs
+some simple mathematical operations. The following sample file entry
+demonstrates how to use the `expr` module.
+
+-------------------------------------------------------------------------------
+bob	Password.Cleartext := "hello"
+	Session-Timeout = "%{60 * 60}"
+-------------------------------------------------------------------------------
+
+Dynamically translated strings may also be used as "check items" to match
+requests coming in to the server. The following examples show how those strings
+(or run-time variables) may be used to both match a request and to configure
+dynamic responses.
+
+You should use the `bob-login-one.sh` script to send a request to match the
+first entry and should send another request with a different NAS-Port.
+
+-------------------------------------------------------------------------------
+bob	Password.Cleartext := "hello", NAS-Port == "%exec('/usr/bin/id', '-u')"
+	Reply-Message = "Your port is very nice.",
+	Session-Timeout = "%{60 * 60}"
+
+bob	Password.Cleartext := "hello", NAS-Port != "%exec('/usr/bin/id', '-u')"
+        Reply-Message = "Your port is less nice.",
+        Session-Timeout = "%{60 * 2}"
+-------------------------------------------------------------------------------
+
+The run-time variables may be nested, too. The following file entry
+demonstrates this nesting.
+
+-------------------------------------------------------------------------------
+bob	Password.Cleartext := "hello"
+	Session-Timeout = "%{60 * %exec(/usr/bin/id -u})"
+-------------------------------------------------------------------------------
+
+In this case, the user "bob" is given one minute of access time,
+multiplied by the value of the "UID" of the RADIUS server.
+
+== Further considerations
+
+Run-time variables allow inter-module calling. The administrator may perform LDAP
+queries and SQL queries to use database information in other modules.
+
+Unfortunately, the format of the string is module-dependent. This limitation
+comes from the fact that each module has its own syntax for database queries.
+The syntax for querying LDAP databases is different than the syntax for querying
+SQL database. The administrator should consult the `man` pages for the relevant
+module for more information on the syntax for run-time dynamic translation of
+strings.
+
+Another limitation is that the query string can be only approximately 250
+characters long in the current version of the server. This limitation may be
+removed in a later version.
+
+== Questions
+
+1.  How would you perform an SQL query in a run-time variable, instead of
+executing a program?
+2.  Why is it useful for modules to be able to query information from other
+modules?
+3.  What is an example of conditional syntax for a run-time variable?
+
