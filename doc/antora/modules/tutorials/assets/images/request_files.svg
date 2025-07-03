@@ -1,0 +1,131 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: fig2dev Version 3.2 Patchlevel 5e -->
+<!-- CreationDate: Mon Aug 11 20:51:55 2014 -->
+<!-- Magnification: 1.000 -->
+<svg	xmlns="http://www.w3.org/2000/svg"
+	xmlns:xlink="http://www.w3.org/1999/xlink"
+	width="6.1in" height="3.5in"
+	viewBox="285 149 7345 4142">
+<g style="stroke-width:.025in; fill:none">
+<!-- Line -->
+<polyline points="1350,675
+1350,780
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 1350 675 - 1350 915-->
+<polygon points="1320 779
+1350 899
+1380 779
+1320 779
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="1350,1275
+1350,1380
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 1350 1275 - 1350 1515-->
+<polygon points="1320 1379
+1350 1499
+1380 1379
+1320 1379
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="1350,1875
+1350,1980
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 1350 1875 - 1350 2115-->
+<polygon points="1320 1979
+1350 2099
+1380 1979
+1320 1979
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="1350,2475
+1350,2580
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 1350 2475 - 1350 2715-->
+<polygon points="1320 2579
+1350 2699
+1380 2579
+1320 2579
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="1350,3675
+1350,3780
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 1350 3675 - 1350 3915-->
+<polygon points="1320 3779
+1350 3899
+1380 3779
+1320 3779
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="1350,3075
+1350,3180
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 1350 3075 - 1350 3315-->
+<polygon points="1320 3179
+1350 3299
+1380 3179
+1320 3179
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="7500,150
+7500,300
+" style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Text -->
+<text xml:space="preserve" x="300" y="1200" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">clients (clients.conf)</text>
+<!-- Text -->
+<text xml:space="preserve" x="1050" y="1800" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">hints</text>
+<!-- Text -->
+<text xml:space="preserve" x="825" y="2400" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">huntgroups</text>
+<!-- Text -->
+<text xml:space="preserve" x="450" y="3000" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">realms (proxy.conf)</text>
+<!-- Text -->
+<text xml:space="preserve" x="1125" y="3600" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">users</text>
+<!-- Text -->
+<text xml:space="preserve" x="600" y="4200" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">Access-Accept</text>
+<!-- Text -->
+<text xml:space="preserve" x="525" y="600" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">Access-Request</text>
+<!-- Text -->
+<text xml:space="preserve" x="3000" y="4200" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">accept or reject the user, and respond with policy attributes</text>
+<!-- Text -->
+<text xml:space="preserve" x="3000" y="3000" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">check if the user is associated with an organization </text>
+<!-- Text -->
+<text xml:space="preserve" x="3000" y="2400" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">group users by NAS and NAS-Port</text>
+<!-- Text -->
+<text xml:space="preserve" x="3000" y="1800" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">check if the user has requested a specific protocol</text>
+<!-- Text -->
+<text xml:space="preserve" x="3000" y="1200" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">match request to a known client</text>
+<!-- Text -->
+<text xml:space="preserve" x="3000" y="600" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">contains user, password, and requested policy</text>
+<!-- Text -->
+<text xml:space="preserve" x="3000" y="3600" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="144" text-anchor="start">match requests to server policy, and configure the reply</text>
+</g>
+</svg>

@@ -1,0 +1,71 @@
+= Multiple instances of a module
+
+
+
+*Goal:* To configure the server to have multiple instances of a module.
+
+*Time:* 10-20 minutes
+
+*File:*
+
+- `/etc/raddb/mods-available/detail`
+
+In this exercise, we will configure the server to use two independent
+``databases'' (here, detail files) for recording accounting data. These
+databases will use the same `detail` module, but with two different
+configurations. The `detail` module logs plain-text information about
+the request to a local file and is therefore an easy module to use for
+demonstration purposes.
+
+The first step is to configure the server to have two instances of the
+`detail` module. The first instance should log requests to a different
+file for each user name. The second should log requests to a different file
+for each date. The following information should be added to the
+`/etc/raddb/mods-available/detail` file.
+
+--------------------------------------------------------------------
+detail byname {
+	filename = ${radacctdir}/byname/%{User-Name || 'none'}
+	permissions = 0600
+}
+
+detail bydate {
+	filename = ${radacctdir}/bydate/%Y-%m-%d
+	permissions = 0600
+}
+--------------------------------------------------------------------
+
+In the module configurations contained within `/etc/raddb/mods-available/*`,
+each module may have two names. The first name is the name of the dynamically
+loadable module that implements that functionality. The second (optional) name
+is the name of an additional instance of the module. In this case, the `detail`
+module has two additional instances, `byname` and `bydate`. These instance names
+can be used in the `authorize`, `accounting`, etc. sections, just like a
+normal module name.
+
+You should now add the two modules to the list of modules in the
+`authorize` section. Start the server and verify that it is
+`Ready to process requests.`
+
+Send the server a test `Access-Request` packet (`bob.sh`). Verify that
+the client receives a response packet and that the server is using the
+two modules to log the request.
+
+Verify that the request was logged to two different files by examining
+them:
+
+[source, bash]
+------------------------------------------------
+$ more /var/log/radius/radacct/byname/*
+$ more /var/log/radius/radacct/bydate/*
+------------------------------------------------
+
+Once you have verified that the files exist and that the correct
+information is logged in them, you may stop the server.
+
+== Questions
+
+1.  Why is it useful to have multiple versions of a module?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

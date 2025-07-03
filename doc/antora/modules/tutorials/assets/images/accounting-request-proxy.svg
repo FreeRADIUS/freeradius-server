@@ -1,0 +1,119 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: fig2dev Version 3.2 Patchlevel 5e -->
+<!-- CreationDate: Mon Aug 11 20:51:55 2014 -->
+<!-- Magnification: 1.000 -->
+<svg	xmlns="http://www.w3.org/2000/svg"
+	xmlns:xlink="http://www.w3.org/1999/xlink"
+	width="6.3in" height="5.1in"
+	viewBox="285 224 7502 6163">
+<g style="stroke-width:.025in; fill:none">
+<!-- Line -->
+<polyline points="600,225
+825,225
+" style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="1500,1200
+2286,1462
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 1500 1200 - 2414 1504-->
+<polygon points="2275 1489
+2399 1499
+2294 1432
+2275 1489
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="7650,300
+7650,450
+" style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 7650 300 - 7650 450-->
+<polygon points="7620 446
+7650 446
+7680 446
+7620 446
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="2400,6075
+1613,6337
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 2400 6075 - 1485 6379-->
+<polygon points="1604 6307
+1500 6374
+1623 6364
+1604 6307
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="4200,3300
+4986,3562
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 4200 3300 - 5114 3604-->
+<polygon points="4975 3589
+5099 3599
+4994 3532
+4975 3589
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="5100,4875
+4313,5137
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 5100 4875 - 4185 5179-->
+<polygon points="4304 5107
+4200 5174
+4323 5164
+4304 5107
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Text -->
+<text xml:space="preserve" x="675" y="600" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="240" text-anchor="start">NAS</text>
+<!-- Text -->
+<text xml:space="preserve" x="300" y="1125" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">Accounting-Request</text>
+<!-- Text -->
+<text xml:space="preserve" x="2700" y="3225" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Proxy-State = 0x01</text>
+<!-- Text -->
+<text xml:space="preserve" x="2550" y="2325" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">pre-proxy</text>
+<!-- Text -->
+<text xml:space="preserve" x="2700" y="600" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="240" text-anchor="start">Proxy</text>
+<!-- Text -->
+<text xml:space="preserve" x="2550" y="1725" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">preacct</text>
+<!-- Text -->
+<text xml:space="preserve" x="2550" y="2010" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">accounting</text>
+<!-- Text -->
+<text xml:space="preserve" x="2550" y="2925" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">Accounting-Request</text>
+<!-- Text -->
+<text xml:space="preserve" x="2625" y="5400" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">post-proxy</text>
+<!-- Text -->
+<text xml:space="preserve" x="2550" y="6000" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">Accounting-Response</text>
+<!-- Text -->
+<text xml:space="preserve" x="5325" y="600" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="240" text-anchor="start">Home server</text>
+<!-- Text -->
+<text xml:space="preserve" x="5250" y="3900" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">preacct</text>
+<!-- Text -->
+<text xml:space="preserve" x="5250" y="4200" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">accounting</text>
+<!-- Text -->
+<text xml:space="preserve" x="5400" y="5100" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Proxy-State = 0x01</text>
+<!-- Text -->
+<text xml:space="preserve" x="5250" y="4800" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">Accounting-Response</text>
+</g>
+</svg>

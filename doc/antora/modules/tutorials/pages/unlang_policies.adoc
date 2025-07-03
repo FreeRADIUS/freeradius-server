@@ -1,0 +1,62 @@
+= Unlang Policies
+
+*Goal:* Create and use policies for abstracting business logic
+
+*Time:* 10-20 minutes
+
+*File:*
+
+- `etc/raddb/policy.d/*`
+
+*`man` page:* unlang
+
+include::partial$unlang_start.adoc[]
+
+Look through the existing files in `etc/raddb/policy.d/*` and the rest
+of the documentation to get a feel for the unlang syntax and the tasks
+that policies can be used for.
+
+The basic structure of a policy is the policy name then a set of curly
+braces containing the body of the policy
+
+------------------------------------------------
+a_policy {
+	if (User-Name =~ /@([\w.+])/) {
+		reply.Reply-Message := "Hello remote %{User-Name}"
+	}
+}
+------------------------------------------------
+
+Policies defined within `etc/raddb/policy.d/*` can be called from
+anywhere in the server where modules can be called.
+
+------------------------------------------------
+authorize {
+	...
+	a_policy
+	...
+}
+------------------------------------------------
+
+Create a policy `proxy_to_realm` that forwards the incoming request
+to to a remote realm if the `User-Name` attribute ends in `@<remote realm>`.
+
+The contents of this policy should be identical to the the 'unlang'
+code written for the xref:unlang_splitting_strings.adoc[Splitting Strings]
+tutorial.
+
+Call this policy at the start of the `authorize {}` section of the
+`etc/raddb/sites-available/default` virtual server.
+
+All the information you need to create this policy is contained within
+documentation pages and the examples in this exercise.
+
+== Questions
+
+1.  What are the advantages of using the policy language over interpreted
+    language modules?
+2.  What are the main differences between a policy and a function in other
+    languages?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -1,0 +1,59 @@
+= Virtual Servers
+
+
+
+*Goal:* To understand how to create and use a new virtual server.
+
+*Time:* 20-30 minutes
+
+*File:*
+
+- `etc/raddb/sites-enabled/virtual`
+
+*documentation page:* raddb/sites-available/README
+
+A "virtual server" is a configuration file that contains the
+following sections:
+
+- *listen* Defines a new socket.
+- *authorize* The authorization section
+- *authenticate* The authentication section
+- *post-auth* The post-authentication section
+- *pre-proxy* The pre-proxy section
+- *post-proxy* The post-proxy section
+- *preacct* The pre-accounting section
+- *accounting* The accounting section
+
+Create a new file `raddb/sites-enabled/virtual`. Put the following text
+into it:
+
+-----------------------------------------------
+listen {
+    ipaddr = 127.0.0.1
+    port = 18273   # some random 5 digit number
+    type = auth
+}
+
+authorize {
+    control.Clearext-Password := "hello"
+    pap
+}
+
+authenticate {
+    pap
+}
+-----------------------------------------------
+
+Start the server in debugging mode, and use `radtest` to send a PAP
+authentication request to the server at the port defined above.
+
+== Questions
+
+1.  What happens when you try to use CHAP or MS-CHAP? Why does this result occur?
+2.  How can you make that virtual server use CHAP or MS-CHAP?
+3.  What happens when you try different User-Names? Why does this result occur?
+4.  How can you make the above configuration authenticate different
+users via different passwords?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -1,0 +1,243 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: fig2dev Version 3.2 Patchlevel 5e -->
+<!-- CreationDate: Mon Aug 11 20:51:55 2014 -->
+<!-- Magnification: 1.000 -->
+<svg	xmlns="http://www.w3.org/2000/svg"
+	xmlns:xlink="http://www.w3.org/1999/xlink"
+	width="6.9in" height="4.2in"
+	viewBox="878 222 8269 5044">
+<g style="stroke-width:.025in; fill:none">
+<!-- Line: box -->
+<rect x="2100" y="1200" width="600" height="600" rx="0" 
+style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line: box -->
+<rect x="3300" y="1200" width="600" height="600" rx="0" 
+style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line: box -->
+<rect x="4500" y="1200" width="600" height="600" rx="0" 
+style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line: box -->
+<rect x="5700" y="1200" width="600" height="600" rx="0" 
+style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line: box -->
+<rect x="2100" y="3000" width="900" height="600" rx="0" 
+style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line: box -->
+<rect x="3600" y="3000" width="900" height="600" rx="0" 
+style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line: box -->
+<rect x="5100" y="3000" width="900" height="600" rx="0" 
+style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line: box -->
+<rect x="6600" y="3000" width="900" height="600" rx="0" 
+style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line: box -->
+<rect x="8100" y="3000" width="900" height="600" rx="0" 
+style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line: box -->
+<rect x="6600" y="4500" width="600" height="600" rx="0" 
+style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="4500,4800
+6060,4800
+" style="stroke:#0000ff;stroke-width:15;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 4500 4800 - 6330 4800-->
+<polygon points="6058 4860
+6298 4800
+6058 4740
+6058 4860
+
+" style="stroke:#0000ff;stroke-width:15;stroke-miterlimit:8;
+fill:#0000ff;"/>
+<!-- Line -->
+<polyline points="7500,4800
+7502,4800
+7505,4800
+7511,4801
+7521,4802
+7534,4803
+7551,4804
+7572,4805
+7597,4806
+7625,4807
+7657,4808
+7690,4808
+7726,4808
+7763,4807
+7800,4805
+7839,4802
+7878,4797
+7918,4791
+7958,4783
+7998,4773
+8039,4760
+8080,4744
+8121,4726
+8162,4704
+8204,4678
+8246,4648
+8286,4613
+8325,4575
+8359,4536
+8389,4496
+8416,4454
+8440,4412
+8461,4370
+8478,4328
+8494,4286
+8506,4245
+8517,4204
+8526,4163
+8533,4122
+8539,4082
+8544,4042
+8547,4002
+8550,3963
+8552,3925
+8553,3889
+8554,3854
+8554,3822
+8554,3792
+8553,3765
+8553,3742
+8552,3722
+8551,3706
+8551,3694
+8562,3914
+" style="stroke:#0000ff;stroke-width:15;
+stroke-linejoin:bevel; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 8551 3694 - 8548 3645-->
+<polygon points="8624 3912
+8550 3677
+8504 3920
+8624 3912
+
+" style="stroke:#0000ff;stroke-width:15;stroke-miterlimit:8;
+fill:#0000ff;"/>
+<!-- Line -->
+<polyline points="1800,3300
+1799,3299
+1796,3298
+1790,3295
+1781,3290
+1769,3284
+1752,3275
+1732,3264
+1707,3251
+1679,3236
+1647,3218
+1612,3199
+1574,3177
+1534,3154
+1492,3129
+1450,3103
+1406,3075
+1363,3046
+1320,3017
+1277,2986
+1235,2954
+1195,2921
+1156,2887
+1119,2852
+1083,2815
+1050,2776
+1019,2736
+991,2694
+965,2650
+943,2603
+925,2555
+912,2505
+903,2453
+900,2400
+903,2347
+912,2295
+925,2245
+943,2197
+965,2150
+991,2106
+1019,2064
+1050,2024
+1083,1985
+1119,1948
+1156,1913
+1195,1879
+1235,1846
+1277,1814
+1320,1783
+1363,1754
+1406,1725
+1450,1697
+1492,1671
+1534,1646
+1574,1623
+1612,1601
+1647,1582
+1679,1564
+1707,1549
+1732,1536
+1752,1525
+1769,1516
+1781,1510
+1588,1611
+" style="stroke:#0000ff;stroke-width:15;
+stroke-linejoin:bevel; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 1781 1510 - 1826 1486-->
+<polygon points="1613 1666
+1797 1501
+1557 1561
+1613 1666
+
+" style="stroke:#0000ff;stroke-width:15;stroke-miterlimit:8;
+fill:#0000ff;"/>
+<!-- Text -->
+<text xml:space="preserve" x="1950" y="1125" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Thread 1</text>
+<!-- Text -->
+<text xml:space="preserve" x="3150" y="1125" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Thread 2</text>
+<!-- Text -->
+<text xml:space="preserve" x="4350" y="1125" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Thread 3</text>
+<!-- Text -->
+<text xml:space="preserve" x="5550" y="1125" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Thread 4</text>
+<!-- Text -->
+<text xml:space="preserve" x="2025" y="2925" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Request 1</text>
+<!-- Text -->
+<text xml:space="preserve" x="3525" y="2925" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Request 2</text>
+<!-- Text -->
+<text xml:space="preserve" x="5025" y="2925" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Request 3</text>
+<!-- Text -->
+<text xml:space="preserve" x="6525" y="2925" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Request 4</text>
+<!-- Text -->
+<text xml:space="preserve" x="8025" y="2925" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Request 5</text>
+<!-- Text -->
+<text xml:space="preserve" x="6300" y="4425" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Server core</text>
+<!-- Text -->
+<text xml:space="preserve" x="1425" y="525" fill="#000000"  font-family="Helvetica" font-style="normal" font-weight="bold" font-size="240" text-anchor="start">Thread Pool and request dispatcher</text>
+<!-- Text -->
+<text xml:space="preserve" x="4125" y="5175" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">Access-Request</text>
+</g>
+</svg>

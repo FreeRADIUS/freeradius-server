@@ -1,0 +1,95 @@
+= Using configuration and run-time variables
+
+*Goal:* To use run-time variable expansion.
+
+*Time:* 15-30 minutes.
+
+*Files:*
+
+- `etc/raddb/radiusd.conf`
+- `etc/raddb/users`
+- `etc/raddb/mods-available/detail`
+
+*`man` page:* `radiusd.conf`
+
+*documentation page:* xref:unlang:xlat/index.adoc[Dynamic expansions]
+
+There are two kinds of variables within the server. The first is within
+`radiusd.conf` and related files. These variables are referenced via the
+`$` character, which is used to define common terms (e.g. `${logdir}` so that
+those terms do not have to be repeated multiple times in the
+configuration files. These variables are used only when the server reads
+the configuration files, and they cannot be updated or edited once the files
+have been read.
+
+The second kind of variable is a run-time variable, which is dynamically
+expanded for each request received by the server. These variables are
+referenced by the `%` character, and they may be used to pull the values of
+attributes from the request to be used by a module. These variables may
+also be used by one module to obtain information from another module.
+
+In this exercise, we cover configuration variables and some simple
+properties of the run-time variables. Later exercises cover additional
+properties of the run-time variables.
+
+The main configuration file `radiusd.conf` and the module configuration
+files contains a number of examples of the use of variables. For example,
+the `detail` module (configured in `etc/raddb/mods-enabled/detail`)
+has a configuration entry named "filename", which by default has the
+following value:
+
+----------------------------------------------------------------
+filename = ${radacctdir}/%{Net.Src.IP}/detail-%Y%m%d
+----------------------------------------------------------------
+
+The configuration entry is composed of two kinds of variable expansion.
+One references the `${radacctdir}` configuration variable, which was
+previously defined in `radiusd.conf`. The following variables are
+expanded at run time and depend on information in the request packet
+and other dynamically calculated data.
+
+Start the server in debugging mode (`radiusd -X`).
+In the server output, look for the `detail` module and the `filename`
+configuration entry for that module. Verify that the string printed
+for the `filename` does not print the reference to the `${radacctdir}`
+variable, but instead has substituted the value of that variable.
+Verify also that the values of the run-time variables have _not_
+been substituted and that they are still printed as variables.
+
+If you don't see any configuration printed for the `detail` file module
+ensure it is uncommented in the `accounting {}` section of the
+`raddb/sites-available/default` virtual server.
+
+Now read the
+https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/doc/configuration/variables.rst[variables]
+documentation file to determine the meaning of the variables used in the `filename` configuration entry.
+Once you are done, send the server an accounting packet (e.g.,
+`bob-acct-stop.sh`), and go look for the detail file, which will be
+dynamically created. Verify that the contents of the file are the
+accounting packet you just sent.
+
+In addition to being used in the configuration files, run-time variables
+may also be used to create values for reply attributes. Stop the server,
+and edit the users file to add the following entry at the top:
+
+-----------------------------------------------------------------------------
+bob Password.Cleartext := "hello"
+        Reply-Message = "Hello %{User-Name}, your NAS port is %{NAS-Port}",
+        Reply-Message += "at time %T"
+-----------------------------------------------------------------------------
+
+Start the server, and run the `bob-login-one.sh` script. Verify that the
+`Reply-Message` attributes contain the user name, NAS port, time, and a
+copy of the `Class` attribute from the reply.
+
+== Questions
+
+1.  Why are run-time variables useful?
+2.  How would you configure that entry in the file to reply with the
+directory name where the `radiusd.conf` file is stored? Why is this a
+bad idea?
+3.  How would you create an entry in the users file that matched users when
+their `Class` was the same as their `NAS-Port`?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

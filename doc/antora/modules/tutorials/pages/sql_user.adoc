@@ -1,0 +1,93 @@
+= Configuring a user in an SQL database
+
+*Goal:* To configure the server to have a new user in an SQL database,
+to send test packets as that user, and to receive a reply.
+
+*Time:* 25-40 minutes.
+
+*File:*
+
+- `etc/raddb/mods-available/sql`
+- `etc/raddb/mods-config/sql/main/*`
+
+Now that we have verified in the previous exercise,
+xref:sql.adoc[SQL] that the server can communicate with
+an SQL server, we proceed to adding user configuration entries into the
+SQL database.
+
+Before adding any user configuration to an SQL database, we first need
+to create the schema used to store that information. In the source
+archive, the file `RADIUS-SQL.schema` in the documentatin directory,
+describes where the schemas are located, and how to install them. In
+general, you will need to be familiar with the tools for the SQL
+database your are using, as they are too complicated and variable to
+describe here.
+
+Once the schema has been created, use an SQL client utility to execute
+the following SQL commands:
+
+[source, sql]
+---------------------------------------------------------
+INSERT INTO radcheck (UserName, Attribute, op, Value)
+  values("bob", "Password.Cleartext", ":=", "hello");
+INSERT INTO radreply (UserName, Attribute, op, Value)
+  values("bob", "Reply-Message", ":=", "Hello from SQL");
+---------------------------------------------------------
+
+These commands may need to be modified slightly, depending on the syntax
+required by your SQL database.
+
+These commands mirror the "check" and "reply" entries listed in the
+file for the user "bob". Use the SQL client to verify that the entries
+are now in the database.
+
+As the previous exercise in xref:sql.adoc[SQL]
+did not tell the server to query the database, but only to connect to it,
+we must now configure FreeRADIUS to query the database. This may be done
+by editing `etc/raddb/sites-available/default`, and listing the `sql`
+module in the "authorize" section.
+
+There should already be a commented-out entry for `sql` in the
+"authorize" section or there will be `-sql` entry.
+If the entry is commented it should be un-commented, to make it live.
+If the entry has a '-' prefix, it may be left as is, the '-' prefix is used
+to mark modules as optional, so that the server can start even if they
+are not enabled.
+
+The file should now be edited to delete the existing entry or entries
+for user "bob". This may be done by commenting out the entries, rather
+than deleting them. Add a `#` character to the start of every line
+for the relevant entries, and save the updated file.
+
+The server should now be started. Send a test packet for user "bob",
+and verify that an authentication accept packet is received. Observe the
+debugging output of the server, and verify that the `sql` module is
+called, and that it successfully returns data for user "bob".
+
+If the server rejects the access request, then there are a number of
+steps to take, to correct the problem. Verify that FreeRADIUS is
+connecting to the SQL server, and that FreeRADIUS is "Ready to process
+requests." Verify that the file entry for "bob" has not matched the
+request. Verify that the SQL module returns "ok", rather than
+"notfound".
+
+If necessary, edit the `etc/raddb/mods-enabled/sql` file, and enable
+additional debugging of SQL statements via the `sqltrace` and `sqltracefile`
+configuration options. If the SQL queries are performed by the server and
+logged to the file, but the request for user "bob" is still rejected, then
+perform those queries by hand, using an SQL test client. Once you have
+verified that the SQL test client returns the correct information for
+the queries, then send the access request again.
+
+== Questions
+
+1.  Why do we not use an SQL database to "authenticate" users?
+2.  How do we have a DEFAULT entry in an SQL database?
+3.  Why is there no "Fall-Through" entry in an SQL database?
+4.  Does that DEFAULT entry differ from its use in the file? If so, why,
+and how? If not, why not?
+5.  What other configuration entries in `etc/raddb/sites-available/default`
+    exist for the `sql` module, and why?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

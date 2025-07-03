@@ -1,0 +1,79 @@
+= Update blocks and simple conditions
+
+*Goal:* Explore uses of update blocks in the policy language
+
+*Time:* 10-25 minutes
+
+*File:*
+
+- `sites-available/default`
+
+*`man` page:* unlang
+
+*documentation page(s):*
+
+- xref:unlang:condition/index.adoc[Conditional Expressions]
+- xref:unlang:update.adoc[The Update Statement]
+
+include::partial$unlang_start.adoc[]
+include::partial$common_control_attrs_sidebar.adoc[]
+
+Unlang `update` blocks are used to update one or attributes in one
+of the server's xref:unlang:list.adoc[attribute lists].
+
+
+In previous tutorials we've used the `files` modules, and the authorize
+methods of authentication modules such as `pap` and `chap` to alter how
+the server processes requests by setting a `Auth-Type` value.
+Here, we will emulate that behaviour using the policy language.
+
+* Create a condition (_condition 1_) to execute policy code if
+the `User-Name` in the request is 'bob'.
+* Within that condition block, set the control attribute `Password.Cleartext`
+to be 'hello', and instruct the server to run the the `authenticate { ... }`
+subsection for `pap`.
+* Use the `bob.sh` script to verify that you see an `Access-Accept` returned
+despite the `files` module not being called.
+
+Using additional conditions and update blocks, emulate the logic implemented
+using the files module in the xref:matching_users.adoc[Matching Users]
+exercise.
+
+To recap:
+
+* If an incoming request contains a `User-Name` attribute with the value
+  'bob', and contains an attribute `Framed-Protocol` with value `PPP`
+  (_condition 2_), reply with a `Framed-IP-Address` attribute with the value
+  `192.168.10.12`.
+* If an incoming request contains a `Service-Type` attribute with a value
+  of `Framed-User` (_condition 3_), reply with a `Framed-Route` attribute
+  assigning a default route of `192.168.10.1` (`0.0.0.0/0 192.168.10.1 1`) and
+  a `Framed-IP-Netmask` attribute with a value of `255.255.255.0`.
+
+Again test the server with username "bob" and password "hello". Use the
+debug output of the server to see which unlang conditions evaluated to
+true.  You may use `radclient` or the `bob.sh` script to send the packets.
+
+Perform other authentication tests, adding the appropriate attributes to
+the test requests to exercise the different conditions. If you already have
+test packets from the xref:matching_users.adoc[Matching Users] exercises,
+you may use those, otherwise continue until you have packets that will match:
+
+* conditions 1 and 2, but not 3.
+* conditions 1 and 3, but not 2.
+* conditions 1, 2, and 3.
+
+== Questions
+
+1.  What are the advantages of unlang over the files module when creating
+    policies?
+2.  What are the advantages of the files modules over unlang?  Are there
+    any situations where you think the files module might be better suited
+    to a task than unlang?
+3.  Can you think of any efficiencies the users module might have over
+    multiple conditions, where policies are being assigned to many different
+    users?
+
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

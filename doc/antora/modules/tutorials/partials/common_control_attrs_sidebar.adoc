@@ -1,0 +1,10 @@
+.Common control attributes
+****
+Attributes in the `control` list can control the behaviour of the server.
+Commonly used control attributes are:
+
+- `control.Auth-Type` specifies the `authenticate <name> {}` section to run
+****
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

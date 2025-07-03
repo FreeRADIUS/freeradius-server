@@ -1,0 +1,60 @@
+= Splitting strings
+
+
+
+*Goal:* Explore uses of regular expressions and subcapture groups
+
+*Time:* 10-20 minutes
+
+*File:*  
+
+- `etc/raddb/policy.d/*`
+
+*`man` page:* unlang
+
+*documentation page(s):*
+
+- xref:unlang:condition/index.adoc[Conditions]
+- xref:unlang:condition/regex.adoc[Regular expressions]
+- xref:unlang:update.adoc[The Update Statement]
+
+include::partial$unlang_start.adoc[]
+
+include::partial$common_control_attrs_sidebar.adoc[]
+
+Regular expressions are an extremely powerful tool in the 'unlang' policy
+language.  They provide both validation capabilities, allowing users
+to check the format of incoming attributes, and substring extraction
+(via capture groups).
+
+If you've completed the xref:proxy.adoc[Proxy] exercise you'll have
+used the `suffix` module to split an incoming `User-Name` value into
+its components and setup the request for proxying.
+
+Create an unlang version of "suffix" that splits an incoming `User-Name` into
+two components on the "@" separator.
+
+The first component should be written to the `request.Stripped-User-Name`
+attribute and the second component should be written to the
+`control.Stripped-User-Domain` attribute.
+
+Use `bob@realm1.sh` and `bob@realm2.sh` to test your new policy to ensure
+it works as expected.
+
+If you've completed the xref:proxy.adoc[Proxy] tutorial and have test
+realms setup, modify the policy code you have just written to proxy
+the request to the realm specified in the `User-Name` attribute.
+
+== Questions
+
+1.  Regular expressions can contain attribute expansions.  Given that
+    all supported regular expression libraries support pre-compilation
+    of expressions, why would regular expressions containing expansions
+    be avoided when the server being deployed will be under heavy load?
+2.  Why might you want to re-implement functionality offered by modules
+    in unlang?
+3.  What is an advantage of using expression based string splitting
+    over the suffix module?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

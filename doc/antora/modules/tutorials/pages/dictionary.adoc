@@ -1,0 +1,70 @@
+= Custom Dictionaries and Attributes
+
+*Goal:* To understand how the dictionaries affect the server and to create
+a new vendor-specific dictionary with a number of custom attributes; also, to test those attributes in the server.
+
+*Time:* 20-30 minutes
+
+*File:*
+
+- usr/share/freeradius/dictionary.*
+
+*`man` page:* dictionary
+
+The dictionary files used by FreeRADIUS form the basis for mapping protocol
+numbers to humanly readable text. These dictionary files are ASCII and may be
+edited to add, delete, or update entries. For this exercise, you will create a
+custom dictionary and will send the attributes to the server using a RADIUS test
+client.
+
+You should first familiarize yourself with the `man` page for the "dictionary"
+file.
+
+You should create a file called `dictionary.test` in the appropriate directory
+and populate it with a "test" vendor, using a vendor ID of 123456. This
+dictionary file should be referenced from the main dictionary file. You should
+verify that the server starts successfully with the new dictionary file, even
+when the new dictionary is empty.
+
+You should now stop the server and add a number of vendor specific attributes to
+the "test" dictionary, as follows:
+
+.Vendor Specific Attributes to add
+|============================================
+| Name               | Number | Type
+| Lunch time         | 1      | date
+| People to eat with | 2      | text string
+| Where to eat       | 3      | IP address
+| What to eat        | 4      | integer
+|============================================
+
+.Enumerated values for "What to eat" to add
+|======================
+| Name      | Number
+| Salad     | 1
+| Bread     | 2
+| Dessert   | 3
+| Beans     | 4
+|======================
+
+Once the attributes and values are added to the `dictionary.test` file, re-start
+the server. Using a RADIUS client, send the server an authentication request for
+user "bob", containing one of each attribute. Verify that the attributes are
+printed as names, not numbers.
+
+Edit the file, and update the entry for user "bob" to reply with the
+attributes and with four names for "people to eat with". Re-send the
+authentication request for user "bob", and verify that the access accept
+contains the expected attributes.
+
+[[dictionary-questions]]
+== Questions
+
+1.  What happens when the same attribute has multiple names, i.e.,
+multiple names for one number?
+2.  Why are many of the attributes in other vendor specific dictionaries
+prefixed with the vendor name?
+3.  Why are vendor specific attributes useful?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

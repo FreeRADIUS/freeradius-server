@@ -1,0 +1,73 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: fig2dev Version 3.2 Patchlevel 5e -->
+<!-- CreationDate: Mon Aug 11 20:51:55 2014 -->
+<!-- Magnification: 1.000 -->
+<svg	xmlns="http://www.w3.org/2000/svg"
+	xmlns:xlink="http://www.w3.org/1999/xlink"
+	width="4.2in" height="2.8in"
+	viewBox="360 299 5041 3383">
+<g style="stroke-width:.025in; fill:none">
+<!-- Line -->
+<polyline points="2550,750
+1294,1726
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 2550 750 - 1188 1809-->
+<polygon points="1277 1701
+1201 1799
+1314 1749
+1277 1701
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="2550,750
+3805,1726
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 2550 750 - 3911 1809-->
+<polygon points="3784 1748
+3898 1799
+3821 1701
+3784 1748
+
+" style="stroke:#000000;stroke-width:7;stroke-miterlimit:8;
+fill:#000000;"/>
+<!-- Line -->
+<polyline points="5400,300
+5400,450
+" style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Text -->
+<text xml:space="preserve" x="1575" y="525" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="240" text-anchor="start">Processing a request</text>
+<!-- Text -->
+<text xml:space="preserve" x="3525" y="1275" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="144" text-anchor="start">Accounting-Request</text>
+<!-- Text -->
+<text xml:space="preserve" x="375" y="1275" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="144" text-anchor="start">Access-Request</text>
+<!-- Text -->
+<text xml:space="preserve" x="750" y="2100" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">authorize</text>
+<!-- Text -->
+<text xml:space="preserve" x="750" y="2400" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">authenticate</text>
+<!-- Text -->
+<text xml:space="preserve" x="900" y="2700" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">pre-proxy</text>
+<!-- Text -->
+<text xml:space="preserve" x="900" y="3000" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">post-proxy</text>
+<!-- Text -->
+<text xml:space="preserve" x="900" y="3300" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">session</text>
+<!-- Text -->
+<text xml:space="preserve" x="3600" y="2100" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">preacct</text>
+<!-- Text -->
+<text xml:space="preserve" x="3600" y="2400" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">accounting</text>
+<!-- Text -->
+<text xml:space="preserve" x="3900" y="2700" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">pre-proxy</text>
+<!-- Text -->
+<text xml:space="preserve" x="3900" y="3000" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">post-proxy</text>
+<!-- Text -->
+<text xml:space="preserve" x="750" y="3600" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="192" text-anchor="start">post-auth</text>
+</g>
+</svg>

@@ -1,0 +1,50 @@
+= EAP-TTLS: Tunneled authentication
+
+
+
+*Goal:* To configure the server to use the EAP-TTLS authentication
+protocol and to send and receive test packets.
+
+*Time:* 20-35 minutes.
+
+*File:*
+
+- `etc/raddb/sites-available/default`
+
+*Diagram:*
+
+image::eap-ttls.svg[Fig. TTLS Packet]
+
+During installation the build system automatically creates
+certificates for use with TTLS. In a normal installation, there should
+be little or no action required to enable TTLS.
+
+This exercise does not cover how to configure EAP-TTLS on the wireless
+client nor how to set up a wireless access point to perform EAP-TTLS.
+We suggest that you consult the documentation for your wireless
+client software for details on this process.
+
+For the initial testing of EAP-TTLS, we recommend using `PAP` on the
+wireless client as the tunneled authentication protocol.
+
+Once the wireless client has been configured to enable EAP-TTLS,
+you should perform a test authentication to the server. If all goes well,
+the server, AP, and wireless client should exchange multiple RADIUS
+`Access-Request` and `Access-Challenge` packets. This process should take
+a few seconds, and you should wait until it is done. If all goes well,
+the final packet from the server should be an `Access-Accept` and should
+contain the `MS-MPPE-Recv-Key` and `MS-MPPE-Send-Key` attributes.
+
+Verify that the authentication succeeded by using the `ping` command to
+see if the wireless client now has network access.
+
+== Questions
+
+1.  How is EAP-TTLS easier to use than EAP-TLS?
+2.  What authentication protocols may be carried inside of the TLS
+tunnel for EAP-TTLS?
+3.  Would you use EAP-TTLS in a large deployment? If so, why? If not,
+why not?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

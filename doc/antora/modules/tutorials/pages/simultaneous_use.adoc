@@ -1,0 +1,61 @@
+[[simultaneous-use]]
+= Configuring users for limited simultaneous access
+
+*Goal:* To prevent a user from having more than one login session at a
+time.
+
+*Time:* 20-35 minutes
+
+*Files:*
+
+- `etc/raddb/users`
+
+For this exercise, you are assumed to have previously worked
+through, and be familiar with, the accounting exercise from
+xref:accounting.adoc[Accounting], and to have an entry in the file, as given the
+exercise in xref:new_user.adoc[New User], for user "bob".
+
+In this exercise, youwill work through an example of a user
+logging into the server, and then attempting a simultaneous login for a
+second session, while still logged in for the first session.
+
+You should run the `bob-login-one.sh` and `bob-acct-start.sh`
+scripts, to simulate a successful user login. You should check the database
+to verify that the server knows that the user is logged
+in.
+
+You should then run the `bob-login-two.sh`, and observe that the
+second authentication request succeeds. The login record should be
+removed through running the `bob-acct-stop.sh` script, and check the database
+to verify that no one is currently
+logged in.
+
+you should now read the `Simultaneous-Use` file in the
+documentation directory, to determine how to limit a user to only one
+login at a time. The "bob" entry in the file should then be edited, to
+add the limitation that "bob" may only have one login session at a
+time.
+
+The scripts `bob-login-one.sh` and `bob-acct-start.sh` should be run
+again, to simulate a successful user login. The `bob-login-two.sh`
+script should then be run, to verify that the second simultaneous
+authentication attempt fails.
+
+After running the `bob-acct-stop.sh` script, you should run the
+`bob-login-two.sh` script again, to verify that the other login attempt
+is now permitted to succeed.
+
+== Questions
+
+1.  Why is it useful to prevent a user from having more than one
+simultaneous login session?
+2.  How would you configure `Simultaneous-Use` with an SQL database?
+3.  What are the benefits of using an SQL database for
+`Simultaneous-Use`, over the `radumtp` file?
+4.  How does `Simultaneous-Use` affect users with multiple "bonded"
+lines, like MPP, or ISDN?
+5.  What would happen if the user tried to log in a second time, before
+the accounting start packet was received?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

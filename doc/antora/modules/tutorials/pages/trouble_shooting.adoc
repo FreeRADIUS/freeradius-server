@@ -1,0 +1,44 @@
+If you encounter a problem with server configuration, observe the following set of procedures to troubleshoot or debug the server:
+
+* Make small, discrete changes to the configuration files.
+
+* Start the server in debugging mode: `radiusd -X`
+
+* Verify that the results are what you expect
+** The debug output shows any configuration changes you have made.
+** Databases (if used) are connected and operating.
+** Test packets are accepted by the server.
+** The debug output shows that the packets are being processed as you expect.
+** The response packets are contain the attributes you expect to see.
+
+* If everything is OK, save a copy of the configuration, go back and make another change.
+
+* If anything goes wrong,
+** double-check the configuration
+** read the entire debug output, looking for words like error or warning. These messages usually contain descriptions of what went wrong, and suggestions for how it can be fixed.
+
+* If you can't make any progress, try to replace your configuration with a saved copy of a "known working" configuration, and start again. This process can clean up errors caused by temporary edits, or edits that you have forgotten.
+
+* If you get stuck, ask for help on the freeradius-users [[project/Mailing list|mailing list]]. Include a description of what you are trying to do, and the entire debugging output, especially output showing the server receiving and processing test packets.
+** You may want to scrub "secret" information from the output before posting it - shared secrets, passwords, etc
+** Please do *not* scrub all the exact addresses and similar data, because often the process of obfuscating can introduce more errors
+
+== Reminder - run the server in debugging mode!
+
+Run the server in debugging mode as suggested in the FAQ, README, INSTALL, man page, and daily on the mailing list.
+
+We cannot emphasize that strongly enough. There is no way for anyone to help you unless you post the debugging output along with your question. If you do not post the debugging output, your question will either be ignored, or you will receive a number of responses saying
+Post the debug output as suggested in the FAQ, README, INSTALL, man page, and daily on the mailing list.
+
+A large number of problems can be trivially solved by having an expert read the debug output. If you do not post it to the list, you are making it impossible for anyone to help you.
+
+== Parsing debug mode
+
+You can usually interpret the debug messages, but if you need help, there is a debug form available at:
+
+* http://networkradius.com/freeradius.html
+
+Paste the output into the debug form, and a colorized HTML version will be produced. Look for red or yellow text, and read the messages.
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

@@ -1,0 +1,40 @@
+= Proxy Load Balancing
+
+
+
+*Goal:* To configure a server to load-balanceproxied requests across
+multiple home servers.
+
+*Time:* 10-15 minutes
+
+*File:*
+
+- `etc/raddb/proxy.conf`
+
+*Diagram:*
+
+image::proxy_load_balance.svg[Fig. Proxy Loadbalance]
+
+For this exercise, the users will be divided into the same groups as
+the previous exercise in xref:proxy_failover.adoc[Proxy Failover].
+
+User 1 will edit his `proxy.conf` file, so that the entries for
+"realm2" are marked as load balancing. The users will send multiple
+requests to the server for "realm1", and observe how the proxied
+requests are distributed among the servers for "realm2".
+
+== Questions
+
+1.  Why is load balancing useful?
+2.  How is load balancing different than fail-over?
+3.  What happens to the load balancing when one of the "realm2"
+servers is stopped, and the server for "realm1" tries to proxy
+requests to it?
+4.  How would this exercise be different if there were more than two
+home server to load balance to?
+5.  If the load balancing home server which has "failed" is started
+again, will the proxying server ever send requests to it again? If so,
+when? If not, why not?
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

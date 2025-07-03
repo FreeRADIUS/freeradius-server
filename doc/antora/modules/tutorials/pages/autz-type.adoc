@@ -1,0 +1,66 @@
+= Using the Autz-Type attribute
+
+*Goal:* To control which authorization modules are executed for an
+`Access-Request`
+
+*Time:* 10-20 minutes
+
+*Files:*
+
+- `etc/raddb/sites-available/default`
+- `etc/raddb/users`
+
+This exercise is a follow-up to the previous one in
+xref:multiple_modules.adoc[Multiple Modules], and it uses the `byname` and `bydate` modules
+configured there.
+
+Start off by deleting the old log files:
+
+[source, bash]
+-------------------------------------------------
+$ rm -f /var/log/radius/radacct/byname/*
+$ rm -f !/var/log/radius/radacct/bydate/*
+-------------------------------------------------
+
+Edit the file, and add the following text at the top:
+
+----------------------------
+DEFAULT  Autz-Type := byname
+         Fall-Through = 1
+----------------------------
+
+In the `raddb/sites-available/default` file, edit the `authorize` section entries for
+the `byname` and `bydate` modules to be as follows:
+
+----------------------
+Autz-Type byname {
+	byname
+}
+
+Autz-Type bydate {
+	bydate
+}
+----------------------
+
+Start the server, and send it a test packet (e.g., `bob.sh`).
+
+Use the debug messages from the server to verify that only one of the modules is
+called.
+
+Look in the log directory, and verify the existence of the files and their contents, as follows:
+
+[source, bash]
+--------------------------------------------------
+$ ls /var/log/radius/radacct/byname/
+$ more /var/log/radius/radacct/byname/bob
+
+$ ls /var/log/radius/radacct/bydate/
+--------------------------------------------------
+
+[[autz-type-questions]]
+== Questions
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
+1.  Why is it useful to _not_ call certain modules for a request?
+2.  Why is it useful to control which modules get called for a request?
