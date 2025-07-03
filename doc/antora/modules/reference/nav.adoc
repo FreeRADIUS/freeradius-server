@@ -116,6 +116,7 @@
 **** xref:xlat/time/character.adoc[Single Character]
 **** xref:xlat/time/generic.adoc[Generic]
 **** xref:xlat/time/is_dst.adoc[Daylight Savings]
+**** xref:xlat/time/next.adoc[Next]
 **** xref:xlat/time/now.adoc[Now]
 **** xref:xlat/time/offset.adoc[UTC Offset]
 **** xref:xlat/time/request.adoc[Request Time]

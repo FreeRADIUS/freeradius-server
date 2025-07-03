@@ -11,6 +11,7 @@ including daylight savings and UTC offset.
 | xref:xlat/time/character.adoc[character] | Single character expansions.
 | xref:xlat/time/generic.adoc[time]        | Generic (too complex) time function.
 | xref:xlat/time/is_dst.adoc[is_dst]       | Is the system running in DST?
+| xref:xlat/time/next.adoc[next]           | Return the time of the next hour, day, week, etc.
 | xref:xlat/time/now.adoc[now]             | Return the current time.
 | xref:xlat/time/offset.adoc[offset]       | Return UTC offset.
 | xref:xlat/time/request.adoc[request]     | Return the time when the request. was received.
