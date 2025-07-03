@@ -852,7 +852,7 @@ fr_pair_t *fr_pair_find_by_da_nested(fr_pair_list_t const *list, fr_pair_t const
 	}
 
 	/*
-	 *	Compatiblitity with flat atttrbutes
+	 *	Compatibility with flat attributes
 	 */
 	if (fr_pair_parent_list(prev) != list) prev = NULL;
 	return fr_pair_find_by_da(list, prev, da);
