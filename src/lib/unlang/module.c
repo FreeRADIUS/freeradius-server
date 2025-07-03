@@ -995,25 +995,27 @@ done:
 
 void unlang_module_init(void)
 {
-	unlang_register(UNLANG_TYPE_MODULE,
-			   &(unlang_op_t){
-				.name = "module",
-				.type = UNLANG_TYPE_MODULE,
+	unlang_register(&(unlang_op_t){
+			.name = "module",
+			.type = UNLANG_TYPE_MODULE,
 
-				/*
-				 *	- UNLANG_OP_FLAG_RCODE_SET
-				 *	  Set request->rcode to be the rcode from the module.
-				 *	- UNLANG_OP_FLAG_RETURN_POINT
-				 *	  Set the return point to be the module.
-				 */
-				.flag = UNLANG_OP_FLAG_RCODE_SET |
-					UNLANG_OP_FLAG_RETURN_POINT |
-					UNLANG_OP_FLAG_INTERNAL,
+			/*
+			 *	- UNLANG_OP_FLAG_RCODE_SET
+			 *	  Set request->rcode to be the rcode from the module.
+			 *	- UNLANG_OP_FLAG_RETURN_POINT
+			 *	  Set the return point to be the module.
+			 */
+			.flag = UNLANG_OP_FLAG_RCODE_SET |
+				UNLANG_OP_FLAG_RETURN_POINT |
+				UNLANG_OP_FLAG_INTERNAL,
 
-				.interpret = unlang_module,
-				.signal = unlang_module_signal,
+			.interpret = unlang_module,
+			.signal = unlang_module_signal,
 
-				.frame_state_size = sizeof(unlang_frame_state_module_t),
-				.frame_state_type = "unlang_frame_state_module_t",
-			   });
+			.unlang_size = sizeof(unlang_module_t),
+			.unlang_name = "unlang_module_t",
+
+			.frame_state_size = sizeof(unlang_frame_state_module_t),
+			.frame_state_type = "unlang_frame_state_module_t",
+		});
 }

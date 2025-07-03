@@ -352,35 +352,33 @@ static unlang_t *unlang_compile_redundant_load_balance(unlang_t *parent, unlang_
 
 void unlang_load_balance_init(void)
 {
-	unlang_register(UNLANG_TYPE_LOAD_BALANCE,
-			   &(unlang_op_t){
-				.name = "load-balance",
-				.type = UNLANG_TYPE_LOAD_BALANCE,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
+	unlang_register(&(unlang_op_t){
+			.name = "load-balance",
+			.type = UNLANG_TYPE_LOAD_BALANCE,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
 
-				.compile = unlang_compile_load_balance,
-				.interpret = unlang_load_balance,
+			.compile = unlang_compile_load_balance,
+			.interpret = unlang_load_balance,
 
-				.unlang_size = sizeof(unlang_load_balance_t),
-				.unlang_name = "unlang_load_balance_t",
+			.unlang_size = sizeof(unlang_load_balance_t),
+			.unlang_name = "unlang_load_balance_t",
 
-			        .frame_state_size = sizeof(unlang_frame_state_redundant_t),
-				.frame_state_type = "unlang_frame_state_redundant_t",
-			   });
+			.frame_state_size = sizeof(unlang_frame_state_redundant_t),
+			.frame_state_type = "unlang_frame_state_redundant_t",
+		});
 
-	unlang_register(UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,
-			   &(unlang_op_t){
-				.name = "redundant-load-balance",
-				.type = UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,	
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
+	unlang_register(&(unlang_op_t){
+			.name = "redundant-load-balance",
+			.type = UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,	
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
 
-				.compile = unlang_compile_redundant_load_balance,
-				.interpret = unlang_redundant_load_balance,
+			.compile = unlang_compile_redundant_load_balance,
+			.interpret = unlang_redundant_load_balance,
 
-				.unlang_size = sizeof(unlang_load_balance_t),
-				.unlang_name = "unlang_load_balance_t",
+			.unlang_size = sizeof(unlang_load_balance_t),
+			.unlang_name = "unlang_load_balance_t",
 
-			        .frame_state_size = sizeof(unlang_frame_state_redundant_t),
-				.frame_state_type = "unlang_frame_state_redundant_t",
-			   });
+			.frame_state_size = sizeof(unlang_frame_state_redundant_t),
+			.frame_state_type = "unlang_frame_state_redundant_t",
+		});
 }

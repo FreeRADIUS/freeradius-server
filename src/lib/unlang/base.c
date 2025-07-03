@@ -51,31 +51,21 @@ fr_hash_table_t *unlang_op_table = NULL;
  * functionality can be in their own source files, and we don't need to include
  * supporting types and function declarations in the interpreter.
  *
- * Later, this could potentially be used to register custom operations for modules.
- *
- * The reason why there's a function instead of accessing the unlang_op array
- * directly, is because 'type' really needs to go away, as needing to add ops to
- * the unlang_type_t enum breaks the pluggable module model. If there's no
- * explicit/consistent type values we need to enumerate the operations ourselves.
- *
- * @param[in] type		Operation identifier.  Used to map compiled unlang code
- *				to operations.
- * @param[in] op		unlang_op to register.
+ * @param[in] op		#unlang_op_t to register.
  */
-void unlang_register(int type, unlang_op_t *op)
+void unlang_register(unlang_op_t *op)
 {
-	fr_assert(type < UNLANG_TYPE_MAX);	/* Unlang max isn't a valid type */
+	fr_assert(op->type < UNLANG_TYPE_MAX);	/* Unlang max isn't a valid type */
 	fr_assert(unlang_op_table != NULL);
-	fr_assert(op->type == (unlang_type_t) type);
 
-	memcpy(&unlang_ops[type], op, sizeof(unlang_ops[type]));
+	memcpy(&unlang_ops[op->type], op, sizeof(unlang_ops[op->type]));
 
 	/*
 	 *	Some instruction types are internal, and are not real keywords.
 	 */
 	if ((op->flag & UNLANG_OP_FLAG_INTERNAL) != 0) return;
 
-	MEM(fr_hash_table_insert(unlang_op_table, &unlang_ops[type]));
+	MEM(fr_hash_table_insert(unlang_op_table, &unlang_ops[op->type]));
 }
 
 static TALLOC_CTX *unlang_ctx = NULL;

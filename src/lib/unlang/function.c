@@ -579,17 +579,19 @@ static void unlang_function_dump(request_t *request, unlang_stack_frame_t *frame
 
 void unlang_function_init(void)
 {
-	unlang_register(UNLANG_TYPE_FUNCTION,
-			&(unlang_op_t){
-				.name = "function",
-				.type = UNLANG_TYPE_FUNCTION,
-				.flag = UNLANG_OP_FLAG_RETURN_POINT | UNLANG_OP_FLAG_INTERNAL,
+	unlang_register(&(unlang_op_t){
+			.name = "function",
+			.type = UNLANG_TYPE_FUNCTION,
+			.flag = UNLANG_OP_FLAG_RETURN_POINT | UNLANG_OP_FLAG_INTERNAL,
 
-				.interpret = call_no_result,
-				.signal = unlang_function_signal,
-				.dump = unlang_function_dump,
-				.frame_state_size = sizeof(unlang_frame_state_func_t),
-				.frame_state_type = "unlang_frame_state_func_t",
-			});
+			.interpret = call_no_result,
+			.signal = unlang_function_signal,
+			.dump = unlang_function_dump,
 
+			.unlang_size = sizeof(unlang_group_t),
+			.unlang_name = "unlang_group_t",	
+
+			.frame_state_size = sizeof(unlang_frame_state_func_t),
+			.frame_state_type = "unlang_frame_state_func_t",
+		});
 }

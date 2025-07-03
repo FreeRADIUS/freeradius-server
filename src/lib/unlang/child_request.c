@@ -278,30 +278,29 @@ int unlang_child_request_init(TALLOC_CTX *ctx, unlang_child_request_t *out, requ
 
 int unlang_child_request_op_init(void)
 {
-	unlang_register(UNLANG_TYPE_CHILD_REQUEST,
-			&(unlang_op_t){
-				.name = "child-request",
-				.type = UNLANG_TYPE_CHILD_REQUEST,
+	unlang_register(&(unlang_op_t){
+			.name = "child-request",
+			.type = UNLANG_TYPE_CHILD_REQUEST,
 
-				/*
-				 *	Frame can't be cancelled, because children need to
-				 *	write out status to the parent.  If we don't do this,
-				 *	then all children must be detachable and must detach
-				 *	so they don't try and write out status to a "done"
-				 *	parent.
-				 *
-				 *	It's easier to allow the child/parent relationship
-				 *	to end normally so that non-detachable requests are
-				 *	guaranteed the parent still exists.
-				 */
-				.flag = UNLANG_OP_FLAG_NO_FORCE_UNWIND | UNLANG_OP_FLAG_INTERNAL,
+			/*
+			 *	Frame can't be cancelled, because children need to
+			 *	write out status to the parent.  If we don't do this,
+			 *	then all children must be detachable and must detach
+			 *	so they don't try and write out status to a "done"
+			 *	parent.
+			 *
+			 *	It's easier to allow the child/parent relationship
+			 *	to end normally so that non-detachable requests are
+			 *	guaranteed the parent still exists.
+			 */
+			.flag = UNLANG_OP_FLAG_NO_FORCE_UNWIND | UNLANG_OP_FLAG_INTERNAL,
 
-				.interpret = unlang_child_request_done,
-				.signal = unlang_child_request_signal,
+			.interpret = unlang_child_request_done,
+			.signal = unlang_child_request_signal,
 
-				.frame_state_size = sizeof(unlang_frame_state_child_request_t),
-				.frame_state_type = "unlang_frame_state_child_request_t"
-			});
+			.frame_state_size = sizeof(unlang_frame_state_child_request_t),
+			.frame_state_type = "unlang_frame_state_child_request_t"
+		});
 
 	return 0;
 }

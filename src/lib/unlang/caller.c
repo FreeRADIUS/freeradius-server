@@ -141,16 +141,15 @@ static unlang_t *unlang_compile_caller(unlang_t *parent, unlang_compile_ctx_t *u
 
 void unlang_caller_init(void)
 {
-	unlang_register(UNLANG_TYPE_CALLER,
-			   &(unlang_op_t){
-				.name = "caller",
-				.type = UNLANG_TYPE_CALLER,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+	unlang_register(&(unlang_op_t){
+			.name = "caller",
+			.type = UNLANG_TYPE_CALLER,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
-				.compile = unlang_compile_caller,
-				.interpret = unlang_caller,
+			.compile = unlang_compile_caller,
+			.interpret = unlang_caller,
 
-				.unlang_size = sizeof(unlang_caller_t),
-				.unlang_name = "unlang_caller_t",
-			   });
+			.unlang_size = sizeof(unlang_caller_t),
+			.unlang_name = "unlang_caller_t",
+		});
 }

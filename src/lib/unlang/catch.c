@@ -195,16 +195,15 @@ static unlang_t *unlang_compile_catch(unlang_t *parent, unlang_compile_ctx_t *un
 
 void unlang_catch_init(void)
 {
-	unlang_register(UNLANG_TYPE_CATCH,
-			   &(unlang_op_t){
-				.name = "catch",
-				.type = UNLANG_TYPE_CATCH,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+	unlang_register(&(unlang_op_t){
+			.name = "catch",
+			.type = UNLANG_TYPE_CATCH,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
-				.compile = unlang_compile_catch,
-				.interpret = unlang_catch,
+			.compile = unlang_compile_catch,
+			.interpret = unlang_catch,
 
-				.unlang_size = sizeof(unlang_catch_t),
-				.unlang_name = "unlang_catch_t",
-			   });
+			.unlang_size = sizeof(unlang_catch_t),
+			.unlang_name = "unlang_catch_t",
+		});
 }

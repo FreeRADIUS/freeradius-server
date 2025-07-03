@@ -1060,32 +1060,30 @@ static unlang_t *unlang_compile_map(unlang_t *parent, unlang_compile_ctx_t *unla
 
 void unlang_map_init(void)
 {
-	unlang_register(UNLANG_TYPE_UPDATE,
-			   &(unlang_op_t){
-				.name = "update",
-				.type = UNLANG_TYPE_UPDATE,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+	unlang_register(&(unlang_op_t){
+			.name = "update",
+			.type = UNLANG_TYPE_UPDATE,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
-				.compile = unlang_compile_update,
-				.interpret = unlang_update_state_init,
+			.compile = unlang_compile_update,
+			.interpret = unlang_update_state_init,
 
-				.unlang_size = sizeof(unlang_map_t),
-				.unlang_name = "unlang_map_t",
-			   });
+			.unlang_size = sizeof(unlang_map_t),
+			.unlang_name = "unlang_map_t",
+		});
 
-	unlang_register(UNLANG_TYPE_MAP,
-			   &(unlang_op_t){
-				.name = "map",
-				.type = UNLANG_TYPE_MAP,
-				.flag = UNLANG_OP_FLAG_RCODE_SET,
+	unlang_register(&(unlang_op_t){
+			.name = "map",
+			.type = UNLANG_TYPE_MAP,
+			.flag = UNLANG_OP_FLAG_RCODE_SET,
 
-				.compile = unlang_compile_map,
-				.interpret = unlang_map_state_init,
+			.compile = unlang_compile_map,
+			.interpret = unlang_map_state_init,
 
-				.unlang_size = sizeof(unlang_map_t),
-				.unlang_name = "unlang_map_t",
+			.unlang_size = sizeof(unlang_map_t),
+			.unlang_name = "unlang_map_t",
 
-				.frame_state_size = sizeof(unlang_frame_state_map_proc_t),
-				.frame_state_type = "unlang_frame_state_map_proc_t",
-			   });
+			.frame_state_size = sizeof(unlang_frame_state_map_proc_t),
+			.frame_state_type = "unlang_frame_state_map_proc_t",
+		});
 }

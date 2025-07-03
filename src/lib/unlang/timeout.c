@@ -369,20 +369,19 @@ static unlang_t *unlang_compile_timeout(unlang_t *parent, unlang_compile_ctx_t *
 
 void unlang_timeout_init(void)
 {
-	unlang_register(UNLANG_TYPE_TIMEOUT,
-			&(unlang_op_t){
-				.name = "timeout",
-				.type = UNLANG_TYPE_TIMEOUT,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
+	unlang_register(&(unlang_op_t){
+			.name = "timeout",
+			.type = UNLANG_TYPE_TIMEOUT,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
 
-				.compile = unlang_compile_timeout,
-				.interpret = unlang_timeout,
-				.signal = unlang_timeout_signal,
+			.compile = unlang_compile_timeout,
+			.interpret = unlang_timeout,
+			.signal = unlang_timeout_signal,
 
-				.unlang_size = sizeof(unlang_timeout_t),
-				.unlang_name = "unlang_timeout_t",
+			.unlang_size = sizeof(unlang_timeout_t),
+			.unlang_name = "unlang_timeout_t",
 
-				.frame_state_size = sizeof(unlang_frame_state_timeout_t),
-				.frame_state_type = "unlang_frame_state_timeout_t",
-			});
+			.frame_state_size = sizeof(unlang_frame_state_timeout_t),
+			.frame_state_type = "unlang_frame_state_timeout_t",
+		});
 }

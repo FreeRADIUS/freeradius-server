@@ -434,17 +434,16 @@ static unlang_t *unlang_compile_parallel(unlang_t *parent, unlang_compile_ctx_t 
 
 void unlang_parallel_init(void)
 {
-	unlang_register(UNLANG_TYPE_PARALLEL,
-			   &(unlang_op_t){
-				.name = "parallel",
-				.type = UNLANG_TYPE_PARALLEL,	
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_FORCE_UNWIND,
+	unlang_register(&(unlang_op_t){
+			.name = "parallel",
+			.type = UNLANG_TYPE_PARALLEL,	
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_FORCE_UNWIND,
 
-				.compile = unlang_compile_parallel,
-				.interpret = unlang_parallel,
-				.signal = unlang_parallel_signal,
+			.compile = unlang_compile_parallel,
+			.interpret = unlang_parallel,
+			.signal = unlang_parallel_signal,
 
-				.unlang_size = sizeof(unlang_parallel_t),
-				.unlang_name = "unlang_parallel_t"
-			   });
+			.unlang_size = sizeof(unlang_parallel_t),
+			.unlang_name = "unlang_parallel_t"
+		});
 }

@@ -70,41 +70,38 @@ static unlang_t *unlang_compile_redundant(unlang_t *parent, unlang_compile_ctx_t
 
 void unlang_group_init(void)
 {
-	unlang_register(UNLANG_TYPE_GROUP,
-			   &(unlang_op_t){
-				.name = "group",
-				.type = UNLANG_TYPE_GROUP,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+	unlang_register(&(unlang_op_t){
+			.name = "group",
+			.type = UNLANG_TYPE_GROUP,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
-				.compile = unlang_compile_group,
-				.interpret = unlang_group,
+			.compile = unlang_compile_group,
+			.interpret = unlang_group,
 
-				.unlang_size = sizeof(unlang_group_t),
-				.unlang_name = "unlang_group_t",
-			   });
+			.unlang_size = sizeof(unlang_group_t),
+			.unlang_name = "unlang_group_t",
+		});
 
-	unlang_register(UNLANG_TYPE_REDUNDANT,
-			   &(unlang_op_t){
-				.name = "redundant",
-				.type = UNLANG_TYPE_REDUNDANT,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+	unlang_register(&(unlang_op_t){
+			.name = "redundant",
+			.type = UNLANG_TYPE_REDUNDANT,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
-				.compile = unlang_compile_redundant,
-				.interpret = unlang_group,
+			.compile = unlang_compile_redundant,
+			.interpret = unlang_group,
 
-				.unlang_size = sizeof(unlang_group_t),
-				.unlang_name = "unlang_group_t",
-			   });
+			.unlang_size = sizeof(unlang_group_t),
+			.unlang_name = "unlang_group_t",
+		});
 
-	unlang_register(UNLANG_TYPE_POLICY,
-			   &(unlang_op_t){
-				.name = "policy",
-				.type = UNLANG_TYPE_POLICY,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RETURN_POINT,
+	unlang_register(&(unlang_op_t){
+			.name = "policy",
+			.type = UNLANG_TYPE_POLICY,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RETURN_POINT | UNLANG_OP_FLAG_INTERNAL,
 
-				.interpret = unlang_policy,
+			.interpret = unlang_policy,
 
-				.unlang_size = sizeof(unlang_group_t),
-				.unlang_name = "unlang_group_t",	
-		   });
+			.unlang_size = sizeof(unlang_group_t),
+			.unlang_name = "unlang_group_t",	
+		});
 }

@@ -67,16 +67,15 @@ static unlang_t *unlang_compile_return(unlang_t *parent, unlang_compile_ctx_t *u
 
 void unlang_return_init(void)
 {
-	unlang_register(UNLANG_TYPE_RETURN,
-			   &(unlang_op_t){
-				.name = "return",
-				.type = UNLANG_TYPE_RETURN,
-				.flag = UNLANG_OP_FLAG_SINGLE_WORD,
+	unlang_register(&(unlang_op_t){
+			.name = "return",
+			.type = UNLANG_TYPE_RETURN,
+			.flag = UNLANG_OP_FLAG_SINGLE_WORD,
 
-				.compile = unlang_compile_return,
-				.interpret = unlang_return,
+			.compile = unlang_compile_return,
+			.interpret = unlang_return,
 
-				.unlang_size = sizeof(unlang_group_t),
-				.unlang_name = "unlang_group_t",
-			   });
+			.unlang_size = sizeof(unlang_group_t),
+			.unlang_name = "unlang_group_t",
+		});
 }

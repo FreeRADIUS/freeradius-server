@@ -268,20 +268,19 @@ static unlang_t *unlang_compile_transaction(unlang_t *parent, unlang_compile_ctx
 
 void unlang_transaction_init(void)
 {
-	unlang_register(UNLANG_TYPE_TRANSACTION,
-			   &(unlang_op_t){
-				.name = "transaction",
-				.type = UNLANG_TYPE_TRANSACTION,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+	unlang_register(&(unlang_op_t){
+			.name = "transaction",
+			.type = UNLANG_TYPE_TRANSACTION,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
-				.compile = unlang_compile_transaction,
-				.interpret = unlang_transaction,
-				.signal = unlang_transaction_signal,
+			.compile = unlang_compile_transaction,
+			.interpret = unlang_transaction,
+			.signal = unlang_transaction_signal,
 
-				.unlang_size = sizeof(unlang_transaction_t),
-				.unlang_name = "unlang_transaction_t",
+			.unlang_size = sizeof(unlang_transaction_t),
+			.unlang_name = "unlang_transaction_t",
 
-				.frame_state_size = sizeof(unlang_frame_state_transaction_t),
-				.frame_state_type = "unlang_frame_state_transaction_t",
-			   });
+			.frame_state_size = sizeof(unlang_frame_state_transaction_t),
+			.frame_state_type = "unlang_frame_state_transaction_t",
+		});
 }

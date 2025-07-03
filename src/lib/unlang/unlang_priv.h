@@ -883,7 +883,7 @@ request_t		*unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *names
  *
  * @{
  */
-void		unlang_register(int type, unlang_op_t *op);
+void		unlang_register(unlang_op_t *op) CC_HINT(nonnull);
 
 void		unlang_call_init(void);
 

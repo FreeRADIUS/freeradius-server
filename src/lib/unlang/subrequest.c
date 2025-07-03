@@ -813,37 +813,35 @@ get_packet_type:
  */
 int unlang_subrequest_op_init(void)
 {
-	unlang_register(UNLANG_TYPE_SUBREQUEST,
-			&(unlang_op_t){
-				.name = "subrequest",
-				.type = UNLANG_TYPE_SUBREQUEST,
+	unlang_register(&(unlang_op_t) {
+			.name = "subrequest",
+			.type = UNLANG_TYPE_SUBREQUEST,
 
-				/*
-				 *	Frame can't be cancelled, because children need to
-				 *	write out status to the parent.  If we don't do this,
-				 *	then all children must be detachable and must detach
-				 *	so they don't try and write out status to a "done"
-				 *	parent.
-				 *
-				 *	It's easier to allow the child/parent relationship
-				 *	to end normally so that non-detachable requests are
-				 *	guaranteed the parent still exists.
+			/*
+			 *	Frame can't be cancelled, because children need to
+			 *	write out status to the parent.  If we don't do this,
+			 *	then all children must be detachable and must detach
+			 *	so they don't try and write out status to a "done"
+			 *	parent.
+			 *
+			 *	It's easier to allow the child/parent relationship
+			 *	to end normally so that non-detachable requests are
+			 *	guaranteed the parent still exists.
 				 */
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_FORCE_UNWIND,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_FORCE_UNWIND,
 
-				.compile = unlang_compile_subrequest,
-				.interpret = unlang_subrequest_init,
-				.signal = unlang_subrequest_signal,
+			.compile = unlang_compile_subrequest,
+			.interpret = unlang_subrequest_init,
+			.signal = unlang_subrequest_signal,
 
+			.unlang_size = sizeof(unlang_subrequest_t),
+			.unlang_name = "unlang_subrequest_t",
+			.pool_headers = (TMPL_POOL_DEF_HEADERS * 3),
+			.pool_len = (TMPL_POOL_DEF_LEN * 3),
 
-				.unlang_size = sizeof(unlang_subrequest_t),
-				.unlang_name = "unlang_subrequest_t",
-				.pool_headers = (TMPL_POOL_DEF_HEADERS * 3),
-				.pool_len = (TMPL_POOL_DEF_LEN * 3),
-
-				.frame_state_size = sizeof(unlang_child_request_t),
-				.frame_state_type = "unlang_child_request_t",
-			});
+			.frame_state_size = sizeof(unlang_child_request_t),
+			.frame_state_type = "unlang_child_request_t",
+		});
 
 	if (unlang_child_request_op_init() < 0) return -1;
 

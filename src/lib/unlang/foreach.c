@@ -840,45 +840,42 @@ static unlang_t *unlang_compile_continue(unlang_t *parent, unlang_compile_ctx_t 
 
 void unlang_foreach_init(void)
 {
-	unlang_register(UNLANG_TYPE_FOREACH,
-			   &(unlang_op_t){
-				.name = "foreach",
-				.type = UNLANG_TYPE_FOREACH,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_BREAK_POINT | UNLANG_OP_FLAG_CONTINUE_POINT,
+	unlang_register(&(unlang_op_t){
+			.name = "foreach",
+			.type = UNLANG_TYPE_FOREACH,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_BREAK_POINT | UNLANG_OP_FLAG_CONTINUE_POINT,
 
-				.compile = unlang_compile_foreach,
-				.interpret = unlang_foreach,
+			.compile = unlang_compile_foreach,
+			.interpret = unlang_foreach,
 
-				.unlang_size = sizeof(unlang_foreach_t),
-				.unlang_name = "unlang_foreach_t",
+			.unlang_size = sizeof(unlang_foreach_t),
+			.unlang_name = "unlang_foreach_t",
 
-				.pool_headers = TMPL_POOL_DEF_HEADERS,
-				.pool_len = TMPL_POOL_DEF_LEN
-			   });
+			.pool_headers = TMPL_POOL_DEF_HEADERS,
+			.pool_len = TMPL_POOL_DEF_LEN
+		});
 
-	unlang_register(UNLANG_TYPE_BREAK,
-			   &(unlang_op_t){
-				.name = "break",
-				.type = UNLANG_TYPE_BREAK,
-				.flag = UNLANG_OP_FLAG_SINGLE_WORD
+	unlang_register(&(unlang_op_t){
+			.name = "break",
+			.type = UNLANG_TYPE_BREAK,
+			.flag = UNLANG_OP_FLAG_SINGLE_WORD
 ,
-				.compile = unlang_compile_break,
-				.interpret = unlang_break,
+			.compile = unlang_compile_break,
+			.interpret = unlang_break,
 
-				.unlang_size = sizeof(unlang_group_t),
-				.unlang_name = "unlang_group_t",
-			   });
+			.unlang_size = sizeof(unlang_group_t),
+			.unlang_name = "unlang_group_t",
+		});				
 
-	unlang_register(UNLANG_TYPE_CONTINUE,
-			   &(unlang_op_t){
-				.name = "continue",
-				.type = UNLANG_TYPE_CONTINUE,
-				.flag = UNLANG_OP_FLAG_SINGLE_WORD,
+	unlang_register(&(unlang_op_t){
+			.name = "continue",
+			.type = UNLANG_TYPE_CONTINUE,
+			.flag = UNLANG_OP_FLAG_SINGLE_WORD,
 
-				.compile = unlang_compile_continue,
-				.interpret = unlang_continue,
+			.compile = unlang_compile_continue,
+			.interpret = unlang_continue,
 
-				.unlang_size = sizeof(unlang_group_t),
-				.unlang_name = "unlang_group_t",
-			   });
+			.unlang_size = sizeof(unlang_group_t),
+			.unlang_name = "unlang_group_t",
+		});
 }

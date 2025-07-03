@@ -323,17 +323,15 @@ static unlang_t *unlang_compile_call(unlang_t *parent, unlang_compile_ctx_t *unl
 
 void unlang_call_init(void)
 {
-	unlang_register(UNLANG_TYPE_CALL,
-			   &(unlang_op_t){
-				.name		= "call",
-				.flag		= UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_DEBUG_BRACES,
-				.type		= UNLANG_TYPE_CALL,
+	unlang_register(&(unlang_op_t){
+			.name		= "call",
+			.flag		= UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_DEBUG_BRACES,
+			.type		= UNLANG_TYPE_CALL,
 
-				.compile	= unlang_compile_call,
-				.interpret	= unlang_call_frame_init,
+			.compile	= unlang_compile_call,
+			.interpret	= unlang_call_frame_init,
 
-
-				.unlang_size	= sizeof(unlang_call_t),
-				.unlang_name	= "unlang_call_t",
-			   });
+			.unlang_size	= sizeof(unlang_call_t),
+			.unlang_name	= "unlang_call_t",
+		});
 }

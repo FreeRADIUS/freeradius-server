@@ -227,23 +227,22 @@ static unlang_t *unlang_compile_limit(unlang_t *parent, unlang_compile_ctx_t *un
 
 void unlang_limit_init(void)
 {
-	unlang_register(UNLANG_TYPE_LIMIT,
-			   &(unlang_op_t){
-				.name = "limit",
-				.type = UNLANG_TYPE_LIMIT,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+	unlang_register(&(unlang_op_t){
+			.name = "limit",
+			.type = UNLANG_TYPE_LIMIT,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
-				.compile = unlang_compile_limit,
-				.interpret = unlang_limit,
-				.signal = unlang_limit_signal,
+			.compile = unlang_compile_limit,
+			.interpret = unlang_limit,
+			.signal = unlang_limit_signal,
 
-				.unlang_size = sizeof(unlang_limit_t),
-				.unlang_name = "unlang_limit_t",
+			.unlang_size = sizeof(unlang_limit_t),
+			.unlang_name = "unlang_limit_t",
 
-				.frame_state_size = sizeof(unlang_frame_state_limit_t),
-				.frame_state_type = "unlang_frame_state_limit_t",
+			.frame_state_size = sizeof(unlang_frame_state_limit_t),
+			.frame_state_type = "unlang_frame_state_limit_t",
 
-				.thread_inst_size = sizeof(unlang_thread_limit_t),
-				.thread_inst_type = "unlang_thread_limit_t",
-			   });
+			.thread_inst_size = sizeof(unlang_thread_limit_t),
+			.thread_inst_type = "unlang_thread_limit_t",
+		});
 }

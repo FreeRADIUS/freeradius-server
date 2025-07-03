@@ -521,34 +521,31 @@ static unlang_t *unlang_compile_switch(unlang_t *parent, unlang_compile_ctx_t *u
 
 void unlang_switch_init(void)
 {
-	unlang_register(UNLANG_TYPE_SWITCH,
-			   &(unlang_op_t){
-				.name = "switch",
-				.type = UNLANG_TYPE_SWITCH,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+	unlang_register(&(unlang_op_t) {
+			.name = "switch",
+			.type = UNLANG_TYPE_SWITCH,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
-				.compile = unlang_compile_switch,
-				.interpret = unlang_switch,
-					
+			.compile = unlang_compile_switch,
+			.interpret = unlang_switch,
+				
+			.unlang_size = sizeof(unlang_switch_t),
+			.unlang_name = "unlang_switch_t",
 
-				.unlang_size = sizeof(unlang_switch_t),
-				.unlang_name = "unlang_switch_t",
-
-				.pool_headers = TMPL_POOL_DEF_HEADERS,
-				.pool_len = TMPL_POOL_DEF_LEN
-			   });
+			.pool_headers = TMPL_POOL_DEF_HEADERS,
+			.pool_len = TMPL_POOL_DEF_LEN
+		});
 
 
-	unlang_register(UNLANG_TYPE_CASE,
-			   &(unlang_op_t){
-				.name = "case",
-				.type = UNLANG_TYPE_CASE,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_BREAK_POINT,
+	unlang_register(&(unlang_op_t){
+			.name = "case",
+			.type = UNLANG_TYPE_CASE,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_BREAK_POINT,
 
-				.compile = unlang_compile_case,
-				.interpret = unlang_case,
+			.compile = unlang_compile_case,
+			.interpret = unlang_case,
 
-				.unlang_size = sizeof(unlang_case_t),
-				.unlang_name = "unlang_case_t",
-			   });
+			.unlang_size = sizeof(unlang_case_t),
+			.unlang_name = "unlang_case_t",
+		});
 }

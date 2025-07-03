@@ -83,16 +83,15 @@ static unlang_t *unlang_compile_try(unlang_t *parent, unlang_compile_ctx_t *unla
 
 void unlang_try_init(void)
 {
-	unlang_register(UNLANG_TYPE_TRY,
-			   &(unlang_op_t){
-				.name = "try",
-				.type = UNLANG_TYPE_TRY,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+	unlang_register(&(unlang_op_t){
+			.name = "try",
+			.type = UNLANG_TYPE_TRY,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
-				.compile = unlang_compile_try,
-				.interpret = unlang_try,
+			.compile = unlang_compile_try,
+			.interpret = unlang_try,
 
-				.unlang_size = sizeof(unlang_try_t),
-				.unlang_name = "unlang_try_t",
-			   });
+			.unlang_size = sizeof(unlang_try_t),
+			.unlang_name = "unlang_try_t",
+		});
 }

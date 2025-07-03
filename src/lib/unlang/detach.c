@@ -81,16 +81,15 @@ static unlang_t *unlang_compile_detach(unlang_t *parent, unlang_compile_ctx_t *u
  */
 void unlang_detach_init(void)
 {
-	unlang_register(UNLANG_TYPE_DETACH,
-			&(unlang_op_t){
-				.name = "detach",
-				.type = UNLANG_TYPE_DETACH,
-				.flag = UNLANG_OP_FLAG_SINGLE_WORD,
+	unlang_register(&(unlang_op_t){
+			.name = "detach",
+			.type = UNLANG_TYPE_DETACH,
+			.flag = UNLANG_OP_FLAG_SINGLE_WORD,
 
-				.compile = unlang_compile_detach,
-				.interpret = unlang_detach,
+			.compile = unlang_compile_detach,
+			.interpret = unlang_detach,
 
-				.unlang_size = sizeof(unlang_group_t),
-				.unlang_name = "unlang_group_t",	
+			.unlang_size = sizeof(unlang_group_t),
+			.unlang_name = "unlang_group_t",	
 		});
 }

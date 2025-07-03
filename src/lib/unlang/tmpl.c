@@ -327,16 +327,18 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 
 void unlang_tmpl_init(void)
 {
-	unlang_register(UNLANG_TYPE_TMPL,
-			   &(unlang_op_t){
-				.name = "tmpl",
-				.type = UNLANG_TYPE_TMPL,
-				.flag = UNLANG_OP_FLAG_INTERNAL,
+	unlang_register(&(unlang_op_t){
+			.name = "tmpl",
+			.type = UNLANG_TYPE_TMPL,
+			.flag = UNLANG_OP_FLAG_INTERNAL,
 
-				.interpret = unlang_tmpl,
-				.signal = unlang_tmpl_signal,
+			.interpret = unlang_tmpl,
+			.signal = unlang_tmpl_signal,
 
-				.frame_state_size = sizeof(unlang_frame_state_tmpl_t),
-				.frame_state_type = "unlang_frame_state_tmpl_t",
-			   });
+			.unlang_size = sizeof(unlang_tmpl_t),
+			.unlang_name = "unlang_tmpl_t",
+
+			.frame_state_size = sizeof(unlang_frame_state_tmpl_t),
+			.frame_state_type = "unlang_frame_state_tmpl_t",
+		});
 }

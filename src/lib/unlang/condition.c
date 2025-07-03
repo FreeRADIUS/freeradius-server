@@ -265,52 +265,49 @@ static unlang_t *unlang_compile_else(unlang_t *parent, unlang_compile_ctx_t *unl
 
 void unlang_condition_init(void)
 {
-	unlang_register(UNLANG_TYPE_IF,
-			   &(unlang_op_t){
-				.name = "if",
-				.type = UNLANG_TYPE_IF,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+	unlang_register(&(unlang_op_t){
+			.name = "if",
+			.type = UNLANG_TYPE_IF,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
-				.compile = unlang_compile_if,
-				.interpret = unlang_if,
+			.compile = unlang_compile_if,
+			.interpret = unlang_if,
 
-				.unlang_size = sizeof(unlang_cond_t),
-				.unlang_name = "unlang_cond_t",
-				.pool_headers = 1 + 1 + (TMPL_POOL_DEF_HEADERS * 2),
-				.pool_len = sizeof(map_t) + (TMPL_POOL_DEF_LEN * 2),
+			.unlang_size = sizeof(unlang_cond_t),
+			.unlang_name = "unlang_cond_t",
+			.pool_headers = 1 + 1 + (TMPL_POOL_DEF_HEADERS * 2),
+			.pool_len = sizeof(map_t) + (TMPL_POOL_DEF_LEN * 2),
 
-				.frame_state_size = sizeof(unlang_frame_state_cond_t),
-				.frame_state_type = "unlang_frame_state_cond_t",
-			   });
+			.frame_state_size = sizeof(unlang_frame_state_cond_t),
+			.frame_state_type = "unlang_frame_state_cond_t",
+		});
 
-	unlang_register(UNLANG_TYPE_ELSE,
-			   &(unlang_op_t){
-				.name = "else",
-				.type = UNLANG_TYPE_ELSE,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+	unlang_register(&(unlang_op_t){
+			.name = "else",
+			.type = UNLANG_TYPE_ELSE,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
-				.compile = unlang_compile_else,
-				.interpret = unlang_group,
+			.compile = unlang_compile_else,
+			.interpret = unlang_group,
 
-				.unlang_size = sizeof(unlang_group_t),
-				.unlang_name = "unlang_group_t"	
-		   });
+			.unlang_size = sizeof(unlang_group_t),
+			.unlang_name = "unlang_group_t"	
+		});
 
-	unlang_register(UNLANG_TYPE_ELSIF,
-			   &(unlang_op_t){
-				.name = "elsif",
-				.type = UNLANG_TYPE_ELSIF,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+	unlang_register(&(unlang_op_t){
+			.name = "elsif",
+			.type = UNLANG_TYPE_ELSIF,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
-				.compile = unlang_compile_elsif,
-				.interpret = unlang_if,
+			.compile = unlang_compile_elsif,
+			.interpret = unlang_if,
 
-				.unlang_size = sizeof(unlang_cond_t),
-				.unlang_name = "unlang_cond_t",
-				.pool_headers = 1 + 1 + (TMPL_POOL_DEF_HEADERS * 2),
-				.pool_len = sizeof(map_t) + (TMPL_POOL_DEF_LEN * 2),
+			.unlang_size = sizeof(unlang_cond_t),
+			.unlang_name = "unlang_cond_t",
+			.pool_headers = 1 + 1 + (TMPL_POOL_DEF_HEADERS * 2),
+			.pool_len = sizeof(map_t) + (TMPL_POOL_DEF_LEN * 2),
 
-				.frame_state_size = sizeof(unlang_frame_state_cond_t),
-				.frame_state_type = "unlang_frame_state_cond_t",
-			   });
+			.frame_state_size = sizeof(unlang_frame_state_cond_t),
+			.frame_state_type = "unlang_frame_state_cond_t",
+		});
 }
