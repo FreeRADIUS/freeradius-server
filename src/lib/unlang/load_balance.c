@@ -242,14 +242,123 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 	return unlang_load_balance_next(p_result, request, frame);
 }
 
+
+static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_SECTION *cs,
+						 unlang_type_t type)
+{
+	char const			*name2;
+	unlang_t			*c;
+	unlang_group_t			*g;
+	unlang_load_balance_t		*gext;
+
+	tmpl_rules_t			t_rules;
+
+	/*
+	 *	We allow unknown attributes here.
+	 */
+	t_rules = *(unlang_ctx->rules);
+	t_rules.attr.allow_unknown = true;
+	RULES_VERIFY(&t_rules);
+
+	/*
+	 *	No children?  Die!
+	 */
+	if (!cf_item_next(cs, NULL)) {
+		cf_log_err(cs, "%s sections cannot be empty", unlang_ops[type].name);
+		return NULL;
+	}
+
+	if (!unlang_compile_limit_subsection(cs, cf_section_name1(cs))) return NULL;
+
+	c = unlang_compile_section(parent, unlang_ctx, cs, type);
+	if (!c) return NULL;
+
+	g = unlang_generic_to_group(c);
+
+	/*
+	 *	Allow for keyed load-balance / redundant-load-balance sections.
+	 */
+	name2 = cf_section_name2(cs);
+
+	/*
+	 *	Inside of the "modules" section, it's a virtual
+	 *	module.  The name is a module name, not a key.
+	 */
+	if (name2) {
+		if (strcmp(cf_section_name1(cf_item_to_section(cf_parent(cs))), "modules") == 0) name2 = NULL;
+	}
+
+	if (name2) {
+		fr_token_t quote;
+		ssize_t slen;
+
+		/*
+		 *	Create the template.  All attributes and xlats are
+		 *	defined by now.
+		 */
+		quote = cf_section_name2_quote(cs);
+		gext = unlang_group_to_load_balance(g);
+		slen = tmpl_afrom_substr(gext, &gext->vpt,
+					 &FR_SBUFF_IN(name2, strlen(name2)),
+					 quote,
+					 NULL,
+					 &t_rules);
+		if (!gext->vpt) {
+			cf_canonicalize_error(cs, slen, "Failed parsing argument", name2);
+			talloc_free(g);
+			return NULL;
+		}
+
+		fr_assert(gext->vpt != NULL);
+
+		/*
+		 *	Fixup the templates
+		 */
+		if (!pass2_fixup_tmpl(g, &gext->vpt, cf_section_to_item(cs), unlang_ctx->rules->attr.dict_def)) {
+			talloc_free(g);
+			return NULL;
+		}
+
+		switch (gext->vpt->type) {
+		default:
+			cf_log_err(cs, "Invalid type in '%s': data will not result in a load-balance key", name2);
+			talloc_free(g);
+			return NULL;
+
+			/*
+			 *	Allow only these ones.
+			 */
+		case TMPL_TYPE_XLAT:
+		case TMPL_TYPE_ATTR:
+		case TMPL_TYPE_EXEC:
+			break;
+		}
+	}
+
+	return c;
+}
+
+static unlang_t *unlang_compile_load_balance(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	return compile_load_balance_subsection(parent, unlang_ctx, cf_item_to_section(ci), UNLANG_TYPE_LOAD_BALANCE);
+}
+
+
+static unlang_t *unlang_compile_redundant_load_balance(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	return compile_load_balance_subsection(parent, unlang_ctx, cf_item_to_section(ci), UNLANG_TYPE_REDUNDANT_LOAD_BALANCE);
+}
+
+
 void unlang_load_balance_init(void)
 {
 	unlang_register(UNLANG_TYPE_LOAD_BALANCE,
 			   &(unlang_op_t){
-				.name = "load-balance group",
+				.name = "load-balance",
 				.type = UNLANG_TYPE_LOAD_BALANCE,
 				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
 
+				.compile = unlang_compile_load_balance,
 				.interpret = unlang_load_balance,
 
 				.unlang_size = sizeof(unlang_load_balance_t),
@@ -261,10 +370,11 @@ void unlang_load_balance_init(void)
 
 	unlang_register(UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,
 			   &(unlang_op_t){
-				.name = "redundant-load-balance group",
+				.name = "redundant-load-balance",
 				.type = UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,	
 				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
 
+				.compile = unlang_compile_redundant_load_balance,
 				.interpret = unlang_redundant_load_balance,
 
 				.unlang_size = sizeof(unlang_load_balance_t),

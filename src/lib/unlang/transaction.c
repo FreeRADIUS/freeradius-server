@@ -134,6 +134,138 @@ fr_edit_list_t *unlang_interpret_edit_list(request_t *request)
 	return NULL;
 }
 
+static fr_table_num_sorted_t transaction_keywords[] = {
+	{ L("case"),		1 },
+	{ L("else"),		1 },
+	{ L("elsif"),		1 },
+	{ L("foreach"),		1 },
+	{ L("group"),		1 },
+	{ L("if"),		1 },
+	{ L("limit"),		1 },
+	{ L("load-balance"),	1 },
+	{ L("redundant"), 	1 },
+	{ L("redundant-load-balance"), 1 },
+	{ L("switch"),		1 },
+	{ L("timeout"),		1 },
+	{ L("transaction"),	1 },
+};
+static int transaction_keywords_len = NUM_ELEMENTS(transaction_keywords);
+
+/** Limit the operations which can appear in a transaction.
+ */
+static bool transaction_ok(CONF_SECTION *cs)
+{
+	CONF_ITEM *ci = NULL;
+
+	while ((ci = cf_item_next(cs, ci)) != NULL) {
+		char const *name;
+
+		if (cf_item_is_section(ci)) {
+			CONF_SECTION *subcs;
+
+			subcs = cf_item_to_section(ci);
+			name = cf_section_name1(subcs);
+
+			if (strcmp(name, "actions") == 0) continue;
+
+			/*
+			 *	Definitely an attribute editing thing.
+			 */
+			if (*name == '&') continue;
+
+			if (fr_list_assignment_op[cf_section_name2_quote(cs)]) continue;
+
+			if (fr_table_value_by_str(transaction_keywords, name, -1) < 0) {
+				cf_log_err(ci, "Invalid keyword in 'transaction'");
+				return false;
+			}
+
+			if (!transaction_ok(subcs)) return false;
+
+			continue;
+
+		} else if (cf_item_is_pair(ci)) {
+			CONF_PAIR *cp;
+
+			cp = cf_item_to_pair(ci);
+			name = cf_pair_attr(cp);
+
+			/*
+			 *	If there's a value then it's not a module call.
+			 */
+			if (cf_pair_value(cp)) continue;
+
+			if (*name == '&') continue;
+
+			/*
+			 *	Allow rcodes via the "always" module.
+			 */
+			if (fr_table_value_by_str(mod_rcode_table, name, -1) >= 0) {
+				continue;
+			}
+
+			cf_log_err(ci, "Invalid module reference in 'transaction'");
+			return false;
+
+		} else {
+			continue;
+		}
+	}
+
+	return true;
+}
+
+static unlang_t *unlang_compile_transaction(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	CONF_SECTION *cs = cf_item_to_section(ci);
+	unlang_group_t *g;
+	unlang_t *c;
+	unlang_compile_ctx_t unlang_ctx2;
+
+	if (cf_section_name2(cs) != NULL) {
+		cf_log_err(cs, "Unexpected argument to 'transaction' section");
+		cf_log_err(ci, DOC_KEYWORD_REF(transaction));
+		return NULL;
+	}
+
+	/*
+	 *	The transaction is empty, ignore it.
+	 */
+	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
+
+	if (!transaction_ok(cs)) return NULL;
+
+	/*
+	 *	Any failure is return, not continue.
+	 */
+	unlang_compile_ctx_copy(&unlang_ctx2, unlang_ctx);
+
+	unlang_ctx2.actions.actions[RLM_MODULE_REJECT] = MOD_ACTION_RETURN;
+	unlang_ctx2.actions.actions[RLM_MODULE_FAIL] = MOD_ACTION_RETURN;
+	unlang_ctx2.actions.actions[RLM_MODULE_INVALID] = MOD_ACTION_RETURN;
+	unlang_ctx2.actions.actions[RLM_MODULE_DISALLOW] = MOD_ACTION_RETURN;
+
+	g = unlang_group_allocate(parent, cs, UNLANG_TYPE_TRANSACTION);
+	if (!g) return NULL;
+
+	c = unlang_group_to_generic(g);
+	c->debug_name = c->name = cf_section_name1(cs);
+
+	if (!unlang_compile_children(g, &unlang_ctx2, false)) return NULL;
+
+	/*
+	 *	The default for a failed transaction is to continue on
+	 *	failure.
+	 */
+	if (!c->actions.actions[RLM_MODULE_FAIL])     c->actions.actions[RLM_MODULE_FAIL] = 1;
+	if (!c->actions.actions[RLM_MODULE_INVALID])  c->actions.actions[RLM_MODULE_INVALID] = 1;
+	if (!c->actions.actions[RLM_MODULE_DISALLOW]) c->actions.actions[RLM_MODULE_DISALLOW] = 1;
+
+	unlang_compile_action_defaults(c, unlang_ctx); /* why is this here???? */
+
+	return c;
+}
+
 void unlang_transaction_init(void)
 {
 	unlang_register(UNLANG_TYPE_TRANSACTION,
@@ -142,6 +274,7 @@ void unlang_transaction_init(void)
 				.type = UNLANG_TYPE_TRANSACTION,
 				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
+				.compile = unlang_compile_transaction,
 				.interpret = unlang_transaction,
 				.signal = unlang_transaction_signal,
 

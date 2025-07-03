@@ -112,6 +112,157 @@ static unlang_action_t unlang_if(unlang_result_t *p_result, request_t *request, 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
+
+static const fr_sbuff_term_t if_terminals = FR_SBUFF_TERMS(
+	L(""),
+	L("{"),
+);
+
+static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_SECTION *cs, unlang_type_t type)
+{
+	unlang_t		*c;
+
+	unlang_group_t		*g;
+	unlang_cond_t		*gext;
+	CONF_ITEM		*ci;
+
+	xlat_exp_head_t		*head = NULL;
+	bool			is_truthy = false, value = false;
+	xlat_res_rules_t	xr_rules = {
+		.tr_rules = &(tmpl_res_rules_t) {
+			.dict_def = unlang_ctx->rules->attr.dict_def,
+		},
+	};
+
+	if (!cf_section_name2(cs)) {
+		cf_log_err(cs, "'%s' without condition", unlang_ops[type].name);
+		return NULL;
+	}
+
+	/*
+	 *	Migration support.
+	 */
+	{
+		char const *name2 = cf_section_name2(cs);
+		ssize_t slen;
+
+		tmpl_rules_t t_rules = (tmpl_rules_t) {
+			.parent = unlang_ctx->rules->parent,
+			.attr = {
+				.dict_def = xr_rules.tr_rules->dict_def,
+				.list_def = request_attr_request,
+				.allow_unresolved = false,
+				.allow_unknown = false,
+				.allow_wildcard = true,
+		},
+			.literals_safe_for = unlang_ctx->rules->literals_safe_for,
+		};
+
+		fr_sbuff_parse_rules_t p_rules = { };
+
+		p_rules.terminals = &if_terminals;
+
+		slen = xlat_tokenize_condition(cs, &head, &FR_SBUFF_IN(name2, strlen(name2)), &p_rules, &t_rules);
+		if (slen == 0) {
+			cf_canonicalize_error(cs, slen, "Empty conditions are invalid", name2);
+			return NULL;
+		}
+
+		if (slen < 0) {
+			slen++;	/* fr_slen_t vs ssize_t */
+			cf_canonicalize_error(cs, slen, "Failed parsing condition", name2);
+			return NULL;
+		}
+
+		/*
+		 *	Resolve the xlat first.
+		 */
+		if (xlat_resolve(head, &xr_rules) < 0) {
+			cf_log_err(cs, "Failed resolving condition - %s", fr_strerror());
+			return NULL;
+		}
+
+		fr_assert(!xlat_needs_resolving(head));
+
+		is_truthy = xlat_is_truthy(head, &value);
+
+		/*
+		 *	If the condition is always false, we don't compile the
+		 *	children.
+		 */
+		if (is_truthy && !value) {
+			cf_log_debug_prefix(cs, "Skipping contents of '%s' as it is always 'false'",
+					    unlang_ops[type].name);
+
+			/*
+			 *	Free the children, which frees any xlats,
+			 *	conditions, etc. which were defined, but are
+			 *	now entirely unused.
+			 *
+			 *	However, we still need to cache the conditions, as they will be accessed at run-time.
+			 */
+			c = unlang_compile_empty(parent, unlang_ctx, cs, type);
+			cf_section_free_children(cs);
+		} else {
+			c = unlang_compile_section(parent, unlang_ctx, cs, type);
+		}
+	}
+
+	if (!c) return NULL;
+	fr_assert(c != UNLANG_IGNORE);
+
+	g = unlang_generic_to_group(c);
+	gext = unlang_group_to_cond(g);
+
+	gext->head = head;
+	gext->is_truthy = is_truthy;
+	gext->value = value;
+
+	ci = cf_section_to_item(cs);
+	while ((ci = cf_item_next(parent->ci, ci)) != NULL) {
+		if (cf_item_is_data(ci)) continue;
+
+		break;
+	}
+
+	/*
+	 *	If there's an 'if' without an 'else', then remember that.
+	 */
+	if (ci && cf_item_is_section(ci)) {
+		char const *name;
+
+		name = cf_section_name1(cf_item_to_section(ci));
+		fr_assert(name != NULL);
+
+		gext->has_else = (strcmp(name, "else") == 0) || (strcmp(name, "elsif") == 0);
+	}
+
+	return c;
+}
+
+static unlang_t *unlang_compile_if(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	return compile_if_subsection(parent, unlang_ctx, cf_item_to_section(ci), UNLANG_TYPE_IF);
+}
+
+static unlang_t *unlang_compile_elsif(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	return compile_if_subsection(parent, unlang_ctx, cf_item_to_section(ci), UNLANG_TYPE_ELSIF);
+}
+
+static unlang_t *unlang_compile_else(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	CONF_SECTION *cs = cf_item_to_section(ci);
+
+	if (cf_section_name2(cs)) {
+		cf_log_err(cs, "'else' cannot have a condition");
+		return NULL;
+	}
+
+	return unlang_compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_ELSE);
+}
+
+
 void unlang_condition_init(void)
 {
 	unlang_register(UNLANG_TYPE_IF,
@@ -120,6 +271,7 @@ void unlang_condition_init(void)
 				.type = UNLANG_TYPE_IF,
 				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
+				.compile = unlang_compile_if,
 				.interpret = unlang_if,
 
 				.unlang_size = sizeof(unlang_cond_t),
@@ -137,6 +289,7 @@ void unlang_condition_init(void)
 				.type = UNLANG_TYPE_ELSE,
 				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
+				.compile = unlang_compile_else,
 				.interpret = unlang_group,
 
 				.unlang_size = sizeof(unlang_group_t),
@@ -145,10 +298,11 @@ void unlang_condition_init(void)
 
 	unlang_register(UNLANG_TYPE_ELSIF,
 			   &(unlang_op_t){
-				.name = "elseif",
+				.name = "elsif",
 				.type = UNLANG_TYPE_ELSIF,
 				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
+				.compile = unlang_compile_elsif,
 				.interpret = unlang_if,
 
 				.unlang_size = sizeof(unlang_cond_t),

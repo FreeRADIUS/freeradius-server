@@ -377,6 +377,61 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 	return UNLANG_ACTION_YIELD;
 }
 
+static unlang_t *unlang_compile_parallel(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	CONF_SECTION			*cs = cf_item_to_section(ci);
+	unlang_t			*c;
+	char const			*name2;
+
+	unlang_group_t			*g;
+	unlang_parallel_t		*gext;
+
+	bool				clone = true;
+	bool				detach = false;
+
+	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
+
+	/*
+	 *	Parallel sections can create empty children, if the
+	 *	admin demands it.  Otherwise, the principle of least
+	 *	surprise is to copy the whole request, reply, and
+	 *	config items.
+	 */
+	name2 = cf_section_name2(cs);
+	if (name2) {
+		if (strcmp(name2, "empty") == 0) {
+			clone = false;
+
+		} else if (strcmp(name2, "detach") == 0) {
+			detach = true;
+
+		} else {
+			cf_log_err(cs, "Invalid argument '%s'", name2);
+			cf_log_err(ci, DOC_KEYWORD_REF(parallel));
+			return NULL;
+		}
+
+	}
+
+	/*
+	 *	We can do "if" in parallel with other "if", but we
+	 *	cannot do "else" in parallel with "if".
+	 */
+	if (!unlang_compile_limit_subsection(cs, cf_section_name1(cs))) {
+		return NULL;
+	}
+
+	c = unlang_compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_PARALLEL);
+	if (!c) return NULL;
+
+	g = unlang_generic_to_group(c);
+	gext = unlang_group_to_parallel(g);
+	gext->clone = clone;
+	gext->detach = detach;
+
+	return c;
+}
+
 void unlang_parallel_init(void)
 {
 	unlang_register(UNLANG_TYPE_PARALLEL,
@@ -385,6 +440,7 @@ void unlang_parallel_init(void)
 				.type = UNLANG_TYPE_PARALLEL,	
 				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_NO_FORCE_UNWIND,
 
+				.compile = unlang_compile_parallel,
 				.interpret = unlang_parallel,
 				.signal = unlang_parallel_signal,
 

@@ -42,6 +42,8 @@ bool unlang_section(CONF_SECTION *cs)
 	return (cf_data_find(cs, unlang_group_t, NULL) != NULL);
 }
 
+fr_hash_table_t *unlang_op_table = NULL;
+
 /** Register an operation with the interpreter
  *
  * The main purpose of this registration API is to avoid intermixing the xlat,
@@ -63,15 +65,42 @@ bool unlang_section(CONF_SECTION *cs)
 void unlang_register(int type, unlang_op_t *op)
 {
 	fr_assert(type < UNLANG_TYPE_MAX);	/* Unlang max isn't a valid type */
+	fr_assert(unlang_op_table != NULL);
+	fr_assert(op->type == (unlang_type_t) type);
 
 	memcpy(&unlang_ops[type], op, sizeof(unlang_ops[type]));
+
+	/*
+	 *	Some instruction types are internal, and are not real keywords.
+	 */
+	if ((op->flag & UNLANG_OP_FLAG_INTERNAL) != 0) return;
+
+	MEM(fr_hash_table_insert(unlang_op_table, &unlang_ops[type]));
 }
 
 static TALLOC_CTX *unlang_ctx = NULL;
 
+static uint32_t op_hash(void const *data)
+{
+	unlang_op_t const *a = data;
+
+	return fr_hash_string(a->name);
+}
+
+static int8_t op_cmp(void const *one, void const *two)
+{
+	unlang_op_t const *a = one;
+	unlang_op_t const *b = two;
+
+	ERROR("CMP ::%s:: ::%s::", a->name, b->name);
+
+	return CMP(strcmp(a->name, b->name), 0);
+}
+
 static int _unlang_global_free(UNUSED void *uctx)
 {
 	TALLOC_FREE(unlang_ctx);
+	unlang_op_table = NULL;
 
 	return 0;
 }
@@ -80,6 +109,9 @@ static int _unlang_global_init(UNUSED void *uctx)
 {
 	unlang_ctx = talloc_init("unlang");
 	if (!unlang_ctx) return -1;
+
+	unlang_op_table = fr_hash_table_alloc(unlang_ctx, op_hash, op_cmp, NULL);
+	if (!unlang_op_table) goto fail;
 
 	/*
 	 *	Explicitly initialise the xlat tree, and perform dictionary lookups.

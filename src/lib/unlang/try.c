@@ -40,6 +40,47 @@ static unlang_action_t unlang_try(UNUSED unlang_result_t *p_result, request_t *r
 	return unlang_interpret_push_children(NULL, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
+static unlang_t *unlang_compile_try(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	CONF_SECTION *cs = cf_item_to_section(ci);
+	unlang_group_t *g;
+	unlang_t *c;
+	CONF_ITEM *next;
+
+	/*
+	 *	The transaction is empty, ignore it.
+	 */
+	if (!cf_item_next(cs, NULL)) {
+		cf_log_err(cs, "'try' sections cannot be empty");
+	print_url:
+		cf_log_err(ci, DOC_KEYWORD_REF(try));
+		return NULL;
+	}
+
+	if (cf_section_name2(cs) != NULL) {
+		cf_log_err(cs, "Unexpected argument to 'try' section");
+		goto print_url;
+	}
+
+	next = cf_item_next(cf_parent(cs), ci);
+	while (next && cf_item_is_data(next)) next = cf_item_next(cf_parent(cs), next);
+
+	if (!next || !cf_item_is_section(next) ||
+	    (strcmp(cf_section_name1(cf_item_to_section(next)), "catch") != 0)) {
+		cf_log_err(cs, "'try' sections must be followed by a 'catch'");
+		goto print_url;
+	}
+
+	g = unlang_group_allocate(parent, cs, UNLANG_TYPE_TRY);
+	if (!g) return NULL;
+
+	c = unlang_group_to_generic(g);
+	c->debug_name = c->name = cf_section_name1(cs);
+
+	return unlang_compile_children(g, unlang_ctx, true);
+}
+
+
 void unlang_try_init(void)
 {
 	unlang_register(UNLANG_TYPE_TRY,
@@ -48,6 +89,7 @@ void unlang_try_init(void)
 				.type = UNLANG_TYPE_TRY,
 				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
+				.compile = unlang_compile_try,
 				.interpret = unlang_try,
 
 				.unlang_size = sizeof(unlang_try_t),

@@ -1763,7 +1763,11 @@ void unlang_edit_init(void)
 	unlang_register(UNLANG_TYPE_EDIT,
 			   &(unlang_op_t){
 				.name = "edit",
+				.type = UNLANG_TYPE_EDIT,
+				.flag = UNLANG_OP_FLAG_INTERNAL,
+
 				.interpret = unlang_edit_state_init,
+
 				.frame_state_size = sizeof(unlang_frame_state_edit_t),
 				.frame_state_type = "unlang_frame_state_edit_t",
 			   });

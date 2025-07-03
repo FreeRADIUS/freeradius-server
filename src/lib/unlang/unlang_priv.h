@@ -203,6 +203,89 @@ typedef void (*unlang_dump_t)(request_t *request, unlang_stack_frame_t *frame);
 
 typedef int (*unlang_thread_instantiate_t)(unlang_t const *instruction, void *thread_inst);
 
+typedef struct {
+	virtual_server_t const		*vs;			//!< Virtual server we're compiling in the context of.
+								///< This shouldn't change during the compilation of
+								///< a single unlang section.
+	char const			*section_name1;
+	char const			*section_name2;
+	unlang_mod_actions_t		actions;
+	tmpl_rules_t const		*rules;
+} unlang_compile_ctx_t;
+
+typedef unlang_t *(*unlang_compile_t)(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci);
+
+#define UNLANG_IGNORE ((unlang_t *) -1)
+
+unlang_t *unlang_compile_empty(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_SECTION *cs, unlang_type_t type);
+
+unlang_t *unlang_compile_section(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_SECTION *cs, unlang_type_t type);
+
+unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlang_ctx_in, bool set_action_defaults);
+
+unlang_group_t *unlang_group_allocate(unlang_t *parent, CONF_SECTION *cs, unlang_type_t type);
+
+int unlang_define_local_variable(CONF_ITEM *ci, unlang_variable_t *var, tmpl_rules_t *t_rules, fr_type_t type, char const *name,
+				 fr_dict_attr_t const *ref);
+
+bool unlang_compile_limit_subsection(CONF_SECTION *cs, char const *name);
+
+/*
+ *	@todo - arguably this should be part of the core compiler, and
+ *	never called by any keyword.
+ */
+void unlang_compile_action_defaults(unlang_t *c, unlang_compile_ctx_t *unlang_ctx);
+
+/*
+ *	@todo - These functions should be made private once all of they keywords have been moved to foo(args) syntax.
+ */
+bool pass2_fixup_tmpl(UNUSED TALLOC_CTX *ctx, tmpl_t **vpt_p, CONF_ITEM const *ci, fr_dict_t const *dict);
+bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_t const *parent);
+bool pass2_fixup_update(unlang_group_t *g, tmpl_rules_t const *rules);
+bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules);
+
+/*
+ *	When we switch to a new unlang ctx, we use the new component
+ *	name and number, but we use the CURRENT actions.
+ */
+static inline CC_HINT(always_inline)
+void unlang_compile_ctx_copy(unlang_compile_ctx_t *dst, unlang_compile_ctx_t const *src)
+{
+	int i;
+
+	*dst = *src;
+
+	/*
+	 *	Ensure that none of the actions are RETRY.
+	 */
+	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+		if (dst->actions.actions[i] == MOD_ACTION_RETRY) dst->actions.actions[i] = MOD_PRIORITY_MIN;
+	}
+	memset(&dst->actions.retry, 0, sizeof(dst->actions.retry)); \
+}
+
+
+#ifndef NDEBUG
+static inline CC_HINT(always_inline) int unlang_attr_rules_verify(tmpl_attr_rules_t const *rules)
+{
+	if (!fr_cond_assert_msg(rules->dict_def, "No protocol dictionary set")) return -1;
+	if (!fr_cond_assert_msg(rules->dict_def != fr_dict_internal(), "rules->attr.dict_def must not be the internal dictionary")) return -1;
+	if (!fr_cond_assert_msg(!rules->allow_foreign, "rules->attr.allow_foreign must be false")) return -1;
+
+	return 0;
+}
+
+static inline CC_HINT(always_inline) int unlang_rules_verify(tmpl_rules_t const *rules)
+{
+	if (!fr_cond_assert_msg(!rules->at_runtime, "rules->at_runtime must be false")) return -1;
+	return unlang_attr_rules_verify(&rules->attr);
+}
+
+#define RULES_VERIFY(_rules) do { if (unlang_rules_verify(_rules) < 0) return NULL; } while (0)
+#else
+#define RULES_VERIFY(_rules)
+#endif
+
 DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
 	UNLANG_OP_FLAG_NONE			= 0x00,			//!< No flags.
@@ -216,7 +299,11 @@ typedef enum CC_HINT(flag_enum) {
 									///< is desired, but can be ignored.
 	UNLANG_OP_FLAG_BREAK_POINT		= 0x08,			//!< Break point.
 	UNLANG_OP_FLAG_RETURN_POINT		= 0x10,			//!< Return point.
-	UNLANG_OP_FLAG_CONTINUE_POINT		= 0x20			//!< Continue point.
+	UNLANG_OP_FLAG_CONTINUE_POINT		= 0x20,			//!< Continue point.
+
+	UNLANG_OP_FLAG_SINGLE_WORD		= 0x1000,		//!< the operation is parsed and compiled as a single word
+	UNLANG_OP_FLAG_INTERNAL			= 0x2000,		//!< it's not a real keyword
+
 } unlang_op_flag_t;
 DIAG_ON(attributes)
 
@@ -228,6 +315,8 @@ DIAG_ON(attributes)
 typedef struct {
 	char const		*name;				//!< Name of the keyword
 	unlang_type_t		type;				//!< enum value for the keyword
+
+	unlang_compile_t	compile;			//!< compile the keyword
 
 	unlang_process_t	interpret;     			//!< Function to interpret the keyword
 
@@ -246,7 +335,7 @@ typedef struct {
 	size_t			thread_inst_size;
 	char const		*thread_inst_type;
 
-	unlang_op_flag_t	flag;				//!< Flags for this operation.
+	unlang_op_flag_t	flag;				//!< Interpreter flags for this operation.
 
 	size_t			frame_state_size;       	//!< size of instance data in the stack frame
 
@@ -376,6 +465,7 @@ typedef struct {
 /** Different operations the interpreter can execute
  */
 extern unlang_op_t unlang_ops[];
+extern fr_hash_table_t *unlang_op_table;
 
 #define MOD_NUM_TYPES (UNLANG_TYPE_XLAT + 1)
 

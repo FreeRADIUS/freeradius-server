@@ -281,8 +281,8 @@ int unlang_child_request_op_init(void)
 	unlang_register(UNLANG_TYPE_CHILD_REQUEST,
 			&(unlang_op_t){
 				.name = "child-request",
-				.interpret = unlang_child_request_done,
-				.signal = unlang_child_request_signal,
+				.type = UNLANG_TYPE_CHILD_REQUEST,
+
 				/*
 				 *	Frame can't be cancelled, because children need to
 				 *	write out status to the parent.  If we don't do this,
@@ -294,7 +294,11 @@ int unlang_child_request_op_init(void)
 				 *	to end normally so that non-detachable requests are
 				 *	guaranteed the parent still exists.
 				 */
-				.flag = UNLANG_OP_FLAG_NO_FORCE_UNWIND,
+				.flag = UNLANG_OP_FLAG_NO_FORCE_UNWIND | UNLANG_OP_FLAG_INTERNAL,
+
+				.interpret = unlang_child_request_done,
+				.signal = unlang_child_request_signal,
+
 				.frame_state_size = sizeof(unlang_frame_state_child_request_t),
 				.frame_state_type = "unlang_frame_state_child_request_t"
 			});

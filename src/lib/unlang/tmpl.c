@@ -330,8 +330,12 @@ void unlang_tmpl_init(void)
 	unlang_register(UNLANG_TYPE_TMPL,
 			   &(unlang_op_t){
 				.name = "tmpl",
+				.type = UNLANG_TYPE_TMPL,
+				.flag = UNLANG_OP_FLAG_INTERNAL,
+
 				.interpret = unlang_tmpl,
 				.signal = unlang_tmpl_signal,
+
 				.frame_state_size = sizeof(unlang_frame_state_tmpl_t),
 				.frame_state_type = "unlang_frame_state_tmpl_t",
 			   });

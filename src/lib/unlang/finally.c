@@ -188,8 +188,17 @@ void unlang_finally_init(void)
 	unlang_register(UNLANG_TYPE_FINALLY,
 			&(unlang_op_t){
 				.name = "finally",
+				.type = UNLANG_TYPE_FINALLY,
+
 				.interpret = unlang_finally,
-				.flag = UNLANG_OP_FLAG_NO_FORCE_UNWIND,	/* No debug braces, the thing that's pushed in unlang finally should have braces */
+
+				/*
+				  *	No debug braces, the thing
+				  *	that's pushed in unlang
+				  *	finally should have braces
+				  */
+				.flag = UNLANG_OP_FLAG_NO_FORCE_UNWIND | UNLANG_OP_FLAG_INTERNAL,
+
 				.frame_state_size = sizeof(unlang_frame_state_finally_t),
 				.frame_state_type = "unlang_frame_state_finally_t",
 			});

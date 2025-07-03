@@ -246,6 +246,81 @@ CONF_SECTION *unlang_call_current(request_t *request)
 	return NULL;
 }
 
+static unlang_t *unlang_compile_call(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	CONF_SECTION			*cs = cf_item_to_section(ci);
+	virtual_server_t const		*vs;
+	unlang_t			*c;
+
+	unlang_group_t			*g;
+	unlang_call_t			*gext;
+
+	fr_token_t			type;
+	char const     			*server;
+	CONF_SECTION			*server_cs;
+	fr_dict_t const			*dict;
+	fr_dict_attr_t const		*attr_packet_type;
+
+	server = cf_section_name2(cs);
+	if (!server) {
+		cf_log_err(cs, "You MUST specify a server name for 'call <server> { ... }'");
+	print_url:
+		cf_log_err(ci, DOC_KEYWORD_REF(call));
+		return NULL;
+	}
+
+	type = cf_section_name2_quote(cs);
+	if (type != T_BARE_WORD) {
+		cf_log_err(cs, "The arguments to 'call' cannot be a quoted string or a dynamic value");
+		goto print_url;
+	}
+
+	vs = virtual_server_find(server);
+	if (!vs) {
+		cf_log_err(cs, "Unknown virtual server '%s'", server);
+		return NULL;
+	}
+
+	server_cs = virtual_server_cs(vs);
+
+	/*
+	 *	The dictionaries are not compatible, forbid it.
+	 */
+	dict = virtual_server_dict_by_name(server);
+	if (!dict) {
+		cf_log_err(cs, "Cannot call virtual server '%s', failed retrieving its namespace",
+			   server);
+		return NULL;
+	}
+	if ((dict != fr_dict_internal()) && fr_dict_internal() &&
+	    unlang_ctx->rules->attr.dict_def && !fr_dict_compatible(unlang_ctx->rules->attr.dict_def, dict)) {
+		cf_log_err(cs, "Cannot call server %s with namespace '%s' from namespaces '%s' - they have incompatible protocols",
+			   server, fr_dict_root(dict)->name, fr_dict_root(unlang_ctx->rules->attr.dict_def)->name);
+		return NULL;
+	}
+
+	attr_packet_type = fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
+	if (!attr_packet_type) {
+		cf_log_err(cs, "Cannot call server %s with namespace '%s' - it has no Packet-Type attribute",
+			   server, fr_dict_root(dict)->name);
+		return NULL;
+	}
+
+	c = unlang_compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_CALL);
+	if (!c) return NULL;
+
+	/*
+	 *	Set the virtual server name, which tells unlang_call()
+	 *	which virtual server to call.
+	 */
+	g = unlang_generic_to_group(c);
+	gext = unlang_group_to_call(g);
+	gext->server_cs = server_cs;
+	gext->attr_packet_type = attr_packet_type;
+
+	return c;
+}
+
 void unlang_call_init(void)
 {
 	unlang_register(UNLANG_TYPE_CALL,
@@ -254,6 +329,7 @@ void unlang_call_init(void)
 				.flag		= UNLANG_OP_FLAG_RCODE_SET | UNLANG_OP_FLAG_DEBUG_BRACES,
 				.type		= UNLANG_TYPE_CALL,
 
+				.compile	= unlang_compile_call,
 				.interpret	= unlang_call_frame_init,
 
 

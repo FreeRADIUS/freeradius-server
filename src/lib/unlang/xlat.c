@@ -823,10 +823,14 @@ void unlang_xlat_init(void)
 {
 	unlang_register(UNLANG_TYPE_XLAT,
 			   &(unlang_op_t){
-				.name = "xlat_eval",
+				.name = "xlat",
+				.type = UNLANG_TYPE_XLAT,
+				.flag = UNLANG_OP_FLAG_INTERNAL,
+
 				.interpret = unlang_xlat,
 				.signal = unlang_xlat_signal,
 				.dump = unlang_xlat_dump,
+
 				.frame_state_size = sizeof(unlang_frame_state_xlat_t),
 				.frame_state_type = "unlang_frame_state_xlat_t",
 			   });

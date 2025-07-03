@@ -46,13 +46,34 @@ unlang_action_t unlang_return(unlang_result_t *p_result, request_t *request, unl
 	return unwind_to_op_flag(NULL, request->stack, UNLANG_OP_FLAG_RETURN_POINT);
 }
 
+static unlang_t *unlang_compile_return(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, UNUSED CONF_ITEM const *ci)
+{
+	/*
+	 *	These types are all parallel, and therefore can have a "return" in them.
+	 */
+	switch (parent->type) {
+	case UNLANG_TYPE_LOAD_BALANCE:
+	case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
+	case UNLANG_TYPE_PARALLEL:
+		break;
+
+	default:
+		parent->closed = true;
+		break;
+	}
+
+	return unlang_compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_RETURN);
+}
+
 void unlang_return_init(void)
 {
 	unlang_register(UNLANG_TYPE_RETURN,
 			   &(unlang_op_t){
 				.name = "return",
 				.type = UNLANG_TYPE_RETURN,
+				.flag = UNLANG_OP_FLAG_SINGLE_WORD,
 
+				.compile = unlang_compile_return,
 				.interpret = unlang_return,
 
 				.unlang_size = sizeof(unlang_group_t),

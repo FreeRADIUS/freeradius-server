@@ -48,6 +48,34 @@ static unlang_action_t unlang_detach(unlang_result_t *p_result, request_t *reque
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
+static unlang_t *unlang_compile_detach(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	unlang_t *subrequest;
+
+	for (subrequest = parent;
+	     subrequest != NULL;
+	     subrequest = subrequest->parent) {
+		if (subrequest->type == UNLANG_TYPE_SUBREQUEST) break;
+	}
+
+	if (!subrequest) {
+		cf_log_err(ci, "'detach' can only be used inside of a 'subrequest' section.");
+		cf_log_err(ci, DOC_KEYWORD_REF(detach));
+		return NULL;
+	}
+
+	/*
+	 *	This really overloads the functionality of
+	 *	cf_item_next().
+	 */
+	if ((parent == subrequest) && !cf_item_next(ci, ci)) {
+		cf_log_err(ci, "'detach' cannot be used as the last entry in a section, as there is nothing more to do");
+		return NULL;
+	}
+
+	return unlang_compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_DETACH);
+}
+
 /** Initialise subrequest ops
  *
  */
@@ -57,7 +85,9 @@ void unlang_detach_init(void)
 			&(unlang_op_t){
 				.name = "detach",
 				.type = UNLANG_TYPE_DETACH,
+				.flag = UNLANG_OP_FLAG_SINGLE_WORD,
 
+				.compile = unlang_compile_detach,
 				.interpret = unlang_detach,
 
 				.unlang_size = sizeof(unlang_group_t),

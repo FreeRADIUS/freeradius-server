@@ -99,6 +99,100 @@ unlang_action_t unlang_interpret_skip_to_catch(UNUSED unlang_result_t *p_result,
 	return frame_set_next(frame, unlang);
 }
 
+static int catch_argv(CONF_SECTION *cs, unlang_catch_t *ca, char const *name)
+{
+	int rcode;
+
+	rcode = fr_table_value_by_str(mod_rcode_table, name, -1);
+	if (rcode < 0) {
+		cf_log_err(cs, "Unknown rcode '%s'.", name);
+		return -1;
+	}
+
+	if (ca->catching[rcode]) {
+		cf_log_err(cs, "Duplicate rcode '%s'.", name);
+		return -1;
+	}
+
+	ca->catching[rcode] = true;
+
+	return 0;
+}
+
+static unlang_t *unlang_compile_catch(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	CONF_SECTION *cs = cf_item_to_section(ci);
+	unlang_group_t *g;
+	unlang_t *c;
+	unlang_catch_t *ca;
+	CONF_ITEM *prev;
+	char const *name;
+
+	prev = cf_item_prev(cf_parent(ci), ci);
+	while (prev && cf_item_is_data(prev)) prev = cf_item_prev(cf_parent(ci), prev);
+
+	if (!prev || !cf_item_is_section(prev)) {
+	fail:
+		cf_log_err(cs, "Found 'catch' section with no previous 'try'");
+		cf_log_err(ci, DOC_KEYWORD_REF(catch));
+		return NULL;
+	}
+
+	name = cf_section_name1(cf_item_to_section(prev));
+	fr_assert(name != NULL);
+
+	if ((strcmp(name, "try") != 0) && (strcmp(name, "catch") != 0)) {
+		/*
+		 *	The previous thing has to be a section.  And it has to
+		 *	be either a "try" or a "catch".
+		 */
+		goto fail;
+	}
+
+	g = unlang_group_allocate(parent, cs, UNLANG_TYPE_CATCH);
+	if (!g) return NULL;
+
+	c = unlang_group_to_generic(g);
+
+	/*
+	 *	Want to log what we caught
+	 */
+	c->debug_name = c->name = talloc_typed_asprintf(c, "%s %s", cf_section_name1(cs), cf_section_name2(cs));
+
+	ca = unlang_group_to_catch(g);
+	if (!cf_section_name2(cs)) {
+		/*
+		 *	No arg2: catch errors
+		 */
+		ca->catching[RLM_MODULE_REJECT] = true;
+		ca->catching[RLM_MODULE_FAIL] = true;
+		ca->catching[RLM_MODULE_INVALID] = true;
+		ca->catching[RLM_MODULE_DISALLOW] = true;
+
+	} else {
+		int i;
+
+		name = cf_section_name2(cs);
+
+		if (catch_argv(cs, ca, name) < 0) {
+			talloc_free(c);
+			return NULL;
+		}
+
+		for (i = 0; (name = cf_section_argv(cs, i)) != NULL; i++) {
+			if (catch_argv(cs, ca, name) < 0) {
+				talloc_free(c);
+				return NULL;
+			}
+		}
+	}
+
+	/*
+	 *	@todo - Else parse and limit the things we catch
+	 */
+	return unlang_compile_children(g, unlang_ctx, true);
+}
+
 void unlang_catch_init(void)
 {
 	unlang_register(UNLANG_TYPE_CATCH,
@@ -107,6 +201,7 @@ void unlang_catch_init(void)
 				.type = UNLANG_TYPE_CATCH,
 				.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
+				.compile = unlang_compile_catch,
 				.interpret = unlang_catch,
 
 				.unlang_size = sizeof(unlang_catch_t),

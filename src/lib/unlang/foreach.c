@@ -547,6 +547,297 @@ static unlang_action_t unlang_continue(UNUSED unlang_result_t *p_result, request
 	return unwind_to_op_flag(NULL, stack, UNLANG_OP_FLAG_CONTINUE_POINT);
 }
 
+static unlang_t *unlang_compile_foreach(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	CONF_SECTION		*cs = cf_item_to_section(ci);
+	fr_token_t		token;
+	char const		*name2;
+	char const		*type_name, *variable_name;
+	fr_type_t		type;
+	unlang_t		*c;
+
+	fr_type_t		key_type;
+	char const		*key_name;
+
+	unlang_group_t		*g;
+	unlang_foreach_t	*gext;
+
+	ssize_t			slen;
+	tmpl_t			*vpt;
+	fr_dict_attr_t const	*da = NULL;
+
+	tmpl_rules_t		t_rules;
+	unlang_compile_ctx_t	unlang_ctx2;
+
+	/*
+	 *	Ignore empty "foreach" blocks, and don't even sanity check their arguments.
+	 */
+	if (!cf_item_next(cs, NULL)) {
+		return UNLANG_IGNORE;
+	}
+
+	/*
+	 *	We allow unknown attributes here.
+	 */
+	t_rules = *(unlang_ctx->rules);
+	t_rules.attr.allow_unknown = true;
+	t_rules.attr.allow_wildcard = true;
+	RULES_VERIFY(&t_rules);
+
+	name2 = cf_section_name2(cs);
+	fr_assert(name2 != NULL); /* checked in cf_file.c */
+
+	/*
+	 *	Allocate a group for the "foreach" block.
+	 */
+	g = unlang_group_allocate(parent, cs, UNLANG_TYPE_FOREACH);
+	if (!g) return NULL;
+
+	c = unlang_group_to_generic(g);
+
+	/*
+	 *	Create the template.  If we fail, AND it's a bare word
+	 *	with &Foo-Bar, it MAY be an attribute defined by a
+	 *	module.  Allow it for now.  The pass2 checks below
+	 *	will fix it up.
+	 */
+	token = cf_section_name2_quote(cs);
+	if (token != T_BARE_WORD) {
+		cf_log_err(cs, "Data being looped over in 'foreach' must be an attribute reference or dynamic expansion, not a string");
+	print_ref:
+		cf_log_err(ci, DOC_KEYWORD_REF(foreach));
+	error:
+		talloc_free(g);
+		return NULL;
+	}
+
+	slen = tmpl_afrom_substr(g, &vpt,
+				 &FR_SBUFF_IN(name2, strlen(name2)),
+				 token,
+				 NULL,
+				 &t_rules);
+	if (!vpt) {
+		cf_canonicalize_error(cs, slen, "Failed parsing argument to 'foreach'", name2);
+		goto error;
+	}
+
+	/*
+	 *	If we don't have a negative return code, we must have a vpt
+	 *	(mostly to quiet coverity).
+	 */
+	fr_assert(vpt);
+
+	if (tmpl_is_attr(vpt)) {
+		if (tmpl_attr_tail_num(vpt) == NUM_UNSPEC) {
+			cf_log_warn(cs, "Attribute reference should be updated to use %s[*]", vpt->name);
+			tmpl_attr_rewrite_leaf_num(vpt, NUM_ALL);
+		}
+
+		if (tmpl_attr_tail_num(vpt) != NUM_ALL) {
+			cf_log_err(cs, "Attribute references must be of the form ...%s[*]", tmpl_attr_tail_da(vpt)->name);
+			goto print_ref;
+		}
+
+	} else if (!tmpl_contains_xlat(vpt)) {
+		cf_log_err(cs, "Invalid content in 'foreach (...)', it must be an attribute reference or a dynamic expansion");
+		goto print_ref;
+	}
+
+	gext = unlang_group_to_foreach(g);
+	gext->vpt = vpt;
+
+	c->name = "foreach";
+	MEM(c->debug_name = talloc_typed_asprintf(c, "foreach %s", name2));
+
+	/*
+	 *	Copy over the compilation context.  This is mostly
+	 *	just to ensure that retry is handled correctly.
+	 *	i.e. reset.
+	 */
+	unlang_compile_ctx_copy(&unlang_ctx2, unlang_ctx);
+
+	/*
+	 *	Then over-write the new compilation context.
+	 */
+	unlang_ctx2.section_name1 = "foreach";
+	unlang_ctx2.section_name2 = name2;
+	unlang_ctx2.rules = &t_rules;
+	t_rules.parent = unlang_ctx->rules;
+
+	/*
+	 *	If we have "type name", then define a local variable of that name.
+	 */
+	type_name = cf_section_argv(cs, 0); /* AFTER name1, name2 */
+
+	key_name = cf_section_argv(cs, 2);
+	if (key_name) {
+		key_type = fr_table_value_by_str(fr_type_table, key_name, FR_TYPE_VOID);
+	} else {
+		key_type = FR_TYPE_VOID;
+	}
+	key_name = cf_section_argv(cs, 3);
+
+	if (tmpl_is_xlat(vpt)) {
+		if (!type_name) {
+			cf_log_err(cs, "Dynamic expansions MUST specify a data type for the variable");
+			goto print_ref;
+		}
+
+		type = fr_table_value_by_str(fr_type_table, type_name, FR_TYPE_VOID);
+
+		/*
+		 *	No data type was specified, see if we can get one from the function.
+		 */
+		if (type == FR_TYPE_NULL) {
+			type = xlat_data_type(tmpl_xlat(vpt));
+			if (fr_type_is_leaf(type)) goto get_name;
+
+			cf_log_err(cs, "Unable to determine return data type from dynamic expansion");
+			goto print_ref;
+		}
+
+		if (!fr_type_is_leaf(type)) {
+			cf_log_err(cs, "Dynamic expansions MUST specify a non-structural data type for the variable");
+			goto print_ref;
+		}
+
+		if ((key_type != FR_TYPE_VOID) && !fr_type_is_numeric(key_type)) {
+			cf_log_err(cs, "Invalid data type '%s' for 'key' variable - it should be numeric", fr_type_to_str(key_type));
+			goto print_ref;
+		}
+
+		goto get_name;
+	} else {
+		fr_assert(tmpl_is_attr(vpt));
+
+		if ((key_type != FR_TYPE_VOID) && (key_type != FR_TYPE_STRING) && (key_type != FR_TYPE_UINT32)) {
+			cf_log_err(cs, "Invalid data type '%s' for 'key' variable - it should be 'string' or 'uint32'", fr_type_to_str(key_type));
+			goto print_ref;
+		}
+	}
+
+	if (type_name) {
+		unlang_variable_t *var;
+
+		type = fr_table_value_by_str(fr_type_table, type_name, FR_TYPE_VOID);
+		fr_assert(type != FR_TYPE_VOID);
+
+		/*
+		 *	foreach string foo (&tlv-thing.[*]) { ... }
+		 */
+		if (tmpl_attr_tail_is_unspecified(vpt)) {
+			goto get_name;
+		}
+
+		da = tmpl_attr_tail_da(vpt);
+
+		if (type == FR_TYPE_NULL) {
+			type = da->type;
+
+		} else if (fr_type_is_leaf(type) != fr_type_is_leaf(da->type)) {
+		incompatible:
+			cf_log_err(cs, "Incompatible data types in foreach variable (%s), and reference %s being looped over (%s)",
+				   fr_type_to_str(type), da->name, fr_type_to_str(da->type));
+			goto print_ref;
+
+		} else if (fr_type_is_structural(type) && (type != da->type)) {
+			goto incompatible;
+		}
+
+	get_name:
+		variable_name = cf_section_argv(cs, 1);
+
+		/*
+		 *	Define the local variables.
+		 */
+		g->variables = var = talloc_zero(g, unlang_variable_t);
+		if (!var) goto error;
+
+		var->dict = fr_dict_protocol_alloc(unlang_ctx->rules->attr.dict_def);
+		if (!var->dict) goto error;
+
+		var->root = fr_dict_root(var->dict);
+
+		var->max_attr = 1;
+
+		if (unlang_define_local_variable(cf_section_to_item(cs), var, &t_rules, type, variable_name, da) < 0) goto error;
+
+		t_rules.attr.dict_def = var->dict;
+		t_rules.attr.namespace = NULL;
+
+		/*
+		 *	And ensure we have the key.
+		 */
+		gext->value = fr_dict_attr_by_name(NULL, var->root, variable_name);
+		fr_assert(gext->value != NULL);
+
+		/*
+		 *	Define the local key variable.  Note that we don't copy any children.
+		 */
+		if (key_type != FR_TYPE_VOID) {
+			if (unlang_define_local_variable(cf_section_to_item(cs), var, &t_rules, key_type, key_name, NULL) < 0) goto error;
+
+			gext->key = fr_dict_attr_by_name(NULL, var->root, key_name);
+			fr_assert(gext->key != NULL);
+		}
+	}
+
+	if (!unlang_compile_children(g, &unlang_ctx2, true)) return NULL;
+
+	return c;
+}
+
+
+static unlang_t *unlang_compile_break(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	unlang_t *unlang;
+
+	for (unlang = parent; unlang != NULL; unlang = unlang->parent) {
+		/*
+		 *	"break" doesn't go past a return point.
+		 */
+		if ((unlang_ops[unlang->type].flag & UNLANG_OP_FLAG_RETURN_POINT) != 0) goto error;
+
+		if ((unlang_ops[unlang->type].flag & UNLANG_OP_FLAG_BREAK_POINT) != 0) break;
+	}
+
+	if (!unlang) {
+	error:
+		cf_log_err(ci, "Invalid location for 'break' - it can only be used inside 'foreach' or 'switch'");
+		cf_log_err(ci, DOC_KEYWORD_REF(break));
+		return NULL;
+	}
+
+	parent->closed = true;
+
+	return unlang_compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_BREAK);
+}
+
+static unlang_t *unlang_compile_continue(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	unlang_t *unlang;
+
+	for (unlang = parent; unlang != NULL; unlang = unlang->parent) {
+		/*
+		 *	"continue" doesn't go past a return point.
+		 */
+		if ((unlang_ops[unlang->type].flag & UNLANG_OP_FLAG_RETURN_POINT) != 0) goto error;
+
+		if (unlang->type == UNLANG_TYPE_FOREACH) break;
+	}
+
+	if (!unlang) {
+	error:
+		cf_log_err(ci, "Invalid location for 'continue' - it can only be used inside 'foreach'");
+		cf_log_err(ci, DOC_KEYWORD_REF(break));
+		return NULL;
+	}
+
+	parent->closed = true;
+
+	return unlang_compile_empty(parent, unlang_ctx, NULL, UNLANG_TYPE_CONTINUE);
+}
+
 void unlang_foreach_init(void)
 {
 	unlang_register(UNLANG_TYPE_FOREACH,
@@ -555,6 +846,7 @@ void unlang_foreach_init(void)
 				.type = UNLANG_TYPE_FOREACH,
 				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_BREAK_POINT | UNLANG_OP_FLAG_CONTINUE_POINT,
 
+				.compile = unlang_compile_foreach,
 				.interpret = unlang_foreach,
 
 				.unlang_size = sizeof(unlang_foreach_t),
@@ -568,7 +860,9 @@ void unlang_foreach_init(void)
 			   &(unlang_op_t){
 				.name = "break",
 				.type = UNLANG_TYPE_BREAK,
-
+				.flag = UNLANG_OP_FLAG_SINGLE_WORD
+,
+				.compile = unlang_compile_break,
 				.interpret = unlang_break,
 
 				.unlang_size = sizeof(unlang_group_t),
@@ -579,7 +873,9 @@ void unlang_foreach_init(void)
 			   &(unlang_op_t){
 				.name = "continue",
 				.type = UNLANG_TYPE_CONTINUE,
+				.flag = UNLANG_OP_FLAG_SINGLE_WORD,
 
+				.compile = unlang_compile_continue,
 				.interpret = unlang_continue,
 
 				.unlang_size = sizeof(unlang_group_t),
