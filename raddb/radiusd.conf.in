@@ -29,15 +29,31 @@
 #		How to create certificates for EAP or RadSec.
 #
 #	Every configuration item in the server is documented
-#	extensively in the comments in the example configuration
-#	files.
+#	extensively in the comments of the configuration files.
+#
+#	Substantial documentation on AAA concepts, dictionaries,
+#	modules, unlang, etc. is also available on the FreeRADIUS web
+#	site:
+#
+#		https://www.freeradius.org/documentation/freeradius-server/v3.2.x/
+#
+#
+#	# Making Changes
 #
 #	Before editing this (or any other) configuration file, PLEASE
 #	read "man radiusd".  See the section titled DEBUGGING.  It
 #	outlines a method where you can quickly create the
 #	configuration you want, with minimal effort.
 #
-#	Run the server in debugging mode, and READ the output.
+#	Start with the default configuration.  Make one change.  Test it.
+#	Save a copy (`git commit` is your friend).  Make another change.
+#	test it.
+#
+#	Making ten changes at the same time will ALMOST ALWAYS break
+#	something.  Don't do that.
+#
+#	Every time you make a change, run the server in debugging
+#	mode, and READ the output.
 #
 #		$ radiusd -X
 #
@@ -53,6 +69,16 @@
 #	More documentation on "radiusd -X" is available on the wiki:
 #		https://wiki.freeradius.org/radiusd-X
 #
+#
+#	# Mailing list
+#
+#	Questions can be asked on the mailing list:
+#
+#		https://lists.freeradius.org/mailman/listinfo/freeradius-users
+#
+#	Questions do not belong on GitHub.  Any configuration question
+#	that is posted to GitHub will be deleted.
+#
 #	If you are going to ask a question on the mailing list, then
 #	explain what you are trying to do, and include the output from
 #	debugging mode (radiusd -X).  Failure to do so means that all
@@ -62,20 +88,27 @@
 #	Guidelines for posting to the mailing list are on the wiki:
 #		https://wiki.freeradius.org/list-help
 #
-#	Please read those guidelines before posting to the list.
+#	Please read those guidelines before posting to the list, which
+#	are largely:
 #
-#	Further documentation is available in the "doc" directory
-#	of the server distribution, or on the wiki at:
+#	Ask a good questions:
+#
+#		Good: "I changed file X from A to B, now it does ZZZ,
+# 		      and I expected it to do YYY instead"
+#
+#		Bad: "I changed some things, and now it doesn't work,
+#		      what's wrong?"
+#
+#	There is much documentation available in the "doc" directory
+#	of the server distribution.  The files there are used to build
+#	the documentation on the main freeradius.org site.
+#
+#	Older documentation is on the wiki.  However, due to spam, the
+#	Wiki is no longer editable.  We are working at moving the
+#	content from the Wiki to the main freeradius.org documentation
+#	page.
+#
 #		https://wiki.freeradius.org/
-#
-#	New users to RADIUS should read the Technical Guide.  That guide
-#	explains how RADIUS works, how FreeRADIUS works, and what each
-#	part of a RADIUS system does.  It is not just "configure FreeRADIUS"!
-#		https://networkradius.com/doc/FreeRADIUS-Technical-Guide.pdf
-#
-#	More documentation on dictionaries, modules, unlang, etc. is also
-#	available on the Network RADIUS web site:
-#		https://networkradius.com/freeradius-documentation/
 #
 
 ######################################################################
