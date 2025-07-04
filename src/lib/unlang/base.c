@@ -92,8 +92,6 @@ static int8_t op_cmp(void const *one, void const *two)
 	unlang_op_t const *a = one;
 	unlang_op_t const *b = two;
 
-	ERROR("CMP ::%s:: ::%s::", a->name, b->name);
-
 	return CMP(strcmp(a->name, b->name), 0);
 }
 

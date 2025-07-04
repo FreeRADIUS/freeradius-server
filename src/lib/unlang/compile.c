@@ -1948,7 +1948,6 @@ static inline CC_HINT(always_inline) unlang_op_t const *name_to_op(char const *n
 	op = fr_hash_table_find(unlang_op_table, &(unlang_op_t) { .name = name });
 	if (op) return op;
 
-	DEBUG("NOT KEYWORD ::%s::", name);
 	return NULL;
 }
 
