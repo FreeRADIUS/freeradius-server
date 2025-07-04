@@ -580,7 +580,7 @@ ldap {
 	#
 	#  For more details, see:
 	#
-	#	http://packages.networkradius.com
+	#	http://packages.inkbridgenetworks.com
 	#
 	tls {
 		# Set this to 'yes' to use TLS encrypted connections
