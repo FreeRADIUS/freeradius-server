@@ -6,10 +6,10 @@ FreeRADIUS to accept RADIUS over TLS requests.
 The following steps should be performed on the host which will be the
 RadSec server, we will call it `radsecsvr`.
 
-You can install FreeRADIUS using the NetworkRADIUS packages by
+You can install FreeRADIUS using the InkBridge Networks packages by
 following the instructions provided here:
 
-<https://networkradius.com/packages/>
+<https://inkbridgenetworks.com/packages/>
 
 Before making any configuration changes, you should stop the radiusd
 service:

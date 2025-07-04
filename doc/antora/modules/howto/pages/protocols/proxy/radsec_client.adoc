@@ -10,10 +10,10 @@ will call `radseccli`.  This system should be a new system, with a
 different IP address.  That is, you shoudl not edit the configuration
 on the `radsecsvr` host.  Doing so will break the RadSec configuration.
 
-Install FreeRADIUS using the NetworkRADIUS packages by following the
+Install FreeRADIUS using the InkBridge Networks packages by following the
 instructions provided here:
 
-<https://networkradius.com/packages/>
+<https://inkbridgenetworks.com/packages/>
 
 Before making any configuration changes, you should stop the radiusd
 service:
