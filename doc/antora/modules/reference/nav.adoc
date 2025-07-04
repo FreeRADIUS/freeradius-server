@@ -1,0 +1,12 @@
+* xref:index.adoc[Reference Documentation]
+** https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/unlang/index.html[Unlang Policy Language]
+** https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/type/index.html[Data Types]
+** https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/xlat/index.html[Dynamic Expansion]
+** https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/dictionary/index.html[Dictionaries]
+** https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/policy/index.html[Writing Policy Rules]
+** https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/man/index.html["man" pages]
+** https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/raddb/index.html[Configuration Files]
+** https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/raddb/mods-available/index.html[Modules]
+** https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/raddb/policy.d/index.html[Policies]
+** https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/raddb/sites-available/index.html[Virtual Servers]
+

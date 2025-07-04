@@ -1,0 +1,38 @@
+= Reference Documentation
+include::ROOT:partial$externaldoc.adoc[]
+
+There are small number of high-level concepts associated with the server, as outlined below.
+
+[NOTE]
+====
+This reference section includes the latest v4 information and may *NOT* be available in v3. See xref:unlang/index.adoc[Unlang] for v3 syntax and/or the relevent source files in your `raddb` directory.
+====
+* xref:unlang/index.adoc[Unlang] syntax
+* https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/raddb/index.html[Configuration Files]
+* https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/dictionary/index.html[Dictionary] where attribute names and data types are defined
+* https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/type/index.html[Data Types] in the server
+* https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/xlat/index.html[Dynamic expansions] i.e. "xlat"s.
+
+The server includes a large number of
+https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/raddb/index.html[configuration files].  These files are
+automatically converted to HTML for the on-line documentation.
+
+During normal operation, the server receives packets of information
+from the network.  Data in the packets is usually encoded in
+pre-defined "attributes" (RADIUS), or "options" (DHCP).  The
+definitions are loaded from https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/dictionary/index.html[dictionary]
+files.
+
+These definitions are strongly typed.  That is, each attribute has a
+pre-defined https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/type/index.html[data type].  For example, an
+attribute "Framed-IP-Address" has data type https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/type/ip.html[ipaddr].
+
+Packets are processed via the xref:unlang/index.adoc[Unlang] policy
+language.  Policies allow the server to read information in databases,
+perform if / then / else checks, add content to replies, along with
+many other actions.
+
+When processing packets, it's possible to call functions or do string
+manipulation with attribute contents.  The
+https://www.freeradius.org/documentation/freeradius-server/4.0.0/reference/xlat/index.html[dynamic expansion] documentation describes how
+this is done.
