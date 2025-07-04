@@ -205,16 +205,8 @@ int unlang_timeout_section_push(request_t *request, CONF_SECTION *cs, fr_time_de
 		.debug_name = "timeout",
 		.actions = {
 			.actions = {
-				[RLM_MODULE_REJECT]	= 0,
-				[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-				[RLM_MODULE_OK]		= 0,
-				[RLM_MODULE_HANDLED]	= 0,
-				[RLM_MODULE_INVALID]	= 0,
-				[RLM_MODULE_DISALLOW]	= 0,
-				[RLM_MODULE_NOTFOUND]	= 0,
-				[RLM_MODULE_NOOP]	= 0,
-				[RLM_MODULE_TIMEOUT]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-				[RLM_MODULE_UPDATED]	= 0
+				[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,
+				[RLM_MODULE_TIMEOUT]	= MOD_ACTION_RETURN,
 			},
 			.retry = RETRY_INIT,
 		},

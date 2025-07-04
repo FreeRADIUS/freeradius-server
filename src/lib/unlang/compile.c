@@ -511,7 +511,7 @@ static void compile_set_default_actions(unlang_t *c, unlang_compile_ctx_t *unlan
 			case RLM_MODULE_FAIL:
 			case RLM_MODULE_TIMEOUT:
 				if (!c->actions.actions[i]) {
-					c->actions.actions[i] = 1;
+					c->actions.actions[i] = MOD_PRIORITY_MIN;
 				}
 				continue;
 

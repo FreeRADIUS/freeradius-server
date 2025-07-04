@@ -210,15 +210,7 @@ static int unlang_xlat_push_internal(TALLOC_CTX *ctx, unlang_result_t *p_result,
 		.debug_name = "xlat",
 		.actions = {
 			.actions = {
-				[RLM_MODULE_REJECT]	= 0,
-				[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-				[RLM_MODULE_OK]		= 0,
-				[RLM_MODULE_HANDLED]	= 0,
-				[RLM_MODULE_INVALID]	= 0,
-				[RLM_MODULE_DISALLOW]	= 0,
-				[RLM_MODULE_NOTFOUND]	= 0,
-				[RLM_MODULE_NOOP]	= 0,
-				[RLM_MODULE_UPDATED]	= 0
+				[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,
 			},
 			.retry = RETRY_INIT,
 		},
