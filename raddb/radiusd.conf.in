@@ -37,6 +37,9 @@
 #
 #		https://www.freeradius.org/documentation/freeradius-server/v3.2.x/
 #
+#	The v3.2.x documentation also applies to v3.0.x, so it is safe
+#	to follow for v3.
+#
 #
 #	# Making Changes
 #
