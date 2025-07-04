@@ -14,7 +14,7 @@ Accessible documents ensures equal information access for everyone and improves 
 Ensure information is accessible (tables, lists) and annotated correctly.
 Diagrams/Table require titles and some call-outs where required. (i.e. Architecture diagram). Other suggestions are outlined in this document that include fonts, spacing, headings, etc.
 
-=== Capitalization
+=== Capitalisation
 
 The TOC is Title Case.
 Title Case on titles and top level subsection titles (H1 and H2 levels).
@@ -122,18 +122,21 @@ Any diagram or image that is required in more than one place needs to be placed 
 [#terms]
 == Terminology
 
-International English, or Global English, is the standard form of English used for global communication. Using global english prioritizes clarity and simplicity for non-native speakers in international contexts. Seamless communication between speakers from diverse linguistic backgrounds are possible.
+International English, or Global English, is the standard form of English used for global communication. Using global english prioritises clarity and simplicity for non-native speakers in international contexts. Seamless communication between speakers from diverse linguistic backgrounds are possible.
 
 To ensure effective communication, consider the following:
 
 * Simplify language and avoid complex constructions.
 
-* Write for translation, simpler words are easy to localize and understand.
+
+* Write for translation, simpler words are easy to localise and understand.
 
 * Use clear, short sentences and avoid ambiguous language.
 
 * Try using standard expressions and avoid phrasal verbs, gerunds, and colloquialisms.
 
-* Standardize dates, phone numbers, and addresses. 
+
+* Standardise dates, phone numbers, and addresses. 
+
 
 include::partial$terminology.adoc[]
