@@ -73,30 +73,27 @@ static void unlang_tmpl_signal(request_t *request, unlang_stack_frame_t *frame, 
  *  called repeatedly until the resumption function returns a final
  *  value.
  */
-static unlang_action_t unlang_tmpl_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_tmpl_resume(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 	unlang_tmpl_t			*ut = unlang_generic_to_tmpl(frame->instruction);
 
 	if (tmpl_eval_cast_in_place(&state->list, request, ut->tmpl) < 0) {
 		RPEDEBUG("Failed casting expansion");
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_OK;
 	}
 
 	if (state->out) fr_value_box_list_move(state->out, &state->list);
 
 	if (state->resume) return state->resume(p_result, request, state->rctx);
 
-	*p_result = RLM_MODULE_OK;
-
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	RETURN_UNLANG_OK;
 }
 
 /** Wrapper to call exec after the program has finished executing
  *
  */
-static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, request_t *request,
+static unlang_action_t unlang_tmpl_exec_wait_final(unlang_result_t *p_result, request_t *request,
 						   unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
@@ -144,8 +141,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 					  fr_sbuff_used(&state->exec.stdout_buff),
 					  NULL) < 0) {
 			talloc_free(box);
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;
+			RETURN_UNLANG_FAIL;
 		}
 		fr_value_box_list_insert_head(&state->list, box);
 	}
@@ -167,7 +163,7 @@ resume:
 /** Wrapper to call exec after a tmpl has been expanded
  *
  */
-static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, request_t *request,
+static unlang_action_t unlang_tmpl_exec_wait_resume(unlang_result_t *p_result, request_t *request,
 						    unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
@@ -179,8 +175,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 			  (state->out != NULL), state,
 			  state->args.exec.timeout) < 0) {
 		RPEDEBUG("Failed executing program");
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_FAIL;
 	}
 
 	fr_value_box_list_talloc_free(&state->list); /* this is the xlat expansion, and not the output string we want */
@@ -190,7 +185,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 }
 
 
-static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_tmpl(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 	unlang_tmpl_t			*ut = unlang_generic_to_tmpl(frame->instruction);
@@ -217,8 +212,7 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, un
 			goto fail;
 		}
 
-		*p_result = RLM_MODULE_OK;
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_OK;
 	}
 
 	/*
@@ -273,7 +267,7 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 		.actions = {
 			.actions = {
 				[RLM_MODULE_REJECT]	= 0,
-				[RLM_MODULE_FAIL]	= 0,
+				[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,
 				[RLM_MODULE_OK]		= 0,
 				[RLM_MODULE_HANDLED]	= 0,
 				[RLM_MODULE_INVALID]	= 0,
@@ -302,11 +296,17 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 	/*
 	 *	Push a new tmpl frame onto the stack
 	 */
-	if (unlang_interpret_push(request, unlang_tmpl_to_generic(ut),
-				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, false) < 0) return -1;
+	if (unlang_interpret_push(NULL, request, unlang_tmpl_to_generic(ut),
+				  FRAME_CONF(RLM_MODULE_NOT_SET, false), UNLANG_NEXT_STOP) < 0) return -1;
 
 	frame = &stack->frame[stack->depth];
 	state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
+
+	/*
+	 *	Set the frame as repeatable so that multiple tmpls can
+	 *	be pushed on the stack before returning UNLANG_ACTION_PUSHED_CHILD
+	 */
+	repeatable_set(frame);
 
 	*state = (unlang_frame_state_tmpl_t) {
 		.out = out,
@@ -327,12 +327,18 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 
 void unlang_tmpl_init(void)
 {
-	unlang_register(UNLANG_TYPE_TMPL,
-			   &(unlang_op_t){
-				.name = "tmpl",
-				.interpret = unlang_tmpl,
-				.signal = unlang_tmpl_signal,
-				.frame_state_size = sizeof(unlang_frame_state_tmpl_t),
-				.frame_state_type = "unlang_frame_state_tmpl_t",
-			   });
+	unlang_register(&(unlang_op_t){
+			.name = "tmpl",
+			.type = UNLANG_TYPE_TMPL,
+			.flag = UNLANG_OP_FLAG_INTERNAL,
+
+			.interpret = unlang_tmpl,
+			.signal = unlang_tmpl_signal,
+
+			.unlang_size = sizeof(unlang_tmpl_t),
+			.unlang_name = "unlang_tmpl_t",
+
+			.frame_state_size = sizeof(unlang_frame_state_tmpl_t),
+			.frame_state_type = "unlang_frame_state_tmpl_t",
+		});
 }

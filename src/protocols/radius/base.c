@@ -78,7 +78,8 @@ fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[] = {
 /*
  *	Some messages get printed out only in debugging mode.
  */
-#define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf_push
+#define FR_DEBUG_STRERROR_PRINTF		if (fr_debug_lvl) fr_strerror_printf
+#define FR_DEBUG_STRERROR_PRINTF_PUSH		if (fr_debug_lvl) fr_strerror_printf_push
 
 fr_table_num_sorted_t const fr_radius_require_ma_table[] = {
 	{ L("auto"),		FR_RADIUS_REQUIRE_MA_AUTO		},
@@ -301,8 +302,8 @@ ssize_t fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src
 
 		FR_DEBUG_STRERROR_PRINTF("Expected at least 4 bytes of header data, got %zd bytes", data_len);
 invalid:
-		FR_DEBUG_STRERROR_PRINTF("Invalid data from %s",
-					 inet_ntop(src_ipaddr->af, &src_ipaddr->addr, buffer, sizeof(buffer)));
+		FR_DEBUG_STRERROR_PRINTF_PUSH("Invalid data from %s",
+					      inet_ntop(src_ipaddr->af, &src_ipaddr->addr, buffer, sizeof(buffer)));
 		(void) udp_recv_discard(sockfd);
 
 		return 0;
@@ -530,7 +531,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	"The minimum length is 20 ..."
 	 */
 	if (packet_len < RADIUS_HEADER_LENGTH) {
-		FR_DEBUG_STRERROR_PRINTF("packet is too short (received %zu < minimum 20)",
+		FR_DEBUG_STRERROR_PRINTF("Packet is too short (received %zu < minimum 20)",
 					 packet_len);
 		failure = DECODE_FAIL_MIN_LENGTH_PACKET;
 		goto finish;
@@ -550,16 +551,37 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 */
 	if ((packet[0] == 0) ||
 	    (packet[0] >= FR_RADIUS_CODE_MAX)) {
-		FR_DEBUG_STRERROR_PRINTF("unknown packet code %d", packet[0]);
+		FR_DEBUG_STRERROR_PRINTF("Unknown packet code %d", packet[0]);
 		failure = DECODE_FAIL_UNKNOWN_PACKET_CODE;
 		goto finish;
 	}
 
-	/*
-	 *	Message-Authenticator is required in Status-Server
-	 *	packets, otherwise they can be trivially forged.
-	 */
-	if (packet[0] == FR_RADIUS_CODE_STATUS_SERVER) require_message_authenticator = true;
+	switch (packet[0]) {
+		/*
+		 *	Message-Authenticator is required in Status-Server
+		 *	packets, otherwise they can be trivially forged.
+		 */
+	case FR_RADIUS_CODE_STATUS_SERVER:
+		require_message_authenticator = true;
+		break;
+
+		/*
+		 *	Message-Authenticator may or may not be
+		 *	required for Access-* packets.
+		 */
+	case FR_RADIUS_CODE_ACCESS_REQUEST:
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_ACCESS_REJECT:
+		break;
+
+		/*
+		 *	Message-Authenticator is not required for all other packets.
+		 */
+	default:
+		require_message_authenticator = false;
+		break;
+	}
 
 	/*
 	 *	Repeat the length checks.  This time, instead of
@@ -573,7 +595,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	"The minimum length is 20 ..."
 	 */
 	if (totallen < RADIUS_HEADER_LENGTH) {
-		FR_DEBUG_STRERROR_PRINTF("length in header is too small (length %zu < minimum 20)",
+		FR_DEBUG_STRERROR_PRINTF("Length in header is too small (length %zu < minimum 20)",
 					 totallen);
 		failure = DECODE_FAIL_MIN_LENGTH_FIELD;
 		goto finish;
@@ -603,7 +625,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	i.e. No response to the NAS.
 	 */
 	if (totallen > packet_len) {
-		FR_DEBUG_STRERROR_PRINTF("packet is truncated (received %zu <  packet header length of %zu)",
+		FR_DEBUG_STRERROR_PRINTF("Packet is truncated (received %zu <  packet header length of %zu)",
 					 packet_len, totallen);
 		failure = DECODE_FAIL_MIN_LENGTH_MISMATCH;
 		goto finish;
@@ -641,7 +663,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 *	attribute header.
 		 */
 		if ((end - attr) < 2) {
-			FR_DEBUG_STRERROR_PRINTF("attribute header overflows the packet");
+			FR_DEBUG_STRERROR_PRINTF("Attribute header overflows the packet");
 			failure = DECODE_FAIL_HEADER_OVERFLOW;
 			goto finish;
 		}
@@ -650,7 +672,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 *	Attribute number zero is NOT defined.
 		 */
 		if (attr[0] == 0) {
-			FR_DEBUG_STRERROR_PRINTF("invalid attribute 0 at offset %zd", attr - packet);
+			FR_DEBUG_STRERROR_PRINTF("Invalid attribute 0 at offset %zd", attr - packet);
 			failure = DECODE_FAIL_INVALID_ATTRIBUTE;
 			goto finish;
 		}
@@ -660,7 +682,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 *	fields.  Anything shorter is an invalid attribute.
 		 */
 		if (attr[1] < 2) {
-			FR_DEBUG_STRERROR_PRINTF("attribute %u is too short at offset %zd",
+			FR_DEBUG_STRERROR_PRINTF("Attribute %u is too short at offset %zd",
 						 attr[0], attr - packet);
 			failure = DECODE_FAIL_ATTRIBUTE_TOO_SHORT;
 			goto finish;
@@ -671,8 +693,8 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		 *	attribute, it's a bad packet.
 		 */
 		if ((attr + attr[1]) > end) {
-			FR_DEBUG_STRERROR_PRINTF("attribute %u data overflows the packet starting at offset %zd",
-					   attr[0], attr - packet);
+			FR_DEBUG_STRERROR_PRINTF("Attribute %u data overflows the packet starting at offset %zd",
+						 attr[0], attr - packet);
 			failure = DECODE_FAIL_ATTRIBUTE_OVERFLOW;
 			goto finish;
 		}
@@ -713,7 +735,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	If not, we complain, and throw the packet away.
 	 */
 	if (attr != end) {
-		FR_DEBUG_STRERROR_PRINTF("attributes do NOT exactly fill the packet");
+		FR_DEBUG_STRERROR_PRINTF("Attributes do NOT exactly fill the packet");
 		failure = DECODE_FAIL_ATTRIBUTE_UNDERFLOW;
 		goto finish;
 	}
@@ -743,7 +765,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	Message-Authenticator attributes.
 	 */
 	if (require_message_authenticator && !seen_ma) {
-		FR_DEBUG_STRERROR_PRINTF("we require Message-Authenticator attribute, but it is not in the packet");
+		FR_DEBUG_STRERROR_PRINTF("We require Message-Authenticator attribute, but it is not in the packet");
 		failure = DECODE_FAIL_MA_MISSING;
 		goto finish;
 	}

@@ -358,11 +358,17 @@ server default {
 
 			#
 			#  idle_timeout:: Time after which idle
-			#  connections or dynamic clients are deleted.
+			#  connections are deleted.
 			#
 			#  Useful range of values: 5 to 600
 			#
 			idle_timeout = 60.0
+
+			#
+			#  dynamic_timeout:: Time after which idle
+			#  dynamic clients are deleted.
+			#
+			dynamic_timeout = 600.0
 
 			#
 			#  nak_lifetime:: Time for which blocked

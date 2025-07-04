@@ -1,5 +1,7 @@
 = Communicating with an SQL database
 
+include::ROOT:partial$v3_warning.adoc[]
+
 *Goal:* To configure the server to communicate with an SQL database.
 
 *Time:* 25-40 minutes.

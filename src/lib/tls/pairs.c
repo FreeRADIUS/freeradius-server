@@ -34,7 +34,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/server/pair.h>
 
 #include "attrs.h"
-#include "base.h"
 #include "bio.h"
 #include "log.h"
 #include "session.h"
@@ -106,6 +105,49 @@ static bool tls_session_pairs_from_san(fr_pair_list_t *pair_list, TALLOC_CTX *ct
 	return true;
 }
 
+/** Extract session pairs from the X509v3-CRL-Distribution-Points extension
+ *
+ */
+static bool tls_session_pairs_from_crl(fr_pair_list_t *pair_list, TALLOC_CTX *ctx, UNUSED request_t *request, X509_EXTENSION *ext)
+{
+	ASN1_STRING		*s = X509_EXTENSION_get_data(ext);
+	char unsigned const	*data = ASN1_STRING_get0_data(s);
+	STACK_OF(DIST_POINT)	*dps;
+	DIST_POINT		*dp;
+	STACK_OF(GENERAL_NAME)	*names;
+	GENERAL_NAME		*name;
+	fr_pair_t		*vp;
+	int			i, j;
+
+	if (!(dps = d2i_CRL_DIST_POINTS(NULL, &data, ASN1_STRING_length(s)))) return false;
+
+	for (i = 0; i < sk_DIST_POINT_num(dps); i++) {
+		dp = sk_DIST_POINT_value(dps, i);
+		names = dp->distpoint->name.fullname;
+
+		/*
+		 *	We only want CRL distribution points that cover all reasons,
+		 *	so ignore any where reasons are set.
+		 */
+		if (dp->reasons) continue;
+
+		for (j = 0; j < sk_GENERAL_NAME_num(names); j++) {
+			name = sk_GENERAL_NAME_value(names, j);
+
+			if (name->type != GEN_URI) continue;
+			MEM(fr_pair_append_by_da(ctx, &vp, pair_list,
+						 attr_tls_certificate_x509v3_crl_distribution_points) == 0);
+			MEM(fr_pair_value_strdup(vp,
+						 (char const *)ASN1_STRING_get0_data(name->d.uniformResourceIdentifier),
+						 true) == 0);
+		}
+	}
+
+	CRL_DIST_POINTS_free(dps);
+
+	return true;
+}
+
 /** Extract attributes from an X509 certificate
  *
  * @param[out] pair_list	to copy attributes to.
@@ -129,7 +171,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 
 	fr_pair_t	*vp = NULL;
 	ssize_t		slen;
-	bool		san_found = false;
+	bool		san_found = false, crl_found = false;
 
 	/*
 	 *	Subject
@@ -201,6 +243,8 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	 */
 	{
 		ASN1_INTEGER const *serial = NULL;
+		unsigned char *der;
+		int len;
 
 		serial = X509_get0_serialNumber(cert);
 		if (!serial) {
@@ -208,8 +252,10 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 			goto error;
 		}
 
+		len = i2d_ASN1_INTEGER(serial, NULL);	/* get length */
 		MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_serial) == 0);
-		MEM(fr_pair_value_memdup(vp, serial->data, serial->length, true) == 0);
+		MEM(fr_pair_value_mem_alloc(vp, &der, len, false) == 0);
+		i2d_ASN1_INTEGER(serial, &der);
 	}
 
 	/*
@@ -245,6 +291,12 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	if (loc >= 0) {
 		X509_EXTENSION	*ext = X509_get_ext(cert, loc);
 		if (ext) san_found = tls_session_pairs_from_san(pair_list, ctx, request, ext);
+	}
+
+	loc = X509_get_ext_by_NID(cert, NID_crl_distribution_points, 0);
+	if (loc >= 0) {
+		X509_EXTENSION	*ext = X509_get_ext(cert, loc);
+		if (ext) crl_found = tls_session_pairs_from_crl(pair_list, ctx, request, ext);
 	}
 
 	/*
@@ -290,6 +342,11 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 			 */
 			if (OBJ_obj2nid(obj) == NID_subject_alt_name) {
 				if (!san_found) san_found = tls_session_pairs_from_san(pair_list, ctx, request, ext);
+				goto again;
+			}
+
+			if (OBJ_obj2nid(obj) == NID_crl_distribution_points) {
+				if (!crl_found) crl_found = tls_session_pairs_from_crl(pair_list, ctx, request, ext);
 				goto again;
 			}
 

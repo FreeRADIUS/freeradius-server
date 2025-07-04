@@ -128,12 +128,15 @@ To ensure effective communication, consider the following:
 
 * Simplify language and avoid complex constructions.
 
+
 * Write for translation, simpler words are easy to localise and understand.
 
 * Use clear, short sentences and avoid ambiguous language.
 
 * Try using standard expressions and avoid phrasal verbs, gerunds, and colloquialisms.
 
+
 * Standardise dates, phone numbers, and addresses. 
+
 
 include::partial$terminology.adoc[]

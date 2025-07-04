@@ -1,5 +1,7 @@
 = Group Project - Simulating a production service
 
+include::ROOT:partial$v3_warning.adoc[]
+
 *Goal:* To create a simulated, federated, production service
 
 *Time:* 2-3 hours

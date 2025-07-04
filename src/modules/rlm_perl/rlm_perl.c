@@ -65,6 +65,10 @@ typedef struct {
 	perl_func_def_t	*func;
 } perl_call_env_t;
 
+typedef struct {
+	pthread_mutex_t	mutex;
+} rlm_perl_mutable_t;
+
 /*
  *	Define a structure for our module configuration.
  *
@@ -83,6 +87,7 @@ typedef struct {
 	PerlInterpreter	*perl;
 	bool		perl_parsed;
 	HV		*rad_perlconf_hv;	//!< holds "config" items (perl %RAD_PERLCONF hash).
+	rlm_perl_mutable_t	*mutable;
 
 } rlm_perl_t;
 
@@ -1442,7 +1447,7 @@ static void perl_pair_list_tie(HV *parent, HV *frpair_stash, char const *name, f
  * 	Store all vps in hashes %RAD_CONFIG %RAD_REPLY %RAD_REQUEST
  *
  */
-static unlang_action_t CC_HINT(nonnull) mod_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_perl(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_perl_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t);
 	perl_call_env_t		*func = talloc_get_type_abort(mctx->env_data, perl_call_env_t);
@@ -1516,7 +1521,7 @@ static unlang_action_t CC_HINT(nonnull) mod_perl(rlm_rcode_t *p_result, module_c
 		LEAVE;
 	}
 
-	RETURN_MODULE_RCODE(ret);
+	RETURN_UNLANG_RCODE(ret);
 }
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
@@ -1558,7 +1563,15 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 
 	PERL_SET_CONTEXT(inst->perl);
 
+	/*
+	 *	Ensure only one thread is cloning an interpreter at a time
+	 *	Whilst the documentation of perl_clone() does not say anything
+	 *	about this, seg faults have been seen if multiple threads clone
+	 *	the same inst->perl at the same time.
+	 */
+	pthread_mutex_lock(&inst->mutable->mutex);
 	interp = perl_clone(inst->perl, clone_flags);
+	pthread_mutex_unlock(&inst->mutable->mutex);
 	{
 		dTHXa(interp);			/* Sets the current thread's interpreter */
 	}
@@ -1741,6 +1754,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	PL_endav = end_AV;
 
+	inst->mutable = talloc(NULL, rlm_perl_mutable_t);
+	pthread_mutex_init(&inst->mutable->mutex, NULL);
+
 	return 0;
 }
 
@@ -1779,6 +1795,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	}
 
 	rlm_perl_interp_free(inst->perl);
+	talloc_free(inst->mutable);
 
 	return ret;
 }

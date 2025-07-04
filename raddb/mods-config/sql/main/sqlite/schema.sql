@@ -8,6 +8,13 @@
 -----------------------------------------------------------------------------
 
 --
+-- To aid performance in a multi-threaded system so that reads are not
+-- blocked by writes, consider using the write-ahead log
+-- https://www.sqlite.org/wal.html
+--
+-- PRAGMA journal_mode=WAL;
+
+--
 -- Table structure for table 'radacct'
 --
 CREATE TABLE radacct (

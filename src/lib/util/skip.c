@@ -111,80 +111,43 @@ ssize_t fr_skip_string(char const *start, char const *end)
 	return -(p - start);
 }
 
-/**  Skip an xlat expression.
+/** Skip a generic {...} or (...) arguments
  *
- *  This is a simple "peek ahead" parser which tries to not be wrong.  It may accept
- *  some things which will later parse as invalid (e.g. unknown attributes, etc.)
- *  But it also rejects all malformed expressions.
- *
- *  It's used as a quick hack because the full parser isn't always available.
- *
- *  @param[in] start	start of the expression, MUST point to the "%{" or "%("
- *  @param[in] end	end of the string (or NULL for zero-terminated strings)
- *  @return
- *	>0 length of the string which was parsed
- *	<=0 on error
  */
-ssize_t fr_skip_xlat(char const *start, char const *end)
+ssize_t fr_skip_brackets(char const *start, char const *end, char end_quote)
 {
-	int	depth = 1;		/* caller skips '{' */
 	ssize_t slen;
-	char	quote, end_quote;
 	char const *p = start;
 
-	/*
-	 *	At least %{1}
-	 */
-	if (end && ((start + 4) > end)) {
-		fr_strerror_const("Invalid expansion");
-		return 0;
-	}
-
-	if ((*p != '%') && (*p != '$')) {
-		fr_strerror_const("Unexpected character in expansion");
-		return -(p - start);
-	}
-
-	p++;
-	if ((*p != '{') && (*p != '(')) {
-		char const *q = p;
-
-		/*
-		 *	New xlat syntax: %foo(...)
-		 */
-		while (isalnum((int) *q) || (*q == '.') || (*q == '_') || (*q == '-')) {
-			q++;
-		}
-		if (*q == '(') {
-			p = q;
-			goto do_quote;
-		}
-
-		fr_strerror_const("Invalid character after '%'");
-		return -(p - start);
-	}
-
-do_quote:
-	quote = *(p++);
-	if (quote == '{') {
-		end_quote = '}';
-	} else {
-		end_quote = ')';
-	}
-
-	while ((end && (p < end)) || (*p >= ' ')) {
-		if (*p == quote) {
-			p++;
-			depth++;
-			continue;
-		}
-
+	while ((end && (p < end)) || *p) {
 		if (*p == end_quote) {
 			p++;
-			depth--;
-			if (!depth) return p - start;
+			return p - start;
+		}
 
+		/*
+		 *	Expressions.  Arguably we want to
+		 *	differentiate conditions and function
+		 *	arguments, but it's not clear how to do that
+		 *	in a pre-parsing stage.
+		 */
+		if (*p == '(') {
+			p++;
+			slen = fr_skip_brackets(p, end, ')');
+			if (slen <= 0) return slen - (p - start);
+
+		next:
+			fr_assert((size_t) slen <= (size_t) (end - p));
+			p += slen;
 			continue;
+		}
+
+		/*
+		 *	A quoted string.
+		 */
+		if ((*p == '"') || (*p == '\'') || (*p == '`')) {
+			slen = fr_skip_string(p, end);
+			goto next;
 		}
 
 		/*
@@ -193,14 +156,17 @@ do_quote:
 		if ((p[0] == '$') || (p[0] == '%')) {
 			if (end && (p + 2) >= end) break;
 
-			if ((p[1] == '{') || ((p[0] == '$') && (p[1] == '('))) {
-				slen = fr_skip_xlat(p, end);
-
-			check:
-				if (slen <= 0) return -(p - start) + slen;
-
-				p += slen;
+			/*
+			 *	%% inside of an xlat
+			 */
+			if ((p[0] == '%') && (p[1] == '%')) {
+				p += 2;
 				continue;
+			}
+
+			if ((p[1] == '{') || (p[1] == '(')) {
+				slen = fr_skip_xlat(p, end);
+				goto next;
 			}
 
 			/*
@@ -211,19 +177,8 @@ do_quote:
 		}
 
 		/*
-		 *	A quoted string.
+		 *	Escapes are special.
 		 */
-		if ((*p == '"') || (*p == '\'') || (*p == '`')) {
-			slen = fr_skip_string(p, end);
-			goto check;
-		}
-
-		/*
-		 *	@todo - bare '(' is a condition or nested
-		 *	expression.  The brackets need to balance
-		 *	here, too.
-		 */
-
 		if (*p != '\\') {
 			p++;
 			continue;
@@ -243,6 +198,73 @@ do_quote:
 	 */
 	fr_strerror_const("Unexpected end of expansion");
 	return -(p - start);
+}
+
+/**  Skip an xlat expression.
+ *
+ *  This is a simple "peek ahead" parser which tries to not be wrong.  It may accept
+ *  some things which will later parse as invalid (e.g. unknown attributes, etc.)
+ *  But it also rejects all malformed expressions.
+ *
+ *  It's used as a quick hack because the full parser isn't always available.
+ *
+ *  @param[in] start	start of the expression, MUST point to the "%{" or "%("
+ *  @param[in] end	end of the string (or NULL for zero-terminated strings)
+ *  @return
+ *	>0 length of the string which was parsed
+ *	<=0 on error
+ */
+ssize_t fr_skip_xlat(char const *start, char const *end)
+{
+	ssize_t slen;
+	char const *p = start;
+
+	/*
+	 *	At least %{1} or $(.)
+	 */
+	if (end && ((end - start) < 4)) {
+		fr_strerror_const("Invalid expansion");
+		return 0;
+	}
+
+	if (!((memcmp(p, "%{", 2) == 0) || /* xlat */
+	      (memcmp(p, "${", 2) == 0) || /* config file macro */
+	      (memcmp(p, "$(", 2) == 0))) {  /* shell expansion in an back-ticks argument */
+		fr_strerror_const("Invalid expansion");
+		return 0;
+	}
+	p++;
+
+	if (*p == '(') {
+		p++;		/* skip the '(' */
+		slen = fr_skip_brackets(p, end, ')');
+
+	} else if (*p == '{') {
+		p++;		/* skip the '{' */
+		slen = fr_skip_brackets(p, end, '}');
+
+	} else {
+		char const *q = p;
+
+		/*
+		 *	New xlat syntax: %foo(...)
+		 */
+		while (isalnum((int) *q) || (*q == '.') || (*q == '_') || (*q == '-')) {
+			q++;
+		}
+
+		if (*q != '(') {
+			fr_strerror_const("Invalid character after '%'");
+			return -(p - start);
+		}
+
+		p = q + 1;
+
+		slen = fr_skip_brackets(p, end, ')');
+	}
+
+	if (slen <= 0) return slen - (p - start);
+	return slen + (p - start);
 }
 
 /**  Skip a conditional expression.

@@ -24,6 +24,7 @@
 
 /*  MPPE support from Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp> */
 
+#include "lib/unlang/action.h"
 RCSID("$Id$")
 
 #define LOG_PREFIX mctx->mi->name
@@ -61,7 +62,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #endif
 
 #ifdef __APPLE__
-unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pair_t *challenge, fr_pair_t *usernamepair,
+unlang_action_t od_mschap_auth(unlang_result_t *p_result, request_t *request, fr_pair_t *challenge, fr_pair_t *usernamepair,
 			       mschap_auth_call_env_t *env_data);
 #endif
 
@@ -1355,7 +1356,7 @@ static void mppe_chap2_gen_keys128(uint8_t const *nt_hashhash, uint8_t const *re
  *	it later. Add Auth-Type attribute if present in module
  *	configuration (usually Auth-Type must be "MS-CHAP")
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_mschap_t const 	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_mschap_t);
 	mschap_autz_call_env_t	*env_data = talloc_get_type_abort(mctx->env_data, mschap_autz_call_env_t);
@@ -1363,7 +1364,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	fr_pair_t		*parent;
 
 	challenge = fr_pair_find_by_da_nested(&request->request_pairs, NULL, tmpl_attr_tail_da(env_data->chap_challenge));
-	if (!challenge) RETURN_MODULE_NOOP;
+	if (!challenge) RETURN_UNLANG_NOOP;
 
 	/*
 	 *	The responses MUST be in the same group as the challenge.
@@ -1376,21 +1377,21 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	    (env_data->chap2_cpw &&
 	     !fr_pair_find_by_da(&parent->vp_group, NULL, tmpl_attr_tail_da(env_data->chap2_cpw)))) {
 		RDEBUG2("Found MS-CHAP-Challenge, but no MS-CHAP response or Change-Password");
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup MS-CHAP authentication",
 		     mctx->mi->name, mctx->mi->name);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
-	if (!module_rlm_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_MODULE_NOOP;
+	if (!module_rlm_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_UNLANG_NOOP;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
-static unlang_action_t mschap_error(rlm_rcode_t *p_result, rlm_mschap_t const *inst, request_t *request,
+static unlang_action_t mschap_error(unlang_result_t *p_result, rlm_mschap_t const *inst, request_t *request,
 				    unsigned char ident, int mschap_result, int mschap_version, fr_pair_t *smb_ctrl,
 				    mschap_auth_call_env_t *env_data)
 {
@@ -1453,7 +1454,7 @@ static unlang_action_t mschap_error(rlm_rcode_t *p_result, rlm_mschap_t const *i
 		rcode = RLM_MODULE_REJECT;
 	}
 
-	if (rcode == RLM_MODULE_OK) RETURN_MODULE_OK;
+	if (rcode == RLM_MODULE_OK) RETURN_UNLANG_OK;
 
 	switch (mschap_version) {
 	case 1:
@@ -1469,12 +1470,12 @@ static unlang_action_t mschap_error(rlm_rcode_t *p_result, rlm_mschap_t const *i
 		break;
 
 	default:
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 	if (env_data->chap_error) mschap_add_reply(request, ident, tmpl_attr_tail_da(env_data->chap_error),
 						   buffer, strlen(buffer));
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 
@@ -1576,7 +1577,7 @@ found_password:
  *	mschap_cpw_request_process() - do the work to handle an MS-CHAP password
  *	change request.
  */
-static unlang_action_t CC_HINT(nonnull) mschap_process_cpw_request(rlm_rcode_t *p_result,
+static unlang_action_t CC_HINT(nonnull) mschap_process_cpw_request(unlang_result_t *p_result,
 								   rlm_mschap_t const *inst,
 								   request_t *request,
 								   mschap_auth_ctx_t *auth_ctx)
@@ -1598,12 +1599,12 @@ static unlang_action_t CC_HINT(nonnull) mschap_process_cpw_request(rlm_rcode_t *
 					 tmpl_attr_tail_da(env_data->chap_error), buffer, strlen(buffer));
 		}
 
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 
 	RDEBUG2("Password change successful");
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /** Validate data required for change password requests.
@@ -1709,7 +1710,7 @@ static int mschap_cpw_prepare(request_t *request, mschap_auth_ctx_t *auth_ctx)
 	return 0;
 }
 
-static CC_HINT(nonnull) unlang_action_t mschap_process_response(rlm_rcode_t *p_result, int *mschap_version,
+static CC_HINT(nonnull) unlang_action_t mschap_process_response(unlang_result_t *p_result, int *mschap_version,
 								uint8_t nthashhash[static NT_DIGEST_LENGTH],
 								rlm_mschap_t const *inst, request_t *request,
 								mschap_auth_ctx_t *auth_ctx,
@@ -1728,7 +1729,7 @@ static CC_HINT(nonnull) unlang_action_t mschap_process_response(rlm_rcode_t *p_r
 	 */
 	if (challenge->vp_length < 8) {
 		REDEBUG("%s has the wrong format", env_data->chap_challenge->name);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -1736,7 +1737,7 @@ static CC_HINT(nonnull) unlang_action_t mschap_process_response(rlm_rcode_t *p_r
 	 */
 	if (response->vp_length < 50) {
 		REDEBUG("%s has the wrong format", env_data->chap_response->name);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -1745,7 +1746,7 @@ static CC_HINT(nonnull) unlang_action_t mschap_process_response(rlm_rcode_t *p_r
 	 */
 	if (!(response->vp_octets[1] & 0x01)) {
 		REDEBUG2("Client used unsupported method LM-Password");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	offset = 26;
@@ -1761,7 +1762,7 @@ static CC_HINT(nonnull) unlang_action_t mschap_process_response(rlm_rcode_t *p_r
 	return mschap_error(p_result, inst, request, *response->vp_octets, mschap_result, *mschap_version, auth_ctx->smb_ctrl, env_data);
 }
 
-static unlang_action_t CC_HINT(nonnull) mschap_process_v2_response(rlm_rcode_t *p_result, int *mschap_version,
+static unlang_action_t CC_HINT(nonnull) mschap_process_v2_response(unlang_result_t *p_result, int *mschap_version,
 								   uint8_t nthashhash[static NT_DIGEST_LENGTH],
 								   rlm_mschap_t const *inst, request_t *request,
 								   mschap_auth_ctx_t *auth_ctx,
@@ -1773,7 +1774,6 @@ static unlang_action_t CC_HINT(nonnull) mschap_process_v2_response(rlm_rcode_t *
 	char const	*username_str;
 	size_t		username_len;
 	int		mschap_result;
-	rlm_rcode_t	rcode;
 	char		msch2resp[42];
 	mschap_auth_call_env_t	*env_data = auth_ctx->env_data;
 
@@ -1786,7 +1786,7 @@ static unlang_action_t CC_HINT(nonnull) mschap_process_v2_response(rlm_rcode_t *
 	 */
 	if (challenge->vp_length < 16) {
 		REDEBUG("%s has the wrong format", env_data->chap_challenge->name);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -1794,14 +1794,14 @@ static unlang_action_t CC_HINT(nonnull) mschap_process_v2_response(rlm_rcode_t *
 	 */
 	if (response->vp_length < 50) {
 		REDEBUG("%s has the wrong format", env_data->chap2_response->name);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
 	 *	We also require a User-Name
 	 */
 	user_name = mschap_identity_find(request, tmpl_attr_tail_da(env_data->username));
-	if (!user_name) RETURN_MODULE_FAIL;
+	if (!user_name) RETURN_UNLANG_FAIL;
 
 	/*
 	 *      Check for MS-CHAP-User-Name and if found, use it
@@ -1846,8 +1846,8 @@ static unlang_action_t CC_HINT(nonnull) mschap_process_v2_response(rlm_rcode_t *
 	 */
 	if (!auth_ctx->nt_password && inst->open_directory) {
 		RDEBUG2("No Password.NT available. Trying OpenDirectory Authentication");
-		od_mschap_auth(&rcode, request, challenge, user_name, env_data);
-		if (rcode != RLM_MODULE_NOOP) RETURN_MODULE_RCODE(rcode);
+		od_mschap_auth(p_result, request, challenge, user_name, env_data);
+		if (p_result->rcode != RLM_MODULE_NOOP) return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 #endif
 	peer_challenge = response->vp_octets + 2;
@@ -1877,9 +1877,9 @@ static unlang_action_t CC_HINT(nonnull) mschap_process_v2_response(rlm_rcode_t *
 	/*
 	 *	Check for errors, and add MSCHAP-Error if necessary.
 	 */
-	mschap_error(&rcode, inst, request, *response->vp_octets,
+	mschap_error(p_result, inst, request, *response->vp_octets,
 		     mschap_result, *mschap_version, auth_ctx->smb_ctrl, env_data);
-	if (rcode != RLM_MODULE_OK) RETURN_MODULE_RCODE(rcode);
+	if (p_result->rcode != RLM_MODULE_OK) return UNLANG_ACTION_CALCULATE_RESULT;
 
 #ifdef WITH_AUTH_WINBIND
 	if (inst->wb_retry_with_normalised_username) {
@@ -1905,15 +1905,15 @@ static unlang_action_t CC_HINT(nonnull) mschap_process_v2_response(rlm_rcode_t *
 	if (env_data->chap2_success) mschap_add_reply(request, *response->vp_octets,
 						      tmpl_attr_tail_da(env_data->chap2_success), msch2resp, 42);
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /** Complete mschap authentication after any tmpls have been expanded.
  *
  */
-static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t mod_authenticate_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	mschap_auth_ctx_t	*auth_ctx = talloc_get_type_abort(uctx, mschap_auth_ctx_t);
+	mschap_auth_ctx_t	*auth_ctx = talloc_get_type_abort(mctx->rctx, mschap_auth_ctx_t);
 	mschap_auth_call_env_t	*env_data = talloc_get_type_abort(auth_ctx->env_data, mschap_auth_call_env_t);
 	rlm_mschap_t const	*inst = talloc_get_type_abort_const(auth_ctx->inst, rlm_mschap_t);
 	fr_pair_t		*challenge = NULL;
@@ -1921,7 +1921,8 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 	fr_pair_t		*parent;
 	uint8_t			nthashhash[NT_DIGEST_LENGTH];
 	int			mschap_version = 0;
-	rlm_rcode_t		rcode = RLM_MODULE_OK;
+
+	p_result->rcode = RLM_MODULE_OK;
 
 	if (auth_ctx->cpw) {
 		uint8_t		*p;
@@ -1931,15 +1932,15 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 		 */
 		if (!auth_ctx->nt_password) {
 			REDEBUG("Missing Password.NT - required for change password request");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 		if (!env_data->chap_nt_enc_pw) {
 			REDEBUG("chap_nt_enc_pw option is not set - required for change password request");
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 		}
 
-		mschap_process_cpw_request(&rcode, inst, request, auth_ctx);
-		if (rcode != RLM_MODULE_OK) goto finish;
+		mschap_process_cpw_request(p_result, inst, request, auth_ctx);
+		if (p_result->rcode != RLM_MODULE_OK) goto finish;
 
 		/*
 		 *	Clear any expiry bit so the user can now login;
@@ -1970,7 +1971,7 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 	if (!challenge) {
 		REDEBUG("control.Auth-Type = %s set for a request that does not contain %s",
 			auth_ctx->name, env_data->chap_challenge->name);
-		rcode = RLM_MODULE_INVALID;
+		p_result->rcode = RLM_MODULE_INVALID;
 		goto finish;
 	}
 
@@ -1984,23 +1985,23 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 	 *	We also require an MS-CHAP-Response.
 	 */
 	if ((response = fr_pair_find_by_da(&parent->vp_group, NULL, tmpl_attr_tail_da(env_data->chap_response)))) {
-		mschap_process_response(&rcode,
+		mschap_process_response(p_result,
 					&mschap_version, nthashhash,
 					inst, request,
 					auth_ctx,
 					challenge, response);
-		if (rcode != RLM_MODULE_OK) goto finish;
+		if (p_result->rcode != RLM_MODULE_OK) goto finish;
 	} else if ((response = fr_pair_find_by_da_nested(&parent->vp_group, NULL, tmpl_attr_tail_da(env_data->chap2_response)))) {
-		mschap_process_v2_response(&rcode,
+		mschap_process_v2_response(p_result,
 					   &mschap_version, nthashhash,
 					   inst, request,
 					   auth_ctx,
 					   challenge, response);
-		if (rcode != RLM_MODULE_OK) goto finish;
+		if (p_result->rcode != RLM_MODULE_OK) goto finish;
 	} else {		/* Neither CHAPv1 or CHAPv2 response: die */
 		REDEBUG("control.Auth-Type = %s set for a request that does not contain %s or %s attributes",
 			auth_ctx->name, env_data->chap_response->name, env_data->chap2_response->name);
-		rcode = RLM_MODULE_INVALID;
+		p_result->rcode = RLM_MODULE_INVALID;
 		goto finish;
 	}
 
@@ -2052,23 +2053,7 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 	} /* else we weren't asked to use MPPE */
 
 finish:
-	RETURN_MODULE_RCODE(rcode);
-}
-
-/** When changing passwords using the ntlm_auth helper, evaluate the domain tmpl
- *
- */
-static unlang_action_t mod_authenticate_domain_tmpl_push(rlm_rcode_t *p_result, UNUSED int *priority,
-							 request_t *request, void *uctx)
-{
-	mschap_auth_ctx_t	*auth_ctx = talloc_get_type_abort(uctx, mschap_auth_ctx_t);
-	mschap_auth_call_env_t	*env_data = talloc_get_type_abort(auth_ctx->env_data, mschap_auth_call_env_t);
-
-	fr_value_box_list_init(&auth_ctx->cpw_ctx->cpw_domain);
-	if (unlang_tmpl_push(auth_ctx, &auth_ctx->cpw_ctx->cpw_domain, request,
-			     env_data->ntlm_cpw_domain, NULL) < 0) RETURN_MODULE_FAIL;
-
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 #ifdef WITH_TLS
@@ -2226,7 +2211,7 @@ static int mschap_new_pass_decrypt(request_t *request, mschap_auth_ctx_t *auth_c
  *	MS-CHAP-Error for MS-CHAP or MS-CHAP v2
  *	If MS-CHAP2 succeeds we MUST return MS-CHAP2-Success
  */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_mschap_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_mschap_t);
 #ifdef WITH_AUTH_WINBIND
@@ -2285,7 +2270,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		 */
 		if ((auth_ctx->smb_ctrl->vp_uint32 & ACB_PWNOTREQ) != 0) {
 			RDEBUG2("SMB-Account-Ctrl says no password is required");
-			RETURN_MODULE_OK;
+			RETURN_UNLANG_OK;
 		}
 	}
 
@@ -2296,7 +2281,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	input attribute, and we're calling out to an
 	 *	external password store.
 	 */
-	if (nt_password_find(auth_ctx, &auth_ctx->nt_password, mctx->mi->data, request) < 0) RETURN_MODULE_FAIL;
+	if (nt_password_find(auth_ctx, &auth_ctx->nt_password, mctx->mi->data, request) < 0) RETURN_UNLANG_FAIL;
 
 	/*
 	 *	Check to see if this is a change password request, and process
@@ -2310,47 +2295,73 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		 */
 		if (!auth_ctx->nt_password) {
 			REDEBUG("Missing Password.NT - required for change password request");
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
-		if (mschap_cpw_prepare(request, auth_ctx) < 0) RETURN_MODULE_FAIL;
+		if (mschap_cpw_prepare(request, auth_ctx) < 0) RETURN_UNLANG_FAIL;
 
 		switch (auth_ctx->method) {
 		case AUTH_INTERNAL:
 #ifdef WITH_TLS
-			if (mschap_new_pass_decrypt(request, auth_ctx) < 0) RETURN_MODULE_FAIL;
-			if (unlang_function_push(request, NULL,  mod_authenticate_resume, NULL, 0,
-						 UNLANG_SUB_FRAME, auth_ctx) < 0) RETURN_MODULE_FAIL;
+			if (mschap_new_pass_decrypt(request, auth_ctx) < 0) RETURN_UNLANG_FAIL;
+
+			if (unlang_module_yield(request, mod_authenticate_resume, NULL, 0, auth_ctx) == UNLANG_ACTION_FAIL) {
+				RETURN_UNLANG_FAIL;
+			}
 
 			fr_value_box_list_init(&auth_ctx->cpw_ctx->local_cpw_result);
 			if (unlang_tmpl_push(auth_ctx, &auth_ctx->cpw_ctx->local_cpw_result, request,
-					     env_data->local_cpw, NULL) < 0) RETURN_MODULE_FAIL;
+					     env_data->local_cpw, NULL) < 0) RETURN_UNLANG_FAIL;
 			break;
 #else
 			REDEBUG("Local MS-CHAPv2 password changes require OpenSSL support");
-			RETURN_MODULE_INVALID;
+			RETURN_UNLANG_INVALID;
 #endif
 
 		default:
 			if (!env_data->ntlm_cpw_username) {
 				REDEBUG("No ntlm_auth username set, passchange will definitely fail!");
-				RETURN_MODULE_FAIL;
+				RETURN_UNLANG_FAIL;
 			}
 
-			if (unlang_function_push(request, env_data->ntlm_cpw_domain ? mod_authenticate_domain_tmpl_push : NULL,
-						 mod_authenticate_resume, NULL, 0,
-						 UNLANG_SUB_FRAME, auth_ctx) < 0) RETURN_MODULE_FAIL;
+			/*
+			 *	Run the resumption function where we're done with:
+			 */
+			if (unlang_module_yield(request, mod_authenticate_resume, NULL, 0, auth_ctx) == UNLANG_ACTION_FAIL) {
+				RETURN_UNLANG_FAIL;
+			};
+
+			/*
+			 *	a) Expanding the domain, if specified
+			 */
+			if (env_data->ntlm_cpw_domain) {
+				fr_value_box_list_init(&auth_ctx->cpw_ctx->cpw_domain);
+				if (unlang_tmpl_push(auth_ctx, &auth_ctx->cpw_ctx->cpw_domain, request,
+						env_data->ntlm_cpw_domain, NULL) < 0) RETURN_UNLANG_FAIL;
+			}
 
 			fr_value_box_list_init(&auth_ctx->cpw_ctx->cpw_user);
+
+			/*
+			 *	b) Expanding the username
+			 */
 			if (unlang_tmpl_push(auth_ctx, &auth_ctx->cpw_ctx->cpw_user, request,
-					     env_data->ntlm_cpw_username, NULL) < 0) RETURN_MODULE_FAIL;
+					     env_data->ntlm_cpw_username, NULL) < 0) RETURN_UNLANG_FAIL;
 			break;
 		}
 
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
-	return mod_authenticate_resume(p_result, NULL, request, auth_ctx);
+	/*
+	 *	Not doing password change, just jump straight to the resumption function...
+	 */
+	{
+		module_ctx_t our_mctx = *mctx;
+		our_mctx.rctx = auth_ctx;
+
+		return mod_authenticate_resume(p_result, &our_mctx, request);
+	}
 }
 
 /*

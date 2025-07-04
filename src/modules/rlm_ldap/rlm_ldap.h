@@ -202,6 +202,7 @@ typedef struct {
 	char			*profile_value;
 	char const		*dn;
 	ldap_access_state_t	access_state;		//!< What state a user's account is in.
+	rlm_rcode_t		rcode;			//!< What rcode we'll finally respond with.
 } ldap_autz_ctx_t;
 
 /** State list for xlat evaluation of LDAP group membership
@@ -227,6 +228,7 @@ typedef struct {
 	fr_ldap_thread_trunk_t		*ttrunk;
 	fr_ldap_query_t			*query;
 	ldap_group_xlat_status_t	status;
+	unlang_result_t			result;
 	bool				found;
 } ldap_group_xlat_ctx_t;
 
@@ -254,7 +256,9 @@ static inline char const *rlm_find_user_dn_cached(request_t *request)
 	return vp->vp_strvalue;
 }
 
-unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst, request_t *request,
+unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx,
+					 unlang_result_t *p_result,
+					 rlm_ldap_t const *inst, request_t *request,
 					 fr_value_box_t *base, fr_value_box_t *filter_box,
 					 fr_ldap_thread_trunk_t *ttrunk, char const *attrs[],
 					 fr_ldap_query_t **query_out);
@@ -266,18 +270,18 @@ void rlm_ldap_check_reply(request_t *request, rlm_ldap_t const *inst, char const
 /*
  *	groups.c - Group membership functions.
  */
-unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx,
+unlang_action_t rlm_ldap_cacheable_userobj(unlang_result_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx,
 					   char const *attr);
 
-unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx);
+unlang_action_t rlm_ldap_cacheable_groupobj(unlang_result_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx);
 
-unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, request_t *request,
+unlang_action_t rlm_ldap_check_groupobj_dynamic(unlang_result_t *p_result, request_t *request,
 						ldap_group_xlat_ctx_t *xlat_ctx);
 
-unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result, request_t *request,
+unlang_action_t rlm_ldap_check_userobj_dynamic(unlang_result_t *p_result, request_t *request,
 					       ldap_group_xlat_ctx_t *xlat_ctx);
 
-unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
+unlang_action_t rlm_ldap_check_cached(unlang_result_t *p_result,
 				      rlm_ldap_t const *inst, request_t *request, fr_value_box_t const *check);
 
 unlang_action_t rlm_ldap_map_profile(fr_ldap_result_code_t *ret, int *applied,

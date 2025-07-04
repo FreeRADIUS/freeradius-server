@@ -53,25 +53,17 @@ typedef enum {
 							//!< returned by modules).
 } rlm_rcode_t;
 
-#define RETURN_MODULE_REJECT		do { *p_result = RLM_MODULE_REJECT; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
-#define RETURN_MODULE_FAIL		do { *p_result = RLM_MODULE_FAIL; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
-#define RETURN_MODULE_OK		do { *p_result = RLM_MODULE_OK; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
-#define RETURN_MODULE_HANDLED		do { *p_result = RLM_MODULE_HANDLED; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
-#define RETURN_MODULE_INVALID		do { *p_result = RLM_MODULE_INVALID; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
-#define RETURN_MODULE_DISALLOW		do { *p_result = RLM_MODULE_DISALLOW; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
-#define RETURN_MODULE_NOTFOUND		do { *p_result = RLM_MODULE_NOTFOUND; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
-#define RETURN_MODULE_NOOP		do { *p_result = RLM_MODULE_NOOP; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
-#define RETURN_MODULE_UPDATED		do { *p_result = RLM_MODULE_UPDATED; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
-#define RETURN_MODULE_TIMEOUT		do { *p_result = RLM_MODULE_TIMEOUT; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
-#define RETURN_MODULE_RCODE(_rcode)	do { *p_result = (_rcode); return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
-
-/** Don't modify the current rcode
- */
-#define RETURN_MODULE_TRANSPARENT	do { \
-						rlm_rcode_t _rcode = *p_result; \
-						*p_result = _rcode; \
-						return UNLANG_ACTION_CALCULATE_RESULT; \
-					} while (0)
+#define RETURN_UNLANG_REJECT		do { p_result->rcode = RLM_MODULE_REJECT; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_UNLANG_FAIL		do { p_result->rcode = RLM_MODULE_FAIL; return UNLANG_ACTION_FAIL; } while (0)
+#define RETURN_UNLANG_OK		do { p_result->rcode = RLM_MODULE_OK; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_UNLANG_HANDLED		do { p_result->rcode = RLM_MODULE_HANDLED; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_UNLANG_INVALID		do { p_result->rcode = RLM_MODULE_INVALID; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_UNLANG_DISALLOW		do { p_result->rcode = RLM_MODULE_DISALLOW; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_UNLANG_NOTFOUND		do { p_result->rcode = RLM_MODULE_NOTFOUND; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_UNLANG_NOOP		do { p_result->rcode = RLM_MODULE_NOOP; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_UNLANG_UPDATED		do { p_result->rcode = RLM_MODULE_UPDATED; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_UNLANG_TIMEOUT		do { p_result->rcode= RLM_MODULE_TIMEOUT; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_UNLANG_RCODE(_rcode)	do { p_result->rcode = (_rcode); return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
 
 extern fr_table_num_sorted_t const rcode_table[];
 extern size_t rcode_table_len;

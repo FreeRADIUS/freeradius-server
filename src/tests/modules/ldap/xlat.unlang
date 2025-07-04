@@ -127,4 +127,24 @@ if (result_string != '2.2.2.2') {
 	test_fail
 }
 
+result_string := %ldap.uri.attr_option("ldap:///ou=people,dc=example,dc=com?displayName?base?", "lang_en");
+if (result_string != 'ldap:///ou=people,dc=example,dc=com?displayName;lang_en?base?') {
+	test_fail
+}
+
+result_string := %ldap.uri.attr_option("ldap:///ou=people,dc=example,dc=com?displayName;lang_en?base?(uid=john)", "lang_en");
+if (result_string != 'ldap:///ou=people,dc=example,dc=com?displayName;lang_en?base?(uid=john)') {
+	test_fail
+}
+
+result_string := %ldap.uri.attr_option("ldap://localhost/ou=people,dc=example,dc=com?displayName;lang_en?base?(uid=john)", "binary");
+if (result_string != 'ldap://localhost:389/ou=people,dc=example,dc=com?displayName;lang_en;binary?base?(uid=john)') {
+	test_fail
+}
+
+result_string := %ldap.uri.attr_option("ldap://localhost:3890/ou=people,dc=example,dc=com?displayName;binary;lang_en?base?(uid=john)", "binary");
+if (result_string != 'ldap://localhost:3890/ou=people,dc=example,dc=com?displayName;binary;lang_en?base?(uid=john)') {
+	test_fail
+}
+
 test_pass

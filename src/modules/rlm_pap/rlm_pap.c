@@ -23,6 +23,7 @@
  * @copyright 2012 Matthew Newton (matthew@newtoncomputing.co.uk)
  * @copyright 2001 Kostas Kalevras (kkalev@noc.ntua.gr)
  */
+#include "lib/unlang/action.h"
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
@@ -75,7 +76,7 @@ typedef struct {
 	bool				normify;
 } rlm_pap_t;
 
-typedef unlang_action_t (*pap_auth_func_t)(rlm_rcode_t *p_result, rlm_pap_t const *inst, request_t *request, fr_pair_t const *, fr_value_box_t const *);
+typedef unlang_action_t (*pap_auth_func_t)(unlang_result_t *p_result, rlm_pap_t const *inst, request_t *request, fr_pair_t const *, fr_value_box_t const *);
 
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("normalise", rlm_pap_t, normify), .dflt = "yes" },
@@ -145,52 +146,53 @@ static fr_dict_attr_t const **pap_alloweds;
  *	This isn't strictly necessary, but it does make the
  *	server simpler to configure.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_pap_t const 	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_pap_t);
 	pap_call_env_t		*env_data = talloc_get_type_abort(mctx->env_data, pap_call_env_t);
 
 	if (fr_pair_find_by_da(&request->control_pairs, NULL, attr_auth_type) != NULL) {
 		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", mctx->mi->name);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	if (env_data->password.type != FR_TYPE_STRING) {
 		RDEBUG2("No %s attribute in the request.  Cannot do PAP", env_data->password_tmpl->name);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup PAP authentication.",
 		     mctx->mi->name, mctx->mi->name);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
-	if (!module_rlm_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_MODULE_NOOP;
+	if (!module_rlm_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_UNLANG_NOOP;
 
-	RETURN_MODULE_UPDATED;
+	RETURN_UNLANG_UPDATED;
 }
 
 /*
  *	PAP authentication functions
  */
 
-static unlang_action_t CC_HINT(nonnull) pap_auth_clear(rlm_rcode_t *p_result,
+static unlang_action_t CC_HINT(nonnull) pap_auth_clear(unlang_result_t *p_result,
 						       UNUSED rlm_pap_t const *inst, request_t *request,
 						       fr_pair_t const *known_good, fr_value_box_t const *password)
 {
 	if ((known_good->vp_length != password->vb_length) ||
 	    (fr_digest_cmp(known_good->vp_octets, password->vb_octets, known_good->vp_length) != 0)) {
 		REDEBUG("Cleartext password does not match \"known good\" password");
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Password   : %pV", password);
 		REDEBUG3("Expected   : %pV", &known_good->data);
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 #ifdef HAVE_CRYPT
-static unlang_action_t CC_HINT(nonnull) pap_auth_crypt(rlm_rcode_t *p_result,
+static unlang_action_t CC_HINT(nonnull) pap_auth_crypt(unlang_result_t *p_result,
 						       UNUSED rlm_pap_t const *inst, request_t *request,
 						       fr_pair_t const *known_good, fr_value_box_t const *password)
 {
@@ -223,14 +225,14 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_crypt(rlm_rcode_t *p_result,
 	 */
 	if (!crypt_out || (cmp != 0)) {
 		REDEBUG("Crypt digest does not match \"known good\" digest");
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 #endif
 
-static unlang_action_t CC_HINT(nonnull) pap_auth_md5(rlm_rcode_t *p_result,
+static unlang_action_t CC_HINT(nonnull) pap_auth_md5(unlang_result_t *p_result,
 						     UNUSED rlm_pap_t const *inst, request_t *request,
 						     fr_pair_t const *known_good, fr_value_box_t const *password)
 {
@@ -238,24 +240,25 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_md5(rlm_rcode_t *p_result,
 
 	if (known_good->vp_length != MD5_DIGEST_LENGTH) {
 		REDEBUG("\"known-good\" MD5 password has incorrect length, expected 16 got %zu", known_good->vp_length);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	fr_md5_calc(digest, password->vb_octets, password->vb_length);
 
 	if (fr_digest_cmp(digest, known_good->vp_octets, known_good->vp_length) != 0) {
 		REDEBUG("MD5 digest does not match \"known good\" digest");
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Password   : %pV", password);
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, MD5_DIGEST_LENGTH));
 		REDEBUG3("Expected   : %pH", fr_box_octets(known_good->vp_octets, MD5_DIGEST_LENGTH));
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 
-static unlang_action_t CC_HINT(nonnull) pap_auth_smd5(rlm_rcode_t *p_result,
+static unlang_action_t CC_HINT(nonnull) pap_auth_smd5(unlang_result_t *p_result,
 						      UNUSED rlm_pap_t const *inst, request_t *request,
 						      fr_pair_t const *known_good, fr_value_box_t const *password)
 {
@@ -264,7 +267,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_smd5(rlm_rcode_t *p_result,
 
 	if (known_good->vp_length <= MD5_DIGEST_LENGTH) {
 		REDEBUG("\"known-good\" Password.SMD5 has incorrect length, expected 16 got %zu", known_good->vp_length);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	md5_ctx = fr_md5_ctx_alloc_from_list();
@@ -278,16 +281,17 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_smd5(rlm_rcode_t *p_result,
 	 */
 	if (fr_digest_cmp(digest, known_good->vp_octets, MD5_DIGEST_LENGTH) != 0) {
 		REDEBUG("SMD5 digest does not match \"known good\" digest");
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Password   : %pV", password);
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, MD5_DIGEST_LENGTH));
 		REDEBUG3("Expected   : %pH", fr_box_octets(known_good->vp_octets, MD5_DIGEST_LENGTH));
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
-static unlang_action_t CC_HINT(nonnull) pap_auth_sha1(rlm_rcode_t *p_result,
+static unlang_action_t CC_HINT(nonnull) pap_auth_sha1(unlang_result_t *p_result,
 						      UNUSED rlm_pap_t const *inst, request_t *request,
 						      fr_pair_t const *known_good, fr_value_box_t const *password)
 {
@@ -296,7 +300,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_sha1(rlm_rcode_t *p_result,
 
 	if (known_good->vp_length != SHA1_DIGEST_LENGTH) {
 		REDEBUG("\"known-good\" Password.SHA1 has incorrect length, expected 20 got %zu", known_good->vp_length);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	fr_sha1_init(&sha1_context);
@@ -305,16 +309,17 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_sha1(rlm_rcode_t *p_result,
 
 	if (fr_digest_cmp(digest, known_good->vp_octets, known_good->vp_length) != 0) {
 		REDEBUG("SHA1 digest does not match \"known good\" digest");
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Password   : %pV", password);
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, SHA1_DIGEST_LENGTH));
 		REDEBUG3("Expected   : %pH", fr_box_octets(known_good->vp_octets, SHA1_DIGEST_LENGTH));
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
-static unlang_action_t CC_HINT(nonnull) pap_auth_ssha1(rlm_rcode_t *p_result,
+static unlang_action_t CC_HINT(nonnull) pap_auth_ssha1(unlang_result_t *p_result,
 						       UNUSED rlm_pap_t const *inst, request_t *request,
 						       fr_pair_t const *known_good, fr_value_box_t const *password)
 {
@@ -323,7 +328,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_ssha1(rlm_rcode_t *p_result,
 
 	if (known_good->vp_length <= SHA1_DIGEST_LENGTH) {
 		REDEBUG("\"known-good\" Password.SSHA has incorrect length, expected > 20 got %zu", known_good->vp_length);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	fr_sha1_init(&sha1_context);
@@ -334,19 +339,20 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_ssha1(rlm_rcode_t *p_result,
 
 	if (fr_digest_cmp(digest, known_good->vp_octets, SHA1_DIGEST_LENGTH) != 0) {
 		REDEBUG("SSHA digest does not match \"known good\" digest");
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Password   : %pV", password);
 		REDEBUG3("Salt       : %pH", fr_box_octets(known_good->vp_octets + SHA1_DIGEST_LENGTH,
 							   known_good->vp_length - SHA1_DIGEST_LENGTH));
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, SHA1_DIGEST_LENGTH));
 		REDEBUG3("Expected   : %pH", fr_box_octets(known_good->vp_octets, SHA1_DIGEST_LENGTH));
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 #ifdef HAVE_OPENSSL_EVP_H
-static unlang_action_t CC_HINT(nonnull) pap_auth_evp_md(rlm_rcode_t *p_result,
+static unlang_action_t CC_HINT(nonnull) pap_auth_evp_md(unlang_result_t *p_result,
 						    	UNUSED rlm_pap_t const *inst, request_t *request,
 						    	fr_pair_t const *known_good, fr_value_box_t const *password,
 						    	char const *name, EVP_MD const *md)
@@ -365,16 +371,17 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_evp_md(rlm_rcode_t *p_result,
 
 	if (fr_digest_cmp(digest, known_good->vp_octets, known_good->vp_length) != 0) {
 		REDEBUG("%s digest does not match \"known good\" digest", name);
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Password   : %pV", password);
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, digest_len));
 		REDEBUG3("Expected   : %pH", &known_good->data);
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
-static unlang_action_t CC_HINT(nonnull) pap_auth_evp_md_salted(rlm_rcode_t *p_result,
+static unlang_action_t CC_HINT(nonnull) pap_auth_evp_md_salted(unlang_result_t *p_result,
 							       UNUSED rlm_pap_t const *inst, request_t *request,
 							       fr_pair_t const *known_good, fr_value_box_t const *password,
 							       char const *name, EVP_MD const *md)
@@ -398,22 +405,23 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_evp_md_salted(rlm_rcode_t *p_re
 	 */
 	if (fr_digest_cmp(digest, known_good->vp_octets, (size_t)digest_len) != 0) {
 		REDEBUG("%s digest does not match \"known good\" digest", name);
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Password   : %pV", password);
 		REDEBUG3("Salt       : %pH",
 			 fr_box_octets(known_good->vp_octets + digest_len, known_good->vp_length - digest_len));
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, digest_len));
 		REDEBUG3("Expected   : %pH", fr_box_octets(known_good->vp_octets, digest_len));
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /** Define a new OpenSSL EVP based password hashing function
  *
  */
 #define PAP_AUTH_EVP_MD(_func, _new_func, _name, _md) \
-static unlang_action_t CC_HINT(nonnull) _new_func(rlm_rcode_t *p_result, \
+static unlang_action_t CC_HINT(nonnull) _new_func(unlang_result_t *p_result, \
 					          rlm_pap_t const *inst, request_t *request, \
 						  fr_pair_t const *known_good, fr_value_box_t const *password) \
 { \
@@ -453,7 +461,7 @@ PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha3_512, "SSHA3-512", EVP_sha
  *	- RLM_MODULE_REJECT
  *	- RLM_MODULE_OK
  */
-static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse_digest(rlm_rcode_t *p_result,
+static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse_digest(unlang_result_t *p_result,
 									    request_t *request, const uint8_t *str, size_t len,
 									    int digest_type, char iter_sep, char salt_sep,
 									    bool iter_is_base64, fr_value_box_t const *password)
@@ -652,6 +660,7 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse_digest(rlm_
 
 	if (fr_digest_cmp(digest, hash, (size_t)digest_len) != 0) {
 		REDEBUG("PBKDF2 digest does not match \"known good\" digest");
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Salt       : %pH", fr_box_octets(salt, salt_len));
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, digest_len));
 		REDEBUG3("Expected   : %pH", fr_box_octets(hash, slen));
@@ -663,7 +672,7 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse_digest(rlm_
 finish:
 	talloc_free(salt);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /** Validates Crypt::PBKDF2 LDAP format strings
@@ -683,7 +692,7 @@ finish:
  *	- RLM_MODULE_REJECT
  *	- RLM_MODULE_OK
  */
-static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t *p_result,
+static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(unlang_result_t *p_result,
 								     request_t *request, const uint8_t *str, size_t len,
 								     fr_table_num_sorted_t const hash_names[], size_t hash_names_len,
 								     char scheme_sep, char iter_sep, char salt_sep,
@@ -720,10 +729,10 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 	return pap_auth_pbkdf2_parse_digest(p_result, request, p, end - p, digest_type, iter_sep, salt_sep, iter_is_base64, password);
 
 finish:
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
-static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_rcode_t *p_result,
+static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2(unlang_result_t *p_result,
 							       UNUSED rlm_pap_t const *inst,
 							       request_t *request,
 							       fr_pair_t const *known_good, fr_value_box_t const *password)
@@ -732,7 +741,7 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_rcode_t *p_re
 
 	if ((end - p) < 2) {
 		REDEBUG("Password.PBKDF2 too short");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -793,15 +802,15 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_rcode_t *p_re
 
 	REDEBUG("Can't determine format of Password.PBKDF2");
 
-	RETURN_MODULE_INVALID;
+	RETURN_UNLANG_INVALID;
 }
 
 /*
  * 	389ds pbkdf2 passwords
- * 	
+ *
  * 	{PBKDF2-<digest>}<rounds>$<b64_salt>$<b64_hash>
  */
-static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha1(rlm_rcode_t *p_result,
+static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha1(unlang_result_t *p_result,
 								    UNUSED rlm_pap_t const *inst,
 								    request_t *request,
 								    fr_pair_t const *known_good, fr_value_box_t const *password)
@@ -810,13 +819,13 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha1(rlm_rcode_t 
 
 	if ((end - p) < 2) {
 		REDEBUG("Password.With-Header {PBKDF2-SHA1} too short");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	return pap_auth_pbkdf2_parse_digest(p_result, request, p, end - p, FR_SSHA1, '$', '$', false, password);
 }
 
-static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256(rlm_rcode_t *p_result,
+static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256(unlang_result_t *p_result,
 								      UNUSED rlm_pap_t const *inst,
 								      request_t *request,
 								      fr_pair_t const *known_good, fr_value_box_t const *password)
@@ -825,13 +834,13 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256(rlm_rcode_
 
 	if ((end - p) < 2) {
 		REDEBUG("Password.With-Header {PBKDF2-SHA256} too short");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	return pap_auth_pbkdf2_parse_digest(p_result, request, p, end - p, FR_SSHA2_256, '$', '$', false, password);
 }
 
-static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha512(rlm_rcode_t *p_result,
+static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha512(unlang_result_t *p_result,
 								      UNUSED rlm_pap_t const *inst,
 								      request_t *request,
 								      fr_pair_t const *known_good, fr_value_box_t const *password)
@@ -840,7 +849,7 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha512(rlm_rcode_
 
 	if ((end - p) < 2) {
 		REDEBUG("Password.With-Header {PBKDF2-SHA512} too short");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	return pap_auth_pbkdf2_parse_digest(p_result, request, p, end - p, FR_SSHA2_512, '$', '$', false, password);
@@ -857,7 +866,7 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha512(rlm_rcode_
  *      64 bytes salt
  *	256 bytes hash
  */
-static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256_legacy(rlm_rcode_t *p_result,
+static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256_legacy(unlang_result_t *p_result,
 									     UNUSED rlm_pap_t const *inst,
 									     request_t *request,
 									     fr_pair_t const *known_good, fr_value_box_t const *password)
@@ -885,7 +894,7 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256_legacy(rlm
 
 	if ((end - p) != PBKDF2_SHA256_LEGACY_B64_LENGTH) {
 		REDEBUG("Password.With-Header {PBKDF2_SHA256} has incorrect size %zd instead of %d.", known_good->vp_length, PBKDF2_SHA256_LEGACY_B64_LENGTH);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	slen = fr_base64_decode(&FR_DBUFF_TMP((uint8_t *) &pbkdf2_buf, sizeof(pbkdf2_buf)),
@@ -893,19 +902,19 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256_legacy(rlm
 
 	if (slen <= 0) {
 		RPEDEBUG("Failed decoding Password.With-Header {PBKDF2_SHA256}: \"%.*s\"", (int)(end -p), p);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	if (slen != PBKDF2_SHA256_LEGACY_TOTAL_LENGTH) {
 		REDEBUG("Password.With-Header {PBKDF2_SHA256} has incorrect decoded size %zd instead of %d.", slen, PBKDF2_SHA256_LEGACY_TOTAL_LENGTH);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	pbkdf2_buf.iterations = ntohl(pbkdf2_buf.iterations);
 
 	if (pbkdf2_buf.iterations != PBKDF2_SHA256_LEGACY_ITERATIONS) {
 		REDEBUG("Password.With-Header {PBKDF2_SHA256} has unexpected number of iterations %d instead of %d.", pbkdf2_buf.iterations, PBKDF2_SHA256_LEGACY_ITERATIONS);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	if (PKCS5_PBKDF2_HMAC((char const *)password->vb_octets, (int)password->vb_length,
@@ -914,22 +923,23 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256_legacy(rlm
 			      evp_md,
 			      (int)digest_len, (unsigned char *)digest) == 0) {
 		fr_tls_log(request, "PBKDF2_SHA256 digest failure");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	if (fr_digest_cmp(digest, pbkdf2_buf.hash, (size_t)digest_len) != 0) {
 		REDEBUG("PBKDF2_SHA256 digest does not match \"known good\" digest");
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Salt       : %pH", fr_box_octets(pbkdf2_buf.salt, PBKDF2_SHA256_LEGACY_SALT_LENGTH));
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, digest_len));
 		REDEBUG3("Expected   : %pH", fr_box_octets(pbkdf2_buf.hash, PBKDF2_SHA256_LEGACY_HASH_LENGTH));
-		RETURN_MODULE_RCODE(RLM_MODULE_REJECT);
+		RETURN_UNLANG_RCODE(RLM_MODULE_REJECT);
 	} else {
-		RETURN_MODULE_RCODE(RLM_MODULE_OK);
+		RETURN_UNLANG_RCODE(RLM_MODULE_OK);
 	}
 }
 #endif
 
-static unlang_action_t CC_HINT(nonnull) pap_auth_nt(rlm_rcode_t *p_result,
+static unlang_action_t CC_HINT(nonnull) pap_auth_nt(unlang_result_t *p_result,
 						    UNUSED rlm_pap_t const *inst, request_t *request,
 						    fr_pair_t const *known_good, fr_value_box_t const *password)
 {
@@ -941,29 +951,30 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_nt(rlm_rcode_t *p_result,
 
 	if (known_good->vp_length != MD4_DIGEST_LENGTH) {
 		REDEBUG("\"known good\" Password.NT has incorrect length, expected 16 got %zu", known_good->vp_length);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	len = fr_utf8_to_ucs2(ucs2, sizeof(ucs2),
 			      password->vb_strvalue, password->vb_length);
 	if (len < 0) {
 		REDEBUG("User-Password is not in UCS2 format");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	fr_md4_calc(digest, (uint8_t *)ucs2, len);
 
 	if (fr_digest_cmp(digest, known_good->vp_octets, known_good->vp_length) != 0) {
 		REDEBUG("NT digest does not match \"known good\" digest");
+		if (!DEBUG_ENABLED3) RETURN_UNLANG_REJECT;
 		REDEBUG3("Calculated : %pH", fr_box_octets(digest, sizeof(digest)));
 		REDEBUG3("Expected   : %pH", &known_good->data);
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
-static unlang_action_t CC_HINT(nonnull) pap_auth_ns_mta_md5(rlm_rcode_t *p_result,
+static unlang_action_t CC_HINT(nonnull) pap_auth_ns_mta_md5(unlang_result_t *p_result,
 							    UNUSED rlm_pap_t const *inst, request_t *request,
 							    fr_pair_t const *known_good, fr_value_box_t const *password)
 {
@@ -977,7 +988,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_ns_mta_md5(rlm_rcode_t *p_resul
 	if (known_good->vp_length != 64) {
 		REDEBUG("\"known good\" Password.NS-MTA-MD5 has incorrect length, expected 64 got %zu",
 			known_good->vp_length);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -986,7 +997,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_ns_mta_md5(rlm_rcode_t *p_resul
 	if (fr_base16_decode(NULL, &digest_dbuff,
 		       &FR_SBUFF_IN(known_good->vp_strvalue, known_good->vp_length), false) != 16) {
 		REDEBUG("\"known good\" Password.NS-MTA-MD5 has invalid value");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -996,7 +1007,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_ns_mta_md5(rlm_rcode_t *p_resul
 	 */
 	if (password->vb_length >= (sizeof(buff) - 2 - 2 * 32)) {
 		REDEBUG("\"known good\" Password.NS-MTA-MD5 is too long");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -1019,20 +1030,20 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_ns_mta_md5(rlm_rcode_t *p_resul
 
 	if (fr_digest_cmp(fr_dbuff_start(&digest_dbuff), buff, 16) != 0) {
 		REDEBUG("NS-MTA-MD5 digest does not match \"known good\" digest");
-		RETURN_MODULE_REJECT;
+		RETURN_UNLANG_REJECT;
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /** Auth func for password types that should have been normalised away
  *
  */
-static unlang_action_t CC_HINT(nonnull) pap_auth_dummy(rlm_rcode_t *p_result,
+static unlang_action_t CC_HINT(nonnull) pap_auth_dummy(unlang_result_t *p_result,
 						       UNUSED rlm_pap_t const *inst, UNUSED request_t *request,
 						       UNUSED fr_pair_t const *known_good, UNUSED fr_value_box_t const *password)
 {
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 
 /** Table of password types we can process
@@ -1082,19 +1093,20 @@ static const pap_auth_func_t auth_func_table[] = {
 /*
  *	Authenticate the user via one of any well-known password.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_pap_t const 	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_pap_t);
 	fr_pair_t		*known_good;
-	rlm_rcode_t		rcode = RLM_MODULE_INVALID;
 	pap_auth_func_t		auth_func;
 	bool			ephemeral;
 	pap_call_env_t		*env_data = talloc_get_type_abort(mctx->env_data, pap_call_env_t);
 
+	p_result->rcode = RLM_MODULE_INVALID;
+
 	if (env_data->password.type != FR_TYPE_STRING) {
 		REDEBUG("You set 'Auth-Type = PAP' for a request that does not contain a %s attribute!",
 			env_data->password_tmpl->name);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -1102,7 +1114,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (env_data->password.vb_length == 0) {
 		REDEBUG("Password must not be empty");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	if (RDEBUG_ENABLED3) {
@@ -1123,7 +1135,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 				   inst->normify);
 	if (!known_good) {
 		REDEBUG("No \"known good\" password found for user");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	fr_assert(known_good->da->attr < NUM_ELEMENTS(auth_func_table));
@@ -1140,9 +1152,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	/*
 	 *	Authenticate, and return.
 	 */
-	auth_func(&rcode, inst, request, known_good, &env_data->password);
+	auth_func(p_result, inst, request, known_good, &env_data->password);
 	if (ephemeral) TALLOC_FREE(known_good);
-	switch (rcode) {
+	switch (p_result->rcode) {
 	case RLM_MODULE_REJECT:
 		REDEBUG("Password incorrect");
 		break;
@@ -1155,7 +1167,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		break;
 	}
 
-	RETURN_MODULE_RCODE(rcode);
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)

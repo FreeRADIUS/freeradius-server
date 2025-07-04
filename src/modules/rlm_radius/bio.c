@@ -545,6 +545,9 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	DEBUG3("Encoded packet");
 	HEXDUMP3(u->packet, u->packet_len, NULL);
 
+	fr_assert(u->packet != NULL);
+	fr_assert(u->packet_len >= RADIUS_HEADER_LENGTH);
+
 	slen = fr_bio_write(h->bio.write, NULL, u->packet, u->packet_len);
 
 	if (slen == fr_bio_error(IO_WOULD_BLOCK)) goto blocked;
@@ -660,15 +663,28 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
 		return FR_BIO_VERIFY_WANT_MORE;
 	}
 
-#define REQUIRE_MA(_h) (((_h)->ctx.inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) || (_h)->ctx.inst->received_message_authenticator)
+#define REQUIRE_MA(_h) (((_h)->ctx.inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) || *(_h)->ctx.inst->received_message_authenticator)
 
 	/*
 	 *	See if we need to discard the packet.
+	 *
+	 *	@todo - rate limit these messages, and find a way to associate them with a request, or even
+	 *	the logging destination of the module.
 	 */
 	if (!fr_radius_ok(data, size, h->ctx.inst->max_attributes, REQUIRE_MA(h), &failure)) {
 		if (failure == DECODE_FAIL_UNKNOWN_PACKET_CODE) return FR_BIO_VERIFY_DISCARD;
 
 		PERROR("%s - Connection %s received bad packet", h->ctx.module_name, h->ctx.fd_info->name);
+
+		if (failure == DECODE_FAIL_MA_MISSING) {
+			if (h->ctx.inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) {
+				ERROR("We are configured with 'require_message_authenticator = true'");
+			} else {
+				ERROR("We previously received a packet from this client which included a Message-Authenticator attribute");
+			}
+		}
+
+		if (h->ctx.fd_config.socket_type == SOCK_DGRAM) return FR_BIO_VERIFY_DISCARD;
 
 		return FR_BIO_VERIFY_ERROR_CLOSE;
 	}
@@ -828,6 +844,8 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uc
 #endif
 		fr_assert_fail("%u tracking entries still allocated at conn close", h->tt->num_requests);
 	}
+
+	fr_bio_shutdown(h->bio.mem);
 
 	DEBUG4("Freeing handle %p", handle);
 
@@ -1222,7 +1240,7 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 	 */
 	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) h->ctx.radius_ctx.secret,
 			   h->ctx.radius_ctx.secret_length) < 0) {
-		RERROR("Failed signing packet");
+		RPERROR("Failed signing packet");
 		goto error;
 	}
 
@@ -1583,6 +1601,9 @@ static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h
 	packet_len = u->packet_len;
 
 do_write:
+	fr_assert(packet != NULL);
+	fr_assert(packet_len >= RADIUS_HEADER_LENGTH);
+
 	slen = fr_bio_write(h->bio.write, NULL, packet, packet_len);
 
 	/*
@@ -2271,14 +2292,14 @@ static void request_complete(request_t *request, NDEBUG_UNUSED void *preq, void 
 /** Resume execution of the request, returning the rcode set during trunk execution
  *
  */
-static unlang_action_t mod_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t mod_resume(unlang_result_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	bio_request_t	*u = talloc_get_type_abort(mctx->rctx, bio_request_t);
 	rlm_rcode_t	rcode = u->rcode;
 
 	talloc_free(u);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 static void do_signal(rlm_radius_t const *inst, bio_request_t *u, request_t *request, fr_signal_t action);
@@ -2668,7 +2689,7 @@ static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	 *	Sign it.
 	 */
 	if (fr_radius_sign(buffer, NULL, (uint8_t const *) radius_ctx.secret, radius_ctx.secret_length) < 0) {
-		RERROR("Failed signing packet");
+		RPERROR("Failed signing packet");
 		return XLAT_ACTION_FAIL;
 	}
 

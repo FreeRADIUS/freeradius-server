@@ -1,5 +1,7 @@
 = Configuring a server to proxy requests
 
+include::ROOT:partial$v3_warning.adoc[]
+
 *Goal:* To configure the server to proxy packets to a remote (home)
 RADIUS server and to perform test authentications against both the
 proxy server and the home server.

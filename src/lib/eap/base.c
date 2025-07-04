@@ -400,7 +400,7 @@ void eap_add_reply(request_t *request, fr_dict_attr_t const *da, uint8_t const *
  *
  * Storing the value of the State attribute in readiness for the next round.
  */
-static unlang_action_t eap_virtual_server_resume(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t eap_virtual_server_resume(UNUSED unlang_result_t *p_result,
 						 request_t *request, void *uctx)
 {
 	eap_session_t	*eap_session = talloc_get_type_abort(uctx, eap_session_t);
@@ -441,10 +441,15 @@ unlang_action_t eap_virtual_server(request_t *request, eap_session_t *eap_sessio
 				  attr_packet_type) < 0) return UNLANG_ACTION_FAIL;
 	vp->vp_uint32 = FR_RADIUS_CODE_ACCESS_REQUEST;
 
-	if (unlang_function_push(request, NULL, eap_virtual_server_resume, NULL, 0,
-				 UNLANG_SUB_FRAME, eap_session) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_function_push_with_result(/* transparent */ unlang_interpret_result(request),
+					     request,
+					     NULL,
+					     eap_virtual_server_resume,
+					     NULL, 0,
+					     UNLANG_SUB_FRAME,
+					     eap_session) < 0) return UNLANG_ACTION_FAIL;
 
-	if (unlang_call_push(request, server_cs, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_call_push(NULL, request, server_cs, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }

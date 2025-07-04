@@ -130,6 +130,13 @@ Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, $
 Description: Brotli compression and decompression for FreeRADIUS server
  This module adds brotli compression and decompression support to FreeRADIUS.
 
+Package: freeradius-ftp
+Architecture: any
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: FTP module for FreeRADIUS server
+ The FreeRADIUS server can make calls to remote FTP servers, and this module
+ is necessary for that.
+
 Package: freeradius-krb5
 Architecture: any
 Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}

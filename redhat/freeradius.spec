@@ -331,6 +331,15 @@ BuildRequires: brotli-devel
 %description brotli
 This module adds brotli compression and decompression support to FreeRADIUS.
 
+%package ftp
+Summary: FTP support for FreeRADIUS
+Group: System Environment/Daemons
+Requires: %{name}%{?_isa} = %{version}-%{release}
+Requires: freeradius-libfreeradius-curl = %{version}
+
+%description ftp
+This plugin provides the ability to retrieve files from FTP URIs for the FreeRADIUS server project.
+
 %package imap
 Summary: IMAP support for FreeRADIUS
 Group: System Environment/Daemons
@@ -777,8 +786,8 @@ touch $RPM_BUILD_ROOT/var/log/radius/radius.log
 %__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/lua
 %endif
 
-%if %{without rlm_ruby}
-%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/ruby
+%if %{without rlm_mruby}
+%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/mruby
 %endif
 %if %{without rlm_sql_oracle}
 %__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
@@ -989,6 +998,7 @@ fi
 %{_libdir}/freeradius/rlm_chap.so
 %{_libdir}/freeradius/rlm_cipher.so
 %{_libdir}/freeradius/rlm_client.so
+%{_libdir}/freeradius/rlm_crl.so
 %{_libdir}/freeradius/rlm_csv.so
 %{_libdir}/freeradius/rlm_date.so
 %{_libdir}/freeradius/rlm_delay.so
@@ -1240,6 +1250,10 @@ fi
 %{_libdir}/freeradius/rlm_cache_memcached.so
 %endif
 
+%files ftp
+%defattr(-,root,root)
+%{_libdir}/freeradius/rlm_ftp.so
+
 %files imap
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_imap.so
@@ -1313,7 +1327,7 @@ fi
 %endif
 
 %if %{with rlm_lua}
-%files ruby
+%files lua
 %defattr(-,root,root,750)
 %attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/lua
 %{_libdir}/freeradius/rlm_lua.so
@@ -1322,7 +1336,7 @@ fi
 %if %{with rlm_mruby}
 %files ruby
 %defattr(-,root,root,750)
-%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/ruby
+%attr(640,root,radiusd) %config(noreplace) %{_sysconfdir}/raddb/mods-config/mruby
 %{_libdir}/freeradius/rlm_mruby.so
 %endif
 

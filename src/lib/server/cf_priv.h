@@ -114,6 +114,7 @@ struct cf_section {
 	int			depth;
 	cf_unlang_t    		unlang;
 	bool			allow_locals;	//!< allow local variables
+	bool			at_reference;	//!< this thing was created from an @...
 
 	CONF_SECTION		*template;
 };

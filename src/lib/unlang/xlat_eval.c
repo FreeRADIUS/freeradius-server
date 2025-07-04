@@ -28,6 +28,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
+#include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/unlang/mod_action.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
 static int instance_count = 0;
@@ -226,7 +228,29 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 	 *	well as the original fmt string.
 	 */
 	if ((node->type == XLAT_FUNC) && !xlat_is_literal(node->call.args)) {
-		RDEBUG2("| %%%s(%pM)", node->call.func->name, args);
+		fr_token_t token = node->call.func->token;
+
+		if ((token == T_INVALID) || (!fr_comparison_op[token] && !fr_binary_op[token])) {
+			RDEBUG2("| %%%s(%pM)", node->call.func->name, args);
+		} else {
+			fr_value_box_t *a, *b;
+
+			a = fr_value_box_list_head(args);
+			b = fr_value_box_list_next(args, a);
+
+			RDEBUG2("| (%pV %s %pV)", a, fr_tokens[node->call.func->token], b);
+
+#ifndef NDEBUG
+			if (a && b) {
+				a = fr_value_box_list_next(args, b);
+				if (a) {
+					RDEBUG2("| ... ??? %pV", a);
+					fr_assert(0);
+				}
+			}
+#endif
+
+		}
 	} else {
 		fr_sbuff_t *agg;
 
@@ -889,8 +913,8 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		/*
 		 *	@todo - we probably should remove this now that we have FR_TYPE_DATE with scaling.
 		 */
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL));
-		value->datum.uint32 = fr_time_to_msec(request->packet->timestamp) % 1000;
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL));
+		value->datum.uint64 = (uint64_t)fr_time_to_usec(request->packet->timestamp) % 1000000;
 		break;
 
 	case 'S': /* Request timestamp in SQL format */
@@ -1600,7 +1624,7 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 			      xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	fr_value_box_list_t	result;
-	bool			success = false;
+	unlang_result_t		unlang_result = { .rcode = RLM_MODULE_NOT_SET, .priority = MOD_ACTION_NOT_SET };
 	TALLOC_CTX		*pool = talloc_new(NULL);
 	rlm_rcode_t		rcode;
 	char			*str;
@@ -1614,7 +1638,7 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 	/*
 	 *	Use the unlang stack to evaluate the xlat.
 	 */
-	if (unlang_xlat_push(pool, &success, &result, request, head, UNLANG_TOP_FRAME) < 0) {
+	if (unlang_xlat_push(pool, &unlang_result, &result, request, head, UNLANG_TOP_FRAME) < 0) {
 	fail:
 		talloc_free(pool);
 		return -1;
@@ -1633,7 +1657,7 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 
 	switch (rcode) {
 	default:
-		if (!success) goto fail;
+		if (!XLAT_RESULT_SUCCESS(&unlang_result)) goto fail;
 		break;
 
 	case RLM_MODULE_REJECT:

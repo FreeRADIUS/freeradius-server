@@ -1,5 +1,7 @@
 = Splitting strings
 
+include::ROOT:partial$v3_warning.adoc[]
+
 *Goal:* Explore uses of regular expressions and subcapture groups
 
 *Time:* 10-20 minutes

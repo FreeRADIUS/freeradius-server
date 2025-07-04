@@ -42,6 +42,7 @@ typedef struct module_list_s			module_list_t;
 #include <freeradius-devel/server/module_ctx.h>
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/unlang/interpret.h>
 
 DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
@@ -65,7 +66,7 @@ DIAG_ON(attributes)
  * @param[in] request		to process.
  * @return the appropriate rcode.
  */
-typedef unlang_action_t (*module_method_t)(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
+typedef unlang_action_t (*module_method_t)(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request);
 
 /** Module instantiation callback
  *
@@ -176,6 +177,13 @@ struct module_method_binding_s {
 	module_method_t				method;			//!< Module method to call
 	call_env_method_t const			*method_env;		//!< Method specific call_env.
 
+	size_t					rctx_size;		//!< If set, this overrides the module_t rctx_size.
+									///< Instructs the module instruction to pre-allocate
+									///< an rctx (available in mctx->rctx) before the module
+									///< method is called.
+	char const				*rctx_type;		//!< If rctx_size is used from the mmb, this sets the
+									///< type of the rctx.
+
 	fr_dlist_head_t				same_name1;		//!< List of bindings with the same name1.  Only initialised
 									///< for the the first name1 binding.
 									///< DO NOT INITIALISE IN THE MODULE.
@@ -235,7 +243,18 @@ struct module_s {
 
 	size_t				thread_inst_size;	//!< Size of the module's thread-specific instance data.
 	char const			*thread_inst_type;	//!< talloc type to assign to thread instance data.
+
+	size_t				rctx_size;		//!< Size of the module's thread-specific data.
+	char const			*rctx_type;		//!< talloc type to assign to thread instance data.
 };
+
+#define TALLOCED_TYPE(_field, _ctype) \
+	._field##_size = sizeof(_ctype), ._field##_type = #_ctype
+
+#define MODULE_BOOT(_ctype) TALLOCED_TYPE(boot, _ctype)
+#define MODULE_INST(_ctype) TALLOCED_TYPE(inst, _ctype)
+#define MODULE_THREAD_INST(_ctype) TALLOCED_TYPE(thread_inst, _ctype)
+#define MODULE_RCTX(_ctype) TALLOCED_TYPE(rctx, _ctype)
 
 /** What state the module instance is currently in
  *

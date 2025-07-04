@@ -580,7 +580,7 @@ static void smtp_io_module_signal(module_ctx_t const *mctx, request_t *request, 
  *	When responding to requests initiated by mod_mail this indicates
  *	the mail has been queued.
  */
-static unlang_action_t smtp_io_module_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t smtp_io_module_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_smtp_t);
 	fr_curl_io_request_t     	*randle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
@@ -603,17 +603,17 @@ static unlang_action_t smtp_io_module_resume(rlm_rcode_t *p_result, module_ctx_t
 		switch (result) {
 		case CURLE_PEER_FAILED_VERIFICATION:
 		case CURLE_LOGIN_DENIED:
-			RETURN_MODULE_REJECT;
+			RETURN_UNLANG_REJECT;
 
 		default:
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 	}
 
 	if (tls->extract_cert_attrs) fr_curl_response_certinfo(request, randle);
 	smtp_slab_release(randle);
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /*
@@ -630,7 +630,7 @@ static unlang_action_t smtp_io_module_resume(rlm_rcode_t *p_result, module_ctx_t
  *	Then it queues the request and yields until a response is given
  *	When it responds, smtp_io_module_resume is called.
  */
-static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_mail(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_smtp_t);
 	rlm_smtp_thread_t       	*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
@@ -646,14 +646,14 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 	/* Make sure all of the essential email components are present and possible*/
 	if (!smtp_body) {
 		RDEBUG2("Attribute \"smtp-body\" is required for smtp");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	if (!call_env->sender_address && !inst->envelope_address) {
 		RDEBUG2("At least one of \"sender_address\" or \"envelope_address\" in the config, or \"SMTP-Sender-Address\" in the request is needed");
 	error:
 		if (randle) smtp_slab_release(randle);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	/*
@@ -666,7 +666,7 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 							    smtp_slab_reserve(t->slab_persist);
 	if (!randle) {
 		RDEBUG2("A handle could not be allocated for the request");
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/* Initialize the uctx to perform the email */
@@ -732,7 +732,7 @@ skip_auth:
 	/* Add the mime endoced elements to the curl request */
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_MIMEPOST, mail_ctx->mime);
 
-	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_MODULE_INVALID;
+	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_UNLANG_INVALID;
 
 	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, ~FR_SIGNAL_CANCEL, randle);
 }
@@ -746,7 +746,7 @@ skip_auth:
  *	Then it queues the request and yields until a response is given
  *	When it responds, smtp_io_module_resume is called.
  */
-static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_smtp_thread_t       *t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
 	rlm_smtp_auth_env_t	*env_data = talloc_get_type_abort(mctx->env_data, rlm_smtp_auth_env_t);
@@ -754,27 +754,27 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 
 	if (!env_data->username_tmpl) {
 		RDEBUG("No 'username' was set for authentication - failing the request");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	if (!env_data->password_tmpl) {
 		RDEBUG("No 'username' was set for authentication - failing the request");
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	if (env_data->username.type != FR_TYPE_STRING || (env_data->username.vb_length == 0)) {
 		RWARN("\"%s\" is required for authentication", env_data->username_tmpl->name);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	if (env_data->password.type != FR_TYPE_STRING || (env_data->password.vb_length == 0)) {
 		RWARN("\"%s\" is required for authentication", env_data->password_tmpl->name);
-		RETURN_MODULE_INVALID;
+		RETURN_UNLANG_INVALID;
 	}
 
 	randle = smtp_slab_reserve(t->slab_onetime);
 	if (!randle) {
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_USERNAME, env_data->username.vb_strvalue);
@@ -783,7 +783,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 	if (fr_curl_io_request_enqueue(t->mhandle, request, randle) < 0) {
 	error:
 		smtp_slab_release(randle);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, ~FR_SIGNAL_CANCEL, randle);

@@ -49,6 +49,7 @@ extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_x509v3_extended_key_usa
 extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_x509v3_subject_key_identifier;
 extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_x509v3_authority_key_identifier;
 extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_x509v3_basic_constraints;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_x509v3_crl_distribution_points;
 
 extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_chain_depth;
 extern HIDDEN fr_dict_attr_t const *attr_tls_client_error_code;
@@ -62,6 +63,8 @@ extern HIDDEN fr_dict_attr_t const *attr_tls_session_require_client_cert;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_cipher_suite;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_version;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_resume_type;
+
+extern HIDDEN fr_dict_attr_t const *attr_module_failure_message;
 
 extern HIDDEN fr_dict_attr_t const *attr_tls_packet_type;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_data;

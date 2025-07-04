@@ -160,13 +160,11 @@ finish:
 /** Submit LDAP extended operation to retrieve Universal Password
  *
  * @param p_result	Result of current operation.
- * @param priority	Unused.
  * @param request	Current request.
  * @param uctx		eDir lookup context.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t ldap_edir_get_password_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
-						    void *uctx)
+static unlang_action_t ldap_edir_get_password_start(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_edir_ctx_t	*edir_ctx = talloc_get_type_abort(uctx, ldap_edir_ctx_t);
 	return fr_ldap_trunk_extended(edir_ctx, &edir_ctx->query, request, edir_ctx->ttrunk,
@@ -176,13 +174,11 @@ static unlang_action_t ldap_edir_get_password_start(UNUSED rlm_rcode_t *p_result
 /** Handle results of retrieving Universal Password
  *
  * @param p_result	Result of current operation.
- * @param priority	Unused.
  * @param request	Current request.
  * @param uctx		eDir lookup context.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t ldap_edir_get_password_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
-						     void *uctx)
+static unlang_action_t ldap_edir_get_password_resume(unlang_result_t *p_result, request_t *request, void *uctx)
 {
 	ldap_edir_ctx_t *edir_ctx = talloc_get_type_abort(uctx, ldap_edir_ctx_t);
 	fr_ldap_query_t	*query = edir_ctx->query;
@@ -267,7 +263,7 @@ finish:
 		rcode = RLM_MODULE_FAIL;
 	}
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /** Cancel an in progress Universal Password lookup
@@ -284,6 +280,7 @@ static void ldap_edir_get_password_cancel(UNUSED request_t *request, UNUSED fr_s
 
 /** Initiate retrieval of the universal password from Novell eDirectory
  *
+ * @param[out] p_result		Where to write the result of the operation.
  * @param[in] request		Current request.
  * @param[in] dn		of the user whose password is to be retrieved.
  * @param[in] ttrunk		on which to send the LDAP request.
@@ -292,7 +289,8 @@ static void ldap_edir_get_password_cancel(UNUSED request_t *request, UNUSED fr_s
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
  *	- UNLANG_ACTION_FAIL on failure.
  */
-unlang_action_t fr_ldap_edir_get_password(request_t *request, char const *dn, fr_ldap_thread_trunk_t *ttrunk,
+unlang_action_t fr_ldap_edir_get_password(unlang_result_t *p_result,
+					  request_t *request, char const *dn, fr_ldap_thread_trunk_t *ttrunk,
 					  fr_dict_attr_t const *password_da)
 {
 	ldap_edir_ctx_t	*edir_ctx;
@@ -300,7 +298,7 @@ unlang_action_t fr_ldap_edir_get_password(request_t *request, char const *dn, fr
 
 	if (!dn || !*dn) {
 		REDEBUG("Missing DN");
-		return UNLANG_ACTION_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	MEM(edir_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_edir_ctx_t));
@@ -315,12 +313,15 @@ unlang_action_t fr_ldap_edir_get_password(request_t *request, char const *dn, fr
 	if (err) {
 		REDEBUG("Failed to encode user DN: %s", fr_ldap_edir_errstr(err));
 		talloc_free(edir_ctx);
-		return UNLANG_ACTION_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
-	return unlang_function_push(request, ldap_edir_get_password_start, ldap_edir_get_password_resume,
-				    ldap_edir_get_password_cancel, ~FR_SIGNAL_CANCEL,
-				    UNLANG_SUB_FRAME, edir_ctx);
+	return unlang_function_push_with_result(p_result,
+						request,
+						ldap_edir_get_password_start,
+						ldap_edir_get_password_resume,
+						ldap_edir_get_password_cancel, ~FR_SIGNAL_CANCEL,
+						UNLANG_SUB_FRAME, edir_ctx);
 }
 
 char const *fr_ldap_edir_errstr(int code)

@@ -25,17 +25,30 @@
  */
 RCSID("$Id$")
 
+#include "action.h"
 #include "unlang_priv.h"
 #include "function.h"
+
+#define FUNC(_state) *((void **)&state->func)
+#define REPEAT(_state) *((void **)&state->repeat)
 
 /*
  *	Some functions differ mainly in their parsing
  */
 typedef struct {
-	unlang_function_t		func;			//!< To call when going down the stack.
+	union {
+		unlang_function_no_result_t	nres;		//!< To call when going down the stack.
+		unlang_function_with_result_t	wres;		//!< To call when going down the stack.
+	} func;
 	char const			*func_name;		//!< Debug name for the function.
-	unlang_function_t		repeat;			//!< To call when going back up the stack.
+
+	union {
+		unlang_function_no_result_t	nres;		//!< To call when going back up the stack.
+		unlang_function_with_result_t	wres;		//!< To call when going back up the stack.
+	} repeat;
+	unlang_function_type_t		type;			//!< Record whether we need to call the
 	char const			*repeat_name;		//!< Debug name for the repeat function.
+
 	unlang_function_signal_t	signal;			//!< Signal function to call.
 	fr_signal_t			sigmask;		//!< Signals to block.
 	char const			*signal_name;		//!< Debug name for the signal function.
@@ -50,16 +63,24 @@ static unlang_t function_instruction = {
 	.name = "function",
 	.debug_name = "function",
 	.actions = {
+		/*
+		 *	By default, functions don't change the section rcode.
+		 *	We can't make generalisations about what the intent
+		 *	of the function callbacks are, so isntead of having
+		 *	implicit, confusing behaviour, we always discard the
+		 *	rcode UNLESS the function explicitly sets it.
+		 */
 		.actions = {
-			[RLM_MODULE_REJECT]	= 0,
-			[RLM_MODULE_FAIL]	= 0,
-			[RLM_MODULE_OK]		= 0,
-			[RLM_MODULE_HANDLED]	= 0,
-			[RLM_MODULE_INVALID]	= 0,
-			[RLM_MODULE_DISALLOW]	= 0,
-			[RLM_MODULE_NOTFOUND]	= 0,
-			[RLM_MODULE_NOOP]	= 0,
-			[RLM_MODULE_UPDATED]	= 0
+			[RLM_MODULE_REJECT]	= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_FAIL]	= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_OK]		= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_HANDLED]	= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_INVALID]	= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_DISALLOW]	= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_NOTFOUND]	= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_NOOP]	= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_UPDATED]	= MOD_ACTION_NOT_SET,
+			[RLM_MODULE_TIMEOUT]	= MOD_ACTION_NOT_SET
 		},
 		.retry = RETRY_INIT,
 	}
@@ -81,69 +102,198 @@ static void unlang_function_signal(request_t *request,
 	state->signal(request, action, state->uctx);
 }
 
-static unlang_action_t unlang_function_call_repeat(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
-{
-	unlang_action_t			ua;
-	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
-	char const 			*caller;
 
-	/*
-	 *	Don't let the callback mess with the current
-	 *	module permanently.
-	 */
-	caller = request->module;
-	request->module = NULL;
-	RDEBUG4("Calling repeat function %p (%s)", state->repeat, state->repeat_name);
-	ua = state->repeat(p_result, &frame->priority, request, state->uctx);
+/*
+ *	Don't let the callback mess with the current
+ *	module permanently.
+ */
+#define STORE_CALLER \
+	char const *caller; \
+	caller = request->module; \
+	request->module = NULL
+
+#define RESTORE_CALLER \
 	request->module = caller;
 
-	return ua;
-}
-
-/** Call a generic function
+/** Call a generic function that produces a result
  *
  * @param[out] p_result		The frame result.
  * @param[in] request		The current request.
  * @param[in] frame		The current frame.
  */
-static unlang_action_t unlang_function_call(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t call_with_result_repeat(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_action_t			ua;
 	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
-	char const 			*caller;
+	unlang_function_with_result_t	func = REPEAT(state);
 
-	/*
-	 *	Don't let the callback mess with the current
-	 *	module permanently.
-	 */
-	caller = request->module;
-	request->module = NULL;
+	STORE_CALLER;
 
-	RDEBUG4("Calling function %p (%s)", state->func, state->func_name);
-	ua = state->func(p_result, &frame->priority, request, state->uctx);
-	switch (ua) {
-	case UNLANG_ACTION_STOP_PROCESSING:
-		break;
-
-	/*
-	 *	Similar functionality to the modcall code.
-	 *	If we have a repeat function set and the
-	 *	initial function is done, call the repeat
-	 *	function using the C stack.
-	 */
-	case UNLANG_ACTION_CALCULATE_RESULT:
-		if (state->repeat) unlang_function_call_repeat(p_result, request, frame);
-		break;
-
-	/*
-	 *	Function pushed more children or yielded
-	 *	setup our repeat function for when we
-	 *	eventually start heading back up the stack.
-	 */
-	default:
-		if (state->repeat) frame_repeat(frame, unlang_function_call_repeat);
+	if (!REPEAT(state)) {
+		RDEBUG4("Repeat function is NULL, likely due to previous yield, skipping call");
+		ua = UNLANG_ACTION_CALCULATE_RESULT;
+		goto done;
 	}
-	request->module = caller;
+
+again:
+	RDEBUG4("Calling repeat function %p (%s)", REPEAT(state), state->repeat_name);
+
+	/*
+	 *	Only called once...
+	 */
+	REPEAT(state) = NULL;
+	state->repeat_name = NULL;
+	ua = func(p_result, request, state->uctx);
+	if (REPEAT(state)) { /* set again by func */
+		switch (ua) {
+		case UNLANG_ACTION_STOP_PROCESSING:
+			break;
+
+		case UNLANG_ACTION_CALCULATE_RESULT:
+			goto again;
+
+		default:
+			frame_repeat(frame, call_with_result_repeat);
+		}
+	}
+
+done:
+	RESTORE_CALLER;
+
+	return ua;
+}
+
+/** Call a generic function that produces a result
+ *
+ * @param[out] p_result		The frame result.
+ * @param[in] request		The current request.
+ * @param[in] frame		The current frame.
+ */
+static unlang_action_t call_with_result(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_action_t			ua;
+	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
+
+	STORE_CALLER;
+
+	RDEBUG4("Calling function %p (%s)", FUNC(state), state->func_name);
+	ua = state->func.wres(p_result, request, state->uctx);
+	FUNC(state) = NULL;
+	state->func_name = NULL;
+	if (REPEAT(state)) {
+		switch (ua) {
+		case UNLANG_ACTION_STOP_PROCESSING:
+			break;
+
+		case UNLANG_ACTION_CALCULATE_RESULT:
+			ua = call_with_result_repeat(p_result, request, frame);
+			break;
+
+		default:
+			frame_repeat(frame, call_with_result_repeat);
+		}
+	}
+	RESTORE_CALLER;
+
+	return ua;
+}
+
+/** Call a generic function that produces a result
+ *
+ * @param[out] p_result		The frame result.
+ * @param[in] request		The current request.
+ * @param[in] frame		The current frame.
+ */
+static unlang_action_t call_no_result_repeat(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_action_t			ua;
+	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
+	unlang_function_no_result_t	func = REPEAT(state);
+
+	STORE_CALLER;
+
+	if (!REPEAT(state)) {
+		RDEBUG4("Repeat function is NULL, likely due to previous yield, skipping call");
+		ua = UNLANG_ACTION_CALCULATE_RESULT;
+		goto done;
+	}
+
+again:
+	RDEBUG4("Calling repeat function %p (%s)", REPEAT(state), state->repeat_name);
+
+	/*
+	 *	Only called once...
+	 */
+	REPEAT(state) = NULL;
+	state->repeat_name = NULL;
+	ua = func(request, state->uctx);
+	if (REPEAT(state)) { /* set again by func */
+		switch (ua) {
+		case UNLANG_ACTION_STOP_PROCESSING:
+			break;
+
+		case UNLANG_ACTION_CALCULATE_RESULT:
+			goto again;
+
+		case UNLANG_ACTION_FAIL:
+		no_action_fail:
+			fr_assert_msg(0, "Function %s (%p) is not allowed to indicate failure via UNLANG_ACTION_FAIL",
+				      state->repeat_name, REPEAT(state));
+			ua = UNLANG_ACTION_CALCULATE_RESULT;
+			break;
+
+		default:
+			frame_repeat(frame, call_no_result_repeat);
+		}
+	}
+
+	if (ua == UNLANG_ACTION_FAIL) goto no_action_fail;
+
+done:
+	RESTORE_CALLER;
+
+	return ua;
+}
+
+/** Call a generic function that produces a result
+ *
+ * @param[out] p_result		The frame result.
+ * @param[in] request		The current request.
+ * @param[in] frame		The current frame.
+ */
+static unlang_action_t call_no_result(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_action_t			ua;
+	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
+
+	STORE_CALLER;
+
+	RDEBUG4("Calling function %p (%s)", FUNC(state), state->func_name);
+	ua = state->func.nres(request, state->uctx);
+	FUNC(state) = NULL;
+	state->func_name = NULL;
+	if (REPEAT(state)) {
+		switch (ua) {
+		case UNLANG_ACTION_STOP_PROCESSING:
+			break;
+
+		case UNLANG_ACTION_CALCULATE_RESULT:
+			ua = call_no_result_repeat(p_result, request, frame);
+			break;
+
+		case UNLANG_ACTION_FAIL:
+		no_action_fail:
+			fr_assert_msg(0, "Function is not allowed to indicate failure via UNLANG_ACTION_FAIL");
+			ua = UNLANG_ACTION_CALCULATE_RESULT;
+			break;
+
+		default:
+			frame_repeat(frame, call_no_result_repeat);
+		}
+	}
+	if (ua == UNLANG_ACTION_FAIL) goto no_action_fail;
+
+	RESTORE_CALLER;
 
 	return ua;
 }
@@ -169,7 +319,7 @@ int unlang_function_clear(request_t *request)
 	}
 
 	state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
-	state->repeat = NULL;
+	REPEAT(state) = NULL;
 	state->signal = NULL;
 
 	repeatable_clear(frame);
@@ -225,11 +375,12 @@ int _unlang_function_signal_set(request_t *request, unlang_function_signal_t sig
  * @param[in] request		The current request.
  * @param[in] repeat		the repeat function to set.
  * @param[in] repeat_name	Name of the repeat function call (for debugging).
+ * @param[in] type		Type of repeat function (with or without result).
  * @return
  *	- 0 on success.
  *      - -1 on failure.
  */
-int _unlang_function_repeat_set(request_t *request, unlang_function_t repeat, char const *repeat_name)
+int _unlang_function_repeat_set(request_t *request, void *repeat, char const *repeat_name, unlang_function_type_t type)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -242,16 +393,125 @@ int _unlang_function_repeat_set(request_t *request, unlang_function_t repeat, ch
 
 	state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
 
+	if (unlikely(state->type != type)) {
+		fr_assert_msg(0, "Function type mismatch \"%s\"", repeat_name);
+		return -1;
+	}
+
 	/*
 	 *	If we're inside unlang_function_call,
 	 *	it'll pickup state->repeat and do the right thing
 	 *	once the current function returns.
 	 */
-	state->repeat = repeat;
+	REPEAT(state) = repeat;
 	state->repeat_name = repeat_name;
 	repeatable_set(frame);
 
 	return 0;
+}
+
+static inline CC_HINT(always_inline)
+unlang_action_t unlang_function_push_common(unlang_result_t *p_result,
+					    request_t *request,
+					    void *func,
+					    char const *func_name,
+					    void *repeat,
+					    char const *repeat_name,
+					    unlang_function_signal_t signal, fr_signal_t sigmask, char const *signal_name,
+					    unlang_function_type_t type,
+					    bool top_frame,
+					    void *uctx)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame;
+	unlang_frame_state_func_t	*state;
+
+	if (!func && !repeat) {
+		fr_assert_msg(0, "function push must push at least one function!");
+		return UNLANG_ACTION_FAIL;
+	}
+
+	/*
+	 *	Push module's function
+	 */
+	if (unlang_interpret_push(p_result, request, &function_instruction,
+				  FRAME_CONF(RLM_MODULE_NOOP, top_frame), UNLANG_NEXT_STOP) < 0) {
+		return UNLANG_ACTION_FAIL;
+	}
+
+	frame = &stack->frame[stack->depth];
+
+	/*
+	 *	Initialize state
+	 */
+	state = frame->state;
+	state->signal = signal;
+	state->sigmask = sigmask;
+	state->signal_name = signal_name;
+	state->type = type;
+	state->uctx = uctx;
+
+	FUNC(state) = func;
+	state->func_name = func_name;
+	REPEAT(state) = repeat;
+	state->repeat_name = repeat_name;
+
+	if (repeat) repeatable_set(frame); /* execute on the way back up */
+
+	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
+/** Push a generic function onto the unlang stack with a result
+ *
+ * @private
+ *
+ * These can be pushed by any other type of unlang op to allow a submodule or function
+ * deeper in the C call stack to establish a new resumption point.
+ *
+ * @param[in] p_result		Where to write the result of the function evaluation.
+ *
+ * @param[in] request		The current request.
+ * @param[in] func		to call going up the stack.
+ * @param[in] func_name		Name of the function call (for debugging).
+ * @param[in] repeat		function to call going back down the stack (may be NULL).
+ *				This may be the same as func.
+ * @param[in] repeat_name	Name of the repeat function call (for debugging).
+ * @param[in] signal		function to call if the request is signalled.
+ * @param[in] sigmask		Signals to block.
+ * @param[in] signal_name	Name of the signal function call (for debugging).
+ * @param[in] top_frame		Return out of the unlang interpreter when popping this frame.
+ * @param[in] uctx		to pass to func(s).
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD on success.
+ *	- UNLANG_ACTION_FAIL on failure.
+ */
+unlang_action_t _unlang_function_push_with_result(unlang_result_t *p_result,
+						  request_t *request,
+						  unlang_function_with_result_t func, char const *func_name,
+						  unlang_function_with_result_t repeat, char const *repeat_name,
+						  unlang_function_signal_t signal, fr_signal_t sigmask, char const *signal_name,
+						  bool top_frame, void *uctx)
+{
+	unlang_action_t ua;
+	unlang_stack_frame_t *frame;
+
+	ua = unlang_function_push_common(p_result,
+					 request,
+					 func, func_name,
+					 repeat, repeat_name,
+					 signal, sigmask, signal_name,
+					 UNLANG_FUNCTION_TYPE_WITH_RESULT, top_frame, uctx);
+
+	if (unlikely(ua == UNLANG_ACTION_FAIL)) return UNLANG_ACTION_FAIL;
+
+	frame = frame_current(request);
+	if (!func && repeat) {
+		frame->process = call_with_result_repeat;
+	} else {
+		frame->process = call_with_result;
+	}
+
+	return ua;
 }
 
 /** Push a generic function onto the unlang stack
@@ -276,49 +536,32 @@ int _unlang_function_repeat_set(request_t *request, unlang_function_t repeat, ch
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
  *	- UNLANG_ACTION_FAIL on failure.
  */
-unlang_action_t _unlang_function_push(request_t *request,
-				      unlang_function_t func, char const *func_name,
-				      unlang_function_t repeat, char const *repeat_name,
-				      unlang_function_signal_t signal, fr_signal_t sigmask, char const *signal_name,
-				      bool top_frame, void *uctx)
+unlang_action_t _unlang_function_push_no_result(request_t *request,
+						unlang_function_no_result_t func, char const *func_name,
+						unlang_function_no_result_t repeat, char const *repeat_name,
+						unlang_function_signal_t signal, fr_signal_t sigmask, char const *signal_name,
+						bool top_frame, void *uctx)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame;
-	unlang_frame_state_func_t	*state;
+	unlang_action_t ua;
+	unlang_stack_frame_t *frame;
 
-	/*
-	 *	Push module's function
-	 */
-	if (unlang_interpret_push(request, &function_instruction,
-				  RLM_MODULE_NOOP, UNLANG_NEXT_STOP, top_frame) < 0) return UNLANG_ACTION_FAIL;
+	ua = unlang_function_push_common(NULL,
+					 request,
+					 func, func_name,
+					 repeat, repeat_name,
+					 signal, sigmask, signal_name,
+					 UNLANG_FUNCTION_TYPE_NO_RESULT, top_frame, uctx);
 
-	frame = &stack->frame[stack->depth];
+	if (unlikely(ua == UNLANG_ACTION_FAIL)) return UNLANG_ACTION_FAIL;
 
-	/*
-	 *	Tell the interpreter to call unlang_function_call
-	 *	again when going back up the stack.
-	 */
-	if (repeat) repeatable_set(frame);
+	frame = frame_current(request);
+	if (!func && repeat) {
+		frame->process = call_no_result_repeat;
+	}
 
-	/*
-	 *	Initialize state
-	 */
-	state = frame->state;
-	state->func = func;
-	state->func_name = func_name;
-	state->repeat = repeat;
-	state->repeat_name = repeat_name;
-	state->signal = signal;
-	state->sigmask = sigmask;
-	state->signal_name = signal_name;
-	state->uctx = uctx;
+	/* frame->process = call_no_result - This is the default, we don't need to set it again */
 
-	/*
-	 *	Just skip to the repeat state directly
-	 */
-	if (!func && repeat) frame->process = unlang_function_call_repeat;
-
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return ua;
 }
 
 /** Custom frame state dumper
@@ -329,22 +572,26 @@ static void unlang_function_dump(request_t *request, unlang_stack_frame_t *frame
 	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
 
 	RDEBUG2("frame state");
-	if (state->func)   RDEBUG2("function       %p (%s)", state->func, state->func_name);
-	if (state->repeat) RDEBUG2("repeat         %p (%s)", state->repeat, state->repeat_name);
+	if (FUNC(state))   RDEBUG2("function       %p (%s)", FUNC(state), state->func_name);
+	if (REPEAT(state)) RDEBUG2("repeat         %p (%s)", REPEAT(state), state->repeat_name);
 	if (state->signal) RDEBUG2("signal         %p (%s)", state->signal, state->signal_name);
 }
 
 void unlang_function_init(void)
 {
-	unlang_register(UNLANG_TYPE_FUNCTION,
-			   &(unlang_op_t){
-				.name = "function",
-				.interpret = unlang_function_call,
-				.signal = unlang_function_signal,
-				.dump = unlang_function_dump,
-				.flag = UNLANG_OP_FLAG_RETURN_POINT,
-			        .frame_state_size = sizeof(unlang_frame_state_func_t),
-				.frame_state_type = "unlang_frame_state_func_t",
-			   });
+	unlang_register(&(unlang_op_t){
+			.name = "function",
+			.type = UNLANG_TYPE_FUNCTION,
+			.flag = UNLANG_OP_FLAG_RETURN_POINT | UNLANG_OP_FLAG_INTERNAL,
 
+			.interpret = call_no_result,
+			.signal = unlang_function_signal,
+			.dump = unlang_function_dump,
+
+			.unlang_size = sizeof(unlang_group_t),
+			.unlang_name = "unlang_group_t",	
+
+			.frame_state_size = sizeof(unlang_frame_state_func_t),
+			.frame_state_type = "unlang_frame_state_func_t",
+		});
 }

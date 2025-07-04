@@ -411,6 +411,11 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 			 *	are broadcast.
 			 */
 		case FR_DHCP_OFFER:
+		{
+			char if_name[IFNAMSIZ] = "";
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
+			if (!inst->interface && socket.inet.ifindex) fr_ifname_from_ifindex(if_name, socket.inet.ifindex);
+#endif
 			/*
 			 *	If the packet was unicast from the
 			 *	client, unicast it back without
@@ -426,7 +431,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 				DEBUG("Reply will be unicast to YIADDR.");
 
 #ifdef SIOCSARP
-			} else if (inst->broadcast && inst->interface) {
+			} else if (inst->broadcast && (inst->interface || if_name[0])) {
 				uint8_t macaddr[6];
 				uint8_t ipaddr[4];
 
@@ -443,7 +448,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 				 *	local ARP table and then
 				 *	unicast the reply.
 				 */
-				if (fr_arp_entry_add(thread->sockfd, inst->interface, ipaddr, macaddr) == 0) {
+				if (fr_arp_entry_add(thread->sockfd, inst->interface ? inst->interface : if_name, ipaddr, macaddr) == 0) {
 					DEBUG("Reply will be unicast to YIADDR, done ARP table updates.");
 					memcpy(&socket.inet.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
 				} else {
@@ -456,6 +461,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 				DEBUG("Reply will be broadcast as we do not create raw UDP sockets.");
 				socket.inet.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 			}
+		}
 			break;
 
 			/*

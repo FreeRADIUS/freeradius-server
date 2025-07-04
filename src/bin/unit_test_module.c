@@ -353,7 +353,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	 *	New async listeners
 	 */
 	request->async = talloc_zero(request, fr_async_t);
-	unlang_call_push(request, server_cs, UNLANG_TOP_FRAME);
+	unlang_call_push(NULL, request, server_cs, UNLANG_TOP_FRAME);
 
 	return request;
 }
@@ -592,11 +592,11 @@ static int map_proc_verify(CONF_SECTION *cs, UNUSED void const *mod_inst, UNUSED
 	return 0;
 }
 
-static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, UNUSED void const *mod_inst, UNUSED void *proc_inst,
+static unlang_action_t mod_map_proc(unlang_result_t *p_result, UNUSED map_ctx_t const *mpctx,
 				    UNUSED request_t *request, UNUSED fr_value_box_list_t *src,
 				    UNUSED map_list_t const *maps)
 {
-	RETURN_MODULE_FAIL;
+	RETURN_UNLANG_FAIL;
 }
 
 static request_t *request_clone(request_t *old, int number, CONF_SECTION *server_cs)
@@ -615,7 +615,7 @@ static request_t *request_clone(request_t *old, int number, CONF_SECTION *server
 	request->number = number;
 	request->name = talloc_typed_asprintf(request, "%" PRIu64, request->number);
 
-	unlang_call_push(request, server_cs, UNLANG_TOP_FRAME);
+	unlang_call_push(NULL, request, server_cs, UNLANG_TOP_FRAME);
 
 	request->master_state = REQUEST_ACTIVE;
 
@@ -626,6 +626,7 @@ static void cancel_request(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t when, vo
 {
 	request_t	*request = talloc_get_type_abort(uctx, request_t);
 	unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
+	request->rcode = RLM_MODULE_TIMEOUT;
 }
 
 fr_time_delta_t time_offset = fr_time_delta_wrap(0);
@@ -943,6 +944,13 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	Needed for the triggers.  Which are always run-time expansions.
+	 */
+	if (main_loop_init() < 0) {
+		PERROR("Failed initialising main event loop");
+		EXIT_WITH_FAILURE;
+	}
+	/*
 	 *	Initialise the interpreter, registering operations.
 	 *      This initialises
 	 */
@@ -1009,9 +1017,9 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Create a dummy event list
+	 *	Get the main event list.
 	 */
-	el = fr_event_list_alloc(NULL, NULL, NULL);
+	el = main_loop_event_list();
 	fr_assert(el != NULL);
 	fr_timer_list_set_time_func(el->tl, _synthetic_time_source);
 
@@ -1255,10 +1263,7 @@ cleanup:
 	 */
 	if (el) fr_event_list_reap_signal(el, fr_time_delta_from_sec(5), SIGKILL);
 
-	/*
-	 *	Free the event list.
-	 */
-	talloc_free(el);
+	main_loop_free();
 
 	/*
 	 *	Ensure all thread local memory is cleaned up

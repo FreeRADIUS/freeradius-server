@@ -42,6 +42,8 @@ bool unlang_section(CONF_SECTION *cs)
 	return (cf_data_find(cs, unlang_group_t, NULL) != NULL);
 }
 
+fr_hash_table_t *unlang_op_table = NULL;
+
 /** Register an operation with the interpreter
  *
  * The main purpose of this registration API is to avoid intermixing the xlat,
@@ -49,29 +51,44 @@ bool unlang_section(CONF_SECTION *cs)
  * functionality can be in their own source files, and we don't need to include
  * supporting types and function declarations in the interpreter.
  *
- * Later, this could potentially be used to register custom operations for modules.
- *
- * The reason why there's a function instead of accessing the unlang_op array
- * directly, is because 'type' really needs to go away, as needing to add ops to
- * the unlang_type_t enum breaks the pluggable module model. If there's no
- * explicit/consistent type values we need to enumerate the operations ourselves.
- *
- * @param[in] type		Operation identifier.  Used to map compiled unlang code
- *				to operations.
- * @param[in] op		unlang_op to register.
+ * @param[in] op		#unlang_op_t to register.
  */
-void unlang_register(int type, unlang_op_t *op)
+void unlang_register(unlang_op_t *op)
 {
-	fr_assert(type < UNLANG_TYPE_MAX);	/* Unlang max isn't a valid type */
+	fr_assert(op->type < UNLANG_TYPE_MAX);	/* Unlang max isn't a valid type */
+	fr_assert(unlang_op_table != NULL);
 
-	memcpy(&unlang_ops[type], op, sizeof(unlang_ops[type]));
+	memcpy(&unlang_ops[op->type], op, sizeof(unlang_ops[op->type]));
+
+	/*
+	 *	Some instruction types are internal, and are not real keywords.
+	 */
+	if ((op->flag & UNLANG_OP_FLAG_INTERNAL) != 0) return;
+
+	MEM(fr_hash_table_insert(unlang_op_table, &unlang_ops[op->type]));
 }
 
 static TALLOC_CTX *unlang_ctx = NULL;
 
+static uint32_t op_hash(void const *data)
+{
+	unlang_op_t const *a = data;
+
+	return fr_hash_string(a->name);
+}
+
+static int8_t op_cmp(void const *one, void const *two)
+{
+	unlang_op_t const *a = one;
+	unlang_op_t const *b = two;
+
+	return CMP(strcmp(a->name, b->name), 0);
+}
+
 static int _unlang_global_free(UNUSED void *uctx)
 {
 	TALLOC_FREE(unlang_ctx);
+	unlang_op_table = NULL;
 
 	return 0;
 }
@@ -80,6 +97,9 @@ static int _unlang_global_init(UNUSED void *uctx)
 {
 	unlang_ctx = talloc_init("unlang");
 	if (!unlang_ctx) return -1;
+
+	unlang_op_table = fr_hash_table_alloc(unlang_ctx, op_hash, op_cmp, NULL);
+	if (!unlang_op_table) goto fail;
 
 	/*
 	 *	Explicitly initialise the xlat tree, and perform dictionary lookups.

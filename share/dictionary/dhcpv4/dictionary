@@ -64,6 +64,7 @@ $INCLUDE dictionary.rfc7291
 $INCLUDE dictionary.rfc7710
 $INCLUDE dictionary.rfc7839
 $INCLUDE dictionary.rfc8357
+$INCLUDE dictionary.rfc8910
 $INCLUDE dictionary.rfc8925
 
 $INCLUDE dictionary.adsl_forum

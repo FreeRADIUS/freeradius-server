@@ -26,15 +26,18 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/unlang/xlat_func.h>
+#include <freeradius-devel/unlang/action.h>
 
 typedef struct {
 	tmpl_t		*delay;			//!< How long we delay for.
 	bool		relative;		//!< Whether the delay is relative to the start of request processing.
 	bool		force_reschedule;	//!< Whether we should force rescheduling of the request.
+	rlm_rcode_t	rcode;			//!< The return code to use when the delay is complete.
 } rlm_delay_t;
 
 /*
@@ -44,6 +47,8 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_HINT_TYPE("delay", FR_TYPE_TIME_DELTA, rlm_delay_t, delay) },
 	{ FR_CONF_OFFSET("relative", rlm_delay_t, relative), .dflt = "no" },
 	{ FR_CONF_OFFSET("force_reschedule", rlm_delay_t, force_reschedule), .dflt = "no" },
+	{ FR_CONF_OFFSET("rcode", rlm_delay_t, rcode),
+			 .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = rcode_table, .len = &rcode_table_len }, .dflt = "notset" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -118,9 +123,10 @@ static int delay_add(request_t *request, fr_time_t *resume_at, fr_time_t now,
 /** Called resume_at the delay is complete, and we're running from the interpreter
  *
  */
-static unlang_action_t mod_delay_return(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_delay_return(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_delay_retry_t *yielded = talloc_get_type_abort(mctx->rctx, rlm_delay_retry_t);
+	rlm_delay_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_delay_t);
 
 	/*
 	 *	Print how long the delay *really* was.
@@ -128,10 +134,14 @@ static unlang_action_t mod_delay_return(rlm_rcode_t *p_result, module_ctx_t cons
 	RDEBUG3("Request delayed by %pV", fr_box_time_delta(fr_time_sub(fr_time(), yielded->when)));
 	talloc_free(yielded);
 
-	RETURN_MODULE_OK;
+	/*
+	 *	Be transparent, don't alter the rcode
+	 */
+	if (inst->rcode == RLM_MODULE_NOT_SET) return UNLANG_ACTION_EXECUTE_NEXT;
+	RETURN_UNLANG_RCODE(inst->rcode);
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_delay(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_delay_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_delay_t);
 	fr_time_delta_t		delay;
@@ -142,7 +152,7 @@ static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_
 		if (tmpl_aexpand_type(request, &delay, FR_TYPE_TIME_DELTA,
 				      request, inst->delay) < 0) {
 			RPEDEBUG("Failed parsing %s as delay time", inst->delay->name);
-			RETURN_MODULE_FAIL;
+			RETURN_UNLANG_FAIL;
 		}
 
 		/*
@@ -174,7 +184,7 @@ static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_
 	 */
 	if (delay_add(request, &resume_at, yielded->when, delay,
 		      inst->force_reschedule, inst->relative) != 0) {
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	RDEBUG3("Current time %pVs, resume time %pVs",

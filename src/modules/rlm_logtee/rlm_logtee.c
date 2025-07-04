@@ -205,7 +205,7 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		      char const *fmt, va_list ap, void *uctx)
 		      CC_HINT(format (printf, 6, 0)) CC_HINT(nonnull (3, 6));
 
-static unlang_action_t mod_insert_logtee(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) CC_HINT(nonnull);
+static unlang_action_t mod_insert_logtee(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request) CC_HINT(nonnull);
 
 /** Connection errored
  *
@@ -523,19 +523,19 @@ finish:
  * @param[in] mctx	Module calling ctx.
  * @param[in] request	request to add our log destination to.
  */
-static unlang_action_t mod_insert_logtee(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_insert_logtee(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	log_dst_t	*dst, **last = NULL;
 
 	for (dst = request->log.dst; dst; dst = dst->next) {
 		if (dst->uctx == mctx->thread) {
-			RETURN_MODULE_NOOP;
+			RETURN_UNLANG_NOOP;
 		}
 
 		last = &(dst->next);
 	}
 
-	if (!last) RETURN_MODULE_NOOP;
+	if (!last) RETURN_UNLANG_NOOP;
 
 	dst = talloc_zero(request, log_dst_t);
 	dst->func = logtee_it;
@@ -543,7 +543,7 @@ static unlang_action_t mod_insert_logtee(rlm_rcode_t *p_result, module_ctx_t con
 
 	*last = dst;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /** Create thread-specific connections and buffers

@@ -2076,14 +2076,15 @@ static void client_expiry_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 		switch (client->state) {
 		case PR_CLIENT_CONNECTED:
 			fr_assert(connection != NULL);
-			FALL_THROUGH;
-
-		case PR_CLIENT_DYNAMIC:
 			delay = inst->idle_timeout;
 			if (fr_time_delta_ispos(client->radclient->limit.idle_timeout) &&
 			    (fr_time_delta_lt(client->radclient->limit.idle_timeout, inst->idle_timeout))) {
 				delay = client->radclient->limit.idle_timeout;
 			}
+			break;
+
+		case PR_CLIENT_DYNAMIC:
+			delay = inst->dynamic_timeout;
 			break;
 
 		case PR_CLIENT_NAK:
@@ -2226,7 +2227,7 @@ idle_timeout:
 		 *	idle timeut.
 		 */
 		client->ready_to_delete = true;
-		delay = inst->idle_timeout;
+		delay = client->state == PR_CLIENT_DYNAMIC ? inst->dynamic_timeout : inst->idle_timeout;
 		goto reset_timer;
 	}
 

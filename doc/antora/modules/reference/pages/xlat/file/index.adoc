@@ -10,6 +10,7 @@ For example, the "unsafe" string `user@freeradius.org/..` will turn into the fil
 [options="headers, autowidth]
 |===
 | *Function*				                | *Description*
+| xref:xlat/file/cat.adoc[cat]				| Returns the contents of a file.
 | xref:reference:xlat/file/escape.adoc[escape]		| Returns an escaped or safe version of the input string.
 | xref:xlat/file/exists.adoc[exists]		        | Checks to see if a file exists on the filesystem.
 | xref:xlat/file/head.adoc[head]	                | Returns the first line of the file.

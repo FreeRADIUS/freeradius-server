@@ -4,7 +4,7 @@
 # Rebuild this file with `make crossbuild.debian12.regen`
 #
 ARG from=debian:bookworm
-FROM ${from} as build
+FROM ${from} AS build
 
 SHELL ["/usr/bin/nice", "-n", "5", "/usr/bin/ionice", "-c", "3", "/bin/sh", "-x", "-c"]
 
@@ -48,6 +48,7 @@ RUN install -d -o root -g root -m 0755 /etc/apt/keyrings && \
 RUN apt-get install $APT_OPTS \
         g++ \
         llvm clang lldb
+
 
 
 

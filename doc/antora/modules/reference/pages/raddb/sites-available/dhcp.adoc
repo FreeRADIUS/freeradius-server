@@ -184,24 +184,6 @@ set the pool name here if you haven't set it elsewhere.
 #	sqlippool
 
 ```
-Set the type of packet to send in reply.
-
-The server will look at the Message-Type attribute to
-determine which type of packet to send in reply. Common
-values would be Offer, Ack or NAK. See
-dictionary.dhcp for all the possible values.
-
-Do-Not-Respond can be used to tell the server to not
-respond.
-
-In the event that Message-Type is not set then the
-server will fall back to determining the type of reply
-based on the rcode of this section.
-
-```
-#	reply.Message-Type = Offer
-
-```
 If Message-Type is not set, returning "ok" or
 "updated" from this section will respond with a Offer
 message.
@@ -212,7 +194,6 @@ Other rcodes will tell the server to not return any response.
 }
 
 recv Request {
-     files_dhcp
 
 ```
 The DHCP Server Identifier is set here since it is returned in OFFERs
@@ -226,11 +207,6 @@ If the request is not for this server then silently discard it
 	    request.Server-Identifier != control.Server-Identifier) {
 	        do_not_respond
 	}
-
-```
-Response packet type. See Discover section above.
-```
-#	reply.Message-Type = Ack
 
 ```
 Call a policy (defined in policy.d/dhcp) to set common reply attributes
@@ -311,19 +287,6 @@ Call a policy (defined in policy.d/dhcp) to set common reply attributes
 	ok
 }
 
-```
-
-For Windows 7 boxes
-
-```
-#recv Inform {
-#	reply.Net.Dst.Port = 67
-#	reply.Message-Type = Ack
-#	reply.Server-Identifier = "%{Net.Dst.IP}"
-#	reply.Site-specific-28 = 0x0a00
-#	ok
-#}
-
 recv Release {
 ```
 If using IPs from a DHCP pool in SQL then you may need to set the
@@ -366,7 +329,7 @@ look up identifier in database
 ```
 	}
 	else {
-		reply.Message-Type = Lease-Unknown
+		reply.Message-Type = ::Lease-Unknown
 
 		ok
 
@@ -383,7 +346,7 @@ if it can't find anything.
 
 ```
 	if (notfound) {
-		reply.Message-Type = Lease-Unknown
+		reply.Message-Type = ::Lease-Unknown
 
 		ok
 
@@ -411,7 +374,7 @@ Lease-Active
 Lease-Unassigned
 
 ```
-	reply.Message-Type = Lease-Unassigned
+	reply.Message-Type = ::Lease-Unassigned
 }
 
 }

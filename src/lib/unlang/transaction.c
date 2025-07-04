@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/server/rcode.h>
 #include "transaction.h"
 #include "transaction_priv.h"
 
@@ -52,7 +53,7 @@ static void unlang_transaction_signal(UNUSED request_t *request, unlang_stack_fr
 /** Commit a successful transaction.
  *
  */
-static unlang_action_t unlang_transaction_final(rlm_rcode_t *p_result, UNUSED request_t *request,
+static unlang_action_t unlang_transaction_final(UNUSED unlang_result_t *p_result, UNUSED request_t *request,
 						unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_transaction_t *state = talloc_get_type_abort(frame->state,
@@ -60,11 +61,17 @@ static unlang_action_t unlang_transaction_final(rlm_rcode_t *p_result, UNUSED re
 
 	fr_assert(state->el != NULL);
 
-	switch (*p_result) {
+	/*
+	 *	p_result contains OUR result, we want the section
+	 *	result from what was just executed on the stack.
+	 */
+	switch (state->result.rcode) {
 	case RLM_MODULE_REJECT:
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_DISALLOW:
+	case RLM_MODULE_NOTFOUND:
+	case RLM_MODULE_TIMEOUT:
 		fr_edit_list_abort(state->el);
 		break;
 
@@ -72,18 +79,25 @@ static unlang_action_t unlang_transaction_final(rlm_rcode_t *p_result, UNUSED re
 	case RLM_MODULE_HANDLED:
 	case RLM_MODULE_NOOP:
 	case RLM_MODULE_UPDATED:
+	case RLM_MODULE_NOT_SET:
 		fr_edit_list_commit(state->el);
 		break;
 
-	default:
+	case RLM_MODULE_NUMCODES:	/* Do not add default: */
 		fr_assert(0);
 		return UNLANG_ACTION_FAIL;
 	}
 
+	/*
+	 *	Allow the interpreter to access
+	 *	the result of the child section
+	 */
+	*p_result = state->result;
+
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_transaction(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_transaction(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_transaction_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_transaction_t);
 	fr_edit_list_t *parent;
@@ -94,7 +108,7 @@ static unlang_action_t unlang_transaction(rlm_rcode_t *p_result, request_t *requ
 
 	frame_repeat(frame, unlang_transaction_final);
 
-	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+	return unlang_interpret_push_children(&state->result, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 fr_edit_list_t *unlang_interpret_edit_list(request_t *request)
@@ -120,15 +134,150 @@ fr_edit_list_t *unlang_interpret_edit_list(request_t *request)
 	return NULL;
 }
 
+static fr_table_num_sorted_t transaction_keywords[] = {
+	{ L("case"),		1 },
+	{ L("else"),		1 },
+	{ L("elsif"),		1 },
+	{ L("foreach"),		1 },
+	{ L("group"),		1 },
+	{ L("if"),		1 },
+	{ L("limit"),		1 },
+	{ L("load-balance"),	1 },
+	{ L("redundant"), 	1 },
+	{ L("redundant-load-balance"), 1 },
+	{ L("switch"),		1 },
+	{ L("timeout"),		1 },
+	{ L("transaction"),	1 },
+};
+static int transaction_keywords_len = NUM_ELEMENTS(transaction_keywords);
+
+/** Limit the operations which can appear in a transaction.
+ */
+static bool transaction_ok(CONF_SECTION *cs)
+{
+	CONF_ITEM *ci = NULL;
+
+	while ((ci = cf_item_next(cs, ci)) != NULL) {
+		char const *name;
+
+		if (cf_item_is_section(ci)) {
+			CONF_SECTION *subcs;
+
+			subcs = cf_item_to_section(ci);
+			name = cf_section_name1(subcs);
+
+			if (strcmp(name, "actions") == 0) continue;
+
+			/*
+			 *	Definitely an attribute editing thing.
+			 */
+			if (*name == '&') continue;
+
+			if (fr_list_assignment_op[cf_section_name2_quote(cs)]) continue;
+
+			if (fr_table_value_by_str(transaction_keywords, name, -1) < 0) {
+				cf_log_err(ci, "Invalid keyword in 'transaction'");
+				return false;
+			}
+
+			if (!transaction_ok(subcs)) return false;
+
+			continue;
+
+		} else if (cf_item_is_pair(ci)) {
+			CONF_PAIR *cp;
+
+			cp = cf_item_to_pair(ci);
+			name = cf_pair_attr(cp);
+
+			/*
+			 *	If there's a value then it's not a module call.
+			 */
+			if (cf_pair_value(cp)) continue;
+
+			if (*name == '&') continue;
+
+			/*
+			 *	Allow rcodes via the "always" module.
+			 */
+			if (fr_table_value_by_str(mod_rcode_table, name, -1) >= 0) {
+				continue;
+			}
+
+			cf_log_err(ci, "Invalid module reference in 'transaction'");
+			return false;
+
+		} else {
+			continue;
+		}
+	}
+
+	return true;
+}
+
+static unlang_t *unlang_compile_transaction(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	CONF_SECTION *cs = cf_item_to_section(ci);
+	unlang_group_t *g;
+	unlang_t *c;
+	unlang_compile_ctx_t unlang_ctx2;
+
+	if (cf_section_name2(cs) != NULL) {
+		cf_log_err(cs, "Unexpected argument to 'transaction' section");
+		cf_log_err(ci, DOC_KEYWORD_REF(transaction));
+		return NULL;
+	}
+
+	/*
+	 *	The transaction is empty, ignore it.
+	 */
+	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
+
+	if (!transaction_ok(cs)) return NULL;
+
+	g = unlang_group_allocate(parent, cs, UNLANG_TYPE_TRANSACTION);
+	if (!g) return NULL;
+
+	c = unlang_group_to_generic(g);
+	c->debug_name = c->name = cf_section_name1(cs);
+
+	/*
+	 *	The default for a failed transaction is to continue to
+	 *	the next instruction on failure.
+	 */
+	c->actions.actions[RLM_MODULE_FAIL] = 1;
+	c->actions.actions[RLM_MODULE_INVALID] = 1;
+	c->actions.actions[RLM_MODULE_DISALLOW] = 1;
+
+	/*
+	 *	For the children of this keyword, any failure is
+	 *	return, not continue.
+	 */
+	unlang_compile_ctx_copy(&unlang_ctx2, unlang_ctx);
+
+	unlang_ctx2.actions.actions[RLM_MODULE_REJECT] = MOD_ACTION_RETURN;
+	unlang_ctx2.actions.actions[RLM_MODULE_FAIL] = MOD_ACTION_RETURN;
+	unlang_ctx2.actions.actions[RLM_MODULE_INVALID] = MOD_ACTION_RETURN;
+	unlang_ctx2.actions.actions[RLM_MODULE_DISALLOW] = MOD_ACTION_RETURN;
+
+	return unlang_compile_children(g, &unlang_ctx2);
+}
+
 void unlang_transaction_init(void)
 {
-	unlang_register(UNLANG_TYPE_TRANSACTION,
-			   &(unlang_op_t){
-				.name = "transaction",
-				.interpret = unlang_transaction,
-				.signal = unlang_transaction_signal,
-				.frame_state_size = sizeof(unlang_frame_state_transaction_t),
-				.frame_state_type = "unlang_frame_state_transaction_t",
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES
-			   });
+	unlang_register(&(unlang_op_t){
+			.name = "transaction",
+			.type = UNLANG_TYPE_TRANSACTION,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
+
+			.compile = unlang_compile_transaction,
+			.interpret = unlang_transaction,
+			.signal = unlang_transaction_signal,
+
+			.unlang_size = sizeof(unlang_transaction_t),
+			.unlang_name = "unlang_transaction_t",
+
+			.frame_state_size = sizeof(unlang_frame_state_transaction_t),
+			.frame_state_type = "unlang_frame_state_transaction_t",
+		});
 }

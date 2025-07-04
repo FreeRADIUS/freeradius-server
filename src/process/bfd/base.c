@@ -62,8 +62,6 @@ typedef struct {
 } process_bfd_sections_t;
 
 typedef struct {
-	bool		unused;
-
 	process_bfd_sections_t	sections;
 } process_bfd_t;
 
@@ -118,9 +116,9 @@ static void bfd_packet_debug(request_t *request, fr_packet_t *packet, fr_pair_li
 	}
 }
 
-RESUME_NO_MCTX(recv_bfd)
+RESUME_FLAG(recv_bfd, UNUSED,)
 {
-	rlm_rcode_t			rcode = *p_result;
+	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_pair_t			*vp;
 	uint32_t			state = 0;
 
@@ -160,7 +158,7 @@ RESUME_NO_MCTX(recv_bfd)
 static fr_process_state_t const process_state_packet[] = {
 	[ FR_BFD_ADMIN_DOWN ] = {
 		.default_reply = FR_BFD_DOWN,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_bfd,
 		.section_offset = offsetof(process_bfd_sections_t, recv_admin_down),
@@ -168,7 +166,7 @@ static fr_process_state_t const process_state_packet[] = {
 
 	[ FR_BFD_DOWN ] = {
 		.default_reply = FR_BFD_DOWN,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_bfd,
 		.section_offset = offsetof(process_bfd_sections_t, recv_down),
@@ -176,7 +174,7 @@ static fr_process_state_t const process_state_packet[] = {
 
 	[ FR_BFD_INIT ] = {
 		.default_reply = FR_BFD_UP,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_bfd,
 		.section_offset = offsetof(process_bfd_sections_t, recv_init),
@@ -184,7 +182,7 @@ static fr_process_state_t const process_state_packet[] = {
 
 	[ FR_BFD_UP ] = {
 		.default_reply = FR_BFD_UP,
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_recv_bfd,
 		.section_offset = offsetof(process_bfd_sections_t, recv_up),
@@ -196,35 +194,35 @@ static fr_process_state_t const process_state_packet[] = {
  */
 static fr_process_state_t const process_state_reply[] = {
 	[ FR_BFD_ADMIN_DOWN ] = {
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_bfd_sections_t, send_admin_down),
 	},
 
 	[ FR_BFD_DOWN ] = {
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_bfd_sections_t, send_down),
 	},
 
 	[ FR_BFD_INIT ] = {
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_bfd_sections_t, send_init),
 	},
 
 	[ FR_BFD_UP ] = {
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_bfd_sections_t, send_up),
 	},
 };
 
-static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const *state;
 	bfd_wrapper_t const *wrapper;
@@ -259,7 +257,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	if (!state->recv) {
 		REDEBUG("Invalid packet type (%u)", request->packet->code);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	bfd_packet_debug(request, request->packet, &request->request_pairs, true);
@@ -297,7 +295,8 @@ fr_process_module_t process_bfd = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "bfd",
-		.inst_size	= sizeof(process_bfd_t),
+		MODULE_INST(process_bfd_t),
+		MODULE_RCTX(process_rctx_t)
 	},
 	.process	= mod_process,
 	.compile_list	= compile_list,

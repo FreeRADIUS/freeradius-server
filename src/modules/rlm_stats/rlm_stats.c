@@ -165,7 +165,7 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_
 }
 
 
-static unlang_action_t CC_HINT(nonnull) mod_stats_inc(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_stats_inc(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_stats_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_stats_t);
 	rlm_stats_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_stats_thread_t);
@@ -175,7 +175,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_inc(rlm_rcode_t *p_result, mod
 
 	if (request->proto_dict != dict_radius) {
 		RWARN("%s can only be called in RADIUS virtual servers", mctx->mi->name);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	src_code = request->packet->code;
@@ -230,7 +230,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_inc(rlm_rcode_t *p_result, mod
 	 */
 
 	if (fr_time_gt(fr_time_add(t->last_global_update, fr_time_delta_wrap(NSEC)), request->async->recv_time)) {
-		RETURN_MODULE_UPDATED;
+		RETURN_UNLANG_UPDATED;
 	}
 
 	t->last_global_update = request->async->recv_time;
@@ -242,13 +242,13 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_inc(rlm_rcode_t *p_result, mod
 	}
 	pthread_mutex_unlock(&inst->mutable->mutex);
 
-	RETURN_MODULE_UPDATED;
+	RETURN_UNLANG_UPDATED;
 }
 
 /*
  *	Do the statistics
  */
-static unlang_action_t CC_HINT(nonnull) mod_stats_read(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_stats_read(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_stats_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_stats_t);
 	rlm_stats_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_stats_thread_t);
@@ -262,14 +262,14 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(rlm_rcode_t *p_result, mo
 
 	if (request->proto_dict != dict_radius) {
 		RWARN("%s can only be called in RADIUS virtual servers", mctx->mi->name);
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	/*
 	 *	Ignore "authenticate" and anything other than Status-Server
 	 */
 	if ((request->packet->code != FR_RADIUS_CODE_STATUS_SERVER)) {
-		RETURN_MODULE_NOOP;
+		RETURN_UNLANG_NOOP;
 	}
 
 	vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_type);
@@ -306,7 +306,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(rlm_rcode_t *p_result, mo
 	case FR_TYPE_VALUE_CLIENT:			/* src */
 		vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_ipv4_address);
 		if (!vp) vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_ipv6_address);
-		if (!vp) RETURN_MODULE_NOOP;
+		if (!vp) RETURN_UNLANG_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;
 		coalesce(local_stats, t, offsetof(rlm_stats_thread_t, src), &mydata);
@@ -315,7 +315,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(rlm_rcode_t *p_result, mo
 	case FR_TYPE_VALUE_LISTENER:			/* dst */
 		vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_ipv4_address);
 		if (!vp) vp = fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_freeradius_stats4_ipv6_address);
-		if (!vp) RETURN_MODULE_NOOP;
+		if (!vp) RETURN_UNLANG_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;
 		coalesce(local_stats, t, offsetof(rlm_stats_thread_t, dst), &mydata);
@@ -323,7 +323,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(rlm_rcode_t *p_result, mo
 
 	default:
 		REDEBUG("Invalid value '%d' for FreeRADIUS-Stats4-type", stats_type);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if (vp ) {
@@ -345,7 +345,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats_read(rlm_rcode_t *p_result, mo
 		vp->vp_uint64 = local_stats[i];
 	}
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 

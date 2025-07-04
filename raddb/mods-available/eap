@@ -517,14 +517,17 @@ eap {
 #		psk_query = "%sql(select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}')"
 
 		#
-		#  For DH cipher suites to work, you have to run OpenSSL to
-		#  create the DH file first:
+		#  You can create the DH parameters by running the
+		#  following command:
 		#
 		#  	openssl dhparam -out certs/dh 2048
 		#
 		#  The DH parameters will usually be ignored in FIPS mode.
 		#
-		dh_file = ${certdir}/dh
+		#  If this file isn't specified, then OpenSSL will
+		#  automatically set the correct DH parameters.
+		#
+#		dh_file = ${certdir}/dh
 
 		#
 		#  fragment_size:: Limit for size of EAP fragments.

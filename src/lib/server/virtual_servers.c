@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/process.h>
+#include <freeradius-devel/server/process_types.h>
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/server/cf_util.h>
 
@@ -680,7 +680,7 @@ int virtual_server_has_namespace(CONF_SECTION **out,
 /*
  *	If we pushed a log destination, we need to pop it/
  */
-static unlang_action_t server_remove_log_destination(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t server_remove_log_destination(UNUSED unlang_result_t *p_result,
 						     request_t *request, void *uctx)
 {
 	virtual_server_t *server = uctx;
@@ -752,7 +752,7 @@ check_default:
  *
  *	Short-term hack
  */
-unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_frame)
+unlang_action_t virtual_server_push(unlang_result_t *p_result, request_t *request, CONF_SECTION *server_cs, bool top_frame)
 {
 	virtual_server_t *vs;
 
@@ -781,10 +781,13 @@ unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs,
 		if (unlang_interpret_stack_depth(request) > 1) {
 			unlang_action_t action;
 
-			action = unlang_function_push(request, NULL, /* don't call it immediately */
-						      server_remove_log_destination, /* but when we pop the frame */
-						      server_signal_remove_log_destination, FR_SIGNAL_CANCEL,
-						      top_frame, vs);
+			action = unlang_function_push_with_result(unlang_interpret_result(request),	/* transparent */
+								  request,
+								  NULL, 				/* don't call it immediately */
+								  server_remove_log_destination, 	/* but when we pop the frame */
+								  server_signal_remove_log_destination, ~(FR_SIGNAL_CANCEL),
+								  top_frame,
+								  vs);
 			if (action != UNLANG_ACTION_PUSHED_CHILD) return action;
 
 			top_frame = UNLANG_SUB_FRAME;	/* switch to SUB_FRAME after the first instruction */
@@ -799,7 +802,7 @@ unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs,
 	/*
 	 *	Bootstrap the stack with a module instance.
 	 */
-	if (unlang_module_push(&request->rcode, request, vs->process_mi,
+	if (unlang_module_push(p_result, request, vs->process_mi,
 			       vs->process_module->process, top_frame) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;

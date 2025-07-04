@@ -439,6 +439,7 @@ ATTRIBUTE	X509v3-Extended-Key-Usage		14	string
 ATTRIBUTE	X509v3-Subject-Key-Identifier		15	string
 ATTRIBUTE	X509v3-Authority-Key-Identifier		16	string
 ATTRIBUTE	X509v3-Basic-Constraints		17	string
+ATTRIBUTE	X509v3-CRL-Distribution-Points		18	string
 END		TLS-Certificate
 
 ATTRIBUTE	TLS-Certificate-Chain-Depth		1902	uint32

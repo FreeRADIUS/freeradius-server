@@ -38,12 +38,8 @@
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/dict_ext.h>
 
+#include "attrs.h"
 #include "der.h"
-
-typedef struct {
-	uint8_t *tmp_ctx;
-	bool	 oid_value_pairs;
-} fr_der_decode_ctx_t;
 
 #define IS_DER_TAG_CONTINUATION(_tag) (((_tag) & DER_TAG_CONTINUATION) == DER_TAG_CONTINUATION)
 #define IS_DER_TAG_CONSTRUCTED(_tag) (((_tag) & 0x20) == 0x20)
@@ -77,9 +73,6 @@ typedef struct {
  *	- 0 no bytes decoded.
  *	- < 0 on error.  May be the offset (as a negative value) where the error occurred.
  */
-static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-					fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
-
 static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent, fr_dbuff_t *in,
 				    bool const allowed_chars[], fr_der_decode_ctx_t *decode_ctx) CC_HINT(nonnull(1,2,3,4,6));
 
@@ -2366,8 +2359,8 @@ static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	return fr_dbuff_set(in, &our_in);
 }
 
-static ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-					fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx)
+ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+				 fr_dbuff_t *in, fr_der_decode_ctx_t *decode_ctx)
 {
 	fr_dbuff_t	     our_in = FR_DBUFF(in);
 	fr_der_tag_decode_t const *func;
@@ -2689,8 +2682,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *
 	test_ctx = talloc_zero(ctx, fr_der_decode_ctx_t);
 	if (!test_ctx) return -1;
 
-	test_ctx->tmp_ctx	  = talloc(test_ctx, uint8_t);
-	test_ctx->oid_value_pairs = false;
+	test_ctx->tmp_ctx	  = talloc_new(test_ctx);
 
 	*out = test_ctx;
 

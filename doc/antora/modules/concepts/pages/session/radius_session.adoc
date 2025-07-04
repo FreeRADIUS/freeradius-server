@@ -1,0 +1,39 @@
+= RADIUS Sessions
+
+A RADIUS session consists of the following steps:
+
+. A remote user connects to a RADIUS client device (using Point-to-Point Protocol (PPP, 802.1X) or another Data Layer link protocol) and initiates a login:
+
+* The NAS initiates all conversations (Authentication Sessions) in RADIUS.
+* All information sent to the server is done solely at the discretion of the client.
+* The RADIUS server does not control what the NAS sends.
+
+. The Network Access Server communicates with the RADIUS server using a shared secret mechanism:
+
+* RADIUS uses User Datagram Protocol (UDP) port 1812 for authentication and 1813 for accounting.
+
+. The NAS sends a RADIUS message (called an Access-Request) to the server.
+
+* This message contains information about the user, including user name, authentication credentials, and requested service.
+* In addition, the message may contain information about the NAS, such as its host name, MAC address, or wireless SSID.
+* The message is sent using the Password Authentication Protocol (PAP), Challenge-Handshake Authentication Protocol (CHAP), or Extensible Authentication Protocol (EAP).
+* The server must decide whether to authenticate or authorise a user based solely on the information contained within the NAS request, as it does not have access to any additional user information.
+* If the NAS sends a packet with an authentication protocol that the server does not support, the server will reject that request.
+
+. The RADIUS server processes the request and verifies the login request against either a local data- base or the authentication service running on the network.
+
+* Authentication services can include: LDAP servers for a domain validation; Active Directory servers on Windows networks; Kerberos servers; SQL Server or another type of database for getting information from a database
+
+. The RADIUS server sends validation results back to the NAS in one of the following forms: Access Reject, Access Challenge, or Access Accept.
+
+* Access Reject locks the user out of the network if the user is invalid or not authorized, denying them access to the requested resource.
+* Access Challenge occurs when the server requires additional information from the user. Since RADIUS packages are limited in size, Access Challenges allow the exchange of larger amounts of data.
+* Access Accept provides the user access to the resource and contains policy information which the NAS uses to provide services to, and enforce the behavior of the user. An Access Accept condition does not apply to all resources. Each additional resource is checked as required. The RADIUS client also verifies the original access offered on a periodic basis.
+* An Access Accept response results in the NAS providing the following services to the remote client: supplys a static or dynamic IP address; assigning a Time-to-Live for the session; downloading and applying the users’ Access Control List (ACL); setting up any L2TP , VLAN, and QoS session parameters required
+
+. Once the session is established on the RADIUS client, the accounting process is initiated:
+
+* The Accounting-Request (start) message, sent by the NAS to the server, indicates the commencement of the session. The the session account record is then created. * The Accounting-Request account record is then closed.
+(stop) message indicates the end of the session; the session
+* The data stored in the database during the accounting sessions is used to generate billable information and reports.
+* Accounting information retained in the database includes the following: time of session, number of packets and amount of data transferred, user and machine identification, network address, and point of attachment information.

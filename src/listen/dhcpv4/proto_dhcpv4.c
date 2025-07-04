@@ -54,6 +54,7 @@ static const conf_parser_t priority_config[] = {
 static conf_parser_t const limit_config[] = {
 	{ FR_CONF_OFFSET("cleanup_delay", proto_dhcpv4_t, io.cleanup_delay), .dflt = "5.0" } ,
 	{ FR_CONF_OFFSET("idle_timeout", proto_dhcpv4_t, io.idle_timeout), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("dynamic_timeout", proto_dhcpv4_t, io.dynamic_timeout), .dflt = "600.0" } ,
 	{ FR_CONF_OFFSET("nak_lifetime", proto_dhcpv4_t, io.nak_lifetime), .dflt = "30.0" } ,
 
 	{ FR_CONF_OFFSET("max_connections", proto_dhcpv4_t, io.max_connections), .dflt = "1024" } ,

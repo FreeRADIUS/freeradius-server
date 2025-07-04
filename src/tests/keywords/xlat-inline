@@ -27,7 +27,6 @@ if (control.Password.Cleartext =~ /(h)(e)(l)(l)(o)/) {
 	"%regex.match(3)"
 	"%regex.match(4)"
 	"%regex.match(5)"
-	"%regex.match(6)"
 }
 
 success

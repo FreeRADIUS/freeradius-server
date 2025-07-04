@@ -304,7 +304,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 /*
  *	Do detail, compatible with old accounting
  */
-static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
+static unlang_action_t CC_HINT(nonnull) detail_do(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request,
 						  fr_packet_t *packet, fr_pair_list_t *list)
 {
 	rlm_detail_env_t	*env = talloc_get_type_abort(mctx->env_data, rlm_detail_env_t);
@@ -318,9 +318,9 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 	outfd = exfile_open(inst->ef, env->filename.vb_strvalue, inst->perm, NULL);
 	if (outfd < 0) {
 		RPERROR("Couldn't open file %pV", &env->filename);
-		*p_result = RLM_MODULE_FAIL;
+
 		/* coverity[missing_unlock] */
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if (inst->group_is_set) {
@@ -344,7 +344,7 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 	fail:
 		if (outfp) fclose(outfp);
 		exfile_close(inst->ef, outfd);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if (detail_write(outfp, inst, request, &env->header, packet, list, env->ht) < 0) goto fail;
@@ -358,13 +358,13 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 	/*
 	 *	And everything is fine.
 	 */
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 /*
  *	Accounting - write the detail files.
  */
-static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	return detail_do(p_result, mctx, request, request->packet, &request->request_pairs);
 }
@@ -372,7 +372,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 /*
  *	Incoming Access Request - write the detail files.
  */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	return detail_do(p_result, mctx, request, request->packet, &request->request_pairs);
 }
@@ -380,7 +380,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 /*
  *	Outgoing Access-Request Reply - write the detail files.
  */
-static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	return detail_do(p_result, mctx, request, request->reply, &request->reply_pairs);
 }

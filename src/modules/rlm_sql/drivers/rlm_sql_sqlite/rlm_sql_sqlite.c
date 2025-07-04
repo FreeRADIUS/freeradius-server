@@ -59,10 +59,12 @@ typedef struct {
 typedef struct {
 	char const	*filename;
 	bool		bootstrap;
+	fr_time_delta_t	busy_timeout;
 } rlm_sql_sqlite_t;
 
 static const conf_parser_t driver_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_OUTPUT | CONF_FLAG_REQUIRED, rlm_sql_sqlite_t, filename) },
+	{ FR_CONF_OFFSET("busy_timeout", rlm_sql_sqlite_t, busy_timeout) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -96,6 +98,7 @@ static sql_rcode_t sql_error_to_rcode(int status)
 	case SQLITE_FULL:
 	case SQLITE_MISMATCH:
 	case SQLITE_BUSY:	/* Can be caused by database locking */
+	WARN("SQLite reported error %d: %s", status, sqlite3_errstr(status));
 		return RLM_SQL_ERROR;
 
 	/*
@@ -366,7 +369,6 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	rlm_sql_t const		*sql = talloc_get_type_abort_const(uctx, rlm_sql_t);
 	rlm_sql_sqlite_t	*inst = talloc_get_type_abort(sql->driver_submodule->data, rlm_sql_sqlite_t);
 	rlm_sql_sqlite_conn_t	*c;
-	rlm_sql_config_t const	*config = &sql->config;
 	int			status;
 
 	MEM(c = talloc_zero(conn, rlm_sql_sqlite_conn_t));
@@ -399,7 +401,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 		talloc_free(c);
 		return CONNECTION_STATE_FAILED;
 	}
-	status = sqlite3_busy_timeout(c->db, fr_time_delta_to_sec(config->query_timeout));
+	status = sqlite3_busy_timeout(c->db, fr_time_delta_to_msec(inst->busy_timeout));
 	if (sql_check_error(c->db, status) != RLM_SQL_OK) {
 		sql_print_error(c->db, status, "Failed setting busy timeout");
 		goto error;
@@ -458,7 +460,7 @@ static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNU
 	return RLM_SQL_OK;
 }
 
-static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t sql_fetch_row(unlang_result_t *p_result, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	int			status, i = 0;
@@ -478,7 +480,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	if (sql_check_error(conn->db, status) != RLM_SQL_OK) {
 	error:
 		query_ctx->rcode = RLM_SQL_ERROR;
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	/*
@@ -486,7 +488,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	 */
 	if (status == SQLITE_DONE) {
 		query_ctx->rcode =  RLM_SQL_NO_MORE_ROWS;
-		RETURN_MODULE_OK;
+		RETURN_UNLANG_OK;
 	}
 
 	/*
@@ -543,7 +545,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	}
 
 	query_ctx->rcode = RLM_SQL_OK;
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
@@ -638,17 +640,28 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 	error:
 		query_ctx->status = SQL_QUERY_FAILED;
 		trunk_request_signal_fail(treq);
-		return;
+		goto finish;
 	}
+
+	/*
+	 *	Set the query status to > 0 so that freeing the query_ctx
+	 *	will tidy up correctly.
+	 */
+	query_ctx->status = SQL_QUERY_SUBMITTED;
 
 	if (query_ctx->type == SQL_QUERY_OTHER) {
 		status = sqlite3_step(sql_conn->statement);
 		query_ctx->rcode = sql_check_error(sql_conn->db, status);
-		if (query_ctx->rcode == RLM_SQL_ERROR) goto error;
+		if (query_ctx->rcode == RLM_SQL_ERROR) {
+			(void) sqlite3_finalize(sql_conn->statement);
+			sql_conn->statement = NULL;
+			goto error;
+		}
 	}
 
 	trunk_request_signal_reapable(treq);
 
+finish:
 	/* If the query went into a backlog, the request will have yielded - so mark runnable just in case */
 	if (request) unlang_interpret_mark_runnable(request);
 }

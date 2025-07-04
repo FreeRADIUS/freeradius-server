@@ -54,6 +54,7 @@ typedef enum {
 	FR_BIO_ERROR_VERIFY,				//!< some packet verification error
 	FR_BIO_ERROR_BUFFER_FULL,      			//!< the buffer is full
 	FR_BIO_ERROR_BUFFER_TOO_SMALL,			//!< the output buffer is too small for the data
+	FR_BIO_ERROR_SHUTDOWN,				//!< the BIO has been shut down
 } fr_bio_error_type_t;
 
 typedef struct fr_bio_s fr_bio_t;

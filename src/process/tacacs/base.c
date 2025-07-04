@@ -23,13 +23,12 @@
  * @copyright 2020 The FreeRADIUS server project.
  * @copyright 2020 Network RADIUS SAS (legal@networkradius.com)
  */
-
-
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/master.h>
 #include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/state.h>
+#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/tacacs/tacacs.h>
 #include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/util/debug.h>
@@ -175,14 +174,16 @@ typedef struct {
 } process_tacacs_auth_t;
 
 typedef struct {
-	CONF_SECTION	*server_cs;		//!< Our virtual server.
+	CONF_SECTION			*server_cs;	//!< Our virtual server.
 
-	uint32_t	session_id;		//!< current session ID
+	uint32_t			session_id;	//!< current session ID
 
-	process_tacacs_sections_t sections;	//!< Pointers to various config sections
-						///< we need to execute
+	process_tacacs_sections_t	sections;	//!< Pointers to various config sections
+							///< we need to execute
 
-	process_tacacs_auth_t	auth;		//!< Authentication configuration.
+	process_tacacs_auth_t		auth;		//!< Authentication configuration.
+
+
 } process_tacacs_t;
 
 typedef struct {
@@ -381,7 +382,7 @@ static const uint32_t authen_status_to_packet_code[UINT8_MAX + 1] = {
 
 RESUME(auth_start)
 {
-	rlm_rcode_t			rcode = *p_result;
+	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_pair_t			*vp;
 	CONF_SECTION			*cs;
 	fr_dict_enum_value_t const	*dv;
@@ -558,7 +559,7 @@ RESUME(auth_start)
 	 *	And continue with sending the generic reply.
 	 */
 	RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(cs), cf_filename(cs));
-	return unlang_module_yield_to_section(p_result, request,
+	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_NOOP, resume_auth_type,
 					      NULL, 0, mctx->rctx);
 }
@@ -576,7 +577,7 @@ RESUME(auth_type)
 		[RLM_MODULE_DISALLOW] = FR_TACACS_CODE_AUTH_FAIL,
 	};
 
-	rlm_rcode_t			rcode = *p_result;
+	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_process_state_t const	*state;
 	fr_pair_t			*vp;
 
@@ -633,7 +634,7 @@ RESUME(auth_type)
 	return state->send(p_result, mctx, request);
 }
 
-RESUME(auth_pass)
+RESUME_FLAG(auth_pass, UNUSED,)
 {
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 
@@ -642,10 +643,10 @@ RESUME(auth_pass)
 	// @todo - worry about user identity existing?
 
 	fr_state_discard(inst->auth.state_tree, request);
-	RETURN_MODULE_TRANSPARENT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-RESUME(auth_fail)
+RESUME_FLAG(auth_fail, UNUSED,)
 {
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 
@@ -655,17 +656,17 @@ RESUME(auth_fail)
 	// and also for FAIL
 
 	fr_state_discard(inst->auth.state_tree, request);
-	RETURN_MODULE_TRANSPARENT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-RESUME(auth_restart)
+RESUME_FLAG(auth_restart, UNUSED,)
 {
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 
 	PROCESS_TRACE;
 
 	fr_state_discard(inst->auth.state_tree, request);
-	RETURN_MODULE_TRANSPARENT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 RESUME(auth_get)
@@ -754,7 +755,7 @@ send_reply:
 		return CALL_SEND_TYPE(FR_TACACS_CODE_AUTH_ERROR);
 	}
 
-	RETURN_MODULE_TRANSPARENT;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 RECV(auth_cont)
@@ -860,7 +861,7 @@ static const uint32_t author_status_to_packet_code[UINT8_MAX + 1] = {
 
 RESUME(autz_request)
 {
-	rlm_rcode_t			rcode = *p_result;
+	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_process_state_t const	*state;
 
 	PROCESS_TRACE;
@@ -913,7 +914,7 @@ RESUME(acct_type)
 		[RLM_MODULE_DISALLOW] = FR_TACACS_CODE_ACCT_ERROR,
 	};
 
-	rlm_rcode_t			rcode = *p_result;
+	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_process_state_t const	*state;
 
 	PROCESS_TRACE;
@@ -959,10 +960,10 @@ RECV(accounting_request)
 
 RESUME(accounting_request)
 {
-	rlm_rcode_t			rcode = *p_result;
+	rlm_rcode_t			rcode = RESULT_RCODE;
 	fr_pair_t			*vp;
 	CONF_SECTION			*cs;
-	fr_dict_enum_value_t const		*dv;
+	fr_dict_enum_value_t const	*dv;
 	fr_process_state_t const	*state;
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 
@@ -1025,12 +1026,12 @@ RESUME(accounting_request)
 	 *
 	 *	And continue with sending the generic reply.
 	 */
-	return unlang_module_yield_to_section(p_result, request,
+	return unlang_module_yield_to_section(RESULT_P, request,
 					      cs, RLM_MODULE_NOOP, resume_acct_type,
 					      NULL, 0, mctx->rctx);
 }
 
-static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_process(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	fr_process_state_t const *state;
 
@@ -1047,7 +1048,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	if (!state->recv) {
 		REDEBUG("Invalid packet type (%u)", request->packet->code);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	// @todo - debug stuff!
@@ -1105,7 +1106,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_AUTH_FAIL,
 			[RLM_MODULE_TIMEOUT]	= FR_TACACS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_auth_start,
 		.resume = resume_auth_start,
 		.section_offset = offsetof(process_tacacs_sections_t, auth_start),
@@ -1118,7 +1119,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_FAIL,
 			[RLM_MODULE_TIMEOUT]	= FR_TACACS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_auth_pass,
 		.section_offset = offsetof(process_tacacs_sections_t, auth_pass),
@@ -1131,7 +1133,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_FAIL,
 			[RLM_MODULE_TIMEOUT]	= FR_TACACS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_REJECT,
 		.send = send_generic,
 		.resume = resume_auth_fail,
 		.section_offset = offsetof(process_tacacs_sections_t, auth_fail),
@@ -1144,7 +1147,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_FAIL,
 			[RLM_MODULE_TIMEOUT]	= FR_TACACS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_auth_get,
 		.section_offset = offsetof(process_tacacs_sections_t, auth_getdata),
@@ -1157,7 +1161,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_FAIL,
 			[RLM_MODULE_TIMEOUT]	= FR_TACACS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_auth_get,
 		.section_offset = offsetof(process_tacacs_sections_t, auth_getpass),
@@ -1170,7 +1175,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTH_FAIL,
 			[RLM_MODULE_TIMEOUT]	= FR_TACACS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_auth_get,
 		.section_offset = offsetof(process_tacacs_sections_t, auth_getuser),
@@ -1178,7 +1184,8 @@ static fr_process_state_t const process_state[] = {
 	[ FR_TACACS_CODE_AUTH_RESTART ] = {
 		.packet_type = {
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_auth_restart,
 		.section_offset = offsetof(process_tacacs_sections_t, auth_restart),
@@ -1186,7 +1193,8 @@ static fr_process_state_t const process_state[] = {
 	[ FR_TACACS_CODE_AUTH_ERROR ] = {
 		.packet_type = {
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_REJECT,
 		.send = send_generic,
 		.resume = resume_auth_restart,
 		.section_offset = offsetof(process_tacacs_sections_t, auth_error),
@@ -1201,7 +1209,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_AUTH_FAIL,
 			[RLM_MODULE_TIMEOUT]	= FR_TACACS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.recv = recv_auth_cont,
 		.resume = resume_auth_start, /* we go back to running 'authenticate', etc. */
 		.section_offset = offsetof(process_tacacs_sections_t, auth_cont),
@@ -1215,7 +1224,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_AUTH_FAIL,
 			[RLM_MODULE_TIMEOUT]	= FR_TACACS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_REJECT,
 		.recv = recv_auth_cont_abort,
 		.resume = resume_auth_cont_abort,
 		.section_offset = offsetof(process_tacacs_sections_t, auth_cont_abort),
@@ -1238,7 +1248,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTZ_FAIL,
 			[RLM_MODULE_TIMEOUT]	= FR_TACACS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
 		.resume = resume_autz_request,
 		.section_offset = offsetof(process_tacacs_sections_t, autz_request),
@@ -1252,7 +1262,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTZ_FAIL,
 			[RLM_MODULE_TIMEOUT]	= FR_TACACS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_tacacs_sections_t, autz_pass_add),
@@ -1266,7 +1277,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_AUTZ_FAIL,
 			[RLM_MODULE_TIMEOUT]	= FR_TACACS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_tacacs_sections_t, autz_pass_replace),
@@ -1274,7 +1286,8 @@ static fr_process_state_t const process_state[] = {
 	[ FR_TACACS_CODE_AUTZ_FAIL ] = {
 		.packet_type = {
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_REJECT,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_tacacs_sections_t, autz_fail),
@@ -1282,7 +1295,8 @@ static fr_process_state_t const process_state[] = {
 	[ FR_TACACS_CODE_AUTZ_ERROR ] = {
 		.packet_type = {
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_REJECT,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_tacacs_sections_t, autz_error),
@@ -1300,7 +1314,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_ACCT_ERROR,
 			[RLM_MODULE_TIMEOUT]	= FR_TACACS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
 		.recv = recv_accounting_request,
 		.resume = resume_accounting_request,
 		.section_offset = offsetof(process_tacacs_sections_t, acct_request),
@@ -1314,7 +1328,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_ACCT_ERROR,
 			[RLM_MODULE_TIMEOUT]	= FR_TACACS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_OK,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_tacacs_sections_t, acct_success),
@@ -1322,7 +1337,8 @@ static fr_process_state_t const process_state[] = {
 	[ FR_TACACS_CODE_ACCT_ERROR ] = {
 		.packet_type = {
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_FAIL,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_tacacs_sections_t, acct_error),
@@ -1341,7 +1357,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_DO_NOT_RESPOND,
 			[RLM_MODULE_TIMEOUT]	= FR_TACACS_CODE_DO_NOT_RESPOND
 		},
-		.rcode = RLM_MODULE_NOOP,
+		.default_rcode = RLM_MODULE_NOOP,
+		.result_rcode = RLM_MODULE_HANDLED,
 		.send = send_generic,
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_tacacs_sections_t, do_not_respond),
@@ -1488,7 +1505,8 @@ fr_process_module_t process_tacacs = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "tacacs",
 		.config		= config,
-		.inst_size	= sizeof(process_tacacs_t),
+		MODULE_INST(process_tacacs_t),
+		MODULE_RCTX(process_rctx_t),
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate
 	},

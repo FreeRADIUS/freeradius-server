@@ -1,0 +1,24 @@
+= Datastore
+
+Datastores (i.e., databases or directories) permit the storage and retrieval of data. They have limited decision-making capabilities. While stored procedures are possible in most databases, they are rarely
+used when simple data storage is required.
+
+The key differences between RADIUS servers and datastores are the way they support policies and authentication. The role of a data store in the authentication process is to provide data to a RADIUS server. The server then uses an authentication method to authenticate the user.
+
+When a RADIUS server authenticates a user or stores accounting data for that user, it reads from or writes to a database or directory.User information (i.e., user name, password, credit amount) and session data (i.e., total session time and statistics for total traffic to and from the user) are stored on this database or directory.
+
+In many respects, the RADIUS protocol is similar to a remote database query language. Specifically, while an SQL or LDAP database stores user data, that database cannot be queried directly by the NAS. Instead, the NAS sends a request to the server, which in turn queries the database. This simplification of the normal database query language means that it is easy to add authentication and accounting to an NAS instead of implementing a full-featured SQL client, which would be very resource intensive and costly.
+
+.Comparison of Datastores and RADIUS Servers
+[opts="headers, autowidth"]
+|===
+| *Datastore*                                   | *RADIUS Server*
+| Stores authentication and authorisation data  | Processes data retrieved from the datastore.
+| Rarely implements policies.                   | Implements policies.
+| Supports basic authentication queries,
+such as LDAP “bind as user”                     | Support authentication protocols that include CHAP, MS-CHAP, MS-CHAPv2, and  802.1X (EAP, EAP-TLS, PEAP, EAP-TTLS, EAP-MD5).
+|===
+
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

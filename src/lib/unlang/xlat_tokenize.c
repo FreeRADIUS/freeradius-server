@@ -414,7 +414,7 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 	XLAT_DEBUG("NEW <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
 	/*
-	 *	The caller ensures that the first character aftet the percent exists, and is alphanumeric.
+	 *	The caller ensures that the first character after the percent exists, and is alphanumeric.
 	 */
 	c = fr_sbuff_char(in, '\0');
 
@@ -519,7 +519,7 @@ static CC_HINT(nonnull) int xlat_tokenize_function_args(xlat_exp_head_t *head, f
 	 *	Now parse the child nodes that form the
 	 *	function's arguments.
 	 */
-	if (xlat_tokenize_argv(node, &node->call.args, in, func,
+	if (xlat_tokenize_argv(node, &node->call.args, in, func ? func->args : NULL,
 			       &xlat_function_arg_rules, t_rules, false) < 0) {
 	error:
 		talloc_free(node);
@@ -1586,7 +1586,7 @@ done:
  *				later.
  * @param[out] out		the head of the xlat list / tree structure.
  * @param[in] in		the format string to expand.
- * @param[in] xlat		we're tokenizing arguments for.
+ * @param[in] xlat_args		the arguments
  * @param[in] p_rules		controlling how to parse the string outside of
  *				any expansions.
  * @param[in] t_rules		controlling how attribute references are parsed.
@@ -1596,7 +1596,7 @@ done:
  *	- >0  on success which is the number of characters parsed.
  */
 fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
-			     xlat_t const *xlat,
+			     xlat_arg_parser_t const *xlat_args,
 			     fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, bool spaces)
 {
 	int				argc;
@@ -1609,8 +1609,8 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 	xlat_arg_parser_t const		*arg = NULL, *arg_start;
 	tmpl_rules_t			arg_t_rules;
 
-	if (xlat && xlat->args) {
-		arg_start = arg = xlat->args;	/* Track the arguments as we parse */
+	if (xlat_args) {
+		arg_start = arg = xlat_args;	/* Track the arguments as we parse */
 	} else {
 		static xlat_arg_parser_t const	default_arg[] = { { .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH, .type = FR_TYPE_VOID  },
 								  XLAT_ARG_PARSER_TERMINATOR };
@@ -1634,7 +1634,11 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		}
 
 	} else {
-		fr_assert(p_rules == &xlat_function_arg_rules);
+		if (!p_rules) {
+			p_rules = &xlat_function_arg_rules;
+		} else {
+			fr_assert(p_rules == &xlat_function_arg_rules);
+		}
 		fr_assert(p_rules->terminals);
 
 		our_p_rules = p_rules;
@@ -1846,6 +1850,8 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_exp_head_t	*head;
+
+	fr_assert(!t_rules || !t_rules->at_runtime || (t_rules->xlat.runtime_el != NULL));
 
 	MEM(head = xlat_exp_head_alloc(ctx));
 	fr_strerror_clear();	/* Clear error buffer */

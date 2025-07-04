@@ -2204,32 +2204,32 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_isc_dhcp_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_isc_dhcp_t);
 	int			ret;
 
 	ret = apply_fixed_ip(inst, request);
-	if (ret < 0) RETURN_MODULE_FAIL;
-	if (ret == 0) RETURN_MODULE_NOOP;
+	if (ret < 0) RETURN_UNLANG_FAIL;
+	if (ret == 0) RETURN_UNLANG_NOOP;
 
-	if (ret == 2) RETURN_MODULE_UPDATED;
+	if (ret == 2) RETURN_UNLANG_UPDATED;
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
-static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_isc_dhcp_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_isc_dhcp_t);
 	int			ret;
 
 	ret = apply(inst, request, inst->head);
-	if (ret < 0) RETURN_MODULE_FAIL;
-	if (ret == 0) RETURN_MODULE_NOOP;
+	if (ret < 0) RETURN_UNLANG_FAIL;
+	if (ret == 0) RETURN_UNLANG_NOOP;
 
 	// @todo - check for subnet mask option.  If none exists, use one from the enclosing network?
 
-	RETURN_MODULE_OK;
+	RETURN_UNLANG_OK;
 }
 
 extern module_rlm_t rlm_isc_dhcp;

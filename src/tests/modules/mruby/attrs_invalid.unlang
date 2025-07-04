@@ -1,0 +1,28 @@
+mruby_invalid.set_simple {
+	fail = 1
+}
+if (!fail) {
+	test_fail
+}
+
+mruby_invalid.set_type {
+	fail = 1
+}
+if (!fail) {
+	test_fail
+}
+
+mruby_invalid.set_nested_1 {
+	fail = 1
+}
+if (!fail) {
+	test_fail
+}
+mruby_invalid.set_nested_2 {
+	fail = 1
+}
+if (!fail) {
+	test_fail
+}
+
+test_pass

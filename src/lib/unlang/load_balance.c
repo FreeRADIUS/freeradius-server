@@ -22,6 +22,7 @@
  *
  * @copyright 2006-2019 The FreeRADIUS server project
  */
+#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/rand.h>
 
@@ -30,17 +31,14 @@
 
 #define unlang_redundant_load_balance unlang_load_balance
 
-static unlang_action_t unlang_load_balance_next(rlm_rcode_t *p_result, request_t *request,
+static unlang_action_t unlang_load_balance_next(unlang_result_t *p_result, request_t *request,
 						unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_redundant_t	*redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 
 #ifdef STATIC_ANALYZER
-	if (!redundant->found) {
-		*p_result = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	if (!redundant->found) RETURN_UNLANG_FAIL;
 #endif
 	/*
 	 *	Set up the first round versus subsequent ones.
@@ -72,7 +70,8 @@ static unlang_action_t unlang_load_balance_next(rlm_rcode_t *p_result, request_t
 		 *	If the current child says "return", then do
 		 *	so.
 		 */
-		if (redundant->child->actions.actions[*p_result] == MOD_ACTION_RETURN) {
+		if ((p_result->rcode != RLM_MODULE_NOT_SET) &&
+		    (redundant->child->actions.actions[p_result->rcode] == MOD_ACTION_RETURN)) {
 			/* DON'T change p_result, as it is taken from the child */
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
@@ -81,7 +80,8 @@ static unlang_action_t unlang_load_balance_next(rlm_rcode_t *p_result, request_t
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	if (unlang_interpret_push(request, redundant->child, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
+	if (unlang_interpret_push(NULL, request, redundant->child,
+				  FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) {
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
@@ -103,7 +103,7 @@ static unlang_action_t unlang_load_balance_next(rlm_rcode_t *p_result, request_t
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_redundant_t	*redundant;
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
@@ -111,10 +111,7 @@ static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *req
 
 	uint32_t count = 0;
 
-	if (!g->num_children) {
-		*p_result = RLM_MODULE_NOOP;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	if (!g->num_children) RETURN_UNLANG_NOOP;
 
 	gext = unlang_group_to_load_balance(g);
 
@@ -227,8 +224,8 @@ static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *req
 	 *	Plain "load-balance".  Just do one child.
 	 */
 	if (frame->instruction->type == UNLANG_TYPE_LOAD_BALANCE) {
-		if (unlang_interpret_push(request, redundant->found,
-					  frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME) < 0) {
+		if (unlang_interpret_push(NULL, request, redundant->found,
+					  FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) {
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
@@ -245,23 +242,143 @@ static unlang_action_t unlang_load_balance(rlm_rcode_t *p_result, request_t *req
 	return unlang_load_balance_next(p_result, request, frame);
 }
 
+
+static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_SECTION *cs,
+						 unlang_type_t type)
+{
+	char const			*name2;
+	unlang_t			*c;
+	unlang_group_t			*g;
+	unlang_load_balance_t		*gext;
+
+	tmpl_rules_t			t_rules;
+
+	/*
+	 *	We allow unknown attributes here.
+	 */
+	t_rules = *(unlang_ctx->rules);
+	t_rules.attr.allow_unknown = true;
+	RULES_VERIFY(&t_rules);
+
+	/*
+	 *	No children?  Die!
+	 */
+	if (!cf_item_next(cs, NULL)) {
+		cf_log_err(cs, "%s sections cannot be empty", unlang_ops[type].name);
+		return NULL;
+	}
+
+	if (!unlang_compile_limit_subsection(cs, cf_section_name1(cs))) return NULL;
+
+	c = unlang_compile_section(parent, unlang_ctx, cs, type);
+	if (!c) return NULL;
+
+	g = unlang_generic_to_group(c);
+
+	/*
+	 *	Allow for keyed load-balance / redundant-load-balance sections.
+	 */
+	name2 = cf_section_name2(cs);
+
+	/*
+	 *	Inside of the "modules" section, it's a virtual
+	 *	module.  The name is a module name, not a key.
+	 */
+	if (name2) {
+		if (strcmp(cf_section_name1(cf_item_to_section(cf_parent(cs))), "modules") == 0) name2 = NULL;
+	}
+
+	if (name2) {
+		fr_token_t quote;
+		ssize_t slen;
+
+		/*
+		 *	Create the template.  All attributes and xlats are
+		 *	defined by now.
+		 */
+		quote = cf_section_name2_quote(cs);
+		gext = unlang_group_to_load_balance(g);
+		slen = tmpl_afrom_substr(gext, &gext->vpt,
+					 &FR_SBUFF_IN(name2, strlen(name2)),
+					 quote,
+					 NULL,
+					 &t_rules);
+		if (!gext->vpt) {
+			cf_canonicalize_error(cs, slen, "Failed parsing argument", name2);
+			talloc_free(g);
+			return NULL;
+		}
+
+		fr_assert(gext->vpt != NULL);
+
+		/*
+		 *	Fixup the templates
+		 */
+		if (!pass2_fixup_tmpl(g, &gext->vpt, cf_section_to_item(cs), unlang_ctx->rules->attr.dict_def)) {
+			talloc_free(g);
+			return NULL;
+		}
+
+		switch (gext->vpt->type) {
+		default:
+			cf_log_err(cs, "Invalid type in '%s': data will not result in a load-balance key", name2);
+			talloc_free(g);
+			return NULL;
+
+			/*
+			 *	Allow only these ones.
+			 */
+		case TMPL_TYPE_XLAT:
+		case TMPL_TYPE_ATTR:
+		case TMPL_TYPE_EXEC:
+			break;
+		}
+	}
+
+	return c;
+}
+
+static unlang_t *unlang_compile_load_balance(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	return compile_load_balance_subsection(parent, unlang_ctx, cf_item_to_section(ci), UNLANG_TYPE_LOAD_BALANCE);
+}
+
+
+static unlang_t *unlang_compile_redundant_load_balance(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	return compile_load_balance_subsection(parent, unlang_ctx, cf_item_to_section(ci), UNLANG_TYPE_REDUNDANT_LOAD_BALANCE);
+}
+
+
 void unlang_load_balance_init(void)
 {
-	unlang_register(UNLANG_TYPE_LOAD_BALANCE,
-			   &(unlang_op_t){
-				.name = "load-balance group",
-				.interpret = unlang_load_balance,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
-			        .frame_state_size = sizeof(unlang_frame_state_redundant_t),
-				.frame_state_type = "unlang_frame_state_redundant_t",
-			   });
+	unlang_register(&(unlang_op_t){
+			.name = "load-balance",
+			.type = UNLANG_TYPE_LOAD_BALANCE,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
 
-	unlang_register(UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,
-			   &(unlang_op_t){
-				.name = "redundant-load-balance group",
-				.interpret = unlang_redundant_load_balance,
-				.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
-			        .frame_state_size = sizeof(unlang_frame_state_redundant_t),
-				.frame_state_type = "unlang_frame_state_redundant_t",
-			   });
+			.compile = unlang_compile_load_balance,
+			.interpret = unlang_load_balance,
+
+			.unlang_size = sizeof(unlang_load_balance_t),
+			.unlang_name = "unlang_load_balance_t",
+
+			.frame_state_size = sizeof(unlang_frame_state_redundant_t),
+			.frame_state_type = "unlang_frame_state_redundant_t",
+		});
+
+	unlang_register(&(unlang_op_t){
+			.name = "redundant-load-balance",
+			.type = UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,	
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
+
+			.compile = unlang_compile_redundant_load_balance,
+			.interpret = unlang_redundant_load_balance,
+
+			.unlang_size = sizeof(unlang_load_balance_t),
+			.unlang_name = "unlang_load_balance_t",
+
+			.frame_state_size = sizeof(unlang_frame_state_redundant_t),
+			.frame_state_type = "unlang_frame_state_redundant_t",
+		});
 }

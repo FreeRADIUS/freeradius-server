@@ -161,7 +161,11 @@ AC_ARG_ENABLE(developer,
 
 if test "x$developer" = "xyes"; then
   AC_MSG_NOTICE([Enabling developer build implicitly, disable with --disable-developer])
+  allow_core_dumps="yes"
+else
+  allow_core_dumps="no"
 fi
+AC_SUBST(allow_core_dumps)
 
 dnl #
 dnl #  Write the current commit into Make.inc

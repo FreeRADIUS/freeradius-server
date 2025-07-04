@@ -115,5 +115,29 @@ interpretation of those files is documented there.  These files are
 often in a custom, module-specific format, instead of using the
 standard configuration file format.
 
+== Module-Specific Overrides
+
+Most modules have section-specific functionality.  For example, the
+`sql` module does different things when it is doing authentication
+versus accounting.  The xref:unlang/module_method.adoc[method
+override] functionality lets you call a particular "method" of a
+module when running a different section.
+
+== Policy Overrides
+
+The server can also replace a module call with a policy.  For example,
+a virtual server can contain a reference to the `radius` module.  In
+most cases, this reference will (of course) call the `radius` module.
+
+In some cases, it is necessary to have module-specific policies.  The
+xref:unlang/policy.d/policy_method.adoc[policy override] syntax allows
+for policies to be added around a module, or to override a module
+method.
+
+In addition, the xref:unlang/policy.d/at_reference.adoc[@policy] references
+allow for policies to be placed in the module configuration file,
+which helps to better organize module-specific configurations and
+policies.
+
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

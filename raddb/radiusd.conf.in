@@ -548,7 +548,7 @@ security {
 	#
 	#  allowed values: {no, yes}
 	#
-	allow_core_dumps = no
+	allow_core_dumps = @allow_core_dumps@
 
 	#
 	#  max_attributes:: The maximum number of attributes

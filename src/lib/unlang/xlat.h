@@ -63,6 +63,7 @@ typedef ssize_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t ou
 
 #include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_ctx.h>
+#include <freeradius-devel/unlang/interpret.h>
 
 /** Instance data for an xlat expansion node
  *
@@ -406,7 +407,7 @@ fr_slen_t	xlat_tokenize_condition(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sb
 					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules) CC_HINT(nonnull(1,2,3));
 
 fr_slen_t 	xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
-				   xlat_t const *xlat, fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
+				   xlat_arg_parser_t const *xlat_args, fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 				   bool spaces) CC_HINT(nonnull(1,2,3,6));
 
 fr_slen_t	xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
@@ -499,7 +500,9 @@ int		xlat_purify_op(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *lhs, fr_token
 int		unlang_xlat_timeout_add(request_t *request, fr_unlang_xlat_timeout_t callback,
 					void const *rctx, fr_time_t when);
 
-int		unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+#define XLAT_RESULT_SUCCESS(_p_result) ((_p_result)->rcode == RLM_MODULE_OK)
+
+int		unlang_xlat_push(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_list_t *out,
 				 request_t *request, xlat_exp_head_t const *head, bool top_frame)
 				 CC_HINT(warn_unused_result);
 

@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/dict_ext_priv.h>
 
+#include "attrs.h"
 #include "der.h"
 
 static uint32_t instance_count = 0;

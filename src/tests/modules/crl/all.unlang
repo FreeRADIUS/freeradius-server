@@ -1,0 +1,106 @@
+#
+#  Tests for checking certificates against CRLs
+#
+string serial
+uint8 len
+uint8 clientno
+
+# Build a client cert
+clientno := 1
+
+prepare_cnf
+
+create_client_cert
+
+# Build a second client cert and revoke it
+
+clientno := 2
+
+prepare_cnf
+
+create_client_cert
+
+revoke_client_cert
+
+# Build a third client cert
+
+clientno := 3
+
+prepare_cnf
+
+create_client_cert
+
+build_crl
+
+# Test a CRL check for a certificate that is valid
+clientno := 1
+
+read_cert_serial
+
+session-state.TLS-Certificate.Serial := %bin(serial)
+# This is a dummy URI - the module is configured to just cat the crl using %exec()
+session-state.TLS-Certificate.X509v3-CRL-Distribution-Points = 'http://www.example.com/example_ca.crl'
+
+crl
+
+if (!ok) {
+	test_fail
+}
+
+#
+#  Test a CRL check for a certificate that is revoked
+#
+clientno := 2
+
+read_cert_serial
+
+session-state.TLS-Certificate.Serial := %bin(serial)
+
+crl {
+	reject = 1
+}
+
+if (!reject) {
+	test_fail
+}
+
+#
+#  Test that CRL reload works
+#
+clientno := 3
+
+read_cert_serial
+
+session-state.TLS-Certificate.Serial := %bin(serial)
+
+#
+#  Check that CRL passes
+#
+crl
+
+if (!ok) {
+	test_fail
+}
+
+#
+#  And advance time beyond the forced CRL refresh interval
+#
+%time.advance(10s)
+
+#
+#  Now revoke the cert and update the crl
+#
+revoke_client_cert
+
+build_crl
+
+crl {
+	reject = 1
+}
+
+if (!reject) {
+	test_fail
+}
+
+test_pass
+

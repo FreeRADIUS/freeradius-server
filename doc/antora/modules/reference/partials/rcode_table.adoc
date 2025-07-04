@@ -27,8 +27,6 @@
 | `timeout`     | The operation failed due to a timeout.
 | `updated`     | The operation completed successfully and updated one
                   or more attributes in the request.
-| `yield`       | Returned by an operation when execution of a request should
-                  be suspended.
 |=====
 
 [NOTE]

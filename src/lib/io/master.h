@@ -80,7 +80,8 @@ typedef struct {
 	uint32_t			max_pending_packets;		//!< maximum number of pending packets
 
 	fr_time_delta_t			cleanup_delay;			//!< for Access-Request packets
-	fr_time_delta_t			idle_timeout;			//!< for dynamic clients
+	fr_time_delta_t			idle_timeout;			//!< for connected clients
+	fr_time_delta_t			dynamic_timeout;		//!< for dynamic clients
 	fr_time_delta_t			nak_lifetime;			//!< lifetime of NAKed clients
 	fr_time_delta_t			check_interval;			//!< polling for closed sockets
 

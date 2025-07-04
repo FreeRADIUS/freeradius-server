@@ -116,6 +116,7 @@
 **** xref:xlat/time/character.adoc[Single Character]
 **** xref:xlat/time/generic.adoc[Generic]
 **** xref:xlat/time/is_dst.adoc[Daylight Savings]
+**** xref:xlat/time/next.adoc[Next]
 **** xref:xlat/time/now.adoc[Now]
 **** xref:xlat/time/offset.adoc[UTC Offset]
 **** xref:xlat/time/request.adoc[Request Time]
@@ -140,7 +141,7 @@
 *** xref:dictionary/begin-vendor.adoc[BEGIN-VENDOR]
 *** xref:dictionary/end-vendor.adoc[END-VENDOR]
 
-** xref:policy/index.adoc[Policies]
+** xref:policy/index.adoc[Writing Policy Rules]
 *** xref:policy/different.adoc[Why FreeRADIUS is different]
 
 ** xref:man/index.adoc["man" pages]
@@ -161,6 +162,7 @@
 
 *** xref:raddb/mods-available/doc/authentication.adoc[Authentication]
 **** xref:raddb/mods-available/chap.adoc[CHAP module]
+**** xref:raddb/mods-available/crl.adoc[CRL]
 **** xref:raddb/mods-available/digest.adoc[Digest]
 **** xref:raddb/mods-available/eap.adoc[EAP]
 **** xref:raddb/mods-available/eap_inner.adoc[EAP/Inner]
@@ -185,6 +187,7 @@
 **** xref:raddb/mods-available/etc_group.adoc[Etc_group]
 **** xref:raddb/mods-available/files.adoc[Files]
 ***** xref:raddb/mods-config/files/users.adoc[File Format]
+**** xref:raddb/mods-available/ftp.adoc[FTP]
 **** xref:raddb/mods-available/ldap.adoc[LDAP]
 **** xref:raddb/mods-available/opendirectory.adoc[OpenDirectory]
 **** xref:raddb/mods-available/passwd.adoc[Passwd]
@@ -242,6 +245,10 @@
 **** xref:raddb/mods-available/smtp.adoc[SMTP]
 **** xref:raddb/mods-available/stats.adoc[Stats]
 **** xref:raddb/mods-available/unbound.adoc[Unbound]
+
+** xref:raddb/policy.d/index.adoc[Policies]
+*** xref:raddb/policy.d/at_reference.adoc[@policy]
+*** xref:raddb/policy.d/method.adoc[Method Override]
 
 ** xref:raddb/sites-available/index.adoc[Virtual Servers]
 *** xref:raddb/sites-available/arp.adoc[ARP]

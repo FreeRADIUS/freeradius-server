@@ -2630,6 +2630,47 @@ static size_t command_proto_dictionary_root(command_result_t *result, command_fi
 	RETURN_OK(0);
 }
 
+/** Parse an reprint a tmpl expansion
+ *
+ */
+static size_t command_tmpl(command_result_t *result, command_file_ctx_t *cc,
+				     char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	ssize_t			slen;
+	tmpl_t			*vpt;
+	size_t			input_len = strlen(in), escaped_len;
+
+	slen = tmpl_afrom_substr(cc->tmp_ctx, &vpt, &FR_SBUFF_IN(in, input_len), T_BARE_WORD,
+				 &value_parse_rules_bareword_unquoted,
+				 &(tmpl_rules_t) {
+					 .attr = {
+						 .dict_def = dictionary_current(cc),
+						 .list_def = request_attr_request,
+						 .allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
+					 },
+					 .xlat = cc->tmpl_rules.xlat,
+				 });
+	if (slen == 0) {
+		fr_strerror_printf_push_head("ERROR failed to parse any input");
+		RETURN_OK_WITH_ERROR();
+	}
+
+	if (slen < 0) {
+		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen - 1);
+
+	return_error:
+		RETURN_OK_WITH_ERROR();
+	}
+
+	if (((size_t) slen != input_len)) {
+		fr_strerror_printf_push_head("offset %d 'Too much text'", (int) slen);
+		goto return_error;
+	}
+
+	escaped_len = tmpl_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), vpt, NULL);
+	RETURN_OK(escaped_len);
+}
+
 /** Touch a file to indicate a test completed
  *
  */
@@ -3264,6 +3305,12 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_returned,
 					.usage = "returned",
 					.description = "Print the returned value to the data buffer"
+				}},
+
+	{ L("tmpl "),		&(command_entry_t){
+					.func = command_tmpl,
+					.usage = "parse <string>",
+					.description = "Parse then print a tmpl expansion, writing the normalised tmpl expansion to the data buffer"
 				}},
 
 	{ L("tmpl-rules "),	&(command_entry_t){

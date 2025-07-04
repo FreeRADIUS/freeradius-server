@@ -315,12 +315,16 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Each argument is a FR_TYPE_GROUP, with one or more elements in a list.
 	 */
 	a = fr_value_box_list_head(in);
+	if (!a) {
+		REDEBUG("Left argument to %s is missing", fr_tokens[op]);
+		return XLAT_ACTION_FAIL;
+	}
+
 	b = fr_value_box_list_next(in, a);
-
-	if (!a && !b) return XLAT_ACTION_FAIL;
-
-	fr_assert(!a || (a->type == FR_TYPE_GROUP));
-	fr_assert(!b || (b->type == FR_TYPE_GROUP));
+	if (!b) {
+		REDEBUG("Right argument to %s is missing", fr_tokens[op]);
+		return XLAT_ACTION_FAIL;
+	}
 
 	fr_assert(!fr_comparison_op[op]);
 
@@ -452,9 +456,16 @@ static xlat_action_t xlat_cmp_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Each argument is a FR_TYPE_GROUP, with one or more elements in a list.
 	 */
 	a = fr_value_box_list_head(in);
-	b = fr_value_box_list_next(in, a);
+	if (!a) {
+		REDEBUG("Left argument to %s is missing", fr_tokens[op]);
+		return XLAT_ACTION_FAIL;
+	}
 
-	if (!a || !b) return XLAT_ACTION_FAIL;
+	b = fr_value_box_list_next(in, a);
+	if (!b) {
+		REDEBUG("Right argument to %s is missing", fr_tokens[op]);
+		return XLAT_ACTION_FAIL;
+	}
 
 	fr_assert(a->type == FR_TYPE_GROUP);
 	fr_assert(b->type == FR_TYPE_GROUP);
@@ -503,7 +514,7 @@ typedef struct {
 } xlat_regex_inst_t;
 
 typedef struct {
-	bool			last_success;
+	unlang_result_t		last_result;
 	fr_value_box_list_t	list;
 } xlat_regex_rctx_t;
 
@@ -753,7 +764,7 @@ static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	If the expansions fails, then we fail the entire thing.
 	 */
-	if (!rctx->last_success) {
+	if (!XLAT_RESULT_SUCCESS(&rctx->last_result)) {
 		talloc_free(rctx);
 		return XLAT_ACTION_FAIL;
 	}
@@ -805,7 +816,7 @@ static xlat_action_t xlat_regex_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (unlang_xlat_push(ctx, &rctx->last_success, &rctx->list,
+	if (unlang_xlat_push(ctx, &rctx->last_result, &rctx->list,
 			     request, tmpl_xlat(inst->xlat->vpt), UNLANG_SUB_FRAME) < 0) goto fail;
 
 	return XLAT_ACTION_PUSH_UNLANG;
@@ -860,7 +871,7 @@ typedef struct {
 
 typedef struct {
 	TALLOC_CTX		*ctx;
-	bool			last_success;
+	unlang_result_t		last_result;
 	fr_value_box_t		*box;		//!< output value-box
 	int			current;
 	fr_value_box_list_t	list;
@@ -1132,7 +1143,7 @@ static xlat_action_t xlat_logical_process_arg(UNUSED TALLOC_CTX *ctx, UNUSED fr_
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (unlang_xlat_push(rctx, &rctx->last_success, &rctx->list,
+	if (unlang_xlat_push(rctx, &rctx->last_result, &rctx->list,
 			     request, inst->argv[rctx->current], UNLANG_SUB_FRAME) < 0) goto fail;
 
 	return XLAT_ACTION_PUSH_UNLANG;
@@ -1203,10 +1214,9 @@ static xlat_action_t xlat_logical_or_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	bool			match;
 
 	/*
-	 *	If one of the expansions fails, then we fail the
-	 *	entire thing.
+	 *	If the expansions fails, then we fail the entire thing.
 	 */
-	if (!rctx->last_success) {
+	if (!XLAT_RESULT_SUCCESS(&rctx->last_result)) {
 		talloc_free(rctx->box);
 		talloc_free(rctx);
 		return XLAT_ACTION_FAIL;
@@ -1308,10 +1318,9 @@ static xlat_action_t xlat_logical_and_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	bool			match;
 
 	/*
-	 *	If one of the expansions fails, then we fail the
-	 *	entire thing.
+	 *	If the expansions fails, then we fail the entire thing.
 	 */
-	if (!rctx->last_success) {
+	if (!XLAT_RESULT_SUCCESS(&rctx->last_result)) {
 		talloc_free(rctx->box);
 		talloc_free(rctx);
 		return XLAT_ACTION_FAIL;
@@ -1682,11 +1691,6 @@ static xlat_action_t xlat_func_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 typedef struct {
 	tmpl_t const		*vpt;		//!< the attribute reference
 } xlat_exists_inst_t;
-
-typedef struct {
-	bool			last_success;
-	fr_value_box_list_t	list;
-} xlat_exists_rctx_t;
 
 static xlat_arg_parser_t const xlat_func_exists_arg[] = {
 	{ .type = FR_TYPE_VOID },

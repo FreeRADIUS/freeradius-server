@@ -51,6 +51,7 @@ typedef struct {
 	tmpl_t const		*vpt;			//!< expanded tmpl
 	tmpl_t			*to_free;		//!< tmpl to free.
 	bool			create;			//!< whether we need to create the VP
+	unlang_result_t		success;		//!< did the xlat succeed?
 	fr_pair_t		*vp;			//!< VP referenced by tmpl.
 	fr_pair_t		*vp_parent;		//!< parent of the current VP
 	fr_pair_list_t		pair_list;		//!< for structural attributes
@@ -165,7 +166,7 @@ static int tmpl_to_values(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
 		return 1;
 
 	case TMPL_TYPE_XLAT:
-		if (unlang_xlat_push(ctx, NULL, &out->result, request, tmpl_xlat(vpt), false) < 0) return -1;
+		if (unlang_xlat_push(ctx, &out->success, &out->result, request, tmpl_xlat(vpt), false) < 0) return -1;
 		return 1;
 
 	default:
@@ -972,6 +973,15 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 {
 	map_t const *map = current->map;
 
+	if (current->rhs.success.rcode == RLM_MODULE_FAIL) {
+		if (map->rhs) {
+			RDEBUG("Failed expanding ... %s", map->rhs->name);
+		} else {
+			RDEBUG("Failed assigning to %s", map->lhs->name);
+		}
+		return -1;
+	}
+
 	XDEBUG("%s map %s %s ...", __FUNCTION__, map->lhs->name, fr_tokens[map->op]);
 
 	/*
@@ -1350,6 +1360,11 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	tmpl_dcursor_ctx_t	cc;
 	fr_dcursor_t		cursor;
 
+	if (current->lhs.success.rcode == RLM_MODULE_FAIL) {
+		RDEBUG("Failed expanding %s ...", map->lhs->name);
+		return -1;
+	}
+
 	current->lhs.create = false;
 	current->lhs.vp = NULL;
 
@@ -1555,7 +1570,7 @@ static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit
  *	- UNLANG_ACTION_CALCULATE_RESULT changes were applied.
  *	- UNLANG_ACTION_PUSHED_CHILD async execution of an expansion is required.
  */
-static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t process_edit(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
 
@@ -1572,6 +1587,8 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 				XDEBUG("MAP %s ... %s", state->current->map->lhs->name, state->current->map->rhs->name);
 			}
 
+			state->current->lhs.success.rcode = state->current->rhs.success.rcode = RLM_MODULE_OK;
+
 			rcode = state->current->func(request, state, state->current);
 			if (rcode < 0) {
 				RINDENT_RESTORE(request, state);
@@ -1587,9 +1604,8 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 				if (state->ours) fr_edit_list_abort(state->el);
 				TALLOC_FREE(frame->state);
 				repeatable_clear(frame);
-				*p_result = RLM_MODULE_FAIL;
 
-				return UNLANG_ACTION_CALCULATE_RESULT;
+				RETURN_UNLANG_FAIL;
 			}
 
 			if (rcode == 1) {
@@ -1614,7 +1630,6 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 
 	RINDENT_RESTORE(request, state);
 
-	*p_result = RLM_MODULE_NOOP;
 	if (state->success) *state->success = true;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
@@ -1666,7 +1681,7 @@ static void edit_state_init_internal(request_t *request, unlang_frame_state_edit
  * If one map fails in the evaluation phase, no more maps are processed, and the current
  * result is discarded.
  */
-static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_edit_state_init(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_edit_t			*edit = unlang_generic_to_edit(frame->instruction);
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
@@ -1731,8 +1746,8 @@ int unlang_edit_push(request_t *request, bool *success, fr_edit_list_t *el, map_
 	/*
 	 *	Push a new edit frame onto the stack
 	 */
-	if (unlang_interpret_push(request, unlang_edit_to_generic(edit),
-				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, false) < 0) return -1;
+	if (unlang_interpret_push(NULL, request, unlang_edit_to_generic(edit),
+				  FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) return -1;
 
 	frame = &stack->frame[stack->depth];
 	state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
@@ -1745,11 +1760,17 @@ int unlang_edit_push(request_t *request, bool *success, fr_edit_list_t *el, map_
 
 void unlang_edit_init(void)
 {
-	unlang_register(UNLANG_TYPE_EDIT,
-			   &(unlang_op_t){
-				.name = "edit",
-				.interpret = unlang_edit_state_init,
-				.frame_state_size = sizeof(unlang_frame_state_edit_t),
-				.frame_state_type = "unlang_frame_state_edit_t",
-			   });
+	unlang_register(&(unlang_op_t){
+			.name = "edit",
+			.type = UNLANG_TYPE_EDIT,
+			.flag = UNLANG_OP_FLAG_INTERNAL,
+
+			.interpret = unlang_edit_state_init,
+
+			.unlang_size = sizeof(unlang_edit_t),
+			.unlang_name = "unlang_edit_t",
+
+			.frame_state_size = sizeof(unlang_frame_state_edit_t),
+			.frame_state_type = "unlang_frame_state_edit_t",
+		});
 }

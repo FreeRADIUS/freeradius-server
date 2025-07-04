@@ -24,13 +24,13 @@
  * @copyright 2000,2006,2015-2016 The FreeRADIUS server project
  * @copyright 2025 Network RADIUS SAS
  */
+#include "lib/unlang/action.h"
 RCSID("$Id$")
 
 #define LOG_PREFIX inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
-#include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/lsan.h>
 
@@ -1185,7 +1185,7 @@ static inline CC_HINT(always_inline) PyObject *pair_list_alloc(request_t *reques
 	return py_list;
 }
 
-static unlang_action_t do_python_single(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+static unlang_action_t do_python_single(unlang_result_t *p_result, module_ctx_t const *mctx,
 					request_t *request, PyObject *p_func, char const *funcname)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
@@ -1201,7 +1201,7 @@ static unlang_action_t do_python_single(rlm_rcode_t *p_result, module_ctx_t cons
 	py_request = PyObject_CallObject((PyObject *)&py_freeradius_request_def, NULL);
 	if (unlikely(!py_request)) {
 		python_error_log(inst, request);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	our_request = (py_freeradius_request_t *)py_request;
@@ -1215,7 +1215,7 @@ static unlang_action_t do_python_single(rlm_rcode_t *p_result, module_ctx_t cons
 	req_error:
 		Py_DECREF(py_request);
 		python_error_log(inst, request);
-		RETURN_MODULE_FAIL;
+		RETURN_UNLANG_FAIL;
 	}
 
 	our_request->reply = pair_list_alloc(request, request_attr_reply);
@@ -1266,31 +1266,30 @@ finish:
 	Py_XDECREF(p_ret);
 	Py_XDECREF(py_request);
 
-	RETURN_MODULE_RCODE(rcode);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
 /** Thread safe call to a python function
  *
  * Will swap in thread state specific to module/thread.
  */
-static unlang_action_t mod_python(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_python(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_python_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_python_thread_t);
 	python_call_env_t	*func = talloc_get_type_abort(mctx->env_data, python_call_env_t);
-	rlm_rcode_t		rcode;
 
 	/*
 	 *	It's a NOOP if the function wasn't defined
 	 */
-	if (!func->func->function) RETURN_MODULE_NOOP;
+	if (!func->func->function) RETURN_UNLANG_NOOP;
 
 	RDEBUG3("Using thread state %p/%p", mctx->mi->data, t->state);
 
 	PyEval_RestoreThread(t->state);	/* Swap in our local thread state */
-	do_python_single(&rcode, mctx, request, func->func->function, func->func->function_name);
+	do_python_single(p_result, mctx, request, func->func->function, func->func->function_name);
 	(void)fr_cond_assert(PyEval_SaveThread() == t->state);
 
-	RETURN_MODULE_RCODE(rcode);
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 static void python_obj_destroy(PyObject **ob)
@@ -1738,10 +1737,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Call the instantiate function.
 	 */
 	if (inst->instantiate.function) {
-		rlm_rcode_t rcode;
+		unlang_result_t result;
 
-		do_python_single(&rcode, MODULE_CTX_FROM_INST(mctx), NULL, inst->instantiate.function, "instantiate");
-		switch (rcode) {
+		do_python_single(&result, MODULE_CTX_FROM_INST(mctx), NULL, inst->instantiate.function, "instantiate");
+		switch (result.rcode) {
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_REJECT:
 		error:
@@ -1785,9 +1784,9 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	 *	We don't care if this fails.
 	 */
 	if (inst->detach.function) {
-		rlm_rcode_t rcode;
+		unlang_result_t result;
 
-		(void)do_python_single(&rcode, MODULE_CTX_FROM_INST(mctx), NULL, inst->detach.function, "detach");
+		(void)do_python_single(&result, MODULE_CTX_FROM_INST(mctx), NULL, inst->detach.function, "detach");
 	}
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
