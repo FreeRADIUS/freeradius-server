@@ -157,11 +157,11 @@ static unlang_action_t unlang_parallel_resume(unlang_result_t *p_result, request
 		 *	stop the parent.
 		 */
 		if (cr->result.priority == MOD_ACTION_RETURN) {
-			cr->result.priority = MOD_ACTION_NOT_SET;
+			cr->result.priority = MOD_PRIORITY_MIN;
 
 		} else if (cr->result.priority == MOD_ACTION_REJECT) {
 			cr->result.rcode = RLM_MODULE_REJECT;
-			cr->result.priority = MOD_ACTION_NOT_SET;
+			cr->result.priority = MOD_PRIORITY_MIN;
 		}
 
 		/*

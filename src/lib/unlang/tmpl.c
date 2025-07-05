@@ -264,12 +264,7 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 		.type = UNLANG_TYPE_TMPL,
 		.name = "tmpl",
 		.debug_name = "tmpl",
-		.actions = {
-			.actions = {
-				[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,
-			},
-			.retry = RETRY_INIT,
-		},
+		.actions = DEFAULT_MOD_ACTIONS,
 	};
 
 	if (tmpl_needs_resolving(tmpl)) {

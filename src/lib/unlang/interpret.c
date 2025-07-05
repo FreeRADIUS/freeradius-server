@@ -520,7 +520,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 			fr_table_str_by_value(mod_rcode_table, result->rcode, "<invalid>"),
 			result->priority);
 
-		frame_result->priority = MOD_ACTION_NOT_SET;
+		frame_result->priority = MOD_PRIORITY_MIN;
 		frame_result->rcode = result->rcode;
 		return UNLANG_FRAME_ACTION_POP;
 
@@ -539,7 +539,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 			fr_table_str_by_value(mod_rcode_table, RLM_MODULE_REJECT, "<invalid>"),
 			result->priority);
 
-		frame_result->priority = MOD_ACTION_NOT_SET;
+		frame_result->priority = MOD_PRIORITY_MIN;
 		frame_result->rcode = RLM_MODULE_REJECT;
 		return UNLANG_FRAME_ACTION_POP;
 

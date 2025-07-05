@@ -208,12 +208,7 @@ static int unlang_xlat_push_internal(TALLOC_CTX *ctx, unlang_result_t *p_result,
 		.type = UNLANG_TYPE_XLAT,
 		.name = "xlat",
 		.debug_name = "xlat",
-		.actions = {
-			.actions = {
-				[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,
-			},
-			.retry = RETRY_INIT,
-		},
+		.actions = DEFAULT_MOD_ACTIONS,
 	};
 
 	unlang_frame_state_xlat_t	*state;

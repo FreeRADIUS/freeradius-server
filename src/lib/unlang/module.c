@@ -66,13 +66,7 @@ int unlang_module_push(unlang_result_t *p_result, request_t *request,
 			.type = UNLANG_TYPE_MODULE,
 			.name = mi->name,
 			.debug_name = mi->name,
-			.actions = {
-				.actions = {
-					[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,
-					[RLM_MODULE_TIMEOUT]	= MOD_ACTION_RETURN,
-				},
-				.retry = RETRY_INIT,
-			},
+			.actions = DEFAULT_MOD_ACTIONS,
 		},
 		.mmc = {
 			.mi = mi,

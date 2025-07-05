@@ -181,12 +181,7 @@ unlang_action_t unlang_call_push(unlang_result_t *p_result, request_t *request, 
 				.name = name,
 				.debug_name = name,
 				.ci = CF_TO_ITEM(server_cs),
-				.actions = {
-					.actions = {
-						[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,
-					},
-					.retry = RETRY_INIT,
-				},
+				.actions = DEFAULT_MOD_ACTIONS,
 			},
 
 			.cs = server_cs,

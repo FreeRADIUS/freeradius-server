@@ -243,9 +243,9 @@ static unlang_t *unlang_compile_case(unlang_t *parent, unlang_compile_ctx_t *unl
 	case_gext->vpt = talloc_steal(case_gext, vpt);
 
 	/*
-	 *	Set all of it's codes to return, so that
-	 *	when we pick a 'case' statement, we don't
-	 *	fall through to processing the next one.
+	 *	Set all of it's codes to return, so that when we pick
+	 *	a 'case' statement, it "returns" to the parent
+	 *	'switch' statement.
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) c->actions.actions[i] = MOD_ACTION_RETURN;
 
