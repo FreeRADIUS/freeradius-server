@@ -80,7 +80,7 @@ static unlang_action_t unlang_tmpl_resume(unlang_result_t *p_result, request_t *
 
 	if (tmpl_eval_cast_in_place(&state->list, request, ut->tmpl) < 0) {
 		RPEDEBUG("Failed casting expansion");
-		RETURN_UNLANG_OK;
+		RETURN_UNLANG_FAIL;
 	}
 
 	if (state->out) fr_value_box_list_move(state->out, &state->list);
