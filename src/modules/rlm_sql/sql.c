@@ -346,6 +346,7 @@ unlang_action_t sql_get_map_list(unlang_result_t *p_result, request_t *request, 
 	rlm_sql_t const	*inst = map_ctx->inst;
 
 	fr_assert(request);
+	fr_assert(map_ctx->query);
 
 	MEM(map_ctx->query_ctx = fr_sql_query_alloc(map_ctx->ctx, inst, request, trunk,
 						    map_ctx->query->vb_strvalue, SQL_QUERY_SELECT));
