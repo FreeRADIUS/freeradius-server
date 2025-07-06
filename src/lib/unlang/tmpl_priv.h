@@ -44,7 +44,8 @@ typedef struct {
 	fr_unlang_tmpl_signal_t		signal;		//!< signal handler
 
 	union {
-		fr_exec_state_t		exec;
+		fr_exec_state_t		exec_result;   	//!< results for exec
+		unlang_result_t		xlat_result;	//!< results for xlat
 	};
 
 	unlang_tmpl_args_t		args;		//!< Arguments that control how the

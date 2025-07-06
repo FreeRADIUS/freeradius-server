@@ -54,7 +54,7 @@ static void unlang_tmpl_signal(request_t *request, unlang_stack_frame_t *frame, 
 	/*
 	 *	If we're cancelled, then kill any child processes
 	 */
-	if ((action == FR_SIGNAL_CANCEL) && state->exec.request) fr_exec_oneshot_cleanup(&state->exec, SIGKILL);
+	if ((action == FR_SIGNAL_CANCEL) && state->exec_result.request) fr_exec_oneshot_cleanup(&state->exec_result, SIGKILL);
 
 	if (!state->signal) return;
 
@@ -103,14 +103,14 @@ static unlang_action_t unlang_tmpl_exec_wait_final(unlang_result_t *p_result, re
 	 *	The exec failed for some internal reason.  We don't
 	 *	care about output, and we don't care about the programs exit status.
 	 */
-	if (state->exec.failed) {
+	if (state->exec_result.failed) {
 		fr_value_box_list_talloc_free(&state->list);
 		goto resume;
 	}
 
-	fr_assert(state->exec.pid < 0);	/* Assert this has been cleaned up */
+	fr_assert(state->exec_result.pid < 0);	/* Assert this has been cleaned up */
 
-	if (!state->args.exec.stdout_on_error && (state->exec.status != 0)) {
+	if (!state->args.exec.stdout_on_error && (state->exec_result.status != 0)) {
 		fr_assert(fr_value_box_list_empty(&state->list));
 		goto resume;
 	}
@@ -132,13 +132,13 @@ static unlang_action_t unlang_tmpl_exec_wait_final(unlang_result_t *p_result, re
 		/*
 		 *	Remove any trailing LF / CR
 		 */
-		fr_sbuff_trim(&state->exec.stdout_buff, sbuff_char_line_endings);
+		fr_sbuff_trim(&state->exec_result.stdout_buff, sbuff_char_line_endings);
 
 		fr_value_box_list_init(&state->list);
 		MEM(box = fr_value_box_alloc(state->ctx, FR_TYPE_STRING, NULL));
 		if (fr_value_box_from_str(state->ctx, box, type, NULL,
-					  fr_sbuff_start(&state->exec.stdout_buff),
-					  fr_sbuff_used(&state->exec.stdout_buff),
+					  fr_sbuff_start(&state->exec_result.stdout_buff),
+					  fr_sbuff_used(&state->exec_result.stdout_buff),
 					  NULL) < 0) {
 			talloc_free(box);
 			RETURN_UNLANG_FAIL;
@@ -150,7 +150,24 @@ resume:
 	/*
 	 *	Inform the caller of the status if it asked for it
 	 */
-	if (state->args.exec.status_out) *state->args.exec.status_out = state->exec.status;
+	if (state->args.exec.status_out) *state->args.exec.status_out = state->exec_result.status;
+
+	/*
+	 *	Ensure that the callers resume function is called.
+	 */
+	frame->process = unlang_tmpl_resume;
+	return unlang_tmpl_resume(p_result, request, frame);
+}
+
+/** Wrapper to call after an xlat has been expanded
+ *
+ */
+static unlang_action_t unlang_tmpl_xlat_resume(unlang_result_t *p_result, request_t *request,
+					       unlang_stack_frame_t *frame)
+{
+	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
+
+	if (!XLAT_RESULT_SUCCESS(&state->xlat_result)) RETURN_UNLANG_FAIL;
 
 	/*
 	 *	Ensure that the callers resume function is called.
@@ -168,7 +185,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(unlang_result_t *p_result, r
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 
-	if (fr_exec_oneshot(state->ctx, &state->exec, request,
+	if (fr_exec_oneshot(state->ctx, &state->exec_result, request,
 			  &state->list,
 			  state->args.exec.env, false, false,
 			  false,
@@ -219,7 +236,7 @@ static unlang_action_t unlang_tmpl(unlang_result_t *p_result, request_t *request
 	 *	XLAT structs are allowed.
 	 */
 	if (tmpl_is_xlat(ut->tmpl)) {
-		frame_repeat(frame, unlang_tmpl_resume);
+		frame_repeat(frame, unlang_tmpl_xlat_resume);
 		goto push;
 	}
 
@@ -230,7 +247,7 @@ static unlang_action_t unlang_tmpl(unlang_result_t *p_result, request_t *request
 	 */
 	frame_repeat(frame, unlang_tmpl_exec_wait_resume);
 push:
-	if (unlang_xlat_push(state->ctx, NULL, &state->list, request, tmpl_xlat(ut->tmpl), false) < 0) {
+	if (unlang_xlat_push(state->ctx, &state->xlat_result, &state->list, request, tmpl_xlat(ut->tmpl), false) < 0) {
 	fail:
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
