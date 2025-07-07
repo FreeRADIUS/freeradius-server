@@ -1322,6 +1322,7 @@ static unlang_action_t CC_HINT(nonnull)  mod_autz_group_resume(unlang_result_t *
 
 	switch(autz_ctx->status) {
 	case SQL_AUTZ_GROUP_MEMB:
+		if (!query) RETURN_UNLANG_FAIL;
 		if (unlang_module_yield(request, mod_autz_group_resume, NULL, 0, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
 		MEM(autz_ctx->group_ctx = talloc(autz_ctx, sql_group_ctx_t));
 		*autz_ctx->group_ctx = (sql_group_ctx_t) {
@@ -1383,6 +1384,7 @@ static unlang_action_t CC_HINT(nonnull)  mod_autz_group_resume(unlang_result_t *
 
 	case SQL_AUTZ_GROUP_CHECK:
 	case SQL_AUTZ_PROFILE_CHECK:
+		if (!query) RETURN_UNLANG_FAIL;
 		*autz_ctx->map_ctx = (fr_sql_map_ctx_t) {
 			.ctx = autz_ctx,
 			.inst = inst,
@@ -1438,6 +1440,7 @@ static unlang_action_t CC_HINT(nonnull)  mod_autz_group_resume(unlang_result_t *
 
 	case SQL_AUTZ_GROUP_REPLY:
 	case SQL_AUTZ_PROFILE_REPLY:
+		if (!query) RETURN_UNLANG_FAIL;
 		*autz_ctx->map_ctx = (fr_sql_map_ctx_t) {
 			.ctx = autz_ctx,
 			.inst = inst,
@@ -1553,6 +1556,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 
 	switch(autz_ctx->status) {
 	case SQL_AUTZ_CHECK:
+		if (!query) RETURN_UNLANG_FAIL;
 		*autz_ctx->map_ctx = (fr_sql_map_ctx_t) {
 			.ctx = autz_ctx,
 			.inst = inst,
@@ -1594,6 +1598,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case SQL_AUTZ_REPLY:
+		if (!query) RETURN_UNLANG_FAIL;
 		*autz_ctx->map_ctx = (fr_sql_map_ctx_t) {
 			.ctx = autz_ctx,
 			.inst = inst,
