@@ -580,7 +580,7 @@ static unlang_action_t ldap_cacheable_groupobj_start(unlang_result_t *p_result, 
 
 	filter = fr_value_box_list_head(&group_ctx->expanded_filter);
 
-	if (filter->type != FR_TYPE_STRING) RETURN_UNLANG_FAIL;
+	if (!filter || filter->type != FR_TYPE_STRING) RETURN_UNLANG_FAIL;
 
 	group_ctx->attrs[0] = inst->group.obj_name_attr;
 	return fr_ldap_trunk_search(group_ctx, &group_ctx->query, request, group_ctx->ttrunk,

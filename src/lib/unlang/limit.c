@@ -88,6 +88,7 @@ static unlang_action_t unlang_limit_xlat_done(unlang_result_t *p_result, request
 	unlang_frame_state_limit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_limit_t);
 	fr_value_box_t			*box = fr_value_box_list_head(&state->result);
 
+	if (unlikely(!box)) RETURN_UNLANG_FAIL;
 	/*
 	 *	compile_limit() ensures that the tmpl is cast to uint32, so we don't have to do any more work here.
 	 */
