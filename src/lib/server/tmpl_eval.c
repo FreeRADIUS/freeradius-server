@@ -511,7 +511,10 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 *	permitted.
 		 */
 		slen = xlat_aeval_compiled(tmp_ctx, &str, request, tmpl_xlat(vpt), escape, escape_ctx);
-		if (slen < 0) goto error;
+		if (slen < 0) {
+			RPEDEBUG("Failed expanding %s", vpt->name);
+			goto error;
+		}
 
 		/*
 		 *	The output is a string which might get cast to something later.

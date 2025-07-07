@@ -1662,8 +1662,10 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 
 	switch (rcode) {
 	default:
-		if (!XLAT_RESULT_SUCCESS(&unlang_result)) goto fail;
-		break;
+		if (XLAT_RESULT_SUCCESS(&unlang_result)) {
+			break;
+		}
+		FALL_THROUGH;
 
 	case RLM_MODULE_REJECT:
 	case RLM_MODULE_FAIL:
