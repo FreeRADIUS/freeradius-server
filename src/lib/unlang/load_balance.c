@@ -224,7 +224,7 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 	 *	Plain "load-balance".  Just do one child.
 	 */
 	if (frame->instruction->type == UNLANG_TYPE_LOAD_BALANCE) {
-		if (unlang_interpret_push(NULL, request, redundant->found,
+		if (unlang_interpret_push(p_result, request, redundant->found,
 					  FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) {
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
