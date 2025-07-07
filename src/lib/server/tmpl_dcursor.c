@@ -511,6 +511,7 @@ fr_pair_t *tmpl_dcursor_value_box_init(int *err, TALLOC_CTX *ctx, fr_value_box_t
 
 		if (*err == -1) {
 			RWDEBUG("Cursor %s returned no attributes", vpt->name);
+			goto set_cursor;
 		} else {
 			RPEDEBUG("Failed initializing cursor");
 		}
@@ -518,6 +519,7 @@ fr_pair_t *tmpl_dcursor_value_box_init(int *err, TALLOC_CTX *ctx, fr_value_box_t
 		return NULL;
 	}
 
+set_cursor:
 	fr_value_box_set_cursor(vb, FR_TYPE_PAIR_CURSOR, cursor, vpt->name);
 	return vp;
 }

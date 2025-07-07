@@ -514,8 +514,12 @@ check_non_leaf:
 
 	/*
 	 *	We already have a pair cursor, the argument was an attribute reference.
+	 *	Check if the arg is required that it has at least one pair.
 	 */
-	if (vb->type == FR_TYPE_PAIR_CURSOR) return XLAT_ACTION_DONE;
+	if (vb->type == FR_TYPE_PAIR_CURSOR) {
+		if (arg->required && !fr_dcursor_current(fr_value_box_get_cursor(vb))) return XLAT_ACTION_FAIL;
+		return XLAT_ACTION_DONE;
+	}
 
 	/*
 	 *	If the argument is a pair
@@ -558,10 +562,11 @@ check_non_leaf:
 		 *	The cursor can return something, nothing (-1), or no list (-2) or no context (-3).  Of
 		 *	these, only the last two are actually errors.
 		 *
-		 *	"no matching pair" returns _no_ cursor, and not an empty cursor.
+		 *	"no matching pair" returns an empty cursor.
 		 */
 		(void) tmpl_dcursor_value_box_init(&err, vb, vb, request, vpt);
-		if (err < 0) return XLAT_ACTION_FAIL;
+		if (err < -1) return XLAT_ACTION_FAIL;
+		if (arg->required && err == -1) return XLAT_ACTION_FAIL;
 	}
 
 #undef ESCAPE
