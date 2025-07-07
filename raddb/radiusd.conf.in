@@ -755,6 +755,11 @@ security {
 	#    the to "yes" manually, in order to make a permanent
 	#    change to the configuration.
 	#
+	#    The "auto" flag will have no effect for a client which
+	#    uses a network IP/mask definition.  If you need to
+	#    control this flag on a per-IP basis, then each "client"
+	#    definition must have only one IP address listed.
+	#
 	#    WARNING: If there are multiple NASes with the same source
 	#    IP and client definitions, BUT the NASes have different
 	#    behavior, then this flag WILL LIKELY BREAK YOUR NETWORK.

@@ -575,6 +575,8 @@ static void blastradius_checks(RADIUS_PACKET *packet, RADCLIENT *client)
 			/*
 			 *	Don't change it from "auto" for wildcard clients.
 			 */
+			DEBUG("BlastRADIUS check: Received packet with Message-Authenticator.");
+			DEBUG("NOT changing \"require_message_authenticator\" flag for client %s with IP/mask", client->shortname);
 			return;
 
 		} else {
