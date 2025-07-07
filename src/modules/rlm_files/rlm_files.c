@@ -646,8 +646,8 @@ static unlang_action_t CC_HINT(nonnull) mod_files(UNUSED unlang_result_t *p_resu
 /** Custom call_env parser for loading files data
  *
  */
-static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
-			  call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
+static int files_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+				call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
 {
 	rlm_files_t const		*inst = talloc_get_type_abort_const(cec->mi->data, rlm_files_t);
 	CONF_PAIR const			*to_parse = cf_item_to_pair(ci);
@@ -686,7 +686,7 @@ static const call_env_method_t method_env = {
 	.env = (call_env_parser_t[]){
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("key", FR_TYPE_VOID, CALL_ENV_FLAG_PARSE_ONLY, rlm_files_env_t, data),
 				     .pair.dflt = "%{Stripped-User-Name || User-Name}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING,
-				     .pair.func = call_env_parse },
+				     .pair.func = files_call_env_parse },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("match_attr", FR_TYPE_VOID, CALL_ENV_FLAG_ATTRIBUTE, rlm_files_env_t, match_attr) },
 		CALL_ENV_TERMINATOR
 	},

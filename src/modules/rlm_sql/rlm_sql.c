@@ -2414,8 +2414,8 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
  *
  * Needed as the escape function needs to reference the correct SQL driver
  */
-static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
-			  call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
+static int sql_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+			      call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
 {
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(cec->mi->data, rlm_sql_t);
 	tmpl_t			*parsed_tmpl;
@@ -2445,7 +2445,7 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 #define QUERY_ESCAPE .pair.escape = { \
 	.mode = TMPL_ESCAPE_PRE_CONCAT, \
 	.uctx = { .func = { .alloc = sql_escape_uctx_alloc }, .type = TMPL_ESCAPE_UCTX_ALLOC_FUNC }, \
-}, .pair.func = call_env_parse
+}, .pair.func = sql_call_env_parse
 
 static const call_env_method_t authorize_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_autz_call_env_t),
