@@ -44,7 +44,6 @@ int fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, fr_packet_t *p
 	ethernet_header_t	*eth_hdr;
 	ip_header_t		*ip_hdr;
 	udp_header_t		*udp_hdr;
-	dhcp_packet_t		*dhcp;
 	/* Pointer to the current position in the frame */
 	uint8_t			*end = dhcp_packet;
 	uint16_t		l4_len;
@@ -85,9 +84,8 @@ int fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, fr_packet_t *p
 	end += UDP_HDR_SIZE;
 
 	/* DHCP layer (L7) */
-	dhcp = (dhcp_packet_t *)end;
 	/* just copy what FreeRADIUS has encoded for us. */
-	memcpy(dhcp, packet->data, packet->data_len);
+	memcpy(end, packet->data, packet->data_len);
 
 	/* UDP checksum is done here */
 	udp_hdr->checksum = fr_udp_checksum((uint8_t const *)udp_hdr, l4_len, udp_hdr->checksum,
