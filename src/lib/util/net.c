@@ -135,7 +135,7 @@ uint16_t fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 	sum += htons(len);
 
 	for (i = len; i > 1; i -= 2) sum += *p++;
-	if (i) sum += (0xff & *(uint8_t const *)p) << 8;
+	if (i) sum += (0xff & *(uint8_t const *)p);
 
 	sum -= checksum;
 
