@@ -262,7 +262,11 @@ static fr_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 #ifdef HAVE_LIBPCAP
 			if (pcap) {
 				reply = fr_dhcpv4_pcap_recv(pcap);
+#  ifdef HAVE_LINUX_IF_PACKET_H
 			} else
+#  else
+			}
+#  endif
 #endif
 #ifdef HAVE_LINUX_IF_PACKET_H
 			{
