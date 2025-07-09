@@ -153,7 +153,7 @@ fr_dict_attr_autoload_t proto_dhcpv4_udp_dict_attr[] = {
 static int8_t dhcpv4_pcap_cmp(void const *a, void const *b)
 {
 	proto_dhcpv4_pcap_t const *one = a, *two = b;
-	return strcmp(one->interface, two->interface);
+	return CMP(strcmp(one->interface, two->interface), 0);
 }
 
 static proto_dhcpv4_pcap_t *dhcpv4_pcap_find(proto_dhcpv4_udp_thread_t *thread, char const *interface)
