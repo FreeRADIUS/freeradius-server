@@ -55,7 +55,7 @@ static fr_time_delta_t	timeout;
 
 static int sockfd;
 #ifdef HAVE_LIBPCAP
-static fr_pcap_t	*pcap;
+static fr_pcap_t	*pcap = NULL;
 #endif
 
 static char *iface = NULL;
@@ -259,14 +259,17 @@ static fr_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 		if (retval > 0 && FD_ISSET(lsockfd, &read_fd)) {
 			/* There is something to read on our socket */
 
+#ifdef HAVE_LIBPCAP
+			if (pcap) {
+				reply = fr_dhcpv4_pcap_recv(pcap);
+			} else
+#endif
 #ifdef HAVE_LINUX_IF_PACKET_H
-			reply = fr_dhcpv4_raw_packet_recv(lsockfd, p_ll, request, request_list);
-#else
-#  ifdef HAVE_LIBPCAP
-			reply = fr_dhcpv4_pcap_recv(pcap);
-#  else
+			{
+				reply = fr_dhcpv4_raw_packet_recv(lsockfd, p_ll, request, request_list);
+			}
+#elif !defined(HAVE_LIBPCAP)
 #    error Need <if/packet.h> or <pcap.h>
-#  endif
 #endif
 		} else {
 			our_timeout = fr_time_delta_wrap(0);
