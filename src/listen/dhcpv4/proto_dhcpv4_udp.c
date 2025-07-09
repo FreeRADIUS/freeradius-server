@@ -487,10 +487,11 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 			 */
 		case FR_DHCP_OFFER:
 		{
-			char if_name[IFNAMSIZ] = "";
+			char if_name[IFNAMSIZ];
 #ifdef HAVE_LIBPCAP
 		offer:
 #endif
+			if_name[0] = '\0';
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
 			if (!inst->interface && socket.inet.ifindex) fr_ifname_from_ifindex(if_name, socket.inet.ifindex);
 #endif
