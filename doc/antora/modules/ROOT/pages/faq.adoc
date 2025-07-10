@@ -10,7 +10,7 @@ Read this FAQ before posting questions to the mailing lists as your question may
 
 == FreeRADIUS Overview
 
-FreeRADIUS is the worlds leading RADIUS server used by Internet Service Providers (ISPs), cellular providers, and corporate and educational networks.  RADIUS, which stands for “Remote Authentication Dial In User Service”, is a network protocol used to manage network access using xref:concepts:protocol/authproto.adoc[Authentication, Authorization and Accounting] processes.
+FreeRADIUS is the worlds leading RADIUS server used by Internet Service Providers (ISPs), cellular providers, and corporate and educational networks.  RADIUS, which stands for “Remote Authentication Dial In User Service”, is a network protocol used to manage network access using xref:concepts:protocol/authproto.adoc[Authentication, authorisation and Accounting] processes.
 
 FreeRADIUS is developed by a group of people who call themselves "The FreeRADIUS Project" and is sponsored by https://www.inkbridgenetworks.com/[InkBridge Networks].
 
@@ -196,7 +196,7 @@ As an administrator, decide which authentication method is required for your bus
 
 === Can I limit access to only POP3 and SMTP?
 
-Yes. The most common approach is to just assign non-globally-routable IP addresses to those users, such as https://datatracker.ietf.org/doc/html/rfc1918[RFC 1918] addresses. Make sure you have RADIUS authorization enabled on your NAS.
+Yes. The most common approach is to just assign non-globally-routable IP addresses to those users, such as https://datatracker.ietf.org/doc/html/rfc1918[RFC 1918] addresses. Make sure you have RADIUS authorisation enabled on your NAS.
 
 Depending on your internal network configuration, you may need to set up internal routes for those addresses, and if you don't want them to do anything besides SMTP and POP3 within your network, you'll have to set up ACLs on your dialup interfaces allowing only ports 25 and 110 through.
 
@@ -213,7 +213,7 @@ User entry in raddb/users file example
 .CISCO configuation example
 [%collapsible]
 ====
-	aaa authorization network default radius
+	aaa authorisation network default radius
 	ip access-list extended 160
 	permit ip ...
 	ip access-list extended 161

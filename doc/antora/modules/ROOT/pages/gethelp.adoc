@@ -1,4 +1,4 @@
-# Getting Help
+# Get Help
 
 ## Official Documentation
 
@@ -33,7 +33,7 @@ smoothly. InkBridge Networks are experts at designing a customized RADIUS soluti
 the appropriate number of RADIUS and database servers for your particular business needs. We install the RADIUS server and database and generate
 the necessary tables, schemas, queries, and replication.
 
-We can configure multiple forms of authorization on the same system simultaneously. The system can include:
+We can configure multiple forms of authorisation on the same system simultaneously. The system can include:
 
 * 802.1x
 * PEAP

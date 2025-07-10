@@ -5,8 +5,8 @@ If your server starts up successfully, save a copy of the configuration so you a
 When the server doesn't start up, go back and verify the configuration and read the entire debug output. If you have issues, the initial steps to troubleshoot or debug the server are:
 
 * Make small, discrete changes to the configuration files.
-* Start the server in debugging mode by entering the command *radiusd -X*
-* Verify that the results are what you expect
+* Start the server in debugging mode by entering the command *radiusd -X*.
+* Verify that the results are what you expect.
 * The debug output shows any configuration changes you have made:
 ** Datastores are connected and operating.
 ** Test packets are accepted by the server.
@@ -53,7 +53,7 @@ The next section xref:debugging/processing.adoc[*Packet Processing*] is where th
 . Inspection of packet contents and multiple modules may be called to complete processing. A decision is made to call one of the following actions:
     . POST-AUTH-REJECT
     . POST-AUTH-ACCEPT
-. Server completes the post-authorization processes for the current packet.
+. Server completes the post-authorisation processes for the current packet.
 
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
