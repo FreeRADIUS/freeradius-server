@@ -36,6 +36,7 @@ extern "C" {
  */
 typedef struct {
 	TALLOC_CTX			*ctx;		//!< for allocating value boxes
+	tmpl_t const   			*vpt;		//!< the thing being expanded
 	fr_value_box_list_t		*out;		//!< output list if the exec succeeds
 	fr_value_box_list_t		list;		//!< our intermediate working list
 

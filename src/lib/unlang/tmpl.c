@@ -326,6 +326,7 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 	repeatable_set(frame);
 
 	*state = (unlang_frame_state_tmpl_t) {
+		.vpt = tmpl,
 		.out = out,
 		.ctx = ctx,
 	};
@@ -342,6 +343,18 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 	return 0;
 }
 
+static void unlang_tmpl_dump(request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
+
+	if (state->vpt) {
+		RDEBUG("tmpl           %s", state->vpt->name);
+	} else {
+		unlang_tmpl_t *ut = unlang_generic_to_tmpl(frame->instruction);
+		RDEBUG("tmpl           %s", ut->tmpl->name);
+	}
+}
+
 void unlang_tmpl_init(void)
 {
 	unlang_register(&(unlang_op_t){
@@ -351,6 +364,7 @@ void unlang_tmpl_init(void)
 
 			.interpret = unlang_tmpl,
 			.signal = unlang_tmpl_signal,
+			.dump = unlang_tmpl_dump,
 
 			.unlang_size = sizeof(unlang_tmpl_t),
 			.unlang_name = "unlang_tmpl_t",
