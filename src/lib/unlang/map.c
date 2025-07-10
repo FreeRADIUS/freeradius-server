@@ -157,7 +157,7 @@ static unlang_action_t list_mod_create(unlang_result_t *p_result, request_t *req
 				break;
 
 			case TMPL_TYPE_EXEC:
-				if (unlang_tmpl_push(update_state, &update_state->lhs_result,
+				if (unlang_tmpl_push(update_state, NULL, &update_state->lhs_result,
 						     request, map->lhs,
 						     NULL) < 0) {
 					return UNLANG_ACTION_STOP_PROCESSING;
@@ -197,7 +197,7 @@ static unlang_action_t list_mod_create(unlang_result_t *p_result, request_t *req
 				break;
 
 			case TMPL_TYPE_EXEC:
-				if (unlang_tmpl_push(update_state, &update_state->rhs_result,
+				if (unlang_tmpl_push(update_state, NULL, &update_state->rhs_result,
 						     request, map->rhs, NULL) < 0) {
 					return UNLANG_ACTION_STOP_PROCESSING;
 				}
@@ -418,7 +418,7 @@ static unlang_action_t unlang_map_state_init(unlang_result_t *p_result, request_
 		break;
 	}
 	case TMPL_TYPE_EXEC:
-		if (unlang_tmpl_push(map_proc_state, &map_proc_state->src_result,
+		if (unlang_tmpl_push(map_proc_state, NULL, &map_proc_state->src_result,
 				     request, inst->src, NULL) < 0) {
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}

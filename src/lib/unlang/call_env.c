@@ -232,7 +232,8 @@ static unlang_action_t call_env_expand_start(UNUSED unlang_result_t *p_result, r
 		ctx = *out;
 	}
 
-	if (unlang_tmpl_push(ctx, &call_env_rctx->tmpl_expanded, request, call_env_rctx->last_expanded->data.tmpl,
+	if (unlang_tmpl_push(ctx, &call_env_rctx->expansion_result, &call_env_rctx->tmpl_expanded, request,
+			     call_env_rctx->last_expanded->data.tmpl,
 			     NULL) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;

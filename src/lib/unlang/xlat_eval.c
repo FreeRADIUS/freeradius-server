@@ -1453,7 +1453,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 
 				if (unlang_xlat_yield(request, xlat_exec_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto fail;
 
-				if (unlang_tmpl_push(ctx, &rctx->list, request, node->vpt,
+				if (unlang_tmpl_push(ctx, NULL, &rctx->list, request, node->vpt,
 						     TMPL_ARGS_EXEC(NULL, fr_time_delta_from_sec(EXEC_TIMEOUT),
 						     		    false, &rctx->status)) < 0) goto fail;
 

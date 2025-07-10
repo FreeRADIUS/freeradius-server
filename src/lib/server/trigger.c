@@ -391,7 +391,7 @@ int trigger_exec(unlang_interpret_t *intp,
 		MEM(vpt = tmpl_alloc(trigger, TMPL_TYPE_EXEC, quote, value, talloc_array_length(value)));
 		tmpl_set_xlat(vpt, xlat);
 
-		if (unlang_tmpl_push(trigger, &trigger->out, request, vpt,
+		if (unlang_tmpl_push(trigger, NULL, &trigger->out, request, vpt,
 				     &(unlang_tmpl_args_t) {
 					     .type = UNLANG_TMPL_ARGS_TYPE_EXEC,
 					     .exec = {

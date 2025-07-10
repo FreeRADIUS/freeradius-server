@@ -175,7 +175,7 @@ static unlang_action_t unlang_timeout(unlang_result_t *p_result, request_t *requ
 
 	fr_value_box_list_init(&state->result);
 
-	if (unlang_tmpl_push(state, &state->result, request, gext->vpt, NULL) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_tmpl_push(state, NULL, &state->result, request, gext->vpt, NULL) < 0) return UNLANG_ACTION_FAIL;
 
 	frame_repeat(frame, unlang_timeout_done);
 

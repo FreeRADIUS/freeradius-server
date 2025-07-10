@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/unlang/mod_action.h>
 #include "tmpl_priv.h"
 #include <signal.h>
 
@@ -247,7 +248,7 @@ static unlang_action_t unlang_tmpl(unlang_result_t *p_result, request_t *request
 	 */
 	frame_repeat(frame, unlang_tmpl_exec_wait_resume);
 push:
-	if (unlang_xlat_push(state->ctx, &state->xlat_result, &state->list, request, tmpl_xlat(ut->tmpl), false) < 0) {
+	if (unlang_xlat_push(state->ctx, &state->xlat_result, &state->list, request, tmpl_xlat(ut->tmpl), UNLANG_SUB_FRAME) < 0) {
 	fail:
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
@@ -258,6 +259,7 @@ push:
 /** Push a tmpl onto the stack for evaluation
  *
  * @param[in] ctx		To allocate value boxes and values in.
+ * @param[out] p_result	        The frame result
  * @param[out] out		The value_box created from the tmpl.  May be NULL,
  *				in which case the result is discarded.
  * @param[in] request		The current request.
@@ -268,7 +270,7 @@ push:
  *	- 0 on success
  *	- -1 on failure
  */
-int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request,
+int unlang_tmpl_push(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_list_t *out, request_t *request,
 		     tmpl_t const *tmpl, unlang_tmpl_args_t *args)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -277,7 +279,7 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 
 	unlang_tmpl_t			*ut;
 
-	static unlang_t tmpl_instruction = {
+	static unlang_t const tmpl_instruction_return = {
 		.type = UNLANG_TYPE_TMPL,
 		.name = "tmpl",
 		.debug_name = "tmpl",
@@ -297,23 +299,38 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 		},
 	};
 
+	static const unlang_t tmpl_instruction_fail = {
+		.type = UNLANG_TYPE_TMPL,
+		.name = "tmpl",
+		.debug_name = "tmpl",
+		.actions = DEFAULT_MOD_ACTIONS,
+	};
+
 	if (tmpl_needs_resolving(tmpl)) {
 		REDEBUG("Expansion \"%pV\" needs to be resolved before it is used", fr_box_strvalue_len(tmpl->name, tmpl->len));
 		return -1;
+	}
+
+	/*
+	 *	Avoid an extra stack frame and more work.  But only if the caller hands us a result.
+	 *	Otherwise, we have to return UNLANG_FAIL.
+	 */
+	if (p_result && (tmpl_rules_cast(tmpl) == FR_TYPE_NULL) && tmpl_is_xlat(tmpl)) {
+		return unlang_xlat_push(ctx, p_result, out, request, tmpl_xlat(tmpl), UNLANG_SUB_FRAME);
 	}
 
 	fr_assert(!tmpl_contains_regex(tmpl));
 
 	MEM(ut = talloc(stack, unlang_tmpl_t));
 	*ut = (unlang_tmpl_t){
-		.self = tmpl_instruction,
+		.self =  p_result ? tmpl_instruction_fail : tmpl_instruction_return,
 		.tmpl = tmpl
 	};
 
 	/*
 	 *	Push a new tmpl frame onto the stack
 	 */
-	if (unlang_interpret_push(NULL, request, unlang_tmpl_to_generic(ut),
+	if (unlang_interpret_push(p_result, request, unlang_tmpl_to_generic(ut),
 				  FRAME_CONF(RLM_MODULE_NOT_SET, false), UNLANG_NEXT_STOP) < 0) return -1;
 
 	frame = &stack->frame[stack->depth];

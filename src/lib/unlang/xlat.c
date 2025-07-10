@@ -270,6 +270,7 @@ static int unlang_xlat_push_internal(TALLOC_CTX *ctx, unlang_result_t *p_result,
 /** Push a pre-compiled xlat onto the stack for evaluation
  *
  * @param[in] ctx		To allocate value boxes and values in.
+ * @param[out] p_result	        The frame result
  * @param[out] out		Where to write the result of the expansion.
  * @param[in] request		to push xlat onto.
  * @param[in] xlat		to evaluate.
