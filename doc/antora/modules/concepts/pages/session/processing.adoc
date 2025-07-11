@@ -11,12 +11,12 @@ The client sends the server a RADIUS authentication request. You don't decide wh
 .FreeRADIUS v4 Request Flow
 image:request_flow_4.0.svg[Process Flow railroad diagram].
 
-=== Summary of the Request Flow Steps
+=== Request flow summary
 
 . An end-user tries to access a network through a RADIUS client such as a wireless access point. 
 . The RADIUS client sends a request to the RADIUS server along with the user's credentials.
 . The RADIUS server verifies the user's credentials against its datastore (flat file, SQL, LDAP, etc.). 
-. If authentication passes, the server returns configuration details (including authorisation) to the client. The client can now grant network access to the end-user 
+. If authentication passes, the server returns configuration details (including authorization) to the client. The client can now grant network access to the end-user 
 . If the authentication fails, the server denies access, and the RADIUS client informs the end-user.
 
 
@@ -29,7 +29,7 @@ Users new to RADIUS, AAA, or EAP are encouraged to read the standards listed bel
 - https://datatracker.ietf.org/doc/html/rfc2865[RFC 3579] - RADIUS Support For Extensible Authentication Protocol (EAP)
 
 
-== Request Processing
+== Request processing
 
 When the server processes requests, it manages four xref:reference:unlang/list.adoc[attribute lists]. All of these lists are available to all modules.  All of these lists are available in xref:reference:unlang/index.adoc[Unlang]
 
@@ -54,7 +54,7 @@ When the server processes requests, it manages four xref:reference:unlang/list.a
 
 
 
-== Select an Auth-Type - authorise {}
+== Select an Auth-Type - authorize {}
 
 The RADIUS server looks at the request and says:
 
@@ -62,7 +62,7 @@ The RADIUS server looks at the request and says:
 
 The answer to that depends on what authentication types are enabled in the server, what the server can look up in a datastore, and what is in the request.
 
-The server starts querying the modules in the authorise section:
+The server starts querying the modules in the authorize section:
 
 > Unix module, can you handle this one?
 
@@ -78,7 +78,7 @@ The module does this by looking for key attributes in the received request, such
 
 If the module thinks has a possibility of authenticating the user, it'll say:
 
-> I can't authenticate this user now (I was just told to authorise them i.e. set the Auth-Type),
+> I can't authenticate this user now (I was just told to authorize them i.e. set the Auth-Type),
 > but my pal in the Authenticate section can!
 > Hey, set the Auth-Type to me!
 
@@ -86,7 +86,7 @@ TThe module performs no action if it doesn't recognize anything in the request. 
 
 == Authenticate a user - authenticate {}
 
-At the end of the authorise process, the server checks if the Auth-Type has been set by a module.
+At the end of the authorize process, the server checks if the Auth-Type has been set by a module.
 
 If no module sets the Auth-Type, the server immediately rejects the request.
 
@@ -96,13 +96,13 @@ During this authenticate process, the server calls the pap module again:
 
 > I see a User-Password, which is what the user entered.
 > That's nice, but I need to compare it with something.
-> Ah! Another module added the "known good" password for this user in authorise!
+> Ah! Another module added the "known good" password for this user in authorize!
 
 Next, the server compares the local "known good" password to the password as entered by the user.  This is how authentication works.
 
 The "known good" password comes from another module.  The pap module just does PAP authentication, and nothing more.  The benefit of this approach is that the "known good" password can come from the 'users' file, SQL, LDAP, ``/etc/passwd``, or any external program.
 
-For this example, the ldap module is listed in the authorise section. It will have run and checked:
+For this example, the ldap module is listed in the authorize section. It will have run and checked:
 
 > Hmm... Can I find a "known good" password for this user?
 

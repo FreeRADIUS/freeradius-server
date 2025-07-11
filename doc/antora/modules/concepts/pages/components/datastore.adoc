@@ -13,7 +13,7 @@ In many respects, the RADIUS protocol is similar to a remote database query lang
 [opts="headers, autowidth"]
 |===
 | *Datastore*                                   | *RADIUS Server*
-| Stores authentication and authorisation data  | Processes data retrieved from the datastore.
+| Stores authentication and authorization data  | Processes data retrieved from the datastore.
 | Rarely implements policies.                   | Implements policies.
 | Supports basic authentication queries,
 such as LDAP “bind as user”                     | Support authentication protocols that include CHAP, MS-CHAP, MS-CHAPv2, and  802.1X (EAP, EAP-TLS, PEAP, EAP-TTLS, EAP-MD5).

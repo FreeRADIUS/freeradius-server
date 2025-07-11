@@ -1,8 +1,8 @@
 = RADIUS Server
 
-A RADIUS server is a central authority that handles authentication, authorisation, and accounting (AAA) for network access. The server receives requests from network access servers (NASs) like wireless access points or VPN concentrators and determines whether a user should be granted access based on predefined policies and data stored in a datastore.
+A RADIUS server is a central authority that handles authentication, authorization, and accounting (AAA) for network access. The server receives requests from network access servers (NASs) like wireless access points or VPN concentrators and determines whether a user should be granted access based on predefined policies and data stored in a datastore.
 
-The RADIUS server is usually a software application running on a self-contained server. A physical device such as RADIUS appliances, with simplified maintenance and management interfaces, are also used. In either scenario, the server waits for a request from an NAS, processes or forwards the request, and then returns a response to the NAS. The response can contain authorisation policies or an acknowledgment of accounting data received.
+The RADIUS server is usually a software application running on a self-contained server. A physical device such as RADIUS appliances, with simplified maintenance and management interfaces, are also used. In either scenario, the server waits for a request from an NAS, processes or forwards the request, and then returns a response to the NAS. The response can contain authorization policies or an acknowledgment of accounting data received.
 
 A single RADIUS server can receive and process many simultaneous access requests from numerous types of NASs (such as ADSL, dial-up, or VPN concentrators) in many different locations. A single server may also
 access flat files, SQL databases, LDAP directories, or other RADIUS servers. In order to make a decision regarding an access request, the RADIUS server must first use information from many sources.
@@ -16,9 +16,9 @@ In this example, the company policy is that when an employee is fired, HR notifi
 being denied access) and the HR department informs the security guard that the employee is no longer free to come and go (similar to the RADIUS server decision sent to the NAS), it is then up to the security guard at the company front desk to perform the task of refusing entry to the fired employee (similar to the NAS enforcing system access in a network). In the network, the NAS enforces system access. The RADIUS server does little more than offer advice to the NAS.
 
 [#policy]
-== RADIUS Server Policies
+== Policies
 
-The RADIUS server processes an NAS request based on the following criteria:
+The RADIUS server processes a NAS request based on the following criteria:
 
 * Contents of the NAS request.
 * Information available locally to the RADUS server (flat files, SQL, LDAP).
