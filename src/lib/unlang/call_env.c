@@ -442,7 +442,7 @@ int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules,
  *	- 0 on success;
  *	- <0 on failure;
  */
-static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, tmpl_rules_t const *t_rules,
+int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, tmpl_rules_t const *t_rules,
 			  CONF_SECTION const *cs,
 			  call_env_ctx_t const *cec, call_env_parser_t const *rule) {
 	CONF_PAIR const		*cp, *next;
