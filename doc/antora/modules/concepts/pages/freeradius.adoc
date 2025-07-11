@@ -1,7 +1,7 @@
 = What is FreeRADIUS?
 
 FreeRADIUS is the most popular and the most widely deployed open source RADIUS server in the world.
-It serves as the basis for multiple commercial offerings, and it supplies the authentication, authorisation, and accounting (AAA) needs of many Fortune 500 companies and Tier 1 ISPs. It is also widely used by the academic community (i.e., eduroam, the world-wide roaming access service developed for the international research and education community, utilises FreeRADIUS software).
+It serves as the basis for multiple commercial offerings, and it supplies the authentication, authorization, and accounting (AAA) needs of many Fortune 500 companies and Tier 1 ISPs. It is also widely used by the academic community (i.e., eduroam, the world-wide roaming access service developed for the international research and education community, utilises FreeRADIUS software).
 
 FreeRADIUS was started in August 1999 by Alan DeKok and Miquel van Smoorenburg. Miquel had previously written the Cistron RADIUS server software, which had been widely adopted when the Livingston server was no longer in service. FreeRADIUS was developed using a modular design, to encourage more active community involvement.
 
@@ -23,8 +23,6 @@ For example, each of the authentication methods (PAP,CHAP, MS-CHAP, TOTP, and EA
 This modular design streamlines development, testing, and enhances the system’s adaptability to new requirements or technologies.
 
 == Scalability
-
-A single FreeRADIUS server is easily reconfigured to handle a wide range of workloads, from just a few requests per second to thousands—by adjusting a few default settings. This adaptability makes FreeRADIUS suitable for both small deployments and very large organisations, including those with over 10 million customers who rely on it for authentication, authorization, and accounting (AAA) services.
 
 A single FreeRADIUS server can transition from handling one request every few seconds to processing thousands of requests per second. These varied workloads are handled by changing a few default settings. FreeRADIUS is suitable for both small deployments and very large organisations, including those with over 10 million customers.  Often, only a single FreeRADIUS server is required to fulfill an organisation's requirements for their AAA services.
 

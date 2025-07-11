@@ -1,58 +1,22 @@
 = Network Access Server
 
-A Network Access Server (NAS) is a system that provides access to
-a network. In some cases, it's also known as a Terminal Server or Remote
-Access Server (RAS).
+A Network Access Server (NAS) is a system that grants or denies access to
+a protected resource. The NAS acts as a gateway that controls access to resources such as networks, printers, or the internet.
 
-The NAS is meant to act as a gateway to guard access to a
-protected resource. This can be anything from a telephone network,
-to printers, to the Internet.
+When a network user or device needs access to a resource, it first sends a request to the NAS. The NAS doesn't store information about who is allowed or what credentials are valid. Instead, it forwards the credentials to a RADIUS server capable of AAA services for validation. Based on the RADIUS server's response, the NAS either grants or denies access to the requested resource. For example, if the credentials are valid, access is granted.
 
-The client connects to the NAS. The NAS then connects to another
-resource asking whether the client's supplied credentials are
-valid. Based on that answer the NAS then allows or disallows
-access to the protected resource.
+== Example
 
-The NAS contains no information about what clients can connect or
-what credentials are valid. All the NAS does is send the
-credentials the client supplied to a resource which does know how
-to process the credentials.
+There are many NAS implementations that handle requests for access such as:
 
-== Examples
+* A user requests access to a resource, such as a website, on the internet. The NAS controls access to the Internet and checks to see if the user is authorized. If not, the NAS prompts the user to enter their credentials such as a username and password. The NAS forwards these credentials to a RADIUS server for validation. If the RADIUS server confirms the credentials are valid, the NAS allows the user to access the Internet. This process ensures that only authorized users can use network resources.
 
-The above translates into different implementations for different uses.
-Here are some examples.
 
--   The most common use would be for access to the Internet. A
-    user opens their browser. The NAS detects that the user is not
-    currently authorized to have access to the Internet, so the NAS
-    prompts the user for their username and password. The user
-    supplies them and sends them back to the NAS. The NAS then uses
-    RADIUS to connect to an AAA server (in this case,
-    it is running FreeRADIUS) and passes off the
-    username and password to the FreeRADIUS server. The FreeRADIUS
-    server searches through its resources and finds that the
-    credentials are valid and notifies the NAS they are valid. The NAS
-    then grants the user access to the internet.
+== Associated protocols
 
--   Another use of a NAS would be in VoIP.  However,
-    instead of using a username and password, many times a phone
-    number or IP Address are used. If the phone number is a valid
-    customer then the call can be completed. Other uses might be if
-    the phone number has long distance access or is a telephone card
-    and has minutes left.
+Network Access Servers (NAS) don't have to use AAA servers, but they almost always do in real-world scenarios. Among the available AAA protocols, RADIUS is the most commonly used for network management access. The DIAMETER protocol extends on RADIUS by adding improved error handling and inter-domain communications. DIAMETER is often used in cellular/mobile networks, but is being deprecated and replaced by JSON over QUIC systems.
 
-== Associated Protocols
-
-Although not required, NAS are almost exclusively used with
-AAA servers. Of the AAA protocols available,
-RADIUS tends to be the most widely used.
-DIAMETER is a new protocol which extends on
-RADIUS by providing error handling and inter-domain
-communications which is starting to be implimented in some high
-end NAS.
-
-== More Information
+== More information
 
 -   https://datatracker.ietf.org/doc/html/rfc2881[RFC 2881] Network Access Server Requirements Next Generation NAS Model
 -   https://datatracker.ietf.org/doc/html/rfc2881[RFC 2882] Network Access Servers Requirements: Extended RADIUS Practices

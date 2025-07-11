@@ -1,27 +1,31 @@
 = Concepts
 
-The Concepts guide introduces the main concepts for readers who are new to RADIUS (Remote Authentication Dial-In User Service) and its associated components.  This information explains the foundational ideas and principles behind RADIUS to help you understand what RADIUS is, what it does, and how it operates within a network environment. By covering these basics, the section aims to provide a solid starting point for further exploration or practical use of RADIUS in network authentication, authorization, and accounting.
+The Concepts section is for users who are new to RADIUS and want to understand its purpose, functionality, and role within a network. It introduces the main ideas behind RADIUS and its use for network authentication, authorization, and accounting. This background knowledge prepares you for a deeper exploration or practical application of RADIUS in real-world scenarios.
 
-== Sections in this Guide
+== xref:concepts:overview.adoc[Overview]
 
-* xref:concepts:overview.adoc[Overview] explains the RADIUS server, FreeRADIUS, and the core services provided.
-        ** xref:freeradius.adoc[What is FreeRADIUS] explains the benefits of the open-source software version.
-        ** xref:aaa/aaa.adoc[Authentication Authorisation Accounting (AAA)] explains the core services provided by FreeRADIUS.
-                *** xref:aaa/authz.adoc[Authorisation] is the process of allowing an authenticated user to access services on the network.
-                *** xref:aaa/authn.adoc[Authentication] if the process of verifying an end-user's credentials.
-                *** xref:aaa/acct.adoc[Accounting] operations record the time spent on the network and services accessed for auditing or billing purposes.
-        ** xref:components/architecture.adoc[RADIUS System Components] explains the RADIUS design and components.
-                *** xref:components/nas.adoc[Network Access Server (NAS)] outlines the NAS operations and access management.
-                *** xref:components/radius_servers.adoc[RADIUS Server] describes the role of the server and how server policies work.
-                *** xref:components/datastore.adoc[Datastores] details how datastores work and what's supported.
-        ** xref:session/radius_session.adoc[RADIUS Sessions] explains session transmission and management or these session on the network.
-                *** xref:session/radius_session_msg.adoc[Session Messages] details the format and content of session messages.
-                *** xref:session/processing.adoc[Processing] outlines the flow of messages and how aaa services are implemented.
-* xref:protocol/authproto.adoc[Protocols] defines the protocols used in the RADIUS environment.
-* xref:modules/ldap/authentication.adoc[Authentication with LDAP] can be used by RADIUS servers to authenticate the network users.
-        ** xref:modules/ldap/password_storage.adoc[Password Storage] explains the methods of how the user's information can be stored.
-        ** xref:modules/ldap/novell.adoc[Integrate Novell] with RADIUS networks using LDAP.
-* xref:resources.adoc[Resources] find more help, mailing lists, and related documentation to help learn about deploying FreeRADIUS.
+This section introduces the RADIUS server, FreeRADIUS, and its core services.Its modular architecture, scalability, and support for various authentication types make it suitable for organizations of all sizes.
+
+=== xref:freeradius.adoc[What is FreeRADIUS]
+FreeRADIUS is a widely used open-source RADIUS server offering authentication, authorization, and accounting services. Learn about the benefits of using the open-source software version.
+
+=== xref:aaa/aaa.adoc[Authentication Authorization Accounting (AAA)]
+Details the AAA framework, which is central to RADIUS operations. The framework is divided in the three distinct functionalities. xref:aaa/authz.adoc[Authorization] is the process of allowing an authenticated user to access services on the network. xref:aaa/authn.adoc[Authentication] is the verification process of validating an end-user's credentials. xref:aaa/acct.adoc[Accounting] operations tracks an end-user's time and access on the network for auditing or billing purposes.
+
+=== xref:components/architecture.adoc[RADIUS System Components]
+The architecture and main components of a RADIUS system are explained such as: the xref:components/nas.adoc[Network Access Server (NAS)], which manages user access and enforces network policies; xref:components/radius_servers.adoc[RADIUS Server], which handles authentication, authorization, and policy enforcement; and xref:components/datastore.adoc[Datastores], which are used to store information such as user credentials and session data. Each linked topic provides detailed information about how these components operate and interact within a RADIUS-based network.
+
+=== xref:session/radius_session.adoc[RADIUS Sessions]
+Explains what RADIUS sessions are and how they're managed in a network. xref:session/radius_session_msg.adoc[Session Messages] details the format and content of session messages. xref:session/processing.adoc[Processing] describes the implementation and processing flow for AAA services.
+
+== xref:protocol/authproto.adoc[Protocols]
+Defines the protocols used in the RADIUS ecosystem by the various components. RADIUS, an application layer protocol using UDP, manages network access with authentication and network protocols. It uses MD5 for packet authentication and supports various authentication methods like EAP, PAP, CHAP, and MS-CHAP.
+
+== xref:modules/ldap/authentication.adoc[Authentication with LDAP]
+Describes how a LDAP integration is used for user authentication with some examples for select vendors. xref:modules/ldap/password_storage.adoc[Password Storage] explains the methods of how the user's information can be stored. xref:modules/ldap/novell.adoc[Integrate Novell] provides information on integrating Novell with RADIUS networks using LDAP.
+
+== xref:resources.adoc[Resources]
+Provides links to further help, mailing lists, and related documentation to support users in deploying FreeRADIUS.
 
 
 

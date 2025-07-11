@@ -1,6 +1,6 @@
 = RADIUS
 
-RADIUS is a protocol for remote user Authorisation, Authentication and Accounting. Its primary use is for Internet Service Providers, though it may as well be used on any network that needs a centralized authentication and/or accounting service for its workstations.
+RADIUS is a protocol for remote user Authorization, Authentication and Accounting. Its primary use is for Internet Service Providers, though it may as well be used on any network that needs a centralized authentication and/or accounting service for its workstations.
 
 RADIUS is often used in larger Wi-Fi (wireless) networks for authentication purposes, replacing the simple shared key methods which are uncomfortable if a Wi-Fi network reaches a specific size.
 
