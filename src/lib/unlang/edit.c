@@ -1721,20 +1721,7 @@ int unlang_edit_push(request_t *request, bool *success, fr_edit_list_t *el, map_
 		.type = UNLANG_TYPE_EDIT,
 		.name = "edit",
 		.debug_name = "edit",
-		.actions = {
-			.actions = {
-				[RLM_MODULE_REJECT]	= 0,
-				[RLM_MODULE_FAIL]	= 0,
-				[RLM_MODULE_OK]		= 0,
-				[RLM_MODULE_HANDLED]	= 0,
-				[RLM_MODULE_INVALID]	= 0,
-				[RLM_MODULE_DISALLOW]	= 0,
-				[RLM_MODULE_NOTFOUND]	= 0,
-				[RLM_MODULE_NOOP]	= 0,
-				[RLM_MODULE_UPDATED]	= 0
-			},
-			.retry = RETRY_INIT,
-		},
+		.actions = DEFAULT_MOD_ACTIONS,
 	};
 
 	MEM(edit = talloc(stack, unlang_edit_t));

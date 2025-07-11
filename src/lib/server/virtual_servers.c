@@ -1023,15 +1023,15 @@ static inline CC_HINT(always_inline) int virtual_server_compile_finally_sections
 {
 	static unlang_mod_actions_t const mod_actions_finally = {
 		.actions = {
-			[RLM_MODULE_REJECT]	= 3,
-			[RLM_MODULE_FAIL]	= 1,
-			[RLM_MODULE_OK]		= 4,
+			[RLM_MODULE_REJECT]	= MOD_PRIORITY(3),
+			[RLM_MODULE_FAIL]	= MOD_PRIORITY(1),
+			[RLM_MODULE_OK]		= MOD_PRIORITY(4),
 			[RLM_MODULE_HANDLED]	= MOD_ACTION_RETURN,
-			[RLM_MODULE_INVALID]	= 2,
-			[RLM_MODULE_DISALLOW]	= 5,
-			[RLM_MODULE_NOTFOUND]	= 6,
-			[RLM_MODULE_NOOP]	= 8,
-			[RLM_MODULE_UPDATED]	= 7
+			[RLM_MODULE_INVALID]	= MOD_PRIORITY(2),
+			[RLM_MODULE_DISALLOW]	= MOD_PRIORITY(5),
+			[RLM_MODULE_NOTFOUND]	= MOD_PRIORITY(6),
+			[RLM_MODULE_NOOP]	= MOD_PRIORITY(8),
+			[RLM_MODULE_UPDATED]	= MOD_PRIORITY(7)
 		},
 		.retry = RETRY_INIT,
 	};

@@ -31,23 +31,19 @@ extern "C" {
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/util/retry.h>
 
-/* Actions may be a positive integer (the highest one returned in the group
- * will be returned), or the keyword "return", represented here by
- * MOD_ACTION_RETURN, to cause an immediate return.
- * There's also the keyword "reject", represented here by MOD_ACTION_REJECT
- * to cause an immediate reject. */
+#define MOD_PRIORITY(_x) (_x)
+
 typedef enum {
-	MOD_ACTION_NOT_SET = -4,
-	MOD_ACTION_RETRY = -3,
-	MOD_ACTION_REJECT = -2,
-	MOD_ACTION_RETURN = -1,
+	MOD_ACTION_NOT_SET = -4,       	//!< default "not set by anything"
+	MOD_ACTION_RETRY = -3,		//!< retry the instruction, MUST also set a retry config
+	MOD_ACTION_REJECT = -2,		//!< change the rcode to REJECT, with unset priority
+	MOD_ACTION_RETURN = -1,		//!< stop processing the section,
+					//!<  and return the rcode with unset priority
 
-
-	MOD_PRIORITY_MIN = 0,
-	MOD_PRIORITY_1 = 1,
-	MOD_PRIORITY_2 = 2,
-	MOD_PRIORITY_3 = 3,
-	MOD_PRIORITY_4 = 4,
+	MOD_PRIORITY_1 = MOD_PRIORITY(1),
+	MOD_PRIORITY_2 = MOD_PRIORITY(2),
+	MOD_PRIORITY_3 = MOD_PRIORITY(3),
+	MOD_PRIORITY_4 = MOD_PRIORITY(4),
 
 	/*
 	 *	If ubsan or the compiler complains
@@ -57,13 +53,17 @@ typedef enum {
 	 *	Defining MOD_PRIORITY_MAX ensures the
 	 *	enum will always be large enough.
 	 */
-	MOD_PRIORITY_MAX = 64
+	MOD_PRIORITY_MAX = MOD_PRIORITY(64)
 } unlang_mod_action_t;
+
+#define MOD_PRIORITY_MIN MOD_PRIORITY_1
 
 typedef struct {
 	unlang_mod_action_t	actions[RLM_MODULE_NUMCODES];
 	fr_retry_config_t	retry;
 } unlang_mod_actions_t;
+
+#define DEFAULT_MOD_ACTIONS { .actions = {}, .retry = RETRY_INIT }
 
 extern unlang_mod_actions_t const mod_actions_authenticate;
 extern unlang_mod_actions_t const mod_actions_authorize;

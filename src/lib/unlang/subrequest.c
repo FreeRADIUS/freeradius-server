@@ -434,20 +434,7 @@ int unlang_subrequest_child_push(unlang_result_t *p_result, request_t *child, vo
 		.type = UNLANG_TYPE_SUBREQUEST,
 		.name = "subrequest",
 		.debug_name = "subrequest",
-		.actions = {
-			.actions = {
-				[RLM_MODULE_REJECT]	= 0,
-				[RLM_MODULE_FAIL]	= 0,
-				[RLM_MODULE_OK]		= 0,
-				[RLM_MODULE_HANDLED]	= 0,
-				[RLM_MODULE_INVALID]	= 0,
-				[RLM_MODULE_DISALLOW]	= 0,
-				[RLM_MODULE_NOTFOUND]	= 0,
-				[RLM_MODULE_NOOP]	= 0,
-				[RLM_MODULE_UPDATED]	= 0
-			},
-			.retry = RETRY_INIT,
-		}
+		.actions = DEFAULT_MOD_ACTIONS,
 	};
 
 	fr_assert_msg(free_child || child->parent, "Child's request pointer must not be NULL when calling subrequest_child_push");
