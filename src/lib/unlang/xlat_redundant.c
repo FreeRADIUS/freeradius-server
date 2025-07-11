@@ -105,6 +105,7 @@ static xlat_action_t xlat_redundant_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	We're back to the first one we tried, fail...
 	 */
 	if (rctx->current == rctx->first) {
+		fr_strerror_printf("Failed all choices for redundant expansion %s", xctx->ex->fmt);
 	error:
 		xa = XLAT_ACTION_FAIL;
 		goto done;
