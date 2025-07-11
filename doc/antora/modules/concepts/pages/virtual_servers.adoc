@@ -65,7 +65,7 @@ received on the IP address `192.0.2.2`, they will be processed through
 the `server two` virtual server.
 
 The contents of the `server one` and `server two` sections are
-`authorise`, `authenticate`, etc. sections used to process packets in
+`authorize`, `authenticate`, etc. sections used to process packets in
 version 1.x.
 
 Client based

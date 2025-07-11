@@ -1,8 +1,8 @@
 = Messages
 
-A RADIUS session message consists of a single User Datagram Protocol (UDP) packet, containing a short header followed by the authentication, authorisation, or accounting data.
+A RADIUS session message consists of a single User Datagram Protocol (UDP) packet, containing a short header followed by the authentication, authorization, or accounting data.
 
-== Message Attributes
+== Message attributes
 
 Each message contains a list of Attribute Value Pairs (AVPs), commonly referred to as attributes. These attributes carry information from the NAS to the server or virtual proxy server and from the server to the NAS. Common attributes include items such as user name, password, IP address, and NAS address; each
 attribute contains only one of these items. An attribute can also contain sub-attributes, for grouping purposes.
@@ -16,7 +16,7 @@ In addition to standardized attributes, vendors can extend RADIUS with vendor-sp
 In order to be useful in the RADIUS client protocol, however, VSAs must be defined on the RADIUS server. Because VSAs are non-standardized attributes, it is difficult to discover any information about them. In addition, they are all vendor-specific (only work on that vendor’s products). Thus, defining VSAs for
 RADIUS server use may be difficult.
 
-== Attribute Types
+== Attribute types
 
 Basic RADIUS attribute types are defined in http://tools.ietf.org/html/rfc2865[RFC 2865]. Since the original implementation and standardisation, additional attribute types have been also defined.
 
@@ -40,7 +40,7 @@ Values between 0 - 65535, integer64, 8-byte integer.
 
 See xref:reference:type/index.adoc[data types of attributes] for a more details.
 
-== xref:reference:dictionary/index.adoc[Attribute Definition Dictionaries]
+== xref:reference:dictionary/index.adoc[Attribute definition dictionaries]
 
 FreeRADIUS contains over 100 dictionaries, which hold nearly 5000 attribute definitions.
 
@@ -74,9 +74,9 @@ The NAS and server may use different dictionaries, which may cause problems if t
 Since the attribute names are not sent in RADIUS packets, the dictionaries are limited to the local server and to the policy implemented by that server.
 In this respect, NAS implementations are much simpler than server implementations. Each NAS “looks” in the RADIUS packet for what it “understands” and ignores everything else. In contrast, each RADIUS server
 is presented with all of the information from every NAS in the RADIUS deployment. Each RADIUS server must be capable of “understanding” the functionality and configure-ability of every attribute that is
-necessary to authenticate or authorise the users.
+necessary to authenticate or authorize the users.
 
-== Dictionary File Format
+== Dictionary file format
 
 It is very important to use the correct dictionaries. If the wrong dictionaries are used, the server may not properly interpret local configuration, or generate the correct response for the NAS.
 
@@ -90,7 +90,7 @@ Servers must have access to a vendor dictionary to understand vendor attributes.
 Some servers may not contain all the necessary dictionary files because each vendor defines their own dictionaries and release schedule. If a server does not include dictionaries for a particular vendor, contact that vendor, and not the organisation that supplied the RADIUS server.
 
 [#server-attr]
-=== Server-side Attributes
+=== Server-side attributes
 
 Server-side attributes are attributes that control the server’s behavior. It is frequently necessary to define these server-side attributes, while ensuring that information pertaining to server-side attributes never
 gets sent through the network in a RADIUS message. Server-side attributes should not be included in RADIUS messages, since these attributes are internal to server implementation.
@@ -101,7 +101,7 @@ Information such as “use LDAP server X”, or “remember that the user is in 
 
 Server-side attributes are presented using the same format as standard or vendor RADIUS attributes. This format gives the administrator the same control over internal aspects of the server behavior as over the server external responses. The server-side attribute information can be retrieved as part of one policy and checked later as part of another policy. For example, the policy can say “use LDAP server X for this request” and “respond with attribute X, value Y”.
 
-=== xref:session/processing.adoc[Processing Requests]
+=== xref:session/processing.adoc[Processing requests]
 
 The server processes requests through local site policy. That policy is used to examine the request, the request attributes, and the attribute values. The server then builds a reply message using responses (determined by local policy) such as time of day restrictions, group access limitations, and IP address allocation. The processing stage may include keeping track of <<server-attr,server-side attributes>>. FreeRADIUS maintains these attribute lists for every request.
 
