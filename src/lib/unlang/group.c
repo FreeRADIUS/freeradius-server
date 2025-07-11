@@ -46,24 +46,6 @@ static unlang_t *unlang_compile_group(unlang_t *parent, unlang_compile_ctx_t *un
 	return unlang_compile_section(parent, unlang_ctx, cf_item_to_section(ci), UNLANG_TYPE_GROUP);
 }
 
-static unlang_t *unlang_compile_redundant(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
-{
-	CONF_SECTION			*cs = cf_item_to_section(ci);
-
-	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
-
-	if (!unlang_compile_limit_subsection(cs, cf_section_name1(cs))) {
-		return NULL;
-	}
-
-	if (cf_section_name2(cs) != NULL) {
-		cf_log_warn(cs, "Ignoring name for 'redundant' section");
-	}
-
-	return unlang_compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_REDUNDANT);
-}
-
-
 void unlang_group_init(void)
 {
 	unlang_register(&(unlang_op_t){
@@ -72,18 +54,6 @@ void unlang_group_init(void)
 			.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
 
 			.compile = unlang_compile_group,
-			.interpret = unlang_group,
-
-			.unlang_size = sizeof(unlang_group_t),
-			.unlang_name = "unlang_group_t",
-		});
-
-	unlang_register(&(unlang_op_t){
-			.name = "redundant",
-			.type = UNLANG_TYPE_REDUNDANT,
-			.flag = UNLANG_OP_FLAG_DEBUG_BRACES,
-
-			.compile = unlang_compile_redundant,
 			.interpret = unlang_group,
 
 			.unlang_size = sizeof(unlang_group_t),

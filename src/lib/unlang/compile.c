@@ -500,31 +500,6 @@ static void compile_set_default_actions(unlang_t *c, unlang_compile_ctx_t *unlan
 	 */
 
 	/*
-	 *	Children of "redundant" and "redundant-load-balance"
-	 *	have RETURN for all actions except fail.  But THEIR children are normal.
-	 */
-	if (c->parent &&
-	    ((c->parent->type == UNLANG_TYPE_REDUNDANT) ||
-	     (c->parent->type == UNLANG_TYPE_REDUNDANT_LOAD_BALANCE))) {
-		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-			switch (i) {
-			case RLM_MODULE_FAIL:
-			case RLM_MODULE_TIMEOUT:
-				if (!c->actions.actions[i]) {
-					c->actions.actions[i] = 1;
-				}
-				continue;
-
-			default:
-				if (!c->actions.actions[i]) c->actions.actions[i] = MOD_ACTION_RETURN;
-				break;
-			}
-		}
-
-		return;
-	}
-
-	/*
 	 *	Set the default actions if they haven't already been
 	 *	set.
 	 */
