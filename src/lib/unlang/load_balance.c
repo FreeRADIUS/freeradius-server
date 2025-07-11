@@ -47,11 +47,16 @@ static unlang_action_t unlang_load_balance_next(unlang_result_t *p_result, reque
 	}
 
 	/*
-	 *	We are in a resumed frame.  Check if running the child resulting in an rcode that we can use.
-	 *	If so, stop.
+	 *	We are in a resumed frame.  Check if running the child resulted in a failure rcode which
+	 *	requires us to keep going.  If not, return to the caller.
 	 */
-	if ((redundant->result.rcode != RLM_MODULE_NOT_SET) &&
-	    (redundant->child->actions.actions[redundant->result.rcode] == MOD_ACTION_RETURN)) {
+	switch (redundant->result.rcode) {	
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_TIMEOUT:
+	case RLM_MODULE_NOT_SET:
+		break;
+
+	default:
 		if (p_result) {
 			p_result->priority = MOD_PRIORITY_MIN;
 			p_result->rcode = redundant->result.rcode;
@@ -92,6 +97,21 @@ push:
 	}
 
 	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
+static unlang_action_t unlang_redundant(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_frame_state_redundant_t	*redundant = talloc_get_type_abort(frame->state,
+									   unlang_frame_state_redundant_t);
+	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
+
+	/*
+	 *	Start at the first child, and then continue from there.
+	 */
+	redundant->start = g->children;
+
+	frame->process = unlang_load_balance_next;
+	return unlang_load_balance_next(p_result, request, frame);
 }
 
 static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -307,47 +327,36 @@ static unlang_t *unlang_compile_load_balance(unlang_t *parent, unlang_compile_ct
 	return compile_load_balance_subsection(parent, unlang_ctx, cf_item_to_section(ci), UNLANG_TYPE_LOAD_BALANCE);
 }
 
-static void compile_redundant_actions(unlang_t *c)
+static unlang_t *unlang_compile_redundant_load_balance(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
 {
-	int i;
-	unlang_group_t *g;
-	unlang_t *child;
-	unlang_mod_actions_t actions;
-
-	/*
-	 *	Children of "redundant" and "redundant-load-balance"
-	 *	have RETURN for all actions except fail and timeout.
-	 */
-	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-		switch (i) {
-		case RLM_MODULE_FAIL:
-		case RLM_MODULE_TIMEOUT:
-			actions.actions[i] = MOD_PRIORITY_MIN;
-			break;
-
-		default:
-			actions.actions[i] = MOD_ACTION_RETURN;
-			break;
-		}
-	}
-
-	g = unlang_generic_to_group(c);
-
-	for (child = g->children; child != NULL; child = child->next) {
-		child->actions = actions;
-	}
+	return compile_load_balance_subsection(parent, unlang_ctx, cf_item_to_section(ci), UNLANG_TYPE_REDUNDANT_LOAD_BALANCE);
 }
 
 
-static unlang_t *unlang_compile_redundant_load_balance(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
+static unlang_t *unlang_compile_redundant(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
 {
-	unlang_t *c;
+	CONF_SECTION			*cs = cf_item_to_section(ci);
 
-	c = compile_load_balance_subsection(parent, unlang_ctx, cf_item_to_section(ci), UNLANG_TYPE_REDUNDANT_LOAD_BALANCE);
-	if (!c || (c == UNLANG_IGNORE)) return c;
+	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
-	compile_redundant_actions(c);
-	return c;
+	if (!unlang_compile_limit_subsection(cs, cf_section_name1(cs))) {
+		return NULL;
+	}
+
+	/*
+	 *	"redundant foo" is allowed only inside of a "modules" section, where the name is the instance
+	 *	name.
+	 *
+	 *	@todo - static versus dynamic modules?
+	 */
+
+	if (cf_section_name2(cs) &&
+	    (strcmp(cf_section_name1(cf_item_to_section(cf_parent(cs))), "modules") != 0)) {
+		cf_log_err(cs, "Cannot specify a key for 'redundant'");
+		return NULL;
+	}
+
+	return unlang_compile_section(parent, unlang_ctx, cs, UNLANG_TYPE_REDUNDANT);
 }
 
 
@@ -382,4 +391,20 @@ void unlang_load_balance_init(void)
 			.frame_state_size = sizeof(unlang_frame_state_redundant_t),
 			.frame_state_type = "unlang_frame_state_redundant_t",
 		});
+
+	unlang_register(&(unlang_op_t){
+			.name = "redundant",
+			.type = UNLANG_TYPE_REDUNDANT,
+			.flag = UNLANG_OP_FLAG_DEBUG_BRACES | UNLANG_OP_FLAG_RCODE_SET,
+
+			.compile = unlang_compile_redundant,
+			.interpret = unlang_redundant,
+
+			.unlang_size = sizeof(unlang_group_t),
+			.unlang_name = "unlang_group_t",
+
+			.frame_state_size = sizeof(unlang_frame_state_redundant_t),
+			.frame_state_type = "unlang_frame_state_redundant_t",
+		});
+
 }
