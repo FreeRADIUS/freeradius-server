@@ -196,16 +196,12 @@ rest {
 	#  The following config items can be used in each of the sections.
 	#  The sections themselves reflect the sections in the server.
 	#
-	#  For example, if you list `rest` in the `authorize` section of a `virtual server`,
-	#  the settings from the `authorize` section here will be used.
+	#  For example, if you list `rest` in the `recv Access-Request` section of a `virtual server`,
+	#  the settings from the `recv access-request` section here will be used.
 	#
-	#  The following sections are supported:
-	#
-	#  - `authorize { ... }`
-	#  - `authenticate { ... }`
-	#  - `accounting { ... }`
-	#  - `post-auth { ... }`
-	#  - `xlat { ... }`
+	#  Where sections have two parts to the name, if a section which matches both names is not
+	#  found, then one using just the first name will be looked for.  E.g. a call in `accounting Start`,
+	#  will look for `accounting start` and fall back to `accounting`.
 	#
 	#  At the top level of each section, the following config items may be listed:
 	#
@@ -356,7 +352,7 @@ rest {
 	}
 
 	#
-	#  ### Authorize { ... }
+	#  ### recv { ... }
 	#
 	#  Default action when called in `recv` sections except `recv Accounting-Request`.
 	#
@@ -373,7 +369,7 @@ rest {
 	#  | xxx  | -            | no            | invalid
 	#  |===
 	#
-	authorize {
+	recv {
 		request {
 			uri = "${...connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authorize"
 			method = 'GET'
@@ -419,13 +415,13 @@ rest {
 	}
 
 	#
-	#  ### Post-Auth { ... }
+	#  ### send { ... }
 	#
 	#  Default action when called in `send` sections.
 	#
 	#  Return codes handled the same as `Accounting { ... }`
 	#
-	post-auth {
+	send {
 		request {
 			uri = "${...connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=post-auth"
 			method = 'POST'
