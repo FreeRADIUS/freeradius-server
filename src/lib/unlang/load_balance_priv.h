@@ -38,8 +38,9 @@ typedef struct {
  *
  */
 typedef struct {
-	unlang_t 		*child;
-	unlang_t		*found;
+	unlang_t 		*child;		//!< the current child we're processing
+	unlang_t		*start;		//!< the starting child
+	unlang_result_t		result;		//!< for intermediate child results
 } unlang_frame_state_redundant_t;
 
 /** Cast a group structure to the load_balance keyword extension
