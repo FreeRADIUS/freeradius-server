@@ -1289,6 +1289,7 @@ static void trunk_request_enter_sent(trunk_request_t *treq)
 		 *	Enforces max_uses
 		 */
 		if ((trunk->conf.max_uses > 0) && (tconn->sent_count >= trunk->conf.max_uses)) {
+			DEBUG3("Trunk hit max uses %" PRIu64 " at %d", trunk->conf.max_uses, __LINE__);
 			trunk_connection_enter_draining_to_free(tconn);
 		}
 	}
@@ -1335,6 +1336,7 @@ static void trunk_request_enter_reapable(trunk_request_t *treq)
 		treq->sent = true;
 
 		if ((trunk->conf.max_uses > 0) && (tconn->sent_count >= trunk->conf.max_uses)) {
+			DEBUG3("Trunk hit max uses %" PRIu64 " at %d", trunk->conf.max_uses, __LINE__);
 			trunk_connection_enter_draining_to_free(tconn);
 		}
 	}
@@ -3400,6 +3402,7 @@ static void _trunk_connection_on_shutdown(UNUSED connection_t *conn,
 					  void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
+	trunk_t			*trunk = tconn->pub.trunk;
 
 	switch (tconn->pub.state) {
 	case TRUNK_CONN_DRAINING_TO_FREE:	/* Do Nothing */
@@ -3419,6 +3422,7 @@ static void _trunk_connection_on_shutdown(UNUSED connection_t *conn,
 		CONN_BAD_STATE_TRANSITION(TRUNK_CONN_DRAINING_TO_FREE);
 	}
 
+	DEBUG3("Trunk draining at %d", __LINE__);
 	trunk_connection_enter_draining_to_free(tconn);
 }
 
@@ -3431,7 +3435,9 @@ static void _trunk_connection_on_shutdown(UNUSED connection_t *conn,
 static void  _trunk_connection_lifetime_expire(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
+	trunk_t			*trunk = tconn->pub.trunk;
 
+	DEBUG3("Trunk draining at %d", __LINE__);
 	trunk_connection_enter_draining_to_free(tconn);
 }
 
@@ -4201,6 +4207,7 @@ static void trunk_manage(trunk_t *trunk, fr_time_t now)
 			 *	This connection has been inactive since before the idle timeout.  Drain it,
 			 *	and free it.
 			 */
+			DEBUG3("Trunk draining at %d", __LINE__);
 			trunk_connection_enter_draining_to_free(tconn);
 		}
 	}
