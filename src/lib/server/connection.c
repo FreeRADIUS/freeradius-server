@@ -1441,6 +1441,14 @@ int connection_signal_on_fd(connection_t *conn, int fd)
 	return 0;
 }
 
+/** Tell a failed connection to move to CONNECTION_STATE_INIT
+ *
+ */
+connection_state_t connection_failed_reinit(UNUSED void *handle, UNUSED connection_state_t state, UNUSED void *uctx)
+{
+	return CONNECTION_STATE_INIT;
+}
+
 /** Close a connection if it's freed
  *
  * @param[in] conn to free.

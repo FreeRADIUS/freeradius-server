@@ -1114,6 +1114,7 @@ static void *sql_escape_arg_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, void *uc
 	conn = connection_alloc(ctx, el,
 				    &(connection_funcs_t){
 					.init = _sql_connection_init,
+					.failed = connection_failed_reinit,
 					.close = _sql_connection_close,
 				    },
 				    inst->config.trunk_conf.conn_conf,
