@@ -43,10 +43,25 @@ uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 
 	if (packet_size < MIN_PACKET_SIZE) return NULL;
 
+	/*
+	 *	This is needed for UBSAN on MacOS, that doesn't
+	 *	allow misaligned accesses.  Because the packet
+	 *	structure is flat, we don't need to deref the
+	 *	packet pointer at any point, we just need to
+	 *	calculate the offsets relative to the pointer
+	 *	value and use those... Whatever actually deals
+	 *	with the option is just expecting a uint8_t *.
+	 */
+#define ALIGNED_ACCESS(packet, field) \
+		(uint8_t const *)packet + offsetof(dhcp_packet_t, field)
+
 	where = 0;
 	size = packet_size - offsetof(dhcp_packet_t, options);
-	data = &packet->options[where];
 
+	/*
+	 *	Alignment fix.  We can't just deref a pointer
+	 */
+	data = ALIGNED_ACCESS(packet, options);
 	while (where < size) {
 		if (data[0] == 0) { /* padding */
 			where++;
@@ -56,14 +71,14 @@ uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 
 		if (data[0] == 255) { /* end of options */
 			if ((field == DHCP_OPTION_FIELD) && (overload & DHCP_FILE_FIELD)) {
-				data = packet->file;
+				data = ALIGNED_ACCESS(packet, file);
 				where = 0;
 				size = sizeof(packet->file);
 				field = DHCP_FILE_FIELD;
 				continue;
 
 			} else if ((field == DHCP_FILE_FIELD || field == DHCP_OPTION_FIELD) && (overload & DHCP_SNAME_FIELD)) {
-				data = packet->sname;
+				data = ALIGNED_ACCESS(packet, sname);
 				where = 0;
 				size = sizeof(packet->sname);
 				field = DHCP_SNAME_FIELD;
