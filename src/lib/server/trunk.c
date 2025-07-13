@@ -1289,6 +1289,7 @@ static void trunk_request_enter_sent(trunk_request_t *treq)
 		 *	Enforces max_uses
 		 */
 		if ((trunk->conf.max_uses > 0) && (tconn->sent_count >= trunk->conf.max_uses)) {
+			DEBUG3("Trunk hit max uses %" PRIu64 " at %d", trunk->conf.max_uses, __LINE__);
 			trunk_connection_enter_draining_to_free(tconn);
 		}
 	}
@@ -1335,6 +1336,7 @@ static void trunk_request_enter_reapable(trunk_request_t *treq)
 		treq->sent = true;
 
 		if ((trunk->conf.max_uses > 0) && (tconn->sent_count >= trunk->conf.max_uses)) {
+			DEBUG3("Trunk hit max uses %" PRIu64 " at %d", trunk->conf.max_uses, __LINE__);
 			trunk_connection_enter_draining_to_free(tconn);
 		}
 	}
