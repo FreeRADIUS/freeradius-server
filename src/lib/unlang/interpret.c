@@ -1246,10 +1246,8 @@ void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
 	 */
 	MEM(stack = talloc_zero_pooled_object(ctx, unlang_stack_t, UNLANG_STACK_MAX, 128));	/* 128 bytes per state */
 	stack->frame[0].result_p = &stack->frame[0].section_result;
-	stack->frame[0].scratch_result.rcode = RLM_MODULE_NOT_SET;
-	stack->frame[0].scratch_result.priority = MOD_ACTION_NOT_SET;
-	stack->frame[0].section_result.rcode = RLM_MODULE_NOT_SET;
-	stack->frame[0].section_result.priority = MOD_ACTION_NOT_SET;
+	stack->frame[0].scratch_result = UNLANG_RESULT_NOT_SET;
+	stack->frame[0].section_result = UNLANG_RESULT_NOT_SET;
 	stack->frame[0].instruction = &unlang_instruction;	/* The top frame has no instruction, so we use a dummy one */
 
 	return stack;

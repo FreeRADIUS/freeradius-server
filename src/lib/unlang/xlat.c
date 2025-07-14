@@ -728,7 +728,7 @@ xlat_action_t unlang_xlat_yield_to_retry(request_t *request, xlat_func_t resume,
  */
 int unlang_xlat_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, xlat_exp_head_t const *xlat)
 {
-	unlang_result_t result = { .rcode = RLM_MODULE_NOT_SET, .priority = MOD_ACTION_NOT_SET };
+	unlang_result_t result = UNLANG_RESULT_NOT_SET;
 
 	if (xlat->flags.impure_func) {
 		fr_strerror_const("Expansion requires async operations");

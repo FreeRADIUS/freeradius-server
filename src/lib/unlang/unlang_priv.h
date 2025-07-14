@@ -634,8 +634,7 @@ static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t 
 	/*
 	 *	Reset for each instruction
 	 */
-	frame->scratch_result.rcode = RLM_MODULE_NOT_SET;
-	frame->scratch_result.priority = MOD_ACTION_NOT_SET;
+	frame->scratch_result = UNLANG_RESULT_NOT_SET;
 
 	frame->process = op->interpret;
 	frame->signal = op->signal;

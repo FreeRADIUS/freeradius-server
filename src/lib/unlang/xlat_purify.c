@@ -66,7 +66,7 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, fr_token_t quote)
 {
 	int rcode;
-	unlang_result_t result = { .rcode = RLM_MODULE_NOT_SET, .priority = MOD_ACTION_NOT_SET };
+	unlang_result_t result = UNLANG_RESULT_NOT_SET;
 	fr_value_box_list_t list;
 	xlat_flags_t our_flags;
 	xlat_exp_t *node, *next;
