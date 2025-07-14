@@ -831,7 +831,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	 *	Log the password
 	 */
 	if (RDEBUG_ENABLED3) {
-		RDEBUG("Login attempt with password \"%pV\"", &call_env->request.password);
+		RDEBUG("Login attempt with password \"%pV\"", call_env->request.password);
 	} else {
 		RDEBUG2("Login attempt with password");
 	}
