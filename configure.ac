@@ -1191,6 +1191,49 @@ if test "x$WITH_COLLECTDCLIENT" = xyes; then
 fi
 
 dnl #
+dnl #  extra argument: --with-libbacktrace
+dnl #
+AC_ARG_WITH(libbacktrace,
+[  --with-libbacktrace          use libbacktrace to print backtraces with line numbers. (default=yes)],
+[ case "$withval" in
+  no)
+    WITH_BACKTRACE=no
+    ;;
+  yes)
+    if ! test -f src/lib/backtrace/configure || git submodule update --init src/lib/backtrace > /dev/null 2>&1; then
+      AC_MSG_ERROR([--with-libbacktrace=yes requires the backtrace submodule to be checked out.  Please run 'git submodule update --init src/lib/backtrace'.])
+    fi
+    WITH_BACKTRACE=yes
+    ;;
+  dnl # Build based on whether the submodule was checked out
+  *)
+    if test -f src/lib/backtrace/configure; then
+      WITH_BACKTRACE=yes
+    else
+      WITH_BACKTRACE=no
+    fi
+  esac ]
+)
+
+dnl #
+dnl #  Check for libbacktrace
+dnl #
+dnl #  This is a weird one because it's intended to be bundled with the code that
+dnl #  uses it and statically linked.  There's no guarantee the user checked out
+dnl #  or was able to check out the submodule though, so we still need to fail
+dnl #  gracefully.
+dnl #
+if test "x$WITH_BACKTRACE" = xyes; then
+  AC_MSG_NOTICE([building with libbacktrace, this will be statically linked])
+  AC_DEFINE(HAVE_BACKTRACE, 1,
+    [Define to 1 if you have the `backtrace' library (-lbacktrace).]
+  )
+  AC_SUBST([WITH_BACKTRACE], $WITH_BACKTRACE)
+else
+  AC_MSG_NOTICE([building without libbacktrace])
+fi
+
+dnl #
 dnl #  extra argument: --with-libcap
 dnl #
 WITH_LIBCAP=yes

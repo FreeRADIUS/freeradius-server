@@ -665,6 +665,7 @@ OPENSSL_LIBS
 CPP
 LIBREADLINE_PREFIX
 LIBREADLINE
+WITH_BACKTRACE
 KQUEUE_LDFLAGS
 KQUEUE_LIBS
 TALLOC_LDFLAGS
@@ -830,6 +831,7 @@ with_systemd_include_dir
 with_talloc_lib_dir
 with_talloc_include_dir
 with_regex
+with_libbacktrace
 with_libcap
 enable_year2038
 '
@@ -1566,6 +1568,7 @@ Optional Packages:
                           available(default=yes)
   --with-pcap          use pcap library for the RADIUS sniffer. (default=yes)
   --with-collectdclient  use collectd client. (default=yes)
+  --with-libbacktrace          use libbacktrace to print backtraces with line numbers. (default=yes)
   --with-libcap          use libcap for debugger checks. (default=yes)
 
 Some influential environment variables:
@@ -3318,6 +3321,7 @@ printf "%s\n" "$as_me: Enabling developer build implicitly, disable with --disab
 else
   allow_core_dumps="no"
 fi
+
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking build commit" >&5
 printf %s "checking build commit... " >&6; }
@@ -5896,6 +5900,7 @@ then :
   *)
     fuzzer=yes
     CFLAGS="$CFLAGS -g3"
+    ;;
   esac
 
 fi
@@ -8950,6 +8955,44 @@ printf "%s\n" "$as_me: WARNING: collectdclient library not found. Use --with-col
     COLLECTDC_LDFLAGS="${smart_ldflags}"
   fi
     LIBS="${old_LIBS}"
+fi
+
+
+# Check whether --with-libbacktrace was given.
+if test ${with_libbacktrace+y}
+then :
+  withval=$with_libbacktrace;  case "$withval" in
+  no)
+    WITH_BACKTRACE=no
+    ;;
+  yes)
+    if ! test -f src/lib/backtrace/configure || git submodule update --init src/lib/backtrace > /dev/null 2>&1; then
+      as_fn_error $? "--with-libbacktrace=yes requires the backtrace submodule to be checked out.  Please run 'git submodule update --init src/lib/backtrace'." "$LINENO" 5
+    fi
+    WITH_BACKTRACE=yes
+    ;;
+    *)
+    if test -f src/lib/backtrace/configure; then
+      WITH_BACKTRACE=yes
+    else
+      WITH_BACKTRACE=no
+    fi
+  esac
+
+fi
+
+
+if test "x$WITH_BACKTRACE" = xyes; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: building with libbacktrace, this will be statically linked" >&5
+printf "%s\n" "$as_me: building with libbacktrace, this will be statically linked" >&6;}
+
+printf "%s\n" "#define HAVE_BACKTRACE 1" >>confdefs.h
+
+  WITH_BACKTRACE=$WITH_BACKTRACE
+
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: building without libbacktrace" >&5
+printf "%s\n" "$as_me: building without libbacktrace" >&6;}
 fi
 
 WITH_LIBCAP=yes
