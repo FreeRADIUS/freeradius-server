@@ -184,7 +184,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 			}
 
 			RDEBUG2("Validating certificate");
-			rad_virtual_server(fake);
+			rad_virtual_server(fake, false);
 
 			/* copy the reply vps back to our reply */
 			fr_pair_list_mcopy_by_num(request->reply, &request->reply->vps,

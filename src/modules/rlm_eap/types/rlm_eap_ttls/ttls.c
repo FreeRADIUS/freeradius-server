@@ -1215,7 +1215,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	 *	Call authentication recursively, which will
 	 *	do PAP, CHAP, MS-CHAP, etc.
 	 */
-	rad_virtual_server(fake);
+	rad_virtual_server(fake, true);
 
 	/*
 	 *	Decide what to do with the reply.

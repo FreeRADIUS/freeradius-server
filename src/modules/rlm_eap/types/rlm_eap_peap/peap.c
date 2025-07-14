@@ -621,7 +621,7 @@ static int CC_HINT(nonnull) eappeap_postproxy(eap_handler_t *handler, void *data
 		fake->reply = NULL;
 
 		request->proxy->dst_port = 0; /* hacks for state.c lookups */
-		
+
 		/*
 		 *	And we're done with this request.
 		 */
@@ -836,7 +836,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 			fake->server = t->soh_virtual_server;
 		}
 		RDEBUG("Sending SoH request to server %s", fake->server ? fake->server : "NULL");
-		rad_virtual_server(fake);
+		rad_virtual_server(fake, true);
 
 		if (fake->reply->code != PW_CODE_ACCESS_ACCEPT) {
 			RDEBUG2("SoH was rejected");
@@ -1029,7 +1029,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 	 *	Call authentication recursively, which will
 	 *	do PAP, CHAP, MS-CHAP, etc.
 	 */
-	rad_virtual_server(fake);
+	rad_virtual_server(fake, true);
 
 	/*
 	 *	Note that we don't do *anything* with the reply

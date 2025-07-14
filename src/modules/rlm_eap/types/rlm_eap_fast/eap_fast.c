@@ -834,7 +834,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply( eap_handler_t *eap_session,
 					rad_assert(!reply->vps);
 				}
 				break;
-				
+
 			default:
 				break;
 			}
@@ -1014,7 +1014,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_handler_t *eap_session
 	 * Call authentication recursively, which will
 	 * do PAP, CHAP, MS-CHAP, etc.
 	 */
-	rad_virtual_server(fake);
+	rad_virtual_server(fake, true);
 
 	/*
 	 * Decide what to do with the reply.

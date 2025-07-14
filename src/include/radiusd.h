@@ -496,7 +496,7 @@ void		version_print(void);
 char	*auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli);
 int		rad_authenticate (REQUEST *);
 int		rad_postauth(REQUEST *);
-int		rad_virtual_server(REQUEST *);
+int		rad_virtual_server(REQUEST *, bool check_username);
 
 /* exec.c */
 pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,

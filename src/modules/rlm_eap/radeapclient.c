@@ -246,7 +246,7 @@ static const FR_NAME_NUMBER rc_request_types[] = {
 	{ NULL, 0}
 };
 
-int rad_virtual_server(REQUEST UNUSED *request)
+int rad_virtual_server(REQUEST UNUSED *request, bool UNUSED check_username)
 {
   /*We're not the server so we cannot do this*/
   abort();

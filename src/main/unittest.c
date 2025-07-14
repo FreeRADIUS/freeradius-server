@@ -909,7 +909,7 @@ int main(int argc, char *argv[])
 		fclose(fp);
 	}
 
-	rad_virtual_server(request);
+	rad_virtual_server(request, true);
 
 	if (!output_file || (strcmp(output_file, "-") == 0)) {
 		fp = stdout;

@@ -732,7 +732,7 @@ authenticate:
  *	Run a virtual server auth and postauth
  *
  */
-int rad_virtual_server(REQUEST *request)
+int rad_virtual_server(REQUEST *request, bool check_username)
 {
 	VALUE_PAIR *vp;
 	int result;
@@ -747,7 +747,7 @@ int rad_virtual_server(REQUEST *request)
 	/*
 	 *	Complain about possible issues related to tunnels.
 	 */
-	if (request->parent && request->parent->username && request->username) {
+	if (request->parent && request->parent->username && request->username && check_username) {
 		/*
 		 *	Look at the full User-Name with realm.
 		 */
