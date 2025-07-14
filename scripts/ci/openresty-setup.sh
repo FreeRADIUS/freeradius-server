@@ -47,7 +47,7 @@ echo "Checking for a running openresty instance"
 if [ -e "${LOGDIR}/nginx.pid" ]
 then
 	echo "Stopping the current openresty instance"
-	kill "$(cat ${LOGDIR}/nginx.pid)"
+	kill "$(cat ${LOGDIR}/nginx.pid)" || true
 	rm -r "${BUILDDIR}"
 fi
 
