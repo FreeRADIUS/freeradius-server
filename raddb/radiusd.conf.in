@@ -461,6 +461,14 @@ log {
 	#  by seeing what is actually being sent.
 	#
 #	suppress_secrets = no
+
+	#  Add timestamps to debug logs
+	#
+	#  By default, at debug level 1 and 2, messages are produced
+	#  without timestamps.
+	#
+	#  Enabling this option will include timestamps on all debug logs.
+#	timestamp = no
 }
 
 #  The program to execute to do concurrency checks.
