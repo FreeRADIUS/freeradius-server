@@ -539,6 +539,29 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 					socket.inet.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
 				}
 #endif
+#ifdef __FreeBSD__
+			} else if (inst->broadcast &&
+#ifdef HAVE_LIBPCAP
+				   !inst->use_pcap &&
+#endif
+				   (inst->interface || if_name[0])) {
+				uint8_t macaddr[6];
+				uint8_t ipaddr[4];
+
+				memcpy(&ipaddr, &packet->yiaddr, 4);
+				memcpy(&macaddr, &packet->chaddr, 6);
+
+				/*
+				 *	FreeBSD version of above using netlink API
+				 */
+				if (fr_bsd_arp_entry_add(socket.inet.ifindex, ipaddr, macaddr) == 0) {
+					DEBUG("Reply will be unicast to YADDR, done ARP table updates.");
+					memcpy(&socket.inet.dst_ipaddr.addr.v4.s_addr, &packet->yiaddr, 4);
+				} else {
+					DEBUG("Failed adding ARP table entry.  Reply will be broadcast.");
+					socket.inet.dst_ipaddr.addr.v4.s_addr = INADDR_BROADCAST;
+				}
+#endif
 #ifdef HAVE_LIBPCAP
 			} else if (inst->use_pcap && inst->broadcast && (inst->interface || if_name[0])) {
 				proto_dhcpv4_pcap_t	*pcap;
@@ -889,7 +912,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		inst->port = ntohl(s->s_port);
 	}
 
-#ifdef SIOCSARP
+#if defined(SIOCSARP) || defined(__FreeBSD__)
 	/*
 	 *	If we're listening for broadcast requests, we MUST
 	 */
