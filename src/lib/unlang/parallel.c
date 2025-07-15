@@ -235,6 +235,7 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 	 */
 	for (i = 0, instruction = g->children; instruction != NULL; i++, instruction = instruction->next) {
 		request_t			*child;
+		unlang_result_t			*child_result;
 
 		child = unlang_io_subrequest_alloc(request,
 						   request->proto_dict, state->detach);
@@ -291,9 +292,13 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 			if (unlang_child_request_init(state, &state->children[i], child, NULL, &state->num_runnable,
 						      frame_current(request)->instruction, false) < 0) goto error;
 			fr_assert(state->children[i].state == CHILD_INIT);
+			child_result = &state->children[i].result;
+			state->children[i].result = UNLANG_RESULT_NOT_SET;
+
 		} else {
 			state->children[i].num = i;
 			state->children[i].request = child;
+			child_result = NULL;
 		}
 
 		/*
@@ -301,7 +306,7 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 		 *	which in case of parallel, is the child's
 		 *	subsection within the parallel block.
 		 */
-		if (unlang_interpret_push(NULL, child,
+		if (unlang_interpret_push(child_result, child,
 					  instruction,
 					  FRAME_CONF(RLM_MODULE_NOOP, state->detach ? UNLANG_TOP_FRAME : UNLANG_SUB_FRAME),
 					  UNLANG_NEXT_STOP) < 0) goto error;
