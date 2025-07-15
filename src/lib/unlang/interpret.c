@@ -1103,13 +1103,19 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 		/*
 		 *	Record this now as the done functions may free
 		 *	the request.
+		 *
+		 *	Note: We use p_result here, as that's where the
+		 *	result of evaluating the frame was written.
+		 *	We don't use the section_result, as that may have
+		 * 	been left as its default value which may be 0
+		 *	(reject).
 		 */
-		rcode = frame->section_result.rcode;
+		rcode = frame->result_p->rcode;
 
 		/*
-		*	This usually means the request is complete in its
-		*	entirety.
-		*/
+		 *	This usually means the request is complete in its
+		 *	entirety.
+		 */
 		if ((stack->depth == 0) && !running) unlang_interpret_request_done(request);
 
 		return rcode;
