@@ -245,17 +245,22 @@ bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules);
 static inline CC_HINT(always_inline)
 void unlang_compile_ctx_copy(unlang_compile_ctx_t *dst, unlang_compile_ctx_t const *src)
 {
+#ifndef NDEBUG
 	int i;
+#endif
 
 	*dst = *src;
 
+#ifndef NDEBUG
 	/*
-	 *	Ensure that none of the actions are RETRY.
+	 *	Ensure that none of the actions are RETRY.  The actions { ... } section is applied to the
+	 *	instruction, and not to the unlang_compile_ctx_t
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-		if (dst->actions.actions[i] == MOD_ACTION_RETRY) dst->actions.actions[i] = MOD_PRIORITY_MIN;
+		fr_assert(dst->actions.actions[i] != MOD_ACTION_RETRY);
+		fr_assert(MOD_ACTION_VALID(dst->actions.actions[i]));
 	}
-	memset(&dst->actions.retry, 0, sizeof(dst->actions.retry)); \
+#endif
 }
 
 
@@ -465,8 +470,6 @@ extern fr_hash_table_t *unlang_op_table;
 
 extern fr_table_num_sorted_t const mod_rcode_table[];
 extern size_t mod_rcode_table_len;
-extern fr_table_num_sorted_t const mod_action_table[];
-extern size_t mod_action_table_len;
 
 static inline void repeatable_set(unlang_stack_frame_t *frame)			{ frame->flag |= UNLANG_FRAME_FLAG_REPEAT; }
 static inline void top_frame_set(unlang_stack_frame_t *frame) 			{ frame->flag |= UNLANG_FRAME_FLAG_TOP_FRAME; }

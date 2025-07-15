@@ -31,13 +31,13 @@ extern "C" {
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/util/retry.h>
 
-#define MOD_PRIORITY(_x) (_x)
+#define MOD_PRIORITY(_x) ((_x) | 0x80)
 
 typedef enum {
-	MOD_ACTION_NOT_SET = -4,       	//!< default "not set by anything"
-	MOD_ACTION_RETRY = -3,		//!< retry the instruction, MUST also set a retry config
-	MOD_ACTION_REJECT = -2,		//!< change the rcode to REJECT, with unset priority
-	MOD_ACTION_RETURN = -1,		//!< stop processing the section,
+	MOD_ACTION_NOT_SET = 0,       	//!< default "not set by anything"
+	MOD_ACTION_RETRY = 1,		//!< retry the instruction, MUST also set a retry config
+	MOD_ACTION_REJECT = 2,		//!< change the rcode to REJECT, with unset priority
+	MOD_ACTION_RETURN = 3,		//!< stop processing the section,
 					//!<  and return the rcode with unset priority
 
 	MOD_PRIORITY_1 = MOD_PRIORITY(1),
@@ -57,6 +57,8 @@ typedef enum {
 } unlang_mod_action_t;
 
 #define MOD_PRIORITY_MIN MOD_PRIORITY_1
+#define MOD_ACTION_VALID(_x)     ((((_x) >= 0) && ((_x) <= 3)) || (((_x) >= MOD_PRIORITY_MIN) && ((_x) <= MOD_PRIORITY_MAX)))
+#define MOD_ACTION_VALID_SET(_x) ((((_x) > 0)  && ((_x) <= 3)) || (((_x) >= MOD_PRIORITY_MIN) && ((_x) <= MOD_PRIORITY_MAX)))
 
 typedef struct {
 	unlang_mod_action_t	actions[RLM_MODULE_NUMCODES];
@@ -70,6 +72,7 @@ extern unlang_mod_actions_t const mod_actions_authorize;
 extern unlang_mod_actions_t const mod_actions_preacct;
 extern unlang_mod_actions_t const mod_actions_accounting;
 extern unlang_mod_actions_t const mod_actions_postauth;
+extern const char *mod_action_name[MOD_PRIORITY_MAX + 1];
 
 #ifdef __cplusplus
 }

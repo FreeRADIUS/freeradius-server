@@ -88,14 +88,6 @@ fr_table_num_sorted_t const mod_rcode_table[] = {
 };
 size_t mod_rcode_table_len = NUM_ELEMENTS(mod_rcode_table);
 
-fr_table_num_sorted_t const mod_action_table[] = {
-	{ L("..."),		MOD_ACTION_NOT_SET	},
-	{ L("reject"),		MOD_ACTION_REJECT	},
-	{ L("retry"),		MOD_ACTION_RETRY	},
-	{ L("return"),		MOD_ACTION_RETURN	}
-};
-size_t mod_action_table_len = NUM_ELEMENTS(mod_action_table);
-
 #define UPDATE_CTX2 unlang_compile_ctx_copy(&unlang_ctx2, unlang_ctx)
 
 
@@ -971,13 +963,16 @@ static int compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
 	else if (!strcasecmp(value, "retry"))
 		action = MOD_ACTION_RETRY;
 
-	else if (strspn(value, "0123456789")==strlen(value)) {
-		action = atoi(value);
-
-		if (!action || (action > MOD_PRIORITY_MAX)) {
+	else if (strspn(value, "0123456789") == strlen(value)) {
+		if (strlen(value) > 2) {
+		invalid_action:
 			cf_log_err(cp, "Priorities MUST be between 1 and 64.");
 			return 0;
 		}
+
+		action = MOD_PRIORITY(atoi(value));
+
+		if (!MOD_ACTION_VALID_SET(action)) goto invalid_action;
 
 	} else {
 		cf_log_err(cp, "Unknown action '%s'.\n",

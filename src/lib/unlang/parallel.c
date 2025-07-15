@@ -164,18 +164,19 @@ static unlang_action_t unlang_parallel_resume(unlang_result_t *p_result, request
 
 		} else {
 			fr_assert(cr->result.priority != MOD_ACTION_RETRY);
+			fr_assert(MOD_ACTION_VALID(cr->result.priority));
 		}
 
 		/*
 		 *	Do priority over-ride.
 		 */
 		if (cr->result.priority > state->result.priority) {
-			RDEBUG4("** [%i] %s - overwriting existing result (%s %d) from higher priority to (%s %d)",
+			RDEBUG4("** [%i] %s - overwriting existing result (%s %s) from higher priority to (%s %s)",
 				stack_depth_current(request), __FUNCTION__,
 				fr_table_str_by_value(mod_rcode_table, state->result.rcode, "<invalid>"),
-				state->result.priority,
+				mod_action_name[state->result.priority],
 				fr_table_str_by_value(mod_rcode_table, cr->result.rcode, "<invalid>"),
-				cr->result.priority);
+				mod_action_name[cr->result.priority]);
 			state->result = cr->result;
 		}
 	}
@@ -203,7 +204,6 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 	unlang_group_t			*g;
 	unlang_parallel_t		*gext;
 	unlang_parallel_state_t		*state;
-
 	int			i;
 
 	g = unlang_generic_to_group(frame->instruction);
