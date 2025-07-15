@@ -611,20 +611,6 @@ static inline int stack_depth_current(request_t *request)
 	return stack->depth;
 }
 
-/** Initialise the result fields in a frame
- *
- * @param[in] result_p	Where to write the result of executing the instruction in the frame.
- *			If NULL, the result will be written to frame->result, and evaluated
-			automatically by the interpeter when the frame is advanced or popped.
- * @param[in] frame	Frame to set the result for.
- */
-static inline void frame_result_set(unlang_result_t *result_p, unlang_stack_frame_t *frame)
-{
-	frame->result_p = result_p ? result_p : &frame->scratch_result;
-	frame->scratch_result.rcode = RLM_MODULE_NOT_SET;
-	frame->scratch_result.priority = MOD_ACTION_NOT_SET;
-}
-
 /** Initialise memory and instruction for a frame when a new instruction is to be evaluated
  *
  * @note We don't change result_p here, we only reset the scratch values.  This is because
