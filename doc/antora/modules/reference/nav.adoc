@@ -141,7 +141,7 @@
 *** xref:dictionary/begin-vendor.adoc[BEGIN-VENDOR]
 *** xref:dictionary/end-vendor.adoc[END-VENDOR]
 
-** xref:policy/index.adoc[Writing Policy Rules]
+** xref:policy/index.adoc[Create Policy Rules]
 *** xref:policy/different.adoc[Why FreeRADIUS is different]
 
 ** xref:man/index.adoc["man" pages]

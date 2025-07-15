@@ -1,4 +1,4 @@
-== Install from packages
+= Install from Packages
 
 include::ROOT:partial$v3_warning.adoc[]
 
@@ -16,7 +16,7 @@ The current packages available include:
 * https://packages.inkbridgenetworks.com/#fr32-centos[Centos]
 * https://packages.inkbridgenetworks.com/#fr32-rhel[RHEL]
 
-=== Distribution-supplied packages
+== Distribution-supplied packages
 
 While many operating system distributions ship FreeRADIUS
 packages, the versions they include are often years out of date.

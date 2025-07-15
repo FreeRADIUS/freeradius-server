@@ -1,16 +1,18 @@
-= Installing Winbind
+= Install Winbind
 
 To integrate linux-based systems with a Windows Active Directory domain, you need to install Winbind.
 
 == Build winbind from packages
 
 *Debian or Ubuntu*
+
 `apt-get install -y samba winbind krb5-user`
 
-*RHEL or Rocky or Linux based systems
+*RHEL or Rocky or Linux based systems*
+
 `yum install -y samba-winbind krb5-workstation`
 
-== Restart the winbind service:
+== Restart the winbind service
 
   `systemctl stop winbind`
   `systemctl start winbind`

@@ -1,4 +1,4 @@
-= rlm_passwd
+= PASSWD
 
 Passwd-like files authorization module.
 

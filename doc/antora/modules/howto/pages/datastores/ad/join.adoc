@@ -1,6 +1,6 @@
 = Join FreeRADIUS to AD Domain
 
-Some deployments use Active Directory services to use in mschap based authentications. The RADIUS server must alreay be up and running and basic authentication works (pap/chap). For a freeRADIUS server to fully leverage the AD server and relevant services, the RADIUS server must first be configured and then joined to the domain (or samba realm).
+Some deployments use Active Directory services to use in mschap based authentications. The RADIUS server must alreay be up and running and basic authentication works (pap/chap). For a FreeRADIUS server to fully leverage the AD server and relevant services, the RADIUS server must first be configured and then joined to the domain (or samba realm).
 
 
  == Configuration of variables
