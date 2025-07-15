@@ -252,6 +252,14 @@ unlang_action_t unlang_module_yield_to_section(unlang_result_t *p_result,
 					       module_method_t resume,
 					       unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx)
 {
+	/*
+	 *	When we yield to a section, the request->rcode
+	 *	should be set to the default rcode, so that
+	 *	conditional checks work correctly.
+	 */
+	RDEBUG3("Resetting request->rcode to %s", fr_table_str_by_value(rcode_table, default_rcode, "<invalid>"));
+	request->rcode = default_rcode;
+
 	if (!subcs) {
 		unlang_stack_t			*stack = request->stack;
 		unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
