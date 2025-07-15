@@ -566,8 +566,8 @@ static unlang_action_t unlang_module_done(unlang_result_t *p_result, request_t *
 	fr_assert(state->unlang_indent == request->log.indent.unlang);
 #endif
 
-	fr_assert(p_result->rcode >= RLM_MODULE_REJECT);
-	fr_assert(p_result->rcode < RLM_MODULE_NOT_SET);
+	fr_assert(p_result->rcode >= RLM_MODULE_NOT_SET);
+	fr_assert(p_result->rcode < RLM_MODULE_NUMCODES);
 
 	RDEBUG("%s (%s)", frame->instruction->name ? frame->instruction->name : "",
 	       fr_table_str_by_value(mod_rcode_table, p_result->rcode, "<invalid>"));
