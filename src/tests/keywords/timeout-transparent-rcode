@@ -9,7 +9,7 @@
 timeout 1s {
 	if (ok) {
 		test_fail
-	} elsif (reject) {
+	} elsif (noop) {
 		notfound
 	}
 }
