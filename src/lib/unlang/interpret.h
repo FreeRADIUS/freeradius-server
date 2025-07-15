@@ -136,17 +136,14 @@ typedef struct {
 	unlang_mod_action_t		priority;		//!< The priority or action for that rcode.
 } unlang_result_t;
 
-#define UNLANG_RESULT_NOT_SET ((unlang_result_t){ .rcode =  RLM_MODULE_NOT_SET, .priority = MOD_ACTION_NOT_SET })
+#define UNLANG_RESULT_NOT_SET ((unlang_result_t) { .rcode =  RLM_MODULE_NOT_SET, .priority = MOD_ACTION_NOT_SET })
+#define UNLANG_RESULT_RCODE(_x) ((unlang_result_t) { .rcode = (_x), .priority = MOD_ACTION_NOT_SET })
 
 /** Configuration structure to make it easier to pass configuration options to initialise the frame with
  */
 typedef struct {
 	bool				top_frame;		//!< Is this the top frame?
-	rlm_rcode_t			default_rcode;		//!< The default return code for the frame.
-								///< This needs to be specified separately
-								///< from p_result, because we may be passing
-								///< in NULL for p_result.
-	unlang_mod_action_t		default_priority;	//!< The default priority for the frame.
+	unlang_result_t			default_result;		//!< The default result for the frame.
 								///< This needs to be specified separately
 								///< from p_result, because we may be passing
 								///< in NULL for p_result.
@@ -155,15 +152,13 @@ typedef struct {
 #define FRAME_CONF(_default_rcode, _top_frame)		\
 	&(unlang_frame_conf_t){				\
 		.top_frame = (_top_frame),		\
-		.default_rcode = (_default_rcode),	\
-		.default_priority = MOD_ACTION_NOT_SET  \
+		.default_result = UNLANG_RESULT_RCODE(_default_rcode),	\
 	}
 
 #define FRAME_CONF_NO_RCODE(_default_rcode, _top_frame)	\
 	&(unlang_frame_conf_t){				\
 		.top_frame = (_top_frame),		\
-		.default_rcode = (_default_rcode),	\
-		.default_priority = MOD_ACTION_NOT_SET	\
+		.default_result = UNLANG_RESULT_RCODE(_default_rcode),	\
 	}
 
 

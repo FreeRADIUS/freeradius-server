@@ -152,16 +152,18 @@ static unlang_action_t unlang_parallel_resume(unlang_result_t *p_result, request
 		state->children[i].state = CHILD_DONE;
 
 		/*
-		 *	Return isn't allowed to make it back
-		 *	to the parent... Not sure this is
-		 *      the correct behaviour, but it's what
-		 *      was there before.
+		 *	Over-ride "return" and "reject".  A "return"
+		 *	in a child of a parallel just stops the child.
+		 *	It doesn't stop the parent.
 		 */
 		if (cr->result.priority == MOD_ACTION_RETURN) {
-			cr->result.priority = 0;
+			cr->result.priority = MOD_ACTION_NOT_SET;
+
 		} else if (cr->result.priority == MOD_ACTION_REJECT) {
-			cr->result.rcode = RLM_MODULE_REJECT;
-			cr->result.priority = 0;
+			cr->result = UNLANG_RESULT_RCODE(RLM_MODULE_REJECT);
+
+		} else {
+			fr_assert(cr->result.priority != MOD_ACTION_RETRY);
 		}
 
 		/*
@@ -174,8 +176,7 @@ static unlang_action_t unlang_parallel_resume(unlang_result_t *p_result, request
 				p_result->priority,
 				fr_table_str_by_value(mod_rcode_table, cr->result.rcode, "<invalid>"),
 				cr->result.priority);
-			p_result->rcode = cr->result.rcode;
-			p_result->priority = cr->result.priority;
+			*p_result = cr->result;
 		}
 	}
 

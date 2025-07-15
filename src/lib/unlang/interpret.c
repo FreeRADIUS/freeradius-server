@@ -270,8 +270,7 @@ void stack_dump_with_actions(request_t *request)
  * @param[in] request		to push the frame onto.
  * @param[in] instruction	One or more unlang_t nodes describing the operations to execute.
  * @param[in] conf		Configuration for the frame.  If NULL, the following values areused:
- *				- default_rcode = RLM_MODULE_NOT_SET
- *				- default_priority = MOD_ACTION_NOT_SET
+ *				- default result = UNLANG_RESULT_NOT_SET
  *				- top_frame = UNLANG_SUB_FRAME
  *				- no_rcode = false
  * @param[in] do_next_sibling	Whether to only execute the first node in the #unlang_t program
@@ -287,8 +286,7 @@ int unlang_interpret_push(unlang_result_t *result_p, request_t *request,
 	unlang_stack_frame_t	*frame;
 
 	static unlang_frame_conf_t default_conf = {
-		.default_rcode = RLM_MODULE_NOT_SET,
-		.default_priority = MOD_ACTION_NOT_SET,
+		.default_result = UNLANG_RESULT_NOT_SET,
 		.top_frame = UNLANG_SUB_FRAME
 	};
 
@@ -333,8 +331,7 @@ int unlang_interpret_push(unlang_result_t *result_p, request_t *request,
 	if (conf->top_frame) top_frame_set(frame);
 
 	frame->result_p = result_p ? result_p : &frame->section_result;
-	frame->result_p->rcode = conf->default_rcode;
-	frame->result_p->priority = conf->default_priority;
+	*frame->result_p = conf->default_result;
 
 	frame->indent = request->log.indent;
 
@@ -520,8 +517,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 			fr_table_str_by_value(mod_rcode_table, result->rcode, "<invalid>"),
 			result->priority);
 
-		frame_result->priority = 0;
-		frame_result->rcode = result->rcode;
+		*frame_result = UNLANG_RESULT_RCODE(result->rcode);
 		return UNLANG_FRAME_ACTION_POP;
 
 	/*
@@ -539,8 +535,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 			fr_table_str_by_value(mod_rcode_table, RLM_MODULE_REJECT, "<invalid>"),
 			result->priority);
 
-		frame_result->priority = 0;
-		frame_result->rcode = RLM_MODULE_REJECT;
+		*frame_result = UNLANG_RESULT_RCODE(RLM_MODULE_REJECT);
 		return UNLANG_FRAME_ACTION_POP;
 
 	case MOD_ACTION_RETRY:
@@ -573,7 +568,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 				if (fr_timer_in(retry, unlang_interpret_event_list(request)->tl, &retry->ev, instruction->actions.retry.mrd,
 						false, instruction_retry_handler, request) < 0) {
 					RPEDEBUG("Failed inserting retry event");
-					frame_result->rcode = RLM_MODULE_FAIL;
+					*frame_result = UNLANG_RESULT_RCODE(RLM_MODULE_FAIL);
 					goto finalize;
 				}
 			}
@@ -597,7 +592,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 					REDEBUG("Retries hit max_rtx_count (%u) - returning 'timeout'", instruction->actions.retry.mrc);
 
 				timeout:
-					frame_result->rcode = RLM_MODULE_TIMEOUT;
+					*frame_result = UNLANG_RESULT_RCODE(RLM_MODULE_TIMEOUT);
 					goto finalize;
 				}
 			}

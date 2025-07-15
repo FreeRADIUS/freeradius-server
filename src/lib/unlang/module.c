@@ -273,7 +273,7 @@ unlang_action_t unlang_module_yield_to_section(unlang_result_t *p_result,
 		 *	Pretend as if we called the section
 		 *	and used the default rcode value.
 		 */
-		frame->scratch_result.rcode = default_rcode;
+		frame->scratch_result = (unlang_result_t) {.rcode = default_rcode, .priority = MOD_ACTION_NOT_SET };
 
 		state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
