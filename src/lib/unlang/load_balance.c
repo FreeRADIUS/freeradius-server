@@ -50,7 +50,7 @@ static unlang_action_t unlang_load_balance_next(unlang_result_t *p_result, reque
 	 *	We are in a resumed frame.  Check if running the child resulted in a failure rcode which
 	 *	requires us to keep going.  If not, return to the caller.
 	 */
-	switch (redundant->result.rcode) {	
+	switch (redundant->result.rcode) {
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_TIMEOUT:
 	case RLM_MODULE_NOT_SET:
@@ -85,7 +85,7 @@ push:
 	 *	The child begins has no result set.  Resetting the results ensures that the failed code from
 	 *	one child doesn't affect the next child that we run.
 	 */
-	redundant->result = (unlang_result_t) UNLANG_RESULT_NOT_SET;
+	redundant->result = UNLANG_RESULT_NOT_SET;
 	repeatable_set(frame);
 
 	/*

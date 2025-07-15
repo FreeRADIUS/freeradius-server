@@ -136,7 +136,7 @@ typedef struct {
 	unlang_mod_action_t		priority;		//!< The priority or action for that rcode.
 } unlang_result_t;
 
-#define UNLANG_RESULT_NOT_SET { .rcode =  RLM_MODULE_NOT_SET, .priority = MOD_ACTION_NOT_SET }
+#define UNLANG_RESULT_NOT_SET ((unlang_result_t){ .rcode =  RLM_MODULE_NOT_SET, .priority = MOD_ACTION_NOT_SET })
 
 /** Configuration structure to make it easier to pass configuration options to initialise the frame with
  */
