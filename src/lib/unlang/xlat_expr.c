@@ -1629,10 +1629,16 @@ static xlat_action_t xlat_func_expr_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	/*
 	 *	If we have zero args, it's because the instantiation
-	 *	function consumed them. om nom nom.
+	 *	function consumed them. Unless the user read the debug
+	 *	output, and tried to see what the rcode is, in case we
 	 */
 	if (fr_value_box_list_num_elements(args) == 0) {
-		fr_assert(inst->rcode != RLM_MODULE_NOT_SET);
+		if (inst->rcode == RLM_MODULE_NOT_SET) {
+			RDEBUG("Request rcode is '%s'",
+			       fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"));
+			return XLAT_ACTION_DONE;
+		}
+
 		rcode = inst->rcode;
 	} else {
 		XLAT_ARGS(args, &arg_rcode);
