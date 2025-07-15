@@ -1588,7 +1588,7 @@ static fr_slen_t xlat_expr_print_rcode(fr_sbuff_t *out, xlat_exp_t const *node, 
 	size_t			at_in = fr_sbuff_used_total(out);
 	xlat_rcode_inst_t	*inst = instance;
 
-	FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "%expr.rcode('");
+	FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "%interpreter.rcode('");
 	if (xlat_exp_head(node->call.args)) {
 		ssize_t slen;
 
@@ -1608,7 +1608,7 @@ static fr_slen_t xlat_expr_print_rcode(fr_sbuff_t *out, xlat_exp_t const *node, 
  *
  * Example:
 @verbatim
-%expr.rcode('handled') == true
+%interpreter.rcode('handled') == true
 
 # ...or how it's used normally used
 if (handled) {
@@ -1895,7 +1895,12 @@ int xlat_register_expressions(void)
 	XLAT_REGISTER_NARY_OP(T_LAND, logical_and, logical);
 	XLAT_REGISTER_NARY_OP(T_LOR, logical_or, logical);
 
+	XLAT_REGISTER_BOOL("interpreter.rcode", xlat_func_expr_rcode, xlat_func_expr_rcode_arg, FR_TYPE_BOOL);
+	xlat_func_instantiate_set(xlat, xlat_instantiate_expr_rcode, xlat_rcode_inst_t, NULL, NULL);
+	xlat_func_print_set(xlat, xlat_expr_print_rcode);
+
 	XLAT_REGISTER_BOOL("expr.rcode", xlat_func_expr_rcode, xlat_func_expr_rcode_arg, FR_TYPE_BOOL);
+	xlat->deprecated = true;
 	xlat_func_instantiate_set(xlat, xlat_instantiate_expr_rcode, xlat_rcode_inst_t, NULL, NULL);
 	xlat_func_print_set(xlat, xlat_expr_print_rcode);
 
@@ -2371,7 +2376,7 @@ static ssize_t tokenize_rcode(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	/*
 	 *	@todo - allow for attributes to have the name "ok-foo" ???
 	 */
-	func = xlat_func_find("expr.rcode", -1);
+	func = xlat_func_find("interpreter.rcode", -1);
 	fr_assert(func != NULL);
 
 	MEM(node = xlat_exp_alloc(head, XLAT_FUNC, fr_sbuff_start(&our_in), slen));

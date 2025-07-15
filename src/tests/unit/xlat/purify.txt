@@ -193,13 +193,13 @@ match false
 #  These are just booleans now.  We can subtract and invert them.
 #
 xlat_purify -fail
-match -%expr.rcode('fail')
+match -%interpreter.rcode('fail')
 
 xlat_purify ~fail
-match ~%expr.rcode('fail')
+match ~%interpreter.rcode('fail')
 
 xlat_purify !fail
-match !%expr.rcode('fail')
+match !%interpreter.rcode('fail')
 
 #
 #  Casts and such

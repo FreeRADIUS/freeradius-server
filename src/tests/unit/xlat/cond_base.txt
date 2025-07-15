@@ -715,16 +715,16 @@ match ((User-Name == "bob") && ((User-Password == "bob") || EAP-Message))
 #  rcode tests
 #
 xlat_purify handled && (User-Name == "bob")
-match (%expr.rcode('handled') && (User-Name == "bob"))
+match (%interpreter.rcode('handled') && (User-Name == "bob"))
 
 xlat_purify (User-Name == "bob") && (User-Password == "bob") && handled
-match ((User-Name == "bob") && (User-Password == "bob") && %expr.rcode('handled'))
+match ((User-Name == "bob") && (User-Password == "bob") && %interpreter.rcode('handled'))
 
 xlat_purify handledx
 match ERROR offset 0: Attribute 'handledx' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 xlat_purify handled
-match %expr.rcode('handled')
+match %interpreter.rcode('handled')
 
 #
 #  Automatic casting
