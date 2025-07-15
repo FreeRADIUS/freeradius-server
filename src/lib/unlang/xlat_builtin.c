@@ -36,9 +36,11 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
+#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/io/test_point.h>
 
 #include <freeradius-devel/util/base16.h>
+#include <freeradius-devel/util/table.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <freeradius-devel/tls/openssl_user_macros.h>
@@ -3505,6 +3507,79 @@ static xlat_action_t xlat_func_subst(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+/*
+ *	Debug builds only, we don't want to allow unsanitised inputs to crash the server
+ */
+#ifndef NDEBUG
+static xlat_arg_parser_t const xlat_func_signal_raise_args[] = {
+	{ .single = true, .required = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static xlat_action_t xlat_func_signal_raise(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					    UNUSED xlat_ctx_t const *xctx, request_t *request,
+					    fr_value_box_list_t *args)
+{
+	static fr_table_num_sorted_t const signal_table[] = {
+		{ L("break"),		SIGTRAP },	/* Save flailing at the keyboard */
+		{ L("BREAK"),		SIGTRAP },
+		{ L("SIGABRT"),		SIGABRT },
+		{ L("SIGALRM"),		SIGALRM },
+#ifdef SIGBUS
+		{ L("SIGBUS"),		SIGBUS },
+#endif
+		{ L("SIGCHLD"),		SIGCHLD },
+		{ L("SIGCONT"),		SIGCONT },
+		{ L("SIGFPE"),		SIGFPE },
+		{ L("SIGHUP"),		SIGHUP },
+		{ L("SIGILL"),		SIGILL },
+		{ L("SIGINT"),		SIGINT },
+		{ L("SIGKILL"),		SIGKILL },
+		{ L("SIGPIPE"),		SIGPIPE },
+#ifdef SIGPOLL
+		{ L("SIGPOLL"),		SIGPOLL },
+#endif
+		{ L("SIGPROF"),		SIGPROF },
+		{ L("SIGQUIT"),		SIGQUIT },
+		{ L("SIGSEGV"),		SIGSEGV },
+		{ L("SIGSTOP"),		SIGSTOP },
+#ifdef SIGSYS
+		{ L("SIGSYS"),		SIGSYS },
+#endif
+		{ L("SIGTERM"),		SIGTERM },
+#ifdef SIGTRAP
+		{ L("SIGTRAP"),		SIGTRAP },
+#endif
+		{ L("SIGTSTP"),		SIGTSTP },
+		{ L("SIGTTIN"),		SIGTTIN },
+		{ L("SIGTTOU"),		SIGTTOU },
+		{ L("SIGURG"),		SIGURG },
+		{ L("SIGUSR1"),		SIGUSR1 },
+		{ L("SIGUSR2"),		SIGUSR2 },
+		{ L("SIGVTALRM"),	SIGVTALRM },
+		{ L("SIGXCPU"),		SIGXCPU },
+		{ L("SIGXFSZ"),		SIGXFSZ }
+	};
+	static size_t signal_table_len = NUM_ELEMENTS(signal_table);
+
+	fr_value_box_t	*signal_vb;
+	int		signal;
+
+	XLAT_ARGS(args, &signal_vb);
+
+	signal = fr_table_value_by_substr(signal_table, signal_vb->vb_strvalue, signal_vb->vb_length, -1);
+	if (signal < 0) {
+		RERROR("Invalid signal \"%pV\"", signal_vb);
+		return XLAT_ACTION_FAIL;
+	}
+	if (raise(signal) < 0) {
+		RERROR("Failed raising signal %d: %s", signal, strerror(errno));
+		return XLAT_ACTION_FAIL;
+	}
+	return XLAT_ACTION_DONE;
+}
+#endif
+
 static xlat_arg_parser_t const xlat_func_time_args[] = {
 	{ .required = false, .single = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -4398,6 +4473,10 @@ do { \
 	XLAT_NEW("str.subst");
 #ifdef HAVE_REGEX_PCRE2
 	xlat_func_instantiate_set(xlat, xlat_instantiate_subst_regex, xlat_subst_regex_inst_t, NULL, NULL);
+#endif
+
+#ifndef NDEBUG
+	XLAT_REGISTER_ARGS("signal.raise", xlat_func_signal_raise, FR_TYPE_STRING, xlat_func_signal_raise_args);
 #endif
 
 	XLAT_REGISTER_ARGS("time", xlat_func_time, FR_TYPE_VOID, xlat_func_time_args);
