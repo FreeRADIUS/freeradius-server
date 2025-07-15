@@ -1,4 +1,4 @@
-= Determining connection parameters
+= Determine connection parameters
 
 `ldapsearch` accepts a large number of different arguments, and allow relatively
 complex commands to be sent to the LDAP server.
@@ -29,7 +29,7 @@ you will need to provide the following arguments:
 - `-H <ldap uri>` - The LDAP server to connect to.
 - `-b <dn>` - A point in the LDAP tree to start the search from.
 
-.Performing an anonymous search
+.Perform an anonymous search
 ====
 [source,shell]
 ----
@@ -54,7 +54,7 @@ continue indefinitely) when there is _no_ firewall blocking.
 ** `netcat -vz -w3 ldap.example.com 636` will return `succeeded` when there is no
 firewall blocking access.
 
-== Failure - No such object
+== Failure - `No such object`
 
 [source,ldif]
 ----
@@ -76,7 +76,7 @@ result: 32 No such object
    <<Failure - Bind required>>).  The anonymous user may not have access to content
    in the LDAP directory.
 
-== Failure - Bind required
+== Failure - `Bind required`
 
 ```
 ldap_bind: Server is unwilling to perform (53)
@@ -95,7 +95,7 @@ server:
 - `-D <dn>` - The bind DN.  A unique identifier for the user being bound.
 - `-w <password>` - The bind password.
 
-.Performing a search with a bound user
+.Perform a search with a bound user
 ====
 [source,shell]
 ----
@@ -107,7 +107,7 @@ ldapsearch -z 1 -x \
 ----
 ====
 
-== Failure - Encryption (confidentiality) required
+== Failure - `Encryption (confidentiality) required`
 
 If a message similar to the one below is returned by `ldapsearch`.  TLS must
 be enabled on the connection.
@@ -204,6 +204,7 @@ The `openssl` invocation is different depending on whether StartTLS or LDAPS
 is used.
 
 .LDAPS - Retrieving the certificate chain of the fictitious ldap.example.com server
+
 ====
 ```
 echo -n | openssl s_client -host ldap.example.com -port 636 -prexit -showcerts
@@ -222,6 +223,7 @@ MIIHDjCCBPagAwIBAgIJANAO5znieeLNMA0GCSqGSIb3DQEBCwUAMIGSMQswCQYD
 
 .StartTLS - Retrieving the certificate chain of the fictitious ldap.example.com server
 ====
+
 ```
 echo -n | openssl s_client -host ldap.example.com -port 389 -prexit -showcerts -starttls ldap
 CONNECTED(00000003)
@@ -235,13 +237,16 @@ Certificate chain
 MIIHDjCCBPagAwIBAgIJANAO5znieeLNMA0GCSqGSIb3DQEBCwUAMIGSMQswCQYD
 ...
 ```
+====
+
 [NOTE]
+====
 .Availability of `-starttls ldap`
 Not all builds of `openssl s_client` support `-starttls ldap`.  As of OpenSSL
 1.1.1 this feature is still only available in the OpenSSL master branch. See
-this GitHub Pull Request for details:
-https://github.com/openssl/openssl/pull/2293.
+this https://github.com/openssl/openssl/pull/2293[GitHub Pull Request] for details.
 ====
+
 ****
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

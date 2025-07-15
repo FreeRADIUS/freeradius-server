@@ -1,4 +1,4 @@
-= SQL counter module
+= SQL-Counter
 
 == Introduction
 

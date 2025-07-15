@@ -20,15 +20,15 @@ In general, we have the following changes:
   `authorize`, etc.
 * each `listen` section needs to be converted to the v4 format.
 
-== Upgrading from older versions
+== Upgrade from older versions
 
-=== Upgrading from v2
+=== Upgrade from v2
 
 If you are upgrading from v2 you should read the v3 version of this
 file.  It describes changed from v2 to v3. This file describes only
 the changes from v3 to v4.
 
-=== Upgrading from v3
+=== Upgrade from v3
 
 When upgrading, please start with the default configuration of v4. Then,
 move your v3 configuration over, one module at a time. Check this file
@@ -51,7 +51,7 @@ information.  This change was necessary in order to support the new
 protocols.
 
 
-== Attribute Names
+== Attribute names
 
 Much of the information in this section is also in the
 `raddb/dictionary` file
@@ -132,7 +132,7 @@ subsection there. See also xref:reference:raddb/templates.conf.adoc[`templates.c
 for a way to regain one global configuration for `Access-Request`
 packets.
 
-=== Instantiate Section
+=== Instantiate section
 
 The `instantiate` section has been removed.  It originally started out
 as a way to ensure that modules were instantiated in a particular
@@ -158,7 +158,7 @@ redundant redundant_sql {
 In this case, this definition creates a `redundant_sql` virtual module.
 
 
-== Virtual Servers
+== Virtual servers
 
 There are some changes to the virtual servers in `v4`. First, every
 virtual server has to begin with an entry:
@@ -187,7 +187,7 @@ Every example virtual server in the `sites-enabled/` directory
 contains a `namespace` parameter.  Please look at those files for
 examples of configuring and running each supported protocol.
 
-=== Listen Sections
+=== Listen sections
 
 The `listen` sections have changed. There is now a `type` entry, which
 lists the packet type by their correct name (e.g._`Access-Request`
@@ -270,7 +270,7 @@ each client. e.g._by keying off of the `NAS-Identifier` attribute.
 The dynamic client functionality behaves the same for all protocols
 supported by the server. e.g. RADIUS, DHCP, VMPS, TACACS+, etc.
 
-== Processing Sections
+== Processing sections
 
 All of the processing sections have been renamed. Sorry, but this was
 required for the new features in v4.
@@ -311,15 +311,15 @@ in `accounting %{Acct-Status-Type}`. See sites-available/default for
 examples and more information.
 ====
 
-=== Update Sections
+=== Update sections
 
 A major difference between v3 and v4 is that `update` sections are no
 longer necessary.  See the <<Unlang Syntax>> section below for full
 details.
 
-== Proxying
+== Proxy
 
-Proxying has undergone massive changes. The `proxy.conf` file no
+The proxy feature has undergone massive changes. The `proxy.conf` file no
 longer exists, and everything in it has been removed. e.g. `realm`,
 `home_server`, `home_server_pool` no longer exist. The old proxying
 functionality was welded into the server core, which made many useful
@@ -388,8 +388,11 @@ redundant {
 }
 ----
 
-NOTE: Of course, you will have to use the names of the `radius`
+[NOTE]
+====
+Of course, you will have to use the names of the `radius`
 modules in your configuration, and not `home_server_1`, etc.
+====
 
 * `type = load-balance` - replaced with `unlang`
 
@@ -439,7 +442,7 @@ While the `Load-Balance-Key` was a special attribute in v3, it has no
 special meaning in v4. You can use any attribute or string expansion as
 part of the `load-balance` key.
 
-=== Things which were impossible in v3
+=== Limitations in v3
 
 In v3, it was impossible to proxy the same request to multiple
 destinations. This is now trivial. In any processing section, do:
@@ -666,7 +669,7 @@ Some modules such as rlm_sql_postgresql can have their timeout set via
 an alternative configuration item (e.g. `radius_db` in the case of
 postgresql).
 
-== Unlang Syntax
+== Unlang syntax
 
 Many new xref:reference:unlang/index.adoc[unlang] keywords have been added.
 
@@ -743,7 +746,7 @@ xref:reference:xlat/index.adoc[xlat] expansions have been changed from syntax li
 
 `%{expr:...}` has been removed.  You can instead use in-place expressions, such as `%{1 + 2}` or `%{NAS-Port + 14}`.
 
-== New Modules
+== New modules
 
 The following modules are new in v4.
 
@@ -776,7 +779,7 @@ retransmitted proxied packets only when it received a retransmission
 from the NAS. That behavior is good, but there are times where
 retransmitting packets at the proxy is better.
 
-== Changed Modules
+== Changed modules
 
 The following modules exhibit changed behaviour.
 
@@ -975,7 +978,7 @@ if (%sql.group(sales)) {
 
 will return `true`.
 
-==== Accounting and Post-Auth module calls
+=== Accounting and Post-Auth module calls
 
 The `reference` option has been removed from `accounting` and `post-auth`
 sql module configuration.
@@ -1008,7 +1011,7 @@ send {
 }
 ```
 
-==== Profiles
+=== Profiles
 
 The `default_user_profile` has been removed.  No one used it, as that
 behavior was already supported by the group functionality.  See
@@ -1020,7 +1023,7 @@ Now calls `mysql_real_escape_string` and no longer produces
 `=<hexit><hexit>` escape sequences in expanded values. The
 `safe_characters` config item is ignored when using MySQL databases.
 
-==== rlm_sql_postgresql
+=== rlm_sql_postgresql
 
 Now calls `PQescapeStringConn` and no longer produces
 `=<hexit><hexit>` escape sequences in expanded values. The
@@ -1108,7 +1111,7 @@ will no longer work.
 The `winbind` module uses an expansion `%winbind.group(<name>)` instead of
 `Winbind-Group == <name>`.
 
-== Deleted Modules
+== Deleted modules
 
 The following modules have been deleted
 
@@ -1159,7 +1162,7 @@ if (%time() < (date) 'Aug 1 2023 01:02:03 UTC') {
 }
 ```
 
-== Deleted Functionality
+== Deleted functionality
 
 Many "virtual" or "fake" attributes have been removed or renamed.
 
@@ -1179,7 +1182,7 @@ Many "virtual" or "fake" attributes have been removed or renamed.
 
 `Packet-Src-Port` should be replaced by `Net.Src.Port`.
 
-== Recommended Changes
+== Recommended changes
 
 In v3, many people had a habit of just adding `"..."` around _everything_.  For example:
 

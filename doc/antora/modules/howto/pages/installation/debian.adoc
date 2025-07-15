@@ -1,9 +1,11 @@
-= Build and Install FreeRadius on Ubuntu
+= Debian and Ubuntu
+
+To Build and Install FreeRadius on Ubuntu, obtain the install files from one of two ways:
 
 * Install from repositories
 * Build and Install from Source
 
-== Installing from repositories
+== Install from repositories
 
 This is usually the easiest solution, as long as the system packages are the latest in their own main version, or can be updated before building. Building from source is recommended as it will contain the latest version, that contains the most recent bug fixes.
 
@@ -50,7 +52,7 @@ Suggested is to stop the service and until all is working use freeradius in debu
 sudo freeradius -X
 ----
 
-== Installing from Source
+== Install from source
 
 Installing from source can be daunting for first time users, but as long as you read the output of the building process, it  tell you what went wrong or what is missing.
 
@@ -146,15 +148,15 @@ sudo dpkg -i *freeradius*_W.X.Y*_*.deb
 The install might show errors. Read the error !! Ask questions on freeradius list if you cannot figure it out. v2 will fail install often on open_ssl issues. Quick thing to change to prevent just that error is to edit a config file so freeradius will not complain about ssl that might be vulnerable. ( /etc/freeradius/eap.conf (v2) or /etc/freeradius/modules-enabled/eap )
 
 
-== Building on Debian or Ubuntu
+== Build on Debian or Ubuntu
 
 Building Debian packages (including Ubuntu) of FreeRADIUS from source is kept as simple as possible.
 
-== Building the stable release (v3.0)
+== Build the stable release (v3.0)
 
 Building packages is very simple. First obtain a copy of the source and unpack it. Second, build the packages.
 
-== Getting the source
+== Get the source
 
 include::partial$get_the-source
 
@@ -169,7 +171,7 @@ fakeroot debian/rules clean
 sudo mk-build-deps -ir debian/control
 ----
 
-== Building Packages
+== Build Packages
 
 Having retrieved whichever version of the source you require and installed dependencies, build the FreeRADIUS packages:
 
@@ -181,7 +183,7 @@ This will build packages in the parent directory, which can be installed with ``
 
 On recent releases you should ensure the source tree is completely clean before running `make deb`, e.g. do not run `./configure` first. (However, on releases before 3.0.16 you _must_ run `./configure` first.)
 
-== Building from source
+== Build from source
 
 Alternatively, rather than building packages, you can build the source directly. Note that you will need to ensure all required dependencies are installed first (such as `libkqueue-dev`, `libtalloc-dev`, and `libssl-dev`).
 
@@ -192,21 +194,21 @@ make
 sudo make install
 ----
 
-== Building development versions (v4.0)
+== Build development versions (v4.0)
 
 Note that version 4 is for developers only. **Do not use these versions unless you know what you are doing.**
 
-== Upgrading GCC
+== Upgrade GCC
 
 include::partial$upgrade_gcc.adoc[]
 
-== Hard Dependencies
+== Dependencies
 
 ----
 sudo apt-get install libssl-dev libtalloc-dev libkqueue-dev
 ----
 
-== Building
+== Build and install
 
 Get the source as described above, then:
 

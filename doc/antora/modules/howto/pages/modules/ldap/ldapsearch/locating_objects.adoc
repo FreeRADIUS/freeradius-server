@@ -1,4 +1,4 @@
-= Locating objects
+= Locate Objects
 
 Once the correct xref:modules/ldap/ldapsearch/connection_parameters.adoc[connection parameters]
  have been determined, the next step in building your configuration

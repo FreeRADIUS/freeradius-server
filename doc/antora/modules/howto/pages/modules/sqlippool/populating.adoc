@@ -18,7 +18,7 @@ that make changes to the datastore. For example:
 generate_pool_addresses.pl ... | align_sql_pools.pl postgresql
 ----
 
-Once the IP addresses have been generated,
+Once the IP addresses have been generated, decide how you want to orgaise your pools within a range or multiple ranges. Properly defining these ranges ensure efficient distribution of IP addresses to end-users and devices on the network.
 
 == Use with a single address range
 

@@ -1,4 +1,6 @@
-= Using OpenLDAP in a docker container
+= Docker
+
+This page explains how to configure using OpenLDAP in a docker container.
 
 == Bootstrap
 
@@ -81,7 +83,7 @@ In order to make the LDAP database persistent, see the
 https://github.com/osixia/docker-openldap[osixia/openldap
 instructions].
 
-== Check it works
+== Test the configuration
 
 As a final step you should verify that test data has been loaded correctly.
 This can be done using the `ldapsearch` utility using the LDAP read only user.

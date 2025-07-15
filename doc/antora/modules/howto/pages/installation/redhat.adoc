@@ -1,13 +1,13 @@
-= Building on RHEL7
+= Redhat and Rocky
 
-There are minimal requirements to building on RHEL, including Rocky or Alma versions.
+There are minimal requirements to building on Redhat (RHEL), including Rocky or Alma versions.
 
 [NOTE]
 ====
 Centos Stream is now a rolling release, feeder distribution for RHEL and no longer supported.
 ====
 
-== Hard Dependencies
+== Dependencies
 
 === libtalloc
 
@@ -29,7 +29,7 @@ yum -y install cmake3
 
 include::partial$libkqueue-rpm.adoc
 
-=== Upgrading GCC (>= v4.0.x and master branch only)
+=== Upgrade GCC (>= v4.0.x and master branch only)
 
 > GCC upgrade only required for versions >= v4.0.x you can skip this step for v3.0.x and below.
 
@@ -55,11 +55,11 @@ Or can set ``CC=/opt/rh/devtoolset-3/root/usr/bin/gcc`` in your environment, whi
 
 If you're building on older versions of RedHat then you'll need to compile GCC from source.
 
-== Getting the source
+== Get the source
 
 include::partial$get_the_source.adoc[]
 
-== Build from Source and Install
+== Build from source and install
 
 If you're using unstable code or encountering issues with the install, use `configure --enable-developer` option.
 
@@ -69,7 +69,7 @@ make
 sudo make install
 ----
 
-== Building Packages
+== Build packages
 
 === With Oracle support
 
