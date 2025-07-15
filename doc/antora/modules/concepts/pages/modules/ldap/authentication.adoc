@@ -20,7 +20,7 @@ Use xref:reference:raddb/mods-available/ntlm_auth.adoc[`ntlm`] or xref:reference
 Due to these limitations of Active Directory, there are no
 other alternatives.
 
-== LDAP Security Recommendations
+== LDAP security recommendations
 
 The credentials (username *and* password) for FreeRADIUS to use to
 connect to your LDAP server(s) should be secure.  We make the
@@ -44,7 +44,7 @@ following recommendations for LDAP "best practices" security.
   `doc/schemas/ldap/openldap/freeradius-radius.schema` must first be imported
   into the LDAP server.
 
-== Authentication Method Compatibility
+== Authentication method compatibility
 
 The LDAP module is compatible a few different kinds of authentication
 methods.  Note that we say _compatible_, and not _supports_.  LDAP
