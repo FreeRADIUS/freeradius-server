@@ -34,8 +34,7 @@ extern "C" {
 #endif
 
 typedef struct {
-	rlm_rcode_t			result;
-	int				priority;
+	unlang_result_t			result;		//!< our result
 
 	unsigned int			num_children;	//!< How many children are executing.
 	unsigned int			num_runnable;	//!< How many children are complete.

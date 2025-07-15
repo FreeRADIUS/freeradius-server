@@ -169,14 +169,14 @@ static unlang_action_t unlang_parallel_resume(unlang_result_t *p_result, request
 		/*
 		 *	Do priority over-ride.
 		 */
-		if (cr->result.priority > p_result->priority) {
+		if (cr->result.priority > state->result.priority) {
 			RDEBUG4("** [%i] %s - overwriting existing result (%s %d) from higher priority to (%s %d)",
 				stack_depth_current(request), __FUNCTION__,
-				fr_table_str_by_value(mod_rcode_table, p_result->rcode, "<invalid>"),
-				p_result->priority,
+				fr_table_str_by_value(mod_rcode_table, state->result.rcode, "<invalid>"),
+				state->result.priority,
 				fr_table_str_by_value(mod_rcode_table, cr->result.rcode, "<invalid>"),
 				cr->result.priority);
-			*p_result = cr->result;
+			state->result = cr->result;
 		}
 	}
 
@@ -193,6 +193,7 @@ static unlang_action_t unlang_parallel_resume(unlang_result_t *p_result, request
 		state->children[i].state = CHILD_FREED;
 	}
 
+	*p_result = state->result;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -224,8 +225,7 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 	}
 
 	(void) talloc_set_type(state, unlang_parallel_state_t);
-	state->result = RLM_MODULE_NOOP;
-	state->priority = MOD_ACTION_NOT_SET;				/* as-yet unset */
+	state->result = UNLANG_RESULT_NOT_SET;
 	state->detach = gext->detach;
 	state->clone = gext->clone;
 	state->num_children = g->num_children;
