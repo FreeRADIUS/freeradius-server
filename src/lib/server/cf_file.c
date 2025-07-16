@@ -2455,6 +2455,14 @@ check_for_eol:
 
 	case CF_UNLANG_ALLOW:
 		/*
+		 *	'case ::foo' is allowed.  For generality, we just expect that the second argument to
+		 *	'case' is not an operator.
+		 */
+		if (strcmp(buff[1], "case") == 0) {
+			break;
+		}
+
+		/*
 		 *	It's not a string, bare word, or attribute reference.  It must be an operator.
 		 */
 		if (!((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || ((*ptr == '&') && (ptr[1] != '=')) ||
