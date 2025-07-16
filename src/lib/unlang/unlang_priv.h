@@ -420,12 +420,12 @@ struct unlang_stack_frame_s {
 	unlang_result_t		scratch_result;			//!< The result of executing the current instruction.
 								///< This will be set to RLM_MODULE_NOT_SET, and
 								///< MOD_ACTION_NOT_SET when a new instruction is set
-								///< for the frame.  If result_p does not point to this
+								///< for the frame.  If p_result does not point to this
 								///< field, the rcode and priority returned will be
 								///< left as NOT_SET and will be ignored.
 								///< This values here will persist between yields.
 
-	unlang_result_t		*result_p;			//!< Where to write the result of executing the current
+	unlang_result_t		*p_result;			//!< Where to write the result of executing the current
 								///< instruction.  Will either point to `scratch_result`,
 								///< OR if the parent does not want its rcode to be updated
 								///< by a child it pushed for evaluation, it will point to
@@ -485,7 +485,7 @@ static inline bool is_repeatable(unlang_stack_frame_t const *frame)		{ return fr
 static inline bool is_top_frame(unlang_stack_frame_t const *frame)		{ return frame->flag & UNLANG_FRAME_FLAG_TOP_FRAME; }
 static inline bool is_yielded(unlang_stack_frame_t const *frame) 		{ return frame->flag & UNLANG_FRAME_FLAG_YIELDED; }
 static inline bool is_unwinding(unlang_stack_frame_t const *frame) 		{ return frame->flag & UNLANG_FRAME_FLAG_UNWIND; }
-static inline bool is_private_result(unlang_stack_frame_t const *frame)		{ return !(frame->result_p == &frame->section_result); }
+static inline bool is_private_result(unlang_stack_frame_t const *frame)		{ return !(frame->p_result == &frame->section_result); }
 
 static inline bool _instruction_has_debug_braces(unlang_t const *instruction)	{ return unlang_ops[instruction->type].flag & UNLANG_OP_FLAG_DEBUG_BRACES; }
 static inline bool _frame_has_debug_braces(unlang_stack_frame_t const *frame)	{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_DEBUG_BRACES; }
@@ -616,7 +616,7 @@ static inline int stack_depth_current(request_t *request)
 
 /** Initialise memory and instruction for a frame when a new instruction is to be evaluated
  *
- * @note We don't change result_p here, we only reset the scratch values.  This is because
+ * @note We don't change frame->p_result here, we only reset the scratch values.  This is because
  *	 Whatever pushed the frame onto the stack generally wants the aggregate result of
  *	 the complete section, not just the first instruction.
  *
@@ -704,7 +704,7 @@ static inline void frame_next(unlang_stack_t *stack, unlang_stack_frame_t *frame
 	frame->next = frame->instruction->next;
 
 	/*
-	 *	We _may_ want to take a new result_p value in future but
+	 *	We _may_ want to take a new frame->p_result value in future but
 	 *	for now default to the scratch result.  Generally the thing
 	 *	advancing the frame is within this library, and doesn't
 	 *	need custom behaviour for rcodes.

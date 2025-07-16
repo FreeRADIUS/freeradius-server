@@ -62,19 +62,19 @@ static size_t unlang_frame_action_table_len = NUM_ELEMENTS(unlang_frame_action_t
 #include <freeradius-devel/unlang/module_priv.h>
 
 typedef enum {
-	RESULT_P_LOCATION_UNKNOWN = 0,
-	RESULT_P_LOCATION_FRAME,
-	RESULT_P_LOCATION_SCRATCH,
-	RESULT_P_LOCATION_STATE,
-	RESULT_P_LOCATION_MODULE_RCTX,
-	RESULT_P_LOCATION_FUNCTION_RCTX
-} result_p_location_t;
+	P_RESULT_LOCATION_UNKNOWN = 0,
+	P_RESULT_LOCATION_FRAME,
+	P_RESULT_LOCATION_SCRATCH,
+	P_RESULT_LOCATION_STATE,
+	P_RESULT_LOCATION_MODULE_RCTX,
+	P_RESULT_LOCATION_FUNCTION_RCTX
+} p_result_location_t;
 
-/** Try and figure out where result_p points to
+/** Try and figure out where p_result points to
  *
  * If it's somewhere other than these three locations, it's probably wrong.
  */
-static int find_result_p_location(result_p_location_t *location, void **chunk, request_t *request, void *ptr)
+static int find_p_result_location(p_result_location_t *location, void **chunk, request_t *request, void *ptr)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame;
@@ -84,19 +84,19 @@ static int find_result_p_location(result_p_location_t *location, void **chunk, r
 		frame = &stack->frame[i];
 		if (frame->state && (ptr >= (void *)frame->state) &&
 		    (ptr < ((void *)((uint8_t *)frame->state + talloc_get_size(frame->state))))) {
-			*location = RESULT_P_LOCATION_STATE;
+			*location = P_RESULT_LOCATION_STATE;
 			*chunk = frame->state;
 			return i;
 		}
 
 		if (ptr == &frame->section_result) {
-			*location = RESULT_P_LOCATION_FRAME;
+			*location = P_RESULT_LOCATION_FRAME;
 			*chunk = NULL;
 			return i;
 		}
 
 		if (ptr == &frame->scratch_result) {
-			*location = RESULT_P_LOCATION_SCRATCH;
+			*location = P_RESULT_LOCATION_SCRATCH;
 			*chunk = NULL;
 			return i;
 		}
@@ -112,14 +112,14 @@ static int find_result_p_location(result_p_location_t *location, void **chunk, r
 
 			if ((ptr >= (void *)mod_state->rctx) &&
 			    (ptr < ((void *)((uint8_t *)mod_state->rctx + talloc_get_size(mod_state->rctx))))) {
-				*location = RESULT_P_LOCATION_MODULE_RCTX;
+				*location = P_RESULT_LOCATION_MODULE_RCTX;
 				*chunk = mod_state->rctx;
 				return i;
 			}
 
 			/*
 			 *	We don't know where the child frame is, so we can't
-			 *	determine where the result_p is.
+			 *	determine where the p_result is.
 			 */
 		}
 			continue;
@@ -129,19 +129,19 @@ static int find_result_p_location(result_p_location_t *location, void **chunk, r
 		}
 	}
 
-	*location = RESULT_P_LOCATION_UNKNOWN;
+	*location = P_RESULT_LOCATION_UNKNOWN;
 	*chunk = NULL;
 	return -1;
 }
 
-static fr_table_num_ordered_t const result_p_location_table[] = {
-	{ L("frame"),		RESULT_P_LOCATION_FRAME },
-	{ L("module_rctx"),	RESULT_P_LOCATION_MODULE_RCTX },
-	{ L("scratch"),		RESULT_P_LOCATION_SCRATCH },
-	{ L("state"),		RESULT_P_LOCATION_STATE },
-	{ L("unknown"),		RESULT_P_LOCATION_UNKNOWN }
+static fr_table_num_ordered_t const p_result_location_table[] = {
+	{ L("frame"),		P_RESULT_LOCATION_FRAME },
+	{ L("module_rctx"),	P_RESULT_LOCATION_MODULE_RCTX },
+	{ L("scratch"),		P_RESULT_LOCATION_SCRATCH },
+	{ L("state"),		P_RESULT_LOCATION_STATE },
+	{ L("unknown"),		P_RESULT_LOCATION_UNKNOWN }
 };
-static size_t result_p_location_table_len = NUM_ELEMENTS(result_p_location_table);
+static size_t p_result_location_table_len = NUM_ELEMENTS(p_result_location_table);
 
 static void instruction_dump(request_t *request, unlang_t const *instruction)
 {
@@ -189,19 +189,19 @@ static void frame_dump(request_t *request, unlang_stack_frame_t *frame, bool wit
 		RDEBUG2("next           <none>");
 	}
 
-	fr_assert(MOD_ACTION_VALID(frame->result_p->priority));
+	fr_assert(MOD_ACTION_VALID(frame->p_result->priority));
 
 	if (is_private_result(frame)) {
 		int location;
-		result_p_location_t type;
+		p_result_location_t type;
 		void *chunk;
 
-		RDEBUG2("p_rcode        %s", fr_table_str_by_value(mod_rcode_table, frame->result_p->rcode, "<invalid>"));
-		RDEBUG2("p_priority     %s", mod_action_name[frame->result_p->priority]);
+		RDEBUG2("p_rcode        %s", fr_table_str_by_value(mod_rcode_table, frame->p_result->rcode, "<invalid>"));
+		RDEBUG2("p_priority     %s", mod_action_name[frame->p_result->priority]);
 
-		location = find_result_p_location(&type, &chunk, request, frame->result_p);
-		RDEBUG2("p_location     %s [%i] %p (%s)", fr_table_str_by_value(result_p_location_table, type, "<invalid>"),
-			location, frame->result_p, chunk ? talloc_get_name(chunk) : "<none>"
+		location = find_p_result_location(&type, &chunk, request, frame->p_result);
+		RDEBUG2("p_location     %s [%i] %p (%s)", fr_table_str_by_value(p_result_location_table, type, "<invalid>"),
+			location, frame->p_result, chunk ? talloc_get_name(chunk) : "<none>"
 			);
 	} else {
 		RDEBUG2("sec_rcode      %s", fr_table_str_by_value(mod_rcode_table, frame->section_result.rcode, "<invalid>"));
@@ -261,7 +261,7 @@ void stack_dump_with_actions(request_t *request)
 
 /** Push a new frame onto the stack
  *
- * @param[in] result_p		Where to write the result of evaluating the section.
+ * @param[in] p_result		Where to write the result of evaluating the section.
  *				If NULL, results will be written to frame->section_result and will
  *				be automatically merged with the next highest frame when this one
  *				is popped.
@@ -277,7 +277,7 @@ void stack_dump_with_actions(request_t *request)
  *	- 0 on success.
  *	- -1 on call stack too deep.
  */
-int unlang_interpret_push(unlang_result_t *result_p, request_t *request,
+int unlang_interpret_push(unlang_result_t *p_result, request_t *request,
 			  unlang_t const *instruction, unlang_frame_conf_t const *conf, bool do_next_sibling)
 {
 	unlang_stack_t		*stack = request->stack;
@@ -328,8 +328,8 @@ int unlang_interpret_push(unlang_result_t *result_p, request_t *request,
 	frame->flag = UNLANG_FRAME_FLAG_NONE;
 	if (conf->top_frame) top_frame_set(frame);
 
-	frame->result_p = result_p ? result_p : &frame->section_result;
-	*frame->result_p = conf->default_result;
+	frame->p_result = p_result ? p_result : &frame->section_result;
+	*frame->p_result = conf->default_result;
 
 	frame->indent = request->log.indent;
 
@@ -449,7 +449,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 {
 	unlang_t const	*instruction = frame->instruction;
 	unlang_stack_t	*stack = request->stack;
-	unlang_result_t *frame_result = frame->result_p;
+	unlang_result_t *frame_result = frame->p_result;
 
 	if (is_unwinding(frame)) {
 		RDEBUG4("** [%i] %s - unwinding frame", stack->depth, __FUNCTION__);
@@ -611,7 +611,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 
 		talloc_free(frame->state);
 		unlang_frame_perf_cleanup(frame);
-		frame_state_init(stack, frame);	/* Don't change result_p */
+		frame_state_init(stack, frame);	/* Don't change p_result */
 		return UNLANG_FRAME_ACTION_RETRY;
 	default:
 		break;
@@ -633,7 +633,7 @@ finalize:
 			mod_action_name[frame_result->priority],
 			fr_table_str_by_value(mod_rcode_table, result->rcode, "<invalid>"),
 			mod_action_name[result->priority]);
-		*frame->result_p = *result;
+		*frame->p_result = *result;
 	}
 
 	/*
@@ -700,14 +700,14 @@ static inline CC_HINT(always_inline) void instruction_done_debug(request_t *requ
 		 */
 		if (RDEBUG_ENABLED && !RDEBUG_ENABLED2) {
 			RDEBUG("# %s %s%s%s", frame->instruction->debug_name,
-				frame->result_p == &frame->section_result ? "(" : "))",
-				fr_table_str_by_value(mod_rcode_table, frame->result_p->rcode, "<invalid>"),
-				frame->result_p == &frame->section_result ? "(" : "))");
+				frame->p_result == &frame->section_result ? "(" : "))",
+				fr_table_str_by_value(mod_rcode_table, frame->p_result->rcode, "<invalid>"),
+				frame->p_result == &frame->section_result ? "(" : "))");
 		} else {
 			RDEBUG2("} # %s %s%s%s", frame->instruction->debug_name,
-				frame->result_p == &frame->section_result ? "(" : "((",
-				fr_table_str_by_value(mod_rcode_table, frame->result_p->rcode, "<invalid>"),
-				frame->result_p == &frame->section_result ? ")" : "))");
+				frame->p_result == &frame->section_result ? "(" : "((",
+				fr_table_str_by_value(mod_rcode_table, frame->p_result->rcode, "<invalid>"),
+				frame->p_result == &frame->section_result ? ")" : "))");
 		}
 	}
 }
@@ -922,13 +922,13 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 	}
 
 pop:
-	fr_assert(MOD_ACTION_VALID(frame->result_p->priority));
+	fr_assert(MOD_ACTION_VALID(frame->p_result->priority));
 
 	RDEBUG4("** [%i] %s - done current subsection with (%s %s), %s",
 		stack->depth, __FUNCTION__,
-		fr_table_str_by_value(mod_rcode_table, frame->result_p->rcode, "<invalid>"),
-		mod_action_name[frame->result_p->priority],
-		frame->result_p == &(frame->section_result) ? "will set higher frame rcode" : "will NOT set higher frame rcode (result_p)");
+		fr_table_str_by_value(mod_rcode_table, frame->p_result->rcode, "<invalid>"),
+		mod_action_name[frame->p_result->priority],
+		frame->p_result == &(frame->section_result) ? "will set higher frame rcode" : "will NOT set higher frame rcode (p_result)");
 
 	return UNLANG_FRAME_ACTION_POP;
 }
@@ -1117,7 +1117,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 		 * 	been left as its default value which may be 0
 		 *	(reject).
 		 */
-		rcode = frame->result_p->rcode;
+		rcode = frame->p_result->rcode;
 
 		/*
 		 *	This usually means the request is complete in its
@@ -1252,7 +1252,7 @@ void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
 	 *	like too low level to make into a tuneable.
 	 */
 	MEM(stack = talloc_zero_pooled_object(ctx, unlang_stack_t, UNLANG_STACK_MAX, 128));	/* 128 bytes per state */
-	stack->frame[0].result_p = &stack->frame[0].section_result;
+	stack->frame[0].p_result = &stack->frame[0].section_result;
 	stack->frame[0].scratch_result = UNLANG_RESULT_NOT_SET;
 	stack->frame[0].section_result = UNLANG_RESULT_NOT_SET;
 	stack->frame[0].instruction = &unlang_instruction;	/* The top frame has no instruction, so we use a dummy one */
@@ -1555,7 +1555,7 @@ int unlang_interpret_stack_depth(request_t *request)
  */
 rlm_rcode_t unlang_interpret_rcode(request_t *request)
 {
-	return frame_current(request)->result_p->rcode;
+	return frame_current(request)->p_result->rcode;
 }
 
 /** Get the last instruction priority OR the last frame that was popped
@@ -1565,7 +1565,7 @@ rlm_rcode_t unlang_interpret_rcode(request_t *request)
  */
 unlang_mod_action_t unlang_interpret_priority(request_t *request)
 {
-	return frame_current(request)->result_p->priority;
+	return frame_current(request)->p_result->priority;
 }
 
 /** Get the last instruction result OR the last frame that was popped
@@ -1575,7 +1575,7 @@ unlang_mod_action_t unlang_interpret_priority(request_t *request)
  */
 unlang_result_t *unlang_interpret_result(request_t *request)
 {
-	return frame_current(request)->result_p;
+	return frame_current(request)->p_result;
 }
 
 /** Return whether a request is currently scheduled
