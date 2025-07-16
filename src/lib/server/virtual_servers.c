@@ -723,8 +723,7 @@ static inline CC_HINT(always_inline) int virtual_server_push_finally(request_t *
 
 		if (!vp) goto check_default;	/* No packet type found, still allow default finally section */
 
-		(void) fr_value_box_cast(NULL, &key, FR_TYPE_UINT16, NULL, &vp->data);
-		fr_assert(key.type == FR_TYPE_UINT16);	/* Cast must succeed */
+		if (fr_value_box_cast(NULL, &key, FR_TYPE_UINT16, NULL, &vp->data) < 0) return -1;
 
 		if (key.vb_uint16 >= talloc_array_length(vs->finally_by_packet_type) ||
 		    !(instruction = vs->finally_by_packet_type[key.vb_uint16])) goto check_default;

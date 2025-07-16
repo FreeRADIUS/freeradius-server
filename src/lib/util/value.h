@@ -1052,11 +1052,11 @@ ssize_t		fr_value_box_from_network(TALLOC_CTX *ctx,
 int		fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 				  fr_value_box_t const *src)
-		CC_HINT(nonnull(2,5));
+		CC_HINT(warn_unused_result,nonnull(2,5));
 
 int		fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 					   fr_type_t dst_type, fr_dict_attr_t const *dst_enumv)
-		CC_HINT(nonnull(1));
+		CC_HINT(warn_unused_result,nonnull(1));
 
 bool		fr_value_box_is_truthy(fr_value_box_t const *box)
 		CC_HINT(nonnull(1));

@@ -349,7 +349,10 @@ static unlang_action_t mod_authorize_resume(unlang_result_t *p_result, module_ct
 		case 0:		/* found */
 		{
 			fr_value_box_t	existing;
-			fr_value_box_cast(NULL, &existing, FR_TYPE_UINT64, NULL, &vp->data);
+			if (fr_value_box_cast(NULL, &existing, FR_TYPE_UINT64, NULL, &vp->data) < 0) {
+				RPEDEBUG("Failed casting to uint64");
+				RETURN_UNLANG_FAIL;
+			}
 			if (fr_value_box_cmp(&vb, &existing) == 1) {
 				RDEBUG2("Leaving existing %s value of %pV" , env->reply_attr->name,
 					&vp->data);
@@ -367,7 +370,10 @@ static unlang_action_t mod_authorize_resume(unlang_result_t *p_result, module_ct
 			RETURN_UNLANG_OK;
 		}
 
-		fr_value_box_cast(vp, &vp->data, vp->data.type, NULL, &vb);
+		if (fr_value_box_cast(vp, &vp->data, vp->data.type, NULL, &vb) < 0) {
+			RPEDEBUG("Failed casting to %s", fr_type_to_str(vp->data.type));
+			RETURN_UNLANG_FAIL;
+		}
 
 		RDEBUG2("%pP", vp);
 

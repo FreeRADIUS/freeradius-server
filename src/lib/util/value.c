@@ -6613,7 +6613,7 @@ bool fr_value_box_is_truthy(fr_value_box_t const *in)
 
 	default:
 		fr_value_box_init_null(&box);
-		(void) fr_value_box_cast(NULL, &box, FR_TYPE_BOOL, NULL, in);
+		if (fr_value_box_cast(NULL, &box, FR_TYPE_BOOL, NULL, in) < 0) return false;
 		return box.vb_bool;
 	}
 }
