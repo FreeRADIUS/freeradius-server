@@ -1606,7 +1606,7 @@ static void request_finish(REQUEST *request, int action)
 	 */
 	if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
 	    (request->reply->code == PW_CODE_ACCESS_REJECT) &&
-	    (request->root->reject_delay.tv_sec > 0)) {
+	    ((request->root->reject_delay.tv_sec > 0) || (request->root->reject_delay.tv_usec > 0))) {
 		request->response_delay = request->root->reject_delay;
 
 		vp = fr_pair_find_by_num(request->reply->vps, PW_FREERADIUS_RESPONSE_DELAY, 0, TAG_ANY);
