@@ -360,12 +360,12 @@ conf
 exit
 ```
 
-## RFC 3576 Change of Authorisation & Disconnect Message
+## RFC 3576 Change of Authorization & Disconnect Message
 
 RFC3576 operation is currently supported on all K and W branch switches. It is considered to be a 'premium' feature, so is unlikely to be backported, or included in lower end switch models.
 
 A RADIUS request with a Code of either 40 (Disconnect Request) or 43 (CoA Request) is sent to UDP port 3799 (default) on the switch.
-This request must include attributes that identify the NAS, attributes that identify the session, and in the case of CoA, attributes that form the new authorisation profile.
+This request must include attributes that identify the NAS, attributes that identify the session, and in the case of CoA, attributes that form the new authorization profile.
 RFC 3576 also recommends that an Event-Timestamp attribute be present for replay protection purposes, and that there be a maximum (default) delta of 300 seconds between the NAS time and the Event-Timestamp attribute included in the request.
 
 _Note: HP switches will silently discard any CoA or DM requests that do not have a valid Event-Timestamp attribute, this behaviour may be disabled on a server by server basis (see below for example)._
@@ -408,9 +408,9 @@ All CoA/DM requests must contain at least one NAS-Identification attribute (NAS-
 |NAS-IP-Address                |1         |Source IP for RADIUS requests (sent from the switch)                      |-            |``<ip-address>``
 |===
 
-### Authorisation attributes
+### Authorization attributes
 
-At least one of these attribute/attribute sets must be present in the CoA request else the NAS will return a CoA-NAK (Missing-Attribute). No authorisation attributes must be included in the disconnect message else the NAS will return a DM-NAK (Unsupported-Attribute).
+At least one of these attribute/attribute sets must be present in the CoA request else the NAS will return a CoA-NAK (Missing-Attribute). No authorization attributes must be included in the disconnect message else the NAS will return a DM-NAK (Unsupported-Attribute).
 
 |===
 |RADIUS Attribute                                                           |Times Used|Description

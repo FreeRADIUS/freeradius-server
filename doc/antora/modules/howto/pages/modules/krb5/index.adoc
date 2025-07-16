@@ -1,4 +1,4 @@
-= Kerberos 5 (krb5)
+= KRB5
 
 The `rlm_krb5` FreeRADIUS module enables the use of Kerberos 5 for
 authentication.

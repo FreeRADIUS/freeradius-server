@@ -1,7 +1,5 @@
 = Python
 
-== Introduction
-
 FreeRADIUS can call Python scripts in order to utilize third party libraries
 which are only available in Python, or to execute particularly complex
 policy.
@@ -100,7 +98,7 @@ return freeradius.RLM_MODULE_UPDATED
 The Python `instantiation` function can return -1 to signal failure and abort
 startup.
 
-== `freeradius` Python module
+== Python module
 
 FreeRADIUS provides a module, `freeradius`, which can be used by any
 Python scripts used by `rlm_python`.

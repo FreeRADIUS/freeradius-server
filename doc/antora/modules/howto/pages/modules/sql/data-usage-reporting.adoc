@@ -1,4 +1,4 @@
-= Periodic Data Usage Reporting
+= Data Usage Reporting
 
 == Introduction
 
@@ -20,7 +20,9 @@ updated in real time with optimal performance. However, this format has the
 caveat that _it is not possible to retrospectively determine in which time
 period data was consumed for any session that spans multiple time periods_.
 
-CAUTION: There exists several guides for configuring FreeRADIUS to report
+[CAUTION]
+====
+There exists several guides for configuring FreeRADIUS to report
 periodic data usage by users. These typically amend the standard queries to
 write potentially large amounts of additional accounting data, or artificially
 limit the lifetime of sessions by splitting them so that the start of each
@@ -28,10 +30,10 @@ reconnected session aligns with the start of the desired reporting interval and
 does not extend significantly beyond the end of the same interval. This places
 unnecessary load on both the RADIUS and database servers and may inconvenience
 a network’s users. There is usually no need to do either of these things.
+====
 
 FreeRADIUS provides a schema extension that implements a recommended approach
 suitable for most circumstances, which we describe here.
-
 
 == Requirements
 
@@ -46,7 +48,9 @@ already provide interim-update packets then it can normally be configured to do
 so, either through its static configuration or by returning an
 `Acct-Interim-Interval` RADIUS attribute in authentication response.
 
-NOTE: If you cannot enable the generation of interim-update packets yet
+[NOTE]
+====
+If you cannot enable the generation of interim-update packets yet
 still require reasonably accurate data usage reporting then you may have no
 choice but to set a `Session-Timeout` RADIUS attribute dynamically to cause the
 NAS to terminate long-running sessions and report their final data usage close
@@ -57,7 +61,7 @@ resources since disconnected devices will likely be trying to reauthenticate
 while other are still being disconnected. Either approach to terminating
 existing sessions will of course result in an interruption of connectivity for
 users.
-
+====
 
 == Solution
 
@@ -85,11 +89,14 @@ The update process appends a number of rows to the `data_usage_by_period` table
 that is equal to the number of users whose sessions were active within the
 current accounting period. It therefore makes efficient use of storage.
 
-TIP: The update process does not have to be called at regular intervals but in
+[TIP]
+====
+ The update process does not have to be called at regular intervals but in
 production is likely to be invoked either as a cronjob or using the database
 server’s event scheduler. It can be safely manually invoked (for debugging or
 ad hoc reporting purposes) as often as necessary outside of the normal schedule
 without impacting normal usage reporting.
+====
 
 For reporting purposes, the ad hoc periods within the `data_usage_by_period`
 table can be efficiently aggregated to provide data bucketed into the required
@@ -111,9 +118,12 @@ procedure that updates this table:
 mysql radius < /etc/raddb/mods-config/sql/main/mysql/process-radacct.sql
 ----
 
-NOTE: The above command assumes that passwordless login has been configured via
+[NOTE]
+====
+The above command assumes that passwordless login has been configured via
 the user's `~/.my.cnf` file, or otherwise. This command and subsequent commands
 should be adjusted accordingly where this is not the case.
+====
 
 Call the update process manually to create the initial accounting period for
 the historical data usage and start of the next period for future use:
@@ -169,11 +179,14 @@ with intervals that begin at the start of the day. Doing this allows accurate
 usage data to be reported for any interval that is some multiple of a day, yet
 no more often.
 
-CAUTION: If storage requirements and resources allow then the frequency with
+[CAUTION]
+====
+If storage requirements and resources allow then the frequency with
 which the `radacct` table is processed could be increased to hourly or even
 more often. However database _partitioning_ should be considered for
 performance reasons if this would result in an enormous number of rows in the
 `data_usage_by_period` table.
+====
 
 Next, enable daily processing of the `radacct` table by adding something like
 the following into the database user’s crontab:
@@ -225,16 +238,24 @@ To extract the aggregated data usage of a user bucketed in monthly periods the
  | 2020-January   | 5.436280540000 | 49.067775280000 |
  +----------------+----------------+-----------------+
 
-TIP: To obtain the overall data usage for all users the restriction on
+[TIP]
+====
+To obtain the overall data usage for all users the restriction on
 `username='bob'` can be dropped from the `WHERE` condition.
-
-TIP: The `process-radacct.sql` files contain example queries for reporting
+====
+[TIP]
+====
+The `process-radacct.sql` files contain example queries for reporting
 per-user data usage per month for the respective database flavour.
+====
 
 ================================================================================================
 
-NOTE: This example setup procedure will differ between databases but the steps
+[NOTE]
+====
+This example setup procedure will differ between databases but the steps
 will be substantially similar.
+====
 
 == Summary
 

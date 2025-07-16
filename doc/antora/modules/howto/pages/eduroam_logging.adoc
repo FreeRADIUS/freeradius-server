@@ -116,7 +116,7 @@ log the reply with the required attributes.
     }
 
 
-## Configuring logging
+## Configure logging
 
 The examples above use the linelog module as an example, but in
 reality many different logging methods could be used in the same

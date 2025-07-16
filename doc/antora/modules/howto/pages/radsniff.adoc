@@ -27,7 +27,7 @@ sudo apt-get install libpcap-dev libcollectdclient-dev
 
 There may be packages available for other systems, else you'll need to build the libraries from source, satisfying their dependencies manually.
 
-### Configuring
+### Configure
 
 If you wish to build a standalone binary of radsniff, you need to pass ``--with-shared-libs=no`` to the configure script, this disabled building with share libraries.
 
@@ -114,9 +114,9 @@ You'll also need to add the type definitions from [here](https://raw.githubuserc
 
 ```text
 -l 0 --vertical-label "PPS"
-DEF:received=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_count-<packet type>.rrd:received:AVERAGE 
-DEF:linked=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_count-<packet type>.rrd:linked:AVERAGE 
-DEF:unlinked=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_count-<packet type>.rrd:unlinked:AVERAGE 
+DEF:received=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_count-<packet type>.rrd:received:AVERAGE
+DEF:linked=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_count-<packet type>.rrd:linked:AVERAGE
+DEF:unlinked=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_count-<packet type>.rrd:unlinked:AVERAGE
 DEF:reused=/var/lib/collectd/rrd/<host>/<instance>exchanged/radius_count-<packet type>.rrd:reused:AVERAGE
 AREA:received#DD44CC:received
 AREA:linked#66BBCC:linked
@@ -144,13 +144,13 @@ LINE:trend86400#946A00:avg_day
 
 ```text
 -l 0  --vertical-label "Requests completed per second"
-DEF:none=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:none:AVERAGE 
-DEF:1=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:1:AVERAGE 
-DEF:2=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:2:AVERAGE 
+DEF:none=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:none:AVERAGE
+DEF:1=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:1:AVERAGE
+DEF:2=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:2:AVERAGE
 DEF:3=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:3:AVERAGE
 DEF:4=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:4:AVERAGE
 DEF:more=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:more:AVERAGE
-DEF:lost=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:lost:AVERAGE 
+DEF:lost=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:lost:AVERAGE
 AREA:none#2AD400:none
 STACK:1#4DB000:1
 STACK:2#718D00:2
@@ -196,7 +196,7 @@ Then restart munin-node.
 
 To monitor multiple packet types create additional symlinks to the radsniff plugin, and alter ``env.pkt_type``. If running multiple instances of radsniff you should also set ``env.instance`` to the ``<instance name>`` used above.
 
-If collectd is aggregating stats from multiple hosts you'll also need to set ``env.host``. 
+If collectd is aggregating stats from multiple hosts you'll also need to set ``env.host``.
 
 ### Caveats
 

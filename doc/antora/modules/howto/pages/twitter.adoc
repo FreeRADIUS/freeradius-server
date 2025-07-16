@@ -52,7 +52,7 @@ And add this to policy.d/twitter
 #	 authenticate users against twitter. It is purely for integration with
 #	 the API.
 #
-#  Note: Unless you're using twitter as part of an authorisation scheme, you should
+#  Note: Unless you're using twitter as part of an authorization scheme, you should
 #	 use a detail reader/writer pair to provide a buffer in case the twitter
 #	 API becomes unavailable/unreachable. You don't want authentication to be
 #        delayed while waiting for a twitter API request to time out.

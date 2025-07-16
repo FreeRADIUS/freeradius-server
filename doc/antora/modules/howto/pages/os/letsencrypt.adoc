@@ -62,7 +62,7 @@ We will be setting up the following components:
 
 - Running `certbot` to issue the certificate.
 
-- Configuring FreeRADIUS to use the LetsEncrypt issued certificate
+- Configure FreeRADIUS to use the LetsEncrypt issued certificate
   and associated private key.
 
 This document is based on a Debian system (version 12 at the time

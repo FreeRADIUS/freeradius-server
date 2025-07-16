@@ -1,4 +1,4 @@
-= Configuring Authorization
+= Configure Authorization
 
 The `authorize` method of the LDAP module is responsible for locating the
 authenticating user's LDAP object.
@@ -10,7 +10,7 @@ You should complete the xref:modules/ldap/base_configuration/index.adoc[base con
 of the LDAP module before attempting to complete any of the howto sections
 listed below.
 
-== xref:modules/ldap/authorization/locating_the_user.adoc[Locating the user]
+== xref:modules/ldap/authorization/locating_the_user.adoc[Locate a user]
 
 No matter what functionality of the LDAP module is being used you must
 specify search DNs and filters that uniquely identify the authenticating
@@ -19,7 +19,7 @@ user in the directory.
 This section should be competed first before attempting any more advanced
 configurations.
 
-== xref:modules/ldap/authorization/user_disambiguation.adoc[Disambiguating user objects]
+== xref:modules/ldap/authorization/user_disambiguation.adoc[Disambiguate user objects]
 
 In some instances the same user may have objects in different areas of the
 LDAP directory.
@@ -30,7 +30,7 @@ the LDAP module will reject the authentication attempt.
 This section discusses strategies to disambiguate user objects, and select
 a single user object consistently.
 
-== xref:modules/ldap/authorization/user_account_controls.adoc[Configuring the enable/disable attribute]
+== xref:modules/ldap/authorization/user_account_controls.adoc[Control user accounts]
 
 In some instances it is useful to enable or disable user accounts without
 removing the objects from the directory.

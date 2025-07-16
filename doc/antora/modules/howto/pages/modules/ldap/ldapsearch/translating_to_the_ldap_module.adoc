@@ -1,4 +1,4 @@
-= Translating ldapsearch arguments to LDAP configuration items
+= Generate LDAP Configuration Items
 
 [width="100%",cols="30%,20%,50%",options="header",]
 |===
@@ -31,7 +31,7 @@
                                                 ```access_positive = 'yes'```
 |===
 
-== Groups - Common
+== Groups - common
 
 [width="100%",cols="30%,70%",options="header",]
 |===

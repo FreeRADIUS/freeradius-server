@@ -1,4 +1,4 @@
-= Bootstrap NGINX
+= Install and Configure NGINX
 
 NGINX itself should be installed from packages provided with your OS.
 

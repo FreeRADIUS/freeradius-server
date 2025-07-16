@@ -1,4 +1,4 @@
-= Before starting
+= Prerequisites
 
 Try to determine answers to the following questions:
 

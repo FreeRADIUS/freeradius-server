@@ -1,4 +1,4 @@
-= Installing OpenLDAP from packages
+= Install OpenLDAP from packages
 
 == Switch to privileged user
 

@@ -1,4 +1,4 @@
-== Configuring FreeRADIUS as a RadSec test client
+== Configure FreeRADIUS as a RadSec test client
 
 Unfortunately, the `radclient` program does not support RadSec.  We
 must therefore configure an instance of FreeRADIUS as a "transport

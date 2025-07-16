@@ -1,4 +1,4 @@
-= Disambiguating user objects
+= Disambiguate User Objects
 
 In some instances a user may have objects located in multiple areas of
 the LDAP directory.
@@ -29,7 +29,7 @@ As the error message states, there are multiple ways to resolve this issue:
 4. As a last resort you can enable the Server Side Sorting extension (if
    supported) on the LDAP server (see below).
 
-== Enabling and configuring Server Side Sorting
+== Enable and configure Server Side Sorting
 
 Server Side Sorting controls are specified by
 https://tools.ietf.org/html/rfc2891[RFC 2891].
@@ -44,7 +44,7 @@ Without SSS which object is used by the LDAP module will be essentially random.
 [TIP]
 ====
 If you followed the
-xref:modules/ldap/bootstrap_openldap/packages.adoc[Installing OpenLDAP from
+xref:modules/ldap/bootstrap_openldap/packages.adoc[Install OpenLDAP from
 packages] section you can enable the Server Side Sorting (SSS) overlay via OLC
 using the ldif below.
 
@@ -60,7 +60,7 @@ EOF
 ----
 ====
 
-== Editing mods-available/ldap to enable Server Side Sorting
+== Edit mods-available/ldap to enable Server Side Sorting
 
 [source,config]
 ----

@@ -1,4 +1,4 @@
-= Installing and Configuring OpenLDAP
+= Install and Configure OpenLDAP
 
 This section of the howto describes two methods of creating an OpenLDAP instance for
 testing purposes.

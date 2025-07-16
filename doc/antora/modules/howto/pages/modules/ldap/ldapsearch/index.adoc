@@ -1,4 +1,4 @@
-= Mapping and testing with ldapsearch
+= Map and Test with ldapsearch
 
 Every LDAP directory is different.  Each directory has different connection parameters,
 locations for objects, and attributes within those objects.
@@ -12,21 +12,21 @@ issues is that a firewall is preventing network access from the RADIUS server to
 the LDAP server. Running `ldapsearch` on a third machine may not reveal these
 firewall issues.
 
-== xref:modules/ldap/ldapsearch/before_starting.adoc[Before starting]
+== xref:modules/ldap/ldapsearch/before_starting.adoc[Prerequisites]
 
 What questions to ask your LDAP administrator before you begin working with the
 directory.
 
-== xref:modules/ldap/ldapsearch/connection_parameters.adoc[Determining connection parameters]
+== xref:modules/ldap/ldapsearch/connection_parameters.adoc[Determine Connection Parameters]
 
 Discover through trial and error, what connection parameters the LDAP
 directory requires.
 
-== xref:modules/ldap/ldapsearch/locating_objects.adoc[Locating objects]
+== xref:modules/ldap/ldapsearch/locating_objects.adoc[Locate objects]
 
 Discover where users and groups are located within the directory.
 
-== xref:modules/ldap/ldapsearch/translating_to_the_ldap_module.adoc[Using results to configure the LDAP module]
+== xref:modules/ldap/ldapsearch/translating_to_the_ldap_module.adoc[Use Results to Configure the LDAP Module]
 
 Translate LDAP search arguments and the results from previous sections
 into LDAP module configuration items.

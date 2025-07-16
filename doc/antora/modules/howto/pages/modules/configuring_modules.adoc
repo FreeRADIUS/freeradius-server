@@ -26,14 +26,14 @@ and all errors before proceeding to the next step.  It is a good idea
 to ensure that the current configuration works _before_ making changes
 to it.
 
-== Editing mods-available/MODULE
+== Edit mods-available/MODULE
 
 As with all FreeRADIUS configuration files, please change at little as
 possible in the default configuration.  The defaults are usually close
 to being correct.  All that is necessary is to make minor changes, and
 _test_ them.  FreeRADIUS should look for data.
 
-== Enabling mods-available/MODULE
+== Enable mods-available/MODULE
 
 A module is enabled by creating a soft link from the `mods-enabled/`
 directory to the `mods-available/` directory.
@@ -51,7 +51,7 @@ This process leaves the original `mods-available/MODULE` configuration
 file in place, if there is a need to refer to it in the future.  The
 choice of which method to use is up to the local administrator.
 
-== Testing the Server
+== Test the server
 
 The configuration of the server can be tested for syntactical
 correctness via the following command:

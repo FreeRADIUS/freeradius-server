@@ -1,4 +1,4 @@
-= rlm_mschap
+= MS-CHAP
 
 include::ROOT:partial$v3_warning.adoc[]
 
@@ -21,9 +21,7 @@ controller.
 These are the ONLY possibilities; MS-CHAP is IMPOSSIBLE if you e.g. only
 have the unix/md5/sha crypt of your users password.
 
-For more info, see:
-
-http://deployingradius.com/documents/protocols/compatibility.html
+See the xref:concepts:protocol/authproto.adoc#Proto-Password-Compat[protocol compatability chart] for more information.
 
 == EAP-MSCHAPv2
 
@@ -50,7 +48,7 @@ i.e. user@domain
 
 You’ll need to fit this to your local needs.
 
-=== Disabling ntlm_auth for some users
+=== Disable ntlm_auth for some users
 
 You might have some users in the domain, and others in files or SQL that
 you want to authenticate locally. To do this, set::
@@ -180,13 +178,16 @@ Or:
 local_cpw = `%exec('/my/script', %{User-Name}, %{MS-CHAP-New-Cleartext-Password})`
 ```
 
-WARNING: Wherever possible, you should use `MS-CHAP-New-NT-Password`. The
+[WARNING]
+====
+Wherever possible, you should use `MS-CHAP-New-NT-Password`. The
 reason is that cleartext passwords have undergone unicode transformation
 from the client encoding (utf-16) to the server encoding (utf-8) and the
 current code does this in a very ad-hoc way. The reverse transformation
 is also not done - when the server reads Password.Cleartext out of
 files/database, it assumes US-ASCII and thus international characters
 will fail.
+====
 
 N.B. this could be fixed, if we wanted to pull in something like iconv.
 
