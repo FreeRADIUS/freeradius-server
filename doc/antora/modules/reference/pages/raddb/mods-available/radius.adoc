@@ -95,7 +95,8 @@ The module has the following return codes:
                 or the reply packet is invalid.
 | ok          | the module received an `ack` (`link:https://freeradius.org/rfc/rfc2865.html#Access-Accept[Access-Accept]`,
                 `link:https://freeradius.org/rfc/rfc2866.html#Accounting-Response[Accounting-Response]`, `CoA-ACK`, etc.)
-| handled     | the module received an `link:https://freeradius.org/rfc/rfc2865.html#Access-Challenge[Access-Challenge]`
+| updated     | the module received an `link:https://freeradius.org/rfc/rfc2865.html#Access-Challenge[Access-Challenge]`
+| handled     | the module received a `Protocol-Error`
 | fail        | there was no response to the proxied request
 | reject      | the module received a `nak` (`link:https://freeradius.org/rfc/rfc2865.html#Access-Reject[Access-Reject]`, `CoA-NAK`, etc.)
 | noop        | the module saw its own `link:https://freeradius.org/rfc/rfc2865.html#Proxy-State[Proxy-State]` attribute,

@@ -98,7 +98,8 @@
 #                  or the reply packet is invalid.
 #  | ok          | the module received an `ack` (`Access-Accept`,
 #                  `Accounting-Response`, `CoA-ACK`, etc.)
-#  | handled     | the module received an `Access-Challenge`
+#  | updated     | the module received an `Access-Challenge`
+#  | handled     | the module received a `Protocol-Error`
 #  | fail        | there was no response to the proxied request
 #  | reject      | the module received a `nak` (`Access-Reject`, `CoA-NAK`, etc.)
 #  | noop        | the module saw its own `Proxy-State` attribute,
