@@ -33,6 +33,8 @@ jobs:
     # Map a step output to a job output
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
+      selfhosted: ${{ github.repository_owner == 'FreeRADIUS' && '1' || '0' }}
+      docker_prefix: ${{ github.repository_owner == 'FreeRADIUS' && 'docker.internal.networkradius.com/' || '' }}
     steps:
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@master
