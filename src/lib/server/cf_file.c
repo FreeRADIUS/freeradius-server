@@ -30,8 +30,11 @@
  */
 RCSID("$Id$")
 
+#include <sys/errno.h>
+
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_priv.h>
+#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/util.h>
@@ -40,9 +43,9 @@ RCSID("$Id$")
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/perm.h>
+#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/skip.h>
 #include <freeradius-devel/util/md5.h>
-
 
 #ifdef HAVE_DIRENT_H
 #  include <dirent.h>
@@ -655,24 +658,259 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 	return 0;
 }
 
+/** Set the euid/egid used when performing file checks
+ *
+ * Sets the euid, and egid used when cf_file_check is called to check
+ * permissions on conf items of type #CONF_FLAG_FILE_READABLE
+ *
+ * @note This is probably only useful for the freeradius daemon itself.
+ *
+ * @param uid to set, (uid_t)-1 to use current euid.
+ * @param gid to set, (gid_t)-1 to use current egid.
+ */
+void cf_file_check_set_uid_gid(uid_t uid, gid_t gid)
+{
+	if (uid != 0) conf_check_uid = uid;
+	if (gid != 0) conf_check_gid = gid;
+}
+
+/** Perform an operation with the effect/group set to conf_check_gid and conf_check_uid
+ *
+ * @param filename		CONF_PAIR for the file being checked
+ * @param cb			callback function to perform the check
+ * @param uctx			user context for the callback
+ * @return
+ *	- CF_FILE_OTHER_ERROR if there was a problem modifying permissions
+ *	- The return value from the callback
+ */
+cf_file_check_err_t cf_file_check_effective(char const *filename,
+					    cf_file_check_err_t (*cb)(char const *filename, void *uctx), void *uctx)
+{
+	int ret;
+
+	uid_t euid = (uid_t)-1;
+	gid_t egid = (gid_t)-1;
+
+	if ((conf_check_gid != (gid_t)-1) && ((egid = getegid()) != conf_check_gid)) {
+		if (setegid(conf_check_gid) < 0) {
+			fr_strerror_printf("Failed setting effective group ID (%d) for file check: %s",
+					   (int) conf_check_gid, fr_syserror(errno));
+			return CF_FILE_OTHER_ERROR;
+		}
+	}
+	if ((conf_check_uid != (uid_t)-1) && ((euid = geteuid()) != conf_check_uid)) {
+		if (seteuid(conf_check_uid) < 0) {
+			fr_strerror_printf("Failed setting effective user ID (%d) for file check: %s",
+					   (int) conf_check_uid, fr_syserror(errno));
+			return CF_FILE_OTHER_ERROR;
+		}
+	}
+	ret = cb(filename, uctx);
+	if (conf_check_uid != euid) {
+		if (seteuid(euid) < 0) {
+			fr_strerror_printf("Failed restoring effective user ID (%d) after file check: %s",
+					   (int) euid, fr_syserror(errno));
+			return CF_FILE_OTHER_ERROR;
+		}
+	}
+	if (conf_check_gid != egid) {
+		if (setegid(egid) < 0) {
+			fr_strerror_printf("Failed restoring effective group ID (%d) after file check: %s",
+					   (int) egid, fr_syserror(errno));
+			return CF_FILE_OTHER_ERROR;
+		}
+	}
+
+	return ret;
+}
+
+/** Check if we can connect to a unix socket
+ *
+ * @param[in] filename		CONF_PAIR for the unix socket path
+ * @param[in] uctx		user context, not used
+ * @return
+ *	- CF_FILE_OK if the socket exists and is accessible.
+ *	- -1 if we couldn't create a new file descriptor.
+ *	- -2 if the file doesn't exist.
+ *	- -3 if the file exists but is not accessible.
+ *	- -4 any other error.
+ */
+cf_file_check_err_t cf_file_check_unix_connect(char const *filename, UNUSED void *uctx)
+{
+	int fd;
+	cf_file_check_err_t ret = CF_FILE_OK;
+
+	struct sockaddr_un addr = { .sun_family = AF_UNIX };
+
+	fr_strerror_clear();
+
+	if (talloc_strlen(filename) >= sizeof(addr.sun_path)) {
+		fr_strerror_printf("Socket path \"%s\" to long", filename);
+		return CF_FILE_OTHER_ERROR;
+	}
+
+	strncpy(addr.sun_path, filename, sizeof(addr.sun_path) - 1);
+
+	fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (fd < 0) {
+		fr_strerror_printf("Failed checking permissions for \"%s\": %s",
+				   filename, fr_syserror(errno));
+		return CF_FILE_OTHER_ERROR;
+	}
+	if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) {
+		fr_strerror_printf("Failed setting non-blocking mode for socket %s: %s",
+				   filename, fr_syserror(errno));
+		close(fd);
+		return CF_FILE_OTHER_ERROR;
+	}
+
+	if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+		switch (errno) {
+		case EINPROGRESS:	/* This is fine */
+			break;
+
+		case ENOENT:
+			fr_strerror_printf("Socket path \"%s\" does not exist", filename);
+			ret = CF_FILE_NO_EXIST;
+			break;
+
+		case EACCES:
+			fr_perm_file_error(errno);
+			fr_strerror_printf_push("Socket path \"%s\" exists but is not accessible", filename);
+			ret = CF_FILE_NO_PERMISSION;
+			break;
+
+		case ENOTSOCK:
+			fr_strerror_printf("File \"%s\" is not a socket", filename);
+			ret = CF_FILE_NO_UNIX_SOCKET;
+			break;
+
+		default:
+			fr_strerror_printf("Failed connecting to socket %s: %s", filename, fr_syserror(errno));
+			ret = CF_FILE_OTHER_ERROR;
+			break;
+		}
+	}
+
+	close(fd);
+
+	return ret;
+}
+
+/** Check if file exists, and is a socket
+ *
+ * @param[in] filename		CONF_PAIR for the unix socket path
+ * @param[in] uctx		user context, not used
+ * @return
+ *	- CF_FILE_OK if the socket exists and is a socket.
+ *	- CF_FILE_NO_EXIST if the file doesn't exist.
+ *	- CF_FILE_NO_PERMISSION if the file exists but is not accessible.
+ *	- CF_FILE_NO_UNIX_SOCKET if the file exists but is not a socket.
+ *	- CF_FILE_OTHER_ERROR any other error.
+ */
+cf_file_check_err_t cf_file_check_unix_perm(char const *filename, UNUSED void *uctx)
+{
+	struct stat buf;
+
+	fr_strerror_clear();
+
+	if (stat(filename, &buf) < 0) {
+		switch (errno) {
+		case ENOENT:
+			fr_strerror_printf("Socket path \"%s\" does not exist", filename);
+			return CF_FILE_NO_EXIST;
+
+		case EPERM:
+		case EACCES:
+			fr_perm_file_error(errno);
+			fr_strerror_printf_push("Socket path \"%s\" exists but is not accessible: %s",
+				    filename, fr_syserror(errno));
+			return CF_FILE_NO_PERMISSION;
+
+		default:
+			fr_strerror_printf("Unable to state socket \"%s\": %s", filename, fr_syserror(errno));
+			return CF_FILE_OTHER_ERROR;
+		}
+	}
+
+	if (!S_ISSOCK(buf.st_mode)) {
+		fr_strerror_printf("File \"%s\" is not a socket", filename);
+		return CF_FILE_NO_UNIX_SOCKET;
+	}
+
+	return CF_FILE_OK;
+}
+
+/** Callback for cf_file_check to open a file and check permissions.
+ *
+ * This is used to check if a file exists, and is readable by the
+ * unprivileged user/group.
+ *
+ * @param filename	currently being processed.
+ * @param uctx		user context, which is a pointer to cf_file_t
+ * @return
+ *	- CF_FILE_OK if the file exists and is readable.
+ *	- CF_FILE_NO_EXIST if the file does not exist.
+ *	- CF_FILE_NO_PERMISSION if the file exists but is not accessible.
+ *	- CF_FILE_OTHER_ERROR if there was any other error.
+ */
+cf_file_check_err_t cf_file_check_open_read(char const *filename, void *uctx)
+{
+	int fd;
+	cf_file_t *file = uctx;
+
+	fr_strerror_clear();
+
+	fd = open(filename, O_RDONLY);
+	if (fd < 0) {
+	error:
+		if (fd >= 0) close(fd);
+
+		switch (errno) {
+		case ENOENT:
+			fr_strerror_printf("File \"%s\" does not exist", filename);
+			return CF_FILE_NO_EXIST;
+
+		case EPERM:
+		case EACCES:
+			fr_perm_file_error(errno);
+			fr_strerror_printf_push("File \"%s\" exists but is not accessible: %s",
+						filename, fr_syserror(errno));
+			return CF_FILE_NO_PERMISSION;
+
+		default:
+			fr_strerror_printf("Unable to open file \"%s\": %s", filename, fr_syserror(errno));
+			return CF_FILE_OTHER_ERROR;
+
+		}
+	}
+
+	if (file && fstat(fd, &file->buf) < 0) goto error;
+
+	close(fd);
+	return CF_FILE_OK;
+}
+
 /** Do some checks on the file as an "input" file.  i.e. one read by a module.
  *
  * @note Must be called with super user privileges.
  *
  * @param cp		currently being processed.
- * @param check_perms	If true - will return false if file is world readable,
+ * @param check_perms	If true - will return error if file is world readable,
  *			or not readable by the unprivileged user/group.
  * @return
- *	- true if permissions are OK, or the file exists.
- *	- false if the file does not exist or the permissions are incorrect.
+ *	- CF_FILE_OK if the socket exists and is a socket.
+ *	- CF_FILE_NO_EXIST if the file doesn't exist.
+ *	- CF_FILE_NO_PERMISSION if the file exists but is not accessible.
+ *	- CF_FILE_OTHER_ERROR any other error.
  */
-bool cf_file_check(CONF_PAIR *cp, bool check_perms)
+cf_file_check_err_t cf_file_check(CONF_PAIR *cp, bool check_perms)
 {
-	cf_file_t	*file;
-	CONF_SECTION	*top;
-	fr_rb_tree_t	*tree;
-	char const 	*filename = cf_pair_value(cp);
-	int		fd = -1;
+	cf_file_t		*file;
+	CONF_SECTION		*top;
+	fr_rb_tree_t		*tree;
+	char const 		*filename = cf_pair_value(cp);
+	cf_file_check_err_t	ret;
 
 	top = cf_root(cp);
 	tree = cf_data_value(cf_data_find(top, fr_rb_tree_t, "filename"));
@@ -686,16 +924,14 @@ bool cf_file_check(CONF_PAIR *cp, bool check_perms)
 
 	if (!check_perms) {
 		if (stat(filename, &file->buf) < 0) {
-		perm_error:
 			fr_perm_file_error(errno);	/* Write error and euid/egid to error buff */
 			cf_log_perr(cp, "Unable to open file \"%s\"", filename);
 		error:
-			if (fd >= 0) close(fd);
 			talloc_free(file);
-			return false;
+			return CF_FILE_OTHER_ERROR;
 		}
 		talloc_free(file);
-		return true;
+		return CF_FILE_OK;
 	}
 
 	/*
@@ -703,52 +939,17 @@ bool cf_file_check(CONF_PAIR *cp, bool check_perms)
 	 *	to check that the file can be read with the
 	 *	euid/egid.
 	 */
-	{
-		uid_t euid = (uid_t)-1;
-		gid_t egid = (gid_t)-1;
-
-		if ((conf_check_gid != (gid_t)-1) && ((egid = getegid()) != conf_check_gid)) {
-			if (setegid(conf_check_gid) < 0) {
-				cf_log_perr(cp, "Failed setting effective group ID (%d) for file check: %s",
-					    (int) conf_check_gid, fr_syserror(errno));
-				goto error;
-			}
-		}
-		if ((conf_check_uid != (uid_t)-1) && ((euid = geteuid()) != conf_check_uid)) {
-			if (seteuid(conf_check_uid) < 0) {
-				cf_log_perr(cp, "Failed setting effective user ID (%d) for file check: %s",
-					    (int) conf_check_uid, fr_syserror(errno));
-				goto error;
-			}
-		}
-		fd = open(filename, O_RDONLY);
-		if (conf_check_uid != euid) {
-			if (seteuid(euid) < 0) {
-				cf_log_perr(cp, "Failed restoring effective user ID (%d) after file check: %s",
-					    (int) euid, fr_syserror(errno));
-				goto error;
-			}
-		}
-		if (conf_check_gid != egid) {
-			if (setegid(egid) < 0) {
-				cf_log_perr(cp, "Failed restoring effective group ID (%d) after file check: %s",
-					    (int) egid, fr_syserror(errno));
-				goto error;
-			}
-		}
+	ret = cf_file_check_effective(filename, cf_file_check_open_read, file);
+	if (ret < 0) {
+		cf_log_perr(cp, "Permissions check failed");
+		goto error;
 	}
-
-	if (fd < 0) goto perm_error;
-	if (fstat(fd, &file->buf) < 0) goto perm_error;
-
-	close(fd);
-
 #ifdef S_IWOTH
 	if ((file->buf.st_mode & S_IWOTH) != 0) {
 		cf_log_perr(cp, "Configuration file %s is globally writable.  "
 		            "Refusing to start due to insecure configuration.", filename);
 		talloc_free(file);
-		return false;
+		return CF_FILE_OTHER_ERROR;
 	}
 #endif
 
@@ -757,7 +958,7 @@ bool cf_file_check(CONF_PAIR *cp, bool check_perms)
 	 */
 	if (!fr_rb_insert(tree, file)) talloc_free(file);
 
-	return true;
+	return CF_FILE_OK;
 }
 
 /*
@@ -3421,22 +3622,6 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 void cf_file_free(CONF_SECTION *cs)
 {
 	talloc_free(cs);
-}
-
-/** Set the euid/egid used when performing file checks
- *
- * Sets the euid, and egid used when cf_file_check is called to check
- * permissions on conf items of type #CONF_FLAG_FILE_INPUT
- *
- * @note This is probably only useful for the freeradius daemon itself.
- *
- * @param uid to set, (uid_t)-1 to use current euid.
- * @param gid to set, (gid_t)-1 to use current egid.
- */
-void cf_file_check_user(uid_t uid, gid_t gid)
-{
-	if (uid != 0) conf_check_uid = uid;
-	if (gid != 0) conf_check_gid = gid;
 }
 
 static char const parse_tabs[] = "																																																																																																																																																																																																								";

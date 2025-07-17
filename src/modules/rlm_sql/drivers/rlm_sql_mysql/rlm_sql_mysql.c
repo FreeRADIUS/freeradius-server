@@ -101,12 +101,12 @@ typedef struct {
 } rlm_sql_mysql_t;
 
 static conf_parser_t tls_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_ca_file) },
-	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_ca_path) },
-	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_certificate_file) },
-	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_private_key_file) },
-	{ FR_CONF_OFFSET_FLAGS("crl_file", CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_crl_file) },
-	{ FR_CONF_OFFSET_FLAGS("crl_path", CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_crl_path) },
+	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_READABLE, rlm_sql_mysql_t, tls_ca_file) },
+	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_READABLE, rlm_sql_mysql_t, tls_ca_path) },
+	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_READABLE, rlm_sql_mysql_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_READABLE, rlm_sql_mysql_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET_FLAGS("crl_file", CONF_FLAG_FILE_READABLE, rlm_sql_mysql_t, tls_crl_file) },
+	{ FR_CONF_OFFSET_FLAGS("crl_path", CONF_FLAG_FILE_READABLE, rlm_sql_mysql_t, tls_crl_path) },
 	/*
 	 *	MySQL Specific TLS attributes
 	 */

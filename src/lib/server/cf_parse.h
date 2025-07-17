@@ -437,27 +437,30 @@ typedef enum CC_HINT(flag_enum) {
 									//!< (deprecated, use #CONF_FLAG_TMPL).
 	CONF_FLAG_SECRET		= (1 << 13),			 //!< Only print value if debug level >= 3.
 
-	CONF_FLAG_FILE_INPUT		= (1 << 14),			//!< File matching value must exist,
+	CONF_FLAG_FILE_READABLE		= (1 << 14),			//!< File matching value must exist,
 								     	//!< and must be readable.
-	CONF_FLAG_FILE_OUTPUT		= (1 << 15),			//!< File matching value must exist,
+	CONF_FLAG_FILE_WRITABLE		= (1 << 15),			//!< File matching value must exist,
 									//!< and must be writable.
+	CONF_FLAG_FILE_SOCKET		= (1 << 16),			//!< File matching value must exist,
+									//!< and must be a unix socket.
+	CONF_FLAG_FILE_EXISTS		= (1 << 17),			//!< File matching value must exist
 
-	CONF_FLAG_XLAT			= (1 << 16), 			//!< string will be dynamically expanded.
-	CONF_FLAG_TMPL			= (1 << 17), 			//!< CONF_PAIR should be parsed as a template.
+	CONF_FLAG_XLAT			= (1 << 18), 			//!< string will be dynamically expanded.
+	CONF_FLAG_TMPL			= (1 << 19), 			//!< CONF_PAIR should be parsed as a template.
 
-	CONF_FLAG_MULTI			= (1 << 18), 			//!< CONF_PAIR can have multiple copies.
-	CONF_FLAG_NOT_EMPTY		= (1 << 19),			//!< CONF_PAIR is required to have a non zero
+	CONF_FLAG_MULTI			= (1 << 20), 			//!< CONF_PAIR can have multiple copies.
+	CONF_FLAG_NOT_EMPTY		= (1 << 21),			//!< CONF_PAIR is required to have a non zero
 									//!< length value.
-	CONF_FLAG_FILE_EXISTS		= (1 << 20),			//!< File matching value must exist
 
-	CONF_FLAG_IS_SET		= (1 << 21),			//!< Write whether this config item was
+
+	CONF_FLAG_IS_SET		= (1 << 22),			//!< Write whether this config item was
 									//!< left as the default to is_set_offset
 									//!< or is_set_ptr.
-	CONF_FLAG_OK_MISSING     	= (1 << 22), 			//!< OK if it's missing
-	CONF_FLAG_HIDDEN		= (1 << 23),			//!< Used by scripts to omit items from the
+	CONF_FLAG_OK_MISSING     	= (1 << 23), 			//!< OK if it's missing
+	CONF_FLAG_HIDDEN		= (1 << 24),			//!< Used by scripts to omit items from the
 									///< generated documentation.
-	CONF_FLAG_REF			= (1 << 24),			//!< reference another conf_parser_t inline in this one
-	CONF_FLAG_OPTIONAL     		= (1 << 25),			//!< subsection is pushed only if a non-optional matching one is pushed
+	CONF_FLAG_REF			= (1 << 25),			//!< reference another conf_parser_t inline in this one
+	CONF_FLAG_OPTIONAL     		= (1 << 26),			//!< subsection is pushed only if a non-optional matching one is pushed
 } conf_parser_flags_t;
 DIAG_ON(attributes)
 
@@ -473,10 +476,13 @@ DIAG_ON(attributes)
 
 #define fr_rule_secret(_rule)		((_rule)->flags & CONF_FLAG_SECRET)
 
-#define fr_rule_file_input(_rule)	((_rule)->flags & CONF_FLAG_FILE_INPUT)
+#define fr_rule_file_readable(_rule)	((_rule)->flags & CONF_FLAG_FILE_READABLE)
 
-#define fr_rule_file_output(_rule)	((_rule)->flags & CONF_FLAG_FILE_OUTPUT)
+#define fr_rule_file_writable(_rule)	((_rule)->flags & CONF_FLAG_FILE_WRITABLE)
 
+#define fr_rule_file_socket(_rule)	((_rule)->flags & CONF_FLAG_FILE_SOCKET)
+
+#define fr_rule_file_exists(_rule)	((_rule)->flags & CONF_FLAG_FILE_EXISTS)
 
 #define fr_rule_multi(_rule)		((_rule)->flags & CONF_FLAG_MULTI)
 
@@ -485,8 +491,6 @@ DIAG_ON(attributes)
 #define fr_rule_is_set(_rule)		((_rule)->flags & CONF_FLAG_IS_SET)
 
 #define fr_rule_ok_missing(_rule)	((_rule)->flags & CONF_FLAG_OK_MISSING)
-
-#define fr_rule_file_exists(_rule)	((_rule)->flags & CONF_FLAG_FILE_EXISTS)
 
 #define fr_rule_dflt(_rule)		((_rule)->dflt || (_rule)->dflt_func)
 

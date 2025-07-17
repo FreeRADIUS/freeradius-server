@@ -78,7 +78,7 @@ fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED | CONF_FLAG_FILE_INPUT, rlm_files_t, filename) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED | CONF_FLAG_FILE_READABLE, rlm_files_t, filename) },
 	{ FR_CONF_OFFSET("v3_compat", rlm_files_t, v3_compat) },
 	CONF_PARSER_TERMINATOR
 };

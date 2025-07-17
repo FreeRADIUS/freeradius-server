@@ -79,7 +79,7 @@ struct proto_load_step_s {
 
 
 static const conf_parser_t load_listen_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_load_step_t, filename) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_load_step_t, filename) },
 	{ FR_CONF_OFFSET("csv", proto_load_step_t, csv) },
 
 	{ FR_CONF_OFFSET("max_attributes", proto_load_step_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) } ,

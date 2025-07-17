@@ -130,7 +130,7 @@ typedef struct {
 
 
 static const conf_parser_t file_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_OUTPUT | CONF_FLAG_XLAT, rlm_logtee_t, file.name) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_WRITABLE | CONF_FLAG_XLAT, rlm_logtee_t, file.name) },
 	{ FR_CONF_OFFSET("permissions", rlm_logtee_t, file.permissions), .dflt = "0600" },
 	{ FR_CONF_OFFSET("group", rlm_logtee_t, file.group_str) },
 	{ FR_CONF_OFFSET("escape_filenames", rlm_logtee_t, file.escape), .dflt = "no" },
@@ -138,7 +138,7 @@ static const conf_parser_t file_config[] = {
 };
 
 static const conf_parser_t unix_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT, rlm_logtee_t, unix_sock.path) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE, rlm_logtee_t, unix_sock.path) },
 	CONF_PARSER_TERMINATOR
 };
 

@@ -79,7 +79,7 @@ struct rlm_csv_entry_s {
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_csv_t, filename) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_csv_t, filename) },
 	{ FR_CONF_OFFSET_FLAGS("delimiter", CONF_FLAG_NOT_EMPTY, rlm_csv_t, delimiter), .dflt = "," },
 	{ FR_CONF_OFFSET("fields", rlm_csv_t, fields) },
 	{ FR_CONF_OFFSET("header", rlm_csv_t, header) },

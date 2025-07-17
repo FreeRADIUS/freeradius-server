@@ -696,7 +696,7 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 	 *	Set the user/group we're going to use
 	 *	to check read permissions on configuration files.
 	 */
-	cf_file_check_user(config->server_uid ? config->server_uid : (uid_t)-1,
+	cf_file_check_set_uid_gid(config->server_uid ? config->server_uid : (uid_t)-1,
 			   config->server_gid ? config->server_gid : (gid_t)-1);
 
 #ifdef HAVE_GRP_H

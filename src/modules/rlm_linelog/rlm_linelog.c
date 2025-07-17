@@ -155,7 +155,7 @@ static const conf_parser_t syslog_config[] = {
 };
 
 static const conf_parser_t unix_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT, rlm_linelog_t, unix_sock.path) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_SOCKET, rlm_linelog_t, unix_sock.path) },
 	CONF_PARSER_TERMINATOR
 };
 

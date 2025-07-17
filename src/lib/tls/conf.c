@@ -116,11 +116,11 @@ static conf_parser_t tls_chain_config[] = {
 			 	.len = &certificate_format_table_len
 			 },
 			 .dflt = "pem" },
-	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_INPUT | CONF_FLAG_FILE_EXISTS | CONF_FLAG_REQUIRED, fr_tls_chain_conf_t, certificate_file) },
+	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_READABLE | CONF_FLAG_FILE_EXISTS | CONF_FLAG_REQUIRED, fr_tls_chain_conf_t, certificate_file) },
 	{ FR_CONF_OFFSET_FLAGS("private_key_password", CONF_FLAG_SECRET, fr_tls_chain_conf_t, password) },
-	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_INPUT | CONF_FLAG_FILE_EXISTS | CONF_FLAG_REQUIRED, fr_tls_chain_conf_t, private_key_file) },
+	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_READABLE | CONF_FLAG_FILE_EXISTS | CONF_FLAG_REQUIRED, fr_tls_chain_conf_t, private_key_file) },
 
-	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_INPUT | CONF_FLAG_MULTI, fr_tls_chain_conf_t, ca_files) },
+	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_READABLE | CONF_FLAG_MULTI, fr_tls_chain_conf_t, ca_files) },
 
 	{ FR_CONF_OFFSET("verify_mode", fr_tls_chain_conf_t, verify_mode),
 			 .func = cf_table_parse_int,
@@ -166,8 +166,8 @@ conf_parser_t fr_tls_server_config[] = {
 	{ FR_CONF_DEPRECATED("private_key_file", fr_tls_conf_t, NULL) },
 
 	{ FR_CONF_OFFSET("verify_depth", fr_tls_conf_t, verify_depth), .dflt = "0" },
-	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_INPUT, fr_tls_conf_t, ca_path) },
-	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_INPUT, fr_tls_conf_t, ca_file) },
+	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_READABLE, fr_tls_conf_t, ca_path) },
+	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_READABLE, fr_tls_conf_t, ca_file) },
 
 #ifdef PSK_MAX_IDENTITY_LEN
 	{ FR_CONF_OFFSET("psk_identity", fr_tls_conf_t, psk_identity) },
@@ -176,7 +176,7 @@ conf_parser_t fr_tls_server_config[] = {
 #endif
 	{ FR_CONF_OFFSET("keylog_file", fr_tls_conf_t, keylog_file) },
 
-	{ FR_CONF_OFFSET_FLAGS("dh_file", CONF_FLAG_FILE_INPUT, fr_tls_conf_t, dh_file) },
+	{ FR_CONF_OFFSET_FLAGS("dh_file", CONF_FLAG_FILE_READABLE, fr_tls_conf_t, dh_file) },
 	{ FR_CONF_OFFSET("fragment_size", fr_tls_conf_t, fragment_size), .dflt = "1024" },
 	{ FR_CONF_OFFSET("padding", fr_tls_conf_t, padding_block_size), },
 
@@ -221,9 +221,9 @@ conf_parser_t fr_tls_client_config[] = {
 	{ FR_CONF_OFFSET("keylog_file", fr_tls_conf_t, keylog_file) },
 
 	{ FR_CONF_OFFSET("verify_depth", fr_tls_conf_t, verify_depth), .dflt = "0" },
-	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_INPUT, fr_tls_conf_t, ca_path) },
+	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_READABLE, fr_tls_conf_t, ca_path) },
 
-	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_INPUT, fr_tls_conf_t, ca_file) },
+	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_READABLE, fr_tls_conf_t, ca_file) },
 	{ FR_CONF_OFFSET("dh_file", fr_tls_conf_t, dh_file) },
 	{ FR_CONF_OFFSET("random_file", fr_tls_conf_t, random_file) },
 	{ FR_CONF_OFFSET("fragment_size",  fr_tls_conf_t, fragment_size), .dflt = "1024" },
