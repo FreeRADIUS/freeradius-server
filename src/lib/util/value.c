@@ -721,9 +721,6 @@ static int8_t float_cmp(double a, double b)
  */
 int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 {
-	if (!fr_cond_assert(a->type != FR_TYPE_NULL)) return -1;
-	if (!fr_cond_assert(b->type != FR_TYPE_NULL)) return -1;
-
 	if (a->type != b->type) {
 		fr_strerror_printf("%s: Can't compare values of different types", __FUNCTION__);
 		return -2;
@@ -829,10 +826,13 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	case FR_TYPE_IFID:
 		COMPARE(ifid);
 
+	case FR_TYPE_NULL:	/* NULLs are not comparable */
+		return -2;
+
 	/*
 	 *	These should be handled at some point
 	 */
-	case FR_TYPE_NON_LEAF:
+	default:
 		(void)fr_cond_assert(0);	/* unknown type */
 		return -2;
 
@@ -971,13 +971,11 @@ extern int fr_regex_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_
  *	- 1 if true
  *	- 0 if false
  *	- -1 on failure.
+ *	- < -1 on failure.
  */
 int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const *b)
 {
 	int compare = 0;
-
-	if (!fr_cond_assert(a->type != FR_TYPE_NULL)) return -1;
-	if (!fr_cond_assert(b->type != FR_TYPE_NULL)) return -1;
 
 	if (unlikely((op == T_OP_REG_EQ) || (op == T_OP_REG_NE))) return fr_regex_cmp_op(op, a, b);
 
@@ -1096,7 +1094,7 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 	cmp:
 		compare = fr_value_box_cmp(a, b);
 		if (compare < -1) {	/* comparison error */
-			return -1;
+			return -2;
 		}
 	}
 
@@ -1276,8 +1274,6 @@ size_t fr_value_substr_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, c
  */
 int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 {
-	if (!fr_cond_assert(src->type != FR_TYPE_NULL)) return -1;
-
 	switch (src->type) {
 	default:
 		break;
@@ -1297,9 +1293,14 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 		fr_value_box_copy(NULL, dst, src);
 		return 0;
 
+	case FR_TYPE_NULL:
+		fr_value_box_init_null(dst);
+		return 0;
+
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
-	case FR_TYPE_NON_LEAF:
+	case FR_TYPE_INTERNAL:
+	case FR_TYPE_STRUCTURAL:
 		fr_assert_fail(NULL);
 		return -1; /* shouldn't happen */
 	}
@@ -3576,7 +3577,6 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		      fr_value_box_t const *src)
 {
 	if (!fr_cond_assert(src != dst)) return -1;
-	if (!fr_cond_assert(src->type != FR_TYPE_NULL)) return -1;
 
 	if (fr_type_is_non_leaf(dst_type)) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Can only cast simple data types",
@@ -4088,8 +4088,6 @@ void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
  */
 int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src)
 {
-	if (!fr_cond_assert(src->type != FR_TYPE_NULL)) return -1;
-
 	switch (src->type) {
 	default:
 		return fr_value_box_copy(ctx, dst, src);
