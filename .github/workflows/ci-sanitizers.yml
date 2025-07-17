@@ -44,19 +44,32 @@ jobs:
 
     runs-on: ${{ matrix.os.runs_on }}
 
+    container:
+      image: ${{ matrix.os.docker }}
+      #  "privileged" is needed for Samba install
+      #  "memory-swap -1" enables full use of host swap and may help
+      #    with containers randomly quitting with "The operation was
+      #    canceled"
+      options: >-
+        --privileged
+        --memory-swap -1
+
     strategy:
       fail-fast: false
       matrix:
-
         #  runs_on - where GitHub will spin up the runner, either
         #            "self-hosted", or the name of a GitHub VM image
-        #            e.g. ubuntu-20.04 or ubuntu-latest
+        #            e.g. ubuntu-24.04 or ubuntu-latest
         #            see: https://github.com/actions/runner-images
         #  code    - the name/version of the OS (for step evaluations below)
         #  docker  - the docker image name, if containers are being used
         #  name    - used in the job name only
         os:
-          - { runs_on: "ubuntu-24.04",  code: "ubuntu2404", docker: "ubuntu:24.04", name: "gh-ubuntu24", imageos: "ubuntu24" }
+          - runs_on: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-24.04' }}"
+            docker: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'docker.internal.networkradius.com/self-hosted' || 'ubuntu:24.04' }}"
+            name: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self' || 'gh' }}-ubuntu24"
+            code: "ubuntu2404"
+            imageos: "ubuntu24"
 
         env:
           - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-lean    }
@@ -72,12 +85,63 @@ jobs:
     #  changes.
     name: "master-${{ matrix.os.name }}-${{ matrix.env.NAME}}"
 
+    #  The standard GitHub environment contains PostgreSQL and
+    #  MySQL already. However when running on hosted GitHub runners
+    #  we need to run separate database containers to provide these.
+    services:
+      mariadb:
+        image: ${{ needs.pre-ci.outputs.docker_prefix }}mariadb
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: yes
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mariadb-admin ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+      postgres:
+        image: ${{ needs.pre-ci.outputs.docker_prefix }}postgres
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      threeds:
+        image: ${{ needs.pre-ci.outputs.docker_prefix }}4teamwork/389ds
+        ports:
+          - 3389:3389
+          - 3636:3636
+        options: >-
+          -e SUFFIX_NAME=dc=example,dc=com
+          -e DS_DM_PASSWORD=secret123
+          --health-cmd "dsctl localhost healthcheck --check backends:localhost:search"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
+
+      #  Need git installed for checkout to behave normally
+      - name: Install checkout prerequisites
+        run: apt-get update && apt-get install -y --no-install-recommends git git-lfs ca-certificates
 
       # Checkout, but defer pulling LFS objects until we've restored the cache
       - uses: actions/checkout@v4
         with:
           lfs: false
+
+      #  Docker image does not have same environment as the
+      #  standard GitHub actions image, so use this to bring them
+      #  more in line.
+      - name: Prepare Docker environment
+        uses: ./.github/actions/docker-prep
 
       - name: Install build dependencies
         uses: ./.github/actions/freeradius-deps
@@ -101,19 +165,24 @@ jobs:
         uses: ./.github/actions/ci-tests
         if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
         with:
-          use_docker: false
-          sql_mysql_test_server: 127.0.0.1
-          sql_postgresql_test_server: 127.0.0.1
+          use_docker: true
+          sql_mysql_test_server: mariadb
+          sql_postgresql_test_server: postgres
           redis_test_server: 127.0.0.1
           ldap_test_server: 127.0.0.1
           ldap_test_server_port: 3890
           ldaps_test_server_port: 6361
-          ldap389_test_server: 127.0.0.1
-          ldap389_test_server_port: 3892
+          ldap389_test_server: threeds
+          ldap389_test_server_port: 3389
           active_directory_test_server: 127.0.0.1
           rest_test_server: 127.0.0.1
           rest_test_port: 8080
           rest_test_ssl_port: 8443
+          imap_test_server: 127.0.0.1
+          imap_test_server_port: 1430
+          imap_test_server_ssl_port: 1432
+          smtp_test_server: 127.0.0.1
+          smtp_test_server_port: 2525
 
       #
       #  If the CI has failed and the branch is ci-debug then we start a tmate
@@ -140,4 +209,3 @@ jobs:
         with:
           limit-access-to-actor: true
         if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
-
