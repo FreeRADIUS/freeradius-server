@@ -66,6 +66,7 @@ typedef struct {
 } unlang_mod_actions_t;
 
 #define DEFAULT_MOD_ACTIONS { .actions = {}, .retry = RETRY_INIT }
+#define MOD_ACTIONS_FAIL_TIMEOUT_RETURN { .actions = { [RLM_MODULE_FAIL] = MOD_ACTION_RETURN, [RLM_MODULE_TIMEOUT] = MOD_ACTION_RETURN,}, .retry = RETRY_INIT }
 
 extern unlang_mod_actions_t const mod_actions_authenticate;
 extern unlang_mod_actions_t const mod_actions_authorize;

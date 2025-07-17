@@ -1212,28 +1212,7 @@ void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
 	 */
 	static unlang_t unlang_instruction = {
 		.debug_name = "top",
-		.actions = {
-			/*
-			*	By default, functions don't change the section rcode.
-			*	We can't make generalisations about what the intent
-			*	of the function callbacks are, so isntead of having
-			*	implicit, confusing behaviour, we always discard the
-			*	rcode UNLESS the function explicitly sets it.
-			*/
-			.actions = {
-				[RLM_MODULE_REJECT]	= MOD_ACTION_NOT_SET,
-				[RLM_MODULE_FAIL]	= MOD_ACTION_NOT_SET,
-				[RLM_MODULE_OK]		= MOD_ACTION_NOT_SET,
-				[RLM_MODULE_HANDLED]	= MOD_ACTION_NOT_SET,
-				[RLM_MODULE_INVALID]	= MOD_ACTION_NOT_SET,
-				[RLM_MODULE_DISALLOW]	= MOD_ACTION_NOT_SET,
-				[RLM_MODULE_NOTFOUND]	= MOD_ACTION_NOT_SET,
-				[RLM_MODULE_NOOP]	= MOD_ACTION_NOT_SET,
-				[RLM_MODULE_UPDATED]	= MOD_ACTION_NOT_SET,
-				[RLM_MODULE_TIMEOUT]	= MOD_ACTION_NOT_SET
-			},
-			.retry = RETRY_INIT
-		}
+		.actions = DEFAULT_MOD_ACTIONS,
 	};
 
 	unlang_stack_t *stack;

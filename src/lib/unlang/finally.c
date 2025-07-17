@@ -134,21 +134,7 @@ int unlang_finally_push_instruction(request_t *request, void *instruction, fr_ti
 		.type = UNLANG_TYPE_FINALLY,
 		.name = "finally",
 		.debug_name = "finally",
-		.actions = {
-			.actions = {
-				[RLM_MODULE_REJECT]	= 0,
-				[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-				[RLM_MODULE_OK]		= 0,
-				[RLM_MODULE_HANDLED]	= 0,
-				[RLM_MODULE_INVALID]	= 0,
-				[RLM_MODULE_DISALLOW]	= 0,
-				[RLM_MODULE_NOTFOUND]	= 0,
-				[RLM_MODULE_NOOP]	= 0,
-				[RLM_MODULE_TIMEOUT]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-				[RLM_MODULE_UPDATED]	= 0
-			},
-			.retry = RETRY_INIT,
-		},
+		.actions = MOD_ACTIONS_FAIL_TIMEOUT_RETURN,
 	};
 
 	unlang_frame_state_finally_t	*state;

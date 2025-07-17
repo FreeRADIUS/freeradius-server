@@ -283,20 +283,7 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_li
 		.type = UNLANG_TYPE_TMPL,
 		.name = "tmpl",
 		.debug_name = "tmpl",
-		.actions = {
-			.actions = {
-				[RLM_MODULE_REJECT]	= 0,
-				[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,
-				[RLM_MODULE_OK]		= 0,
-				[RLM_MODULE_HANDLED]	= 0,
-				[RLM_MODULE_INVALID]	= 0,
-				[RLM_MODULE_DISALLOW]	= 0,
-				[RLM_MODULE_NOTFOUND]	= 0,
-				[RLM_MODULE_NOOP]	= 0,
-				[RLM_MODULE_UPDATED]	= 0
-			},
-			.retry = RETRY_INIT,
-		},
+		.actions = MOD_ACTIONS_FAIL_TIMEOUT_RETURN,
 	};
 
 	static const unlang_t tmpl_instruction_fail = {
