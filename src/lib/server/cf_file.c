@@ -729,11 +729,11 @@ cf_file_check_err_t cf_file_check_effective(char const *filename,
  * @param[in] filename		CONF_PAIR for the unix socket path
  * @param[in] uctx		user context, not used
  * @return
- *	- CF_FILE_OK if the socket exists and is accessible.
- *	- -1 if we couldn't create a new file descriptor.
- *	- -2 if the file doesn't exist.
- *	- -3 if the file exists but is not accessible.
- *	- -4 any other error.
+ *	- CF_FILE_OK if the socket exists and is a socket.
+ *	- CF_FILE_NO_EXIST if the file doesn't exist.
+ *	- CF_FILE_NO_PERMISSION if the file exists but is not accessible.
+ *	- CF_FILE_NO_UNIX_SOCKET if the file exists but is not a socket.
+ *	- CF_FILE_OTHER_ERROR any other error.
  */
 cf_file_check_err_t cf_file_check_unix_connect(char const *filename, UNUSED void *uctx)
 {
@@ -828,7 +828,7 @@ cf_file_check_err_t cf_file_check_unix_perm(char const *filename, UNUSED void *u
 			return CF_FILE_NO_PERMISSION;
 
 		default:
-			fr_strerror_printf("Unable to state socket \"%s\": %s", filename, fr_syserror(errno));
+			fr_strerror_printf("Unable to stat socket \"%s\": %s", filename, fr_syserror(errno));
 			return CF_FILE_OTHER_ERROR;
 		}
 	}
