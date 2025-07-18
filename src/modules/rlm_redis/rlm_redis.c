@@ -715,8 +715,6 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		}
 	}
 
-	RDEBUG2("REDIS command arguments");
-	RINDENT();
 	fr_value_box_list_foreach(in, vb) {
 		if (argc == NUM_ELEMENTS(argv)) {
 			REDEBUG("Too many arguments (%i)", argc);
@@ -728,7 +726,6 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		arg_len[argc] = vb->vb_length;
 		argc++;
 	}
-	REXDENT();
 
 	/*
 	 *	If we've got multiple arguments, the second one is usually the key.
