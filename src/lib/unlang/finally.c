@@ -75,6 +75,8 @@ static unlang_action_t unlang_finally(UNUSED unlang_result_t *p_result, request_
 {
 	unlang_frame_state_finally_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_finally_t);
 
+	state->original_rcode = request->rcode;;
+
 	/*
 	 *	Ensure the request has at least min_time to continue
 	 *	executing before we cancel it.
@@ -107,7 +109,7 @@ static unlang_action_t unlang_finally(UNUSED unlang_result_t *p_result, request_
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-/** Push a finally instruction on the stack, to be evaluated as the stack is unwound
+/** Push a finally instructtion on the stack, to be evaluated as the stack is unwound
  *
  * @param[in] request		to push timeout onto
  * @param[in] instruction	to run as we unwind
@@ -157,12 +159,9 @@ int unlang_finally_push_instruction(request_t *request, void *instruction, fr_ti
 	 *	Allocate its state
 	 */
 	MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_finally_t));
-
 	state->instruction = instruction;
 	state->request = request;
 	state->min_time = min_time;
-	state->original_rcode = request->rcode;;
-	state->result = UNLANG_RESULT_NOT_SET;
 
 	frame_repeat(frame, unlang_finally);	/* execute immediately... or when unwinding */
 
