@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/main_loop.h>
+#include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/request_data.h>
 #include <freeradius-devel/server/trigger.h>
 #include <freeradius-devel/unlang/function.h>
@@ -57,6 +58,20 @@ typedef struct {
 	CONF_ITEM	*ci;		//!< Config item this rate limit counter is associated with.
 	fr_time_t	last_fired;	//!< When this trigger last fired.
 } trigger_last_fired_t;
+
+static fr_dict_t const *dict_freeradius;
+extern fr_dict_autoload_t trigger_dict[];
+fr_dict_autoload_t trigger_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_trigger_name;
+extern fr_dict_attr_autoload_t trigger_dict_attr[];
+fr_dict_attr_autoload_t trigger_dict_attr[] = {
+	{ .out = &attr_trigger_name, .name = "Trigger-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ NULL }
+};
 
 xlat_arg_parser_t const trigger_xlat_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_STRING },
@@ -304,7 +319,8 @@ int trigger_exec(unlang_interpret_t *intp,
 	 *	trigger_xlat function.
 	 */
 	if (args) {
-		fr_pair_list_t *local_args;
+		fr_pair_list_t	*local_args;
+		fr_pair_t	*vp;
 
 		MEM(local_args = talloc_zero(request, fr_pair_list_t));
 		fr_pair_list_init(local_args);
@@ -314,6 +330,9 @@ int trigger_exec(unlang_interpret_t *intp,
 			talloc_free(request);
 			return -1;
 		}
+
+		MEM(pair_append_request(&vp, attr_trigger_name) >= 0);
+		fr_pair_value_strdup(vp, cf_pair_value(cp), false);
 
 		if (request_data_add(request, &trigger_cs, REQUEST_INDEX_TRIGGER_ARGS, local_args,
 				      false, false, false) < 0) goto args_error;
@@ -501,6 +520,7 @@ static int _mutex_free(pthread_mutex_t *mutex)
  */
 static int _trigger_exec_free(UNUSED void *uctx)
 {
+	fr_dict_autofree(trigger_dict);
 	TALLOC_FREE(trigger_last_fired_tree);
 	TALLOC_FREE(trigger_mutex);
 
@@ -523,7 +543,18 @@ static int _trigger_exec_free(UNUSED void *uctx)
  */
 static int _trigger_exec_init(void *cs_arg)
 {
-	CONF_SECTION *cs = talloc_get_type_abort(cs_arg, CONF_SECTION);
+	CONF_SECTION *cs;
+
+	if (unlikely(fr_dict_autoload(trigger_dict) < 0)) {
+		PERROR("Failed loading trigger dictionaries");
+		return -1;
+	}
+	if (unlikely(fr_dict_attr_autoload(trigger_dict_attr) < 0)) {
+		PERROR("Failed loading trigger attributes");
+		return -1;
+	}
+
+	cs = talloc_get_type_abort(cs_arg, CONF_SECTION);
 	if (!cs) {
 		ERROR("%s - Pointer to main_config was NULL", __FUNCTION__);
 		return -1;

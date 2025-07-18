@@ -536,8 +536,9 @@ ATTRIBUTE	Radclient-CoA-Filter			2203	string
 #	Range:  2220-2259
 #		 Attributes used as trigger arguments
 #
-ATTRIBUTE	Connection-Pool-Server			2220	string
-ATTRIBUTE	Connection-Pool-Port			2221	short
+ATTRIBUTE	Trigger-Name				2220	string
+ATTRIBUTE	Connection-Pool-Server			2221	string
+ATTRIBUTE	Connection-Pool-Port			2222	short
 ATTRIBUTE	Exfile-Name				2223	string
 ATTRIBUTE	LDAP-Sync-Base-DN			2224	string
 

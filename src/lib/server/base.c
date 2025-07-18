@@ -47,11 +47,6 @@ int server_init(CONF_SECTION *cs, char const *dict_dir, fr_dict_t *dict)
 	if (tmpl_global_init() < 0) return -1;
 
 	/*
-	 *	Initialise the trigger rate limiting tree
-	 */
-	if (trigger_exec_init(cs) < 0) return -1;
-
-	/*
 	 *	Set up dictionaries and attributes for password comparisons
 	 */
 	if (password_init() < 0) return -1;
@@ -99,6 +94,15 @@ int server_init(CONF_SECTION *cs, char const *dict_dir, fr_dict_t *dict)
 	default:
 		break;
 	}
+
+	/*
+	 *	Initialise the trigger rate limiting tree.
+	 *
+	 *	This must be done after the modules have been bootstrapped, so that
+	 *	any xlat functions/dictionary attributes have been registered and
+	 *	before the modules actually want to use triggers or open connections.
+	 */
+	if (trigger_exec_init(cs) < 0) return -1;
 
 	/*
 	 *	And then load the virtual servers.
