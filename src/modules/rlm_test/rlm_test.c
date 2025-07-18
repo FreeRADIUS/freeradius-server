@@ -416,6 +416,20 @@ static xlat_action_t test_xlat_fail(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t 
 }
 
 
+/** Always return a NULL value-box
+ */
+static xlat_action_t test_xlat_null(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				    UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
+				    UNUSED fr_value_box_list_t *in)
+{
+	fr_value_box_t	*vb;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_NULL, NULL));
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
 	rlm_test_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_test_t);
@@ -485,6 +499,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	if (!(xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "fail", test_xlat_fail, FR_TYPE_VOID))) return -1;
 	xlat_func_args_set(xlat, test_xlat_fail_args);
+
+	if (!module_rlm_xlat_register(mctx->mi->boot, mctx, "null", test_xlat_null, FR_TYPE_VOID)) return -1;
 
 	return 0;
 }
