@@ -555,10 +555,12 @@ static xlat_action_t redis_lua_func_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	if (vb_out->type == FR_TYPE_GROUP) {
 		fr_value_box_t	*child_vb = NULL;
-		while ((child_vb = fr_value_box_list_pop_head(&vb_out->vb_group))) fr_dcursor_append(out, child_vb);
+		while ((child_vb = fr_value_box_list_pop_head(&vb_out->vb_group))) {
+			if (child_vb->type != FR_TYPE_NULL) fr_dcursor_append(out, child_vb);
+		}
 		talloc_free(vb_out);
 	} else {
-		fr_dcursor_append(out, vb_out);
+		if (vb_out->type != FR_TYPE_NULL) fr_dcursor_append(out, vb_out);
 	}
 
 finish:
@@ -774,10 +776,12 @@ reply_parse:
 
 	if (vb_out->type == FR_TYPE_GROUP) {
 		fr_value_box_t	*child_vb = NULL;
-		while ((child_vb = fr_value_box_list_pop_head(&vb_out->vb_group))) fr_dcursor_append(out, child_vb);
+		while ((child_vb = fr_value_box_list_pop_head(&vb_out->vb_group))) {
+			if (child_vb->type != FR_TYPE_NULL) fr_dcursor_append(out, child_vb);
+		}
 		talloc_free(vb_out);
 	} else {
-		fr_dcursor_append(out, vb_out);
+		if (vb_out->type != FR_TYPE_NULL) fr_dcursor_append(out, vb_out);
 	}
 
 finish:
