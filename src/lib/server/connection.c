@@ -125,7 +125,7 @@ struct connection_s {
 
 #define CONN_TRIGGER(_state) do { \
 	if (conn->pub.triggers) { \
-		trigger_exec(unlang_interpret_get_thread_default(), \
+		trigger(unlang_interpret_get_thread_default(), \
 			     NULL, fr_table_str_by_value(connection_trigger_names, _state, "<INVALID>"), true, NULL); \
 	} \
 } while (0)

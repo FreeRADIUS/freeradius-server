@@ -47,9 +47,6 @@ static CONF_SECTION const	*trigger_cs;
 static fr_rb_tree_t		*trigger_last_fired_tree;
 static pthread_mutex_t		*trigger_mutex;
 
-#define REQUEST_INDEX_TRIGGER_NAME	1
-#define REQUEST_INDEX_TRIGGER_ARGS	2
-
 /** Describes a rate limiting entry for a trigger
  *
  */
@@ -72,54 +69,6 @@ fr_dict_attr_autoload_t trigger_dict_attr[] = {
 	{ .out = &attr_trigger_name, .name = "Trigger-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ NULL }
 };
-
-xlat_arg_parser_t const trigger_xlat_args[] = {
-	{ .required = true, .single = true, .type = FR_TYPE_STRING },
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
-/** Retrieve attributes from a special trigger list
- *
- */
-xlat_action_t trigger_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-			   UNUSED xlat_ctx_t const *xctx,
-			   request_t *request, fr_value_box_list_t *in)
-{
-	fr_pair_list_t		*head = NULL;
-	fr_dict_attr_t const	*da;
-	fr_pair_t		*vp;
-	fr_value_box_t		*in_head = fr_value_box_list_head(in);
-	fr_value_box_t		*vb;
-
-	if (!trigger_cs) {
-		ERROR("Triggers are not enabled");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (!request_data_reference(request, &trigger_cs, REQUEST_INDEX_TRIGGER_NAME)) {
-		ERROR("trigger xlat may only be used in a trigger command");
-		return XLAT_ACTION_FAIL;
-	}
-
-	head = request_data_reference(request, &trigger_cs, REQUEST_INDEX_TRIGGER_ARGS);
-
-	da = fr_dict_attr_by_name(NULL, fr_dict_root(request->local_dict), in_head->vb_strvalue);
-	if (!da) {
-		ERROR("Unknown attribute \"%pV\"", in_head);
-		return XLAT_ACTION_FAIL;
-	}
-
-	vp = fr_pair_find_by_da(head, NULL, da);
-	if (!vp) {
-		ERROR("Attribute \"%pV\" is not valid for this trigger", in_head);
-		return XLAT_ACTION_FAIL;
-	}
-
-	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_copy(vb, vb, &vp->data);
-	fr_dcursor_append(out, vb);
-	return XLAT_ACTION_DONE;
-}
 
 static void _trigger_last_fired_free(void *data)
 {
@@ -148,19 +97,19 @@ bool trigger_enabled(void)
 }
 
 typedef struct {
-	fr_value_box_list_t	args;		//!< Arguments to pass to the trigger exec.
 	fr_value_box_list_t	out;		//!< result of the xlap (which we ignore)
 	unlang_result_t		result;		//!< the result of expansion
-	int			exec_status;
+	tmpl_t			*vpt;		//!< the template to execute
+	int			exec_status;	//!< Result of the program (if the trigger is a tmpl)
 } fr_trigger_t;
 
 /** Execute a trigger - call an executable to process an event
  *
  * A trigger ties a state change (e.g. connection up) in a module to an action
  * (e.g. send an SNMP trap) defined in raqddb/triggers.conf or in the trigger
- * section of a module, and can be created with one call to trigger_exec().
+ * section of a module, and can be created with one call to trigger().
  *
- * The trigger_exec function expands the configuration item, and runs the given
+ * The trigger function expands the configuration item, and runs the given
  * function (exec, sql insert, etc.) asynchronously, allowing the server to
  * keep processing packets while the action is being taken.
  *
@@ -175,7 +124,7 @@ typedef struct {
  * In contrast, triggers are something specific which the administrator needs
  * to be notified about immediately and can't wait to post-process a log file.
  *
- * @note Calls to this function will be ignored if #trigger_exec_init has not been called.
+ * @note Calls to this function will be ignored if #trigger_init has not been called.
  *
  * @param[in] intp		Interpreter to run the trigger with.  If this is NULL the
  *				trigger will be executed synchronously.
@@ -191,8 +140,8 @@ typedef struct {
  *	- 0 on success.
  *	- -1 on failure.
  */
-int trigger_exec(unlang_interpret_t *intp,
-		 CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_list_t *args)
+int trigger(unlang_interpret_t *intp,
+	    CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_list_t *args)
 {
 	CONF_ITEM		*ci;
 	CONF_PAIR		*cp;
@@ -205,12 +154,10 @@ int trigger_exec(unlang_interpret_t *intp,
 	ssize_t			slen;
 
 	fr_event_list_t		*el;
-	xlat_exp_head_t		*xlat;
 	tmpl_rules_t		t_rules;
-	fr_token_t		quote;
 
 	/*
-	 *	noop if trigger_exec_init was never called, or if
+	 *	noop if trigger_init was never called, or if
 	 *	we're just checking the configuration.
 	 */
 	if (!trigger_cs || check_config) return 0;
@@ -314,38 +261,23 @@ int trigger_exec(unlang_interpret_t *intp,
 	 */
 	request = request_local_alloc_internal(NULL, (&(request_init_args_t){ .detachable = true }));
 
-	/*
-	 *	Add the args to the request data, so they can be picked up by the
-	 *	trigger_xlat function.
-	 */
 	if (args) {
-		fr_pair_list_t	*local_args;
 		fr_pair_t	*vp;
 
-		MEM(local_args = talloc_zero(request, fr_pair_list_t));
-		fr_pair_list_init(local_args);
-		if (fr_pair_list_copy(local_args, local_args, args) < 0) {
+		if (fr_pair_list_copy(request->request_ctx, &request->request_pairs, args) < 0) {
 			PERROR("Failed copying trigger arguments");
-		args_error:
 			talloc_free(request);
 			return -1;
 		}
 
+		/*
+		 *	Add the trigger name to the request data
+		 */
 		MEM(pair_append_request(&vp, attr_trigger_name) >= 0);
 		fr_pair_value_strdup(vp, cf_pair_value(cp), false);
-
-		if (request_data_add(request, &trigger_cs, REQUEST_INDEX_TRIGGER_ARGS, local_args,
-				      false, false, false) < 0) goto args_error;
-	}
-
-	if (request_data_add(request, &trigger_cs, REQUEST_INDEX_TRIGGER_NAME,
-			     UNCONST(char *, name), false, false, false) < 0) {
-		talloc_free(request);
-		return -1;
 	}
 
 	MEM(trigger = talloc_zero(request, fr_trigger_t));
-	fr_value_box_list_init(&trigger->args);
 	fr_value_box_list_init(&trigger->out);
 
 	el = unlang_interpret_event_list(request);
@@ -362,22 +294,14 @@ int trigger_exec(unlang_interpret_t *intp,
 		.at_runtime = true,
 	};
 
-	quote = cf_pair_value_quote(cp);
-
-	/*
-	 *	Parse the xlat as appropriate.
-	 */
-	if (quote != T_BACK_QUOTED_STRING) {
-		slen = xlat_tokenize(trigger, &xlat, &FR_SBUFF_IN(value, talloc_array_length(value) - 1), NULL, &t_rules);
-	} else {
-		slen = xlat_tokenize_argv(trigger, &xlat, &FR_SBUFF_IN(value, talloc_array_length(value) - 1), NULL, NULL, &t_rules, true);
-	}
+	slen = tmpl_afrom_substr(trigger, &trigger->vpt, &FR_SBUFF_IN(value, talloc_strlen(value)),
+				 cf_pair_value_quote(cp), NULL, &t_rules);
 	if (slen <= 0) {
 		char *spaces, *text;
 
 		fr_canonicalize_error(trigger, &spaces, &text, slen, value);
 
-		cf_log_err(cp, "Failed parsing trigger command");
+		cf_log_err(cp, "Failed parsing trigger expresion");
 		cf_log_err(cp, "%s", text);
 		cf_log_perr(cp, "%s^", spaces);
 
@@ -387,39 +311,27 @@ int trigger_exec(unlang_interpret_t *intp,
 		return -1;
 	}
 
-	fr_assert(xlat != NULL);
-
-	if (quote != T_BACK_QUOTED_STRING) {
-		if (unlang_xlat_push(trigger, &trigger->result, &trigger->out, request, xlat, true) < 0) {
-		fail_expand:
-			DEBUG("Failed expanding trigger - %s", fr_strerror());
-			talloc_free(request);
-			return -1;
-		}
-	} else {
-		tmpl_t *vpt;
-
+	if (!tmpl_is_exec(trigger->vpt) && !tmpl_is_xlat(trigger->vpt)) {
 		/*
-		 *	We need back-ticks, because it's just so much
-		 *	easier than anything else.
-		 *
-		 *	@todo - define %exec.string() function, which
-		 *	splits the string, and THEN expands it.  That
-		 *	would be much simpler than this stuff.
+		 *	We only support exec and xlat templates.
+		 *	Anything else is an error.
 		 */
-		MEM(vpt = tmpl_alloc(trigger, TMPL_TYPE_EXEC, quote, value, talloc_array_length(value)));
-		tmpl_set_xlat(vpt, xlat);
+		cf_log_err(cp, "Trigger must be an \"expr\" or `exec`");
+		talloc_free(request);
+		return -1;
+	}
 
-		if (unlang_tmpl_push(trigger, NULL, &trigger->out, request, vpt,
-				     &(unlang_tmpl_args_t) {
-					     .type = UNLANG_TMPL_ARGS_TYPE_EXEC,
-					     .exec = {
-						     .status_out = &trigger->exec_status,
-						     .timeout = fr_time_delta_from_sec(1),
-					     },
-				     }) < 0) {
-			goto fail_expand;
-		}
+	fr_assert(trigger->vpt != NULL);
+
+	if (unlang_tmpl_push(trigger, &trigger->result, &trigger->out, request, trigger->vpt,
+			     &(unlang_tmpl_args_t) {
+				.type = UNLANG_TMPL_ARGS_TYPE_EXEC,
+				.exec = {
+					.status_out = &trigger->exec_status,
+					.timeout = fr_time_delta_from_sec(5),
+					},
+			     }) < 0) {
+		talloc_free(request);
 	}
 
 	/*
@@ -474,7 +386,7 @@ int trigger_exec(unlang_interpret_t *intp,
 
 /** Create trigger arguments to describe the server the pool connects to
  *
- * @note #trigger_exec_init must be called before calling this function,
+ * @note #trigger_init must be called before calling this function,
  *	 else it will return NULL.
  *
  * @param[in] ctx	to allocate fr_pair_t s in.
@@ -518,7 +430,7 @@ static int _mutex_free(pthread_mutex_t *mutex)
 /** Free trigger resources
  *
  */
-static int _trigger_exec_free(UNUSED void *uctx)
+static int _trigger_free(UNUSED void *uctx)
 {
 	fr_dict_autofree(trigger_dict);
 	TALLOC_FREE(trigger_last_fired_tree);
@@ -527,7 +439,7 @@ static int _trigger_exec_free(UNUSED void *uctx)
 	return 0;
 }
 
-/** Set the global trigger section trigger_exec will search in, and register xlats
+/** Set the global trigger section trigger will search in, and register xlats
  *
  * This function exists because triggers are used by the connection pool, which
  * is used in the server library which may not have the mainconfig available.
@@ -541,7 +453,7 @@ static int _trigger_exec_free(UNUSED void *uctx)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _trigger_exec_init(void *cs_arg)
+static int _trigger_init(void *cs_arg)
 {
 	CONF_SECTION *cs;
 
@@ -577,11 +489,11 @@ static int _trigger_exec_init(void *cs_arg)
 	return 0;
 }
 
-int trigger_exec_init(CONF_SECTION const *cs)
+int trigger_init(CONF_SECTION const *cs)
 {
 	int ret;
 
-	fr_atexit_global_once_ret(&ret, _trigger_exec_init, _trigger_exec_free, UNCONST(CONF_SECTION *, cs));
+	fr_atexit_global_once_ret(&ret, _trigger_init, _trigger_free, UNCONST(CONF_SECTION *, cs));
 
 	return ret;
 }

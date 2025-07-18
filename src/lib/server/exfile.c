@@ -66,7 +66,7 @@ struct exfile_s {
  * @param[in] entry for the file that the event occurred on.
  * @param[in] name_suffix trigger name suffix.
  */
-static inline void exfile_trigger_exec(exfile_t *ef, exfile_entry_t *entry, char const *name_suffix)
+static inline void exfile_trigger(exfile_t *ef, exfile_entry_t *entry, char const *name_suffix)
 {
 	char			name[128];
 	fr_pair_t		*vp;
@@ -91,7 +91,7 @@ static inline void exfile_trigger_exec(exfile_t *ef, exfile_entry_t *entry, char
 				       talloc_array_length(entry->filename) - 1, false);
 
 	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, name_suffix);
-	trigger_exec(unlang_interpret_get_thread_default(), ef->conf, name, false, &args);
+	trigger(unlang_interpret_get_thread_default(), ef->conf, name, false, &args);
 
 	fr_pair_list_free(&args);
 }
@@ -107,7 +107,7 @@ static void exfile_cleanup_entry(exfile_t *ef, exfile_entry_t *entry)
 	/*
 	 *	Issue close trigger *after* we've closed the fd
 	 */
-	exfile_trigger_exec(ef, entry, "close");
+	exfile_trigger(ef, entry, "close");
 
 	/*
 	 *	Trigger still needs access to filename to populate Exfile-Name
@@ -381,7 +381,7 @@ reopen:
 	ef->entries[i].fd = exfile_open_mkdir(ef, filename, permissions);
 	if (ef->entries[i].fd < 0) goto error;
 
-	exfile_trigger_exec(ef, &ef->entries[i], "open");
+	exfile_trigger(ef, &ef->entries[i], "open");
 
 try_lock:
 	/*
@@ -483,7 +483,7 @@ try_lock:
 	 */
 	ef->entries[i].last_used = now;
 
-	exfile_trigger_exec(ef, &ef->entries[i], "reserve");
+	exfile_trigger(ef, &ef->entries[i], "reserve");
 
 	/* coverity[missing_unlock] */
 	return ef->entries[i].fd;
@@ -536,7 +536,7 @@ static int exfile_close_lock(exfile_t *ef, int fd)
 		(void) rad_unlockfd(ef->entries[i].fd, 0);
 		pthread_mutex_unlock(&(ef->mutex));
 
-		exfile_trigger_exec(ef, &ef->entries[i], "release");
+		exfile_trigger(ef, &ef->entries[i], "release");
 		return 0;
 	}
 

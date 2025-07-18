@@ -36,15 +36,9 @@ extern "C" {
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/talloc.h>
 
-extern xlat_arg_parser_t const trigger_xlat_args[];
+int		trigger_init(CONF_SECTION const *cs);
 
-xlat_action_t	trigger_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-			     UNUSED xlat_ctx_t const *xctx,
-			     request_t *request, fr_value_box_list_t *in);
-
-int		trigger_exec_init(CONF_SECTION const *cs);
-
-int		trigger_exec(unlang_interpret_t *intp,
+int		trigger(unlang_interpret_t *intp,
 			     CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_list_t *args)
 			     CC_HINT(nonnull(3));
 

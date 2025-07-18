@@ -1630,7 +1630,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			};
 			our_p_rules = &tmp_p_rules;
 		} else {
-			our_p_rules = &value_parse_rules_bareword_quoted;			
+			our_p_rules = &value_parse_rules_bareword_quoted;
 		}
 
 	} else {

@@ -102,7 +102,7 @@ int server_init(CONF_SECTION *cs, char const *dict_dir, fr_dict_t *dict)
 	 *	any xlat functions/dictionary attributes have been registered and
 	 *	before the modules actually want to use triggers or open connections.
 	 */
-	if (trigger_exec_init(cs) < 0) return -1;
+	if (trigger_init(cs) < 0) return -1;
 
 	/*
 	 *	And then load the virtual servers.

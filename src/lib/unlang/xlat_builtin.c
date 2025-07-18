@@ -4485,7 +4485,6 @@ do { \
 	XLAT_REGISTER_VOID("time.offset", xlat_func_time_offset, FR_TYPE_TIME_DELTA);
 	XLAT_REGISTER_VOID("time.is_dst", xlat_func_time_is_dst, FR_TYPE_BOOL);
 
-	XLAT_REGISTER_ARGS("trigger", trigger_xlat, FR_TYPE_STRING, trigger_xlat_args);
 	XLAT_REGISTER_ARGS("base64.encode", xlat_func_base64_encode, FR_TYPE_STRING, xlat_func_base64_encode_arg);
 	XLAT_REGISTER_ARGS("base64.decode", xlat_func_base64_decode, FR_TYPE_OCTETS, xlat_func_base64_decode_arg);
 	XLAT_REGISTER_ARGS("rand", xlat_func_rand, FR_TYPE_UINT64, xlat_func_rand_arg);
