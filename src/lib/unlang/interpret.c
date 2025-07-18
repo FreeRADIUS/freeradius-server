@@ -872,7 +872,10 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		 *	functions.  It reduces boilerplate.
 		 */
 		case UNLANG_ACTION_FAIL:
-			frame->scratch_result.rcode = RLM_MODULE_FAIL;	/* Let unlang_calculate figure out if this is the final result */
+			/*
+			 *	Let unlang_calculate figure out if this is the final result
+			 */
+			frame->scratch_result = UNLANG_RESULT_RCODE(RLM_MODULE_FAIL);
 			FALL_THROUGH;
 
 		/*
