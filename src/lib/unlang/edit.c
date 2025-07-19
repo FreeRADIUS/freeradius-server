@@ -973,7 +973,7 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 {
 	map_t const *map = current->map;
 
-	if (current->rhs.result.rcode == RLM_MODULE_FAIL) {
+	if (!XLAT_RESULT_SUCCESS(&current->rhs.result)) {
 		if (map->rhs) {
 			RDEBUG("Failed expanding ... %s", map->rhs->name);
 		} else {
@@ -1360,7 +1360,7 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	tmpl_dcursor_ctx_t	cc;
 	fr_dcursor_t		cursor;
 
-	if (current->lhs.result.rcode == RLM_MODULE_FAIL) {
+	if (!XLAT_RESULT_SUCCESS(&current->lhs.result)) {
 		RDEBUG("Failed expanding %s ...", map->lhs->name);
 		return -1;
 	}
@@ -1587,7 +1587,7 @@ static unlang_action_t process_edit(unlang_result_t *p_result, request_t *reques
 				XDEBUG("MAP %s ... %s", state->current->map->lhs->name, state->current->map->rhs->name);
 			}
 
-			state->current->lhs.result.rcode = state->current->rhs.result.rcode = RLM_MODULE_OK;
+			state->current->lhs.result = state->current->rhs.result = UNLANG_RESULT_RCODE(RLM_MODULE_OK);
 
 			rcode = state->current->func(request, state, state->current);
 			if (rcode < 0) {
