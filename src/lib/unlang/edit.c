@@ -47,11 +47,11 @@ RCSID("$Id$")
 } while (0)
 
 typedef struct {
-	fr_value_box_list_t	result;			//!< result of expansion
+	fr_value_box_list_t	list;			//!< output data
 	tmpl_t const		*vpt;			//!< expanded tmpl
 	tmpl_t			*to_free;		//!< tmpl to free.
 	bool			create;			//!< whether we need to create the VP
-	unlang_result_t		success;		//!< did the xlat succeed?
+	unlang_result_t		result;			//!< result of the xlat expansion
 	fr_pair_t		*vp;			//!< VP referenced by tmpl.
 	fr_pair_t		*vp_parent;		//!< parent of the current VP
 	fr_pair_list_t		pair_list;		//!< for structural attributes
@@ -107,7 +107,7 @@ static fr_pair_t *edit_list_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, 
 static int tmpl_attr_from_result(TALLOC_CTX *ctx, map_t const *map, edit_result_t *out, request_t *request)
 {
 	ssize_t slen;
-	fr_value_box_t *box = fr_value_box_list_head(&out->result);
+	fr_value_box_t *box = fr_value_box_list_head(&out->list);
 
 	if (!box) {
 		RWDEBUG("%s %s ... - Assignment failed - No value on right-hand side", map->lhs->name, fr_tokens[map->op]);
@@ -117,7 +117,7 @@ static int tmpl_attr_from_result(TALLOC_CTX *ctx, map_t const *map, edit_result_
 	/*
 	 *	Mash all of the results together.
 	 */
-	if (fr_value_box_list_concat_in_place(box, box, &out->result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+	if (fr_value_box_list_concat_in_place(box, box, &out->list, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 		RWDEBUG("Failed converting result to string");
 		return -1;
 	}
@@ -139,7 +139,7 @@ static int tmpl_attr_from_result(TALLOC_CTX *ctx, map_t const *map, edit_result_
 	}
 
 	out->vpt = out->to_free;
-	fr_value_box_list_talloc_free(&out->result);
+	fr_value_box_list_talloc_free(&out->list);
 
 	return 0;
 }
@@ -162,11 +162,11 @@ static int tmpl_to_values(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
 		return 0;
 
 	case TMPL_TYPE_EXEC:
-		if (unlang_tmpl_push(ctx, &out->success, &out->result, request, vpt, NULL) < 0) return -1;
+		if (unlang_tmpl_push(ctx, &out->result, &out->list, request, vpt, NULL) < 0) return -1;
 		return 1;
 
 	case TMPL_TYPE_XLAT:
-		if (unlang_xlat_push(ctx, &out->success, &out->result, request, tmpl_xlat(vpt), false) < 0) return -1;
+		if (unlang_xlat_push(ctx, &out->result, &out->list, request, tmpl_xlat(vpt), false) < 0) return -1;
 		return 1;
 
 	default:
@@ -301,7 +301,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			}
 
 		} else {
-			box = fr_value_box_list_head(&current->rhs.result);
+			box = fr_value_box_list_head(&current->rhs.list);
 
 			/*
 			 *	Can't concatenate empty results.
@@ -314,7 +314,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			/*
 			 *	Mash all of the results together.
 			 */
-			if (fr_value_box_list_concat_in_place(box, box, &current->rhs.result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+			if (fr_value_box_list_concat_in_place(box, box, &current->rhs.list, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 				RWDEBUG("Failed converting result to string");
 				return -1;
 			}
@@ -666,28 +666,28 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 			 *
 			 *	@todo - we should really push the quote into the xlat, too.
 			 */
-			box = fr_value_box_list_head(&current->rhs.result);
+			box = fr_value_box_list_head(&current->rhs.list);
 
 			if (!box) {
 				MEM(box = fr_value_box_alloc(state, FR_TYPE_STRING, NULL));
 				fr_value_box_strdup(box, box, NULL, "", false);
-				fr_value_box_list_insert_tail(&current->rhs.result, box);
+				fr_value_box_list_insert_tail(&current->rhs.list, box);
 
-			} else if (fr_value_box_list_concat_in_place(box, box, &current->rhs.result, FR_TYPE_STRING,
+			} else if (fr_value_box_list_concat_in_place(box, box, &current->rhs.list, FR_TYPE_STRING,
 							      FR_VALUE_BOX_LIST_FREE_BOX, true, 8192) < 0) {
 				RWDEBUG("Failed converting result to string");
 				return -1;
 			}
-			box = fr_value_box_list_head(&current->rhs.result);
+			box = fr_value_box_list_head(&current->rhs.list);
 			single = true;
 
 		} else {
 		rhs_list:
-			if (fr_value_box_list_num_elements(&current->rhs.result) == 1) {
-				box = fr_value_box_list_head(&current->rhs.result);
+			if (fr_value_box_list_num_elements(&current->rhs.list) == 1) {
+				box = fr_value_box_list_head(&current->rhs.list);
 				single = true;
 			} else {
-				box = fr_dcursor_init(&cursor, fr_value_box_list_dlist_head(&current->rhs.result));
+				box = fr_dcursor_init(&cursor, fr_value_box_list_dlist_head(&current->rhs.list));
 			}
 		}
 	} else {
@@ -877,7 +877,7 @@ apply_op:
 
 done:
 	if (pair) tmpl_dcursor_clear(&cc);
-	fr_value_box_list_talloc_free(&current->rhs.result);
+	fr_value_box_list_talloc_free(&current->rhs.list);
 
 	return 0;
 }
@@ -973,7 +973,7 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 {
 	map_t const *map = current->map;
 
-	if (current->rhs.success.rcode == RLM_MODULE_FAIL) {
+	if (current->rhs.result.rcode == RLM_MODULE_FAIL) {
 		if (map->rhs) {
 			RDEBUG("Failed expanding ... %s", map->rhs->name);
 		} else {
@@ -1117,8 +1117,8 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 	memset(&child->rhs, 0, sizeof(child->rhs));
 
 	fr_pair_list_init(&child->rhs.pair_list);
-	fr_value_box_list_init(&child->lhs.result);
-	fr_value_box_list_init(&child->rhs.result);
+	fr_value_box_list_init(&child->lhs.list);
+	fr_value_box_list_init(&child->rhs.list);
 
 	/*
 	 *	Continue back with the RHS when we're done processing the
@@ -1183,7 +1183,7 @@ static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state,
 		MEM(box = fr_value_box_alloc_null(state));
 		if (fr_value_box_copy(box, box, tmpl_value(vpt)) < 0) return -1;
 
-		fr_value_box_list_insert_tail(&current->parent->rhs.result, box);
+		fr_value_box_list_insert_tail(&current->parent->rhs.list, box);
 
 		return next_map(request, state, current);
 	}
@@ -1207,7 +1207,7 @@ static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state,
 			MEM(box = fr_value_box_alloc_null(state));
 			if (fr_value_box_copy(box, box, &vp->data) < 0) return -1;
 
-			fr_value_box_list_insert_tail(&current->parent->rhs.result, box);
+			fr_value_box_list_insert_tail(&current->parent->rhs.list, box);
 
 			vp = fr_dcursor_next(&cursor);
 		}
@@ -1233,7 +1233,7 @@ static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *sta
 {
 	fr_dict_attr_t const *da;
 	fr_type_t type;
-	fr_value_box_t *box = fr_value_box_list_head(&current->lhs.result);
+	fr_value_box_t *box = fr_value_box_list_head(&current->lhs.list);
 	fr_value_box_t *dst;
 	fr_sbuff_unescape_rules_t *erules = NULL;
 
@@ -1250,7 +1250,7 @@ static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *sta
 	 *	There's only one value-box, just use it as-is.  We let the parent handler complain about being
 	 *	able to parse (or not) the value.
 	 */
-	if (!fr_value_box_list_next(&current->lhs.result, box)) goto done;
+	if (!fr_value_box_list_next(&current->lhs.list, box)) goto done;
 
 	/*
 	 *	Figure out how to parse the string.
@@ -1271,7 +1271,7 @@ static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *sta
 	/*
 	 *	Mash all of the results together.
 	 */
-	if (fr_value_box_list_concat_in_place(box, box, &current->lhs.result, type, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+	if (fr_value_box_list_concat_in_place(box, box, &current->lhs.list, type, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 		RWDEBUG("Failed converting result to '%s' - no memory", fr_type_to_str(type));
 		return -1;
 	}
@@ -1281,7 +1281,7 @@ static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *sta
 	 */
 	if (!fr_type_is_fixed_size(da->type)) {
 	done:
-		fr_value_box_list_move(&current->parent->rhs.result, &current->lhs.result);
+		fr_value_box_list_move(&current->parent->rhs.list, &current->lhs.list);
 		return next_map(request, state, current);
 	}
 
@@ -1298,8 +1298,8 @@ static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *sta
 	}
 	fr_value_box_safety_copy_changed(dst, box);
 
-	fr_value_box_list_talloc_free(&current->lhs.result);
-	fr_value_box_list_insert_tail(&current->parent->rhs.result, dst);
+	fr_value_box_list_talloc_free(&current->lhs.list);
+	fr_value_box_list_insert_tail(&current->parent->rhs.list, dst);
 	return next_map(request, state, current);
 }
 
@@ -1360,7 +1360,7 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	tmpl_dcursor_ctx_t	cc;
 	fr_dcursor_t		cursor;
 
-	if (current->lhs.success.rcode == RLM_MODULE_FAIL) {
+	if (current->lhs.result.rcode == RLM_MODULE_FAIL) {
 		RDEBUG("Failed expanding %s ...", map->lhs->name);
 		return -1;
 	}
@@ -1546,8 +1546,8 @@ static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit
 
 	XDEBUG("%s map %s %s ...", __FUNCTION__, map->lhs->name, fr_tokens[map->op]);
 
-	fr_assert(fr_value_box_list_empty(&current->lhs.result));	/* Should have been consumed */
-	fr_assert(fr_value_box_list_empty(&current->rhs.result));	/* Should have been consumed */
+	fr_assert(fr_value_box_list_empty(&current->lhs.list));	/* Should have been consumed */
+	fr_assert(fr_value_box_list_empty(&current->rhs.list));	/* Should have been consumed */
 
 	rcode = tmpl_to_values(state, &current->lhs, request, map->lhs);
 	if (rcode < 0) return -1;
@@ -1587,7 +1587,7 @@ static unlang_action_t process_edit(unlang_result_t *p_result, request_t *reques
 				XDEBUG("MAP %s ... %s", state->current->map->lhs->name, state->current->map->rhs->name);
 			}
 
-			state->current->lhs.success.rcode = state->current->rhs.success.rcode = RLM_MODULE_OK;
+			state->current->lhs.result.rcode = state->current->rhs.result.rcode = RLM_MODULE_OK;
 
 			rcode = state->current->func(request, state, state->current);
 			if (rcode < 0) {
@@ -1639,8 +1639,8 @@ static void edit_state_init_internal(request_t *request, unlang_frame_state_edit
 	edit_map_t			*current = &state->first;
 
 	state->current = current;
-	fr_value_box_list_init(&current->lhs.result);
-	fr_value_box_list_init(&current->rhs.result);
+	fr_value_box_list_init(&current->lhs.list);
+	fr_value_box_list_init(&current->rhs.list);
 
 	/*
 	 *	The edit list creates a local pool which should
