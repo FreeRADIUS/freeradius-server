@@ -2659,7 +2659,9 @@ check_for_eol:
 		 *	'case ::foo' is allowed.  For generality, we just expect that the second argument to
 		 *	'case' is not an operator.
 		 */
-		if (strcmp(buff[1], "case") == 0) {
+		if ((strcmp(buff[1], "case") == 0) ||
+		    (strcmp(buff[1], "limit") == 0) ||
+		    (strcmp(buff[1], "timeout") == 0)) {
 			break;
 		}
 
