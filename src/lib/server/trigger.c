@@ -260,6 +260,7 @@ int trigger(unlang_interpret_t *intp,
 	 *	Allocate a request to run asynchronously in the interpreter.
 	 */
 	request = request_local_alloc_internal(NULL, (&(request_init_args_t){ .detachable = true }));
+	request->name = talloc_typed_asprintf(request, "trigger-%s", name);
 
 	if (args) {
 		fr_pair_t	*vp;
