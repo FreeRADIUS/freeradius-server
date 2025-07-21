@@ -152,8 +152,7 @@ do { \
  */
 static inline CC_HINT(always_inline) unlang_result_t *process_result_reset(unlang_result_t *p_result, fr_process_state_t const *state)
 {
-	p_result->rcode = state->default_rcode;
-	p_result->priority = MOD_ACTION_NOT_SET;
+	*p_result = UNLANG_RESULT_RCODE(state->default_rcode);
 	return p_result;
 }
 
