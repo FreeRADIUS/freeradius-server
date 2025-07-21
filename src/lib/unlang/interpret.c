@@ -1003,7 +1003,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 			 *	Head on back up the stack
 			 */
 			frame_pop(request, stack);
-			RDEBUG4("** [%i] %s - frame popped", stack->depth, __FUNCTION__);
+			RDEBUG4("** [%i] %s - frame popped", stack->depth + 1, __FUNCTION__);
 
 			/*
 			 *	Update the stack frame
