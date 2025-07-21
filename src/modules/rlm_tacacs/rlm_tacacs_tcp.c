@@ -1392,7 +1392,7 @@ static unlang_action_t mod_enqueue(unlang_result_t *p_result, void **rctx_out, U
 	 */
 	MEM(u = talloc_zero(treq, udp_request_t));
 	u->code = request->packet->code;
-	u->priority = request->async->priority;
+	u->priority = request->priority;
 	u->recv_time = request->async->recv_time;
 
 	r->rcode = RLM_MODULE_FAIL;

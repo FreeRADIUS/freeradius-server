@@ -720,7 +720,7 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 	/*
 	 *	Set sequence so that we can prioritize ongoing multi-packet sessions.
 	 */
-	request->async->sequence = entry->tries;
+	request->sequence = entry->tries;
 	REQUEST_VERIFY(request);
 	return 0;
 }

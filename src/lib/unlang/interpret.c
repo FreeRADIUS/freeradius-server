@@ -1299,7 +1299,7 @@ void unlang_interpret_request_prioritise(request_t *request, uint32_t priority)
 
 	intp = stack->intp;
 
-	request->async->priority = priority;
+	request->priority = priority;
 
 	if (intp->funcs.prioritise) intp->funcs.prioritise(request, intp->uctx);
 }
@@ -1477,8 +1477,7 @@ static void instruction_retry_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time
 
 static void instruction_timeout_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *ctx)
 {
-	unlang_retry_t			*retry = talloc_get_type_abort(ctx, unlang_retry_t);
-	request_t			*request = talloc_get_type_abort(retry->request, request_t);
+	request_t			*request = talloc_get_type_abort(ctx, request_t);
 
 	RDEBUG("Maximum timeout reached, signalling interpreter to stop the request.");
 

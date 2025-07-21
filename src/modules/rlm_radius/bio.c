@@ -2413,7 +2413,7 @@ static int mod_enqueue(bio_request_t **p_u, fr_retry_config_t const **p_retry_co
 	 *	Can't use compound literal - const issues.
 	 */
 	u->code = request->packet->code;
-	u->priority = request->async->priority;
+	u->priority = request->priority;
 	u->recv_time = request->async->recv_time;
 	fr_pair_list_init(&u->extra);
 

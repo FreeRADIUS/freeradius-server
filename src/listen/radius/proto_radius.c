@@ -406,7 +406,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 */
 	if ((request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) &&
 	    fr_pair_find_by_da(&request->request_pairs, NULL, attr_state)) {
-		request->async->sequence = 1;
+		request->sequence = 1;
 	}
 
 	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
