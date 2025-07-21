@@ -394,7 +394,7 @@ static unlang_action_t unlang_xlat(UNUSED unlang_result_t *p_result, request_t *
 		 *	multiple sibling nodes.
 		 */
 		fr_value_box_list_talloc_free(&state->out);
-		if (unlang_xlat_push(state->ctx, NULL, &state->out, request, child, false) < 0) {
+		if (unlang_xlat_push(state->ctx, p_result, &state->out, request, child, false) < 0) {
 			RINDENT_RESTORE(request, state);
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
