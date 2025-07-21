@@ -31,6 +31,8 @@ extern "C" {
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/server/cf_util.h>
 
 #ifdef _CONST
 #  error _CONST can only be defined in the local header
@@ -77,7 +79,6 @@ struct connection_pub_s {
 							///< re-establish this connection.
 	uint64_t _CONST			timed_out;	//!< How many times has this connection timed out when
 							///< connecting.
-	bool _CONST			triggers;	//!< do we run the triggers?
 };
 
 typedef enum {
@@ -92,6 +93,12 @@ typedef struct {
 	fr_time_delta_t connection_timeout;	//!< How long to wait for the connection to open
 						//!< or for shutdown to close the connection.
 	fr_time_delta_t reconnection_delay;	//!< How long to wait after failures.
+
+	CONF_SECTION	*trigger_cs;		//!< Local configuration section we also search for triggers in.
+						///< Lifetime must be longer than the connection.
+
+	fr_pair_list_t	*trigger_args;		//!< Additional pairs to pass to the trigger function
+						///< Lifetime must be longer than the connection.
 } connection_conf_t;
 
 typedef struct connection_watch_entry_s connection_watch_entry_t;
