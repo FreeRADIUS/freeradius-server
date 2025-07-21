@@ -186,6 +186,8 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(unlang_result_t *p_result, r
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 
+	if (!XLAT_RESULT_SUCCESS(&state->xlat_result)) RETURN_UNLANG_FAIL;
+
 	if (fr_exec_oneshot(state->ctx, &state->exec_result, request,
 			  &state->list,
 			  state->args.exec.env, false, false,
