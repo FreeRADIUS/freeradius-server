@@ -268,12 +268,13 @@ push:
  * @param[in] tmpl		the tmpl to expand
  * @param[in] args		additional controls for expanding #TMPL_TYPE_EXEC,
  * 				and where the status of exited programs will be stored.
+ * @param[in] top_frame		If true, then this is the top frame of the sub-stack.
  * @return
  *	- 0 on success
  *	- -1 on failure
  */
 int unlang_tmpl_push(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_list_t *out, request_t *request,
-		     tmpl_t const *tmpl, unlang_tmpl_args_t *args)
+		     tmpl_t const *tmpl, unlang_tmpl_args_t *args, bool top_frame)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -320,7 +321,7 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_li
 	 *	Push a new tmpl frame onto the stack
 	 */
 	if (unlang_interpret_push(p_result, request, unlang_tmpl_to_generic(ut),
-				  FRAME_CONF(RLM_MODULE_NOT_SET, false), UNLANG_NEXT_STOP) < 0) return -1;
+				  FRAME_CONF(RLM_MODULE_NOT_SET, top_frame), UNLANG_NEXT_STOP) < 0) return -1;
 
 	frame = &stack->frame[stack->depth];
 	state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);

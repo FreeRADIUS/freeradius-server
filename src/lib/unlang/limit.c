@@ -115,7 +115,7 @@ static unlang_action_t unlang_limit(unlang_result_t *p_result, request_t *reques
 
 	fr_value_box_list_init(&state->result);
 
-	if (unlang_tmpl_push(state, NULL, &state->result, request, gext->vpt, NULL) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_tmpl_push(state, NULL, &state->result, request, gext->vpt, NULL, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
 
 	frame_repeat(frame, unlang_limit_xlat_done);
 

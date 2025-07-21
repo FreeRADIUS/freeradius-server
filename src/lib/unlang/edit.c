@@ -162,7 +162,7 @@ static int tmpl_to_values(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
 		return 0;
 
 	case TMPL_TYPE_EXEC:
-		if (unlang_tmpl_push(ctx, &out->result, &out->list, request, vpt, NULL) < 0) return -1;
+		if (unlang_tmpl_push(ctx, &out->result, &out->list, request, vpt, NULL, UNLANG_SUB_FRAME) < 0) return -1;
 		return 1;
 
 	case TMPL_TYPE_XLAT:

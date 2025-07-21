@@ -103,15 +103,6 @@ typedef struct {
 	int			exec_status;	//!< Result of the program (if the trigger is a tmpl)
 } fr_trigger_t;
 
-/*
- *	Function to call when popping the frame
- */
-static unlang_action_t trigger_pop(UNUSED unlang_result_t *p_result, UNUSED request_t *request, UNUSED void *uctx)
-{
-	return UNLANG_ACTION_CALCULATE_RESULT;
-}
-
-
 /** Execute a trigger - call an executable to process an event
  *
  * A trigger ties a state change (e.g. connection up) in a module to an action
@@ -164,8 +155,6 @@ int trigger(unlang_interpret_t *intp,
 
 	fr_event_list_t		*el;
 	tmpl_rules_t		t_rules;
-
-	unlang_action_t		action;
 
 	/*
 	 *	noop if trigger_init was never called, or if
@@ -334,19 +323,6 @@ int trigger(unlang_interpret_t *intp,
 
 	fr_assert(trigger->vpt != NULL);
 
-	action = unlang_function_push_with_result(unlang_interpret_result(request),	/* transparent */
-						  request,
-						  NULL, 				/* don't call it immediately */
-						  trigger_pop, 				/* but when we pop the frame */
-						  NULL, ~(FR_SIGNAL_CANCEL),
-						  UNLANG_TOP_FRAME,
-						  NULL);
-	if (action != UNLANG_ACTION_PUSHED_CHILD) {
-		ERROR("Failed initializing the trigger");
-		talloc_free(request);
-		return -1;
-	}
-
 	if (unlang_tmpl_push(trigger, &trigger->result, &trigger->out, request, trigger->vpt,
 			     &(unlang_tmpl_args_t) {
 				.type = UNLANG_TMPL_ARGS_TYPE_EXEC,
@@ -354,7 +330,7 @@ int trigger(unlang_interpret_t *intp,
 					.status_out = &trigger->exec_status,
 					.timeout = fr_time_delta_from_sec(5),
 					},
-			     }) < 0) {
+			     }, UNLANG_TOP_FRAME) < 0) {
 		talloc_free(request);
 	}
 

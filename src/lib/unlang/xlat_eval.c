@@ -1455,7 +1455,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 
 				if (unlang_tmpl_push(ctx, NULL, &rctx->list, request, node->vpt,
 						     TMPL_ARGS_EXEC(NULL, fr_time_delta_from_sec(EXEC_TIMEOUT),
-						     		    false, &rctx->status)) < 0) goto fail;
+						     		    false, &rctx->status), UNLANG_SUB_FRAME) < 0) goto fail;
 
 				xa = XLAT_ACTION_PUSH_UNLANG;
 				goto finish;

@@ -2173,7 +2173,7 @@ next:
 	if (usermod_ctx->current_mod < usermod_ctx->num_mods) {
 		if (unlang_module_yield(request, user_modify_mod_build_resume, NULL, 0, usermod_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
 		if (unlang_tmpl_push(usermod_ctx, NULL, &usermod_ctx->expanded, request,
-				     usermod_ctx->call_env->mod[usermod_ctx->current_mod]->tmpl, NULL) < 0) RETURN_UNLANG_FAIL;
+				     usermod_ctx->call_env->mod[usermod_ctx->current_mod]->tmpl, NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
@@ -2214,7 +2214,7 @@ static unlang_action_t CC_HINT(nonnull) user_modify_resume(unlang_result_t *p_re
 	if (unlang_module_yield(request, user_modify_mod_build_resume, NULL, 0, usermod_ctx) == UNLANG_ACTION_FAIL) goto fail;
 ;
 	if (unlang_tmpl_push(usermod_ctx, NULL, &usermod_ctx->expanded, request,
-			     usermod_ctx->call_env->mod[0]->tmpl, NULL) < 0) goto fail;
+			     usermod_ctx->call_env->mod[0]->tmpl, NULL, UNLANG_SUB_FRAME) < 0) goto fail;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
