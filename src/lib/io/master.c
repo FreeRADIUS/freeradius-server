@@ -2800,13 +2800,6 @@ static int mod_close(fr_listen_t *li)
 	}
 	pthread_mutex_unlock(&connection->parent->mutex);
 
-	/*
-	 *	Clean up listener
-	 */
-	if (unlikely(fr_network_listen_delete(connection->nr, child) < 0)) {
-		PERROR("Failed to delete connection %s", connection->name);
-	}
-
 	talloc_free(connection->mi);
 
 	return 0;
