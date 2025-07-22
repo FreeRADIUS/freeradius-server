@@ -158,6 +158,7 @@ typedef struct home_server {
 #ifdef HAVE_TRUST_ROUTER_TR_DH_H
 	time_t			expiration;
 #endif
+	uint32_t		id;
 } home_server_t;
 
 
@@ -171,10 +172,6 @@ typedef enum home_pool_type_t {
 	HOME_POOL_CONSISTENT_KEYED_BALANCE
 } home_pool_type_t;
 
-typedef struct {
-	home_server_t		*home;
-	uint32_t		id;
-} home_server_id_t;
 
 typedef struct home_pool_t {
 	char const		*name;
@@ -193,7 +190,7 @@ typedef struct home_pool_t {
 	home_server_t		**affinity_group;
 
 	int			num_home_servers;
-	home_server_id_t       	servers[1];
+	home_server_t		*servers[1];
 } home_pool_t;
 
 

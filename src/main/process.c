@@ -757,7 +757,7 @@ void request_done(REQUEST *request, int original)
 			request->home_pool->last_serviced = now.tv_sec;
 
 			for (i = 0; i < request->home_pool->num_home_servers; i++) {
-				home_server_t *home = request->home_pool->servers[i].home;
+				home_server_t *home = request->home_pool->servers[i];
 
 				if (home->state == HOME_STATE_CONNECTION_FAIL) {
 					mark_home_server_dead(home, &now, false);
