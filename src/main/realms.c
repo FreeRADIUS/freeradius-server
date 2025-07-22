@@ -1446,7 +1446,7 @@ int realm_pool_add(home_pool_t *pool, CONF_SECTION *cs)
 
 	old = rbtree_finddata(home_pools_byname, pool);
 	if (old) {
-		cf_log_err_cs(cs, "Cannot add duplicate home server %s, original is at %s[%d]", pool->name,
+		cf_log_err_cs(cs, "Cannot add duplicate home server pool %s, original is at %s[%d]", pool->name,
 			      cf_section_filename(old->cs), cf_section_lineno(old->cs));
 		return 0;
 	}
