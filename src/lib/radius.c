@@ -325,7 +325,7 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 done:
 #endif
 	if (rcode < 0) {
-		if (errno == EMSGSIZ) {
+		if (errno == EMSGSIZE) {
 			fr_strerror_printf("sendto failed - destination does not support UDP fragmentation: %s", fr_syserror(errno));
 		} else {
 			fr_strerror_printf("sendto failed: %s", fr_syserror(errno));
