@@ -22,9 +22,36 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
 import threading
 
-from pyrad.client import Client, Timeout
-from pyrad.dictionary import Dictionary
-import pyrad.packet
+from os import name
+# On Windows use pyrad2 as pyrad won't work
+# pyrad2 requires Python >= 3.12 so stick with pyrad
+# on other platforms
+if name == 'nt':
+    from pyrad2.client import Client
+    from pyrad2.dictionary import Dictionary
+    from pyrad2 import packet
+    from pyrad2.constants import PacketType
+    from pyrad2.exceptions import Timeout
+else:
+    from pyrad.client import Client, Timeout
+    from pyrad.dictionary import Dictionary
+    from pyrad import packet
+
+    class PacketType:
+        AccessRequest = packet.AccessRequest
+        AccessAccept = packet.AccessAccept
+        AccessReject = packet.AccessReject
+        AccountingRequest = packet.AccountingRequest
+        AccountingResponse = packet.AccountingResponse
+        AccessChallenge = packet.AccessChallenge
+        StatusServer = packet.StatusServer
+        StatusClient = packet.StatusClient
+        DisconnectRequest = packet.DisconnectRequest
+        DisconnectACK = packet.DisconnectACK
+        DisconnectNAK = packet.DisconnectNAK
+        CoARequest = packet.CoARequest
+        CoAACK = packet.CoAACK
+        CoANAK = packet.CoANAK
 
 import argparse
 import json
@@ -47,20 +74,20 @@ class RadiusHealthCheckHandler(BaseHTTPRequestHandler):
 
     def codeToStr(self, code):
         code_map = {
-            pyrad.packet.AccessRequest : 'Access-Request',
-            pyrad.packet.AccessAccept : 'Access-Accept',
-            pyrad.packet.AccessReject : 'Access-Reject',
-            pyrad.packet.AccountingRequest : 'Accounting-Request',
-            pyrad.packet.AccountingResponse : 'Accounting-Response',
-            pyrad.packet.AccessChallenge : 'Access-Challenge',
-            pyrad.packet.StatusServer : 'Status-Server',
-            pyrad.packet.StatusClient : 'Status-Client',
-            pyrad.packet.DisconnectRequest : 'Disconnect-Request',
-            pyrad.packet.DisconnectACK : 'Disconnect-Ack',
-            pyrad.packet.DisconnectNAK : 'Disconnect-NAK',
-            pyrad.packet.CoARequest : 'CoA-Request',
-            pyrad.packet.CoAACK : 'CoA-ACK',
-            pyrad.packet.CoANAK : 'CoA-NAK'
+            PacketType.AccessRequest : 'Access-Request',
+            PacketType.AccessAccept : 'Access-Accept',
+            PacketType.AccessReject : 'Access-Reject',
+            PacketType.AccountingRequest : 'Accounting-Request',
+            PacketType.AccountingResponse : 'Accounting-Response',
+            PacketType.AccessChallenge : 'Access-Challenge',
+            PacketType.StatusServer : 'Status-Server',
+            PacketType.StatusClient : 'Status-Client',
+            PacketType.DisconnectRequest : 'Disconnect-Request',
+            PacketType.DisconnectACK : 'Disconnect-Ack',
+            PacketType.DisconnectNAK : 'Disconnect-NAK',
+            PacketType.CoARequest : 'CoA-Request',
+            PacketType.CoAACK : 'CoA-ACK',
+            PacketType.CoANAK : 'CoA-NAK'
         }
         if code in code_map:
             return code_map[code]
@@ -97,14 +124,14 @@ class RadiusHealthCheckHandler(BaseHTTPRequestHandler):
                         dict = config.raddict)
 
         # Create the RADIUS request
-        if healthcheck['type']['req_code'] == pyrad.packet.AccessRequest:
+        if healthcheck['type']['req_code'] == PacketType.AccessRequest:
             req = client.CreateAuthPacket(**healthcheck['attributes'])
-        elif healthcheck['type']['req_code'] == pyrad.packet.AccountingRequest:
+        elif healthcheck['type']['req_code'] == PacketType.AccountingRequest:
             req = client.CreateAcctPacket(**healthcheck['attributes'])
-        elif healthcheck['type']['req_code'] == pyrad.packet.CoARequest:
+        elif healthcheck['type']['req_code'] == PacketType.CoARequest:
             req = client.CreateCoAPacket(**healthcheck['attributes'])
-        elif healthcheck['type']['req_code'] == pyrad.packet.StatusServer:
-            req = client.CreateAuthPacket(code=pyrad.packet.StatusServer,**healthcheck['attributes'])
+        elif healthcheck['type']['req_code'] == PacketType.StatusServer:
+            req = client.CreateAuthPacket(code=PacketType.StatusServer,**healthcheck['attributes'])
         else:
             req = client.CreatePacket(code=healthcheck['type']['req_code'],**healthcheck['attributes'])
 
@@ -114,10 +141,10 @@ class RadiusHealthCheckHandler(BaseHTTPRequestHandler):
         # We now block until retries and timeout have expired
         try:
             rsp = client.SendPacket(req)
-        except pyrad.packet.PacketError as e:
+        except packet.PacketError as e:
             self.genericResponse(502, json.dumps({"msg": "Healthcheck error: " + str(e) })) # BadGateway
             return
-        except pyrad.client.Timeout as e:
+        except Timeout as e:
             self.genericResponse(504, json.dumps({"msg": "Healthcheck error: No response from upstream"})) # Gateway timeout
             return
         except Exception as e:
@@ -144,23 +171,23 @@ class Configuration:
     def read_configuration(self):
         packet_types = {
             'access-request': {
-                'req_code': pyrad.packet.AccessRequest,
-                'rsp_code': pyrad.packet.AccessAccept
+                'req_code': PacketType.AccessRequest,
+                'rsp_code': PacketType.AccessAccept
             },
             'accounting-request': {
-                'req_code': pyrad.packet.AccountingRequest,
-                'rsp_code': pyrad.packet.AccountingResponse
+                'req_code': PacketType.AccountingRequest,
+                'rsp_code': PacketType.AccountingResponse
             },
             'coa-request': {
-                'req_code': pyrad.packet.CoARequest,
-                'rsp_code': pyrad.packet.CoAACK
+                'req_code': PacketType.CoARequest,
+                'rsp_code': PacketType.CoAACK
             },
             'disconnect-request': {
-                'req_code': pyrad.packet.DisconnectRequest,
-                'rsp_code': pyrad.packet.DisconnectACK
+                'req_code': PacketType.DisconnectRequest,
+                'rsp_code': PacketType.DisconnectACK
             },
             'status-server': {
-                'req_code': pyrad.packet.StatusServer
+                'req_code': PacketType.StatusServer
             }
         }
 
