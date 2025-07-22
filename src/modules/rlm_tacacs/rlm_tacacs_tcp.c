@@ -552,11 +552,11 @@ static ssize_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_
 	*response_code = 0;	/* Initialise to keep the rest of the code happy */
 
 	/*
-	 *	Check the session ID here, because we've lost the original packet.
+	 *	Check the session ID.
 	 */
-	if (h->session_id != fr_nbo_to_uint32(data + 4)) {
+	if (memcmp(data + 4, req->packet + 4, 4) != 0) {
 		REDEBUG("Session ID %08x does not match expected number %08x",
-			fr_nbo_to_uint32(data + 4), h->session_id);
+			fr_nbo_to_uint32(data + 4), fr_nbo_to_uint32(req->packet + 4));
 	}
 
 	/*
