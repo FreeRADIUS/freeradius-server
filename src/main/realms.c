@@ -1468,6 +1468,18 @@ int realm_pool_add(home_pool_t *pool, CONF_SECTION *cs)
 	return 1;
 }
 
+static int server_cmp_by_id(void const *one, void const *two)
+{
+	home_server_t const *a = *(home_server_t const * const *) one;
+	home_server_t const *b = *(home_server_t const * const *) two;
+
+	if (a->id < b->id) return -1;
+	if (a->id > b->id) return +1;
+
+	if (a < b) return -1;
+	return +1;
+}
+
 static int server_pool_add(realm_config_t *rc,
 			   CONF_SECTION *cs, home_type_t server_type, bool do_print)
 {
@@ -1564,6 +1576,7 @@ static int server_pool_add(realm_config_t *rc,
 			{ "client-balance", HOME_POOL_CLIENT_BALANCE },
 			{ "client-port-balance", HOME_POOL_CLIENT_PORT_BALANCE },
 			{ "keyed-balance", HOME_POOL_KEYED_BALANCE },
+			{ "consistent-keyed-balance", HOME_POOL_CONSISTENT_KEYED_BALANCE },
 			{ NULL, 0 }
 		};
 
@@ -1645,6 +1658,16 @@ static int server_pool_add(realm_config_t *rc,
 			goto error;
 		}
 
+		/*
+		 *	We can only do consisteny keyed balance to real home servers.
+		 */
+		if (pool->type == HOME_POOL_CONSISTENT_KEYED_BALANCE) {
+			if (home->virtual_server) {
+				ERROR("Home server %s is a virtual server, and cannot be used with home_server_pool of 'type = consistent-keyed-balance'", home->name);
+				goto error;
+			}
+		}
+
 		if (home->affinity) {
 			if (home->virtual_server) {
 				ERROR("Home server %s is a virtual server, and cannot be used with 'affinity'", home->name);
@@ -1685,6 +1708,57 @@ static int server_pool_add(realm_config_t *rc,
 			ERROR("Cannot use home server pool 'fallback' when home server 'affinity' is set");
 			goto error;
 		}
+	}
+
+	/*
+	 *	Create the hash ID, and then sort the home servers by ID.
+	 */
+	if (pool->type == HOME_POOL_CONSISTENT_KEYED_BALANCE) {
+		int i;
+
+		/*
+		 *	Create an ID for the home server which is
+		 *	unique across restarts.  We use the
+		 *	destination IP, port, and protocol.  This
+		 *	should make the fields unique.
+		 */
+		for (i = 0; i < pool->num_home_servers; i++) {
+			uint32_t hash;
+
+			home = pool->servers[i];
+
+			switch (home->ipaddr.af) {
+			case AF_INET:
+				hash = fr_hash(&home->ipaddr.ipaddr.ip4addr,
+					       sizeof(home->ipaddr.ipaddr.ip4addr));
+				break;
+
+			case AF_INET6:
+				hash = fr_hash(&home->ipaddr.ipaddr.ip6addr,
+					       sizeof(home->ipaddr.ipaddr.ip6addr));
+				break;
+
+			default:
+				ERROR("Invalid address family");
+				goto error;
+			}
+
+			/*
+			 *	If we use a different source IP, then
+			 *	we're a different client to the home
+			 *	server.  So we might as well use this,
+			 *	too.
+			 */
+			if (home->src_ipaddr_str) {
+				hash = fr_hash_update(home->src_ipaddr_str, strlen(home->src_ipaddr_str), hash);
+			}
+
+			hash = fr_hash_update(&home->proto, sizeof(home->proto), hash);
+			home->id = fr_hash_update(&home->port, sizeof(home->port), hash);
+		}
+
+		qsort(&pool->servers[0], pool->num_home_servers, sizeof(pool->servers[0]),
+		      server_cmp_by_id);
 	}
 
 	if (!realm_pool_add(pool, cs)) goto error;
@@ -2807,6 +2881,84 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 	}
 }
 
+static bool home_server_active(REQUEST *request, home_server_t *home)
+{
+	/*
+	 *	Skip dead home servers.
+	 *
+	 *	Home servers that are unknown, alive, or zombie
+	 *	are used for proxying.
+	 */
+	if (HOME_SERVER_IS_DEAD(home)) {
+		return false;
+	}
+
+	/*
+	 *	This home server is too busy.  Choose another one.
+	 */
+	if (home->currently_outstanding >= home->max_outstanding) {
+		return false;
+	}
+
+#ifdef WITH_DETAIL
+	/*
+	 *	We read the packet from a detail file, AND it
+	 *	came from this server.  Don't re-proxy it
+	 *	there.
+	 */
+	if (request->listener &&
+	    (request->listener->type == RAD_LISTEN_DETAIL) &&
+	    (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
+	    (fr_ipaddr_cmp(&home->ipaddr, &request->packet->src_ipaddr) == 0)) {
+		return false;
+	}
+#endif
+
+	/*
+	 *	Default virtual: ignore homes tied to a
+	 *	virtual.
+	 */
+	if (!request->server && home->parent_server) {
+		return false;
+	}
+
+	/*
+	 *	A virtual AND home is tied to virtual,
+	 *	ignore ones which don't match.
+	 */
+	if (request->server && home->parent_server &&
+	    strcmp(request->server, home->parent_server) != 0) {
+		return false;
+	}
+
+	/*
+	 *	Allow request->server && !home->parent_server
+	 *
+	 *	i.e. virtuals can proxy to globally defined
+	 *	homes.
+	 */
+
+	return true;
+}
+
+/*
+ *	Return the nearest neighbour by consistent hash.
+ *
+ *	The home servers are ordered by ID (small to large).  We
+ *	choose the nearest one (wrapping around) which is higher than
+ *	the current hash.
+ */
+static home_server_t *home_server_by_consistent_key(home_pool_t *pool, uint32_t hash)
+{
+	int i;
+
+	for (i = 0; i < pool->num_home_servers; i++) {
+		if (pool->servers[i]->id > hash) return pool->servers[i];
+	}
+
+	return pool->servers[0];
+}
+
 home_server_t *home_server_ldb(char const *realmname,
 			       home_pool_t *pool, REQUEST *request)
 {
@@ -2904,6 +3056,28 @@ home_server_t *home_server_ldb(char const *realmname,
 		start = 0;
 		break;
 
+	case HOME_POOL_CONSISTENT_KEYED_BALANCE:
+		/*
+		 *	If there's no key, we just pick a random destination.
+		 */
+		vp = fr_pair_find_by_num(request->config, PW_LOAD_BALANCE_KEY, 0, TAG_ANY);
+		if (!vp) {
+			start = 0;
+			break;
+		}
+
+		hash = fr_hash(vp->vp_strvalue, vp->vp_length);
+
+		for (count = 0; count < pool->num_home_servers; count++) {
+			uint32_t count_hash;
+
+			count_hash = fr_hash_update(&count, sizeof(count), hash);
+
+			found = home_server_by_consistent_key(pool, count_hash);
+			if (home_server_active(request, found)) return found;
+		}
+		goto all_dead;
+
 	default:		/* this shouldn't happen... */
 		start = 0;
 		break;
@@ -2922,60 +3096,7 @@ home_server_t *home_server_ldb(char const *realmname,
 
 		if (!home) continue;
 
-		/*
-		 *	Skip dead home servers.
-		 *
-		 *	Home servers that are unknown, alive, or zombie
-		 *	are used for proxying.
-		 */
-		if (HOME_SERVER_IS_DEAD(home)) {
-			continue;
-		}
-
-		/*
-		 *	This home server is too busy.  Choose another one.
-		 */
-		if (home->currently_outstanding >= home->max_outstanding) {
-			continue;
-		}
-
-#ifdef WITH_DETAIL
-		/*
-		 *	We read the packet from a detail file, AND it
-		 *	came from this server.  Don't re-proxy it
-		 *	there.
-		 */
-		if (request->listener &&
-		    (request->listener->type == RAD_LISTEN_DETAIL) &&
-		    (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
-		    (fr_ipaddr_cmp(&home->ipaddr, &request->packet->src_ipaddr) == 0)) {
-			continue;
-		}
-#endif
-
-		/*
-		 *	Default virtual: ignore homes tied to a
-		 *	virtual.
-		 */
-		if (!request->server && home->parent_server) {
-			continue;
-		}
-
-		/*
-		 *	A virtual AND home is tied to virtual,
-		 *	ignore ones which don't match.
-		 */
-		if (request->server && home->parent_server &&
-		    strcmp(request->server, home->parent_server) != 0) {
-			continue;
-		}
-
-		/*
-		 *	Allow request->server && !home->parent_server
-		 *
-		 *	i.e. virtuals can proxy to globally defined
-		 *	homes.
-		 */
+		if (!home_server_active(request, home)) continue;
 
 		/*
 		 *	It's zombie, so we remember the first zombie
@@ -3050,6 +3171,7 @@ home_server_t *home_server_ldb(char const *realmname,
 	/*
 	 *	There's a fallback if they're all dead.
 	 */
+all_dead:
 	if (!found && pool->fallback) {
 		found = pool->fallback;
 
