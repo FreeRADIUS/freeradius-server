@@ -150,6 +150,24 @@ struct tcp_request_s {
 	fr_retry_t		retry;			//!< retransmission timers
 };
 
+static rlm_rcode_t tacacs_code_to_rcode[FR_TACACS_CODE_MAX] = {
+	[FR_TACACS_CODE_AUTH_PASS]		= RLM_MODULE_OK,
+	[FR_TACACS_CODE_AUTH_FAIL]		= RLM_MODULE_REJECT,
+	[FR_TACACS_CODE_AUTH_GETUSER]		= RLM_MODULE_UPDATED,
+	[FR_TACACS_CODE_AUTH_GETPASS]		= RLM_MODULE_UPDATED,
+	[FR_TACACS_CODE_AUTH_GETDATA]		= RLM_MODULE_UPDATED,
+	[FR_TACACS_CODE_AUTH_RESTART]		= RLM_MODULE_HANDLED,
+	[FR_TACACS_CODE_AUTH_ERROR]		= RLM_MODULE_FAIL,
+
+	[FR_TACACS_CODE_AUTZ_PASS_ADD]		= RLM_MODULE_OK,
+	[FR_TACACS_CODE_AUTZ_PASS_REPLACE]	= RLM_MODULE_UPDATED,
+	[FR_TACACS_CODE_AUTZ_FAIL]		= RLM_MODULE_REJECT,
+	[FR_TACACS_CODE_AUTZ_ERROR]		= RLM_MODULE_FAIL,
+
+	[FR_TACACS_CODE_ACCT_SUCCESS]		= RLM_MODULE_OK,
+	[FR_TACACS_CODE_ACCT_ERROR]		= RLM_MODULE_FAIL,
+};
+
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, rlm_tacacs_tcp_t, dst_ipaddr), },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, rlm_tacacs_tcp_t, dst_ipaddr) },
@@ -1179,9 +1197,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 
 		treq->request->reply->code = code;
 
-		// @todo - check various random locations for status of the reply: error, etc.
-		r->rcode = RLM_MODULE_OK;
-//		r->rcode = radius_code_to_rcode[code];
+		r->rcode = tacacs_code_to_rcode[code];
 		fr_pair_list_append(&request->reply_pairs, &reply);
 		trunk_request_signal_complete(treq);
 	}
