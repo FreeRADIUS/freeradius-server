@@ -1374,7 +1374,7 @@ void realm_pool_free(home_pool_t *pool)
 		 *	configuration files.
 		 */
 		for (i = 0; i < pool->num_home_servers; i++) {
-			if (pool->servers[i]->cs) {
+			if (pool->servers[i].home->cs) {
 				rad_assert(0 == 1);
 				return;
 			}
@@ -1470,13 +1470,13 @@ int realm_pool_add(home_pool_t *pool, CONF_SECTION *cs)
 
 static int server_cmp_by_id(void const *one, void const *two)
 {
-	home_server_t const *a = *(home_server_t const * const *) one;
-	home_server_t const *b = *(home_server_t const * const *) two;
+	home_server_id_t const *a = (home_server_id_t const *) one;
+	home_server_id_t const *b = (home_server_id_t const *) two;
 
 	if (a->id < b->id) return -1;
 	if (a->id > b->id) return +1;
 
-	if (a < b) return -1;
+	if (a->home < b->home) return -1;
 	return +1;
 }
 
@@ -1698,7 +1698,8 @@ static int server_pool_add(realm_config_t *rc,
 		}
 
 		if (do_print) cf_log_info(cs, "\thome_server = %s", home->name);
-		pool->servers[num_home_servers++] = home;
+		pool->servers[num_home_servers++].home = home;
+
 	} /* loop over home_server's */
 
 	if (pool->fallback) {
@@ -1725,7 +1726,7 @@ static int server_pool_add(realm_config_t *rc,
 		for (i = 0; i < pool->num_home_servers; i++) {
 			uint32_t hash;
 
-			home = pool->servers[i];
+			home = pool->servers[i].home;
 
 			switch (home->ipaddr.af) {
 			case AF_INET:
@@ -1754,7 +1755,7 @@ static int server_pool_add(realm_config_t *rc,
 			}
 
 			hash = fr_hash_update(&home->proto, sizeof(home->proto), hash);
-			home->id = fr_hash_update(&home->port, sizeof(home->port), hash);
+			pool->servers[i].id = fr_hash_update(&home->port, sizeof(home->port), hash);
 		}
 
 		qsort(&pool->servers[0], pool->num_home_servers, sizeof(pool->servers[0]),
@@ -1866,9 +1867,9 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 	insert_point = -1;
 	if (pool) {
 		for (i = pool->num_home_servers - 1; i >= 0; i--) {
-			if (pool->servers[i]) break;
+			if (pool->servers[i].home) break;
 
-			if (!pool->servers[i]) {
+			if (!pool->servers[i].home) {
 				insert_point = i;
 			}
 		}
@@ -1993,7 +1994,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 	 */
 	if (insert_point >= 0) {
 		rad_assert(pool != NULL);
-		pool->servers[insert_point] = home;
+		pool->servers[insert_point].home = home;
 		return 1;
 	}
 
@@ -2027,7 +2028,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 
 	pool->cs = cs;
 
-	pool->servers[0] = home;
+	pool->servers[0].home = home;
 
 	if (!rbtree_insert(home_pools_byname, pool)) {
 		rad_assert("Internal sanity check failed" == NULL);
@@ -2953,10 +2954,10 @@ static home_server_t *home_server_by_consistent_key(home_pool_t *pool, uint32_t 
 	int i;
 
 	for (i = 0; i < pool->num_home_servers; i++) {
-		if (pool->servers[i]->id > hash) return pool->servers[i];
+		if (pool->servers[i].id > hash) return pool->servers[i].home;
 	}
 
-	return pool->servers[0];
+	return pool->servers[0].home;
 }
 
 home_server_t *home_server_ldb(char const *realmname,
@@ -3092,7 +3093,7 @@ home_server_t *home_server_ldb(char const *realmname,
 	 *	Otherwise, use it.
 	 */
 	for (count = 0; count < pool->num_home_servers; count++) {
-		home_server_t *home = pool->servers[(start + count) % pool->num_home_servers];
+		home_server_t *home = pool->servers[(start + count) % pool->num_home_servers].home;
 
 		if (!home) continue;
 
@@ -3211,7 +3212,7 @@ all_dead:
 	if (!realm_config->fallback &&
 	    realm_config->wake_all_if_all_dead) {
 		for (count = 0; count < pool->num_home_servers; count++) {
-			home_server_t *home = pool->servers[count];
+			home_server_t *home = pool->servers[count].home;
 
 			if (!home) continue;
 

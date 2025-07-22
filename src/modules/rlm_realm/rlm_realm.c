@@ -316,9 +316,9 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 *	send it there again.
 		 */
 		for (i = 0; i < realm->acct_pool->num_home_servers; i++) {
-			if (realm->acct_pool->servers[i]->ipaddr.af == AF_UNSPEC) continue;
+			if (realm->acct_pool->servers[i].home->ipaddr.af == AF_UNSPEC) continue;
 
-			if (fr_ipaddr_cmp(&realm->acct_pool->servers[i]->ipaddr, &my_ipaddr) == 0) {
+			if (fr_ipaddr_cmp(&realm->acct_pool->servers[i].home->ipaddr, &my_ipaddr) == 0) {
 				RDEBUG2("Suppressing proxy due to FreeRADIUS-Proxied-To");
 				return RLM_MODULE_OK;
 			}
@@ -341,11 +341,11 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 *	send it there again.
 		 */
 		for (i = 0; i < realm->acct_pool->num_home_servers; i++) {
-			if (realm->acct_pool->servers[i]->ipaddr.af == AF_UNSPEC) continue;
+			if (realm->acct_pool->servers[i].home->ipaddr.af == AF_UNSPEC) continue;
 
-			if ((fr_ipaddr_cmp(&realm->acct_pool->servers[i]->ipaddr,
+			if ((fr_ipaddr_cmp(&realm->acct_pool->servers[i].home->ipaddr,
 					     &request->packet->src_ipaddr) == 0) &&
-			    (realm->acct_pool->servers[i]->port == request->packet->src_port)) {
+			    (realm->acct_pool->servers[i].home->port == request->packet->src_port)) {
 				RDEBUG2("Suppressing proxy because packet was already sent to a server in that realm");
 				return RLM_MODULE_OK;
 			}
