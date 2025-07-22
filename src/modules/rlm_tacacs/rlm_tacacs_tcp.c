@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/heap.h>
-#include <freeradius-devel/util/udp.h>
 
 #include <sys/socket.h>
 #include <sys/uio.h>
@@ -68,15 +67,15 @@ typedef struct {
 	rlm_tacacs_tcp_t const	*inst;			//!< our instance
 
 	trunk_conf_t		trunk_conf;		//!< trunk configuration
-	trunk_t		*trunk;			//!< trunk handler
-} udp_thread_t;
+	trunk_t			*trunk;			//!< trunk handler
+} tcp_thread_t;
 
 typedef struct {
-	trunk_request_t	*treq;
+	trunk_request_t		*treq;
 	rlm_rcode_t		rcode;			//!< from the transport
-} udp_result_t;
+} tcp_result_t;
 
-typedef struct udp_request_s udp_request_t;
+typedef struct tcp_request_s tcp_request_t;
 
 typedef struct {
 	uint8_t			*read;			//!< where we read data from
@@ -101,7 +100,7 @@ typedef struct {
 							///< in one go.
 
 	rlm_tacacs_tcp_t const	*inst;			//!< Our module instance.
-	udp_thread_t		*thread;
+	tcp_thread_t		*thread;
 
 	uint32_t		session_id;		//!< for TACACS+ "security".
 
@@ -127,16 +126,16 @@ typedef struct {
 	fr_time_t		last_sent;		//!< last time we sent a packet.
 	fr_time_t		last_idle;		//!< last time we had nothing to do
 
-	fr_timer_t	*zombie_ev;		//!< Zombie timeout.
+	fr_timer_t		*zombie_ev;		//!< Zombie timeout.
 
 	trunk_connection_t	*tconn;			//!< trunk connection
-} udp_handle_t;
+} tcp_handle_t;
 
 
 /** Connect request_t to local tracking structure
  *
  */
-struct udp_request_s {
+struct tcp_request_s {
 	uint32_t		priority;		//!< copied from request->async->priority
 	fr_time_t		recv_time;		//!< copied from request->async->recv_time
 
@@ -147,7 +146,7 @@ struct udp_request_s {
 	uint8_t			*packet;		//!< Packet we write to the network.
 	size_t			packet_len;		//!< Length of the packet.
 
-	fr_timer_t	*ev;			//!< timer for retransmissions
+	fr_timer_t		*ev;			//!< timer for retransmissions
 	fr_retry_t		retry;			//!< retransmission timers
 };
 
@@ -195,22 +194,22 @@ fr_dict_attr_autoload_t rlm_tacacs_tcp_dict_attr[] = {
 	{ NULL }
 };
 
-/** Clear out any connection specific resources from a udp request
+/** Clear out any connection specific resources from a tcp request
  *
  */
-static void udp_request_reset(udp_handle_t *h, udp_request_t *u)
+static void tcp_request_reset(tcp_handle_t *h, tcp_request_t *req)
 {
-	u->packet = NULL;
+	req->packet = NULL;
 
 	fr_assert(h->active > 0);
-	fr_assert(h->tracking[u->id] != NULL);
-	fr_assert(h->tracking[u->id]->preq == u);
+	fr_assert(h->tracking[req->id] != NULL);
+	fr_assert(h->tracking[req->id]->preq == req);
 
-	h->tracking[u->id] = NULL;
-	u->outstanding = false;
+	h->tracking[req->id] = NULL;
+	req->outstanding = false;
 	h->active--;
 
-	FR_TIMER_DISARM(u->ev);
+	FR_TIMER_DISARM(req->ev);
 
 	/*
 	 *	We've sent 255 packets, and received all replies.  Shut the connection down.
@@ -226,7 +225,7 @@ static void udp_request_reset(udp_handle_t *h, udp_request_t *u)
 /** Free a connection handle, closing associated resources
  *
  */
-static int _udp_handle_free(udp_handle_t *h)
+static int _tcp_handle_free(tcp_handle_t *h)
 {
 	fr_assert(h->fd >= 0);
 
@@ -253,15 +252,15 @@ static int _udp_handle_free(udp_handle_t *h)
  *
  * @param[out] h_out	Where to write the new file descriptor.
  * @param[in] conn	to initialise.
- * @param[in] uctx	A #udp_thread_t
+ * @param[in] uctx	A #tcp_thread_t
  */
 static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx)
 {
 	int			fd;
-	udp_handle_t		*h;
-	udp_thread_t		*thread = talloc_get_type_abort(uctx, udp_thread_t);
+	tcp_handle_t		*h;
+	tcp_thread_t		*thread = talloc_get_type_abort(uctx, tcp_thread_t);
 
-	MEM(h = talloc_zero(conn, udp_handle_t));
+	MEM(h = talloc_zero(conn, tcp_handle_t));
 	h->thread = thread;
 	h->inst = thread->inst;
 	h->module_name = h->inst->parent->name;
@@ -295,7 +294,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 			      fr_box_ipaddr(h->src_ipaddr), h->src_port,
 			      fr_box_ipaddr(h->inst->dst_ipaddr), h->inst->dst_port);
 
-	talloc_set_destructor(h, _udp_handle_free);
+	talloc_set_destructor(h, _tcp_handle_free);
 
 #ifdef SO_RCVBUF
 	if (h->inst->recv_buff_is_set) {
@@ -402,7 +401,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
  */
 static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uctx)
 {
-	udp_handle_t *h = talloc_get_type_abort(handle, udp_handle_t);
+	tcp_handle_t *h = talloc_get_type_abort(handle, tcp_handle_t);
 
 	/*
 	 *	There's tracking entries still allocated
@@ -422,7 +421,7 @@ static connection_t *thread_conn_alloc(trunk_connection_t *tconn, fr_event_list_
 					  char const *log_prefix, void *uctx)
 {
 	connection_t		*conn;
-	udp_thread_t		*thread = talloc_get_type_abort(uctx, udp_thread_t);
+	tcp_thread_t		*thread = talloc_get_type_abort(uctx, tcp_thread_t);
 
 	conn = connection_alloc(tconn, el,
 				   &(connection_funcs_t){
@@ -454,7 +453,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	connection_t		*conn = tconn->conn;
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+	tcp_handle_t		*h = talloc_get_type_abort(conn->h, tcp_handle_t);
 
 	ERROR("%s - Connection %s failed: %s", h->module_name, h->name, fr_syserror(fd_errno));
 
@@ -466,7 +465,7 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 			       fr_event_list_t *el,
 			       trunk_connection_event_t notify_on, UNUSED void *uctx)
 {
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+	tcp_handle_t		*h = talloc_get_type_abort(conn->h, tcp_handle_t);
 	fr_event_fd_cb_t	read_fn = NULL;
 	fr_event_fd_cb_t	write_fn = NULL;
 
@@ -512,8 +511,8 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
  */
 static int8_t request_prioritise(void const *one, void const *two)
 {
-	udp_request_t const *a = one;
-	udp_request_t const *b = two;
+	tcp_request_t const *a = one;
+	tcp_request_t const *b = two;
 	int8_t ret;
 
 	/*
@@ -535,7 +534,7 @@ static int8_t request_prioritise(void const *one, void const *two)
  * @param[out] response_code		The type of response packet.
  * @param[in] h				connection handle.
  * @param[in] request			the request.
- * @param[in] u				UDP request.
+ * @param[in] req			TCP request.
  * @param[in] data			to decode.
  * @param[in] data_len			Length of input data.
  * @return
@@ -543,7 +542,7 @@ static int8_t request_prioritise(void const *one, void const *two)
  *	- >0 for how many bytes were decoded
  */
 static ssize_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_code,
-		      udp_handle_t *h, request_t *request, udp_request_t *u,
+		      tcp_handle_t *h, request_t *request, tcp_request_t *req,
 		      uint8_t *data, size_t data_len)
 {
 	rlm_tacacs_tcp_t const *inst = h->thread->inst;
@@ -581,25 +580,25 @@ static ssize_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_
 	/*
 	 *	Fixup retry times
 	 */
-	if (fr_time_gt(u->retry.start, h->mrs_time)) h->mrs_time = u->retry.start;
+	if (fr_time_gt(req->retry.start, h->mrs_time)) h->mrs_time = req->retry.start;
 
 	return packet_len;
 }
 
-static int encode(udp_handle_t *h, request_t *request, udp_request_t *u)
+static int encode(tcp_handle_t *h, request_t *request, tcp_request_t *req)
 {
 	ssize_t			packet_len;
 	rlm_tacacs_tcp_t const *inst = h->inst;
 	fr_pair_t		*hdr, *vp;
 
-	fr_assert(inst->parent->allowed[u->code]);
-	fr_assert(!u->packet);
-	fr_assert(!u->outstanding);
+	fr_assert(inst->parent->allowed[req->code]);
+	fr_assert(!req->packet);
+	fr_assert(!req->outstanding);
 
 	/*
 	 *	Encode the packet in the outbound buffer.
 	 */
-	u->packet = h->send.write;
+	req->packet = h->send.write;
 
 	/*
 	 *	Set the session ID, if it hasn't already been set.
@@ -619,7 +618,7 @@ static int encode(udp_handle_t *h, request_t *request, udp_request_t *u)
 	/*
 	 *	Encode the packet.
 	 */
-	packet_len = fr_tacacs_encode(&FR_DBUFF_TMP(u->packet, (size_t) inst->max_packet_size), NULL,
+	packet_len = fr_tacacs_encode(&FR_DBUFF_TMP(req->packet, (size_t) inst->max_packet_size), NULL,
 				      inst->secret, inst->secretlen, request->reply->code, &request->request_pairs);
 	if (packet_len < 0) {
 		RPERROR("Failed encoding packet");
@@ -629,9 +628,9 @@ static int encode(udp_handle_t *h, request_t *request, udp_request_t *u)
 	/*
 	 *	Update the ID and the actual packet length;
 	 */
-	u->packet[1] = u->id;
-	u->packet_len = packet_len;
-	u->outstanding = true;
+	req->packet[1] = req->id;
+	req->packet_len = packet_len;
+	req->outstanding = true;
 
 //	fr_tacacs_packet_log_hex(&default_log, u->packet);
 
@@ -645,7 +644,7 @@ static int encode(udp_handle_t *h, request_t *request, udp_request_t *u)
 static void revive_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
-	udp_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
+	tcp_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, tcp_handle_t);
 
 	INFO("%s - Reviving connection %s", h->module_name, h->name);
 	trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
@@ -657,7 +656,7 @@ static void revive_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, voi
 static void zombie_timeout(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
-	udp_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
+	tcp_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, tcp_handle_t);
 
 	INFO("%s - No replies during 'zombie_period', marking connection %s as dead", h->module_name, h->name);
 
@@ -704,7 +703,7 @@ static void zombie_timeout(fr_timer_list_t *tl, fr_time_t now, void *uctx)
  */
 static bool check_for_zombie(fr_timer_list_t *tl, trunk_connection_t *tconn, fr_time_t now, fr_time_t last_sent)
 {
-	udp_handle_t	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
+	tcp_handle_t	*h = talloc_get_type_abort(tconn->conn->h, tcp_handle_t);
 
 	/*
 	 *	If we're already zombie, don't go to zombie
@@ -749,8 +748,8 @@ static bool check_for_zombie(fr_timer_list_t *tl, trunk_connection_t *tconn, fr_
 static void request_retry(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 {
 	trunk_request_t		*treq = talloc_get_type_abort(uctx, trunk_request_t);
-	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
-	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
+	tcp_request_t		*req = talloc_get_type_abort(treq->preq, tcp_request_t);
+	tcp_result_t		*r = talloc_get_type_abort(treq->rctx, tcp_result_t);
 	request_t		*request = treq->request;
 	trunk_connection_t	*tconn = treq->tconn;
 
@@ -758,7 +757,7 @@ static void request_retry(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 	fr_assert(treq->preq);						/* Must still have a protocol request */
 	fr_assert(tconn);
 
-	switch (fr_retry_next(&u->retry, now)) {
+	switch (fr_retry_next(&req->retry, now)) {
 	/*
 	 *	Queue the request for retransmission.
 	 *
@@ -773,26 +772,26 @@ static void request_retry(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 
 	case FR_RETRY_MRD:
 		REDEBUG("Reached maximum_retransmit_duration (%pVs > %pVs), failing request",
-			fr_box_time_delta(fr_time_sub(now, u->retry.start)), fr_box_time_delta(u->retry.config->mrd));
+			fr_box_time_delta(fr_time_sub(now, req->retry.start)), fr_box_time_delta(req->retry.config->mrd));
 		break;
 
 	case FR_RETRY_MRC:
 		REDEBUG("Reached maximum_retransmit_count (%u > %u), failing request",
-		        u->retry.count, u->retry.config->mrc);
+		        req->retry.count, req->retry.config->mrc);
 		break;
 	}
 
 	r->rcode = RLM_MODULE_FAIL;
 	trunk_request_signal_complete(treq);
 
-	check_for_zombie(tl, tconn, now, u->retry.start);
+	check_for_zombie(tl, tconn, now, req->retry.start);
 }
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void request_mux(fr_event_list_t *el,
 			trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
 {
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+	tcp_handle_t		*h = talloc_get_type_abort(conn->h, tcp_handle_t);
 	rlm_tacacs_tcp_t const	*inst = h->inst;
 	ssize_t			sent;
 	uint16_t		i, queued;
@@ -804,8 +803,8 @@ static void request_mux(fr_event_list_t *el,
 	 */
 	for (i = 0, queued = 0; (i < inst->max_send_coalesce); i++) {
 		trunk_request_t	*treq;
-		udp_request_t		*u;
-		request_t		*request;
+		tcp_request_t	*req;
+		request_t	*request;
 
  		if (unlikely(trunk_connection_pop_request(&treq, tconn) < 0)) return;
 
@@ -819,7 +818,7 @@ static void request_mux(fr_event_list_t *el,
 		 *
 		 *	If we have a partial packet, then we know that there's partial data in the output
 		 *	buffer.  However, the request MAY still be freed or timed out before we can write the
-		 *	data.  As a result, we ignore the udp_request_t, and just keep writing the data.
+		 *	data.  As a result, we ignore the tcp_request_t, and just keep writing the data.
 		 */
 		if (treq->state == TRUNK_REQUEST_STATE_PARTIAL) {
 			fr_assert(h->send.read == h->send.data);
@@ -837,7 +836,7 @@ static void request_mux(fr_event_list_t *el,
  		fr_assert(treq->state == TRUNK_REQUEST_STATE_PENDING);
 
 		request = treq->request;
-		u = talloc_get_type_abort(treq->preq, udp_request_t);
+		req = talloc_get_type_abort(treq->preq, tcp_request_t);
 
 		/*
 		 *	We'd like to retransmit the packet on this connection, but it's TCP so we don't.
@@ -845,7 +844,7 @@ static void request_mux(fr_event_list_t *el,
 		 *	The retransmission timers are really there to move the packet to a new connection if
 		 *	the current connection is dead.
 		 */
-		if (u->outstanding) continue;
+		if (req->outstanding) continue;
 
 		/*
 		 *	Not enough room for a full-sized packet, stop encoding packets
@@ -857,33 +856,33 @@ static void request_mux(fr_event_list_t *el,
 		/*
 		 *	Start retransmissions from when the socket is writable.
 		 */
-		fr_retry_init(&u->retry, fr_time(), &h->inst->parent->retry);
-		fr_assert(fr_time_delta_ispos(u->retry.rt));
-		fr_assert(fr_time_gt(u->retry.next, fr_time_wrap(0)));
+		fr_retry_init(&req->retry, fr_time(), &h->inst->parent->retry);
+		fr_assert(fr_time_delta_ispos(req->retry.rt));
+		fr_assert(fr_time_gt(req->retry.next, fr_time_wrap(0)));
 
 		/*
 		 *	Set up the packet for encoding.
 		 */
-		u->id = h->id;
+		req->id = h->id;
 		h->tconn = tconn;
 
-		h->tracking[u->id] = treq;
+		h->tracking[req->id] = treq;
 		h->id += 2;
 		h->active++;
 
 		RDEBUG("Sending %s ID %d length %ld over connection %s",
-		       fr_tacacs_packet_names[u->code], u->id, u->packet_len, h->name);
+		       fr_tacacs_packet_names[req->code], req->id, req->packet_len, h->name);
 
-		if (encode(h, request, u) < 0) {
+		if (encode(h, request, req) < 0) {
 			/*
 			 *	Need to do this because request_conn_release
 			 *	may not be called.
 			 */
-			udp_request_reset(h, u);
+			tcp_request_reset(h, req);
 			trunk_request_signal_fail(treq);
 			continue;
 		}
-		RHEXDUMP3(u->packet, u->packet_len, "Encoded packet");
+		RHEXDUMP3(req->packet, req->packet_len, "Encoded packet");
 
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->request_pairs, NULL);
 
@@ -891,7 +890,7 @@ static void request_mux(fr_event_list_t *el,
 		 *	Remember that we've encoded this packet.
 		 */
 		h->coalesced[queued] = treq;
-		h->send.write += u->packet_len;
+		h->send.write += req->packet_len;
 
 		fr_assert(h->send.write <= h->send.end);
 
@@ -921,7 +920,7 @@ static void request_mux(fr_event_list_t *el,
 	/*
 	 *	Verify nothing accidentally freed the connection handle
 	 */
-	(void)talloc_get_type_abort(h, udp_handle_t);
+	(void)talloc_get_type_abort(h, tcp_handle_t);
 
 	/*
 	 *	Send the packets as one system call.
@@ -965,8 +964,8 @@ static void request_mux(fr_event_list_t *el,
 	 */
 	for (i = 0; i < queued; i++) {
 		trunk_request_t	*treq = h->coalesced[i];
-		udp_request_t		*u;
-		request_t		*request;
+		tcp_request_t	*req;
+		request_t	*request;
 
 		/*
 		 *	We *think* we sent this, but we might not had :(
@@ -974,17 +973,17 @@ static void request_mux(fr_event_list_t *el,
 		fr_assert(treq->state == TRUNK_REQUEST_STATE_SENT);
 
 		request = treq->request;
-		u = talloc_get_type_abort(treq->preq, udp_request_t);
+		req = talloc_get_type_abort(treq->preq, tcp_request_t);
 
 		/*
 		 *	This packet ends before the piece we've
 		 *	written, so we've written all of it.
 		 */
-		if (u->packet + u->packet_len <= written) {
-			h->last_sent = u->retry.start;
+		if (req->packet + req->packet_len <= written) {
+			h->last_sent = req->retry.start;
 			if (fr_time_lteq(h->first_sent, h->last_idle)) h->first_sent = h->last_sent;
 
-			if (fr_timer_at(u, el->tl, &u->ev, u->retry.next, false, request_retry, treq) < 0) {
+			if (fr_timer_at(req, el->tl, &req->ev, req->retry.next, false, request_retry, treq) < 0) {
 				RERROR("Failed inserting retransmit timeout for connection");
 				trunk_request_signal_fail(treq);
 			}
@@ -993,7 +992,7 @@ static void request_mux(fr_event_list_t *el,
 			 *	If the packet doesn't get a response, then the timer will hit
 			 *	and will retransmit.
 			 */
-			u->outstanding = true;
+			req->outstanding = true;
 			continue;
 		}
 
@@ -1001,23 +1000,23 @@ static void request_mux(fr_event_list_t *el,
 		 *	The packet starts before the piece we've written, BUT ends after the written piece.
 		 *
 		 *	We only wrote part of this packet, remember the partial packet we wrote.  Note that
-		 *	we only track the packet data, and not the udp_request_t.  The underlying request (and
+		 *	we only track the packet data, and not the tcp_request_t.  The underlying request (and
 		 *	u) may disappear at any time, even if there's still data in the buffer.
 		 *
 		 *	Then, signal that isn't a partial packet, and stop processing the queue, as we know
 		 *	that the next packet wasn't written.
 		 */
-		if (u->packet < written) {
-			size_t skip = written - u->packet;
-			size_t left = u->packet_len - skip;
+		if (req->packet < written) {
+			size_t skip = written - req->packet;
+			size_t left = req->packet_len - skip;
 
-			fr_assert(u->packet + u->packet_len > written);
+			fr_assert(req->packet + req->packet_len > written);
 
-			memmove(h->send.data, u->packet, left);
+			memmove(h->send.data, req->packet, left);
 
 			fr_assert(h->send.read == h->send.data);
 			partial = h->send.data + left;
-			u->outstanding = true;
+			req->outstanding = true;
 
 			trunk_request_signal_partial(h->coalesced[i]);
 			continue;
@@ -1033,7 +1032,7 @@ static void request_mux(fr_event_list_t *el,
 		 *	the request ready for sending again...
 		 */
 		trunk_request_requeue(h->coalesced[i]);
-		fr_assert(!u->outstanding); /* must have called udp_request_requeue() */
+		fr_assert(!req->outstanding); /* must have called request_requeue() */
 	}
 
 	/*
@@ -1045,7 +1044,7 @@ static void request_mux(fr_event_list_t *el,
 
 static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
 {
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+	tcp_handle_t		*h = talloc_get_type_abort(conn->h, tcp_handle_t);
 	bool			do_read = true;
 
 	DEBUG3("%s - Reading data for connection %s", h->module_name, h->name);
@@ -1056,8 +1055,8 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 
 		trunk_request_t	*treq;
 		request_t		*request;
-		udp_request_t		*u;
-		udp_result_t		*r;
+		tcp_request_t		*req;
+		tcp_result_t		*r;
 		uint8_t			code = 0;
 		fr_pair_list_t		reply;
 
@@ -1157,15 +1156,15 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		treq = talloc_get_type_abort(treq, trunk_request_t);
 		request = treq->request;
 		fr_assert(request != NULL);
-		u = talloc_get_type_abort(treq->preq, udp_request_t);
-		r = talloc_get_type_abort(treq->rctx, udp_result_t);
+		req = talloc_get_type_abort(treq->preq, tcp_request_t);
+		r = talloc_get_type_abort(treq->rctx, tcp_result_t);
 
 		fr_pair_list_init(&reply);
 
 		/*
 		 *	Validate and decode the incoming packet
 		 */
-		slen = decode(request->reply_ctx, &reply, &code, h, request, u, h->recv.read, packet_len);
+		slen = decode(request->reply_ctx, &reply, &code, h, request, req, h->recv.read, packet_len);
 		if (slen < 0) {
 			// @todo - give real decode error?
 			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
@@ -1195,16 +1194,16 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 static void request_cancel(connection_t *conn, void *preq_to_reset,
 			   trunk_cancel_reason_t reason, UNUSED void *uctx)
 {
-	udp_request_t	*u = talloc_get_type_abort(preq_to_reset, udp_request_t);
+	tcp_request_t	*req = talloc_get_type_abort(preq_to_reset, tcp_request_t);
 
 	/*
 	 *	Request has been requeued on the same
 	 *	connection due to timeout or DUP signal.
 	 */
 	if (reason == TRUNK_CANCEL_REASON_REQUEUE) {
-		udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+		tcp_handle_t		*h = talloc_get_type_abort(conn->h, tcp_handle_t);
 
-		udp_request_reset(h, u);
+		tcp_request_reset(h, req);
 	}
 
 	/*
@@ -1219,10 +1218,10 @@ static void request_cancel(connection_t *conn, void *preq_to_reset,
  */
 static void request_conn_release(connection_t *conn, void *preq_to_reset, UNUSED void *uctx)
 {
-	udp_request_t		*u = talloc_get_type_abort(preq_to_reset, udp_request_t);
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+	tcp_request_t		*req = talloc_get_type_abort(preq_to_reset, tcp_request_t);
+	tcp_handle_t		*h = talloc_get_type_abort(conn->h, tcp_handle_t);
 
-	if (u->packet) udp_request_reset(h, u);
+	if (req->packet) tcp_request_reset(h, req);
 
 	/*
 	 *	If there are no outstanding tracking entries
@@ -1239,12 +1238,12 @@ static void request_conn_release(connection_t *conn, void *preq_to_reset, UNUSED
 static void request_fail(request_t *request, NDEBUG_UNUSED void *preq, void *rctx,
 			 NDEBUG_UNUSED trunk_request_state_t state, UNUSED void *uctx)
 {
-	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
+	tcp_result_t		*r = talloc_get_type_abort(rctx, tcp_result_t);
 #ifndef NDEBUG
-	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
+	tcp_request_t		*req = talloc_get_type_abort(preq, tcp_request_t);
 #endif
 
-	fr_assert(!fr_timer_armed(u->ev));	/* Dealt with by request_conn_release */
+	fr_assert(!fr_timer_armed(req->ev));	/* Dealt with by request_conn_release */
 
 	fr_assert(state != TRUNK_REQUEST_STATE_INIT);
 
@@ -1259,12 +1258,12 @@ static void request_fail(request_t *request, NDEBUG_UNUSED void *preq, void *rct
  */
 static void request_complete(request_t *request, NDEBUG_UNUSED void *preq, void *rctx, UNUSED void *uctx)
 {
-	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
+	tcp_result_t		*r = talloc_get_type_abort(rctx, tcp_result_t);
 #ifndef NDEBUG
-	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
+	tcp_request_t		*req = talloc_get_type_abort(preq, tcp_request_t);
 #endif
 
-	fr_assert(!u->packet && !u->ev);	/* Dealt with by request_conn_release */
+	fr_assert(!req->packet && !req->ev);	/* Dealt with by request_conn_release */
 
 	r->treq = NULL;
 
@@ -1276,11 +1275,11 @@ static void request_complete(request_t *request, NDEBUG_UNUSED void *preq, void 
  */
 static void request_free(UNUSED request_t *request, void *preq_to_free, UNUSED void *uctx)
 {
-	udp_request_t		*u = talloc_get_type_abort(preq_to_free, udp_request_t);
+	tcp_request_t		*req = talloc_get_type_abort(preq_to_free, tcp_request_t);
 
-	fr_assert(!u->packet && !u->ev);	/* Dealt with by request_conn_release */
+	fr_assert(!req->packet && !req->ev);	/* Dealt with by request_conn_release */
 
-	talloc_free(u);
+	talloc_free(req);
 }
 
 /** Resume execution of the request, returning the rcode set during trunk execution
@@ -1288,7 +1287,7 @@ static void request_free(UNUSED request_t *request, void *preq_to_free, UNUSED v
  */
 static unlang_action_t mod_resume(unlang_result_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	udp_result_t	*r = talloc_get_type_abort(mctx->rctx, udp_result_t);
+	tcp_result_t	*r = talloc_get_type_abort(mctx->rctx, tcp_result_t);
 	rlm_rcode_t	rcode = r->rcode;
 
 	talloc_free(r);
@@ -1298,8 +1297,8 @@ static unlang_action_t mod_resume(unlang_result_t *p_result, module_ctx_t const 
 
 static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_signal_t action)
 {
-//	udp_thread_t		*t = talloc_get_type_abort(mctx->thread, udp_thread_t);
-	udp_result_t		*r = talloc_get_type_abort(mctx->rctx, udp_result_t);
+//	tcp_thread_t		*t = talloc_get_type_abort(mctx->thread, tcp_thread_t);
+	tcp_result_t		*r = talloc_get_type_abort(mctx->rctx, tcp_result_t);
 
 	/*
 	 *	If we don't have a treq associated with the
@@ -1349,21 +1348,21 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
 }
 
 #ifndef NDEBUG
-/** Free a udp_result_t
+/** Free a tcp_result_t
  *
  * Allows us to set break points for debugging.
  */
-static int _udp_result_free(udp_result_t *r)
+static int _tcp_result_free(tcp_result_t *r)
 {
-	trunk_request_t	*treq;
-	udp_request_t		*u;
+	trunk_request_t		*treq;
+	tcp_request_t		*req;
 
 	if (!r->treq) return 0;
 
 	treq = talloc_get_type_abort(r->treq, trunk_request_t);
-	u = talloc_get_type_abort(treq->preq, udp_request_t);
+	req = talloc_get_type_abort(treq->preq, tcp_request_t);
 
-	fr_assert_msg(!u->ev, "udp_result_t freed with active timer");
+	fr_assert_msg(!req->ev, "tcp_result_t freed with active timer");
 
 	return 0;
 }
@@ -1371,9 +1370,9 @@ static int _udp_result_free(udp_result_t *r)
 
 static unlang_action_t mod_enqueue(unlang_result_t *p_result, void **rctx_out, UNUSED void *instance, void *thread, request_t *request)
 {
-	udp_thread_t			*t = talloc_get_type_abort(thread, udp_thread_t);
-	udp_result_t			*r;
-	udp_request_t			*u;
+	tcp_thread_t		*t = talloc_get_type_abort(thread, tcp_thread_t);
+	tcp_result_t		*r;
+	tcp_request_t		*req;
 	trunk_request_t		*treq;
 	trunk_enqueue_t		q;
 
@@ -1382,24 +1381,24 @@ static unlang_action_t mod_enqueue(unlang_result_t *p_result, void **rctx_out, U
 	treq = trunk_request_alloc(t->trunk, request);
 	if (!treq) RETURN_UNLANG_FAIL;
 
-	MEM(r = talloc_zero(request, udp_result_t));
+	MEM(r = talloc_zero(request, tcp_result_t));
 #ifndef NDEBUG
-	talloc_set_destructor(r, _udp_result_free);
+	talloc_set_destructor(r, _tcp_result_free);
 #endif
 
 	/*
 	 *	Can't use compound literal - const issues.
 	 */
-	MEM(u = talloc_zero(treq, udp_request_t));
-	u->code = request->packet->code;
-	u->priority = request->priority;
-	u->recv_time = request->async->recv_time;
+	MEM(req = talloc_zero(treq, tcp_request_t));
+	req->code = request->packet->code;
+	req->priority = request->priority;
+	req->recv_time = request->async->recv_time;
 
 	r->rcode = RLM_MODULE_FAIL;
 
-	q = trunk_request_enqueue(&treq, t->trunk, request, u, r);
+	q = trunk_request_enqueue(&treq, t->trunk, request, req, r);
 	if (q < 0) {
-		fr_assert(!u->packet);	/* Should not have been fed to the muxer */
+		fr_assert(!req->packet);	/* Should not have been fed to the muxer */
 		trunk_request_free(&treq);		/* Return to the free list */
 	fail:
 		talloc_free(r);
@@ -1427,7 +1426,7 @@ static unlang_action_t mod_enqueue(unlang_result_t *p_result, void **rctx_out, U
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
 	rlm_tacacs_tcp_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_tacacs_tcp_t);
-	udp_thread_t			*thread = talloc_get_type_abort(mctx->thread, udp_thread_t);
+	tcp_thread_t			*thread = talloc_get_type_abort(mctx->thread, tcp_thread_t);
 
 	static trunk_io_funcs_t	io_funcs = {
 						.connection_alloc = thread_conn_alloc,
@@ -1542,8 +1541,8 @@ rlm_tacacs_io_t rlm_tacacs_tcp = {
 		.name			= "tacacs_tcp",
 		.inst_size		= sizeof(rlm_tacacs_tcp_t),
 
-		.thread_inst_size	= sizeof(udp_thread_t),
-		.thread_inst_type	= "udp_thread_t",
+		.thread_inst_size	= sizeof(tcp_thread_t),
+		.thread_inst_type	= "tcp_thread_t",
 
 		.config			= module_config,
 		.instantiate		= mod_instantiate,
