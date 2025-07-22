@@ -1468,7 +1468,7 @@ int realm_pool_add(home_pool_t *pool, CONF_SECTION *cs)
 	return 1;
 }
 
-static int server_cmp_by_id(void const *one, void const *two)
+static int server_id_cmp(void const *one, void const *two)
 {
 	home_server_t const *a = *(home_server_t const * const *) one;
 	home_server_t const *b = *(home_server_t const * const *) two;
@@ -1758,7 +1758,7 @@ static int server_pool_add(realm_config_t *rc,
 		}
 
 		qsort(&pool->servers[0], pool->num_home_servers, sizeof(pool->servers[0]),
-		      server_cmp_by_id);
+		      server_id_cmp);
 	}
 
 	if (!realm_pool_add(pool, cs)) goto error;
@@ -2947,16 +2947,88 @@ static bool home_server_active(REQUEST *request, home_server_t *home)
  *	The home servers are ordered by ID (small to large).  We
  *	choose the nearest one (wrapping around) which is higher than
  *	the current hash.
+ *
+ *	An implementation of https://arxiv.org/pdf/1505.00062
+ *	"Multi-probe consistent hashing".
+ *
+ *	It hashes the nodes once, and then hashes the key K ways.
+ *	Using K=2 achieves O(1) lookup with high probability.  So this
+ *	looks like it's O(N^2), but that is a very very rare
+ *	situation.
+ *
+ *	@todo - if there's only one server alive, just pick that?
  */
-static home_server_t *home_server_by_consistent_key(home_pool_t *pool, uint32_t hash)
+static home_server_t *home_server_by_consistent_key(REQUEST *request, home_pool_t *pool, uint32_t hash)
 {
-	int i;
+	int i, j, max;
+	uint32_t key[8];
+	unsigned int mask;
+	home_server_t *home[8] = { NULL, NULL, NULL, NULL, 
+				   NULL, NULL, NULL, NULL };
+	static const uint32_t constants[8] = { 0xff51afd7, 0xed558ccd, 0xc4ceb9fe, 0x1a85ec53,
+					      ~0xff51afd7,~0xed558ccd,~0xc4ceb9fe,~0x1a85ec53 };
 
-	for (i = 0; i < pool->num_home_servers; i++) {
-		if (pool->servers[i]->id > hash) return pool->servers[i];
+	/*
+	 *	Limit the number of rounds we do.  We don't always
+	 *	need to do 8 rounds.
+	 */
+	max = 8;
+	if (pool->num_home_servers < max) max = pool->num_home_servers;
+
+	/*
+	 *	Set the bits of the mask based on number of home servers.
+	 */
+	mask = (1 << max) - 1;
+
+	/*
+	 *	Get some hash keys.
+	 */
+	for (i = 0; i < max; i++) {
+		key[i] = fr_hash_update(&constants[i], sizeof(constants[i]), hash);
 	}
 
-	return pool->servers[0];
+	/*
+	 *	Loop over all home servers, picking one of them
+	 *	which corresponds to the hash key.
+	 *
+	 *	We pick the first home server which has a key greater
+	 *	than the current one.
+	 */
+	for (i = 0; i < pool->num_home_servers; i++) {
+		for (j = 0; j < max; j++) {
+			if (!home[j] && (pool->servers[i]->id > key[j])) {
+				home[j] = pool->servers[i];
+
+				mask &= ~(1 << j);
+				if (!mask) goto pick;
+			}
+		}
+	}
+
+	/*
+	 *	If we didn't find a matching home server because our
+	 *	key was too large, then wrap around to pick the first
+	 *	home server.
+	 */
+	if (mask) for (i = 0; i < max; i++) {
+		if (!home[i]) home[i] = pool->servers[0];
+	}
+
+pick:
+	/*
+	 *	Pick the first home server which is alive, using
+	 *	consistent keying.
+	 *
+	 *	Note that we do NOT pick the first alive home server
+	 *	found in the main loop.  For consistency, we MUST
+	 *	instead pick one using the first key, and only use the
+	 *	second key if the first one we chose is dead.
+	 */
+	for (i = 0; i < max; i++) {
+		if (home_server_active(request, home[i])) return home[i];
+	}
+
+	return NULL;
 }
 
 home_server_t *home_server_ldb(char const *realmname,
@@ -3067,16 +3139,14 @@ home_server_t *home_server_ldb(char const *realmname,
 		}
 
 		hash = fr_hash(vp->vp_strvalue, vp->vp_length);
+		found = home_server_by_consistent_key(request, pool, hash);
+		if (found) return found;
 
-		for (count = 0; count < pool->num_home_servers; count++) {
-			uint32_t count_hash;
-
-			count_hash = fr_hash_update(&count, sizeof(count), hash);
-
-			found = home_server_by_consistent_key(pool, count_hash);
-			if (home_server_active(request, found)) return found;
-		}
-		goto all_dead;
+		/*
+		 *	Fall back to just load balancing from the start.
+		 */
+		start = 0;
+		break;
 
 	default:		/* this shouldn't happen... */
 		start = 0;
@@ -3171,7 +3241,6 @@ home_server_t *home_server_ldb(char const *realmname,
 	/*
 	 *	There's a fallback if they're all dead.
 	 */
-all_dead:
 	if (!found && pool->fallback) {
 		found = pool->fallback;
 
