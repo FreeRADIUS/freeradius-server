@@ -1263,7 +1263,7 @@ static void request_complete(request_t *request, NDEBUG_UNUSED void *preq, void 
 	tcp_request_t		*req = talloc_get_type_abort(preq, tcp_request_t);
 #endif
 
-	fr_assert(!req->packet && !req->ev);	/* Dealt with by request_conn_release */
+	fr_assert(!req->packet && !fr_timer_armed(req->ev));	/* Dealt with by request_conn_release */
 
 	r->treq = NULL;
 
@@ -1277,7 +1277,7 @@ static void request_free(UNUSED request_t *request, void *preq_to_free, UNUSED v
 {
 	tcp_request_t		*req = talloc_get_type_abort(preq_to_free, tcp_request_t);
 
-	fr_assert(!req->packet && !req->ev);	/* Dealt with by request_conn_release */
+	fr_assert(!req->packet && !fr_timer_armed(req->ev));	/* Dealt with by request_conn_release */
 
 	talloc_free(req);
 }
