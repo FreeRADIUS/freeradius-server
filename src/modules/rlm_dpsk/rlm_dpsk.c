@@ -487,10 +487,11 @@ stage1:
 
 		vp_id = fr_pair_find_by_num(request->config, PW_PSK_IDENTITY, 0, TAG_ANY);
 		if (vp_id) {
-			psk_identity = vp->vp_strvalue;
+			psk_identity = vp_id->vp_strvalue;
 		} else {
 			vp = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
-			fr_assert(vp != NULL);
+			if (!vp) return RLM_MODULE_REJECT;
+
 			psk_identity = vp->vp_strvalue;
 		}
 
@@ -769,7 +770,7 @@ make_digest:
 			entry->ssid_len = vp_ssid->vp_length;
 
 			MEM(entry->psk = talloc_memdup(entry, psk, psk_len));
-			entry->psk_len = vp->vp_length;
+			entry->psk_len = psk_len;
 
 			MEM(entry->identity = talloc_memdup(entry, psk_identity, strlen(psk_identity)));
 			entry->identity_len = strlen(psk_identity);
