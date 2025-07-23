@@ -110,7 +110,7 @@ typedef struct {
 	char			*identity;
 	size_t			identity_len;
 
-	uint8_t			*psk;
+	char			*psk;
 	size_t			psk_len;
 	time_t			expires;
 
@@ -273,52 +273,16 @@ static rlm_dpsk_cache_t *dpsk_cache_find(REQUEST *request, rlm_dpsk_t const *ins
 }
 
 
-static int generate_pmk(REQUEST *request, rlm_dpsk_t const *inst, uint8_t *buffer, size_t buflen, VALUE_PAIR *ssid, uint8_t const *mac, char const *psk, size_t psk_len)
+static int generate_pmk(REQUEST *request, uint8_t *buffer, size_t buflen, VALUE_PAIR *ssid, char const *psk, size_t psk_len)
 {
-	VALUE_PAIR *vp;
-
 	fr_assert(buflen == 32);
-
-	if (!ssid) {
-		ssid = fr_pair_find_by_da(request->packet->vps, inst->ssid, TAG_ANY);
-		if (!ssid) {
-			RDEBUG("No %s in the request", inst->ssid->name);
-			return 0;
-		}
-	}
-
-	/*
-	 *	No provided PSK.  Try to look it up in the cache.  If
-	 *	it isn't there, find it in the config items.
-	 */
-	if (!psk) {
-		if (inst->cache && mac) {
-			rlm_dpsk_cache_t *entry;
-
-			entry = dpsk_cache_find(request, inst, buffer, buflen, ssid, mac);
-			if (entry) {
-				memcpy(buffer, entry->pmk, buflen);
-				return 1;
-			}
-			RDEBUG3("Cache entry not found");
-		} /* else no caching */
-
-		vp = fr_pair_find_by_num(request->config, PW_PRE_SHARED_KEY, 0, TAG_ANY);
-		if (!vp) {
-			RDEBUG("No &config:Pre-Shared-Key");
-			return 0;
-		}
-
-		psk = vp->vp_strvalue;
-		psk_len = vp->vp_length;
-	}
 
 	if (PKCS5_PBKDF2_HMAC_SHA1((const char *) psk, psk_len, (const unsigned char *) ssid->vp_strvalue, ssid->vp_length, 4096, buflen, buffer) == 0) {
 		RDEBUG("Failed calling OpenSSL to calculate the PMK");
-		return 0;
+		return -1;
 	}
 
-	return 1;
+	return 0;
 }
 
 /*
@@ -327,15 +291,17 @@ static int generate_pmk(REQUEST *request, rlm_dpsk_t const *inst, uint8_t *buffe
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_dpsk_t *inst = instance;
-	VALUE_PAIR *anonce, *key_msg, *ssid, *vp;
-	rlm_dpsk_cache_t *entry;
+	VALUE_PAIR *anonce, *key_msg, *vp, *vp_psk = NULL, *vp_id = NULL, *vp_ssid = NULL;
+	rlm_dpsk_cache_t *entry = NULL;
 	int lineno = 0;
-	size_t len, psk_len;
+	int stage = 0;
+	rlm_rcode_t rcode = RLM_MODULE_OK;
+	size_t len, psk_len = 0;
 	unsigned int digest_len, mic_len;
 	eapol_attr_t const *eapol;
 	eapol_attr_t *zeroed;
 	FILE *fp = NULL;
-	char const *psk_identity = NULL, *psk;
+	char const *psk_identity = NULL, *psk = NULL;
 	uint8_t *p;
 	uint8_t const *snonce, *ap_mac;
 	uint8_t const *min_mac, *max_mac;
@@ -344,6 +310,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	uint8_t s_mac[6], message[sizeof("Pairwise key expansion") + 6 + 6 + 32 + 32 + 1], frame[128];
 	uint8_t digest[EVP_MAX_MD_SIZE], mic[EVP_MAX_MD_SIZE];
 	char token_identity[256];
+	char token_psk[256];
 
 	/*
 	 *	Search for the information in a bunch of attributes.
@@ -375,40 +342,40 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		return RLM_MODULE_NOOP;
 	}
 
-	ssid = fr_pair_find_by_da(request->packet->vps, inst->ssid, TAG_ANY);
-	if (!ssid) {
+	vp_ssid = fr_pair_find_by_da(request->packet->vps, inst->ssid, TAG_ANY);
+	if (!vp_ssid) {
 		RDEBUG("No %s in the request", inst->ssid->name);
-		return 0;
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
-	 *	Get supplicant MAC address.
+	 *	At this point, the request has the relevant DPSK
+	 *	attributes.  The module now should return FAIL for
+	 *	missing / invalid attributes, or REJECT for
+	 *	authentication failure.
+	 *
+	 *	If the entry is found in a VP or a cache, the module
+	 *	returns OK.  This means that the caller should not
+	 *	save &control:Pre-Shared-Key somewhere.
+	 *
+	 *	If the module found a matching entry in the file, it
+	 *	returns UPDATED to indicate that the caller should
+	 *	update the database with the PSK which was found.
+	 */
+
+	/*
+	 *	Get supplicant MAC address from the User-Name
 	 */
 	vp = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 	if (!vp) {
-		RDEBUG("No &User-Name");
-		return RLM_MODULE_NOOP;
+		RDEBUG("Missing &User-Name");
+		return RLM_MODULE_FAIL;
 	}
 
 	len = fr_hex2bin(s_mac, sizeof(s_mac), vp->vp_strvalue, vp->vp_length);
 	if (len != 6) {
 		RDEBUG("&User-Name is not a recognizable hex MAC address");
-		return RLM_MODULE_NOOP;
-	}
-
-	/*
-	 *	In case we're not reading from a file.
-	 */
-	vp = fr_pair_find_by_num(request->config, PW_PSK_IDENTITY, 0, TAG_ANY);
-	if (vp) psk_identity = vp->vp_strvalue;
-
-	vp = fr_pair_find_by_num(request->config, PW_PRE_SHARED_KEY, 0, TAG_ANY);
-	if (vp) {
-		psk = vp->vp_strvalue;
-		psk_len = vp->vp_length;
-	} else {
-		psk = NULL;
-		psk_len = 0;
+		return RLM_MODULE_FAIL;
 	}
 
 	/*
@@ -416,13 +383,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 */
 	vp = fr_pair_find_by_num(request->packet->vps, PW_CALLED_STATION_MAC, 0, TAG_ANY);
 	if (!vp) {
-		RDEBUG("No &Called-Station-MAC");
-		return RLM_MODULE_NOOP;
+		RDEBUG("Missing &Called-Station-MAC");
+		return RLM_MODULE_FAIL;
 	}
 
 	if (vp->length != 6) {
 		RDEBUG("&Called-Station-MAC is not a recognizable MAC address");
-		return RLM_MODULE_NOOP;
+		return RLM_MODULE_FAIL;
 	}
 
 	ap_mac = vp->vp_octets;
@@ -470,22 +437,89 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	*p = '\0';
 	fr_assert(sizeof(message) == (p + 1 - message));
 
-	if (inst->filename && !psk) {
+	/*
+	 *	If we're caching, then check the cache first, before
+	 *	trying the file.  This check allows us to avoid the
+	 *	PMK calculation in many situations, as that can be
+	 *	expensive.
+	 */
+	if (inst->cache) {
+		entry = dpsk_cache_find(request, inst, pmk, sizeof(pmk), vp_ssid, s_mac);
+		if (entry) {
+			psk_identity = entry->identity;
+			psk = entry->psk;
+			psk_len = entry->psk_len;
+			goto make_digest;
+		}
+	}
+
+	/*
+	 *	No cache, or no cache entry.  Look for an external PMK
+	 *	taken from a database.
+	 */
+stage1:
+	stage = 1;
+
+	vp = fr_pair_find_by_num(request->config, PW_PAIRWISE_MASTER_KEY, 0, TAG_ANY);
+	if (vp && (vp->vp_length != sizeof(pmk))) {
+		RDEBUG("&control:Pairwise-Master-Key has incorrect length (%zu != %zu) - ignoring it", vp->vp_length, sizeof(pmk));
+		vp = NULL;
+	}
+
+	if (vp) {
+		RDEBUG("Using &control:Pairwise-Master-Key");
+		memcpy(pmk, vp->vp_octets, sizeof(pmk));
+		goto make_digest;
+	}
+
+	/*
+	 *	No external PMK.  Try an external PSK.
+	 */
+	vp_psk = fr_pair_find_by_num(request->config, PW_PRE_SHARED_KEY, 0, TAG_ANY);
+	if (vp_psk) {
+		RDEBUG("Trying &control:Pre-Shared-Key");
+		if (generate_pmk(request, pmk, sizeof(pmk), vp_ssid, vp_psk->vp_strvalue, vp_psk->vp_length) < 0) {
+			fr_assert(!fp);
+			return RLM_MODULE_FAIL;
+		}
+
+		vp_id = fr_pair_find_by_num(request->config, PW_PSK_IDENTITY, 0, TAG_ANY);
+		if (vp_id) {
+			psk_identity = vp->vp_strvalue;
+		} else {
+			vp = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+			fr_assert(vp != NULL);
+			psk_identity = vp->vp_strvalue;
+		}
+
+		psk = vp_psk->vp_strvalue;
+		psk_len = vp_psk->vp_length;
+
+		goto make_digest;
+	}
+
+	/*
+	 *	No external PSK was found.  If there's no file, then
+	 *	we can't do anything else.
+	 */
+stage2:
+	stage = 2;
+
+	if (!inst->filename) {
+		RDEBUG("No &control:Pre-Shared-Key was found, and no 'filename' was configured");
+		return RLM_MODULE_FAIL;
+	}
+
+	/*
+	 *	If there's an PSK from an external database, then we
+	 *	never read the filename.
+	 */
+	if (inst->filename) {
 		FR_TOKEN token;
 		char const *q, *filename;
-		char token_psk[256];
 		char token_mac[256];
 		char buffer[1024];
 		char filename_buffer[1024];
-
-		/*
-		 *	If there's a cached entry, we don't read the file.
-		 */
-		entry = dpsk_cache_find(request, inst, pmk, sizeof(pmk), ssid, s_mac);
-		if (entry) {
-			psk_identity = entry->identity;
-			goto make_digest;
-		}
 
 		if (!inst->dynamic) {
 			filename = inst->filename;
@@ -506,11 +540,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 			return RLM_MODULE_FAIL;
 		}
 
-get_next_psk:
+stage2a:
 		q = fgets(buffer, sizeof(buffer), fp);
 		if (!q) {
-			RDEBUG("Failed to find matching key in %s", filename);
-		fail:
+			RDEBUG("Failed to find matching PSK or MAC in %s", filename);
+		fail_file:
 			fclose(fp);
 			return RLM_MODULE_FAIL;
 		}
@@ -521,28 +555,33 @@ get_next_psk:
 		token = getstring(&q, token_identity, sizeof(token_identity), true);
 		if (token == T_INVALID) {
 			RDEBUG("%s[%d] Failed parsing identity", filename, lineno);
-			goto fail;
+			goto fail_file;
 		}
 
 		if (*q != ',') {
 			RDEBUG("%s[%d] Failed to find ',' after identity", filename, lineno);
-			goto fail;
+			goto fail_file;
 		}
 		q++;
 
 		token = getstring(&q, token_psk, sizeof(token_psk), true);
 		if (token == T_INVALID) {
 			RDEBUG("%s[%d] Failed parsing PSK", filename, lineno);
-			goto fail;
+			goto fail_file;
 		}
 
+		/*
+		 *	The MAC is optional.  If there is a MAC, we
+		 *	loop over the file until we find a matching
+		 *	one.
+		 */
 		if (*q == ',') {
 			q++;
 
 			token = getstring(&q, token_mac, sizeof(token_mac), true);
 			if (token == T_INVALID) {
 				RDEBUG("%s[%d] Failed parsing MAC", filename, lineno);
-				goto fail;
+				goto fail_file;
 			}
 
 			/*
@@ -552,61 +591,31 @@ get_next_psk:
 			if ((strlen(token_mac) != 12) ||
 			    (fr_hex2bin((uint8_t *) token_mac, 6, token_mac, 12) != 12)) {
 				RDEBUG("%s[%d] Failed parsing MAC", filename, lineno);
-				goto fail;
-			}
-
-			if (memcmp(s_mac, token_mac, 6) != 0) {
-				psk_identity = NULL;
-				goto get_next_psk;
+				goto fail_file;
 			}
 
 			/*
-			 *	Close the file so that we don't check any other entries.
+			 *	The MAC doesn't match, don't even bother trying to generate the PMK.
 			 */
-			MEM(vp = fr_pair_afrom_num(request, PW_PRE_SHARED_KEY, 0));
-			fr_pair_value_bstrncpy(vp, token_psk, strlen(token_psk));
-
-			fr_pair_add(&request->config, vp);
-			fclose(fp);
-			fp = NULL;
+			if (memcmp(s_mac, token_mac, 6) != 0) {
+				goto stage2a;
+			}
 
 			RDEBUG3("Found matching MAC");
+			stage = 3;
 		}
 
 		/*
 		 *	Generate the PMK using the SSID, this MAC, and the PSK we just read.
 		 */
-		RDEBUG3("%s[%d] Trying PSK %s", filename, lineno, token_psk);
-		if (generate_pmk(request, inst, pmk, sizeof(pmk), ssid, s_mac, token_psk, strlen(token_psk)) == 0) {
-			RDEBUG("No &config:Pairwise-Master-Key or &config:Pre-Shared-Key found");
-			return RLM_MODULE_NOOP;
-		}
-
-		/*
-		 *	Remember which identity we had
-		 */
+		psk = token_psk;
+		psk_len = strlen(token_psk);
 		psk_identity = token_identity;
-		goto make_digest;
-	}
 
-	/*
-	 *	Use the PMK if it already exists.  Otherwise calculate it from the PSK.
-	 */
-	vp = fr_pair_find_by_num(request->config, PW_PAIRWISE_MASTER_KEY, 0, TAG_ANY);
-	if (!vp) {
-		if (generate_pmk(request, inst, pmk, sizeof(pmk), ssid, s_mac, psk, psk_len) == 0) {
-			RDEBUG("No &config:Pairwise-Master-Key or &config:Pre-Shared-Key found");
-			fr_assert(!fp);
-			return RLM_MODULE_NOOP;
+		RDEBUG3("%s[%d] Trying PSK %s", filename, lineno, token_psk);
+		if (generate_pmk(request, pmk, sizeof(pmk), vp_ssid, psk, psk_len) < 0) {
+			goto fail_file;
 		}
-
-	} else if (vp->vp_length != sizeof(pmk)) {
-		RDEBUG("Pairwise-Master-Key has incorrect length (%zu != %zu)", vp->vp_length, sizeof(pmk));
-		fr_assert(!fp);
-		return RLM_MODULE_NOOP;
-
-	} else {
-		memcpy(pmk, vp->vp_octets, sizeof(pmk));
 	}
 
 	/*
@@ -635,55 +644,113 @@ make_digest:
 	HMAC(EVP_sha1(), digest, 16, frame, key_msg->vp_length, mic, &mic_len);
 
 	/*
-	 *	Do the MICs match?
+	 *	The MICs don't match.
 	 */
 	if (memcmp(&eapol->frame.mic[0], mic, 16) != 0) {
-		if (fp) {
-			psk_identity = NULL;
-			goto get_next_psk;
-		}
-
+		RDEBUG3("Stage %d", stage);
 		RDEBUG_HEX(request, "calculated mic:", mic, 16);
 		RDEBUG_HEX(request, "packet mic    :", &eapol->frame.mic[0], 16);
+
+		psk_identity = NULL;
+		psk = NULL;
+		psk_len = 0;
+
+		/*
+		 *	Found a cached entry, but it didn't match.  Go
+		 *	check external PMK / PSK.
+		 */
+		if (stage == 0) {
+			fr_assert(entry != NULL);
+			rbtree_deletebydata(inst->cache, entry); /* locks and unlinks the entry */
+			entry = NULL;
+			goto stage1;
+		}
+
+		/*
+		 *	Found an external PMK or PSK, but it didn't
+		 *	match.  Go check the file.
+		 */
+		if (stage == 1) {
+			if (vp_psk) RDEBUG("&control:Pre-Shared-Key did not match");
+
+			if (inst->filename) {
+				RDEBUG("Checking file %s for PSK and MAC", inst->filename);
+				goto stage2;
+			}
+
+			RDEBUG("No 'filename' was configured.");
+			return RLM_MODULE_REJECT;
+		}
+
+		/*
+		 *	The file is open, so we keep reading it until
+		 *	we find a matching entry.
+		 */
+		fr_assert(fp);
+
+		if (stage == 2) goto stage2a;
+
+		fclose(fp);
+
+		/*
+		 *	We found a PSK associated with this MAC in the
+		 *	file.  But it didn't match, so we're done.
+		 */
+		fr_assert(stage == 3);
+
+		RDEBUG("Found matching MAC in %s, but the PSK does not match", inst->filename);
 		return RLM_MODULE_FAIL;
 	}
 
 	/*
-	 *	It matches.  Close the input file if necessary.
+	 *	We found a matching PSK.  If we read it from the file,
+	 *	then close the file, and ensure that we return
+	 *	UPDATED.  This tells the caller to write the entry
+	 *	into the database, so that we don't need to scan the
+	 *	file again.
 	 */
-	if (fp) fclose(fp);
+	if (fp) {
+		rcode = RLM_MODULE_UPDATED;
+		fr_assert(psk == token_psk);
+		fr_assert(psk_identity == token_identity);
+		fclose(fp);
+	}
 
 	/*
 	 *	Extend the lifetime of the cache entry, or add the
-	 *	cache entry if necessary.
+	 *	cache entry if necessary.  We only add / update the
+	 *	cache entry if the PSK was not found in a VP.
+	 *
+	 *	If the caller gave us only a PMK, then don't cache anything.
 	 */
-	if (inst->cache) {
+	if (inst->cache && psk && psk_identity) {
 		rlm_dpsk_cache_t my_entry;
 
 		/*
-		 *	Find the entry (again), and update the expiry time.
-		 *
-		 *	Create the entry if neessary.
+		 *	We've found an entry. Just update it.
+		 */
+		if (entry) goto update_entry;
+
+		/*
+		 *	No cached entry, or the PSK in the cached
+		 *	entry didn't match.  We need to create one.
 		 */
 		memcpy(my_entry.mac, s_mac, sizeof(my_entry.mac));
-
-		vp = fr_pair_find_by_da(request->packet->vps, inst->ssid, TAG_ANY);
-		if (!vp) goto save_psk; /* should never really happen, but just to be safe */
-
-		memcpy(&my_entry.ssid, &vp->vp_octets, sizeof(my_entry.ssid)); /* const issues */
-		my_entry.ssid_len = vp->vp_length;
+		memcpy(&my_entry.ssid, &vp_ssid->vp_octets, sizeof(my_entry.ssid)); /* const ptr issues */
+		my_entry.ssid_len = vp_ssid->vp_length;
 
 		entry = rbtree_finddata(inst->cache, &my_entry);
 		if (!entry) {
 			/*
-			 *	Too many entries in the cache.  Delete the oldest one.
+			 *	Maybe there are oo many entries in the
+			 *	cache.  If so, delete the oldest one.
 			 */
 			if (rbtree_num_elements(inst->cache) > inst->cache_size) {
 				PTHREAD_MUTEX_LOCK(&inst->mutex);
 				entry = fr_dlist_head(&inst->head);
 				PTHREAD_MUTEX_UNLOCK(&inst->mutex);
 
-				rbtree_deletebydata(inst->cache, entry);
+				rbtree_deletebydata(inst->cache, entry); /* locks and unlinks the entry */
 			}
 
 			MEM(entry = talloc_zero(NULL, rlm_dpsk_cache_t));
@@ -695,41 +762,30 @@ make_digest:
 			entry->inst = inst;
 
 			/*
-			 *	Save the variable-length SSID.
+			 *	Save the SSID, PSK, and PSK identity in the cache entry.
 			 */
-			MEM(entry->ssid = talloc_memdup(entry, vp->vp_octets, vp->vp_length));
-			entry->ssid_len = vp->vp_length;
+			MEM(entry->ssid = talloc_memdup(entry, vp_ssid->vp_octets, vp_ssid->vp_length));
+			entry->ssid_len = vp_ssid->vp_length;
 
-			/*
-			 *	Save the PSK.  If we just have the
-			 *	PMK, then we can still cache that.
-			 */
-			vp = fr_pair_find_by_num(request->config, PW_PRE_SHARED_KEY, 0, TAG_ANY);
-			if (vp) {
-				MEM(entry->psk = talloc_memdup(entry, vp->vp_octets, vp->vp_length));
-				entry->psk_len = vp->vp_length;
-			}
+			MEM(entry->psk = talloc_memdup(entry, psk, psk_len));
+			entry->psk_len = vp->vp_length;
 
-			/*
-			 *	Save the identity.
-			 */
-			if (psk_identity) {
-				MEM(entry->identity = talloc_memdup(entry, psk_identity, strlen(psk_identity)));
-				entry->identity_len = strlen(psk_identity);
-			}
+			MEM(entry->identity = talloc_memdup(entry, psk_identity, strlen(psk_identity)));
+			entry->identity_len = strlen(psk_identity);
 
 			/*
 			 *	Cache it.
 			 */
 			if (!rbtree_insert(inst->cache, entry)) {
-				talloc_free(entry);
-				goto save_found_psk;
+				TALLOC_FREE(entry);
+				goto update_attributes;
 			}
 			RDEBUG3("Cache entry saved");
 		}
-		entry->expires = request->timestamp + inst->cache_lifetime;
 
+	update_entry:
 		PTHREAD_MUTEX_LOCK(&inst->mutex);
+		entry->expires = request->timestamp + inst->cache_lifetime;
 		fr_dlist_entry_unlink(&entry->dlist);
 		fr_dlist_insert_tail(&inst->head, &entry->dlist);
 		PTHREAD_MUTEX_UNLOCK(&inst->mutex);
@@ -743,33 +799,32 @@ make_digest:
 
 			fr_pair_add(&request->reply->vps, vp);
 		}
-
-		goto save_psk_identity;
 	}
 
+update_attributes:
 	/*
-	 *	Save a copy of the found PSK in the reply;
+	 *	We found a cache entry, or an external PSK.  Don't
+	 *	create new attributes.
 	 */
-save_psk:
-	vp = fr_pair_find_by_num(request->config, PW_PRE_SHARED_KEY, 0, TAG_ANY);
+	if (rcode == RLM_MODULE_OK) return RLM_MODULE_OK;
 
-save_found_psk:
-	if (!vp) return RLM_MODULE_OK;
+	fr_assert(psk != NULL);
+	fr_assert(psk_identity != NULL);
 
-	fr_pair_add(&request->reply->vps, fr_pair_copy(request->reply, vp));
-
-save_psk_identity:
 	/*
-	 *	Save which identity matched.
+	 *	Create the attributes which the caller can then save
+	 *	in the database.
 	 */
-	if (psk_identity) {
-		MEM(vp = fr_pair_afrom_num(request->reply, PW_PSK_IDENTITY, 0));
-		fr_pair_value_bstrncpy(vp, psk_identity, strlen(psk_identity));
+	RDEBUG("Creating &reply:PSK-Identity and &reply:Pre-Shared-Key");
+	MEM(vp = fr_pair_afrom_num(request->reply, PW_PSK_IDENTITY, 0));
+	fr_pair_value_bstrncpy(vp, psk, psk_len);
+	fr_pair_add(&request->reply->vps, vp);
 
-		fr_pair_add(&request->reply->vps, vp);
-	}
+	MEM(vp = fr_pair_afrom_num(request->reply, PW_PSK_IDENTITY, 0));
+	fr_pair_value_bstrncpy(vp, psk_identity, strlen(psk_identity));
+	fr_pair_add(&request->reply->vps, vp);
 
-	return RLM_MODULE_OK;
+	return RLM_MODULE_UPDATED;
 }
 
 /*
@@ -790,10 +845,27 @@ static ssize_t dpsk_xlat(void *instance, REQUEST *request,
 	while (isspace((uint8_t) *p)) p++;
 
 	if (!*p) {
-		if (generate_pmk(request, inst, buffer, sizeof(buffer), NULL, NULL, NULL, 0) == 0) {
-			RDEBUG("No &request:Called-Station-SSID or &config:Pre-Shared-Key found");
+		VALUE_PAIR *vp_ssid, *vp_psk;
+
+		vp_ssid = fr_pair_find_by_da(request->packet->vps, inst->ssid, TAG_ANY);
+		if (!vp_ssid) {
+			RDEBUG("No %s in the request", inst->ssid->name);
 			return 0;
 		}
+
+		vp_psk = fr_pair_find_by_num(request->config, PW_PRE_SHARED_KEY, 0, TAG_ANY);
+		if (!vp_psk) {
+			RDEBUG("No &config:Pre-Shared-Key");
+			return 0;
+		}
+
+		psk = vp_psk->vp_strvalue;
+		psk_len = vp_psk->vp_length;
+
+		ssid = vp_ssid->vp_strvalue;
+		ssid_len = vp_ssid->vp_length;
+		goto get_pmk;
+
 	} else {
 		ssid = p;
 
@@ -812,6 +884,7 @@ static ssize_t dpsk_xlat(void *instance, REQUEST *request,
 
 		psk_len = p - psk;
 
+	get_pmk:
 		if (PKCS5_PBKDF2_HMAC_SHA1(psk, psk_len, (const unsigned char *) ssid, ssid_len, 4096, sizeof(buffer), buffer) == 0) {
 			RDEBUG("Failed calling OpenSSL to calculate the PMK");
 			return 0;
@@ -889,11 +962,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_dpsk_t *inst = instance;
 
+	/*
+	 *	We can still use a cache if we're getting PSKs from a
+	 *	database.  The PMK calculation can take time, so
+	 *	caching the PMK still saves us time.
+	 */
 	if (!inst->cache_size) return 0;
 
 	FR_INTEGER_BOUND_CHECK("cache_size", inst->cache_size, <=, ((uint32_t) 1) << 16);
-
-	if (!inst->cache_size) return 0;
 
 	FR_INTEGER_BOUND_CHECK("cache_lifetime", inst->cache_lifetime, <=, (7 * 86400));
 	FR_INTEGER_BOUND_CHECK("cache_lifetime", inst->cache_lifetime, >=, 3600);

@@ -24,27 +24,67 @@
 #		...
 #		rewrite_called_station_id
 #
-#		update control {
-#			&PSK-Identity := "bob"
-#			&Pre-Shared-Key := "this-is-super-secret"
-#		}
 #		dpsk
+#		if (ok) {
+#			update control {
+#				&PSK-Identity := "bob"
+#				&Pre-Shared-Key := "this-is-super-secret"
+#			}
+#		}
 #
 #	}
 #
-#  And update the "authenticate" section to list the "dpsk" module:
+#  Alternatively, you can read &control:PSK-Identity and
+#  &control:Pre-Shared-Key from a database.  Just do that before
+#  running the "authenticate" section.  You can do the database lookup
+#  after running the "dpsk" module in the "authorize" section.
+#
+#  The database should look up the User-Name (i.e. MAC), and then set
+#  &control:PSK-Identity and &control:Pre-Shared-Key.  In general, it
+#  is easiest to just set PSK-Identity to be same as the User-Name.
+#
+#  Then update the "authenticate" section to list the "dpsk" module:
 #
 #	authenticate {
 #		...
-#		dpsk
+#
+#		Auth-Type dpsk {
+#			dpsk
+#			if (updated) {
+#				... cache &reply:Pre-Shared-Key
+#				... cache &reply:PSK-Identity
+#
+#			}
+#		}
+#
 #		...
 #	}
 #
-#  The module will return "fail" if the PSK is not correct.  It will return "ok"
-#  if the PSK is correct.
+#  In the "authenticate" section, the module will return
 #
-#  It also updates &reply:Pre-Shared-Key with the found key, along with
-#  &reply:PSK-Identity with the found identity.
+#  * noop	if there are no DPSK attributes in the request
+#
+#  * fail	if there are DPSK attributes, but it is unable to get the
+#		information necessary to check the DPSK data.
+#
+#  * reject 	if there are DPSK attributes, but they do not match any
+#		given PSK.
+#
+#  * ok		if there are DPSK attributes, and they match a known PSK.
+#
+#  * updated	if there are DPSK attributes which match a PSK, and the
+#		PSK was read from 'filename'.
+#
+#		It also updates the attributes &reply:Pre-Shared-Key
+#		with the found PSK, along with &reply:PSK-Identity
+#		with the found identity.
+#
+#		You can then check the return code for "updated", and
+#		write those attributes into a database.  This step
+#		ensures that 'filename' is read only as a last resort.
+#		Since the file is read from top to bottom for every
+#		packet, this process is much slower than using a
+#		database which is keyed to the PSK Identity.
 #
 #  We STRONGLY RECOMMEND THAT NO ONE USE THIS MODULE.
 #
@@ -72,6 +112,9 @@ dpsk {
 	#  The cache entry is the PSK-Identity and Pre-Shared-Key,
 	#  and/or the PMK which are used to verify the information in
 	#  the Access-Request.
+	#
+	#  Caching entries can help, even when using a database.  It
+	#  is very slow to calculate the PMK from the PSK.
 	#
 	cache_size = 1024
 
