@@ -301,6 +301,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	eapol_attr_t const *eapol;
 	eapol_attr_t *zeroed;
 	FILE *fp = NULL;
+	char const *filename;
 	char const *psk_identity = NULL, *psk = NULL;
 	uint8_t *p;
 	uint8_t const *snonce, *ap_mac;
@@ -311,6 +312,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	uint8_t digest[EVP_MAX_MD_SIZE], mic[EVP_MAX_MD_SIZE];
 	char token_identity[256];
 	char token_psk[256];
+	char filename_buffer[1024];
 
 	/*
 	 *	Search for the information in a bunch of attributes.
@@ -516,10 +518,9 @@ stage2:
 	 */
 	if (inst->filename) {
 		FR_TOKEN token;
-		char const *q, *filename;
+		char const *q;
 		char token_mac[256];
 		char buffer[1024];
-		char filename_buffer[1024];
 
 		if (!inst->dynamic) {
 			filename = inst->filename;
