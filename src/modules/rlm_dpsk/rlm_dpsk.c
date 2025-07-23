@@ -301,7 +301,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	eapol_attr_t const *eapol;
 	eapol_attr_t *zeroed;
 	FILE *fp = NULL;
-	char const *filename;
+	char const *filename = inst->filename;
 	char const *psk_identity = NULL, *psk = NULL;
 	uint8_t *p;
 	uint8_t const *snonce, *ap_mac;
@@ -523,15 +523,15 @@ stage2:
 		char token_mac[256];
 		char buffer[1024];
 
-		if (!inst->dynamic) {
-			filename = inst->filename;
-		} else {
+		if (inst->dynamic) {
 			if (radius_xlat(filename_buffer, sizeof(filename_buffer),
 					request, inst->filename, NULL, NULL) < 0) {
 				return RLM_MODULE_FAIL;
 			}
 
 			filename = filename_buffer;
+		} else {
+			fr_assert(filename == inst->filename);
 		}
 
 		RDEBUG3("Looking for PSK in file %s", filename);
