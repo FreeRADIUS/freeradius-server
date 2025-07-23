@@ -1,0 +1,5 @@
+rewrite_called_station_id
+dpsk
+update control {
+	&Pre-Shared-Key := &Filter-Id
+}

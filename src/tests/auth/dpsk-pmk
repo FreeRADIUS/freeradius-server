@@ -1,0 +1,6 @@
+rewrite_called_station_id
+dpsk
+update control {
+	&Pairwise-Master-Key := &Class
+}
+
