@@ -1,0 +1,17 @@
+string result0
+string result1
+string result2
+string result3
+
+map list %str.split('one two three', ' ') {
+	result0 := 0
+	result1 := 1
+	result2 := 2
+	result3 := 3
+}
+
+if ((result0 != 'one') || (result1 != 'two') || (result2 != 'three') || result3) {
+	test_fail
+}
+
+success
