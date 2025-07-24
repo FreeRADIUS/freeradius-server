@@ -44,6 +44,12 @@ typedef void (*unlang_map_signal_t)(map_ctx_t const *mpctx, request_t *request, 
 
 unlang_action_t unlang_map_yield(request_t *request,
 				 map_proc_func_t resume, unlang_map_signal_t signal, fr_signal_t sigmask, void *rctx);
+
+/*
+ *	map_builtin.c
+ */
+int		map_global_init(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -112,6 +112,11 @@ static int _unlang_global_init(UNUSED void *uctx)
 		return -1;
 	}
 
+	/*
+	 *	Initialise global maps
+	 */
+	if (map_global_init() < 0) goto fail;
+
 	unlang_interpret_init_global(unlang_ctx);
 
 	/*

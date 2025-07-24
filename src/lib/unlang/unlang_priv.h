@@ -31,6 +31,7 @@
 #include <freeradius-devel/server/time_tracking.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/unlang/map.h>
 #include <freeradius-devel/io/listen.h>
 
 #ifdef __cplusplus
