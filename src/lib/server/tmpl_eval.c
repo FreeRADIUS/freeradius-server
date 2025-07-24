@@ -606,7 +606,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	 *	Cast the data to the correct type.  Which also allocates any variable sized buffers from the
 	 *	output ctx.
 	 */
-	if (dst_type != vb_in->type) {		
+	if (dst_type != vb_in->type) {
 		if (vb_in == &value) {
 			fr_assert(tmp_ctx != NULL);
 			fr_assert(str != NULL);
@@ -650,7 +650,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	} /* else the output type is a leaf, and is the same data type as the input */
 
 	RDEBUG4("Copying %zu bytes to %p from offset %zu",
-		fr_value_box_field_sizes[dst_type], *((void **)out), fr_value_box_offsets[dst_type]);
+		fr_value_box_field_sizes[dst_type], out, fr_value_box_offsets[dst_type]);
 
 	fr_value_box_memcpy_out(out, vb_in);
 
