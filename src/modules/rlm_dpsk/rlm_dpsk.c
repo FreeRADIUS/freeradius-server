@@ -755,7 +755,7 @@ make_digest:
 				rbtree_deletebydata(inst->cache, entry); /* locks and unlinks the entry */
 			}
 
-			MEM(entry = talloc_zero(NULL, rlm_dpsk_cache_t));
+			MEM(entry = talloc_zero(inst->cache, rlm_dpsk_cache_t));
 
 			memcpy(entry->mac, s_mac, sizeof(entry->mac));
 			memcpy(entry->pmk, pmk, sizeof(entry->pmk));
