@@ -272,6 +272,7 @@ static int _tcp_handle_free(tcp_handle_t *h)
  * @param[in] conn	to initialise.
  * @param[in] uctx	A #tcp_thread_t
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx)
 {
 	int			fd;
