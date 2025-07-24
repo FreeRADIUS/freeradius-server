@@ -2957,6 +2957,13 @@ static bool home_server_active(REQUEST *request, home_server_t *home)
  *	situation.
  *
  *	@todo - if there's only one server alive, just pick that?
+ *
+ *	@todo - move to a home_server_id_t structure, which contains a
+ *	home_server_t* and a uin32_t id.  We can then allocate 8-16
+ *	IDs per home server, which will help with load balancing.  If
+ *	each home server has only one ID, there is a chance that two
+ *	will be randomly assigned right next to each other.  That
+ *	results in bad load balancing.
  */
 static home_server_t *home_server_by_consistent_key(REQUEST *request, home_pool_t *pool, uint32_t hash)
 {
@@ -3065,8 +3072,6 @@ home_server_t *home_server_ldb(char const *realmname,
 	 *	Determine how to pick choose the home server.
 	 */
 	switch (pool->type) {
-
-
 		/*
 		 *	For load-balancing by client IP address, we
 		 *	pick a home server by hashing the client IP.
@@ -3091,7 +3096,23 @@ home_server_t *home_server_ldb(char const *realmname,
 			hash = 0;
 			break;
 		}
+
+	pick_matching_server:
+		/*
+		 *	Try the matching server first.  If it's alive, we return it.
+		 *
+		 *	Otherwise we fall back to just picking a random one.
+		 */
 		start = hash % pool->num_home_servers;
+		found = pool->servers[start];
+		if (home_server_active(request, found)) return found;
+
+		/*
+		 *	The matching one is dead.  We then use the
+		 *	"load-balance" algorithm to pick the server.
+		 */
+		found = NULL;
+		start = 0;
 		break;
 
 	case HOME_POOL_CLIENT_PORT_BALANCE:
@@ -3112,19 +3133,18 @@ home_server_t *home_server_ldb(char const *realmname,
 		}
 		hash = fr_hash_update(&request->packet->src_port,
 				      sizeof(request->packet->src_port), hash);
-		start = hash % pool->num_home_servers;
-		break;
+		goto pick_matching_server;
 
 	case HOME_POOL_KEYED_BALANCE:
 		if ((vp = fr_pair_find_by_num(request->config, PW_LOAD_BALANCE_KEY, 0, TAG_ANY)) != NULL) {
 			hash = fr_hash(vp->vp_strvalue, vp->vp_length);
 			start = hash % pool->num_home_servers;
-			break;
+			goto pick_matching_server;
 		}
 		/* FALL-THROUGH */
 
-	case HOME_POOL_LOAD_BALANCE:
 	case HOME_POOL_FAIL_OVER:
+	case HOME_POOL_LOAD_BALANCE:
 		start = 0;
 		break;
 
@@ -3151,7 +3171,6 @@ home_server_t *home_server_ldb(char const *realmname,
 	default:		/* this shouldn't happen... */
 		start = 0;
 		break;
-
 	}
 
 	/*
@@ -3160,6 +3179,10 @@ home_server_t *home_server_ldb(char const *realmname,
 	 *	it.  If it is too busy, skip it.
 	 *
 	 *	Otherwise, use it.
+	 *
+	 *	The difference between fail-over (i.e redundant) and
+	 *	load balance is that redundant always starts at the
+	 *	first one, and load balance starts at a random one.
 	 */
 	for (count = 0; count < pool->num_home_servers; count++) {
 		home_server_t *home = pool->servers[(start + count) % pool->num_home_servers];
@@ -3179,9 +3202,14 @@ home_server_t *home_server_ldb(char const *realmname,
 		}
 
 		/*
-		 *	We've found the first "live" one.  Use that.
+		 *	For fail-over, we just pick the first one
+		 *	which is alive.
+		 *
+		 *	For all other methods, we load balance among
+		 *	all servers, picking the least busy home
+		 *	server.
 		 */
-		if (pool->type != HOME_POOL_LOAD_BALANCE) {
+		if (pool->type == HOME_POOL_FAIL_OVER) {
 			found = home;
 			break;
 		}
