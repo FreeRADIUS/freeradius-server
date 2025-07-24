@@ -3138,7 +3138,6 @@ home_server_t *home_server_ldb(char const *realmname,
 	case HOME_POOL_KEYED_BALANCE:
 		if ((vp = fr_pair_find_by_num(request->config, PW_LOAD_BALANCE_KEY, 0, TAG_ANY)) != NULL) {
 			hash = fr_hash(vp->vp_strvalue, vp->vp_length);
-			start = hash % pool->num_home_servers;
 			goto pick_matching_server;
 		}
 		/* FALL-THROUGH */

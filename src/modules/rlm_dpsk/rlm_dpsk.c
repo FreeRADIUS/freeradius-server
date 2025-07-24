@@ -772,8 +772,8 @@ make_digest:
 			MEM(entry->psk = talloc_memdup(entry, psk, psk_len));
 			entry->psk_len = psk_len;
 
-			MEM(entry->identity = talloc_memdup(entry, psk_identity, strlen(psk_identity)));
 			entry->identity_len = strlen(psk_identity);
+			MEM(entry->identity = talloc_memdup(entry, psk_identity, entry->identity_len));
 
 			/*
 			 *	Cache it.
