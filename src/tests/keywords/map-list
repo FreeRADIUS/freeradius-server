@@ -2,6 +2,7 @@ string result0
 string result1
 string result2
 string result3
+integer index
 
 map list %str.split('one two three', ' ') {
 	result0 := 0
@@ -11,6 +12,15 @@ map list %str.split('one two three', ' ') {
 }
 
 if ((result0 != 'one') || (result1 != 'two') || (result2 != 'three') || result3) {
+	test_fail
+}
+
+index := 1
+map list %str.split('foo baa baz', ' ') {
+	result1 := index
+}
+
+if (result1 != 'baa') {
 	test_fail
 }
 
