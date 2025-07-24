@@ -47,7 +47,7 @@ int	regex_request_to_sub(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *reques
 /*
  *	Named capture groups only supported by PCRE.
  */
-#  if defined(HAVE_REGEX_PCRE2) || defined(HAVE_REGEX_PCRE)
+#  if defined(HAVE_REGEX_PCRE2)
 int	regex_request_to_sub_named(TALLOC_CTX *ctx, fr_value_box_t *out, request_t *request, char const *name) CC_HINT(nonnull);
 #  endif
 #endif

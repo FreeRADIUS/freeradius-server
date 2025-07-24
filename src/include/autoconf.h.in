@@ -362,9 +362,6 @@
 /* Define if we have any regular expression library */
 #undef HAVE_REGEX
 
-/* define this if we have libpcre */
-#undef HAVE_REGEX_PCRE
-
 /* define this if we have libpcre2 */
 #undef HAVE_REGEX_PCRE2
 

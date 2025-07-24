@@ -23,9 +23,9 @@ FILES := $(filter-out pap-ssha2 sha2,$(FILES))
 endif
 
 #
-#  Some tests require PCRE or PCRE2
+#  Some tests require PCRE2
 #
-ifeq "$(AC_HAVE_REGEX_PCRE)$(AC_HAVE_REGEX_PCRE2)" ""
+ifeq "$(AC_HAVE_REGEX_PCRE2)" ""
 FILES := $(filter-out if-regex-match-named,$(FILES))
 endif
 
