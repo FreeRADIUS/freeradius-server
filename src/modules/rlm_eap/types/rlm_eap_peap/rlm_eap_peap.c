@@ -39,7 +39,7 @@ typedef struct {
 	bool			copy_request_to_tunnel;	//!< Use SOME of the request attributes from outside of the
 							//!< tunneled session in the tunneled request.
 
-	char const		*virtual_server;	//!< Virtual server for inner tunnel session.
+	virtual_server_t	*virtual_server;	//!< Virtual server for inner tunnel session.
 	CONF_SECTION		*server_cs;
 
 	bool			req_client_cert;	//!< Do we do require a client cert?
@@ -52,8 +52,9 @@ static conf_parser_t submodule_config[] = {
 
 	{ FR_CONF_DEPRECATED("use_tunneled_reply", rlm_eap_peap_t, NULL), .dflt = "no" },
 
-	{ FR_CONF_OFFSET_FLAGS("virtual_server", CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_eap_peap_t, virtual_server) },
-
+	{ FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_eap_peap_t, virtual_server),
+				    .func = virtual_server_cf_parse,
+				    .uctx = &(virtual_server_cf_parse_uctx_t){ .process_module_name = "eap_peap"} },
 	{ FR_CONF_OFFSET("require_client_cert", rlm_eap_peap_t, req_client_cert), .dflt = "no" },
 
 	CONF_PARSER_TERMINATOR
@@ -380,18 +381,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_eap_peap_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_peap_t);
 	CONF_SECTION		*conf = mctx->mi->conf;
-	virtual_server_t const	*virtual_server = virtual_server_find(inst->virtual_server);
 
-	if (!virtual_server) {
-		cf_log_err_by_child(conf, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
-		return -1;
-	}
-
-	inst->server_cs = virtual_server_cs(virtual_server);
-	if (!inst->server_cs) {
-		cf_log_err_by_child(conf, "virtual_server", "Virtual server \"%s\" missing", inst->virtual_server);
-		return -1;
-	}
+	inst->server_cs = virtual_server_cs(inst->virtual_server);
 
 	/*
 	 *	Read tls configuration, either from group given by 'tls'

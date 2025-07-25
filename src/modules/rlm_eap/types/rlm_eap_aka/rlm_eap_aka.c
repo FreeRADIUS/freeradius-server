@@ -37,7 +37,11 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 
 static conf_parser_t submodule_config[] = {
-	{ FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, 0, eap_aka_sim_module_conf_t, virtual_server), .func = virtual_server_cf_parse },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, 0, eap_aka_sim_module_conf_t, virtual_server),
+				    .func = virtual_server_cf_parse,
+				    .uctx = &(virtual_server_cf_parse_uctx_t){
+					    .process_module_name = "eap_aka",
+				    } },
 	{ FR_CONF_OFFSET_IS_SET("prefer_aka_prime", FR_TYPE_BOOL, 0, eap_aka_sim_module_conf_t, aka.send_at_bidding_prefer_prime ), .dflt = "no" },
 
 	CONF_PARSER_TERMINATOR

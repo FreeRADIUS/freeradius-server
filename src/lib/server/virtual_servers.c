@@ -41,6 +41,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/master.h>
 #include <freeradius-devel/io/listen.h>
 
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/talloc.h>
@@ -1006,6 +1007,7 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 			    CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	virtual_server_t const *vs;
+	virtual_server_cf_parse_uctx_t const *uctx = rule->uctx;
 
 	vs = virtual_server_find(cf_pair_value(cf_item_to_pair(ci)));
 	if (!vs) {
@@ -1013,6 +1015,52 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 		return -1;
 	}
 
+	/*
+	 *	Validation checks
+	 */
+	if (uctx) {
+		/*
+		 *	Check the module name
+		 *
+		 *	FIXME: ...at some point in the distance future.  Names
+		 *	are icky, we should compare based on dl_module_t, but
+		 *	ordering issues make this difficult currently.
+		 */
+		if (uctx->process_module_name) {
+			/* catch users doing stupid things */
+			if (strcmp(uctx->process_module_name, vs->process_mi->module->name) != 0) {
+				cf_log_err(ci, "virtual server \"%s\" must be of type \"%s\", "
+					   "got type \"%s\"",
+					   cf_pair_value(cf_item_to_pair(ci)),
+					   uctx->process_module_name, vs->process_mi->module->name);
+				return -1;
+			}
+		}
+
+		/*
+		 *	It's theoretically possible for the same module to be used
+		 *	with multiple namespaces, so we need this check too.
+		 */
+		if (uctx->required_dict) {
+			fr_dict_t *required_dict = *uctx->required_dict;
+
+			if (!fr_cond_assert_msg(required_dict != NULL,
+						"dict not resolved before virtual server reference")) {
+				goto done;
+			}
+
+			if (required_dict != *vs->process_module->dict) {
+				cf_log_err(ci, "virtual server \"%s\" must use namespace \"%s\", "
+					   "got namespace \"%s\"",
+					   cf_pair_value(cf_item_to_pair(ci)),
+					   fr_dict_root(required_dict)->name,
+					   fr_dict_root(*vs->process_module->dict)->name);
+				return -1;
+			}
+		}
+	}
+
+done:
 	*((CONF_SECTION **)out) = vs->server_cs;
 
 	return 0;

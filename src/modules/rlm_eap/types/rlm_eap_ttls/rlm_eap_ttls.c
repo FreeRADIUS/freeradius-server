@@ -37,8 +37,8 @@ typedef struct {
 	/*
 	 *	TLS configuration
 	 */
-	char const	*tls_conf_name;
-	fr_tls_conf_t	*tls_conf;
+	char const		*tls_conf_name;
+	fr_tls_conf_t		*tls_conf;
 
 	/*
 	 *	RFC 5281 (TTLS) says that the length field MUST NOT be
@@ -49,18 +49,18 @@ typedef struct {
 	 *	RFC, we add the option here.  If set to "no", it sends
 	 *	the length field in ONLY the first fragment.
 	 */
-	bool		include_length;
+	bool			include_length;
 
 	/*
 	 *	Virtual server for inner tunnel session.
 	 */
-	char const	*virtual_server;
-	CONF_SECTION	*server_cs;
+	virtual_server_t	*virtual_server;
+	CONF_SECTION		*server_cs;
 
 	/*
 	 * 	Do we do require a client cert?
 	 */
-	bool		req_client_cert;
+	bool			req_client_cert;
 } rlm_eap_ttls_t;
 
 
@@ -68,7 +68,9 @@ static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("tls", rlm_eap_ttls_t, tls_conf_name) },
 	{ FR_CONF_DEPRECATED("copy_request_to_tunnel", rlm_eap_ttls_t, NULL), .dflt = "no" },
 	{ FR_CONF_DEPRECATED("use_tunneled_reply", rlm_eap_ttls_t, NULL), .dflt = "no" },
-	{ FR_CONF_OFFSET_FLAGS("virtual_server", CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_eap_ttls_t, virtual_server) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_eap_ttls_t, virtual_server),
+				    .func = virtual_server_cf_parse,
+				    .uctx = &(virtual_server_cf_parse_uctx_t){ .process_module_name = "eap_ttls"} },
 	{ FR_CONF_OFFSET("include_length", rlm_eap_ttls_t, include_length), .dflt = "yes" },
 	{ FR_CONF_OFFSET("require_client_cert", rlm_eap_ttls_t, req_client_cert), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
@@ -300,18 +302,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_eap_ttls_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_ttls_t);
 	CONF_SECTION 	*conf = mctx->mi->conf;
-	virtual_server_t const	*virtual_server = virtual_server_find(inst->virtual_server);
 
-	if (!virtual_server) {
-		cf_log_err_by_child(conf, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
-		return -1;
-	}
-
-	inst->server_cs = virtual_server_cs(virtual_server);
-	if (!inst->server_cs) {
-		cf_log_err_by_child(conf, "virtual_server", "Virtual server \"%s\" missing", inst->virtual_server);
-		return -1;
-	}
+	inst->server_cs = virtual_server_cs(inst->virtual_server);
 
 	/*
 	 *	Read tls configuration, either from group given by 'tls'
