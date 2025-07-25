@@ -993,17 +993,20 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-#ifdef HAVE_PTHREAD_H
 static int mod_detach(void *instance)
 {
 	rlm_dpsk_t *inst = instance;
 
 	if (!inst->cache_size) return 0;
 
+	rbtree_free(inst->cache);
+
+#ifdef HAVE_PTHREAD_H
 	pthread_mutex_destroy(&inst->mutex);
+#endif
+
 	return 0;
 }
-#endif
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -1023,9 +1026,7 @@ module_t rlm_dpsk = {
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
-#ifdef HAVE_PTHREAD_H
 	.detach		= mod_detach,
-#endif
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_AUTHENTICATE]	= mod_authenticate,
