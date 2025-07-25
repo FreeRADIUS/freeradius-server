@@ -30,11 +30,17 @@ FreeRADIUS 3.2.8 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	  configuration.
 	* Add support for 389ds password hashes.  Patch from
 	  Gerald Vogt.
-	* Add delay_proxy_rejects, and ensure that reject_delay
-	  will delay for at least that time, and does not always
-	  add a delay.
+	* reject_delay does not _add_ a delay, but instead ensures that
+	  the reject is delayed for _at least_ that time.  This change
+	  means that reject_delay can be set in more situations, including
+	  for proxies.
+	* Add delay_proxy_rejects.  By default, proxied rejects are not
+	  delayed.  Setting this flag means that reject_delay is applied
+	  to proxied rejects, too.
 	* The proxy_rate_limit module can now be listed in the
 	  "authorize" section.
+	* Update dpsk module to be faster, and be easier to configure
+	  with databases.  See mods-available/dpsk
 
 	Bug fixes
 	* Move assertion in thread / queue code, which only affects
