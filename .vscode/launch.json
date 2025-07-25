@@ -47,6 +47,45 @@
                                         "text": "set solib-search-path ${workspaceFolder}"
                                 }
                         ]
-                }
-        ]
+                },
+		{
+			"type": "cppdbg",
+			"request": "launch",
+			"name": "Keyword Test (gdb)",
+			"program": "${workspaceFolder}/build/bin/local/unittest",
+			"args": [
+				"-D",
+				"${workspaceFolder}/share",
+				"-d",
+				"${workspaceFolder}/src/tests/keywords/",
+				"-i",
+				"${workspaceFolder}/build/tests/keywords/${input:keyword}.attrs",
+				"-f",
+				"${workspaceFolder}/build/tests/keywords/${input:keyword}.attrs",
+				"-xx"
+			],
+			"cwd": "${workspaceFolder}",
+                        "environment": [
+                                { "name": "FR_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
+                                { "name": "LD_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
+                                { "name": "KEYWORD", "value": "${input:keyword}" },
+                                { "name": "DEBUGGER_ATTACHED", "value": "yes"}
+                        ],
+                        "MIMode": "gdb",
+                        "setupCommands": [
+                                {
+                                        "description": "Set solib",
+                                        "text": "set solib-search-path ${workspaceFolder}"
+                                }
+                        ]
+
+		}
+        ],
+	"inputs": [
+		{
+			"id": "keyword",
+			"type": "promptString",
+			"description": "Keyword to test"
+		}
+	]
 }
