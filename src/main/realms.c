@@ -1659,7 +1659,7 @@ static int server_pool_add(realm_config_t *rc,
 		}
 
 		/*
-		 *	We can only do consisteny keyed balance to real home servers.
+		 *	We can only do consistent keyed balance to real home servers.
 		 */
 		if (pool->type == HOME_POOL_CONSISTENT_KEYED_BALANCE) {
 			if (home->virtual_server) {
@@ -2951,61 +2951,50 @@ static bool home_server_active(REQUEST *request, home_server_t *home)
  *	An implementation of https://arxiv.org/pdf/1505.00062
  *	"Multi-probe consistent hashing".
  *
- *	It hashes the nodes once, and then hashes the key K ways.
- *	Using K=2 achieves O(1) lookup with high probability.  So this
- *	looks like it's O(N^2), but that is a very very rare
- *	situation.
+ *	It hashes the nodes once, and then hashes the key K ways.  We
+ *	then choose the node which has a value _closest_ to one of the
+ *	K keys.  Using K=2 achieves O(1) lookup with high probability,
+ *	and a max to average ration of ~3.
  *
  *	@todo - if there's only one server alive, just pick that?
- *
- *	@todo - move to a home_server_id_t structure, which contains a
- *	home_server_t* and a uin32_t id.  We can then allocate 8-16
- *	IDs per home server, which will help with load balancing.  If
- *	each home server has only one ID, there is a chance that two
- *	will be randomly assigned right next to each other.  That
- *	results in bad load balancing.
  */
 static home_server_t *home_server_by_consistent_key(REQUEST *request, home_pool_t *pool, uint32_t hash)
 {
-	int i, j, max;
+	int i, j;
 	uint32_t key[8];
 	unsigned int mask;
+	uint32_t found_diff;
+	home_server_t *found;
 	home_server_t *home[8] = { NULL, NULL, NULL, NULL, 
 				   NULL, NULL, NULL, NULL };
 	static const uint32_t constants[8] = { 0xff51afd7, 0xed558ccd, 0xc4ceb9fe, 0x1a85ec53,
 					      ~0xff51afd7,~0xed558ccd,~0xc4ceb9fe,~0x1a85ec53 };
 
 	/*
-	 *	Limit the number of rounds we do.  We don't always
-	 *	need to do 8 rounds.
-	 */
-	max = 8;
-	if (pool->num_home_servers < max) max = pool->num_home_servers;
-
-	/*
-	 *	Set the bits of the mask based on number of home servers.
-	 */
-	mask = (1 << max) - 1;
-
-	/*
 	 *	Get some hash keys.
 	 */
-	for (i = 0; i < max; i++) {
+	for (i = 0; i < 8; i++) {
 		key[i] = fr_hash_update(&constants[i], sizeof(constants[i]), hash);
 	}
+	mask = (1 << 8) - 1;
 
 	/*
 	 *	Loop over all home servers, picking one of them
 	 *	which corresponds to the hash key.
 	 *
 	 *	We pick the first home server which has a key greater
-	 *	than the current one.
+	 *	than the current one.  Note that the home servers are
+	 *	sorted by ID, so as soon as we find a matching one, we
+	 *	can stop walking the list of home servers.
 	 */
 	for (i = 0; i < pool->num_home_servers; i++) {
-		for (j = 0; j < max; j++) {
+		for (j = 0; j < 8; j++) {
 			if (!home[j] && (pool->servers[i]->id > key[j])) {
 				home[j] = pool->servers[i];
 
+				/*
+				 *	Stop early if we fill up the array.
+				 */
 				mask &= ~(1 << j);
 				if (!mask) goto pick;
 			}
@@ -3017,25 +3006,38 @@ static home_server_t *home_server_by_consistent_key(REQUEST *request, home_pool_
 	 *	key was too large, then wrap around to pick the first
 	 *	home server.
 	 */
-	if (mask) for (i = 0; i < max; i++) {
+	if (mask) for (i = 0; i < 8; i++) {
 		if (!home[i]) home[i] = pool->servers[0];
 	}
 
 pick:
+	found = NULL;
+	found_diff = ~((uint32_t) 0);
+
 	/*
-	 *	Pick the first home server which is alive, using
-	 *	consistent keying.
-	 *
-	 *	Note that we do NOT pick the first alive home server
-	 *	found in the main loop.  For consistency, we MUST
-	 *	instead pick one using the first key, and only use the
-	 *	second key if the first one we chose is dead.
+	 *	Pick the _alive_ home server which has an ID which is
+	 *	_closest_ to the given key.
 	 */
-	for (i = 0; i < max; i++) {
-		if (home_server_active(request, home[i])) return home[i];
+	for (i = 0; i < 8; i++) {
+		uint32_t diff;
+
+		if (!home_server_active(request, home[i])) continue;
+
+		if (found->id <= key[i]) {
+			diff = key[i] - found->id;
+
+		} else {
+			diff = key[i] + (~((uint32_t) 0) - found->id) + 1;
+		}
+
+		if (!found || (diff < found_diff)) {
+			found = home[i];
+			found_diff = diff;
+			continue;
+		}
 	}
 
-	return NULL;
+	return found;
 }
 
 home_server_t *home_server_ldb(char const *realmname,
