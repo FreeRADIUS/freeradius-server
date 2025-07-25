@@ -85,6 +85,8 @@ int		virtual_server_has_namespace(CONF_SECTION **out,
  */
 CONF_SECTION		*virtual_server_cs(virtual_server_t const *vs) CC_HINT(nonnull);
 
+virtual_server_t const	*virtual_server_from_cs(CONF_SECTION *server_cs);
+
 virtual_server_t const	*virtual_server_find(char const *name) CC_HINT(nonnull);
 
 virtual_server_t const	*virtual_server_by_child(CONF_ITEM const *ci) CC_HINT(nonnull);
@@ -144,7 +146,7 @@ int		virtual_server_section_register(virtual_server_t *vs, virtual_server_compil
 
 section_name_t const **virtual_server_section_methods(virtual_server_t const *vs, section_name_t const *section) CC_HINT(nonnull);
 
-unlang_action_t	virtual_server_push(unlang_result_t *p_result, request_t *request, CONF_SECTION *server_cs, bool top_frame) CC_HINT(nonnull(2,3));
+unlang_action_t	virtual_server_push(unlang_result_t *p_result, request_t *request, virtual_server_t const *vs, bool top_frame) CC_HINT(nonnull(2,3));
 
 /** @name Parsing, bootstrap and instantiation
  *

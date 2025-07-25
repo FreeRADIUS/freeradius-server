@@ -135,7 +135,7 @@ static unlang_action_t unlang_call_frame_init(unlang_result_t *p_result, request
 		frame_repeat(frame, unlang_call_children);
 	}
 
-	if (virtual_server_push(NULL, request, gext->server_cs, UNLANG_SUB_FRAME) < 0) goto error;
+	if (virtual_server_push(NULL, request, virtual_server_from_cs(gext->server_cs), UNLANG_SUB_FRAME) < 0) goto error;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }

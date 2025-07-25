@@ -752,16 +752,8 @@ check_default:
  *
  *	Short-term hack
  */
-unlang_action_t virtual_server_push(unlang_result_t *p_result, request_t *request, CONF_SECTION *server_cs, bool top_frame)
+unlang_action_t virtual_server_push(unlang_result_t *p_result, request_t *request, virtual_server_t const *vs, bool top_frame)
 {
-	virtual_server_t *vs;
-
-	vs = cf_data_value(cf_data_find(server_cs, virtual_server_t, NULL));
-	if (!vs) {
-		cf_log_err(server_cs, "server_cs does not contain virtual server data");
-		return UNLANG_ACTION_FAIL;
-	}
-
 	/*
 	 *	Add a log destination specific to this virtual server.
 	 *
@@ -787,7 +779,7 @@ unlang_action_t virtual_server_push(unlang_result_t *p_result, request_t *reques
 								  server_remove_log_destination, 	/* but when we pop the frame */
 								  server_signal_remove_log_destination, ~(FR_SIGNAL_CANCEL),
 								  top_frame,
-								  vs);
+								  UNCONST(void *, vs));
 			if (action != UNLANG_ACTION_PUSHED_CHILD) return action;
 
 			top_frame = UNLANG_SUB_FRAME;	/* switch to SUB_FRAME after the first instruction */
@@ -951,6 +943,22 @@ CONF_SECTION *virtual_server_cs(virtual_server_t const *vs)
 	return vs->server_cs;
 }
 
+/** Resolve a CONF_SECTION to a virtual server
+ *
+ */
+virtual_server_t const *virtual_server_from_cs(CONF_SECTION *server_cs)
+{
+	virtual_server_t *vs;
+
+	vs = cf_data_value(cf_data_find(server_cs, virtual_server_t, NULL));
+	if (!vs) {
+		cf_log_err(server_cs, "server_cs does not contain virtual server data");
+		return NULL;
+	}
+
+	return vs;
+}
+
 /** Return virtual server matching the specified name
  *
  * @note May be called in bootstrap or instantiate as all servers should be present.
@@ -1061,7 +1069,7 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 	}
 
 done:
-	*((CONF_SECTION **)out) = vs->server_cs;
+	*((virtual_server_t const **)out) = vs;
 
 	return 0;
 }
