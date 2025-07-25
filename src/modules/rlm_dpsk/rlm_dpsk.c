@@ -267,7 +267,6 @@ static rlm_dpsk_cache_t *dpsk_cache_find(REQUEST *request, rlm_dpsk_t const *ins
 
 		RDEBUG3("Cache entry has expired");
 		rbtree_deletebydata(inst->cache, entry);
-		talloc_free(entry);
 	}
 
 	return NULL;
