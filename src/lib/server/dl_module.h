@@ -152,8 +152,6 @@ dl_module_t		*dl_module_alloc(dl_module_t const *parent, char const *name, dl_mo
 
 char const		*dl_module_search_path(void);
 
-dl_loader_t		*dl_loader_from_module_loader(dl_module_loader_t *dl_module_loader);
-
 dl_module_loader_t	*dl_module_loader_init(char const *lib_dir);
 
 #undef _CONST
