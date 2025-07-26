@@ -1264,6 +1264,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 	 */
 	switch (c->type) {
 	case UNLANG_TYPE_CASE:
+	case UNLANG_TYPE_CATCH:
 	case UNLANG_TYPE_IF:
 	case UNLANG_TYPE_ELSE:
 	case UNLANG_TYPE_ELSIF:
