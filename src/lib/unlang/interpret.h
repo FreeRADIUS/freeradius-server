@@ -155,13 +155,6 @@ typedef struct {
 		.default_result = UNLANG_RESULT_RCODE(_default_rcode),	\
 	}
 
-#define FRAME_CONF_NO_RCODE(_default_rcode, _top_frame)	\
-	&(unlang_frame_conf_t){				\
-		.top_frame = (_top_frame),		\
-		.default_result = UNLANG_RESULT_RCODE(_default_rcode),	\
-	}
-
-
 int			unlang_interpret_push_section(unlang_result_t *p_result, request_t *request,
 						      CONF_SECTION *cs, unlang_frame_conf_t const *conf)
 						      CC_HINT(warn_unused_result);
