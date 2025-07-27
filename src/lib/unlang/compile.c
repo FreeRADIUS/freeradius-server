@@ -37,7 +37,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/unlang/xlat_priv.h>
 
-#include "catch_priv.h"
 #include "call_priv.h"
 #include "caller_priv.h"
 #include "condition_priv.h"
