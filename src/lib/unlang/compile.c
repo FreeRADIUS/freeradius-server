@@ -238,103 +238,105 @@ bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules)
 				cf_section_to_item(g->cs), rules->attr.dict_def);
 }
 
-static void unlang_dump(unlang_t *instruction, int depth)
+static void unlang_dump(unlang_t *c, int depth)
 {
 	unlang_group_t *g;
 	map_t *map;
 	char buffer[1024];
 
-	unlang_list_foreach(instruction->list, c) {
-		switch (c->type) {
-		case UNLANG_TYPE_NULL:
-		case UNLANG_TYPE_CHILD_REQUEST:
-		case UNLANG_TYPE_MAX:
-			fr_assert(0);
-			break;
+	switch (c->type) {
+	case UNLANG_TYPE_NULL:
+	case UNLANG_TYPE_CHILD_REQUEST:
+	case UNLANG_TYPE_MAX:
+		fr_assert(0);
+		break;
 
-		case UNLANG_TYPE_FUNCTION:
-			DEBUG("%.*s%s", depth, unlang_spaces, c->debug_name);
-			break;
+	case UNLANG_TYPE_FUNCTION:
+		DEBUG("%.*s%s", depth, unlang_spaces, c->debug_name);
+		break;
 
-		case UNLANG_TYPE_MODULE:
-		{
-			unlang_module_t *m = unlang_generic_to_module(c);
+	case UNLANG_TYPE_MODULE:
+	{
+		unlang_module_t *m = unlang_generic_to_module(c);
 
-			DEBUG("%.*s%s", depth, unlang_spaces, m->mmc.mi->name);
+		DEBUG("%.*s%s", depth, unlang_spaces, m->mmc.mi->name);
+	}
+	break;
+
+	case UNLANG_TYPE_MAP:
+	case UNLANG_TYPE_UPDATE:
+	{
+		unlang_map_t *gext;
+
+		DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
+
+		g = unlang_generic_to_group(c);
+		gext = unlang_group_to_map(g);
+		map = NULL;
+		while ((map = map_list_next(&gext->map, map))) {
+			map_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map);
+			DEBUG("%.*s%s", depth + 1, unlang_spaces, buffer);
 		}
-			break;
 
-		case UNLANG_TYPE_MAP:
-		case UNLANG_TYPE_UPDATE:
-		{
-			unlang_map_t *gext;
+		DEBUG("%.*s}", depth, unlang_spaces);
+	}
+	break;
 
-			DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
+	case UNLANG_TYPE_EDIT:
+	{
+		unlang_edit_t *edit;
 
-			g = unlang_generic_to_group(c);
-			gext = unlang_group_to_map(g);
-			map = NULL;
-			while ((map = map_list_next(&gext->map, map))) {
-				map_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map);
-				DEBUG("%.*s%s", depth + 1, unlang_spaces, buffer);
-			}
+		edit = unlang_generic_to_edit(c);
+		map = NULL;
+		while ((map = map_list_next(&edit->maps, map))) {
+			if (!map->rhs) continue; /* @todo - fixme */
 
-			DEBUG("%.*s}", depth, unlang_spaces);
+			map_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map);
+			DEBUG("%.*s%s", depth + 1, unlang_spaces, buffer);
 		}
-			break;
 
-		case UNLANG_TYPE_EDIT:
-		{
-			unlang_edit_t *edit;
+		DEBUG("%.*s}", depth, unlang_spaces);
+	}
+	break;
 
-			edit = unlang_generic_to_edit(c);
-			map = NULL;
-			while ((map = map_list_next(&edit->maps, map))) {
-				if (!map->rhs) continue; /* @todo - fixme */
+	case UNLANG_TYPE_CALL:
+	case UNLANG_TYPE_CALLER:
+	case UNLANG_TYPE_CASE:
+	case UNLANG_TYPE_FOREACH:
+	case UNLANG_TYPE_FINALLY:
+	case UNLANG_TYPE_ELSE:
+	case UNLANG_TYPE_ELSIF:
+	case UNLANG_TYPE_GROUP:
+	case UNLANG_TYPE_IF:
+	case UNLANG_TYPE_LOAD_BALANCE:
+	case UNLANG_TYPE_PARALLEL:
+	case UNLANG_TYPE_POLICY:
+	case UNLANG_TYPE_REDUNDANT:
+	case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
+	case UNLANG_TYPE_SUBREQUEST:
+	case UNLANG_TYPE_SWITCH:
+	case UNLANG_TYPE_TIMEOUT:
+	case UNLANG_TYPE_LIMIT:
+	case UNLANG_TYPE_TRANSACTION:
+	case UNLANG_TYPE_TRY:
+	case UNLANG_TYPE_CATCH: /* @todo - print out things we catch, too */
+		g = unlang_generic_to_group(c);
 
-				map_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map);
-				DEBUG("%.*s%s", depth + 1, unlang_spaces, buffer);
-			}
-
-			DEBUG("%.*s}", depth, unlang_spaces);
+		DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
+		unlang_list_foreach(&g->children, child) {
+			unlang_dump(child, depth + 1);
 		}
-			break;
+		DEBUG("%.*s}", depth, unlang_spaces);
+		break;
 
-		case UNLANG_TYPE_CALL:
-		case UNLANG_TYPE_CALLER:
-		case UNLANG_TYPE_CASE:
-		case UNLANG_TYPE_FOREACH:
-		case UNLANG_TYPE_FINALLY:
-		case UNLANG_TYPE_ELSE:
-		case UNLANG_TYPE_ELSIF:
-		case UNLANG_TYPE_GROUP:
-		case UNLANG_TYPE_IF:
-		case UNLANG_TYPE_LOAD_BALANCE:
-		case UNLANG_TYPE_PARALLEL:
-		case UNLANG_TYPE_POLICY:
-		case UNLANG_TYPE_REDUNDANT:
-		case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
-		case UNLANG_TYPE_SUBREQUEST:
-		case UNLANG_TYPE_SWITCH:
-		case UNLANG_TYPE_TIMEOUT:
-		case UNLANG_TYPE_LIMIT:
-		case UNLANG_TYPE_TRANSACTION:
-		case UNLANG_TYPE_TRY:
-		case UNLANG_TYPE_CATCH: /* @todo - print out things we catch, too */
-			DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
-			unlang_dump(c, depth + 1);
-			DEBUG("%.*s}", depth, unlang_spaces);
-			break;
-
-		case UNLANG_TYPE_BREAK:
-		case UNLANG_TYPE_CONTINUE:
-		case UNLANG_TYPE_DETACH:
-		case UNLANG_TYPE_RETURN:
-		case UNLANG_TYPE_TMPL:
-		case UNLANG_TYPE_XLAT:
-			DEBUG("%.*s%s", depth, unlang_spaces, c->debug_name);
-			break;
-		}
+	case UNLANG_TYPE_BREAK:
+	case UNLANG_TYPE_CONTINUE:
+	case UNLANG_TYPE_DETACH:
+	case UNLANG_TYPE_RETURN:
+	case UNLANG_TYPE_TMPL:
+	case UNLANG_TYPE_XLAT:
+		DEBUG("%.*s%s", depth, unlang_spaces, c->debug_name);
+		break;
 	}
 }
 
@@ -1482,6 +1484,7 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 		fr_assert(g == talloc_parent(single));
 		fr_assert(single->parent == unlang_group_to_generic(g));
 		unlang_list_insert_tail(&g->children, single);
+		single->list = &g->children;
 
 		/*
 		 *	If it's not possible to execute statement
@@ -2236,6 +2239,8 @@ int unlang_compile(virtual_server_t const *vs,
 			    },
 			    cs, UNLANG_TYPE_GROUP);
 	if (!c) return -1;
+
+	fr_assert(c != UNLANG_IGNORE);
 
 	if (DEBUG_ENABLED4) unlang_dump(c, 2);
 
