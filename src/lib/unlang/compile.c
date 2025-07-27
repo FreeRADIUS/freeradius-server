@@ -240,12 +240,11 @@ bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules)
 
 static void unlang_dump(unlang_t *instruction, int depth)
 {
-	unlang_t *c;
 	unlang_group_t *g;
 	map_t *map;
 	char buffer[1024];
 
-	for (c = instruction; c != NULL; c = c->next) {
+	unlang_list_foreach(instruction->list, c) {
 		switch (c->type) {
 		case UNLANG_TYPE_NULL:
 		case UNLANG_TYPE_CHILD_REQUEST:
@@ -322,9 +321,8 @@ static void unlang_dump(unlang_t *instruction, int depth)
 		case UNLANG_TYPE_TRANSACTION:
 		case UNLANG_TYPE_TRY:
 		case UNLANG_TYPE_CATCH: /* @todo - print out things we catch, too */
-			g = unlang_generic_to_group(c);
 			DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
-			unlang_dump(g->children, depth + 1);
+			unlang_dump(c, depth + 1);
 			DEBUG("%.*s}", depth, unlang_spaces);
 			break;
 
@@ -464,14 +462,12 @@ unlang_group_t *unlang_group_allocate(unlang_t *parent, CONF_SECTION *cs, unlang
 							 op->pool_headers, op->pool_len);
 	if (!g) return NULL;
 
-	g->children = NULL;
-	g->tail = &g->children;
 	g->cs = cs;
 
 	c = unlang_group_to_generic(g);
-	c->parent = parent;
-	c->type = type;
 	c->ci = CF_TO_ITEM(cs);
+
+	unlang_group_type_init(c, parent, type);
 
 	return g;
 }
@@ -644,11 +640,9 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_ctx_t *un
 	if (!edit) return NULL;
 
 	c = out = unlang_edit_to_generic(edit);
-	c->parent = parent;
-	c->next = NULL;
+	unlang_type_init(c, parent, UNLANG_TYPE_EDIT);
 	c->name = cf_section_name1(cs);
 	c->debug_name = c->name;
-	c->type = UNLANG_TYPE_EDIT;
 	c->ci = CF_TO_ITEM(cs);
 
 	map_list_init(&edit->maps);
@@ -786,11 +780,9 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_ctx_t *unlan
 	if (!edit) return NULL;
 
 	c = out = unlang_edit_to_generic(edit);
-	c->parent = parent;
-	c->next = NULL;
+	unlang_type_init(c, parent, UNLANG_TYPE_EDIT);
 	c->name = cf_pair_attr(cp);
 	c->debug_name = c->name;
-	c->type = UNLANG_TYPE_EDIT;
 	c->ci = CF_TO_ITEM(cp);
 
 	map_list_init(&edit->maps);
@@ -1489,11 +1481,7 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 		 */
 		fr_assert(g == talloc_parent(single));
 		fr_assert(single->parent == unlang_group_to_generic(g));
-		fr_assert(!single->next);
-
-		*g->tail = single;
-		g->tail = &single->next;
-		g->num_children++;
+		unlang_list_insert_tail(&g->children, single);
 
 		/*
 		 *	If it's not possible to execute statement
@@ -1567,11 +1555,9 @@ static unlang_t *compile_tmpl(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx
 
 	MEM(ut = talloc_zero(parent, unlang_tmpl_t));
 	c = unlang_tmpl_to_generic(ut);
-	c->parent = parent;
-	c->next = NULL;
+	unlang_type_init(c, parent, UNLANG_TYPE_TMPL);
 	c->name = p;
 	c->debug_name = c->name;
-	c->type = UNLANG_TYPE_TMPL;
 	c->ci = CF_TO_ITEM(cp);
 
 	RULES_VERIFY(unlang_ctx->rules);
@@ -1832,12 +1818,9 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_ctx_t *unlang_c
 	}
 
 	c = unlang_module_to_generic(m);
-	c->parent = parent;
-	c->next = NULL;
-
+	unlang_type_init(c, parent, UNLANG_TYPE_MODULE);
 	c->name = talloc_typed_strdup(c, name);
 	c->debug_name = c->name;
-	c->type = UNLANG_TYPE_MODULE;
 	c->ci = ci;
 
 	/*
@@ -2472,10 +2455,8 @@ static void unlang_perf_dump(fr_log_t *log, unlang_t const *instruction, int dep
 	fr_log(log, L_DBG, file, line, "count=%" PRIu64 " cpu_time=%" PRId64 " yielded_time=%" PRId64 ,
 	       t->use_count, fr_time_delta_unwrap(t->tracking.running_total), fr_time_delta_unwrap(t->tracking.waiting_total));
 
-	if (g->children) {
-		unlang_t *child;
-
-		for (child = g->children; child != NULL; child = child->next) {
+	if (!unlang_list_empty(&g->children)) {
+		unlang_list_foreach(&g->children, child) {
 			unlang_perf_dump(log, child, depth + 1);
 		}
 	}

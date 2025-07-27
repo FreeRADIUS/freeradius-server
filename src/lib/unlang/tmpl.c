@@ -316,6 +316,7 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_li
 		.self =  p_result ? tmpl_instruction_fail : tmpl_instruction_return,
 		.tmpl = tmpl
 	};
+	unlang_type_init(&ut->self, NULL, UNLANG_TYPE_TMPL);
 
 	/*
 	 *	Push a new tmpl frame onto the stack

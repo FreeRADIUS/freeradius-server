@@ -204,10 +204,13 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 	unlang_group_t			*g;
 	unlang_parallel_t		*gext;
 	unlang_parallel_state_t		*state;
-	int			i;
+	int				i;
+	size_t				num_children;
 
 	g = unlang_generic_to_group(frame->instruction);
-	if (!g->num_children) RETURN_UNLANG_NOOP;
+
+	num_children = unlang_list_num_elements(&g->children);
+	if (num_children == 0) RETURN_UNLANG_NOOP;
 
 	gext = unlang_group_to_parallel(g);
 
@@ -216,9 +219,9 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 	 */
 	MEM(frame->state = state = _talloc_zero_pooled_object(request,
 							      sizeof(unlang_parallel_state_t) +
-							      (sizeof(state->children[0]) * g->num_children),
+							      (sizeof(state->children[0]) * num_children),
 							      "unlang_parallel_state_t",
-							      g->num_children,
+							      num_children,
 							      (talloc_array_length(request->name) * 2)));
 	if (!state) {
 		return UNLANG_ACTION_FAIL;
@@ -228,12 +231,14 @@ static unlang_action_t unlang_parallel(unlang_result_t *p_result, request_t *req
 	state->result = UNLANG_RESULT_NOT_SET;
 	state->detach = gext->detach;
 	state->clone = gext->clone;
-	state->num_children = g->num_children;
+	state->num_children = unlang_list_num_elements(&g->children);
 
 	/*
 	 *	Initialize all of the children.
 	 */
-	for (i = 0, instruction = g->children; instruction != NULL; i++, instruction = instruction->next) {
+	for (i = 0, instruction = unlang_list_head(&g->children);
+	     instruction != NULL;
+	     i++, instruction = unlang_list_next(&g->children, instruction)) {
 		request_t			*child;
 		unlang_result_t			*child_result;
 
@@ -398,10 +403,10 @@ static unlang_t *unlang_compile_parallel(unlang_t *parent, unlang_compile_ctx_t 
 	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
 	/*
-	 *	Parallel sections can create empty children, if the
-	 *	admin demands it.  Otherwise, the principle of least
-	 *	surprise is to copy the whole request, reply, and
-	 *	config items.
+	 *	Parallel sections can create empty child requests, if
+	 *	the admin demands it.  Otherwise, the principle of
+	 *	least surprise is to copy the whole request, reply,
+	 *	and config items.
 	 */
 	name2 = cf_section_name2(cs);
 	if (name2) {

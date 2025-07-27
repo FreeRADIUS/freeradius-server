@@ -319,9 +319,9 @@ int unlang_interpret_push(unlang_result_t *p_result, request_t *request,
 
 	frame->instruction = instruction;
 
-	if (do_next_sibling) {
+	if (do_next_sibling && instruction->list) {
 		fr_assert(instruction != NULL);
-		frame->next = instruction->next;
+		frame->next = unlang_list_next(instruction->list, instruction);
 	}
 	/* else frame->next MUST be NULL */
 
@@ -398,12 +398,12 @@ unlang_action_t unlang_interpret_push_children(unlang_result_t *p_result, reques
 	 *	top-level 'recv Access-Request' etc.  Which can exist,
 	 *	and can be empty.
 	 */
-	if (!g->children) {
+	if (unlang_list_empty(&g->children)) {
 		RDEBUG2("... ignoring empty subsection ...");
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
-	if (unlang_interpret_push(p_result, request, g->children,
+	if (unlang_interpret_push(p_result, request, unlang_list_head(&g->children),
 				  FRAME_CONF(default_rcode, UNLANG_SUB_FRAME), do_next_sibling) < 0) {
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}

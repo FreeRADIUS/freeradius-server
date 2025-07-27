@@ -124,7 +124,7 @@ static unlang_action_t unlang_case(unlang_result_t *p_result, request_t *request
 {
 	unlang_group_t		*g = unlang_generic_to_group(frame->instruction);
 
-	if (!g->children) RETURN_UNLANG_NOOP;
+	if (unlang_list_empty(&g->children)) RETURN_UNLANG_NOOP;
 
 	return unlang_group(p_result, request, frame);
 }
@@ -509,9 +509,7 @@ static unlang_t *unlang_compile_switch(unlang_t *parent, unlang_compile_ctx_t *u
 			goto error;
 		}
 
-		*g->tail = single;
-		g->tail = &single->next;
-		g->num_children++;
+		unlang_list_insert_tail(&g->children, single);
 	}
 
 	return c;

@@ -186,7 +186,7 @@ static unlang_action_t unlang_subrequest_init(unlang_result_t *p_result, request
 	 *	Initialize the state
 	 */
 	g = unlang_generic_to_group(frame->instruction);
-	if (!g->num_children) RETURN_UNLANG_NOOP;
+	if (unlang_list_empty(&g->children)) RETURN_UNLANG_NOOP;
 
 	gext = unlang_group_to_subrequest(g);
 	child = unlang_io_subrequest_alloc(request, gext->dict, UNLANG_DETACHABLE);
@@ -263,7 +263,7 @@ static unlang_action_t unlang_subrequest_init(unlang_result_t *p_result, request
 	 *	Push the first instruction the child's
 	 *	going to run.
 	 */
-	if (unlang_interpret_push(NULL, child, g->children,
+	if (unlang_interpret_push(NULL, child, unlang_list_head(&g->children),
 				  FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME),
 				  UNLANG_NEXT_SIBLING) < 0) goto fail;
 
@@ -526,6 +526,8 @@ static unlang_t *unlang_compile_subrequest(unlang_t *parent, unlang_compile_ctx_
 	char const			*packet_name = NULL;
 
 	tmpl_t				*vpt = NULL, *src_vpt = NULL, *dst_vpt = NULL;
+
+	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
 	/*
 	 *	subrequest { ... }

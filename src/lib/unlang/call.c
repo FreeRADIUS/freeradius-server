@@ -129,7 +129,7 @@ static unlang_action_t unlang_call_frame_init(unlang_result_t *p_result, request
 	 *	DIE DIE DIE DIE DIE DIE DIE DIE DIE
 	 *	DIE DIE DIE.
 	 */
-	if (!g->children) {
+	if (unlang_list_empty(&g->children)) {
 		frame_repeat(frame, unlang_call_resume);
 	} else {
 		frame_repeat(frame, unlang_call_children);
@@ -189,6 +189,8 @@ unlang_action_t unlang_call_push(unlang_result_t *p_result, request_t *request, 
 		.server_cs = server_cs,
 		.attr_packet_type = attr_packet_type
 	};
+
+	unlang_group_type_init(&c->group.self, NULL, UNLANG_TYPE_CALL);
 
 	/*
 	 *	Push a new call frame onto the stack

@@ -30,6 +30,7 @@
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/time_tracking.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/unlang/map.h>
 #include <freeradius-devel/io/listen.h>
@@ -117,6 +118,9 @@ DIAG_ON(attributes)
 typedef struct unlang_s unlang_t;
 typedef struct unlang_stack_frame_s unlang_stack_frame_t;
 
+FR_DLIST_TYPES(unlang_list)
+FR_DLIST_TYPEDEFS(unlang_list, unlang_list_t, unlang_entry_t)
+
 /** A node in a graph of #unlang_op_t (s) that we execute
  *
  * The interpreter acts like a turing machine, with #unlang_t nodes forming the tape
@@ -130,7 +134,8 @@ typedef struct unlang_stack_frame_s unlang_stack_frame_t;
  */
 struct unlang_s {
 	unlang_t		*parent;	//!< Previous node.
-	unlang_t		*next;		//!< Next node (executed on #UNLANG_ACTION_EXECUTE_NEXT et al).
+	unlang_list_t		*list;		//!< so we have fewer run-time dereferences
+	unlang_entry_t		entry;		//!< next / prev entries
 	char const		*name;		//!< Unknown...
 	char const 		*debug_name;	//!< Printed in log messages when the node is executed.
 	unlang_type_t		type;		//!< The specialisation of this node.
@@ -139,6 +144,9 @@ struct unlang_s {
 	unsigned int		number;		//!< unique node number
 	unlang_mod_actions_t	actions;	//!< Priorities, etc. for the various return codes.
 };
+
+FR_DLIST_FUNCS(unlang_list, unlang_t, entry)
+#define unlang_list_foreach(_list_head, _iter) fr_dlist_foreach(unlang_list_dlist_head(_list_head), unlang_t, _iter)
 
 typedef struct {
 	fr_dict_t		*dict;		//!< our dictionary
@@ -152,11 +160,9 @@ typedef struct {
  */
 typedef struct {
 	unlang_t		self;
-	unlang_t		*children;	//!< Children beneath this group.  The body of an if
-						//!< section for example.
-	unlang_t		**tail;		//!< pointer to the tail which gets updated
+
 	CONF_SECTION		*cs;
-	int			num_children;
+	unlang_list_t		children;
 
 	unlang_variable_t	*variables;	//!< rarely used, so we don't usually need it
 } unlang_group_t;
@@ -702,7 +708,7 @@ static inline void frame_next(unlang_stack_t *stack, unlang_stack_frame_t *frame
 
 	if (!frame->instruction) return;	/* No siblings, need to pop instead */
 
-	frame->next = frame->instruction->next;
+	frame->next = unlang_list_next(frame->instruction->list, frame->instruction);
 
 	/*
 	 *	We _may_ want to take a new frame->p_result value in future but
@@ -768,7 +774,7 @@ static inline void frame_repeat(unlang_stack_frame_t *frame, unlang_process_t pr
 	frame->process = process;
 }
 
-static inline unlang_action_t frame_set_next(unlang_stack_frame_t *frame, unlang_t *unlang)
+static inline unlang_action_t frame_set_next(unlang_stack_frame_t *frame, unlang_t const *unlang)
 {
 	/*
 	 *	We're skipping the remaining siblings, stop the
@@ -817,6 +823,25 @@ static inline unlang_group_t *unlang_generic_to_group(unlang_t const *p)
 static inline unlang_t *unlang_group_to_generic(unlang_group_t const *p)
 {
 	return UNCONST(unlang_t *, p);
+}
+
+static inline CC_HINT(always_inline) unlang_list_t *unlang_list(unlang_t *unlang)
+{
+	return &unlang_generic_to_group(unlang)->children;
+}
+
+static inline CC_HINT(always_inline) void unlang_type_init(unlang_t *unlang, unlang_t *parent, unlang_type_t type)
+{
+	unlang->type = type;
+	unlang->parent = parent;
+	if (parent) unlang->list = unlang_list(parent);
+	unlang_list_entry_init(unlang);
+}
+
+static inline CC_HINT(always_inline) void unlang_group_type_init(unlang_t *unlang, unlang_t *parent, unlang_type_t type)
+{
+	unlang_type_init(unlang, parent, type);
+	unlang_list_init(&((unlang_group_t *) unlang)->children);
 }
 
 static inline unlang_tmpl_t *unlang_generic_to_tmpl(unlang_t const *p)

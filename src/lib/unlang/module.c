@@ -75,6 +75,7 @@ int unlang_module_push(unlang_result_t *p_result, request_t *request,
 			}
 		}
 	};
+	unlang_type_init(&mc->self, NULL, UNLANG_TYPE_MODULE);
 
 	/*
 	 *	Push a new module frame onto the stack

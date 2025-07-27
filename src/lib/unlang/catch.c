@@ -30,19 +30,17 @@ RCSID("$Id$")
 
 static unlang_action_t catch_skip_to_next(UNUSED unlang_result_t *p_result, UNUSED request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_t		*unlang;
+	unlang_t const *unlang = frame->instruction;
 
 	fr_assert(frame->instruction->type == UNLANG_TYPE_CATCH);
 
-	for (unlang = frame->instruction->next;
-	     unlang != NULL;
-	     unlang = unlang->next) {
-		if (unlang->type == UNLANG_TYPE_CATCH) continue;
-
-		break;
+	while ((unlang = unlang_list_next(unlang->list, unlang)) != NULL) {
+		if (unlang->type != UNLANG_TYPE_CATCH) {
+			return frame_set_next(frame, unlang);
+		}
 	}
 
-	return frame_set_next(frame, unlang);
+	return frame_set_next(frame, NULL);
 }
 
 static unlang_action_t unlang_catch(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -67,23 +65,17 @@ static unlang_action_t unlang_catch(UNUSED unlang_result_t *p_result, request_t 
  */
 unlang_action_t unlang_interpret_skip_to_catch(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_t		*unlang;
+	unlang_t const		*unlang;
 	rlm_rcode_t		rcode = unlang_interpret_rcode(request);
 
 	fr_assert(frame->instruction->type == UNLANG_TYPE_TRY);
 
-	/*
-	 *	'try' at the end of a block without 'catch' should have been caught by the compiler.
-	 */
-	fr_assert(frame->instruction->next);
-
-	for (unlang = frame->instruction->next;
+	for (unlang = unlang_list_next(frame->instruction->list, frame->instruction);
 	     unlang != NULL;
-	     unlang = unlang->next) {
+	     unlang = unlang_list_next(unlang->list, unlang)) {
 		unlang_catch_t const *c;
 
 		if (unlang->type != UNLANG_TYPE_CATCH) {
-		not_caught:
 			RDEBUG3("No catch section for %s",
 				fr_table_str_by_value(mod_rcode_table, rcode, "<invalid>"));
 			return frame_set_next(frame, unlang);
@@ -92,11 +84,14 @@ unlang_action_t unlang_interpret_skip_to_catch(UNUSED unlang_result_t *p_result,
 		if (rcode >= RLM_MODULE_NUMCODES) continue;
 
 		c = unlang_generic_to_catch(unlang);
-		if (c->catching[rcode]) break;
+		if (c->catching[rcode]) {
+			return frame_set_next(frame, unlang);
+		}
 	}
-	if (!unlang) goto not_caught;
 
-	return frame_set_next(frame, unlang);
+	RDEBUG3("No catch section for %s",
+		fr_table_str_by_value(mod_rcode_table, rcode, "<invalid>"));
+	return frame_set_next(frame, NULL);
 }
 
 static int catch_argv(CONF_SECTION *cs, unlang_catch_t *ca, char const *name)

@@ -69,8 +69,8 @@ static unlang_action_t unlang_load_balance_next(unlang_result_t *p_result, reque
 	 *	We finished the previous child, and it failed.  Go to the next one.  If we fall off of the
 	 *	end, loop around to the next one.
 	 */
-	redundant->child = redundant->child->next;
-	if (!redundant->child) redundant->child = g->children;
+	redundant->child = unlang_list_next(&g->children, redundant->child);
+	if (!redundant->child) redundant->child = unlang_list_head(&g->children);
 
 	/*
 	 *	We looped back to the start.  Return whatever results we had from the last child.
@@ -108,7 +108,7 @@ static unlang_action_t unlang_redundant(unlang_result_t *p_result, request_t *re
 	/*
 	 *	Start at the first child, and then continue from there.
 	 */
-	redundant->start = g->children;
+	redundant->start = unlang_list_head(&g->children);
 
 	frame->process = unlang_load_balance_next;
 	return unlang_load_balance_next(p_result, request, frame);
@@ -119,15 +119,14 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 	unlang_frame_state_redundant_t	*redundant;
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_load_balance_t		*gext = NULL;
-	unlang_t			*child;
 
 	uint32_t			count = 0;
 
 #ifdef STATIC_ANALYZER
-	if (!g || !g->num_children) return UNLANG_ACTION_STOP_PROCESSING;
+	if (!g || unlang_list_empty(&g->children)) return UNLANG_ACTION_STOP_PROCESSING;
 #else
 	fr_assert(g != NULL);
-	fr_assert(g->num_children);
+	fr_assert(!unlang_list_empty(&g->children));
 #endif
 
 	gext = unlang_group_to_load_balance(g);
@@ -154,7 +153,7 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 
 			fr_assert(fr_type_is_leaf(vp->vp_type));
 
-			start = fr_value_box_hash(&vp->data) % g->num_children;
+			start = fr_value_box_hash(&vp->data) % unlang_list_num_elements(&g->children);
 
 		} else {
 			uint8_t *octets = NULL;
@@ -168,23 +167,25 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 
 			hash = fr_hash(octets, slen);
 
-			start = hash % g->num_children;
+			start = hash % unlang_list_num_elements(&g->children);
 		}
 
 		RDEBUG3("load-balance starting at child %d", (int) start);
 
 		count = 0;
-		for (child = redundant->start = g->children; child != NULL; child = child->next) {
-			count++;
+		unlang_list_foreach(&g->children, child) {
 			if (count == start) {
 				redundant->start = child;
 				break;
 			}
+
+			count++;
 		}
+		fr_assert(redundant->start != NULL);
 
 	} else {
 	randomly_choose:
-		count = 0;
+		count = 1;
 
 		/*
 		 *	Choose a child at random.
@@ -200,12 +201,15 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 		 *	for this load-balance section.  So for now,
 		 *	just pick a random child.
 		 */
-		for (child = redundant->start = g->children; child != NULL; child = child->next) {
-			count++;
+		unlang_list_foreach(&g->children, child) {
 			if ((count * (fr_rand() & 0xffffff)) < (uint32_t) 0x1000000) {
 				redundant->start = child;
 			}
+			count++;
 		}
+
+		fr_assert(redundant->start != NULL);
+
 	}
 
 	fr_assert(redundant->start != NULL);

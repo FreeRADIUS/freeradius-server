@@ -1728,6 +1728,8 @@ int unlang_edit_push(request_t *request, bool *success, fr_edit_list_t *el, map_
 	*edit = (unlang_edit_t) {
 		.self = edit_instruction,
 	};
+
+	unlang_type_init(&edit->self, NULL, UNLANG_TYPE_EDIT);
 	map_list_init(&edit->maps);
 
 	/*

@@ -278,8 +278,8 @@ static unlang_action_t unlang_update_state_init(unlang_result_t *p_result, reque
 	 */
 	MEM(frame->state = update_state = talloc_zero_pooled_object(request->stack, unlang_frame_state_update_t,
 								    (sizeof(map_t) +
-								    (sizeof(tmpl_t) * 2) + 128),
-								    g->num_children));	/* 128 is for string buffers */
+								    (sizeof(tmpl_t) * 2) + 128), 	/* 128 is for string buffers */
+								    unlang_list_num_elements(&g->children)));
 
 	fr_dcursor_init(&update_state->maps, &gext->map.head);
 	fr_value_box_list_init(&update_state->lhs_result);
