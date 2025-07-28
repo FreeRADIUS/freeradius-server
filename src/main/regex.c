@@ -33,7 +33,7 @@ RCSID("$Id$")
 #define REQUEST_DATA_REGEX (0xadbeef00)
 
 typedef struct regcapture {
-#ifdef HAVE_PCRE
+#if defined(HAVE_PCRE) || defined(HAVE_PCRE2)
 	regex_t		*preg;		//!< Compiled pattern.
 #endif
 	char const	*value;		//!< Original string.
@@ -83,8 +83,12 @@ void regex_sub_to_request(REQUEST *request, regex_t **preg, char const *value, s
 	 */
 	MEM(new_sc = talloc(request, regcapture_t));
 
+#ifdef HAVE_PCRE2
+	new_sc->rxmatch = talloc_steal(new_sc, rxmatch);
+#else
 	MEM(new_sc->rxmatch = talloc_memdup(new_sc, rxmatch, sizeof(rxmatch[0]) * nmatch));
 	talloc_set_type(new_sc->rxmatch, regmatch_t[]);
+#endif
 
 	MEM(p = talloc_array(new_sc, char, len + 1));
 	memcpy(p, value, len);
@@ -92,7 +96,7 @@ void regex_sub_to_request(REQUEST *request, regex_t **preg, char const *value, s
 	new_sc->value = p;
 	new_sc->nmatch = nmatch;
 
-#ifdef HAVE_PCRE
+#if defined(HAVE_PCRE) || defined(HAVE_PCRE2)
 	if (!(*preg)->precompiled) {
 		new_sc->preg = talloc_steal(new_sc, *preg);
 		*preg = NULL;
@@ -104,7 +108,121 @@ void regex_sub_to_request(REQUEST *request, regex_t **preg, char const *value, s
 	request_data_add(request, request, REQUEST_DATA_REGEX, new_sc, true);
 }
 
-#  ifdef HAVE_PCRE
+#  ifdef HAVE_PCRE2
+/** Extract a subcapture value from the request
+ *
+ * @note This is the PCRE2 variant of the function.
+ *
+ * @param ctx To allocate subcapture buffer in.
+ * @param out Where to write the subcapture string.
+ * @param request to extract.
+ * @param num Subcapture index (0 for entire match).
+ * @return 0 on success, -1 on notfound.
+ */
+int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num)
+{
+	regcapture_t		*cap;
+	char			*buff;
+	int			ret;
+	size_t			len;
+	pcre2_match_data	*match_data;
+
+	cap = request_data_reference(request, request, REQUEST_DATA_REGEX);
+	if (!cap) {
+		RDEBUG4("No subcapture data found");
+		*out = NULL;
+		return -1;
+	}
+	match_data = talloc_get_type_abort(cap->rxmatch->match_data, pcre2_match_data);
+
+	ret = pcre2_substring_length_bynumber(match_data, num, &len);
+	switch (ret) {
+	case PCRE2_ERROR_NOMEMORY:
+		MEM(NULL);
+		/* FALL-THROUGH */
+
+	/*
+	 *	Not finding a substring is fine
+	 */
+	case PCRE2_ERROR_NOSUBSTRING:
+		RDEBUG4("%i/%zu Not found", num, cap->nmatch);
+		*out = NULL;
+		return -1;
+
+	default:
+		if (ret < 0) {
+			*out = NULL;
+			return -1;
+		}
+
+		MEM(buff = talloc_array(ctx, char, ++len));	/* +1 for \0, it'll get reset by pcre2_substring */
+		pcre2_substring_copy_bynumber(match_data, num, (PCRE2_UCHAR *)buff, &len); /* can't error */
+
+		memcpy(out, &buff, sizeof(*out));
+
+		RDEBUG4("%i/%zu Found: %s (%zu)", num, cap->nmatch, buff, talloc_array_length(buff));
+
+		return 0;
+	}
+}
+
+/** Extract a named subcapture value from the request
+ *
+ * @note This is the PCRE2 variant of the function.
+ *
+ * @param ctx To allocate subcapture buffer in.
+ * @param out Where to write the subcapture string.
+ * @param request to extract.
+ * @param name of subcapture.
+ * @return 0 on success, -1 on notfound.
+ */
+int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *name)
+{
+	regcapture_t		*cap;
+	char			*buff;
+	int			ret;
+	size_t			len;
+	pcre2_match_data	*match_data;
+
+	cap = request_data_reference(request, request, REQUEST_DATA_REGEX);
+	if (!cap) {
+		RDEBUG4("No subcapture data found");
+		*out = NULL;
+		return -1;
+	}
+	match_data = talloc_get_type_abort(cap->rxmatch->match_data, pcre2_match_data);
+
+	ret = pcre2_substring_length_byname(match_data, (PCRE2_UCHAR const *)name, &len);
+	switch (ret) {
+	case PCRE2_ERROR_NOMEMORY:
+		MEM(NULL);
+		/* FALL-THROUGH */
+
+	/*
+	 *	Not finding a substring is fine
+	 */
+	case PCRE2_ERROR_NOSUBSTRING:
+		RDEBUG4("No named capture group \"%s\"", name);
+		*out = NULL;
+		return -1;
+
+	default:
+		if (ret < 0) {
+			*out = NULL;
+			return -1;
+		}
+
+		MEM(buff = talloc_array(ctx, char, ++len));	/* +1 for \0, it'll get reset by pcre2_substring */
+		pcre2_substring_copy_byname(match_data, (PCRE2_UCHAR const *)name, (PCRE2_UCHAR *)buff, &len); /* can't error */
+
+		memcpy(out, &buff, sizeof(*out));
+
+		RDEBUG4("Found \"%s\": %s (%zu)", name, buff, talloc_array_length(buff));
+
+		return 0;
+	}
+}
+#  elif defined(HAVE_PCRE)
 /** Extract a subcapture value from the request
  *
  * @note This is the PCRE variant of the function.

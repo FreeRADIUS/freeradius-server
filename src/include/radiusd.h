@@ -470,7 +470,7 @@ int	regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 /*
  *	Named capture groups only supported by PCRE.
  */
-#  ifdef HAVE_PCRE
+#  if defined(HAVE_PCRE) || defined(HAVE_PCRE2)
 int	regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *name);
 #  endif
 #endif

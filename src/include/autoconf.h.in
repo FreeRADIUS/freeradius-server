@@ -330,6 +330,9 @@
 /* define this if we have libpcre */
 #undef HAVE_PCRE
 
+/* define this if we have libpcre2 */
+#undef HAVE_PCRE2
+
 /* Define to 1 if you have the <prot.h> header file. */
 #undef HAVE_PROT_H
 

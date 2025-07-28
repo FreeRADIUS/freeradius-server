@@ -29,8 +29,31 @@ RCSIDH(regex_h, "$Id$")
 #  ifdef __cplusplus
 extern "C" {
 #  endif
-#  ifdef HAVE_PCRE
-#    include <pcre.h>
+#  ifdef HAVE_PCRE2
+#    define PCRE2_CODE_UNIT_WIDTH 8
+#    include <pcre2.h>
+int fr_pcre2_gcontext_setup(void);
+void fr_pcre2_gcontext_free(void);
+
+typedef struct regmatch {
+	pcre2_match_data	*match_data;	//!< Match data containing the subject
+						///< and various match offsets.
+#ifndef NDEBUG
+	char const		*subject;	//!< Here for debugging purposes if we explicitly duped the string.
+#endif
+} regmatch_t;
+
+typedef struct regex {
+	pcre2_code_8	*compiled;	//!< Compiled regular expression.
+	uint32_t	subcaptures;	//!< Number of subcaptures contained within the expression.
+	bool		precompiled;	//!< Whether this regex was precompiled, or compiled for one of evaluation.
+	bool		jitd;		//!< Whether JIT data is available.
+} regex_t;
+
+regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count);
+
+#  elif defined (HAVE_PCRE)
+#      include <pcre.h>
 /*
  *  Versions older then 8.20 didn't have the JIT functionality
  *  gracefully degrade.

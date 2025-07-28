@@ -49,6 +49,10 @@ extern fr_cond_t	*debug_condition;
 fr_cond_t		*debug_condition = NULL;			//!< Condition used to mark packets up for checking.
 bool			event_loop_started = false;		//!< Whether the main event loop has been started yet.
 
+#ifdef HAVE_PCRE2
+#  include <freeradius-devel/regex.h>
+#endif
+
 typedef struct cached_config_t {
 	struct cached_config_t *next;
 	time_t		created;
@@ -1340,6 +1344,19 @@ do {\
 	rad_assert(cs_cache == NULL);
 	cs_cache = cc;
 
+#ifdef HAVE_PCRE2
+	/*
+	 *	If pcre2 is being used for regex, we need to set up a global context
+	 *	to use our alloc / free routines.
+	 *	Since this is a library rather than module specific, it can't be done
+	 *	with a module bootstrap.
+	 */
+	if (fr_pcre2_gcontext_setup() < 0) {
+		ERROR("Failed creating pcre2 general context");
+		return -1;
+	}
+#endif
+
 	/* Clear any unprocessed configuration errors */
 	(void) fr_strerror();
 
@@ -1353,6 +1370,9 @@ int main_config_free(void)
 {
 	virtual_servers_free(0);
 
+#ifdef HAVE_PCRE2
+	fr_pcre2_gcontext_free();
+#endif
 	/*
 	 *	Clean up the configuration data
 	 *	structures.

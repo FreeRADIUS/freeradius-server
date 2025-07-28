@@ -161,8 +161,13 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	int		ret;
 
 	regex_t		*preg, *rreg = NULL;
+#ifdef HAVE_PCRE2
+	regmatch_t	*rxmatch;
+	size_t		nmatch = REQUEST_MAX_REGEX + 1;
+#else
 	regmatch_t	rxmatch[REQUEST_MAX_REGEX + 1];	/* +1 for %{0} (whole match) capture group */
 	size_t		nmatch = sizeof(rxmatch) / sizeof(regmatch_t);
+#endif
 
 	if (!lhs || (lhs_type != PW_TYPE_STRING)) return -1;
 
@@ -173,7 +178,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	switch (map->rhs->type) {
 	case TMPL_TYPE_REGEX_STRUCT: /* pre-compiled to a regex */
 		preg = map->rhs->tmpl_preg;
-#ifdef HAVE_PCRE
+#if defined(HAVE_PCRE) || defined(HAVE_PCRE2)
 		rad_assert(preg->precompiled);
 #endif
 		break;
@@ -196,6 +201,9 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 		break;
 	}
 
+#ifdef HAVE_PCRE2
+	rxmatch = regex_match_data_alloc(request, REQUEST_MAX_REGEX + 1);
+#endif
 	ret = regex_exec(preg, lhs->strvalue, lhs_len, rxmatch, &nmatch);
 	switch (ret) {
 	case 0:
