@@ -1018,12 +1018,6 @@ int fr_bio_fd_close(fr_bio_t *bio)
 
 	if (my->info.state == FR_BIO_FD_STATE_CLOSED) return 0;
 
-	/*
-	 *	Shut the bio down cleanly.
-	 */
-	rcode = fr_bio_shutdown(bio);
-	if (rcode < 0) return rcode;
-
 	my->bio.read = fr_bio_fail_read;
 	my->bio.write = fr_bio_fail_write;
 
