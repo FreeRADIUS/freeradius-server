@@ -2565,7 +2565,7 @@ int fr_pair_value_copy(fr_pair_t *dst, fr_pair_t *src)
 {
 	if (!fr_cond_assert(src->data.type != FR_TYPE_NULL)) return -1;
 
-	if (dst->data.type != FR_TYPE_NULL) fr_value_box_clear_value(&dst->data);
+	fr_value_box_clear_value(&dst->data);
 	fr_value_box_copy(dst, &dst->data, &src->data);
 
 	/*
