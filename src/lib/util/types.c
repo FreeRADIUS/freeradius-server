@@ -70,6 +70,8 @@ fr_table_num_ordered_t const fr_type_table[] = {
 	{ L("vendor"),        	FR_TYPE_VENDOR		},
 	{ L("group"),        	FR_TYPE_GROUP		},
 
+	{ L("attribute"),	FR_TYPE_ATTR		},
+
 	/*
 	 *	Alternative names
 	 */
@@ -119,6 +121,7 @@ static char const *fr_type_to_c_type[] = {
 	[FR_TYPE_TIME_DELTA]			= "fr_time_delta_t",
 	[FR_TYPE_SIZE]				= "size_t",
 	[FR_TYPE_VALUE_BOX]			= "fr_value_box_t",
+	[FR_TYPE_ATTR]				= "fr_dict_attr_t *",
 	[FR_TYPE_VOID]				= "void *",
 
 	[FR_TYPE_VALUE_BOX_CURSOR]    		= "fr_dcursor_t *",
@@ -162,6 +165,7 @@ static size_t const fr_type_to_c_size[] = {
 	[FR_TYPE_TIME_DELTA]			= sizeof(fr_time_delta_t),
 	[FR_TYPE_SIZE]				= sizeof(size_t),
 	[FR_TYPE_VALUE_BOX]			= sizeof(fr_value_box_t),
+	[FR_TYPE_ATTR]				= sizeof(fr_dict_attr_t *),
 	[FR_TYPE_VOID]				= sizeof(void *),
 
 	[FR_TYPE_VALUE_BOX_CURSOR]     		= sizeof(void *),

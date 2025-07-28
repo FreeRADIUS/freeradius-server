@@ -576,6 +576,11 @@ static int perl_value_marshal(fr_pair_t *vp, SV **value)
 	PERLINT(32)
 	PERLINT(64)
 
+
+	case FR_TYPE_SIZE:
+		*value = sv_2mortal(newSVuv(vp->vp_size));
+		break;
+
 	case FR_TYPE_BOOL:
 		*value = sv_2mortal(newSVuv(vp->vp_bool));
 		break;
@@ -614,8 +619,9 @@ static int perl_value_marshal(fr_pair_t *vp, SV **value)
 		break;
 
 	/* Only leaf nodes should be able to call this */
-	default:
-		fr_assert(0);
+	case FR_TYPE_ATTR:
+	case FR_TYPE_NON_LEAF:
+		croak("Cannot convert %s to Perl type", fr_type_to_str(vp->vp_type));
 		return -1;
 	}
 

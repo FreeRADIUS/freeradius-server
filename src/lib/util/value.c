@@ -829,6 +829,9 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	case FR_TYPE_NULL:	/* NULLs are not comparable */
 		return -2;
 
+	case FR_TYPE_ATTR:
+		return CMP(a->vb_attr, b->vb_attr);
+
 	/*
 	 *	These should be handled at some point
 	 */
@@ -1631,6 +1634,48 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 	}
 		break;
 
+	case FR_TYPE_ATTR:
+	{
+		fr_value_box_t tmp, base;
+
+		/*
+		 *	For now, we only encode at depth 1.  The protocol-specific encoders need to do
+		 *	something special for attributes at other depths.
+		 */
+		if (value->vb_attr->depth != 1) {
+			fr_strerror_printf("Unsupported depth '%u' for attribute %s",
+					   value->vb_attr->depth, value->vb_attr->name);
+			return 0;
+		}
+
+		switch (value->vb_attr->flags.length) {
+		case 1:
+			fr_value_box_init(&base, FR_TYPE_UINT8, NULL, false);
+			base.vb_uint8 = value->vb_attr->attr;
+			break;
+
+		case 2:
+			fr_value_box_init(&base, FR_TYPE_UINT16, NULL, false);
+			base.vb_uint16 = value->vb_attr->attr;
+			break;
+
+		case 4:
+			fr_value_box_init(&base, FR_TYPE_UINT32, NULL, false);
+			base.vb_uint32 = value->vb_attr->attr;
+			break;
+
+		default:
+			fr_strerror_printf("Unsupported length '%d' for attribute %s",
+					   value->vb_attr->flags.length, value->vb_attr->name);
+			return 0;
+		}
+
+		fr_value_box_hton(&tmp, &base);
+
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, fr_value_box_raw(&tmp, tmp.type), min);
+	}
+		break;
+
 	/*
 	 *	Dates and deltas are stored internally as
 	 *	64-bit nanoseconds.  We have to convert to the
@@ -2025,6 +2070,10 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	case FR_TYPE_FLOAT64:
 		FR_DBUFF_OUT_RETURN(&dst->vb_float64, &work_dbuff);
 		break;
+
+	case FR_TYPE_ATTR:
+		fr_strerror_const("Unsupported ntoh from FR_TYPE_ATTR");
+		return 0;
 
 	/*
 	 *	Dates and deltas are stored internally as
@@ -3708,6 +3757,41 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		}
 		break;		/* use generic string/octets stuff below */
 
+	case FR_TYPE_ATTR:
+		if (src->vb_attr->depth != 1) {
+			fr_strerror_printf("Unsupported depth '%d' for attribute %s",
+					   src->vb_attr->depth, src->vb_attr->name);
+			return 0;
+
+		}
+
+		/*
+		 *	Convert it to an integer of the correct lenght. Then, cast it in place.
+		 */
+		switch (src->vb_attr->flags.length) {
+		case 1:
+			fr_value_box_init(dst, FR_TYPE_UINT8, NULL, false);
+			dst->vb_uint8 = src->vb_attr->attr;
+			break;
+
+		case 2:
+			fr_value_box_init(dst, FR_TYPE_UINT16, NULL, false);
+			dst->vb_uint16 = src->vb_attr->attr;
+			break;
+
+		case 4:
+			fr_value_box_init(dst, FR_TYPE_UINT32, NULL, false);
+			dst->vb_uint32 = src->vb_attr->attr;
+			break;
+
+		default:
+			fr_strerror_printf("Unsupported length '%d' for attribute %s",
+					   src->vb_attr->flags.length, src->vb_attr->name);
+			return 0;
+		}
+
+		return fr_value_box_cast_in_place(ctx, dst, dst_type, dst_enumv);
+
 	/*
 	 *	Invalid types for casting (were caught earlier)
 	 */
@@ -5378,6 +5462,33 @@ parse:
 		fr_strerror_const("Unexpected value for data type NULL");
 		return -1;
 
+	case FR_TYPE_ATTR:
+		if (!dst_enumv) {
+			fr_strerror_const("No dictionary passed for data type 'attr'");
+			return -1;
+		}
+
+		if (!dst_enumv->flags.is_root) {
+			fr_strerror_const("Can only start from dictioanry root for data type 'attr'");
+			return -1;
+		}
+
+		if (!fr_sbuff_next_if_char(&our_in, '@')) {
+			fr_strerror_const("Expected '@...' for attribute reference");
+			return -1;
+		}
+		
+		fr_value_box_init(dst, dst_type, dst_enumv, false);
+
+		slen = fr_dict_attr_by_name_substr(NULL, &dst->vb_attr, dst_enumv, &our_in, rules->terminals);
+		if (slen <= 0) {
+			fr_strerror_printf("Failed to find the named attribute in %s", dst_enumv->name);
+			return -2;
+		}
+		fr_assert(dst->vb_attr != NULL);
+
+		FR_SBUFF_SET_RETURN(in, &our_in);
+
 	/*
 	 *	Dealt with below
 	 */
@@ -5648,6 +5759,18 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 				", ", (sizeof(", ") - 1), e_rules,
 				FR_VALUE_BOX_LIST_NONE, FR_VALUE_BOX_SAFE_FOR_ANY, false);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '}');
+		break;
+
+	case FR_TYPE_ATTR:
+		if (data->vb_attr->depth != 1) {
+			fr_strerror_printf("Unsupported depth '%u' for attribute %s",
+					   data->vb_attr->depth, data->vb_attr->name);
+			return 0;
+		}
+
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, '@');
+		FR_SBUFF_IN_ESCAPE_RETURN(&our_out, data->vb_attr->name,
+					  strlen(data->vb_attr->name), e_rules);
 		break;
 
 	case FR_TYPE_NULL:

@@ -366,6 +366,7 @@ static int CC_HINT(nonnull(2,3)) filename_xlat_escape(UNUSED request_t *request,
 	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_ATTR:
 		/*
 		 *	Printing prefixes etc. does NOT result in the escape function being called!  So
 		 *	instead, we cast the results to a string, and then escape the string.

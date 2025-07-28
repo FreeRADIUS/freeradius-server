@@ -261,10 +261,12 @@ static mrb_value mruby_pair_value_to_ruby(mrb_state *mrb, request_t *request, fr
 		return value;
 	}
 
-	default:
-		fr_assert(0);
+	case FR_TYPE_ATTR:
+	case FR_TYPE_NON_LEAF:
+		REDEBUG("Cannot convert %s to ruby type", fr_type_to_str(vp->vp_type));
 		break;
 	}
+
 	return mrb_nil_value();
 }
 

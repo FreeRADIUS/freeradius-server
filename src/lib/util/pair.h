@@ -131,6 +131,8 @@ struct value_pair_s {
 #define vp_float32		data.vb_float32
 #define vp_float64		data.vb_float64
 
+#define vp_attr			data.vb_attr
+
 #define vp_date			data.vb_date
 #define vp_time_delta		data.vb_time_delta
 

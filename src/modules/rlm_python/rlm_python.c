@@ -878,6 +878,7 @@ static PyObject *py_freeradius_pair_getvalue(PyObject *self, UNUSED void *closur
 	case FR_TYPE_COMBO_IP_ADDR:
 	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_ETHERNET:
+	case FR_TYPE_ATTR:
 	{
 		ssize_t slen;
 		char buffer[1024];
@@ -1040,6 +1041,7 @@ static int py_freeradius_pair_setvalue(PyObject *self, PyObject *value, UNUSED v
 	case FR_TYPE_COMBO_IP_ADDR:
 	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_ETHERNET:
+	case FR_TYPE_ATTR:
 	{
 		char const	*val;
 		ssize_t		len;

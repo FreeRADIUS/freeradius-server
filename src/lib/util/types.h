@@ -80,6 +80,7 @@ typedef enum {
 
 	FR_TYPE_GROUP,				//!< A grouping of other attributes
 	FR_TYPE_VALUE_BOX,			//!< A boxed value.
+	FR_TYPE_ATTR,				//!< A contains an attribute reference
 
 	FR_TYPE_VOID,				//!< User data.  Should be a talloced chunk
 						///< assigned to the ptr value of the union.
@@ -256,6 +257,7 @@ typedef enum {
 #define FR_TYPE_LEAF_DEF(_beg, _mid, _end) \
 	_beg(FR_TYPE_ETHERNET) \
 	_mid(FR_TYPE_IFID) \
+	_mid(FR_TYPE_ATTR) \
 	FR_TYPE_IP_DEF(_mid, _mid, _mid) \
 	FR_TYPE_VARIABLE_SIZE_DEF(_mid, _mid, _mid) \
 	FR_TYPE_NUMERIC_DEF(_mid, _mid, _end)

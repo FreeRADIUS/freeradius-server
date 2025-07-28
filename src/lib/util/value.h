@@ -112,8 +112,9 @@ typedef union {
 	};
 
 	struct {
-		void 		       * _CONST	cursor;			//!< cursors
-		char const     	       * _CONST	name;			//!< name of the current cursor
+		void			* _CONST cursor;		//!< cursors
+		char const		* _CONST name;			//!< name of the current cursor
+		fr_dict_attr_t const	* _CONST da;			//!< dictionary reference
 	};
 
 	/*
@@ -258,6 +259,7 @@ typedef enum {
 #define vb_octets				datum.octets
 #define vb_void					datum.ptr
 #define vb_group				datum.children
+#define vb_attr					datum.da
 
 #define vb_ip					datum.ip
 

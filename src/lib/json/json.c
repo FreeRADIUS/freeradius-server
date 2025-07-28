@@ -443,6 +443,7 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 		fr_strerror_const("Structural boxes not yet supported");
 		return -1;
 
+	case FR_TYPE_ATTR:
 	case FR_TYPE_INTERNAL:
 		fr_strerror_printf("Box type %s cannot be converted to string", fr_type_to_str(vb->type));
 		return -1;
