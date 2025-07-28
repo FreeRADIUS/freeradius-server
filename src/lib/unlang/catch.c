@@ -34,24 +34,18 @@ static unlang_action_t unlang_catch(UNUSED unlang_result_t *p_result, request_t 
 }
 
 
-static int catch_argv(CONF_SECTION *cs, unlang_try_t *gext, char const *name, unlang_t *c)
+/*
+ *	Sanity checks have already been done by compile_try().
+ */
+static void catch_argv(unlang_try_t *gext, char const *name, unlang_t *c)
 {
-	int rcode;
+	rlm_rcode_t rcode;
 
-	rcode = fr_table_value_by_str(mod_rcode_table, name, -1);
-	if (rcode < 0) {
-		cf_log_err(cs, "Unknown rcode '%s'.", name);
-		return -1;
-	}
-
-	if (gext->catch[rcode]) {
-		cf_log_err(cs, "Duplicate rcode '%s'.", name);
-		return -1;
-	}
+	rcode = fr_table_value_by_str(mod_rcode_table, name, RLM_MODULE_NOT_SET);
+	fr_assert(rcode != RLM_MODULE_NOT_SET);
+	fr_assert(!gext->catch[rcode]);
 
 	gext->catch[rcode] = c;
-
-	return 0;
 }
 
 static unlang_t *unlang_compile_catch(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
@@ -90,30 +84,28 @@ static unlang_t *unlang_compile_catch(unlang_t *parent, unlang_compile_ctx_t *un
 	 */
 	c->debug_name = c->name = talloc_typed_asprintf(c, "%s %s", cf_section_name1(cs), cf_section_name2(cs));
 
+	/*
+	 *	catch { ... } has to be the last one, and will catch _all_ rcodes that weren't mentioned
+	 *	before.
+	 */
 	if (!cf_section_name2(cs)) {
-		/*
-		 *	No arg2: catch errors
-		 */
-		gext->catch[RLM_MODULE_REJECT] = c;
-		gext->catch[RLM_MODULE_FAIL] = c;
-		gext->catch[RLM_MODULE_INVALID] = c;
-		gext->catch[RLM_MODULE_DISALLOW] = c;
+		int i;
+
+		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+			if (gext->catch[i]) continue;
+
+			gext->catch[i] = c;
+		}
 
 	} else {
 		int i;
 
 		name = cf_section_name2(cs);
 
-		if (catch_argv(cs, gext, name, c) < 0) {
-			talloc_free(c);
-			return NULL;
-		}
+		catch_argv(gext, name, c);
 
 		for (i = 0; (name = cf_section_argv(cs, i)) != NULL; i++) {
-			if (catch_argv(cs, gext, name, c) < 0) {
-				talloc_free(c);
-				return NULL;
-			}
+			catch_argv(gext, name, c);
 		}
 	}
 
