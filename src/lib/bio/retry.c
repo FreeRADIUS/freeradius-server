@@ -893,6 +893,7 @@ static void fr_bio_retry_shutdown(fr_bio_t *bio)
 	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
 
 	(void) fr_bio_retry_destructor(my);
+	talloc_set_destructor(my, NULL);
 }
 
 /**  Allocate a #fr_bio_retry_t

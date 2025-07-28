@@ -106,9 +106,18 @@ static int fr_bio_fd_destructor(fr_bio_fd_t *my)
 		my->connect.el = NULL;
 	}
 
-	if (my->cb.shutdown) my->cb.shutdown(&my->bio);
-
 	return fr_bio_fd_close(&my->bio);
+}
+
+/**  Orderly shutdown.
+ *
+ */
+static void fr_bio_fd_shutdown(fr_bio_t *bio)
+{
+	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
+
+	(void) fr_bio_fd_destructor(my);
+	talloc_set_destructor(my, NULL);
 }
 
 static int fr_bio_fd_eof(fr_bio_t *bio)
@@ -992,6 +1001,7 @@ fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_fd_config_t const *cfg, size_t
 
 	my->priv_cb.eof = fr_bio_fd_eof;
 	my->priv_cb.write_resume = fr_bio_fd_write_resume;
+	my->priv_cb.shutdown = fr_bio_fd_shutdown;
 
 	talloc_set_destructor(my, fr_bio_fd_destructor);
 	return (fr_bio_t *) my;
@@ -1054,6 +1064,7 @@ retry:
 	my->info.read_blocked = true;
 	my->info.write_blocked = true;
 	my->info.eof = true;
+	my->info.socket.fd = -1;
 
 	return 0;
 }
