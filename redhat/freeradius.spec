@@ -63,7 +63,11 @@ BuildRequires: autoconf
 BuildRequires: gdbm-devel
 BuildRequires: openssl, openssl-devel
 BuildRequires: pam-devel
+%if 0%{rhel} >= 10
+BuildRequires: pcre2-devel
+%else
 BuildRequires: pcre-devel
+%endif
 BuildRequires: zlib-devel
 BuildRequires: net-snmp-devel
 BuildRequires: net-snmp-utils
