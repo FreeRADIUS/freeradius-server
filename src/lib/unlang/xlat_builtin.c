@@ -3498,7 +3498,6 @@ static xlat_action_t xlat_func_subst(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	fr_assert(vb && (vb->type != FR_TYPE_NULL));
 	fr_value_box_safety_copy(vb, subject_vb);
 	fr_value_box_safety_merge(vb, rep_vb);
 
