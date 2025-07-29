@@ -62,7 +62,7 @@ fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[] = {
 	{ .out = &attr_relay_link_address, .name = "Relay-Link-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_dhcpv6 },
 	{ .out = &attr_relay_peer_address, .name = "Relay-Peer-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_dhcpv6 },
 	{ .out = &attr_relay_message, .name = "Relay-Message", .type = FR_TYPE_GROUP, .dict = &dict_dhcpv6 },
-	{ .out = &attr_option_request, .name = "Option-Request", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv6 },
+	{ .out = &attr_option_request, .name = "Option-Request", .type = FR_TYPE_ATTR, .dict = &dict_dhcpv6 },
 	{ NULL }
 };
 
@@ -899,9 +899,6 @@ void fr_dhcpv6_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 
 int fr_dhcpv6_global_init(void)
 {
-	fr_dict_attr_t const *child;
-	fr_value_box_t		value = *fr_box_uint16(0);
-
 	if (instance_count > 0) {
 		instance_count++;
 		return 0;
@@ -918,22 +915,6 @@ int fr_dhcpv6_global_init(void)
 	if (fr_dict_attr_autoload(libfreeradius_dhcpv6_dict_attr) < 0) {
 		fr_dict_autofree(libfreeradius_dhcpv6_dict);
 		goto fail;
-	}
-
-	/*
-	 *	Fixup dictionary entry for DHCP-Paramter-Request-List adding all the options
-	 */
-	child = NULL;
-	while ((child = fr_dict_attr_iterate_children(fr_dict_root(dict_dhcpv6), &child)) != NULL) {
-		if (child->flags.internal) continue;
-
-		value.vb_uint16 = child->attr;
-
-		if (fr_dict_enum_add_name(fr_dict_attr_unconst(attr_option_request),
-					  child->name, &value, true, false) < 0) {
-			fr_dict_autofree(libfreeradius_dhcpv6_dict);
-			goto fail;
-		}
 	}
 
 	instantiated = true;
@@ -980,6 +961,11 @@ static bool attr_valid(fr_dict_attr_t *da)
 
 	if ((da->type != FR_TYPE_STRING) && fr_dhcpv6_flag_any_dns_label(da)) {
 		fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
+		return false;
+	}
+
+	if ((da->type == FR_TYPE_ATTR) && !da->parent->flags.is_root) {
+		fr_strerror_const("Data type 'attr' can only exist at the dictionary root");
 		return false;
 	}
 

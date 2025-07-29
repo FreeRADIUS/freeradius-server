@@ -193,11 +193,11 @@ match Server-ID = { DUID = ::UUID, DUID.UUID = { Value = 0x000102030405060708090
 #
 #  IA_NA-options        Options associated with this IA_NA.
 #
-encode-pair IA-NA.IAID = 180150000, IA-NA.T1 = 54093, IA-NA.T2 = 45887, IA-NA.Options = { Option-Request = 173 }
+encode-pair IA-NA.IAID = 180150000, IA-NA.T1 = 54093, IA-NA.T2 = 45887, IA-NA.Options = { Option-Request = ::173 }
 match 00 03 00 12 0a bc de f0 00 00 d3 4d 00 00 b3 3f 00 06 00 02 00 ad
 
 decode-pair -
-match IA-NA = { IAID = 180150000, T1 = 54093, T2 = 45887, Options = { Option-Request = 173 } }
+match IA-NA = { IAID = 180150000, T1 = 54093, T2 = 45887, Options = { Option-Request = ::173 } }
 
 #
 #  21.5. Identity Association for Temporary Addresses Option
@@ -232,11 +232,11 @@ match IA-NA = { IAID = 180150000, T1 = 54093, T2 = 45887, Options = { Option-Req
 #
 #  IA_TA-options        Options associated with this IA_TA.
 #
-encode-pair IA-TA.IAID = 3237998080, IA-TA.Options = { Option-Request = 173 }
+encode-pair IA-TA.IAID = 3237998080, IA-TA.Options = { Option-Request = ::173 }
 match 00 04 00 0a c0 ff ee 00 00 06 00 02 00 ad
 
 decode-pair -
-match IA-TA = { IAID = 3237998080, Options = { Option-Request = 173 } }
+match IA-TA = { IAID = 3237998080, Options = { Option-Request = ::173 } }
 
 #
 #  21.6.  IA Address Option
@@ -291,7 +291,7 @@ match IA-TA = { IAID = 3237998080, Options = { Option-Request = 173 } }
 #                       variable-length field (24 octets less than
 #                       the value in the option-len field).
 #
-encode-pair IA-Addr.IPv6-Address = fd85:d2bb:92c::74ae:2871:f56c:8d94, IA-Addr.Preferred-Lifetime = 120, IA-Addr.Valid-Lifetime = 86400, IA-Addr.Options = { Option-Request = 173 }
+encode-pair IA-Addr.IPv6-Address = fd85:d2bb:92c::74ae:2871:f56c:8d94, IA-Addr.Preferred-Lifetime = 120, IA-Addr.Valid-Lifetime = 86400, IA-Addr.Options = { Option-Request = ::173 }
 match 00 05 00 1e fd 85 d2 bb 09 2c 00 00 74 ae 28 71 f5 6c 8d 94 00 00 00 78 00 01 51 80 00 06 00 02 00 ad
 
 #
@@ -301,7 +301,7 @@ match 00 05 00 1e fd 85 d2 bb 09 2c 00 00 74 ae 28 71 f5 6c 8d 94 00 00 00 78 00
 # We use a regex match to deal with the inconsistency.
 #
 decode-pair -
-match-regex IA-Addr = \{ IPv6-Address = fd85:d2bb:92c:0{0,4}:74ae:2871:f56c:8d94, Preferred-Lifetime = 120, Valid-Lifetime = 86400, Options = \{ Option-Request = 173 \} \}
+match-regex IA-Addr = \{ IPv6-Address = fd85:d2bb:92c:0{0,4}:74ae:2871:f56c:8d94, Preferred-Lifetime = 120, Valid-Lifetime = 86400, Options = \{ Option-Request = ::173 \} \}
 
 #
 #  21.7.  Option Request Option
@@ -331,7 +331,7 @@ match-regex IA-Addr = \{ IPv6-Address = fd85:d2bb:92c:0{0,4}:74ae:2871:f56c:8d94
 #                            2-octet field containing an unsigned
 #                            integer.
 #
-encode-pair Option-Request = Unicast, Option-Request = IA-Addr
+encode-pair Option-Request = ::Unicast, Option-Request = ::IA-Addr
 match 00 06 00 04 00 0c 00 05
 
 decode-pair -

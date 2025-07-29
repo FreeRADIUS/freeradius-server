@@ -116,6 +116,10 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	}
 
 	switch (vp->vp_type) {
+	case FR_TYPE_ATTR:
+		FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) vp->vp_attr->attr);
+		break;
+
 	case FR_TYPE_TLV:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_VSA:
