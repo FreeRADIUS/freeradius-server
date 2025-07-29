@@ -120,6 +120,10 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 		case FR_TYPE_TIME_DELTA:
 			break;
 
+		case FR_TYPE_ATTR:
+			flags->is_known_width = 1;
+			break;
+
 		case FR_TYPE_STRING:
 		case FR_TYPE_OCTETS:
 			if (!flags->length) {

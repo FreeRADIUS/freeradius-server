@@ -3110,6 +3110,15 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 					     file, line, vp->da->name, vp->da->parent->name, parent->da->name);
 		}
 
+#if 0
+		/*
+		 *	We would like to enable this, but there's a
+		 *	lot of code like fr_pair_append_by_da() which
+		 *	creates the #fr_pair_t with no value.
+		 */
+		fr_value_box_verify(file, line, &vp->data);
+#endif
+
 	} else {
 		fr_pair_t *parent = fr_pair_parent(vp);
 
