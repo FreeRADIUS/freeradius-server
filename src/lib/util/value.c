@@ -137,6 +137,8 @@ static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_DATE]				= {2, 8},  //!< 2, 4, or 8 only
 	[FR_TYPE_TIME_DELTA]   			= {2, 8},  //!< 2, 4, or 8 only
 
+	[FR_TYPE_ATTR]				= {1, 4},
+
 	[FR_TYPE_MAX]				= {~0, 0}		//!< Ensure array covers all types.
 };
 
@@ -2072,8 +2074,50 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		break;
 
 	case FR_TYPE_ATTR:
-		fr_strerror_const("Unsupported ntoh from FR_TYPE_ATTR");
-		return 0;
+		if (!enumv) {
+			fr_strerror_const("No enumv (i.e. root) passed to fr_value_box_from_network for type 'attribute'");
+			return 0;
+		}
+
+		/*
+		 *	Decode the number, and see if we can create a
+		 *	matching attribute.
+		 */
+		{
+			unsigned int num;
+			uint8_t num8;
+			uint16_t num16;
+			uint32_t num32;
+
+			switch (enumv->flags.length) {
+			case 1:
+				FR_DBUFF_OUT_RETURN(&num8, &work_dbuff);
+				num = num8;
+				break;
+
+			case 2:
+				FR_DBUFF_OUT_RETURN(&num16, &work_dbuff);
+				num = num16;
+				break;
+
+			case 4:
+				FR_DBUFF_OUT_RETURN(&num32, &work_dbuff);
+				num = num32;
+				break;
+
+			default:
+				fr_strerror_const("Unsupported parent length");
+				return 0;
+			}
+
+			dst->vb_attr = fr_dict_attr_child_by_num(enumv, num);
+			if (!dst->vb_attr) {
+				dst->vb_attr = fr_dict_attr_unknown_raw_afrom_num(ctx, enumv, num);
+				if (!dst->vb_attr) return 0;
+			}
+
+			break;
+		}
 
 	/*
 	 *	Dates and deltas are stored internally as
