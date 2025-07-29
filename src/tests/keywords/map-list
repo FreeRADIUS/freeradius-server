@@ -24,4 +24,12 @@ if (result1 != 'baa') {
 	test_fail
 }
 
+map list %str.split('local main other', ' ') {
+	control.IP-Pool.Name := 1
+}
+
+if (control.IP-Pool.Name != 'main') {
+	test_fail
+}
+
 success
