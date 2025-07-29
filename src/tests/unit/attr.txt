@@ -1,0 +1,14 @@
+#
+#  Parse and print data type 'attribute'
+#
+proto radius
+proto-dictionary radius
+
+value attribute ::User-Name
+match ::User-Name
+
+value attribute ::26.9.1
+match ::Vendor-Specific.Cisco.AVPair
+
+count
+match 6

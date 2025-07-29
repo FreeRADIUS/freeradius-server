@@ -1643,7 +1643,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		 *	something special for attributes at other depths.
 		 */
 		if (value->vb_attr->depth != 1) {
-			fr_strerror_printf("Unsupported depth '%u' for attribute %s",
+			fr_strerror_printf("Unsupported depth '%u' for encoding attribute %s",
 					   value->vb_attr->depth, value->vb_attr->name);
 			return 0;
 		}
@@ -1665,7 +1665,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 			break;
 
 		default:
-			fr_strerror_printf("Unsupported length '%d' for attribute %s",
+			fr_strerror_printf("Unsupported length '%d' for decoding attribute %s",
 					   value->vb_attr->flags.length, value->vb_attr->name);
 			return 0;
 		}
@@ -3758,15 +3758,8 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		break;		/* use generic string/octets stuff below */
 
 	case FR_TYPE_ATTR:
-		if (src->vb_attr->depth != 1) {
-			fr_strerror_printf("Unsupported depth '%d' for attribute %s",
-					   src->vb_attr->depth, src->vb_attr->name);
-			return 0;
-
-		}
-
 		/*
-		 *	Convert it to an integer of the correct lenght. Then, cast it in place.
+		 *	Convert it to an integer of the correct length. Then, cast it in place.
 		 */
 		switch (src->vb_attr->flags.length) {
 		case 1:
@@ -4996,7 +4989,7 @@ ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	/*
 	 *	Lookup any names before continuing
 	 */
-	if (dst_enumv && dst_enumv->flags.has_value) {
+	if (dst_enumv && dst_enumv->flags.has_value && (dst_type != FR_TYPE_ATTR)) {
 		size_t				name_len;
 		fr_dict_enum_value_t const	*enumv;
 
@@ -5473,18 +5466,23 @@ parse:
 			return -1;
 		}
 
-		if (!fr_sbuff_next_if_char(&our_in, '@')) {
-			fr_strerror_const("Expected '@...' for attribute reference");
-			return -1;
-		}
-		
 		fr_value_box_init(dst, dst_type, dst_enumv, false);
 
-		slen = fr_dict_attr_by_name_substr(NULL, &dst->vb_attr, dst_enumv, &our_in, rules->terminals);
-		if (slen <= 0) {
-			fr_strerror_printf("Failed to find the named attribute in %s", dst_enumv->name);
-			return -2;
+		if (!fr_sbuff_adv_past_str_literal(&our_in, "::")) {
+			fr_strerror_const("Missing '::' for attribute reference");
+			return -1;
 		}
+
+		slen = fr_dict_attr_by_oid_substr(NULL, &dst->vb_attr, dst_enumv, &our_in, rules->terminals);
+		if (slen <= 0) {
+			slen = fr_dict_attr_by_oid_substr(NULL, &dst->vb_attr, dst_enumv,
+							  &our_in, rules->terminals);
+			if (slen <= 0) {
+				fr_strerror_printf("Failed to find the named attribute in %s", dst_enumv->name);
+				return -2;
+			}
+		}
+
 		fr_assert(dst->vb_attr != NULL);
 
 		FR_SBUFF_SET_RETURN(in, &our_in);
@@ -5762,15 +5760,32 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		break;
 
 	case FR_TYPE_ATTR:
-		if (data->vb_attr->depth != 1) {
-			fr_strerror_printf("Unsupported depth '%u' for attribute %s",
-					   data->vb_attr->depth, data->vb_attr->name);
-			return 0;
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, ':', ':');
+
+		fr_assert(data->enumv != NULL);
+
+		/*
+		 *	No escaping, just dump the name as-is.
+		 */
+		if (!e_rules) {
+			FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, data->enumv, data->vb_attr, false);
+			break;
 		}
 
-		FR_SBUFF_IN_CHAR_RETURN(&our_out, '@');
-		FR_SBUFF_IN_ESCAPE_RETURN(&our_out, data->vb_attr->name,
-					  strlen(data->vb_attr->name), e_rules);
+		/*
+		 *	Escaping, use an intermediate buffer.  Because
+		 *	we can't pipe sbuffs together.
+		 */
+		{
+			fr_sbuff_t *unescaped = NULL;
+
+			FR_SBUFF_TALLOC_THREAD_LOCAL(&unescaped, 256, 4096);
+
+			FR_DICT_ATTR_OID_PRINT_RETURN(unescaped, data->enumv, data->vb_attr, false);
+
+			FR_SBUFF_IN_ESCAPE_RETURN(&our_out, fr_sbuff_start(unescaped),
+						  fr_sbuff_used(unescaped), e_rules);
+		}
 		break;
 
 	case FR_TYPE_NULL:

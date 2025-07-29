@@ -1111,8 +1111,6 @@ static size_t parse_typed_value(command_result_t *result, command_file_ctx_t *cc
 			enumv = fr_dict_root(dict);
 		}
 
-		fprintf(stderr, "PARSE TYPE %s %p\n", fr_type_to_str(type), enumv);
-
 		slen = fr_value_box_from_substr(box, box, type, enumv,
 						&sbuff,
 						&value_parse_rules_bareword_unquoted);
