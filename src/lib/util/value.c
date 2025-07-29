@@ -5519,23 +5519,22 @@ parse:
 
 		fr_value_box_init(dst, dst_type, dst_enumv, false);
 
-		if (!fr_sbuff_adv_past_str_literal(&our_in, "::")) {
-			fr_strerror_const("Missing '::' for attribute reference");
-			return -1;
-		}
+		if (fr_sbuff_adv_past_str_literal(&our_in, "::")) {
 
-		slen = fr_dict_attr_by_oid_substr(NULL, &dst->vb_attr, dst_enumv, &our_in, rules->terminals);
-		if (slen <= 0) {
-			slen = fr_dict_attr_by_oid_substr(NULL, &dst->vb_attr, dst_enumv,
-							  &our_in, rules->terminals);
-			if (slen <= 0) {
-				fr_strerror_printf("Failed to find the named attribute in %s", dst_enumv->name);
-				return -2;
+			slen = fr_dict_attr_by_oid_substr(NULL, &dst->vb_attr, dst_enumv, &our_in, rules->terminals);
+			if (slen > 0) {
+				fr_assert(dst->vb_attr != NULL);
+				FR_SBUFF_SET_RETURN(in, &our_in);
 			}
 		}
 
-		fr_assert(dst->vb_attr != NULL);
+		slen = fr_dict_attr_unknown_afrom_oid_substr(ctx, &dst->vb_attr, dst_enumv, &our_in, FR_TYPE_OCTETS);
+		if (slen <= 0) {
+			fr_strerror_printf("Failed to find the named attribute in %s", dst_enumv->name);
+			return -2;
+		}
 
+		fr_assert(dst->vb_attr != NULL);
 		FR_SBUFF_SET_RETURN(in, &our_in);
 
 	/*
