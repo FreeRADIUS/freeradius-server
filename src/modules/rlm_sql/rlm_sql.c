@@ -685,7 +685,7 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_pair_t	*vp;
 	char const	*value = uctx;
 
-	vp = fr_pair_afrom_da_nested(ctx, out, tmpl_attr_tail_da(map->lhs));
+	vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs));
 	if (!vp) return -1;
 
 	/*
@@ -695,9 +695,10 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (fr_pair_value_from_str(vp, value, strlen(value), NULL, true) < 0) {
 		RPEDEBUG("Failed parsing value \"%pV\" for attribute %s",
 			 fr_box_strvalue_buffer(value), vp->da->name);
-		fr_pair_delete(out, vp);
+		talloc_free(vp);
 		return -1;
 	}
+	fr_pair_append(out, vp);
 
 	return 0;
 }

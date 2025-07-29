@@ -48,14 +48,15 @@ static int _list_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_pair_t	*vp;
 	fr_value_box_t	*value = talloc_get_type_abort(uctx, fr_value_box_t);
 
-	vp = fr_pair_afrom_da_nested(ctx, out, tmpl_attr_tail_da(map->lhs));
+	vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs));
 	if (!vp) return -1;
 
 	if (fr_value_box_cast(vp, &vp->data, vp->data.type, vp->da, value) < 0) {
 		RPEDEBUG("Failed casting \"%pV\" for attribute %s", value, vp->da->name);
-		fr_pair_delete(out, vp);
+		talloc_free(vp);
 		return -1;
 	}
+	fr_pair_append(out, vp);
 
 	return 0;
 }
