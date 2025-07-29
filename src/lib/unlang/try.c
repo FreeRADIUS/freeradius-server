@@ -33,6 +33,7 @@ static unlang_action_t skip_to_catch(UNUSED unlang_result_t *p_result, request_t
 	unlang_try_t const     	*gext = unlang_generic_to_try(frame->instruction);
 
 	fr_assert(frame->instruction->type == UNLANG_TYPE_TRY);
+	fr_assert(rcode < RLM_MODULE_NUMCODES);
 
 	/*
 	 *	Push the one "catch" section that we want to run.  Once it's done, it will pop, return to us,
@@ -210,7 +211,7 @@ static unlang_t *unlang_compile_try(unlang_t *parent, unlang_compile_ctx_t *unla
 	 *	If the child is returning for that action, ensure that _we_ aren't returning.
 	 *
 	 *	Note that as above, reject / fail / invalid / disallow / timeout are errors, and cause the
-	 *	child to immediately return.  All other rcodes 
+	 *	child to immediately return.  All other rcodes
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
 		/*
