@@ -140,6 +140,25 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	}
 
 	switch (vp->vp_type) {
+	case FR_TYPE_ATTR:
+		/*
+		 *	Force the length of the data to be one,
+		 *	otherwise the "from network" call complains.
+		 *	Because we pass in the enumv as the _parent_
+		 *	and not the da.  The da is marked as "array",
+		 *	but the parent is not.
+		 */
+		end = p + 1;
+
+		fr_assert(da->parent->flags.is_root);
+
+		slen = fr_value_box_from_network(vp, &vp->data, vp->vp_type, da->parent,
+						 &FR_DBUFF_TMP(p, end - p), end - p, true);
+		if (slen <= 0) goto raw;
+
+		p++;
+		break;
+
 	/*
 	 *	Doesn't include scope, whereas the generic format can
 	 */

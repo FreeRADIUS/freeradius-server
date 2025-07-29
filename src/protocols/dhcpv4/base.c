@@ -90,7 +90,7 @@ fr_dict_attr_autoload_t dhcpv4_dict_attr[] = {
 	{ .out = &attr_dhcp_dhcp_maximum_msg_size, .name = "Maximum-Msg-Size", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_interface_mtu_size, .name = "Interface-MTU-Size", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_parameter_request_list, .name = "Parameter-Request-List", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_parameter_request_list, .name = "Parameter-Request-List", .type = FR_TYPE_ATTR, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_overload, .name = "Overload", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_vendor_class_identifier, .name = "Vendor-Class-Identifier", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_relay_link_selection, .name = "Relay-Agent-Information.Relay-Link-Selection", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
@@ -584,9 +584,6 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
  */
 int fr_dhcpv4_global_init(void)
 {
-	fr_value_box_t		value = *fr_box_uint8(0);
-	uint8_t			i;
-
 	if (instance_count > 0) {
 		instance_count++;
 		return 0;
@@ -603,24 +600,6 @@ int fr_dhcpv4_global_init(void)
 	if (fr_dict_attr_autoload(dhcpv4_dict_attr) < 0) {
 		fr_dict_autofree(dhcpv4_dict);
 		goto fail;
-	}
-
-	/*
-	 *	Fixup dictionary entry for Paramter-Request-List adding all the options
-	 */
-	for (i = 1; i < 255; i++) {
-		fr_dict_attr_t const *attr;
-
-		attr = fr_dict_attr_child_by_num(fr_dict_root(dict_dhcpv4), i);
-		if (!attr) {
-			continue;
-		}
-		value.vb_uint8 = i;
-
-		if (fr_dict_enum_add_name(fr_dict_attr_unconst(attr_dhcp_parameter_request_list),
-					  attr->name, &value, true, false) < 0) {
-			goto fail;
-		}
 	}
 
 	instantiated = true;
@@ -749,6 +728,11 @@ static bool attr_valid(fr_dict_attr_t *da)
 
 	if ((da->type != FR_TYPE_BOOL) && fr_dhcpv4_flag_exists(da)) {
 		fr_strerror_const("The 'exists' flag can only be used with attributes of type 'bool'");
+		return false;
+	}
+
+	if ((da->type == FR_TYPE_ATTR) && !da->parent->flags.is_root) {
+		fr_strerror_const("Data type 'attr' can only exist at the dictionary root");
 		return false;
 	}
 
