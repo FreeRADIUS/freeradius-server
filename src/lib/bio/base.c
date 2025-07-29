@@ -162,6 +162,12 @@ int fr_bio_shutdown(fr_bio_t *bio)
 	first = this;
 
 	/*
+	 *	We're in the process of shutting down, don't call ourselves recursively.
+	 */
+	my = (fr_bio_common_t *) this;
+	if (my->bio.read == fr_bio_shutdown_read) return 0;
+
+	/*
 	 *	Walk back down the chain, calling the shutdown functions.
 	 */
 	for (/* nothing */; this != NULL; this = fr_bio_next(this)) {
