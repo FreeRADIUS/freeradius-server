@@ -135,6 +135,8 @@ ssize_t fr_dict_attr_oid_print(fr_sbuff_t *out,
 	 */
 	if ((ancestor == da) || (da->depth == 0)) return 0;
 
+	if (ancestor && (ancestor->flags.is_root)) ancestor = NULL;
+
 	fr_proto_da_stack_build(&da_stack, da);
 
 	/*
