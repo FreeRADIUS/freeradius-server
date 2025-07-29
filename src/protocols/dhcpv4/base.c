@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include "attrs.h"
 
 static uint32_t instance_count = 0;
+static bool	instantiated = false;
 
 typedef struct {
 	uint8_t		code;
@@ -622,16 +623,20 @@ int fr_dhcpv4_global_init(void)
 		}
 	}
 
+	instantiated = true;
 	return 0;
 }
 
 void fr_dhcpv4_global_free(void)
 {
+	if (!instantiated) return;
+
 	fr_assert(instance_count > 0);
 
 	if (--instance_count > 0) return;
 
 	fr_dict_autofree(dhcpv4_dict);
+	instantiated = false;
 }
 
 

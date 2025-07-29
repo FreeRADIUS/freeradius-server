@@ -36,6 +36,7 @@
 #include "attrs.h"
 
 static uint32_t instance_count = 0;
+static bool	instantiated = false;
 
 fr_dict_t const *dict_dhcpv6;
 
@@ -935,16 +936,20 @@ int fr_dhcpv6_global_init(void)
 		}
 	}
 
+	instantiated = true;
 	return 0;
 }
 
 void fr_dhcpv6_global_free(void)
 {
+	if (!instantiated) return;
+
 	fr_assert(instance_count > 0);
 
 	if (--instance_count > 0) return;
 
 	fr_dict_autofree(libfreeradius_dhcpv6_dict);
+	instantiated = false;
 }
 
 static bool attr_valid(fr_dict_attr_t *da)

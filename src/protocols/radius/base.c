@@ -39,6 +39,7 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/radius/freeradius.internal.h>
 
 static uint32_t instance_count = 0;
+static bool	instantiated = false;
 
 fr_dict_t const *dict_freeradius;
 fr_dict_t const *dict_radius;
@@ -1251,11 +1252,14 @@ int fr_radius_global_init(void)
 		goto fail;
 	}
 
+	instantiated = true;
 	return 0;
 }
 
 void fr_radius_global_free(void)
 {
+	if (!instantiated) return;
+
 	if (--instance_count != 0) return;
 
 	fr_dict_autofree(libfreeradius_radius_dict);
