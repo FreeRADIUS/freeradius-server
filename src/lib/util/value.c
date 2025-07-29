@@ -5505,8 +5505,15 @@ parse:
 			return -1;
 		}
 
-		if (!dst_enumv->flags.is_root) {
-			fr_strerror_const("Can only start from dictioanry root for data type 'attr'");
+		/*
+		 *	@todo - have attributes of FR_TYPE_ATTR also
+		 *	carry a ref to where their values are taken from.
+		 */
+		if (dst_enumv->type == FR_TYPE_ATTR) {
+			dst_enumv = fr_dict_root(dst_enumv->dict);
+
+		} else if (!dst_enumv->flags.is_root) {
+			fr_strerror_printf("Can only start from dictionary root for data type 'attr', and not from %s", dst_enumv->name);
 			return -1;
 		}
 
