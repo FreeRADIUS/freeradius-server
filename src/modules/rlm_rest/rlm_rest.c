@@ -424,9 +424,19 @@ static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	case 403:
 	case 401:
 	{
+		fr_pair_t *vp;
 		xa = XLAT_ACTION_FAIL;
 error:
 		rest_response_error(request, handle);
+
+		/*
+		 *	When the HTTP status code is a failure, put the
+		 *	response body in REST-HTTP-Body.
+		 */
+		len = rest_get_handle_data(&body, handle);
+		if (len == 0) goto finish;
+		MEM(pair_update_request(&vp, attr_rest_http_body) >= 0);
+		fr_pair_value_bstrndup(vp, body, len, true);
 		goto finish;
 	}
 	case 204:
@@ -447,9 +457,8 @@ error:
 		}
 	}
 
-finish:
 	/*
-	 *	Always output the xlat data.
+	 *	Output the xlat data if the HTTP status code is one of the "success" ones.
 	 *
 	 *	The user can check REST-HTTP-Status-Code to figure out what happened.
 	 *
@@ -464,6 +473,7 @@ finish:
 		fr_value_box_bstrndup(vb, vb, NULL, body, len, true);
 		fr_dcursor_insert(out, vb);
 	}
+finish:
 
 	rest_slab_release(handle);
 
