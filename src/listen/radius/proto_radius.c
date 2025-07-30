@@ -324,12 +324,13 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 			client->seen_first_packet = true;
 			client->first_packet_no_proxy_state = fr_pair_find_by_da(&request->request_pairs, NULL, attr_proxy_state) == NULL;
 
+			/* None of these should be errors */
 			if (!fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator)) {
-				RERROR("Packet from %pV (%pV) did not contain Message-Authenticator:",
+				RWARN("Packet from %pV (%pV) did not contain Message-Authenticator:",
 				      fr_box_ipaddr(client->ipaddr),
 				      fr_box_strvalue_buffer(client->shortname));
-				RERROR("- Upgrade the client, as your network is vulnerable to the BlastRADIUS attack.");
-				RERROR("- Then set 'require_message_authenticator = yes' in the client definition");
+				RWARN("- Upgrade the client, as your network is vulnerable to the BlastRADIUS attack.");
+				RWARN("- Then set 'require_message_authenticator = yes' in the client definition");
 			} else {
 				RWARN("Packet from %pV (%pV) contains Message-Authenticator:",
 				      fr_box_ipaddr(client->ipaddr),
