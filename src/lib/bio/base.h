@@ -46,10 +46,10 @@ RCSIDH(lib_bio_base_h, "$Id$")
 
 typedef enum {
 	FR_BIO_ERROR_NONE = 0,
+	FR_BIO_ERROR_GENERIC,				//!< -1 == generic "failed" error - check fr_strerror()
 	FR_BIO_ERROR_IO_WOULD_BLOCK,     		//!< IO would block
 
 	FR_BIO_ERROR_IO,				//!< IO error - check errno
-	FR_BIO_ERROR_GENERIC,				//!< generic "failed" error - check fr_strerror()
 	FR_BIO_ERROR_OOM,				//!< out of memory
 	FR_BIO_ERROR_VERIFY,				//!< some packet verification error
 	FR_BIO_ERROR_BUFFER_FULL,      			//!< the buffer is full
