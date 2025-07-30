@@ -999,6 +999,11 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 
 	fr_strerror_clear();
 
+	if (cfg->type == FR_BIO_FD_ACCEPTED) {
+		fr_strerror_const("Connection is already open");
+		return fr_bio_error(GENERIC);
+	}
+
 	my->info = (fr_bio_fd_info_t) {
 		.socket = {
 			.type = cfg->socket_type,
@@ -1076,8 +1081,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			break;
 
 		case FR_BIO_FD_ACCEPTED:
-			fr_assert(my->info.socket.inet.src_ipaddr.af != AF_UNSPEC);
-			fr_assert(my->info.socket.inet.dst_ipaddr.af != AF_UNSPEC);
+			fr_assert(0);
 			break;
 		}
 
@@ -1096,19 +1100,10 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			}
 		}
 
-		/*
-		 *	It's already opened, so we don't need to do that.
-		 */
-		if (cfg->type == FR_BIO_FD_ACCEPTED) {
-			fd = my->info.socket.fd;
-			fr_assert(fd >= 0);
-
-		} else {
-			fd = socket(my->info.socket.af, my->info.socket.type, protocol);
-			if (fd < 0) {
-				fr_strerror_printf("Failed opening socket: %s", fr_syserror(errno));
-				return -1;
-			}
+		fd = socket(my->info.socket.af, my->info.socket.type, protocol);
+		if (fd < 0) {
+			fr_strerror_printf("Failed opening socket: %s", fr_syserror(errno));
+			return -1;
 		}
 
 	} else if (cfg->path) {
@@ -1293,24 +1288,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		break;
 
 	case FR_BIO_FD_ACCEPTED:
-#ifdef SO_NOSIGPIPE
-		/*
-		 *	Although the server ignore SIGPIPE, some operating systems like BSD and OSX ignore the
-		 *	ignoring.
-		 *
-		 *	Fortunately, those operating systems usually support SO_NOSIGPIPE.  We set that to prevent
-		 *	them raising the signal in the first place.
-		 */
-		{
-			int on = 1;
-
-			setsockopt(my->info.socket.fd, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on));
-		}
-#endif
-
-		my->info.type = FR_BIO_FD_CONNECTED;
-
-                if (fr_bio_fd_init_common(my) < 0) goto fail;
+		fr_assert(0);
 		break;
 
 		/*
