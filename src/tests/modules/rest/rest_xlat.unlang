@@ -212,4 +212,25 @@ if (!(Module-Failure-Message == "curl request failed: Timeout was reached (28)")
 	test_fail
 }
 
+# Call an endpoint which will return a "failure" status code
+result_string := %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/fail")
+
+if (REST-HTTP-Status-Code != 400) {
+	test_fail
+}
+
+# The output should not be returned
+if (result_string) {
+	test_fail
+}
+
+# Server output will be in REST-HTTP-Body (this endpoint returns JSON)
+map json REST-HTTP-Body {
+	test_string := '$.error'
+}
+
+if (test_string != 'Invalid request') {
+	test_fail
+}
+
 test_pass

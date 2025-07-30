@@ -102,6 +102,10 @@ http {
 	location ~ ^/delay(.*)$ {
 	    content_by_lua_file  ${APIDIR}/delay-api.lua;
 	}
+
+	location ~ ^/fail(.*)$ {
+	    content_by_lua_file  ${APIDIR}/fail.lua;
+	}
     }
 
     server {
