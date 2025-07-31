@@ -1298,7 +1298,7 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_SIZE:
-		fr_value_box_copy(NULL, dst, src);
+		if (unlikely(fr_value_box_copy(NULL, dst, src) < 0)) return -1;
 		return 0;
 
 	case FR_TYPE_NULL:
@@ -4202,7 +4202,7 @@ void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 {
 	switch (src->type) {
 	default:
-		fr_value_box_copy(NULL, dst, src);
+		if (unlikely(fr_value_box_copy(NULL, dst, src) < 0)) return;
 		break;
 
 	case FR_TYPE_STRING:

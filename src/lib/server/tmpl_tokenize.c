@@ -1015,7 +1015,7 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bo
 	if (steal) {
 		if (fr_value_box_steal(vpt, tmpl_value(vpt), data) < 0) goto error;
 	} else {
-		if (fr_value_box_copy(vpt, tmpl_value(vpt), data) < 0) goto error;
+		if (unlikely(fr_value_box_copy(vpt, tmpl_value(vpt), data) < 0)) goto error;
 	}
 	*out = vpt;
 
@@ -3110,7 +3110,10 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 		if (dv) {
 			tmpl_init(vpt, TMPL_TYPE_DATA, T_BARE_WORD,
 				  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
-			(void) fr_value_box_copy(vpt, &vpt->data.literal, dv->value);
+			if (unlikely(fr_value_box_copy(vpt, &vpt->data.literal, dv->value) < 0)) {
+				talloc_free(vpt);
+				return -1;
+			}
 			vpt->data.literal.enumv = t_rules->enumv;
 
 			*out = vpt;

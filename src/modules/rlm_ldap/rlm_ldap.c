@@ -434,7 +434,11 @@ static xlat_action_t ldap_uri_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	If it's already safe, just copy it over.
 	 */
 	if (fr_value_box_is_safe_for_only(in_vb, LDAP_URI_SAFE_FOR)) {
-		fr_value_box_copy(vb, vb, in_vb);
+		if (unlikely(fr_value_box_copy(vb, vb, in_vb) < 0)) {
+			RPEDEBUG("Failed copying input argument to output");
+			talloc_free(vb);
+			return XLAT_ACTION_FAIL;
+		}
 
 		fr_dcursor_append(out, vb);
 		return XLAT_ACTION_DONE;

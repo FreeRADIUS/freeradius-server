@@ -416,7 +416,10 @@ bool module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type_
 
 	switch (pair_update_control(&vp, type_da)) {
 	case 0:
-		fr_value_box_copy(vp, &vp->data, enumv->value);
+		if (unlikely(fr_value_box_copy(vp, &vp->data, enumv->value) < 0)) {
+			fr_strerror_printf("Failed to set control.%pP to %s", vp, enumv->name);
+			return false;
+		}
 		vp->data.enumv = vp->da;	/* So we get the correct string alias */
 		RDEBUG2("Setting control.%pP", vp);
 		return true;

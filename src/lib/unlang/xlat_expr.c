@@ -965,7 +965,7 @@ check:
 	xlat_instance_unregister_func(parent);
 
 	xlat_exp_set_type(parent, XLAT_BOX);
-	fr_value_box_copy(parent, &parent->data, box);
+	if (!fr_cond_assert(fr_value_box_copy(parent, &parent->data, box) == 0)) return false;
 
 	return true;
 }
@@ -1197,7 +1197,7 @@ static bool xlat_logical_or(xlat_logical_rctx_t *rctx, fr_value_box_list_t const
 	} else {
 		fr_value_box_clear(rctx->box);
 	}
-	if (last) fr_value_box_copy(rctx->box, rctx->box, last);
+	if (last && !fr_cond_assert(fr_value_box_copy(rctx->box, rctx->box, last) == 0)) return false;
 
 	return ret;
 }
@@ -1301,7 +1301,7 @@ static bool xlat_logical_and(xlat_logical_rctx_t *rctx, fr_value_box_list_t cons
 	} else {
 		fr_value_box_clear(rctx->box);
 	}
-	fr_value_box_copy(rctx->box, rctx->box, found);
+	if (!fr_cond_assert(fr_value_box_copy(rctx->box, rctx->box, found) == 0)) return false;
 
 	return true;
 }

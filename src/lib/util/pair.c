@@ -506,12 +506,13 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 	 */
 	if (fr_type_is_structural(n->vp_type)) {
 		if (fr_pair_list_copy(n, &n->vp_group, &vp->vp_group) < 0) {
+		error:
 			talloc_free(n);
 			return NULL;
 		}
 
 	} else {
-		fr_value_box_copy(n, &n->data, &vp->data);
+		if (unlikely(fr_value_box_copy(n, &n->data, &vp->data) < 0)) goto error;
 	}
 
 	return n;
@@ -2377,7 +2378,10 @@ int fr_pair_list_copy_to_box(fr_value_box_t *dst, fr_pair_list_t *from)
 				fr_value_box_list_talloc_free_to_tail(&dst->vb_group, first_added);
 				return -1;
 			}
-			fr_value_box_copy(value, value, &vp->data);
+			if (unlikely(fr_value_box_copy(value, value, &vp->data) < 0)) {
+				talloc_free(value);
+				goto fail;
+			}
 		}
 
 		if (!first_added) first_added = value;
@@ -2564,7 +2568,7 @@ int fr_pair_value_copy(fr_pair_t *dst, fr_pair_t *src)
 	if (!fr_cond_assert(src->data.type != FR_TYPE_NULL)) return -1;
 
 	fr_value_box_clear_value(&dst->data);
-	fr_value_box_copy(dst, &dst->data, &src->data);
+	if (unlikely(fr_value_box_copy(dst, &dst->data, &src->data) < 0)) return -1;
 
 	/*
 	 *	If either source or destination is secret, then this value is secret.

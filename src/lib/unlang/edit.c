@@ -1181,7 +1181,7 @@ static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state,
 
 	data:
 		MEM(box = fr_value_box_alloc_null(state));
-		if (fr_value_box_copy(box, box, tmpl_value(vpt)) < 0) return -1;
+		if (unlikely(fr_value_box_copy(box, box, tmpl_value(vpt)) < 0)) return -1;
 
 		fr_value_box_list_insert_tail(&current->parent->rhs.list, box);
 
@@ -1205,7 +1205,7 @@ static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state,
 		vp = tmpl_dcursor_init(NULL, request, &cc, &cursor, request, vpt);
 		while (vp) {
 			MEM(box = fr_value_box_alloc_null(state));
-			if (fr_value_box_copy(box, box, &vp->data) < 0) return -1;
+			if (unlikely(fr_value_box_copy(box, box, &vp->data) < 0)) return -1;
 
 			fr_value_box_list_insert_tail(&current->parent->rhs.list, box);
 

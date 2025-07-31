@@ -1188,7 +1188,7 @@ static int cast_ipv4_addr(fr_value_box_t *out, fr_value_box_t const *in)
 
 	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_IPV4_ADDR:
-		fr_value_box_copy(NULL, out, in);
+		if (unlikely(fr_value_box_copy(NULL, out, in) < 0)) return -1;
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
@@ -1390,7 +1390,7 @@ static int cast_ipv6_addr(fr_value_box_t *out, fr_value_box_t const *in)
 
 	case FR_TYPE_IPV6_PREFIX:
 	case FR_TYPE_IPV6_ADDR:
-		fr_value_box_copy(NULL, out, in);
+		if (unlikely(fr_value_box_copy(NULL, out, in) < 0)) return -1;
 		break;
 
 	case FR_TYPE_IPV4_ADDR:

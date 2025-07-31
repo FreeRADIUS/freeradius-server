@@ -31,14 +31,17 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/calc.h>
 
-static void xlat_value_list_to_xlat(xlat_exp_head_t *head, fr_value_box_list_t *list)
+static int xlat_value_list_to_xlat(xlat_exp_head_t *head, fr_value_box_list_t *list)
 {
 	fr_value_box_t *box;
 	xlat_exp_t *node;
 
 	while ((box = fr_value_box_list_pop_head(list)) != NULL) {
 		MEM(node = xlat_exp_alloc(head, XLAT_BOX, NULL, 0));
-		fr_value_box_copy(node, &node->data, box);
+		if (unlikely(fr_value_box_copy(node, &node->data, box) < 0)) {
+			talloc_free(node);
+			return -1;
+		}
 
 		if (node->data.type == FR_TYPE_STRING) {
 			node->quote = T_DOUBLE_QUOTED_STRING;
@@ -54,6 +57,8 @@ static void xlat_value_list_to_xlat(xlat_exp_head_t *head, fr_value_box_list_t *
 
 		xlat_exp_insert_tail(head, node);
 	}
+
+	return 0;
 }
 
 static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, fr_token_t quote);
@@ -273,7 +278,7 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 			xlat_instance_unregister_func(node);
 			xlat_exp_set_type(node, XLAT_GROUP);	/* Frees the argument list */
 
-			xlat_value_list_to_xlat(node->group, &list);
+			if (xlat_value_list_to_xlat(node->group, &list) < 0) return -1;
 			node->flags = node->group->flags;
 			break;
 		}
@@ -527,7 +532,10 @@ static int binary_peephole_optimize(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_
 
 	MEM(fr_value_box_aprint(node, &name, &box, NULL) >= 0);
 	xlat_exp_set_name_shallow(node, name);
-	fr_value_box_copy(node, &node->data, &box);
+	if (unlikely(fr_value_box_copy(node, &node->data, &box) < 0)) {
+		talloc_free(node);
+		return -1;
+	}
 
 	*out = node;
 

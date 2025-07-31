@@ -719,7 +719,7 @@ void		fr_value_box_clear(fr_value_box_t *data)
 		CC_HINT(nonnull(1));
 
 int		fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src)
-		CC_HINT(nonnull(2,3));
+		CC_HINT(nonnull(2,3)) CC_HINT(warn_unused_result);
 
 void		fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst,
 					  const fr_value_box_t *src)

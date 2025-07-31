@@ -1500,7 +1500,10 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 		break;
 	}
 
-	fr_value_box_copy(map->rhs, tmpl_value(map->rhs), &vp->data);
+	if (unlikely(fr_value_box_copy(map->rhs, tmpl_value(map->rhs), &vp->data) < 0)) {
+		talloc_free(map);
+		return -1;
+	}
 
 	*out = map;
 
@@ -1797,8 +1800,9 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		MEM(n = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs)));
 
 		if (tmpl_attr_tail_da(map->lhs)->type == tmpl_value_type(map->rhs)) {
-			if (fr_value_box_copy(n, &n->data, tmpl_value(map->rhs)) < 0) {
+			if (unlikely(fr_value_box_copy(n, &n->data, tmpl_value(map->rhs)) < 0)) {
 				rcode = -1;
+				talloc_free(n);
 				goto error;
 			}
 

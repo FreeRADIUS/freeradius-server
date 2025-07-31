@@ -2441,7 +2441,7 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 			return -1;
 		}
 
-		if (fr_value_box_copy(vp, &vp->data, flags->default_value) < 0) {
+		if (unlikely(fr_value_box_copy(vp, &vp->data, flags->default_value) < 0)) {
 			talloc_free(vp);
 			return -1;
 		}

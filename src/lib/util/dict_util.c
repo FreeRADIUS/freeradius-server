@@ -1856,7 +1856,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 			return -1;
 		}
 	} else {
-		if (fr_value_box_copy(enum_value, enum_value, value) < 0) {
+		if (unlikely(fr_value_box_copy(enum_value, enum_value, value) < 0)) {
 			fr_strerror_printf_push("%s: Failed copying value into enum", __FUNCTION__);
 			return -1;
 		}

@@ -1654,15 +1654,17 @@ done:
 
 static int add_option_by_da(rlm_isc_dhcp_info_t *info, fr_dict_attr_t const *da)
 {
-	int ret;
 	fr_pair_t *vp;
 
 	if (!info->parent) return -1; /* internal error */
 
 	MEM(vp = fr_pair_afrom_da(info->parent, da));
 
-	ret = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
-	if (ret < 0) return ret;
+	/* TLS error buffer is checked */
+	if (unlikely(fr_value_box_copy(vp, &(vp->data), info->argv[0]) < 0)) {
+		talloc_free(vp);
+		return -1;
+	}
 
 	fr_pair_append(&info->parent->options, vp);
 
@@ -1742,7 +1744,6 @@ static int parse_next_server(UNUSED rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhc
  */
 static int apply_fixed_ip(rlm_isc_dhcp_t const *inst, request_t *request)
 {
-	int ret;
 	rlm_isc_dhcp_info_t *host, *info;
 	fr_pair_t *vp;
 	fr_pair_t *yiaddr;
@@ -1771,9 +1772,10 @@ static int apply_fixed_ip(rlm_isc_dhcp_t const *inst, request_t *request)
 
 		MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_your_ip_address));
 
-		ret = fr_value_box_copy(vp, &(vp->data), info->argv[0]);
-		if (ret < 0) return ret;
-
+		if (unlikely(fr_value_box_copy(vp, &(vp->data), info->argv[0]) < 0)) {
+			RPEDEBUG("Failed assigning Your-IP-Address");
+			return -1;
+		}
 		fr_pair_append(&request->reply_pairs, vp);
 
 		/*

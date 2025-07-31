@@ -420,7 +420,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			 *	getting the buffer value from may be freed
 			 *	before this map is applied.
 			 */
-			if (fr_value_box_copy(n_mod->rhs, tmpl_value(n_mod->rhs), &vp->data) < 0) goto error;
+			if (unlikely(fr_value_box_copy(n_mod->rhs, tmpl_value(n_mod->rhs), &vp->data) < 0)) goto error;
 			map_list_insert_tail(&n->mod, n_mod);
 
 			MAP_VERIFY(n_mod);
@@ -591,12 +591,13 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 				if (fr_value_box_cast(n_vb, n_vb,
 						      mutated->cast ? mutated->cast : tmpl_attr_tail_da(mutated->lhs)->type,
 						      tmpl_attr_tail_da(mutated->lhs), &vp->data) < 0) {
+				assign_error:
 					RPEDEBUG("Assigning value to \"%s\" failed", tmpl_attr_tail_da(mutated->lhs)->name);
 
 					goto attr_error;
 				}
 			} else {
-				fr_value_box_copy(n_vb, n_vb, &vp->data);
+				if (unlikely(fr_value_box_copy(n_vb, n_vb, &vp->data) < 0)) goto assign_error;
 			}
 			fr_dcursor_append(&values, n_vb);
 		} while ((vp = fr_dcursor_next(&from)));
@@ -645,7 +646,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			 *	on the static/global buffers and possibly
 			 *	lead to threading issues.
 			 */
-			if (fr_value_box_copy(n_vb, n_vb, vb) < 0) goto data_error;
+			if (unlikely(fr_value_box_copy(n_vb, n_vb, vb) < 0)) goto data_error;
 		}
 		fr_dcursor_append(&values, n_vb);
 	}
@@ -766,7 +767,11 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	 *	If tmpl_value were a pointer we could
 	 *	assign values directly.
 	 */
-	fr_value_box_copy(map_list_head(&n->mod)->rhs, tmpl_value(map_list_head(&n->mod)->rhs), fr_value_box_list_head(&head));
+	if (unlikely(fr_value_box_copy(map_list_head(&n->mod)->rhs, tmpl_value(map_list_head(&n->mod)->rhs),
+				       fr_value_box_list_head(&head)) < 0)) {
+		goto error;
+	}
+
 	/*
 	 *	value boxes in tmpls cannot now be the head of a list
 	 *
@@ -800,7 +805,7 @@ static inline fr_pair_t *map_list_mod_to_vp(TALLOC_CTX *ctx, tmpl_t const *attr,
 	fr_pair_t *vp;
 
 	MEM(vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(attr)));
-	if (fr_value_box_copy(vp, &vp->data, value) < 0) {
+	if (unlikely(fr_value_box_copy(vp, &vp->data, value) < 0)) {
 		talloc_free(vp);
 		return NULL;
 	}

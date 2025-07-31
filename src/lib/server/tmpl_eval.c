@@ -577,7 +577,10 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 		if (cast_type == FR_TYPE_NULL) {
 			if (needs_dup) {
-				fr_value_box_copy(vb_out, vb_out, vb_in);
+				if (unlikely(fr_value_box_copy(vb_out, vb_out, vb_in) < 0)) {
+					talloc_free(vb_out);
+					goto failed_cast;
+				}
 			} else {
 				fr_value_box_steal(vb_out, vb_out, vb_in);
 			}
@@ -636,9 +639,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		if (needs_dup) {
 			fr_assert(vb_in != &value);
 
-			ret = fr_value_box_copy(ctx, &value, vb_in);
-			if (ret < 0) goto failed_cast;
-
+			if (unlikely(fr_value_box_copy(ctx, &value, vb_in) < 0)) goto failed_cast;
 			vb_in = &value;
 		} else {
 			fr_assert(dst_type == FR_TYPE_STRING);
@@ -1045,7 +1046,10 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 			} else {
 				value = fr_value_box_alloc(ctx, vp->data.type, vp->da);
 				if (!value) goto oom;
-				fr_value_box_copy(value, value, &vp->data);
+				if(unlikely(fr_value_box_copy(value, value, &vp->data) < 0)) {
+					talloc_free(value);
+					goto fail;
+				}
 			}
 
 			fr_value_box_list_insert_tail(&list, value);
@@ -1062,7 +1066,7 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 		value = fr_value_box_alloc(ctx, vp->data.type, vp->da);
 		if (!value) goto oom;
 
-		fr_value_box_copy(value, value, &vp->data);	/* Also dups taint */
+		if (unlikely(fr_value_box_copy(value, value, &vp->data) < 0)) goto fail;
 		fr_value_box_list_insert_tail(&list, value);
 		break;
 	}
@@ -1128,7 +1132,10 @@ int tmpl_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmp
 	if (tmpl_is_data(vpt)) {
 		MEM(value = fr_value_box_alloc(ctx, tmpl_value_type(vpt), NULL));
 
-		fr_value_box_copy(value, value, tmpl_value(vpt));	/* Also dups taint */
+		if (unlikely(fr_value_box_copy(value, value, tmpl_value(vpt)) < 0)) {
+			talloc_free(value);
+			return -1;	/* Also dups taint */
+		}
 		goto done;
 	}
 

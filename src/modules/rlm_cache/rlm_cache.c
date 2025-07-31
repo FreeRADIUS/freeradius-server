@@ -939,7 +939,11 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		    (tmpl_list(map->lhs) != tmpl_list(target))) continue;
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
-		fr_value_box_copy(vb, vb, tmpl_value(map->rhs));
+		if (unlikely(fr_value_box_copy(vb, vb, tmpl_value(map->rhs)) < 0)) {
+			RPEDEBUG("Failed copying value from cache entry");
+			talloc_free(vb);
+			return XLAT_ACTION_FAIL;
+		}
 		fr_dcursor_append(out, vb);
 		break;
 	}
