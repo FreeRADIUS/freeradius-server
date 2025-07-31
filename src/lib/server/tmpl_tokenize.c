@@ -3033,9 +3033,11 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 			       tmpl_rules_t const *t_rules)
 {
 	tmpl_t		*vpt;
-	char		*str;
 	fr_sbuff_parse_error_t	sberr;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
+	fr_sbuff_t	*enum_buff;
+
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&enum_buff, 1024, SIZE_MAX);
 
 	/*
 	 *	If there isn't a "::" prefix, then check for migration flags, and enum.
@@ -3060,6 +3062,12 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 		return 0;
 	}
 
+	/*
+	 *	Need to store the value with the prefix, because the value box functions
+	 *	expect it to be there...
+	 */
+	fr_sbuff_in_strcpy_literal(enum_buff, "::");
+
 	vpt = tmpl_alloc_null(ctx);
 
 	/*
@@ -3068,7 +3076,7 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 	 *	Note that we don't actually try to resolve the enum name.  The caller is responsible
 	 *	for doing that.
 	 */
-	if (fr_dict_enum_name_afrom_substr(vpt, &str, &sberr, &our_in, p_rules ? p_rules->terminals : NULL) < 0) {
+	if (fr_dict_enum_name_from_substr(enum_buff, &sberr, &our_in, p_rules ? p_rules->terminals : NULL) < 0) {
 		/*
 		 *	Produce our own errors which make
 		 *	more sense in the context of tmpls
@@ -3098,7 +3106,7 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 	if (t_rules->enumv) {
 		fr_dict_enum_value_t const *dv;
 
-		dv = fr_dict_enum_by_name(t_rules->enumv, str, -1);
+		dv = fr_dict_enum_by_name(t_rules->enumv, fr_sbuff_start(enum_buff), fr_sbuff_used(enum_buff));
 		if (dv) {
 			tmpl_init(vpt, TMPL_TYPE_DATA, T_BARE_WORD,
 				  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
@@ -3119,7 +3127,7 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 
 	tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, T_BARE_WORD,
 		  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
-	vpt->data.unescaped = str;
+	MEM(vpt->data.unescaped = talloc_bstrndup(vpt, fr_sbuff_start(enum_buff), fr_sbuff_used(enum_buff)));
 	*out = vpt;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
