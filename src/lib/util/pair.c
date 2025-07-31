@@ -3221,6 +3221,13 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 		}
 		break;
 
+       case FR_TYPE_ATTR:
+		if (!vp->vp_attr) {
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" attribute pointer is NULL",
+					     file, line, vp->da->name);
+		}
+		break;
+
        case FR_TYPE_STRUCTURAL:
        {
 	       if (vp->vp_group.verified) break;
