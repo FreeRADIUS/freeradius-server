@@ -131,6 +131,8 @@ static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_INT32]				= {4, 4},
 	[FR_TYPE_INT64]				= {8, 8},
 
+	[FR_TYPE_SIZE]				= {8, 8},
+
 	[FR_TYPE_FLOAT32]			= {4, 4},
 	[FR_TYPE_FLOAT64]			= {8, 8},
 
@@ -1858,6 +1860,8 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 
 	min = network_min_size(type);
 	max = network_max_size(type);
+
+	fr_assert(max > 0);
 
 	if (len < min) {
 		fr_strerror_printf("Got truncated value parsing type \"%s\". "
