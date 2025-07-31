@@ -71,6 +71,10 @@ VALUE	Packet-Type			Do-Not-Respond		256
 
 ATTRIBUTE	Packet-Authentication-Vector		1002	octets
 
+ATTRIBUTE	Packet					1003	tlv
+ATTRIBUTE	Id					.1	uint8
+ATTRIBUTE	Authenticator				.2	octets
+
 #
 #  v4 has tags as groups.
 #

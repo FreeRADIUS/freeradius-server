@@ -120,6 +120,8 @@ static fr_dict_attr_t const *attr_state;
 static fr_dict_attr_t const *attr_proxy_state;
 static fr_dict_attr_t const *attr_message_authenticator;
 static fr_dict_attr_t const *attr_eap_message;
+static fr_dict_attr_t const *attr_packet_id;
+static fr_dict_attr_t const *attr_packet_authenticator;
 
 extern fr_dict_attr_autoload_t proto_radius_dict_attr[];
 fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
@@ -129,6 +131,8 @@ fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
 	{ .out = &attr_proxy_state, .name = "Proxy-State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+	{ .out = &attr_packet_id, .name = "Packet.Id", .type = FR_TYPE_UINT8, .dict = &dict_radius},
+	{ .out = &attr_packet_authenticator, .name = "Packet.Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ NULL }
 };
 
@@ -203,6 +207,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_radius_limit_proxy_state_t	limit_proxy_state = client->limit_proxy_state_is_set ?
 							    client->limit_proxy_state:
 							    inst->limit_proxy_state;
+	fr_pair_t			*packet_vp;
 
 	fr_assert(data[0] < FR_RADIUS_CODE_MAX);
 
@@ -412,6 +417,18 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 
 	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {
 		RPEDEBUG("Failed decoding 'Net.*' packet");
+		return -1;
+	}
+
+	/*
+	 *	Populate Packet structure with Id and Authenticator
+	 */
+	MEM(packet_vp = fr_pair_afrom_da_nested(request->request_ctx, &request->request_pairs, attr_packet_id));
+	packet_vp->vp_uint8 = request->packet->id;
+	MEM(packet_vp = fr_pair_afrom_da_nested(request->request_ctx, &request->request_pairs, attr_packet_authenticator));
+	if (fr_value_box_memdup(packet_vp, &packet_vp->data, NULL, request->packet->data + 4,
+				RADIUS_AUTH_VECTOR_LENGTH, true) < 0) {
+		RPEDEBUG("Failed adding Authenticator pair");
 		return -1;
 	}
 
