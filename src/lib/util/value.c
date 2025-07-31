@@ -179,6 +179,8 @@ size_t const fr_value_box_field_sizes[] = {
 	[FR_TYPE_TIME_DELTA]			= SIZEOF_MEMBER(fr_value_box_t, datum.time_delta),
 	[FR_TYPE_SIZE]				= SIZEOF_MEMBER(fr_value_box_t, datum.size),
 
+	[FR_TYPE_ATTR] 				= SIZEOF_MEMBER(fr_value_box_t, vb_attr),
+
 	[FR_TYPE_VALUE_BOX]			= sizeof(fr_value_box_t),
 
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
@@ -218,6 +220,7 @@ size_t const fr_value_box_offsets[] = {
 
 	[FR_TYPE_TIME_DELTA]			= offsetof(fr_value_box_t, vb_time_delta),
 	[FR_TYPE_SIZE]				= offsetof(fr_value_box_t, vb_size),
+	[FR_TYPE_ATTR]				= offsetof(fr_value_box_t, vb_attr),
 
 	[FR_TYPE_VALUE_BOX]			= 0,
 
@@ -4158,6 +4161,18 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 			fr_value_box_list_insert_tail(&dst->vb_group, new);
 		}
 	}
+		break;
+
+	case FR_TYPE_ATTR:
+		fr_value_box_copy_meta(dst, src);
+
+		/* raw also sets is_unknown */
+		if (src->vb_attr->flags.is_unknown) {
+			dst->vb_attr = fr_dict_attr_unknown_copy(ctx, src->vb_attr);
+			if (!dst->vb_attr) return -1;
+			break;
+		}
+		dst->vb_attr = src->vb_attr;
 		break;
 
 	case FR_TYPE_TLV:
