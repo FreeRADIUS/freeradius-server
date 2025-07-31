@@ -5833,7 +5833,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		 *	No escaping, just dump the name as-is.
 		 */
 		if (!e_rules) {
-			FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, data->enumv, data->vb_attr, false);
+			FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, NULL, data->vb_attr, false);
 			break;
 		}
 
@@ -5846,7 +5846,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 
 			FR_SBUFF_TALLOC_THREAD_LOCAL(&unescaped, 256, 4096);
 
-			FR_DICT_ATTR_OID_PRINT_RETURN(unescaped, data->enumv, data->vb_attr, false);
+			FR_DICT_ATTR_OID_PRINT_RETURN(unescaped, NULL, data->vb_attr, false);
 
 			FR_SBUFF_IN_ESCAPE_RETURN(&our_out, fr_sbuff_start(unescaped),
 						  fr_sbuff_used(unescaped), e_rules);
