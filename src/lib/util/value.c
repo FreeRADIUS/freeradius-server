@@ -2508,6 +2508,15 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 		break
 
 
+static inline int fr_value_box_cast_unsupported(fr_type_t dst, fr_type_t src)
+{
+	fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
+			   fr_type_to_str(src),
+			   fr_type_to_str(dst));
+	return -1;
+}
+
+
 /** Convert any supported type to an IPv4 address
  *
  * Allowed input types are:
@@ -2617,10 +2626,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 		break;
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		return -1;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 
 	return 0;
@@ -2735,10 +2741,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 	}
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		return -1;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 
 	return 0;
@@ -2852,10 +2855,7 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 		break;
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		break;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 
 	return 0;
@@ -2955,10 +2955,7 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 		break;
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		return -1;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 	return 0;
 }
@@ -3017,10 +3014,7 @@ static inline int fr_value_box_cast_to_ethernet(TALLOC_CTX *ctx, fr_value_box_t 
 	}
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		return -1;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 
 	return 0;
@@ -3115,10 +3109,7 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
 		break;
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		return -1;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 
 	return 0;
@@ -3530,10 +3521,7 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 	}
 
 bad_cast:
-	fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-			   fr_type_to_str(src->type),
-			   fr_type_to_str(dst_type));
-	return -1;
+	return fr_value_box_cast_unsupported(dst_type, src->type);
 }
 
 /** Convert any value to a floating point value
@@ -3642,10 +3630,7 @@ static inline int fr_value_box_cast_to_float(UNUSED TALLOC_CTX *ctx, fr_value_bo
 	}
 
 bad_cast:
-	fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-			   fr_type_to_str(src->type),
-			   fr_type_to_str(dst_type));
-	return -1;
+	return fr_value_box_cast_unsupported(dst_type, src->type);
 }
 
 
