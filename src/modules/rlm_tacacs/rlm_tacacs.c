@@ -21,13 +21,13 @@
  *
  * @copyright 2023 Network RADIUS SAS (legal@networkradius.com)
  */
-#include "lib/unlang/action.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/unlang/action.h>
 
 #include "rlm_tacacs.h"
 

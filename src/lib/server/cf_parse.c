@@ -24,12 +24,11 @@
  * @copyright 2000 Miquel van Smoorenburg (miquels@cistron.nl)
  * @copyright 2000 Alan DeKok (aland@freeradius.org)
  */
-#include "lib/util/syserror.h"
-#include <sys/errno.h>
-#include <sys/fcntl.h>
 RCSID("$Id$")
 
 #include <string.h>
+#include <sys/errno.h>
+#include <sys/fcntl.h>
 
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_parse.h>
@@ -42,6 +41,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/perm.h>
+#include <freeradius-devel/util/syserror.h>
 
 static conf_parser_t conf_term = CONF_PARSER_TERMINATOR;
 static char const parse_spaces[] = "                                                                                                                                                                                                                                              ";

@@ -22,7 +22,6 @@
  * @copyright 2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2012-2014 The FreeRADIUS server project
  */
-#include "lib/unlang/action.h"
 RCSID("$Id$")
 
 #define LOG_PREFIX mctx->mi->name
@@ -36,8 +35,10 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/value.h>
+#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/call_env.h>
+#include <freeradius-devel/unlang/xlat.h>
 
 #include "rlm_cache.h"
 

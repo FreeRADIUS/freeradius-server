@@ -24,7 +24,6 @@
  * @copyright 2000,2006,2015-2016 The FreeRADIUS server project
  * @copyright 2025 Network RADIUS SAS
  */
-#include "lib/unlang/action.h"
 RCSID("$Id$")
 
 #define LOG_PREFIX inst->name
@@ -33,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/lsan.h>
+#include <freeradius-devel/unlang/action.h>
 
 #include <Python.h>
 #include <structmember.h>

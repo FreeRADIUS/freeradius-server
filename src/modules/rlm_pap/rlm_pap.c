@@ -23,7 +23,6 @@
  * @copyright 2012 Matthew Newton (matthew@newtoncomputing.co.uk)
  * @copyright 2001 Kostas Kalevras (kkalev@noc.ntua.gr)
  */
-#include "lib/unlang/action.h"
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
@@ -39,6 +38,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/sha1.h>
 
+#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/call_env.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.password.h>

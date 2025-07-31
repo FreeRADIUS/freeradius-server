@@ -23,12 +23,12 @@
  * @copyright 2021 The FreeRADIUS server project
  * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/calc.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 
 #undef XLAT_DEBUG
