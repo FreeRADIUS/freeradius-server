@@ -837,7 +837,7 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		return -2;
 
 	case FR_TYPE_ATTR:
-		return CMP(a->vb_attr, b->vb_attr);
+		return fr_dict_attr_cmp(a->vb_attr, b->vb_attr);
 
 	/*
 	 *	These should be handled at some point
