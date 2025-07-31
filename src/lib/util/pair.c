@@ -1341,8 +1341,6 @@ int fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *to_add)
  */
 int fr_pair_append(fr_pair_list_t *list, fr_pair_t *to_add)
 {
-	PAIR_VERIFY(to_add);
-
 #ifdef WITH_VERIFY_PTR
 	fr_assert(!fr_pair_order_list_in_a_list(to_add));
 	list->verified = false;
