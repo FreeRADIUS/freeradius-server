@@ -60,8 +60,6 @@ do { \
  */
 static bool filedone = false;
 static int my_debug_lvl = 0;
-static unlang_result_t result = UNLANG_RESULT_NOT_SET;
-
 
 char const *radiusd_version = RADIUSD_VERSION_BUILD("unit_test_module");
 
@@ -195,8 +193,6 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	fr_dcursor_t	cursor;
 
 	static int	number = 0;
-
-	result = UNLANG_RESULT_NOT_SET;
 
 	if (!dict_protocol) {
 		fr_strerror_printf_push("%s dictionary failed to load", PROTOCOL_NAME);
@@ -357,7 +353,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	 *	New async listeners
 	 */
 	request->async = talloc_zero(request, fr_async_t);
-	unlang_call_push(&result, request, server_cs, UNLANG_TOP_FRAME);
+	unlang_call_push(NULL, request, server_cs, UNLANG_TOP_FRAME);
 
 	return request;
 }
