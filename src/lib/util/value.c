@@ -657,7 +657,20 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 		fr_value_box_list_init(&dst->vb_group);
 		break;
 
-	default:
+	case FR_TYPE_NUMERIC:
+	case FR_TYPE_IP:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_ATTR:
+	case FR_TYPE_NULL:
+		break;
+
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_INTERNAL:
+		fr_assert(0);
 		break;
 	}
 
@@ -1100,12 +1113,27 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 
 		goto cmp_prefix_v6;
 
-	default:
+	case FR_TYPE_NUMERIC:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_VARIABLE_SIZE:
+	case FR_TYPE_ATTR:
+	case FR_TYPE_NULL:
 	cmp:
 		compare = fr_value_box_cmp(a, b);
 		if (compare < -1) {	/* comparison error */
 			return -2;
 		}
+		break;
+
+	case FR_TYPE_GROUP:
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_INTERNAL:
+		fr_assert(0);
+		return -2;
 	}
 
 	/*
@@ -1285,7 +1313,16 @@ size_t fr_value_substr_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, c
 int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 {
 	switch (src->type) {
-	default:
+	case FR_TYPE_INT16:
+	case FR_TYPE_INT32:
+	case FR_TYPE_INT64:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
+	case FR_TYPE_FLOAT32:
+	case FR_TYPE_FLOAT64:
+	case FR_TYPE_DATE:
+	case FR_TYPE_TIME_DELTA:
 		break;
 
 	case FR_TYPE_BOOL:
@@ -1307,6 +1344,7 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 		fr_value_box_init_null(dst);
 		return 0;
 
+	case FR_TYPE_ATTR:
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
 	case FR_TYPE_INTERNAL:
@@ -1414,7 +1452,16 @@ size_t fr_value_box_network_length(fr_value_box_t const *value)
 		FALL_THROUGH;
 
 	default:
+		fr_assert(network_min_size(value->type) != 0);
 		return network_min_size(value->type);
+
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_INTERNAL:
+		fr_assert(0);
+		return -1;
 	}
 }
 
@@ -1537,8 +1584,17 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		break;
 
 	default:
+		fr_assert(network_min_size(value->type) != 0);
 		min = network_min_size(value->type);
 		break;
+
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_INTERNAL:
+		fr_assert(0);
+		return -1;
 	}
 
 	/*
@@ -2487,12 +2543,29 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 					   fr_value_box_field_sizes[src->type], src->tainted);
 	}
 
-	default:
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_INTERNAL:
+	case FR_TYPE_NULL:
+	case FR_TYPE_ATTR:
+	case FR_TYPE_COMBO_IP_ADDR: /* the types should have been realized to ipv4 / ipv6 */
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_OCTETS:	/* handled above*/
+		break;
+
+
 		/* Not the same talloc_memdup call as above.  The above memdup reads data from the dst */
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
 		return fr_value_box_memdup(ctx, dst, dst_enumv,
 					   fr_value_box_raw(src, src->type),
 					   fr_value_box_field_sizes[src->type], src->tainted);
 	}
+
+	fr_assert(0);
+	return -1;
 }
 
 #define CAST_IP_FIX_COMBO 	\
@@ -4075,7 +4148,10 @@ void fr_value_box_clear(fr_value_box_t *data)
 int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src)
 {
 	switch (src->type) {
-	default:
+	case FR_TYPE_NUMERIC:
+	case FR_TYPE_IP:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
 		fr_value_box_memcpy_out(fr_value_box_raw(dst, src->type), src);
 		fr_value_box_copy_meta(dst, src);
 		break;
@@ -4164,11 +4240,18 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 		dst->vb_attr = src->vb_attr;
 		break;
 
+	case FR_TYPE_VALUE_BOX_CURSOR: /* ??? is this correct ??? */
+	case FR_TYPE_PAIR_CURSOR:
+		break;
+
 	case FR_TYPE_TLV:
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
-	case FR_TYPE_INTERNAL:
+	case FR_TYPE_VOID:
+	case FR_TYPE_VALUE_BOX:
+	case FR_TYPE_MAX:
+		fr_assert(0);
 		fr_strerror_printf("Cannot copy data type '%s'", fr_type_to_str(src->type));
 		return -1;
 	}
@@ -4907,6 +4990,7 @@ void fr_value_box_increment(fr_value_box_t *vb)
 		return;
 
 	default:
+		fr_assert_fail(NULL);
 		return;
 	}
 }
@@ -6326,6 +6410,11 @@ int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t const
 		fr_strerror_printf("Cannot escape data type '%s'", fr_type_to_str(vb->type));
 		return -1;
 
+	case FR_TYPE_ATTR:
+		fr_assert(0);	/* @todo - print to string, and then escape? */
+		fr_strerror_printf("Cannot escape data type '%s'", fr_type_to_str(vb->type));
+		return -1;
+
 	default:
 		break;
 	}
@@ -6519,7 +6608,15 @@ uint32_t fr_value_box_hash(fr_value_box_t const *vb)
 	case FR_TYPE_OCTETS:
 		return fr_hash(vb->vb_octets, vb->vb_length);
 
-	default:
+	case FR_TYPE_ATTR:
+		return fr_hash(&vb->vb_attr, sizeof(vb->vb_attr));
+
+	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_INTERNAL:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_NULL:
+		fr_assert(0);
 		break;
 	}
 
@@ -6793,7 +6890,11 @@ bool fr_value_box_is_truthy(fr_value_box_t const *in)
 	switch (in->type) {
 	case FR_TYPE_NULL:
 	case FR_TYPE_STRUCTURAL_EXCEPT_GROUP:
-		return false;
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_ATTR:
+	case FR_TYPE_INTERNAL:
+		break;
 
 	case FR_TYPE_GROUP:
 		return (fr_value_box_list_num_elements(&in->vb_group) > 0);
@@ -6813,11 +6914,17 @@ bool fr_value_box_is_truthy(fr_value_box_t const *in)
 	case FR_TYPE_IPV6_PREFIX:
 		return !((in->vb_ip.prefix == 0) && fr_ipaddr_is_inaddr_any(&in->vb_ip));
 
-	default:
+	case FR_TYPE_INTEGER_EXCEPT_BOOL:
+	case FR_TYPE_FLOAT32:
+	case FR_TYPE_FLOAT64:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
 		fr_value_box_init_null(&box);
 		if (fr_value_box_cast(NULL, &box, FR_TYPE_BOOL, NULL, in) < 0) return false;
 		return box.vb_bool;
 	}
+
+	return false;
 }
 
 #define INFO_INDENT(_fmt, ...)  fprintf(fp, "%*s" _fmt "\n", depth * 2, " ", ## __VA_ARGS__)
