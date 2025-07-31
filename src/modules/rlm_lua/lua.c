@@ -113,6 +113,7 @@ static int fr_lua_marshall(request_t *request, lua_State *L, fr_pair_t const *vp
 	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_IFID:
 	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_ATTR:
 	{
 		char	buff[128];
 		ssize_t	slen;
@@ -193,7 +194,6 @@ static int fr_lua_marshall(request_t *request, lua_State *L, fr_pair_t const *vp
 		lua_pushinteger(L, (lua_Integer)vp->vp_size);
 		break;
 
-	case FR_TYPE_ATTR:
 	case FR_TYPE_NON_LEAF:
 		REDEBUG("Cannot convert %s to Lua type", fr_type_to_str(vp->vp_type));
 		return -1;

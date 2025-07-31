@@ -250,6 +250,7 @@ static mrb_value mruby_pair_value_to_ruby(mrb_state *mrb, request_t *request, fr
 	case FR_TYPE_IFID:
 	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_DATE:
+	case FR_TYPE_ATTR:
 	{
 		char		*in;
 		size_t		len;
@@ -261,7 +262,6 @@ static mrb_value mruby_pair_value_to_ruby(mrb_state *mrb, request_t *request, fr
 		return value;
 	}
 
-	case FR_TYPE_ATTR:
 	case FR_TYPE_NON_LEAF:
 		REDEBUG("Cannot convert %s to ruby type", fr_type_to_str(vp->vp_type));
 		break;
@@ -319,7 +319,7 @@ static void mruby_pair_parent_build(mrb_state *mrb, mruby_pair_t *pair)
 /** Convert a ruby value to a fr_pair_t value
  *
  */
-static void mruby_roby_to_pair_value(mrb_state *mrb, mrb_value *value, fr_pair_t *vp)
+static void mruby_ruby_to_pair_value(mrb_state *mrb, mrb_value *value, fr_pair_t *vp)
 {
 	switch (vp->vp_type) {
 	case FR_TYPE_STRING:
@@ -367,6 +367,23 @@ static void mruby_roby_to_pair_value(mrb_state *mrb, mrb_value *value, fr_pair_t
 	RUBYSETFLOAT(32)
 	RUBYSETFLOAT(64)
 
+	case FR_TYPE_SIZE:
+		if (mrb_type(*value) != MRB_TT_INTEGER) {
+			mrb_raise(mrb, E_ARGUMENT_ERROR, "Integer value required");
+		}
+		vp->vp_size = mrb_integer(*value);
+		break;
+
+	case FR_TYPE_BOOL:
+		if (mrb_type(*value) == MRB_TT_TRUE) {
+			vp->vp_bool = true;
+		} else if (mrb_type(*value) == MRB_TT_FALSE) {
+			vp->vp_bool = false;
+		} else {
+			mrb_raise(mrb, E_ARGUMENT_ERROR, "Boolean value required");
+		}
+		break;
+
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV6_ADDR:
@@ -377,13 +394,15 @@ static void mruby_roby_to_pair_value(mrb_state *mrb, mrb_value *value, fr_pair_t
 	case FR_TYPE_IFID:
 	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_DATE:
+	case FR_TYPE_ATTR:
+
 		*value = mrb_obj_as_string(mrb, *value);
 		if (fr_pair_value_from_str(vp, RSTRING_PTR(*value), RSTRING_LEN(*value), NULL, false) < 0) {
 			mrb_raise(mrb, E_RUNTIME_ERROR, "Failed populating pair");
 		}
 		break;
 
-	default:
+	case FR_TYPE_NON_LEAF:
 		fr_assert(0);
 		break;
 	}
@@ -429,7 +448,7 @@ static mrb_value mruby_value_pair_set(mrb_state *mrb, mrb_value self)
 		}
 	}
 
-	mruby_roby_to_pair_value(mrb, &value, vp);
+	mruby_ruby_to_pair_value(mrb, &value, vp);
 
 	RDEBUG2("%pP", vp);
 	return mrb_nil_value();
@@ -459,7 +478,7 @@ static mrb_value mruby_value_pair_append(mrb_state *mrb, mrb_value self)
 		mrb_raisef(mrb, E_RUNTIME_ERROR, "Failed adding %s", pair->da->name);
 	}
 
-	mruby_roby_to_pair_value(mrb, &value, vp);
+	mruby_ruby_to_pair_value(mrb, &value, vp);
 
 	RDEBUG2("%pP", vp);
 	return mrb_nil_value();

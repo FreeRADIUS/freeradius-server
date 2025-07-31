@@ -603,6 +603,7 @@ static int perl_value_marshal(fr_pair_t *vp, SV **value)
 	case FR_TYPE_IFID:
 	case FR_TYPE_DATE:
 	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_ATTR:
 	{
 		char	buff[128];
 		ssize_t	slen;
@@ -619,7 +620,6 @@ static int perl_value_marshal(fr_pair_t *vp, SV **value)
 		break;
 
 	/* Only leaf nodes should be able to call this */
-	case FR_TYPE_ATTR:
 	case FR_TYPE_NON_LEAF:
 		croak("Cannot convert %s to Perl type", fr_type_to_str(vp->vp_type));
 		return -1;
