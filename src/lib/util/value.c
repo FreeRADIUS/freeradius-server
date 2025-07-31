@@ -137,7 +137,7 @@ static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_DATE]				= {2, 8},  //!< 2, 4, or 8 only
 	[FR_TYPE_TIME_DELTA]   			= {2, 8},  //!< 2, 4, or 8 only
 
-	[FR_TYPE_ATTR]				= {1, 4},
+	[FR_TYPE_ATTR]				= {1, ~0},
 
 	[FR_TYPE_MAX]				= {~0, 0}		//!< Ensure array covers all types.
 };
