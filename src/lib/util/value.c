@@ -4210,6 +4210,11 @@ void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		dst->datum.ptr = ctx ? talloc_reference(ctx, src->datum.ptr) : src->datum.ptr;
 		fr_value_box_copy_meta(dst, src);
 		break;
+
+	case FR_TYPE_ATTR:
+		dst->vb_attr = src->vb_attr;
+		fr_value_box_copy_meta(dst, src);
+		break;
 	}
 }
 
