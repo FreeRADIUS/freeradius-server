@@ -313,10 +313,6 @@ void _fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent, fr_pair_
 	fr_sbuff_t sbuff;
 	char buffer[1024];
 
-#ifdef STATIC_ANALYZER
-	buffer[0] = '\0';
-#endif
-
 	fr_sbuff_init_out(&sbuff, buffer, sizeof(buffer));
 
 	fr_pair_list_log_sbuff(log, lvl, parent, list, file, line, &sbuff);
@@ -388,10 +384,6 @@ void fr_pair_debug(FILE *fp, fr_pair_t const *pair)
 {
 	fr_sbuff_t sbuff;
 	char buffer[1024];
-
-#ifdef STATIC_ANALYZER
-	buffer[0] = '\0';
-#endif
 
 	fr_sbuff_init_out(&sbuff, buffer, sizeof(buffer));
 
