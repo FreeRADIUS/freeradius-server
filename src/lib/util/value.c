@@ -850,6 +850,14 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		return -2;
 
 	case FR_TYPE_ATTR:
+		/*
+		 *	@todo - this makes things _distinct_, but doesn't provide a _full_ order.  We
+		 *	generally don't need a full ordering for attributes.
+		 *
+		 *	The need to call fr_dict_attr_cmp() here is for comparing raw / unknown attributes
+		 *	which come from xlats.  Unknown / raw attributes which are in policies are added to
+		 *	the dictionaries when the server starts, and are thus known.
+		 */
 		return fr_dict_attr_cmp(a->vb_attr, b->vb_attr);
 
 	/*

@@ -194,6 +194,11 @@ static fr_dict_flag_parser_t const dhcpv4_flags[] = {
 	{ L("prefix"),		{ .func = dict_flag_prefix } }
 };
 
+/*
+ *	@todo - arguably we don't want to mutate the input list.
+ *	Instead, the encoder should just do 3 passes, where middle one
+ *	ignores the message-type and option 82.
+ */
 int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 {
 	fr_pair_t const *my_a = a, *my_b = b;
