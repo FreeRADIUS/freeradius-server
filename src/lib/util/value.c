@@ -4248,16 +4248,14 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 		dst->vb_attr = src->vb_attr;
 		break;
 
-	case FR_TYPE_VALUE_BOX_CURSOR: /* ??? is this correct ??? */
-	case FR_TYPE_PAIR_CURSOR:
-		break;
-
 	case FR_TYPE_TLV:
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_VOID:
 	case FR_TYPE_VALUE_BOX:
+	case FR_TYPE_VALUE_BOX_CURSOR:
+	case FR_TYPE_PAIR_CURSOR:
 	case FR_TYPE_MAX:
 		fr_assert(0);
 		fr_strerror_printf("Cannot copy data type '%s'", fr_type_to_str(src->type));
