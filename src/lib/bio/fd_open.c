@@ -815,7 +815,10 @@ done:
 	return fr_bio_fd_socket_name(my);
 }
 
-static void fr_bio_fd_name(fr_bio_fd_t *my)
+/**  Set the name of an FD BIO
+ *
+ */
+void fr_bio_fd_name(fr_bio_fd_t *my)
 {
 	fr_bio_fd_config_t const *cfg = my->info.cfg;
 
@@ -847,7 +850,6 @@ static void fr_bio_fd_name(fr_bio_fd_t *my)
 		break;
 
 	case FR_BIO_FD_CONNECTED:
-	case FR_BIO_FD_ACCEPTED:
 		switch (my->info.socket.af) {
 		case AF_INET:
 		case AF_INET6:
@@ -889,8 +891,6 @@ static void fr_bio_fd_name(fr_bio_fd_t *my)
 		break;
 
 	case FR_BIO_FD_LISTEN:
-		fr_assert(cfg->socket_type == SOCK_STREAM);
-
 		switch (my->info.socket.af) {
 		case AF_INET:
 		case AF_INET6:
@@ -977,11 +977,6 @@ int fr_bio_fd_check_config(fr_bio_fd_config_t const *cfg)
 			return -1;
 		}
 		break;
-
-	case FR_BIO_FD_ACCEPTED:
-		fr_assert(cfg->src_ipaddr.af != AF_UNSPEC);
-		fr_assert(cfg->dst_ipaddr.af != AF_UNSPEC);
-		break;
 	}
 
 	return 0;
@@ -998,11 +993,6 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
 	fr_strerror_clear();
-
-	if (cfg->type == FR_BIO_FD_ACCEPTED) {
-		fr_strerror_const("Connection is already open");
-		return fr_bio_error(GENERIC);
-	}
 
 	my->info = (fr_bio_fd_info_t) {
 		.socket = {
@@ -1079,10 +1069,6 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		case FR_BIO_FD_LISTEN:
 			fr_assert(my->info.socket.inet.src_ipaddr.af != AF_UNSPEC);
 			break;
-
-		case FR_BIO_FD_ACCEPTED:
-			fr_assert(0);
-			break;
 		}
 
 		if (cfg->socket_type == SOCK_STREAM) {
@@ -1103,7 +1089,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		fd = socket(my->info.socket.af, my->info.socket.type, protocol);
 		if (fd < 0) {
 			fr_strerror_printf("Failed opening socket: %s", fr_syserror(errno));
-			return -1;
+			return fr_bio_error(GENERIC);
 		}
 
 	} else if (cfg->path) {
@@ -1114,7 +1100,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		fd = socket(my->info.socket.af, my->info.socket.type, 0);
 		if (fd < 0) {
 			fr_strerror_printf("Failed opening domain socket %s: %s", cfg->path, fr_syserror(errno));
-			return -1;
+			return fr_bio_error(GENERIC);
 		}
 
 	} else {
@@ -1165,7 +1151,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		}
 		if (fd < 0) {
 			fr_strerror_printf("Failed opening file %s: %s", cfg->filename, fr_syserror(errno));
-			return -1;
+			return fr_bio_error(GENERIC);
 		}
 	}
 
@@ -1173,7 +1159,8 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	 *	Set it to be non-blocking if required.
 	 */
 	if (cfg->async && (fr_nonblock(fd) < 0)) {
-		fr_strerror_printf("Failed opening setting O_NONBLOCK: %s", fr_syserror(errno));
+		fr_strerror_printf("Failed setting O_NONBLOCK: %s", fr_syserror(errno));
+		rcode = fr_bio_error(GENERIC);
 
 	fail:
 		my->info.socket = (fr_socket_t) {
@@ -1182,7 +1169,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		my->info.state = FR_BIO_FD_STATE_CLOSED;
 		my->info.cfg = NULL;
 		close(fd);
-		return -1;
+		return rcode;
 	}
 
 #ifdef FD_CLOEXEC
@@ -1192,7 +1179,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	rcode = fcntl(fd, F_GETFD);
 	if (rcode >= 0) {
 		if (fcntl(fd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
-			fr_strerror_printf("Failed opening setting FD_CLOEXE: %s", fr_syserror(errno));
+			fr_strerror_printf("Failed  setting FD_CLOEXEC: %s", fr_syserror(errno));
 			goto fail;
 		}
 	}
@@ -1287,15 +1274,14 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		if (fr_bio_fd_init_connected(my) < 0) goto fail;
 		break;
 
-	case FR_BIO_FD_ACCEPTED:
-		fr_assert(0);
-		break;
-
 		/*
 		 *	Server socket which listens for new stream connections
 		 */
 	case FR_BIO_FD_LISTEN:
-		fr_assert(my->info.socket.type == SOCK_STREAM);
+		if ((my->info.socket.type == SOCK_DGRAM) && !cfg->reuse_port) {
+			fr_strerror_const("reuseport must be set for datagram sockets");
+			goto fail;
+		}
 
 		switch (my->info.socket.af) {
 		case AF_INET:

@@ -68,7 +68,6 @@ typedef enum {
 	FR_BIO_FD_CONNECTED,		//!< connected client sockets (UDP or TCP)
 	FR_BIO_FD_LISTEN,		//!< returns new fd in buffer on fr_bio_read() or fr_bio_fd_accept()
 					// updates #fr_bio_fd_packet_ctx_t on successful FD read.
-	FR_BIO_FD_ACCEPTED,		//!< temporarily until it's connected.
 } fr_bio_fd_type_t;
 
 /** Configuration for sockets
