@@ -1135,7 +1135,6 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	{
 		xlat_action_t		xa;
 		xlat_thread_inst_t	*t;
-		fr_value_box_list_t	result_copy;
 
 		t = xlat_thread_instance_find(node);
 		fr_assert(t);
@@ -1146,21 +1145,14 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		VALUE_BOX_LIST_VERIFY(result);
 
-		/*
-		 *	Always need to init and free the
-		 *	copy list as debug level could change
-		 *	when the xlat function executes.
-		 */
-		fr_value_box_list_init(&result_copy);
+		if (RDEBUG_ENABLED2) {
+			REXDENT();
+			xlat_debug_log_expansion(request, *in, result, __LINE__);
+			RINDENT();
+		}
 
-		/*
-		 *	Need to copy the input list in case
-		 *	the async function mucks with it.
-		 */
-		if (RDEBUG_ENABLED2) fr_value_box_list_acopy(unlang_interpret_frame_talloc_ctx(request), &result_copy, result);
 		xa = xlat_process_args(ctx, result, request, node);
 		if (xa == XLAT_ACTION_FAIL) {
-			fr_value_box_list_talloc_free(&result_copy);
 			return xa;
 		}
 
@@ -1169,13 +1161,6 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   XLAT_CTX(node->call.inst->data, t->data, node, t->mctx, env_data, NULL),
 					   request, result);
 		VALUE_BOX_LIST_VERIFY(result);
-
-		if (RDEBUG_ENABLED2) {
-			REXDENT();
-			xlat_debug_log_expansion(request, *in, &result_copy, __LINE__);
-			RINDENT();
-		}
-		fr_value_box_list_talloc_free(&result_copy);
 
 		switch (xa) {
 		case XLAT_ACTION_FAIL:
