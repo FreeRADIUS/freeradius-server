@@ -560,6 +560,8 @@ do { \
 	.is_const	= IS_CONST(char *, _start) \
 })
 
+#define FR_SBUFF_IN_STR(_start) FR_SBUFF_IN(_start, strlen(_start))
+
 /** Structure to encapsulate a thread local sbuff information
  *
  */
