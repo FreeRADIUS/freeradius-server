@@ -2478,7 +2478,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *dctx, char **argv, int a
 {
 	fr_dict_attr_t		*da;
 	fr_value_box_t		value = FR_VALUE_BOX_INITIALISER_NULL(value);
-	fr_slen_t		enum_len;
+	size_t			enum_len;
 	fr_dict_attr_t const 	*parent = dctx->stack[dctx->stack_depth].da;
 
 	if (argc != 3) {
@@ -2509,9 +2509,39 @@ static int dict_read_process_value(dict_tokenize_ctx_t *dctx, char **argv, int a
 	/*
 	 *	Verify the enum name matches the expected from.
 	 */
-	enum_len = (fr_slen_t)strlen(argv[1]);
-	if (fr_dict_enum_name_from_substr(NULL, NULL, &FR_SBUFF_IN(argv[1], enum_len), NULL) != enum_len) {
+	enum_len = strlen(argv[1]);
+	if (fr_dict_enum_name_from_substr(NULL, NULL, &FR_SBUFF_IN(argv[1], enum_len), NULL) != (fr_slen_t) enum_len) {
 		fr_strerror_printf_push("Invalid VALUE name '%s' for attribute '%s'", argv[1], da->name);
+		return -1;
+	}
+
+	/*
+	 *	enum names cannot be integers.  People should just use the integer instead.
+	 *
+	 *	But what about IPv6 addresses, which also use a "::" prefix?
+	 *
+	 *	The ::FOO addresses were historically part of the "ipv4 compatible ipv6 address" range
+	 *	"::0.0.0.0/96".  That range has since been deprecated, and the "::FOO" range is tracked in the
+	 *	IANA Special-Purpose Address Registry.  That lists three things beginning with ::
+	 *
+	 *	* ::/128  - unspecified address (i.e. ::0/128).
+	 *	* ::1/128 - Loopback address
+	 *	* ::ffff:0:0/96 - IPv4-mapped address.
+	 *
+	 *	Since IPv6 addresses are 128 bits, the first two are just ::0 and ::1.  No other possibilities
+	 *	exist.
+	 *
+	 *	For the range "::ffff:0:0/96", a value such as "::ffff:192.168.1.2 is not a valid enum name.
+	 *	It contains an extra ':' (and MUST contain the extra ':'), and the ':' is not allowed in an
+	 *	enum name.
+	 *
+	 *	IANA could assign other values in the :: range, but this seems unlikely.
+	 *
+	 *	As a result, the only overlap between enum ::FOO and IPv6 addresses is the single case of ::1.
+	 *	This check disallows that.
+	 */
+	if (fr_sbuff_adv_past_allowed( &FR_SBUFF_IN(argv[1], enum_len), SIZE_MAX, sbuff_char_class_int, NULL) == enum_len) {
+		fr_strerror_printf("Invalid VALUE name '%s' for attribute '%s' - the name cannot be an integer", argv[1], da->name);
 		return -1;
 	}
 
