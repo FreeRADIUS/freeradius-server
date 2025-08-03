@@ -847,7 +847,7 @@ static int dict_attr_add_or_fixup(dict_fixup_ctx_t *fixup, fr_dict_attr_t **da_p
 			/*
 			 *	IF the ref exists, we can always add it.  The ref won't be changed later.
 			 */
-			if (dict_protocol_reference(&src, da->parent, ref->unresolved) < 0) return -1;
+			if (fr_dict_protocol_reference(&src, da->parent, &FR_SBUFF_IN_STR(ref->unresolved)) < 0) return -1;
 
 			if (src && (dict_attr_ref_set(*da_p, src, FR_DICT_ATTR_REF_ALIAS) < 0)) return -1;
 
@@ -877,7 +877,7 @@ static int dict_attr_add_or_fixup(dict_fixup_ctx_t *fixup, fr_dict_attr_t **da_p
 			 *	@todo - if we defer this clone, we get errors loading dictionary.wimax.  That
 			 *	likely means there are issues with the dict_fixup_clone_apply() function.
 			 */
-			if (dict_protocol_reference(&src, da->parent, ref->unresolved) < 0) return -1;
+			if (fr_dict_protocol_reference(&src, da->parent, &FR_SBUFF_IN_STR(ref->unresolved)) < 0) return -1;
 			if (src) {
 				if (dict_fixup_clone(da_p, src) < 0) return -1;
 				break;
