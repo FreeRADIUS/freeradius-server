@@ -218,7 +218,7 @@ static unlang_t *unlang_compile_timeout(unlang_t *parent, unlang_compile_ctx_t *
 		RULES_VERIFY(&t_rules);
 
 		slen = tmpl_afrom_substr(gext, &vpt,
-					 &FR_SBUFF_IN(name2, strlen(name2)),
+					 &FR_SBUFF_IN_STR(name2),
 					 token,
 					 NULL,
 					 &t_rules);

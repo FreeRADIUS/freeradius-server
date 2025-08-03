@@ -35,7 +35,7 @@ fr_slen_t fr_size_to_str(fr_sbuff_t *out, size_t in);
 */
 
 
-#define test_str(_str)	&FR_SBUFF_IN(_str, strlen(_str))
+#define test_str(_str)	&FR_SBUFF_IN_STR(_str)
 #define test_out(_buff)	&FR_SBUFF_OUT(_buff, sizeof(_buff))
 
 static char buff[sizeof("18446744073709551615") + 3];

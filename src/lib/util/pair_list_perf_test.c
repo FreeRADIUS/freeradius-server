@@ -209,7 +209,7 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 		while ((p = strchr(p, '#'))) {
 			*p = (char)(i + 48);
 		}
-		slen = fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(prep_pairs, strlen(prep_pairs)));
+		slen = fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN_STR(prep_pairs));
 		if (slen <= 0) fr_perror("pair_list_perf_tests");
 		TEST_ASSERT(slen > 0);
 

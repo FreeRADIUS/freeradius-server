@@ -108,7 +108,7 @@ int active_directory_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no,
 		DEBUG2("LDAP filter %s does not match Active Directory requirements, parsing for local filtering.",
 			sync->config->filter);
 		filter = "(objectClass=*)";
-		ret = fr_ldap_filter_parse(sync, &sync->filter, &FR_SBUFF_IN(config->filter, strlen(config->filter)),
+		ret = fr_ldap_filter_parse(sync, &sync->filter, &FR_SBUFF_IN_STR(config->filter),
 					   active_directory_sync_attr_add, UNCONST(sync_config_t *,config));
 		if (ret < 0) {
 			CONF_ITEM	*ci;

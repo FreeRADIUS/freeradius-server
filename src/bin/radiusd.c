@@ -285,7 +285,7 @@ int main(int argc, char *argv[])
 		 */
 		env = getenv("FR_GLOBAL_POOL");
 		if (env) {
-			if (fr_size_from_str(&pool_size, &FR_SBUFF_IN(env, strlen(env))) < 0) {
+			if (fr_size_from_str(&pool_size, &FR_SBUFF_IN_STR(env)) < 0) {
 				fr_perror("%s: Invalid pool size string \"%s\"", program, env);
 				EXIT_WITH_FAILURE;
 			}

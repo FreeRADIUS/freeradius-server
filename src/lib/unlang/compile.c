@@ -1802,7 +1802,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_ctx_t *unlang_c
 	slen = module_rlm_by_name_and_method(m, &m->mmc,
 					     unlang_ctx->vs,
 					     &(section_name_t){ .name1 = unlang_ctx->section_name1, .name2 = unlang_ctx->section_name2 },
-					     &FR_SBUFF_IN(name, strlen(name)),
+					     &FR_SBUFF_IN_STR(name),
 					     unlang_ctx->rules);
 	if (slen < 0) {
 		cf_log_perr(ci, "Failed compiling module call");

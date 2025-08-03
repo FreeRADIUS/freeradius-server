@@ -173,7 +173,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_ctx_t *u
 
 		p_rules.terminals = &if_terminals;
 
-		slen = xlat_tokenize_condition(cs, &head, &FR_SBUFF_IN(name2, strlen(name2)), &p_rules, &t_rules);
+		slen = xlat_tokenize_condition(cs, &head, &FR_SBUFF_IN_STR(name2), &p_rules, &t_rules);
 		if (slen == 0) {
 			cf_canonicalize_error(cs, slen, "Empty conditions are invalid", name2);
 			return NULL;

@@ -280,7 +280,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 		quote = cf_section_name2_quote(cs);
 		gext = unlang_group_to_load_balance(g);
 		slen = tmpl_afrom_substr(gext, &gext->vpt,
-					 &FR_SBUFF_IN(name2, strlen(name2)),
+					 &FR_SBUFF_IN_STR(name2),
 					 quote,
 					 NULL,
 					 &t_rules);

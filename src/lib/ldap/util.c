@@ -607,7 +607,7 @@ int fr_ldap_filter_to_tmpl(TALLOC_CTX *ctx, tmpl_rules_t const *t_rules, char co
 		in = buffer;
 	}
 
-	len = tmpl_afrom_substr(ctx, &parsed, &FR_SBUFF_IN(in, strlen(in)), T_DOUBLE_QUOTED_STRING, NULL, t_rules);
+	len = tmpl_afrom_substr(ctx, &parsed, &FR_SBUFF_IN_STR(in), T_DOUBLE_QUOTED_STRING, NULL, t_rules);
 
 	talloc_free(buffer);
 

@@ -1758,7 +1758,7 @@ ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *reques
 	 *	Give better errors than the old code.
 	 */
 	len = xlat_tokenize(ctx, &head,
-			    &FR_SBUFF_IN(fmt, strlen(fmt)),
+			    &FR_SBUFF_IN_STR(fmt),
 			    NULL,
 			    &(tmpl_rules_t){
 				    .attr = {

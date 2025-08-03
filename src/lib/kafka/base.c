@@ -165,7 +165,7 @@ static int kafka_config_dflt_single(CONF_PAIR **out, UNUSED void *parent, CONF_S
 		fr_sbuff_t 	value_elem = FR_SBUFF_IN(tmp, sizeof(tmp));
 		size_t		size;
 
-		if (fr_size_from_str(&size, &FR_SBUFF_IN(value, strlen(value))) < 0) {
+		if (fr_size_from_str(&size, &FR_SBUFF_IN_STR(value)) < 0) {
 			cf_log_perr(cs, "Failed parsing default \"%s\"", value);
 			return -1;
 		}

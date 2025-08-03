@@ -195,7 +195,7 @@ int main(int argc, char **argv)
 			return 1;
 		}
 
-		len = fr_base32_decode(&FR_DBUFF_TMP(key, sizeof(key)), &FR_SBUFF_IN(argv[2], strlen(argv[2])), true, true);
+		len = fr_base32_decode(&FR_DBUFF_TMP(key, sizeof(key)), &FR_SBUFF_IN_STR(argv[2]), true, true);
 		printf("Decoded %ld %s\n", len, key);
 
 		for (p = key; p < (key + len); p++) {

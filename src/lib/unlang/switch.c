@@ -191,7 +191,7 @@ static unlang_t *unlang_compile_case(unlang_t *parent, unlang_compile_ctx_t *unl
 		quote = cf_section_name2_quote(cs);
 
 		slen = tmpl_afrom_substr(cs, &vpt,
-					 &FR_SBUFF_IN(name2, strlen(name2)),
+					 &FR_SBUFF_IN_STR(name2),
 					 quote,
 					 NULL,
 					 &t_rules);
@@ -326,12 +326,12 @@ static unlang_t *unlang_compile_switch(unlang_t *parent, unlang_compile_ctx_t *u
 
 	if ((token == T_BARE_WORD) && (name2[0] != '%')) {
 		slen = tmpl_afrom_attr_substr(gext, NULL, &gext->vpt,
-					      &FR_SBUFF_IN(name2, strlen(name2)),
+					      &FR_SBUFF_IN_STR(name2),
 					      NULL,
 					      &t_rules);
 	} else {
 		slen = tmpl_afrom_substr(gext, &gext->vpt,
-					 &FR_SBUFF_IN(name2, strlen(name2)),
+					 &FR_SBUFF_IN_STR(name2),
 					 token,
 					 NULL,
 					 &t_rules);

@@ -877,7 +877,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 		MEM(tmp_ctx = talloc_init_const("tmp"));
 
 		slen = tmpl_request_ref_list_afrom_substr(ctx, NULL, &our_lhs_rules.attr.request_def,
-							  &FR_SBUFF_IN(p, strlen(p)));
+							  &FR_SBUFF_IN_STR(p));
 		if (slen < 0) {
 			cf_log_err(ci, "Invalid reference - %s", fr_strerror());
 			talloc_free(tmp_ctx);
@@ -885,7 +885,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 		}
 		p += slen;
 
-		slen = tmpl_attr_list_from_substr(&our_lhs_rules.attr.list_def, &FR_SBUFF_IN(p, strlen(p)));
+		slen = tmpl_attr_list_from_substr(&our_lhs_rules.attr.list_def, &FR_SBUFF_IN_STR(p));
 		if (slen == 0) {
 			cf_log_err(ci, "Unknown list reference \"%s\"", p);
 			talloc_free(tmp_ctx);
@@ -1386,7 +1386,7 @@ int map_afrom_value_box(TALLOC_CTX *ctx, map_t **out,
 	map = map_alloc(ctx, NULL);
 
 	slen = tmpl_afrom_substr(map, &map->lhs,
-				 &FR_SBUFF_IN(lhs, strlen(lhs)),
+				 &FR_SBUFF_IN_STR(lhs),
 				 lhs_quote,
 				 NULL,
 				 lhs_rules);
@@ -2623,7 +2623,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		fr_assert(tmpl_is_attr(parent->lhs));
 		my_rules.attr.namespace = tmpl_attr_tail_da(parent->lhs);
 
-		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &FR_SBUFF_IN(lhs, strlen(lhs)),
+		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &FR_SBUFF_IN_STR(lhs),
 					      &map_parse_rules_bareword_quoted, lhs_rules);
 	} else {
 		/*
@@ -2782,7 +2782,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		/*
 		 *	Parse it as the given data type.
 		 */
-		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs, strlen(rhs)),
+		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN_STR(rhs),
 					 T_BARE_WORD, value_parse_rules_unquoted[T_BARE_WORD], &my_rules);
 		if (slen <= 0) {
 			goto parse_as_attr;

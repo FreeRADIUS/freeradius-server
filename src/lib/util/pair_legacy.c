@@ -718,7 +718,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		 *
 		 *		foo = { bar = baz }
 		 */
-		if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(buf, strlen(buf))) < 0) {
+		if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN_STR(buf)) < 0) {
 			*pfiledone = false;
 			fr_pair_list_free(&tmp_list);
 			return -1;

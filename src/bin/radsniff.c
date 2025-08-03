@@ -2109,7 +2109,7 @@ static int rs_build_filter(fr_pair_list_t *out, char const *filter)
 	};
 	relative = (fr_pair_parse_t) { };
 
-	if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(filter, strlen(filter))) <= 0) {
+	if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN_STR(filter)) <= 0) {
 		fr_perror("Invalid RADIUS filter \"%s\"", filter);
 		return -1;
 	}
