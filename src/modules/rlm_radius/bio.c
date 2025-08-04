@@ -2603,7 +2603,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	thread->bio.fd = fr_bio_fd_alloc(thread, &thread->ctx.fd_config, 0);
 	if (!thread->bio.fd) {
 		PERROR("%s - failed opening socket", inst->name);
-		return CONNECTION_STATE_FAILED;
+		return -1;
 	}
 
 	thread->bio.fd->uctx = thread;
