@@ -1389,7 +1389,7 @@ int fr_bio_fd_write_only(fr_bio_t *bio)
 	return 0;
 }
 
-#ifndef __linux__
+#if !defined(__linux__) && !defined(__FreeBSD__)
 static int inline accept4(int fd, struct sockaddr *sockaddr, socklen_t *salen, UNUSED int flags)
 {
 	fd = accept(fd, sockaddr, salen);
