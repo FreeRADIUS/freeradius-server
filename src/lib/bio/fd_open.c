@@ -711,7 +711,7 @@ static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, UNUSED fr_bio_fd_con
  *	cmsg_level = IPPROTO_IP
  *	cmsg_type = IP_RECVIF
  */
-static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
+static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, UNUSED fr_bio_fd_config_t const *cfg)
 {
 	if (!my->info.socket.inet.ifindex) return 0;
 
