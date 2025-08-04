@@ -5618,7 +5618,46 @@ parse:
 
 		fr_value_box_init(dst, dst_type, dst_enumv, false);
 
-		if (fr_sbuff_adv_past_str_literal(&our_in, "::")) {
+		/*
+		 *	Allow '@' references in values.
+		 */
+		if (fr_sbuff_is_char(&our_in, '@')) {
+			size_t len;
+			fr_sbuff_marker_t m;
+
+			fr_sbuff_marker(&m, &our_in);
+			fr_sbuff_advance(&our_in, 1); /* '@' is not an allowed character for dictionary names */
+
+			len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in),
+							fr_dict_attr_nested_allowed_chars, NULL);
+			fr_sbuff_set(&our_in, &m);
+			fr_sbuff_marker_release(&m);
+
+			len++;	/* account for '@' */
+
+			/*
+			 *	This function needs the '@'.
+			 */
+			if (fr_dict_protocol_reference(&dst->vb_attr, fr_dict_root(dst_enumv->dict), &FR_SBUFF_IN(fr_sbuff_current(&our_in), len)) < 0) {
+				return -1;
+			}
+
+			if (!dst->vb_attr) {
+				fr_strerror_printf("Failed to find attribute reference %.*s", (int) len, fr_sbuff_current(&our_in));
+				return -1;
+			}
+
+			fr_assert(dst->vb_attr != NULL);
+
+			if (dst->vb_attr->dict != dst_enumv->dict) {
+				fr_strerror_const("Type 'attribute' cannot reference a different protocol");
+				return -1;
+			}
+
+			fr_sbuff_advance(&our_in, len);
+			FR_SBUFF_SET_RETURN(in, &our_in);
+
+		} else if (fr_sbuff_adv_past_str_literal(&our_in, "::")) {
 
 			slen = fr_dict_attr_by_oid_substr(NULL, &dst->vb_attr, dst_enumv, &our_in, rules->terminals);
 			if (slen > 0) {
