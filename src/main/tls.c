@@ -3011,7 +3011,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	buf[0] = '\0';
 	sn = X509_get_serialNumber(client_cert);
 
-	RDEBUG2("(TLS) %s - Creating attributes from %d certificate in chain", conf->name, lookup + 1);
+	RDEBUG2("(TLS) %s - Creating attributes from certificate %d in chain", conf->name, lookup + 1);
  	RINDENT();
 
 	/*
