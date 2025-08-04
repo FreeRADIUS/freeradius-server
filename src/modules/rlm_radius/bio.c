@@ -44,7 +44,10 @@ typedef struct {
 	trunk_t			*trunk;	       	//!< trunk handler
 	fr_bio_fd_config_t	fd_config;	//!< for threads or sockets
 	fr_bio_fd_info_t const	*fd_info;	//!< status of the FD.
-	fr_radius_ctx_t		radius_ctx;
+	fr_radius_ctx_t		radius_ctx;	//!< for signing packets
+#ifdef REUSE_CONN
+	bool			limit_source_ports;
+#endif
 } bio_handle_ctx_t;
 
 typedef struct {
@@ -133,7 +136,13 @@ typedef struct {
 	bio_handle_ctx_t	ctx;		//!< for copying to bio_handle_t
 
 	fr_rb_expire_node_t	expire;
+
+#ifdef REUSE_CONN
+	int			num_ports;
+	connection_t		*connections[];	//!< for tracking outbound connections
+#endif
 } home_server_t;
+
 
 /** Turn a reply code into a module rcode;
  *
@@ -713,6 +722,9 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	int			fd;
 	bio_handle_t		*h;
 	bio_handle_ctx_t	*ctx = uctx; /* thread or home server */
+#ifdef REUSE_CONN
+	connection_t		**to_save = NULL;
+#endif
 
 	MEM(h = talloc_zero(conn, bio_handle_t));
 	h->ctx = *ctx;
@@ -724,6 +736,37 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	h->buflen = h->max_packet_size;
 
 	MEM(h->tt = radius_track_alloc(h));
+
+#ifdef REUSE_CONN
+	/*
+	 *	We are proxying to multiple home servers, but using a limited port range.  We must track the
+	 *	source port for each home server, so that we only can select the right unused source port for
+	 *	this home server.
+	 */
+	if (ctx->limit_source_ports) {
+		int i;
+		home_server_t *home = talloc_get_type_abort(ctx, home_server_t);
+
+		for (i = 0; i < home->num_ports; i++) {
+			if (!home->connections[i]) {
+				to_save = &home->connections[i];
+
+				/*
+				 *	Set the source port, but also leave the src_port_start and
+				 *	src_port_end alone.
+				 */
+				h->ctx.fd_config.src_port = h->ctx.fd_config.src_port_start + i;
+				break;
+			}
+		}
+
+		if (!to_save) {
+			ERROR("%s - Failed opening socket to home server %pV:%u - source port range is full",
+			      h->ctx.module_name, fr_box_ipaddr(h->ctx.fd_config.dst_ipaddr), h->ctx.fd_config.dst_port);
+			goto fail;
+		}
+	}
+#endif
 
 	h->bio.fd = fr_bio_fd_alloc(h, &h->ctx.fd_config, 0);
 	if (!h->bio.fd) {
@@ -823,13 +866,21 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 
 	*h_out = h;
 
+#ifdef REUSE_CONN
+	if (to_save) *to_save = conn;
+#endif
+
 	return CONNECTION_STATE_CONNECTING;
 }
 
 /** Shutdown/close a file descriptor
  *
  */
-static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uctx)
+static void conn_close(UNUSED fr_event_list_t *el, void *handle,
+#ifndef REUSE_CONN
+  UNUSED
+#endif
+  void *uctx)
 {
 	bio_handle_t *h = talloc_get_type_abort(handle, bio_handle_t);
 
@@ -846,6 +897,27 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uc
 	}
 
 	fr_bio_shutdown(h->bio.mem);
+
+	/*
+	 *	We have opened a limited number of outbound source ports.  This means that when we close a
+	 *	port, we have to mark it unused.
+	 */
+#ifdef REUSE_CONN
+	if (h->ctx.limit_source_ports) {
+		int offset;
+		home_server_t *home = talloc_get_type_abort(uctx, home_server_t);
+
+		fr_assert(h->ctx.fd_config.src_port >= h->ctx.fd_config.src_port_start);
+		fr_assert(h->ctx.fd_config.src_port < h->ctx.fd_config.src_port_end);
+
+		offset = h->ctx.fd_config.src_port - h->ctx.fd_config.src_port_start;
+		fr_assert(offset < home->num_ports);
+
+		fr_assert(home->connections[offset] == h->conn);
+
+		home->connections[offset] = NULL;
+	}
+#endif
 
 	DEBUG4("Freeing handle %p", handle);
 
@@ -2588,7 +2660,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	}
 
 	/*
-	 *	If we have a port range, allocate the source IP based
+	 *	If we have a port range, allocate the source port based
 	 *	on the range start, plus the thread ID.  This means
 	 *	that we can avoid "hunt and peck" attempts to open up
 	 *	the source port.
@@ -2807,14 +2879,35 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 			},
 		});
 	if (!home) {
+#ifdef REUSE_CONN
+		size_t num_ports = 0;
+
+		/*
+		 *	Track which connections are made to this home server from which open ports.
+		 */
+		if ((inst->fd_config.src_port_start > 0) && (inst->fd_config.src_port_end > 0)) {
+			num_ports = inst->fd_config.src_port_end - inst->fd_config.src_port_start;
+		}
+
+		MEM(home = (home_server_t *) talloc_zero_array(thread, uint8_t, sizeof(home_server_t) + sizeof(connection_t *) * num_ports));
+		talloc_set_type(home, home_server_t);
+#else
 		MEM(home = talloc(thread, home_server_t));
+#endif
 
 		*home = (home_server_t) {
 			.ctx = (bio_handle_ctx_t) {
 				.el = unlang_interpret_event_list(request),
 				.module_name = inst->name,
 				.inst = inst,
+#ifdef REUSE_CONN
+				.limit_source_ports = (num_ports > 0),
+#endif
 			},
+
+#ifdef REUSE_CONN
+			.num_ports = num_ports,
+#endif
 		};
 
 		/*

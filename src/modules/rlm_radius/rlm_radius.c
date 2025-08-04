@@ -703,6 +703,27 @@ check_others:
 		inst->fd_config.flags = O_RDWR;
 	}
 
+	/*
+	 *	When using %radius.sendto.ipaddr(), we can then often re-use the source port, as we connect()
+	 *	the outbound sockets.
+	 */
+	if (inst->mode == RLM_RADIUS_MODE_XLAT_PROXY) {
+		if (inst->fd_config.src_port != 0) {
+			cf_log_err(conf, "Cannot set a fixed source port for mode=dynamic-proxy");
+			return -1;
+		}
+
+#ifdef REUSE_CONN
+		/*
+		 *	If there is a limited source port range, then set the reuse port flag.  This lets us
+		 *	bind multiple sockets to the same port before we connect() them.
+		 */
+		if ((inst->fd_config.src_port_start > 0) && (inst->fd_config.src_port_end > 0)) {
+			inst->fd_config.reuse_port = 1;
+		}
+#endif
+	}
+
 	if (fr_bio_fd_check_config(&inst->fd_config) < 0) {
 		cf_log_perr(conf, "Invalid configuration");
 		return -1;
