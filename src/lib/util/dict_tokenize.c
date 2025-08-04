@@ -2480,6 +2480,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *dctx, char **argv, int a
 	fr_value_box_t		value = FR_VALUE_BOX_INITIALISER_NULL(value);
 	size_t			enum_len;
 	fr_dict_attr_t const 	*parent = dctx->stack[dctx->stack_depth].da;
+	fr_dict_attr_t const	*enumv = NULL;
 
 	if (argc != 3) {
 		fr_strerror_const("Invalid VALUE syntax");
@@ -2575,7 +2576,12 @@ static int dict_read_process_value(dict_tokenize_ctx_t *dctx, char **argv, int a
 		return -1;
 	}
 
-	if (fr_value_box_from_str(NULL, &value, da->type, NULL,
+	/*
+	 *	Pass in the root for type attr, so that we can find the reference.
+	 */
+	if (da->type == FR_TYPE_ATTR) enumv = fr_dict_root(da->dict);
+
+	if (fr_value_box_from_str(NULL, &value, da->type, enumv,
 				  argv[2], strlen(argv[2]),
 				  NULL) < 0) {
 		fr_strerror_printf_push("Invalid VALUE '%s' for attribute '%s' of data type '%s'",
