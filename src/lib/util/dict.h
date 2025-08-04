@@ -499,10 +499,15 @@ typedef struct fr_dict_gctx_s fr_dict_gctx_t;
  */
 #define FR_DICT_MAX_TLV_STACK		(FR_DICT_TLV_NEST_MAX + 5)
 
-/** Characters that are allowed in dictionary attribute names
+/** Characters allowed in a single dictionary attribute name
  *
  */
 extern bool const	fr_dict_attr_allowed_chars[UINT8_MAX + 1];
+
+/** Characters allowed in a nested dictionary attribute name
+ *
+ */
+extern bool const fr_dict_attr_nested_allowed_chars[UINT8_MAX + 1];
 
 /** Characters that are allowed in dictionary enumeration value names
  *
