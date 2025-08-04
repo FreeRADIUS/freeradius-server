@@ -40,11 +40,11 @@ typedef struct rlm_radius_s rlm_radius_t;
 
 typedef enum {
 	RLM_RADIUS_MODE_INVALID = 0,
-	RLM_RADIUS_MODE_PROXY,
-	RLM_RADIUS_MODE_CLIENT,
-	RLM_RADIUS_MODE_REPLICATE,
-	RLM_RADIUS_MODE_UNCONNECTED_REPLICATE,
-	RLM_RADIUS_MODE_XLAT_PROXY,
+	RLM_RADIUS_MODE_PROXY,				//!< we proxy to one home server
+	RLM_RADIUS_MODE_CLIENT,				//!< we are a client to one home server
+	RLM_RADIUS_MODE_REPLICATE,			//!< to a particular destination
+	RLM_RADIUS_MODE_UNCONNECTED_REPLICATE,		//!< %radius.sendto.ipaddr(), but we don't look for a reply
+	RLM_RADIUS_MODE_XLAT_PROXY,			//!< %radius.sendto.ipaddr(), but we do look for a reply.
 } rlm_radius_mode_t;
 
 /*
