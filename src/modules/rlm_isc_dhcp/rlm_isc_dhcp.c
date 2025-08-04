@@ -459,7 +459,7 @@ redo:
 	state->token_len = p - state->token;
 
 	if (state->token_len == 0) {
-		fr_strerror_const("FUCK");
+		fr_strerror_const("Failed to find token");
 		return -1;
 	}
 
