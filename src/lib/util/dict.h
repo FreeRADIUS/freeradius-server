@@ -615,6 +615,8 @@ fr_dict_attr_t const	*fr_dict_attr_unknown_resolve(fr_dict_t const *dict, fr_dic
  *
  * @{
  */
+int8_t			fr_dict_attr_ordered_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b);
+
 static inline CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
 {
 	int8_t ret;

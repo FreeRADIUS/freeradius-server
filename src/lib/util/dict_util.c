@@ -217,6 +217,68 @@ static int8_t dict_attr_name_cmp(void const *one, void const *two)
 	return CMP(ret, 0);
 }
 
+/** Compare two attributes by total order.
+ *
+ *  This function is safe / ordered even when the attributes are in
+ *  different dictionaries.  This allows it to work for local
+ *  variables, as those are in a different dictionary from the
+ *  protocol ones.
+ *
+ *  This function orders parents first, then their children.
+ */
+int8_t fr_dict_attr_ordered_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
+{
+	int8_t ret;
+
+	/*
+	 *	Order by parent first.  If the parents are different,
+	 *	we order by parent numbers.
+	 *
+	 *	If the attributes share the same parent at some point,
+	 *	then the deeper child is sorted later.
+	 */
+	if (a->depth < b->depth) {
+		ret = fr_dict_attr_ordered_cmp(a, b->parent);
+		if (ret != 0) return ret;
+
+		return -1;	/* order a before b */
+	}
+
+	if (a->depth > b->depth) {
+		ret = fr_dict_attr_ordered_cmp(a->parent, b);
+		if (ret != 0) return ret;
+
+		return +1;	/* order b before a */
+	}
+
+	/*
+	 *	We're at the root (e.g. "RADIUS").  Compare by
+	 *	protocol number.
+	 *
+	 *	Or, the parents are the same.  We can then order by
+	 *	our (i.e. child) attribute number.
+	 */
+	if ((a->depth == 0) || (a->parent == b->parent)) {
+		/*
+		 *	Order known attributes before unknown / raw ones.
+		 */
+		ret = (b->flags.is_unknown | b->flags.is_raw) - (a->flags.is_unknown | a->flags.is_raw);
+		if (ret != 0) return 0;
+
+		return CMP(a->attr, b->attr);
+	}
+
+	/*
+	 *	The parents are different, we don't need to order by
+	 *	our attribute number.  Instead, we order by the
+	 *	parent.
+	 *
+	 *	Note that at this point, the call below will never
+	 *	return 0, because the parents are different.
+	 */
+	return fr_dict_attr_ordered_cmp(a->parent, b->parent);
+}
+
 /** Wrap name hash function for fr_dict_vendor_t
  *
  * @param data fr_dict_vendor_t to hash.
