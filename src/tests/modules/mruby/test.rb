@@ -31,6 +31,12 @@ module FreeRADIUS
     return RLM_MODULE_OK
   end
 
+  # Check casting from a float
+  def self.set_float(p)
+    p.request.nas_port.set(12.0)
+    return RLM_MODULE_OK
+  end
+
   # Check setting nested pairs
   def self.set_nested(p)
     p.control.vendor_specific.cisco.avpair.set('very=special')
