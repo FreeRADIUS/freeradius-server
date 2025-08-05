@@ -340,7 +340,7 @@ static void mruby_ruby_to_pair_value(mrb_state *mrb, mrb_value *value, fr_pair_t
 	case MRB_TT_STRING:
 		MEM(vb = fr_value_box_alloc(NULL, FR_TYPE_STRING, NULL));
 		fr_value_box_bstrndup_dbuff(vb, vb, NULL,
-					    &FR_DBUFF_TMP((uint8_t *)RSTRING_PTR(*value), RSTRING_LEN(*value)),
+					    &FR_DBUFF_TMP((uint8_t *)RSTRING_PTR(*value), (size_t)RSTRING_LEN(*value)),
 					    RSTRING_LEN(*value), true);
 		break;
 
