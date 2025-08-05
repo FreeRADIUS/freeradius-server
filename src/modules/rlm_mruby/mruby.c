@@ -321,37 +321,35 @@ static void mruby_pair_parent_build(mrb_state *mrb, mruby_pair_t *pair)
  */
 static void mruby_ruby_to_pair_value(mrb_state *mrb, mrb_value *value, fr_pair_t *vp)
 {
-	fr_value_box_t	*vb = NULL;
+	fr_value_box_t	vb;
 
 	/*
 	 *  Convert the type provided by mRuby to the largest containing FreeRADIUS type
 	 */
 	switch (mrb_type(*value)) {
 	case MRB_TT_INTEGER:
-		MEM(vb = fr_value_box_alloc(NULL, FR_TYPE_INT64, NULL));
-		vb->vb_int64 = mrb_integer(*value);
+		fr_value_box_init(&vb, FR_TYPE_INT64, NULL, true);
+		vb.vb_int64 = mrb_integer(*value);
 		break;
 
 	case MRB_TT_FLOAT:
-		MEM(vb = fr_value_box_alloc(NULL, FR_TYPE_FLOAT64, NULL));
-		vb->vb_float64 = mrb_float(*value);
+		fr_value_box_init(&vb, FR_TYPE_FLOAT64, NULL, true);
+		vb.vb_float64 = mrb_float(*value);
 		break;
 
 	case MRB_TT_STRING:
-		MEM(vb = fr_value_box_alloc(NULL, FR_TYPE_STRING, NULL));
-		fr_value_box_bstrndup_dbuff(vb, vb, NULL,
-					    &FR_DBUFF_TMP((uint8_t *)RSTRING_PTR(*value), (size_t)RSTRING_LEN(*value)),
-					    RSTRING_LEN(*value), true);
+		fr_value_box_init(&vb, FR_TYPE_STRING, NULL, true);
+		fr_value_box_bstrndup_shallow(&vb, NULL, (char *)RSTRING_PTR(*value), (size_t)RSTRING_LEN(*value), true);
 		break;
 
 	case MRB_TT_TRUE:
-		MEM(vb = fr_value_box_alloc(NULL, FR_TYPE_BOOL, NULL));
-		vb->vb_bool = true;
+		fr_value_box_init(&vb, FR_TYPE_BOOL, NULL, true);
+		vb.vb_bool = true;
 		break;
 
 	case MRB_TT_FALSE:
-		MEM(vb = fr_value_box_alloc(NULL, FR_TYPE_BOOL, NULL));
-		vb->vb_bool = false;
+		fr_value_box_init(&vb, FR_TYPE_BOOL, NULL, true);
+		vb.vb_bool = false;
 		break;
 
 	default:
@@ -362,11 +360,9 @@ static void mruby_ruby_to_pair_value(mrb_state *mrb, mrb_value *value, fr_pair_t
 	 *  Cast the converted value to the required type for the pair
 	 */
 	fr_pair_value_clear(vp);
-	if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, vb) < 0) {
-		talloc_free(vb);
+	if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, &vb) < 0) {
 		mrb_raisef(mrb, E_ARGUMENT_ERROR, "Failed casting ruby value to %s", fr_type_to_str(vp->vp_type));
 	}
-	talloc_free(vb);
 }
 
 /** Set a value pair from mruby
