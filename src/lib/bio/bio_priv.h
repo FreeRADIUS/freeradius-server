@@ -56,6 +56,22 @@ struct fr_bio_common_s {
 	FR_BIO_COMMON;
 };
 
+/** Define a common destructor pattern.
+ *
+ *  Ensure that talloc_free() is safe no matter what.  The caller can free any BIO at any time.  If that
+ *  happens, then the entire chain is shut down.  On successful shutdown, this BIO is removed from the chain.
+ */
+#define FR_BIO_DESTRUCTOR_COMMON \
+do { \
+	if (my->priv_cb.shutdown) {		   \
+		int rcode;			   \
+		rcode = fr_bio_shutdown(&my->bio); \
+		if (rcode < 0) return rcode;	   \
+	}					   \
+	fr_bio_unchain(&my->bio);		   \
+} while (0)
+
+
 ssize_t fr_bio_next_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size);
 
 ssize_t fr_bio_next_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size);

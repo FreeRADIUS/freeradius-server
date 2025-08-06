@@ -47,6 +47,8 @@ typedef struct {
 
 static int fr_bio_pipe_destructor(fr_bio_pipe_t *my)
 {
+	FR_BIO_DESTRUCTOR_COMMON;
+
 	pthread_mutex_destroy(&my->mutex);
 
 	return 0;

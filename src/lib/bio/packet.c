@@ -151,7 +151,11 @@ void fr_bio_packet_connected(fr_bio_t *bio)
 
 static int fr_bio_packet_shutdown(fr_bio_t *bio)
 {
+	int rcode;
 	fr_bio_packet_t *my = bio->uctx;
+
+	rcode = fr_bio_shutdown(bio);
+	if (rcode < 0) return rcode;
 
 	if (!my->cb.shutdown) return 0;
 

@@ -106,11 +106,6 @@ static int fr_bio_fd_shutdown(fr_bio_t *bio)
 	return fr_bio_fd_close(&my->bio);
 }
 
-static int fr_bio_fd_destructor(fr_bio_fd_t *my)
-{
-	return fr_bio_fd_shutdown((fr_bio_t *) my);
-}
-
 static int fr_bio_fd_eof(fr_bio_t *bio)
 {
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
@@ -712,7 +707,7 @@ static ssize_t fr_bio_fd_try_connect(fr_bio_fd_t *my)
 	}
 
 	if (rcode < 0) {
-		fr_bio_shutdown(&my->bio);
+		(void) fr_bio_shutdown(&my->bio);
 		return fr_bio_error(GENERIC);
 	}
 
@@ -762,7 +757,7 @@ retry:
         }
 
 fail:
-	fr_bio_shutdown(&my->bio);
+	(void) fr_bio_shutdown(&my->bio);
         return fr_bio_error(IO);
 }
 
@@ -998,7 +993,7 @@ fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_fd_config_t const *cfg, size_t
 	my->priv_cb.write_resume = fr_bio_fd_write_resume;
 	my->priv_cb.shutdown = fr_bio_fd_shutdown;
 
-	talloc_set_destructor(my, fr_bio_fd_destructor);
+	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor); /* always use a common destructor */
 	return (fr_bio_t *) my;
 }
 
@@ -1071,7 +1066,10 @@ static void fr_bio_fd_el_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 		my->connect.error(&my->bio);
 	}
 
-	fr_bio_shutdown(&my->bio);
+	/*
+	 *	The entire bio is unusable.
+	 */
+	(void) fr_bio_shutdown(&my->bio);
 }
 
 /** Connect callback for when the socket is writable.
@@ -1154,7 +1152,7 @@ static void fr_bio_fd_el_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t no
 
 	my->connect.timeout(&my->bio);
 
-	fr_bio_shutdown(&my->bio);
+	(void) fr_bio_shutdown(&my->bio);
 }
 
 
@@ -1191,7 +1189,7 @@ int fr_bio_fd_connect_full(fr_bio_t *bio, fr_event_list_t *el, fr_bio_callback_t
 		my->info.connect_errno = ECONNREFUSED;
 #endif
 		if (error_cb) error_cb(bio);
-		fr_bio_shutdown(&my->bio);
+		(void) fr_bio_shutdown(&my->bio);
 		return fr_bio_error(GENERIC);
 	}
 

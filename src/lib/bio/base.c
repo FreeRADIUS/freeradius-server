@@ -26,22 +26,20 @@
 #include <freeradius-devel/bio/null.h>
 #include <freeradius-devel/util/syserror.h>
 
-#ifndef NDEBUG
 /** Free this bio.
  *
- *  The bio can only be freed if it is not in any chain.
+ *  We allow talloc_free() to be called on just about anything in the
+ *  bio chain.  But we ensure that the chain is always shut down in an
+ *  orderly fashion.
  */
 int fr_bio_destructor(fr_bio_t *bio)
 {
-	fr_assert(!fr_bio_prev(bio));
-	fr_assert(!fr_bio_next(bio));
+	fr_bio_common_t *my = (fr_bio_common_t *) bio;
 
-	/*
-	 *	It's safe to free this bio.
-	 */
+	FR_BIO_DESTRUCTOR_COMMON;
+
 	return 0;
 }
-#endif
 
 /** Internal bio function which just reads from the "next" bio.
  *
@@ -89,50 +87,6 @@ ssize_t fr_bio_next_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, s
 	return rcode;
 }
 
-/** Free this bio, and everything it calls.
- *
- *  We unlink the bio chain, and then free it individually.  If there's an error, the bio chain is relinked.
- *  That way the error can be addressed (somehow) and this function can be called again.
- *
- *  Note that we do not support talloc_free() for the bio chain.  Each individual bio has to be unlinked from
- *  the chain before the destructor will allow it to be freed.  This functionality is by design.
- *
- *  We want to have an API where bios are created "bottom up", so that it is impossible for an application to
- *  create an incorrect chain.  However, creating the chain bottom up means that the lower bios not parented
- *  from the higher bios, and therefore talloc_free() won't free them.  As a result, we need an explicit
- *  bio_free() function.
- */
-int fr_bio_free(fr_bio_t *bio)
-{
-	fr_bio_t *next = fr_bio_next(bio);
-
-	/*
-	 *	We cannot free a bio in the middle of a chain.  It has to be unlinked first.
-	 */
-	if (fr_bio_prev(bio)) return -1;
-
-	/*
-	 *	Unlink our bio, and recurse to free the next one.  If we can't free it, re-chain it, but reset
-	 *	the read/write functions to do nothing.
-	 */
-	if (next) {
-		next->entry.prev = NULL;
-		if (fr_bio_free(next) < 0) {
-			next->entry.prev = &bio->entry;
-			bio->read = fr_bio_fail_read;
-			bio->write = fr_bio_fail_write;
-			return -1;
-		}
-
-		bio->entry.next = NULL;
-	}
-
-	/*
-	 *	It's now safe to free this bio.
-	 */
-	return talloc_free(bio);
-}
-
 static ssize_t fr_bio_shutdown_read(UNUSED fr_bio_t *bio, UNUSED void *packet_ctx, UNUSED void *buffer, UNUSED size_t size)
 {
 	return fr_bio_error(SHUTDOWN);
@@ -145,8 +99,17 @@ static ssize_t fr_bio_shutdown_write(UNUSED fr_bio_t *bio, UNUSED void *packet_c
 
 /** Shut down a set of BIOs
  *
- *  We shut down the BIOs from the top to the bottom.  This gives the TLS BIO an opportunity to
- *  call the SSL_shutdown() routine, which should then write to the FD BIO.
+ *  We shut down the BIOs from the top to the bottom.  This gives the
+ *  TLS BIO an opportunity to call the SSL_shutdown() routine, which
+ *  should then write to the FD BIO.  Once that write is completed,
+ *  the FD BIO can then close its socket.
+ *
+ *  Any shutdown is "stop read / write", but is not "free all
+ *  resources".  A shutdown can happen when one of the intermediary
+ *  BIOs hits a fatal error.  It can't free the BIO, but it has to
+ *  mark the entire BIO chain as being unusable.
+ *
+ *  A destructor will first shutdown the BIOs, and then free all resources.
  */
 int fr_bio_shutdown(fr_bio_t *bio)
 {
@@ -186,7 +149,8 @@ int fr_bio_shutdown(fr_bio_t *bio)
 	}
 
 	/*
-	 *	Call the application shutdown routine
+	 *	Call the application shutdown routine to tell it that
+	 *	the BIO has been successfully shut down.
 	 */
 	my = (fr_bio_common_t *) first;
 

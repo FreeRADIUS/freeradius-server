@@ -100,6 +100,8 @@ static void fr_bio_queue_list_cancel(fr_bio_queue_t *my)
 
 static int fr_bio_queue_destructor(fr_bio_queue_t *my)
 {
+	FR_BIO_DESTRUCTOR_COMMON;
+
 	fr_assert(my->cancel);	/* otherwise it would be fr_bio_destructor */
 
 	fr_bio_queue_list_cancel(my);

@@ -62,7 +62,7 @@ static ssize_t fr_bio_haproxy_v1(fr_bio_haproxy_t *my)
 	 */
 	if (memcmp(my->buffer.read, "PROXY TCP", 9) != 0) {
 	fail:
-		fr_bio_shutdown(&my->bio);
+		(void) fr_bio_shutdown(&my->bio);
 		return fr_bio_error(VERIFY);
 	}
 	p += 9;
@@ -239,7 +239,7 @@ fr_bio_t *fr_bio_haproxy_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, fr_bio_t 
 
 	fr_bio_chain(&my->bio, next);
 
-	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor);
+	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor); /* always use a common destructor */
 	return (fr_bio_t *) my;
 }
 

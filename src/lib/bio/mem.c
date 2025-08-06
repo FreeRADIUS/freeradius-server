@@ -350,7 +350,7 @@ static ssize_t fr_bio_mem_read_verify_datagram(fr_bio_t *bio, void *packet_ctx, 
 			break;
 		}
 
-		fr_bio_shutdown(bio);
+		(void) fr_bio_shutdown(bio);
 		return fr_bio_error(VERIFY);
 	}
 
@@ -679,7 +679,7 @@ static int fr_bio_mem_call_verify(fr_bio_t *bio, void *packet_ctx, size_t *size)
 	/*
 	 *	A fatal error.  Shut down the entire BIO chain.
 	 */
-	fr_bio_shutdown(bio);
+	(void) fr_bio_shutdown(bio);
 	return -1;
 }
 
@@ -779,7 +779,7 @@ fr_bio_t *fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size,
 
 	fr_bio_chain(&my->bio, next);
 
-	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor);
+	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor); /* always use a common destructor */
 	return (fr_bio_t *) my;
 }
 
@@ -883,7 +883,7 @@ fr_bio_t *fr_bio_mem_sink_alloc(TALLOC_CTX *ctx, size_t read_size)
 	my->bio.read = fr_bio_mem_read_buffer;
 	my->bio.write = fr_bio_mem_write_read_buffer; /* the upstream will write to our read buffer */
 
-	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor);
+	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor); /* always use a common destructor */
 	return (fr_bio_t *) my;
 }
 

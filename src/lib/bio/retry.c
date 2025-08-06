@@ -885,11 +885,6 @@ static int fr_bio_retry_shutdown(fr_bio_t *bio)
 	return 0;
 }
 
-static int fr_bio_retry_destructor(fr_bio_retry_t *my)
-{
-	return fr_bio_retry_shutdown((fr_bio_t *) my);
-}
-
 /**  Allocate a #fr_bio_retry_t
  *
  */
@@ -978,8 +973,7 @@ fr_bio_t *fr_bio_retry_alloc(TALLOC_CTX *ctx, size_t max_saved,
 
 	fr_bio_chain(&my->bio, next);
 
-	talloc_set_destructor(my, fr_bio_retry_destructor);
-
+	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor); /* always use a common destructor */
 	return (fr_bio_t *) my;
 }
 

@@ -896,8 +896,6 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle,
 		fr_assert_fail("%u tracking entries still allocated at conn close", h->tt->num_requests);
 	}
 
-	fr_bio_shutdown(h->bio.mem);
-
 	/*
 	 *	We have opened a limited number of outbound source ports.  This means that when we close a
 	 *	port, we have to mark it unused.
