@@ -274,7 +274,7 @@ static void unlang_foreach_attr_key_update(UNUSED request_t *request, unlang_fra
 
 	case FR_TYPE_STRING:
 		fr_value_box_clear_value(&state->key->data);
-		if (tmpl_dcursor_print(&FR_SBUFF_IN(state->buffer, BUFFER_SIZE), &state->cc) > 0) {
+		if (tmpl_dcursor_print(&FR_SBUFF_OUT(state->buffer, BUFFER_SIZE), &state->cc) > 0) {
 			fr_value_box_strdup(state->key, &state->key->data, NULL, state->buffer, false);
 		}
 		break;
