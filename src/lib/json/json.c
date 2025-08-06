@@ -209,7 +209,7 @@ json_object *json_object_from_value_box(fr_value_box_t const *data)
 	do_string:
 	{
 		char		buffer[64];
-		fr_sbuff_t	sbuff = FR_SBUFF_IN(buffer, sizeof(buffer));
+		fr_sbuff_t	sbuff = FR_SBUFF_OUT(buffer, sizeof(buffer));
 
 		if (fr_value_box_print(&sbuff, data, NULL) <= 0) return NULL;
 
