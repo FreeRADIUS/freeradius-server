@@ -862,12 +862,12 @@ const fr_retry_t *fr_bio_retry_entry_info(UNUSED fr_bio_t *bio, fr_bio_retry_ent
 	return &item->retry;
 }
 
-
-/**  Cancel all outstanding packets.
+/**  Orderly shutdown.
  *
  */
-static int fr_bio_retry_destructor(fr_bio_retry_t *my)
+static int fr_bio_retry_shutdown(fr_bio_t *bio)
 {
+	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
 	fr_bio_retry_entry_t *item;
 
 	fr_timer_list_disarm(my->next_tl);
@@ -885,15 +885,9 @@ static int fr_bio_retry_destructor(fr_bio_retry_t *my)
 	return 0;
 }
 
-/**  Orderly shutdown.
- *
- */
-static void fr_bio_retry_shutdown(fr_bio_t *bio)
+static int fr_bio_retry_destructor(fr_bio_retry_t *my)
 {
-	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
-
-	(void) fr_bio_retry_destructor(my);
-	talloc_set_destructor(my, NULL);
+	return fr_bio_retry_shutdown((fr_bio_t *) my);
 }
 
 /**  Allocate a #fr_bio_retry_t

@@ -87,7 +87,7 @@ typedef void (*fr_bio_callback_t)(fr_bio_t *bio); /* connected / shutdown callba
 
 typedef struct {
 	fr_bio_callback_t	connected;		//!< called when the BIO is ready to be used
-	fr_bio_callback_t	shutdown;		//!< called when the BIO is being shut down
+	fr_bio_io_t		shutdown;		//!< called when the BIO is being shut down
 	fr_bio_callback_t	eof;			//!< called when the BIO is at EOF
 	fr_bio_callback_t	failed;			//!< called when the BIO fails
 

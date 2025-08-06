@@ -88,17 +88,14 @@
 		addr->socket.inet.ifindex = my->info.socket.inet.ifindex; \
 	} while (0)
 
-/*
- *	Close the descriptor and free the bio.
+/**  Orderly shutdown.
+ *
  */
-static int fr_bio_fd_destructor(fr_bio_fd_t *my)
+static int fr_bio_fd_shutdown(fr_bio_t *bio)
 {
-	/*
-	 *	The upstream bio must have unlinked it from the chain before calling talloc_free() on this
-	 *	bio.
-	 */
-	fr_assert(!fr_bio_prev(&my->bio));
-	fr_assert(!fr_bio_next(&my->bio));
+	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
+
+	if (my->info.state == FR_BIO_FD_STATE_CLOSED) return 0;
 
 	FR_TIMER_DELETE(&my->connect.ev);
 	if (my->connect.el) {
@@ -109,15 +106,9 @@ static int fr_bio_fd_destructor(fr_bio_fd_t *my)
 	return fr_bio_fd_close(&my->bio);
 }
 
-/**  Orderly shutdown.
- *
- */
-static void fr_bio_fd_shutdown(fr_bio_t *bio)
+static int fr_bio_fd_destructor(fr_bio_fd_t *my)
 {
-	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
-
-	(void) fr_bio_fd_destructor(my);
-	talloc_set_destructor(my, NULL);
+	return fr_bio_fd_shutdown((fr_bio_t *) my);
 }
 
 static int fr_bio_fd_eof(fr_bio_t *bio)

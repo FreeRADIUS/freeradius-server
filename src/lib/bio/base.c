@@ -150,6 +150,7 @@ static ssize_t fr_bio_shutdown_write(UNUSED fr_bio_t *bio, UNUSED void *packet_c
  */
 int fr_bio_shutdown(fr_bio_t *bio)
 {
+	int rcode;
 	fr_bio_t *this, *first;
 	fr_bio_common_t *my;
 
@@ -174,7 +175,8 @@ int fr_bio_shutdown(fr_bio_t *bio)
 		my = (fr_bio_common_t *) this;
 
 		if (my->priv_cb.shutdown) {
-			my->priv_cb.shutdown(&my->bio);
+			rcode = my->priv_cb.shutdown(&my->bio);
+			if (rcode < 0) return rcode;
 			my->priv_cb.shutdown = NULL;
 		}
 
@@ -188,8 +190,11 @@ int fr_bio_shutdown(fr_bio_t *bio)
 	 */
 	my = (fr_bio_common_t *) first;
 
-	if (my->cb.shutdown) my->cb.shutdown(first);
-	my->cb.shutdown = NULL;
+	if (my->cb.shutdown) {
+		rcode = my->cb.shutdown(first);
+		if (rcode < 0) return rcode;
+		my->cb.shutdown = NULL;
+	}
 
 	return 0;
 }

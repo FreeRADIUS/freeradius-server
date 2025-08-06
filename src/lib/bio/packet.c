@@ -149,12 +149,13 @@ void fr_bio_packet_connected(fr_bio_t *bio)
 	my->cb.connected(my);
 }
 
-static void fr_bio_packet_shutdown(fr_bio_t *bio)
+static int fr_bio_packet_shutdown(fr_bio_t *bio)
 {
 	fr_bio_packet_t *my = bio->uctx;
 
-	if (my->cb.shutdown) my->cb.shutdown(my);
-	my->cb.shutdown = NULL;
+	if (!my->cb.shutdown) return 0;
+
+	return my->cb.shutdown(my);
 }
 
 static void fr_bio_packet_eof(fr_bio_t *bio)
