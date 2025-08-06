@@ -2892,8 +2892,8 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 		/*
 		 *	Track which connections are made to this home server from which open ports.
 		 */
-		if ((inst->fd_config.src_port_start > 0) && (inst->fd_config.src_port_end > 0)) {
-			num_ports = inst->fd_config.src_port_end - inst->fd_config.src_port_start;
+		if ((thread->ctx.fd_config.src_port_start > 0) && (thread->ctx.fd_config.src_port_end > 0)) {
+			num_ports = thread->ctx.fd_config.src_port_end - thread->ctx.fd_config.src_port_start + 1;
 		}
 
 		MEM(home = (home_server_t *) talloc_zero_array(thread, uint8_t, sizeof(home_server_t) + sizeof(connection_t *) * num_ports));
@@ -2918,10 +2918,10 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 		};
 
 		/*
-		 *	Copy the home server configuration from the root configuration.  Then update it with
+		 *	Copy the home server configuration from the thread configuration.  Then update it with
 		 *	the needs of the home server.
 		 */
-		home->ctx.fd_config = inst->fd_config;
+		home->ctx.fd_config = thread->ctx.fd_config;
 		home->ctx.fd_config.type = FR_BIO_FD_CONNECTED;
 		home->ctx.fd_config.dst_ipaddr = ipaddr->vb_ip;
 		home->ctx.fd_config.dst_port = port->vb_uint32;
