@@ -1253,8 +1253,15 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		 */
 	case FR_BIO_FD_CONNECTED:
 		if (my->info.socket.type == SOCK_DGRAM) {
-			rcode = fr_bio_fd_common_datagram(fd, &my->info.socket, cfg); /* we don't use SO_REUSEPORT for clients */
-			if (rcode < 0) goto fail;
+			switch (my->info.socket.af) {
+			case AF_INET:
+			case AF_INET6:
+				if ((rcode = fr_bio_fd_common_udp(fd, &my->info.socket, cfg)) < 0) goto fail;
+				break;
+			default:
+				if ((rcode = fr_bio_fd_common_datagram(fd, &my->info.socket, cfg)) < 0) goto fail;
+				break;
+			}
 
 		} else if ((my->info.socket.af == AF_INET) || (my->info.socket.af == AF_INET6)) {
 			rcode = fr_bio_fd_common_tcp(fd, &my->info.socket, cfg);
