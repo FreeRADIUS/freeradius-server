@@ -1220,11 +1220,11 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		switch (my->info.socket.af) {
 		case AF_INET:
 		case AF_INET6:
-			if (fr_bio_fd_common_udp(fd, &my->info.socket, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_common_udp(fd, &my->info.socket, cfg)) < 0) goto fail;
 			break;
 
 		case AF_LOCAL:
-			if (fr_bio_fd_common_datagram(fd, &my->info.socket, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_common_datagram(fd, &my->info.socket, cfg)) < 0) goto fail;
 			break;
 
 		case AF_FILE_BIO:
@@ -1236,9 +1236,9 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			goto fail;
 		}
 
-		if (fr_bio_fd_socket_bind(my, cfg) < 0) goto fail;
+		if ((rcode = fr_bio_fd_socket_bind(my, cfg)) < 0) goto fail;
 
-		if (fr_bio_fd_init_common(my) < 0) goto fail;
+		if ((rcode = fr_bio_fd_init_common(my)) < 0) goto fail;
 		break;
 
 		/*
@@ -1256,7 +1256,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 
 		switch (my->info.socket.af) {
 		case AF_LOCAL:
-			if (fr_bio_fd_socket_bind_unix(my, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_socket_bind_unix(my, cfg)) < 0) goto fail;
 			break;
 
 		case AF_FILE_BIO:
@@ -1264,14 +1264,14 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 
 		case AF_INET:
 		case AF_INET6:
-			if (fr_bio_fd_socket_bind(my, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_socket_bind(my, cfg)) < 0) goto fail;
 			break;
 
 		default:
 			return -1;
 		}
 
-		if (fr_bio_fd_init_connected(my) < 0) goto fail;
+		if ((rcode = fr_bio_fd_init_connected(my)) < 0) goto fail;
 		break;
 
 		/*
@@ -1280,32 +1280,34 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	case FR_BIO_FD_LISTEN:
 		if ((my->info.socket.type == SOCK_DGRAM) && !cfg->reuse_port) {
 			fr_strerror_const("reuseport must be set for datagram sockets");
+			rcode = -1;
 			goto fail;
 		}
 
 		switch (my->info.socket.af) {
 		case AF_INET:
-			if (fr_bio_fd_server_ipv4(fd, &my->info.socket, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_server_ipv4(fd, &my->info.socket, cfg)) < 0) goto fail;
 
-			if (fr_bio_fd_socket_bind(my, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_socket_bind(my, cfg)) < 0) goto fail;
 			break;
 
 		case AF_INET6:
-			if (fr_bio_fd_server_ipv6(fd, &my->info.socket, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_server_ipv6(fd, &my->info.socket, cfg)) < 0) goto fail;
 
-			if (fr_bio_fd_socket_bind(my, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_socket_bind(my, cfg)) < 0) goto fail;
 			break;
 
 		case AF_LOCAL:
-			if (fr_bio_fd_socket_bind_unix(my, cfg) < 0) goto fail;
+			if ((rcode = fr_bio_fd_socket_bind_unix(my, cfg)) < 0) goto fail;
 			break;
 
 		default:
 			fr_strerror_const("Unsupported address family for accept() socket");
+			rcode = -1;
 			goto fail;
 		}
 
-		if (fr_bio_fd_init_listen(my) < 0) goto fail;
+		if ((rcode = fr_bio_fd_init_listen(my)) < 0) goto fail;
 		break;
 	}
 
