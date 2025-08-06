@@ -2634,6 +2634,15 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	case RLM_RADIUS_MODE_XLAT_PROXY:
 		fr_rb_expire_inline_talloc_init(&thread->bio.expires, home_server_t, expire, home_server_cmp, home_server_free,
 						inst->home_server_lifetime);
+		/*
+		 *	Assign each thread a portion of the available source port range.
+		 */
+		if (thread->ctx.fd_config.src_port_start) {
+			uint16_t	range = inst->fd_config.src_port_end - inst->fd_config.src_port_start + 1;
+			uint16_t	block = range / main_config->max_workers;
+			thread->ctx.fd_config.src_port_start = inst->fd_config.src_port_start + (block * fr_schedule_worker_id());
+			thread->ctx.fd_config.src_port_end = inst->fd_config.src_port_start + (block * (fr_schedule_worker_id() +1)) - 1;
+		}
 		FALL_THROUGH;
 
 	default:
