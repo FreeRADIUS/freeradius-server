@@ -512,7 +512,7 @@ do { \
 								 fr_sbuff_ptr(_sbuff_or_marker)->eof, \
 								 0x01)
 
-/** Creates a compound literal to pass into functions which accept a sbuff
+/** Creates an empty sbuff which can then be used as a destination for printing
  *
  * @note The return value of the function should be used to determine how much
  *	 data was written to the buffer.
@@ -523,7 +523,10 @@ do { \
 #define FR_SBUFF_OUT(_start, _len_or_end) \
 ((fr_sbuff_t){ \
 	.buff_i		= _start, \
-	.start_i	= _start, \
+	.start_i	= _Generic((_start), \
+				char *		: _start, \
+				uint8_t *	: _start \
+			), \
 	.end_i		= _Generic((_len_or_end), \
 				size_t		: (char const *)(_start) + ((size_t)(_len_or_end) - 1), \
 				long		: (char const *)(_start) + ((size_t)(_len_or_end) - 1), \
@@ -533,10 +536,10 @@ do { \
 				char const *	: (char const *)(_len_or_end) \
 			), \
 	.p_i		= _start, \
-	.is_const	= IS_CONST(char *, _start) \
+	.is_const	= false, \
 })
 
-/** Creates a compound literal to pass into functions which accept a sbuff
+/** Creates an sbuff from existing data, so the caller can read from it.
  *
  * @note The return value of the function should be used to determine how much
  *	 data was written to the buffer.
@@ -547,7 +550,12 @@ do { \
 #define FR_SBUFF_IN(_start, _len_or_end) \
 ((fr_sbuff_t){ \
 	.buff_i		= _start, \
-	.start_i	= _start, \
+	.start_i	= _Generic((_start), \
+				char *		: _start, \
+				char const *	: _start, \
+				uint8_t *	: _start, \
+				uint8_t const *	: _start \
+			), \
 	.end_i		= _Generic((_len_or_end), \
 				size_t		: (char const *)(_start) + (size_t)(_len_or_end), \
 				long		: (char const *)(_start) + (size_t)(_len_or_end), \
@@ -557,7 +565,7 @@ do { \
 				char const *	: (char const *)(_len_or_end) \
 			), \
 	.p_i		= _start, \
-	.is_const	= IS_CONST(char *, _start) \
+	.is_const	= true, \
 })
 
 #define FR_SBUFF_IN_STR(_start) FR_SBUFF_IN(_start, strlen(_start))
