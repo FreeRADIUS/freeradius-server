@@ -999,6 +999,15 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request, bool running)
 			unlang_result_t section_result = frame->section_result; /* record the result of the frame before we pop it*/
 
 			DUMP_STACK;
+
+			/*
+			 *	Triggers can run modules which pop, and then the stack is empty.
+			 */
+			if (unlikely(stack->depth == 0)) {
+				fr_assert(top_frame);
+				break;
+			}
+
 			/*
 			 *	Head on back up the stack
 			 */
