@@ -104,9 +104,9 @@ static inline void CC_HINT(nonnull) fr_bio_unchain(fr_bio_t *bio)
 
 	fr_assert(prev || next);
 
-	if (prev) prev->entry.next = &next->entry;
+	if (prev) prev->entry.next = bio->entry.next;
 
-	if (next) next->entry.prev = &prev->entry;
+	if (next) next->entry.prev = bio->entry.prev;
 
 	bio->entry.prev = bio->entry.next = NULL;
 }
