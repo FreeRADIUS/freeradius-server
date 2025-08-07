@@ -68,7 +68,8 @@ do { \
 		rcode = fr_bio_shutdown(&my->bio); \
 		if (rcode < 0) return rcode;	   \
 	}					   \
-	fr_bio_unchain(&my->bio);		   \
+	if (fr_bio_prev(&my->bio) || fr_bio_next(&my->bio)) \
+		fr_bio_unchain(&my->bio);	   \
 } while (0)
 
 
