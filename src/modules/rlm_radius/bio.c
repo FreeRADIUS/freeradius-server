@@ -71,8 +71,7 @@ typedef struct {
 	int			fd;			//!< File descriptor.
 
 	struct {
-		fr_bio_t		*read;     	//!< what we use for input
-		fr_bio_t		*write;    	//!< what we use for output
+		fr_bio_t		*main;     	//!< what we use for IO
 		fr_bio_t		*fd;		//!< raw FD
 		fr_bio_t		*mem;		//!< memory wrappers for stream sockets
 	} bio;
@@ -426,7 +425,7 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	uint8_t			code = 0;
 
 	fr_pair_list_init(&reply);
-	slen = fr_bio_read(h->bio.read, NULL, h->buffer, h->buflen);
+	slen = fr_bio_read(h->bio.main, NULL, h->buffer, h->buflen);
 	if (slen == 0) {
 		/*
 		 *	@todo - set BIO FD EOF callback, so that we don't have to check it here.
@@ -557,7 +556,7 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	fr_assert(u->packet != NULL);
 	fr_assert(u->packet_len >= RADIUS_HEADER_LENGTH);
 
-	slen = fr_bio_write(h->bio.write, NULL, u->packet, u->packet_len);
+	slen = fr_bio_write(h->bio.main, NULL, u->packet, u->packet_len);
 
 	if (slen == fr_bio_error(IO_WOULD_BLOCK)) goto blocked;
 
@@ -806,7 +805,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	 *	Set the BIO read function to be the memory BIO, which will then call the packet verification
 	 *	routine.
 	 */
-	h->bio.read = h->bio.write = h->bio.mem;
+	h->bio.main = h->bio.mem;
 	h->bio.mem->uctx = h;
 
 	h->fd = fd;
@@ -991,7 +990,7 @@ static void conn_discard(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int f
 	uint8_t			buffer[4096];
 	ssize_t			slen;
 
-	while ((slen = fr_bio_read(h->bio.read, NULL, buffer, sizeof(buffer))) > 0);
+	while ((slen = fr_bio_read(h->bio.main, NULL, buffer, sizeof(buffer))) > 0);
 
 	if (slen < 0) {
 		switch (errno) {
@@ -1674,7 +1673,7 @@ do_write:
 	fr_assert(packet != NULL);
 	fr_assert(packet_len >= RADIUS_HEADER_LENGTH);
 
-	slen = fr_bio_write(h->bio.write, NULL, packet, packet_len);
+	slen = fr_bio_write(h->bio.main, NULL, packet, packet_len);
 
 	/*
 	 *	Can't write anything, requeue it on a different socket.
@@ -2004,7 +2003,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		 *	saves a round through the event loop.  If we're not
 		 *	busy, a few extra system calls don't matter.
 		 */
-		slen = fr_bio_read(h->bio.read, NULL, h->buffer, h->buflen);
+		slen = fr_bio_read(h->bio.main, NULL, h->buffer, h->buflen);
 		if (slen == 0) {
 			/*
 			 *	@todo - set BIO FD EOF callback, so that we don't have to check it here.
@@ -2174,7 +2173,7 @@ static void request_replicate_demux(UNUSED fr_event_list_t *el, trunk_connection
 		 *	saves a round through the event loop.  If we're not
 		 *	busy, a few extra system calls don't matter.
 		 */
-		slen = fr_bio_read(h->bio.read, NULL, h->buffer, h->buflen);
+		slen = fr_bio_read(h->bio.main, NULL, h->buffer, h->buflen);
 		if (slen == 0) {
 			/*
 			 *	@todo - set BIO FD EOF callback, so that we don't have to check it here.
