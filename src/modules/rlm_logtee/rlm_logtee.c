@@ -214,7 +214,7 @@ static void _logtee_conn_error(UNUSED fr_event_list_t *el, int sock, UNUSED int 
 {
 	rlm_logtee_thread_t	*t = talloc_get_type_abort(uctx, rlm_logtee_thread_t);
 
-	ERROR("Connection failed (%i): %s", sock, fr_syserror(fd_errno));
+	if (fd_errno) ERROR("Connection failed (%i): %s", sock, fr_syserror(fd_errno));
 
 	/*
 	 *	Something bad happened... Fix it...

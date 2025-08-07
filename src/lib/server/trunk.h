@@ -964,7 +964,7 @@ static void _conn_readable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int
 static void _conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx) \
 { \
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t); \
-	ERROR("%s - Connection failed: %s", tconn->conn->name, fr_syserror(fd_errno)); \
+	if (fd_errno) ERROR("%s - Connection failed: %s", tconn->conn->name, fr_syserror(fd_errno)); \
 	connection_signal_reconnect(tconn->conn, CONNECTION_FAILED); \
 } \
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/ \

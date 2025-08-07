@@ -474,7 +474,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 	connection_t		*conn = tconn->conn;
 	tcp_handle_t		*h = talloc_get_type_abort(conn->h, tcp_handle_t);
 
-	ERROR("%s - Connection %s failed: %s", h->module_name, h->name, fr_syserror(fd_errno));
+	if (fd_errno) ERROR("%s - Connection %s failed: %s", h->module_name, h->name, fr_syserror(fd_errno));
 
 	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
