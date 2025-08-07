@@ -99,8 +99,7 @@ static inline void CC_HINT(nonnull) fr_bio_chain(fr_bio_t *first, fr_bio_t *seco
  */
 static inline void CC_HINT(nonnull) fr_bio_unchain(fr_bio_t *bio)
 {
-	fr_assert(fr_bio_prev(bio) != NULL);
-	fr_assert(fr_bio_next(bio) != NULL);
+	fr_assert((fr_bio_prev(bio) != NULL) || (fr_bio_next(bio) != NULL));
 
 	fr_dlist_entry_unlink(&bio->entry);
 	bio->entry.prev = bio->entry.next = NULL;
