@@ -45,9 +45,7 @@ typedef struct {
 	fr_bio_fd_config_t	fd_config;	//!< for threads or sockets
 	fr_bio_fd_info_t const	*fd_info;	//!< status of the FD.
 	fr_radius_ctx_t		radius_ctx;	//!< for signing packets
-#ifdef REUSE_CONN
 	bool			limit_source_ports;
-#endif
 } bio_handle_ctx_t;
 
 typedef struct {
@@ -136,10 +134,8 @@ typedef struct {
 
 	fr_rb_expire_node_t	expire;
 
-#ifdef REUSE_CONN
 	int			num_ports;
 	connection_t		*connections[];	//!< for tracking outbound connections
-#endif
 } home_server_t;
 
 
@@ -721,9 +717,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	int			fd;
 	bio_handle_t		*h;
 	bio_handle_ctx_t	*ctx = uctx; /* thread or home server */
-#ifdef REUSE_CONN
 	connection_t		**to_save = NULL;
-#endif
 
 	MEM(h = talloc_zero(conn, bio_handle_t));
 	h->ctx = *ctx;
@@ -736,7 +730,6 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 
 	MEM(h->tt = radius_track_alloc(h));
 
-#ifdef REUSE_CONN
 	/*
 	 *	We are proxying to multiple home servers, but using a limited port range.  We must track the
 	 *	source port for each home server, so that we only can select the right unused source port for
@@ -765,7 +758,6 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 			goto fail;
 		}
 	}
-#endif
 
 	h->bio.fd = fr_bio_fd_alloc(h, &h->ctx.fd_config, 0);
 	if (!h->bio.fd) {
@@ -865,9 +857,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 
 	*h_out = h;
 
-#ifdef REUSE_CONN
 	if (to_save) *to_save = conn;
-#endif
 
 	return CONNECTION_STATE_CONNECTING;
 }
@@ -875,11 +865,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 /** Shutdown/close a file descriptor
  *
  */
-static void conn_close(UNUSED fr_event_list_t *el, void *handle,
-#ifndef REUSE_CONN
-  UNUSED
-#endif
-  void *uctx)
+static void conn_close(UNUSED fr_event_list_t *el, void *handle, void *uctx)
 {
 	bio_handle_t *h = talloc_get_type_abort(handle, bio_handle_t);
 
@@ -899,7 +885,6 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle,
 	 *	We have opened a limited number of outbound source ports.  This means that when we close a
 	 *	port, we have to mark it unused.
 	 */
-#ifdef REUSE_CONN
 	if (h->ctx.limit_source_ports) {
 		int offset;
 		home_server_t *home = talloc_get_type_abort(uctx, home_server_t);
@@ -914,7 +899,6 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle,
 
 		home->connections[offset] = NULL;
 	}
-#endif
 
 	DEBUG4("Freeing handle %p", handle);
 
@@ -2885,7 +2869,6 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 			},
 		});
 	if (!home) {
-#ifdef REUSE_CONN
 		size_t num_ports = 0;
 
 		/*
@@ -2897,23 +2880,15 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 
 		MEM(home = (home_server_t *) talloc_zero_array(thread, uint8_t, sizeof(home_server_t) + sizeof(connection_t *) * num_ports));
 		talloc_set_type(home, home_server_t);
-#else
-		MEM(home = talloc(thread, home_server_t));
-#endif
 
 		*home = (home_server_t) {
 			.ctx = (bio_handle_ctx_t) {
 				.el = unlang_interpret_event_list(request),
 				.module_name = inst->name,
 				.inst = inst,
-#ifdef REUSE_CONN
 				.limit_source_ports = (num_ports > 0),
-#endif
 			},
-
-#ifdef REUSE_CONN
 			.num_ports = num_ports,
-#endif
 		};
 
 		/*

@@ -729,9 +729,7 @@ check_others:
 				return -1;
 			}
 
-#ifdef REUSE_CONN
 			inst->fd_config.reuse_port = 1;
-#endif
 		}
 	}
 
