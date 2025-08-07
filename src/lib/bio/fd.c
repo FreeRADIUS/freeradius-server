@@ -1008,8 +1008,8 @@ int fr_bio_fd_close(fr_bio_t *bio)
 
 	if (my->info.state == FR_BIO_FD_STATE_CLOSED) return 0;
 
-	my->bio.read = fr_bio_fail_read;
-	my->bio.write = fr_bio_fail_write;
+	my->bio.read = fr_bio_shutdown_read;
+	my->bio.write = fr_bio_shutdown_write;
 
 	/*
 	 *	Shut down the connected socket.  The only errors possible here are things we can't do anything

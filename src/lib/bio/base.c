@@ -48,20 +48,12 @@ int fr_bio_destructor(fr_bio_t *bio)
  */
 ssize_t fr_bio_next_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
 {
-	ssize_t rcode;
 	fr_bio_t *next;
 
 	next = fr_bio_next(bio);
 	fr_assert(next != NULL);
 
-	rcode = next->read(next, packet_ctx, buffer, size);
-	if (rcode >= 0) return rcode;
-
-	if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return rcode;
-
-	bio->read = fr_bio_fail_read;
-	bio->write = fr_bio_fail_write;
-	return rcode;
+	return next->read(next, packet_ctx, buffer, size);
 }
 
 /** Internal bio function which just writes to the "next" bio.
@@ -71,28 +63,20 @@ ssize_t fr_bio_next_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t s
  */
 ssize_t fr_bio_next_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size)
 {
-	ssize_t rcode;
 	fr_bio_t *next;
 
 	next = fr_bio_next(bio);
 	fr_assert(next != NULL);
 
-	rcode = next->write(next, packet_ctx, buffer, size);
-	if (rcode >= 0) return rcode;
-
-	if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return rcode;
-
-	bio->read = fr_bio_fail_read;
-	bio->write = fr_bio_fail_write;
-	return rcode;
+	return next->write(next, packet_ctx, buffer, size);
 }
 
-static ssize_t fr_bio_shutdown_read(UNUSED fr_bio_t *bio, UNUSED void *packet_ctx, UNUSED void *buffer, UNUSED size_t size)
+ssize_t fr_bio_shutdown_read(UNUSED fr_bio_t *bio, UNUSED void *packet_ctx, UNUSED void *buffer, UNUSED size_t size)
 {
 	return fr_bio_error(SHUTDOWN);
 }
 
-static ssize_t fr_bio_shutdown_write(UNUSED fr_bio_t *bio, UNUSED void *packet_ctx, UNUSED void const *buffer, UNUSED size_t size)
+ssize_t fr_bio_shutdown_write(UNUSED fr_bio_t *bio, UNUSED void *packet_ctx, UNUSED void const *buffer, UNUSED size_t size)
 {
 	return fr_bio_error(SHUTDOWN);
 }

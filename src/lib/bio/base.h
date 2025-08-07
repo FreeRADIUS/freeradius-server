@@ -194,4 +194,7 @@ char const *fr_bio_strerror(ssize_t error);
 
 void	fr_bio_cb_set(fr_bio_t *bio, fr_bio_cb_funcs_t const *cb) CC_HINT(nonnull(1));
 
+ssize_t fr_bio_shutdown_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size);
+ssize_t fr_bio_shutdown_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size);
+
 #undef _CONST
