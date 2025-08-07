@@ -683,7 +683,6 @@ int dict_attr_parent_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *parent)
 {
 	fr_dict_attr_t *da = *da_p;
 
-
 	if (unlikely((*da_p)->type == FR_TYPE_NULL)) {
 		fr_strerror_const("Attribute type must be set before initialising parent.  Use dict_attr_type_init() first");
 		return -1;
@@ -855,11 +854,11 @@ int dict_attr_init_common(char const *filename, int line,
 
 	if (unlikely(dict_attr_type_init(da_p, type) < 0)) return -1;
 
+	if (args->flags) (*da_p)->flags = *args->flags;
+
 	if (parent && (dict_attr_parent_init(da_p, parent) < 0)) return -1;
 
 	if (args->ref && (dict_attr_ref_aset(da_p, args->ref, FR_DICT_ATTR_REF_ALIAS) < 0)) return -1;
-
-	if (args->flags) (*da_p)->flags = *args->flags;
 
 	return 0;
 }

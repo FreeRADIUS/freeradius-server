@@ -88,7 +88,7 @@ static inline void *dict_attr_ext_copy(fr_dict_attr_t **da_out_p, fr_dict_attr_t
 	 */
 #ifndef NDEBUG
 	if ((*da_out_p)->flags.is_unknown && ((*da_out_p)->type == FR_TYPE_OCTETS)) {
-		fr_assert(ext == FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+		fr_assert((ext == FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC) || (ext == FR_DICT_ATTR_EXT_VENDOR));
 	}
 #endif
 
