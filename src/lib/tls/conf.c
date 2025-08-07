@@ -246,11 +246,16 @@ conf_parser_t fr_tls_client_config[] = {
 static int tls_virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	fr_tls_conf_t	*conf = talloc_get_type_abort(parent, fr_tls_conf_t);
+	virtual_server_t const	*vs = NULL;
 
-	if (virtual_server_cf_parse(ctx, out, parent, ci, rule) < 0) return -1;
+	if (virtual_server_cf_parse(ctx, &vs, parent, ci, rule) < 0) return -1;
 
-	if (!conf->virtual_server) return 0;
+	if (!vs) return 0;
 
+	/*
+	 *	`out` points to conf->virtual_server
+	 */
+	*((CONF_SECTION const **)out) = virtual_server_cs(vs);
 	conf->verify_certificate = cf_section_find(conf->virtual_server, "verify", "certificate") ? true : false;
 	conf->new_session = cf_section_find(conf->virtual_server, "new", "session") ? true : false;
 	conf->establish_session = cf_section_find(conf->virtual_server, "establish", "session") ? true : false;
