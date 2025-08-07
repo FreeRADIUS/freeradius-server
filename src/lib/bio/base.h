@@ -137,6 +137,17 @@ static inline CC_HINT(nonnull) fr_bio_t *fr_bio_next(fr_bio_t *bio)
 	return fr_dlist_entry_to_item(offsetof(fr_bio_t, entry), next);
 }
 
+static inline CC_HINT(nonnull) fr_bio_t *fr_bio_head(fr_bio_t *bio)
+{
+	fr_bio_t *this, *prev;
+
+	for (this = bio; (prev = fr_bio_prev(this)) != NULL; this = prev) {
+		/* nothing */
+	}
+
+	return this;
+}
+
 /** Read raw data from a bio
  *
  *  @param bio		the binary IO handler

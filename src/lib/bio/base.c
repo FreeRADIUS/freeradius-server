@@ -98,27 +98,24 @@ ssize_t fr_bio_shutdown_write(UNUSED fr_bio_t *bio, UNUSED void *packet_ctx, UNU
 int fr_bio_shutdown(fr_bio_t *bio)
 {
 	int rcode;
-	fr_bio_t *this, *first;
+	fr_bio_t *head, *this;
 	fr_bio_common_t *my;
 
 	/*
 	 *	Find the first bio in the chain.
 	 */
-	for (this = bio; fr_bio_prev(this) != NULL; this = fr_bio_prev(this)) {
-		/* nothing */
-	}
-	first = this;
+	head = fr_bio_head(bio);
 
 	/*
 	 *	We're in the process of shutting down, don't call ourselves recursively.
 	 */
-	my = (fr_bio_common_t *) this;
+	my = (fr_bio_common_t *) head;
 	if (my->bio.read == fr_bio_shutdown_read) return 0;
 
 	/*
 	 *	Walk back down the chain, calling the shutdown functions.
 	 */
-	for (/* nothing */; this != NULL; this = fr_bio_next(this)) {
+	for (this = head; this != NULL; this = fr_bio_next(this)) {
 		my = (fr_bio_common_t *) this;
 
 		if (my->priv_cb.shutdown) {
@@ -136,10 +133,10 @@ int fr_bio_shutdown(fr_bio_t *bio)
 	 *	Call the application shutdown routine to tell it that
 	 *	the BIO has been successfully shut down.
 	 */
-	my = (fr_bio_common_t *) first;
+	my = (fr_bio_common_t *) head;
 
 	if (my->cb.shutdown) {
-		rcode = my->cb.shutdown(first);
+		rcode = my->cb.shutdown(head);
 		if (rcode < 0) return rcode;
 		my->cb.shutdown = NULL;
 	}

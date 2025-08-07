@@ -144,6 +144,18 @@ static ssize_t fr_bio_fd_read_stream(fr_bio_t *bio, UNUSED void *packet_ctx, voi
 retry:
 	rcode = read(my->info.socket.fd, buffer, size);
 	if (rcode == 0) {
+		fr_bio_t *head;
+
+		/*
+		 *	Flush any pending writes, shut down the BIO, and then mark it as EOF.
+		 */
+		head = fr_bio_head(bio);
+
+		(void) fr_bio_write(head, NULL, NULL, SIZE_MAX);
+
+		rcode = fr_bio_shutdown(head);
+		if (rcode < 0) return rcode;
+
 		fr_bio_eof(bio);
 		return 0;
 	}
