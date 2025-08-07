@@ -713,15 +713,26 @@ check_others:
 			return -1;
 		}
 
-#ifdef REUSE_CONN
 		/*
 		 *	If there is a limited source port range, then set the reuse port flag.  This lets us
 		 *	bind multiple sockets to the same port before we connect() them.
 		 */
 		if ((inst->fd_config.src_port_start > 0) && (inst->fd_config.src_port_end > 0)) {
+			if (inst->fd_config.src_port_end <= inst->fd_config.src_port_start) {
+				cf_log_perr(conf, "src_port_start must be smaller than src_port_end");
+				return -1;
+			}
+
+			if ((inst->fd_config.src_port_end - inst->fd_config.src_port_start) < (int) main_config->max_workers) {
+				cf_log_perr(conf, "src_port_start / end range is not enough for %u worker threads",
+					    main_config->max_workers);
+				return -1;
+			}
+
+#ifdef REUSE_CONN
 			inst->fd_config.reuse_port = 1;
-		}
 #endif
+		}
 	}
 
 	if (fr_bio_fd_check_config(&inst->fd_config) < 0) {
