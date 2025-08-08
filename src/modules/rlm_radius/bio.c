@@ -2620,18 +2620,19 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	case RLM_RADIUS_MODE_XLAT_PROXY:
 		fr_rb_expire_inline_talloc_init(&thread->bio.expires, home_server_t, expire, home_server_cmp, home_server_free,
 						inst->home_server_lifetime);
+		FALL_THROUGH;
+
+	default:
 		/*
 		 *	Assign each thread a portion of the available source port range.
 		 */
 		if (thread->ctx.fd_config.src_port_start) {
 			uint16_t	range = inst->fd_config.src_port_end - inst->fd_config.src_port_start + 1;
-			uint16_t	block = range / main_config->max_workers;
-			thread->ctx.fd_config.src_port_start = inst->fd_config.src_port_start + (block * fr_schedule_worker_id());
-			thread->ctx.fd_config.src_port_end = inst->fd_config.src_port_start + (block * (fr_schedule_worker_id() +1)) - 1;
+			thread->num_ports = range / main_config->max_workers;
+			thread->ctx.fd_config.src_port_start = inst->fd_config.src_port_start + (thread->num_ports * fr_schedule_worker_id());
+			thread->ctx.fd_config.src_port_end = inst->fd_config.src_port_start + (thread->num_ports * (fr_schedule_worker_id() +1)) - 1;
 		}
-		FALL_THROUGH;
 
-	default:
 		thread->ctx.trunk = trunk_alloc(thread, mctx->el, &io_funcs,
 					    &inst->trunk_conf, inst->name, thread, false);
 		if (!thread->ctx.trunk) return -1;
@@ -2872,16 +2873,10 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 			},
 		});
 	if (!home) {
-		size_t num_ports = 0;
-
 		/*
 		 *	Track which connections are made to this home server from which open ports.
 		 */
-		if ((thread->ctx.fd_config.src_port_start > 0) && (thread->ctx.fd_config.src_port_end > 0)) {
-			num_ports = thread->ctx.fd_config.src_port_end - thread->ctx.fd_config.src_port_start + 1;
-		}
-
-		MEM(home = (home_server_t *) talloc_zero_array(thread, uint8_t, sizeof(home_server_t) + sizeof(connection_t *) * num_ports));
+		MEM(home = (home_server_t *) talloc_zero_array(thread, uint8_t, sizeof(home_server_t) + sizeof(connection_t *) * thread->num_ports));
 		talloc_set_type(home, home_server_t);
 
 		*home = (home_server_t) {
@@ -2889,9 +2884,9 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 				.el = unlang_interpret_event_list(request),
 				.module_name = inst->name,
 				.inst = inst,
-				.limit_source_ports = (num_ports > 0),
+				.limit_source_ports = (thread->num_ports > 0),
 			},
-			.num_ports = num_ports,
+			.num_ports = thread->num_ports,
 		};
 
 		/*
