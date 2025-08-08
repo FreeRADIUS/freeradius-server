@@ -56,6 +56,9 @@ typedef struct {
 		uint32_t id;			//!< for replication
 		fr_rb_expire_t	expires;       	//!< for proxying / client sending
 	} bio;
+
+	int			num_ports;
+	connection_t		**connections;
 } bio_thread_t;
 
 typedef struct bio_request_s bio_request_t;
