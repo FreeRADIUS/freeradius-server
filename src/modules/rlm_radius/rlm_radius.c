@@ -767,6 +767,19 @@ check_others:
 		}
 
 		/*
+		 *	Encorce limits per trunk, due to the 8-bit ID space.
+		 */
+		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, >=, 2);
+		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, <=, 255);
+		FR_INTEGER_BOUND_CHECK("trunk.per_connection_target", inst->trunk_conf.target_req_per_conn, <=, inst->trunk_conf.max_req_per_conn / 2);
+
+		/*
+		 *	This only applies for XLAT_PROXY, but what the heck.
+		 */
+		FR_TIME_DELTA_BOUND_CHECK("home_server_lifetime", inst->home_server_lifetime, >=, fr_time_delta_from_sec(10));
+		FR_TIME_DELTA_BOUND_CHECK("home_server_lifetime", inst->home_server_lifetime, <=, fr_time_delta_from_sec(3600));
+
+		/*
 		 *	No src_port range, we don't need to check any other settings.
 		 */
 		if (!inst->fd_config.src_port_start && !inst->fd_config.src_port_end) break;
@@ -795,18 +808,6 @@ check_others:
 			return -1;
 		}
 
-		/*
-		 *	Encorce limits per trunk, due to the 8-bit ID space.
-		 */
-		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, >=, 2);
-		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, <=, 255);
-		FR_INTEGER_BOUND_CHECK("trunk.per_connection_target", inst->trunk_conf.target_req_per_conn, <=, inst->trunk_conf.max_req_per_conn / 2);
-
-		/*
-		 *	This only applies for XLAT_PROXY, but what the heck.
-		 */
-		FR_TIME_DELTA_BOUND_CHECK("home_server_lifetime", inst->home_server_lifetime, >=, fr_time_delta_from_sec(10));
-		FR_TIME_DELTA_BOUND_CHECK("home_server_lifetime", inst->home_server_lifetime, <=, fr_time_delta_from_sec(3600));
 		break;
 
 	case RLM_RADIUS_MODE_UNCONNECTED_REPLICATE:
