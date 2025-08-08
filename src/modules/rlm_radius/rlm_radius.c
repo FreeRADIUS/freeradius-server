@@ -703,36 +703,6 @@ check_others:
 		inst->fd_config.flags = O_RDWR;
 	}
 
-	/*
-	 *	When using %radius.sendto.ipaddr(), we can then often re-use the source port, as we connect()
-	 *	the outbound sockets.
-	 */
-	if (inst->mode == RLM_RADIUS_MODE_XLAT_PROXY) {
-		if (inst->fd_config.src_port != 0) {
-			cf_log_err(conf, "Cannot set a fixed source port for mode=dynamic-proxy");
-			return -1;
-		}
-
-		/*
-		 *	If there is a limited source port range, then set the reuse port flag.  This lets us
-		 *	bind multiple sockets to the same port before we connect() them.
-		 */
-		if ((inst->fd_config.src_port_start > 0) && (inst->fd_config.src_port_end > 0)) {
-			if (inst->fd_config.src_port_end <= inst->fd_config.src_port_start) {
-				cf_log_perr(conf, "src_port_start must be smaller than src_port_end");
-				return -1;
-			}
-
-			if ((inst->fd_config.src_port_end - inst->fd_config.src_port_start) < (int) main_config->max_workers) {
-				cf_log_perr(conf, "src_port_start / end range is not enough for %u worker threads",
-					    main_config->max_workers);
-				return -1;
-			}
-
-			inst->fd_config.reuse_port = 1;
-		}
-	}
-
 	if (fr_bio_fd_check_config(&inst->fd_config) < 0) {
 		cf_log_perr(conf, "Invalid configuration");
 		return -1;
@@ -808,6 +778,21 @@ check_others:
 			return -1;
 		}
 
+		/*
+		 *	The source port range is split by worker - so there needs to be sufficient for at least
+		 *	one per worker.
+		 */
+		if ((inst->fd_config.src_port_end - inst->fd_config.src_port_start + 1) < (int) main_config->max_workers) {
+			cf_log_perr(conf, "src_port_start / end range is not enough for %u worker threads",
+				    main_config->max_workers);
+			return -1;
+		}
+
+		/*
+		 *	If there is a limited source port range, then set the reuse port flag.  This lets us
+		 *	bind multiple sockets to the same port before we connect() them.
+		 */
+		inst->fd_config.reuse_port = 1;
 		break;
 
 	case RLM_RADIUS_MODE_UNCONNECTED_REPLICATE:
