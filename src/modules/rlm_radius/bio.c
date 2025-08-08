@@ -2631,6 +2631,9 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 			thread->num_ports = range / main_config->max_workers;
 			thread->ctx.fd_config.src_port_start = inst->fd_config.src_port_start + (thread->num_ports * fr_schedule_worker_id());
 			thread->ctx.fd_config.src_port_end = inst->fd_config.src_port_start + (thread->num_ports * (fr_schedule_worker_id() +1)) - 1;
+			if (inst->mode != RLM_RADIUS_MODE_XLAT_PROXY) {
+				thread->connections = talloc_zero_array(thread, connection_t *, thread->num_ports);
+			}
 		}
 
 		thread->ctx.trunk = trunk_alloc(thread, mctx->el, &io_funcs,
