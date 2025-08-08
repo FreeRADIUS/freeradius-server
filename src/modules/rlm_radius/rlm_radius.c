@@ -777,14 +777,6 @@ check_others:
 		}
 
 		/*
-		 *	We can only have one method of allocating source ports.
-		 */
-		if (inst->fd_config.src_port) {
-			cf_log_err(conf, "Cannot set 'src_port' and 'src_port_start' or 'src_port_end'");
-			return -1;
-		}
-
-		/*
 		 *	Cross-check src_port, src_port_start, and src_port_end.
 		 */
 		if (inst->fd_config.src_port_start) {
