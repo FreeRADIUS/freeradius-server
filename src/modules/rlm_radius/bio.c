@@ -37,6 +37,12 @@
 //#include "rlm_radius.h"
 #include "track.h"
 
+typedef enum {
+	LIMIT_PORTS_NONE = 0,			//!< Source port not restricted
+	LIMIT_PORTS_STATIC,			//!< Limited source ports for static home servers
+	LIMIT_PORTS_DYNAMIC			//!< Limited source ports for dynamic home servers
+} bio_limit_ports_t;
+
 typedef struct {
 	char const		*module_name;	//!< the module that opened the connection
 	rlm_radius_t const	*inst;		//!< our instance
@@ -45,7 +51,7 @@ typedef struct {
 	fr_bio_fd_config_t	fd_config;	//!< for threads or sockets
 	fr_bio_fd_info_t const	*fd_info;	//!< status of the FD.
 	fr_radius_ctx_t		radius_ctx;	//!< for signing packets
-	bool			limit_source_ports;
+	bio_limit_ports_t	limit_source_ports;	//!< What type of port limit is in use.
 } bio_handle_ctx_t;
 
 typedef struct {
@@ -738,7 +744,15 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	 *	source port for each home server, so that we only can select the right unused source port for
 	 *	this home server.
 	 */
-	if (ctx->limit_source_ports) {
+	switch (ctx->limit_source_ports) {
+	case LIMIT_PORTS_NONE:
+		break;
+
+	/*
+	 *	Dynamic home servers store source port usage in the home_server_t
+	 */
+	case LIMIT_PORTS_DYNAMIC:
+	{
 		int i;
 		home_server_t *home = talloc_get_type_abort(ctx, home_server_t);
 
@@ -760,6 +774,32 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 			      h->ctx.module_name, fr_box_ipaddr(h->ctx.fd_config.dst_ipaddr), h->ctx.fd_config.dst_port);
 			goto fail;
 		}
+	}
+		break;
+
+	/*
+	 *	Static home servers store source port usage in bio_thread_t
+	 */
+	case LIMIT_PORTS_STATIC:
+	{
+		int i;
+		bio_thread_t *thread = talloc_get_type_abort(ctx, bio_thread_t);
+
+		for (i = 0; i < thread->num_ports; i++) {
+			if (!thread->connections[i]) {
+				to_save = &thread->connections[i];
+				h->ctx.fd_config.src_port = h->ctx.fd_config.src_port_start + i;
+				break;
+			}
+		}
+
+		if (!to_save) {
+			ERROR("%s - Failed opening socket to home server %pV:%u - source port range is full",
+			      h->ctx.module_name, fr_box_ipaddr(h->ctx.fd_config.dst_ipaddr), h->ctx.fd_config.dst_port);
+			goto fail;
+		}
+	}
+		break;
 	}
 
 	h->bio.fd = fr_bio_fd_alloc(h, &h->ctx.fd_config, 0);
@@ -888,7 +928,12 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, void *uctx)
 	 *	We have opened a limited number of outbound source ports.  This means that when we close a
 	 *	port, we have to mark it unused.
 	 */
-	if (h->ctx.limit_source_ports) {
+	switch (h->ctx.limit_source_ports) {
+	case LIMIT_PORTS_NONE:
+		break;
+
+	case LIMIT_PORTS_DYNAMIC:
+	{
 		int offset;
 		home_server_t *home = talloc_get_type_abort(uctx, home_server_t);
 
@@ -901,6 +946,25 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, void *uctx)
 		fr_assert(home->connections[offset] == h->conn);
 
 		home->connections[offset] = NULL;
+	}
+		break;
+
+	case LIMIT_PORTS_STATIC:
+	{
+		int offset;
+		bio_thread_t *thread = talloc_get_type_abort(uctx, bio_thread_t);
+
+		fr_assert(h->ctx.fd_config.src_port >= h->ctx.fd_config.src_port_start);
+		fr_assert(h->ctx.fd_config.src_port < h->ctx.fd_config.src_port_end);
+
+		offset = h->ctx.fd_config.src_port - h->ctx.fd_config.src_port_start;
+		fr_assert(offset < thread->num_ports);
+
+		fr_assert(thread->connections[offset] == h->conn);
+
+		thread->connections[offset] = NULL;
+	}
+		break;
 	}
 
 	DEBUG4("Freeing handle %p", handle);
@@ -2633,6 +2697,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 			thread->ctx.fd_config.src_port_end = inst->fd_config.src_port_start + (thread->num_ports * (fr_schedule_worker_id() +1)) - 1;
 			if (inst->mode != RLM_RADIUS_MODE_XLAT_PROXY) {
 				thread->connections = talloc_zero_array(thread, connection_t *, thread->num_ports);
+				thread->ctx.limit_source_ports = LIMIT_PORTS_STATIC;
 			}
 		}
 
@@ -2887,7 +2952,7 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 				.el = unlang_interpret_event_list(request),
 				.module_name = inst->name,
 				.inst = inst,
-				.limit_source_ports = (thread->num_ports > 0),
+				.limit_source_ports = (thread->num_ports > 0) ? LIMIT_PORTS_DYNAMIC : LIMIT_PORTS_NONE,
 			},
 			.num_ports = thread->num_ports,
 		};
