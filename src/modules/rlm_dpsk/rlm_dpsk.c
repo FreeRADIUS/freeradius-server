@@ -818,7 +818,7 @@ update_attributes:
 	 *	in the database.
 	 */
 	RDEBUG("Creating &reply:PSK-Identity and &reply:Pre-Shared-Key");
-	MEM(vp = fr_pair_afrom_num(request->reply, PW_PSK_IDENTITY, 0));
+	MEM(vp = fr_pair_afrom_num(request->reply, PW_PRE_SHARED_KEY, 0));
 	fr_pair_value_bstrncpy(vp, psk, psk_len);
 	fr_pair_add(&request->reply->vps, vp);
 
