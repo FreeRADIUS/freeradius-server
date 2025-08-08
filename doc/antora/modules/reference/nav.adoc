@@ -1,9 +1,7 @@
 * xref:index.adoc[Reference Documentation]
 
 ** xref:unlang/index.adoc[Unlang Policy Language]
-
 *** xref:unlang/interpreter.adoc[Interpreter]
-
 *** xref:unlang/keywords.adoc[Keywords]
 **** xref:unlang/break.adoc[break]
 **** xref:unlang/call.adoc[call]
@@ -38,7 +36,7 @@
 
 *** xref:unlang/local.adoc[Local Variables]
 
-*** xref:unlang/module.adoc[Modules]
+*** xref:unlang/module.adoc[Module]
 **** xref:unlang/module_method.adoc[Module Methods]
 **** xref:unlang/module_builtin.adoc[Built-in Modules]
 
@@ -58,7 +56,7 @@
 *** xref:unlang/attr.adoc[Attribute References]
 *** xref:unlang/return_codes.adoc[Return Codes]
 
-** xref:type/index.adoc[Data Types]
+** xref:type/index.adoc[Data Type]
 *** xref:type/index.adoc[List of Data Types]
 *** xref:type/cast.adoc[Casts]
 *** xref:type/ip.adoc[IP Addresses]
@@ -121,7 +119,7 @@
 **** xref:xlat/time/offset.adoc[UTC Offset]
 **** xref:xlat/time/request.adoc[Request Time]
 
-** xref:dictionary/index.adoc[Dictionaries]
+** xref:dictionary/index.adoc[Dictionary]
 *** xref:dictionary/alias.adoc[ALIAS]
 *** xref:dictionary/attribute.adoc[ATTRIBUTE]
 *** xref:dictionary/define.adoc[DEFINE]
@@ -141,25 +139,16 @@
 *** xref:dictionary/begin-vendor.adoc[BEGIN-VENDOR]
 *** xref:dictionary/end-vendor.adoc[END-VENDOR]
 
-** xref:policy/index.adoc[Create Policy Rules]
-*** xref:policy/different.adoc[Why FreeRADIUS is different]
-
-** xref:man/index.adoc["man" pages]
-*** xref:man/radclient.adoc[radclient]
-*** xref:man/radiusd.adoc[radiusd]
-*** xref:man/radmin.adoc[radmin]
-*** xref:man/radsniff.adoc[radsniff]
-
-** xref:raddb/index.adoc[Configuration Files]
+** xref:raddb/index.adoc[Configuration File]
 *** xref:raddb/format.adoc[Format of the Configuration Files]
 *** xref:raddb/certs/index.adoc[Certificates]
 *** xref:raddb/global.d/index.adoc[Global Configuration]
 **** xref:raddb/global.d/ldap.adoc[Ldap]
 **** xref:raddb/global.d/python.adoc[Python]
 
-** xref:raddb/mods-available/index.adoc[Modules]
-*** xref:raddb/mods-available/all_modules.adoc[Summary of Modules]
 
+** xref:raddb/mods-available/index.adoc[Module]
+*** xref:raddb/mods-available/all_modules.adoc[Summary of Modules]
 *** xref:raddb/mods-available/doc/authentication.adoc[Authentication]
 **** xref:raddb/mods-available/chap.adoc[CHAP module]
 **** xref:raddb/mods-available/crl.adoc[CRL]
@@ -227,6 +216,7 @@
 ***** xref:raddb/mods-available/detail.example.com.adoc[Example]
 ***** xref:raddb/mods-available/detail.log.adoc[Log Example]
 
+
 *** xref:raddb/mods-available/doc/policy.adoc[Policy]
 **** xref:raddb/mods-available/always.adoc[Always]
 **** xref:raddb/mods-available/attr_filter.adoc[Attr_filter]
@@ -246,11 +236,14 @@
 **** xref:raddb/mods-available/stats.adoc[Stats]
 **** xref:raddb/mods-available/unbound.adoc[Unbound]
 
-** xref:raddb/policy.d/index.adoc[Policies]
-*** xref:raddb/policy.d/at_reference.adoc[@policy]
-*** xref:raddb/policy.d/method.adoc[Method Override]
 
-** xref:raddb/sites-available/index.adoc[Virtual Servers]
+** xref:raddb/policy.d/index.adoc[Policy]
+*** xref:policy/index.adoc[Create Policy Rules]
+**** xref:policy/different.adoc[Why FreeRADIUS is different]
+**** xref:raddb/policy.d/at_reference.adoc[@policy]
+**** xref:raddb/policy.d/method.adoc[Method Override]
+
+** xref:raddb/sites-available/index.adoc[Virtual Server]
 *** xref:raddb/sites-available/arp.adoc[ARP]
 *** xref:raddb/sites-available/bfd.adoc[BFD]
 *** xref:raddb/sites-available/control-socket.adoc[Control Socket]
@@ -271,7 +264,7 @@
 **** xref:raddb/sites-available/decoupled-accounting.adoc[Decoupled Accounting]
 **** xref:raddb/sites-available/detail.adoc[Detail]
 **** xref:raddb/sites-available/inner-tunnel.adoc[EAP Inner Tunnel]
-**** xref:raddb/sites-available/virtual.example.com.adoc[Internal Proxying]
+**** xref:raddb/sites-available/virtual.example.com.adoc[Internal Proxy]
 **** xref:raddb/sites-available/originate-coa.adoc[Originate CoA-Request]
 ***** xref:raddb/sites-available/robust-proxy-accounting.adoc[Robust Proxy Accounting]
 **** xref:raddb/sites-available/proxy-inner-tunnel.adoc[Proxy Inner Tunnel]
@@ -280,15 +273,26 @@
 ***** xref:raddb/sites-available/tacacs.adoc[Virtual Server]
 **** xref:raddb/sites-available/tls.adoc[TLS]
 **** xref:raddb/sites-available/vmps.adoc[VMPS]
-**** xref:raddb/sites-available/dynamic-clients.adoc[Dynamic Clients]
+**** xref:raddb/sites-available/dynamic-clients.adoc[Dynamic Client]
 
 *** xref:raddb/clients.conf.adoc[Clients]
 *** xref:raddb/debug.conf.adoc[Debugging Configuration]
-*** xref:raddb/dictionary.adoc[Local Dictionary Definitions]
+*** xref:raddb/dictionary.adoc[Local Dictionary Definition]
 *** xref:raddb/radrelay.conf.adoc[Radrelay Configuration]
 *** xref:raddb/radiusd.conf.adoc[Server Configuration File]
-*** xref:raddb/templates.conf.adoc[Templates]
-*** xref:raddb/trigger.conf.adoc[Triggers]
+*** xref:raddb/templates.conf.adoc[Template]
+*** xref:raddb/trigger.conf.adoc[Trigger]
+
+
+** xref:man/index.adoc[Man Pages]
+*** xref:man/dictionary.adoc[dictionary]
+*** xref:man/radclient.adoc[radclient]
+*** xref:man/radiusd.adoc[radiusd]
+*** xref:man/radmin.adoc[radmin]
+*** xref:man/radsniff.adoc[radsniff]
+*** xref:man/unlang.adoc[unlang]
+
+
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

@@ -1,6 +1,6 @@
 = Policies
 
-The core functionality of the server is implemented in _policies_.
+The core functionality of the server is implemented in *policies*.
 These policies are written in `unlang`.  In addition to documenting
 the default policies, this section describes how and why to write good
 policies.

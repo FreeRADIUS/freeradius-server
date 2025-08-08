@@ -1,4 +1,4 @@
-== Dictionaries
+== Dictionary
 
 The `dictionary` files define names, numbers, and
 xref:type/index.adoc[data types] for use in the server.  In general,
@@ -24,7 +24,7 @@ Editing those files will likely break the server.
 Instead, you can add local dictionary definitions in the
 xref:raddb/dictionary.adoc[raddb/dictionary] file.
 
-== Concepts and Background
+== Concepts and background
 
 The dictionaries are necessary because many networking protocols do
 not send humanly-readable names over the network.  Instead, the
@@ -78,13 +78,13 @@ Vendors can submit new dictionaries to us via
 mailto:dictionary@freeradius.org[email], or via
 https://github.com/FreeRADIUS/freeradius-server/[GitHub].
 
-=== Names are Case-insensitive
+=== Names are case-insensitive
 
 When names are printed, they are printed as the name given in the
 dictionaries.  When a name is looked up in the dictionaries, the
 lookup is done in a case-insensitive manner.
 
-=== Names are Hierarchical
+=== Names are hierarchical
 
 In earlier versions of FreeRADIUS, the names were global.  The global
 names for attributes caused issue with implementations, as noted in
@@ -111,7 +111,7 @@ xref:dictionary/struct.adoc[STRUCT], etc.  We generally refer to all
 of these entities as being 'attributes', no matter how the name was
 defined.
 
-== Files and Location
+== Files and location
 
 The dictionaries are placed into a `share` directory, which is usually
 in a location such as `/usr/share/freeradius/`.  The definitions for
@@ -126,7 +126,7 @@ upgrade) will over-write local changes.
 Local edits should be kept to the `raddb/dictionary` file, which will
 not be overwritten on an upgrade.
 
-== File Syntax
+== File syntax
 
 The dictionary file format follows the standard RADIUS dictionary
 syntax.  In many respects, the format has had only minor changes since
