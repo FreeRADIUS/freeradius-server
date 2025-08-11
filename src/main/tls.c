@@ -3623,7 +3623,7 @@ int tls_global_init(TLS_UNUSED bool spawn_flag, TLS_UNUSED bool check)
 	CONF_modules_load_file(NULL, NULL, 0);
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	EVP_set_default_properties(NULL, "fips=no");
+	EVP_set_default_properties(NULL, "-fips");
 #endif
 
 	/*
