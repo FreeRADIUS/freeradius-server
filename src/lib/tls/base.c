@@ -546,8 +546,10 @@ int fr_openssl_init(void)
  */
 int fr_openssl_fips_mode(bool enabled)
 {
-	if (!EVP_set_default_properties(NULL, enabled ? "fips=yes" : "fips=no")) {
-		fr_tls_log(NULL, "Failed %s OpenSSL FIPS mode", enabled ? "enabling" : "disabling");
+	if (enabled) return 0;	/* don't change the FIPS mode */
+
+	if (!EVP_set_default_properties(NULL, "-fips")) {
+		fr_tls_log(NULL, "Failed disabling OpenSSL FIPS mode");
 		return -1;
 	}
 
