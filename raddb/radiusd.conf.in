@@ -569,19 +569,9 @@ security {
 @openssl_version_check_config@
 
 	#
-	#  openssl_fips_mode:: Disable OpenSSL FIPS mode.
+	#  openssl_fips_mode:: Enable OpenSSL FIPS mode.
 	#
-	#  Setting this to "yes" means "use whatever FIPS mode is
-	#  available on the system".
-	#
-	#  Setting this to "no" means "disable FIPS mode just for
-	#  FreeRADIUS".
-	#
-	#  FreeRADIUS MUST disable FIPS mode in order to use MD4 and
-	#  MD5 from the OpenSSL APIs.
-	#
-	#  This setting should only be used then the system as a whole
-	#  enables FIPS, and you still want to use RADIUS.
+	#  This disables non-FIPS compliant digests and algorithms
 	#
 #	openssl_fips_mode = no
 }
