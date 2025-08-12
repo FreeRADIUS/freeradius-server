@@ -3874,6 +3874,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		}
 		break;		/* use generic string/octets stuff below */
 
+#if 0
 	case FR_TYPE_ATTR:
 		/*
 		 *	Convert it to an integer of the correct length. Then, cast it in place.
@@ -3901,7 +3902,9 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		}
 
 		return fr_value_box_cast_in_place(ctx, dst, dst_type, dst_enumv);
-
+#else
+	case FR_TYPE_ATTR:
+#endif
 	/*
 	 *	Invalid types for casting (were caught earlier)
 	 */
