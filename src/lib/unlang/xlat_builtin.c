@@ -23,14 +23,11 @@
  * @copyright 2000,2006 The FreeRADIUS server project
  * @copyright 2000 Alan DeKok (aland@freeradius.org)
  */
-
-
 RCSID("$Id$")
 
 /**
  * @defgroup xlat_functions xlat expansion functions
  */
-
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/unlang/interpret.h>
@@ -40,6 +37,9 @@ RCSID("$Id$")
 #include <freeradius-devel/io/test_point.h>
 
 #include <freeradius-devel/util/base16.h>
+#include <freeradius-devel/util/dbuff.h>
+#include <freeradius-devel/util/dcursor.h>
+#include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/table.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
@@ -259,8 +259,8 @@ xlat_action_t xlat_transparent(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_pairs_debug(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-					  UNUSED xlat_ctx_t const *xctx,
-					  request_t *request, fr_value_box_list_t *args)
+					   UNUSED xlat_ctx_t const *xctx,
+					   request_t *request, fr_value_box_list_t *args)
 {
 	fr_pair_t		*vp;
 	fr_dcursor_t		*cursor;
@@ -4142,12 +4142,13 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	bool		tainted = false;
 	fr_value_box_t	*encoded;
 
-	uint8_t		binbuf[2048];
-	uint8_t		*p = binbuf, *end = p + sizeof(binbuf);
+	fr_dbuff_t	*dbuff;
 	ssize_t		len = 0;
 	fr_value_box_t	*in_head;
 	void		*encode_ctx = NULL;
 	fr_test_point_pair_encode_t const *tp_encode;
+
+	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 2048, SIZE_MAX);
 
 	XLAT_ARGS(args, &in_head);
 
@@ -4167,12 +4168,35 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Loop over the attributes, encoding them.
 	 */
-	for (vp = fr_dcursor_current(cursor);
-	     vp != NULL;
-	     vp = fr_dcursor_next(cursor)) {
-		if (vp->da->flags.internal) continue;
+	RDEBUG2("Encoding attributes");
 
+	if (RDEBUG_ENABLED2) {
+		RINDENT();
+		for (vp = fr_dcursor_current(cursor);
+		     vp != NULL;
+		     vp = fr_dcursor_next(cursor)) {
+			RDEBUG2("%pP", vp);
+		}
+		REXDENT();
+	}
+
+	/*
+	 *	Encoders advance the cursor, so we just need to feed
+	 *	in the next pair.  This was originally so we could
+	 *	extend the output buffer, but with dbuffs that's
+	 *	no longer necessary... we might want to refactor this
+	 *	in future.
+	 */
+	for (vp = fr_dcursor_head(cursor);
+	     vp != NULL;
+	     vp = fr_dcursor_current(cursor)) {
 		/*
+		 *
+		 *	Don't check for internal attributes, the
+		 *	encoders can skip them if they need to, and the
+		 *	internal encoder can encode anything, as can
+		 *	things like CBOR.
+		 *
 		 *	Don't check the dictionaries.  By definition,
 		 *	vp->da->dict==request->proto_dict, OR else we're
 		 *	using the internal encoder and encoding a real
@@ -4183,22 +4207,22 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 *	as AKA/SIM and DHCPv6 encode "bool"s only if
 		 *	their value is true.
 		 */
-
-		len = tp_encode->func(&FR_DBUFF_TMP(p, end), cursor, encode_ctx);
+		len = tp_encode->func(dbuff, cursor, encode_ctx);
 		if (len < 0) {
 			RPEDEBUG("Protocol encoding failed");
+			REXDENT();
 			return XLAT_ACTION_FAIL;
 		}
 
 		tainted |= vp->vp_tainted;
-		p += len;
 	}
+	REXDENT();
 
 	/*
 	 *	Pass the options string back to the caller.
 	 */
 	MEM(encoded = fr_value_box_alloc_null(ctx));
-	fr_value_box_memdup(encoded, encoded, NULL, binbuf, (size_t)len, tainted);
+	fr_value_box_memdup(encoded, encoded, NULL, fr_dbuff_start(dbuff), fr_dbuff_used(dbuff), tainted);
 	fr_dcursor_append(out, encoded);
 
 	return XLAT_ACTION_DONE;
