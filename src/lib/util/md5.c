@@ -40,8 +40,6 @@ static _Thread_local fr_md5_free_list_t *md5_array;
 #  include <openssl/err.h>
 #  include <openssl/provider.h>
 
-static int have_openssl_md5 = -1;
-
 /** @copydoc fr_md5_ctx_reset
  *
  */
@@ -307,39 +305,41 @@ static fr_md5_ctx_t *fr_md5_local_ctx_alloc(void)
 {
 	fr_md5_ctx_local_t *ctx_local;
 
-#ifdef HAVE_OPENSSL_EVP_H
-	if (unlikely(have_openssl_md5 == -1)) {
-		/*
-		 *	If we're not in FIPS mode, then swap out the
-		 *	md5 functions, and call the OpenSSL init
-		 *	function.
-		 */
-		if (!EVP_default_properties_is_fips_enabled(NULL)) {
-			have_openssl_md5 = 1;
-
-			/*
-			 *	Swap out the functions pointers
-			 *	for the OpenSSL versions.
-			 */
-			fr_md5_ctx_reset = fr_md5_openssl_ctx_reset;
-			fr_md5_ctx_copy = fr_md5_openssl_ctx_copy;
-			fr_md5_ctx_alloc = fr_md5_openssl_ctx_alloc;
-			fr_md5_ctx_free = fr_md5_openssl_ctx_free;
-			fr_md5_update = fr_md5_openssl_update;
-			fr_md5_final = fr_md5_openssl_final;
-
-			return fr_md5_ctx_alloc();
-		}
-
-		have_openssl_md5 = 0;
-	}
-#endif
 	ctx_local = talloc(NULL, fr_md5_ctx_local_t);
 	if (unlikely(!ctx_local)) return NULL;
 	fr_md5_local_ctx_reset(ctx_local);
 
 	return ctx_local;
 }
+
+#ifdef HAVE_OPENSSL_EVP_H
+/** Initialize whether or not we use the local allocator, or the OpenSSL one.
+ *
+ */
+static fr_md5_ctx_t *fr_md5_local_ctx_init(void)
+{
+	/*
+	 *	If we are in FIPS mode, then use the local allocator.
+	 */
+	if (EVP_default_properties_is_fips_enabled(NULL)) {
+		fr_md5_ctx_alloc = fr_md5_local_ctx_alloc;
+		return fr_md5_local_ctx_alloc();
+	}
+
+	/*
+	 *	Otherwise OpenSSL isn't in FIPS mode.  Swap out the
+	 *	functions pointers for the OpenSSL versions.
+	 */
+	fr_md5_ctx_reset = fr_md5_openssl_ctx_reset;
+	fr_md5_ctx_copy = fr_md5_openssl_ctx_copy;
+	fr_md5_ctx_alloc = fr_md5_openssl_ctx_alloc;
+	fr_md5_ctx_free = fr_md5_openssl_ctx_free;
+	fr_md5_update = fr_md5_openssl_update;
+	fr_md5_final = fr_md5_openssl_final;
+
+	return fr_md5_openssl_ctx_alloc();
+}
+#endif
 
 /** @copydoc fr_md5_ctx_free
  *
@@ -437,7 +437,11 @@ static void fr_md5_local_final(uint8_t out[static MD5_DIGEST_LENGTH], fr_md5_ctx
  */
 fr_md5_ctx_reset_t fr_md5_ctx_reset = fr_md5_local_ctx_reset;
 fr_md5_ctx_copy_t fr_md5_ctx_copy = fr_md5_local_ctx_copy;
+#ifdef HAVE_OPENSSL_EVP_H
+fr_md5_ctx_alloc_t fr_md5_ctx_alloc = fr_md5_local_ctx_init; /* check what we should do */
+#else
 fr_md5_ctx_alloc_t fr_md5_ctx_alloc = fr_md5_local_ctx_alloc;
+#endif
 fr_md5_ctx_free_t fr_md5_ctx_free = fr_md5_local_ctx_free;
 fr_md5_update_t fr_md5_update = fr_md5_local_update;
 fr_md5_final_t fr_md5_final = fr_md5_local_final;
