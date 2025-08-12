@@ -66,11 +66,13 @@ static inline CC_HINT(always_inline) void tmpl_cursor_nested_push(tmpl_dcursor_c
 	fr_dlist_insert_tail(&cc->nested, ns);
 }
 
-static inline CC_HINT(always_inline) void tmpl_cursor_nested_pop(tmpl_dcursor_ctx_t *cc)
+static inline CC_HINT(always_inline) tmpl_dcursor_nested_t *tmpl_cursor_nested_pop(tmpl_dcursor_ctx_t *cc)
 {
 	tmpl_dcursor_nested_t *ns = fr_dlist_pop_tail(&cc->nested);
 
 	if (ns != &cc->leaf) talloc_free(ns);
+
+	return ns;
 }
 
 /** Initialise the evaluation context for traversing a group attribute
@@ -107,6 +109,16 @@ void _tmpl_cursor_pair_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_att
 		fr_assert_msg(0, "Invalid attr reference type");
 	}
 	tmpl_cursor_nested_push(cc, ns);
+}
+
+static inline CC_HINT(always_inline) void tmpl_cursor_reset(tmpl_dcursor_ctx_t *cc)
+{
+	while (tmpl_cursor_nested_pop(cc));	/* Pop all the nested cursors */
+
+	/*
+	 *	Reinitialise the lowest frame in the cursor stack
+	 */
+	_tmpl_cursor_pair_init(cc->rel_list_ctx, cc->rel_list, tmpl_attr_list_head(&cc->vpt->data.attribute.ar), cc);
 }
 
 /** Evaluates, then, sometimes, pops evaluation contexts from the tmpl stack
@@ -278,6 +290,13 @@ static void *_tmpl_cursor_next(UNUSED fr_dcursor_t *cursor, void *curr, void *uc
 
 	fr_pair_t		*vp;
 
+	/*
+	 *	No curr means reset back to the initial state
+	 *	i.e. we're at the end of the cursor, so next
+	 *	means start from the beginning.
+	 */
+	if (!curr) tmpl_cursor_reset(cc);
+
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
 	{
@@ -365,7 +384,8 @@ fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ct
 		.vpt = vpt,
 		.ctx = ctx,
 		.request = request,
-		.list = &list->vp_group,
+		.rel_list_ctx = list,
+		.rel_list = &list->vp_group,
 		.build = build,
 		.uctx = uctx
 	};
@@ -376,7 +396,7 @@ fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ct
 	 */
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
-		_tmpl_cursor_pair_init(list, cc->list, tmpl_attr_list_head(&vpt->data.attribute.ar), cc);
+		_tmpl_cursor_pair_init(cc->rel_list_ctx, cc->rel_list, tmpl_attr_list_head(&vpt->data.attribute.ar), cc);
 		break;
 
 	default:
@@ -387,7 +407,7 @@ fr_pair_t *tmpl_dcursor_init_relative(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ct
 	/*
 	 *	Get the first entry from the tmpl
 	 */
-	vp = fr_pair_dcursor_iter_init(cursor, cc->list, _tmpl_cursor_next, cc);
+	vp = fr_pair_dcursor_iter_init(cursor, cc->rel_list, _tmpl_cursor_next, cc);
 	if (!vp) {
 		if (err) {
 			*err = -1;
@@ -637,14 +657,14 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 		.vpt = vpt,
 		.ctx = ctx,
 		.request = request,
-		.list = list_head
+		.rel_list = list_head
 	};
 	fr_dlist_init(&cc.nested, tmpl_dcursor_nested_t, entry);
 
 	/*
 	 *	Prime the stack!
 	 */
-	_tmpl_cursor_pair_init(list_ctx, cc.list, tmpl_attr_list_head(&vpt->data.attribute.ar), &cc);
+	_tmpl_cursor_pair_init(list_ctx, cc.rel_list, tmpl_attr_list_head(&vpt->data.attribute.ar), &cc);
 
 	/*
 	 *	- Continue until there are no evaluation contexts
