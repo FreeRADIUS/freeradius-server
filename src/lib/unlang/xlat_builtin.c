@@ -4210,13 +4210,11 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		len = tp_encode->func(dbuff, cursor, encode_ctx);
 		if (len < 0) {
 			RPEDEBUG("Protocol encoding failed");
-			REXDENT();
 			return XLAT_ACTION_FAIL;
 		}
 
 		tainted |= vp->vp_tainted;
 	}
-	REXDENT();
 
 	/*
 	 *	Pass the options string back to the caller.
