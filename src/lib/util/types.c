@@ -69,6 +69,7 @@ fr_table_num_ordered_t const fr_type_table[] = {
 	{ L("vsa"),          	FR_TYPE_VSA		},
 	{ L("vendor"),        	FR_TYPE_VENDOR		},
 	{ L("group"),        	FR_TYPE_GROUP		},
+	{ L("union"),        	FR_TYPE_UNION		},
 
 	{ L("attribute"),	FR_TYPE_ATTR		},
 

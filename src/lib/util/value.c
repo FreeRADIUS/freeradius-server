@@ -669,6 +669,7 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
+	case FR_TYPE_UNION:
 	case FR_TYPE_INTERNAL:
 		fr_assert(0);
 		break;
@@ -1139,6 +1140,7 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
+	case FR_TYPE_UNION:
 	case FR_TYPE_INTERNAL:
 		fr_assert(0);
 		return -2;
@@ -2555,6 +2557,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
+	case FR_TYPE_UNION:
 	case FR_TYPE_INTERNAL:
 	case FR_TYPE_NULL:
 	case FR_TYPE_ATTR:
@@ -4255,6 +4258,7 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
+	case FR_TYPE_UNION:
 	case FR_TYPE_VOID:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_VALUE_BOX_CURSOR:
@@ -5990,6 +5994,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 	case FR_TYPE_STRUCT:		/* Not a box type */
 	case FR_TYPE_VSA:		/* Not a box type */
 	case FR_TYPE_VENDOR:		/* Not a box type */
+	case FR_TYPE_UNION:		/* Not a box type */
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_VOID:
 	case FR_TYPE_MAX:
