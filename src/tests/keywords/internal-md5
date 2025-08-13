@@ -13,7 +13,7 @@ group {
 	# to skip every other attribute.
 	data := %internal.encode('reply.[*]')
 
-	# STOP - Dont just change the MD5 to make the test past.
+	# STOP - Dont just change the MD5 to make the test pass.
 	# Understand _EXACTLY_ what changed, and WARN all other
 	# core developers that you are making this change and _WHY_.
 	if ! (%md5(data) == 0x9a9b2606e346135a4e64030a1763a83e) {
