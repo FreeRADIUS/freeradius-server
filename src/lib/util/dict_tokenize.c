@@ -1322,6 +1322,12 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		return -1;
 	}
 
+	if (parent->type == FR_TYPE_UNION) {
+		fr_strerror_printf("Parent attribute %s is of type 'union', and can only have STRUCT children",
+				   parent->name);
+		return -1;
+	}
+
 	da = dict_attr_alloc_null(dctx->dict->pool, dctx->dict->proto);
 	if (unlikely(!da)) return -1;
 
@@ -1464,8 +1470,8 @@ static int dict_read_process_begin(dict_tokenize_ctx_t *dctx, char **argv, int a
 		goto error;
 	}
 
-	if (!fr_type_is_tlv(da->type) && !fr_type_is_struct(da->type)) {
-		fr_strerror_printf_push("BEGIN %s should be a 'tlv' or 'struct', but is a '%s'",
+	if (!fr_type_is_tlv(da->type) && !fr_type_is_struct(da->type) && (da->type != FR_TYPE_UNION)) {
+		fr_strerror_printf_push("BEGIN %s cannot be used with data type '%s'",
 					argv[0],
 					fr_type_to_str(da->type));
 		goto error;
@@ -1706,6 +1712,12 @@ static int dict_read_process_define(dict_tokenize_ctx_t *dctx, char **argv, int 
 	if (parent->type == FR_TYPE_STRUCT) {
 		fr_strerror_printf("Member %s of parent %s type 'struct' MUST use the \"MEMBER\" keyword",
 				   argv[0], parent->name);
+		return -1;
+	}
+
+	if (parent->type == FR_TYPE_UNION) {
+		fr_strerror_printf("Parent attribute %s is of type 'union', and can only have STRUCT children",
+				   parent->name);
 		return -1;
 	}
 

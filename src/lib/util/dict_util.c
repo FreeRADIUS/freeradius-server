@@ -1470,6 +1470,7 @@ bool dict_attr_can_have_children(fr_dict_attr_t const *da)
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_VSA:
 	case FR_TYPE_STRUCT:
+	case FR_TYPE_UNION:
 		return true;
 
 	case FR_TYPE_UINT8:

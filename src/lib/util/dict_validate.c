@@ -264,11 +264,13 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 	 *	other types.
 	 */
 	if (!flags->extra || (flags->subtype != FLAG_BIT_FIELD)) switch (type) {
+	case FR_TYPE_INT8:
 	case FR_TYPE_UINT8:
 	case FR_TYPE_BOOL:
 		flags->length = 1;
 		break;
 
+	case FR_TYPE_INT16:
 	case FR_TYPE_UINT16:
 		flags->length = 2;
 		break;
@@ -285,12 +287,13 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 		break;
 
 	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_UINT32:
 	case FR_TYPE_INT32:
+	case FR_TYPE_UINT32:
 	case FR_TYPE_FLOAT32:
 		flags->length = 4;
 		break;
 
+	case FR_TYPE_INT64:
 	case FR_TYPE_UINT64:
 	case FR_TYPE_FLOAT64:
 		flags->length = 8;
@@ -428,12 +431,33 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 		}
 		break;
 
+	case FR_TYPE_UNION:
+		if (parent->type != FR_TYPE_STRUCT) {
+			fr_strerror_printf("Attributes of type 'union' must have a parent of type 'struct', not of type '%s'",
+					   fr_type_to_str(parent->type));
+			return false;
+		}
+
+		if (!fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_KEY)) {
+			fr_strerror_const("Attribute of type 'union' is missing 'key=...'");
+			return false;
+		}
+		break;
+
 	case FR_TYPE_NULL:
+	case FR_TYPE_INTERNAL:
 		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
 				   fr_type_to_str(type));
 		return false;
 
-	default:
+		/*
+		 *	These types are encoded differently in each protocol.
+		 */
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_ATTR:
+	case FR_TYPE_STRING:
+	case FR_TYPE_VSA:
+	case FR_TYPE_GROUP:
 		break;
 	}
 
@@ -573,6 +597,14 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 
 	case FR_TYPE_TLV:
 	case FR_TYPE_VENDOR:
+		break;
+
+	case FR_TYPE_UNION:
+		if (da->type != FR_TYPE_STRUCT) {
+			fr_strerror_printf("Attributes of type '%s' cannot be children of the 'union' type",
+					   fr_type_to_str(type));
+			return false;
+		}
 		break;
 
 		/*
