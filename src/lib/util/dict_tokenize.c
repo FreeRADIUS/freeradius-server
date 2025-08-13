@@ -480,6 +480,11 @@ static int dict_flag_clone(fr_dict_attr_t **da_p, char const *value, UNUSED fr_d
 	 */
 	if (unlikely(dict_attr_ref_aunresolved(da_p, value, FR_DICT_ATTR_REF_CLONE) < 0)) return -1;
 
+	/*
+	 *	We don't know how big the cloned reference is, so it isn't known width.
+	 */
+	(*da_p)->flags.is_known_width = 0;
+
 	return 0;
 }
 
@@ -2291,6 +2296,13 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 		 *	The solution is to update the unwind() function to check if the da we've
 		 *	unwound to is a struct, and then if so... get the last child, and mark it
 		 *	closed.
+		 *
+		 *	@todo - a MEMBER which is of type 'struct' and has 'clone=foo', we delay the clone
+		 *	until after all of the dictionaries have been loaded.  As such, this attribute
+		 *	is unknown width, and MUST be at the end of the parent structure.
+		 *
+		 *	If the cloned MEMBER is in the middle of a structure, then the user will get an opaque
+		 *	error.  But that case should be rare.
 		 */
 		if (!da->flags.is_known_width) dctx->stack[dctx->stack_depth].struct_is_closed = da;
 		break;
