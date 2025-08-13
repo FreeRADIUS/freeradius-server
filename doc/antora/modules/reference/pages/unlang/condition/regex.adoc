@@ -199,27 +199,25 @@ saved during evaluation.
 ====
 [source,unlang]
 ----
-if (User-Name =~ /^@%{Tmp-String-0}$/) {
+string regex
+
+regex = %sql("SELECT realm ....")
+
+if (User-Name =~ /^@%{regex}$/) {
     ...
 }
 ----
 ====
+
+Note that the string will be deemed to be "unsafe", so characters
+which are special for a regular expression will be escaped.  If the
+string is taken from a trusted source, it can be marked as safe via
+the `%regex.safe()` function.
 
 To ensure optimal performance you should limit the number of patterns
 containing xref:xlat/index.adoc[dynamic expansions], and if using PCRE, combine
 multiple expressions operating on the same subject into a single expression
 using the PCRE alternation '|' operator.
-
-.Using multiple dynamic expansions and the PCRE alternation operator
-====
-[source,unlang]
-----
-if (User-Name =~ /^@(%{Tmp-String-0}|%{Tmp-String-1})$/) {
-    ...
-}
-----
-====
-
 
 // Licenced under CC-by-NC 4.0.
 // Copyright (C) 2021 Network RADIUS SAS.

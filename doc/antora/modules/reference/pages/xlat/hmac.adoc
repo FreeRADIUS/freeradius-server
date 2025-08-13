@@ -14,13 +14,17 @@ Generate `HMAC-MD5` of string.
 
 [source,unlang]
 ----
-control.Tmp-String-0 := "mykey"
-control.Tmp-String-1 := "Caipirinha"
-reply.control.Tmp-Octets-0 := %hmac.md5(control.Tmp-String-0, control.Tmp-String-1)
+string test1
+string test2
+octets output
+
+test1 := "mykey"
+test2 := "Caipirinha"
+output := %hmac.md5(test1, test2)
 
 reply += {
-    Reply-Message = "The HMAC-MD5 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
-    Reply-Message = "The HMAC-MD5 of %{control.Tmp-String-1} in hex is %hex(control.Tmp-Octets-0)"
+    Reply-Message = "The HMAC-MD5 of %{test1}%{test2} in octets is %{output}"
+    Reply-Message = "The HMAC-MD5 of %{test1}%{test2} in hex is %hex(output)"
 }
 ----
 
@@ -41,13 +45,17 @@ Generate `HMAC-SHA1` of string.
 
 [source,unlang]
 ----
-control.Tmp-String-0 := "mykey"
-control.Tmp-String-1 := "Caipirinha"
-control.Tmp-Octets-0 := %hmac.sha1(control.Tmp-String-0, control.Tmp-String-1)
+string test1
+string test2
+octets output
+
+test1 := "mykey"
+test2 := "Caipirinha"
+output := %hmac.sha1(test1, test2)
 
 reply += {
-    Reply-Message = "The HMAC-SHA1 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
-    Reply-Message = "The HMAC-SHA1 of %{control.Tmp-String-1} in hex is %hex(control.Tmp-Octets-0}"
+    Reply-Message = "The HMAC-SHA1 of %{test1}%{test2} in octets is %{output}"
+    Reply-Message = "The HMAC-SHA1 of %{test1}%{test2} in hex is %hex(output)"
 }
 ----
 
