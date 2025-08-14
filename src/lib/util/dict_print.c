@@ -180,6 +180,7 @@ ssize_t fr_dict_attr_oid_print(fr_sbuff_t *out,
 typedef struct {
 	FILE			*fp;
 	fr_dict_t const		*dict;
+	fr_dict_attr_t const	*da;		//!< where we started
 	char			prefix[256];
 	char			flags[256];
 	char			oid[256];
@@ -193,11 +194,16 @@ static int dict_attr_debug(fr_dict_attr_t const *da, void *uctx)
 	fr_dict_enum_value_t const	*enumv;
 	fr_dict_attr_ext_enumv_t 	*ext;
 
+	/*
+	 *	Don't print it twice.
+	 */
+	if (da == ctx->da) return 0;
+
 	fr_dict_attr_flags_print(&FR_SBUFF_OUT(ctx->flags, sizeof(ctx->flags)),
 			      ctx->dict, da->type, &da->flags);
 
 	snprintf(ctx->prefix, sizeof(ctx->prefix),
-		 "[%02u] 0x%016" PRIxPTR "%*s",
+		 "[%02u] 0x%016" PRIxPTR "%*s - ",
 		 da->depth,
 		 (unsigned long)da,
 		 (da->depth - ctx->start_depth) * 4, "");
@@ -262,6 +268,8 @@ void fr_dict_attr_debug(FILE *fp, fr_dict_attr_t const *da)
 	};
 
 	dict_attr_debug(da, &uctx);
+	uctx.da = da,
+
 	(void)fr_dict_walk(da, dict_attr_debug, &uctx);
 }
 
