@@ -1505,8 +1505,7 @@ static int dict_read_process_begin(dict_tokenize_ctx_t *dctx, char **argv, int a
 	dctx->relative_attr = NULL;
 
 	if (argc != 1) {
-		fr_strerror_const_push("Invalid BEGIN keyword.  Expected BEGIN <name>");
-	error:
+		fr_strerror_const("Invalid BEGIN keyword.  Expected BEGIN <name>");
 		return -1;
 	}
 
@@ -1525,27 +1524,25 @@ static int dict_read_process_begin(dict_tokenize_ctx_t *dctx, char **argv, int a
 	 */
 	da = fr_dict_attr_by_oid(NULL, frame->da, argv[0]);
 	if (!da) {
-		fr_strerror_printf_push("BEGIN '%s' not resolvable in context '%s'", argv[0], frame->da->name);
-		goto error;
+		fr_strerror_printf("BEGIN %s is not resolvable in current context '%s'", argv[0], frame->da->name);
+		return -1;
 	}
 
 	if (!fr_type_is_tlv(da->type) && !fr_type_is_struct(da->type) && (da->type != FR_TYPE_UNION)) {
-		fr_strerror_printf_push("BEGIN %s cannot be used with data type '%s'",
-					argv[0],
-					fr_type_to_str(da->type));
-		goto error;
+		fr_strerror_printf("BEGIN %s cannot be used with data type '%s'",
+				   argv[0],
+				   fr_type_to_str(da->type));
+		return -1;
 	}
 
 	common = fr_dict_attr_common_parent(frame->da, da, true);
 	if (!common) {
-		fr_strerror_printf_push("BEGIN %s should be a child of '%s'",
-					argv[0], dctx->stack[dctx->stack_depth].da->name);
-		goto error;
+		fr_strerror_printf("BEGIN %s should be a child of '%s'",
+				   argv[0], dctx->stack[dctx->stack_depth].da->name);
+		return -1;
 	}
 
-	if (dict_dctx_push(dctx, da, NEST_ATTRIBUTE) < 0) goto error;
-
-	return 0;
+	return dict_dctx_push(dctx, da, NEST_ATTRIBUTE);
 }
 
 static int dict_read_process_begin_protocol(dict_tokenize_ctx_t *dctx, char **argv, int argc,
