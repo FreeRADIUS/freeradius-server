@@ -1,0 +1,5 @@
+# Test dpsk using a know pairwise master key - provided in Class
+rewrite_called_station_id
+control.Pairwise-Master-Key := Class
+dpsk.authenticate
+test_pass
