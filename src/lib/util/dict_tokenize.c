@@ -381,6 +381,9 @@ static int dict_process_type_field(dict_tokenize_ctx_t *dctx, char const *name, 
 		} else if (strcmp(name, "struct") == 0) {
 			type = FR_TYPE_STRUCT;
 
+		} else if (strcmp(name, "union") == 0) {
+			type = FR_TYPE_UNION;
+
 		} else if (strcmp(name, "bit") == 0) {
 			if (dctx->stack[dctx->stack_depth].da->type != FR_TYPE_STRUCT) {
 				fr_strerror_const("Bit fields can only be used inside of a STRUCT");
@@ -415,7 +418,8 @@ static int dict_process_type_field(dict_tokenize_ctx_t *dctx, char const *name, 
 			(*da_p)->flags.flag_byte_offset = length;
 
 		} else {
-			fr_strerror_const("Only 'octets', 'string', 'struct', or 'bit' types can have a 'length' parameter");
+			fr_strerror_printf("Attributes of type '%s' cannot use the %s[...] syntax",
+					   name, name);
 			return -1;
 		}
 
