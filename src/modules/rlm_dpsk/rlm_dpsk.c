@@ -730,7 +730,6 @@ make_digest:
 			memcpy(entry->mac, s_mac, sizeof(entry->mac));
 			memcpy(entry->pmk, pmk, sizeof(entry->pmk));
 
-			fr_dlist_entry_init(&entry->dlist);
 			entry->inst = inst;
 
 			/*
@@ -739,11 +738,11 @@ make_digest:
 			MEM(entry->ssid = talloc_memdup(entry, env->ssid.vb_octets, env->ssid.vb_length));
 			entry->ssid_len = env->ssid.vb_length;
 
-			MEM(entry->psk = talloc_memdup(entry, psk, psk_len));
+			MEM(entry->psk = talloc_strdup(entry, psk));
 			entry->psk_len = psk_len;
 
 			entry->identity_len = strlen(psk_identity);
-			MEM(entry->identity = talloc_memdup(entry, psk_identity, entry->identity_len));
+			MEM(entry->identity = talloc_strdup(entry, psk_identity));
 
 			/*
 			 *	Cache it.
@@ -758,8 +757,8 @@ make_digest:
 	update_entry:
 		PTHREAD_MUTEX_LOCK(&inst->mutable->mutex);
 		entry->expires = fr_time_add(fr_time(), inst->cache_lifetime);
-		fr_dlist_entry_unlink(&entry->dlist);
-		fr_dlist_insert_tail(&inst->mutable->head, &entry->dlist);
+		if (fr_dlist_entry_in_list(&entry->dlist)) fr_dlist_remove(&inst->mutable->head, entry);
+		fr_dlist_insert_tail(&inst->mutable->head, entry);
 		PTHREAD_MUTEX_UNLOCK(&inst->mutable->mutex);
 
 		/*
