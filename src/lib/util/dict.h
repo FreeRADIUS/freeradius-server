@@ -170,6 +170,7 @@ typedef enum {
 	FR_DICT_ATTR_EXT_CHILDREN,				//!< Attribute has children.
 	FR_DICT_ATTR_EXT_REF,					//!< Attribute references another
 								///< attribute and/or dictionary.
+	FR_DICT_ATTR_EXT_KEY,					//!< UNION attribute references a key
 	FR_DICT_ATTR_EXT_VENDOR,				//!< Cached vendor pointer.
 	FR_DICT_ATTR_EXT_DA_STACK,				//!< Cached da stack.
 	FR_DICT_ATTR_EXT_ENUMV,					//!< Enumeration values.

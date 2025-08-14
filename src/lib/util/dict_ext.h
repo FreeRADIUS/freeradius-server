@@ -62,6 +62,7 @@ typedef enum CC_HINT(flag_enum) {
 								///< dictionary.
 	FR_DICT_ATTR_REF_CLONE		= 0x02,			//!< The attribute is a "copy" of another attribute.
 	FR_DICT_ATTR_REF_ENUM		= 0x04,			//!< The attribute is an enumeration value.
+	FR_DICT_ATTR_REF_KEY		= 0x08,			//!< it is a UNION which has a ref to a key, and children.
 	FR_DICT_ATTR_REF_UNRESOLVED	= 0x10			//!< This flag is combined with the other states to indicate
 								///< that the reference is unresolved.
 } fr_dict_attr_ref_type_t;

@@ -29,6 +29,7 @@ static fr_table_num_ordered_t const dict_attr_ext_table[] = {
 	{ L("name"),			FR_DICT_ATTR_EXT_NAME			},
 	{ L("children"),		FR_DICT_ATTR_EXT_CHILDREN		},
 	{ L("ref"),			FR_DICT_ATTR_EXT_REF			},
+	{ L("key"),			FR_DICT_ATTR_EXT_KEY			},
 	{ L("vendor"),			FR_DICT_ATTR_EXT_VENDOR			},
 	{ L("da_stack"),		FR_DICT_ATTR_EXT_DA_STACK		},
 	{ L("enumv"),			FR_DICT_ATTR_EXT_ENUMV			},
@@ -226,6 +227,10 @@ fr_ext_t const fr_dict_attr_ext_def = {
 							.can_copy = false,		/* Limitation in hashing scheme we use */
 						},
 		[FR_DICT_ATTR_EXT_REF]		= {
+							.min = sizeof(fr_dict_attr_ext_ref_t),
+							.can_copy = true,
+						},
+		[FR_DICT_ATTR_EXT_KEY]		= {	//!< keys are just refs, but they're not auto-followed like refs
 							.min = sizeof(fr_dict_attr_ext_ref_t),
 							.can_copy = true,
 						},
