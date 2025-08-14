@@ -2399,48 +2399,92 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 static int dict_read_process_struct(dict_tokenize_ctx_t *dctx, char **argv, int argc,
 				    UNUSED fr_dict_attr_flags_t *base_flags)
 {
-	fr_value_box_t			value = FR_VALUE_BOX_INITIALISER_NULL(value);
+	fr_value_box_t			box = FR_VALUE_BOX_INITIALISER_NULL(box);
 	int				i;
 	fr_dict_attr_t const	       	*parent = NULL;
+	fr_dict_attr_t const		*key = NULL;
 	unsigned int			attr;
-	char				*key_attr = argv[1];
-	char			        *name = argv[0];
+	char const     		        *name = argv[0];
+	char const			*value;
+	char				*flags = NULL;
 	fr_dict_attr_t			*da;
-
-	if ((argc < 3) || (argc > 4)) {
-		fr_strerror_const("Invalid STRUCT syntax");
-		return -1;
-	}
 
 	fr_assert(dctx->stack_depth > 0);
 
 	/*
-	 *	Unwind the stack until we find a parent which has a child named "key_attr"
+	 *	Old-stle: unwind the stack until we find a parent which has a child named for key_attr.
 	 */
-	for (i = dctx->stack_depth; i > 0; i--) {
-		parent = dict_attr_by_name(NULL, dctx->stack[i].da, key_attr);
-		if (parent) {
-			dctx->stack_depth = i;
-			break;
+	parent = dctx->stack[dctx->stack_depth].da;
+	if (parent->type != FR_TYPE_UNION) {
+		char const *key_attr;
+
+		if ((argc < 3) || (argc > 4)) {
+			fr_strerror_const("Invalid STRUCT syntax");
+			return -1;
 		}
-	}
 
-	/*
-	 *	Else maybe it's a fully qualified name?
-	 */
-	if (!parent) {
-		parent = fr_dict_attr_by_oid(NULL, dctx->stack[dctx->stack_depth].da->dict->root, key_attr);
-	}
+		key_attr = argv[1];
+		value = argv[2];
+		if (argc == 4) flags = argv[3];
 
-	if (!parent) {
-		fr_strerror_printf("Invalid STRUCT definition, unknown key attribute %s",
-				   key_attr);
-		return -1;
-	}
+		parent = NULL;
+		for (i = dctx->stack_depth; i > 0; i--) {
+			key = dict_attr_by_name(NULL, dctx->stack[i].da, key_attr);
+			if (key) {
+				parent = key;
+				dctx->stack_depth = i;
+				break;
+			}
+		}
 
-	if (!fr_dict_attr_is_key_field(parent)) {
-		fr_strerror_printf("Attribute '%s' is not a 'key' attribute", key_attr);
-		return -1;
+		/*
+		 *	No parent was found, maybe the reference is a fully qualified name from the root.
+		 */
+		if (!parent) {
+			parent = fr_dict_attr_by_oid(NULL, dctx->stack[dctx->stack_depth].da->dict->root, key_attr);
+
+			if (!parent) {
+				fr_strerror_printf("Invalid STRUCT definition, unknown key attribute %s",
+						   key_attr);
+				return -1;
+			}
+
+			if (!fr_dict_attr_is_key_field(parent)) {
+				fr_strerror_printf("Attribute '%s' is not a 'key' attribute", key_attr);
+				return -1;
+			}
+
+			key = parent;
+		}
+
+	} else {
+		fr_dict_attr_ext_ref_t *ext;
+
+		/*
+		 *	STRUCT inside of a UNION doesn't need to specify the name of the key.
+		 *
+		 *	STRUCT name value [flags]
+		 */
+		if ((argc < 2) || (argc > 3)) {
+			fr_strerror_const("Invalid STRUCT syntax");
+			return -1;
+		}
+
+		value = argv[1];
+		if (argc == 3) flags = argv[2];
+
+		/*
+		 *	The parent is a union.  Get and verify the key ref.
+		 */
+		ext = fr_dict_attr_ext(parent, FR_DICT_ATTR_EXT_KEY);
+		fr_assert(ext != NULL);
+
+		/*
+		 *	Double-check names against the reference.
+		 */
+		key = ext->ref;
+		fr_assert(key);
+		fr_assert(fr_dict_attr_is_key_field(key));
 	}
 
 	/*
@@ -2450,10 +2494,10 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *dctx, char **argv, int 
 	if (!fr_cond_assert(parent->parent->type == FR_TYPE_STRUCT)) return -1;
 
 	/*
-	 *	Parse the value.
+	 *	Parse the value, which should be a small integer.
 	 */
-	if (fr_value_box_from_str(NULL, &value, parent->type, NULL, argv[2], strlen(argv[2]), NULL) < 0) {
-		fr_strerror_printf_push("Invalid value for STRUCT \"%s\"", argv[2]);
+	if (fr_value_box_from_str(NULL, &box, key->type, NULL, value, strlen(value), NULL) < 0) {
+		fr_strerror_printf_push("Invalid value for STRUCT \"%s\"", value);
 		return -1;
 	}
 
@@ -2476,28 +2520,28 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *dctx, char **argv, int 
 	 *	Structs can be prefixed with 16-bit lengths, but not
 	 *	with any other type of length.
 	 */
-	if (argc == 4) {
-		if (dict_process_flag_field(dctx, argv[3], &da) < 0) goto error;
+	if (flags) {
+		if (dict_process_flag_field(dctx, flags, &da) < 0) goto error;
 	}
 
 	/*
-	 *	@todo - auto-number from a parent UNION, instead of overloading the value.
+	 *	Create a unique number for the child attribute, based on the value of the key.
 	 */
-	switch (parent->type) {
+	switch (key->type) {
 	case FR_TYPE_UINT8:
-		attr = value.vb_uint8;
+		attr = box.vb_uint8;
 		break;
 
 	case FR_TYPE_UINT16:
-		attr = value.vb_uint16;
+		attr = box.vb_uint16;
 		break;
 
 	case FR_TYPE_UINT32:
-		attr = value.vb_uint32;
+		attr = box.vb_uint32;
 		break;
 
 	default:
-		fr_strerror_printf("Invalid data type in attribute '%s'", key_attr);
+		fr_assert(0);	/* should have been checked earlier when the key attribute was defined */
 		return -1;
 	}
 
@@ -2522,7 +2566,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *dctx, char **argv, int 
 	}
 
 	/*
-	 *	Add the keyed STRUCT to the global namespace, and as a child of "parent".
+	 *	Add the STRUCT to the global namespace, and as a child of "parent".
 	 */
 	switch (dict_attr_add_or_fixup(&dctx->fixup, &da)) {
 	default:
@@ -2540,14 +2584,14 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *dctx, char **argv, int 
 		if (dict_dctx_push(dctx, da, 0) < 0) return -1;
 
 		/*
-		*	Add the VALUE to the parent attribute, and ensure that
+		*	Add the VALUE to the key attribute, and ensure that
 		*	the VALUE also contains a pointer to the child struct.
 		*/
-		if (dict_attr_enum_add_name(fr_dict_attr_unconst(parent), name, &value, false, true, da) < 0) {
-			fr_value_box_clear(&value);
+		if (dict_attr_enum_add_name(fr_dict_attr_unconst(key), name, &box, false, true, da) < 0) {
+			fr_value_box_clear(&box);
 			return -1;
 		}
-		fr_value_box_clear(&value);
+		fr_value_box_clear(&box);
 		break;
 
 	case 1:
@@ -2982,6 +3026,10 @@ static int dict_struct_finalise(dict_tokenize_ctx_t *dctx)
 		if (dctx->stack[dctx->stack_depth].struct_size <= 255) {
 			UNCONST(fr_dict_attr_t *, da)->flags.length = dctx->stack[dctx->stack_depth].struct_size;
 		} /* else length 0 means "unknown / variable size / too large */
+
+	} else if (da->type == FR_TYPE_UNION) {
+		// do nothing
+
 	} else {
 		fr_assert_msg(da->type == FR_TYPE_TLV, "Expected parent type of 'tlv', got '%s'", fr_type_to_str(da->type));
 	}
