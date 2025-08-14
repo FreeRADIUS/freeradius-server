@@ -508,12 +508,6 @@ distribution maintainers.
 
 
 
-openssl_fips_mode:: Enable OpenSSL FIPS mode.
-
-This disables non-FIPS compliant digests and algorithms
-
-
-
 .Clients Configuration
 
 Client configuration is defined in `clients.conf`.
@@ -787,7 +781,6 @@ security {
 	allow_core_dumps = no
 	max_attributes = 200
 	allow_vulnerable_openssl = no
-#	openssl_fips_mode = no
 }
 $INCLUDE clients.conf
 thread pool {
