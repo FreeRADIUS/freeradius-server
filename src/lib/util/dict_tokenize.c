@@ -516,22 +516,79 @@ static int dict_flag_enum(fr_dict_attr_t **da_p, char const *value, UNUSED fr_di
 
 FLAG_FUNC(internal)
 
-static int dict_flag_key(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rule)
+static int dict_flag_key(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rule)
 {
 	fr_dict_attr_t *da = *da_p;
+	fr_dict_attr_t const *key;
+	fr_dict_attr_ext_ref_t *ext;
 
-	if ((da->type != FR_TYPE_UINT8) && (da->type != FR_TYPE_UINT16) && (da->type != FR_TYPE_UINT32)) {
-		fr_strerror_const("The 'key' flag can only be used for attributes of type 'uint8', 'uint16', or 'uint32'");
+	if (fr_type_is_leaf(da->type)) {
+		if (value) {
+			fr_strerror_const("Attributes defining a 'key' field cannot specify a key reference");
+			return -1;
+		}
+
+		if ((da->type != FR_TYPE_UINT8) && (da->type != FR_TYPE_UINT16) && (da->type != FR_TYPE_UINT32)) {
+			fr_strerror_const("The 'key' flag can only be used for attributes of type 'uint8', 'uint16', or 'uint32'");
+			return -1;
+		}
+
+		if (da->flags.extra) {
+			fr_strerror_const("Bit fields cannot be key fields");
+			return -1;
+		}
+
+		da->flags.extra = 1;
+		da->flags.subtype = FLAG_KEY_FIELD;
+		return 0;
+	}
+
+	if (da->type != FR_TYPE_UNION) {
+		fr_strerror_printf("Attributes of type '%s' cannot define a 'key' reference", fr_type_to_str(da->type));
 		return -1;
 	}
 
-	if (da->flags.extra) {
-		fr_strerror_const("Bit fields cannot be key fields");
+	if (!value) {
+		fr_strerror_const("Missing reference for 'key=...'");
 		return -1;
 	}
 
-	da->flags.extra = 1;
-	da->flags.subtype = FLAG_KEY_FIELD;
+	/*
+	 *	The reference must be to a sibling, which is marked "is key".
+	 */
+	key = fr_dict_attr_by_name(NULL, da->parent, value);
+	if (!key) {
+		fr_strerror_printf("Invalid reference for 'key=...'.  Parent %s does not have a child attribute named %s",
+				   da->parent->name, value);
+		return -1;
+	}
+
+	if (da->parent != key->parent) {
+		fr_strerror_printf("Invalid reference for 'key=...'.  Reference %s does not share a common parent",
+				   value);
+		return -1;
+	}
+
+	if (!fr_dict_attr_is_key_field(key)) {
+		fr_strerror_printf("Invalid reference for 'key=...'.  Reference %s is not a 'key' field",
+				   value);
+		return -1;
+	}
+
+	/*
+	 *	Allocate the ref and save the value.
+	 */
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_REF);
+	if (ext) {
+		fr_strerror_printf("Attribute already has a 'key=...' defined");
+		return -1;
+	}
+
+	ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_KEY); /* can change da_p */
+	if (unlikely(!ext)) return -1;
+
+	ext->type = FR_DICT_ATTR_REF_KEY;
+	ext->ref = key;
 
 	return 0;
 }
