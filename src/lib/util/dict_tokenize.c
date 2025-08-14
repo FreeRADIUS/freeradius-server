@@ -1029,8 +1029,10 @@ static int dict_set_value_attr(dict_tokenize_ctx_t *dctx, fr_dict_attr_t *da)
 	if (da->type == FR_TYPE_STRUCT) {
 		if (dict_dctx_push(dctx, da, 0) < 0) return -1;
 		dctx->value_attr = NULL;
+
 	} else if (fr_type_is_leaf(da->type)) {
-		memcpy(&dctx->value_attr, &da, sizeof(da));
+		dctx->value_attr = da;
+
 	} else {
 		dctx->value_attr = NULL;
 	}
