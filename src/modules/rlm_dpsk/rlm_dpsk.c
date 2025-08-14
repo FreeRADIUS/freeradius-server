@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/rb.h>
 
@@ -810,6 +811,58 @@ update_attributes:
 	RETURN_UNLANG_UPDATED;
 }
 
+static xlat_arg_parser_t const dpsk_pmk_xlat_arg[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** xlat to generate the PMK from SSID and Pre-Shared-Key
+ *
+ * Example:
+ @verbatim
+ %dpsk.pmk(Calling-Station-SSID, Pre-Shared-Key)
+ @endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t dpsk_pmk_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+			       request_t *request, fr_value_box_list_t *in)
+{
+	fr_value_box_t	*ssid, *psk, *vb;
+	uint8_t		buffer[32];
+
+	XLAT_ARGS(in, &ssid, &psk);
+
+	if (PKCS5_PBKDF2_HMAC_SHA1(psk->vb_strvalue, psk->vb_length,
+				   (const unsigned char *) ssid->vb_strvalue, ssid->vb_length,
+				   4096, sizeof(buffer), buffer) == 0) {
+		RERROR("Failed calling OpenSSL to calculate the PMK");
+		return XLAT_ACTION_FAIL;
+	}
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, NULL));
+	fr_value_box_memdup(vb, vb, NULL, buffer, sizeof(buffer), true);
+
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+static int mod_load(void)
+{
+	xlat_t	*xlat;
+	if (unlikely((xlat = xlat_func_register(NULL, "dpsk.pmk", dpsk_pmk_xlat, FR_TYPE_OCTETS)) == NULL)) return -1;
+	xlat_func_args_set(xlat, dpsk_pmk_xlat_arg);
+
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	xlat_func_unregister("dpsk.pmk");
+}
+
 static int8_t cmp_cache_entry(void const *one, void const *two)
 {
 	rlm_dpsk_cache_t const *a = (rlm_dpsk_cache_t const *) one;
@@ -913,6 +966,8 @@ module_rlm_t rlm_dpsk = {
 		.config		= module_config,
 #ifdef WITH_TLS
 		.detach		= mod_detach,
+		.onload		= mod_load,
+		.unload		= mod_unload,
 #endif
 	},
 #ifdef WITH_TLS
