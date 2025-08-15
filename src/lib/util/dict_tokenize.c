@@ -110,12 +110,14 @@ void dict_dctx_debug(dict_tokenize_ctx_t *dctx)
 	int i;
 
 	for (i = 0; i <= dctx->stack_depth; i++) {
+		dict_tokenize_frame_t const *frame = &dctx->stack[i];
+
 		FR_FAULT_LOG("[%d]: %s %s (%s): %s[%d]",
 			     i,
-			     fr_table_str_by_value(dict_nest_table, dctx->stack[i].nest, "<INVALID>"),
-			     dctx->stack[i].da->name,
-			     fr_type_to_str(dctx->stack[i].da->type),
-			     dctx->stack[i].filename, dctx->stack[i].line);
+			     fr_table_str_by_value(dict_nest_table, frame->nest, "<INVALID>"),
+			     frame->da->name,
+			     fr_type_to_str(frame->da->type),
+			     frame->filename, frame->line);
 	}
 }
 
@@ -130,16 +132,14 @@ static dict_tokenize_frame_t const *dict_dctx_find_frame(dict_tokenize_ctx_t *dc
 	return NULL;
 }
 
-static int dict_dctx_push(dict_tokenize_ctx_t *dctx, fr_dict_attr_t const *da, dict_nest_t nest)
+static int CC_HINT(nonnull) dict_dctx_push(dict_tokenize_ctx_t *dctx, fr_dict_attr_t const *da, dict_nest_t nest)
 {
 	if ((dctx->stack_depth + 1) >= DICT_MAX_STACK) {
 		fr_strerror_const_push("Attribute definitions are nested too deep.");
 		return -1;
 	}
 
-	fr_assert(da != NULL);
-
-	dctx->stack[++dctx->stack_depth] = (dict_tokenize_frame_t){
+	dctx->stack[++dctx->stack_depth] = (dict_tokenize_frame_t) {
 		.dict = dctx->stack[dctx->stack_depth - 1].dict,
 		.da = da,
 		.filename = dctx->stack[dctx->stack_depth - 1].filename,
@@ -1536,9 +1536,9 @@ static int dict_read_process_begin_protocol(dict_tokenize_ctx_t *dctx, char **ar
 		goto error;
 	}
 
-	frame = dict_dctx_find_frame(dctx, NEST_PROTOCOL);
+	frame = dict_dctx_find_frame(dctx, NEST_PROTOCOL | NEST_VENDOR | NEST_ATTRIBUTE);
 	if (frame) {
-		fr_strerror_printf_push("Nested BEGIN-PROTOCOL is forbidden.  Previous definition is at %s[%d]",
+		fr_strerror_printf_push("BEGIN-PROTOCOL cannot be used inside of any other BEGIN/END block.  Previous definition is at %s[%d]",
 					frame->filename, frame->line);
 		goto error;
 	}
@@ -3729,7 +3729,9 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 		if (ret < 0) goto error;
 
 	} else if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
-		if (parent && (parent != dict->root)) dctx.stack[++dctx.stack_depth].da = parent;
+		if (parent && (parent != dict->root)) {
+			(void) dict_dctx_push(&dctx, parent, NEST_NONE);
+		}
 
 		memset(&base_flags, 0, sizeof(base_flags));
 
