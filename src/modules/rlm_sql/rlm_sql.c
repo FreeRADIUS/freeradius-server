@@ -215,7 +215,7 @@ typedef struct {
 static const call_env_method_t accounting_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_redundant_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_redundant_call_env_t, user) },
+		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE, sql_redundant_call_env_t, user) },
 		{ FR_CALL_ENV_SUBSECTION_FUNC(CF_IDENT_ANY, CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, logfile_call_env_parse) },
 		{ FR_CALL_ENV_SUBSECTION_FUNC("accounting", CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, query_call_env_parse) },
 		CALL_ENV_TERMINATOR
@@ -225,7 +225,7 @@ static const call_env_method_t accounting_method_env = {
 static const call_env_method_t send_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_redundant_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_redundant_call_env_t, user) },
+		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE, sql_redundant_call_env_t, user) },
 		{ FR_CALL_ENV_SUBSECTION_FUNC(CF_IDENT_ANY, CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, logfile_call_env_parse) },
 		{ FR_CALL_ENV_SUBSECTION_FUNC("send", CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, query_call_env_parse) },
 		CALL_ENV_TERMINATOR
@@ -253,7 +253,7 @@ typedef struct {
 static const call_env_method_t group_xlat_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_group_xlat_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_group_xlat_call_env_t, user) },
+		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE, sql_group_xlat_call_env_t, user) },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("group_membership_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_group_xlat_call_env_t, membership_query) },
 		CALL_ENV_TERMINATOR
 	}
@@ -2451,7 +2451,7 @@ static int sql_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_
 static const call_env_method_t authorize_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_autz_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_autz_call_env_t, user) },
+		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE, sql_autz_call_env_t, user) },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_check_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, check_query), QUERY_ESCAPE },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_reply_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, reply_query), QUERY_ESCAPE },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("group_membership_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, membership_query), QUERY_ESCAPE },
