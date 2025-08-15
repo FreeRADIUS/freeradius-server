@@ -135,7 +135,7 @@ static dict_tokenize_frame_t const *dict_dctx_find_frame(dict_tokenize_ctx_t *dc
 static int CC_HINT(nonnull) dict_dctx_push(dict_tokenize_ctx_t *dctx, fr_dict_attr_t const *da, dict_nest_t nest)
 {
 	if ((dctx->stack_depth + 1) >= DICT_MAX_STACK) {
-		fr_strerror_const_push("Attribute definitions are nested too deep.");
+		fr_strerror_const("Attribute definitions are nested too deep.");
 		return -1;
 	}
 
@@ -1129,8 +1129,8 @@ static int dict_read_process_include(dict_tokenize_ctx_t *dctx, char **argv, int
 	}
 
 	if (dctx->stack_depth < stack_depth) {
-		fr_strerror_printf_push("unexpected END-??? in $INCLUDE at %s[%d]",
-					fr_cwd_strip(fn), line);
+		fr_strerror_printf("unexpected END-??? in $INCLUDE at %s[%d]",
+				   fr_cwd_strip(fn), line);
 		return -1;
 	}
 
@@ -1515,7 +1515,7 @@ static int dict_read_process_begin_protocol(dict_tokenize_ctx_t *dctx, char **ar
 	dctx->relative_attr = NULL;
 
 	if (argc != 1) {
-		fr_strerror_const_push("Invalid BEGIN-PROTOCOL entry");
+		fr_strerror_const("Invalid BEGIN-PROTOCOL entry");
 	error:
 		return -1;
 	}
@@ -1526,7 +1526,7 @@ static int dict_read_process_begin_protocol(dict_tokenize_ctx_t *dctx, char **ar
 	 *	statements.
 	 */
 	if (dctx->dict != dict_gctx->internal) {
-		fr_strerror_const_push("Nested BEGIN-PROTOCOL statements are not allowed");
+		fr_strerror_const("Nested BEGIN-PROTOCOL statements are not allowed");
 		goto error;
 	}
 
@@ -1538,8 +1538,8 @@ static int dict_read_process_begin_protocol(dict_tokenize_ctx_t *dctx, char **ar
 
 	frame = dict_dctx_find_frame(dctx, NEST_PROTOCOL | NEST_VENDOR | NEST_ATTRIBUTE);
 	if (frame) {
-		fr_strerror_printf_push("BEGIN-PROTOCOL cannot be used inside of any other BEGIN/END block.  Previous definition is at %s[%d]",
-					frame->filename, frame->line);
+		fr_strerror_printf("BEGIN-PROTOCOL cannot be used inside of any other BEGIN/END block.  Previous definition is at %s[%d]",
+				   frame->filename, frame->line);
 		goto error;
 	}
 
@@ -1579,14 +1579,14 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 	dctx->relative_attr = NULL;
 
 	if (argc < 1) {
-		fr_strerror_const_push("Invalid BEGIN-VENDOR entry");
+		fr_strerror_const("Invalid BEGIN-VENDOR entry");
 	error:
 		return -1;
 	}
 
 	vendor = fr_dict_vendor_by_name(dctx->dict, argv[0]);
 	if (!vendor) {
-		fr_strerror_printf_push("Unknown vendor '%s'", argv[0]);
+		fr_strerror_printf("Unknown vendor '%s'", argv[0]);
 		goto error;
 	}
 
@@ -1599,21 +1599,21 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 		fr_dict_attr_t const *da;
 
 		if (strncmp(argv[1], "parent=", 7) != 0) {
-			fr_strerror_printf_push("BEGIN-VENDOR invalid argument (%s)", argv[1]);
+			fr_strerror_printf("BEGIN-VENDOR invalid argument (%s)", argv[1]);
 			goto error;
 		}
 
 		p = argv[1] + 7;
 		da = fr_dict_attr_by_oid(NULL, CURRENT_FRAME(dctx)->da, p);
 		if (!da) {
-			fr_strerror_printf_push("BEGIN-VENDOR invalid argument (%s)", argv[1]);
+			fr_strerror_printf("BEGIN-VENDOR invalid argument (%s)", argv[1]);
 			goto error;
 		}
 
 		if (da->type != FR_TYPE_VSA) {
-			fr_strerror_printf_push("Invalid parent for BEGIN-VENDOR.  "
-						"Attribute '%s' should be 'vsa' but is '%s'", p,
-						fr_type_to_str(da->type));
+			fr_strerror_printf("Invalid parent for BEGIN-VENDOR.  "
+					   "Attribute '%s' should be 'vsa' but is '%s'", p,
+					   fr_type_to_str(da->type));
 			goto error;
 		}
 
@@ -1625,8 +1625,8 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 		 */
 		vsa_da = dict_attr_child_by_num(CURRENT_FRAME(dctx)->da, dctx->dict->vsa_parent);
 		if (!vsa_da) {
-			fr_strerror_printf_push("Failed finding VSA parent for Vendor %s",
-						vendor->name);
+			fr_strerror_printf("Failed finding VSA parent for Vendor %s",
+					   vendor->name);
 			goto error;
 		}
 
@@ -1634,15 +1634,15 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 		vsa_da = dctx->dict->root;
 
 	} else {
-		fr_strerror_printf_push("BEGIN-VENDOR is forbidden for protocol %s - it has no ATTRIBUTE of type 'vsa'",
-					dctx->dict->root->name);
+		fr_strerror_printf("BEGIN-VENDOR is forbidden for protocol %s - it has no ATTRIBUTE of type 'vsa'",
+				   dctx->dict->root->name);
 		goto error;
 	}
 
 	frame = dict_dctx_find_frame(dctx, NEST_VENDOR);
 	if (frame) {
-		fr_strerror_printf_push("Nested BEGIN-VENDOR is forbidden.  Previous definition is at %s[%d]",
-					frame->filename, frame->line);
+		fr_strerror_printf("Nested BEGIN-VENDOR is forbidden.  Previous definition is at %s[%d]",
+				   frame->filename, frame->line);
 		goto error;
 	}
 
@@ -1878,7 +1878,7 @@ static int dict_read_process_end(dict_tokenize_ctx_t *dctx, char **argv, int arg
 	}
 
 	if (da != current) {
-		fr_strerror_printf_push("END %s does not match previous BEGIN %s", argv[0], current->name);
+		fr_strerror_printf("END %s does not match previous BEGIN %s", argv[0], current->name);
 		goto error;
 	}
 
@@ -1920,8 +1920,8 @@ static int dict_read_process_end_protocol(dict_tokenize_ctx_t *dctx, char **argv
 	}
 
 	if (found->root != CURRENT_FRAME(dctx)->da) {
-		fr_strerror_printf_push("END-PROTOCOL %s does not match previous BEGIN-PROTOCOL %s", argv[0],
-					CURRENT_FRAME(dctx)->da->name);
+		fr_strerror_printf("END-PROTOCOL %s does not match previous BEGIN-PROTOCOL %s", argv[0],
+				   CURRENT_FRAME(dctx)->da->name);
 		goto error;
 	}
 
@@ -2637,8 +2637,8 @@ static int dict_read_process_value(dict_tokenize_ctx_t *dctx, char **argv, int a
 	 *	Only a leaf types can have values defined.
 	 */
 	if (!fr_type_is_leaf(da->type)) {
-		fr_strerror_printf_push("Cannot define VALUE for attribute '%s' of data type '%s'", da->name,
-					fr_type_to_str(da->type));
+		fr_strerror_printf("Cannot define VALUE for attribute '%s' of data type '%s'", da->name,
+				   fr_type_to_str(da->type));
 		return -1;
 	}
 
@@ -3099,7 +3099,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	if (!fr_cond_assert(!dctx->dict->root || CURRENT_FRAME(dctx)->da)) return -1;
 
 	if ((strlen(dir_name) + 3 + strlen(filename)) > sizeof(dir)) {
-		fr_strerror_printf_push("%s: Filename name too long", "Error reading dictionary");
+		fr_strerror_printf("%s: Filename name too long", "Error reading dictionary");
 		return -1;
 	}
 
@@ -3156,11 +3156,11 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 
 	if ((fp = fopen(fn, "r")) == NULL) {
 		if (!src_file) {
-			fr_strerror_printf_push("Couldn't open dictionary %s: %s", fr_syserror(errno), fn);
+			fr_strerror_printf("Couldn't open dictionary %s: %s", fr_syserror(errno), fn);
 		} else {
-			fr_strerror_printf_push("Error reading dictionary: %s[%d]: Couldn't open dictionary '%s': %s",
-						fr_cwd_strip(src_file), src_line, fn,
-						fr_syserror(errno));
+			fr_strerror_printf("Error reading dictionary: %s[%d]: Couldn't open dictionary '%s': %s",
+					   fr_cwd_strip(src_file), src_line, fn,
+					   fr_syserror(errno));
 		}
 		return -2;
 	}
@@ -3169,7 +3169,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	 *	If fopen works, this works.
 	 */
 	if (fstat(fileno(fp), &statbuf) < 0) {
-		fr_strerror_printf_push("Failed stating dictionary \"%s\" - %s", fn, fr_syserror(errno));
+		fr_strerror_printf("Failed stating dictionary \"%s\" - %s", fn, fr_syserror(errno));
 
 	perm_error:
 		fclose(fp);
@@ -3177,7 +3177,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	}
 
 	if (!S_ISREG(statbuf.st_mode)) {
-		fr_strerror_printf_push("Dictionary is not a regular file: %s", fn);
+		fr_strerror_printf("Dictionary is not a regular file: %s", fn);
 		goto perm_error;
 	}
 
@@ -3187,8 +3187,8 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	 */
 #ifdef S_IWOTH
 	if (dict_gctx->perm_check && ((statbuf.st_mode & S_IWOTH) != 0)) {
-		fr_strerror_printf_push("Dictionary is globally writable: %s. "
-					"Refusing to start due to insecure configuration", fn);
+		fr_strerror_printf("Dictionary is globally writable: %s. "
+				   "Refusing to start due to insecure configuration", fn);
 		goto perm_error;
 	}
 #endif
@@ -3228,7 +3228,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 		if (argc == 0) continue;
 
 		if (argc == 1) {
-			fr_strerror_const("Invalid entry");
+			fr_strerror_const("Invalid syntax - expected keyword followed by arguments");
 
 		error:
 			fr_strerror_printf_push("Failed parsing dictionary at %s[%d]", fr_cwd_strip(fn), line);
@@ -3310,7 +3310,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 		/*
 		 *	Any other string: We don't recognize it.
 		 */
-		fr_strerror_printf_push("Invalid keyword '%s'", argv_p[0]);
+		fr_strerror_printf("Invalid keyword '%s'", argv_p[0]);
 		goto error;
 	}
 
