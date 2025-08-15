@@ -51,10 +51,10 @@ RCSID("$Id$")
 DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
 	NEST_NONE	= 0x00,
-	NEST_ROOT	= 0x01,
-	NEST_PROTOCOL	= 0x02,
-	NEST_VENDOR	= 0x04,
-	NEST_ATTRIBUTE	= 0x08
+	NEST_TOP	= 0x01,		//!< top of the stack
+	NEST_PROTOCOL	= 0x02,		//!< BEGIN-PROTOCOL
+	NEST_VENDOR	= 0x04,		//!< BEGIN-VENDOR
+	NEST_ATTRIBUTE	= 0x08		//!< BEGIN foo
 } dict_nest_t;
 DIAG_ON(attributes)
 
@@ -62,7 +62,7 @@ static fr_table_num_sorted_t const dict_nest_table[] = {
 	{ L("ATTRIBUTE"),	NEST_ATTRIBUTE },
 	{ L("NONE"),		NEST_NONE },
 	{ L("PROTOCOL"),	NEST_PROTOCOL },
-	{ L("ROOT"),		NEST_ROOT },
+	{ L("TOP"),		NEST_TOP },
 	{ L("VENDOR"),		NEST_VENDOR }
 };
 static size_t const dict_nest_table_len = NUM_ELEMENTS(dict_nest_table);
@@ -1509,7 +1509,7 @@ static int dict_read_process_begin(dict_tokenize_ctx_t *dctx, char **argv, int a
 		return -1;
 	}
 
-	frame = dict_dctx_find_frame(dctx, NEST_ROOT | NEST_PROTOCOL | NEST_ATTRIBUTE);
+	frame = dict_dctx_find_frame(dctx, NEST_TOP | NEST_PROTOCOL | NEST_ATTRIBUTE);
 	if (!fr_cond_assert_msg(frame, "Context stack doesn't have an attribute or dictionary "
 				"root to begin searching from %s[%d]", CURRENT_FILENAME(dctx), CURRENT_LINE(dctx)) ||
 	    !fr_cond_assert_msg(fr_type_is_structural(frame->da->type), "Context attribute is not structural %s[%d]",
@@ -1908,7 +1908,7 @@ static int dict_read_process_end(dict_tokenize_ctx_t *dctx, char **argv, int arg
 	 *	This is where we'll have begun the previous search to
 	 *	evaluate the BEGIN keyword.
 	 */
-	frame = dict_dctx_find_frame(dctx, NEST_ROOT | NEST_PROTOCOL | NEST_ATTRIBUTE);
+	frame = dict_dctx_find_frame(dctx, NEST_TOP | NEST_PROTOCOL | NEST_ATTRIBUTE);
 	if (!fr_cond_assert(frame)) goto error;
 
 	da = fr_dict_attr_by_oid(NULL, frame->da, argv[0]);
@@ -3392,7 +3392,7 @@ static int dict_from_file(fr_dict_t *dict,
 	dict_fixup_init(NULL, &dctx.fixup);
 	dctx.stack[0].dict = dict;
 	dctx.stack[0].da = dict->root;
-	dctx.stack[0].nest = NEST_ROOT;
+	dctx.stack[0].nest = NEST_TOP;
 
 	ret = _dict_from_file(&dctx, dir_name, filename, src_file, src_line);
 	if (ret < 0) {
@@ -3746,7 +3746,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 	dctx.dict = dict;
 	dctx.stack[0].dict = dict;
 	dctx.stack[0].da = dict->root;
-	dctx.stack[0].nest = NEST_ROOT;
+	dctx.stack[0].nest = NEST_TOP;
 
 	if (dict_fixup_init(NULL, &dctx.fixup) < 0) return -1;
 
