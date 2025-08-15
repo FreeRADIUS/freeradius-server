@@ -196,14 +196,16 @@ static dict_tokenize_frame_t const *dict_dctx_pop(dict_tokenize_ctx_t *dctx)
  */
 static dict_tokenize_frame_t const *dict_dctx_unwind_until(dict_tokenize_ctx_t *dctx, dict_nest_t nest)
 {
-	while ((dctx->stack_depth > 0) &&
-	       !(dctx->stack[dctx->stack_depth].nest & nest)) {
-		dctx->stack_depth--;
+	int i;
+
+	for (i = dctx->stack_depth; i >= 0; i--) {
+		if ((dctx->stack[i].nest & nest) != 0) {
+			dctx->stack_depth = i;
+			return &dctx->stack[i];
+		}
 	}
 
-	if (!(dctx->stack[dctx->stack_depth].nest & nest)) return NULL;
-
-	return &dctx->stack[dctx->stack_depth];
+	return NULL;
 }
 
 static inline dict_tokenize_frame_t const *dict_dctx_unwind(dict_tokenize_ctx_t *dctx)
