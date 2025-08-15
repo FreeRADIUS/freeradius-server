@@ -356,7 +356,7 @@ static int dict_process_type_field(dict_tokenize_ctx_t *dctx, char const *name, 
 			type = FR_TYPE_UNION;
 
 		} else if (strcmp(name, "bit") == 0) {
-			if (dctx->stack[dctx->stack_depth].da->type != FR_TYPE_STRUCT) {
+			if (CURRENT_FRAME(dctx)->da->type != FR_TYPE_STRUCT) {
 				fr_strerror_const("Bit fields can only be used inside of a STRUCT");
 				return -1;
 			}
@@ -846,8 +846,8 @@ static int dict_finalise(dict_tokenize_ctx_t *dctx)
 static inline CC_HINT(always_inline)
 void dict_attr_location_set(dict_tokenize_ctx_t *dctx, fr_dict_attr_t *da)
 {
-	da->filename = dctx->stack[dctx->stack_depth].filename;
-	da->line = dctx->stack[dctx->stack_depth].line;
+	da->filename = CURRENT_FILENAME(dctx);
+	da->line = CURRENT_LINE(dctx);
 }
 
 /** Add an attribute to the dictionary, or add it to a list of attributes to clone later
@@ -1137,7 +1137,7 @@ static int dict_read_process_include(dict_tokenize_ctx_t *dctx, char **argv, int
 	/*
 	 *	Reset the filename.
 	 */
-	dctx->stack[dctx->stack_depth].filename = fn;
+	CURRENT_FRAME(dctx)->filename = fn;
 
 	return 0;
 }
@@ -1216,7 +1216,7 @@ static int dict_read_parse_format(char const *format, int *ptype, int *plength, 
 static int dict_read_process_alias(dict_tokenize_ctx_t *dctx, char **argv, int argc, UNUSED fr_dict_attr_flags_t *base_flags)
 {
 	fr_dict_attr_t const	*da;
-	fr_dict_attr_t const	*parent = dctx->stack[dctx->stack_depth].da;
+	fr_dict_attr_t const	*parent = CURRENT_FRAME(dctx)->da;
 	fr_dict_attr_t const	*ref_namespace;
 
 	if (argc != 2) {
@@ -1255,7 +1255,7 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *dctx, char **argv, int a
 		 *	been allowed before the ALIASed
 		 *	attributes.
 		 */
-		return dict_fixup_alias_enqueue(&dctx->fixup, CURRENT_FRAME(dctx)->filename, CURRENT_FRAME(dctx)->line,
+		return dict_fixup_alias_enqueue(&dctx->fixup, CURRENT_FILENAME(dctx), CURRENT_LINE(dctx),
 					fr_dict_attr_unconst(parent), argv[0],
 					fr_dict_attr_unconst(ref_namespace), argv[1]);
 	}
@@ -1498,7 +1498,7 @@ static int dict_read_process_begin(dict_tokenize_ctx_t *dctx, char **argv, int a
 	common = fr_dict_attr_common_parent(frame->da, da, true);
 	if (!common) {
 		fr_strerror_printf("BEGIN %s should be a child of '%s'",
-				   argv[0], dctx->stack[dctx->stack_depth].da->name);
+				   argv[0], CURRENT_FRAME(dctx)->da->name);
 		return -1;
 	}
 
@@ -1604,7 +1604,7 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 		}
 
 		p = argv[1] + 7;
-		da = fr_dict_attr_by_oid(NULL, dctx->stack[dctx->stack_depth].da, p);
+		da = fr_dict_attr_by_oid(NULL, CURRENT_FRAME(dctx)->da, p);
 		if (!da) {
 			fr_strerror_printf_push("BEGIN-VENDOR invalid argument (%s)", argv[1]);
 			goto error;
@@ -1623,7 +1623,7 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 		/*
 		 *	Check that the protocol-specific VSA parent exists.
 		 */
-		vsa_da = dict_attr_child_by_num(dctx->stack[dctx->stack_depth].da, dctx->dict->vsa_parent);
+		vsa_da = dict_attr_child_by_num(CURRENT_FRAME(dctx)->da, dctx->dict->vsa_parent);
 		if (!vsa_da) {
 			fr_strerror_printf_push("Failed finding VSA parent for Vendor %s",
 						vendor->name);
@@ -1919,9 +1919,9 @@ static int dict_read_process_end_protocol(dict_tokenize_ctx_t *dctx, char **argv
 		return -1;
 	}
 
-	if (found->root != dctx->stack[dctx->stack_depth].da) {
+	if (found->root != CURRENT_FRAME(dctx)->da) {
 		fr_strerror_printf_push("END-PROTOCOL %s does not match previous BEGIN-PROTOCOL %s", argv[0],
-					dctx->stack[dctx->stack_depth].da->name);
+					CURRENT_FRAME(dctx)->da->name);
 		goto error;
 	}
 
@@ -1935,7 +1935,7 @@ static int dict_read_process_end_protocol(dict_tokenize_ctx_t *dctx, char **argv
 
 	dctx->stack_depth--;	/* nuke the BEGIN-PROTOCOL */
 
-	dctx->dict = dctx->stack[dctx->stack_depth].dict;
+	dctx->dict = CURRENT_FRAME(dctx)->dict;
 
 	return 0;
 }
@@ -1967,9 +1967,9 @@ static int dict_read_process_end_vendor(dict_tokenize_ctx_t *dctx, char **argv, 
 		return -1;
 	}
 
-	if (vendor->pen != dctx->stack[dctx->stack_depth].da->attr) {
+	if (vendor->pen != CURRENT_FRAME(dctx)->da->attr) {
 		fr_strerror_printf("END-VENDOR %s does not match previous BEGIN-VENDOR %s", argv[0],
-				   dctx->stack[dctx->stack_depth].da->name);
+				   CURRENT_FRAME(dctx)->da->name);
 		return -1;
 	}
 
@@ -2048,7 +2048,7 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *dctx, char **argv, int ar
 		break;
 	}
 
-	parent = dctx->stack[dctx->stack_depth].da;
+	parent = CURRENT_FRAME(dctx)->da;
 	if (!parent) {
 		fr_strerror_const("Invalid location for ENUM");
 		goto error;
@@ -2121,10 +2121,10 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 		return -1;
 	}
 
-	if (dctx->stack[dctx->stack_depth].da->type != FR_TYPE_STRUCT) {
+	if (CURRENT_FRAME(dctx)->da->type != FR_TYPE_STRUCT) {
 		fr_strerror_printf("MEMBER can only be used for ATTRIBUTEs of type 'struct', not %s of type %s",
-				   dctx->stack[dctx->stack_depth].da->name,
-				   fr_type_to_str(dctx->stack[dctx->stack_depth].da->type));
+				   CURRENT_FRAME(dctx)->da->name,
+				   fr_type_to_str(CURRENT_FRAME(dctx)->da->type));
 		return -1;
 	}
 
@@ -2132,10 +2132,10 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 	 *	Check if the parent 'struct' is fixed size.  And if
 	 *	so, complain if we're adding a variable sized member.
 	 */
-	if (dctx->stack[dctx->stack_depth].struct_is_closed) {
+	if (CURRENT_FRAME(dctx)->struct_is_closed) {
 		fr_strerror_printf("Cannot add MEMBER to 'struct' %s after a variable sized member %s",
-				   dctx->stack[dctx->stack_depth].da->name,
-				   dctx->stack[dctx->stack_depth].struct_is_closed->name);
+				   CURRENT_FRAME(dctx)->da->name,
+				   CURRENT_FRAME(dctx)->struct_is_closed->name);
 		return -1;
 	}
 
@@ -2147,7 +2147,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 	 *	Although _arguably_, it may be useful to know which
 	 *	field this is, 0..N?
 	 */
-	if (dict_read_process_common(dctx, &da, dctx->stack[dctx->stack_depth].da, argv[0], argv[1],
+	if (dict_read_process_common(dctx, &da, CURRENT_FRAME(dctx)->da, argv[0], argv[1],
 				     (argc > 2) ? argv[2] : NULL, base_flags) < 0) {
 		return -1;
 	}
@@ -2159,16 +2159,16 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 	/*
 	 *	If our parent is a fixed-size struct, then we have to be fixed-size, too.
 	 */
-	da->flags.is_known_width |= dctx->stack[dctx->stack_depth].da->flags.is_known_width;
+	da->flags.is_known_width |= CURRENT_FRAME(dctx)->da->flags.is_known_width;
 
 	/*
 	 *	Double check any bit field magic
 	 */
-	if (dctx->stack[dctx->stack_depth].member_num > 0) {
+	if (CURRENT_FRAME(dctx)->member_num > 0) {
 		fr_dict_attr_t const *previous;
 
-		previous = dict_attr_child_by_num(dctx->stack[dctx->stack_depth].da,
-						  dctx->stack[dctx->stack_depth].member_num);
+		previous = dict_attr_child_by_num(CURRENT_FRAME(dctx)->da,
+						  CURRENT_FRAME(dctx)->member_num);
 		/*
 		 *	Check that the previous bit field ended on a
 		 *	byte boundary.
@@ -2207,25 +2207,25 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 		/*
 		 *	@todo - cache the key field in the stack frame, so we don't have to loop over the children.
 		 */
-		for (i = 1; i <= dctx->stack[dctx->stack_depth].member_num; i++) {
-			key = dict_attr_child_by_num(dctx->stack[dctx->stack_depth].da, i);
+		for (i = 1; i <= CURRENT_FRAME(dctx)->member_num; i++) {
+			key = dict_attr_child_by_num(CURRENT_FRAME(dctx)->da, i);
 			if (!key) continue; /* really should be WTF? */
 
 			if (fr_dict_attr_is_key_field(key)) {
 				fr_strerror_printf("'struct' %s has a 'key' field %s, and cannot end with a TLV %s",
-						   dctx->stack[dctx->stack_depth].da->name, key->name, argv[0]);
+						   CURRENT_FRAME(dctx)->da->name, key->name, argv[0]);
 				goto error;
 			}
 
 			if (da_is_length_field(key)) {
 				fr_strerror_printf("'struct' %s has a 'length' field %s, and cannot end with a TLV %s",
-						   dctx->stack[dctx->stack_depth].da->name, key->name, argv[0]);
+						   CURRENT_FRAME(dctx)->da->name, key->name, argv[0]);
 				goto error;
 			}
 		}
 	}
 
-	if (unlikely(dict_attr_num_init(da, ++dctx->stack[dctx->stack_depth].member_num) < 0)) goto error;
+	if (unlikely(dict_attr_num_init(da, ++CURRENT_FRAME(dctx)->member_num) < 0)) goto error;
 	if (unlikely(dict_attr_finalise(&da, argv[0]) < 0)) goto error;
 
 	/*
@@ -2259,8 +2259,8 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 		*	to them.
 		*/
 		if (da->type == FR_TYPE_TLV) {
-			dctx->relative_attr = dict_attr_child_by_num(dctx->stack[dctx->stack_depth].da,
-								    dctx->stack[dctx->stack_depth].member_num);
+			dctx->relative_attr = dict_attr_child_by_num(CURRENT_FRAME(dctx)->da,
+								    CURRENT_FRAME(dctx)->member_num);
 			if (dctx->relative_attr && (dict_dctx_push(dctx, dctx->relative_attr, NEST_NONE) < 0)) return -1;
 			return 0;
 
@@ -2269,28 +2269,28 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 		/*
 		 *	Add the size of this member to the parent struct.
 		 */
-		if (dctx->stack[dctx->stack_depth].da->flags.length) {
+		if (CURRENT_FRAME(dctx)->da->flags.length) {
 			/*
 			 *	Fixed-size struct can't have MEMBERs of unknown sizes.
 			 */
 			if (!da->flags.is_known_width) {
 				fr_strerror_printf("'struct' %s has fixed size %u, but member %s is of unknown size",
-						   dctx->stack[dctx->stack_depth].da->name, dctx->stack[dctx->stack_depth].da->flags.length,
+						   CURRENT_FRAME(dctx)->da->name, CURRENT_FRAME(dctx)->da->flags.length,
 						   argv[0]);
 				return -1;
 			}
 
-			dctx->stack[dctx->stack_depth].struct_size += da->flags.length;
+			CURRENT_FRAME(dctx)->struct_size += da->flags.length;
 
 		}
 
 		/*
 		 *	Check for overflow.
 		 */
-		if (dctx->stack[dctx->stack_depth].da->flags.length &&
-		    (dctx->stack[dctx->stack_depth].struct_size > dctx->stack[dctx->stack_depth].da->flags.length)) {
+		if (CURRENT_FRAME(dctx)->da->flags.length &&
+		    (CURRENT_FRAME(dctx)->struct_size > CURRENT_FRAME(dctx)->da->flags.length)) {
 			fr_strerror_printf("'struct' %s has fixed size %u, but member %s overflows that length",
-					   dctx->stack[dctx->stack_depth].da->name, dctx->stack[dctx->stack_depth].da->flags.length,
+					   CURRENT_FRAME(dctx)->da->name, CURRENT_FRAME(dctx)->da->flags.length,
 					   argv[0]);
 			return -1;
 		}
@@ -2314,7 +2314,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 		 *	If the cloned MEMBER is in the middle of a structure, then the user will get an opaque
 		 *	error.  But that case should be rare.
 		 */
-		if (!da->flags.is_known_width) dctx->stack[dctx->stack_depth].struct_is_closed = da;
+		if (!da->flags.is_known_width) CURRENT_FRAME(dctx)->struct_is_closed = da;
 		break;
 
 	/* Deferred attribute, don't begin the TLV section automatically */
@@ -2349,7 +2349,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *dctx, char **argv, int 
 	/*
 	 *	Old-stle: unwind the stack until we find a parent which has a child named for key_attr.
 	 */
-	parent = dctx->stack[dctx->stack_depth].da;
+	parent = CURRENT_FRAME(dctx)->da;
 	if (parent->type != FR_TYPE_UNION) {
 		char const *key_attr;
 
@@ -2376,7 +2376,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *dctx, char **argv, int 
 		 *	No parent was found, maybe the reference is a fully qualified name from the root.
 		 */
 		if (!parent) {
-			parent = fr_dict_attr_by_oid(NULL, dctx->stack[dctx->stack_depth].da->dict->root, key_attr);
+			parent = fr_dict_attr_by_oid(NULL, CURRENT_FRAME(dctx)->da->dict->root, key_attr);
 
 			if (!parent) {
 				fr_strerror_printf("Invalid STRUCT definition, unknown key attribute %s",
@@ -2545,7 +2545,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *dctx, char **argv, int a
 	fr_dict_attr_t		*da;
 	fr_value_box_t		value = FR_VALUE_BOX_INITIALISER_NULL(value);
 	size_t			enum_len;
-	fr_dict_attr_t const 	*parent = dctx->stack[dctx->stack_depth].da;
+	fr_dict_attr_t const 	*parent = CURRENT_FRAME(dctx)->da;
 	fr_dict_attr_t const	*enumv = NULL;
 
 	if (argc != 3) {
@@ -2623,7 +2623,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *dctx, char **argv, int a
 		if (!fr_cond_assert_msg(dctx->fixup.pool, "fixup pool context invalid")) return -1;
 
 		if (dict_fixup_enumv_enqueue(&dctx->fixup,
-				     CURRENT_FRAME(dctx)->filename, CURRENT_FRAME(dctx)->line,
+				     CURRENT_FILENAME(dctx), CURRENT_LINE(dctx),
 				     argv[0], strlen(argv[0]),
 				     argv[1], strlen(argv[1]),
 				     argv[2], strlen(argv[2]), parent) < 0) {
@@ -2942,7 +2942,7 @@ static int dict_struct_finalise(dict_tokenize_ctx_t *dctx)
 {
 	fr_dict_attr_t const *da;
 
-	da = dctx->stack[dctx->stack_depth].da;
+	da = CURRENT_FRAME(dctx)->da;
 	if (da->type == FR_TYPE_STRUCT) {
 		/*
 		 *	The structure was fixed-size,
@@ -2953,7 +2953,7 @@ static int dict_struct_finalise(dict_tokenize_ctx_t *dctx)
 		 *	for overflow, the check here
 		 *	is really only for underflow.
 		 */
-		if (da->flags.length && (dctx->stack[dctx->stack_depth].struct_size != da->flags.length)) {
+		if (da->flags.length && (CURRENT_FRAME(dctx)->struct_size != da->flags.length)) {
 			fr_strerror_printf("MEMBERs of %s struct[%u] do not exactly fill the fixed-size structure",
 					da->name, da->flags.length);
 			return -1;
@@ -2966,8 +2966,8 @@ static int dict_struct_finalise(dict_tokenize_ctx_t *dctx)
 		 *	then update the length field
 		 *	with the structure size/
 		 */
-		if (dctx->stack[dctx->stack_depth].struct_size <= 255) {
-			UNCONST(fr_dict_attr_t *, da)->flags.length = dctx->stack[dctx->stack_depth].struct_size;
+		if (CURRENT_FRAME(dctx)->struct_size <= 255) {
+			UNCONST(fr_dict_attr_t *, da)->flags.length = CURRENT_FRAME(dctx)->struct_size;
 		} /* else length 0 means "unknown / variable size / too large */
 
 	} else if (da->type == FR_TYPE_UNION) {
@@ -3096,7 +3096,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	 */
 	fr_dict_attr_flags_t	base_flags = {};
 
-	if (!fr_cond_assert(!dctx->dict->root || dctx->stack[dctx->stack_depth].da)) return -1;
+	if (!fr_cond_assert(!dctx->dict->root || CURRENT_FRAME(dctx)->da)) return -1;
 
 	if ((strlen(dir_name) + 3 + strlen(filename)) > sizeof(dir)) {
 		fr_strerror_printf_push("%s: Filename name too long", "Error reading dictionary");
@@ -3207,7 +3207,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 		fr_dict_keyword_parser_t const	*parser;
 		char **argv_p = argv;
 
-		dctx->stack[dctx->stack_depth].line = ++line;
+		CURRENT_FRAME(dctx)->line = ++line;
 
 		switch (buf[0]) {
 		case '#':
@@ -3320,7 +3320,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	 *	Unwind until the stack depth matches what we had on input.
 	 */
 	while (dctx->stack_depth > stack_depth) {
-		dict_tokenize_frame_t const *frame = &dctx->stack[dctx->stack_depth];
+		dict_tokenize_frame_t const *frame = CURRENT_FRAME(dctx);
 
 		if ((frame->nest & NEST_VENDOR) != 0) {
 			fr_strerror_printf("BEGIN-VENDOR at %s[%d] is missing END-VENDOR",
