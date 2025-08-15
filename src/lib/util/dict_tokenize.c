@@ -1027,7 +1027,7 @@ static int dict_set_value_attr(dict_tokenize_ctx_t *dctx, fr_dict_attr_t *da)
 	 *	BEGIN-STRUCT.
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
-		if (dict_dctx_push(dctx, da, 0) < 0) return -1;
+		if (dict_dctx_push(dctx, da, NEST_NONE) < 0) return -1;
 		dctx->value_attr = NULL;
 
 	} else if (fr_type_is_leaf(da->type)) {
@@ -1478,7 +1478,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		 *	BEGIN-STRUCT.
 		 */
 		if (da->type == FR_TYPE_STRUCT) {
-			if (dict_dctx_push(dctx, da, 0) < 0) return -1;
+			if (dict_dctx_push(dctx, da, NEST_NONE) < 0) return -1;
 			dctx->value_attr = NULL;
 		} else {
 			memcpy(&dctx->value_attr, &da, sizeof(da));
@@ -2323,7 +2323,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 		if (da->type == FR_TYPE_TLV) {
 			dctx->relative_attr = dict_attr_child_by_num(dctx->stack[dctx->stack_depth].da,
 								    dctx->stack[dctx->stack_depth].member_num);
-			if (dctx->relative_attr && (dict_dctx_push(dctx, dctx->relative_attr, 0) < 0)) return -1;
+			if (dctx->relative_attr && (dict_dctx_push(dctx, dctx->relative_attr, NEST_NONE) < 0)) return -1;
 			return 0;
 
 		}
@@ -2578,7 +2578,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *dctx, char **argv, int 
 		 *	A STRUCT definition is an implicit BEGIN-STRUCT.
 		 */
 		dctx->relative_attr = NULL;
-		if (dict_dctx_push(dctx, da, 0) < 0) return -1;
+		if (dict_dctx_push(dctx, da, NEST_NONE) < 0) return -1;
 
 		/*
 		*	Add the VALUE to the key attribute, and ensure that
