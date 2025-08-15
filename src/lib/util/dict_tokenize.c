@@ -58,6 +58,8 @@ typedef enum CC_HINT(flag_enum) {
 } dict_nest_t;
 DIAG_ON(attributes)
 
+#define NEST_ANY (NEST_TOP | NEST_PROTOCOL | NEST_VENDOR | NEST_ATTRIBUTE)
+
 static fr_table_num_sorted_t const dict_nest_table[] = {
 	{ L("ATTRIBUTE"),	NEST_ATTRIBUTE },
 	{ L("NONE"),		NEST_NONE },
@@ -181,6 +183,19 @@ static dict_tokenize_frame_t const *dict_dctx_unwind_until(dict_tokenize_ctx_t *
 	int i;
 
 	for (i = dctx->stack_depth; i >= 0; i--) {
+		/*
+		 *	END-foo cannot be used without BEGIN-foo.
+		 */
+		if (dctx->stack[i].filename && (dctx->stack[i].filename != dctx->filename) &&
+		    (nest != NEST_ANY)) {
+			char const *name;
+
+			name = fr_table_str_by_value(dict_nest_table, nest, "<INVALID>");
+			fr_strerror_printf("END-%s in file %s[%d] without matching BEGIN-%s",
+					   name, dctx->filename, dctx->line, name);
+			return NULL;
+		}
+
 		if ((dctx->stack[i].nest & nest) != 0) {
 			dctx->stack_depth = i;
 			return &dctx->stack[i];
@@ -192,7 +207,7 @@ static dict_tokenize_frame_t const *dict_dctx_unwind_until(dict_tokenize_ctx_t *
 
 static inline dict_tokenize_frame_t const *dict_dctx_unwind(dict_tokenize_ctx_t *dctx)
 {
-	return dict_dctx_unwind_until(dctx, NEST_TOP | NEST_PROTOCOL | NEST_VENDOR | NEST_ATTRIBUTE);
+	return dict_dctx_unwind_until(dctx, NEST_ANY);
 }
 
 /*
@@ -1850,15 +1865,13 @@ static int dict_read_process_end(dict_tokenize_ctx_t *dctx, char **argv, int arg
 
 	if (argc > 2) {
 		fr_strerror_const("Invalid END syntax, expected END <ref>");
-		goto error;
+		return -1;
 	}
 
 	/*
 	 *	Unwind until we hit an attribute nesting section
 	 */
 	if (!dict_dctx_unwind_until(dctx, NEST_ATTRIBUTE)) {
-		fr_strerror_const("END attribute without BEGIN attribute");
-	error:
 		return -1;
 	}
 
@@ -1878,17 +1891,17 @@ static int dict_read_process_end(dict_tokenize_ctx_t *dctx, char **argv, int arg
 	 *	evaluate the BEGIN keyword.
 	 */
 	frame = dict_dctx_find_frame(dctx, NEST_TOP | NEST_PROTOCOL | NEST_ATTRIBUTE);
-	if (!fr_cond_assert(frame)) goto error;
+	if (!fr_cond_assert(frame)) return -1;
 
 	da = fr_dict_attr_by_oid(NULL, frame->da, argv[0]);
 	if (!da) {
 		fr_strerror_const_push("Failed resolving attribute in BEGIN entry");
-		goto error;
+		return -1;
 	}
 
 	if (da != current) {
 		fr_strerror_printf("END %s does not match previous BEGIN %s", argv[0], current->name);
-		goto error;
+		return -1;
 	}
 
 	return 0;
@@ -1904,34 +1917,32 @@ static int dict_read_process_end_protocol(dict_tokenize_ctx_t *dctx, char **argv
 
 	if (argc != 1) {
 		fr_strerror_const("Invalid END-PROTOCOL entry");
-	error:
 		return -1;
 	}
 
 	found = dict_by_protocol_name(argv[0]);
 	if (!found) {
 		fr_strerror_printf("END-PROTOCOL %s does not refer to a valid protocol", argv[0]);
-		goto error;
+		return -1;
 	}
 
 	if (found != dctx->dict) {
 		fr_strerror_printf("END-PROTOCOL %s does not match previous BEGIN-PROTOCOL %s",
 				   argv[0], dctx->dict->root->name);
-		goto error;
+		return -1;
 	}
 
 	/*
 	 *	Unwind until we get to a BEGIN-PROTOCOL nesting.
 	 */
 	if (!dict_dctx_unwind_until(dctx, NEST_PROTOCOL)) {
-		fr_strerror_const("END-PROTOCOL without previous BEGIN-PROTOCOL");
 		return -1;
 	}
 
 	if (found->root != CURRENT_FRAME(dctx)->da) {
 		fr_strerror_printf("END-PROTOCOL %s does not match previous BEGIN-PROTOCOL %s", argv[0],
 				   CURRENT_FRAME(dctx)->da->name);
-		goto error;
+		return -1;
 	}
 
 	/*
@@ -1940,7 +1951,7 @@ static int dict_read_process_end_protocol(dict_tokenize_ctx_t *dctx, char **argv
 	 *	out the original filename / line of the error. So we
 	 *	don't need to do that here.
 	 */
-	if (dict_finalise(dctx) < 0) goto error;
+	if (dict_finalise(dctx) < 0) return -1;
 
 	dctx->stack_depth--;	/* nuke the BEGIN-PROTOCOL */
 
@@ -1972,7 +1983,6 @@ static int dict_read_process_end_vendor(dict_tokenize_ctx_t *dctx, char **argv, 
 	 *	Unwind until we get to a BEGIN-VENDOR nesting.
 	 */
 	if (!dict_dctx_unwind_until(dctx, NEST_VENDOR)) {
-		fr_strerror_const("END-VENDOR without previous BEGIN-VENDOR");
 		return -1;
 	}
 
@@ -3331,14 +3341,21 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	while (dctx->stack_depth > stack_depth) {
 		dict_tokenize_frame_t const *frame = CURRENT_FRAME(dctx);
 
-		if ((frame->nest & NEST_VENDOR) != 0) {
-			fr_strerror_printf("BEGIN-VENDOR at %s[%d] is missing END-VENDOR",
+		if (frame->nest == NEST_PROTOCOL) {
+			fr_strerror_printf("BEGIN-PROTOCOL at %s[%d] is missing END-PROTOCOL",
 					   fr_cwd_strip(frame->filename), line);
 			goto error;
 		}
 
-		if ((frame->nest & NEST_PROTOCOL) != 0) {
-			fr_strerror_printf("BEGIN-PROTOCOL at %s[%d] is missing END-PROTOCOl",
+		if (frame->nest == NEST_ATTRIBUTE) {
+			fr_strerror_printf("BEGIN %s at %s[%d] is missing END %s",
+					   frame->da->name, fr_cwd_strip(frame->filename), line,
+					   frame->da->name);
+			goto error;
+		}
+
+		if (frame->nest == NEST_VENDOR) {
+			fr_strerror_printf("BEGIN-VENDOR at %s[%d] is missing END-VENDOR",
 					   fr_cwd_strip(frame->filename), line);
 			goto error;
 		}
