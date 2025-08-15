@@ -69,6 +69,8 @@ static fr_table_num_sorted_t const dict_nest_table[] = {
 };
 static size_t const dict_nest_table_len = NUM_ELEMENTS(dict_nest_table);
 
+typedef int (*fr_dict_keyword_finalise_t)(dict_tokenize_ctx_t *dctx);
+
 /** Parser context for dict_from_file
  *
  * Allows vendor and TLV context to persist across $INCLUDEs
@@ -79,6 +81,8 @@ typedef struct {
 	int			line;			//!< line number where we read this entry
 	fr_dict_attr_t const	*da;			//!< the da we care about
 	dict_nest_t		nest;			//!< for manual vs automatic begin / end things
+
+	fr_dict_keyword_finalise_t finalise;		//!< function to call when popping
 	int			member_num;		//!< structure member numbers
 	fr_dict_attr_t const	*struct_is_closed;	//!< no more members are allowed
 	ssize_t			struct_size;		//!< size of the struct.
@@ -149,7 +153,7 @@ static int CC_HINT(nonnull) dict_dctx_push(dict_tokenize_ctx_t *dctx, fr_dict_at
 		.da = da,
 		.filename = dctx->filename,
 		.line = dctx->line,
-		.nest = nest
+		.nest = nest,
 	};
 
 	return 0;
@@ -167,6 +171,8 @@ static dict_tokenize_frame_t const *dict_dctx_pop(dict_tokenize_ctx_t *dctx)
 {
 	if (dctx->stack_depth == 0) return NULL;
 
+	fr_assert(!dctx->stack[dctx->stack_depth].finalise);
+
 	return &dctx->stack[dctx->stack_depth--];
 }
 
@@ -183,10 +189,24 @@ static dict_tokenize_frame_t const *dict_dctx_unwind_until(dict_tokenize_ctx_t *
 	int i;
 
 	for (i = dctx->stack_depth; i >= 0; i--) {
+		dict_tokenize_frame_t *frame;
+
+		/*
+		 *	We mash the stack depth here, because the finalisation function needs it.  Plus, if
+		 *	there's any error, we don't care about the dctx stack, we just return up the C stack.
+		 */
+		dctx->stack_depth = i;
+		frame = CURRENT_FRAME(dctx);
+
+		if (frame->finalise) {
+			if (frame->finalise(dctx) < 0) return NULL;
+			frame->finalise = NULL;
+		}
+
 		/*
 		 *	END-foo cannot be used without BEGIN-foo.
 		 */
-		if (dctx->stack[i].filename && (dctx->stack[i].filename != dctx->filename) &&
+		if (frame->filename && (frame->filename != dctx->filename) &&
 		    (nest != NEST_ANY)) {
 			char const *name;
 
@@ -196,9 +216,8 @@ static dict_tokenize_frame_t const *dict_dctx_unwind_until(dict_tokenize_ctx_t *
 			return NULL;
 		}
 
-		if ((dctx->stack[i].nest & nest) != 0) {
-			dctx->stack_depth = i;
-			return &dctx->stack[i];
+		if ((frame->nest & nest) != 0) {
+			return frame;
 		}
 	}
 
@@ -1009,6 +1028,37 @@ static int dict_attr_allow_dup(fr_dict_attr_t const *da)
 	return 0;
 }
 
+static int dict_struct_finalise(dict_tokenize_ctx_t *dctx)
+{
+	fr_dict_attr_t const *da;
+	dict_tokenize_frame_t const *frame = CURRENT_FRAME(dctx);
+
+	da = frame->da;
+	fr_assert(da->type == FR_TYPE_STRUCT);
+
+	/*
+	 *	The structure was fixed-size, but the fields don't fill it.  That's an error.
+	 *
+	 *	Since process_member() checks for overflow, the check here is really only for
+	 *	underflow.
+	 */
+	if (da->flags.length && (CURRENT_FRAME(dctx)->struct_size != da->flags.length)) {
+		fr_strerror_printf("MEMBERs of %s struct[%u] do not exactly fill the fixed-size structure",
+					da->name, da->flags.length);
+		return -1;
+	}
+
+	/*
+	 *	If the structure is fixed size, AND small enough to fit into an 8-bit length field, then
+	 *	update the length field with the structure size/
+	 */
+	if (frame->struct_size <= 255) {
+		UNCONST(fr_dict_attr_t *, da)->flags.length = frame->struct_size;
+	} /* else length 0 means "unknown / variable size / too large */
+
+	return 0;
+}
+
 static int dict_set_value_attr(dict_tokenize_ctx_t *dctx, fr_dict_attr_t *da)
 {
 	/*
@@ -1017,6 +1067,8 @@ static int dict_set_value_attr(dict_tokenize_ctx_t *dctx, fr_dict_attr_t *da)
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
 		if (dict_dctx_push(dctx, da, NEST_NONE) < 0) return -1;
+
+		CURRENT_FRAME(dctx)->finalise = dict_struct_finalise;
 		dctx->value_attr = NULL;
 
 	} else if (fr_type_is_leaf(da->type)) {
@@ -1463,9 +1515,11 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		 */
 		if (da->type == FR_TYPE_STRUCT) {
 			if (dict_dctx_push(dctx, da, NEST_NONE) < 0) return -1;
+
+			CURRENT_FRAME(dctx)->finalise = dict_struct_finalise;
 			dctx->value_attr = NULL;
 		} else {
-			memcpy(&dctx->value_attr, &da, sizeof(da));
+			dctx->value_attr = da;
 		}
 
 		if (set_relative_attr) dctx->relative_attr = da;
@@ -1953,6 +2007,7 @@ static int dict_read_process_end_protocol(dict_tokenize_ctx_t *dctx, char **argv
 	 */
 	if (dict_finalise(dctx) < 0) return -1;
 
+	fr_assert(!dctx->stack[dctx->stack_depth].finalise);
 	dctx->stack_depth--;	/* nuke the BEGIN-PROTOCOL */
 
 	dctx->dict = CURRENT_FRAME(dctx)->dict;
@@ -1992,6 +2047,7 @@ static int dict_read_process_end_vendor(dict_tokenize_ctx_t *dctx, char **argv, 
 		return -1;
 	}
 
+	fr_assert(!dctx->stack[dctx->stack_depth].finalise);
 	dctx->stack_depth--;	/* nuke the BEGIN-VENDOR */
 
 	return 0;
@@ -2957,48 +3013,6 @@ static inline bool dict_filename_loaded(fr_dict_t *dict, char const *filename,
 }
 #endif
 
-static int dict_struct_finalise(dict_tokenize_ctx_t *dctx)
-{
-	fr_dict_attr_t const *da;
-
-	da = CURRENT_FRAME(dctx)->da;
-	if (da->type == FR_TYPE_STRUCT) {
-		/*
-		 *	The structure was fixed-size,
-		 *	but the fields don't fill it.
-		 *	That's an error.
-		 *
-		 *	Since process_member() checks
-		 *	for overflow, the check here
-		 *	is really only for underflow.
-		 */
-		if (da->flags.length && (CURRENT_FRAME(dctx)->struct_size != da->flags.length)) {
-			fr_strerror_printf("MEMBERs of %s struct[%u] do not exactly fill the fixed-size structure",
-					da->name, da->flags.length);
-			return -1;
-		}
-
-		/*
-		 *	If the structure is fixed
-		 *	size, AND small enough to fit
-		 *	into an 8-bit length field,
-		 *	then update the length field
-		 *	with the structure size/
-		 */
-		if (CURRENT_FRAME(dctx)->struct_size <= 255) {
-			UNCONST(fr_dict_attr_t *, da)->flags.length = CURRENT_FRAME(dctx)->struct_size;
-		} /* else length 0 means "unknown / variable size / too large */
-
-	} else if (da->type == FR_TYPE_UNION) {
-		// do nothing
-
-	} else {
-		fr_assert_msg(da->type == FR_TYPE_TLV, "Expected parent type of 'tlv', got '%s'", fr_type_to_str(da->type));
-	}
-
-	return 0;
-}
-
 /** Process an inline BEGIN PROTOCOL block
  */
 static int dict_begin_protocol(dict_tokenize_ctx_t *dctx)
@@ -3102,7 +3116,6 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	char			buf[256];
 	char			*p;
 	int			line = 0;
-	bool			was_member = false;
 
 	struct stat		statbuf;
 	char			*argv[DICT_MAX_ARGV];
@@ -3279,17 +3292,6 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 				goto process_begin;
 			}
 
-			/*
-			 *	Note: This is broken.  It won't apply correctly to deferred
-			 *	definitions of attributes we need some kind of proper
-			 *	finalisation API.
-			 */
-			if (parser->parse == dict_read_process_member) {
-				was_member = true;
-			} else if (was_member) {
-				if (unlikely(dict_struct_finalise(dctx) < 0)) goto error;
-				was_member = false;
-			}
 			if (unlikely(parser->parse(dctx, argv_p + 1 , argc - 1, &base_flags) < 0)) goto error;
 
 			/*
@@ -3333,13 +3335,11 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 		goto error;
 	}
 
-	if (was_member && unlikely(dict_struct_finalise(dctx) < 0)) goto error;
-
 	/*
 	 *	Unwind until the stack depth matches what we had on input.
 	 */
 	while (dctx->stack_depth > stack_depth) {
-		dict_tokenize_frame_t const *frame = CURRENT_FRAME(dctx);
+		dict_tokenize_frame_t *frame = CURRENT_FRAME(dctx);
 
 		if (frame->nest == NEST_PROTOCOL) {
 			fr_strerror_printf("BEGIN-PROTOCOL at %s[%d] is missing END-PROTOCOL",
@@ -3360,6 +3360,15 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 			goto error;
 		}
 
+		/*
+		 *	Run any necessary finalise callback, and then pop the frame.
+		 */
+		if (frame->finalise) {
+			if (frame->finalise(dctx) < 0) goto error;
+			frame->finalise = NULL;
+		}
+
+		fr_assert(!dctx->stack[dctx->stack_depth].finalise);
 		dctx->stack_depth--;
 	}
 
