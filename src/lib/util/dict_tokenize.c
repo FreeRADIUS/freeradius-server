@@ -150,27 +150,6 @@ static int dict_dctx_push(dict_tokenize_ctx_t *dctx, fr_dict_attr_t const *da, d
 	return 0;
 }
 
-/** Either updates the da in the current stack frame if 'nest' matches, or pushes a new frame of type 'nest'
- *
- * @param[in] dctx		Stack to push to.
- * @param[in] da		Attribute to push.
- * @param[in] nest		Frame type to push.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int CC_HINT(nonnull)
-dict_dctx_push_or_update(dict_tokenize_ctx_t *dctx, fr_dict_attr_t const *da, dict_nest_t nest)
-{
-	if (dctx->stack[++dctx->stack_depth].nest == nest) {
-		dctx->stack[dctx->stack_depth].filename = dctx->stack[dctx->stack_depth - 1].filename;
-		dctx->stack[dctx->stack_depth].da = da;
-		return 0;
-	}
-
-	return dict_dctx_push(dctx, da, nest);
-}
-
 
 /** Pop the current stack frame
  *
@@ -2755,6 +2734,14 @@ static int dict_read_process_protocol(dict_tokenize_ctx_t *dctx, char **argv, in
 	bool		require_dl = false;
 	bool		string_based = false;
 
+	/*
+	 *	We cannot define a PROTOCOL inside of another protocol.
+	 */
+	if (CURRENT_FRAME(dctx)->nest != NEST_TOP) {
+		fr_strerror_const("PROTOCOL definitions cannot occur inside of any other BEGIN/END block");
+		return -1;
+	}
+
 	dctx->value_attr = NULL;
 	dctx->relative_attr = NULL;
 
@@ -2891,7 +2878,7 @@ done:
 	 *	Make the root available on the stack, in case
 	 *	something wants to begin it...
 	 */
-	if (unlikely(dict_dctx_push_or_update(dctx, dict->root, NEST_NONE) < 0)) goto error;
+	if (unlikely(dict_dctx_push(dctx, dict->root, NEST_NONE) < 0)) goto error;
 
 	return 0;
 }
