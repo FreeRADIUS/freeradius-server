@@ -1155,17 +1155,6 @@ static int dict_read_process_include(dict_tokenize_ctx_t *dctx, char **argv, int
 		return -1;
 	}
 
-	while (dctx->stack_depth > stack_depth) {
-		if (dctx->stack[dctx->stack_depth].nest == NEST_NONE) {
-			dctx->stack_depth--;
-			continue;
-		}
-
-		fr_strerror_printf_push("BEGIN-??? without END-... in file $INCLUDEd from %s[%d]",
-					fr_cwd_strip(fn), line);
-		return -1;
-	}
-
 	/*
 	 *	Reset the filename.
 	 */
@@ -1944,21 +1933,11 @@ static int dict_read_process_end_protocol(dict_tokenize_ctx_t *dctx, char **argv
 	}
 
 	/*
-	 *	Pop the stack until we get to a PROTOCOL nesting.
+	 *	Unwind until we get to a BEGIN-PROTOCOL nesting.
 	 */
-	while ((dctx->stack_depth > 0) && (dctx->stack[dctx->stack_depth].nest != NEST_PROTOCOL)) {
-		if (dctx->stack[dctx->stack_depth].nest != NEST_NONE) {
-			fr_strerror_printf_push("END-PROTOCOL %s with mismatched BEGIN-??? %s", argv[0],
-				dctx->stack[dctx->stack_depth].da->name);
-			goto error;
-		}
-
-		dctx->stack_depth--;
-	}
-
-	if (dctx->stack_depth == 0) {
-		fr_strerror_printf_push("END-PROTOCOL %s with no previous BEGIN-PROTOCOL", argv[0]);
-		goto error;
+	if (!dict_dctx_unwind_until(dctx, NEST_PROTOCOL)) {
+		fr_strerror_const("END-PROTOCOL without previous BEGIN-PROTOCOL");
+		return -1;
 	}
 
 	if (found->root != dctx->stack[dctx->stack_depth].da) {
@@ -1968,16 +1947,15 @@ static int dict_read_process_end_protocol(dict_tokenize_ctx_t *dctx, char **argv
 	}
 
 	/*
-	 *	Applies fixups to any attributes added
-	 *	to the protocol dictionary.  Note that
-	 *	the finalise function prints out the
-	 *	original filename / line of the
-	 *	error. So we don't need to do that
-	 *	here.
+	 *	Applies fixups to any attributes added to the protocol
+	 *	dictionary.  Note that the finalise function prints
+	 *	out the original filename / line of the error. So we
+	 *	don't need to do that here.
 	 */
 	if (dict_finalise(dctx) < 0) goto error;
 
-	dctx->stack_depth--;
+	dctx->stack_depth--;	/* nuke the BEGIN-PROTOCOL */
+
 	dctx->dict = dctx->stack[dctx->stack_depth].dict;
 
 	return 0;
@@ -1992,42 +1970,31 @@ static int dict_read_process_end_vendor(dict_tokenize_ctx_t *dctx, char **argv, 
 	dctx->relative_attr = NULL;
 
 	if (argc != 1) {
-		fr_strerror_const_push("Invalid END-VENDOR entry");
-	error:
+		fr_strerror_const("END-VENDOR is missing vendor name");
 		return -1;
 	}
 
 	vendor = fr_dict_vendor_by_name(dctx->dict, argv[0]);
 	if (!vendor) {
-		fr_strerror_printf_push("Unknown vendor '%s'", argv[0]);
-		goto error;
+		fr_strerror_printf("Unknown vendor '%s'", argv[0]);
+		return -1;
 	}
 
 	/*
-	 *	Pop the stack until we get to a VENDOR nesting.
+	 *	Unwind until we get to a BEGIN-VENDOR nesting.
 	 */
-	while ((dctx->stack_depth > 0) && (dctx->stack[dctx->stack_depth].nest != NEST_VENDOR)) {
-		if (dctx->stack[dctx->stack_depth].nest != NEST_NONE) {
-			fr_strerror_printf_push("END-VENDOR %s with mismatched BEGIN-??? %s", argv[0],
-				dctx->stack[dctx->stack_depth].da->name);
-			goto error;
-		}
-
-		dctx->stack_depth--;
-	}
-
-	if (dctx->stack_depth == 0) {
-		fr_strerror_printf_push("END-VENDOR %s with no previous BEGIN-VENDOR", argv[0]);
-		goto error;
+	if (!dict_dctx_unwind_until(dctx, NEST_VENDOR)) {
+		fr_strerror_const("END-VENDOR without previous BEGIN-VENDOR");
+		return -1;
 	}
 
 	if (vendor->pen != dctx->stack[dctx->stack_depth].da->attr) {
-		fr_strerror_printf_push("END-VENDOR %s does not match previous BEGIN-VENDOR %s", argv[0],
-					dctx->stack[dctx->stack_depth].da->name);
-		goto error;
+		fr_strerror_printf("END-VENDOR %s does not match previous BEGIN-VENDOR %s", argv[0],
+				   dctx->stack[dctx->stack_depth].da->name);
+		return -1;
 	}
 
-	dctx->stack_depth--;
+	dctx->stack_depth--;	/* nuke the BEGIN-VENDOR */
 
 	return 0;
 }
@@ -3135,6 +3102,8 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	char			*argv[DICT_MAX_ARGV];
 	int			argc;
 
+	int			stack_depth = dctx->stack_depth;
+
 	/*
 	 *	Base flags are only set for the current file
 	 */
@@ -3361,13 +3330,27 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	if (was_member && unlikely(dict_struct_finalise(dctx) < 0)) goto error;
 
 	/*
-	 *	Note that we do NOT walk back up the stack to check
-	 *	for missing END-FOO to match BEGIN-FOO.  The context
-	 *	was copied from the parent, so there are guaranteed to
-	 *	be missing things.
+	 *	Unwind until the stack depth matches what we had on input.
 	 */
-	fclose(fp);
+	while (dctx->stack_depth > stack_depth) {
+		dict_tokenize_frame_t const *frame = &dctx->stack[dctx->stack_depth];
 
+		if ((frame->nest & NEST_VENDOR) != 0) {
+			fr_strerror_printf("BEGIN-VENDOR at %s[%d] is missing END-VENDOR",
+					   fr_cwd_strip(frame->filename), line);
+			goto error;
+		}
+
+		if ((frame->nest & NEST_PROTOCOL) != 0) {
+			fr_strerror_printf("BEGIN-PROTOCOL at %s[%d] is missing END-PROTOCOl",
+					   fr_cwd_strip(frame->filename), line);
+			goto error;
+		}
+
+		dctx->stack_depth--;
+	}
+
+	fclose(fp);
 
 	return 0;
 }
