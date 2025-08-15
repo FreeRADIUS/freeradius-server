@@ -73,8 +73,8 @@ static size_t const dict_nest_table_len = NUM_ELEMENTS(dict_nest_table);
  */
 typedef struct {
 	fr_dict_t		*dict;			//!< The dictionary before the current BEGIN-PROTOCOL block.
-	char			*filename;		//!< name of the file we're reading
-	int			line;			//!< line number of this file
+	char			*filename;		//!< name of the file where we read this entry
+	int			line;			//!< line number where we read this entry
 	fr_dict_attr_t const	*da;			//!< the da we care about
 	dict_nest_t		nest;			//!< for manual vs automatic begin / end things
 	int			member_num;		//!< structure member numbers
@@ -91,6 +91,9 @@ struct dict_tokenize_ctx_s {
 	fr_dict_attr_t		*value_attr;		//!< Cache of last attribute to speed up value processing.
 	fr_dict_attr_t const   	*relative_attr;		//!< for ".82" instead of "1.2.3.82". only for parents of type "tlv"
 	dict_fixup_ctx_t	fixup;
+
+	char			*filename;		//!< current filename
+	int			line;			//!< current line
 };
 
 static int _dict_from_file(dict_tokenize_ctx_t *dctx,
@@ -142,8 +145,8 @@ static int CC_HINT(nonnull) dict_dctx_push(dict_tokenize_ctx_t *dctx, fr_dict_at
 	dctx->stack[++dctx->stack_depth] = (dict_tokenize_frame_t) {
 		.dict = dctx->stack[dctx->stack_depth - 1].dict,
 		.da = da,
-		.filename = dctx->stack[dctx->stack_depth - 1].filename,
-		.line = dctx->stack[dctx->stack_depth - 1].line,
+		.filename = dctx->filename,
+		.line = dctx->line,
 		.nest = nest
 	};
 
@@ -1090,8 +1093,8 @@ static int dict_read_process_include(dict_tokenize_ctx_t *dctx, char **argv, int
 {
 	int rcode;
 	int stack_depth = dctx->stack_depth;
-	char *fn = CURRENT_FILENAME(dctx);
-	int line = CURRENT_LINE(dctx);
+	char *filename = dctx->filename;
+	int line = dctx->line;
 
 	/*
 	 *	Allow "$INCLUDE" or "$INCLUDE-", but
@@ -1103,7 +1106,7 @@ static int dict_read_process_include(dict_tokenize_ctx_t *dctx, char **argv, int
 	}
 
 	if (argc != 2) {
-		fr_strerror_printf("Unexpected text after $INCLUDE at %s[%d]", fr_cwd_strip(fn), line);
+		fr_strerror_printf("Unexpected text after $INCLUDE at %s[%d]", fr_cwd_strip(filename), line);
 		return -1;
 	}
 
@@ -1113,9 +1116,9 @@ static int dict_read_process_include(dict_tokenize_ctx_t *dctx, char **argv, int
 	 *	the root dictionaries are located.
 	 */
 	if (strncmp(argv[1], "${dictdir}/", 11) != 0) {
-		rcode = _dict_from_file(dctx, dir, argv[1], fn, line);
+		rcode = _dict_from_file(dctx, dir, argv[1], filename, line);
 	} else {
-		rcode = _dict_from_file(dctx, fr_dict_global_ctx_dir(), argv[1] + 11, fn, line);
+		rcode = _dict_from_file(dctx, fr_dict_global_ctx_dir(), argv[1] + 11, filename, line);
 	}
 
 	if ((rcode == -2) && (argv[0][8] == '-')) {
@@ -1124,20 +1127,21 @@ static int dict_read_process_include(dict_tokenize_ctx_t *dctx, char **argv, int
 	}
 
 	if (rcode < 0) {
-		fr_strerror_printf_push("from $INCLUDE at %s[%d]", fr_cwd_strip(fn), line);
+		fr_strerror_printf_push("from $INCLUDE at %s[%d]", fr_cwd_strip(filename), line);
 		return -1;
 	}
 
 	if (dctx->stack_depth < stack_depth) {
 		fr_strerror_printf("unexpected END-??? in $INCLUDE at %s[%d]",
-				   fr_cwd_strip(fn), line);
+				   fr_cwd_strip(filename), line);
 		return -1;
 	}
 
 	/*
-	 *	Reset the filename.
+	 *	Reset the filename and line number.
 	 */
-	CURRENT_FRAME(dctx)->filename = fn;
+	dctx->filename = filename;
+	dctx->line = line;
 
 	return 0;
 }
@@ -1291,7 +1295,12 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 	 *	unwind the stack to match.
 	 */
 	if (argv[1][0] != '.') {
-		parent = dict_dctx_unwind(dctx)->da;
+		dict_tokenize_frame_t const *frame;
+
+		frame = dict_dctx_unwind(dctx);
+		if (!frame) return -1;
+
+		parent = frame->da;
 
 		/*
 		 *	Allow '0xff00' as attribute numbers, but only
@@ -1848,7 +1857,7 @@ static int dict_read_process_end(dict_tokenize_ctx_t *dctx, char **argv, int arg
 	 *	Unwind until we hit an attribute nesting section
 	 */
 	if (!dict_dctx_unwind_until(dctx, NEST_ATTRIBUTE)) {
-		fr_strerror_const("Unbalanced BEGIN and END keywords");
+		fr_strerror_const("END attribute without BEGIN attribute");
 	error:
 		return -1;
 	}
@@ -3198,7 +3207,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	 *	This string is safe to assign to the filename pointer in any attributes added beneath the
 	 *	dictionary.
 	 */
-	if (unlikely(dict_filename_add(&CURRENT_FILENAME(dctx), dctx->dict, fn, src_file, src_line) < 0)) {
+	if (unlikely(dict_filename_add(&dctx->filename, dctx->dict, fn, src_file, src_line) < 0)) {
 		goto perm_error;
 	}
 
@@ -3207,7 +3216,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 		fr_dict_keyword_parser_t const	*parser;
 		char **argv_p = argv;
 
-		CURRENT_FRAME(dctx)->line = ++line;
+		dctx->line = ++line;
 
 		switch (buf[0]) {
 		case '#':
