@@ -186,21 +186,6 @@ static dict_tokenize_frame_t const *dict_dctx_pop(dict_tokenize_ctx_t *dctx)
 	return &dctx->stack[dctx->stack_depth--];
 }
 
-/** Unwind the entire stack, returning the root frame
- *
- * @param[in] dctx		Stack to unwind.
- * @return Pointer to the root frame.
- */
-static dict_tokenize_frame_t const *dict_dctx_unwind(dict_tokenize_ctx_t *dctx)
-{
-	while ((dctx->stack_depth > 0) &&
-	       (dctx->stack[dctx->stack_depth].nest == NEST_NONE)) {
-		dctx->stack_depth--;
-	}
-
-	return &dctx->stack[dctx->stack_depth];
-}
-
 /** Unwind the stack until it points to a particular type of stack frame
  *
  * @param[in] dctx		Stack to unwind.
@@ -219,6 +204,11 @@ static dict_tokenize_frame_t const *dict_dctx_unwind_until(dict_tokenize_ctx_t *
 	if (!(dctx->stack[dctx->stack_depth].nest & nest)) return NULL;
 
 	return &dctx->stack[dctx->stack_depth];
+}
+
+static inline dict_tokenize_frame_t const *dict_dctx_unwind(dict_tokenize_ctx_t *dctx)
+{
+	return dict_dctx_unwind_until(dctx, NEST_TOP | NEST_PROTOCOL | NEST_VENDOR | NEST_ATTRIBUTE);
 }
 
 /*
