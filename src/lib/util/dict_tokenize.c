@@ -1042,15 +1042,19 @@ static int dict_struct_finalise(dict_tokenize_ctx_t *dctx)
 	 *	Since process_member() checks for overflow, the check here is really only for
 	 *	underflow.
 	 */
-	if (da->flags.length && (CURRENT_FRAME(dctx)->struct_size != da->flags.length)) {
-		fr_strerror_printf("MEMBERs of %s struct[%u] do not exactly fill the fixed-size structure",
-					da->name, da->flags.length);
-		return -1;
+	if (da->flags.length) {
+		if (CURRENT_FRAME(dctx)->struct_size != da->flags.length) {
+			fr_strerror_printf("MEMBERs of %s struct[%u] do not exactly fill the fixed-size structure",
+					   da->name, da->flags.length);
+			return -1;
+		}
+
+		return 0;
 	}
 
 	/*
-	 *	If the structure is fixed size, AND small enough to fit into an 8-bit length field, then
-	 *	update the length field with the structure size/
+	 *	If we have discovered that the structure has a fixed size, then update the da with that
+	 *	information.
 	 */
 	if (frame->struct_size <= 255) {
 		UNCONST(fr_dict_attr_t *, da)->flags.length = frame->struct_size;
@@ -2323,81 +2327,95 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 	default:
 		goto error;
 
-	/* New attribute, fixup stack */
+	case 1:
+		/*
+		 *	@todo - a MEMBER can theoretically have a "ref=..", though non currently do.
+		 *
+		 *	If the ref is deferred, then we cannot finalise the parent struct until we have
+		 *	resolved the reference.  But the "finalise struct on fixup" code isn't written.  So
+		 *	instead of silently doing the wrong thing, we just return an error.
+		 */
+		fr_strerror_printf("Cannot have MEMBER with deferred ref=...");
+		return -1;
+
 	case 0:
 		/*
-		*	A 'struct' can have a MEMBER of type 'tlv', but ONLY
-		*	as the last entry in the 'struct'.  If we see that,
-		*	set the previous attribute to the TLV we just added.
-		*	This allows the children of the TLV to be parsed as
-		*	partial OIDs, so we don't need to know the full path
-		*	to them.
-		*/
-		if (da->type == FR_TYPE_TLV) {
-			dctx->relative_attr = dict_attr_child_by_num(CURRENT_FRAME(dctx)->da,
-								    CURRENT_FRAME(dctx)->member_num);
-			if (dctx->relative_attr && (dict_dctx_push(dctx, dctx->relative_attr, NEST_NONE) < 0)) return -1;
-			return 0;
+		 *	New attribute - avoid lots of indentation.
+		 */
+		break;
+	}
 
-		}
-
+	/*
+	 *	Check if this MEMBER closes the structure.
+	 *
+	 *	Close this struct if the child struct is variable sized.  For now, it we only support
+	 *	child structs at the end of the parent.
+	 *
+	 *	The solution is to update the unwind() function to check if the da we've
+	 *	unwound to is a struct, and then if so... get the last child, and mark it
+	 *	closed.
+	 *
+	 *	@todo - a MEMBER which is of type 'struct' and has 'clone=foo', we delay the clone
+	 *	until after all of the dictionaries have been loaded.  As such, this attribute
+	 *	is unknown width, and MUST be at the end of the parent structure.
+	 *
+	 *	If the cloned MEMBER is in the middle of a structure, then the user will get an opaque
+	 *	error.  But that case should be rare.
+	 */
+	if (!da->flags.is_known_width) {
 		/*
-		 *	Add the size of this member to the parent struct.
+		 *	The child is unknown width, but we were told that the parent has known width.
+		 *	That's an error.
 		 */
 		if (CURRENT_FRAME(dctx)->da->flags.length) {
-			/*
-			 *	Fixed-size struct can't have MEMBERs of unknown sizes.
-			 */
-			if (!da->flags.is_known_width) {
-				fr_strerror_printf("'struct' %s has fixed size %u, but member %s is of unknown size",
-						   CURRENT_FRAME(dctx)->da->name, CURRENT_FRAME(dctx)->da->flags.length,
-						   argv[0]);
-				return -1;
-			}
-
-			CURRENT_FRAME(dctx)->struct_size += da->flags.length;
-
-		}
-
-		/*
-		 *	Check for overflow.
-		 */
-		if (CURRENT_FRAME(dctx)->da->flags.length &&
-		    (CURRENT_FRAME(dctx)->struct_size > CURRENT_FRAME(dctx)->da->flags.length)) {
-			fr_strerror_printf("'struct' %s has fixed size %u, but member %s overflows that length",
+			fr_strerror_printf("'struct' %s has fixed size %u, but member %s is of unknown size",
 					   CURRENT_FRAME(dctx)->da->name, CURRENT_FRAME(dctx)->da->flags.length,
 					   argv[0]);
 			return -1;
 		}
 
-		if (dict_set_value_attr(dctx, da) < 0) return -1;
+		/*
+		 *	Mark the structure as closed by this attribute.  And then set the size to
+		 *	zero, for "unknown size".
+		 */
+		CURRENT_FRAME(dctx)->struct_is_closed = da;
+		CURRENT_FRAME(dctx)->struct_size = 0;
 
 		/*
-		 *	Check if this MEMBER closes the structure.
-		 *
-		 *	@todo - close this struct if the child struct is variable sized.  For now, it
-		 *	looks like most child structs are at the end of the parent.
-		 *
-		 *	The solution is to update the unwind() function to check if the da we've
-		 *	unwound to is a struct, and then if so... get the last child, and mark it
-		 *	closed.
-		 *
-		 *	@todo - a MEMBER which is of type 'struct' and has 'clone=foo', we delay the clone
-		 *	until after all of the dictionaries have been loaded.  As such, this attribute
-		 *	is unknown width, and MUST be at the end of the parent structure.
-		 *
-		 *	If the cloned MEMBER is in the middle of a structure, then the user will get an opaque
-		 *	error.  But that case should be rare.
+		 *	A 'struct' can have a MEMBER of type 'tlv', but ONLY
+		 *	as the last entry in the 'struct'.  If we see that,
+		 *	set the previous attribute to the TLV we just added.
+		 *	This allows the children of the TLV to be parsed as
+		 *	partial OIDs, so we don't need to know the full path
+		 *	to them.
 		 */
-		if (!da->flags.is_known_width) CURRENT_FRAME(dctx)->struct_is_closed = da;
-		break;
+		if (da->type == FR_TYPE_TLV) {
+			dctx->relative_attr = dict_attr_child_by_num(CURRENT_FRAME(dctx)->da,
+								     CURRENT_FRAME(dctx)->member_num);
+			if (dctx->relative_attr && (dict_dctx_push(dctx, dctx->relative_attr, NEST_NONE) < 0)) return -1;
+		}
 
-	/* Deferred attribute, don't begin the TLV section automatically */
-	case 1:
-		break;
+	} else if (CURRENT_FRAME(dctx)->da->flags.length) {
+		/*
+		 *	The parent is fixed size, so we track the length of the children.
+		 */
+		CURRENT_FRAME(dctx)->struct_size += da->flags.length;
+
+		/*
+		 *	Adding this child may result in an overflow, so we check that.
+		 */
+		if (CURRENT_FRAME(dctx)->struct_size > CURRENT_FRAME(dctx)->da->flags.length) {
+			fr_strerror_printf("'struct' %s has fixed size %u, but member %s overflows that length",
+					   CURRENT_FRAME(dctx)->da->name, CURRENT_FRAME(dctx)->da->flags.length,
+					   argv[0]);
+			return -1;
+		}
 	}
 
-	return 0;
+	/*
+	 *	Set or clear the attribute for VALUE statements.
+	 */
+	return dict_set_value_attr(dctx, da);
 }
 
 /** Process a STRUCT name attr value
