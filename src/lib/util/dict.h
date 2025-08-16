@@ -223,7 +223,7 @@ struct dict_attr_s {
  * @note New extension structures should also be added to the appropriate table in dict_ext.c
  */
 typedef enum {
-	FR_DICT_ENUM_EXT_UNION_REF = 0,				//!< Reference to a union/subs-struct.
+	FR_DICT_ENUM_EXT_KEY_CHILD_REF = 0,			//!< Reference to a child associated with this key
 	FR_DICT_ENUM_EXT_MAX
 } fr_dict_enum_ext_t;
 
@@ -239,7 +239,7 @@ typedef struct {
 
 	uint8_t			ext[FR_DICT_ENUM_EXT_MAX];	//!< Extensions to the dictionary attribute.
 
-	fr_dict_attr_t const	*child_struct[];		//!< for key fields
+	fr_dict_attr_t const	*key_child_ref[];		//!< for key fields
 } fr_dict_enum_value_t CC_HINT(aligned(FR_EXT_ALIGNMENT));
 
 /** Private enterprise

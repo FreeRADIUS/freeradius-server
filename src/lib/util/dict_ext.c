@@ -77,28 +77,28 @@ static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
 	for (enumv = fr_hash_table_iter_init(src_ext->value_by_name, &iter);
 	     enumv;
 	     enumv = fr_hash_table_iter_next(src_ext->value_by_name, &iter)) {
-		fr_dict_attr_t *child_struct;
+		fr_dict_attr_t *key_child_ref;
 
 		if (!has_child) {
-			child_struct = NULL;
+			key_child_ref = NULL;
 		} else {
-			fr_dict_t *dict = dict_by_da(enumv->child_struct[0]);
+			fr_dict_t *dict = dict_by_da(enumv->key_child_ref[0]);
 
 			/*
-			 *	Copy the child_struct, and all if it's children recursively.
+			 *	Copy the key_child_ref, and all if it's children recursively.
 			 */
-			child_struct = dict_attr_acopy(dict->pool, enumv->child_struct[0], NULL);
-			if (!child_struct) return -1;
+			key_child_ref = dict_attr_acopy(dict->pool, enumv->key_child_ref[0], NULL);
+			if (!key_child_ref) return -1;
 
-			child_struct->parent = da_dst; /* we need to re-parent this attribute */
+			key_child_ref->parent = da_dst; /* we need to re-parent this attribute */
 
-			if (dict_attr_children(enumv->child_struct[0])) {
-				if (dict_attr_acopy_children(dict, child_struct, enumv->child_struct[0]) < 0) return -1;
+			if (dict_attr_children(enumv->key_child_ref[0])) {
+				if (dict_attr_acopy_children(dict, key_child_ref, enumv->key_child_ref[0]) < 0) return -1;
 			}
 		}
 
 		if (dict_attr_enum_add_name(da_dst, enumv->name, enumv->value,
-					    true, true, child_struct) < 0) return -1;
+					    true, true, key_child_ref) < 0) return -1;
 	}
 
 	return 0;
@@ -264,7 +264,7 @@ fr_ext_t const fr_dict_attr_ext_def = {
 };
 
 static fr_table_num_ordered_t const dict_enum_ext_table[] = {
-	{ L("union_ref"),	FR_DICT_ENUM_EXT_UNION_REF	}
+	{ L("key_child_ref"),	FR_DICT_ENUM_EXT_KEY_CHILD_REF	}
 };
 static size_t dict_enum_ext_table_len = NUM_ELEMENTS(dict_enum_ext_table);
 
@@ -282,8 +282,8 @@ fr_ext_t const fr_dict_enum_ext_def = {
 	.name_table_len	= &dict_enum_ext_table_len,
 	.max		= FR_DICT_ENUM_EXT_MAX,
 	.info		= (fr_ext_info_t[]){ /* -Wgnu-flexible-array-initializer */
-		[FR_DICT_ENUM_EXT_UNION_REF]	= {
-							.min = sizeof(fr_dict_enum_ext_union_ref_t),
+		[FR_DICT_ENUM_EXT_KEY_CHILD_REF]	= {
+							.min = sizeof(fr_dict_enum_ext_key_child_ref_t),
 							.can_copy = true
 						},
 		[FR_DICT_ENUM_EXT_MAX]		= {}

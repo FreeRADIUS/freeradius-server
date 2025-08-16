@@ -122,8 +122,8 @@ typedef struct {
  *
  */
 typedef struct {
-	fr_dict_attr_t const	*union_ref;			//!< The union da this value points into.
-} fr_dict_enum_ext_union_ref_t;
+	fr_dict_attr_t const	*ref;				//!< the child structure referenced by this value of key
+} fr_dict_enum_ext_key_child_ref_t;
 
 /** @name Add extension structures to attributes
  *

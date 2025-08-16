@@ -1828,7 +1828,7 @@ int fr_dict_attr_add_name_only(fr_dict_t *dict, fr_dict_attr_t const *parent,
 int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 			    fr_value_box_t const *value,
 			    bool coerce, bool takes_precedence,
-			    fr_dict_attr_t const *child_struct)
+			    fr_dict_attr_t const *key_child_ref)
 {
 	size_t				len;
 	fr_dict_enum_value_t		*enumv = NULL;
@@ -1854,10 +1854,26 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	/*
 	 *	If the parent isn't a key field, then we CANNOT add a child struct.
 	 */
-	if (!fr_dict_attr_is_key_field(da) && child_struct) {
-		fr_strerror_const("Child structures cannot be defined for VALUEs which are not for 'key' attributes");
+	if (!fr_dict_attr_is_key_field(da) && key_child_ref) {
+		fr_strerror_const("Child attributes cannot be defined for VALUEs which are not 'key' attributes");
 		return -1;
 	}
+
+#if 0
+	/*
+	 *	Commented out becuase of share/dictionary/dhcpv6/dictionary.rfc6607.
+	 *
+	 *	That dictionary defines a value which is associated with a zero-sized child.
+	 *	In order to enforce this check, we need to support zero-sized structures.
+	 *
+	 *	Perhaps this can be done as a special case after we convert to UNIONs?  Because then
+	 *	we can allow ATTRIBUTE Global-VPN 255 struct[0].
+	 */
+	if (fr_dict_attr_is_key_field(da) && !key_child_ref) {
+		fr_strerror_const("Child attribute must be defined for VALUEs associated with a 'key' attribute");
+		return -1;
+	}
+#endif
 
 	if (fr_type_is_structural(da->type) || (da->type == FR_TYPE_STRING)) {
 		fr_strerror_printf("Enumeration names cannot be added for data type '%s'", fr_type_to_str(da->type));
@@ -1898,7 +1914,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	 *	Allocate a structure to map between
 	 *	the name and value.
 	 */
-	enumv = talloc_zero_size(da, sizeof(fr_dict_enum_value_t) + sizeof(enumv->child_struct[0]) * fr_dict_attr_is_key_field(da));
+	enumv = talloc_zero_size(da, sizeof(fr_dict_enum_value_t) + sizeof(enumv->key_child_ref[0]) * fr_dict_attr_is_key_field(da));
 	if (!enumv) {
 	oom:
 		fr_strerror_printf("%s: Out of memory", __FUNCTION__);
@@ -1909,7 +1925,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	enumv->name = talloc_typed_strdup(enumv, name);
 	enumv->name_len = len;
 
-	if (child_struct) enumv->child_struct[0] = child_struct;
+	if (key_child_ref) enumv->key_child_ref[0] = key_child_ref;
 	enum_value = fr_value_box_alloc(enumv, da->type, NULL);
 	if (!enum_value) goto oom;
 

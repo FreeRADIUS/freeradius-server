@@ -348,7 +348,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		}
 
 		enumv = fr_dict_enum_by_value(key_vp->da, &key_vp->data);
-		if (enumv) child = enumv->child_struct[0];
+		if (enumv) child = enumv->key_child_ref[0];
 
 		if (!child) {
 		unknown_child:
