@@ -65,6 +65,9 @@ ifneq "$(DOCKER_REGISTRY)" ""
 	override DOCKER_REGISTRY := $(DOCKER_REGISTRY)/
 endif
 
+#
+#  Alternative version for building manifests
+DOCKER_MANIFEST_VERSION := $(DOCKER_VERSION)
 
 #
 #  Print some useful help
@@ -204,8 +207,13 @@ docker-publish: docker docker-push-latest
 #
 .PHONY: docker-ci-manifest
 docker-ci-manifest:
+	echo docker manifest create \
+		$(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_MANIFEST_VERSION) \
+		$(foreach ARCH,$(DOCKER_ARCHS),--amend $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(ARCH)-$(DOCKER_VERSION))
+	echo docker manifest push \
+		$(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_MANIFEST_VERSION)
 	$(Q)docker manifest create \
-		$(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION) \
+		$(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_MANIFEST_VERSION) \
 		$(foreach ARCH,$(DOCKER_ARCHS),--amend $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(ARCH)-$(DOCKER_VERSION))
 	$(Q)docker manifest push \
-		$(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)
+		$(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_MANIFEST_VERSION)

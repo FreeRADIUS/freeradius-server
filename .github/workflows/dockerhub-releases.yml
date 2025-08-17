@@ -1,0 +1,221 @@
+name: Dockerhub Releases
+
+on:
+# Rebuild on new release tag...
+  push:
+    tags:
+      - 'release_3_2_*'
+# ...weekly (to keep docker base OS up-to-date)...
+  schedule:
+    - cron: '30 4 * * 1'
+# ...or when manually triggered.
+  workflow_dispatch:
+
+
+# Don't run more than one build at the same time
+concurrency:
+  group: dockerhub-releases-v3.2.x
+
+
+env:
+  CI: 1
+  GH_ACTIONS: 1
+  DEBIAN_FRONTEND: noninteractive
+  APT_OPTS: "-y --no-install-recommends"
+  DOCKER_TAG: "freeradius-test"
+  BRANCH: v3.2.x
+
+
+jobs:
+
+  #
+  #  Get list of releases to rebuild
+  #
+  get_release_tags:
+    runs-on: ubuntu-latest
+
+    outputs:
+      matrix: ${{ steps.gen-matrix.outputs.matrix }}
+      latest_tag: ${{ steps.gen-matrix.outputs.tag }}
+      latest_ver: ${{ steps.gen-matrix.outputs.version }}
+
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        lfs: false
+
+    - id: gen-matrix
+      name: Generate matrix based on recent release tags
+      run: |
+        TAGS=$(git ls-remote --tags --sort=-committerdate origin 'release_3_2_*' | head -2 | cut -d/ -f3)
+        echo "Tags: $TAGS"
+        M=$(echo "$TAGS" | perl -n -e '{chomp; $Q=$_; s/release_//; s/_/./g; push @L,"\"TAG\":\"$Q\",\"VER\":\"$_\""} END{print "[{",join("},{",@L),"}]"}')
+        T=$(git describe --abbrev=0 --tags)
+        V=$(echo "$T" | perl -pe 's/release_//; s/_/./g')
+        echo "Matrix: $M"
+        echo "Latest tag: $T"
+        echo "Latest version: $V"
+        echo "matrix=$M" >> $GITHUB_OUTPUT
+        echo "tag=$T" >> $GITHUB_OUTPUT
+        echo "version=$V" >> $GITHUB_OUTPUT
+
+
+  #
+  #  Run docker target for each given OS and ARCH. This will
+  #  build the Docker images.
+  #
+  build_docker_images:
+    needs:
+      - get_release_tags
+
+    runs-on: ubuntu-24.04
+    if: github.repository_owner == 'FreeRADIUS'
+
+    strategy:
+      matrix:
+        tag: ${{ fromJson(needs.get_release_tags.outputs.matrix) }}
+        env:
+          - { OS: "ubuntu", ARCH: "linux/amd64",    NAME: "amd64" }
+          - { OS: "ubuntu", ARCH: "linux/arm/v7",   NAME: "armv7" }
+          - { OS: "ubuntu", ARCH: "linux/arm64/v8", NAME: "arm64v8" }
+          - { OS: "alpine", ARCH: "linux/amd64",    NAME: "amd64" }
+          - { OS: "alpine", ARCH: "linux/arm/v6",   NAME: "armv6" }
+          - { OS: "alpine", ARCH: "linux/arm/v7",   NAME: "armv7" }
+          - { OS: "alpine", ARCH: "linux/arm64/v8", NAME: "arm64v8" }
+
+      fail-fast: false
+
+    name: "${{ matrix.tag.TAG }}-${{ matrix.env.OS }}-${{ matrix.env.ARCH }}"
+
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Regenerate Dockerfiles
+      run: |
+        rm scripts/docker/dists/*/Dockerfile || true
+        make docker.regen
+
+    - name: Install qemu
+      run: |
+        sudo apt-get update
+        sudo apt-get install ${APT_OPTS} qemu-user-static
+
+    - name: Build docker image
+      run: |
+        make docker-${{ matrix.env.OS }} \
+          DOCKER_COMMIT="${{ matrix.tag.TAG }}" \
+          DOCKER_BUILD_ARGS="--no-cache --platform ${{ matrix.env.ARCH }}" \
+          DOCKER_TAG="$DOCKER_TAG" \
+          DOCKER_VERSION="${{ matrix.env.NAME }}-${{ matrix.tag.VER }}"
+
+    - name: Docker login
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+    - name: Push arch image to Docker registry
+      shell: bash
+      run: |
+        make docker-push-${{ matrix.env.OS }} \
+          DOCKER_TAG="$DOCKER_TAG" \
+          DOCKER_VERSION="${{ matrix.env.NAME }}-${{ matrix.tag.VER }}"
+
+
+  manifest:
+    needs:
+      - get_release_tags
+      - build_docker_images
+
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'FreeRADIUS'
+
+    strategy:
+      matrix:
+        tag: ${{ fromJson(needs.get_release_tags.outputs.matrix) }}
+        env:
+          - { OS: "ubuntu", ARCHS: "amd64 armv7 arm64v8", SUFFIX: "" }
+          - { OS: "alpine", ARCHS: "amd64 armv6 armv7 arm64v8", SUFFIX: "-alpine" }
+
+      fail-fast: false
+
+    name: "manifest-${{ matrix.tag.VER }}-${{ matrix.env.OS }}"
+
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Docker login
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+    - name: Create manifests
+      shell: bash
+      run: |
+        make docker-ci-manifest \
+          DOCKER_TAG="$DOCKER_TAG" \
+          DOCKER_VERSION="${{ matrix.tag.VER }}${{ matrix.env.SUFFIX }}" \
+          DOCKER_ARCHS="${{ matrix.env.ARCHS }}"
+
+
+  #
+  #  Create/update manifest for latest version
+  #
+  #  This maintains the 'latest', 'latest-alpine', 'latest-3.2' and 'latest-3.2-alpine' image tags
+  #
+  latest_manifest:
+    needs:
+      - get_release_tags
+      - build_docker_images
+
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'FreeRADIUS'
+
+    strategy:
+      matrix:
+        env:
+          - { OS: "ubuntu", ARCHS: "amd64 armv7 arm64v8", SUFFIX: "" }
+          - { OS: "alpine", ARCHS: "amd64 armv6 armv7 arm64v8", SUFFIX: "-alpine" }
+
+      fail-fast: false
+
+    name: "manifest-${{ matrix.env.OS }}-latest"
+
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Docker login
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+    - name: Create 'latest' manifests
+      shell: bash
+      run: |
+        make docker-ci-manifest \
+          DOCKER_TAG="$DOCKER_TAG" \
+          DOCKER_VERSION="${{ needs.get_release_tags.outputs.latest_ver }}${{ matrix.env.SUFFIX }}" \
+          DOCKER_MANIFEST_VERSION="latest${{ matrix.env.SUFFIX }}" \
+          DOCKER_ARCHS="${{ matrix.env.ARCHS }}"
+
+    - name: Create 'latest-3.2' manifests
+      shell: bash
+      run: |
+        make docker-ci-manifest \
+          DOCKER_TAG="$DOCKER_TAG" \
+          DOCKER_VERSION="${{ needs.get_release_tags.outputs.latest_ver }}${{ matrix.env.SUFFIX }}" \
+          DOCKER_MANIFEST_VERSION="latest-3.2${{ matrix.env.SUFFIX }}" \
+          DOCKER_ARCHS="${{ matrix.env.ARCHS }}"
