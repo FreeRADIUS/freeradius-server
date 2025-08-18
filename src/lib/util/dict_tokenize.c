@@ -394,7 +394,7 @@ static int dict_process_type_field(dict_tokenize_ctx_t *dctx, char const *name, 
 
 		} else if (strcmp(name, "bit") == 0) {
 			if (CURRENT_FRAME(dctx)->da->type != FR_TYPE_STRUCT) {
-				fr_strerror_const("Bit fields can only be used inside of a STRUCT");
+				fr_strerror_const("Bit fields can only be defined as a MEMBER of data type 'struct'");
 				return -1;
 			}
 
@@ -1452,7 +1452,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 	}
 
 	if (da->flags.extra && (da->flags.subtype == FLAG_BIT_FIELD)) {
-		fr_strerror_const("Bit fields can only be defined as a MEMBER of a STRUCT");
+		fr_strerror_const("Bit fields can only be defined as a MEMBER of data type 'struct'");
 		goto error;
 	}
 
@@ -1460,7 +1460,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 	 *	Unions need a key field.  And key fields can only appear inside of a struct.
 	 */
 	if (da->type == FR_TYPE_UNION) {
-		fr_strerror_const("ATTRIBUTEs of type 'union' can only appear inside of a parent of type 'struct'");
+		fr_strerror_const("ATTRIBUTEs of type 'union' can only be defined as a MEMBER of data type 'struct'");
 		return -1;
 	}
 
@@ -1852,7 +1852,7 @@ static int dict_read_process_define(dict_tokenize_ctx_t *dctx, char **argv, int 
 	}
 
 	if (da->flags.extra && (da->flags.subtype == FLAG_BIT_FIELD)) {
-		fr_strerror_const("Bit fields can only be defined as a MEMBER of a STRUCT");
+		fr_strerror_const("Bit fields can only be defined as a MEMBER of data type 'struct'");
 		goto error;
 	}
 
@@ -2120,7 +2120,7 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *dctx, char **argv, int ar
 	}
 
 	if (da->flags.extra && (da->flags.subtype == FLAG_BIT_FIELD)) {
-		fr_strerror_const("Bit fields can only be defined as a MEMBER of a STRUCT");
+		fr_strerror_const("Bit fields can only be defined as a MEMBER of a data type 'struct'");
 		goto error;
 	}
 
@@ -2208,8 +2208,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 	}
 
 	if (CURRENT_FRAME(dctx)->da->type != FR_TYPE_STRUCT) {
-		fr_strerror_printf("MEMBER can only be used for ATTRIBUTEs of type 'struct', not %s of type %s",
-				   CURRENT_FRAME(dctx)->da->name,
+		fr_strerror_printf("MEMBER can only be used for ATTRIBUTEs of type 'struct', not for data type %s",
 				   fr_type_to_str(CURRENT_FRAME(dctx)->da->type));
 		return -1;
 	}
