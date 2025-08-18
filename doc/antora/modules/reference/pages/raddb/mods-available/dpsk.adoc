@@ -30,7 +30,7 @@ The database should look up the User-Name (i.e. MAC), and then set
 control,PSK-Identity and control.Pre-Shared-Key.  In general, it
 is easiest to just set PSK-Identity to be same as the User-Name.
 
-Then update the "authenticate dpsk" section to list the "dpsk" module:
+Then create an "authenticate dpsk" section which calls the "dpsk" module:
 
 
 In the "authenticate" section, the module will return
@@ -215,6 +215,8 @@ pre_shared_key_attr::
 
 Attribute into which the matched pre shared key will be written.
 
+When used with hostapd, this should be reply.Tunnel-Password
+
 
 
 psk_identity_attr::
@@ -235,7 +237,7 @@ Attribute into which the matched PSK identity will be written.
 #		...
 #		rewrite_called_station_id
 #		dpsk
-#		if (ok) {
+#		if (updated) {
 #			control.PSK-Identity := "bob"
 #			control.Pre-Shared-Key := "this-is-super-secret"
 #		}
@@ -243,16 +245,17 @@ Attribute into which the matched PSK identity will be written.
 #	authenticate dpsk {
 #		dpsk
 #		if (updated) {
-#			... cache &reply:Pre-Shared-Key
-#			... cache &reply:PSK-Identity
+#			... cache reply.Pre-Shared-Key
+#			... cache reply.PSK-Identity
 #		}
 #	}
 #		information necessary to check the DPSK data.
 #		given PSK.
 #		PSK was read from 'filename'.
-#		It also updates the attributes &reply:Pre-Shared-Key
-#		with the found PSK, along with &reply:PSK-Identity
-#		with the found identity.
+#		It also updates the attributes reply.Pre-Shared-Key
+#		with the found PSK, along with reply.PSK-Identity
+#		with the found identity.  The attributes populated
+#		can be configured below.
 #		You can then check the return code for "updated", and
 #		write those attributes into a database.  This step
 #		ensures that 'filename' is read only as a last resort.
@@ -262,13 +265,13 @@ Attribute into which the matched PSK identity will be written.
 dpsk {
 	cache_size = 1024
 	cache_lifetime = 24h
-#	filename = "${modconfdir}/${..:name}/psk.csv"
+#	filename = "${modconfdir}/${.:name}/psk.csv"
 #	pre_shared_key = control.Pre-Shared-Key
 #	psk_identity = control.PSK-Identity
 #	pairwise_master_key = control.Pairwise-Master-Key
 #	ssid = Called-Station-SSID
 #	anonce = FreeRADIUS-EV5.802_1X-EAPoL-Anonce
-	key_msg = FreeRADIUS-EV5.802_1X-EAPoL-Key-Msg
+#	key_msg = FreeRADIUS-EV5.802_1X-EAPoL-Key-Msg
 #	username = User-name
 #	called_station = Called-Station-MAC
 #	pre_shared_key_attr = reply.Pre-Shared-Key
