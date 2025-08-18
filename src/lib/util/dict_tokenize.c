@@ -76,7 +76,6 @@ typedef int (*fr_dict_keyword_finalise_t)(dict_tokenize_ctx_t *dctx);
  * Allows vendor and TLV context to persist across $INCLUDEs
  */
 typedef struct {
-	fr_dict_t		*dict;			//!< The dictionary before the current BEGIN-PROTOCOL block.
 	char			*filename;		//!< name of the file where we read this entry
 	int			line;			//!< line number where we read this entry
 	fr_dict_attr_t const	*da;			//!< the da we care about
@@ -149,7 +148,6 @@ static int CC_HINT(nonnull) dict_dctx_push(dict_tokenize_ctx_t *dctx, fr_dict_at
 	}
 
 	dctx->stack[++dctx->stack_depth] = (dict_tokenize_frame_t) {
-		.dict = dctx->stack[dctx->stack_depth - 1].dict,
 		.da = da,
 		.filename = dctx->filename,
 		.line = dctx->line,
@@ -2015,7 +2013,7 @@ static int dict_read_process_end_protocol(dict_tokenize_ctx_t *dctx, char **argv
 	fr_assert(!dctx->stack[dctx->stack_depth].finalise);
 	dctx->stack_depth--;	/* nuke the BEGIN-PROTOCOL */
 
-	dctx->dict = CURRENT_FRAME(dctx)->dict;
+	dctx->dict = UNCONST(fr_dict_t *, found);
 
 	return 0;
 }
@@ -3413,7 +3411,6 @@ static int dict_from_file(fr_dict_t *dict,
 	memset(&dctx, 0, sizeof(dctx));
 	dctx.dict = dict;
 	dict_fixup_init(NULL, &dctx.fixup);
-	dctx.stack[0].dict = dict;
 	dctx.stack[0].da = dict->root;
 	dctx.stack[0].nest = NEST_TOP;
 
@@ -3767,8 +3764,6 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent)
 
 	memset(&dctx, 0, sizeof(dctx));
 	dctx.dict = dict;
-	dctx.stack[0].dict = dict;
-	dctx.stack[0].da = dict->root;
 	dctx.stack[0].nest = NEST_TOP;
 
 	if (dict_fixup_init(NULL, &dctx.fixup) < 0) return -1;
