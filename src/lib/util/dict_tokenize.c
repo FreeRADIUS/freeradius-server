@@ -3278,7 +3278,15 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 		if (argc == 0) continue;
 
 		if (argc == 1) {
-			fr_strerror_const("Invalid syntax - expected keyword followed by arguments");
+			/*
+			 *	Be nice.
+			 */
+			if ((strcmp(argv[0], "BEGIN") == 0) ||
+			    (fr_dict_keyword(&parser, keywords, NUM_ELEMENTS(keywords), argv_p[0], NULL))) {
+				fr_strerror_printf("Keyword %s is missing all of its arguments", argv[0]);
+			} else {
+				fr_strerror_printf("Invalid syntax - unknown keyword %s", argv[0]);
+			}
 
 		error:
 			fr_strerror_printf_push("Failed parsing dictionary at %s[%d]", fr_cwd_strip(fn), line);
