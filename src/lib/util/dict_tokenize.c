@@ -1456,6 +1456,13 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		goto error;
 	}
 
+	/*
+	 *	Unions need a key field.  And key fields can only appear inside of a struct.
+	 */
+	if (da->type == FR_TYPE_UNION) {
+		fr_strerror_const("ATTRIBUTEs of type 'union' can only appear inside of a parent of type 'struct'");
+		return -1;
+	}
 
 #ifdef WITH_DICTIONARY_WARNINGS
 	/*
