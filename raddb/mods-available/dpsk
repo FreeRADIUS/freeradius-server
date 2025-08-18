@@ -194,7 +194,7 @@ dpsk {
 	#  files by location, which can drastically reduce the overall
 	#  search space, and thus the CPU requirements.
 	#
-#	filename = "${modconfdir}/${..:name}/psk.csv"
+#	filename = "${modconfdir}/${.:name}/psk.csv"
 
 	#
 	#  pre_shared_key::
