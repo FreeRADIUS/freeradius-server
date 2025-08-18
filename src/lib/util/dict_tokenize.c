@@ -2010,10 +2010,13 @@ static int dict_read_process_end_protocol(dict_tokenize_ctx_t *dctx, char **argv
 	 */
 	if (dict_finalise(dctx) < 0) return -1;
 
+	ASSERT_CURRENT_NEST(dctx, NEST_PROTOCOL);
+
 	fr_assert(!dctx->stack[dctx->stack_depth].finalise);
 	dctx->stack_depth--;	/* nuke the BEGIN-PROTOCOL */
 
-	dctx->dict = UNCONST(fr_dict_t *, found);
+	ASSERT_CURRENT_NEST(dctx, NEST_TOP);
+	dctx->dict = dict_gctx->internal;
 
 	return 0;
 }
@@ -2967,7 +2970,11 @@ post_option:
 done:
 	/*
 	 *	Make the root available on the stack, in case
-	 *	something wants to begin it...
+	 *	something wants to begin it.  Note that we mark it as
+	 *	NONE, so that it can be cleaned up by anything.
+	 *
+	 *	This stack entry is just a place-holder so that the
+	 *	BEGIN statement can find the dictionary.
 	 */
 	if (unlikely(dict_dctx_push(dctx, dict->root, NEST_NONE) < 0)) goto error;
 
@@ -3030,22 +3037,21 @@ static inline bool dict_filename_loaded(fr_dict_t *dict, char const *filename,
 #endif
 
 /** Process an inline BEGIN PROTOCOL block
+ *
+ *  This function is called *after* the PROTOCOL handler.
  */
-static int dict_begin_protocol(dict_tokenize_ctx_t *dctx)
+static int dict_begin_protocol(NDEBUG_UNUSED dict_tokenize_ctx_t *dctx)
 {
-	fr_dict_attr_t const *da;
-
 	ASSERT_CURRENT_NEST(dctx, NEST_NONE);
-	da = CURRENT_DA(dctx);
-	fr_assert_msg(fr_type_is_tlv(da->type), "Expected dictionary root to be a tlv, got '%s'", fr_type_to_str(da->type));
-	fr_assert(da->flags.is_root);
-
-	dctx->dict = da->dict;
+	fr_assert(CURRENT_DA(dctx)->flags.is_root);
 
 	/*
-	 *	Push a PROTOCOL block onto the stack
+	 *	Rewrite it in place.
 	 */
-	return dict_dctx_push(dctx, da, NEST_PROTOCOL);
+	CURRENT_FRAME(dctx)->nest = NEST_PROTOCOL;
+	dctx->dict = CURRENT_DA(dctx)->dict;
+
+	return 0;
 }
 
 /** Keyword parser
