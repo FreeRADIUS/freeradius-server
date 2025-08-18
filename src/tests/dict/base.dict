@@ -45,4 +45,4 @@ ATTRIBUTE	Base-IPv4-Prefix			20	ipv4prefix
 ATTRIBUTE	Base-Integer32				21	uint32	enum=base-enum-uint64
 
 # Ignore VSA, VENDOR, timeval, boolean, combo-ip-prefix, decimal... for now
-END-PROTOCOL
+END-PROTOCOL TEST
