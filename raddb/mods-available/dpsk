@@ -32,7 +32,7 @@
 #		rewrite_called_station_id
 #
 #		dpsk
-#		if (ok) {
+#		if (updated) {
 #			control.PSK-Identity := "bob"
 #			control.Pre-Shared-Key := "this-is-super-secret"
 #		}
@@ -48,13 +48,13 @@
 #  control,PSK-Identity and control.Pre-Shared-Key.  In general, it
 #  is easiest to just set PSK-Identity to be same as the User-Name.
 #
-#  Then update the "authenticate dpsk" section to list the "dpsk" module:
+#  Then create an "authenticate dpsk" section which calls the "dpsk" module:
 #
 #	authenticate dpsk {
 #		dpsk
 #		if (updated) {
-#			... cache &reply:Pre-Shared-Key
-#			... cache &reply:PSK-Identity
+#			... cache reply.Pre-Shared-Key
+#			... cache reply.PSK-Identity
 #		}
 #	}
 #
@@ -73,9 +73,10 @@
 #  * updated	if there are DPSK attributes which match a PSK, and the
 #		PSK was read from 'filename'.
 #
-#		It also updates the attributes &reply:Pre-Shared-Key
-#		with the found PSK, along with &reply:PSK-Identity
-#		with the found identity.
+#		It also updates the attributes reply.Pre-Shared-Key
+#		with the found PSK, along with reply.PSK-Identity
+#		with the found identity.  The attributes populated
+#		can be configured below.
 #
 #		You can then check the return code for "updated", and
 #		write those attributes into a database.  This step
@@ -240,7 +241,7 @@ dpsk {
 	#
 	#  Attribute containing the EAPoL key msg from the AP.
 	#
-	key_msg = FreeRADIUS-EV5.802_1X-EAPoL-Key-Msg
+#	key_msg = FreeRADIUS-EV5.802_1X-EAPoL-Key-Msg
 
 	#
 	#  username::
@@ -263,6 +264,8 @@ dpsk {
 	#  pre_shared_key_attr::
 	#
 	#  Attribute into which the matched pre shared key will be written.
+	#
+	#  When used with hostapd, this should be reply.Tunnel-Password
 	#
 #	pre_shared_key_attr = reply.Pre-Shared-Key
 
