@@ -1605,7 +1605,6 @@ static int dict_read_process_begin_protocol(dict_tokenize_ctx_t *dctx, char **ar
 
 	if (argc != 1) {
 		fr_strerror_const("Invalid BEGIN-PROTOCOL entry");
-	error:
 		return -1;
 	}
 
@@ -1616,20 +1615,20 @@ static int dict_read_process_begin_protocol(dict_tokenize_ctx_t *dctx, char **ar
 	 */
 	if (dctx->dict != dict_gctx->internal) {
 		fr_strerror_const("Nested BEGIN-PROTOCOL statements are not allowed");
-		goto error;
+		return -1;
 	}
 
 	found = dict_by_protocol_name(argv[0]);
 	if (!found) {
 		fr_strerror_printf("Unknown protocol '%s'", argv[0]);
-		goto error;
+		return -1;
 	}
 
 	frame = dict_dctx_find_frame(dctx, NEST_PROTOCOL | NEST_VENDOR | NEST_ATTRIBUTE);
 	if (frame) {
 		fr_strerror_printf("BEGIN-PROTOCOL cannot be used inside of any other BEGIN/END block.  Previous definition is at %s[%d]",
 				   frame->filename, frame->line);
-		goto error;
+		return -1;
 	}
 
 	/*
@@ -1647,9 +1646,7 @@ static int dict_read_process_begin_protocol(dict_tokenize_ctx_t *dctx, char **ar
 
 	dctx->dict = found;
 
-	if (dict_dctx_push(dctx, dctx->dict->root, NEST_PROTOCOL) < 0) goto error;
-
-	return 0;
+	return dict_dctx_push(dctx, dctx->dict->root, NEST_PROTOCOL);
 }
 
 static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv, int argc,
@@ -1669,14 +1666,13 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 
 	if (argc < 1) {
 		fr_strerror_const("Invalid BEGIN-VENDOR entry");
-	error:
 		return -1;
 	}
 
 	vendor = fr_dict_vendor_by_name(dctx->dict, argv[0]);
 	if (!vendor) {
 		fr_strerror_printf("Unknown vendor '%s'", argv[0]);
-		goto error;
+		return -1;
 	}
 
 	/*
@@ -1689,21 +1685,21 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 
 		if (strncmp(argv[1], "parent=", 7) != 0) {
 			fr_strerror_printf("BEGIN-VENDOR invalid argument (%s)", argv[1]);
-			goto error;
+			return -1;
 		}
 
 		p = argv[1] + 7;
 		da = fr_dict_attr_by_oid(NULL, CURRENT_FRAME(dctx)->da, p);
 		if (!da) {
 			fr_strerror_printf("BEGIN-VENDOR invalid argument (%s)", argv[1]);
-			goto error;
+			return -1;
 		}
 
 		if (da->type != FR_TYPE_VSA) {
 			fr_strerror_printf("Invalid parent for BEGIN-VENDOR.  "
 					   "Attribute '%s' should be 'vsa' but is '%s'", p,
 					   fr_type_to_str(da->type));
-			goto error;
+			return -1;
 		}
 
 		vsa_da = da;
@@ -1716,7 +1712,7 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 		if (!vsa_da) {
 			fr_strerror_printf("Failed finding VSA parent for Vendor %s",
 					   vendor->name);
-			goto error;
+			return -1;
 		}
 
 	} else if (dctx->dict->string_based) {
@@ -1725,14 +1721,14 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 	} else {
 		fr_strerror_printf("BEGIN-VENDOR is forbidden for protocol %s - it has no ATTRIBUTE of type 'vsa'",
 				   dctx->dict->root->name);
-		goto error;
+		return -1;
 	}
 
 	frame = dict_dctx_find_frame(dctx, NEST_VENDOR);
 	if (frame) {
 		fr_strerror_printf("Nested BEGIN-VENDOR is forbidden.  Previous definition is at %s[%d]",
 				   frame->filename, frame->line);
-		goto error;
+		return -1;
 	}
 
 	/*
@@ -1767,16 +1763,16 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 		new = dict_attr_alloc(dctx->dict->pool,
 				      vsa_da, argv[0], vendor->pen, FR_TYPE_VENDOR,
 				      &(dict_attr_args_t){ .flags = &flags });
-		if (unlikely(!new)) goto error;
+		if (unlikely(!new)) return -1;
 
 		if (dict_attr_child_add(UNCONST(fr_dict_attr_t *, vsa_da), new) < 0) {
 			talloc_free(new);
-			goto error;
+			return -1;
 		}
 
 		if (dict_attr_add_to_namespace(UNCONST(fr_dict_attr_t *, vsa_da), new) < 0) {
 			talloc_free(new);
-			goto error;
+			return -1;
 		}
 
 		vendor_da = new;
@@ -1784,9 +1780,7 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 		fr_assert(vendor_da->type == FR_TYPE_VENDOR);
 	}
 
-	if (dict_dctx_push(dctx, vendor_da, NEST_VENDOR) < 0) goto error;
-
-	return 0;
+	return dict_dctx_push(dctx, vendor_da, NEST_VENDOR);
 }
 
 /*
