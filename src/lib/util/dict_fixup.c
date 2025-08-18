@@ -210,14 +210,20 @@ int fr_dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const
 		da = dict->root;
 	}
 
+	/*
+	 *	ref=.foo is a ref from the current parent.
+	 *
+	 *	ref=@foo is a ref from the root of the tree.
+	 */
+
 	if (!fr_sbuff_next_if_char(in, '.')) {
-		fr_strerror_printf("Attribute %s has reference '%s' which does not begin with '.' or '@'",
-				   rel->name, fr_sbuff_start(in));
+		fr_strerror_printf("Invalid reference '%s' - it should start with '@' (from the root), or '.' (from the parent)",
+				   fr_sbuff_start(in));
 		return -1;
 	}
 
 	/*
-	 *	First '.' makes it reletive, subsequent ones traverse up the tree.
+	 *	First '.' makes it relative, subsequent ones traverse up the tree.
 	 *
 	 *	No '.' means use the root.
 	 */
@@ -380,8 +386,8 @@ static inline CC_HINT(always_inline) int dict_fixup_group_apply(UNUSED dict_fixu
 
 	(void) fr_dict_protocol_reference(&da, fixup->da->parent, &FR_SBUFF_IN_STR(fixup->ref));
 	if (!da) {
-		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%d]",
-					fr_cwd_strip(fixup->da->filename), fixup->da->line);
+		fr_strerror_printf_push("Failed resolving reference for attribute %s at %s[%d]",
+					fixup->da->name, fr_cwd_strip(fixup->da->filename), fixup->da->line);
 		return -1;
 	}
 
@@ -603,8 +609,8 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 
 	(void) fr_dict_protocol_reference(&src, fixup->da->parent, &FR_SBUFF_IN_STR(fixup->ref));
 	if (!src) {
-		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%d]",
-					fr_cwd_strip(fixup->da->filename), fixup->da->line);
+		fr_strerror_printf_push("Failed resolving reference for attribute %s at %s[%d]",
+					fixup->da->name, fr_cwd_strip(fixup->da->filename), fixup->da->line);
 		return -1;
 	}
 
@@ -662,8 +668,8 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict
 
 	(void) fr_dict_protocol_reference(&src, fixup->da->parent, &FR_SBUFF_IN_STR(fixup->ref));
 	if (!src) {
-		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%d]",
-					fr_cwd_strip(fixup->da->filename), fixup->da->line);
+		fr_strerror_printf_push("Failed resolving reference for attribute %s at %s[%d]",
+					fixup->da->name, fr_cwd_strip(fixup->da->filename), fixup->da->line);
 		return -1;
 	}
 
