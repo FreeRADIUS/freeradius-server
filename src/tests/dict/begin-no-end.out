@@ -1,0 +1,2 @@
+build/tests/dict/begin-no-end.error.txt[3]: BEGIN-VENDOR at src/tests/dict/begin-no-end.error[4] is missing END-VENDOR
+Failed parsing dictionary at src/tests/dict/begin-no-end.error[4]
