@@ -30,7 +30,10 @@ COPY . .
 RUN git clean -fdxx \
  && git reset --hard HEAD
 
-RUN [ -z "$release" ] || git checkout ${release}
+ARG release
+RUN [ -z "$release" ] || git checkout ${release} ; \
+    git status ; \
+    git log -1 --oneline
 
 
 #
