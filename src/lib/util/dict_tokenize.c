@@ -2355,7 +2355,20 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 				goto error;
 			}
 		}
+
+		/*
+		 *      TLVs are variable sized, and close the parent struct.
+		 */
+		CURRENT_FRAME(dctx)->struct_is_closed = da;
 	}
+
+	/*
+	 *      Unions close the parent struct, even if they're fixed size.  For now, the struct to/from
+	 *      network code assumes that a union is the last member of a structure.
+	 */
+	if (da->type == FR_TYPE_UNION) {
+		CURRENT_FRAME(dctx)->struct_is_closed = da;
+        }
 
 	if (unlikely(dict_attr_num_init(da, ++CURRENT_FRAME(dctx)->member_num) < 0)) goto error;
 	if (unlikely(dict_attr_finalise(&da, argv[0]) < 0)) goto error;
