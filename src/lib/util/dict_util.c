@@ -644,7 +644,7 @@ int dict_attr_type_init(fr_dict_attr_t **da_p, fr_type_t type)
 		break;
 	}
 
-	(*da_p)->flags.is_known_width = fr_type_fixed_size[type];
+	(*da_p)->flags.is_known_width |= fr_type_fixed_size[type];
 
 	/*
 	 *	Set default type-based flags
