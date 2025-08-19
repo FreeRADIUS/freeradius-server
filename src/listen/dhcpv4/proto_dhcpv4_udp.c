@@ -718,6 +718,7 @@ static int mod_open(fr_listen_t *li)
 		PERROR("Failed binding socket");
 		goto error;
 	}
+	if (inst->interface) li->app_io_addr->inet.src_ipaddr.scope_id = ipaddr.scope_id;
 
 	thread->sockfd = sockfd;
 
