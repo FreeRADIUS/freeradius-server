@@ -1040,7 +1040,7 @@ static int dict_struct_finalise(dict_tokenize_ctx_t *dctx)
 	 *	Since process_member() checks for overflow, the check here is really only for
 	 *	underflow.
 	 */
-	if (da->flags.length) {
+	if (da->flags.is_known_width) {
 		if (CURRENT_FRAME(dctx)->struct_size != da->flags.length) {
 			fr_strerror_printf("MEMBERs of %s struct[%u] do not exactly fill the fixed-size structure",
 					   da->name, da->flags.length);
@@ -1491,6 +1491,21 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		return -1;
 	}
 
+	/*
+	 *	Cross-check fixed lengths.
+	 */
+	if (key && (parent->flags.is_known_width)) {
+		if (!da->flags.is_known_width) {
+			da->flags.is_known_width = 1;
+			da->flags.length = parent->flags.length;
+
+		} else if (da->flags.length != parent->flags.length) {
+			fr_strerror_printf("Invalid length %u for struct, the parent union %s has a different length %u",
+					   da->flags.length, parent->name, parent->flags.length);
+			return -1;
+		}
+	}
+
 #ifdef WITH_DICTIONARY_WARNINGS
 	/*
 	 *	Hack to help us discover which vendors have illegal
@@ -1542,7 +1557,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		if (da->type == FR_TYPE_VSA) {
 			if (parent->flags.is_root) dctx->dict->vsa_parent = attr;
 
-			if (dict_fixup_vsa_enqueue(&dctx->fixup, UNCONST(fr_dict_attr_t *, da)) < 0) {
+			if (dict_fixup_vsa_enqueue(&dctx->fixup, da) < 0) {
 				return -1;	/* Leaves attr added */
 			}
 		}
