@@ -1346,8 +1346,9 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 	ssize_t			slen;
 	unsigned int		attr;
 
-	fr_dict_attr_t const	*parent;
+	fr_dict_attr_t const	*parent, *key = NULL;
 	fr_dict_attr_t		*da;
+	fr_value_box_t		box;
 
 	if ((argc < 3) || (argc > 4)) {
 		fr_strerror_const("Invalid ATTRIBUTE syntax");
@@ -1419,10 +1420,24 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		return -1;
 	}
 
+	/*
+	 *	A UNION can have child ATTRIBUTEs
+	 */
 	if (parent->type == FR_TYPE_UNION) {
-		fr_strerror_printf("Parent attribute %s is of type 'union', and can only have STRUCT children",
-				   parent->name);
-		return -1;
+		fr_dict_attr_ext_ref_t *ext;
+
+		/*
+		 *	The parent is a union.  Get and verify the key ref.
+		 */
+		ext = fr_dict_attr_ext(parent, FR_DICT_ATTR_EXT_KEY);
+		fr_assert(ext != NULL);
+
+		/*
+		 *	Double-check names against the reference.
+		 */
+		key = ext->ref;
+		fr_assert(key);
+		fr_assert(fr_dict_attr_is_key_field(key));
 	}
 
 	da = dict_attr_alloc_null(dctx->dict->pool, dctx->dict->proto);
@@ -1442,6 +1457,20 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 	error:
 		talloc_free(da);
 		return -1;
+	}
+
+	/*
+	 *	Check the attribute number against the allowed values.
+	 */
+	if (key) {
+		fr_value_box_init(&box, FR_TYPE_UINT32, NULL, false);
+		box.vb_uint32 = attr;
+
+		if (fr_value_box_cast_in_place(da, &box, key->type, NULL) < 0) {
+			fr_strerror_printf_push("Invalid attribute number as key field %s has data type %s",
+						key->name, fr_type_to_str(key->type));
+			goto error;
+		}
 	}
 
 	if (dict_read_process_common(dctx, &da, parent, argv[0], argv[2],
@@ -1516,6 +1545,14 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 			if (dict_fixup_vsa_enqueue(&dctx->fixup, UNCONST(fr_dict_attr_t *, da)) < 0) {
 				return -1;	/* Leaves attr added */
 			}
+		}
+
+		/*
+		 *	Add the VALUE to the key attribute, and ensure that
+		 *	the VALUE also contains a pointer to the child struct.
+		 */
+		if (key && (dict_attr_enum_add_name(fr_dict_attr_unconst(key), da->name, &box, false, true, da) < 0)) {
+			goto error;
 		}
 
 		/*
@@ -2613,9 +2650,9 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *dctx, char **argv, int 
 		if (dict_dctx_push(dctx, da, NEST_NONE) < 0) return -1;
 
 		/*
-		*	Add the VALUE to the key attribute, and ensure that
-		*	the VALUE also contains a pointer to the child struct.
-		*/
+		 *	Add the VALUE to the key attribute, and ensure that
+		 *	the VALUE also contains a pointer to the child struct.
+		 */
 		if (dict_attr_enum_add_name(fr_dict_attr_unconst(key), name, &box, false, true, da) < 0) {
 			fr_value_box_clear(&box);
 			return -1;

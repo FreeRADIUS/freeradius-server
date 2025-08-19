@@ -45,7 +45,7 @@ MEMBER		Key-Field				uint8	key
 MEMBER		Data					union	key=Key-Field
 
 BEGIN Test-Struct2.Data
-STRUCT	Sub-Struct 1
+ATTRIBUTE	Sub-Struct				1	struct
 MEMBER		Nested-Sub1				uint8
 MEMBER		Nested-Sub2				uint8
 END Test-Struct2.Data
