@@ -153,8 +153,6 @@ struct main_config_s {
 	/*
 	 *	Migration tools
 	 */
-	bool		rewrite_update;			//!< rewrite "update" to be new edit sections
-	bool		forbid_update;			//!< forbid "update" sections
 };
 
 void			main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config);

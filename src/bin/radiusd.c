@@ -1201,11 +1201,7 @@ static NEVER_RETURNS void usage(int status)
 #endif
 	fprintf(output, "  -P            Always write out PID, even with -f.\n");
 	fprintf(output, "  -s            Do not spawn child processes to handle requests (same as -ft).\n");
-	fprintf(output, "  -S <flag>     Set migration flags to assist with upgrades from version 3.  Flags are:\n\n");
-	fprintf(output, "                rewrite_update=no   Use the old v3 interpreter for 'update' sections.\n");
-	fprintf(output, "                forbid_update=yes   Error if the old v3 'update' section is used.\n");
-	fprintf(output, "                v3_enum_names=yes   Do not use '::' as the prefix for enumeration names,\n");
-	fprintf(output, "                                    AND require '&' for all attribute names.\n");
+	fprintf(output, "  -S <flag>     Set migration flags to assist with upgrades from version 3.\n");
 	fprintf(output, "  -t            Disable threads.\n");
 	fprintf(output, "  -T            Prepend timestamps to  log messages.\n");
 	fprintf(output, "  -v            Print server version information.\n");
