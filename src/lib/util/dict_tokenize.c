@@ -2934,7 +2934,11 @@ post_option:
 					   dict->root->name, dict->root->flags.type_size, type_size);
 			return -1;
 		}
-		goto done;
+
+		/*
+		 *	Do NOT talloc_free() dict on error.
+		 */
+		return dict_dctx_push(dctx, dict->root, NEST_NONE);
 	}
 
 	dict = dict_alloc(dict_gctx);
@@ -2967,7 +2971,6 @@ post_option:
 		mutable->flags.length = 1; /* who knows... */
 	}
 
-done:
 	/*
 	 *	Make the root available on the stack, in case
 	 *	something wants to begin it.  Note that we mark it as
