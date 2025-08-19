@@ -1,4 +1,0 @@
-Packet-Type = Discover
-
-Result-Status == success
-Packet-Type == Offer
