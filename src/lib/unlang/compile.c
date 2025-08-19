@@ -263,7 +263,6 @@ static void unlang_dump(unlang_t *c, int depth)
 	break;
 
 	case UNLANG_TYPE_MAP:
-	case UNLANG_TYPE_UPDATE:
 	{
 		unlang_map_t *gext;
 
@@ -2031,7 +2030,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx
 
 		if (op) {
 			/*
-			 *	Forbid section keywords as pair names, e.g. bare "update"
+			 *	Forbid section keywords as pair names, e.g. "switch = foo"
 			 */
 			if ((op->flag & UNLANG_OP_FLAG_SINGLE_WORD) == 0) {
 				cf_log_err(ci, "Syntax error after keyword '%s' - missing '{'", name);
