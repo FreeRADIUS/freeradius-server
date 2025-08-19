@@ -271,6 +271,43 @@ static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags
 	}
 }
 
+static void _sql_connect_query_run(connection_t *conn, UNUSED connection_state_t prev,
+				   UNUSED connection_state_t state, void *uctx)
+{
+	rlm_sql_t const			*sql = talloc_get_type_abort_const(uctx, rlm_sql_t);
+	rlm_sql_postgresql_t		*inst = talloc_get_type_abort(sql->driver_submodule->data, rlm_sql_postgresql_t);
+	rlm_sql_postgres_conn_t		*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_postgres_conn_t);
+	int				err;
+	PGresult			*result, *tmp_result;
+	ExecStatusType			status;
+	sql_rcode_t			rcode;
+
+	DEBUG2("Executing \"%s\"", sql->config.connect_query);
+
+	err = PQsendQuery(sql_conn->db, sql->config.connect_query);
+	if (!err) {
+	fail:
+		ERROR("Failed running \"open_query\": %s", PQerrorMessage(sql_conn->db));
+		connection_signal_reconnect(conn, CONNECTION_FAILED);
+		return;
+	}
+
+	result = PQgetResult(sql_conn->db);
+	if (!result) goto fail;
+
+	/*
+	 *  Clear up any additional results returned
+	 */
+	while ((tmp_result = PQgetResult(sql_conn->db))) PQclear(tmp_result);
+
+	status = PQresultStatus(result);
+
+	rcode = sql_classify_error(inst, status, result);
+	PQclear(result);
+
+	if (rcode != RLM_SQL_OK) goto fail;
+}
+
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_state_t _sql_connection_init(void **h, connection_t *conn, void *uctx)
 {
@@ -323,6 +360,9 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	DEBUG2("Connecting to database '%s' on '%s', fd %d", PQdb(c->db), PQhost(c->db), c->fd);
 
 	*h = c;
+
+	if (sql->config.connect_query) connection_add_watch_post(conn, CONNECTION_STATE_CONNECTED,
+								 _sql_connect_query_run, true, sql);
 
 	return CONNECTION_STATE_CONNECTING;
 }
