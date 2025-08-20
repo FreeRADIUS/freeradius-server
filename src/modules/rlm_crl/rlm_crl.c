@@ -189,7 +189,7 @@ static int8_t crl_pending_cmp(void const *a, void const *b)
 	return CMP(pending_a->request, pending_b->request);
 }
 
-static void crl_expire(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
+static void crl_expire(fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	crl_entry_t	*crl = talloc_get_type_abort(uctx, crl_entry_t);
 
