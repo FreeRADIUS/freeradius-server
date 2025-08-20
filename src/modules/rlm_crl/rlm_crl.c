@@ -801,6 +801,15 @@ static int mod_mutable_free(rlm_crl_mutable_t *mutable)
 	pthread_mutex_destroy(&mutable->mutex);
 	return 0;
 }
+
+static int mod_detach(module_detach_ctx_t const *mctx)
+{
+	rlm_crl_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_crl_t);
+
+	if (inst->verify_store) X509_STORE_free(inst->verify_store);
+	talloc_free(inst->mutable);
+	return 0;
+}
 #endif
 
 /**	Instantiate the module
@@ -837,32 +846,19 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 #endif
 }
 
-static int mod_detach(
-#ifndef WITH_TLS
-		      UNUSED
-#endif
-		      module_detach_ctx_t const *mctx)
-{
-#ifdef WITH_TLS
-	rlm_crl_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_crl_t);
-
-	if (inst->verify_store) X509_STORE_free(inst->verify_store);
-	talloc_free(inst->mutable);
-#endif
-	return 0;
-}
-
 extern module_rlm_t rlm_crl;
 module_rlm_t rlm_crl = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.inst_size	= sizeof(rlm_crl_t),
 		.instantiate	= mod_instantiate,
-		.detach		= mod_detach,
 		.name		= "crl",
 		.config		= module_config,
 		MODULE_THREAD_INST(rlm_crl_thread_t),
+#ifdef WITH_TLS
 		.thread_instantiate	= mod_thread_instantiate,
+		.detach		= mod_detach,
+#endif
 	},
 #ifdef WITH_TLS
 	.method_group = {
