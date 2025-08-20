@@ -3,8 +3,8 @@ name: Dockerhub Releases
 on:
 # Rebuild on new release tag...
   push:
-#    tags:
-#      - 'release_3_2_*'
+    tags:
+      - 'release_3_2_*'
 # ...weekly (to keep docker base OS up-to-date)...
   schedule:
     - cron: '30 4 * * 1'
