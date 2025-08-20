@@ -194,7 +194,20 @@ static void crl_expire(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *u
 	crl_entry_t	*crl = talloc_get_type_abort(uctx, crl_entry_t);
 
 	DEBUG2("CRL associated with CDP %s expired", crl->cdp_url);
-	pthread_mutex_lock(&crl->inst->mutable->mutex);
+
+	/*
+	 *	If the mutex is locked and this thread is fetching a CRL, asynchonously,
+	 *	insert a new timer event - otherwise the mutex will never be unlocked.
+	 */
+	if (pthread_mutex_trylock(&crl->inst->mutable->mutex) != 0) {
+		if (crl->inst->mutable->fetching == crl->thread) {
+			if (fr_timer_in(crl, tl, &crl->ev, fr_time_delta_from_sec(1), false, crl_expire, crl) <0) {
+				ERROR("Failed inserting CRL expiry event");
+			}
+			return;
+		}
+		pthread_mutex_lock(&crl->inst->mutable->mutex);
+	}
 	fr_rb_remove(crl->inst->mutable->crls, crl);
 	pthread_mutex_unlock(&crl->inst->mutable->mutex);
 	talloc_free(crl);
