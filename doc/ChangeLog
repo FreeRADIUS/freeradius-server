@@ -1,4 +1,4 @@
-FreeRADIUS 3.2.8 Fri 31 Jan 2025 12:00:00 UTC urgency=low
+FreeRADIUS 3.2.8 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	Configuration changes
 	* Replace dictionary.infinera with the correct one.
 	* Update dictionary.alteon
@@ -25,11 +25,9 @@ FreeRADIUS 3.2.8 Fri 31 Jan 2025 12:00:00 UTC urgency=low
 	* Added kafka module.  See mods-available/kafka.
 	* json module can now print dates as integers.
 	  See mods-available/json
-	* The debug output now points to the online documentation
-	  in many cases, when there are syntax errors in the
-	  configuration.
-	* Add support for 389ds password hashes.  Patch from
-	  Gerald Vogt.
+	* The debug output now points to the online documentation in
+	  many cases, when there are syntax errors in the configuration.
+	* Add support for 389ds password hashes.  Patch from Gerald Vogt.
 	* reject_delay does not _add_ a delay, but instead ensures that
 	  the reject is delayed for _at least_ that time.  This change
 	  means that reject_delay can be set in more situations, including
