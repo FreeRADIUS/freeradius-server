@@ -1,0 +1,32 @@
+#
+#  UNION tests
+#
+#  src/tests/dict checks if the dictionaries can be parsed.
+#  This file tests if the contents are OK.
+#
+proto radius
+proto-dictionary radius
+load-dictionary dictionary.test
+fuzzer-out radius
+
+#
+#  Too small.
+#
+decode-pair fd 04 01 21
+match Test-Struct2 = { Key-Field = ::Sub-Struct, Data = { Sub-Struct = { Nested-Uint1 = 33 } } }
+#match raw.Test-Struct2 = 0x0121
+
+#
+#  Too large.  Extra data is silently ignored.
+#
+decode-pair fd 06 01 21 12 33
+match Test-Struct2 = { Key-Field = ::Sub-Struct, Data = { Sub-Struct = { Nested-Uint1 = 33, Nested-Uint2 = 18 } } }
+
+#
+#  Just right.
+#
+decode-pair fd 05 01 21 12
+match Test-Struct2 = { Key-Field = ::Sub-Struct, Data = { Sub-Struct = { Nested-Uint1 = 33, Nested-Uint2 = 18 } } }
+
+count
+match 10

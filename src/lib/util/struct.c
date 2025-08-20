@@ -36,7 +36,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 {
 	unsigned int		child_num;
 	uint8_t const		*p = data, *end = data + data_len;
-	fr_dict_attr_t const	*child;
+	fr_dict_attr_t const	*child, *substruct_da;
 	fr_pair_list_t		child_list_head;
 	fr_pair_list_t		*child_list;
 	fr_pair_t		*vp, *key_vp, *struct_vp = NULL;
@@ -58,8 +58,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	struct_vp = fr_pair_afrom_da(ctx, parent);
 	if (!struct_vp) {
-		fr_strerror_const("out of memory");
-		return -1;
+		return PAIR_DECODE_OOM;
 	}
 
 	fr_pair_list_init(&child_list_head); /* still used elsewhere */
@@ -161,6 +160,8 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			vp = fr_pair_afrom_da(child_ctx, child);
 			if (!vp) {
 				FR_PROTO_TRACE("fr_struct_from_network - failed allocating child VP");
+			oom:
+				talloc_free(struct_vp);
 				return PAIR_DECODE_OOM;
 			}
 
@@ -199,39 +200,15 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		}
 		offset = 0;	/* reset for non-bit-field attributes */
 
-		/*
-		 *	Decode child TLVs, according to the parent attribute.
-		 */
-		if (child->type == FR_TYPE_TLV) {
-			fr_assert(!key_vp);
-
-			if (!decode_tlv) {
-				fr_strerror_const("Decoding TLVs requires a decode_tlv() function to be passed");
-				return -(p - data);
-			}
-
-			/*
-			 *	Decode EVERYTHING as a TLV.
-			 */
-			while (p < end) {
-				slen = decode_tlv(child_ctx, child_list, child, p, end - p, decode_ctx);
-				if (slen < 0) {
-					FR_PROTO_TRACE("failed decoding TLV?");
-					goto unknown;
-				}
-				p += slen;
-			}
-
-			goto done;
-		}
-
 		child_length = child->flags.length;
 
 		/*
 		 *	If this field overflows the input, then *all*
 		 *	of the input is suspect.
 		 */
-		if (child_length > (size_t) (end - p)) {
+		if (child_length > (size_t) (end - p)) {	
+			fprintf(stderr, "SHIT %s have %zd want %zd\n",
+				child->name, (end - p), child_length);
 			FR_PROTO_TRACE("fr_struct_from_network - child length %zu overflows buffer", child_length);
 			goto unknown;
 		}
@@ -244,8 +221,78 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			child_length = end - p;
 
 		} else if ((size_t) (end - p) < child_length) {
+			fprintf(stderr, "SHIT %s have %zd want %zd\n",
+				child->name, (end - p), child_length);
 			FR_PROTO_TRACE("fr_struct_from_network - child length %zu underflows buffer", child_length);
 			goto unknown;
+		}
+
+		/*
+		 *	We only allow a limited number of data types
+		 *	inside of a struct.
+		 */
+		switch (child->type) {
+		default:
+			/*
+			 *	Other structural types can only be decoded by a callback.
+			 */
+			if (!decode_value) {
+				FR_PROTO_TRACE("fr_struct_from_network - unknown child type");
+				goto unknown;
+			}
+			break;
+
+		case FR_TYPE_LEAF:
+			break;
+
+		/*
+		 *	Decode child TLVs, according to the parent attribute.
+		 */
+		case FR_TYPE_TLV:
+			fr_assert(!key_vp);
+
+			if (!decode_tlv) {
+				fr_strerror_const("Decoding TLVs requires a decode_tlv() function to be passed");
+				talloc_free(struct_vp);
+				return -(p - data);
+			}
+
+			/*
+			 *	Decode all of the remaining data as
+			 *	TLVs.  Any malformed TLVs are appended
+			 *	as raw VP.
+			 */
+			while (p < end) {
+				slen = decode_tlv(child_ctx, child_list, child, p, end - p, decode_ctx);
+				if (slen < 0) {
+					FR_PROTO_TRACE("failed decoding TLV?");
+					goto unknown;
+				}
+				p += slen;
+			}
+
+			goto done;
+
+		/*
+		 *	The child is a union, it MUST be at the end of
+		 *	the struct, and we must have seen a key before
+		 *	we reach the union.  See dict_tokenize.
+		 */
+		case FR_TYPE_UNION:
+			fr_assert(!fr_dict_attr_child_by_num(parent, child_num + 1));
+			if (!fr_cond_assert(key_vp)) goto unknown;
+
+			/*
+			 *	Create the union wrapper, and reset the child_ctx and child_list to it.
+			 */
+			vp = fr_pair_afrom_da(child_ctx, child);
+			if (!vp) goto oom;
+
+			fr_pair_append(child_list, vp);
+			substruct_da = child;
+			child_ctx = vp;
+			child_list = &vp->vp_group;
+			goto substruct;
 		}
 
 		/*
@@ -271,19 +318,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			child_num++;	/* go to the next child */
 			if (fr_dict_attr_is_key_field(child)) key_vp = fr_pair_list_tail(child_list);
 			continue;
-		}
-
-		/*
-		 *	We only allow a limited number of data types
-		 *	inside of a struct.
-		 */
-		switch (child->type) {
-		default:
-			FR_PROTO_TRACE("fr_struct_from_network - unknown child type");
-			goto unknown;
-
-		case FR_TYPE_LEAF:
-			break;
 		}
 
 		/*
@@ -335,6 +369,10 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 */
 	if (key_vp) {
 		fr_dict_enum_value_t const *enumv;
+
+		substruct_da = key_vp->da;
+
+	substruct:
 		child = NULL;
 
 		FR_PROTO_HEX_DUMP(p, (end - p), "fr_struct_from_network - substruct");
@@ -360,7 +398,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			 *	incomparable.  And thus can all be
 			 *	given the same number.
 			 */
-			child = fr_dict_attr_unknown_raw_afrom_num(child_ctx, key_vp->da, 0);
+			child = fr_dict_attr_unknown_raw_afrom_num(child_ctx, substruct_da, 0);
 			if (!child) {
 				FR_PROTO_TRACE("failed allocating unknown child for key VP %s - %s",
 					       key_vp->da->name, fr_strerror());
