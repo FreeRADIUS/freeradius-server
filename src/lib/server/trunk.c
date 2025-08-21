@@ -299,6 +299,7 @@ static conf_parser_t const trunk_config_request[] = {
 	{ FR_CONF_OFFSET("per_connection_max", trunk_conf_t, max_req_per_conn), .dflt = "2000" },
 	{ FR_CONF_OFFSET("per_connection_target", trunk_conf_t, target_req_per_conn), .dflt = "1000" },
 	{ FR_CONF_OFFSET("free_delay", trunk_conf_t, req_cleanup_delay), .dflt = "10.0" },
+	{ FR_CONF_OFFSET("triggers", trunk_conf_t, req_triggers) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -326,6 +327,8 @@ conf_parser_t const trunk_config[] = {
 	{ FR_CONF_OFFSET("manage_interval", trunk_conf_t, manage_interval), .dflt = "0.2" },
 
 	{ FR_CONF_OFFSET("max_backlog", trunk_conf_t, max_backlog), .dflt = "1000" },
+
+	{ FR_CONF_OFFSET("triggers", trunk_conf_t, conn_triggers) },
 
 	{ FR_CONF_OFFSET_SUBSECTION("connection", 0, trunk_conf_t, conn_conf, trunk_config_connection), .subcs_size = sizeof(trunk_config_connection) },
 	{ FR_CONF_POINTER("request", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) trunk_config_request },
@@ -430,7 +433,7 @@ static fr_table_num_ordered_t const trunk_connection_events[] = {
 static size_t trunk_connection_events_len = NUM_ELEMENTS(trunk_connection_events);
 
 #define CONN_TRIGGER(_state) do { \
-	if (trunk->pub.triggers) { \
+	if (trunk->conf.conn_triggers) { \
 		trigger(unlang_interpret_get_thread_default(), \
 			     NULL, fr_table_str_by_value(trunk_conn_trigger_names, _state, \
 							 "<INVALID>"), true, NULL); \
@@ -461,7 +464,7 @@ void trunk_request_state_log_entry_add(char const *function, int line,
 				       trunk_request_t *treq, trunk_request_state_t new) CC_HINT(nonnull);
 
 #define REQUEST_TRIGGER(_state) do { \
-	if (trunk->pub.triggers) { \
+	if (trunk->conf.req_triggers) { \
 		trigger(unlang_interpret_get_thread_default(), \
 			     NULL, fr_table_str_by_value(trunk_req_trigger_names, _state, \
 							 "<INVALID>"), true, NULL); \

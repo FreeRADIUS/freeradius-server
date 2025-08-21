@@ -281,6 +281,10 @@ typedef struct {
 	bool			backlog_on_failed_conn;	//!< Assign requests to the backlog when there are no
 							//!< available connections and the last connection event
 							//!< was a failure, instead of failing them immediately.
+
+	bool			conn_triggers;		//!< Do we run connection related triggers?
+
+	bool			req_triggers;		//!< Do we run request related triggers?
 } trunk_conf_t;
 
 /** Public fields for the trunk
@@ -327,8 +331,6 @@ struct trunk_pub_s {
 
 	uint64_t _CONST		req_alloc_reused;	//!< How many requests were reused.
 	/** @} */
-
-	bool _CONST		triggers;		//!< do we run the triggers?
 
 	trunk_state_t _CONST	state;			//!< Current state of the trunk.
 };
