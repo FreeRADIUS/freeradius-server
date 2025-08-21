@@ -353,7 +353,7 @@ sql {
 	groupreply_table = "radgroupreply"
 	usergroup_table = "radusergroup"
 #	read_groups = yes
-#	read_profile = yes
+#	read_profiles = yes
 #	logfile = ${logdir}/sqllog.sql
 #	query_timeout = 5
 	pool {

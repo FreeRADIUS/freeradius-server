@@ -131,18 +131,15 @@ This will trigger only once per 60 seconds.
 
 ### Module triggers
 
-Triggers for specific modules.  These are *not* in the module
-configuration because they are global to all instances of the
-module.  You can have module-specific triggers, by placing a
-"trigger" subsection in the module configuration.
+Triggers for specific modules.  These are *not* in the
+module configuration because they are global to all
+instances of the module.  You can have module-specific
+triggers, by placing a `trigger` subsection in the module
+configuration.  Not all modules support a `trigger`
+subsection.
 
 
 #### rlm_ldap: The LDAP module
-
-If the server does "bind as user", it will open and
-close an LDAP connection every time it binds as a
-user. Be aware that this will likely produce a lot
-of triggers.
 
 
 Define common arguments to use below:
@@ -222,25 +219,25 @@ snmp {
 snmptrap = "${snmp.trap.cmd} -c ${snmp.trap.community} ${snmp.trap.agent} FREERADIUS-NOTIFICATION-MIB"
 trigger {
 	server {
-		start = "${snmptrap}::serverStart"
-		stop = "${snmptrap}::serverStop"
-		max_requests = "${snmptrap}::serverMaxRequests"
+		start = `${snmptrap}::serverStart`
+		stop = `${snmptrap}::serverStop`
+		max_requests = `${snmptrap}::serverMaxRequests`
 	}
 	modules {
 		ldap {
 			args = "radiusdModuleName s '${.:name}' radiusdModuleInstance s '${.:instance}'"
-			open = "${snmptrap}::serverModuleConnectionUp ${args}"
-			close = "${snmptrap}::serverModuleConnectionDown ${args}"
-			min = "${snmptrap}::serverModuleConnectionReservedPeriodMin ${args}"
-			max = "${snmptrap}::serverModuleConnectionReservedPeriodMax ${args}"
+			open = `${snmptrap}::serverModuleConnectionUp ${args}`
+			close = `${snmptrap}::serverModuleConnectionDown ${args}`
+			min = `${snmptrap}::serverModuleConnectionReservedPeriodMin ${args}`
+			max = `${snmptrap}::serverModuleConnectionReservedPeriodMax ${args}`
 		}
 		sql {
 			args = "radiusdModuleName s '${.:name}' radiusdModuleInstance s '${.:instance}'"
-			open = "${snmptrap}::serverModuleConnectionUp ${args}"
-			close = "${snmptrap}::serverModuleConnectionDown ${args}"
-			fail = "${snmptrap}::serverModuleConnectionFail ${args}"
-			min = "${snmptrap}::serverModuleConnectionReservedPeriodMin ${args}"
-			max = "${snmptrap}::serverModuleConnectionReservedPeriodMax ${args}"
+			open = `${snmptrap}::serverModuleConnectionUp ${args}`
+			close = `${snmptrap}::serverModuleConnectionDown ${args}`
+			fail = `${snmptrap}::serverModuleConnectionFail ${args}`
+			min = `${snmptrap}::serverModuleConnectionReservedPeriodMin ${args}`
+			max = `${snmptrap}::serverModuleConnectionReservedPeriodMax ${args}`
 		}
 	}
 }
