@@ -309,7 +309,10 @@ static unlang_action_t sql_get_map_list_resume(unlang_result_t *p_result, reques
 
 	rhs_rules.attr.list_def = request_attr_request;
 
-	if (query_ctx->rcode != RLM_SQL_OK) RETURN_UNLANG_FAIL;
+	if (query_ctx->rcode != RLM_SQL_OK) {
+		rlm_sql_print_error(inst, request, query_ctx, false);
+		RETURN_UNLANG_FAIL;
+	}
 
 	while ((inst->fetch_row(p_result, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
 	       (query_ctx->rcode == RLM_SQL_OK)) {

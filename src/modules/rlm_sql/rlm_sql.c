@@ -1070,6 +1070,7 @@ static unlang_action_t sql_get_grouplist_resume(unlang_result_t *p_result, reque
 
 	if (query_ctx->rcode != RLM_SQL_OK) {
 	error:
+		rlm_sql_print_error(inst, request, query_ctx, false);
 		talloc_free(query_ctx);
 		RETURN_UNLANG_FAIL;
 	}
@@ -1807,12 +1808,14 @@ static unlang_action_t mod_sql_redundant_query_resume(unlang_result_t *p_result,
 	 *	so we do not need to call fr_pool_connection_release.
 	 */
 	case RLM_SQL_RECONNECT:
+		rlm_sql_print_error(inst, request, query_ctx, false);
 		RETURN_UNLANG_FAIL;
 
 	/*
 	 *	Query was invalid, this is a terminal error.
 	 */
 	case RLM_SQL_QUERY_INVALID:
+		rlm_sql_print_error(inst, request, query_ctx, false);
 		RETURN_UNLANG_INVALID;
 
 	/*
