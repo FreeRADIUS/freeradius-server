@@ -283,8 +283,10 @@ typedef struct {
 							//!< was a failure, instead of failing them immediately.
 
 	bool			conn_triggers;		//!< Do we run connection related triggers?
+	CONF_SECTION		*conn_trigger_cs;	//!< Module conf section to find connection trigger section in.
 
 	bool			req_triggers;		//!< Do we run request related triggers?
+	CONF_SECTION		*req_trigger_cs;	//!< Module conf section to find request trigger section in.
 } trunk_conf_t;
 
 /** Public fields for the trunk
