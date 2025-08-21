@@ -172,10 +172,8 @@ int trigger(unlang_interpret_t *intp,
 	 *	module instances.
 	 */
 	if (cs) {
-		CONF_SECTION const *subcs;
-
-		subcs = cf_section_find(cs, "trigger", NULL);
-		if (!subcs) goto use_global;
+		cs = cf_section_find(cs, "trigger", NULL);
+		if (!cs) goto use_global;
 
 		/*
 		 *	If a local trigger{...} section exists, then
