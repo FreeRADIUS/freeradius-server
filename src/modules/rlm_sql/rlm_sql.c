@@ -468,7 +468,7 @@ static xlat_action_t sql_xlat_query_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, x
 	numaffected = (inst->driver->sql_affected_rows)(query_ctx, &inst->config);
 	if (numaffected < 1) {
 		RDEBUG2("SQL query affected no rows");
-		goto finish;
+		numaffected = 0;
 	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
