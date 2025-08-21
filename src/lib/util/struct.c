@@ -612,22 +612,6 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		FR_PROTO_TRACE("fr_struct_to_network child %s", child->name);
 
 		/*
-		 *	Encode child TLVs at the end of a struct.
-		 *
-		 *	In order to encode the child TLVs, we need to
-		 *	know the length of "T" and "L", and we don't.
-		 *	So just let the caller do the work.
-		 */
-		if (child->type == FR_TYPE_TLV) {
-			if (offset != 0) goto leftover_bits;
-
-			fr_assert(!key_da);
-
-			tlv = child;
-			goto done;
-		}
-
-		/*
 		 *	The MEMBER may be raw, in which case it is encoded as octets.
 		 *
 		 *	This can happen for the last MEMBER of a struct, such as when the last member is a TLV
@@ -642,7 +626,14 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			fr_assert(vp->vp_type == FR_TYPE_OCTETS);
 			fr_assert(!da_is_bit_field(child));
 
-			goto raw;
+			goto raw; /* we may have a raw entry in an array :( */
+		}
+
+		/*
+		 *	Remember the key field.  Note that we ignore raw key fields.
+		 */
+		if (fr_dict_attr_is_key_field(child)) {
+			key_da = child;
 		}
 
 		/*
@@ -664,9 +655,10 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 				continue;
 			}
 
-			if (fr_dict_attr_is_key_field(child)) {
-				key_da = child;
-			}
+			/*
+			 *	A child TLV is missing, we're done, and we don't encode any data.
+			 */
+			if (child->type == FR_TYPE_TLV) goto done;
 
 			/*
 			 *	Zero out the unused field.
@@ -686,6 +678,8 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		 */
 		if (da_is_bit_field(child)) {
 			uint64_t value;
+
+			FR_PROTO_TRACE("child %s is a bit field", child->name);
 
 			switch (child->type) {
 				case FR_TYPE_BOOL:
@@ -733,14 +727,25 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		}
 
 		/*
-		 *	Remember key_da before we do any encoding.
+		 *	Encode child TLVs at the end of a struct.
+		 *
+		 *	In order to encode the child TLVs, we need to
+		 *	know the length of "T" and "L", and we don't.
+		 *	So just let the caller do the work.
 		 */
-		if (fr_dict_attr_is_key_field(child)) {
-			key_da = child;
+		if (child->type == FR_TYPE_TLV) {
+			fr_assert(!key_da);
+
+			FR_PROTO_TRACE("child %s is a TLV field", child->name);
+			tlv = child;
+			goto done;
 		}
 
 		if (encode_value) {
 			ssize_t	len;
+
+			FR_PROTO_TRACE("child %s encode_value", child->name);
+
 			/*
 			 *	Call the protocol encoder for non-bit fields.
 			 */
@@ -754,11 +759,19 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			if (len < 0) return len;
 			vp = fr_dcursor_current(cursor);
 
+		} else if (!fr_type_is_leaf(child->type)) {
+			fr_strerror_printf("non-leaf attribute %s of type %s in struct %s, but no 'encode_value' callback was specified",
+					   child->name, fr_type_to_str(child->type), parent->name);
+			return PAIR_ENCODE_FATAL_ERROR;
+
 		} else {
-		redo:
+		continue_array:
+#if 0
 			/*
 			 *	Hack until we find all places that don't set data.enumv
 			 */
+			fr_assert(!vp->da->flags.length || (vp->data.enumv == vp->da));
+#else
 			if (vp->da->flags.length && (vp->data.enumv != vp->da)) {
 				fr_dict_attr_t const * const *c = &vp->data.enumv;
 				fr_dict_attr_t **u;
@@ -766,17 +779,20 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 				memcpy(&u, &c, sizeof(c)); /* const issues */
 				memcpy(u, &vp->da, sizeof(vp->da));
 			}
+#endif
 
 			/*
 			 *	Determine the nested type and call the appropriate encoder
 			 */
 		raw:
+			FR_PROTO_TRACE("child %s encode to network", child->name);
+
 			if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return PAIR_ENCODE_FATAL_ERROR;
 
 			vp = fr_dcursor_next(cursor);
 			if (!vp) break;
 
-			if (child->flags.array && (vp->da == child)) goto redo;
+			if (child->flags.array && (vp->da == child)) goto continue_array;
 		}
 
 	next:
