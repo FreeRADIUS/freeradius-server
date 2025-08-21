@@ -626,7 +626,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			fr_assert(vp->vp_type == FR_TYPE_OCTETS);
 			fr_assert(!da_is_bit_field(child));
 
-			goto raw; /* we may have a raw entry in an array :( */
+			goto encode_data; /* we may have a raw entry in an array :( */
 		}
 
 		/*
@@ -765,26 +765,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			return PAIR_ENCODE_FATAL_ERROR;
 
 		} else {
-		continue_array:
-#if 0
-			/*
-			 *	Hack until we find all places that don't set data.enumv
-			 */
-			fr_assert(!vp->da->flags.length || (vp->data.enumv == vp->da));
-#else
-			if (vp->da->flags.length && (vp->data.enumv != vp->da)) {
-				fr_dict_attr_t const * const *c = &vp->data.enumv;
-				fr_dict_attr_t **u;
-
-				memcpy(&u, &c, sizeof(c)); /* const issues */
-				memcpy(u, &vp->da, sizeof(vp->da));
-			}
-#endif
-
-			/*
-			 *	Determine the nested type and call the appropriate encoder
-			 */
-		raw:
+		encode_data:
 			FR_PROTO_TRACE("child %s encode to network", child->name);
 
 			if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return PAIR_ENCODE_FATAL_ERROR;
@@ -792,7 +773,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			vp = fr_dcursor_next(cursor);
 			if (!vp) break;
 
-			if (child->flags.array && (vp->da == child)) goto continue_array;
+			if (child->flags.array && (vp->da == child)) goto encode_data;
 		}
 
 	next:
