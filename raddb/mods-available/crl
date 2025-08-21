@@ -97,4 +97,53 @@ crl {
 	#
 #	ca_path = ${modules.eap.tls-config[tls-common].ca_path}
 	ca_path = ${cadir}
+
+	#
+	#  trigger_rate_limit::
+	#
+	#  If triggers are enabled (either here or in trigger.conf),
+	#  should the trigger messages be rate limited.
+#	trigger_rate_limit = yes
+
+	#
+	#  trigger::  Xlats to run when specific CRL events happen
+	#
+	#  When configured here, they are specific to this module instance.
+	#  Alternatively global settings for all instances of the `crl`
+	#  module can be set in `triggers.conf` under the `modules` -> `crl`
+	#  section.
+	#
+	#  For triggers to be enabled, a top level `trigger` section must
+	#  exist.  Enable the line `$INCLUDE trigger.conf` in `radiusd.conf`
+	#  and if none of the triggers in there are required, comment them
+	#  out, leaving just the outer section.
+	#
+	#  Triggers can either be calls to execute programs or xlat expansions.
+	#  The examples below show the use of the `linelog` xlat.
+	#
+	#  In the "fetch..." triggers, the attributes from the request list
+	#  where the `crl` module is called are available.
+	#  The "expired" trigger only has `CRL.CDP-URL` available.
+	#
+#	trigger {
+		#
+		#  fetchuri:: A CRL URI is being requested
+		#
+#		fetchuri = %linelog("Fetching CRL from %{CRL.CDP-URL}")
+
+		#
+		#  fetchfail:: Fetching a CRL URI failed
+		#
+#		fetchfail = %linelog("Failed fetching %{CRL.CDP-URL}: %{Module-Failure-Message}")
+
+		#
+		#  fetchbad:: Fetching a CRL URI returned bad data
+		#
+#		fetchbad = %linelog("Data returned from %{CRL.CDP-URL} was not valid")
+
+		#
+		#  expired:: A CRL has expired
+		#
+#		expired = %linelog("CRL from %{CRL.CDP-URL} has expired")
+#	}
 }

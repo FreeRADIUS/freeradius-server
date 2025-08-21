@@ -66,6 +66,8 @@ typedef struct {
 	char const			*ca_path;			//!< Directory containing certs for verifying CRL signatures.
 	X509_STORE			*verify_store;			//!< Store of certificates to verify CRL signatures.
 	rlm_crl_mutable_t		*mutable;			//!< Mutable data that's shared between all threads.
+	CONF_SECTION			*cs;				//!< Module instance config.
+	bool				trigger_rate_limit;		//!< Rate limit triggers.
 } rlm_crl_t;
 
 /** A single CRL in the global list of CRLs */
@@ -107,6 +109,7 @@ static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("early_refresh", rlm_crl_t, early_refresh) },
 	{ FR_CONF_OFFSET("ca_file", rlm_crl_t, ca_file) },
 	{ FR_CONF_OFFSET("ca_path", rlm_crl_t, ca_path) },
+	{ FR_CONF_OFFSET("trigger_rate_limit", rlm_crl_t, trigger_rate_limit), .dflt = "yes" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -210,6 +213,17 @@ static void crl_expire(fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 	}
 	fr_rb_remove(crl->inst->mutable->crls, crl);
 	pthread_mutex_unlock(&crl->inst->mutable->mutex);
+
+	if (trigger_enabled()) {
+		fr_pair_list_t	args;
+		fr_pair_t	*vp;
+		fr_pair_list_init(&args);
+		MEM((vp = fr_pair_afrom_da_nested(crl, &args, attr_crl_cdp_url)));
+		fr_value_box_strdup_shallow(&vp->data, NULL, crl->cdp_url, true);
+		trigger(unlang_interpret_get_thread_default(), crl->inst->cs, "modules.crl.expired",
+			crl->inst->trigger_rate_limit, &args);
+	}
+
 	talloc_free(crl);
 }
 
@@ -491,6 +505,9 @@ static int crl_tmpl_yield(request_t *request, rlm_crl_t const *inst, rlm_crl_thr
 		return -1;
 	}
 
+	trigger(unlang_interpret_get_thread_default(), inst->cs, "modules.crl.fetchuri", inst->trigger_rate_limit,
+		&request->request_pairs);
+
 	if (unlang_module_yield_to_tmpl(rctx, &rctx->crl_data, request, vpt,
 					NULL, crl_process_cdp_data, crl_signal, 0, rctx) < 0) return -1;
 	inst->mutable->fetching = thread;
@@ -518,6 +535,8 @@ static unlang_action_t CC_HINT(nonnull) crl_process_cdp_data(unlang_result_t *p_
 	switch (fr_value_box_list_num_elements(&rctx->crl_data)) {
 	case 0:
 		REDEBUG("No CRL data returned from %pV, failing", rctx->cdp_url);
+		trigger(unlang_interpret_get_thread_default(), inst->cs, "modules.crl.fetchfail",
+			inst->trigger_rate_limit, &request->request_pairs);
 	again:
 		talloc_free(rctx->cdp_url);
 
@@ -551,6 +570,8 @@ static unlang_action_t CC_HINT(nonnull) crl_process_cdp_data(unlang_result_t *p_
 		talloc_free(crl_data);
 		if (!crl_entry) {
 			RPERROR("Failed to process returned CRL data");
+			trigger(unlang_interpret_get_thread_default(), inst->cs, "modules.crl.fetchbad",
+				inst->trigger_rate_limit, &request->request_pairs);
 			goto again;
 		}
 
@@ -838,6 +859,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	X509_STORE_set_purpose(inst->verify_store, X509_PURPOSE_SSL_CLIENT);
+
+	inst->cs = mctx->mi->conf;
 
 	return 0;
 #else
