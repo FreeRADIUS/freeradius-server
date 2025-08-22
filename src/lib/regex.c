@@ -152,10 +152,20 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 		 *	expressions that are going to be
 		 *	evaluated repeatedly.
 		 */
-		if (do_jit) {
+		if (do_jit) do {
 			ret = pcre2_jit_compile(preg->compiled, PCRE2_JIT_COMPLETE);
 			if (ret < 0) {
 				PCRE2_UCHAR errbuff[128];
+
+				/*
+				 *	PCRE can do JIT, but this UID
+				 *	cannot allocate executable
+				 *	memory.  Stop trying to JIT things.
+				 */
+				if (ret == PCRE2_ERROR_NOMEMORY) {
+					do_jit = false;
+					break;
+				}
 
 				pcre2_get_error_message(ret, errbuff, sizeof(errbuff));
 				fr_strerror_printf("Pattern JIT failed: %s", (char *)errbuff);
@@ -164,7 +174,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 				return 0;
 			}
 			preg->jitd = true;
-		}
+		} while (0)
 #endif
 	}
 
