@@ -133,6 +133,8 @@ typedef struct {
 	linelog_net_t		udp;			//!< UDP server.
 
 	CONF_SECTION		*cs;			//!< #CONF_SECTION to use as the root for #log_ref lookups.
+
+	bool			triggers;		//!< Do we do triggers.
 } rlm_linelog_t;
 
 typedef struct {
@@ -177,6 +179,8 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("destination", CONF_FLAG_REQUIRED, rlm_linelog_t, log_dst_str) },
 
 	{ FR_CONF_OFFSET("delimiter", rlm_linelog_t, delimiter), .dflt = "\n" },
+
+	{ FR_CONF_OFFSET("triggers", rlm_linelog_t, triggers) },
 
 	/*
 	 *	Log destinations
@@ -960,7 +964,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		}
 		if (!cf_pair_find(cs, "filename")) goto no_filename;
 
-		inst->file.ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
+		inst->file.ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true,
+						       inst->triggers, NULL, NULL);
 		if (!inst->file.ef) {
 			cf_log_err(conf, "Failed creating log file context");
 			return -1;

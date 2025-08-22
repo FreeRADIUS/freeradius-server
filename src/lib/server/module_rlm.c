@@ -93,6 +93,7 @@ void module_rlm_list_debug(void)
  * @param[in] max_entries	Max file descriptors to cache, and manage locks for.
  * @param[in] max_idle		Maximum time a file descriptor can be idle before it's closed.
  * @param[in] locking		Whether	or not to lock the files.
+ * @param[in] triggers		Should triggers be enabled.
  * @param[in] trigger_prefix	if NULL will be set automatically from the module CONF_SECTION.
  * @param[in] trigger_args	to make available in any triggers executed by the connection pool.
  * @return
@@ -104,6 +105,7 @@ exfile_t *module_rlm_exfile_init(TALLOC_CTX *ctx,
 				 uint32_t max_entries,
 				 fr_time_delta_t max_idle,
 				 bool locking,
+				 bool triggers,
 				 char const *trigger_prefix,
 				 fr_pair_list_t *trigger_args)
 {
@@ -118,7 +120,7 @@ exfile_t *module_rlm_exfile_init(TALLOC_CTX *ctx,
 	handle = exfile_init(ctx, max_entries, max_idle, locking);
 	if (!handle) return NULL;
 
-	exfile_enable_triggers(handle, cf_section_find(module, "file", NULL), trigger_prefix, trigger_args);
+	if (triggers) exfile_enable_triggers(handle, cf_section_find(module, "file", NULL), trigger_prefix, trigger_args);
 
 	return handle;
 }
