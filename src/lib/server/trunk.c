@@ -191,6 +191,24 @@ typedef struct trunk_watch_entry_s {
 	void			*uctx;			//!< User data to pass to the function.
 } trunk_watch_entry_t;
 
+/** Map connection states to trigger names
+ *
+ * Must stay in the same order as #trunk_connection_state_t
+ */
+static fr_table_num_indexed_bit_pos_t const trunk_conn_trigger_names[] = {
+	{ L("pool.connection_halted"),			TRUNK_CONN_HALTED			},	/* 0x0000 - bit 0 */
+	{ L("pool.connection_init"),			TRUNK_CONN_INIT				},	/* 0x0001 - bit 1 */
+	{ L("pool.connection_connecting"),		TRUNK_CONN_CONNECTING			},	/* 0x0002 - bit 2 */
+	{ L("pool.connection_active"),			TRUNK_CONN_ACTIVE			},	/* 0x0004 - bit 3 */
+	{ L("pool.connection_closed"),			TRUNK_CONN_CLOSED			},	/* 0x0008 - bit 4 */
+	{ L("pool.connection_full"),			TRUNK_CONN_FULL				},	/* 0x0010 - bit 5 */
+	{ L("pool.connection_inactive"),		TRUNK_CONN_INACTIVE			},	/* 0x0020 - bit 6 */
+	{ L("pool.connection_inactive_draining"),	TRUNK_CONN_INACTIVE_DRAINING		},	/* 0x0040 - bit 7 */
+	{ L("pool.connection_draining"),		TRUNK_CONN_DRAINING			},	/* 0x0080 - bit 8 */
+	{ L("pool.connection_draining_to_free"),	TRUNK_CONN_DRAINING_TO_FREE		}	/* 0x0100 - bit 9 */
+};
+static size_t trunk_conn_trigger_names_len = NUM_ELEMENTS(trunk_conn_trigger_names);
+
 /** Main trunk management handle
  *
  */
@@ -293,6 +311,8 @@ struct trunk_s {
 
 	uint64_t		last_req_per_conn;	//!< The last request to connection ratio we calculated.
 	/** @} */
+
+	bool			trigger_undef[NUM_ELEMENTS(trunk_conn_trigger_names)];	//!< Record that a specific trigger is undefined.
 };
 
 int trunk_trigger_cf_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
@@ -379,24 +399,6 @@ static fr_table_num_ordered_t const trunk_request_states[] = {
 };
 static size_t trunk_request_states_len = NUM_ELEMENTS(trunk_request_states);
 
-/** Map connection states to trigger names
- *
- * Must stay in the same order as #trunk_connection_state_t
- */
-static fr_table_num_indexed_bit_pos_t const trunk_conn_trigger_names[] = {
-	{ L("pool.connection_halted"),			TRUNK_CONN_HALTED			},	/* 0x0000 - bit 0 */
-	{ L("pool.connection_init"),			TRUNK_CONN_INIT				},	/* 0x0001 - bit 1 */
-	{ L("pool.connection_connecting"),		TRUNK_CONN_CONNECTING			},	/* 0x0002 - bit 2 */
-	{ L("pool.connection_active"),			TRUNK_CONN_ACTIVE			},	/* 0x0004 - bit 3 */
-	{ L("pool.connection_closed"),			TRUNK_CONN_CLOSED			},	/* 0x0008 - bit 4 */
-	{ L("pool.connection_full"),			TRUNK_CONN_FULL				},	/* 0x0010 - bit 5 */
-	{ L("pool.connection_inactive"),		TRUNK_CONN_INACTIVE			},	/* 0x0020 - bit 6 */
-	{ L("pool.connection_inactive_draining"),	TRUNK_CONN_INACTIVE_DRAINING		},	/* 0x0040 - bit 7 */
-	{ L("pool.connection_draining"),		TRUNK_CONN_DRAINING			},	/* 0x0080 - bit 8 */
-	{ L("pool.connection_draining_to_free"),	TRUNK_CONN_DRAINING_TO_FREE		}	/* 0x0100 - bit 9 */
-};
-static size_t trunk_conn_trigger_names_len = NUM_ELEMENTS(trunk_conn_trigger_names);
-
 static fr_table_num_ordered_t const trunk_states[] = {
 	{ L("IDLE"),					TRUNK_STATE_IDLE			},
 	{ L("ACTIVE"),					TRUNK_STATE_ACTIVE			},
@@ -435,10 +437,12 @@ static fr_table_num_ordered_t const trunk_connection_events[] = {
 static size_t trunk_connection_events_len = NUM_ELEMENTS(trunk_connection_events);
 
 #define CONN_TRIGGER(_state) do { \
-	if (trunk->conf.conn_triggers) { \
-		trigger(unlang_interpret_get_thread_default(), \
+	if (trunk->conf.conn_triggers && !trunk->trigger_undef[fr_high_bit_pos(_state)]) { \
+		if (trigger(unlang_interpret_get_thread_default(), \
 			trunk->conf.conn_trigger_cs, fr_table_str_by_value(trunk_conn_trigger_names, _state, \
-							 "<INVALID>"), true, NULL); \
+							 "<INVALID>"), true, NULL) == -1) { \
+			trunk->trigger_undef[fr_high_bit_pos(_state)] = true; \
+		} \
 	} \
 } while (0)
 
