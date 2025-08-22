@@ -426,7 +426,15 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
-#if !defined(HAVE_PCRE) && defined(HAVE_REGEX)
+	version_add_feature(cs, "regex-pcre2",
+#ifdef HAVE_PCRE2
+				true
+#else
+				false
+#endif
+				);
+
+#if !defined(HAVE_PCRE) && !defined(HAVE_PCRE2) && defined(HAVE_REGEX)
 	version_add_feature(cs, "regex-posix", true);
 	version_add_feature(cs, "regex-posix-extended",
 #  ifdef HAVE_REG_EXTENDED
