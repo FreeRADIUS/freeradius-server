@@ -174,7 +174,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 				return 0;
 			}
 			preg->jitd = true;
-		} while (0)
+		} while (0);
 #endif
 	}
 
