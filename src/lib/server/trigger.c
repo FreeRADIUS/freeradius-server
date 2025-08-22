@@ -138,7 +138,9 @@ typedef struct {
  * @param[in] args		to make available via the @verbatim %trigger(<arg>) @endverbatim xlat.
  * @return
  *	- 0 on success.
- *	- -1 on failure.
+ *	- -1 if the trigger is not defined.
+ *	- -2 if the trigger was rate limited.
+ *	- -3 on failure.
  */
 int trigger(unlang_interpret_t *intp,
 	    CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_list_t *args)
@@ -250,7 +252,7 @@ int trigger(unlang_interpret_t *intp,
 		 *
 		 *	@todo - make this configurable for longer periods of time.
 		 */
-		if (fr_time_to_sec(found->last_fired) == fr_time_to_sec(now)) return -1;
+		if (fr_time_to_sec(found->last_fired) == fr_time_to_sec(now)) return -2;
 		found->last_fired = now;
 	}
 
@@ -266,7 +268,7 @@ int trigger(unlang_interpret_t *intp,
 		if (fr_pair_list_copy(request->request_ctx, &request->request_pairs, args) < 0) {
 			PERROR("Failed copying trigger arguments");
 			talloc_free(request);
-			return -1;
+			return -3;
 		}
 
 		/*
@@ -307,7 +309,7 @@ int trigger(unlang_interpret_t *intp,
 		talloc_free(request);
 		talloc_free(spaces);
 		talloc_free(text);
-		return -1;
+		return -3;
 	}
 
 	if (!tmpl_is_exec(trigger->vpt) && !tmpl_is_xlat(trigger->vpt)) {
@@ -317,7 +319,7 @@ int trigger(unlang_interpret_t *intp,
 		 */
 		cf_log_err(cp, "Trigger must be an \"expr\" or `exec`");
 		talloc_free(request);
-		return -1;
+		return -3;
 	}
 
 	fr_assert(trigger->vpt != NULL);
@@ -349,13 +351,13 @@ int trigger(unlang_interpret_t *intp,
 		if (unlang_interpret_set_timeout(request, fr_time_delta_from_sec(1)) < 0) {
 			DEBUG("Failed setting timeout on trigger %s", value);
 			talloc_free(request);
-			return -1;
+			return -3;
 		}
 
 		if (unlang_subrequest_child_push_and_detach(request) < 0) {
 			PERROR("Running trigger failed");
 			talloc_free(request);
-			return -1;
+			return -3;
 		}
 	} else {
 		/*
