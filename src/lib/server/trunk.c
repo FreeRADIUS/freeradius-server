@@ -295,11 +295,13 @@ struct trunk_s {
 	/** @} */
 };
 
+int trunk_trigger_cf_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+
 static conf_parser_t const trunk_config_request[] = {
 	{ FR_CONF_OFFSET("per_connection_max", trunk_conf_t, max_req_per_conn), .dflt = "2000" },
 	{ FR_CONF_OFFSET("per_connection_target", trunk_conf_t, target_req_per_conn), .dflt = "1000" },
 	{ FR_CONF_OFFSET("free_delay", trunk_conf_t, req_cleanup_delay), .dflt = "10.0" },
-	{ FR_CONF_OFFSET("triggers", trunk_conf_t, req_triggers) },
+	{ FR_CONF_OFFSET("triggers", trunk_conf_t, req_triggers), .func = trunk_trigger_cf_parse },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -328,7 +330,7 @@ conf_parser_t const trunk_config[] = {
 
 	{ FR_CONF_OFFSET("max_backlog", trunk_conf_t, max_backlog), .dflt = "1000" },
 
-	{ FR_CONF_OFFSET("triggers", trunk_conf_t, conn_triggers) },
+	{ FR_CONF_OFFSET("triggers", trunk_conf_t, conn_triggers), .func = trunk_trigger_cf_parse },
 
 	{ FR_CONF_OFFSET_SUBSECTION("connection", 0, trunk_conf_t, conn_conf, trunk_config_connection), .subcs_size = sizeof(trunk_config_connection) },
 	{ FR_CONF_POINTER("request", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) trunk_config_request },
@@ -5017,6 +5019,32 @@ trunk_t *trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	}
 
 	return trunk;
+}
+
+/** Find check for a module trigger section when parsing the `triggers` option.
+ *
+ */
+int trunk_trigger_cf_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	trunk_conf_t	*conf = parent;
+	CONF_SECTION	*cs = cf_item_to_section(cf_parent(ci));
+
+	if (cf_pair_parse_value(ctx, out, parent, ci, rule)< 0) return -1;
+
+	/*
+	 *	If the parent section of the `triggers` option contains a trigger
+	 *	section then store it as the module CONF SECTION for the appropriate
+	 *	trigger group.
+	 */
+	if (cf_section_find(cs, "trigger", NULL)) {
+		if (strcmp(cf_section_name(cs), "request") == 0) {
+			conf->req_trigger_cs = cs;
+		} else {
+			conf->conn_trigger_cs = cs;
+		}
+	}
+
+	return 0;
 }
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
