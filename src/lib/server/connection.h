@@ -99,6 +99,8 @@ typedef struct {
 
 	fr_pair_list_t	*trigger_args;		//!< Additional pairs to pass to the trigger function
 						///< Lifetime must be longer than the connection.
+
+	bool		triggers;		//!< Do we run triggers.
 } connection_conf_t;
 
 typedef struct connection_watch_entry_s connection_watch_entry_t;
