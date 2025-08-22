@@ -1,3 +1,6 @@
+# Selinux type we're building for
+%global selinuxtype targeted
+
 %bcond_with rlm_yubikey
 %bcond_without ldap
 %bcond_with radlast
@@ -552,6 +555,7 @@ exit 0
 
 %post
 if [ $1 = 1 ]; then
+  %selinux_set_booleans -s %{selinuxtype} radius_use_jit=on
 %if %{?_unitdir:1}%{!?_unitdir:0}
   /bin/systemctl enable radiusd.service
 %else
