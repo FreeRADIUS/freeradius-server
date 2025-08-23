@@ -20,7 +20,7 @@ Environment=HOSTNAME=%H
 # Limit memory to 2G this is fine for %99.99 of deployments.  FreeRADIUS
 # is not memory hungry, if it's using more than this, then there's probably
 # a leak somewhere.
-MemoryLimit=2G
+MemoryMax=2G
 
 RuntimeDirectory=radiusd radiusd/tmp
 RuntimeDirectoryMode=0775
