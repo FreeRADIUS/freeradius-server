@@ -632,7 +632,7 @@ static int dict_flag_offset(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 		return -1;
 	}
 
-	if (!da->flags.extra || (!(da->flags.subtype == FLAG_LENGTH_UINT8) || (da->flags.subtype == FLAG_LENGTH_UINT16))) {
+	if (!da_is_length_field(da)) {
 		fr_strerror_const("The 'offset' flag can only be used in combination with 'length=uint8' or 'length=uint16'");
 		return -1;
 	}
@@ -1399,7 +1399,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 
 	} else {
 		if (!dctx->relative_attr) {
-			fr_strerror_const("Unknown parent for partial OID");
+			fr_strerror_printf("No parent attribute reference was set for partial OID %s", argv[1]);
 			return -1;
 		}
 
@@ -1480,7 +1480,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		goto error;
 	}
 
-	if (da->flags.extra && (da->flags.subtype == FLAG_BIT_FIELD)) {
+	if (da_is_bit_field(da)) {
 		fr_strerror_const("Bit fields can only be defined as a MEMBER of data type 'struct'");
 		goto error;
 	}
@@ -1897,7 +1897,7 @@ static int dict_read_process_define(dict_tokenize_ctx_t *dctx, char **argv, int 
 		break;
 	}
 
-	if (da->flags.extra && (da->flags.subtype == FLAG_BIT_FIELD)) {
+	if (da_is_bit_field(da)) {
 		fr_strerror_const("Bit fields can only be defined as a MEMBER of data type 'struct'");
 		goto error;
 	}
@@ -2168,7 +2168,7 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *dctx, char **argv, int ar
 		return -1;
 	}
 
-	if (da->flags.extra && (da->flags.subtype == FLAG_BIT_FIELD)) {
+	if (da_is_bit_field(da)) {
 		fr_strerror_const("Bit fields can only be defined as a MEMBER of a data type 'struct'");
 		goto error;
 	}
@@ -2312,13 +2312,13 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 		 *	Note that the previous attribute might be a deferred TLV, in which case it doesn't
 		 *	exist.  That's fine.
 		 */
-		if (previous && previous->flags.extra && (previous->flags.subtype == FLAG_BIT_FIELD)) {
+		if (previous && da_is_bit_field(previous)) {
 			/*
 			 *	This attribute is a bit field.  Keep
 			 *	track of where in the byte we are
 			 *	located.
 			 */
-			if (da->flags.extra && (da->flags.subtype == FLAG_BIT_FIELD)) {
+			if (da_is_bit_field(da)) {
 				da->flags.flag_byte_offset = (da->flags.length + previous->flags.flag_byte_offset) & 0x07;
 
 			} else {
