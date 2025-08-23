@@ -506,7 +506,12 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 		ALLOW_FLAG(extra);
 		ALLOW_FLAG(subtype);
 
-		if (parent->flags.is_known_width && !flags->is_known_width && !flags->length) {
+		/*
+		 *	If our parent is known width, then the children have to be known width, UNLESS
+		 *	either this child or its parent has a "length" prefix.
+		 */
+		if (parent->flags.is_known_width && !flags->is_known_width && !flags->length &&
+		    !da_is_length_field(da) && !da_is_length_field(parent)) {
 			fr_strerror_const("Variable-sized fields cannot be used within a 'struct' which is 'array'");
 			return false;
 		}

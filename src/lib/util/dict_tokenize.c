@@ -2289,9 +2289,11 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 #endif
 
 	/*
-	 *	If our parent is a fixed-size struct, then we have to be fixed-size, too.
+	 *	If our parent is a known width struct, then we're
+	 *	allowed to be variable width.  The parent might just
+	 *	have a "length=16" prefix, which lets its children be
+	 *	variable sized.
 	 */
-	da->flags.is_known_width |= CURRENT_FRAME(dctx)->da->flags.is_known_width;
 
 	/*
 	 *	Double check any bit field magic
@@ -2456,9 +2458,8 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 		 *	to them.
 		 */
 		if (da->type == FR_TYPE_TLV) {
-			dctx->relative_attr = dict_attr_child_by_num(CURRENT_FRAME(dctx)->da,
-								     CURRENT_FRAME(dctx)->member_num);
-			if (dctx->relative_attr && (dict_dctx_push(dctx, dctx->relative_attr, NEST_NONE) < 0)) return -1;
+			dctx->relative_attr = da;
+			if (dict_dctx_push(dctx, dctx->relative_attr, NEST_NONE) < 0) return -1;
 		}
 
 	} else if (CURRENT_FRAME(dctx)->da->flags.length) {
