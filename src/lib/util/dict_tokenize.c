@@ -604,10 +604,12 @@ static int dict_flag_length(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 	fr_dict_attr_t *da = *da_p;
 
 	if (strcmp(value, "uint8") == 0) {
+		da->flags.is_known_width = true;
 		da->flags.extra = 1;
 		da->flags.subtype = FLAG_LENGTH_UINT8;
 
 	} else if (strcmp(value, "uint16") == 0) {
+		da->flags.is_known_width = true;
 		da->flags.extra = 1;
 		da->flags.subtype = FLAG_LENGTH_UINT16;
 
