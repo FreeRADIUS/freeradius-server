@@ -88,6 +88,7 @@ ssize_t fr_pair_raw_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	if (!da->parent) return -1; /* stupid static analyzers */
 #endif
 
+	FR_PROTO_TRACE("Creating Raw attribute %s", da->name);
 	FR_PROTO_HEX_DUMP(data, data_len, "fr_pair_raw_from_network");
 
 	/*
