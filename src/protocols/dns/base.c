@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include "attrs.h"
 
 static uint32_t instance_count = 0;
+static bool	instantiated = false;
 
 typedef struct {
 	uint16_t	code;
@@ -428,16 +429,20 @@ int fr_dns_global_init(void)
 		goto fail;
 	}
 
+	instantiated = true;
 	return 0;
 }
 
 void fr_dns_global_free(void)
 {
+	if (!instantiated) return;
+
 	fr_assert(instance_count > 0);
 
 	if (--instance_count > 0) return;
 
 	fr_dict_autofree(dns_dict);
+	instantiated = false;
 }
 
 static bool attr_valid(fr_dict_attr_t *da)
