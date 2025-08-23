@@ -118,7 +118,7 @@ typedef struct {
 
 	unsigned int		local : 1;       		//!< is a local variable
 
-	unsigned int		has_fixup : 1;
+	unsigned int		has_fixup : 1;			//! needs a fixup during dictionary parsing
 
 	/*
 	 *	main: extra is set, then this field is is key, bit, or a uint16 length field.
@@ -128,18 +128,26 @@ typedef struct {
 	uint8_t			subtype;			//!< protocol-specific values, OR key fields
 
 	/*
-	 *	Length in bytes for most attributes.
-	 *	Length in bits for da_is_bit_field(da)
+	 *	TLVs: Number of bytes in the "type" field for TLVs (typically 1, 2, or 4)
+	 *
+	 *	da_is_bit_field(da): offset in the byte where this bit
+	 *  	field ends.  This is only used as a caching mechanism
+	 *  	during parsing of the dictionaries.
+	 *
+	 *	time/time_delta: fr_time_res_t, which has 4 possible values.
+	 *
+	 *	otherwise: unused.
 	 */
-	uint8_t			length;				//!< length of the attribute
+	uint8_t			type_size;			//!< Type size for TLVs
 
 	/*
-	 *	TLVs: 1, 2, or 4.
-	 *	date / time types: fr_time_res_t, which has 4 possible values.
-	 *	bit fields: offset in the byte where this bit field ends, which is only
-	 *  	used as a caching mechanism during parsing of the dictionaries.
+	 *	da_is_bit_field(da): Length of the field in bits.
+	 *
+	 *	TLV: Number of bytes in the "length" field
+	 *
+	 *	otherwise: Length in bytes
 	 */
-	uint8_t			type_size;			//!< For TLV2 and root attributes.
+	uint16_t	       	length;				//!< length of the attribute
 } fr_dict_attr_flags_t;
 
 #define flag_time_res type_size

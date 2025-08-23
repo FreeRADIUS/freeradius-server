@@ -368,9 +368,9 @@ static int dict_process_type_field(dict_tokenize_ctx_t *dctx, char const *name, 
 		}
 
 		/*
-		 *	"length" has to fit into a uint8_t field.
+		 *	"length" has to fit into the flags.length field.
 		 */
-		if ((length == 0) || (length > 255)) {
+		if ((length == 0) || (length > UINT16_MAX)) {
 			fr_strerror_printf("Invalid length for '%s[...]'", name);
 			return -1;
 		}
@@ -1054,7 +1054,7 @@ static int dict_struct_finalise(dict_tokenize_ctx_t *dctx)
 	 *	If we have discovered that the structure has a fixed size, then update the da with that
 	 *	information.
 	 */
-	if (frame->struct_size <= 255) {
+	if (frame->struct_size < UINT16_MAX) {
 		UNCONST(fr_dict_attr_t *, da)->flags.length = frame->struct_size;
 	} /* else length 0 means "unknown / variable size / too large */
 
