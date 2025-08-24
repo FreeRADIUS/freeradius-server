@@ -483,6 +483,42 @@ static void *struct_next_encodable(fr_dcursor_t *cursor, void *current, void *uc
 	return c;
 }
 
+static ssize_t encode_tlv(fr_dbuff_t *dbuff, fr_dict_attr_t const *tlv,
+			  fr_da_stack_t *da_stack, unsigned int depth,
+			  fr_dcursor_t *cursor, void *encode_ctx,
+			  UNUSED fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_pair)
+
+{
+	fr_pair_t	*vp;
+	fr_dcursor_t	tlv_cursor;
+	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
+
+	if (!encode_pair) {
+		fr_strerror_printf("Asked to encode child attribute %s, but we were not passed an encoding function",
+				   tlv->name);
+		return PAIR_ENCODE_FATAL_ERROR;
+	}
+
+	vp = fr_dcursor_current(cursor);
+	if (!vp) return 0;
+
+	fr_assert(vp->da == tlv);
+
+	vp = fr_pair_dcursor_init(&tlv_cursor, &vp->vp_group);
+	if (vp) {
+		ssize_t slen;
+
+		FR_PROTO_TRACE("fr_struct_to_network trailing TLVs of %s", tlv->name);
+		fr_proto_da_stack_build(da_stack, vp->da);
+		FR_PROTO_STACK_PRINT(da_stack, depth);
+
+		slen = fr_pair_cursor_to_network(&work_dbuff, da_stack, depth + 1, &tlv_cursor, encode_ctx, encode_pair);
+		if (slen < 0) return slen;
+	}
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
 
 ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			     fr_da_stack_t *da_stack, unsigned int depth,
@@ -496,7 +532,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	bool			do_length = false;
 	uint8_t			bit_buffer = 0;
 	fr_pair_t const		*vp = fr_dcursor_current(parent_cursor);
-	fr_dict_attr_t const   	*child, *key_da, *parent, *tlv = NULL;
+	fr_dict_attr_t const   	*child, *parent, *key_da = NULL;
 	fr_dcursor_t		child_cursor, *cursor;
 	size_t			prefix_length = 0;
 	ssize_t			slen;
@@ -553,8 +589,6 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 				   __FUNCTION__, vp->da->name, vp->da->parent->name, parent->name);
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
-
-	key_da = NULL;
 
 	/*
 	 *	Some structs are prefixed by a 16-bit length.
@@ -642,8 +676,10 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 
 			/*
 			 *	A child TLV is missing, we're done, and we don't encode any data.
+			 *
+			 *	@todo - mark up the TLVs as required?
 			 */
-			if (child->type == FR_TYPE_TLV) goto done;
+			if (child->type == FR_TYPE_TLV) goto encode_length;
 
 			/*
 			 *	Zero out the unused field.
@@ -721,8 +757,10 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			fr_assert(!key_da);
 
 			FR_PROTO_TRACE("child %s is a TLV field", child->name);
-			tlv = child;
-			goto done;
+			slen = encode_tlv(&work_dbuff, child, da_stack, depth, cursor,
+					  encode_ctx, encode_value, encode_pair);
+			if (slen < 0) return slen;
+			goto encode_length;
 		}
 
 		FR_PROTO_TRACE("child %s encode_value", child->name);
@@ -763,13 +801,12 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		 */
 		if ((vp->da->parent == key_da) &&
 		    (vp->vp_type == FR_TYPE_STRUCT)) {
-			ssize_t	len;
 			fr_proto_da_stack_build(da_stack, vp->da);
 
-			len = fr_struct_to_network(&work_dbuff, da_stack, depth + 2, /* note + 2 !!! */
+			slen = fr_struct_to_network(&work_dbuff, da_stack, depth + 2, /* note + 2 !!! */
 						   cursor, encode_ctx, encode_value, encode_pair);
-			if (len < 0) return len;
-			goto done;
+			if (slen < 0) return slen;
+			goto encode_length;
 		}
 
 		/*
@@ -781,13 +818,12 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		 */
 		if ((vp->da->parent->parent == key_da) &&
 		    (vp->da->parent->type == FR_TYPE_STRUCT)) {
-			ssize_t	len;
 			fr_proto_da_stack_build(da_stack, vp->da->parent);
 
-			len = fr_struct_to_network(&work_dbuff, da_stack, depth + 2, /* note + 2 !!! */
+			slen = fr_struct_to_network(&work_dbuff, da_stack, depth + 2, /* note + 2 !!! */
 						   cursor, encode_ctx, encode_value, encode_pair);
-			if (len < 0) return len;
-			goto done;
+			if (slen < 0) return slen;
+			goto encode_length;
 		}
 
 		/*
@@ -797,7 +833,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		    (vp->vp_type != FR_TYPE_TLV)) {
 			if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return PAIR_ENCODE_FATAL_ERROR;
 			(void) fr_dcursor_next(cursor);
-			goto done;
+			goto encode_length;
 		}
 
 		/*
@@ -805,30 +841,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		 */
 	}
 
-done:
-	vp = fr_dcursor_current(cursor);
-	if (tlv && vp && (vp->da == tlv)) {
-		fr_dcursor_t tlv_cursor;
-
-		if (!encode_pair) {
-			fr_strerror_printf("Asked to encode child attribute %s, but we were not passed an encoding function",
-					   tlv->name);
-			return PAIR_ENCODE_FATAL_ERROR;
-		}
-
-		fr_assert(vp->vp_type == FR_TYPE_TLV);
-
-		vp = fr_pair_dcursor_init(&tlv_cursor, &vp->vp_group);
-		if (vp) {
-			FR_PROTO_TRACE("fr_struct_to_network trailing TLVs of %s", tlv->name);
-			fr_proto_da_stack_build(da_stack, vp->da);
-			FR_PROTO_STACK_PRINT(da_stack, depth);
-
-			slen = fr_pair_cursor_to_network(&work_dbuff, da_stack, depth + 1, &tlv_cursor, encode_ctx, encode_pair);
-			if (slen < 0) return slen;
-		}
-	}
-
+encode_length:
 	if (do_length) {
 		size_t length = fr_dbuff_used(&work_dbuff);
 
