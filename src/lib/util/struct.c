@@ -26,47 +26,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/struct.h>
 #include <freeradius-devel/io/pair.h>
 
-/** Generic decode value.
- *
- */
-static ssize_t generic_decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
-				    fr_dict_attr_t const *parent,
-				    uint8_t const *data, size_t const data_len, UNUSED void *decode_ctx)
-{
-	fr_pair_t *vp;
-	ssize_t slen;
-
-	if (!fr_type_is_leaf(parent->type)) {
-		FR_PROTO_TRACE("Cannot use generic decoder for data type %s", fr_type_to_str(parent->type));
-		fr_strerror_printf("Cannot decode data type %s", fr_type_to_str(parent->type));
-		return -1;
-	}
-
-	vp = fr_pair_afrom_da(ctx, parent);
-	if (!vp) {
-		FR_PROTO_TRACE("fr_struct_from_network - failed allocating child VP");
-		return PAIR_DECODE_OOM;
-	}
-
-	/*
-	 *	No protocol-specific data types here (yet).
-	 *
-	 *	If we can't decode this field, then the entire
-	 *	structure is treated as a raw blob.
-	 */
-	slen = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
-					  &FR_DBUFF_TMP(data, data_len), data_len, true);
-	if (slen < 0) {
-		FR_PROTO_TRACE("fr_struct_from_network - failed decoding child VP %s", vp->da->name);
-		talloc_free(vp);
-		return slen;
-	}
-
-	fr_pair_append(out, vp);
-
-	return slen;
-}
-
 /** Convert a STRUCT to one or more VPs
  *
  */
@@ -111,7 +70,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	/*
 	 *	Simplify the code by having a generic decode routine.
 	 */
-	if (!decode_value) decode_value = generic_decode_value;
+	if (!decode_value) decode_value = fr_pair_decode_value;
 
 	/*
 	 *	Decode structs with length prefixes.
@@ -524,26 +483,6 @@ static void *struct_next_encodable(fr_dcursor_t *cursor, void *current, void *uc
 	return c;
 }
 
-static ssize_t generic_encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, UNUSED unsigned int depth,
-				    fr_dcursor_t *cursor, UNUSED void *encode_ctx)
-{
-	fr_pair_t const		*vp = fr_dcursor_current(cursor);
-	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
-
-	if (!fr_type_is_leaf(vp->vp_type)) {
-		FR_PROTO_TRACE("Cannot use generic encoder for data type %s", fr_type_to_str(vp->vp_type));
-		fr_strerror_printf("Cannot encode data type %s", fr_type_to_str(vp->vp_type));
-		return PAIR_ENCODE_FATAL_ERROR;
-	}
-
-
-	if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return PAIR_ENCODE_FATAL_ERROR;
-
-	(void) fr_dcursor_next(cursor);
-
-	return fr_dbuff_set(dbuff, &work_dbuff);	
-}
-
 
 ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			     fr_da_stack_t *da_stack, unsigned int depth,
@@ -642,7 +581,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		do_length = true;
 	}
 
-	if (!encode_value) encode_value = generic_encode_value;
+	if (!encode_value) encode_value = fr_pair_encode_value;
 
 	/*
 	 *	Loop over all children.

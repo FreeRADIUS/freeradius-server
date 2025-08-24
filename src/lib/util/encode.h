@@ -49,6 +49,9 @@ ssize_t fr_pair_cursor_to_network(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, un
 ssize_t fr_pair_ref_to_network(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth,
 			       fr_dcursor_t *cursor) CC_HINT(nonnull);
 
+ssize_t fr_pair_encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, UNUSED unsigned int depth,
+			     fr_dcursor_t *cursor, UNUSED void *encode_ctx) CC_HINT(nonnull(1,4));
+
 #ifdef __cplusplus
 }
 #endif
