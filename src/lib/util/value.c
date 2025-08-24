@@ -1442,13 +1442,11 @@ size_t fr_value_box_network_length(fr_value_box_t const *value)
 			/*
 			 *	Clamp length at maximum we're allowed to encode.
 			 */
-			if (da_is_length_field(value->enumv)) {
-				if (value->enumv->flags.subtype == FLAG_LENGTH_UINT8) {
-					if (value->vb_length > 255) return 255;
+			if (da_is_length_field8(value->enumv)) {
+				if (value->vb_length > UINT8_MAX) return UINT8_MAX;
 
-				} else if (value->enumv->flags.subtype == FLAG_LENGTH_UINT16) {
-					if (value->vb_length > 65535) return 65535;
-				}
+			} else if (da_is_length_field16(value->enumv)) {
+				if (value->vb_length > UINT16_MAX) return UINT16_MAX;
 			}
 		}
 		return value->vb_length;
@@ -1560,21 +1558,17 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 					max = value->enumv->flags.length;
 				}
 
-			} else if (da_is_length_field(value->enumv)) {
+			} else if (da_is_length_field8(value->enumv)) {
 				/*
 				 *	Truncate the output to the max allowed for this field and encode the length.
 				 */
-				if (value->enumv->flags.subtype == FLAG_LENGTH_UINT8) {
-					if (max > 255) max = 255;
-					FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t) max);
+				if (max > UINT8_MAX) max = UINT8_MAX;
+				FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t) max);
 
-				} else if (value->enumv->flags.subtype == FLAG_LENGTH_UINT16) {
-					if (max > 65536) max = 65535;
-					FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) max);
+			} else if (da_is_length_field16(value->enumv)) {
 
-				} else {
-					return -1;
-				}
+				if (max > UINT16_MAX) max = UINT16_MAX;
+				FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) max);
 			}
 		}
 
@@ -1966,27 +1960,19 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 			if (enumv->flags.length) {
 				newlen = enumv->flags.length;
 
-			} else if (da_is_length_field(enumv)) {
-				/*
-				 *	Or fields with a length prefix.
-				 */
-				if (enumv->flags.subtype == FLAG_LENGTH_UINT8) {
-					uint8_t num = 0;
+			} else if (da_is_length_field8(enumv)) {
+				uint8_t num = 0;
 
-					FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
-					newlen = num;
-					offset = 1;
+				FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
+				newlen = num;
+				offset = 1;
 
-				} else if (enumv->flags.subtype == FLAG_LENGTH_UINT16) {
-					uint16_t num = 0;
+			} else if (da_is_length_field16(enumv)) {
+				uint16_t num = 0;
 
-					FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
-					newlen = num;
-					offset = 2;
-
-				} else {
-					return -1;
-				}
+				FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
+				newlen = num;
+				offset = 2;
 			}
 		}
 

@@ -123,9 +123,10 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		/*
 		 *	Set how many bytes there are in the "length" field.
 		 */
-		if (parent->flags.subtype == FLAG_LENGTH_UINT8) {
+		if (da_is_length_field8(parent)) {
 			field_len = 1;
 		} else {
+			fr_assert(da_is_length_field16(parent));
 			field_len = 2;
 		}
 
@@ -606,20 +607,23 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	 */
 	if (!da_is_length_field(parent)) {
 		work_dbuff = FR_DBUFF(dbuff);
+
+	} else if (da_is_length_field8(parent)) {
+		work_dbuff = FR_DBUFF_MAX(dbuff, UINT8_MAX);
+		fr_dbuff_marker(&hdr, &work_dbuff);
+
+		FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 1);
+		prefix_length = 1;
+		do_length = true;
+
 	} else {
-		if (parent->flags.subtype == FLAG_LENGTH_UINT8) {
-			work_dbuff = FR_DBUFF_MAX(dbuff, 256);
-			fr_dbuff_marker(&hdr, &work_dbuff);
+		fr_assert(da_is_length_field16(parent));
 
-			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 1);
-			prefix_length = 1;
-		} else {
-			work_dbuff = FR_DBUFF_MAX(dbuff, 65536);
-			fr_dbuff_marker(&hdr, &work_dbuff);
+		work_dbuff = FR_DBUFF_MAX(dbuff, UINT16_MAX);
+		fr_dbuff_marker(&hdr, &work_dbuff);
 
-			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 2);
-			prefix_length = 2;
-		}
+		FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 2);
+		prefix_length = 2;
 		do_length = true;
 	}
 
@@ -905,7 +909,7 @@ done:
 		 */
 		if (length < prefix_length) return PAIR_ENCODE_FATAL_ERROR;
 #endif
-		if (parent->flags.subtype == FLAG_LENGTH_UINT8) {
+		if (da_is_length_field8(parent)) {
 			length -= prefix_length;
 
 			length += da_length_offset(parent);
