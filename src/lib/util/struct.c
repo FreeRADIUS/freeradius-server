@@ -519,6 +519,32 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff, fr_dict_attr_t const *tlv,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
+static ssize_t encode_keyed_struct(fr_dbuff_t *dbuff, fr_pair_t const *vp,
+				   fr_da_stack_t *da_stack, unsigned int depth,
+				   fr_dcursor_t *cursor, void *encode_ctx,
+				   fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_pair)
+{
+	FR_PROTO_TRACE("fr_struct_to_network encoding key %s", vp->da->name);
+
+	/*
+	 *	We usually have a keyed struct for the child.
+	 */
+	if (vp->vp_type == FR_TYPE_STRUCT) {
+		fr_proto_da_stack_build(da_stack, vp->da);
+		return fr_struct_to_network(dbuff, da_stack, depth + 2, /* note + 2 !!! */
+					    cursor, encode_ctx, encode_value, encode_pair);
+	}
+
+	/*
+	 *	If it's not a real child, then it's a raw something.
+	 */
+	fr_assert(vp->vp_type == FR_TYPE_OCTETS);
+	fr_assert(vp->da->flags.is_unknown);
+
+	if (fr_value_box_to_network(dbuff, &vp->data) <= 0) return PAIR_ENCODE_FATAL_ERROR;
+	(void) fr_dcursor_next(cursor);
+	return 0;
+}
 
 ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			     fr_da_stack_t *da_stack, unsigned int depth,
@@ -653,6 +679,8 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		 *	Remember the key field.  Note that we ignore raw key fields.
 		 */
 		if (fr_dict_attr_is_key_field(child)) {
+			fr_assert(!key_da);
+
 			key_da = child;
 		}
 
@@ -790,55 +818,14 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	 *	Check for keyed data to encode.
 	 */
 	if (vp && key_da) {
-		FR_PROTO_TRACE("fr_struct_to_network encoding key %s", key_da->name);
-
 		/*
-		 *	If our parent is a struct, AND its parent is
-		 *	the key_da, then we have a keyed struct for
-		 *	the child.  Go encode it.
-		 *
-		 *	This check is really for "nested" VPs.
+		 *	We have no more "flat" VPs.
 		 */
-		if ((vp->da->parent == key_da) &&
-		    (vp->vp_type == FR_TYPE_STRUCT)) {
-			fr_proto_da_stack_build(da_stack, vp->da);
+		fr_assert(vp->da->parent == key_da);
 
-			slen = fr_struct_to_network(&work_dbuff, da_stack, depth + 2, /* note + 2 !!! */
-						   cursor, encode_ctx, encode_value, encode_pair);
-			if (slen < 0) return slen;
-			goto encode_length;
-		}
-
-		/*
-		 *	If our parent is a struct, AND its parent is
-		 *	the key_da, then we have a keyed struct for
-		 *	the child.  Go encode it.
-		 *
-		 *	This check is really for "flat" VPs.
-		 */
-		if ((vp->da->parent->parent == key_da) &&
-		    (vp->da->parent->type == FR_TYPE_STRUCT)) {
-			fr_proto_da_stack_build(da_stack, vp->da->parent);
-
-			slen = fr_struct_to_network(&work_dbuff, da_stack, depth + 2, /* note + 2 !!! */
-						   cursor, encode_ctx, encode_value, encode_pair);
-			if (slen < 0) return slen;
-			goto encode_length;
-		}
-
-		/*
-		 *	The next VP is likely octets and unknown.
-		 */
-		if ((vp->da->parent == key_da) &&
-		    (vp->vp_type != FR_TYPE_TLV)) {
-			if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return PAIR_ENCODE_FATAL_ERROR;
-			(void) fr_dcursor_next(cursor);
-			goto encode_length;
-		}
-
-		/*
-		 *	We have no idea what to do.  Ignore it.
-		 */
+		slen = encode_keyed_struct(&work_dbuff, vp, da_stack, depth,
+					   cursor, encode_ctx, encode_value, encode_pair);
+		if (slen < 0) return slen;
 	}
 
 encode_length:
