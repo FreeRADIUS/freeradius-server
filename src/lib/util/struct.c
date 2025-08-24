@@ -106,7 +106,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_pair_list_init(&child_list_head); /* still used elsewhere */
 	child_list = &struct_vp->vp_group;
 	child_ctx = struct_vp;
-	child_num = 1;
 	key_vp = NULL;
 
 	/*
@@ -180,14 +179,10 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	@todo - If the struct is truncated on a MEMBER boundary, we silently omit
 	 *	the trailing members.  Maybe this should be an error?
 	 */
-	while (p < end) {
+	for (child_num = 1;
+	     (p < end) && (child = fr_dict_attr_child_by_num(parent, child_num)) != NULL;
+	     child_num++) {
 		size_t child_length;
-
-		/*
-		 *	Go to the next child.  If it doesn't exist, we're done.
-		 */
-		child = fr_dict_attr_child_by_num(parent, child_num);
-		if (!child) break;
 
 		FR_PROTO_TRACE("Decoding struct %s child %s (%d)", parent->name, child->name, child->attr);
 		FR_PROTO_HEX_DUMP(p, (end - p), "fr_struct_from_network - remaining %zu", (size_t) (end - p));
@@ -255,7 +250,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 			p += (num_bits >> 3); /* go to the LAST bit, not the byte AFTER the last bit */
 			offset = num_bits & 0x07;
-			child_num++;
 			continue;
 		}
 
@@ -378,7 +372,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		}
 
 		p += slen;   	/* not always the same as child->flags.length */
-		child_num++;	/* go to the next child */
 
 		if (fr_dict_attr_is_key_field(child)) {
 			fr_assert(!key_vp);
@@ -560,11 +553,11 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	fr_dbuff_t		work_dbuff;
 	fr_dbuff_marker_t	hdr;
 	int			offset = 0;
-	unsigned int		child_num = 1;
+	unsigned int		child_num;
 	bool			do_length = false;
 	uint8_t			bit_buffer = 0;
 	fr_pair_t const		*vp = fr_dcursor_current(parent_cursor);
-	fr_dict_attr_t const   	*key_da, *parent, *tlv = NULL;
+	fr_dict_attr_t const   	*child, *key_da, *parent, *tlv = NULL;
 	fr_dcursor_t		child_cursor, *cursor;
 	size_t			prefix_length = 0;
 	ssize_t			slen;
@@ -651,18 +644,18 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 
 	if (!encode_value) encode_value = generic_encode_value;
 
-	for (;;) {
-		fr_dict_attr_t const *child;
-
+	/*
+	 *	Loop over all children.
+	 */
+	for (child_num = 1;
+	     (child = fr_dict_attr_child_by_num(parent, child_num)) != NULL;
+	     child_num++) {
 		/*
 		 *	The child attributes should be in order.  If
 		 *	they're not, we fill the struct with zeroes.
 		 *
 		 *	The caller will encode TLVs.
 		 */
-		child = fr_dict_attr_child_by_num(parent, child_num);
-		if (!child) break;
-
 		FR_PROTO_TRACE("fr_struct_to_network child %s", child->name);
 
 		/*
@@ -705,7 +698,6 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 					fr_strerror_printf("Failed encoding bit field %s", child->name);
 					return offset;
 				}
-				child_num++;
 				continue;
 			}
 
@@ -718,7 +710,6 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			 *	Zero out the unused field.
 			 */
 			FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, child->flags.length);
-			child_num++;
 			continue;
 		}
 
@@ -813,7 +804,6 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 
 	next:
 		FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "fr_struct_to_network after child %s", child->name);
-		child_num++;
 	}
 
 	/* Check for leftover bits */
