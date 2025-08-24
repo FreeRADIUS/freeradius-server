@@ -531,6 +531,27 @@ static void *struct_next_encodable(fr_dcursor_t *cursor, void *current, void *uc
 	return c;
 }
 
+static ssize_t generic_encode_value(fr_dbuff_t *dbuff, UNUSED fr_da_stack_t *da_stack, UNUSED unsigned int depth,
+				    fr_dcursor_t *cursor, UNUSED void *encode_ctx)
+{
+	fr_pair_t const		*vp = fr_dcursor_current(cursor);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
+
+	if (!fr_type_is_leaf(vp->vp_type)) {
+		FR_PROTO_TRACE("Cannot use generic encoder for data type %s", fr_type_to_str(vp->vp_type));
+		fr_strerror_printf("Cannot encode data type %s", fr_type_to_str(vp->vp_type));
+		return PAIR_ENCODE_FATAL_ERROR;
+	}
+
+
+	if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return PAIR_ENCODE_FATAL_ERROR;
+
+	(void) fr_dcursor_next(cursor);
+
+	return fr_dbuff_set(dbuff, &work_dbuff);	
+}
+
+
 ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			     fr_da_stack_t *da_stack, unsigned int depth,
 			     fr_dcursor_t *parent_cursor, void *encode_ctx,
@@ -546,6 +567,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	fr_dict_attr_t const   	*key_da, *parent, *tlv = NULL;
 	fr_dcursor_t		child_cursor, *cursor;
 	size_t			prefix_length = 0;
+	ssize_t			slen;
 
 	if (!vp) {
 		fr_strerror_printf("%s: Can't encode empty struct", __FUNCTION__);
@@ -626,6 +648,8 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		prefix_length = 2;
 		do_length = true;
 	}
+
+	if (!encode_value) encode_value = generic_encode_value;
 
 	for (;;) {
 		fr_dict_attr_t const *child;
@@ -771,40 +795,21 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			goto done;
 		}
 
-		if (encode_value) {
-			ssize_t	len;
+		FR_PROTO_TRACE("child %s encode_value", child->name);
 
-			FR_PROTO_TRACE("child %s encode_value", child->name);
+		/*
+		 *	Call the protocol encoder for non-bit fields.
+		 */
+	encode_data:
+		fr_proto_da_stack_build(da_stack, child);
 
-			/*
-			 *	Call the protocol encoder for non-bit fields.
-			 */
-			fr_proto_da_stack_build(da_stack, child);
-
-			if (child->flags.array) {
-				len = fr_pair_array_to_network(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx, encode_value);
-			} else {
-				len = encode_value(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
-			}
-			if (len < 0) return len;
-			vp = fr_dcursor_current(cursor);
-
-		} else if (!fr_type_is_leaf(child->type)) {
-			fr_strerror_printf("non-leaf attribute %s of type %s in struct %s, but no 'encode_value' callback was specified",
-					   child->name, fr_type_to_str(child->type), parent->name);
-			return PAIR_ENCODE_FATAL_ERROR;
-
+		if (child->flags.array) {
+			slen = fr_pair_array_to_network(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx, encode_value);
 		} else {
-		encode_data:
-			FR_PROTO_TRACE("child %s encode to network", child->name);
-
-			if (fr_value_box_to_network(&work_dbuff, &vp->data) <= 0) return PAIR_ENCODE_FATAL_ERROR;
-
-			vp = fr_dcursor_next(cursor);
-			if (!vp) break;
-
-			if (child->flags.array && (vp->da == child)) goto encode_data;
+			slen = encode_value(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		}
+		if (slen < 0) return slen;
+		vp = fr_dcursor_current(cursor);
 
 	next:
 		FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "fr_struct_to_network after child %s", child->name);
@@ -874,7 +879,6 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 done:
 	vp = fr_dcursor_current(cursor);
 	if (tlv && vp && (vp->da == tlv)) {
-		ssize_t slen;
 		fr_dcursor_t tlv_cursor;
 
 		if (!encode_pair) {
