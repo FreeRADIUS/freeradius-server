@@ -120,7 +120,7 @@ typedef struct {
 
 	unsigned int		has_fixup : 1;			//! needs a fixup during dictionary parsing
 
-	unsigned int		migration_union_key;		//!< for migrating key fields
+	unsigned int		migration_union_key : 1;       	//!< for migrating key fields
 
 	/*
 	 *	main: extra is set, then this field is is key, bit, or a uint16 length field.
