@@ -2349,6 +2349,10 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 			key = dict_attr_child_by_num(CURRENT_FRAME(dctx)->da, i);
 			if (!key) continue; /* really should be WTF? */
 
+			/*
+			 *	@todo - we can allow this if the _rest_ of the struct is fixed size, i.e. if
+			 *	there is a key field, and then the union is fixed size.
+			 */
 			if (fr_dict_attr_is_key_field(key)) {
 				fr_strerror_printf("'struct' %s has a 'key' field %s, and cannot end with a TLV %s",
 						   CURRENT_FRAME(dctx)->da->name, key->name, argv[0]);

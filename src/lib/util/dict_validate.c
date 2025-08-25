@@ -576,7 +576,7 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 			 *	key fields.  Yes, this is O(N^2), but
 			 *	the structs are small.
 			 */
-			if (flags->extra && (flags->subtype == FLAG_KEY_FIELD)) {
+			if (fr_dict_attr_is_key_field(da)) {
 				for (i = 1; i < attr; i++) {
 					sibling = fr_dict_attr_child_by_num(parent, i);
 					if (!sibling) {
