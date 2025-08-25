@@ -299,6 +299,14 @@ cp_found:
 	el = unlang_interpret_event_list(request);
 	if (!el) el = main_loop_event_list();
 
+	/*
+	 *	During shutdown there may be no event list, so nothing much can be done.
+	 */
+	if (unlikely(!el)) {
+		talloc_free(request);
+		return -3;
+	}
+
 	t_rules = (tmpl_rules_t) {
 		.attr = {
 			.dict_def = request->local_dict, /* we can use local attributes */
