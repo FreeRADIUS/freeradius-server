@@ -38,9 +38,8 @@ extern "C" {
 
 int		trigger_init(CONF_SECTION const *cs);
 
-int		trigger(unlang_interpret_t *intp,
-			     CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_list_t *args)
-			     CC_HINT(nonnull(3));
+int		trigger(unlang_interpret_t *intp, CONF_SECTION const *cs, CONF_PAIR **trigger_cp,
+			char const *name, bool rate_limit, fr_pair_list_t *args) CC_HINT(nonnull(4));
 
 bool		trigger_enabled(void);
 

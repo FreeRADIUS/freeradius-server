@@ -163,7 +163,7 @@ static int sync_state_free(sync_state_t *sync)
 
 	DEBUG3("Abandoning sync base dn \"%s\", filter \"%s\"", sync->config->base_dn, sync->config->filter);
 
-	trigger(unlang_interpret_get_thread_default(), sync->config->cs, "modules.ldap_sync.stop", true, &sync->trigger_args);
+	trigger(unlang_interpret_get_thread_default(), sync->config->cs, NULL, "modules.ldap_sync.stop", true, &sync->trigger_args);
 
 	if (!sync->conn->handle) return 0;	/* Handled already closed? */
 

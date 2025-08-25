@@ -313,6 +313,8 @@ struct trunk_s {
 	/** @} */
 
 	bool			trigger_undef[NUM_ELEMENTS(trunk_conn_trigger_names)];	//!< Record that a specific trigger is undefined.
+
+	CONF_PAIR		*trigger_cp[NUM_ELEMENTS(trunk_conn_trigger_names)];	//!< Cached trigger CONF_PAIRs
 };
 
 int trunk_trigger_cf_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
@@ -437,11 +439,13 @@ static fr_table_num_ordered_t const trunk_connection_events[] = {
 static size_t trunk_connection_events_len = NUM_ELEMENTS(trunk_connection_events);
 
 #define CONN_TRIGGER(_state) do { \
-	if (trunk->conf.conn_triggers && !trunk->trigger_undef[fr_high_bit_pos(_state)]) { \
-		if (trigger(unlang_interpret_get_thread_default(), \
-			trunk->conf.conn_trigger_cs, fr_table_str_by_value(trunk_conn_trigger_names, _state, \
-							 "<INVALID>"), true, NULL) == -1) { \
-			trunk->trigger_undef[fr_high_bit_pos(_state)] = true; \
+	uint8_t idx = fr_high_bit_pos(_state); \
+	if (trunk->conf.conn_triggers && !trunk->trigger_undef[idx]) { \
+		if (trigger(unlang_interpret_get_thread_default(), trunk->conf.conn_trigger_cs, \
+			    &trunk->trigger_cp[idx], \
+			    fr_table_str_by_value(trunk_conn_trigger_names, _state, \
+						  "<INVALID>"), true, NULL) == -1) { \
+			trunk->trigger_undef[idx] = true; \
 		} \
 	} \
 } while (0)
@@ -472,7 +476,7 @@ void trunk_request_state_log_entry_add(char const *function, int line,
 #define REQUEST_TRIGGER(_state) do { \
 	if (trunk->conf.req_triggers) { \
 		trigger(unlang_interpret_get_thread_default(), \
-			trunk->conf.req_trigger_cs, fr_table_str_by_value(trunk_req_trigger_names, _state, \
+			trunk->conf.req_trigger_cs, NULL, fr_table_str_by_value(trunk_req_trigger_names, _state, \
 							 "<INVALID>"), true, NULL); \
 	} \
 } while (0)

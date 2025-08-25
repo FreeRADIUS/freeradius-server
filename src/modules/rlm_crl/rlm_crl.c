@@ -220,7 +220,7 @@ static void crl_expire(fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 		fr_pair_list_init(&args);
 		MEM((vp = fr_pair_afrom_da_nested(crl, &args, attr_crl_cdp_url)));
 		fr_value_box_strdup_shallow(&vp->data, NULL, crl->cdp_url, true);
-		trigger(unlang_interpret_get_thread_default(), crl->inst->cs, "modules.crl.expired",
+		trigger(unlang_interpret_get_thread_default(), crl->inst->cs, NULL, "modules.crl.expired",
 			crl->inst->trigger_rate_limit, &args);
 	}
 
@@ -505,7 +505,7 @@ static int crl_tmpl_yield(request_t *request, rlm_crl_t const *inst, rlm_crl_thr
 		return -1;
 	}
 
-	trigger(unlang_interpret_get_thread_default(), inst->cs, "modules.crl.fetchuri", inst->trigger_rate_limit,
+	trigger(unlang_interpret_get_thread_default(), inst->cs, NULL, "modules.crl.fetchuri", inst->trigger_rate_limit,
 		&request->request_pairs);
 
 	if (unlang_module_yield_to_tmpl(rctx, &rctx->crl_data, request, vpt,
@@ -535,7 +535,7 @@ static unlang_action_t CC_HINT(nonnull) crl_process_cdp_data(unlang_result_t *p_
 	switch (fr_value_box_list_num_elements(&rctx->crl_data)) {
 	case 0:
 		REDEBUG("No CRL data returned from %pV, failing", rctx->cdp_url);
-		trigger(unlang_interpret_get_thread_default(), inst->cs, "modules.crl.fetchfail",
+		trigger(unlang_interpret_get_thread_default(), inst->cs, NULL, "modules.crl.fetchfail",
 			inst->trigger_rate_limit, &request->request_pairs);
 	again:
 		talloc_free(rctx->cdp_url);
@@ -570,7 +570,7 @@ static unlang_action_t CC_HINT(nonnull) crl_process_cdp_data(unlang_result_t *p_
 		talloc_free(crl_data);
 		if (!crl_entry) {
 			RPERROR("Failed to process returned CRL data");
-			trigger(unlang_interpret_get_thread_default(), inst->cs, "modules.crl.fetchbad",
+			trigger(unlang_interpret_get_thread_default(), inst->cs, NULL, "modules.crl.fetchbad",
 				inst->trigger_rate_limit, &request->request_pairs);
 			goto again;
 		}

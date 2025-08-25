@@ -132,6 +132,10 @@ typedef struct {
  *				If cs is not NULL, the portion after the last '.' in name is used for the trigger.
  *				If cs is NULL, the entire name is used to find the trigger in the global trigger
  *				section.
+ * @param[in,out] trigger_cp	Optional pointer to a CONF_PAIR pointer.  If populated and the pointer is not
+ * 				NULL, this CONF_PAIR will be used rather than searching.
+ * 				If populated, and the pointer is NULL, the search will happen and the pointer
+ * 				will be populated with the found CONF_PAIR.
  * @param[in] name		the path relative to the global trigger section ending in the trigger name
  *				e.g. module.ldap.pool.start.
  * @param[in] rate_limit	whether to rate limit triggers.
@@ -142,8 +146,8 @@ typedef struct {
  *	- -2 if the trigger was rate limited.
  *	- -3 on failure.
  */
-int trigger(unlang_interpret_t *intp,
-	    CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_list_t *args)
+int trigger(unlang_interpret_t *intp, CONF_SECTION const *cs, CONF_PAIR **trigger_cp,
+	    char const *name, bool rate_limit, fr_pair_list_t *args)
 {
 	CONF_ITEM		*ci;
 	CONF_PAIR		*cp;
@@ -163,6 +167,14 @@ int trigger(unlang_interpret_t *intp,
 	 *	we're just checking the configuration.
 	 */
 	if (!trigger_cs || check_config) return 0;
+
+	/*
+	 *	Do we have a cached conf pair?
+	 */
+	if (trigger_cp && *trigger_cp) {
+		cp = *trigger_cp;
+		goto cp_found;
+	}
 
 	/*
 	 *	A module can have a local "trigger" section.  In which
@@ -215,6 +227,9 @@ int trigger(unlang_interpret_t *intp,
 	cp = cf_item_to_pair(ci);
 	if (!cp) return -1;
 
+	if (trigger_cp) *trigger_cp = cp;
+
+cp_found:
 	value = cf_pair_value(cp);
 	if (!value) {
 		DEBUG3("Trigger has no value: %s", name);

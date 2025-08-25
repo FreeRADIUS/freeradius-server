@@ -91,7 +91,7 @@ static inline void exfile_trigger(exfile_t *ef, exfile_entry_t *entry, char cons
 				       talloc_array_length(entry->filename) - 1, false);
 
 	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, name_suffix);
-	trigger(unlang_interpret_get_thread_default(), ef->conf, name, false, &args);
+	trigger(unlang_interpret_get_thread_default(), ef->conf, NULL, name, false, &args);
 
 	fr_pair_list_free(&args);
 }

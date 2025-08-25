@@ -142,7 +142,7 @@ int active_directory_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no,
 	DEBUG3("Sync created with base dn \"%s\", filter \"%s\", msgid %i",
 		sync->config->base_dn, sync->config->filter, sync->msgid);
 
-	trigger(unlang_interpret_get_thread_default(), config->cs, "modules.ldap_sync.start", true, &sync->trigger_args);
+	trigger(unlang_interpret_get_thread_default(), config->cs, NULL, "modules.ldap_sync.start", true, &sync->trigger_args);
 
 	return 0;
 }

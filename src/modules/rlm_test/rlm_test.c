@@ -353,7 +353,7 @@ static xlat_action_t trigger_test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*in_head = fr_value_box_list_head(in);
 	fr_value_box_t	*vb;
 
-	if (trigger(unlang_interpret_get(request), NULL, in_head->vb_strvalue, false, NULL) < 0) {
+	if (trigger(unlang_interpret_get(request), NULL, NULL, in_head->vb_strvalue, false, NULL) < 0) {
 		RPEDEBUG("Running trigger failed");
 		return XLAT_ACTION_FAIL;
 	}
