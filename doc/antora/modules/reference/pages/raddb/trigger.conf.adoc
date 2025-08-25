@@ -139,59 +139,81 @@ configuration.  Not all modules support a `trigger`
 subsection.
 
 
-#### rlm_ldap: The LDAP module
+
+
+### Trunk connection triggers
+
+The following modules use trunk connections:
+
+  - ldap
+  - sql
+  - radius
+  - tacacs
+
+and these all support the following triggers relating to trunk
+connection state changes.
+
+Instead of globally configuring these triggers here, they should be configured per module instance
+by including a `trigger` section within the module instance `pool` section.  That allows for
+the `${.:name}` and `${.:instance}` expansions to reference the correct module name and instance name.
+
+In addition to either enabling the triggers here or within the module `pool` section, for triggers
+to be enabled for a specific module instance, the `triggers` option within the `pool` section needs
+to be set to `yes`.
 
 
 Define common arguments to use below:
 
 
 
-open:: A new connection to the directory has been opened.
+connection_halted:: A connection has entered the "halted" state.
+
+All connections start in this state, and return to it after closing.
 
 
 
-close:: A connection to the directory has been closed.
+connection_init:: A connection is being initialised
 
 
 
-min:: Connection was released too quickly.
+connection_connecting::  A connection has started connecting to the remote server
 
 
 
-max:: Connection was held for too long.
+active::  A connection has become active (able to service requests)
+
+  *Note:* This trigger should not be configured for SQL since due to the limitation of
+one query per connection, every SQL query results in the connection switching from
+`active` to `full` and then back again.
 
 
 
-#### rlm_sql: The SQL module
-
-
-args:: Define common arguments to use below:
+connection_closed::  A connection has been closed.
 
 
 
-open:: A new connection to the database has been opened.
+connection_full::  A connection has become full.
+
+A full connection is one which has reached the maximum number of requests per connection.
+
+  *Note:* This trigger should not be configured for SQL as every query results in the
+connection becoming full, due to the limit of one query per connection.
 
 
 
-close:: A connection to the database has been closed.
+connection_inactive::  A connection has become inactive (unable to accept new requests)
 
 
 
-fail:: Failed to open a new connection to the database.
+connection_inactive_draining::  A connection has become inactive and is draining its requests.
 
 
 
-min:: A connection was released too quickly.
+connection_draining::  A connection is draining its outstanding requests
 
 
 
-max:: A connection was held for too long.
-
-
-
-NOTE: You can also use connection pool's start/stop/open/close triggers
-for any module which uses the `pool` section, both here and under
-`pool.trigger` in module configuration.
+connection_draining_to_free:: A connection is draining its outstanding requests before feeing.
 
 
 
@@ -224,22 +246,20 @@ trigger {
 		max_requests = `${snmptrap}::serverMaxRequests`
 	}
 	modules {
-		ldap {
-			args = "radiusdModuleName s '${.:name}' radiusdModuleInstance s '${.:instance}'"
-			open = `${snmptrap}::serverModuleConnectionUp ${args}`
-			close = `${snmptrap}::serverModuleConnectionDown ${args}`
-			min = `${snmptrap}::serverModuleConnectionReservedPeriodMin ${args}`
-			max = `${snmptrap}::serverModuleConnectionReservedPeriodMax ${args}`
-		}
-		sql {
-			args = "radiusdModuleName s '${.:name}' radiusdModuleInstance s '${.:instance}'"
-			open = `${snmptrap}::serverModuleConnectionUp ${args}`
-			close = `${snmptrap}::serverModuleConnectionDown ${args}`
-			fail = `${snmptrap}::serverModuleConnectionFail ${args}`
-			min = `${snmptrap}::serverModuleConnectionReservedPeriodMin ${args}`
-			max = `${snmptrap}::serverModuleConnectionReservedPeriodMax ${args}`
-		}
 	}
+#	pool {
+#		args = "radiusdModuleName s '${.:name}' radiusdModuleInstance s '${.:instance}'"
+#		connection_halted = `${snmptrap}::serverModuleConnectionHalted ${args}`
+#		connection_init = `${snmptrap}::serverModuleConnectionInit ${args}`
+#		connection_connecting = `${snmptrap}::serverModuleConnectionInit ${args}`
+#		connection_active = `${snmptrap}::serverModuleConnectionUp ${args}`
+#		connection_closed = `${snmptrap}::serverModuleConnectionDown ${args}`
+#		connection_full = `${snmptrap}::serverModuleConnectionFull ${args}`
+#		connection_inactive = `${snmptrap}::serverModuleConnectionInactive ${args}`
+#		connection_inactive_draining = `${snmptrap}::serverModuleConnectionInactiveDraining ${args}`
+#		connection_draining = `${snmptrap}::serverModuleConnectionDraining ${args}`
+#		connection_draining_to_free = `${snmptrap}::serverModuleConnectionDrainingToFree ${args}`
+#	}
 }
 ```
 
