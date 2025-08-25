@@ -490,7 +490,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff, fr_dict_attr_t const *tlv,
 
 {
 	fr_pair_t	*vp;
-	fr_dcursor_t	tlv_cursor;
+	fr_dcursor_t	child_cursor;
 	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
 
 	if (!encode_pair) {
@@ -500,11 +500,9 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff, fr_dict_attr_t const *tlv,
 	}
 
 	vp = fr_dcursor_current(cursor);
-	if (!vp) return 0;
+	if (!vp || (vp->da != tlv)) return 0;
 
-	fr_assert(vp->da == tlv);
-
-	vp = fr_pair_dcursor_init(&tlv_cursor, &vp->vp_group);
+	vp = fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
 	if (vp) {
 		ssize_t slen;
 
@@ -512,9 +510,121 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff, fr_dict_attr_t const *tlv,
 		fr_proto_da_stack_build(da_stack, vp->da);
 		FR_PROTO_STACK_PRINT(da_stack, depth);
 
-		slen = fr_pair_cursor_to_network(&work_dbuff, da_stack, depth + 1, &tlv_cursor, encode_ctx, encode_pair);
+		slen = fr_pair_cursor_to_network(&work_dbuff, da_stack, depth + 1, &child_cursor, encode_ctx, encode_pair);
 		if (slen < 0) return slen;
 	}
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
+static ssize_t encode_union(fr_dbuff_t *dbuff, fr_dict_attr_t const *wrapper,
+			    fr_dict_attr_t const *key_da, fr_pair_t const *key_vp, fr_dbuff_marker_t *key_m,
+			    fr_da_stack_t *da_stack, unsigned int depth,
+			    fr_dcursor_t *cursor, void *encode_ctx,
+			    UNUSED fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_pair)
+
+{
+	ssize_t		slen;
+	fr_pair_t	*parent, *child, *found = NULL;
+	fr_dcursor_t	child_cursor;
+	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
+
+	if (!encode_pair) {
+		fr_strerror_printf("Asked to encode child attribute %s, but we were not passed an encoding function",
+				   wrapper->name);
+		return PAIR_ENCODE_FATAL_ERROR;
+	}
+
+	parent = fr_dcursor_current(cursor);
+	if (!parent || (parent->da != wrapper)) return 0;
+
+	fr_assert(key_vp);	/* @todo */
+
+	child = fr_pair_dcursor_init(&child_cursor, &parent->vp_group);
+	if (!child) {
+		/*
+		 *	@todo - do we want to skip encoding the entire parent structure?
+		 */
+		FR_PROTO_TRACE("fr_struct_to_network union %s has no children", key_da->name);
+		return 0;
+	}
+
+	fr_assert(child->vp_type == FR_TYPE_STRUCT);
+
+	/*
+	 *	There's a key VP, we find the matching child struct, and then set the cursor to encode just
+	 *	that child.
+	 */
+	if (key_vp) {
+		fr_dict_enum_value_t const *enumv;
+
+		enumv = fr_dict_enum_by_value(key_da, &key_vp->data);
+		if (enumv) {
+			found = fr_pair_find_by_da(&parent->vp_group, NULL, enumv->key_child_ref[0]);
+			if (found) {
+				(void) fr_dcursor_set_current(&child_cursor, found);
+			}
+		}
+	}
+
+	/*
+	 *	No child matching the key vp was found.  Either there's no key_vp, or the key_vp doesn't match
+	 *	the chld we have.
+	 *
+	 *	We then update the key field so that it corresponds to the child that we found.
+	 */
+	if (!found) {
+		fr_dict_enum_value_t const *enumv;
+		fr_dict_enum_iter_t iter;
+		fr_dbuff_t key_dbuff;
+
+		/*
+		 *	Root through the enum values, looking for a child ref which matches the child we
+		 *	found.
+		 */
+		for (enumv = fr_dict_enum_iter_init(key_da, &iter);
+		     enumv != NULL;
+		     enumv = fr_dict_enum_iter_next(key_da, &iter)) {
+			if (enumv->key_child_ref[0] == child->da) break;
+		}
+
+		/*
+		 *	There's a child, but no matching enum.  That's a fatal error of the dictionary
+		 *	tokenizer.
+		 */
+		if (!fr_cond_assert(enumv)) return PAIR_ENCODE_FATAL_ERROR;
+
+		/*
+		 *	Create a dbuff for the key, and encode the key.
+		 *
+		 *	Note that enumv->value->vb_length is NOT set. That field is really only used for
+		 *	string / octet data types.
+		 */
+		fr_assert(key_da->flags.length >= 1);
+		fr_assert(key_da->flags.length <= 4);
+
+		FR_DBUFF_INIT(&key_dbuff, fr_dbuff_current(key_m), (size_t) key_da->flags.length);
+
+		FR_PROTO_TRACE("fr_struct_to_network union %s encoding key %s for child %s",
+			       parent->da->name, key_da->name, child->da->name);
+
+		if (fr_value_box_to_network(&key_dbuff, enumv->value) <= 0) return PAIR_ENCODE_FATAL_ERROR;
+	}
+
+	/*
+	 *	And finally encode the one child.
+	 */
+	FR_PROTO_TRACE("fr_struct_to_network union %s encoding child %s", parent->da->name, child->da->name);
+	fr_proto_da_stack_build(da_stack, child->da);
+	FR_PROTO_STACK_PRINT(da_stack, depth);
+
+	slen = fr_struct_to_network(&work_dbuff, da_stack, depth + 2,
+				    &child_cursor, encode_ctx, encode_value, encode_pair);
+	if (slen < 0) return slen;
+
+	/*
+	 *	@todo - if there is more than one child of the union, that's an error!
+	 */
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -558,10 +668,12 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	bool			do_length = false;
 	uint8_t			bit_buffer = 0;
 	fr_pair_t const		*vp = fr_dcursor_current(parent_cursor);
+	fr_pair_t const		*key_vp = NULL;
 	fr_dict_attr_t const   	*child, *parent, *key_da = NULL;
 	fr_dcursor_t		child_cursor, *cursor;
 	size_t			prefix_length = 0;
 	ssize_t			slen;
+	fr_dbuff_marker_t	key_m;
 
 	if (!vp) {
 		fr_strerror_printf("%s: Can't encode empty struct", __FUNCTION__);
@@ -682,6 +794,8 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			fr_assert(!key_da);
 
 			key_da = child;
+			key_vp = vp;
+			fr_dbuff_marker(&key_m, &work_dbuff);
 		}
 
 		/*
@@ -787,6 +901,20 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			FR_PROTO_TRACE("child %s is a TLV field", child->name);
 			slen = encode_tlv(&work_dbuff, child, da_stack, depth, cursor,
 					  encode_ctx, encode_value, encode_pair);
+			if (slen < 0) return slen;
+			goto encode_length;
+		}
+
+		if (child->type == FR_TYPE_UNION) {
+			FR_PROTO_TRACE("child %s is a UNION field", child->name);
+
+			if (!key_da) {
+				FR_PROTO_TRACE("child %s is missing key_da", child->name);
+				goto encode_length;
+			}
+
+			slen = encode_union(&work_dbuff, child, key_da, key_vp, &key_m, da_stack, depth, cursor,
+					    encode_ctx, encode_value, encode_pair);
 			if (slen < 0) return slen;
 			goto encode_length;
 		}
