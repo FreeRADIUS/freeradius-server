@@ -556,10 +556,10 @@ redo:
 		case FR_TYPE_UINT16:
 		case FR_TYPE_UINT32:
 			/*
-			 *	Key fields have children in their namespace, but the children go into the
-			 *	parents context and list.
+			 *	Key fields have children in their namespace, but for OLD style, the children
+			 *	go into the parents context and list.
 			 */
-			if (fr_dict_attr_is_key_field(vp->da)) {
+			if (fr_dict_attr_is_key_field(vp->da) && !vp->da->flags.migration_union_key) {
 				fr_pair_t *parent_vp;
 
 				parent_vp = fr_pair_parent(vp);

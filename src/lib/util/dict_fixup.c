@@ -541,6 +541,8 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 
 	/*
 	 *	Can't clone KEY fields directly, you MUST clone the parent struct.
+	 *
+	 *	@todo - remove after migration_union_key is deleted
 	 */
 	if (!fr_type_is_non_leaf(src->type) || fr_dict_attr_is_key_field(src) || fr_dict_attr_is_key_field(dst)) {
 		fr_strerror_printf("Invalid reference from '%s' to %s", dst->name, src->name);

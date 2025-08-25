@@ -1440,6 +1440,8 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		key = ext->ref;
 		fr_assert(key);
 		fr_assert(fr_dict_attr_is_key_field(key));
+		da = UNCONST(fr_dict_attr_t *, key);
+		da->flags.migration_union_key = true;
 	}
 
 	da = dict_attr_alloc_null(dctx->dict->pool, dctx->dict->proto);
@@ -2546,6 +2548,9 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *dctx, char **argv, int 
 				return -1;
 			}
 
+			/*
+			 *	@todo - remove after migration_union_key is deleted
+			 */
 			if (!fr_dict_attr_is_key_field(parent)) {
 				fr_strerror_printf("Attribute '%s' is not a 'key' attribute", key_attr);
 				return -1;

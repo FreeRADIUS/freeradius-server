@@ -622,6 +622,9 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 	case FR_TYPE_UINT8:
 	case FR_TYPE_UINT16:
 	case FR_TYPE_UINT32:
+		/*
+		 *	@todo - remove after migration_union_key is deleted
+		 */
 		if (fr_dict_attr_is_key_field(parent)) break;
 		FALL_THROUGH;
 

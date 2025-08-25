@@ -1479,6 +1479,8 @@ bool dict_attr_can_have_children(fr_dict_attr_t const *da)
 		/*
 		 *	Children are allowed here, but ONLY if this
 		 *	attribute is a key field.
+		 *
+		 *	@todo - remove after migration_union_key is deleted
 		 */
 		if (da->parent && (da->parent->type == FR_TYPE_STRUCT) && fr_dict_attr_is_key_field(da)) return true;
 		break;
@@ -1868,6 +1870,8 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	 *
 	 *	Perhaps this can be done as a special case after we convert to UNIONs?  Because then
 	 *	we can allow ATTRIBUTE Global-VPN 255 struct[0].
+	 *
+	 *	@todo - remove after migration_union_key is deleted
 	 */
 	if (fr_dict_attr_is_key_field(da) && !key_child_ref) {
 		fr_strerror_const("Child attribute must be defined for VALUEs associated with a 'key' attribute");
@@ -5019,6 +5023,8 @@ bool fr_dict_attr_can_contain(fr_dict_attr_t const *parent, fr_dict_attr_t const
 	/*
 	 *	Child is a STRUCT which has a parent key field.  The
 	 *	child pair nesting, though, is in the grandparent.
+	 *
+	 *	@todo - remove after migration_union_key is deleted
 	 */
 	if (fr_dict_attr_is_key_field(child->parent)) {
 		fr_assert(child->parent->parent == parent);

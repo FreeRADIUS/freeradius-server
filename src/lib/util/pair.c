@@ -431,6 +431,8 @@ fr_pair_t *fr_pair_afrom_da_depth_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, 
 		 *	Otherwise if we're creating a child struct (which is magically parented by the key
 		 *	field), then don't bother creating the key field.  It will be automatically filled in
 		 *	by the encoder.
+		 *
+		 *	@todo - remove after migration_union_key is deleted
 		 */
 		if ((find != da) && fr_dict_attr_is_key_field(find)) {
 			continue;
@@ -3430,6 +3432,8 @@ static fr_pair_t *pair_alloc_parent(fr_pair_t *in, fr_pair_t *item, fr_dict_attr
 	 *
 	 *	If we're asked to create children of a keyed
 	 *	structure, just create the children in the parent.
+	 *
+	 *	@todo - remove after migration_union_key is deleted
 	 */
 	if (!fr_type_is_structural(da->type)) {
 		fr_assert(fr_dict_attr_is_key_field(da));

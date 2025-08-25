@@ -892,6 +892,8 @@ int pair_append_by_tmpl_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t 
 			 *
 			 *	We just skip one level down an don't create or update
 			 *	the key pair.
+			 *
+			 *	@todo - remove after migration_union_key is deleted
 			 */
 			if (vp && fr_dict_attr_is_key_field(ar->da) && fr_type_is_leaf(vp->data.type)) {
 				ar = tmpl_attr_list_next(ar_list, ar);

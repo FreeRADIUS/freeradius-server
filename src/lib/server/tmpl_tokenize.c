@@ -2108,6 +2108,8 @@ do_suffix:
 			/*
 			 *	Key fields can have children, because we really don't know how else to
 			 *	represent the child structures.
+			 *
+			 *	@todo - remove after migration_union_key is deleted
 			 */
 			if (fr_dict_attr_is_key_field(da)) goto is_union;
 

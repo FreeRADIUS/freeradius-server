@@ -66,7 +66,11 @@ static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
 	fr_dict_attr_ext_enumv_t	*src_ext = src_ext_ptr;
 	fr_hash_iter_t			iter;
 	fr_dict_enum_value_t			*enumv;
-	bool				has_child = fr_dict_attr_is_key_field(da_src);
+
+	/*
+	 *	@todo - remove after migration_union_key is deleted
+	 */
+	bool				has_child = fr_dict_attr_is_key_field(da_src) && !da_src->flags.migration_union_key;
 
 	if (!src_ext->value_by_name) return 0;
 
