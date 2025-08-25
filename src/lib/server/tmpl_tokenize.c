@@ -2096,10 +2096,7 @@ do_suffix:
 			}
 			break;
 
-		case FR_TYPE_STRUCT:
-		case FR_TYPE_TLV:
-		case FR_TYPE_VENDOR:
-		case FR_TYPE_VSA:
+		case FR_TYPE_STRUCTURAL_EXCEPT_GROUP:
 		is_union:
 			/*
 			 *	Structural types are parented and namespaced from their parent da.

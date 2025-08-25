@@ -531,10 +531,7 @@ redo:
 		 *	Reset the parsing to the new namespace if necessary.
 		 */
 		switch (vp->vp_type) {
-		case FR_TYPE_TLV:
-		case FR_TYPE_STRUCT:
-		case FR_TYPE_VSA:
-		case FR_TYPE_VENDOR:
+		case FR_TYPE_STRUCTURAL_EXCEPT_GROUP:
 			relative->ctx = vp;
 			relative->da = vp->da;
 			relative->list = &vp->vp_group;
@@ -555,7 +552,9 @@ redo:
 			relative->list = &vp->vp_group;
 			break;
 
-		default:
+		case FR_TYPE_UINT8:
+		case FR_TYPE_UINT16:
+		case FR_TYPE_UINT32:
 			/*
 			 *	Key fields have children in their namespace, but the children go into the
 			 *	parents context and list.
@@ -569,8 +568,16 @@ redo:
 				relative->ctx = parent_vp;
 				relative->da = vp->da;
 				relative->list = &parent_vp->vp_group;
+				break;
 			}
+			FALL_THROUGH;
+
+		default:
 			break;
+
+		case FR_TYPE_INTERNAL:
+			fr_strerror_printf("Cannot parse internal data type %s", fr_type_to_str(vp->vp_type));
+			return fr_sbuff_error(&our_in);
 		}
 
 		i++;
