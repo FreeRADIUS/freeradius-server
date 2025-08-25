@@ -330,8 +330,6 @@ cp_found:
 		cf_log_perr(cp, "%s^", spaces);
 
 		talloc_free(request);
-		talloc_free(spaces);
-		talloc_free(text);
 		return -3;
 	}
 
