@@ -2905,9 +2905,9 @@ uint32_t trunk_request_count_by_connection(trunk_connection_t const *tconn, int 
 	return count;
 }
 
-/** Automatically mark a connection as inactive
+/** Automatically mark a connection as full
  *
- * @param[in] tconn	to potentially mark as inactive.
+ * @param[in] tconn	to potentially mark as full.
  */
 static inline void trunk_connection_auto_full(trunk_connection_t *tconn)
 {
