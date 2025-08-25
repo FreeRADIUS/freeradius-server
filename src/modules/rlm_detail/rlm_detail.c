@@ -161,7 +161,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	CONF_SECTION	*conf = mctx->mi->conf;
 
 	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), inst->locking,
-					  inst->triggers, NULL, NULL);
+					  inst->triggers, "modules.detail", NULL);
 	if (!inst->ef) {
 		cf_log_err(conf, "Failed creating log file context");
 		return -1;
