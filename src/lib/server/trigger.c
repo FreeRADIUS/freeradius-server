@@ -173,6 +173,7 @@ int trigger(unlang_interpret_t *intp, CONF_SECTION const *cs, CONF_PAIR **trigge
 	 */
 	if (trigger_cp && *trigger_cp) {
 		cp = *trigger_cp;
+		ci = cf_pair_to_item(cp);
 		goto cp_found;
 	}
 
