@@ -791,6 +791,30 @@ static xlat_action_t xlat_func_file_rm(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_action_t xlat_func_file_touch(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+					  request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t *dst, *vb;
+	char const	*filename;
+	int		fd;
+
+	XLAT_ARGS(args, &vb);
+	fr_assert(vb->type == FR_TYPE_STRING);
+	filename = vb->vb_strvalue;
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	fr_dcursor_append(out, dst);
+
+	fd = open(filename, O_CREAT | S_IRUSR | S_IWUSR, 0600);
+	if (fd == -1) {
+		dst->vb_bool = false;
+		REDEBUG3("Failed touching file %s - %s", filename, fr_syserror(errno));
+	}
+
+	close(fd);
+
+	return XLAT_ACTION_DONE;
+}
 
 static xlat_arg_parser_t const xlat_func_taint_args[] = {
 	{ .required = true, .type = FR_TYPE_VOID },
@@ -4462,6 +4486,7 @@ do { \
 	XLAT_REGISTER_ARGS("file.exists", xlat_func_file_exists, FR_TYPE_BOOL, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.head", xlat_func_file_head, FR_TYPE_STRING, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.rm", xlat_func_file_rm, FR_TYPE_BOOL, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.touch", xlat_func_file_touch, FR_TYPE_BOOL, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.size", xlat_func_file_size, FR_TYPE_UINT64, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.tail", xlat_func_file_tail, FR_TYPE_STRING, xlat_func_file_name_count_args);
 	XLAT_REGISTER_ARGS("file.cat", xlat_func_file_cat, FR_TYPE_OCTETS, xlat_func_file_cat_args);
