@@ -810,6 +810,7 @@ static xlat_action_t xlat_func_file_touch(TALLOC_CTX *ctx, fr_dcursor_t *out, UN
 		dst->vb_bool = false;
 		REDEBUG3("Failed touching file %s - %s", filename, fr_syserror(errno));
 	}
+	dst->vb_bool = true;
 
 	close(fd);
 
