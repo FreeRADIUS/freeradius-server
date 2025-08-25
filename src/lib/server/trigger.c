@@ -313,7 +313,7 @@ cp_found:
 			.list_def = request_attr_request,
 		},
 		.xlat = {
-						     .runtime_el = el,
+			.runtime_el = el,
 		},
 		.at_runtime = true,
 	};
