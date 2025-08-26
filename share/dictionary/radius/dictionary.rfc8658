@@ -72,6 +72,9 @@ ATTRIBUTE	EA-Length				.12	uint32
 ATTRIBUTE	IPv4-Address				.13	ipv4addr
 ATTRIBUTE	Bind-IPv6-Prefix			.14	ipv6prefix
 
+#
+#  Only the lower 8 bits are used.
+#
 ATTRIBUTE	PSID-Offset				.15	uint32
 
 #
