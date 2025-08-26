@@ -1,0 +1,110 @@
+# -*- text -*-
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	Attributes and values defined in RFC 8658.
+#	http://www.ietf.org/rfc/rfc8658.txt
+#
+# These attribute definitions are obtuse, confusing, and downright
+# weird.  They do NOT follow any reasonable design.
+#
+#  * None of the attribute definitions use the RFC 8044 format.
+#
+#  * Softwire46-Rule is defined to have two numbers for the same name
+#
+#  * The "child" attributes are all in a flat number space, but there
+#    is text giving additional restrictions
+#
+#  * The text disagrees with itself.  See Softwire46-V4V6Bind
+#
+
+ATTRIBUTE	Softwire46-Configuration		241.9	tlv
+
+#
+#  MUST contain one Softwire46-Rule (which one?)
+#  MUST contain one or more Softwire46-BR
+#  MAY contain Softwire46-PORTPARAMS
+#
+ATTRIBUTE	Softwire46-MAP-E			.1	tlv
+
+#
+#  MUST contain one Softwire46-Rule (which one?)
+#  MUST contain one or more Softwire46-DMR
+#  MAY contain Softwire46-PORTPARAMS
+#
+ATTRIBUTE	Softwire46-MAP-T			.2	tlv
+
+#
+#  MUST contain one or more Softwire46-BR
+#  MUST contain on Softwire46-V4V6Bind
+#  MAY contain Softwire46-PORTPARAMS
+#
+ATTRIBUTE	Softwire46-Lightweight-4over6		.3	tlv
+
+#
+#  These two attributes can only contain Rule-IPv6-Prefix,
+#  Rule-IPv4-Prefix, and EA-Length.
+#
+ATTRIBUTE	Softwire46-Rule-Basic-Mapping-Rule	.4	tlv
+ATTRIBUTE	Softwire46-Rule-Forwarding-Mapping-Rule	.5	tlv
+
+ATTRIBUTE	Softwire46-BR				.6	ipv6addr
+ATTRIBUTE	Softwire46-DMR				.7	ipv6prefix
+
+#
+#  Contains IPv4-Address and/or Bind-IPv6-Prefix.
+#
+#  There MUST be exactly one Softwire46-V4V6Bind included in each
+#  Softwire46-Lightweight-4over6.  But the
+#  Softwire46-Lightweight-4over6 doesn't say this.
+#
+ATTRIBUTE	Softwire46-V4V6Bind			.8	tlv
+
+#
+#  PSID-Offset, PSID-Len, PSID
+#
+ATTRIBUTE	Softwire46-PORTPARAMS			.9	tlv
+
+ATTRIBUTE	Rule-IPv6-Prefix			.10	ipv6prefix
+ATTRIBUTE	Rule-IPv4-Prefix			.11	ipv4prefix
+ATTRIBUTE	EA-Length				.12	uint32
+ATTRIBUTE	IPv4-Address				.13	ipv4addr
+ATTRIBUTE	Bind-IPv6-Prefix			.14	ipv6prefix
+
+ATTRIBUTE	PSID-Offset				.15	uint32
+
+#
+#  Only the lower 8 bits are used.
+#
+ATTRIBUTE	PSID-Len				.16	uint32
+
+#
+#  Only the lower 16 bits are used.
+#
+ATTRIBUTE	PSID					.17	uint32
+
+#
+#  32-bit IANA registered option code  representing a Softwire46 mechanism.
+#
+ATTRIBUTE	Softwire46-Option-Code			.18	uint32
+VALUE	Softwire46-Option-Code		MAP-E			1
+VALUE	Softwire46-Option-Code		MAP-T			2
+VALUE	Softwire46-Option-Code		Lightweight-4over6	3
+VALUE	Softwire46-Option-Code		DS_Lite			144
+
+ATTRIBUTE	ASM-Prefix64				.19	ipv6prefix
+ATTRIBUTE	SSM-Prefix64				.20	ipv6prefix
+ATTRIBUTE	U-Prefix64				.21	ipv6prefix
+
+#
+#  MUST contain one or more Softwire46-Option-Code
+#
+ATTRIBUTE	Softwire46-Priority			241.10	tlv	clone=.Softwire46-Configuration
+
+#
+#  MUST contain ASM-Prefix64 or SSM-Prefix64, and  MAY include both
+#  MAY contain ASM-Prefix64, SSM-Prefix64, or U-Prefix6
+#  U-Prefix64 MUST be present when SSM-Prefix64 is present. U-Prefix64 MAY be present when ASM-Prefix64 is present.
+#
+ATTRIBUTE	Softwire46-Multicast			241.11	tlv	clone=.Softwire46-Configuration
