@@ -1661,6 +1661,12 @@ do_read:
 		}
 
 		MEM(client = client_alloc(thread, state, inst, thread, radclient, network));
+
+		/*
+		 *	Parent the dynamic client radclient off the client - it
+		 *	is the client which gets freed by the dynamic client timers.
+		 */
+		if (state == PR_CLIENT_PENDING) talloc_steal(client, radclient);
 	}
 
 have_client:
