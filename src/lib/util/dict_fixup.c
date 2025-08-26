@@ -190,6 +190,8 @@ int fr_dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const
 			 *	Load the new dictionary, and mark it as loaded from our dictionary.
 			 */
 			if (fr_dict_protocol_afrom_file(&dict, proto_name, NULL, (rel->dict)->root->name) < 0) {
+				fr_strerror_printf_push("Perhaps there is a '.' missing before the attribute name in %.*s ?",
+							(int) fr_sbuff_used(in), fr_sbuff_start(in));
 				return -1;
 			}
 
