@@ -12,25 +12,6 @@ RUN dnf install -y rpmdevtools openssl epel-release git procps dnf-utils \
 RUN dnf config-manager --set-enabled crb
 
 #
-#  Documentation build dependencies
-#
-define(`NODE_VER', `20')dnl
-define(`ANTORA_VER', `3.1.7')dnl
-
-#  - doxygen & JSON.pm
-RUN dnf install -y doxygen graphviz perl-JSON
-#  - antora (npm needed)
-RUN curl -sL https://rpm.nodesource.com/setup_`'NODE_VER.x | bash -
-RUN dnf install -y nodejs
-RUN npm i -g @antora/cli@ANTORA_VER @antora/site-generator-default@ANTORA_VER
-#  - pandoc
-RUN curl -o - -L $(curl -s https://api.github.com/repos/jgm/pandoc/releases/latest | grep "browser_download_url.*tar.gz" | cut -d '"' -f 4 | head -1) | tar xzvf - -C /tmp/
-RUN mv /tmp/pandoc-*/bin/* /usr/local/bin
-#  - asciidoctor
-RUN dnf install -y rubygems-devel
-RUN gem install asciidoctor
-
-#
 #  Setup a src dir in /usr/local
 #
 RUN mkdir -p /usr/local/src/repositories

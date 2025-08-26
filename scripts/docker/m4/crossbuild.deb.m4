@@ -95,37 +95,6 @@ dnl for tests:
 
 
 #
-#  Documentation build dependencies
-#
-define(`NODE_VER', `20')dnl
-define(`ANTORA_VER', `3.1.7')dnl
-
-WORKDIR /tmp
-
-#  - doxygen & JSON.pm
-RUN apt-get install $APT_OPTS \
-        doxygen \
-        graphviz \
-        libjson-perl
-
-#  - antora (needs npm)
-RUN bash -c "$(wget -O - https://deb.nodesource.com/setup_`'NODE_VER.x)" && \
-    apt-get install $APT_OPTS nodejs && \
-    npm i -g @antora/cli@ANTORA_VER @antora/site-generator-default@ANTORA_VER
-
-#  - pandoc
-RUN wget $(wget -qO - https://api.github.com/repos/jgm/pandoc/releases/latest | sed -ne 's/.*"browser_download_url".*"\(.*amd64\.deb\)"/\1/ p') && \
-    find . -mindepth 1 -maxdepth 1 -type f -name 'pandoc-*.deb' -print0 | \
-        xargs -0 -r apt-get install $APT_OPTS && \
-    find . -mindepth 1 -maxdepth 1 -type f -name 'pandoc-*.deb' -delete
-
-#  - asciidoctor
-RUN apt-get install $APT_OPTS \
-    ruby ruby-dev && \
-    gem install asciidoctor
-
-
-#
 #  Setup a src dir in /usr/local
 #
 RUN mkdir -p /usr/local/src/repositories
