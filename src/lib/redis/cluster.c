@@ -2249,7 +2249,6 @@ bool fr_redis_cluster_min_version(fr_redis_cluster_t *cluster, char const *min_v
  * @param module		Configuration section to search for 'server' conf pairs in.
  * @param conf			Base redis server configuration. Cluster nodes share database
  *				number and password.
- * @param triggers_enabled	Whether triggers should be enabled.
  * @param log_prefix		Custom log prefix.  Defaults to @verbatim rlm_<module> (<instance>) @endverbatim.
  * @param trigger_prefix	Custom trigger prefix.  Defaults to @verbatim modules.<module>.pool @endverbatim.
  * @param trigger_args		Argument pairs to pass to the trigger in addition to Connection-Pool-Server,
@@ -2261,7 +2260,6 @@ bool fr_redis_cluster_min_version(fr_redis_cluster_t *cluster, char const *min_v
 fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 					   CONF_SECTION *module,
 					   fr_redis_conf_t *conf,
-					   bool triggers_enabled,
 					   char const *log_prefix,
 					   char const *trigger_prefix,
 					   fr_pair_list_t *trigger_args)
@@ -2277,16 +2275,13 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	uint64_t		num_nodes;
 	fr_redis_cluster_t	*cluster;
 
-	fr_assert(triggers_enabled || !trigger_prefix);
-	fr_assert(triggers_enabled || (!trigger_args || fr_pair_list_empty(trigger_args)));
-
 	MEM(cluster = talloc_zero(NULL, fr_redis_cluster_t));
 	fr_pair_list_init(&cluster->trigger_args);
 
 	cs_name1 = cf_section_name1(module);
 	cs_name2 = cf_section_name2(module);
 
-	cluster->triggers_enabled = triggers_enabled;
+	cluster->triggers_enabled = conf->triggers;
 	if (cluster->triggers_enabled) {
 		/*
 		 *	Setup trigger prefix

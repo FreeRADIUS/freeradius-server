@@ -77,7 +77,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", mctx->mi->parent->name);
 
-	driver->cluster = fr_redis_cluster_alloc(driver, mctx->mi->conf, &driver->conf, true,
+	driver->cluster = fr_redis_cluster_alloc(driver, mctx->mi->conf, &driver->conf,
 						 buffer, "modules.cache.pool", NULL);
 	if (!driver->cluster) {
 		ERROR("Cluster failure");

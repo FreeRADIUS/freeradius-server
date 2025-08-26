@@ -792,7 +792,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	fr_socket_t *nodes;
 	int ret, i;
 
-	inst->cluster = fr_redis_cluster_alloc(inst, mctx->mi->conf, &inst->conf, true, NULL, NULL, NULL);
+	inst->cluster = fr_redis_cluster_alloc(inst, mctx->mi->conf, &inst->conf, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
 
 	/*

@@ -131,7 +131,6 @@ bool fr_redis_cluster_min_version(fr_redis_cluster_t *cluster, char const *min_v
 fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 					   CONF_SECTION *module,
 					   fr_redis_conf_t *conf,
-					   bool enable_triggers,
 					   char const *log_prefix,
 					   char const *trigger_prefix,
 					   fr_pair_list_t *trigger_args);

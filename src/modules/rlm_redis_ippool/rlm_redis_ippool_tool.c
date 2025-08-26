@@ -1266,7 +1266,11 @@ static int driver_init(TALLOC_CTX *ctx, CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	this->cluster = fr_redis_cluster_alloc(this, conf, &this->conf, false,
+	/*
+	 *  Triggers won't work from the tool
+	 */
+	this->conf.triggers = false;
+	this->cluster = fr_redis_cluster_alloc(this, conf, &this->conf,
 					       "rlm_redis_ippool_tool", NULL, NULL);
 	if (!this->cluster) {
 		talloc_free(this);
