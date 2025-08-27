@@ -634,7 +634,7 @@ fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *cluster_thread
 	MEM(rtrunk = talloc_zero(cluster_thread, fr_redis_trunk_t));
 	rtrunk->io_conf = io_conf;
 	rtrunk->trunk = trunk_alloc(rtrunk, cluster_thread->el,
-				       &io_funcs, cluster_thread->tconf, cluster_thread->log_prefix, rtrunk,
+				       &io_funcs, cluster_thread->tconf, io_conf->log_prefix, rtrunk,
 				       cluster_thread->delay_start);
 	if (!rtrunk->trunk) {
 		talloc_free(rtrunk);
