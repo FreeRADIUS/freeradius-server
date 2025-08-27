@@ -260,7 +260,7 @@ fr_redis_command_set_t *fr_redis_command_set_alloc(TALLOC_CTX *ctx,
  *
  * @param[in] cmd to free.  Frees any redis results associated with the command.
  */
-static int _redis_command_free(fr_redis_command_t *cmd)
+static int _redis_command_free(UNUSED fr_redis_command_t *cmd)
 {
 	//if (cmd->result) fr_redis_reply_free(&cmd->result);
 
@@ -480,37 +480,41 @@ static connection_t *_redis_pipeline_connection_alloc(trunk_connection_t *tconn,
  * @param[in] conn		Connection handle containing the fr_redis_handle_t.
  * @param[in] uctx		fr_redis_cluster_t.  Unused.
  */
-static void _redis_pipeline_mux(trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
+static void _redis_pipeline_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
+				connection_t *conn, UNUSED void *uctx)
 {
-	trunk_request_t	*treq;
+	trunk_request_t		*treq;
 	fr_redis_command_set_t 	*cmds;
 	fr_redis_command_t	*cmd;
 	fr_redis_handle_t	*h = talloc_get_type_abort(conn->h, fr_redis_handle_t);
-	request_t			*request;
+	request_t		*request;
 
-	treq = trunk_connection_pop_request(&request, (void *)&cmds, NULL, tconn);
-	while ((cmd = fr_dlist_head(&cmds->pending))) {
-		/*
-		 *	If this fails it probably means the connection
-		 *	is disconnecting, but if that's happening then
-		 *	we shouldn't be enqueueing new requests?
-		 */
-		if (unlikely(redisAsyncCommand(h->ac, _redis_pipeline_demux, cmd, "%s", cmd->str) != REDIS_OK)) {
-			ROPTIONAL(ERROR, REDEBUG, "Unexpected error queueing REDIS command");
+	while (trunk_connection_pop_request(&treq, tconn) == 0) {
+		cmds = talloc_get_type_abort(treq->preq, fr_redis_command_set_t);
+		request = treq->request;
+		while ((cmd = fr_dlist_head(&cmds->pending))) {
+			/*
+			 *	If this fails it probably means the connection
+			 *	is disconnecting, but if that's happening then
+			 *	we shouldn't be enqueueing new requests?
+			 */
+			if (unlikely(redisAsyncCommand(h->ac, _redis_pipeline_demux, cmd, "%s", cmd->str) != REDIS_OK)) {
+				ROPTIONAL(ERROR, REDEBUG, "Unexpected error queueing REDIS command");
 
-			while ((cmd = fr_dlist_head(&cmds->sent))) {
-				fr_redis_connection_ignore_response(h, cmd->sqn);
-				fr_dlist_remove(&cmds->sent, cmd);
-				fr_dlist_insert_tail(&cmds->pending, cmd);
+				while ((cmd = fr_dlist_head(&cmds->sent))) {
+					fr_redis_connection_ignore_response(h, cmd->sqn);
+					fr_dlist_remove(&cmds->sent, cmd);
+					fr_dlist_insert_tail(&cmds->pending, cmd);
+				}
+				trunk_request_signal_fail(treq);
+				return;
 			}
-			trunk_request_signal_fail(treq);
-			return;
+			cmd->sqn = fr_redis_connection_sent_request(h);
+			fr_dlist_remove(&cmds->pending, cmd);
+			fr_dlist_insert_tail(&cmds->sent, cmd);
 		}
-		cmd->sqn = fr_redis_connection_sent_request(h);
-		fr_dlist_remove(&cmds->pending, cmd);
-		fr_dlist_insert_tail(&cmds->sent, cmd);
+		trunk_request_signal_sent(treq);
 	}
-	trunk_request_signal_sent(treq);
 }
 
 /** Deal with cancellation of sent requests
@@ -519,7 +523,7 @@ static void _redis_pipeline_mux(trunk_connection_t *tconn, connection_t *conn, U
  * on why the commands were cancelled, we either tell the handle to ignore
  * them, or move them back into the pending list.
  */
-static void _redis_pipeline_command_set_cancel(connection_t *conn, UNUSED trunk_request_t *treq, void *preq,
+static void _redis_pipeline_command_set_cancel(connection_t *conn, void *preq,
 					       trunk_cancel_reason_t reason, UNUSED void *uctx)
 {
 	fr_redis_command_set_t	*cmds = talloc_get_type_abort(preq, fr_redis_command_set_t);
@@ -540,6 +544,7 @@ static void _redis_pipeline_command_set_cancel(connection_t *conn, UNUSED trunk_
 	 *	command set back into the correct state for
 	 *	execution by another handle.
 	 */
+	case TRUNK_CANCEL_REASON_REQUEUE:
 	case TRUNK_CANCEL_REASON_MOVE:
 		fr_dlist_move(&cmds->pending, &cmds->sent);
 		return;
@@ -586,8 +591,8 @@ static void _redis_pipeline_command_set_complete(UNUSED request_t *request, void
 /** Signal the API client that we failed enqueuing the commands
  *
  */
-static void _redis_pipeline_command_set_fail(UNUSED request_t *request, void *preq,
-					     UNUSED void *rctx, UNUSED void *uctx)
+static void _redis_pipeline_command_set_fail(UNUSED request_t *request, void *preq, UNUSED void *rctx,
+					     UNUSED trunk_request_state_t state,  UNUSED void *uctx)
 {
 	fr_redis_command_set_t	*cmds = talloc_get_type_abort(preq, fr_redis_command_set_t);
 
