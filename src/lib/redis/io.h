@@ -44,8 +44,6 @@ typedef struct {
 	uint32_t		database;	//!< number on Redis server.
 
 	char const		*password;	//!< to authenticate to Redis.
-	fr_time_delta_t		connection_timeout;
-	fr_time_delta_t		reconnection_delay;
 	char const		*log_prefix;
 } fr_redis_io_conf_t;
 
