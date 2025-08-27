@@ -105,7 +105,7 @@ struct fr_redis_command_set_s {
 	 * encapsulated within the command set, not just within the trunk.
 	 * @{
  	 */
-	trunk_request_t		*treq;		//!< Trunk request this command set is associated with.
+	trunk_request_t			*treq;		//!< Trunk request this command set is associated with.
 	request_t			*request;	//!< Request this commands set is associated with (if any).
 	void				*rctx;		//!< Resume context to write results to.
 	/** @} */
@@ -144,7 +144,7 @@ struct fr_redis_command_set_s {
 struct fr_redis_trunk_s {
 	fr_redis_io_conf_t const	*io_conf;	//!< Redis I/O configuration.  Specifies how to connect
 							///< to the host this trunk is used to communicate with.
-	trunk_t			*trunk;		//!< Trunk containing all the connections to a specific
+	trunk_t				*trunk;		//!< Trunk containing all the connections to a specific
 							///< host.
 	fr_redis_cluster_thread_t	*cluster;	//!< Cluster this trunk belongs to.
 };
