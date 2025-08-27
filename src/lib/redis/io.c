@@ -25,6 +25,7 @@
  * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 
+#include "config.h"
 #include <freeradius-devel/redis/io.h>
 #include <freeradius-devel/util/debug.h>
 
@@ -196,7 +197,7 @@ static void _redis_io_del_write(void *uctx)
 /** Connection timer expired
  *
  */
-static void _redis_io_service_timer_expired(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void _redis_io_service_timer_expired(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	connection_t const	*conn = talloc_get_type_abort_const(uctx, connection_t);
 	fr_redis_handle_t	*h = conn->h;
@@ -219,8 +220,8 @@ static void _redis_io_timer_modify(void *uctx, struct timeval tv)
 
 	DEBUG4("redis handle %p - Timeout in %pV seconds", h, fr_box_time_delta(timeout));
 
-	if (fr_timer_in(h, conn->el, &h->timer,
-			      timeout, _redis_io_service_timer_expired, conn) < 0) {
+	if (fr_timer_in(h, conn->el->tl, &h->timer_ev, timeout,
+			false, _redis_io_service_timer_expired, conn) < 0) {
 		PERROR("redis timeout %p - Failed adding timeout", h);
 	}
 }
