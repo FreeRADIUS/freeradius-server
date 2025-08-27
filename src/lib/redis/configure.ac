@@ -101,6 +101,13 @@ FR_LIBRARY_START_TESTS
     then
       AC_DEFINE([HAVE_REDIS_SSL],[1],[Build with SSL support])
     fi
+
+    smart_try_dir="$redis_lib_dir"
+    FR_SMART_CHECK_LIB(hiredis, redisAsyncHandleTimeout)
+    if test "x$ac_cv_lib_hiredis_redisAsyncHandleTimeout" == "xyes"
+    then
+      AC_DEFINE([HAVE_REDIS_TIMEOUT],[1],[Define if redisAsyncHandleTimeout is available])
+    fi
 FR_LIBRARY_END_TESTS
 
 mod_ldflags="$SMART_LIBS"
