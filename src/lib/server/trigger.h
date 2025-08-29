@@ -36,6 +36,16 @@ extern "C" {
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/talloc.h>
 
+/** Common values used by modules when building trigger args
+ *
+ */
+typedef struct {
+	char const	*module;	//!< Module name
+	char const	*name;		//!< Instance name
+	char const	*server;	//!< Server name / IP
+	uint16_t	port;		//!< Server port
+} module_trigger_args_t;
+
 int		trigger_init(CONF_SECTION const *cs);
 
 int		trigger(unlang_interpret_t *intp, CONF_SECTION const *cs, CONF_PAIR **trigger_cp,
@@ -44,6 +54,9 @@ int		trigger(unlang_interpret_t *intp, CONF_SECTION const *cs, CONF_PAIR **trigg
 bool		trigger_enabled(void);
 
 void		trigger_args_afrom_server(TALLOC_CTX *ctx, fr_pair_list_t *list, char const *server, uint16_t port);
+
+int		module_trigger_args_build(TALLOC_CTX *ctx, fr_pair_list_t *list, CONF_SECTION *cs,
+					  module_trigger_args_t *args) CC_HINT(nonnull(1,2,4));
 
 typedef int (*fr_trigger_worker_t)(request_t *request, module_method_t process, void *ctx);
 

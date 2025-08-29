@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/main_loop.h>
+#include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/request_data.h>
 #include <freeradius-devel/server/trigger.h>
@@ -442,6 +443,103 @@ void trigger_args_afrom_server(TALLOC_CTX *ctx, fr_pair_list_t *list, char const
 	MEM(vp = fr_pair_afrom_da(ctx, port_da));
 	vp->vp_uint16 = port;
 	fr_pair_append(list, vp);
+}
+
+/**  Callback to verify that trigger_args map is valid
+ */
+static int trigger_args_validate(map_t *map, UNUSED void *uctx)
+{
+	if (map->lhs->type != TMPL_TYPE_ATTR) {
+		cf_log_err(map->ci, "%s is not an internal attribute reference", map->lhs->name);
+		return -1;
+	}
+
+	switch (map->rhs->type) {
+	case TMPL_TYPE_DATA_UNRESOLVED:
+		if (tmpl_resolve(map->rhs, NULL) < 0) {
+			cf_log_err(map->ci, "Invalid data %s", map->rhs->name);
+			return -1;
+		}
+		break;
+	case TMPL_TYPE_DATA:
+		break;
+
+	default:
+		cf_log_err(map->ci, "Right hand side of trigger_args must be litteral, not %s", tmpl_type_to_str(map->rhs->type));
+		return -1;
+	}
+
+	return 0;
+}
+
+#define BUILD_ATTR(_name, _value) if (_value) { \
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), _name); \
+	if (!da) { \
+		ERROR("Incomplete dictionary: Missing definition for \"" _name "\""); \
+		return -1; \
+	} \
+	MEM(vp = fr_pair_afrom_da(ctx, da)); \
+	fr_pair_value_strdup(vp, _value, false); \
+	fr_pair_append(list, vp); \
+}
+
+/** Build trigger args pair list for modules
+ *
+ * @param[in] ctx	to allocate pairs in.
+ * @param[in] list	to populate.
+ * @param[in] cs	CONF_SECTION to search for a "trigger_args" section
+ * @param[in] args	Common module data which will populate default pairs
+ */
+int module_trigger_args_build(TALLOC_CTX *ctx, fr_pair_list_t *list, CONF_SECTION *cs, module_trigger_args_t *args)
+{
+	map_list_t		*maps;
+	map_t			*map = NULL;
+	fr_pair_t		*vp;
+	fr_dict_attr_t const	*da;
+	tmpl_rules_t		t_rules = (tmpl_rules_t){
+						.attr = {
+							.dict_def = fr_dict_internal(),
+							.list_def = request_attr_request,
+						},
+					};
+
+	/*
+	 *	Build the default pairs from the module data
+	 */
+	BUILD_ATTR("Module-Name", args->module)
+	BUILD_ATTR("Module-Instance", args->name)
+	BUILD_ATTR("Connection-Pool-Server", args->server)
+	da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CONNECTION_POOL_PORT);
+	if (!da) {
+		ERROR("Incomplete dictionary: Missing definition for \"Connection-Pool-Port\"");
+		return -1;
+	}
+	MEM(vp = fr_pair_afrom_da(ctx, da));
+	vp->vp_uint16 = args->port;
+	fr_pair_append(list, vp);
+
+	/*
+	 *	If a CONF_SECTION has been passed in, look for a "trigger_args"
+	 *	sub section and parse that as a map to create additional pairs.
+	 */
+	if (!cs) return 0;
+	cs = cf_section_find(cs, "trigger_args", NULL);
+	if (!cs) return 0;
+
+	MEM(maps = talloc(NULL, map_list_t));
+	map_list_init(maps);
+	if (map_afrom_cs(maps, maps, cs, &t_rules, &t_rules, trigger_args_validate, NULL, 256) < 0) {
+	fail:
+		talloc_free(maps);
+		return -1;
+	}
+
+	while ((map = map_list_next(maps, map))) {
+		MEM(vp = fr_pair_afrom_da_nested(ctx, list, tmpl_attr_tail_da(map->lhs)));
+		if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &map->rhs->data.literal) < 0) goto fail;
+	}
+	talloc_free(maps);
+	return 0;
 }
 
 static int _mutex_free(pthread_mutex_t *mutex)
