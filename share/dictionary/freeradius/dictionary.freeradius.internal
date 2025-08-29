@@ -546,6 +546,8 @@ ATTRIBUTE	Connection-Pool-Server			2221	string
 ATTRIBUTE	Connection-Pool-Port			2222	short
 ATTRIBUTE	Exfile-Name				2223	string
 ATTRIBUTE	LDAP-Sync-Base-DN			2224	string
+ATTRIBUTE	Module-Name				2225	string
+ATTRIBUTE	Module-Instance				2226	string
 
 #
 #	Range:	2261-2299
