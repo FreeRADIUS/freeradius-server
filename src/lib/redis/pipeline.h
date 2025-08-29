@@ -71,8 +71,6 @@ fr_redis_pipeline_status_t	fr_redis_command_argv_add(fr_redis_command_set_t *cmd
  */
 fr_redis_pipeline_status_t redis_command_set_enqueue(fr_redis_trunk_t *rtrunk, fr_redis_command_set_t *cmds);
 
-redisReply *fr_redis_command_get_result(fr_redis_command_t *cmd);
-
 fr_redis_command_set_t		*fr_redis_command_set_alloc(TALLOC_CTX *ctx,
 							    request_t *request,
 							    fr_redis_command_set_complete_t complete,

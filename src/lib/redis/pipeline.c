@@ -80,7 +80,6 @@ struct fr_redis_command_s {
 							///< valid for a specific handle, and is unique within
 							///< the handle.
 
-	redisReply			*result;	//!< The result from the REDIS server.
 };
 
 /** Represents a collection of pipelined commands
@@ -268,11 +267,6 @@ static int _redis_command_free(UNUSED fr_redis_command_t *cmd)
 	//if (cmd->result) fr_redis_reply_free(&cmd->result);
 
 	return 0;
-}
-
-redisReply *fr_redis_command_get_result(fr_redis_command_t *cmd)
-{
-	return cmd->result;
 }
 
 static fr_redis_pipeline_status_t redis_command_transaction_check(request_t *request, fr_redis_command_type_t *type,
@@ -488,7 +482,6 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 	 */
 	cmd = talloc_get_type_abort(privdata, fr_redis_command_t);
 	cmds = cmd->cmds;
-	cmd->result = reply;
 
 	fr_dlist_remove(&cmds->sent, cmd);
 	fr_dlist_insert_tail(&cmds->completed, cmd);
