@@ -80,6 +80,9 @@ struct fr_redis_command_s {
 							///< valid for a specific handle, and is unique within
 							///< the handle.
 
+	fr_redis_command_complete_t	complete;	//!< Callback to process result from this command.
+
+	void				*rctx;		//!< To be passed to the callback.
 };
 
 /** Represents a collection of pipelined commands
@@ -361,7 +364,8 @@ static fr_redis_pipeline_status_t redis_command_transaction_check(request_t *req
  *	- FR_REDIS_PIPELINE_BAD_CMDS if a bad command sequence is enqueued.
  *	- FR_REDIS_PIPELINE_OK if command was enqueued successfully.
  */
-fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_set_t *cmds, char const *cmd_str)
+fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_set_t *cmds, char const *cmd_str,
+							     fr_redis_command_complete_t complete, void *rctx)
 {
 	request_t		*request = cmds->request;
 	fr_redis_command_t	*cmd;
@@ -374,6 +378,8 @@ fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_se
 	cmd->cmds = cmds;
 	cmd->type = type;
 	cmd->str = cmd_str;
+	cmd->complete = complete;
+	cmd->rctx = rctx;
 	fr_dlist_insert_tail(&cmds->pending, cmd);
 
 	return FR_REDIS_PIPELINE_OK;
@@ -392,7 +398,8 @@ fr_redis_pipeline_status_t fr_redis_command_preformatted_add(fr_redis_command_se
  *	- FR_REDIS_PIPELINE_OK if command was enqueued successfully.
  */
 fr_redis_pipeline_status_t fr_redis_command_argv_add(fr_redis_command_set_t *cmds, size_t argc,
-						     char const **argv, size_t *argv_len)
+						     char const **argv, size_t *argv_len,
+						     fr_redis_command_complete_t complete, void *rctx)
 {
 	request_t		*request = cmds->request;
 	fr_redis_command_t	*cmd;
@@ -407,6 +414,8 @@ fr_redis_pipeline_status_t fr_redis_command_argv_add(fr_redis_command_set_t *cmd
 	cmd->argc = argc;
 	cmd->argv = argv;
 	cmd->argv_len = argv_len;
+	cmd->complete = complete;
+	cmd->rctx = rctx;
 	fr_dlist_insert_tail(&cmds->pending, cmd);
 
 	return FR_REDIS_PIPELINE_OK;
@@ -482,6 +491,8 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 	 */
 	cmd = talloc_get_type_abort(privdata, fr_redis_command_t);
 	cmds = cmd->cmds;
+
+	if (cmd->complete) cmd->complete(cmds->request, cmd, reply, cmd->rctx);
 
 	fr_dlist_remove(&cmds->sent, cmd);
 	fr_dlist_insert_tail(&cmds->completed, cmd);

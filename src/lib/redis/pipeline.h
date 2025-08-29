@@ -51,6 +51,11 @@ typedef struct fr_redis_command_s fr_redis_command_t;
 typedef struct fr_redis_command_set_s fr_redis_command_set_t;
 typedef struct fr_redis_trunk_s fr_redis_trunk_t;
 
+/** Process the reply from a single command
+ *
+ */
+typedef void (*fr_redis_command_complete_t)(request_t *request, fr_redis_command_t *cmd, redisReply *reply, void *rctx);
+
 /** Do something meaningful with the replies to the commands previously issued
  *
  */
@@ -61,10 +66,12 @@ typedef void (*fr_redis_command_set_complete_t)(request_t *request, fr_dlist_hea
  */
 typedef void (*fr_redis_command_set_fail_t)(request_t *request, fr_dlist_head_t *completed, void *rctx);
 
-fr_redis_pipeline_status_t	fr_redis_command_preformatted_add(fr_redis_command_set_t *cmds, char const *cmd_str);
+fr_redis_pipeline_status_t	fr_redis_command_preformatted_add(fr_redis_command_set_t *cmds, char const *cmd_str,
+								  fr_redis_command_complete_t complete, void *rctx);
 
 fr_redis_pipeline_status_t	fr_redis_command_argv_add(fr_redis_command_set_t *cmds, size_t argc,
-							  char const **argv, size_t *argv_len);
+							  char const **argv, size_t *argv_len,
+							  fr_redis_command_complete_t complete, void *rctx);
 
 /*
  *	TEMPORARY
