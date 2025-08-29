@@ -92,4 +92,6 @@ struct rlm_radius_s {
 	fr_retry_config_t      	retry[FR_RADIUS_CODE_MAX];
 
 	trunk_conf_t		trunk_conf;		//!< trunk configuration
+
+	fr_pair_list_t		*trigger_args;		//!< Pairs passed to trigger requests.
 };

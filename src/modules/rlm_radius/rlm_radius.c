@@ -931,6 +931,29 @@ check_others:
 	inst->trunk_conf.req_pool_headers = 4;	/* One for the request, one for the buffer, one for the tracking binding, one for Proxy-State VP */
 	inst->trunk_conf.req_pool_size = 1024 + sizeof(fr_pair_t) + 20;
 
+	if (inst->trunk_conf.conn_triggers) {
+		module_trigger_args_t	args;
+		char			*server = NULL;
+
+		args = (module_trigger_args_t) {
+			.module = mctx->mi->module->name,
+			.name = inst->name
+		};
+
+		/*
+		 *	Only client and proxy mode have fixed destinations
+		 */
+		if ((inst->mode == RLM_RADIUS_MODE_CLIENT) || (inst->mode == RLM_RADIUS_MODE_PROXY)) {
+			fr_value_box_aprint(inst, &server, fr_box_ipaddr(inst->fd_config.dst_ipaddr), NULL);
+			args.server = server;
+			args.port = inst->fd_config.dst_port;
+		}
+
+		MEM(inst->trigger_args = fr_pair_list_alloc(inst));
+		if (module_trigger_args_build(inst->trigger_args, inst->trigger_args,
+					      cf_section_find(conf, "pool", NULL), &args) < 0) return -1;
+	}
+
 	/*
 	 *	Only check the async timers when we're acting as a client.
 	 */
