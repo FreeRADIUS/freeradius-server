@@ -73,6 +73,8 @@ fr_redis_pipeline_status_t	fr_redis_command_argv_add(fr_redis_command_set_t *cmd
 							  char const **argv, size_t *argv_len,
 							  fr_redis_command_complete_t complete, void *rctx);
 
+char const			*fr_redis_command_get_cmd(fr_redis_command_t *cmd);
+
 /*
  *	TEMPORARY
  */

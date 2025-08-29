@@ -719,3 +719,9 @@ fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_eve
 
 	return cluster_thread;
 }
+
+char const *fr_redis_command_get_cmd(fr_redis_command_t *cmd)
+{
+	if (cmd->argv) return cmd->argv[0];
+	return cmd->str;
+}
