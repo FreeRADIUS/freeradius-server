@@ -2604,7 +2604,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			cf_log_err(conf, "Configuration item 'group.name_attribute' must be set if cacheable "
 				      "group names are enabled");
 
-			goto error;
+			return -1;
 		}
 	}
 
@@ -2616,7 +2616,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	if (!cf_pair_find(conf, "pool")) {
 		if (!inst->handle_config.server_str) {
 			cf_log_err(conf, "Configuration item 'server' must have a value");
-			goto error;
+			return -1;
 		}
 	}
 
@@ -2624,7 +2624,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	if (inst->handle_config.admin_sasl.mech) {
 		cf_log_err(conf, "Configuration item 'sasl.mech' not supported.  "
 			   "Linked libldap does not provide ldap_sasl_interactive_bind function");
-		goto error;
+		return -1;
 	}
 #endif
 
@@ -2652,7 +2652,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			case ';':
 				cf_log_err(conf, "Invalid character '%c' found in 'server' configuration item",
 					      value[j]);
-				goto error;
+				return -1;
 
 			default:
 				continue;
@@ -2701,7 +2701,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		if (inst->handle_config.dereference < 0) {
 			cf_log_err(conf, "Invalid 'dereference' value \"%s\", expected 'never', 'searching', "
 				      "'finding' or 'always'", inst->handle_config.dereference_str);
-			goto error;
+			return -1;
 		}
 	}
 
@@ -2715,7 +2715,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		if (ret != LDAP_SUCCESS) { \
 			cf_log_err(conf, "Invalid " STRINGIFY(_obj) ".sort_by value \"%s\": %s", \
 				      inst->_obj.obj_sort_by, ldap_err2string(ret)); \
-			goto error; \
+			return -1; \
 		} \
 		/* \
 		 *	Always set the control as critical, if it's not needed \
@@ -2725,7 +2725,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		ldap_free_sort_keylist(keys); \
 		if (ret != LDAP_SUCCESS) { \
 			ERROR("Failed creating server sort control: %s", ldap_err2string(ret)); \
-			goto error; \
+			return -1; \
 		} \
 	}
 
@@ -2741,7 +2741,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		if (inst->handle_config.tls_require_cert < 0) {
 			cf_log_err(conf, "Invalid 'tls.require_cert' value \"%s\", expected 'never', "
 				      "'demand', 'allow', 'try' or 'hard'", inst->handle_config.tls_require_cert_str);
-			goto error;
+			return -1;
 		}
 	}
 
@@ -2763,7 +2763,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 		} else {
 			cf_log_err(conf, "Invalid 'tls.tls_min_version' value \"%s\"", inst->handle_config.tls_min_version_str);
-			goto error;
+			return -1;
 		}
 	}
 
@@ -2789,9 +2789,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 					      }) < 0) return -1;
 	}
 	return 0;
-
-error:
-	return -1;
 }
 
 /** Bootstrap the module
