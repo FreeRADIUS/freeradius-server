@@ -5031,7 +5031,7 @@ trunk_t *trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	return trunk;
 }
 
-/** Find check for a module trigger section when parsing the `triggers` option.
+/** Check for a module trigger section when parsing the `triggers` option.
  *
  */
 int trunk_trigger_cf_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
