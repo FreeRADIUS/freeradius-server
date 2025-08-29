@@ -635,6 +635,7 @@ static void _redis_pipeline_command_set_complete(UNUSED request_t *request, void
 	fr_redis_command_set_t	*cmds = talloc_get_type_abort(preq, fr_redis_command_set_t);
 
 	if (cmds->complete) cmds->complete(cmds->request, &cmds->completed, cmds->rctx);
+	if (cmds->request) unlang_interpret_mark_runnable(cmds->request);
 }
 
 /** Signal the API client that we failed enqueuing the commands
@@ -646,6 +647,7 @@ static void _redis_pipeline_command_set_fail(UNUSED request_t *request, void *pr
 	fr_redis_command_set_t	*cmds = talloc_get_type_abort(preq, fr_redis_command_set_t);
 
 	if (cmds->fail) cmds->fail(cmds->request, &cmds->completed, cmds->rctx);
+	if (cmds->request) unlang_interpret_mark_runnable(cmds->request);
 }
 
 /** Free the command set

@@ -53,13 +53,11 @@ typedef struct fr_redis_trunk_s fr_redis_trunk_t;
 
 /** Do something meaningful with the replies to the commands previously issued
  *
- * Should mark the request as runnable, if there's a request.
  */
 typedef void (*fr_redis_command_set_complete_t)(request_t *request, fr_dlist_head_t *completed, void *rctx);
 
 /** Write a failure result to the rctx so that the module is aware that the request failed
  *
- * Should mark the request as runnable, if there's a request.
  */
 typedef void (*fr_redis_command_set_fail_t)(request_t *request, fr_dlist_head_t *completed, void *rctx);
 
