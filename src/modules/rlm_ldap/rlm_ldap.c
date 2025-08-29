@@ -2532,6 +2532,8 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	t->trunk_conf = &inst->trunk_conf;
 	t->bind_trunk_conf = &inst->bind_trunk_conf;
 	t->el = mctx->el;
+	t->trigger_args = inst->trigger_args;
+	t->bind_trigger_args = inst->bind_trigger_args;
 
 	/*
 	 *	Launch trunk for module default connection
@@ -2765,6 +2767,27 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		}
 	}
 
+	if (inst->trunk_conf.conn_triggers) {
+		MEM(inst->trigger_args = fr_pair_list_alloc(inst));
+		if (module_trigger_args_build(inst->trigger_args, inst->trigger_args, cf_section_find(conf, "pool", NULL),
+					      &(module_trigger_args_t) {
+							.module = mctx->mi->module->name,
+							.name = mctx->mi->name,
+							.server = inst->handle_config.server,
+							.port = inst->handle_config.port
+					      }) < 0) return -1;
+	}
+
+	if (inst->bind_trunk_conf.conn_triggers) {
+		MEM(inst->bind_trigger_args = fr_pair_list_alloc(inst));
+		if (module_trigger_args_build(inst->bind_trigger_args, inst->bind_trigger_args, cf_section_find(conf, "bind_pool", NULL),
+					      &(module_trigger_args_t) {
+							.module = mctx->mi->module->name,
+							.name = mctx->mi->name,
+							.server = inst->handle_config.server,
+							.port = inst->handle_config.port
+					      }) < 0) return -1;
+	}
 	return 0;
 
 error:
