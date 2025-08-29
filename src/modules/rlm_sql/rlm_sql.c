@@ -35,6 +35,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/server/trigger.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/skip.h>
@@ -2209,7 +2210,16 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	return 0;
+	if (!inst->config.trunk_conf.conn_triggers) return 0;
+
+	inst->trigger_args = fr_pair_list_alloc(inst);
+	return module_trigger_args_build(inst->trigger_args, inst->trigger_args, cf_section_find(conf, "pool", NULL),
+					&(module_trigger_args_t) {
+						.module = inst->mi->module->name,
+						.name = inst->name,
+						.server = inst->config.sql_server,
+						.port = inst->config.sql_port
+					});
 }
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
