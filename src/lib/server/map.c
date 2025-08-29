@@ -1030,7 +1030,7 @@ do_children:
 				fr_assert(fr_type_is_leaf(tmpl_attr_tail_da(map->lhs)->type));
 
 				/*
-				 *	&foo := { a, b, c }
+				 *	foo := { a, b, c }
 				 *
 				 *	@todo - maybe lhs_rules?  But definitely not child_lhs_rules.
 				 *
@@ -1065,14 +1065,14 @@ do_children:
 		/*
 		 *	Over-ride RHS rules for
 		 *
-		 *	&reply += {
-		 *		&User-Name = &User-Name
+		 *	reply += {
+		 *		User-Name = User-Name
 		 *	}
 		 *
 		 *	Which looks stupid.  Instead we require
 		 *
-		 *	&reply += {
-		 *		&User-Name = &request.User-Name
+		 *	reply += {
+		 *		User-Name = request.User-Name
 		 *	}
 		 *
 		 *	On the other hand, any xlats on the RHS don't use the full path.  :( And we still need
