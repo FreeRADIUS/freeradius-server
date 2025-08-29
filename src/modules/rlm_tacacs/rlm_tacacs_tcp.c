@@ -59,6 +59,8 @@ typedef struct {
 
 	bool			recv_buff_is_set;	//!< Whether we were provided with a recv_buf
 	bool			send_buff_is_set;	//!< Whether we were provided with a send_buf
+
+	fr_pair_list_t		*trigger_args;		//!< Pairs passed to trigger request.
 } rlm_tacacs_tcp_t;
 
 typedef struct {
@@ -1472,6 +1474,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_tacacs_t		*parent = talloc_get_type_abort(mctx->mi->parent->data, rlm_tacacs_t);
 	rlm_tacacs_tcp_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_tacacs_tcp_t);
 	CONF_SECTION		*conf = mctx->mi->conf;
+	char			*server = NULL;
 
 	if (!parent) {
 		ERROR("IO module cannot be instantiated directly");
@@ -1547,6 +1550,20 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	if (inst->secret) inst->secretlen = talloc_array_length(inst->secret) - 1;
+
+	if (!parent->trunk_conf.conn_triggers) return 0;
+
+	fr_value_box_aprint(inst, &server, fr_box_ipaddr(inst->dst_ipaddr), NULL);
+
+	MEM(inst->trigger_args = fr_pair_list_alloc(inst));
+	if (module_trigger_args_build(inst->trigger_args, inst->trigger_args,
+				      cf_section_find(cf_item_to_section(cf_parent(conf)), "pool", NULL),
+				      &(module_trigger_args_t) {
+						.module = mctx->mi->module->name,
+						.name = parent->name,
+						.server = server,
+						.port = inst->dst_port
+					}) < 0) return -1;
 
 	return 0;
 }
