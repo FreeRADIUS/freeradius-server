@@ -2702,7 +2702,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		}
 
 		thread->ctx.trunk = trunk_alloc(thread, mctx->el, &io_funcs,
-					    &inst->trunk_conf, inst->name, thread, false);
+					    &inst->trunk_conf, inst->name, thread, false, inst->trigger_args);
 		if (!thread->ctx.trunk) return -1;
 		return 0;
 
@@ -2713,7 +2713,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		if (inst->fd_config.socket_type == SOCK_DGRAM) break;
 
 		thread->ctx.trunk = trunk_alloc(thread, mctx->el, &io_replicate_funcs,
-						&inst->trunk_conf, inst->name, thread, false);
+						&inst->trunk_conf, inst->name, thread, false, inst->trigger_args);
 		if (!thread->ctx.trunk) return -1;
 		return 0;
 
@@ -2976,7 +2976,7 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 		 *	Allocate the trunk and start it up.
 		 */
 		home->ctx.trunk = trunk_alloc(home, unlang_interpret_event_list(request), &io_funcs,
-					      &inst->trunk_conf, inst->name, home, false);
+					      &inst->trunk_conf, inst->name, home, false, inst->trigger_args);
 		if (!home->ctx.trunk) {
 		fail:
 			talloc_free(home);

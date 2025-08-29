@@ -4961,7 +4961,7 @@ static int _trunk_free(trunk_t *trunk)
  */
 trunk_t *trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 			   trunk_io_funcs_t const *funcs, trunk_conf_t const *conf,
-			   char const *log_prefix, void const *uctx, bool delay_start)
+			   char const *log_prefix, void const *uctx, bool delay_start, fr_pair_list_t *trigger_args)
 {
 	trunk_t	*trunk;
 	size_t		i;
@@ -4974,6 +4974,7 @@ trunk_t *trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	MEM(trunk = talloc_zero(ctx, trunk_t));
 	trunk->el = el;
 	trunk->log_prefix = talloc_strdup(trunk, log_prefix);
+	trunk->trigger_args = trigger_args;
 
 	memcpy(&trunk->funcs, funcs, sizeof(trunk->funcs));
 	if (!trunk->funcs.connection_prioritise) {

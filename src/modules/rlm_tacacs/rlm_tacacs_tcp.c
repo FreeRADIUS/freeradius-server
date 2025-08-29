@@ -1463,7 +1463,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	thread->el = mctx->el;
 	thread->inst = inst;
 	thread->trunk = trunk_alloc(thread, mctx->el, &io_funcs,
-				    &inst->parent->trunk_conf, inst->parent->name, thread, false);
+				    &inst->parent->trunk_conf, inst->parent->name, thread, false, inst->trigger_args);
 	if (!thread->trunk) return -1;
 
 	return 0;

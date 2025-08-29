@@ -911,9 +911,10 @@ void		trunk_connection_manage_stop(trunk_t *trunk) CC_HINT(nonnull);
 
 int		trunk_connection_manage_schedule(trunk_t *trunk) CC_HINT(nonnull);
 
-trunk_t	*trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
+trunk_t		*trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 				trunk_io_funcs_t const *funcs, trunk_conf_t const *conf,
-				char const *log_prefix, void const *uctx, bool delay_start) CC_HINT(nonnull(2, 3, 4));
+				char const *log_prefix, void const *uctx, bool delay_start,
+				fr_pair_list_t *trigger_args) CC_HINT(nonnull(2, 3, 4));
 /** @} */
 
 /** @name Watchers

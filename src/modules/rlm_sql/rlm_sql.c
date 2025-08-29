@@ -2408,7 +2408,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	t->inst = inst;
 
 	t->trunk = trunk_alloc(t, mctx->el, &inst->driver->trunk_io_funcs,
-				  &inst->config.trunk_conf, inst->name, t, false);
+			       &inst->config.trunk_conf, inst->name, t, false, inst->trigger_args);
 	if (!t->trunk) return -1;
 
 	return 0;
