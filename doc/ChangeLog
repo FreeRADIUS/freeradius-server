@@ -4,6 +4,12 @@ FreeRADIUS 3.2.9 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	Feature improvements
 
 	Bug fixes
+	* Fix run_dir (#5637) and MemoryLimit (#5639)
+	* Disable the PCRE JIT at run time if it can't allocate
+	  executable memory.
+	* Set selinux boolean to allow PCRE2 JIT
+	* If you set the clock 25 years in the future, don't spam
+	  systemd.  Fixes #5642
 
 FreeRADIUS 3.2.8 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	Configuration changes
