@@ -642,45 +642,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->received_message_authenticator = talloc_zero(NULL, bool);		/* Allocated outside of inst to default protection */
 
 	/*
-	 *	Allow explicit setting of mode.
-	 */
-	if (inst->mode != RLM_RADIUS_MODE_INVALID) goto check_others;
-
-	/*
-	 *	If not set, try to insinuate it from context.
-	 */
-	if (inst->replicate) {
-		if (inst->originate) {
-			cf_log_err(conf, "Cannot set 'replicate=true' and 'originate=true' at the same time.");
-			return -1;
-		}
-
-		if (inst->synchronous) {
-			cf_log_warn(conf, "Ignoring 'synchronous=true' due to 'replicate=true'");
-		}
-
-		inst->mode = RLM_RADIUS_MODE_REPLICATE;
-		goto check_others;
-	}
-
-	/*
-	 *	Argubly we should be allowed to do synchronous proxying _and_ originating client packets.
-	 *
-	 *	However, the previous code didn't really do that consistently.
-	 */
-	if (inst->synchronous && inst->originate) {
-		cf_log_err(conf, "Cannot set 'synchronous=true' and 'originate=true'");
-		return -1;
-	}
-
-	if (inst->synchronous) {
-		inst->mode = RLM_RADIUS_MODE_PROXY;
-	} else {
-		inst->mode = RLM_RADIUS_MODE_CLIENT;
-	}
-
-check_others:
-	/*
 	 *	Replication is write-only, and append by default.
 	 */
 	if (inst->mode == RLM_RADIUS_MODE_REPLICATE) {
