@@ -292,7 +292,7 @@ cp_found:
 		 *	Add the trigger name to the request data
 		 */
 		MEM(pair_append_request(&vp, attr_trigger_name) >= 0);
-		fr_pair_value_strdup(vp, cf_pair_value(cp), false);
+		fr_pair_value_strdup(vp, cf_pair_attr(cp), false);
 	}
 
 	MEM(trigger = talloc_zero(request, fr_trigger_t));
