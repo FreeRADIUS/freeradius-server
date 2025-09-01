@@ -140,12 +140,6 @@ static conf_parser_t const module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI | CONF_FLAG_REQUIRED, rlm_radius_t, types),
 	  .func = type_parse },
 
-	{ FR_CONF_OFFSET_FLAGS("replicate", CONF_FLAG_DEPRECATED, rlm_radius_t, replicate) },
-
-	{ FR_CONF_OFFSET_FLAGS("synchronous", CONF_FLAG_DEPRECATED, rlm_radius_t, synchronous) },
-
-	{ FR_CONF_OFFSET_FLAGS("originate", CONF_FLAG_DEPRECATED, rlm_radius_t, originate) },
-
 	{ FR_CONF_OFFSET("max_packet_size", rlm_radius_t, max_packet_size), .dflt = "4096" },
 	{ FR_CONF_OFFSET("max_send_coalesce", rlm_radius_t, max_send_coalesce), .dflt = "1024" },
 

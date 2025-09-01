@@ -68,11 +68,6 @@ struct rlm_radius_s {
 
 	fr_radius_ctx_t		common_ctx;
 
-	bool			replicate;		//!< Ignore responses.
-	bool			synchronous;		//!< Retransmit when receiving a duplicate request.
-	bool			originate;		//!< Originating packets, instead of proxying existing ones.
-							///< Controls whether Proxy-State is added to the outbound
-							///< request
 	rlm_radius_mode_t	mode;			//!< proxy, client, etc.
 
 	uint32_t		max_attributes;   	//!< Maximum number of attributes to decode in response.
