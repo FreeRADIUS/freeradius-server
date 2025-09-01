@@ -252,9 +252,6 @@ static int mode_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 
 	mode = fr_table_value_by_str(mode_names, name, RLM_RADIUS_MODE_INVALID);
 
-	/*
-	 *	Commented out until we upgrade the old configurations.
-	 */
 	if (mode == RLM_RADIUS_MODE_INVALID) {
 		cf_log_err(ci, "Invalid mode name \"%s\"", name);
 		return -1;
