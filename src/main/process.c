@@ -386,6 +386,7 @@ static void sd_watchdog_event(void *ctx)
 	DEBUG("Emitting systemd watchdog notification");
 	sd_notify(0, "WATCHDOG=1");
 
+	fr_event_now(s->el, &s->when);
 	timeradd(&s->when, &sd_watchdog_interval, &s->when);
 	if (!fr_event_insert(s->el, sd_watchdog_event, ctx, &s->when, &sd_watchdog_ev)) {
 		rad_panic("Failed to insert event");
