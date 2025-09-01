@@ -919,10 +919,7 @@ int fr_bio_fd_init_listen(fr_bio_fd_t *my)
 	my->bio.read = fr_bio_null_read;
 	my->bio.write = fr_bio_null_write;
 
-	/*
-	 *	@todo - make the backlog configurable.
-	 */
-	if (listen(my->info.socket.fd, 8) < 0) {
+	if (listen(my->info.socket.fd, my->info.cfg->backlog_is_set ? my->info.cfg->backlog : 8) < 0) {
 		fr_strerror_printf("Failed calling listen() %s", fr_syserror(errno));
 		return fr_bio_error(IO);
 	}
