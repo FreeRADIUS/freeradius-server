@@ -141,6 +141,8 @@ typedef struct listen_socket_t {
 	fr_ipaddr_t	my_ipaddr;
 	uint16_t	my_port;
 
+	uint32_t	backlog;
+
 	char const	*interface;
 #ifdef SO_BROADCAST
 	int		broadcast;

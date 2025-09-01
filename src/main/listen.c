@@ -1618,6 +1618,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
+	sock->backlog = 8;
 
 	rcode = cf_item_parse(cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_COMBO_IP_ADDR, &ipaddr), NULL);
 	if (rcode < 0) return -1;
@@ -1634,6 +1635,9 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (rcode < 0) return -1;
 
 	rcode = cf_item_parse(cs, "recv_buff", PW_TYPE_INTEGER, &sock->recv_buff, NULL);
+	if (rcode < 0) return -1;
+
+	rcode = cf_item_parse(cs, "backlog", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->backlog), NULL);
 	if (rcode < 0) return -1;
 
 	sock->proto = IPPROTO_UDP;
@@ -3441,7 +3445,7 @@ static int listen_bind(rad_listen_t *this)
 #ifdef WITH_PROXY
 		if (this->type != RAD_LISTEN_PROXY)
 #endif
-		if (listen(this->fd, 8) < 0) {
+		if (listen(this->fd, sock->backlog) < 0) {
 			close(this->fd);
 			ERROR("Failed in listen(): %s", fr_syserror(errno));
 			return -1;
