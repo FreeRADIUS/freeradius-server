@@ -55,20 +55,28 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 	char const		*what		= NULL;
 	char			*status_name	= NULL;
 	tContextData	    	context		= 0;
-	uint32_t	   	nodeCount	= 0;
-	uint32_t		attrIndex	= 0;
 	tDataList	       *nodeName	= NULL;
 	tAttributeEntryPtr      pAttrEntry	= NULL;
 	tDataList	       *pRecName	= NULL;
 	tDataList	       *pRecType	= NULL;
 	tDataList	       *pAttrType	= NULL;
-	uint32_t	   	recCount	= 0;
 	tRecordEntry	    	*pRecEntry	= NULL;
 	tAttributeListRef       attrListRef	= 0;
 	char		    	*pUserLocation	= NULL;
 	tAttributeValueListRef  valueRef	= 0;
 	tDataList	       *pUserNode	= NULL;
 	rlm_rcode_t		result		= RLM_MODULE_FAIL;
+
+	/*
+	 *	These variables are passed to OSX APIs, which need
+	 *	UInt32.  And helpfully, the OSX headers define UInt32
+	 *	differently, depending on the platform.  As a result,
+	 *	we can't assume that uint32_t and UInt32 are
+	 *	compatible.  Thanks, Apple.
+	 */
+	UInt32		   	nodeCount	= 0;
+	UInt32		   	recCount	= 0;
+	UInt32			attrIndex	= 0;
 
 	if (!inUserName) {
 		ERROR("rlm_mschap: getUserNodeRef(): no username");
