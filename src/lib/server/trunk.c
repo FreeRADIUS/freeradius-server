@@ -4955,6 +4955,7 @@ static int _trunk_free(trunk_t *trunk)
  * @param[in] uctx		User data to pass to the alloc function.
  * @param[in] delay_start	If true, then we will not spawn any connections
  *				until the first request is enqueued.
+ * @param[in] trigger_args	Pairs to pass to trigger requests, if triggers are enabled.
  * @return
  *	- New trunk handle on success.
  *	- NULL on error.

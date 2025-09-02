@@ -893,6 +893,7 @@ fr_bio_t *fr_bio_mem_sink_alloc(TALLOC_CTX *ctx, size_t read_size)
  *
  *  @param bio		the binary IO handler
  *  @param verify	the verification function
+ *  @param verify_ctx	to pass to the verification function
  *  @param datagram	whether or not this bio is a datagram one.
  *  @return
  *	- <0 on error

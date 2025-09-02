@@ -496,12 +496,12 @@ char const *fr_filename(char const *path)
 	return path;
 }
 
-/** Get the filename from a path
+/** Trim a common prefix from a filename
  *
  * @param path to get filename from.
+ * @param common prefix to trim from the path.
  * @return
- *	- pointer to the filename in the path.
- *	- pointer to the path if no '/' is found.
+ *	- pointer to the position on the path where the common prefix match ended.
  */
 char const *fr_filename_common_trim(char const *path, char const *common)
 {

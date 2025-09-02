@@ -90,6 +90,7 @@ typedef struct {
  * @param request	The current request
  * @param name		Group name to be searched
  * @param env		Group check xlat call_env
+ * @param t		Winbind thread structure
  *
  * @return
  *	- 0 user is in group

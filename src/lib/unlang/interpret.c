@@ -440,6 +440,8 @@ static void instruction_retry_handler(UNUSED fr_timer_list_t *tl, UNUSED fr_time
  * @note Sets stack->scratch to be the the result of the frame being popped.
  *
  * @param[in] request			The current request.
+ * @param[in] frame			The current stack frame.
+ * @param[in] result			from the previous action.
  * @return
  *	- UNLANG_FRAME_ACTION_NEXT	evaluate more instructions.
  *	- UNLANG_FRAME_ACTION_POP	the final result has been calculated for this frame.
