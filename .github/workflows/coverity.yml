@@ -21,7 +21,6 @@ jobs:
           echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
           sudo dpkg-reconfigure man-db
           sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
-          sudo apt-get update
 
       - name: NetworkRADIUS signing key
         shell: bash
@@ -36,6 +35,7 @@ jobs:
           RELEASE=$(lsb_release -cs)
           sudo /bin/sh -c "echo \"deb [arch=amd64 signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main\" \
             > /etc/apt/sources.list.d/networkradius-extras.list"
+          sudo apt-get update
 
       # Remove pre-installed package which conflicts with dependency installation
       - name: Remove package conflicts
