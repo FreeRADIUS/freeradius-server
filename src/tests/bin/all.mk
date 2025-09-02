@@ -8,6 +8,7 @@ FILES	:= \
 	radsniff 		\
 	radsnmp 		\
 	rbmonkey 		\
+	ring_buffer_test 	\
 	rlm_redis_ippool_tool 	\
 	unit_test_attribute 	\
 	unit_test_map 		\
@@ -18,7 +19,6 @@ FILES	:= \
 #	radmin			\
 #	radsniff 		\
 #	radsnmp 		\
-#	ring_buffer_test 	\
 #	smbencrypt 		\
 #	unit_test_attribute 	\
 #	unit_test_map 		\

@@ -23,7 +23,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/ring_buffer.h>
-#include <freeradius-devel/util/request.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/syserror.h>
@@ -45,20 +44,6 @@ static int		debug_lvl = 0;
 
 static char const      	*seed_string = "foo";
 static size_t		seed_string_len = 3;
-
-/**********************************************************************/
-typedef struct request_s request_t;
-request_t *request_alloc(UNUSED TALLOC_CTX *ctx, UNUSED request_init_args_t const *args);
-void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t *request);
-
-request_t *request_alloc(UNUSED TALLOC_CTX *ctx, UNUSED request_init_args_t const *args)
-{
-	return NULL;
-}
-
-void request_verify(UNUSED char const *file, UNUSED int line, UNUSED request_t *request)
-{
-}
 
 /**********************************************************************/
 
