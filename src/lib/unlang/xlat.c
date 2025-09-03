@@ -608,7 +608,7 @@ static void unlang_xlat_event_retry_handler(UNUSED fr_timer_list_t *tl, fr_time_
 		 *	Reset the timer.
 		 */
 		if (fr_timer_at(ev, unlang_interpret_event_list(request)->tl, &ev->ev, ev->retry.next,
-				false, unlang_xlat_event_retry_handler, request) < 0) {
+				false, unlang_xlat_event_retry_handler, ev) < 0) {
 			RPEDEBUG("Failed inserting event");
 			talloc_free(ev);
 			unlang_interpret_mark_runnable(request);
