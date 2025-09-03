@@ -1,0 +1,34 @@
+home_server ##C_NAME## {
+  ipaddr = ##H_IP##
+  port = 1812
+  type = auth+acct
+  secret = radsec
+  proto = tcp
+  status_check = none
+
+  nonblock = yes
+
+  revive_interval = 10
+
+  tls {
+    private_key_password = whatever
+    private_key_file = ${certdir}/client.pem
+    certificate_file = ${certdir}/client.pem
+    ca_file = ${cadir}/ca.pem
+    fragment_size = 8192
+    ca_path = ${cadir}
+    cipher_list = "DEFAULT"
+    tls_min_version = "1.2"
+    tls_max_version = "1.2"
+  }
+}
+
+home_server_pool ##C_NAME## {
+  type = fail-over
+  home_server = ##C_NAME##
+}
+
+realm "##C_NAME##" {
+  pool = ##C_NAME##
+  nostrip
+}
