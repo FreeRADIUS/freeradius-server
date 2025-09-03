@@ -208,6 +208,16 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 		block_len = encrypted_len - n;
 		if (block_len > AUTH_PASS_LEN) block_len = AUTH_PASS_LEN;
 
+#ifdef __COVERITY__
+		/*
+		 *	Coverity is not doing the calculations correctly - it doesn't see
+		 *	that setting block_len = encrypted_len - n puts a safe boundary
+		 *	on block_len so the access to tpasswd won't overflow.
+		 */
+		if ((block_len + 2 + n) > RADIUS_MAX_STRING_LENGTH) {
+			block_len = RADIUS_MAX_STRING_LENGTH - n - 3;
+		}
+#endif
 		for (i = 0; i < block_len; i++) tpasswd[i + 2 + n] ^= digest[i];
 	}
 
