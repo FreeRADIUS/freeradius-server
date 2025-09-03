@@ -353,6 +353,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	 *	update the database with the PSK which was found.
 	 */
 
+#ifdef __COVERITY__
+	/*
+	 * Coverity doesn't see that fr_base16_decode will populate s_mac
+	 */
+	memset(s_mac, 0, 6);
+#endif
 	/*
 	 *	Get supplicant MAC address from the User-Name
 	 */
@@ -598,6 +604,12 @@ stage2a:
 	 */
 make_digest:
 	digest_len = sizeof(digest);
+#ifdef __COVERITY__
+	/*
+	 * Coverity doesn't see that HMAC will populate digest
+	 */
+	memset(digest, 0, digest_len);
+#endif
 	HMAC(EVP_sha1(), pmk, sizeof(pmk), message, sizeof(message), digest, &digest_len);
 
 	RHEXDUMP3(message, sizeof(message), "message:");
@@ -614,6 +626,12 @@ make_digest:
 	RHEXDUMP3(frame, env->key_msg.vb_length, "zeroed:");
 
 	mic_len = sizeof(mic);
+#ifdef __COVERITY__
+	/*
+	 * Coverity doesn't see that HMAC will populate mic
+	 */
+	memset(mic, 0, mic_len);
+#endif
 	HMAC(EVP_sha1(), digest, 16, frame, env->key_msg.vb_length, mic, &mic_len);
 
 	/*
