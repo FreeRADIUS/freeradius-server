@@ -1645,10 +1645,11 @@ static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h
 	size_t			packet_len;
 	ssize_t			slen;
 
-	fr_assert((treq->state == TRUNK_REQUEST_STATE_PENDING) ||
-		  (treq->state == TRUNK_REQUEST_STATE_PARTIAL));
-
 	u = treq->preq;
+
+	fr_assert((treq->state == TRUNK_REQUEST_STATE_PENDING) ||
+		  (treq->state == TRUNK_REQUEST_STATE_PARTIAL) ||
+		  ((u->retry.count > 0) && (treq->state == TRUNK_REQUEST_STATE_SENT)));
 
 	fr_assert(!u->status_check);
 
