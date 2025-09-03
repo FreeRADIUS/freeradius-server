@@ -408,6 +408,8 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 		fd = exfile_open(inst->file.ef, path, inst->file.permissions, &offset);
 		if (fd < 0) {
 			RERROR("Failed to open %pV: %s", call_env->filename, fr_syserror(errno));
+
+			/* coverity[missing_unlock] */
 			return -1;
 		}
 
