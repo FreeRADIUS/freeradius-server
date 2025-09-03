@@ -2212,7 +2212,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	if (!inst->config.trunk_conf.conn_triggers) return 0;
 
-	inst->trigger_args = fr_pair_list_alloc(inst);
+	MEM(inst->trigger_args = fr_pair_list_alloc(inst));
 	return module_trigger_args_build(inst->trigger_args, inst->trigger_args, cf_section_find(conf, "pool", NULL),
 					&(module_trigger_args_t) {
 						.module = inst->mi->module->name,
