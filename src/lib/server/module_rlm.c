@@ -110,6 +110,7 @@ exfile_t *module_rlm_exfile_init(TALLOC_CTX *ctx,
 				 fr_pair_list_t *trigger_args)
 {
 	char		trigger_prefix_buff[128];
+	bool		prefix_set = trigger_prefix ? true : false;
 	exfile_t	*handle;
 
 	if (!trigger_prefix) {
@@ -120,7 +121,7 @@ exfile_t *module_rlm_exfile_init(TALLOC_CTX *ctx,
 	handle = exfile_init(ctx, max_entries, max_idle, locking);
 	if (!handle) return NULL;
 
-	if (triggers) exfile_enable_triggers(handle, trigger_prefix ? module : cf_section_find(module, "file", NULL),
+	if (triggers) exfile_enable_triggers(handle, prefix_set ? module : cf_section_find(module, "file", NULL),
 					     trigger_prefix, trigger_args);
 
 	return handle;
