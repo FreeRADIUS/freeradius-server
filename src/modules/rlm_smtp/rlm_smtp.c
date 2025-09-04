@@ -637,7 +637,7 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(unlang_result_t *p_result, modu
 	rlm_smtp_env_t			*call_env = talloc_get_type_abort(mctx->env_data, rlm_smtp_env_t);
 	fr_curl_io_request_t     	*randle = NULL;
 	fr_mail_ctx_t			*mail_ctx;
-
+	rlm_rcode_t			rcode = RLM_MODULE_INVALID;
 	fr_pair_t const 		*smtp_body;
 
 	/* Elements provided by the request */
@@ -653,7 +653,7 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(unlang_result_t *p_result, modu
 		RDEBUG2("At least one of \"sender_address\" or \"envelope_address\" in the config, or \"SMTP-Sender-Address\" in the request is needed");
 	error:
 		if (randle) smtp_slab_release(randle);
-		RETURN_UNLANG_INVALID;
+		RETURN_UNLANG_RCODE(rcode);
 	}
 
 	/*
@@ -708,6 +708,7 @@ skip_auth:
 	/* Set the header elements */
        	if (header_source(mail_ctx, inst, call_env) != 0) {
 		REDEBUG("The header slist could not be generated");
+		rcode = RLM_MODULE_FAIL;
 		goto error;
 	}
 
@@ -721,6 +722,7 @@ skip_auth:
 	/* Initialize the body elements to be uploaded */
 	if (body_init(mail_ctx, mail_ctx->mime) == 0) {
 		REDEBUG("The body could not be generated");
+		rcode = RLM_MODULE_FAIL;
 		goto error;
 	}
 
@@ -732,7 +734,10 @@ skip_auth:
 	/* Add the mime encoded elements to the curl request */
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_MIMEPOST, mail_ctx->mime);
 
-	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) goto error;
+	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) {
+		rcode = RLM_MODULE_FAIL;
+		goto error;
+	}
 
 	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, ~FR_SIGNAL_CANCEL, randle);
 }
