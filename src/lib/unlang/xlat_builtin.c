@@ -4618,6 +4618,7 @@ do { \
 	XLAT_REGISTER_HASH("sha2_256", xlat_func_sha2_256);
 	XLAT_REGISTER_HASH("sha2_384", xlat_func_sha2_384);
 	XLAT_REGISTER_HASH("sha2_512", xlat_func_sha2_512);
+	XLAT_REGISTER_HASH("sha2", xlat_func_sha2_256);
 
 #  ifdef HAVE_EVP_BLAKE2S256
 	XLAT_REGISTER_HASH("blake2s_256", xlat_func_blake2s_256);
@@ -4630,6 +4631,7 @@ do { \
 	XLAT_REGISTER_HASH("sha3_256", xlat_func_sha3_256);
 	XLAT_REGISTER_HASH("sha3_384", xlat_func_sha3_384);
 	XLAT_REGISTER_HASH("sha3_512", xlat_func_sha3_512);
+	XLAT_REGISTER_HASH("sha3", xlat_func_sha3_256);
 #endif
 
 	XLAT_REGISTER_PURE("string", xlat_transparent, FR_TYPE_STRING, xlat_func_string_arg);
