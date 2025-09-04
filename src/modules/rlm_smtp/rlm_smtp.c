@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/token.h>
 
 #include <freeradius-devel/unlang/call_env.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 static fr_dict_t const 	*dict_freeradius;
 
@@ -82,6 +83,32 @@ typedef struct {
 	fr_value_box_t		password;		//!< Value to use for password
 	tmpl_t			*password_tmpl;		//!< tmpl expanded to populate password
 } rlm_smtp_auth_env_t;
+
+/** Call environment for sending simple emails using an xlat.
+*/
+typedef struct {
+	fr_value_box_t		username;		//!< User to authenticate as when sending emails.
+	tmpl_t			*username_tmpl;		//!< The tmpl used to produce the above.
+	fr_value_box_t		password;		//!< Password for authenticated mails.
+	fr_value_box_list_t	*sender_address;	//!< The address(es) used to generate the From: header
+	fr_value_box_list_t	headers;		//!< Entries to add to email header.
+} rlm_smtp_xlat_env_t;
+
+static int smtp_header_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
+				     CONF_ITEM *ci, call_env_ctx_t const *cec, call_env_parser_t const *rule);
+
+static const call_env_method_t smtp_call_env_xlat = {
+	FR_CALL_ENV_METHOD_OUT(rlm_smtp_xlat_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_PARSE_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT, rlm_smtp_env_t, username, username_tmpl),
+					  .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
+		{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT, rlm_smtp_env_t, password), .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
+		{ FR_CALL_ENV_OFFSET("sender_address", FR_TYPE_STRING, CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, rlm_smtp_env_t, sender_address) },
+		{ FR_CALL_ENV_SUBSECTION_FUNC("header", CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, smtp_header_section_parse) },
+
+		CALL_ENV_TERMINATOR
+	}
+};
 
 typedef struct {
 	char const		*uri;			//!< URI of smtp server
@@ -794,6 +821,153 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(unlang_result_t *p
 	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, ~FR_SIGNAL_CANCEL, randle);
 }
 
+static xlat_arg_parser_t const smtp_xlat_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },	/* To: */
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },	/* Subject: */
+	{ .concat = true, .type = FR_TYPE_STRING }, 			/* Body */
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static xlat_action_t smtp_send_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					   xlat_ctx_t const *xctx,
+					   request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	fr_curl_io_request_t	*randle = talloc_get_type_abort(xctx->rctx, fr_curl_io_request_t);
+	fr_value_box_t		*vb;
+
+	if (randle->result != CURLE_OK) {
+		RPERROR("Sending mail failed: %s %i", curl_easy_strerror(randle->result), randle->result);
+		smtp_slab_release(randle);
+		return XLAT_ACTION_FAIL;
+	}
+
+	smtp_slab_release(randle);
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	vb->vb_bool = true;
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+static void smtp_xlat_signal(xlat_ctx_t const *xctx, request_t *request, fr_signal_t action)
+{
+	fr_curl_io_request_t	*randle = talloc_get_type_abort(xctx->rctx, fr_curl_io_request_t);
+	rlm_smtp_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_smtp_thread_t);
+
+	smtp_io_module_signal(MODULE_CTX(xctx->mctx->mi, t, NULL, randle), request, action);
+}
+
+/** Xlat to send simple emails
+ *
+ * Example:
+ @verbatim
+ %smtp.send('bob@example.com', 'Something happened', 'More details about what happened')
+ @endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t smtp_send_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+				    xlat_ctx_t const *xctx, request_t *request,
+				    fr_value_box_list_t *in)
+{
+	rlm_smtp_t const	*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_smtp_t);
+	rlm_smtp_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_smtp_thread_t);
+	fr_value_box_t		*to, *subject, *body;
+	rlm_smtp_xlat_env_t	*call_env = talloc_get_type_abort(xctx->env_data, rlm_smtp_xlat_env_t);
+	fr_curl_io_request_t	*randle = NULL;
+	fr_mail_ctx_t		*mail_ctx;
+	fr_value_box_t		*vb;
+	char const		*sender;
+	char			*header_string;
+	curl_mimepart		*part;
+
+	XLAT_ARGS(in, &to, &subject, &body);
+
+	randle = (call_env->username_tmpl &&
+		  !tmpl_is_data(call_env->username_tmpl)) ? smtp_slab_reserve(t->slab_onetime) :
+		  					    smtp_slab_reserve(t->slab_persist);
+	if (!randle) {
+		RERROR("A handle could not be allocated for the request");
+		return XLAT_ACTION_FAIL;
+	}
+
+	mail_ctx = talloc_get_type_abort(randle->uctx, fr_mail_ctx_t);
+	*mail_ctx = (fr_mail_ctx_t) {
+		.request	= request,
+		.randle		= randle,
+		.mime		= curl_mime_init(randle->candle),
+		.time		= fr_time(),
+	};
+
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_UPLOAD, 1L);
+
+	/* Set the username and password if they have been provided */
+	if (call_env->username.vb_strvalue) {
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_USERNAME, call_env->username.vb_strvalue);
+
+		if (!call_env->password.vb_strvalue) goto skip_auth;
+
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_PASSWORD, call_env->password.vb_strvalue);
+		RDEBUG2("Username and password set");
+	}
+
+skip_auth:
+	sender = inst->envelope_address ? inst->envelope_address : fr_value_box_list_head(call_env->sender_address)->vb_strvalue;
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_MAIL_FROM, sender);
+	header_string = talloc_asprintf(call_env, "From: %s", sender);
+	mail_ctx->header = curl_slist_append(mail_ctx->header, header_string);
+
+	mail_ctx->recipients = curl_slist_append(mail_ctx->recipients, to->vb_strvalue);
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_MAIL_RCPT, mail_ctx->recipients);
+	header_string = talloc_asprintf(call_env, "To: %s", to->vb_strvalue);
+	mail_ctx->header = curl_slist_append(mail_ctx->header, header_string);
+
+	header_string = talloc_asprintf(call_env, "Subject: %s", subject->vb_strvalue);
+	mail_ctx->header = curl_slist_append(mail_ctx->header, header_string);
+
+	if (fr_value_box_list_initialised(&call_env->headers)) {
+		while ((vb = fr_value_box_list_next(&call_env->headers, vb))) {
+			RDEBUG2("Adding header \"%pV\"", vb);
+			mail_ctx->header = curl_slist_append(mail_ctx->header, vb->vb_strvalue);
+		}
+	}
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_HTTPHEADER, mail_ctx->header);
+
+	MEM(part = curl_mime_addpart(mail_ctx->mime));
+	if (curl_mime_encoder(part, "8bit") != CURLE_OK) {
+		RERROR("Failed setting mime encoder");
+	error:
+		if (randle) smtp_slab_release(randle);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (body && (body->type == FR_TYPE_STRING)) {
+		if (curl_mime_data(part, body->vb_strvalue, body->vb_length) != CURLE_OK) {
+			RERROR("Failed adding email body");
+			goto error;
+		}
+	} else {
+		curl_mime_data(part, "", 0);
+	}
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_MIMEPOST, mail_ctx->mime);
+
+	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) goto error;
+
+	return unlang_xlat_yield(request, smtp_send_xlat_resume, smtp_xlat_signal, ~FR_SIGNAL_CANCEL, randle);
+}
+
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
+{
+	xlat_t	*xlat;
+
+	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "send", smtp_send_xlat, FR_TYPE_BOOL);
+	xlat_func_args_set(xlat, smtp_xlat_args);
+	xlat_func_call_env_set(xlat, &smtp_call_env_xlat);
+
+	return 0;
+}
+
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_smtp_t			*inst = talloc_get_type_abort(mctx->mi->data, rlm_smtp_t);
@@ -1071,6 +1245,7 @@ module_rlm_t rlm_smtp = {
 		.inst_size	        = sizeof(rlm_smtp_t),
 		.thread_inst_size   	= sizeof(rlm_smtp_thread_t),
 		.config		        = module_config,
+		.bootstrap		= mod_bootstrap,
 		.instantiate		= mod_instantiate,
 		.thread_instantiate 	= mod_thread_instantiate,
 		.thread_detach      	= mod_thread_detach,
