@@ -729,10 +729,10 @@ skip_auth:
 		RDEBUG2("No files were attached to the email");
 	}
 
-	/* Add the mime endoced elements to the curl request */
+	/* Add the mime encoded elements to the curl request */
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_MIMEPOST, mail_ctx->mime);
 
-	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_UNLANG_INVALID;
+	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) goto error;
 
 	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, ~FR_SIGNAL_CANCEL, randle);
 }
