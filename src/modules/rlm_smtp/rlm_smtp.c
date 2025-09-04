@@ -620,7 +620,7 @@ static unlang_action_t smtp_io_module_resume(unlang_result_t *p_result, module_c
  *	Checks that there is a User-Name and User-Password field in the request
  *	As well as all of the required SMTP elements
  *	Sets the: username, password
- *		website URI
+ *		SMTP server URI
  *		timeout information
  *		TLS information
  *		Sender and recipient information
@@ -739,7 +739,7 @@ skip_auth:
 
 /*
  *	Sets the: username, password
- *		website URI
+ *		SMTP server URI
  *		timeout information
  *		and TLS information
  *
