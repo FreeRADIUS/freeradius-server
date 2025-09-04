@@ -435,7 +435,7 @@ static size_t body_source(char *ptr, size_t size, size_t nmemb, void *mail_ctx)
 
 	vp = fr_dcursor_current(&uctx->body_cursor);
 	if (!vp) {
-		RDEBUG2("vp could not be found for the body element");
+		RWARN("vp could not be found for the body element");
 		return 0;
 	}
 
@@ -445,7 +445,7 @@ static size_t body_source(char *ptr, size_t size, size_t nmemb, void *mail_ctx)
 	 *	and get called again.
 	 */
 	if (fr_dbuff_in_memcpy_partial(&out, &uctx->vp_in, SIZE_MAX) < fr_dbuff_remaining(&uctx->vp_in)) {
-		RDEBUG2("%zu bytes used (partial copy)", fr_dbuff_used(&out));
+		RDEBUG3("%zu bytes used (partial copy)", fr_dbuff_used(&out));
 		return fr_dbuff_used(&out);
 	}
 
@@ -458,7 +458,7 @@ static size_t body_source(char *ptr, size_t size, size_t nmemb, void *mail_ctx)
 
 	}
 
-	RDEBUG2("%zu bytes used (full copy)", fr_dbuff_used(&out));
+	RDEBUG3("%zu bytes used (full copy)", fr_dbuff_used(&out));
 	return fr_dbuff_used(&out);
 }
 
@@ -645,12 +645,12 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(unlang_result_t *p_result, modu
 
 	/* Make sure all of the essential email components are present and possible*/
 	if (!smtp_body) {
-		RDEBUG2("Attribute \"smtp-body\" is required for smtp");
+		RERROR("Attribute \"smtp-body\" is required for smtp");
 		RETURN_UNLANG_INVALID;
 	}
 
 	if (!call_env->sender_address && !inst->envelope_address) {
-		RDEBUG2("At least one of \"sender_address\" or \"envelope_address\" in the config, or \"SMTP-Sender-Address\" in the request is needed");
+		RERROR("At least one of \"sender_address\" or \"envelope_address\" in the config, or \"SMTP-Sender-Address\" in the request is needed");
 	error:
 		if (randle) smtp_slab_release(randle);
 		RETURN_UNLANG_RCODE(rcode);
@@ -689,7 +689,7 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(unlang_result_t *p_result, modu
 		if (!call_env->password.vb_strvalue) goto skip_auth;
 
 		FR_CURL_REQUEST_SET_OPTION(CURLOPT_PASSWORD, call_env->password.vb_strvalue);
-		RDEBUG2("Username and password set");
+		RDEBUG3("Username and password set");
 	}
 
 skip_auth:
@@ -728,7 +728,7 @@ skip_auth:
 
 	/* Initialize the attachments if there are any*/
 	if (attachments_source(mail_ctx, mail_ctx->mime, inst, call_env) == 0){
-		RDEBUG2("No files were attached to the email");
+		RDEBUG3("No files were attached to the email");
 	}
 
 	/* Add the mime encoded elements to the curl request */
