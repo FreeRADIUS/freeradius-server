@@ -280,7 +280,7 @@ int 		_fr_event_user_insert(NDEBUG_LOCATION_ARGS
 #define		fr_event_user_insert(_ctx, _ev_p, _el, _trigger, _callback, _uctx) \
 			_fr_event_user_insert(NDEBUG_LOCATION_EXP _ctx, _ev_p, _el, _trigger, _callback, _uctx)
 
-int		fr_event_user_trigger(fr_event_list_t *el, fr_event_user_t *ev);
+int		fr_event_user_trigger(fr_event_user_t *ev);
 
 int		fr_event_user_delete(fr_event_list_t *el, fr_event_user_cb_t user, void *uctx) CC_HINT(nonnull(1,2));
 

@@ -1919,19 +1919,18 @@ int _fr_event_user_insert(NDEBUG_LOCATION_ARGS
 
 /** Trigger a user event
  *
- * @param[in] el	containing the user event.
  * @param[in] ev	Handle for the user event.
  * @return
  *	- 0 on success.
  *	- -1 on error.
  */
-int fr_event_user_trigger(fr_event_list_t *el, fr_event_user_t *ev)
+int fr_event_user_trigger(fr_event_user_t *ev)
 {
 	struct kevent evset;
 
 	EV_SET(&evset, (uintptr_t)ev, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER, 0, NULL);
 
-	if (unlikely(kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
+	if (unlikely(kevent(ev->el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
 		fr_strerror_printf("Failed triggering user event - kevent %s", fr_syserror(evset.flags));
 		return -1;
 	}
