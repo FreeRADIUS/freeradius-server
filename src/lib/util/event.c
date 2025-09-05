@@ -1928,7 +1928,7 @@ int fr_event_user_trigger(fr_event_user_t *ev)
 {
 	struct kevent evset;
 
-	EV_SET(&evset, (uintptr_t)ev, EVFILT_USER, EV_ENABLE, NOTE_TRIGGER, 0, NULL);
+	EV_SET(&evset, (uintptr_t)ev, EVFILT_USER, 0, NOTE_TRIGGER, 0, NULL);
 
 	if (unlikely(kevent(ev->el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
 		fr_strerror_printf("Failed triggering user event - kevent %s", fr_syserror(evset.flags));
