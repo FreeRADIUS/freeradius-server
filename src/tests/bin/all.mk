@@ -2,6 +2,7 @@ TEST	:= test.bin
 
 FILES	:= \
 	atomic_queue_test 	\
+	control_test		\
 	radclient		\
 	radict 			\
 	radmin			\
@@ -34,6 +35,7 @@ $(eval $(call TEST_BOOTSTRAP))
 #
 #  Some tests take arguments, others do not.
 #
+control_test.ARGS = -m 1000 -w 32
 radclient.ARGS = -h
 radict.ARGS = -D $(top_srcdir)/share/dictionary User-Name
 radmin.ARGS = -h
