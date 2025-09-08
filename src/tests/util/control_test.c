@@ -218,6 +218,7 @@ int main(int argc, char *argv[])
 	el = main_loop_event_list();
 
 	num_aq = single_aq ? 1 : num_workers;
+	aq_size = single_aq ? FR_CONTROL_MAX_MESSAGES * num_workers : FR_CONTROL_MAX_MESSAGES;
 	aq = talloc_array(autofree, fr_atomic_queue_t *, num_aq);
 	for (i = 0; i < num_aq; i++) {
 		aq[i] = fr_atomic_queue_alloc(aq, aq_size);
