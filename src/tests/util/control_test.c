@@ -148,6 +148,7 @@ static void *control_worker(void *arg)
 
 	for (i = 0; i < max_messages; i++) {
 		my_message_t m;
+		int delay = 0;
 
 		m.header = CONTROL_MAGIC;
 		m.counter = i;
@@ -156,7 +157,8 @@ static void *control_worker(void *arg)
 retry:
 		if (fr_control_message_send(control[aq_num], wa->rb, FR_CONTROL_ID_CHANNEL, &m, sizeof(m)) < 0) {
 			MPRINT1("\tWorker %ld retrying message %zu\n", wa->id, i);
-			usleep(10);
+			delay += 10;
+			usleep(delay);
 			goto retry;
 		}
 
