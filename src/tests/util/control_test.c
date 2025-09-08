@@ -41,6 +41,8 @@ RCSID("$Id$")
 #undef MEM
 #define MEM(x) if (!(x)) { fprintf(stderr, "%s[%u] OUT OF MEMORY\n", __FILE__, __LINE__); _exit(EXIT_FAILURE); }
 #define MPRINT1 if (debug_lvl) printf
+#define MPRINT2 if (debug_lvl >= 2) printf
+#define MPRINT3 if (debug_lvl >= 3) printf
 #define CONTROL_MAGIC 0xabcd6809
 
 typedef struct {
@@ -89,7 +91,8 @@ static void recv_control_callback(void *ctx, void const *data, size_t data_size,
 	fr_assert(m->header == CONTROL_MAGIC);
 	fr_assert(data_size == sizeof(*m));
 
-	MPRINT1("Master got worker %ld message %zu, size %ld.\n", m->worker, m->counter, data_size);
+	MPRINT2("Master got worker %ld message %zu, size %ld.\n", m->worker, m->counter, data_size);
+	if (m->counter == (max_messages - 1)) MPRINT1("Master seen all messages from worker %ld\n", m->worker);
 	master_ctx->num_messages++;
 }
 
@@ -112,7 +115,7 @@ static void *control_master(UNUSED void *arg)
 	while (master_ctx->num_messages < (max_messages * num_workers)) {
 		int num_events;
 
-		MPRINT1("Master waiting for events (seen %ld).\n", master_ctx->num_messages);
+		MPRINT3("Master waiting for events (seen %ld).\n", master_ctx->num_messages);
 
 		num_events = fr_event_corral(el, fr_time(), true);
 		if (num_events < 0) {
@@ -124,7 +127,7 @@ static void *control_master(UNUSED void *arg)
 		}
 	}
 
-	MPRINT1("Master exiting.\n");
+	MPRINT1("Master exiting. Seen %ld messages.\n", master_ctx->num_messages);
 
 	talloc_free(ctx);
 
@@ -157,7 +160,7 @@ retry:
 			goto retry;
 		}
 
-		MPRINT1("\tWorker %ld sent message %zu\n", wa->id, i);
+		MPRINT2("\tWorker %ld sent message %zu\n", wa->id, i);
 	}
 
 	MPRINT1("\tWorker %ld exiting.\n", wa->id);
