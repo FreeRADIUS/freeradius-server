@@ -230,7 +230,7 @@ bool fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data)
 		diff = (seq - (tail + 1));
 
 		/*
-		 *	tail is smaller than the current entry, the queue is full.
+		 *	tail is smaller than the current entry, the queue is empty.
 		 */
 		if (diff < 0) {
 			return false;
