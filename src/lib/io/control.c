@@ -304,18 +304,13 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 	MPRINT("CONTROL push aq %p\n", c->aq);
 
 	/*
-	 *	Get a message.  If we can't get one, do garbage
-	 *	collection.  Get another, and if that fails, we're
-	 *	done.
+	 *	Get a message.  The alloc call attempts garbage collection
+	 *	if there is not enough free space.
 	 */
 	m = fr_control_message_alloc(c, rb, id, data, data_size);
 	if (!m) {
-		(void) fr_control_gc(c, rb);
-		m = fr_control_message_alloc(c, rb, id, data, data_size);
-		if (!m) {
-			fr_strerror_const("Failed allocating after GC");
-			return -2;
-		}
+		fr_strerror_const("Failed allocating after GC");
+		return -2;
 	}
 
 	if (!fr_atomic_queue_push(c->aq, m)) {
