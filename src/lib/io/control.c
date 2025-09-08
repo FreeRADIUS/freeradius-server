@@ -91,23 +91,17 @@ struct fr_control_s {
 static void pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	fr_control_t *c = talloc_get_type_abort(uctx, fr_control_t);
-	ssize_t i, num;
 	fr_time_t now;
 	char read_buffer[256];
 	uint8_t	data[256];
+	size_t message_size;
+	uint32_t id = 0;
 
-	num = read(fd, read_buffer, sizeof(read_buffer));
-	if (num <= 0) return;
+	if (read(fd, read_buffer, sizeof(read_buffer)) <= 0) return;
 
 	now = fr_time();
 
-	for (i = 0; i < num; i++) {
-		uint32_t id = 0;
-		size_t message_size;
-
-		message_size = fr_control_message_pop(c->aq, &id, data, sizeof(data));
-		if (!message_size) return;
-
+	while((message_size = fr_control_message_pop(c->aq, &id, data, sizeof(data)))) {
 		if (id >= FR_CONTROL_MAX_TYPES) continue;
 
 		if (!c->type[id].callback) continue;
