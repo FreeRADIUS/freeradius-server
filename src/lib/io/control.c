@@ -342,6 +342,8 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
  */
 int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size)
 {
+	ssize_t	ret;
+	int	delay = 0;
 	(void) talloc_get_type_abort(c, fr_control_t);
 
 	if (c->same_thread) {
@@ -353,10 +355,19 @@ int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 
 	if (fr_control_message_push(c, rb, id, data, data_size) < 0) return -1;
 
-	while (write(c->pipe[1], ".", 1) == 0) {
+again:
+	while ((ret = write(c->pipe[1], ".", 1)) == 0) {
 		/* nothing */
 	}
-
+	if ((ret < 0) && ((errno == EAGAIN))
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+	    || (errno == EWOULDBLOCK)
+#endif
+	) {
+		delay += 10;
+		usleep(delay);
+		goto again;
+	}
 	return 0;
 }
 
