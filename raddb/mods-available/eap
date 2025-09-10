@@ -369,6 +369,10 @@ eap {
 		#
 	#	allow_expired_crl = no
 
+		# Accept a missing Certificate Revocation List
+		#
+	#	allow_missing_crl = no
+
 		#  If check_cert_issuer is set, the value will
 		#  be checked against the DN of the issuer in
 		#  the client certificate.  If the values do not
