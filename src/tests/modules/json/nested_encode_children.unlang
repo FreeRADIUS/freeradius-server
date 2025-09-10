@@ -1,0 +1,19 @@
+request := {
+	Event-Timestamp = "2025-09-10T17:58:46Z"
+	Called-Station-Id = "00:11:22:33:44:55"
+	Service-Type = ::Framed-User
+	Acct-Authentic = ::RADIUS
+	Vendor-Specific = {
+		Calix = {
+			Applied-Role = "my-test-profile"
+			Walled-Garden-URL = "https://example.org"
+		}
+	}
+}
+
+# Check we get good output for "children of"
+if (!(%json_object_simple.encode('request.[*]') == "{\"Event-Timestamp\":\"2025-09-10T17:58:46Z\",\"Called-Station-Id\":\"00:11:22:33:44:55\",\"Service-Type\":\"Framed-User\",\"Acct-Authentic\":\"RADIUS\",\"Vendor-Specific\":{\"Calix\":{\"Applied-Role\":\"my-test-profile\",\"Walled-Garden-URL\":\"https:\\/\\/example.org\"}}}")) {
+	test_fail
+}
+
+test_pass
