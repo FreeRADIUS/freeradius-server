@@ -1104,7 +1104,7 @@ static int try_connect(rad_listen_t *this)
 			return 2;
 
 		case SSL_ERROR_WANT_WRITE:
-			proxy_listener_freeze(this, tls_write_available);
+			if (!this->blocked) proxy_listener_freeze(this, tls_write_available);
 			DEBUG3("(TLS) SSL_connect() returned WANT_WRITE");
 			return 2;
 		}
