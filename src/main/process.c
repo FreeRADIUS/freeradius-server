@@ -657,6 +657,8 @@ void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_h
 void proxy_listener_thaw(rad_listen_t *listener)
 {
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
+	if (!listener->blocked) return;
+
 	if (!fr_packet_list_socket_thaw(proxy_list,
 					  listener->fd)) {
 		ERROR("Fatal error freezing socket: %s", fr_strerror());
