@@ -11,6 +11,11 @@ simple, common cases.
 Returns `%`.
 
 
+`%n`::
+
+Returns the requesrt number.
+
+
 == Current Time
 
 `%c`::
