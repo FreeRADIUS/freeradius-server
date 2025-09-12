@@ -52,13 +52,9 @@ static uint32_t openssl_instance_count = 0;
  */
 #define OPENSSL_ASYNC_STACK_SIZE	32768
 
-/** How big of a stack we allocate, rounded up to the nearest page size
+/** How big of a stack we allocate, taken from the default thread stack size
  */
 static size_t			openssl_stack_size;
-
-/** Cached page size
- */
-static size_t			openssl_page_size;
 
 /** The context which holds any memory OpenSSL allocates
  *
@@ -403,17 +399,16 @@ static void *fr_openssl_stack_alloc(size_t *len)
 {
 	void *stack;
 
-	if (posix_memalign(&stack, openssl_page_size, openssl_stack_size + openssl_page_size) != 0) {
-		fr_tls_log(NULL, "Failed allocating OpenSSL stack: %s", fr_syserror(errno));
-		return NULL;
-	}
-
 	/*
-	 *	Catch reads and writes going off the end of the stack.
+	 *	Use mmap to sparsely allocate the stack
 	 */
-	if (mprotect((uint8_t *)stack + openssl_stack_size, openssl_page_size, PROT_NONE) < 0) {
-		fr_tls_log(NULL, "Failed adding guard page to OpenSSL stack: %s", fr_syserror(errno));
-		free(stack);
+#if defined(__linux__) || defined(__FreeBSD__)
+	stack = mmap(NULL, openssl_stack_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_STACK, -1, 0);
+#else
+	stack = mmap(NULL, openssl_stack_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+#endif
+	if (stack == MAP_FAILED) {
+		fr_tls_log(NULL, "Failed allocating OpenSSL stack: %s", fr_syserror(errno));
 		return NULL;
 	}
 	*len = openssl_stack_size;
@@ -423,15 +418,7 @@ static void *fr_openssl_stack_alloc(size_t *len)
 
 static void fr_openssl_stack_free(void *stack)
 {
-	/*
-	 *	Remove the guard page.  If this failed, we can't continue
-	 *	as we'll have random protected memory chunks
-	 */
-	if (unlikely(mprotect((uint8_t *)stack + openssl_stack_size, openssl_page_size, PROT_READ | PROT_WRITE) < 0)) {
-		fr_assert_msg(0, "Uprotecting OpenSSL stack memory failed, can't continue: %s", fr_syserror(errno));
-		fr_exit(1);
-	}
-	free(stack);
+	munmap(stack, openssl_stack_size);
 }
 #endif
 
@@ -442,14 +429,18 @@ static void fr_openssl_stack_free(void *stack)
  */
 int fr_openssl_init(void)
 {
+	pthread_attr_t tattr;
+
 	if (openssl_instance_count > 0) {
 		openssl_instance_count++;
 		return 0;
 	}
 
-	openssl_page_size = (size_t)getpagesize();
-	openssl_stack_size = ROUND_UP_POW2(OPENSSL_ASYNC_STACK_SIZE, openssl_page_size);
-
+	pthread_attr_init(&tattr);
+	if (pthread_attr_getstacksize(&tattr, &openssl_stack_size) != 0) {
+		fr_tls_log(NULL, "Failed getting stack size");
+		return -1;
+	}
 
 	/*
 	 *	This will only fail if memory has already been allocated
