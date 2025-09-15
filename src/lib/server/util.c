@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/skip.h>
 #include <freeradius-devel/util/perm.h>
+#include <freeradius-devel/util/cap.h>
 
 
 #include <fcntl.h>
@@ -800,6 +801,16 @@ void rad_suid_down_permanent(void)
 
 	if (geteuid() != suid_down_uid) {
 		ERROR("Switched to unknown uid");
+		fr_exit_now(EXIT_FAILURE);
+	}
+
+	/*
+	 *	Shut down most of the interesting things which might get abused.
+	 */
+	if ((fr_cap_disable(CAP_SETUID, CAP_EFFECTIVE) < 0) ||
+	    (fr_cap_disable(CAP_SETUID, CAP_INHERITABLE) < 0) ||
+	    (fr_cap_disable(CAP_SETUID, CAP_PERMITTED) < 0)) {
+		ERROR("Failed disabling CAP_SUID");
 		fr_exit_now(EXIT_FAILURE);
 	}
 
