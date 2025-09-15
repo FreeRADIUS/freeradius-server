@@ -151,6 +151,7 @@ static conf_parser_t tls_verify_config[] = {
 	{ FR_CONF_OFFSET("check_crl", fr_tls_verify_conf_t, check_crl), .dflt = "no" },
 	{ FR_CONF_OFFSET("allow_expired_crl", fr_tls_verify_conf_t, allow_expired_crl) },
 	{ FR_CONF_OFFSET("allow_not_yet_valid_crl", fr_tls_verify_conf_t, allow_not_yet_valid_crl) },
+	{ FR_CONF_OFFSET("der_decode", fr_tls_verify_conf_t, der_decode) },
 	CONF_PARSER_TERMINATOR
 };
 

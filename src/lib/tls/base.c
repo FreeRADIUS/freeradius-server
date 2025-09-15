@@ -75,11 +75,13 @@ static uint32_t tls_instance_count = 0;
 fr_dict_t const *dict_freeradius;
 fr_dict_t const *dict_radius;
 fr_dict_t const *dict_tls;
+fr_dict_t const	*dict_der;
 
 extern fr_dict_autoload_t tls_dict[];
 fr_dict_autoload_t tls_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_tls, .proto = "tls" },
+	{ .out = &dict_der, .proto = "der" },
 	{ NULL }
 };
 
@@ -127,6 +129,8 @@ fr_dict_attr_t const *attr_tls_session_data;
 fr_dict_attr_t const *attr_tls_session_id;
 fr_dict_attr_t const *attr_tls_session_resumed;
 fr_dict_attr_t const *attr_tls_session_ttl;
+
+fr_dict_attr_t const *attr_der_certificate;
 
 extern fr_dict_attr_autoload_t tls_dict_attr[];
 fr_dict_attr_autoload_t tls_dict_attr[] = {
@@ -177,6 +181,9 @@ fr_dict_attr_autoload_t tls_dict_attr[] = {
 	{ .out = &attr_tls_session_id, .name = "Session-Id", .type = FR_TYPE_OCTETS, .dict = &dict_tls },
 	{ .out = &attr_tls_session_resumed, .name = "Session-Resumed", .type = FR_TYPE_BOOL, .dict = &dict_tls },
 	{ .out = &attr_tls_session_ttl, .name = "Session-TTL", .type = FR_TYPE_TIME_DELTA, .dict = &dict_tls },
+
+	{ .out = &attr_der_certificate, .name = "Certificate", .type = FR_TYPE_TLV, .dict = &dict_der },
+
 	{ NULL }
 };
 

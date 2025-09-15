@@ -21,7 +21,7 @@ SOURCES	:= \
 	version.c \
 	virtual_server.c
 
-TGT_PREREQS := libfreeradius-internal$(L) libfreeradius-util$(L)
+TGT_PREREQS := libfreeradius-internal$(L) libfreeradius-util$(L) libfreeradius-der$(L)
 
 # This lets the linker determine which version of the SSLeay functions to use.
 TGT_LDLIBS  := $(LIBS) $(OPENSSL_LIBS) $(GPERFTOOLS_LIBS)
