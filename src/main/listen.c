@@ -1801,14 +1801,19 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			sock->limit.idle_timeout = 5;
 		}
 
-		if ((sock->limit.lifetime > 0) && (sock->limit.lifetime < 5)) {
-			WARN("Setting lifetime to 5");
-			sock->limit.lifetime = 5;
-		}
+		if (sock->limit.lifetime) {
+			if (sock->limit.lifetime < 5) {
+				WARN("Setting lifetime to 5");
+				sock->limit.lifetime = 5;
+			}
 
-		if ((sock->limit.lifetime > 0) && (sock->limit.idle_timeout > sock->limit.lifetime)) {
-			WARN("Setting idle_timeout to 0");
-			sock->limit.idle_timeout = 0;
+			if (sock->limit.idle_timeout > sock->limit.lifetime) {
+				WARN("Setting idle_timeout to 0");
+				sock->limit.idle_timeout = 0;
+			}
+
+		} else if (!sock->limit.idle_timeout) {
+			sock->limit.idle_timeout = 30;
 		}
 
 		/*
@@ -3622,6 +3627,24 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 	if (home->proto == IPPROTO_TCP) {
 		this->recv = proxy_socket_tcp_recv;
 
+		/*
+		 *	Our limit is the smaller of the socket config and this home server config.
+		 */
+		if (home->limit.lifetime && (home->limit.lifetime < sock->limit.lifetime)) {
+			sock->limit.lifetime = home->limit.lifetime;
+		}
+
+		if (home->limit.idle_timeout && (home->limit.idle_timeout < sock->limit.idle_timeout)) {
+			sock->limit.idle_timeout = home->limit.idle_timeout;
+
+			if (sock->limit.lifetime && (sock->limit.lifetime > sock->limit.idle_timeout)) {
+				sock->limit.idle_timeout = 0;
+			}
+
+		}
+
+		if (!sock->limit.lifetime && !sock->limit.idle_timeout) sock->limit.idle_timeout = 30;
+
 #ifdef WITH_TLS
 		this->nonblock |= home->nonblock;
 #endif
@@ -3759,7 +3782,6 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 			goto error;
 		}
 #endif
-
 
 		sock->connect_timeout = home->connect_timeout;
 

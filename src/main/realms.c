@@ -618,12 +618,22 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 	if (home->proto != IPPROTO_TCP) home->limit.max_connections = 0;
 #endif
 
-	if ((home->limit.idle_timeout > 0) && (home->limit.idle_timeout < 5))
+	if ((home->limit.idle_timeout > 0) && (home->limit.idle_timeout < 5)) {
 		home->limit.idle_timeout = 5;
-	if ((home->limit.lifetime > 0) && (home->limit.lifetime < 5))
-		home->limit.lifetime = 5;
-	if ((home->limit.lifetime > 0) && (home->limit.idle_timeout > home->limit.lifetime))
-		home->limit.idle_timeout = 0;
+	}
+
+	if (home->limit.lifetime > 0) {
+		if (home->limit.lifetime < 5) {
+			home->limit.lifetime = 5;
+		}
+
+		if (home->limit.idle_timeout > home->limit.lifetime) {
+			home->limit.idle_timeout = 0;
+		}
+
+	} else if (!home->limit.idle_timeout) {
+		home->limit.idle_timeout = 30;
+	}
 
 	/*
 	 *	Make sure that this is set.
