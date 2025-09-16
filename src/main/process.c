@@ -5723,13 +5723,12 @@ static void event_new_fd(void *ctx)
 			rad_assert((sock->proto == IPPROTO_UDP) || (sock->home != NULL));
 
 			/*
-			 *	Add timers to outgoing child sockets, if necessary.
+			 *	Add timers to outgoing TCP sockets.
 			 */
-			if (sock->proto == IPPROTO_TCP && sock->opened &&
-			    (sock->home->limit.lifetime || sock->home->limit.idle_timeout)) {
+			if (sock->proto == IPPROTO_TCP) {
 				struct timeval when;
 
-				when.tv_sec = sock->opened + 1;
+				when.tv_sec = time(NULL) + 1;
 				when.tv_usec = 0;
 
 				ASSERT_MASTER;
@@ -5762,13 +5761,12 @@ static void event_new_fd(void *ctx)
 		default:
 #ifdef WITH_TCP
 			/*
-			 *	Add timers to incoming child sockets, if necessary.
+			 *	Add timers to incoming TCP sockets;
 			 */
-			if (sock->proto == IPPROTO_TCP && sock->opened &&
-			    (sock->limit.lifetime || sock->limit.idle_timeout)) {
+			if (sock->proto == IPPROTO_TCP) {
 				struct timeval when;
 
-				when.tv_sec = sock->opened + 1;
+				when.tv_sec = time(NULL) + 1;
 				when.tv_usec = 0;
 
 				ASSERT_MASTER;
