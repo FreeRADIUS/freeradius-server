@@ -5606,7 +5606,13 @@ static void listener_free_cb(void *ctx)
 #ifdef WITH_TCP
 	fr_event_delete(el, &sock->ev);
 #endif
-	talloc_free(this);
+	if (this->type != RAD_LISTEN_PROXY) {
+		PTHREAD_MUTEX_LOCK(&proxy_mutex);
+		talloc_free(this);
+		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+	} else {
+		talloc_free(this);
+	}
 }
 
 #ifdef WITH_PROXY
