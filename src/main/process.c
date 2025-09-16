@@ -2559,6 +2559,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 #ifdef HAVE_PTHREAD_H
 			proxy_no_new_sockets = true;
 #endif
+			talloc_free(this);
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
 			/*
