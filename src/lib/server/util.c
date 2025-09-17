@@ -814,6 +814,15 @@ void rad_suid_down_permanent(void)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
+#ifdef HAVE_GRP_H
+	if ((fr_cap_disable(CAP_SETGID, CAP_EFFECTIVE) < 0) ||
+	    (fr_cap_disable(CAP_SETGID, CAP_INHERITABLE) < 0) ||
+	    (fr_cap_disable(CAP_SETGID, CAP_PERMITTED) < 0)) {
+		ERROR("Failed disabling CAP_SGID");
+		fr_exit_now(EXIT_FAILURE);
+	}
+#endif
+
 	fr_reset_dumpable();
 
 	suid_down_permanent = true;

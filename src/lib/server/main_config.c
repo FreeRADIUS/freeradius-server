@@ -41,7 +41,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/hw.h>
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/sem.h>
-#include <freeradius-devel/util/cap.h>
 #include <freeradius-devel/util/pair_legacy.h>
 
 #include <freeradius-devel/unlang/xlat_func.h>
@@ -713,13 +712,6 @@ static int switch_users(main_config_t *config, CONF_SECTION *cs)
 
 			fprintf(stderr, "%s: Failed setting group to %s: %s",
 				config->name, group->gr_name, fr_syserror(errno));
-			return -1;
-		}
-
-		if ((fr_cap_disable(CAP_SETGID, CAP_EFFECTIVE) < 0) ||
-		    (fr_cap_disable(CAP_SETGID, CAP_INHERITABLE) < 0) ||
-		    (fr_cap_disable(CAP_SETGID, CAP_PERMITTED) < 0)) {
-			fprintf(stderr, "Failed disabling CAP_SGID - %s", fr_syserror(errno));
 			return -1;
 		}
 	}
