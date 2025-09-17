@@ -877,7 +877,7 @@ static xlat_action_t smtp_send_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t 
 	rlm_smtp_xlat_env_t	*call_env = talloc_get_type_abort(xctx->env_data, rlm_smtp_xlat_env_t);
 	fr_curl_io_request_t	*randle = NULL;
 	fr_mail_ctx_t		*mail_ctx;
-	fr_value_box_t		*vb;
+	fr_value_box_t		*vb = NULL;
 	char const		*sender;
 	char			*header_string;
 	curl_mimepart		*part;
