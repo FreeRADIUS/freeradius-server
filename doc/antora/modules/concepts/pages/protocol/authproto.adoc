@@ -1,18 +1,18 @@
 = Protocols
 
-== RADIUS Protocol
+== RADIUS protocol
 
-RADIUS is a protocol for remote user Authorisation, Authentication, and Accounting. It's very important for Internet Service Providers, and any network that needs a centralized authentication and/or accounting services for its infrastructure.
+RADIUS is a protocol for remote user Authorization, Authentication, and Accounting. It's very important for Internet Service Providers, and any network that needs a centralized authentication and/or accounting services for its infrastructure.
 
 RADIUS is often used in larger Wi-Fi (wireless) networks for authentication purposes, replacing the simple shared key methods which are uncomfortable if a Wi-Fi network reaches a specific size.
 
 The protocol originally was designed by the well known terminal server manufacturer Livingston for use with their Portmaster series of terminal servers. Since then it has been implemented by hundreds other vendors and has a become an Internet Standard RFC. The DIAMETER protocol is the designated successor, but RADIUS is still commonly used today.
 
-=== RADIUS Protocol Dependencies
+=== RADIUS protocol dependencies
 
 RADIUS uses UDP as its underlying protocol. The registered UDP port for RADIUS traffic is 1812 for authentication and configuration. The early deployment of RADIUS used UDP port 1645, which conflicted with the "datametrics" service.  When RADIUS is used for accounting  the registered UDP port is 1813. The earlier RADIUS version used port 1646, which conflicted with the "sa-msg-port" service.
 
-== Authentication Protocols
+== Authentication protocols
 
 In order for RADIUS authentication to work, user passwords need to be stored in a format that is understood by the authentication protocol used by the client. Many protocols integrated with RADIUS include:
 
@@ -23,7 +23,7 @@ In order for RADIUS authentication to work, user passwords need to be stored in 
 
 Authentication protocols used in RADIUS are not always compatible with the way the passwords have been stored. The following table shows which protocol is compatible with what kind of password.
 
-=== Authentication Protocol and Password Compatibility
+=== Authentication protocol and password compatibility
 
 Passwords may be stored in a datastore in many forms. Clear-text, MD5 hashed, crypt'd, NT hash, or other methods are all commonly used. Authentication protocols used in RADIUS are not always compatible with the way the passwords have been stored. The following table shows which protocol is compatible with what kind of password.
 
@@ -128,7 +128,7 @@ Many people store passwords in their databases in hashed or encrypted form. They
 
 The password hashes, and authentication protocols were designed to be incompatible. If the cell in the above table is red, then it's impossible to make the authentication protocol use that form of the password. Your only choices are to stop trying to use that authentication protocol, or to store the passwords in a form compatible with that authentication protocol. The last choice often means asking all users to change their passwords, unfortunately.
 
-== More Information
+== More information
 
 Refer to xref:reference:dictionary/index.adoc[Attributes] for more protocol attribute details and https://www.iana.org/assignments/radius-types/radius-types.xhtml[RADIUS Packet Types].
 
