@@ -3183,7 +3183,7 @@ static TABLE_TYPE_NAME_FUNC_RPTR(table_sorted_value_by_str, fr_dict_keyword_t co
  *			Used to track what PROTOCOL, VENDOR or TLV block
  *			we're in. Block context changes in $INCLUDEs should
  *			not affect the context of the including file.
- * @param[in] dir_name	Directory containing the dictionary we're loading.
+ * @param[in] dir	Directory containing the dictionary we're loading.
  * @param[in] filename	we're parsing.
  * @param[in] src_file	The including file.
  * @param[in] src_line	Line on which the $INCLUDE or $NCLUDE- statement was found.
@@ -3192,7 +3192,7 @@ static TABLE_TYPE_NAME_FUNC_RPTR(table_sorted_value_by_str, fr_dict_keyword_t co
  *	- -1 on failure.
  */
 static int _dict_from_file(dict_tokenize_ctx_t *dctx,
-			   char const *dir_name, char const *filename,
+			   char const *dir, char const *filename,
 			   char const *src_file, int src_line)
 {
 	static fr_dict_keyword_t const keywords[] = {
@@ -3214,7 +3214,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	};
 
 	FILE			*fp;
-	char 			dir[256], fn[256];
+	char 			filename_buf[256];
 	char			buf[256];
 	char			*p;
 	int			line = 0;
@@ -3232,68 +3232,51 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 
 	if (!fr_cond_assert(!dctx->dict->root || CURRENT_FRAME(dctx)->da)) return -1;
 
-	if ((strlen(dir_name) + 3 + strlen(filename)) > sizeof(dir)) {
+	if ((strlen(dir) + 2 + strlen(filename)) > sizeof(filename_buf)) {
 		fr_strerror_printf("%s: Filename name too long", "Error reading dictionary");
 		return -1;
 	}
 
 	/*
-	 *	If it's an absolute dir, forget the parent dir,
-	 *	and remember the new one.
+	 *	The filename is relative to the current directory.
 	 *
-	 *	If it's a relative dir, tack on the current filename
-	 *	to the parent dir.  And use that.
+	 *	Ensure that the directory name doesn't end with 2 '/',
+	 *	and then create the full path from dir + filename.
 	 */
-	if (!FR_DIR_IS_RELATIVE(filename)) {
-		strlcpy(dir, filename, sizeof(dir));
-		p = strrchr(dir, FR_DIR_SEP);
-		if (p) {
-			p[1] = '\0';
-		} else {
-			strlcat(dir, "/", sizeof(dir));
-		}
+	if (FR_DIR_IS_RELATIVE(filename)) {
+		/*
+		 *	The filename is relative to the input
+		 *	directory.
+		 */
+		strlcpy(filename_buf, dir, sizeof(filename_buf));
+		p = strrchr(filename_buf, FR_DIR_SEP);
+		if (p && !p[1]) *p = '\0';
 
-		strlcpy(fn, filename, sizeof(fn));
-	} else {
-		strlcpy(dir, dir_name, sizeof(dir));
-		p = strrchr(dir, FR_DIR_SEP);
-		if (p) {
-			if (p[1]) strlcat(dir, "/", sizeof(dir));
-		} else {
-			strlcat(dir, "/", sizeof(dir));
-		}
-		strlcat(dir, filename, sizeof(dir));
-		p = strrchr(dir, FR_DIR_SEP);
-		if (p) {
-			p[1] = '\0';
-		} else {
-			strlcat(dir, "/", sizeof(dir));
-		}
-
-		p = strrchr(filename, FR_DIR_SEP);
-		if (p) {
-			snprintf(fn, sizeof(fn), "%s%s", dir, p);
-		} else {
-			snprintf(fn, sizeof(fn), "%s%s", dir, filename);
-		}
+		snprintf(filename_buf, sizeof(filename_buf), "%s/%s", dir, filename);
+		filename = filename_buf;
 	}
+	/*
+	 *	Else we ignore the input directory.  We also assume
+	 *	that the filename is normalized, and therefore don't
+	 *	change it.
+	 */
 
 	/*
 	 *	See if we have already loaded this filename.  If so, suppress it.
 	 */
 #ifndef NDEBUG
-	if (unlikely(dict_filename_loaded(dctx->dict, fn, src_file, src_line))) {
-		fr_strerror_printf("ERROR - we have a recursive $INCLUDE or load of dictionary %s", fn);
+	if (unlikely(dict_filename_loaded(dctx->dict, filename, src_file, src_line))) {
+		fr_strerror_printf("ERROR - we have a recursive $INCLUDE or load of dictionary %s", filename);
 		return -1;
 	}
 #endif
 
-	if ((fp = fopen(fn, "r")) == NULL) {
+	if ((fp = fopen(filename, "r")) == NULL) {
 		if (!src_file) {
-			fr_strerror_printf("Couldn't open dictionary %s: %s", fr_syserror(errno), fn);
+			fr_strerror_printf("Couldn't open dictionary %s: %s", fr_syserror(errno), filename);
 		} else {
 			fr_strerror_printf("Error reading dictionary: %s[%d]: Couldn't open dictionary '%s': %s",
-					   fr_cwd_strip(src_file), src_line, fn,
+					   fr_cwd_strip(src_file), src_line, filename,
 					   fr_syserror(errno));
 		}
 		return -2;
@@ -3303,7 +3286,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	 *	If fopen works, this works.
 	 */
 	if (fstat(fileno(fp), &statbuf) < 0) {
-		fr_strerror_printf("Failed stating dictionary \"%s\" - %s", fn, fr_syserror(errno));
+		fr_strerror_printf("Failed stating dictionary \"%s\" - %s", filename, fr_syserror(errno));
 
 	perm_error:
 		fclose(fp);
@@ -3311,7 +3294,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	}
 
 	if (!S_ISREG(statbuf.st_mode)) {
-		fr_strerror_printf("Dictionary is not a regular file: %s", fn);
+		fr_strerror_printf("Dictionary is not a regular file: %s", filename);
 		goto perm_error;
 	}
 
@@ -3322,7 +3305,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 #ifdef S_IWOTH
 	if (dict_gctx->perm_check && ((statbuf.st_mode & S_IWOTH) != 0)) {
 		fr_strerror_printf("Dictionary is globally writable: %s. "
-				   "Refusing to start due to insecure configuration", fn);
+				   "Refusing to start due to insecure configuration", filename);
 		goto perm_error;
 	}
 #endif
@@ -3332,7 +3315,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	 *	This string is safe to assign to the filename pointer in any attributes added beneath the
 	 *	dictionary.
 	 */
-	if (unlikely(dict_filename_add(&dctx->filename, dctx->dict, fn, src_file, src_line) < 0)) {
+	if (unlikely(dict_filename_add(&dctx->filename, dctx->dict, filename, src_file, src_line) < 0)) {
 		goto perm_error;
 	}
 
@@ -3373,7 +3356,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 			}
 
 		error:
-			fr_strerror_printf_push("Failed parsing dictionary at %s[%d]", fr_cwd_strip(fn), line);
+			fr_strerror_printf_push("Failed parsing dictionary at %s[%d]", fr_cwd_strip(filename), line);
 			fclose(fp);
 			return -1;
 		}
