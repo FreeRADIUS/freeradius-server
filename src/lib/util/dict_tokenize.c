@@ -1164,8 +1164,9 @@ static int dict_read_process_include(dict_tokenize_ctx_t *dctx, char **argv, int
 {
 	int rcode;
 	int stack_depth = dctx->stack_depth;
-	char *filename = dctx->filename;
-	int line = dctx->line;
+	char *src_file = dctx->filename;
+	int src_line = dctx->line;
+	char *filename;
 
 	/*
 	 *	Allow "$INCLUDE" or "$INCLUDE-", but
@@ -1177,42 +1178,43 @@ static int dict_read_process_include(dict_tokenize_ctx_t *dctx, char **argv, int
 	}
 
 	if (argc != 2) {
-		fr_strerror_printf("Unexpected text after $INCLUDE at %s[%d]", fr_cwd_strip(filename), line);
+		fr_strerror_printf("Unexpected text after $INCLUDE at %s[%d]", fr_cwd_strip(src_file), src_line);
 		return -1;
 	}
 
+	filename = argv[1];
+
 	/*
-	 *	Allow limited macro capability, so
-	 *	people don't have to remember where
-	 *	the root dictionaries are located.
+	 *	Allow limited macro capability, so people don't have
+	 *	to remember where the root dictionaries are located.
 	 */
-	if (strncmp(argv[1], "${dictdir}/", 11) != 0) {
-		rcode = _dict_from_file(dctx, dir, argv[1], filename, line);
-	} else {
-		rcode = _dict_from_file(dctx, fr_dict_global_ctx_dir(), argv[1] + 11, filename, line);
+	if (strncmp(filename, "${dictdir}/", 11) == 0) {
+		dir = fr_dict_global_ctx_dir();
+		filename += 11;
 	}
 
+	rcode = _dict_from_file(dctx, dir, filename, src_file, src_line);
 	if ((rcode == -2) && (argv[0][8] == '-')) {
 		fr_strerror_clear(); /* delete all errors */
 		return 0;
 	}
 
 	if (rcode < 0) {
-		fr_strerror_printf_push("from $INCLUDE at %s[%d]", fr_cwd_strip(filename), line);
+		fr_strerror_printf_push("from $INCLUDE at %s[%d]", fr_cwd_strip(src_file), src_line);
 		return -1;
 	}
 
 	if (dctx->stack_depth < stack_depth) {
 		fr_strerror_printf("unexpected END-??? in $INCLUDE at %s[%d]",
-				   fr_cwd_strip(filename), line);
+				   fr_cwd_strip(src_file), src_line);
 		return -1;
 	}
 
 	/*
 	 *	Reset the filename and line number.
 	 */
-	dctx->filename = filename;
-	dctx->line = line;
+	dctx->filename = src_file;
+	dctx->line = src_line;
 
 	return 0;
 }
