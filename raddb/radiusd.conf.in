@@ -541,6 +541,17 @@ security {
 #	group = radius
 
 	#
+	#  After the server has changed to the final user/group, it
+	#  can also set the current working directory.  While not
+	#  necessary, changing the working directory means that the
+	#  server does not have any dangling paths.
+	#
+	#  The directory here should either be "/", or ${confdir}
+	#
+#	chdir = ${confdir}
+
+
+	#
 	#  allow_core_dumps:: Core dumps are a bad thing.
 	#
 	#  This should only be set to `yes` if you're debugging

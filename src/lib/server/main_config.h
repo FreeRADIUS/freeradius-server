@@ -102,6 +102,9 @@ struct main_config_s {
 	bool		gid_is_set;
 #endif
 
+	char const	*chdir;				//!< where to chdir() to when we start.
+	bool		chdir_is_set;
+
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	char const	*allow_vulnerable_openssl;	//!< The CVE number of the last security issue acknowledged.
 #endif

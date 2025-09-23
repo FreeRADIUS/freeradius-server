@@ -881,6 +881,17 @@ int main(int argc, char *argv[])
 	 */
 	rad_suid_down_permanent();
 
+	/*
+	 *	Move the current working directory to a place where it
+	 *	can't hurt anything.
+	 */
+	if (main_config->chdir_is_set) {
+		if (chdir(main_config->chdir) < 0) {
+			ERROR("Failed changing working to %s: %s", main_config->chdir, fr_syserror(errno));
+			EXIT_WITH_FAILURE;
+		}
+	}
+
 	DUMP_CAPABILITIES("post-suid-down");
 
 	/*

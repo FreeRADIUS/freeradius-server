@@ -274,6 +274,8 @@ static const conf_parser_t security_config[] = {
 	{ FR_CONF_OFFSET_IS_SET("openssl_fips_mode", FR_TYPE_BOOL, 0, main_config_t, openssl_fips_mode), .dflt = "no" },
 #endif
 
+	{ FR_CONF_OFFSET_IS_SET("chdir", FR_TYPE_STRING, 0, main_config_t, chdir), },
+
 	CONF_PARSER_TERMINATOR
 };
 
