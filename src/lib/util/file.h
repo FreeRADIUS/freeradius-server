@@ -86,8 +86,6 @@ typedef enum {
 typedef struct {
 	fr_globdir_type_t	type;
 
-	bool			opened;
-
 	char			*path;
 	char			*filename;
 
