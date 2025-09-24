@@ -1163,10 +1163,13 @@ static int dict_read_process_common(dict_tokenize_ctx_t *dctx, fr_dict_attr_t **
 static int dict_read_process_include(dict_tokenize_ctx_t *dctx, char **argv, int argc, char const *dir)
 {
 	int rcode;
+	bool required = true;
 	int stack_depth = dctx->stack_depth;
 	char *src_file = dctx->filename;
 	int src_line = dctx->line;
-	char *filename;
+	char *pattern;
+	char const *filename;
+	fr_globdir_iter_t iter;
 
 	/*
 	 *	Allow "$INCLUDE" or "$INCLUDE-", but
@@ -1182,41 +1185,68 @@ static int dict_read_process_include(dict_tokenize_ctx_t *dctx, char **argv, int
 		return -1;
 	}
 
-	filename = argv[1];
+	pattern = argv[1];
+	required = (argv[0][8] != '-');
 
 	/*
 	 *	Allow limited macro capability, so people don't have
 	 *	to remember where the root dictionaries are located.
 	 */
-	if (strncmp(filename, "${dictdir}/", 11) == 0) {
+	if (strncmp(pattern, "${dictdir}/", 11) == 0) {
 		dir = fr_dict_global_ctx_dir();
-		filename += 11;
+		pattern += 11;
 	}
 
-	rcode = _dict_from_file(dctx, dir, filename, src_file, src_line);
-	if ((rcode == -2) && (argv[0][8] == '-')) {
+	/*
+	 *	Figure out what we need to open, and put the result into "filename".
+	 */
+	rcode = fr_globdir_iter_init(&filename, dir, pattern, &iter);
+	if (rcode < 0) {
+	failed:
+		fr_strerror_printf("Failed opening $INCLUDE of %s/%s at %s[%d] - %s",
+				   dir, pattern, fr_cwd_strip(src_file), src_line, fr_syserror(errno));
+		return -1;
+	}
+
+	/*
+	 *	No files may or may not be an error, depending on if the $INCLUDE was required.
+	 */
+	if (rcode == 0) {
+		if (required) {
+			errno = ENOENT;
+			goto failed;
+		}
+
 		fr_strerror_clear(); /* delete all errors */
 		return 0;
 	}
 
-	if (rcode < 0) {
-		fr_strerror_printf_push("from $INCLUDE at %s[%d]", fr_cwd_strip(src_file), src_line);
-		return -1;
-	}
+	/*
+	 *	"filename" is already the file, so we use do{}while() instead of while{}
+	 */
+	do {
+		rcode = _dict_from_file(dctx, dir, filename, src_file, src_line);
+		if (rcode < 0) {
+			fr_strerror_printf_push("from $INCLUDE at %s[%d]", fr_cwd_strip(src_file), src_line);
+			break;
+		}
 
-	if (dctx->stack_depth < stack_depth) {
-		fr_strerror_printf("unexpected END-??? in $INCLUDE at %s[%d]",
-				   fr_cwd_strip(src_file), src_line);
-		return -1;
-	}
+		if (dctx->stack_depth < stack_depth) {
+			fr_strerror_printf("unexpected END-??? in $INCLUDE at %s[%d]",
+					   fr_cwd_strip(src_file), src_line);
+			rcode = -1;
+			break;
+		}
+
+	} while ((rcode = fr_globdir_iter_next(&filename, &iter)) == 1);
+	(void) fr_globdir_iter_free(&iter);
 
 	/*
 	 *	Reset the filename and line number.
 	 */
 	dctx->filename = src_file;
 	dctx->line = src_line;
-
-	return 0;
+	return rcode;		/* could be an error! */
 }
 
 static int dict_read_parse_format(char const *format, int *ptype, int *plength, bool *pcontinuation)
