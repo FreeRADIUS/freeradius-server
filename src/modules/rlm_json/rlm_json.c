@@ -242,7 +242,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					      	.attr = {
 							.list_def = request_attr_request,
 							.allow_wildcard = true,
-							.dict_def = request->proto_dict,
+							.dict_def = request->local_dict,
 					      	}
 					      });
 		if (slen <= 0) {

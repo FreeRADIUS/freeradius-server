@@ -167,4 +167,17 @@ if !(test_string1 == '[]') {
 #          -e "s/\"$/') {/" \
 #          -e "s/$/\n	test_fail\n}\n/"
 
+# 6a Local attributes
+group {
+	string local_attr
+
+	local_attr := 'foo'
+
+	test_string1 := %json.encode("local_attr")
+
+	if !(test_string1 == '{"local_attr":{"type":"string","value":"foo"}}') {
+		test_fail
+	}
+}
+
 test_pass
