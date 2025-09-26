@@ -845,6 +845,7 @@ static void process_file(const char *root_dir, char const *filename)
 				continue;
 			}
 
+			fr_pair_list_sort(&head, fr_dhcp_attr_cmp);
 			fr_cursor_init(&cursor, &head);
 
 
