@@ -46,12 +46,12 @@ if (!(test_string1 == test_string2) ||
 	test_fail
 }
 
-test_string1 := %json.encode(" request.[*]    !Filter-Id ")
+test_string1 := %json.encode(" request.[*]","    !Filter-Id ")
 if !(test_string1 == '{"User-Name":{"type":"string","value":"john"},"NAS-Port":{"type":"uint32","value":999},"Service-Type":{"type":"uint32","value":"Login-User"}}') {
 	test_fail
 }
 
-test_string1 := %json.encode("request.[*] ! ")
+test_string1 := %json.encode("request.[*]", "! ")
 if test_string1 {
 	test_fail
 }

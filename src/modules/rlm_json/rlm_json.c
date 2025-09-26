@@ -192,13 +192,14 @@ static xlat_action_t json_jpath_validate_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out
 }
 
 static xlat_arg_parser_t const json_encode_xlat_arg[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .single = true, .type = FR_TYPE_STRING, .required = true },
+	{ .single = true, .type = FR_TYPE_STRING, .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
 /** Convert given attributes to a JSON document
  *
- * Usage is `%json.encode(attr tmpl list)`
+ * Usage is `%json.encode('attr', 'list[*]', '!negation)`
  *
  * @ingroup xlat_functions
  */
@@ -216,20 +217,18 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	char			*json_str = NULL;
 	fr_value_box_t		*vb;
 	fr_sbuff_t		sbuff;
-	fr_value_box_t		*in_head = fr_value_box_list_head(in);
 
 	fr_pair_list_init(&json_vps);
 	fr_pair_list_init(&vps);
-
-	sbuff = FR_SBUFF_IN(in_head->vb_strvalue, in_head->vb_length);
-	fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 
 	/*
 	 * Iterate through the list of attribute templates in the xlat. For each
 	 * one we either add it to the list of attributes for the JSON document
 	 * or, if prefixed with '!', remove from the JSON list.
 	 */
-	while (fr_sbuff_extend(&sbuff)) {
+	fr_value_box_list_foreach(in, ref) {
+		sbuff = FR_SBUFF_IN(ref->vb_strvalue, ref->vb_length);
+		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 		negate = false;
 
 		/* Check if we should be removing attributes */
@@ -289,9 +288,6 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		}
 
 		TALLOC_FREE(vpt);
-
-		/* Jump forward to next attr */
-		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
 	}
 
 	/*
