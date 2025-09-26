@@ -1223,6 +1223,8 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 {
 	VALUE_PAIR const *my_a = a;
 	VALUE_PAIR const *my_b = b;
+	unsigned int base_a, base_b;
+	uint8_t child_a, child_b;
 
 	VERIFY_VP(my_a);
 	VERIFY_VP(my_b);
@@ -1240,13 +1242,30 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 	if ((my_a->da->attr != PW_DHCP_MESSAGE_TYPE) && (my_b->da->attr == PW_DHCP_MESSAGE_TYPE)) return +1;
 
 	/*
+	 *	If the attr is a TLV, first compare on the parent
+	 */
+	base_a = my_a->da->flags.is_tlv ? DHCP_BASE_ATTR(my_a->da->attr) : my_a->da->attr;
+	base_b = my_b->da->flags.is_tlv ? DHCP_BASE_ATTR(my_b->da->attr) : my_a->da->attr;
+
+	/*
 	 *	Relay-Agent is last
 	 */
-	if ((my_a->da->attr == PW_DHCP_OPTION_82) && (my_b->da->attr != PW_DHCP_OPTION_82)) return +1;
-	if ((my_a->da->attr != PW_DHCP_OPTION_82) && (my_b->da->attr == PW_DHCP_OPTION_82)) return -1;
+	if ((base_a == PW_DHCP_OPTION_82) && (base_b != PW_DHCP_OPTION_82)) return +1;
+	if ((base_a != PW_DHCP_OPTION_82) && (my_b->da->attr == base_b)) return -1;
 
-	if (my_a->da->attr < my_b->da->attr) return -1;
-	if (my_a->da->attr > my_b->da->attr) return 1;
+	if (base_a < base_b) return -1;
+	if (base_a > base_b) return 1;
+
+	if (!my_a->da->flags.is_tlv) return 0;
+
+	/*
+	 *	If this is a TLV, sort the sub options
+	 */
+	child_a = DHCP_UNPACK_OPTION1(my_a->da->attr);
+	child_b = DHCP_UNPACK_OPTION1(my_b->da->attr);
+
+	if (child_a < child_b) return -1;
+	if (child_a > child_b) return 1;
 
 	return 0;
 }
@@ -1375,7 +1394,7 @@ static ssize_t fr_dhcp_vp2data_tlv(uint8_t *out, ssize_t outlen, vp_cursor_t *cu
 	attr = 0;
 	opt_len = NULL;
 	p = out;
-	
+
 	for (vp = fr_cursor_current(cursor);
 	     vp && vp->da->flags.is_tlv && (SUBOPTION_PARENT(vp->da->attr) == parent);
 	     vp = fr_cursor_next(cursor)) {
