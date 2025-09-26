@@ -547,7 +547,7 @@ check_non_leaf:
 		if (tmpl_afrom_attr_str(ctx, NULL, &vpt, vb->vb_strvalue,
 					&(tmpl_rules_t){
 						.attr = {
-							.dict_def = request->proto_dict, /* we can't encode local attributes */
+							.dict_def = request->local_dict,
 							.list_def = request_attr_request,
 							.allow_wildcard = arg->allow_wildcard,
 						}
