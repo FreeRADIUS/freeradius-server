@@ -42,3 +42,6 @@ data ADSL-Forum-Device-Manufacturer-OUI = 0x303030313946, ADSL-Forum-Device-Seri
 
 encode-dhcp -
 data 7d 1e 00 00 0d e9 19 01 06 30 30 30 31 39 46 02 0a 52 4e 56 35 30 34 35 39 34 34 03 03 41 54 41
+
+encode-dhcp DHCP-Relay-Circuit-Id = 0xacdb489f87af, DHCP-DHCP-Maximum-Msg-Size = 1500, DHCP-Vendor-Specific-Information = 0x0000118b060104010203010000061b34030a444d5a2d434f532d3032010e4554492d5250442d504f52542d300207756e69636173740e07000100000079000d040a666f07, DHCP-Client-Identifier = 0xff489f87af00030001acdb489f87af, DHCP-Relay-Remote-Id = 0xacdb489f87af
+data 39 02 05 dc 3d 0f ff 48 9f 87 af 00 03 00 01 ac db 48 9f 87 af 52 56 01 06 ac db 48 9f 87 af 02 06 ac db 48 9f 87 af 09 44 00 00 11 8b 06 01 04 01 02 03 01 00 00 06 1b 34 03 0a 44 4d 5a 2d 43 4f 53 2d 30 32 01 0e 45 54 49 2d 52 50 44 2d 50 4f 52 54 2d 30 02 07 75 6e 69 63 61 73 74 0e 07 00 01 00 00 00 79 00 0d 04 0a 66 6f 07
