@@ -405,6 +405,8 @@ static int CC_HINT(nonnull) _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX 
 			node->call.func = p->call.func;
 			node->call.dict = p->call.dict;
 			node->call.ephemeral = p->call.ephemeral;
+			node->call.args = xlat_exp_head_alloc(node);
+			node->call.args->is_argv = true;
 			if (unlikely(_xlat_copy_internal(NDEBUG_LOCATION_VALS
 							 node, node->call.args, p->call.args) < 0)) goto error;
 			break;
