@@ -107,12 +107,18 @@ typedef struct {
 /** Execute a trigger - call an executable to process an event
  *
  * A trigger ties a state change (e.g. connection up) in a module to an action
- * (e.g. send an SNMP trap) defined in raqddb/triggers.conf or in the trigger
- * section of a module, and can be created with one call to trigger().
+ * (e.g. send an SNMP trap) defined in raddb/triggers.conf or in the trigger
+ * section of a module.  There's no setup for triggers, the triggering code
+ * just calls this function with the name of the trigger to run, and an optional
+ * interpreter if the trigger should run asynchronously.
  *
- * The trigger function expands the configuration item, and runs the given
- * function (exec, sql insert, etc.) asynchronously, allowing the server to
- * keep processing packets while the action is being taken.
+ * If no interpreter is passed in, the trigger runs synchronously, which is
+ * useful when the server is shutting down and we want to ensure that the
+ * trigger has completed before the server exits.
+ *
+ * If an interpreter is passed in, the trigger runs asynchronously in that
+ * interpreter, allowing the server to continue processing packets while the
+ * trigger runs.
  *
  * The name of each trigger is based on the module or portion of the server
  * which runs the trigger, and is usually taken from the state when the module
@@ -140,7 +146,7 @@ typedef struct {
  * @param[in] name		the path relative to the global trigger section ending in the trigger name
  *				e.g. module.ldap.pool.start.
  * @param[in] rate_limit	whether to rate limit triggers.
- * @param[in] args		to make available via the @verbatim %trigger(<arg>) @endverbatim xlat.
+ * @param[in] args		to populate the trigger's request list with.
  * @return
  *	- 0 on success.
  *	- -1 if the trigger is not defined.
