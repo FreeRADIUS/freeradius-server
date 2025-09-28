@@ -33,6 +33,19 @@ RCSID("$Id$")
 #include <freeradius-devel/io/atomic_queue.h>
 #include <freeradius-devel/util/talloc.h>
 
+/*
+ *	Some macros to make our life easier.
+ */
+#define atomic_int64_t _Atomic(int64_t)
+#define atomic_uint32_t _Atomic(uint32_t)
+#define atomic_uint64_t _Atomic(uint64_t)
+
+#define cas_incr(_store, _var)    atomic_compare_exchange_strong_explicit(&_store, &_var, _var + 1, memory_order_release, memory_order_relaxed)
+#define cas_decr(_store, _var)    atomic_compare_exchange_strong_explicit(&_store, &_var, _var - 1, memory_order_release, memory_order_relaxed)
+#define load(_var)           	atomic_load_explicit(&_var, memory_order_relaxed)
+#define acquire(_var)        	atomic_load_explicit(&_var, memory_order_acquire)
+#define store(_store, _var)  	atomic_store_explicit(&_store, _var, memory_order_release)
+
 #define CACHE_LINE_SIZE	64
 
 /** Entry in the queue
@@ -161,7 +174,7 @@ bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
 		int64_t seq, diff;
 
 		entry = &aq->entry[ head % aq->size ];
-		seq = aquire(entry->seq);
+		seq = acquire(entry->seq);
 		diff = (seq - head);
 
 		/*
@@ -225,7 +238,7 @@ bool fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data)
 		int64_t diff;
 
 		entry = &aq->entry[ tail % aq->size ];
-		seq = aquire(entry->seq);
+		seq = acquire(entry->seq);
 
 		diff = (seq - (tail + 1));
 
