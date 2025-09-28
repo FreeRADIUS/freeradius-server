@@ -68,6 +68,10 @@ typedef struct CC_HINT(packed, aligned(CACHE_LINE_SIZE)) {
 
 /** Structure to hold the atomic queue
  *
+ * @note DO NOT redorder these fields without understanding how alignas works
+ * and maintaining separation. The head and tail must be in different cache lines
+ * to reduce contention between producers and consumers. Cold data (size, chunk)
+ * can share a line, but must be separated from head and tail and entry.
  */
 struct fr_atomic_queue_s {
 	alignas(CACHE_LINE_SIZE) atomic_int64_t		head;		//!< Position of the producer.
@@ -82,7 +86,10 @@ struct fr_atomic_queue_s {
 									///< Reads may still need to occur from size
 									///< whilst the producer is writing to tail.
 
-	size_t						size;		//!< The length of the queue.  This is static.
+	alignas(CACHE_LINE_SIZE) size_t			size;		//!< The length of the queue.  This is static.
+									///< Also needs to be cache aligned, otherwise
+									///< it can end up directly after tail in memory
+									///< and share a cache line.
 
 	void						*chunk;		//!< The start of the talloc chunk to pass to free.
 									///< We need to play tricks to get aligned memory
