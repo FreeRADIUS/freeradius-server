@@ -611,6 +611,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 #ifdef WITH_PROXY
 	request->proxy_reply = NULL;
 #endif
+	request->ctx = request;
 	request->config = NULL;
 	request->username = NULL;
 	request->password = NULL;

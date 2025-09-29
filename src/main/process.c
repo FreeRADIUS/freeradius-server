@@ -613,14 +613,7 @@ void request_free(REQUEST *request)
 		return;
 	}
 
-	if ((request->options & RAD_REQUEST_OPTION_CTX) == 0) {
-		talloc_free(request);
-		return;
-	}
-
-	ptr = talloc_parent(request);
-	rad_assert(ptr != NULL);
-	talloc_free(ptr);
+	talloc_free(request->ctx);
 }
 
 
@@ -2025,11 +2018,7 @@ skip_dup:
 		talloc_free(ctx);
 		return 1;
 	}
-
-	/*
-	 *	Mark it as a "real" request with a context.
-	 */
-	request->options |= RAD_REQUEST_OPTION_CTX;
+	request->ctx = ctx;
 
 	/*
 	 *	Remember the request in the list.
