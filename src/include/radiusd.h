@@ -205,7 +205,7 @@ typedef enum {
 	REQUEST_STOP_PROCESSING,
 	REQUEST_TO_FREE,			//!< in the queue, and the queue should free it
 } rad_master_state_t;
-#define REQUEST_MASTER_NUM_STATES (REQUEST_STOP_PROCESSING + 1)
+#define REQUEST_MASTER_NUM_STATES (REQUEST_TO_FREE + )
 
 typedef enum {
 	REQUEST_QUEUED = 1,
