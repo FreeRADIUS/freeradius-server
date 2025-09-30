@@ -406,7 +406,7 @@ static size_t ldap_uri_scheme_table_len = NUM_ELEMENTS(ldap_uri_scheme_table);
 #define LDAP_URI_SAFE_FOR (fr_value_box_safe_for_t)fr_ldap_uri_escape_func
 
 static xlat_arg_parser_t const ldap_uri_escape_xlat_arg[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required=true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -423,54 +423,53 @@ static xlat_action_t ldap_uri_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					  UNUSED xlat_ctx_t const *xctx,
 					  request_t *request, fr_value_box_list_t *in)
 {
-	fr_value_box_t		*vb, *in_vb = fr_value_box_list_head(in);
+	fr_value_box_t		*vb, *in_vb, *in_group = fr_value_box_list_head(in);
 	fr_sbuff_t		sbuff;
 	fr_sbuff_uctx_talloc_t	sbuff_ctx;
 	size_t			len;
 
-	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_assert(in_group->type == FR_TYPE_GROUP);
 
-	/*
-	 *	If it's already safe, just copy it over.
-	 */
-	if (fr_value_box_is_safe_for_only(in_vb, LDAP_URI_SAFE_FOR)) {
-		if (unlikely(fr_value_box_copy(vb, vb, in_vb) < 0)) {
-			RPEDEBUG("Failed copying input argument to output");
+	while ((in_vb = fr_value_box_list_pop_head(&in_group->vb_group))) {
+		/*
+		 *	If it's already safe, just move it over.
+		 */
+		if (fr_value_box_is_safe_for_only(in_vb, LDAP_URI_SAFE_FOR)) {
+			fr_dcursor_append(out, in_vb);
+			continue;
+		}
+
+		MEM(vb = fr_value_box_alloc_null(ctx));
+
+		/*
+		 *	Maximum space needed for output would be 3 times the input if every
+		 *	char needed escaping
+		 */
+		if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, in_vb->vb_length * 3, in_vb->vb_length * 3)) {
+			REDEBUG("Failed to allocate buffer for escaped string");
 			talloc_free(vb);
 			return XLAT_ACTION_FAIL;
 		}
 
+		/*
+		 *	Call the escape function, including the space for the trailing NULL
+		 */
+		len = fr_ldap_uri_escape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length * 3 + 1, in_vb->vb_strvalue, NULL);
+
+		/*
+		 *	Trim buffer to fit used space and assign to box
+		 */
+		fr_sbuff_trim_talloc(&sbuff, len);
+		fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), in_vb->tainted);
+		talloc_free(in_vb);
+
 		fr_dcursor_append(out, vb);
-		return XLAT_ACTION_DONE;
 	}
-
-	/*
-	 *	Maximum space needed for output would be 3 times the input if every
-	 *	char needed escaping
-	 */
-	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, in_vb->vb_length * 3, in_vb->vb_length * 3)) {
-		REDEBUG("Failed to allocate buffer for escaped string");
-		talloc_free(vb);
-		return XLAT_ACTION_FAIL;
-	}
-
-	/*
-	 *	Call the escape function, including the space for the trailing NULL
-	 */
-	len = fr_ldap_uri_escape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length * 3 + 1, in_vb->vb_strvalue, NULL);
-
-	/*
-	 *	Trim buffer to fit used space and assign to box
-	 */
-	fr_sbuff_trim_talloc(&sbuff, len);
-	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), in_vb->tainted);
-
-	fr_dcursor_append(out, vb);
 	return XLAT_ACTION_DONE;
 }
 
 static xlat_arg_parser_t const ldap_uri_unescape_xlat_arg[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -482,32 +481,37 @@ static xlat_action_t ldap_uri_unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					    UNUSED xlat_ctx_t const *xctx,
 					    request_t *request, fr_value_box_list_t *in)
 {
-	fr_value_box_t		*vb, *in_vb = fr_value_box_list_head(in);
+	fr_value_box_t		*vb, *in_vb = NULL, *in_group = fr_value_box_list_head(in);
 	fr_sbuff_t		sbuff;
 	fr_sbuff_uctx_talloc_t	sbuff_ctx;
 	size_t			len;
 
-	MEM(vb = fr_value_box_alloc_null(ctx));
-	/*
-	 *	Maximum space needed for output will be the same as the input
-	 */
-	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, in_vb->vb_length, in_vb->vb_length)) {
-		REDEBUG("Failed to allocate buffer for unescaped string");
-		talloc_free(vb);
-		return XLAT_ACTION_FAIL;
+	fr_assert(in_group->type == FR_TYPE_GROUP);
+
+	while ((in_vb = fr_value_box_list_next(&in_group->vb_group, in_vb))) {
+
+		MEM(vb = fr_value_box_alloc_null(ctx));
+		/*
+		 *	Maximum space needed for output will be the same as the input
+		 */
+		if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, in_vb->vb_length, in_vb->vb_length)) {
+			REDEBUG("Failed to allocate buffer for unescaped string");
+			talloc_free(vb);
+			return XLAT_ACTION_FAIL;
+		}
+
+		/*
+		 *	Call the unescape function, including the space for the trailing NULL
+		 */
+		len = fr_ldap_uri_unescape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length + 1, in_vb->vb_strvalue, NULL);
+
+		/*
+		 *	Trim buffer to fit used space and assign to box
+		 */
+		fr_sbuff_trim_talloc(&sbuff, len);
+		fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), in_vb->tainted);
+		fr_dcursor_append(out, vb);
 	}
-
-	/*
-	 *	Call the unescape function, including the space for the trailing NULL
-	 */
-	len = fr_ldap_uri_unescape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length + 1, in_vb->vb_strvalue, NULL);
-
-	/*
-	 *	Trim buffer to fit used space and assign to box
-	 */
-	fr_sbuff_trim_talloc(&sbuff, len);
-	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), in_vb->tainted);
-	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
