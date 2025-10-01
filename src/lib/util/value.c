@@ -4947,6 +4947,13 @@ void fr_value_box_set_cursor(fr_value_box_t *dst, fr_type_t type, void *cursor, 
 	dst->vb_cursor_name = name;
 }
 
+void fr_value_box_set_attr(fr_value_box_t *dst, fr_dict_attr_t const *da)
+{
+	fr_value_box_init(dst, FR_TYPE_ATTR, NULL, false);
+	dst->vb_attr = da;
+	dst->enumv = da;
+}
+
 /** Increment a boxed value
  *
  * Implements safe integer overflow.
