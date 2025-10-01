@@ -598,8 +598,6 @@ static void request_timer(void *ctx)
  */
 void request_free(REQUEST *request)
 {
-	void *ptr;
-
 	rad_assert(request->ev == NULL);
 	rad_assert(!request->in_request_hash);
 	rad_assert(!request->in_proxy_hash);
@@ -1204,7 +1202,7 @@ static void request_queue_or_run(REQUEST *request,
 
 void request_inject(REQUEST *request)
 {
-	request_queue_or_run(request, request_running);
+	request_queue_or_run(request, request_running); /* child thread */
 }
 
 
@@ -2065,7 +2063,8 @@ skip_dup:
 	 *	Otherwise, insert it into the state machine.
 	 *	The child threads will take care of processing it.
 	 */
-	request_queue_or_run(request, request_running);
+	ASSERT_MASTER;
+	request_queue_or_run(request, request_running); /* network thread - from listener */
 
 	return 1;
 }
@@ -2852,6 +2851,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	char buffer[128];
 
 	VERIFY_PACKET(packet);
+	ASSERT_MASTER;
 
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	proxy_p = fr_packet_list_find_byreply(proxy_list, packet);
@@ -3935,7 +3935,8 @@ static int request_proxy_anew(REQUEST *request)
 		REDEBUG2("Failed to find live home server for request");
 	post_proxy_fail:
 		if (setup_post_proxy_fail(request)) {
-			request_queue_or_run(request, proxy_running);
+			ASSERT_MASTER;
+			request_queue_or_run(request, proxy_running); /* network thread - timer */
 		} else {
 			gettimeofday(&request->reply->timestamp, NULL);
 			request_cleanup_delay_init(request);
@@ -4708,7 +4709,8 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		}
 
 		if (setup_post_proxy_fail(request)) {
-			request_queue_or_run(request, proxy_no_reply);
+			ASSERT_MASTER;
+			request_queue_or_run(request, proxy_no_reply); /* network thread - timer */
 		} else {
 			gettimeofday(&request->reply->timestamp, NULL);
 			request_cleanup_delay_init(request);
@@ -4719,7 +4721,8 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *	We received a new reply.  Go process it.
 		 */
 	case FR_ACTION_PROXY_REPLY:
-		request_queue_or_run(request, proxy_running);
+		ASSERT_MASTER;
+		request_queue_or_run(request, proxy_running); /* network thread - listener */
 		break;
 
 	default:
@@ -5093,7 +5096,8 @@ static void coa_retransmit(REQUEST *request)
 
 	fail:
 		if (setup_post_proxy_fail(request)) {
-			request_queue_or_run(request, coa_no_reply);
+			ASSERT_MASTER;
+			request_queue_or_run(request, coa_no_reply); /* network thread - timer */
 		} else {
 			request_done(request, FR_ACTION_DONE);
 		}
@@ -5227,7 +5231,8 @@ static bool coa_max_time(REQUEST *request)
 			       request->proxy->dst_port,
 			       mrd);
 			if (setup_post_proxy_fail(request)) {
-				request_queue_or_run(request, coa_no_reply);
+				ASSERT_MASTER;
+				request_queue_or_run(request, coa_no_reply); /* network thread - timer */
 			} else {
 				request_done(request, FR_ACTION_DONE);
 			}
@@ -5318,7 +5323,8 @@ static void coa_wait_for_reply(REQUEST *request, int action)
 		request->delay = (int)request->root->init_delay.tv_sec * USEC +
 			(int)request->root->init_delay.tv_usec;
 
-		request_queue_or_run(request, coa_running);
+		ASSERT_MASTER;
+		request_queue_or_run(request, coa_running); /* network thread - timer */
 		break;
 
 	default:
