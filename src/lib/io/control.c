@@ -303,7 +303,7 @@ int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 	 */
 	m = fr_control_message_alloc(c, rb, id, data, data_size);
 	if (!m) {
-		fr_strerror_const("Failed allocating after GC");
+		fr_strerror_const_push("Failed allocating after GC");
 		return -2;
 	}
 

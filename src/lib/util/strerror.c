@@ -669,7 +669,7 @@ char const *fr_strerror_marker_peek(char const **subject, size_t *offset)
  * Return the first message added to the error stack using #fr_strerror_printf
  * or #fr_strerror_printf_push.
  *
- * @note Unlink fr_strerror() will return NULL if no messages are pending.
+ * @note  fr_strerror() will return NULL if no messages are pending.
  *
  * @return
  *	- A library error.

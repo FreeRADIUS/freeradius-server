@@ -101,6 +101,7 @@ static void *control_master(UNUSED void *arg)
 	TALLOC_CTX *ctx;
 	master_ctx_t *master_ctx;
 	size_t i;
+	fr_time_t start;
 
 	MEM(ctx = talloc_init_const("control_master"));
 
@@ -112,6 +113,7 @@ static void *control_master(UNUSED void *arg)
 		fr_control_callback_add(control[i], FR_CONTROL_ID_CHANNEL, master_ctx, recv_control_callback);
 	}
 
+	start = fr_time();
 	while (master_ctx->num_messages < (max_messages * num_workers)) {
 		int num_events;
 
@@ -126,8 +128,10 @@ static void *control_master(UNUSED void *arg)
 			fr_event_service(el);
 		}
 	}
-
-	MPRINT1("Master exiting. Seen %ld messages.\n", master_ctx->num_messages);
+	MPRINT1("Master exiting. Seen %zu messages. %.2f per second\n",
+		master_ctx->num_messages,
+		((double)master_ctx->num_messages * 1e6) /
+		(double)fr_time_delta_to_usec(fr_time_sub_time_time(fr_time(), start)));
 
 	talloc_free(ctx);
 
@@ -156,7 +160,11 @@ static void *control_worker(void *arg)
 
 retry:
 		if (fr_control_message_send(control[aq_num], wa->rb, FR_CONTROL_ID_CHANNEL, &m, sizeof(m)) < 0) {
+			char const *err;
 			MPRINT1("\tWorker %ld retrying message %zu\n", wa->id, i);
+			while ((err = fr_strerror_pop())) {
+				MPRINT1("\t%s\n", err);
+			}
 			delay += 10;
 			usleep(delay);
 			goto retry;
