@@ -208,8 +208,8 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out, UNUSED rlm_cache
 
 	reply = redisCommand(randle->conn,"GET %s", key);
 	if (!reply) {
-		RERROR("Failed retrieving entry for key \"%s\"", key);
-		return CACHE_ERROR;
+		RERROR("Failed talking to database for key \"%s\"", key);
+		return CACHE_RECONNECT;
 	}
 
 	c = talloc_zero(NULL,  rlm_cache_entry_t);
@@ -279,7 +279,10 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_t *inst, REQUEST *requ
 			c->expires - c->created);
 
 	if (!reply) {
-		goto error;
+		RERROR("Failed talking to database for key \"%s\"", c->key);
+		if (reply) freeReplyObject(reply);
+		talloc_free(pool);
+		return CACHE_RECONNECT;
 	}
 
 	switch (reply->type) {
@@ -316,15 +319,16 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_t *inst, REQUEST *requ
 	reply = redisCommand( randle->conn, "DEL %b", c->key, talloc_array_length(c->key) - 1);
 	if (!reply) {
 		RERROR("Failed expire for key \"%s\"", c->key);
-	error:
 		if (reply) freeReplyObject(reply);
-		return CACHE_ERROR;
+		return CACHE_RECONNECT;
 	}
 
 	switch (reply->type) {
 	default:
 		RERROR("Failed expire for key \"%s\"", c->key);
-		goto error;
+	error:
+		if (reply) freeReplyObject(reply);
+		return CACHE_ERROR;
 	case REDIS_REPLY_ERROR:
 		RERROR("Failed expire for key \"%s\": %s", c->key, reply->str);
 		goto error;
