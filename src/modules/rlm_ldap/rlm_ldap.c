@@ -1646,6 +1646,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 	ldap_autz_call_env_t	*call_env = talloc_get_type_abort(autz_ctx->call_env, ldap_autz_call_env_t);
 	int			ldap_errno;
 	LDAP			*handle = fr_ldap_handle_thread_local();
+	unlang_action_t		ret = UNLANG_ACTION_CALCULATE_RESULT;
 
 	/*
 	 *	If a previous async call returned one of the "failure" results just return.
@@ -1800,8 +1801,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		 *	Apply ONE user profile, or a default user profile.
 		 */
 		if (call_env->default_profile.type == FR_TYPE_STRING) {
-			unlang_action_t	ret;
-
 			REPEAT_MOD_AUTHORIZE_RESUME;
 			ret = rlm_ldap_map_profile(NULL, NULL, inst, request, autz_ctx->ttrunk,
 						   call_env->default_profile.vb_strvalue,
@@ -1887,8 +1886,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		}
 
 		if (autz_ctx->profile_values && autz_ctx->profile_values[autz_ctx->value_idx]) {
-			unlang_action_t	ret;
-
 			autz_ctx->profile_value = fr_ldap_berval_to_string(autz_ctx, autz_ctx->profile_values[autz_ctx->value_idx++]);
 			REPEAT_MOD_AUTHORIZE_RESUME;
 			ret = rlm_ldap_map_profile(NULL, NULL, inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
@@ -1914,7 +1911,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 finish:
 	talloc_free(autz_ctx);
 
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return ret;
 }
 
 /** Clear up when cancelling a mod_authorize call
