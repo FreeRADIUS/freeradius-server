@@ -1344,6 +1344,19 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 		goto finish;
 	}
 
+	/*
+	 *	An attribute reference which produces a box of type FR_TYPE_ATTR
+	 */
+	if (unlikely(head && head->is_attr)) {
+		fr_assert((*in)->type == XLAT_TMPL);
+
+		MEM(value = fr_value_box_alloc_null(ctx));
+		fr_value_box_set_attr(value, tmpl_attr_tail_da((*in)->vpt));
+
+		fr_dcursor_append(out, value);
+		goto finish;
+	}
+
 	XLAT_DEBUG("** [%i] %s >> entered", unlang_interpret_stack_depth(request), __FUNCTION__);
 
 	for (node = *in; node; node = xlat_exp_next(head, node)) {

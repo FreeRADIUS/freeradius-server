@@ -191,6 +191,7 @@ struct xlat_exp_head_s {
 	uint8_t			instantiated : 1;  //!< temporary flag until we fix more things
 	uint8_t			is_argv : 1;	//!< this thing holds function arguments
 	uint8_t			cursor : 1;	//!< otherwise it's too hard to pass xlat_arg_parser_t to the evaluation function.
+	uint8_t			is_attr : 1;	//!< the argument is an attribute reference
 
 #ifndef NDEBUG
 	char const * _CONST	file;		//!< File where the xlat was allocated.

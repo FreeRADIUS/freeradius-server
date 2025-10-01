@@ -293,6 +293,26 @@ static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t
 	}
 
 	/*
+	 *	An attribute argument results in an FR_TYPE_ATTR box, rather than the value of the attribute
+	 */
+	if (arg_p->type == FR_TYPE_ATTR) {
+		if (node->type != XLAT_TMPL) {
+			fr_strerror_printf("Attribute must be a bare word, not %s", fr_type_to_str(node->data.type));
+			return -1;
+		}
+
+		if (xlat_tmpl_normalize(node) < 0) return -1;
+
+		if (!tmpl_is_attr(node->vpt)) {
+			fr_strerror_printf("Invalid argument - expected attribute reference");
+			return -1;
+		}
+
+		arg->group->is_attr = true;
+		return 0;
+	}
+
+	/*
 	 *	The argument is either ONE tmpl / value-box, OR is an
 	 *	xlat group which contains a double-quoted string.
 	 */
