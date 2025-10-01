@@ -59,6 +59,8 @@ static unlang_action_t ldap_find_user_async_result(unlang_result_t *p_result, re
 	char			*dn;
 	fr_pair_t		*vp;
 
+	if (!query) RETURN_UNLANG_FAIL;
+
 	/*
 	 *	Make the result available to the query
 	 */
