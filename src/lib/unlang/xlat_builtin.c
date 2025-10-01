@@ -4035,7 +4035,7 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 static xlat_arg_parser_t const protocol_decode_xlat_args[] = {
-	{ .single = true, .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH, .type = FR_TYPE_VOID },
+	{ .required = true, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -4055,10 +4055,14 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					  request_t *request, fr_value_box_list_t *in)
 {
 	int					decoded;
-	fr_value_box_t				*vb;
+	fr_value_box_t				*vb, *in_head;
 	void					*decode_ctx = NULL;
 	protocol_decode_xlat_uctx_t const	*decode_uctx = talloc_get_type_abort(*(void * const *)xctx->inst, protocol_decode_xlat_uctx_t);
 	fr_test_point_pair_decode_t const	*tp_decode = decode_uctx->tp_decode;
+
+	XLAT_ARGS(in, &in_head);
+
+	fr_assert(in_head->type == FR_TYPE_GROUP);
 
 	if (decode_uctx->dict && decode_uctx->dict != request->proto_dict) {
 		REDEBUG2("Can't call %%%s() when in %s namespace", xctx->ex->call.func->name,
@@ -4073,7 +4077,7 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	decoded = xlat_decode_value_box_list(request->request_ctx, &request->request_pairs,
-					     request, decode_ctx, tp_decode->func, in);
+					     request, decode_ctx, tp_decode->func, &in_head->vb_group);
 	if (decoded <= 0) {
 		talloc_free(decode_ctx);
 		RPERROR("Protocol decoding failed");
