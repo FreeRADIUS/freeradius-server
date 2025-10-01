@@ -1909,8 +1909,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 	p_result->rcode = autz_ctx->rcode;
 
 finish:
-	talloc_free(autz_ctx);
-
 	return ret;
 }
 
