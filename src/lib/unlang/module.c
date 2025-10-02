@@ -178,7 +178,7 @@ unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, unlang_result_t *p_
 	/*
 	 *	Push the xlat function
 	 */
-	if (unlang_xlat_push(ctx, p_result, out, request, exp, false) < 0) return UNLANG_ACTION_STOP_PROCESSING;
+	if (unlang_xlat_push(ctx, p_result, out, request, exp, false) < 0) RETURN_UNLANG_ACTION_FATAL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -285,7 +285,9 @@ unlang_action_t unlang_module_yield_to_section(unlang_result_t *p_result,
 	(void) unlang_module_yield(request, resume, signal, sigmask, rctx);
 
 	if (unlang_interpret_push_section(p_result, request, subcs,
-					  FRAME_CONF(default_rcode, UNLANG_SUB_FRAME)) < 0) return UNLANG_ACTION_STOP_PROCESSING;
+					  FRAME_CONF(default_rcode, UNLANG_SUB_FRAME)) < 0) {
+		RETURN_UNLANG_ACTION_FATAL;
+	}
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -615,17 +617,7 @@ static unlang_action_t unlang_module_resume(unlang_result_t *p_result, request_t
 		    state->env_data, state->rctx), request);
 	safe_unlock(m->mmc.mi);
 
-	if (request->master_state == REQUEST_STOP_PROCESSING) ua = UNLANG_ACTION_STOP_PROCESSING;
-
 	switch (ua) {
-	case UNLANG_ACTION_STOP_PROCESSING:
-		RWARN("Module %s or worker signalled to stop processing request", m->mmc.mi->name);
-		state->thread->active_callers--;
-		request->module = state->previous_module;
-		p_result->rcode = RLM_MODULE_NOT_SET;
-		p_result->priority = MOD_ACTION_NOT_SET;
-		return UNLANG_ACTION_STOP_PROCESSING;
-
 	case UNLANG_ACTION_YIELD:
 		/*
 		 *	The module yielded but didn't set a
@@ -888,18 +880,7 @@ static unlang_action_t unlang_module(unlang_result_t *p_result, request_t *reque
 			       request);
 	safe_unlock(m->mmc.mi);
 
-	if (request->master_state == REQUEST_STOP_PROCESSING) ua = UNLANG_ACTION_STOP_PROCESSING;
-
 	switch (ua) {
-	/*
-	 *	It is now marked as "stop" when it wasn't before, we
-	 *	must have been blocked.
-	 */
-	case UNLANG_ACTION_STOP_PROCESSING:
-		RWARN("Module %s became unblocked", m->mmc.mi->name);
-		request->module = state->previous_module;
-		return UNLANG_ACTION_STOP_PROCESSING;
-
 	case UNLANG_ACTION_YIELD:
 		state->thread->active_callers++;
 

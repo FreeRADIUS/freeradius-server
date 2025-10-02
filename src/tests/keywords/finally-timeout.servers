@@ -1,0 +1,18 @@
+server timeout-fin {
+	namespace = radius
+
+	recv Access-Request {
+		# Trigger the overall timeout for the test binary
+		%time.advance(61s)
+		ok
+	}
+
+	finally {
+		if (timeout) {
+			reply.Reply-Message := 'bye-from-timeout-fin'
+			success
+		} else {
+			fail
+		}
+	}
+}

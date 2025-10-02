@@ -334,7 +334,7 @@ static unlang_action_t unlang_xlat_repeat(unlang_result_t *p_result, request_t *
 		fr_value_box_list_talloc_free(&state->out);
 		if (unlang_xlat_push(state->ctx, p_result, &state->out, request, child, false) < 0) {
 			REXDENT();
-			return UNLANG_ACTION_STOP_PROCESSING;
+			RETURN_UNLANG_ACTION_FATAL;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 
@@ -396,7 +396,7 @@ static unlang_action_t unlang_xlat(UNUSED unlang_result_t *p_result, request_t *
 		fr_value_box_list_talloc_free(&state->out);
 		if (unlang_xlat_push(state->ctx, p_result, &state->out, request, child, false) < 0) {
 			RINDENT_RESTORE(request, state);
-			return UNLANG_ACTION_STOP_PROCESSING;
+			RETURN_UNLANG_ACTION_FATAL;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 
@@ -510,7 +510,7 @@ static unlang_action_t unlang_xlat_resume(unlang_result_t *p_result, request_t *
 		fr_value_box_list_talloc_free(&state->out);
 		if (unlang_xlat_push(state->ctx, state->p_result, &state->out, request, child, false) < 0) {
 			RINDENT_RESTORE(request, state);
-			return UNLANG_ACTION_STOP_PROCESSING;
+			RETURN_UNLANG_ACTION_FATAL;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 

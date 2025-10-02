@@ -46,7 +46,6 @@ static fr_table_num_ordered_t const unlang_action_table[] = {
 	{ L("calculate-result"),	UNLANG_ACTION_CALCULATE_RESULT },
 	{ L("next"),			UNLANG_ACTION_EXECUTE_NEXT },
 	{ L("pushed-child"),		UNLANG_ACTION_PUSHED_CHILD },
-	{ L("stop"),			UNLANG_ACTION_STOP_PROCESSING },
 	{ L("yield"),			UNLANG_ACTION_YIELD }
 };
 static size_t unlang_action_table_len = NUM_ELEMENTS(unlang_action_table);
@@ -379,7 +378,7 @@ static int _local_variables_free(unlang_variable_ref_t *ref)
  * @return
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
  *	- UNLANG_ACTION_EXECUTE_NEXT do nothing, but just go to the next sibling instruction
- *	- UNLANG_ACTION_STOP_PROCESSING, fatal error, usually stack overflow.
+ *	- UNLANG_ACTION_FAIL, fatal error, usually stack overflow.
  */
 unlang_action_t unlang_interpret_push_children(unlang_result_t *p_result, request_t *request,
 					       rlm_rcode_t default_rcode, bool do_next_sibling)
@@ -405,7 +404,7 @@ unlang_action_t unlang_interpret_push_children(unlang_result_t *p_result, reques
 
 	if (unlang_interpret_push(p_result, request, unlang_list_head(&g->children),
 				  FRAME_CONF(default_rcode, UNLANG_SUB_FRAME), do_next_sibling) < 0) {
-		return UNLANG_ACTION_STOP_PROCESSING;
+		RETURN_UNLANG_ACTION_FATAL;
 	}
 
 	if (!g->variables) return UNLANG_ACTION_PUSHED_CHILD;
@@ -831,15 +830,6 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		if (is_unwinding(frame)) goto calculate_result;
 
 		switch (ua) {
-		case UNLANG_ACTION_STOP_PROCESSING:
-			/*
-			 *	This marks all the cancellable
-			 *	frames with the unwind flag,
-			 *	and starts popping them.
-			 */
-			unlang_interpret_signal(request, FR_SIGNAL_CANCEL);
-			return UNLANG_FRAME_ACTION_POP;
-
 		/*
 		 *	The operation resulted in additional frames
 		 *	being pushed onto the stack, execution should

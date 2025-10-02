@@ -186,14 +186,14 @@ static unlang_action_t unlang_map_state_init(unlang_result_t *p_result, request_
 	case TMPL_TYPE_EXEC:
 		if (unlang_tmpl_push(map_proc_state, NULL, &map_proc_state->src_result,
 				     request, inst->src, NULL, UNLANG_SUB_FRAME) < 0) {
-			return UNLANG_ACTION_STOP_PROCESSING;
+			RETURN_UNLANG_ACTION_FATAL;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case TMPL_TYPE_XLAT:
 		if (unlang_xlat_push(map_proc_state, NULL, &map_proc_state->src_result,
 				     request, tmpl_xlat(inst->src), false) < 0) {
-			return UNLANG_ACTION_STOP_PROCESSING;
+			RETURN_UNLANG_ACTION_FATAL;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 

@@ -113,7 +113,7 @@ do_null_case:
 	if (!found) return UNLANG_ACTION_EXECUTE_NEXT;
 
 	if (unlang_interpret_push(NULL, request, found, FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) {
-		return UNLANG_ACTION_STOP_PROCESSING;
+		RETURN_UNLANG_ACTION_FATAL;
 	}
 
 	return UNLANG_ACTION_PUSHED_CHILD;
@@ -524,7 +524,7 @@ void unlang_switch_init(void)
 
 			.compile = unlang_compile_switch,
 			.interpret = unlang_switch,
-				
+
 			.unlang_size = sizeof(unlang_switch_t),
 			.unlang_name = "unlang_switch_t",
 

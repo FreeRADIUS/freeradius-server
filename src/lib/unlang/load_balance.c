@@ -93,7 +93,7 @@ push:
 	 */
 	if (unlang_interpret_push(&redundant->result, request, redundant->child,
 				  FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) {
-		return UNLANG_ACTION_STOP_PROCESSING;
+		RETURN_UNLANG_ACTION_FATAL;
 	}
 
 	return UNLANG_ACTION_PUSHED_CHILD;
@@ -123,7 +123,7 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 	uint32_t			count = 0;
 
 #ifdef STATIC_ANALYZER
-	if (!g || unlang_list_empty(&g->children)) return UNLANG_ACTION_STOP_PROCESSING;
+	if (!g || unlang_list_empty(&g->children)) return UNLANG_ACTION_FAIL;
 #else
 	fr_assert(g != NULL);
 	fr_assert(!unlang_list_empty(&g->children));
@@ -220,7 +220,7 @@ static unlang_action_t unlang_load_balance(unlang_result_t *p_result, request_t 
 	if (frame->instruction->type == UNLANG_TYPE_LOAD_BALANCE) {
 		if (unlang_interpret_push(p_result, request, redundant->start,
 					  FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) {
-			return UNLANG_ACTION_STOP_PROCESSING;
+			RETURN_UNLANG_ACTION_FATAL;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
