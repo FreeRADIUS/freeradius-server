@@ -34,6 +34,12 @@ information, and extra resources to help users better understand and
 deploy the software. This ensures that users of all experience levels
 can find the information they need.
 
+Please also see the xref:releases.adoc[releases] page for a guide to
+future versions of v4.  We ask operating system vendors and packages
+*not* package odd numbered releases.  e.g. 4.1 or 4.3.  Those releases
+are unstable, and will not be supported by the FreeRADIUS team.  Only
+even numbered releases should be packaged, e.g. 4.0 or 4.2.
+
 == Sections in this guide
 
 * xref:getstarted.adoc[Getting Started] guides you through a basic

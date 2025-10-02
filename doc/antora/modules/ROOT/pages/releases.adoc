@@ -1,0 +1,124 @@
+= Release Management
+
+For most of the v3 lifespan, we had released one version after another
+in sequence, e.g. 3.0.0, 3.0.1, 3.0.2, etc.  After a while it became
+clear that we needed to separate the releases into "stable" and
+"feature" releases.
+
+We then move to 3.0.x as a "stable" version, which had only bug fixes
+and security enhancements, and 3.2.x as a "feature" version, which had
+new features.  People needing long-term stability could use 3.0.x, and
+know that new releases had minimal changes.  People needing new
+features could use 3.2.x.
+
+We are following a similar release management process with v4.
+
+== Stable vs Experimental
+
+The v4 releases are split into two streams, based on even / odd
+version numbers:
+
+* even numbers are _stable_ and _supported_ releases.  e.g. 4.0,
+  4.0.1, 4.2, etc.
+
+  * "point" releases (4.0.1, 4.0.2) are 100% compatible for a stable
+    release.
+
+* odd numbers are _experimental_ or _feature_ releases.  e.g. 4.1,
+  4.1.1, 4.3, etc.
+
+  * "point" releases (4.1.1, 4.1.2) may be incompatible with other
+    point releases for experimental releases.
+
+=== Stable Releases
+
+Stable releases are fully supported by the FreeRADIUS team, and by
+https://inkbridgenetworks.com[InkBridge Networks].  Once a stable
+release has been made (e.g. 4.0.0), it is feature frozen.  The only
+changes to it will be security fixes, bug fixes, etc.  No behavior
+changes will be made, and no features will be added.
+
+**Stable releases should be packaged by OS vendors.**
+
+Minor releases will be made for security fixes, bug fixes, etc.  So
+4.0.1 will be 100% compatible with 4.0.0, except that 4.0.1 will
+contain any necessary fixes.
+
+This guarantee means that all future versions of a stable release will
+be compatible with the initial release.  People can install 4.0, and
+know that no behavior will change, ever.
+
+The downside to this approach is that new features will never be added
+to a stable release.  That's where experimental releases come in.
+
+=== Experimental Releases
+
+Experimental releases are supported only for testing purposes.  Each
+experimental release my have breaking changes from a previous stable
+release.  Each experimental release may even have breaking changes
+from a previous experimental release!
+
+**Experimental releases must not be packaged by OS vendors.**
+
+Minor releases will be made for new features, security fixes, bug
+fixes, etc.  Note that 4.1.1 is not guaranteed to be compatible with
+either 4.0.x, or even with 4.1.0!
+
+As such, you should only install an experimental release to test or to
+validate new features.  We do not recommend using an experimental
+release in a production environment.
+
+The purpose of the experimental releases is to test new features, and
+to allow testing of breaking changes to the server.
+
+In some limited situations, an experimental release may be supported
+by https://inkbridgenetworks.com[InkBridge Networks].  However, that
+support will be strictly limited to paying customers who use a version
+that has been approved in advance by the company.
+
+Other people are free to use experimental releases, though it will be
+at their own risk.  The FreeRADIUS team will accept and fix most bug
+reports for an experimental release.  However, bug reports which note
+incompatibilities with a stable release will not be accepted.
+
+This process is necessary in order to allow a small team to maintain a
+large and complex product.
+
+== Rationale
+
+The above release process is necessary to balance a number of different goals:
+
+* the desire to never break existing production deployments
+* the need to add new features, and to fix existing but broken features
+* the need to manage multiple releases with a small team.
+
+The use of a "stable" release means that people can be sure that any
+upgrades within that stable release will never break existing
+functionality.  Any production system which uses a stable release will
+never have its behavior changed by upgraded to a new "point" release.
+
+For most software products, the development team spends an enormous
+amount of time porting features and bug fixes across multiple
+releases.  The release management process outlined here means that the
+FreeRADIUS team does not need to take on that effort.
+
+This release management process will also let the FreeRADIUS team
+develop new features more quickly, as it is easier to "break"
+backwards compatibility.  We can change core functionality from 4.0 to
+4.2, without worrying about taking down production systems which are
+using 4.0.  Instead, those systems can stay on 4.0, and any systems
+needing new functionality can use 4.2.
+
+== Guidelines
+
+The following are guidelines for code which goes into a release.
+
+Stable point releases can contain:
+
+* bug fixes
+* security fixes
+
+Stable point releases cannot contain:
+
+* new features
+* bug fixes which change the behavior of an existing feature.
