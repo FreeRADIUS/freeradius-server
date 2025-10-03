@@ -1089,7 +1089,6 @@ do_children:
 		}
 
 		if (map_afrom_cp(parent_ctx, &map, parent, cp, &child_lhs_rules, our_rhs_rules, edit) < 0) {
-			fr_assert(0);
 			cf_log_err(ci, "Failed creating map from '%s = %s'",
 				   cf_pair_attr(cp), cf_pair_value(cp));
 			goto error;
