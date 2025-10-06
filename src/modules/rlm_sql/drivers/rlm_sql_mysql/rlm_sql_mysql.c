@@ -353,8 +353,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 					     config->sql_port, NULL, sql_flags);
 
 	c->fd = mysql_get_socket(&c->db);
-
-	if (c->fd <= 0) {
+	if (c->fd < 0) {
 		ERROR("Could't connect to MySQL server %s@%s:%s", config->sql_login,
 		      config->sql_server, config->sql_db);
 		ERROR("MySQL error: %s", mysql_error(&c->db));
