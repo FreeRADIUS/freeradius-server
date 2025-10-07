@@ -71,7 +71,7 @@ to a stable version.  That's where experimental versions come in.
 
 Experimental versions are supported only for testing purposes.  An
 experimental version my have breaking changes from a previous stable
-version.  A "point" releas of an experimental version may even have
+version.  A "point" release of an experimental version may even have
 breaking changes from a previous "point" release!
 
 WARNING: Experimental versions must not be packaged by OS vendors.
@@ -86,7 +86,9 @@ experimental version in a production environment, unless it is first
 validated for your systems.
 
 The purpose of an experimental version is to test new features, and to
-allow testing of breaking changes to the server.
+allow testing of breaking changes to the server.  Each experimental
+release will note all behavior changes, including breaking changes in
+the release notes.
 
 In some limited situations, an experimental version may be supported
 by https://inkbridgenetworks.com[InkBridge Networks].  However, that
@@ -100,7 +102,7 @@ note incompatibilities with a stable version will not be accepted.  As
 the purpose of an experimental version is to change functionality,
 such bug reports are inappropriate.
 
-The aboce process is necessary in order to allow the small FreeRADIUS
+The above process is necessary in order to allow the small FreeRADIUS
 team to maintain a large and complex product.  There are many projects
 supported by much large teams, which have much less functionality!
 
