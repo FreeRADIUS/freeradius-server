@@ -153,3 +153,50 @@ Stable point releases cannot contain:
 
 * new features
 * bug fixes which change the behavior of an existing feature.
+
+== Developers
+=== Changes to stable branches
+
+All changes to stable branches must undergo a review process to ensure
+adequate testing is in place, and to verify that they are backwards
+compatible with previous releases.
+
+A PR must be raised in order to move commits into a stable branch from
+the experimental branch, and that PR must pass all CI checks, and be
+reviewed by at least one other core developer.
+
+IMPORTANT: Breaking changes are only permitted, IF they are added behind
+a feature flag, that preserves the previous behaviour by default.
+
+=== Changes to experimental branches
+
+Minor changes to experimental branches are permitted.  Other work may
+need peer review.  Developers must self-classify change sets to determine
+if peer review is needed.
+
+The main criteria for requiring peer review are:
+- Will the change break backwards compatibility (this is fine, but
+  needs to be understood and documented).
+- Is it a code area with many untested paths, or poorly structed code
+  that's hard to reason about.
+- Is the code likely to have widespread impacts on the rest of the code
+  base, will it be difficult to change later, will it have widespread
+  negative impacts if it's not architected correctly.
+
+.Examples of peer reviewed changes
+- Major refactoring over 1000 +/- changes LoC
+- Changes to parsing that would break comptibility with previous syntax.
+- Changes to the behaviour of keywords that are not backwards compatible.
+- Any alterations to state machines i.e. new states, and changes to 
+  pre/post conditions.
+- Changes to async I/O code other than trivial fixes.  Code paths here
+  are notoriously undertested and need careful to review to ensure there
+  are no unintended consequences.
+- Conversions of existing modules to async I/O.
+
+==== Breaking changes
+Breaking changes must be documented in the release notes `RELEASE.md`.
+Changes to syntax should include an example of the previous syntax and
+new syntax.  Changes to behaviour should include a description of those
+changes.
+
