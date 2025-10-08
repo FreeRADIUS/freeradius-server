@@ -77,7 +77,6 @@ jobs:
             libpcap              \
             libyubikey           \
             lua52                \
-            luajit-devel         \
             mariadb-connector-c  \
             net-snmp             \
             openldap25-client    \
