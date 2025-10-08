@@ -209,3 +209,31 @@ filter_inner_identity {
 		#
 	}
 }
+
+#
+#  This policy should be applied for all eduroam proxying
+#
+filter_username_nai {
+	if (&User-Name && &EAP-Message && (&Called-Station-Id =~ /.*\:eduroam$/)) {
+		#
+		#  The User-Name must have exactly one "@" character.
+		#
+		if (&User-Name !~ /.*@.*/ ) {
+			update request {
+				&Module-Failure-Message += 'Rejected: No @ in User-Name'
+			}
+			reject
+		}
+
+		#
+		#  The User-Name must match the 'official' eduroam
+		#  regular expression.
+		#
+		if (&User-Name !~ /@[-a-zA-Z0-9_]+(\.[-a-zA-Z0-9_]+)+$/ ) {
+			update request {
+				&Module-Failure-Message += 'Rejected: Invalid eduroam User-Name format'
+			}
+			reject
+		}
+	}
+}
