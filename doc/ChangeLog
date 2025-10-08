@@ -2,6 +2,8 @@ FreeRADIUS 3.2.9 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	Configuration changes
 
 	Feature improvements
+	* added filter_username_nai to policy.d/filter, mainly for use in
+	  eduroam.
 
 	Bug fixes
 	* Fix run_dir (#5637) and MemoryLimit (#5639)
@@ -10,6 +12,14 @@ FreeRADIUS 3.2.9 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	* Set selinux boolean to allow PCRE2 JIT
 	* If you set the clock 25 years in the future, don't spam
 	  systemd.  Fixes #5642
+	* Don't load the OpenSSL legacy provider when built with
+	  --enable-fips-workaround.  Fixes #5644.
+	* Address potential leaks when opening many RADIUS/TLS proxy
+	  sockets.
+	* Encode multiple DHCP Option 82 as one option, instead of as
+	  multiple options.
+	* Update the rlm_cache_redis driver to reconnect on connection
+	  failure.  Fixes #5651.
 
 FreeRADIUS 3.2.8 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	Configuration changes
