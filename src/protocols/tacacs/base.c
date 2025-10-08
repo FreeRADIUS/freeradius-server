@@ -142,42 +142,6 @@ char const *fr_tacacs_packet_names[FR_TACACS_CODE_MAX] = {
 };
 
 
-int fr_tacacs_global_init(void)
-{
-	if (instance_count > 0) {
-		instance_count++;
-		return 0;
-	}
-
-	instance_count++;
-
-	if (fr_dict_autoload(libfreeradius_tacacs_dict) < 0) {
-	fail:
-		instance_count--;
-		return -1;
-	}
-
-	if (fr_dict_attr_autoload(libfreeradius_tacacs_dict_attr) < 0) {
-		fr_dict_autofree(libfreeradius_tacacs_dict);
-		goto fail;
-	}
-
-	instantiated = true;
-	return 0;
-}
-
-void fr_tacacs_global_free(void)
-{
-	if (!instantiated) return;
-
-	fr_assert(instance_count > 0);
-
-	if (--instance_count > 0) return;
-
-	fr_dict_autofree(libfreeradius_tacacs_dict);
-	instantiated = false;
-}
-
 /** XOR the body based on the secret key.
  *
  *  This function encrypts (or decrypts) TACACS+ packets, and sets the "encrypted" flag.
@@ -619,3 +583,40 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 
 	fr_assert(p == end);
 }
+
+int fr_tacacs_global_init(void)
+{
+	if (instance_count > 0) {
+		instance_count++;
+		return 0;
+	}
+
+	instance_count++;
+
+	if (fr_dict_autoload(libfreeradius_tacacs_dict) < 0) {
+	fail:
+		instance_count--;
+		return -1;
+	}
+
+	if (fr_dict_attr_autoload(libfreeradius_tacacs_dict_attr) < 0) {
+		fr_dict_autofree(libfreeradius_tacacs_dict);
+		goto fail;
+	}
+
+	instantiated = true;
+	return 0;
+}
+
+void fr_tacacs_global_free(void)
+{
+	if (!instantiated) return;
+
+	fr_assert(instance_count > 0);
+
+	if (--instance_count > 0) return;
+
+	fr_dict_autofree(libfreeradius_tacacs_dict);
+	instantiated = false;
+}
+
