@@ -60,6 +60,7 @@ jobs:
         memory: 4G
         environment_variables: HOSTAPD_BUILD_DIR HOSTAPD_GIT_TAG NO_PERFORMANCE_TESTS
         run: |
+          sudo pkg upgrade -y
           sudo pkg install -y    \
             brotli               \
             curl                 \
