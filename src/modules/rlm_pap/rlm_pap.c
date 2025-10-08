@@ -1292,8 +1292,8 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256_legacy(UNUSED 
 
 	pbkdf2_buf.iterations = ntohl(pbkdf2_buf.iterations);
 
-	if (pbkdf2_buf.iterations != PBKDF2_SHA256_LEGACY_ITERATIONS) {
-		REDEBUG("Password-With-Header {PBKDF2_SHA256} has unexpected number of iterations %d instead of %d.", pbkdf2_buf.iterations, PBKDF2_SHA256_LEGACY_ITERATIONS);
+	if (pbkdf2_buf.iterations < 1) {
+		REDEBUG("Password-With-Header {PBKDF2_SHA256} has invalid number of iterations %d.", pbkdf2_buf.iterations);
 		return RLM_MODULE_INVALID;
 	}
 
