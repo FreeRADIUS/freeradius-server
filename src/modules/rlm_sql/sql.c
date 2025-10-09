@@ -213,6 +213,15 @@ static void sql_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_t
 	if (!query_ctx->treq) return;
 
 	/*
+	 *	A reapable trunk request has already completed.
+	 */
+	if (unlikely(query_ctx->treq->state == TRUNK_REQUEST_STATE_REAPABLE)) {
+		trunk_request_signal_complete(query_ctx->treq);
+		query_ctx->treq = NULL;
+		return;
+	}
+
+	/*
 	 *	The query_ctx needs to be parented by the treq so that it still exists
 	 *	when the cancel_mux callback is run.
 	 */
