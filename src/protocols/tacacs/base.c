@@ -620,3 +620,59 @@ void fr_tacacs_global_free(void)
 	instantiated = false;
 }
 
+static bool attr_valid(fr_dict_attr_t *da)
+{
+	fr_dict_attr_flags_t *flags = &da->flags;
+
+	/*
+	 *	No arrays in TACACS+
+	 */
+	if (flags->array) {
+		fr_strerror_const("Attributes with flag 'array' cannot be used in TACACS+");
+		return false;
+	}
+
+	if ((strcmp(da->name, "Packet") == 0) &&
+	    (da->depth == 1)) {
+		if (da->type != FR_TYPE_STRUCT) {
+			fr_strerror_const("The top 'Packet' attribute must of type 'struct'");
+			return false;
+		}
+
+		return true;
+	}
+
+	/*
+	 *	The top-level Packet is a STRUCT which contains
+	 *	MEMBERs with defined values.
+	 */
+	if (!flags->name_only && (da->parent->type != FR_TYPE_STRUCT)) {
+		fr_strerror_const("Attributes in TACACS+ cannot have assigned values.  Use DEFINE, not ATTRIBUTE");
+		return false;
+	}
+
+	switch (da->type) {
+	case FR_TYPE_STRUCTURAL_EXCEPT_GROUP:
+	case FR_TYPE_INTERNAL:
+		fr_strerror_printf("Attributes of type '%s' cannot be used in TACACS+", fr_type_to_str(da->type));
+		return false;
+
+	default:
+		break;
+	}
+
+	return true;
+}
+
+extern fr_dict_protocol_t libfreeradius_tacacs_dict_protocol;
+fr_dict_protocol_t libfreeradius_tacacs_dict_protocol = {
+	.name = "tacacs",
+	.default_type_size = 4,
+	.default_type_length = 4,
+	.attr = {
+		.valid = attr_valid,
+	},
+
+	.init = fr_tacacs_global_init,
+	.free = fr_tacacs_global_free,
+};
