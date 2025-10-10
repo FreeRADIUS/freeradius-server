@@ -232,8 +232,6 @@ static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags
 	rlm_sql_postgres_conn_t		*c = talloc_get_type_abort(uctx, rlm_sql_postgres_conn_t);
 	PostgresPollingStatusType	status;
 
-	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
-
 	status = PQconnectPoll(c->db);
 
 	/*
@@ -247,6 +245,7 @@ static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags
 		DEBUG2("Connected to database '%s' on '%s' server version %i, protocol version %i, backend PID %i ",
 		       PQdb(c->db), PQhost(c->db), PQserverVersion(c->db), PQprotocolVersion(c->db),
 		       PQbackendPID(c->db));
+		fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
 		PQsetnonblocking(c->db, 1);
 		connection_signal_connected(c->conn);
 		return;
