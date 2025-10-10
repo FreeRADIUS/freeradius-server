@@ -254,11 +254,11 @@ static xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t const *func, xlat
 		arg = xlat_exp_head(node->call.args);
 
 		for (arg_p = node->call.func->args; arg_p->type != FR_TYPE_NULL; arg_p++) {
-		        if (!arg) break;
+			if (!arg) break;
 
 			xlat_mark_safe_for(arg->group, arg_p->safe_for);
 
-		        arg = xlat_exp_next(node->call.args, arg);
+			arg = xlat_exp_next(node->call.args, arg);
 		}
 	}
 
