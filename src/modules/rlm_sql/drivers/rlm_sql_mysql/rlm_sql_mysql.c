@@ -194,8 +194,6 @@ static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags
 	rlm_sql_mysql_conn_t	*c = talloc_get_type_abort(uctx, rlm_sql_mysql_conn_t);
 	char const		*log_prefix = c->conn->name;
 
-	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
-
 	if (c->status == 0) goto connected;
 	c->status = mysql_real_connect_cont(&c->sock, &c->db, c->status);
 
@@ -211,6 +209,12 @@ static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags
 	}
 
 connected:
+	/*
+	 *	Pause any notifications until we're actually ready
+	 *	to operate on the connection.
+	 */
+	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
+
 	if (!c->sock) {
 		ERROR("MySQL error: %s", mysql_error(&c->db));
 		connection_signal_reconnect(c->conn, CONNECTION_FAILED);
