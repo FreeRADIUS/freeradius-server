@@ -1,5 +1,7 @@
 = RADIUS Sessions
 
+The RADIUS protocol enables remote user authentication and authorization for network access. It uses UDP ports 1812 and 1813 for authentication and accounting, respectively. The RADIUS server processes requests from the Network Access Server (NAS), validating user credentials against local databases or authentication services like LDAP or Active Directory.
+
 A RADIUS session consists of the following steps:
 
 . A remote user connects to a RADIUS client device (using Point-to-Point Protocol (PPP, 802.1X) or another Data Layer link protocol) and initiates a login:
@@ -17,7 +19,7 @@ A RADIUS session consists of the following steps:
 * This message contains information about the user, including user name, authentication credentials, and requested service.
 * In addition, the message may contain information about the NAS, such as its host name, MAC address, or wireless SSID.
 * The message is sent using the Password Authentication Protocol (PAP), Challenge-Handshake Authentication Protocol (CHAP), or Extensible Authentication Protocol (EAP).
-* The server must decide whether to authenticate or authorise a user based solely on the information contained within the NAS request, as it does not have access to any additional user information.
+* The server must decide whether to authenticate or authorize a user based solely on the information contained within the NAS request, as it does not have access to any additional user information.
 * If the NAS sends a packet with an authentication protocol that the server does not support, the server will reject that request.
 
 . The RADIUS server processes the request and verifies the login request against either a local data- base or the authentication service running on the network.

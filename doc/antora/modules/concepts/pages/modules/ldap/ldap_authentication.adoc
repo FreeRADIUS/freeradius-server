@@ -54,7 +54,7 @@ cleartext.  Otherwise, the only authentication methods that will work
 are PAP and EAP-TTLS/PAP.  The next section explains these issues in
 more detail.
 
-== Password Storage Methods
+== Password storage methods
 
 If the `userPassword` field is returned from LDAP to FreeRADIUS, that
 information can be stored in a number of different formats:
@@ -82,7 +82,7 @@ decode the `userPassword` field from LDAP.  Please see the
 xref:reference:raddb/mods-available/pap.adoc[pap module] for a full list of
 supported password "encryption" formats.
 
-== Additional Considerations
+== Additional considerations
 
 There are some major caveats with the above authentication methods.
 The first is that we *strongly recommend* against using "bind as
