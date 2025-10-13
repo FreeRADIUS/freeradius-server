@@ -375,6 +375,8 @@ int request_enqueue(REQUEST *request)
 	time_t now;
 
 	rad_assert(pool_initialized == true);
+	rad_assert(request->master_state == REQUEST_ACTIVE);
+	rad_assert(request->magic == REQUEST_MAGIC);
 
 	/*
 	 *	Proxied packets get requeued when they time out, or

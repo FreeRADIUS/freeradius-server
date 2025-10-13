@@ -1187,6 +1187,9 @@ static void request_queue_or_run(REQUEST *request,
 #endif
 	}
 
+	fr_assert((request->child_state == REQUEST_RUNNING) ||
+		  (request->child_state != REQUEST_PROXIED));
+
 	request->child_state = REQUEST_RUNNING;
 	request->process(request, FR_ACTION_RUN);
 
