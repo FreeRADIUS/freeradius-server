@@ -706,8 +706,6 @@ void request_done(REQUEST *request, int original)
 
 	TRACE_STATE_MACHINE;
 
-	rad_assert(request->child_state != REQUEST_QUEUED);
-
 	/*
 	 *	Force this no matter what.
 	 */
@@ -837,6 +835,9 @@ void request_done(REQUEST *request, int original)
 				       child_state_names[request->child_state],
 				       child_state_names[REQUEST_DONE]);
 #endif
+
+		if (request->child_state == REQUEST_QUEUED) goto update_time_and_wait;
+
 		request->child_state = REQUEST_DONE;
 		break;
 
@@ -919,6 +920,8 @@ void request_done(REQUEST *request, int original)
 	 *	If the child is still running, wait for it to be finished.
 	 */
 	if (request->child_state <= REQUEST_RUNNING) {
+	update_time_and_wait:
+
 		gettimeofday(&now, NULL);
 #ifdef WITH_PROXY
 	wait_some_more:
