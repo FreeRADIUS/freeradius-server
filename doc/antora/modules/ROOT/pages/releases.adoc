@@ -51,21 +51,30 @@ https://inkbridgenetworks.com[InkBridge Networks].
 
 Once a stable version has been released (e.g. 4.0.0), it is feature
 frozen.  The only changes to it will be security fixes, bug fixes,
-etc.  No behavior changes will be made, and no new features will be
-added.
+etc.  No behavior changes will be made, and no new core features will
+be added.
+
+A point release can include new features, where those features do not
+affect anything else.  i.e. Where the features do not require any
+changes to the server core.
+
+In practice, this requirement means that new features can only be
+added as a new module.
 
 NOTE: Stable versions can be packaged by OS vendors.
 
 Within a stable version, "point" releases will be made for security
 fixes, bug fixes, etc.  So 4.0.1 will be 100% compatible with 4.0.0,
-plus 4.0.1 will contain minor fixes.
+wplus 4.0.1 will contain minor fixes.
 
 This guarantee means that all future releases of a stable version will
 be compatible with the initial version.  People can install 4.0, and
 know that its behavior will never change across "point" releases".
 
-The downside to this approach is that new features will never be added
-to a stable version.  That's where experimental versions come in.
+The downside to this approach is that new core features will never be
+added to a stable version, and that existing features will never have
+behavior changes, even to fix bugs.  That's where experimental
+versions come in.
 
 === Experimental Versions
 
