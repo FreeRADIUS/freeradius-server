@@ -706,6 +706,8 @@ void request_done(REQUEST *request, int original)
 
 	TRACE_STATE_MACHINE;
 
+	rad_assert(request->child_state != REQUEST_QUEUED);
+
 	/*
 	 *	Force this no matter what.
 	 */
