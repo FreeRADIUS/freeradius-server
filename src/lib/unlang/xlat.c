@@ -357,9 +357,8 @@ static unlang_action_t unlang_xlat_repeat(unlang_result_t *p_result, request_t *
 
 	case XLAT_ACTION_FAIL:
 	fail:
-		*p_result = UNLANG_RESULT_RCODE(RLM_MODULE_FAIL);
 		REXDENT();
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		return UNLANG_ACTION_FAIL;
 
 	default:
 		fr_assert(0);
@@ -419,9 +418,8 @@ static unlang_action_t unlang_xlat(UNUSED unlang_result_t *p_result, request_t *
 
 	case XLAT_ACTION_FAIL:
 	fail:
-		*p_result = UNLANG_RESULT_RCODE(RLM_MODULE_FAIL);
 		RINDENT_RESTORE(request, state);
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		return UNLANG_ACTION_FAIL;
 
 	default:
 		fr_assert(0);
@@ -515,17 +513,15 @@ static unlang_action_t unlang_xlat_resume(unlang_result_t *p_result, request_t *
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case XLAT_ACTION_FAIL:
-		*p_result = UNLANG_RESULT_RCODE(RLM_MODULE_FAIL);
 		RINDENT_RESTORE(request, state);
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		return UNLANG_ACTION_FAIL;
 	/* DON'T SET DEFAULT */
 	}
 
 	fr_assert(0);		/* Garbage xlat action */
 
-	*p_result = UNLANG_RESULT_RCODE(RLM_MODULE_FAIL);
 	RINDENT_RESTORE(request, state);
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return UNLANG_ACTION_FAIL;
 }
 
 /** Yield a request back to the interpreter from within a module
