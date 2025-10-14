@@ -60,16 +60,14 @@ You _cannot_ convert an `update` section to the new syntax simply by
 removing the `update` keyword.
 ====
 
-== Atomic "Transactions" and Errors
+== Assignment Failures
 
-The edit process is atomic, in that either all of the attributes are
-modified, or none of them are modified.  If the edit fails for any
-reason, then all of the results are discarded, and the edit does not
-affect any attributes.
+If the right side of an edit fails, then the assignment does nothing,
+and the variable named on the left hand side is not updated.
 
-Note also that the server tracks overflows, underflows, and division
-by zero.  These issues are caught, and cause the problematic
-calculation to fail.
+For mathematical expressions, the server tracks overflows, underflows,
+and division by zero.  These issues are caught, and cause the
+problematic calculation to fail.
 
 For example, if an attribute is of type `uint8`, then it can only
 contain 8-bit integers.  Any attempt to overflow the value to more
@@ -86,11 +84,12 @@ and do not result in any changes.
 
 === Grouping Edits
 
-Multiple attributes may be grouped into a set by using the xref:unlang/transaction.adoc[transaction]
-keyword.  When changes are done in a `transaction`, then either all of the
-changes are applied, or none of them are applied.  This functionality
-is best used to conditionally apply attribute changes, generally when
-retrieving data from a database.
+Multiple attributes may be grouped into a set by using the
+xref:unlang/transaction.adoc[transaction] keyword.  When changes are
+done in a `transaction`, then either all of the changes are applied,
+or none of them are applied.  This functionality is best used to
+conditionally apply attribute changes, generally when retrieving data
+from a database.
 
 == List Editing
 
