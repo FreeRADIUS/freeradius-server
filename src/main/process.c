@@ -730,6 +730,7 @@ void request_done(REQUEST *request, int original)
 	 *	and wait for the master thread timer to clean us up.
 	 */
 	if (!we_are_master()) {
+		fr_assert(request->child_state != REQUEST_QUEUED);
 		FINAL_STATE(REQUEST_DONE);
 		return;
 	}
@@ -763,22 +764,24 @@ void request_done(REQUEST *request, int original)
 	}
 #endif
 
-	/*
-	 *	If it was administratively canceled, then it's done.
-	 */
-	if (action >= FR_ACTION_CANCELLED) {
-		action = FR_ACTION_DONE;
-
-#ifdef WITH_COA
+	switch (action) {
 		/*
-		 *	Don't touch request->coa, it's in the middle
-		 *	of being processed...
+		 *	If it was administratively canceled, then it's done.
 		 */
-	} else {
+	case FR_ACTION_CANCELLED:
+	case FR_ACTION_CONFLICT:
+	case FR_ACTION_MAX_TIME:
+	case FR_ACTION_INTERNAL_FAILURE:
+	case FR_ACTION_COA_CANCELLED: /* we are request->coa, parent request can still run */
+		action = FR_ACTION_DONE;
+		break;
+
+	case FR_ACTION_CLEANUP_DELAY:
+	case FR_ACTION_DONE:
+#ifdef WITH_COA	
 		/*
 		 *	Move the CoA request to its own handler, but
-		 *	only if the request finished normally, and was
-		 *	not administratively canceled.
+		 *	only if the request ran to completion.
 		 */
 		if (request->coa) {
 			coa_separate(request->coa, true);
@@ -786,76 +789,15 @@ void request_done(REQUEST *request, int original)
 			coa_separate(request, true);
 		}
 #endif
-	}
-
-	/*
-	 *	It doesn't hurt to send duplicate replies.  All other
-	 *	signals are ignored, as the request will be cleaned up
-	 *	soon anyways.
-	 */
-	switch (action) {
-	case FR_ACTION_DUP:
-#ifdef WITH_DETAIL
-		rad_assert(request->listener != NULL);
-#endif
-		if (request->reply->code != 0) {
-			request->listener->send(request->listener, request);
-			return;
-		} else {
-			RDEBUG("No reply.  Ignoring retransmit");
-		}
 		break;
 
 		/*
-		 *	Mark the request as done.
+		 *	These actions (invalid, run, dup, timer,
+		 *	proxy_reply) should never be used with
+		 *	request_done().
 		 */
-	case FR_ACTION_DONE:
-#ifdef HAVE_PTHREAD_H
-		/*
-		 *	If the child is still queued or running, don't
-		 *	mark it as DONE.
-		 *
-		 *	For queued requests, the request_free()
-		 *	function will mark up the request so that the
-		 *	queue will free it.
-		 *
-		 *	For running requests, the child thread will
-		 *	eventually call request_done().  A timer in
-		 *	the master thread will then take care of
-		 *	cleaning up the request.
-		 */
-		if (spawn_flag && (request->child_state <= REQUEST_RUNNING)) {
-			break;
-		}
-#endif
-
-#ifdef DEBUG_STATE_MACHINE
-		if (rad_debug_lvl) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n",
-				       request->number, __FUNCTION__,
-				       child_state_names[request->child_state],
-				       child_state_names[REQUEST_DONE]);
-#endif
-
-		if (request->child_state == REQUEST_QUEUED) goto update_time_and_wait;
-
-		request->child_state = REQUEST_DONE;
-		break;
-
-		/*
-		 *	Called when the child is taking too long to
-		 *	finish.  We've already marked it "please
-		 *	stop", so we don't complain any more.
-		 */
-	case FR_ACTION_TIMER:
-		break;
-
-#ifdef WITH_PROXY
-	case FR_ACTION_PROXY_REPLY:
-		proxy_reply_too_late(request);
-		break;
-#endif
-
 	default:
+		fr_assert(0);
 		break;
 	}
 
@@ -909,19 +851,10 @@ void request_done(REQUEST *request, int original)
 	}
 #endif
 
-#ifdef HAVE_PTHREAD_H
-	/*
-	 *	If there's no children, we can mark the request as done.
-	 */
-	if (!spawn_flag) request->child_state = REQUEST_DONE;
-#endif
-
 	/*
 	 *	If the child is still running, wait for it to be finished.
 	 */
-	if (request->child_state <= REQUEST_RUNNING) {
-	update_time_and_wait:
-
+	if (spawn_flag && (request->child_state <= REQUEST_RUNNING)) {
 		gettimeofday(&now, NULL);
 #ifdef WITH_PROXY
 	wait_some_more:
@@ -935,6 +868,13 @@ void request_done(REQUEST *request, int original)
 		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 		return;
 	}
+
+	/*
+	 *	We can clean up the request.  But only if it was
+	 *	running.  If the request is queued, that's an error.
+	 */
+	fr_assert(request->child_state != REQUEST_QUEUED);
+	request->child_state = REQUEST_DONE;
 
 #ifdef HAVE_PTHREAD_H
 	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
@@ -1029,6 +969,7 @@ static void request_cleanup_delay_init(REQUEST *request)
 		request->process = request_cleanup_delay;
 
 		if (!we_are_master()) {
+			fr_assert(request->child_state != REQUEST_QUEUED);
 			FINAL_STATE(REQUEST_CLEANUP_DELAY);
 			return;
 		}
@@ -1036,6 +977,7 @@ static void request_cleanup_delay_init(REQUEST *request)
 		/*
 		 *	Update this if we can, otherwise let the timers pick it up.
 		 */
+		fr_assert(request->child_state != REQUEST_QUEUED);
 		request->child_state = REQUEST_CLEANUP_DELAY;
 #ifdef HAVE_PTHREAD_H
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
@@ -1549,6 +1491,7 @@ static void request_finish(REQUEST *request, int action)
 	 */
 	if (request->packet->dst_port == 0) {
 		RDEBUG("Finished internally proxied request.");
+		fr_assert(request->child_state != REQUEST_QUEUED);
 		FINAL_STATE(REQUEST_DONE);
 		return;
 	}
@@ -1713,6 +1656,7 @@ static void request_finish(REQUEST *request, int action)
 		request->listener->encode(request->listener, request);
 		request->process = request_response_delay;
 
+		fr_assert(request->child_state != REQUEST_QUEUED);
 		FINAL_STATE(REQUEST_RESPONSE_DELAY);
 	}
 }
@@ -2062,6 +2006,7 @@ skip_dup:
 		/*
 		 *	Don't do delayed reject.  Oh well.
 		 */
+		fr_assert(request->child_state != REQUEST_QUEUED);
 		request->child_state = REQUEST_DONE;
 		request_free(request);
 		return 1;
@@ -3903,6 +3848,7 @@ static int request_proxy(REQUEST *request)
 	 *	server.
 	 */
 	request->process = proxy_wait_for_reply;
+	fr_assert(request->child_state != REQUEST_QUEUED);
 	request->child_state = REQUEST_PROXIED;
 	request->component = "<REQUEST_PROXIED>";
 	request->module = "";
@@ -4229,6 +4175,7 @@ static void ping_home_server(void *ctx)
 #ifdef HAVE_PTHREAD_H
 	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 #endif
+	fr_assert(request->child_state != REQUEST_QUEUED);
 	request->child_state = REQUEST_PROXIED;
 	request->process = request_ping;
 
@@ -5014,6 +4961,7 @@ set_packet_type:
 	 *	send the packet.
 	 */
 	coa->process = coa_wait_for_reply;
+	fr_assert(coa->child_state != REQUEST_QUEUED);
 	coa->child_state = REQUEST_PROXIED;
 
 #ifdef HAVE_PTHREAD_H
