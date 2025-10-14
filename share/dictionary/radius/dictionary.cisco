@@ -73,7 +73,7 @@ ATTRIBUTE	Policy-Down				38	string
 ATTRIBUTE	Relay-Information-Option		46	string
 ATTRIBUTE	DHCP-User-Class				47	string
 ATTRIBUTE	DHCP-Vendor-Class			48	string
-
+ATTRIBUTE	DHCP-Client-Id				49	octets
 ATTRIBUTE	DHCP-Relay-GiAddr			50	string
 ATTRIBUTE	Service-Name				51	string
 ATTRIBUTE	Parent-Session-Id			52	string
