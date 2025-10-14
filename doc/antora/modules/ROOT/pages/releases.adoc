@@ -65,7 +65,7 @@ NOTE: Stable versions can be packaged by OS vendors.
 
 Within a stable version, "point" releases will be made for security
 fixes, bug fixes, etc.  So 4.0.1 will be 100% compatible with 4.0.0,
-wplus 4.0.1 will contain minor fixes.
+plus 4.0.1 will contain minor fixes.
 
 This guarantee means that all future releases of a stable version will
 be compatible with the initial version.  People can install 4.0, and
@@ -164,6 +164,7 @@ Stable point releases cannot contain:
 * bug fixes which change the behavior of an existing feature.
 
 == Developers
+
 === Changes to stable branches
 
 All changes to stable branches must undergo a review process to ensure
@@ -174,8 +175,8 @@ A PR must be raised in order to move commits into a stable branch from
 the experimental branch, and that PR must pass all CI checks, and be
 reviewed by at least one other core developer.
 
-IMPORTANT: Breaking changes are only permitted, IF they are added behind
-a feature flag, that preserves the previous behaviour by default.
+IMPORTANT: Breaking changes are only permitted IF they are added behind
+a feature flag that preserves the previous behaviour by default.
 
 === Changes to experimental branches
 
