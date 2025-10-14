@@ -433,6 +433,7 @@ static bool fr_globdir_file_ok(char const *try, fr_globdir_iter_t *iter)
 {
 	size_t len, room;
 	char const *p;
+	char *filename;
 	struct stat stat_buf;
 
 	/*
@@ -490,11 +491,17 @@ static bool fr_globdir_file_ok(char const *try, fr_globdir_iter_t *iter)
 	if ((len > 8) && (strncmp(&try[len - 8], ".rpmsave", 10) == 0)) return false;
 
 	/*
+	 *	When reading all files in a directory, iter->filename points to the directory
+	 *	name which is being read.  The file being tested needs to be added after that.
+	 */
+	filename = iter->filename + (iter->type == FR_GLOBDIR_DIR ? strlen(iter->filename) : 0);
+
+	/*
 	 *	strlcpy() returns the length of the input, which can be larger than the available space.
 	 */
-	room = (iter->path + PATH_MAX) - iter->filename;
+	room = (iter->path + PATH_MAX) - filename;
 
-	if (strlcpy(iter->filename, try, room) >= room) return false;
+	if (strlcpy(filename, try, room) >= room) return false;
 
 	/*
 	 *	We only read normal files which are NOT executable, and symlinks.
