@@ -773,7 +773,6 @@ void request_done(REQUEST *request, int original)
 	case FR_ACTION_MAX_TIME:
 	case FR_ACTION_INTERNAL_FAILURE:
 	case FR_ACTION_COA_CANCELLED: /* we are request->coa, parent request can still run */
-		action = FR_ACTION_DONE;
 		break;
 
 	case FR_ACTION_CLEANUP_DELAY:
