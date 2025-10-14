@@ -43,6 +43,7 @@ RCSID("$Id$")
 static _Thread_local unlang_interpret_t *intp_thread_default;
 
 static fr_table_num_ordered_t const unlang_action_table[] = {
+	{ L("fail"),			UNLANG_ACTION_FAIL },
 	{ L("calculate-result"),	UNLANG_ACTION_CALCULATE_RESULT },
 	{ L("next"),			UNLANG_ACTION_EXECUTE_NEXT },
 	{ L("pushed-child"),		UNLANG_ACTION_PUSHED_CHILD },
