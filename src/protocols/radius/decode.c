@@ -2142,7 +2142,8 @@ static int _test_ctx_free(fr_radius_decode_ctx_t *ctx)
        return 0;
 }
 
-static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	static uint8_t vector[RADIUS_AUTH_VECTOR_LENGTH] = {
 		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,

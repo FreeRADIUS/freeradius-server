@@ -1088,7 +1088,8 @@ static int _encode_test_ctx(fr_tacacs_ctx_t *proto_ctx)
 	return 0;
 }
 
-static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	fr_tacacs_ctx_t *test_ctx;
 

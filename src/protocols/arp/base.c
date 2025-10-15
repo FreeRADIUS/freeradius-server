@@ -393,7 +393,8 @@ typedef struct {
 	bool		tmp;
 } fr_arp_ctx_t;
 
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	fr_arp_ctx_t *test_ctx;
 

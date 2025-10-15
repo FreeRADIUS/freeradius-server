@@ -704,12 +704,14 @@ ssize_t	fr_dhcpv4_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
 }
 
 
-static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   fr_dict_attr_t const *root_da)
 {
 	fr_dhcpv4_ctx_t *test_ctx;
 
 	test_ctx = talloc_zero(ctx, fr_dhcpv4_ctx_t);
 	test_ctx->tmp_ctx = talloc(test_ctx, uint8_t);
+	test_ctx->root = root_da;
 
 	*out = test_ctx;
 
