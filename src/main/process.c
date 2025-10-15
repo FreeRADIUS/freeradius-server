@@ -777,7 +777,7 @@ void request_done(REQUEST *request, int original)
 
 	case FR_ACTION_CLEANUP_DELAY:
 	case FR_ACTION_DONE:
-#ifdef WITH_COA	
+#ifdef WITH_COA
 		/*
 		 *	Move the CoA request to its own handler, but
 		 *	only if the request ran to completion.
@@ -1134,7 +1134,7 @@ static void request_queue_or_run(REQUEST *request,
 	}
 
 	fr_assert((request->child_state == REQUEST_RUNNING) ||
-		  (request->child_state != REQUEST_PROXIED));
+		  (request->child_state == REQUEST_PROXIED));
 
 	request->child_state = REQUEST_RUNNING;
 	request->process(request, FR_ACTION_RUN);
@@ -2763,7 +2763,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		uint8_t *src;
 
 		src = talloc_array(vp, uint8_t, vp->vp_length + 1);
-		if (!src) return 0; 
+		if (!src) return 0;
 
 		src[0] = request->home_server->affinity;
 		memcpy(&src[1], vp->vp_octets, vp->vp_length);
