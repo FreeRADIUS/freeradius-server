@@ -4174,7 +4174,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 {
 	fr_pair_t	*vp;
 	fr_dcursor_t	*cursor;
-	bool		tainted = false;
+	bool		tainted = false, encode_children = false;
 	fr_value_box_t	*encoded;
 
 	fr_dbuff_t	*dbuff;
@@ -4210,6 +4210,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			REDEBUG2("%s is not a child of %s", vp->da->name, root_da->vb_attr->name);
 			return XLAT_ACTION_FAIL;
 		}
+		if (root_da->vb_attr == vp->da) encode_children = true;
 	}
 
 	/*
@@ -4254,7 +4255,25 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 *	as AKA/SIM and DHCPv6 encode "bool"s only if
 		 *	their value is true.
 		 */
-		len = tp_encode->func(dbuff, cursor, encode_ctx);
+		if (encode_children) {
+			fr_dcursor_t	child_cursor;
+
+			fr_assert(fr_type_is_structural(vp->vp_type));
+
+			/*
+			 *	If we're given an encoding context which is the
+			 *	same as the DA returned by the cursor, that means
+			 *	encode the children.
+			 */
+			fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
+			while (fr_dcursor_current(&child_cursor)) {
+				len = tp_encode->func(dbuff, &child_cursor, encode_ctx);
+				if (len < 0) break;
+			}
+			fr_dcursor_next(cursor);
+		} else {
+			len = tp_encode->func(dbuff, cursor, encode_ctx);
+		}
 		if (len < 0) {
 			RPEDEBUG("Protocol encoding failed");
 			return XLAT_ACTION_FAIL;
