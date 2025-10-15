@@ -72,7 +72,7 @@ static void fb_set_sqlda(XSQLDA *sqlda) {
 		}
 
 		if (sqlda->sqlvar[i].sqltype & 1) {
-			sqlda->sqlvar[i].sqlind = (short*)calloc(sizeof(short), 1);
+			sqlda->sqlvar[i].sqlind = (short*)calloc(1, sizeof(short));
 		} else {
 			sqlda->sqlvar[i].sqlind = 0;
 		}

@@ -444,7 +444,7 @@ static bool totp_reused(void *instance, time_t now, uint8_t const *key, size_t k
 		return true;
 	}
 
-	dedup = calloc(sizeof(*dedup), 1);
+	dedup = calloc(1, sizeof(*dedup));
 	if (!dedup) {
 		PTHREAD_MUTEX_UNLOCK(inst);
 		return false;
