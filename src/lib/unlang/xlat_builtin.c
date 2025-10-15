@@ -4200,6 +4200,18 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		}
 	}
 
+	if (root_da) {
+		if (!fr_type_is_structural(root_da->vb_attr->type)) {
+			REDEBUG2("Encoding context must be a structural attribute reference");
+			return XLAT_ACTION_FAIL;
+		}
+		vp = fr_dcursor_current(cursor);
+		if (!fr_dict_attr_common_parent(root_da->vb_attr, vp->da, true) && (root_da->vb_attr != vp->da)) {
+			REDEBUG2("%s is not a child of %s", vp->da->name, root_da->vb_attr->name);
+			return XLAT_ACTION_FAIL;
+		}
+	}
+
 	/*
 	 *	Loop over the attributes, encoding them.
 	 */
