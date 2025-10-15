@@ -4151,6 +4151,12 @@ static int protocol_xlat_instantiate(xlat_inst_ctx_t const *mctx)
 	return 0;
 }
 
+static xlat_arg_parser_t const protocol_encode_xlat_args[] = {
+	XLAT_ARG_PARSER_CURSOR,
+	{ .single = true, .type = FR_TYPE_ATTR },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Encode protocol attributes / options
  *
  * Returns octet string created from the provided pairs
@@ -4173,13 +4179,13 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	fr_dbuff_t	*dbuff;
 	ssize_t		len = 0;
-	fr_value_box_t	*in_head;
+	fr_value_box_t	*in_head, *root_da;
 	void		*encode_ctx = NULL;
 	fr_test_point_pair_encode_t const *tp_encode;
 
 	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 2048, SIZE_MAX);
 
-	XLAT_ARGS(args, &in_head);
+	XLAT_ARGS(args, &in_head, &root_da);
 
 	memcpy(&tp_encode, xctx->inst, sizeof(tp_encode)); /* const issues */
 
@@ -4189,7 +4195,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Create the encoding context.
 	 */
 	if (tp_encode->test_ctx) {
-		if (tp_encode->test_ctx(&encode_ctx, cursor, request->proto_dict, NULL) < 0) {
+		if (tp_encode->test_ctx(&encode_ctx, cursor, request->proto_dict, root_da ? root_da->vb_attr : NULL) < 0) {
 			return XLAT_ACTION_FAIL;
 		}
 	}
@@ -4295,7 +4301,7 @@ static int xlat_protocol_register_by_name(dl_t *dl, char const *name, fr_dict_t 
 		if (xlat_func_find(buffer, -1)) return 1;
 
 		if (unlikely((xlat = xlat_func_register(NULL, buffer, protocol_encode_xlat, FR_TYPE_OCTETS)) == NULL)) return -1;
-		xlat_func_args_set(xlat, xlat_pair_cursor_args);
+		xlat_func_args_set(xlat, protocol_encode_xlat_args);
 		/* coverity[suspicious_sizeof] */
 		xlat_func_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_encode_t *, NULL, tp_encode);
 		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
