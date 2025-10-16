@@ -4036,6 +4036,7 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 static xlat_arg_parser_t const protocol_decode_xlat_args[] = {
 	{ .required = true, .type = FR_TYPE_VOID },
+	{ .single = true, .type = FR_TYPE_ATTR },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -4055,12 +4056,14 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					  request_t *request, fr_value_box_list_t *in)
 {
 	int					decoded;
-	fr_value_box_t				*vb, *in_head;
+	fr_value_box_t				*vb, *in_head, *root_da;
 	void					*decode_ctx = NULL;
 	protocol_decode_xlat_uctx_t const	*decode_uctx = talloc_get_type_abort(*(void * const *)xctx->inst, protocol_decode_xlat_uctx_t);
 	fr_test_point_pair_decode_t const	*tp_decode = decode_uctx->tp_decode;
+	fr_pair_t				*vp = NULL;
+	bool					created = false;
 
-	XLAT_ARGS(in, &in_head);
+	XLAT_ARGS(in, &in_head, &root_da);
 
 	fr_assert(in_head->type == FR_TYPE_GROUP);
 
@@ -4070,17 +4073,34 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (tp_decode->test_ctx) {
-		if (tp_decode->test_ctx(&decode_ctx, ctx, request->proto_dict, NULL) < 0) {
+	if (root_da) {
+		int ret;
+		if (!fr_type_is_structural(root_da->vb_attr->type)) {
+			REDEBUG2("Decoding context must be a structural attribute reference");
 			return XLAT_ACTION_FAIL;
+		}
+		ret = fr_pair_update_by_da_parent(fr_pair_list_parent(&request->request_pairs), &vp, root_da->vb_attr);
+		if (ret < 0) {
+			REDEBUG2("Failed creating decoding root pair");
+			return XLAT_ACTION_FAIL;
+		}
+		if (ret == 0) created = true;
+	}
+
+	if (tp_decode->test_ctx) {
+		if (tp_decode->test_ctx(&decode_ctx, ctx, request->proto_dict, root_da ? root_da->vb_attr : NULL) < 0) {
+			goto fail;
 		}
 	}
 
-	decoded = xlat_decode_value_box_list(request->request_ctx, &request->request_pairs,
+	decoded = xlat_decode_value_box_list(root_da ? vp : request->request_ctx,
+					     root_da ? &vp->vp_group : &request->request_pairs,
 					     request, decode_ctx, tp_decode->func, &in_head->vb_group);
 	if (decoded <= 0) {
 		talloc_free(decode_ctx);
 		RPERROR("Protocol decoding failed");
+	fail:
+		if (created) fr_pair_delete(&request->request_pairs, vp);
 		return XLAT_ACTION_FAIL;
 	}
 
