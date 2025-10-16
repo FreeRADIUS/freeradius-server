@@ -730,7 +730,8 @@ done:
 ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_pair_t		*vp;
-	unsigned int		depth = 0;
+	fr_dhcpv4_ctx_t		*enc_ctx = encode_ctx;
+	unsigned int		depth = enc_ctx->root->depth;
 	fr_da_stack_t		da_stack;
 	ssize_t			len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
