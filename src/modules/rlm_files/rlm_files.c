@@ -102,8 +102,8 @@ static int pairlist_to_key(uint8_t **out, size_t *outlen, void const *a)
 	return fr_value_box_to_key(out, outlen, ((PAIR_LIST_LIST const *)a)->box);
 }
 
-static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptree, PAIR_LIST_LIST **pdefault,
-			    fr_type_t data_type, fr_dict_attr_t const *key_enum, fr_dict_t const *dict, bool v3_compat)
+static int getrecv_filename(TALLOC_CTX *ctx, rlm_files_t const *inst, fr_htrie_t **ptree, PAIR_LIST_LIST **pdefault,
+			    fr_type_t data_type, fr_dict_attr_t const *key_enum, fr_dict_t const *dict)
 {
 	int			rcode;
 	PAIR_LIST_LIST		users;
@@ -115,13 +115,13 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 	fr_value_box_t		*box;
 	map_t			*reply_head;
 
-	if (!filename) {
+	if (!inst->filename) {
 		*ptree = NULL;
 		return 0;
 	}
 
 	pairlist_list_init(&users);
-	rcode = pairlist_read(ctx, dict, filename, &users, v3_compat);
+	rcode = pairlist_read(ctx, dict, inst->filename, &users, inst->v3_compat);
 	if (rcode < 0) {
 		return -1;
 	}
@@ -677,8 +677,8 @@ static int files_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *
 		key_enum = tmpl_attr_tail_da(files_data->key_tmpl);
 	}
 
-	if (getrecv_filename(files_data, inst->filename, &files_data->htrie, &files_data->def,
-			     keytype, key_enum, t_rules->attr.dict_def, inst->v3_compat) < 0) goto error;
+	if (getrecv_filename(files_data, inst, &files_data->htrie, &files_data->def,
+			     keytype, key_enum, t_rules->attr.dict_def) < 0) goto error;
 
 	*(void **)out = files_data;
 	return 0;
