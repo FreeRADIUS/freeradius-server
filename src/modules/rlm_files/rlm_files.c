@@ -39,6 +39,7 @@ RCSID("$Id$")
 typedef struct {
 	char const	*filename;
 	bool		v3_compat;
+	fr_htrie_type_t	htype;
 } rlm_files_t;
 
 /**  Structure produced by custom call_env parser
@@ -80,6 +81,8 @@ fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED | CONF_FLAG_FILE_READABLE, rlm_files_t, filename) },
 	{ FR_CONF_OFFSET("v3_compat", rlm_files_t, v3_compat) },
+	{ FR_CONF_OFFSET("type", rlm_files_t, htype), .dflt = "auto",
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_htrie_type_table, .len = &fr_htrie_type_table_len } },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -126,7 +129,11 @@ static int getrecv_filename(TALLOC_CTX *ctx, rlm_files_t const *inst, fr_htrie_t
 		return -1;
 	}
 
-	htype = fr_htrie_hint(data_type);
+	if (inst->htype == FR_HTRIE_AUTO) {
+		htype = fr_htrie_hint(data_type);
+	} else {
+		htype = inst->htype;
+	}
 
 	/*
 	 *	Walk through the 'users' file list
