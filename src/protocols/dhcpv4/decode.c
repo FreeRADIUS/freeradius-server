@@ -628,9 +628,9 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		if (q == concat_buffer) return 0;
 
-		da = fr_dict_attr_child_by_num(fr_dict_root(dict_dhcpv4), p[0]);
+		da = fr_dict_attr_child_by_num(packet_ctx->root, p[0]);
 		if (!da) {
-			da = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, fr_dict_root(dict_dhcpv4), p[0]);
+			da = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, packet_ctx->root, p[0]);
 			if (!da) return -1;
 
 			slen = fr_pair_raw_from_network(ctx, out, da, concat_buffer, q - concat_buffer);
@@ -657,7 +657,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		return next - data;
 	}
 
-	slen = decode_option(ctx, out, fr_dict_root(dict_dhcpv4), data, data[1] + 2, decode_ctx);
+	slen = decode_option(ctx, out, packet_ctx->root, data, data[1] + 2, decode_ctx);
 	if (slen < 0) return slen;
 
 	FR_PROTO_TRACE("decoding option complete, %zd decoded, returning %u byte(s)", slen, (unsigned int) data[1] + 2);
@@ -670,7 +670,9 @@ ssize_t	fr_dhcpv4_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	ssize_t slen;
 	uint8_t const *attr, *end;
 
-	fr_dhcpv4_ctx_t decode_ctx = {};
+	fr_dhcpv4_ctx_t decode_ctx = {
+		.root = fr_dict_root(dict_dhcpv4)
+	};
 
 	fr_assert(dict_dhcpv4 != NULL);
 
@@ -711,7 +713,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *
 
 	test_ctx = talloc_zero(ctx, fr_dhcpv4_ctx_t);
 	test_ctx->tmp_ctx = talloc(test_ctx, uint8_t);
-	test_ctx->root = root_da;
+	test_ctx->root = root_da ? root_da : fr_dict_root(dict_dhcpv4);
 
 	*out = test_ctx;
 
