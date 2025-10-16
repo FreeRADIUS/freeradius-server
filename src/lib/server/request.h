@@ -273,6 +273,10 @@ struct request_s {
 	int			alloc_line;	//!< Line the request was allocated on.
 
 	fr_dlist_t		listen_entry;	//!< request's entry in the list for this listener / socket
+
+	uint32_t		priority;	//!< higher == higher priority
+	uint32_t		sequence;	//!< higher == higher priority, too
+
 	fr_heap_index_t		runnable;	//!< entry in the heap of runnable packets
 
 };				/* request_t typedef */

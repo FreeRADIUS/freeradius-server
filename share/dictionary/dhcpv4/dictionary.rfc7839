@@ -8,6 +8,12 @@ MEMBER		reserved				uint8
 
 # Values are in https://www.rfc-editor.org/rfc/rfc5213
 MEMBER		ATT					uint8
+VALUE	ATT			Reserved		0
+VALUE	ATT			Virtual			1
+VALUE	ATT			PPP			2
+VALUE	ATT			IEEE-802.3		3
+VALUE	ATT			IEEE-802.11a/b/g	4
+VALUE	ATT			IEEE-802.16e		5
 
 ATTRIBUTE	Network-Name				82.14	string
 ATTRIBUTE	Access-Point-Name			82.15	string

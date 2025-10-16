@@ -67,4 +67,4 @@ default:
 /*
  *	Shut down the BIO.  It's no longer useable.
  */
-fr_bio_shutdown(&my->bio);
+(void) fr_bio_shutdown(&my->bio);

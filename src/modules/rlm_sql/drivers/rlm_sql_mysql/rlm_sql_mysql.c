@@ -101,12 +101,12 @@ typedef struct {
 } rlm_sql_mysql_t;
 
 static conf_parser_t tls_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_ca_file) },
-	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_ca_path) },
-	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_certificate_file) },
-	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_private_key_file) },
-	{ FR_CONF_OFFSET_FLAGS("crl_file", CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_crl_file) },
-	{ FR_CONF_OFFSET_FLAGS("crl_path", CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_crl_path) },
+	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_READABLE, rlm_sql_mysql_t, tls_ca_file) },
+	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_READABLE, rlm_sql_mysql_t, tls_ca_path) },
+	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_READABLE, rlm_sql_mysql_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_READABLE, rlm_sql_mysql_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET_FLAGS("crl_file", CONF_FLAG_FILE_READABLE, rlm_sql_mysql_t, tls_crl_file) },
+	{ FR_CONF_OFFSET_FLAGS("crl_path", CONF_FLAG_FILE_READABLE, rlm_sql_mysql_t, tls_crl_path) },
 	/*
 	 *	MySQL Specific TLS attributes
 	 */
@@ -194,8 +194,6 @@ static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags
 	rlm_sql_mysql_conn_t	*c = talloc_get_type_abort(uctx, rlm_sql_mysql_conn_t);
 	char const		*log_prefix = c->conn->name;
 
-	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
-
 	if (c->status == 0) goto connected;
 	c->status = mysql_real_connect_cont(&c->sock, &c->db, c->status);
 
@@ -211,6 +209,12 @@ static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags
 	}
 
 connected:
+	/*
+	 *	Pause any notifications until we're actually ready
+	 *	to operate on the connection.
+	 */
+	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
+
 	if (!c->sock) {
 		ERROR("MySQL error: %s", mysql_error(&c->db));
 		connection_signal_reconnect(c->conn, CONNECTION_FAILED);
@@ -353,8 +357,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 					     config->sql_port, NULL, sql_flags);
 
 	c->fd = mysql_get_socket(&c->db);
-
-	if (c->fd <= 0) {
+	if (c->fd < 0) {
 		ERROR("Could't connect to MySQL server %s@%s:%s", config->sql_login,
 		      config->sql_server, config->sql_db);
 		ERROR("MySQL error: %s", mysql_error(&c->db));

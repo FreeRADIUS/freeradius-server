@@ -23,8 +23,6 @@
  */
 
 /*  MPPE support from Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp> */
-
-#include "lib/unlang/action.h"
 RCSID("$Id$")
 
 #define LOG_PREFIX mctx->mi->name
@@ -43,6 +41,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/sha1.h>
 
+#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
@@ -2310,8 +2309,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 			}
 
 			fr_value_box_list_init(&auth_ctx->cpw_ctx->local_cpw_result);
-			if (unlang_tmpl_push(auth_ctx, &auth_ctx->cpw_ctx->local_cpw_result, request,
-					     env_data->local_cpw, NULL) < 0) RETURN_UNLANG_FAIL;
+			if (unlang_tmpl_push(auth_ctx, NULL, &auth_ctx->cpw_ctx->local_cpw_result, request,
+					     env_data->local_cpw, NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 			break;
 #else
 			REDEBUG("Local MS-CHAPv2 password changes require OpenSSL support");
@@ -2336,8 +2335,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 			 */
 			if (env_data->ntlm_cpw_domain) {
 				fr_value_box_list_init(&auth_ctx->cpw_ctx->cpw_domain);
-				if (unlang_tmpl_push(auth_ctx, &auth_ctx->cpw_ctx->cpw_domain, request,
-						env_data->ntlm_cpw_domain, NULL) < 0) RETURN_UNLANG_FAIL;
+				if (unlang_tmpl_push(auth_ctx, NULL, &auth_ctx->cpw_ctx->cpw_domain, request,
+						     env_data->ntlm_cpw_domain, NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 			}
 
 			fr_value_box_list_init(&auth_ctx->cpw_ctx->cpw_user);
@@ -2345,8 +2344,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 			/*
 			 *	b) Expanding the username
 			 */
-			if (unlang_tmpl_push(auth_ctx, &auth_ctx->cpw_ctx->cpw_user, request,
-					     env_data->ntlm_cpw_username, NULL) < 0) RETURN_UNLANG_FAIL;
+			if (unlang_tmpl_push(auth_ctx, NULL, &auth_ctx->cpw_ctx->cpw_user, request,
+					     env_data->ntlm_cpw_username, NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 			break;
 		}
 

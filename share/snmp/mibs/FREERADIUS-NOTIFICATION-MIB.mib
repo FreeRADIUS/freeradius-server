@@ -167,6 +167,78 @@ serverModuleHup NOTIFICATION-TYPE
        DESCRIPTION "Notification that the module has been HUP'd via radmin"
        ::= { serverModuleGeneric 8 }
 
+serverModuleConnectionHalted NOTIFICATION-TYPE
+       OBJECTS { radiusdModuleName,
+		 radiusdModuleInstance,
+		 radiusdConnectionPoolServer,
+		 radiusdConnectionPoolPort }
+       STATUS current
+       DESCRIPTION "Notification a module connection has entered the halted state"
+       ::= { serverModuleGeneric 9 }
+
+serverModuleConnectionInit NOTIFICATION-TYPE
+       OBJECTS { radiusdModuleName,
+		 radiusdModuleInstance,
+		 radiusdConnectionPoolServer,
+		 radiusdConnectionPoolPort }
+       STATUS current
+       DESCRIPTION "Notification a module connection has entered the init state"
+       ::= { serverModuleGeneric 10 }
+
+serverModuleConnectionConnecting NOTIFICATION-TYPE
+       OBJECTS { radiusdModuleName,
+		 radiusdModuleInstance,
+		 radiusdConnectionPoolServer,
+		 radiusdConnectionPoolPort }
+       STATUS current
+       DESCRIPTION "Notification a module connection has entered the connecting state"
+       ::= { serverModuleGeneric 11 }
+
+serverModuleConnectionFull NOTIFICATION-TYPE
+       OBJECTS { radiusdModuleName,
+		 radiusdModuleInstance,
+		 radiusdConnectionPoolServer,
+		 radiusdConnectionPoolPort }
+       STATUS current
+       DESCRIPTION "Notification a module connection has entered the full state"
+       ::= { serverModuleGeneric 12 }
+
+serverModuleConnectionInactive NOTIFICATION-TYPE
+       OBJECTS { radiusdModuleName,
+		 radiusdModuleInstance,
+		 radiusdConnectionPoolServer,
+		 radiusdConnectionPoolPort }
+       STATUS current
+       DESCRIPTION "Notification a module connection has entered the inactive state"
+       ::= { serverModuleGeneric 13 }
+
+serverModuleConnectionInactiveDraining NOTIFICATION-TYPE
+       OBJECTS { radiusdModuleName,
+		 radiusdModuleInstance,
+		 radiusdConnectionPoolServer,
+		 radiusdConnectionPoolPort }
+       STATUS current
+       DESCRIPTION "Notification a module connection has entered the inactive-draining state"
+       ::= { serverModuleGeneric 14 }
+
+serverModuleConnectionDraining NOTIFICATION-TYPE
+       OBJECTS { radiusdModuleName,
+		 radiusdModuleInstance,
+		 radiusdConnectionPoolServer,
+		 radiusdConnectionPoolPort }
+       STATUS current
+       DESCRIPTION "Notification a module connection has entered the draining state"
+       ::= { serverModuleGeneric 15 }
+
+serverModuleConnectionDrainingToFree NOTIFICATION-TYPE
+       OBJECTS { radiusdModuleName,
+		 radiusdModuleInstance,
+		 radiusdConnectionPoolServer,
+		 radiusdConnectionPoolPort }
+       STATUS current
+       DESCRIPTION "Notification a module connection has entered the draining-to-free state"
+       ::= { serverModuleGeneric 16 }
+
 homeServer  OBJECT IDENTIFIER ::= { freeRadiusNotificationMib 3 }
 
 --

@@ -37,7 +37,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/unlang/xlat_priv.h>
 
-#include "catch_priv.h"
 #include "call_priv.h"
 #include "caller_priv.h"
 #include "condition_priv.h"
@@ -87,14 +86,6 @@ fr_table_num_sorted_t const mod_rcode_table[] = {
 	{ L("updated"),    	RLM_MODULE_UPDATED	}
 };
 size_t mod_rcode_table_len = NUM_ELEMENTS(mod_rcode_table);
-
-fr_table_num_sorted_t const mod_action_table[] = {
-	{ L("..."),		MOD_ACTION_NOT_SET	},
-	{ L("reject"),		MOD_ACTION_REJECT	},
-	{ L("retry"),		MOD_ACTION_RETRY	},
-	{ L("return"),		MOD_ACTION_RETURN	}
-};
-size_t mod_action_table_len = NUM_ELEMENTS(mod_action_table);
 
 #define UPDATE_CTX2 unlang_compile_ctx_copy(&unlang_ctx2, unlang_ctx)
 
@@ -246,105 +237,104 @@ bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules)
 				cf_section_to_item(g->cs), rules->attr.dict_def);
 }
 
-static void unlang_dump(unlang_t *instruction, int depth)
+static void unlang_dump(unlang_t *c, int depth)
 {
-	unlang_t *c;
 	unlang_group_t *g;
 	map_t *map;
 	char buffer[1024];
 
-	for (c = instruction; c != NULL; c = c->next) {
-		switch (c->type) {
-		case UNLANG_TYPE_NULL:
-		case UNLANG_TYPE_CHILD_REQUEST:
-		case UNLANG_TYPE_MAX:
-			fr_assert(0);
-			break;
+	switch (c->type) {
+	case UNLANG_TYPE_NULL:
+	case UNLANG_TYPE_CHILD_REQUEST:
+	case UNLANG_TYPE_MAX:
+		fr_assert(0);
+		break;
 
-		case UNLANG_TYPE_FUNCTION:
-			DEBUG("%.*s%s", depth, unlang_spaces, c->debug_name);
-			break;
+	case UNLANG_TYPE_FUNCTION:
+		DEBUG("%.*s%s", depth, unlang_spaces, c->debug_name);
+		break;
 
-		case UNLANG_TYPE_MODULE:
-		{
-			unlang_module_t *m = unlang_generic_to_module(c);
+	case UNLANG_TYPE_MODULE:
+	{
+		unlang_module_t *m = unlang_generic_to_module(c);
 
-			DEBUG("%.*s%s", depth, unlang_spaces, m->mmc.mi->name);
+		DEBUG("%.*s%s", depth, unlang_spaces, m->mmc.mi->name);
+	}
+	break;
+
+	case UNLANG_TYPE_MAP:
+	{
+		unlang_map_t *gext;
+
+		DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
+
+		g = unlang_generic_to_group(c);
+		gext = unlang_group_to_map(g);
+		map = NULL;
+		while ((map = map_list_next(&gext->map, map))) {
+			map_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map);
+			DEBUG("%.*s%s", depth + 1, unlang_spaces, buffer);
 		}
-			break;
 
-		case UNLANG_TYPE_MAP:
-		case UNLANG_TYPE_UPDATE:
-		{
-			unlang_map_t *gext;
+		DEBUG("%.*s}", depth, unlang_spaces);
+	}
+	break;
 
-			DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
+	case UNLANG_TYPE_EDIT:
+	{
+		unlang_edit_t *edit;
 
-			g = unlang_generic_to_group(c);
-			gext = unlang_group_to_map(g);
-			map = NULL;
-			while ((map = map_list_next(&gext->map, map))) {
-				map_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map);
-				DEBUG("%.*s%s", depth + 1, unlang_spaces, buffer);
-			}
+		edit = unlang_generic_to_edit(c);
+		map = NULL;
+		while ((map = map_list_next(&edit->maps, map))) {
+			if (!map->rhs) continue; /* @todo - fixme */
 
-			DEBUG("%.*s}", depth, unlang_spaces);
+			map_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map);
+			DEBUG("%.*s%s", depth + 1, unlang_spaces, buffer);
 		}
-			break;
 
-		case UNLANG_TYPE_EDIT:
-		{
-			unlang_edit_t *edit;
+		DEBUG("%.*s}", depth, unlang_spaces);
+	}
+	break;
 
-			edit = unlang_generic_to_edit(c);
-			map = NULL;
-			while ((map = map_list_next(&edit->maps, map))) {
-				if (!map->rhs) continue; /* @todo - fixme */
+	case UNLANG_TYPE_CALL:
+	case UNLANG_TYPE_CALLER:
+	case UNLANG_TYPE_CASE:
+	case UNLANG_TYPE_FOREACH:
+	case UNLANG_TYPE_FINALLY:
+	case UNLANG_TYPE_ELSE:
+	case UNLANG_TYPE_ELSIF:
+	case UNLANG_TYPE_GROUP:
+	case UNLANG_TYPE_IF:
+	case UNLANG_TYPE_LOAD_BALANCE:
+	case UNLANG_TYPE_PARALLEL:
+	case UNLANG_TYPE_POLICY:
+	case UNLANG_TYPE_REDUNDANT:
+	case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
+	case UNLANG_TYPE_SUBREQUEST:
+	case UNLANG_TYPE_SWITCH:
+	case UNLANG_TYPE_TIMEOUT:
+	case UNLANG_TYPE_LIMIT:
+	case UNLANG_TYPE_TRANSACTION:
+	case UNLANG_TYPE_TRY:
+	case UNLANG_TYPE_CATCH: /* @todo - print out things we catch, too */
+		g = unlang_generic_to_group(c);
 
-				map_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map);
-				DEBUG("%.*s%s", depth + 1, unlang_spaces, buffer);
-			}
-
-			DEBUG("%.*s}", depth, unlang_spaces);
+		DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
+		unlang_list_foreach(&g->children, child) {
+			unlang_dump(child, depth + 1);
 		}
-			break;
+		DEBUG("%.*s}", depth, unlang_spaces);
+		break;
 
-		case UNLANG_TYPE_CALL:
-		case UNLANG_TYPE_CALLER:
-		case UNLANG_TYPE_CASE:
-		case UNLANG_TYPE_FOREACH:
-		case UNLANG_TYPE_FINALLY:
-		case UNLANG_TYPE_ELSE:
-		case UNLANG_TYPE_ELSIF:
-		case UNLANG_TYPE_GROUP:
-		case UNLANG_TYPE_IF:
-		case UNLANG_TYPE_LOAD_BALANCE:
-		case UNLANG_TYPE_PARALLEL:
-		case UNLANG_TYPE_POLICY:
-		case UNLANG_TYPE_REDUNDANT:
-		case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
-		case UNLANG_TYPE_SUBREQUEST:
-		case UNLANG_TYPE_SWITCH:
-		case UNLANG_TYPE_TIMEOUT:
-		case UNLANG_TYPE_LIMIT:
-		case UNLANG_TYPE_TRANSACTION:
-		case UNLANG_TYPE_TRY:
-		case UNLANG_TYPE_CATCH: /* @todo - print out things we catch, too */
-			g = unlang_generic_to_group(c);
-			DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
-			unlang_dump(g->children, depth + 1);
-			DEBUG("%.*s}", depth, unlang_spaces);
-			break;
-
-		case UNLANG_TYPE_BREAK:
-		case UNLANG_TYPE_CONTINUE:
-		case UNLANG_TYPE_DETACH:
-		case UNLANG_TYPE_RETURN:
-		case UNLANG_TYPE_TMPL:
-		case UNLANG_TYPE_XLAT:
-			DEBUG("%.*s%s", depth, unlang_spaces, c->debug_name);
-			break;
-		}
+	case UNLANG_TYPE_BREAK:
+	case UNLANG_TYPE_CONTINUE:
+	case UNLANG_TYPE_DETACH:
+	case UNLANG_TYPE_RETURN:
+	case UNLANG_TYPE_TMPL:
+	case UNLANG_TYPE_XLAT:
+		DEBUG("%.*s%s", depth, unlang_spaces, c->debug_name);
+		break;
 	}
 }
 
@@ -472,14 +462,12 @@ unlang_group_t *unlang_group_allocate(unlang_t *parent, CONF_SECTION *cs, unlang
 							 op->pool_headers, op->pool_len);
 	if (!g) return NULL;
 
-	g->children = NULL;
-	g->tail = &g->children;
 	g->cs = cs;
 
 	c = unlang_group_to_generic(g);
-	c->parent = parent;
-	c->type = type;
 	c->ci = CF_TO_ITEM(cs);
+
+	unlang_group_type_init(c, parent, type);
 
 	return g;
 }
@@ -498,31 +486,6 @@ static void compile_set_default_actions(unlang_t *c, unlang_compile_ctx_t *unlan
 	 *	retries.  That is not what we want.  Instead, we want
 	 *	the retries to apply only to the _current_ section.
 	 */
-
-	/*
-	 *	Children of "redundant" and "redundant-load-balance"
-	 *	have RETURN for all actions except fail.  But THEIR children are normal.
-	 */
-	if (c->parent &&
-	    ((c->parent->type == UNLANG_TYPE_REDUNDANT) ||
-	     (c->parent->type == UNLANG_TYPE_REDUNDANT_LOAD_BALANCE))) {
-		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-			switch (i) {
-			case RLM_MODULE_FAIL:
-			case RLM_MODULE_TIMEOUT:
-				if (!c->actions.actions[i]) {
-					c->actions.actions[i] = 1;
-				}
-				continue;
-
-			default:
-				if (!c->actions.actions[i]) c->actions.actions[i] = MOD_ACTION_RETURN;
-				break;
-			}
-		}
-
-		return;
-	}
 
 	/*
 	 *	Set the default actions if they haven't already been
@@ -677,11 +640,9 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_ctx_t *un
 	if (!edit) return NULL;
 
 	c = out = unlang_edit_to_generic(edit);
-	c->parent = parent;
-	c->next = NULL;
+	unlang_type_init(c, parent, UNLANG_TYPE_EDIT);
 	c->name = cf_section_name1(cs);
 	c->debug_name = c->name;
-	c->type = UNLANG_TYPE_EDIT;
 	c->ci = CF_TO_ITEM(cs);
 
 	map_list_init(&edit->maps);
@@ -819,11 +780,9 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_ctx_t *unlan
 	if (!edit) return NULL;
 
 	c = out = unlang_edit_to_generic(edit);
-	c->parent = parent;
-	c->next = NULL;
+	unlang_type_init(c, parent, UNLANG_TYPE_EDIT);
 	c->name = cf_pair_attr(cp);
 	c->debug_name = c->name;
-	c->type = UNLANG_TYPE_EDIT;
 	c->ci = CF_TO_ITEM(cp);
 
 	map_list_init(&edit->maps);
@@ -996,13 +955,16 @@ static int compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
 	else if (!strcasecmp(value, "retry"))
 		action = MOD_ACTION_RETRY;
 
-	else if (strspn(value, "0123456789")==strlen(value)) {
-		action = atoi(value);
-
-		if (!action || (action > MOD_PRIORITY_MAX)) {
+	else if (strspn(value, "0123456789") == strlen(value)) {
+		if (strlen(value) > 2) {
+		invalid_action:
 			cf_log_err(cp, "Priorities MUST be between 1 and 64.");
 			return 0;
 		}
+
+		action = MOD_PRIORITY(atoi(value));
+
+		if (!MOD_ACTION_VALID_SET(action)) goto invalid_action;
 
 	} else {
 		cf_log_err(cp, "Unknown action '%s'.\n",
@@ -1301,6 +1263,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 	 */
 	switch (c->type) {
 	case UNLANG_TYPE_CASE:
+	case UNLANG_TYPE_CATCH:
 	case UNLANG_TYPE_IF:
 	case UNLANG_TYPE_ELSE:
 	case UNLANG_TYPE_ELSIF:
@@ -1519,11 +1482,8 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 		 */
 		fr_assert(g == talloc_parent(single));
 		fr_assert(single->parent == unlang_group_to_generic(g));
-		fr_assert(!single->next);
-
-		*g->tail = single;
-		g->tail = &single->next;
-		g->num_children++;
+		unlang_list_insert_tail(&g->children, single);
+		single->list = &g->children;
 
 		/*
 		 *	If it's not possible to execute statement
@@ -1597,11 +1557,9 @@ static unlang_t *compile_tmpl(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx
 
 	MEM(ut = talloc_zero(parent, unlang_tmpl_t));
 	c = unlang_tmpl_to_generic(ut);
-	c->parent = parent;
-	c->next = NULL;
+	unlang_type_init(c, parent, UNLANG_TYPE_TMPL);
 	c->name = p;
 	c->debug_name = c->name;
-	c->type = UNLANG_TYPE_TMPL;
 	c->ci = CF_TO_ITEM(cp);
 
 	RULES_VERIFY(unlang_ctx->rules);
@@ -1843,7 +1801,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_ctx_t *unlang_c
 	slen = module_rlm_by_name_and_method(m, &m->mmc,
 					     unlang_ctx->vs,
 					     &(section_name_t){ .name1 = unlang_ctx->section_name1, .name2 = unlang_ctx->section_name2 },
-					     &FR_SBUFF_IN(name, strlen(name)),
+					     &FR_SBUFF_IN_STR(name),
 					     unlang_ctx->rules);
 	if (slen < 0) {
 		cf_log_perr(ci, "Failed compiling module call");
@@ -1862,12 +1820,9 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_ctx_t *unlang_c
 	}
 
 	c = unlang_module_to_generic(m);
-	c->parent = parent;
-	c->next = NULL;
-
+	unlang_type_init(c, parent, UNLANG_TYPE_MODULE);
 	c->name = talloc_typed_strdup(c, name);
 	c->debug_name = c->name;
-	c->type = UNLANG_TYPE_MODULE;
 	c->ci = ci;
 
 	/*
@@ -2075,7 +2030,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx
 
 		if (op) {
 			/*
-			 *	Forbid section keywords as pair names, e.g. bare "update"
+			 *	Forbid section keywords as pair names, e.g. "switch = foo"
 			 */
 			if ((op->flag & UNLANG_OP_FLAG_SINGLE_WORD) == 0) {
 				cf_log_err(ci, "Syntax error after keyword '%s' - missing '{'", name);
@@ -2283,6 +2238,8 @@ int unlang_compile(virtual_server_t const *vs,
 			    },
 			    cs, UNLANG_TYPE_GROUP);
 	if (!c) return -1;
+
+	fr_assert(c != UNLANG_IGNORE);
 
 	if (DEBUG_ENABLED4) unlang_dump(c, 2);
 
@@ -2502,10 +2459,8 @@ static void unlang_perf_dump(fr_log_t *log, unlang_t const *instruction, int dep
 	fr_log(log, L_DBG, file, line, "count=%" PRIu64 " cpu_time=%" PRId64 " yielded_time=%" PRId64 ,
 	       t->use_count, fr_time_delta_unwrap(t->tracking.running_total), fr_time_delta_unwrap(t->tracking.waiting_total));
 
-	if (g->children) {
-		unlang_t *child;
-
-		for (child = g->children; child != NULL; child = child->next) {
+	if (!unlang_list_empty(&g->children)) {
+		unlang_list_foreach(&g->children, child) {
 			unlang_perf_dump(log, child, depth + 1);
 		}
 	}

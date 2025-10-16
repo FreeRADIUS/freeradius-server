@@ -1,0 +1,283 @@
+
+
+
+
+= DPSK authentication Module
+
+Calculate dynamic PSKs
+
+This module needs the following attributes as input:
+
+
+The attributes where data is found can be amened using configuration options
+below, e.g. if you need to use different VSAs for the anonce and EAPoL key msg.
+
+Note that you MUST run the "rewrite_called_station_id" policy before calling this module.
+
+That policy MUST also create the Called-Station-MAC attribute.
+
+Then place the following configuration into the "recv Access-Request" section:
+
+
+
+
+Alternatively, you can read control.PSK-Identity and
+control.Pre-Shared-Key from a database.  Just do that before
+running the "authenticate" section.  You can do the database lookup
+after running the "dpsk" module in the "recv Access-Request" section.
+
+The database should look up the User-Name (i.e. MAC), and then set
+control,PSK-Identity and control.Pre-Shared-Key.  In general, it
+is easiest to just set PSK-Identity to be same as the User-Name.
+
+Then create an "authenticate dpsk" section which calls the "dpsk" module:
+
+
+In the "authenticate" section, the module will return
+
+  * noop	if there are no DPSK attributes in the request
+
+  * fail	if there are DPSK attributes, but it is unable to get the
+
+  * reject 	if there are DPSK attributes, but they do not match any
+
+  * ok		if there are DPSK attributes, and they match a known PSK.
+
+  * updated	if there are DPSK attributes which match a PSK, and the
+
+
+
+We STRONGLY RECOMMEND THAT NO ONE USE THIS MODULE.
+
+While it works, it needs to use a brute-force method to match MAC
+to PSK.  That process is extremely slow, and scales very poorly.
+
+i.e. if you have 10 PSKs, it's not too bad.  If you have 10,000
+PSKs, then the module can consume 100% of CPU trying to
+brute-force every PSK.
+
+This is a limitation of how DPSK works.  There is no way to make it
+better.  The only thing we've done is to add a cache which can help
+to minimize the amount of brute-force attempts.
+
+
+## Configuration Settings
+
+
+cache_size::
+
+The maximum number of PSK entries to cache
+
+The cache is keyed by (supplicant MAC + SSID)
+
+The cache entry is the PSK-Identity and Pre-Shared-Key,
+and/or the PMK which are used to verify the information in
+the Access-Request.
+
+Caching entries can help, even when using a database.  It
+is very slow to calculate the PMK from the PSK.
+
+
+
+cache_lifetime::
+
+How long cache entries are valid for
+
+
+
+filename::
+
+
+PSKs can also be stored in a CSV file.  The format of the file is:
+
+identity,psk,mac
+
+If there are commas in a field, then the field can be
+double quoted: "psk".
+
+The mac field is optional.  If it exists, then that PSK
+will be used.  It is highly recommended that the MAC *not* be placed
+into the CSV file.  Instead, the MAC and PSK should be placed into a
+database.  The server can then be configured to look up the MAC in the
+database, which returns the PSK.  That way this module will only ever
+check one PSK, which is fast.
+
+i.e. the CSV file should only contain the small number of PSKs where
+you do not yet know the MAC.  As soon as you know the MAC, you should
+put the MAC and PSK into a database, and then remove the MAC and PSK
+from the CSV file.
+
+NOTE: the file is opened and read from top to bottom for every
+new request which comes in.  This process can be very slow!
+
+However, opening the file for every new request means that the
+server does not have to be reloaded when the file changes.  Instead,
+the file can be generated, and then moved into place atomically:
+
+create csv file > psk.csv.new
+mv psk.csv.new psk.csv
+
+Any process which writes a new "psk.csv" file MUST NOT
+write to the file directly, as that will cause the dpsk
+module to read partial entries and fail.  Instead, use "mv"
+to atomically overwrite the old file with a new one.
+
+Both "cache_size" and "filename" can be configured at the
+same time, which is recommended.  When an entry in the file
+is found, the identity, PSK, and MAC are saved in the cache.
+
+If a cache entry is found, then the filename is NOT read.
+
+The resulting combination of features means that the module
+should be as fast as possible, given the limitations of DPSK.
+
+NOTE: Tests show that the module can do ~100K PSK / DPSK
+checks per second.  This means that if you have 10,000
+users and 10 packets a second, the system will be 100% busy
+checking PSKs.  Similarly, of you have 100K DPSKs in the file,
+the one packet will take 1 second of CPU time to verify!
+
+As a result, the DPSK functionality scales poorly.  It
+should be used only with a small number of PSKs (100s
+perhaps), and only at low packet rates.  If the server is
+getting 1000 packets per second, then it can only handle
+100 PSKs before running out of CPU.
+
+Using the cache will help substantially.  But the cache is
+only in memory, which means that all cache entries are lost
+when the server restarts.  As a result, the combination of
+number of PSKs and packet rates should be kept as low as
+possible.
+
+The filename is dynamically expanded, so it can reference
+other attributes.  This expansion lets you split up DPSK
+files by location, which can drastically reduce the overall
+search space, and thus the CPU requirements.
+
+
+
+pre_shared_key::
+
+Attribute containing the PSK for the user, as retrieved from
+a data store
+
+
+
+psk_identity::
+
+Attribute containing an identity name for the PSK, as retrieved
+from a data store.
+
+
+
+pairwise_master_key::
+
+Attribute containing the pairwise master key for the user.
+This is used in preference to the PSK if set.
+
+
+
+ssid::
+
+Attribute containing the SSID of the network the client is
+connecting to.
+
+
+
+anonce::
+
+Attribute containing the nonce from the AP.
+
+
+
+key_msg:
+
+Attribute containing the EAPoL key msg from the AP.
+
+
+
+username::
+
+Attribute containing the supplicant MAC address in hex format, e.g. "abcdef012345".
+
+
+
+called_station::
+
+Attribute containing the AP MAC in binary
+
+Typically this is extracted from Called-Station-Id using a modified version
+of the "rewrite_called_station_id" policy.
+
+
+
+pre_shared_key_attr::
+
+Attribute into which the matched pre shared key will be written.
+
+When used with hostapd, this should be reply.Tunnel-Password
+
+
+
+psk_identity_attr::
+
+Attribute into which the matched PSK identity will be written.
+
+
+== Default Configuration
+
+```
+#	* control.Pre-Shared-Key -  the PSK for the user
+#	* User-Name - the supplicant MAC in hex format, e.g. "abcdef012345"
+#	* Called-Station-MAC - the AP MAC in binary
+#	  this attribute is set by the "rewrite_called_station_id" policy.
+#	* FreeRADIUS-802.1X-Anonce - from the AP
+#	* FreeRADIUS-802.1X-EAPoL-Key-Msg - from the AP
+#	recv Access-Request {
+#		...
+#		rewrite_called_station_id
+#		dpsk
+#		if (updated) {
+#			control.PSK-Identity := "bob"
+#			control.Pre-Shared-Key := "this-is-super-secret"
+#		}
+#	}
+#	authenticate dpsk {
+#		dpsk
+#		if (updated) {
+#			... cache reply.Pre-Shared-Key
+#			... cache reply.PSK-Identity
+#		}
+#	}
+#		information necessary to check the DPSK data.
+#		given PSK.
+#		PSK was read from 'filename'.
+#		It also updates the attributes reply.Pre-Shared-Key
+#		with the found PSK, along with reply.PSK-Identity
+#		with the found identity.  The attributes populated
+#		can be configured below.
+#		You can then check the return code for "updated", and
+#		write those attributes into a database.  This step
+#		ensures that 'filename' is read only as a last resort.
+#		Since the file is read from top to bottom for every
+#		packet, this process is much slower than using a
+#		database which is keyed to the PSK Identity.
+dpsk {
+	cache_size = 1024
+	cache_lifetime = 24h
+#	filename = "${modconfdir}/${.:name}/psk.csv"
+#	pre_shared_key = control.Pre-Shared-Key
+#	psk_identity = control.PSK-Identity
+#	pairwise_master_key = control.Pairwise-Master-Key
+#	ssid = Called-Station-SSID
+#	anonce = FreeRADIUS-EV5.802_1X-EAPoL-Anonce
+#	key_msg = FreeRADIUS-EV5.802_1X-EAPoL-Key-Msg
+#	username = User-name
+#	called_station = Called-Station-MAC
+#	pre_shared_key_attr = reply.Pre-Shared-Key
+#	psk_identity_attr = reply.PSK-Identity
+}
+```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

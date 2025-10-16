@@ -519,7 +519,13 @@ void status_code_add(process_dhcpv6_t const *inst, request_t *request, fr_value_
 	 *	Don't override the user status
 	 *      code.
 	 */
-	if (pair_update_reply(&vp, attr_status_code_value) == 0) fr_value_box_copy(vp, &vp->data, vb);
+	if (pair_update_reply(&vp, attr_status_code_value) == 0) {
+		if (unlikely(fr_value_box_copy(vp, &vp->data, vb) < 0)) {
+			RPERROR("Failed copying status code value");
+			pair_delete_reply(vp);
+			return;
+		}
+	}
 
 	/*
 	 *	Move the module failure messages upwards

@@ -1661,6 +1661,12 @@ do_read:
 		}
 
 		MEM(client = client_alloc(thread, state, inst, thread, radclient, network));
+
+		/*
+		 *	Parent the dynamic client radclient off the client - it
+		 *	is the client which gets freed by the dynamic client timers.
+		 */
+		if (state == PR_CLIENT_PENDING) talloc_steal(client, radclient);
 	}
 
 have_client:
@@ -2799,13 +2805,6 @@ static int mod_close(fr_listen_t *li)
 		(void) fr_hash_table_delete(connection->parent->ht, connection);
 	}
 	pthread_mutex_unlock(&connection->parent->mutex);
-
-	/*
-	 *	Clean up listener
-	 */
-	if (unlikely(fr_network_listen_delete(connection->nr, child) < 0)) {
-		PERROR("Failed to delete connection %s", connection->name);
-	}
 
 	talloc_free(connection->mi);
 

@@ -27,6 +27,8 @@
 RCSID("$Id$")
 
 #include <string.h>
+#include <sys/errno.h>
+#include <sys/fcntl.h>
 
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_parse.h>
@@ -39,6 +41,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/perm.h>
+#include <freeradius-devel/util/syserror.h>
 
 static conf_parser_t conf_term = CONF_PARSER_TERMINATOR;
 static char const parse_spaces[] = "                                                                                                                                                                                                                                              ";
@@ -136,18 +139,56 @@ int cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, co
 	 *	Strings can be file paths...
 	 */
 	if (fr_type_is_string(rule->type)) {
+		if (fr_rule_file_socket(rule)) {
+			/*
+			 *	Attempt to actually connect to the socket.
+			 *	There's no real standard behaviour across
+			 *	operating systems for this.
+			 *
+			 *	This also implies fr_rule_file_exists.
+			 */
+			if (fr_rule_file_readable(rule) || fr_rule_file_writable(rule)) {
+				if (cf_file_check_effective(cf_pair_value(cp), cf_file_check_unix_connect, NULL) != 0) {
+					cf_log_perr(cp, "File check failed");
+					return -1;
+				}
+			/*
+			 *	Otherwise just passively check if the socket
+			 *	exists.
+			 */
+			} else if (fr_rule_file_exists(rule)) {
+				if (cf_file_check_effective(cf_pair_value(cp), cf_file_check_unix_perm, NULL) != 0) {
+					cf_log_perr(cp, "File check failed");
+					return -1;
+				}
+			/*
+			 *	...and if there's no existence requirement
+			 *	just check that it's a unix socket.
+			 */
+			} else {
+				switch (cf_file_check_effective(cf_pair_value(cp), cf_file_check_unix_perm, NULL)) {
+				default:
+					/* ok */
+					break;
+
+				case CF_FILE_NO_UNIX_SOCKET:
+					cf_log_perr(cp, "File check failed");
+					return -1;
+				}
+			}
+		}
 		/*
 		 *	If there's out AND it's an input file, check
 		 *	that we can read it.  This check allows errors
 		 *	to be caught as early as possible, during
 		 *	server startup.
 		 */
-		if (fr_rule_file_input(rule) && !cf_file_check(cp, true)) {
+		else if (fr_rule_file_readable(rule) && (cf_file_check(cp, true) < 0)) {
 		error:
 			fr_value_box_clear(out);
 			return -1;
 		}
-		if (fr_rule_file_exists(rule) && !cf_file_check(cp, false)) goto error;
+		else if (fr_rule_file_exists(rule) && (cf_file_check(cp, false) < 0)) goto error;
 	}
 
 	fr_value_box_mark_safe_for(out, FR_VALUE_BOX_SAFE_FOR_ANY);
@@ -713,8 +754,8 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
  *	- ``flag`` #CONF_FLAG_REQUIRED		- @copybrief CONF_FLAG_REQUIRED
  *	- ``flag`` #CONF_FLAG_ATTRIBUTE		- @copybrief CONF_FLAG_ATTRIBUTE
  *	- ``flag`` #CONF_FLAG_SECRET		- @copybrief CONF_FLAG_SECRET
- *	- ``flag`` #CONF_FLAG_FILE_INPUT	- @copybrief CONF_FLAG_FILE_INPUT
- *	- ``flag`` #CONF_FLAG_FILE_OUTPUT	- @copybrief CONF_FLAG_FILE_OUTPUT
+ *	- ``flag`` #CONF_FLAG_FILE_READABLE	- @copybrief CONF_FLAG_FILE_READABLE
+ *	- ``flag`` #CONF_FLAG_FILE_WRITABLE	- @copybrief CONF_FLAG_FILE_WRITABLE
  *	- ``flag`` #CONF_FLAG_NOT_EMPTY		- @copybrief CONF_FLAG_NOT_EMPTY
  *	- ``flag`` #CONF_FLAG_MULTI		- @copybrief CONF_FLAG_MULTI
  *	- ``flag`` #CONF_FLAG_IS_SET		- @copybrief CONF_FLAG_IS_SET
@@ -851,8 +892,8 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, conf_parser_t con
 	if (cp && cp->parsed) return 0;
 
 	if ((rule->type != FR_TYPE_STRING) &&
-	    (!(rule->flags & CONF_FLAG_FILE_INPUT)) &&
-	    (!(rule->flags & CONF_FLAG_FILE_OUTPUT))) {
+	    (!(rule->flags & CONF_FLAG_FILE_READABLE)) &&
+	    (!(rule->flags & CONF_FLAG_FILE_WRITABLE))) {
 		return 0;
 	}
 

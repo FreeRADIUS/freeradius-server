@@ -1,3 +1,0 @@
-#
-#  An empty file to keep unit_test_attribute happy
-#

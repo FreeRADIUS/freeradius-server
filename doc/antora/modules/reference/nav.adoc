@@ -141,7 +141,7 @@
 *** xref:dictionary/begin-vendor.adoc[BEGIN-VENDOR]
 *** xref:dictionary/end-vendor.adoc[END-VENDOR]
 
-** xref:policy/index.adoc[Writing Policy Rules]
+** xref:policy/index.adoc[Create Policy Rules]
 *** xref:policy/different.adoc[Why FreeRADIUS is different]
 
 ** xref:man/index.adoc["man" pages]
@@ -164,6 +164,7 @@
 **** xref:raddb/mods-available/chap.adoc[CHAP module]
 **** xref:raddb/mods-available/crl.adoc[CRL]
 **** xref:raddb/mods-available/digest.adoc[Digest]
+**** xref:raddb/mods-available/dpsk.adoc[DPSK]
 **** xref:raddb/mods-available/eap.adoc[EAP]
 **** xref:raddb/mods-available/eap_inner.adoc[EAP/Inner]
 **** xref:raddb/mods-available/imap.adoc[IMAP]

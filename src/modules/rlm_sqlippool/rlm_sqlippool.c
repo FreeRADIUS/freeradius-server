@@ -283,7 +283,7 @@ static unlang_action_t mod_alloc_resume(unlang_result_t *p_result, module_ctx_t 
 		if (env->existing) {
 			alloc_ctx->status = IPPOOL_ALLOC_EXISTING;
 			REPEAT_MOD_ALLOC_RESUME;
-			if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->existing, NULL) < 0) {
+			if (unlang_tmpl_push(alloc_ctx, NULL, &alloc_ctx->values, request, env->existing, NULL, UNLANG_SUB_FRAME) < 0) {
 			error:
 				talloc_free(alloc_ctx);
 				RETURN_UNLANG_FAIL;
@@ -310,7 +310,7 @@ static unlang_action_t mod_alloc_resume(unlang_result_t *p_result, module_ctx_t 
 		if (env->requested && (env->requested_address.type != FR_TYPE_NULL)) {
 			alloc_ctx->status = IPPOOL_ALLOC_REQUESTED;
 			REPEAT_MOD_ALLOC_RESUME;
-			if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->requested, NULL) < 0) goto error;
+			if (unlang_tmpl_push(alloc_ctx, NULL, &alloc_ctx->values, request, env->requested, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
 		goto expand_find;
@@ -333,7 +333,7 @@ static unlang_action_t mod_alloc_resume(unlang_result_t *p_result, module_ctx_t 
 		 */
 		alloc_ctx->status = IPPOOL_ALLOC_FIND;
 		REPEAT_MOD_ALLOC_RESUME;
-		if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->find, NULL) < 0) goto error;
+		if (unlang_tmpl_push(alloc_ctx, NULL, &alloc_ctx->values, request, env->find, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case IPPOOL_ALLOC_FIND:
@@ -364,7 +364,7 @@ static unlang_action_t mod_alloc_resume(unlang_result_t *p_result, module_ctx_t 
 		if (env->pool_check) {
 			alloc_ctx->status = IPPOOL_ALLOC_POOL_CHECK;
 			REPEAT_MOD_ALLOC_RESUME;
-			if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->pool_check, NULL) < 0) goto error;
+			if (unlang_tmpl_push(alloc_ctx, NULL, &alloc_ctx->values, request, env->pool_check, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
 	no_address:
@@ -405,7 +405,7 @@ static unlang_action_t mod_alloc_resume(unlang_result_t *p_result, module_ctx_t 
 		if (env->update) {
 			alloc_ctx->status = IPPOOL_ALLOC_UPDATE;
 			REPEAT_MOD_ALLOC_RESUME;
-			if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->update, NULL) < 0) goto error;
+			if (unlang_tmpl_push(alloc_ctx, NULL, &alloc_ctx->values, request, env->update, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
 

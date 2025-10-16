@@ -35,6 +35,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/server/trigger.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/skip.h>
@@ -215,7 +216,7 @@ typedef struct {
 static const call_env_method_t accounting_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_redundant_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_redundant_call_env_t, user) },
+		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE, sql_redundant_call_env_t, user) },
 		{ FR_CALL_ENV_SUBSECTION_FUNC(CF_IDENT_ANY, CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, logfile_call_env_parse) },
 		{ FR_CALL_ENV_SUBSECTION_FUNC("accounting", CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, query_call_env_parse) },
 		CALL_ENV_TERMINATOR
@@ -225,7 +226,7 @@ static const call_env_method_t accounting_method_env = {
 static const call_env_method_t send_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_redundant_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_redundant_call_env_t, user) },
+		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE, sql_redundant_call_env_t, user) },
 		{ FR_CALL_ENV_SUBSECTION_FUNC(CF_IDENT_ANY, CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, logfile_call_env_parse) },
 		{ FR_CALL_ENV_SUBSECTION_FUNC("send", CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, query_call_env_parse) },
 		CALL_ENV_TERMINATOR
@@ -253,7 +254,7 @@ typedef struct {
 static const call_env_method_t group_xlat_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_group_xlat_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_group_xlat_call_env_t, user) },
+		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE, sql_group_xlat_call_env_t, user) },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("group_membership_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_group_xlat_call_env_t, membership_query) },
 		CALL_ENV_TERMINATOR
 	}
@@ -468,7 +469,7 @@ static xlat_action_t sql_xlat_query_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, x
 	numaffected = (inst->driver->sql_affected_rows)(query_ctx, &inst->config);
 	if (numaffected < 1) {
 		RDEBUG2("SQL query affected no rows");
-		goto finish;
+		numaffected = 0;
 	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
@@ -685,7 +686,7 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_pair_t	*vp;
 	char const	*value = uctx;
 
-	vp = fr_pair_afrom_da_nested(ctx, out, tmpl_attr_tail_da(map->lhs));
+	vp = fr_pair_afrom_da(ctx, tmpl_attr_tail_da(map->lhs));
 	if (!vp) return -1;
 
 	/*
@@ -695,9 +696,10 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (fr_pair_value_from_str(vp, value, strlen(value), NULL, true) < 0) {
 		RPEDEBUG("Failed parsing value \"%pV\" for attribute %s",
 			 fr_box_strvalue_buffer(value), vp->da->name);
-		fr_pair_delete(out, vp);
+		talloc_free(vp);
 		return -1;
 	}
+	fr_pair_append(out, vp);
 
 	return 0;
 }
@@ -1069,6 +1071,7 @@ static unlang_action_t sql_get_grouplist_resume(unlang_result_t *p_result, reque
 
 	if (query_ctx->rcode != RLM_SQL_OK) {
 	error:
+		rlm_sql_print_error(inst, request, query_ctx, false);
 		talloc_free(query_ctx);
 		RETURN_UNLANG_FAIL;
 	}
@@ -1221,7 +1224,7 @@ static xlat_action_t sql_group_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t 
 	fr_value_box_list_init(&xlat_ctx->query);
 
 	if (unlang_xlat_yield(request, sql_group_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) return XLAT_ACTION_FAIL;
-	if (unlang_tmpl_push(xlat_ctx, &xlat_ctx->query, request, call_env->membership_query, NULL) < 0) return XLAT_ACTION_FAIL;
+	if (unlang_tmpl_push(xlat_ctx, NULL, &xlat_ctx->query, request, call_env->membership_query, NULL, UNLANG_SUB_FRAME) < 0) return XLAT_ACTION_FAIL;
 	return XLAT_ACTION_PUSH_UNLANG;
 }
 
@@ -1373,8 +1376,8 @@ static unlang_action_t CC_HINT(nonnull)  mod_autz_group_resume(unlang_result_t *
 
 		if (call_env->group_check_query) {
 			if (unlang_module_yield(request, mod_autz_group_resume, NULL, 0, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
-			if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request,
-					     call_env->group_check_query, NULL) < 0) RETURN_UNLANG_FAIL;
+			if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request,
+					     call_env->group_check_query, NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
 
@@ -1428,8 +1431,8 @@ static unlang_action_t CC_HINT(nonnull)  mod_autz_group_resume(unlang_result_t *
 		if (call_env->group_reply_query) {
 		group_reply_push:
 			if (unlang_module_yield(request, mod_autz_group_resume, NULL, 0, mctx->rctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
-			if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request,
-					     call_env->group_reply_query, NULL) < 0) RETURN_UNLANG_FAIL;
+			if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request,
+					     call_env->group_reply_query, NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 			autz_ctx->status = autz_ctx->status & SQL_AUTZ_STAGE_GROUP ? SQL_AUTZ_GROUP_REPLY : SQL_AUTZ_PROFILE_REPLY;
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
@@ -1593,7 +1596,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		if (!call_env->reply_query) goto skip_reply;
 
 		if (unlang_module_yield(request, mod_authorize_resume, NULL, 0, autz_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
-		if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request, call_env->reply_query, NULL) < 0) RETURN_UNLANG_FAIL;
+		if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request, call_env->reply_query, NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 		autz_ctx->status = SQL_AUTZ_REPLY;
 		return UNLANG_ACTION_PUSHED_CHILD;
 
@@ -1656,8 +1659,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 			}
 
 			if (unlang_module_yield(request, mod_autz_group_resume, NULL, 0, autz_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
-			if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request,
-					     call_env->membership_query, NULL) < 0) RETURN_UNLANG_FAIL;
+			if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request,
+					     call_env->membership_query, NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 			autz_ctx->status = SQL_AUTZ_GROUP_MEMB;
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
@@ -1739,13 +1742,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 	 *	Query the check table to find any conditions associated with this user/realm/whatever...
 	 */
 	if (call_env->check_query) {
-		if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request, call_env->check_query, NULL) < 0) goto error;
+		if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request, call_env->check_query, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 		autz_ctx->status = SQL_AUTZ_CHECK;
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
 	if (call_env->reply_query) {
-		if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request, call_env->reply_query, NULL) < 0) goto error;
+		if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request, call_env->reply_query, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 		autz_ctx->status = SQL_AUTZ_REPLY;
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
@@ -1753,7 +1756,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result,
 	/*
 	 *	Neither check nor reply queries were set, so we must be doing group stuff
 	 */
-	if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request, call_env->membership_query, NULL) < 0) goto error;
+	if (unlang_tmpl_push(autz_ctx, NULL, &autz_ctx->query, request, call_env->membership_query, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 	autz_ctx->status = SQL_AUTZ_GROUP_MEMB;
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -1806,12 +1809,14 @@ static unlang_action_t mod_sql_redundant_query_resume(unlang_result_t *p_result,
 	 *	so we do not need to call fr_pool_connection_release.
 	 */
 	case RLM_SQL_RECONNECT:
+		rlm_sql_print_error(inst, request, query_ctx, false);
 		RETURN_UNLANG_FAIL;
 
 	/*
 	 *	Query was invalid, this is a terminal error.
 	 */
 	case RLM_SQL_QUERY_INVALID:
+		rlm_sql_print_error(inst, request, query_ctx, false);
 		RETURN_UNLANG_INVALID;
 
 	/*
@@ -1850,7 +1855,7 @@ next:
 	redundant_ctx->query_no++;
 	if (redundant_ctx->query_no >= talloc_array_length(call_env->query)) RETURN_UNLANG_NOOP;
 	if (unlang_module_yield(request, mod_sql_redundant_resume, NULL, 0, redundant_ctx) == UNLANG_ACTION_FAIL) RETURN_UNLANG_FAIL;
-	if (unlang_tmpl_push(redundant_ctx, &redundant_ctx->query, request, call_env->query[redundant_ctx->query_no], NULL) < 0) RETURN_UNLANG_FAIL;
+	if (unlang_tmpl_push(redundant_ctx, NULL, &redundant_ctx->query, request, call_env->query[redundant_ctx->query_no], NULL, UNLANG_SUB_FRAME) < 0) RETURN_UNLANG_FAIL;
 
 	RDEBUG2("Trying next query...");
 
@@ -2180,7 +2185,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		.always_escape = false,
 	};
 
-	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
+	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, false, NULL, NULL);
 	if (!inst->ef) {
 		cf_log_err(conf, "Failed creating log file context");
 		return -1;
@@ -2205,7 +2210,16 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	return 0;
+	if (!inst->config.trunk_conf.conn_triggers) return 0;
+
+	MEM(inst->trigger_args = fr_pair_list_alloc(inst));
+	return module_trigger_args_build(inst->trigger_args, inst->trigger_args, cf_section_find(conf, "pool", NULL),
+					&(module_trigger_args_t) {
+						.module = inst->mi->module->name,
+						.name = inst->name,
+						.server = inst->config.sql_server,
+						.port = inst->config.sql_port
+					});
 }
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
@@ -2394,7 +2408,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	t->inst = inst;
 
 	t->trunk = trunk_alloc(t, mctx->el, &inst->driver->trunk_io_funcs,
-				  &inst->config.trunk_conf, inst->name, t, false);
+			       &inst->config.trunk_conf, inst->name, t, false, inst->trigger_args);
 	if (!t->trunk) return -1;
 
 	return 0;
@@ -2450,7 +2464,7 @@ static int sql_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_
 static const call_env_method_t authorize_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_autz_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_autz_call_env_t, user) },
+		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE, sql_autz_call_env_t, user) },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_check_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, check_query), QUERY_ESCAPE },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_reply_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, reply_query), QUERY_ESCAPE },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("group_membership_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, membership_query), QUERY_ESCAPE },

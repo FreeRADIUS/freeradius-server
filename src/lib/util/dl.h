@@ -129,7 +129,7 @@ dl_loader_t		*dl_loader_init(TALLOC_CTX *ctx, void *uctx, bool uctx_free, bool d
 
 bool			dl_loader_set_static(dl_loader_t *dl_loader, bool do_static) CC_HINT(nonnull);
 
-void			dl_loader_debug(dl_loader_t *dl);
+void			dl_loader_debug(FILE *fp, dl_loader_t *dl) CC_HINT(nonnull);
 #ifdef __cplusplus
 }
 #endif

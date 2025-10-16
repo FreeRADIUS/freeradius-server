@@ -15,36 +15,52 @@ been made will be reverted.
 
 [ statements ]:: The `unlang` commands which will be executed.
 
+A `transaction` section should only contain attribute editing which is
+done via the xref:unlang/edit.adoc[edit] statements, or conditions
+(xref:unlang/edit.adoc[if] / xref:unlang/edit.adoc[else] /
+xref:unlang/edit.adoc[elsif]).  It can also contain
+xref:unlang/return_codes.adoc[rcodes] such as `fail` or `ok`.
+
 == Caveats
 
-The `transaction` sets its own action defaults for return codes
-`fail`, `invalid`, and `disallow`.  The priority for those return
-codes is set to `1`, instead of the default `return`.  This behavior
-allows for the caller to edit attributes, but continue processing if
-something goes wrong.
+An Unlang `transaction` cannot undo operations on external databases.
+For example, any data which was inserted into `sql` during a
+`transaction` statement will remain in `sql` even if the Unlang
+`transaction` fails.  This is because Unlang transactions are
+independent of any database transactions.
 
-The main limitation of `transaction` is that it can only revert
-attribute editing which is done via the xref:unlang/edit.adoc[edit]
-statements.  If a module performs attribute editing (e.g. `sql`,
-`files`, etc.), then those edits are not reverted.
-
-Similarly, a `transaction` cannot undo operations on external
-databases.  For example, any data which was inserted into `sql` during
-a `transaction` statement will remain in `sql`.
+The `transaction` keyword sets its own return codes for `fail`,
+`invalid`, and `disallow` to be set the the priority `1`, instead of
+the default `return`.  This behavior means that a failed `transaction`
+will cause the interpreter to proceed to the next instruction, instead
+of returning.
 
 .Example
 
 In this example, if the SQL `select` statement fails, then the
 `reply.Framed-IP-Address` attribute is _not_ updated, and the
-`transaction` section returns `fail`.
+statements inside of the `transaction` section will return `fail`.
+The assignment to `reply.Framed-IP-Address` will then be reverted.
 
 [source,unlang]
 ----
 transaction {
-    reply.Filter-Id := %sql("SELECT ...")
+    string tmp
+    tmp := %sql("SELECT ...")
     reply.Framed-IP-Address := 192.0.2.1
+
+    if !tmp  {
+        fail
+    }
+
+    reply.Filter-Id := tmp
 }
 ----
+
+Note that xref:unlang/edit.adoc[edit] statements do not fail if the
+right hand side expression fails.  Instead, you must manually check if
+the assignment failed.  The example above does this with an
+intermediate variable.
 
 The last entry in a `transaction` section can also be an
 xref:unlang/actions.adoc[actions] subsection.  If set, those actions
@@ -57,7 +73,7 @@ xref:unlang/edit.adoc[edit] instructions.  When edit instructions are
 grouped, then the edits are done in an atomic transaction.  That is,
 either all of the edits succeed, or none of them do.
 
-For now, the only purpose of `transaction` is to group edits.  None of
+For now, the main purpose of `transaction` is to group edits.  None of
 the modules support transactions.  If a module is used inside of a
 transaction, the server will return an error, and will not start.
 

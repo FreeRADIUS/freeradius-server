@@ -1,0 +1,4 @@
+# This should timeout, so it must call success in the finally section
+# Reply attributes are set in the finally section of the server we're calling
+# and checked with the response filter, as this request will get cancelled too.
+call module-timeout-fin { }

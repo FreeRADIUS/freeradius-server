@@ -250,6 +250,7 @@ static mrb_value mruby_pair_value_to_ruby(mrb_state *mrb, request_t *request, fr
 	case FR_TYPE_IFID:
 	case FR_TYPE_TIME_DELTA:
 	case FR_TYPE_DATE:
+	case FR_TYPE_ATTR:
 	{
 		char		*in;
 		size_t		len;
@@ -261,10 +262,11 @@ static mrb_value mruby_pair_value_to_ruby(mrb_state *mrb, request_t *request, fr
 		return value;
 	}
 
-	default:
-		fr_assert(0);
+	case FR_TYPE_NON_LEAF:
+		REDEBUG("Cannot convert %s to ruby type", fr_type_to_str(vp->vp_type));
 		break;
 	}
+
 	return mrb_nil_value();
 }
 
@@ -317,73 +319,49 @@ static void mruby_pair_parent_build(mrb_state *mrb, mruby_pair_t *pair)
 /** Convert a ruby value to a fr_pair_t value
  *
  */
-static void mruby_roby_to_pair_value(mrb_state *mrb, mrb_value *value, fr_pair_t *vp)
+static void mruby_ruby_to_pair_value(mrb_state *mrb, mrb_value *value, fr_pair_t *vp)
 {
-	switch (vp->vp_type) {
-	case FR_TYPE_STRING:
-		*value = mrb_obj_as_string(mrb, *value);
-		fr_pair_value_clear(vp);
-		fr_pair_value_bstrndup(vp, RSTRING_PTR(*value), RSTRING_LEN(*value), true);
+	fr_value_box_t	vb;
+
+	/*
+	 *  Convert the type provided by mRuby to the largest containing FreeRADIUS type
+	 */
+	switch (mrb_type(*value)) {
+	case MRB_TT_INTEGER:
+		fr_value_box_init(&vb, FR_TYPE_INT64, NULL, true);
+		vb.vb_int64 = mrb_integer(*value);
 		break;
 
-	case FR_TYPE_OCTETS:
-		*value = mrb_obj_as_string(mrb, *value);
-		fr_pair_value_clear(vp);
-		fr_pair_value_memdup(vp, (uint8_t *)RSTRING_PTR(*value), RSTRING_LEN(*value), true);
+	case MRB_TT_FLOAT:
+		fr_value_box_init(&vb, FR_TYPE_FLOAT64, NULL, true);
+		vb.vb_float64 = mrb_float(*value);
 		break;
 
-#define RUBYSETINT(_size)	case FR_TYPE_INT ## _size: \
-	if (mrb_type(*value) != MRB_TT_INTEGER) mrb_raise(mrb, E_ARGUMENT_ERROR, "Integer value required"); \
-	vp->vp_int ## _size = mrb_integer(*value); \
-	break;
-	RUBYSETINT(8)
-	RUBYSETINT(16)
-	RUBYSETINT(32)
-	RUBYSETINT(64)
+	case MRB_TT_STRING:
+		fr_value_box_init(&vb, FR_TYPE_STRING, NULL, true);
+		fr_value_box_bstrndup_shallow(&vb, NULL, (char *)RSTRING_PTR(*value), (size_t)RSTRING_LEN(*value), true);
+		break;
 
-#define RUBYSETUINT(_size)	case FR_TYPE_UINT ## _size: \
-	if (mrb_type(*value) != MRB_TT_INTEGER) mrb_raise(mrb, E_ARGUMENT_ERROR, "Integer value required"); \
-	vp->vp_uint ## _size = mrb_integer(*value); \
-	break;
-	RUBYSETUINT(8)
-	RUBYSETUINT(16)
-	RUBYSETUINT(32)
-	RUBYSETUINT(64)
+	case MRB_TT_TRUE:
+		fr_value_box_init(&vb, FR_TYPE_BOOL, NULL, true);
+		vb.vb_bool = true;
+		break;
 
-#define RUBYSETFLOAT(_size)	case FR_TYPE_FLOAT ## _size: \
-	switch (mrb_type(*value)) { \
-	case MRB_TT_FLOAT: \
-		vp->vp_float ## _size = mrb_float(*value); \
-		break; \
-	case MRB_TT_INTEGER: \
-		vp->vp_float ## _size = mrb_integer(*value); \
-		break; \
-	default: \
-		mrb_raise(mrb, E_ARGUMENT_ERROR, "Float or integer value required"); \
-	} \
-	break;
-	RUBYSETFLOAT(32)
-	RUBYSETFLOAT(64)
-
-	case FR_TYPE_ETHERNET:
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV6_ADDR:
-	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_IPV6_PREFIX:
-	case FR_TYPE_COMBO_IP_ADDR:
-	case FR_TYPE_COMBO_IP_PREFIX:
-	case FR_TYPE_IFID:
-	case FR_TYPE_TIME_DELTA:
-	case FR_TYPE_DATE:
-		*value = mrb_obj_as_string(mrb, *value);
-		if (fr_pair_value_from_str(vp, RSTRING_PTR(*value), RSTRING_LEN(*value), NULL, false) < 0) {
-			mrb_raise(mrb, E_RUNTIME_ERROR, "Failed populating pair");
-		}
+	case MRB_TT_FALSE:
+		fr_value_box_init(&vb, FR_TYPE_BOOL, NULL, true);
+		vb.vb_bool = false;
 		break;
 
 	default:
-		fr_assert(0);
-		break;
+		mrb_raise(mrb, E_ARGUMENT_ERROR, "Unsupported value type");
+	}
+
+	/*
+	 *  Cast the converted value to the required type for the pair
+	 */
+	fr_pair_value_clear(vp);
+	if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, &vb) < 0) {
+		mrb_raisef(mrb, E_ARGUMENT_ERROR, "Failed casting ruby value to %s", fr_type_to_str(vp->vp_type));
 	}
 }
 
@@ -427,7 +405,7 @@ static mrb_value mruby_value_pair_set(mrb_state *mrb, mrb_value self)
 		}
 	}
 
-	mruby_roby_to_pair_value(mrb, &value, vp);
+	mruby_ruby_to_pair_value(mrb, &value, vp);
 
 	RDEBUG2("%pP", vp);
 	return mrb_nil_value();
@@ -457,7 +435,7 @@ static mrb_value mruby_value_pair_append(mrb_state *mrb, mrb_value self)
 		mrb_raisef(mrb, E_RUNTIME_ERROR, "Failed adding %s", pair->da->name);
 	}
 
-	mruby_roby_to_pair_value(mrb, &value, vp);
+	mruby_ruby_to_pair_value(mrb, &value, vp);
 
 	RDEBUG2("%pP", vp);
 	return mrb_nil_value();

@@ -121,13 +121,15 @@ struct connection_s {
 							///< the connection.
 
 	unsigned int		signals_pause;		//!< Temporarily stop processing of signals.
+
+	CONF_SECTION		*trigger_cs;		//!< Where to search locally for triggers.
+	fr_pair_list_t		*trigger_args;		//!< Arguments to pass to the trigger functions.
+	bool			triggers;		//!< Do we run triggers.
 };
 
 #define CONN_TRIGGER(_state) do { \
-	if (conn->pub.triggers) { \
-		trigger_exec(unlang_interpret_get_thread_default(), \
-			     NULL, fr_table_str_by_value(connection_trigger_names, _state, "<INVALID>"), true, NULL); \
-	} \
+	if (conn->triggers) trigger(unlang_interpret_get_thread_default(), \
+		conn->trigger_cs, NULL, fr_table_str_by_value(connection_trigger_names, _state, "<INVALID>"), true, conn->trigger_args); \
 } while (0)
 
 #define STATE_TRANSITION(_new) \
@@ -1509,10 +1511,10 @@ static int _connection_free(connection_t *conn)
  *	- NULL on failure.
  */
 connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-				     connection_funcs_t const *funcs,
-				     connection_conf_t const *conf,
-				     char const *log_prefix,
-				     void const *uctx)
+			       connection_funcs_t const *funcs,
+			       connection_conf_t const *conf,
+			       char const *log_prefix,
+			       void const *uctx)
 {
 	size_t i;
 	connection_t *conn;
@@ -1539,6 +1541,9 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 		.failed = funcs->failed,
 		.shutdown = funcs->shutdown,
 		.is_closed = true,		/* Starts closed */
+		.triggers = conf->triggers,
+		.trigger_args = conf->trigger_args,
+		.trigger_cs = conf->trigger_cs,
 		.pub.name = talloc_asprintf(conn, "%s - [%" PRIu64 "]", log_prefix, id)
 	};
 	memcpy(&conn->uctx, &uctx, sizeof(conn->uctx));
@@ -1555,7 +1560,7 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	Pre-allocate a on_halt watcher for deferred signal processing
 	 */
 	conn->on_halted = connection_add_watch_post(conn, CONNECTION_STATE_HALTED,
-						       _deferred_signal_connection_on_halted, true, NULL);
+						    _deferred_signal_connection_on_halted, true, NULL);
 	connection_watch_disable(conn->on_halted);	/* Start disabled */
 
 	return conn;

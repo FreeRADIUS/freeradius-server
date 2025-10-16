@@ -23,12 +23,12 @@
  * @copyright 2013 The FreeRADIUS server project
  * @copyright 2013 Network RADIUS (legal@networkradius.com)
  */
-#include "lib/server/rcode.h"
-#include "lib/unlang/action.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/unlang/xlat_func.h>
+#include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/unlang/action.h>
 #include "rlm_yubikey.h"
 
 #ifdef HAVE_YKCLIENT

@@ -508,12 +508,6 @@ distribution maintainers.
 
 
 
-openssl_fips_mode:: Enable OpenSSL FIPS mode.
-
-This disables non-FIPS compliant digests and algorithms
-
-
-
 .Clients Configuration
 
 Client configuration is defined in `clients.conf`.
@@ -596,27 +590,6 @@ Some of these flags can also be passed on the command line as
 `-S flag=value`.
 
 Dictionary migration instructions can be found in `${raddbdir}/dictionary`.
-
-
-rewrite_update:: Rewrite old `update` sections to use the new
-"edit" code.
-
-When this flag is set to `true`, the server will read the
-`update` section, and swap the internal implementation to
-use the new code.  The configuration file can still contain
-the `update` keyword.
-
-Not all `update` sections can be automatically converted.
-If the conversion process does not work, then the server
-will produce an error instead of doing the wrong thing.
-
-
-
-forbid_update:: Forbid the use of the `update` keyword.
-
-This flag allows us to remove the last bits of the v2
-configuration from the server.
-
 
 
 .Module Configuration
@@ -787,7 +760,6 @@ security {
 	allow_core_dumps = no
 	max_attributes = 200
 	allow_vulnerable_openssl = no
-#	openssl_fips_mode = no
 }
 $INCLUDE clients.conf
 thread pool {
@@ -801,8 +773,6 @@ global {
 	$INCLUDE global.d/
 }
 migrate {
-	rewrite_update = false
-	forbid_update = false
 }
 modules {
 #	$INCLUDE mods-enabled/sql

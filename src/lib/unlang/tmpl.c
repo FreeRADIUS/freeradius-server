@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/unlang/mod_action.h>
 #include "tmpl_priv.h"
 #include <signal.h>
 
@@ -185,6 +186,8 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(unlang_result_t *p_result, r
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 
+	if (!XLAT_RESULT_SUCCESS(&state->xlat_result)) RETURN_UNLANG_FAIL;
+
 	if (fr_exec_oneshot(state->ctx, &state->exec_result, request,
 			  &state->list,
 			  state->args.exec.env, false, false,
@@ -247,9 +250,9 @@ static unlang_action_t unlang_tmpl(unlang_result_t *p_result, request_t *request
 	 */
 	frame_repeat(frame, unlang_tmpl_exec_wait_resume);
 push:
-	if (unlang_xlat_push(state->ctx, &state->xlat_result, &state->list, request, tmpl_xlat(ut->tmpl), false) < 0) {
+	if (unlang_xlat_push(state->ctx, &state->xlat_result, &state->list, request, tmpl_xlat(ut->tmpl), UNLANG_SUB_FRAME) < 0) {
 	fail:
-		return UNLANG_ACTION_STOP_PROCESSING;
+		RETURN_UNLANG_ACTION_FATAL;
 	}
 
 	return UNLANG_ACTION_PUSHED_CHILD;
@@ -258,18 +261,20 @@ push:
 /** Push a tmpl onto the stack for evaluation
  *
  * @param[in] ctx		To allocate value boxes and values in.
+ * @param[out] p_result	        The frame result
  * @param[out] out		The value_box created from the tmpl.  May be NULL,
  *				in which case the result is discarded.
  * @param[in] request		The current request.
  * @param[in] tmpl		the tmpl to expand
  * @param[in] args		additional controls for expanding #TMPL_TYPE_EXEC,
  * 				and where the status of exited programs will be stored.
+ * @param[in] top_frame		If true, then this is the top frame of the sub-stack.
  * @return
  *	- 0 on success
  *	- -1 on failure
  */
-int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request,
-		     tmpl_t const *tmpl, unlang_tmpl_args_t *args)
+int unlang_tmpl_push(TALLOC_CTX *ctx, unlang_result_t *p_result, fr_value_box_list_t *out, request_t *request,
+		     tmpl_t const *tmpl, unlang_tmpl_args_t *args, bool top_frame)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -277,24 +282,18 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 
 	unlang_tmpl_t			*ut;
 
-	static unlang_t tmpl_instruction = {
+	static unlang_t const tmpl_instruction_return = {
 		.type = UNLANG_TYPE_TMPL,
 		.name = "tmpl",
 		.debug_name = "tmpl",
-		.actions = {
-			.actions = {
-				[RLM_MODULE_REJECT]	= 0,
-				[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,
-				[RLM_MODULE_OK]		= 0,
-				[RLM_MODULE_HANDLED]	= 0,
-				[RLM_MODULE_INVALID]	= 0,
-				[RLM_MODULE_DISALLOW]	= 0,
-				[RLM_MODULE_NOTFOUND]	= 0,
-				[RLM_MODULE_NOOP]	= 0,
-				[RLM_MODULE_UPDATED]	= 0
-			},
-			.retry = RETRY_INIT,
-		},
+		.actions = MOD_ACTIONS_FAIL_TIMEOUT_RETURN,
+	};
+
+	static const unlang_t tmpl_instruction_fail = {
+		.type = UNLANG_TYPE_TMPL,
+		.name = "tmpl",
+		.debug_name = "tmpl",
+		.actions = DEFAULT_MOD_ACTIONS,
 	};
 
 	if (tmpl_needs_resolving(tmpl)) {
@@ -302,19 +301,28 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 		return -1;
 	}
 
+	/*
+	 *	Avoid an extra stack frame and more work.  But only if the caller hands us a result.
+	 *	Otherwise, we have to return UNLANG_FAIL.
+	 */
+	if (p_result && (tmpl_rules_cast(tmpl) == FR_TYPE_NULL) && tmpl_is_xlat(tmpl)) {
+		return unlang_xlat_push(ctx, p_result, out, request, tmpl_xlat(tmpl), UNLANG_SUB_FRAME);
+	}
+
 	fr_assert(!tmpl_contains_regex(tmpl));
 
 	MEM(ut = talloc(stack, unlang_tmpl_t));
 	*ut = (unlang_tmpl_t){
-		.self = tmpl_instruction,
+		.self =  p_result ? tmpl_instruction_fail : tmpl_instruction_return,
 		.tmpl = tmpl
 	};
+	unlang_type_init(&ut->self, NULL, UNLANG_TYPE_TMPL);
 
 	/*
 	 *	Push a new tmpl frame onto the stack
 	 */
-	if (unlang_interpret_push(NULL, request, unlang_tmpl_to_generic(ut),
-				  FRAME_CONF(RLM_MODULE_NOT_SET, false), UNLANG_NEXT_STOP) < 0) return -1;
+	if (unlang_interpret_push(p_result, request, unlang_tmpl_to_generic(ut),
+				  FRAME_CONF(RLM_MODULE_NOT_SET, top_frame), UNLANG_NEXT_STOP) < 0) return -1;
 
 	frame = &stack->frame[stack->depth];
 	state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
@@ -326,6 +334,7 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 	repeatable_set(frame);
 
 	*state = (unlang_frame_state_tmpl_t) {
+		.vpt = tmpl,
 		.out = out,
 		.ctx = ctx,
 	};
@@ -342,6 +351,18 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 	return 0;
 }
 
+static void unlang_tmpl_dump(request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
+
+	if (state->vpt) {
+		RDEBUG("tmpl           %s", state->vpt->name);
+	} else {
+		unlang_tmpl_t *ut = unlang_generic_to_tmpl(frame->instruction);
+		RDEBUG("tmpl           %s", ut->tmpl->name);
+	}
+}
+
 void unlang_tmpl_init(void)
 {
 	unlang_register(&(unlang_op_t){
@@ -351,6 +372,7 @@ void unlang_tmpl_init(void)
 
 			.interpret = unlang_tmpl,
 			.signal = unlang_tmpl_signal,
+			.dump = unlang_tmpl_dump,
 
 			.unlang_size = sizeof(unlang_tmpl_t),
 			.unlang_name = "unlang_tmpl_t",

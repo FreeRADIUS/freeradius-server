@@ -27,6 +27,31 @@ typedef struct {
 } fr_md5_free_list_t;
 static _Thread_local fr_md5_free_list_t *md5_array;
 
+static void fr_md5_local_ctx_reset(fr_md5_ctx_t *ctx);
+static void fr_md5_local_ctx_copy(fr_md5_ctx_t *dst, fr_md5_ctx_t const *src);
+#ifdef HAVE_OPENSSL_EVP_H
+static fr_md5_ctx_t *fr_md5_local_ctx_init(void);
+#else
+static fr_md5_ctx_t *fr_md5_local_ctx_alloc(void);
+#endif
+static void fr_md5_local_ctx_free(fr_md5_ctx_t **ctx);
+static void fr_md5_local_update(fr_md5_ctx_t *ctx, uint8_t const *in, size_t inlen);
+static void fr_md5_local_final(uint8_t out[static MD5_DIGEST_LENGTH], fr_md5_ctx_t *ctx);
+
+static fr_md5_funcs_t md5_local_funcs = {
+	.reset = fr_md5_local_ctx_reset,
+	.copy = fr_md5_local_ctx_copy,
+#ifdef HAVE_OPENSSL_EVP_H
+	.alloc = fr_md5_local_ctx_init,
+#else
+	.alloc = fr_md5_local_ctx_alloc,
+#endif
+	.free = fr_md5_local_ctx_free,
+	.update = fr_md5_local_update,
+	.final = fr_md5_local_final
+};
+fr_md5_funcs_t const *fr_md5_funcs = &md5_local_funcs;
+
 /*
  *	If we have OpenSSL's EVP API available, then build wrapper functions.
  *
@@ -39,8 +64,6 @@ static _Thread_local fr_md5_free_list_t *md5_array;
 #  include <openssl/crypto.h>
 #  include <openssl/err.h>
 #  include <openssl/provider.h>
-
-static int have_openssl_md5 = -1;
 
 /** @copydoc fr_md5_ctx_reset
  *
@@ -112,6 +135,15 @@ static void fr_md5_openssl_final(uint8_t out[static MD5_DIGEST_LENGTH], fr_md5_c
 
 	if (!fr_cond_assert(len == MD5_DIGEST_LENGTH)) return;
 }
+
+static fr_md5_funcs_t md5_openssl_funcs = {
+	.reset = fr_md5_openssl_ctx_reset,
+	.copy = fr_md5_openssl_ctx_copy,
+	.alloc = fr_md5_openssl_ctx_alloc,
+	.free = fr_md5_openssl_ctx_free,
+	.update = fr_md5_openssl_update,
+	.final = fr_md5_openssl_final
+};
 #endif
 
 #  define MD5_BLOCK_LENGTH 64
@@ -307,39 +339,39 @@ static fr_md5_ctx_t *fr_md5_local_ctx_alloc(void)
 {
 	fr_md5_ctx_local_t *ctx_local;
 
-#ifdef HAVE_OPENSSL_EVP_H
-	if (unlikely(have_openssl_md5 == -1)) {
-		/*
-		 *	If we're not in FIPS mode, then swap out the
-		 *	md5 functions, and call the OpenSSL init
-		 *	function.
-		 */
-		if (!EVP_default_properties_is_fips_enabled(NULL)) {
-			have_openssl_md5 = 1;
-
-			/*
-			 *	Swap out the functions pointers
-			 *	for the OpenSSL versions.
-			 */
-			fr_md5_ctx_reset = fr_md5_openssl_ctx_reset;
-			fr_md5_ctx_copy = fr_md5_openssl_ctx_copy;
-			fr_md5_ctx_alloc = fr_md5_openssl_ctx_alloc;
-			fr_md5_ctx_free = fr_md5_openssl_ctx_free;
-			fr_md5_update = fr_md5_openssl_update;
-			fr_md5_final = fr_md5_openssl_final;
-
-			return fr_md5_ctx_alloc();
-		}
-
-		have_openssl_md5 = 0;
-	}
-#endif
 	ctx_local = talloc(NULL, fr_md5_ctx_local_t);
 	if (unlikely(!ctx_local)) return NULL;
 	fr_md5_local_ctx_reset(ctx_local);
 
 	return ctx_local;
 }
+
+#ifdef HAVE_OPENSSL_EVP_H
+/** Initialize whether or not we use the local allocator, or the OpenSSL one.
+ *
+ */
+static fr_md5_ctx_t *fr_md5_local_ctx_init(void)
+{
+	/*
+	 *	If we are in FIPS mode, then use the local allocator.
+	 */
+	if (!EVP_default_properties_is_fips_enabled(NULL)) {
+		/*
+		 *	OpenSSL isn't in FIPS mode.  Swap out the functions
+		 *	pointers for the OpenSSL versions.
+		 *
+		 *	We do this by swapping out a pointer to a structure
+		 *	containing the functions, as this prevents possible
+		 *	skew where some threads see a mixture of functions.
+		 */
+		fr_md5_funcs = &md5_openssl_funcs;
+	} else {
+		md5_local_funcs.alloc = fr_md5_local_ctx_alloc;	/* Don't call this (init) function again */
+	}
+
+	return fr_md5_ctx_alloc();
+}
+#endif
 
 /** @copydoc fr_md5_ctx_free
  *
@@ -431,16 +463,6 @@ static void fr_md5_local_final(uint8_t out[static MD5_DIGEST_LENGTH], fr_md5_ctx
 
 	memset(ctx_local, 0, sizeof(*ctx_local));	/* in case it's sensitive */
 }
-
-/*
- *	Digest function pointers
- */
-fr_md5_ctx_reset_t fr_md5_ctx_reset = fr_md5_local_ctx_reset;
-fr_md5_ctx_copy_t fr_md5_ctx_copy = fr_md5_local_ctx_copy;
-fr_md5_ctx_alloc_t fr_md5_ctx_alloc = fr_md5_local_ctx_alloc;
-fr_md5_ctx_free_t fr_md5_ctx_free = fr_md5_local_ctx_free;
-fr_md5_update_t fr_md5_update = fr_md5_local_update;
-fr_md5_final_t fr_md5_final = fr_md5_local_final;
 
 /** Calculate the MD5 hash of the contents of a buffer
  *

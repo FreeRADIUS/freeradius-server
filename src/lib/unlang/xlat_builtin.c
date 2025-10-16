@@ -23,22 +23,24 @@
  * @copyright 2000,2006 The FreeRADIUS server project
  * @copyright 2000 Alan DeKok (aland@freeradius.org)
  */
-
-
 RCSID("$Id$")
 
 /**
  * @defgroup xlat_functions xlat expansion functions
  */
-
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
+#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/io/test_point.h>
 
 #include <freeradius-devel/util/base16.h>
+#include <freeradius-devel/util/dbuff.h>
+#include <freeradius-devel/util/dcursor.h>
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/table.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <freeradius-devel/tls/openssl_user_macros.h>
@@ -257,8 +259,8 @@ xlat_action_t xlat_transparent(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_pairs_debug(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-					  UNUSED xlat_ctx_t const *xctx,
-					  request_t *request, fr_value_box_list_t *args)
+					   UNUSED xlat_ctx_t const *xctx,
+					   request_t *request, fr_value_box_list_t *args)
 {
 	fr_pair_t		*vp;
 	fr_dcursor_t		*cursor;
@@ -364,6 +366,7 @@ static int CC_HINT(nonnull(2,3)) filename_xlat_escape(UNUSED request_t *request,
 	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_ATTR:
 		/*
 		 *	Printing prefixes etc. does NOT result in the escape function being called!  So
 		 *	instead, we cast the results to a string, and then escape the string.
@@ -788,6 +791,31 @@ static xlat_action_t xlat_func_file_rm(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_action_t xlat_func_file_touch(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+					  request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t *dst, *vb;
+	char const	*filename;
+	int		fd;
+
+	XLAT_ARGS(args, &vb);
+	fr_assert(vb->type == FR_TYPE_STRING);
+	filename = vb->vb_strvalue;
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	fr_dcursor_append(out, dst);
+
+	fd = open(filename, O_CREAT | S_IRUSR | S_IWUSR, 0600);
+	if (fd == -1) {
+		dst->vb_bool = false;
+		REDEBUG3("Failed touching file %s - %s", filename, fr_syserror(errno));
+	}
+	dst->vb_bool = true;
+
+	close(fd);
+
+	return XLAT_ACTION_DONE;
+}
 
 static xlat_arg_parser_t const xlat_func_taint_args[] = {
 	{ .required = true, .type = FR_TYPE_VOID },
@@ -2721,7 +2749,6 @@ static xlat_action_t xlat_func_range(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	} else {
 		start = 0;
-		fr_value_box_debug(start_vb);
 		end = fr_value_box_list_head(&start_vb->vb_group)->vb_uint64;
 		step = 1;
 	}
@@ -3496,7 +3523,6 @@ static xlat_action_t xlat_func_subst(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	fr_assert(vb && (vb->type != FR_TYPE_NULL));
 	fr_value_box_safety_copy(vb, subject_vb);
 	fr_value_box_safety_merge(vb, rep_vb);
 
@@ -3504,6 +3530,79 @@ static xlat_action_t xlat_func_subst(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	return XLAT_ACTION_DONE;
 }
+
+/*
+ *	Debug builds only, we don't want to allow unsanitised inputs to crash the server
+ */
+#ifndef NDEBUG
+static xlat_arg_parser_t const xlat_func_signal_raise_args[] = {
+	{ .single = true, .required = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static xlat_action_t xlat_func_signal_raise(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					    UNUSED xlat_ctx_t const *xctx, request_t *request,
+					    fr_value_box_list_t *args)
+{
+	static fr_table_num_sorted_t const signal_table[] = {
+		{ L("break"),		SIGTRAP },	/* Save flailing at the keyboard */
+		{ L("BREAK"),		SIGTRAP },
+		{ L("SIGABRT"),		SIGABRT },
+		{ L("SIGALRM"),		SIGALRM },
+#ifdef SIGBUS
+		{ L("SIGBUS"),		SIGBUS },
+#endif
+		{ L("SIGCHLD"),		SIGCHLD },
+		{ L("SIGCONT"),		SIGCONT },
+		{ L("SIGFPE"),		SIGFPE },
+		{ L("SIGHUP"),		SIGHUP },
+		{ L("SIGILL"),		SIGILL },
+		{ L("SIGINT"),		SIGINT },
+		{ L("SIGKILL"),		SIGKILL },
+		{ L("SIGPIPE"),		SIGPIPE },
+#ifdef SIGPOLL
+		{ L("SIGPOLL"),		SIGPOLL },
+#endif
+		{ L("SIGPROF"),		SIGPROF },
+		{ L("SIGQUIT"),		SIGQUIT },
+		{ L("SIGSEGV"),		SIGSEGV },
+		{ L("SIGSTOP"),		SIGSTOP },
+#ifdef SIGSYS
+		{ L("SIGSYS"),		SIGSYS },
+#endif
+		{ L("SIGTERM"),		SIGTERM },
+#ifdef SIGTRAP
+		{ L("SIGTRAP"),		SIGTRAP },
+#endif
+		{ L("SIGTSTP"),		SIGTSTP },
+		{ L("SIGTTIN"),		SIGTTIN },
+		{ L("SIGTTOU"),		SIGTTOU },
+		{ L("SIGURG"),		SIGURG },
+		{ L("SIGUSR1"),		SIGUSR1 },
+		{ L("SIGUSR2"),		SIGUSR2 },
+		{ L("SIGVTALRM"),	SIGVTALRM },
+		{ L("SIGXCPU"),		SIGXCPU },
+		{ L("SIGXFSZ"),		SIGXFSZ }
+	};
+	static size_t signal_table_len = NUM_ELEMENTS(signal_table);
+
+	fr_value_box_t	*signal_vb;
+	int		signal;
+
+	XLAT_ARGS(args, &signal_vb);
+
+	signal = fr_table_value_by_substr(signal_table, signal_vb->vb_strvalue, signal_vb->vb_length, -1);
+	if (signal < 0) {
+		RERROR("Invalid signal \"%pV\"", signal_vb);
+		return XLAT_ACTION_FAIL;
+	}
+	if (raise(signal) < 0) {
+		RERROR("Failed raising signal %d: %s", signal, strerror(errno));
+		return XLAT_ACTION_FAIL;
+	}
+	return XLAT_ACTION_DONE;
+}
+#endif
 
 static xlat_arg_parser_t const xlat_func_time_args[] = {
 	{ .required = false, .single = true, .type = FR_TYPE_STRING },
@@ -3936,7 +4035,7 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 static xlat_arg_parser_t const protocol_decode_xlat_args[] = {
-	{ .single = true, .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH, .type = FR_TYPE_VOID },
+	{ .required = true, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -3956,10 +4055,14 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					  request_t *request, fr_value_box_list_t *in)
 {
 	int					decoded;
-	fr_value_box_t				*vb;
+	fr_value_box_t				*vb, *in_head;
 	void					*decode_ctx = NULL;
 	protocol_decode_xlat_uctx_t const	*decode_uctx = talloc_get_type_abort(*(void * const *)xctx->inst, protocol_decode_xlat_uctx_t);
 	fr_test_point_pair_decode_t const	*tp_decode = decode_uctx->tp_decode;
+
+	XLAT_ARGS(in, &in_head);
+
+	fr_assert(in_head->type == FR_TYPE_GROUP);
 
 	if (decode_uctx->dict && decode_uctx->dict != request->proto_dict) {
 		REDEBUG2("Can't call %%%s() when in %s namespace", xctx->ex->call.func->name,
@@ -3974,7 +4077,7 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	decoded = xlat_decode_value_box_list(request->request_ctx, &request->request_pairs,
-					     request, decode_ctx, tp_decode->func, in);
+					     request, decode_ctx, tp_decode->func, &in_head->vb_group);
 	if (decoded <= 0) {
 		talloc_free(decode_ctx);
 		RPERROR("Protocol decoding failed");
@@ -4068,12 +4171,13 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	bool		tainted = false;
 	fr_value_box_t	*encoded;
 
-	uint8_t		binbuf[2048];
-	uint8_t		*p = binbuf, *end = p + sizeof(binbuf);
+	fr_dbuff_t	*dbuff;
 	ssize_t		len = 0;
 	fr_value_box_t	*in_head;
 	void		*encode_ctx = NULL;
 	fr_test_point_pair_encode_t const *tp_encode;
+
+	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 2048, SIZE_MAX);
 
 	XLAT_ARGS(args, &in_head);
 
@@ -4093,12 +4197,35 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Loop over the attributes, encoding them.
 	 */
-	for (vp = fr_dcursor_current(cursor);
-	     vp != NULL;
-	     vp = fr_dcursor_next(cursor)) {
-		if (vp->da->flags.internal) continue;
+	RDEBUG2("Encoding attributes");
 
+	if (RDEBUG_ENABLED2) {
+		RINDENT();
+		for (vp = fr_dcursor_current(cursor);
+		     vp != NULL;
+		     vp = fr_dcursor_next(cursor)) {
+			RDEBUG2("%pP", vp);
+		}
+		REXDENT();
+	}
+
+	/*
+	 *	Encoders advance the cursor, so we just need to feed
+	 *	in the next pair.  This was originally so we could
+	 *	extend the output buffer, but with dbuffs that's
+	 *	no longer necessary... we might want to refactor this
+	 *	in future.
+	 */
+	for (vp = fr_dcursor_head(cursor);
+	     vp != NULL;
+	     vp = fr_dcursor_current(cursor)) {
 		/*
+		 *
+		 *	Don't check for internal attributes, the
+		 *	encoders can skip them if they need to, and the
+		 *	internal encoder can encode anything, as can
+		 *	things like CBOR.
+		 *
 		 *	Don't check the dictionaries.  By definition,
 		 *	vp->da->dict==request->proto_dict, OR else we're
 		 *	using the internal encoder and encoding a real
@@ -4109,22 +4236,20 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 *	as AKA/SIM and DHCPv6 encode "bool"s only if
 		 *	their value is true.
 		 */
-
-		len = tp_encode->func(&FR_DBUFF_TMP(p, end), cursor, encode_ctx);
+		len = tp_encode->func(dbuff, cursor, encode_ctx);
 		if (len < 0) {
 			RPEDEBUG("Protocol encoding failed");
 			return XLAT_ACTION_FAIL;
 		}
 
 		tainted |= vp->vp_tainted;
-		p += len;
 	}
 
 	/*
 	 *	Pass the options string back to the caller.
 	 */
 	MEM(encoded = fr_value_box_alloc_null(ctx));
-	fr_value_box_memdup(encoded, encoded, NULL, binbuf, (size_t)len, tainted);
+	fr_value_box_memdup(encoded, encoded, NULL, fr_dbuff_start(dbuff), fr_dbuff_used(dbuff), tainted);
 	fr_dcursor_append(out, encoded);
 
 	return XLAT_ACTION_DONE;
@@ -4366,6 +4491,7 @@ do { \
 	XLAT_REGISTER_ARGS("file.exists", xlat_func_file_exists, FR_TYPE_BOOL, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.head", xlat_func_file_head, FR_TYPE_STRING, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.rm", xlat_func_file_rm, FR_TYPE_BOOL, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.touch", xlat_func_file_touch, FR_TYPE_BOOL, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.size", xlat_func_file_size, FR_TYPE_UINT64, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.tail", xlat_func_file_tail, FR_TYPE_STRING, xlat_func_file_name_count_args);
 	XLAT_REGISTER_ARGS("file.cat", xlat_func_file_cat, FR_TYPE_OCTETS, xlat_func_file_cat_args);
@@ -4400,13 +4526,16 @@ do { \
 	xlat_func_instantiate_set(xlat, xlat_instantiate_subst_regex, xlat_subst_regex_inst_t, NULL, NULL);
 #endif
 
+#ifndef NDEBUG
+	XLAT_REGISTER_ARGS("signal.raise", xlat_func_signal_raise, FR_TYPE_STRING, xlat_func_signal_raise_args);
+#endif
+
 	XLAT_REGISTER_ARGS("time", xlat_func_time, FR_TYPE_VOID, xlat_func_time_args);
 	XLAT_REGISTER_VOID("time.now", xlat_func_time_now, FR_TYPE_DATE);
 	XLAT_REGISTER_VOID("time.request", xlat_func_time_request, FR_TYPE_DATE);
 	XLAT_REGISTER_VOID("time.offset", xlat_func_time_offset, FR_TYPE_TIME_DELTA);
 	XLAT_REGISTER_VOID("time.is_dst", xlat_func_time_is_dst, FR_TYPE_BOOL);
 
-	XLAT_REGISTER_ARGS("trigger", trigger_xlat, FR_TYPE_STRING, trigger_xlat_args);
 	XLAT_REGISTER_ARGS("base64.encode", xlat_func_base64_encode, FR_TYPE_STRING, xlat_func_base64_encode_arg);
 	XLAT_REGISTER_ARGS("base64.decode", xlat_func_base64_decode, FR_TYPE_OCTETS, xlat_func_base64_decode_arg);
 	XLAT_REGISTER_ARGS("rand", xlat_func_rand, FR_TYPE_UINT64, xlat_func_rand_arg);
@@ -4493,6 +4622,7 @@ do { \
 	XLAT_REGISTER_HASH("sha2_256", xlat_func_sha2_256);
 	XLAT_REGISTER_HASH("sha2_384", xlat_func_sha2_384);
 	XLAT_REGISTER_HASH("sha2_512", xlat_func_sha2_512);
+	XLAT_REGISTER_HASH("sha2", xlat_func_sha2_256);
 
 #  ifdef HAVE_EVP_BLAKE2S256
 	XLAT_REGISTER_HASH("blake2s_256", xlat_func_blake2s_256);
@@ -4505,6 +4635,7 @@ do { \
 	XLAT_REGISTER_HASH("sha3_256", xlat_func_sha3_256);
 	XLAT_REGISTER_HASH("sha3_384", xlat_func_sha3_384);
 	XLAT_REGISTER_HASH("sha3_512", xlat_func_sha3_512);
+	XLAT_REGISTER_HASH("sha3", xlat_func_sha3_256);
 #endif
 
 	XLAT_REGISTER_PURE("string", xlat_transparent, FR_TYPE_STRING, xlat_func_string_arg);

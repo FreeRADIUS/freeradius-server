@@ -95,7 +95,7 @@ static void unlang_child_request_signal(request_t *request, UNUSED unlang_stack_
 		 */
 		repeatable_clear(frame);
 
-		frame->result_p = &frame->scratch_result;
+		frame->p_result = &frame->scratch_result;
 
 		/*
 		 *	Tell the parent to resume if all the request's siblings are done
@@ -208,20 +208,7 @@ static int unlang_child_request_stack_init(unlang_child_request_t *cr)
 		.type = UNLANG_TYPE_CHILD_REQUEST,
 		.name = "child-request",
 		.debug_name = "child-request-resume",
-		.actions = {
-			.actions = {
-				[RLM_MODULE_REJECT]	= 0,
-				[RLM_MODULE_FAIL]	= 0,
-				[RLM_MODULE_OK]		= 0,
-				[RLM_MODULE_HANDLED]	= 0,
-				[RLM_MODULE_INVALID]	= 0,
-				[RLM_MODULE_DISALLOW]	= 0,
-				[RLM_MODULE_NOTFOUND]	= 0,
-				[RLM_MODULE_NOOP]	= 0,
-				[RLM_MODULE_UPDATED]	= 0
-			},
-			.retry = RETRY_INIT,
-		}
+		.actions = DEFAULT_MOD_ACTIONS,
 	};
 
 	/* Sets up the frame for us to use immediately */

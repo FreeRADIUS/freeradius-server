@@ -166,12 +166,15 @@ static bool transaction_ok(CONF_SECTION *cs)
 			subcs = cf_item_to_section(ci);
 			name = cf_section_name1(subcs);
 
-			if (strcmp(name, "actions") == 0) continue;
-
 			/*
-			 *	Definitely an attribute editing thing.
+			 *	Allow limited keywords.
 			 */
-			if (*name == '&') continue;
+			if ((strcmp(name, "actions") == 0) ||
+			    (strcmp(name, "if") == 0) ||
+			    (strcmp(name, "else") == 0) ||
+			    (strcmp(name, "elsif") == 0)) {
+				continue;
+			}
 
 			if (fr_list_assignment_op[cf_section_name2_quote(cs)]) continue;
 
@@ -194,8 +197,6 @@ static bool transaction_ok(CONF_SECTION *cs)
 			 *	If there's a value then it's not a module call.
 			 */
 			if (cf_pair_value(cp)) continue;
-
-			if (*name == '&') continue;
 
 			/*
 			 *	Allow rcodes via the "always" module.
@@ -245,9 +246,9 @@ static unlang_t *unlang_compile_transaction(unlang_t *parent, unlang_compile_ctx
 	 *	The default for a failed transaction is to continue to
 	 *	the next instruction on failure.
 	 */
-	c->actions.actions[RLM_MODULE_FAIL] = 1;
-	c->actions.actions[RLM_MODULE_INVALID] = 1;
-	c->actions.actions[RLM_MODULE_DISALLOW] = 1;
+	c->actions.actions[RLM_MODULE_FAIL] = MOD_PRIORITY(1);
+	c->actions.actions[RLM_MODULE_INVALID] = MOD_PRIORITY(1);
+	c->actions.actions[RLM_MODULE_DISALLOW] = MOD_PRIORITY(1);
 
 	/*
 	 *	For the children of this keyword, any failure is

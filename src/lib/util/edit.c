@@ -146,7 +146,7 @@ static int edit_undo(fr_edit_t *e)
 	case FR_EDIT_VALUE:
 		fr_assert(fr_type_is_leaf(vp->vp_type));
 		if (!fr_type_is_fixed_size(vp->vp_type)) fr_value_box_clear(&vp->data);
-		fr_value_box_copy(vp, &vp->data, &e->data);
+		if (unlikely(fr_value_box_copy(vp, &vp->data, &e->data) < 0)) return -1;
 		break;
 
 	case FR_EDIT_CLEAR:
@@ -507,7 +507,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 		fr_assert(ref == NULL);
 
 		fr_assert(fr_type_is_leaf(vp->vp_type));
-		fr_value_box_copy(e, &e->data, &vp->data);
+		if (unlikely(fr_value_box_copy(e, &e->data, &vp->data) < 0)) goto fail;
 		break;
 
 	case FR_EDIT_CLEAR:

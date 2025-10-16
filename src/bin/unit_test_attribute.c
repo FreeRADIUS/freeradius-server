@@ -374,6 +374,10 @@ static void mismatch_print(command_file_ctx_t *cc, char const *command,
 			ERROR("  got      : %.*s", (int) got_len, got);
 			ERROR("  expected : %.*s", (int) expected_len, expected);
 			ERROR("             %.*s^ differs here (%zu)", (int) (e - expected), spaces, e - expected);
+		} else if (fr_debug_lvl > 1) {
+			ERROR("  got      : %.*s", (int) got_len, got);
+			ERROR("Differs at : %zu", e - expected);
+
 		} else {
 			size_t glen, elen;
 
@@ -1042,16 +1046,18 @@ static int dictionary_load_common(command_result_t *result, command_file_ctx_t *
 	 */
 	if (fr_debug_lvl > 5) fr_dict_debug(fr_log_fp, cc->tmpl_rules.attr.dict_def);
 
+
 	RETURN_OK(0);
 }
 
-static size_t parse_typed_value(command_result_t *result, fr_value_box_t *box, char const **out, char const *in, size_t inlen)
+static size_t parse_typed_value(command_result_t *result, command_file_ctx_t *cc, fr_value_box_t *box, char const **out, char const *in, size_t inlen)
 {
 	fr_type_t	type;
 	size_t		match_len;
 	ssize_t		slen;
 	char const     	*p;
 	fr_sbuff_t	sbuff;
+	fr_dict_attr_t const *enumv = NULL;
 
 	/*
 	 *	Parse data types
@@ -1074,7 +1080,7 @@ static size_t parse_typed_value(command_result_t *result, fr_value_box_t *box, c
 	if (*p == '"'){
 		p++;
 		sbuff = FR_SBUFF_IN(p, strlen(p));
-		slen = fr_value_box_from_substr(box, box, FR_TYPE_STRING, NULL,
+		slen = fr_value_box_from_substr(box, box, FR_TYPE_STRING, enumv,
 						&sbuff,
 						&value_parse_rules_double_quoted);
 		if (slen < 0) {
@@ -1096,7 +1102,21 @@ static size_t parse_typed_value(command_result_t *result, fr_value_box_t *box, c
 	} else {
 		sbuff = FR_SBUFF_IN(p, strlen(p));
 
-		slen = fr_value_box_from_substr(box, box, type, NULL,
+		/*
+		 *	We have no other way to pass the dict to the value-box parse function.
+		 */
+		if (type == FR_TYPE_ATTR) {
+			fr_dict_t const *dict = dictionary_current(cc);
+
+			if (!dict) {
+				fr_strerror_const("proto-dictionary must be defined");
+				RETURN_PARSE_ERROR(0);
+			}
+
+			enumv = fr_dict_root(dict);
+		}
+
+		slen = fr_value_box_from_substr(box, box, type, enumv,
 						&sbuff,
 						&value_parse_rules_bareword_unquoted);
 		if (slen < 0) {
@@ -1136,7 +1156,7 @@ static void command_print(void)
 	void *walk_ctx = NULL;
 
 	printf("Command hierarchy --------");
-	fr_command_debug(stdout, command_head);
+	fr_cmd_debug(stdout, command_head);
 
 	printf("Command list --------");
 	while (fr_command_walk(command_head, &walk_ctx, NULL, command_walk) == 1) {
@@ -1239,7 +1259,7 @@ static size_t command_calc(command_result_t *result, command_file_ctx_t *cc,
 	p = in;
 	end = in + inlen;
 
-	match_len = parse_typed_value(result, a, &value, p, end - p);
+	match_len = parse_typed_value(result, cc, a, &value, p, end - p);
 	if (match_len == 0) return 0; /* errors have already been updated */
 
 	p += match_len;
@@ -1262,7 +1282,7 @@ static size_t command_calc(command_result_t *result, command_file_ctx_t *cc,
 	}
 	fr_skip_whitespace(p);
 
-	match_len = parse_typed_value(result, b, &value, p, end - p);
+	match_len = parse_typed_value(result, cc, b, &value, p, end - p);
 	if (match_len == 0) return 0;
 
 	p += match_len;
@@ -1338,7 +1358,7 @@ static size_t command_calc_nary(command_result_t *result, command_file_ctx_t *cc
 
 		a = talloc_zero(group, fr_value_box_t);
 
-		match_len = parse_typed_value(result, a, &value, p, end - p);
+		match_len = parse_typed_value(result, cc, a, &value, p, end - p);
 		if (match_len == 0) return 0; /* errors have already been updated */
 
 		fr_value_box_list_insert_tail(&group->vb_group, a);
@@ -1386,7 +1406,7 @@ static size_t command_cast(command_result_t *result, command_file_ctx_t *cc,
 	p = in;
 	end = in + inlen;
 
-	match_len = parse_typed_value(result, a, &value, p, end - p);
+	match_len = parse_typed_value(result, cc, a, &value, p, end - p);
 	if (match_len == 0) return 0; /* errors have already been updated */
 
 	p += match_len;
@@ -2816,7 +2836,7 @@ static size_t command_value_box_normalise(command_result_t *result, command_file
 	ssize_t		slen;
 	fr_type_t	type;
 
-	match_len = parse_typed_value(result, box, &value, in, strlen(in));
+	match_len = parse_typed_value(result, cc, box, &value, in, strlen(in));
 	if (match_len == 0) {
 		talloc_free(box);
 		return 0;	/* errors have already been updated */
@@ -2844,7 +2864,7 @@ static size_t command_value_box_normalise(command_result_t *result, command_file
 	 *	box as last time.
 	 */
 	box2 = talloc_zero(NULL, fr_value_box_t);
-	if (fr_value_box_from_str(box2, box2, type, NULL,
+	if (fr_value_box_from_str(box2, box2, type, box->enumv,
 				  data, slen,
 				  &fr_value_unescape_double) < 0) {
 		talloc_free(box2);

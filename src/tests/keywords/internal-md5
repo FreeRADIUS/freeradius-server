@@ -1,0 +1,40 @@
+group {
+	octets data
+
+	reply.Reply-Message := 'foo'
+	reply.Tag-1.Tunnel-Private-Group-Id := 10
+	reply.Tag-2.Tunnel-Private-Group-Id := 20
+	reply.Vendor-Specific.FreeRADIUS.Acct-Unique-Session-Id := '0123456789'
+
+	debug_reply
+
+	# Encode the children of the reply list
+	# This is also a regression test, as %internal.encode used
+	# to skip every other attribute.
+	data := %internal.encode('reply.[*]')
+
+	# STOP - Dont just change the MD5 to make the test pass.
+	# Understand _EXACTLY_ what changed, and WARN all other
+	# core developers that you are making this change and _WHY_.
+	if ! (%md5(data) == 0x9a9b2606e346135a4e64030a1763a83e) {
+		test_fail
+	}
+
+	reply := {}
+
+	# Make sure we decode exactly four attributes
+	if (%internal.decode(data) != 4) {
+		test_fail
+	}
+
+	# ...and that they match what we encoded.
+	# This is mostly to help debug if the MD5 checksum changes.
+	if (Reply-Message != 'foo' ||
+	    (Tag-1.Tunnel-Private-Group-Id != 10) ||
+	    (Tag-2.Tunnel-Private-Group-Id != 20) ||
+	    (Vendor-Specific.FreeRADIUS.Acct-Unique-Session-Id != '0123456789')) {
+		test_fail
+	}
+}
+
+success

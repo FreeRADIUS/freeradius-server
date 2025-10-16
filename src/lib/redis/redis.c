@@ -395,7 +395,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, map_list_t *out, request_t *request,
 	slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, key->str,
 				   &(tmpl_rules_t){
 				   	.attr = {
-						.dict_def = request->proto_dict,
+						.dict_def = request->local_dict,
 						.list_def = request_attr_request
 				   	}
 				   });

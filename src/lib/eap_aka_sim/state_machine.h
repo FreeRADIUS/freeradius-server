@@ -45,7 +45,7 @@ struct eap_aka_sim_session_s {
 	module_method_t			next;				//!< Resumption function to call after
 									///< executing common code.
 
-	unlang_result_t			result;				//!< The result of the last unlang section we evaluted.
+	unlang_result_t			section_result;			//!< The result of the last unlang section we evaluted.
 
 	eap_type_t			type;				//!< Either FR_TYPE_AKA, or FR_TYPE_AKA_PRIME.
 

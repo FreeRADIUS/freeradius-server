@@ -85,9 +85,39 @@ int		virtual_server_has_namespace(CONF_SECTION **out,
  */
 CONF_SECTION		*virtual_server_cs(virtual_server_t const *vs) CC_HINT(nonnull);
 
+virtual_server_t const	*virtual_server_from_cs(CONF_SECTION *server_cs);
+
 virtual_server_t const	*virtual_server_find(char const *name) CC_HINT(nonnull);
 
 virtual_server_t const	*virtual_server_by_child(CONF_ITEM const *ci) CC_HINT(nonnull);
+
+/** Additional validation rules for virtual server lookup
+ *
+ * This is used to ensure that the virtual server we find matches
+ * the requirements of the caller.
+ *
+ * This should be passed in the rule calling this function:
+ @code{.c}
+ { FR_CONF_OFFSET_TYPE_FLAGS("virtual_server", FR_TYPE_VOID, 0, module_conf_t, virtual_server),
+ 			     .func = virtual_server_cf_parse,
+			     .uctx = &(virtual_server_cf_parse_uctx_t){ .process_module_name = "eap_aka"} },
+ @endcode
+ *
+ * @note process_module_name is the name field in the exported symbol of the module.
+ *
+ * The double dereference is to work around compile time constant issues.
+ */
+typedef struct {
+	char const		*process_module_name;		//!< Virtual server we find must use this
+								///< this process module.  This is a string
+								///< identifier as the process modules are
+								///< often not loaded at the same time as the modules
+								///< and this makes ordering issues easier to deal with.
+								///< Ignored if NULL.
+
+	fr_dict_t		**required_dict;		//!< Virtual server we find must have this
+								///< dictionary.  Ignored if NULL
+} virtual_server_cf_parse_uctx_t;
 
 int			virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent,
 						CONF_ITEM *ci, conf_parser_t const *rule) CC_HINT(nonnull(2,4));
@@ -116,7 +146,7 @@ int		virtual_server_section_register(virtual_server_t *vs, virtual_server_compil
 
 section_name_t const **virtual_server_section_methods(virtual_server_t const *vs, section_name_t const *section) CC_HINT(nonnull);
 
-unlang_action_t	virtual_server_push(unlang_result_t *p_result, request_t *request, CONF_SECTION *server_cs, bool top_frame) CC_HINT(nonnull(2,3));
+unlang_action_t	virtual_server_push(unlang_result_t *p_result, request_t *request, virtual_server_t const *vs, bool top_frame) CC_HINT(nonnull(2,3));
 
 /** @name Parsing, bootstrap and instantiation
  *

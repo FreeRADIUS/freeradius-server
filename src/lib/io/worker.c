@@ -76,7 +76,7 @@ static void worker_verify(fr_worker_t *worker);
 #endif
 
 #define CACHE_LINE_SIZE	64
-static alignas(CACHE_LINE_SIZE) atomic_uint64_t request_number = 0;
+static alignas(CACHE_LINE_SIZE) _Atomic(uint64_t) request_number = 0;
 
 FR_SLAB_TYPES(request, request_t);
 FR_SLAB_FUNCS(request, request_t);
@@ -866,7 +866,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 
 	request->async->listen = listen;
 	request->async->packet_ctx = cd->packet_ctx;
-	request->async->priority = cd->priority;
+	request->priority = cd->priority;
 
 	/*
 	 *	Now that the "request" structure has been initialized, go decode the packet.
@@ -994,10 +994,10 @@ static int8_t worker_runnable_cmp(void const *one, void const *two)
 	request_t const *a = one, *b = two;
 	int ret;
 
-	ret = CMP(b->async->priority, a->async->priority);
+	ret = CMP(b->priority, a->priority);
 	if (ret != 0) return ret;
 
-	ret = CMP(a->async->sequence, b->async->sequence);
+	ret = CMP(a->sequence, b->sequence);
 	if (ret != 0) return ret;
 
 	return fr_time_cmp(a->async->recv_time, b->async->recv_time);

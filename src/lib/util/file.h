@@ -31,6 +31,14 @@ extern "C" {
 #include <freeradius-devel/util/talloc.h>
 #include <stdbool.h>
 
+#ifdef HAVE_DIRENT_H
+#  include <dirent.h>
+#endif
+
+#ifdef HAVE_GLOB_H
+#include <glob.h>
+#endif
+
 /** Callback for allowing additional operations on newly created directories
  *
  * @param[in] fd	Of newly created directory.
@@ -63,6 +71,38 @@ int 		fr_unlink(char const *filename);
 char const	*fr_cwd_strip(char const *filename);
 
 int 		fr_dirfd(int *dirfd, char const **filename, char const *pathname) CC_HINT(nonnull);
+
+typedef enum {
+	FR_GLOBDIR_INVALID = 0,
+	FR_GLOBDIR_FILE,
+#ifdef HAVE_DIRENT_H
+	FR_GLOBDIR_DIR,
+#endif
+#ifdef HAVE_GLOB_H
+	FR_GLOBDIR_GLOB,
+#endif
+} fr_globdir_type_t;
+
+typedef struct {
+	fr_globdir_type_t	type;
+
+	char			*path;
+	char			*filename;
+
+	union {
+		DIR		*dir;
+#ifdef HAVE_GLOB_H
+		struct {
+			size_t	gl_current;
+			glob_t	glob;
+		};
+#endif
+	};
+} fr_globdir_iter_t;
+
+int		fr_globdir_iter_init(char const **filename, char const *dir, char const *pattern, fr_globdir_iter_t *iter);
+int		fr_globdir_iter_next(char const **filename, fr_globdir_iter_t *iter);
+int		fr_globdir_iter_free(fr_globdir_iter_t *iter);
 
 #ifdef __cplusplus
 }

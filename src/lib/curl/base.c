@@ -66,11 +66,11 @@ static int tls_config_dflt_capath(CONF_PAIR **out, UNUSED void *parent, CONF_SEC
 }
 
 conf_parser_t fr_curl_tls_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_file) },
-	{ FR_CONF_OFFSET_FLAGS("ca_issuer_file", CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_issuer_file) },
-	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_path), .dflt_func = tls_config_dflt_capath },
-	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_INPUT, fr_curl_tls_t, certificate_file) },
-	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_INPUT, fr_curl_tls_t, private_key_file) },
+	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_READABLE, fr_curl_tls_t, ca_file) },
+	{ FR_CONF_OFFSET_FLAGS("ca_issuer_file", CONF_FLAG_FILE_READABLE, fr_curl_tls_t, ca_issuer_file) },
+	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_READABLE, fr_curl_tls_t, ca_path), .dflt_func = tls_config_dflt_capath },
+	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_READABLE, fr_curl_tls_t, certificate_file) },
+	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_READABLE, fr_curl_tls_t, private_key_file) },
 	{ FR_CONF_OFFSET_FLAGS("private_key_password", CONF_FLAG_SECRET, fr_curl_tls_t, private_key_password) },
 	{ FR_CONF_OFFSET("random_file", fr_curl_tls_t, random_file) },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("require_cert", FR_TYPE_VOID, 0, fr_curl_tls_t, require_cert),
@@ -84,7 +84,7 @@ conf_parser_t fr_curl_tls_config[] = {
 	{ FR_CONF_OFFSET("check_cert_cn", fr_curl_tls_t, check_cert_cn), .dflt = "yes" },
 	{ FR_CONF_OFFSET("extract_cert_attrs", fr_curl_tls_t, extract_cert_attrs), .dflt = "no" },
 #ifdef WITH_TLS
-	{ FR_CONF_OFFSET_FLAGS("keylog_file", CONF_FLAG_FILE_OUTPUT, fr_curl_tls_t,  keylog_file) },
+	{ FR_CONF_OFFSET_FLAGS("keylog_file", CONF_FLAG_FILE_WRITABLE, fr_curl_tls_t,  keylog_file) },
 #endif
 	CONF_PARSER_TERMINATOR
 };

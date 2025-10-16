@@ -1,0 +1,22 @@
+# Regression test  We'd set the request master state to "Stop Processing" and this
+# would result in module calls in finally being skipped.
+server module-timeout-fin {
+	namespace = radius
+
+	recv Access-Request {
+		# Trigger the overall timeout for the test binary
+		%time.advance(61s)
+		ok
+	}
+
+	finally {
+		if (timeout) {
+			# This previously resulted in the request processing terminating early
+			reschedule
+			reply.Reply-Message := 'bye-from-timeout-module'
+			success
+		} else {
+			fail
+		}
+	}
+}

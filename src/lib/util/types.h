@@ -79,7 +79,9 @@ typedef enum {
 	FR_TYPE_VENDOR,				//!< Attribute that represents a vendor in the attribute tree.
 
 	FR_TYPE_GROUP,				//!< A grouping of other attributes
+	FR_TYPE_UNION,				//!< A union of limited children
 	FR_TYPE_VALUE_BOX,			//!< A boxed value.
+	FR_TYPE_ATTR,				//!< A contains an attribute reference
 
 	FR_TYPE_VOID,				//!< User data.  Should be a talloced chunk
 						///< assigned to the ptr value of the union.
@@ -219,6 +221,7 @@ typedef enum {
 	_beg(FR_TYPE_GROUP) \
 	_mid(FR_TYPE_STRUCT) \
 	_mid(FR_TYPE_TLV) \
+	_mid(FR_TYPE_UNION) \
 	_end(FR_TYPE_VENDOR)
 
 /** Hack for truthiness check
@@ -232,6 +235,7 @@ typedef enum {
 	_beg(FR_TYPE_VSA) \
 	_mid(FR_TYPE_STRUCT) \
 	_mid(FR_TYPE_TLV) \
+	_mid(FR_TYPE_UNION) \
 	_end(FR_TYPE_VENDOR)
 
 /** Match all non value types in case statements
@@ -256,6 +260,7 @@ typedef enum {
 #define FR_TYPE_LEAF_DEF(_beg, _mid, _end) \
 	_beg(FR_TYPE_ETHERNET) \
 	_mid(FR_TYPE_IFID) \
+	_mid(FR_TYPE_ATTR) \
 	FR_TYPE_IP_DEF(_mid, _mid, _mid) \
 	FR_TYPE_VARIABLE_SIZE_DEF(_mid, _mid, _mid) \
 	FR_TYPE_NUMERIC_DEF(_mid, _mid, _end)

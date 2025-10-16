@@ -78,13 +78,13 @@ delay {
 	#  The default is `notset`, which means that the delay module will be
 	#  transparent and not alter the section rcode.
 	#
-	# [NOTE]
-	# ====
-	# The default section `rcode` in many places is `fail`.  Care should be
-	# taken to set the `rcode` for the section a delay module appears in, if
-	# this configuration item is not set, and no other modules are present
-	# in the section.
-	# ====
+	#  [NOTE]
+	#  ====
+	#  The default section `rcode` in many places is `fail`.  Care should be
+	#  taken to set the `rcode` for the section a delay module appears in, if
+	#  this configuration item is not set, and no other modules are present
+	#  in the section.
+	#  ====
 	#
 #	rcode = 'notset'
 }

@@ -152,7 +152,7 @@ static xlat_action_t unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		RPEDEBUG("Failed allocating space for unescaped string");
 		return XLAT_ACTION_FAIL;
 	}
-	sbuff = FR_SBUFF_IN(out_p, arg->vb_length);
+	sbuff = FR_SBUFF_OUT(out_p, talloc_array_length(out_p));
 
 	p = arg->vb_strvalue;
 	end = p + arg->vb_length;

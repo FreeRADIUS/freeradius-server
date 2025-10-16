@@ -31,15 +31,6 @@ RCSID("$Id$")
 
 #include <fcntl.h>
 
-typedef struct {
-	uint8_t	code;
-	uint8_t	id;
-	uint8_t	length[2];
-	uint8_t	vector[RADIUS_AUTH_VECTOR_LENGTH];
-	uint8_t	data[1];
-} radius_packet_t;
-
-
 /*
  *	Some messages get printed out only in debugging mode.
  */

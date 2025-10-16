@@ -458,20 +458,32 @@ define INCLUDE_SUBMAKEFILE
             # needs to be made smarter to filter out the duplicates, or we need to find a way of
             # doing it here.
 #           $${TGT}_LDLIBS += $$(filter-out %.a %.la %.${TARGET_LIB_EXT},$${$${TGT_PREREQS}_LDLIBS})
-
-            #
-            #  OSX does lazy linking by default.  We want to over-ride that for binaries.
-            #  That way we catch errors at compile time, and not at run time.
-            #
-            ifneq "$(findstring apple-darwin,$(TARGET_SYSTEM))" ""
-                $${TGT}_LDFLAGS += -Wl,-undefined -Wl,error
-            endif
         endif
 
         $${TGT}_BUILD := $$(if $$(suffix $${TGT}),$${BUILD_DIR}/lib,$${BUILD_DIR}/bin)
         $${TGT}_MAKEFILES += ${1}
         $${TGT}_CHECK_HEADERS := $${TGT_CHECK_HEADERS}
         $${TGT}_CHECK_LIBS := $${TGT_CHECK_LIBS}
+
+        #
+        #  OSX does lazy linking by default.  We want to over-ride that for binaries.
+        #  That way we catch errors at compile time, and not at run time.
+        #
+        ifneq "$(findstring apple-darwin,$(TARGET_SYSTEM))" ""
+          ifeq "$${$${TGT}_SUFFIX}" ".${TARGET_EXE_EXT}"
+            $${TGT}_LDFLAGS += -Wl,-undefined -Wl,error
+            ifneq "$(DSYMUTL)" ""
+              $${TGT}_POSTMAKE := dsymutil $${$${TGT}_BUILD}/$${TGT}
+            endif
+          endif
+
+          ifeq "$${$${TGT}_SUFFIX}" ".la"
+            ifneq "$(DSYMUTL)" ""
+              $${TGT}_POSTMAKE := dsymutil $${$${TGT}_BUILD}/$$(patsubst %.la,%.dylib,$${TGT})
+            endif
+          endif
+        endif
+
     else
         # The values defined by this makefile apply to the the "current" target
         # as determined by which target is at the top of the stack.
@@ -703,6 +715,10 @@ COMPILE.cxx = ${CXX}
 CPP = cc -E
 LINK.c = ${CC}
 LINK.cxx = ${CXX}
+
+ifneq "$(AC_HAVEBACKTRACE)" ""
+  DSYMUTIL = $(shell which dsymutil)
+endif
 
 # Set ECHO to "true" for *very* quiet builds
 ECHO = echo

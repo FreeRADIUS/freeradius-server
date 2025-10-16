@@ -23,12 +23,12 @@
  * @copyright 2021 The FreeRADIUS server project
  * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/calc.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 
 #undef XLAT_DEBUG
@@ -965,7 +965,7 @@ check:
 	xlat_instance_unregister_func(parent);
 
 	xlat_exp_set_type(parent, XLAT_BOX);
-	fr_value_box_copy(parent, &parent->data, box);
+	if (!fr_cond_assert(fr_value_box_copy(parent, &parent->data, box) == 0)) return false;
 
 	return true;
 }
@@ -1197,7 +1197,7 @@ static bool xlat_logical_or(xlat_logical_rctx_t *rctx, fr_value_box_list_t const
 	} else {
 		fr_value_box_clear(rctx->box);
 	}
-	if (last) fr_value_box_copy(rctx->box, rctx->box, last);
+	if (last && !fr_cond_assert(fr_value_box_copy(rctx->box, rctx->box, last) == 0)) return false;
 
 	return ret;
 }
@@ -1301,7 +1301,7 @@ static bool xlat_logical_and(xlat_logical_rctx_t *rctx, fr_value_box_list_t cons
 	} else {
 		fr_value_box_clear(rctx->box);
 	}
-	fr_value_box_copy(rctx->box, rctx->box, found);
+	if (!fr_cond_assert(fr_value_box_copy(rctx->box, rctx->box, found) == 0)) return false;
 
 	return true;
 }
@@ -1588,7 +1588,7 @@ static fr_slen_t xlat_expr_print_rcode(fr_sbuff_t *out, xlat_exp_t const *node, 
 	size_t			at_in = fr_sbuff_used_total(out);
 	xlat_rcode_inst_t	*inst = instance;
 
-	FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "%expr.rcode('");
+	FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "%interpreter.rcode('");
 	if (xlat_exp_head(node->call.args)) {
 		ssize_t slen;
 
@@ -1608,7 +1608,7 @@ static fr_slen_t xlat_expr_print_rcode(fr_sbuff_t *out, xlat_exp_t const *node, 
  *
  * Example:
 @verbatim
-%expr.rcode('handled') == true
+%interpreter.rcode('handled') == true
 
 # ...or how it's used normally used
 if (handled) {
@@ -1629,10 +1629,16 @@ static xlat_action_t xlat_func_expr_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	/*
 	 *	If we have zero args, it's because the instantiation
-	 *	function consumed them. om nom nom.
+	 *	function consumed them. Unless the user read the debug
+	 *	output, and tried to see what the rcode is, in case we
 	 */
 	if (fr_value_box_list_num_elements(args) == 0) {
-		fr_assert(inst->rcode != RLM_MODULE_NOT_SET);
+		if (inst->rcode == RLM_MODULE_NOT_SET) {
+			RDEBUG("Request rcode is '%s'",
+			       fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"));
+			return XLAT_ACTION_DONE;
+		}
+
 		rcode = inst->rcode;
 	} else {
 		XLAT_ARGS(args, &arg_rcode);
@@ -1889,7 +1895,12 @@ int xlat_register_expressions(void)
 	XLAT_REGISTER_NARY_OP(T_LAND, logical_and, logical);
 	XLAT_REGISTER_NARY_OP(T_LOR, logical_or, logical);
 
+	XLAT_REGISTER_BOOL("interpreter.rcode", xlat_func_expr_rcode, xlat_func_expr_rcode_arg, FR_TYPE_BOOL);
+	xlat_func_instantiate_set(xlat, xlat_instantiate_expr_rcode, xlat_rcode_inst_t, NULL, NULL);
+	xlat_func_print_set(xlat, xlat_expr_print_rcode);
+
 	XLAT_REGISTER_BOOL("expr.rcode", xlat_func_expr_rcode, xlat_func_expr_rcode_arg, FR_TYPE_BOOL);
+	xlat->deprecated = true;
 	xlat_func_instantiate_set(xlat, xlat_instantiate_expr_rcode, xlat_rcode_inst_t, NULL, NULL);
 	xlat_func_print_set(xlat, xlat_expr_print_rcode);
 
@@ -2365,7 +2376,7 @@ static ssize_t tokenize_rcode(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	/*
 	 *	@todo - allow for attributes to have the name "ok-foo" ???
 	 */
-	func = xlat_func_find("expr.rcode", -1);
+	func = xlat_func_find("interpreter.rcode", -1);
 	fr_assert(func != NULL);
 
 	MEM(node = xlat_exp_alloc(head, XLAT_FUNC, fr_sbuff_start(&our_in), slen));
@@ -2634,7 +2645,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 			/*
 			 *	Regex?  Or something else weird?
 			 */
-			tmpl_debug(vpt);
+			tmpl_debug(stderr, vpt);
 			fr_assert(0);
 		}
 	}

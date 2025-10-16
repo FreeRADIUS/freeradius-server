@@ -84,6 +84,10 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	}
 
 	switch (da_stack->da[depth]->type) {
+	case FR_TYPE_ATTR:
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) vp->vp_attr->attr);
+		break;
+
 	case FR_TYPE_IPV6_PREFIX:
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, vp->vp_ip.prefix);
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));

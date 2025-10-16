@@ -353,15 +353,13 @@ static xlat_action_t trigger_test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*in_head = fr_value_box_list_head(in);
 	fr_value_box_t	*vb;
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
-	fr_dcursor_append(out, vb);
-
-	if (trigger_exec(unlang_interpret_get(request), NULL, in_head->vb_strvalue, false, NULL) < 0) {
+	if (trigger(unlang_interpret_get(request), NULL, NULL, in_head->vb_strvalue, false, NULL) < 0) {
 		RPEDEBUG("Running trigger failed");
-		vb->vb_bool = false;
 		return XLAT_ACTION_FAIL;
 	}
 
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	fr_dcursor_append(out, vb);
 	vb->vb_bool = true;
 
 	return XLAT_ACTION_DONE;
@@ -388,7 +386,7 @@ static xlat_action_t test_xlat_passthrough(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_list_foreach(in, vb_p) {
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
 
-		if (fr_value_box_copy(vb, vb, vb_p) < 0) {
+		if (unlikely(fr_value_box_copy(vb, vb, vb_p) < 0)) {
 			talloc_free(vb);
 			return XLAT_ACTION_FAIL;
 		}
@@ -415,6 +413,20 @@ static xlat_action_t test_xlat_fail(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t 
 	return XLAT_ACTION_FAIL;
 }
 
+
+/** Always return a NULL value-box
+ */
+static xlat_action_t test_xlat_null(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				    UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
+				    UNUSED fr_value_box_list_t *in)
+{
+	fr_value_box_t	*vb;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_NULL, NULL));
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
 
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
@@ -485,6 +497,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	if (!(xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "fail", test_xlat_fail, FR_TYPE_VOID))) return -1;
 	xlat_func_args_set(xlat, test_xlat_fail_args);
+
+	if (!module_rlm_xlat_register(mctx->mi->boot, mctx, "null", test_xlat_null, FR_TYPE_VOID)) return -1;
 
 	return 0;
 }

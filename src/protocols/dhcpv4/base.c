@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include "attrs.h"
 
 static uint32_t instance_count = 0;
+static bool	instantiated = false;
 
 typedef struct {
 	uint8_t		code;
@@ -89,7 +90,7 @@ fr_dict_attr_autoload_t dhcpv4_dict_attr[] = {
 	{ .out = &attr_dhcp_dhcp_maximum_msg_size, .name = "Maximum-Msg-Size", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_interface_mtu_size, .name = "Interface-MTU-Size", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
-	{ .out = &attr_dhcp_parameter_request_list, .name = "Parameter-Request-List", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_parameter_request_list, .name = "Parameter-Request-List", .type = FR_TYPE_ATTR, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_overload, .name = "Overload", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_vendor_class_identifier, .name = "Vendor-Class-Identifier", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_relay_link_selection, .name = "Relay-Agent-Information.Relay-Link-Selection", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
@@ -193,6 +194,11 @@ static fr_dict_flag_parser_t const dhcpv4_flags[] = {
 	{ L("prefix"),		{ .func = dict_flag_prefix } }
 };
 
+/*
+ *	@todo - arguably we don't want to mutate the input list.
+ *	Instead, the encoder should just do 3 passes, where middle one
+ *	ignores the message-type and option 82.
+ */
 int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 {
 	fr_pair_t const *my_a = a, *my_b = b;
@@ -583,9 +589,6 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
  */
 int fr_dhcpv4_global_init(void)
 {
-	fr_value_box_t		value = *fr_box_uint8(0);
-	uint8_t			i;
-
 	if (instance_count > 0) {
 		instance_count++;
 		return 0;
@@ -604,34 +607,20 @@ int fr_dhcpv4_global_init(void)
 		goto fail;
 	}
 
-	/*
-	 *	Fixup dictionary entry for Paramter-Request-List adding all the options
-	 */
-	for (i = 1; i < 255; i++) {
-		fr_dict_attr_t const *attr;
-
-		attr = fr_dict_attr_child_by_num(fr_dict_root(dict_dhcpv4), i);
-		if (!attr) {
-			continue;
-		}
-		value.vb_uint8 = i;
-
-		if (fr_dict_enum_add_name(fr_dict_attr_unconst(attr_dhcp_parameter_request_list),
-					  attr->name, &value, true, false) < 0) {
-			goto fail;
-		}
-	}
-
+	instantiated = true;
 	return 0;
 }
 
 void fr_dhcpv4_global_free(void)
 {
+	if (!instantiated) return;
+
 	fr_assert(instance_count > 0);
 
 	if (--instance_count > 0) return;
 
 	fr_dict_autofree(dhcpv4_dict);
+	instantiated = false;
 }
 
 
@@ -708,21 +697,48 @@ void fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 static bool attr_valid(fr_dict_attr_t *da)
 {
 	/*
+	 *	DNS labels are strings, but are known width.
+	 */
+	if (fr_dhcpv4_flag_dns_label(da)) {
+		if (da->type != FR_TYPE_STRING) {
+			fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
+			return false;
+		}
+
+		da->flags.is_known_width = true;
+		da->flags.length = 0;
+	}
+
+	if (da->type == FR_TYPE_ATTR)  {
+		da->flags.is_known_width = true;
+		da->flags.length = 1;
+	}
+
+	if (da_is_length_field16(da)) {
+		fr_strerror_const("The 'length=uint16' flag cannot be used for DHCPv4");
+		return false;
+	}
+
+	/*
 	 *	"arrays" of string/octets are encoded as a 8-bit
 	 *	length, followed by the actual data.
 	 */
-	if (da->flags.array && ((da->type == FR_TYPE_STRING) || (da->type == FR_TYPE_OCTETS))) {
-		da->flags.is_known_width = true;
+	if (da->flags.array) {
+		if ((da->type == FR_TYPE_STRING) || (da->type == FR_TYPE_OCTETS)) {
+			if (da->flags.extra && !da_is_length_field8(da)) {
+				fr_strerror_const("Invalid flags");
+				return false;
+			}
 
-		if (da->flags.extra && (da->flags.subtype != FLAG_LENGTH_UINT8)) {
-			fr_strerror_const("string/octets arrays require the 'length=uint8' flag");
+			da->flags.is_known_width = true;
+			da->flags.extra = true;
+			da->flags.subtype = FLAG_LENGTH_UINT8;
+		}
+
+		if (!da->flags.is_known_width) {
+			fr_strerror_const("DHCPv4 arrays require data types which have known width");
 			return false;
 		}
-	}
-
-	if (da->flags.extra && (da->flags.subtype == FLAG_LENGTH_UINT16)) {
-		fr_strerror_const("The 'length=uint16' flag cannot be used for DHCPv4");
-		return false;
 	}
 
 	/*
@@ -730,11 +746,6 @@ static bool attr_valid(fr_dict_attr_t *da)
 	 *	dictionaries itself.
 	 */
 	if (da->flags.extra || !da->flags.subtype) return true;
-
-	if ((da->type != FR_TYPE_STRING) && (fr_dhcpv4_flag_dns_label(da))) {
-		fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
-		return false;
-	}
 
 	if ((da->type != FR_TYPE_IPV4_PREFIX) &&
 	    (fr_dhcpv4_flag_prefix(da))) {
@@ -744,6 +755,11 @@ static bool attr_valid(fr_dict_attr_t *da)
 
 	if ((da->type != FR_TYPE_BOOL) && fr_dhcpv4_flag_exists(da)) {
 		fr_strerror_const("The 'exists' flag can only be used with attributes of type 'bool'");
+		return false;
+	}
+
+	if ((da->type == FR_TYPE_ATTR) && !da->parent->flags.is_root) {
+		fr_strerror_const("The 'attribute' data type can only be used at the dictionary root");
 		return false;
 	}
 

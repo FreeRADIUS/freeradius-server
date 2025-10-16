@@ -81,7 +81,7 @@ static unlang_action_t unlang_finally(UNUSED unlang_result_t *p_result, request_
 	 *	Ensure the request has at least min_time to continue
 	 *	executing before we cancel it.
 	 */
-	if (fr_time_delta_lt(state->min_time, fr_timer_remaining(request->timeout))) {
+	if (request->timeout && fr_time_delta_lt(state->min_time, fr_timer_remaining(request->timeout))) {
 		if (unlikely(fr_timer_in(unlang_interpret_frame_talloc_ctx(request),
 			     unlang_interpret_event_list(request)->tl, &request->timeout,
 			     state->min_time, false, unlang_timeout_handler, state) < 0)) {
@@ -92,7 +92,7 @@ static unlang_action_t unlang_finally(UNUSED unlang_result_t *p_result, request_
 
 	/*
 	 *	Finally should be transparent to allow the rcode from
-	 *	process module to propegate back up, if there are no
+	 *	process module to propagate back up, if there are no
 	 *	modules called.
 	 */
 	if (unlikely(unlang_interpret_push_instruction(&state->result, request, state->instruction,
@@ -134,21 +134,7 @@ int unlang_finally_push_instruction(request_t *request, void *instruction, fr_ti
 		.type = UNLANG_TYPE_FINALLY,
 		.name = "finally",
 		.debug_name = "finally",
-		.actions = {
-			.actions = {
-				[RLM_MODULE_REJECT]	= 0,
-				[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-				[RLM_MODULE_OK]		= 0,
-				[RLM_MODULE_HANDLED]	= 0,
-				[RLM_MODULE_INVALID]	= 0,
-				[RLM_MODULE_DISALLOW]	= 0,
-				[RLM_MODULE_NOTFOUND]	= 0,
-				[RLM_MODULE_NOOP]	= 0,
-				[RLM_MODULE_TIMEOUT]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-				[RLM_MODULE_UPDATED]	= 0
-			},
-			.retry = RETRY_INIT,
-		},
+		.actions = MOD_ACTIONS_FAIL_TIMEOUT_RETURN,
 	};
 
 	unlang_frame_state_finally_t	*state;

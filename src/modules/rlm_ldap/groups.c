@@ -728,7 +728,7 @@ unlang_action_t rlm_ldap_cacheable_groupobj(unlang_result_t *p_result, request_t
 		RETURN_UNLANG_FAIL;
 	}
 
-	if (unlang_tmpl_push(group_ctx, &group_ctx->expanded_filter, request, autz_ctx->call_env->group_filter, NULL) < 0) goto error;
+	if (unlang_tmpl_push(group_ctx, NULL, &group_ctx->expanded_filter, request, autz_ctx->call_env->group_filter, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -816,7 +816,7 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(unlang_result_t *p_result, reque
 
 		t_rules = (tmpl_rules_t){
 			.attr = {
-				.dict_def = request->proto_dict,
+				.dict_def = request->local_dict,
 				.list_def = request_attr_request,
 			},
 			.xlat = {
@@ -855,7 +855,7 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(unlang_result_t *p_result, reque
 		RETURN_UNLANG_FAIL;
 	}
 
-	if (unlang_tmpl_push(group_ctx, &group_ctx->expanded_filter, request, group_ctx->filter_tmpl, NULL) < 0) goto error;
+	if (unlang_tmpl_push(group_ctx, NULL, &group_ctx->expanded_filter, request, group_ctx->filter_tmpl, NULL, UNLANG_SUB_FRAME) < 0) goto error;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }

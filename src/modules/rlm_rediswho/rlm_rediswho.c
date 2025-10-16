@@ -243,7 +243,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_rediswho_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_rediswho_t);
 	CONF_SECTION	*conf = mctx->mi->conf;
 
-	inst->cluster = fr_redis_cluster_alloc(inst, conf, &inst->conf, true, NULL, NULL, NULL);
+	inst->cluster = fr_redis_cluster_alloc(inst, conf, &inst->conf, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
 
 	return 0;

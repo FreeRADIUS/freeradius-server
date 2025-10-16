@@ -1329,8 +1329,6 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		slen = cbor_decode_integer(&value, info, &work_dbuff);
 		if (slen < 0) return_slen;
 
-		fr_assert(type != FR_TYPE_NULL);
-
 		/*
 		 *	No tag defined for this data type, that's on us.
 		 */

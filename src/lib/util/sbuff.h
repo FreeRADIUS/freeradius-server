@@ -512,7 +512,7 @@ do { \
 								 fr_sbuff_ptr(_sbuff_or_marker)->eof, \
 								 0x01)
 
-/** Creates a compound literal to pass into functions which accept a sbuff
+/** Creates an empty sbuff which can then be used as a destination for printing
  *
  * @note The return value of the function should be used to determine how much
  *	 data was written to the buffer.
@@ -523,7 +523,10 @@ do { \
 #define FR_SBUFF_OUT(_start, _len_or_end) \
 ((fr_sbuff_t){ \
 	.buff_i		= _start, \
-	.start_i	= _start, \
+	.start_i	= _Generic((_start), \
+				char *		: _start, \
+				uint8_t *	: _start \
+			), \
 	.end_i		= _Generic((_len_or_end), \
 				size_t		: (char const *)(_start) + ((size_t)(_len_or_end) - 1), \
 				long		: (char const *)(_start) + ((size_t)(_len_or_end) - 1), \
@@ -533,10 +536,10 @@ do { \
 				char const *	: (char const *)(_len_or_end) \
 			), \
 	.p_i		= _start, \
-	.is_const	= IS_CONST(char *, _start) \
+	.is_const	= false, \
 })
 
-/** Creates a compound literal to pass into functions which accept a sbuff
+/** Creates an sbuff from existing data, so the caller can read from it.
  *
  * @note The return value of the function should be used to determine how much
  *	 data was written to the buffer.
@@ -547,7 +550,12 @@ do { \
 #define FR_SBUFF_IN(_start, _len_or_end) \
 ((fr_sbuff_t){ \
 	.buff_i		= _start, \
-	.start_i	= _start, \
+	.start_i	= _Generic((_start), \
+				char *		: _start, \
+				char const *	: _start, \
+				uint8_t *	: _start, \
+				uint8_t const *	: _start \
+			), \
 	.end_i		= _Generic((_len_or_end), \
 				size_t		: (char const *)(_start) + (size_t)(_len_or_end), \
 				long		: (char const *)(_start) + (size_t)(_len_or_end), \
@@ -557,8 +565,10 @@ do { \
 				char const *	: (char const *)(_len_or_end) \
 			), \
 	.p_i		= _start, \
-	.is_const	= IS_CONST(char *, _start) \
+	.is_const	= true, \
 })
+
+#define FR_SBUFF_IN_STR(_start) FR_SBUFF_IN(_start, strlen(_start))
 
 /** Structure to encapsulate a thread local sbuff information
  *
@@ -612,9 +622,9 @@ static inline void fr_sbuff_terminate(fr_sbuff_t *sbuff)
 	*sbuff->p = '\0';
 }
 
-static inline void _fr_sbuff_init(fr_sbuff_t *out, char const *start, char const *end, bool is_const, bool nul_term)
+static inline void _fr_sbuff_init(fr_sbuff_t *out, char const *start, char const *end, bool is_const)
 {
-	if (unlikely(end < start)) end = start;	/* Could be an assert? */
+	if (unlikely(end < start)) end = start; /* Could be an assert? */
 
 	*out = (fr_sbuff_t){
 		.buff_i = start,
@@ -623,8 +633,6 @@ static inline void _fr_sbuff_init(fr_sbuff_t *out, char const *start, char const
 		.end_i = end,
 		.is_const = is_const
 	};
-
-	if (nul_term) *out->start = '\0';
 }
 
 /*
@@ -640,20 +648,23 @@ DIAG_OFF(maybe-uninitialized)
  * Will \0 terminate the output buffer.
  *
  * @param[out] _out		Pointer to buffer.
- * @param[in] _start		Start of the buffer.
+ * @param[in] _start		Start of the buffer.  Cannot be const.
  * @param[in] _len_or_end	Either an end pointer or the length
- *				of the buffer.
+ *				of the buffer.  'end' can be const.
  */
 #define fr_sbuff_init_out(_out, _start, _len_or_end) \
-_fr_sbuff_init(_out, _start, \
-_Generic((_len_or_end), \
+do { \
+  *(_start) = '\0'; \
+  _fr_sbuff_init(_out, _start, \
+  _Generic((_len_or_end), \
 	size_t		: (char const *)(_start) + ((size_t)(_len_or_end) - 1), \
 	long		: (char const *)(_start) + ((size_t)(_len_or_end) - 1), \
 	int		: (char const *)(_start) + ((size_t)(_len_or_end) - 1), \
 	char *		: (char const *)(_len_or_end), \
 	char const *	: (char const *)(_len_or_end) \
-), \
-IS_CONST(char *, _start), true)
+ ), \
+ false); \
+} while (0)
 
 #if defined(__GNUC__) && __GNUC__ >= 11
 DIAG_ON(maybe-uninitialized)
@@ -675,7 +686,7 @@ _Generic((_len_or_end), \
 	char *		: (char const *)(_len_or_end), \
 	char const *	: (char const *)(_len_or_end) \
 ), \
-IS_CONST(char *, _start), false)
+IS_CONST(char *, _start))
 
 /** Initialise a special sbuff which automatically reads in more data as the buffer is exhausted
  *
@@ -1828,11 +1839,11 @@ SBUFF_IS_FUNC(hex, isxdigit((uint8_t) *p))
 
 /** @} */
 
-void	fr_sbuff_unescape_debug(fr_sbuff_unescape_rules_t const *escapes);
+void	fr_sbuff_unescape_debug(FILE *fp, fr_sbuff_unescape_rules_t const *escapes);
 
-void	fr_sbuff_terminal_debug(fr_sbuff_term_t const *tt);
+void	fr_sbuff_terminal_debug(FILE *fp, fr_sbuff_term_t const *tt);
 
-void 	fr_sbuff_parse_rules_debug(fr_sbuff_parse_rules_t const *p_rules);
+void 	fr_sbuff_parse_rules_debug(FILE *fp, fr_sbuff_parse_rules_t const *p_rules);
 
 /*
  *	...printf("foo %.*s", fr_sbuff_as_percent_s(&sbuff));

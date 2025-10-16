@@ -1,7 +1,5 @@
 = SQL Module
 
-== Introduction
-
 The SQL module is composed of two parts: a generic SQL front-end
 (rlm_sql), and a series of database-dependent back-end drivers,
 (rlm_sql_mysql, rlm_sql_postgresql, etc.)
@@ -73,7 +71,7 @@ The above is exactly the same as in the `users` file.
 
 === Example with groups
 
-For any fairly complex setup, it is likely that most of the actual
+For any complex setup, it is likely that most of the actual
 processing will be done using groups. In these cases, the user entries
 in radcheck and radreply will be of limited use except for things like
 setting user-specific attributes such as the user’s password. So, one
@@ -132,15 +130,12 @@ Framed-IP-Address     :=      1.2.3.4
 ^ ATTRIBUTE ^       ^ OP ^   ^ VALUE ^
 ----
 
-If you want the server to be completely misconfigured, and to never do
-what you want, leave the `op' field blank. If you want to be rudely told
-to RTFM, then post questions on the mailing list, asking
-
 _Why doesn’t my SQL configuration work when I leave the `op` field
-empty?_
+empty?
 
-The short answer is that with the op field empty, the server does not
-know what you want it to do with the attribute.
+If leave the `op' field blank, the server is misconfigured, and unpreditable behaviour occurs. Read this documentation thoroughly before you post questions on the mailing list.
+
+If the op field is empty, the server does not know what you want it to do with the attribute.
 
   * Is it a check item that should be compared against the request?
   * Should it be added to the control or reply list?
@@ -148,7 +143,6 @@ know what you want it to do with the attribute.
 Without the operator, the server simply doesn’t know, so always put a
 value in the field. The value is the string form of the operator: "=",
 ">=", etc. See below for more details.
-
 
 == Authentication versus Authorization
 

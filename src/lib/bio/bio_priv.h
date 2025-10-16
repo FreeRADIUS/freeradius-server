@@ -29,13 +29,11 @@ RCSIDH(lib_bio_bio_priv_h, "$Id$")
 #define _BIO_PRIVATE 1
 #include <freeradius-devel/bio/base.h>
 
-typedef int (*fr_bio_shutdown_t)(fr_bio_t *bio);
-
 typedef struct fr_bio_common_s fr_bio_common_t;
 
 typedef struct {
 	fr_bio_io_t		connected;
-	fr_bio_callback_t	shutdown;
+	fr_bio_io_t		shutdown;
 	fr_bio_io_t		eof;
 	fr_bio_callback_t	failed;
 
@@ -57,6 +55,23 @@ typedef struct {
 struct fr_bio_common_s {
 	FR_BIO_COMMON;
 };
+
+/** Define a common destructor pattern.
+ *
+ *  Ensure that talloc_free() is safe no matter what.  The caller can free any BIO at any time.  If that
+ *  happens, then the entire chain is shut down.  On successful shutdown, this BIO is removed from the chain.
+ */
+#define FR_BIO_DESTRUCTOR_COMMON \
+do { \
+	if (my->priv_cb.shutdown) {		   \
+		int rcode;			   \
+		rcode = fr_bio_shutdown(&my->bio); \
+		if (rcode < 0) return rcode;	   \
+	}					   \
+	if (fr_bio_prev(&my->bio) || fr_bio_next(&my->bio)) \
+		fr_bio_unchain(&my->bio);	   \
+} while (0)
+
 
 ssize_t fr_bio_next_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size);
 
@@ -85,10 +100,15 @@ static inline void CC_HINT(nonnull) fr_bio_chain(fr_bio_t *first, fr_bio_t *seco
  */
 static inline void CC_HINT(nonnull) fr_bio_unchain(fr_bio_t *bio)
 {
-	fr_assert(fr_bio_prev(bio) != NULL);
-	fr_assert(fr_bio_next(bio) != NULL);
+	fr_bio_t *prev = fr_bio_prev(bio);
+	fr_bio_t *next = fr_bio_next(bio);
 
-	fr_dlist_entry_unlink(&bio->entry);
+	fr_assert(prev || next);
+
+	if (prev) prev->entry.next = bio->entry.next;
+
+	if (next) next->entry.prev = bio->entry.prev;
+
 	bio->entry.prev = bio->entry.next = NULL;
 }
 

@@ -30,7 +30,9 @@
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/time_tracking.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/unlang/map.h>
 #include <freeradius-devel/io/listen.h>
 
 #ifdef __cplusplus
@@ -54,7 +56,6 @@ typedef enum {
 	UNLANG_TYPE_IF,				//!< Condition.
 	UNLANG_TYPE_ELSE,			//!< !Condition.
 	UNLANG_TYPE_ELSIF,			//!< !Condition && Condition.
-	UNLANG_TYPE_UPDATE,			//!< Update block.
 	UNLANG_TYPE_SWITCH,			//!< Switch section.
 	UNLANG_TYPE_CASE,			//!< Case section (within a #UNLANG_TYPE_SWITCH).
 	UNLANG_TYPE_FOREACH,			//!< Foreach section.
@@ -116,6 +117,9 @@ DIAG_ON(attributes)
 typedef struct unlang_s unlang_t;
 typedef struct unlang_stack_frame_s unlang_stack_frame_t;
 
+FR_DLIST_TYPES(unlang_list)
+FR_DLIST_TYPEDEFS(unlang_list, unlang_list_t, unlang_entry_t)
+
 /** A node in a graph of #unlang_op_t (s) that we execute
  *
  * The interpreter acts like a turing machine, with #unlang_t nodes forming the tape
@@ -129,7 +133,8 @@ typedef struct unlang_stack_frame_s unlang_stack_frame_t;
  */
 struct unlang_s {
 	unlang_t		*parent;	//!< Previous node.
-	unlang_t		*next;		//!< Next node (executed on #UNLANG_ACTION_EXECUTE_NEXT et al).
+	unlang_list_t		*list;		//!< so we have fewer run-time dereferences
+	unlang_entry_t		entry;		//!< next / prev entries
 	char const		*name;		//!< Unknown...
 	char const 		*debug_name;	//!< Printed in log messages when the node is executed.
 	unlang_type_t		type;		//!< The specialisation of this node.
@@ -138,6 +143,9 @@ struct unlang_s {
 	unsigned int		number;		//!< unique node number
 	unlang_mod_actions_t	actions;	//!< Priorities, etc. for the various return codes.
 };
+
+FR_DLIST_FUNCS(unlang_list, unlang_t, entry)
+#define unlang_list_foreach(_list_head, _iter) fr_dlist_foreach(unlang_list_dlist_head(_list_head), unlang_t, _iter)
 
 typedef struct {
 	fr_dict_t		*dict;		//!< our dictionary
@@ -151,11 +159,9 @@ typedef struct {
  */
 typedef struct {
 	unlang_t		self;
-	unlang_t		*children;	//!< Children beneath this group.  The body of an if
-						//!< section for example.
-	unlang_t		**tail;		//!< pointer to the tail which gets updated
+
 	CONF_SECTION		*cs;
-	int			num_children;
+	unlang_list_t		children;
 
 	unlang_variable_t	*variables;	//!< rarely used, so we don't usually need it
 } unlang_group_t;
@@ -245,17 +251,22 @@ bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules);
 static inline CC_HINT(always_inline)
 void unlang_compile_ctx_copy(unlang_compile_ctx_t *dst, unlang_compile_ctx_t const *src)
 {
+#ifndef NDEBUG
 	int i;
+#endif
 
 	*dst = *src;
 
+#ifndef NDEBUG
 	/*
-	 *	Ensure that none of the actions are RETRY.
+	 *	Ensure that none of the actions are RETRY.  The actions { ... } section is applied to the
+	 *	instruction, and not to the unlang_compile_ctx_t
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-		if (dst->actions.actions[i] == MOD_ACTION_RETRY) dst->actions.actions[i] = MOD_PRIORITY_MIN;
+		fr_assert(dst->actions.actions[i] != MOD_ACTION_RETRY);
+		fr_assert(MOD_ACTION_VALID(dst->actions.actions[i]));
 	}
-	memset(&dst->actions.retry, 0, sizeof(dst->actions.retry)); \
+#endif
 }
 
 
@@ -415,12 +426,12 @@ struct unlang_stack_frame_s {
 	unlang_result_t		scratch_result;			//!< The result of executing the current instruction.
 								///< This will be set to RLM_MODULE_NOT_SET, and
 								///< MOD_ACTION_NOT_SET when a new instruction is set
-								///< for the frame.  If result_p does not point to this
+								///< for the frame.  If p_result does not point to this
 								///< field, the rcode and priority returned will be
 								///< left as NOT_SET and will be ignored.
 								///< This values here will persist between yields.
 
-	unlang_result_t		*result_p;			//!< Where to write the result of executing the current
+	unlang_result_t		*p_result;			//!< Where to write the result of executing the current
 								///< instruction.  Will either point to `scratch_result`,
 								///< OR if the parent does not want its rcode to be updated
 								///< by a child it pushed for evaluation, it will point to
@@ -465,8 +476,6 @@ extern fr_hash_table_t *unlang_op_table;
 
 extern fr_table_num_sorted_t const mod_rcode_table[];
 extern size_t mod_rcode_table_len;
-extern fr_table_num_sorted_t const mod_action_table[];
-extern size_t mod_action_table_len;
 
 static inline void repeatable_set(unlang_stack_frame_t *frame)			{ frame->flag |= UNLANG_FRAME_FLAG_REPEAT; }
 static inline void top_frame_set(unlang_stack_frame_t *frame) 			{ frame->flag |= UNLANG_FRAME_FLAG_TOP_FRAME; }
@@ -482,7 +491,7 @@ static inline bool is_repeatable(unlang_stack_frame_t const *frame)		{ return fr
 static inline bool is_top_frame(unlang_stack_frame_t const *frame)		{ return frame->flag & UNLANG_FRAME_FLAG_TOP_FRAME; }
 static inline bool is_yielded(unlang_stack_frame_t const *frame) 		{ return frame->flag & UNLANG_FRAME_FLAG_YIELDED; }
 static inline bool is_unwinding(unlang_stack_frame_t const *frame) 		{ return frame->flag & UNLANG_FRAME_FLAG_UNWIND; }
-static inline bool is_private_result(unlang_stack_frame_t const *frame)		{ return !(frame->result_p == &frame->section_result); }
+static inline bool is_private_result(unlang_stack_frame_t const *frame)		{ return !(frame->p_result == &frame->section_result); }
 
 static inline bool _instruction_has_debug_braces(unlang_t const *instruction)	{ return unlang_ops[instruction->type].flag & UNLANG_OP_FLAG_DEBUG_BRACES; }
 static inline bool _frame_has_debug_braces(unlang_stack_frame_t const *frame)	{ return unlang_ops[frame->instruction->type].flag & UNLANG_OP_FLAG_DEBUG_BRACES; }
@@ -611,23 +620,9 @@ static inline int stack_depth_current(request_t *request)
 	return stack->depth;
 }
 
-/** Initialise the result fields in a frame
- *
- * @param[in] result_p	Where to write the result of executing the instruction in the frame.
- *			If NULL, the result will be written to frame->result, and evaluated
-			automatically by the interpeter when the frame is advanced or popped.
- * @param[in] frame	Frame to set the result for.
- */
-static inline void frame_result_set(unlang_result_t *result_p, unlang_stack_frame_t *frame)
-{
-	frame->result_p = result_p ? result_p : &frame->scratch_result;
-	frame->scratch_result.rcode = RLM_MODULE_NOT_SET;
-	frame->scratch_result.priority = MOD_ACTION_NOT_SET;
-}
-
 /** Initialise memory and instruction for a frame when a new instruction is to be evaluated
  *
- * @note We don't change result_p here, we only reset the scratch values.  This is because
+ * @note We don't change frame->p_result here, we only reset the scratch values.  This is because
  *	 Whatever pushed the frame onto the stack generally wants the aggregate result of
  *	 the complete section, not just the first instruction.
  *
@@ -648,8 +643,7 @@ static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t 
 	/*
 	 *	Reset for each instruction
 	 */
-	frame->scratch_result.rcode = RLM_MODULE_NOT_SET;
-	frame->scratch_result.priority = MOD_ACTION_NOT_SET;
+	frame->scratch_result = UNLANG_RESULT_NOT_SET;
 
 	frame->process = op->interpret;
 	frame->signal = op->signal;
@@ -713,10 +707,10 @@ static inline void frame_next(unlang_stack_t *stack, unlang_stack_frame_t *frame
 
 	if (!frame->instruction) return;	/* No siblings, need to pop instead */
 
-	frame->next = frame->instruction->next;
+	frame->next = unlang_list_next(frame->instruction->list, frame->instruction);
 
 	/*
-	 *	We _may_ want to take a new result_p value in future but
+	 *	We _may_ want to take a new frame->p_result value in future but
 	 *	for now default to the scratch result.  Generally the thing
 	 *	advancing the frame is within this library, and doesn't
 	 *	need custom behaviour for rcodes.
@@ -779,7 +773,7 @@ static inline void frame_repeat(unlang_stack_frame_t *frame, unlang_process_t pr
 	frame->process = process;
 }
 
-static inline unlang_action_t frame_set_next(unlang_stack_frame_t *frame, unlang_t *unlang)
+static inline unlang_action_t frame_set_next(unlang_stack_frame_t *frame, unlang_t const *unlang)
 {
 	/*
 	 *	We're skipping the remaining siblings, stop the
@@ -828,6 +822,25 @@ static inline unlang_group_t *unlang_generic_to_group(unlang_t const *p)
 static inline unlang_t *unlang_group_to_generic(unlang_group_t const *p)
 {
 	return UNCONST(unlang_t *, p);
+}
+
+static inline CC_HINT(always_inline) unlang_list_t *unlang_list(unlang_t *unlang)
+{
+	return &unlang_generic_to_group(unlang)->children;
+}
+
+static inline CC_HINT(always_inline) void unlang_type_init(unlang_t *unlang, unlang_t *parent, unlang_type_t type)
+{
+	unlang->type = type;
+	unlang->parent = parent;
+	if (parent) unlang->list = unlang_list(parent);
+	unlang_list_entry_init(unlang);
+}
+
+static inline CC_HINT(always_inline) void unlang_group_type_init(unlang_t *unlang, unlang_t *parent, unlang_type_t type)
+{
+	unlang_type_init(unlang, parent, type);
+	unlang_list_init(&((unlang_group_t *) unlang)->children);
 }
 
 static inline unlang_tmpl_t *unlang_generic_to_tmpl(unlang_t const *p)

@@ -431,6 +431,8 @@ fr_pair_t *fr_pair_afrom_da_depth_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, 
 		 *	Otherwise if we're creating a child struct (which is magically parented by the key
 		 *	field), then don't bother creating the key field.  It will be automatically filled in
 		 *	by the encoder.
+		 *
+		 *	@todo - remove after migration_union_key is deleted
 		 */
 		if ((find != da) && fr_dict_attr_is_key_field(find)) {
 			continue;
@@ -506,12 +508,13 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 	 */
 	if (fr_type_is_structural(n->vp_type)) {
 		if (fr_pair_list_copy(n, &n->vp_group, &vp->vp_group) < 0) {
+		error:
 			talloc_free(n);
 			return NULL;
 		}
 
 	} else {
-		fr_value_box_copy(n, &n->data, &vp->data);
+		if (unlikely(fr_value_box_copy(n, &n->data, &vp->data) < 0)) goto error;
 	}
 
 	return n;
@@ -1341,8 +1344,6 @@ int fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *to_add)
  */
 int fr_pair_append(fr_pair_list_t *list, fr_pair_t *to_add)
 {
-	PAIR_VERIFY(to_add);
-
 #ifdef WITH_VERIFY_PTR
 	fr_assert(!fr_pair_order_list_in_a_list(to_add));
 	list->verified = false;
@@ -2379,7 +2380,10 @@ int fr_pair_list_copy_to_box(fr_value_box_t *dst, fr_pair_list_t *from)
 				fr_value_box_list_talloc_free_to_tail(&dst->vb_group, first_added);
 				return -1;
 			}
-			fr_value_box_copy(value, value, &vp->data);
+			if (unlikely(fr_value_box_copy(value, value, &vp->data) < 0)) {
+				talloc_free(value);
+				goto fail;
+			}
 		}
 
 		if (!first_added) first_added = value;
@@ -2565,8 +2569,8 @@ int fr_pair_value_copy(fr_pair_t *dst, fr_pair_t *src)
 {
 	if (!fr_cond_assert(src->data.type != FR_TYPE_NULL)) return -1;
 
-	if (dst->data.type != FR_TYPE_NULL) fr_value_box_clear_value(&dst->data);
-	fr_value_box_copy(dst, &dst->data, &src->data);
+	fr_value_box_clear_value(&dst->data);
+	if (unlikely(fr_value_box_copy(dst, &dst->data, &src->data) < 0)) return -1;
 
 	/*
 	 *	If either source or destination is secret, then this value is secret.
@@ -3110,6 +3114,15 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 					     file, line, vp->da->name, vp->da->parent->name, parent->da->name);
 		}
 
+#if 0
+		/*
+		 *	We would like to enable this, but there's a
+		 *	lot of code like fr_pair_append_by_da() which
+		 *	creates the #fr_pair_t with no value.
+		 */
+		fr_value_box_verify(file, line, &vp->data);
+#endif
+
 	} else {
 		fr_pair_t *parent = fr_pair_parent(vp);
 
@@ -3211,6 +3224,13 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 					     "set correctly for IPv6 address.  Expected %i got %i",
 					     file, line, vp->da->name,
 					     128, vp->vp_ip.prefix);
+		}
+		break;
+
+       case FR_TYPE_ATTR:
+		if (!vp->vp_attr) {
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" attribute pointer is NULL",
+					     file, line, vp->da->name);
 		}
 		break;
 
@@ -3412,6 +3432,8 @@ static fr_pair_t *pair_alloc_parent(fr_pair_t *in, fr_pair_t *item, fr_dict_attr
 	 *
 	 *	If we're asked to create children of a keyed
 	 *	structure, just create the children in the parent.
+	 *
+	 *	@todo - remove after migration_union_key is deleted
 	 */
 	if (!fr_type_is_structural(da->type)) {
 		fr_assert(fr_dict_attr_is_key_field(da));

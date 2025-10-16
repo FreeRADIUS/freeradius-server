@@ -26,171 +26,106 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/rcode.h>
 #include "unlang_priv.h"
-#include "catch_priv.h"
+#include "try_priv.h"
 
-static unlang_action_t catch_skip_to_next(UNUSED unlang_result_t *p_result, UNUSED request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_catch(UNUSED unlang_result_t *p_result, request_t *request, UNUSED unlang_stack_frame_t *frame)
 {
-	unlang_t		*unlang;
-
-	fr_assert(frame->instruction->type == UNLANG_TYPE_CATCH);
-
-	for (unlang = frame->instruction->next;
-	     unlang != NULL;
-	     unlang = unlang->next) {
-		if (unlang->type == UNLANG_TYPE_CATCH) continue;
-
-		break;
-	}
-
-	return frame_set_next(frame, unlang);
-}
-
-static unlang_action_t unlang_catch(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
-{
-#ifndef NDEBUG
-	unlang_catch_t const *c = unlang_generic_to_catch(frame->instruction);
-
-	fr_assert(!c->catching[p_result->rcode]);
-#endif
-
-	/*
-	 *	Skip over any "catch" statementa after this one.
-	 */
-	frame_repeat(frame, catch_skip_to_next);
-
 	return unlang_interpret_push_children(NULL, request, RLM_MODULE_NOT_SET, UNLANG_NEXT_SIBLING);
 }
 
 
-/** Skip ahead to a particular "catch" instruction.
- *
+/*
+ *	Sanity checks have already been done by compile_try().
  */
-unlang_action_t unlang_interpret_skip_to_catch(UNUSED unlang_result_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static void catch_argv(unlang_try_t *gext, char const *name, unlang_t *c)
 {
-	unlang_t		*unlang;
-	rlm_rcode_t		rcode = unlang_interpret_rcode(request);
+	rlm_rcode_t rcode;
 
-	fr_assert(frame->instruction->type == UNLANG_TYPE_TRY);
+	rcode = fr_table_value_by_str(mod_rcode_table, name, RLM_MODULE_NOT_SET);
+	fr_assert(rcode != RLM_MODULE_NOT_SET);
+	fr_assert(!gext->catch[rcode]);
 
-	/*
-	 *	'try' at the end of a block without 'catch' should have been caught by the compiler.
-	 */
-	fr_assert(frame->instruction->next);
-
-	for (unlang = frame->instruction->next;
-	     unlang != NULL;
-	     unlang = unlang->next) {
-		unlang_catch_t const *c;
-
-		if (unlang->type != UNLANG_TYPE_CATCH) {
-		not_caught:
-			RDEBUG3("No catch section for %s",
-				fr_table_str_by_value(mod_rcode_table, rcode, "<invalid>"));
-			return frame_set_next(frame, unlang);
-		}
-
-		if (rcode >= RLM_MODULE_NUMCODES) continue;
-
-		c = unlang_generic_to_catch(unlang);
-		if (c->catching[rcode]) break;
-	}
-	if (!unlang) goto not_caught;
-
-	return frame_set_next(frame, unlang);
-}
-
-static int catch_argv(CONF_SECTION *cs, unlang_catch_t *ca, char const *name)
-{
-	int rcode;
-
-	rcode = fr_table_value_by_str(mod_rcode_table, name, -1);
-	if (rcode < 0) {
-		cf_log_err(cs, "Unknown rcode '%s'.", name);
-		return -1;
-	}
-
-	if (ca->catching[rcode]) {
-		cf_log_err(cs, "Duplicate rcode '%s'.", name);
-		return -1;
-	}
-
-	ca->catching[rcode] = true;
-
-	return 0;
+	gext->catch[rcode] = c;
 }
 
 static unlang_t *unlang_compile_catch(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx, CONF_ITEM const *ci)
 {
-	CONF_SECTION *cs = cf_item_to_section(ci);
-	unlang_group_t *g;
-	unlang_t *c;
-	unlang_catch_t *ca;
-	CONF_ITEM *prev;
-	char const *name;
+	CONF_SECTION	*cs = cf_item_to_section(ci);
+	unlang_group_t	*g;
+	unlang_t	*c;
+	unlang_try_t	*gext;
+	char const	*name2;
 
-	prev = cf_item_prev(cf_parent(ci), ci);
-	while (prev && cf_item_is_data(prev)) prev = cf_item_prev(cf_parent(ci), prev);
+	g = unlang_generic_to_group(parent);
+	fr_assert(g != NULL);
 
-	if (!prev || !cf_item_is_section(prev)) {
-	fail:
+	/*
+	 *	"catch" is NOT inserted into the normal child list.
+	 *	It's an exception, and is run only if the "try" says
+	 *	to run it.
+	 */
+	c = unlang_list_tail(&g->children);
+	if (!c || c->type != UNLANG_TYPE_TRY) {
 		cf_log_err(cs, "Found 'catch' section with no previous 'try'");
 		cf_log_err(ci, DOC_KEYWORD_REF(catch));
 		return NULL;
 	}
 
-	name = cf_section_name1(cf_item_to_section(prev));
-	fr_assert(name != NULL);
-
-	if ((strcmp(name, "try") != 0) && (strcmp(name, "catch") != 0)) {
-		/*
-		 *	The previous thing has to be a section.  And it has to
-		 *	be either a "try" or a "catch".
-		 */
-		goto fail;
-	}
+	gext = talloc_get_type_abort(c, unlang_try_t);
+	fr_assert(gext != NULL);
 
 	g = unlang_group_allocate(parent, cs, UNLANG_TYPE_CATCH);
 	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
 
-	/*
-	 *	Want to log what we caught
-	 */
-	c->debug_name = c->name = talloc_typed_asprintf(c, "%s %s", cf_section_name1(cs), cf_section_name2(cs));
+	name2 = cf_section_name2(cs);
 
-	ca = unlang_group_to_catch(g);
+	/*
+	 *	catch { ... } has to be the last one, and will catch _all_ rcodes that weren't mentioned
+	 *	before.
+	 */
 	if (!cf_section_name2(cs)) {
-		/*
-		 *	No arg2: catch errors
-		 */
-		ca->catching[RLM_MODULE_REJECT] = true;
-		ca->catching[RLM_MODULE_FAIL] = true;
-		ca->catching[RLM_MODULE_INVALID] = true;
-		ca->catching[RLM_MODULE_DISALLOW] = true;
+		int i;
+
+		c->debug_name = c->name = "catch";
+
+		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+			if (gext->catch[i]) continue;
+
+			gext->catch[i] = c;
+		}
 
 	} else {
 		int i;
 
-		name = cf_section_name2(cs);
+		c->debug_name = c->name = talloc_typed_asprintf(c, "%s %s", cf_section_name1(cs), name2);
 
-		if (catch_argv(cs, ca, name) < 0) {
-			talloc_free(c);
-			return NULL;
-		}
+		catch_argv(gext, name2, c);
 
-		for (i = 0; (name = cf_section_argv(cs, i)) != NULL; i++) {
-			if (catch_argv(cs, ca, name) < 0) {
-				talloc_free(c);
-				return NULL;
-			}
+		for (i = 0; (name2 = cf_section_argv(cs, i)) != NULL; i++) {
+			catch_argv(gext, name2, c);
 		}
 	}
 
 	/*
-	 *	@todo - Else parse and limit the things we catch
+	 *	Compile our children.
 	 */
-	return unlang_compile_children(g, unlang_ctx);
+	if (!unlang_compile_children(g, unlang_ctx)) {
+		return NULL;
+	}
+
+	/*
+	 *	The "catch" section isn't in the parent list.  It's just associated with "try".
+	 */
+	(void) talloc_steal(gext, c);
+	c->parent = &gext->group.self;
+	c->list = NULL;
+
+	/*
+	 *	Don't insert it unto the normal list of children.
+	 */
+	return UNLANG_IGNORE;
 }
 
 void unlang_catch_init(void)
@@ -203,7 +138,7 @@ void unlang_catch_init(void)
 			.compile = unlang_compile_catch,
 			.interpret = unlang_catch,
 
-			.unlang_size = sizeof(unlang_catch_t),
-			.unlang_name = "unlang_catch_t",
+			.unlang_size = sizeof(unlang_group_t),
+			.unlang_name = "unlang_group_t",
 		});
 }

@@ -87,7 +87,7 @@ static NEVER_RETURNS void usage(int ret)
  */
 int main(int argc, char *argv[])
 {
-	char			c;
+	int			c;
 	fr_radlock_action_t	action;
 	char const		*file;
 	uid_t			uid = geteuid();

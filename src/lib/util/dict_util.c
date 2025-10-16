@@ -41,25 +41,36 @@ RCSID("$Id$")
 
 fr_dict_gctx_t *dict_gctx = NULL;	//!< Top level structure containing global dictionary state.
 
-/** Characters allowed in dictionary names
+#define DICT_ATTR_ALLOWED_CHARS \
+	['-'] = true, ['/'] = true, ['_'] = true, \
+	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true, \
+	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true, \
+	['A'] = true, ['B'] = true, ['C'] = true, ['D'] = true, ['E'] = true, \
+	['F'] = true, ['G'] = true, ['H'] = true, ['I'] = true, ['J'] = true, \
+	['K'] = true, ['L'] = true, ['M'] = true, ['N'] = true, ['O'] = true, \
+	['P'] = true, ['Q'] = true, ['R'] = true, ['S'] = true, ['T'] = true, \
+	['U'] = true, ['V'] = true, ['W'] = true, ['X'] = true, ['Y'] = true, \
+	['Z'] = true, \
+	['a'] = true, ['b'] = true, ['c'] = true, ['d'] = true, ['e'] = true, \
+	['f'] = true, ['g'] = true, ['h'] = true, ['i'] = true, ['j'] = true, \
+	['k'] = true, ['l'] = true, ['m'] = true, ['n'] = true, ['o'] = true, \
+	['p'] = true, ['q'] = true, ['r'] = true, ['s'] = true, ['t'] = true, \
+	['u'] = true, ['v'] = true, ['w'] = true, ['x'] = true, ['y'] = true, \
+	['z'] = true
+
+/** Characters allowed in a single dictionary attribute name
  *
  */
 bool const fr_dict_attr_allowed_chars[UINT8_MAX + 1] = {
-	['-'] = true, ['/'] = true, ['_'] = true,
-	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
-	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
-	['A'] = true, ['B'] = true, ['C'] = true, ['D'] = true, ['E'] = true,
-	['F'] = true, ['G'] = true, ['H'] = true, ['I'] = true, ['J'] = true,
-	['K'] = true, ['L'] = true, ['M'] = true, ['N'] = true, ['O'] = true,
-	['P'] = true, ['Q'] = true, ['R'] = true, ['S'] = true, ['T'] = true,
-	['U'] = true, ['V'] = true, ['W'] = true, ['X'] = true, ['Y'] = true,
-	['Z'] = true,
-	['a'] = true, ['b'] = true, ['c'] = true, ['d'] = true, ['e'] = true,
-	['f'] = true, ['g'] = true, ['h'] = true, ['i'] = true, ['j'] = true,
-	['k'] = true, ['l'] = true, ['m'] = true, ['n'] = true, ['o'] = true,
-	['p'] = true, ['q'] = true, ['r'] = true, ['s'] = true, ['t'] = true,
-	['u'] = true, ['v'] = true, ['w'] = true, ['x'] = true, ['y'] = true,
-	['z'] = true
+	DICT_ATTR_ALLOWED_CHARS
+};
+
+/** Characters allowed in a nested dictionary attribute name
+ *
+ */
+bool const fr_dict_attr_nested_allowed_chars[UINT8_MAX + 1] = {
+	DICT_ATTR_ALLOWED_CHARS,
+	[ '.' ] = true
 };
 
 /** Characters allowed in enumeration value names
@@ -204,6 +215,68 @@ static int8_t dict_attr_name_cmp(void const *one, void const *two)
 
 	ret = strcasecmp(a->name, b->name);
 	return CMP(ret, 0);
+}
+
+/** Compare two attributes by total order.
+ *
+ *  This function is safe / ordered even when the attributes are in
+ *  different dictionaries.  This allows it to work for local
+ *  variables, as those are in a different dictionary from the
+ *  protocol ones.
+ *
+ *  This function orders parents first, then their children.
+ */
+int8_t fr_dict_attr_ordered_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
+{
+	int8_t ret;
+
+	/*
+	 *	Order by parent first.  If the parents are different,
+	 *	we order by parent numbers.
+	 *
+	 *	If the attributes share the same parent at some point,
+	 *	then the deeper child is sorted later.
+	 */
+	if (a->depth < b->depth) {
+		ret = fr_dict_attr_ordered_cmp(a, b->parent);
+		if (ret != 0) return ret;
+
+		return -1;	/* order a before b */
+	}
+
+	if (a->depth > b->depth) {
+		ret = fr_dict_attr_ordered_cmp(a->parent, b);
+		if (ret != 0) return ret;
+
+		return +1;	/* order b before a */
+	}
+
+	/*
+	 *	We're at the root (e.g. "RADIUS").  Compare by
+	 *	protocol number.
+	 *
+	 *	Or, the parents are the same.  We can then order by
+	 *	our (i.e. child) attribute number.
+	 */
+	if ((a->depth == 0) || (a->parent == b->parent)) {
+		/*
+		 *	Order known attributes before unknown / raw ones.
+		 */
+		ret = (b->flags.is_unknown | b->flags.is_raw) - (a->flags.is_unknown | a->flags.is_raw);
+		if (ret != 0) return 0;
+
+		return CMP(a->attr, b->attr);
+	}
+
+	/*
+	 *	The parents are different, we don't need to order by
+	 *	our attribute number.  Instead, we order by the
+	 *	parent.
+	 *
+	 *	Note that at this point, the call below will never
+	 *	return 0, because the parents are different.
+	 */
+	return fr_dict_attr_ordered_cmp(a->parent, b->parent);
 }
 
 /** Wrap name hash function for fr_dict_vendor_t
@@ -571,7 +644,7 @@ int dict_attr_type_init(fr_dict_attr_t **da_p, fr_type_t type)
 		break;
 	}
 
-	(*da_p)->flags.is_known_width = fr_type_fixed_size[type];
+	(*da_p)->flags.is_known_width |= fr_type_fixed_size[type];
 
 	/*
 	 *	Set default type-based flags
@@ -609,7 +682,6 @@ int dict_attr_type_init(fr_dict_attr_t **da_p, fr_type_t type)
 int dict_attr_parent_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *parent)
 {
 	fr_dict_attr_t *da = *da_p;
-
 
 	if (unlikely((*da_p)->type == FR_TYPE_NULL)) {
 		fr_strerror_const("Attribute type must be set before initialising parent.  Use dict_attr_type_init() first");
@@ -782,11 +854,11 @@ int dict_attr_init_common(char const *filename, int line,
 
 	if (unlikely(dict_attr_type_init(da_p, type) < 0)) return -1;
 
+	if (args->flags) (*da_p)->flags = *args->flags;
+
 	if (parent && (dict_attr_parent_init(da_p, parent) < 0)) return -1;
 
 	if (args->ref && (dict_attr_ref_aset(da_p, args->ref, FR_DICT_ATTR_REF_ALIAS) < 0)) return -1;
-
-	if (args->flags) (*da_p)->flags = *args->flags;
 
 	return 0;
 }
@@ -1398,6 +1470,7 @@ bool dict_attr_can_have_children(fr_dict_attr_t const *da)
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_VSA:
 	case FR_TYPE_STRUCT:
+	case FR_TYPE_UNION:
 		return true;
 
 	case FR_TYPE_UINT8:
@@ -1406,6 +1479,8 @@ bool dict_attr_can_have_children(fr_dict_attr_t const *da)
 		/*
 		 *	Children are allowed here, but ONLY if this
 		 *	attribute is a key field.
+		 *
+		 *	@todo - remove after migration_union_key is deleted
 		 */
 		if (da->parent && (da->parent->type == FR_TYPE_STRUCT) && fr_dict_attr_is_key_field(da)) return true;
 		break;
@@ -1755,7 +1830,7 @@ int fr_dict_attr_add_name_only(fr_dict_t *dict, fr_dict_attr_t const *parent,
 int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 			    fr_value_box_t const *value,
 			    bool coerce, bool takes_precedence,
-			    fr_dict_attr_t const *child_struct)
+			    fr_dict_attr_t const *key_child_ref)
 {
 	size_t				len;
 	fr_dict_enum_value_t		*enumv = NULL;
@@ -1781,10 +1856,28 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	/*
 	 *	If the parent isn't a key field, then we CANNOT add a child struct.
 	 */
-	if (!fr_dict_attr_is_key_field(da) && child_struct) {
-		fr_strerror_const("Child structures cannot be defined for VALUEs which are not for 'key' attributes");
+	if (!fr_dict_attr_is_key_field(da) && key_child_ref) {
+		fr_strerror_const("Child attributes cannot be defined for VALUEs which are not 'key' attributes");
 		return -1;
 	}
+
+#if 0
+	/*
+	 *	Commented out becuase of share/dictionary/dhcpv6/dictionary.rfc6607.
+	 *
+	 *	That dictionary defines a value which is associated with a zero-sized child.
+	 *	In order to enforce this check, we need to support zero-sized structures.
+	 *
+	 *	Perhaps this can be done as a special case after we convert to UNIONs?  Because then
+	 *	we can allow ATTRIBUTE Global-VPN 255 struct[0].
+	 *
+	 *	@todo - remove after migration_union_key is deleted
+	 */
+	if (fr_dict_attr_is_key_field(da) && !key_child_ref) {
+		fr_strerror_const("Child attribute must be defined for VALUEs associated with a 'key' attribute");
+		return -1;
+	}
+#endif
 
 	if (fr_type_is_structural(da->type) || (da->type == FR_TYPE_STRING)) {
 		fr_strerror_printf("Enumeration names cannot be added for data type '%s'", fr_type_to_str(da->type));
@@ -1825,7 +1918,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	 *	Allocate a structure to map between
 	 *	the name and value.
 	 */
-	enumv = talloc_zero_size(da, sizeof(fr_dict_enum_value_t) + sizeof(enumv->child_struct[0]) * fr_dict_attr_is_key_field(da));
+	enumv = talloc_zero_size(da, sizeof(fr_dict_enum_value_t) + sizeof(enumv->key_child_ref[0]) * fr_dict_attr_is_key_field(da));
 	if (!enumv) {
 	oom:
 		fr_strerror_printf("%s: Out of memory", __FUNCTION__);
@@ -1836,7 +1929,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	enumv->name = talloc_typed_strdup(enumv, name);
 	enumv->name_len = len;
 
-	if (child_struct) enumv->child_struct[0] = child_struct;
+	if (key_child_ref) enumv->key_child_ref[0] = key_child_ref;
 	enum_value = fr_value_box_alloc(enumv, da->type, NULL);
 	if (!enum_value) goto oom;
 
@@ -1856,7 +1949,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 			return -1;
 		}
 	} else {
-		if (fr_value_box_copy(enum_value, enum_value, value) < 0) {
+		if (unlikely(fr_value_box_copy(enum_value, enum_value, value) < 0)) {
 			fr_strerror_printf_push("%s: Failed copying value into enum", __FUNCTION__);
 			return -1;
 		}
@@ -4406,7 +4499,7 @@ static int _dict_global_free(fr_dict_gctx_t *gctx)
 
 	if (still_loaded) {
 #ifndef NDEBUG
-		fr_dict_global_ctx_debug(gctx);
+		fr_dict_gctx_debug(stderr, gctx);
 #endif
 		return -1;
 	}
@@ -4571,7 +4664,7 @@ void fr_dict_global_ctx_read_only(void)
  *
  * Intended to be called from a debugger
  */
-void fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx)
+void fr_dict_gctx_debug(FILE *fp, fr_dict_gctx_t const *gctx)
 {
 	fr_hash_iter_t			dict_iter;
 	fr_dict_t			*dict;
@@ -4581,18 +4674,19 @@ void fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx)
 	if (gctx == NULL) gctx = dict_gctx;
 
 	if (!gctx) {
-		FR_FAULT_LOG("gctx not initialised");
+		fprintf(fp, "gctx not initialised\n");
 		return;
 	}
 
-	FR_FAULT_LOG("gctx %p report", dict_gctx);
+	fprintf(fp, "gctx %p report\n", dict_gctx);
 	for (dict = fr_hash_table_iter_init(gctx->protocol_by_num, &dict_iter);
 	     dict;
 	     dict = fr_hash_table_iter_next(gctx->protocol_by_num, &dict_iter)) {
 		for (dep = fr_rb_iter_init_inorder(&dep_iter, dict->dependents);
 		     dep;
 		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
-			FR_FAULT_LOG("\t%s is referenced from %s count (%d)", dict->root->name, dep->dependent, dep->count);
+			fprintf(fp, "\t%s is referenced from %s count (%d)\n",
+				dict->root->name, dep->dependent, dep->count);
 		}
 	}
 
@@ -4600,7 +4694,8 @@ void fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx)
 		for (dep = fr_rb_iter_init_inorder(&dep_iter, gctx->internal->dependents);
 		     dep;
 		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
-			FR_FAULT_LOG("\t%s is referenced from %s count (%d)", gctx->internal->root->name, dep->dependent, dep->count);
+			fprintf(fp, "\t%s is referenced from %s count (%d)\n",
+				gctx->internal->root->name, dep->dependent, dep->count);
 		}
 	}
 }
@@ -4928,6 +5023,8 @@ bool fr_dict_attr_can_contain(fr_dict_attr_t const *parent, fr_dict_attr_t const
 	/*
 	 *	Child is a STRUCT which has a parent key field.  The
 	 *	child pair nesting, though, is in the grandparent.
+	 *
+	 *	@todo - remove after migration_union_key is deleted
 	 */
 	if (fr_dict_attr_is_key_field(child->parent)) {
 		fr_assert(child->parent->parent == parent);

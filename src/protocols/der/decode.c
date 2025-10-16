@@ -67,6 +67,7 @@ typedef struct {
  * @param[in] parent		Parent attribute.  This should be the root of the dictionary
  *				we're using to decode DER data initially, and then nested children.
  * @param[in] in		The DER encoded data.
+ * @param[in] allowed_chars	Optional array indicating which ASCII characters are allowed.
  * @param[in] decode_ctx	Any decode specific data.
  * @return
  *	- > 0 on success.  How many bytes were decoded.
@@ -2441,7 +2442,7 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 			return -1;
 		}
 
-		if (fr_value_box_copy(vp, &vp->data, flags->default_value) < 0) {
+		if (unlikely(fr_value_box_copy(vp, &vp->data, flags->default_value) < 0)) {
 			talloc_free(vp);
 			return -1;
 		}
@@ -2659,6 +2660,9 @@ static ssize_t fr_der_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t
  *				we're using to decode DER data.  This only specifies structures
  *				like SEQUENCES.  OID based pairs are resolved using the global
  *				dictionary tree.
+ * @param[in] data		to decode.
+ * @param[in] data_len		Length of data.
+ * @param[in] decode_ctx	to pass to decode function.
  *
  */
 static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent, uint8_t const *data,

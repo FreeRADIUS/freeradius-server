@@ -111,15 +111,15 @@ type to `string`.  The value is left alone.
 .Example of casting to raw 'octets'
 [source,unlang]
 ----
-"User-Name is %{Tmp-Octets-0}"
-"User-Name is %{(string) Tmp-Octets-0}"
+"Value is %{Class}"
+"Value is %{(string) Class}"
 ----
 
-if the `Tmp-Octets-0` attribute has value `0x666f6f` (`foo`)
+if the `Class` attribute has value `0x666f6f` (`foo`)
 
-In the first expansion, the resulting output is `User-Name is
+In the first expansion, the resulting output is `Value is
 0x666f6f`.  In the second expansion, the resulting output is
-`User-name is foo`.
+`Value is foo`.
 
 Note that placing raw `octets` data into a string may allow for binary
 data to be inserted into what should be a printable string.  Any uses

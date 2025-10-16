@@ -140,12 +140,6 @@ static conf_parser_t const module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI | CONF_FLAG_REQUIRED, rlm_radius_t, types),
 	  .func = type_parse },
 
-	{ FR_CONF_OFFSET_FLAGS("replicate", CONF_FLAG_DEPRECATED, rlm_radius_t, replicate) },
-
-	{ FR_CONF_OFFSET_FLAGS("synchronous", CONF_FLAG_DEPRECATED, rlm_radius_t, synchronous) },
-
-	{ FR_CONF_OFFSET_FLAGS("originate", CONF_FLAG_DEPRECATED, rlm_radius_t, originate) },
-
 	{ FR_CONF_OFFSET("max_packet_size", rlm_radius_t, max_packet_size), .dflt = "4096" },
 	{ FR_CONF_OFFSET("max_send_coalesce", rlm_radius_t, max_send_coalesce), .dflt = "1024" },
 
@@ -252,9 +246,6 @@ static int mode_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 
 	mode = fr_table_value_by_str(mode_names, name, RLM_RADIUS_MODE_INVALID);
 
-	/*
-	 *	Commented out until we upgrade the old configurations.
-	 */
 	if (mode == RLM_RADIUS_MODE_INVALID) {
 		cf_log_err(ci, "Invalid mode name \"%s\"", name);
 		return -1;
@@ -645,45 +636,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->received_message_authenticator = talloc_zero(NULL, bool);		/* Allocated outside of inst to default protection */
 
 	/*
-	 *	Allow explicit setting of mode.
-	 */
-	if (inst->mode != RLM_RADIUS_MODE_INVALID) goto check_others;
-
-	/*
-	 *	If not set, try to insinuate it from context.
-	 */
-	if (inst->replicate) {
-		if (inst->originate) {
-			cf_log_err(conf, "Cannot set 'replicate=true' and 'originate=true' at the same time.");
-			return -1;
-		}
-
-		if (inst->synchronous) {
-			cf_log_warn(conf, "Ignoring 'synchronous=true' due to 'replicate=true'");
-		}
-
-		inst->mode = RLM_RADIUS_MODE_REPLICATE;
-		goto check_others;
-	}
-
-	/*
-	 *	Argubly we should be allowed to do synchronous proxying _and_ originating client packets.
-	 *
-	 *	However, the previous code didn't really do that consistently.
-	 */
-	if (inst->synchronous && inst->originate) {
-		cf_log_err(conf, "Cannot set 'synchronous=true' and 'originate=true'");
-		return -1;
-	}
-
-	if (inst->synchronous) {
-		inst->mode = RLM_RADIUS_MODE_PROXY;
-	} else {
-		inst->mode = RLM_RADIUS_MODE_CLIENT;
-	}
-
-check_others:
-	/*
 	 *	Replication is write-only, and append by default.
 	 */
 	if (inst->mode == RLM_RADIUS_MODE_REPLICATE) {
@@ -737,20 +689,25 @@ check_others:
 		}
 
 		/*
+		 *	Encorce limits per trunk, due to the 8-bit ID space.
+		 */
+		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, >=, 2);
+		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, <=, 255);
+		FR_INTEGER_BOUND_CHECK("trunk.per_connection_target", inst->trunk_conf.target_req_per_conn, <=, inst->trunk_conf.max_req_per_conn / 2);
+
+		/*
+		 *	This only applies for XLAT_PROXY, but what the heck.
+		 */
+		FR_TIME_DELTA_BOUND_CHECK("home_server_lifetime", inst->home_server_lifetime, >=, fr_time_delta_from_sec(10));
+		FR_TIME_DELTA_BOUND_CHECK("home_server_lifetime", inst->home_server_lifetime, <=, fr_time_delta_from_sec(3600));
+
+		/*
 		 *	No src_port range, we don't need to check any other settings.
 		 */
 		if (!inst->fd_config.src_port_start && !inst->fd_config.src_port_end) break;
 
 		if (inst->fd_config.path) {
 			cf_log_err(conf, "Cannot set 'src_port_start' or 'src_port_end' for outgoing Unix sockets");
-			return -1;
-		}
-
-		/*
-		 *	We can only have one method of allocating source ports.
-		 */
-		if (inst->fd_config.src_port) {
-			cf_log_err(conf, "Cannot set 'src_port' and 'src_port_start' or 'src_port_end'");
 			return -1;
 		}
 
@@ -774,17 +731,20 @@ check_others:
 		}
 
 		/*
-		 *	Encorce limits per trunk, due to the 8-bit ID space.
+		 *	The source port range is split by worker - so there needs to be sufficient for at least
+		 *	one per worker.
 		 */
-		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, >=, 2);
-		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, <=, 255);
-		FR_INTEGER_BOUND_CHECK("trunk.per_connection_target", inst->trunk_conf.target_req_per_conn, <=, inst->trunk_conf.max_req_per_conn / 2);
+		if ((inst->fd_config.src_port_end - inst->fd_config.src_port_start + 1) < (int) main_config->max_workers) {
+			cf_log_perr(conf, "src_port_start / end range is not enough for %u worker threads",
+				    main_config->max_workers);
+			return -1;
+		}
 
 		/*
-		 *	This only applies for XLAT_PROXY, but what the heck.
+		 *	If there is a limited source port range, then set the reuse port flag.  This lets us
+		 *	bind multiple sockets to the same port before we connect() them.
 		 */
-		FR_TIME_DELTA_BOUND_CHECK("home_server_lifetime", inst->home_server_lifetime, >=, fr_time_delta_from_sec(10));
-		FR_TIME_DELTA_BOUND_CHECK("home_server_lifetime", inst->home_server_lifetime, <=, fr_time_delta_from_sec(3600));
+		inst->fd_config.reuse_port = 1;
 		break;
 
 	case RLM_RADIUS_MODE_UNCONNECTED_REPLICATE:
@@ -923,6 +883,29 @@ check_others:
 	inst->trunk_conf.req_pool_headers = 4;	/* One for the request, one for the buffer, one for the tracking binding, one for Proxy-State VP */
 	inst->trunk_conf.req_pool_size = 1024 + sizeof(fr_pair_t) + 20;
 
+	if (inst->trunk_conf.conn_triggers) {
+		module_trigger_args_t	args;
+		char			*server = NULL;
+
+		args = (module_trigger_args_t) {
+			.module = mctx->mi->module->name,
+			.name = inst->name
+		};
+
+		/*
+		 *	Only client and proxy mode have fixed destinations
+		 */
+		if ((inst->mode == RLM_RADIUS_MODE_CLIENT) || (inst->mode == RLM_RADIUS_MODE_PROXY)) {
+			fr_value_box_aprint(inst, &server, fr_box_ipaddr(inst->fd_config.dst_ipaddr), NULL);
+			args.server = server;
+			args.port = inst->fd_config.dst_port;
+		}
+
+		MEM(inst->trigger_args = fr_pair_list_alloc(inst));
+		if (module_trigger_args_build(inst->trigger_args, inst->trigger_args,
+					      cf_section_find(conf, "pool", NULL), &args) < 0) return -1;
+	}
+
 	/*
 	 *	Only check the async timers when we're acting as a client.
 	 */
@@ -939,10 +922,10 @@ check_others:
 		FR_INTEGER_BOUND_CHECK("Access-Request.max_rtx_count", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].mrc, >=, 1);
 		FR_TIME_DELTA_BOUND_CHECK("Access-Request.max_rtx_duration", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].mrd, >=, fr_time_delta_from_sec(5));
 
-		FR_TIME_DELTA_BOUND_CHECK("Access-Request.initial_rtx_time", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].irt, <=, fr_time_delta_from_sec(3));
+		FR_TIME_DELTA_BOUND_CHECK("Access-Request.initial_rtx_time", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].irt, <=, fr_time_delta_from_sec(15));
 		FR_TIME_DELTA_BOUND_CHECK("Access-Request.max_rtx_time", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].mrt, <=, fr_time_delta_from_sec(30));
 		FR_INTEGER_BOUND_CHECK("Access-Request.max_rtx_count", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].mrc, <=, 10);
-		FR_TIME_DELTA_BOUND_CHECK("Access-Request.max_rtx_duration", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
+		FR_TIME_DELTA_BOUND_CHECK("Access-Request.max_rtx_duration", inst->retry[FR_RADIUS_CODE_ACCESS_REQUEST].mrd, <=, fr_time_delta_from_sec(90));
 	}
 
 	/*

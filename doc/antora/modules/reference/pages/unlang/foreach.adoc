@@ -221,15 +221,19 @@ be examined, but cannot be changed.  This is a limitation of the
 current interpreter, and may be changed in the future.
 
 .Example of Looping over children of a structural type.
+
+In this examply, we assume that an attribute `TLV-Thing` has a child
+called `Foo`.
+
 [source,unlang]
 ----
-foreach thing (Tmp-TLV-0[*]) {
-	out += thing.c
+foreach thing (TLV-Thing[*]) {
+	out += thing.Foo
 	out += " "
 }
 ----
 
-This example can read the child attribute `c`, but cannot modify it.
+This example can read the child attribute `Foo`, but cannot modify it.
 
 
 // Copyright (C) 2024 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

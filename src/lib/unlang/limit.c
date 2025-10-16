@@ -115,7 +115,7 @@ static unlang_action_t unlang_limit(unlang_result_t *p_result, request_t *reques
 
 	fr_value_box_list_init(&state->result);
 
-	if (unlang_tmpl_push(state, &state->result, request, gext->vpt, NULL) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_tmpl_push(state, NULL, &state->result, request, gext->vpt, NULL, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
 
 	frame_repeat(frame, unlang_limit_xlat_done);
 
@@ -164,7 +164,7 @@ static unlang_t *unlang_compile_limit(unlang_t *parent, unlang_compile_ctx_t *un
 	RULES_VERIFY(&t_rules);
 
 	slen = tmpl_afrom_substr(gext, &vpt,
-				 &FR_SBUFF_IN(name2, strlen(name2)),
+				 &FR_SBUFF_IN_STR(name2),
 				 token,
 				 NULL,
 				 &t_rules);

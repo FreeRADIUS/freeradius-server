@@ -35,7 +35,7 @@ static unlang_action_t unlang_caller(unlang_result_t *p_result, request_t *reque
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_caller_t			*gext = unlang_group_to_caller(g);
 
-	fr_assert(g->num_children > 0); /* otherwise the compilation is broken */
+	fr_assert(!unlang_list_empty(&g->children)); /* otherwise the compilation is broken */
 
 	/*
 	 *	No parent, or the dictionaries don't match.  Ignore it.
@@ -131,7 +131,7 @@ static unlang_t *unlang_compile_caller(unlang_t *parent, unlang_compile_ctx_t *u
 		talloc_steal(gext, dict_ref);
 	}
 
-	if (!g->num_children) {
+	if (unlang_list_empty(&g->children)) {
 		talloc_free(c);
 		return UNLANG_IGNORE;
 	}

@@ -574,6 +574,7 @@ int _fr_timer_at(NDEBUG_LOCATION_ARGS
  * @param[in,out] ev_p		If not NULL modify this event instead of creating a new one.  This is a parent
  *				in a temporal sense, not in a memory structure or dependency sense.
  * @param[in] delta		In how many nanoseconds to wait before should we execute the event.
+ * @param[in] free_on_fire	Whether event memory should be freed if the event fires.
  * @param[in] callback		function to execute if the event fires.
  * @param[in] uctx		user data to pass to the event.
  * @return

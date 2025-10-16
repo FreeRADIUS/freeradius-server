@@ -131,11 +131,15 @@ static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_INT32]				= {4, 4},
 	[FR_TYPE_INT64]				= {8, 8},
 
+	[FR_TYPE_SIZE]				= {8, 8},
+
 	[FR_TYPE_FLOAT32]			= {4, 4},
 	[FR_TYPE_FLOAT64]			= {8, 8},
 
 	[FR_TYPE_DATE]				= {2, 8},  //!< 2, 4, or 8 only
 	[FR_TYPE_TIME_DELTA]   			= {2, 8},  //!< 2, 4, or 8 only
+
+	[FR_TYPE_ATTR]				= {1, ~0},
 
 	[FR_TYPE_MAX]				= {~0, 0}		//!< Ensure array covers all types.
 };
@@ -177,6 +181,8 @@ size_t const fr_value_box_field_sizes[] = {
 	[FR_TYPE_TIME_DELTA]			= SIZEOF_MEMBER(fr_value_box_t, datum.time_delta),
 	[FR_TYPE_SIZE]				= SIZEOF_MEMBER(fr_value_box_t, datum.size),
 
+	[FR_TYPE_ATTR] 				= SIZEOF_MEMBER(fr_value_box_t, vb_attr),
+
 	[FR_TYPE_VALUE_BOX]			= sizeof(fr_value_box_t),
 
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
@@ -216,6 +222,7 @@ size_t const fr_value_box_offsets[] = {
 
 	[FR_TYPE_TIME_DELTA]			= offsetof(fr_value_box_t, vb_time_delta),
 	[FR_TYPE_SIZE]				= offsetof(fr_value_box_t, vb_size),
+	[FR_TYPE_ATTR]				= offsetof(fr_value_box_t, vb_attr),
 
 	[FR_TYPE_VALUE_BOX]			= 0,
 
@@ -650,7 +657,21 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 		fr_value_box_list_init(&dst->vb_group);
 		break;
 
-	default:
+	case FR_TYPE_NUMERIC:
+	case FR_TYPE_IP:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_ATTR:
+	case FR_TYPE_NULL:
+		break;
+
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_UNION:
+	case FR_TYPE_INTERNAL:
+		fr_assert(0);
 		break;
 	}
 
@@ -721,9 +742,6 @@ static int8_t float_cmp(double a, double b)
  */
 int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 {
-	if (!fr_cond_assert(a->type != FR_TYPE_NULL)) return -1;
-	if (!fr_cond_assert(b->type != FR_TYPE_NULL)) return -1;
-
 	if (a->type != b->type) {
 		fr_strerror_printf("%s: Can't compare values of different types", __FUNCTION__);
 		return -2;
@@ -829,10 +847,24 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	case FR_TYPE_IFID:
 		COMPARE(ifid);
 
+	case FR_TYPE_NULL:	/* NULLs are not comparable */
+		return -2;
+
+	case FR_TYPE_ATTR:
+		/*
+		 *	@todo - this makes things _distinct_, but doesn't provide a _full_ order.  We
+		 *	generally don't need a full ordering for attributes.
+		 *
+		 *	The need to call fr_dict_attr_cmp() here is for comparing raw / unknown attributes
+		 *	which come from xlats.  Unknown / raw attributes which are in policies are added to
+		 *	the dictionaries when the server starts, and are thus known.
+		 */
+		return fr_dict_attr_cmp(a->vb_attr, b->vb_attr);
+
 	/*
 	 *	These should be handled at some point
 	 */
-	case FR_TYPE_NON_LEAF:
+	default:
 		(void)fr_cond_assert(0);	/* unknown type */
 		return -2;
 
@@ -971,13 +1003,11 @@ extern int fr_regex_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_
  *	- 1 if true
  *	- 0 if false
  *	- -1 on failure.
+ *	- < -1 on failure.
  */
 int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const *b)
 {
 	int compare = 0;
-
-	if (!fr_cond_assert(a->type != FR_TYPE_NULL)) return -1;
-	if (!fr_cond_assert(b->type != FR_TYPE_NULL)) return -1;
 
 	if (unlikely((op == T_OP_REG_EQ) || (op == T_OP_REG_NE))) return fr_regex_cmp_op(op, a, b);
 
@@ -1092,12 +1122,28 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 
 		goto cmp_prefix_v6;
 
-	default:
+	case FR_TYPE_NUMERIC:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_VARIABLE_SIZE:
+	case FR_TYPE_ATTR:
+	case FR_TYPE_NULL:
 	cmp:
 		compare = fr_value_box_cmp(a, b);
 		if (compare < -1) {	/* comparison error */
-			return -1;
+			return -2;
 		}
+		break;
+
+	case FR_TYPE_GROUP:
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_UNION:
+	case FR_TYPE_INTERNAL:
+		fr_assert(0);
+		return -2;
 	}
 
 	/*
@@ -1276,10 +1322,17 @@ size_t fr_value_substr_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, c
  */
 int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 {
-	if (!fr_cond_assert(src->type != FR_TYPE_NULL)) return -1;
-
 	switch (src->type) {
-	default:
+	case FR_TYPE_INT16:
+	case FR_TYPE_INT32:
+	case FR_TYPE_INT64:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
+	case FR_TYPE_FLOAT32:
+	case FR_TYPE_FLOAT64:
+	case FR_TYPE_DATE:
+	case FR_TYPE_TIME_DELTA:
 		break;
 
 	case FR_TYPE_BOOL:
@@ -1294,12 +1347,18 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_SIZE:
-		fr_value_box_copy(NULL, dst, src);
+		if (unlikely(fr_value_box_copy(NULL, dst, src) < 0)) return -1;
 		return 0;
 
+	case FR_TYPE_NULL:
+		fr_value_box_init_null(dst);
+		return 0;
+
+	case FR_TYPE_ATTR:
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
-	case FR_TYPE_NON_LEAF:
+	case FR_TYPE_INTERNAL:
+	case FR_TYPE_STRUCTURAL:
 		fr_assert_fail(NULL);
 		return -1; /* shouldn't happen */
 	}
@@ -1383,13 +1442,11 @@ size_t fr_value_box_network_length(fr_value_box_t const *value)
 			/*
 			 *	Clamp length at maximum we're allowed to encode.
 			 */
-			if (da_is_length_field(value->enumv)) {
-				if (value->enumv->flags.subtype == FLAG_LENGTH_UINT8) {
-					if (value->vb_length > 255) return 255;
+			if (da_is_length_field8(value->enumv)) {
+				if (value->vb_length > UINT8_MAX) return UINT8_MAX;
 
-				} else if (value->enumv->flags.subtype == FLAG_LENGTH_UINT16) {
-					if (value->vb_length > 65535) return 65535;
-				}
+			} else if (da_is_length_field16(value->enumv)) {
+				if (value->vb_length > UINT16_MAX) return UINT16_MAX;
 			}
 		}
 		return value->vb_length;
@@ -1403,7 +1460,16 @@ size_t fr_value_box_network_length(fr_value_box_t const *value)
 		FALL_THROUGH;
 
 	default:
+		fr_assert(network_min_size(value->type) != 0);
 		return network_min_size(value->type);
+
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_INTERNAL:
+		fr_assert(0);
+		return -1;
 	}
 }
 
@@ -1492,21 +1558,17 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 					max = value->enumv->flags.length;
 				}
 
-			} else if (da_is_length_field(value->enumv)) {
+			} else if (da_is_length_field8(value->enumv)) {
 				/*
 				 *	Truncate the output to the max allowed for this field and encode the length.
 				 */
-				if (value->enumv->flags.subtype == FLAG_LENGTH_UINT8) {
-					if (max > 255) max = 255;
-					FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t) max);
+				if (max > UINT8_MAX) max = UINT8_MAX;
+				FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t) max);
 
-				} else if (value->enumv->flags.subtype == FLAG_LENGTH_UINT16) {
-					if (max > 65536) max = 65535;
-					FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) max);
+			} else if (da_is_length_field16(value->enumv)) {
 
-				} else {
-					return -1;
-				}
+				if (max > UINT16_MAX) max = UINT16_MAX;
+				FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) max);
 			}
 		}
 
@@ -1526,8 +1588,17 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		break;
 
 	default:
+		fr_assert(network_min_size(value->type) != 0);
 		min = network_min_size(value->type);
 		break;
+
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_INTERNAL:
+		fr_assert(0);
+		return -1;
 	}
 
 	/*
@@ -1627,6 +1698,48 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		fr_value_box_hton(&tmp, value);
 
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, fr_value_box_raw(&tmp, value->type), min);
+	}
+		break;
+
+	case FR_TYPE_ATTR:
+	{
+		fr_value_box_t tmp, base;
+
+		/*
+		 *	For now, we only encode at depth 1.  The protocol-specific encoders need to do
+		 *	something special for attributes at other depths.
+		 */
+		if (value->vb_attr->depth != 1) {
+			fr_strerror_printf("Unsupported depth '%u' for encoding attribute %s",
+					   value->vb_attr->depth, value->vb_attr->name);
+			return 0;
+		}
+
+		switch (value->vb_attr->flags.length) {
+		case 1:
+			fr_value_box_init(&base, FR_TYPE_UINT8, NULL, false);
+			base.vb_uint8 = value->vb_attr->attr;
+			break;
+
+		case 2:
+			fr_value_box_init(&base, FR_TYPE_UINT16, NULL, false);
+			base.vb_uint16 = value->vb_attr->attr;
+			break;
+
+		case 4:
+			fr_value_box_init(&base, FR_TYPE_UINT32, NULL, false);
+			base.vb_uint32 = value->vb_attr->attr;
+			break;
+
+		default:
+			fr_strerror_printf("Unsupported length '%d' for decoding attribute %s",
+					   value->vb_attr->flags.length, value->vb_attr->name);
+			return 0;
+		}
+
+		fr_value_box_hton(&tmp, &base);
+
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, fr_value_box_raw(&tmp, tmp.type), min);
 	}
 		break;
 
@@ -1808,6 +1921,8 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	min = network_min_size(type);
 	max = network_max_size(type);
 
+	fr_assert(max > 0);
+
 	if (len < min) {
 		fr_strerror_printf("Got truncated value parsing type \"%s\". "
 				   "Expected length >= %zu bytes, got %zu bytes",
@@ -1845,27 +1960,19 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 			if (enumv->flags.length) {
 				newlen = enumv->flags.length;
 
-			} else if (da_is_length_field(enumv)) {
-				/*
-				 *	Or fields with a length prefix.
-				 */
-				if (enumv->flags.subtype == FLAG_LENGTH_UINT8) {
-					uint8_t num = 0;
+			} else if (da_is_length_field8(enumv)) {
+				uint8_t num = 0;
 
-					FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
-					newlen = num;
-					offset = 1;
+				FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
+				newlen = num;
+				offset = 1;
 
-				} else if (enumv->flags.subtype == FLAG_LENGTH_UINT16) {
-					uint16_t num = 0;
+			} else if (da_is_length_field16(enumv)) {
+				uint16_t num = 0;
 
-					FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
-					newlen = num;
-					offset = 2;
-
-				} else {
-					return -1;
-				}
+				FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
+				newlen = num;
+				offset = 2;
 			}
 		}
 
@@ -2024,6 +2131,52 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	case FR_TYPE_FLOAT64:
 		FR_DBUFF_OUT_RETURN(&dst->vb_float64, &work_dbuff);
 		break;
+
+	case FR_TYPE_ATTR:
+		if (!enumv) {
+			fr_strerror_const("No enumv (i.e. root) passed to fr_value_box_from_network for type 'attribute'");
+			return 0;
+		}
+
+		/*
+		 *	Decode the number, and see if we can create a
+		 *	matching attribute.
+		 */
+		{
+			unsigned int num;
+			uint8_t num8;
+			uint16_t num16;
+			uint32_t num32;
+
+			switch (enumv->flags.length) {
+			case 1:
+				FR_DBUFF_OUT_RETURN(&num8, &work_dbuff);
+				num = num8;
+				break;
+
+			case 2:
+				FR_DBUFF_OUT_RETURN(&num16, &work_dbuff);
+				num = num16;
+				break;
+
+			case 4:
+				FR_DBUFF_OUT_RETURN(&num32, &work_dbuff);
+				num = num32;
+				break;
+
+			default:
+				fr_strerror_const("Unsupported parent length");
+				return 0;
+			}
+
+			dst->vb_attr = fr_dict_attr_child_by_num(enumv, num);
+			if (!dst->vb_attr) {
+				dst->vb_attr = fr_dict_attr_unknown_raw_afrom_num(ctx, enumv, num);
+				if (!dst->vb_attr) return 0;
+			}
+
+			break;
+		}
 
 	/*
 	 *	Dates and deltas are stored internally as
@@ -2386,12 +2539,30 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 					   fr_value_box_field_sizes[src->type], src->tainted);
 	}
 
-	default:
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_UNION:
+	case FR_TYPE_INTERNAL:
+	case FR_TYPE_NULL:
+	case FR_TYPE_ATTR:
+	case FR_TYPE_COMBO_IP_ADDR: /* the types should have been realized to ipv4 / ipv6 */
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_OCTETS:	/* handled above*/
+		break;
+
+
 		/* Not the same talloc_memdup call as above.  The above memdup reads data from the dst */
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
 		return fr_value_box_memdup(ctx, dst, dst_enumv,
 					   fr_value_box_raw(src, src->type),
 					   fr_value_box_field_sizes[src->type], src->tainted);
 	}
+
+	fr_assert(0);
+	return -1;
 }
 
 #define CAST_IP_FIX_COMBO 	\
@@ -2409,6 +2580,15 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 			src_type = FR_TYPE_IPV6_PREFIX; \
 		} \
 		break
+
+
+static inline int fr_value_box_cast_unsupported(fr_type_t dst, fr_type_t src)
+{
+	fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
+			   fr_type_to_str(src),
+			   fr_type_to_str(dst));
+	return -1;
+}
 
 
 /** Convert any supported type to an IPv4 address
@@ -2520,10 +2700,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 		break;
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		return -1;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 
 	return 0;
@@ -2638,10 +2815,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 	}
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		return -1;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 
 	return 0;
@@ -2755,10 +2929,7 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 		break;
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		break;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 
 	return 0;
@@ -2858,10 +3029,7 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 		break;
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		return -1;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 	return 0;
 }
@@ -2920,10 +3088,7 @@ static inline int fr_value_box_cast_to_ethernet(TALLOC_CTX *ctx, fr_value_box_t 
 	}
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		return -1;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 
 	return 0;
@@ -3018,10 +3183,7 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
 		break;
 
 	default:
-		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type));
-		return -1;
+		return fr_value_box_cast_unsupported(dst_type, src->type);
 	}
 
 	return 0;
@@ -3433,10 +3595,7 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 	}
 
 bad_cast:
-	fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-			   fr_type_to_str(src->type),
-			   fr_type_to_str(dst_type));
-	return -1;
+	return fr_value_box_cast_unsupported(dst_type, src->type);
 }
 
 /** Convert any value to a floating point value
@@ -3545,10 +3704,7 @@ static inline int fr_value_box_cast_to_float(UNUSED TALLOC_CTX *ctx, fr_value_bo
 	}
 
 bad_cast:
-	fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-			   fr_type_to_str(src->type),
-			   fr_type_to_str(dst_type));
-	return -1;
+	return fr_value_box_cast_unsupported(dst_type, src->type);
 }
 
 
@@ -3576,7 +3732,6 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		      fr_value_box_t const *src)
 {
 	if (!fr_cond_assert(src != dst)) return -1;
-	if (!fr_cond_assert(src->type != FR_TYPE_NULL)) return -1;
 
 	if (fr_type_is_non_leaf(dst_type)) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Can only cast simple data types",
@@ -3708,6 +3863,37 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		}
 		break;		/* use generic string/octets stuff below */
 
+#if 0
+	case FR_TYPE_ATTR:
+		/*
+		 *	Convert it to an integer of the correct length. Then, cast it in place.
+		 */
+		switch (src->vb_attr->flags.length) {
+		case 1:
+			fr_value_box_init(dst, FR_TYPE_UINT8, NULL, false);
+			dst->vb_uint8 = src->vb_attr->attr;
+			break;
+
+		case 2:
+			fr_value_box_init(dst, FR_TYPE_UINT16, NULL, false);
+			dst->vb_uint16 = src->vb_attr->attr;
+			break;
+
+		case 4:
+			fr_value_box_init(dst, FR_TYPE_UINT32, NULL, false);
+			dst->vb_uint32 = src->vb_attr->attr;
+			break;
+
+		default:
+			fr_strerror_printf("Unsupported length '%d' for attribute %s",
+					   src->vb_attr->flags.length, src->vb_attr->name);
+			return 0;
+		}
+
+		return fr_value_box_cast_in_place(ctx, dst, dst_type, dst_enumv);
+#else
+	case FR_TYPE_ATTR:
+#endif
 	/*
 	 *	Invalid types for casting (were caught earlier)
 	 */
@@ -3962,7 +4148,10 @@ void fr_value_box_clear(fr_value_box_t *data)
 int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src)
 {
 	switch (src->type) {
-	default:
+	case FR_TYPE_NUMERIC:
+	case FR_TYPE_IP:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
 		fr_value_box_memcpy_out(fr_value_box_raw(dst, src->type), src);
 		fr_value_box_copy_meta(dst, src);
 		break;
@@ -4039,11 +4228,29 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 	}
 		break;
 
+	case FR_TYPE_ATTR:
+		fr_value_box_copy_meta(dst, src);
+
+		/* raw also sets is_unknown */
+		if (src->vb_attr->flags.is_unknown) {
+			dst->vb_attr = fr_dict_attr_unknown_copy(ctx, src->vb_attr);
+			if (!dst->vb_attr) return -1;
+			break;
+		}
+		dst->vb_attr = src->vb_attr;
+		break;
+
 	case FR_TYPE_TLV:
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
-	case FR_TYPE_INTERNAL:
+	case FR_TYPE_UNION:
+	case FR_TYPE_VOID:
+	case FR_TYPE_VALUE_BOX:
+	case FR_TYPE_VALUE_BOX_CURSOR:
+	case FR_TYPE_PAIR_CURSOR:
+	case FR_TYPE_MAX:
+		fr_assert(0);
 		fr_strerror_printf("Cannot copy data type '%s'", fr_type_to_str(src->type));
 		return -1;
 	}
@@ -4066,12 +4273,17 @@ void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 {
 	switch (src->type) {
 	default:
-		fr_value_box_copy(NULL, dst, src);
+		if (unlikely(fr_value_box_copy(NULL, dst, src) < 0)) return;
 		break;
 
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
 		dst->datum.ptr = ctx ? talloc_reference(ctx, src->datum.ptr) : src->datum.ptr;
+		fr_value_box_copy_meta(dst, src);
+		break;
+
+	case FR_TYPE_ATTR:
+		dst->vb_attr = src->vb_attr;
 		fr_value_box_copy_meta(dst, src);
 		break;
 	}
@@ -4088,8 +4300,6 @@ void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
  */
 int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src)
 {
-	if (!fr_cond_assert(src->type != FR_TYPE_NULL)) return -1;
-
 	switch (src->type) {
 	default:
 		return fr_value_box_copy(ctx, dst, src);
@@ -4737,6 +4947,13 @@ void fr_value_box_set_cursor(fr_value_box_t *dst, fr_type_t type, void *cursor, 
 	dst->vb_cursor_name = name;
 }
 
+void fr_value_box_set_attr(fr_value_box_t *dst, fr_dict_attr_t const *da)
+{
+	fr_value_box_init(dst, FR_TYPE_ATTR, NULL, false);
+	dst->vb_attr = da;
+	dst->enumv = da;
+}
+
 /** Increment a boxed value
  *
  * Implements safe integer overflow.
@@ -4779,6 +4996,7 @@ void fr_value_box_increment(fr_value_box_t *vb)
 		return;
 
 	default:
+		fr_assert_fail(NULL);
 		return;
 	}
 }
@@ -4914,7 +5132,7 @@ ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	/*
 	 *	Lookup any names before continuing
 	 */
-	if (dst_enumv && dst_enumv->flags.has_value) {
+	if (dst_enumv && dst_enumv->flags.has_value && (dst_type != FR_TYPE_ATTR)) {
 		size_t				name_len;
 		fr_dict_enum_value_t const	*enumv;
 
@@ -5380,6 +5598,83 @@ parse:
 		fr_strerror_const("Unexpected value for data type NULL");
 		return -1;
 
+	case FR_TYPE_ATTR:
+		if (!dst_enumv) {
+			fr_strerror_const("No dictionary passed for data type 'attr'");
+			return -1;
+		}
+
+		/*
+		 *	@todo - have attributes of FR_TYPE_ATTR also
+		 *	carry a ref to where their values are taken from.
+		 */
+		if (dst_enumv->type == FR_TYPE_ATTR) {
+			dst_enumv = fr_dict_root(dst_enumv->dict);
+
+		} else if (!dst_enumv->flags.is_root) {
+			fr_strerror_printf("Can only start from dictionary root for data type 'attr', and not from %s", dst_enumv->name);
+			return -1;
+		}
+
+		fr_value_box_init(dst, dst_type, dst_enumv, false);
+
+		/*
+		 *	Allow '@' references in values.
+		 */
+		if (fr_sbuff_is_char(&our_in, '@')) {
+			size_t len;
+			fr_sbuff_marker_t m;
+
+			fr_sbuff_marker(&m, &our_in);
+			fr_sbuff_advance(&our_in, 1); /* '@' is not an allowed character for dictionary names */
+
+			len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in),
+							fr_dict_attr_nested_allowed_chars, NULL);
+			fr_sbuff_set(&our_in, &m);
+			fr_sbuff_marker_release(&m);
+
+			len++;	/* account for '@' */
+
+			/*
+			 *	This function needs the '@'.
+			 */
+			if (fr_dict_protocol_reference(&dst->vb_attr, fr_dict_root(dst_enumv->dict), &FR_SBUFF_IN(fr_sbuff_current(&our_in), len)) < 0) {
+				return -1;
+			}
+
+			if (!dst->vb_attr) {
+				fr_strerror_printf("Failed to find attribute reference %.*s", (int) len, fr_sbuff_current(&our_in));
+				return -1;
+			}
+
+			fr_assert(dst->vb_attr != NULL);
+
+			if (dst->vb_attr->dict != dst_enumv->dict) {
+				fr_strerror_const("Type 'attribute' cannot reference a different protocol");
+				return -1;
+			}
+
+			fr_sbuff_advance(&our_in, len);
+			FR_SBUFF_SET_RETURN(in, &our_in);
+
+		} else if (fr_sbuff_adv_past_str_literal(&our_in, "::")) {
+
+			slen = fr_dict_attr_by_oid_substr(NULL, &dst->vb_attr, dst_enumv, &our_in, rules->terminals);
+			if (slen > 0) {
+				fr_assert(dst->vb_attr != NULL);
+				FR_SBUFF_SET_RETURN(in, &our_in);
+			}
+		}
+
+		slen = fr_dict_attr_unknown_afrom_oid_substr(ctx, &dst->vb_attr, dst_enumv, &our_in, FR_TYPE_OCTETS);
+		if (slen <= 0) {
+			fr_strerror_printf("Failed to find the named attribute in %s", dst_enumv->name);
+			return -2;
+		}
+
+		fr_assert(dst->vb_attr != NULL);
+		FR_SBUFF_SET_RETURN(in, &our_in);
+
 	/*
 	 *	Dealt with below
 	 */
@@ -5652,6 +5947,35 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '}');
 		break;
 
+	case FR_TYPE_ATTR:
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, ':', ':');
+
+		fr_assert(data->enumv != NULL);
+
+		/*
+		 *	No escaping, just dump the name as-is.
+		 */
+		if (!e_rules) {
+			FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, NULL, data->vb_attr, false);
+			break;
+		}
+
+		/*
+		 *	Escaping, use an intermediate buffer.  Because
+		 *	we can't pipe sbuffs together.
+		 */
+		{
+			fr_sbuff_t *unescaped = NULL;
+
+			FR_SBUFF_TALLOC_THREAD_LOCAL(&unescaped, 256, 4096);
+
+			FR_DICT_ATTR_OID_PRINT_RETURN(unescaped, NULL, data->vb_attr, false);
+
+			FR_SBUFF_IN_ESCAPE_RETURN(&our_out, fr_sbuff_start(unescaped),
+						  fr_sbuff_used(unescaped), e_rules);
+		}
+		break;
+
 	case FR_TYPE_NULL:
 		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "NULL");
 		break;
@@ -5663,6 +5987,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 	case FR_TYPE_STRUCT:		/* Not a box type */
 	case FR_TYPE_VSA:		/* Not a box type */
 	case FR_TYPE_VENDOR:		/* Not a box type */
+	case FR_TYPE_UNION:		/* Not a box type */
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_VOID:
 	case FR_TYPE_MAX:
@@ -6131,6 +6456,11 @@ int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t const
 		fr_strerror_printf("Cannot escape data type '%s'", fr_type_to_str(vb->type));
 		return -1;
 
+	case FR_TYPE_ATTR:
+		fr_assert(0);	/* @todo - print to string, and then escape? */
+		fr_strerror_printf("Cannot escape data type '%s'", fr_type_to_str(vb->type));
+		return -1;
+
 	default:
 		break;
 	}
@@ -6324,7 +6654,15 @@ uint32_t fr_value_box_hash(fr_value_box_t const *vb)
 	case FR_TYPE_OCTETS:
 		return fr_hash(vb->vb_octets, vb->vb_length);
 
-	default:
+	case FR_TYPE_ATTR:
+		return fr_hash(&vb->vb_attr, sizeof(vb->vb_attr));
+
+	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_INTERNAL:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_NULL:
+		fr_assert(0);
 		break;
 	}
 
@@ -6462,6 +6800,13 @@ DIAG_ON(nonnull-compare)
 		fr_value_box_list_verify(file, line, &vb->vb_group);
 		break;
 
+	case FR_TYPE_ATTR:
+		if (vb->vb_attr) break;
+
+		fr_fatal_assert_msg(vb->vb_void, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t vb_attr field "
+				    "was NULL", file, line);
+		break;
+
 	default:
 		break;
 	}
@@ -6591,7 +6936,11 @@ bool fr_value_box_is_truthy(fr_value_box_t const *in)
 	switch (in->type) {
 	case FR_TYPE_NULL:
 	case FR_TYPE_STRUCTURAL_EXCEPT_GROUP:
-		return false;
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_COMBO_IP_PREFIX:
+	case FR_TYPE_ATTR:
+	case FR_TYPE_INTERNAL:
+		break;
 
 	case FR_TYPE_GROUP:
 		return (fr_value_box_list_num_elements(&in->vb_group) > 0);
@@ -6611,22 +6960,28 @@ bool fr_value_box_is_truthy(fr_value_box_t const *in)
 	case FR_TYPE_IPV6_PREFIX:
 		return !((in->vb_ip.prefix == 0) && fr_ipaddr_is_inaddr_any(&in->vb_ip));
 
-	default:
+	case FR_TYPE_INTEGER_EXCEPT_BOOL:
+	case FR_TYPE_FLOAT32:
+	case FR_TYPE_FLOAT64:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
 		fr_value_box_init_null(&box);
-		(void) fr_value_box_cast(NULL, &box, FR_TYPE_BOOL, NULL, in);
+		if (fr_value_box_cast(NULL, &box, FR_TYPE_BOOL, NULL, in) < 0) return false;
 		return box.vb_bool;
 	}
+
+	return false;
 }
 
-#define INFO_INDENT(_fmt, ...)  FR_FAULT_LOG("%*s"_fmt, depth * 2, " ", ## __VA_ARGS__)
+#define INFO_INDENT(_fmt, ...)  fprintf(fp, "%*s" _fmt "\n", depth * 2, " ", ## __VA_ARGS__)
 
-static void _fr_value_box_debug(fr_value_box_t const *vb, int depth, int idx);
-static void _fr_value_box_list_debug(fr_value_box_list_t const *head, int depth)
+static void _fr_value_box_debug(FILE *fp, fr_value_box_t const *vb, int depth, int idx);
+static void _fr_value_box_list_debug(FILE *fp, fr_value_box_list_t const *head, int depth)
 {
 	int i = 0;
 
 	INFO_INDENT("{");
-	fr_value_box_list_foreach(head, vb) _fr_value_box_debug(vb, depth + 1, i++);
+	fr_value_box_list_foreach(head, vb) _fr_value_box_debug(fp, vb, depth + 1, i++);
 	INFO_INDENT("}");
 }
 
@@ -6634,18 +6989,18 @@ static void _fr_value_box_list_debug(fr_value_box_list_t const *head, int depth)
  *
  * @note Call directly from the debugger
  */
-void fr_value_box_list_debug(fr_value_box_list_t const *head)
+void fr_value_box_list_debug(FILE *fp, fr_value_box_list_t const *head)
 {
-	_fr_value_box_list_debug(head, 0);
+	_fr_value_box_list_debug(fp, head, 0);
 }
 
-static void _fr_value_box_debug(fr_value_box_t const *vb, int depth, int idx)
+static void _fr_value_box_debug(FILE *fp, fr_value_box_t const *vb, int depth, int idx)
 {
 	char *value;
 	char buffer[64];
 
 	if (fr_type_is_structural(vb->type)) {
-		_fr_value_box_list_debug(&vb->vb_group, depth + 1);
+		_fr_value_box_list_debug(fp, &vb->vb_group, depth + 1);
 		return;
 	}
 
@@ -6681,7 +7036,7 @@ static void _fr_value_box_debug(fr_value_box_t const *vb, int depth, int idx)
  *
  * @note Call directly from the debugger
  */
-void fr_value_box_debug(fr_value_box_t const *vb)
+void fr_value_box_debug(FILE *fp, fr_value_box_t const *vb)
 {
-	_fr_value_box_debug(vb, 0, -1);
+	_fr_value_box_debug(fp, vb, 0, -1);
 }

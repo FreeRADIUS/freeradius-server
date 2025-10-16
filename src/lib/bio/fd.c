@@ -88,25 +88,20 @@
 		addr->socket.inet.ifindex = my->info.socket.inet.ifindex; \
 	} while (0)
 
-/*
- *	Close the descriptor and free the bio.
+/**  Orderly shutdown.
+ *
  */
-static int fr_bio_fd_destructor(fr_bio_fd_t *my)
+static int fr_bio_fd_shutdown(fr_bio_t *bio)
 {
-	/*
-	 *	The upstream bio must have unlinked it from the chain before calling talloc_free() on this
-	 *	bio.
-	 */
-	fr_assert(!fr_bio_prev(&my->bio));
-	fr_assert(!fr_bio_next(&my->bio));
+	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
+
+	if (my->info.state == FR_BIO_FD_STATE_CLOSED) return 0;
 
 	FR_TIMER_DELETE(&my->connect.ev);
 	if (my->connect.el) {
 		(void) fr_event_fd_delete(my->connect.el, my->info.socket.fd, FR_EVENT_FILTER_IO);
 		my->connect.el = NULL;
 	}
-
-	if (my->cb.shutdown) my->cb.shutdown(&my->bio);
 
 	return fr_bio_fd_close(&my->bio);
 }
@@ -149,6 +144,18 @@ static ssize_t fr_bio_fd_read_stream(fr_bio_t *bio, UNUSED void *packet_ctx, voi
 retry:
 	rcode = read(my->info.socket.fd, buffer, size);
 	if (rcode == 0) {
+		fr_bio_t *head;
+
+		/*
+		 *	Flush any pending writes, shut down the BIO, and then mark it as EOF.
+		 */
+		head = fr_bio_head(bio);
+
+		(void) fr_bio_write(head, NULL, NULL, SIZE_MAX);
+
+		rcode = fr_bio_shutdown(head);
+		if (rcode < 0) return rcode;
+
 		fr_bio_eof(bio);
 		return 0;
 	}
@@ -712,7 +719,7 @@ static ssize_t fr_bio_fd_try_connect(fr_bio_fd_t *my)
 	}
 
 	if (rcode < 0) {
-		fr_bio_shutdown(&my->bio);
+		(void) fr_bio_shutdown(&my->bio);
 		return fr_bio_error(GENERIC);
 	}
 
@@ -720,8 +727,6 @@ static ssize_t fr_bio_fd_try_connect(fr_bio_fd_t *my)
 
 retry:
         if (connect(my->info.socket.fd, (struct sockaddr *) &my->remote_sockaddr, my->remote_sockaddr_len) == 0) {
-		fr_bio_fd_set_open(my);
-
 		/*
 		 *	The source IP may have changed, so get the new one.
 		 */
@@ -729,6 +734,7 @@ retry:
 
                 if (fr_bio_fd_init_common(my) < 0) goto fail;
 
+		fr_bio_fd_set_open(my);
                 return 0;
         }
 
@@ -763,7 +769,7 @@ retry:
         }
 
 fail:
-	fr_bio_shutdown(&my->bio);
+	(void) fr_bio_shutdown(&my->bio);
         return fr_bio_error(IO);
 }
 
@@ -908,12 +914,14 @@ int fr_bio_fd_init_common(fr_bio_fd_t *my)
 
 int fr_bio_fd_init_listen(fr_bio_fd_t *my)
 {
+	fr_assert(my->info.socket.type == SOCK_STREAM);
+
 	my->bio.read = fr_bio_null_read;
 	my->bio.write = fr_bio_null_write;
 
-	if (listen(my->info.socket.fd, 8) < 0) {
-		fr_strerror_printf("Failed opening setting FD_CLOEXE: %s", fr_syserror(errno));
-		return -1;
+	if (listen(my->info.socket.fd, my->info.cfg->backlog_is_set ? my->info.cfg->backlog : 8) < 0) {
+		fr_strerror_printf("Failed calling listen() %s", fr_syserror(errno));
+		return fr_bio_error(IO);
 	}
 
 	fr_bio_fd_set_open(my);
@@ -992,8 +1000,9 @@ fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_fd_config_t const *cfg, size_t
 
 	my->priv_cb.eof = fr_bio_fd_eof;
 	my->priv_cb.write_resume = fr_bio_fd_write_resume;
+	my->priv_cb.shutdown = fr_bio_fd_shutdown;
 
-	talloc_set_destructor(my, fr_bio_fd_destructor);
+	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor); /* always use a common destructor */
 	return (fr_bio_t *) my;
 }
 
@@ -1008,14 +1017,8 @@ int fr_bio_fd_close(fr_bio_t *bio)
 
 	if (my->info.state == FR_BIO_FD_STATE_CLOSED) return 0;
 
-	/*
-	 *	Shut the bio down cleanly.
-	 */
-	rcode = fr_bio_shutdown(bio);
-	if (rcode < 0) return rcode;
-
-	my->bio.read = fr_bio_fail_read;
-	my->bio.write = fr_bio_fail_write;
+	my->bio.read = fr_bio_shutdown_read;
+	my->bio.write = fr_bio_shutdown_write;
 
 	/*
 	 *	Shut down the connected socket.  The only errors possible here are things we can't do anything
@@ -1040,7 +1043,7 @@ retry:
 		case EIO:
 			tries++;
 			if (tries < my->max_tries) goto retry;
-			return -1;
+			return fr_bio_error(IO);
 
 		default:
 			/*
@@ -1054,6 +1057,7 @@ retry:
 	my->info.read_blocked = true;
 	my->info.write_blocked = true;
 	my->info.eof = true;
+	my->info.socket.fd = -1;
 
 	return 0;
 }
@@ -1071,7 +1075,10 @@ static void fr_bio_fd_el_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 		my->connect.error(&my->bio);
 	}
 
-	fr_bio_shutdown(&my->bio);
+	/*
+	 *	The entire bio is unusable.
+	 */
+	(void) fr_bio_shutdown(&my->bio);
 }
 
 /** Connect callback for when the socket is writable.
@@ -1154,7 +1161,7 @@ static void fr_bio_fd_el_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t no
 
 	my->connect.timeout(&my->bio);
 
-	fr_bio_shutdown(&my->bio);
+	(void) fr_bio_shutdown(&my->bio);
 }
 
 
@@ -1191,7 +1198,7 @@ int fr_bio_fd_connect_full(fr_bio_t *bio, fr_event_list_t *el, fr_bio_callback_t
 		my->info.connect_errno = ECONNREFUSED;
 #endif
 		if (error_cb) error_cb(bio);
-		fr_bio_shutdown(&my->bio);
+		(void) fr_bio_shutdown(&my->bio);
 		return fr_bio_error(GENERIC);
 	}
 
@@ -1340,7 +1347,6 @@ int fr_bio_fd_write_only(fr_bio_t *bio)
 		goto set_recv_buff_zero;
 
 	case FR_BIO_FD_CONNECTED:
-	case FR_BIO_FD_ACCEPTED:
 		/*
 		 *	Further reads are disallowed.  However, this likely has no effect for UDP sockets.
 		 */
@@ -1381,104 +1387,144 @@ int fr_bio_fd_write_only(fr_bio_t *bio)
 	return 0;
 }
 
-/** Alternative to calling fr_bio_read() on new socket.
+#if !defined(__linux__) && !defined(__FreeBSD__)
+static int inline accept4(int fd, struct sockaddr *sockaddr, socklen_t *salen, UNUSED int flags)
+{
+	fd = accept(fd, sockaddr, salen);
+	if (fd >= 0) {
+#ifdef FD_CLOEXEC
+		int rcode;
+
+		rcode = fcntl(fd, F_GETFD);
+		if (rcode >= 0) {
+			if (fcntl(fd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
+				close(fd);
+				return -1;
+			}
+		}
+#endif
+
+		if (fr_nonblock(fd) < 0) {
+			close(fd);
+		}
+	}
+
+	return fd;
+}
+#ifndef SOCK_NONBLOCK
+#define SOCK_NONBLOCK 0
+#endif
+
+#ifndef SOCK_CLOEXEC
+#define SOCK_CLOEXEC 0
+#endif
+
+#endif
+
+/** Accept a stream socket and initialize its flags.
  *
  */
-int fr_bio_fd_accept(TALLOC_CTX *ctx, fr_bio_t **out_p, fr_bio_t *bio)
+static int fr_bio_fd_accept_stream(fr_bio_fd_t *my, fr_bio_fd_t const *parent)
 {
-	int fd, tries = 0;
 	int rcode;
-	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
-	socklen_t salen;
-	struct sockaddr_storage sockaddr;
-	fr_bio_fd_t *out;
-	fr_bio_fd_config_t *cfg;
+	int fd, tries = 0;
 
-	salen = sizeof(sockaddr);
-	*out_p = NULL;
-
-	fr_assert(my->info.type == FR_BIO_FD_LISTEN);
-	fr_assert(my->info.socket.type == SOCK_STREAM);
+	my->remote_sockaddr_len = sizeof(my->remote_sockaddr);
 
 retry:
-#ifdef __linux__
 	/*
 	 *	Set these flags immediately on the new socket.
 	 */
-	fd = accept4(my->info.socket.fd, (struct sockaddr *) &sockaddr, &salen, SOCK_NONBLOCK | SOCK_CLOEXEC);
-#else
-	fd = accept(my->info.socket.fd, (struct sockaddr *) &sockaddr, &salen);
-#endif
+	fd = accept4(parent->info.socket.fd, (struct sockaddr *) &my->remote_sockaddr, &my->remote_sockaddr_len,
+		     SOCK_NONBLOCK | SOCK_CLOEXEC);
 	if (fd < 0) {
-		switch (errno) {
-		case EINTR:
-			/*
-			 *	Try a few times before giving up.
-			 */
+		/*
+		 *	Try a few times before giving up.
+		 */
+		if (errno == EINTR) {
 			tries++;
 			if (tries <= my->max_tries) goto retry;
-			return 0;
-
-			/*
-			 *	We can ignore these errors.
-			 */
-		case ECONNABORTED:
-#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
-		case EWOULDBLOCK:
-#endif
-		case EAGAIN:
-#ifdef EPERM
-		case EPERM:
-#endif
-#ifdef ETIMEDOUT
-		case ETIMEDOUT:
-#endif
-			return 0;
-
-		default:
-			/*
-			 *	Some other error, it's fatal.
-			 */
-			fr_bio_shutdown(&my->bio);
-			break;
 		}
 
 		return fr_bio_error(IO);
 	}
 
 	/*
+	 *	Get IP addresses from the sockaddr.
+	 */
+	if ((my->info.socket.af == AF_INET) || (my->info.socket.af == AF_INET6)) {
+		fr_ipaddr_from_sockaddr(&my->info.socket.inet.dst_ipaddr, &my->info.socket.inet.dst_port,
+					&my->remote_sockaddr, my->remote_sockaddr_len);
+	}
+
+	/*
+	 *	The socket is now open.  Save the new state.
+	 */
+	my->info.socket.fd = fd;
+	my->info.type = FR_BIO_FD_CONNECTED;
+
+	rcode = fr_bio_fd_init_common(my);
+	if (rcode < 0) {
+		close(fd);
+		return rcode;
+	}
+
+	fr_bio_fd_name(my);
+	if (!my->info.name) {
+		close(fd);
+		return fr_bio_error(OOM);
+	}
+
+	return 0;
+}
+
+
+/** Accept a new connection on a socket.
+ *
+ */
+int fr_bio_fd_accept(TALLOC_CTX *ctx, fr_bio_t **out_p, fr_bio_t *bio)
+{
+	int rcode;
+	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
+	fr_bio_fd_t *out;
+
+	*out_p = NULL;
+
+	fr_assert(my->info.type == FR_BIO_FD_LISTEN);
+
+	/*
 	 *	Allocate the base BIO and set it up.
 	 */
 	out = (fr_bio_fd_t *) fr_bio_fd_alloc(ctx, NULL, my->offset);
-	if (!out) {
-		close(fd);
-		return fr_bio_error(GENERIC);
-	}
+	if (!out) return fr_bio_error(GENERIC);
 
 	/*
-	 *	We have a file descriptor.  Initialize the configuration with the new information.
+	 *	Initialize the new BIO information.
 	 */
-	cfg = talloc_memdup(out, my->info.cfg, sizeof(*my->info.cfg));
-	if (!cfg) {
-		fr_strerror_const("Out of memory");
-		close(fd);
-		talloc_free(out);
-		return fr_bio_error(GENERIC);
-	}
+	out->info.cfg = my->info.cfg;
 
 	/*
-	 *	Set the type to ACCEPTED, and set up the rest of the callbacks to match.
+	 *	Copy all socket fields, including ones which will be over-written later.
 	 */
-	cfg->type = FR_BIO_FD_ACCEPTED;
-	out->info.socket.fd = fd;
+	out->info.socket = my->info.socket;
 
-	rcode = fr_bio_fd_open(bio, cfg);
+	if (my->info.socket.type == SOCK_STREAM) {
+		rcode = fr_bio_fd_accept_stream(out, my);
+
+	} else {
+		fr_assert(my->info.socket.type == SOCK_DGRAM);
+
+		// rcode = fr_bio_fd_accept_datagram(out, my);
+		rcode = -1;
+	}
 	if (rcode < 0) {
 		talloc_free(out);
 		return rcode;
 	}
 
-	fr_assert(out->info.type == FR_BIO_FD_CONNECTED);
+	/*
+	 *	The socket is now
+	 */
 
 	*out_p = (fr_bio_t *) out;
 	return 1;

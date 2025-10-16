@@ -1,0 +1,57 @@
+bool sent
+
+#
+#  Test xlat with all 3 arguments
+#
+sent = %smtp_xlat.send('xlat_recipient_1@localhost', 'Simple email', 'With body')
+
+#
+#  Xlat failure is likely a timeout
+#  Avoid false negatives by aborting test
+#
+if (!sent) {
+	if (Module-Failure-Message[*] == 'smtp: curl request failed: Timeout was reached (28)') {
+		test_pass
+		handled
+	}
+	test_fail
+}
+
+#
+# Wait up to five seconds for exim to deliver the email
+# Then confirm it was delivered
+#
+foreach i (%range(50)) {
+	if %file.exists('build/ci/exim4/mail/xlat_recipient_1') {
+		break;
+	}
+	%delay(0.1)
+}
+if !%file.exists('build/ci/exim4/mail/xlat_recipient_1') {
+	test_fail
+}
+
+#
+#  Test xlat with just recipient and subject
+#
+sent := %smtp_xlat.send('xlat_recipient_2@localhost', 'Simple email two')
+
+if (!sent) {
+	if (Module-Failure-Message[*] == 'smtp: curl request failed: Timeout was reached (28)') {
+		test_pass
+		handled
+	}
+	test_fail
+}
+
+foreach i (%range(50)) {
+	if %file.exists('build/ci/exim4/mail/xlat_recipient_2') {
+		break;
+	}
+	%delay(0.1)
+}
+if !%file.exists('build/ci/exim4/mail/xlat_recipient_2') {
+	test_fail
+}
+
+test_pass

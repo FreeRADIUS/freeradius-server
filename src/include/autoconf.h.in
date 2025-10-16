@@ -35,6 +35,9 @@
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
 
+/* Define to 1 if you have the `backtrace' library (-lbacktrace). */
+#undef HAVE_BACKTRACE
+
 /* Define to 1 if you have the 'bindat' function. */
 #undef HAVE_BINDAT
 
@@ -358,9 +361,6 @@
 
 /* Define if we have any regular expression library */
 #undef HAVE_REGEX
-
-/* define this if we have libpcre */
-#undef HAVE_REGEX_PCRE
 
 /* define this if we have libpcre2 */
 #undef HAVE_REGEX_PCRE2

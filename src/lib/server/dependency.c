@@ -192,14 +192,6 @@ void dependency_features_init(CONF_SECTION *cs)
 #endif
 				);
 
-	dependency_feature_add(cs, "regex-pcre",
-#ifdef HAVE_REGEX_PCRE
-				true
-#else
-				false
-#endif
-				);
-
 	dependency_feature_add(cs, "regex-pcre2",
 #ifdef HAVE_REGEX_PCRE2
 				true
@@ -223,7 +215,7 @@ void dependency_features_init(CONF_SECTION *cs)
 #endif
 
 	dependency_feature_add(cs, "regex-binsafe",
-#if defined(HAVE_REGNEXEC) || defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
+#if defined(HAVE_REGNEXEC) || defined(HAVE_REGEX_PCRE2)
 				true
 #else
 				false
@@ -357,8 +349,6 @@ void dependency_version_numbers_init(CONF_SECTION *cs)
 #  ifdef HAVE_REGEX_PCRE2
 	snprintf(buffer, sizeof(buffer), "%i.%i (%s) - retrieved at build time", PCRE2_MAJOR, PCRE2_MINOR, STRINGIFY(PCRE2_DATE));
 	dependency_version_number_add(cs, "pcre2", buffer);
-#  elif defined(HAVE_REGEX_PCRE)
-	dependency_version_number_add(cs, "pcre", pcre_version());
 #  endif
 #endif
 

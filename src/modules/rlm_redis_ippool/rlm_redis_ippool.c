@@ -1159,7 +1159,10 @@ static unlang_action_t CC_HINT(nonnull) mod_update(unlang_result_t *p_result, mo
 				.rhs = &ip_rhs
 			};
 
-			fr_value_box_copy(NULL, &ip_rhs.data.literal, &env->requested_address);
+			if (unlikely(fr_value_box_copy(NULL, &ip_rhs.data.literal, &env->requested_address) < 0)) {
+				RPEDEBUG("Failed copying IP address to reply attribute");
+				RETURN_UNLANG_FAIL;
+			}
 
 			if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) RETURN_UNLANG_FAIL;
 		}
@@ -1240,7 +1243,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	fr_assert(subcs);
 
-	inst->cluster = fr_redis_cluster_alloc(inst, subcs, &inst->conf, true, NULL, NULL, NULL);
+	inst->cluster = fr_redis_cluster_alloc(inst, subcs, &inst->conf, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
 
 	if (!fr_redis_cluster_min_version(inst->cluster, "3.0.2")) {

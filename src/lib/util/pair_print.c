@@ -313,40 +313,81 @@ void _fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent, fr_pair_
 	fr_sbuff_t sbuff;
 	char buffer[1024];
 
-#ifdef STATIC_ANALYZER
-	buffer[0] = '\0';
-#endif
-
 	fr_sbuff_init_out(&sbuff, buffer, sizeof(buffer));
 
 	fr_pair_list_log_sbuff(log, lvl, parent, list, file, line, &sbuff);
 }
 
+static void fr_pair_list_debug_sbuff(FILE *fp, int lvl, fr_pair_t *parent, fr_pair_list_t const *list, fr_sbuff_t *sbuff)
+{
+	fr_dict_attr_t const *parent_da = NULL;
+
+	fr_pair_list_foreach(list, vp) {
+		PAIR_VERIFY_WITH_LIST(list, vp);
+
+		fr_sbuff_set_to_start(sbuff);
+
+		if (vp->vp_raw) (void) fr_sbuff_in_strcpy(sbuff, "raw.");
+
+		if (parent && (parent->vp_type != FR_TYPE_GROUP)) parent_da = parent->da;
+		if (fr_dict_attr_oid_print(sbuff, parent_da, vp->da, false) <= 0) return;
+
+		/*
+		 *	Recursively print grouped attributes.
+		 */
+		switch (vp->vp_type) {
+		case FR_TYPE_STRUCTURAL:
+			fprintf(fp, "%*s%*s {\n", lvl * 2, "", (int) fr_sbuff_used(sbuff), fr_sbuff_start(sbuff));
+			_fr_pair_list_debug(fp, lvl + 1, vp, &vp->vp_group);
+			fprintf(fp, "%*s}\n", lvl * 2, "");
+			break;
+
+		default:
+			(void) fr_sbuff_in_strcpy(sbuff, " = ");
+			if (fr_value_box_print_quoted(sbuff, &vp->data, T_DOUBLE_QUOTED_STRING)< 0) break;
+
+			fprintf(fp, "%*s%*s\n", lvl * 2, "", (int) fr_sbuff_used(sbuff), fr_sbuff_start(sbuff));
+		}
+	}
+}
+
+/** Print a list of attributes and enumv
+ *
+ * @param[in] fp	to output to.
+ * @param[in] lvl	depth in structural attribute.
+ * @param[in] parent	parent attribute
+ * @param[in] list	to print.
+ */
+void _fr_pair_list_debug(FILE *fp, int lvl, fr_pair_t *parent, fr_pair_list_t const *list)
+{
+	fr_sbuff_t sbuff;
+	char buffer[1024];
+
+	fr_sbuff_init_out(&sbuff, buffer, sizeof(buffer));
+
+	fr_pair_list_debug_sbuff(fp, lvl, parent, list, &sbuff);
+}
+
 /** Dumps a list to the default logging destination - Useful for calling from debuggers
  *
  */
-void fr_pair_list_debug(fr_pair_list_t const *list)
+void fr_pair_list_debug(FILE *fp, fr_pair_list_t const *list)
 {
-	_fr_pair_list_log(&default_log, 0, NULL, list, "<internal>", 0);
+	_fr_pair_list_debug(fp, 0, NULL, list);
 }
 
 
 /** Dumps a pair to the default logging destination - Useful for calling from debuggers
  *
  */
-void fr_pair_debug(fr_pair_t const *pair)
+void fr_pair_debug(FILE *fp, fr_pair_t const *pair)
 {
 	fr_sbuff_t sbuff;
 	char buffer[1024];
-
-#ifdef STATIC_ANALYZER
-	buffer[0] = '\0';
-#endif
 
 	fr_sbuff_init_out(&sbuff, buffer, sizeof(buffer));
 
 	(void) fr_pair_print(&sbuff, NULL, pair);
 
-	fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pV",
-	       fr_box_strvalue_len(fr_sbuff_start(&sbuff), fr_sbuff_used(&sbuff)));
+	fprintf(fp, "%pV\n", fr_box_strvalue_len(fr_sbuff_start(&sbuff), fr_sbuff_used(&sbuff)));
 }

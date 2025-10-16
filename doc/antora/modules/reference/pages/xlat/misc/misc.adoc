@@ -33,12 +33,11 @@ the named capture group values will be cleared.
 
 [NOTE]
 ====
-This expansion is only available if the server is built with libpcre or libpcre2.
+This expansion is only available if the server is built with libpcre2.
 Use the output of `radiusd -Xxv` to determine which regular expression library in use.
 
 ....
 ...
-Debug :   regex-pcre               : no
 Debug :   regex-pcre2              : yes
 Debug :   regex-posix              : no
 Debug :   regex-posix-extended     : no

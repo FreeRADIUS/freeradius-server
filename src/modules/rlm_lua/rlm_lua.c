@@ -42,7 +42,7 @@ RCSID("$Id$")
  *	buffer over-flows.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED, rlm_lua_t, module), NULL},
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED, rlm_lua_t, module), NULL},
 	{ FR_CONF_OFFSET("func_instantiate", rlm_lua_t, func_instantiate), NULL},
 	{ FR_CONF_OFFSET("func_detach", rlm_lua_t, func_detach), NULL},
 	{ FR_CONF_OFFSET("func_xlat", rlm_lua_t, func_xlat), NULL},

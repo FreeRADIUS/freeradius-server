@@ -41,6 +41,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/master.h>
 #include <freeradius-devel/io/listen.h>
 
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/talloc.h>
@@ -723,8 +724,7 @@ static inline CC_HINT(always_inline) int virtual_server_push_finally(request_t *
 
 		if (!vp) goto check_default;	/* No packet type found, still allow default finally section */
 
-		(void) fr_value_box_cast(NULL, &key, FR_TYPE_UINT16, NULL, &vp->data);
-		fr_assert(key.type == FR_TYPE_UINT16);	/* Cast must succeed */
+		if (fr_value_box_cast(NULL, &key, FR_TYPE_UINT16, NULL, &vp->data) < 0) return -1;
 
 		if (key.vb_uint16 >= talloc_array_length(vs->finally_by_packet_type) ||
 		    !(instruction = vs->finally_by_packet_type[key.vb_uint16])) goto check_default;
@@ -752,16 +752,8 @@ check_default:
  *
  *	Short-term hack
  */
-unlang_action_t virtual_server_push(unlang_result_t *p_result, request_t *request, CONF_SECTION *server_cs, bool top_frame)
+unlang_action_t virtual_server_push(unlang_result_t *p_result, request_t *request, virtual_server_t const *vs, bool top_frame)
 {
-	virtual_server_t *vs;
-
-	vs = cf_data_value(cf_data_find(server_cs, virtual_server_t, NULL));
-	if (!vs) {
-		cf_log_err(server_cs, "server_cs does not contain virtual server data");
-		return UNLANG_ACTION_FAIL;
-	}
-
 	/*
 	 *	Add a log destination specific to this virtual server.
 	 *
@@ -787,7 +779,7 @@ unlang_action_t virtual_server_push(unlang_result_t *p_result, request_t *reques
 								  server_remove_log_destination, 	/* but when we pop the frame */
 								  server_signal_remove_log_destination, ~(FR_SIGNAL_CANCEL),
 								  top_frame,
-								  vs);
+								  UNCONST(void *, vs));
 			if (action != UNLANG_ACTION_PUSHED_CHILD) return action;
 
 			top_frame = UNLANG_SUB_FRAME;	/* switch to SUB_FRAME after the first instruction */
@@ -951,6 +943,22 @@ CONF_SECTION *virtual_server_cs(virtual_server_t const *vs)
 	return vs->server_cs;
 }
 
+/** Resolve a CONF_SECTION to a virtual server
+ *
+ */
+virtual_server_t const *virtual_server_from_cs(CONF_SECTION *server_cs)
+{
+	virtual_server_t *vs;
+
+	vs = cf_data_value(cf_data_find(server_cs, virtual_server_t, NULL));
+	if (!vs) {
+		cf_log_err(server_cs, "server_cs does not contain virtual server data");
+		return NULL;
+	}
+
+	return vs;
+}
+
 /** Return virtual server matching the specified name
  *
  * @note May be called in bootstrap or instantiate as all servers should be present.
@@ -1007,6 +1015,7 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 			    CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	virtual_server_t const *vs;
+	virtual_server_cf_parse_uctx_t const *uctx = rule->uctx;
 
 	vs = virtual_server_find(cf_pair_value(cf_item_to_pair(ci)));
 	if (!vs) {
@@ -1014,7 +1023,53 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 		return -1;
 	}
 
-	*((CONF_SECTION **)out) = vs->server_cs;
+	/*
+	 *	Validation checks
+	 */
+	if (uctx) {
+		/*
+		 *	Check the module name
+		 *
+		 *	FIXME: ...at some point in the distance future.  Names
+		 *	are icky, we should compare based on dl_module_t, but
+		 *	ordering issues make this difficult currently.
+		 */
+		if (uctx->process_module_name) {
+			/* catch users doing stupid things */
+			if (strcmp(uctx->process_module_name, vs->process_mi->module->name) != 0) {
+				cf_log_err(ci, "virtual server \"%s\" must be of type \"%s\", "
+					   "got type \"%s\"",
+					   cf_pair_value(cf_item_to_pair(ci)),
+					   uctx->process_module_name, vs->process_mi->module->name);
+				return -1;
+			}
+		}
+
+		/*
+		 *	It's theoretically possible for the same module to be used
+		 *	with multiple namespaces, so we need this check too.
+		 */
+		if (uctx->required_dict) {
+			fr_dict_t *required_dict = *uctx->required_dict;
+
+			if (!fr_cond_assert_msg(required_dict != NULL,
+						"dict not resolved before virtual server reference")) {
+				goto done;
+			}
+
+			if (required_dict != *vs->process_module->dict) {
+				cf_log_err(ci, "virtual server \"%s\" must use namespace \"%s\", "
+					   "got namespace \"%s\"",
+					   cf_pair_value(cf_item_to_pair(ci)),
+					   fr_dict_root(required_dict)->name,
+					   fr_dict_root(*vs->process_module->dict)->name);
+				return -1;
+			}
+		}
+	}
+
+done:
+	*((virtual_server_t const **)out) = vs;
 
 	return 0;
 }
@@ -1023,15 +1078,15 @@ static inline CC_HINT(always_inline) int virtual_server_compile_finally_sections
 {
 	static unlang_mod_actions_t const mod_actions_finally = {
 		.actions = {
-			[RLM_MODULE_REJECT]	= 3,
-			[RLM_MODULE_FAIL]	= 1,
-			[RLM_MODULE_OK]		= 4,
+			[RLM_MODULE_REJECT]	= MOD_PRIORITY(3),
+			[RLM_MODULE_FAIL]	= MOD_PRIORITY(1),
+			[RLM_MODULE_OK]		= MOD_PRIORITY(4),
 			[RLM_MODULE_HANDLED]	= MOD_ACTION_RETURN,
-			[RLM_MODULE_INVALID]	= 2,
-			[RLM_MODULE_DISALLOW]	= 5,
-			[RLM_MODULE_NOTFOUND]	= 6,
-			[RLM_MODULE_NOOP]	= 8,
-			[RLM_MODULE_UPDATED]	= 7
+			[RLM_MODULE_INVALID]	= MOD_PRIORITY(2),
+			[RLM_MODULE_DISALLOW]	= MOD_PRIORITY(5),
+			[RLM_MODULE_NOTFOUND]	= MOD_PRIORITY(6),
+			[RLM_MODULE_NOOP]	= MOD_PRIORITY(8),
+			[RLM_MODULE_UPDATED]	= MOD_PRIORITY(7)
 		},
 		.retry = RETRY_INIT,
 	};

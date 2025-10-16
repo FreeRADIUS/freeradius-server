@@ -371,7 +371,7 @@ typedef struct {
 } rlm_passwd_t;
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED, rlm_passwd_t, filename) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED, rlm_passwd_t, filename) },
 	{ FR_CONF_OFFSET_FLAGS("format", CONF_FLAG_REQUIRED, rlm_passwd_t, format) },
 	{ FR_CONF_OFFSET("delimiter", rlm_passwd_t, delimiter), .dflt = ":" },
 

@@ -539,7 +539,7 @@ check_non_leaf:
 		}
 
 		if (!fr_value_box_is_safe_for(vb, FR_VALUE_BOX_SAFE_FOR_ANY)) {
-			fr_value_box_debug(vb);
+			fr_value_box_debug(fr_log_fp, vb);
 			REDEBUG("Refusing to reference attribute from unsafe data");
 			return XLAT_ACTION_FAIL;
 		}
@@ -547,7 +547,7 @@ check_non_leaf:
 		if (tmpl_afrom_attr_str(ctx, NULL, &vpt, vb->vb_strvalue,
 					&(tmpl_rules_t){
 						.attr = {
-							.dict_def = request->proto_dict, /* we can't encode local attributes */
+							.dict_def = request->local_dict,
 							.list_def = request_attr_request,
 							.allow_wildcard = arg->allow_wildcard,
 						}
@@ -985,6 +985,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 typedef struct {
 	int			status;
 	fr_value_box_list_t	list;
+	unlang_result_t		result;
 } xlat_exec_rctx_t;
 
 static xlat_action_t xlat_exec_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
@@ -997,6 +998,44 @@ static xlat_action_t xlat_exec_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_strerror_printf("Program failed with status %d", rctx->status);
 		return XLAT_ACTION_FAIL;
 	}
+
+#if 0
+	/*
+	 *	Comment this out until such time as we better track exceptions.
+	 *
+	 *	Enabling this code causes some keyword tests to fail, specifically
+	 *	xlat-alternation-with-func and if-regex-match-named.
+	 *
+	 *	The regex tests are failing because the various regex_request_to_sub() functions are returning
+	 *	errors when there is no previous regex, OR when the referenced regex match doesn't exist.
+	 *	This should arguably be a success with NULL results.
+	 *
+	 *	The alternation test is failing because a function is called with an argument that doesn't
+	 *	exist, inside of an alternation.  e.g. %{%foo(nope) || bar}.  We arguably want the alternation
+	 *	to catch this error, and run the alternate path "bar".
+	 *
+	 *	However, doing that would involve more changes.  Alternation could catch LHS errors of
+	 *	XLAT_FAIL, and then run the RHS.  Doing that would require it to manually expand each
+	 *	argument, and catch the errors.  Note that this is largely what Perl and Python do with their
+	 *	logical "and" / "or" functions.
+	 *
+	 *	For our use-case, we could perhaps have a variante of || which "catches" errors.  One proposal
+	 *	is to use a %catch(...) function, but that seems ugly.  Pretty much everything would need to
+	 *	be wrapped in %catch().
+	 *
+	 *	Another option is to extend the || operator. e.g. %{foo(nope) ||? bar}.  But that seems ugly,
+	 *	too.
+	 *
+	 *	Another option is to change the behavior so that failed xlats just result in empty
+	 *	value-boxes.  However, it then becomes difficult to distinguish the situations for
+	 *	%sql("SELECT...") where the SELECT returns nothing, versus the SQL connection is down.
+	 */
+	if (rctx->result.rcode != RLM_MODULE_OK) {
+		fr_strerror_printf("Expansion failed with code %s",
+				   fr_table_str_by_value(rcode_table, rctx->result.rcode, "<INVALID>"));
+		return XLAT_ACTION_FAIL;
+	}
+#endif
 
 	fr_value_box_list_move((fr_value_box_list_t *)out->dlist, &rctx->list);
 
@@ -1135,7 +1174,6 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	{
 		xlat_action_t		xa;
 		xlat_thread_inst_t	*t;
-		fr_value_box_list_t	result_copy;
 
 		t = xlat_thread_instance_find(node);
 		fr_assert(t);
@@ -1146,21 +1184,14 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		VALUE_BOX_LIST_VERIFY(result);
 
-		/*
-		 *	Always need to init and free the
-		 *	copy list as debug level could change
-		 *	when the xlat function executes.
-		 */
-		fr_value_box_list_init(&result_copy);
+		if (RDEBUG_ENABLED2) {
+			REXDENT();
+			xlat_debug_log_expansion(request, *in, result, __LINE__);
+			RINDENT();
+		}
 
-		/*
-		 *	Need to copy the input list in case
-		 *	the async function mucks with it.
-		 */
-		if (RDEBUG_ENABLED2) fr_value_box_list_acopy(unlang_interpret_frame_talloc_ctx(request), &result_copy, result);
 		xa = xlat_process_args(ctx, result, request, node);
 		if (xa == XLAT_ACTION_FAIL) {
-			fr_value_box_list_talloc_free(&result_copy);
 			return xa;
 		}
 
@@ -1169,13 +1200,6 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   XLAT_CTX(node->call.inst->data, t->data, node, t->mctx, env_data, NULL),
 					   request, result);
 		VALUE_BOX_LIST_VERIFY(result);
-
-		if (RDEBUG_ENABLED2) {
-			REXDENT();
-			xlat_debug_log_expansion(request, *in, &result_copy, __LINE__);
-			RINDENT();
-		}
-		fr_value_box_list_talloc_free(&result_copy);
 
 		switch (xa) {
 		case XLAT_ACTION_FAIL:
@@ -1359,6 +1383,19 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 		goto finish;
 	}
 
+	/*
+	 *	An attribute reference which produces a box of type FR_TYPE_ATTR
+	 */
+	if (unlikely(head && head->is_attr)) {
+		fr_assert((*in)->type == XLAT_TMPL);
+
+		MEM(value = fr_value_box_alloc_null(ctx));
+		fr_value_box_set_attr(value, tmpl_attr_tail_da((*in)->vpt));
+
+		fr_dcursor_append(out, value);
+		goto finish;
+	}
+
 	XLAT_DEBUG("** [%i] %s >> entered", unlang_interpret_stack_depth(request), __FUNCTION__);
 
 	for (node = *in; node; node = xlat_exp_next(head, node)) {
@@ -1386,7 +1423,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 			 *	because references aren't threadsafe.
 			 */
 			MEM(value = fr_value_box_alloc_null(ctx));
-			if (fr_value_box_copy(value, value, &node->data) < 0) goto fail;
+			if (unlikely(fr_value_box_copy(value, value, &node->data) < 0)) goto fail;
 			fr_dcursor_append(out, value);
 			continue;
 
@@ -1417,7 +1454,10 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 
 				MEM(value = fr_value_box_alloc(ctx, tmpl_value_type(node->vpt), NULL));
 
-				fr_value_box_copy(value, value, tmpl_value(node->vpt));	/* Also dups taint */
+				if (unlikely(fr_value_box_copy(value, value, tmpl_value(node->vpt)) < 0)) {
+					talloc_free(value);
+					goto fail;
+				};	/* Also dups taint */
 				fr_value_box_list_insert_tail(&result, value);
 
 				/*
@@ -1448,14 +1488,15 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 				 */
 				MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_exec_rctx_t));
 				fr_value_box_list_init(&rctx->list);
+				rctx->result = UNLANG_RESULT_RCODE(RLM_MODULE_OK);
 
 				xlat_debug_log_expansion(request, node, NULL, __LINE__);
 
 				if (unlang_xlat_yield(request, xlat_exec_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto fail;
 
-				if (unlang_tmpl_push(ctx, &rctx->list, request, node->vpt,
+				if (unlang_tmpl_push(ctx, &rctx->result, &rctx->list, request, node->vpt,
 						     TMPL_ARGS_EXEC(NULL, fr_time_delta_from_sec(EXEC_TIMEOUT),
-						     		    false, &rctx->status)) < 0) goto fail;
+						     		    false, &rctx->status), UNLANG_SUB_FRAME) < 0) goto fail;
 
 				xa = XLAT_ACTION_PUSH_UNLANG;
 				goto finish;
@@ -1629,7 +1670,7 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 			      xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	fr_value_box_list_t	result;
-	unlang_result_t		unlang_result = { .rcode = RLM_MODULE_NOT_SET, .priority = MOD_ACTION_NOT_SET };
+	unlang_result_t		unlang_result = UNLANG_RESULT_NOT_SET;
 	TALLOC_CTX		*pool = talloc_new(NULL);
 	rlm_rcode_t		rcode;
 	char			*str;
@@ -1770,7 +1811,7 @@ ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *reques
 	 *	Give better errors than the old code.
 	 */
 	len = xlat_tokenize(ctx, &head,
-			    &FR_SBUFF_IN(fmt, strlen(fmt)),
+			    &FR_SBUFF_IN_STR(fmt),
 			    NULL,
 			    &(tmpl_rules_t){
 				    .attr = {

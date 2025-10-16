@@ -1,4 +1,4 @@
-= PAM Support for FreeRadius
+= PAM
 
 PAM support was done by Jeph Blaize. Miguel a.l. Paraz
 mailto:map@iphil.net[map@iphil.net] ported it to FreeRADIUS’

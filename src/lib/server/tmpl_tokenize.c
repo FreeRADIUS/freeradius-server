@@ -193,7 +193,7 @@ static inline bool CC_HINT(always_inline) tmpl_substr_terminal_check(fr_sbuff_t 
 	return ret;
 }
 
-void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
+void tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, int i)
 {
 	char buffer[sizeof(STRINGIFY(INT16_MAX)) + 1];
 
@@ -204,29 +204,29 @@ void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
 	case TMPL_ATTR_TYPE_UNSPEC:
 	case TMPL_ATTR_TYPE_UNKNOWN:
 		if (!ar->da) {
-			FR_FAULT_LOG("\t[%u] %s null%s%s%s",
-				     i,
-				     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
-				     ar->ar_num != NUM_UNSPEC ? "[" : "",
-				     ar->ar_num != NUM_UNSPEC ? fr_table_str_by_value(attr_num_table, ar->ar_num, buffer) : "",
-				     ar->ar_num != NUM_UNSPEC ? "]" : "");
+			fprintf(fp, "\t[%u] %s null%s%s%s\n",
+				i,
+				fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
+				ar->ar_num != NUM_UNSPEC ? "[" : "",
+				ar->ar_num != NUM_UNSPEC ? fr_table_str_by_value(attr_num_table, ar->ar_num, buffer) : "",
+				ar->ar_num != NUM_UNSPEC ? "]" : "");
 			return;
 		}
 
-		FR_FAULT_LOG("\t[%u] %s %s %s%s%s%s (%p) attr %u",
-			     i,
-			     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
-			     fr_type_to_str(ar->da->type),
-			     ar->da->name,
-			     ar->ar_num != NUM_UNSPEC ? "[" : "",
-			     ar->ar_num != NUM_UNSPEC ? fr_table_str_by_value(attr_num_table, ar->ar_num, buffer) : "",
-			     ar->ar_num != NUM_UNSPEC ? "]" : "",
-			     ar->da,
-			     ar->da->attr
+		fprintf(fp, "\t[%u] %s %s %s%s%s%s (%p) attr %u\n ",
+			i,
+			fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
+			fr_type_to_str(ar->da->type),
+			ar->da->name,
+			ar->ar_num != NUM_UNSPEC ? "[" : "",
+			ar->ar_num != NUM_UNSPEC ? fr_table_str_by_value(attr_num_table, ar->ar_num, buffer) : "",
+			ar->ar_num != NUM_UNSPEC ? "]" : "",
+			ar->da,
+			ar->da->attr
 		);
-		FR_FAULT_LOG("\t    is_raw     : %s", ar_is_raw(ar) ? "yes" : "no");
-		FR_FAULT_LOG("\t    is_unknown : %s", ar_is_unknown(ar) ? "yes" : "no");
-		if (ar->ar_parent) FR_FAULT_LOG("\t    parent     : %s (%p)", ar->ar_parent->name, ar->ar_parent);
+		fprintf(fp, "\t    is_raw     : %s\n", ar_is_raw(ar) ? "yes" : "no");
+		fprintf(fp, "\t    is_unknown : %s", ar_is_unknown(ar) ? "yes" : "no");
+		if (ar->ar_parent) fprintf(fp, "\t    parent     : %s (%p)", ar->ar_parent->name, ar->ar_parent);
 		break;
 
 
@@ -235,40 +235,40 @@ void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
 		 *	Type reveals unresolved status
 		 *	so we don't need to add it explicitly
 		 */
-		FR_FAULT_LOG("\t[%u] %s %s%s%s%s",
-			     i,
-			     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
-			     ar->ar_unresolved,
-			     ar->ar_num != NUM_UNSPEC ? "[" : "",
-			     ar->ar_num != NUM_UNSPEC ? fr_table_str_by_value(attr_num_table, ar->ar_num, buffer) : "",
-			     ar->ar_num != NUM_UNSPEC ? "]" : "");
-		if (ar->ar_parent) 			FR_FAULT_LOG("\t    parent     : %s", ar->ar_parent->name);
-		if (ar->ar_unresolved_namespace)	FR_FAULT_LOG("\t    namespace  : %s", ar->ar_unresolved_namespace->name);
+		fprintf(fp, "\t[%u] %s %s%s%s%s\n",
+			i,
+			fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
+			ar->ar_unresolved,
+			ar->ar_num != NUM_UNSPEC ? "[" : "",
+			ar->ar_num != NUM_UNSPEC ? fr_table_str_by_value(attr_num_table, ar->ar_num, buffer) : "",
+			ar->ar_num != NUM_UNSPEC ? "]" : "");
+		if (ar->ar_parent) 			fprintf(fp, "\t    parent     : %s", ar->ar_parent->name);
+		if (ar->ar_unresolved_namespace)	fprintf(fp, "\t    namespace  : %s", ar->ar_unresolved_namespace->name);
 		break;
 
 	default:
-		FR_FAULT_LOG("\t[%u] Bad type %s(%u)",
+		fprintf(fp, "\t[%u] Bad type %s(%u)",
 			     i, fr_table_str_by_value(attr_table, ar->type, "<INVALID>"), ar->type);
 		break;
 	}
 }
 
-void tmpl_attr_ref_list_debug(FR_DLIST_HEAD(tmpl_attr_list) const *ar_head)
+void tmpl_attr_ref_list_debug(FILE *fp, FR_DLIST_HEAD(tmpl_attr_list) const *ar_head)
 {
 	tmpl_attr_t		*ar = NULL;
 	unsigned int		i = 0;
 
-	FR_FAULT_LOG("attribute references:");
+	fprintf(fp, "attribute references:\n");
 	/*
 	 *	Print all the attribute references
 	 */
 	while ((ar = tmpl_attr_list_next(ar_head, ar))) {
-		tmpl_attr_ref_debug(ar, i);
+		tmpl_attr_ref_debug(fp, ar, i);
 		i++;
 	}
 }
 
-void tmpl_attr_debug(tmpl_t const *vpt)
+void tmpl_attr_debug(FILE *fp, tmpl_t const *vpt)
 {
 	tmpl_request_t		*rr = NULL;
 	unsigned int		i = 0;
@@ -279,61 +279,61 @@ void tmpl_attr_debug(tmpl_t const *vpt)
 		break;
 
 	default:
-		FR_FAULT_LOG("%s can't print tmpls of type %s", __FUNCTION__,
-			     tmpl_type_to_str(vpt->type));
+		fprintf(fp, "%s can't print tmpls of type %s\n", __FUNCTION__,
+			tmpl_type_to_str(vpt->type));
 		return;
 	}
 
-	FR_FAULT_LOG("tmpl_t %s (%.8x) \"%pV\" (%p)",
-		     tmpl_type_to_str(vpt->type),
-		     vpt->type,
-		     fr_box_strvalue_len(vpt->name, vpt->len), vpt);
+	fprintf(fp, "tmpl_t %s (%.8x) \"%pV\" (%p)\n",
+		tmpl_type_to_str(vpt->type),
+		vpt->type,
+		fr_box_strvalue_len(vpt->name, vpt->len), vpt);
 
-	FR_FAULT_LOG("\tcast       : %s", fr_type_to_str(tmpl_rules_cast(vpt)));
-	FR_FAULT_LOG("\tquote      : %s", fr_table_str_by_value(fr_token_quotes_table, vpt->quote, "<INVALID>"));
+	fprintf(fp, "\tcast       : %s\n", fr_type_to_str(tmpl_rules_cast(vpt)));
+	fprintf(fp, "\tquote      : %s\n", fr_table_str_by_value(fr_token_quotes_table, vpt->quote, "<INVALID>"));
 
-	FR_FAULT_LOG("request references:");
+	fprintf(fp, "request references:");
 
 	/*
 	 *	Print all the request references
 	 */
 	while ((rr = tmpl_request_list_next(&vpt->data.attribute.rr, rr))) {
-		FR_FAULT_LOG("\t[%u] %s (%u)", i,
+		fprintf(fp, "\t[%u] %s (%u)\n", i,
 			     fr_table_str_by_value(tmpl_request_ref_table, rr->request, "<INVALID>"), rr->request);
 		i++;
 	}
 
-	FR_FAULT_LOG("list: %s", tmpl_list_name(tmpl_list(vpt), "<INVALID>"));
-	tmpl_attr_ref_list_debug(tmpl_attr(vpt));
+	fprintf(fp, "list: %s\n", tmpl_list_name(tmpl_list(vpt), "<INVALID>"));
+	tmpl_attr_ref_list_debug(fp, tmpl_attr(vpt));
 }
 
-void tmpl_debug(tmpl_t const *vpt)
+void tmpl_debug(FILE *fp, tmpl_t const *vpt)
 {
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_ATTR_UNRESOLVED:
-		tmpl_attr_debug(vpt);
+		tmpl_attr_debug(fp, vpt);
 		return;
 
 	default:
 		break;
 	}
 
-	FR_FAULT_LOG("tmpl_t %s (%.8x) \"%s\" (%p)",
-		     tmpl_type_to_str(vpt->type),
-		     vpt->type,
-		     vpt->name, vpt);
+	fprintf(fp, "tmpl_t %s (%.8x) \"%pR\" (%p)\n",
+		tmpl_type_to_str(vpt->type),
+		vpt->type,
+		vpt->name, vpt);
 
-	FR_FAULT_LOG("\tcast       : %s", fr_type_to_str(tmpl_rules_cast(vpt)));
-	FR_FAULT_LOG("\tquote      : %s", fr_table_str_by_value(fr_token_quotes_table, vpt->quote, "<INVALID>"));
+	fprintf(fp, "\tcast       : %s\n", fr_type_to_str(tmpl_rules_cast(vpt)));
+	fprintf(fp, "\tquote      : %s\n", fr_table_str_by_value(fr_token_quotes_table, vpt->quote, "<INVALID>"));
 	switch (vpt->type) {
 	case TMPL_TYPE_DATA:
-		FR_FAULT_LOG("\ttype       : %s", fr_type_to_str(tmpl_value_type(vpt)));
-		FR_FAULT_LOG("\tlen        : %zu", tmpl_value_length(vpt));
-		FR_FAULT_LOG("\tvalue      : %pV", tmpl_value(vpt));
+		fprintf(fp, "\ttype       : %s\n", fr_type_to_str(tmpl_value_type(vpt)));
+		fprintf(fp, "\tlen        : %zu\n", tmpl_value_length(vpt));
+		fprintf(fp, "\tvalue      : %pV\n", tmpl_value(vpt));
 
-		if (tmpl_value_enumv(vpt)) FR_FAULT_LOG("\tenumv      : %s (%p)",
-							tmpl_value_enumv(vpt)->name, tmpl_value_enumv(vpt));
+		if (tmpl_value_enumv(vpt)) fprintf(fp, "\tenumv      : %s (%p)",
+						   tmpl_value_enumv(vpt)->name, tmpl_value_enumv(vpt));
 		return;
 
 	case TMPL_TYPE_XLAT:
@@ -344,7 +344,7 @@ void tmpl_debug(tmpl_t const *vpt)
 
 		xlat_aprint(NULL, &str, tmpl_xlat(vpt), NULL);
 
-		FR_FAULT_LOG("\texpansion  : %s", str);
+		fprintf(fp, "\texpansion  : %s\n", str);
 
 		talloc_free(str);
 	}
@@ -352,21 +352,21 @@ void tmpl_debug(tmpl_t const *vpt)
 
 	case TMPL_TYPE_REGEX:
 	{
-		FR_FAULT_LOG("\tpattern    : %s", vpt->name);
+		fprintf(fp, "\tpattern    : %s\n", vpt->name);
 	}
 		break;
 
 	default:
 		if (tmpl_needs_resolving(vpt)) {
 			if (tmpl_is_data_unresolved(vpt)) {
-				FR_FAULT_LOG("\tunescaped  : %s", vpt->data.unescaped);
-				FR_FAULT_LOG("\tlen        : %zu", talloc_array_length(vpt->data.unescaped) - 1);
+				fprintf(fp, "\tunescaped  : %s\n", vpt->data.unescaped);
+				fprintf(fp, "\tlen        : %zu\n", talloc_array_length(vpt->data.unescaped) - 1);
 			} else {
-				FR_FAULT_LOG("\tunresolved : %s", vpt->name);
-				FR_FAULT_LOG("\tlen        : %zu", vpt->len);
+				fprintf(fp, "\tunresolved : %s\n", vpt->name);
+				fprintf(fp, "\tlen        : %zu\n", vpt->len);
 			}
 		} else {
-			FR_FAULT_LOG("debug nyi");
+			fprintf(fp, "debug nyi\n");
 		}
 		break;
 	}
@@ -1015,7 +1015,7 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bo
 	if (steal) {
 		if (fr_value_box_steal(vpt, tmpl_value(vpt), data) < 0) goto error;
 	} else {
-		if (fr_value_box_copy(vpt, tmpl_value(vpt), data) < 0) goto error;
+		if (unlikely(fr_value_box_copy(vpt, tmpl_value(vpt), data) < 0)) goto error;
 	}
 	*out = vpt;
 
@@ -2096,10 +2096,7 @@ do_suffix:
 			}
 			break;
 
-		case FR_TYPE_STRUCT:
-		case FR_TYPE_TLV:
-		case FR_TYPE_VENDOR:
-		case FR_TYPE_VSA:
+		case FR_TYPE_STRUCTURAL_EXCEPT_GROUP:
 		is_union:
 			/*
 			 *	Structural types are parented and namespaced from their parent da.
@@ -2111,6 +2108,8 @@ do_suffix:
 			/*
 			 *	Key fields can have children, because we really don't know how else to
 			 *	represent the child structures.
+			 *
+			 *	@todo - remove after migration_union_key is deleted
 			 */
 			if (fr_dict_attr_is_key_field(da)) goto is_union;
 
@@ -3033,9 +3032,11 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 			       tmpl_rules_t const *t_rules)
 {
 	tmpl_t		*vpt;
-	char		*str;
 	fr_sbuff_parse_error_t	sberr;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
+	fr_sbuff_t	*enum_buff;
+
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&enum_buff, 1024, SIZE_MAX);
 
 	/*
 	 *	If there isn't a "::" prefix, then check for migration flags, and enum.
@@ -3060,6 +3061,12 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 		return 0;
 	}
 
+	/*
+	 *	Need to store the value with the prefix, because the value box functions
+	 *	expect it to be there...
+	 */
+	fr_sbuff_in_strcpy_literal(enum_buff, "::");
+
 	vpt = tmpl_alloc_null(ctx);
 
 	/*
@@ -3068,7 +3075,7 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 	 *	Note that we don't actually try to resolve the enum name.  The caller is responsible
 	 *	for doing that.
 	 */
-	if (fr_dict_enum_name_afrom_substr(vpt, &str, &sberr, &our_in, p_rules ? p_rules->terminals : NULL) < 0) {
+	if (fr_dict_enum_name_from_substr(enum_buff, &sberr, &our_in, p_rules ? p_rules->terminals : NULL) < 0) {
 		/*
 		 *	Produce our own errors which make
 		 *	more sense in the context of tmpls
@@ -3098,11 +3105,14 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 	if (t_rules->enumv) {
 		fr_dict_enum_value_t const *dv;
 
-		dv = fr_dict_enum_by_name(t_rules->enumv, str, -1);
+		dv = fr_dict_enum_by_name(t_rules->enumv, fr_sbuff_start(enum_buff), fr_sbuff_used(enum_buff));
 		if (dv) {
 			tmpl_init(vpt, TMPL_TYPE_DATA, T_BARE_WORD,
 				  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
-			(void) fr_value_box_copy(vpt, &vpt->data.literal, dv->value);
+			if (unlikely(fr_value_box_copy(vpt, &vpt->data.literal, dv->value) < 0)) {
+				talloc_free(vpt);
+				return -1;
+			}
 			vpt->data.literal.enumv = t_rules->enumv;
 
 			*out = vpt;
@@ -3119,7 +3129,7 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 
 	tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, T_BARE_WORD,
 		  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
-	vpt->data.unescaped = str;
+	MEM(vpt->data.unescaped = talloc_bstrndup(vpt, fr_sbuff_start(enum_buff), fr_sbuff_used(enum_buff)));
 	*out = vpt;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -5012,7 +5022,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 		switch (ar->type) {
 		case TMPL_ATTR_TYPE_NORMAL:
 			if (seen_unknown) {
-				tmpl_attr_debug(vpt);
+				tmpl_attr_debug(stderr, vpt);
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: "
 						     "TMPL_TYPE_ATTR known attribute \"%s\" "
 						     "occurred after unknown attribute %s "
@@ -5022,7 +5032,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 						     ar->unknown.da->name);
 			}
 			if (seen_unresolved) {
-				tmpl_attr_debug(vpt);
+				tmpl_attr_debug(stderr, vpt);
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: "
 						     "TMPL_TYPE_ATTR known attribute \"%s\" "
 						     "occurred after unresolved attribute \"%s\""
@@ -5038,7 +5048,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 
 		case TMPL_ATTR_TYPE_UNSPEC:
 			if (seen_unknown) {
-				tmpl_attr_debug(vpt);
+				tmpl_attr_debug(stderr, vpt);
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: "
 						     "TMPL_TYPE_ATTR unspecified attribute "
 						     "occurred after unknown attribute %s "
@@ -5047,7 +5057,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 						     ar->unknown.da->name);
 			}
 			if (seen_unresolved) {
-				tmpl_attr_debug(vpt);
+				tmpl_attr_debug(stderr, vpt);
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: "
 						     "TMPL_TYPE_ATTR unspecified attribute "
 						     "occurred after unresolved attribute \"%s\""
@@ -5067,7 +5077,7 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 		case TMPL_ATTR_TYPE_UNKNOWN:
 			seen_unknown = ar;
 			if (seen_unresolved) {
-				tmpl_attr_debug(vpt);
+				tmpl_attr_debug(stderr, vpt);
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: "
 						     "TMPL_TYPE_ATTR unknown attribute \"%s\" "
 						     "occurred after unresolved attribute %s "
@@ -5178,7 +5188,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 		if ((tmpl_attr_list_num_elements(tmpl_attr(vpt)) > 0) &&
 		    ((tmpl_attr_t *)tmpl_attr_list_tail(tmpl_attr(vpt)))->da) {
 #ifndef NDEBUG
-			tmpl_attr_debug(vpt);
+			tmpl_attr_debug(stderr, vpt);
 #endif
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR_UNRESOLVED contains %u "
 					     "references", file, line, tmpl_attr_list_num_elements(tmpl_attr(vpt)));
@@ -5679,7 +5689,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 				if ((*p == '#') || (*p == '*') || (*p == 'n')) {
 					p++;
 
-				} else if (*p == '(') {
+				} else {
 					ssize_t slen;
 					bool eol = false;
 
@@ -5690,18 +5700,6 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 					}
 					p += slen;
 					continue;
-
-				} else {
-					/*
-					 *	Allow numbers as array indexes
-					 */
-					while ((*p >= '0') && (*p <= '9')) {
-						p++;
-					}
-
-					if (*p != ']') {
-						return_P("Array index is not an integer");
-					}
 				}
 
 				if (*p == ']') {

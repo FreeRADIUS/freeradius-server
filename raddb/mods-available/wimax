@@ -10,7 +10,7 @@
 #  The `winmax` module implements the WiMAX attributes as defined in
 #  NWG_R1_V1.2.1-Stage-3.pdf
 #
-#  It should be listed in the `authorize` and `preacct` sections.
+#  It should be listed in the `recv Access-Request` and `recv Accounting-Request` sections.
 #
 #  NOTE: The module will change the horrible binary version of
 #  `Calling-Station-Id` to the normal format, as specified in RFC

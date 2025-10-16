@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include "attrs.h"
 
 static uint32_t instance_count = 0;
+static bool	instantiated = false;
 
 typedef struct {
 	uint16_t	code;
@@ -428,26 +429,32 @@ int fr_dns_global_init(void)
 		goto fail;
 	}
 
+	instantiated = true;
 	return 0;
 }
 
 void fr_dns_global_free(void)
 {
+	if (!instantiated) return;
+
 	fr_assert(instance_count > 0);
 
 	if (--instance_count > 0) return;
 
 	fr_dict_autofree(dns_dict);
+	instantiated = false;
 }
 
 static bool attr_valid(fr_dict_attr_t *da)
 {
-	/*
-	 *	"arrays" of string/octets are encoded as a 16-bit
-	 *	length, followed by the actual data.
-	 */
-	if (da->flags.array && ((da->type == FR_TYPE_STRING) || (da->type == FR_TYPE_OCTETS))) {
-		da->flags.is_known_width = true;
+	if (da->flags.array) {
+		fr_strerror_const("The 'array' flag cannot be used with DNS");
+		return false;
+	}
+
+	if (da->type == FR_TYPE_ATTR) {
+		fr_strerror_const("The 'attribute' data type cannot be used with DNS");
+		return false;
 	}
 
 	if (fr_dns_flag_dns_label_any(da)) {

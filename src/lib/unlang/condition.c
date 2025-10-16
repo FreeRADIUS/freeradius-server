@@ -38,6 +38,7 @@ static unlang_action_t unlang_if_resume(unlang_result_t *p_result, request_t *re
 	unlang_frame_state_cond_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_cond_t);
 	fr_value_box_t			*box = fr_value_box_list_head(&state->out);
 	bool				value;
+	unlang_t const			*unlang;
 
 	/*
 	 *	Something in the conditional evaluation failed.
@@ -71,11 +72,21 @@ static unlang_action_t unlang_if_resume(unlang_result_t *p_result, request_t *re
 	 *	Tell the main interpreter to skip over the else /
 	 *	elsif blocks, as this "if" condition was taken.
 	 */
-	while (frame->next &&
-	       ((frame->next->type == UNLANG_TYPE_ELSE) ||
-		(frame->next->type == UNLANG_TYPE_ELSIF))) {
-		frame->next = frame->next->next;
+	for (unlang = frame->next;
+	     unlang != NULL;
+	     unlang = unlang_list_next(unlang->list, unlang)) {
+		if ((unlang->type == UNLANG_TYPE_ELSE) ||
+		    (unlang->type == UNLANG_TYPE_ELSIF)) {
+			continue;
+		}
+
+		break;
 	}
+
+	/*
+	 *	Do NOT call frame_set_next(), as that will clean up the current frame.
+	 */
+	frame->next = unlang;
 
 	/*
 	 *	We took the "if".  Go recurse into its' children.
@@ -162,7 +173,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_ctx_t *u
 
 		p_rules.terminals = &if_terminals;
 
-		slen = xlat_tokenize_condition(cs, &head, &FR_SBUFF_IN(name2, strlen(name2)), &p_rules, &t_rules);
+		slen = xlat_tokenize_condition(cs, &head, &FR_SBUFF_IN_STR(name2), &p_rules, &t_rules);
 		if (slen == 0) {
 			cf_canonicalize_error(cs, slen, "Empty conditions are invalid", name2);
 			return NULL;

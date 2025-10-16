@@ -62,28 +62,7 @@ static unlang_t function_instruction = {
 	.type = UNLANG_TYPE_FUNCTION,
 	.name = "function",
 	.debug_name = "function",
-	.actions = {
-		/*
-		 *	By default, functions don't change the section rcode.
-		 *	We can't make generalisations about what the intent
-		 *	of the function callbacks are, so isntead of having
-		 *	implicit, confusing behaviour, we always discard the
-		 *	rcode UNLESS the function explicitly sets it.
-		 */
-		.actions = {
-			[RLM_MODULE_REJECT]	= MOD_ACTION_NOT_SET,
-			[RLM_MODULE_FAIL]	= MOD_ACTION_NOT_SET,
-			[RLM_MODULE_OK]		= MOD_ACTION_NOT_SET,
-			[RLM_MODULE_HANDLED]	= MOD_ACTION_NOT_SET,
-			[RLM_MODULE_INVALID]	= MOD_ACTION_NOT_SET,
-			[RLM_MODULE_DISALLOW]	= MOD_ACTION_NOT_SET,
-			[RLM_MODULE_NOTFOUND]	= MOD_ACTION_NOT_SET,
-			[RLM_MODULE_NOOP]	= MOD_ACTION_NOT_SET,
-			[RLM_MODULE_UPDATED]	= MOD_ACTION_NOT_SET,
-			[RLM_MODULE_TIMEOUT]	= MOD_ACTION_NOT_SET
-		},
-		.retry = RETRY_INIT,
-	}
+	.actions = DEFAULT_MOD_ACTIONS,
 };
 
 /** Generic signal handler
@@ -146,9 +125,6 @@ again:
 	ua = func(p_result, request, state->uctx);
 	if (REPEAT(state)) { /* set again by func */
 		switch (ua) {
-		case UNLANG_ACTION_STOP_PROCESSING:
-			break;
-
 		case UNLANG_ACTION_CALCULATE_RESULT:
 			goto again;
 
@@ -182,9 +158,6 @@ static unlang_action_t call_with_result(unlang_result_t *p_result, request_t *re
 	state->func_name = NULL;
 	if (REPEAT(state)) {
 		switch (ua) {
-		case UNLANG_ACTION_STOP_PROCESSING:
-			break;
-
 		case UNLANG_ACTION_CALCULATE_RESULT:
 			ua = call_with_result_repeat(p_result, request, frame);
 			break;
@@ -229,9 +202,6 @@ again:
 	ua = func(request, state->uctx);
 	if (REPEAT(state)) { /* set again by func */
 		switch (ua) {
-		case UNLANG_ACTION_STOP_PROCESSING:
-			break;
-
 		case UNLANG_ACTION_CALCULATE_RESULT:
 			goto again;
 
@@ -274,9 +244,6 @@ static unlang_action_t call_no_result(UNUSED unlang_result_t *p_result, request_
 	state->func_name = NULL;
 	if (REPEAT(state)) {
 		switch (ua) {
-		case UNLANG_ACTION_STOP_PROCESSING:
-			break;
-
 		case UNLANG_ACTION_CALCULATE_RESULT:
 			ua = call_no_result_repeat(p_result, request, frame);
 			break;
@@ -589,7 +556,7 @@ void unlang_function_init(void)
 			.dump = unlang_function_dump,
 
 			.unlang_size = sizeof(unlang_group_t),
-			.unlang_name = "unlang_group_t",	
+			.unlang_name = "unlang_group_t",
 
 			.frame_state_size = sizeof(unlang_frame_state_func_t),
 			.frame_state_type = "unlang_frame_state_func_t",

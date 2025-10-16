@@ -29,6 +29,7 @@ RCSIDH(tls_attrs_h, "$Id$")
 extern HIDDEN fr_dict_t const *dict_freeradius;
 extern HIDDEN fr_dict_t const *dict_radius;
 extern HIDDEN fr_dict_t const *dict_tls;
+extern HIDDEN fr_dict_t const *dict_der;
 
 extern HIDDEN fr_dict_attr_t const *attr_allow_session_resumption;
 extern HIDDEN fr_dict_attr_t const *attr_session_resumed;
@@ -71,6 +72,8 @@ extern HIDDEN fr_dict_attr_t const *attr_tls_session_data;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_id;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_resumed;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_ttl;
+
+extern HIDDEN fr_dict_attr_t const *attr_der_certificate;
 
 extern fr_value_box_t const *enum_tls_session_resumed_stateful;
 extern fr_value_box_t const *enum_tls_session_resumed_stateless;

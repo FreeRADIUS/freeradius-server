@@ -266,7 +266,7 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		 *	and cause validation to fail.
 		 */
 		if (fr_tls_session_pairs_from_x509_cert(&container->vp_group, container,
-							request, cert) < 0) {
+							request, cert, conf->verify.der_decode) < 0) {
 			fr_pair_delete_by_da(&request->session_state_pairs, attr_tls_certificate);
 			my_ok = 0;
 			goto done;

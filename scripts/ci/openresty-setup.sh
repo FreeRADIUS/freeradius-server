@@ -47,7 +47,7 @@ echo "Checking for a running openresty instance"
 if [ -e "${LOGDIR}/nginx.pid" ]
 then
 	echo "Stopping the current openresty instance"
-	kill "$(cat ${LOGDIR}/nginx.pid)"
+	kill "$(cat ${LOGDIR}/nginx.pid)" || true
 	rm -r "${BUILDDIR}"
 fi
 
@@ -101,6 +101,10 @@ http {
 
 	location ~ ^/delay(.*)$ {
 	    content_by_lua_file  ${APIDIR}/delay-api.lua;
+	}
+
+	location ~ ^/fail(.*)$ {
+	    content_by_lua_file  ${APIDIR}/fail.lua;
 	}
     }
 

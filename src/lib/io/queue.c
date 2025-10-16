@@ -252,10 +252,10 @@ int fr_queue_localize_atomic(fr_queue_t *fq, fr_atomic_queue_t *aq)
 #ifndef NDEBUG
 /**  Dump a queue.
  *
- * @param[in] fq the queue
  * @param[in] fp where the debugging information will be printed.
+ * @param[in] fq the queue
  */
-void fr_queue_debug(fr_queue_t *fq, FILE *fp)
+void fr_queue_debug(FILE *fp, fr_queue_t *fq)
 {
 	int i;
 

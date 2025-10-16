@@ -1607,7 +1607,7 @@ static void fr_command_debug_internal(FILE *fp, fr_cmd_t *head, int depth)
 	}
 }
 
-void fr_command_debug(FILE *fp, fr_cmd_t *head)
+void fr_cmd_debug(FILE *fp, fr_cmd_t *head)
 {
 	fr_command_debug_internal(fp, head, 0);
 }

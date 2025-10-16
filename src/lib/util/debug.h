@@ -44,6 +44,7 @@ typedef enum {
 	DEBUGGER_STATE_ATTACHED			= 1	//!< We can't attach, it's likely a debugger is already tracing.
 } fr_debug_state_t;
 
+extern int fr_fault_log_fd;
 extern fr_debug_state_t fr_debug_state;
 
 #define FR_FAULT_LOG(_fmt, ...)			fr_fault_log(_fmt "\n", ## __VA_ARGS__)
@@ -61,7 +62,6 @@ extern fr_debug_state_t fr_debug_state;
  *	- < 0 on failure.
  */
 typedef int (*fr_fault_cb_t)(int signum);
-typedef struct fr_bt_marker fr_bt_marker_t;
 
 int			fr_get_lsan_state(void);
 
@@ -73,12 +73,6 @@ char const		*fr_debug_state_to_msg(fr_debug_state_t state);
 
 void			fr_debug_break(bool always);
 
-void			backtrace_print(fr_fring_t *fring, void *obj);
-
-int			fr_backtrace_do(fr_bt_marker_t *marker);
-
-fr_bt_marker_t		*fr_backtrace_attach(fr_fring_t **fring, TALLOC_CTX *obj);
-
 void			fr_panic_on_free(TALLOC_CTX *ctx);
 
 int			fr_set_dumpable_init(void);
@@ -88,8 +82,6 @@ int			fr_set_dumpable(bool allow_core_dumps);
 int			fr_reset_dumpable(void);
 
 int			fr_log_talloc_report(TALLOC_CTX const *ctx);
-
-void			fr_fault_backtrace(void);
 
 void			fr_fault(int sig);
 

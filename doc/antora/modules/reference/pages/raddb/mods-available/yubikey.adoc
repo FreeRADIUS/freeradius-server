@@ -32,15 +32,14 @@ truncated and `request.Vendor-Specific.Yubicon.Yubikey-OTP` will be added.
 
 decrypt:: Whether tokens will be decrypted and processed locally.
 
-In the `authorize` section, this module should be placed before the
+In the `recv Access-Request` section, this module should be placed before the
 persistent storage module.
 
-The authenticate section should have the following added:
+The following authenticate section should be added:
 
 [source,unlang]
 ----
-Auth-Type yubikey {
-  #pap
+authenticate yubikey {
   yubikey
 }
 ----

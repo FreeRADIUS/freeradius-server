@@ -1,0 +1,30 @@
+# PRE: if foreach
+#
+#  Redundant blocks.
+#
+#  Verify that only a single redundant child executes for redundant-load-balance
+#
+#  This is a regression test, where we saw multiple children execute.  This should
+#  in theory be caught by redundant-load-balance, but this is a simpler test to
+#  understand.
+#
+redundant-load-balance {
+	group {
+		request += {
+			Reply-Message = "A thing"
+		}
+		ok
+	}
+	group {
+		request += {
+			Reply-Message = "A second thing"
+		}
+		ok
+	}
+}
+
+if (!(%{Reply-Message[#]} == 1)) {
+	test_fail
+}
+
+success

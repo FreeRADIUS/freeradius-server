@@ -1,0 +1,12 @@
+#
+# PRE: limit
+#
+try {
+	limit %test.fail() {
+		success
+	}
+}
+catch fail {
+	success
+}
+

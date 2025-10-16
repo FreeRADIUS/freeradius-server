@@ -53,8 +53,11 @@ size_t sbuff_parse_error_table_len = NUM_ELEMENTS(sbuff_parse_error_table);
 
 #if defined(STATIC_ANALYZER) || !defined(NDEBUG)
 #  define CHECK_SBUFF_INIT(_sbuff)	do { if (!(_sbuff)->extend && (unlikely(!(_sbuff)->buff) || unlikely(!(_sbuff)->start) || unlikely(!(_sbuff)->end) || unlikely(!(_sbuff)->p))) return 0; } while (0)
+#  define CHECK_SBUFF_WRITEABLE(_sbuff) do { CHECK_SBUFF_INIT(_sbuff); if (unlikely((_sbuff)->is_const)) return 0; } while (0)
+
 #else
 #  define CHECK_SBUFF_INIT(_sbuff)
+#  define CHECK_SBUFF_WRITEABLE(_sbuff)
 #endif
 
 bool const sbuff_char_class_uint[UINT8_MAX + 1] = {
@@ -1457,9 +1460,7 @@ ssize_t fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str)
 {
 	size_t len;
 
-	CHECK_SBUFF_INIT(sbuff);
-
-	if (unlikely(sbuff->is_const)) return 0;
+	CHECK_SBUFF_WRITEABLE(sbuff);
 
 	len = strlen(str);
 	FR_SBUFF_EXTEND_LOWAT_OR_RETURN(sbuff, len);
@@ -1481,9 +1482,7 @@ ssize_t fr_sbuff_in_strcpy(fr_sbuff_t *sbuff, char const *str)
  */
 ssize_t fr_sbuff_in_bstrncpy(fr_sbuff_t *sbuff, char const *str, size_t len)
 {
-	CHECK_SBUFF_INIT(sbuff);
-
-	if (unlikely(sbuff->is_const)) return 0;
+	CHECK_SBUFF_WRITEABLE(sbuff);
 
 	FR_SBUFF_EXTEND_LOWAT_OR_RETURN(sbuff, len);
 
@@ -1505,9 +1504,7 @@ ssize_t fr_sbuff_in_bstrcpy_buffer(fr_sbuff_t *sbuff, char const *str)
 {
 	size_t len;
 
-	CHECK_SBUFF_INIT(sbuff);
-
-	if (unlikely(sbuff->is_const)) return 0;
+	CHECK_SBUFF_WRITEABLE(sbuff);
 
 	len = talloc_array_length(str) - 1;
 
@@ -1557,7 +1554,7 @@ static inline CC_HINT(always_inline) int sbuff_scratch_init(TALLOC_CTX **out)
  * @param[in] sbuff	to print into.
  * @param[in] fmt	string.
  * @param[in] ap	arguments for format string.
- * @return
+< * @return
  *	- >= 0 the number of bytes printed into the sbuff.
  *	- <0 the number of bytes required to complete the print operation.
  */
@@ -1568,9 +1565,7 @@ ssize_t fr_sbuff_in_vsprintf(fr_sbuff_t *sbuff, char const *fmt, va_list ap)
 	char		*tmp;
 	ssize_t		slen;
 
-	CHECK_SBUFF_INIT(sbuff);
-
-	if (unlikely(sbuff->is_const)) return 0;
+	CHECK_SBUFF_WRITEABLE(sbuff);
 
 	if (sbuff_scratch_init(&scratch) < 0) return 0;
 
@@ -1599,7 +1594,7 @@ ssize_t fr_sbuff_in_sprintf(fr_sbuff_t *sbuff, char const *fmt, ...)
 	va_list		ap;
 	ssize_t		slen;
 
-	if (unlikely(sbuff->is_const)) return 0;
+	CHECK_SBUFF_WRITEABLE(sbuff);
 
 	va_start(ap, fmt);
 	slen = fr_sbuff_in_vsprintf(sbuff, fmt, ap);
@@ -1628,9 +1623,7 @@ ssize_t fr_sbuff_in_escape(fr_sbuff_t *sbuff, char const *in, size_t inlen, fr_s
 	/* Significantly quicker if there are no rules */
 	if (!e_rules || (e_rules->chr == '\0')) return fr_sbuff_in_bstrncpy(sbuff, in, inlen);
 
-	CHECK_SBUFF_INIT(sbuff);
-
-	if (unlikely(sbuff->is_const)) return 0;
+	CHECK_SBUFF_WRITEABLE(sbuff);
 
 	our_sbuff = FR_SBUFF(sbuff);
 	while (p < end) {
@@ -1698,7 +1691,7 @@ ssize_t fr_sbuff_in_escape_buffer(fr_sbuff_t *sbuff, char const *in, fr_sbuff_es
 {
 	if (unlikely(!in)) return 0;
 
-	if (unlikely(sbuff->is_const)) return 0;
+	CHECK_SBUFF_WRITEABLE(sbuff);
 
 	return fr_sbuff_in_escape(sbuff, in, talloc_array_length(in) - 1, e_rules);
 }
@@ -1722,6 +1715,8 @@ fr_slen_t fr_sbuff_in_array(fr_sbuff_t *out, char const * const *array, char con
 				};
 
 	if (sep) e_rules.subs[(uint8_t)*sep] = *sep;
+
+	CHECK_SBUFF_WRITEABLE(out);
 
 	for (p = array; *p; p++) {
 		if (*p) FR_SBUFF_RETURN(fr_sbuff_in_escape, &our_out, *p, strlen(*p), &e_rules);
@@ -2261,51 +2256,51 @@ static char const *sbuff_print_char(char c)
 	}
 }
 
-void fr_sbuff_unescape_debug(fr_sbuff_unescape_rules_t const *escapes)
+void fr_sbuff_unescape_debug(FILE *fp, fr_sbuff_unescape_rules_t const *escapes)
 {
 	uint8_t i;
 
-	FR_FAULT_LOG("Escape rules %s (%p)", escapes->name, escapes);
-	FR_FAULT_LOG("chr     : %c", escapes->chr ? escapes->chr : ' ');
-	FR_FAULT_LOG("do_hex  : %s", escapes->do_hex ? "yes" : "no");
-	FR_FAULT_LOG("do_oct  : %s", escapes->do_oct ? "yes" : "no");
+	fprintf(fp, "Escape rules %s (%p)\n", escapes->name, escapes);
+	fprintf(fp, "chr     : %c\n", escapes->chr ? escapes->chr : ' ');
+	fprintf(fp, "do_hex  : %s\n", escapes->do_hex ? "yes" : "no");
+	fprintf(fp, "do_oct  : %s\n", escapes->do_oct ? "yes" : "no");
 
-	FR_FAULT_LOG("substitutions:");
+	fprintf(fp, "substitutions:\n");
 	for (i = 0; i < UINT8_MAX; i++) {
-		if (escapes->subs[i]) FR_FAULT_LOG("\t%s -> %s",
+		if (escapes->subs[i]) FR_FAULT_LOG("\t%s -> %s\n",
 						   sbuff_print_char((char)i),
 						   sbuff_print_char((char)escapes->subs[i]));
 	}
-	FR_FAULT_LOG("skipes:");
+	fprintf(fp, "skipes:\n");
 	for (i = 0; i < UINT8_MAX; i++) {
-		if (escapes->skip[i]) FR_FAULT_LOG("\t%s", sbuff_print_char((char)i));
+		if (escapes->skip[i]) fprintf(fp, "\t%s\n", sbuff_print_char((char)i));
 	}
 }
 
-void fr_sbuff_terminal_debug(fr_sbuff_term_t const *tt)
+void fr_sbuff_terminal_debug(FILE *fp, fr_sbuff_term_t const *tt)
 {
 	size_t i;
 
-	FR_FAULT_LOG("Terminal count %zu", tt->len);
+	fprintf(fp, "Terminal count %zu\n", tt->len);
 
-	for (i = 0; i < tt->len; i++) FR_FAULT_LOG("\t\"%s\" (%zu)", tt->elem[i].str, tt->elem[i].len);
+	for (i = 0; i < tt->len; i++) fprintf(fp, "\t\"%s\" (%zu)\n", tt->elem[i].str, tt->elem[i].len);
 }
 
-void fr_sbuff_parse_rules_debug(fr_sbuff_parse_rules_t const *p_rules)
+void fr_sbuff_parse_rules_debug(FILE *fp, fr_sbuff_parse_rules_t const *p_rules)
 {
-	FR_FAULT_LOG("Parse rules %p", p_rules);
+	fprintf(fp, "Parse rules %p\n", p_rules);
 
 	FR_FAULT_LOG("Escapes - ");
 	if (p_rules->escapes) {
-		fr_sbuff_unescape_debug(p_rules->escapes);
+		fr_sbuff_unescape_debug(fp, p_rules->escapes);
 	} else {
-		FR_FAULT_LOG("<none>");
+		fprintf(fp, "<none>\n");
 	}
 
 	FR_FAULT_LOG("Terminals - ");
 	if (p_rules->terminals) {
-		fr_sbuff_terminal_debug(p_rules->terminals);
+		fr_sbuff_terminal_debug(fp, p_rules->terminals);
 	} else {
-		FR_FAULT_LOG("<none>");
+		fprintf(fp, "<none>\n");
 	}
 }

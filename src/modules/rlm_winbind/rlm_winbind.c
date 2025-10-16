@@ -90,6 +90,7 @@ typedef struct {
  * @param request	The current request
  * @param name		Group name to be searched
  * @param env		Group check xlat call_env
+ * @param t		Winbind thread structure
  *
  * @return
  *	- 0 user is in group
@@ -517,7 +518,7 @@ static int domain_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const 
 		}
 
 		tmpl_afrom_substr(ctx, &parsed_tmpl,
-			          &FR_SBUFF_IN(wb_info->netbios_domain, strlen(wb_info->netbios_domain)),
+			          &FR_SBUFF_IN_STR(wb_info->netbios_domain),
 			          T_SINGLE_QUOTED_STRING, NULL, t_rules);
 		if (!parsed_tmpl) {
 			cf_log_perr(ci, "Bad domain");

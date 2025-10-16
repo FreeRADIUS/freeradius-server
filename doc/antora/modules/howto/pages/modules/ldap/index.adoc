@@ -1,31 +1,25 @@
 = LDAP
-== Introduction
 
-FreeRADIUS can be configured to use an LDAP server for authentication,
-authorization and accounting.
+FreeRADIUS can integrate with an LDAP server to handle authentication, authorization, and accounting tasks. The tutorials that follow are intended for readers who already understand LDAP concepts and terminology. If you are new to LDAP or unsure about how LDAP directories work, review the https://ldap.com/basic-ldap-concepts/[basic concepts] before proceeding. The FreeRADIUS documentation doesn't cover any foundational LDAP topics.
 
-This series of tutorials assume that the reader is familiar LDAP. If you're not
-familiar with LDAP specific terms or how LDAP directories in general operate,
-you may wish to review https://ldap.com/basic-ldap-concepts/[ldap.com - basic
-concepts], as these concepts will not be covered in FreeRADIUS documentation.
+To use LDAP, an existing LDAP server must be and tested using the ldapsearch tool.
 
 [NOTE]
 ====
 In an Microsoft Active Directory environment you should use `rlm_winbind` for
 authentication, and `rlm_ldap` for group membership checks as described in
-xref:modules/ldap/authorization/index.adoc[authorization] section of this tuorial.
-The WinBind protocol does not support the full range of group checks that is
+xref:modules/ldap/authorization/index.adoc[authorization] section. The winbind protocol does not support the full range of group checks that is
 possible with LDAP.
 ====
 
-== Preparation
+== Sections in this guide
 
-These preparation steps must be completed in order for the examples in the later
-sections of this tutorial to operate correctly.
+These sections must be completed in order for the examples later
+in the tutorial to operate correctly. For additional features and configuration items see the xref:reference:raddb/mods-available/ldap.adoc[mods-available/ldap] page for more details about rlm_ldap module supports.
 
-=== 1. Provisioning
+=== xref:modules/ldap/bootstrap_openldap/index.adoc[Install and Configure OpenLDAP]
 
-In order to use LDAP, there must be an existing LDAP server populated with
+In order to use LDAP, there must be an existing LDAP server provisioned with
 users, groups, and possibly clients.  We highly recommend using
 https://www.openldap.org/[OpenLDAP] for both its flexibility and performance.
 
@@ -35,51 +29,35 @@ alternatively, if you're using a Debian or RHEL based distribution, using the
 OpenLDAP LTB https://www.ltb-project.org/documentation/openldap-rpm.html[RPM] or
 https://www.ltb-project.org/documentation/openldap-deb.html[DEB] packages.
 
-For testing purposes it's recommended to install an LDAP instances on the same
+[TIP]
+====
+For testing purposes it's recommended to install the LDAP instances on the same
 machine (or inter-container network in the case of docker) as the RADIUS server
-to avoid any potential networking issues.
+to avoid any potential networking issues. This recommendation applies equally to high load production environments, or where a high level of redundancy is required.
+====
 
-This recommendation applies equally to high load production environments, or
-where a high level of redundancy is required.
+=== xref:modules/ldap/ldapsearch/index.adoc[Test with Ldapsearch]
 
-=== 2. Testing
+Once the LDAP server is provisioned and available, test the server using the command-line xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] tool. If the `ldapsearch` tests fail, any LDAP server configuration issues *must* be fixed before proceeding with the FreeRADIUS integration. This step ensures that authentication and data retrieval function correctly when FreeRADIUS queries the LDAP server.
 
-Once an LDAP server is available, it should be tested via the command-line
-xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] tool.  This is to ensure that
-the LDAP server has been configured correctly.  If testing via `ldapsearch`
-fails, then that *MUST* those issues must be resolved before configuring
-FreeRADIUS.
+=== xref:modules/ldap/base_configuration/index.adoc[Base Configuration]
 
-=== 3. Configuring the LDAP module
+Once the xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] validation tests pass, the next step is to xref:modules/ldap/base_configuration/index.adoc[Configure the LDAP Module]. All basic settings required for all functions of the LDAP module are detailed here.
 
-Once the xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] validation tests pass, the
-next step is to xref:modules/ldap/base_configuration/index.adoc[configure the LDAP module].
+OpenLDAP configuration examples show how to install appropriate schemas and
+populate the server with test data will be provided in each section.
 
-OpenLDAP configuration examples detailing how to install appropriate schemas and
-populate the server with test data will be provided at the beginning of each
-tutorial section.
+=== xref:modules/ldap/authorization/index.adoc[Configure Authorization]
 
-== Sections in this tutorial
-
-For features and configuration items not covered by this tutorial series
-xref:reference:raddb/mods-available/ldap.adoc[mods-available/ldap] page provides a complete
-reference for all the configuration items available for the rlm_ldap module.
-
-=== xref:modules/ldap/base_configuration/index.adoc[Base configuration]
-
-Configures basic settings required for all functions of the LDAP module.
-
-=== xref:modules/ldap/authorization/index.adoc[Authorization]
-
-Covers Authorization by group, enabling/disabling accounts using attributes,
+Covers authorization by group, enabling/disabling accounts using attributes,
 LDAP attribute to FreeRADIUS attribute mappings, and LDAP profiles.
 
-=== xref:modules/ldap/authentication.adoc[Authentication]
+=== xref:modules/ldap/authentication.adoc[Configure Authentication]
 
 Examples of configuring different methods of LDAP based authentication
 (search, bind, edir).
 
-=== xref:modules/ldap/accounting.adoc[Accounting]
+=== xref:modules/ldap/accounting.adoc[Configure Accounting]
 
 Examples of updating objects in LDAP after authentication completes, or when
 accounting data is received.

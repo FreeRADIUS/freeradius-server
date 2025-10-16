@@ -61,7 +61,8 @@ if (User-Name == "bob") {
 ----
 
 In v3 the default dictionaries included a series of `Tmp-*`
-attributes.  These are no longer necessary, and should not be used.
+attributes.  These attributes are no longer necessary, and should not
+be used.  Local variables should be used instead.
 
 .Local variables exist on only if they have been created
 [source,unlang]

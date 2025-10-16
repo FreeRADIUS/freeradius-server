@@ -118,7 +118,7 @@ static void *perl_dlhandle;		//!< To allow us to load perl's symbols into the gl
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED, rlm_perl_t, module) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED, rlm_perl_t, module) },
 
 	{ FR_CONF_OFFSET("func_detach", rlm_perl_t, func_detach), .data = NULL, .dflt = "detach", .quote = T_INVALID },
 
@@ -576,6 +576,11 @@ static int perl_value_marshal(fr_pair_t *vp, SV **value)
 	PERLINT(32)
 	PERLINT(64)
 
+
+	case FR_TYPE_SIZE:
+		*value = sv_2mortal(newSVuv(vp->vp_size));
+		break;
+
 	case FR_TYPE_BOOL:
 		*value = sv_2mortal(newSVuv(vp->vp_bool));
 		break;
@@ -598,6 +603,7 @@ static int perl_value_marshal(fr_pair_t *vp, SV **value)
 	case FR_TYPE_IFID:
 	case FR_TYPE_DATE:
 	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_ATTR:
 	{
 		char	buff[128];
 		ssize_t	slen;
@@ -614,8 +620,8 @@ static int perl_value_marshal(fr_pair_t *vp, SV **value)
 		break;
 
 	/* Only leaf nodes should be able to call this */
-	default:
-		fr_assert(0);
+	case FR_TYPE_NON_LEAF:
+		croak("Cannot convert %s to Perl type", fr_type_to_str(vp->vp_type));
 		return -1;
 	}
 
@@ -693,58 +699,39 @@ static int fr_perl_pair_parent_build(fr_perl_pair_t *pair_data)
  */
 static int perl_value_unmarshal(fr_pair_t *vp, SV *value)
 {
-	char	*val;
-	STRLEN	len;
+	fr_value_box_t	vb;
 
-	switch (vp->vp_type) {
-	case FR_TYPE_STRING:
-		val = SvPV(value, len);
-		fr_pair_value_clear(vp);
-		fr_pair_value_bstrndup(vp, val, len, true);
+	switch (SvTYPE(value)) {
+	case SVt_IV:
+		fr_value_box_init(&vb, FR_TYPE_INT64, NULL, true);
+		vb.vb_int64 = SvIV(value);
 		break;
 
-	case FR_TYPE_OCTETS:
-		val = SvPV(value, len);
-		fr_pair_value_clear(vp);
-		fr_pair_value_memdup(vp, (uint8_t const *)val, len, true);
+	case SVt_NV:
+		fr_value_box_init(&vb, FR_TYPE_FLOAT64, NULL, true);
+		vb.vb_float64 = SvNV(value);
 		break;
 
-#define PERLSETUINT(_size)	case FR_TYPE_UINT ## _size: \
-	vp->vp_uint ## _size = SvUV(value); \
-	break;
-	PERLSETUINT(8)
-	PERLSETUINT(16)
-	PERLSETUINT(32)
-	PERLSETUINT(64)
-
-#define PERLSETINT(_size)	case FR_TYPE_INT ## _size: \
-	vp->vp_int ## _size = SvIV(value); \
-	break;
-	PERLSETINT(8)
-	PERLSETINT(16)
-	PERLSETINT(32)
-	PERLSETINT(64)
-
-	case FR_TYPE_ETHERNET:
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV6_ADDR:
-	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_IPV6_PREFIX:
-	case FR_TYPE_COMBO_IP_ADDR:
-	case FR_TYPE_COMBO_IP_PREFIX:
-	case FR_TYPE_IFID:
-	case FR_TYPE_TIME_DELTA:
-	case FR_TYPE_DATE:
+	case SVt_PV:
+	case SVt_PVLV:
+	{
+		char	*val;
+		STRLEN	len;
+		fr_value_box_init(&vb, FR_TYPE_STRING, NULL, true);
 		val = SvPV(value, len);
-		if (fr_pair_value_from_str(vp, val, len, NULL, false) < 0) {
-			croak("Failed populating pair");
-			return -1;
-		}
+		fr_value_box_bstrndup_shallow(&vb, NULL, val, len, true);
+	}
 		break;
 
 	default:
-		fr_assert(0);
-		break;
+		croak("Unsupported Perl data type");
+		return -1;
+	}
+
+	fr_pair_value_clear(vp);
+	if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, &vb) < 0) {
+		croak("Failed casting Perl value to %s", fr_type_to_str(vp->vp_type));
+		return -1;
 	}
 
 	return 0;

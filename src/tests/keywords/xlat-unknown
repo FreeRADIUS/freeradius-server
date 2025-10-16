@@ -1,7 +1,7 @@
 #
-# PRE: update escape
+# PRE: escape
 #
-update reply {
+reply += {
 	Vendor-Specific.WiMAX.Capability.Release = "foo"
 }
 

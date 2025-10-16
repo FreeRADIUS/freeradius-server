@@ -187,17 +187,13 @@ void fr_log_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void 
 		return;
 	}
 
-#ifdef STATIC_ANALYZER
-	buffer[0] = '\0';
+#ifndef NDEBUG
+	memset(buffer, 0x42, sizeof(buffer));
 #endif
 
 	fr_sbuff_init_out(&sbuff, buffer, sizeof(buffer));
 	fr_sbuff_marker(&m_start, &sbuff);
 	fr_sbuff_marker(&m_end, &sbuff);
-
-#ifndef NDEBUG
-	memset(buffer, 0x42, sizeof(buffer));
-#endif
 
 	for (;;) {
 		ssize_t		slen;

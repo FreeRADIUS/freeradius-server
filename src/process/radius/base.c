@@ -289,7 +289,11 @@ void radius_request_pairs_to_reply(request_t *request, process_radius_rctx_t *rc
 		fr_pair_t *vp;
 
 		MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_proxy_state));
-		fr_value_box_copy(vp, &vp->data, proxy_state_value);
+		if (unlikely(fr_value_box_copy(vp, &vp->data, proxy_state_value) < 0)) {
+			RDEBUG2("Failed to copy Proxy-State value %pV", proxy_state_value);
+			talloc_free(vp);
+			break;
+		}
 		fr_pair_append(&request->reply_pairs, vp);
 		RDEBUG3("reply.%pP", vp);
 	}
@@ -448,7 +452,7 @@ RESUME(auth_type)
 		[RLM_MODULE_NOOP] =	FR_RADIUS_CODE_ACCESS_REJECT,
 		[RLM_MODULE_NOTFOUND] =	FR_RADIUS_CODE_ACCESS_REJECT,
 		[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_ACCESS_REJECT,
-		[RLM_MODULE_UPDATED] =	FR_RADIUS_CODE_ACCESS_REJECT,
+		[RLM_MODULE_UPDATED] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
 		[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT,
 	};
 

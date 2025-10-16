@@ -64,7 +64,7 @@ match ERROR offset 4: Invalid operator
 
 # sillyness is OK, but cleaned up.
 condition ((((((ok))))))
-match %expr.rcode('ok')
+match %interpreter.rcode('ok')
 
 #
 #  Extra braces get squashed
@@ -73,10 +73,10 @@ condition (User-Name == User-Password)
 match (User-Name == User-Password)
 
 condition (!ok)
-match !%expr.rcode('ok')
+match !%interpreter.rcode('ok')
 
 condition !(ok)
-match !%expr.rcode('ok')
+match !%interpreter.rcode('ok')
 
 condition !!ok
 match ERROR offset 1: Double operator is invalid
@@ -85,7 +85,7 @@ match ERROR offset 1: Double operator is invalid
 # @todo - peephole - do optimization to get rid of double negation?
 #
 condition !(!ok)
-match !!%expr.rcode('ok')
+match !!%interpreter.rcode('ok')
 
 #
 #  These next two are identical after normalization
@@ -113,15 +113,15 @@ condition ((User-Name == 'b') || (Filter-Id == 'd')))
 match ERROR passed in 43, returned 42
 
 condition (handled && (Packet-Type == ::Access-Challenge))
-match (%expr.rcode('handled') && (Packet-Type == ::Access-Challenge))
+match (%interpreter.rcode('handled') && (Packet-Type == ::Access-Challenge))
 
 # This is OK, without the braces
 condition handled && Packet-Type == ::Access-Challenge
-match (%expr.rcode('handled') && (Packet-Type == ::Access-Challenge))
+match (%interpreter.rcode('handled') && (Packet-Type == ::Access-Challenge))
 
 # and this, though it's not a good idea.
 condition handled &&&Packet-Type == ::Access-Challenge
-match (%expr.rcode('handled') && (Packet-Type == ::Access-Challenge))
+match (%interpreter.rcode('handled') && (Packet-Type == ::Access-Challenge))
 
 condition reply == request
 match ERROR offset 0: Cannot use list references in condition
@@ -385,13 +385,13 @@ match ERROR offset 1: Attribute 'a' not found in namespace 'internal': Unresolve
 #  Module return codes are OK
 #
 condition (ok)
-match %expr.rcode('ok')
+match %interpreter.rcode('ok')
 
 condition (handled)
-match %expr.rcode('handled')
+match %interpreter.rcode('handled')
 
 condition (fail)
-match %expr.rcode('fail')
+match %interpreter.rcode('fail')
 
 condition ("a")
 match "a"

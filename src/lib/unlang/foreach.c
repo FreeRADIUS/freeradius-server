@@ -115,7 +115,7 @@ static int unlang_foreach_pair_copy(fr_pair_t *to, fr_pair_t *from, fr_dict_attr
 		fr_pair_append(&to->vp_group, child);
 
 		if (fr_type_is_leaf(child->vp_type)) {
-			if (fr_value_box_copy(child, &child->data, &vp->data) < 0) return -1;
+			if (unlikely(fr_value_box_copy(child, &child->data, &vp->data) < 0)) return -1;
 			continue;
 		}
 
@@ -274,7 +274,7 @@ static void unlang_foreach_attr_key_update(UNUSED request_t *request, unlang_fra
 
 	case FR_TYPE_STRING:
 		fr_value_box_clear_value(&state->key->data);
-		if (tmpl_dcursor_print(&FR_SBUFF_IN(state->buffer, BUFFER_SIZE), &state->cc) > 0) {
+		if (tmpl_dcursor_print(&FR_SBUFF_OUT(state->buffer, BUFFER_SIZE), &state->cc) > 0) {
 			fr_value_box_strdup(state->key, &state->key->data, NULL, state->buffer, false);
 		}
 		break;
@@ -302,7 +302,10 @@ static unlang_action_t unlang_foreach_attr_next(unlang_result_t *p_result, reque
 	if (fr_type_is_leaf(vp->vp_type)) {
 		if (vp->vp_type == state->value->vp_type) {
 			fr_value_box_clear_value(&vp->data);
-			(void) fr_value_box_copy(vp, &vp->data, &state->value->data);
+			if (unlikely(fr_value_box_copy(vp, &vp->data, &state->value->data) < 0)) {
+				RPEDEBUG("Failed copying value from %s to %s", state->value->da->name, vp->da->name);
+				return UNLANG_ACTION_FAIL;
+			}
 		} else {
 			/*
 			 *	@todo - this shouldn't happen?
@@ -612,7 +615,7 @@ static unlang_t *unlang_compile_foreach(unlang_t *parent, unlang_compile_ctx_t *
 	}
 
 	slen = tmpl_afrom_substr(g, &vpt,
-				 &FR_SBUFF_IN(name2, strlen(name2)),
+				 &FR_SBUFF_IN_STR(name2),
 				 token,
 				 NULL,
 				 &t_rules);
@@ -863,7 +866,7 @@ void unlang_foreach_init(void)
 
 			.unlang_size = sizeof(unlang_group_t),
 			.unlang_name = "unlang_group_t",
-		});				
+		});
 
 	unlang_register(&(unlang_op_t){
 			.name = "continue",

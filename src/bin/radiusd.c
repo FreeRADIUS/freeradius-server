@@ -285,7 +285,7 @@ int main(int argc, char *argv[])
 		 */
 		env = getenv("FR_GLOBAL_POOL");
 		if (env) {
-			if (fr_size_from_str(&pool_size, &FR_SBUFF_IN(env, strlen(env))) < 0) {
+			if (fr_size_from_str(&pool_size, &FR_SBUFF_IN_STR(env)) < 0) {
 				fr_perror("%s: Invalid pool size string \"%s\"", program, env);
 				EXIT_WITH_FAILURE;
 			}
@@ -881,6 +881,17 @@ int main(int argc, char *argv[])
 	 */
 	rad_suid_down_permanent();
 
+	/*
+	 *	Move the current working directory to a place where it
+	 *	can't hurt anything.
+	 */
+	if (main_config->chdir_is_set) {
+		if (chdir(main_config->chdir) < 0) {
+			ERROR("Failed changing working to %s: %s", main_config->chdir, fr_syserror(errno));
+			EXIT_WITH_FAILURE;
+		}
+	}
+
 	DUMP_CAPABILITIES("post-suid-down");
 
 	/*
@@ -939,7 +950,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	trigger_exec(NULL, NULL, "server.start", false, NULL);
+	trigger(NULL, NULL, NULL, "server.start", false, NULL);
 
 	/*
 	 *  Inform the parent (who should still be waiting) that the rest of
@@ -1024,8 +1035,8 @@ int main(int argc, char *argv[])
 	 *   Fire signal and stop triggers after ignoring SIGTERM, so handlers are
 	 *   not killed with the rest of the process group, below.
 	 */
-	if (status == 2) trigger_exec(NULL, NULL, "server.signal.term", true, NULL);
-	trigger_exec(NULL, NULL, "server.stop", false, NULL);
+	if (status == 2) trigger(NULL, NULL, NULL, "server.signal.term", true, NULL);
+	trigger(NULL, NULL, NULL, "server.stop", false, NULL);
 
 	/*
 	 *  Stop the scheduler, this signals the network and worker threads
@@ -1201,11 +1212,7 @@ static NEVER_RETURNS void usage(int status)
 #endif
 	fprintf(output, "  -P            Always write out PID, even with -f.\n");
 	fprintf(output, "  -s            Do not spawn child processes to handle requests (same as -ft).\n");
-	fprintf(output, "  -S <flag>     Set migration flags to assist with upgrades from version 3.  Flags are:\n\n");
-	fprintf(output, "                rewrite_update=no   Use the old v3 interpreter for 'update' sections.\n");
-	fprintf(output, "                forbid_update=yes   Error if the old v3 'update' section is used.\n");
-	fprintf(output, "                v3_enum_names=yes   Do not use '::' as the prefix for enumeration names,\n");
-	fprintf(output, "                                    AND require '&' for all attribute names.\n");
+	fprintf(output, "  -S <flag>     Set migration flags to assist with upgrades from version 3.\n");
 	fprintf(output, "  -t            Disable threads.\n");
 	fprintf(output, "  -T            Prepend timestamps to  log messages.\n");
 	fprintf(output, "  -v            Print server version information.\n");

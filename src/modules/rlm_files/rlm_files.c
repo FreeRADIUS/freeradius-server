@@ -78,7 +78,7 @@ fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED | CONF_FLAG_FILE_INPUT, rlm_files_t, filename) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED | CONF_FLAG_FILE_READABLE, rlm_files_t, filename) },
 	{ FR_CONF_OFFSET("v3_compat", rlm_files_t, v3_compat) },
 	CONF_PARSER_TERMINATOR
 };
@@ -366,14 +366,17 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 			user_list->name = entry->name;
 			user_list->box = fr_value_box_alloc(user_list, data_type, NULL);
 
-			(void) fr_value_box_copy(user_list, user_list->box, box);
+			if (unlikely(fr_value_box_copy(user_list, user_list->box, box) < 0)) {
+				PERROR("%s[%d] Failed copying key %s",
+				       entry->filename, entry->lineno, entry->name);
+			}
 
 			/*
 			 *	Insert the new list header.
 			 */
 			if (!fr_htrie_insert(tree, user_list)) {
-				ERROR("%s[%d] Failed inserting key %s - %s",
-				      entry->filename, entry->lineno, entry->name, fr_strerror());
+				PERROR("%s[%d] Failed inserting key %s",
+				       entry->filename, entry->lineno, entry->name);
 				goto error;
 
 			error:

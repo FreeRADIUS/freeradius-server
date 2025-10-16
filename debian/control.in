@@ -14,14 +14,14 @@ Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  libjson-c (>= 1.13) | libjson-c4 | libjson-c5,
  libjson-c-dev,
  libjson-perl,
- libkqueue-dev,
+ libkqueue-dev (>= 2.6.1),
  libkrb5-dev | heimdal-dev,
  libldap2-dev,
  libmemcached-dev,
  libmariadb-dev,
  libpam0g-dev,
  libpcap-dev,
- libpcre2-dev | libpcre3-dev,
+ libpcre2-dev,
  libperl-dev,
  libpq-dev,
  librdkafka-dev,
@@ -108,7 +108,7 @@ Description: FreeRADIUS SNMP mibs and utilities
 
 Package: libfreeradius4
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}, libkqueue0 (>= 2.6.1)
 Conflicts: libfreeradius3
 Description: FreeRADIUS shared library
  The FreeRADIUS projects' libfreeradius-util, libfreeradius-radius and libfreeradius-eap, used by

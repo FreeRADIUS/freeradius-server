@@ -740,7 +740,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 		if (tmpl_afrom_attr_str(request, NULL, &dst, name,
 					&(tmpl_rules_t){
 						.attr = {
-							.dict_def = request->proto_dict,
+							.dict_def = request->local_dict,
 							.list_def = request_attr_reply
 						}
 					}) <= 0) {
@@ -1030,7 +1030,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			if (tmpl_afrom_attr_str(request, NULL, &dst, name,
 						&(tmpl_rules_t){
 							.attr = {
-								.dict_def = request->proto_dict,
+								.dict_def = request->local_dict,
 								.list_def = request_attr_reply
 							}
 						}) <= 0) {

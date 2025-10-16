@@ -102,6 +102,9 @@ struct main_config_s {
 	bool		gid_is_set;
 #endif
 
+	char const	*chdir;				//!< where to chdir() to when we start.
+	bool		chdir_is_set;
+
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	char const	*allow_vulnerable_openssl;	//!< The CVE number of the last security issue acknowledged.
 #endif
@@ -153,8 +156,6 @@ struct main_config_s {
 	/*
 	 *	Migration tools
 	 */
-	bool		rewrite_update;			//!< rewrite "update" to be new edit sections
-	bool		forbid_update;			//!< forbid "update" sections
 };
 
 void			main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config);

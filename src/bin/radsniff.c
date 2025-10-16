@@ -1329,7 +1329,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	/*
 	 *	End of variable length bits, do basic check now to see if packet looks long enough
 	 */
-	len = (p - data) + sizeof(udp_header_t) + sizeof(radius_packet_t);	/* length value */
+	len = (p - data) + sizeof(udp_header_t) + RADIUS_HEADER_LENGTH;	/* length value */
 	if ((size_t) len > header->caplen) {
 		REDEBUG("Packet too small, we require at least %zu bytes, captured %i bytes",
 			(size_t) len, header->caplen);
@@ -2109,7 +2109,7 @@ static int rs_build_filter(fr_pair_list_t *out, char const *filter)
 	};
 	relative = (fr_pair_parse_t) { };
 
-	if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(filter, strlen(filter))) <= 0) {
+	if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN_STR(filter)) <= 0) {
 		fr_perror("Invalid RADIUS filter \"%s\"", filter);
 		return -1;
 	}

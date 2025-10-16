@@ -126,25 +126,24 @@ static inline CC_HINT(always_inline) int dict_fixup_common(fr_dlist_head_t *fixu
  *
  * @param[out] da_p		Where the attribute will be stored
  * @param[in] rel		Relative attribute to resolve from.
- * @param[in] ref		Reference string.
+ * @param[in] in		Reference string.
  * @return
  *	- <0 on error
  *	- 0 on parse OK, but *da_p is NULL;
  *	- 1 for parse OK, and *da_p is !NULL
  */
-int dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *rel, char const *ref)
+int fr_dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *rel, fr_sbuff_t *in)
 {
 	fr_dict_t			*dict = fr_dict_unconst(rel->dict);
 	fr_dict_attr_t const		*da = rel;
 	ssize_t				slen;
-	fr_sbuff_t			sbuff = FR_SBUFF_IN(ref, strlen(ref));
 
 	*da_p = NULL;
 
 	/*
 	 *	Are we resolving a foreign reference?
 	 */
-	if (fr_sbuff_next_if_char(&sbuff, '@')) {
+	if (fr_sbuff_next_if_char(in, '@')) {
 		char proto_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
 		fr_sbuff_t proto_name_sbuff = FR_SBUFF_OUT(proto_name, sizeof(proto_name));
 
@@ -153,21 +152,21 @@ int dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *r
 		 *
 		 *	This is a bit clearer than "foo".
 		 */
-		if (fr_sbuff_next_if_char(&sbuff, '.')) {
-			if (fr_sbuff_is_char(&sbuff, '.')) goto above_root;
+		if (fr_sbuff_next_if_char(in, '.')) {
+			if (fr_sbuff_is_char(in, '.')) goto above_root;
 
 			da = rel->dict->root;
 			goto more;
 		}
 
-		slen = dict_by_protocol_substr(NULL, &dict, &sbuff, NULL);
+		slen = dict_by_protocol_substr(NULL, &dict, in, NULL);
 		/* Need to load it... */
 		if (slen <= 0) {
 			/* Quiet coverity */
 			fr_sbuff_terminate(&proto_name_sbuff);
 
 			/* Fixme, probably want to limit allowed chars */
-			if (fr_sbuff_out_bstrncpy_until(&proto_name_sbuff, &sbuff, SIZE_MAX,
+			if (fr_sbuff_out_bstrncpy_until(&proto_name_sbuff, in, SIZE_MAX,
 							&FR_SBUFF_TERMS(L(""), L(".")), NULL) <= 0) {
 			invalid_name:
 				fr_strerror_const("Invalid protocol name");
@@ -191,6 +190,8 @@ int dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *r
 			 *	Load the new dictionary, and mark it as loaded from our dictionary.
 			 */
 			if (fr_dict_protocol_afrom_file(&dict, proto_name, NULL, (rel->dict)->root->name) < 0) {
+				fr_strerror_printf_push("Perhaps there is a '.' missing before the attribute name in %.*s ?",
+							(int) fr_sbuff_used(in), fr_sbuff_start(in));
 				return -1;
 			}
 
@@ -203,7 +204,7 @@ int dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *r
 		/*
 		 *	Didn't stop at an attribute ref... we're done
 		 */
-		if (fr_sbuff_eof(&sbuff)) {
+		if (fr_sbuff_eof(in)) {
 			*da_p = dict->root;
 			return 1;
 		}
@@ -211,18 +212,24 @@ int dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *r
 		da = dict->root;
 	}
 
-	if (!fr_sbuff_next_if_char(&sbuff, '.')) {
-		fr_strerror_printf("Attribute %s has reference '%s' which does not begin with '.' or '@'",
-				   rel->name, ref);
+	/*
+	 *	ref=.foo is a ref from the current parent.
+	 *
+	 *	ref=@foo is a ref from the root of the tree.
+	 */
+
+	if (!fr_sbuff_next_if_char(in, '.')) {
+		fr_strerror_printf("Invalid reference '%s' - it should start with '@' (from the root), or '.' (from the parent)",
+				   fr_sbuff_start(in));
 		return -1;
 	}
 
 	/*
-	 *	First '.' makes it reletive, subsequent ones traverse up the tree.
+	 *	First '.' makes it relative, subsequent ones traverse up the tree.
 	 *
 	 *	No '.' means use the root.
 	 */
-	while (fr_sbuff_next_if_char(&sbuff, '.')) {
+	while (fr_sbuff_next_if_char(in, '.')) {
 		if (!da->parent) {
 		above_root:
 			fr_strerror_const("Reference attempted to navigate above dictionary root");
@@ -236,7 +243,7 @@ int dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *r
 	 *	update *da_p with a partial reference if it exists.
 	 */
 more:
-	slen = fr_dict_attr_by_oid_substr(NULL, da_p, da, &sbuff, NULL);
+	slen = fr_dict_attr_by_oid_substr(NULL, da_p, da, in, NULL);
 	if (slen < 0) return -1;
 
 	if (slen == 0) {
@@ -379,10 +386,10 @@ static inline CC_HINT(always_inline) int dict_fixup_group_apply(UNUSED dict_fixu
 {
 	fr_dict_attr_t const *da;
 
-	(void) dict_protocol_reference(&da, fixup->da->parent, fixup->ref);
+	(void) fr_dict_protocol_reference(&da, fixup->da->parent, &FR_SBUFF_IN_STR(fixup->ref));
 	if (!da) {
-		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%d]",
-					fr_cwd_strip(fixup->da->filename), fixup->da->line);
+		fr_strerror_printf_push("Failed resolving reference for attribute %s at %s[%d]",
+					fixup->da->name, fr_cwd_strip(fixup->da->filename), fixup->da->line);
 		return -1;
 	}
 
@@ -536,6 +543,8 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 
 	/*
 	 *	Can't clone KEY fields directly, you MUST clone the parent struct.
+	 *
+	 *	@todo - remove after migration_union_key is deleted
 	 */
 	if (!fr_type_is_non_leaf(src->type) || fr_dict_attr_is_key_field(src) || fr_dict_attr_is_key_field(dst)) {
 		fr_strerror_printf("Invalid reference from '%s' to %s", dst->name, src->name);
@@ -602,10 +611,10 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 {
 	fr_dict_attr_t const	*src;
 
-	(void) dict_protocol_reference(&src, fixup->da->parent, fixup->ref);
+	(void) fr_dict_protocol_reference(&src, fixup->da->parent, &FR_SBUFF_IN_STR(fixup->ref));
 	if (!src) {
-		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%d]",
-					fr_cwd_strip(fixup->da->filename), fixup->da->line);
+		fr_strerror_printf_push("Failed resolving reference for attribute %s at %s[%d]",
+					fixup->da->name, fr_cwd_strip(fixup->da->filename), fixup->da->line);
 		return -1;
 	}
 
@@ -661,10 +670,10 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict
 	fr_dict_attr_t const	*src;
 	int			copied;
 
-	(void) dict_protocol_reference(&src, fixup->da->parent, fixup->ref);
+	(void) fr_dict_protocol_reference(&src, fixup->da->parent, &FR_SBUFF_IN_STR(fixup->ref));
 	if (!src) {
-		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%d]",
-					fr_cwd_strip(fixup->da->filename), fixup->da->line);
+		fr_strerror_printf_push("Failed resolving reference for attribute %s at %s[%d]",
+					fixup->da->name, fr_cwd_strip(fixup->da->filename), fixup->da->line);
 		return -1;
 	}
 

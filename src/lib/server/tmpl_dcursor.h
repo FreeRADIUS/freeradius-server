@@ -66,7 +66,11 @@ struct tmpl_dcursor_ctx_s {
 
 	request_t		*request;	//!< Result of following the request references.
 
-	fr_pair_list_t		*list;		//!< List within the request.
+	TALLOC_CTX		*rel_list_ctx;	//!< When we need to allocate pairs in our
+						///< the rel_list, we use this as the ctx.
+
+	fr_pair_list_t		*rel_list;	//!< List we're starting at.  This could be
+						///< a group deep in the request.
 
 	fr_dlist_head_t		nested;		//!< Nested state.  These are allocated when we
 						///< need to maintain state between multiple

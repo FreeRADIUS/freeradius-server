@@ -419,18 +419,19 @@ static unlang_action_t eap_virtual_server_resume(UNUSED unlang_result_t *p_resul
  *
  * @param[in] request		the current (real) request.
  * @param[in] eap_session	representing the outer eap method.
- * @param[in] server_cs		The virtual server to send the request to.
+ * @param[in] virtual_server	The virtual server to send the request to.
  * @return
  * 	- UNLANG_ACTION_PUSHED_CHILD on success
  *	- UNLANG_ACTION_FAIL on error
  */
-unlang_action_t eap_virtual_server(request_t *request, eap_session_t *eap_session, CONF_SECTION *server_cs)
+unlang_action_t eap_virtual_server(request_t *request, eap_session_t *eap_session, virtual_server_t *virtual_server)
 {
 	fr_pair_t	*vp;
 
 	fr_assert(request->parent);
+	fr_assert(virtual_server);
 
-	RDEBUG2("Running request through virtual server \"%s\"", cf_section_name(server_cs));
+	RDEBUG2("Running request through virtual server \"%s\"", cf_section_name2(virtual_server_cs(virtual_server)));
 
 	/*
 	 *	Re-present the previously stored child's session state if there is one
@@ -449,7 +450,7 @@ unlang_action_t eap_virtual_server(request_t *request, eap_session_t *eap_sessio
 					     UNLANG_SUB_FRAME,
 					     eap_session) < 0) return UNLANG_ACTION_FAIL;
 
-	if (unlang_call_push(NULL, request, server_cs, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_call_push(NULL, request, virtual_server_cs(virtual_server), UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }

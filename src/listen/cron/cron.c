@@ -51,7 +51,7 @@ static conf_parser_t const proto_cron_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("when", CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_cron_t, spec),
 	  		.func = time_parse },
 
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_cron_t, filename ) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_cron_t, filename ) },
 
 	{ FR_CONF_OFFSET("priority", proto_cron_t, priority) },
 

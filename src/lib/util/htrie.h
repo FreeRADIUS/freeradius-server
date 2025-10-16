@@ -164,6 +164,7 @@ static inline fr_htrie_type_t fr_htrie_hint(fr_type_t type)
 	case FR_TYPE_FLOAT64:
 		return FR_HTRIE_RB;
 
+	case FR_TYPE_ATTR:
 	case FR_TYPE_NON_LEAF:
 		break;
 	}

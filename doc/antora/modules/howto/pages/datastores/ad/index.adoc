@@ -4,8 +4,8 @@ Microsoft Active Directory (AD) is a directory service that stores and manages u
 
 The services manage network activities by:
 
-* authenticating users by verifying their identity and credentials, and
-* authorizating resource use by applying policies to restrict access to data.
+* Authenticates users by verifying their identity and credentials.
+* Authorizes resource use by applying policies to restrict access to data.
 
 == What is it?
 
@@ -13,7 +13,7 @@ When FreeRADIUS is integrated with Active Directory, the AD server functions as 
 
 For MS-CHAP based authentications, FreeRADIUS uses tools such as Samba, including winbind and the `ntlm_auth` helper program to communicate with the AD server. 
 
-=== FreeRADIUS Active Directory Authentication Process
+=== FreeRADIUS AD authentication process
 
 The authentication process flow of steps to authenticate a user is as follows:
 
@@ -64,9 +64,9 @@ winbind_domain = "%{mschap:NT-Domain}"}
 ```
 
 
-This configuration requires Freeradius to be built with winbind auth. For example, on linux-based systems, you rebuild the packages and add the winbind libraries to the ./configure path. See xref:datastores/ad/winbind.adoc[Installing winbind] for more details.
+This configuration requires Freeradius to be built with winbind auth. For example, on linux-based systems, you rebuild the packages and add the winbind libraries to the ./configure path. See xref:datastores/ad/winbind.adoc[Install Winbind] for more details.
 
-=== Testing
+=== Tests
 
 If everything works successfully, you'll see an entry in the AD Domain Controller's audit log similar to the snippit below:
 
@@ -92,12 +92,8 @@ Without the "--allow-mschapv2" setting, you would see "passwordType":"NTLMv1"
 
 When FreeRADIUS is integrated with Active Directory, only authorized users gain access to network resources, enhancing the overall security of your network. Active Directory functions as a centralized datastore for user accounts and security policies, simplifying user management and access rights across the network. By integrating with AD, FreeRADIUS can leverage the exisiting infrastructure and be scaled up for larger systems.
 
-== xref:datastores/ad/samba.adoc[Using Samba]
-
-FreeRADIUS uses Samba to integrate with Active Directory for authentication.  For authorization such as group membership, FreeRADIUS can query Active Directory over LDAP.
-
-For the next steps, see the following:
+For your next steps, see the following:
 
 * xref:datastores/ad/samba.adoc[Using Samba]
-* xref:datastores/ad/ntlm_mschap.adoc[Configuring ntlm]
-* xref:datastores/ad/winbind.adoc[Installing winbind]
+* xref:datastores/ad/ntlm_mschap.adoc[Configure NTLM]
+* xref:datastores/ad/winbind.adoc[Install Winbind]

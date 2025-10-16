@@ -22,7 +22,6 @@
  * @copyright 2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2012-2014 The FreeRADIUS server project
  */
-#include "lib/unlang/action.h"
 RCSID("$Id$")
 
 #define LOG_PREFIX mctx->mi->name
@@ -36,8 +35,10 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/value.h>
+#include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/call_env.h>
+#include <freeradius-devel/unlang/xlat.h>
 
 #include "rlm_cache.h"
 
@@ -909,7 +910,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      NULL,
 				      &(tmpl_rules_t){
 				      	.attr = {
-						.dict_def = request->proto_dict,
+						.dict_def = request->local_dict,
 						.list_def = request_attr_request,
 				      	}
 				      });
@@ -939,7 +940,11 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		    (tmpl_list(map->lhs) != tmpl_list(target))) continue;
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
-		fr_value_box_copy(vb, vb, tmpl_value(map->rhs));
+		if (unlikely(fr_value_box_copy(vb, vb, tmpl_value(map->rhs)) < 0)) {
+			RPEDEBUG("Failed copying value from cache entry");
+			talloc_free(vb);
+			return XLAT_ACTION_FAIL;
+		}
 		fr_dcursor_append(out, vb);
 		break;
 	}

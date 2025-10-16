@@ -41,6 +41,21 @@ int	fr_cap_enable(cap_value_t cap, cap_flag_t set);
 int	fr_cap_disable(cap_value_t cap, cap_flag_t set);
 
 ssize_t fr_cap_set_to_str(TALLOC_CTX *ctx, char **out);
+
+#else
+/*
+ *	So we don't have ifdef's throughout the rest of the code.
+ */
+#  define CAP_EFFECTIVE	 	(0)
+#  define CAP_INHERITABLE	(0)
+#  define CAP_PERMITTED		(0)
+
+#  define CAP_SETUID		(0)
+#  define CAP_SETGID		(0)
+#  define CAP_CHOWN		(0)
+
+#  define fr_cap_disable(_x, _y) (0)
+
 #endif
 
 #ifdef __cplusplus

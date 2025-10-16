@@ -64,14 +64,10 @@ FR_DLIST_FUNCS(call_env_parsed, call_env_parsed_t, entry)
 /** Parse the result of call_env tmpl expansion
  */
 static inline CC_HINT(always_inline)
-call_env_result_t call_env_result(TALLOC_CTX *ctx, request_t *request, void *out,
-			          void **tmpl_out, call_env_parsed_t const *env,
+call_env_result_t call_env_result(TALLOC_CTX *ctx, request_t *request, void *out, call_env_parsed_t const *env,
 				  fr_value_box_list_t *tmpl_expanded)
 {
 	fr_value_box_t	*vb;
-
-	if (tmpl_out) *tmpl_out = UNCONST(tmpl_t *, env->data.tmpl);
-	if (call_env_parse_only(env->rule->flags)) return CALL_ENV_SUCCESS;
 
 	vb = fr_value_box_list_head(tmpl_expanded);
 	if (!vb) {
@@ -143,6 +139,7 @@ static unlang_action_t call_env_expand_start(UNUSED unlang_result_t *p_result, r
 	call_env_parsed_t const	*env = NULL;
 	void		**out;
 
+again:
 	while ((call_env_rctx->last_expanded = call_env_parsed_next(&call_env_rctx->call_env->parsed, call_env_rctx->last_expanded))) {
 		env = call_env_rctx->last_expanded;
 		fr_assert(env != NULL);
@@ -232,19 +229,47 @@ static unlang_action_t call_env_expand_start(UNUSED unlang_result_t *p_result, r
 		ctx = *out;
 	}
 
-	if (unlang_tmpl_push(ctx, &call_env_rctx->tmpl_expanded, request, call_env_rctx->last_expanded->data.tmpl,
-			     NULL) < 0) return UNLANG_ACTION_FAIL;
+	/*
+	 *	If the tmpl is already data, we can just copy the data to the right place.
+	 */
+	if (tmpl_is_data(call_env_rctx->last_expanded->data.tmpl)) {
+		fr_value_box_t		*vb;
+		call_env_result_t	result;
+		void 			*box_out;
+
+		MEM(vb = fr_value_box_acopy(ctx, &call_env_rctx->last_expanded->data.tmpl->data.literal));
+		fr_value_box_list_insert_tail(&call_env_rctx->tmpl_expanded, vb);
+
+		box_out = ((uint8_t*)(*call_env_rctx->data)) + env->rule->pair.offset;
+
+		if (call_env_multi(env->rule->flags)) {
+			void *array = *(void **)box_out;
+			box_out = ((uint8_t *)array) + env->rule->pair.size * env->multi_index;
+		}
+
+		/* coverity[var_deref_model] */
+		result = call_env_result(*call_env_rctx->data, request, box_out, env, &call_env_rctx->tmpl_expanded);
+		if (result != CALL_ENV_SUCCESS) {
+			if (call_env_rctx->result) *call_env_rctx->result = result;
+			return UNLANG_ACTION_FAIL;
+		}
+		goto again;
+	}
+
+	if (unlang_tmpl_push(ctx, &call_env_rctx->expansion_result, &call_env_rctx->tmpl_expanded, request,
+			     call_env_rctx->last_expanded->data.tmpl,
+			     NULL, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /** Extract expanded call environment tmpl and store in env_data
  *
- * If there are more tmpls to expand, push the next expansion.
+ * If there are more call environments to evaluate, push the next one.
  */
 static unlang_action_t call_env_expand_repeat(UNUSED unlang_result_t *p_result, request_t *request, void *uctx)
 {
-	void			*out = NULL, *tmpl_out = NULL;
+	void			*out = NULL;
 	call_env_rctx_t		*call_env_rctx = talloc_get_type_abort(uctx, call_env_rctx_t);
 	call_env_parsed_t	const *env;
 	call_env_result_t	result;
@@ -260,7 +285,6 @@ static unlang_action_t call_env_expand_repeat(UNUSED unlang_result_t *p_result, 
 	env = call_env_rctx->last_expanded;
 	if (!env) return UNLANG_ACTION_CALCULATE_RESULT;
 
-	if (call_env_parse_only(env->rule->flags)) goto parse_only;
 	/*
 	 *	Find the location of the output
 	 */
@@ -275,11 +299,8 @@ static unlang_action_t call_env_expand_repeat(UNUSED unlang_result_t *p_result, 
 		out = ((uint8_t *)array) + env->rule->pair.size * env->multi_index;
 	}
 
-parse_only:
-	if (env->rule->pair.parsed.offset >= 0) tmpl_out = ((uint8_t *)*call_env_rctx->data) + env->rule->pair.parsed.offset;
-
 	/* coverity[var_deref_model] */
-	result = call_env_result(*call_env_rctx->data, request, out, tmpl_out, env, &call_env_rctx->tmpl_expanded);
+	result = call_env_result(*call_env_rctx->data, request, out, env, &call_env_rctx->tmpl_expanded);
 	if (result != CALL_ENV_SUCCESS) {
 		if (call_env_rctx->result) *call_env_rctx->result = result;
 		return UNLANG_ACTION_FAIL;
@@ -442,7 +463,7 @@ int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules,
  *	- 0 on success;
  *	- <0 on failure;
  */
-static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, tmpl_rules_t const *t_rules,
+int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, tmpl_rules_t const *t_rules,
 			  CONF_SECTION const *cs,
 			  call_env_ctx_t const *cec, call_env_parser_t const *rule) {
 	CONF_PAIR const		*cp, *next;

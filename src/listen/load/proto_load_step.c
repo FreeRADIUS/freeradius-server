@@ -79,7 +79,7 @@ struct proto_load_step_s {
 
 
 static const conf_parser_t load_listen_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_load_step_t, filename) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_load_step_t, filename) },
 	{ FR_CONF_OFFSET("csv", proto_load_step_t, csv) },
 
 	{ FR_CONF_OFFSET("max_attributes", proto_load_step_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) } ,
@@ -389,7 +389,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	FR_INTEGER_BOUND_CHECK("step", inst->load.step, <, 100000);
 
 	if (inst->load.max_pps > 0) FR_INTEGER_BOUND_CHECK("max_pps", inst->load.max_pps, >, inst->load.start_pps);
-	FR_INTEGER_BOUND_CHECK("max_pps", inst->load.max_pps, <, 100000);
+	FR_INTEGER_BOUND_CHECK("max_pps", inst->load.max_pps, <, 400000);
 
 	FR_TIME_DELTA_BOUND_CHECK("duration", inst->load.duration, >=, fr_time_delta_from_sec(1));
 	FR_TIME_DELTA_BOUND_CHECK("duration", inst->load.duration, <, fr_time_delta_from_sec(10000));

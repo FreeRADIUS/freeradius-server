@@ -26,22 +26,3 @@ server packet-fin {
 		fail
 	}
 }
-
-server timeout-fin {
-	namespace = radius
-
-	recv Access-Request {
-		# Trigger the overall timeout for the test binary
-		%time.advance(61s)
-		ok
-	}
-
-	finally {
-		if (timeout) {
-			Tmp-String-0 := 'bye-from-timeout-fin'
-			success
-		} else {
-			fail
-		}
-	}
-}

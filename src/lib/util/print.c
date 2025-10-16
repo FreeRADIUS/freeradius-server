@@ -40,7 +40,17 @@ inline size_t fr_utf8_char(uint8_t const *str, ssize_t inlen)
 {
 	if (inlen == 0) return 0;
 
-	if (inlen < 0) inlen = 4;	/* longest char */
+	if (inlen < 0) {
+		if (*str < 0x20) return 0; /* end of string, or control characters. */
+
+		/*
+		 *	The trailing zero can occur at any point in
+		 *	the next 4 characters.
+		 */
+		for (inlen = 1; inlen <= 4; inlen++) {
+			if (!str[inlen]) break;
+		}
+	}
 
 	if (*str <= 0x7f) return 1;	/* 1 */
 

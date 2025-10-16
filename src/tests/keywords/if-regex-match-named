@@ -3,7 +3,7 @@
 string result_string
 string dummy_string
 
-if (('${feature.regex-pcre}' == 'yes') || ('${feature.regex-pcre2}' == 'yes')) {
+if ('${feature.regex-pcre2}' == 'yes') {
 	request += {
 		NAS-Port = '123456789'
 		Port-Limit = 1

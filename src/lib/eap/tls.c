@@ -797,10 +797,10 @@ ignore_length:
 /** Process the result from the last TLS handshake round
  *
  * @return
- *	- eap_tls_session->state = EAP_TLS_FAIL if the message is invalid.
- *	- eap_tls_session->state = EAP_TLS_HANDLED if we need to send an
+ *	- eap_tls_session->state == EAP_TLS_FAIL if the message is invalid.
+ *	- eap_tls_session->state == EAP_TLS_HANDLED if we need to send an
  *	  additional request to the peer.
- *	- eap_tls_session->state = EAP_TLS_ESTABLISHED if the handshake
+ *	- eap_tls_session->state == EAP_TLS_ESTABLISHED if the handshake
  *	  completed successfully, and there's no more data to send.
  */
 static unlang_action_t eap_tls_handshake_resume(request_t *request, void *uctx)

@@ -78,6 +78,32 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_value");
 
 	switch (parent->type) {
+	case FR_TYPE_ATTR:
+		/*
+		 *	Force the length of the data to be two,
+		 *	otherwise the "from network" call complains.
+		 *	Because we pass in the enumv as the _parent_
+		 *	and not the da.  The da is marked as "array",
+		 *	but the parent is not.
+		 */
+		if (data_len < 2) goto raw;
+
+		fr_assert(parent->parent->flags.is_root);
+
+		vp = fr_pair_afrom_da(ctx, parent);
+		if (!vp) return PAIR_DECODE_OOM;
+
+		slen = fr_value_box_from_network(vp, &vp->data, vp->vp_type, parent->parent,
+						 &FR_DBUFF_TMP(data, 2), 2, true);
+		if (slen <= 0) {
+			TALLOC_FREE(vp);
+			goto raw;
+		}
+
+		vp->vp_tainted = true;
+		fr_pair_append(out, vp);
+		return 2;
+
 	/*
 	 *	Address MAY be shorter than 16 bytes.
 	 */

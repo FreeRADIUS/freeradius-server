@@ -103,6 +103,7 @@ exfile_t		*module_rlm_exfile_init(TALLOC_CTX *ctx,
 						uint32_t max_entries,
 						fr_time_delta_t max_idle,
 						bool locking,
+						bool triggers,
 						char const *trigger_prefix,
 						fr_pair_list_t *trigger_args);
 /** @} */

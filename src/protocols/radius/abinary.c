@@ -430,7 +430,7 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 	 */
 	token = fr_base16_decode(NULL,
 			   &FR_DBUFF_TMP(net->node, IPX_NODE_ADDR_LEN),
-			   &FR_SBUFF_IN(p, strlen(p)), false);
+			   &FR_SBUFF_IN_STR(p), false);
 	if (token != IPX_NODE_ADDR_LEN) {
 		fr_strerror_printf("IPX network node name '%s' is the wrong size", argv[2]);
 		return -1;
@@ -1114,7 +1114,7 @@ static int ascend_parse_generic(int argc, char **argv,
 
 	slen = fr_base16_decode(NULL,
 			   &FR_DBUFF_TMP(filter->mask, sizeof(filter->mask)),
-			   &FR_SBUFF_IN(argv[1], strlen(argv[1])), false);
+			   &FR_SBUFF_IN_STR(argv[1]), false);
 	if (slen != sizeof(filter->mask)) {
 		fr_strerror_printf("Invalid filter mask '%s'", argv[1]);
 		return -1;
@@ -1122,7 +1122,7 @@ static int ascend_parse_generic(int argc, char **argv,
 
 	token = fr_base16_decode(NULL,
 			   &FR_DBUFF_TMP(filter->value, sizeof(filter->value)),
-			   &FR_SBUFF_IN(argv[2], strlen(argv[2])), false);
+			   &FR_SBUFF_IN_STR(argv[2]), false);
 	if (token != sizeof(filter->value)) {
 		fr_strerror_printf("Invalid filter mask '%s'", argv[1]);
 		return -1;

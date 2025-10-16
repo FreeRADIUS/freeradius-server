@@ -1,0 +1,17 @@
+#
+#  PRE: if
+#
+
+#
+#  Regression test for encoding Vendor-Specific as a container
+#
+Vendor-Specific.FreeRADIUS = {
+	Proxied-To = 192.168.0.1
+	Acct-Unique-Session-Id = '123456789'
+}
+
+if (%internal.encode(Vendor-Specific.FreeRADIUS) != 0x001a17202c5013000104c0a8000100ba09313233343536373839) {
+	test_fail
+}
+
+success

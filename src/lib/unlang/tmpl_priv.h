@@ -36,16 +36,17 @@ extern "C" {
  */
 typedef struct {
 	TALLOC_CTX			*ctx;		//!< for allocating value boxes
+	tmpl_t const   			*vpt;		//!< the thing being expanded
 	fr_value_box_list_t		*out;		//!< output list if the exec succeeds
 	fr_value_box_list_t		list;		//!< our intermediate working list
 
 	void				*rctx;		//!< for resume
 	fr_unlang_tmpl_resume_t		resume;	       	//!< resumption handler
 	fr_unlang_tmpl_signal_t		signal;		//!< signal handler
+	unlang_result_t			xlat_result;	//!< results for xlat
 
 	union {
 		fr_exec_state_t		exec_result;   	//!< results for exec
-		unlang_result_t		xlat_result;	//!< results for xlat
 	};
 
 	unlang_tmpl_args_t		args;		//!< Arguments that control how the

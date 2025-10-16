@@ -248,6 +248,8 @@ struct sql_inst {
 	fr_dict_attr_t const		*group_da;		//!< Group dictionary attribute.
 	fr_dict_attr_t const		*query_number_da;	//!< Query number attribute.
 	module_instance_t const		*mi;			//!< Module instance data for thread lookups.
+
+	fr_pair_list_t			*trigger_args;		//!< Pairs passed to trigger request.
 };
 
 unlang_action_t	sql_get_map_list(unlang_result_t *p_result, request_t *request, fr_sql_map_ctx_t *map_ctx, trunk_t *trunk);

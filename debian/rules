@@ -53,16 +53,11 @@ else
 	confflags += --build $(DEB_BUILD_GNU_TYPE) --host $(DEB_HOST_GNU_TYPE)
 endif
 
-# Add dependency on distribution specific version of openssl that fixes Heartbleed (CVE-2014-0160).
-ifeq ($(shell dpkg-vendor --derives-from Ubuntu && echo yes),yes)
-       SUBSTVARS = -Vdist:Depends="libssl1.0.0 (>= 1.0.1f-1ubuntu2) | libssl1.1 | libssl3"
+# Later Debian versions have the legacy OpenSSL provider in a separate package
+ifeq ($(shell apt-cache show openssl-provider-legacy &>/dev/null && echo yes),yes)
+        SUBSTVARS = -Vdist:Depends="libssl3, openssl-provider-legacy"
 else
-       # Later Debian versions have the legacy OpenSSL provider in a separate package
-       ifeq ($(shell apt-cache show openssl-provider-legacy &>/dev/null && echo yes),yes)
-              SUBSTVARS = -Vdist:Depends="libssl3, openssl-provider-legacy"
-       else
-              SUBSTVARS = -Vdist:Depends="libssl1.0.0 (>= 1.0.1e-2+deb7u5) | libssl1.0.2 | libssl1.1 | libssl3"
-       endif
+        SUBSTVARS = -Vdist:Depends="libssl3"
 endif
 
 # Add libsystemd-dev as a Build-Depends to debian/control if it is known to this system

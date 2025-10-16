@@ -66,21 +66,7 @@ int unlang_module_push(unlang_result_t *p_result, request_t *request,
 			.type = UNLANG_TYPE_MODULE,
 			.name = mi->name,
 			.debug_name = mi->name,
-			.actions = {
-				.actions = {
-					[RLM_MODULE_REJECT]	= 0,
-					[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-					[RLM_MODULE_OK]		= 0,
-					[RLM_MODULE_HANDLED]	= 0,
-					[RLM_MODULE_INVALID]	= 0,
-					[RLM_MODULE_DISALLOW]	= 0,
-					[RLM_MODULE_NOTFOUND]	= 0,
-					[RLM_MODULE_NOOP]	= 0,
-					[RLM_MODULE_UPDATED]	= 0,
-					[RLM_MODULE_TIMEOUT]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-				},
-				.retry = RETRY_INIT,
-			},
+			.actions = MOD_ACTIONS_FAIL_TIMEOUT_RETURN,
 		},
 		.mmc = {
 			.mi = mi,
@@ -89,6 +75,7 @@ int unlang_module_push(unlang_result_t *p_result, request_t *request,
 			}
 		}
 	};
+	unlang_type_init(&mc->self, NULL, UNLANG_TYPE_MODULE);
 
 	/*
 	 *	Push a new module frame onto the stack
@@ -191,7 +178,7 @@ unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, unlang_result_t *p_
 	/*
 	 *	Push the xlat function
 	 */
-	if (unlang_xlat_push(ctx, p_result, out, request, exp, false) < 0) return UNLANG_ACTION_STOP_PROCESSING;
+	if (unlang_xlat_push(ctx, p_result, out, request, exp, false) < 0) RETURN_UNLANG_ACTION_FATAL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -241,7 +228,7 @@ unlang_action_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_list_t
 	/*
 	 *	Push the xlat function
 	 */
-	if (unlang_tmpl_push(ctx, out, request, vpt, args) < 0) return UNLANG_ACTION_FAIL;
+	if (unlang_tmpl_push(ctx, NULL, out, request, vpt, args, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -252,6 +239,14 @@ unlang_action_t unlang_module_yield_to_section(unlang_result_t *p_result,
 					       module_method_t resume,
 					       unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx)
 {
+	/*
+	 *	When we yield to a section, the request->rcode
+	 *	should be set to the default rcode, so that
+	 *	conditional checks work correctly.
+	 */
+	RDEBUG3("Resetting request->rcode to %s", fr_table_str_by_value(rcode_table, default_rcode, "<invalid>"));
+	request->rcode = default_rcode;
+
 	if (!subcs) {
 		unlang_stack_t			*stack = request->stack;
 		unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -265,7 +260,7 @@ unlang_action_t unlang_module_yield_to_section(unlang_result_t *p_result,
 		 *	Pretend as if we called the section
 		 *	and used the default rcode value.
 		 */
-		frame->scratch_result.rcode = default_rcode;
+		frame->scratch_result = (unlang_result_t) {.rcode = default_rcode, .priority = MOD_ACTION_NOT_SET };
 
 		state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
@@ -290,7 +285,9 @@ unlang_action_t unlang_module_yield_to_section(unlang_result_t *p_result,
 	(void) unlang_module_yield(request, resume, signal, sigmask, rctx);
 
 	if (unlang_interpret_push_section(p_result, request, subcs,
-					  FRAME_CONF(default_rcode, UNLANG_SUB_FRAME)) < 0) return UNLANG_ACTION_STOP_PROCESSING;
+					  FRAME_CONF(default_rcode, UNLANG_SUB_FRAME)) < 0) {
+		RETURN_UNLANG_ACTION_FATAL;
+	}
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -566,8 +563,8 @@ static unlang_action_t unlang_module_done(unlang_result_t *p_result, request_t *
 	fr_assert(state->unlang_indent == request->log.indent.unlang);
 #endif
 
-	fr_assert(p_result->rcode >= RLM_MODULE_REJECT);
-	fr_assert(p_result->rcode < RLM_MODULE_NOT_SET);
+	fr_assert(p_result->rcode >= RLM_MODULE_NOT_SET);
+	fr_assert(p_result->rcode < RLM_MODULE_NUMCODES);
 
 	RDEBUG("%s (%s)", frame->instruction->name ? frame->instruction->name : "",
 	       fr_table_str_by_value(mod_rcode_table, p_result->rcode, "<invalid>"));
@@ -620,17 +617,7 @@ static unlang_action_t unlang_module_resume(unlang_result_t *p_result, request_t
 		    state->env_data, state->rctx), request);
 	safe_unlock(m->mmc.mi);
 
-	if (request->master_state == REQUEST_STOP_PROCESSING) ua = UNLANG_ACTION_STOP_PROCESSING;
-
 	switch (ua) {
-	case UNLANG_ACTION_STOP_PROCESSING:
-		RWARN("Module %s or worker signalled to stop processing request", m->mmc.mi->name);
-		state->thread->active_callers--;
-		request->module = state->previous_module;
-		p_result->rcode = RLM_MODULE_NOT_SET;
-		p_result->priority = MOD_ACTION_NOT_SET;
-		return UNLANG_ACTION_STOP_PROCESSING;
-
 	case UNLANG_ACTION_YIELD:
 		/*
 		 *	The module yielded but didn't set a
@@ -893,18 +880,7 @@ static unlang_action_t unlang_module(unlang_result_t *p_result, request_t *reque
 			       request);
 	safe_unlock(m->mmc.mi);
 
-	if (request->master_state == REQUEST_STOP_PROCESSING) ua = UNLANG_ACTION_STOP_PROCESSING;
-
 	switch (ua) {
-	/*
-	 *	It is now marked as "stop" when it wasn't before, we
-	 *	must have been blocked.
-	 */
-	case UNLANG_ACTION_STOP_PROCESSING:
-		RWARN("Module %s became unblocked", m->mmc.mi->name);
-		request->module = state->previous_module;
-		return UNLANG_ACTION_STOP_PROCESSING;
-
 	case UNLANG_ACTION_YIELD:
 		state->thread->active_callers++;
 

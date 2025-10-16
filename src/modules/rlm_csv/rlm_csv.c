@@ -79,7 +79,7 @@ struct rlm_csv_entry_s {
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_csv_t, filename) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_csv_t, filename) },
 	{ FR_CONF_OFFSET_FLAGS("delimiter", CONF_FLAG_NOT_EMPTY, rlm_csv_t, delimiter), .dflt = "," },
 	{ FR_CONF_OFFSET("fields", rlm_csv_t, fields) },
 	{ FR_CONF_OFFSET("header", rlm_csv_t, header) },
@@ -1014,7 +1014,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 	 */
 	slen = tmpl_aexpand_type(request, &key, FR_TYPE_VALUE_BOX, request, inst->key);
 	if (slen < 0) {
-		DEBUG("Failed expanding key '%s'", inst->key->name);
+		REDEBUG("Failed expanding key '%s'", inst->key->name);
 		RETURN_UNLANG_FAIL;
 	}
 
@@ -1025,14 +1025,19 @@ static unlang_action_t CC_HINT(nonnull) mod_process(unlang_result_t *p_result, m
 	if (key->type != inst->key_data_type) {
 		fr_value_box_t tmp;
 
-		fr_value_box_copy(request, &tmp, key);
+		if (unlikely(fr_value_box_copy(request, &tmp, key) < 0)) {
+			talloc_free(key);
+			REDEBUG("Failed copying %pV to data type '%s'",
+				&key, fr_type_to_str(inst->key_data_type));
+			RETURN_UNLANG_FAIL;
+		}
 
 		slen = fr_value_box_cast(request, key, inst->key_data_type, NULL, &tmp);
 		fr_value_box_clear(&tmp);
 		if (slen < 0) {
 			talloc_free(key);
-			DEBUG("Failed casting %pV to data type '%s'",
-			      &key, fr_type_to_str(inst->key_data_type));
+			REDEBUG("Failed casting %pV to data type '%s'",
+				&key, fr_type_to_str(inst->key_data_type));
 			RETURN_UNLANG_FAIL;
 		}
 	}

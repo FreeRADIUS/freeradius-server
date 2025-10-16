@@ -37,10 +37,11 @@ ifneq "$(RUN_SLOW_TESTS)" "1"
 endif
 
 #
-#  Don't run crl tests if there's no SSL
+#  Don't run crl or dpsk tests if there's no SSL
 #
 ifeq "$(OPENSSL_LIBS)" ""
   FILES_SKIP += $(filter crl/%,$(FILES))
+  FILES_SKIP += $(filter dpsk/%,$(FILES))
 endif
 
 #

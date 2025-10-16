@@ -14,7 +14,11 @@ try {
 catch disallow {
 	test_fail
 }
-catch ok reject fail {
+catch ok reject {
+	test_fail
+}
+
+catch fail {
 	if foo != "hello" {
 		test_fail
 	}

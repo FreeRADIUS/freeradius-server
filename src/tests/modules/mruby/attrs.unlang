@@ -24,6 +24,14 @@ if (User-Name != 'john') {
 	test_fail
 }
 
+mruby.set_float
+if (!ok) {
+	test_fail
+}
+if (NAS-Port != 12) {
+	test_fail
+}
+
 mruby.set_nested
 if (!updated) {
 	test_fail

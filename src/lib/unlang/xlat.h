@@ -527,7 +527,6 @@ xlat_action_t	unlang_xlat_yield_to_retry(request_t *request, xlat_func_t resume,
  */
 int		xlat_protocols_register(void);
 int		xlat_global_init(void);
-void		xlat_global_free(void);
 
 #ifdef __cplusplus
 }

@@ -291,7 +291,7 @@ static void raddict_export(uint64_t *count, uintptr_t *low, uintptr_t *high, fr_
 int main(int argc, char *argv[])
 {
 	char const		*dict_dir = DICTDIR;
-	char			c;
+	int			c;
 	int			ret = 0;
 	bool			found = false;
 	bool			export = false;

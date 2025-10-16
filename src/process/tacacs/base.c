@@ -468,7 +468,11 @@ RESUME(auth_start)
 			 */
 		add_auth_flags:
 			MEM(pair_append_reply(&vp, attr_tacacs_authentication_flags) >= 0);
-			(void) fr_value_box_copy(vp, &vp->data, enum_auth_flags_noecho);
+			if (unlikely(fr_value_box_copy(vp, &vp->data, enum_auth_flags_noecho) < 0)) {
+				RPEDEBUG("Failed creating Authentication-Flags attribute with No-Echo flag");
+				pair_delete_reply(vp);
+				goto reject;
+			}
 			vp->data.enumv = attr_tacacs_authentication_flags;
 			goto send_reply;
 		}
@@ -573,7 +577,7 @@ RESUME(auth_type)
 		[RLM_MODULE_NOOP] =	FR_TACACS_CODE_AUTH_FAIL,
 		[RLM_MODULE_NOTFOUND] =	FR_TACACS_CODE_AUTH_FAIL,
 		[RLM_MODULE_REJECT] =	FR_TACACS_CODE_AUTH_FAIL,
-		[RLM_MODULE_UPDATED] =	FR_TACACS_CODE_AUTH_FAIL,
+		[RLM_MODULE_UPDATED] =	FR_TACACS_CODE_AUTH_PASS,
 		[RLM_MODULE_DISALLOW] = FR_TACACS_CODE_AUTH_FAIL,
 	};
 

@@ -482,11 +482,6 @@ char const *dl_module_search_path(void)
 	return dl_search_path(dl_module_loader->dl_loader);
 }
 
-dl_loader_t *dl_loader_from_module_loader(dl_module_loader_t *dl_module_l)
-{
-	return dl_module_l->dl_loader;
-}
-
 /** Wrapper to log errors
  */
 static int dl_dict_enum_autoload(dl_t const *module, void *symbol, void *user_ctx)

@@ -349,7 +349,10 @@ void dns_rcode_add(fr_pair_t **rcode, request_t *request, fr_value_box_t const *
 	 */
 	MEM((ret = fr_pair_update_by_da_parent(request->reply_ctx, rcode, attr_rcode)) >= 0);
 	if (ret == 0) {
-		fr_value_box_copy(*rcode, &(*rcode)->data, vb);
+		if (unlikely(fr_value_box_copy(*rcode, &(*rcode)->data, vb) < 0)) {
+			RPEDEBUG("Failed copying rcode value");
+			return;
+		}
 		(*rcode)->data.enumv = (*rcode)->da;	/* Hack, boxes should have their enumv field populated */
 	}
 }

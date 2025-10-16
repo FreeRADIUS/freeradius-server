@@ -113,7 +113,7 @@ do_null_case:
 	if (!found) return UNLANG_ACTION_EXECUTE_NEXT;
 
 	if (unlang_interpret_push(NULL, request, found, FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), UNLANG_NEXT_STOP) < 0) {
-		return UNLANG_ACTION_STOP_PROCESSING;
+		RETURN_UNLANG_ACTION_FATAL;
 	}
 
 	return UNLANG_ACTION_PUSHED_CHILD;
@@ -124,7 +124,7 @@ static unlang_action_t unlang_case(unlang_result_t *p_result, request_t *request
 {
 	unlang_group_t		*g = unlang_generic_to_group(frame->instruction);
 
-	if (!g->children) RETURN_UNLANG_NOOP;
+	if (unlang_list_empty(&g->children)) RETURN_UNLANG_NOOP;
 
 	return unlang_group(p_result, request, frame);
 }
@@ -191,7 +191,7 @@ static unlang_t *unlang_compile_case(unlang_t *parent, unlang_compile_ctx_t *unl
 		quote = cf_section_name2_quote(cs);
 
 		slen = tmpl_afrom_substr(cs, &vpt,
-					 &FR_SBUFF_IN(name2, strlen(name2)),
+					 &FR_SBUFF_IN_STR(name2),
 					 quote,
 					 NULL,
 					 &t_rules);
@@ -326,12 +326,12 @@ static unlang_t *unlang_compile_switch(unlang_t *parent, unlang_compile_ctx_t *u
 
 	if ((token == T_BARE_WORD) && (name2[0] != '%')) {
 		slen = tmpl_afrom_attr_substr(gext, NULL, &gext->vpt,
-					      &FR_SBUFF_IN(name2, strlen(name2)),
+					      &FR_SBUFF_IN_STR(name2),
 					      NULL,
 					      &t_rules);
 	} else {
 		slen = tmpl_afrom_substr(gext, &gext->vpt,
-					 &FR_SBUFF_IN(name2, strlen(name2)),
+					 &FR_SBUFF_IN_STR(name2),
 					 token,
 					 NULL,
 					 &t_rules);
@@ -509,9 +509,7 @@ static unlang_t *unlang_compile_switch(unlang_t *parent, unlang_compile_ctx_t *u
 			goto error;
 		}
 
-		*g->tail = single;
-		g->tail = &single->next;
-		g->num_children++;
+		unlang_list_insert_tail(&g->children, single);
 	}
 
 	return c;
@@ -526,7 +524,7 @@ void unlang_switch_init(void)
 
 			.compile = unlang_compile_switch,
 			.interpret = unlang_switch,
-				
+
 			.unlang_size = sizeof(unlang_switch_t),
 			.unlang_name = "unlang_switch_t",
 
