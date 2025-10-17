@@ -219,7 +219,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 			fail:
 				fr_pair_list_free(&tmp);
 				talloc_free(packet_ctx);
-				return len;
+				return -1;
 			}
 			p += len;
 		}
