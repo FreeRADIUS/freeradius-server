@@ -784,6 +784,8 @@ VALUE	Packet-Type			CoA-NAK			45
 VALUE	Packet-Type			IP-Address-Allocate	50
 VALUE	Packet-Type			IP-Address-Release	51
 
+VALUE	Packet-Type			Protocol-Error		52
+
 VALUE	Response-Packet-Type		Access-Request		1
 VALUE	Response-Packet-Type		Access-Accept		2
 VALUE	Response-Packet-Type		Access-Reject		3
@@ -804,6 +806,9 @@ VALUE	Response-Packet-Type		Disconnect-NAK		42
 VALUE	Response-Packet-Type		CoA-Request		43
 VALUE	Response-Packet-Type		CoA-ACK			44
 VALUE	Response-Packet-Type		CoA-NAK			45
+
+VALUE	Response-Packet-Type		Protocol-Error		52
+
 #
 #  Special value
 #
