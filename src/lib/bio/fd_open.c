@@ -491,14 +491,14 @@ static int fr_bio_fd_unix_shutdown(fr_bio_t *bio)
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
 	/*
-	 *	The bio must be open in order to shut it down.
+	 *	This is called after fr_bio_fd_close() - which marks the bio state as closed
 	 *
 	 *	Unix domain sockets are deleted when the bio is closed.
 	 *
 	 *	Unix domain sockets are never in the "connecting" state, because connect() always returns
 	 *	immediately.
 	 */
-	fr_assert(my->info.state == FR_BIO_FD_STATE_OPEN);
+	fr_assert(my->info.state == FR_BIO_FD_STATE_CLOSED);
 
 	/*
 	 *	Run the user shutdown before we run ours.
