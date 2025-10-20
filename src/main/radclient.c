@@ -1105,6 +1105,7 @@ static int blast_radius_check(rc_request_t *request, RADIUS_PACKET *reply)
 	case PW_CODE_ACCESS_ACCEPT:
 	case PW_CODE_ACCESS_REJECT:
 	case PW_CODE_ACCESS_CHALLENGE:
+	case PW_CODE_PROTOCOL_ERROR:
 		if (reply->data[1] != request->packet->id) {
 			ERROR("Invalid reply ID %d to Access-Request ID %d", reply->data[1], request->packet->id);
 			return -1;
