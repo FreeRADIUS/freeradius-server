@@ -982,6 +982,7 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 		case PW_CODE_ACCESS_ACCEPT:
 		case PW_CODE_ACCESS_REJECT:
 		case PW_CODE_ACCESS_CHALLENGE:
+		case PW_CODE_PROTOCOL_ERROR:
 		default:
 			if (!original) {
 				fr_strerror_printf("ERROR: No request packet, cannot encrypt %s attribute in the vp.", vp->da->name);
@@ -1858,6 +1859,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	case PW_CODE_ACCESS_ACCEPT:
 	case PW_CODE_ACCESS_REJECT:
 	case PW_CODE_ACCESS_CHALLENGE:
+	case PW_CODE_PROTOCOL_ERROR:
 		if (!original) {
 			fr_strerror_printf("ERROR: Cannot sign response packet without a request packet");
 			return -1;
@@ -1947,6 +1949,22 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 
 		ptr += 18;
 		total_length += 18;
+	}
+
+	/*
+	 *	For Protocol-Error, automatically add
+	 *	Original-Packet-Code after the Message-Authenticator.
+	 */
+	if (packet->code == PW_CODE_PROTOCOL_ERROR) {
+		ptr[0] = 241;	/* Extended-Attribute-1 */
+		ptr[1] = 7;
+		ptr[2] = 4;	/* Original-Packet-Code */
+				/* no length field */
+		ptr[3] = ptr[4] = ptr[5] = 0;
+		ptr[6] = original->code;
+
+		ptr += 7;
+		total_length += 7;
 	}
 
 	/*
@@ -2148,6 +2166,7 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	case PW_CODE_DISCONNECT_NAK:
 	case PW_CODE_COA_ACK:
 	case PW_CODE_COA_NAK:
+	case PW_CODE_PROTOCOL_ERROR:
 		if (!original) {
 			fr_strerror_printf("ERROR: Cannot sign response packet without a request packet");
 			return -1;
@@ -2194,6 +2213,7 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		case PW_CODE_DISCONNECT_NAK:
 		case PW_CODE_COA_ACK:
 		case PW_CODE_COA_NAK:
+		case PW_CODE_PROTOCOL_ERROR:
 			memcpy(hdr->vector, original->vector, AUTH_VECTOR_LEN);
 			break;
 
@@ -3078,6 +3098,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUSV11_UNUSED RADIUS_PACKET *original, 
 			case PW_CODE_DISCONNECT_NAK:
 			case PW_CODE_COA_ACK:
 			case PW_CODE_COA_NAK:
+			case PW_CODE_PROTOCOL_ERROR:
 				if (!original) {
 					fr_strerror_printf("Cannot validate Message-Authenticator in response "
 							   "packet without a request packet");
@@ -3174,6 +3195,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUSV11_UNUSED RADIUS_PACKET *original, 
 	case PW_CODE_DISCONNECT_NAK:
 	case PW_CODE_COA_ACK:
 	case PW_CODE_COA_NAK:
+	case PW_CODE_PROTOCOL_ERROR:
 		rcode = calc_replydigest(packet, original, secret);
 		if (rcode > 1) {
 			fr_strerror_printf("Received %s packet "
