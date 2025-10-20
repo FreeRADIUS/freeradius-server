@@ -2642,6 +2642,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 	case PW_CODE_ACCESS_ACCEPT:
 	case PW_CODE_ACCESS_CHALLENGE:
 	case PW_CODE_ACCESS_REJECT:
+	case PW_CODE_PROTOCOL_ERROR:
 		break;
 
 #ifdef WITH_ACCOUNTING
@@ -2763,6 +2764,7 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 	case PW_CODE_ACCESS_ACCEPT:
 	case PW_CODE_ACCESS_CHALLENGE:
 	case PW_CODE_ACCESS_REJECT:
+	case PW_CODE_PROTOCOL_ERROR:
 		break;
 
 #ifdef WITH_ACCOUNTING
