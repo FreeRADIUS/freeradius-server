@@ -60,7 +60,7 @@ typedef struct {
 } rlm_cache_htrie_entry_t;
 
 static conf_parser_t driver_config[] = {
-	{ FR_CONF_OFFSET("htrie_type", rlm_cache_htrie_t, htype), .dflt = "auto",
+	{ FR_CONF_OFFSET("type", rlm_cache_htrie_t, htype), .dflt = "auto",
 	  .func = cf_htrie_type_parse,
 	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_htrie_type_table, .len = &fr_htrie_type_table_len }  },
 	CONF_PARSER_TERMINATOR
