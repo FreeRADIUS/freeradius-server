@@ -518,6 +518,8 @@ static const CONF_PARSER client_config[] = {
 	{ "require_message_authenticator", FR_CONF_POINTER(PW_TYPE_STRING| PW_TYPE_IGNORE_DEFAULT, &require_message_authenticator), NULL },
 	{ "limit_proxy_state", FR_CONF_POINTER(PW_TYPE_STRING| PW_TYPE_IGNORE_DEFAULT, &limit_proxy_state), NULL },
 
+	{ "protocol_error", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, RADCLIENT, protocol_error), "no" },
+
 	{ "secret", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, RADCLIENT, secret), NULL },
 	{ "shortname", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, shortname), NULL },
 
@@ -734,6 +736,7 @@ static const CONF_PARSER dynamic_config[] = {
 	{ "FreeRADIUS-Client-Shortname",  FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, shortname), "" },
 	{ "FreeRADIUS-Client-NAS-Type",  FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, nas_type), NULL },
 	{ "FreeRADIUS-Client-Virtual-Server",  FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, server), NULL },
+	{ "FreeRADIUS-Client-Protocol-Error",  FR_CONF_OFFSET(PW_TYPE_BYTE, RADCLIENT, protocol_error_byte), NULL },
 
 	CONF_PARSER_TERMINATOR
 };

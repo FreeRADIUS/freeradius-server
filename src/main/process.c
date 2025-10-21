@@ -1619,6 +1619,16 @@ static void request_finish(REQUEST *request, int action)
 	}
 
 	/*
+	 *	Not all clients support Protocol-Error.
+	 */
+	if ((request->reply->code == PW_CODE_PROTOCOL_ERROR) &&
+	    request->client && !request->client->protocol_error) {
+		RWDEBUG2("Client %s does not support Protocol-Error - discarding reply",
+			 request->client->shortname);
+		request->reply->code = 0;
+	}
+
+	/*
 	 *	Send the reply.
 	 */
 	if ((request->response_delay.tv_sec == 0) &&
