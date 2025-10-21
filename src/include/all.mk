@@ -82,6 +82,9 @@ src/include/%.h: share/dictionary.% share/dictionary.vqp
 	@$(ECHO) HEADER $@
 	@echo "/* AUTO-GENERATED HEADER FILE.  DO NOT EDIT. */" > $@
 	@grep ^ATTRIBUTE $<  | awk '{print "PW_"$$2 " " $$3 } ' | tr '[:lower:]' '[:upper:]' | tr -- - _ | sed 's/^/#define /' >> $@
+	@echo "" >> $@
+	@grep ^VALUE $<  | awk '{print "PW_"$$2 "_" $$3 " " $$4 }' | tr '[:lower:]' '[:upper:]' | tr -- - _ | sed 's/^/#define /' >> $@
+
 
 #
 #  Build features.h by copying over WITH_* and RADIUSD_VERSION_*
