@@ -160,7 +160,7 @@ server coa {
 					#  Acct-Session-Id
 					control.Acct-Session-Id := "%{2}"
 
-					subrequest CoA-Request {
+					subrequest ::CoA-Request {
 						#
 						#  The subrequest begins empty, so initially copy all attributes
 						#  from the incoming request.
