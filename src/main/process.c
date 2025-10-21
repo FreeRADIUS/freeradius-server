@@ -2634,6 +2634,11 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 			if (dval) post_proxy_type = dval->value;
 			break;
 
+		case PW_CODE_PROTOCOL_ERROR:
+			dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, fr_packet_codes[reply->code]);
+			if (dval) post_proxy_type = dval->value;
+			break;
+
 		default:
 			break;
 		}
