@@ -41,3 +41,5 @@ VALUE	Requested-Location-Info		Users-Location		4
 VALUE	Requested-Location-Info		NAS-Location		8
 VALUE	Requested-Location-Info		Future-Requests		16
 VALUE	Requested-Location-Info		None			32
+
+VALUE	Error-Cause			Location-Info-Required	509

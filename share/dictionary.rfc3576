@@ -23,6 +23,7 @@ VALUE	Error-Cause			NAS-Identification-Mismatch 403
 VALUE	Error-Cause			Invalid-Request		404
 VALUE	Error-Cause			Unsupported-Service	405
 VALUE	Error-Cause			Unsupported-Extension	406
+VALUE	Error-Cause			Invalid-Attribute-Value	407
 VALUE	Error-Cause			Administratively-Prohibited 501
 VALUE	Error-Cause			Proxy-Request-Not-Routable 502
 VALUE	Error-Cause			Session-Context-Not-Found 503
