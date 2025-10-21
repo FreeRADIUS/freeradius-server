@@ -3221,6 +3221,11 @@ static void proxy_running(REQUEST *request, int action)
 		break;
 
 	case FR_ACTION_RUN:
+		/*
+		 *	@todo - Protocol-Error re-proxy the packet if the reply is a Protocol-Error?
+		 *
+		 *	That also will bypass the request_finish here.
+		 */
 		if (process_proxy_reply(request, request->proxy_reply, 0)) {
 			request->handle(request);
 		}
@@ -3786,6 +3791,9 @@ static int proxy_to_virtual_server(REQUEST *request)
 
 	/*
 	 *	Do the proxy reply (if any)
+	 *
+	 *	If the reply is Protocol-Error, then it came from the internal virtual server.  We can't send
+	 *	it to a different destination.  Instead, we just send it to the client.
 	 */
 	if (process_proxy_reply(request, request->proxy_reply, error_cause)) {
 		request->handle(request);
@@ -5441,6 +5449,11 @@ static void coa_running(REQUEST *request, int action)
 		break;
 
 	case FR_ACTION_RUN:
+		/*
+		 *	@todo - Protocol-Error re-proxy the packet if the reply is a Protocol-Error?
+		 *
+		 *	That also will bypass the request_finish here.
+		 */
 		if (process_proxy_reply(request, request->proxy_reply, 0)) {
 			request->handle(request);
 		}
