@@ -408,7 +408,7 @@ STATE_MACHINE_DECL(proxy_no_reply) CC_HINT(nonnull);
 STATE_MACHINE_DECL(proxy_running) CC_HINT(nonnull);
 STATE_MACHINE_DECL(proxy_wait_for_reply) CC_HINT(nonnull);
 
-static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply) CC_HINT(nonnull (1));
+static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t error_cause) CC_HINT(nonnull (1));
 static void remove_from_proxy_hash(REQUEST *request) CC_HINT(nonnull);
 static void remove_from_proxy_hash_nl(REQUEST *request, bool yank) CC_HINT(nonnull);
 static int insert_into_proxy_hash(REQUEST *request) CC_HINT(nonnull);
@@ -1686,6 +1686,7 @@ static void request_finish(REQUEST *request, int action)
 static void request_running(REQUEST *request, int action)
 {
 	int rcode;
+	uint32_t error_cause = 0;
 
 	VERIFY_REQUEST(request);
 
@@ -1733,6 +1734,10 @@ static void request_running(REQUEST *request, int action)
 			 */
 		retry_proxy:
 			if (request_proxy(request) < 0) {
+				/*
+				 *	This isn't actually an error, but a bad signal that the internal
+				 *	virtual server succeeded.
+				 */
 				if (request->home_server && request->home_server->virtual_server) goto req_finished;
 
 				if (request->home_pool && request->home_server &&
@@ -1753,19 +1758,32 @@ static void request_running(REQUEST *request, int action)
 						home_server_update_request(home, request);
 						goto retry_proxy;
 					}
+
+					if (realm) {
+						error_cause = PW_ERROR_CAUSE_PROXY_PROCESSING_ERROR;
+					} else {
+						error_cause = PW_ERROR_CAUSE_PROXY_REQUEST_NOT_ROUTABLE;
+					}
+				} else {
+					/*
+					 *	The home server is alive, but we can't proxy to it for some
+					 *	reason.  We might have all connections full
+					 *
+					 *	Error-Cause = Other Proxy Processing Error.
+					 */
+					error_cause = PW_ERROR_CAUSE_PROXY_PROCESSING_ERROR;
 				}
 
-				(void) setup_post_proxy_fail(request);
-				process_proxy_reply(request, NULL);
-				goto req_finished;
+				goto do_post_proxy_fail;
 			}
 
 		} else if (rcode < 0) {
 			/*
 			 *	No live home servers, run Post-Proxy-Type Fail.
 			 */
+		do_post_proxy_fail:
 			(void) setup_post_proxy_fail(request);
-			process_proxy_reply(request, NULL);
+			process_proxy_reply(request, NULL, error_cause);
 			goto req_finished;
 		} else
 #endif
@@ -2578,7 +2596,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	return 1;
 }
 
-static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
+static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t error_cause)
 {
 	int rcode;
 	int post_proxy_type = 0;
@@ -2608,6 +2626,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	vp = fr_pair_find_by_num(request->config, PW_POST_PROXY_TYPE, 0, TAG_ANY);
 	if (vp) {
 		post_proxy_type = vp->vp_integer;
+
 	/*
 	 *	If we have a proxy_reply, and it was a reject, or a NAK
 	 *	setup Post-Proxy <type>.
@@ -2752,6 +2771,17 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 			if (vp && (vp->vp_integer != 256)) {
 				request->proxy_reply = rad_alloc_reply(request, request->proxy);
 				request->proxy_reply->code = vp->vp_integer;
+
+				/*
+				 *	If the Post-Proxy-Type created Protocol-Error, then add an
+				 *	Error-Cause.
+				 */
+				if (vp->vp_integer == PW_CODE_PROTOCOL_ERROR) {
+					if (!error_cause) error_cause = PW_ERROR_CAUSE_PROXY_PROCESSING_ERROR;
+
+					vp = fr_pair_afrom_num(request->proxy_reply, PW_ERROR_CAUSE, 0);
+					if (vp) vp->vp_integer = error_cause;
+				}
 			}
 		}
 #ifdef WITH_COA
@@ -3146,7 +3176,7 @@ static void proxy_no_reply(REQUEST *request, int action)
 		break;
 
 	case FR_ACTION_RUN:
-		if (process_proxy_reply(request, NULL)) {
+		if (process_proxy_reply(request, NULL, PW_ERROR_CAUSE_UNSUPPORTED_EXTENSION)) {
 			request->handle(request);
 		}
 		request_finish(request, action);
@@ -3191,7 +3221,7 @@ static void proxy_running(REQUEST *request, int action)
 		break;
 
 	case FR_ACTION_RUN:
-		if (process_proxy_reply(request, request->proxy_reply)) {
+		if (process_proxy_reply(request, request->proxy_reply, 0)) {
 			request->handle(request);
 		}
 		request_finish(request, action);
@@ -3705,6 +3735,7 @@ add_proxy_state:
 static int proxy_to_virtual_server(REQUEST *request)
 {
 	REQUEST *fake;
+	uint32_t error_cause = 0;
 
 	if (request->packet->dst_port == 0) {
 		WARN("Cannot proxy an internal request");
@@ -3750,12 +3781,13 @@ static int proxy_to_virtual_server(REQUEST *request)
 	if (!request->proxy_reply->code) {
 		TALLOC_FREE(request->proxy_reply);
 		setup_post_proxy_fail(request);
+		error_cause = PW_ERROR_CAUSE_UNSUPPORTED_EXTENSION;
 	}
 
 	/*
 	 *	Do the proxy reply (if any)
 	 */
-	if (process_proxy_reply(request, request->proxy_reply)) {
+	if (process_proxy_reply(request, request->proxy_reply, error_cause)) {
 		request->handle(request);
 	}
 
@@ -5368,7 +5400,7 @@ static void coa_no_reply(REQUEST *request, int action)
 		break;
 
 	case FR_ACTION_RUN:
-		if (process_proxy_reply(request, NULL)) {
+		if (process_proxy_reply(request, NULL, PW_ERROR_CAUSE_UNSUPPORTED_EXTENSION)) {
 			request->handle(request);
 		}
 		request_done(request, FR_ACTION_DONE);
@@ -5409,7 +5441,7 @@ static void coa_running(REQUEST *request, int action)
 		break;
 
 	case FR_ACTION_RUN:
-		if (process_proxy_reply(request, request->proxy_reply)) {
+		if (process_proxy_reply(request, request->proxy_reply, 0)) {
 			request->handle(request);
 		}
 		request_done(request, FR_ACTION_DONE);
