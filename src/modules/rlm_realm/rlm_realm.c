@@ -37,6 +37,8 @@ typedef struct rlm_realm_t {
 	char const	*delim;
 	bool		ignore_default;
 	bool		ignore_null;
+	bool		return_notfound;
+	rlm_rcode_t	notfound;
 
 #ifdef HAVE_TRUST_ROUTER_TR_DH_H
 	char const	*default_community;
@@ -53,6 +55,7 @@ static CONF_PARSER module_config[] = {
 	{ "delimiter", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t, delim), "@" },
 	{ "ignore_default", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_realm_t, ignore_default), "no" },
 	{ "ignore_null", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_realm_t, ignore_null), "no" },
+	{ "return_notfound", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_realm_t, return_notfound), "no" },
 #ifdef HAVE_TRUST_ROUTER_TR_DH_H
 	{ "default_community", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t, default_community),  "none" },
 	{ "rp_realm", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t, rp_realm),  "none" },
@@ -189,13 +192,13 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	if (!realm) {
 		RDEBUG2("No such realm \"%s\"", (!realmname) ? "NULL" : realmname);
 		talloc_free(namebuf);
-		return RLM_MODULE_NOOP;
+		return inst->notfound;
 	}
 
 	if (inst->ignore_default && (strcmp(realm->name, "DEFAULT")) == 0) {
 		RDEBUG2("Found DEFAULT, but skipping due to config");
 		talloc_free(namebuf);
-		return RLM_MODULE_NOOP;
+		return inst->notfound;
 	}
 
 	RDEBUG2("Found realm \"%s\"", realm->name);
@@ -391,6 +394,15 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		cf_log_err_cs(conf, "Invalid value \"%s\" for delimiter",
 			      inst->delim);
 	     return -1;
+	}
+
+	/*
+	 *	Changed behavior is behind a feature flag.
+	 */
+	if (inst->return_notfound) {
+		inst->notfound = RLM_MODULE_NOTFOUND;
+	} else {
+		inst->notfound = RLM_MODULE_NOOP;
 	}
 
 #ifdef HAVE_TRUST_ROUTER_TR_DH_H

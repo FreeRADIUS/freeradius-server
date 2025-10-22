@@ -48,6 +48,21 @@ realm suffix {
 #	# specified number of seconds after its creation or rekeying. Otherwise,
 #	# the key material expiration timestamp is used
 #	realm_lifetime = 0
+
+	#
+	#  Prior to 3.2.9, the module would return "noop" when a realm was not found.
+	#  This can be changed to return "notfound" by setting the flag below.
+	#
+	#  This change allows unlang policies to distinguish a "noop"
+	#  case from "notfound".
+	#
+	#  "noop" is "module cannot do anything".  Which means there is no User-Name,
+	#  or the User-Name does not contain the delimiter, etc.
+	#
+	#  "notfound" means that the User-Name is found, it contains the expected delimiter,
+	#  but the destination realm was not found.
+	#
+	return_notfound = no
 }
 
 #  'realm!username'
