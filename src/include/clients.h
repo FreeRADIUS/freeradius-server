@@ -46,10 +46,7 @@ typedef struct radclient {
 	fr_bool_auto_t 		require_ma;		//!< Require RADIUS message authenticator in requests.
 
 	bool			dynamic_require_ma;	//!< for dynamic clients
-	union {
-		bool		protocol_error;		//!< can receive Protocol-Error replies
-		uint8_t		protocol_error_byte;	/* the dictionaries don't support BOOL */
-	};
+	bool			protocol_error;		//!< can receive Protocol-Error replies
 
 	fr_bool_auto_t 		limit_proxy_state;     	//!< Limit Proxy-State in requests
 
