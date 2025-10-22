@@ -9,4 +9,52 @@
 ATTRIBUTE	Response-Length				241.3	integer
 ATTRIBUTE	Original-Packet-Code			241.4	integer
 
+VALUE	Original-Packet-Code		Access-Request		1
+VALUE	Original-Packet-Code		Access-Accept		2
+VALUE	Original-Packet-Code		Access-Reject		3
+VALUE	Original-Packet-Code		Accounting-Request	4
+VALUE	Original-Packet-Code		Accounting-Response	5
+VALUE	Original-Packet-Code		Accounting-Status	6
+VALUE	Original-Packet-Code		Password-Request	7
+VALUE	Original-Packet-Code		Password-Accept		8
+VALUE	Original-Packet-Code		Password-Reject		9
+VALUE	Original-Packet-Code		Accounting-Message	10
+VALUE	Original-Packet-Code		Access-Challenge	11
+VALUE	Original-Packet-Code		Status-Server		12
+VALUE	Original-Packet-Code		Status-Client		13
+
+#
+#	The following packet types are described in RFC 2882,
+#	but they are NOT part of the RADIUS standard.  Instead,
+#	they are informational about vendor-specific extensions
+#	to the RADIUS standard.
+#
+VALUE	Original-Packet-Code		Resource-Free-Request	21
+VALUE	Original-Packet-Code		Resource-Free-Response	22
+VALUE	Original-Packet-Code		Resource-Query-Request	23
+VALUE	Original-Packet-Code		Resource-Query-Response	24
+VALUE	Original-Packet-Code		Alternate-Resource-Reclaim-Request 25
+VALUE	Original-Packet-Code		NAS-Reboot-Request	26
+VALUE	Original-Packet-Code		NAS-Reboot-Response	27
+VALUE	Original-Packet-Code		Next-Passcode		29
+VALUE	Original-Packet-Code		New-Pin			30
+VALUE	Original-Packet-Code		Terminate-Session	31
+VALUE	Original-Packet-Code		Password-Expired	32
+VALUE	Original-Packet-Code		Event-Request		33
+VALUE	Original-Packet-Code		Event-Response		34
+
+#	RFC 3576 allocates packet types 40-45
+
+VALUE	Original-Packet-Code		Disconnect-Request	40
+VALUE	Original-Packet-Code		Disconnect-ACK		41
+VALUE	Original-Packet-Code		Disconnect-NAK		42
+VALUE	Original-Packet-Code		CoA-Request		43
+VALUE	Original-Packet-Code		CoA-ACK			44
+VALUE	Original-Packet-Code		CoA-NAK			45
+
+VALUE	Original-Packet-Code		IP-Address-Allocate	50
+VALUE	Original-Packet-Code		IP-Address-Release	51
+
+VALUE	Original-Packet-Code		Protocol-Error		52
+
 VALUE	Error-Cause			Response-Too-Big	601
