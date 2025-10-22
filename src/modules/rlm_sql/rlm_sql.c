@@ -2397,29 +2397,29 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
  */
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_sql_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_sql_thread_t);
+	rlm_sql_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_sql_thread_t);
 	rlm_sql_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_t);
 
 	if (inst->driver->sql_escape_arg_alloc) {
-		t->sql_escape_arg = inst->driver->sql_escape_arg_alloc(t, mctx->el, inst);
-		if (!t->sql_escape_arg) return -1;
+		thread->sql_escape_arg = inst->driver->sql_escape_arg_alloc(thread, mctx->el, inst);
+		if (!thread->sql_escape_arg) return -1;
 	}
 
-	t->inst = inst;
+	thread->inst = inst;
 
-	t->trunk = trunk_alloc(t, mctx->el, &inst->driver->trunk_io_funcs,
-			       &inst->config.trunk_conf, inst->name, t, false, inst->trigger_args);
-	if (!t->trunk) return -1;
+	thread->trunk = trunk_alloc(thread, mctx->el, &inst->driver->trunk_io_funcs,
+			       &inst->config.trunk_conf, inst->name, thread, false, inst->trigger_args);
+	if (!thread->trunk) return -1;
 
 	return 0;
 }
 
 static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_sql_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_sql_thread_t);
+	rlm_sql_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_sql_thread_t);
 	rlm_sql_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_t);
 
-	if (inst->driver->sql_escape_arg_free) inst->driver->sql_escape_arg_free(t->sql_escape_arg);
+	if (inst->driver->sql_escape_arg_free) inst->driver->sql_escape_arg_free(thread->sql_escape_arg);
 
 	return 0;
 }
