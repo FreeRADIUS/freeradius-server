@@ -1118,16 +1118,49 @@ static void request_queue_or_run(REQUEST *request,
 
 #ifdef HAVE_PTHREAD_H
 		if (spawn_flag) {
+			VALUE_PAIR *vp;
+
 			/*
 			 *	A child thread will eventually pick it up.
 			 */
 			if (request_enqueue(request)) return;
 
 			/*
-			 *	Otherwise we're not going to do anything with
-			 *	it...
+			 *	Enqueuing failed.  If we can't send a Protocol-Error, OR if the request is an
+			 *	internal one, then just mark it as done.
 			 */
-			request_done(request, FR_ACTION_INTERNAL_FAILURE);
+			if (!request->client->protocol_error || (request->packet->dst_port == 0)) {
+				request_done(request, FR_ACTION_INTERNAL_FAILURE);
+				return;
+			}
+
+			/*
+			 *	Othewise send a Protocol-Error.
+			 *
+			 *	@todo - there should be a "too busy" value for Error-Cause.
+			 */
+			request->reply->code = PW_CODE_PROTOCOL_ERROR;
+
+			vp = fr_pair_afrom_num(request->reply, PW_ERROR_CAUSE, 0);
+			if (vp) {
+				fr_pair_add(&request->reply->vps, vp);
+				vp->vp_integer = PW_ERROR_CAUSE_PROXY_PROCESSING_ERROR;
+			}
+
+			/*
+			 *	Encode and send it, but do NOT debug it.  If we're overloaded,
+			 *	debugging is even more useless work.
+			 */
+			request->listener->encode(request->listener, request);
+			request->listener->send(request->listener, request);
+
+			/*
+			 *	Mark the request as "done" right away.  We don't want to keep it
+			 *	around in a dedup queue or cleanup delay.
+			 *
+			 *	@todo - maybe we do want to add a cleanup delay?
+			 */
+			request_done(request, FR_ACTION_DONE);
 			return;
 		}
 #endif
