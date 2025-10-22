@@ -92,7 +92,7 @@ static int command_write_magic(int newfd, listen_socket_t *sock);
 static int listen_coa_init(void);
 #endif
 
-static fr_protocol_t master_listen[];
+extern fr_protocol_t master_listen[];
 
 #ifdef WITH_DYNAMIC_CLIENTS
 static void client_timer_free(void *ctx)
@@ -2945,7 +2945,7 @@ static int proxy_socket_decode(RADIUSV11_UNUSED rad_listen_t *listener, REQUEST 
 /*
  *	Temporarily NOT const!
  */
-static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
+fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 #ifdef WITH_STATS
 	{ RLM_MODULE_INIT, "status", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, NULL,
