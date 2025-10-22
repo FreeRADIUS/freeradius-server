@@ -83,7 +83,7 @@ src/include/%.h: share/dictionary.% share/dictionary.vqp
 	@echo "/* AUTO-GENERATED HEADER FILE.  DO NOT EDIT. */" > $@
 	@grep ^ATTRIBUTE $<  | awk '{print "PW_"$$2 " " $$3 } ' | tr '[:lower:]' '[:upper:]' | tr -- - _ | sed 's/^/#define /' >> $@
 	@echo "" >> $@
-	@grep ^VALUE $<  | awk '{print "PW_"$$2 "_" $$3 " " $$4 }' | tr '[:lower:]' '[:upper:]' | tr -- - _ | sed 's/^/#define /' >> $@
+	@grep ^VALUE $<  | awk '{print "PW_"$$2 "_" $$3 " " $$4 }' | tr '[:lower:].-' '[:upper:]__' | sed 's/^/#define /' >> $@
 
 
 #
