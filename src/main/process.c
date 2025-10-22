@@ -2609,9 +2609,16 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 	VERIFY_REQUEST(request);
 
 	/*
-	 *	There may be a proxy reply, but it may be too late.
+	 *	There may be a proxy reply, but it may be too late.  i.e. We have a reply, and then the socket
+	 *	goes away.  So we can't decode it.  Instead, pretend that we received nothing.
 	 */
-	if ((request->home_server && !request->home_server->virtual_server) && !request->proxy_listener) return 0;
+	if ((request->home_server && !request->home_server->virtual_server) && !request->proxy_listener) {
+		if (request->in_proxy_hash) remove_from_proxy_hash(request);
+
+		reply = NULL;
+		TALLOC_FREE(request->proxy_reply);
+		error_cause = PW_ERROR_CAUSE_PROXY_PROCESSING_ERROR;
+	}
 
 	/*
 	 *	Delete any reply we had accumulated until now.
