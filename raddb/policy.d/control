@@ -14,7 +14,7 @@ do_not_respond {
 #
 accept {
 	update control {
-		&Response-Packet-Type = Access-Accept
+		&Response-Packet-Type := Access-Accept
 	}
 	handled
 }
@@ -24,7 +24,7 @@ accept {
 #
 challenge {
 	update control {
-		&Response-Packet-Type = Access-Challenge
+		&Response-Packet-Type := Access-Challenge
 	}
 	handled
 }
@@ -34,7 +34,7 @@ challenge {
 #
 acct_response {
 	update control {
-		&Response-Packet-Type = Accounting-Response
+		&Response-Packet-Type := Accounting-Response
 	}
 	handled
 }
