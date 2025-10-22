@@ -264,6 +264,7 @@ typedef union value_data {
 	struct in6_addr		ipv6addr;			//!< IPv6 Address.
 	uint8_t			ipv6prefix[18];			//!< IPv6 prefix (should be struct?).
 
+	bool			boolean;       			//!< boolean
 	uint8_t			byte;				//!< 8bit unsigned integer.
 	uint16_t		ushort;				//!< 16bit unsigned integer.
 
@@ -362,6 +363,7 @@ typedef struct value_pair_raw {
 #define vp_ifid		data.ifid
 #define vp_ipv6addr	data.ipv6addr
 #define vp_ipv6prefix	data.ipv6prefix
+#define vp_boolean	data.boolean
 #define vp_byte		data.byte
 #define vp_short	data.ushort
 #define vp_ether	data.ether

@@ -84,6 +84,7 @@ const FR_NAME_NUMBER dict_attr_types[] = {
 	{ "ifid",	PW_TYPE_IFID },
 	{ "ipv6addr",	PW_TYPE_IPV6_ADDR },
 	{ "ipv6prefix", PW_TYPE_IPV6_PREFIX },
+	{ "bool",	PW_TYPE_BOOLEAN },
 	{ "byte",	PW_TYPE_BYTE },
 	{ "short",	PW_TYPE_SHORT },
 	{ "ether",	PW_TYPE_ETHERNET },
@@ -1242,6 +1243,13 @@ int dict_addvalue(char const *namestr, char const *attrstr, int value)
 		 *	Don't worry about fixups...
 		 */
 		switch (da->type) {
+		case PW_TYPE_BOOLEAN:
+			if (value > 1) {
+				fr_pool_free(dval);
+				fr_strerror_printf("dict_addvalue: ATTRIBUTEs of type 'bool' cannot have VALUEs larger than 1");
+				return -1;
+			}
+			break;
 		case PW_TYPE_BYTE:
 			if (value > 255) {
 				fr_pool_free(dval);

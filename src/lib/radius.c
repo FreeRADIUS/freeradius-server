@@ -881,6 +881,12 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 		data = (uint8_t const *) &vp->data;
 		break;
 
+	case PW_TYPE_BOOLEAN:
+		len = 1;	/* just in case */
+		array[0] = vp->vp_boolean;
+		data = array;
+		break;
+
 	case PW_TYPE_BYTE:
 		len = 1;	/* just in case */
 		array[0] = vp->vp_byte;
@@ -4238,6 +4244,10 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		if (data[1] > 128) goto raw;
 		break;
 
+	case PW_TYPE_BOOLEAN:
+		if (datalen != 1) goto raw;
+		break;
+
 	case PW_TYPE_BYTE:
 		if (datalen != 1) goto raw;
 		break;
@@ -4428,6 +4438,10 @@ alloc_raw:
 
 	case PW_TYPE_ABINARY:
 		fr_pair_value_memcpy(vp, data, vp->vp_length);
+		break;
+
+	case PW_TYPE_BOOLEAN:
+		vp->vp_boolean = (data[0] != 0);
 		break;
 
 	case PW_TYPE_BYTE:
