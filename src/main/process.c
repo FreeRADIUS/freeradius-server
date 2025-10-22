@@ -2625,6 +2625,8 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 	 *	synthesize a Protocol-Error, and add Error-Cause.
 	 */
 	if (!reply && request->client->protocol_error) {
+		request->proxy_listener = NULL;
+
 		request->proxy_reply = reply = rad_alloc_reply(request, request->proxy);
 		request->proxy_reply->code = PW_CODE_PROTOCOL_ERROR;
 
