@@ -412,6 +412,30 @@ authorize {
 	#
 	# Look for realms in user@domain format
 	suffix
+
+	#
+	#  If the realm is not found, AND the client supports
+	#  Protocol-Error, then reply with Protocol-Error.  Note that
+	#  you also have to update the "suffix" module configuration
+	#  to add
+	#
+	#	return_notfound = yes
+	#
+	#  Otherwise it will return "noop" when it does not find a
+	#  realm.
+	#
+	#  In practice, this configuration is mainly useful for
+	#  proxies which forward packets based on Realm, and don't do
+	#  anything else.
+	#
+#	if (notfound && ("%{client:protocol_error}" == "yes")) {
+#		update {
+#		       &control:Response-Packet-Type := Protocol-Error
+#		       &reply:Error-Cause := Proxy-Request-Not-Routable
+#		}
+#	       handled
+#	}
+
 #	ntdomain
 
 	#
