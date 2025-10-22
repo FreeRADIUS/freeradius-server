@@ -140,7 +140,7 @@ typedef enum {
 	PYTHON_PATH_MODE_OVERWRITE
 } py_path_mode;
 
-FR_NAME_NUMBER const python_path_mode[] = {
+static FR_NAME_NUMBER const python_path_mode[] = {
 	{ "append",	PYTHON_PATH_MODE_APPEND    },
 	{ "prepend",	PYTHON_PATH_MODE_PREPEND   },
 	{ "overwrite",	PYTHON_PATH_MODE_OVERWRITE },
