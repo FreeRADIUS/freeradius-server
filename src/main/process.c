@@ -2621,6 +2621,20 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 	}
 
 	/*
+	 *	Maybe we can send a Protocol-Error packet to the client.  We don't have any other reply, so we
+	 *	synthesize a Protocol-Error, and add Error-Cause.
+	 */
+	if (!reply && request->client->protocol_error) {
+		request->proxy_reply = reply = rad_alloc_reply(request, request->proxy);
+		request->proxy_reply->code = PW_CODE_PROTOCOL_ERROR;
+
+		if (!error_cause) error_cause = PW_ERROR_CAUSE_PROXY_PROCESSING_ERROR;
+
+		vp = fr_pair_afrom_num(request->proxy_reply, PW_ERROR_CAUSE, 0);
+		if (vp) vp->vp_integer = error_cause;
+	}
+
+	/*
 	 *	Delete any reply we had accumulated until now.
 	 */
 	RDEBUG2("Clearing existing &reply: attributes");
