@@ -416,11 +416,10 @@ int8_t fr_pair_cmp_by_da_tag(void const *a, void const *b)
 {
 	VALUE_PAIR const *my_a = a;
 	VALUE_PAIR const *my_b = b;
+	uint8_t cmp;
 
 	VERIFY_VP(my_a);
 	VERIFY_VP(my_b);
-
-	uint8_t cmp;
 
 	cmp = fr_pointer_cmp(my_a->da, my_b->da);
 	if (cmp != 0) return cmp;
