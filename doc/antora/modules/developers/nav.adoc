@@ -5,3 +5,4 @@
 ** xref:profile.adoc[Profiling]
 ** xref:contributing.adoc[Contributing]
 ** xref:release-method.adoc[Release Method]
+** xref:protocol-error.adoc[Protocol-Error]

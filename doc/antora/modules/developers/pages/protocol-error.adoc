@@ -1,0 +1,150 @@
+= Protocol-Error Implementation
+
+The following is a set of notes for implementing Protocol-Error in FreeRADIUS 3.2.
+
+== Client Configuration
+
+Each client now has an additional configuration option:
+
+```
+protocol_error = yes # default is "no"
+```
+
+This configuration option is also exposed as in internal attribute for dynamic clients.
+
+The purpose of this option is to control whether or not we send a
+Protocol-Error response to the client.  Previous versions of the
+server would synthesize an Access-Reject in some circumstances, and we
+don't want to change that behavior in a stable release.
+
+All new behavior for sending Protocol-Error to a client is enabled by
+setting this flag.
+
+== Encoder / Decoder
+
+The encoder and decoder have been updated to allow Protocol-Error.
+
+=== Encoder
+
+The encoder has been updated to encode Protocol-Error as response
+packets. The encoding method used is the same as for Access-Accept,
+etc.  This encoding means that Message-Authenticator is also added for
+all Protocol-Error packets, even for ones which are in response to
+Accounting-Request.  We may be OK with relaxing this requirement in
+the future.
+
+The only magic in the encoder is that it automatically adds
+`Original-Packet-Code`.  This attribute allows the client to associate
+the Protocol-Error responsewith (e.g.) Access-Request or
+Accounting-Request, even if both of those packets contain the same ID.
+
+i.e. there is no need for the RADIUS policies to add
+Original-Packet-Code.  Since that attribute is required for protocol
+compliance, the encoder adds it automatically.
+
+FreeRADIUS tracks packets by ID, and not by packet Code.  So this
+attribute isn't necessary. But maybe other RADIUS implementations need
+it.
+
+=== Decoder
+
+The decoder has been updated to decode Protocol-Error as response
+packets for any request.
+
+Other than that, the decoder did not require any changes.
+
+== radclient
+
+radclient was updated to explicitly accept Protocol-Error as a
+response to Access-Request packets.  Note that only the BlastRADIUS
+checks needed to be updated, because they checked the packet codes
+before calling the decoder.
+
+Since the decoder was updated to allow Protocol-Error, no additional
+changes to radclient were needed.
+
+== Server
+
+The server had a number of changes in order to support Protocol-Error.
+
+=== Input Queue
+
+When the server is busy and cannot enqueue a new packet, it previously
+just discarded the request.
+
+It now checks if the client supports Protocol-Error.  If so, it
+immediately encodes and sends a Protocol-Error response.  The request
+is also marked up as done/completed/cleaned-up immediately.  Since the
+server is busy, there isn't much utility in caching the packet for a
+"cleanup delay".
+
+NOTE: We may want to add "cleanup delay" handling in the future.
+
+=== Modules
+
+The `realm` module has been updated to configurable return `notfound`
+when the destination realm isn't found.  As this is a behavior change,
+it is hidden behind a new module configuration flag
+
+```
+return_notfound = yes # default is "no"
+
+=== Default Virtual Server
+
+The `default` virtual server has been updated with a commented-out
+configuration for Protocol-Error.  The configuration is after the
+`suffix` module, which is used for routing packets based on realms:
+
+```
+authorize {
+	...
+	suffix
+	if (notfound && ("%{client:protocol_error}" == "yes")) {
+		update {
+		       &control:Response-Packet-Type := Protocol-Error
+		       &reply:Error-Cause := Proxy-Request-Not-Routable
+		}
+	       handled
+	}
+	...
+}
+```
+
+=== Proxied Requests
+
+No changes are made to proxied requests.
+
+=== Proxied Responses
+
+The server always accepts Protocol-Error as a response to any proxied
+request.  This behavior is not configurable.  There doesn't seem to be
+any good reason to ignore/discard Protocol-Error responses.
+
+If the server never receives a reply from the home server, it checks
+if the client can receive Protocol-Error.  If so, it synthesizes a
+Protocol-Error reply, and runs it through the "proxcess proxy reply"
+functionality.  It also adds an Error-Cause with a value that is
+appropriate for what happened.
+
+If the server never receives a reply from the home server, a policy in
+the Post-Proxy-Type section can still manually create a Protocol-Error
+packet.  This is allowed because maybe there's a situation where
+checking the client `protocol_error` flag isn't enough.  Again, it
+also adds (if necessary) an Error-Cause with a value that is
+appropriate for what happened.  If the policy added Error-Cause, then
+that value isn't changed.
+
+NOTE: The server does not re-proxy the packet if it receives a
+Protocol-Error response from the home server.
+
+=== Finished Processing, Sending Response
+
+Once a request is done processing, a response is sent.  Since not all
+clients support Protocol-Error, the code checks if a policy (or home
+server) created a Protocol-Error response.  If it is there, the packet
+code is mashed to "no reply".
+
+This change allows the rest of the code to determine what response (if
+any) is sent.  For example, the historic behavior for Access-Request
+is to send a synthesized Access-Reject.
+
