@@ -2835,7 +2835,8 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 				 *	If the Post-Proxy-Type created Protocol-Error, then add an
 				 *	Error-Cause.
 				 */
-				if (vp->vp_integer == PW_CODE_PROTOCOL_ERROR) {
+				if ((vp->vp_integer == PW_CODE_PROTOCOL_ERROR) &&
+				    ((vp = fr_pair_find_by_num(request->proxy_reply->vps, PW_ERROR_CAUSE, 0, TAG_ANY)) == NULL)) {
 					if (!error_cause) error_cause = PW_ERROR_CAUSE_PROXY_PROCESSING_ERROR;
 
 					vp = fr_pair_afrom_num(request->proxy_reply, PW_ERROR_CAUSE, 0);
