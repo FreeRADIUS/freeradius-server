@@ -88,6 +88,7 @@ it is hidden behind a new module configuration flag
 
 ```
 return_notfound = yes # default is "no"
+```
 
 === Default Virtual Server
 
