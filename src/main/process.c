@@ -2633,7 +2633,10 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 		if (!error_cause) error_cause = PW_ERROR_CAUSE_PROXY_PROCESSING_ERROR;
 
 		vp = fr_pair_afrom_num(request->proxy_reply, PW_ERROR_CAUSE, 0);
-		if (vp) vp->vp_integer = error_cause;
+		if (vp) {
+			fr_pair_add(&request->proxy_reply->vps, vp);
+			vp->vp_integer = error_cause;
+		}
 	}
 
 	/*
