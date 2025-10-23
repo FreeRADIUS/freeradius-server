@@ -753,7 +753,7 @@ static xlat_action_t xlat_func_file_cat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		goto fail;
 	}
 
-	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, false));
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, NULL));
 	fr_value_box_mem_alloc(dst, &buffer, dst, NULL, buf.st_size, true);
 
 	len = read(fd, buffer, buf.st_size);

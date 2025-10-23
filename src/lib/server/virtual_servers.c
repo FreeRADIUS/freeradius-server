@@ -912,7 +912,7 @@ static int8_t listen_addr_cmp(void const *one, void const *two)
  */
 fr_listen_t *listen_find_any(fr_listen_t *li)
 {
-	if (!listen_addr_root) return false;
+	if (!listen_addr_root) return NULL;
 
 	return fr_rb_find(listen_addr_root, li);
 }
