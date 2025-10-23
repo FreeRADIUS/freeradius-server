@@ -5831,9 +5831,11 @@ static void event_new_fd(void *ctx)
 		default:
 #ifdef WITH_TCP
 			/*
-			 *	Add timers to incoming TCP sockets;
+			 *	Add timers to incoming TCP sockets,
+			 *	except for the main ones which end up
+			 *	calling accept() on "readable".
 			 */
-			if (sock->proto == IPPROTO_TCP) {
+			if ((sock->proto == IPPROTO_TCP) && !this->listen) {
 				struct timeval when;
 
 				when.tv_sec = time(NULL) + 1;

@@ -3457,6 +3457,8 @@ static int listen_bind(rad_listen_t *this)
 			ERROR("Failed in listen(): %s", fr_syserror(errno));
 			return -1;
 		}
+
+		this->listen = true;
 	}
 #endif
 
