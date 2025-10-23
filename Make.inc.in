@@ -58,7 +58,12 @@ CFLAGS		= $(INCLUDE) -fno-strict-aliasing @CFLAGS@
 #  To quiet modern compilers.  We're not going to fix warnings in the v3.2.x branch.
 #
 #CFLAGS		+= -Wno-unsafe-buffer-usage -Wno-extra-semi-stmt -Wno-format -Wno-reserved-macro-identifier \
-#		   -Wno-reserved-identifier -Wno-switch-default -Wno-implicit-fallthrough
+#		   -Wno-reserved-identifier -Wno-switch-default -Wno-implicit-fallthrough \
+#		   -Wno-default-const-init-field-unsafe -Wno-cast-function-type-strict -Wno-format-pedantic \
+#		   -Wno-declaration-after-statement -Wno-vla -Wno-used-but-marked-unused -Wno-c2x-extensions \
+#		   -Wno-assign-enum -Wno-unused-macros -Wno-disabled-macro-expansion -Wno-class-varargs \
+#		   -Wno-incompatible-function-pointer-types-strict -Wno-bad-function-cast \
+#		   -Wno-compound-token-split-by-macro -Wno-pre-c2x-compat -Wno-incompatible-function-pointer-types
 
 CPPFLAGS	= @CPPFLAGS@
 LIBPREFIX	= @LIBPREFIX@
