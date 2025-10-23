@@ -108,6 +108,10 @@ static char const *master_state_names[REQUEST_MASTER_NUM_STATES] = {
 	"stop-processing",
 	"in-queue-waiting-to-free",
 };
+#else
+#  define TRACE_STATE_MACHINE {}
+#endif
+
 
 static char const *child_state_names[REQUEST_CHILD_NUM_STATES] = {
 	"?",
@@ -118,10 +122,6 @@ static char const *child_state_names[REQUEST_CHILD_NUM_STATES] = {
 	"cleanup-delay",
 	"done"
 };
-
-#else
-#  define TRACE_STATE_MACHINE {}
-#endif
 
 static NEVER_RETURNS void _rad_panic(char const *file, unsigned int line, char const *msg)
 {
@@ -796,8 +796,9 @@ void request_done(REQUEST *request, int original)
 		 *	request_done().
 		 */
 	default:
-		fr_assert(0);
-		break;
+		RWARN("Unexpected action %s received for finished request in '%s' child_state - ignoring",
+		      action_codes[action], child_state_names[request->child_state]);
+		return;
 	}
 
 	/*
