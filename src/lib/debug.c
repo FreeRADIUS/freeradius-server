@@ -1161,8 +1161,9 @@ bool fr_assert_cond(char const *file, int line, char const *expr, bool cond)
 		FR_FAULT_LOG("SOFT ASSERT FAILED %s[%u]: %s", file, line, expr);
 #if !defined(NDEBUG)
 		fr_fault(SIGABRT);
-#endif
+#else
 		return false;
+#endif
 	}
 
 	return cond;
