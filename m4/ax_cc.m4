@@ -15,6 +15,31 @@ AC_DEFUN([AX_CC_IS_CLANG],[
   ])
 ])
 
+AC_DEFUN([AX_CC_STD_C23],[
+  AC_CACHE_CHECK([for the compiler flag to enable C23 support], [ax_cv_cc_std_c23_flag],[
+    ax_cv_cc_std_c23_flag=
+
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -std=c23"
+
+    AC_LANG_PUSH(C)
+    AC_TRY_COMPILE(
+      [],
+      [
+        struct foo {
+          union {
+            int a;
+            int b;
+          };
+        } bar;
+      ],
+      [ax_cv_cc_std_c23_flag="-std=c23"])
+
+    AC_LANG_POP
+    CFLAGS="$CFLAGS_SAVED"
+  ])
+])
+
 dnl #
 dnl # clang and gcc originally used different flags to specify c11 support
 dnl #

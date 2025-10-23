@@ -341,11 +341,16 @@ else
   AC_SUBST(clang_path, "")
 fi
 
-AX_CC_STD_C11
-if test "x$ax_cv_cc_std_c11_flag" != x; then
-  CFLAGS="$CFLAGS $ax_cv_cc_std_c11_flag"
+AX_CC_STD_C23
+if test "x$ax_cv_cc_std_c23_flag" != x; then
+  CFLAGS="$CFLAGS $ax_cv_cc_std_c23_flag"
 else
-  AC_MSG_ERROR([FreeRADIUS requires a C11 compiler])
+  AX_CC_STD_C11
+  if test "x$ax_cv_cc_std_c11_flag" != x; then
+    CFLAGS="$CFLAGS $ax_cv_cc_std_c11_flag"
+  else
+    AC_MSG_ERROR([FreeRADIUS requires a C11 compiler])
+  fi
 fi
 
 dnl #
