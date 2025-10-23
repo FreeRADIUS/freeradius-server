@@ -616,8 +616,9 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		q = concat_buffer;
 
 		for (next = data; next < end; next += 2 + next[1]) {
-			if ((end - next) < 2) return -1;
+			if (next >= end) return -1;
 			if (next[0] != data[0]) break;
+			if ((end - next) < 2) return -1;
 			if ((next + 2 + next[1]) > end) return -1;
 
 			if ((size_t) (q + next[1] - concat_buffer) > sizeof(concat_buffer)) return -1;
