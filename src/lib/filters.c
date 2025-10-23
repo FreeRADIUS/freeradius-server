@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #ifdef WITH_ASCEND_BINARY
 #include <ctype.h>
+#include <stdbool.h>
 
 /*
  * Two types of filters are supported, GENERIC and IP.  The identifiers
@@ -48,12 +49,6 @@ RCSID("$Id$")
  */
 
 #define IPX_NODE_ADDR_LEN		6
-
-#if ! defined( false )
-# define false		0
-# define true		(! false)
-#endif
-
 
 /*
  *	ascend_ip_filter_t
