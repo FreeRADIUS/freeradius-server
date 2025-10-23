@@ -1969,10 +1969,10 @@ if test "x$developer" = "xyes"; then
   dnl #  -Wno-cast-function-type-strict -Wno-format-pedantic -Wno-declaration-after-statement -Wno-vla -Wno-used-but-marked-unused -Wno-c2x-extensions -Wno-assign-enum -Wno-unused-macros -Wno-disabled-macro-expansion -Wno-class-varargs -Wno-incompatible-function-pointer-types-strict -Wno-bad-function-cast -Wcompound-token-split-by-macro
   AX_CC_WEVERYTHING_FLAG
   if test "x$ax_cv_cc_weverything_flag" = "xyes"; then
-    devcflags="$devcflags -W -Weverything -Wformat=2 -Wno-missing-field-initializers -Wno-date-time -Wno-padded -Wno-gnu-zero-variadic-macro-arguments -Wno-shorten-64-to-32 -Wno-sign-conversion -Wno-conversion -Wno-switch-enum -Wno-gnu-statement-expression -Wno-extended-offsetof -Wno-cast-align -Wno-documentation-unknown-command -Wno-covered-switch-default -Wno-packed $verify_ptr
+    devcflags="$devcflags -W -Weverything -Wformat=2 -Wno-missing-field-initializers -Wno-date-time -Wno-padded -Wno-gnu-zero-variadic-macro-arguments -Wno-shorten-64-to-32 -Wno-sign-conversion -Wno-conversion -Wno-switch-enum -Wno-gnu-statement-expression -Wno-extended-offsetof -Wno-cast-align -Wno-documentation-unknown-command -Wno-covered-switch-default -Wno-packed $verify_ptr"
   else
     if test "x$GCC" = "xyes"; then
-      devcflags="$devcflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 $verify_ptr
+      devcflags="$devcflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 $verify_ptr"
       INSTALLSTRIP=""
     fi
   fi
