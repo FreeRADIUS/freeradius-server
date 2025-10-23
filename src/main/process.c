@@ -2653,22 +2653,64 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 		error_cause = PW_ERROR_CAUSE_PROXY_PROCESSING_ERROR;
 	}
 
+#ifdef WITH_COA_TUNNEL
 	/*
-	 *	Maybe we can send a Protocol-Error packet to the client.  We don't have any other reply, so we
-	 *	synthesize a Protocol-Error, and add Error-Cause.
+	 *	Cache this, as request->proxy_listener will be
+	 *	NULL after removing the request from the proxy
+	 *	hash.
 	 */
-	if (!reply && request->client->protocol_error) {
-		request->proxy_listener = NULL;
+	if (request->proxy_listener) reverse_coa = request->proxy_listener->type != RAD_LISTEN_PROXY;
+#endif
 
-		request->proxy_reply = reply = rad_alloc_reply(request, request->proxy);
-		request->proxy_reply->code = PW_CODE_PROTOCOL_ERROR;
 
-		if (!error_cause) error_cause = PW_ERROR_CAUSE_PROXY_PROCESSING_ERROR;
+	if (reply) {
+		VERIFY_PACKET(reply);
 
-		vp = fr_pair_afrom_num(request->proxy_reply, PW_ERROR_CAUSE, 0);
-		if (vp) {
-			fr_pair_add(&request->proxy_reply->vps, vp);
-			vp->vp_integer = error_cause;
+		/*
+		 *	Decode the packet if required.
+		 */
+		if (request->proxy_listener) {
+			rcode = request->proxy_listener->proxy_decode(request->proxy_listener, request);
+			debug_packet(request, reply, true);
+
+			/*
+			 *	Pro-actively remove it from the proxy hash.
+			 *	This is later than in 2.1.x, but it means that
+			 *	the replies are authenticated before being
+			 *	removed from the hash.
+			 */
+			if ((rcode == 0) &&
+			    (request->num_proxied_requests <= request->num_proxied_responses)) {
+				remove_from_proxy_hash(request);
+			}
+		} else {
+			rad_assert(!request->in_proxy_hash);
+		}
+
+	} else {		/* no reply */
+		/*
+		 *	We didn't get a reply, but the proxied request may still be in the proxy hash.
+		 */
+		if (request->in_proxy_hash) remove_from_proxy_hash(request);
+
+
+		/*
+		 *	Maybe we can send a Protocol-Error packet to the client.  We don't have any other
+		 *	reply, so we synthesize a Protocol-Error, and add Error-Cause.
+		 */
+		if (request->client->protocol_error) {
+			request->proxy_listener = NULL;
+
+			request->proxy_reply = reply = rad_alloc_reply(request, request->proxy);
+			request->proxy_reply->code = PW_CODE_PROTOCOL_ERROR;
+
+			if (!error_cause) error_cause = PW_ERROR_CAUSE_PROXY_PROCESSING_ERROR;
+
+			vp = fr_pair_afrom_num(request->proxy_reply, PW_ERROR_CAUSE, 0);
+			if (vp) {
+				fr_pair_add(&request->proxy_reply->vps, vp);
+				vp->vp_integer = error_cause;
+			}
 		}
 	}
 
@@ -2732,43 +2774,6 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 
 	if (post_proxy_type > 0) RDEBUG2("Found Post-Proxy-Type %s",
 					 dict_valnamebyattr(PW_POST_PROXY_TYPE, 0, post_proxy_type));
-
-#ifdef WITH_COA_TUNNEL
-	/*
-	 *	Cache this, as request->proxy_listener will be
-	 *	NULL after removing the request from the proxy
-	 *	hash.
-	 */
-	if (request->proxy_listener) reverse_coa = request->proxy_listener->type != RAD_LISTEN_PROXY;
-#endif
-
-	if (reply) {
-		VERIFY_PACKET(reply);
-
-		/*
-		 *	Decode the packet if required.
-		 */
-		if (request->proxy_listener) {
-			rcode = request->proxy_listener->proxy_decode(request->proxy_listener, request);
-			debug_packet(request, reply, true);
-
-			/*
-			 *	Pro-actively remove it from the proxy hash.
-			 *	This is later than in 2.1.x, but it means that
-			 *	the replies are authenticated before being
-			 *	removed from the hash.
-			 */
-			if ((rcode == 0) &&
-			    (request->num_proxied_requests <= request->num_proxied_responses)) {
-				remove_from_proxy_hash(request);
-			}
-		} else {
-			rad_assert(!request->in_proxy_hash);
-		}
-	} else if (request->in_proxy_hash) {
-		remove_from_proxy_hash(request);
-	}
-
 
 	/*
 	 *	Run the request through the virtual server for the
