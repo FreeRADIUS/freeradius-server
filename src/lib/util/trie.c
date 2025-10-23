@@ -2649,9 +2649,9 @@ void *fr_trie_find(fr_trie_t *ft, void const *data)
 	key = &uctx->buffer[0];
 	keylen = sizeof(uctx->buffer) * 8;
 
-	if (!uctx->get_key) return false;
+	if (!uctx->get_key) return NULL;
 
-	if (uctx->get_key(&key, &keylen, data) < 0) return false;
+	if (uctx->get_key(&key, &keylen, data) < 0) return NULL;
 
 	return fr_trie_lookup_by_key(ft, key, keylen);
 }
@@ -2675,9 +2675,9 @@ void *fr_trie_match(fr_trie_t *ft, void const *data)
 	key = &uctx->buffer[0];
 	keylen = sizeof(uctx->buffer) * 8;
 
-	if (!uctx->get_key) return false;
+	if (!uctx->get_key) return NULL;
 
-	if (uctx->get_key(&key, &keylen, data) < 0) return false;
+	if (uctx->get_key(&key, &keylen, data) < 0) return NULL;
 
 	return fr_trie_match_by_key(ft, key, keylen);
 }
