@@ -50,8 +50,9 @@ typedef	void (*fr_control_callback_t)(void *ctx, void const *data, size_t data_s
 #define FR_CONTROL_MAX_MESSAGES (1024)
 #define FR_CONTROL_MAX_SIZE	(64)
 
+fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_queue_t *aq, size_t num_callbacks) CC_HINT(nonnull(3));
 
-fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_queue_t *aq) CC_HINT(nonnull(3));
+int fr_control_open(fr_control_t *c);
 
 int fr_control_gc(fr_control_t *c, fr_ring_buffer_t *rb) CC_HINT(nonnull);
 
@@ -60,7 +61,7 @@ int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size) CC_HINT(nonnull);
 ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data, size_t data_size) CC_HINT(nonnull);
 
-int fr_control_callback_add(fr_control_t *c, uint32_t id, void *ctx, fr_control_callback_t callback) CC_HINT(nonnull(1,4));
+int fr_control_callback_add(fr_control_t **c, uint32_t id, void *ctx, fr_control_callback_t callback) CC_HINT(nonnull(1,4));
 int fr_control_callback_delete(fr_control_t *c, uint32_t id) CC_HINT(nonnull);
 
 int fr_control_same_thread(fr_control_t *c) CC_HINT(nonnull);
