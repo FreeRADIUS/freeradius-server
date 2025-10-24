@@ -233,7 +233,7 @@ struct call_env_ctx_s {
 								///< module_method_binding_t.
 };
 
-#define CALL_ENV_TERMINATOR { NULL }
+#define CALL_ENV_TERMINATOR { .name = NULL }
 
 /** Helper macro for populating the size/type fields of a #call_env_method_t from the output structure type
  */
