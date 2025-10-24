@@ -458,6 +458,29 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	fr_assert(client);
 
 	/*
+	 *	The policy may ask us to send a Protocol-Error, but the client does not support it.  So we
+	 *	suppress the response.
+	 */
+	if ((request->reply->code == FR_RADIUS_CODE_PROTOCOL_ERROR) && !client->protocol_error) {
+		if (request->packet->code != FR_RADIUS_CODE_ACCESS_REQUEST) {
+			RDEBUG("Client %s does not support Protocol-Error. Suppressing response",
+			       client->shortname);
+			track->do_not_respond = true;
+			return 1;
+		}
+
+		/*
+		 *	If the client doesn't support Protocol-Error, swap it to Access-Reject.
+		 *
+		 *	Note that RFC 8559 already says that systems should send CoA-NAK or Disconnect-NAK
+		 *	with Error-Cause if the packet can't be routed.
+		 */
+		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
+		RDEBUG("Client %s does not support Protocol-Error - rewriting to Access-Reject",
+		       client->shortname);
+	}
+
+	/*
 	 *	Dynamic client stuff
 	 */
 	if (client->dynamic && !client->active) {
