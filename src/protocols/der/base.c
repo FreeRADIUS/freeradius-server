@@ -40,12 +40,16 @@ fr_dict_t const *dict_der;
 //fr_dict_attr_t const *attr_oid_tree;
 
 extern fr_dict_autoload_t libfreeradius_der_dict[];
-fr_dict_autoload_t	  libfreeradius_der_dict[] = { { .out = &dict_der, .proto = "der" }, { NULL } };
+fr_dict_autoload_t	  libfreeradius_der_dict[] = {
+	{ .out = &dict_der, .proto = "der" },
+
+	DICT_AUTOLOAD_TERMINATOR
+};
 
 extern fr_dict_attr_autoload_t libfreeradius_der_dict_attr[];
 fr_dict_attr_autoload_t	       libfreeradius_der_dict_attr[] = {
 //	{ .out = &attr_oid_tree, .name = "OID-Tree", .type = FR_TYPE_TLV, .dict = &dict_der },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_table_num_sorted_t const tag_name_to_number[] = {

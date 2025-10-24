@@ -43,7 +43,7 @@ fr_dict_t const *dict_dhcpv6;
 extern fr_dict_autoload_t libfreeradius_dhcpv6_dict[];
 fr_dict_autoload_t libfreeradius_dhcpv6_dict[] = {
 	{ .out = &dict_dhcpv6, .proto = "dhcpv6" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_packet_type;
@@ -63,7 +63,7 @@ fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[] = {
 	{ .out = &attr_relay_peer_address, .name = "Relay-Peer-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_dhcpv6 },
 	{ .out = &attr_relay_message, .name = "Relay-Message", .type = FR_TYPE_GROUP, .dict = &dict_dhcpv6 },
 	{ .out = &attr_option_request, .name = "Option-Request", .type = FR_TYPE_ATTR, .dict = &dict_dhcpv6 },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*

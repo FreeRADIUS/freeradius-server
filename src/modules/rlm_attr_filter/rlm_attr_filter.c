@@ -63,7 +63,7 @@ extern fr_dict_autoload_t rlm_attr_filter_dict[];
 fr_dict_autoload_t rlm_attr_filter_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_stripped_user_name;
@@ -79,7 +79,7 @@ fr_dict_attr_autoload_t rlm_attr_filter_dict_attr[] = {
 	{ .out = &attr_relax_filter, .name = "Relax-Filter", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
 	{ .out = &attr_vendor_specific, .name = "Vendor-Specific", .type = FR_TYPE_VSA, .dict = &dict_radius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static const call_env_method_t attr_filter_env = {

@@ -95,7 +95,7 @@ static fr_dict_t const *dict_radius;
 extern fr_dict_autoload_t rlm_stats_dict[];
 fr_dict_autoload_t rlm_stats_dict[] = {
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_freeradius_stats4_ipv4_address;
@@ -109,7 +109,7 @@ fr_dict_attr_autoload_t rlm_stats_dict_attr[] = {
 	{ .out = &attr_freeradius_stats4_ipv6_address, .name = "Vendor-Specific.FreeRADIUS.Stats4.IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_radius },
 	{ .out = &attr_freeradius_stats4_type, .name = "Vendor-Specific.FreeRADIUS.Stats4.Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_freeradius_stats4_packet_counters, .name = "Vendor-Specific.FreeRADIUS.Stats4.Packet-Counters", .type = FR_TYPE_TLV, .dict = &dict_radius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_t *t,

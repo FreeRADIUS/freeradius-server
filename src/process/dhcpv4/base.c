@@ -36,7 +36,7 @@ static fr_dict_t const *dict_dhcpv4;
 extern fr_dict_autoload_t process_dhcpv4_dict[];
 fr_dict_autoload_t process_dhcpv4_dict[] = {
 	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_message_type;
@@ -50,7 +50,7 @@ fr_dict_attr_autoload_t process_dhcpv4_dict_attr[] = {
 	{ .out = &attr_yiaddr, .name = "Your-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv4},
 	{ .out = &attr_dhcp_option_82, .name = "Relay-Agent-Information", .type = FR_TYPE_TLV, .dict = &dict_dhcpv4 },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*

@@ -73,7 +73,7 @@ extern fr_dict_autoload_t proto_ldap_sync_ldap_dict[];
 fr_dict_autoload_t proto_ldap_sync_ldap_dict[] = {
 	{ .out = &dict_ldap_sync, .proto = "ldap" },
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_ldap_sync_packet_id;
@@ -95,7 +95,7 @@ fr_dict_attr_autoload_t proto_ldap_sync_ldap_dict_attr[] = {
 	{ .out = &attr_ldap_sync_root_dn, .name = "LDAP-Sync.Directory-Root-DN", .type = FR_TYPE_STRING, .dict = &dict_ldap_sync },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_ldap_sync },
 	{ .out = &attr_ldap_sync_base_dn, .name = "LDAP-Sync-Base-DN", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 extern global_lib_autoinst_t const *proto_ldap_sync_ldap_lib[];

@@ -4370,7 +4370,7 @@ fr_dict_autoload_talloc_t *_fr_dict_autoload_talloc(TALLOC_CTX *ctx, fr_dict_t c
 	}
 
 	dict_ref->load[0] = (fr_dict_autoload_t){ .proto = proto, .out = out};
-	dict_ref->load[1] = (fr_dict_autoload_t){ NULL };
+	dict_ref->load[1] = (fr_dict_autoload_t) DICT_AUTOLOAD_TERMINATOR;
 	dict_ref->dependent = talloc_strdup(dict_ref, dependent);
 	if (unlikely(dict_ref->dependent == NULL)) {
 		talloc_free(dict_ref);

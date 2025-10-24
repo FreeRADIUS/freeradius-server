@@ -200,7 +200,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t log_dict[];
 fr_dict_autoload_t log_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_module_failure_message;
@@ -208,7 +208,7 @@ static fr_dict_attr_t const *attr_module_failure_message;
 extern fr_dict_attr_autoload_t log_dict_attr[];
 fr_dict_attr_autoload_t log_dict_attr[] = {
 	{ .out = &attr_module_failure_message, .name = "Module-Failure-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 typedef struct {

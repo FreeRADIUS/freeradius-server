@@ -70,7 +70,7 @@ static fr_dict_t const *dict_ldap_sync;
 extern fr_dict_autoload_t proto_ldap_sync_dict[];
 fr_dict_autoload_t proto_ldap_sync_dict[] = {
 	{ .out = &dict_ldap_sync, .proto = "ldap" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_ldap_sync_packet_id;
@@ -90,7 +90,7 @@ fr_dict_attr_autoload_t proto_ldap_sync_dict_attr[] = {
 	{ .out = &attr_ldap_sync_scope, .name = "LDAP-Sync.Scope", .type = FR_TYPE_UINT32, .dict = &dict_ldap_sync },
 	{ .out = &attr_ldap_sync_filter, .name = "LDAP-Sync.Filter", .type = FR_TYPE_STRING, .dict = &dict_ldap_sync },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_ldap_sync },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Check if an attribute is in the config list and add if not present

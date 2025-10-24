@@ -80,14 +80,14 @@ static fr_dict_attr_t const *attr_auth_type;
 extern fr_dict_autoload_t virtual_server_dict_autoload[];
 fr_dict_autoload_t virtual_server_dict_autoload[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 extern fr_dict_attr_autoload_t virtual_server_dict_attr_autoload[];
 fr_dict_attr_autoload_t virtual_server_dict_attr_autoload[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** List of process modules we've loaded

@@ -39,12 +39,12 @@ static fr_dict_t const *dict_freeradius; /*internal dictionary for server*/
 extern fr_dict_attr_autoload_t curl_attr[];
 fr_dict_attr_autoload_t curl_attr[] = {
 	{ .out = &attr_tls_certificate, .name = "TLS-Certificate", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_autoload_t curl_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_table_num_sorted_t const fr_curl_sslcode_table[] = {

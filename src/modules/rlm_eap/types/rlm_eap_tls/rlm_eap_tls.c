@@ -55,7 +55,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_eap_tls_dict[];
 fr_dict_autoload_t rlm_eap_tls_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_eap_tls_require_client_cert;
@@ -63,7 +63,7 @@ static fr_dict_attr_t const *attr_eap_tls_require_client_cert;
 extern fr_dict_attr_autoload_t rlm_eap_tls_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_tls_dict_attr[] = {
 	{ .out = &attr_eap_tls_require_client_cert, .name = "EAP-TLS-Require-Client-Cert", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static unlang_action_t mod_handshake_done(unlang_result_t *p_result, UNUSED module_ctx_t const *mctx,

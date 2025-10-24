@@ -82,7 +82,8 @@ fr_dict_autoload_t tls_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_tls, .proto = "tls" },
 	{ .out = &dict_der, .proto = "der" },
-	{ NULL }
+
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_allow_session_resumption;
@@ -184,7 +185,7 @@ fr_dict_attr_autoload_t tls_dict_attr[] = {
 
 	{ .out = &attr_der_certificate, .name = "Certificate", .type = FR_TYPE_TLV, .dict = &dict_der },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*
@@ -225,7 +226,8 @@ fr_dict_enum_autoload_t tls_dict_enum[] = {
 
 	{ .out = &enum_tls_session_resumed_stateful, .name = "stateful", .attr = &attr_tls_session_resume_type },
 	{ .out = &enum_tls_session_resumed_stateless, .name = "stateless", .attr = &attr_tls_session_resume_type },
-	{ NULL }
+
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*

@@ -45,7 +45,7 @@ static _Thread_local uint8_t		fr_dns_marker[65536];
 extern fr_dict_autoload_t dns_dict[];
 fr_dict_autoload_t dns_dict[] = {
 	{ .out = &dict_dns, .proto = "dns" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 //fr_dict_attr_t const *attr_dns_packet_type;
@@ -63,7 +63,7 @@ fr_dict_attr_autoload_t dns_dict_attr[] = {
 	{ .out = &attr_dns_rr, .name = "Resource-Record", .type = FR_TYPE_STRUCT, .dict = &dict_dns },
 	{ .out = &attr_dns_ns, .name = "Name-Server", .type = FR_TYPE_STRUCT, .dict = &dict_dns },
 	{ .out = &attr_dns_ar, .name = "Additional-Record", .type = FR_TYPE_STRUCT, .dict = &dict_dns },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
  char const *fr_dns_packet_names[FR_DNS_CODE_MAX] = {

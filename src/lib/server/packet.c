@@ -33,7 +33,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t util_packet_dict[];
 fr_dict_autoload_t util_packet_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_net;
@@ -58,7 +58,7 @@ fr_dict_attr_autoload_t util_packet_dict_attr[] = {
 	{ .out = &attr_net_timestamp, .name = "Net.Timestamp", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
 	{ .out = &attr_net_interface, .name = "Net.Interface", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static int inet2pairs(TALLOC_CTX *ctx, fr_pair_list_t *list,

@@ -181,7 +181,7 @@ static fr_dict_t const *dict_radius;
 extern fr_dict_autoload_t rlm_test_dict[];
 fr_dict_autoload_t rlm_test_dict[] = {
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_user_name;
@@ -189,7 +189,7 @@ static fr_dict_attr_t const *attr_user_name;
 extern fr_dict_attr_autoload_t rlm_test_dict_attr[];
 fr_dict_attr_autoload_t rlm_test_dict_attr[] = {
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*

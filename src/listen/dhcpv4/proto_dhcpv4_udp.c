@@ -136,7 +136,7 @@ static fr_dict_t const *dict_dhcpv4;
 extern fr_dict_autoload_t proto_dhcpv4_udp_dict[];
 fr_dict_autoload_t proto_dhcpv4_udp_dict[] = {
 	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_message_type;
@@ -146,7 +146,7 @@ extern fr_dict_attr_autoload_t proto_dhcpv4_udp_dict_attr[];
 fr_dict_attr_autoload_t proto_dhcpv4_udp_dict_attr[] = {
 	{ .out = &attr_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4},
 	{ .out = &attr_dhcp_server_identifier, .name = "Server-Identifier", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 #ifdef HAVE_LIBPCAP

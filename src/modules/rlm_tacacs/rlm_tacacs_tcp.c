@@ -199,7 +199,7 @@ static fr_dict_t const *dict_tacacs;
 extern fr_dict_autoload_t rlm_tacacs_tcp_dict[];
 fr_dict_autoload_t rlm_tacacs_tcp_dict[] = {
 	{ .out = &dict_tacacs, .proto = "tacacs" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -211,7 +211,7 @@ fr_dict_attr_autoload_t rlm_tacacs_tcp_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_tacacs },
 	{ .out = &attr_packet_hdr, .name = "Packet", .type = FR_TYPE_STRUCT, .dict = &dict_tacacs },
 	{ .out = &attr_session_id, .name = "Packet.Session-ID", .type = FR_TYPE_UINT32, .dict = &dict_tacacs },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Clear out any connection specific resources from a tcp request

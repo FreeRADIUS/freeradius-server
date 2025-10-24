@@ -36,7 +36,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t request_dict[];
 fr_dict_autoload_t request_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *request_attr_root;
@@ -54,7 +54,7 @@ fr_dict_attr_autoload_t request_dict_attr[] = {
 	{ .out = &request_attr_control, .name = "control", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
 	{ .out = &request_attr_state, .name = "session-state", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
 	{ .out = &request_attr_local, .name = "local-variables", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 #ifndef NDEBUG

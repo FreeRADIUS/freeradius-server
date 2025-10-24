@@ -39,7 +39,7 @@ extern fr_dict_autoload_t libfreeradius_tacacs_dict[];
 fr_dict_autoload_t libfreeradius_tacacs_dict[] = {
 	{ .out = &dict_tacacs, .proto = "tacacs" },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_tacacs_accounting_flags;
@@ -114,7 +114,7 @@ fr_dict_attr_autoload_t libfreeradius_tacacs_dict_attr[] = {
 	{ .out = &attr_tacacs_mschap_response, .name = "MS-CHAP-Response", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_mschap2_response, .name = "MS-CHAP2-Response", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 	{ .out = &attr_tacacs_mschap_challenge, .name = "MS-CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 char const *fr_tacacs_packet_names[FR_TACACS_CODE_MAX] = {

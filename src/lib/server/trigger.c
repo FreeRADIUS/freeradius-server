@@ -61,14 +61,14 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t trigger_dict[];
 fr_dict_autoload_t trigger_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_trigger_name;
 extern fr_dict_attr_autoload_t trigger_dict_attr[];
 fr_dict_attr_autoload_t trigger_dict_attr[] = {
 	{ .out = &attr_trigger_name, .name = "Trigger-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static void _trigger_last_fired_free(void *data)

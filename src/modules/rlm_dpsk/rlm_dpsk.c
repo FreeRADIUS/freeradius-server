@@ -129,7 +129,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_dpsk_dict[];
 fr_dict_autoload_t rlm_dpsk_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_auth_type;
@@ -138,7 +138,7 @@ extern fr_dict_attr_autoload_t rlm_dpsk_dict_attr[];
 fr_dict_attr_autoload_t rlm_dpsk_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static const conf_parser_t module_config[] = {

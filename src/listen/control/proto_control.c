@@ -63,7 +63,7 @@ static fr_dict_t const *dict_control;
 extern fr_dict_autoload_t proto_control_dict[];
 fr_dict_autoload_t proto_control_dict[] = {
 	{ .out = &dict_control, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)

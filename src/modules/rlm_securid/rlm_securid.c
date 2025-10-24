@@ -54,7 +54,7 @@ static fr_dict_t const *dict_radius;
 extern fr_dict_autoload_t mem_dict[];
 fr_dict_autoload_t mem_dict[] = {
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_prompt;
@@ -70,7 +70,7 @@ fr_dict_attr_autoload_t mem_dict_attr[] = {
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static SD_CHAR empty_pin[] = "";

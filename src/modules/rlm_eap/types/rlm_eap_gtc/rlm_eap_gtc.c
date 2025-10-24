@@ -60,7 +60,7 @@ extern fr_dict_autoload_t rlm_eap_gtc_dict[];
 fr_dict_autoload_t rlm_eap_gtc_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_auth_type;
@@ -70,7 +70,7 @@ extern fr_dict_attr_autoload_t rlm_eap_gtc_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_gtc_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static unlang_action_t mod_session_init(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request);

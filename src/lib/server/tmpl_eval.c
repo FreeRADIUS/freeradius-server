@@ -46,7 +46,7 @@ extern fr_dict_autoload_t tmpl_dict[];
 fr_dict_autoload_t tmpl_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" }, /* @todo - remove RADIUS from the server core... */
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Placeholder attribute for uses of unspecified attribute references

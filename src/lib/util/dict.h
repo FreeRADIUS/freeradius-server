@@ -303,6 +303,9 @@ typedef struct {
 	char const		*proto;				//!< The protocol dictionary name.
 } fr_dict_autoload_t;
 
+#define DICT_AUTOLOAD_TERMINATOR { .out = NULL }
+
+
 /** Errors returned by attribute lookup functions
  *
  */

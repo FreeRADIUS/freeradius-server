@@ -118,7 +118,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_crl_dict[];
 fr_dict_autoload_t rlm_crl_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_crl_data;
@@ -128,7 +128,7 @@ extern fr_dict_attr_autoload_t rlm_crl_dict_attr[];
 fr_dict_attr_autoload_t rlm_crl_dict_attr[] = {
 	{ .out = &attr_crl_data, .name = "CRL.Data", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_crl_cdp_url, .name = "CRL.CDP-URL", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 typedef struct {

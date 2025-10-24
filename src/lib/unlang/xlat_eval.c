@@ -38,7 +38,7 @@ static fr_dict_t const *dict_freeradius;
 
 static fr_dict_autoload_t xlat_eval_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_expr_bool_enum; /* xlat_expr.c */
@@ -72,7 +72,7 @@ static fr_dict_attr_autoload_t xlat_eval_dict_attr[] = {
 	{ .out = &attr_cast_time_res_usec, .name = "Cast-Time-Res-Micro-Sec", .type = FR_TYPE_TIME_DELTA, .dict = &dict_freeradius },
 	{ .out = &attr_cast_time_res_nsec, .name = "Cast-Time-Res-Nano-Sec", .type = FR_TYPE_TIME_DELTA, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_table_num_sorted_t const xlat_action_table[] = {

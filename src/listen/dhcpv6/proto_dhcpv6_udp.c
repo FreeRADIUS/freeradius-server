@@ -113,7 +113,7 @@ static fr_dict_t const *dict_dhcpv6;
 extern fr_dict_autoload_t proto_dhcpv6_udp_dict[];
 fr_dict_autoload_t proto_dhcpv6_udp_dict[] = {
 	{ .out = &dict_dhcpv6, .proto = "dhcpv6" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -125,7 +125,7 @@ fr_dict_attr_autoload_t proto_dhcpv6_udp_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6},
 	{ .out = &attr_client_id, .name = "Client-ID", .type = FR_TYPE_STRUCT, .dict = &dict_dhcpv6},
 	{ .out = &attr_relay_message, .name = "Relay-Message", .type = FR_TYPE_GROUP, .dict = &dict_dhcpv6 },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p, uint8_t *buffer, size_t buffer_len,

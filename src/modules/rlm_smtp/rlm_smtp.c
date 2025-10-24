@@ -41,7 +41,7 @@ static fr_dict_t const 	*dict_freeradius;
 extern fr_dict_autoload_t rlm_smtp_dict[];
 fr_dict_autoload_t rlm_smtp_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius"},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const 	*attr_smtp_header;
@@ -51,7 +51,7 @@ extern fr_dict_attr_autoload_t rlm_smtp_dict_attr[];
 fr_dict_attr_autoload_t rlm_smtp_dict_attr[] = {
 	{ .out = &attr_smtp_header, .name = "SMTP-Mail-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_smtp_body, .name = "SMTP-Mail-Body", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ NULL },
+	DICT_AUTOLOAD_TERMINATOR,
 };
 
 extern global_lib_autoinst_t const * const rlm_smtp_lib[];

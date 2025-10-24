@@ -33,7 +33,7 @@ static fr_dict_t const *dict_ldap_sync;
 extern fr_dict_autoload_t process_ldap_sync_dict[];
 fr_dict_autoload_t process_ldap_sync_dict[] = {
 	{ .out = &dict_ldap_sync, .proto = "ldap" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -42,7 +42,7 @@ extern fr_dict_attr_autoload_t process_ldap_sync_dict_attr[];
 fr_dict_attr_autoload_t process_ldap_sync_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type= FR_TYPE_UINT32, .dict = &dict_ldap_sync },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static char const *ldap_sync_message_types[FR_LDAP_SYNC_CODE_MAX] = {

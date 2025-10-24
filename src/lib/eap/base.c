@@ -83,7 +83,7 @@ fr_dict_autoload_t eap_base_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
 	{ .out = &dict_tls, .proto = "tls" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_chbind_response_code;
@@ -126,7 +126,7 @@ fr_dict_attr_autoload_t eap_base_dict_attr[] = {
 	{ .out = &attr_tls_min_version, .name = "Min-Version", .type = FR_TYPE_FLOAT32, .dict = &dict_tls },
 	{ .out = &attr_tls_max_version, .name = "Max-Version", .type = FR_TYPE_FLOAT32, .dict = &dict_tls },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 void eap_packet_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *list, eap_packet_raw_t const *eap)
