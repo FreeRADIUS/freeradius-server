@@ -1658,9 +1658,16 @@ static void request_finish(REQUEST *request, int action)
 	 */
 	if ((request->reply->code == PW_CODE_PROTOCOL_ERROR) &&
 	    request->client && !request->client->protocol_error) {
-		RWDEBUG2("Client %s does not support Protocol-Error - discarding reply",
-			 request->client->shortname);
-		request->reply->code = 0;
+		if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
+			RWDEBUG2("Client %s does not support Protocol-Error - rewriting to Access-Reject",
+				 request->client->shortname);
+			request->reply->code = PW_CODE_ACCESS_REJECT;
+
+		} else {
+			RWDEBUG2("Client %s does not support Protocol-Error - discarding reply",
+				 request->client->shortname);
+			request->reply->code = 0;
+		}
 	}
 
 	/*
