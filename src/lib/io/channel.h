@@ -64,6 +64,8 @@ typedef struct fr_listen fr_listen_t;
 extern "C" {
 #endif
 
+#define FR_CONTROL_ID_CHANNEL		(1)
+
 typedef enum fr_channel_event_t {
 	FR_CHANNEL_ERROR = 0,
 	FR_CHANNEL_DATA_READY_RESPONDER,
