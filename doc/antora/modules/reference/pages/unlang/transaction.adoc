@@ -46,10 +46,11 @@ The assignment to `reply.Framed-IP-Address` will then be reverted.
 ----
 transaction {
     string tmp
+
     tmp := %sql("SELECT ...")
     reply.Framed-IP-Address := 192.0.2.1
 
-    if !tmp  {
+    if !tmp {
         fail
     }
 
