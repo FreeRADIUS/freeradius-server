@@ -110,7 +110,8 @@ static void *control_master(UNUSED void *arg)
 	MPRINT1("Master started.\n");
 
 	for (i = 0; i < num_aq; i++) {
-		fr_control_callback_add(control[i], FR_CONTROL_ID_CHANNEL, master_ctx, recv_control_callback);
+		fr_control_callback_add(&control[i], FR_CONTROL_ID_CHANNEL, master_ctx, recv_control_callback);
+		fr_control_open(control[i]);
 	}
 
 	start = fr_time();
@@ -233,7 +234,7 @@ int main(int argc, char *argv[])
 
 	control = talloc_array(autofree, fr_control_t *, num_aq);
 	for (i = 0; i < num_aq; i++) {
-		control[i] = fr_control_create(control, el, aq[i]);
+		control[i] = fr_control_create(control, el, aq[i], 2);
 		if (!control[i]) {
 			fprintf(stderr, "control_test: Failed to create control plane\n");
 			fr_exit_now(EXIT_FAILURE);
