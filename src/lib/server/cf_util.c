@@ -2335,7 +2335,7 @@ void _cf_item_debug(CONF_ITEM const *ci)
 		in_ident1 = fr_rb_find(ci->ident1, child) == child? "in ident1 " : "";
 
 		if (ci->type != CONF_ITEM_SECTION) {
-			in_ident2 = false;
+			in_ident2 = NULL;
 		} else {
 			in_ident2 = fr_rb_find(ci->ident2, child) == child? "in ident2 " : "";
 		}
