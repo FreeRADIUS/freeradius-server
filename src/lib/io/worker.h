@@ -30,6 +30,15 @@ RCSIDH(worker_h, "$Id$")
 extern "C" {
 #endif
 
+/*
+ *  Network <-> Worker control message IDs
+ */
+#define FR_CONTROL_ID_LISTEN		(2)
+#define FR_CONTROL_ID_WORKER		(3)
+#define FR_CONTROL_ID_DIRECTORY		(4)
+#define FR_CONTROL_ID_INJECT	 	(5)
+#define FR_CONTROL_ID_LISTEN_DEAD	(6)
+
 /**
  *  A data structure to track the worker.
  *
