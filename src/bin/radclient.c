@@ -1294,6 +1294,7 @@ static int blast_radius_check(rc_request_t *request, fr_packet_t *reply)
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 	case FR_RADIUS_CODE_ACCESS_REJECT:
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_PROTOCOL_ERROR:
 		if (reply->data[1] != request->packet->id) {
 			ERROR("Invalid reply ID %d to Access-Request ID %d", reply->data[1], request->packet->id);
 			return -1;
@@ -1552,6 +1553,9 @@ retry:
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 		break;
 
+	case FR_RADIUS_CODE_PROTOCOL_ERROR:
+		stats.error++;
+		break;
 	default:
 		stats.rejected++;
 	}
@@ -2234,11 +2238,13 @@ int main(int argc, char **argv)
 		      "\tAccepted      : %" PRIu64 "\n"
 		      "\tRejected      : %" PRIu64 "\n"
 		      "\tLost          : %" PRIu64 "\n"
+		      "\tErrored       : %" PRIu64 "\n"
 		      "\tPassed filter : %" PRIu64 "\n"
 		      "\tFailed filter : %" PRIu64,
 		      stats.accepted,
 		      stats.rejected,
 		      stats.lost,
+		      stats.error,
 		      stats.passed,
 		      stats.failed
 		);
