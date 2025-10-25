@@ -263,7 +263,7 @@ static PyGetSetDef py_freeradius_pair_getset[] = {
 		.doc = "Pair value",
 		.closure = NULL
 	},
-	{ NULL }	/* Terminator */
+	{ .name = NULL }	/* Terminator */
 };
 
 /** Contains a value pair of a specific type
@@ -345,7 +345,7 @@ static PyMemberDef py_freeradius_request_attrs[] = {
 		.flags = READONLY,
 		.doc = "Pairs in the session-state list - persists for the length of the session"
 	},
-	{ NULL }	/* Terminator */
+	{ .name = NULL }	/* Terminator */
 };
 
 static PyTypeObject py_freeradius_request_def = {
