@@ -2000,7 +2000,6 @@ if test "x$developer" = "xyes"; then
       	-Wmissing-declarations \
       	-Wmissing-prototypes \
       	-Wnested-externs \
-      	-Wno-cast-align \
       	-Wno-format-extra-args \
       	-Wno-format-zero-length \
       	-Wpointer-arith \

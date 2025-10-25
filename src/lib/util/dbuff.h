@@ -38,6 +38,8 @@ extern "C" {
 #include <stdint.h>
 #include <sys/types.h>
 
+DIAG_OFF(cast-align)
+
 /** A dbuff
  *
  * dbuffs wrap an underlying buffer, maintaining 'start', 'current', and 'end'
@@ -1059,6 +1061,7 @@ _fr_dbuff_set_end(\
 	) \
 )
 
+
 /** Advance 'current' position in dbuff or marker by _len bytes
  *
  * @param[in] _dbuff_or_marker	to advance.
@@ -1898,7 +1901,6 @@ static inline ssize_t _fr_dbuff_out_int64v(int64_t *num, uint8_t **pos_p, fr_dbu
 #define FR_DBUFF_OUT_INT64V_RETURN(_num, _dbuff_or_marker, _len) FR_DBUFF_RETURN(fr_dbuff_out_int64v, _num, _dbuff_or_marker, _len)
 
 /** @} */
-
 #ifdef __cplusplus
 }
 #endif

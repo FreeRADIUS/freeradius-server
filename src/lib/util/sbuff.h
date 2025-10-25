@@ -61,6 +61,7 @@ typedef struct fr_sbuff_ptr_s fr_sbuff_marker_t;
  *
  */
 DIAG_OFF(attributes)
+DIAG_OFF(cast-align)
 typedef enum CC_HINT(flag_enum) {
 	FR_SBUFF_FLAG_EXTENDED			= 0x01,		//!< The last call to extend function actually extended the buffer.
 	FR_SBUFF_FLAG_EXTEND_ERROR		= 0x02		//!< The last call to an extend function resulted in an error.
@@ -843,7 +844,7 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
 /** Return a pointer to the 'end' position of an sbuff or one of its markers
  *
  * @param[in] _sbuff_or_marker	to return the end position of.
- * @return A pointer to the end position of the buffer or marker.
+< * @return A pointer to the end position of the buffer or marker.
  */
 #define fr_sbuff_end(_sbuff_or_marker) \
 	(_Generic((_sbuff_or_marker), \
