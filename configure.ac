@@ -1968,7 +1968,6 @@ if test "x$developer" = "xyes"; then
 	-Wno-date-time \
 	-Wno-disabled-macro-expansion \
 	-Wno-format-pedantic \
-	-Wno-missing-field-initializers \
     	-Wno-cast-align \
     	-Wno-conversion \
     	-Wno-covered-switch-default \
@@ -2004,7 +2003,6 @@ if test "x$developer" = "xyes"; then
       	-Wno-cast-align \
       	-Wno-format-extra-args \
       	-Wno-format-zero-length \
-      	-Wno-missing-field-initializers \
       	-Wpointer-arith \
       	-Wredundant-decls \
       	-Wshadow \
