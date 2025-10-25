@@ -859,5 +859,5 @@ TEST_LIST = {
 	{ "pair_edit_child_value",		test_pair_edit_child_value },
 	{ "pair_edit_child_value_abort",	test_pair_edit_child_value_abort },
 
-	{ NULL }
+	TEST_TERMINATOR
 };

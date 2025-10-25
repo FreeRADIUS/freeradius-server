@@ -524,6 +524,6 @@ TEST_LIST = {
 	{ "fr_dbuff_out",				test_dbuff_out },
 
 
-	{ NULL }
+	TEST_TERMINATOR
 };
 

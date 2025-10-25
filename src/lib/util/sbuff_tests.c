@@ -1642,5 +1642,5 @@ TEST_LIST = {
 	{ "fr_sbuff_next_if_char",		test_next_if_char },
 	{ "fr_sbuff_next_unless_char", 		test_next_unless_char },
 
-	{ NULL }
+	TEST_TERMINATOR
 };

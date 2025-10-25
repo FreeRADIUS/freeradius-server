@@ -832,7 +832,7 @@ TEST_LIST = {
 	{ "test_level_3_build_invalid1",	test_level_3_build_invalid1 },
 	{ "test_level_3_build_invalid2",	test_level_3_build_invalid2 },
 
-	{ NULL }
+	TEST_TERMINATOR
 };
 
 DIAG_ON(declaration-after-statement)

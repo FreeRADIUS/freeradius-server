@@ -525,5 +525,5 @@ TEST_LIST = {
 	all_repetition_tests(find_nth)
 	all_repetition_tests(fr_pair_list_free)
 
-	{ NULL }
+	TEST_TERMINATOR
 };

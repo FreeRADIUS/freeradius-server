@@ -404,5 +404,5 @@ TEST_LIST = {
 	{ "ordered_bad_inserts",	ordered_bad_inserts_test },
 	{ "lst_nested",		lst_nested },
 	{ "ordered_nested",		ordered_nested },
-	{ NULL }
+	TEST_TERMINATOR
 };

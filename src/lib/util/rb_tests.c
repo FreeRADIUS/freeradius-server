@@ -216,5 +216,5 @@ TEST_LIST = {
 	{ "fr_rb_iter_postorder",          test_fr_rb_iter_postorder },
 	{ "fr_rb_iter_delete",             test_fr_rb_iter_delete },
 
-	{ NULL }
+	TEST_TERMINATOR
 };

@@ -578,5 +578,5 @@ TEST_LIST = {
 	{ "queue_cmp_50",	queue_cmp_50 },
 	{ "queue_cmp_100",	queue_cmp_100 },
 	{ "queue_cmp_1000",	queue_cmp_1000 },
-	{ NULL }
+	TEST_TERMINATOR
 };

@@ -212,5 +212,5 @@ TEST_LIST = {
 	{ "hmac-md5",			test_hmac_md5	},
 	{ "hmac-sha1",			test_hmac_sha1	},
 
-	{ NULL }
+	TEST_TERMINATOR
 };

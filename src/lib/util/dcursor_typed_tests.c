@@ -1855,5 +1855,5 @@ TEST_LIST = {
 	{ "current",		test_filter_current },
 	{ "no_match",		test_filter_no_match },
 
-	{ NULL }
+	TEST_TERMINATOR
 };

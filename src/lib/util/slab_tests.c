@@ -804,5 +804,5 @@ TEST_LIST = {
 	{ "test_realloc",	test_realloc },
 	{ "test_child_alloc",	test_child_alloc },
 
-	{ NULL }
+	TEST_TERMINATOR
 };

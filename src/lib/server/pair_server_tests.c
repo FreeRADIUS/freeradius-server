@@ -370,5 +370,5 @@ TEST_LIST = {
 	{ "pair_delete_control",       test_pair_delete_control },
 	{ "pair_delete_session_state", test_pair_delete_session_state },
 
-	{ NULL }
+	TEST_TERMINATOR
 };
