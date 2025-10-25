@@ -3429,7 +3429,7 @@ static fr_trie_command_t commands[] = {
 	{ "verify",	command_verify,	0, 0, false },
 	{ "lineno",	command_lineno, 1, 1, false },
 	{ "clear",	command_clear,	0, 0, false },
-	{ NULL, NULL, 0, 0}
+	{ .name = NULL }
 };
 
 #define MAX_ARGC (16)
