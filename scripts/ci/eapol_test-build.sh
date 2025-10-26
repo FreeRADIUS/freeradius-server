@@ -93,7 +93,7 @@ CLONE_DEPTH="--depth 1"
 # Unless we want a specific commit, in which case there's no way to grab it directly
 [ -z "${HOSTAPD_GIT_COMMIT}" ] || CLONE_DEPTH=""
 
-if ! [ -e "${HOSTAPD_DIR}/.git" ] && ! git clone --branch "${HOSTAPD_GIT_BRANCH}" ${CLONE_DEPTH} http://w1.fi/hostap.git 1>&2 "${TMP_BUILD_DIR}/hostapd"; then
+if ! [ -e "${HOSTAPD_DIR}/.git" ] && ! git clone --branch "${HOSTAPD_GIT_BRANCH}" ${CLONE_DEPTH} http://git.w1.fi/hostap.git 1>&2 "${TMP_BUILD_DIR}/hostapd"; then
     echo "Failed cloning hostapd" 1>&2
     if [ -z "${BUILD_DIR}" ]; then rm -rf "$TMP_BUILD_DIR"; fi
     exit 1
