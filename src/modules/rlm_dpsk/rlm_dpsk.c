@@ -939,7 +939,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	If it's a static file, then check it ourselves.
 	 */
-	if (!inst->dynamic && !cf_file_check(conf, inst->filename, true)) {
+	if (inst->filename && !inst->dynamic && !cf_file_check(conf, inst->filename, true)) {
 		return -1;
 	}
 
