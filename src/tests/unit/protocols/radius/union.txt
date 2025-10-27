@@ -1,3 +1,4 @@
+
 #
 #  UNION tests
 #
@@ -53,6 +54,15 @@ encode-pair Test-Struct2 = { Data = { Sub-Struct = { Nested-Uint1 = 33, Nested-U
 match fd 05 01 21 12
 
 #
+#  Skip the UNION
+#
+pair Test-Struct2 = { Sub-Struct = { Nested-Uint1 = 33, Nested-Uint2 = 18 } }
+match Test-Struct2 = { Data = { Sub-Struct = { Nested-Uint1 = 33, Nested-Uint2 = 18 } } }
+
+encode-pair Test-Struct2 = { Sub-Struct = { Nested-Uint1 = 33, Nested-Uint2 = 18 } }
+match fd 05 01 21 12
+
+#
 #  Wrong Key-Field - it gets over-written
 #
 #  @todo - to we want to update the parser to disallow bare key fields like this?
@@ -71,4 +81,4 @@ match fd 05 02 43 41
 #
 
 count
-match 24
+match 28

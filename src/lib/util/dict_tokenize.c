@@ -1627,6 +1627,19 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		break;
 	}
 
+	/*
+	 *	While UNIONs are named, it's nicer to hide them.
+	 *	Therefore we automatically add an ALIAS in the unions
+	 *	parent, for the child in the union.
+	 */
+	if (parent->type == FR_TYPE_UNION) {
+		fr_assert(parent->parent);
+
+		if (dict_attr_alias_add(parent->parent, da->name, da) < 0) {
+			goto error;
+		}
+	}
+
 	return 0;
 }
 
@@ -1901,7 +1914,7 @@ static int dict_read_process_define(dict_tokenize_ctx_t *dctx, char **argv, int 
 	}
 
 	if (parent->type == FR_TYPE_UNION) {
-		fr_strerror_printf("Parent attribute %s is of type 'union', and can only have STRUCT children",
+		fr_strerror_printf("Parent attribute %s is of type 'union', and cannot use DEFINE for children",
 				   parent->name);
 		return -1;
 	}
