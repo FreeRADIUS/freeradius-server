@@ -608,7 +608,7 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 		break;
 
 	case FR_TYPE_UNION:
-		if (da->type != FR_TYPE_STRUCT) {
+		if (!((da->type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_TLV) || fr_type_is_leaf(da->type))) {
 			fr_strerror_printf("Attributes of type '%s' cannot be children of the 'union' type",
 					   fr_type_to_str(type));
 			return false;

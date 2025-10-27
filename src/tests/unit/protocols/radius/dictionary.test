@@ -50,6 +50,11 @@ MEMBER		Nested-Uint1				uint8
 MEMBER		Nested-Uint2				uint8
 END Test-Struct2.Data
 
+BEGIN Test-Struct2.Data
+ATTRIBUTE	Thingy					2	tlv
+ATTRIBUTE	Child					.1	string
+END Test-Struct2.Data
+
 ATTRIBUTE	Unit-TLV				254	tlv
 ATTRIBUTE	Milliseconds				254.1	date precision=milliseconds
 ATTRIBUTE	Delta-MSec				254.2	time_delta precision=milliseconds
