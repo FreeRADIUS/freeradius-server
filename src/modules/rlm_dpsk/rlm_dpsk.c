@@ -143,7 +143,7 @@ static const CONF_PARSER module_config[] = {
 	{ "cache_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_dpsk_t, cache_size), "0" },
 	{ "cache_lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_dpsk_t, cache_lifetime), "0" },
 
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT,  rlm_dpsk_t, filename), NULL },
+	{ "filename", FR_CONF_OFFSET(PW_TYPE_STRING,  rlm_dpsk_t, filename), NULL },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -527,6 +527,12 @@ stage2:
 			}
 
 			filename = filename_buffer;
+
+			if (!cf_file_check(inst, filename, true)) {
+				RDEBUG("Cannot open %s", filename);
+				return RLM_MODULE_FAIL;
+			}
+
 		} else {
 			fr_assert(filename == inst->filename);
 		}
@@ -927,6 +933,13 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	}
 
 	inst->dynamic = inst->filename && (strchr(inst->filename, '%') != NULL);
+
+	/*
+	 *	If it's a static file, then check it ourselves.
+	 */
+	if (!inst->dynamic && !cf_file_check(inst, inst->filename, true)) {
+		return -1;
+	}
 
 	return 0;
 }
