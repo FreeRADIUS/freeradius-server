@@ -94,17 +94,17 @@ statement calling the policy (by name) can be commented out in
 ====
 
 To use an instance of `files` to map `Network-Subnet` to reply options
-and the pool name create `<raddb>/mods-enabled/dhcp_network` containing
+and the pool name create `<raddb>/mods-enabled/dhcp_subnet` containing
 
 [source,config]
 ----
-files dhcp_network {
+files dhcp_subnet {
 	key = Network-Subnet
-	filename = ${modconfdir}/files/dhcp_network
+	filename = ${modconfdir}/files/dhcp_subnet
 }
 ----
 
-Then create `<raddb>/mods-config/files/dhcp_network` with the mapping between
+Then create `<raddb>/mods-config/files/dhcp_subnet` with the mapping between
 subnets and options.
 
 For the configuration above you may deduce the following configuration, which
