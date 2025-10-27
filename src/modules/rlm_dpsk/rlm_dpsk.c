@@ -135,6 +135,7 @@ struct rlm_dpsk_s {
 	DICT_ATTR const		*ssid;
 	DICT_ATTR const		*anonce;
 	DICT_ATTR const		*frame;
+	CONF_SECTION		*cs;
 };
 
 static const CONF_PARSER module_config[] = {
@@ -528,7 +529,7 @@ stage2:
 
 			filename = filename_buffer;
 
-			if (!cf_file_check(inst, filename, true)) {
+			if (!cf_file_check(inst->cs, filename, true)) {
 				RDEBUG("Cannot open %s", filename);
 				return RLM_MODULE_FAIL;
 			}
@@ -933,11 +934,12 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	}
 
 	inst->dynamic = inst->filename && (strchr(inst->filename, '%') != NULL);
+	inst->cs = conf;
 
 	/*
 	 *	If it's a static file, then check it ourselves.
 	 */
-	if (!inst->dynamic && !cf_file_check(inst, inst->filename, true)) {
+	if (!inst->dynamic && !cf_file_check(conf, inst->filename, true)) {
 		return -1;
 	}
 
