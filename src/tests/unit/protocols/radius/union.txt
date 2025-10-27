@@ -60,5 +60,15 @@ match fd 05 01 21 12
 encode-pair Test-Struct2 = { Key-Field = 2, Data = { Sub-Struct = { Nested-Uint1 = 33, Nested-Uint2 = 18 } } }
 match fd 05 01 21 12
 
+decode-pair fd 05 02 43 41
+match Test-Struct2 = { Key-Field = ::CC, Data = { CC = "CA" } }
+
+encode-pair -
+match fd 05 02 43 41
+
+#
+#  @todo - add tests for TLV (only one can be used), and for arrays of leaf attributes.
+#
+
 count
-match 20
+match 24

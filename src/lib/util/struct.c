@@ -43,6 +43,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	unsigned int		offset = 0;
 	TALLOC_CTX		*child_ctx;
 	ssize_t			slen;
+	size_t			child_length;
 
 	if (data_len == 0) {
 		fr_strerror_const("struct decoder was passed zero bytes of data");
@@ -141,8 +142,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	for (child_num = 1;
 	     (p < end) && (child = fr_dict_attr_child_by_num(parent, child_num)) != NULL;
 	     child_num++) {
-		size_t child_length;
-
 		FR_PROTO_TRACE("Decoding struct %s child %s (%d)", parent->name, child->name, child->attr);
 		FR_PROTO_HEX_DUMP(p, (end - p), "fr_struct_from_network - remaining %zu", (size_t) (end - p));
 
@@ -390,15 +389,70 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			}
 
 			p = end;
+
 		} else {
-			FR_PROTO_TRACE("Decoding child structure %s", child->name);
+			switch (child->type) {
+			case FR_TYPE_STRUCT:
+				FR_PROTO_TRACE("Decoding child structure %s", child->name);
+				slen = fr_struct_from_network(child_ctx, child_list, child, p, end - p,
+							      decode_ctx, decode_value, decode_tlv);
+				break;
 
-			fr_assert(child->type == FR_TYPE_STRUCT);
+			case FR_TYPE_TLV:
+				if (!decode_tlv) {
+					FR_PROTO_TRACE("Failed to pass decode_tlv() for child tlv %s", child->name);
+					goto unknown_child;
+				}
 
-			slen = fr_struct_from_network(child_ctx, child_list, child, p, end - p,
-						      decode_ctx, decode_value, decode_tlv);
+				FR_PROTO_TRACE("Decoding child tlv %s", child->name);
+
+				slen = decode_tlv(child_ctx, child_list, child, p, end - p, decode_ctx);
+				break;
+
+			case FR_TYPE_LEAF:
+				fr_assert(decode_value);
+
+				FR_PROTO_TRACE("Decoding child %s", child->name);
+
+				/*
+				 *	@todo - unify this code with the code above, but for now copying is
+				 *	easier.
+				 */
+
+				/*
+				 *	The child is either unknown width, OR known width with a length that is too large for
+				 *	the "length" field, OR is known width via some kind of protocol-specific length header.
+				 */
+				if (!child->flags.length || child->flags.array) {
+					child_length = end - p;
+
+				} else {
+					child_length = child->flags.length;
+
+					/*
+					 *	If this field overflows the input, then *all*
+					 *	of the input is suspect.
+					 */
+					if (child_length > (size_t) (end - p)) {
+						FR_PROTO_TRACE("fr_struct_from_network - child length %zu overflows buffer", child_length);
+						goto remainder_raw;
+					}
+				}
+
+				if (child->flags.array) {
+					slen = fr_pair_array_from_network(child_ctx, child_list, child, p, child_length, decode_ctx, decode_value);
+				} else {
+					slen = decode_value(child_ctx, child_list, child, p, child_length, decode_ctx);
+				}
+				break;
+
+			default:
+				FR_PROTO_TRACE("Unknown data type %s in child %s", fr_type_to_str(child->type), child->name);
+				goto unknown_child;
+			}
+
 			if (slen <= 0) {
-				FR_PROTO_TRACE("substruct %s decoding failed", child->name);
+				FR_PROTO_TRACE("failed decoding child %s", child->name);
 				goto unknown_child;
 			}
 			p += slen;
@@ -549,8 +603,6 @@ static ssize_t encode_union(fr_dbuff_t *dbuff, fr_dict_attr_t const *wrapper,
 		return 0;
 	}
 
-	fr_assert(child->vp_type == FR_TYPE_STRUCT);
-
 	/*
 	 *	There's a key VP, we find the matching child struct, and then set the cursor to encode just
 	 *	that child.
@@ -618,8 +670,25 @@ static ssize_t encode_union(fr_dbuff_t *dbuff, fr_dict_attr_t const *wrapper,
 	fr_proto_da_stack_build(da_stack, child->da);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
-	slen = fr_struct_to_network(&work_dbuff, da_stack, depth + 2,
-				    &child_cursor, encode_ctx, encode_value, encode_pair);
+	switch (child->da->type) {
+	case FR_TYPE_STRUCT:
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth + 2,
+					    &child_cursor, encode_ctx, encode_value, encode_pair);
+		break;
+
+	case FR_TYPE_TLV:
+		slen = encode_tlv(&work_dbuff, child->da, da_stack, depth + 2, &child_cursor, encode_ctx, encode_value, encode_pair);
+		break;
+
+	case FR_TYPE_LEAF:
+		slen = encode_value(&work_dbuff, da_stack, depth + 2, &child_cursor, encode_ctx);
+		break;
+
+	default:
+		slen = 0;
+		break;
+	}
+
 	if (slen < 0) return slen;
 
 	/*
