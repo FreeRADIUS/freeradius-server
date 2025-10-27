@@ -210,29 +210,49 @@ static size_t ftp_response_body(void *in, size_t size, size_t nmemb, void *userd
 
 	char const		*start = in, *p = start, *end = p + (size * nmemb);
 	char			*out_p;
-	size_t			needed;
+	size_t			needed, chunk_len, total;
 
 	if (start == end) return 0; 	/* Nothing to process */
 
-	if ((ctx->instance->max_resp_size > 0) && ((ctx->used + (end - p)) > ctx->instance->max_resp_size)) {
-			REDEBUG("Incoming data (%zu bytes) exceeds max_body_in (%zu bytes).  "
-				"Forcing body to type 'invalid'", ctx->used + (end - p), ctx->instance->max_resp_size);
-			ctx->state = WRITE_STATE_DISCARD;
-			TALLOC_FREE(ctx->buffer);
-			goto end;
+	/* If we already decided to discard, drop everything */
+	if (ctx->state == WRITE_STATE_DISCARD) return (end - start);
+
+	chunk_len = (size_t)(end - p);
+	total = ctx->used + chunk_len;
+
+	if ((ctx->instance->max_resp_size > 0) && (total > ctx->instance->max_resp_size)) {
+		REDEBUG("Incoming data (%zu bytes) exceeds max_body_in (%zu bytes).  Forcing discard",
+			total, ctx->instance->max_resp_size);
+		ctx->state = WRITE_STATE_DISCARD;
+		TALLOC_FREE(ctx->buffer);
+		ctx->alloc = 0;
+		ctx->used  = 0;
+		goto end;
 	}
 
-	needed = ROUND_UP(ctx->used + (end - p), FTP_BODY_ALLOC_CHUNK);
+	/* If buffer was freed earlier, drop stale used offset */
+	if (!ctx->buffer && ctx->used) {
+		ctx->used = 0;
+		total = chunk_len;
+	}
+
+	/* Allocate capacity for data + trailing NUL */
+	needed = ROUND_UP(total + 1, FTP_BODY_ALLOC_CHUNK);
 	if (needed > ctx->alloc) {
-		MEM(ctx->buffer = talloc_bstr_realloc(NULL, ctx->buffer, needed));
+		if (ctx->buffer) {
+			/* bstr realloc grows to inlen + 1, so request needed - 1 */
+			MEM(ctx->buffer = talloc_bstr_realloc(NULL, ctx->buffer, needed - 1));
+		} else {
+			/* NULL path allocates exactly inlen bytes, so request full needed */
+			MEM(ctx->buffer = talloc_bstr_realloc(NULL, NULL, needed));
+		}
 		ctx->alloc = needed;
 	}
 
 	out_p = ctx->buffer + ctx->used;
-	memcpy(out_p, p, (end - p));
-	out_p += (end - p);
-	*out_p = '\0';
-	ctx->used += (end - p);
+	memcpy(out_p, p, chunk_len);
+	ctx->used = total;
+	ctx->buffer[ctx->used] = '\0';
 	ctx->state = WRITE_STATE_POPULATED;
 
 end:
