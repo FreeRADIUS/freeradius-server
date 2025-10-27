@@ -1972,7 +1972,7 @@ int cf_pair_in_table(int32_t *out, fr_table_num_sorted_t const *table, size_t ta
 	/*
 	 *	Trim the final ", "
 	 */
-	MEM(list = talloc_bstr_realloc(NULL, list, talloc_array_length(list) - 3));
+	MEM(list = talloc_bstr_realloc(NULL, list, talloc_array_length(list) - 2));
 
 	cf_log_err(cp, "Invalid value \"%s\". Expected one of %s", cf_pair_value(cp), list);
 
