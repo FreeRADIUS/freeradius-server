@@ -249,6 +249,11 @@ static size_t ftp_response_body(void *in, size_t size, size_t nmemb, void *userd
 		ctx->alloc = needed;
 	}
 
+    /* Should never happen, but quiet static analyzers */
+	if (unlikely(!ctx->buffer)) {
+		MEM(ctx->buffer = talloc_bstr_realloc(NULL, NULL, ctx->alloc ? ctx->alloc : needed));
+	}
+
 	out_p = ctx->buffer + ctx->used;
 	memcpy(out_p, p, chunk_len);
 	ctx->used = total;
