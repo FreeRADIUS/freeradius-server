@@ -93,12 +93,12 @@ static ssize_t fr_bio_haproxy_v1(fr_bio_haproxy_t *my)
 		}
 
 		if (*p < ' ') {
-			if ((end - p) < 3) goto fail;
+			if ((end - p) < 2) goto fail;
 
-			if (memcmp(p, "\r\n", 3) != 0) goto fail;
+			if (memcmp(p, "\r\n", 2) != 0) goto fail;
 
 			*p = '\0';
-			end = p + 3;
+			end = p + 2;
 			rcode = 0;
 			break;
 		}
@@ -107,7 +107,7 @@ static ssize_t fr_bio_haproxy_v1(fr_bio_haproxy_t *my)
 
 		*(p++) = '\0';
 	}
-	
+
 	/*
 	 *	Didn't end with CRLF and zero.
 	 */
