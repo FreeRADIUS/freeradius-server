@@ -10,17 +10,17 @@ defined by some manually aggregation related devices, typically based on lists
 of MAC address).
 
 The sample DHCP configuration provided with FreeRADIUS makes use of an internal
-attribute `DHCP-Group-Name` to support the setting of different options for
+attribute `Group-Name` to support the setting of different options for
 different groups of devices.
 
 In general the groups to which a device belongs is determined during the
 processing of a request and these are added as instances of the
-`DHCP-Group-Name` attribute. This may be by performing a test on one or more
+`Group-Name` attribute. This may be by performing a test on one or more
 request parameters (akin to a "class"), hash-based lookup of up all of part of
 an attribute in a local list (akin to a "subclass"), or doing the same using a
 remote datastore (SQL, LDAP, REST API, etc).
 
-FreeRADIUS can then iterate over `DHCP-Group-Name` to set group-specific
+FreeRADIUS can then iterate over `Group-Name` to set group-specific
 options.
 
 We describe some of these options in more detail.
@@ -107,13 +107,22 @@ The `files` module that has already been described for global, network and
 subnet options can also be used to apply options to groups of clients.
 
 Firstly we must defined a mapping from a set of clients clients to their
-respective groups.  One option for this is to use the `passwd` module, for
-which a sample configuration is included.
+respective groups.  One option for this is to use the `passwd` module.
 
-Firstly symlink or copy the module configuration
-`<raddb>/mods-available/dhcp_passwd` into `<raddb>/mods-enabled/`.  The
-suggested configuration expects the group membership file to be in
-`<raddb>/mods-config/files/dhcp_groups` and take the form of:
+Create `<raddb>/mods-enabled/dhcp_groups`:
+
+[source,config]
+----
+passwd dhcp_groups {
+	filename = ${modconfdir}/files/dhcp_groups
+	format = "~Group-Name:*,Client-Hardware-Address"
+	hash_size = 100
+	allow_multiple_keys = yes
+	delimiter = '|'
+}
+----
+
+Then create `<raddb>/mods-config/files/dhcp_groups`
 
 [source,config]
 ----
@@ -127,13 +136,21 @@ character and then a comma-separated list of hardware addresses.
 The `allow_multiple_keys` option allows for a host to be a member of
 more than one group.
 
-Sample configuration for looking up group options is contained in
-`<raddb>/policy.d/dhcp` in the `dhcp_group_options` policy and in
-`<raddb>/mods-available/dhcp_files` as the `dhcp_set_group_options` instance.
+Having mapped the client to a group, an instance of `files` can be used to
+add reply options.
 
-The same data file `<raddb>/mods-config/files/dhcp` is used to lookup
-group options as was used for global and network options.  In this instance,
-add entries with the group name as the key such as:
+Create an instance of `files` - `<raddb>/mods-enabled/dhcp_group_options`:
+
+[source,config]
+----
+files dhcp_group_options {
+	filename = ${modconfdir}/files/dhcp_group_options
+	key = Group-Name
+}
+----
+
+Then create the data file '<raddb>/mods-config/files/dhcp_group_options'
+containing entries with the group name as the key such as:
 
 [source,config]
 ----

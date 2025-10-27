@@ -108,5 +108,5 @@ FreeRADIUS database, using the mac as the identifier:
 
 [source,shell]
 ----
-rlm_iscfixed2ippool -c /etc/dhcp/dhcpd.conf -t fr_ippool -k mac -f /usr/local/etc/raddb
+rlm_iscfixed2ippool -c /etc/dhcp/dhcpd.conf -t fr_ippool -k mac -f /etc/raddb
 ----

@@ -66,7 +66,7 @@ Instead we should have previously populated a single pool containing all of the
 IP addresses from both ranges.
 ====
 
-FreeRADIUS derives a request attribute called `DHCP-Network-Subnet` which
+FreeRADIUS derives a request attribute called `Network-Subnet` which
 honours the standard DHCP process for designating the choice of network, in
 order of preference:
 
@@ -75,13 +75,13 @@ order of preference:
   3. Gateway IP Address ("giaddr")
   4. Client IP Address ("ciaddr", only set for unicast packets)
 
-If `DHCP-Network-Subnet` contains an IP address then this should be used as
+If `Network-Subnet` contains an IP address then this should be used as
 the basis of choosing a network.  When there is no address in this attribute it
 can be assumed that the packet has been received from a client on the local
 LAN.
 
 The `files` module in FreeRADIUS provides a simple method to map
-`DHCP-Network-Subnet` to the corresponding pool based on its network
+`Network-Subnet` to the corresponding pool based on its network
 membership, setting the appropriate options to return to clients.  It can also
 set the global options.
 
@@ -93,12 +93,19 @@ statement calling the policy (by name) can be commented out in
 `<raddb>/sites-enabled/dhcp`.
 ====
 
-To use the provided example `files` module instance for DHCP, symlink or copy
-`<raddb>/mods-available/dhcp_files` into `<raddb>/mods-enabled/` and then
-uncomment the calls to `dhcp_network` in `<raddb>/sites-enabled/dhcp`.
+To use an instance of `files` to map `Network-Subnet` to reply options
+and the pool name create `<raddb>/mods-enabled/dhcp_network` containing
 
-A template configuration file `<raddb>/mods-config/files/dhcp` is also
-provided which should be adapted to suit your network topology.
+[source,config]
+----
+files dhcp_network {
+	key = Network-Subnet
+	filename = ${modconfdir}/files/dhcp_network
+}
+----
+
+Then create `<raddb>/mods-config/files/dhcp_network` with the mapping between
+subnets and options.
 
 For the configuration above you may deduce the following configuration, which
 has been extended to include an initial default section for requests originating
@@ -106,14 +113,14 @@ from directly-connected clients on the local LAN (192.168.20/24):
 
 [source,config]
 ----
-network IP-Pool.Name := "local"
+DEFAULT IP-Pool.Name := "local"
         Domain-Name := "example.org",
         Subnet-Mask := 255.255.255.0,
         Router-Address := 192.168.20.1,
         Domain-Name-Server := 192.168.20.2,
         Fall-Through := yes
 
-network Network-Subnet < 10.10.0.0/16, IP-Pool.Name := "remote"
+10.10.0.0/16 IP-Pool.Name := "remote"
         Subnet-Mask := 255.0.0.0,
         Router-Address := 10.10.0.1,
         Domain-Name-Server := 10.10.0.2,
@@ -122,15 +129,14 @@ network Network-Subnet < 10.10.0.0/16, IP-Pool.Name := "remote"
 ----
 
 Each block in the file starts with a line beginning with the key to be matched.
-In this case the keyword of `network` (defined earlier in `dhcp_networks`
-configuration) is used for each block, so each of the above blocks is a
-candidate during the search.
+In this case the subnet which Network-Subnet will be matched into.  When the
+attribute being used as a key is an IPv4 prefix (as with `Network-Subnet`)
+then the matching is done using a closest containing matches.  So, in this
+case, if `Network-Subnet` contains `10.10.3.5/32` it will match the entry with
+the key value `10.10.0.0/16`.
 
 There may be further filtering of the candidates in the form of `<Attribute>
-<op> <Value>`.  In the case of the second block we match the
-`Network-Subnet` to an enclosing subnet with
-`Network-Subnet < <subnet>`.  Additional filters could be added as
-required, comma separated.
+<op> <Value>`.
 
 Following the filters on the first line, attributes in the `control` list can
 be set using the syntax of `<Attribute> := <Value>`.  In this example this is
@@ -143,7 +149,7 @@ comma.
 
 The special option `Fall-Through` determines whether, following a match,
 other records are checked for a match.  All lookups will match the entry
-with a key of `network` and no further filtering, so `Fall-Through`
+with a key of `DEFAULT` and no further filtering, so `Fall-Through`
 is set on that record in order that the other records will be tested
 to find subnet matches.
 
@@ -151,7 +157,7 @@ to find subnet matches.
 
 For our example, we consider a request arriving from a DHCP relay within
 10.10.0.0/16. In the absence of any specific DHCP subnet selection options in
-the request, the `DHCP-Network-Subnet` attribute is calculated to be the
+the request, the `Network-Subnet` attribute is calculated to be the
 relay's IP address, say 10.10.0.1.
 
 The request is matched against the first block, setting an initial pool name to
@@ -165,7 +171,7 @@ setting it to "remote", overrides some other global defaults and sets the lease
 time to 7200 seconds. `Fall-Through` is not set, so we are now done with
 deriving the pool name and network options.
 
-When the `dhcp_sqlippool` module is called during DHCP DISCOVER processing (in
+When the `sqlippool` module is called during `recv Discover` processing (in
 `<raddb>/sites-enabled/dhcp`) the `remote` pool will be used for IP address
 allocation.
 
