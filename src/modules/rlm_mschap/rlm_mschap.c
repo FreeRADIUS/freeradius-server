@@ -1516,7 +1516,7 @@ static int CC_HINT(nonnull(1, 2, 3)) nt_password_find(TALLOC_CTX *ctx, fr_pair_t
 			/*
 			 *	If we're doing internal auth, then this is an issue
 			 */
-			RWDEBUG2("No control.%s.%s or control.%s.%s found.  Cannot create Password.NT",
+			REDEBUG2("No control.%s.%s or control.%s.%s found.  Cannot create Password.NT",
 				 attr_cleartext_password->parent->name, attr_cleartext_password->name,
 				 attr_nt_password->parent->name, attr_nt_password->name);
 			return -1;
