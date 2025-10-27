@@ -386,7 +386,7 @@ error:
 /*
  *	Do some checks on the file
  */
-static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
+bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 {
 	cf_file_t *file;
 	CONF_DATA *cd;
