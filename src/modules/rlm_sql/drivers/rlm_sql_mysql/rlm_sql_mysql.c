@@ -636,7 +636,7 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
  *	- Number of errors written to the #sql_log_entry_t array.
  *	- -1 on failure.
  */
-static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
+static ssize_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			   rlm_sql_mysql_conn_t *conn)
 {
 	MYSQL_RES		*result;
@@ -731,7 +731,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	 *	was that the server was unavailable.
 	 */
 	if ((outlen > 1) && (sql_check_error(conn->sock, 0) != RLM_SQL_RECONNECT)) {
-		size_t ret;
+		ssize_t ret;
 		unsigned int msgs;
 
 		switch (inst->warnings) {
