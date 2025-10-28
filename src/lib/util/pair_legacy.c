@@ -519,20 +519,9 @@ redo:
 			goto leaf;
 		} else {
 		leaf:
-			/*
-			 *	In the common case, we jump ahead one level.
-			 *
-			 *	But for ALIAS, we may jump ahead multiple levels.
-			 */
-			if ((relative->da->depth + 1) == da->depth) {
-				if (fr_pair_append_by_da(relative->ctx, &vp, relative->list, da) < 0) {
-					return fr_sbuff_error(&our_in);
-				}
-			} else {
-				vp = fr_pair_afrom_da_depth_nested(relative->ctx, relative->list, da,
-								   relative->da->depth);
-				if (!vp) return fr_sbuff_error(&our_in);
-			}
+			vp = fr_pair_afrom_da_depth_nested(relative->ctx, relative->list, da,
+							   relative->da->depth);
+			if (!vp) return fr_sbuff_error(&our_in);
 		}
 
 		fr_assert(vp != NULL);
