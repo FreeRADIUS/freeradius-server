@@ -111,7 +111,6 @@ struct rlm_proxy_rate_limit_s {
 	uint32_t			idle_timeout;
 	uint32_t			num_subtables;
 	uint32_t			window;
-
 	rlm_proxy_rate_limit_table_t	tables[MAX_NUM_SUBTABLES];
 };
 
@@ -134,6 +133,7 @@ static rlm_proxy_rate_limit_table_t* derive_key_and_table(rlm_proxy_rate_limit_t
 
 	uint32_t	hash;
 	char		hash_hex[9];
+	char		*p;
 	VALUE_PAIR	*vp1, *vp2;
 
 	fr_assert(*key_len >= 6);	/* Satisfy analyser */
@@ -157,15 +157,29 @@ static rlm_proxy_rate_limit_table_t* derive_key_and_table(rlm_proxy_rate_limit_t
 	}
 
 	/*
-	 *	key will be "HHHHHH{User-Name}{Calling-Station-Id}"
+	 *	key will be "HHHHHHL{User-Name}L{Calling-Station-Id}"
+	 *
+	 *	We prefix the key with a hash of the User-Name and
+	 *	Calling-Station-ID, which makes the RB tree generally
+	 *	much more balanced.
+	 *
+	 *	We prefix the User-Name and Calling-Station-ID strings
+	 *	with their lengths, so that we can later print out
+	 *	information about the keys which are limited or not
+	 *	limited.
 	 */
-        memcpy(key + 6, vp1->vp_strvalue, vp1->vp_length);
-	memcpy(key + 6 + vp1->vp_length, vp2->vp_strvalue, vp2->vp_length);
-	*key_len = 6 + vp1->vp_length + vp2->vp_length;
+	p = key + 6;
+	*(p++) = vp1->vp_length;
+	memcpy(p, vp1->vp_strvalue, vp1->vp_length);
+	p += vp1->vp_length;
+
+	*(p++) = vp2->vp_length;
+	memcpy(p, vp2->vp_strvalue, vp2->vp_length);
+	*key_len = 8 + vp1->vp_length + vp2->vp_length;
 
 	/*
 	 *	Stable map of the key to a 4-octet value. Provides
-	 *	good distribution with similar prefixes.
+	 *	a better distribution of keys in the RB tree.
 	 */
 	hash = fr_hash(key + 6, (*key_len) - 6);
 
@@ -177,7 +191,7 @@ static rlm_proxy_rate_limit_table_t* derive_key_and_table(rlm_proxy_rate_limit_t
 	memcpy(key, hash_hex, 6);
 
 	/*
-	 *	Last octet used to pick one of the tables.
+	 *	The last octet used to pick one of the tables.
 	 */
 	return &inst->tables[(hash & 0xff) % inst->num_subtables];
 
@@ -190,7 +204,7 @@ static rlm_proxy_rate_limit_table_t* derive_key_and_table(rlm_proxy_rate_limit_t
 static int CC_HINT(nonnull) mod_common(void * instance, REQUEST *request)
 {
 	rlm_proxy_rate_limit_t		*inst = instance;
-	char				key[512];
+	char				key[512 + 8];
 	size_t				key_len = sizeof(key);
 	rlm_proxy_rate_limit_table_t	*table;
 	rlm_proxy_rate_limit_entry_t	*entry, my_entry;
@@ -248,12 +262,20 @@ static int CC_HINT(nonnull) mod_common(void * instance, REQUEST *request)
 		 *	Delete the entry.
 		 */
 		PTHREAD_MUTEX_UNLOCK(&table->mutex);
-		rbtree_deletebydata(table->tree, entry);
-		return 0;
+		goto expires;
 	}
 
 	if (entry->expires <= request->timestamp) {
-		RDEBUG3("Rate limit entry %.*s (%d) has expired", 6, entry->key, entry->table->id);
+		char const *name, *calling_station_id;
+
+	expires:
+		name = entry->key + 6;
+		calling_station_id = name + *name;
+
+		INFO("Proxy-Rate-Limit expired for User-Name = %.*s, Calling-Station-Id = %.*s",
+		     (int) *name, name + 1,
+		     (int) *calling_station_id, calling_station_id + 1);
+
 		rbtree_deletebydata(table->tree, entry);
 		return 0;
 	};
@@ -346,7 +368,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void * instance, REQUEST *requ
 static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *request)
 {
 	rlm_proxy_rate_limit_t		*inst = instance;
-	char				key[512];
+	char				key[512 + 8];
 	size_t				key_len = sizeof(key);
 	rlm_proxy_rate_limit_table_t	*table;
 	rlm_proxy_rate_limit_entry_t	*entry, my_entry;
@@ -412,11 +434,21 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 		 */
 		if (!entry->active && entry->last_id != request->packet->id &&
 		    request->timestamp - entry->last_reject < 1) {
+			char const *name, *calling_station_id;
+
 			entry->active = true;
 			entry->count = 0;
 			RDEBUG("Rate limit entry %.*s (%d) activated", 6, entry->key, entry->table->id);
 
-			(void) pair_make_config("Proxy-Rate-Limit", "yes", T_OP_SET);
+			(void) pair_make_config("Proxy-Rate-Limit", "yes", T_OP_SET);			
+
+			name = entry->key + 6;
+			calling_station_id = name + *name;
+
+			INFO("Proxy-Rate-Limit enabled for User-Name = %.*s, Calling-Station-Id = %.*s",
+			     (int) *name, name + 1,
+			     (int) *calling_station_id, calling_station_id + 1);
+
 		} else {
 			RDEBUG3("Rate limit entry %.*s (%d) updated", 6, entry->key, entry->table->id);
 		}
