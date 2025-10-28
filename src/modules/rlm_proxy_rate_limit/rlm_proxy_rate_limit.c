@@ -55,6 +55,7 @@ typedef struct {
 	int			id;
 	rbtree_t		*tree;
 	fr_dlist_t		expiry_list;
+	time_t			last_checked;
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t		mutex;
 #endif
@@ -112,7 +113,6 @@ struct rlm_proxy_rate_limit_s {
 	uint32_t			window;
 
 	rlm_proxy_rate_limit_table_t	tables[MAX_NUM_SUBTABLES];
-
 };
 
 static const CONF_PARSER module_config[] = {
@@ -206,7 +206,49 @@ static int CC_HINT(nonnull) mod_common(void * instance, REQUEST *request)
 	my_entry.key_len = key_len;
 	entry = rbtree_finddata(table->tree, &my_entry);
 
+	/*
+	 *	If nothing is found, then once a second we clean up
+	 *	old entries.
+	 */
 	if (!entry) {
+		time_t now;
+
+		/*
+		 *	We don't really care about mutex locks here.
+		 *	If we get this check wrong and there's only
+		 *	one entry, we can clean it up later after
+		 *	receiving another packet.
+		 */
+		if (rbtree_num_elements(table->tree) == 0) return 0;
+
+		/*
+		 *	We've already cleaned up the list this second,
+		 *	don't do it again.
+		 */
+		PTHREAD_MUTEX_LOCK(&table->mutex);
+		if (table->last_checked == request->timestamp) {
+			PTHREAD_MUTEX_UNLOCK(&table->mutex);
+			return 0;
+		}
+
+		/*
+		 *	Grab the first entry, and see if it has
+		 *	expired.
+		 */
+		entry = fr_dlist_head(&table->expiry_list);
+
+		table->last_checked = now = time(NULL);
+
+		if (!entry || (entry->expires >= now)) {
+			PTHREAD_MUTEX_UNLOCK(&table->mutex);
+			return 0;
+		}
+
+		/*
+		 *	Delete the entry.
+		 */
+		PTHREAD_MUTEX_UNLOCK(&table->mutex);
+		rbtree_deletebydata(table->tree, entry);
 		return 0;
 	}
 
