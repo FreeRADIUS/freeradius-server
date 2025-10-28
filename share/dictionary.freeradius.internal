@@ -17,6 +17,7 @@ ATTRIBUTE	Fall-Through				500	integer
 ATTRIBUTE	Relax-Filter				501	integer
 ATTRIBUTE	Exec-Program				502	string
 ATTRIBUTE	Exec-Program-Wait			503	string
+ATTRIBUTE	Proxy-Rate-Limit			504	bool
 
 #	These attributes CANNOT go in the reply item list.
 

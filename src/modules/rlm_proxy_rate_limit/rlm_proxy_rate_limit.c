@@ -415,6 +415,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 			entry->active = true;
 			entry->count = 0;
 			RDEBUG("Rate limit entry %.*s (%d) activated", 6, entry->key, entry->table->id);
+
+			(void) pair_make_config("Proxy-Rate-Limit", "yes", T_OP_SET);
 		} else {
 			RDEBUG3("Rate limit entry %.*s (%d) updated", 6, entry->key, entry->table->id);
 		}
