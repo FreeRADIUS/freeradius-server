@@ -198,15 +198,20 @@ static int CC_HINT(nonnull) mod_common(void * instance, REQUEST *request)
 	rlm_proxy_rate_limit_table_t	*table;
 	rlm_proxy_rate_limit_entry_t	*entry, my_entry;
 
-	if (!(table = derive_key_and_table(inst, request, key, &key_len)))
+	/*
+	 *	Nothing in the packet lets us find the correct table.
+	 */
+	if (!(table = derive_key_and_table(inst, request, key, &key_len))) {
 		return 0;
+	}
 
 	my_entry.key = key;
 	my_entry.key_len = key_len;
 	entry = rbtree_finddata(table->tree, &my_entry);
 
-	if (!entry)
+	if (!entry) {
 		return 0;
+	}
 
 	if (entry->expires <= request->timestamp) {
 		RDEBUG3("Rate limit entry %.*s (%d) has expired", 6, entry->key, entry->table->id);
@@ -222,8 +227,9 @@ static int CC_HINT(nonnull) mod_common(void * instance, REQUEST *request)
 	 *	Limit only when active and for new requests, not
 	 *	retransmissions.
 	 */
-	if (!entry->active || entry->last_id == request->packet->id)
+	if (!entry->active || entry->last_id == request->packet->id) {
 		return 0;
+	}
 
 	RDEBUG("Active rate limit entry %.*s (%d) matched for new request. Cancelling proxy "
 		"and sending Access-Reject. Instance %d.", 6, entry->key, entry->table->id, entry->count);
@@ -361,9 +367,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 	} else {
 
 		/*
-		 * Trigger suppression after two Access-Rejects from a home server
-		 * for different requests (not retransmissions) are received within
-		 * the same second.
+		 *	Trigger suppression after two Access-Rejects from a home server
+		 *	for different requests (not retransmissions) are received within
+		 *	the same second.
 		 */
 		if (!entry->active && entry->last_id != request->packet->id &&
 		    request->timestamp - entry->last_reject < 1) {
@@ -378,8 +384,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 		entry->last_id = request->packet->id;
 
 		/*
-		 * Ditto comment above ("request->timestamp + inst->idle_timeout") should we later
-		 * decide to proactively free expiry list entries.
+		 *	Ditto comment above ("request->timestamp + inst->idle_timeout") should we later
+		 *	decide to proactively free expiry list entries.
 		 */
 		entry->expires = request->timestamp +
 			(entry->active ? inst->idle_timeout : 1);
