@@ -4,13 +4,13 @@ We can verify that FreeRADIUS is providing a DHCP service using the
 `dhcpclient` tool that is included with the FreeRADIUS distribution.
 
 Temporarily configure FreeRADIUS to issue a single static IP address to all
-clients by updating the `dhcp DHCP-Discover` section in the `dhcp` virtual
+clients by updating the `recv Discover` section in the `dhcp` virtual
 server to include the following:
 
 [source,unlang]
 ----
 update reply {
-    DHCP-Your-IP-Address := 1.2.3.4
+    Your-IP-Address := 1.2.3.4
 }
 ----
 
@@ -19,9 +19,9 @@ Define a sample DHCP packet as follows:
 [source,shell]
 ----
 cat <<EOF > dhcp-packet.txt
-DHCP-Message-Type := DHCP-Discover
-DHCP-Client-Hardware-Address := 02:01:aa:bb:cc:dd
-DHCP-Client-Identifier := abc123
+Message-Type := Discover
+Client-Hardware-Address := 02:01:aa:bb:cc:dd
+Client-Identifier := abc123
 EOF
 ----
 
@@ -68,17 +68,17 @@ for replies:
 ===================================================
  dhcpclient: ...
  ----------------------------------------------------------------------
- DHCP-Opcode = 0x01
- DHCP-Hardware-Type = 0x01
- DHCP-Hardware-Address-Length = 0x06
- DHCP-Hop-Count = 0x00
- DHCP-Transaction-Id = 0x5e0bbfab
- DHCP-Number-of-Seconds = 0x0000
- DHCP-Flags = 0x0000
- DHCP-Client-IP-Address = 0x00000000
- DHCP-Your-IP-Address = 0x00000000
- DHCP-Server-IP-Address = 0x00000000
- DHCP-Gateway-IP-Address = 0x00000000
+ Opcode = ::Client-Message
+ Hardware-Type = 0x01
+ Hardware-Address-Length = 0x06
+ Hop-Count = 0x00
+ Transaction-Id = 0x5e0bbfab
+ Number-of-Seconds = 0x0000
+ Flags = 0x0000
+ Client-IP-Address = 0x00000000
+ Your-IP-Address = 0x00000000
+ Server-IP-Address = 0x00000000
+ Gateway-IP-Address = 0x00000000
  ...
  ----------------------------------------------------------------------
  Waiting for DHCP replies for: 5.000000
@@ -92,27 +92,27 @@ Each received DHCP response will generate output such as the following:
 ==================================================
  ...
  ----------------------------------------------------------------------
- DHCP-Opcode = Server-Message
- DHCP-Hardware-Type = Ethernet
- DHCP-Hardware-Address-Length = 6
- DHCP-Hop-Count = 0
- DHCP-Transaction-Id = 1577828267
- DHCP-Number-of-Seconds = 0
- DHCP-Flags = 0
- DHCP-Client-IP-Address = 0.0.0.0
- DHCP-Your-IP-Address = 1.2.3.4
- DHCP-Server-IP-Address = 192.0.2.10
- DHCP-Gateway-IP-Address = 0.0.0.0
- DHCP-Client-Hardware-Address = 02:42:0a:00:00:0b
- DHCP-Message-Type = DHCP-Offer
- DHCP-Client-Identifier = 0x616263313233
+ Opcode = ::Server-Message
+ Hardware-Type = Ethernet
+ Hardware-Address-Length = 6
+ Hop-Count = 0
+ Transaction-Id = 1577828267
+ Number-of-Seconds = 0
+ Flags = 0
+ Client-IP-Address = 0.0.0.0
+ Your-IP-Address = 1.2.3.4
+ Server-IP-Address = 192.0.2.10
+ Gateway-IP-Address = 0.0.0.0
+ Client-Hardware-Address = 02:42:0a:00:00:0b
+ Message-Type = ::Offer
+ Client-Identifier = 0x616263313233
  Waiting for additional DHCP replies for: 4.999429
  ...
 ==================================================
 
 Examine the DHCP response to ensure that it has the correct message type
-(`DHCP-Offer`, in this case), contains the temporary IP address that you
-configured earlier, i.e. `DHCP-Your-IP-Address = 1.2.3.4`, and any other
+(`Offer`, in this case), contains the temporary IP address that you
+configured earlier, i.e. `Your-IP-Address = 1.2.3.4`, and any other
 expected reply parameters (which we configure later). Carefully
 examine the output of a FreeRADIUS debug session (`radius -X`) to ensure that
 the policy is being executed in the way that you expect and that no warnings
@@ -121,7 +121,7 @@ are being generated.
 You can now change the content of the sample DHCP request by editing the
 `dhcp-packet.txt` file and re-run the above command to see the server's reply.
 You should examine the DHCP dictionary distrubuted with FreeRADIUS (usually
-`/usr/share/freeradius/dictionary.dhcp`) which provides the list of all of the
+`/usr/share/freeradius/dictionary/dhcpv4/`) which provides the list of all of the
 DHCP parameters ("attributes") understood by FreeRADIUS.
 
 [WARNING]

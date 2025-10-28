@@ -314,7 +314,7 @@ To which you would expect to see a response such as:
  Waiting for DHCP replies for: 5.000000
  ----------------------------------------------------------------------
  ...
- Message-Type = Offer
+ Message-Type = ::Offer
  Your-IP-Address = 1.2.3.4
  Boot-Filename := "http://my.web.server/boot_script.php"
  ...
