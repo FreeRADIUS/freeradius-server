@@ -295,6 +295,7 @@ static xlat_action_t ftp_get_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *o
 
 	randle->request = request;	/* Populate the request pointer for escape callbacks */
 	curl_ctx = talloc_get_type_abort(randle->uctx, rlm_ftp_curl_context_t);
+	curl_ctx->response.request = request;
 
 	RDEBUG2("Sending FTP GET to \"%pV\"", uri_vb);
 
