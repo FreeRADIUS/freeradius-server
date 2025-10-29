@@ -4,6 +4,16 @@ FreeRADIUS 3.2.9 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	Feature improvements
 	* added filter_username_nai to policy.d/filter, mainly for use in
 	  eduroam.
+	* Initial implementation of Protocol-Failure as per IETF draft.
+	  The functionality is disabled by default, but can be enabled
+	  via new configuration flags.
+	* Updates to VSCode default configuration.
+	* Cleanups and add log messages for rlm_proxy_rate_limit.
+	* allow 389ds legacy PBKDF2_SHA256 to use arbitrary iteration
+	  count.  (#5654)
+	* amend policy insert_acct_class/acct_unique to work in
+	  environments with multiple Class attributes (#5337)
+	* Tweak sqlippool messages to make them clearer.
 
 	Bug fixes
 	* Fix run_dir (#5637) and MemoryLimit (#5639)
@@ -20,6 +30,10 @@ FreeRADIUS 3.2.9 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	  multiple options.
 	* Update the rlm_cache_redis driver to reconnect on connection
 	  failure.  Fixes #5651.
+	* Tweaks to the processing state machine to handle more corner
+	  cases / race conditions.  Thanks to Paul Dekkers for testing.
+	* Don't close the main listen socket for TCP.  Fixes #5661.
+	* Fix rlm_dspk to properly support dynamic filenames.
 
 FreeRADIUS 3.2.8 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	Configuration changes
