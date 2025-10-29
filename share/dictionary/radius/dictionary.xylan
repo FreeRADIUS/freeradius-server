@@ -48,6 +48,12 @@ ATTRIBUTE	Acce-Priv-F-R1				39	octets
 ATTRIBUTE	Acce-Priv-F-R2				40	octets
 ATTRIBUTE	Acce-Priv-F-W1				41	octets
 ATTRIBUTE	Acce-Priv-F-W2				42	octets
+ATTRIBUTE	Acce-Priv-R1				33	octets
+ATTRIBUTE	Acce-Priv-R2				34	octets
+ATTRIBUTE	Acce-Priv-W1				35	octets
+ATTRIBUTE	Acce-Priv-W2				36	octets
+ATTRIBUTE	Acce-Priv-G1				37	octets
+ATTRIBUTE	Acce-Priv-G2				38	octets
 
 ATTRIBUTE	Policy-List				100	string
 ATTRIBUTE	Redirect-Url				101	string
