@@ -57,6 +57,18 @@
 #		...
 #	}
 #
+#  When running in the post-proxy section, the module will check if
+#  rate limiting is needed.  When rate limiting starts, it will add an
+#  attribute '&config:Proxy-Rate-Limit = yes'.  This lets you know
+#  when rate limiting starts.  That attribute can be checked in the
+#  "Post-Auth-Type Reject" section.
+#
+#  The module also logs an INFO message when rate limiting starts or
+#  stops for a particular key.  The module will NOT log anything for
+#  packets which are rate limited.  The idea is that if a bad client
+#  is sending 1000 packets per second, you don't want to fill up the
+#  logs with 1000 messages that say all the same thing.
+#
 #  The module can also be listed in the "authorize" section.  Listing
 #  it there as the first module allows the server to reject bad
 #  packets as quickly as possible, while doing zero additional work
