@@ -215,7 +215,7 @@ static size_t ftp_response_body(void *in, size_t size, size_t nmemb, void *userd
 	if (start == end) return 0; 	/* Nothing to process */
 
 	if ((ctx->instance->max_resp_size > 0) && ((ctx->used + (end - p)) > ctx->instance->max_resp_size)) {
-			REDEBUG("Incoming data (%zu bytes) exceeds max_body_in (%zu bytes).  "
+			REDEBUG("Incoming data (%zu bytes) exceeds max_resp_size (%zu bytes).  "
 				"Forcing body to type 'invalid'", ctx->used + (end - p), ctx->instance->max_resp_size);
 			ctx->state = WRITE_STATE_DISCARD;
 			TALLOC_FREE(ctx->buffer);
