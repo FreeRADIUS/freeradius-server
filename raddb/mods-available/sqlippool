@@ -19,6 +19,12 @@ sqlippool {
 	dialect = "mysql"
 
 	# Name of the check item attribute to be used as a key in the SQL queries
+	#
+	#  define &config:Pool-Name to select which pool will be used for IP address
+	#  allocaton.
+	#
+	#  If there is no &config:Pool-Name defined, the module will not allocate
+	#  any IP addresses.
 	pool_name = "Pool-Name"
 
 	# SQL table to use for ippool range and lease info
