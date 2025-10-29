@@ -448,15 +448,28 @@ static int dict_process_type_field(dict_tokenize_ctx_t *dctx, char const *name, 
 		return -1;
 	}
 
-	/*
-	 *	Still not known, or is still a NULL type, that's an error.
-	 *
-	 *	The protocol-specific function can return an error if
-	 *	it has an error in its parsing.  Or, it can return
-	 *	"true"
-	 */
-	if (fr_type_is_null(type)) {
+	switch (type) {
+		/*
+		 *	Still not known, or is still a NULL type, that's an error.
+		 *
+		 *	The protocol-specific function can return an error if
+		 *	it has an error in its parsing.  Or, it can return
+		 *	"true"
+		 */
+	case FR_TYPE_NULL:
 		fr_strerror_printf("Unknown data type '%s'", name);
+		return -1;
+
+	case FR_TYPE_LEAF:
+	case FR_TYPE_STRUCTURAL:
+		break;
+
+	case FR_TYPE_VALUE_BOX:
+	case FR_TYPE_VOID:
+	case FR_TYPE_VALUE_BOX_CURSOR:
+	case FR_TYPE_PAIR_CURSOR:
+	case FR_TYPE_MAX:
+		fr_strerror_printf("Invalid data type '%s'", name);
 		return -1;
 	}
 
