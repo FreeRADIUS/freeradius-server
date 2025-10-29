@@ -528,13 +528,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	 *	If there is already an attribute in the reply do nothing
 	 */
 	if (!inst->allow_duplicates && (fr_pair_find_by_num(request->reply->vps, inst->framed_ip_address->attr, inst->framed_ip_address->vendor, TAG_ANY) != NULL)) {
-		RDEBUG("%s already exists", inst->attribute_name);
+		RWDEBUG("&reply:%s already exists", inst->attribute_name);
 
 		return do_logging(request, inst->log_exists, RLM_MODULE_NOOP);
 	}
 
 	if (fr_pair_find_by_num(request->config, inst->pool_attribute->attr, inst->pool_attribute->vendor, TAG_ANY) == NULL) {
-		RDEBUG("No %s defined", inst->pool_name);
+		RWDEBUG("&config:%s was not found.  Not doing IP Pool allocation.", inst->pool_name);
 
 		return do_logging(request, inst->log_nopool, RLM_MODULE_NOOP);
 	}
