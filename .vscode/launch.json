@@ -122,7 +122,7 @@
                                 { "name": "LDAP_TEST_SERVER_PORT", "value": "3890" },
                                 { "name": "LDAP_TEST_SERVER_SSL_PORT", "value": "6361" },
                                 { "name": "RFC4533_TEST_SERVER", "value": "ldap://${input:testserver}:3890/" },
-                                { "name": "PERSISTENT_SEARCH_TEST_SERVER", "value": "ldap://${input:testserver:3892}" },
+                                { "name": "PERSISTENT_SEARCH_TEST_SERVER", "value": "ldap://${input:testserver}:3892" },
                                 { "name": "REST_TEST_SERVER", "value": "${input:testserver}" },
                                 { "name": "REST_TEST_SERVER_PORT", "value": "8080" },
                                 { "name": "REST_TEST_SERVER_SSL_PORT", "value": "8443" },
