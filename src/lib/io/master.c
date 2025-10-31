@@ -2143,7 +2143,7 @@ static void client_expiry_timer(fr_timer_list_t *tl, fr_time_t now, void *uctx)
 		return;
 	}
 
-	DEBUG("TIMER - checking status of dynamic client %s %pV", client->radclient->shortname, fr_box_ipaddr(client->src_ipaddr));
+	DEBUG2("TIMER - checking status of dynamic client %s %pV", client->radclient->shortname, fr_box_ipaddr(client->src_ipaddr));
 
 	/*
 	 *	It's a dynamically defined client.  If no one is using
