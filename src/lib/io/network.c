@@ -1185,7 +1185,11 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		/*
 		 *	Write of 0 bytes means an OS bug, and we just discard this packet.
 		 */
-		if (rcode == 0) goto discard;
+		if (rcode == 0) {
+			RATE_LIMIT_GLOBAL(ERROR, "Discarding packet due to write returning zero for socket %s",
+					  s->listen->name);
+			goto discard;
+		}
 
 		/*
 		 *	Or we have a write error.
@@ -1224,6 +1228,8 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 				return;
 			}
 
+			PERROR("Failed writing to socket %s", s->listen->name);
+
 			/*
 			 *	As a special hack, check for something
 			 *	that will never be returned from a
@@ -1233,7 +1239,6 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 			 */
 			if ((errno == ECONNREFUSED) || (errno == ECONNRESET)) goto dead;
 
-			PERROR("Failed writing to socket %s", s->listen->name);
 			if (li->app_io->error) li->app_io->error(li);
 
 		dead:
