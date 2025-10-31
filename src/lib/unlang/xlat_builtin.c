@@ -1297,7 +1297,7 @@ static xlat_action_t xlat_func_log_dst(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 
 
 static xlat_arg_parser_t const xlat_func_map_arg[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -1334,46 +1334,48 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	XLAT_ARGS(args, &fmt_vb);
 
-	if (map_afrom_attr_str(request, &map, fmt_vb->vb_strvalue, &attr_rules, &attr_rules) < 0) {
-		RPEDEBUG("Failed parsing \"%s\" as map", fmt_vb->vb_strvalue);
-		return XLAT_ACTION_FAIL;
-	}
-
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	vb->vb_bool = false;	/* Default fail value - changed to true on success */
 	fr_dcursor_append(out, vb);
 
-	switch (map->lhs->type) {
-	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_XLAT:
-		break;
+	fr_value_box_list_foreach_safe(&fmt_vb->vb_group, fmt) {
+		if (map_afrom_attr_str(request, &map, fmt->vb_strvalue, &attr_rules, &attr_rules) < 0) {
+			RPEDEBUG("Failed parsing \"%s\" as map", fmt_vb->vb_strvalue);
+			return XLAT_ACTION_FAIL;
+		}
 
-	default:
-		REDEBUG("Unexpected type %s in left hand side of expression",
-			tmpl_type_to_str(map->lhs->type));
-		return XLAT_ACTION_FAIL;
-	}
+		switch (map->lhs->type) {
+		case TMPL_TYPE_ATTR:
+		case TMPL_TYPE_XLAT:
+			break;
 
-	switch (map->rhs->type) {
-	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_DATA:
-	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
-	case TMPL_TYPE_DATA_UNRESOLVED:
-	case TMPL_TYPE_XLAT:
-		break;
+		default:
+			REDEBUG("Unexpected type %s in left hand side of expression",
+				tmpl_type_to_str(map->lhs->type));
+			return XLAT_ACTION_FAIL;
+		}
 
-	default:
-		REDEBUG("Unexpected type %s in right hand side of expression",
-			tmpl_type_to_str(map->rhs->type));
-		return XLAT_ACTION_FAIL;
-	}
+		switch (map->rhs->type) {
+		case TMPL_TYPE_ATTR:
+		case TMPL_TYPE_EXEC:
+		case TMPL_TYPE_DATA:
+		case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
+		case TMPL_TYPE_DATA_UNRESOLVED:
+		case TMPL_TYPE_XLAT:
+			break;
 
-	RINDENT();
-	ret = map_to_request(request, map, map_to_vp, NULL);
-	REXDENT();
-	talloc_free(map);
-	if (ret < 0) return XLAT_ACTION_FAIL;
+		default:
+			REDEBUG("Unexpected type %s in right hand side of expression",
+				tmpl_type_to_str(map->rhs->type));
+			return XLAT_ACTION_FAIL;
+		}
+
+		RINDENT();
+		ret = map_to_request(request, map, map_to_vp, NULL);
+		REXDENT();
+		talloc_free(map);
+		if (ret < 0) return XLAT_ACTION_FAIL;
+	}}
 
 	vb->vb_bool = true;
 	return XLAT_ACTION_DONE;
