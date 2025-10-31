@@ -492,11 +492,6 @@ FLAG_FUNC(array)
 
 static int dict_flag_clone(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
-	if (((*da_p)->type != FR_TYPE_TLV) && ((*da_p)->type != FR_TYPE_STRUCT)) {
-		fr_strerror_const("'clone=...' references can only be used for 'tlv' and 'struct' types");
-		return -1;
-	}
-
 	/*
 	 *	Allow cloning of any types, so long as
 	 *	the types are the same.  We do the checks later.
