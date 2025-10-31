@@ -444,9 +444,9 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
     } while (0)
 
 	switch (packet->hdr.type) {
-		default:
-			print_hex(log, file, line, "      data   ", p, length);
-			return;
+	default:
+		print_hex(log, file, line, "      data   ", p, length);
+		return;
 
 	case FR_TAC_PLUS_AUTHEN:
 		if (packet_is_authen_start_request(packet)) {
@@ -495,6 +495,8 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 			ASCII("      server_msg     ", fr_nbo_to_uint16(hdr + 2));
 			HEXIT("      data           ", fr_nbo_to_uint16(hdr + 4));
 		}
+
+		fr_assert(p == end);
 		break;
 
 	case FR_TAC_PLUS_AUTHOR:
@@ -577,11 +579,11 @@ void _fr_tacacs_packet_log_hex(fr_log_t const *log, fr_tacacs_packet_t const *pa
 
 			ASCII("      server_msg     ", fr_nbo_to_uint16(hdr));
 			HEXIT("      data           ", fr_nbo_to_uint16(hdr + 2));
+
+			fr_assert(p == end);
 		}
 		break;
 	}
-
-	fr_assert(p == end);
 }
 
 int fr_tacacs_global_init(void)
