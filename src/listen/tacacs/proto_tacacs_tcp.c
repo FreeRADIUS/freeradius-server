@@ -305,7 +305,8 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 			if (pkt->author_reply.status == FR_TAC_PLUS_AUTHOR_STATUS_ERROR) {
 			close_it:
 				DEBUG("Closing connection due to unrecoverable server error response");
-				return 0;
+				errno = ECONNRESET;
+				return -1;
 			}
 			break;
 

@@ -1183,10 +1183,9 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 					  cd->m.data, cd->m.data_size, s->written);
 
 		/*
-		 *	As a special case, allow write() to return
-		 *	"0", which means "close the socket".
+		 *	Write of 0 bytes means an OS bug, and we just discard this packet.
 		 */
-		if (rcode == 0) goto dead;
+		if (rcode == 0) goto discard;
 
 		/*
 		 *	Or we have a write error.
@@ -1232,7 +1231,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 			 *	signals to us that we have to close
 			 *	the socket, but NOT complain about it.
 			 */
-			if (errno == ECONNREFUSED) goto dead;
+			if ((errno == ECONNREFUSED) || (errno == ECONNRESET)) goto dead;
 
 			PERROR("Failed writing to socket %s", s->listen->name);
 			if (li->app_io->error) li->app_io->error(li);
@@ -1251,6 +1250,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 			goto save_pending;
 		}
 
+	discard:
 		s->written = 0;
 
 		/*
