@@ -171,66 +171,72 @@ an SQL database provides greater flexibility since the queries will be run in
 response to each DHCP packet rather than requiring the server to be restarted.
 
 DHCP reply options for devices (including network-specific options) can be
-fetched from SQL using an arbitrary lookup key. This can be performed multiple
-times as necessary using different contexts, for example to first set
-subnet-specific options and then to set group-specific options.
+fetched from SQL (or other data stores such as LDAP or redis) using an arbitrary
+lookup key. This can be performed multiple times as necessary using different
+contexts, for example to first set subnet-specific options and then to set
+group-specific options.
 
-The default schema contains three tables to support this:
+There is no set way to perform this but one method would be to create an SQL
+table such as
 
-"dhcpreply" contains reply options for a given identifier (e.g. MAC Address):
+[source,sql]
+----
+CREATE TABLE dhcpoptions (
+	context		VARCHAR(30) NOT NULL,
+	identifier	VARCHAR(255) NOT NULL,
+	option		VARCHAR(511) NOT NULL,
+);
+----
 
-.dhcpreply table
+Then populate "dhcpoptions" with reply options for a given identifier (e.g. MAC Address):
+
+.dhcpoptions table
 |===
-|Identifier |Attribute |Op |Value |Context
+| context | identifier | option
 
-|`02:01:aa:bb:cc:dd` |`Log-Server`      |`:=` |`192.0.2.10` |`by-mac`
-|`02:01:aa:bb:cc:dd` |`LPR-Server`      |`:=` |`192.0.2.11` |`by-mac`
-|`02:01:aa:bb:cc:dd` |`Fall-Through`    |`:=` |`Yes`        |`by-mac`
+|`by-mac` | `02:01:aa:bb:cc:dd` |`reply.Log-Server := 192.0.2.10`
+|`by-mac` | `02:01:aa:bb:cc:dd` |`reply.LPR-Server := 192.0.2.11`
 |===
 
-"dhcpgroup" maps identifiers to a group of options that can be shared:
+Additionally records can be added to map identifiers to a group of options that can be shared:
 
-.dhcpgroup table
+.dhcpoptions table
 |===
-|Identifier |GroupName |Priority |Context
+| context  | identifier | option
 
-|`02:01:aa:bb:cc:dd` |`salesdept` |`10` |`by-mac`
+| `by-mac` | `02:01:aa:bb:cc:dd` |`control.Group-Name := 'salesdept'`
 |===
 
-"dhcpgroupreply" contains reply options for each group:
+And then group reply options can be added to the "dhcpoptions" table:
 
-.dhcpgroupreply table
+.dhcpoptions table
 |===
-|GroupName |Attribute |Op |Value |Context
+| context | identifier | option
 
-|`salesdept` |`NTP-Servers` |`:=` |`192.0.2.20` |`by-mac`
-|`salesdept` |`Log-Server`  |`+=` |`192.0.2.21` |`by-mac`
-|`salesdept` |`LPR-Server`  |`^=` |`192.0.2.22` |`by-mac`
+| `by-group` | `salesdept` |`reply.NTP-Servers := 192.0.2.20`
+| `by-group` | `salesdept` |`reply.Log-Server += 192.0.2.21`
+| `by-group` | `salesdept` |`reply.LPR-Server ^= 192.0.2.22`
 |===
 
 Within the context of assigning options directly to devices, as well as to
 manually-curated groups of devices keyed by their MAC address:
 
-  - Place device-specific options in the "dhcpreply" table.
-  - Add `Fall-Through := Yes` to the options in the "dhcpreply" table in order
-    to trigger group lookups, which are disabled by default.
-  - Place entries in the "dhcpgroup" `identifier = <MAC-Address>, groupname = <group>, priority =
-    <priority>` in the "dhcpgroup" table to map a device to its groups by
-    priority.
-  - Place the grouped options in the "dhcpgroupreply" table.
-  - For each of the above, set `Context` to something by which the option
-    lookup is referred to in the policy, for example `Context = 'by-mac'`.
+  - Place device-specific options in the "dhcpoptions" table, with the `option`
+    column having the option name prefixed with `reply.`.
+  - Place entries in the "dhcpoptions" which set the `control.Group-Name` attribute
+    to assign the device to one or more groups.
+  - Place the grouped options in the "dhcpoptions" table with the context being
+    `by-group`.
 
-For the above example you would add the following to the DHCP virtual server to
-perform reply option lookup using the device's MAC address against the `by-mac`
-context:
+The following `unlang` will then allow retrieval of options from the database
 
 [source,unlang]
 ----
-control.SQL-Option-Context := 'by-mac'
-control.SQL-Option-Identifier := request.Client-Hardware-Address
+%map(%sql("SELECT option FROM dhcpoptions WHERE context = 'by-mac' AND identifier = '%{Client-Hardware-Address}'"))
 
-dhcp_sql.authorize
+foreach dhcpgroup (control.Group-Name[*]) {
+	%map(%sql("SELECT option FROM dhcpoptions WHERE context = 'by-group' AND identifier = '%{dhcpgroup}'"))
+}
 ----
 
 In the above, the DHCP reply options would be assigned to a device with MAC
@@ -238,8 +244,7 @@ address 02:01:aa:bb:cc:dd as follows:
 
   - Firstly, the `Log-Server` option would be set to `192.0.2.10` and the
     `LPR-Server` option set to `192.0.2.11`.
-  - `Fall-Through` is set, so the group mapping is then queried which
-    determines that the device belongs to a single `salesdept` group.
+  - The `Group-Name` option in the `control` list gets set to `salesdept`.
   - Finally, the options for the `salesdept` group are now merged, setting a
     `NTP-Servers` option to `192.0.2.20`, appending an additional
     `Log-Server` option set to `192.0.2.21`, and prepending an additional
@@ -249,43 +254,29 @@ If instead you wanted to perform a "subclass" lookup based on the first three
 octets of the device's MAC address then with tables containing the following
 sample data you could invoke an SQL lookup as shown:
 
-."dhcpreply" table:
+."dhcpoptions" table:
 |===
-|Identifier |Attribute |Op |Value |Context
+| context | identifier | option
 
-|`000393` |`Fall-Through` |`:=` |`Yes` |`class-vendor`
-|`000a27` |`Fall-Through` |`:=` |`Yes` |`class-vendor`
-|`f40304` |`Fall-Through` |`:=` |`Yes` |`class-vendor`
-|===
-
-."dhcpgroup" table:
-|===
-|Identifier |GroupName |Priority |Context
-
-|`000393` |`apple`  |`10` |`class-vendor`
-|`000a27` |`apple`  |`10` |`class-vendor`
-|`f40304` |`google` |`10` |`class-vendor`
-|===
-
-."dhcpgroupreply" table:
-|===
-|GroupName |Attribute |Op |Value |Context
-
-|`apple`  |`Boot-Filename` |`:=` |`apple.efi`  |`class-vendor`
-|`google` |`Boot-Filename` |`:=` |`google.efi` |`class-vendor`
+|`class-vendor` | `000393` | `control.Group-Name := apple`
+|`class-vendor` | `000a27` | `control.Group-Name := apple`
+|`class-vendor` | `f40304` | `control.Group-Name := google`
+|`by-group` | `apple`  | `reply.Boot-Filename := 'apple.efi'`
+|`by-group` | `google` | `reply.Boot-Filename := 'google.efi'`
 |===
 
 
 [source,unlang]
 ----
-control.SQL-Option-Context := 'class-vendor'
-control.SQL-Option-Identifier := \
-            %substring(%{Client-Hardware-Address}, 0, 6)
-dhcp_sql.authorize
+%map(%sql("SELECT option FROM dhcpoptions WHERE context = 'class-vendor' AND identifier = '%substring(%{Client-Hardware-Address}, 0, 6)'"))
+
+foreach dhcpgroup (control.Group-Name[*]) {
+	%map(%sql("SELECT option FROM dhcpoptions WHERE context = 'by-group' AND identifier = '%{dhcpgroup}'"))
+}
 ----
 
-The file `policy.d/dhcp` contains a policy named `dhcp_policy_sql` which
-provides further worked examples for different types of option lookups.
+This is just one approach which can be taken to populate DHCP reply options from
+an SQL database.
 
 == Test "device", "class" and "group" options
 
