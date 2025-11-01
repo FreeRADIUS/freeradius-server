@@ -2692,6 +2692,19 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 			    (request->num_proxied_requests <= request->num_proxied_responses)) {
 				remove_from_proxy_hash(request);
 			}
+
+			/*
+			 *	Check Original-Packet-Code.  We don't actually need it, but we check if it's wrong.
+			 */
+			if (reply->code == PW_CODE_PROTOCOL_ERROR) {
+				vp = fr_pair_find_by_num(reply->vps, 4, ((unsigned int) PW_EXTENDED_ATTRIBUTE_1 << 24), TAG_ANY);
+				if (!vp) {
+					RWDEBUG("Protocol-Error response is missing Original-Packet-Code");
+				} else if (vp->vp_integer != request->packet->code) {
+					RWDEBUG("Protocol-Error contains incorrect Original-Packet-Code %u", vp->vp_integer);
+				}
+			}			
+
 		} else {
 			rad_assert(!request->in_proxy_hash);
 		}
