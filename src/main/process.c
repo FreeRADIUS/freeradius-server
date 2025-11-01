@@ -2733,7 +2733,10 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 			/*
 			 *	Ensure that we can do Post-Proxy-Type Fail
 			 */
-			if (!request->proxy) request->proxy = rad_alloc(request, true);
+			if (!request->proxy) {
+				request->proxy = rad_alloc(request, true);
+				request->proxy->code = request->packet->code;
+			}
 
 			request->proxy_reply = reply = rad_alloc_reply(request, request->proxy);
 			request->proxy_reply->code = PW_CODE_PROTOCOL_ERROR;
