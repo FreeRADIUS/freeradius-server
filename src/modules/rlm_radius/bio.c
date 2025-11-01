@@ -1891,37 +1891,37 @@ static void protocol_error_reply(bio_request_t *u, bio_handle_t *h)
 		 */
 		if (attr[0] != attr_extended_attribute_1->attr) continue;
 
-			/*
-			 *	ATTR + LEN + EXT-Attr + uint32
-			 */
-			if (attr[1] != 7) continue;
+		/*
+		 *	ATTR + LEN + EXT-Attr + uint32
+		 */
+		if (attr[1] != 7) continue;
 
-			/*
-			 *	See if there's an Original-Packet-Code.
-			 */
-			if (attr[2] != (uint8_t)attr_original_packet_code->attr) continue;
+		/*
+		 *	See if there's an Original-Packet-Code.
+		 */
+		if (attr[2] != (uint8_t)attr_original_packet_code->attr) continue;
 
-			/*
-			 *	Has to be an 8-bit number.
-			 */
-			if ((attr[3] != 0) ||
-			    (attr[4] != 0) ||
-			    (attr[5] != 0)) {
-				u->rcode = RLM_MODULE_FAIL;
-				return;
-			}
+		/*
+		 *	Has to be an 8-bit number.
+		 */
+		if ((attr[3] != 0) ||
+		    (attr[4] != 0) ||
+		    (attr[5] != 0)) {
+			u->rcode = RLM_MODULE_FAIL;
+			return;
+		}
 
-			/*
-			 *	The value has to match.  We don't
-			 *	currently multiplex different codes
-			 *	with the same IDs on connections.  So
-			 *	this check is just for RFC compliance,
-			 *	and for sanity.
-			 */
-			if (attr[6] != u->code) {
-				u->rcode = RLM_MODULE_FAIL;
-				return;
-			}
+		/*
+		 *	The value has to match.  We don't
+		 *	currently multiplex different codes
+		 *	with the same IDs on connections.  So
+		 *	this check is just for RFC compliance,
+		 *	and for sanity.
+		 */
+		if (attr[6] != u->code) {
+			u->rcode = RLM_MODULE_FAIL;
+			return;
+		}
 	}
 
 	/*
@@ -2134,6 +2134,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		switch (code) {
 		case FR_RADIUS_CODE_PROTOCOL_ERROR:
 			protocol_error_reply(u, h);
+			fr_pair_delete_by_da(&request->reply_pairs, NULL, attr_original_packet_code);
 			break;
 
 		default:
