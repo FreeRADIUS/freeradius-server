@@ -2726,6 +2726,8 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 		 *	reply, so we synthesize a Protocol-Error, and add Error-Cause.
 		 */
 		if (request->client->protocol_error) {
+			RWDEBUG("Synthesizing Protocol-Error reply to client %s", request->client->shortname);
+
 			request->proxy_listener = NULL;
 
 			/*
@@ -2743,6 +2745,8 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 				fr_pair_add(&request->proxy_reply->vps, vp);
 				vp->vp_integer = error_cause;
 			}
+		} else {
+			RWDEBUG("Client %s does not support Protocol-Error", request->client->shortname);
 		}
 	}
 
