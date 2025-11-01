@@ -2709,7 +2709,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 					 */
 					fr_pair_delete(&reply->vps, vp);
 				}
-			}			
+			}
 
 		} else {
 			rad_assert(!request->in_proxy_hash);
