@@ -2721,7 +2721,6 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 		 */
 		if (request->in_proxy_hash) remove_from_proxy_hash(request);
 
-
 		/*
 		 *	Maybe we can send a Protocol-Error packet to the client.  We don't have any other
 		 *	reply, so we synthesize a Protocol-Error, and add Error-Cause.
@@ -3192,6 +3191,11 @@ static int setup_post_proxy_fail(REQUEST *request)
 	RADIUS_PACKET *packet;
 
 	VERIFY_REQUEST(request);
+
+	/*
+	 *	Ensure that we can do Post-Proxy-Type Fail
+	 */
+	if (!request->proxy) request->proxy = rad_alloc(request, true);
 
 	packet = request->proxy ? request->proxy : request->packet;
 
