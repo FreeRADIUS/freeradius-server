@@ -2702,6 +2702,12 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 					RWDEBUG("Protocol-Error response is missing Original-Packet-Code");
 				} else if (vp->vp_integer != request->packet->code) {
 					RWDEBUG("Protocol-Error contains incorrect Original-Packet-Code %u", vp->vp_integer);
+
+					/*
+					 *	No one else needs to know about Original-Packet-Code, and we
+					 *	don't send it back to the client.
+					 */
+					fr_pair_delete(&reply->vps, vp);
 				}
 			}			
 
