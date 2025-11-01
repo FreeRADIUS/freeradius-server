@@ -2134,7 +2134,13 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		switch (code) {
 		case FR_RADIUS_CODE_PROTOCOL_ERROR:
 			protocol_error_reply(u, h);
-			fr_pair_delete_by_da(&request->reply_pairs, NULL, attr_original_packet_code);
+
+			vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_original_packet_code);
+			if (!vp) {
+				RWDEBUG("Protocol-Error response is missing Original-Packet-Code");
+			} else {
+				fr_pair_delete_by_da(&request->reply_pairs, attr_original_packet_code);
+			}
 
 			vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_error_cause);
 			if (!vp) {
