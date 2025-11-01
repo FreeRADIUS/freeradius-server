@@ -2728,6 +2728,11 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply, uint32_t 
 		if (request->client->protocol_error) {
 			request->proxy_listener = NULL;
 
+			/*
+			 *	Ensure that we can do Post-Proxy-Type Fail
+			 */
+			if (!request->proxy) request->proxy = rad_alloc(request, true);
+
 			request->proxy_reply = reply = rad_alloc_reply(request, request->proxy);
 			request->proxy_reply->code = PW_CODE_PROTOCOL_ERROR;
 
@@ -3191,11 +3196,6 @@ static int setup_post_proxy_fail(REQUEST *request)
 	RADIUS_PACKET *packet;
 
 	VERIFY_REQUEST(request);
-
-	/*
-	 *	Ensure that we can do Post-Proxy-Type Fail
-	 */
-	if (!request->proxy) request->proxy = rad_alloc(request, true);
 
 	packet = request->proxy ? request->proxy : request->packet;
 
