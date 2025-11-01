@@ -1285,6 +1285,21 @@ static int recv_one_packet(int wait_time)
 		goto packet_done; /* shared secret is incorrect */
 	}
 
+	/*
+	 *	Check Original-Packet-Code.  We don't actually need it, but we check if it's wrong.
+	 */
+	if (reply->code == PW_CODE_PROTOCOL_ERROR) {
+		VALUE_PAIR *vp;
+
+		vp = fr_pair_find_by_num(reply->vps, 4, ((unsigned int) PW_EXTENDED_ATTRIBUTE_1 << 24), TAG_ANY);
+		if (!vp) {
+			RDEBUG("WARNING: Protocol-Error response is missing Original-Packet-Code");
+
+		} else if (vp->vp_integer != request->packet->code) {
+			RDEBUG("WARNING: Protocol-Error contains incorrect Original-Packet-Code %u", vp->vp_integer);
+		}
+	}
+
 	if (print_filename) {
 		RDEBUG("%s response code %d", request->files->packets, reply->code);
 	}
