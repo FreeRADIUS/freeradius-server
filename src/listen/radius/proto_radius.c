@@ -120,6 +120,7 @@ static fr_dict_attr_t const *attr_state;
 static fr_dict_attr_t const *attr_proxy_state;
 static fr_dict_attr_t const *attr_message_authenticator;
 static fr_dict_attr_t const *attr_eap_message;
+static fr_dict_attr_t const *attr_error_cause;
 static fr_dict_attr_t const *attr_packet_id;
 static fr_dict_attr_t const *attr_packet_authenticator;
 
@@ -131,6 +132,7 @@ fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
 	{ .out = &attr_proxy_state, .name = "Proxy-State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+	{ .out = &attr_error_cause, .name = "Error-Cause", .type = FR_TYPE_UINT32, .dict = &dict_radius},
 	{ .out = &attr_packet_id, .name = "Packet.Id", .type = FR_TYPE_UINT8, .dict = &dict_radius},
 	{ .out = &attr_packet_authenticator, .name = "Packet.Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	DICT_AUTOLOAD_TERMINATOR
@@ -439,10 +441,52 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 {
 	fr_io_track_t		*track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
+	uint32_t		error_cause;
 	ssize_t			data_len;
 	fr_client_t const	*client;
 	fr_radius_ctx_t		common_ctx = {};
 	fr_radius_encode_ctx_t  encode_ctx;
+
+	client = address->radclient;
+	fr_assert(client);
+
+	/*
+	 *	No reply was set, and the client supports Protocol-Error.  Go create one.
+	 */
+	if (unlikely((buffer_len > 1) && (request->reply->code == 0) && client->protocol_error)) {
+		switch (request->packet->code) {
+		case FR_RADIUS_CODE_ACCESS_REQUEST:
+			RDEBUG2("There was no response configured - sending Access-Reject");
+			request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
+			break;
+
+		case FR_RADIUS_CODE_COA_REQUEST:
+			RDEBUG2("There was no response configured - sending CoA-NAK");
+			request->reply->code = FR_RADIUS_CODE_COA_NAK;
+			goto not_routable;
+
+		case FR_RADIUS_CODE_DISCONNECT_REQUEST:
+			RDEBUG2("There was no response configured - sending Disconnect-NAK");
+			request->reply->code = FR_RADIUS_CODE_DISCONNECT_NAK;
+			goto not_routable;
+
+		case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
+			/*
+			 *	Send Protocol-Error reply.
+			 *
+			 *	@todo - Session-Context-Not-Found is likely the wrong error.
+			 */
+			RDEBUG2("There was no response configured - sending Protocol-Error");
+
+			request->reply->code = FR_RADIUS_CODE_PROTOCOL_ERROR;
+			error_cause = FR_ERROR_CAUSE_VALUE_SESSION_CONTEXT_NOT_FOUND;
+			goto force_reply;
+
+		default:
+			RDEBUG2("There was no response configured - not sending reply");
+			break;
+		}
+	}
 
 	/*
 	 *	Process layer NAK, or "Do not respond".
@@ -454,30 +498,49 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		return 1;
 	}
 
-	client = address->radclient;
-	fr_assert(client);
-
 	/*
-	 *	The policy may ask us to send a Protocol-Error, but the client does not support it.  So we
-	 *	suppress the response.
+	 *	Not all clients support Protocol-Error.  The admin might have forced Protocol-Error, or we
+	 *	might have received a Protocol-Error from a home server.
 	 */
 	if ((request->reply->code == FR_RADIUS_CODE_PROTOCOL_ERROR) && !client->protocol_error) {
-		if (request->packet->code != FR_RADIUS_CODE_ACCESS_REQUEST) {
-			RDEBUG("Client %s does not support Protocol-Error. Suppressing response",
-			       client->shortname);
+		fr_pair_t *vp;
+
+		switch (request->packet->code) {
+		case FR_RADIUS_CODE_ACCESS_REQUEST:
+			RWDEBUG("Client %s does not support Protocol-Error - rewriting to Access-Reject",
+				client->shortname);
+			request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
+			break;
+
+		case FR_RADIUS_CODE_COA_REQUEST:
+			RWDEBUG2("Client %s does not support Protocol-Error - rewriting to CoA-NAK",
+				 request->client->shortname);
+			request->reply->code = FR_RADIUS_CODE_COA_NAK;
+			goto not_routable;
+
+		case FR_RADIUS_CODE_DISCONNECT_REQUEST:
+			RWDEBUG2("Client %s does not support Protocol-Error - rewriting to Disconnect-NAK",
+				 request->client->shortname);
+			request->reply->code = FR_RADIUS_CODE_DISCONNECT_NAK;
+
+		not_routable:
+			error_cause = FR_ERROR_CAUSE_VALUE_PROXY_REQUEST_NOT_ROUTABLE;
+
+		force_reply:
+			fr_pair_list_free(&request->reply_pairs);
+
+			MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_error_cause));
+			fr_pair_append(&request->reply_pairs, vp);
+			vp->vp_uint32 = error_cause;
+			break;
+
+		case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
+		default:
+			RWDEBUG2("Client %s does not support Protocol-Error - not replying to the client",
+				 request->client->shortname);
 			track->do_not_respond = true;
 			return 1;
 		}
-
-		/*
-		 *	If the client doesn't support Protocol-Error, swap it to Access-Reject.
-		 *
-		 *	Note that RFC 8559 already says that systems should send CoA-NAK or Disconnect-NAK
-		 *	with Error-Cause if the packet can't be routed.
-		 */
-		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
-		RDEBUG("Client %s does not support Protocol-Error - rewriting to Access-Reject",
-		       client->shortname);
 	}
 
 	/*
