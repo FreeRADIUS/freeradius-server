@@ -1470,17 +1470,37 @@ static void request_finish(REQUEST *request, int action)
 		}
 	}
 	/*
-	 *	Catch Auth-Type := Reject BEFORE proxying the packet.
+	 *	There's no response configured, see if we need to synthesize a response.
 	 */
-	else if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
-		if (request->reply->code == 0) {
-			vp = fr_pair_find_by_num(request->config, PW_AUTH_TYPE, 0, TAG_ANY);
-			if (!vp) {
-				RDEBUG2("There was no response configured: "
-					"rejecting request");
-			}
-
+	else if (request->reply->code == 0) {
+		switch (request->packet->code) {
+		case PW_CODE_ACCESS_REQUEST:
+			RDEBUG2("There was no response configured: "
+				"rejecting request");
 			request->reply->code = PW_CODE_ACCESS_REJECT;
+			break;
+
+		case PW_CODE_COA_REQUEST:
+			RDEBUG2("There was no response configured: "
+				"sending CoA-NAK");
+			request->reply->code = PW_CODE_COA_NAK;
+			break;
+
+		case PW_CODE_DISCONNECT_REQUEST:
+			RDEBUG2("There was no response configured: "
+				"sending Disconnect-NAK");
+			request->reply->code = PW_CODE_DISCONNECT_NAK;
+			break;
+
+		case PW_CODE_ACCOUNTING_REQUEST:
+			RDEBUG2("There was no response configured: "
+				"not replying to the client");
+			break;
+
+		default:
+			RDEBUG2("There was no response configured: "
+				"???");
+			break;
 		}
 	}
 
