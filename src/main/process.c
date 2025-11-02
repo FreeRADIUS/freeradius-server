@@ -1463,7 +1463,7 @@ static void request_finish(REQUEST *request, int action)
 	if (vp) {
 		if (vp->vp_integer == 256) {
 			RDEBUG2("Not responding to request");
-			fr_pair_delete_by_num(&request->reply->vps, PW_RESPONSE_PACKET_TYPE, 0, TAG_ANY);
+			fr_pair_delete_by_num(&request->config, PW_RESPONSE_PACKET_TYPE, 0, TAG_ANY);
 			request->reply->code = 0;
 		} else {
 			request->reply->code = vp->vp_integer;
