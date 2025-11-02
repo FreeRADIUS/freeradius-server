@@ -1484,12 +1484,21 @@ static void request_finish(REQUEST *request, int action)
 			RDEBUG2("There was no response configured: "
 				"sending CoA-NAK");
 			request->reply->code = PW_CODE_COA_NAK;
-			break;
+			goto not_routable;
 
 		case PW_CODE_DISCONNECT_REQUEST:
 			RDEBUG2("There was no response configured: "
 				"sending Disconnect-NAK");
 			request->reply->code = PW_CODE_DISCONNECT_NAK;
+
+		not_routable:
+			fr_pair_list_free(&request->reply->vps);
+
+			vp = fr_pair_afrom_num(request->reply, PW_ERROR_CAUSE, 0);
+			if (vp) {
+				fr_pair_add(&request->reply->vps, vp);
+				vp->vp_integer = PW_ERROR_CAUSE_PROXY_REQUEST_NOT_ROUTABLE;
+			}
 			break;
 
 		case PW_CODE_ACCOUNTING_REQUEST:
