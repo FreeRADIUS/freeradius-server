@@ -1473,6 +1473,8 @@ static void request_finish(REQUEST *request, int action)
 	 *	There's no response configured, see if we need to synthesize a response.
 	 */
 	else if (request->reply->code == 0) {
+		uint32_t error_cause;
+
 		switch (request->packet->code) {
 		case PW_CODE_ACCESS_REQUEST:
 			RDEBUG2("There was no response configured: "
@@ -1492,19 +1494,36 @@ static void request_finish(REQUEST *request, int action)
 			request->reply->code = PW_CODE_DISCONNECT_NAK;
 
 		not_routable:
+			error_cause = PW_ERROR_CAUSE_PROXY_REQUEST_NOT_ROUTABLE;
+
+		force_reply:
 			fr_pair_list_free(&request->reply->vps);
 
 			vp = fr_pair_afrom_num(request->reply, PW_ERROR_CAUSE, 0);
 			if (vp) {
 				fr_pair_add(&request->reply->vps, vp);
-				vp->vp_integer = PW_ERROR_CAUSE_PROXY_REQUEST_NOT_ROUTABLE;
+				vp->vp_integer = error_cause;
 			}
 			break;
 
 		case PW_CODE_ACCOUNTING_REQUEST:
+			if (!request->client->protocol_error) {
+				RDEBUG2("There was no response configured: "
+					"not replying to the client");
+				break;
+			}
+
+			/*
+			 *	Send Protocol-Error reply.
+			 *
+			 *	@todo - Session-Context-Not-Found is likely the wrong error.
+			 */
 			RDEBUG2("There was no response configured: "
-				"not replying to the client");
-			break;
+				"sending Protocol-Error");
+
+			request->reply->code = PW_CODE_PROTOCOL_ERROR;
+			error_cause = PW_ERROR_CAUSE_SESSION_CONTEXT_NOT_FOUND;
+			goto force_reply;
 
 		default:
 			RDEBUG2("There was no response configured: "
