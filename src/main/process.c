@@ -1439,6 +1439,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 static void request_finish(REQUEST *request, int action)
 {
 	VALUE_PAIR *vp;
+	uint32_t error_cause;
 
 	VERIFY_REQUEST(request);
 
@@ -1473,8 +1474,6 @@ static void request_finish(REQUEST *request, int action)
 	 *	There's no response configured, see if we need to synthesize a response.
 	 */
 	else if (request->reply->code == 0) {
-		uint32_t error_cause;
-
 		switch (request->packet->code) {
 		case PW_CODE_ACCESS_REQUEST:
 			RDEBUG2("There was no response configured: "
@@ -1492,19 +1491,7 @@ static void request_finish(REQUEST *request, int action)
 			RDEBUG2("There was no response configured: "
 				"sending Disconnect-NAK");
 			request->reply->code = PW_CODE_DISCONNECT_NAK;
-
-		not_routable:
-			error_cause = PW_ERROR_CAUSE_PROXY_REQUEST_NOT_ROUTABLE;
-
-		force_reply:
-			fr_pair_list_free(&request->reply->vps);
-
-			vp = fr_pair_afrom_num(request->reply, PW_ERROR_CAUSE, 0);
-			if (vp) {
-				fr_pair_add(&request->reply->vps, vp);
-				vp->vp_integer = error_cause;
-			}
-			break;
+			goto not_routable;
 
 		case PW_CODE_ACCOUNTING_REQUEST:
 			if (!request->client->protocol_error) {
@@ -1529,6 +1516,50 @@ static void request_finish(REQUEST *request, int action)
 			RDEBUG2("There was no response configured: "
 				"???");
 			break;
+		}
+	}
+
+	/*
+	 *	Not all clients support Protocol-Error.  The admin might have forced Protocol-Error, or we
+	 *	might have received a Protocol-Error from a home server.
+	 */
+	if ((request->reply->code == PW_CODE_PROTOCOL_ERROR) &&
+	    !request->client->protocol_error) {
+		switch (request->packet->code) {
+		case PW_CODE_ACCESS_REQUEST:
+			RWDEBUG2("Client %s does not support Protocol-Error - rewriting to Access-Reject",
+				 request->client->shortname);
+			request->reply->code = PW_CODE_ACCESS_REJECT;
+			break;
+
+		case PW_CODE_COA_REQUEST:
+			RWDEBUG2("Client %s does not support Protocol-Error - rewriting to CoA-NAK",
+				 request->client->shortname);
+			request->reply->code = PW_CODE_COA_NAK;
+			goto not_routable;
+
+		case PW_CODE_DISCONNECT_REQUEST:
+			RWDEBUG2("Client %s does not support Protocol-Error - rewriting to Disconnect-NAK",
+				 request->client->shortname);
+			request->reply->code = PW_CODE_DISCONNECT_NAK;
+
+		not_routable:
+			error_cause = PW_ERROR_CAUSE_PROXY_REQUEST_NOT_ROUTABLE;
+
+		force_reply:
+			fr_pair_list_free(&request->reply->vps);
+
+			vp = fr_pair_afrom_num(request->reply, PW_ERROR_CAUSE, 0);
+			if (vp) {
+				fr_pair_add(&request->reply->vps, vp);
+				vp->vp_integer = error_cause;
+			}
+			break;
+
+		default:
+			RWDEBUG2("Client %s does not support Protocol-Error - not replying to the client",
+				 request->client->shortname);
+			request->reply->code = 0;
 		}
 	}
 
@@ -1698,23 +1729,6 @@ static void request_finish(REQUEST *request, int action)
 			} else {
 				timersub(&when, &request->reply->timestamp, &request->response_delay);
 			}
-		}
-	}
-
-	/*
-	 *	Not all clients support Protocol-Error.
-	 */
-	if ((request->reply->code == PW_CODE_PROTOCOL_ERROR) &&
-	    request->client && !request->client->protocol_error) {
-		if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
-			RWDEBUG2("Client %s does not support Protocol-Error - rewriting to Access-Reject",
-				 request->client->shortname);
-			request->reply->code = PW_CODE_ACCESS_REJECT;
-
-		} else {
-			RWDEBUG2("Client %s does not support Protocol-Error - discarding reply",
-				 request->client->shortname);
-			request->reply->code = 0;
 		}
 	}
 
