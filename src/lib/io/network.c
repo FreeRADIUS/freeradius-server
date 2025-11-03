@@ -955,6 +955,7 @@ next_message:
 	s->cd = NULL;
 
 	DEBUG3("Read %zd byte(s) from FD %u", data_size, sockfd);
+	if (s->listen->read_hexdump) HEXDUMP2(cd->m.data, data_size, "%s read ", s->listen->name);
 	nr->stats.in++;
 	s->stats.in++;
 
@@ -1178,6 +1179,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		int rcode;
 
 		fr_assert(li == cd->listen);
+		if (li->write_hexdump) HEXDUMP2(cd->m.data, cd->m.data_size, "%s writing ", li->name);
 		rcode = li->app_io->write(li, cd->packet_ctx,
 					  cd->reply.request_time,
 					  cd->m.data, cd->m.data_size, s->written);
