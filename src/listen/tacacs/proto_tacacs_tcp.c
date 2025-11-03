@@ -68,6 +68,9 @@ typedef struct {
 	fr_trie_t			*trie;			//!< for parsed networks
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
 	fr_ipaddr_t			*deny;			//!< denied networks for dynamic clients
+
+	bool				read_hexdump;		//!< Do we debug hexdump read packets.
+	bool				write_hexdump;		//!< Do we debug hexdump write packets.
 } proto_tacacs_tcp_t;
 
 static const conf_parser_t networks_config[] = {
@@ -93,6 +96,9 @@ static const conf_parser_t tcp_listen_config[] = {
 
 	{ FR_CONF_OFFSET("max_packet_size", proto_tacacs_tcp_t, max_packet_size), .dflt = "4096" } ,
 	{ FR_CONF_OFFSET("max_attributes", proto_tacacs_tcp_t, max_attributes), .dflt = STRINGIFY(TACACS_MAX_ATTRIBUTES) } ,
+
+	{ FR_CONF_OFFSET("read_hexdump", proto_tacacs_tcp_t, read_hexdump) },
+	{ FR_CONF_OFFSET("write_hexdump", proto_tacacs_tcp_t, write_hexdump) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -414,6 +420,13 @@ static char const *mod_name(fr_listen_t *li)
 	return thread->name;
 }
 
+static void mod_hexdump_set(fr_listen_t *li, void *data)
+{
+	proto_tacacs_tcp_t	*inst = talloc_get_type_abort(data, proto_tacacs_tcp_t);
+	li->read_hexdump = inst->read_hexdump;
+	li->write_hexdump = inst->write_hexdump;
+}
+
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	proto_tacacs_tcp_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_tacacs_tcp_t);
@@ -536,4 +549,5 @@ fr_app_io_t proto_tacacs_tcp = {
 	.network_get		= mod_network_get,
 	.client_find		= mod_client_find,
 	.get_name		= mod_name,
+	.hexdump_set		= mod_hexdump_set,
 };
