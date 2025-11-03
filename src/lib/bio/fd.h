@@ -96,6 +96,8 @@ typedef struct {
 
 	char const	*interface;	//!< for binding to an interface
 
+	uint32_t	backlog;	//!< for listen()
+
 	uint32_t	recv_buff;	//!< How big the kernel's receive buffer should be.
 	uint32_t	send_buff;	//!< How big the kernel's send buffer should be.
 
@@ -117,6 +119,7 @@ typedef struct {
 	 */
 	bool		recv_buff_is_set;	//!< Whether we were provided with a recv_buf
 	bool		send_buff_is_set;	//!< Whether we were provided with a send_buf
+	bool		backlog_is_set;		//!< Whether we were provided with a backlog
 } fr_bio_fd_config_t;
 
 extern const conf_parser_t fr_bio_fd_client_config[];

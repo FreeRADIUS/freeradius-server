@@ -31,7 +31,7 @@ static fr_dict_t const *dict_bfd;
 extern fr_dict_autoload_t process_bfd_dict[];
 fr_dict_autoload_t process_bfd_dict[] = {
 	{ .out = &dict_bfd, .proto = "bfd" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -45,7 +45,7 @@ fr_dict_attr_autoload_t process_bfd_dict_attr[] = {
 	{ .out = &attr_bfd_packet, .name = "Packet", .type = FR_TYPE_STRUCT, .dict = &dict_bfd},
 	{ .out = &attr_bfd_state, .name = "Packet.state", .type = FR_TYPE_UINT8, .dict = &dict_bfd},
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 #define SECTION(_x) \

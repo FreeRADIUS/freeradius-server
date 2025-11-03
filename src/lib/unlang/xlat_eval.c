@@ -38,7 +38,7 @@ static fr_dict_t const *dict_freeradius;
 
 static fr_dict_autoload_t xlat_eval_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_expr_bool_enum; /* xlat_expr.c */
@@ -72,7 +72,7 @@ static fr_dict_attr_autoload_t xlat_eval_dict_attr[] = {
 	{ .out = &attr_cast_time_res_usec, .name = "Cast-Time-Res-Micro-Sec", .type = FR_TYPE_TIME_DELTA, .dict = &dict_freeradius },
 	{ .out = &attr_cast_time_res_nsec, .name = "Cast-Time-Res-Nano-Sec", .type = FR_TYPE_TIME_DELTA, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_table_num_sorted_t const xlat_action_table[] = {
@@ -547,7 +547,7 @@ check_non_leaf:
 		if (tmpl_afrom_attr_str(ctx, NULL, &vpt, vb->vb_strvalue,
 					&(tmpl_rules_t){
 						.attr = {
-							.dict_def = request->proto_dict, /* we can't encode local attributes */
+							.dict_def = request->local_dict,
 							.list_def = request_attr_request,
 							.allow_wildcard = arg->allow_wildcard,
 						}
@@ -985,6 +985,7 @@ xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 typedef struct {
 	int			status;
 	fr_value_box_list_t	list;
+	unlang_result_t		result;
 } xlat_exec_rctx_t;
 
 static xlat_action_t xlat_exec_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
@@ -997,6 +998,44 @@ static xlat_action_t xlat_exec_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_strerror_printf("Program failed with status %d", rctx->status);
 		return XLAT_ACTION_FAIL;
 	}
+
+#if 0
+	/*
+	 *	Comment this out until such time as we better track exceptions.
+	 *
+	 *	Enabling this code causes some keyword tests to fail, specifically
+	 *	xlat-alternation-with-func and if-regex-match-named.
+	 *
+	 *	The regex tests are failing because the various regex_request_to_sub() functions are returning
+	 *	errors when there is no previous regex, OR when the referenced regex match doesn't exist.
+	 *	This should arguably be a success with NULL results.
+	 *
+	 *	The alternation test is failing because a function is called with an argument that doesn't
+	 *	exist, inside of an alternation.  e.g. %{%foo(nope) || bar}.  We arguably want the alternation
+	 *	to catch this error, and run the alternate path "bar".
+	 *
+	 *	However, doing that would involve more changes.  Alternation could catch LHS errors of
+	 *	XLAT_FAIL, and then run the RHS.  Doing that would require it to manually expand each
+	 *	argument, and catch the errors.  Note that this is largely what Perl and Python do with their
+	 *	logical "and" / "or" functions.
+	 *
+	 *	For our use-case, we could perhaps have a variante of || which "catches" errors.  One proposal
+	 *	is to use a %catch(...) function, but that seems ugly.  Pretty much everything would need to
+	 *	be wrapped in %catch().
+	 *
+	 *	Another option is to extend the || operator. e.g. %{foo(nope) ||? bar}.  But that seems ugly,
+	 *	too.
+	 *
+	 *	Another option is to change the behavior so that failed xlats just result in empty
+	 *	value-boxes.  However, it then becomes difficult to distinguish the situations for
+	 *	%sql("SELECT...") where the SELECT returns nothing, versus the SQL connection is down.
+	 */
+	if (rctx->result.rcode != RLM_MODULE_OK) {
+		fr_strerror_printf("Expansion failed with code %s",
+				   fr_table_str_by_value(rcode_table, rctx->result.rcode, "<INVALID>"));
+		return XLAT_ACTION_FAIL;
+	}
+#endif
 
 	fr_value_box_list_move((fr_value_box_list_t *)out->dlist, &rctx->list);
 
@@ -1344,6 +1383,19 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 		goto finish;
 	}
 
+	/*
+	 *	An attribute reference which produces a box of type FR_TYPE_ATTR
+	 */
+	if (unlikely(head && head->is_attr)) {
+		fr_assert((*in)->type == XLAT_TMPL);
+
+		MEM(value = fr_value_box_alloc_null(ctx));
+		fr_value_box_set_attr(value, tmpl_attr_tail_da((*in)->vpt));
+
+		fr_dcursor_append(out, value);
+		goto finish;
+	}
+
 	XLAT_DEBUG("** [%i] %s >> entered", unlang_interpret_stack_depth(request), __FUNCTION__);
 
 	for (node = *in; node; node = xlat_exp_next(head, node)) {
@@ -1436,12 +1488,13 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 				 */
 				MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_exec_rctx_t));
 				fr_value_box_list_init(&rctx->list);
+				rctx->result = UNLANG_RESULT_RCODE(RLM_MODULE_OK);
 
 				xlat_debug_log_expansion(request, node, NULL, __LINE__);
 
 				if (unlang_xlat_yield(request, xlat_exec_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto fail;
 
-				if (unlang_tmpl_push(ctx, NULL, &rctx->list, request, node->vpt,
+				if (unlang_tmpl_push(ctx, &rctx->result, &rctx->list, request, node->vpt,
 						     TMPL_ARGS_EXEC(NULL, fr_time_delta_from_sec(EXEC_TIMEOUT),
 						     		    false, &rctx->status), UNLANG_SUB_FRAME) < 0) goto fail;
 

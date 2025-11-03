@@ -644,7 +644,7 @@ int dict_attr_type_init(fr_dict_attr_t **da_p, fr_type_t type)
 		break;
 	}
 
-	(*da_p)->flags.is_known_width = fr_type_fixed_size[type];
+	(*da_p)->flags.is_known_width |= fr_type_fixed_size[type];
 
 	/*
 	 *	Set default type-based flags
@@ -682,7 +682,6 @@ int dict_attr_type_init(fr_dict_attr_t **da_p, fr_type_t type)
 int dict_attr_parent_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *parent)
 {
 	fr_dict_attr_t *da = *da_p;
-
 
 	if (unlikely((*da_p)->type == FR_TYPE_NULL)) {
 		fr_strerror_const("Attribute type must be set before initialising parent.  Use dict_attr_type_init() first");
@@ -855,11 +854,11 @@ int dict_attr_init_common(char const *filename, int line,
 
 	if (unlikely(dict_attr_type_init(da_p, type) < 0)) return -1;
 
+	if (args->flags) (*da_p)->flags = *args->flags;
+
 	if (parent && (dict_attr_parent_init(da_p, parent) < 0)) return -1;
 
 	if (args->ref && (dict_attr_ref_aset(da_p, args->ref, FR_DICT_ATTR_REF_ALIAS) < 0)) return -1;
-
-	if (args->flags) (*da_p)->flags = *args->flags;
 
 	return 0;
 }
@@ -1471,6 +1470,7 @@ bool dict_attr_can_have_children(fr_dict_attr_t const *da)
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_VSA:
 	case FR_TYPE_STRUCT:
+	case FR_TYPE_UNION:
 		return true;
 
 	case FR_TYPE_UINT8:
@@ -1479,6 +1479,8 @@ bool dict_attr_can_have_children(fr_dict_attr_t const *da)
 		/*
 		 *	Children are allowed here, but ONLY if this
 		 *	attribute is a key field.
+		 *
+		 *	@todo - remove after migration_union_key is deleted
 		 */
 		if (da->parent && (da->parent->type == FR_TYPE_STRUCT) && fr_dict_attr_is_key_field(da)) return true;
 		break;
@@ -1828,7 +1830,7 @@ int fr_dict_attr_add_name_only(fr_dict_t *dict, fr_dict_attr_t const *parent,
 int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 			    fr_value_box_t const *value,
 			    bool coerce, bool takes_precedence,
-			    fr_dict_attr_t const *child_struct)
+			    fr_dict_attr_t const *key_child_ref)
 {
 	size_t				len;
 	fr_dict_enum_value_t		*enumv = NULL;
@@ -1854,10 +1856,28 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	/*
 	 *	If the parent isn't a key field, then we CANNOT add a child struct.
 	 */
-	if (!fr_dict_attr_is_key_field(da) && child_struct) {
-		fr_strerror_const("Child structures cannot be defined for VALUEs which are not for 'key' attributes");
+	if (!fr_dict_attr_is_key_field(da) && key_child_ref) {
+		fr_strerror_const("Child attributes cannot be defined for VALUEs which are not 'key' attributes");
 		return -1;
 	}
+
+#if 0
+	/*
+	 *	Commented out becuase of share/dictionary/dhcpv6/dictionary.rfc6607.
+	 *
+	 *	That dictionary defines a value which is associated with a zero-sized child.
+	 *	In order to enforce this check, we need to support zero-sized structures.
+	 *
+	 *	Perhaps this can be done as a special case after we convert to UNIONs?  Because then
+	 *	we can allow ATTRIBUTE Global-VPN 255 struct[0].
+	 *
+	 *	@todo - remove after migration_union_key is deleted
+	 */
+	if (fr_dict_attr_is_key_field(da) && !key_child_ref) {
+		fr_strerror_const("Child attribute must be defined for VALUEs associated with a 'key' attribute");
+		return -1;
+	}
+#endif
 
 	if (fr_type_is_structural(da->type) || (da->type == FR_TYPE_STRING)) {
 		fr_strerror_printf("Enumeration names cannot be added for data type '%s'", fr_type_to_str(da->type));
@@ -1898,7 +1918,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	 *	Allocate a structure to map between
 	 *	the name and value.
 	 */
-	enumv = talloc_zero_size(da, sizeof(fr_dict_enum_value_t) + sizeof(enumv->child_struct[0]) * fr_dict_attr_is_key_field(da));
+	enumv = talloc_zero_size(da, sizeof(fr_dict_enum_value_t) + sizeof(enumv->key_child_ref[0]) * fr_dict_attr_is_key_field(da));
 	if (!enumv) {
 	oom:
 		fr_strerror_printf("%s: Out of memory", __FUNCTION__);
@@ -1909,7 +1929,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	enumv->name = talloc_typed_strdup(enumv, name);
 	enumv->name_len = len;
 
-	if (child_struct) enumv->child_struct[0] = child_struct;
+	if (key_child_ref) enumv->key_child_ref[0] = key_child_ref;
 	enum_value = fr_value_box_alloc(enumv, da->type, NULL);
 	if (!enum_value) goto oom;
 
@@ -4350,7 +4370,7 @@ fr_dict_autoload_talloc_t *_fr_dict_autoload_talloc(TALLOC_CTX *ctx, fr_dict_t c
 	}
 
 	dict_ref->load[0] = (fr_dict_autoload_t){ .proto = proto, .out = out};
-	dict_ref->load[1] = (fr_dict_autoload_t){ NULL };
+	dict_ref->load[1] = (fr_dict_autoload_t) DICT_AUTOLOAD_TERMINATOR;
 	dict_ref->dependent = talloc_strdup(dict_ref, dependent);
 	if (unlikely(dict_ref->dependent == NULL)) {
 		talloc_free(dict_ref);
@@ -5003,6 +5023,8 @@ bool fr_dict_attr_can_contain(fr_dict_attr_t const *parent, fr_dict_attr_t const
 	/*
 	 *	Child is a STRUCT which has a parent key field.  The
 	 *	child pair nesting, though, is in the grandparent.
+	 *
+	 *	@todo - remove after migration_union_key is deleted
 	 */
 	if (fr_dict_attr_is_key_field(child->parent)) {
 		fr_assert(child->parent->parent == parent);

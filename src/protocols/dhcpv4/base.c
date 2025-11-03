@@ -43,7 +43,8 @@ fr_dict_t const *dict_dhcpv4;
 extern fr_dict_autoload_t dhcpv4_dict[];
 fr_dict_autoload_t dhcpv4_dict[] = {
 	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
-	{ NULL }
+	
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_dhcp_boot_filename;
@@ -97,7 +98,8 @@ fr_dict_attr_autoload_t dhcpv4_dict_attr[] = {
 	{ .out = &attr_dhcp_subnet_selection_option, .name = "Subnet-Selection-Option", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_network_subnet, .name = "Network-Subnet", .type = FR_TYPE_IPV4_PREFIX, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_option_82, .name = "Relay-Agent-Information", .type = FR_TYPE_TLV, .dict = &dict_dhcpv4 },
-	{ NULL }
+
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*
@@ -697,21 +699,48 @@ void fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 static bool attr_valid(fr_dict_attr_t *da)
 {
 	/*
+	 *	DNS labels are strings, but are known width.
+	 */
+	if (fr_dhcpv4_flag_dns_label(da)) {
+		if (da->type != FR_TYPE_STRING) {
+			fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
+			return false;
+		}
+
+		da->flags.is_known_width = true;
+		da->flags.length = 0;
+	}
+
+	if (da->type == FR_TYPE_ATTR)  {
+		da->flags.is_known_width = true;
+		da->flags.length = 1;
+	}
+
+	if (da_is_length_field16(da)) {
+		fr_strerror_const("The 'length=uint16' flag cannot be used for DHCPv4");
+		return false;
+	}
+
+	/*
 	 *	"arrays" of string/octets are encoded as a 8-bit
 	 *	length, followed by the actual data.
 	 */
-	if (da->flags.array && ((da->type == FR_TYPE_STRING) || (da->type == FR_TYPE_OCTETS))) {
-		da->flags.is_known_width = true;
+	if (da->flags.array) {
+		if ((da->type == FR_TYPE_STRING) || (da->type == FR_TYPE_OCTETS)) {
+			if (da->flags.extra && !da_is_length_field8(da)) {
+				fr_strerror_const("Invalid flags");
+				return false;
+			}
 
-		if (da->flags.extra && (da->flags.subtype != FLAG_LENGTH_UINT8)) {
-			fr_strerror_const("string/octets arrays require the 'length=uint8' flag");
+			da->flags.is_known_width = true;
+			da->flags.extra = true;
+			da->flags.subtype = FLAG_LENGTH_UINT8;
+		}
+
+		if (!da->flags.is_known_width) {
+			fr_strerror_const("DHCPv4 arrays require data types which have known width");
 			return false;
 		}
-	}
-
-	if (da->flags.extra && (da->flags.subtype == FLAG_LENGTH_UINT16)) {
-		fr_strerror_const("The 'length=uint16' flag cannot be used for DHCPv4");
-		return false;
 	}
 
 	/*
@@ -719,11 +748,6 @@ static bool attr_valid(fr_dict_attr_t *da)
 	 *	dictionaries itself.
 	 */
 	if (da->flags.extra || !da->flags.subtype) return true;
-
-	if ((da->type != FR_TYPE_STRING) && (fr_dhcpv4_flag_dns_label(da))) {
-		fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
-		return false;
-	}
 
 	if ((da->type != FR_TYPE_IPV4_PREFIX) &&
 	    (fr_dhcpv4_flag_prefix(da))) {
@@ -737,7 +761,7 @@ static bool attr_valid(fr_dict_attr_t *da)
 	}
 
 	if ((da->type == FR_TYPE_ATTR) && !da->parent->flags.is_root) {
-		fr_strerror_const("Data type 'attr' can only exist at the dictionary root");
+		fr_strerror_const("The 'attribute' data type can only be used at the dictionary root");
 		return false;
 	}
 

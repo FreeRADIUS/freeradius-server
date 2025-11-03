@@ -70,7 +70,7 @@ extern fr_dict_autoload_t rlm_pam_dict[];
 fr_dict_autoload_t rlm_pam_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_pam_auth;
@@ -82,7 +82,7 @@ fr_dict_attr_autoload_t rlm_pam_dict_attr[] = {
 	{ .out = &attr_pam_auth, .name = "Pam-Auth", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)

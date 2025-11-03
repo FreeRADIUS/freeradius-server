@@ -124,11 +124,12 @@ struct connection_s {
 
 	CONF_SECTION		*trigger_cs;		//!< Where to search locally for triggers.
 	fr_pair_list_t		*trigger_args;		//!< Arguments to pass to the trigger functions.
+	bool			triggers;		//!< Do we run triggers.
 };
 
 #define CONN_TRIGGER(_state) do { \
-	trigger(unlang_interpret_get_thread_default(), \
-		conn->trigger_cs, fr_table_str_by_value(connection_trigger_names, _state, "<INVALID>"), true, conn->trigger_args); \
+	if (conn->triggers) trigger(unlang_interpret_get_thread_default(), \
+		conn->trigger_cs, NULL, fr_table_str_by_value(connection_trigger_names, _state, "<INVALID>"), true, conn->trigger_args); \
 } while (0)
 
 #define STATE_TRANSITION(_new) \
@@ -1442,14 +1443,6 @@ int connection_signal_on_fd(connection_t *conn, int fd)
 	return 0;
 }
 
-/** Tell a failed connection to move to CONNECTION_STATE_INIT
- *
- */
-connection_state_t connection_failed_reinit(UNUSED void *handle, UNUSED connection_state_t state, UNUSED void *uctx)
-{
-	return CONNECTION_STATE_INIT;
-}
-
 /** Close a connection if it's freed
  *
  * @param[in] conn to free.
@@ -1548,6 +1541,7 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 		.failed = funcs->failed,
 		.shutdown = funcs->shutdown,
 		.is_closed = true,		/* Starts closed */
+		.triggers = conf->triggers,
 		.trigger_args = conf->trigger_args,
 		.trigger_cs = conf->trigger_cs,
 		.pub.name = talloc_asprintf(conn, "%s - [%" PRIu64 "]", log_prefix, id)

@@ -64,7 +64,7 @@ static fr_dict_t const *dict_cron;
 extern fr_dict_autoload_t proto_cron_dict[];
 fr_dict_autoload_t proto_cron_dict[] = {
 	{ .out = &dict_cron, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Translates the packet-type into a submodule name

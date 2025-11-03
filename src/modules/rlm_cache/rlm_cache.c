@@ -84,7 +84,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_cache_dict[];
 fr_dict_autoload_t rlm_cache_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_cache_merge_new;
@@ -102,7 +102,7 @@ fr_dict_attr_autoload_t rlm_cache_dict_attr[] = {
 	{ .out = &attr_cache_allow_insert, .name = "Cache-Allow-Insert", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ .out = &attr_cache_ttl, .name = "Cache-TTL", .type = FR_TYPE_INT32, .dict = &dict_freeradius },
 	{ .out = &attr_cache_entry_hits, .name = "Cache-Entry-Hits", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
@@ -910,7 +910,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      NULL,
 				      &(tmpl_rules_t){
 				      	.attr = {
-						.dict_def = request->proto_dict,
+						.dict_def = request->local_dict,
 						.list_def = request_attr_request,
 				      	}
 				      });

@@ -2096,10 +2096,7 @@ do_suffix:
 			}
 			break;
 
-		case FR_TYPE_STRUCT:
-		case FR_TYPE_TLV:
-		case FR_TYPE_VENDOR:
-		case FR_TYPE_VSA:
+		case FR_TYPE_STRUCTURAL_EXCEPT_GROUP:
 		is_union:
 			/*
 			 *	Structural types are parented and namespaced from their parent da.
@@ -2111,6 +2108,8 @@ do_suffix:
 			/*
 			 *	Key fields can have children, because we really don't know how else to
 			 *	represent the child structures.
+			 *
+			 *	@todo - remove after migration_union_key is deleted
 			 */
 			if (fr_dict_attr_is_key_field(da)) goto is_union;
 
@@ -5690,7 +5689,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 				if ((*p == '#') || (*p == '*') || (*p == 'n')) {
 					p++;
 
-				} else if (*p == '(') {
+				} else {
 					ssize_t slen;
 					bool eol = false;
 
@@ -5701,18 +5700,6 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 					}
 					p += slen;
 					continue;
-
-				} else {
-					/*
-					 *	Allow numbers as array indexes
-					 */
-					while ((*p >= '0') && (*p <= '9')) {
-						p++;
-					}
-
-					if (*p != ']') {
-						return_P("Array index is not an integer");
-					}
 				}
 
 				if (*p == ']') {

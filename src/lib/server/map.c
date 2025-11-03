@@ -1030,7 +1030,7 @@ do_children:
 				fr_assert(fr_type_is_leaf(tmpl_attr_tail_da(map->lhs)->type));
 
 				/*
-				 *	&foo := { a, b, c }
+				 *	foo := { a, b, c }
 				 *
 				 *	@todo - maybe lhs_rules?  But definitely not child_lhs_rules.
 				 *
@@ -1065,14 +1065,14 @@ do_children:
 		/*
 		 *	Over-ride RHS rules for
 		 *
-		 *	&reply += {
-		 *		&User-Name = &User-Name
+		 *	reply += {
+		 *		User-Name = User-Name
 		 *	}
 		 *
 		 *	Which looks stupid.  Instead we require
 		 *
-		 *	&reply += {
-		 *		&User-Name = &request.User-Name
+		 *	reply += {
+		 *		User-Name = request.User-Name
 		 *	}
 		 *
 		 *	On the other hand, any xlats on the RHS don't use the full path.  :( And we still need
@@ -1089,7 +1089,6 @@ do_children:
 		}
 
 		if (map_afrom_cp(parent_ctx, &map, parent, cp, &child_lhs_rules, our_rhs_rules, edit) < 0) {
-			fr_assert(0);
 			cf_log_err(ci, "Failed creating map from '%s = %s'",
 				   cf_pair_attr(cp), cf_pair_value(cp));
 			goto error;

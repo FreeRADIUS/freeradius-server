@@ -1,0 +1,35 @@
+#
+# PRE: transaction
+#
+string foo
+string bar
+
+transaction {
+	#
+	#  Bad argument to base64 decode, so it fails and doesn't return anything.
+	#
+	foo := %base64.decode('$$$')
+	bar := "nope"
+
+	if !foo {
+		fail
+	}	
+}
+
+#
+#  This should be rolled back.
+#
+if bar {
+	test_fail
+}
+
+#
+#  This should get rolled back, too!
+#
+if foo {
+	test_fail
+} else {
+	ok		# force auth success for the test framework
+}
+
+success

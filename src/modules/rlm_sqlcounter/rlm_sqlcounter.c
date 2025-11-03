@@ -114,7 +114,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_sqlcounter_dict[];
 fr_dict_autoload_t rlm_sqlcounter_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static int find_next_reset(rlm_sqlcounter_t *inst, fr_time_t now)

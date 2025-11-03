@@ -114,3 +114,21 @@ ATTRIBUTE	Network-Subnet				274	ipv4prefix
 # This is a name for the group(s) a client belongs to, used for
 # looking up of options
 ATTRIBUTE	Group-Name				275	string
+
+# This TLV is intended to be used as a helper for the challenge
+# of Option 43.
+# Vendor / device class TLVs can be defined under this, with children
+# representing the sub options used by a particular vendor.
+# The Vendor / device class TLVs don't need to match enterprise numbers
+# - they are just a container.
+ATTRIBUTE	Decoded-Option-43			276	tlv
+
+# When these options are returned in option 43, these are
+# the sub-option numbers - which differ from what happens if
+# they are returned in option 125 (see dictionary.adsl_forum and
+# https://www.broadband-forum.org/pdfs/tr-069-1-6-1.pdf )
+ATTRIBUTE	Broadband-Forum				276.1	tlv
+ATTRIBUTE	ACS-URL					.1	string
+ATTRIBUTE	Provisioning-Code			.2	string
+ATTRIBUTE	CWMP-Retry-Minimum-Interval		.3	string
+ATTRIBUTE	CWMP-Retry-Interval-Multiplier		.4	string

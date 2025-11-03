@@ -37,6 +37,12 @@
 //#include "rlm_radius.h"
 #include "track.h"
 
+typedef enum {
+	LIMIT_PORTS_NONE = 0,			//!< Source port not restricted
+	LIMIT_PORTS_STATIC,			//!< Limited source ports for static home servers
+	LIMIT_PORTS_DYNAMIC			//!< Limited source ports for dynamic home servers
+} bio_limit_ports_t;
+
 typedef struct {
 	char const		*module_name;	//!< the module that opened the connection
 	rlm_radius_t const	*inst;		//!< our instance
@@ -45,9 +51,7 @@ typedef struct {
 	fr_bio_fd_config_t	fd_config;	//!< for threads or sockets
 	fr_bio_fd_info_t const	*fd_info;	//!< status of the FD.
 	fr_radius_ctx_t		radius_ctx;	//!< for signing packets
-#ifdef REUSE_CONN
-	bool			limit_source_ports;
-#endif
+	bio_limit_ports_t	limit_source_ports;	//!< What type of port limit is in use.
 } bio_handle_ctx_t;
 
 typedef struct {
@@ -58,6 +62,9 @@ typedef struct {
 		uint32_t id;			//!< for replication
 		fr_rb_expire_t	expires;       	//!< for proxying / client sending
 	} bio;
+
+	int			num_ports;
+	connection_t		**connections;
 } bio_thread_t;
 
 typedef struct bio_request_s bio_request_t;
@@ -71,8 +78,7 @@ typedef struct {
 	int			fd;			//!< File descriptor.
 
 	struct {
-		fr_bio_t		*read;     	//!< what we use for input
-		fr_bio_t		*write;    	//!< what we use for output
+		fr_bio_t		*main;     	//!< what we use for IO
 		fr_bio_t		*fd;		//!< raw FD
 		fr_bio_t		*mem;		//!< memory wrappers for stream sockets
 	} bio;
@@ -137,10 +143,8 @@ typedef struct {
 
 	fr_rb_expire_node_t	expire;
 
-#ifdef REUSE_CONN
 	int			num_ports;
 	connection_t		*connections[];	//!< for tracking outbound connections
-#endif
 } home_server_t;
 
 
@@ -426,7 +430,7 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	uint8_t			code = 0;
 
 	fr_pair_list_init(&reply);
-	slen = fr_bio_read(h->bio.read, NULL, h->buffer, h->buflen);
+	slen = fr_bio_read(h->bio.main, NULL, h->buffer, h->buflen);
 	if (slen == 0) {
 		/*
 		 *	@todo - set BIO FD EOF callback, so that we don't have to check it here.
@@ -557,7 +561,7 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	fr_assert(u->packet != NULL);
 	fr_assert(u->packet_len >= RADIUS_HEADER_LENGTH);
 
-	slen = fr_bio_write(h->bio.write, NULL, u->packet, u->packet_len);
+	slen = fr_bio_write(h->bio.main, NULL, u->packet, u->packet_len);
 
 	if (slen == fr_bio_error(IO_WOULD_BLOCK)) goto blocked;
 
@@ -722,9 +726,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	int			fd;
 	bio_handle_t		*h;
 	bio_handle_ctx_t	*ctx = uctx; /* thread or home server */
-#ifdef REUSE_CONN
 	connection_t		**to_save = NULL;
-#endif
 
 	MEM(h = talloc_zero(conn, bio_handle_t));
 	h->ctx = *ctx;
@@ -737,13 +739,20 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 
 	MEM(h->tt = radius_track_alloc(h));
 
-#ifdef REUSE_CONN
 	/*
 	 *	We are proxying to multiple home servers, but using a limited port range.  We must track the
 	 *	source port for each home server, so that we only can select the right unused source port for
 	 *	this home server.
 	 */
-	if (ctx->limit_source_ports) {
+	switch (ctx->limit_source_ports) {
+	case LIMIT_PORTS_NONE:
+		break;
+
+	/*
+	 *	Dynamic home servers store source port usage in the home_server_t
+	 */
+	case LIMIT_PORTS_DYNAMIC:
+	{
 		int i;
 		home_server_t *home = talloc_get_type_abort(ctx, home_server_t);
 
@@ -766,7 +775,32 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 			goto fail;
 		}
 	}
-#endif
+		break;
+
+	/*
+	 *	Static home servers store source port usage in bio_thread_t
+	 */
+	case LIMIT_PORTS_STATIC:
+	{
+		int i;
+		bio_thread_t *thread = talloc_get_type_abort(ctx, bio_thread_t);
+
+		for (i = 0; i < thread->num_ports; i++) {
+			if (!thread->connections[i]) {
+				to_save = &thread->connections[i];
+				h->ctx.fd_config.src_port = h->ctx.fd_config.src_port_start + i;
+				break;
+			}
+		}
+
+		if (!to_save) {
+			ERROR("%s - Failed opening socket to home server %pV:%u - source port range is full",
+			      h->ctx.module_name, fr_box_ipaddr(h->ctx.fd_config.dst_ipaddr), h->ctx.fd_config.dst_port);
+			goto fail;
+		}
+	}
+		break;
+	}
 
 	h->bio.fd = fr_bio_fd_alloc(h, &h->ctx.fd_config, 0);
 	if (!h->bio.fd) {
@@ -806,7 +840,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	 *	Set the BIO read function to be the memory BIO, which will then call the packet verification
 	 *	routine.
 	 */
-	h->bio.read = h->bio.write = h->bio.mem;
+	h->bio.main = h->bio.mem;
 	h->bio.mem->uctx = h;
 
 	h->fd = fd;
@@ -866,9 +900,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 
 	*h_out = h;
 
-#ifdef REUSE_CONN
 	if (to_save) *to_save = conn;
-#endif
 
 	return CONNECTION_STATE_CONNECTING;
 }
@@ -876,11 +908,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 /** Shutdown/close a file descriptor
  *
  */
-static void conn_close(UNUSED fr_event_list_t *el, void *handle,
-#ifndef REUSE_CONN
-  UNUSED
-#endif
-  void *uctx)
+static void conn_close(UNUSED fr_event_list_t *el, void *handle, void *uctx)
 {
 	bio_handle_t *h = talloc_get_type_abort(handle, bio_handle_t);
 
@@ -896,14 +924,16 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle,
 		fr_assert_fail("%u tracking entries still allocated at conn close", h->tt->num_requests);
 	}
 
-	fr_bio_shutdown(h->bio.mem);
-
 	/*
 	 *	We have opened a limited number of outbound source ports.  This means that when we close a
 	 *	port, we have to mark it unused.
 	 */
-#ifdef REUSE_CONN
-	if (h->ctx.limit_source_ports) {
+	switch (h->ctx.limit_source_ports) {
+	case LIMIT_PORTS_NONE:
+		break;
+
+	case LIMIT_PORTS_DYNAMIC:
+	{
 		int offset;
 		home_server_t *home = talloc_get_type_abort(uctx, home_server_t);
 
@@ -917,7 +947,25 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle,
 
 		home->connections[offset] = NULL;
 	}
-#endif
+		break;
+
+	case LIMIT_PORTS_STATIC:
+	{
+		int offset;
+		bio_thread_t *thread = talloc_get_type_abort(uctx, bio_thread_t);
+
+		fr_assert(h->ctx.fd_config.src_port >= h->ctx.fd_config.src_port_start);
+		fr_assert(h->ctx.fd_config.src_port < h->ctx.fd_config.src_port_end);
+
+		offset = h->ctx.fd_config.src_port - h->ctx.fd_config.src_port_start;
+		fr_assert(offset < thread->num_ports);
+
+		fr_assert(thread->connections[offset] == h->conn);
+
+		thread->connections[offset] = NULL;
+	}
+		break;
+	}
 
 	DEBUG4("Freeing handle %p", handle);
 
@@ -993,7 +1041,7 @@ static void conn_discard(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int f
 	uint8_t			buffer[4096];
 	ssize_t			slen;
 
-	while ((slen = fr_bio_read(h->bio.read, NULL, buffer, sizeof(buffer))) > 0);
+	while ((slen = fr_bio_read(h->bio.main, NULL, buffer, sizeof(buffer))) > 0);
 
 	if (slen < 0) {
 		switch (errno) {
@@ -1027,7 +1075,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 	connection_t		*conn = tconn->conn;
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
-	ERROR("%s - Connection %s failed: %s", h->ctx.module_name, h->ctx.fd_info->name, fr_syserror(fd_errno));
+	if (fd_errno) ERROR("%s - Connection %s failed: %s", h->ctx.module_name, h->ctx.fd_info->name, fr_syserror(fd_errno));
 
 	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
@@ -1597,10 +1645,11 @@ static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h
 	size_t			packet_len;
 	ssize_t			slen;
 
-	fr_assert((treq->state == TRUNK_REQUEST_STATE_PENDING) ||
-		  (treq->state == TRUNK_REQUEST_STATE_PARTIAL));
-
 	u = treq->preq;
+
+	fr_assert((treq->state == TRUNK_REQUEST_STATE_PENDING) ||
+		  (treq->state == TRUNK_REQUEST_STATE_PARTIAL) ||
+		  ((u->retry.count > 0) && (treq->state == TRUNK_REQUEST_STATE_SENT)));
 
 	fr_assert(!u->status_check);
 
@@ -1676,7 +1725,7 @@ do_write:
 	fr_assert(packet != NULL);
 	fr_assert(packet_len >= RADIUS_HEADER_LENGTH);
 
-	slen = fr_bio_write(h->bio.write, NULL, packet, packet_len);
+	slen = fr_bio_write(h->bio.main, NULL, packet, packet_len);
 
 	/*
 	 *	Can't write anything, requeue it on a different socket.
@@ -1842,37 +1891,37 @@ static void protocol_error_reply(bio_request_t *u, bio_handle_t *h)
 		 */
 		if (attr[0] != attr_extended_attribute_1->attr) continue;
 
-			/*
-			 *	ATTR + LEN + EXT-Attr + uint32
-			 */
-			if (attr[1] != 7) continue;
+		/*
+		 *	ATTR + LEN + EXT-Attr + uint32
+		 */
+		if (attr[1] != 7) continue;
 
-			/*
-			 *	See if there's an Original-Packet-Code.
-			 */
-			if (attr[2] != (uint8_t)attr_original_packet_code->attr) continue;
+		/*
+		 *	See if there's an Original-Packet-Code.
+		 */
+		if (attr[2] != (uint8_t)attr_original_packet_code->attr) continue;
 
-			/*
-			 *	Has to be an 8-bit number.
-			 */
-			if ((attr[3] != 0) ||
-			    (attr[4] != 0) ||
-			    (attr[5] != 0)) {
-				u->rcode = RLM_MODULE_FAIL;
-				return;
-			}
+		/*
+		 *	Has to be an 8-bit number.
+		 */
+		if ((attr[3] != 0) ||
+		    (attr[4] != 0) ||
+		    (attr[5] != 0)) {
+			u->rcode = RLM_MODULE_FAIL;
+			return;
+		}
 
-			/*
-			 *	The value has to match.  We don't
-			 *	currently multiplex different codes
-			 *	with the same IDs on connections.  So
-			 *	this check is just for RFC compliance,
-			 *	and for sanity.
-			 */
-			if (attr[6] != u->code) {
-				u->rcode = RLM_MODULE_FAIL;
-				return;
-			}
+		/*
+		 *	The value has to match.  We don't
+		 *	currently multiplex different codes
+		 *	with the same IDs on connections.  So
+		 *	this check is just for RFC compliance,
+		 *	and for sanity.
+		 */
+		if (attr[6] != u->code) {
+			u->rcode = RLM_MODULE_FAIL;
+			return;
+		}
 	}
 
 	/*
@@ -2006,7 +2055,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		 *	saves a round through the event loop.  If we're not
 		 *	busy, a few extra system calls don't matter.
 		 */
-		slen = fr_bio_read(h->bio.read, NULL, h->buffer, h->buflen);
+		slen = fr_bio_read(h->bio.main, NULL, h->buffer, h->buflen);
 		if (slen == 0) {
 			/*
 			 *	@todo - set BIO FD EOF callback, so that we don't have to check it here.
@@ -2085,6 +2134,20 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		switch (code) {
 		case FR_RADIUS_CODE_PROTOCOL_ERROR:
 			protocol_error_reply(u, h);
+
+			vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_original_packet_code);
+			if (!vp) {
+				RWDEBUG("Protocol-Error response is missing Original-Packet-Code");
+			} else {
+				fr_pair_delete_by_da(&request->reply_pairs, attr_original_packet_code);
+			}
+
+			vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_error_cause);
+			if (!vp) {
+				MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_error_cause));
+				vp->vp_uint32 = FR_ERROR_CAUSE_VALUE_PROXY_PROCESSING_ERROR;
+				fr_pair_append(&request->reply_pairs, vp);
+			}
 			break;
 
 		default:
@@ -2176,7 +2239,7 @@ static void request_replicate_demux(UNUSED fr_event_list_t *el, trunk_connection
 		 *	saves a round through the event loop.  If we're not
 		 *	busy, a few extra system calls don't matter.
 		 */
-		slen = fr_bio_read(h->bio.read, NULL, h->buffer, h->buflen);
+		slen = fr_bio_read(h->bio.main, NULL, h->buffer, h->buflen);
 		if (slen == 0) {
 			/*
 			 *	@todo - set BIO FD EOF callback, so that we don't have to check it here.
@@ -2639,8 +2702,22 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		FALL_THROUGH;
 
 	default:
+		/*
+		 *	Assign each thread a portion of the available source port range.
+		 */
+		if (thread->ctx.fd_config.src_port_start) {
+			uint16_t	range = inst->fd_config.src_port_end - inst->fd_config.src_port_start + 1;
+			thread->num_ports = range / main_config->max_workers;
+			thread->ctx.fd_config.src_port_start = inst->fd_config.src_port_start + (thread->num_ports * fr_schedule_worker_id());
+			thread->ctx.fd_config.src_port_end = inst->fd_config.src_port_start + (thread->num_ports * (fr_schedule_worker_id() +1)) - 1;
+			if (inst->mode != RLM_RADIUS_MODE_XLAT_PROXY) {
+				thread->connections = talloc_zero_array(thread, connection_t *, thread->num_ports);
+				thread->ctx.limit_source_ports = LIMIT_PORTS_STATIC;
+			}
+		}
+
 		thread->ctx.trunk = trunk_alloc(thread, mctx->el, &io_funcs,
-					    &inst->trunk_conf, inst->name, thread, false);
+					    &inst->trunk_conf, inst->name, thread, false, inst->trigger_args);
 		if (!thread->ctx.trunk) return -1;
 		return 0;
 
@@ -2651,7 +2728,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		if (inst->fd_config.socket_type == SOCK_DGRAM) break;
 
 		thread->ctx.trunk = trunk_alloc(thread, mctx->el, &io_replicate_funcs,
-						&inst->trunk_conf, inst->name, thread, false);
+						&inst->trunk_conf, inst->name, thread, false, inst->trigger_args);
 		if (!thread->ctx.trunk) return -1;
 		return 0;
 
@@ -2879,42 +2956,27 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 			},
 		});
 	if (!home) {
-#ifdef REUSE_CONN
-		size_t num_ports = 0;
-
 		/*
 		 *	Track which connections are made to this home server from which open ports.
 		 */
-		if ((inst->fd_config.src_port_start > 0) && (inst->fd_config.src_port_end > 0)) {
-			num_ports = inst->fd_config.src_port_end - inst->fd_config.src_port_start;
-		}
-
-		MEM(home = (home_server_t *) talloc_zero_array(thread, uint8_t, sizeof(home_server_t) + sizeof(connection_t *) * num_ports));
+		MEM(home = (home_server_t *) talloc_zero_array(thread, uint8_t, sizeof(home_server_t) + sizeof(connection_t *) * thread->num_ports));
 		talloc_set_type(home, home_server_t);
-#else
-		MEM(home = talloc(thread, home_server_t));
-#endif
 
 		*home = (home_server_t) {
 			.ctx = (bio_handle_ctx_t) {
 				.el = unlang_interpret_event_list(request),
 				.module_name = inst->name,
 				.inst = inst,
-#ifdef REUSE_CONN
-				.limit_source_ports = (num_ports > 0),
-#endif
+				.limit_source_ports = (thread->num_ports > 0) ? LIMIT_PORTS_DYNAMIC : LIMIT_PORTS_NONE,
 			},
-
-#ifdef REUSE_CONN
-			.num_ports = num_ports,
-#endif
+			.num_ports = thread->num_ports,
 		};
 
 		/*
-		 *	Copy the home server configuration from the root configuration.  Then update it with
+		 *	Copy the home server configuration from the thread configuration.  Then update it with
 		 *	the needs of the home server.
 		 */
-		home->ctx.fd_config = inst->fd_config;
+		home->ctx.fd_config = thread->ctx.fd_config;
 		home->ctx.fd_config.type = FR_BIO_FD_CONNECTED;
 		home->ctx.fd_config.dst_ipaddr = ipaddr->vb_ip;
 		home->ctx.fd_config.dst_port = port->vb_uint32;
@@ -2929,7 +2991,7 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 		 *	Allocate the trunk and start it up.
 		 */
 		home->ctx.trunk = trunk_alloc(home, unlang_interpret_event_list(request), &io_funcs,
-					      &inst->trunk_conf, inst->name, home, false);
+					      &inst->trunk_conf, inst->name, home, false, inst->trigger_args);
 		if (!home->ctx.trunk) {
 		fail:
 			talloc_free(home);

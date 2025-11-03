@@ -10,14 +10,15 @@ The lowercase operation is done using the current locale.
 
 [source,unlang]
 ----
-control.Tmp-String-0 := "CAIPIRINHA"
-reply.Reply-Message := "lowercase of %{control.Tmp-String-0} is %str.lower(control.Tmp-String-0)"
+User-Name := "BOB"
+
+reply.Reply-Message := "lowercase of %{User-Name} is %str.lower(User-Name)"
 ----
 
 .Output
 
 ```
-lowercase of CAIPIRINHA is caipirinha
+lowercase of BOB is bob
 ```
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

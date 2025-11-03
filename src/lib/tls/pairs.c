@@ -32,6 +32,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/pair.h>
+#include <freeradius-devel/der/der.h>
 
 #include "attrs.h"
 #include "bio.h"
@@ -154,12 +155,19 @@ static bool tls_session_pairs_from_crl(fr_pair_list_t *pair_list, TALLOC_CTX *ct
  * @param[in] ctx		to allocate attributes in.
  * @param[in] request		the current request.
  * @param[in] cert		to validate.
+ * @param[in] der_decode	should the certificate be parsed with the DER decoder.
  * @return
  *	- 1 already exists.
  *	- 0 on success.
  *	- < 0 on failure.
  */
-int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *ctx, request_t *request, X509 *cert)
+int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *ctx, request_t *request, X509 *cert,
+#if OPENSSL_VERSION_NUMBER >= 0x30400000L
+					bool der_decode
+#else
+					UNUSED bool der_decode
+#endif
+				)
 {
 	int		loc;
 	char		buff[1024];
@@ -172,6 +180,35 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	fr_pair_t	*vp = NULL;
 	ssize_t		slen;
 	bool		san_found = false, crl_found = false;
+
+	/*
+	 *	We require OpenSSL >= 3.4 to call the DER decoder due to the stack size
+	 *	needed to handle the recursive calls involved in certificate decoding.
+	 */
+#if OPENSSL_VERSION_NUMBER >= 0x30400000L
+	if (der_decode) {
+		uint8_t			*cert_der;
+		uint8_t			*cd;
+		int			der_len;
+		fr_der_decode_ctx_t	der_ctx;
+
+		der_len = i2d_X509(cert, NULL);
+		if (der_len < 0) {
+			fr_tls_log(request, "Failed retrieving certificate");
+			return -1;
+		}
+		der_ctx.tmp_ctx = talloc_new(ctx);
+		cert_der = cd = talloc_array(der_ctx.tmp_ctx, uint8_t, der_len);
+		i2d_X509(cert, &cd);
+		slen = fr_der_decode_pair_dbuff(request->session_state_ctx, &request->session_state_pairs,
+						attr_der_certificate, &FR_DBUFF_TMP(cert_der, (size_t)der_len), &der_ctx);
+		talloc_free(der_ctx.tmp_ctx);
+		if (slen < 0) {
+			fr_tls_log(request, "Failed decoding certificate");
+			return -1;
+		}
+	}
+#endif
 
 	/*
 	 *	Subject

@@ -37,6 +37,11 @@ RCSID("$Id$")
 #include <openssl/asn1.h>
 #include <openssl/bn.h>
 
+/** Thread specific structure to hold requests awaiting CRL fetching */
+typedef struct {
+	fr_rb_tree_t			pending;			//!< Requests yielded while the CRL is being fetched.
+} rlm_crl_thread_t;
+
 /** Global tree of CRLs
  *
  * Separate from the instance data because that's protected.
@@ -45,6 +50,8 @@ typedef struct {
 	fr_rb_tree_t			*crls;				//!< A tree of CRLs organised by CDP URL.
 	fr_timer_list_t			*timer_list;			//!< The timer list to use for CRL expiry.
 									///< This gets serviced by the main loop.
+	rlm_crl_thread_t		*fetching;			//!< Pointer to thread instance data of
+									///< thread which is fetching a CRL.
 	pthread_mutex_t			mutex;
 } rlm_crl_mutable_t;
 
@@ -59,6 +66,8 @@ typedef struct {
 	char const			*ca_path;			//!< Directory containing certs for verifying CRL signatures.
 	X509_STORE			*verify_store;			//!< Store of certificates to verify CRL signatures.
 	rlm_crl_mutable_t		*mutable;			//!< Mutable data that's shared between all threads.
+	CONF_SECTION			*cs;				//!< Module instance config.
+	bool				trigger_rate_limit;		//!< Rate limit triggers.
 } rlm_crl_t;
 
 /** A single CRL in the global list of CRLs */
@@ -70,7 +79,14 @@ typedef struct {
 	fr_rb_node_t			node;				//!< The node in the tree
 	fr_value_box_list_t		delta_urls;			//!< URLs from which a delta CRL can be retrieved.
 	rlm_crl_t const			*inst;				//!< The instance of the CRL module.
+	rlm_crl_thread_t		*thread;			//!< The thread which fetched this entry.
 } crl_entry_t;
+
+/** Structure to record a request which is waiting for CRL fetching to complete */
+typedef struct {
+	request_t			*request;
+	fr_rb_node_t			node;
+} crl_pending_t;
 
 /** A status used to track which CRL is being checked */
 typedef enum {
@@ -93,6 +109,7 @@ static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("early_refresh", rlm_crl_t, early_refresh) },
 	{ FR_CONF_OFFSET("ca_file", rlm_crl_t, ca_file) },
 	{ FR_CONF_OFFSET("ca_path", rlm_crl_t, ca_path) },
+	{ FR_CONF_OFFSET("trigger_rate_limit", rlm_crl_t, trigger_rate_limit), .dflt = "yes" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -101,7 +118,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_crl_dict[];
 fr_dict_autoload_t rlm_crl_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_crl_data;
@@ -111,7 +128,7 @@ extern fr_dict_attr_autoload_t rlm_crl_dict_attr[];
 fr_dict_attr_autoload_t rlm_crl_dict_attr[] = {
 	{ .out = &attr_crl_data, .name = "CRL.Data", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_crl_cdp_url, .name = "CRL.CDP-URL", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 typedef struct {
@@ -167,14 +184,46 @@ static void crl_free(void *data)
 	talloc_free(data);
 }
 
-static void crl_expire(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t now, UNUSED void *uctx)
+static int8_t crl_pending_cmp(void const *a, void const *b)
+{
+	crl_pending_t	const *pending_a = (crl_pending_t const *)a;
+	crl_pending_t	const *pending_b = (crl_pending_t const *)b;
+
+	return CMP(pending_a->request, pending_b->request);
+}
+
+static void crl_expire(fr_timer_list_t *tl, UNUSED fr_time_t now, void *uctx)
 {
 	crl_entry_t	*crl = talloc_get_type_abort(uctx, crl_entry_t);
 
 	DEBUG2("CRL associated with CDP %s expired", crl->cdp_url);
-	pthread_mutex_lock(&crl->inst->mutable->mutex);
+
+	/*
+	 *	If the mutex is locked and this thread is fetching a CRL, asynchonously,
+	 *	insert a new timer event - otherwise the mutex will never be unlocked.
+	 */
+	if (pthread_mutex_trylock(&crl->inst->mutable->mutex) != 0) {
+		if (crl->inst->mutable->fetching == crl->thread) {
+			if (fr_timer_in(crl, tl, &crl->ev, fr_time_delta_from_sec(1), false, crl_expire, crl) <0) {
+				ERROR("Failed inserting CRL expiry event");
+			}
+			return;
+		}
+		pthread_mutex_lock(&crl->inst->mutable->mutex);
+	}
 	fr_rb_remove(crl->inst->mutable->crls, crl);
 	pthread_mutex_unlock(&crl->inst->mutable->mutex);
+
+	if (trigger_enabled()) {
+		fr_pair_list_t	args;
+		fr_pair_t	*vp;
+		fr_pair_list_init(&args);
+		MEM((vp = fr_pair_afrom_da_nested(crl, &args, attr_crl_cdp_url)));
+		fr_value_box_strdup_shallow(&vp->data, NULL, crl->cdp_url, true);
+		trigger(unlang_interpret_get_thread_default(), crl->inst->cs, NULL, "modules.crl.expired",
+			crl->inst->trigger_rate_limit, &args);
+	}
+
 	talloc_free(crl);
 }
 
@@ -418,6 +467,8 @@ static unlang_action_t CC_HINT(nonnull) crl_process_cdp_data(unlang_result_t *p_
 /** Yield to a tmpl to retrieve CRL data
  *
  * @param request	the current request.
+ * @param inst		module instance data.
+ * @param thread	thread instance data.
  * @param env		the call_env for this module call.
  * @param rctx		the resume ctx for this module call.
  *
@@ -426,7 +477,8 @@ static unlang_action_t CC_HINT(nonnull) crl_process_cdp_data(unlang_result_t *p_
  *  - 0 - no tmpl pushed, soft fail.
  *  - -1 - no tmpl pushed, hard fail
  */
-static int crl_tmpl_yield(request_t *request, rlm_crl_env_t *env, rlm_crl_rctx_t *rctx)
+static int crl_tmpl_yield(request_t *request, rlm_crl_t const *inst, rlm_crl_thread_t *thread, rlm_crl_env_t *env,
+			  rlm_crl_rctx_t *rctx)
 {
 	fr_pair_t	*vp;
 	tmpl_t		*vpt;
@@ -453,12 +505,16 @@ static int crl_tmpl_yield(request_t *request, rlm_crl_env_t *env, rlm_crl_rctx_t
 		return -1;
 	}
 
+	trigger(unlang_interpret_get_thread_default(), inst->cs, NULL, "modules.crl.fetchuri", inst->trigger_rate_limit,
+		&request->request_pairs);
+
 	if (unlang_module_yield_to_tmpl(rctx, &rctx->crl_data, request, vpt,
 					NULL, crl_process_cdp_data, crl_signal, 0, rctx) < 0) return -1;
+	inst->mutable->fetching = thread;
 	return 1;
 }
 
-static unlang_action_t crl_by_url(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request);
+static unlang_action_t crl_by_url_start(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request);
 
 /** Process the response from evaluating the cdp_url -> crl_data expansion
  *
@@ -468,13 +524,19 @@ static unlang_action_t CC_HINT(nonnull) crl_process_cdp_data(unlang_result_t *p_
 							     request_t *request)
 {
 	rlm_crl_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_crl_t);
+	rlm_crl_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_crl_thread_t);
 	rlm_crl_env_t *env = talloc_get_type_abort(mctx->env_data, rlm_crl_env_t);
 	rlm_crl_rctx_t *rctx = talloc_get_type_abort(mctx->rctx, rlm_crl_rctx_t);
 	crl_ret_t	ret = CRL_NOT_FOUND;
+	rlm_rcode_t	rcode = RLM_MODULE_FAIL;
+	crl_pending_t	*pending;
 
+	inst->mutable->fetching = NULL;
 	switch (fr_value_box_list_num_elements(&rctx->crl_data)) {
 	case 0:
 		REDEBUG("No CRL data returned from %pV, failing", rctx->cdp_url);
+		trigger(unlang_interpret_get_thread_default(), inst->cs, NULL, "modules.crl.fetchfail",
+			inst->trigger_rate_limit, &request->request_pairs);
 	again:
 		talloc_free(rctx->cdp_url);
 
@@ -483,7 +545,7 @@ static unlang_action_t CC_HINT(nonnull) crl_process_cdp_data(unlang_result_t *p_
 		 */
 		rctx->cdp_url = fr_value_box_list_pop_head(&rctx->missing_crls);
 		if (rctx->cdp_url) {
-			switch (crl_tmpl_yield(request, env, rctx)) {
+			switch (crl_tmpl_yield(request, inst, t, env, rctx)) {
 			case 0:
 				goto again;
 			case 1:
@@ -493,10 +555,9 @@ static unlang_action_t CC_HINT(nonnull) crl_process_cdp_data(unlang_result_t *p_
 			}
 		}
 	fail:
-		pthread_mutex_unlock(&inst->mutable->mutex);
 		fr_value_box_list_talloc_free(&rctx->crl_data);
 		pair_delete_request(attr_crl_cdp_url);
-		RETURN_UNLANG_FAIL;
+		goto finish;
 
 	case 1:
 	{
@@ -509,6 +570,8 @@ static unlang_action_t CC_HINT(nonnull) crl_process_cdp_data(unlang_result_t *p_
 		talloc_free(crl_data);
 		if (!crl_entry) {
 			RPERROR("Failed to process returned CRL data");
+			trigger(unlang_interpret_get_thread_default(), inst->cs, NULL, "modules.crl.fetchbad",
+				inst->trigger_rate_limit, &request->request_pairs);
 			goto again;
 		}
 
@@ -554,8 +617,8 @@ static unlang_action_t CC_HINT(nonnull) crl_process_cdp_data(unlang_result_t *p_
 	check_return:
 		switch (ret) {
 		case CRL_ENTRY_FOUND:
-			pthread_mutex_unlock(&inst->mutable->mutex);
-			RETURN_UNLANG_REJECT;
+			rcode = RLM_MODULE_REJECT;
+			goto finish;
 
 		case CRL_ENTRY_NOT_FOUND:
 			/*
@@ -572,9 +635,9 @@ static unlang_action_t CC_HINT(nonnull) crl_process_cdp_data(unlang_result_t *p_
 			FALL_THROUGH;
 
 		case CRL_ENTRY_REMOVED:
-			pthread_mutex_unlock(&inst->mutable->mutex);
+			rcode = RLM_MODULE_OK;
 			pair_delete_request(attr_crl_cdp_url);
-			RETURN_UNLANG_OK;
+			goto finish;
 
 		case CRL_ERROR:
 			goto fail;
@@ -593,21 +656,22 @@ static unlang_action_t CC_HINT(nonnull) crl_process_cdp_data(unlang_result_t *p_
 
 	default:
 		REDEBUG("Too many CRL values returned, failing");
-		break;
+		goto fail;
 	}
 
-	goto fail;
+finish:
+	pthread_mutex_unlock(&inst->mutable->mutex);
+	pending = fr_rb_first(&t->pending);
+	if (pending) unlang_interpret_mark_runnable(pending->request);
+	RETURN_UNLANG_RCODE(rcode);
 }
 
-static unlang_action_t CC_HINT(nonnull) crl_by_url(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull(1,2,3,4,6)) crl_by_url(unlang_result_t *p_result, rlm_crl_t const *inst,
+							      rlm_crl_thread_t *t, rlm_crl_env_t *env,
+							      rlm_crl_rctx_t *rctx, request_t *request)
 {
-	rlm_crl_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_crl_t);
-	rlm_crl_env_t *env = talloc_get_type_abort(mctx->env_data, rlm_crl_env_t);
-	rlm_crl_rctx_t *rctx = mctx->rctx;
 	rlm_rcode_t	rcode = RLM_MODULE_NOOP;
 	crl_entry_t	*found;
-
-	if (fr_value_box_list_num_elements(env->cdp) == 0) RETURN_UNLANG_NOOP;
 
 	if (!rctx) rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), rlm_crl_rctx_t);
 	fr_value_box_list_init(&rctx->missing_crls);
@@ -660,7 +724,13 @@ static unlang_action_t CC_HINT(nonnull) crl_by_url(unlang_result_t *p_result, mo
 	}
 
 	if (rcode != RLM_MODULE_NOTFOUND) {
+		crl_pending_t *pending;
+	finish:
 		pthread_mutex_unlock(&inst->mutable->mutex);
+
+		pending = fr_rb_first(&t->pending);
+		if (pending) unlang_interpret_mark_runnable(pending->request);
+
 		RETURN_UNLANG_RCODE(rcode);
 	}
 
@@ -676,7 +746,7 @@ fetch_missing:
 again:
 	rctx->cdp_url = fr_value_box_list_pop_head(&rctx->missing_crls);
 
-	switch (crl_tmpl_yield(request, env, rctx)) {
+	switch (crl_tmpl_yield(request, inst, t, env, rctx)) {
 	case 0:
 		goto again;
 	case 1:
@@ -686,14 +756,79 @@ again:
 		/* coverity[missing_unlock] */
 		return UNLANG_ACTION_PUSHED_CHILD;
 	default:
-		pthread_mutex_unlock(&inst->mutable->mutex);
-		RETURN_UNLANG_FAIL;
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
 	}
+}
+
+static unlang_action_t CC_HINT(nonnull) crl_by_url_resume(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_crl_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_crl_t);
+	rlm_crl_env_t		*env = talloc_get_type_abort(mctx->env_data, rlm_crl_env_t);
+	rlm_crl_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_crl_thread_t);
+	crl_pending_t		find, *found;
+
+	find.request = request;
+	found = fr_rb_find(&t->pending, &find);
+	if (!found) RETURN_UNLANG_NOOP;
+
+	fr_rb_delete(&t->pending, found);
+	return crl_by_url(p_result, inst, t, env, mctx->rctx, request);
+}
+
+static void crl_by_url_cancel(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
+{
+	rlm_crl_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_crl_thread_t);
+	crl_pending_t		*found, find;
+
+	find.request = request;
+	found = fr_rb_find(&t->pending, &find);
+	if (!found) return;
+
+	fr_rb_delete(&t->pending, found);
+}
+
+static unlang_action_t CC_HINT(nonnull) crl_by_url_start(unlang_result_t *p_result, module_ctx_t const *mctx,
+							request_t *request)
+{
+	rlm_crl_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_crl_t);
+	rlm_crl_env_t		*env = talloc_get_type_abort(mctx->env_data, rlm_crl_env_t);
+	rlm_crl_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_crl_thread_t);
+	crl_pending_t		*pending;
+
+	if (fr_value_box_list_num_elements(env->cdp) == 0) RETURN_UNLANG_NOOP;
+
+	if (inst->mutable->fetching != t) return crl_by_url(p_result, inst, t, env, mctx->rctx, request);
+
+	MEM(pending = talloc_zero(t, crl_pending_t));
+	pending->request = request;
+
+	fr_rb_insert(&t->pending, pending);
+	RDEBUG3("Yielding request until CRL fetching completed");
+	return unlang_module_yield(request, crl_by_url_resume, crl_by_url_cancel, ~FR_SIGNAL_CANCEL, mctx->rctx);
+}
+
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_crl_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_crl_thread_t);
+
+	fr_rb_inline_init(&t->pending, crl_pending_t, node, crl_pending_cmp, NULL);
+
+	return 0;
 }
 
 static int mod_mutable_free(rlm_crl_mutable_t *mutable)
 {
 	pthread_mutex_destroy(&mutable->mutex);
+	return 0;
+}
+
+static int mod_detach(module_detach_ctx_t const *mctx)
+{
+	rlm_crl_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_crl_t);
+
+	if (inst->verify_store) X509_STORE_free(inst->verify_store);
+	talloc_free(inst->mutable);
 	return 0;
 }
 #endif
@@ -725,26 +860,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	X509_STORE_set_purpose(inst->verify_store, X509_PURPOSE_SSL_CLIENT);
 
+	inst->cs = mctx->mi->conf;
+
 	return 0;
 #else
 	cf_log_err(mctx->mi->conf, "rlm_crl requires OpenSSL");
 	return -1;
 #endif
-}
-
-static int mod_detach(
-#ifndef WITH_TLS
-		      UNUSED
-#endif
-		      module_detach_ctx_t const *mctx)
-{
-#ifdef WITH_TLS
-	rlm_crl_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_crl_t);
-
-	if (inst->verify_store) X509_STORE_free(inst->verify_store);
-	talloc_free(inst->mutable);
-#endif
-	return 0;
 }
 
 extern module_rlm_t rlm_crl;
@@ -753,14 +875,18 @@ module_rlm_t rlm_crl = {
 		.magic		= MODULE_MAGIC_INIT,
 		.inst_size	= sizeof(rlm_crl_t),
 		.instantiate	= mod_instantiate,
-		.detach		= mod_detach,
 		.name		= "crl",
 		.config		= module_config,
+		MODULE_THREAD_INST(rlm_crl_thread_t),
+#ifdef WITH_TLS
+		.thread_instantiate	= mod_thread_instantiate,
+		.detach		= mod_detach,
+#endif
 	},
 #ifdef WITH_TLS
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
-			{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = crl_by_url, .method_env = &crl_env },
+			{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = crl_by_url_start, .method_env = &crl_env },
 			MODULE_BINDING_TERMINATOR
 		}
 	}

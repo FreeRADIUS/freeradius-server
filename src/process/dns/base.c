@@ -40,7 +40,7 @@ static fr_dict_t const *dict_dns;
 extern fr_dict_autoload_t process_dns_dict[];
 fr_dict_autoload_t process_dns_dict[] = {
 	{ .out = &dict_dns, .proto = "dns" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -60,7 +60,7 @@ fr_dict_attr_autoload_t process_dns_dict_attr[] = {
 	{ .out = &attr_response_bit, .name = "Header.Query", .type = FR_TYPE_BOOL, .dict = &dict_dns},
 	{ .out = &attr_rcode, .name = "Header.Rcode", .type = FR_TYPE_UINT8, .dict = &dict_dns},
 	{ .out = &attr_authoritative_bit, .name = "Header.Authoritative", .type = FR_TYPE_BOOL, .dict = &dict_dns},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_value_box_t const *enum_rcode_no_error;
@@ -76,7 +76,7 @@ fr_dict_enum_autoload_t process_dns_dict_enum[] = {
 	{ .out = &enum_rcode_server_failure, .name = "Server-Failure", .attr = &attr_rcode },		/* fail */
 	{ .out = &enum_rcode_name_error, .name = "Name-Error", .attr = &attr_rcode },			/* notfound */
 	{ .out = &enum_rcode_refused, .name = "Refused", .attr = &attr_rcode },				/* reject */
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 typedef struct {

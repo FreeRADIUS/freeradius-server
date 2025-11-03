@@ -250,7 +250,6 @@ _Generic(&(_ct), \
  *
  * @param[in] _name		of the CONF_PAIR to search for.
  * @param[in] _type		to parse the CONF_PAIR as.
- * @param[in] _flags		controlling parsing behaviour.
  * @param[in] _struct		containing the field to write the result to.
  * @param[in] _field		to write the result to.
  */
@@ -318,7 +317,6 @@ _Generic(&(_ct), \
 
 /** conf_parser_t which populates a sub-struct using a CONF_SECTION
  *
- * @param[in] _name		of the CONF_SECTION to search for.
  * @param[in] _struct		containing the sub-struct to populate.
  * @param[in] _field		containing the sub-struct to populate.
  * @param[in] _subcs		conf_parser_t to include in-line in this section

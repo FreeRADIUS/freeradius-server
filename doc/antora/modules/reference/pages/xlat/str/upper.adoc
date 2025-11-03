@@ -10,14 +10,14 @@ The uppercase operation is done using the current locale.
 
 [source,unlang]
 ----
-control.Tmp-String-0 := "caipirinha"
-reply.Reply-Message := "uppercase of %{control.Tmp-String-0} is " + %str.upper(control.Tmp-String-0)
+User-Name := "bob"
+reply.Reply-Message := "uppercase of %{User-Name} is " + %str.upper(User-Name)
 ----
 
 .Output
 
 ```
-uppercase of caipirinha is CAIPIRINHA
+uppercase of bob is BOB
 ```
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

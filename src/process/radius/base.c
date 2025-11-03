@@ -50,7 +50,7 @@ extern fr_dict_autoload_t process_radius_dict[];
 fr_dict_autoload_t process_radius_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_auth_type;
@@ -87,7 +87,7 @@ fr_dict_attr_autoload_t process_radius_dict_attr[] = {
 
 	{ .out = &attr_event_timestamp, .name = "Event-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_radius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_value_box_t const	*enum_auth_type_accept;
@@ -97,7 +97,7 @@ extern fr_dict_enum_autoload_t process_radius_dict_enum[];
 fr_dict_enum_autoload_t process_radius_dict_enum[] = {
 	{ .out = &enum_auth_type_accept, .name = "Accept", .attr = &attr_auth_type },
 	{ .out = &enum_auth_type_reject, .name = "Reject", .attr = &attr_auth_type },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*
@@ -452,7 +452,7 @@ RESUME(auth_type)
 		[RLM_MODULE_NOOP] =	FR_RADIUS_CODE_ACCESS_REJECT,
 		[RLM_MODULE_NOTFOUND] =	FR_RADIUS_CODE_ACCESS_REJECT,
 		[RLM_MODULE_REJECT] =	FR_RADIUS_CODE_ACCESS_REJECT,
-		[RLM_MODULE_UPDATED] =	FR_RADIUS_CODE_ACCESS_REJECT,
+		[RLM_MODULE_UPDATED] =	FR_RADIUS_CODE_ACCESS_ACCEPT,
 		[RLM_MODULE_DISALLOW] = FR_RADIUS_CODE_ACCESS_REJECT,
 	};
 

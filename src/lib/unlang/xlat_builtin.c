@@ -23,14 +23,11 @@
  * @copyright 2000,2006 The FreeRADIUS server project
  * @copyright 2000 Alan DeKok (aland@freeradius.org)
  */
-
-
 RCSID("$Id$")
 
 /**
  * @defgroup xlat_functions xlat expansion functions
  */
-
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/unlang/interpret.h>
@@ -40,6 +37,9 @@ RCSID("$Id$")
 #include <freeradius-devel/io/test_point.h>
 
 #include <freeradius-devel/util/base16.h>
+#include <freeradius-devel/util/dbuff.h>
+#include <freeradius-devel/util/dcursor.h>
+#include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/table.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
@@ -259,8 +259,8 @@ xlat_action_t xlat_transparent(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_pairs_debug(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-					  UNUSED xlat_ctx_t const *xctx,
-					  request_t *request, fr_value_box_list_t *args)
+					   UNUSED xlat_ctx_t const *xctx,
+					   request_t *request, fr_value_box_list_t *args)
 {
 	fr_pair_t		*vp;
 	fr_dcursor_t		*cursor;
@@ -753,7 +753,7 @@ static xlat_action_t xlat_func_file_cat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		goto fail;
 	}
 
-	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, false));
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, NULL));
 	fr_value_box_mem_alloc(dst, &buffer, dst, NULL, buf.st_size, true);
 
 	len = read(fd, buffer, buf.st_size);
@@ -791,6 +791,31 @@ static xlat_action_t xlat_func_file_rm(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_action_t xlat_func_file_touch(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+					  request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t *dst, *vb;
+	char const	*filename;
+	int		fd;
+
+	XLAT_ARGS(args, &vb);
+	fr_assert(vb->type == FR_TYPE_STRING);
+	filename = vb->vb_strvalue;
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	fr_dcursor_append(out, dst);
+
+	fd = open(filename, O_CREAT | S_IRUSR | S_IWUSR, 0600);
+	if (fd == -1) {
+		dst->vb_bool = false;
+		REDEBUG3("Failed touching file %s - %s", filename, fr_syserror(errno));
+	}
+	dst->vb_bool = true;
+
+	close(fd);
+
+	return XLAT_ACTION_DONE;
+}
 
 static xlat_arg_parser_t const xlat_func_taint_args[] = {
 	{ .required = true, .type = FR_TYPE_VOID },
@@ -1272,7 +1297,7 @@ static xlat_action_t xlat_func_log_dst(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 
 
 static xlat_arg_parser_t const xlat_func_map_arg[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -1309,46 +1334,48 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	XLAT_ARGS(args, &fmt_vb);
 
-	if (map_afrom_attr_str(request, &map, fmt_vb->vb_strvalue, &attr_rules, &attr_rules) < 0) {
-		RPEDEBUG("Failed parsing \"%s\" as map", fmt_vb->vb_strvalue);
-		return XLAT_ACTION_FAIL;
-	}
-
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
 	vb->vb_bool = false;	/* Default fail value - changed to true on success */
 	fr_dcursor_append(out, vb);
 
-	switch (map->lhs->type) {
-	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_XLAT:
-		break;
+	fr_value_box_list_foreach_safe(&fmt_vb->vb_group, fmt) {
+		if (map_afrom_attr_str(request, &map, fmt->vb_strvalue, &attr_rules, &attr_rules) < 0) {
+			RPEDEBUG("Failed parsing \"%s\" as map", fmt_vb->vb_strvalue);
+			return XLAT_ACTION_FAIL;
+		}
 
-	default:
-		REDEBUG("Unexpected type %s in left hand side of expression",
-			tmpl_type_to_str(map->lhs->type));
-		return XLAT_ACTION_FAIL;
-	}
+		switch (map->lhs->type) {
+		case TMPL_TYPE_ATTR:
+		case TMPL_TYPE_XLAT:
+			break;
 
-	switch (map->rhs->type) {
-	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_DATA:
-	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
-	case TMPL_TYPE_DATA_UNRESOLVED:
-	case TMPL_TYPE_XLAT:
-		break;
+		default:
+			REDEBUG("Unexpected type %s in left hand side of expression",
+				tmpl_type_to_str(map->lhs->type));
+			return XLAT_ACTION_FAIL;
+		}
 
-	default:
-		REDEBUG("Unexpected type %s in right hand side of expression",
-			tmpl_type_to_str(map->rhs->type));
-		return XLAT_ACTION_FAIL;
-	}
+		switch (map->rhs->type) {
+		case TMPL_TYPE_ATTR:
+		case TMPL_TYPE_EXEC:
+		case TMPL_TYPE_DATA:
+		case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
+		case TMPL_TYPE_DATA_UNRESOLVED:
+		case TMPL_TYPE_XLAT:
+			break;
 
-	RINDENT();
-	ret = map_to_request(request, map, map_to_vp, NULL);
-	REXDENT();
-	talloc_free(map);
-	if (ret < 0) return XLAT_ACTION_FAIL;
+		default:
+			REDEBUG("Unexpected type %s in right hand side of expression",
+				tmpl_type_to_str(map->rhs->type));
+			return XLAT_ACTION_FAIL;
+		}
+
+		RINDENT();
+		ret = map_to_request(request, map, map_to_vp, NULL);
+		REXDENT();
+		talloc_free(map);
+		if (ret < 0) return XLAT_ACTION_FAIL;
+	}}
 
 	vb->vb_bool = true;
 	return XLAT_ACTION_DONE;
@@ -4010,7 +4037,8 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 static xlat_arg_parser_t const protocol_decode_xlat_args[] = {
-	{ .single = true, .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH, .type = FR_TYPE_VOID },
+	{ .required = true, .type = FR_TYPE_VOID },
+	{ .single = true, .type = FR_TYPE_ATTR },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -4030,10 +4058,16 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					  request_t *request, fr_value_box_list_t *in)
 {
 	int					decoded;
-	fr_value_box_t				*vb;
+	fr_value_box_t				*vb, *in_head, *root_da;
 	void					*decode_ctx = NULL;
 	protocol_decode_xlat_uctx_t const	*decode_uctx = talloc_get_type_abort(*(void * const *)xctx->inst, protocol_decode_xlat_uctx_t);
 	fr_test_point_pair_decode_t const	*tp_decode = decode_uctx->tp_decode;
+	fr_pair_t				*vp = NULL;
+	bool					created = false;
+
+	XLAT_ARGS(in, &in_head, &root_da);
+
+	fr_assert(in_head->type == FR_TYPE_GROUP);
 
 	if (decode_uctx->dict && decode_uctx->dict != request->proto_dict) {
 		REDEBUG2("Can't call %%%s() when in %s namespace", xctx->ex->call.func->name,
@@ -4041,17 +4075,34 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (tp_decode->test_ctx) {
-		if (tp_decode->test_ctx(&decode_ctx, ctx, request->proto_dict) < 0) {
+	if (root_da) {
+		int ret;
+		if (!fr_type_is_structural(root_da->vb_attr->type)) {
+			REDEBUG2("Decoding context must be a structural attribute reference");
 			return XLAT_ACTION_FAIL;
+		}
+		ret = fr_pair_update_by_da_parent(fr_pair_list_parent(&request->request_pairs), &vp, root_da->vb_attr);
+		if (ret < 0) {
+			REDEBUG2("Failed creating decoding root pair");
+			return XLAT_ACTION_FAIL;
+		}
+		if (ret == 0) created = true;
+	}
+
+	if (tp_decode->test_ctx) {
+		if (tp_decode->test_ctx(&decode_ctx, ctx, request->proto_dict, root_da ? root_da->vb_attr : NULL) < 0) {
+			goto fail;
 		}
 	}
 
-	decoded = xlat_decode_value_box_list(request->request_ctx, &request->request_pairs,
-					     request, decode_ctx, tp_decode->func, in);
+	decoded = xlat_decode_value_box_list(root_da ? vp : request->request_ctx,
+					     root_da ? &vp->vp_group : &request->request_pairs,
+					     request, decode_ctx, tp_decode->func, &in_head->vb_group);
 	if (decoded <= 0) {
 		talloc_free(decode_ctx);
 		RPERROR("Protocol decoding failed");
+	fail:
+		if (created) fr_pair_delete(&request->request_pairs, vp);
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -4122,6 +4173,12 @@ static int protocol_xlat_instantiate(xlat_inst_ctx_t const *mctx)
 	return 0;
 }
 
+static xlat_arg_parser_t const protocol_encode_xlat_args[] = {
+	XLAT_ARG_PARSER_CURSOR,
+	{ .single = true, .type = FR_TYPE_ATTR },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Encode protocol attributes / options
  *
  * Returns octet string created from the provided pairs
@@ -4139,17 +4196,18 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 {
 	fr_pair_t	*vp;
 	fr_dcursor_t	*cursor;
-	bool		tainted = false;
+	bool		tainted = false, encode_children = false;
 	fr_value_box_t	*encoded;
 
-	uint8_t		binbuf[2048];
-	uint8_t		*p = binbuf, *end = p + sizeof(binbuf);
+	fr_dbuff_t	*dbuff;
 	ssize_t		len = 0;
-	fr_value_box_t	*in_head;
+	fr_value_box_t	*in_head, *root_da;
 	void		*encode_ctx = NULL;
 	fr_test_point_pair_encode_t const *tp_encode;
 
-	XLAT_ARGS(args, &in_head);
+	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 2048, SIZE_MAX);
+
+	XLAT_ARGS(args, &in_head, &root_da);
 
 	memcpy(&tp_encode, xctx->inst, sizeof(tp_encode)); /* const issues */
 
@@ -4159,20 +4217,56 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Create the encoding context.
 	 */
 	if (tp_encode->test_ctx) {
-		if (tp_encode->test_ctx(&encode_ctx, cursor, request->proto_dict) < 0) {
+		if (tp_encode->test_ctx(&encode_ctx, cursor, request->proto_dict, root_da ? root_da->vb_attr : NULL) < 0) {
 			return XLAT_ACTION_FAIL;
 		}
+	}
+
+	if (root_da) {
+		if (!fr_type_is_structural(root_da->vb_attr->type)) {
+			REDEBUG2("Encoding context must be a structural attribute reference");
+			return XLAT_ACTION_FAIL;
+		}
+		vp = fr_dcursor_current(cursor);
+		if (!fr_dict_attr_common_parent(root_da->vb_attr, vp->da, true) && (root_da->vb_attr != vp->da)) {
+			REDEBUG2("%s is not a child of %s", vp->da->name, root_da->vb_attr->name);
+			return XLAT_ACTION_FAIL;
+		}
+		if (root_da->vb_attr == vp->da) encode_children = true;
 	}
 
 	/*
 	 *	Loop over the attributes, encoding them.
 	 */
-	for (vp = fr_dcursor_current(cursor);
-	     vp != NULL;
-	     vp = fr_dcursor_next(cursor)) {
-		if (vp->da->flags.internal) continue;
+	RDEBUG2("Encoding attributes");
 
+	if (RDEBUG_ENABLED2) {
+		RINDENT();
+		for (vp = fr_dcursor_current(cursor);
+		     vp != NULL;
+		     vp = fr_dcursor_next(cursor)) {
+			RDEBUG2("%pP", vp);
+		}
+		REXDENT();
+	}
+
+	/*
+	 *	Encoders advance the cursor, so we just need to feed
+	 *	in the next pair.  This was originally so we could
+	 *	extend the output buffer, but with dbuffs that's
+	 *	no longer necessary... we might want to refactor this
+	 *	in future.
+	 */
+	for (vp = fr_dcursor_head(cursor);
+	     vp != NULL;
+	     vp = fr_dcursor_current(cursor)) {
 		/*
+		 *
+		 *	Don't check for internal attributes, the
+		 *	encoders can skip them if they need to, and the
+		 *	internal encoder can encode anything, as can
+		 *	things like CBOR.
+		 *
 		 *	Don't check the dictionaries.  By definition,
 		 *	vp->da->dict==request->proto_dict, OR else we're
 		 *	using the internal encoder and encoding a real
@@ -4183,22 +4277,38 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 *	as AKA/SIM and DHCPv6 encode "bool"s only if
 		 *	their value is true.
 		 */
+		if (encode_children) {
+			fr_dcursor_t	child_cursor;
 
-		len = tp_encode->func(&FR_DBUFF_TMP(p, end), cursor, encode_ctx);
+			fr_assert(fr_type_is_structural(vp->vp_type));
+
+			/*
+			 *	If we're given an encoding context which is the
+			 *	same as the DA returned by the cursor, that means
+			 *	encode the children.
+			 */
+			fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
+			while (fr_dcursor_current(&child_cursor)) {
+				len = tp_encode->func(dbuff, &child_cursor, encode_ctx);
+				if (len < 0) break;
+			}
+			fr_dcursor_next(cursor);
+		} else {
+			len = tp_encode->func(dbuff, cursor, encode_ctx);
+		}
 		if (len < 0) {
 			RPEDEBUG("Protocol encoding failed");
 			return XLAT_ACTION_FAIL;
 		}
 
 		tainted |= vp->vp_tainted;
-		p += len;
 	}
 
 	/*
 	 *	Pass the options string back to the caller.
 	 */
 	MEM(encoded = fr_value_box_alloc_null(ctx));
-	fr_value_box_memdup(encoded, encoded, NULL, binbuf, (size_t)len, tainted);
+	fr_value_box_memdup(encoded, encoded, NULL, fr_dbuff_start(dbuff), fr_dbuff_used(dbuff), tainted);
 	fr_dcursor_append(out, encoded);
 
 	return XLAT_ACTION_DONE;
@@ -4244,7 +4354,7 @@ static int xlat_protocol_register_by_name(dl_t *dl, char const *name, fr_dict_t 
 		if (xlat_func_find(buffer, -1)) return 1;
 
 		if (unlikely((xlat = xlat_func_register(NULL, buffer, protocol_encode_xlat, FR_TYPE_OCTETS)) == NULL)) return -1;
-		xlat_func_args_set(xlat, xlat_pair_cursor_args);
+		xlat_func_args_set(xlat, protocol_encode_xlat_args);
 		/* coverity[suspicious_sizeof] */
 		xlat_func_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_encode_t *, NULL, tp_encode);
 		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
@@ -4440,6 +4550,7 @@ do { \
 	XLAT_REGISTER_ARGS("file.exists", xlat_func_file_exists, FR_TYPE_BOOL, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.head", xlat_func_file_head, FR_TYPE_STRING, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.rm", xlat_func_file_rm, FR_TYPE_BOOL, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.touch", xlat_func_file_touch, FR_TYPE_BOOL, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.size", xlat_func_file_size, FR_TYPE_UINT64, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.tail", xlat_func_file_tail, FR_TYPE_STRING, xlat_func_file_name_count_args);
 	XLAT_REGISTER_ARGS("file.cat", xlat_func_file_cat, FR_TYPE_OCTETS, xlat_func_file_cat_args);
@@ -4570,6 +4681,7 @@ do { \
 	XLAT_REGISTER_HASH("sha2_256", xlat_func_sha2_256);
 	XLAT_REGISTER_HASH("sha2_384", xlat_func_sha2_384);
 	XLAT_REGISTER_HASH("sha2_512", xlat_func_sha2_512);
+	XLAT_REGISTER_HASH("sha2", xlat_func_sha2_256);
 
 #  ifdef HAVE_EVP_BLAKE2S256
 	XLAT_REGISTER_HASH("blake2s_256", xlat_func_blake2s_256);
@@ -4582,6 +4694,7 @@ do { \
 	XLAT_REGISTER_HASH("sha3_256", xlat_func_sha3_256);
 	XLAT_REGISTER_HASH("sha3_384", xlat_func_sha3_384);
 	XLAT_REGISTER_HASH("sha3_512", xlat_func_sha3_512);
+	XLAT_REGISTER_HASH("sha3", xlat_func_sha3_256);
 #endif
 
 	XLAT_REGISTER_PURE("string", xlat_transparent, FR_TYPE_STRING, xlat_func_string_arg);

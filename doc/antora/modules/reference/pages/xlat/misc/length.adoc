@@ -13,11 +13,11 @@ the attributes data as encoded "on the wire".
 ====
 [source,unlang]
 ----
-Tmp-String-0 := "Caipirinha"
+string test := "Caipirinha"
 Framed-IP-Address := 192.0.2.1
 
 reply += {
-	Reply-Message = "The length of %{control.Tmp-String-0} is %length(control.Tmp-String-0)"
+	Reply-Message = "The length of %{test} is %length(test)"
 	Reply-Message = "The length of %{control.Framed-IP-Address} is %length(control.Framed-IP-Address)"
 }
 ----

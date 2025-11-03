@@ -67,15 +67,17 @@ the user is authenticated.  Otherwise, authentication fails.
 CHAP::
 The user supplies a `CHAP` password attribute.
 +
-FreeRADIUS reads the "known good" password from LDAP in cleartext, and
-compares that to what the user entered.
+FreeRADIUS reads the "known good" password from LDAP, and compares
+that to what the user entered.  The password in LDAP *must* be clear
+text.
 
 MS-CHAP::
 The user supplies a `MS-CHAP` password attribute.  Either as
 MS-CHAPv2, or as PEAP/MSCHAPv2, or as EAP-TTLS/MS-CHAPv2.
 +
-FreeRADIUS reads the "known good" password from LDAP in cleartext, or
-as an NT hash, and compares that to what the user entered.
+FreeRADIUS reads the "known good" password from LDAP, and does the
+relevant MS-CHAP hashing in order to verify the data it received from
+the user.  The password in LDAP *must* be clear text, or as an NT hash.
 
 All of these authentication methods except "bind as user" require
 that FreeRADIUS obtain the `userPassword` field from LDAP.  If that
@@ -92,10 +94,16 @@ These tests *must* be run prior to configuring FreeRADIUS.  We strongly
 recommend having the LDAP database return the `userPassword` field to
 FreeRADIUS, so that FreeRADIUS can authenticate the user.
 
-We strongly recommend that the passwords be stored in LDAP as
-cleartext.  Otherwise, the only authentication methods that will work
-are PAP and EAP-TTLS/PAP.  The next section explains these issues in
-more detail.
+We strongly recommend that the passwords be stored in LDAP as hashed /
+salted.  The downside of this approach is that the authentication
+methods are then limited to PAP and EAP-TTLS/PAP.  Storing passwords
+as clear text (or NT hash, which is essentially clear text) is
+extremely insecure.
+
+For an in-depth description as to why are making these
+recommendations, see the InkBridge article on
+https://www.inkbridgenetworks.com/blog/blog-10/pap-vs-chap-is-pap-less-secure-55[PAP
+vs CHAP]
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

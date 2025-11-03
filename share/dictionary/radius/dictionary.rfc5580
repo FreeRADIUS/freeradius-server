@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2023 The FreeRADIUS Server project and contributors
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -24,13 +24,47 @@ ATTRIBUTE	Operator-Name				126	string
 ATTRIBUTE	Location-Information			127	struct
 MEMBER		Index					uint16
 MEMBER		Code					uint8
+
+#
+# See RFC 5580 Section 4.3.1.
+#
+# The contents are RFC4776 Section 3.1, skipping the first 3 octets.
+#
+#  The code for the DHCP option, the length of the DHCP option, and
+#  the 'what' element are not included.
+#
+VALUE	Code				Civic-Location		0
+
+#
+#  See RFC 5580 Section 4.3.2.
+#
+#
+#  The contents are RFC3825 Section 2, skipping the first 2 octets.
+#
+#  The code for the DHCP option, the length of the DHCP option are
+#  not included.
+#
+VALUE	Code				Geospatial-Location	1
+
 MEMBER		Entity					uint8
 MEMBER		Sighting-Time				uint64
 MEMBER		TTL					uint64
 MEMBER		Method					string
 
 ATTRIBUTE	Location-Data				128	struct
+
+#
+#  This field correlates Location-Information.Index with Location-Data.Index
+#
 MEMBER		Index					uint16
+
+#
+#  This field is actually one of a few different data structures,
+#  depending on Location-Information.Code.
+#
+#  Unfortunately, we do not (yet) support decoding unions based on a
+# key field which is in a different attribute.
+#
 MEMBER		Location				octets
 
 ATTRIBUTE	Basic-Location-Policy-Rules		129	struct

@@ -652,7 +652,7 @@ char *talloc_bstr_realloc(TALLOC_CTX *ctx, char *in, size_t inlen)
 	char *n;
 
 	if (!in) {
-		n = talloc_array(ctx, char, inlen);
+		n = talloc_array(ctx, char, inlen + 1);
 		n[0] = '\0';
 		return n;
 	}

@@ -100,6 +100,8 @@ static void fr_bio_queue_list_cancel(fr_bio_queue_t *my)
 
 static int fr_bio_queue_destructor(fr_bio_queue_t *my)
 {
+	FR_BIO_DESTRUCTOR_COMMON;
+
 	fr_assert(my->cancel);	/* otherwise it would be fr_bio_destructor */
 
 	fr_bio_queue_list_cancel(my);
@@ -334,11 +336,13 @@ static ssize_t fr_bio_queue_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
  *
  *  Cancel / close has to be called before re-init.
  */
-static void fr_bio_queue_shutdown(fr_bio_t *bio)
+static int fr_bio_queue_shutdown(fr_bio_t *bio)
 {
 	fr_bio_queue_t *my = talloc_get_type_abort(bio, fr_bio_queue_t);
 
 	fr_bio_queue_list_cancel(my);
+
+	return 0;
 }
 
 

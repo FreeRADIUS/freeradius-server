@@ -389,7 +389,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	FR_INTEGER_BOUND_CHECK("step", inst->load.step, <, 100000);
 
 	if (inst->load.max_pps > 0) FR_INTEGER_BOUND_CHECK("max_pps", inst->load.max_pps, >, inst->load.start_pps);
-	FR_INTEGER_BOUND_CHECK("max_pps", inst->load.max_pps, <, 100000);
+	FR_INTEGER_BOUND_CHECK("max_pps", inst->load.max_pps, <, 400000);
 
 	FR_TIME_DELTA_BOUND_CHECK("duration", inst->load.duration, >=, fr_time_delta_from_sec(1));
 	FR_TIME_DELTA_BOUND_CHECK("duration", inst->load.duration, <, fr_time_delta_from_sec(10000));

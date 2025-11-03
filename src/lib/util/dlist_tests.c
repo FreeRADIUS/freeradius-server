@@ -193,5 +193,5 @@ TEST_LIST = {
 	{ "fr_dlist_entry_move",	test_dlist_entry_move	},
 	{ "fr_dlist_foreach_safe",	test_dlist_foreach_safe	},
 
-	{ NULL }
+	TEST_TERMINATOR
 };

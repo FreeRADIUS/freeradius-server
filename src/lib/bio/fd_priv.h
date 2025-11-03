@@ -34,7 +34,7 @@ RCSIDH(lib_bio_fd_privh, "$Id$")
  */
 typedef struct fr_bio_fd_s {
 	FR_BIO_COMMON;
-	fr_bio_callback_t  user_shutdown;	//!< user shutdown
+	fr_bio_io_t  user_shutdown;				//!< user shutdown
 
 	fr_bio_fd_info_t  info;
 

@@ -127,6 +127,9 @@ typedef struct {
 	trunk_conf_t	bind_trunk_conf;		//!< Trunk configuration for trunk used for bind auths
 
 	module_instance_t const *mi;			//!< Module instance data for thread lookups.
+
+	fr_pair_list_t	*trigger_args;			//!< Pairs passed to trigger request for standard trunk.
+	fr_pair_list_t	*bind_trigger_args;		//!< Pairs passed to trigger request for bind trunk.
 } rlm_ldap_t;
 
 /** Call environment used in LDAP authorization

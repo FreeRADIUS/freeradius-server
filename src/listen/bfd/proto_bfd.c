@@ -62,7 +62,7 @@ static fr_dict_t const *dict_bfd;
 extern fr_dict_autoload_t proto_bfd_dict[];
 fr_dict_autoload_t proto_bfd_dict[] = {
 	{ .out = &dict_bfd, .proto = "bfd" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -80,7 +80,7 @@ fr_dict_attr_autoload_t proto_bfd_dict_attr[] = {
 	{ .out = &attr_your_discriminator, .name = "Packet.your-discriminator", .type = FR_TYPE_UINT32, .dict = &dict_bfd},
 
 	{ .out = &attr_additional_data, .name = "Additional-Data", .type = FR_TYPE_GROUP, .dict = &dict_bfd},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)

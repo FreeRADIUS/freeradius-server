@@ -103,7 +103,7 @@ static fr_dict_t const *dict_freeradius;
 
 static fr_dict_autoload_t rlm_pap_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_auth_type;
@@ -113,7 +113,7 @@ static fr_dict_attr_autoload_t rlm_pap_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_root, .name = "Password", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 #ifdef HAVE_OPENSSL_EVP_H
@@ -912,8 +912,8 @@ static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_sha256_legacy(unl
 
 	pbkdf2_buf.iterations = ntohl(pbkdf2_buf.iterations);
 
-	if (pbkdf2_buf.iterations != PBKDF2_SHA256_LEGACY_ITERATIONS) {
-		REDEBUG("Password.With-Header {PBKDF2_SHA256} has unexpected number of iterations %d instead of %d.", pbkdf2_buf.iterations, PBKDF2_SHA256_LEGACY_ITERATIONS);
+	if (pbkdf2_buf.iterations < 1) {
+		REDEBUG("Password.With-Header {PBKDF2_SHA256} has invalid number of iterations %d.", pbkdf2_buf.iterations);
 		RETURN_UNLANG_INVALID;
 	}
 

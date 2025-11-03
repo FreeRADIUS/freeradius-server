@@ -194,8 +194,6 @@ static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags
 	rlm_sql_mysql_conn_t	*c = talloc_get_type_abort(uctx, rlm_sql_mysql_conn_t);
 	char const		*log_prefix = c->conn->name;
 
-	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
-
 	if (c->status == 0) goto connected;
 	c->status = mysql_real_connect_cont(&c->sock, &c->db, c->status);
 
@@ -211,6 +209,12 @@ static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags
 	}
 
 connected:
+	/*
+	 *	Pause any notifications until we're actually ready
+	 *	to operate on the connection.
+	 */
+	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
+
 	if (!c->sock) {
 		ERROR("MySQL error: %s", mysql_error(&c->db));
 		connection_signal_reconnect(c->conn, CONNECTION_FAILED);
@@ -353,8 +357,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 					     config->sql_port, NULL, sql_flags);
 
 	c->fd = mysql_get_socket(&c->db);
-
-	if (c->fd <= 0) {
+	if (c->fd < 0) {
 		ERROR("Could't connect to MySQL server %s@%s:%s", config->sql_login,
 		      config->sql_server, config->sql_db);
 		ERROR("MySQL error: %s", mysql_error(&c->db));
@@ -633,7 +636,7 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
  *	- Number of errors written to the #sql_log_entry_t array.
  *	- -1 on failure.
  */
-static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
+static ssize_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			   rlm_sql_mysql_conn_t *conn)
 {
 	MYSQL_RES		*result;
@@ -728,7 +731,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	 *	was that the server was unavailable.
 	 */
 	if ((outlen > 1) && (sql_check_error(conn->sock, 0) != RLM_SQL_RECONNECT)) {
-		size_t ret;
+		ssize_t ret;
 		unsigned int msgs;
 
 		switch (inst->warnings) {
@@ -1114,7 +1117,6 @@ static void *sql_escape_arg_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, void *uc
 	conn = connection_alloc(ctx, el,
 				    &(connection_funcs_t){
 					.init = _sql_connection_init,
-					.failed = connection_failed_reinit,
 					.close = _sql_connection_close,
 				    },
 				    inst->config.trunk_conf.conn_conf,

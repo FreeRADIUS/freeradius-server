@@ -179,7 +179,7 @@ fr_dict_attr_t const *attr_eap_aka_sim_rand;
 extern fr_dict_autoload_t rlm_sigtran_dict[];
 fr_dict_autoload_t rlm_sigtran_dict[] = {
 	{ .out = &dict_eap_aka_sim, .base_dir = "eap/aka-sim", .proto = "eap-aka-sim" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_auth_type;
@@ -194,7 +194,7 @@ fr_dict_attr_autoload_t rlm_sigtran_dict_attr[] = {
 	{ .out = &attr_eap_aka_sim_sres, .name = "SRES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 	{ .out = &attr_eap_aka_sim_xres, .name = "XRES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)

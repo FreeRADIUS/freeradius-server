@@ -215,7 +215,7 @@ static size_t ftp_response_body(void *in, size_t size, size_t nmemb, void *userd
 	if (start == end) return 0; 	/* Nothing to process */
 
 	if ((ctx->instance->max_resp_size > 0) && ((ctx->used + (end - p)) > ctx->instance->max_resp_size)) {
-			REDEBUG("Incoming data (%zu bytes) exceeds max_body_in (%zu bytes).  "
+			REDEBUG("Incoming data (%zu bytes) exceeds max_resp_size (%zu bytes).  "
 				"Forcing body to type 'invalid'", ctx->used + (end - p), ctx->instance->max_resp_size);
 			ctx->state = WRITE_STATE_DISCARD;
 			TALLOC_FREE(ctx->buffer);
@@ -295,6 +295,7 @@ static xlat_action_t ftp_get_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *o
 
 	randle->request = request;	/* Populate the request pointer for escape callbacks */
 	curl_ctx = talloc_get_type_abort(randle->uctx, rlm_ftp_curl_context_t);
+	curl_ctx->response.request = request;
 
 	RDEBUG2("Sending FTP GET to \"%pV\"", uri_vb);
 

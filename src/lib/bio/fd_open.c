@@ -486,26 +486,33 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	return 0;
 }
 
-static void fr_bio_fd_unix_shutdown(fr_bio_t *bio)
+static int fr_bio_fd_unix_shutdown(fr_bio_t *bio)
 {
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
 	/*
-	 *	The bio must be open in order to shut it down.
+	 *	This is called after fr_bio_fd_close() - which marks the bio state as closed
 	 *
 	 *	Unix domain sockets are deleted when the bio is closed.
 	 *
 	 *	Unix domain sockets are never in the "connecting" state, because connect() always returns
 	 *	immediately.
 	 */
-	fr_assert(my->info.state == FR_BIO_FD_STATE_OPEN);
+	fr_assert(my->info.state == FR_BIO_FD_STATE_CLOSED);
 
 	/*
 	 *	Run the user shutdown before we run ours.
 	 */
-	if (my->user_shutdown) my->user_shutdown(bio);
+	if (my->user_shutdown) {
+		int rcode;
 
-	(void) unlink(my->info.socket.unix.path);
+		rcode = my->user_shutdown(bio);
+		if (rcode < 0) return rcode;
+	}
+
+	if (unlink(my->info.socket.unix.path) < 0) return fr_bio_error(GENERIC);
+
+	return 0;
 }
 
 /** Bind to a Unix domain socket.
@@ -1246,8 +1253,15 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		 */
 	case FR_BIO_FD_CONNECTED:
 		if (my->info.socket.type == SOCK_DGRAM) {
-			rcode = fr_bio_fd_common_datagram(fd, &my->info.socket, cfg); /* we don't use SO_REUSEPORT for clients */
-			if (rcode < 0) goto fail;
+			switch (my->info.socket.af) {
+			case AF_INET:
+			case AF_INET6:
+				if ((rcode = fr_bio_fd_common_udp(fd, &my->info.socket, cfg)) < 0) goto fail;
+				break;
+			default:
+				if ((rcode = fr_bio_fd_common_datagram(fd, &my->info.socket, cfg)) < 0) goto fail;
+				break;
+			}
 
 		} else if ((my->info.socket.af == AF_INET) || (my->info.socket.af == AF_INET6)) {
 			rcode = fr_bio_fd_common_tcp(fd, &my->info.socket, cfg);

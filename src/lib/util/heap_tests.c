@@ -312,6 +312,6 @@ TEST_LIST = {
 	{ "heap_test_order",		heap_test_order		},
 	{ "heap_iter",			heap_iter		},
 	{ "heap_cycle",			heap_cycle		},
-	{ NULL }
+	TEST_TERMINATOR
 };
 

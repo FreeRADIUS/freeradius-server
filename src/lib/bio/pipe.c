@@ -47,6 +47,8 @@ typedef struct {
 
 static int fr_bio_pipe_destructor(fr_bio_pipe_t *my)
 {
+	FR_BIO_DESTRUCTOR_COMMON;
+
 	pthread_mutex_destroy(&my->mutex);
 
 	return 0;
@@ -124,15 +126,18 @@ static ssize_t fr_bio_pipe_write(fr_bio_t *bio, void *packet_ctx, void const *bu
 /** Shutdown callback.
  *
  */
-static void fr_bio_pipe_shutdown(fr_bio_t *bio)
+static int fr_bio_pipe_shutdown(fr_bio_t *bio)
 {
+	int rcode;
 	fr_bio_pipe_t *my = talloc_get_type_abort(bio, fr_bio_pipe_t);	
 
 	fr_assert(my->next != NULL);
 
 	pthread_mutex_lock(&my->mutex);
-	fr_bio_shutdown(my->next);
+	rcode = fr_bio_shutdown(my->next);
 	pthread_mutex_unlock(&my->mutex);
+
+	return rcode;
 }
 
 /** Set EOF.

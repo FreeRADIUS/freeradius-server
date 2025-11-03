@@ -30,7 +30,7 @@ static fr_dict_t const *dict_test;
 extern fr_dict_autoload_t process_test_dict[];
 fr_dict_autoload_t process_test_dict[] = {
 	{ .out = &dict_test, .proto = "test" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -38,7 +38,7 @@ static fr_dict_attr_t const *attr_packet_type;
 extern fr_dict_attr_autoload_t process_test_dict_attr[];
 fr_dict_attr_autoload_t process_test_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_test},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 typedef struct {

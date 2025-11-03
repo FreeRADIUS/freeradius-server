@@ -116,6 +116,24 @@
                                 "-xx"
                         ],
                         "environment": [
+                                { "name": "SQL_MYSQL_TEST_SERVER", "value": "${input:testserver}" },
+                                { "name": "SQL_POSTRESQL_TEST_SERVER", "value": "${input:testserver}" },
+                                { "name": "LDAP_TEST_SERVER", "value": "${input:testserver}" },
+                                { "name": "LDAP_TEST_SERVER_PORT", "value": "3890" },
+                                { "name": "LDAP_TEST_SERVER_SSL_PORT", "value": "6361" },
+                                { "name": "RFC4533_TEST_SERVER", "value": "ldap://${input:testserver}:3890/" },
+                                { "name": "PERSISTENT_SEARCH_TEST_SERVER", "value": "ldap://${input:testserver}:3892" },
+                                { "name": "REST_TEST_SERVER", "value": "${input:testserver}" },
+                                { "name": "REST_TEST_SERVER_PORT", "value": "8080" },
+                                { "name": "REST_TEST_SERVER_SSL_PORT", "value": "8443" },
+                                { "name": "SMTP_TEST_SERVER", "value": "${input:testserver}" },
+                                { "name": "SMTP_TEST_SERVER_PORT", "value": "2525" },
+                                { "name": "REDIS_TEST_SERVER", "value": "${input:testserver}" },
+                                { "name": "REDIS_IPPOOL_TEST_SERVER", "value": "${input:testserver}" },
+                                { "name": "CACHE_REDIS_TEST_SERVER", "value": "${input:testserver}" },
+                                { "name": "IMAP_TEST_SERVER", "value": "${input:testserver" },
+                                { "name": "IMAP_TEST_SERVER_PORT", "value": "1430" },
+                                { "name": "IMAP_TEST_SERVER_SSL_PORT", "value": "1432" },
                                 { "name": "FR_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
                                 { "name": "LD_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
                                 { "name": "MODULE_TEST_DIR", "value": "src/tests/modules/${input:module}/"},
@@ -239,6 +257,12 @@
                         "type": "promptString",
                         "description": "Test to run"
                 },
+		{
+			"id": "testserver",
+			"type": "promptString",
+			"description": "Test server IP",
+			"default": "127.0.0.1"
+		},
                 {
                         "id": "unittest",
                         "type": "promptString",

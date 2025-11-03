@@ -126,7 +126,7 @@ extern fr_dict_autoload_t password_dict[];
 fr_dict_autoload_t password_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 extern fr_dict_attr_autoload_t password_dict_attr[];
@@ -174,7 +174,7 @@ fr_dict_attr_autoload_t password_dict_attr[] = {
 
 	{ .out = &attr_user, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 typedef enum {

@@ -697,7 +697,7 @@ void *fr_rb_remove(fr_rb_tree_t *tree, void const *data)
 	fr_rb_node_t	*node;
 	void		*node_data;
 
-	if (unlikely(tree->being_freed)) return false;
+	if (unlikely(tree->being_freed)) return NULL;
 	node = find_node(tree, data);
 	if (!node) return NULL;
 

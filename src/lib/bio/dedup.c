@@ -1006,10 +1006,11 @@ int fr_bio_dedup_entry_extend(fr_bio_t *bio, fr_bio_dedup_entry_t *item, fr_time
 /**  Remove the dedup cache
  *
  */
-static int fr_bio_dedup_destructor(fr_bio_dedup_t *my)
+static int fr_bio_dedup_shutdown(fr_bio_t *bio)
 {
 	fr_rb_iter_inorder_t iter;
 	fr_bio_dedup_entry_t *item;
+	fr_bio_dedup_t *my = talloc_get_type_abort(bio, fr_bio_dedup_t);
 
 	talloc_const_free(my->ev);
 
@@ -1090,7 +1091,9 @@ fr_bio_t *fr_bio_dedup_alloc(TALLOC_CTX *ctx, size_t max_saved,
 
 	fr_bio_chain(&my->bio, next);
 
-	talloc_set_destructor(my, fr_bio_dedup_destructor);
+	my->priv_cb.shutdown = fr_bio_dedup_shutdown;
+
+	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor); /* always use a common destructor */
 
 	return (fr_bio_t *) my;
 }

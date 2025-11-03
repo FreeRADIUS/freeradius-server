@@ -2,8 +2,8 @@
 
 In the case that shared-networks are in use, with the pool containing
 equally-valid IP addresses from multiple subnets, it is necessary to set the
-subnet-specific parameters such as `DHCP-Router-Address`, `DHCP-Subnet-Mask`
-and `DHCP-Broadcast-Address` based on the IP address that has been allocated.
+subnet-specific parameters such as `Router-Address`, `Subnet-Mask`
+and `Broadcast-Address` based on the IP address that has been allocated.
 
 Consider the ISC DHCP configuration snippet:
 
@@ -65,39 +65,41 @@ As with the network to pool lookup, an instance of the `files` modules can be
 employed (this time after the allocation of an IP address) to set the correct
 reply parameters based on the subnet membership of the assigned address.
 
-To do this, we can use this section of `<raddb>/mods-available/dhcp_files`:
+To do this, we can create an instance of `files` - `<raddb>/mods-enabled/dhcp_subnets`:
 
 [source,config]
 ----
 files dhcp_subnets {
-    filename = ${modconfdir}/files/dhcp
-    key = "subnet"
+    filename = ${modconfdir}/files/dhcp_subnets
+    key = Network-Subnet
 }
 ----
 
-Additionally, uncomment the `dhcp_subnets` policy in `<raddb>/policy.d/dhcp`.
-This policy wraps the call to the `dhcp_subnets` files module with code that
-"tightens" the `DHCP-Network-Subnet` attribute by setting it to the
-just-allocated IP address.
+Additionally, following the call to `sqlippool` add
 
-The relevant entries in the `<raddb>/mods-config/files/dhcp` configuration
+[source,config]
+----
+Network-Subnet := reply.Your-IP-Address
+----
+
+The relevant entries in the `<raddb>/mods-config/files/dhcp_subnets` configuration
 file might then look something like this:
 
 [source,config]
 ----
-network
+DEFAULT
         Domain-Name := "example.org",
         Fall-Through := yes
 
-network Network-Subnet < 10.30.0.0/16, IP-Pool.Name := "bigdept"
+10.30.0.0/16, IP-Pool.Name := "bigdept"
         Domain-Name-Server := 10.10.0.2,
         Domain-Name-Server += 10.10.0.3,
         IP-Address-Lease-Time := 7200
 
-subnet Network-Subnet < 10.30.10.0/24
+10.30.10.0/24
        Router-Address := 10.30.10.1
 
-subnet Network-Subnet < 10.30.20.0/24
+10.30.20.0/24
        Router-Address := 10.30.20.1
 ----
 
@@ -105,26 +107,25 @@ subnet Network-Subnet < 10.30.20.0/24
 
 For our example, we consider a request arriving from a DHCP relay within
 10.30.10.0/24. In the absence of any specific DHCP subnet selection options in
-the request, the `DHCP-Network-Subnet` attribute is calculated to be the
+the request, the `Network-Subnet` attribute is calculated to be the
 relay's IP address, say 10.30.10.1.
 
-The request is matched against the first "network" block, setting the domain
-name to "example.org". By virtue of `Fall-Through` being set, the next "network"
+The request is matched against the first "DEFAULT" block, setting the domain
+name to "example.org". By virtue of `Fall-Through` being set, the next
 block is considered.
 
 Since the network identifier is within the specified subnet (i.e.  `10.30.10.1 <
-10.30.0.0/16`) this second "network" block is matched. This block sets the pool
+10.30.0.0/16`) this second block is matched. This block sets the pool
 name to "bigdept", sets some network-specific DNS resolvers and sets the lease
 time to 7200 seconds. `Fall-Through` is not set, so we are now done with
 deriving the pool name and network options.
 
-When the `dhcp_sqlippool` module is called during DHCP DISCOVER processing (in
+When the `sqlippool` module is called during `recv Discover` processing (in
 `<raddb>/sites-enabled/dhcp`) the `bigdept` pool will be used for IP address
 allocation.
 
-After IP allocation the `dhcp_subnet` policy and files instance are called.
-Before the subnet options are looked up the `DHCP-Network-Subnet`
-attribute is tightened to match the assigned IP address, say 10.30.20.123.
+After IP allocation `Network-Subnet` is set to be the assigned IP address,
+say 10.30.20.123 and then the files instance `dhcp_subnet` is called.
 
 The request does not match the first subnet block since 10.30.20.123 is not
 within 10.30.10.0/24. However, the request does match the second subnet block

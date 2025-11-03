@@ -669,6 +669,7 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
+	case FR_TYPE_UNION:
 	case FR_TYPE_INTERNAL:
 		fr_assert(0);
 		break;
@@ -1139,6 +1140,7 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
+	case FR_TYPE_UNION:
 	case FR_TYPE_INTERNAL:
 		fr_assert(0);
 		return -2;
@@ -1440,13 +1442,11 @@ size_t fr_value_box_network_length(fr_value_box_t const *value)
 			/*
 			 *	Clamp length at maximum we're allowed to encode.
 			 */
-			if (da_is_length_field(value->enumv)) {
-				if (value->enumv->flags.subtype == FLAG_LENGTH_UINT8) {
-					if (value->vb_length > 255) return 255;
+			if (da_is_length_field8(value->enumv)) {
+				if (value->vb_length > UINT8_MAX) return UINT8_MAX;
 
-				} else if (value->enumv->flags.subtype == FLAG_LENGTH_UINT16) {
-					if (value->vb_length > 65535) return 65535;
-				}
+			} else if (da_is_length_field16(value->enumv)) {
+				if (value->vb_length > UINT16_MAX) return UINT16_MAX;
 			}
 		}
 		return value->vb_length;
@@ -1558,21 +1558,17 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 					max = value->enumv->flags.length;
 				}
 
-			} else if (da_is_length_field(value->enumv)) {
+			} else if (da_is_length_field8(value->enumv)) {
 				/*
 				 *	Truncate the output to the max allowed for this field and encode the length.
 				 */
-				if (value->enumv->flags.subtype == FLAG_LENGTH_UINT8) {
-					if (max > 255) max = 255;
-					FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t) max);
+				if (max > UINT8_MAX) max = UINT8_MAX;
+				FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t) max);
 
-				} else if (value->enumv->flags.subtype == FLAG_LENGTH_UINT16) {
-					if (max > 65536) max = 65535;
-					FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) max);
+			} else if (da_is_length_field16(value->enumv)) {
 
-				} else {
-					return -1;
-				}
+				if (max > UINT16_MAX) max = UINT16_MAX;
+				FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) max);
 			}
 		}
 
@@ -1964,27 +1960,19 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 			if (enumv->flags.length) {
 				newlen = enumv->flags.length;
 
-			} else if (da_is_length_field(enumv)) {
-				/*
-				 *	Or fields with a length prefix.
-				 */
-				if (enumv->flags.subtype == FLAG_LENGTH_UINT8) {
-					uint8_t num = 0;
+			} else if (da_is_length_field8(enumv)) {
+				uint8_t num = 0;
 
-					FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
-					newlen = num;
-					offset = 1;
+				FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
+				newlen = num;
+				offset = 1;
 
-				} else if (enumv->flags.subtype == FLAG_LENGTH_UINT16) {
-					uint16_t num = 0;
+			} else if (da_is_length_field16(enumv)) {
+				uint16_t num = 0;
 
-					FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
-					newlen = num;
-					offset = 2;
-
-				} else {
-					return -1;
-				}
+				FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
+				newlen = num;
+				offset = 2;
 			}
 		}
 
@@ -2555,6 +2543,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
+	case FR_TYPE_UNION:
 	case FR_TYPE_INTERNAL:
 	case FR_TYPE_NULL:
 	case FR_TYPE_ATTR:
@@ -3874,6 +3863,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		}
 		break;		/* use generic string/octets stuff below */
 
+#if 0
 	case FR_TYPE_ATTR:
 		/*
 		 *	Convert it to an integer of the correct length. Then, cast it in place.
@@ -3901,7 +3891,9 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		}
 
 		return fr_value_box_cast_in_place(ctx, dst, dst_type, dst_enumv);
-
+#else
+	case FR_TYPE_ATTR:
+#endif
 	/*
 	 *	Invalid types for casting (were caught earlier)
 	 */
@@ -4252,6 +4244,7 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
+	case FR_TYPE_UNION:
 	case FR_TYPE_VOID:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_VALUE_BOX_CURSOR:
@@ -4952,6 +4945,13 @@ void fr_value_box_set_cursor(fr_value_box_t *dst, fr_type_t type, void *cursor, 
 	fr_value_box_init(dst, type, NULL, false);
 	dst->vb_cursor = cursor;
 	dst->vb_cursor_name = name;
+}
+
+void fr_value_box_set_attr(fr_value_box_t *dst, fr_dict_attr_t const *da)
+{
+	fr_value_box_init(dst, FR_TYPE_ATTR, NULL, false);
+	dst->vb_attr = da;
+	dst->enumv = da;
 }
 
 /** Increment a boxed value
@@ -5987,6 +5987,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 	case FR_TYPE_STRUCT:		/* Not a box type */
 	case FR_TYPE_VSA:		/* Not a box type */
 	case FR_TYPE_VENDOR:		/* Not a box type */
+	case FR_TYPE_UNION:		/* Not a box type */
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_VOID:
 	case FR_TYPE_MAX:

@@ -61,16 +61,6 @@ fr_bio_packet_t *fr_radius_client_bio_alloc(TALLOC_CTX *ctx, fr_radius_client_co
 	return fr_radius_client_tcp_bio_alloc(ctx, cfg, fd_cfg);
 }
 
-static int _radius_client_fd_bio_free(fr_radius_client_fd_bio_t *my)
-{
-	if (fr_bio_shutdown(my->common.bio) < 0) return -1;
-
-	if (fr_bio_free(my->common.bio) < 0) return -1;
-
-	return 0;
-}
-
-
 fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t read_size, fr_radius_client_config_t *cfg, fr_bio_fd_config_t const *fd_cfg)
 {
 	int i;
@@ -152,8 +142,6 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	 *	Initialize the packet handlers in each BIO.
 	 */
 	fr_bio_packet_init(&my->common);
-
-	talloc_set_destructor(my, _radius_client_fd_bio_free);
 
 	/*
 	 *	Set up the connected status.

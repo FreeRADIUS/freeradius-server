@@ -17,6 +17,10 @@
 #
 ##############################################################################
 
+VENDOR		Juniper				2636
+
+BEGIN-VENDOR	Juniper
+
 #
 #  The username local to the router
 #
@@ -74,3 +78,5 @@ DEFINE	allow-configurations-regexps			string
 #
 DEFINE	deny-configuration				string
 DEFINE	deny-configuration-regexps			string
+
+END-VENDOR	Juniper

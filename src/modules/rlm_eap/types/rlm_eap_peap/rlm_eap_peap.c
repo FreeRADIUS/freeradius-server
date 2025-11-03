@@ -96,7 +96,7 @@ extern fr_dict_autoload_t rlm_eap_peap_dict[];
 fr_dict_autoload_t rlm_eap_peap_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_auth_type;
@@ -112,7 +112,7 @@ fr_dict_attr_autoload_t rlm_eap_peap_dict_attr[] = {
 
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 

@@ -42,7 +42,7 @@ extern fr_dict_autoload_t process_tacacs_dict[];
 fr_dict_autoload_t process_tacacs_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_tacacs, .proto = "tacacs" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_auth_type;
@@ -110,7 +110,7 @@ fr_dict_attr_autoload_t process_tacacs_dict_attr[] = {
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_tacacs },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_value_box_t const	*enum_auth_type_accept;
@@ -124,7 +124,7 @@ fr_dict_enum_autoload_t process_tacacs_dict_enum[] = {
 	{ .out = &enum_auth_type_reject, .name = "Reject", .attr = &attr_auth_type },
 	{ .out = &enum_auth_flags_noecho, .name = "No-Echo", .attr = &attr_tacacs_authentication_flags },
 	{ .out = &enum_tacacs_auth_type_ascii, .name = "ASCII", .attr = &attr_tacacs_authentication_type },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 
@@ -577,7 +577,7 @@ RESUME(auth_type)
 		[RLM_MODULE_NOOP] =	FR_TACACS_CODE_AUTH_FAIL,
 		[RLM_MODULE_NOTFOUND] =	FR_TACACS_CODE_AUTH_FAIL,
 		[RLM_MODULE_REJECT] =	FR_TACACS_CODE_AUTH_FAIL,
-		[RLM_MODULE_UPDATED] =	FR_TACACS_CODE_AUTH_FAIL,
+		[RLM_MODULE_UPDATED] =	FR_TACACS_CODE_AUTH_PASS,
 		[RLM_MODULE_DISALLOW] = FR_TACACS_CODE_AUTH_FAIL,
 	};
 

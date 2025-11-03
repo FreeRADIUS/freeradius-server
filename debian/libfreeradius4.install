@@ -3,6 +3,7 @@ usr/lib/freeradius/libfreeradius-bfd.so
 usr/lib/freeradius/libfreeradius-bio.so
 usr/lib/freeradius/libfreeradius-bio-config.so
 usr/lib/freeradius/libfreeradius-control.so
+usr/lib/freeradius/libfreeradius-der.so
 usr/lib/freeradius/libfreeradius-dhcpv4.so
 usr/lib/freeradius/libfreeradius-dhcpv6.so
 usr/lib/freeradius/libfreeradius-dns.so

@@ -541,7 +541,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(unlang_result_t *p_result, mod
 							alloc_ctx->query_ctx);
 	}
 
-	return UNLANG_ACTION_PUSHED_CHILD;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 /** Resume function called after mod_common "update" query has completed

@@ -13690,8 +13690,6 @@ printf "%s\n" "$ax_cv_cc_weverything_flag" >&6; }
 	-Wno-date-time \
 	-Wno-disabled-macro-expansion \
 	-Wno-format-pedantic \
-	-Wno-missing-field-initializers \
-    	-Wno-cast-align \
     	-Wno-conversion \
     	-Wno-covered-switch-default \
     	-Wno-documentation-unknown-command \
@@ -13723,10 +13721,8 @@ printf "%s\n" "$ax_cv_cc_weverything_flag" >&6; }
       	-Wmissing-declarations \
       	-Wmissing-prototypes \
       	-Wnested-externs \
-      	-Wno-cast-align \
       	-Wno-format-extra-args \
       	-Wno-format-zero-length \
-      	-Wno-missing-field-initializers \
       	-Wpointer-arith \
       	-Wredundant-decls \
       	-Wshadow \

@@ -111,7 +111,7 @@ static fr_dict_t const *dict_radius;
 extern fr_dict_autoload_t proto_radius_dict[];
 fr_dict_autoload_t proto_radius_dict[] = {
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -133,7 +133,7 @@ fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_packet_id, .name = "Packet.Id", .type = FR_TYPE_UINT8, .dict = &dict_radius},
 	{ .out = &attr_packet_authenticator, .name = "Packet.Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Translates the packet-type into a submodule name
@@ -456,6 +456,29 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 
 	client = address->radclient;
 	fr_assert(client);
+
+	/*
+	 *	The policy may ask us to send a Protocol-Error, but the client does not support it.  So we
+	 *	suppress the response.
+	 */
+	if ((request->reply->code == FR_RADIUS_CODE_PROTOCOL_ERROR) && !client->protocol_error) {
+		if (request->packet->code != FR_RADIUS_CODE_ACCESS_REQUEST) {
+			RDEBUG("Client %s does not support Protocol-Error. Suppressing response",
+			       client->shortname);
+			track->do_not_respond = true;
+			return 1;
+		}
+
+		/*
+		 *	If the client doesn't support Protocol-Error, swap it to Access-Reject.
+		 *
+		 *	Note that RFC 8559 already says that systems should send CoA-NAK or Disconnect-NAK
+		 *	with Error-Cause if the packet can't be routed.
+		 */
+		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
+		RDEBUG("Client %s does not support Protocol-Error - rewriting to Access-Reject",
+		       client->shortname);
+	}
 
 	/*
 	 *	Dynamic client stuff

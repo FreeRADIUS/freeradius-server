@@ -1,0 +1,12 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+Calling-Station-ID = 00:11:23:33:01:00
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Reply-Message == "Vendor 3"
+

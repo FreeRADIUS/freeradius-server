@@ -87,7 +87,7 @@ typedef void (*fr_bio_callback_t)(fr_bio_t *bio); /* connected / shutdown callba
 
 typedef struct {
 	fr_bio_callback_t	connected;		//!< called when the BIO is ready to be used
-	fr_bio_callback_t	shutdown;		//!< called when the BIO is being shut down
+	fr_bio_io_t		shutdown;		//!< called when the BIO is being shut down
 	fr_bio_callback_t	eof;			//!< called when the BIO is at EOF
 	fr_bio_callback_t	failed;			//!< called when the BIO fails
 
@@ -137,6 +137,17 @@ static inline CC_HINT(nonnull) fr_bio_t *fr_bio_next(fr_bio_t *bio)
 	return fr_dlist_entry_to_item(offsetof(fr_bio_t, entry), next);
 }
 
+static inline CC_HINT(nonnull) fr_bio_t *fr_bio_head(fr_bio_t *bio)
+{
+	fr_bio_t *this, *prev;
+
+	for (this = bio; (prev = fr_bio_prev(this)) != NULL; this = prev) {
+		/* nothing */
+	}
+
+	return this;
+}
+
 /** Read raw data from a bio
  *
  *  @param bio		the binary IO handler
@@ -184,20 +195,17 @@ static inline ssize_t CC_HINT(nonnull(1)) fr_bio_write(fr_bio_t *bio, void *pack
 
 int	fr_bio_shutdown_intermediate(fr_bio_t *bio) CC_HINT(nonnull);
 
-#ifndef NDEBUG
-int	fr_bio_destructor(fr_bio_t *bio) CC_HINT(nonnull);
-#else
-#define fr_bio_destructor (NULL)
-#endif
+int	fr_bio_destructor(fr_bio_t *bio);
 
 #define fr_bio_error(_x) (-(FR_BIO_ERROR_ ## _x))
 
 int	fr_bio_shutdown(fr_bio_t *bio) CC_HINT(nonnull);
 
-int	fr_bio_free(fr_bio_t *bio) CC_HINT(nonnull);
-
 char const *fr_bio_strerror(ssize_t error);
 
 void	fr_bio_cb_set(fr_bio_t *bio, fr_bio_cb_funcs_t const *cb) CC_HINT(nonnull(1));
+
+ssize_t fr_bio_shutdown_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size);
+ssize_t fr_bio_shutdown_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size);
 
 #undef _CONST

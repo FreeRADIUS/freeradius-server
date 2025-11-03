@@ -41,7 +41,7 @@ extern fr_dict_autoload_t rlm_digest_dict[];
 fr_dict_autoload_t rlm_digest_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static const fr_dict_attr_t *attr_auth_type;
@@ -80,7 +80,7 @@ fr_dict_attr_autoload_t rlm_digest_dict_attr[] = {
 	{ .out = &attr_digest_uri, .name = "Digest-Attributes.Uri", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_digest_user_name, .name = "Digest-Attributes.User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static unlang_action_t CC_HINT(nonnull) mod_authorize(unlang_result_t *p_result, module_ctx_t const *mctx, request_t *request)

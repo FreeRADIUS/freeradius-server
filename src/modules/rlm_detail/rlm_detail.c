@@ -58,6 +58,8 @@ typedef struct {
 	bool		escape;		//!< do filename escaping, yes / no
 
 	exfile_t    	*ef;		//!< Log file handler
+
+	bool		triggers;	//!< Do we run triggers.
 } rlm_detail_t;
 
 typedef struct {
@@ -77,6 +79,7 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("locking", rlm_detail_t, locking), .dflt = "no" },
 	{ FR_CONF_OFFSET("escape_filenames", rlm_detail_t, escape), .dflt = "no" },
 	{ FR_CONF_OFFSET("log_packet_header", rlm_detail_t, log_srcdst), .dflt = "no" },
+	{ FR_CONF_OFFSET("triggers", rlm_detail_t, triggers) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -87,7 +90,7 @@ extern fr_dict_autoload_t rlm_detail_dict[];
 fr_dict_autoload_t rlm_detail_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_net;
@@ -104,7 +107,7 @@ fr_dict_attr_autoload_t rlm_detail_dict_attr[] = {
 	{ .out = &attr_net_src_address, .name = "Net.Src.IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_net_src_port, .name = "Net.Src.Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Print one attribute and value to FP
@@ -157,7 +160,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_detail_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_detail_t);
 	CONF_SECTION	*conf = mctx->mi->conf;
 
-	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), inst->locking, NULL, NULL);
+	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), inst->locking,
+					  inst->triggers, "modules.detail", NULL);
 	if (!inst->ef) {
 		cf_log_err(conf, "Failed creating log file context");
 		return -1;

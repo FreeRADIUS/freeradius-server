@@ -42,6 +42,21 @@ if (!(result_string == '\2c\2b\22\5c\3c\3e\3b\2a\3d\28\29')) {
         test_fail
 }
 
+# Multiple boxes on the input
+control += {
+	Filter-Id = 'safe'
+	Filter-Id = 'non safe,+'
+}
+control.Filter-Id := %ldap.uri.escape(control.Filter-Id[*])
+if ((control.Filter-Id[0] != 'safe') || (control.Filter-Id[1] != 'non safe\2c\2b')) {
+	test_fail
+}
+
+control.Filter-Id := %ldap.uri.unescape(control.Filter-Id[*])
+if ((control.Filter-Id[0] != 'safe') || (control.Filter-Id[1] != 'non safe,+')) {
+	test_fail
+}
+
 result_string := %ldap.uri.unescape(%{result_string})
 
 if (!(result_string == ',+"\<>;*=()')) {

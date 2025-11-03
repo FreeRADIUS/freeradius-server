@@ -348,7 +348,7 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 		int		count, i;
 		tmpl_rules_t const parse_rules = {
 			.attr = {
-				.dict_def = request->proto_dict,
+				.dict_def = request->local_dict,
 				.list_def = request_attr_request,
 			},
 			.xlat = {
@@ -459,7 +459,7 @@ int fr_ldap_map_do(request_t *request, char const *check_attr,
 
 			tmpl_rules_t const parse_rules = {
 				.attr = {
-					.dict_def = request->proto_dict,
+					.dict_def = request->local_dict,
 					.list_def = request_attr_request,
 				},
 				.xlat = {

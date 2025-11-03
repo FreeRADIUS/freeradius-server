@@ -2,12 +2,14 @@ TEST	:= test.bin
 
 FILES	:= \
 	atomic_queue_test 	\
+	control_test		\
 	radclient		\
 	radict 			\
 	radmin			\
 	radsniff 		\
 	radsnmp 		\
 	rbmonkey 		\
+	ring_buffer_test 	\
 	rlm_redis_ippool_tool 	\
 	unit_test_attribute 	\
 	unit_test_map 		\
@@ -18,7 +20,6 @@ FILES	:= \
 #	radmin			\
 #	radsniff 		\
 #	radsnmp 		\
-#	ring_buffer_test 	\
 #	smbencrypt 		\
 #	unit_test_attribute 	\
 #	unit_test_map 		\
@@ -34,6 +35,7 @@ $(eval $(call TEST_BOOTSTRAP))
 #
 #  Some tests take arguments, others do not.
 #
+control_test.ARGS = -m 1000 -w 32
 radclient.ARGS = -h
 radict.ARGS = -D $(top_srcdir)/share/dictionary User-Name
 radmin.ARGS = -h

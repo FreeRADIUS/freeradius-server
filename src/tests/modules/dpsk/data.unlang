@@ -1,0 +1,4 @@
+# Test dpsk fetching the PSK from a data file
+rewrite_called_station_id
+dpsk_data.authenticate
+test_pass

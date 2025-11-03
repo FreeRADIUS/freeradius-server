@@ -42,7 +42,7 @@ static unlang_action_t skip_to_catch(UNUSED unlang_result_t *p_result, request_t
 	if (gext->catch[rcode]) {
 		if (unlang_interpret_push(NULL, request, gext->catch[rcode],
 					  FRAME_CONF(RLM_MODULE_NOT_SET, UNLANG_SUB_FRAME), false) < 0) {
-			return UNLANG_ACTION_STOP_PROCESSING;
+			RETURN_UNLANG_ACTION_FATAL;
 		}
 
 		return UNLANG_ACTION_PUSHED_CHILD;

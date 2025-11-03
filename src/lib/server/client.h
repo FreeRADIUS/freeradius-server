@@ -115,6 +115,7 @@ struct fr_client_s {
 	bool			first_packet_no_proxy_state;	//!< Whether that first packet contained a Proxy-State
 								///< attribute.
 
+	bool			protocol_error;		//!< Whether the client supports Protocol-Error
 	bool			dynamic;		//!< Whether the client was dynamically defined.
 	bool			active;			//!< for dynamic clients
 	bool			use_connected;		//!< do we use connected sockets for this client

@@ -121,6 +121,15 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_t c
 
 	PAIR_VERIFY(vp);
 
+	/*
+	 *	Omit the union if we can.
+	 */
+	if ((vp->vp_type == FR_TYPE_UNION) &&
+	    (fr_pair_list_num_elements(&vp->vp_group) == 1)) {
+		parent = vp->da;
+		vp = fr_pair_list_head(&vp->vp_group);
+	}
+
 	if ((vp->op > T_INVALID) && (vp->op < T_TOKEN_LAST)) {
 		token = fr_tokens[vp->op];
 	} else {
@@ -143,7 +152,9 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_t c
 
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, ':', ':');
 		FR_SBUFF_IN_STRCPY_RETURN(&our_out, name);
+
 	} else {
+
 	no_enumv:
 		FR_SBUFF_RETURN(fr_pair_print_value_quoted, &our_out, vp, T_DOUBLE_QUOTED_STRING);
 	}

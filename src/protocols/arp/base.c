@@ -57,7 +57,7 @@ fr_dict_t const *dict_arp;
 extern fr_dict_autoload_t libfreeradius_arp_dict[];
 fr_dict_autoload_t libfreeradius_arp_dict[] = {
 	{ .out = &dict_arp, .proto = "arp" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_arp_packet;
@@ -65,7 +65,7 @@ fr_dict_attr_t const *attr_arp_packet;
 extern fr_dict_attr_autoload_t libfreeradius_arp_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_arp_dict_attr[] = {
 	{ .out = &attr_arp_packet, .name = "arp", .type = FR_TYPE_STRUCT, .dict = &dict_arp },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 
@@ -393,7 +393,8 @@ typedef struct {
 	bool		tmp;
 } fr_arp_ctx_t;
 
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	fr_arp_ctx_t *test_ctx;
 

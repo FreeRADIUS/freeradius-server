@@ -181,7 +181,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_logtee_dict[];
 fr_dict_autoload_t rlm_logtee_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_log_level;
@@ -193,7 +193,7 @@ fr_dict_attr_autoload_t rlm_logtee_dict_attr[] = {
 	{ .out = &attr_log_level, .name = "Log-Level", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_log_message, .name = "Log-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_log_type, .name = "Log-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static void logtee_fd_idle(rlm_logtee_thread_t *t);
@@ -214,7 +214,7 @@ static void _logtee_conn_error(UNUSED fr_event_list_t *el, int sock, UNUSED int 
 {
 	rlm_logtee_thread_t	*t = talloc_get_type_abort(uctx, rlm_logtee_thread_t);
 
-	ERROR("Connection failed (%i): %s", sock, fr_syserror(fd_errno));
+	if (fd_errno) ERROR("Connection failed (%i): %s", sock, fr_syserror(fd_errno));
 
 	/*
 	 *	Something bad happened... Fix it...

@@ -53,7 +53,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_passwd_dict[];
 fr_dict_autoload_t rlm_passwd_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 #ifdef TEST

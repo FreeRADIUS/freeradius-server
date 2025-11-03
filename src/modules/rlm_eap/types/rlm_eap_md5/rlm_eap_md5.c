@@ -35,7 +35,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_eap_md5_dict[];
 fr_dict_autoload_t rlm_eap_md5_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_cleartext_password;
@@ -43,7 +43,7 @@ static fr_dict_attr_t const *attr_cleartext_password;
 extern fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[] = {
 	{ .out = &attr_cleartext_password, .name = "Password.Cleartext", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*

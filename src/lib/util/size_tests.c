@@ -336,5 +336,5 @@ TEST_LIST = {
 	{ "print_base2",			test_size_print_base2 },
 	{ "print_base10",			test_size_print_base10 },
 
-	{ NULL }
+	TEST_TERMINATOR
 };

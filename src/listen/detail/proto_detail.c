@@ -82,7 +82,7 @@ extern fr_dict_autoload_t proto_detail_dict[];
 fr_dict_autoload_t proto_detail_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_dst_ip_address;
@@ -99,7 +99,7 @@ fr_dict_attr_autoload_t proto_detail_dict_attr[] = {
 	{ .out = &attr_packet_src_ip_address, .name = "Net.Src.IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_freeradius },
 	{ .out = &attr_packet_src_port, .name = "Net.Src.Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Translates the packet-type into a submodule name

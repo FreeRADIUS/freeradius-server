@@ -59,6 +59,8 @@ static unlang_action_t ldap_find_user_async_result(unlang_result_t *p_result, re
 	char			*dn;
 	fr_pair_t		*vp;
 
+	if (!query) RETURN_UNLANG_FAIL;
+
 	/*
 	 *	Make the result available to the query
 	 */
@@ -148,6 +150,7 @@ static void ldap_find_user_async_cancel(UNUSED request_t *request, UNUSED fr_sig
  * LDAP directory servers out there.
  *
  * @param[in] ctx	in which to allocate the query.
+ * @param[in] p_result	Where rcode from running the query will be written.
  * @param[in] inst	rlm_ldap configuration.
  * @param[in] request	Current request.
  * @param[in] base	DN to search in.

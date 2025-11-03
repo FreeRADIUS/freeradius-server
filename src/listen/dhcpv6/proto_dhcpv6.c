@@ -97,7 +97,7 @@ static fr_dict_t const *dict_dhcpv6;
 extern fr_dict_autoload_t proto_dhcpv6_dict[];
 fr_dict_autoload_t proto_dhcpv6_dict[] = {
 	{ .out = &dict_dhcpv6, .proto = "dhcpv6" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -107,7 +107,7 @@ extern fr_dict_attr_autoload_t proto_dhcpv6_dict_attr[];
 fr_dict_attr_autoload_t proto_dhcpv6_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6},
 	{ .out = &attr_client_id, .name = "Client-Id", .type = FR_TYPE_STRUCT, .dict = &dict_dhcpv6},
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Translates the packet-type into a submodule name

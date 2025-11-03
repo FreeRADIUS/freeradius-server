@@ -49,6 +49,9 @@ struct fr_listen {
 							///< populated when event_list_set callback is run which doesn't
 							///< happen if the short cut is taken.
 
+	bool			read_hexdump;		//!< Do we debug hexdump packets as they're read.
+	bool			write_hexdump;		//!< Do we debug hexdump packets as they're written.
+
 	size_t			default_message_size;	//!< copied from app_io, but may be changed
 	size_t			num_messages;		//!< for the message ring buffer
 };

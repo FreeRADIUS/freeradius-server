@@ -162,7 +162,8 @@ ssize_t fr_bfd_encode(uint8_t *out, size_t outlen, UNUSED uint8_t const *origina
 }
 
 
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	fr_bfd_ctx_t	*test_ctx;
 

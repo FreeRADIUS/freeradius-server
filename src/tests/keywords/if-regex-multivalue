@@ -1,5 +1,5 @@
 #
-# PRE: update if
+# PRE: if
 #
 
 Vendor-Specific.Cisco.AVPair := { 'foo=bar', 'bar=baz', 'baz=foo' }

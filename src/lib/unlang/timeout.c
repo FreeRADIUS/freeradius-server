@@ -117,7 +117,7 @@ static unlang_action_t unlang_timeout_set(UNUSED unlang_result_t *p_result, requ
 	if (fr_timer_in(state, unlang_interpret_event_list(request)->tl, &state->ev, state->timeout,
 			false, unlang_timeout_handler, state) < 0) {
 		RPEDEBUG("Failed inserting event");
-		return UNLANG_ACTION_STOP_PROCESSING;
+		RETURN_UNLANG_ACTION_FATAL;
 	}
 
 	frame_repeat(frame, unlang_timeout_resume_done);

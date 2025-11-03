@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/main_loop.h>
+#include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/request_data.h>
 #include <freeradius-devel/server/trigger.h>
@@ -60,14 +61,14 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t trigger_dict[];
 fr_dict_autoload_t trigger_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_trigger_name;
 extern fr_dict_attr_autoload_t trigger_dict_attr[];
 fr_dict_attr_autoload_t trigger_dict_attr[] = {
 	{ .out = &attr_trigger_name, .name = "Trigger-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static void _trigger_last_fired_free(void *data)
@@ -106,12 +107,18 @@ typedef struct {
 /** Execute a trigger - call an executable to process an event
  *
  * A trigger ties a state change (e.g. connection up) in a module to an action
- * (e.g. send an SNMP trap) defined in raqddb/triggers.conf or in the trigger
- * section of a module, and can be created with one call to trigger().
+ * (e.g. send an SNMP trap) defined in raddb/triggers.conf or in the trigger
+ * section of a module.  There's no setup for triggers, the triggering code
+ * just calls this function with the name of the trigger to run, and an optional
+ * interpreter if the trigger should run asynchronously.
  *
- * The trigger function expands the configuration item, and runs the given
- * function (exec, sql insert, etc.) asynchronously, allowing the server to
- * keep processing packets while the action is being taken.
+ * If no interpreter is passed in, the trigger runs synchronously, which is
+ * useful when the server is shutting down and we want to ensure that the
+ * trigger has completed before the server exits.
+ *
+ * If an interpreter is passed in, the trigger runs asynchronously in that
+ * interpreter, allowing the server to continue processing packets while the
+ * trigger runs.
  *
  * The name of each trigger is based on the module or portion of the server
  * which runs the trigger, and is usually taken from the state when the module
@@ -132,16 +139,22 @@ typedef struct {
  *				If cs is not NULL, the portion after the last '.' in name is used for the trigger.
  *				If cs is NULL, the entire name is used to find the trigger in the global trigger
  *				section.
+ * @param[in,out] trigger_cp	Optional pointer to a CONF_PAIR pointer.  If populated and the pointer is not
+ * 				NULL, this CONF_PAIR will be used rather than searching.
+ * 				If populated, and the pointer is NULL, the search will happen and the pointer
+ * 				will be populated with the found CONF_PAIR.
  * @param[in] name		the path relative to the global trigger section ending in the trigger name
  *				e.g. module.ldap.pool.start.
  * @param[in] rate_limit	whether to rate limit triggers.
- * @param[in] args		to make available via the @verbatim %trigger(<arg>) @endverbatim xlat.
+ * @param[in] args		to populate the trigger's request list with.
  * @return
  *	- 0 on success.
- *	- -1 on failure.
+ *	- -1 if the trigger is not defined.
+ *	- -2 if the trigger was rate limited.
+ *	- -3 on failure.
  */
-int trigger(unlang_interpret_t *intp,
-	    CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_list_t *args)
+int trigger(unlang_interpret_t *intp, CONF_SECTION const *cs, CONF_PAIR **trigger_cp,
+	    char const *name, bool rate_limit, fr_pair_list_t *args)
 {
 	CONF_ITEM		*ci;
 	CONF_PAIR		*cp;
@@ -163,6 +176,15 @@ int trigger(unlang_interpret_t *intp,
 	if (!trigger_cs || check_config) return 0;
 
 	/*
+	 *	Do we have a cached conf pair?
+	 */
+	if (trigger_cp && *trigger_cp) {
+		cp = *trigger_cp;
+		ci = cf_pair_to_item(cp);
+		goto cp_found;
+	}
+
+	/*
 	 *	A module can have a local "trigger" section.  In which
 	 *	case that is used in preference to the global one.
 	 *
@@ -172,10 +194,8 @@ int trigger(unlang_interpret_t *intp,
 	 *	module instances.
 	 */
 	if (cs) {
-		CONF_SECTION const *subcs;
-
-		subcs = cf_section_find(cs, "trigger", NULL);
-		if (!subcs) goto use_global;
+		cs = cf_section_find(cs, "trigger", NULL);
+		if (!cs) goto use_global;
 
 		/*
 		 *	If a local trigger{...} section exists, then
@@ -215,6 +235,9 @@ int trigger(unlang_interpret_t *intp,
 	cp = cf_item_to_pair(ci);
 	if (!cp) return -1;
 
+	if (trigger_cp) *trigger_cp = cp;
+
+cp_found:
 	value = cf_pair_value(cp);
 	if (!value) {
 		DEBUG3("Trigger has no value: %s", name);
@@ -252,7 +275,7 @@ int trigger(unlang_interpret_t *intp,
 		 *
 		 *	@todo - make this configurable for longer periods of time.
 		 */
-		if (fr_time_to_sec(found->last_fired) == fr_time_to_sec(now)) return -1;
+		if (fr_time_to_sec(found->last_fired) == fr_time_to_sec(now)) return -2;
 		found->last_fired = now;
 	}
 
@@ -268,14 +291,14 @@ int trigger(unlang_interpret_t *intp,
 		if (fr_pair_list_copy(request->request_ctx, &request->request_pairs, args) < 0) {
 			PERROR("Failed copying trigger arguments");
 			talloc_free(request);
-			return -1;
+			return -3;
 		}
 
 		/*
 		 *	Add the trigger name to the request data
 		 */
 		MEM(pair_append_request(&vp, attr_trigger_name) >= 0);
-		fr_pair_value_strdup(vp, cf_pair_value(cp), false);
+		fr_pair_value_strdup(vp, cf_pair_attr(cp), false);
 	}
 
 	MEM(trigger = talloc_zero(request, fr_trigger_t));
@@ -284,13 +307,21 @@ int trigger(unlang_interpret_t *intp,
 	el = unlang_interpret_event_list(request);
 	if (!el) el = main_loop_event_list();
 
+	/*
+	 *	During shutdown there may be no event list, so nothing much can be done.
+	 */
+	if (unlikely(!el)) {
+		talloc_free(request);
+		return -3;
+	}
+
 	t_rules = (tmpl_rules_t) {
 		.attr = {
 			.dict_def = request->local_dict, /* we can use local attributes */
 			.list_def = request_attr_request,
 		},
 		.xlat = {
-						     .runtime_el = el,
+			.runtime_el = el,
 		},
 		.at_runtime = true,
 	};
@@ -307,9 +338,7 @@ int trigger(unlang_interpret_t *intp,
 		cf_log_perr(cp, "%s^", spaces);
 
 		talloc_free(request);
-		talloc_free(spaces);
-		talloc_free(text);
-		return -1;
+		return -3;
 	}
 
 	if (!tmpl_is_exec(trigger->vpt) && !tmpl_is_xlat(trigger->vpt)) {
@@ -319,7 +348,7 @@ int trigger(unlang_interpret_t *intp,
 		 */
 		cf_log_err(cp, "Trigger must be an \"expr\" or `exec`");
 		talloc_free(request);
-		return -1;
+		return -3;
 	}
 
 	fr_assert(trigger->vpt != NULL);
@@ -351,13 +380,13 @@ int trigger(unlang_interpret_t *intp,
 		if (unlang_interpret_set_timeout(request, fr_time_delta_from_sec(1)) < 0) {
 			DEBUG("Failed setting timeout on trigger %s", value);
 			talloc_free(request);
-			return -1;
+			return -3;
 		}
 
 		if (unlang_subrequest_child_push_and_detach(request) < 0) {
 			PERROR("Running trigger failed");
 			talloc_free(request);
-			return -1;
+			return -3;
 		}
 	} else {
 		/*
@@ -420,6 +449,103 @@ void trigger_args_afrom_server(TALLOC_CTX *ctx, fr_pair_list_t *list, char const
 	MEM(vp = fr_pair_afrom_da(ctx, port_da));
 	vp->vp_uint16 = port;
 	fr_pair_append(list, vp);
+}
+
+/**  Callback to verify that trigger_args map is valid
+ */
+static int trigger_args_validate(map_t *map, UNUSED void *uctx)
+{
+	if (map->lhs->type != TMPL_TYPE_ATTR) {
+		cf_log_err(map->ci, "%s is not an internal attribute reference", map->lhs->name);
+		return -1;
+	}
+
+	switch (map->rhs->type) {
+	case TMPL_TYPE_DATA_UNRESOLVED:
+		if (tmpl_resolve(map->rhs, NULL) < 0) {
+			cf_log_err(map->ci, "Invalid data %s", map->rhs->name);
+			return -1;
+		}
+		break;
+	case TMPL_TYPE_DATA:
+		break;
+
+	default:
+		cf_log_err(map->ci, "Right hand side of trigger_args must be litteral, not %s", tmpl_type_to_str(map->rhs->type));
+		return -1;
+	}
+
+	return 0;
+}
+
+#define BUILD_ATTR(_name, _value) if (_value) { \
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(fr_dict_internal()), _name); \
+	if (!da) { \
+		ERROR("Incomplete dictionary: Missing definition for \"" _name "\""); \
+		return -1; \
+	} \
+	MEM(vp = fr_pair_afrom_da(ctx, da)); \
+	fr_pair_value_strdup(vp, _value, false); \
+	fr_pair_append(list, vp); \
+}
+
+/** Build trigger args pair list for modules
+ *
+ * @param[in] ctx	to allocate pairs in.
+ * @param[in] list	to populate.
+ * @param[in] cs	CONF_SECTION to search for a "trigger_args" section
+ * @param[in] args	Common module data which will populate default pairs
+ */
+int module_trigger_args_build(TALLOC_CTX *ctx, fr_pair_list_t *list, CONF_SECTION *cs, module_trigger_args_t *args)
+{
+	map_list_t		*maps;
+	map_t			*map = NULL;
+	fr_pair_t		*vp;
+	fr_dict_attr_t const	*da;
+	tmpl_rules_t		t_rules = (tmpl_rules_t){
+						.attr = {
+							.dict_def = fr_dict_internal(),
+							.list_def = request_attr_request,
+						},
+					};
+
+	/*
+	 *	Build the default pairs from the module data
+	 */
+	BUILD_ATTR("Module-Name", args->module)
+	BUILD_ATTR("Module-Instance", args->name)
+	BUILD_ATTR("Connection-Pool-Server", args->server)
+	da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CONNECTION_POOL_PORT);
+	if (!da) {
+		ERROR("Incomplete dictionary: Missing definition for \"Connection-Pool-Port\"");
+		return -1;
+	}
+	MEM(vp = fr_pair_afrom_da(ctx, da));
+	vp->vp_uint16 = args->port;
+	fr_pair_append(list, vp);
+
+	/*
+	 *	If a CONF_SECTION has been passed in, look for a "trigger_args"
+	 *	sub section and parse that as a map to create additional pairs.
+	 */
+	if (!cs) return 0;
+	cs = cf_section_find(cs, "trigger_args", NULL);
+	if (!cs) return 0;
+
+	MEM(maps = talloc(NULL, map_list_t));
+	map_list_init(maps);
+	if (map_afrom_cs(maps, maps, cs, &t_rules, &t_rules, trigger_args_validate, NULL, 256) < 0) {
+	fail:
+		talloc_free(maps);
+		return -1;
+	}
+
+	while ((map = map_list_next(maps, map))) {
+		MEM(vp = fr_pair_afrom_da_nested(ctx, list, tmpl_attr_tail_da(map->lhs)));
+		if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &map->rhs->data.literal) < 0) goto fail;
+	}
+	talloc_free(maps);
+	return 0;
 }
 
 static int _mutex_free(pthread_mutex_t *mutex)

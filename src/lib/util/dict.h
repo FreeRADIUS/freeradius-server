@@ -118,7 +118,9 @@ typedef struct {
 
 	unsigned int		local : 1;       		//!< is a local variable
 
-	unsigned int		has_fixup : 1;
+	unsigned int		has_fixup : 1;			//! needs a fixup during dictionary parsing
+
+	unsigned int		migration_union_key : 1;       	//!< for migrating key fields
 
 	/*
 	 *	main: extra is set, then this field is is key, bit, or a uint16 length field.
@@ -128,18 +130,26 @@ typedef struct {
 	uint8_t			subtype;			//!< protocol-specific values, OR key fields
 
 	/*
-	 *	Length in bytes for most attributes.
-	 *	Length in bits for da_is_bit_field(da)
+	 *	TLVs: Number of bytes in the "type" field for TLVs (typically 1, 2, or 4)
+	 *
+	 *	da_is_bit_field(da): offset in the byte where this bit
+	 *  	field ends.  This is only used as a caching mechanism
+	 *  	during parsing of the dictionaries.
+	 *
+	 *	time/time_delta: fr_time_res_t, which has 4 possible values.
+	 *
+	 *	otherwise: unused.
 	 */
-	uint8_t			length;				//!< length of the attribute
+	uint8_t			type_size;			//!< Type size for TLVs
 
 	/*
-	 *	TLVs: 1, 2, or 4.
-	 *	date / time types: fr_time_res_t, which has 4 possible values.
-	 *	bit fields: offset in the byte where this bit field ends, which is only
-	 *  	used as a caching mechanism during parsing of the dictionaries.
+	 *	da_is_bit_field(da): Length of the field in bits.
+	 *
+	 *	TLV: Number of bytes in the "length" field
+	 *
+	 *	otherwise: Length in bytes
 	 */
-	uint8_t			type_size;			//!< For TLV2 and root attributes.
+	uint16_t	       	length;				//!< length of the attribute
 } fr_dict_attr_flags_t;
 
 #define flag_time_res type_size
@@ -159,6 +169,8 @@ enum {
 #define fr_dict_attr_is_key_field(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_KEY_FIELD))
 #define da_is_bit_field(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_BIT_FIELD))
 #define da_is_length_field(_da) ((_da)->flags.extra && (((_da)->flags.subtype == FLAG_LENGTH_UINT8) || ((_da)->flags.subtype == FLAG_LENGTH_UINT16)))
+#define da_is_length_field8(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_LENGTH_UINT8))
+#define da_is_length_field16(_da) ((_da)->flags.extra && ((_da)->flags.subtype == FLAG_LENGTH_UINT16))
 #define da_length_offset(_da) ((_da)->flags.type_size)
 
 /** Extension identifier
@@ -170,6 +182,7 @@ typedef enum {
 	FR_DICT_ATTR_EXT_CHILDREN,				//!< Attribute has children.
 	FR_DICT_ATTR_EXT_REF,					//!< Attribute references another
 								///< attribute and/or dictionary.
+	FR_DICT_ATTR_EXT_KEY,					//!< UNION attribute references a key
 	FR_DICT_ATTR_EXT_VENDOR,				//!< Cached vendor pointer.
 	FR_DICT_ATTR_EXT_DA_STACK,				//!< Cached da stack.
 	FR_DICT_ATTR_EXT_ENUMV,					//!< Enumeration values.
@@ -222,7 +235,7 @@ struct dict_attr_s {
  * @note New extension structures should also be added to the appropriate table in dict_ext.c
  */
 typedef enum {
-	FR_DICT_ENUM_EXT_UNION_REF = 0,				//!< Reference to a union/subs-struct.
+	FR_DICT_ENUM_EXT_KEY_CHILD_REF = 0,			//!< Reference to a child associated with this key
 	FR_DICT_ENUM_EXT_MAX
 } fr_dict_enum_ext_t;
 
@@ -238,7 +251,7 @@ typedef struct {
 
 	uint8_t			ext[FR_DICT_ENUM_EXT_MAX];	//!< Extensions to the dictionary attribute.
 
-	fr_dict_attr_t const	*child_struct[];		//!< for key fields
+	fr_dict_attr_t const	*key_child_ref[];		//!< for key fields
 } fr_dict_enum_value_t CC_HINT(aligned(FR_EXT_ALIGNMENT));
 
 /** Private enterprise
@@ -289,6 +302,9 @@ typedef struct {
 	char const		*base_dir;			//!< Directory structure beneath share.
 	char const		*proto;				//!< The protocol dictionary name.
 } fr_dict_autoload_t;
+
+#define DICT_AUTOLOAD_TERMINATOR { .out = NULL }
+
 
 /** Errors returned by attribute lookup functions
  *

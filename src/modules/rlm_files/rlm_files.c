@@ -39,6 +39,7 @@ RCSID("$Id$")
 typedef struct {
 	char const	*filename;
 	bool		v3_compat;
+	fr_htrie_type_t	htype;
 } rlm_files_t;
 
 /**  Structure produced by custom call_env parser
@@ -63,7 +64,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_files_dict[];
 fr_dict_autoload_t rlm_files_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_fall_through;
@@ -74,12 +75,14 @@ fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 	{ .out = &attr_fall_through, .name = "Fall-Through", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ .out = &attr_next_shortest_prefix, .name = "Next-Shortest-Prefix", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED | CONF_FLAG_FILE_READABLE, rlm_files_t, filename) },
 	{ FR_CONF_OFFSET("v3_compat", rlm_files_t, v3_compat) },
+	{ FR_CONF_OFFSET("lookup_type", rlm_files_t, htype), .dflt = "auto",
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_htrie_type_table, .len = &fr_htrie_type_table_len } },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -102,8 +105,8 @@ static int pairlist_to_key(uint8_t **out, size_t *outlen, void const *a)
 	return fr_value_box_to_key(out, outlen, ((PAIR_LIST_LIST const *)a)->box);
 }
 
-static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptree, PAIR_LIST_LIST **pdefault,
-			    fr_type_t data_type, fr_dict_attr_t const *key_enum, fr_dict_t const *dict, bool v3_compat)
+static int getrecv_filename(TALLOC_CTX *ctx, rlm_files_t const *inst, fr_htrie_t **ptree, PAIR_LIST_LIST **pdefault,
+			    fr_type_t data_type, fr_dict_attr_t const *key_enum, fr_dict_t const *dict)
 {
 	int			rcode;
 	PAIR_LIST_LIST		users;
@@ -115,18 +118,22 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 	fr_value_box_t		*box;
 	map_t			*reply_head;
 
-	if (!filename) {
+	if (!inst->filename) {
 		*ptree = NULL;
 		return 0;
 	}
 
 	pairlist_list_init(&users);
-	rcode = pairlist_read(ctx, dict, filename, &users, v3_compat);
+	rcode = pairlist_read(ctx, dict, inst->filename, &users, inst->v3_compat);
 	if (rcode < 0) {
 		return -1;
 	}
 
-	htype = fr_htrie_hint(data_type);
+	if (inst->htype == FR_HTRIE_AUTO) {
+		htype = fr_htrie_hint(data_type);
+	} else {
+		htype = inst->htype;
+	}
 
 	/*
 	 *	Walk through the 'users' file list
@@ -677,8 +684,8 @@ static int files_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *
 		key_enum = tmpl_attr_tail_da(files_data->key_tmpl);
 	}
 
-	if (getrecv_filename(files_data, inst->filename, &files_data->htrie, &files_data->def,
-			     keytype, key_enum, t_rules->attr.dict_def, inst->v3_compat) < 0) goto error;
+	if (getrecv_filename(files_data, inst, &files_data->htrie, &files_data->def,
+			     keytype, key_enum, t_rules->attr.dict_def) < 0) goto error;
 
 	*(void **)out = files_data;
 	return 0;

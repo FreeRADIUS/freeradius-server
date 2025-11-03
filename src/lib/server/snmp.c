@@ -45,7 +45,7 @@ static fr_dict_t const *dict_snmp;
 extern fr_dict_autoload_t snmp_dict[];
 fr_dict_autoload_t snmp_dict[] = {
 	{ .out = &dict_snmp, .proto = "snmp" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_snmp_operation;
@@ -59,7 +59,7 @@ fr_dict_attr_autoload_t snmp_dict_attr[] = {
 	{ .out = &attr_snmp_type, .name = "FreeRADIUS-SNMP-Type", .type = FR_TYPE_UINT8, .dict = &dict_snmp },
 	{ .out = &attr_snmp_failure, .name = "FreeRADIUS-SNMP-Failure", .type = FR_TYPE_UINT8, .dict = &dict_snmp },
 	{ .out = &attr_snmp_root, .name = "FreeRADIUS-Iso", .type = FR_TYPE_TLV, .dict = &dict_snmp },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 #define FR_FREERADIUS_SNMP_TYPE_OBJECT 0

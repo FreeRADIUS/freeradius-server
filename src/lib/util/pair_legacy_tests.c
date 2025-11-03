@@ -223,5 +223,5 @@ TEST_LIST = {
 	{ "fr_pair_list_afrom_file", test_fr_pair_list_afrom_file },
 	{ "fr_pair_list_move_op",       test_fr_pair_list_move_op },
 
-	{ NULL }
+	TEST_TERMINATOR
 };

@@ -35,6 +35,21 @@
 
 #include <fcntl.h>
 
+typedef enum {
+	EXFILE_TRIGGER_OPEN = 0,
+	EXFILE_TRIGGER_CLOSE,
+	EXFILE_TRIGGER_RESERVE,
+	EXFILE_TRIGGER_RELEASE,
+	EXFILE_TRIGGER_MAX
+} exfile_trigger_t;
+
+static const char * exfile_trigger_names[EXFILE_TRIGGER_MAX] = {
+	"open",
+	"close",
+	"reserve",
+	"release"
+};
+
 typedef struct {
 	int			fd;			//!< File descriptor associated with an entry.
 	uint32_t		hash;			//!< Hash for cheap comparison.
@@ -55,6 +70,8 @@ struct exfile_s {
 	CONF_SECTION		*conf;			//!< Conf section to search for triggers.
 	char const		*trigger_prefix;	//!< Trigger path in the global trigger section.
 	fr_pair_list_t		trigger_args;		//!< Arguments to pass to trigger.
+	bool			trigger_undef[EXFILE_TRIGGER_MAX];	//!< Is the trigger undefined
+	CONF_PAIR		*trigger_cp[EXFILE_TRIGGER_MAX];	//!< Cache of trigger CONF_PAIRs
 };
 
 #define MAX_TRY_LOCK 4			//!< How many times we attempt to acquire a lock
@@ -64,18 +81,20 @@ struct exfile_s {
  *
  * @param[in] ef to send trigger for.
  * @param[in] entry for the file that the event occurred on.
- * @param[in] name_suffix trigger name suffix.
+ * @param[in] ex_trigger to fire.
  */
-static inline void exfile_trigger(exfile_t *ef, exfile_entry_t *entry, char const *name_suffix)
+static inline void exfile_trigger(exfile_t *ef, exfile_entry_t *entry, exfile_trigger_t ex_trigger)
 {
 	char			name[128];
 	fr_pair_t		*vp;
 	fr_pair_list_t		args;
 	fr_dict_attr_t const	*da;
 
+	if (ef->trigger_undef[ex_trigger]) return;
+
 	fr_pair_list_init(&args);
 	fr_assert(ef != NULL);
-	fr_assert(name_suffix != NULL);
+	fr_assert(ex_trigger < EXFILE_TRIGGER_MAX);
 
 	if (!ef->trigger_prefix) return;
 
@@ -90,8 +109,10 @@ static inline void exfile_trigger(exfile_t *ef, exfile_entry_t *entry, char cons
 	fr_pair_list_prepend_by_da_len(NULL, vp, &args, da, entry->filename,
 				       talloc_array_length(entry->filename) - 1, false);
 
-	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, name_suffix);
-	trigger(unlang_interpret_get_thread_default(), ef->conf, name, false, &args);
+	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, exfile_trigger_names[ex_trigger]);
+	if (trigger(unlang_interpret_get_thread_default(), ef->conf, &ef->trigger_cp[ex_trigger], name, false, &args) == -1) {
+		ef->trigger_undef[ex_trigger] = true;
+	}
 
 	fr_pair_list_free(&args);
 }
@@ -107,7 +128,7 @@ static void exfile_cleanup_entry(exfile_t *ef, exfile_entry_t *entry)
 	/*
 	 *	Issue close trigger *after* we've closed the fd
 	 */
-	exfile_trigger(ef, entry, "close");
+	exfile_trigger(ef, entry, EXFILE_TRIGGER_CLOSE);
 
 	/*
 	 *	Trigger still needs access to filename to populate Exfile-Name
@@ -381,7 +402,7 @@ reopen:
 	ef->entries[i].fd = exfile_open_mkdir(ef, filename, permissions);
 	if (ef->entries[i].fd < 0) goto error;
 
-	exfile_trigger(ef, &ef->entries[i], "open");
+	exfile_trigger(ef, &ef->entries[i], EXFILE_TRIGGER_OPEN);
 
 try_lock:
 	/*
@@ -483,7 +504,7 @@ try_lock:
 	 */
 	ef->entries[i].last_used = now;
 
-	exfile_trigger(ef, &ef->entries[i], "reserve");
+	exfile_trigger(ef, &ef->entries[i], EXFILE_TRIGGER_RESERVE);
 
 	/* coverity[missing_unlock] */
 	return ef->entries[i].fd;
@@ -536,7 +557,7 @@ static int exfile_close_lock(exfile_t *ef, int fd)
 		(void) rad_unlockfd(ef->entries[i].fd, 0);
 		pthread_mutex_unlock(&(ef->mutex));
 
-		exfile_trigger(ef, &ef->entries[i], "release");
+		exfile_trigger(ef, &ef->entries[i], EXFILE_TRIGGER_RELEASE);
 		return 0;
 	}
 

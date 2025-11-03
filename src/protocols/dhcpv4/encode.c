@@ -730,7 +730,8 @@ done:
 ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_pair_t		*vp;
-	unsigned int		depth = 0;
+	fr_dhcpv4_ctx_t		*enc_ctx = encode_ctx;
+	unsigned int		depth = enc_ctx->root->depth;
 	fr_da_stack_t		da_stack;
 	ssize_t			len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
@@ -807,13 +808,14 @@ static ssize_t fr_dhcpv4_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vp
 	return fr_dhcpv4_encode_dbuff(&FR_DBUFF_TMP(data, data_len), NULL, 0, 0, vps);
 }
 
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   fr_dict_attr_t const *root_da)
 {
 	fr_dhcpv4_ctx_t *test_ctx;
 
 	test_ctx = talloc_zero(ctx, fr_dhcpv4_ctx_t);
 	if (!test_ctx) return -1;
-	test_ctx->root = fr_dict_root(dict_dhcpv4);
+	test_ctx->root = root_da ? root_da : fr_dict_root(dict_dhcpv4);
 
 	*out = test_ctx;
 

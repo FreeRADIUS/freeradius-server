@@ -41,12 +41,11 @@ These define a subnet containing a single pool that is restricted to members of
 the "printers" class. (The definition for this class is omitted.)
 
 In FreeRADIUS, to filter access to this pool entries such as the following
-should included in the `<raddb>/mods-config/files/dhcp` configuration file:
+should included in the `<raddb>/mods-config/files/dhcp_subnet` configuration file:
 
 [source,config]
 ----
-network Network-Subnet < 10.99.99.0/24, \
-           Group-Name == "printers", IP-Pool.Name := "printers-pool"
+10.99.99.0/24 Group-Name == "printers", IP-Pool.Name := "printers-pool"
        Router-Address := 10.99.99.1
 ----
 

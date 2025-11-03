@@ -133,6 +133,8 @@ typedef struct {
 	linelog_net_t		udp;			//!< UDP server.
 
 	CONF_SECTION		*cs;			//!< #CONF_SECTION to use as the root for #log_ref lookups.
+
+	bool			triggers;		//!< Do we do triggers.
 } rlm_linelog_t;
 
 typedef struct {
@@ -178,6 +180,8 @@ static const conf_parser_t module_config[] = {
 
 	{ FR_CONF_OFFSET("delimiter", rlm_linelog_t, delimiter), .dflt = "\n" },
 
+	{ FR_CONF_OFFSET("triggers", rlm_linelog_t, triggers) },
+
 	/*
 	 *	Log destinations
 	 */
@@ -218,9 +222,9 @@ typedef struct {
 static const call_env_method_t linelog_method_env = {
 	FR_CALL_ENV_METHOD_OUT(linelog_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("format", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_PARSE_ONLY| CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, linelog_call_env_t, log_src), .pair.escape.box_escape = LINELOG_BOX_ESCAPE },
-		{ FR_CALL_ENV_OFFSET("reference",FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, linelog_call_env_t, log_ref), .pair.escape.box_escape = LINELOG_BOX_ESCAPE},
-		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_head), .pair.escape.box_escape = LINELOG_BOX_ESCAPE },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("format", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_PARSE_ONLY| CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, linelog_call_env_t, log_src), .pair.escape = { .box_escape = LINELOG_BOX_ESCAPE } },
+		{ FR_CALL_ENV_OFFSET("reference",FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_BARE_WORD_ATTRIBUTE, linelog_call_env_t, log_ref), .pair.escape = { .box_escape = LINELOG_BOX_ESCAPE } },
+		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_head), .pair.escape = { .box_escape = LINELOG_BOX_ESCAPE } },
 		{ FR_CALL_ENV_SUBSECTION("file", NULL, CALL_ENV_FLAG_NONE,
 			((call_env_parser_t[]) {
 				{ FR_CALL_ENV_OFFSET("filename", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, filename),
@@ -234,7 +238,7 @@ static const call_env_method_t linelog_method_env = {
 static const call_env_method_t linelog_xlat_method_env = {
 	FR_CALL_ENV_METHOD_OUT(linelog_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_head), .pair.escape.box_escape = LINELOG_BOX_ESCAPE },
+		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_head), .pair.escape = { .box_escape = LINELOG_BOX_ESCAPE } },
 		{ FR_CALL_ENV_SUBSECTION("file", NULL, CALL_ENV_FLAG_NONE,
 			((call_env_parser_t[]) {
 				{ FR_CALL_ENV_OFFSET("filename", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, filename),
@@ -404,6 +408,8 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 		fd = exfile_open(inst->file.ef, path, inst->file.permissions, &offset);
 		if (fd < 0) {
 			RERROR("Failed to open %pV: %s", call_env->filename, fr_syserror(errno));
+
+			/* coverity[missing_unlock] */
 			return -1;
 		}
 
@@ -960,7 +966,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		}
 		if (!cf_pair_find(cs, "filename")) goto no_filename;
 
-		inst->file.ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
+		inst->file.ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true,
+						       inst->triggers, NULL, NULL);
 		if (!inst->file.ef) {
 			cf_log_err(conf, "Failed creating log file context");
 			return -1;

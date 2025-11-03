@@ -44,7 +44,7 @@ extern fr_dict_autoload_t process_ttls_dict[];
 fr_dict_autoload_t process_ttls_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_auth_type;
@@ -82,7 +82,7 @@ fr_dict_attr_autoload_t process_ttls_dict_attr[] = {
 	{ .out = &attr_original_packet_code, .name = "Extended-Attribute-1.Original-Packet-Code", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_error_cause, .name = "Error-Cause", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_value_box_t const	*enum_auth_type_accept;
@@ -92,7 +92,7 @@ extern fr_dict_enum_autoload_t process_ttls_dict_enum[];
 fr_dict_enum_autoload_t process_ttls_dict_enum[] = {
 	{ .out = &enum_auth_type_accept, .name = "Accept", .attr = &attr_auth_type },
 	{ .out = &enum_auth_type_reject, .name = "Reject", .attr = &attr_auth_type },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*

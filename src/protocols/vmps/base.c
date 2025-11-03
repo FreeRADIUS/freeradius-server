@@ -36,7 +36,7 @@ fr_dict_t const *dict_vmps;
 extern fr_dict_autoload_t libfreeradius_vmps[];
 fr_dict_autoload_t libfreeradius_vmps[] = {
 	{ .out = &dict_vmps, .proto = "vmps" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_error_code;
@@ -48,7 +48,7 @@ fr_dict_attr_autoload_t libfreeradius_vmps_dict_attr[] = {
 	{ .out = &attr_error_code, .name = "Error-Code", .type = FR_TYPE_UINT8, .dict = &dict_vmps },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_vmps },
 	{ .out = &attr_sequence_number, .name = "Sequence-Number", .type = FR_TYPE_UINT32, .dict = &dict_vmps },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 

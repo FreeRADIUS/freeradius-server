@@ -42,14 +42,16 @@ RCSID("$Id$")
  */
 typedef struct {
 	char const	*filename;
-	tmpl_t		*key;
 	bool		relaxed;
 	PAIR_LIST_LIST	attrs;
 } rlm_attr_filter_t;
 
+typedef struct {
+	fr_value_box_t	*key;
+} attr_filter_env_t;
+
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_READABLE | CONF_FLAG_REQUIRED, rlm_attr_filter_t, filename) },
-	{ FR_CONF_OFFSET_HINT_TYPE("key", FR_TYPE_STRING, rlm_attr_filter_t, key), .dflt = "Realm", .quote = T_BARE_WORD },
 	{ FR_CONF_OFFSET("relaxed", rlm_attr_filter_t, relaxed), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
@@ -61,7 +63,7 @@ extern fr_dict_autoload_t rlm_attr_filter_dict[];
 fr_dict_autoload_t rlm_attr_filter_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_stripped_user_name;
@@ -77,7 +79,16 @@ fr_dict_attr_autoload_t rlm_attr_filter_dict_attr[] = {
 	{ .out = &attr_relax_filter, .name = "Relax-Filter", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
 	{ .out = &attr_vendor_specific, .name = "Vendor-Specific", .type = FR_TYPE_VSA, .dict = &dict_radius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
+};
+
+static const call_env_method_t attr_filter_env = {
+	FR_CALL_ENV_METHOD_OUT(attr_filter_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE, attr_filter_env_t, key),
+		  .pair.dflt = "Realm", .pair.dflt_quote = T_BARE_WORD },
+		CALL_ENV_TERMINATOR
+	}
 };
 
 static void check_pair(request_t *request, fr_pair_t *check_item, fr_pair_t *reply_item, int *pass, int *fail)
@@ -191,21 +202,18 @@ static unlang_action_t CC_HINT(nonnull) attr_filter_common(TALLOC_CTX *ctx, unla
 							   fr_pair_list_t *list)
 {
 	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_attr_filter_t);
+	attr_filter_env_t	*env_data = talloc_get_type_abort(mctx->env_data, attr_filter_env_t);
 	fr_pair_list_t	output;
 	PAIR_LIST	*pl = NULL;
 	int		found = 0;
 	int		pass, fail = 0;
 	char const	*keyname = NULL;
-	char		buffer[256];
-	ssize_t		slen;
 
-	slen = tmpl_expand(&keyname, buffer, sizeof(buffer), request, inst->key);
-	if (slen < 0) {
-		RETURN_UNLANG_FAIL;
-	}
-	if ((keyname == buffer) && is_truncated((size_t)slen, sizeof(buffer))) {
-		REDEBUG("Key too long, expected < " STRINGIFY(sizeof(buffer)) " bytes, got %zi bytes", slen);
-		RETURN_UNLANG_FAIL;
+	/* The key expanded to nothing - use DEFAULT */
+	if (env_data->key->type != FR_TYPE_STRING) {
+		keyname = "DEFAULT";
+	} else {
+		keyname = env_data->key->vb_strvalue;
 	}
 
 	/*
@@ -408,21 +416,21 @@ module_rlm_t rlm_attr_filter = {
 			/*
 			 *	Hack to support old configurations
 			 */
-			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY),		.method = mod_reply	},
-			{ .section = SECTION_NAME("authorize", CF_IDENT_ANY),		.method = mod_request	},
+			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY),		.method = mod_reply,	.method_env = &attr_filter_env	},
+			{ .section = SECTION_NAME("authorize", CF_IDENT_ANY),		.method = mod_request, 	.method_env = &attr_filter_env	},
 
-			{ .section = SECTION_NAME("recv", "accounting-request"),	.method = mod_request	},
-			{ .section = SECTION_NAME("recv", CF_IDENT_ANY),		.method = mod_request	},
+			{ .section = SECTION_NAME("recv", "accounting-request"),	.method = mod_request, 	.method_env = &attr_filter_env	},
+			{ .section = SECTION_NAME("recv", CF_IDENT_ANY),		.method = mod_request, 	.method_env = &attr_filter_env	},
 
-			{ .section = SECTION_NAME("send", CF_IDENT_ANY),		.method = mod_reply	},
+			{ .section = SECTION_NAME("send", CF_IDENT_ANY),		.method = mod_reply, 	.method_env = &attr_filter_env	},
 
 			/*
 			 *	List name based methods
 			 */
-			{ .section = SECTION_NAME("request", CF_IDENT_ANY),		.method = mod_request	},
-			{ .section = SECTION_NAME("reply", CF_IDENT_ANY),		.method = mod_reply	},
-			{ .section = SECTION_NAME("control", CF_IDENT_ANY),		.method = mod_control	},
-			{ .section = SECTION_NAME("session-state", CF_IDENT_ANY),	.method = mod_session	},
+			{ .section = SECTION_NAME("request", CF_IDENT_ANY),		.method = mod_request, 	.method_env = &attr_filter_env	},
+			{ .section = SECTION_NAME("reply", CF_IDENT_ANY),		.method = mod_reply, 	.method_env = &attr_filter_env	},
+			{ .section = SECTION_NAME("control", CF_IDENT_ANY),		.method = mod_control, 	.method_env = &attr_filter_env	},
+			{ .section = SECTION_NAME("session-state", CF_IDENT_ANY),	.method = mod_session, 	.method_env = &attr_filter_env	},
 			MODULE_BINDING_TERMINATOR
 		}
 	}

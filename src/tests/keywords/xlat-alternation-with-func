@@ -8,8 +8,7 @@ string dummy_string
 test_string1 := "foo"
 test_string2 := "bar"
 
-
-if (!(%{%test.passthrough(%{dummy_string}) || %{test_string2}} == 'bar')) {
+if (!(%{%test.passthrough(dummy_string) || test_string2} == 'bar')) {
 	test_fail
 }
 

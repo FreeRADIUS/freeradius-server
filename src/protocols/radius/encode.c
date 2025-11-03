@@ -208,6 +208,16 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 		block_len = encrypted_len - n;
 		if (block_len > AUTH_PASS_LEN) block_len = AUTH_PASS_LEN;
 
+#ifdef __COVERITY__
+		/*
+		 *	Coverity is not doing the calculations correctly - it doesn't see
+		 *	that setting block_len = encrypted_len - n puts a safe boundary
+		 *	on block_len so the access to tpasswd won't overflow.
+		 */
+		if ((block_len + 2 + n) > RADIUS_MAX_STRING_LENGTH) {
+			block_len = RADIUS_MAX_STRING_LENGTH - n - 3;
+		}
+#endif
 		for (i = 0; i < block_len; i++) tpasswd[i + 2 + n] ^= digest[i];
 	}
 
@@ -1697,7 +1707,8 @@ ssize_t	fr_radius_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t const *list)
 }
 
 
-static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict)
+static int encode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *dict,
+			   UNUSED fr_dict_attr_t const *root_da)
 {
 	static uint8_t vector[RADIUS_AUTH_VECTOR_LENGTH] = {
 		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,

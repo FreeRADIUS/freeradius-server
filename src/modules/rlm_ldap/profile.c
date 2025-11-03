@@ -122,7 +122,7 @@ static unlang_action_t ldap_map_profile_resume(request_t *request, void *uctx)
 
 			tmpl_rules_t const parse_rules = {
 				.attr = {
-					.dict_def = request->proto_dict,
+					.dict_def = request->local_dict,
 					.list_def = request_attr_request,
 				},
 				.xlat = {

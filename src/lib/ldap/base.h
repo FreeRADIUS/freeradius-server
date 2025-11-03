@@ -386,6 +386,8 @@ typedef struct {
 	fr_event_list_t		*el;			//!< Thread event list for callbacks / timeouts
 	fr_ldap_thread_trunk_t	*bind_trunk;		//!< LDAP trunk used for bind auths
 	fr_rb_tree_t		*binds;			//!< Tree of outstanding bind auths
+	fr_pair_list_t		*trigger_args;		//!< Passed to trigger request for normal trunks
+	fr_pair_list_t		*bind_trigger_args;	//!< Passed to trigger request for bind trunks
 } fr_ldap_thread_t;
 
 /** Thread LDAP trunk structure

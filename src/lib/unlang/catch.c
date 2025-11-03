@@ -54,7 +54,7 @@ static unlang_t *unlang_compile_catch(unlang_t *parent, unlang_compile_ctx_t *un
 	unlang_group_t	*g;
 	unlang_t	*c;
 	unlang_try_t	*gext;
-	char const	*name;
+	char const	*name2;
 
 	g = unlang_generic_to_group(parent);
 	fr_assert(g != NULL);
@@ -79,10 +79,7 @@ static unlang_t *unlang_compile_catch(unlang_t *parent, unlang_compile_ctx_t *un
 
 	c = unlang_group_to_generic(g);
 
-	/*
-	 *	Want to log what we caught
-	 */
-	c->debug_name = c->name = talloc_typed_asprintf(c, "%s %s", cf_section_name1(cs), cf_section_name2(cs));
+	name2 = cf_section_name2(cs);
 
 	/*
 	 *	catch { ... } has to be the last one, and will catch _all_ rcodes that weren't mentioned
@@ -90,6 +87,8 @@ static unlang_t *unlang_compile_catch(unlang_t *parent, unlang_compile_ctx_t *un
 	 */
 	if (!cf_section_name2(cs)) {
 		int i;
+
+		c->debug_name = c->name = "catch";
 
 		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
 			if (gext->catch[i]) continue;
@@ -100,12 +99,12 @@ static unlang_t *unlang_compile_catch(unlang_t *parent, unlang_compile_ctx_t *un
 	} else {
 		int i;
 
-		name = cf_section_name2(cs);
+		c->debug_name = c->name = talloc_typed_asprintf(c, "%s %s", cf_section_name1(cs), name2);
 
-		catch_argv(gext, name, c);
+		catch_argv(gext, name2, c);
 
-		for (i = 0; (name = cf_section_argv(cs, i)) != NULL; i++) {
-			catch_argv(gext, name, c);
+		for (i = 0; (name2 = cf_section_argv(cs, i)) != NULL; i++) {
+			catch_argv(gext, name2, c);
 		}
 	}
 

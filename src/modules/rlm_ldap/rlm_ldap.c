@@ -319,7 +319,7 @@ static fr_dict_t const *dict_freeradius;
 extern fr_dict_autoload_t rlm_ldap_dict[];
 fr_dict_autoload_t rlm_ldap_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_password;
@@ -340,7 +340,7 @@ fr_dict_attr_autoload_t rlm_ldap_dict_attr[] = {
 	{ .out = &attr_password_with_header, .name = "Password.With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 extern global_lib_autoinst_t const *rlm_ldap_lib[];
@@ -406,7 +406,7 @@ static size_t ldap_uri_scheme_table_len = NUM_ELEMENTS(ldap_uri_scheme_table);
 #define LDAP_URI_SAFE_FOR (fr_value_box_safe_for_t)fr_ldap_uri_escape_func
 
 static xlat_arg_parser_t const ldap_uri_escape_xlat_arg[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required=true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -423,54 +423,53 @@ static xlat_action_t ldap_uri_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					  UNUSED xlat_ctx_t const *xctx,
 					  request_t *request, fr_value_box_list_t *in)
 {
-	fr_value_box_t		*vb, *in_vb = fr_value_box_list_head(in);
+	fr_value_box_t		*vb, *in_vb, *in_group = fr_value_box_list_head(in);
 	fr_sbuff_t		sbuff;
 	fr_sbuff_uctx_talloc_t	sbuff_ctx;
 	size_t			len;
 
-	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_assert(in_group->type == FR_TYPE_GROUP);
 
-	/*
-	 *	If it's already safe, just copy it over.
-	 */
-	if (fr_value_box_is_safe_for_only(in_vb, LDAP_URI_SAFE_FOR)) {
-		if (unlikely(fr_value_box_copy(vb, vb, in_vb) < 0)) {
-			RPEDEBUG("Failed copying input argument to output");
+	while ((in_vb = fr_value_box_list_pop_head(&in_group->vb_group))) {
+		/*
+		 *	If it's already safe, just move it over.
+		 */
+		if (fr_value_box_is_safe_for_only(in_vb, LDAP_URI_SAFE_FOR)) {
+			fr_dcursor_append(out, in_vb);
+			continue;
+		}
+
+		MEM(vb = fr_value_box_alloc_null(ctx));
+
+		/*
+		 *	Maximum space needed for output would be 3 times the input if every
+		 *	char needed escaping
+		 */
+		if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, in_vb->vb_length * 3, in_vb->vb_length * 3)) {
+			REDEBUG("Failed to allocate buffer for escaped string");
 			talloc_free(vb);
 			return XLAT_ACTION_FAIL;
 		}
 
+		/*
+		 *	Call the escape function, including the space for the trailing NULL
+		 */
+		len = fr_ldap_uri_escape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length * 3 + 1, in_vb->vb_strvalue, NULL);
+
+		/*
+		 *	Trim buffer to fit used space and assign to box
+		 */
+		fr_sbuff_trim_talloc(&sbuff, len);
+		fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), in_vb->tainted);
+		talloc_free(in_vb);
+
 		fr_dcursor_append(out, vb);
-		return XLAT_ACTION_DONE;
 	}
-
-	/*
-	 *	Maximum space needed for output would be 3 times the input if every
-	 *	char needed escaping
-	 */
-	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, in_vb->vb_length * 3, in_vb->vb_length * 3)) {
-		REDEBUG("Failed to allocate buffer for escaped string");
-		talloc_free(vb);
-		return XLAT_ACTION_FAIL;
-	}
-
-	/*
-	 *	Call the escape function, including the space for the trailing NULL
-	 */
-	len = fr_ldap_uri_escape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length * 3 + 1, in_vb->vb_strvalue, NULL);
-
-	/*
-	 *	Trim buffer to fit used space and assign to box
-	 */
-	fr_sbuff_trim_talloc(&sbuff, len);
-	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), in_vb->tainted);
-
-	fr_dcursor_append(out, vb);
 	return XLAT_ACTION_DONE;
 }
 
 static xlat_arg_parser_t const ldap_uri_unescape_xlat_arg[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -482,32 +481,37 @@ static xlat_action_t ldap_uri_unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					    UNUSED xlat_ctx_t const *xctx,
 					    request_t *request, fr_value_box_list_t *in)
 {
-	fr_value_box_t		*vb, *in_vb = fr_value_box_list_head(in);
+	fr_value_box_t		*vb, *in_vb = NULL, *in_group = fr_value_box_list_head(in);
 	fr_sbuff_t		sbuff;
 	fr_sbuff_uctx_talloc_t	sbuff_ctx;
 	size_t			len;
 
-	MEM(vb = fr_value_box_alloc_null(ctx));
-	/*
-	 *	Maximum space needed for output will be the same as the input
-	 */
-	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, in_vb->vb_length, in_vb->vb_length)) {
-		REDEBUG("Failed to allocate buffer for unescaped string");
-		talloc_free(vb);
-		return XLAT_ACTION_FAIL;
+	fr_assert(in_group->type == FR_TYPE_GROUP);
+
+	while ((in_vb = fr_value_box_list_next(&in_group->vb_group, in_vb))) {
+
+		MEM(vb = fr_value_box_alloc_null(ctx));
+		/*
+		 *	Maximum space needed for output will be the same as the input
+		 */
+		if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, in_vb->vb_length, in_vb->vb_length)) {
+			REDEBUG("Failed to allocate buffer for unescaped string");
+			talloc_free(vb);
+			return XLAT_ACTION_FAIL;
+		}
+
+		/*
+		 *	Call the unescape function, including the space for the trailing NULL
+		 */
+		len = fr_ldap_uri_unescape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length + 1, in_vb->vb_strvalue, NULL);
+
+		/*
+		 *	Trim buffer to fit used space and assign to box
+		 */
+		fr_sbuff_trim_talloc(&sbuff, len);
+		fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), in_vb->tainted);
+		fr_dcursor_append(out, vb);
 	}
-
-	/*
-	 *	Call the unescape function, including the space for the trailing NULL
-	 */
-	len = fr_ldap_uri_unescape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length + 1, in_vb->vb_strvalue, NULL);
-
-	/*
-	 *	Trim buffer to fit used space and assign to box
-	 */
-	fr_sbuff_trim_talloc(&sbuff, len);
-	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), in_vb->tainted);
-	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
@@ -1642,6 +1646,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 	ldap_autz_call_env_t	*call_env = talloc_get_type_abort(autz_ctx->call_env, ldap_autz_call_env_t);
 	int			ldap_errno;
 	LDAP			*handle = fr_ldap_handle_thread_local();
+	unlang_action_t		ret = UNLANG_ACTION_CALCULATE_RESULT;
 
 	/*
 	 *	If a previous async call returned one of the "failure" results just return.
@@ -1796,8 +1801,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		 *	Apply ONE user profile, or a default user profile.
 		 */
 		if (call_env->default_profile.type == FR_TYPE_STRING) {
-			unlang_action_t	ret;
-
 			REPEAT_MOD_AUTHORIZE_RESUME;
 			ret = rlm_ldap_map_profile(NULL, NULL, inst, request, autz_ctx->ttrunk,
 						   call_env->default_profile.vb_strvalue,
@@ -1883,8 +1886,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		}
 
 		if (autz_ctx->profile_values && autz_ctx->profile_values[autz_ctx->value_idx]) {
-			unlang_action_t	ret;
-
 			autz_ctx->profile_value = fr_ldap_berval_to_string(autz_ctx, autz_ctx->profile_values[autz_ctx->value_idx++]);
 			REPEAT_MOD_AUTHORIZE_RESUME;
 			ret = rlm_ldap_map_profile(NULL, NULL, inst, request, autz_ctx->ttrunk, autz_ctx->profile_value,
@@ -1908,9 +1909,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 	p_result->rcode = autz_ctx->rcode;
 
 finish:
-	talloc_free(autz_ctx);
-
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return ret;
 }
 
 /** Clear up when cancelling a mod_authorize call
@@ -2532,6 +2531,8 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	t->trunk_conf = &inst->trunk_conf;
 	t->bind_trunk_conf = &inst->bind_trunk_conf;
 	t->el = mctx->el;
+	t->trigger_args = inst->trigger_args;
+	t->bind_trigger_args = inst->bind_trigger_args;
 
 	/*
 	 *	Launch trunk for module default connection
@@ -2602,7 +2603,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			cf_log_err(conf, "Configuration item 'group.name_attribute' must be set if cacheable "
 				      "group names are enabled");
 
-			goto error;
+			return -1;
 		}
 	}
 
@@ -2614,7 +2615,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	if (!cf_pair_find(conf, "pool")) {
 		if (!inst->handle_config.server_str) {
 			cf_log_err(conf, "Configuration item 'server' must have a value");
-			goto error;
+			return -1;
 		}
 	}
 
@@ -2622,7 +2623,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	if (inst->handle_config.admin_sasl.mech) {
 		cf_log_err(conf, "Configuration item 'sasl.mech' not supported.  "
 			   "Linked libldap does not provide ldap_sasl_interactive_bind function");
-		goto error;
+		return -1;
 	}
 #endif
 
@@ -2650,7 +2651,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			case ';':
 				cf_log_err(conf, "Invalid character '%c' found in 'server' configuration item",
 					      value[j]);
-				goto error;
+				return -1;
 
 			default:
 				continue;
@@ -2699,7 +2700,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		if (inst->handle_config.dereference < 0) {
 			cf_log_err(conf, "Invalid 'dereference' value \"%s\", expected 'never', 'searching', "
 				      "'finding' or 'always'", inst->handle_config.dereference_str);
-			goto error;
+			return -1;
 		}
 	}
 
@@ -2713,7 +2714,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		if (ret != LDAP_SUCCESS) { \
 			cf_log_err(conf, "Invalid " STRINGIFY(_obj) ".sort_by value \"%s\": %s", \
 				      inst->_obj.obj_sort_by, ldap_err2string(ret)); \
-			goto error; \
+			return -1; \
 		} \
 		/* \
 		 *	Always set the control as critical, if it's not needed \
@@ -2723,7 +2724,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		ldap_free_sort_keylist(keys); \
 		if (ret != LDAP_SUCCESS) { \
 			ERROR("Failed creating server sort control: %s", ldap_err2string(ret)); \
-			goto error; \
+			return -1; \
 		} \
 	}
 
@@ -2739,7 +2740,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		if (inst->handle_config.tls_require_cert < 0) {
 			cf_log_err(conf, "Invalid 'tls.require_cert' value \"%s\", expected 'never', "
 				      "'demand', 'allow', 'try' or 'hard'", inst->handle_config.tls_require_cert_str);
-			goto error;
+			return -1;
 		}
 	}
 
@@ -2761,14 +2762,32 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 		} else {
 			cf_log_err(conf, "Invalid 'tls.tls_min_version' value \"%s\"", inst->handle_config.tls_min_version_str);
-			goto error;
+			return -1;
 		}
 	}
 
-	return 0;
+	if (inst->trunk_conf.conn_triggers) {
+		MEM(inst->trigger_args = fr_pair_list_alloc(inst));
+		if (module_trigger_args_build(inst->trigger_args, inst->trigger_args, cf_section_find(conf, "pool", NULL),
+					      &(module_trigger_args_t) {
+							.module = mctx->mi->module->name,
+							.name = mctx->mi->name,
+							.server = inst->handle_config.server,
+							.port = inst->handle_config.port
+					      }) < 0) return -1;
+	}
 
-error:
-	return -1;
+	if (inst->bind_trunk_conf.conn_triggers) {
+		MEM(inst->bind_trigger_args = fr_pair_list_alloc(inst));
+		if (module_trigger_args_build(inst->bind_trigger_args, inst->bind_trigger_args, cf_section_find(conf, "bind_pool", NULL),
+					      &(module_trigger_args_t) {
+							.module = mctx->mi->module->name,
+							.name = mctx->mi->name,
+							.server = inst->handle_config.server,
+							.port = inst->handle_config.port
+					      }) < 0) return -1;
+	}
+	return 0;
 }
 
 /** Bootstrap the module

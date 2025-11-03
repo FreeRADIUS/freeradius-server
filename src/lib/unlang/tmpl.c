@@ -252,7 +252,7 @@ static unlang_action_t unlang_tmpl(unlang_result_t *p_result, request_t *request
 push:
 	if (unlang_xlat_push(state->ctx, &state->xlat_result, &state->list, request, tmpl_xlat(ut->tmpl), UNLANG_SUB_FRAME) < 0) {
 	fail:
-		return UNLANG_ACTION_STOP_PROCESSING;
+		RETURN_UNLANG_ACTION_FATAL;
 	}
 
 	return UNLANG_ACTION_PUSHED_CHILD;

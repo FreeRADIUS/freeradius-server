@@ -99,6 +99,8 @@ typedef struct {
 
 	fr_pair_list_t	*trigger_args;		//!< Additional pairs to pass to the trigger function
 						///< Lifetime must be longer than the connection.
+
+	bool		triggers;		//!< Do we run triggers.
 } connection_conf_t;
 
 typedef struct connection_watch_entry_s connection_watch_entry_t;
@@ -267,8 +269,6 @@ void			connection_signals_resume(connection_t *conn);
  * @{
  */
 int			connection_signal_on_fd(connection_t *conn, int fd);
-
-connection_state_t	connection_failed_reinit(void *handle, connection_state_t state, void *uctx);
 /** @} */
 
 /** @name Allocate a new connection

@@ -51,7 +51,6 @@ test: \
 		test.unit	\
 		test.keywords	\
 		test.xlat	\
-		test.map	\
 		test.modules	\
 		test.radiusd-c	\
 		test.radclient	\

@@ -80,14 +80,14 @@ static fr_dict_attr_t const *attr_auth_type;
 extern fr_dict_autoload_t virtual_server_dict_autoload[];
 fr_dict_autoload_t virtual_server_dict_autoload[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 extern fr_dict_attr_autoload_t virtual_server_dict_attr_autoload[];
 fr_dict_attr_autoload_t virtual_server_dict_attr_autoload[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** List of process modules we've loaded
@@ -912,7 +912,7 @@ static int8_t listen_addr_cmp(void const *one, void const *two)
  */
 fr_listen_t *listen_find_any(fr_listen_t *li)
 {
-	if (!listen_addr_root) return false;
+	if (!listen_addr_root) return NULL;
 
 	return fr_rb_find(listen_addr_root, li);
 }

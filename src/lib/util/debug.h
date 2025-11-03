@@ -226,49 +226,6 @@ NEVER_RETURNS void	_fr_exit(char const *file, int line, int status, bool now);
 #  define	fr_exit_now(_x) _fr_exit(__FILE__, __LINE__, (_x), true)
 /** @} */
 
-void fr_sign_struct(void *ptr, size_t size, size_t offset);
-void fr_verify_struct(void const *ptr, size_t size, size_t offset);
-void fr_verify_struct_member(void const *ptr, size_t len, uint32_t *signature);
-
-/** Manual validation of structures.
- *
- *	typedef struct {
- *		char *a;
- *		int b;
- *		FR_SIGNATURE		// no semicolon!
- *	} foo_t;
- *
- *  and then once the structure is initialized (and will never be changed)
- *
- *	foo_t *ptr;
- *	FR_STRUCT_SIGN(ptr);
- *
- *  and some time later...
- *
- *	foo_t *ptr;
- *	FR_STRUCT_VERIFY(ptr);
- *
- *  Note that the structure can't contain variable elements such as fr_dlist_t.
- *  And that we're not verifying the contents of the members which are pointers.
- */
-#ifndef NDEBUG
-#define FR_STRUCT_SIGN(_ptr)			fr_sign_struct(_ptr, sizeof(__typeof__(*_ptr)), offsetof(__typeof__(*_ptr), _signature));
-#define FR_STRUCT_VERIFY(_ptr)			fr_verify_struct(_ptr, sizeof(__typeof__(*_ptr)), offsetof(__typeof__(*_ptr), _signature))
-#define FR_STRUCT_SIGNATURE			uint32_t _signature;
-
-#define FR_STRUCT_MEMBER_SIGN(_ptr, _member, _len) _ptr->_signature_##_member = fr_hash(_ptr->_member, _len)
-#define FR_STRUCT_MEMBER_VERIFY(_ptr, _member, _len) fr_verify_struct_member(_ptr->_member, _len, &(_ptr->_signature_##_member))
-#define FR_STRUCT_MEMBER_SIGNATURE(_member)	uint32_t _signature_##_member;
-#else
-#define FR_STRUCT_SIGN(_ptr)
-#define FR_STRUCT_VERIFY(_ptr)
-#define FR_STRUCT_SIGNATURE
-
-#define FR_STRUCT_MEMBER_SIGN(_ptr, _member, _len)
-#define FR_STRUCT_MEMBER_VERIFY(_ptr, _member, _len)
-#define FR_STRUCT_MEMBER_SIGNATURE(_member)
-#endif
-
 #ifdef __cplusplus
 }
 #endif

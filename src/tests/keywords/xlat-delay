@@ -1,6 +1,3 @@
-#
-# PRE: update
-#
 time_delta result
 
 # This is mainly a smoke test... i.e. if it crashes there's smoke

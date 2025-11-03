@@ -227,7 +227,7 @@ extern fr_dict_autoload_t rlm_mschap_dict[];
 fr_dict_autoload_t rlm_mschap_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_auth_type;
@@ -256,7 +256,7 @@ fr_dict_attr_autoload_t rlm_mschap_dict_attr[] = {
 	{ .out = &attr_smb_account_ctrl_text, .name = "SMB-Account-Ctrl-Text", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_smb_account_ctrl, .name = "SMB-Account-Ctrl", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_pair_t *mschap_identity_find(request_t *request, fr_dict_attr_t const *attr_user_name)
@@ -1516,7 +1516,7 @@ static int CC_HINT(nonnull(1, 2, 3)) nt_password_find(TALLOC_CTX *ctx, fr_pair_t
 			/*
 			 *	If we're doing internal auth, then this is an issue
 			 */
-			RWDEBUG2("No control.%s.%s or control.%s.%s found.  Cannot create Password.NT",
+			REDEBUG2("No control.%s.%s or control.%s.%s found.  Cannot create Password.NT",
 				 attr_cleartext_password->parent->name, attr_cleartext_password->name,
 				 attr_nt_password->parent->name, attr_nt_password->name);
 			return -1;

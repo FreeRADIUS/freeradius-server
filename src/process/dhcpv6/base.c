@@ -122,7 +122,7 @@ extern fr_dict_autoload_t process_dhcpv6_dict[];
 fr_dict_autoload_t process_dhcpv6_dict[] = {
 	{ .out = &dict_dhcpv6, .proto = "dhcpv6" },
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_client_id;
@@ -152,7 +152,7 @@ fr_dict_attr_autoload_t process_dhcpv6_dict_attr[] = {
 	{ .out = &attr_transaction_id, .name = "Transaction-Id", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv6 },
 
 	{ .out = &attr_module_failure_message, .name = "Module-Failure-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_value_box_t const *enum_status_code_success;
@@ -166,7 +166,7 @@ fr_dict_enum_autoload_t process_dhcpv6_dict_enum[] = {
 	{ .out = &enum_status_code_unspec_fail, .name = "UnspecFail", .attr = &attr_status_code_value },
 	{ .out = &enum_status_code_not_on_link, .name = "NotOnLink", .attr = &attr_status_code_value },
 	{ .out = &enum_status_code_no_binding, .name = "NoBinding", .attr = &attr_status_code_value },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 #define FR_DHCPV6_PROCESS_CODE_VALID(_x) (FR_DHCPV6_PACKET_CODE_VALID(_x) || (_x == FR_DHCPV6_DO_NOT_RESPOND))

@@ -334,7 +334,7 @@ static unlang_action_t unlang_xlat_repeat(unlang_result_t *p_result, request_t *
 		fr_value_box_list_talloc_free(&state->out);
 		if (unlang_xlat_push(state->ctx, p_result, &state->out, request, child, false) < 0) {
 			REXDENT();
-			return UNLANG_ACTION_STOP_PROCESSING;
+			RETURN_UNLANG_ACTION_FATAL;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 
@@ -357,9 +357,8 @@ static unlang_action_t unlang_xlat_repeat(unlang_result_t *p_result, request_t *
 
 	case XLAT_ACTION_FAIL:
 	fail:
-		*p_result = UNLANG_RESULT_RCODE(RLM_MODULE_FAIL);
 		REXDENT();
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		return UNLANG_ACTION_FAIL;
 
 	default:
 		fr_assert(0);
@@ -396,7 +395,7 @@ static unlang_action_t unlang_xlat(UNUSED unlang_result_t *p_result, request_t *
 		fr_value_box_list_talloc_free(&state->out);
 		if (unlang_xlat_push(state->ctx, p_result, &state->out, request, child, false) < 0) {
 			RINDENT_RESTORE(request, state);
-			return UNLANG_ACTION_STOP_PROCESSING;
+			RETURN_UNLANG_ACTION_FATAL;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 
@@ -419,9 +418,8 @@ static unlang_action_t unlang_xlat(UNUSED unlang_result_t *p_result, request_t *
 
 	case XLAT_ACTION_FAIL:
 	fail:
-		*p_result = UNLANG_RESULT_RCODE(RLM_MODULE_FAIL);
 		RINDENT_RESTORE(request, state);
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		return UNLANG_ACTION_FAIL;
 
 	default:
 		fr_assert(0);
@@ -510,22 +508,20 @@ static unlang_action_t unlang_xlat_resume(unlang_result_t *p_result, request_t *
 		fr_value_box_list_talloc_free(&state->out);
 		if (unlang_xlat_push(state->ctx, state->p_result, &state->out, request, child, false) < 0) {
 			RINDENT_RESTORE(request, state);
-			return UNLANG_ACTION_STOP_PROCESSING;
+			RETURN_UNLANG_ACTION_FATAL;
 		}
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case XLAT_ACTION_FAIL:
-		*p_result = UNLANG_RESULT_RCODE(RLM_MODULE_FAIL);
 		RINDENT_RESTORE(request, state);
-		return UNLANG_ACTION_CALCULATE_RESULT;
+		return UNLANG_ACTION_FAIL;
 	/* DON'T SET DEFAULT */
 	}
 
 	fr_assert(0);		/* Garbage xlat action */
 
-	*p_result = UNLANG_RESULT_RCODE(RLM_MODULE_FAIL);
 	RINDENT_RESTORE(request, state);
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return UNLANG_ACTION_FAIL;
 }
 
 /** Yield a request back to the interpreter from within a module
@@ -608,7 +604,7 @@ static void unlang_xlat_event_retry_handler(UNUSED fr_timer_list_t *tl, fr_time_
 		 *	Reset the timer.
 		 */
 		if (fr_timer_at(ev, unlang_interpret_event_list(request)->tl, &ev->ev, ev->retry.next,
-				false, unlang_xlat_event_retry_handler, request) < 0) {
+				false, unlang_xlat_event_retry_handler, ev) < 0) {
 			RPEDEBUG("Failed inserting event");
 			talloc_free(ev);
 			unlang_interpret_mark_runnable(request);

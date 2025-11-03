@@ -1006,6 +1006,7 @@ fi
 %{_libdir}/freeradius/rlm_dhcpv4.so
 %{_libdir}/freeradius/rlm_dict.so
 %{_libdir}/freeradius/rlm_digest.so
+%{_libdir}/freeradius/rlm_dpsk.so
 %{_libdir}/freeradius/rlm_eap.so
 %{_libdir}/freeradius/rlm_eap_aka.so
 %{_libdir}/freeradius/rlm_eap_aka_prime.so

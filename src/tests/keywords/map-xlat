@@ -7,6 +7,8 @@ request += {
 	Filter-Id = 'control.Filter-Id := \'testing123\''
 	NAS-Port-Id = "request.Vendor-Specific.Nokia-SR.MSAP-Interface = 'UNICAST_7360OLT3'"
 	NAS-Port-Id = "request.Vendor-Specific.Nokia-SR.MSAP-Interface += 'UNICAST_7360OLT4'"
+	NAS-Identifier = 'control.Reply-Message = "Hello"'
+	NAS-Identifier = 'request.Reply-Message = "Goodbye"'
 }
 
 if !%map(Filter-Id) {
@@ -28,6 +30,17 @@ if (!(Vendor-Specific.Nokia-SR.MSAP-Interface[0] == 'UNICAST_7360OLT3')) {
 }
 
 if (!(Vendor-Specific.Nokia-SR.MSAP-Interface[1] == 'UNICAST_7360OLT4')) {
+	test_fail
+}
+
+if !%map(NAS-Identifier[*]) {
+	test_fail
+}
+
+if (control.Reply-Message != 'Hello') {
+	test_fail
+}
+if (request.Reply-Message != 'Goodbye') {
 	test_fail
 }
 

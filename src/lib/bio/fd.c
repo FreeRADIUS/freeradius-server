@@ -88,17 +88,14 @@
 		addr->socket.inet.ifindex = my->info.socket.inet.ifindex; \
 	} while (0)
 
-/*
- *	Close the descriptor and free the bio.
+/**  Orderly shutdown.
+ *
  */
-static int fr_bio_fd_destructor(fr_bio_fd_t *my)
+static int fr_bio_fd_shutdown(fr_bio_t *bio)
 {
-	/*
-	 *	The upstream bio must have unlinked it from the chain before calling talloc_free() on this
-	 *	bio.
-	 */
-	fr_assert(!fr_bio_prev(&my->bio));
-	fr_assert(!fr_bio_next(&my->bio));
+	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
+
+	if (my->info.state == FR_BIO_FD_STATE_CLOSED) return 0;
 
 	FR_TIMER_DELETE(&my->connect.ev);
 	if (my->connect.el) {
@@ -107,17 +104,6 @@ static int fr_bio_fd_destructor(fr_bio_fd_t *my)
 	}
 
 	return fr_bio_fd_close(&my->bio);
-}
-
-/**  Orderly shutdown.
- *
- */
-static void fr_bio_fd_shutdown(fr_bio_t *bio)
-{
-	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
-
-	(void) fr_bio_fd_destructor(my);
-	talloc_set_destructor(my, NULL);
 }
 
 static int fr_bio_fd_eof(fr_bio_t *bio)
@@ -158,6 +144,18 @@ static ssize_t fr_bio_fd_read_stream(fr_bio_t *bio, UNUSED void *packet_ctx, voi
 retry:
 	rcode = read(my->info.socket.fd, buffer, size);
 	if (rcode == 0) {
+		fr_bio_t *head;
+
+		/*
+		 *	Flush any pending writes, shut down the BIO, and then mark it as EOF.
+		 */
+		head = fr_bio_head(bio);
+
+		(void) fr_bio_write(head, NULL, NULL, SIZE_MAX);
+
+		rcode = fr_bio_shutdown(head);
+		if (rcode < 0) return rcode;
+
 		fr_bio_eof(bio);
 		return 0;
 	}
@@ -721,7 +719,7 @@ static ssize_t fr_bio_fd_try_connect(fr_bio_fd_t *my)
 	}
 
 	if (rcode < 0) {
-		fr_bio_shutdown(&my->bio);
+		(void) fr_bio_shutdown(&my->bio);
 		return fr_bio_error(GENERIC);
 	}
 
@@ -771,7 +769,7 @@ retry:
         }
 
 fail:
-	fr_bio_shutdown(&my->bio);
+	(void) fr_bio_shutdown(&my->bio);
         return fr_bio_error(IO);
 }
 
@@ -921,10 +919,7 @@ int fr_bio_fd_init_listen(fr_bio_fd_t *my)
 	my->bio.read = fr_bio_null_read;
 	my->bio.write = fr_bio_null_write;
 
-	/*
-	 *	@todo - make the backlog configurable.
-	 */
-	if (listen(my->info.socket.fd, 8) < 0) {
+	if (listen(my->info.socket.fd, my->info.cfg->backlog_is_set ? my->info.cfg->backlog : 8) < 0) {
 		fr_strerror_printf("Failed calling listen() %s", fr_syserror(errno));
 		return fr_bio_error(IO);
 	}
@@ -1007,7 +1002,7 @@ fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_fd_config_t const *cfg, size_t
 	my->priv_cb.write_resume = fr_bio_fd_write_resume;
 	my->priv_cb.shutdown = fr_bio_fd_shutdown;
 
-	talloc_set_destructor(my, fr_bio_fd_destructor);
+	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor); /* always use a common destructor */
 	return (fr_bio_t *) my;
 }
 
@@ -1022,8 +1017,8 @@ int fr_bio_fd_close(fr_bio_t *bio)
 
 	if (my->info.state == FR_BIO_FD_STATE_CLOSED) return 0;
 
-	my->bio.read = fr_bio_fail_read;
-	my->bio.write = fr_bio_fail_write;
+	my->bio.read = fr_bio_shutdown_read;
+	my->bio.write = fr_bio_shutdown_write;
 
 	/*
 	 *	Shut down the connected socket.  The only errors possible here are things we can't do anything
@@ -1080,7 +1075,10 @@ static void fr_bio_fd_el_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 		my->connect.error(&my->bio);
 	}
 
-	fr_bio_shutdown(&my->bio);
+	/*
+	 *	The entire bio is unusable.
+	 */
+	(void) fr_bio_shutdown(&my->bio);
 }
 
 /** Connect callback for when the socket is writable.
@@ -1163,7 +1161,7 @@ static void fr_bio_fd_el_timeout(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t no
 
 	my->connect.timeout(&my->bio);
 
-	fr_bio_shutdown(&my->bio);
+	(void) fr_bio_shutdown(&my->bio);
 }
 
 
@@ -1200,7 +1198,7 @@ int fr_bio_fd_connect_full(fr_bio_t *bio, fr_event_list_t *el, fr_bio_callback_t
 		my->info.connect_errno = ECONNREFUSED;
 #endif
 		if (error_cb) error_cb(bio);
-		fr_bio_shutdown(&my->bio);
+		(void) fr_bio_shutdown(&my->bio);
 		return fr_bio_error(GENERIC);
 	}
 

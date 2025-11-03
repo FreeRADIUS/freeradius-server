@@ -1,5 +1,5 @@
 #
-# PRE: update if pap
+# PRE: if pap
 #
 string salt
 string result_string

@@ -48,7 +48,8 @@ extern fr_dict_autoload_t libfreeradius_radius_dict[];
 fr_dict_autoload_t libfreeradius_radius_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
+
+	DICT_AUTOLOAD_TERMINATOR	
 };
 
 fr_dict_attr_t const *attr_packet_type;
@@ -73,7 +74,8 @@ fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[] = {
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_vendor_specific, .name = "Vendor-Specific", .type = FR_TYPE_VSA, .dict = &dict_radius },
 	{ .out = &attr_nas_filter_rule, .name = "NAS-Filter-Rule", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ NULL }
+
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /*
@@ -421,6 +423,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *vector,
 		case FR_RADIUS_CODE_DISCONNECT_NAK:
 		case FR_RADIUS_CODE_COA_ACK:
 		case FR_RADIUS_CODE_COA_NAK:
+		case FR_RADIUS_CODE_PROTOCOL_ERROR:
 			if (!vector) goto need_original;
 			memcpy(packet + 4, vector, RADIUS_AUTH_VECTOR_LENGTH);
 			break;
@@ -574,6 +577,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 	case FR_RADIUS_CODE_ACCESS_REJECT:
+	case FR_RADIUS_CODE_PROTOCOL_ERROR:
 		break;
 
 		/*
@@ -1009,15 +1013,15 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 		}
 		break;
 
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 	case FR_RADIUS_CODE_ACCESS_REJECT:
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 	case FR_RADIUS_CODE_ACCOUNTING_RESPONSE:
-	case FR_RADIUS_CODE_COA_ACK:
-	case FR_RADIUS_CODE_COA_NAK:
 	case FR_RADIUS_CODE_DISCONNECT_ACK:
 	case FR_RADIUS_CODE_DISCONNECT_NAK:
+	case FR_RADIUS_CODE_COA_ACK:
+	case FR_RADIUS_CODE_COA_NAK:
 	case FR_RADIUS_CODE_PROTOCOL_ERROR:
-	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 		if (!packet_ctx->request_authenticator) {
 			fr_strerror_const("Cannot encode response without request");
 			return -1;
@@ -1057,10 +1061,15 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 	case FR_RADIUS_CODE_ACCESS_REJECT:
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 	case FR_RADIUS_CODE_STATUS_SERVER:
+	case FR_RADIUS_CODE_PROTOCOL_ERROR:
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_MESSAGE_AUTHENTICATOR, 0x12,
 					 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 					 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
 		packet_ctx->seen_message_authenticator = true;
+		break;
+
+	default:
+		break;
 	}
 
 	/*
@@ -1156,8 +1165,9 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *
 		 *	Otherwise the reply code must be associated with the request code we sent.
 		 */
-		if ((code != FR_RADIUS_CODE_PROTOCOL_ERROR) && (decode_ctx->request_code != FR_RADIUS_CODE_STATUS_SERVER) &&
-		    (allowed_replies[code] != decode_ctx->request_code)) {
+		if ((allowed_replies[code] != decode_ctx->request_code) &&
+		    (code != FR_RADIUS_CODE_PROTOCOL_ERROR) &&
+		    (decode_ctx->request_code != FR_RADIUS_CODE_STATUS_SERVER)) {
 			fr_strerror_printf("%s packet received invalid reply code %s",
 					   fr_radius_packet_name[decode_ctx->request_code], fr_radius_packet_name[code]);
 			return -DECODE_FAIL_UNKNOWN_PACKET_CODE;

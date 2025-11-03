@@ -8,6 +8,8 @@
 #  RFC3256 - The DOCSIS (Data-Over-Cable Service Interface Specifications)
 #            Device Class DHCP (Dynamic Host Configuration Protocol) Relay
 #            Agent Information Sub-option
+#  RFC4243 - Vendor-Specific Information Suboption for the Dynamic Host
+#            Configuration Protocol (DHCP) Relay Agent Option
 #  RFC5010 - The Dynamic Host Configuration Protocol Version 4 (DHCPv4)
 #            Relay Agent Flags Suboption
 #

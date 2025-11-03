@@ -596,23 +596,23 @@ static ssize_t rest_request_encode_wrapper(char **out, UNUSED rlm_rest_t const *
 					   rest_read_t func, size_t limit, void *userdata)
 {
 	char	*buff = NULL;
-	size_t	alloc = REST_BODY_ALLOC_CHUNK;	/* Size of buffer to alloc */
+	size_t	needed = REST_BODY_ALLOC_CHUNK;	/* Size of buffer to alloc */
 	size_t	used = 0;			/* Size of data written */
 	size_t	len = 0;
 
-	buff = talloc_array(NULL, char, alloc);
+	buff = talloc_array(NULL, char, needed);
 	for (;;) {
-		len = func(buff + used, alloc - used, 1, userdata);
+		len = func(buff + used, needed - used, 1, userdata);
 		used += len;
 		if (!len) {
 			*out = buff;
 			return used;
 		}
 
-		alloc = alloc * 2;
-		if (alloc > limit) break;
+		needed *= 2;
+		if (needed > limit) break;
 
-		MEM(buff = talloc_realloc(NULL, buff, char, alloc));
+		MEM(buff = talloc_realloc(NULL, buff, char, needed));
 	}
 
 	talloc_free(buff);
@@ -740,7 +740,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 		if (tmpl_afrom_attr_str(request, NULL, &dst, name,
 					&(tmpl_rules_t){
 						.attr = {
-							.dict_def = request->proto_dict,
+							.dict_def = request->local_dict,
 							.list_def = request_attr_reply
 						}
 					}) <= 0) {
@@ -1030,7 +1030,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			if (tmpl_afrom_attr_str(request, NULL, &dst, name,
 						&(tmpl_rules_t){
 							.attr = {
-								.dict_def = request->proto_dict,
+								.dict_def = request->local_dict,
 								.list_def = request_attr_reply
 							}
 						}) <= 0) {

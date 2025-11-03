@@ -59,6 +59,8 @@ typedef struct {
 
 	bool			recv_buff_is_set;	//!< Whether we were provided with a recv_buf
 	bool			send_buff_is_set;	//!< Whether we were provided with a send_buf
+
+	fr_pair_list_t		*trigger_args;		//!< Pairs passed to trigger request.
 } rlm_tacacs_tcp_t;
 
 typedef struct {
@@ -197,7 +199,7 @@ static fr_dict_t const *dict_tacacs;
 extern fr_dict_autoload_t rlm_tacacs_tcp_dict[];
 fr_dict_autoload_t rlm_tacacs_tcp_dict[] = {
 	{ .out = &dict_tacacs, .proto = "tacacs" },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 static fr_dict_attr_t const *attr_packet_type;
@@ -209,7 +211,7 @@ fr_dict_attr_autoload_t rlm_tacacs_tcp_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_tacacs },
 	{ .out = &attr_packet_hdr, .name = "Packet", .type = FR_TYPE_STRUCT, .dict = &dict_tacacs },
 	{ .out = &attr_session_id, .name = "Packet.Session-ID", .type = FR_TYPE_UINT32, .dict = &dict_tacacs },
-	{ NULL }
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 /** Clear out any connection specific resources from a tcp request
@@ -474,7 +476,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 	connection_t		*conn = tconn->conn;
 	tcp_handle_t		*h = talloc_get_type_abort(conn->h, tcp_handle_t);
 
-	ERROR("%s - Connection %s failed: %s", h->module_name, h->name, fr_syserror(fd_errno));
+	if (fd_errno) ERROR("%s - Connection %s failed: %s", h->module_name, h->name, fr_syserror(fd_errno));
 
 	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
@@ -1461,7 +1463,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	thread->el = mctx->el;
 	thread->inst = inst;
 	thread->trunk = trunk_alloc(thread, mctx->el, &io_funcs,
-				    &inst->parent->trunk_conf, inst->parent->name, thread, false);
+				    &inst->parent->trunk_conf, inst->parent->name, thread, false, inst->trigger_args);
 	if (!thread->trunk) return -1;
 
 	return 0;
@@ -1472,6 +1474,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_tacacs_t		*parent = talloc_get_type_abort(mctx->mi->parent->data, rlm_tacacs_t);
 	rlm_tacacs_tcp_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_tacacs_tcp_t);
 	CONF_SECTION		*conf = mctx->mi->conf;
+	char			*server = NULL;
 
 	if (!parent) {
 		ERROR("IO module cannot be instantiated directly");
@@ -1547,6 +1550,20 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	if (inst->secret) inst->secretlen = talloc_array_length(inst->secret) - 1;
+
+	if (!parent->trunk_conf.conn_triggers) return 0;
+
+	fr_value_box_aprint(inst, &server, fr_box_ipaddr(inst->dst_ipaddr), NULL);
+
+	MEM(inst->trigger_args = fr_pair_list_alloc(inst));
+	if (module_trigger_args_build(inst->trigger_args, inst->trigger_args,
+				      cf_section_find(cf_item_to_section(cf_parent(conf)), "pool", NULL),
+				      &(module_trigger_args_t) {
+						.module = mctx->mi->module->name,
+						.name = parent->name,
+						.server = server,
+						.port = inst->dst_port
+					}) < 0) return -1;
 
 	return 0;
 }

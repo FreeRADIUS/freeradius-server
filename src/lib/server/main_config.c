@@ -176,9 +176,6 @@ static const conf_parser_t thread_config[] = {
  *	Migration configuration.
  */
 static const conf_parser_t migrate_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("rewrite_update", CONF_FLAG_HIDDEN, main_config_t, rewrite_update) },
-	{ FR_CONF_OFFSET_FLAGS("forbid_update", CONF_FLAG_HIDDEN, main_config_t, forbid_update) },
-
 	CONF_PARSER_TERMINATOR
 };
 
@@ -276,6 +273,8 @@ static const conf_parser_t security_config[] = {
 #ifdef WITH_TLS
 	{ FR_CONF_OFFSET_IS_SET("openssl_fips_mode", FR_TYPE_BOOL, 0, main_config_t, openssl_fips_mode), .dflt = "no" },
 #endif
+
+	{ FR_CONF_OFFSET_IS_SET("chdir", FR_TYPE_STRING, 0, main_config_t, chdir), },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -1444,8 +1443,6 @@ void main_config_hup(main_config_t *config)
 }
 
 static fr_table_num_ordered_t config_arg_table[] = {
-	{ L("rewrite_update"),		 offsetof(main_config_t, rewrite_update) },
-	{ L("forbid_update"),		 offsetof(main_config_t, forbid_update) },
 };
 static size_t config_arg_table_len = NUM_ELEMENTS(config_arg_table);
 
