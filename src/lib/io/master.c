@@ -3140,6 +3140,7 @@ int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 	li->thread_instance = thread;
 	li->app_io_instance = inst;
 	li->track_duplicates = inst->app_io->track_duplicates;
+	if (inst->app_io->hexdump_set) inst->app_io->hexdump_set(li, inst->app_io_instance);
 
 	/*
 	 *	The child listener points to the *actual* IO path.

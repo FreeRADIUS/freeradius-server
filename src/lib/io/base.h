@@ -344,6 +344,8 @@ typedef struct fr_client_s fr_client_t;
 
 typedef fr_client_t *(*fr_io_client_find_t)(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto);
 
+typedef void (*fr_io_hexdump_set_t)(fr_listen_t *li, void *inst);
+
 /** Callback to return network properties
  *
  * @param[out] ipproto		IP protocol (AF_INET or AF_INET6).
