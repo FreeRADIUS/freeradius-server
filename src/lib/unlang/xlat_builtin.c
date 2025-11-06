@@ -2711,6 +2711,147 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+/** Convert a UUID in an array of uint32_t to the conventional string representation.
+ */
+static int uuid_print_vb(fr_value_box_t *vb, uint32_t vals[4])
+{
+	char	buffer[36];
+	int	i, j = 0;
+
+#define UUID_CHARS(_v, _num)	for (i = 0; i < _num; i++) { \
+		buffer[j++] = fr_base16_alphabet_encode_lc[(uint8_t)((vals[_v] & 0xf0000000) >> 28)]; \
+		vals[_v] = vals[_v] << 4; \
+	}
+
+	UUID_CHARS(0, 8)
+	buffer[j++] = '-';
+	UUID_CHARS(1, 4)
+	buffer[j++] = '-';
+	UUID_CHARS(1, 4);
+	buffer[j++] = '-';
+	UUID_CHARS(2, 4);
+	buffer[j++] = '-';
+	UUID_CHARS(2, 4);
+	UUID_CHARS(3, 8);
+
+	return fr_value_box_bstrndup(vb, vb, NULL, buffer, sizeof(buffer), false);
+}
+
+static inline void uuid_set_version(uint32_t vals[4], uint8_t version)
+{
+	/*
+	 *	The version is indicated by the upper 4 bits of byte 7 - the 3rd byte of vals[1]
+	 */
+	vals[1] = (vals[1] & 0xffff0fff) | (((uint32_t)version & 0x0f) << 12);
+}
+
+static inline void uuid_set_variant(uint32_t vals[4], uint8_t variant)
+{
+	/*
+	 *	The variant is indicated by the first 1, 2 or 3 bits of byte 9
+	 *	The number of bits is determined by the variant.
+	 */
+	switch (variant) {
+	case 0:
+		vals[2] = vals[2] & 0x7fffffff;
+		break;
+
+	case 1:
+		vals[2] = (vals[2] & 0x3fffffff) | 0x80000000;
+		break;
+
+	case 2:
+		vals[2] = (vals[2] & 0x3fffffff) | 0xc0000000;
+		break;
+
+	case 3:
+		vals[2] = vals[2] | 0xe0000000;
+		break;
+	}
+}
+
+/** Generate a version 4 UUID
+ *
+ * Version 4 UUIDs are all random except the version and variant fields
+ *
+ * Example:
+@verbatim
+%uuid.v4 == "cba48bda-641c-42ae-8173-d97aa04f888a"
+@endverbatim
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_uuid_v4(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+				       UNUSED request_t *request, UNUSED fr_value_box_list_t *args)
+{
+	fr_value_box_t	*vb;
+	uint32_t	vals[4];
+	int		i;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
+
+	/*
+	 *	A type 4 UUID is all random except a few bits.
+	 *	Start with 128 bits of random.
+	 */
+	for (i = 0; i < 4; i++) vals[i] = fr_rand();
+
+	/*
+	 *	Set the version and variant fields
+	 */
+	uuid_set_version(vals, 4);
+	uuid_set_variant(vals, 1);
+
+	if (uuid_print_vb(vb, vals) < 0) return XLAT_ACTION_FAIL;
+
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
+}
+
+/** Generate a version 7 UUID
+ *
+ * Version 7 UUIDs use 48 bits of unix millisecond epoch and 74 bits of random
+ *
+ * Example:
+@verbatim
+%uuid.v7 == "019a58d8-8524-7342-aa07-c0fa2bba6a4e"
+@endverbatim
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_uuid_v7(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+				       UNUSED request_t *request, UNUSED fr_value_box_list_t *args)
+{
+	fr_value_box_t	*vb;
+	uint32_t	vals[4];
+	int		i;
+	uint64_t	now;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
+
+	/*
+	 *	A type 7 UUID has random data from bit 48
+	 *	Start with random from bit 32 - since fr_rand is uint32
+	 */
+	for (i = 1; i < 4; i++) vals[i] = fr_rand();
+
+	/*
+	 *	The millisecond epoch fills the first 48 bits
+	 */
+	now = fr_time_to_msec(fr_time());
+	now = now << 16;
+	vals[0] = now >> 32;
+	vals[1] = (vals[1] & 0x0000ffff) | (now & 0xffff0000);
+
+	/*
+	 *	Set the version and variant fields
+	 */
+	uuid_set_version(vals, 7);
+	uuid_set_variant(vals, 1);
+
+	if (uuid_print_vb(vb, vals) < 0) return XLAT_ACTION_FAIL;
+
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
+}
 
 static xlat_arg_parser_t const xlat_func_range_arg[] = {
 	{ .required = true, .type = FR_TYPE_UINT64 },
@@ -4602,6 +4743,9 @@ do { \
 	XLAT_REGISTER_ARGS("str.rand", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
 	XLAT_REGISTER_ARGS("randstr", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
 	XLAT_NEW("str.rand");
+
+	XLAT_REGISTER_VOID("uuid.v4", xlat_func_uuid_v4, FR_TYPE_STRING);
+	XLAT_REGISTER_VOID("uuid.v7", xlat_func_uuid_v7, FR_TYPE_STRING);
 
 	XLAT_REGISTER_ARGS("range", xlat_func_range, FR_TYPE_UINT64, xlat_func_range_arg);
 
