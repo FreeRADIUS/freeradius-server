@@ -270,7 +270,7 @@ static int CC_HINT(nonnull) mod_common(void * instance, REQUEST *request)
 
 	expires:
 		name = entry->key + 6;
-		calling_station_id = name + *name;
+		calling_station_id = name + *name + 1;
 
 		INFO("Proxy-Rate-Limit expired for User-Name = %.*s, Calling-Station-Id = %.*s",
 		     (int) *name, name + 1,
@@ -443,7 +443,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 			(void) pair_make_config("Proxy-Rate-Limit", "yes", T_OP_SET);			
 
 			name = entry->key + 6;
-			calling_station_id = name + *name;
+			calling_station_id = name + *name + 1;
 
 			INFO("Proxy-Rate-Limit enabled for User-Name = %.*s, Calling-Station-Id = %.*s",
 			     (int) *name, name + 1,
