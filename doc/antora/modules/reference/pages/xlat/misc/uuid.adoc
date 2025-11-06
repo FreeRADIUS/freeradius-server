@@ -1,0 +1,28 @@
+= UUID generation
+
+Two functions are availble to generate UUIDs.
+
+`uuid.v4` generates a version 4 UUID and `uuid.v7` generates a
+version 7 UUID.
+
+.Return: _string_
+
+.Example
+====
+[source,unlang]
+----
+reply += {
+	Reply-Message = "A version 4 UUID is %uuid.v4()"
+	Reply-Message = "A version 7 UUID is %uuid.v7()"
+}
+----
+
+.Output
+....
+A version 4 UUID is cba48bda-641c-42ae-8173-d97aa04f888a
+A version 7 UUID is 019a58d8-8524-7342-aa07-c0fa2bba6a4e
+....
+====
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

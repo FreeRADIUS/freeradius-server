@@ -12,6 +12,7 @@ which operate on inputs, and produce an output.
 | xref:xlat/misc/length.adoc[length]	            | Get the length of data
 | xref:xlat/misc/misc.adoc[Miscellaneous]	    | Functions to execute regular expression search on string, using pattern.
 | xref:xlat/misc/rand.adoc[rand]	            | random integers
+| xref:xlat/misc/uuid.adoc[UUID]                    | Generation of UUIDs
 |===
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
