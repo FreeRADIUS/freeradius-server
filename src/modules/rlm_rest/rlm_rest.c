@@ -360,7 +360,7 @@ static int rest_uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	}
 
 	str = talloc_typed_strdup(vb, escaped);
-	fr_value_box_strdup_shallow_replace(vb, str, strlen(str));
+	fr_value_box_strdup_shallow_replace(vb, str, talloc_strlen(str));
 
 	curl_free(escaped);
 
