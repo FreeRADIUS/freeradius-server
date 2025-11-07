@@ -595,6 +595,8 @@ void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
 	entry = fr_state_find(request, state, request->server, original);
 	if (entry) state_entry_free(state, entry);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
+
+	if (entry) RDEBUG2("session-state: Discarding attributes for server %s", request->server);
 }
 
 /*
@@ -610,7 +612,7 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	 *	No State, don't do anything.
 	 */
 	if (!fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY)) {
-		RDEBUG3("session-state: No State attribute");
+		RDEBUG3("session-state: No State attribute for server %s", request->server);
 		return;
 	}
 
@@ -624,7 +626,7 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	 *	isn't thread-safe.
 	 */
 	if (entry) {
-		RDEBUG2("Restoring &session-state");
+		RDEBUG2("session-state: Restoring attributes for server %s", request->server);
 
 		if (request->state_ctx) old_ctx = request->state_ctx;
 
@@ -637,7 +639,7 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 		rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
 
 	} else {
-		RDEBUG2("session-state: No cached attributes");
+		RDEBUG2("session-state: No cached attributes for server %s", request->server);
 	}
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
@@ -669,7 +671,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 		VALUE_PAIR *vp;
 		uint8_t buffer[16];
 
-		RDEBUG3("session-state: Nothing to cache");
+		RDEBUG3("session-state: Nothing to cache for server %s", request->server);
 
 		if (packet->code != PW_CODE_ACCESS_CHALLENGE) return true;
 
@@ -691,7 +693,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 		return true;
 	}
 
-	RDEBUG2("session-state: Saving cached attributes");
+	RDEBUG2("session-state: Saving cached attributes for server %s", request->server);
 	rdebug_pair_list(L_DBG_LVL_1, request, request->state, NULL);
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
