@@ -262,6 +262,7 @@ struct rad_request {
 
 	RAD_REQUEST_FUNP	handle;		//!< The function to call to move the request through the
 						//!< various server configuration sections.
+	RAD_REQUEST_FUNP	original_handle; //!< as it says
 	rlm_rcode_t		rcode;		//!< Last rcode returned by a module
 	char const		*module;	//!< Module the request is currently being processed by.
 	char const		*component; 	//!< Section the request is in.

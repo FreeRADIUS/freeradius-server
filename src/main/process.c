@@ -3909,7 +3909,7 @@ static int proxy_to_virtual_server(REQUEST *request)
 	uint32_t error_cause = 0;
 
 	if (request->packet->dst_port == 0) {
-		WARN("Cannot proxy an internal request");
+		RWDEBUG("Cannot proxy an internal request");
 		return 0;
 	}
 
@@ -3968,6 +3968,17 @@ static int proxy_to_virtual_server(REQUEST *request)
 	return -1;	/* so we call request_finish */
 }
 
+static int rad_proxy_to_virtual_server(REQUEST *request)
+{
+	fr_assert(request->original_handle != NULL);
+
+	request->handle = request->original_handle;
+	request->original_handle = NULL;
+
+	(void) proxy_to_virtual_server(request);
+
+	return RLM_MODULE_OK;
+}
 
 static int request_proxy(REQUEST *request)
 {
@@ -4145,10 +4156,17 @@ static int request_proxy_anew(REQUEST *request)
 	 *	server.
 	 */
 	if (home->virtual_server) {
+		if (request->packet->dst_port == 0) {
+			RWDEBUG("Cannot proxy an internal request");
+			goto post_proxy_fail;
+		}
+
 		request->home_server = home;
 		TALLOC_FREE(request->proxy);
 
-		(void) proxy_to_virtual_server(request);
+		request->original_handle = request->handle;
+		request->handle = rad_proxy_to_virtual_server;
+		request_queue_or_run(request, request->process);
 		return 0;
 	}
 
