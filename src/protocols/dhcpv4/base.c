@@ -43,7 +43,7 @@ fr_dict_t const *dict_dhcpv4;
 extern fr_dict_autoload_t dhcpv4_dict[];
 fr_dict_autoload_t dhcpv4_dict[] = {
 	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
-	
+
 	DICT_AUTOLOAD_TERMINATOR
 };
 
@@ -525,18 +525,23 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	/* DHCP magic number */
 	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t) DHCP_OPTION_MAGIC_NUMBER);
 
-	if ((vp = fr_pair_find_by_da(vps, NULL, attr_dhcp_message_type))) {
-		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_MESSAGE_TYPE, 0x01, vp->vp_uint8);
-	} else {
-		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_MESSAGE_TYPE, 0x01, (uint8_t)code);
-	}
-
 	/*
 	 *  Pre-sort attributes into contiguous blocks so that fr_dhcpv4_encode_option
 	 *  operates correctly. This changes the order of the list, but never mind...
+	 *
+	 *  If attr_dhcp_message_type is present it will have been sorted as the first
+	 *  option, so we don't need to search for it.
 	 */
 	fr_pair_list_sort(vps, fr_dhcpv4_attr_cmp);
 	fr_pair_dcursor_iter_init(&cursor, vps, fr_dhcpv4_next_encodable, dict_dhcpv4);
+
+	vp = fr_dcursor_head(&cursor);
+	if (vp && vp->da == attr_dhcp_message_type) {
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_MESSAGE_TYPE, 0x01, vp->vp_uint8);
+		fr_dcursor_next(&cursor);	/* Skip message type so it doesn't get double encoded */
+	} else {
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_MESSAGE_TYPE, 0x01, (uint8_t)code);
+	}
 
 	/*
 	 *  Each call to fr_dhcpv4_encode_option will encode one complete DHCP option,

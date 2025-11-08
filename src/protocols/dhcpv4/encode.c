@@ -739,13 +739,7 @@ ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 	vp = fr_dcursor_current(cursor);
 	if (!vp) return -1;
 
-	if (vp->da == attr_dhcp_message_type) goto next; /* already done */
-	if (vp->da->attr > 255) {
-		fr_strerror_printf("Attribute \"%s\" is not a DHCP option", vp->da->name);
-	next:
-		(void)fr_dcursor_next(cursor);
-		return 0;
-	}
+	fr_assert_msg(vp->da->attr <= 255, "Cursor provided unencodable attribute to enecoder");
 
 	fr_proto_da_stack_build(&da_stack, vp->da);
 
