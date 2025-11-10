@@ -4166,7 +4166,7 @@ static int request_proxy_anew(REQUEST *request)
 
 		request->original_handle = request->handle;
 		request->handle = rad_proxy_to_virtual_server;
-		request_queue_or_run(request, request->process);
+		request_queue_or_run(request, request_running);
 		return 0;
 	}
 
@@ -4782,6 +4782,13 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		break;
 
 	case FR_ACTION_TIMER:
+		/*
+		 *	The request was proxied to a virtual server.
+		 *
+		 *	We don't time it out, or check the status of the home server.  It's always up.
+		 */
+		if (request->home_server->virtual_server) return;
+
 		/*
 		 *	Failed connections get the home server marked
 		 *	as dead.
