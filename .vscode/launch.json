@@ -50,6 +50,32 @@
                 {
                         "type": "cppdbg",
                         "request": "launch",
+                        "name": "Debug (gdb) multi-thread",
+                        "program": "${workspaceFolder}/build/bin/local/radiusd",
+                        "args": [
+                                "-fxxl",
+				"stdout",
+                                "-D",
+                                "${workspaceFolder}/share/dictionary",
+                                "-d",
+                                "${input:raddb}"
+                        ],
+                        "cwd": "${workspaceFolder}",
+                        "environment": [
+                                { "name": "FR_LIBRARY_PATH", "value": "${workspaceFolder}/build/lib/local/.libs" },
+                                { "name": "DEBUGGER_ATTACHED", "value": "yes" }
+                        ],
+                        "MIMode": "gdb",
+                        "setupCommands": [
+                                {
+                                        "description": "Set solib",
+                                        "text": "set solib-search-path ${workspaceFolder}"
+                                }
+                        ]
+                },
+                {
+                        "type": "cppdbg",
+                        "request": "launch",
                         "name": "Keyword Test (gdb)",
                         "program": "${workspaceFolder}/build/bin/local/unit_test_module",
                         "args": [
