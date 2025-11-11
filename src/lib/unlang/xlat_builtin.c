@@ -56,7 +56,7 @@ static TALLOC_CTX *xlat_ctx;
 typedef struct {
 	fr_test_point_pair_decode_t	*tp_decode;
 	fr_dict_t const			*dict;		//!< Restrict xlat to this namespace
-} protocol_decode_xlat_uctx_t;
+} xlat_pair_decode_uctx_t;
 
 /*
  *	Regular xlat functions
@@ -4177,7 +4177,7 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_arg_parser_t const protocol_decode_xlat_args[] = {
+static xlat_arg_parser_t const xlat_pair_decode_args[] = {
 	{ .required = true, .type = FR_TYPE_VOID },
 	{ .single = true, .type = FR_TYPE_ATTR },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -4194,14 +4194,14 @@ static xlat_arg_parser_t const protocol_decode_xlat_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					  xlat_ctx_t const *xctx,
-					  request_t *request, fr_value_box_list_t *in)
+static xlat_action_t xlat_pair_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				      xlat_ctx_t const *xctx,
+				      request_t *request, fr_value_box_list_t *in)
 {
 	int					decoded;
 	fr_value_box_t				*vb, *in_head, *root_da;
 	void					*decode_ctx = NULL;
-	protocol_decode_xlat_uctx_t const	*decode_uctx = talloc_get_type_abort(*(void * const *)xctx->inst, protocol_decode_xlat_uctx_t);
+	xlat_pair_decode_uctx_t const	*decode_uctx = talloc_get_type_abort(*(void * const *)xctx->inst, xlat_pair_decode_uctx_t);
 	fr_test_point_pair_decode_t const	*tp_decode = decode_uctx->tp_decode;
 	fr_pair_t				*vp = NULL;
 	bool					created = false;
@@ -4308,13 +4308,13 @@ static xlat_action_t xlat_func_subnet_broadcast(TALLOC_CTX *ctx, fr_dcursor_t *o
 	return XLAT_ACTION_DONE;
 }
 
-static int protocol_xlat_instantiate(xlat_inst_ctx_t const *mctx)
+static int xlat_pair_dencode_instantiate(xlat_inst_ctx_t const *mctx)
 {
 	*(void **) mctx->inst = mctx->uctx;
 	return 0;
 }
 
-static xlat_arg_parser_t const protocol_encode_xlat_args[] = {
+static xlat_arg_parser_t const xlat_pair_encode_args[] = {
 	XLAT_ARG_PARSER_CURSOR,
 	{ .single = true, .type = FR_TYPE_ATTR },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -4331,9 +4331,9 @@ static xlat_arg_parser_t const protocol_encode_xlat_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					  xlat_ctx_t const *xctx,
-					  request_t *request, fr_value_box_list_t *args)
+static xlat_action_t xlat_pair_encode(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				      xlat_ctx_t const *xctx,
+				      request_t *request, fr_value_box_list_t *args)
 {
 	fr_pair_t	*vp;
 	fr_dcursor_t	*cursor;
@@ -4459,7 +4459,7 @@ static int xlat_protocol_register_by_name(dl_t *dl, char const *name, fr_dict_t 
 {
 	fr_test_point_pair_decode_t *tp_decode;
 	fr_test_point_pair_encode_t *tp_encode;
-	protocol_decode_xlat_uctx_t *decode_uctx;
+	xlat_pair_decode_uctx_t *decode_uctx;
 	xlat_t *xlat;
 	char buffer[256+32];
 
@@ -4474,13 +4474,13 @@ static int xlat_protocol_register_by_name(dl_t *dl, char const *name, fr_dict_t 
 		/* May be called multiple times, so just skip protocols we've already registered */
 		if (xlat_func_find(buffer, -1)) return 1;
 
-		if (unlikely((xlat = xlat_func_register(NULL, buffer, protocol_decode_xlat, FR_TYPE_UINT32)) == NULL)) return -1;
-		xlat_func_args_set(xlat, protocol_decode_xlat_args);
-		decode_uctx = talloc(xlat, protocol_decode_xlat_uctx_t);
+		if (unlikely((xlat = xlat_func_register(NULL, buffer, xlat_pair_decode, FR_TYPE_UINT32)) == NULL)) return -1;
+		xlat_func_args_set(xlat, xlat_pair_decode_args);
+		decode_uctx = talloc(xlat, xlat_pair_decode_uctx_t);
 		decode_uctx->tp_decode = tp_decode;
 		decode_uctx->dict = dict;
 		/* coverity[suspicious_sizeof] */
-		xlat_func_instantiate_set(xlat, protocol_xlat_instantiate, protocol_decode_xlat_uctx_t *, NULL, decode_uctx);
+		xlat_func_instantiate_set(xlat, xlat_pair_dencode_instantiate, xlat_pair_decode_uctx_t *, NULL, decode_uctx);
 		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 	}
 
@@ -4494,10 +4494,10 @@ static int xlat_protocol_register_by_name(dl_t *dl, char const *name, fr_dict_t 
 
 		if (xlat_func_find(buffer, -1)) return 1;
 
-		if (unlikely((xlat = xlat_func_register(NULL, buffer, protocol_encode_xlat, FR_TYPE_OCTETS)) == NULL)) return -1;
-		xlat_func_args_set(xlat, protocol_encode_xlat_args);
+		if (unlikely((xlat = xlat_func_register(NULL, buffer, xlat_pair_encode, FR_TYPE_OCTETS)) == NULL)) return -1;
+		xlat_func_args_set(xlat, xlat_pair_encode_args);
 		/* coverity[suspicious_sizeof] */
-		xlat_func_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_encode_t *, NULL, tp_encode);
+		xlat_func_instantiate_set(xlat, xlat_pair_dencode_instantiate, fr_test_point_pair_encode_t *, NULL, tp_encode);
 		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 	}
 
