@@ -66,6 +66,7 @@ typedef int (*unlang_edit_expand_t)(request_t *request, unlang_frame_state_edit_
 struct edit_map_s {
 	fr_edit_list_t		*el;			//!< edit list
 
+	request_t		*request;
 	TALLOC_CTX		*ctx;
 	edit_map_t		*parent;
 	edit_map_t		*child;
@@ -906,6 +907,18 @@ static fr_pair_t *edit_list_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, 
 	fr_pair_t *vp;
 	edit_map_t *current = uctx;
 
+	if (!fr_type_is_structural(parent->da->type)) {
+		request_t *request = current->request;
+
+		if (fr_dict_attr_is_key_field(parent->da)) {
+			REDEBUG("Please use nested edits for structures, not 'dotted' path names");
+		} else {
+			REDEBUG("Cannot create child of leaf data type");
+		}
+
+		return NULL;
+	}
+
 	vp = fr_pair_afrom_da(parent, da);
 	if (!vp) return NULL;
 
@@ -1654,6 +1667,7 @@ static void edit_state_init_internal(request_t *request, unlang_frame_state_edit
 		state->ours = false;
 	}
 
+	current->request = request;
 	current->ctx = state;
 	current->el = state->el;
 	current->map_list = map_list;
