@@ -1273,16 +1273,6 @@ static int cf_parse_tmpl_pass2(UNUSED CONF_SECTION *cs, tmpl_t **out, CONF_PAIR 
 		break;
 
 	case TMPL_TYPE_ATTR:
-		if (!check_config) break;
-
-		if (vpt->name[0] != '&') break;
-
-		if (main_config_migrate_option_get("call_env_forbid_ampersand")) {
-			cf_log_err(cp, "Please remove '&' from the attribute name");
-			return -1;
-		}
-		break;
-
 	case TMPL_TYPE_DATA:
 	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_EXEC_UNRESOLVED:
