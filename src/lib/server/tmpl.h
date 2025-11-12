@@ -298,6 +298,8 @@ struct tmpl_attr_rules_s {
 	tmpl_attr_list_presence_t list_presence;	//!< Whether the attribute reference can
 							///< have a list, forbid it, or require it.
 
+	CONF_ITEM		*ci;			//!< for migration support and various warnings
+
 	uint8_t			allow_unknown:1;	//!< Allow unknown attributes i.e. attributes
 							///< defined by OID string.
 

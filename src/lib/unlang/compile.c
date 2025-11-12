@@ -774,6 +774,7 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_ctx_t *unlan
 	 */
 	t_rules = *(unlang_ctx->rules);
 	t_rules.attr.allow_unknown = true;
+	fr_assert(t_rules.attr.ci == cf_pair_to_item(cp));
 	RULES_VERIFY(&t_rules);
 
 	edit = talloc_zero(parent, unlang_edit_t);
@@ -1292,7 +1293,7 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 	char const	*skip_else = NULL;
 	unlang_compile_ctx_t *unlang_ctx;
 	unlang_compile_ctx_t unlang_ctx2;
-	tmpl_rules_t	t_rules;
+	tmpl_rules_t	t_rules, t2_rules; /* yes, it does */
 
 	c = unlang_group_to_generic(g);
 
@@ -1301,7 +1302,11 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 	 *	by a variable definition.
 	 */
 	unlang_compile_ctx_copy(&unlang_ctx2, unlang_ctx_in);
+	t2_rules = *(unlang_ctx_in->rules);
+
 	unlang_ctx = &unlang_ctx2;
+	unlang_ctx2.rules = &t2_rules;
+
 	t_rules = *unlang_ctx_in->rules;
 
 	/*
@@ -1309,6 +1314,9 @@ unlang_t *unlang_compile_children(unlang_group_t *g, unlang_compile_ctx_t *unlan
 	 */
 	while ((ci = cf_item_next(g->cs, ci))) {
 		if (cf_item_is_data(ci)) continue;
+
+		t_rules.attr.ci = ci;
+		t2_rules.attr.ci = ci;
 
 		/*
 		 *	Sections are keywords, or references to
@@ -1639,6 +1647,8 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_ctx_t *unlang
 	unlang_compile_ctx_t		unlang_ctx2;
 	unlang_t			*c;
 
+	UPDATE_CTX2;
+
 	/*
 	 *	module.c takes care of ensuring that this is:
 	 *
@@ -1651,8 +1661,6 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_ctx_t *unlang
 	 *	if it was found here.
 	 */
 	if (cf_section_name2(subcs)) {
-		UPDATE_CTX2;
-
 		if (policy) {
 			cf_log_err(subcs, "Unexpected second name in policy");
 			return NULL;
@@ -1661,8 +1669,6 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_ctx_t *unlang
 		c = compile_item(parent, &unlang_ctx2, cf_section_to_item(subcs));
 
 	} else {
-		UPDATE_CTX2;
-
 		/*
 		 *	We have:
 		 *

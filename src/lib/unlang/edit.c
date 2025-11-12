@@ -132,6 +132,7 @@ static int tmpl_attr_from_result(TALLOC_CTX *ctx, map_t const *map, edit_result_
 				   	.attr = {
 						.dict_def = request->local_dict,
 						.list_def = request_attr_request,
+						.ci = map->ci,
 					}
 				   });
 	if (slen <= 0) {

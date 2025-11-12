@@ -162,10 +162,11 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_ctx_t *u
 			.attr = {
 				.dict_def = xr_rules.tr_rules->dict_def,
 				.list_def = request_attr_request,
+				.ci = cf_section_to_item(cs),
 				.allow_unresolved = false,
 				.allow_unknown = false,
 				.allow_wildcard = true,
-		},
+			},
 			.literals_safe_for = unlang_ctx->rules->literals_safe_for,
 		};
 
