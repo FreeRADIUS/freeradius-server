@@ -1135,13 +1135,41 @@ static int dict_read_process_common(dict_tokenize_ctx_t *dctx, fr_dict_attr_t **
 	 */
 	memcpy(&da->flags, base_flags, sizeof(da->flags));
 
-	/*
-	 *	Set the base type of the attribute.
-	 */
-	if (dict_process_type_field(dctx, type_name, &da) < 0) {
-	error:
-		if (da == to_free) talloc_free(to_free);
-		return -1;
+	if (unlikely(strcmp(type_name, "auto") == 0)) {
+		fr_dict_attr_t const *src;
+		char const *p, *end;
+
+		if (!flag_name || !(p = strstr(flag_name, "clone="))) {
+			fr_strerror_const("Data type of 'auto' is missing the required flag 'clone=...'");
+			goto error;
+		}
+
+		p += 6;
+		for (end = p; *end != '\0'; end++) {
+			if (*end == ',') break;
+		}
+
+		if (fr_dict_protocol_reference(&src, parent, &FR_SBUFF_IN(p, end)) < 0) goto error;
+		if (!src) {
+			fr_strerror_const("Data type 'auto' requires that the 'clone=...' reference points to an attribute which already exists");
+			goto error;
+		}
+
+		/*
+		 *	Don't copy the source yet, as later things may add enums, children, etc. to the source
+		 *	attribute.  Instead, we just copy the data type.
+		 */
+		if (dict_attr_type_init(&da, src->type) < 0) goto error;
+
+	} else {
+		/*
+		 *	Set the base type of the attribute.
+		 */
+		if (dict_process_type_field(dctx, type_name, &da) < 0) {
+		error:
+			if (da == to_free) talloc_free(to_free);
+			return -1;
+		}
 	}
 
 	/*
