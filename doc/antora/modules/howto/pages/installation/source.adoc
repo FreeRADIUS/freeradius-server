@@ -68,7 +68,7 @@ this may cause undesired behavior and failure to operate correctly.
 
 The initial output from running in xref:ROOT:debugging/radiusd_X.adoc[debugging mode]
 will tell you which configuration files are being used. See
- xref:howto:installation/upgrade.adoc[upgrade from v3 to v4] for more information. There _may_ be changes in the
+ xref:howto:upgrade/index.adoc[upgrade from v3 to v4] for more information. There _may_ be changes in the
 dictionary files which are required for a new version of the
 software. These files will not be installed over your current
 configuration, so you *must* verify and install any problem files by
@@ -95,7 +95,7 @@ It is generally not possible to reuse configurations between different
 major versions of the server. For example - version 2 to version 3, or
 version 3 to version 4.
 
-For details on what has changed between the version, see  xref:howto:installation/upgrade.adoc[upgrade from v3 to v4].
+For details on what has changed between the version, see  xref:howto:upgrade/index.adoc[upgrade from v3 to v4].
 
 We _strongly_ recommend that new major versions be installed in a
 different location than any existing installations. Any local policies

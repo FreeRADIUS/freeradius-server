@@ -70,7 +70,7 @@ even numbered releases should be packaged, e.g. 4.0 or 4.2.
   is accessed here.
 
 * xref:howto:index.adoc[Howto Guides] gives step-by-step instructions
-  on how to xref:howto:installation/index.adoc[install and upgrade]
+  on how to xref:howto:installation/index.adoc[install]
   FreeRADIUS. Many other configuration guides are here for configuring
   xref:howto:modules/configuring_modules.adoc[modules],
   xref:howto:datastores/index.adoc[datastores],
@@ -220,7 +220,7 @@ As of the time of this release, FreeRADIUS:
 * The "haproxy" and "reverse CoA" features aren't implemented.
 
 Administrators using version 3 that wish to upgrade to version 4 must
-read the xref:howto:installation/upgrade.adoc[upgrade] guide.  This
+read the xref:howto:upgrade/index.adoc[index] guide.  This
 guide explains the differences between the two versions and how an
 existing configuration is reproduced in the latest release. Do *not*
 use version 3 configuration files with version 4. These configuration

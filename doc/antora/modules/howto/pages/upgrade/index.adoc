@@ -45,7 +45,7 @@ the next change.  If the changes do not work, either keep at it, or
 move to a different portion of the configuration
 
 All of the attribute names used in v3 have been changed in v4.  Please
-see the xref:howto:installation/attribute_names.adoc[attribute names] document for more
+see the xref:howto:upgrade/attribute_names.adoc[attribute names] document for more
 information.  This change was necessary in order to support the new
 "grouped" attributes, which are required for DHCPv6 and other
 protocols.
