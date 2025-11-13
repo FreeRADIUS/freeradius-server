@@ -61,7 +61,7 @@ static const conf_parser_t module_config[] = {
 };
 
 typedef struct {
-	fr_value_box_t		*key;			//!< To lookup the cache entry with.
+	fr_value_box_list_t	key;			//!< To lookup the cache entry with.
 	map_list_t		*maps;			//!< Attribute map applied to cache entries.
 } cache_call_env_t;
 
@@ -612,6 +612,22 @@ static unlang_action_t cache_set_ttl(unlang_result_t *p_result,
 	}
 }
 
+/** Macro to reduce boilerplate in all the module methods / xlat functions
+ * If multiple values are in the input list, concat them as a string
+ * Then check that a variable length key is longer than zero bytes
+ */
+#define FIXUP_KEY(_fail, _invalid) \
+if ((fr_value_box_list_num_elements(&env->key) > 1) && \
+    (fr_value_box_list_concat_in_place(key, key, &env->key, FR_TYPE_STRING, \
+				       FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0)) { \
+	REDEBUG("Failed concatenating values to form the key"); \
+	_fail; \
+} \
+if (fr_type_is_variable_size(key->type) && (key->vb_length == 0)) { \
+	REDEBUG("Zero length key string is invalid"); \
+	_invalid; \
+}
+
 /** Do caching checks
  *
  * Since we can update ANY VP list, we do exactly the same thing for all sections
@@ -625,7 +641,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(unlang_result_t *p_result, 
 	rlm_cache_entry_t	*c = NULL;
 	rlm_cache_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
-
+	fr_value_box_t		*key = fr_value_box_list_head(&env->key);
 	rlm_cache_handle_t	*handle;
 
 	fr_dcursor_t		cursor;
@@ -638,10 +654,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(unlang_result_t *p_result, 
 
 	p_result->rcode = RLM_MODULE_NOOP;
 
-	if (fr_type_is_variable_size(env->key->type) && (env->key->vb_length == 0)) {
-		REDEBUG("Zero length key string is invalid");
-		RETURN_UNLANG_INVALID;
-	}
+	FIXUP_KEY(RETURN_UNLANG_FAIL, RETURN_UNLANG_INVALID)
 
 	/*
 	 *	If Cache-Status-Only == yes, only return whether we found a
@@ -657,7 +670,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(unlang_result_t *p_result, 
 			RETURN_UNLANG_FAIL;
 		}
 
-		cache_find(p_result, &c, inst, request, &handle, env->key);
+		cache_find(p_result, &c, inst, request, &handle, key);
 		if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 		fr_assert(!inst->driver->acquire || handle);
 
@@ -704,7 +717,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(unlang_result_t *p_result, 
 	 *	recording whether the entry existed.
 	 */
 	if (merge) {
-		cache_find(p_result, &c, inst, request, &handle, env->key);
+		cache_find(p_result, &c, inst, request, &handle, key);
 		switch (p_result->rcode) {
 		case RLM_MODULE_FAIL:
 			goto finish;
@@ -737,7 +750,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(unlang_result_t *p_result, 
 			unlang_result_t tmp;
 
 			fr_assert(!set_ttl);
-			cache_expire(&tmp, inst, request, &handle, env->key);
+			cache_expire(&tmp, inst, request, &handle, key);
 			switch (tmp.rcode) {
 			case RLM_MODULE_FAIL:
 				p_result->rcode = RLM_MODULE_FAIL;
@@ -769,7 +782,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(unlang_result_t *p_result, 
 	if ((exists < 0) && (insert || set_ttl)) {
 		unlang_result_t tmp;
 
-		cache_find(&tmp, &c, inst, request, &handle, env->key);
+		cache_find(&tmp, &c, inst, request, &handle, key);
 		switch (tmp.rcode) {
 		case RLM_MODULE_FAIL:
 			p_result->rcode = RLM_MODULE_FAIL;
@@ -825,7 +838,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(unlang_result_t *p_result, 
 	if (insert && (exists == 0)) {
 		unlang_result_t tmp;
 
-		cache_insert(&tmp, inst, request, &handle, env->key, env->maps, ttl);
+		cache_insert(&tmp, inst, request, &handle, key, env->maps, ttl);
 		switch (tmp.rcode) {
 		case RLM_MODULE_FAIL:
 			p_result->rcode = RLM_MODULE_FAIL;
@@ -895,6 +908,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	rlm_cache_entry_t 		*c = NULL;
 	rlm_cache_t			*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_cache_t);
 	cache_call_env_t		*env = talloc_get_type_abort(xctx->env_data, cache_call_env_t);
+	fr_value_box_t			*key = fr_value_box_list_head(&env->key);
 	rlm_cache_handle_t		*handle = NULL;
 
 	ssize_t				slen;
@@ -905,6 +919,8 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	tmpl_t				*target = NULL;
 	map_t				*map = NULL;
 	unlang_result_t 		result = { .rcode = RLM_MODULE_NOOP };
+
+	FIXUP_KEY(return XLAT_ACTION_FAIL, return XLAT_ACTION_FAIL)
 
 	slen = tmpl_afrom_attr_substr(ctx, NULL, &target,
 				      &FR_SBUFF_IN(attr->vb_strvalue, attr->vb_length),
@@ -925,7 +941,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	cache_find(&result, &c, inst, request, &handle, env->key);
+	cache_find(&result, &c, inst, request, &handle, key);
 	switch (result.rcode) {
 	case RLM_MODULE_OK:		/* found */
 		break;
@@ -967,21 +983,23 @@ static xlat_action_t cache_ttl_get_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					xlat_ctx_t const *xctx,
 					request_t *request, UNUSED fr_value_box_list_t *in)
 {
-
 	rlm_cache_entry_t	*c = NULL;
 	rlm_cache_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(xctx->env_data, cache_call_env_t);
+	fr_value_box_t		*key = fr_value_box_list_head(&env->key);
 	rlm_cache_handle_t	*handle = NULL;
 
 	unlang_result_t 	result = { .rcode = RLM_MODULE_NOOP };
 
 	fr_value_box_t		*vb;
 
+	FIXUP_KEY(return XLAT_ACTION_FAIL, return XLAT_ACTION_FAIL)
+
 	if (cache_acquire(&handle, inst, request) < 0) {
 		return XLAT_ACTION_FAIL;
 	}
 
-	cache_find(&result, &c, inst, request, &handle, env->key);
+	cache_find(&result, &c, inst, request, &handle, key);
 	switch (result.rcode) {
 	case RLM_MODULE_OK:		/* found */
 		break;
@@ -1051,15 +1069,13 @@ static unlang_action_t CC_HINT(nonnull) mod_method_status(unlang_result_t *p_res
 {
 	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
+	fr_value_box_t		*key = fr_value_box_list_head(&env->key);
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 
 	p_result->rcode = RLM_MODULE_NOOP;
 
-	if (fr_type_is_variable_size(env->key->type) && (env->key->vb_length == 0)) {
-		REDEBUG("Zero length key string is invalid");
-		RETURN_UNLANG_FAIL;
-	}
+	FIXUP_KEY(RETURN_UNLANG_FAIL, RETURN_UNLANG_INVALID)
 
 	/* Good to go? */
 	if (cache_acquire(&handle, inst, request) < 0) {
@@ -1068,7 +1084,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_status(unlang_result_t *p_res
 
 	fr_assert(!inst->driver->acquire || handle);
 
-	cache_find(p_result, &entry, inst, request, &handle, env->key);
+	cache_find(p_result, &entry, inst, request, &handle, key);
 	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 
 	p_result->rcode = (entry) ? RLM_MODULE_OK : RLM_MODULE_NOTFOUND;
@@ -1092,20 +1108,18 @@ static unlang_action_t CC_HINT(nonnull) mod_method_load(unlang_result_t *p_resul
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
+	fr_value_box_t		*key = fr_value_box_list_head(&env->key);
 
 	p_result->rcode = RLM_MODULE_NOOP;
 
-	if (fr_type_is_variable_size(env->key->type) && (env->key->vb_length == 0)) {
-		REDEBUG("Zero length key string is invalid");
-		RETURN_UNLANG_FAIL;
-	}
+	FIXUP_KEY(RETURN_UNLANG_FAIL, RETURN_UNLANG_INVALID)
 
 	/* Good to go? */
 	if (cache_acquire(&handle, inst, request) < 0) {
 		RETURN_UNLANG_FAIL;
 	}
 
-	cache_find(p_result, &entry, inst, request, &handle, env->key);
+	cache_find(p_result, &entry, inst, request, &handle, key);
 	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 
 	if (!entry) {
@@ -1133,6 +1147,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_update(unlang_result_t *p_res
 {
 	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
+	fr_value_box_t		*key = fr_value_box_list_head(&env->key);
 	fr_time_delta_t		ttl;
 	bool 			expire = false;
 	rlm_cache_entry_t 	*entry = NULL;
@@ -1141,10 +1156,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_update(unlang_result_t *p_res
 
 	p_result->rcode = RLM_MODULE_NOOP;
 
-	if (fr_type_is_variable_size(env->key->type) && (env->key->vb_length == 0)) {
-		REDEBUG("Zero length key string is invalid");
-		RETURN_UNLANG_FAIL;
-	}
+	FIXUP_KEY(RETURN_UNLANG_FAIL, RETURN_UNLANG_INVALID)
 
 	/* Good to go? */
 	if (cache_acquire(&handle, inst, request) < 0) {
@@ -1170,7 +1182,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_update(unlang_result_t *p_res
 	/*
 	 *	We can only alter the TTL on an entry if it exists.
 	 */
-	cache_find(p_result, &entry, inst, request, &handle, env->key);
+	cache_find(p_result, &entry, inst, request, &handle, key);
 	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 
 	if (p_result->rcode == RLM_MODULE_OK) {
@@ -1194,7 +1206,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_update(unlang_result_t *p_res
 	if (expire) {
 		DEBUG3("Expiring cache entry");
 
-		cache_expire(p_result, inst, request, &handle, env->key);
+		cache_expire(p_result, inst, request, &handle, key);
 		if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 	}
 
@@ -1202,7 +1214,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_update(unlang_result_t *p_res
 	 *	Inserts are upserts, so we don't care about the
 	 *	entry state.
 	 */
-	cache_insert(p_result, inst, request, &handle, env->key, env->maps, ttl);
+	cache_insert(p_result, inst, request, &handle, key, env->maps, ttl);
 	if (p_result->rcode == RLM_MODULE_OK) p_result->rcode = RLM_MODULE_UPDATED;
 
 finish:
@@ -1222,6 +1234,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(unlang_result_t *p_resu
 {
 	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
+	fr_value_box_t		*key = fr_value_box_list_head(&env->key);
 	fr_time_delta_t		ttl;
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
@@ -1229,10 +1242,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(unlang_result_t *p_resu
 
 	p_result->rcode = RLM_MODULE_NOOP;
 
-	if (fr_type_is_variable_size(env->key->type) && (env->key->vb_length == 0)) {
-		REDEBUG("Zero length key string is invalid");
-		RETURN_UNLANG_FAIL;
-	}
+	FIXUP_KEY(RETURN_UNLANG_FAIL, RETURN_UNLANG_INVALID)
 
 	if (cache_acquire(&handle, inst, request) < 0) {
 		RETURN_UNLANG_FAIL;
@@ -1250,7 +1260,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(unlang_result_t *p_resu
 	/*
 	 *	We can only alter the TTL on an entry if it exists.
 	 */
-	cache_find(p_result, &entry, inst, request, &handle, env->key);
+	cache_find(p_result, &entry, inst, request, &handle, key);
 	switch (p_result->rcode) {
 	default:
 	case RLM_MODULE_OK:
@@ -1270,7 +1280,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(unlang_result_t *p_resu
 	 *	setting the TTL, which precludes performing an
 	 *	insert.
 	 */
-	cache_insert(p_result, inst, request, &handle, env->key, env->maps, ttl);
+	cache_insert(p_result, inst, request, &handle, key, env->maps, ttl);
 
 finish:
 	cache_unref(request, inst, entry, handle);
@@ -1290,6 +1300,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_clear(unlang_result_t *p_resu
 {
 	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
+	fr_value_box_t		*key = fr_value_box_list_head(&env->key);
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 
@@ -1297,17 +1308,14 @@ static unlang_action_t CC_HINT(nonnull) mod_method_clear(unlang_result_t *p_resu
 
 	DEBUG3("Calling %s.clear", mctx->mi->name);
 
-	if (fr_type_is_variable_size(env->key->type) && (env->key->vb_length == 0)) {
-		REDEBUG("Zero length key string is invalid");
-		RETURN_UNLANG_FAIL;
-	}
+	FIXUP_KEY(RETURN_UNLANG_FAIL, RETURN_UNLANG_INVALID)
 
 	/* Good to go? */
 	if (cache_acquire(&handle, inst, request) < 0) {
 		RETURN_UNLANG_FAIL;
 	}
 
-	cache_find(p_result, &entry, inst, request, &handle, env->key);
+	cache_find(p_result, &entry, inst, request, &handle, key);
 	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 
 	if (!entry) {
@@ -1316,7 +1324,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_clear(unlang_result_t *p_resu
 		goto finish;
 	}
 
-	cache_expire(p_result, inst, request, &handle, env->key);
+	cache_expire(p_result, inst, request, &handle, key);
 
 finish:
 	cache_unref(request, inst, entry, handle);
@@ -1335,6 +1343,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl(unlang_result_t *p_result
 {
 	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
+	fr_value_box_t		*key = fr_value_box_list_head(&env->key);
 	fr_time_delta_t		ttl;
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
@@ -1344,10 +1353,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl(unlang_result_t *p_result
 
 	DEBUG3("Calling %s.ttl", mctx->mi->name);
 
-	if (fr_type_is_variable_size(env->key->type) && (env->key->vb_length == 0)) {
-		REDEBUG("Zero length key string is invalid");
-		RETURN_UNLANG_FAIL;
-	}
+	FIXUP_KEY(RETURN_UNLANG_FAIL, RETURN_UNLANG_INVALID)
 
 	/* Good to go? */
 	if (cache_acquire(&handle, inst, request) < 0) {
@@ -1371,7 +1377,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl(unlang_result_t *p_result
 	/*
 	 *	We can only alter the TTL on an entry if it exists.
 	 */
-	cache_find(p_result, &entry, inst, request, &handle, env->key);
+	cache_find(p_result, &entry, inst, request, &handle, key);
 	if (p_result->rcode == RLM_MODULE_FAIL) goto finish;
 
 	if (p_result->rcode == RLM_MODULE_OK) {
