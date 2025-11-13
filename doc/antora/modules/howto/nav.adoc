@@ -9,7 +9,43 @@
 **** xref:howto:installation/osx.adoc[OSX]
 
 ** xref:howto:upgrade/index.adoc[Upgrade from v3]
+*** Configuration Files
+**** radiusd.conf
+*** Modules
+**** client
+**** radius
+**** cache
+**** couchbase
+**** counter
+**** eap
+**** exec
+**** mschap
+**** expiration
+**** ippool
+**** ldap
+**** logintime
+**** perl
+**** python
+**** radutmp
+**** rest
+**** sql
+***** Profiles
+***** MySQL
+***** PostgreSQL
+**** sqlcounter
+**** sqlippool
+**** unix
+**** winbind
+*** Processing Sections
+*** Unlang
+**** "&" is no longer used
+**** foreach
+**** update
+*** Dictionaries
 *** xref:howto:upgrade/attribute_names.adoc[All Attribute Names Have Changed]
+**** Deleted Virtual Attributes
+*** Proxying
+*** General Recommendations
 
 ** xref:modules/configuring_modules.adoc[Configure Modules]
 *** xref:modules/chap/index.adoc[CHAP]
