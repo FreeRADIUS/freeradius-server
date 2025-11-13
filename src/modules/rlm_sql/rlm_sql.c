@@ -357,6 +357,32 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 	if (fr_value_box_is_safe_for(vb, inst->driver)) return 0;
 
 	/*
+	 *	Don't print "::" for enum names.  Instead we convert
+	 *	the box to a string which contains the enum name, and
+	 *	then see if we need to escape it.
+	 */
+	if (vb->enumv && vb->enumv->flags.has_value) {
+		char const *name;
+
+		name = fr_dict_enum_name_by_value(vb->enumv, vb);
+		if (name) {
+			int rcode;
+
+			/*
+			 *	Store list pointers to restore later - fr_value_box_cast clears them
+			 */
+			fr_value_box_entry_t entry = vb->entry;
+
+			rcode = fr_value_box_strdup(vb, vb, NULL, name, false);
+			vb->entry = entry;
+
+			if (rcode < 0) return rcode;
+
+			goto check_escape_arg;
+		}
+	}
+
+	/*
 	 *	No need to escape types with inherently safe data
 	 */
 	switch (vb->type) {
@@ -370,6 +396,7 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 		break;
 	}
 
+check_escape_arg:
 	if (inst->sql_escape_arg) {
 		arg = inst->sql_escape_arg;
 	} else if (thread->sql_escape_arg) {
