@@ -159,7 +159,7 @@ echo "Copy lua scripts into place"
 cp ${CIDIR}/openresty/*.lua "${APIDIR}"
 
 echo "Copy sample data into place"
-cp "${CIDIR}/openresty/test.txt" "${ROOTDIR}"
+cp ${CIDIR}/openresty/test.* "${ROOTDIR}"
 
 echo "Copy htpasswd into place"
 cp "${CIDIR}/openresty/.htpasswd" "${BUILDDIR}"

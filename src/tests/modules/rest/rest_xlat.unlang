@@ -44,6 +44,18 @@ if (!(REST-HTTP-Status-Code == 404)) {
 	test_fail
 }
 
+# Retrieve some XML.  text/xml is not handled by module methods so would be dropped,
+# but with the xlat we just get the body regardless of Content-Type
+result_string := %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/test.xml")
+
+if (!(REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+if (!(result_string == "<root><child></child></root>\n")) {
+	test_fail
+}
+
 # GET with URL parameters
 test_string := %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/user/%{User-Name}/mac/%{Called-Station-Id}")
 
