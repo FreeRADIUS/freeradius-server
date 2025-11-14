@@ -214,9 +214,8 @@ static int list_insert(fr_hash_table_t *ht,
 
 	last = head;
 
-	for (cur = *head; cur != &ht->null; cur = cur->next) {
+	for (cur = *head; cur != &ht->null; last = &(cur->next), cur = cur->next) {
 		if (cur->reversed > node->reversed) break;
-		last = &(cur->next);
 
 		if (cur->reversed == node->reversed) {
 			if (ht->cmp) {
