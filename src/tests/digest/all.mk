@@ -41,6 +41,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 		echo "Vendor-Specific.Test.Test-Name = \"$(TARGET)\"" >> $@.request;		\
 		echo "Vendor-Specific.Test.Test-Number = \"$${_num}\"" >> $@.request;	\
 		if ! $(TEST_BIN)/radclient -f $@.request -xF -d src/tests/digest/config -D share/dictionary 127.0.0.1:$(digest_port) auth $(SECRET) > $@.out; then \
+			cat $(DIGEST_RADIUS_LOG);			\
 			echo "FAILED";					\
 			cat $@.out;					\
 			rm -f $(BUILD_DIR)/tests/test.digest;           \
