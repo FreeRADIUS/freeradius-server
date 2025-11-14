@@ -1409,6 +1409,12 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 			 */
 			} else {
 				ctx->type = http_body_type_supported[type];
+
+				/*
+				 *  No need to check supported types if we accept everything.
+				 */
+				if (ctx->section->response.accept_all) break;
+
 				switch (ctx->type) {
 				case REST_HTTP_BODY_UNKNOWN:
 					RWDEBUG("Couldn't determine type, using the request's type \"%s\".",
@@ -1486,6 +1492,8 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
 	case REST_HTTP_BODY_UNSUPPORTED:
 	case REST_HTTP_BODY_UNAVAILABLE:
 	case REST_HTTP_BODY_INVALID:
+		if (ctx->section->response.accept_all) goto accept_body;
+
 		while ((q = memchr(p, '\n', (end - p)))) {
 			REDEBUG("%pV", fr_box_strvalue_len(p, q - p));
 			p = q + 1;
@@ -1506,7 +1514,7 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
 	default:
 	{
 		char *out_p;
-
+	accept_body:
 		if ((ctx->section->response.max_body_in > 0) && ((ctx->used + (end - p)) > ctx->section->response.max_body_in)) {
 			REDEBUG("Incoming data (%zu bytes) exceeds max_body_in (%zu bytes).  "
 				"Forcing body to type 'invalid'", ctx->used + (end - p), ctx->section->response.max_body_in);

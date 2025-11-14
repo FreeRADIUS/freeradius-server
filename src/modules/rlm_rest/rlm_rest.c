@@ -1207,7 +1207,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->xlat.request.method_str = "GET";
 	inst->xlat.request.body = REST_HTTP_BODY_NONE;
 	inst->xlat.request.body_str = "application/x-www-form-urlencoded";
-	inst->xlat.response.force_to_str = "plain";
+	inst->xlat.response.accept_all = true;
 
 	if (!inst->sections_init) fr_rb_inline_init(&inst->sections, rlm_rest_section_conf_t, node, rest_section_cmp, NULL);
 

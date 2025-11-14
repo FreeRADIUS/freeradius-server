@@ -128,6 +128,7 @@ typedef struct {
 	char const			*force_to_str;	//!< Force decoding with this decoder.
 	http_body_type_t		force_to;	//!< Override the Content-Type header in the response
 							//!< to force decoding as a particular type.
+	bool				accept_all;	//!< Accept all content types.
 
 	size_t				max_body_in;	//!< Maximum size of incoming data.
 } rlm_rest_section_response_t;
