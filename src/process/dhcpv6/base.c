@@ -104,6 +104,7 @@ typedef struct {
 	fr_pair_list_t	client_id;
 	fr_pair_list_t	server_id;
 	unlang_result_t	result;
+	void		*uctx;
 } process_dhcpv6_rctx_t;
 
 /** Records fields from the original relay-request so we have a known good copy
@@ -669,10 +670,12 @@ RECV(from_relay)
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
 	process_dhcpv6_t const		*inst = mctx->mi->data;
-	process_dhcpv6_relay_fields_t	*rctx = NULL;
+	process_dhcpv6_relay_fields_t	*relay_fields = NULL;
+	process_dhcpv6_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, process_dhcpv6_rctx_t);
 
-	rctx = dhcpv6_relay_fields_store(request);
-	if (!rctx) RETURN_UNLANG_INVALID;
+	relay_fields = dhcpv6_relay_fields_store(request);
+	if (!relay_fields) RETURN_UNLANG_INVALID;
+	rctx->uctx = relay_fields;
 
 	UPDATE_STATE_CS(packet);
 
@@ -687,7 +690,8 @@ RECV(from_relay)
 RESUME(send_to_relay)
 {
 	process_dhcpv6_t		*inst = talloc_get_type_abort(mctx->mi->data, process_dhcpv6_t);
-	process_dhcpv6_relay_fields_t	*fields = talloc_get_type_abort(mctx->rctx, process_dhcpv6_relay_fields_t);
+	process_dhcpv6_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, process_dhcpv6_rctx_t);
+	process_dhcpv6_relay_fields_t	*fields = talloc_get_type_abort(rctx->uctx, process_dhcpv6_relay_fields_t);
 	fr_process_state_t const	*state;
 
 	UPDATE_STATE(reply);
