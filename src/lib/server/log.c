@@ -781,6 +781,7 @@ void log_request_pair(fr_log_lvl_t lvl, request_t *request,
 {
 	fr_dict_attr_t const	*parent_da = NULL;
 	fr_sbuff_t		*oid_buff;
+	char const		*name;
 
 	if (!request->log.dst) return;
 
@@ -809,7 +810,22 @@ void log_request_pair(fr_log_lvl_t lvl, request_t *request,
 			fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
 			&vp->data);
 		break;
+
 	default:
+		fr_assert(fr_type_is_leaf(vp->vp_type));
+
+		/*
+		 *	Manually add enum prefix when printing.
+		 */
+		if ((name = fr_value_box_enum_name(&vp->data)) != NULL) {
+			RDEBUGX(lvl, "%s%pV = ::%s", prefix ? prefix : "",
+				fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
+				name);
+			break;
+		}
+		FALL_THROUGH;
+
+	case FR_TYPE_INTERNAL:
 		RDEBUGX(lvl, "%s%pV = %pV", prefix ? prefix : "",
 			fr_box_strvalue_len(fr_sbuff_start(oid_buff), fr_sbuff_used(oid_buff)),
 			&vp->data);

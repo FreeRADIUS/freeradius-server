@@ -1113,6 +1113,32 @@ void fr_value_box_set_secret(fr_value_box_t *box, bool secret)
 	box->secret = secret;
 }
 
+/** Decide if we need an enum prefix.
+ *
+ *  We don't print the prefix in fr_value_box_print(), even though that function is the inverse of
+ *  fr_value_box_from_str().  If we always add the prefix there, then lots of code needs to be updated to
+ *  suppress printing the prefix.  e.g. When using %{Service-Type} in a filename, or %{Acct-Status-Type} in an
+ *  SQL query, etc.
+ *
+ *  Instead, the various unlang / debug routines add the prefix manually.  This way ends up being less
+ *  complicated, and has fewer cornrer cases than the "right" way of doing it.
+ *
+ *  Note that we don't return the enum name for booleans.  Those are printed as "true / false", or "yes / no"
+ *  without the "::" prefix.
+ */
+static inline CC_HINT(nonnull, always_inline)
+char const *fr_value_box_enum_name(fr_value_box_t const *box)
+{
+	if (fr_type_is_leaf(box->type) && (box->type != FR_TYPE_STRING) &&
+	    box->enumv && box->enumv->flags.has_value &&
+	    ((box->type != FR_TYPE_BOOL) || da_is_bit_field(box->enumv))) {
+		return fr_dict_enum_name_by_value(box->enumv, box);
+	}
+
+	return NULL;
+}
+
+
 /** @name Assign and manipulate binary-unsafe C strings
  *
  * @{

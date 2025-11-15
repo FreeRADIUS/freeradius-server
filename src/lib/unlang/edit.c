@@ -42,9 +42,34 @@ RCSID("$Id$")
 #define XDEBUG DEBUG2
 #endif
 
-#define RDEBUG_ASSIGN(_name, _op, _box) do { \
-	RDEBUG2(((_box)->type == FR_TYPE_STRING) ? "%s %s \"%pV\"" : "%s %s %pV", _name, fr_tokens[_op], _box); \
-} while (0)
+#define RDEBUG_ASSIGN(_name, _op, _box) rdebug_assign(request, _name, _op, _box)
+
+static void rdebug_assign(request_t *request, char const *attr, fr_token_t op, fr_value_box_t const *box)
+{
+	char const *name;
+
+	switch (box->type) {
+	case FR_TYPE_QUOTED:
+		RDEBUG2("%s %s \"%pV\"", attr, fr_tokens[op], box);
+		break;
+
+	case FR_TYPE_INTERNAL:
+	case FR_TYPE_STRUCTURAL:
+		fr_assert(0);
+		break;
+
+	default:
+		fr_assert(fr_type_is_leaf(box->type));
+
+		if ((name = fr_value_box_enum_name(box)) != NULL) {
+			RDEBUG2("%s %s ::%s", name, fr_tokens[op], name);
+			break;
+		}
+
+		RDEBUG2("%s %s %pV", attr, fr_tokens[op], box);
+		break;
+	}
+}
 
 typedef struct {
 	fr_value_box_list_t	list;			//!< output data

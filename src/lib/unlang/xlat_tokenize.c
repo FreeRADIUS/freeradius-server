@@ -1185,20 +1185,12 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 
 		if (tmpl_is_data(node->vpt)) {
 			/*
-			 *	@todo - until such time as the value
-			 *	box functions print "::" before enum
-			 *	names.
-			 *
-			 *	Arguably it should _always_ print the
-			 *	"::" before enum names, even if the
-			 *	input didn't have "::".  But that's
-			 *	addressed when the prefix is required,
-			 *	OR when the value-box functions are
-			 *	updated.
+			 *	Manually add enum prefix when printing.
 			 */
 			if (node->vpt->data.literal.enumv &&
+			    ((node->vpt->data.literal.type != FR_TYPE_BOOL) || da_is_bit_field(node->vpt->data.literal.enumv)) &&
 			    (strncmp(node->fmt, "::", 2) == 0)) {
-				FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "::");
+				FR_SBUFF_IN_CHAR_RETURN(out, ':', ':');
 			}
 			FR_SBUFF_RETURN(fr_value_box_print_quoted, out, tmpl_value(node->vpt), node->vpt->quote);
 			goto done;
