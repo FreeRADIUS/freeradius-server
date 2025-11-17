@@ -52,6 +52,7 @@ test: \
 		test.keywords	\
 		test.xlat	\
 		test.modules	\
+		test.process	\
 		test.radiusd-c	\
 		test.radclient	\
 		test.detail	\
