@@ -2522,12 +2522,14 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		/*
 		 *	Peek for rcodes.
 		 */
-		slen = tokenize_rcode(head, &node, &our_in, p_rules->terminals);
-		if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
+		if (cond) {
+			slen = tokenize_rcode(head, &node, &our_in, p_rules->terminals);
+			if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
-		if (slen > 0) {
-			fr_assert(node != NULL);
-			goto done;
+			if (slen > 0) {
+				fr_assert(node != NULL);
+				goto done;
+			}
 		}
 		FALL_THROUGH;
 

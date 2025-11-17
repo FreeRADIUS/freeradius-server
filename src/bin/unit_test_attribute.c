@@ -3088,6 +3088,68 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 }
 
 
+/** Parse, purify, and reprint an xlat expression expansion
+ *
+ */
+static size_t command_xlat_purify_condition(command_result_t *result, command_file_ctx_t *cc,
+					    char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	ssize_t			slen;
+	xlat_exp_head_t		*head = NULL;
+	size_t			input_len = strlen(in), escaped_len;
+	tmpl_rules_t		t_rules = (tmpl_rules_t) {
+						   .attr = {
+							.dict_def = dictionary_current(cc),
+							.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved,
+							.list_def = request_attr_request,
+						   },
+						   .xlat = cc->tmpl_rules.xlat,
+						   .at_runtime = true,
+					   };
+
+	if (!el) {
+		fr_strerror_const("Flag '-p' not used.  xlat_purify is disabled");
+		goto return_error;
+	}
+	t_rules.xlat.runtime_el = el;
+
+	slen = xlat_tokenize_condition(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), NULL, &t_rules);
+	if (slen == 0) {
+		fr_strerror_printf_push_head("ERROR failed to parse any input");
+		RETURN_OK_WITH_ERROR();
+	}
+
+	if (slen < 0) {
+		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen - 1);
+	return_error:
+		RETURN_OK_WITH_ERROR();
+	}
+
+	if (((size_t) slen != input_len)) {
+		fr_strerror_printf_push_head("Passed in %zu characters, but only parsed %zd characters", input_len, slen);
+		goto return_error;
+	}
+
+	if (fr_debug_lvl > 2) {
+		DEBUG("Before purify --------------------------------------------------");
+		xlat_debug_head(head);
+	}
+
+	if (xlat_purify(head, NULL) < 0) {
+		fr_strerror_printf_push_head("ERROR purifying node - %s", fr_strerror());
+		goto return_error;
+	}
+
+	if (fr_debug_lvl > 2) {
+		DEBUG("After purify --------------------------------------------------");
+		xlat_debug_head(head);
+	}
+
+	escaped_len = xlat_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), head, &fr_value_escape_double);
+	RETURN_OK(escaped_len);
+}
+
+
 /** Parse an reprint and xlat argv expansion
  *
  */
@@ -3375,6 +3437,12 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_xlat_purify,
 					.usage = "xlat_purify <string>",
 					.description = "Parse, purify, then print an xlat expression, writing the normalised xlat expansion to the data buffer"
+				}},
+
+	{ L("xlat_purify_cond "),	&(command_entry_t){
+					.func = command_xlat_purify_condition,
+					.usage = "xlat_purify_cond <string>",
+					.description = "Parse, purify, then print an xlat condition, writing the normalised xlat expansion to the data buffer"
 				}},
 
 };
