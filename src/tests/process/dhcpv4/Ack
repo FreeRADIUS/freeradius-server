@@ -1,9 +1,9 @@
-subrequest DHCPv4.Request {
+subrequest @DHCPv4::Request {
 	# Client -> Server
 	request += {
-		Message-Type = Request
+		Message-Type = ::Request
 
-		Hardware-Type = Ethernet
+		Hardware-Type = ::Ethernet
 		Hardware-Address-Length = 6
 		Hop-Count = 0
 		Transaction-Id = 15646
@@ -29,7 +29,7 @@ subrequest DHCPv4.Request {
 
 	call dhcpv4 {
 		# 'Discover' expects 'Ack'
-		if (reply.Packet-Type != Ack) {
+		if (reply.Packet-Type != ::Ack) {
 			test_fail
 		}
 

@@ -1,14 +1,26 @@
-subrequest DHCPv6.Request {
+subrequest @DHCPv6::Request {
 	Transaction-ID = 0x1e291d
 
-	Server-ID.DUID = LLT
-	Server-ID.DUID.LLT.Hardware-Type = Ethernet
-	Server-ID.DUID.LLT.Time = "Nov 21 2012 08:36:00 UTC"
-	Server-ID.DUID.LLT.Hardware-Type.Ethernet.Address = 00:11:22:33:44:55
+	Server-ID = {
+		DUID = ::LLT
+		DUID.LLT = {
+			Hardware-Type = ::Ethernet
+			Time = "Nov 21 2012 08:36:00 UTC"
+			Hardware-Type.Ethernet = {
+				Address = 00:11:22:33:44:55
+			}
+		}
+	}
 
-	Client-ID.DUID = LL
-	Client-ID.DUID.LL.Hardware-Type = Ethernet
-	Client-ID.DUID.LL.Hardware-Type.Ethernet.Address = 00:01:02:03:04:05
+	Client-ID = {
+		DUID = ::LL
+		DUID.LL = {
+			Hardware-Type = ::Ethernet
+			Hardware-Type.Ethernet = {
+				Address = 00:01:02:03:04:05
+			}
+		}
+	}
 
 	request += {
 		Option-Request = DNS-Servers
@@ -19,7 +31,7 @@ subrequest DHCPv6.Request {
 
 	call dhcpv6 {
 		# 'Request' expects 'Reply'
-		if (reply.Packet-Type != Reply) {
+		if (reply.Packet-Type != ::Reply) {
 			test_fail
 		}
 
