@@ -37,17 +37,20 @@ subrequest @DHCPv6::Request {
 
 		test_dhcpv6_reply_matches_request
 
-		# ... Server-ID must be inside reply
-		if (!reply.Server-ID.DUID.LLT.Hardware-Type) {
-			test_fail
-		}
+#
+#  Disabled at present pending UNION data types
+#
+#		# ... Server-ID must be inside reply
+#		if (!reply.Server-ID.DUID.LLT.Hardware-Type) {
+#			test_fail
+#		}
 
-		if (!reply.Server-ID.DUID.LLT.Time) {
-			test_fail
-		}
+#		if (!reply.Server-ID.DUID.LLT.Time) {
+#			test_fail
+#		}
 
-		if (!reply.Server-ID.DUID.LLT.Hardware-Type.Ethernet.Address) {
-			test_fail
-		}
+#		if (!reply.Server-ID.DUID.LLT.Hardware-Type.Ethernet.Address) {
+#			test_fail
+#		}
 	}
 }
