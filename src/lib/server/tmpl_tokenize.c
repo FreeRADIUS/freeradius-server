@@ -547,7 +547,10 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 	 */
 	if (namespace) {
 		if (at_rules->namespace) {
-			*namespace = at_rules->namespace;
+			/*
+			 *	If the namespace is FR_TYPE_GROUP use the correct namespace
+			 */
+			*namespace = at_rules->namespace->type == FR_TYPE_GROUP ? fr_dict_attr_ref(at_rules->namespace) : at_rules->namespace;
 		} else {
 			*namespace = NULL;
 		}
