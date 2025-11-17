@@ -1,4 +1,4 @@
-== Dictionary
+= Dictionaries
 
 The `dictionary` files define names, numbers, and
 xref:type/index.adoc[data types] for use in the server.  In general,
@@ -24,7 +24,7 @@ Editing those files will likely break the server.
 Instead, you can add local dictionary definitions in the
 xref:raddb/dictionary.adoc[raddb/dictionary] file.
 
-== Concepts and background
+== Concepts and Background
 
 The dictionaries are necessary because many networking protocols do
 not send humanly-readable names over the network.  Instead, the
@@ -111,7 +111,7 @@ xref:dictionary/struct.adoc[STRUCT], etc.  We generally refer to all
 of these entities as being 'attributes', no matter how the name was
 defined.
 
-== Files and location
+== Files and Location
 
 The dictionaries are placed into a `share` directory, which is usually
 in a location such as `/usr/share/freeradius/`.  The definitions for
@@ -126,7 +126,7 @@ upgrade) will over-write local changes.
 Local edits should be kept to the `raddb/dictionary` file, which will
 not be overwritten on an upgrade.
 
-== File syntax
+== File Syntax
 
 The dictionary file format follows the standard RADIUS dictionary
 syntax.  In many respects, the format has had only minor changes since

@@ -1,4 +1,4 @@
-= Dynamic Expansion
+= Dynamic Expansions
 
 Dynamic expansion is a feature that allows values to be dynamically
 expanded at run time. For historical reasons, these string expansions
