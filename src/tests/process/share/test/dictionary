@@ -1,6 +1,4 @@
-PROTOCOL Test 314159
-
-BEGIN-PROTOCOL Test
+BEGIN PROTOCOL	test	314159
 
 #
 #  Only for tests.
@@ -11,7 +9,7 @@ DEFINE		Packet-Type				uint32
 VALUE	Packet-Type		Request			1
 VALUE	Packet-Type		Reply			2
 
-END-PROTOCOL Test
+END-PROTOCOL test
 
 #
 #  Generic test failure message
