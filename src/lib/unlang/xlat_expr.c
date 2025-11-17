@@ -2374,6 +2374,14 @@ static ssize_t tokenize_rcode(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	}
 
 	/*
+	 *	We do NOT do math on return codes.  But these two characters are allowed for attribute names.
+	 *	So we don't parse "Invalid-Packet" as "Invalid - packet".
+	 */
+	if (fr_sbuff_is_char(&our_in, '-') || fr_sbuff_is_char(&our_in, '/')) {
+		return 0;
+	}
+
+	/*
 	 *	@todo - allow for attributes to have the name "ok-foo" ???
 	 */
 	func = xlat_func_find("interpreter.rcode", -1);
