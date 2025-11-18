@@ -1792,6 +1792,19 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 {
 	fr_dict_attr_t *da;
 
+	if (fr_dict_attr_ref(parent)) {
+		fr_strerror_printf("Cannot add children to attribute '%s' which has 'ref=%s'",
+				   parent->name, fr_dict_attr_ref(parent)->name);
+		return -1;
+	}
+
+	if (!dict_attr_can_have_children(parent)) {
+		fr_strerror_printf("Cannot add children to attribute '%s' of type %s",
+				   parent->name,
+				   fr_type_to_str(parent->type));
+		return -1;
+	}
+
 	da = dict_attr_alloc_null(dict->pool, dict->proto);
 	if (unlikely(!da)) return -1;
 
