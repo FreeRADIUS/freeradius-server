@@ -33,36 +33,9 @@ RCSID("$Id$")
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/server/trigger.h>
+#include <freeradius-devel/util/semaphore.h>
 
 #include <pthread.h>
-
-/*
- *	Other OS's have sem_init, OS X doesn't.
- */
-#ifdef HAVE_SEMAPHORE_H
-#include <semaphore.h>
-#endif
-
-#define SEMAPHORE_LOCKED	(0)
-
-#ifdef __APPLE__
-#include <mach/task.h>
-#include <mach/mach_init.h>
-#include <mach/semaphore.h>
-
-#undef sem_t
-#define sem_t semaphore_t
-#undef sem_init
-#define sem_init(s,p,c) semaphore_create(mach_task_self(),s,SYNC_POLICY_FIFO,c)
-#undef sem_wait
-#define sem_wait(s) semaphore_wait(*s)
-#undef sem_post
-#define sem_post(s) semaphore_signal(*s)
-#undef sem_destroy
-#define sem_destroy(s) semaphore_destroy(mach_task_self(),*s)
-#endif	/* __APPLE__ */
-
-#define SEM_WAIT_INTR(_x) do {if (sem_wait(_x) == 0) break;} while (errno == EINTR)
 
 /**
  *  Track the child thread status.
@@ -135,8 +108,8 @@ struct fr_schedule_s {
 
 	unsigned int	num_workers_exited;	//!< number of exited workers
 
-	sem_t		worker_sem;		//!< for inter-thread signaling
-	sem_t		network_sem;		//!< for inter-thread signaling
+	fr_sem_t	*worker_sem;		//!< for inter-thread signaling
+	fr_sem_t	*network_sem;		//!< for inter-thread signaling
 
 	fr_schedule_thread_instantiate_t	worker_thread_instantiate;	//!< thread instantiation callback
 	fr_schedule_thread_detach_t		worker_thread_detach;
@@ -262,7 +235,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	/*
 	 *	Tell the originator that the thread has started.
 	 */
-	sem_post(&sc->worker_sem);
+	sem_post(sc->worker_sem);
 
 	/*
 	 *	Do all of the work.
@@ -293,7 +266,7 @@ fail:
 	/*
 	 *	Tell the scheduler we're done.
 	 */
-	sem_post(&sc->worker_sem);
+	sem_post(sc->worker_sem);
 
 	talloc_free(ctx);
 
@@ -378,7 +351,7 @@ static void *fr_schedule_network_thread(void *arg)
 	/*
 	 *	Tell the originator that the thread has started.
 	 */
-	sem_post(&sc->network_sem);
+	sem_post(sc->network_sem);
 
 	DEBUG3("%s - Started", network_name);
 
@@ -405,7 +378,7 @@ fail:
 	/*
 	 *	Tell the scheduler we're done.
 	 */
-	sem_post(&sc->network_sem);
+	sem_post(sc->network_sem);
 
 	talloc_free(ctx);
 
@@ -589,20 +562,17 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	fr_dlist_init(&sc->workers, fr_schedule_worker_t, entry);
 	fr_dlist_init(&sc->networks, fr_schedule_network_t, entry);
 
-	memset(&sc->network_sem, 0, sizeof(sc->network_sem));
-	if (sem_init(&sc->network_sem, 0, SEMAPHORE_LOCKED) != 0) {
+	sc->network_sem = fr_sem_alloc();
+	if (!sc->network_sem) {
+	sem_fail:
 		ERROR("Failed creating semaphore: %s", fr_syserror(errno));
+		fr_sem_free(sc->network_sem);
 		talloc_free(sc);
 		return NULL;
 	}
 
-	memset(&sc->worker_sem, 0, sizeof(sc->worker_sem));
-	if (sem_init(&sc->worker_sem, 0, SEMAPHORE_LOCKED) != 0) {
-		ERROR("Failed creating semaphore: %s", fr_syserror(errno));
-		sem_destroy(&sc->network_sem);
-		talloc_free(sc);
-		return NULL;
-	}
+	sc->worker_sem = fr_sem_alloc();
+	if (!sc->worker_sem) goto sem_fail;
 
 	/*
 	 *	Create the network threads first.
@@ -638,7 +608,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	for (i = 0; i < (unsigned int)fr_dlist_num_elements(&sc->networks); i++) {
 		DEBUG3("Waiting for semaphore from network %u/%u",
 		       i + 1, (unsigned int)fr_dlist_num_elements(&sc->networks));
-		SEM_WAIT_INTR(&sc->network_sem);
+		SEM_WAIT_INTR(sc->network_sem);
 	}
 
 	/*
@@ -697,7 +667,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	for (i = 0; i < (unsigned int)fr_dlist_num_elements(&sc->workers); i++) {
 		DEBUG3("Waiting for semaphore from worker %u/%u",
 		       i + 1, (unsigned int)fr_dlist_num_elements(&sc->workers));
-		SEM_WAIT_INTR(&sc->worker_sem);
+		SEM_WAIT_INTR(sc->worker_sem);
 	}
 
 	/*
@@ -816,7 +786,7 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 	for (i = 0; i < (unsigned int)fr_dlist_num_elements(&sc->networks); i++) {
 		DEBUG2("Scheduler - Waiting for semaphore indicating network exit %u/%u", i + 1,
 		       (unsigned int)fr_dlist_num_elements(&sc->networks));
-		SEM_WAIT_INTR(&sc->network_sem);
+		SEM_WAIT_INTR(sc->network_sem);
 	}
 	DEBUG2("Scheduler - All networks indicated exit complete");
 
@@ -846,7 +816,7 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 	for (i = 0; i < (unsigned int)fr_dlist_num_elements(&sc->workers); i++) {
 		DEBUG2("Scheduler - Waiting for semaphore indicating worker exit %u/%u", i + 1,
 		       (unsigned int)fr_dlist_num_elements(&sc->workers));
-		SEM_WAIT_INTR(&sc->worker_sem);
+		SEM_WAIT_INTR(sc->worker_sem);
 	}
 	DEBUG2("Scheduler - All workers indicated exit complete");
 
@@ -871,8 +841,8 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		}
 	}
 
-	sem_destroy(&sc->network_sem);
-	sem_destroy(&sc->worker_sem);
+	fr_sem_free(sc->network_sem);
+	fr_sem_free(sc->worker_sem);
 done:
 	/*
 	 *	Now that all of the workers are done, we can return to
