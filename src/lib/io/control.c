@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <fcntl.h>
 #include <string.h>
 #include <sys/event.h>
+#include <poll.h>
 
 /*
  *	Debugging, mainly for channel_test
@@ -531,4 +532,21 @@ int fr_control_same_thread(fr_control_t *c)
 	talloc_set_destructor(c, NULL);
 
 	return 0;
+}
+
+/** Wait for a plane control to become readable
+ *
+ * This is a blocking function so only to be used in rare cases such as waiting
+ * for another thread to complete a task before proceeding.
+ *
+ * @param[in] c the control structure.
+ */
+void fr_control_wait(fr_control_t *c)
+{
+	struct pollfd	fd;
+
+	fd.fd = c->pipe[0];
+	fd.events = POLLIN;
+
+	poll(&fd, 1, -1);
 }
