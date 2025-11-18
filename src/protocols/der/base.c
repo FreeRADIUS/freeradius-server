@@ -691,25 +691,27 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 		fr_strerror_const("Cannot use 'tlv' in DER.  Please use 'sequence'");
 		return false;
 
-	case FR_TYPE_IFID:
-	case FR_TYPE_COMBO_IP_PREFIX:
-	case FR_TYPE_ETHERNET:
-	case FR_TYPE_FLOAT32:
-	case FR_TYPE_FLOAT64:
-	case FR_TYPE_VSA:
-	case FR_TYPE_VENDOR:
-	case FR_TYPE_VALUE_BOX:
-	case FR_TYPE_VOID:
-	case FR_TYPE_MAX:
+	default:
+	invalid_type:
 		fr_strerror_printf("Cannot use type '%s' in the DER dictionaries",
 				   fr_type_to_str(*type_p));
 		return false;
 
 		/*
-		 *	We allow integers for now.  They may be
+		 *	We allow all integer types.  They may be
 		 *	internal, or they may be inside of a struct.
 		 */
-	default:
+	case FR_TYPE_NULL:
+	case FR_TYPE_INTEGER:
+	case FR_TYPE_VARIABLE_SIZE:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_COMBO_IP_ADDR:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_GROUP:
+	case FR_TYPE_ATTR:
 		break;
 	}
 
@@ -728,6 +730,7 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 	fr_type = fr_table_value_by_str(type_table, name, FR_TYPE_MAX);
 	if (fr_type == FR_TYPE_MAX) {
 		flags->der_type = fr_type_to_der_tag_default(*type_p);
+		if (!flags->der_type) goto invalid_type;
 		return true;
 	}
 
