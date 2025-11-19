@@ -601,6 +601,7 @@ Some of these flags can also be passed on the command line as
 Dictionary migration instructions can be found in `${raddbdir}/dictionary`.
 
 
+
 .Module Configuration
 
 The names and configuration of each module is located in this section.
@@ -766,7 +767,8 @@ templates {
 security {
 #	user = radius
 #	group = radius
-	allow_core_dumps = no
+#	chdir = ${confdir}
+	allow_core_dumps = yes
 	max_attributes = 200
 	allow_vulnerable_openssl = no
 }
