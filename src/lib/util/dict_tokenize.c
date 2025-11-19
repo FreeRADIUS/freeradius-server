@@ -2909,9 +2909,9 @@ static int dict_read_process_value(dict_tokenize_ctx_t *dctx, char **argv, int a
 	}
 
 	/*
-	 *	Pass in the root for type attr, so that we can find the reference.
+	 *	Pass in the DA.  The value-box parsing functions will figure out where the enums are found.
 	 */
-	if (da->type == FR_TYPE_ATTR) enumv = fr_dict_root(da->dict);
+	if (da->type == FR_TYPE_ATTR) enumv = da;
 
 	if (fr_value_box_from_str(NULL, &value, da->type, enumv,
 				  argv[2], strlen(argv[2]),
