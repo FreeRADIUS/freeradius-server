@@ -493,6 +493,20 @@ FLAG_FUNC(array)
 static int dict_flag_clone(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	/*
+	 *	Clone has a limited scope.
+	 */
+	switch ((*da_p)->type) {
+	case FR_TYPE_LEAF:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_TLV:
+		break;
+
+	default:
+		fr_strerror_printf("Attributes of data type '%s' cannot use 'clone=...'", fr_type_to_str((*da_p)->type));
+		return -1;
+	}
+
+	/*
 	 *	Allow cloning of any types, so long as
 	 *	the types are the same.  We do the checks later.
 	 */
