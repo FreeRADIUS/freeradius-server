@@ -475,6 +475,15 @@ controls.
 
 
 
+After the server has changed to the final user/group, it
+can also set the current working directory.  While not
+necessary, changing the working directory means that the
+server does not have any dangling paths.
+
+The directory here should either be "/", or ${confdir}
+
+
+
 allow_core_dumps:: Core dumps are a bad thing.
 
 This should only be set to `yes` if you're debugging
@@ -590,6 +599,7 @@ Some of these flags can also be passed on the command line as
 `-S flag=value`.
 
 Dictionary migration instructions can be found in `${raddbdir}/dictionary`.
+
 
 
 .Module Configuration
@@ -757,7 +767,8 @@ templates {
 security {
 #	user = radius
 #	group = radius
-	allow_core_dumps = no
+#	chdir = ${confdir}
+	allow_core_dumps = yes
 	max_attributes = 200
 	allow_vulnerable_openssl = no
 }
