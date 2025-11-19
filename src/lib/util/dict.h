@@ -107,6 +107,8 @@ typedef struct {
 
 	unsigned int		unsafe : 1;	       		//!< e.g. Cleartext-Password
 
+	unsigned int		is_ref_target : 1;		//!< is the target of a ref, and cannot be moved.
+
 	/*
 	 *	@todo - if we want to clean these fields up, make
 	 *	"subtype" and "type_size" both 4-bit bitfields.  That

@@ -1100,6 +1100,11 @@ fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char 
 			    in->attr, in->type, &(dict_attr_args_t){ .flags = &in->flags });
 	if (unlikely(!n)) return NULL;
 
+	/*
+	 *	This newly allocated attribute is not the target of a ref.
+	 */
+	n->flags.is_ref_target = false;
+
 	if (dict_attr_ext_copy_all(&n, in) < 0) {
 		talloc_free(n);
 		return NULL;
