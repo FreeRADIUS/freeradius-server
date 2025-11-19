@@ -490,6 +490,22 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 	}
 
 	/*
+	 *	Leaf attributes can be cloned.  TLV and STRUCT can be
+	 *	cloned.  But all other data types cannot be cloned.
+	 */
+	switch (src->type) {
+	default:
+		fr_strerror_printf("References MUST NOT refer to an attribute of data type '%s' at %s[%d]",
+				   fr_type_to_str(src->type), fr_cwd_strip(dst->filename), dst->line);
+		return -1;
+
+	case FR_TYPE_LEAF:
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+		break;
+	}
+
+	/*
 	 *	If the attributes are of different types, then we have
 	 *	to _manually_ clone the values.  This means looping
 	 *	over the ref da, and _casting_ the values to the new
@@ -505,8 +521,6 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 		int copied;
 
 		/*
-		 *	Only TLV and STRUCT types can be the source or destination of clones.
-		 *
 		 *	Leaf types can be cloned, even if they're
 		 *	different types.  But only if they don't have
 		 *	children (i.e. key fields).

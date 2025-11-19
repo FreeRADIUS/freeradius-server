@@ -234,9 +234,22 @@ fr_ext_t const fr_dict_attr_ext_def = {
 							.min = sizeof(fr_dict_attr_ext_ref_t),
 							.can_copy = true,
 						},
-		[FR_DICT_ATTR_EXT_KEY]		= {	//!< keys are just refs, but they're not auto-followed like refs
+		[FR_DICT_ATTR_EXT_KEY]		= {
+							/*
+							 *	keys are mostly like refs, but they're not
+							 *	auto-followed like refs.  The difference is
+							 *	that we can copy a ref, because the ref points
+							 *	to something which exists, and is independent
+							 *	of us.
+							 *
+							 *	We can't copy a key ref, because it's only
+							 *	used in a UNION, and then points to the key
+							 *	attribute of the parent structure.  If we do
+							 *	allow copying a UNION, we will also need to
+							 *	specify the new key ref.
+							 */
 							.min = sizeof(fr_dict_attr_ext_ref_t),
-							.can_copy = true,
+							.can_copy = false,
 						},
 		[FR_DICT_ATTR_EXT_VENDOR]	= {
 							.min = sizeof(fr_dict_attr_ext_vendor_t),
