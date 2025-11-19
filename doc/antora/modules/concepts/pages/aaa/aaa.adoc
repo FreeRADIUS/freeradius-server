@@ -6,11 +6,11 @@ It is possible to incorporate only a portion of AAA in a system. For example, if
 
 Without AAA, a network administrator would have to statically configure a network. Even in the earliest days of dialup access, network administrators found a static model inadequate. AAA ensures the flexibility of network policies. AAA also gives network administrators the ability to move systems; without AAA, they would have to clearly define connectivity options.
 
-Today, the proliferation of mobile devices, diverse network consumers, and varied network access methods combine to create an environment that places greater demands on AAA. This protocol is used in almost all the ways we access a network: wireless hotspots use AAA for security; partitioned networks require AAA to enforce access; all types of remote access use AAA to authorize remote users.
+Today, the proliferation of mobile devices, diverse network consumers, and varied network access methods combine to create an environment that places greater demands on AAA. The AAA framework is used in almost all the ways we access a network: wireless hotspots use AAA for security; partitioned networks require AAA to enforce access; all types of remote access use AAA to authorize remote users.
 
 The following sections describe each part of the AAA solution, and how each one works.
 
-== AAA request handling
+== AAA Request Handling
 
 AAA request handling refers to the process by which a system manages xref:aaa/authn.adoc[authentication], xref:aaa/authz.adoc[authorization], and xref:aaa/acct.adoc[accounting] (AAA) services for users accessing computer resources or network services. This process involves verifying user identities, granting access based on permissions, and tracking their activities for auditing or billing purposes.
 

@@ -9,7 +9,7 @@
 **** xref:components/nas.adoc[Network Access Server (NAS)]
 **** xref:components/radius_servers.adoc[RADIUS Server]
 ***** xref:components/radius_servers.adoc#policy[Policies]
-**** xref:components/datastore.adoc[Datastore]
+**** xref:components/datastore.adoc[Datastores]
 *** xref:session/radius_session.adoc[RADIUS Sessions]
 **** xref:session/radius_session_msg.adoc[Messages]
 **** xref:session/processing.adoc[Processing]

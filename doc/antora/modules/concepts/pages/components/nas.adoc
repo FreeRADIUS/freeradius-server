@@ -1,21 +1,20 @@
 = Network Access Server
 
 A Network Access Server (NAS) is a system that grants or denies access to
-a protected resource. It is sometimes referred to as a Terminal Server (TS) or a Remote Access Server (RAS). The NAS acts as a gateway that controls access to resources such as networks, printers, or the internet.
+a protected resource. The NAS acts as a gateway that controls access to resources such as networks, printers, or the internet.
 
 When a network user or device needs access to a resource, it first sends a request to the NAS. The NAS doesn't store information about who is allowed or what credentials are valid. Instead, it forwards the credentials to a RADIUS server capable of AAA services for validation. Based on the RADIUS server's response, the NAS either grants or denies access to the requested resource. For example, if the credentials are valid, access is granted.
 
-== Examples
+== Example
 
 There are many NAS implementations that handle requests for access such as:
 
-* A user opens their browser to get online. The NAS controls access to the Internet and checks to see if the user is authorized. If not, the NAS prompts the user to enter their credentials such as a username and password. The NAS forwards these credentials to a RADIUS server for validation. If the RADIUS server confirms the credentials are valid, the NAS allows the user to access the Internet. This process ensures that only authorized users can use network resources.
+* A user requests access to a resource, such as a website, on the internet. The NAS controls access to the Internet and checks to see if the user is authorized. If not, the NAS prompts the user to enter their credentials such as a username and password. The NAS forwards these credentials to a RADIUS server for validation. If the RADIUS server confirms the credentials are valid, the NAS allows the user to access the Internet. This process ensures that only authorized users can use network resources.
 
-* In a Voice over IP (VoIP) scenario, instead of a username and password, VoIP systems use phone numbers or IP addresses. If the supplied phone number matches a valid customer account, the NAS allows (grants) the call to proceed. The NAS may check for additional permissions, such as long-distance access or available minutes on a telephone card, before granting service. This approach enables flexible and account-based access control for telephony services.
 
 == Associated protocols
 
-Network Access Servers (NAS) don't have to use AAA servers, but they almost always do in real-world scenarios. Among the available AAA protocols, RADIUS is the most commonly used for network management access. DIAMETER, a newer protocol extends on RADIUS by adding improved error handling and inter-domain communications. DIAMETER is beginning to be adopted in more advanced NAS systems.
+Network Access Servers (NAS) don't have to use AAA servers, but they almost always do in real-world scenarios. Among the available AAA protocols, RADIUS is the most commonly used for network management access. The DIAMETER protocol extends on RADIUS by adding improved error handling and inter-domain communications. DIAMETER is often used in cellular/mobile networks, but is being deprecated and replaced by JSON over QUIC systems.
 
 == More information
 
