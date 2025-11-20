@@ -30,7 +30,7 @@ void fr_proto_print(char const *file, int line, char const *fmt, ...)
 	char		*buff;
 
 	va_start(ap, fmt);
-	buff = talloc_vasprintf(NULL, fmt, ap);
+	buff = fr_vasprintf(NULL, fmt, ap);
 	va_end(ap);
 
 	fr_log(&default_log, L_DBG, file, line, "msg: %pV", fr_box_strvalue_buffer(buff));
