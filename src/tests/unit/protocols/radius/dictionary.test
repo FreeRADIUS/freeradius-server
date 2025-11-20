@@ -48,13 +48,9 @@ BEGIN Test-Struct2.Data
 ATTRIBUTE	Sub-Struct				1	struct
 MEMBER		Nested-Uint1				uint8
 MEMBER		Nested-Uint2				uint8
-END Test-Struct2.Data
 
-BEGIN Test-Struct2.Data
 ATTRIBUTE	CC					2	string[2]
-END Test-Struct2.Data
 
-BEGIN Test-Struct2.Data
 ATTRIBUTE	Thingy					3	tlv
 ATTRIBUTE	Child					.1	string
 END Test-Struct2.Data
