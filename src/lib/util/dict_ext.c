@@ -204,6 +204,38 @@ static int dict_ext_protocol_specific_copy(UNUSED int ext,
 	return to_proto->attr.flags.copy(dst_chunk, dst_ext_ptr, src_ext_ptr);
 }
 
+/** Rediscover the key reference for this attribute, and cache it
+ *
+ *  The UNION has a ref to the key DA, which is a sibling of the union.
+ */
+static int fr_dict_attr_ext_key_copy(UNUSED int ext,
+				     TALLOC_CTX *chunk_dst,
+				     void *dst_ext_ptr, UNUSED size_t dst_ext_len,
+				     UNUSED TALLOC_CTX const *chunk_src,
+				     void *src_ext_ptr, UNUSED size_t src_ext_len)
+{
+	fr_dict_attr_t			*da_dst = talloc_get_type_abort(chunk_dst, fr_dict_attr_t);
+	fr_dict_attr_ext_ref_t		*dst_ext = dst_ext_ptr, *src_ext = src_ext_ptr;
+	fr_dict_attr_t const		*key;
+
+	fr_assert(da_dst->parent);
+	fr_assert(da_dst->type == FR_TYPE_UNION);
+	fr_assert(src_ext->type == FR_DICT_ATTR_REF_KEY);
+
+	fr_assert(da_dst->parent != src_ext->ref->parent);
+
+	key = fr_dict_attr_by_name(NULL, da_dst->parent, src_ext->ref->name);
+	if (!key) {
+		fr_strerror_printf("Parent %s has no key attribute '%s'",
+				   da_dst->parent->name, src_ext->ref->name);
+		return -1;
+	}
+
+	dst_ext->ref = key;	/* @todo - is ref_target? */
+
+	return 0;
+}
+
 /** Holds additional information about extension structures
  *
  */
@@ -231,18 +263,20 @@ fr_ext_t const fr_dict_attr_ext_def = {
 							/*
 							 *	keys are mostly like refs, but they're not
 							 *	auto-followed like refs.  The difference is
-							 *	that we can copy a ref, because the ref points
-							 *	to something which exists, and is independent
-							 *	of us.
+							 *	that we can copy a ref as-is, because the ref
+							 *	points to something which exists, and is
+							 *	independent of us.
 							 *
-							 *	We can't copy a key ref, because it's only
-							 *	used in a UNION, and then points to the key
-							 *	attribute of the parent structure.  If we do
-							 *	allow copying a UNION, we will also need to
-							 *	specify the new key ref.
+							 *	But a key ref is only used in a UNION, and
+							 *	then points to the key attribute of the parent
+							 *	structure.  If we do allow copying a UNION, we
+							 *	will also need to specify the new key ref.
+							 *
+							 *	So we need a special copy function.
 							 */
 							.min = sizeof(fr_dict_attr_ext_ref_t),
-							.can_copy = false,
+							.copy = fr_dict_attr_ext_key_copy,
+							.can_copy = true,
 						},
 		[FR_DICT_ATTR_EXT_VENDOR]	= {
 							.min = sizeof(fr_dict_attr_ext_vendor_t),

@@ -1187,7 +1187,15 @@ static int dict_attr_acopy_child(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_a
 
 	if (!dict_attr_children(child)) return 0;
 
-	return dict_attr_acopy_children(dict, copy, child);
+	if (dict_attr_acopy_children(dict, copy, child) < 0) return -1;
+
+	/*
+	 *	Children of a UNION get an ALIAS added to the parent of the UNION.  This allows the UNION
+	 *	attribute to be omitted from parsing and printing.
+	 */
+	if (src->type != FR_TYPE_UNION) return 0;
+
+	return dict_attr_alias_add(dst->parent, copy->name, copy);
 }
 
 
@@ -1203,7 +1211,8 @@ static int dict_attr_acopy_child(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_a
 int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_t const *src)
 {
 	uint				child_num;
-	fr_dict_attr_t const		*child = NULL;
+	fr_dict_attr_t const		*child = NULL, *src_key = NULL;
+	fr_dict_attr_t			*dst_key;
 
 	fr_assert(fr_dict_attr_has_ext(dst, FR_DICT_ATTR_EXT_CHILDREN));
 	fr_assert(dst->type == src->type);
@@ -1233,8 +1242,61 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 	for (child_num = 1, child = fr_dict_attr_child_by_num(src, child_num);
 	     child != NULL;
 	     child_num++, child = fr_dict_attr_child_by_num(src, child_num)) {
+		/*
+		 *	If the key field has enums, then delay copying the enums until after we've copied all
+		 *	of the other children.
+		 *
+		 *	For a UNION which is inside of a STRUCT, the UNION has a reference to the key field.
+		 *	So the key field needs to be defined before we create the UNION.
+		 *
+		 *	But the key field also has a set of ENUMs, each of which has a key ref to the UNION
+		 *	member which is associated with that key value.  This means that we have circular
+		 *	dependencies.
+		 *
+		 *	The loop is resolved by creating the key first, and allocating room for an ENUM
+		 *	extension.  This allows the UNION to reference the key.  Once the UNION is created, we
+		 *	go back and copy all of the ENUMs over.  The ENUM copy routine will take care of
+		 *	fixing up the refs.
+		 */
+		if (unlikely(fr_dict_attr_is_key_field(child) && child->flags.has_value)) {
+			src_key = child;
+
+			if (src_key->flags.has_fixup) {
+				fr_strerror_printf("Cannot copy from %s - source attribute is waiting for additional definitions",
+						   src_key->name);
+				return -1;
+			}
+
+			dst_key = dict_attr_alloc(dict, dst, src_key->name,
+						  src_key->attr, src_key->type, &(dict_attr_args_t){ .flags = &src_key->flags });
+			if (unlikely(!dst_key)) return -1;
+
+			if (!dict_attr_ext_alloc(&dst_key, FR_DICT_ATTR_EXT_ENUMV)) return -1;
+
+			fr_assert(dst_key->parent == dst);
+			dst_key->depth = dst->depth + 1;
+
+			if (dict_attr_child_add(dst, dst_key) < 0) return -1;
+
+			if (dict_attr_add_to_namespace(dst, dst_key) < 0) return -1;
+
+			if (!dict_attr_children(src_key)) continue;
+
+			if (dict_attr_acopy_children(dict, dst_key, src_key) < 0) return -1;
+
+			continue;
+		}
+
 		if (dict_attr_acopy_child(dict, dst, src, child) < 0) return -1;
+
+		DA_VERIFY(child);
 	}
+
+	DA_VERIFY(dst);
+
+	if (!src_key) return 0;
+
+	if (!dict_attr_ext_copy(&dst_key, src_key, FR_DICT_ATTR_EXT_ENUMV)) return -1;
 
 	return 0;
 }
