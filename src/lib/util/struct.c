@@ -361,7 +361,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		}
 
 		enumv = fr_dict_enum_by_value(key_vp->da, &key_vp->data);
-		if (enumv) child = enumv->key_child_ref[0];
+		if (enumv) child = fr_dict_enum_attr_ref(enumv);
 
 		if (!child) {
 			FR_PROTO_TRACE("No matching child structure found");
@@ -580,6 +580,7 @@ static ssize_t encode_union(fr_dbuff_t *dbuff, fr_dict_attr_t const *wrapper,
 {
 	ssize_t		slen;
 	fr_pair_t	*parent, *child, *found = NULL;
+	fr_dict_attr_t const *child_ref;
 	fr_dcursor_t	child_cursor;
 	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
 
@@ -611,8 +612,8 @@ static ssize_t encode_union(fr_dbuff_t *dbuff, fr_dict_attr_t const *wrapper,
 		fr_dict_enum_value_t const *enumv;
 
 		enumv = fr_dict_enum_by_value(key_da, &key_vp->data);
-		if (enumv) {
-			found = fr_pair_find_by_da(&parent->vp_group, NULL, enumv->key_child_ref[0]);
+		if (enumv && ((child_ref = fr_dict_enum_attr_ref(enumv)) != NULL)) {
+			found = fr_pair_find_by_da(&parent->vp_group, NULL, child_ref);
 			if (found) {
 				(void) fr_dcursor_set_current(&child_cursor, found);
 			}
@@ -637,7 +638,10 @@ static ssize_t encode_union(fr_dbuff_t *dbuff, fr_dict_attr_t const *wrapper,
 		for (enumv = fr_dict_enum_iter_init(key_da, &iter);
 		     enumv != NULL;
 		     enumv = fr_dict_enum_iter_next(key_da, &iter)) {
-			if (enumv->key_child_ref[0] == child->da) break;
+			child_ref = fr_dict_enum_attr_ref(enumv);
+			if (!child_ref) continue;
+
+			if (child_ref == child->da) break;
 		}
 
 		/*

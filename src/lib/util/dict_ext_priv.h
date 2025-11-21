@@ -289,6 +289,16 @@ static inline fr_hash_table_t *dict_attr_namespace(fr_dict_attr_t const *da)
 }
 /** @} */
 
+/** Allocate an enum extension
+ *
+ */
+static inline void *dict_enum_ext_alloc(fr_dict_enum_value_t **enumv_p, fr_dict_enum_ext_t ext)
+{
+	fr_assert(!fr_dict_enum_ext(*enumv_p, ext));
+
+	return fr_ext_alloc_size(&fr_dict_enum_ext_def, (void **)enumv_p, ext, fr_dict_enum_ext_def.info[ext].min);
+}
+
 #ifdef __cplusplus
 }
 #endif

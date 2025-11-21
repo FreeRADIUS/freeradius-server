@@ -118,13 +118,6 @@ typedef struct {
 	fr_hash_table_t		*namespace;			//!< Lookup a child by name
 } fr_dict_attr_ext_namespace_t;
 
-/** Enum extension - Sub-struct or union pointer
- *
- */
-typedef struct {
-	fr_dict_attr_t const	*ref;				//!< the child structure referenced by this value of key
-} fr_dict_enum_ext_key_child_ref_t;
-
 /** @name Add extension structures to attributes
  *
  * @{
@@ -241,6 +234,39 @@ static inline fr_dict_attr_t const *fr_dict_vendor_da_by_da(fr_dict_attr_t const
 
 	return ext->vendor;
 }
+
+/* Retrieve an extension structure for a dictionary enum
+ *
+ * @param[in] enumv	to retrieve structure from.
+ * @param[in] ext	to retrieve.
+ * @return
+ *	- NULL if the extension wasn't found.
+ *	- A pointer to the start of the extension.
+ */
+static inline void *fr_dict_enum_ext(fr_dict_enum_value_t const *enumv, fr_dict_enum_ext_t ext)
+{
+	if (!enumv->ext[ext]) return NULL;
+
+	return fr_ext_ptr(enumv, enumv->ext[ext], fr_dict_enum_ext_def.info[ext].has_hdr);
+}
+
+/** Return the attribute reference associated with an enum
+ *
+ * @param[in] enumv	to return the reference for.
+ * @return
+ *	- NULL if no reference available.
+ *	- A pointer to the attribute being referenced.
+ */
+static inline fr_dict_attr_t const *fr_dict_enum_attr_ref(fr_dict_enum_value_t const *enumv)
+{
+	fr_dict_enum_ext_attr_ref_t const *ref;
+
+	ref = fr_dict_enum_ext(enumv, FR_DICT_ENUM_EXT_ATTR_REF);
+	if (!ref) return NULL;
+
+	return ref->da;
+}
+
 
 /** @} */
 

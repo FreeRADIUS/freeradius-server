@@ -1936,7 +1936,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	 *	Allocate a structure to map between
 	 *	the name and value.
 	 */
-	enumv = talloc_zero_size(da, sizeof(fr_dict_enum_value_t) + sizeof(enumv->key_child_ref[0]) * fr_dict_attr_is_key_field(da));
+	enumv = talloc_zero_size(da, sizeof(fr_dict_enum_value_t));
 	if (!enumv) {
 	oom:
 		fr_strerror_printf("%s: Out of memory", __FUNCTION__);
@@ -1947,7 +1947,15 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	enumv->name = talloc_typed_strdup(enumv, name);
 	enumv->name_len = len;
 
-	if (key_child_ref) enumv->key_child_ref[0] = key_child_ref;
+	if (key_child_ref) {
+		fr_dict_enum_ext_attr_ref_t *ref;
+
+		ref = dict_enum_ext_alloc(&enumv, FR_DICT_ENUM_EXT_ATTR_REF);
+		if (!ref) goto oom;
+
+		ref->da = key_child_ref;
+	}
+
 	enum_value = fr_value_box_alloc(enumv, da->type, NULL);
 	if (!enum_value) goto oom;
 

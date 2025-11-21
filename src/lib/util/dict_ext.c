@@ -58,19 +58,13 @@ static int fr_dict_attr_ext_name_fixup(UNUSED int ext,
 static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
 				       TALLOC_CTX *chunk_dst,
 				       UNUSED void *dst_ext_ptr, UNUSED size_t dst_ext_len,
-				       TALLOC_CTX const *chunk_src,
-				       void *src_ext_ptr, UNUSED size_t src_ext_len)
+				       UNUSED TALLOC_CTX const *chunk_src,
+				       UNUSED void *src_ext_ptr, UNUSED size_t src_ext_len)
 {
-	fr_dict_attr_t const		*da_src = talloc_get_type_abort_const(chunk_src, fr_dict_attr_t);
 	fr_dict_attr_t			*da_dst = talloc_get_type_abort(chunk_dst, fr_dict_attr_t);
 	fr_dict_attr_ext_enumv_t	*src_ext = src_ext_ptr;
 	fr_hash_iter_t			iter;
-	fr_dict_enum_value_t			*enumv;
-
-	/*
-	 *	@todo - remove after migration_union_key is deleted
-	 */
-	bool				has_child = fr_dict_attr_is_key_field(da_src) && !da_src->flags.migration_union_key;
+	fr_dict_enum_value_t		*enumv;
 
 	if (!src_ext->value_by_name) return 0;
 
@@ -81,23 +75,25 @@ static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
 	for (enumv = fr_hash_table_iter_init(src_ext->value_by_name, &iter);
 	     enumv;
 	     enumv = fr_hash_table_iter_next(src_ext->value_by_name, &iter)) {
+		fr_dict_enum_ext_attr_ref_t *ref;
 		fr_dict_attr_t *key_child_ref;
 
-		if (!has_child) {
-			key_child_ref = NULL;
-		} else {
-			fr_dict_t *dict = dict_by_da(enumv->key_child_ref[0]);
+		key_child_ref = NULL;
+
+		ref = fr_dict_enum_ext(enumv, FR_DICT_ENUM_EXT_ATTR_REF);
+		if (ref) {
+			fr_dict_t *dict = dict_by_da(ref->da);
 
 			/*
 			 *	Copy the key_child_ref, and all if it's children recursively.
 			 */
-			key_child_ref = dict_attr_acopy(dict->pool, enumv->key_child_ref[0], NULL);
+			key_child_ref = dict_attr_acopy(dict->pool, ref->da, NULL);
 			if (!key_child_ref) return -1;
 
 			key_child_ref->parent = da_dst; /* we need to re-parent this attribute */
 
-			if (dict_attr_children(enumv->key_child_ref[0])) {
-				if (dict_attr_acopy_children(dict, key_child_ref, enumv->key_child_ref[0]) < 0) return -1;
+			if (dict_attr_children(ref->da)) {
+				if (dict_attr_acopy_children(dict, key_child_ref, ref->da) < 0) return -1;
 			}
 		}
 
@@ -281,7 +277,7 @@ fr_ext_t const fr_dict_attr_ext_def = {
 };
 
 static fr_table_num_ordered_t const dict_enum_ext_table[] = {
-	{ L("key_child_ref"),	FR_DICT_ENUM_EXT_KEY_CHILD_REF	}
+	{ L("attr_ref"),	FR_DICT_ENUM_EXT_ATTR_REF	}
 };
 static size_t dict_enum_ext_table_len = NUM_ELEMENTS(dict_enum_ext_table);
 
@@ -299,8 +295,8 @@ fr_ext_t const fr_dict_enum_ext_def = {
 	.name_table_len	= &dict_enum_ext_table_len,
 	.max		= FR_DICT_ENUM_EXT_MAX,
 	.info		= (fr_ext_info_t[]){ /* -Wgnu-flexible-array-initializer */
-		[FR_DICT_ENUM_EXT_KEY_CHILD_REF]	= {
-							.min = sizeof(fr_dict_enum_ext_key_child_ref_t),
+		[FR_DICT_ENUM_EXT_ATTR_REF] = {
+							.min = sizeof(fr_dict_enum_ext_attr_ref_t),
 							.can_copy = true
 						},
 		[FR_DICT_ENUM_EXT_MAX]		= {}
