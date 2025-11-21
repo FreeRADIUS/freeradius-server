@@ -1175,11 +1175,7 @@ static int dict_attr_acopy_child(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_a
 {
 	fr_dict_attr_t			*copy;
 
-	if (child->dict == dict) {
-		copy = dict_attr_acopy(dict->pool, child, NULL);
-	} else {
-		copy = dict_attr_acopy_dict(dict->pool, dst, child);
-	}
+	copy = dict_attr_acopy_dict(dict->pool, dst, child);
 	if (!copy) return -1;
 
 	fr_assert(copy->parent == dst);
