@@ -5,7 +5,7 @@
 
 #######################################################################
 #
-#  = isc_dhcp Module
+#  = ISC DHCP
 #
 #  The `isc_dhcp` module reads ISC DHCP configuration files.
 #
@@ -143,6 +143,6 @@ isc_dhcp {
 #  | omapi-port UINT16
 #  | pid-file-name STRING
 #  | remote-port UINT16
-#  |==
+#  |===
 #
 #
