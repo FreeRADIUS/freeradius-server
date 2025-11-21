@@ -1,4 +1,4 @@
-== Dictionaries
+= Dictionaries
 
 The `dictionary` files define names, numbers, and
 xref:type/index.adoc[data types] for use in the server.  In general,
@@ -78,13 +78,13 @@ Vendors can submit new dictionaries to us via
 mailto:dictionary@freeradius.org[email], or via
 https://github.com/FreeRADIUS/freeradius-server/[GitHub].
 
-=== Names are Case-insensitive
+=== Names are case-insensitive
 
 When names are printed, they are printed as the name given in the
 dictionaries.  When a name is looked up in the dictionaries, the
 lookup is done in a case-insensitive manner.
 
-=== Names are Hierarchical
+=== Names are hierarchical
 
 In earlier versions of FreeRADIUS, the names were global.  The global
 names for attributes caused issue with implementations, as noted in

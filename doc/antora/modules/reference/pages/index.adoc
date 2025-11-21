@@ -1,36 +1,48 @@
 = Reference Documentation
 
-There are small number of high-level concepts associated with the server, as outlined below.
+This comprehensive reference documents all aspects of the unlang syntax and its features. These details help the readers’ understanding and use of the configuration language. Additionally, the FreeRADIUS configuration is organised into directories for modules, virtual servers, and policies.  To enable specific modules or virtual servers, create symbolic links in the mods-enabled and sites-enabled directories. This hierarchy ensures clarity and manageability during setup. The man pages offer a quick way to look up functionality and options, serving as a handy reference for administrators.
 
-* xref:unlang/index.adoc[Unlang] syntax
-* xref:reference:raddb/index.adoc[Configuration Files]
-* xref:dictionary/index.adoc[Dictionary] where attribute names and data types are defined
-* xref:type/index.adoc[Data Types] in the server
-* xref:xlat/index.adoc[Dynamic expansions] i.e. "xlat"s.
+== xref:unlang/index.adoc[Unlang Policy Language]
 
-The server includes a large number of
-xref:reference:raddb/index.adoc[configuration files].  These files are
-automatically converted to HTML for the on-line documentation.
+The full syntax of unlang is described in this section. Packets are processed via the xref:unlang/index.adoc[Unlang Policy Language], also referred to as xref:unlang/index.adoc[unlang].  Policies allow the server to read information in databases, perform if / then / else checks, add content to replies, along with many other actions.
 
-During normal operation, the server receives packets of information
-from the network.  Data in the packets is usually encoded in
-pre-defined "attributes" (RADIUS), or "options" (DHCP).  The
-definitions are loaded from xref:dictionary/index.adoc[dictionary]
-files.
+== xref:type/index.adoc[Data Types]
 
-These definitions are strongly typed.  That is, each attribute has a
+Many data type definitions are packaged in the FreeRADIUS server. These definitions are strongly typed.  That is, each attribute has a
 pre-defined xref:type/index.adoc[data type].  For example, an
 attribute "Framed-IP-Address" has data type xref:type/ip.adoc[ipaddr].
 
-Packets are processed via the xref:unlang/index.adoc[Unlang] policy
-language.  Policies allow the server to read information in databases,
-perform if / then / else checks, add content to replies, along with
-many other actions.
+== xref:xlat/index.adoc[Dynamic Expansions]
 
-When processing packets, it's possible to call functions or do string
-manipulation with attribute contents.  The
-xref:xlat/index.adoc[dynamic expansion] documentation describes how
-this is done.
+Dynamic expansions may also be referred to as "xlats" for historical reasons.When processing packets, it's possible to call functions or do string
+manipulation with attribute contents.  The xref:xlat/index.adoc[dynamic expansion] documentation describes how this is done.
+
+== xref:dictionary/index.adoc[Dictionaries]
+
+Where attribute names and data types are defined. During normal operation, the server receives packets of information from the network.  Data in the packets is usually encoded in pre-defined "attributes" (RADIUS), or "options" (DHCP).  The definitions are loaded from xref:dictionary/index.adoc[dictionary]
+files.
+
+== xref:reference:raddb/index.adoc[Configuration Files]
+
+The server includes a large number of xref:reference:raddb/index.adoc[configuration files].  These files are automatically converted to HTML for the on-line documentation.
+
+== xref:raddb/mods-available/index.adoc[Modules]
+
+The FreeRADIUS server uses modules to manage different functions and tasks. Most of the xref:raddb/mods-available/index.adoc[modules] are enabled ensuring compatibility with most authentication protocols.  FreeRADIUS supports conditional module loading, enhancing flexibility and configuration management.
+
+== xref:raddb/mods-available/doc/policy.adoc[Policies]
+
+Contains policies, written in unlang, that determine how the server processes messages. For example, policy.d/debug determines what information to print to the terminal when the server is run in debug mode. >It’s important to note that the policy.d directory is not the only place containing policies. Policies are anything written in Unlang, throughout the configuration files, which describes how data should be processed as it flows through the processing sections.
+
+== xref:raddb/sites-available/index.adoc[Virtual Servers]
+
+Describes how configuration files are used to manage virtual servers in FreeRADIUS. Each virtual server has its own configuration file, ensuring settings organized and easy to manage. FreeRADIUS provides default configurations for over 30 virtual servers, giving users a wide range of ready-to-use examples and templates.
+
+== xref:man/index.adoc[Man Pages]
+
+These man pages are for quick reference and maintaining compatibility over time. You can type `man radiusd` on the command line to access the same information. The man pages offer concise summaries of their features.
+
+
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
