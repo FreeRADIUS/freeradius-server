@@ -1202,15 +1202,37 @@ static int dict_attr_acopy_child(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_a
  */
 int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_t const *src)
 {
+	uint				child_num;
 	fr_dict_attr_t const		*child = NULL;
 
 	fr_assert(fr_dict_attr_has_ext(dst, FR_DICT_ATTR_EXT_CHILDREN));
 	fr_assert(dst->type == src->type);
 	fr_assert(fr_dict_attr_is_key_field(src) == fr_dict_attr_is_key_field(dst));
 
-	for (child = fr_dict_attr_iterate_children(src, &child);
+	/*
+	 *	For non-struct parents, we can copy their children in any order.
+	 */
+	if (likely(src->type != FR_TYPE_STRUCT)) {
+		for (child = fr_dict_attr_iterate_children(src, &child);
+		     child != NULL;
+		     child = fr_dict_attr_iterate_children(src, &child)) {
+			if (dict_attr_acopy_child(dict, dst, src, child) < 0) return -1;
+		}
+
+		return 0;
+	}
+
+	/*
+	 *	For structs, we copy the children in order.  This allows "key" fields to be copied before
+	 *	fields which depend on them.
+	 *
+	 *	Note that due to the checks in the DEFINE and ATTRIBUTE parsers (but not the validate
+	 *	routines), STRUCTs can only have children which are MEMBERs.  And MEMBERs are allocated in
+	 *	order.
+	 */
+	for (child_num = 1, child = fr_dict_attr_child_by_num(src, child_num);
 	     child != NULL;
-	     child = fr_dict_attr_iterate_children(src, &child)) {
+	     child_num++, child = fr_dict_attr_child_by_num(src, child_num)) {
 		if (dict_attr_acopy_child(dict, dst, src, child) < 0) return -1;
 	}
 
