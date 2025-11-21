@@ -76,25 +76,22 @@ static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
 	     enumv;
 	     enumv = fr_hash_table_iter_next(src_ext->value_by_name, &iter)) {
 		fr_dict_enum_ext_attr_ref_t *ref;
-		fr_dict_attr_t *key_child_ref;
+		fr_dict_attr_t const *key_child_ref;
 
 		key_child_ref = NULL;
 
 		ref = fr_dict_enum_ext(enumv, FR_DICT_ENUM_EXT_ATTR_REF);
 		if (ref) {
-			fr_dict_t *dict = dict_by_da(ref->da);
+			fr_dict_attr_t const *ref_parent;
+
+			ref_parent = fr_dict_attr_by_name(NULL, da_dst->parent, ref->da->parent->name);
+			fr_assert(ref_parent);
 
 			/*
-			 *	Copy the key_child_ref, and all if it's children recursively.
+			 *	The reference has to exist.
 			 */
-			key_child_ref = dict_attr_acopy(dict->pool, ref->da, NULL);
-			if (!key_child_ref) return -1;
-
-			key_child_ref->parent = da_dst; /* we need to re-parent this attribute */
-
-			if (dict_attr_children(ref->da)) {
-				if (dict_attr_acopy_children(dict, key_child_ref, ref->da) < 0) return -1;
-			}
+			key_child_ref = fr_dict_attr_by_name(NULL, ref_parent, ref->da->name);
+			fr_assert(key_child_ref != NULL);
 		}
 
 		if (dict_attr_enum_add_name(da_dst, enumv->name, enumv->value,
