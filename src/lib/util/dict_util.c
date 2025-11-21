@@ -1170,6 +1170,31 @@ int fr_dict_attr_acopy_local(fr_dict_attr_t const *dst, fr_dict_attr_t const *sr
 	return dict_attr_acopy_children(dst->dict, UNCONST(fr_dict_attr_t *, dst), src);
 }
 
+static int dict_attr_acopy_child(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_t const *src,
+				 fr_dict_attr_t const *child)
+{
+	fr_dict_attr_t			*copy;
+
+	if (child->dict == dict) {
+		copy = dict_attr_acopy(dict->pool, child, NULL);
+	} else {
+		copy = dict_attr_acopy_dict(dict->pool, dst, child);
+	}
+	if (!copy) return -1;
+
+	fr_assert(copy->parent == dst);
+	copy->depth = copy->parent->depth + 1;
+
+	if (dict_attr_child_add(dst, copy) < 0) return -1;
+
+	if (dict_attr_add_to_namespace(dst, copy) < 0) return -1;
+
+	if (!dict_attr_children(child)) return 0;
+
+	return dict_attr_acopy_children(dict, copy, child);
+}
+
+
 /** Copy the children of an existing attribute
  *
  * @param[in] dict		to allocate the children in
@@ -1182,8 +1207,6 @@ int fr_dict_attr_acopy_local(fr_dict_attr_t const *dst, fr_dict_attr_t const *sr
 int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_t const *src)
 {
 	fr_dict_attr_t const		*child = NULL;
-	fr_dict_attr_t			*copy;
-	uint				depth_diff = dst->depth - src->depth;
 
 	fr_assert(fr_dict_attr_has_ext(dst, FR_DICT_ATTR_EXT_CHILDREN));
 	fr_assert(dst->type == src->type);
@@ -1192,23 +1215,7 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 	for (child = fr_dict_attr_iterate_children(src, &child);
 	     child != NULL;
 	     child = fr_dict_attr_iterate_children(src, &child)) {
-		if (child->dict == dict) {
-			copy = dict_attr_acopy(dict->pool, child, NULL);
-		} else {
-			copy = dict_attr_acopy_dict(dict->pool, dst, child);
-		}
-		if (!copy) return -1;
-
-		copy->parent = dst;
-		copy->depth += depth_diff;
-
-		if (dict_attr_child_add(dst, copy) < 0) return -1;
-
-		if (dict_attr_add_to_namespace(dst, copy) < 0) return -1;
-
-		if (!dict_attr_children(child)) continue;
-
-		if (dict_attr_acopy_children(dict, copy, child) < 0) return -1;
+		if (dict_attr_acopy_child(dict, dst, src, child) < 0) return -1;
 	}
 
 	return 0;
