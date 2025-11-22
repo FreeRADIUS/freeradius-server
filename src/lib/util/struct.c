@@ -584,12 +584,6 @@ static ssize_t encode_union(fr_dbuff_t *dbuff, fr_dict_attr_t const *wrapper,
 	fr_dcursor_t	child_cursor;
 	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
 
-	if (!encode_pair) {
-		fr_strerror_printf("Asked to encode child attribute %s, but we were not passed an encoding function",
-				   wrapper->name);
-		return PAIR_ENCODE_FATAL_ERROR;
-	}
-
 	parent = fr_dcursor_current(cursor);
 	if (!parent || (parent->da != wrapper)) return 0;
 
