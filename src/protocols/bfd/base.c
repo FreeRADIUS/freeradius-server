@@ -36,6 +36,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/udp.h>
 
 static uint32_t instance_count = 0;
+static bool	instantiated = false;
 
 fr_dict_t const *dict_freeradius;
 fr_dict_t const *dict_bfd;
@@ -238,16 +239,20 @@ int fr_bfd_global_init(void)
 		goto fail;
 	}
 
+	instantiated = true;	
+
 	return 0;
 }
 
 void fr_bfd_global_free(void)
 {
-	fr_assert(instance_count > 0);
+	if (!instantiated) return;
 
 	if (--instance_count > 0) return;
 
 	fr_dict_autofree(libfreeradius_bfd_dict);
+
+	instantiated = false;
 }
 
 extern fr_dict_protocol_t libfreeradius_bfd_dict_protocol;
