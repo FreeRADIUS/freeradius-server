@@ -43,14 +43,14 @@ encode-pair Client-Link-Layer.Type = Ethernet, Client-Link-Layer.Type.Ethernet.A
 match 00 4f 00 08 00 01 c0 ff ee c0 ff ee
 
 decode-pair 00 4f 00 08 00 01 c0 ff ee c0 ff ee
-match Client-Link-Layer = { Type = ::Ethernet, Type.Ethernet = { Address = c0:ff:ee:c0:ff:ee } }
+match Client-Link-Layer = { Type = ::Ethernet, Ethernet = { Address = c0:ff:ee:c0:ff:ee } }
 
 # type: Lanstar
 encode-pair Client-Link-Layer.Type = Lanstar, Client-Link-Layer.Type.Lanstar.Address = 0xc0ffeec0ffee
 match 00 4f 00 08 00 09 c0 ff ee c0 ff ee
 
 decode-pair -
-match Client-Link-Layer = { Type = ::Lanstar, Type.Lanstar = { Address = 0xc0ffeec0ffee } }
+match Client-Link-Layer = { Type = ::Lanstar, Lanstar = { Address = 0xc0ffeec0ffee } }
 
 count
 match 11
