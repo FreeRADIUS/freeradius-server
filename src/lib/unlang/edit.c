@@ -62,7 +62,7 @@ static void rdebug_assign(request_t *request, char const *attr, fr_token_t op, f
 		fr_assert(fr_type_is_leaf(box->type));
 
 		if ((name = fr_value_box_enum_name(box)) != NULL) {
-			RDEBUG2("%s %s ::%s", name, fr_tokens[op], name);
+			RDEBUG2("%s %s ::%s", attr, fr_tokens[op], name);
 			break;
 		}
 
