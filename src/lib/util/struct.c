@@ -1016,7 +1016,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		/*
 		 *	We have no more "flat" VPs.
 		 */
-		fr_assert(vp->da->parent == key_da);
+		fr_assert((vp->da->parent == key_da) || vp->da->flags.is_unknown || vp->da->flags.is_raw);
 
 		slen = encode_keyed_struct(&work_dbuff, vp, da_stack, depth,
 					   cursor, encode_ctx, encode_value, encode_pair);
