@@ -23,6 +23,10 @@ ATTRIBUTE	Operator-Name				126	string
 #
 ATTRIBUTE	Location-Information			127	struct
 MEMBER		Index					uint16
+
+#
+#  This is a key to the contents of the Location-Data attribute.
+#
 MEMBER		Code					uint8
 
 #
