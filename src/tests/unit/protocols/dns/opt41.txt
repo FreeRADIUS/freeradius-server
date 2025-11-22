@@ -6,7 +6,7 @@ proto-dictionary dns
 fuzzer-out dns
 
 decode-proto f6 ab 01 20 00 01 00 00 00 00 00 01 00 00 06 00 01 00 00 29 10 00 00 00 00 00 00 0c 00 0a 00 08 36 bf 11 1f ef 2e 01 09
-match Header = { ID = 63147, Query = ::Query, Opcode = ::Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = yes, Recursion-Available = no, Reserved = no, Authentic-Data = yes, Checking-Disabled = no, Rcode = ::No-Error, Question-Count = 1, Answer-Count = 0, Name-Server-Count = 0, Additional-Records-Count = 1 }, Question = { Name = ".", Type = 6, Class = ::Internet }, Additional-Record = { Name = ".", Type = ::Opt, Class = 4096, TTL = 0, Type.Opt = { Options = { Cookie = { Client = 0x36bf111fef2e0109 } } } }
+match Header = { ID = 63147, Query = ::Query, Opcode = ::Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = yes, Recursion-Available = no, Reserved = no, Authentic-Data = yes, Checking-Disabled = no, Rcode = ::No-Error, Question-Count = 1, Answer-Count = 0, Name-Server-Count = 0, Additional-Records-Count = 1 }, Question = { Name = ".", Type = 6, Class = ::Internet }, Additional-Record = { Name = ".", Type = ::Opt, Class = 4096, TTL = 0, Opt = { Options = { Cookie = { Client = 0x36bf111fef2e0109 } } } }
 
 encode-proto -
 match f6 ab 01 20 00 01 00 00 00 00 00 01 00 00 06 00 01 00 00 29 10 00 00 00 00 00 00 0c 00 0a 00 08 36 bf 11 1f ef 2e 01 09

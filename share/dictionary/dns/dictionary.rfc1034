@@ -72,22 +72,24 @@ MEMBER		Name					string	dns_label
 MEMBER		Type					uint16	key
 MEMBER		Class					uint16 enum=@.Question.Class
 MEMBER		TTL					time_delta
+MEMBER		RDATA					union	key=Type
 
 ######################################################################
 #
 #  Now we have resource records
 #
 ######################################################################
-STRUCT	A				Type			1	length=uint16
+BEGIN Resource-Record.RDATA
+ATTRIBUTE	A					1	struct length=uint16
 MEMBER		IP					ipaddr
 
-STRUCT	NS				Type			2	length=uint16
+ATTRIBUTE	NS					2	struct length=uint16
 MEMBER		Domain-Name				string	dns_label
 
-STRUCT	CNAME				Type			5	length=uint16
+ATTRIBUTE	CNAME					5	struct length=uint16
 MEMBER		Domain-Name				string	dns_label
 
-STRUCT	SOA				Type			6	length=uint16
+ATTRIBUTE	SOA					6	struct length=uint16
 MEMBER		Master-Name				string	dns_label
 MEMBER		Responsible-Name			string	dns_label
 MEMBER		Serial					uint32
@@ -96,20 +98,20 @@ MEMBER		Retry					time_delta
 MEMBER		Expire					time_delta
 MEMBER		Minimum					time_delta
 
-STRUCT	PTR				Type			12	length=uint16
+ATTRIBUTE	PTR					12	struct length=uint16
 MEMBER		Domain-Name				string	dns_label
 
-STRUCT	MX				Type			15	length=uint16
+ATTRIBUTE	MX					15	struct length=uint16
 MEMBER		Preference				uint32
 MEMBER		Domain-Name				string	dns_label
 
-STRUCT	TXT				Type			16	length=uint16
+ATTRIBUTE	TXT					16	struct length=uint16
 MEMBER		Data					string
 
-STRUCT	AAAA				Type			28	length=uint16
+ATTRIBUTE	AAAA					28	struct length=uint16
 MEMBER		IP					ipv6addr
 
-STRUCT	DHCID				type			49	length=uint16
+ATTRIBUTE	DHCID					49	struct length=uint16
 MEMBER		Identifier-Type-Code			uint16
 MEMBER		Digest-Type-Code			uint8
 MEMBER		Digest					octets
@@ -128,7 +130,7 @@ VALUE	Digest-Type-Code		SHA-256			1
 #  4 octets TTL - extended Rcode and flags
 #  2 octets RDLEN
 #  RRDATA of 16 bits code, 16 bits length of data, data
-STRUCT	Opt				Type			41	length=uint16
+ATTRIBUTE	Opt					41	struct length=uint16
 MEMBER		Options					tlv
 
 ATTRIBUTE	LLQ					.1	struct
@@ -163,6 +165,8 @@ MEMBER		Server					octets
 ATTRIBUTE	EDNS0-Tcp-Keepalive			.11	uint16 # time_delta in units of 100 milliseconds
 
 ATTRIBUTE	Padding					.12	octets
+
+END Resource-Record.RDATA
 
 #  Name server RR
 DEFINE	Name-Server					struct	clone=@.Resource-Record
