@@ -43,31 +43,36 @@ VALUE	state				down			1
 VALUE	state				init			2
 VALUE	state				up			3
 
-STRUCT	simple-password			auth-type		1 length=uint8,offset=3
+MEMBER		auth					union key=auth-type
+
+BEGIN Packet.auth
+ATTRIBUTE	simple-password				1	struct	length=uint8,offset=3
 MEMBER		key-id					uint8
 MEMBER		reserved				uint8
 MEMBER		password				string		# really 1..16
 
-STRUCT	keyed-md5			auth-type		2 length=uint8,offset=3
+ATTRIBUTE	keyed-md5				2	struct	length=uint8,offset=3
 MEMBER		key-id					uint8
 MEMBER		reserved				uint8
 MEMBER		sequence-number				uint32
 MEMBER		digest					octets[16]
 
-STRUCT	meticulous-keyed-md5		auth-type		3 length=uint8,offset=3
+ATTRIBUTE	meticulous-keyed-md5			3	struct	length=uint8,offset=3
 MEMBER		key-id					uint8
 MEMBER		reserved				uint8
 MEMBER		sequence-number				uint32
 MEMBER		digest					octets[16]
 
-STRUCT	keyed-ssha1			auth-type		4 length=uint8,offset=3
+ATTRIBUTE	keyed-ssha1				4	struct	length=uint8,offset=3
 MEMBER		key-id					uint8
 MEMBER		reserved				uint8
 MEMBER		sequence-number				uint32
 MEMBER		digest					octets[20]
 
-STRUCT	meticulous-keyed-ssha1		auth-type		5 length=uint8,offset=3
+ATTRIBUTE	meticulous-keyed-ssha1			5	struct	length=uint8,offset=3
 MEMBER		key-id					uint8
 MEMBER		reserved				uint8
 MEMBER		sequence-number				uint32
 MEMBER		digest					octets[20]
+
+END Packet.auth
