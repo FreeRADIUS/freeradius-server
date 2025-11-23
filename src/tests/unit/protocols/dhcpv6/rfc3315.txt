@@ -43,22 +43,22 @@ fuzzer-out dhcpv6
 #
 
 #  Define the DUID-LLT + DUID
-encode-pair Client-ID.DUID = LLT, Client-ID.DUID.LLT.Hardware-Type = 1, Client-ID.DUID.LLT.Time = "Jan  1 2000 12:00:00 UTC", Client-ID.DUID.LLT.Hardware-Type.Ethernet.Address = aa:bb:cc:dd:ee:ff
+encode-pair Client-ID.DUID = LLT, Client-ID.LLT.Hardware-Type = 1, Client-ID.LLT.Time = "Jan  1 2000 12:00:00 UTC", Client-ID.LLT.Ethernet.Address = aa:bb:cc:dd:ee:ff
 match 00 01 00 0e 00 01 00 01 00 00 a8 c0 aa bb cc dd ee ff
 
 decode-pair -
-match Client-ID = { DUID = ::LLT, DUID.LLT = { Hardware-Type = ::Ethernet, Time = "2000-01-01T12:00:00Z", Hardware-Type.Ethernet = { Address = aa:bb:cc:dd:ee:ff } } }
+match Client-ID = { DUID = ::LLT, LLT = { Hardware-Type = ::Ethernet, Time = "2000-01-01T12:00:00Z", Ethernet = { Address = aa:bb:cc:dd:ee:ff } } }
 
 #
 #  Server Identifier
 #
 
 #  Define the DUID-LLT + DUID
-encode-pair Server-ID.DUID = LLT, Server-ID.DUID.LLT.Hardware-Type = Ethernet, Server-ID.DUID.LLT.Time = "Jan  1 2000 12:00:00 UTC", Server-ID.DUID.LLT.Hardware-Type.Ethernet.Address = c0:ff:ee:c0:ff:ee
+encode-pair Server-ID.DUID = LLT, Server-ID.LLT.Hardware-Type = Ethernet, Server-ID.LLT.Time = "Jan  1 2000 12:00:00 UTC", Server-ID.LLT.Ethernet.Address = c0:ff:ee:c0:ff:ee
 match 00 02 00 0e 00 01 00 01 00 00 a8 c0 c0 ff ee c0 ff ee
 
 decode-pair -
-match Server-ID = { DUID = ::LLT, DUID.LLT = { Hardware-Type = ::Ethernet, Time = "2000-01-01T12:00:00Z", Hardware-Type.Ethernet = { Address = c0:ff:ee:c0:ff:ee } } }
+match Server-ID = { DUID = ::LLT, LLT = { Hardware-Type = ::Ethernet, Time = "2000-01-01T12:00:00Z", Ethernet = { Address = c0:ff:ee:c0:ff:ee } } }
 
 #
 #  9.3. DUID Assigned by Vendor Based on Enterprise Number [DUID-EN]
@@ -81,22 +81,22 @@ match Server-ID = { DUID = ::LLT, DUID.LLT = { Hardware-Type = ::Ethernet, Time 
 #
 
 #  Define the DUID-EN + DUID
-encode-pair Client-ID.DUID = EN, Client-ID.DUID.EN.Enterprise-Number = 11344, Client-ID.DUID.EN.Identifier = 0xaabbccddeeff
+encode-pair Client-ID.DUID = EN, Client-ID.EN.Enterprise-Number = 11344, Client-ID.EN.Identifier = 0xaabbccddeeff
 match 00 01 00 0c 00 02 00 00 2c 50 aa bb cc dd ee ff
 
 decode-pair -
-match Client-ID = { DUID = ::EN, DUID.EN = { Enterprise-Number = 11344, Identifier = 0xaabbccddeeff } }
+match Client-ID = { DUID = ::EN, EN = { Enterprise-Number = 11344, Identifier = 0xaabbccddeeff } }
 
 #
 #  Server Identifier
 #
 
 #  Define the DUID-EN + DUID
-encode-pair Server-ID.DUID = EN, Server-ID.DUID.EN.Enterprise-Number = 11344, Server-ID.DUID.EN.Identifier = 0xc0ffeec0ffee
+encode-pair Server-ID.DUID = EN, Server-ID.EN.Enterprise-Number = 11344, Server-ID.EN.Identifier = 0xc0ffeec0ffee
 match 00 02 00 0c 00 02 00 00 2c 50 c0 ff ee c0 ff ee
 
 decode-pair -
-match Server-ID = { DUID = ::EN, DUID.EN = { Enterprise-Number = 11344, Identifier = 0xc0ffeec0ffee } }
+match Server-ID = { DUID = ::EN, EN = { Enterprise-Number = 11344, Identifier = 0xc0ffeec0ffee } }
 
 #
 #  9.4. DUID Based on Link-layer Address [DUID-LL]
@@ -117,22 +117,22 @@ match Server-ID = { DUID = ::EN, DUID.EN = { Enterprise-Number = 11344, Identifi
 #
 
 #  Define the DUID-LL + DUID
-encode-pair Client-ID.DUID = LL, Client-ID.DUID.LL.Hardware-Type = Ethernet, Client-ID.DUID.LL.Hardware-Type.Ethernet.Address = aa:bb:cc:dd:ee:ff
+encode-pair Client-ID.DUID = LL, Client-ID.LL.Hardware-Type = Ethernet, Client-ID.LL.Ethernet.Address = aa:bb:cc:dd:ee:ff
 match 00 01 00 0a 00 03 00 01 aa bb cc dd ee ff
 
 decode-pair -
-match Client-ID = { DUID = ::LL, DUID.LL = { Hardware-Type = ::Ethernet, Hardware-Type.Ethernet = { Address = aa:bb:cc:dd:ee:ff } } }
+match Client-ID = { DUID = ::LL, LL = { Hardware-Type = ::Ethernet, Ethernet = { Address = aa:bb:cc:dd:ee:ff } } }
 
 #
 #  Server Identifier
 #
 
 #  Define the DUID-LL + DUID
-encode-pair Server-ID.DUID = LL, Server-ID.DUID.LL.Hardware-Type = Ethernet, Server-ID.DUID.LL.Hardware-Type.Ethernet.Address = d3:4d:00:c0:ff:ee
+encode-pair Server-ID.DUID = LL, Server-ID.LL.Hardware-Type = Ethernet, Server-ID.LL.Ethernet.Address = d3:4d:00:c0:ff:ee
 match 00 02 00 0a 00 03 00 01 d3 4d 00 c0 ff ee
 
 decode-pair -
-match Server-ID = { DUID = ::LL, DUID.LL = { Hardware-Type = ::Ethernet, Hardware-Type.Ethernet = { Address = d3:4d:00:c0:ff:ee } } }
+match Server-ID = { DUID = ::LL, LL = { Hardware-Type = ::Ethernet, Ethernet = { Address = d3:4d:00:c0:ff:ee } } }
 
 #
 #  And unknown hardware types: hardware type 255 is unassigned
@@ -143,7 +143,7 @@ match Server-ID = { DUID = ::LL, DUID.LL = { Hardware-Type = ::Ethernet, Hardwar
 #  this will likely be easier to do once we have real nested TLVs / groups
 #
 decode-pair 00 02 00 0a 00 03 00 ff d3 4d 00 c0 ff ee
-match Server-ID = { DUID = ::LL, DUID.LL = { Hardware-Type = 255, raw.Hardware-Type.0 = 0xd34d00c0ffee } }
+match Server-ID = { DUID = ::LL, LL = { Hardware-Type = 255, raw.0 = 0xd34d00c0ffee } }
 
 count
 match 29

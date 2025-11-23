@@ -2,9 +2,11 @@ subrequest @DHCPv6::Solicit {
 	Transaction-ID = 0xd81eb8
 	Client-Id = {
 		DUID = ::LL
-		DUID.LL = {
+		LL = {
 			Hardware-Type = ::Ethernet
-			Hardware-Type.Ethernet.Address = 00:01:02:03:04:05
+			Ethernet = {
+				Address = 00:01:02:03:04:05
+			}
 		}
 	}
 	Option-Request = DNS-Servers

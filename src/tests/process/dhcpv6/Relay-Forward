@@ -7,7 +7,7 @@ subrequest @DHCPv6::Relay-Forward {
 		Transaction-ID = 0x1835ef
 		Client-ID = {
 			DUID = ::UUID
-			DUID.UUID = {
+			UUID = {
 				Value = 0x00000000000000000000000000000001
 			}
 		}
@@ -34,7 +34,7 @@ subrequest @DHCPv6::Relay-Forward {
 	}
 	Client-Link-Layer = {
 		Type = ::Ethernet
-		Type.Ethernet = {
+		Ethernet = {
 			Address = 0xaabbccddeeff
 		}
 	}

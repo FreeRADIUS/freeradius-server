@@ -3,10 +3,10 @@ subrequest @DHCPv6::Request {
 
 	Server-ID = {
 		DUID = ::LLT
-		DUID.LLT = {
+		LLT = {
 			Hardware-Type = ::Ethernet
 			Time = "Nov 21 2012 08:36:00 UTC"
-			Hardware-Type.Ethernet = {
+			Ethernet = {
 				Address = 00:11:22:33:44:55
 			}
 		}
@@ -14,9 +14,9 @@ subrequest @DHCPv6::Request {
 
 	Client-ID = {
 		DUID = ::LL
-		DUID.LL = {
+		LL = {
 			Hardware-Type = ::Ethernet
-			Hardware-Type.Ethernet = {
+			Ethernet = {
 				Address = 00:01:02:03:04:05
 			}
 		}

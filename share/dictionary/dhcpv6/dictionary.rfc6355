@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2025 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -10,13 +10,12 @@
 #
 ##############################################################################
 
-STRUCT	UUID			Client-ID.DUID			4
+BEGIN Client-ID.Value
+ATTRIBUTE	UUID					4	struct
 MEMBER		Value					octets[16]
+END Client-ID.Value
 
-STRUCT	UUID			Server-ID.DUID			4
+BEGIN Server-ID.Value
+ATTRIBUTE	UUID					4	struct
 MEMBER		Value					octets[16]
-
-#
-#  Defining DUID for the Client-ID will automatically
-#  clone that definition for Server-ID.  See dictionary.rfc3315
-#
+END Server-ID.Value

@@ -44,7 +44,7 @@ fuzzer-out dhcpv6
 #       \iapdopt   \
 #
 decode-proto 01 d8 1e b8 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 06 00 04 00 17 00 40 00 08 00 02 00 00 00 19 00 0c 02 03 04 05 00 00 0e 10 00 00 15 18
-match Packet-Type = ::Solicit, Transaction-ID = 0xd81eb8, Client-ID = { DUID = ::LL, DUID.LL = { Hardware-Type = ::Ethernet, Hardware-Type.Ethernet = { Address = 00:01:02:03:04:05 } } }, Option-Request = ::DNS-Servers, Option-Request = ::AFTR-Name, Elapsed-Time = 0, IA-PD = { IAID = 33752069, T1 = 3600, T2 = 5400 }
+match Packet-Type = ::Solicit, Transaction-ID = 0xd81eb8, Client-ID = { DUID = ::LL, LL = { Hardware-Type = ::Ethernet, Ethernet = { Address = 00:01:02:03:04:05 } } }, Option-Request = ::DNS-Servers, Option-Request = ::AFTR-Name, Elapsed-Time = 0, IA-PD = { IAID = 33752069, T1 = 3600, T2 = 5400 }
 
 encode-proto -
 match 01 d8 1e b8 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 06 00 04 00 17 00 40 00 08 00 02 00 00 00 19 00 0c 02 03 04 05 00 00 0e 10 00 00 15 18
@@ -101,7 +101,7 @@ match 01 d8 1e b8 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 06 00 04 00 17 00
 #         data      = '\taftr-name\x08mydomain\x03net\x00'
 #
 decode-proto 02 d8 1e b8 00 19 00 29 02 03 04 05 00 00 00 96 00 00 00 fa 00 1a 00 19 00 00 00 fa 00 00 01 2c 38 2a 00 00 01 00 01 01 00 00 00 00 00 00 00 00 00 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 02 00 0e 00 01 00 01 18 3f 4e f0 00 11 22 33 44 55 00 07 00 01 0a 00 17 00 10 2a 01 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 40 00 18 09 61 66 74 72 2d 6e 61 6d 65 08 6d 79 64 6f 6d 61 69 6e 03 6e 65 74 00
-match Packet-Type = ::Advertise, Transaction-ID = 0xd81eb8, IA-PD = { IAID = 33752069, T1 = 150, T2 = 250, Options = { IA-PD-Prefix = { Preferred-Lifetime = 250, Valid-Lifetime = 300, IPv6-Prefix = 2a00:1:1:100::/56 } } }, Client-ID = { DUID = ::LL, DUID.LL = { Hardware-Type = ::Ethernet, Hardware-Type.Ethernet = { Address = 00:01:02:03:04:05 } } }, Server-ID = { DUID = ::LLT, DUID.LLT = { Hardware-Type = ::Ethernet, Time = "2012-11-21T08:36:00Z", Hardware-Type.Ethernet = { Address = 00:11:22:33:44:55 } } }, Preference = 10, DNS-Servers = 2a01::1, AFTR-Name = "aftr-name.mydomain.net"
+match Packet-Type = ::Advertise, Transaction-ID = 0xd81eb8, IA-PD = { IAID = 33752069, T1 = 150, T2 = 250, Options = { IA-PD-Prefix = { Preferred-Lifetime = 250, Valid-Lifetime = 300, IPv6-Prefix = 2a00:1:1:100::/56 } } }, Client-ID = { DUID = ::LL, LL = { Hardware-Type = ::Ethernet, Ethernet = { Address = 00:01:02:03:04:05 } } }, Server-ID = { DUID = ::LLT, LLT = { Hardware-Type = ::Ethernet, Time = "2012-11-21T08:36:00Z", Ethernet = { Address = 00:11:22:33:44:55 } } }, Preference = 10, DNS-Servers = 2a01::1, AFTR-Name = "aftr-name.mydomain.net"
 
 encode-proto -
 match 02 d8 1e b8 00 19 00 29 02 03 04 05 00 00 00 96 00 00 00 fa 00 1a 00 19 00 00 00 fa 00 00 01 2c 38 2a 00 00 01 00 01 01 00 00 00 00 00 00 00 00 00 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 02 00 0e 00 01 00 01 18 3f 4e f0 00 11 22 33 44 55 00 07 00 01 0a 00 17 00 10 2a 01 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 40 00 18 09 61 66 74 72 2d 6e 61 6d 65 08 6d 79 64 6f 6d 61 69 6e 03 6e 65 74 00
@@ -154,7 +154,7 @@ match 02 d8 1e b8 00 19 00 29 02 03 04 05 00 00 00 96 00 00 00 fa 00 1a 00 19 00
 #         |  iaprefopts= ''
 #
 decode-proto 03 1e 29 1d 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 02 00 0e 00 01 00 01 18 3f 4e f0 00 11 22 33 44 55 00 06 00 04 00 17 00 40 00 08 00 02 00 00 00 19 00 29 02 03 04 05 00 00 0e 10 00 00 15 18 00 1a 00 19 00 00 1c 20 00 00 1d 4c 38 2a 00 00 01 00 01 01 00 00 00 00 00 00 00 00 00
-match Packet-Type = ::Request, Transaction-ID = 0x1e291d, Client-ID = { DUID = ::LL, DUID.LL = { Hardware-Type = ::Ethernet, Hardware-Type.Ethernet = { Address = 00:01:02:03:04:05 } } }, Server-ID = { DUID = ::LLT, DUID.LLT = { Hardware-Type = ::Ethernet, Time = "2012-11-21T08:36:00Z", Hardware-Type.Ethernet = { Address = 00:11:22:33:44:55 } } }, Option-Request = ::DNS-Servers, Option-Request = ::AFTR-Name, Elapsed-Time = 0, IA-PD = { IAID = 33752069, T1 = 3600, T2 = 5400, Options = { IA-PD-Prefix = { Preferred-Lifetime = 7200, Valid-Lifetime = 7500, IPv6-Prefix = 2a00:1:1:100::/56 } } }
+match Packet-Type = ::Request, Transaction-ID = 0x1e291d, Client-ID = { DUID = ::LL, LL = { Hardware-Type = ::Ethernet, Ethernet = { Address = 00:01:02:03:04:05 } } }, Server-ID = { DUID = ::LLT, LLT = { Hardware-Type = ::Ethernet, Time = "2012-11-21T08:36:00Z", Ethernet = { Address = 00:11:22:33:44:55 } } }, Option-Request = ::DNS-Servers, Option-Request = ::AFTR-Name, Elapsed-Time = 0, IA-PD = { IAID = 33752069, T1 = 3600, T2 = 5400, Options = { IA-PD-Prefix = { Preferred-Lifetime = 7200, Valid-Lifetime = 7500, IPv6-Prefix = 2a00:1:1:100::/56 } } }
 
 encode-proto -
 match 03 1e 29 1d 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 02 00 0e 00 01 00 01 18 3f 4e f0 00 11 22 33 44 55 00 06 00 04 00 17 00 40 00 08 00 02 00 00 00 19 00 29 02 03 04 05 00 00 0e 10 00 00 15 18 00 1a 00 19 00 00 1c 20 00 00 1d 4c 38 2a 00 00 01 00 01 01 00 00 00 00 00 00 00 00 00
@@ -211,7 +211,7 @@ match 03 1e 29 1d 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 02 00 0e 00 01 00
 #         data      = '\taftr-name\x08mydomain\x03net\x00'
 #
 decode-proto 07 1e 29 1d 00 19 00 29 02 03 04 05 00 00 00 96 00 00 00 fa 00 1a 00 19 00 00 00 fa 00 00 01 2c 38 2a 00 00 01 00 01 01 00 00 00 00 00 00 00 00 00 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 02 00 0e 00 01 00 01 18 3f 4e f0 00 11 22 33 44 55 00 07 00 01 0a 00 17 00 10 2a 01 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 40 00 18 09 61 66 74 72 2d 6e 61 6d 65 08 6d 79 64 6f 6d 61 69 6e 03 6e 65 74 00
-match Packet-Type = ::Reply, Transaction-ID = 0x1e291d, IA-PD = { IAID = 33752069, T1 = 150, T2 = 250, Options = { IA-PD-Prefix = { Preferred-Lifetime = 250, Valid-Lifetime = 300, IPv6-Prefix = 2a00:1:1:100::/56 } } }, Client-ID = { DUID = ::LL, DUID.LL = { Hardware-Type = ::Ethernet, Hardware-Type.Ethernet = { Address = 00:01:02:03:04:05 } } }, Server-ID = { DUID = ::LLT, DUID.LLT = { Hardware-Type = ::Ethernet, Time = "2012-11-21T08:36:00Z", Hardware-Type.Ethernet = { Address = 00:11:22:33:44:55 } } }, Preference = 10, DNS-Servers = 2a01::1, AFTR-Name = "aftr-name.mydomain.net"
+match Packet-Type = ::Reply, Transaction-ID = 0x1e291d, IA-PD = { IAID = 33752069, T1 = 150, T2 = 250, Options = { IA-PD-Prefix = { Preferred-Lifetime = 250, Valid-Lifetime = 300, IPv6-Prefix = 2a00:1:1:100::/56 } } }, Client-ID = { DUID = ::LL, LL = { Hardware-Type = ::Ethernet, Ethernet = { Address = 00:01:02:03:04:05 } } }, Server-ID = { DUID = ::LLT, LLT = { Hardware-Type = ::Ethernet, Time = "2012-11-21T08:36:00Z", Ethernet = { Address = 00:11:22:33:44:55 } } }, Preference = 10, DNS-Servers = 2a01::1, AFTR-Name = "aftr-name.mydomain.net"
 
 encode-proto -
 match 07 1e 29 1d 00 19 00 29 02 03 04 05 00 00 00 96 00 00 00 fa 00 1a 00 19 00 00 00 fa 00 00 01 2c 38 2a 00 00 01 00 01 01 00 00 00 00 00 00 00 00 00 00 01 00 0a 00 03 00 01 00 01 02 03 04 05 00 02 00 0e 00 01 00 01 18 3f 4e f0 00 11 22 33 44 55 00 07 00 01 0a 00 17 00 10 2a 01 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 40 00 18 09 61 66 74 72 2d 6e 61 6d 65 08 6d 79 64 6f 6d 61 69 6e 03 6e 65 74 00
