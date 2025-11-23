@@ -364,17 +364,25 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (enumv) child = fr_dict_enum_attr_ref(enumv);
 
 		if (!child) {
+			/*
+			 *	Always encode the unknown child as attribute number 0.  Since the unknown
+			 *	children have no "real" number, and are all unique da's, they are
+			 *	incomparable.  And thus can all be given the same number.
+			 */
+			uint64_t attr = 0;
+
 			FR_PROTO_TRACE("No matching child structure found");
 		unknown_child:
+
 			/*
-			 *	Always encode the unknown child as
-			 *	attribute number 0.  Since the unknown
-			 *	children have no "real" number, and
-			 *	are all unique da's, they are
-			 *	incomparable.  And thus can all be
-			 *	given the same number.
+			 *	But if we have a key field, the unknown attribute number is taken from the
+			 *	from the key field.
 			 */
-			child = fr_dict_attr_unknown_raw_afrom_num(child_ctx, substruct_da, 0);
+			if (fr_type_is_integer(key_vp->vp_type)) {
+				attr = fr_value_box_as_uint64(&key_vp->data);
+			}
+
+			child = fr_dict_attr_unknown_raw_afrom_num(child_ctx, substruct_da, attr);
 			if (!child) {
 				FR_PROTO_TRACE("failed allocating unknown child for key VP %s - %s",
 					       key_vp->da->name, fr_strerror());
