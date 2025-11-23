@@ -257,6 +257,12 @@ fr_ext_t const fr_dict_attr_ext_def = {
 						},
 		[FR_DICT_ATTR_EXT_REF]		= {
 							.min = sizeof(fr_dict_attr_ext_ref_t),
+							/*
+							 *	Copying a CLONE or ENUM is OK.
+							 *
+							 *	@todo - copying an ALIAS will copy the name,
+							 *	but the ref will be to the original destination DA.
+							 */
 							.can_copy = true,
 						},
 		[FR_DICT_ATTR_EXT_KEY]		= {
