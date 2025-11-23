@@ -78,7 +78,7 @@ decode-pair f1 0e fa 00 00 00 01 00 00 00 02 00 04 00
 match Extended-Attribute-1 = { Unit-Ext-241-Struct4 = { Unit-Struct4-Int1 = 1, Unit-Struct4-Int2 = 2, Unit-Struct4-Short = 4 } }
 
 decode-pair ff 09 01 00 00 1a 99 05 06
-match Test-Struct = { Key-Field = ::Sub-Struct, Filler = 6809, Key-Field.Sub-Struct = { Nested-Sub1 = 5, Nested-Sub2 = 6 } }
+match Test-Struct = { Key-Field = ::Sub-Struct, Filler = 6809, Sub-Struct = { Nested-Sub1 = 5, Nested-Sub2 = 6 } }
 
 encode-pair -
 match ff 09 01 00 00 1a 99 05 06
@@ -88,7 +88,7 @@ match ff 09 01 00 00 1a 99 05 06
 #  as an unknown attribute.
 #
 decode-pair ff 0d 02 00 00 1a 99 ff fe fd fc fb fa
-match Test-Struct = { Key-Field = 2, Filler = 6809, raw.Key-Field.2 = 0xfffefdfcfbfa }
+match Test-Struct = { Key-Field = 2, Filler = 6809, raw.2 = 0xfffefdfcfbfa }
 
 encode-pair -
 match ff 0d 02 00 00 1a 99 ff fe fd fc fb fa
