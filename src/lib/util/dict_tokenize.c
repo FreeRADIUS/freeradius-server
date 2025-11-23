@@ -1389,15 +1389,21 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *dctx, char **argv, int a
 		return -1;
 	}
 
+	if (strchr(argv[0], '.') != NULL) {
+		fr_strerror_const("ALIAS names must be in the local context, and cannot contain '.'");
+		return -1;
+	}
+
 	/*
 	 *	Relative refs get resolved from the current namespace.
 	 */
 	if (argv[1][0] == '.') {
 		ref_namespace = parent;
-	/*
-	 *	No dot, so we're looking in the root namespace.
-	 */
+
 	} else {
+		/*
+		 *	No dot, so we're looking in the root namespace.
+		 */
 		ref_namespace = dctx->dict->root;
 	}
 
