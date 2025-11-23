@@ -382,9 +382,9 @@ static void mismatch_print(command_file_ctx_t *cc, char const *command,
 			size_t glen, elen;
 
 			elen = strlen(e);
-			if (elen > 40) elen = 40;
+			if (elen > 70) elen = 70;
 			glen = strlen(g);
-			if (glen > 40) glen = 40;
+			if (glen > 70) glen = 70;
 
 			ERROR("(%zu) ... %.*s ... ", e - expected, (int) elen, e);
 			ERROR("(%zu) ... %.*s ... ", e - expected, (int) glen, g);
