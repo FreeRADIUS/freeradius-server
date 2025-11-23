@@ -1732,7 +1732,12 @@ static int dict_read_process_begin(dict_tokenize_ctx_t *dctx, char **argv, int a
 		return -1;
 	}
 
-	if (!fr_type_is_tlv(da->type) && !fr_type_is_struct(da->type) && (da->type != FR_TYPE_UNION)) {
+	/*
+	 *	We cannot use BEGIN/END on structs.  Once they're defined, they can't be modified.
+	 *
+	 *	This restriction can be lifted once we don't auto-push on FR_TYPE_STRUCT.
+	 */
+	if (!fr_type_is_tlv(da->type) && (da->type != FR_TYPE_UNION)) {
 		fr_strerror_printf("BEGIN %s cannot be used with data type '%s'",
 				   argv[0],
 				   fr_type_to_str(da->type));
