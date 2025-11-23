@@ -1061,6 +1061,9 @@ int		fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 					   fr_type_t dst_type, fr_dict_attr_t const *dst_enumv)
 		CC_HINT(warn_unused_result,nonnull(1));
 
+uint64_t       	fr_value_box_as_uint64(fr_value_box_t const *src)
+		CC_HINT(warn_unused_result,nonnull);
+
 bool		fr_value_box_is_truthy(fr_value_box_t const *box)
 		CC_HINT(nonnull(1));
 
