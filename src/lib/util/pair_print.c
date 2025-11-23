@@ -408,3 +408,46 @@ void fr_pair_debug(FILE *fp, fr_pair_t const *pair)
 
 	fprintf(fp, "%pV\n", fr_box_strvalue_len(fr_sbuff_start(&sbuff), fr_sbuff_used(&sbuff)));
 }
+
+static const char spaces[] = "                                                                                                                                ";
+
+static void fprintf_pair_list(FILE *fp, fr_pair_list_t const *list, int depth)
+{
+	fr_pair_list_foreach(list, vp) {
+		fprintf(fp, "%.*s", depth, spaces);
+
+		if (fr_type_is_leaf(vp->vp_type)) {
+			fr_fprintf(fp, "%s %s %pV\n", vp->da->name, fr_tokens[vp->op], &vp->data);
+			continue;
+		}
+
+		fr_assert(fr_type_is_structural(vp->vp_type));
+
+		fprintf(fp, "%s = {\n", vp->da->name);
+		fprintf_pair_list(fp, &vp->vp_group, depth + 1);
+		fprintf(fp, "%.*s}\n", depth, spaces);
+	}
+}
+
+void fr_fprintf_pair_list(FILE *fp, fr_pair_list_t const *list)
+{
+	fprintf_pair_list(fp, list, 0);
+}
+
+/*
+ *	print.c doesn't include pair.h, and doing so causes too many knock-on effects.
+ */
+void fr_fprintf_pair(FILE *fp, char const *msg, fr_pair_t const *vp)
+{
+	if (msg) fputs(msg, fp);
+
+	if (fr_type_is_leaf(vp->vp_type)) {
+		fr_fprintf(fp, "%s %s %pV\n", vp->da->name, fr_tokens[vp->op], &vp->data);
+	} else {
+		fr_assert(fr_type_is_structural(vp->vp_type));
+
+		fprintf(fp, "%s = {\n", vp->da->name);
+		fprintf_pair_list(fp, &vp->vp_group, 1);
+		fprintf(fp, "}\n");
+	}
+}
