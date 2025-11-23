@@ -59,18 +59,14 @@ DEFINE		Test-Bitstring				bitstring
 END Seq-Bitstring-Octets
 
 DEFINE	Bitstring-Struct				struct der_type=bitstring
-BEGIN Bitstring-Struct
 MEMBER		foo					bit[8]
 MEMBER		bar					bit[4]
 MEMBER		foo-bar					bit[4]
-END Bitstring-Struct
 
 DEFINE	Bitstring-Struct-7				struct der_type=bitstring
-BEGIN Bitstring-Struct-7
 MEMBER		foo					bit[2]
 MEMBER		bar					bit[1]
 MEMBER		foo-bar					bit[4]
-END Bitstring-Struct-7
 
 DEFINE	Octetstring					octetstring
 

@@ -25,7 +25,6 @@ END 1.3.6.1.5.5.7.1.11
 ATTRIBUTE	subjectKeyIdentifier			2.5.29.14	octetstring     is_oid_leaf
 
 ATTRIBUTE	keyUsage				2.5.29.15	struct  is_oid_leaf
-BEGIN 2.5.29.15
 MEMBER		digitalSignature			bit[1]
 MEMBER		nonRepudation				bit[1]
 MEMBER		keyEncipherment				bit[1]
@@ -36,7 +35,6 @@ MEMBER		cRLSign					bit[1]
 MEMBER		encipherOnly				bit[1]
 MEMBER		decipherOnly				bit[1]
 MEMBER		unused_bits				bit[7]
-END 2.5.29.15
 
 ATTRIBUTE	subjectAltName				2.5.29.17	group der_type=sequence,sequence_of=choice,ref=@.GeneralName,is_oid_leaf,size=1..
 
