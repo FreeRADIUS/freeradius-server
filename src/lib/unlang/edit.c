@@ -936,12 +936,7 @@ static fr_pair_t *edit_list_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, 
 	if (!fr_type_is_structural(parent->da->type)) {
 		request_t *request = current->request;
 
-		if (fr_dict_attr_is_key_field(parent->da)) {
-			REDEBUG("Please use nested edits for structures, not 'dotted' path names");
-		} else {
-			REDEBUG("Cannot create child of leaf data type");
-		}
-
+		REDEBUG("Cannot create child of leaf data type");
 		return NULL;
 	}
 

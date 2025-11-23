@@ -615,19 +615,6 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 		}
 		break;
 
-		/*
-		 *	"key" fields inside of a STRUCT can have
-		 *	children, even if they are integer data type.
-		 */
-	case FR_TYPE_UINT8:
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-		/*
-		 *	@todo - remove after migration_union_key is deleted
-		 */
-		if (fr_dict_attr_is_key_field(parent)) break;
-		FALL_THROUGH;
-
 	default:
 		fr_strerror_printf("Attributes of type '%s' cannot have child attributes",
 				   fr_type_to_str(parent->type));

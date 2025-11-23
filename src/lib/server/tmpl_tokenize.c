@@ -2099,7 +2099,6 @@ do_suffix:
 			break;
 
 		case FR_TYPE_STRUCTURAL_EXCEPT_GROUP:
-		is_union:
 			/*
 			 *	Structural types are parented and namespaced from their parent da.
 			 */
@@ -2107,14 +2106,6 @@ do_suffix:
 			break;
 
 		default:
-			/*
-			 *	Key fields can have children, because we really don't know how else to
-			 *	represent the child structures.
-			 *
-			 *	@todo - remove after migration_union_key is deleted
-			 */
-			if (fr_dict_attr_is_key_field(da)) goto is_union;
-
 			fr_strerror_printf("Parent type of nested attribute %s must be of type "
 					   "\"struct\", \"tlv\", \"vendor\", \"vsa\" or \"group\", got \"%s\"",
 					   da->name,

@@ -1565,18 +1565,6 @@ bool dict_attr_can_have_children(fr_dict_attr_t const *da)
 	case FR_TYPE_UNION:
 		return true;
 
-	case FR_TYPE_UINT8:
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-		/*
-		 *	Children are allowed here, but ONLY if this
-		 *	attribute is a key field.
-		 *
-		 *	@todo - remove after migration_union_key is deleted
-		 */
-		if (da->parent && (da->parent->type == FR_TYPE_STRUCT) && fr_dict_attr_is_key_field(da)) return true;
-		break;
-
 	default:
 		break;
 	}
@@ -2357,13 +2345,11 @@ ssize_t fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const *
 	 */
 	*attr = num;
 
-	switch ((*parent)->type) {
-	case FR_TYPE_STRUCTURAL:
-		break;
-
-	default:
-		if (dict_attr_can_have_children(*parent)) break;
-		fr_strerror_printf("Attribute %s (%u) is not a TLV, so cannot contain a child attribute.  "
+	/*
+	 *	Only a limited number of structural types can have children.  Specifically, groups cannot.
+	 */
+	if (!dict_attr_can_have_children(*parent)) {
+		fr_strerror_printf("Attribute %s (%u) cannot contain a child attribute.  "
 				   "Error at sub OID \"%s\"", (*parent)->name, (*parent)->attr, oid);
 		return 0;	/* We parsed nothing */
 	}
@@ -2448,12 +2434,7 @@ fr_slen_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 
 	*out = NULL;
 
-	switch (parent->type) {
-	case FR_TYPE_STRUCTURAL:
-		break;
-
-	default:
-		if (dict_attr_can_have_children(parent)) break;
+	if (!dict_attr_can_have_children(parent)) {
 		fr_strerror_printf("Attribute '%s' is type %s and cannot contain child attributes.  "
 				   "Error at OID \"%.*s\"",
 				   parent->name,
@@ -5132,18 +5113,6 @@ bool fr_dict_attr_can_contain(fr_dict_attr_t const *parent, fr_dict_attr_t const
 	if (child->parent == parent) return true;
 
 	if (child->flags.is_raw) return true; /* let people do stupid things */
-
-	/*
-	 *	Child is a STRUCT which has a parent key field.  The
-	 *	child pair nesting, though, is in the grandparent.
-	 *
-	 *	@todo - remove after migration_union_key is deleted
-	 */
-	if (fr_dict_attr_is_key_field(child->parent)) {
-		fr_assert(child->parent->parent == parent);
-
-		return (child->parent->parent == parent);
-	}
 
 	/*
 	 *	Only structural types or key fields can have children.
