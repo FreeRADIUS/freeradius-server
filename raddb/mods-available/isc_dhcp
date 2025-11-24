@@ -143,6 +143,6 @@ isc_dhcp {
 #  | omapi-port UINT16
 #  | pid-file-name STRING
 #  | remote-port UINT16
-#  |==
+#  |===
 #
 #
