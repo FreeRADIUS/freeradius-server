@@ -2337,13 +2337,13 @@ ssize_t fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const *
 	}
 
 	/*
-	 *	If it's not a vendor type, it must be between 0..8*type_size
-	 *
-	 *	@fixme: find the TLV parent, and check it's size
+	 *	TLVs must have a defined size.
 	 */
-	if (((*parent)->type != FR_TYPE_VENDOR) && ((*parent)->type != FR_TYPE_VSA) && !(*parent)->flags.is_root &&
-	    (num > ((uint64_t) 1 << (8 * (*parent)->flags.type_size)))) {
-		fr_strerror_printf("TLV attributes must be %" PRIu64 " bits or less", ((uint64_t)1 << (8 * (*parent)->flags.type_size)));
+	if (((*parent)->type == FR_TYPE_TLV) &&
+	    (!(*parent)->flags.internal && !(*parent)->flags.name_only && !(*parent)->flags.is_root &&
+	     (num > ((uint64_t) 1 << (8 * (*parent)->flags.type_size))))) {
+		fr_strerror_printf("TLV attributes of parent %s must be %" PRIu64 " bits or less",
+				   (*parent)->name, ((uint64_t)1 << (8 * (*parent)->flags.type_size)));
 		return 0;
 	}
 
