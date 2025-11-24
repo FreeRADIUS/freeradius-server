@@ -606,7 +606,7 @@ static int dict_flag_key(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dic
 	/*
 	 *	Allocate the ref and save the value.
 	 */
-	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_REF);
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_KEY);
 	if (ext) {
 		fr_strerror_printf("Attribute already has a 'key=...' defined");
 		return -1;
