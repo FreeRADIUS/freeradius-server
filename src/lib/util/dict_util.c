@@ -1954,24 +1954,6 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 		return -1;
 	}
 
-#if 0
-	/*
-	 *	Commented out becuase of share/dictionary/dhcpv6/dictionary.rfc6607.
-	 *
-	 *	That dictionary defines a value which is associated with a zero-sized child.
-	 *	In order to enforce this check, we need to support zero-sized structures.
-	 *
-	 *	Perhaps this can be done as a special case after we convert to UNIONs?  Because then
-	 *	we can allow ATTRIBUTE Global-VPN 255 struct[0].
-	 *
-	 *	@todo - remove after migration_union_key is deleted
-	 */
-	if (fr_dict_attr_is_key_field(da) && !key_child_ref) {
-		fr_strerror_const("Child attribute must be defined for VALUEs associated with a 'key' attribute");
-		return -1;
-	}
-#endif
-
 	if (fr_type_is_structural(da->type) || (da->type == FR_TYPE_STRING)) {
 		fr_strerror_printf("Enumeration names cannot be added for data type '%s'", fr_type_to_str(da->type));
 		return -1;

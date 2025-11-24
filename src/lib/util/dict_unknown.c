@@ -306,11 +306,6 @@ fr_dict_attr_t *fr_dict_attr_unknown_typed_afrom_num_raw(TALLOC_CTX *ctx, fr_dic
 		return NULL;
 
 	default:
-		/*
-		 *	@todo - remove after migration_union_key is deleted
-		 */
-		if (fr_dict_attr_is_key_field(parent)) break;
-
 		if (!fr_type_is_structural_except_vsa(parent->type)) {
 		fail:
 			fr_strerror_printf("%s: Cannot allocate unknown %s attribute (%u) with parent type %s",

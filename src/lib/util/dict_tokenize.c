@@ -1529,7 +1529,6 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		fr_assert(key);
 		fr_assert(fr_dict_attr_is_key_field(key));
 		da = UNCONST(fr_dict_attr_t *, key);
-		da->flags.migration_union_key = true;
 	}
 
 	da = dict_attr_alloc_null(dctx->dict->pool, dctx->dict->proto);
