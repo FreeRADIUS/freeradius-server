@@ -245,7 +245,7 @@ fr_dict_attr_t		*_dict_attr_alloc(char const *filename, int line,
 					  fr_type_t type, dict_attr_args_t const *args) CC_HINT(nonnull(4));
 /** @} */
 
-fr_dict_attr_t		*dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char const *new_name);
+fr_dict_attr_t		*dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, fr_dict_attr_t const *in, char const *new_name);
 
 int			dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_t const *src);
 

@@ -1076,17 +1076,18 @@ fr_dict_attr_t *_dict_attr_alloc(char const *filename, int line,
 	return n;
 }
 
-/** Copy a an existing attribute
+/** Copy a an existing attribute, possibly to a new location
  *
  * @param[in] ctx		to allocate new attribute in.
+ * @param[in] parent		where to parent the copy from. If NULL, in->parent is used.
  * @param[in] in		attribute to copy.
- * @param[in] new_name		to assign to the attribute.
- *				If NULL the existing name will be used.
+ * @param[in] name		to assign to the attribute. If NULL, in->name is used.
  * @return
  *	- A copy of the input fr_dict_attr_t on success.
  *	- NULL on failure.
  */
-fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char const *new_name)
+fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, fr_dict_attr_t const *in,
+				char const *name)
 {
 	fr_dict_attr_t		*n;
 
@@ -1096,7 +1097,9 @@ fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char 
 		return NULL;
 	}
 
-	n = dict_attr_alloc(ctx, in->parent, new_name ? new_name : in->name,
+	fr_assert(parent || name);
+
+	n = dict_attr_alloc(ctx, parent ? parent : in->parent, name ? name : in->name,
 			    in->attr, in->type, &(dict_attr_args_t){ .flags = &in->flags });
 	if (unlikely(!n)) return NULL;
 
@@ -1104,38 +1107,6 @@ fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char 
 	 *	This newly allocated attribute is not the target of a ref.
 	 */
 	n->flags.is_ref_target = false;
-
-	if (dict_attr_ext_copy_all(&n, in) < 0) {
-		talloc_free(n);
-		return NULL;
-	}
-	DA_VERIFY(n);
-
-	return n;
-}
-
-/** Copy an existing attribute to a different dictionary
- *
- * @param[in] ctx		to allocate new attribute in.
- * @param[in] parent		new parent to copy into
- * @param[in] in		attribute to copy.
- * @return
- *	- A copy of the input fr_dict_attr_t on success.
- *	- NULL on failure.
- */
-static fr_dict_attr_t *dict_attr_acopy_dict(TALLOC_CTX *ctx, fr_dict_attr_t *parent, fr_dict_attr_t const *in)
-{
-	fr_dict_attr_t		*n;
-
-	if (in->flags.has_fixup) {
-		fr_strerror_printf("Cannot copy from %s - source attribute is waiting for additional definitions",
-				   in->name);
-		return NULL;
-	}
-
-	n = dict_attr_alloc(ctx, parent, in->name,
-			    in->attr, in->type, &(dict_attr_args_t){ .flags = &in->flags });
-	if (unlikely(!n)) return NULL;
 
 	if (dict_attr_ext_copy_all(&n, in) < 0) {
 		talloc_free(n);
@@ -1175,7 +1146,7 @@ static int dict_attr_acopy_child(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_a
 {
 	fr_dict_attr_t			*copy;
 
-	copy = dict_attr_acopy_dict(dict->pool, dst, child);
+	copy = dict_attr_acopy(dict->pool, dst, child, child->name);
 	if (!copy) return -1;
 
 	fr_assert(copy->parent == dst);

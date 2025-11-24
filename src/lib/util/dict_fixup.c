@@ -587,17 +587,16 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 	}
 
 	/*
-	 *	Copy the source attribute, but with a
-	 *	new name and a new attribute number.
+	 *	Copy the source attribute, but with a new name.  Then also assign a new number.
 	 */
-	cloned = dict_attr_acopy(dict->pool, src, dst->name);
+	cloned = dict_attr_acopy(dict->pool, dst->parent, src, dst->name);
 	if (!cloned) {
 		fr_strerror_printf("Failed copying attribute '%s' to %s", src->name, dst->name);
 		return -1;
 	}
 
 	cloned->attr = dst->attr;
-	cloned->parent = dst->parent; /* we need to re-parent this attribute */
+	fr_assert(cloned->parent == dst->parent);
 	cloned->depth = cloned->parent->depth + 1;
 
 	/*
