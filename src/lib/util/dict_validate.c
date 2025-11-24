@@ -509,14 +509,14 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 			 */
 		} else if (!flags->extra) {
 			if ((type != FR_TYPE_TLV) && (type != FR_TYPE_VENDOR)) {
-				fr_strerror_const("The 'format=' flag can only be used with attributes of type 'tlv'");
+				fr_strerror_printf("The 'format=' flag can only be used with attributes of type 'tlv', and not type '%s'", fr_type_to_str(type));
 				return false;
 			}
 
 			if ((flags->type_size != 1) &&
 			    (flags->type_size != 2) &&
 			    (flags->type_size != 4)) {
-				fr_strerror_const("The 'format=' flag can only be used with attributes of type size 1,2 or 4");
+				fr_strerror_printf("The 'format=' flag can only be used with attributes of type size 1,2 or 4, not %i", flags->type_size);
 				return false;
 			}
 		}
