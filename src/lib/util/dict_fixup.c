@@ -490,8 +490,10 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 	}
 
 	/*
-	 *	Leaf attributes can be cloned.  TLV and STRUCT can be
-	 *	cloned.  But all other data types cannot be cloned.
+	 *	Leaf attributes can be cloned.  TLV and STRUCT can be cloned.  But all other data types cannot
+	 *	be cloned.
+	 *
+	 *	And while we're at it, copy the flags over.
 	 */
 	switch (src->type) {
 	default:
@@ -499,11 +501,26 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 				   fr_type_to_str(src->type), fr_cwd_strip(dst->filename), dst->line);
 		return -1;
 
-	case FR_TYPE_LEAF:
 	case FR_TYPE_TLV:
+		dst->flags.type_size = src->flags.type_size;
+		dst->flags.length = src->flags.length;
+		break;
+
+	case FR_TYPE_LEAF:
+		dst->flags.is_unsigned = src->flags.is_unsigned;
+		dst->flags.counter = src->flags.counter;
+		dst->flags.secret = src->flags.secret;
+		dst->flags.unsafe = src->flags.unsafe;
+		break;
+
 	case FR_TYPE_STRUCT:
 		break;
 	}
+
+	dst->flags.array = src->flags.array;
+	dst->flags.is_known_width = src->flags.is_known_width;
+	dst->flags.internal = src->flags.internal;
+	dst->flags.name_only = src->flags.name_only;
 
 	/*
 	 *	If the attributes are of different types, then we have
