@@ -167,6 +167,41 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 	}
 
 	/*
+	 *	Sanity check aliases.
+	 */
+	if (flags->is_alias) {
+		fr_dict_attr_ext_ref_t *ext;
+
+		ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_REF);
+		if (!ext) {
+			fr_strerror_const("ALIAS is missing extension");
+			return false;
+		}
+
+		if (!ext->ref) {
+			fr_strerror_const("ALIAS is missing ref");
+			return false;
+		}
+
+		if (da->parent->type == FR_TYPE_STRUCT) {
+			fr_strerror_const("ALIAS cannot be added to a data type 'struct'");
+			return false;
+		}
+
+		fr_assert(!da->flags.is_unknown);
+		fr_assert(!da->flags.is_raw);
+		fr_assert(!da->flags.array);
+		fr_assert(!da->flags.is_known_width);
+		fr_assert(!da->flags.has_value);
+		fr_assert(!da->flags.counter);
+		fr_assert(!da->flags.secret);
+		fr_assert(!da->flags.unsafe);
+		fr_assert(!da->flags.is_ref_target);
+		fr_assert(!da->flags.local);
+		fr_assert(!da->flags.has_fixup);
+	}
+
+	/*
 	 *	The "extra" flag is a grab-bag of stuff, depending on
 	 *	the data type.
 	 */
