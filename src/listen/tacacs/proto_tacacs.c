@@ -386,7 +386,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		       data_len,
 		       request->async->listen->name);
 
-		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
 	}
 
 	RHEXDUMP3(buffer, data_len, "proto_tacacs encode packet");
