@@ -452,6 +452,118 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 done:
 	return 0;
 }
+
+/** Callback to extract pairs from a Client Hello
+ *
+ */
+int fr_tls_session_client_hello_cb(SSL *ssl, UNUSED int *al, UNUSED void *arg)
+{
+	request_t		*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	request_t		*parent = request->parent;
+	uint8_t	const		*ciphers, *extension;
+	int			*extensions, extension_len, i;
+	size_t			data_size, j;
+	STACK_OF(SSL_CIPHER)	*sk;
+	SSL_CIPHER const	*cipher;
+	STACK_OF(SSL_CIPHER)	*scsvs;
+	uint16_t		tls_version = 0;
+	fr_pair_t		*container, *vp;
+
+	fr_assert(parent);
+
+	container = fr_pair_find_by_da(&parent->session_state_pairs, NULL, attr_tls_client_hello);
+	if (container) return SSL_CLIENT_HELLO_SUCCESS;
+
+	MEM(container = fr_pair_afrom_da(parent->session_state_ctx, attr_tls_client_hello));
+
+	data_size = SSL_client_hello_get0_ciphers(ssl, &ciphers);
+	if (SSL_bytes_to_cipher_list(ssl, ciphers, data_size, SSL_client_hello_isv2(ssl), &sk, &scsvs) == 0) {
+		RPEDEBUG("Failed to decode cipher list");
+	fail:
+		talloc_free(container);
+		return SSL_CLIENT_HELLO_ERROR;
+	}
+
+	for (i = 0; i < sk_SSL_CIPHER_num(sk); i++) {
+		fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_cipher);
+		cipher = sk_SSL_CIPHER_value(sk, i);
+		fr_value_box_strdup(vp, &vp->data, NULL, SSL_CIPHER_get_name(cipher), false);
+	}
+
+	sk_SSL_CIPHER_free(sk);
+	sk_SSL_CIPHER_free(scsvs);
+
+	/*
+	 *	Fetch the extensions and decode the ones we know about
+	 *	These are the ones which are returned as simple lists
+	 *	of values of known length which map to enum attributes.
+	 */
+	if (SSL_client_hello_get1_extensions_present(ssl, &extensions, &data_size) == 0) {
+		RPEDEBUG("Failed to fetch client hello extensions");
+		goto fail;
+	}
+	for (j = 0; j < data_size; j++) {
+		if (SSL_client_hello_get0_ext(ssl, extensions[j], &extension, NULL) == 0) {
+			RPDEBUG("Failed getting client hello extension %d", extensions[j]);
+			OPENSSL_free(extensions);
+			goto fail;
+		}
+
+		switch (extensions[j]) {
+		case TLSEXT_TYPE_supported_groups:
+			extension_len = (extension[0] << 8) + extension[1];
+			for (i = 0; i < extension_len; i += 2) {
+				fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_supported_group);
+				vp->vp_uint16 = (extension[i + 2] << 8) + extension[i + 3];
+			}
+			break;
+
+		case TLSEXT_TYPE_ec_point_formats:
+			for (i = 0; i < extension[0]; i += 1) {
+				fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_ec_point_format);
+				vp->vp_uint8 = extension[i + 1];
+			}
+			break;
+
+		case TLSEXT_TYPE_signature_algorithms:
+			extension_len = (extension[0] << 8) + extension[1];
+			for (i = 0; i < extension_len; i += 2) {
+				fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_sig_algo);
+				vp->vp_uint16 = (extension[i + 2] << 8) + extension[i + 3];
+			}
+			break;
+
+		case TLSEXT_TYPE_supported_versions:
+			for (i = 0; i < extension[0]; i += 2) {
+				fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_tls_version);
+				tls_version = vp->vp_uint16 = (extension[i + 1] << 8) + extension[i + 2];
+			}
+			break;
+
+		case TLSEXT_TYPE_psk_kex_modes:
+			for (i = 0; i < extension[0]; i += 1) {
+				fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_psk_key_mode);
+				vp->vp_uint8 = extension[i + 1];
+			}
+			break;
+		}
+	}
+
+	if (extensions) OPENSSL_free(extensions);
+
+	/*
+	 *	This is the version being negotiated by the client, but tops at	1.2.
+	 *	After that the supported_versions extension is where the real value is.
+	 */
+	if (tls_version == 0) {
+		fr_pair_append_by_da(container, &vp, &container->vp_group, attr_tls_client_hello_tls_version);
+		vp->vp_uint16 = SSL_client_hello_get0_legacy_version(ssl);
+	}
+
+	fr_pair_append(&parent->session_state_pairs, container);
+
+	return SSL_CLIENT_HELLO_SUCCESS;
+}
 DIAG_ON(used-but-marked-unused)
 DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 #endif

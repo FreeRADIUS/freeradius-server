@@ -65,6 +65,14 @@ extern HIDDEN fr_dict_attr_t const *attr_tls_session_cipher_suite;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_version;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_resume_type;
 
+extern HIDDEN fr_dict_attr_t const *attr_tls_client_hello;
+extern HIDDEN fr_dict_attr_t const *attr_tls_client_hello_tls_version;
+extern HIDDEN fr_dict_attr_t const *attr_tls_client_hello_cipher;
+extern HIDDEN fr_dict_attr_t const *attr_tls_client_hello_sig_algo;
+extern HIDDEN fr_dict_attr_t const *attr_tls_client_hello_supported_group;
+extern HIDDEN fr_dict_attr_t const *attr_tls_client_hello_ec_point_format;
+extern HIDDEN fr_dict_attr_t const *attr_tls_client_hello_psk_key_mode;
+
 extern HIDDEN fr_dict_attr_t const *attr_module_failure_message;
 
 extern HIDDEN fr_dict_attr_t const *attr_tls_packet_type;

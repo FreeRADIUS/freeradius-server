@@ -305,6 +305,8 @@ void		fr_tls_session_keylog_cb(const SSL *ssl, const char *line);
 int		fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *ctx,
 				     		    request_t *request, X509 *cert, bool der_decode) CC_HINT(nonnull);
 
+int		fr_tls_session_client_hello_cb(SSL *ssl, int *al, void *arg);
+
 int		fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session);
 
 int 		fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session);

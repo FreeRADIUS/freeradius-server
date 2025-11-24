@@ -123,6 +123,14 @@ fr_dict_attr_t const *attr_tls_session_cipher_suite;
 fr_dict_attr_t const *attr_tls_session_version;
 fr_dict_attr_t const *attr_tls_session_resume_type;
 
+fr_dict_attr_t const *attr_tls_client_hello;
+fr_dict_attr_t const *attr_tls_client_hello_tls_version;
+fr_dict_attr_t const *attr_tls_client_hello_cipher;
+fr_dict_attr_t const *attr_tls_client_hello_sig_algo;
+fr_dict_attr_t const *attr_tls_client_hello_supported_group;
+fr_dict_attr_t const *attr_tls_client_hello_ec_point_format;
+fr_dict_attr_t const *attr_tls_client_hello_psk_key_mode;
+
 fr_dict_attr_t const *attr_module_failure_message;
 
 fr_dict_attr_t const *attr_tls_packet_type;
@@ -171,6 +179,14 @@ fr_dict_attr_autoload_t tls_dict_attr[] = {
 	{ .out = &attr_tls_session_cipher_suite, .name = "TLS-Session-Cipher-Suite", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_tls_session_version, .name = "TLS-Session-Version", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_tls_session_resume_type, .name = "TLS-Session-Resume-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+
+	{ .out = &attr_tls_client_hello, .name = "TLS-Client-Hello", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_tls_client_hello_tls_version, .name = "TLS-Client-Hello.TLS-Version", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_tls_client_hello_cipher, .name = "TLS-Client-Hello.Cipher", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_client_hello_sig_algo, .name = "TLS-Client-Hello.Signature-Algorithm", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_tls_client_hello_supported_group, .name = "TLS-Client-Hello.Supported-Group", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_tls_client_hello_ec_point_format, .name = "TLS-Client-Hello.EC-Point-Format", .type = FR_TYPE_UINT8, .dict = &dict_freeradius },
+	{ .out = &attr_tls_client_hello_psk_key_mode, .name = "TLS-Client-Hello.PSK-Key-Mode", .type = FR_TYPE_UINT8, .dict = &dict_freeradius },
 
 	{ .out = &attr_module_failure_message, .name = "Module-Failure-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
