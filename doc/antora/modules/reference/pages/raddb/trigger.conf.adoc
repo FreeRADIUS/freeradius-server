@@ -153,9 +153,10 @@ The following modules use trunk connections:
 and these all support the following triggers relating to trunk
 connection state changes.
 
-Instead of globally configuring these triggers here, they should be configured per module instance
-by including a `trigger` section within the module instance `pool` section.  That allows for
-the `${.:name}` and `${.:instance}` expansions to reference the correct module name and instance name.
+Instead of globally configuring these triggers here, they could be configured per module instance
+by including a `trigger` section within the module instance `pool` section.  That allows for startup
+expansions `${.:name}` and `${.:instance}` to reference the module name and instance name in place
+of run-time expansions %{Module-Name} and %{Module-Instance}.
 
 In addition to either enabling the triggers here or within the module `pool` section, for triggers
 to be enabled for a specific module instance, the `triggers` option within the `pool` section needs
@@ -248,7 +249,7 @@ trigger {
 	modules {
 	}
 #	pool {
-#		args = "radiusdModuleName s '${.:name}' radiusdModuleInstance s '${.:instance}'"
+#		args = "radiusdModuleName s '%{Module-Name}' radiusdModuleInstance s '%{Module-Instance}'"
 #		connection_halted = `${snmptrap}::serverModuleConnectionHalted ${args}`
 #		connection_init = `${snmptrap}::serverModuleConnectionInit ${args}`
 #		connection_connecting = `${snmptrap}::serverModuleConnectionInit ${args}`

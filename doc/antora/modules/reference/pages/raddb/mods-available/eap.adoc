@@ -568,6 +568,16 @@ openssl ecparam -list_curves
 
 
 
+client_hello_parse:: Extract attributes from TLS Client Hello
+
+For logging / diagnostics it can be beneficial to extract
+data from the TLS Client Hello.
+
+These are placed in `session-state` so that they are
+accessible throughout the authentication process.
+
+
+
 verify:: Parameters for controlling client cert chain
 verification.
 
@@ -1410,6 +1420,7 @@ eap {
 #		tls_max_version = 1.2
 #		tls_min_version = 1.2
 		ecdh_curve = prime256v1
+#		client_hello_parse = no
 		verify {
 #			mode = all
 #			attribute_mode = client-and-issuer

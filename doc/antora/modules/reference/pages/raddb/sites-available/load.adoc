@@ -95,7 +95,7 @@ Each line will contain the following columns:
   to enqueue more packets until we get responses
   to the outstanding requests.
 ```
-			csv = ${confdir}/stats.csv
+			csv = ${logdir}/stats.csv
 
 ```
 

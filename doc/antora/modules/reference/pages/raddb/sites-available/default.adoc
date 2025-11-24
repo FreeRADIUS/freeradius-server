@@ -1553,6 +1553,22 @@ counter, Acct-[Input|Output]-Octets64.
 
 ```
 
+Session start times are *implied* in RADIUS.  The NAS never
+sends a "start time".  Instead, it sends a start packet,
+  *possibly* with an Acct-Delay-Time, or an Event-Timestamp.
+The server is supposed to conclude that the start time was
+"Acct-Delay-Time" seconds in the past.
+
+If there's no Event-Timestamp, then we create one, using
+Acct-Delay-Time as an offset if it exists.
+
+```
+	if (!Event-Timestamp) {
+		Event-Timestamp := %time.request() - %{Acct-Delay-Time || 0}
+	}
+
+```
+
 Ensure that we have a semi-unique identifier for every
 request, as many NAS boxes are broken.
 
