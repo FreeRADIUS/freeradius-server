@@ -131,7 +131,6 @@
 *** xref:dictionary/member.adoc[MEMBER]
 *** xref:dictionary/protocol.adoc[PROTOCOL]
 *** xref:dictionary/reference.adoc[References]
-*** xref:dictionary/struct.adoc[STRUCT]
 *** xref:dictionary/value.adoc[VALUE]
 *** xref:dictionary/vendor.adoc[VENDOR]
 *** xref:dictionary/begin-protocol.adoc[BEGIN-PROTOCOL]
