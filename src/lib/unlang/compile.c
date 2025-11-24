@@ -682,9 +682,9 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_ctx_t *un
 		map_t *child;
 
 		/*
-		 *	Don't update namespace for &reply += { ... }
+		 *	Don't update namespace for reply += { ... }
 		 *
-		 *	Do update namespace for &reply.foo += { ... }
+		 *	Do update namespace for reply.foo += { ... }
 		 *
 		 *	Don't update if the LHS is an internal group.
 		 */
@@ -728,7 +728,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_ctx_t *un
 		}
 	} else {
 		/*
-		 *	&foo := { a, b, c }
+		 *	foo := { a, b, c }
 		 */
 		if (map_list_afrom_cs(map, &map->child, cs, &t_rules, NULL, NULL, 256) < 0) {
 			goto fail;
