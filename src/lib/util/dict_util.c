@@ -1280,10 +1280,6 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 
 			if (dict_attr_add_to_namespace(dst, dst_key) < 0) return -1;
 
-			if (!dict_attr_children(src_key)) continue;
-
-			if (dict_attr_acopy_children(dict, dst_key, src_key) < 0) return -1;
-
 			continue;
 		}
 
