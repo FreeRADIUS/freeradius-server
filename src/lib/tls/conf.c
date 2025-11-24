@@ -196,6 +196,8 @@ conf_parser_t fr_tls_server_config[] = {
 
 	{ FR_CONF_OFFSET("tls_min_version", fr_tls_conf_t, tls_min_version), .dflt = "1.2" },
 
+	{ FR_CONF_OFFSET("client_hello_parse", fr_tls_conf_t, client_hello_parse )},
+
 	{ FR_CONF_OFFSET_SUBSECTION("session", 0, fr_tls_conf_t, cache, tls_cache_config) },
 
 	{ FR_CONF_OFFSET_SUBSECTION("verify", 0, fr_tls_conf_t, verify, tls_verify_config) },

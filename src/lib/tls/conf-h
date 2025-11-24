@@ -183,6 +183,7 @@ struct fr_tls_conf_s {
 	bool		verify_certificate;		//!< Does the "verify certificate" section exist.
 	bool		new_session;			//!< Does the "new session" section exist.
 	bool		establish_session;		//!< Does the "establish session" section exist.
+	bool		client_hello_parse;		//!< Should attributes be extracted from Client Hello.
 };
 
 fr_tls_conf_t	*fr_tls_conf_alloc(TALLOC_CTX *ctx);

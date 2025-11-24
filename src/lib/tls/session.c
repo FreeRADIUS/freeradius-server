@@ -1963,6 +1963,10 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)tls_session);
 
+	if (conf->client_hello_parse) {
+		SSL_CTX_set_client_hello_cb(ssl_ctx, fr_tls_session_client_hello_cb, NULL);
+	}
+
 	tls_session->mtu = conf->fragment_size;
 	if (dynamic_mtu > 100 && dynamic_mtu < tls_session->mtu) {
 		RDEBUG2("Setting fragment_len to %zu from dynamic_mtu", dynamic_mtu);
