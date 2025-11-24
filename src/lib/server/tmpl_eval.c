@@ -883,23 +883,8 @@ int pair_append_by_tmpl_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t 
 		 */
 		if (ar != leaf) {
 			vp = fr_pair_find_by_da(list, NULL, ar->da);
-			/*
-			 *	HACK - Pretend we didn't see this stupid key field
-			 *
-			 *	If we don't have this, the code creates a key pair
-			 *	and then horribly mangles its data by adding children
-			 *	to it.
-			 *
-			 *	We just skip one level down an don't create or update
-			 *	the key pair.
-			 *
-			 *	@todo - remove after migration_union_key is deleted
-			 */
-			if (vp && fr_dict_attr_is_key_field(ar->da) && fr_type_is_leaf(vp->data.type)) {
-				ar = tmpl_attr_list_next(ar_list, ar);
-				continue;
-			}
 		}
+
 		/*
 		 *	Nothing found, create the pair
 		 */
