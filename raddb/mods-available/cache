@@ -286,7 +286,8 @@ cache {
 	#  [options="header,autowidth"]
 	#  |===
 	#  | Condition            | Description
-	#  | `Cache-TTL` of > `0` | Set the TTL of the entry to the new value #                           (and reset the expiry timer).
+	#  | `Cache-TTL` of > `0` | Set the TTL of the entry to the new value
+	#                           (and reset the expiry timer).
 	#  | `Cache-TTL` of < `0` | Expire the existing entry and create a new
 	#                           one with TTL set to `Cache-TTL` * `-1`.
 	#  | `Cache-TTL` of `0`   | Expire the existing entry and create a new one.
