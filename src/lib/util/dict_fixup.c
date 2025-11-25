@@ -611,6 +611,14 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict
 {
 	fr_dict_attr_t const	*src;
 
+	/*
+	 *	This extension must already exist.
+	 */
+	fr_assert(fr_dict_attr_ext(fixup->da, FR_DICT_ATTR_EXT_ENUMV));
+
+	/*
+	 *	Find the referenced attribute, and validate it.
+	 */
 	(void) fr_dict_protocol_reference(&src, fixup->da->parent, &FR_SBUFF_IN_STR(fixup->ref));
 	if (!src) {
 		fr_strerror_printf_push("Failed resolving reference for attribute %s at %s[%d]",
@@ -620,32 +628,23 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict
 
 	if (!fr_dict_attr_ext(src, FR_DICT_ATTR_EXT_ENUMV)) {
 		fr_strerror_printf_push("Reference %s has no VALUEs defined at %s[%d]",
-					fixup->da->name, fr_cwd_strip(fixup->da->filename), fixup->da->line);
+					fixup->ref, fr_cwd_strip(fixup->da->filename), fixup->da->line);
 		return -1;
 	}
 
 	/*
-	 *	This must already exist.
+	 *	Allow enums to be copied from any protocol, so long as the attribute is not a key, and not of
+	 *	type 'attribute'.
 	 */
-	fr_assert(fr_dict_attr_ext(fixup->da, FR_DICT_ATTR_EXT_ENUMV));
-
-	/*
-	 *	@todo - allow this for leaf attributes, but only if they're not a key, and not FR_TYPE_ATTR.
-	 */
-	if (src->dict->proto != fixup->da->dict->proto) {
-		fr_strerror_printf("Incompatible protocols.  Referenced '%s', referencing '%s'.  Defined at %s[%d]",
-				   src->dict->proto->name, fixup->da->dict->proto->name, fixup->da->filename, fixup->da->line);
+	if (fr_dict_attr_is_key_field(src) || fr_dict_attr_is_key_field(fixup->da) || (src->type == FR_TYPE_ATTR)) {
+		fr_strerror_printf("Cannot clone VALUEs from 'key=...' or type 'attribute' at %s[%d]",
+				   fixup->da->filename, fixup->da->line);
 		return -1;
 	}
 
 	if (fr_dict_attr_ref(src)) {
 		fr_strerror_printf("References MUST NOT refer to an ATTRIBUTE which itself has a 'ref=...' at %s[%d]",
 				   fr_cwd_strip(fixup->da->filename), fixup->da->line);
-		return -1;
-	}
-
-	if (!fr_type_is_leaf(fixup->da->type)) {
-		fr_strerror_printf("enum copy can only be applied to leaf types, not %s", fr_type_to_str(fixup->da->type));
 		return -1;
 	}
 
