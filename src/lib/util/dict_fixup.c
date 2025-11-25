@@ -426,6 +426,8 @@ int dict_fixup_clone_enqueue(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, char co
 {
 	dict_fixup_clone_t *fixup;
 
+	fr_assert(!fr_type_is_leaf(da->type));
+
 	/*
 	 *	Delay type checks until we've loaded all of the
 	 *	dictionaries.  This means that errors are produced
@@ -674,6 +676,8 @@ int dict_fixup_clone_enum_enqueue(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, ch
 {
 	dict_fixup_clone_t *fixup;
 
+	fr_assert(fr_type_is_leaf(da->type));
+
 	/*
 	 *	Delay type checks until we've loaded all of the
 	 *	dictionaries.  This means that errors are produced
@@ -690,7 +694,7 @@ int dict_fixup_clone_enum_enqueue(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, ch
 		.ref = talloc_typed_strdup(fixup, ref)
 	};
 
-	return dict_fixup_common(&fctx->clone, &fixup->common);
+	return dict_fixup_common(&fctx->clone_enum, &fixup->common);
 }
 
 /** Clone one are of a tree into another
@@ -738,7 +742,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict
 		return -1;
 	}
 
-	if (!fr_type_is_non_leaf(fixup->da->type)) {
+	if (!fr_type_is_leaf(fixup->da->type)) {
 		fr_strerror_printf("enum copy can only be applied to leaf types, not %s", fr_type_to_str(fixup->da->type));
 		return -1;
 	}
@@ -888,6 +892,7 @@ int dict_fixup_init(TALLOC_CTX *ctx, dict_fixup_ctx_t *fctx)
 	fr_dlist_talloc_init(&fctx->enumv, dict_fixup_enumv_t, common.entry);
 	fr_dlist_talloc_init(&fctx->group, dict_fixup_group_t, common.entry);
 	fr_dlist_talloc_init(&fctx->clone, dict_fixup_clone_t, common.entry);
+	fr_dlist_talloc_init(&fctx->clone_enum, dict_fixup_clone_t, common.entry);
 	fr_dlist_talloc_init(&fctx->vsa, dict_fixup_vsa_t, common.entry);
 	fr_dlist_talloc_init(&fctx->alias, dict_fixup_alias_t, common.entry);
 
