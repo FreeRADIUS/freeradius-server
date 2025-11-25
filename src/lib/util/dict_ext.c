@@ -65,6 +65,8 @@ static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
 	fr_dict_attr_ext_enumv_t	*src_ext = src_ext_ptr;
 	fr_hash_iter_t			iter;
 	fr_dict_enum_value_t		*enumv;
+	fr_value_box_t			box;
+	fr_value_box_t const		*vb;
 
 	if (!src_ext->value_by_name) return 0;
 
@@ -84,6 +86,8 @@ static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
 		if (ref) {
 			fr_dict_attr_t const *ref_parent;
 
+			fr_assert(ref->da->parent->type == FR_TYPE_UNION);
+
 			ref_parent = fr_dict_attr_by_name(NULL, da_dst->parent, ref->da->parent->name);
 			fr_assert(ref_parent);
 
@@ -94,7 +98,17 @@ static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
 			fr_assert(key_child_ref != NULL);
 		}
 
-		if (dict_attr_enum_add_name(da_dst, enumv->name, enumv->value,
+		vb = enumv->value;
+		if (da_dst->type != enumv->value->type) {
+			fr_assert(fr_type_is_integer(enumv->value->type));
+			fr_assert(fr_type_is_integer(da_dst->type));
+
+			if (fr_value_box_cast(da_dst, &box, da_dst->type, NULL, enumv->value) < 0) return -1;
+
+			vb = &box;
+		}
+
+		if (dict_attr_enum_add_name(da_dst, enumv->name, vb,
 					    true, true, key_child_ref) < 0) return -1;
 	}
 
