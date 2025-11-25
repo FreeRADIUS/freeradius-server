@@ -461,7 +461,6 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 {
 	fr_dict_attr_t		*dst = *dst_p;
 	fr_dict_t		*dict = fr_dict_unconst(dst->dict);
-	fr_dict_attr_t		*cloned;
 
 	/*
 	 *	@todo - allow this for structural attributes, so long as they don't have a child TLV.
@@ -483,7 +482,7 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 
 		for (parent = dst->parent; !parent->flags.is_root; parent = parent->parent) {
 			if (parent == src) {
-				fr_strerror_printf("References MUST NOT refer to a parent attribute %s at %s[%d]",
+				fr_strerror_printf("References MUST NOT be to a parent attribute %s at %s[%d]",
 						   parent->name, fr_cwd_strip(dst->filename), dst->line);
 				return -1;
 			}
@@ -508,12 +507,6 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 				   fr_type_to_str(src->type), fr_cwd_strip(dst->filename), dst->line);
 		return -1;
 
-		if (fr_dict_attr_is_key_field(src)) {
-			fr_strerror_printf("References MUST NOT refer to an attribute %s with 'key=...' at %s[%d]",
-					   src->name, fr_cwd_strip(dst->filename), dst->line);
-			return -1;
-		}
-
 	case FR_TYPE_TLV:
 		dst->flags.type_size = src->flags.type_size;
 		dst->flags.length = src->flags.length;
@@ -534,50 +527,16 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 	dst->flags.name_only = src->flags.name_only;
 
 	/*
-	 *	Copy the source attribute, but with a new name.  Then also assign a new number.
+	 *	Clone the children from the source to the dst.
+	 *
+	 *	Note that the destination may already have children!
 	 */
-	cloned = dict_attr_acopy(dict->pool, dst->parent, src, dst->name);
-	if (!cloned) {
-		fr_strerror_printf("Failed copying attribute '%s' to %s", src->name, dst->name);
+	if (dict_attr_acopy_children(dict, dst, src) < 0) {
+		fr_strerror_printf("Failed populating attribute '%s' with children of %s - %s", dst->name, src->name, fr_strerror());
 		return -1;
 	}
 
-	cloned->attr = dst->attr;
-	fr_assert(cloned->parent == dst->parent);
-	cloned->depth = cloned->parent->depth + 1;
-
-	/*
-	 *	Copy any pre-existing children over.
-	 */
-	if (dict_attr_children(dst)) {
-		if (dict_attr_acopy_children(dict, cloned, dst) < 0) {
-			fr_strerror_printf("Failed populating attribute '%s' with children of %s - %s", src->name, dst->name, fr_strerror());
-			return -1;
-		}
-	}
-
-	/*
-	 *	Copy children of the DA we're cloning.
-	 */
-	if (dict_attr_children(src)) {
-		if (dict_attr_acopy_children(dict, cloned, src) < 0) {
-			fr_strerror_printf("Failed populating attribute '%s' with children of %s - %s", src->name, dst->name, fr_strerror());
-			return -1;
-		}
-	}
-
-	if (fr_dict_attr_add_initialised(cloned) < 0) {
-		talloc_free(cloned);
-		return -1;
-	}
-
-	/*
-	 *	Free the original and pass back our new cloned attribute
-	 */
-	talloc_free(dst);
-	*dst_p = cloned;
-
-	return 0;
+	return fr_dict_attr_add_initialised(dst);
 }
 
 /** Clone one are of a tree into another
