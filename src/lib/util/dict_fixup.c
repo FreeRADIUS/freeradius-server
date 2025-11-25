@@ -702,7 +702,6 @@ int dict_fixup_clone_enum_enqueue(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, ch
 static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_clone_t *fixup)
 {
 	fr_dict_attr_t const	*src;
-	int			copied;
 
 	(void) fr_dict_protocol_reference(&src, fixup->da->parent, &FR_SBUFF_IN_STR(fixup->ref));
 	if (!src) {
@@ -711,6 +710,20 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict
 		return -1;
 	}
 
+	if (!fr_dict_attr_ext(src, FR_DICT_ATTR_EXT_ENUMV)) {
+		fr_strerror_printf_push("Reference %s has no VALUEs defined at %s[%d]",
+					fixup->da->name, fr_cwd_strip(fixup->da->filename), fixup->da->line);
+		return -1;
+	}
+
+	/*
+	 *	This must already exist.
+	 */
+	fr_assert(fr_dict_attr_ext(fixup->da, FR_DICT_ATTR_EXT_ENUMV));
+
+	/*
+	 *	@todo - allow this for leaf attributes.
+	 */
 	if (src->dict->proto != fixup->da->dict->proto) {
 		fr_strerror_printf("Incompatible protocols.  Referenced '%s', referencing '%s'.  Defined at %s[%d]",
 				   src->dict->proto->name, fixup->da->dict->proto->name, fixup->da->filename, fixup->da->line);
@@ -728,25 +741,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict
 		return -1;
 	}
 
-	if (src->type != fixup->da->type) {
-		fr_strerror_printf("enum copy type mismatch.  src '%s', dst '%s'",
-				   fr_type_to_str(src->type), fr_type_to_str(fixup->da->type));
-		return -1;
-	}
-
-	/*
-	 *	We copy all of the VALUEs over from the source
-	 *	da by hand, by casting them.
-	 *
-	 *	We have to do this work manually because we
-	 *	can't call dict_attr_acopy(), as that function
-	 *	copies the VALUE with the *source* data type,
-	 *	where we need the *destination* data type.
-	 */
-	copied = dict_attr_acopy_enumv(fixup->da, src);
-	if (copied < 0) return -1;
-
-	if (!copied) {
+	if (!dict_attr_ext_copy(&fixup->da, src, FR_DICT_ATTR_EXT_ENUMV)) {
 		fr_strerror_printf("Reference copied no VALUEs from type type '%s' at %s[%d]",
 					fr_type_to_str(fixup->da->type),
 					fr_cwd_strip(fixup->da->filename), fixup->da->line);

@@ -525,17 +525,18 @@ FLAG_FUNC(counter)
 static int dict_flag_enum(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rule)
 {
 	/*
-	 *	Allow enum=... as a synonym for
-	 *	"clone".  We check the sources and not
-	 *	the targets, because that's easier.
-	 *
-	 *	Plus, ENUMs are really just normal attributes
-	 *	in disguise.
+	 *	Allow enum=... as an almost synonym for "clone", where we copy only the VALUEs, and not any
+	 *	children.
 	 */
 	if (!fr_type_is_leaf((*da_p)->type)) {
 		fr_strerror_const("'enum=...' references cannot be used for structural types");
 		return -1;
 	}
+
+	/*
+	 *	Ensure that this attribute has room for enums.
+	 */
+	if (!dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_ENUMV)) return -1;
 
 	if (unlikely(dict_attr_ref_aunresolved(da_p, value, FR_DICT_ATTR_REF_ENUM) < 0)) return -1;
 
