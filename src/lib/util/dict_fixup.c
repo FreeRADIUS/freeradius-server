@@ -506,11 +506,6 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 				   fr_type_to_str(src->type), fr_cwd_strip(dst->filename), dst->line);
 		return -1;
 
-	case FR_TYPE_TLV:
-		dst->flags.type_size = src->flags.type_size;
-		dst->flags.length = src->flags.length;
-		break;
-
 	case FR_TYPE_LEAF:
 		if (fr_dict_attr_is_key_field(src)) {
 			fr_strerror_printf("References MUST NOT refer to an attribute %s with 'key=...' at %s[%d]",
@@ -524,7 +519,17 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 		dst->flags.unsafe = src->flags.unsafe;
 		break;
 
+	case FR_TYPE_TLV:
+		dst->flags.type_size = src->flags.type_size;
+		dst->flags.length = src->flags.length;
+		FALL_THROUGH;
+
 	case FR_TYPE_STRUCT:
+		if (!dict_attr_children(src)) {
+			fr_strerror_printf_push("Reference %s has no children defined at %s[%d]",
+						src->name, fr_cwd_strip(dst->filename), dst->line);
+			return -1;
+		}
 		break;
 	}
 
