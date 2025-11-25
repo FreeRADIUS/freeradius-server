@@ -461,6 +461,9 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 	fr_dict_t		*dict = fr_dict_unconst(dst->dict);
 	fr_dict_attr_t		*cloned;
 
+	/*
+	 *	@todo - allow this for leaf attributes, but only if they're not a key, and not FR_TYPE_ATTR.
+	 */
 	if (src->dict->proto != dst->dict->proto) {
 		fr_strerror_printf("Incompatible protocols.  Referenced '%s', referencing '%s'.  Defined at %s[%d]",
 				   src->dict->proto->name, dst->dict->proto->name, dst->filename, dst->line);
@@ -468,8 +471,10 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 	}
 
 	/*
-	 *	The referenced DA is higher than the one we're
-	 *	creating.  Ensure it's not a parent.
+	 *	The referenced DA is higher than the one we're creating.  Ensure it's not a parent.
+	 *
+	 *	@todo - Do we want to require that aliases only go deeper in the tree?  Otherwise aliases can
+	 *	make the tree a lot more complicated.
 	 */
 	if (src->depth < dst->depth) {
 		fr_dict_attr_t const *parent;
@@ -507,6 +512,12 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 		break;
 
 	case FR_TYPE_LEAF:
+		if (fr_dict_attr_is_key_field(src)) {
+			fr_strerror_printf("References MUST NOT refer to an attribute %s with 'key=...' at %s[%d]",
+					   src->name, fr_cwd_strip(dst->filename), dst->line);
+			return -1;
+		}
+
 		dst->flags.is_unsigned = src->flags.is_unsigned;
 		dst->flags.counter = src->flags.counter;
 		dst->flags.secret = src->flags.secret;
@@ -570,20 +581,6 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 		}
 
 		return 0;
-	}
-
-	/*
-	 *	Can't clone members of a struct, you MUST clone the parent struct.  You also can't clone a
-	 *	union.
-	 */
-	if (src->parent->type == FR_TYPE_STRUCT) {
-		fr_strerror_printf("Cannot clone members of '%s' of type 'struct", src->parent->name);
-		return -1;
-	}
-
-	if (src->type == FR_TYPE_UNION) {
-		fr_strerror_printf("Cannot clone '%s' of type 'union", src->name);
-		return -1;
 	}
 
 	/*
@@ -722,7 +719,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict
 	fr_assert(fr_dict_attr_ext(fixup->da, FR_DICT_ATTR_EXT_ENUMV));
 
 	/*
-	 *	@todo - allow this for leaf attributes.
+	 *	@todo - allow this for leaf attributes, but only if they're not a key, and not FR_TYPE_ATTR.
 	 */
 	if (src->dict->proto != fixup->da->dict->proto) {
 		fr_strerror_printf("Incompatible protocols.  Referenced '%s', referencing '%s'.  Defined at %s[%d]",
