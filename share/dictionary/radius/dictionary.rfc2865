@@ -12,18 +12,18 @@ ATTRIBUTE	User-Name				1	string
 ATTRIBUTE	User-Password				2	string encrypt=User-Password
 ATTRIBUTE	CHAP-Password				3	octets
 ATTRIBUTE	NAS-IP-Address				4	ipaddr
-ATTRIBUTE	NAS-Port				5	integer
-ATTRIBUTE	Service-Type				6	integer
-ATTRIBUTE	Framed-Protocol				7	integer
+ATTRIBUTE	NAS-Port				5	uint32
+ATTRIBUTE	Service-Type				6	uint32
+ATTRIBUTE	Framed-Protocol				7	uint32
 ATTRIBUTE	Framed-IP-Address			8	ipaddr
 ATTRIBUTE	Framed-IP-Netmask			9	ipaddr
-ATTRIBUTE	Framed-Routing				10	integer
+ATTRIBUTE	Framed-Routing				10	uint32
 ATTRIBUTE	Filter-Id				11	string
-ATTRIBUTE	Framed-MTU				12	integer
-ATTRIBUTE	Framed-Compression			13	integer
+ATTRIBUTE	Framed-MTU				12	uint32
+ATTRIBUTE	Framed-Compression			13	uint32
 ATTRIBUTE	Login-IP-Host				14	ipaddr
-ATTRIBUTE	Login-Service				15	integer
-ATTRIBUTE	Login-TCP-Port				16	integer
+ATTRIBUTE	Login-Service				15	uint32
+ATTRIBUTE	Login-TCP-Port				16	uint32
 # Attribute 17 is undefined
 ATTRIBUTE	Reply-Message				18	string
 ATTRIBUTE	Callback-Number				19	string
@@ -34,9 +34,9 @@ ATTRIBUTE	Framed-IPX-Network			23	ipaddr
 ATTRIBUTE	State					24	octets
 ATTRIBUTE	Class					25	octets
 ATTRIBUTE	Vendor-Specific				26	vsa
-ATTRIBUTE	Session-Timeout				27	integer
-ATTRIBUTE	Idle-Timeout				28	integer
-ATTRIBUTE	Termination-Action			29	integer
+ATTRIBUTE	Session-Timeout				27	uint32
+ATTRIBUTE	Idle-Timeout				28	uint32
+ATTRIBUTE	Termination-Action			29	uint32
 ATTRIBUTE	Called-Station-Id			30	string
 ATTRIBUTE	Calling-Station-Id			31	string
 ATTRIBUTE	NAS-Identifier				32	string
@@ -44,13 +44,13 @@ ATTRIBUTE	Proxy-State				33	octets
 ATTRIBUTE	Login-LAT-Service			34	string
 ATTRIBUTE	Login-LAT-Node				35	string
 ATTRIBUTE	Login-LAT-Group				36	octets
-ATTRIBUTE	Framed-AppleTalk-Link			37	integer
-ATTRIBUTE	Framed-AppleTalk-Network		38	integer
+ATTRIBUTE	Framed-AppleTalk-Link			37	uint32
+ATTRIBUTE	Framed-AppleTalk-Network		38	uint32
 ATTRIBUTE	Framed-AppleTalk-Zone			39	string
 
 ATTRIBUTE	CHAP-Challenge				60	octets
-ATTRIBUTE	NAS-Port-Type				61	integer
-ATTRIBUTE	Port-Limit				62	integer
+ATTRIBUTE	NAS-Port-Type				61	uint32
+ATTRIBUTE	Port-Limit				62	uint32
 ATTRIBUTE	Login-LAT-Port				63	string
 
 #

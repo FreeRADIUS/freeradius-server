@@ -9,7 +9,7 @@
 #	$Id$
 #
 ATTRIBUTE	Acct-Tunnel-Connection			68	string
-ATTRIBUTE	Acct-Tunnel-Packets-Lost		86	integer
+ATTRIBUTE	Acct-Tunnel-Packets-Lost		86	uint32
 
 VALUE	Acct-Status-Type		Tunnel-Start		9
 VALUE	Acct-Status-Type		Tunnel-Stop		10

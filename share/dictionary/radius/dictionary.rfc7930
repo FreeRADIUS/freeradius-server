@@ -7,7 +7,7 @@
 #        http://www.ietf.org/rfc/rfc7930.txt
 #
 
-ATTRIBUTE	Response-Length				241.3	integer
-ATTRIBUTE	Original-Packet-Code			241.4	integer enum=@.Packet-Type
+ATTRIBUTE	Response-Length				241.3	uint32
+ATTRIBUTE	Original-Packet-Code			241.4	uint32 enum=@.Packet-Type
 
 VALUE	Error-Cause			Response-Too-Big	601

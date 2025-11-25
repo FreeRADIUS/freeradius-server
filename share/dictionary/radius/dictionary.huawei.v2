@@ -17,71 +17,71 @@ VENDOR		Huawei				2011
 
 BEGIN-VENDOR	Huawei
 
-ATTRIBUTE	Input-Peak-Information-Rate		1	integer
-ATTRIBUTE	Input-Committed-Information-Rate	2	integer
-ATTRIBUTE	Input-Committed-Burst-Size		3	integer
-ATTRIBUTE	Output-Peak-Information-Rate		4	integer
-ATTRIBUTE	Output-Committed-Information-Rate	5	integer
-ATTRIBUTE	Output-Committed-Burst-Size		6	integer
-ATTRIBUTE	In-Kb-Before-T-Switch			7	integer
-ATTRIBUTE	Out-Kb-Before-T-Switch			8	integer
-ATTRIBUTE	In-Pkt-Before-T-Switch			9	integer
-ATTRIBUTE	Out-Pkt-Before-T-Switch			10	integer
-ATTRIBUTE	In-Kb-After-T-Switch			11	integer
-ATTRIBUTE	Out-Kb-After-T-Switch			12	integer
-ATTRIBUTE	In-Pkt-After-T-Switch			13	integer
-ATTRIBUTE	Out-Pkt-After-T-Switch			14	integer
-ATTRIBUTE	Remanent-Volume				15	integer
-ATTRIBUTE	Tariff-Switch-Interval			16	integer
+ATTRIBUTE	Input-Peak-Information-Rate		1	uint32
+ATTRIBUTE	Input-Committed-Information-Rate	2	uint32
+ATTRIBUTE	Input-Committed-Burst-Size		3	uint32
+ATTRIBUTE	Output-Peak-Information-Rate		4	uint32
+ATTRIBUTE	Output-Committed-Information-Rate	5	uint32
+ATTRIBUTE	Output-Committed-Burst-Size		6	uint32
+ATTRIBUTE	In-Kb-Before-T-Switch			7	uint32
+ATTRIBUTE	Out-Kb-Before-T-Switch			8	uint32
+ATTRIBUTE	In-Pkt-Before-T-Switch			9	uint32
+ATTRIBUTE	Out-Pkt-Before-T-Switch			10	uint32
+ATTRIBUTE	In-Kb-After-T-Switch			11	uint32
+ATTRIBUTE	Out-Kb-After-T-Switch			12	uint32
+ATTRIBUTE	In-Pkt-After-T-Switch			13	uint32
+ATTRIBUTE	Out-Pkt-After-T-Switch			14	uint32
+ATTRIBUTE	Remanent-Volume				15	uint32
+ATTRIBUTE	Tariff-Switch-Interval			16	uint32
 ATTRIBUTE	Subscriber-QoS-Profile			17	string
-ATTRIBUTE	Max-Users-Per-Logic-Port		18	integer
-ATTRIBUTE	Command					20	integer
-ATTRIBUTE	Priority				22	integer
-ATTRIBUTE	Control-Identifier			24	integer
+ATTRIBUTE	Max-Users-Per-Logic-Port		18	uint32
+ATTRIBUTE	Command					20	uint32
+ATTRIBUTE	Priority				22	uint32
+ATTRIBUTE	Control-Identifier			24	uint32
 
-ATTRIBUTE	Result-Code				25	integer
+ATTRIBUTE	Result-Code				25	uint32
 
 # > 0 indicates an error.
 VALUE	Result-Code			Succeeded		0
 
-ATTRIBUTE	Connect-ID				26	integer
+ATTRIBUTE	Connect-ID				26	uint32
 ATTRIBUTE	PortalURL				27	string
 ATTRIBUTE	FTP-Directory				28	string
-ATTRIBUTE	Exec-Privilege				29	integer
-ATTRIBUTE	IP-Address				30	integer
+ATTRIBUTE	Exec-Privilege				29	uint32
+ATTRIBUTE	IP-Address				30	uint32
 ATTRIBUTE	Qos-Data				31	string
 ATTRIBUTE	SIP-Server				32	string
-ATTRIBUTE	VoiceVlan				33	integer
+ATTRIBUTE	VoiceVlan				33	uint32
 ATTRIBUTE	Command-Mode				34	string
-ATTRIBUTE	ProxyRdsPkt				35	integer
-ATTRIBUTE	Rebinding-Time				36	integer
-ATTRIBUTE	IGMP-Enable				37	integer
+ATTRIBUTE	ProxyRdsPkt				35	uint32
+ATTRIBUTE	Rebinding-Time				36	uint32
+ATTRIBUTE	IGMP-Enable				37	uint32
 ATTRIBUTE	Destnation-IP-Addr			39	string
 ATTRIBUTE	Destnation-Volume			40	string
-ATTRIBUTE	NAS-Startup-Time-Stamp			59	integer
+ATTRIBUTE	NAS-Startup-Time-Stamp			59	uint32
 ATTRIBUTE	IP-Host-Address				60	string
-ATTRIBUTE	Up-Priority				61	integer
-ATTRIBUTE	Down-Priority				62	integer
+ATTRIBUTE	Up-Priority				61	uint32
+ATTRIBUTE	Down-Priority				62	uint32
 ATTRIBUTE	Tunnel-VPN-Instance			63	string
-ATTRIBUTE	VT-Name					64	integer
+ATTRIBUTE	VT-Name					64	uint32
 ATTRIBUTE	User-Date				65	string
 ATTRIBUTE	User-Class				66	string
-ATTRIBUTE	PPP-NCP-Type				70	integer
+ATTRIBUTE	PPP-NCP-Type				70	uint32
 ATTRIBUTE	VSI-Name				71	string
 ATTRIBUTE	Subnet-Mask				72	ipaddr
 ATTRIBUTE	Gateway-Address				73	ipaddr
-ATTRIBUTE	Lease-Time				74	integer
+ATTRIBUTE	Lease-Time				74	uint32
 ATTRIBUTE	Primary-WINS				75	ipaddr
 ATTRIBUTE	Second-WINS				76	ipaddr
-ATTRIBUTE	Input-Peak-Burst-Size			77	integer
-ATTRIBUTE	Output-Peak-Burst-Size			78	integer
-ATTRIBUTE	Reduced-CIR				79	integer
-ATTRIBUTE	Tunnel-Session-Limit			80	integer
+ATTRIBUTE	Input-Peak-Burst-Size			77	uint32
+ATTRIBUTE	Output-Peak-Burst-Size			78	uint32
+ATTRIBUTE	Reduced-CIR				79	uint32
+ATTRIBUTE	Tunnel-Session-Limit			80	uint32
 ATTRIBUTE	Zone-Name				81	string
 ATTRIBUTE	Data-Filter				82	string
 ATTRIBUTE	Access-Service				83	string
-ATTRIBUTE	Accounting-Level			84	integer
-ATTRIBUTE	Portal-Mode				85	integer
+ATTRIBUTE	Accounting-Level			84	uint32
+ATTRIBUTE	Portal-Mode				85	uint32
 
 VALUE	Portal-Mode			PADM			0
 VALUE	Portal-Mode			Redirectional		1
@@ -91,42 +91,42 @@ ATTRIBUTE	DPI-Policy-Name				86	string
 ATTRIBUTE	huawei-Policy-Route			87	ipaddr
 ATTRIBUTE	Framed-Pool				88	string
 ATTRIBUTE	L2TP-Terminate-Cause			89	string
-ATTRIBUTE	Multi-Account-Mode			90	integer
+ATTRIBUTE	Multi-Account-Mode			90	uint32
 ATTRIBUTE	Queue-Profile				91	string
-ATTRIBUTE	Layer4-Session-Limit			92	integer
+ATTRIBUTE	Layer4-Session-Limit			92	uint32
 ATTRIBUTE	Multicast-Profile			93	string
 ATTRIBUTE	VPN-Instance				94	string
 ATTRIBUTE	Policy-Name				95	string
 ATTRIBUTE	Tunnel-Group-Name			96	string
 ATTRIBUTE	Multicast-Source-Group			97	string
 ATTRIBUTE	Multicast-Receive-Group			98	ipaddr
-ATTRIBUTE	User-Multicast-Type			99	integer
-ATTRIBUTE	Reduced-PIR				100	integer
+ATTRIBUTE	User-Multicast-Type			99	uint32
+ATTRIBUTE	Reduced-PIR				100	uint32
 ATTRIBUTE	LI-ID					101	string
 ATTRIBUTE	LI-Md-Address				102	ipaddr
-ATTRIBUTE	LI-Md-Port				103	integer
+ATTRIBUTE	LI-Md-Port				103	uint32
 ATTRIBUTE	LI-Md-VpnInstance			104	string
-ATTRIBUTE	Service-Chg-Cmd				105	integer
-ATTRIBUTE	Acct-Packet-Type			106	integer
-ATTRIBUTE	Call-Reference				107	integer
-ATTRIBUTE	PSTN-Port				108	integer
-ATTRIBUTE	Voip-Service-Type			109	integer
-ATTRIBUTE	Acct-Connection-Time			110	integer
-ATTRIBUTE	Error-Reason				112	integer
-ATTRIBUTE	Remain-Monney				113	integer
+ATTRIBUTE	Service-Chg-Cmd				105	uint32
+ATTRIBUTE	Acct-Packet-Type			106	uint32
+ATTRIBUTE	Call-Reference				107	uint32
+ATTRIBUTE	PSTN-Port				108	uint32
+ATTRIBUTE	Voip-Service-Type			109	uint32
+ATTRIBUTE	Acct-Connection-Time			110	uint32
+ATTRIBUTE	Error-Reason				112	uint32
+ATTRIBUTE	Remain-Monney				113	uint32
 ATTRIBUTE	Org-GK-ipaddr				123	ipaddr
 ATTRIBUTE	Org-GW-ipaddr				124	ipaddr
 ATTRIBUTE	Dst-GK-ipaddr				125	ipaddr
 ATTRIBUTE	Dst-GW-ipaddr				126	ipaddr
 ATTRIBUTE	Access-Num				127	string
-ATTRIBUTE	Remain-Time				128	integer
-ATTRIBUTE	Codec-Type				131	integer
+ATTRIBUTE	Remain-Time				128	uint32
+ATTRIBUTE	Codec-Type				131	uint32
 ATTRIBUTE	Transfer-Num				132	string
 ATTRIBUTE	New-User-Name				133	string
 ATTRIBUTE	Transfer-Station-Id			134	string
 ATTRIBUTE	Client-Primary-DNS			135	ipaddr
 ATTRIBUTE	Client-Secondary-DNS			136	ipaddr
-ATTRIBUTE	ONLY-Account-Type			137	integer
+ATTRIBUTE	ONLY-Account-Type			137	uint32
 ATTRIBUTE	Domain-Name				138	string
 ATTRIBUTE	ANCP-Profile				139	string
 ATTRIBUTE	HTTP-Redirect-URL			140	string
@@ -138,38 +138,38 @@ VALUE	QoS-Profile-Type		L2TP-Inbound		1
 VALUE	QoS-Profile-Type		L2TP-Outbound		2
 VALUE	QoS-Profile-Type		L2TP			3
 
-ATTRIBUTE	Max-List-Num				143	integer
-ATTRIBUTE	Acct-IPv6-Input-Octets			144	integer
-ATTRIBUTE	Acct-IPv6-Output-Octets			145	integer
+ATTRIBUTE	Max-List-Num				143	uint32
+ATTRIBUTE	Acct-IPv6-Input-Octets			144	uint32
+ATTRIBUTE	Acct-IPv6-Output-Octets			145	uint32
 ATTRIBUTE	Service-Scheme				146	string
-ATTRIBUTE	Acct-IPv6-Output-Packets		147	integer
-ATTRIBUTE	Acct-IPv6-Input-Gigawords		148	integer
-ATTRIBUTE	Acct-IPv6-Output-Gigawords		149	integer
+ATTRIBUTE	Acct-IPv6-Output-Packets		147	uint32
+ATTRIBUTE	Acct-IPv6-Input-Gigawords		148	uint32
+ATTRIBUTE	Acct-IPv6-Output-Gigawords		149	uint32
 ATTRIBUTE	DHCPv6-Option37				150	string
 ATTRIBUTE	DHCPv6-Option38				151	string
-ATTRIBUTE	Access-Type				153	integer
+ATTRIBUTE	Access-Type				153	uint32
 ATTRIBUTE	DNS-Server-IPv6-address			154	ipv6addr
-ATTRIBUTE	URL-Flag				155	integer
+ATTRIBUTE	URL-Flag				155	uint32
 ATTRIBUTE	Portal-UR				156	string
 ATTRIBUTE	Terminal-Type				157	string
 ATTRIBUTE	DHCP-Option				158	string
-ATTRIBUTE	Acct-Update-Address			159	integer
-ATTRIBUTE	UCL-Group				160	integer
+ATTRIBUTE	Acct-Update-Address			159	uint32
+ATTRIBUTE	UCL-Group				160	uint32
 ATTRIBUTE	Forwarding-VLAN				161	string
 ATTRIBUTE	Forwarding-Interface			162	string
 ATTRIBUTE	LLDP					163	string
-ATTRIBUTE	NAT-Port-Forwarding			164	integer
-ATTRIBUTE	NAT-Port-Range-Update			165	integer
+ATTRIBUTE	NAT-Port-Forwarding			164	uint32
+ATTRIBUTE	NAT-Port-Range-Update			165	uint32
 ATTRIBUTE	DS-Lite-Tunnel-Name			166	string
 ATTRIBUTE	PCP-Server-Name				167	string # manual says text?
-ATTRIBUTE	Public-IP-Addr-State			168	integer
+ATTRIBUTE	Public-IP-Addr-State			168	uint32
 ATTRIBUTE	Redirect-ACL				173	string
 
 VALUE	Public-IP-Addr-State		Safe			0
 VALUE	Public-IP-Addr-State		Warning			1
 VALUE	Public-IP-Addr-State		Danger			2
 
-ATTRIBUTE	Auth-Type				180	integer
+ATTRIBUTE	Auth-Type				180	uint32
 
 VALUE	Auth-Type			PPP			1
 VALUE	Auth-Type			Web			2
@@ -184,7 +184,7 @@ VALUE	Auth-Type			None			10
 
 ATTRIBUTE	Acct-Terminate-Subcause			181	string
 ATTRIBUTE	Down-QOS-Profile-Name			182	string
-ATTRIBUTE	Port-Mirror				183	integer
+ATTRIBUTE	Port-Mirror				183	uint32
 
 VALUE	Port-Mirror			Disable			0
 VALUE	Port-Mirror			Uplink-Enable		1
@@ -199,7 +199,7 @@ ATTRIBUTE	Delegated-IPv6-Prefix-Pool		191	string
 ATTRIBUTE	IPv6-Prefix-Lease			192	octets
 ATTRIBUTE	IPv6-Address-Lease			193	octets
 ATTRIBUTE	IPv6-Policy-Route			194	ipv6prefix # manual says string?
-ATTRIBUTE	MNG-IPv6				196	integer
+ATTRIBUTE	MNG-IPv6				196	uint32
 ATTRIBUTE	User-Extend-Info			201	string
 
 VALUE	MNG-IPv6			Unsupported		0
@@ -214,9 +214,9 @@ VALUE	MNG-IPv6			Supported		1
 ATTRIBUTE	DPSK-Info				206	string
 
 ATTRIBUTE	Flow-Info				211	string
-ATTRIBUTE	Flow-Id					212	integer
+ATTRIBUTE	Flow-Id					212	uint32
 ATTRIBUTE	DHCP-Server-IP				214	ipaddr
-ATTRIBUTE	Application-Type			215	integer
+ATTRIBUTE	Application-Type			215	uint32
 
 VALUE	Application-Type		Fixed			1
 VALUE	Application-Type		Nomadic			2
@@ -224,9 +224,9 @@ VALUE	Application-Type		Portable		3
 VALUE	Application-Type		Simple-Mobile		4
 VALUE	Application-Type		Full-Mobile		5
 
-ATTRIBUTE	Indication-Flag				216	octets # integer??
+ATTRIBUTE	Indication-Flag				216	octets # uint32??
 ATTRIBUTE	Original_NAS-IP_Address			217	ipaddr
-ATTRIBUTE	User-Priority				218	integer
+ATTRIBUTE	User-Priority				218	uint32
 
 VALUE	User-Priority			Common			0
 VALUE	User-Priority			Copper			1

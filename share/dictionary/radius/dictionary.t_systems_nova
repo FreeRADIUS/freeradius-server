@@ -17,18 +17,18 @@ ATTRIBUTE	Location-ID				1	string
 ATTRIBUTE	Location-Name				2	string
 ATTRIBUTE	Logoff-URL				3	string
 ATTRIBUTE	Redirection-URL				4	string
-ATTRIBUTE	Bandwidth-Min-Up			5	integer
-ATTRIBUTE	Bandwidth-Min-Down			6	integer
-ATTRIBUTE	Bandwidth-Max-Up			7	integer
-ATTRIBUTE	Bandwidth-Max-Down			8	integer
-ATTRIBUTE	Session-Terminate-Time			9	integer
+ATTRIBUTE	Bandwidth-Min-Up			5	uint32
+ATTRIBUTE	Bandwidth-Min-Down			6	uint32
+ATTRIBUTE	Bandwidth-Max-Up			7	uint32
+ATTRIBUTE	Bandwidth-Max-Down			8	uint32
+ATTRIBUTE	Session-Terminate-Time			9	uint32
 
-#ATTRIBUTE	Session-Terminate-End-Of-Day 	10 integer
-ATTRIBUTE	Session-Terminate-EoD			10	integer
+#ATTRIBUTE	Session-Terminate-End-Of-Day 	10 uint32
+ATTRIBUTE	Session-Terminate-EoD			10	uint32
 
 ATTRIBUTE	Billing-Class-Of-Service		11	string
 ATTRIBUTE	Service-Name				12	string
-ATTRIBUTE	Price-Of-Service			13	integer
+ATTRIBUTE	Price-Of-Service			13	uint32
 ATTRIBUTE	Visiting-Provider-Code			14	string
 ATTRIBUTE	UnknownAVP				15	string
 

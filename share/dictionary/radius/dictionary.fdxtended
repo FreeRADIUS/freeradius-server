@@ -5,16 +5,16 @@
 VENDOR		fdXtended			34536
 
 BEGIN-VENDOR	fdXtended
-ATTRIBUTE	Bandwidth-Up				1	integer
-ATTRIBUTE	Bandwidth-Down				2	integer
+ATTRIBUTE	Bandwidth-Up				1	uint32
+ATTRIBUTE	Bandwidth-Down				2	uint32
 ATTRIBUTE	PostAuthURL				3	string
 ATTRIBUTE	One2onenat-IP				4	string
-ATTRIBUTE	ContentFilter				5	integer
-ATTRIBUTE	NetworkPolicy				6	integer
-ATTRIBUTE	BytesDown				7	integer
-ATTRIBUTE	BytesUp					8	integer
+ATTRIBUTE	ContentFilter				5	uint32
+ATTRIBUTE	NetworkPolicy				6	uint32
+ATTRIBUTE	BytesDown				7	uint32
+ATTRIBUTE	BytesUp					8	uint32
 ATTRIBUTE	Expiration				9	string
-ATTRIBUTE	SessionTimeout				10	integer
+ATTRIBUTE	SessionTimeout				10	uint32
 ATTRIBUTE	Wan-Interface				11	string
 END-VENDOR fdXtended
 ALIAS		fdXtended				Vendor-Specific.fdXtended

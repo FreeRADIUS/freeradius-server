@@ -34,7 +34,7 @@ ATTRIBUTE	Extended-Vendor-Specific-6		246.26	vsa
 #  In this case, the "Cisco-Foo-Bar" attribute has OID 241.26.9.1
 #
 #BEGIN-VENDOR Cisco format=Extended-Vendor-Specific-1
-#ATTRIBUTE Cisco-Foo-Bar 1 integer
-#ATTRIBUTE Cisco-Bar-Baz 2 integer
+#ATTRIBUTE Cisco-Foo-Bar 1 uint32
+#ATTRIBUTE Cisco-Bar-Baz 2 uint32
 #...
 #END-VENDOR Cisco

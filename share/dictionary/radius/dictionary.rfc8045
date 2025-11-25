@@ -8,26 +8,26 @@
 #
 
 ATTRIBUTE	IP-Port-Limit-Info			241.5	tlv
-ATTRIBUTE	Type					.1	integer
-ATTRIBUTE	Limit					.2	integer
+ATTRIBUTE	Type					.1	uint32
+ATTRIBUTE	Limit					.2	uint32
 ATTRIBUTE	Ext-IPv4-Addr				.3	ipaddr
 ATTRIBUTE	Int-IPv4-Addr				.4	ipaddr
 ATTRIBUTE	Int-IPv6-Addr				.5	ipv6addr
-ATTRIBUTE	Int-Port				.6	integer
-ATTRIBUTE	Ext-Port				.7	integer
-ATTRIBUTE	Alloc					.8	integer
+ATTRIBUTE	Int-Port				.6	uint32
+ATTRIBUTE	Ext-Port				.7	uint32
+ATTRIBUTE	Alloc					.8	uint32
 
 VALUE	Alloc				Reserved		0
 VALUE	Alloc				Allocation		1
 VALUE	Alloc				Deallocation		2
 
-ATTRIBUTE	Range-Start				.9	integer
-ATTRIBUTE	Range-End				.10	integer
+ATTRIBUTE	Range-Start				.9	uint32
+ATTRIBUTE	Range-End				.10	uint32
 ATTRIBUTE	Local-Id				.11	string
 
 ATTRIBUTE	IP-Port-Range				241.6	tlv clone=.IP-Port-Limit-Info
-ATTRIBUTE	Range-Start				.9	integer
-ATTRIBUTE	Range-End				.10	integer
+ATTRIBUTE	Range-Start				.9	uint32
+ATTRIBUTE	Range-End				.10	uint32
 ATTRIBUTE	Local-Id				.11	string
 
 ATTRIBUTE	IP-Port-Forwarding-Map			241.7	tlv clone=.IP-Port-Range

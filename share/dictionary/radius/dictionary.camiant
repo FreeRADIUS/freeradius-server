@@ -14,7 +14,7 @@ VENDOR		Camiant				21274
 BEGIN-VENDOR	Camiant
 
 ATTRIBUTE	MI-role					1	string
-ATTRIBUTE	SUI-role				2	integer
+ATTRIBUTE	SUI-role				2	uint32
 ATTRIBUTE	MI-scope				3	string
 
 VALUE	SUI-role			camiantView		101

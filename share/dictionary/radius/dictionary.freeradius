@@ -23,7 +23,7 @@ ATTRIBUTE	Session-Start-Time			2	date
 #  FreeRADIUS v4 produces statistics in its own TLV
 #
 ATTRIBUTE	Stats4					15	tlv
-ATTRIBUTE	Type					.1	integer
+ATTRIBUTE	Type					.1	uint32
 
 VALUE	Type				Global			1
 VALUE	Type				Client			2
@@ -33,20 +33,20 @@ ATTRIBUTE	Name					.2	string
 ATTRIBUTE	Number					.3	string
 ATTRIBUTE	IPv4-Address				.4	ipaddr
 ATTRIBUTE	IPv6-Address				.5	ipv6addr
-ATTRIBUTE	Port					.6	integer
+ATTRIBUTE	Port					.6	uint32
 
 #
 #  All of the counters are in a sub-TLV
 #
 ATTRIBUTE	Counters				15.8	tlv
-ATTRIBUTE	Requests				.1	integer64
-ATTRIBUTE	Responses				.2	integer64
-ATTRIBUTE	Invalid-Requests			.3	integer64
-ATTRIBUTE	Dup-Requests				.4	integer64
-ATTRIBUTE	Malformed-Requests			.5	integer64
-ATTRIBUTE	Packets-Dropped				.6	integer64
-ATTRIBUTE	Bad-Authenticators			.7	integer64
-ATTRIBUTE	Unknown-Types				.8	integer64
+ATTRIBUTE	Requests				.1	uint64
+ATTRIBUTE	Responses				.2	uint64
+ATTRIBUTE	Invalid-Requests			.3	uint64
+ATTRIBUTE	Dup-Requests				.4	uint64
+ATTRIBUTE	Malformed-Requests			.5	uint64
+ATTRIBUTE	Packets-Dropped				.6	uint64
+ATTRIBUTE	Bad-Authenticators			.7	uint64
+ATTRIBUTE	Unknown-Types				.8	uint64
 
 #
 #  These count request and response packets for each type of packet.
@@ -59,20 +59,20 @@ ATTRIBUTE	Packet-Counters				15.9	tlv
 #
 #  The attribute number for the counters is taken from the packet codes.
 #
-ATTRIBUTE	Access-Request				15.9.1	integer64
-ATTRIBUTE	Access-Accept				15.9.2	integer64
-ATTRIBUTE	Access-Reject				15.9.3	integer64
-ATTRIBUTE	Accounting-Request			15.9.4	integer64
-ATTRIBUTE	Accounting-Response			15.9.5	integer64
-ATTRIBUTE	Access-Challenge			15.9.11	integer64
-ATTRIBUTE	Status-Server				15.9.12	integer64
-ATTRIBUTE	Disconnect-Request			15.9.40	integer64
-ATTRIBUTE	Disconnect-ACK				15.9.41	integer64
-ATTRIBUTE	Disconnect-NAK				15.9.42	integer64
-ATTRIBUTE	CoA-Request				15.9.43	integer64
-ATTRIBUTE	CoA-ACK					15.9.44	integer64
-ATTRIBUTE	CoA-NAK					15.9.45	integer64
-ATTRIBUTE	Protocol-Error				15.9.52	integer64
+ATTRIBUTE	Access-Request				15.9.1	uint64
+ATTRIBUTE	Access-Accept				15.9.2	uint64
+ATTRIBUTE	Access-Reject				15.9.3	uint64
+ATTRIBUTE	Accounting-Request			15.9.4	uint64
+ATTRIBUTE	Accounting-Response			15.9.5	uint64
+ATTRIBUTE	Access-Challenge			15.9.11	uint64
+ATTRIBUTE	Status-Server				15.9.12	uint64
+ATTRIBUTE	Disconnect-Request			15.9.40	uint64
+ATTRIBUTE	Disconnect-ACK				15.9.41	uint64
+ATTRIBUTE	Disconnect-NAK				15.9.42	uint64
+ATTRIBUTE	CoA-Request				15.9.43	uint64
+ATTRIBUTE	CoA-ACK					15.9.44	uint64
+ATTRIBUTE	CoA-NAK					15.9.45	uint64
+ATTRIBUTE	Protocol-Error				15.9.52	uint64
 
 #
 #  Attributes 127 through 187 are for statistics produced by
@@ -83,7 +83,7 @@ ATTRIBUTE	Protocol-Error				15.9.52	integer64
 #
 #  This attribute is really a bitmask.
 #
-ATTRIBUTE	Statistics-Type				127	integer
+ATTRIBUTE	Statistics-Type				127	uint32
 
 VALUE	Statistics-Type			None			0
 VALUE	Statistics-Type			Authentication		1
@@ -103,71 +103,71 @@ VALUE	Statistics-Type			All			0x1f
 #
 #  Global authentication statistics for packets received by the server.
 #
-ATTRIBUTE	Total-Access-Requests			128	integer
-ATTRIBUTE	Total-Access-Accepts			129	integer
-ATTRIBUTE	Total-Access-Rejects			130	integer
-ATTRIBUTE	Total-Access-Challenges			131	integer
-ATTRIBUTE	Total-Auth-Responses			132	integer
-ATTRIBUTE	Total-Auth-Duplicate-Requests		133	integer
-ATTRIBUTE	Total-Auth-Malformed-Requests		134	integer
-ATTRIBUTE	Total-Auth-Invalid-Requests		135	integer
-ATTRIBUTE	Total-Auth-Dropped-Requests		136	integer
-ATTRIBUTE	Total-Auth-Unknown-Types		137	integer
+ATTRIBUTE	Total-Access-Requests			128	uint32
+ATTRIBUTE	Total-Access-Accepts			129	uint32
+ATTRIBUTE	Total-Access-Rejects			130	uint32
+ATTRIBUTE	Total-Access-Challenges			131	uint32
+ATTRIBUTE	Total-Auth-Responses			132	uint32
+ATTRIBUTE	Total-Auth-Duplicate-Requests		133	uint32
+ATTRIBUTE	Total-Auth-Malformed-Requests		134	uint32
+ATTRIBUTE	Total-Auth-Invalid-Requests		135	uint32
+ATTRIBUTE	Total-Auth-Dropped-Requests		136	uint32
+ATTRIBUTE	Total-Auth-Unknown-Types		137	uint32
 
 #
 #  Global statistics for auth packets sent by the server to all home servers
 #
-ATTRIBUTE	Total-Proxy-Access-Requests		138	integer
-ATTRIBUTE	Total-Proxy-Access-Accepts		139	integer
-ATTRIBUTE	Total-Proxy-Access-Rejects		140	integer
-ATTRIBUTE	Total-Proxy-Access-Challenges		141	integer
-ATTRIBUTE	Total-Proxy-Auth-Responses		142	integer
-ATTRIBUTE	Total-Proxy-Auth-Duplicate-Requests	143	integer
-ATTRIBUTE	Total-Proxy-Auth-Malformed-Requests	144	integer
-ATTRIBUTE	Total-Proxy-Auth-Invalid-Requests	145	integer
-ATTRIBUTE	Total-Proxy-Auth-Dropped-Requests	146	integer
-ATTRIBUTE	Total-Proxy-Auth-Unknown-Types		147	integer
+ATTRIBUTE	Total-Proxy-Access-Requests		138	uint32
+ATTRIBUTE	Total-Proxy-Access-Accepts		139	uint32
+ATTRIBUTE	Total-Proxy-Access-Rejects		140	uint32
+ATTRIBUTE	Total-Proxy-Access-Challenges		141	uint32
+ATTRIBUTE	Total-Proxy-Auth-Responses		142	uint32
+ATTRIBUTE	Total-Proxy-Auth-Duplicate-Requests	143	uint32
+ATTRIBUTE	Total-Proxy-Auth-Malformed-Requests	144	uint32
+ATTRIBUTE	Total-Proxy-Auth-Invalid-Requests	145	uint32
+ATTRIBUTE	Total-Proxy-Auth-Dropped-Requests	146	uint32
+ATTRIBUTE	Total-Proxy-Auth-Unknown-Types		147	uint32
 
 #
 #  Global accounting statistics for packets received by the server.
 #
-ATTRIBUTE	Total-Accounting-Requests		148	integer
-ATTRIBUTE	Total-Accounting-Responses		149	integer
-ATTRIBUTE	Total-Acct-Duplicate-Requests		150	integer
-ATTRIBUTE	Total-Acct-Malformed-Requests		151	integer
-ATTRIBUTE	Total-Acct-Invalid-Requests		152	integer
-ATTRIBUTE	Total-Acct-Dropped-Requests		153	integer
-ATTRIBUTE	Total-Acct-Unknown-Types		154	integer
+ATTRIBUTE	Total-Accounting-Requests		148	uint32
+ATTRIBUTE	Total-Accounting-Responses		149	uint32
+ATTRIBUTE	Total-Acct-Duplicate-Requests		150	uint32
+ATTRIBUTE	Total-Acct-Malformed-Requests		151	uint32
+ATTRIBUTE	Total-Acct-Invalid-Requests		152	uint32
+ATTRIBUTE	Total-Acct-Dropped-Requests		153	uint32
+ATTRIBUTE	Total-Acct-Unknown-Types		154	uint32
 
 #
 #  Global statistics for acct packets sent by the server to all home servers
 #
-ATTRIBUTE	Total-Proxy-Accounting-Requests		155	integer
-ATTRIBUTE	Total-Proxy-Accounting-Responses	156	integer
-ATTRIBUTE	Total-Proxy-Acct-Duplicate-Requests	157	integer
-ATTRIBUTE	Total-Proxy-Acct-Malformed-Requests	158	integer
-ATTRIBUTE	Total-Proxy-Acct-Invalid-Requests	159	integer
-ATTRIBUTE	Total-Proxy-Acct-Dropped-Requests	160	integer
-ATTRIBUTE	Total-Proxy-Acct-Unknown-Types		161	integer
+ATTRIBUTE	Total-Proxy-Accounting-Requests		155	uint32
+ATTRIBUTE	Total-Proxy-Accounting-Responses	156	uint32
+ATTRIBUTE	Total-Proxy-Acct-Duplicate-Requests	157	uint32
+ATTRIBUTE	Total-Proxy-Acct-Malformed-Requests	158	uint32
+ATTRIBUTE	Total-Proxy-Acct-Invalid-Requests	159	uint32
+ATTRIBUTE	Total-Proxy-Acct-Dropped-Requests	160	uint32
+ATTRIBUTE	Total-Proxy-Acct-Unknown-Types		161	uint32
 
 #
 #  Internal queues.  Different packet types are put into different queues.
 #
-ATTRIBUTE	Queue-Len-Internal			162	integer
-ATTRIBUTE	Queue-Len-Proxy				163	integer
-ATTRIBUTE	Queue-Len-Auth				164	integer
-ATTRIBUTE	Queue-Len-Acct				165	integer
-ATTRIBUTE	Queue-Len-Detail			166	integer
+ATTRIBUTE	Queue-Len-Internal			162	uint32
+ATTRIBUTE	Queue-Len-Proxy				163	uint32
+ATTRIBUTE	Queue-Len-Auth				164	uint32
+ATTRIBUTE	Queue-Len-Acct				165	uint32
+ATTRIBUTE	Queue-Len-Detail			166	uint32
 
 ATTRIBUTE	Stats-Client-IP-Address			167	ipaddr
-ATTRIBUTE	Stats-Client-Number			168	integer
-ATTRIBUTE	Stats-Client-Netmask			169	integer
+ATTRIBUTE	Stats-Client-Number			168	uint32
+ATTRIBUTE	Stats-Client-Netmask			169	uint32
 
 ATTRIBUTE	Stats-Server-IP-Address			170	ipaddr
-ATTRIBUTE	Stats-Server-Port			171	integer
+ATTRIBUTE	Stats-Server-Port			171	uint32
 
-ATTRIBUTE	Stats-Server-Outstanding-Requests	172	integer
-ATTRIBUTE	Stats-Server-State			173	integer
+ATTRIBUTE	Stats-Server-Outstanding-Requests	172	uint32
+ATTRIBUTE	Stats-Server-State			173	uint32
 
 VALUE	Stats-Server-State		Alive			0
 VALUE	Stats-Server-State		Zombie			1
@@ -195,13 +195,13 @@ ATTRIBUTE	Stats-HUP-Time				177	date
 #  Both Window-1 and Window-10 are times in microseconds
 #  (1/1000000 of a second).
 #
-ATTRIBUTE	Server-EMA-Window			178	integer
-ATTRIBUTE	Server-EMA-USEC-Window-1		179	integer
-ATTRIBUTE	Server-EMA-USEC-Window-10		180	integer
+ATTRIBUTE	Server-EMA-Window			178	uint32
+ATTRIBUTE	Server-EMA-USEC-Window-1		179	uint32
+ATTRIBUTE	Server-EMA-USEC-Window-10		180	uint32
 
-ATTRIBUTE	Queue-PPS-In				181	integer
-ATTRIBUTE	Queue-PPS-Out				182	integer
-ATTRIBUTE	Queue-Use-Percentage			183	integer
+ATTRIBUTE	Queue-PPS-In				181	uint32
+ATTRIBUTE	Queue-PPS-Out				182	uint32
+ATTRIBUTE	Queue-Use-Percentage			183	uint32
 
 ATTRIBUTE	Stats-Last-Packet-Recv			184	date
 ATTRIBUTE	Stats-Last-Packet-Sent			185	date

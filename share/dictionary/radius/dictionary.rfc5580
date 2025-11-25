@@ -88,7 +88,7 @@ MEMBER		Users-Location-Capable			bit[1]
 MEMBER		NAS-Location-Capable			bit[1]
 MEMBER		Location-Capable-Reserved		bit[4]
 
-ATTRIBUTE	Requested-Location-Info			132	integer
+ATTRIBUTE	Requested-Location-Info			132	uint32
 VALUE	Requested-Location-Info		Civic-Location		1
 VALUE	Requested-Location-Info		Geo-Location		2
 VALUE	Requested-Location-Info		Users-Location		4

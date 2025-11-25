@@ -17,15 +17,15 @@ BEGIN-VENDOR	Nortel
 
 ATTRIBUTE	User-Role				110	string
 
-ATTRIBUTE	Privilege-Level				166	integer
+ATTRIBUTE	Privilege-Level				166	uint32
 
-ATTRIBUTE	Passport-Command-Scope			200	integer
-ATTRIBUTE	Passport-Command-Impact			201	integer
-ATTRIBUTE	Passport-Customer-Identifier		202	integer
-ATTRIBUTE	Passport-Allowed-Access			203	integer
-ATTRIBUTE	Passport-AllowedOut-Access		204	integer
+ATTRIBUTE	Passport-Command-Scope			200	uint32
+ATTRIBUTE	Passport-Command-Impact			201	uint32
+ATTRIBUTE	Passport-Customer-Identifier		202	uint32
+ATTRIBUTE	Passport-Allowed-Access			203	uint32
+ATTRIBUTE	Passport-AllowedOut-Access		204	uint32
 ATTRIBUTE	Passport-Login-Directory		205	string
-ATTRIBUTE	Passport-Timeout-Protocol		206	integer
+ATTRIBUTE	Passport-Timeout-Protocol		206	uint32
 ATTRIBUTE	Passport-Role				207	string
 
 VALUE	Privilege-Level			VoiceMailAdmin		0
@@ -68,11 +68,11 @@ VALUE	Privilege-Level			System-SerialPort	36
 #
 ##############################################################################
 
-ATTRIBUTE	Fabric-Attach-VLAN-Create		170	integer
+ATTRIBUTE	Fabric-Attach-VLAN-Create		170	uint32
 ATTRIBUTE	Fabric-Attach-VLAN-ISID			171	string
-ATTRIBUTE	Fabric-Attach-VLAN-PVID			172	integer
+ATTRIBUTE	Fabric-Attach-VLAN-PVID			172	uint32
 
-ATTRIBUTE	Fabric-Attach-Switch-Mode		180	integer
+ATTRIBUTE	Fabric-Attach-Switch-Mode		180	uint32
 ATTRIBUTE	Fabric-Attach-Client-Id			181	string
 ATTRIBUTE	Fabric-Attach-Client-Type		182	string
 
@@ -92,7 +92,7 @@ VALUE	Fabric-Attach-Switch-Mode	Fabric-Attach-Standalone-Proxy 5
 #
 ##############################################################################
 
-ATTRIBUTE	Fabric-Attach-Client-PSK		183	integer
+ATTRIBUTE	Fabric-Attach-Client-PSK		183	uint32
 ATTRIBUTE	Fabric-Attach-Service-Request		186	string
 
 VALUE	Fabric-Attach-Client-PSK	NO-Fabric-Attach-Message-Authentication 0
@@ -107,7 +107,7 @@ VALUE	Fabric-Attach-Client-PSK	User-Defined-Key-Auth-Succes 101
 #
 ##############################################################################
 
-ATTRIBUTE	Fabric-Attach-Client-Trust		184	integer
+ATTRIBUTE	Fabric-Attach-Client-Trust		184	uint32
 ATTRIBUTE	Fabric-Attach-Client-Trusted-Binding	185	string
 
 VALUE	Fabric-Attach-Client-Trust	Fabric-Attach-Switch-Trust-None 0

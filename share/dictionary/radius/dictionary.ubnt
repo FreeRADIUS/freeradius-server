@@ -21,10 +21,10 @@ BEGIN-VENDOR	UBNT
 # for UAP series running 4.0.59+
 # source: https://community.ui.com/questions/RADIUS-Dictionary/c2fbeeac-3b86-493c-88cb-0dc4b3e47912#answer/c6cce5df-d6e2-42b4-8069-2e3f636cd6a9
 
-ATTRIBUTE	Data-Rate-DL				1	integer64
-ATTRIBUTE	Data-Rate-DL-Burst			2	integer64
-ATTRIBUTE	Data-Rate-UL				3	integer64
-ATTRIBUTE	Data-Rate-UL-Burst			4	integer64
+ATTRIBUTE	Data-Rate-DL				1	uint64
+ATTRIBUTE	Data-Rate-DL-Burst			2	uint64
+ATTRIBUTE	Data-Rate-UL				3	uint64
+ATTRIBUTE	Data-Rate-UL-Burst			4	uint64
 
 #
 # PSK RADIUS attributes

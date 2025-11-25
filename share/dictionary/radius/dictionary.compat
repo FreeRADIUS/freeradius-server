@@ -23,7 +23,7 @@ ALIAS		Dialback-No				Callback-Number
 ALIAS		Dialback-Name				Callback-Id
 ALIAS		Challenge-State				State
 
-# Other enumeration names for hte same integers
+# Other enumeration names for hte same uint32s
 VALUE	Framed-Compression		Van-Jacobsen-TCP-IP	1
 VALUE	Framed-Compression		VJ-TCP-IP		1
 

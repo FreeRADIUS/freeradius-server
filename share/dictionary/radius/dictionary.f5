@@ -15,19 +15,19 @@
 VENDOR		F5				3375
 BEGIN-VENDOR	F5
 
-ATTRIBUTE	LTM-User-Role				1	integer
-ATTRIBUTE	LTM-User-Role-Universal			2	integer    # enable/disable
+ATTRIBUTE	LTM-User-Role				1	uint32
+ATTRIBUTE	LTM-User-Role-Universal			2	uint32    # enable/disable
 ATTRIBUTE	LTM-User-Partition			3	string
-ATTRIBUTE	LTM-User-Console			4	integer    # enable/disable
+ATTRIBUTE	LTM-User-Console			4	uint32    # enable/disable
 ATTRIBUTE	LTM-User-Shell				5	string     # supported values are disable, tmsh, and bpsh
-ATTRIBUTE	LTM-User-Context-1			10	integer
-ATTRIBUTE	LTM-User-Context-2			11	integer
+ATTRIBUTE	LTM-User-Context-1			10	uint32
+ATTRIBUTE	LTM-User-Context-2			11	uint32
 ATTRIBUTE	LTM-User-Info-1				12	string
 ATTRIBUTE	LTM-User-Info-2				13	string
 ATTRIBUTE	LTM-Audit-Msg				14	string
 
-ATTRIBUTE	F5OS-UID				21	integer
-ATTRIBUTE	F5OS-GID				22	integer
+ATTRIBUTE	F5OS-UID				21	uint32
+ATTRIBUTE	F5OS-GID				22	uint32
 ATTRIBUTE	F5OS-HOMEDIR				23	string
 ATTRIBUTE	F5OS-SHELL				24	string
 ATTRIBUTE	F5OS-USERINFO				25	string

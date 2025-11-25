@@ -25,7 +25,7 @@ BEGIN-VENDOR	Aerohive
 
 # Beginning of HiveManager Classic VSAs
 # The following ATTRIBUTE and VALUE definitions are required.
-ATTRIBUTE	AH-HM-Admin-Group-Id			1	integer
+ATTRIBUTE	AH-HM-Admin-Group-Id			1	uint32
 VALUE	AH-HM-Admin-Group-Id		Read-Only-Admin		0
 VALUE	AH-HM-Admin-Group-Id		Super-Admin		1
 VALUE	AH-HM-Admin-Group-Id		Read-Write-Admin	2
@@ -36,26 +36,26 @@ VALUE	AH-HM-Admin-Group-Id		Read-Write-Admin	2
 # End of HiveManager Classic VSAs
 # Beginning of HiveOS VSAs
 
-ATTRIBUTE	Extreme-User-Vlan			1	integer
+ATTRIBUTE	Extreme-User-Vlan			1	uint32
 ATTRIBUTE	Extreme-Libsip-Patron-Info		3	octets encrypt=Tunnel-Password
-ATTRIBUTE	Extreme-Libsip-Action			4	integer
+ATTRIBUTE	Extreme-Libsip-Action			4	uint32
 ATTRIBUTE	Extreme-Libsip-Additional-Message	5	octets
-ATTRIBUTE	Extreme-User-Profile-Attribute		6	integer
+ATTRIBUTE	Extreme-User-Profile-Attribute		6	uint32
 ATTRIBUTE	Extreme-Data-Usage-Limit		7	octets
 ATTRIBUTE	Extreme-AVPair				8	string
-ATTRIBUTE	Extreme-Radius-Code			9	integer
+ATTRIBUTE	Extreme-Radius-Code			9	uint32
 ATTRIBUTE	Extreme-PPSK-Request			201	octets
 ATTRIBUTE	Extreme-PPSK-PMK			202	octets
-ATTRIBUTE	Extreme-IDM-Message			203	integer
-ATTRIBUTE	Extreme-NT-Identity			204	integer
+ATTRIBUTE	Extreme-IDM-Message			203	uint32
+ATTRIBUTE	Extreme-NT-Identity			204	uint32
 ATTRIBUTE	Extreme-User-Language			205	string
-ATTRIBUTE	Extreme-Time-Zone-Offset		207	integer
-ATTRIBUTE	Extreme-Daylight-Saving-Offset		208	integer
+ATTRIBUTE	Extreme-Time-Zone-Offset		207	uint32
+ATTRIBUTE	Extreme-Daylight-Saving-Offset		208	uint32
 ATTRIBUTE	Extreme-Client-Monitor-Session		209	octets
-ATTRIBUTE	Extreme-Client-Monitor-Problem		210	integer
+ATTRIBUTE	Extreme-Client-Monitor-Problem		210	uint32
 ATTRIBUTE	Extreme-IDM-Redirect-URL		211	string
 ATTRIBUTE	Extreme-MGT-MAC-Address			212	string
-ATTRIBUTE	Extreme-Auth-Source			213	integer
+ATTRIBUTE	Extreme-Auth-Source			213	uint32
 
 #
 # Integer Translations

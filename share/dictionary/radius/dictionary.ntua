@@ -9,14 +9,14 @@ BEGIN-VENDOR	NTUA
 #
 # Authentication Attributes
 #
-ATTRIBUTE	UserLogon-Uid				10	integer
-ATTRIBUTE	UserLogon-Gid				11	integer
+ATTRIBUTE	UserLogon-Uid				10	uint32
+ATTRIBUTE	UserLogon-Gid				11	uint32
 ATTRIBUTE	UserLogon-HomeDir			12	string
-ATTRIBUTE	UserLogon-Type				13	integer
-ATTRIBUTE	UserLogon-QuotaBytes			14	integer
-ATTRIBUTE	UserLogon-QuotaFiles			15	integer
+ATTRIBUTE	UserLogon-Type				13	uint32
+ATTRIBUTE	UserLogon-QuotaBytes			14	uint32
+ATTRIBUTE	UserLogon-QuotaFiles			15	uint32
 ATTRIBUTE	UserLogon-Shell				16	string
-ATTRIBUTE	UserLogon-Restriction			17	integer
+ATTRIBUTE	UserLogon-Restriction			17	uint32
 ATTRIBUTE	UserLogon-GroupNames			18	string
 ATTRIBUTE	UserLogon-DriveNames			19	string
 ATTRIBUTE	UserLogon-UserDescription		20	string

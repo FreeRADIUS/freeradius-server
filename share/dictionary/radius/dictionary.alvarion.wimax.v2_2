@@ -21,7 +21,7 @@ BEGIN-VENDOR	Alvarion
 
 ATTRIBUTE	R3-IF-Descriptor			1	tlv
 ATTRIBUTE	R3-IF-Name				.1	string
-ATTRIBUTE	R3-IF-ID				.2	integer
+ATTRIBUTE	R3-IF-ID				.2	uint32
 ATTRIBUTE	PDFID					.3	short
 ATTRIBUTE	IPv4-Address				.4	ipaddr
 # IPv4 subnet mask plus bit-width mask

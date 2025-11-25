@@ -13,7 +13,7 @@
 #
 FLAGS	internal
 
-ATTRIBUTE	Packet-Type				1000	integer
+ATTRIBUTE	Packet-Type				1000	uint32
 VALUE	Packet-Type			Access-Request		1
 VALUE	Packet-Type			Access-Accept		2
 VALUE	Packet-Type			Access-Reject		3

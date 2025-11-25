@@ -10,20 +10,20 @@
 VENDOR		Waverider			2979
 
 BEGIN-VENDOR	Waverider
-ATTRIBUTE	Grade-Of-Service			1	integer
-ATTRIBUTE	Priority-Enabled			2	integer
+ATTRIBUTE	Grade-Of-Service			1	uint32
+ATTRIBUTE	Priority-Enabled			2	uint32
 ATTRIBUTE	Authentication-Key			3	string
 ATTRIBUTE	Current-Password			5	string
 ATTRIBUTE	New-Password				6	string
-ATTRIBUTE	Radio-Frequency				7	integer
+ATTRIBUTE	Radio-Frequency				7	uint32
 ATTRIBUTE	SNMP-Read-Community			8	string
 ATTRIBUTE	SNMP-Write-Community			9	string
 ATTRIBUTE	SNMP-Trap-Server			10	string
 ATTRIBUTE	SNMP-Contact				11	string
 ATTRIBUTE	SNMP-Location				12	string
 ATTRIBUTE	SNMP-Name				13	string
-ATTRIBUTE	Max-Customers				14	integer
-ATTRIBUTE	Rf-Power				15	integer
+ATTRIBUTE	Max-Customers				14	uint32
+ATTRIBUTE	Rf-Power				15	uint32
 
 VALUE	Grade-Of-Service		be			1
 VALUE	Grade-Of-Service		bronze			2

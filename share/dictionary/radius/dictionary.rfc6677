@@ -7,7 +7,7 @@
 #	http://www.ietf.org/rfc/rfc6677.txt
 #
 
-ATTRIBUTE	EAP-Lower-Layer				163	integer
+ATTRIBUTE	EAP-Lower-Layer				163	uint32
 
 VALUE	EAP-Lower-Layer			Wired-IEEE-802.1X	1
 VALUE	EAP-Lower-Layer			IEEE-802.1X-No-Preauth	2

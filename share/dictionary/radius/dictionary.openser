@@ -21,8 +21,8 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Sip-Method				101	integer
-ATTRIBUTE	Sip-Response-Code			102	integer
+ATTRIBUTE	Sip-Method				101	uint32
+ATTRIBUTE	Sip-Response-Code			102	uint32
 ATTRIBUTE	Sip-Cseq				103	string
 ATTRIBUTE	Sip-To-Tag				104	string
 ATTRIBUTE	Sip-From-Tag				105	string

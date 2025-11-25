@@ -15,20 +15,20 @@ BEGIN-VENDOR	ADSL-Forum
 
 ATTRIBUTE	Agent-Circuit-Id			1	octets
 ATTRIBUTE	Agent-Remote-Id				2	octets
-ATTRIBUTE	Actual-Data-Rate-Upstream		129	integer
-ATTRIBUTE	Actual-Data-Rate-Downstream		130	integer
-ATTRIBUTE	Minimum-Data-Rate-Upstream		131	integer
-ATTRIBUTE	Minimum-Data-Rate-Downstream		132	integer
-ATTRIBUTE	Attainable-Data-Rate-Upstream		133	integer
-ATTRIBUTE	Attainable-Data-Rate-Downstream		134	integer
-ATTRIBUTE	Maximum-Data-Rate-Upstream		135	integer
-ATTRIBUTE	Maximum-Data-Rate-Downstream		136	integer
-ATTRIBUTE	Minimum-Data-Rate-Upstream-Low-Power	137	integer
-ATTRIBUTE	Minimum-Data-Rate-Downstream-Low-Power	138	integer
-ATTRIBUTE	Maximum-Interleaving-Delay-Upstream	139	integer
-ATTRIBUTE	Actual-Interleaving-Delay-Upstream	140	integer
-ATTRIBUTE	Maximum-Interleaving-Delay-Downstream	141	integer
-ATTRIBUTE	Actual-Interleaving-Delay-Downstream	142	integer
+ATTRIBUTE	Actual-Data-Rate-Upstream		129	uint32
+ATTRIBUTE	Actual-Data-Rate-Downstream		130	uint32
+ATTRIBUTE	Minimum-Data-Rate-Upstream		131	uint32
+ATTRIBUTE	Minimum-Data-Rate-Downstream		132	uint32
+ATTRIBUTE	Attainable-Data-Rate-Upstream		133	uint32
+ATTRIBUTE	Attainable-Data-Rate-Downstream		134	uint32
+ATTRIBUTE	Maximum-Data-Rate-Upstream		135	uint32
+ATTRIBUTE	Maximum-Data-Rate-Downstream		136	uint32
+ATTRIBUTE	Minimum-Data-Rate-Upstream-Low-Power	137	uint32
+ATTRIBUTE	Minimum-Data-Rate-Downstream-Low-Power	138	uint32
+ATTRIBUTE	Maximum-Interleaving-Delay-Upstream	139	uint32
+ATTRIBUTE	Actual-Interleaving-Delay-Upstream	140	uint32
+ATTRIBUTE	Maximum-Interleaving-Delay-Downstream	141	uint32
+ATTRIBUTE	Actual-Interleaving-Delay-Downstream	142	uint32
 
 #
 #  This next attribute has a weird encoding.

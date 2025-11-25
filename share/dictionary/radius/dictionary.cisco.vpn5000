@@ -12,14 +12,14 @@
 VENDOR		Cisco-VPN5000			255
 
 BEGIN-VENDOR	Cisco-VPN5000
-ATTRIBUTE	Tunnel-Delay				0	integer
-ATTRIBUTE	Tunnel-Throughput			1	integer
+ATTRIBUTE	Tunnel-Delay				0	uint32
+ATTRIBUTE	Tunnel-Throughput			1	uint32
 ATTRIBUTE	Client-Assigned-IP			2	string
 ATTRIBUTE	Client-Real-IP				3	ipaddr
 ATTRIBUTE	VPN-GroupInfo				4	string
 ATTRIBUTE	VPN-Password				5	string
-ATTRIBUTE	Echo					6	integer
-ATTRIBUTE	Client-Assigned-IPX			7	integer
+ATTRIBUTE	Echo					6	uint32
+ATTRIBUTE	Client-Assigned-IPX			7	uint32
 END-VENDOR  Cisco-VPN5000
 ALIAS		Cisco-VPN5000				Vendor-Specific.Cisco-VPN5000
 ALIAS		Compatible				Vendor-Specific.Cisco-VPN5000

@@ -18,33 +18,33 @@ VENDOR		HP				11
 BEGIN-VENDOR	HP
 
 # Management authorization
-ATTRIBUTE	Privilege-Level				1	integer
+ATTRIBUTE	Privilege-Level				1	uint32
 ATTRIBUTE	Command-String				2	string
-ATTRIBUTE	Command-Exception			3	integer
+ATTRIBUTE	Command-Exception			3	uint32
 
 VALUE	Command-Exception		Permit-List		0
 VALUE	Command-Exception		Deny-List		1
 
-ATTRIBUTE	Management-Protocol			26	integer
+ATTRIBUTE	Management-Protocol			26	uint32
 
 VALUE	Management-Protocol		HTTP			5
 VALUE	Management-Protocol		HTTPS			6
 
 # Dynamic port-access attributes
-ATTRIBUTE	Port-Client-Limit-Dot1x			10	integer
-ATTRIBUTE	Port-Client-Limit-MA			11	integer
-ATTRIBUTE	Port-Client-Limit-WA			12	integer
-ATTRIBUTE	Port-Auth-Mode-Dot1x			13	integer
+ATTRIBUTE	Port-Client-Limit-Dot1x			10	uint32
+ATTRIBUTE	Port-Client-Limit-MA			11	uint32
+ATTRIBUTE	Port-Client-Limit-WA			12	uint32
+ATTRIBUTE	Port-Auth-Mode-Dot1x			13	uint32
 
 VALUE	Port-Auth-Mode-Dot1x		Port-Based		1
 VALUE	Port-Auth-Mode-Dot1x		User-Based		2
 
-ATTRIBUTE	Port-MA-Port-Mode			14	integer
+ATTRIBUTE	Port-MA-Port-Mode			14	uint32
 
 VALUE	Port-MA-Port-Mode		User-Based		0
 VALUE	Port-MA-Port-Mode		Port-Based		1
 
-ATTRIBUTE	Port-Bounce-Host			23	integer
+ATTRIBUTE	Port-Bounce-Host			23	uint32
 ATTRIBUTE	Captive-Portal-URL			24	string
 ATTRIBUTE	User-Role				25	string
 ATTRIBUTE	CPPM-Role				27	string
@@ -55,20 +55,20 @@ ATTRIBUTE	Port-Priority-Regeneration-Table	40	string
 
 # Access control
 ALIAS		Cos					.Port-Priority-Regeneration-Table
-#ATTRIBUTE	Rate-Limit				46	integer
+#ATTRIBUTE	Rate-Limit				46	uint32
 
-ATTRIBUTE	Bandwidth-Max-Ingress			46	integer
-ATTRIBUTE	Bandwidth-Max-Egress			48	integer
+ATTRIBUTE	Bandwidth-Max-Ingress			46	uint32
+ATTRIBUTE	Bandwidth-Max-Egress			48	uint32
 
 ATTRIBUTE	Ip-Filter-Raw				61	string
 
 # Client ACL attributes
 ALIAS		Nas-Filter-Rule				.Ip-Filter-Raw
 ATTRIBUTE	Access-Profile				62	string
-ATTRIBUTE	Nas-Rules-IPv6				63	integer
+ATTRIBUTE	Nas-Rules-IPv6				63	uint32
 
 # VLAN assignment attributes
-ATTRIBUTE	Egress-VLANID				64	integer
+ATTRIBUTE	Egress-VLANID				64	uint32
 ATTRIBUTE	Egress-VLAN-Name			65	string
 
 # Bonjour Profile
@@ -79,7 +79,7 @@ ATTRIBUTE	Bonjour-Outbound-Profile		67	string
 ATTRIBUTE	URI-String				80	string
 ATTRIBUTE	URI-Json-String				81	string
 ATTRIBUTE	URI-Access				82	string
-ATTRIBUTE	URI-Exception				83	integer
+ATTRIBUTE	URI-Exception				83	uint32
 
 ATTRIBUTE	VC-groups				192	string
 
@@ -91,7 +91,7 @@ ATTRIBUTE	Capability-Advert			255	octets
 #
 #  Conflicting attributes are commented out.
 #
-#ATTRIBUTE	Management-Role			26	integer
+#ATTRIBUTE	Management-Role			26	uint32
 
 # Management-Role
 #VALUE	Management-Role		SuperUser		1

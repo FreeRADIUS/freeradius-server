@@ -15,43 +15,43 @@ VENDOR		NetElastic			54268
 
 BEGIN-VENDOR	NetElastic
 
-ATTRIBUTE	Input-Burst-Size			1	integer
-ATTRIBUTE	Input-Average-Rate			2	integer
-ATTRIBUTE	Input-Peak-Rate				3	integer
-ATTRIBUTE	Output-Burst-Size			4	integer
-ATTRIBUTE	Output-Average-Rate			5	integer
-ATTRIBUTE	Output-Peak-Rate			6	integer
-ATTRIBUTE	Remanent-Volume				15	integer
+ATTRIBUTE	Input-Burst-Size			1	uint32
+ATTRIBUTE	Input-Average-Rate			2	uint32
+ATTRIBUTE	Input-Peak-Rate				3	uint32
+ATTRIBUTE	Output-Burst-Size			4	uint32
+ATTRIBUTE	Output-Average-Rate			5	uint32
+ATTRIBUTE	Output-Peak-Rate			6	uint32
+ATTRIBUTE	Remanent-Volume				15	uint32
 ATTRIBUTE	ISP-ID					17	string
 ATTRIBUTE	PortalURL				27	string
 ATTRIBUTE	Qos-Profile-Name			31	string
-ATTRIBUTE	Lease-Time				74	integer
-ATTRIBUTE	Input-Peak-Burst-Size			77	integer
-ATTRIBUTE	Output-Peak-Burst-Size			78	integer
+ATTRIBUTE	Lease-Time				74	uint32
+ATTRIBUTE	Input-Peak-Burst-Size			77	uint32
+ATTRIBUTE	Output-Peak-Burst-Size			78	uint32
 ATTRIBUTE	Data-Filter				82	string
-ATTRIBUTE	Portal-Mode				85	integer
+ATTRIBUTE	Portal-Mode				85	uint32
 ATTRIBUTE	Policy-Name				95	string
 ATTRIBUTE	Primary-DNS				135	ipaddr
 ATTRIBUTE	Secondary-DNS				136	ipaddr
 ATTRIBUTE	Domain-Name				138	string
 ATTRIBUTE	HTTP-Redirect-URL			140	string
-ATTRIBUTE	Acct-IPv6-Input-Octets			144	integer
-ATTRIBUTE	Acct-IPv6-Output-Octets			145	integer
-ATTRIBUTE	Acct-IPv6-Input-Packets			146	integer
-ATTRIBUTE	Acct-IPv6-Output-Packets		147	integer
-ATTRIBUTE	Acct-IPv6-Input-Gigawords		148	integer
-ATTRIBUTE	Acct-IPv6-Output-Gigawords		149	integer
+ATTRIBUTE	Acct-IPv6-Input-Octets			144	uint32
+ATTRIBUTE	Acct-IPv6-Output-Octets			145	uint32
+ATTRIBUTE	Acct-IPv6-Input-Packets			146	uint32
+ATTRIBUTE	Acct-IPv6-Output-Packets		147	uint32
+ATTRIBUTE	Acct-IPv6-Input-Gigawords		148	uint32
+ATTRIBUTE	Acct-IPv6-Output-Gigawords		149	uint32
 ATTRIBUTE	User-Mac				153	string
 ATTRIBUTE	Framed-IPv6-Address			158	ipv6addr
 ATTRIBUTE	NAT-Public-Address			161	ipaddr
-ATTRIBUTE	NAT-Start-Port				162	integer
-ATTRIBUTE	NAT-End-Port				163	integer
+ATTRIBUTE	NAT-Start-Port				162	uint32
+ATTRIBUTE	NAT-End-Port				163	uint32
 ATTRIBUTE	Tariff-Input-Octets			247	string
 ATTRIBUTE	Tariff-Output-Octets			248	string
 ATTRIBUTE	Tariff-Input-Gigawords			249	string
 ATTRIBUTE	Tariff-Output-Gigawords			250	string
-ATTRIBUTE	Remanent-Volume-Type			251	integer
-ATTRIBUTE	Web-COA					252	integer
+ATTRIBUTE	Remanent-Volume-Type			251	uint32
+ATTRIBUTE	Web-COA					252	uint32
 
 END-VENDOR	NetElastic
 ALIAS		NetElastic				Vendor-Specific.NetElastic

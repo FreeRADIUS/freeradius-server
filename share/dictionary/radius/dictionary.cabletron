@@ -11,8 +11,8 @@ VENDOR		Cabletron			52
 
 BEGIN-VENDOR	Cabletron
 
-ATTRIBUTE	Protocol-Enable				201	integer
-ATTRIBUTE	Protocol-Callable			202	integer
+ATTRIBUTE	Protocol-Enable				201	uint32
+ATTRIBUTE	Protocol-Callable			202	uint32
 
 VALUE	Protocol-Enable			IP-Enable		1
 VALUE	Protocol-Enable			Bridge-Enable		2
