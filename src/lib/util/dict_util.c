@@ -1311,6 +1311,19 @@ int dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict
 	fr_dict_attr_t *self;
 	fr_hash_table_t *namespace;
 
+	switch (parent->type) {
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_VSA:
+		break;
+
+	default:
+		fr_strerror_printf("Cannot add ALIAS to %s of data type '%s'",
+				   parent->name, fr_type_to_str(parent->type));
+		return -1;
+	}
+
 	da = dict_attr_by_name(NULL, parent, alias);
 	if (da) {
 		fr_strerror_printf("ALIAS '%s' conflicts with another attribute in namespace %s",
