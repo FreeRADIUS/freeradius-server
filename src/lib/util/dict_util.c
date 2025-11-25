@@ -1338,6 +1338,7 @@ int dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict
 	}
 
 	self->dict = parent->dict;
+	UNCONST(fr_dict_attr_t *, parent)->flags.has_alias = true;
 
 	fr_assert(fr_dict_attr_ref(self) == ref);
 

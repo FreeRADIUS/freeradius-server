@@ -86,6 +86,7 @@ typedef struct {
 								///< ephemeral.
 	unsigned int		is_alias : 1;			//!< This isn't a real attribute, it's a reference to
 								///< to one.
+	unsigned int		has_alias : 1;			//!< this attribute has an alias.
 	unsigned int		internal : 1;			//!< Internal attribute, should not be received
 								///< in protocol packets, should not be encoded.
 	unsigned int		array : 1; 			//!< Pack multiples into 1 attr.
