@@ -464,7 +464,7 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 	fr_dict_attr_t		*cloned;
 
 	/*
-	 *	@todo - allow this for leaf attributes, but only if they're not a key, and not FR_TYPE_ATTR.
+	 *	@todo - allow this for structural attributes, so long as they don't have a child TLV.
 	 */
 	if (src->dict->proto != dst->dict->proto) {
 		fr_strerror_printf("Incompatible protocols.  Referenced '%s', referencing '%s'.  Defined at %s[%d]",
@@ -508,18 +508,11 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 				   fr_type_to_str(src->type), fr_cwd_strip(dst->filename), dst->line);
 		return -1;
 
-	case FR_TYPE_LEAF:
 		if (fr_dict_attr_is_key_field(src)) {
 			fr_strerror_printf("References MUST NOT refer to an attribute %s with 'key=...' at %s[%d]",
 					   src->name, fr_cwd_strip(dst->filename), dst->line);
 			return -1;
 		}
-
-		dst->flags.is_unsigned = src->flags.is_unsigned;
-		dst->flags.counter = src->flags.counter;
-		dst->flags.secret = src->flags.secret;
-		dst->flags.unsafe = src->flags.unsafe;
-		break;
 
 	case FR_TYPE_TLV:
 		dst->flags.type_size = src->flags.type_size;
@@ -539,56 +532,6 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 	dst->flags.is_known_width = src->flags.is_known_width;
 	dst->flags.internal = src->flags.internal;
 	dst->flags.name_only = src->flags.name_only;
-
-	/*
-	 *	If the attributes are of different types, then we have
-	 *	to _manually_ clone the values.  This means looping
-	 *	over the ref da, and _casting_ the values to the new
-	 *	data type.  If the cast succeeds, we add the value.
-	 *	Otherwise we don't
-	 *
-	 *	We do this if the source type is a leaf node, AND the
-	 *	types are different, or the destination has no
-	 *	children.
-	 */
-	if (!fr_type_is_non_leaf(dst->type) &&
-	    ((src->type != dst->type) || !dict_attr_children(src))) {
-		int copied;
-
-		/*
-		 *	Leaf types can be cloned, even if they're
-		 *	different types.  But only if they don't have
-		 *	children (i.e. key fields).
-		 */
-		if (fr_type_is_non_leaf(src->type) || fr_type_is_non_leaf(dst->type) ||
-		    dict_attr_children(src) || dict_attr_children(dst)) {
-			fr_strerror_printf("Reference MUST be to a simple data type of type '%s' at %s[%d]",
-					   fr_type_to_str(dst->type),
-					   fr_cwd_strip(dst->filename), dst->line);
-			return -1;
-		}
-
-		/*
-		 *	We copy all of the VALUEs over from the source
-		 *	da by hand, by casting them.
-		 *
-		 *	We have to do this work manually because we
-		 *	can't call dict_attr_acopy(), as that function
-		 *	copies the VALUE with the *source* data type,
-		 *	where we need the *destination* data type.
-		 */
-		copied = dict_attr_acopy_enumv(dst, src);
-		if (copied < 0) return -1;
-
-		if (!copied) {
-			fr_strerror_printf("Reference copied no VALUEs from type type '%s' at %s[%d]",
-					   fr_type_to_str(dst->type),
-					   fr_cwd_strip(dst->filename), dst->line);
-			return -1;
-		}
-
-		return 0;
-	}
 
 	/*
 	 *	Copy the source attribute, but with a new name.  Then also assign a new number.
