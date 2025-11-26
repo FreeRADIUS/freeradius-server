@@ -2,4 +2,4 @@
 DIR=$(dirname $0)/../..
 PROGRAM=$(basename $0)
 
-exec $DIR/build/make/jlibtool --mode=execute $FR_DEBUGGER $DIR/build/bin/local/$PROGRAM -d $DIR/raddb -D $DIR/share/dictionary $@
+exec $DIR/build/make/jlibtool --silent --mode=execute $FR_DEBUGGER $DIR/build/bin/local/$PROGRAM -d $DIR/raddb -D $DIR/share/dictionary $@
