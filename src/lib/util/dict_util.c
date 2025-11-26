@@ -1109,10 +1109,15 @@ fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, f
 	n->flags.is_ref_target = false;
 
 	if (dict_attr_ext_copy_all(&n, in) < 0) {
+	error:
 		talloc_free(n);
 		return NULL;
 	}
 	DA_VERIFY(n);
+
+	if (fr_type_is_structural(in->type) && in->flags.has_alias) {
+		if (dict_attr_acopy_aliases(n, in) < 0) goto error;
+	}
 
 	return n;
 }
@@ -1300,6 +1305,92 @@ int dict_attr_acopy_enumv(fr_dict_attr_t *dst, fr_dict_attr_t const *src)
 	if (dict_attr_ext_copy(&dst, src, FR_DICT_ATTR_EXT_ENUMV)) return fr_hash_table_num_elements(ext->name_by_value);
 
 	return -1;
+}
+
+
+/** Copy aliases of an existing attribute to a new one.
+ *
+ * @param[in] dst		where to copy the children to
+ * @param[in] src		where to copy the children from
+ * @return
+ *	- 0 on success
+ *	- <0 on error
+ */
+int dict_attr_acopy_aliases(UNUSED fr_dict_attr_t *dst, fr_dict_attr_t const *src)
+{
+	fr_hash_table_t *namespace;
+	fr_hash_iter_t	iter;
+	fr_dict_attr_t const *da;
+
+	if (!src->flags.has_alias) return 0;
+
+	switch (src->type) {
+	case FR_TYPE_TLV:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_VSA:
+		break;
+
+		/*
+		 *	Automatically added aliases are copied in dict_attr_acopy_child().
+		 */
+	case FR_TYPE_STRUCT:
+		return 0;
+
+	default:
+		fr_strerror_printf("Cannot add ALIAS to parent attribute %s of data type '%s'", src->name, fr_type_to_str(src->type));
+		return -1;
+
+	}
+
+	namespace = dict_attr_namespace(src);
+
+	for (da = fr_hash_table_iter_init(namespace, &iter);
+	     da != NULL;
+	     da = fr_hash_table_iter_next(namespace, &iter)) {
+		if (!da->flags.is_alias) continue;
+
+#if 1
+		fr_strerror_printf("Cannot clone ALIAS %s.%s to %s.%s", src->name, da->name, dst->name, da->name);
+		return -1;
+		
+#else
+		fr_dict_attr_t const *parent, *ref;
+		fr_dict_attr_t const *new_ref;
+
+		ref = fr_dict_attr_ref(da);
+		fr_assert(ref != NULL);
+
+		/*
+		 *	ALIASes are normally down the tree, to shorten sibling relationships.
+		 *	e.g. Cisco-AVPAir -> Vendor-Specific.Cisco.AV-Pair.
+		 *
+		 *	The question is to we want to allow aliases to create cross-tree links?  I suspect
+		 *	not.
+		 */
+		parent = fr_dict_attr_common_parent(src, ref, true);
+		if (!parent) {
+			fr_strerror_printf("Cannot clone ALIAS %s.%s to %s.%s, the alias reference %s is outside of the shared tree",
+					   src->name, da->name, dst->name, da->name, ref->name);
+			return -1;
+		}
+
+		fr_assert(parent == src);
+
+		new_ref = fr_dict_attr_by_name(NULL, dst, da->name);
+		fr_assert(new_ref == NULL);
+
+		/*
+		 *	This function needs to walk back up from "ref" to "src", finding the intermediate DAs.
+		 *	Once that's done, it needs to walk down from "dst" to create a new "ref".
+		 */
+		new_ref = dict_alias_reref(dst, src, ref);
+		fr_assert(new_ref != NULL);
+
+		if (dict_attr_alias_add(dst, da->name, new_ref) < 0) return -1;
+#endif
+	}
+
+	return 0;
 }
 
 /** Add an alias to an existing attribute
