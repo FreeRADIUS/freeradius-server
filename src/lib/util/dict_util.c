@@ -1454,7 +1454,7 @@ int dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict
 
 		flags.is_alias = 1;	/* These get followed automatically by public functions */
 
-		self = dict_attr_alloc(parent->dict->pool, parent, alias, ref->attr, ref->type, (&(dict_attr_args_t){ .flags = &flags, .ref = ref }));
+		self = dict_attr_alloc(parent->dict->pool, parent, alias, ref->attr, FR_TYPE_VOID, (&(dict_attr_args_t){ .flags = &flags, .ref = ref }));
 		if (unlikely(!self)) return -1;
 	}
 
