@@ -1410,8 +1410,14 @@ int dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict
 		break;
 
 	default:
-		fr_strerror_printf("Cannot add ALIAS to %s of data type '%s'",
+		fr_strerror_printf("Cannot add ALIAS to parent attribute %s of data type '%s'",
 				   parent->name, fr_type_to_str(parent->type));
+		return -1;
+	}
+
+	if ((ref->type == FR_TYPE_UNION) || fr_dict_attr_is_key_field(ref)) {
+		fr_strerror_printf("Cannot add ALIAS to target attribute %s of data type '%s'",
+				   ref->name, fr_type_to_str(ref->type));
 		return -1;
 	}
 

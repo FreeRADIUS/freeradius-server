@@ -1396,6 +1396,24 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *dctx, char **argv, int a
 	}
 
 	/*
+	 *	Internally we can add aliases to STRUCTs.  But the poor user can't.
+	 *
+	 *	This limitation is mainly so that we can differentiate automatically added aliases (which
+	 *	point to unions), from ones added by users.  If we make dict_attr_acopy_aliases() a little
+	 *	smarter, then we can relax those checks.
+	 */
+	switch (parent->type) {
+	case FR_TYPE_TLV:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+		break;
+
+	default:
+		fr_strerror_printf("ALIAS cannot be added to data type '%s'", fr_type_to_str(parent->type));
+		return -1;
+	}
+
+	/*
 	 *	Relative refs get resolved from the current namespace.
 	 */
 	if (argv[1][0] == '.') {
