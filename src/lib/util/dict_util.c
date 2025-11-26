@@ -1343,6 +1343,7 @@ int dict_attr_acopy_aliases(UNUSED fr_dict_attr_t *dst, fr_dict_attr_t const *sr
 	}
 
 	namespace = dict_attr_namespace(src);
+	fr_assert(namespace != NULL);
 
 	for (da = fr_hash_table_iter_init(namespace, &iter);
 	     da != NULL;
