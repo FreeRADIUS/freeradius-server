@@ -1227,6 +1227,78 @@ static size_t command_allow_unresolved(command_result_t *result, command_file_ct
 	RETURN_OK(0);
 }
 
+#define ATTR_COMMON \
+	fr_sbuff_t		our_in = FR_SBUFF_IN(in, inlen); \
+	fr_dict_attr_err_t	err; \
+	fr_slen_t		slen; \
+	fr_dict_attr_t const	*root; \
+	fr_dict_attr_t const	*da; \
+	root = cc->tmpl_rules.attr.dict_def ? \
+		fr_dict_root(cc->tmpl_rules.attr.dict_def) : \
+		fr_dict_root(fr_dict_internal()); \
+	slen = fr_dict_attr_by_oid_substr(&err, \
+					  &da, \
+					  root, \
+					  &our_in, NULL); \
+	if (err != FR_DICT_ATTR_OK) FR_SBUFF_ERROR_RETURN(&our_in)
+
+
+/** Print attribute information
+ *
+ */
+static size_t command_attr_flags(command_result_t *result, command_file_ctx_t *cc,
+				 UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	ATTR_COMMON;
+
+	slen = fr_dict_attr_flags_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), da->dict, da->type, &da->flags);
+	if (slen <= 0) RETURN_OK_WITH_ERROR();
+
+	RETURN_OK(slen);
+}
+
+/** Print attribute information
+ *
+ */
+static size_t command_attr_name(command_result_t *result, command_file_ctx_t *cc,
+				 UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	ATTR_COMMON;
+
+	slen = fr_dict_attr_oid_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), root, da, false);
+	if (slen <= 0) RETURN_OK_WITH_ERROR();
+
+	RETURN_OK(slen);
+}
+
+/** Print attribute information
+ *
+ */
+static size_t command_attr_oid(command_result_t *result, command_file_ctx_t *cc,
+			       UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	ATTR_COMMON;
+
+	slen = fr_dict_attr_oid_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), root, da, true);
+	if (slen <= 0) RETURN_OK_WITH_ERROR();
+
+	RETURN_OK(slen);
+}
+
+/** Print attribute information
+ *
+ */
+static size_t command_attr_type(command_result_t *result, command_file_ctx_t *cc,
+			       UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	ATTR_COMMON;
+
+	slen = fr_sbuff_in_strcpy(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), fr_type_to_str(da->type));
+	if (slen <= 0) RETURN_OK_WITH_ERROR();
+
+	RETURN_OK(slen);
+}
+
 static const fr_token_t token2op[UINT8_MAX + 1] = {
 	[ '+' ] = T_ADD,
 	[ '-' ] = T_SUB,
@@ -3213,6 +3285,40 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_allow_unresolved,
 					.usage = "allow-unresolved yes|no",
 					.description = "Allow or disallow unresolved attributes in xlats and references"
+				}},
+	{ L("attr.flags"),	&(command_entry_t){
+					.func = command_attr_flags,
+					.usage = "attr.flags",
+					.description = "Return the flags of the named attribute",
+				}},
+	{ L("attr.name"),	&(command_entry_t){
+					.func = command_attr_name,
+					.usage = "attr.name",
+					.description = "Return the number of the named attribute",
+				}},
+#if 0
+	{ L("attr.number"),	&(command_entry_t){
+					.func = command_attr_number,
+					.usage = "attr.number",
+					.description = "Return the number of the named attribute",
+				}},
+#endif
+	{ L("attr.oid"),	&(command_entry_t){
+					.func = command_attr_oid,
+					.usage = "attr.oid",
+					.description = "Return the OID of the named attribute",
+				}},
+#if 0
+	{ L("attr.ref"),	&(command_entry_t){
+					.func = command_attr_ref,
+					.usage = "attr.ref",
+					.description = "Return the reference (if any) of the named attribute",
+				}},
+#endif
+	{ L("attr.type"),	&(command_entry_t){
+					.func = command_attr_type,
+					.usage = "attr.type",
+					.description = "Return the data type of the named attribute",
 				}},
 	{ L("calc "),		&(command_entry_t){
 					.func = command_calc,
