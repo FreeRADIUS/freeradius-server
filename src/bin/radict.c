@@ -200,7 +200,7 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da, in
 	switch(output_format) {
 		case RADICT_OUT_CSV:
 			printf("%s,%s,%s,%d,%s,%s\n",
-			       fr_dict_root(dict)->name,
+			       depth == 0 ? fr_dict_root(dict)->name : "",
 			       fr_sbuff_start(&old_str_sbuff),
 			       da->name,
 			       da->attr,
@@ -211,7 +211,7 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da, in
 		case RADICT_OUT_FANCY:
 		default:
 			printf("%s\t%s\t%s\t%d\t%s\t%s\n",
-			       fr_dict_root(dict)->name,
+			       depth == 0 ? fr_dict_root(dict)->name : "",
 			       fr_sbuff_start(&old_str_sbuff),
 			       da->name,
 			       da->attr,
@@ -233,7 +233,7 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da, in
 			switch(output_format) {
 				case RADICT_OUT_CSV:
 					str = fr_asprintf(NULL, "%s,%s,%s,%d,%s,%s,%s,%pV",
-								fr_dict_root(dict)->name,
+								depth == 0 ? fr_dict_root(dict)->name : "",
 								fr_sbuff_start(&old_str_sbuff),
 								da->name,
 								da->attr,
@@ -246,7 +246,7 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da, in
 				case RADICT_OUT_FANCY:
 				default:
 					str = fr_asprintf(NULL, "%s\t%s\t%s\t%d\t%s\t%s\t%s\t%pV",
-								fr_dict_root(dict)->name,
+								depth == 0 ? fr_dict_root(dict)->name : "",
 								fr_sbuff_start(&old_str_sbuff),
 								da->name,
 								da->attr,
