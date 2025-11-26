@@ -43,7 +43,7 @@ MEMBER		Value					union key=Hardware-Type
 BEGIN LL.Value
 ATTRIBUTE	Ethernet				1	struct
 MEMBER		Address					ether
-END .Value
+END LL.Value
 
 END Client-ID.Value
 
