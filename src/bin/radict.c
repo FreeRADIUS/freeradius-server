@@ -73,6 +73,7 @@ static void usage(void)
 
 static int load_dicts(char const *dict_dir, char const *protocol)
 {
+	int		loaded = 0;
 	DIR		*dir;
 	struct dirent	*dp;
 
@@ -137,6 +138,7 @@ static int load_dicts(char const *dict_dir, char const *protocol)
 					goto error;
 				}
 				dict_end++;
+				loaded++;
 			}
 
 			/*
@@ -146,6 +148,16 @@ static int load_dicts(char const *dict_dir, char const *protocol)
 		talloc_free(file_str);
 	}
 	closedir(dir);
+
+	if (!loaded) {
+		if (!protocol) {
+			fr_strerror_printf("Failed to load any dictionaries");
+		} else {
+			fr_strerror_printf("Failed to load dictionary for protocol %s", protocol);
+		}
+
+		return -1;
+	}
 
 	return 0;
 }
@@ -360,7 +372,6 @@ int main(int argc, char *argv[])
 		case 'h':
 		default:
 			usage();
-			found = true;
 			goto finish;
 	}
 	argc -= optind;
@@ -388,6 +399,7 @@ int main(int argc, char *argv[])
 		ret = 1;
 		goto finish;
 	}
+
 	/*
 	 *	Don't emit spurious errors...
 	 */
@@ -401,7 +413,7 @@ int main(int argc, char *argv[])
 	if (dict_end == dicts) {
 		fr_perror("radict - No dictionaries loaded");
 		ret = 1;
-		goto finish;
+
 	}
 
 	if (print_headers) switch(output_format) {
@@ -449,13 +461,17 @@ int main(int argc, char *argv[])
 		} while (++dict_p < dict_end);
 	}
 
+	if (argc == 0) {
+		fprintf(stderr, "Missing attribute argument\n");
+		fr_exit(EXIT_FAILURE);
+	}
+
 	while (argc-- > 0) {
 		char			*attr;
 		fr_dict_attr_t const	*da;
 		fr_dict_t		**dict_p = dicts;
 
 		attr = *argv++;
-
 
 		/*
 		 *	Loop through all the dicts.  An attribute may
@@ -468,9 +484,14 @@ int main(int argc, char *argv[])
 			if (da) {
 				da_print_info_td(*dict_p, da);
 				found = true;
+			} else {
+				fprintf(stderr, "Dictionary %s does not contain attribute %s\n",
+					fr_dict_root(*dict_p)->name, attr);
 			}
 		} while (++dict_p < dict_end);
 	}
+
+	if (!found) ret = 64;
 
 finish:
 	/*
@@ -492,5 +513,5 @@ finish:
 	 */
 	fr_atexit_global_trigger_all();
 
-	return found ? ret : 64;
+	return ret;
 }
