@@ -5186,7 +5186,7 @@ bool fr_dict_attr_can_contain(fr_dict_attr_t const *parent, fr_dict_attr_t const
 	if (child->flags.is_raw) return true; /* let people do stupid things */
 
 	/*
-	 *	Only structural types or key fields can have children.
+	 *	Only structural types can have children.
 	 */
 	if (!fr_type_structural[parent->type]) return false;
 
