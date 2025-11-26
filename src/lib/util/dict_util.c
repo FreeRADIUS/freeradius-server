@@ -1403,8 +1403,19 @@ int dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict
 	fr_hash_table_t *namespace;
 
 	switch (parent->type) {
-	case FR_TYPE_TLV:
 	case FR_TYPE_STRUCT:
+		/*
+		 *	If we are a STRUCT, the reference an only be to children of a UNION.
+		 */
+		fr_assert(ref->parent->type == FR_TYPE_UNION);
+
+		/*
+		 *	And the UNION must be a MEMBER of the STRUCT.
+		 */
+		fr_assert(ref->parent->parent == parent);
+		break;
+
+	case FR_TYPE_TLV:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_VSA:
 		break;
