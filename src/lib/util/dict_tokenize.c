@@ -605,7 +605,8 @@ static int dict_flag_key(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dic
 	}
 
 	/*
-	 *	Allocate the ref and save the value.
+	 *	Allocate the ref and save the value.  This link exists solely so that the children of the
+	 *	UNION can easily find the key field of the parent STRUCT.
 	 */
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_KEY);
 	if (ext) {
@@ -1547,7 +1548,6 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		key = ext->ref;
 		fr_assert(key);
 		fr_assert(fr_dict_attr_is_key_field(key));
-		da = UNCONST(fr_dict_attr_t *, key);
 	}
 
 	da = dict_attr_alloc_null(dctx->dict->pool, dctx->dict->proto);

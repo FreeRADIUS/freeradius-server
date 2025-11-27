@@ -476,6 +476,10 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 			return false;
 		}
 
+		/*
+		 *	If the UNION is missing a key extension, then the children of the UNION cannot find
+		 *	the key field in the parent STRUCT.
+		 */
 		if (!fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_KEY)) {
 			fr_strerror_const("Attribute of type 'union' is missing 'key=...'");
 			return false;

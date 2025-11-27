@@ -82,6 +82,11 @@ static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
 
 		key_child_ref = NULL;
 
+		/*
+		 *	If the enum refers to a child, it MUST refer to a child of a union.
+		 *
+		 *	We then re-write the ref to point to the newly copied child.
+		 */
 		ref = fr_dict_enum_ext(enumv, FR_DICT_ENUM_EXT_ATTR_REF);
 		if (ref) {
 			fr_dict_attr_t const *ref_parent;
@@ -90,6 +95,7 @@ static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
 
 			ref_parent = fr_dict_attr_by_name(NULL, da_dst->parent, ref->da->parent->name);
 			fr_assert(ref_parent);
+			fr_assert(ref_parent->type == FR_TYPE_UNION);
 
 			/*
 			 *	The reference has to exist.
