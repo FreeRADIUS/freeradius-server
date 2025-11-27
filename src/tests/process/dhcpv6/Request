@@ -40,17 +40,48 @@ subrequest @DHCPv6::Request {
 #
 #  Disabled at present pending UNION data types
 #
-#		# ... Server-ID must be inside reply
-#		if (!reply.Server-ID.DUID.LLT.Hardware-Type) {
-#			test_fail
-#		}
+if (0) {
+		#
+		#  This output omits the intermediate unions "Value"
+		#
+		%pairs.debug(reply.Server-ID)
 
-#		if (!reply.Server-ID.DUID.LLT.Time) {
-#			test_fail
-#		}
+		#
+		#  The string output prints "Value.LLT", and "Value.Ethernet" here.
+		#
+		if (%pairs.print(reply.Server-Id) != 'Server-ID = { DUID = ::LLT, Value.LLT = { Hardware-Type = ::Ethernet, Time = "2012-11-21T08:36:00Z", Value.Ethernet = { Address = 00:11:22:33:44:55 } } }') {
+			test_fail
+		}
 
-#		if (!reply.Server-ID.DUID.LLT.Hardware-Type.Ethernet.Address) {
-#			test_fail
-#		}
+		if (!reply.Server-ID.DUID) {
+			test_fail
+
+		} elsif (reply.Server-ID.DUID != ::LLT) {
+			test_fail
+		}
+
+		if (!reply.Server-ID.LLT) { # FAILS - LLT should be an alias to Value.LLT
+			test_fail
+		}
+
+		if (!reply.Server-ID.Value.LLT) { # FAILS - Value.LLT should exist here!
+			test_fail
+		}
+
+		if (!reply.Server-ID.LLT.Hardware-Type) {
+			test_fail
+
+		} elsif (reply.Server-ID.LLT.Hardware-Type != ::Ethernet) {
+			test_fail
+		}
+
+		if (!reply.Server-ID.LLT.Time) {
+			test_fail
+		}
+
+		if (!reply.Server-ID.LLT.Value.Ethernet.Address) {
+			test_fail
+		}
+} # if (0)
 	}
 }
