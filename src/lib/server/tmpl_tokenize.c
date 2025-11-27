@@ -1862,15 +1862,6 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 			 *	switch the namespace.
 			 */
 			if (!da->flags.local && namespace->flags.local) namespace = our_parent = fr_dict_root(da->dict);
-
-			/*
-			 *	We had an alias in the same namespace,
-			 *	go add more things in.
-			 */
-			if (da->parent != our_parent) {
-				fr_assert(namespace == our_parent);
-				tmpl_attr_ref_fixup(ctx, vpt, da->parent, our_parent);
-			}
 		}
 	}
 
@@ -1895,6 +1886,16 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		 *	reference.
 		 */
 		fr_assert(our_parent != NULL);
+
+		/*
+		 *	We had an alias in the same namespace,
+		 *	go add more things in.
+		 */
+		if (da->parent != our_parent) {
+			fr_assert(namespace == our_parent);
+			tmpl_attr_ref_fixup(ctx, vpt, da->parent, our_parent);
+		}
+
 		goto alloc_ar;
 	}
 
@@ -1927,7 +1928,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	.<oid>
 	 */
 	if (fr_sbuff_out(NULL, &oid, name) > 0) {
-		namespace = fr_dict_unlocal(namespace);
+		our_parent = namespace = fr_dict_unlocal(namespace);
 
 		fr_assert(ar == NULL);
 
@@ -1941,7 +1942,10 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		 *	reference.
 		 */
 		da = fr_dict_attr_child_by_num(namespace, oid);
-		if (da) goto alloc_ar;
+		if (da) {
+			fr_assert(da->parent == our_parent);
+			goto alloc_ar;
+		}
 
 		if (!at_rules->allow_unknown) {
 		disallow_unknown:
@@ -2021,7 +2025,7 @@ alloc_ar:
 		.ar_num = NUM_UNSPEC,
 		.ar_type = TMPL_ATTR_TYPE_NORMAL,
 		.ar_da = da,
-		.ar_parent = our_parent,
+		.ar_parent = da->parent,
 	};
 
 do_suffix:
@@ -5039,6 +5043,16 @@ void tmpl_attr_verify(char const *file, int line, tmpl_t const *vpt)
 			fr_fatal_assert_msg(ar->ar_parent,
 					    "CONSISTENCY CHECK FAILED %s[%u]: attr ref missing parent",
 					    file, line);
+
+			if (ar->ar_parent->type != FR_TYPE_GROUP) {
+				fr_fatal_assert_msg(ar->ar_parent == ar->ar_da->parent,
+						    "CONSISTENCY CHECK FAILED %s[%u]: attr ref has wrong parent: "
+						    "Expected %s, got %s",
+						    file, line,
+						    ar->ar_da->parent->name,
+						    ar->ar_parent->name);
+
+			}
 			break;
 
 		case TMPL_ATTR_TYPE_UNSPEC:
