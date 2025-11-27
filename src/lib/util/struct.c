@@ -984,7 +984,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			FR_PROTO_TRACE("child %s is a UNION field", child->name);
 
 			if (!key_da) {
-				FR_PROTO_TRACE("child %s is missing key_da", child->name);
+				FR_PROTO_TRACE("structure %s is missing key_da", parent->name);
 				goto encode_length;
 			}
 
