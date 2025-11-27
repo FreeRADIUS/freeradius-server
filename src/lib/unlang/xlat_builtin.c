@@ -253,7 +253,7 @@ xlat_action_t xlat_transparent(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * Example:
 @verbatim
-%debug.attr(&request)
+%pairs.debug(&request)
 @endverbatim
  *
  * @ingroup xlat_functions
