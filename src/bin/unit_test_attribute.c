@@ -55,6 +55,8 @@ typedef struct request_s request_t;
 #include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/util/syserror.h>
 
+#include <freeradius-devel/util/dict_priv.h>
+
 #include <ctype.h>
 
 #ifdef __clangd__
@@ -1241,6 +1243,49 @@ static size_t command_allow_unresolved(command_result_t *result, command_file_ct
 					  root, \
 					  &our_in, NULL); \
 	if (err != FR_DICT_ATTR_OK) FR_SBUFF_ERROR_RETURN(&our_in)
+
+
+/** Print attribute information
+ *
+ */
+static size_t command_attr_children(command_result_t *result, command_file_ctx_t *cc,
+				    UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	fr_hash_table_t *namespace;	
+	fr_hash_iter_t	iter;
+	fr_dict_attr_t const *ref;
+	fr_sbuff_t out = FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX);
+	ATTR_COMMON;
+
+	namespace = dict_attr_namespace(da);
+	fr_assert(namespace != NULL);
+
+	for (da = fr_hash_table_iter_init(namespace, &iter);
+	     da != NULL;
+	     da = fr_hash_table_iter_next(namespace, &iter)) {
+		if (da->flags.is_alias) {
+			ref = fr_dict_attr_ref(da);
+			fr_assert(ref != NULL);
+
+			slen = fr_sbuff_in_sprintf(&out, "%s (ALIAS ref=", da->name);
+			if (slen <= 0) RETURN_OK_WITH_ERROR();
+
+			slen = fr_dict_attr_oid_print(&out, fr_dict_root(da->dict), ref, false);
+			if (slen <= 0) RETURN_OK_WITH_ERROR();
+
+			slen = fr_sbuff_in_strcpy(&out, "), ");
+			if (slen <= 0) RETURN_OK_WITH_ERROR();
+			continue;
+		}
+
+		slen = fr_sbuff_in_sprintf(&out, "%s (%s), ", da->name, fr_type_to_str(da->type));
+		if (slen <= 0) RETURN_OK_WITH_ERROR();
+	}
+
+	fr_sbuff_trim(&out, (bool[UINT8_MAX + 1]){ [' '] = true, [','] = true });
+
+	RETURN_OK(fr_sbuff_used(&out));
+}
 
 
 /** Print attribute information
@@ -3285,6 +3330,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_allow_unresolved,
 					.usage = "allow-unresolved yes|no",
 					.description = "Allow or disallow unresolved attributes in xlats and references"
+				}},
+	{ L("attr.children"),	&(command_entry_t){
+					.func = command_attr_children,
+					.usage = "attr.children",
+					.description = "Return the children of the named attribute",
 				}},
 	{ L("attr.flags"),	&(command_entry_t){
 					.func = command_attr_flags,
