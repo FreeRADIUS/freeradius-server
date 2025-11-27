@@ -225,7 +225,7 @@ void tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, int i)
 		);
 		fprintf(fp, "\t    is_raw     : %s\n", ar_is_raw(ar) ? "yes" : "no");
 		fprintf(fp, "\t    is_unknown : %s", ar_is_unknown(ar) ? "yes" : "no");
-		if (ar->ar_parent) fprintf(fp, "\t    parent     : %s (%p)", ar->ar_parent->name, ar->ar_parent);
+		if (ar->ar_parent) fprintf(fp, "\t    parent     : %s (%p)\n", ar->ar_parent->name, ar->ar_parent);
 		break;
 
 
