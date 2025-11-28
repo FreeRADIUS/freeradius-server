@@ -828,6 +828,7 @@ int tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 
 		if (pair_append_by_tmpl_parent(ctx, &vp, head, vpt, true) < 0) return -1;
 
+		PAIR_ALLOCED(vp);
 		*out = vp;
 	}
 		return 1;
@@ -890,6 +891,7 @@ int pair_append_by_tmpl_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t 
 		 */
 		if (!vp) {
 			if (fr_pair_append_by_da(pair_ctx, &vp, list, ar->da) < 0) goto error;
+			PAIR_ALLOCED(vp);
 		}
 
 		/*

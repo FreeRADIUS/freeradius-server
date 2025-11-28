@@ -357,6 +357,7 @@ redo:
 
 				if (!vp) return fr_sbuff_error(&our_in);
 
+				PAIR_ALLOCED(vp);
 				PAIR_VERIFY(vp);
 
 				/*
@@ -434,11 +435,13 @@ redo:
 					if (fr_pair_append_by_da(relative->ctx, &vp, relative->list, da) < 0) {
 						return fr_sbuff_error(&our_in);
 					}
+					PAIR_ALLOCED(vp);
 				}
 			} else {
 				vp = fr_pair_afrom_da(relative->ctx, da);
 				if (!vp) return fr_sbuff_error(&our_in);
 
+				PAIR_ALLOCED(vp);
 				fr_pair_append(relative->list, vp);
 			}
 
@@ -480,6 +483,7 @@ redo:
 				fr_dict_attr_unknown_free(&da_unknown);
 				return fr_sbuff_error(&our_in);
 			}
+			PAIR_ALLOCED(vp);
 
 			fr_dict_attr_unknown_free(&da_unknown);
 
@@ -510,6 +514,7 @@ redo:
 				if (fr_pair_append_by_da(grand_vp, &vp, &grand_vp->vp_group, parent_vp->da) < 0) {
 					return fr_sbuff_error(&our_in);
 				}
+				PAIR_ALLOCED(vp);
 
 				relative->ctx = vp;
 				fr_assert(relative->da == vp->da);
@@ -522,6 +527,7 @@ redo:
 			vp = fr_pair_afrom_da_depth_nested(relative->ctx, relative->list, da,
 							   relative->da->depth);
 			if (!vp) return fr_sbuff_error(&our_in);
+			PAIR_ALLOCED(vp);
 		}
 
 		fr_assert(vp != NULL);

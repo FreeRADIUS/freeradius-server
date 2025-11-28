@@ -785,6 +785,8 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 			}
 
 			vp->op = map->op;
+			PAIR_ALLOCED(vp);
+
 			if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) return -1;
 
 			if (single) break;
@@ -857,6 +859,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 
 			if (fr_edit_list_insert_pair_tail(state->el, &current->lhs.vp_parent->vp_group, vp) < 0) goto fail;
 			vp->op = T_OP_EQ;
+			PAIR_ALLOCED(vp);
 		}
 
 		goto done;
@@ -945,6 +948,7 @@ static fr_pair_t *edit_list_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, 
 
 	current->lhs.vp_parent = parent;
 	current->lhs.vp = vp;
+	PAIR_ALLOCED(vp);
 
 	if (fr_edit_list_insert_pair_tail(current->el, &parent->vp_group, vp) < 0) {
 		talloc_free(vp);
@@ -1378,6 +1382,7 @@ static int check_lhs_nested(request_t *request, unlang_frame_state_edit_t *state
 	MEM(current->lhs.vp = fr_pair_afrom_da(current->ctx, tmpl_attr_tail_da(current->lhs.vpt)));
 	fr_pair_append(&current->parent->rhs.pair_list, current->lhs.vp);
 	current->lhs.vp->op = map->op;
+	PAIR_ALLOCED(current->lhs.vp);
 
 	return expand_rhs(request, state, current);
 }

@@ -563,7 +563,10 @@ fr_pair_t *tmpl_dcursor_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, fr_d
 {
 	fr_pair_t *vp;
 	vp = fr_pair_afrom_da(parent, da);
-	if (vp) fr_dcursor_append(cursor, vp);
+	if (vp) {
+		PAIR_ALLOCED(vp);
+		fr_dcursor_append(cursor, vp);
+	}
 	return vp;
 }
 
@@ -759,6 +762,7 @@ int tmpl_extents_build_to_leaf_parent(fr_dlist_head_t *existing, fr_dlist_head_t
 				if (!fr_type_is_structural(ar->ar_da->type)) continue;
 
 				MEM(vp = fr_pair_afrom_da(list_ctx, ar->ar_da));	/* Copies unknowns */
+				PAIR_ALLOCED(vp);
 				fr_pair_append(list, vp);
 				list = &vp->vp_group;
 				list_ctx = vp;		/* New allocations occur under the VP */
