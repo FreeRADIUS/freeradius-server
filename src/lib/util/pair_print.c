@@ -330,6 +330,8 @@ void _fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent, fr_pair_
 	fr_sbuff_t sbuff;
 	char buffer[1024];
 
+	buffer[0] = '\0';
+
 	fr_sbuff_init_out(&sbuff, buffer, sizeof(buffer));
 
 	fr_pair_list_log_sbuff(log, lvl, parent, list, file, line, &sbuff);
@@ -380,6 +382,8 @@ void _fr_pair_list_debug(FILE *fp, int lvl, fr_pair_t *parent, fr_pair_list_t co
 	fr_sbuff_t sbuff;
 	char buffer[1024];
 
+	buffer[0] = '\0';
+
 	fr_sbuff_init_out(&sbuff, buffer, sizeof(buffer));
 
 	fr_pair_list_debug_sbuff(fp, lvl, parent, list, &sbuff);
@@ -401,6 +405,8 @@ void fr_pair_debug(FILE *fp, fr_pair_t const *pair)
 {
 	fr_sbuff_t sbuff;
 	char buffer[1024];
+
+	buffer[0] = '\0';
 
 	fr_sbuff_init_out(&sbuff, buffer, sizeof(buffer));
 
