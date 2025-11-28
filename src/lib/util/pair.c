@@ -504,7 +504,10 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 	if (!n) return NULL;
 
 	n->op = vp->op;
-	PAIR_ALLOCED(n);
+#ifdef WITH_VERIFY_PTR
+	n->filename = vp->filename;
+	n->line = vp->line;
+#endif
 
 	/*
 	 *	Groups are special.
@@ -3088,19 +3091,10 @@ int fr_pair_value_enum_box(fr_value_box_t const **out, fr_pair_t *vp)
 
 #ifdef WITH_VERIFY_PTR
 /*
- *	Verify a fr_pair_t
+ *	Verify the parent of a fr_pair_t
  */
-void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da, fr_pair_list_t const *list, fr_pair_t const *vp)
+void fr_pair_verify_parent_da(char const *file, int line, fr_dict_attr_t const *parent, fr_pair_t const *vp)
 {
-	(void) talloc_get_type_abort_const(vp, fr_pair_t);
-
-	if (!vp->da) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t da pointer was NULL", file, line);
-	}
-
-	fr_dict_attr_verify(file, line, vp->da);
-
-
 	/*
 	 *	Enforce correct parentage.  If the parent exists, AND it's not a group (because groups break
 	 *	the strict hierarchy), then check parentage.
@@ -3110,14 +3104,35 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 	 *	attributes, and the parent is also raw / unknown.  In which case the parent_da _should_ be the
 	 *	same as vp->da->parent.
 	 */
-	if (parent_da && (parent_da->type != FR_TYPE_GROUP) &&
-	    !parent_da->flags.is_raw && !parent_da->flags.is_unknown &&
-	    !vp->da->flags.is_raw && !vp->da->flags.is_unknown) {
-		fr_fatal_assert_msg(vp->da->parent == parent_da,
-				    "CONSISTENCY CHECK FAILED %s[%d]:  pair %s does not have the correct parentage - "
-				    "expected parent %s, found different parent %s",
-				    file, line, vp->da->name, vp->da->parent->name, parent_da->name);
+	if (!parent || (parent->type == FR_TYPE_GROUP)) return;
+
+	if (parent->flags.is_raw || parent->flags.is_unknown ||
+	    vp->da->flags.is_raw ||vp->da->flags.is_unknown) return;
+
+	fr_fatal_assert_msg(vp->da->parent == parent,
+			    "CONSISTENCY CHECK FAILED %s[%d]:  pair %s does not have the correct parentage - "
+			    "expected parent %s, found different parent %s",
+			    file, line, vp->da->name, vp->da->parent->name, parent->name);
+}
+
+/*
+ *	Verify a fr_pair_t
+ */
+void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da, fr_pair_list_t const *list, fr_pair_t const *vp)
+{
+	fr_pair_t *parent = fr_pair_parent(vp);
+
+	(void) talloc_get_type_abort_const(vp, fr_pair_t);
+
+	if (!vp->da) {
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t da pointer was NULL", file, line);
 	}
+
+	fr_dict_attr_verify(file, line, vp->da);
+
+	if (parent && !parent_da) parent_da = parent->da;
+
+	fr_pair_verify_parent_da(file, line, parent_da, vp);
 
 	if (list) {
 		fr_fatal_assert_msg(fr_pair_order_list_parent(vp) == &list->order,
@@ -3130,8 +3145,6 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 	 *	This field is only valid for non-structural pairs
 	 */
 	if (!fr_type_is_structural(vp->vp_type)) {
-		fr_pair_t *parent = fr_pair_parent(vp);
-
 		if (vp->data.enumv) fr_dict_attr_verify(file, line, vp->data.enumv);
 
 		if (parent && !fr_dict_attr_can_contain(parent->da, vp->da)) {
@@ -3149,8 +3162,6 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 #endif
 
 	} else {
-		fr_pair_t *parent = fr_pair_parent(vp);
-
 		if (parent && (parent->vp_type != FR_TYPE_GROUP) && (parent->da == vp->da)) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" structural (non-group) type contains itself",
 					     file, line, vp->da->name);
@@ -3163,7 +3174,7 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 	case FR_TYPE_OCTETS:
 	{
 		size_t len;
-		TALLOC_CTX *parent;
+		TALLOC_CTX *parent_ctx;
 
 		if (!vp->vp_octets) break;	/* We might be in the middle of initialisation */
 
@@ -3178,12 +3189,12 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 					     "uint8_t data buffer length %zu", file, line, vp->da->name, vp->vp_length, len);
 		}
 
-		parent = talloc_parent(vp->vp_ptr);
-		if (parent != vp) {
+		parent_ctx = talloc_parent(vp->vp_ptr);
+		if (parent_ctx != vp) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" char buffer is not "
 					     "parented by fr_pair_t %p, instead parented by %p (%s)",
 					     file, line, vp->da->name,
-					     vp, parent, parent ? talloc_get_name(parent) : "NULL");
+					     vp, parent_ctx, parent_ctx ? talloc_get_name(parent_ctx) : "NULL");
 		}
 	}
 		break;
@@ -3191,7 +3202,7 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 	case FR_TYPE_STRING:
 	{
 		size_t len;
-		TALLOC_CTX *parent;
+		TALLOC_CTX *parent_ctx;
 
 		if (!vp->vp_octets) break;	/* We might be in the middle of initialisation */
 
@@ -3211,12 +3222,12 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 					     "terminated", file, line, vp->da->name);
 		}
 
-		parent = talloc_parent(vp->vp_ptr);
-		if (parent != vp) {
+		parent_ctx = talloc_parent(vp->vp_ptr);
+		if (parent_ctx != vp) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" char buffer is not "
 					     "parented by fr_pair_t %p, instead parented by %p (%s)",
 					     file, line, vp->da->name,
-					     vp, parent, parent ? talloc_get_name(parent) : "NULL");
+					     vp, parent_ctx, parent_ctx ? talloc_get_name(parent_ctx) : "NULL");
 					     fr_fatal_assert_fail("0");
 		}
 	}
@@ -3264,15 +3275,15 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 	       if (vp->vp_group.verified) break;
 
 	       fr_pair_list_foreach(&vp->vp_group, child) {
-			TALLOC_CTX *parent = talloc_parent(child);
+			TALLOC_CTX *parent_ctx = talloc_parent(child);
 
-			fr_fatal_assert_msg(parent == vp,
+			fr_fatal_assert_msg(parent_ctx == vp,
 					    "CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" should be parented "
 					    "by fr_pair_t \"%s\".  Expected talloc parent %p (%s) got %p (%s)",
 					    file, line,
 					    child->da->name, vp->da->name,
 					    vp, talloc_get_name(vp),
-					    parent, talloc_get_name(parent));
+					    parent_ctx, talloc_get_name(parent_ctx));
 
 			/*
 			 *	Check if the child can be in the parent.
