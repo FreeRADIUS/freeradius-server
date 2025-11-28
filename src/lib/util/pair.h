@@ -153,14 +153,16 @@ struct value_pair_s {
  *
  */
 #ifdef WITH_VERIFY_PTR
-void		fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_pair_t const *vp) CC_HINT(nonnull(4));
+void		fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent, fr_pair_list_t const *list, fr_pair_t const *vp) CC_HINT(nonnull(5));
 
 void		fr_pair_list_verify(char const *file, int line,
 				    TALLOC_CTX const *expected, fr_pair_list_t const *list) CC_HINT(nonnull(4));
 
-#  define PAIR_VERIFY(_x)		fr_pair_verify(__FILE__, __LINE__, NULL, _x)
-#  define PAIR_VERIFY_WITH_LIST(_l, _x)		fr_pair_verify(__FILE__, __LINE__, _l, _x)
+#  define PAIR_VERIFY(_x)		fr_pair_verify(__FILE__, __LINE__, NULL, NULL, _x)
+#  define PAIR_VERIFY_WITH_LIST(_l, _x)		fr_pair_verify(__FILE__, __LINE__, NULL, _l, _x)
 #  define PAIR_LIST_VERIFY(_x)	fr_pair_list_verify(__FILE__, __LINE__, NULL, _x)
+#  define PAIR_VERIFY_WITH_PARENT_VP(_p, _x)  fr_pair_verify(__FILE__, __LINE__, (_p)->da, &(_p)->vp_group, _x)
+#  define PAIR_VERIFY_WITH_PARENT_DA(_p, _x)  fr_pair_verify(__FILE__, __LINE__, _p, NULL, _x)
 #else
 DIAG_OFF(nonnull-compare)
 /** Wrapper function to defeat nonnull checks
@@ -194,6 +196,9 @@ DIAG_ON(nonnull-compare)
 #  define PAIR_VERIFY_WITH_LIST(_l, _x)	fr_pair_list_nonnull_assert(_l); \
 					fr_pair_nonnull_assert(_x)
 #  define PAIR_LIST_VERIFY(_x)	fr_pair_list_nonnull_assert(_x)
+#  define PAIR_VERIFY_WITH_PARENT_VP(_p, _x) fr_pair_list_nonnull_assert(_p); \
+					  fr_pair_list_nonnull_assert(_x)
+#  define PAIR_VERIFY_WITH_PARENT_DA(_p, _x) fr_pair_list_nonnull_assert(_x)
 #endif
 
 

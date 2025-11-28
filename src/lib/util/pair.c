@@ -3080,7 +3080,7 @@ int fr_pair_value_enum_box(fr_value_box_t const **out, fr_pair_t *vp)
 /*
  *	Verify a fr_pair_t
  */
-void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_pair_t const *vp)
+void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da, fr_pair_list_t const *list, fr_pair_t const *vp)
 {
 	(void) talloc_get_type_abort_const(vp, fr_pair_t);
 
@@ -3089,6 +3089,26 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 	}
 
 	fr_dict_attr_verify(file, line, vp->da);
+
+
+	/*
+	 *	Enforce correct parentage.  If the parent exists, AND it's not a group (because groups break
+	 *	the strict hierarchy), then check parentage.
+	 *
+	 *	We also ignore parentage if either the expected parent or the vp is raw / unknown.  We may
+	 *	want to tighten that a little bit, as there are cases where we create raw / unknown
+	 *	attributes, and the parent is also raw / unknown.  In which case the parent_da _should_ be the
+	 *	same as vp->da->parent.
+	 */
+	if (parent_da && (parent_da->type != FR_TYPE_GROUP) &&
+	    !parent_da->flags.is_raw && !parent_da->flags.is_unknown &&
+	    !vp->da->flags.is_raw && !vp->da->flags.is_unknown) {
+		fr_fatal_assert_msg(vp->da->parent == parent_da,
+				    "CONSISTENCY CHECK FAILED %s[%d]:  pair %s does not have the correct parentage - "
+				    "expected parent %s, found different parent %s",
+				    file, line, vp->da->name, vp->da->parent->name, parent_da->name);
+	}
+
 	if (list) {
 		fr_fatal_assert_msg(fr_pair_order_list_parent(vp) == &list->order,
 				    "CONSISTENCY CHECK FAILED %s[%d]:  pair does not have the correct parentage "
@@ -3253,7 +3273,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 					    file, line,
 					    child->da->name, child->da->parent->name, vp->da->name);
 
-			fr_pair_verify(file, line, &vp->vp_group, child);
+			fr_pair_verify(file, line, vp->da, &vp->vp_group, child);
 		}
 
 	       UNCONST(fr_pair_t *, vp)->vp_group.verified = true;
