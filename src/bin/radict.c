@@ -39,7 +39,8 @@ RCSID("$Id$")
 
 typedef enum {
 	RADICT_OUT_FANCY = 1,
-	RADICT_OUT_CSV
+	RADICT_OUT_CSV,
+	RADICT_OUT_DICT
 } radict_out_t;
 
 static fr_dict_t *dicts[255];
@@ -62,6 +63,7 @@ static void usage(void)
 	fprintf(stderr, "  -c               Print out in CSV format.\n");
 	fprintf(stderr, "  -D <dictdir>     Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -f               Export dictionary definitions in the normal dictionary format\n");
+	fprintf(stderr, "  -F <format>      Set output format.  Use 'csv', 'full', or 'dictionary'\n");
 	fprintf(stderr, "  -E               Export dictionary definitions.\n");
 	fprintf(stderr, "  -h               Print help text.\n");
 	fprintf(stderr, "  -H               Show the headers of each field.\n");
@@ -166,7 +168,7 @@ static int load_dicts(char const *dict_dir, char const *protocol)
 
 static const char *spaces = "                                                                                ";
 
-static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da, int depth)
+static void da_print_info(fr_dict_t const *dict, fr_dict_attr_t const *da, int depth)
 {
 	char 			oid_str[512];
 	char			flags[256];
@@ -272,7 +274,7 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da, in
 	for (child = fr_hash_table_iter_init(namespace, &iter);
 	     child != NULL;
 	     child = fr_hash_table_iter_next(namespace, &iter)) {
-		da_print_info_td(dict, child, depth + 1);
+		da_print_info(dict, child, depth + 1);
 	}
 }
 
@@ -298,7 +300,7 @@ static void _raddict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *l
 			*high = (uintptr_t)da;
 		}
 
-		da_print_info_td(fr_dict_by_da(da), da, 0);
+		da_print_info(fr_dict_by_da(da), da, 0);
 	}
 
 	if (count) (*count)++;
@@ -362,7 +364,7 @@ int main(int argc, char *argv[])
 	fr_debug_lvl = 1;
 	fr_log_fp = stdout;
 
-	while ((c = getopt(argc, argv, "AcfED:p:rVxhH")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "AcfF:ED:p:rVxhH")) != -1) switch (c) {
 		case 'A':
 			alias = true;
 			break;
@@ -377,6 +379,22 @@ int main(int argc, char *argv[])
 
 		case 'f':
 			file_export = true;
+			break;
+
+		case 'F':
+			if (strcmp(optarg, "csv") == 0) {
+				output_format = RADICT_OUT_CSV;
+
+			} else if (strcmp(optarg, "full") == 0) {
+				output_format = RADICT_OUT_CSV;
+
+			} else if (strncmp(optarg, "dict", 4) == 0) {
+				output_format = RADICT_OUT_DICT;
+
+			} else {
+				fprintf(stderr, "Invalid output format '%s'\n", optarg);
+				fr_exit(EXIT_FAILURE);
+			}
 			break;
 
 		case 'E':
@@ -520,7 +538,7 @@ int main(int argc, char *argv[])
 
 			da = fr_dict_attr_by_oid(NULL, fr_dict_root(*dict_p), attr);
 			if (da) {
-				da_print_info_td(*dict_p, da, 0);
+				da_print_info(*dict_p, da, 0);
 				found = true;
 			} else {
 				fprintf(stderr, "Dictionary %s does not contain attribute %s\n",
