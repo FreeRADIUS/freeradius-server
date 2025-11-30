@@ -1399,7 +1399,7 @@ int dict_attr_acopy_aliases(UNUSED fr_dict_attr_t *dst, fr_dict_attr_t const *sr
  */
 int dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict_attr_t const *ref)
 {
-	fr_dict_attr_t const *da;
+	fr_dict_attr_t const *da, *common;
 	fr_dict_attr_t *self;
 	fr_hash_table_t *namespace;
 
@@ -1437,6 +1437,17 @@ int dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict
 	if (da) {
 		fr_strerror_printf("ALIAS '%s' conflicts with another attribute in namespace %s",
 				   alias, parent->name);
+		return -1;
+	}
+
+	/*
+	 *	ALIASes can point across the tree and down, for the same parent.  ALIASes cannot go back up
+	 *	the tree.
+	 */
+	common = fr_dict_attr_common_parent(parent, ref, true);
+	if (!common) {
+		fr_strerror_printf("Invalid ALIAS to target attribute %s of data type '%s' - the attributes do not share a parent",
+				   ref->name, fr_type_to_str(ref->type));
 		return -1;
 	}
 
