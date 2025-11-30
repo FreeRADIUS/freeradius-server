@@ -162,13 +162,36 @@ void fr_dict_attr_unknown_free(fr_dict_attr_t const **da)
 /**  Allocate an unknown DA.
  *
  */
-static fr_dict_attr_t *dict_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const *da, fr_type_t type)
+fr_dict_attr_t *fr_dict_attr_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const *da, fr_type_t type)
 {
 	fr_dict_attr_t		*n;
 	fr_dict_attr_t const	*parent;
 	fr_dict_attr_flags_t	flags = da->flags;
 
 	fr_assert(!da->flags.is_root); /* cannot copy root attributes */
+
+	switch (type) {
+	case FR_TYPE_LEAF:
+	case FR_TYPE_GROUP:
+	case FR_TYPE_TLV:
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+		break;
+
+	default:
+		fr_strerror_printf("Invalid data type '%s' for unknown attribute", fr_type_to_str(type));
+		return NULL;
+	}
+
+	switch (da->type) {
+	case FR_TYPE_LEAF:
+	case FR_TYPE_STRUCTURAL:
+		break;
+
+	default:
+		fr_strerror_printf("Cannot create unknown attribute from data type '%s'", fr_type_to_str(da->type));
+		return NULL;
+	}
 
 	/*
 	 *	Set the unknown flag, and copy only those other flags
@@ -216,13 +239,23 @@ static fr_dict_attr_t *dict_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const 
 	if (dict_attr_init(&n, parent, da->name, da->attr, type, &(dict_attr_args_t){ .flags = &flags }) < 0) {
 		goto error;
 	}
-	if (type != FR_TYPE_OCTETS) {
-		dict_attr_ext_copy_all(&n, da);
 
-	} else if (fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC) &&
-		   !dict_attr_ext_copy(&n, da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC)) {
+	/*
+	 *	Copy protocol-specific extents, and hope to heck that the protocol encoder knows what it's doing.
+	 */
+	if (fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC) &&
+	    !dict_attr_ext_copy(&n, da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC)) {
 		goto error;
 	}
+
+	/*
+	 *	Do NOT copy extents.  The name and da_stack extents are already defined.  We do NOT copy
+	 *	existing children, references, keys, enumv, etc.  If the unknown attribute is a group, it's
+	 *	ref is already set to the root, or to a copy of the input DA.  If the unknown attribute is a
+	 *	TLV, then it cannot have known children.  If an unknown attribute is a leaf, then it cannot
+	 *	have known enums.
+	 */
+
 	DA_VERIFY(n);
 
 	return n;
@@ -260,7 +293,7 @@ fr_dict_attr_t *fr_dict_attr_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t co
 		break;
 	}
 
-	return dict_unknown_alloc(ctx, da, type);
+	return fr_dict_attr_unknown_alloc(ctx, da, type);
 }
 
 /** Initialise a fr_dict_attr_t from a number and a data type
@@ -343,19 +376,6 @@ fr_dict_attr_t *fr_dict_attr_unknown_typed_afrom_num_raw(TALLOC_CTX *ctx, fr_dic
 
 	return dict_attr_alloc(ctx, parent, NULL, num, type,
 			       &(dict_attr_args_t){ .flags = &flags });
-}
-
-/** Initialise an octets type attribute from a da
- *
- * @param[in] ctx		to allocate the attribute in.
- * @param[in] da		of the unknown attribute.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-fr_dict_attr_t	*fr_dict_attr_unknown_raw_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
-{
-	return dict_unknown_alloc(ctx, da, FR_TYPE_OCTETS);
 }
 
 /** Create a fr_dict_attr_t from an ASCII attribute and value

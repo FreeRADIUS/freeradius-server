@@ -578,6 +578,8 @@ fr_dict_protocol_t const *fr_dict_protocol(fr_dict_t const *dict);
  *
  * @{
  */
+fr_dict_attr_t		*fr_dict_attr_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const *da, fr_type_t type) CC_HINT(nonnull(2));
+
 fr_dict_attr_t const	*fr_dict_attr_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *old) CC_HINT(nonnull);
 
 void			fr_dict_attr_unknown_free(fr_dict_attr_t const **da);
@@ -618,8 +620,10 @@ static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_raw_afrom
 	return fr_dict_attr_unknown_typed_afrom_num_raw(ctx, parent, attr, FR_TYPE_OCTETS, true);
 }
 
-fr_dict_attr_t		*fr_dict_attr_unknown_raw_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
-		                     	       		   CC_HINT(nonnull(2));
+static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_raw_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+{
+	return fr_dict_attr_unknown_alloc(ctx, da, FR_TYPE_OCTETS);
+}
 
 
 fr_slen_t		fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
