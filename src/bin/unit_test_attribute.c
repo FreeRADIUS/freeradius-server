@@ -373,11 +373,12 @@ static void mismatch_print(command_file_ctx_t *cc, char const *command,
 		if (expected_len < 100) {
 			char const *spaces = "                                                                                ";
 
-			ERROR("  got      : %.*s", (int) got_len, got);
-			ERROR("  expected : %.*s", (int) expected_len, expected);
+			ERROR("  EXPECTED : %.*s", (int) expected_len, expected);
+			ERROR("  GOT      : %.*s", (int) got_len, got);
 			ERROR("             %.*s^ differs here (%zu)", (int) (e - expected), spaces, e - expected);
 		} else if (fr_debug_lvl > 1) {
-			ERROR("  got      : %.*s", (int) got_len, got);
+			ERROR("  EXPECTED : %.*s", (int) expected_len, expected);
+			ERROR("  GOT      : %.*s", (int) got_len, got);
 			ERROR("Differs at : %zu", e - expected);
 
 		} else {
