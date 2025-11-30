@@ -58,7 +58,7 @@ DIAG_ON(unused-macros)
 
 static void usage(void)
 {
-	fprintf(stderr, "usage: radict [OPTS] <attribute> [attribute...]\n");
+	fprintf(stderr, "usage: radict [OPTS] [attribute...]\n");
 	fprintf(stderr, "  -A               Export aliases.\n");
 	fprintf(stderr, "  -c               Print out in CSV format.\n");
 	fprintf(stderr, "  -D <dictdir>     Set main dictionary directory (defaults to " DICTDIR ").\n");
@@ -517,10 +517,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	if (argc == 0) {
-		fprintf(stderr, "Missing attribute argument\n");
-		fr_exit(EXIT_FAILURE);
-	}
+	if (argc == 0) goto finish;
 
 	while (argc-- > 0) {
 		char			*attr;
