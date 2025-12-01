@@ -71,5 +71,6 @@ $INCLUDE dictionary.adsl_forum
 $INCLUDE dictionary.cablelabs
 $INCLUDE dictionary.cisco
 $INCLUDE dictionary.cts
+$INCLUDE dictionary.genexis
 
 END-PROTOCOL 	DHCPv4
