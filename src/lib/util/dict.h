@@ -620,6 +620,19 @@ static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_raw_afrom
 	return fr_dict_attr_unknown_typed_afrom_num_raw(ctx, parent, attr, FR_TYPE_OCTETS, true);
 }
 
+static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_afrom_oid(TALLOC_CTX *ctx,
+										     fr_dict_attr_t const *parent,
+										     fr_sbuff_t *in, fr_type_t type)
+{
+	uint32_t		num;
+	fr_sbuff_parse_error_t	sberr;
+
+	fr_sbuff_out(&sberr, &num, in);
+	if (sberr != FR_SBUFF_PARSE_OK) return NULL;
+
+	return fr_dict_attr_unknown_typed_afrom_num_raw(ctx, parent, num, type, true);
+}
+
 static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_raw_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 {
 	return fr_dict_attr_unknown_alloc(ctx, da, FR_TYPE_OCTETS);
