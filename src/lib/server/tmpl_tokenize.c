@@ -2168,8 +2168,7 @@ do_suffix:
  *							#tmpl_request_ref_t qualifiers are found in name.
  *				- list_def		The default list to set if no #fr_pair_list_t
  *							qualifiers are found in the name.
- *				- allow_unknown		If true attributes in the format accepted by
- *							#fr_dict_attr_unknown_afrom_oid_substr will be allowed,
+ *				- allow_unknown		If true, numerical attributes will be allowed,
  *							even if they're not in the main dictionaries.
  *							If an unknown attribute is found a #TMPL_TYPE_ATTR
  *							#tmpl_t will be produced.
