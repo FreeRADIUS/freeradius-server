@@ -111,7 +111,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	}
 
 	if (vp->da != da) {
-		fr_strerror_printf("%s: Top of stack does not match vp->da", __FUNCTION__);
+		fr_strerror_printf("%s: Top of stack %s does not match encoding attribute %s",
+				   __FUNCTION__, da->name, vp->da->name);
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
