@@ -449,6 +449,8 @@ static inline CC_HINT(nonnull) int dump_fuzzer_data(int fd_dir, char const *text
 	char		digest_str[(SHA1_DIGEST_LENGTH * 2) + 1];
 	int		file_fd;
 
+	fr_assert(data_len <= COMMAND_OUTPUT_MAX);
+
 	fr_sha1_init(&ctx);
 	fr_sha1_update(&ctx, (uint8_t const *)text, strlen(text));
 	fr_sha1_final(digest, &ctx);
