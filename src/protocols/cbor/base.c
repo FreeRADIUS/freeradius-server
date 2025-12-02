@@ -30,7 +30,7 @@ static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t 
 		}
 
 		slen = fr_cbor_decode_pair(ctx, out, &dbuff, parent, false);
-		if (slen <= 0) return slen - fr_dbuff_used(&dbuff);
+		if (slen <= 0) return FR_DBUFF_ERROR_OFFSET(slen, fr_dbuff_used(&dbuff));
 	} while (true);
 
 	return fr_dbuff_used(&dbuff);
@@ -49,7 +49,7 @@ static ssize_t encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED void 
 		ssize_t slen;
 
 		slen = fr_cbor_encode_pair(&work_dbuff, vp);
-		if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+		if (slen <= 0) return FR_DBUFF_ERROR_OFFSET(slen, fr_dbuff_used(&work_dbuff));
 	}
 
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) 0xff); /* end of indefinite array */

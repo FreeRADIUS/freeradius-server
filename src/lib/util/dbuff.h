@@ -189,6 +189,14 @@ do { \
 	if (_slen < 0) return _slen; \
 } while (0)
 
+/** Generic wrapper to return an error and an offset from encoding.
+ *
+ *  Some encoders return PAIR_ENCODE_FATAL_ERROR.  Substracting an
+ *  offset from that values means it wraps be be a positive number
+ *  near INT64_MAX.  This macro ensures that doesn't happen.
+ */
+#define FR_DBUFF_ERROR_OFFSET(_slen, _offset) ((_slen < INT32_MAX) ? _slen : _slen - (ssize_t) _offset)
+
 /** @name Initialisers
  * @{
  */

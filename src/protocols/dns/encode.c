@@ -486,25 +486,25 @@ ssize_t fr_dns_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_dns_ctx_t *pack
 	 *	Encode questions
 	 */
 	slen = encode_record(&work_dbuff, &da_stack, vps, attr_dns_question, packet_ctx, packet + 4);
-	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+	if (slen < 0) return FR_DBUFF_ERROR_OFFSET(slen, fr_dbuff_used(&work_dbuff));
 
 	/*
 	 *	Encode answers
 	 */
 	slen = encode_record(&work_dbuff, &da_stack, vps, attr_dns_rr, packet_ctx, packet + 6);
-	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+	if (slen < 0) return FR_DBUFF_ERROR_OFFSET(slen, fr_dbuff_used(&work_dbuff));
 
 	/*
 	 *	Encode NS records
 	 */
 	slen = encode_record(&work_dbuff, &da_stack, vps, attr_dns_ns, packet_ctx, packet + 8);
-	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+	if (slen < 0) return FR_DBUFF_ERROR_OFFSET(slen, fr_dbuff_used(&work_dbuff));
 
 	/*
 	 *	Encode additional records
 	 */
 	slen = encode_record(&work_dbuff, &da_stack, vps, attr_dns_ar, packet_ctx, packet + 10);
-	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+	if (slen < 0) return FR_DBUFF_ERROR_OFFSET(slen, fr_dbuff_used(&work_dbuff));
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
