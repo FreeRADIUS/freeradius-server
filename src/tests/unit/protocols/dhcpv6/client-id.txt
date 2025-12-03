@@ -1,0 +1,25 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL (legal@networkradius.com)
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+
+proto dhcpv6
+proto-dictionary dhcpv6
+fuzzer-out dhcpv6
+
+#
+#  This seems very wrong.
+#
+pair Client-ID.UUID.Value = 0xabcdef
+match Client-ID = { Value.UUID = { Value = 0xabcdef } }
+
+encode-pair Client-ID.UUID.Value = 0xabcdef
+match fr_struct_to_network: Asked to encode UUID, but its parent Value is not the expected parent Client-ID
+
+#decode-pair -
+#match foo
+
+count
+match 7

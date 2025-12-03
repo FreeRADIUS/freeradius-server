@@ -377,7 +377,7 @@ redo:
 				}
 
 				/*
-				 *	Update the new relative information for the current VP, which
+				 *	update the new relative information for the current VP, which
 				 *	may be structural, or a key field.
 				 */
 				fr_assert(!fr_sbuff_is_char(&our_in, '.')); /* be sure the loop exits */
@@ -559,6 +559,20 @@ redo:
 			break;
 
 		default:
+			/*
+			 *	A leaf attribute MUST be the last one in the list.  We can no longer have
+			 *	"key" fields which contain children.
+			 */
+			if (fr_sbuff_is_char(&our_in, '.')) {
+				if (fr_dict_attr_is_key_field(da)) {
+					fr_strerror_printf("Please remove the reference to key field '%s' from the input string",
+							   da->name);
+				} else {
+					fr_strerror_printf("Leaf attribute '%s' cannot have children", da->name);
+				}
+
+				return fr_sbuff_error(&our_in);
+			}
 			break;
 
 		case FR_TYPE_INTERNAL:
