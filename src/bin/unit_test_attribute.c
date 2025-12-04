@@ -2686,8 +2686,9 @@ static size_t command_no(command_result_t *result, command_file_ctx_t *cc,
 /** Parse an print an attribute pair or pair list.
  *
  */
-static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
-			   char *data, UNUSED size_t data_used, char *in, size_t inlen)
+static size_t command_pair_common(command_result_t *result, command_file_ctx_t *cc,
+				  char *data, UNUSED size_t data_used, char *in, size_t inlen,
+				  bool allow_compare)
 {
 	fr_pair_list_t 	head;
 	ssize_t		slen;
@@ -2702,6 +2703,7 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 		.list = &head,
 		.dict = dict,
 		.internal = fr_dict_internal(),
+		.allow_compare = allow_compare,
 	};
 	relative = (fr_pair_parse_t) { };
 
@@ -2726,6 +2728,19 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 	fr_pair_list_free(&head);
 	RETURN_OK(slen);
 }
+
+static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
+			   char *data, size_t data_used, char *in, size_t inlen)
+{
+	return command_pair_common(result, cc, data, data_used, in, inlen, false);
+}
+
+static size_t command_pair_compare(command_result_t *result, command_file_ctx_t *cc,
+				   char *data, size_t data_used, char *in, size_t inlen)
+{
+	return command_pair_common(result, cc, data, data_used, in, inlen, true);
+}
+
 
 /** Dynamically load a protocol library
  *
@@ -3519,6 +3534,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_pair,
 					.usage = "pair ... data ...",
 					.description = "Parse a list of pairs",
+				}},
+	{ L("pair-compare "),		&(command_entry_t){
+					.func = command_pair_compare,
+					.usage = "pair-compare ... data ...",
+					.description = "Parse a list of pairs, allowing comparison operators",
 				}},
 	{ L("proto "),		&(command_entry_t){
 					.func = command_proto,
