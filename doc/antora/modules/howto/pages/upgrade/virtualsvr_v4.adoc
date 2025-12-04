@@ -1,0 +1,113 @@
+= Virtual Servers
+
+There are some changes to the virtual servers in `v4`. First, every
+virtual server has to begin with an entry:
+
+```
+namespace = ...
+```
+
+For RADIUS, use:
+
+```
+namespace = radius
+```
+
+This tells the server what protocol is being used in that virtual
+server. This configuration was not necessary in v3, because each
+protocol was pretending to be RADIUS. That was simple to program at
+the time and worked for some things, but it was not the best approach.
+
+In v4, each protocol is completely independent, and RADIUS is no
+longer built into the server core.  i.e. The server core does modules,
+configuration files, policies, etc.  RADIUS has been relegated to just
+another plug-in protocol, with the same status as DHCPv4 and DHCPv6.
+
+Every example virtual server in the `sites-enabled/` directory
+contains a `namespace` parameter.  Please look at those files for
+examples of configuring and running each supported protocol.
+
+== Listen Sections
+
+The `listen` sections have changed. There is now a `type` entry, which
+lists the packet type by their correct name (e.g._`Access-Request`
+instead of `auth`). To accept multiple kinds of packets, just list
+`type` multiple times:
+
+```
+type = Access-Request
+type = Accounting-Request
+```
+
+Each `listen` section also has a `transport` entry. This
+configuration can be left out for `headless` servers, such as
+`inner-tunnel`. For example, setting UDP transport is done via:
+
+```
+transport = udp
+```
+
+Each type of transport has its configuration stored in a subsection
+named for that transport:
+
+```
+transport = udp
+udp {
+    ... udp transport configuration ...
+}
+```
+
+For `udp`, the configuration entries are largely the same as for v3.
+e.g. `ipaddr`, `port`, etc.
+
+The `listen` section then compiles each
+xref:index.adoc#_processing_sections[Processing Section] based on the named packet
+types. It has a `recv` section for receiving packets, and a `send`
+section for sending packets, as seen in the following example:
+
+[source,unlang]
+----
+recv Access-Request {
+   ... unlang ...
+}
+
+send Access-Accept {
+    ... unlang ...
+}
+----
+
+This configuration is different from v3. The benefit of the change is
+that it is much easier to understand. Instead of using confusing names
+such as `Post-Auth-Type Reject`, the server now just uses `send
+Access-Reject`.
+
+See also xref:index.adoc#_processing_sections[Processing Section] for how the
+`unlang` statements are parsed.
+
+[#clients]
+== Clients
+
+The server supports global clients in the `clients.conf` file, as with
+v3.
+
+Client can also be defined in a `client` subsection of a virtual
+server. Unlike `v3`, there is no need to have a `clients` section
+which "wraps" one or more `client` definitions. See
+`sites-available/default` for examples.
+
+The server also supports dynamic clients. See
+`sites-available/dynamic_clients` for a worked example. There are many
+changes from v3. First, there is no need to have a `client` definition
+which contains a network. Instead, there is a `network` section which
+has a number of `allow` and `deny` rules. Second, dynamic clients
+can be defined on a per-connection basis. Finally, the
+`sites-available/dynamic_clients` virtual server has full access to
+the entire RADIUS packet.
+
+The result of these changes is that it is now possible to have multiple
+clients behind a NAT gateway, and to have different shared secrets for
+each client. e.g._by keying off of the `NAS-Identifier` attribute.
+
+The dynamic client functionality behaves the same for all protocols
+supported by the server. e.g. RADIUS, DHCP, VMPS, TACACS+, etc.
+

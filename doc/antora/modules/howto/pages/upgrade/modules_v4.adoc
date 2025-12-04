@@ -1,0 +1,476 @@
+= Modules
+
+FreeRADIUS 4 provides new and updated modules that improve its features and configuration options. This section lists these changes and highlights any deleted modules. Please check this section to stay informed about important updates.
+
+FreeRADIUS 4 focuses on easier module management. You can enable modules by creating soft links from mods-enabled/ to mods-available/. Another option is to copy the file and edit the configuration files in mods-enabled/. This method makes customisation simpler and prevents direct changes to default settings.
+
+== New Modules
+
+The following modules are new in v4.
+
+[#rlm_client]
+=== rlm_client
+
+This module handles the `%{client:..}` xlat expansions.
+
+The `Client-Shortname` attribute has been removed.  You should use `%client(shortname)` instead.
+
+[#rlm_radius]
+=== rlm_radius
+
+The `radius` module has taken over much of the functionality of
+`proxy.conf`. See `raddb/mods-available/radius` for documentation
+and configuration examples.
+
+The `radius` module connects to one home server, just like the
+`home_server` configuration in v3. Some of the configuration items are
+similar to the `home_server` configuration, but not all.
+
+The module can send multiple packet types to one home server.
+e.g. Access-Request and Accounting-Request.
+
+This module also replaces the old `coa` and `originate-coa`
+configuration. See also `subrequest` for creating child requests that are
+different from the parent requests.
+
+Unlike v3, the module can do asynchronous proxying. That is, proxying
+where the server controls the retransmission behavior. In v3, the server
+retransmitted proxied packets only when it received a retransmission
+from the NAS. That behavior is good, but there are times where
+retransmitting packets at the proxy is better.
+
+=== Load Balancing and Redundancy Sections
+
+Before v4, the `load-balance` sections implemented load balancing by
+picking a child at random. This meant that load balancing was
+probabilistically fair, but not perfectly fair.
+
+In v4, `load-balance` sections track how many requests are in each
+sub-section, and pick the subsection which is used the least. This is
+like the v3 proxy behavior of load balancing across home server pools.
+
+The `load-balance` and `redundant-load-balance` sections now allow
+for a load-balance key:
+
+[source,unlang]
+----
+load-balance "%{Calling-Station-Id}" {
+    module1
+    module2
+    module3
+    ...
+}
+----
+
+If the key exists, it is hashed, and used to pick one of the
+subsections. This behavior allows for deterministic load-balancing of
+modules, similar to the v3 proxy `keyed-balance` configuration.
+
+== Changed Modules
+
+The following modules exhibit changed behaviour.
+
+[#rlm_cache]
+=== rlm_cache
+
+`control.Cache-Merge` has been renamed to
+`control.Cache-Merge-New` and controls whether new entries are merged
+into the current request. It defaults to `no`. The primary use case,
+is if you’re using xlat expansions in the cache module itself to
+retrieve information for caching, and need the result of those
+expansions to be available immediately.
+
+Two new control attributes `control.Cache-Allow-Merge` and
+`control.Cache-Allow-Insert` have been added. These control whether
+existing entries are to be merged, and new entries created on the next
+call to a cache module instance. Both default to `yes`.
+
+[#rlm_eap]
+=== rlm_eap
+
+All certificate attributes are available in the `session-state.`
+list, immediately after they are parsed from their ASN1 form.
+
+The certificates are no longer added to the `request` list. Instead,
+they are added to the `session-state` list.  You are advised to update
+any references during the upgrade to 4.0:
+
+```
+s/TLS-Cert-/session-state.TLS-Cert-/
+```
+
+The `rlm_eap_ikev2` module was removed. It does not follow RFC 5106,
+and no one was maintaining it.
+
+The `rlm_eap_tnc` module was removed. No one was using or maintaining
+it.
+
+The in-memory SSL cache was removed. Changes in OpenSSL and FreeRADIUS
+made it difficult to continue using the OpenSSL implementation of a
+cache. See `raddb/sites-available/tls-cache` for a better replacement.
+The OpenSSL cache can now be placed on disk, in memory, in memcache,
+or in a redis cache. The result is both higher performance, and more
+configurable.
+
+The `use_tunneled_reply` and `copy_request_to_tunnel` configuration
+items have been removed. Their functionality has been replaced with the
+`use_tunneled_reply` and `copy_request_to_tunnel` policies. See
+`raddb/sites-available/inner-tunnel` and `raddb/policy.d/eap` for
+more information.
+
+These configuration items were removed because they caused issues for a
+number of users, and they made the code substantially more complicated.
+Experience shows that having configurable policies in `unlang` is
+preferable to having them hard-coded in C.
+
+[#rlm_eap_pwd]
+=== rlm_eap_pwd
+
+The `virtual_server` configuration has been removed from EAP-PWD. The
+module now looks for request.control.Password.Cleartext.
+
+[#rlm_eap_leap]
+=== rlm_eap_leap
+
+The LEAP protocol has been removed from the server.  It is insecure,
+non-standard, and should not be used.
+
+[#rlm_exec]
+=== rlm_exec
+
+Exec-Program and Exec-Program-Wait have been removed.
+
+The `packet_type` configuration has been removed. Use `unlang`
+checks to see if you want to execute the module.
+
+[#rlm_expr]
+=== rlm_expr
+
+The `expr` module is no longer necessary and has been removed.
+
+The xref:reference:xlat/index.adoc[xlat] expansions just support math
+natively.  For example:
+
+```
+Reply-Message := "1 + 2 = %{1 + 2}"
+```
+
+will return the string `1 + 2 = 3`.  The contents of the expansion can
+be any math or condition.  Attribute assignments in expansions are not
+supported.
+
+[#rlm_expiration]
+=== rlm_expiration
+
+The `expiration` module has been replaced with an `unlang` policy.
+The policy is located in `raddb/policy.d/time`.  The `Expiration`
+attribute should continue to work the same as with v3.
+
+[#rlm_ldap]
+=== rlm_ldap
+
+The `ldap` module provides an expansion `%ldap.group(<name>)` instead of
+`LDAP-Group` for dynamically testing group membership.  The old method of
+
+```
+if (LDAP-Group == "foo") { ...
+```
+
+will no longer work.  Instead, use
+
+```
+if (%ldap.group(foo)) { ...
+```
+
+The caching of group membership into attributes in the `control` list is
+still available, so
+
+```
+control.LDAP-Group[*] == "foo"
+```
+can also be used to test membership after having called the `ldap` module,
+if `cacheable_name` or `cacheable_dn` are enabled.
+
+[#rlm_mschap]
+=== rlm_mschap
+
+The `winbind_*` configuration options are now in a `winbind`
+subsection. See `mods-available/mschap` for details.
+
+[#rlm_perl]
+=== rlm_per]
+
+Attributes of type `octets` are now passed directly to Perl as binary
+data, instead of as hex strings.
+
+All data received from the network is marked `tainted` by default.
+
+Rather than using the global hashes `%RAD_REQUEST` etc, Perl subroutines
+called by FreeRADIUS during packet processing are passed a hash ref
+representing the packet being processed.
+
+This hash ref contains four hashes representing the attribute lists.
+
+Manipulating the values of attributes is now done directly from the
+Perl subroutines e.g.
+
+```
+$p->{'reply'}{'foo'}[0] = 'baa'
+```
+
+Will set the value of `reply.foo` to `"baa"`, creating the pair if
+needed.
+
+[#rlm_python]
+=== xref:howto:modules/python/index.adoc[rlm_python]
+
+Rather than passing a tuple representing attributes in the `request`
+list, an object is passsed to Python functions representing the request.
+This object has members giving access to all the lists, for both
+accessing and setting attributes.
+
+The module now only expects a single return value representing the module
+`rcode` since attributes can be set directly within Python functions.
+
+[#rlm_radutmp]
+=== rlm_radutmp
+
+The module has been removed.  Many Unix distributions have moved away
+from using flat-text files for `utmp`.  We recommend using sqlite
+to store session data, instead of radutmp.
+
+[#rlm_rest]
+=== rlm_rest
+
+`REST-HTTP-Code` is now inserted into the `request` list instead
+of the `reply.` list, to be compliant with the
+https://wiki.freeradius.org/guide/List-Usage[list usage] guidelines.
+
+[#rlm_sql]
+=== rlm_sql
+
+Driver-specific options have moved from `mods-available/sql` to
+`mods-config/sql/driver/<drivername>`.
+
+If caching is enabled, the `SQL-Group` attribute is cached in the
+`control` list after the module has run.  This means it is possible to
+do regular expression comparison on group names.
+
+It also means that any comparison of `SQL-Group == "foo"` has to be
+updated to use `control.SQL-Group == "foo"` instead.
+
+This caching also means that the group comparison will be done
+internally, and will not result in a database lookup.  This also means
+that it is now possible to do group comparisons based on regular
+expressions.
+
+It is possible to force a dynamic group lookup via the expansion
+`%sql.group(foo)`.  This expansion returns `true` if the user is a
+member of that SQL group, and `false` otherwise.
+
+```
+if (%sql.group(sales)) {
+   ...
+}
+```
+
+will return `true`.
+
+=== Accounting and Post-Auth module calls
+
+The `reference` option has been removed from `accounting` and `post-auth`
+sql module configuration.
+
+Instead, the set of queries run depend on the section the module is called
+from.  E.g. calling from `accounting Start` will run the set of queries
+defined as
+
+```
+accounting {
+	start {
+		query = ...
+		query = ...
+	}
+}
+```
+
+The v3 `post-auth` configuration is now replaced with a set of `send`
+queries, again with the queries run specific to the section that the
+module is called from.
+
+```
+send {
+	access-accept {
+		query = ...
+	}
+	access-reject {
+		query = ...
+	}
+}
+```
+[#profiles]
+==== Profiles
+
+The `default_user_profile` has been removed.  No one used it, as that
+behavior was already supported by the group functionality.  See
+rlm_sql and `User-Profile` for new, and superior, behavior.
+
+[#rlm_sql_mysql]
+==== rlm_sql_mysql
+
+Now calls `mysql_real_escape_string` and no longer produces
+`=<hexit><hexit>` escape sequences in expanded values. The
+`safe_characters` config item is ignored when using MySQL databases.
+
+[#rlm_sql_postgresql]
+==== rlm_sql_postgresql
+
+Now calls `PQescapeStringConn` and no longer produces
+`=<hexit><hexit>` escape sequences in expanded values. The
+`safe_characters` config item is ignored when using PostgreSQL
+databases.
+
+[#rlm_sqlcounter]
+=== rlm_sqlcounter
+
+Attribute references:
+
+The following config items must now be defined as attribute references::
+
+```
+counter_name
+check_name
+reply_name
+```
+
+For example where in v3 you would specify the attribute names as::
+
+```
+counter_name    = Daily-Session-Time
+check_name      = Max-Daily-Session
+reply_name      = Session-Timeout
+key             = User-Name
+```
+
+In v4 they must now be specified as::
+
+```
+counter_name    = control.Daily-Session-Time
+check_name      = control.Max-Daily-Session
+reply_name      = reply.Session-Timeout
+key             = "%{Stripped-User-Name || User-Name}"
+```
+
+Attributes must be qualified with the list to search in, or add to.
+
+This allows significantly greater flexibility, and better integration
+with newer features in the server such as CoA, where reply_name can now
+be `coa:Session-Timeout`. That allows the server to send a CoA packet
+which updates the `Session-Timeout` for the user.
+
+In v4, when the `key` field was set to `User-Name`, the module would
+also look for `Stripped-User-Name` as the key.  In v4, this
+functionality has been moved to the configuration.  To get the same
+functionality, the key should now be specified as a dynamic expansion:
+
+```
+key = "%{Stripped-User-Name || User-Name}"
+```
+
+The `count_attribute` has been removed, as it is no longer necessary.
+
+The old expansions `%%b` and `%%e` have been removed.  This should
+only affect people who are editing the queries manually.  See the file
+`mods-availble/sqlcounter` for more information.
+
+The attribute comparison has been removed.  It is no longer possible
+to check `Daily-Session-Time > 4` everywhere.  Instead, the attribute
+exists only after the `sqlcounter` module has been run.
+
+[#rlm_sqlippool]
+=== rlm_sqlippool
+
+[NOTE]
+====
+The `ipv6` configuration item has been deleted. It was
+deprecated in 3.0.16.
+====
+
+Instead, use `attribute-name`. See `mods-available/sqlippool` for
+more information.
+
+[#unix]
+=== rlm_unix
+
+The `unix` module uses an expansion `%unix.group(<name>)` instead of
+`Unix-Group`, `Group` or `Group-Name`.  The old method of doing
+
+```
+Group == "foo"
+```
+
+will no longer work.
+
+[#rlm_winbind]
+=== rlm_winbind
+
+The `winbind` module uses an expansion `%winbind.group(<name>)` instead of
+`Winbind-Group == <name>`.
+
+== Deleted Modules
+
+The following modules have been deleted
+
+[#rlm_couchbase]
+=== rlm_couchbase
+
+This module used an old version of the Couchbase API, which is no
+longer supported.  Since no one stepped up to upgrade the module, it
+has been removed.
+
+[#rlm_counter]
+=== rlm_counter
+
+Instead of using this, please use the `sqlcounter` module with sqlite.
+
+It is difficult to maintain multiple implementations of the same
+functionality. As a result, we have simplified the server by removing
+duplicate functionality.
+
+[#rlm_ippool]
+=== rlm_ippool
+
+Instead of using this, please use the `sql_ippool` module with sqlite.
+
+It is difficult to maintain multiple implementations of the same
+functionality. As a result, we have simplified the server by removing
+duplicate functionality.
+
+[#rlm_logintime]
+=== rlm_logintime
+
+This module was poorly documented, and it appears that no one was using it.
+
+The attributes `Time-Of-Day`, `Login-Time`, and `Current-Time` have
+also been removed.  Any configuration which tries to use them will
+result in an error.
+
+Dates and time attributes can be checked against date strings by
+casting them:
+
+```
+if (Date-attribute < (date) 'Aug 1 2023 01:02:03 UTC') {
+	...
+}
+```
+
+The current time can also be checked:
+
+```
+if (%time() < (date) 'Aug 1 2023 01:02:03 UTC') {
+	...
+}
+```
+
+
+
