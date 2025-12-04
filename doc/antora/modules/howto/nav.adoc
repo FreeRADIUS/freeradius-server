@@ -9,43 +9,45 @@
 **** xref:howto:installation/osx.adoc[OSX]
 
 ** xref:howto:upgrade/index.adoc[Upgrade from v3]
-*** Configuration Files
-**** radiusd.conf
-*** Modules
-**** client
-**** radius
-**** cache
-**** couchbase
-**** counter
-**** eap
-**** exec
-**** mschap
-**** expiration
-**** ippool
-**** ldap
-**** logintime
-**** perl
-**** python
-**** radutmp
-**** rest
-**** sql
-***** Profiles
-***** MySQL
-***** PostgreSQL
-**** sqlcounter
-**** sqlippool
-**** unix
-**** winbind
-*** Processing Sections
-*** Unlang
-**** "&" is no longer used
-**** foreach
-**** update
-*** Dictionaries
-*** xref:howto:upgrade/attribute_names.adoc[All Attribute Names Have Changed]
-**** Deleted Virtual Attributes
-*** Proxying
-*** General Recommendations
+*** xref:howto:upgrade/configfiles.adoc[Configuration Files]
+**** xref:howto:upgrade/radiusconf.adoc[Radiusd.conf]
+**** xref:howto:upgrade/virtualsvr.adoc[Virtual Servers]
+*** xref:howto:upgrade/modules.adoc[Modules]
+**** xref:howto:upgrade/modules.adoc#rlm_client[Client]
+**** xref:howto:upgrade/modules.adoc#rlm_radius[Radius]
+**** xref:howto:upgrade/modules.adoc#rlm_cache[Cache]
+**** xref:howto:upgrade/modules.adoc#rlm_couchbase[Couchbase]
+**** xref:howto:upgrade/modules.adoc#rlm_counter[Counter]
+**** xref:howto:upgrade/modules.adoc#rlm_eap[EAP]
+**** xref:howto:upgrade/modules.adoc#rlm_exec[Exec]
+**** xref:howto:upgrade/modules.adoc#rlm_mschap[MSCHAP]
+**** xref:howto:upgrade/modules.adoc#rlm_expiration[Expiration]
+**** xref:howto:upgrade/modules.adoc#rlm_ippool[IP-POOL]
+**** xref:howto:upgrade/modules.adoc#rlm_ldap[LDAP]
+**** xref:howto:upgrade/modules.adoc#rlm_logintime[Logintime]
+**** xref:howto:upgrade/modules.adoc#rlm_perl[Perl]
+**** xref:howto:upgrade/modules.adoc#rlm_python[Python]
+**** xref:howto:upgrade/modules.adoc#rlm_radutmp[Radutmp]
+**** xref:howto:upgrade/modules.adoc#rlm_rest[REST]
+**** xref:howto:upgrade/modules.adoc#rlm_sql[SQL]
+***** xref:howto:upgrade/modules.adoc#profiles[Profiles]
+***** xref:howto:upgrade/modules.adoc#rlm_sql_mysql[MYSQL]
+***** xref:howto:upgrade/modules.adoc#PostgreSQL[PostgreSQL]
+**** xref:howto:upgrade/modules.adoc#rlm_sqlcounter[SQL-Counter]
+**** xref:howto:upgrade/modules.adoc#rlm_sqlippool[SQL-IP-POOL]
+**** xref:howto:upgrade/modules.adoc#rlm_unix[Unix]
+**** xref:howto:upgrade/modules.adoc#rlm_winbind[Winbind]
+*** xref:howto:upgrade/processing.adoc[Processing Sections]
+*** xref:howto:upgrade/unlang.adoc[Unlang Syntax]
+**** xref:howto:upgrade/unlang.adoc#ampersand["&" is Deprecated]
+**** xref:howto:upgrade/unlang.adoc#foreach[Foreach]
+**** xref:howto:upgrade/unlang.adoc#update[Update]
+*** xref:howto:upgrade/dict.adoc[Dictionaries]
+*** xref:howto:upgrade/attributes.adoc[Attributes]
+**** xref:howto:upgrade/attribute_names.adoc[Attribute Name Changes]
+**** xref:howto:upgrade/attributes_deleted.adoc[Deleted Functionality]
+*** xref:howto:upgrade/proxy.adoc[Proxying]
+*** *** xref:howto:upgrade/recommendations.adoc[Recommendations]
 
 ** xref:modules/configuring_modules.adoc[Configure Modules]
 *** xref:modules/chap/index.adoc[CHAP]

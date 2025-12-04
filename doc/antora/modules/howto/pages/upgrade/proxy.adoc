@@ -1,0 +1,163 @@
+= Proxying
+
+The proxy feature has undergone massive changes. The `proxy.conf` file no
+longer exists, and everything in it has been removed. e.g. `realm`,
+`home_server`, `home_server_pool` no longer exist. The old proxying
+functionality was welded into the server core, which made many useful
+features impossible to configure.
+
+The `radius` module now handles basic proxying to home servers. We
+recommend creating one instance of the `radius` module per home
+server. e.g.
+
+[source,unlang]
+----
+radius home_server_1 {
+   ... configuration for home server 1 ...
+}
+----
+
+You can then use `home_server_1` in any processing section, and the
+request will be proxied when processing reaches the module.
+
+For ease of management, we recommend naming the modules for the host
+name of the home server.
+
+It is often simplest to do proxying via an `authenticate proxy { ... }`
+section, though that section can have any name. e.g. setting
+`Auth-Type := proxy` will call the `authenticate proxy` section, and
+is similar to the previous setting `Proxy-To-Realm`.
+
+[source,unlang]
+----
+authenticate proxy {
+    home_server_1
+}
+----
+
+For more detailed examples, see the Wiki page:
+https://wiki.freeradius.org/upgrading/version4/proxy. That page also
+describes how to upgrade a v3 configuration to the new v4 style.
+
+The benefit of this approach is that the "RADIUS proxy" functionality
+is just another module.  It is now possible to not just fail over from
+one home server to another, but also to proxy the same packet to
+multiple destinations.
+
+== home_server
+
+The `home_server` configuration has been replaced with the `radius`
+module. See `raddb/mods-available/radius` for examples and
+documentation.
+
+== home_server_pool
+
+The `home_server_pool` configuration has been replaced with standard
+unlang configurations. The various load-balancing options can be
+re-created using in-place `unlang` configuration.
+
+The mappings for `type` are as follows:
+
+* `type = fail-over` - replaced with `unlang`
+
+[source,unlang]
+----
+redundant {
+    home_server_1
+    home_server_2
+    home_server_3
+}
+----
+
+[NOTE]
+====
+Of course, you will have to use the names of the `radius`
+modules in your configuration, and not `home_server_1`, etc.
+====
+
+* `type = load-balance` - replaced with `unlang`
+
+[source,unlang]
+----
+load-balance {
+    home_server_1
+    home_server_2
+    home_server_3
+}
+----
+
+* `type = client-balance` - replaced with `unlang`
+
+[source,unlang]
+----
+load-balance "%{Net.Src.IP}" {
+    home_server_1
+    home_server_2
+    home_server_3
+}
+----
+
+* `type = client-port-balance` - replaced with `unlang`
+
+[source,unlang]
+----
+load-balance "%%{Net.Src.IP}-%{Net.Src.Port}" {
+    home_server_1
+    home_server_2
+    home_server_3
+}
+----
+
+* `type = keyed-balance` - replaced with `unlang`
+
+[source,unlang]
+----
+load-balance "%{Load-Balance-Key}" {
+    home_server_1
+    home_server_2
+    home_server_3
+}
+----
+
+While the `Load-Balance-Key` was a special attribute in v3, it has no
+special meaning in v4. You can use any attribute or string expansion as
+part of the `load-balance` key.
+
+=== Limitations in v3
+
+In v3, it was impossible to proxy the same request to multiple
+destinations. This is now trivial. In any processing section, do:
+
+[source,unlang]
+----
+...
+home_server_1
+home_server_2
+...
+----
+
+When processing reaches that point, it will proxy the request to
+`home_server_1`, followed by `home_server_2`.
+
+This functionality can be used to send `Accounting-Request` packets to
+multiple destinations.
+
+You can also catch _failed_ proxying, and do something else. In the
+example below, try to proxy to `home_server_1`, if that fails, just
+`accept` the request.
+
+[source,unlang]
+----
+...
+home_server_1
+if (fail) {
+    accept
+}
+...
+----
+
+== CoA and Originate-Coa
+
+The `sites-available/originate-coa` virtual server has been updated to
+use the new `subrequest` feature.  Please see that virtual server, and
+the `subrequest` keyword for details.
