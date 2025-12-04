@@ -1,0 +1,49 @@
+= Processing Sections
+
+All of the processing sections have been renamed. Sorry, but this was
+required for the new features in v4.
+
+[cols=",",options="header",]
+|===
+| Old Name                   | New Name
+| `authorize`                | `recv Access-Request`
+| `authenticate`             | `authenticate <Auth-Type>`
+| `post-auth`                | `send Access-Accept`
+|                            |
+| `preacct`                  | `recv Accounting-Request`
+| `accounting`               | `accounting %\{Acct-Status-Type\}`
+| `accounting`               | `send Accounting-Response`
+|                            |
+| `recv-coa`                 | `recv CoA-Request`
+| `send-coa`                 | `send CoA-ACK`
+| `send-coa`                 | `send CoA-NAK`
+|                            |
+| `Post-Auth-Type Reject`    | `send Access-Reject`
+| `Post-Auth-Type Challenge` | `send Access-Challenge`
+|===
+
+So, instead of the section names being (mostly) randomly named, the
+names are now consistent. The `recv` sections receive packets from the
+network. The `send` sections send packets back to the network. The
+second name of the section is the _type_ of the packet that is being
+received or sent.
+
+[NOTE]
+====
+For accounting, packets are also processed through an
+`accounting` section named after Acct-Status-Type. This process is
+similar to `authenticate` for `Access-Request` packets. The goal
+here is to allow a common pre-processing of accounting packets in the
+`recv Accounting-Request` packet, followed by type-specific processing
+in `accounting %{Acct-Status-Type}`. See sites-available/default for
+examples and more information.
+====
+
+== Update Sections
+
+A major difference between v3 and v4 is that `update` sections are no
+longer necessary.  See the xref:howto:upgrade/unlang.adoc[Unlang Syntax] pages for more guidance and
+details.
+
+
+
