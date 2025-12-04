@@ -441,6 +441,8 @@ static int CC_HINT(nonnull) radius_legacy_map_apply_structural(request_t *reques
 			.ctx = vp,
 				.da = vp->da,
 				.list = &vp->vp_group,
+				.dict = vp->da->dict,
+				.internal = fr_dict_internal(),
 				.allow_compare = false,
 				.tainted = box->tainted,
 		};

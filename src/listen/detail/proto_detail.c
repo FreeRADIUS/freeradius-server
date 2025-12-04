@@ -353,6 +353,8 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 			.ctx = request->request_ctx,
 			.da = fr_dict_root(request->proto_dict),
 			.list = &tmp_list,
+			.dict = request->proto_dict,
+			.internal = fr_dict_internal(),
 		};
 		relative = (fr_pair_parse_t) { };
 

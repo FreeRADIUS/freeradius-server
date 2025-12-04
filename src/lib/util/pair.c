@@ -3519,6 +3519,8 @@ void fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 		.ctx = ctx,
 		.da = fr_dict_root(dict),
 		.list = out,
+		.dict = dict,
+		.internal = fr_dict_internal(),
 		.allow_crlf = true,
 		.tainted = box->tainted,
 	};

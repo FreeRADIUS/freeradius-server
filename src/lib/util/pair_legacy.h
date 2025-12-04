@@ -43,6 +43,10 @@ typedef struct fr_pair_parse_s {
 	TALLOC_CTX		*ctx;
 	fr_dict_attr_t const	*da;		//!< root da to start parsing from
 	fr_pair_list_t		*list;		//!< list where output is placed
+
+	fr_dict_t const		*dict;		//!< the protocol dictionary we use
+	fr_dict_t const		*internal;	//!< a cached pointer to the internal dictionary
+
 	bool			allow_compare;	//!< allow comparison operators
 	bool			allow_crlf;	//!< allow CRLF, and treat like comma
 	bool			tainted;	//!< source is tainted

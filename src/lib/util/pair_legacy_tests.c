@@ -92,6 +92,8 @@ static void test_fr_pair_list_afrom_substr(void)
 		.ctx = autofree,
 		.da = fr_dict_root(test_dict),
 		.list = &list,
+		.dict = test_dict,
+		.internal = fr_dict_internal(),
 	};
 	relative = (fr_pair_parse_t) { };
 

@@ -201,6 +201,8 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 			.ctx = ctx,
 			.da = fr_dict_root(dict),
 			.list = &list,
+			.dict = dict,
+			.internal = fr_dict_internal(),
 		};
 		relative = (fr_pair_parse_t) { };
 

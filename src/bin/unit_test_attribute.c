@@ -2126,6 +2126,8 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 		.ctx = cc->tmp_ctx,
 		.da = cc->tmpl_rules.attr.namespace,
 		.list = &head,
+		.dict = cc->tmpl_rules.attr.namespace->dict,
+		.internal = fr_dict_internal(),
 	};
 	relative = (fr_pair_parse_t) { };
 
@@ -2345,6 +2347,8 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 		.ctx = cc->tmp_ctx,
 		.da = cc->tmpl_rules.attr.namespace,
 		.list = &head,
+		.dict = cc->tmpl_rules.attr.namespace->dict,
+		.internal = fr_dict_internal(),
 	};
 	relative = (fr_pair_parse_t) { };
 
@@ -2696,6 +2700,8 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 		.ctx = cc->tmp_ctx,
 		.da = fr_dict_root(dict),
 		.list = &head,
+		.dict = dict,
+		.internal = fr_dict_internal(),
 	};
 	relative = (fr_pair_parse_t) { };
 

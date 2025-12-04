@@ -361,6 +361,8 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			.ctx = current->ctx,
 			.da = da,
 			.list = children,
+			.dict = request->proto_dict,
+			.internal = fr_dict_internal(),
 			.allow_compare = true,
 			.tainted = box->tainted,
 		};
