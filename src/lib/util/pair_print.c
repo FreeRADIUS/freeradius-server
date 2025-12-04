@@ -19,12 +19,18 @@
  *
  *	@todo - parent should _never_ be vp->da.
  */
-#define fr_pair_reset_parent(parent) do { \
-	if (parent && (parent->type == FR_TYPE_GROUP)) { \
-		parent = fr_dict_attr_ref(parent); \
-		if (parent->flags.is_root) parent = NULL; \
-	} \
-	if (parent && (parent == vp->da)) parent = NULL; \
+#define fr_pair_reset_parent(parent) do {		\
+	if (!parent) break;				\
+	fr_assert(parent != vp->da);			\
+	fr_assert(fr_type_is_structural(parent->type));	\
+	if (parent->type == FR_TYPE_GROUP) {		\
+		parent = fr_dict_attr_ref(parent);	\
+		if (parent->flags.is_root) {		\
+			parent = NULL;			\
+			break;				\
+	        }					\
+	}						\
+	if (parent->dict != vp->da->dict) parent = NULL; \
   } while (0)
 
 /** Pair serialisation API
