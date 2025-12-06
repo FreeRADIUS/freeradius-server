@@ -1237,8 +1237,6 @@ int			tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules) CC_HINT(nonnul
 
 void			tmpl_unresolve(tmpl_t *vpt) CC_HINT(nonnull);
 
-void			tmpl_attr_to_raw(tmpl_t *vpt) CC_HINT(nonnull);
-
 int			tmpl_attr_unknown_add(tmpl_t *vpt);
 
 int			tmpl_attr_tail_unresolved_add(fr_dict_t *dict, tmpl_t *vpt,

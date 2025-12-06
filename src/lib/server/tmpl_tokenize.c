@@ -160,7 +160,7 @@ static fr_table_num_sorted_t const attr_num_table[] = {
 static size_t attr_num_table_len = NUM_ELEMENTS(attr_num_table);
 /* clang-format on */
 
-static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref);
+static int attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref) CC_HINT(nonnull,warn_unused_result);
 
 /*
  *	Can't use |= or ^= else we get out of range errors
@@ -2275,7 +2275,10 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 *	otherwise we'll need to do the conversion
 	 *	later.
 	 */
-	if (tmpl_is_attr(vpt) && is_raw) tmpl_attr_to_raw(vpt);
+	if (tmpl_is_attr(vpt) && is_raw) {
+		ret = attr_to_raw(vpt, tmpl_attr_list_tail(tmpl_attr(vpt)));
+		if (ret < 0) goto error;
+	}
 
 	/*
 	 *	Local variables cannot be given a list modifier.
@@ -4394,17 +4397,16 @@ void tmpl_unresolve(tmpl_t *vpt)
 	TMPL_VERIFY(vpt);
 }
 
-static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
+static int attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 {
-	if (!ref) return;
-
 	switch (ref->type) {
 	case TMPL_ATTR_TYPE_NORMAL:
 	{
 		ref->da = ref->ar_unknown = fr_dict_attr_unknown_afrom_da(vpt, ref->da);
+		if (!ref->da) return -1;
+
 		ref->ar_unknown->type = FR_TYPE_OCTETS;
 		ref->is_raw = 1;
-		ref->ar_unknown->flags.is_unknown = 1;
 		ref->type = TMPL_ATTR_TYPE_UNKNOWN;
 	}
 		break;
@@ -4422,14 +4424,8 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 	}
 
 	TMPL_ATTR_VERIFY(vpt);
-}
 
-/** Convert the leaf attribute of a tmpl to a unknown/raw type
- *
- */
-void tmpl_attr_to_raw(tmpl_t *vpt)
-{
-	attr_to_raw(vpt, tmpl_attr_list_tail(tmpl_attr(vpt)));
+	return 0;
 }
 
 /** Add an unknown #fr_dict_attr_t specified by a #tmpl_t to the main dictionary
