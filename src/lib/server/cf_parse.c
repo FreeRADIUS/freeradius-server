@@ -511,7 +511,7 @@ static int cf_pair_unescape(CONF_PAIR *cp, conf_parser_t const *rule)
 static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, void *base,
 						        CONF_SECTION *cs, conf_parser_t const *rule)
 {
-	bool		required, deprecated;
+	bool		required, deprecated, was_dflt = false;
 	size_t		count = 0;
 	CONF_PAIR	*cp = NULL, *dflt_cp = NULL;
 
@@ -676,6 +676,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 				return 0;
 			}
+			was_dflt = true;
 		} else {
 			if (cf_pair_unescape(cp, rule) < 0) return -1;
 		}
@@ -695,7 +696,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 		cf_pair_mark_parsed(cp);
 	}
 
-	return 0;
+	return was_dflt ? 1 : 0;
 }
 
 /** Parses a #CONF_PAIR into a C data type, with a default value.
