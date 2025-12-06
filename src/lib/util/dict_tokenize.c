@@ -317,8 +317,8 @@ static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_n
 
 	fr_dict_attr_flags_t flags = {
 		.is_root = 1,
-		.type_size = 1,
-		.length = 1
+		.type_size = dict->proto->default_type_size,
+		.length = dict->proto->default_type_length,
 	};
 
 	if (!fr_cond_assert(!dict->root)) {
@@ -2836,7 +2836,6 @@ static int dict_read_process_protocol(dict_tokenize_ctx_t *dctx, char **argv, in
 	unsigned int	value;
 	unsigned int	type_size = 0;
 	fr_dict_t	*dict;
-	fr_dict_attr_t	*mutable;
 	unsigned int	required_value;
 	char const	*required_name;
 	bool		require_dl = false;
@@ -2995,12 +2994,11 @@ post_option:
 
 	if (dict_protocol_add(dict) < 0) goto error;
 
-	mutable = UNCONST(fr_dict_attr_t *, dict->root);
 	dict->string_based = string_based;
-	if (!type_size) {
-		mutable->flags.type_size = dict->proto->default_type_size;
-		mutable->flags.length = dict->proto->default_type_length;
-	} else {
+	if (type_size) {
+		fr_dict_attr_t	*mutable;
+
+		mutable = UNCONST(fr_dict_attr_t *, dict->root);
 		mutable->flags.type_size = type_size;
 		mutable->flags.length = 1; /* who knows... */
 	}

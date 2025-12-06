@@ -4281,8 +4281,8 @@ fr_dict_t *fr_dict_protocol_alloc(fr_dict_t const *parent)
 		.is_root = true,
 		.local = true,
 		.internal = true,
-		.type_size = 2,
-		.length = 2
+		.type_size = parent->root->flags.type_size,
+		.length = parent->root->flags.length,
 	};
 
 	dict = dict_alloc(UNCONST(fr_dict_t *, parent));
