@@ -461,14 +461,22 @@ static int dict_process_type_field(dict_tokenize_ctx_t *dctx, char const *name, 
 		return -1;
 
 	case FR_TYPE_LEAF:
-	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_VSA:
+	case FR_TYPE_GROUP:
+	case FR_TYPE_UNION:
 		break;
 
-	case FR_TYPE_VALUE_BOX:
-	case FR_TYPE_VOID:
-	case FR_TYPE_VALUE_BOX_CURSOR:
-	case FR_TYPE_PAIR_CURSOR:
-	case FR_TYPE_MAX:
+		/*
+		 *	@todo - allow definitions of type 'vendor' only if we need to have different
+		 *	type_size/length for VSAs or "evs" in the Extended-Attribute space.
+		 */
+	case FR_TYPE_VENDOR:
+		fr_strerror_const("Cannot use data type 'vendor' - use BEGIN-VENDOR instead");
+		return -1;
+
+	default:
 		fr_strerror_printf("Invalid data type '%s'", name);
 		return -1;
 	}
@@ -1829,11 +1837,53 @@ static int dict_read_process_begin_protocol(dict_tokenize_ctx_t *dctx, char **ar
 	return dict_dctx_push(dctx, dctx->dict->root, NEST_PROTOCOL);
 }
 
+/** Set the type size and length based on the parent.
+ *
+ */
+static void dict_flags_set(fr_dict_t const *dict, fr_dict_attr_t const *parent, fr_dict_vendor_t const *dv, fr_dict_attr_flags_t *flags)
+{
+	flags->type_size = dict->proto->default_type_size;
+	flags->length = dict->proto->default_type_length;
+
+	/*
+	 *	Only RADIUS is crazy enough to have different type
+	 *	sizes for each vendor.
+	 */
+	if (dict->root->attr != FR_DICT_PROTO_RADIUS) return;
+
+	/*
+	 *	If the parent exists, it will already have the correct flags set.
+	 */
+	if (parent->type != FR_TYPE_VSA) {
+		flags->type_size = parent->flags.type_size;
+		flags->length = parent->flags.length;
+		return;
+	}
+
+	/*
+	 *	VSAs can exist inside Extended-Attribute-1, but they MUST be 1/1, and not any crazy
+	 *	vendor things.
+	 */
+	if (!parent->parent->flags.is_root) return;
+
+	/*
+	 *	Only the top-level Vendor-Specific attribute can have different type sizes for each vendor.
+	 *
+	 *	Unknown vendors default to 1/1.
+	 */
+	if (!dv) return;
+
+	/*
+	 *	Otherwise we use the vendor-defined type size.
+	 */
+	flags->type_size = dv->type;
+	flags->length = dv->length;
+}
+
 static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv, int argc,
 				    	  UNUSED fr_dict_attr_flags_t *base_flags)
 {
 	fr_dict_vendor_t const		*vendor;
-	fr_dict_attr_flags_t		flags;
 
 	fr_dict_attr_t const		*vsa_da;
 	fr_dict_attr_t const		*vendor_da;
@@ -1912,33 +1962,16 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 	}
 
 	/*
-	 *	Create a VENDOR attribute on the fly, either in the context
-	 *	of the VSA (26) attribute.
+	 *	Check if the VENDOR attribute exists under this VSA.  If not, create one.
+	 *
+	 *	@todo - There are no vendor fixups, so if the vendor has unusual type sizes, it MUST be
+	 *	defined before the BEGIN-VENDOR is used.
 	 */
 	vendor_da = dict_attr_child_by_num(vsa_da, vendor->pen);
 	if (!vendor_da) {
-		memset(&flags, 0, sizeof(flags));
+		fr_dict_attr_flags_t flags = {};
 
-		flags.type_size = dctx->dict->proto->default_type_size;
-		flags.length = dctx->dict->proto->default_type_length;
-
-		/*
-		 *	See if this vendor has
-		 *	specific sizes for type /
-		 *	length.
-		 *
-		 *	@todo - Make this more protocol agnostic!
-		 */
-		if ((vsa_da->type == FR_TYPE_VSA) &&
-			(vsa_da->parent->flags.is_root)) {
-			fr_dict_vendor_t const *dv;
-
-			dv = fr_dict_vendor_by_num(dctx->dict, vendor->pen);
-			if (dv) {
-				flags.type_size = dv->type;
-				flags.length = dv->length;
-			}
-		}
+		dict_flags_set(dctx->dict, vsa_da, vendor, &flags);
 
 		new = dict_attr_alloc(dctx->dict->pool,
 				      vsa_da, argv[0], vendor->pen, FR_TYPE_VENDOR,
