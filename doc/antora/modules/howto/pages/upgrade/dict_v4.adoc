@@ -1,0 +1,53 @@
+= Dictionaries
+
+The `struct` data type is now supported. See `man dictionary`.
+
+Bit fields are now support via a data type such as `bit[3]`.  Not that
+bit fields are _only_ supported inside of a `struct` definition.
+
+The dictionary parser includes many more sanity checks and helpful
+messages for people who create new dictionaries.
+
+Dictionaries are now split up by protocol.
+e.g._`share/freeradius/radius/dictionary*`.  All protocol-specific
+data types have been removed, and replaced with per-attribute flags.
+
+The old `abinary` data type has been removed.  Attributes needing this
+functionality should instead be marked with a flag, e.g._`string abinary`.
+
+The old `extended` data type has been removed. Attributes needing this
+functionality should instead be marked with a flag, e.g._`tlv
+extended`.
+
+== "Tagged" RADIUS Attributes
+
+The old-style "tagged" RADIUS format has been removed.  Instead of using
+
+[source,unlang]
+----
+Tunnel-Type:1 = PPTP
+----
+
+you should use
+
+[source,unlang]
+----
+Tag-1.Tunnel-Type = PPTP
+----
+
+It is also possible to "group" tagged attributes together, as in the
+following example:
+
+[source,unlang]
+----
+Tag-1 = { Tunnel-Type = PPTP, Tunnel-Medium-Type = IPv4 }
+----
+
+There are 31 such attributes, `Tag-1` through `Tag-31`.  There is no
+`Tag-0` attribute, as it is not needed.
+
+After much investigation, it was unfortunately impossible to continue
+supporting the `Attribute-Name:tag` syntax for tagged attributes.
+This change requires modifications to all configuration files and
+databases which use tags.  This change means also that `detail` files
+from v3 are not readable by v4.

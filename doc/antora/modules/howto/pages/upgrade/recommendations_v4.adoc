@@ -1,0 +1,79 @@
+= Recommendations
+
+We recommend manually converting the `update` sections to the new
+method.  The biggest change that confuses people is the old `+=`
+operator does not work the same way as before.
+
+Instead of doing:
+
+```
+Reply-Message += "foo"
+```
+
+you should edit the `reply` list, using the `+=` operator:
+
+```
+reply += {
+    Reply-Message = "foo"
+}
+```
+
+We also recommend removing double-quotes from xlat expansions where
+possible.  The temptation in v3 is to just add double quotes to
+everything, and hope it all works out.  This is no longer necessary in
+v4.
+
+For example, in v3 you would do:
+
+```
+update reply {
+	Framed-IP-Address := "%{sql:SELECT ...}"
+}
+```
+
+In v4, you can remove the `update`, and rewrite the SQL call to:
+
+```
+reply.Framed-IP-Address := %sql("SELECT ...")
+```
+
+Using double quotes everywhere means that every bit of data gets
+converted to printable strings, and then back to it's real data type
+(`ipaddr` in the above example).  Removing the double quotes means
+that there is less work going on, which means higher performance.
+
+
+== Best Practise
+
+In v3, many people had a habit of just adding `"..."` around _everything_.  For example:
+
+.Bad practice - using "" everywhere
+[source,unlang]
+----
+update reply {
+	Reply-Message := "%{User-Name}"
+}
+
+...
+
+if ("%{User-Name}" == "bob") {
+   ...
+}
+----
+
+This practice is not recommended.  It was never necessary, and it's not clear why it became a (bad) habit.
+
+In v4, it is clearer, simpler, and faster to just use `unlang` syntax correctly.
+
+.Good practice - just rely on the server to do the right thing
+
+[source,unlang]
+----
+reply.Reply-Message := User-Name
+
+...
+
+if (User-Name == "bob") {
+   ...
+}
+----

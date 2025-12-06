@@ -1,4 +1,4 @@
-= Attribute name changes from v3 to v4
+= Attribute Name Changes
 
 Version 4 has significantly changed much of the server internals.  One
 part of that is renaming the dictionary attributes.  In v3, the names

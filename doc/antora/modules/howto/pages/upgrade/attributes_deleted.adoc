@@ -1,0 +1,24 @@
+= Deleted Functionality
+
+Many "virtual" or "fake" attributes and configuration items have been removed or renamed in FreeRADIUS v4.
+
+[cols=",",options="header",]
+|===
+| Old Attribute Name or Function        | Replace with
+|                                       |
+| `Module-Return-Code`                  | `%interpreter(rcode)`
+| `Response-Packet-Type`                | `reply.Packet-Type`
+| `Virtual-Server`                      | `%interpreter(server)`
+|                                       |
+| `Packet-Authentication-Vector`        | `%radius.packet.vector()`
+| `Packet-Dst-IP-Address`               | `Net.Dst.IP`
+| `Packet-Dst-IPv6-Address`             | `Net.Dst.IP`
+| `Packet-Dst-Port`                     | `Net.Dst.Port`
+| `Packet-Src-IP-Address`               | `Net.Src.IP`
+| `Packet-Src-IPv6-Address`             | `Net.Src.IP`
+| `Packet-Src-Port`                     | `Net.Src.Port`
+| `Post-Auth-Type Reject`               | `send Access-Reject`
+| `Post-Auth-Type Challenge`            | `send Access-Challenge`
+|===
+
+
