@@ -603,7 +603,6 @@ int dict_attr_type_init(fr_dict_attr_t **da_p, fr_type_t type)
 	 */
 	switch (type) {
 	case FR_TYPE_STRUCTURAL:
-	structural:
 		/*
 		 *	Groups don't have children or namespaces.  But
 		 *	they always have refs.  Either to the root of
@@ -627,14 +626,6 @@ int dict_attr_type_init(fr_dict_attr_t **da_p, fr_type_t type)
 
 		(*da_p)->last_child_attr = (1 << 24);	/* High enough not to conflict with protocol numbers */
 		break;
-
-	/*
-	 *	Keying types *sigh*
-	 */
-	case FR_TYPE_UINT8:	/* Hopefully temporary until unions are done properly */
-	case FR_TYPE_UINT16:	/* Same here */
-		if (dict_attr_enumv_init(da_p) < 0) return -1;
-		goto structural;
 
 	/*
 	 *	Leaf types
