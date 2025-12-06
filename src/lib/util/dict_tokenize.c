@@ -2805,6 +2805,28 @@ static int dict_read_process_vendor(dict_tokenize_ctx_t *dctx, char **argv, int 
 	return 0;
 }
 
+/** The main protocols that we care about.
+ *
+ *	Not all of them are listed here, but that should be fine.
+ *
+ */
+static fr_table_num_ordered_t const dict_proto_table[] = {
+	{ L("RADIUS"),		FR_DICT_PROTO_RADIUS },
+	{ L("DHCPv4"),		FR_DICT_PROTO_DHCPv4 },
+	{ L("DHCPv6"),		FR_DICT_PROTO_DHCPv6 },
+	{ L("Ethernet"),       	FR_DICT_PROTO_ETHERNET },
+	{ L("TACACS"),		FR_DICT_PROTO_TACACS },
+	{ L("VMPS"),		FR_DICT_PROTO_VMPS },
+	{ L("SNMP"),		FR_DICT_PROTO_SNMP },
+	{ L("ARP"),		FR_DICT_PROTO_ARP },
+	{ L("TFTP"),		FR_DICT_PROTO_TFTP },
+	{ L("TLS"),		FR_DICT_PROTO_TLS },
+	{ L("DNS"),		FR_DICT_PROTO_DNS },
+	{ L("LDAP"),		FR_DICT_PROTO_LDAP },
+	{ L("BFD"),		FR_DICT_PROTO_BFD },
+};
+static size_t const dict_proto_table_len = NUM_ELEMENTS(dict_proto_table);
+
 /** Register the specified dictionary as a protocol dictionary
  *
  * Allows vendor and TLV context to persist across $INCLUDEs
@@ -2815,6 +2837,8 @@ static int dict_read_process_protocol(dict_tokenize_ctx_t *dctx, char **argv, in
 	unsigned int	type_size = 0;
 	fr_dict_t	*dict;
 	fr_dict_attr_t	*mutable;
+	unsigned int	required_value;
+	char const	*required_name;
 	bool		require_dl = false;
 	bool		string_based = false;
 
@@ -2847,6 +2871,26 @@ static int dict_read_process_protocol(dict_tokenize_ctx_t *dctx, char **argv, in
 	 */
 	if (!value) {
 		fr_strerror_printf("Invalid value '%u' following PROTOCOL", value);
+		return -1;
+	}
+
+	/*
+	 *	While the numbers are in the dictionaries, the administrator cannot change "RADIUS" to be a
+	 *	different number.  Similarly, they can't assign the RADIUS number to a different protocol.
+	 */
+	required_value = fr_table_value_by_str(dict_proto_table, argv[0], 0);
+	if (required_value && (required_value != value)) {
+		fr_strerror_printf("Invalid value '%u' following PROTOCOL - expected '%u'", value, required_value);
+		return -1;
+	}
+
+	/*
+	 *	And the administrator can't define the name to be a different number.
+	 */
+	required_name = fr_table_str_by_value(dict_proto_table, value, NULL);
+	if (required_name && (strcasecmp(required_name, argv[0]) != 0)) {
+		fr_strerror_printf("Invalid value '%u' for PROTOCOL '%s' - that value is already used by '%s'",
+				   value, argv[0], required_name);
 		return -1;
 	}
 
