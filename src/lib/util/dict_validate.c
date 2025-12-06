@@ -388,12 +388,15 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 		}
 
 		/*
-		 *	Set the length / type_size of vendor
-		 *	attributes from the vendor definition.
+		 *	Set the length / type_size of vendor attributes from the the dictionary defaults.  If
+		 *	there's a vendor, set them from the vendor definition.
+		 *
+		 *	But we only do this for RADIUS, because the other protocols aren't crazy enough to
+		 *	have different type sizes for different vendors.
 		 */
-		flags->type_size = 1;
-		flags->length = 1;
-		if (attr > 0) {
+		flags->type_size = dict->root->flags.type_size;
+		flags->length = dict->root->flags.type_size;
+		if ((attr > 0) && (dict->root->attr == FR_DICT_PROTO_RADIUS)) {
 			fr_dict_vendor_t const *dv;
 
 			dv = fr_dict_vendor_by_num(dict, attr);
