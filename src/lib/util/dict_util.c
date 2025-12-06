@@ -672,7 +672,9 @@ int dict_attr_type_init(fr_dict_attr_t **da_p, fr_type_t type)
  */
 int dict_attr_parent_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *parent)
 {
-	fr_dict_attr_t *da = *da_p;
+	fr_dict_attr_t		  *da = *da_p;
+	fr_dict_t const		  *dict = parent->dict;
+	fr_dict_attr_ext_vendor_t *ext;
 
 	if (unlikely((*da_p)->type == FR_TYPE_NULL)) {
 		fr_strerror_const("Attribute type must be set before initialising parent.  Use dict_attr_type_init() first");
@@ -699,12 +701,34 @@ int dict_attr_parent_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *parent)
 	 *	Point to the vendor definition.  Since ~90% of
 	 *	attributes are VSAs, caching this pointer will help.
 	 */
+	if (da->type == FR_TYPE_VENDOR) {
+		da->flags.type_size = dict->root->flags.type_size;
+		da->flags.length = dict->root->flags.type_size;
+
+		if ((dict->root->attr == FR_DICT_PROTO_RADIUS) && (da->depth == 2)) {
+			fr_dict_vendor_t const *dv;
+
+			dv = fr_dict_vendor_by_num(dict, da->attr);
+			if (dv) {
+				da->flags.type_size = dv->type;
+				da->flags.length = dv->length;
+			}
+		}
+		ext = NULL;
+
+	} else if (da->type == FR_TYPE_TLV) {
+		da->flags.type_size = dict->root->flags.type_size;
+		da->flags.length = dict->root->flags.type_size;
+	}
+
 	if (parent->type == FR_TYPE_VENDOR) {
-		int ret = dict_attr_vendor_set(&da, parent);
-		*da_p = da;
-		if (ret < 0) return -1;
+		ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_VENDOR);
+		if (unlikely(!ext)) return -1;
+
+		ext->vendor = parent;
+
 	} else {
-		dict_attr_ext_copy(da_p, parent, FR_DICT_ATTR_EXT_VENDOR); /* Noop if no vendor extension */
+		ext = dict_attr_ext_copy(da_p, parent, FR_DICT_ATTR_EXT_VENDOR); /* Noop if no vendor extension */
 	}
 
 	/*
@@ -712,6 +736,13 @@ int dict_attr_parent_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *parent)
 	 *	to generate it at runtime.
 	 */
 	dict_attr_da_stack_set(da_p);
+
+	da = *da_p;
+
+	if (!ext || ((da->type != FR_TYPE_TLV) && (da->type != FR_TYPE_VENDOR))) return 0;
+
+	da->flags.type_size = ext->vendor->flags.type_size;
+	da->flags.length = ext->vendor->flags.type_size;
 
 	return 0;
 }
@@ -886,9 +917,15 @@ int _dict_attr_init(char const *filename, int line,
 		    char const *name, unsigned int attr,
 		    fr_type_t type, dict_attr_args_t const *args)
 {
-	if (unlikely(dict_attr_init_common(filename, line, da_p, parent, type, args) < 0)) return -1;
-
+	/*
+	 *	We initialize the number first, as doing that doesn't have any other side effects.
+	 */
 	if (unlikely(dict_attr_num_init(*da_p, attr) < 0)) return -1;
+
+	/*
+	 *	This function then checks the number, for things like VSAs.
+	 */
+	if (unlikely(dict_attr_init_common(filename, line, da_p, parent, type, args) < 0)) return -1;
 
 	if (unlikely(dict_attr_finalise(da_p, name) < 0)) return -1;
 

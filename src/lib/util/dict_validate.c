@@ -40,7 +40,6 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 	uint32_t shift_array, shift_has_value;
 	uint32_t shift_subtype, shift_extra;
 	uint32_t shift_counter;
-	fr_dict_attr_t const *v;
 	fr_dict_t		*dict = da->dict;
 	fr_dict_attr_t const	*parent = da->parent;
 	char const		*name = da->name;
@@ -369,6 +368,8 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 		break;
 
 	case FR_TYPE_VENDOR:
+		if (dict->string_based) break;
+
 		if (parent->type != FR_TYPE_VSA) {
 			fr_strerror_printf("Attributes of type 'vendor' MUST have a parent of type 'vsa' "
 					   "instead of '%s'",
@@ -376,74 +377,21 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 			return false;
 		}
 
-		if (flags->length) {
-			if ((flags->length != 1) &&
-			    (flags->length != 2) &&
-			    (flags->length != 4)) {
-				fr_strerror_const("The 'length' flag can only be used for attributes of type 'vendor' with lengths of 1,2 or 4");
-				return false;
-			}
-
-			break;
-		}
-
-		/*
-		 *	Set the length / type_size of vendor attributes from the the dictionary defaults.  If
-		 *	there's a vendor, set them from the vendor definition.
-		 *
-		 *	But we only do this for RADIUS, because the other protocols aren't crazy enough to
-		 *	have different type sizes for different vendors.
-		 */
-		flags->type_size = dict->root->flags.type_size;
-		flags->length = dict->root->flags.type_size;
-		if ((attr > 0) && (dict->root->attr == FR_DICT_PROTO_RADIUS)) {
-			fr_dict_vendor_t const *dv;
-
-			dv = fr_dict_vendor_by_num(dict, attr);
-			if (dv) {
-				flags->type_size = dv->type;
-				flags->length = dv->length;
-			}
+		if ((flags->length != 1) &&
+		    (flags->length != 2) &&
+		    (flags->length != 4)) {
+			fr_strerror_const("The 'length' flag can only be used for attributes of type 'vendor' with lengths of 1,2 or 4");
+			return false;
 		}
 		break;
 
 	case FR_TYPE_TLV:
-		if (flags->length) {
-			if ((flags->length != 1) &&
-			    (flags->length != 2) &&
-			    (flags->length != 4)) {
-				fr_strerror_const("The 'length' flag can only be used for attributes of type 'tlv' with lengths of 1,2 or 4");
-				return false;
-			}
-
-			break;
-		}
-
-		/*
-		 *	Find an appropriate parent to copy the
-		 *	TLV-specific fields from.
-		 */
-		for (v = parent; v != NULL; v = v->parent) {
-			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
-				break;
-			}
-		}
-
-		/*
-		 *	root is always FR_TYPE_TLV, so we're OK.
-		 */
-		if (!v) {
-			fr_strerror_printf("Attributes of type '%s' require a parent attribute",
-					   fr_type_to_str(type));
+		if ((flags->length != 1) &&
+		    (flags->length != 2) &&
+		    (flags->length != 4)) {
+			fr_strerror_const("The 'length' flag can only be used for attributes of type 'tlv' with lengths of 1,2 or 4");
 			return false;
 		}
-
-		/*
-		 *	Over-ride whatever was there before, so we
-		 *	don't have multiple formats of VSAs.
-		 */
-		flags->type_size = v->flags.type_size;
-		flags->length = v->flags.length;
 		break;
 
 		/*

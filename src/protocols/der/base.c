@@ -820,6 +820,15 @@ static bool attr_valid(fr_dict_attr_t *da)
 	fr_der_attr_flags_t *parent;
 
 	/*
+	 *	We might have created the attribute of type "tlv", and then later swapped it to "group".
+	 *	Ensure that the main validation routines are happy with the result.
+	 */
+	if (da->type == FR_TYPE_GROUP) {
+		da->flags.type_size = 0;
+		da->flags.length = 0;
+	}
+
+	/*
 	 *	sequence_of=oid_and_value has to have a reference to the OID tree.
 	 *
 	 *	Group refs are added as unresolved refs, see dict_flag_ref(), and are resolved later

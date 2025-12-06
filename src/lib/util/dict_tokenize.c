@@ -1837,49 +1837,6 @@ static int dict_read_process_begin_protocol(dict_tokenize_ctx_t *dctx, char **ar
 	return dict_dctx_push(dctx, dctx->dict->root, NEST_PROTOCOL);
 }
 
-/** Set the type size and length based on the parent.
- *
- */
-static void dict_flags_set(fr_dict_t const *dict, fr_dict_attr_t const *parent, fr_dict_vendor_t const *dv, fr_dict_attr_flags_t *flags)
-{
-	flags->type_size = dict->proto->default_type_size;
-	flags->length = dict->proto->default_type_length;
-
-	/*
-	 *	Only RADIUS is crazy enough to have different type
-	 *	sizes for each vendor.
-	 */
-	if (dict->root->attr != FR_DICT_PROTO_RADIUS) return;
-
-	/*
-	 *	If the parent exists, it will already have the correct flags set.
-	 */
-	if (parent->type != FR_TYPE_VSA) {
-		flags->type_size = parent->flags.type_size;
-		flags->length = parent->flags.length;
-		return;
-	}
-
-	/*
-	 *	VSAs can exist inside Extended-Attribute-1, but they MUST be 1/1, and not any crazy
-	 *	vendor things.
-	 */
-	if (!parent->parent->flags.is_root) return;
-
-	/*
-	 *	Only the top-level Vendor-Specific attribute can have different type sizes for each vendor.
-	 *
-	 *	Unknown vendors default to 1/1.
-	 */
-	if (!dv) return;
-
-	/*
-	 *	Otherwise we use the vendor-defined type size.
-	 */
-	flags->type_size = dv->type;
-	flags->length = dv->length;
-}
-
 static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv, int argc,
 				    	  UNUSED fr_dict_attr_flags_t *base_flags)
 {
@@ -1970,8 +1927,6 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 	vendor_da = dict_attr_child_by_num(vsa_da, vendor->pen);
 	if (!vendor_da) {
 		fr_dict_attr_flags_t flags = {};
-
-		dict_flags_set(dctx->dict, vsa_da, vendor, &flags);
 
 		new = dict_attr_alloc(dctx->dict->pool,
 				      vsa_da, argv[0], vendor->pen, FR_TYPE_VENDOR,
