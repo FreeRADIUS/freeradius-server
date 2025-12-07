@@ -224,7 +224,7 @@ void tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, int i)
 			ar->da->attr
 		);
 		fprintf(fp, "\t    is_raw     : %s\n", ar_is_raw(ar) ? "yes" : "no");
-		fprintf(fp, "\t    is_unknown : %s", ar_is_unknown(ar) ? "yes" : "no");
+		fprintf(fp, "\t    is_unknown : %s\n", ar_is_unknown(ar) ? "yes" : "no");
 		if (ar->ar_parent) fprintf(fp, "\t    parent     : %s (%p)\n", ar->ar_parent->name, ar->ar_parent);
 		break;
 
@@ -241,12 +241,12 @@ void tmpl_attr_ref_debug(FILE *fp, const tmpl_attr_t *ar, int i)
 			ar->ar_num != NUM_UNSPEC ? "[" : "",
 			ar->ar_num != NUM_UNSPEC ? fr_table_str_by_value(attr_num_table, ar->ar_num, buffer) : "",
 			ar->ar_num != NUM_UNSPEC ? "]" : "");
-		if (ar->ar_parent) 			fprintf(fp, "\t    parent     : %s", ar->ar_parent->name);
-		if (ar->ar_unresolved_namespace)	fprintf(fp, "\t    namespace  : %s", ar->ar_unresolved_namespace->name);
+		if (ar->ar_parent) 			fprintf(fp, "\t    parent     : %s\n", ar->ar_parent->name);
+		if (ar->ar_unresolved_namespace)	fprintf(fp, "\t    namespace  : %s\n", ar->ar_unresolved_namespace->name);
 		break;
 
 	default:
-		fprintf(fp, "\t[%u] Bad type %s(%u)",
+		fprintf(fp, "\t[%u] Bad type %s(%u)\n",
 			     i, fr_table_str_by_value(attr_table, ar->type, "<INVALID>"), ar->type);
 		break;
 	}
