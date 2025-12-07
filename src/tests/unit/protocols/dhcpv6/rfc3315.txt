@@ -143,7 +143,7 @@ match Server-ID = { DUID = ::LL, LL = { Hardware-Type = ::Ethernet, Ethernet = {
 #  this will likely be easier to do once we have real nested TLVs / groups
 #
 decode-pair 00 02 00 0a 00 03 00 ff d3 4d 00 c0 ff ee
-match Server-ID = { DUID = ::LL, LL = { Hardware-Type = 255, raw.255 = 0xd34d00c0ffee } }
+match Server-ID = { DUID = ::LL, LL = { Hardware-Type = 255, Value = { raw.255 = 0xd34d00c0ffee } } }
 
 count
 match 29

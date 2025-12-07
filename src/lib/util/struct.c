@@ -285,13 +285,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	we reach the union.  See dict_tokenize.
 		 */
 		case FR_TYPE_UNION:
-			fr_assert(!fr_dict_attr_child_by_num(parent, child_num + 1));
-			if (!key_vp) {
-			remainder_raw:
-				child_length = end - p;
-				goto raw;
-			}
-
 			/*
 			 *	Create the union wrapper, and reset the child_ctx and child_list to it.
 			 */
@@ -302,6 +295,14 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			substruct_da = child;
 			child_ctx = vp;
 			child_list = &vp->vp_group;
+
+			fr_assert(!fr_dict_attr_child_by_num(parent, child_num + 1)); /* has to be the last one */
+			if (!key_vp) {
+			remainder_raw:
+				child_length = end - p;
+				goto raw;
+			}
+
 			goto substruct;
 		}
 
@@ -623,6 +624,19 @@ static ssize_t encode_union(fr_dbuff_t *dbuff, fr_dict_attr_t const *wrapper,
 	}
 
 	/*
+	 *	@todo - encode the key field based on the attribute number?
+	 *
+	 *	However, we are likely better off just not doing that.
+	 *	Which allows us to have the key and UNION contents
+	 *	disagree.
+	 */
+	if (!found && child->da->flags.is_unknown) {
+		fr_assert(child->da->type == FR_TYPE_OCTETS);
+
+		goto encode;
+	}
+
+	/*
 	 *	No child matching the key vp was found.  Either there's no key_vp, or the key_vp doesn't match
 	 *	the chld we have.
 	 *
@@ -672,6 +686,7 @@ static ssize_t encode_union(fr_dbuff_t *dbuff, fr_dict_attr_t const *wrapper,
 	/*
 	 *	And finally encode the one child.
 	 */
+encode:
 	FR_PROTO_TRACE("fr_struct_to_network union %s encoding child %s", parent->da->name, child->da->name);
 	fr_proto_da_stack_build(da_stack, child->da);
 	FR_PROTO_STACK_PRINT(da_stack, depth);

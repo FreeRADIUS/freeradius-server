@@ -147,12 +147,17 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_t c
 	PAIR_VERIFY(vp);
 
 	/*
-	 *	Omit the union if we can.
+	 *	Omit the union if we can.  But if the child is raw, then always print it.  That way it's
+	 *	clearer what's going on.
 	 */
-	if ((vp->vp_type == FR_TYPE_UNION) &&
-	    (fr_pair_list_num_elements(&vp->vp_group) == 1)) {
-		parent = vp->da;
-		vp = fr_pair_list_head(&vp->vp_group);
+	if (vp->vp_type == FR_TYPE_UNION) {
+		fr_pair_t *child = fr_pair_list_head(&vp->vp_group);
+
+		if (!child->da->flags.is_unknown &&
+		    (fr_pair_list_num_elements(&vp->vp_group) == 1)) {
+			parent = vp->da;
+			vp = fr_pair_list_head(&vp->vp_group);
+		}
 	}
 
 	if ((vp->op > T_INVALID) && (vp->op < T_TOKEN_LAST)) {
