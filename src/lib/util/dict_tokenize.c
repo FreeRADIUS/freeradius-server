@@ -1123,12 +1123,20 @@ static int dict_read_process_common(dict_tokenize_ctx_t *dctx, fr_dict_attr_t **
 				    fr_dict_attr_flags_t const *base_flags)
 {
 	fr_dict_attr_t *da, *to_free = NULL;
+	size_t len;
 
 	/*
-	 *	Dictionaries need to have real names, not shitty ones.
+	 *	Dictionaries need to have real names, not v3-style ones "Attr-#".  And not ones which are
+	 *	solely numerical.
 	 */
 	if (strncmp(name, "Attr-", 5) == 0) {
-		fr_strerror_const("Invalid name");
+		fr_strerror_const("Invalid name - 'Attr-' is an invalid name");
+		return -1;
+	}
+
+	len = strlen(name);
+	if (fr_sbuff_adv_past_allowed( &FR_SBUFF_IN(name, len), SIZE_MAX, sbuff_char_class_int, NULL) == len) {
+		fr_strerror_printf("Invalid attribute name '%s' - the name cannot be an integer", name);
 		return -1;
 	}
 
