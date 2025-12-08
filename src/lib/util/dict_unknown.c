@@ -71,10 +71,8 @@ static int dict_attr_unknown_init(fr_dict_attr_t const *parent, UNUSED fr_dict_a
 		}
 	}
 
-#if 0
 	/*
-	 *	@todo - This is commented out because it changes some of the debug output, and we want to
-	 *	separate commits into logically associated ones.
+	 *	Ensure that raw members of a structure have the correct length.
 	 */
 	if (parent->type == FR_TYPE_STRUCT) {
 		if (!da) {
@@ -93,12 +91,14 @@ static int dict_attr_unknown_init(fr_dict_attr_t const *parent, UNUSED fr_dict_a
 
 		} else if (da->type != type) {
 		cannot_change_type:
+			/*
+			 *	@todo - why not?  So long as the size is the same...
+			 */
 			fr_strerror_printf("Cannot create 'raw' attribute in 'struct' which changes data type from '%s' to '%s'",
 					   fr_type_to_str(da->type), fr_type_to_str(type));
 			return -1;
 		}
 	}
-#endif
 
 	return 0;
 }

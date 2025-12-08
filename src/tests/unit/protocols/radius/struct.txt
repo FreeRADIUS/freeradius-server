@@ -94,14 +94,21 @@ encode-pair -
 match ff 0d 02 00 00 1a 99 ff fe fd fc fb fa
 
 #
-#  @todo - these are perhaps wrong?  The raw attribute should perhaps
-#  be ignored, or else it should be an error to create it.
+#  raw.2 has the same number as "Filler".  We don't want to encode fields twice.
 #
 encode-pair Test-Struct = { Key-Field = 2, Filler = 6809, raw.2 = 0xfffefdfcfbfa }
-match ff 0d 02 00 00 1a 99 ff fe fd fc fb fa
+match ff 07 02 00 00 1a 99
 
-encode-pair Test-Struct = { Key-Field = 3, Filler = 6809, raw.2 = 0xfffefdfcfbfa }
-match ff 0d 03 00 00 1a 99 ff fe fd fc fb fa
+decode-pair -
+match Test-Struct = { Key-Field = 2, Filler = 6809 }
+
+#
+#  The final field is too long, but we still decode it.
+#
+#  @todo - arguably we should ignore the extra data, as the contents of "data" should only be 2 octets?
+#
+decode-pair ff 0d 02 00 00 1a 99 ff fe fd fc fb fa
+match Test-Struct = { Key-Field = 2, Filler = 6809, Data = { raw.2 = 0xfffefdfcfbfa } }
 
 count
-match 50
+match 52
