@@ -248,6 +248,7 @@ fr_dict_attr_t *fr_dict_attr_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const
 	fr_dict_attr_flags_t	flags = {};
 
 	fr_assert(!da->flags.is_root); /* cannot copy root attributes */
+	fr_assert(da->parent);
 
 	switch (type) {
 	case FR_TYPE_LEAF:
@@ -291,7 +292,7 @@ fr_dict_attr_t *fr_dict_attr_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const
 	 *	parents when this 'da' is freed.  We therefore talloc
 	 *	the parent from the 'da'.
 	 */
-	if (da->parent && da->parent->flags.is_unknown) {
+	if (da->parent->flags.is_unknown) {
 		parent = fr_dict_attr_unknown_copy(n, da->parent);
 		if (!parent) {
 		error:
