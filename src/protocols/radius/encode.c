@@ -262,6 +262,8 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 
 			fr_pair_dcursor_child_iter_init(&child_cursor, &vp->vp_group, cursor);
 			vp = fr_dcursor_current(&child_cursor);
+			if (!vp) goto next;
+
 			fr_proto_da_stack_build(da_stack, vp->da);
 
 			/*
@@ -270,13 +272,14 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			slen = encode_tlv(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 			if (slen < 0) return slen;
 
+		next:
 			vp = fr_dcursor_next(cursor);
 			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
 		} else {
 			slen = encode_child(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
+			if (slen < 0) return slen;
 		}
-		if (slen < 0) return slen;
 
 		/*
 		 *	If nothing updated the attribute, stop
@@ -468,7 +471,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	case FR_TYPE_STRING:
 		if (fr_radius_flag_abinary(da)) {
 			slen = fr_radius_encode_abinary(vp, &value_dbuff);
-			if (slen <= 0) return slen;
+			if (slen < 0) return slen;
 			break;
 		}
 		FALL_THROUGH;
