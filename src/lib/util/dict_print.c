@@ -270,7 +270,7 @@ void fr_dict_attr_debug(FILE *fp, fr_dict_attr_t const *da)
 	};
 
 	dict_attr_debug(da, &uctx);
-	uctx.da = da,
+	uctx.da = da;
 
 	(void)fr_dict_walk(da, dict_attr_debug, &uctx);
 }
