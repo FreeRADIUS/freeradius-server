@@ -714,7 +714,6 @@ int dict_attr_parent_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *parent)
 				da->flags.length = dv->length;
 			}
 		}
-		ext = NULL;
 
 	} else if (da->type == FR_TYPE_TLV) {
 		da->flags.type_size = dict->root->flags.type_size;
