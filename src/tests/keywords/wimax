@@ -4,8 +4,15 @@ if (!(Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port =
 	test_fail
 }
 
-26.24757.84.9.5.7 := 0x01
-if (!(Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Assigned == 1)) {
+#
+#  Raw attributes get resolved to real ones if they exist.
+#
+raw.26.24757.84.9.5.7 := 0x01
+if (!Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Assigned) {
+	test_fail
+}
+
+if (Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Assigned != 1) {
 	test_fail
 }
 

@@ -258,6 +258,9 @@ match true
 condition (ether) 00:11:22:33:44:55 == "%hash.md4('00:11:22:33:44:55')"
 match (00:11:22:33:44:55 == "%hash.md4(0x30303a31313a32323a33333a34343a3535)")
 
+#
+#  @todo - we have a hint on the cast.  Perhaps we want to return a different error?
+#
 condition (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
 match ERROR offset 10: Unexpected text after attribute reference
 
@@ -339,8 +342,11 @@ match true
 condition (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
 
+#
+#  @todo - we have a hint on the cast.  Perhaps we want to return a different error?
+#
 condition (ipaddr)127.0.0.1/327 == 127.0.0.1
-match ERROR offset 13: Parent type of nested attribute 0 must be of type "struct", "tlv", "vendor", "vsa" or "group", got "octets"
+match ERROR offset 8: Numerical attribute references are not allowed here
 
 condition (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
@@ -495,8 +501,8 @@ match (Acct-Input-Octets64 > "%{Session-Timeout}")
 #  @todo - peephole - Perhaps this isn't done because the xlat name is taken from the
 #  input, and not from the canonicalized names.
 #
-condition 26.24757.84.9.5.4 == 0x1a99
-match  (26.24757.84.9.5.4 == 0x1a99)
+condition raw.26.24757.84.9.5.4 == 0x1a99
+match  (raw.26.24757.84.9.5.4 == 0x1a99)
 #match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port == 6809
 
 #
@@ -509,8 +515,8 @@ match (raw.26.24757.84.9.5.7 == 0x1a99)
 #match raw.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Assigned == 0x1a99
 
 #  This one is really unknown
-condition 26.24757.84.9.5.15 == 0x1a99
-match (26.24757.84.9.5.15 == 0x1a99)
+condition raw.26.24757.84.9.5.15 == 0x1a99
+match (raw.26.24757.84.9.5.15 == 0x1a99)
 #match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.15 == 0x1a99
 
 #

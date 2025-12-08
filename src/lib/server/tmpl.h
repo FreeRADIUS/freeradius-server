@@ -313,6 +313,8 @@ struct tmpl_attr_rules_s {
 
 	uint8_t			allow_foreign:1;	//!< Allow arguments not found in dict_def.
 
+	uint8_t			allow_oid:1;		//!< allow numerical OIDs.
+
 	uint8_t			disallow_filters:1;	//!< disallow filters.
 
 	uint8_t			xlat:1	;		//!< for %{User-Name}
@@ -1026,7 +1028,8 @@ typedef enum {
 	TMPL_ATTR_ERROR_INVALID_FILTER,			//!< Invalid filter
 	TMPL_ATTR_ERROR_NESTING_TOO_DEEP,		//!< Too many levels of nesting.
 	TMPL_ATTR_ERROR_MISSING_TERMINATOR,		//!< Unexpected text found after attribute reference
-	TMPL_ATTR_ERROR_BAD_CAST			//!< Specified cast was invalid.
+	TMPL_ATTR_ERROR_BAD_CAST,			//!< Specified cast was invalid.
+	TMPL_ATTR_ERROR_INVALID_OID			//!< OIDs are not allowed
 } tmpl_attr_error_t;
 
 /** Map ptr type to a boxed type

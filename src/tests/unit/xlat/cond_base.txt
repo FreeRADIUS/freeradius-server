@@ -275,7 +275,7 @@ xlat_purify_cond (ether)00:11:22:33:44:55 == "%hash.md4('00:11:22:33:44:55')"
 match ERROR purifying node - Missing separator, expected ':'
 
 xlat_purify_cond (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
-match ERROR offset 8: Unknown attributes not allowed here
+match ERROR offset 10: Unexpected text after attribute reference
 
 #
 #  Tests for boolean data types.
@@ -353,7 +353,7 @@ xlat_purify_cond (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
 
 xlat_purify_cond (ipaddr)127.0.0.1/327 == 127.0.0.1
-match ERROR offset 12: Unknown attributes not allowed here
+match ERROR offset 8: Numerical attribute references are not allowed here
 
 xlat_purify_cond (ipaddr)127.0.0.1/32 == 127.0.0.1
 match true
@@ -509,8 +509,8 @@ match (Acct-Input-Octets64 > Session-Timeout)
 #  Parse OIDs into known attributes, where possible.
 #
 # @todo - peephole - resolve the unknown attribute to something real!
-xlat_purify_cond 26.24757.84.9.5.4 == 0x1a99
-match (26.24757.84.9.5.4 == 0x1a99)
+xlat_purify_cond raw.26.24757.84.9.5.4 == 0x1a99
+match (raw.26.24757.84.9.5.4 == 0x1a99)
 #match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.Port == 6809
 
 #
@@ -524,8 +524,11 @@ match (raw.26.24757.84.9.5.7 == 0x1a99)
 
 #  This one is really unknown
 xlat_purify_cond 26.24757.84.9.5.15 == 0x1a99
-match ERROR offset 16: Unknown attributes not allowed here
-#match Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.15 == 0x1a99
+match ERROR offset 0: Numerical attribute references are not allowed here
+
+xlat_purify_cond raw.26.24757.84.9.5.15 == 0x1a99
+match ERROR offset 20: Unknown attributes not allowed here
+#match raw.Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec.15 == 0x1a99
 
 #
 #  Invalid array references.
@@ -767,4 +770,4 @@ xlat_purify_cond (192.168.0.1 !== 192.168.0.2)
 match true
 
 count
-match 328
+match 330

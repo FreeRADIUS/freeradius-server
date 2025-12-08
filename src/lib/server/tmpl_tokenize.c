@@ -1747,12 +1747,12 @@ static void tmpl_attr_ref_fixup(TALLOC_CTX *ctx, tmpl_t *vpt, fr_dict_attr_t con
  *	- <0 on error.
  *	- 0 on success.
  */
-static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
-					      tmpl_t *vpt,
-					      fr_dict_attr_t const *parent, fr_dict_attr_t const *namespace,
-					      fr_sbuff_t *name,
-					      fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *at_rules,
-					      unsigned int depth)
+static int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
+				       tmpl_t *vpt,
+				       fr_dict_attr_t const *parent, fr_dict_attr_t const *namespace,
+				       fr_sbuff_t *name,
+				       fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *at_rules,
+				       unsigned int depth)
 {
 	uint32_t		oid = 0;
 	tmpl_attr_t		*ar = NULL;
@@ -1928,6 +1928,27 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	.<oid>
 	 */
 	if (fr_sbuff_out(NULL, &oid, name) > 0) {
+		if (!at_rules->allow_oid) {
+			uint8_t c = fr_sbuff_char(name, '\0');
+
+			/*
+			 *	This extra test is to give the user better errors.  The string "3G" is parsed
+			 *	as "3", and then an error of "what the heck do you mean by G?"
+			 *
+			 *	In contrast, the string "3." is parsed as "3", and then "nope, that's not an attribute reference".
+			 */
+			if (c != '.') {
+				fr_strerror_const("Unexpected text after attribute reference");
+				if (err) *err = TMPL_ATTR_ERROR_MISSING_TERMINATOR;
+			} else {
+				fr_strerror_const("Numerical attribute references are not allowed here");
+				if (err) *err = TMPL_ATTR_ERROR_INVALID_OID;
+
+				fr_sbuff_set(name, &m_s);
+			}
+			goto error;
+		}
+
 		our_parent = namespace = fr_dict_unlocal(namespace);
 
 		fr_assert(ar == NULL);
@@ -2110,10 +2131,7 @@ do_suffix:
 			break;
 
 		default:
-			fr_strerror_printf("Parent type of nested attribute %s must be of type "
-					   "\"struct\", \"tlv\", \"vendor\", \"vsa\" or \"group\", got \"%s\"",
-					   da->name,
-					   fr_type_to_str(da->type));
+			fr_strerror_printf("Attribute %s of data type '%s' cannot have child attributes", da->name, fr_type_to_str(da->type));
 			fr_sbuff_set(name, &m_s);
 			goto error;
 		}
@@ -2203,6 +2221,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	fr_sbuff_t			our_name = FR_SBUFF(name);	/* Take a local copy in case we need to back track */
 	bool				is_raw = false;
 	tmpl_attr_rules_t const		*at_rules;
+	tmpl_attr_rules_t		my_attr_rules;
 	fr_sbuff_marker_t		m_l;
 	fr_dict_attr_t const		*namespace;
 	DEFAULT_RULES;
@@ -2237,7 +2256,13 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 *	users to stick whatever they want in there as
 	 *	a value.
 	 */
-	if (fr_sbuff_adv_past_strcase_literal(&our_name, "raw.")) is_raw = true;
+	if (fr_sbuff_adv_past_strcase_literal(&our_name, "raw.")) {
+		my_attr_rules = *at_rules;
+		my_attr_rules.allow_oid = true;
+		at_rules = &my_attr_rules;
+
+		is_raw = true;
+	}
 
 	/*
 	 *	Parse one or more request references
