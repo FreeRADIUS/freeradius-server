@@ -465,6 +465,15 @@ static bool attr_valid(fr_dict_attr_t *da)
 		da->flags.is_known_width = true;	/* Lie so we don't trip up the main validation checks */
 	}
 
+	switch (da->type) {
+	case FR_TYPE_IP:
+		da->flags.is_known_width = true;
+		break;
+
+	default:
+		break;
+	}
+
 	return true;
 }
 
