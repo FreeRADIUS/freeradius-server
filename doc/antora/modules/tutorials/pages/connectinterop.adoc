@@ -1,0 +1,18 @@
+=  Connectivity and Interoperability
+
+This section lists the explains more configuration topics related to the connectivity and interoperability functionality. It starts with a general guide to advanced configuration, followed by specific topics such as using xref:variables.adoc[variables], xref:dynamic-translation.adoc[dynamic translation], managing xref:multiple_modules.adoc[multiple module instances], and configuring xref:autz-type.adoc[Autz-Type] for authorization.
+
+It also covers xref:module_fail_over.adoc[module fail-over] strategies, xref:prepaid.adoc[prepaid] accounts, the use of xref:dictionary.adoc[dictionaries], xref:virtual.adoc[virtual server] setups, and the xref:radmin.adoc[Radmin management tool].
+
+Each entry links to a detailed page, allowing users to explore advanced features and customization options in FreeRADIUS:
+
+* xref:variables.adoc[Variables]
+* xref:dynamic-translation.adoc[Dynamic-Translation]
+* xref:multiple_modules.adoc[Module instances]
+* xref:autz-type.adoc[Autz-Type]
+* xref:module_fail_over.adoc[Module-Fail-Over]
+* xref:prepaid.adoc[Prepaid]
+* xref:dictionary.adoc[Dictionary]
+* xref:virtual.adoc[Virtual]
+* xref:radmin.adoc[Radmin]
+* xref:final_group_project.adoc[Final group project]
