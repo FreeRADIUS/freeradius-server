@@ -1235,8 +1235,8 @@ static fr_radius_decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, ui
 	if ((u->code == FR_RADIUS_CODE_ACCESS_REQUEST) &&
 	    (inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_AUTO) &&
 	    !*(inst->received_message_authenticator) &&
-	    fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator) &&
-	    !fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_message)) {
+	    fr_pair_find_by_da(reply, NULL, attr_message_authenticator) &&
+	    !fr_pair_find_by_da(reply, NULL, attr_eap_message)) {
 		RINFO("Packet contained a valid Message-Authenticator.  Setting \"require_message_authenticator = yes\"");
 		*(inst->received_message_authenticator) = true;
 	}
