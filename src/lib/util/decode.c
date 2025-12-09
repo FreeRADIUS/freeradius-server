@@ -160,9 +160,17 @@ ssize_t fr_pair_tlvs_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	FR_PROTO_HEX_DUMP(data, data_len, "fr_pair_tlvs_from_network");
 
-	if (!fr_cond_assert_msg((parent->type == FR_TYPE_TLV || (parent->type == FR_TYPE_VENDOR)),
-				"%s: Internal sanity check failed, attribute \"%s\" is not of type 'tlv'",
-				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
+	switch (parent->type) {
+	case FR_TYPE_TLV:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_STRUCT:
+		break;
+
+	default:
+		fr_strerror_printf("Internal sanity check failed, attribute \"%s\" has unexpected data type '%s'",
+				   parent->name, fr_type_to_str(parent->type));
+		return PAIR_DECODE_FATAL_ERROR;
+	}
 
 	/*
 	 *	Do a quick sanity check to see if the TLVs are at all OK.
