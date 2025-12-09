@@ -2033,8 +2033,16 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		vp = fr_pair_afrom_da(ctx, da);
 		if (!vp) return -1;
 
+		/*
+		 *	Ensure that it has a value.
+		 */
+		if (fr_pair_value_memdup(vp, (uint8_t const *) "", 0, false) < 0) {
+			talloc_free(vp);
+			return -1;
+		}
+
+		PAIR_ALLOCED(vp);
 		fr_pair_append(out, vp);
-		vp->vp_tainted = true;		/* not REALLY necessary, but what the heck */
 
 		return 2;
 	}
