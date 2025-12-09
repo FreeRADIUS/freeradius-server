@@ -696,6 +696,7 @@ int dict_attr_parent_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *parent)
 	da->parent = parent;
 	da->dict = parent->dict;
 	da->depth = parent->depth + 1;
+	da->flags.internal |= parent->flags.internal;
 
 	/*
 	 *	Point to the vendor definition.  Since ~90% of
@@ -880,6 +881,23 @@ int dict_attr_init_common(char const *filename, int line,
 	if (parent && (dict_attr_parent_init(da_p, parent) < 0)) return -1;
 
 	if (args->ref && (dict_attr_ref_aset(da_p, args->ref, FR_DICT_ATTR_REF_ALIAS) < 0)) return -1;
+
+	/*
+	 *	Everything should be created correctly.
+	 */
+	if (!(*da_p)->flags.internal && !(*da_p)->flags.is_alias &&
+	    parent && ((parent->type == FR_TYPE_TLV) || (parent->type ==FR_TYPE_VENDOR))) {
+		if (!parent->flags.type_size) {
+			fr_strerror_printf("Parent %s has zero type_size", parent->name);
+			return -1;
+		}
+
+		if ((uint64_t) (*da_p)->attr >= ((uint64_t) 1 << (8 * parent->flags.type_size))) {
+			fr_strerror_printf("Child of parent %s has invalid attribute number %u for type_size %u",
+					   parent->name, (*da_p)->attr, parent->flags.type_size);
+			return -1;
+		}
+	}
 
 	return 0;
 }
