@@ -335,6 +335,15 @@ void *fr_dhcpv4_next_encodable(fr_dcursor_t *cursor, void *current, void *uctx)
 
 		if (c->vp_type == FR_TYPE_BOOL && fr_dhcpv4_flag_exists(c->da) && !c->vp_bool) continue;
 
+		/*
+		 *	The VSIO encoder expects to seee VENDOR inside of VSA, and has an assertion to that
+		 *	effect.  Until we fix that, we simply ignore all attributes which do not fit into the
+		 *	established hierarchy.
+		 */
+		if (c->da->flags.is_raw && c->da->parent && (c->da->parent->type == FR_TYPE_VSA)) continue;
+
+		fr_assert_msg((c->da->type != FR_TYPE_VENDOR) || (c->da->attr <= 255), "Cursor found unencodable attribute");
+
 		break;
 	}
 

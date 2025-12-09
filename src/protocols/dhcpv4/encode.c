@@ -675,7 +675,10 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 		ssize_t len;
 		fr_dcursor_t vsa_cursor;
 
-		if (vp->vp_type != FR_TYPE_VENDOR) continue;
+		if (vp->vp_type != FR_TYPE_VENDOR) {
+			(void) fr_dcursor_next(&vendor_cursor);
+			continue;
+		}
 
 		fr_pair_dcursor_init(&vsa_cursor, &vp->vp_group);
 
@@ -694,7 +697,9 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 			 */
 			fr_proto_da_stack_build(da_stack, vp->da);
 			len = encode_vsio_data(&work_dbuff, da_stack, depth + 2, &vsa_cursor, encode_ctx);
-			if (len <= 0) return len;
+			if (len < 0) return len;
+
+			if (len == 0) (void) fr_dcursor_next(&vsa_cursor);
 		}
 
 		(void) fr_dcursor_next(&vendor_cursor);
@@ -739,8 +744,6 @@ ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 	vp = fr_dcursor_current(cursor);
 	if (!vp) return -1;
 
-	fr_assert_msg(vp->da->attr <= 255, "Cursor provided unencodable attribute to enecoder");
-
 	fr_proto_da_stack_build(&da_stack, vp->da);
 
 	FR_PROTO_STACK_PRINT(&da_stack, depth);
@@ -757,9 +760,17 @@ ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 		len = encode_tlv(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
 
-	default:
+	case FR_TYPE_GROUP:
+	case FR_TYPE_STRUCT:
+	case FR_TYPE_LEAF:
 		len = encode_rfc(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
+
+	default:
+		fr_strerror_printf("DHCP option %s has unsupported data type '%s'",
+				   da_stack.da[depth]->name, fr_type_to_str(da_stack.da[depth]->type));
+
+		return -1;
 	}
 
 	if (len <= 0) return len;
