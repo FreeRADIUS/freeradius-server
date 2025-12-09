@@ -6829,9 +6829,7 @@ DIAG_ON(nonnull-compare)
 		break;
 
 	case FR_TYPE_ATTR:
-		if (vb->vb_attr) break;
-
-		fr_fatal_assert_msg(vb->vb_void, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t vb_attr field "
+		fr_fatal_assert_msg(vb->vb_attr, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t vb_attr field "
 				    "was NULL", file, line);
 		break;
 
