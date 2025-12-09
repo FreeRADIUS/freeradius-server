@@ -1,0 +1,20 @@
+= Advanced Configuration
+
+This section organizes documentation topics related to connectivity and interoperability in FreeRADIUS. It includes guides on xref:eap.adoc[EAP] (Extensible Authentication Protocol) and its variants—EAP-MD5, EAP-TTLS, EAP-PEAP, and EAP-TLS—which are commonly used for secure network authentication.
+
+There are also sections on xref:sql.adoc[SQL integration], including managing xref:sql_user.adoc[SQL users], which is useful for storing and retrieving user data from databases. Finally, it covers xref:proxy.adoc[proxying] features, with dedicated guides for proxy receive, fail-over, and load balancing, helping administrators configure and optimize network traffic routing and redundancy.
+
+Each entry linksto a detailed page and provides additional guidance and step-by-step instructions, making it easier for users to quickly find the information they need for more complex or advanced operations:
+
+* xref:eap.adoc[EAP]
+** xref:eap-md5.adoc[EAP-MD5]
+** xref:eap-ttls.adoc[EAP-TTLS]
+** xref:eap-peap.adoc[EAP-PEAP]
+** xref:eap-tls.adoc[EAP-TLS]
+* xref:sql.adoc[SQL]
+** xref:sql_user.adoc[SQL Users]
+* xref:proxy.adoc[Proxying]
+** xref:proxy_receive.adoc[Proxy Receive]
+** xref:proxy_failover.adoc[Proxy Fail-Over]
+** xref:proxy_load_balance.adoc[Proxy Load-Balance]
+

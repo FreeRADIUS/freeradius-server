@@ -1,0 +1,21 @@
+= Tutorials
+
+The tutorials are here to help. They are divided into three main sections so you can pick and choose what exactly you need. Alternatively, you can start on the first tutorial and work you way through each section and tutorial sequentialy.
+
+== xref:basic.adoc[Basic Configuration]
+
+To set up a FreeRADIUS v4 server, you will want to start by defining a client and adding a test user. Then, run the server in debug mode to make sure everything is working properly. The main part of this setup is unlang, but remember that FreeRADIUS also offers a wide range of accounting operations.
+
+This section guides you through steps to ensure you have simple and functioning configuration.
+
+== xref:advanced.adoc[Advanced Configuration]
+
+Advanced configuration of a FreeRADIUS v4 server extends beyond basic tasks, including dynamic user data sources, robust EAP methods, proxying, and high-level policy enforcement. Information on SQL integration helps manage SQL users for storing and retrieving user data from databases.
+
+Finally, it covers proxying and how to set up proxy receive, fail-over, and load balancing. These help administrators configure and optimise network traffic routing and redundancy.
+
+== xref:connectinterop.adoc[Connectivity and Interoperability]
+
+This section covers connectivity and interoperability in FreeRADIUS.  It navigates key topics such as variable usage and dynamic translation. It also tackles the art of managing multiple module instances and different authorization types (Autz-Type).
+
+More topics include strategies for module failover, handling prepaid accounts, and working with dictionaries. You’ll find guidance on setting up virtual servers and using the Radmin management tool.
