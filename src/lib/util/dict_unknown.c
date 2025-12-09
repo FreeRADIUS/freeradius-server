@@ -385,6 +385,20 @@ fr_dict_attr_t *fr_dict_attr_unknown_typed_afrom_num_raw(TALLOC_CTX *ctx, fr_dic
 				};
 	fr_dict_attr_t const	*da = NULL;
 
+	if (parent->flags.internal) {
+		fr_strerror_printf("Cannot create 'raw' attribute from internal parent '%s' of data type '%s'",
+				   parent->name, fr_type_to_str(parent->type));
+		return NULL;
+	}
+
+	if (((parent->type == FR_TYPE_TLV) || (parent->type == FR_TYPE_VENDOR))) {
+		if ((uint64_t) num >= ((uint64_t) 1 << (8 * parent->flags.type_size))) {
+			fr_strerror_printf("Invalid attribute number '%u' - it must be no more than %u bits in size",
+					   num, 8 * parent->flags.type_size);
+			return NULL;
+		}
+	}
+
 	switch (type) {
 	default:
 		fr_strerror_printf("Cannot allocate unknown attribute '%u' - invalid data type '%s'",

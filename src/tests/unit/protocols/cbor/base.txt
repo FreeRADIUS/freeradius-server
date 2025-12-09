@@ -133,7 +133,7 @@ match PMIP6-Home-HN-Prefix = ::/128
 #  From a fuzzer output
 #
 decode-pair 9f a1 1a 19 a1 82 00 da 00 00 03 ea a2 01 1a be 00 00 00 28 1b 70 a1 00 da 00 00 03 ea
-match Invalid cbor header - unexpected end of data
+match Invalid attribute number '430014976' - it must be no more than 8 bits in size
 
 count
 match 61

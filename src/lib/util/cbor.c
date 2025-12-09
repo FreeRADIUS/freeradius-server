@@ -1690,12 +1690,11 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 		 *	data types.
 		 */
 		da = fr_dict_attr_unknown_typed_afrom_num(ctx, parent, value, type);
-		if (!da) goto oom;
+		if (!da) return -fr_dbuff_used(&work_dbuff);
 	}
 
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) {
-	oom:
 		fr_strerror_const("Out of memory");
 		return -fr_dbuff_used(&work_dbuff);
 	}
