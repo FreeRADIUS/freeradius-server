@@ -2067,16 +2067,18 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		    (len <= network_max_size(FR_TYPE_IPV6_ADDR))) goto ipv6addr;	/* scope is optional */
 		else if ((len >= network_min_size(FR_TYPE_IPV4_ADDR)) &&
 		    	 (len <= network_max_size(FR_TYPE_IPV4_ADDR))) goto ipv4addr;
+
 		fr_strerror_const("Invalid combo ip address value");
-		return 0;
+		return -1;
 
 	case FR_TYPE_COMBO_IP_PREFIX:
 		if ((len >= network_min_size(FR_TYPE_IPV6_PREFIX)) &&
 		    (len <= network_max_size(FR_TYPE_IPV6_PREFIX))) goto ipv6prefix;	/* scope is optional */
 		else if ((len >= network_min_size(FR_TYPE_IPV4_PREFIX)) &&
 		    	 (len <= network_max_size(FR_TYPE_IPV4_PREFIX))) goto ipv4prefix;
+
 		fr_strerror_const("Invalid combo ip prefix value");
-		return 0;
+		return -1;
 
 	case FR_TYPE_BOOL:
 		{
@@ -2135,7 +2137,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	case FR_TYPE_ATTR:
 		if (!enumv) {
 			fr_strerror_const("No enumv (i.e. root) passed to fr_value_box_from_network for type 'attribute'");
-			return 0;
+			return -1;
 		}
 
 		/*
@@ -2166,13 +2168,13 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 
 			default:
 				fr_strerror_const("Unsupported parent length");
-				return 0;
+				return -1;
 			}
 
 			dst->vb_attr = fr_dict_attr_child_by_num(enumv, num);
 			if (!dst->vb_attr) {
 				dst->vb_attr = fr_dict_attr_unknown_raw_afrom_num(ctx, enumv, num);
-				if (!dst->vb_attr) return 0;
+				if (!dst->vb_attr) return -1;
 			}
 
 			break;
@@ -2208,7 +2210,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 
 		if (!fr_multiply(&date, date, fr_time_multiplier_by_res[precision])) {
 			fr_strerror_const("date would overflow");
-			return 0;
+			return -1;
 		}
 
 		dst->vb_date = fr_unix_time_wrap(date);
@@ -2263,7 +2265,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	case FR_TYPE_NON_LEAF:
 		fr_strerror_printf("Cannot decode type \"%s\" - Is not a value",
 				   fr_type_to_str(type));
-		break;
+		return -1;
 	}
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
