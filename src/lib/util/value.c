@@ -1928,7 +1928,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 				   "Expected length >= %zu bytes, got %zu bytes",
 				   fr_type_to_str(type),
 				   min, len);
-		return -(len);
+		return -(min);
 	}
 
 	/*
