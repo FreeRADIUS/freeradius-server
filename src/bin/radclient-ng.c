@@ -41,6 +41,8 @@ RCSID("$Id$")
 
 #ifdef HAVE_OPENSSL_SSL_H
 #include <openssl/ssl.h>
+#include <freeradius-devel/util/md4.h>
+#include <freeradius-devel/util/md5.h>
 #endif
 #include <ctype.h>
 
@@ -233,6 +235,9 @@ static int openssl3_init(void)
 		return -1;
 	}
 
+	fr_md5_openssl_init();
+	fr_md4_openssl_init();
+
 	return 0;
 }
 
@@ -247,6 +252,9 @@ static void openssl3_free(void)
 		ERROR("Failed unloading legacy provider");
 	}
 	openssl_legacy_provider = NULL;
+
+	fr_md5_openssl_free();
+	fr_md4_openssl_free();
 }
 #else
 #define openssl3_init()

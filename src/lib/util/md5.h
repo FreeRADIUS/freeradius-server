@@ -110,6 +110,12 @@ void		fr_md5_ctx_free_from_list(fr_md5_ctx_t **ctx);
 /* hmac.c */
 int		fr_hmac_md5(uint8_t digest[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
 			    uint8_t const *key, size_t key_len);
+
+#ifdef HAVE_OPENSSL_EVP_H
+void		fr_md5_openssl_init(void);
+void		fr_md5_openssl_free(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

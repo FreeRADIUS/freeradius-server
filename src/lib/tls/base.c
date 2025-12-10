@@ -45,6 +45,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/math.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/md4.h>
 
 static uint32_t openssl_instance_count = 0;
 
@@ -397,6 +399,9 @@ void fr_openssl_free(void)
 	fr_tls_log_free();
 
 	fr_tls_bio_free();
+
+	fr_md5_openssl_free();
+	fr_md4_openssl_free();
 }
 
 static void _openssl_provider_free(void)
@@ -538,6 +543,9 @@ int fr_openssl_init(void)
 
 	fr_tls_bio_init();
 
+	fr_md5_openssl_init();
+	fr_md4_openssl_init();
+
 	/*
 	 *	Use an atexit handler to try and ensure
 	 *	that OpenSSL gets freed last.
@@ -565,6 +573,17 @@ int fr_openssl_fips_mode(bool enabled)
 	if (!EVP_set_default_properties(NULL, enabled ? "fips=yes" : "-fips")) {
 		fr_tls_log(NULL, "Failed %s OpenSSL FIPS mode", enabled ? "enabling" : "disabling");
 		return -1;
+	}
+
+	/*
+	 *	Swap the MD4 / MD5 functions as appropriate.
+	 */
+	if (enabled) {
+		fr_md5_openssl_init();
+		fr_md4_openssl_init();
+	} else {
+		fr_md5_openssl_free();
+		fr_md4_openssl_free();
 	}
 
 	return 0;

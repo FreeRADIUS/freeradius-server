@@ -106,6 +106,12 @@ fr_md4_ctx_t	*fr_md4_ctx_alloc_from_list(void);
  *
  */
 void		fr_md4_ctx_free_from_list(fr_md4_ctx_t **ctx);
+
+#ifdef HAVE_OPENSSL_EVP_H
+void		fr_md4_openssl_init(void);
+void		fr_md4_openssl_free(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

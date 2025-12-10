@@ -29,11 +29,7 @@ static _Thread_local fr_md4_free_list_t *md4_array;
 
 static void fr_md4_local_ctx_reset(fr_md4_ctx_t *ctx);
 static void fr_md4_local_ctx_copy(fr_md4_ctx_t *dst, fr_md4_ctx_t const *src);
-#ifdef HAVE_OPENSSL_EVP_H
-static fr_md4_ctx_t *fr_md4_local_ctx_init(void);
-#else
 static fr_md4_ctx_t *fr_md4_local_ctx_alloc(void);
-#endif
 static void fr_md4_local_ctx_free(fr_md4_ctx_t **ctx);
 static void fr_md4_local_update(fr_md4_ctx_t *ctx, uint8_t const *in, size_t inlen);
 static void fr_md4_local_final(uint8_t out[static MD4_DIGEST_LENGTH], fr_md4_ctx_t *ctx);
@@ -41,11 +37,7 @@ static void fr_md4_local_final(uint8_t out[static MD4_DIGEST_LENGTH], fr_md4_ctx
 static fr_md4_funcs_t md4_local_funcs = {
 	.reset = fr_md4_local_ctx_reset,
 	.copy = fr_md4_local_ctx_copy,
-#ifdef HAVE_OPENSSL_EVP_H
-	.alloc = fr_md4_local_ctx_init,
-#else
 	.alloc = fr_md4_local_ctx_alloc,
-#endif
 	.free = fr_md4_local_ctx_free,
 	.update = fr_md4_local_update,
 	.final = fr_md4_local_final
@@ -352,32 +344,6 @@ static fr_md4_ctx_t *fr_md4_local_ctx_alloc(void)
 	return ctx_local;
 }
 
-#ifdef HAVE_OPENSSL_EVP_H
-/** Initialize whether or not we use the local allocator, or the OpenSSL one.
- *
- */
-static fr_md4_ctx_t *fr_md4_local_ctx_init(void)
-{
-	/*
-	 *	If we are in FIPS mode, then use the local allocator.
-	 */
-	if (!EVP_default_properties_is_fips_enabled(NULL)) {
-		/*
-		 *	OpenSSL isn't in FIPS mode.  Swap out the functions
-		 *	pointers for the OpenSSL versions.
-		 *
-		 *	We do this by swapping out a pointer to a structure
-		 *	containing the functions, as this prevents possible
-		 *	skew where some threads see a mixture of functions.
-		 */
-		fr_md4_funcs = &md4_openssl_funcs;
-	} else {
-		md4_local_funcs.alloc = fr_md4_local_ctx_alloc;	/* Don't call this (init) function again */
-	}
-
-	return fr_md4_ctx_alloc();
-}
-#endif
 
 /** @copydoc fr_md4_ctx_free
  *
@@ -496,16 +462,6 @@ static void fr_md4_local_final(uint8_t out[static MD4_DIGEST_LENGTH], fr_md4_ctx
 	memset(ctx_local, 0, sizeof(*ctx_local));	/* in case it's sensitive */
 }
 
-/*
- *	Digest function pointers
- */
-fr_md4_ctx_reset_t fr_md4_ctx_reset = fr_md4_local_ctx_reset;
-fr_md4_ctx_copy_t fr_md4_ctx_copy = fr_md4_local_ctx_copy;
-fr_md4_ctx_alloc_t fr_md4_ctx_alloc = fr_md4_local_ctx_alloc;
-fr_md4_ctx_free_t fr_md4_ctx_free = fr_md4_local_ctx_free;
-fr_md4_update_t fr_md4_update = fr_md4_local_update;
-fr_md4_final_t fr_md4_final = fr_md4_local_final;
-
 /** Calculate the MD4 hash of the contents of a buffer
  *
  * @param[out] out Where to write the MD4 digest. Must be a minimum of MD4_DIGEST_LENGTH.
@@ -602,3 +558,29 @@ void fr_md4_ctx_free_from_list(fr_md4_ctx_t **ctx)
 	fr_md4_ctx_free(*ctx);
 	*ctx = NULL;
 }
+
+#ifdef HAVE_OPENSSL_EVP_H
+void fr_md4_openssl_init(void)
+{
+	/*
+	 *	If we are in FIPS mode, then we still use the local
+	 *	allocator.
+	 */
+	if (!EVP_default_properties_is_fips_enabled(NULL)) return;
+
+	/*
+	 *	OpenSSL isn't in FIPS mode.  Swap out the functions
+	 *	pointers for the OpenSSL versions.
+	 *
+	 *	We do this by swapping out a pointer to a structure
+	 *	containing the functions, as this prevents possible
+	 *	skew where some threads see a mixture of functions.
+	 */
+	fr_md4_funcs = &md4_openssl_funcs;
+}
+
+void fr_md4_openssl_free(void)
+{
+	fr_md4_funcs = &md4_local_funcs;
+}
+#endif
