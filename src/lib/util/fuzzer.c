@@ -62,8 +62,20 @@ static ssize_t util_decode_proto(TALLOC_CTX *ctx, UNUSED fr_pair_list_t *out, ui
 	return rcode;
 }
 
+static ssize_t util_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
+{
+	return fr_pair_list_print(&FR_SBUFF_OUT((char *) data, data_len), NULL, vps);
+}
+
+
 extern fr_test_point_proto_decode_t util_tp_decode_proto;
 fr_test_point_proto_decode_t util_tp_decode_proto = {
 	.test_ctx	= decode_test_ctx,
 	.func		= util_decode_proto
+};
+
+extern fr_test_point_proto_encode_t util_tp_encode_proto;
+fr_test_point_proto_encode_t util_tp_encode_proto = {
+	.test_ctx	= decode_test_ctx,
+	.func		= util_encode_proto
 };

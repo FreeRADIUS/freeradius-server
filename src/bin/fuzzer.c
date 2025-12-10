@@ -47,6 +47,7 @@ static TALLOC_CTX		*autofree = NULL;
 static fr_dict_t		*dict = NULL;
 
 extern fr_test_point_proto_decode_t XX_PROTOCOL_XX_tp_decode_proto;
+extern fr_test_point_proto_encode_t XX_PROTOCOL_XX_tp_encode_proto;
 
 int LLVMFuzzerInitialize(int *argc, char ***argv);
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
@@ -254,25 +255,45 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	return 1;
 }
 
+static uint8_t encoded_data[65536];
+
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 {
 	TALLOC_CTX *   ctx = talloc_init_const("fuzzer");
 	fr_pair_list_t vps;
 	void *decode_ctx = NULL;
-	fr_test_point_proto_decode_t *tp = &XX_PROTOCOL_XX_tp_decode_proto;
+	void *encode_ctx = NULL;
+	fr_test_point_proto_decode_t *tp_decode = &XX_PROTOCOL_XX_tp_decode_proto;
+	fr_test_point_proto_encode_t *tp_encode = &XX_PROTOCOL_XX_tp_encode_proto;
 
 	fr_pair_list_init(&vps);
 	if (!init) LLVMFuzzerInitialize(NULL, NULL);
 
-	if (tp->test_ctx && (tp->test_ctx(&decode_ctx, NULL, dict, NULL) < 0)) {
+	if (tp_decode->test_ctx && (tp_decode->test_ctx(&decode_ctx, NULL, dict, NULL) < 0)) {
 		fr_perror("fuzzer: Failed initializing test point decode_ctx");
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	tp->func(ctx, &vps, buf, len, decode_ctx);
-	if (fr_debug_lvl > 3) fr_pair_list_debug(stderr, &vps);
+	if (tp_encode->test_ctx && (tp_encode->test_ctx(&encode_ctx, NULL, dict, NULL) < 0)) {
+		fr_perror("fuzzer: Failed initializing test point encode_ctx");
+		fr_exit_now(EXIT_FAILURE);
+	}
+
+	/*
+	 *	Decode the input, and print the resulting data if we
+	 *	decoded it successfully.
+	 *
+	 *	If we have successfully decoded the data, then encode
+	 *	it again, too.
+	 */
+	if (tp_decode->func(ctx, &vps, buf, len, decode_ctx) > 0) {
+		if (fr_debug_lvl > 3) fr_pair_list_debug(stderr, &vps);
+
+		(void) tp_encode->func(ctx, &vps, encoded_data, sizeof(encoded_data), encode_ctx);
+	}
 
 	talloc_free(decode_ctx);
+	talloc_free(encode_ctx);
 	talloc_free(ctx);
 
 	/*
