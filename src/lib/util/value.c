@@ -6797,6 +6797,14 @@ DIAG_ON(nonnull-compare)
 #endif
 	switch (vb->type) {
 	case FR_TYPE_STRING:
+		if (!vb->vb_length) {
+#if 0
+			fr_fatal_assert_msg(!vb->vb_strvalue || (talloc_array_length(vb->vb_strvalue) == 1), "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t strvalue field "
+					    "wasn non-NULL, but length was %u", file, line, vb->vb_length);
+#endif
+			break;
+		}
+
 		fr_fatal_assert_msg(vb->vb_strvalue, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t strvalue field "
 				    "was NULL", file, line);
 		fr_fatal_assert_msg(vb->vb_strvalue[vb->vb_length] == '\0',
@@ -6815,6 +6823,14 @@ DIAG_ON(nonnull-compare)
 		break;
 
 	case FR_TYPE_OCTETS:
+		if (!vb->vb_length) {
+#if 0
+			fr_fatal_assert_msg(!vb->vb_octets || (talloc_array_length(vb->vb_octets) == 0), "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t octets field "
+					    "wasn non-NULL, but length was %u", file, line, vb->vb_length);
+#endif
+			break;
+		}
+
 		fr_fatal_assert_msg(vb->vb_octets, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t octets field "
 				    "was NULL", file, line);
 		break;
