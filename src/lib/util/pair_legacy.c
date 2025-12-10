@@ -326,6 +326,8 @@ redo:
 		slen = fr_dict_oid_component(&err, &da, relative->da, &our_in, &bareword_terminals);
 		if (err == FR_DICT_ATTR_NOTFOUND) {
 			if (raw) {
+				fr_pair_t *parent_vp;
+
 				/*
 				 *	We looked up raw.FOO, and FOO wasn't found.  The component must be a number.
 				 */
@@ -357,8 +359,15 @@ redo:
 
 				if (!vp) return fr_sbuff_error(&our_in);
 
+				parent_vp = fr_pair_parent(vp);
+				fr_assert(parent_vp);
+
+				/*
+				 *	@todo - check parent_vp->da, too?  But we have to handle the case of
+				 *	groups, changing dictionaries, etc.
+				 */
 				PAIR_ALLOCED(vp);
-				PAIR_VERIFY(vp);
+				fr_pair_verify(__FILE__, __LINE__, NULL, &parent_vp->vp_group, vp, false);
 
 				/*
 				 *	The above function MAY have jumped ahead a few levels.  Ensure
@@ -366,10 +375,6 @@ redo:
 				 *	but only if the parent changed.
 				 */
 				if (relative->da != vp->da->parent) {
-					fr_pair_t *parent_vp;
-
-					parent_vp = fr_pair_parent(vp);
-					fr_assert(parent_vp);
 
 					relative->ctx = parent_vp;
 					relative->da = parent_vp->da;
@@ -638,6 +643,9 @@ redo:
 	if (slen <= 0) return fr_sbuff_error(&our_in) + slen;
 
 done:
+	/*
+	 *	Now that we have a value, verify the full VP.
+	 */
 	PAIR_VERIFY(vp);
 
 	keep_going = false;

@@ -158,16 +158,17 @@ struct value_pair_s {
  *
  */
 #ifdef WITH_VERIFY_PTR
-void		fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent, fr_pair_list_t const *list, fr_pair_t const *vp) CC_HINT(nonnull(5));
+void		fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent,
+			       fr_pair_list_t const *list, fr_pair_t const *vp, bool verify_values) CC_HINT(nonnull(5));
 
 void		fr_pair_list_verify(char const *file, int line,
-				    TALLOC_CTX const *expected, fr_pair_list_t const *list) CC_HINT(nonnull(4));
+				    TALLOC_CTX const *expected, fr_pair_list_t const *list, bool verify_values) CC_HINT(nonnull(4));
 
-#  define PAIR_VERIFY(_x)		fr_pair_verify(__FILE__, __LINE__, NULL, NULL, _x)
-#  define PAIR_VERIFY_WITH_LIST(_l, _x)		fr_pair_verify(__FILE__, __LINE__, NULL, _l, _x)
-#  define PAIR_LIST_VERIFY(_x)	fr_pair_list_verify(__FILE__, __LINE__, NULL, _x)
-#  define PAIR_VERIFY_WITH_PARENT_VP(_p, _x)  fr_pair_verify(__FILE__, __LINE__, (_p)->da, &(_p)->vp_group, _x)
-#  define PAIR_VERIFY_WITH_PARENT_DA(_p, _x)  fr_pair_verify(__FILE__, __LINE__, _p, NULL, _x)
+#  define PAIR_VERIFY(_x)		fr_pair_verify(__FILE__, __LINE__, NULL, NULL, _x, true)
+#  define PAIR_VERIFY_WITH_LIST(_l, _x)		fr_pair_verify(__FILE__, __LINE__, NULL, _l, _x, true)
+#  define PAIR_LIST_VERIFY(_x)	fr_pair_list_verify(__FILE__, __LINE__, NULL, _x, true)
+#  define PAIR_VERIFY_WITH_PARENT_VP(_p, _x)  fr_pair_verify(__FILE__, __LINE__, (_p)->da, &(_p)->vp_group, _x, true)
+#  define PAIR_VERIFY_WITH_PARENT_DA(_p, _x)  fr_pair_verify(__FILE__, __LINE__, _p, NULL, _x, true)
 
 #define PAIR_ALLOCED(_x) do { (_x)->filename = __FILE__; (_x)->line = __LINE__; } while (0)
 #else
