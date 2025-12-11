@@ -916,20 +916,6 @@ FreeRADIUS, the `digest` module will set `Auth-Type :=
 
 ```
 
-The `wimax` module fixes up various WiMAX-specific stupidities.
-
-The WiMAX specification says that the `link:https://freeradius.org/rfc/rfc2865.html#Calling-Station-Id[Calling-Station-Id]`
-is 6 octets of the MAC.  This definition conflicts with RFC
-3580, and all common RADIUS practices. Uncommenting the
-`wimax` module here allows the module to change the
-`link:https://freeradius.org/rfc/rfc2865.html#Calling-Station-Id[Calling-Station-Id]` attribute to the normal format as
-specified in https://tools.ietf.org/html/rfc3580#section-3.21.[RFC 3580 Section 3.21.]
-
-```
-#	wimax
-
-```
-
 The `eap` module takes care of all EAP authentication,
 including EAP-MD5, EAP-TLS, PEAP and EAP-TTLS.
 
@@ -1350,40 +1336,6 @@ user's object in LDAP after a successful login.
 
 ```
 #	ldap
-
-```
-
-Calculate the various WiMAX keys. In order for this to
-work, you will need to define the WiMAX NAI, usually
-via:
-
-```
-#	request.WiMAX-MN-NAI = "%{User-Name}"
-
-```
-If you want various keys to be calculated, you will
-need to update the reply with "template" values. The
-module will see this, and replace the template values
-with the correct ones taken from the cryptographic
-calculations, e.g.
-
-```
-#	reply += {
-#		Vendor-Specific.WiMAX = {
-#			FA-RK-Key = 0x00
-#			MSK = reply.EAP-MSK
-#		}
-#	}
-
-```
-You may want to delete the `MS-MPPE-*-Keys` from the
-reply, as some WiMAX clients behave badly when those
-attributes are included. See the configuration entry
-`delete_mppe_keys` in xref:reference:raddb/mods-available/wimax.adoc[mods-available/wimax] for
-more information.
-
-```
-#	wimax
 
 ```
 

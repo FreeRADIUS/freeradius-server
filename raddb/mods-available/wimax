@@ -7,7 +7,7 @@
 #
 #  = WiMAX Module
 #
-#  The `winmax` module implements the WiMAX attributes as defined in
+#  The `wimax` module implements the WiMAX attributes as defined in
 #  NWG_R1_V1.2.1-Stage-3.pdf
 #
 #  It should be listed in the `recv Access-Request` and `recv Accounting-Request` sections.
@@ -16,10 +16,58 @@
 #  `Calling-Station-Id` to the normal format, as specified in RFC
 #  3580, Section 3.21.
 #
+#  ## recv Access-Request
+#
+#  In the `recv Access-Request section. the `wimax` module fixes up
+#  various non-standard WiMAX issues.
+#
+#  The WiMAX specification says that the `Calling-Station-Id`
+#  is 6 octets of the MAC.  This definition conflicts with RFC
+#  3580, and all common RADIUS practices. Uncommenting the
+#  `wimax` module here allows the module to change the
+#  `Calling-Station-Id` attribute to the normal format as
+#  specified in RFC 3580 Section 3.21.
+#
+#	recv Access-Request {
+#		...
+#		wimax
+#		...
+#	}
+#
+#  == send Access-Accept
+#
 #  In order to calculate the various WiMAX keys, the module should
-#  be listed in the `post-auth` section.  If EAP authentication
+#  be listed in the `send Access-Accept` section.  If EAP authentication
 #  has been used, AND the EAP method derives MSK and EMSK, then
 #  the various WiMAX keys can be calculated.
+#
+# 	send Access-Accept {
+#		...
+#
+#		# define the WiMAX NAI
+#		request.WiMAX-MN-NAI = User-Name
+#
+#		# Update the reply with "template" values. The wimax module
+#		# will see this, and replace the template values with the
+#		#correct ones taken from the cryptographic calculations,
+#		reply += {
+#			Vendor-Specific.WiMAX = {
+#				FA-RK-Key = 0x00
+#				MSK = reply.EAP-MSK
+#			}
+#		}
+#
+#		#  You may want to delete the `MS-MPPE-*-Keys` from the
+#		#  reply, as some WiMAX clients behave badly when those
+#		#  attributes are included. See the configuration entry
+#		#  `delete_mppe_keys` for more information.
+#		#
+#		wimax
+#
+#		...
+#	}
+#
+#  == Miscellaneous
 #
 #  Some useful things to remember:
 #
@@ -47,7 +95,7 @@
 #
 #  You have to create it, and put it into the request or reply as something like:
 #
-#    WiMAX-MN-NAI = "%{User-Name}"
+#    WiMAX-MN-NAI = User-Name}
 #
 #  You will also have to have the appropriate IP address (`v4` or `v6`)
 #  in order to calculate the keys below.
