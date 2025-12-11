@@ -221,7 +221,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_pair_list_t		tmp_list;
 	fr_dcursor_t		cursor;
 	time_t			timestamp = 0;
-	fr_pair_parse_t root, relative;
+	fr_pair_parse_t		root, relative;
 
 	RHEXDUMP3(data, data_len, "proto_detail decode packet");
 
@@ -263,6 +263,8 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 *	Parse each individual line.
 	 */
 	while (p < end) {
+		fr_slen_t slen;
+
 		/*
 		 *	Each record begins with a zero byte.  If the
 		 *	next byte is also zero, that's the end of
@@ -355,16 +357,24 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 			.list = &tmp_list,
 			.dict = request->proto_dict,
 			.internal = fr_dict_internal(),
+			.allow_zeros = true,
 		};
 		relative = (fr_pair_parse_t) { };
 
-		if ((fr_pair_list_afrom_substr(&root, &relative,
-					       &FR_SBUFF_IN((char const *) p, (data + data_len) - p)) > 0) && !fr_pair_list_empty(&tmp_list)) {
+		slen = fr_pair_list_afrom_substr(&root, &relative,
+						 &FR_SBUFF_IN((char const *) p, (data + data_len) - p));
+		if (slen < 0) {
+			RPEDEBUG("Failed reading line");
+			vp = NULL;
+
+		} else if ((slen == 0) || fr_pair_list_empty(&tmp_list)) {
+			vp = NULL;
+			RWDEBUG("Ignoring line %d - %s", lineno, p);
+
+		} else {
+
 			vp = fr_pair_list_head(&tmp_list);
 			fr_pair_list_append(&request->request_pairs, &tmp_list);
-		} else {
-			vp = NULL;
-			RWDEBUG("Ignoring line %d - :%s", lineno, p);
 		}
 
 		/*

@@ -9,17 +9,17 @@ proto dhcpv6
 proto-dictionary dhcpv6
 fuzzer-out dhcpv6
 
-#
-#  This seems very wrong.
-#
 pair Client-ID.UUID.Value = 0xabcdef
-match Client-ID = { Value.UUID = { Value = 0xabcdef } }
+match Client-ID = { UUID = { Value = 0xabcdef } }
 
 encode-pair Client-ID.UUID.Value = 0xabcdef
-match fr_struct_to_network: Asked to encode UUID, but its parent Value is not the expected parent Client-ID
+match 00 01 00 12 00 04 ab cd ef 00 00 00 00 00 00 00 00 00 00 00 00 00
 
-#decode-pair -
-#match foo
+#
+#  The value is padded to 16 octets.
+#
+decode-pair -
+match Client-ID = { DUID = ::UUID, UUID = { Value = 0xabcdef00000000000000000000000000 } }
 
 count
-match 7
+match 9

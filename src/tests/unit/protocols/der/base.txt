@@ -911,10 +911,16 @@ encode-pair Test-GeneralNames = { iPAddress = 10.0.5.4 }
 match 30 06 87 04 0a 00 05 04
 
 #
-#  Ignore raw.FOO when we know the subtypes.
+#  Raw groups cannot be TLVs, they can only be octets
 #
 encode-pair raw.Test-GeneralNames = { dNSName = "foo.bar" }
-match 30 09 82 07 66 6f 6f 2e 62 61 72
+match Cannot create 'raw' attributes for data type 'group'
+
+#
+#  @todo - This shouldn't be raw data. It should be wrapped in data type 'octets'
+#
+encode-pair raw.Test-GeneralNames = 0xabcdef
+match ab cd ef
 
 proto-dictionary-root Test-GeneralNames
 
@@ -936,4 +942,4 @@ match c0 01 01 c1 01 02
 
 
 count
-match 560
+match 562

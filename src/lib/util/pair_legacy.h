@@ -49,8 +49,10 @@ typedef struct fr_pair_parse_s {
 
 	bool			allow_compare;	//!< allow comparison operators
 	bool			allow_crlf;	//!< allow CRLF, and treat like comma
+	bool			allow_zeros;	//!< allow '\0' as end of attribute
 	bool			tainted;	//!< source is tainted
 	char			last_char;	//!< last character we read - ',', '\n', or 0 for EOF
+	bool			end_of_list;	//!< do we expect an end of list '}' character?
 } fr_pair_parse_t;
 
 fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t *relative,
