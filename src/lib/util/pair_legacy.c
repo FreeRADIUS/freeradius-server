@@ -1196,6 +1196,10 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		found = true;
 	}
 
+#ifndef NDEBUG
+	fr_pair_list_verify(__FILE__, __LINE__, ctx, &tmp_list, true);
+#endif
+
 	fr_pair_list_append(out, &tmp_list);
 
 	*pfiledone = true;
