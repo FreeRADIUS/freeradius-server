@@ -6245,6 +6245,11 @@ static void event_new_fd(void *ctx)
 				fr_exit(1);
 			}
 
+			/*
+			 *	We've deleted a socket, so we can start allowing new sockets again.
+			 */
+			proxy_no_new_sockets = false;
+
 #ifdef WITH_TLS
 			/*
 			 *	Remove this socket from the list of sockets assocated with this home server.
