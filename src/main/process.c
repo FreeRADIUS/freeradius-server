@@ -6248,7 +6248,9 @@ static void event_new_fd(void *ctx)
 			/*
 			 *	We've deleted a socket, so we can start allowing new sockets again.
 			 */
+#ifdef HAVE_PTHREAD_H
 			proxy_no_new_sockets = false;
+#endif
 
 #ifdef WITH_TLS
 			/*
