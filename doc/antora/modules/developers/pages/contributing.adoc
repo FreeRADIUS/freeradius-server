@@ -48,8 +48,8 @@ be broken out into another, separate, commit.
 
 See the following links for more details about submitting via github:
 
-* https://help.github.com/articles/fork-a-repo
-* https://wiki.freeradius.org/contributing/GitHub
+* https://help.github.com/articles/fork-a-repo[Fork a repo]
+* xref:github.adoc[Submitting Patches] 
 
 == Submitting patches via email
 
