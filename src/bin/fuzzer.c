@@ -49,6 +49,8 @@ static fr_dict_t		*dict = NULL;
 extern fr_test_point_proto_decode_t XX_PROTOCOL_XX_tp_decode_proto;
 extern fr_test_point_proto_encode_t XX_PROTOCOL_XX_tp_encode_proto;
 
+static bool do_encode = false;
+
 int LLVMFuzzerInitialize(int *argc, char ***argv);
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
 
@@ -289,7 +291,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 	if (tp_decode->func(ctx, &vps, buf, len, decode_ctx) > 0) {
 		if (fr_debug_lvl > 3) fr_pair_list_debug(stderr, &vps);
 
-		(void) tp_encode->func(ctx, &vps, encoded_data, sizeof(encoded_data), encode_ctx);
+		if (do_encode) {
+			(void) tp_encode->func(ctx, &vps, encoded_data, sizeof(encoded_data), encode_ctx);
+		}
 	}
 
 	talloc_free(decode_ctx);
