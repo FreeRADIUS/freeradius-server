@@ -585,12 +585,15 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 	module_method_binding_t const	*mmb;
 
 	fr_sbuff_marker_t		meth_start;
+	bool				softfail;
 
 	fr_slen_t			slen;
 	fr_sbuff_t 			our_name = FR_SBUFF(name);
 
 	mmc = mmc_out ? mmc_out : &mmc_tmp;
-	if (mmc_out) memset(mmc_out, 0, sizeof(*mmc_out));
+	if (mmc_out) *mmc_out = (module_method_call_t) {};
+
+	softfail = fr_sbuff_next_if_char(&our_name, '-');
 
 	/*
 	 *	Advance until the start of the dynamic selector
@@ -683,6 +686,8 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 		}
 
 		if (!mmc->mi) {
+			if (softfail) return fr_sbuff_set(name, &our_name);
+
 			fr_strerror_printf("No such module '%pV'", fr_box_strvalue_len(our_name.start, slen));
 			return -1;
 		}

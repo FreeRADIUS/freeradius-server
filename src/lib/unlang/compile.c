@@ -1815,6 +1815,11 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_ctx_t *unlang_c
 		return NULL;
 	}
 
+	/*
+	 *	We parsed a string, but we were told to ignore it.  Don't do anything.
+	 */
+	if (!m->mmc.rlm) return UNLANG_IGNORE;
+
 	if (m->mmc.rlm->common.dict &&
 	    !fr_dict_compatible(*m->mmc.rlm->common.dict, unlang_ctx->rules->attr.dict_def)) {
 		cf_log_err(ci, "The '%s' module can only be used within a '%s' namespace.",
@@ -1986,11 +1991,9 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_ctx_t *unlang_ctx
 {
 	char const		*name, *p;
 	CONF_SECTION		*cs, *subcs, *modules;
-	char const		*realname;
 	unlang_compile_ctx_t	unlang_ctx2;
 	bool			policy;
 	unlang_t		*c;
-	bool			ignore_notfound = false;
 	unlang_op_t const	*op;
 
 	if (cf_item_is_section(ci)) {
@@ -2139,16 +2142,6 @@ check_for_module:
 		return NULL;
 	}
 
-	realname = name;
-
-	/*
-	 *	Try to load the optional module.
-	 */
-	if (*realname == '-') {
-		ignore_notfound = true;
-		realname++;
-	}
-
 	/*
 	 *	Set the child compilation context BEFORE parsing the
 	 *	module name and method.  The lookup function will take
@@ -2156,16 +2149,7 @@ check_for_module:
 	 *	name2, etc.
 	 */
 	UPDATE_CTX2;
-	c = compile_module(parent, &unlang_ctx2, ci, realname);
-	if (!c) {
-		if (ignore_notfound) {
-			cf_log_warn(ci, "Ignoring \"%s\" as the \"%s\" module is not enabled, "
-				    "or the method does not exist", name, realname);
-			return UNLANG_IGNORE;
-		}
-
-		return NULL;
-	}
+	c = compile_module(parent, &unlang_ctx2, ci, name);
 
 allocate_number:
 	if (!c) return NULL;
