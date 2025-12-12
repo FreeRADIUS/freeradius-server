@@ -53,7 +53,7 @@ Some additional documentation specific to Github is at https://help.github.com/a
 
 == Submitting patches via email
 
-See the xref:email.adoc[email] page for how to contibute patches via
+See the xref:email.adoc[Email] page for how to contibute patches via
 email.  In short: don't.
 
 // Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
