@@ -4942,10 +4942,8 @@ printf "%s\n" "$ax_cv_cc_unwindlib_arg" >&6; }
   clang_path="$CC"
 
 
-    LDFLAGS="$LDFLAGS --rtlib=compiler-rt"
-
   if test "x$ax_cv_cc_unwindlib_arg" = "xyes"; then
-    LDFLAGS="$LDFLAGS --unwindlib=libunwind"
+        LDFLAGS="$LDFLAGS --rtlib=compiler-rt --unwindlib=libunwind"
   fi
 else
   clang_path=""

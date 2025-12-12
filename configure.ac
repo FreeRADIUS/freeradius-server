@@ -331,11 +331,9 @@ if test "x$ax_cv_cc_clang" = "xyes"; then
   AX_CC_UNWINDLIB_ARG
   AC_SUBST(clang_path, "$CC")
 
-  dnl # Needed for builtins to function correctly (https://bugs.gentoo.org/702344)
-  LDFLAGS="$LDFLAGS --rtlib=compiler-rt"
-
   if test "x$ax_cv_cc_unwindlib_arg" = "xyes"; then
-    LDFLAGS="$LDFLAGS --unwindlib=libunwind"
+    dnl # For GCC, use --rtlib=libgcc --unwindlib=libgcc
+    LDFLAGS="$LDFLAGS --rtlib=compiler-rt --unwindlib=libunwind"
   fi
 else
   AC_SUBST(clang_path, "")
