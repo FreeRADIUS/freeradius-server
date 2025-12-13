@@ -1369,6 +1369,11 @@ void unlang_stack_signal(request_t *request, fr_signal_t action, int limit)
 			 *	where it can accept further signals.
 			 */
 			if (action == FR_SIGNAL_CANCEL) frame->signal = NULL;
+
+			/*
+			 *	If the frame is cancelled, we don't do any retries.
+			 */
+			TALLOC_FREE(frame->retry);
 		}
 	}
 }
