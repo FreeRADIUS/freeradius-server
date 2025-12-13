@@ -194,6 +194,8 @@ bool			unlang_request_is_done(request_t const *request);
 
 void			unlang_interpret_request_done(request_t *request);
 
+void			unlang_interpret_request_cancel_retry(request_t *request);
+
 void			unlang_interpret_request_prioritise(request_t *request, uint32_t priority);
 
 void			unlang_interpret_mark_runnable(request_t *request);
