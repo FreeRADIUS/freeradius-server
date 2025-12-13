@@ -1636,8 +1636,8 @@ static fr_type_t cbor_guess_type(fr_dbuff_t *dbuff, bool pair)
 	return FR_TYPE_NULL;
 }
 
-ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *dbuff,
-			    fr_dict_attr_t const *parent, bool tainted)
+static ssize_t cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *dbuff,
+				fr_dict_attr_t const *parent, bool tainted, int depth)
 {
 	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
 	uint8_t header, major, info;
@@ -1676,12 +1676,23 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 		return_slen;
 	}
 
+	/*
+	 *	If the nesting is too deep, decode as raw octets.  We have to do this manually in CBOR,
+	 *	because the other protocols create a da_stack which limits the depth.
+	 */
+	if (depth >= FR_DICT_MAX_TLV_STACK) goto raw;
+
 	da = fr_dict_attr_child_by_num(parent, value);
 	if (!da) {
 		fr_type_t type;
 
 		type = cbor_guess_type(&work_dbuff, true);
 		if (type == FR_TYPE_NULL) return -fr_dbuff_used(&work_dbuff);
+
+		if (depth >= FR_DICT_MAX_TLV_STACK) {
+		raw:
+			type = FR_TYPE_OCTETS;
+		}
 
 		/*
 		 *	@todo - the value here isn't a cbor octets type, but is instead cbor data.  Since cbor
@@ -1808,7 +1819,7 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 			break;
 		}
 
-		slen = fr_cbor_decode_pair(vp, &vp->vp_group, &work_dbuff, parent, tainted);
+		slen = cbor_decode_pair(vp, &vp->vp_group, &work_dbuff, parent, tainted, depth + 1);
 		if (slen <= 0) {
 			talloc_free(vp);
 			return_slen;
@@ -1820,6 +1831,12 @@ done:
 
 	fr_pair_append(out, vp);
 	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
+ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *dbuff,
+			    fr_dict_attr_t const *parent, bool tainted)
+{
+	return cbor_decode_pair(ctx, out, dbuff, parent, tainted, 0);
 }
 
 /*
