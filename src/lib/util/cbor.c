@@ -1414,7 +1414,10 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			 *	We have to decode at least one value.
 			 */
 			slen = fr_cbor_decode_value_box(child, child, &work_dbuff, FR_TYPE_NULL, NULL, tainted);
-			if (slen <= 0) return_slen;
+			if (slen <= 0) {
+				talloc_free(child);
+				return_slen;
+			}
 
 			fr_value_box_list_insert_tail(&vb->vb_group, child);
 		}
