@@ -111,9 +111,7 @@ int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, con
 	module_instance_t	*mi;
 	int ret;
 
-	ret = module_rlm_submodule_parse(ctx, out, parent, ci, rule);
-	if (unlikely(ret < 0)) return ret;
-
+	if (unlikely((ret = module_rlm_submodule_parse(ctx, out, parent, ci, rule)) < 0)) return ret;
 	mi = talloc_get_type_abort(*((void **)out), module_instance_t);
 	inst->driver = (rlm_cache_driver_t const *)mi->exported; /* Public symbol exported by the submodule */
 
