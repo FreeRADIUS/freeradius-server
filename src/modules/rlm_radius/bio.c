@@ -2403,6 +2403,7 @@ static void request_fail(request_t *request, NDEBUG_UNUSED void *preq, void *rct
 	u->rcode = RLM_MODULE_FAIL;
 	u->treq = NULL;
 
+	unlang_interpret_request_cancel_retry(request);
 	unlang_interpret_mark_runnable(request);
 }
 
@@ -2421,6 +2422,7 @@ static void request_complete(request_t *request, NDEBUG_UNUSED void *preq, void 
 
 	u->treq = NULL;
 
+	unlang_interpret_request_cancel_retry(request);
 	unlang_interpret_mark_runnable(request);
 }
 
@@ -2476,6 +2478,7 @@ static void do_signal(rlm_radius_t const *inst, bio_request_t *u, UNUSED request
 	 */
 	case FR_SIGNAL_CANCEL:
 		trunk_request_signal_cancel(u->treq);
+		unlang_interpret_request_cancel_retry(request);
 		u->treq = NULL;
 		return;
 
