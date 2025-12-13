@@ -861,6 +861,9 @@ static unlang_action_t unlang_module(unlang_result_t *p_result, request_t *reque
 		} else if(m->mmc.mi->exported->rctx_size) {
 			size = m->mmc.mi->exported->rctx_size;
 			type = m->mmc.mi->exported->rctx_type;
+		} else {
+			size = 0;
+			type = NULL;
 		}
 
 		if (size > 0) {
