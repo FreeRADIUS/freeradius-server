@@ -350,7 +350,7 @@ fr_dict_attr_t *fr_dict_attr_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t co
 	 *	OCTETS.  Similarly, if a GROUP is malformed, then we
 	 *	have no idea what's inside of it, and we make it OCTETS.
 	 */
-	switch (type) {
+	if (!da->flags.is_unknown) switch (type) {
 	case FR_TYPE_VENDOR:
 		fr_assert(da->flags.type_size != 0);
 		break;
