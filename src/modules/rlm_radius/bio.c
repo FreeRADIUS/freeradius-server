@@ -1546,13 +1546,23 @@ static void mod_retry(module_ctx_t const *mctx, request_t *request, fr_retry_t c
 
 static void do_retry(rlm_radius_t const *inst, bio_request_t *u, request_t *request, fr_retry_t const *retry)
 {
-	trunk_request_t		*treq = talloc_get_type_abort(u->treq, trunk_request_t);
-	trunk_connection_t	*tconn = treq->tconn;
-	fr_time_t		now = retry->updated;
+	trunk_request_t		*treq;
+	trunk_connection_t	*tconn;
+	fr_time_t		now;
+
+	if (!u->treq) {
+		RDEBUG("Packet was cancelled by the connection handler - ignoring retry");
+		return;
+	}
+
+	treq = talloc_get_type_abort(u->treq, trunk_request_t);
 
 	fr_assert(request == treq->request);
 	fr_assert(treq->preq);						/* Must still have a protocol request */
 	fr_assert(treq->preq == u);
+
+	tconn = treq->tconn;
+	now = retry->updated;
 
 	switch (retry->state) {
 	case FR_RETRY_CONTINUE:
