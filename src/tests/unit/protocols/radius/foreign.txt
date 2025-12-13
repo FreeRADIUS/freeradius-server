@@ -75,5 +75,8 @@ match 1a 0b 00 00 19 7f 66 05 35 01 01
 decode-pair -
 match Vendor-Specific = { Nokia-SR = { ToServer-Dhcp-Options = { Message-Type = ::Discover } } }
 
+decode-proto 05 ff 00 1e 00 2a 3e 00 c7 00 00 18 13 00 2f 00 00 20 00 00 1a 0a 00 00 19 7f 66 04 21 00
+match Packet-Type = ::Accounting-Response, Packet-Authentication-Vector = 0x002a3e00c700001813002f0000200000, Vendor-Specific = { Nokia-SR = { ToServer-Dhcp-Options = { } } }
+
 count
-match 29
+match 31

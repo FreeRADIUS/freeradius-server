@@ -146,7 +146,7 @@ ssize_t fr_pair_ref_to_network(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsig
 	 *	The foreign functions don't take a cursor, so we have to update the cursor ourselves.
 	 */
 	slen = proto->encode(&work_dbuff, &vp->vp_group);
-	if (slen <= 0) return slen;
+	if (slen < 0) return slen;
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "group ref");
 
