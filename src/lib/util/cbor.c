@@ -1718,7 +1718,7 @@ static ssize_t cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t
 	 */
 	if (fr_type_is_leaf(da->type)) {
 		slen = fr_cbor_decode_value_box(vp, &vp->data, &work_dbuff, da->type, da, tainted);
-		if (slen <= 0) {
+		if (slen < 0) {
 			talloc_free(vp);
 			return_slen;
 		}
