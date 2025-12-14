@@ -43,6 +43,7 @@ static dl_t			*dl = NULL;
 static dl_loader_t		*dl_loader;
 static fr_dict_protocol_t	*dl_proto;
 static TALLOC_CTX		*autofree = NULL;
+static bool			do_encode = false;
 
 static fr_dict_t		*dict = NULL;
 
@@ -291,7 +292,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 
 		if (fr_debug_lvl > 3) fr_pair_list_debug(stderr, &vps);
 
-		(void) tp_encode->func(ctx, &vps, encoded_data, sizeof(encoded_data), encode_ctx);
+		if (do_encode) (void) tp_encode->func(ctx, &vps, encoded_data, sizeof(encoded_data), encode_ctx);
 	}
 
 	talloc_free(decode_ctx);
