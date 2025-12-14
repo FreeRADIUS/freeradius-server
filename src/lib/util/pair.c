@@ -3141,6 +3141,30 @@ void fr_pair_verify(char const *file, int line, fr_dict_attr_t const *parent_da,
 		}
 
 		/*
+		 *	The data types have to agree, except for comb-ip and combo-ipaddr.
+		 */
+		if (vp->vp_type != vp->da->type) switch (vp->da->type) {
+		case FR_TYPE_COMBO_IP_ADDR:
+			if ((vp->vp_type == FR_TYPE_IPV4_ADDR) ||
+			    (vp->vp_type == FR_TYPE_IPV6_ADDR)) {
+				    break;
+			    }
+			goto failed_type;
+
+		case FR_TYPE_COMBO_IP_PREFIX:
+			if ((vp->vp_type == FR_TYPE_IPV4_PREFIX) ||
+			    (vp->vp_type == FR_TYPE_IPV6_PREFIX)) {
+				break;
+			}
+			FALL_THROUGH;
+
+		default:
+			failed_type:
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_pair_t \"%s\" has value of data type '%s', which disagrees with the dictionary data type '%s'",
+					     file, line, vp->da->name, fr_type_to_str(vp->vp_type), fr_type_to_str(vp->da->type));
+		}
+
+		/*
 		 *	We would like to enable this, but there's a
 		 *	lot of code like fr_pair_append_by_da() which
 		 *	creates the #fr_pair_t with no value.
