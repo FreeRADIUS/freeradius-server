@@ -2137,7 +2137,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 		RETURN_OK_WITH_ERROR();
 	}
 
-	 PAIR_LIST_VERIFY(&head);
+	 PAIR_LIST_VERIFY_WITH_CTX(cc->tmp_ctx, &head);
 
 	/*
 	 *	Outer loop implements truncate test

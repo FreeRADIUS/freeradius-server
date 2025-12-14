@@ -287,6 +287,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 	 *	it again, too.
 	 */
 	if (tp_decode->func(ctx, &vps, buf, len, decode_ctx) > 0) {
+		PAIR_LIST_VERIFY_WITH_CTX(ctx, &vps);
+
 		if (fr_debug_lvl > 3) fr_pair_list_debug(stderr, &vps);
 
 		(void) tp_encode->func(ctx, &vps, encoded_data, sizeof(encoded_data), encode_ctx);
