@@ -1687,18 +1687,6 @@ int dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 
 /** See if a #fr_dict_attr_t can have children
  *
- *  The check for children is complicated by the need for "int" types
- *  to have children, when they are `key` fields in a `struct`.  This
- *  situation occurs when a struct has multiple sub-structures, which
- *  are selected based on a `key` field.
- *
- *  There is no other place for the sub-structures to go.  In the
- *  future, we may extend the functionality of the `key` field, by
- *  allowing non-integer data types.  That would require storing keys
- *  as #fr_dict_enum_value_t, and then placing the child (i.e. sub)
- *  structures there.  But that would involve adding children to
- *  enums, which is currently not supported.
- *
  * @param da the dictionary attribute to check.
  */
 bool dict_attr_can_have_children(fr_dict_attr_t const *da)
