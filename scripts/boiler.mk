@@ -473,13 +473,13 @@ define INCLUDE_SUBMAKEFILE
           ifeq "$${$${TGT}_SUFFIX}" ".${TARGET_EXE_EXT}"
             $${TGT}_LDFLAGS += -Wl,-undefined -Wl,error
             ifneq "$(DSYMUTL)" ""
-              $${TGT}_POSTMAKE := dsymutil $${$${TGT}_BUILD}/$${TGT}
+              $${TGT}_POSTMAKE := $(DSYMUTL) $${$${TGT}_BUILD}/$${TGT}
             endif
           endif
 
           ifeq "$${$${TGT}_SUFFIX}" ".la"
             ifneq "$(DSYMUTL)" ""
-              $${TGT}_POSTMAKE := dsymutil $${$${TGT}_BUILD}/$$(patsubst %.la,%.dylib,$${TGT})
+              $${TGT}_POSTMAKE := $(DSYMUTL) $${$${TGT}_BUILD}/$$(patsubst %.la,%.dylib,$${TGT})
             endif
           endif
         endif
