@@ -1002,7 +1002,10 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 
 	if (type == FR_TYPE_NULL) {
 		type = cbor_guess_type(&work_dbuff, false);
-		if (type == FR_TYPE_NULL) return 0;
+		if (type == FR_TYPE_NULL) {
+			fr_strerror_const("Unable to determine data type from cbor");
+			return -1;
+		}
 	}
 
 	fr_value_box_init(vb, type, enumv, tainted);
@@ -1016,7 +1019,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 	if (((info >= 28) && (info <= 30)) ||
 	    ((info == 31) && ((major == 0) || (major == 1) || (major == 6)))) {
 		fr_strerror_const("Invalid cbor data - input is not 'well formed'");
-		return 0;
+		return -1;
 	}
 
 	switch (major) {
@@ -1031,7 +1034,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		if (info == 31) {
 		no_chunks:
 			fr_strerror_const("Chunked strings are not supported");
-			return 0;
+			return -1;
 		}
 
 
