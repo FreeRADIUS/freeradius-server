@@ -127,7 +127,6 @@ runs:
             if [ "$TEST_TYPE" = "fuzzing" ]; then
                 echo "Enabling fuzzer"
                 enable_sanitizers="$enable_sanitizers --enable-fuzzer"
-                sudo apt-get install -y --no-install-recommends libunwind-dev
             fi
         fi
         build_paths=""
