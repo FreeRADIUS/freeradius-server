@@ -1960,55 +1960,55 @@ if test "x$developer" = "xyes"; then
   AX_CC_WEVERYTHING_FLAG
   if test "x$ax_cv_cc_weverything_flag" = "xyes"; then
     devcflags="$devcflags \
-	-W \
-	-Weverything \
-	-Wformat=2 \
-	-Wno-date-time \
-	-Wno-disabled-macro-expansion \
-	-Wno-format-pedantic \
-    	-Wno-cast-align \
-    	-Wno-conversion \
-    	-Wno-covered-switch-default \
-    	-Wno-documentation-unknown-command \
-    	-Wno-extended-offsetof \
-    	-Wno-gnu-empty-initializer \
-    	-Wno-gnu-statement-expression \
-    	-Wno-gnu-zero-variadic-macro-arguments \
-    	-Wno-packed \
-    	-Wno-padded \
-    	-Wno-poison-system-directories \
-    	-Wno-reserved-id-macro \
-    	-Wno-shorten-64-to-32 \
-    	-Wno-sign-conversion \
-    	-Wno-switch-enum \
-	-Wno-unreachable-code-generic-assoc \
-    	-Wno-vla \
-        $verify_ptr"
-  else
-    if test "x$GCC" = "xyes"; then
-      devcflags="$devcflags \
-      	-W \
-      	-Wall \
-      	-Wcast-align \
-      	-Wcast-qual \
-      	-Wformat-nonliteral \
-      	-Wformat-security \
-      	-Wformat-y2k \
-      	-Wformat=2 \
-      	-Wmissing-declarations \
-      	-Wmissing-prototypes \
-      	-Wnested-externs \
-      	-Wno-format-extra-args \
-      	-Wno-format-zero-length \
-      	-Wpointer-arith \
-      	-Wredundant-decls \
-      	-Wshadow \
-      	-Wstrict-prototypes \
-      	-Wundef \
-      	-Wwrite-strings \
-	$verify_ptr"
-      INSTALLSTRIP=""
-    fi
+      -W \
+      -Weverything \
+      -Wformat=2 \
+      -Wno-date-time \
+      -Wno-disabled-macro-expansion \
+      -Wno-format-pedantic \
+      -Wno-cast-align \
+      -Wno-conversion \
+      -Wno-covered-switch-default \
+      -Wno-default-const-init-field-unsafe \
+      -Wno-documentation-unknown-command \
+      -Wno-extended-offsetof \
+      -Wno-gnu-empty-initializer \
+      -Wno-gnu-statement-expression \
+      -Wno-gnu-zero-variadic-macro-arguments \
+      -Wno-packed \
+      -Wno-padded \
+      -Wno-poison-system-directories \
+      -Wno-reserved-id-macro \
+      -Wno-shorten-64-to-32 \
+      -Wno-sign-conversion \
+      -Wno-switch-enum \
+      -Wno-unreachable-code-generic-assoc \
+      -Wno-vla \
+      $verify_ptr"
+  elif test "x$GCC" = "xyes"; then
+    devcflags="$devcflags \
+      -W \
+      -Wall \
+      -Wcast-align \
+      -Wcast-qual \
+      -Wformat-nonliteral \
+      -Wformat-security \
+      -Wformat-y2k \
+      -Wformat=2 \
+      -Wmissing-declarations \
+      -Wmissing-prototypes \
+      -Wnested-externs \
+      -Wno-default-const-init-field-unsafe \
+      -Wno-format-extra-args \
+      -Wno-format-zero-length \
+      -Wpointer-arith \
+      -Wredundant-decls \
+      -Wshadow \
+      -Wstrict-prototypes \
+      -Wundef \
+      -Wwrite-strings \
+      $verify_ptr"
+    INSTALLSTRIP=""
   fi
 
   dnl #

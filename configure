@@ -4951,6 +4951,65 @@ else
 fi
 
 
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for the compiler flag to enable C23 support" >&5
+printf %s "checking for the compiler flag to enable C23 support... " >&6; }
+if test ${ax_cv_cc_std_c23_flag+y}
+then :
+  printf %s "(cached) " >&6
+else case e in #(
+  e)
+    ax_cv_cc_std_c23_flag=
+
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -std=c23"
+
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main (void)
+{
+
+        struct foo {
+          union {
+            int a;
+            int b;
+          };
+        } bar;
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+  ax_cv_cc_std_c23_flag="-std=c23"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+    CFLAGS="$CFLAGS_SAVED"
+   ;;
+esac
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_std_c23_flag" >&5
+printf "%s\n" "$ax_cv_cc_std_c23_flag" >&6; }
+
+if test "x$ax_cv_cc_std_c23_flag" != x; then
+  CFLAGS="$CFLAGS $ax_cv_cc_std_c23_flag"
+else
+
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for the compiler flag to enable C11 support" >&5
 printf %s "checking for the compiler flag to enable C11 support... " >&6; }
 if test ${ax_cv_cc_std_c11_flag+y}
@@ -5033,10 +5092,11 @@ fi
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_std_c11_flag" >&5
 printf "%s\n" "$ax_cv_cc_std_c11_flag" >&6; }
 
-if test "x$ax_cv_cc_std_c11_flag" != x; then
-  CFLAGS="$CFLAGS $ax_cv_cc_std_c11_flag"
-else
-  as_fn_error $? "FreeRADIUS requires a C11 compiler" "$LINENO" 5
+  if test "x$ax_cv_cc_std_c11_flag" != x; then
+    CFLAGS="$CFLAGS $ax_cv_cc_std_c11_flag"
+  else
+    as_fn_error $? "FreeRADIUS requires a C11 compiler" "$LINENO" 5
+  fi
 fi
 
 if test "x$GCC" = "xyes"; then
@@ -13682,54 +13742,55 @@ printf "%s\n" "$ax_cv_cc_weverything_flag" >&6; }
 
   if test "x$ax_cv_cc_weverything_flag" = "xyes"; then
     devcflags="$devcflags \
-	-W \
-	-Weverything \
-	-Wformat=2 \
-	-Wno-date-time \
-	-Wno-disabled-macro-expansion \
-	-Wno-format-pedantic \
-    	-Wno-conversion \
-    	-Wno-covered-switch-default \
-    	-Wno-documentation-unknown-command \
-    	-Wno-extended-offsetof \
-    	-Wno-gnu-empty-initializer \
-    	-Wno-gnu-statement-expression \
-    	-Wno-gnu-zero-variadic-macro-arguments \
-    	-Wno-packed \
-    	-Wno-padded \
-    	-Wno-poison-system-directories \
-    	-Wno-reserved-id-macro \
-    	-Wno-shorten-64-to-32 \
-    	-Wno-sign-conversion \
-    	-Wno-switch-enum \
-	-Wno-unreachable-code-generic-assoc \
-    	-Wno-vla \
-        $verify_ptr"
-  else
-    if test "x$GCC" = "xyes"; then
-      devcflags="$devcflags \
-      	-W \
-      	-Wall \
-      	-Wcast-align \
-      	-Wcast-qual \
-      	-Wformat-nonliteral \
-      	-Wformat-security \
-      	-Wformat-y2k \
-      	-Wformat=2 \
-      	-Wmissing-declarations \
-      	-Wmissing-prototypes \
-      	-Wnested-externs \
-      	-Wno-format-extra-args \
-      	-Wno-format-zero-length \
-      	-Wpointer-arith \
-      	-Wredundant-decls \
-      	-Wshadow \
-      	-Wstrict-prototypes \
-      	-Wundef \
-      	-Wwrite-strings \
-	$verify_ptr"
-      INSTALLSTRIP=""
-    fi
+      -W \
+      -Weverything \
+      -Wformat=2 \
+      -Wno-date-time \
+      -Wno-disabled-macro-expansion \
+      -Wno-format-pedantic \
+      -Wno-cast-align \
+      -Wno-conversion \
+      -Wno-covered-switch-default \
+      -Wno-default-const-init-field-unsafe \
+      -Wno-documentation-unknown-command \
+      -Wno-extended-offsetof \
+      -Wno-gnu-empty-initializer \
+      -Wno-gnu-statement-expression \
+      -Wno-gnu-zero-variadic-macro-arguments \
+      -Wno-packed \
+      -Wno-padded \
+      -Wno-poison-system-directories \
+      -Wno-reserved-id-macro \
+      -Wno-shorten-64-to-32 \
+      -Wno-sign-conversion \
+      -Wno-switch-enum \
+      -Wno-unreachable-code-generic-assoc \
+      -Wno-vla \
+      $verify_ptr"
+  elif test "x$GCC" = "xyes"; then
+    devcflags="$devcflags \
+      -W \
+      -Wall \
+      -Wcast-align \
+      -Wcast-qual \
+      -Wformat-nonliteral \
+      -Wformat-security \
+      -Wformat-y2k \
+      -Wformat=2 \
+      -Wmissing-declarations \
+      -Wmissing-prototypes \
+      -Wnested-externs \
+      -Wno-default-const-init-field-unsafe \
+      -Wno-format-extra-args \
+      -Wno-format-zero-length \
+      -Wpointer-arith \
+      -Wredundant-decls \
+      -Wshadow \
+      -Wstrict-prototypes \
+      -Wundef \
+      -Wwrite-strings \
+      $verify_ptr"
+    INSTALLSTRIP=""
   fi
 
 
