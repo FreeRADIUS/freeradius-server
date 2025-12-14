@@ -8,7 +8,7 @@
 #ifdef HAVE_BACKTRACE
 #  include <freeradius-devel/backtrace/backtrace.h>
 
-struct backtrace_state *backtrace_state = NULL;		//!< Backtrace state for the backtrace functions
+static struct backtrace_state *backtrace_state = NULL;	//!< Backtrace state for the backtrace functions
 							///< This is initialised to be thread-safe, so we only need one.
 
 /** Used when building without libbacktrace to record frame information
