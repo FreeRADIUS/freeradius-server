@@ -78,26 +78,27 @@ static void backtrace_info_sanitise(fr_bt_info_frame_t *info)
 static void backtrace_info_print(fr_bt_info_frame_t *frame, int fd, bool trim_path)
 {
 	if (!frame->library && !frame->filename) {
-		dprintf(fd, "%u: @ 0x%lx\n",
+		dprintf(fd, "#%u: 0x%lx\n",
 			frame->frameno,
 			(unsigned long)frame->pc);
 		return;
 	}
 	else if (!frame->filename) {
-		dprintf(fd, "%u: %s %s() @ 0x%lx\n",
+		dprintf(fd, "%u: 0x%lx %s in %s()\n",
 			frame->frameno,
+			(unsigned long)frame->pc,
 			trim_path ? fr_filename(frame->library) : frame->library,
-			frame->function,
-			(unsigned long)frame->pc);
+			frame->function);
 		return;
 	}
-	dprintf(fd, "%u: %s:%d %s()%s @ 0x%lx\n",
+	dprintf(fd, "#%u: 0x%lx %s in %s() at %s:%d\n",
 		frame->frameno,
-		trim_path ? fr_filename_common_trim(frame->filename, TOP_SRCDIR) : frame->filename,
-		frame->lineno,
+		(unsigned long)frame->pc,
+		trim_path ? fr_filename(frame->library) : frame->library,
 		frame->function,
-		frame->function_guess ? "?" : "",
-		(unsigned long)frame->pc);
+		trim_path ? fr_filename_common_trim(frame->filename, frame->library) : frame->filename,
+		frame->lineno);
+
 }
 
 static int _backtrace_info_record(void *data, uintptr_t pc,
