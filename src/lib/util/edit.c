@@ -1049,7 +1049,7 @@ static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src, b
 	fr_pair_list_sort(&dst->children, fr_pair_cmp_by_parent_num);
 	fr_pair_list_sort(src, fr_pair_cmp_by_parent_num);
 
-	PAIR_LIST_VERIFY(&dst->children);
+	PAIR_VERIFY(dst);
 	PAIR_LIST_VERIFY(src);
 
 	a = fr_pair_list_head(&dst->children);
@@ -1174,7 +1174,7 @@ static int list_merge_lhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
 	fr_pair_list_sort(&dst->children, fr_pair_cmp_by_parent_num);
 	fr_pair_list_sort(src, fr_pair_cmp_by_parent_num);
 
-	PAIR_LIST_VERIFY(&dst->children);
+	PAIR_VERIFY(dst);
 	PAIR_LIST_VERIFY(src);
 
 	a = fr_pair_list_head(&dst->children);
@@ -1278,7 +1278,7 @@ static int list_merge_rhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
 	fr_pair_list_sort(&dst->children, fr_pair_cmp_by_parent_num);
 	fr_pair_list_sort(src, fr_pair_cmp_by_parent_num);
 
-	PAIR_LIST_VERIFY(&dst->children);
+	PAIR_VERIFY(dst);
 	PAIR_LIST_VERIFY(src);
 
 	a = fr_pair_list_head(&dst->children);
