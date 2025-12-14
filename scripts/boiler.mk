@@ -250,7 +250,8 @@ define ADD_TARGET_RULE.exe
 	    $(Q)$(ECHO) LINK $${${1}_BUILD}/${1}
 	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/${1} $${RPATH_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${${1}_PRLIBS} \
-                $${LDLIBS} $${${1}_LDLIBS}
+                $${LDLIBS} $${${1}_LDLIBS} ${OSX_LDFLAGS}
+	    ${Q}$(DSYMUTIL) $${${1}_BUILD}/${1}
 	    $(Q)$${${1}_POSTMAKE}
 
     ifneq "${ANALYZE.c}" ""
@@ -464,25 +465,6 @@ define INCLUDE_SUBMAKEFILE
         $${TGT}_MAKEFILES += ${1}
         $${TGT}_CHECK_HEADERS := $${TGT_CHECK_HEADERS}
         $${TGT}_CHECK_LIBS := $${TGT_CHECK_LIBS}
-
-        #
-        #  OSX does lazy linking by default.  We want to over-ride that for binaries.
-        #  That way we catch errors at compile time, and not at run time.
-        #
-        ifneq "$(findstring apple-darwin,$(TARGET_SYSTEM))" ""
-          ifeq "$${$${TGT}_SUFFIX}" ".${TARGET_EXE_EXT}"
-            $${TGT}_LDFLAGS += -Wl,-undefined -Wl,error
-            ifneq "$(DSYMUTL)" ""
-              $${TGT}_POSTMAKE := $(DSYMUTL) $${$${TGT}_BUILD}/$${TGT}
-            endif
-          endif
-
-          ifeq "$${$${TGT}_SUFFIX}" ".la"
-            ifneq "$(DSYMUTL)" ""
-              $${TGT}_POSTMAKE := $(DSYMUTL) $${$${TGT}_BUILD}/$$(patsubst %.la,%.dylib,$${TGT})
-            endif
-          endif
-        endif
 
     else
         # The values defined by this makefile apply to the the "current" target
@@ -716,9 +698,25 @@ CPP = cc -E
 LINK.c = ${CC}
 LINK.cxx = ${CXX}
 
-ifneq "$(AC_HAVEBACKTRACE)" ""
+ifneq "$(AC_HAVE_BACKTRACE)" ""
   DSYMUTIL = $(shell which dsymutil)
 endif
+
+ifeq "$(DSYMUTIL)" ""
+  DSYMUTIL := echo
+endif
+
+#
+#  OSX does lazy linking by default.  We want to over-ride that for all binaries.
+#  That way we catch errors at compile time, and not at run time.
+#
+#  We also add "-w" to suppress warnings.  Because -undefined,error is supported,
+#  but deprecated.
+#
+ifneq "$(findstring apple-darwin,$(TARGET_SYSTEM))" ""
+  OSX_LDFLAGS += -w -Wl,-undefined -Wl,error
+endif
+
 
 # Set ECHO to "true" for *very* quiet builds
 ECHO = echo

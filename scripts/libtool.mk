@@ -152,6 +152,7 @@ define ADD_TARGET_RULE.la
 	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/${1} $${RPATH_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
                 $${${1}_PRLIBS}
+	    ${Q}$(DSYMUTIL) $${${1}_BUILD}/.libs/$$(patsubst %.la,%.dylib,${1})
 	    $(Q)$${${1}_POSTMAKE}
 
     ifneq "${ANALYZE.c}" ""
@@ -243,7 +244,8 @@ define ADD_LOCAL_RULE.exe
 	    $(Q)$(strip mkdir -p $${${1}_BUILD}/${LOCAL}/)
 	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/$${LOCAL}${1} $${LOCAL_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${${1}_LOCAL_PRLIBS} \
-                $${LDLIBS} $${${1}_LDLIBS}
+                $${LDLIBS} $${${1}_LDLIBS} ${OSX_LDFLAGS}
+	    ${Q}$(DSYMUTIL) $${${1}_BUILD}/$${${1}_LOCAL}
 	    $(Q)$${${1}_POSTMAKE}
 
     .PHONY: $(DIR)
