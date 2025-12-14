@@ -120,7 +120,7 @@ done:
 /*
  *	Make many things easier
  */
-#define return_slen return slen - fr_dbuff_used(&work_dbuff)
+#define return_slen return FR_DBUFF_ERROR_OFFSET(slen, fr_dbuff_used(&work_dbuff))
 
 /*
  *	Octets is length + data
