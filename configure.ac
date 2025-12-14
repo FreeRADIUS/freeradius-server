@@ -1203,7 +1203,7 @@ AC_ARG_WITH(libbacktrace,
     WITH_BACKTRACE=no
     ;;
   yes)
-    if ! test -f src/lib/backtrace/configure || git submodule update --init src/lib/backtrace > /dev/null 2>&1; then
+    if ! test -f src/lib/backtrace/configure && ! git submodule update --init src/lib/backtrace > /dev/null 2>&1; then
       AC_MSG_ERROR([--with-libbacktrace=yes requires the backtrace submodule to be checked out.  Please run 'git submodule update --init src/lib/backtrace'.])
     fi
     WITH_BACKTRACE=yes
