@@ -101,7 +101,19 @@ clean.libs:
 
 # Re-define compilers and linkers
 #
-LIBTOOL_VERBOSE=$(if ${VERBOSE},--debug,--silent)
+
+#
+#  VERBOSE=1 means "debug the commands that we're running".
+#  VERBOSE=2 means "also debug the jlibtool internals".
+#
+#  For normal VERBOSE=1, we do NOT want to see thousands of lines of
+#  the same content of jlibtool environment variables.
+#
+ifeq "$(VERBOSE)" "2"
+LIBTOOL_VERBOSE=--debug
+else
+LIBTOOL_VERBOSE=--silent
+endif
 
 OBJ_EXT = lo
 
