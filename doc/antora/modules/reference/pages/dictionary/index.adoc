@@ -1,4 +1,4 @@
-= Dictionaries
+== Dictionaries
 
 The `dictionary` files define names, numbers, and
 xref:type/index.adoc[data types] for use in the server.  In general,
