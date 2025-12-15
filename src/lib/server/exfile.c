@@ -232,11 +232,11 @@ void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigge
  *	Try to open the file. It it doesn't exist, try to
  *	create it's parent directories.
  */
-static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissions)
+static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissions, int flags)
 {
 	int fd;
 
-	fd = open(filename, O_RDWR | O_CREAT, permissions);
+	fd = open(filename, O_RDWR | O_CREAT | flags, permissions);
 	if (fd < 0) {
 		mode_t dirperm;
 		char *p, *dir;
@@ -271,7 +271,7 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
 		}
 		talloc_free(dir);
 
-		fd = open(filename, O_RDWR | O_CREAT, permissions);
+		fd = open(filename, O_RDWR | O_CREAT | flags, permissions);
 		if (fd < 0) {
 			fr_strerror_printf("Failed to open file %s: %s", filename, fr_syserror(errno));
 			return -1;
@@ -286,7 +286,7 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
  * to influence whether and which __coverity*__() functions are called. We therefore create a
  * separate function for the locking case which we *can* model.
  */
-static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissions, off_t *offset)
+static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissions, int flags, off_t *offset)
 {
 	int i, tries, unused = -1, found = -1, oldest = -1;
 	bool do_cleanup = false;
@@ -399,7 +399,7 @@ static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissio
 	ef->entries[i].fd = -1;
 
 reopen:
-	ef->entries[i].fd = exfile_open_mkdir(ef, filename, permissions);
+	ef->entries[i].fd = exfile_open_mkdir(ef, filename, permissions, flags);
 	if (ef->entries[i].fd < 0) goto error;
 
 	exfile_trigger(ef, &ef->entries[i], EXFILE_TRIGGER_OPEN);
@@ -432,7 +432,7 @@ try_lock:
 		}
 
 		close(ef->entries[i].fd);
-		ef->entries[i].fd = open(filename, O_RDWR | O_CREAT, permissions);
+		ef->entries[i].fd = open(filename, O_RDWR | O_CREAT | flags, permissions);
 		if (ef->entries[i].fd < 0) {
 			fr_strerror_printf("Failed to open file %s: %s", filename, fr_syserror(errno));
 			goto error;
@@ -518,17 +518,18 @@ try_lock:
  * @param ef The logfile context returned from exfile_init().
  * @param filename the file to open.
  * @param permissions to use.
+ * @param flags flags to pass to open.
  * @param offset Optional pointer to store offset in when seeking the end of file.
  * @return
  *	- FD used to write to the file.
  *	- -1 on failure.
  */
-int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, off_t *offset)
+int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, int flags, off_t *offset)
 {
 	if (!ef || !filename) return -1;
 
 	if (!ef->locking) {
-		int found = exfile_open_mkdir(ef, filename, permissions);
+		int found = exfile_open_mkdir(ef, filename, permissions, flags);
 		off_t real_offset;
 
 		if (found < 0) return -1;
@@ -537,7 +538,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, off_t *o
 		return found;
 	}
 
-	return exfile_open_lock(ef, filename, permissions, offset);
+	return exfile_open_lock(ef, filename, permissions, flags, offset);
 }
 
 /*
