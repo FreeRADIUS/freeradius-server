@@ -271,7 +271,7 @@ fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t
 #define CLEAN_DA_STACK do { if (was_unknown) {		\
 	for (i = 1; i < da_stack.depth; i++) {		\
 		fr_dict_attr_unknown_free(&da_stack.da[i]); \
-	} } } while (0)	
+	} } } while (0)
 
 
 redo:
@@ -1196,7 +1196,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		found = true;
 	}
 
-#ifndef NDEBUG
+#ifdef WITH_VERIFY_PTR
 	fr_pair_list_verify(__FILE__, __LINE__, ctx, &tmp_list, true);
 #endif
 
