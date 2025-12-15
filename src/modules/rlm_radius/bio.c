@@ -322,7 +322,7 @@ static void CC_HINT(nonnull) status_check_alloc(bio_handle_t *h)
 	request->packet->code = u->code;
 
 	DEBUG3("%s - Status check packet type will be %s", h->ctx.module_name, fr_radius_packet_name[u->code]);
-	log_request_pair_list(L_DBG_LVL_3, request, NULL, &request->request_pairs, NULL);
+	log_request_proto_pair_list(L_DBG_LVL_3, request, NULL, &request->request_pairs, NULL);
 }
 
 /** Connection errored
@@ -1725,8 +1725,8 @@ static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h
 	/*
 	 *	@todo - When logging Message-Authenticator, don't print its' value.
 	 */
-	log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->request_pairs, NULL);
-	if (!fr_pair_list_empty(&u->extra)) log_request_pair_list(L_DBG_LVL_2, request, NULL, &u->extra, NULL);
+	log_request_proto_pair_list(L_DBG_LVL_2, request, NULL, &request->request_pairs, NULL);
+	if (!fr_pair_list_empty(&u->extra)) log_request_proto_pair_list(L_DBG_LVL_2, request, NULL, &u->extra, NULL);
 
 	packet = u->packet;
 	packet_len = u->packet_len;
