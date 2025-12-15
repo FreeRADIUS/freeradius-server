@@ -319,7 +319,7 @@ static unlang_action_t CC_HINT(nonnull) detail_do(unlang_result_t *p_result, mod
 
 	RDEBUG2("%s expands to %pV", env->filename_tmpl->name, &env->filename);
 
-	outfd = exfile_open(inst->ef, env->filename.vb_strvalue, inst->perm, NULL);
+	outfd = exfile_open(inst->ef, env->filename.vb_strvalue, inst->perm, 0, NULL);
 	if (outfd < 0) {
 		RPERROR("Couldn't open file %pV", &env->filename);
 

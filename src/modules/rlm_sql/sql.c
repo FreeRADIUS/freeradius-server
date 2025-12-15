@@ -389,7 +389,7 @@ void rlm_sql_query_log(rlm_sql_t const *inst, char const *filename, char const *
 	size_t len;
 	bool failed = false;	/* Write the log message outside of the critical region */
 
-	fd = exfile_open(inst->ef, filename, 0640, NULL);
+	fd = exfile_open(inst->ef, filename, 0640, 0, NULL);
 	if (fd < 0) {
 		ERROR("Couldn't open logfile '%s': %s", filename, fr_syserror(errno));
 
