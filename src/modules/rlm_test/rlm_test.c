@@ -550,8 +550,8 @@ module_rlm_t rlm_test = {
 
 			{ .section = SECTION_NAME("name1_null", NULL),			.method = mod_return },
 
-			{ .section = SECTION_NAME("recv", "access-challenge"),		.method = mod_return },
-			{ .section = SECTION_NAME("recv", "accounting-request"),	.method = mod_preacct },
+			{ .section = SECTION_NAME("recv", "Access-Challenge"),		.method = mod_return },
+			{ .section = SECTION_NAME("recv", "Accounting-Request"),	.method = mod_preacct },
 			{ .section = SECTION_NAME("recv", CF_IDENT_ANY),		.method = mod_authorize },
 
 			{ .section = SECTION_NAME("retry", NULL),			.method = mod_retry },

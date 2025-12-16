@@ -1376,7 +1376,7 @@ module_rlm_t rlm_rest = {
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
-			{ .section = SECTION_NAME("recv", "accounting-request"), .method = mod_accounting, .method_env = &rest_method_env },
+			{ .section = SECTION_NAME("recv", "Accounting-Request"), .method = mod_accounting, .method_env = &rest_method_env },
 			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting, .method_env = &rest_method_env },
 			{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate, .method_env = &rest_method_env },
 			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_accounting, .method_env = &rest_method_env },
