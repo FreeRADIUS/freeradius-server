@@ -188,9 +188,9 @@ int fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 	end = data + data_len;
 
 	/*
-	 *	Note that vmps_recv() MUST ensure that the packet is
-	 *	formatted in a way we expect, and that vmps_recv() MUST
-	 *	be called before vmps_decode().
+	 *	Note that fr_vmps_ok() MUST ensure that the packet is
+	 *	formatted in a way we expect, and that fr_vmps_ok() MUST
+	 *	be called before fr_vmps_decode().
 	 */
 	while (ptr < end) {
 		if ((end - ptr) < 6) {
@@ -201,6 +201,8 @@ int fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 		attr = fr_nbo_to_uint16(ptr + 2);
 		attr_len = fr_nbo_to_uint16(ptr + 4);
 		ptr += 6;
+
+		if (!attr_len) continue;
 
 		/*
 		 *	fr_vmps_ok() should have checked this already,
