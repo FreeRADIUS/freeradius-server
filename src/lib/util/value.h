@@ -148,7 +148,7 @@ typedef union {
 	size_t					size;			//!< System specific file/memory size.
 	fr_time_delta_t				time_delta;		//!< a delta time in nanoseconds
 
-	fr_dict_attr_t const	* _CONST	da;			//!< dictionary reference
+	fr_dict_attr_t const			*da;			//!< dictionary reference
 
 	fr_value_box_list_t			children;		//!< for groups
 } fr_value_box_datum_t;
