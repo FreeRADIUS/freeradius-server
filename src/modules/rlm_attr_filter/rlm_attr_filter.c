@@ -419,7 +419,6 @@ module_rlm_t rlm_attr_filter = {
 			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY),		.method = mod_reply,	.method_env = &attr_filter_env	},
 			{ .section = SECTION_NAME("authorize", CF_IDENT_ANY),		.method = mod_request, 	.method_env = &attr_filter_env	},
 
-			{ .section = SECTION_NAME("recv", "accounting-request"),	.method = mod_request, 	.method_env = &attr_filter_env	},
 			{ .section = SECTION_NAME("recv", CF_IDENT_ANY),		.method = mod_request, 	.method_env = &attr_filter_env	},
 
 			{ .section = SECTION_NAME("send", CF_IDENT_ANY),		.method = mod_reply, 	.method_env = &attr_filter_env	},
