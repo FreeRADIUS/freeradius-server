@@ -318,11 +318,6 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		}
 
 		/*
-		 *	Ensure temporary list is empty before each use
-		 */
-		fr_pair_list_free(&tmp_list);
-
-		/*
 		 *	Reinitialize every time.
 		 *
 		 *	@todo - maybe we want to keep "relative' around between lines?
@@ -372,9 +367,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 			RWDEBUG("Ignoring line %d - %s", lineno, p);
 
 		} else {
-
 			vp = fr_pair_list_head(&tmp_list);
-			fr_pair_list_append(&request->request_pairs, &tmp_list);
 		}
 
 		/*
@@ -396,6 +389,8 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		lineno++;
 		while ((p < end) && (*p)) p++;
 	}
+
+	fr_pair_list_append(&request->request_pairs, &tmp_list);
 
 	/*
 	 *	Let the app_io take care of populating additional fields in the request
