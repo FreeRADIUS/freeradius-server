@@ -152,8 +152,8 @@ define ADD_TARGET_RULE.la
 	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/${1} $${RPATH_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
                 $${${1}_PRLIBS}
-	    ${Q}$(DSYMUTIL) $${${1}_BUILD}/.libs/$$(patsubst %.la,%.dylib,${1})
-	    ${Q}$(DSYMUTIL) $${${1}_BUILD}/local/.libs/$$(patsubst %.la,%.dylib,${1})
+	    ${Q}$(DSYMUTIL) $${${1}_BUILD}/.libs/$$(patsubst %.la,%.${TARGET_LIB_EXT},${1})
+	    ${Q}$(DSYMUTIL) $${${1}_BUILD}/local/.libs/$$(patsubst %.la,%.${TARGET_LIB_EXT},${1})
 	    $(Q)$${${1}_POSTMAKE}
 
     ifneq "${ANALYZE.c}" ""
