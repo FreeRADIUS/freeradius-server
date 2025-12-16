@@ -6,6 +6,6 @@ endif
 
 SOURCES		:= $(TARGETNAME).c eap_fast_crypto.c
 
-SRC_INCDIRS	:= ${top_srcdir}/src/modules/rlm_eap/ ${top_srcdir}/src/modules/rlm_eap/lib/base/
+SRC_INCDIRS	:= ${top_srcdir}/src/modules/rlm_eap/
 
 TGT_PREREQS	:= libfreeradius-tls$(L) libfreeradius-eap$(L)
