@@ -639,6 +639,24 @@ static ssize_t fr_der_decode_oid(fr_dbuff_t *in, fr_der_decode_oid_t func, void 
 	 *		that of the (i + 1)th object identifier component.
 	 */
 
+	/*
+	 *	RFC 5280 says:
+	 *
+	 *	...
+	 *	This specification mandates support for OIDs that have arc elements
+	 *	with values that are less than 2^28, that is, they MUST be between 0
+	 *	and 268,435,455, inclusive.  This allows each arc element to be
+	 *	represented within a single 32-bit word.  Implementations MUST also
+	 *	support OIDs where the length of the dotted decimal (see Section 1.4
+	 *	of [RFC4512]) string representation can be up to 100 bytes
+	 *	(inclusive).  Implementations MUST be able to handle OIDs with up to
+	 *	20 elements (inclusive). 
+	 *	...
+	 *
+	 *	We support up to 2^32 for attribute numbers (unsigned int), and 24 for
+	 *	nesting (FR_DICT_TLV_NEST_MAX), so we're OK here.
+	 *
+	 */
 	FR_PROTO_TRACE("Decoding OID");
 	FR_PROTO_HEX_DUMP(fr_dbuff_current(&our_in), len, "buff in OID");
 
@@ -702,6 +720,11 @@ static ssize_t fr_der_decode_oid(fr_dbuff_t *in, fr_der_decode_oid_t func, void 
 			 */
 			FR_PROTO_TRACE("decode context - first OID: %" PRIu64, first_component);
 			if (unlikely(func(first_component, uctx, (len == 0)) <= 0)) return -1;
+		}
+
+		if (oid >= ((uint64_t) 1 << 28)) {
+			fr_strerror_printf("OID subidentifier is too large (2^28 max) - %" PRIu64, oid);
+			return -1;
 		}
 
 		FR_PROTO_TRACE("decode context - OID: %" PRIu64, oid);

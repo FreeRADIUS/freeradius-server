@@ -317,25 +317,25 @@ decode-pair 06 0A 2a 86 48 ff 86 f7 0d 01 01 0b
 match Test-Oid = "1.2.840.266451853.1.1.11"
 
 decode-pair 06 0B 2a 86 48 ff ff 86 f7 0d 01 01 0b
-match Test-Oid = "1.2.840.34357754765.1.1.11"
+match OID subidentifier is too large (2^28 max) - 34357754765
 
 decode-pair 06 0C 2a 86 48 ff ff ff 86 f7 0d 01 01 0b
-match Test-Oid = "1.2.840.4398044527501.1.1.11"
+match OID subidentifier is too large (2^28 max) - 4398044527501
 
 decode-pair 06 0C 2a 86 48 ff ff ff ff 7f 0d 01 01 0b
-match Test-Oid = "1.2.840.34359738367.13.1.1.11"
+match OID subidentifier is too large (2^28 max) - 34359738367
 
 decode-pair 06 0D 2a 86 48 ff ff ff ff ff 7f 0d 01 01 0b
-match Test-Oid = "1.2.840.4398046511103.13.1.1.11"
+match OID subidentifier is too large (2^28 max) - 4398046511103
 
 decode-pair 06 0e 2a 86 48 ff ff ff ff ff ff 7f 0d 01 01 0b
-match Test-Oid = "1.2.840.562949953421311.13.1.1.11"
+match OID subidentifier is too large (2^28 max) - 562949953421311
 
 decode-pair 06 0f 2a 86 48 ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match Test-Oid = "1.2.840.72057594037927935.13.1.1.11"
+match OID subidentifier is too large (2^28 max) - 72057594037927935
 
 decode-pair 06 10 2a 86 48 ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match Test-Oid = "1.2.840.9223372036854775807.13.1.1.11"
+match OID subidentifier is too large (2^28 max) - 9223372036854775807
 
 decode-pair 06 11 2a 86 48 ff ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
 match OID subidentifier too large (>63 bits)
@@ -364,25 +364,25 @@ decode-pair 30 0C 06 0A 2a 86 48 ff 86 f7 0d 01 01 0b
 match Seq-Oid = { Test-Oid = "1.2.840.266451853.1.1.11" }
 
 decode-pair 30 0d 06 0B 2a 86 48 ff ff 86 f7 0d 01 01 0b
-match Seq-Oid = { Test-Oid = "1.2.840.34357754765.1.1.11" }
+match OID subidentifier is too large (2^28 max) - 34357754765: Failed decoding Seq-Oid
 
 decode-pair 30 0e 06 0C 2a 86 48 ff ff ff 86 f7 0d 01 01 0b
-match Seq-Oid = { Test-Oid = "1.2.840.4398044527501.1.1.11" }
+match OID subidentifier is too large (2^28 max) - 4398044527501: Failed decoding Seq-Oid
 
 decode-pair 30 0e 06 0C 2a 86 48 ff ff ff ff 7f 0d 01 01 0b
-match Seq-Oid = { Test-Oid = "1.2.840.34359738367.13.1.1.11" }
+match OID subidentifier is too large (2^28 max) - 34359738367: Failed decoding Seq-Oid
 
 decode-pair 30 0f 06 0D 2a 86 48 ff ff ff ff ff 7f 0d 01 01 0b
-match Seq-Oid = { Test-Oid = "1.2.840.4398046511103.13.1.1.11" }
+match OID subidentifier is too large (2^28 max) - 4398046511103: Failed decoding Seq-Oid
 
 decode-pair 30 10 06 0e 2a 86 48 ff ff ff ff ff ff 7f 0d 01 01 0b
-match Seq-Oid = { Test-Oid = "1.2.840.562949953421311.13.1.1.11" }
+match OID subidentifier is too large (2^28 max) - 562949953421311: Failed decoding Seq-Oid
 
 decode-pair 30 11 06 0f 2a 86 48 ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match Seq-Oid = { Test-Oid = "1.2.840.72057594037927935.13.1.1.11" }
+match OID subidentifier is too large (2^28 max) - 72057594037927935: Failed decoding Seq-Oid
 
 decode-pair 30 12 06 10 2a 86 48 ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
-match Seq-Oid = { Test-Oid = "1.2.840.9223372036854775807.13.1.1.11" }
+match OID subidentifier is too large (2^28 max) - 9223372036854775807: Failed decoding Seq-Oid
 
 decode-pair 30 13 06 11 2a 86 48 ff ff ff ff ff ff ff ff ff 7f 0d 01 01 0b
 match OID subidentifier too large (>63 bits): Failed decoding Seq-Oid
