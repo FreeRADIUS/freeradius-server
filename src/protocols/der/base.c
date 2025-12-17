@@ -37,7 +37,7 @@ RCSID("$Id$")
 static uint32_t instance_count = 0;
 
 fr_dict_t const *dict_der;
-//fr_dict_attr_t const *attr_oid_tree;
+fr_dict_attr_t const *attr_oid_tree;
 
 extern fr_dict_autoload_t libfreeradius_der_dict[];
 fr_dict_autoload_t	  libfreeradius_der_dict[] = {
@@ -48,7 +48,7 @@ fr_dict_autoload_t	  libfreeradius_der_dict[] = {
 
 extern fr_dict_attr_autoload_t libfreeradius_der_dict_attr[];
 fr_dict_attr_autoload_t	       libfreeradius_der_dict_attr[] = {
-//	{ .out = &attr_oid_tree, .name = "OID-Tree", .type = FR_TYPE_TLV, .dict = &dict_der },
+	{ .out = &attr_oid_tree, .name = "OID-Tree", .type = FR_TYPE_TLV, .dict = &dict_der },
 	DICT_AUTOLOAD_TERMINATOR
 };
 
@@ -143,7 +143,6 @@ static const bool *fr_type_to_der_tags[FR_DER_TAG_MAX] = {
 		[FR_DER_TAG_OCTETSTRING] = true,
 	},
 	[FR_TYPE_STRING] = (bool [FR_DER_TAG_MAX]) {
-		[FR_DER_TAG_OID] = true,
 		[FR_DER_TAG_UTF8_STRING] = true,
 		[FR_DER_TAG_PRINTABLE_STRING] = true,
 		[FR_DER_TAG_T61_STRING] = true,
@@ -155,6 +154,9 @@ static const bool *fr_type_to_der_tags[FR_DER_TAG_MAX] = {
 	[FR_TYPE_DATE] = (bool [FR_DER_TAG_MAX]) {
 		[FR_DER_TAG_UTC_TIME] = true,
 		[FR_DER_TAG_GENERALIZED_TIME] = true,
+	},
+	[FR_TYPE_ATTR] = (bool [FR_DER_TAG_MAX]) {
+		[FR_DER_TAG_OID] = true,
 	},
 	[FR_TYPE_TLV] = (bool [FR_DER_TAG_MAX]) {
 		[FR_DER_TAG_SEQUENCE] = true,
@@ -637,7 +639,7 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 		{ L("integer"),		FR_TYPE_INT64 },
 		{ L("null"),		FR_TYPE_BOOL },
 		{ L("octetstring"),	FR_TYPE_OCTETS },
-		{ L("oid"),		FR_TYPE_STRING },
+		{ L("oid"),		FR_TYPE_ATTR },
 		{ L("printablestring"),	FR_TYPE_STRING },
 		{ L("sequence"),	FR_TYPE_TLV },
 		{ L("set"),		FR_TYPE_TLV },

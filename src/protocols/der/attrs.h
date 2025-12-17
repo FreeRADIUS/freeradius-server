@@ -27,3 +27,4 @@ RCSIDH(der_attrs_h, "$Id$")
 #include <freeradius-devel/util/dict.h>
 
 extern HIDDEN fr_dict_t const *dict_der;
+extern HIDDEN fr_dict_attr_t const *attr_oid_tree;

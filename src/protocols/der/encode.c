@@ -652,14 +652,16 @@ static ssize_t fr_der_encode_oid(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED
 	fr_dbuff_t	our_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t const *vp;
 	uint64_t	component;
-	int		count = 0;
-	unsigned long long oid;
-	char const *start;
-	char	 *end = NULL;
+	int		i, count = 0;
+	fr_da_stack_t	da_stack;
 
 	vp = fr_dcursor_current(cursor);
 	PAIR_VERIFY(vp);
 	fr_assert(!vp->da->flags.is_raw);
+	fr_assert(vp->vp_type == FR_TYPE_ATTR);
+
+	fr_proto_da_stack_build(&da_stack, vp->vp_attr);
+	FR_PROTO_STACK_PRINT(&da_stack, da_stack.depth);
 
 	/*
 	 *	ISO/IEC 8825-1:2021
@@ -685,23 +687,13 @@ static ssize_t fr_der_encode_oid(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED
 	 *		that of the (i + 1)th object identifier component.
 	 */
 
-
 	/*
 	 *	Parse each OID component.
 	 */
-	for (start = vp->vp_strvalue; *start != '\0'; start = end + 1) {
+	for (i = 0; i < da_stack.depth; i++) {
 		ssize_t slen;
 
-		/*
-		 *	Parse the component.
-		 */
-		oid = strtoull(start, &end, 10);
-		if ((oid == ULLONG_MAX) || (*end && (*end != '.'))) {
-			fr_strerror_const("Invalid OID");
-			return -1;
-		}
-
-		slen = fr_der_encode_oid_from_value(&our_dbuff, oid, &component, &count);
+		slen = fr_der_encode_oid_from_value(&our_dbuff, da_stack.da[i]->attr, &component, &count);
 		if (slen < 0) return -1;
 	}
 
