@@ -5706,7 +5706,7 @@ parse:
 unknown_attr:
 		slen = fr_dict_attr_unknown_afrom_oid_substr(ctx, &dst->vb_attr, dst_enumv, &our_in, FR_TYPE_OCTETS);
 		if (slen <= 0) {
-			fr_strerror_printf("Failed to find the named attribute in %s", dst_enumv->name);
+			fr_strerror_printf_push("Failed to find the attribute in %s", dst_enumv->name);
 			return -2;
 		}
 
