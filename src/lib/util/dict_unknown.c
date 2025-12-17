@@ -559,6 +559,17 @@ fr_slen_t fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 			}
 			break;
 
+		case FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW:
+		{
+			fr_sbuff_marker_t c_start;
+
+			fr_sbuff_marker(&c_start, &our_in);
+			fr_sbuff_adv_past_allowed(&our_in, FR_DICT_ATTR_MAX_NAME_LEN, fr_dict_attr_allowed_chars, NULL);
+			fr_strerror_printf("Invalid value \"%.*s\" - attribute numbers must be less than 2^32",
+					   (int)fr_sbuff_behind(&c_start), fr_sbuff_current(&c_start));
+			goto error;
+		}
+
 		default:
 		{
 			fr_sbuff_marker_t c_start;
