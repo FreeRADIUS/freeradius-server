@@ -5639,8 +5639,8 @@ parse:
 		if (dst_enumv->type == FR_TYPE_ATTR) {
 			if (!dst_enumv->flags.has_value) dst_enumv = fr_dict_root(dst_enumv->dict);
 
-		} else if (!dst_enumv->flags.is_root) {
-			fr_strerror_printf("Can only start from dictionary root for data type 'attribute', and not from %s", dst_enumv->name);
+		} else if (dst_enumv->type != FR_TYPE_TLV) {
+			fr_strerror_printf("Can only start from data type 'tlv' for data type 'attribute', and not from %s", dst_enumv->name);
 			return -1;
 		}
 
@@ -5985,16 +5985,32 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '}');
 		break;
 
-	case FR_TYPE_ATTR:
+	case FR_TYPE_ATTR: {
+		fr_dict_attr_t const *parent = NULL;
+		fr_sbuff_t *unescaped = NULL;
+
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, ':', ':');
 
 		fr_assert(data->enumv != NULL);
+
+		switch (data->enumv->type) {
+		case FR_TYPE_TLV:
+			parent = data->enumv;
+			break;
+
+		case FR_TYPE_ATTR: /* will print from the root */
+			break;
+
+		default:
+			fr_assert_msg(0, "Invalid data type for 'attr' enumv");
+			break;
+		}
 
 		/*
 		 *	No escaping, just dump the name as-is.
 		 */
 		if (!e_rules) {
-			FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, NULL, data->vb_attr, false);
+			FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent, data->vb_attr, false);
 			break;
 		}
 
@@ -6002,15 +6018,12 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		 *	Escaping, use an intermediate buffer.  Because
 		 *	we can't pipe sbuffs together.
 		 */
-		{
-			fr_sbuff_t *unescaped = NULL;
+		FR_SBUFF_TALLOC_THREAD_LOCAL(&unescaped, 256, 4096);
 
-			FR_SBUFF_TALLOC_THREAD_LOCAL(&unescaped, 256, 4096);
+		FR_DICT_ATTR_OID_PRINT_RETURN(unescaped, parent, data->vb_attr, false);
 
-			FR_DICT_ATTR_OID_PRINT_RETURN(unescaped, NULL, data->vb_attr, false);
-
-			FR_SBUFF_IN_ESCAPE_RETURN(&our_out, fr_sbuff_start(unescaped),
-						  fr_sbuff_used(unescaped), e_rules);
+		FR_SBUFF_IN_ESCAPE_RETURN(&our_out, fr_sbuff_start(unescaped),
+					  fr_sbuff_used(unescaped), e_rules);
 		}
 		break;
 
