@@ -2546,9 +2546,11 @@ fr_slen_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 				   fr_type_to_str(parent->type),
 				   (int)fr_sbuff_remaining(&our_in),
 				   fr_sbuff_current(&our_in));
-		if (err) *err =FR_DICT_ATTR_NO_CHILDREN;
+		if (err) *err = FR_DICT_ATTR_NO_CHILDREN;
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
+
+	if (fr_dict_attr_by_name_substr(err, &child, parent, &our_in, tt) > 0) goto done;
 
 	fr_sbuff_out(&sberr, &num, &our_in);
 	switch (sberr) {
@@ -2557,43 +2559,50 @@ fr_slen_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 	 */
 	case FR_SBUFF_PARSE_OK:
 		if (!fr_sbuff_is_char(&our_in, '.') && !fr_sbuff_is_terminal(&our_in, tt)) {
-			fr_sbuff_set_to_start(&our_in);
-			goto oid_str;
+			if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+			fr_strerror_printf("Invalid OID component (%s) \"%.*s\"",
+					   fr_table_str_by_value(sbuff_parse_error_table, sberr, "<INVALID>"),
+					   (int)fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
+			goto fail;
 		}
 
 		child = dict_attr_child_by_num(parent, num);
 		if (!child) {
+			fr_sbuff_set_to_start(&our_in);
 			fr_strerror_printf("Failed resolving child %u in namespace '%s'",
 					   num, parent->name);
 			if (err) *err = FR_DICT_ATTR_NOTFOUND;
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
+
+		if (err) *err = FR_DICT_ATTR_OK;
 		break;
 
-	/*
-	 *	Lookup by name
-	 */
-	case FR_SBUFF_PARSE_ERROR_NOT_FOUND:
-	case FR_SBUFF_PARSE_ERROR_TRAILING:
-	{
-		fr_dict_attr_err_t	our_err;
-	oid_str:
-		/* Sets its own errors, don't override */
-		if (fr_dict_attr_by_name_substr(&our_err, &child, parent, &our_in, tt) < 0) {
-			if (err) *err = our_err;
-			FR_SBUFF_ERROR_RETURN(&our_in);
+	case FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW:
+		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+
+		fr_sbuff_set_to_start(&our_in);
+
+		{
+			fr_sbuff_marker_t c_start;
+
+			fr_sbuff_marker(&c_start, &our_in);
+			fr_sbuff_adv_past_allowed(&our_in, FR_DICT_ATTR_MAX_NAME_LEN, fr_dict_attr_allowed_chars, NULL);
+			fr_strerror_printf("Invalid value \"%.*s\" - attribute numbers must be less than 2^32",
+					   (int)fr_sbuff_behind(&c_start), fr_sbuff_current(&c_start));
 		}
-	}
-		break;
+		FR_SBUFF_ERROR_RETURN(&our_in);
 
 	default:
-		fr_strerror_printf("Invalid OID component (%s) \"%.*s\"",
-				   fr_table_str_by_value(sbuff_parse_error_table, sberr, "<INVALID>"),
-				   (int)fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
-		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+	fail:
+		/*
+		 *	Leave *err from the call to fr_dict_attr_by_name_substr().
+		 */
+		fr_sbuff_set_to_start(&our_in);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
+done:
 	child = dict_attr_alias(err, child);
 	if (unlikely(!child)) FR_SBUFF_ERROR_RETURN(&our_in);
 
