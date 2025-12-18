@@ -1,0 +1,13 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "regex"
+User-Password = "testing123"
+NAS-Identifier = "special"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Reply-Message == "totally amazing"
