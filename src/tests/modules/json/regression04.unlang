@@ -11,7 +11,7 @@ Vendor-Specific.Nokia-SR = {
 	}
 }
 
-if (!(%json.encode('&Vendor-Specific') == "{\"Vendor-Specific\":{\"type\":\"vsa\",\"value\":{\"Nokia-SR\":{\"type\":\"vendor\",\"value\":{\"ToServer-Dhcp-Options\":{\"type\":\"group\",\"value\":{\"Message-Type\":{\"type\":\"uint8\",\"value\":\"Discover\"},\"Parameter-Request-List\":{\"type\":\"attribute\",\"value\":[\"::Subnet-Mask\",\"::Router-Address\"]},\"Vendor-Class-Identifier\":{\"type\":\"octets\",\"value\":\"udhcp 1.30.1\"},\"Hostname\":{\"type\":\"string\",\"value\":\"modem\"},\"Relay-Agent-Information\":{\"type\":\"tlv\",\"value\":{\"Remote-Id\":{\"type\":\"octets\",\"value\":\"2295554460\"}}}}}}}}}}")) {
+if (%json.encode('&Vendor-Specific') != '{"Vendor-Specific":{"type":"vsa","value":{"Nokia-SR":{"type":"vendor","value":{"ToServer-Dhcp-Options":{"type":"group","value":{"Message-Type":{"type":"uint8","value":"Discover"},"Parameter-Request-List":{"type":"attribute","value":["::Subnet-Mask","::Router-Address"]},"Vendor-Class-Identifier":{"type":"octets","value":"udhcp 1.30.1"},"Hostname":{"type":"string","value":"modem"},"Relay-Agent-Information":{"type":"tlv","value":{"Remote-Id":{"type":"octets","value":"2295554460"}}}}}}}}}}') {
 	test_fail
 }
 
