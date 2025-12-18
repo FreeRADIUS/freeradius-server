@@ -5688,12 +5688,22 @@ parse:
 		} else if (fr_sbuff_adv_past_str_literal(&our_in, "::")) {
 
 			slen = fr_dict_attr_by_oid_substr(NULL, &dst->vb_attr, dst_enumv, &our_in, rules->terminals);
-			if (slen > 0) {
-				fr_assert(dst->vb_attr != NULL);
+			if (slen <= 0) goto unknown_attr;
+
+			fr_assert(dst->vb_attr != NULL);
+
+			if (!fr_sbuff_next_if_char(&our_in, '.')) {
 				FR_SBUFF_SET_RETURN(in, &our_in);
 			}
+
+			/*
+			 *	Parse the unknown attribute starting from where we left off.
+			 */
+			dst_enumv = dst->vb_attr;
+			dst->vb_attr = NULL;
 		}
 
+unknown_attr:
 		slen = fr_dict_attr_unknown_afrom_oid_substr(ctx, &dst->vb_attr, dst_enumv, &our_in, FR_TYPE_OCTETS);
 		if (slen <= 0) {
 			fr_strerror_printf("Failed to find the named attribute in %s", dst_enumv->name);

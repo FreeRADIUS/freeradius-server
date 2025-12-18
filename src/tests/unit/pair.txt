@@ -1,0 +1,232 @@
+#  -*- text -*-
+#  Copyright (C) 2025 Network RADIUS SARL (legal@networkradius.com)
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+
+#
+#  @todo - add error offset to failure cases.
+#
+
+#
+#  Test pair parsing for  fr_pair_list_afrom_substr()
+#
+proto radius
+proto-dictionary radius
+
+load-dictionary dictionary.test
+
+pair User-Name = "bob"
+match User-Name = "bob"
+
+#
+#  @todo - This is arguably wrong.  The rest of the server requires quoted strings, and disallows bare words.
+#
+pair User-Name = 0xabcdef
+match User-Name = "0xabcdef"
+
+#
+#  @todo - This is arguably wrong.  The rest of the server requires "::" prefixes for enumeration values.
+#
+pair Service-Type = Framed-User
+match Service-Type = ::Framed-User
+
+#
+#  Multiple things
+#
+pair User-Name = "bob", User-Password = "hello"
+match User-Name = "bob", User-Password = "hello"
+
+######################################################################
+#
+#  Raw attributes
+#
+######################################################################
+
+# 
+#  A raw attribute.
+#
+#  This is perhaps wrong?  We should probably be printing this as
+#  "raw.1 = 0xabcdef", because it's not the normal attribute.
+#
+pair raw.User-Name = 0xabcdef
+match raw.User-Name = 0xabcdef
+
+#
+#  Change data types.
+#
+#  @todo - This is arguably wrong.  We should be able to change data types, so
+#  long as the attribute is "raw.1", and not "raw.User-Name".
+#
+pair raw.User-Name = (ipaddr) 192.168.0.1
+match Cannot create raw attribute User-Name which changes data type from string to ipaddr
+
+#
+#  This is OK, due to the underlying IP address parser.
+#
+pair Framed-IP-Address = 1
+match Framed-IP-Address = 0.0.0.1
+
+######################################################################
+#
+#  Nested attributes
+#
+######################################################################
+
+#
+#  Empty list
+#
+pair Extended-Attribute-1 = { }
+match Extended-Attribute-1 = { }
+
+#
+#  Internal group can contain a protocol attribute.
+#
+pair Tmp-Group-0 = { User-Name = "bob" }
+match Tmp-Group-0 = { User-Name = "bob" }
+
+#
+#  Internal TLV cannot contain a protocol attribute.
+#
+pair Tmp-TLV-0 = { User-Name = "bob" }
+match Internal attribute 'Tmp-TLV-0' of data type 'tlv' cannot contain protocol attributes
+
+#
+#  Protocol TLV can contain an internal attribute
+#
+#  This is definitely wrong.  The switch to the internal dictionary
+#  confuses the pair printing routines.
+#
+pair Extended-Attribute-1 = { Tmp-Integer-0 = 1 }
+match Extended-Attribute-1 = { Tmp-Integer-0 = 1 }
+
+#
+#  One level of TLVs
+#
+pair Digest-Attributes = { Realm = "foo" }
+match Digest-Attributes = { Realm = "foo" }
+
+#
+#  Two levels of TLVs
+#
+pair Extended-Attribute-1 = { IP-Port-Limit-Info = { Type = 1 } }
+match Extended-Attribute-1 = { IP-Port-Limit-Info = { Type = 1 } }
+
+#
+#  Aliases
+#
+pair IP-Port-Limit-Info.Type = 1
+match Extended-Attribute-1 = { IP-Port-Limit-Info = { Type = 1 } }
+
+pair IP-Port-Limit-Info = { Type = 1 }
+match Extended-Attribute-1 = { IP-Port-Limit-Info = { Type = 1 } }
+
+######################################################################
+#
+#  Flat lists with operators
+#
+######################################################################
+
+#
+#  Flat input results in nested output.
+#
+pair Extended-Attribute-1.IP-Port-Limit-Info.Type = 1
+match Extended-Attribute-1 = { IP-Port-Limit-Info = { Type = 1 } }
+
+#
+#  Flat inputs nest at the lowest level
+#
+pair Vendor-Specific.Cisco.AVPair = "foo", Vendor-Specific.Cisco.AVPair = "bar"
+match Vendor-Specific = { Cisco = { AVPair = "foo", AVPair = "bar" } }
+
+#
+#  "+=" gets mashed to "="
+#
+pair Vendor-Specific.Cisco.AVPair = "foo", Vendor-Specific.Cisco.AVPair += "bar"
+match Vendor-Specific = { Cisco = { AVPair = "foo", AVPair = "bar" } }
+
+#
+#  Comparison operators, equality.  Only leaf attributes can be compared.
+#
+pair-compare Vendor-Specific.Cisco.AVPair == "foo", Vendor-Specific.Cisco.AVPair == "bar"
+match Vendor-Specific = { Cisco = { AVPair == "foo", AVPair == "bar" } }
+
+#
+#  Except that lists can only be compared for equality
+#
+
+#
+#  Comparison operators, leaf comparisons
+#
+pair-compare Vendor-Specific.Cisco.AVPair < "foo", Vendor-Specific.Cisco.AVPair > "bar"
+match Vendor-Specific = { Cisco = { AVPair < "foo", AVPair > "bar" } }
+
+#
+#  Comparison operators apply only to leaf.
+#
+pair-compare Vendor-Specific < { Cisco == { AVPair == "foo" } }
+match Structural attribute 'Vendor-Specific' must use '=' or '==' for comparisons
+
+#
+#  Invalid operator - comparison operators are not allowed when doing assignments.
+#
+pair Vendor-Specific.Cisco.AVPair == "foo", Vendor-Specific.Cisco.AVPair == "bar"
+match Invalid character '=' after operator '='
+
+#
+#  Flat inputs nest at a higher level, too
+#
+pair Vendor-Specific.Cisco.AVPair = "foo", Vendor-Specific.HP.Privilege-Level = 1
+match Vendor-Specific = { Cisco = { AVPair = "foo" }, HP = { Privilege-Level = 1 } }
+
+######################################################################
+#
+#  Error cases
+#
+######################################################################
+
+pair .User-Name = "bob"
+match The '.Attribute' syntax cannot be used at the root of a dictionary
+
+pair Tmp-Group-0 = { .User-Name = "bob" }
+match The '.Attribute' syntax cannot be used with parent Tmp-Group-0 of data type 'group'
+
+pair Vendor-Specific = { Cisco = { .AVPair += "foo" } }
+match The '.Attribute' syntax cannot be used along with the '+=' operator
+
+#
+#  Invalid data types
+#
+pair NAS-Port = 192.168.0.1
+match Unexpected text '.168.0.1 ...' after value
+
+pair NAS-Port = 192.168.0.1, NAS-Port = 2
+match Unexpected text '.168.0.1, NAS-Port = ...' after value
+
+pair NAS-Port = abcdef
+match Failed parsing string as type 'uint32'
+
+pair Extended-Attribute-1 = 0xabcdef
+match Group list for Extended-Attribute-1 MUST start with '{'
+
+pair Extended-Attribute-1.Framed-IP-Address.Tmp-String-0 := "hello"
+match Unknown attribute "Framed-IP-Address.Tmp-String-0" for parent "Extended-Attribute-1"
+
+#
+#  Attributes as values
+#
+pair Test-Attr = ::Vendor-Specific.Cisco.AVPair
+match Test-Attr = ::Vendor-Specific.Cisco.AVPair
+
+pair Test-Attr = ::26.9.1
+match Test-Attr = ::Vendor-Specific.Cisco.AVPair
+
+#
+#  Partially known and partially unknown
+#
+pair Test-Attr = ::Vendor-Specific.12345.1.1
+match Test-Attr = ::Vendor-Specific.12345.1.1
+
+count
+match 71
