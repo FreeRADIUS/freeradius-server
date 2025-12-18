@@ -3763,7 +3763,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		ret = fr_value_box_copy(ctx, dst, src);
 		if (ret < 0) return ret;
 
-		dst->enumv = dst_enumv;
+		if (dst_enumv) dst->enumv = dst_enumv;
 
 		return ret;
 	}
