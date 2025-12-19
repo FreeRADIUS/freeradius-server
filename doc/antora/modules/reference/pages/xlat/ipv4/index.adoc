@@ -1,0 +1,15 @@
+= IPv4 handling
+
+The following functions perform manipulation of IPv4 addresses / subnets.
+
+.IPv4 handling
+[options="header"]
+[cols="30%,70%"]
+|=====
+| *Function*                                 | *Description*
+| xref:xlat/ipv4/broadcast.adoc[broadcast]   | Get the broadcast address from an IPv4 prefix
+| xref:xlat/ipv4/netmask.adoc[netmask]       | Get the netmask from an IPv4 prefix
+|=====
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

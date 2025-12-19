@@ -119,6 +119,10 @@
 **** xref:xlat/time/offset.adoc[UTC Offset]
 **** xref:xlat/time/request.adoc[Request Time]
 
+*** xref:xlat/ipv4/index.adoc[IPv4 Handling]
+**** xref:xlat/ipv4/broadcast.adoc[Broadcast Address]
+**** xref:xlat/ipv4/netmask.adoc[Subnet Mask]
+
 ** xref:dictionary/index.adoc[Dictionaries]
 *** xref:dictionary/alias.adoc[ALIAS]
 *** xref:dictionary/attribute.adoc[ATTRIBUTE]

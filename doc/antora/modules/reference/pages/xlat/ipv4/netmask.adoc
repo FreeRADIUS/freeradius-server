@@ -1,0 +1,26 @@
+= %ip.v4.netmask( <ipv4 prefix> )
+
+Get the netmask from an IPv4 prefix
+
+.Return: _ipv4_
+
+Particularly useful for use when handling DHCPv4 requests, where
+`Subnet-Mask` is required in the reply, and the subnet the client is
+being placed in is known.
+
+.Example
+
+[source,unlang]
+----
+Network-Subnet := 192.168.1.0/24
+reply.Subnet-Mask := %ip.v4.netmask(Network-Subnet)
+----
+
+.Output
+
+```
+255.255.255.0
+```
+
+// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
