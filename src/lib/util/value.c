@@ -3895,6 +3895,10 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		return fr_value_box_cast_in_place(ctx, dst, dst_type, dst_enumv);
 #else
 	case FR_TYPE_ATTR:
+		if (src->type == FR_TYPE_STRING) break;
+
+		FALL_THROUGH;
+
 #endif
 	/*
 	 *	Invalid types for casting (were caught earlier)

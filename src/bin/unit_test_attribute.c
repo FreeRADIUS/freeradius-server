@@ -1077,6 +1077,12 @@ static size_t parse_typed_value(command_result_t *result, command_file_ctx_t *cc
 	fr_skip_whitespace(p);
 	*out = p;
 
+	if (type == FR_TYPE_ATTR) {
+		enumv = cc->tmpl_rules.attr.dict_def ?
+			fr_dict_root(cc->tmpl_rules.attr.dict_def) :
+			fr_dict_root(fr_dict_internal());
+	}
+
 	/*
 	 *	As a hack, allow most things to be inside
 	 *	double-quoted strings.  This is really only for dates,
@@ -1520,6 +1526,7 @@ static size_t command_cast(command_result_t *result, command_file_ctx_t *cc,
 	fr_type_t type;
 	char const *p, *value, *end;
 	size_t slen;
+	fr_dict_attr_t const *enumv = NULL;
 
 	a = talloc_zero(cc->tmp_ctx, fr_value_box_t);
 
@@ -1542,7 +1549,13 @@ static size_t command_cast(command_result_t *result, command_file_ctx_t *cc,
 	if (type == FR_TYPE_MAX) RETURN_PARSE_ERROR(0);
 	fr_value_box_init(out, type, NULL, false);
 
-	if (fr_value_box_cast(out, out, type, NULL, a) < 0) {
+	if (type == FR_TYPE_ATTR) {
+		enumv = cc->tmpl_rules.attr.dict_def ?
+			fr_dict_root(cc->tmpl_rules.attr.dict_def) :
+			fr_dict_root(fr_dict_internal());
+	}
+
+	if (fr_value_box_cast(out, out, type, enumv, a) < 0) {
 		RETURN_OK_WITH_ERROR();
 	}
 

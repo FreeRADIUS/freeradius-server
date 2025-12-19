@@ -40,5 +40,17 @@ match 691200
 cast time_delta 1.14285714w -> time_delta
 match 691199.998272
 
+#
+#  Attribute tests
+#
+proto-dictionary radius
+tmpl-rules allow_unresolved=no allow_unknown=no
+
+cast attribute ::Vendor-Specific.Cisco.AVPair -> attribute
+match ::Vendor-Specific.Cisco.AVPair
+
+cast string "::26.9.1" -> attribute
+match Vendor-Specific.Cisco.AVPair
+
 count
-match 24
+match 28
