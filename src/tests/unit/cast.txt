@@ -49,6 +49,21 @@ tmpl-rules allow_unresolved=no allow_unknown=no
 cast attribute ::Vendor-Specific.Cisco.AVPair -> attribute
 match ::Vendor-Specific.Cisco.AVPair
 
+#
+#  Specifying the same protocol is fine.
+#
+cast attribute @RADIUS.Vendor-Specific.Cisco.AVPair -> attribute
+match ::Vendor-Specific.Cisco.AVPair
+
+cast attribute ::@RADIUS.Vendor-Specific.Cisco.AVPair -> attribute
+match ::Vendor-Specific.Cisco.AVPair
+
+#
+#  Can't change protocols.
+#
+cast attribute @DHCPv4.Message-Type
+match Type 'attribute' cannot reference a different protocol
+
 cast string "::26.9.1" -> attribute
 match ::Vendor-Specific.Cisco.AVPair
 
@@ -59,4 +74,4 @@ cast string "26.12345.1" -> attribute
 match ::Vendor-Specific.12345.1
 
 count
-match 34
+match 40

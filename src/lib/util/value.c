@@ -5650,6 +5650,8 @@ parse:
 
 		fr_value_box_init(dst, dst_type, dst_enumv, false);
 
+		(void) fr_sbuff_adv_past_str_literal(&our_in, "::");
+
 		/*
 		 *	Allow '@' references in values.
 		 */
@@ -5691,8 +5693,6 @@ parse:
 
 		} else {
 			fr_dict_attr_t const *da;
-
-			(void) fr_sbuff_adv_past_str_literal(&our_in, "::");
 
 			slen = fr_dict_attr_by_oid_substr(NULL, &dst->vb_attr, dst_enumv, &our_in, rules->terminals);
 			if (slen > 0) {
