@@ -50,7 +50,13 @@ cast attribute ::Vendor-Specific.Cisco.AVPair -> attribute
 match ::Vendor-Specific.Cisco.AVPair
 
 cast string "::26.9.1" -> attribute
-match Vendor-Specific.Cisco.AVPair
+match ::Vendor-Specific.Cisco.AVPair
+
+cast string "26.9.1" -> attribute
+match ::Vendor-Specific.Cisco.AVPair
+
+cast string "26.12345.1" -> attribute
+match ::Vendor-Specific.12345.1
 
 count
-match 28
+match 34

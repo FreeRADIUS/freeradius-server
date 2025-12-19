@@ -5689,33 +5689,36 @@ parse:
 			fr_sbuff_advance(&our_in, len);
 			FR_SBUFF_SET_RETURN(in, &our_in);
 
-		} else if (fr_sbuff_adv_past_str_literal(&our_in, "::")) {
+		} else {
+			fr_dict_attr_t const *da;
+
+			(void) fr_sbuff_adv_past_str_literal(&our_in, "::");
 
 			slen = fr_dict_attr_by_oid_substr(NULL, &dst->vb_attr, dst_enumv, &our_in, rules->terminals);
-			if (slen <= 0) goto unknown_attr;
+			if (slen > 0) {
+				fr_assert(dst->vb_attr != NULL);
 
-			fr_assert(dst->vb_attr != NULL);
+				if (!fr_sbuff_next_if_char(&our_in, '.')) {
+					FR_SBUFF_SET_RETURN(in, &our_in);
+				}
 
-			if (!fr_sbuff_next_if_char(&our_in, '.')) {
-				FR_SBUFF_SET_RETURN(in, &our_in);
+				/*
+				 *	The next bit MUST be an unknown attribute.
+				 */
 			}
 
-			/*
-			 *	Parse the unknown attribute starting from where we left off.
-			 */
-			dst_enumv = dst->vb_attr;
-			dst->vb_attr = NULL;
-		}
+			if (!fr_sbuff_is_digit(&our_in)) {
+			invalid_attr:
+				fr_strerror_printf_push("Failed to find the attribute in %s", dst_enumv->name);
+				return -2;
+			}
 
-unknown_attr:
-		slen = fr_dict_attr_unknown_afrom_oid_substr(ctx, &dst->vb_attr, dst_enumv, &our_in, FR_TYPE_OCTETS);
-		if (slen <= 0) {
-			fr_strerror_printf_push("Failed to find the attribute in %s", dst_enumv->name);
-			return -2;
-		}
+			slen = fr_dict_attr_unknown_afrom_oid_substr(ctx, &da, dst->vb_attr, &our_in, FR_TYPE_OCTETS);
+			if (slen <= 0) goto invalid_attr;
 
-		fr_assert(dst->vb_attr != NULL);
-		FR_SBUFF_SET_RETURN(in, &our_in);
+			dst->vb_attr = da;
+			FR_SBUFF_SET_RETURN(in, &our_in);
+		}
 
 	/*
 	 *	Dealt with below
@@ -5995,7 +5998,10 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, ':', ':');
 
-		fr_assert(data->enumv != NULL);
+		if (!data->enumv) {
+			fr_strerror_const("Value of type 'attribute' is missing the enum");
+			return -1;
+		}
 
 		switch (data->enumv->type) {
 		case FR_TYPE_TLV:

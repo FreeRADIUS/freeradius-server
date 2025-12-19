@@ -22,7 +22,7 @@ pair  Test-Oid = "1.2.840.113549.1.1.11"
 match Test-Oid = ::1.2.840.113549.1.1.11
 
 pair Test-Oid = ::iso.member-body.us.rsadsi.pkcs.pkcs-1.rsaEncryption
-match Unknown attribute "iso" for parent "DER": Failed to find the attribute in DER
+match Attribute 'iso' not found in namespace 'DER': Failed to find the attribute in DER
 
 #
 #  These tests work

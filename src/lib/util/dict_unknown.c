@@ -470,6 +470,7 @@ fr_slen_t fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 	fr_dict_attr_t const	*our_parent = parent;
 	fr_dict_attr_t		*n = NULL;
+	int			depth;
 	fr_dict_attr_flags_t	flags = { .is_raw = true, };
 
 	*out = NULL;
@@ -492,9 +493,17 @@ fr_slen_t fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 	/*
 	 *	Loop until there's no more component separators.
 	 */
-	for (;;) {
+	for (depth = 0; depth < FR_DICT_MAX_TLV_STACK; depth++) {
 		uint32_t		num;
 		fr_sbuff_parse_error_t	sberr;
+
+		/*
+		 *	Cannot create attributes that are too deeply nested.
+		 */
+		if ((depth + parent->depth) >= FR_DICT_MAX_TLV_STACK) {
+			fr_strerror_printf("Attribute depth (%u) is too large", depth + parent->depth);
+			goto error;
+		}
 
 		fr_sbuff_out(&sberr, &num, &our_in);
 		switch (sberr) {
@@ -572,13 +581,32 @@ fr_slen_t fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 
 		default:
 		{
+			size_t len;
 			fr_sbuff_marker_t c_start;
 
 			fr_sbuff_marker(&c_start, &our_in);
-			fr_sbuff_adv_past_allowed(&our_in, FR_DICT_ATTR_MAX_NAME_LEN, fr_dict_attr_allowed_chars, NULL);
-			fr_strerror_printf("Unknown attribute \"%.*s\" for parent \"%s\"",
+			len = fr_sbuff_adv_past_allowed(&our_in, FR_DICT_ATTR_MAX_NAME_LEN, fr_dict_attr_allowed_chars, NULL);
+
+			/*
+			 *	If we saw no valid characters at the start, it's a bad attribute name.
+			 *
+			 *	If we saw valid characters but didn't parse them into an attribute name, it's
+			 *	a bad attribute name.
+			 *
+			 *	Otherwise we parsed at least one attribute, and then ran out of valid
+			 *	attribute characters to parse.  The result must be OK.
+			 *
+			 *	This check is here really only because there's a lot of code which parses
+			 *	attributes, but does not properly set either the buffer size to be _just_ the
+			 *	attribute name, OR the set of terminal characters.  This means that the
+			 *	attribute parsing code can't error out if there are invalid characters after a
+			 *	valid attribute name.  Instead, the caller has to check the return code.
+			 */
+			if (((depth == 0) && (len == 0)) || ((depth > 0) && (len > 0))) {
+				fr_strerror_printf("Unknown attribute \"%.*s\" for parent \"%s\"",
 					   (int)fr_sbuff_behind(&c_start), fr_sbuff_current(&c_start), our_parent->name);
-			goto error;
+				goto error;
+			}
 		}
 		}
 		break;
