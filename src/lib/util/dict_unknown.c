@@ -28,6 +28,12 @@ static int dict_attr_unknown_init(fr_dict_attr_t const *parent, UNUSED fr_dict_a
 {
 	flags->is_unknown = true;
 
+	if (parent->flags.local) {
+		fr_strerror_printf("Cannot create 'raw' attribute of data type '%s' which is a local variable",
+				   fr_type_to_str(type));
+		return -1;
+	}
+
 	if (parent->flags.internal) {
 		fr_strerror_printf("Cannot create 'raw' attribute of data type '%s' which is 'internal'",
 				   fr_type_to_str(type));

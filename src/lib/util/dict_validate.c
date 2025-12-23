@@ -97,6 +97,11 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 		return false;
 	}
 
+	if (flags->local && (flags->is_unknown || flags->is_raw)) {
+		fr_strerror_const("Local variables cannot be 'raw' or unknown");
+		return false;
+	}
+
 	/*
 	 *	Only some data types can be in arrays, because we need
 	 *	to be able to decode the various array members.
