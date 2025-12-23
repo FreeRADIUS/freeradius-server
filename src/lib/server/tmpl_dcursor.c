@@ -832,7 +832,7 @@ ssize_t tmpl_dcursor_print(fr_sbuff_t *out, tmpl_dcursor_ctx_t const *cc)
 	 *	Print all the request references
 	 */
 	while ((rr = tmpl_request_list_next(&cc->vpt->data.attribute.rr, rr))) {
-		FR_SBUFF_IN_STRCPY_RETURN(&our_out, fr_table_str_by_value(tmpl_request_ref_table, rr->request, "<INVALID>"));
+		FR_SBUFF_IN_STRCPY_RETURN(&our_out, fr_table_str_by_value(tmpl_request_ref_table, rr->request, "current"));
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 	}
 

@@ -1027,6 +1027,7 @@ typedef enum {
 	TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX,		//!< Invalid array index.
 	TMPL_ATTR_ERROR_INVALID_FILTER,			//!< Invalid filter
 	TMPL_ATTR_ERROR_NESTING_TOO_DEEP,		//!< Too many levels of nesting.
+	TMPL_ATTR_ERROR_INVALID_REQUEST_REF,		//!< invalid request reference
 	TMPL_ATTR_ERROR_MISSING_TERMINATOR,		//!< Unexpected text found after attribute reference
 	TMPL_ATTR_ERROR_BAD_CAST,			//!< Specified cast was invalid.
 	TMPL_ATTR_ERROR_INVALID_OID			//!< OIDs are not allowed

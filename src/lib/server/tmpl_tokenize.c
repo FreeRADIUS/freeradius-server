@@ -139,10 +139,18 @@ static fr_table_num_ordered_t const attr_table[] = {
 };
 static size_t attr_table_len = NUM_ELEMENTS(attr_table);
 
+/** We can print "current", but we shouldn't parse the "current" in a configuration.
+ */
+static fr_table_num_sorted_t const tmpl_request_ref_print_table[] = {
+	{ L("current"),		REQUEST_CURRENT			},
+	{ L("outer"),		REQUEST_OUTER			},
+	{ L("parent"),		REQUEST_PARENT			},
+};
+static size_t tmpl_request_ref_print_table_len = NUM_ELEMENTS(tmpl_request_ref_print_table);
+
 /** Map keywords to #tmpl_request_ref_t values
  */
 fr_table_num_sorted_t const tmpl_request_ref_table[] = {
-	{ L("current"),		REQUEST_CURRENT			},
 	{ L("outer"),		REQUEST_OUTER			},
 	{ L("parent"),		REQUEST_PARENT			},
 };
@@ -296,7 +304,7 @@ void tmpl_attr_debug(FILE *fp, tmpl_t const *vpt)
 	 */
 	while ((rr = tmpl_request_list_next(&vpt->data.attribute.rr, rr))) {
 		fprintf(fp, "\t[%u] %s (%u)\n", i,
-			     fr_table_str_by_value(tmpl_request_ref_table, rr->request, "<INVALID>"), rr->request);
+			     fr_table_str_by_value(tmpl_request_ref_print_table, rr->request, "<INVALID>"), rr->request);
 		i++;
 	}
 
@@ -460,7 +468,7 @@ void tmpl_request_ref_list_debug(FR_DLIST_HEAD(tmpl_request_list) const *rql)
 
 	while ((rr = tmpl_request_list_next(rql, rr))) {
 		FR_FAULT_LOG("request - %s (%u)",
-			     fr_table_str_by_value(tmpl_request_ref_table, rr->request, "<INVALID>"),
+			     fr_table_str_by_value(tmpl_request_ref_print_table, rr->request, "<INVALID>"),
 			     rr->request);
 	}
 }
@@ -509,7 +517,6 @@ int8_t tmpl_request_ref_list_cmp(FR_DLIST_HEAD(tmpl_request_list) const *a, FR_D
  * @param[out] err	If !NULL where to write the parsing error.
  * @param[in] out	The list to write to.
  * @param[in] in	Sbuff to read request references from.
- * @param[in] p_rules	Parse rules.
  * @param[in] t_rules	Default list and other rules.
  * @param[out] namespace the namespace to use
  * @return
@@ -519,16 +526,13 @@ int8_t tmpl_request_ref_list_cmp(FR_DLIST_HEAD(tmpl_request_list) const *a, FR_D
 static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 						   FR_DLIST_HEAD(tmpl_request_list) *out,
 						   fr_sbuff_t *in,
-						   fr_sbuff_parse_rules_t const *p_rules,
 						   tmpl_rules_t const *t_rules,
 						   fr_dict_attr_t const **namespace)
 {
 	tmpl_request_ref_t	ref;
 	tmpl_request_t		*rr;
-	size_t			ref_len;
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 	tmpl_request_t		*tail = tmpl_request_list_tail(out);
-	unsigned int		depth = 0;
 	fr_sbuff_marker_t	m;
 	tmpl_attr_rules_t const	*at_rules;
 	DEFAULT_RULES;
@@ -561,114 +565,122 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 	 */
 	if (!tmpl_request_list_initialised(out)) tmpl_request_list_talloc_init(out);
 
-	fr_sbuff_marker(&m, &our_in);
-	for (depth = 0; depth < TMPL_MAX_REQUEST_REF_NESTING; depth++) {
-		bool end;
+	/*
+	 *	We're in a name space, OR lists are forbidden, don't allow list qualifiers.
+	 */
+	if (at_rules->namespace || (at_rules->list_presence == TMPL_ATTR_LIST_FORBID)) {
+		if (fr_sbuff_is_str_literal(&our_in, "outer.") ||
+		    fr_sbuff_is_str_literal(&our_in, "parent.")) {
+			fr_strerror_const("request list qualifiers are not allowed here");
+			if (err) *err = TMPL_ATTR_ERROR_LIST_NOT_ALLOWED;
 
-		/*
-		 *	Search for a known request reference like
-		 *	'current', or 'parent'.
-		 */
-		fr_sbuff_out_by_longest_prefix(&ref_len, &ref, tmpl_request_ref_table, &our_in, REQUEST_UNKNOWN);
-
-		/*
-		 *	No match
-		 */
-		if (ref_len == 0) {
-			/*
-			 *	If depth == 0, we're at the start
-			 *	so just use the default request
-			 *	reference.
-			 */
-		default_ref:
-			if ((depth == 0) && at_rules->request_def) {
-				tmpl_request_ref_list_copy(ctx, out, at_rules->request_def);
-			}
-			break;
+			fr_sbuff_set(&our_in, in);	/* Marker at the start */
+	error:
+			tmpl_request_list_talloc_free_to_tail(out, tail);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
-		/*
-		 *	We don't want to misidentify the list
-		 *	as being part of an attribute.
-		 */
-		if (!fr_sbuff_is_char(&our_in, '.') && (fr_sbuff_is_in_charset(&our_in, fr_dict_attr_allowed_chars) || !tmpl_substr_terminal_check(&our_in, p_rules))) {
-			goto default_ref;
-		}
-
-		if (depth == 0) {
-			if (at_rules->namespace || (at_rules->list_presence == TMPL_ATTR_LIST_FORBID)) {
-				fr_strerror_const("List qualifiers are not allowed here");
-				if (err) *err = TMPL_ATTR_ERROR_LIST_NOT_ALLOWED;
-
-				fr_sbuff_set(&our_in, in);	/* Marker at the start */
-			error:
-				tmpl_request_list_talloc_free_to_tail(out, tail);
-				FR_SBUFF_ERROR_RETURN(&our_in);
-			}
-		}
-
-		/*
-		 *	If the caller is asking for a namespace, then walk back up the tmpl_rules_t to find a parent namespace.
-		 */
-		if (namespace && t_rules && t_rules->parent) {
-			t_rules = t_rules->parent;
-
-			switch (ref) {
-			case REQUEST_OUTER:
-				while (t_rules->parent) t_rules = t_rules->parent;	/* Walk back to the root */
-				FALL_THROUGH;
-
-			case REQUEST_PARENT:
-				if (t_rules->attr.namespace) {
-					*namespace = t_rules->attr.namespace;
-				} else if (t_rules->attr.dict_def) {
-					*namespace = fr_dict_root(t_rules->attr.dict_def);
-				} else {
-					*namespace = NULL;
-				}
-				break;
-
-			default:
-				break;
-			}
-		}
-
-		/*
-		 *	Add a new entry to the dlist
-		 */
-		MEM(rr = talloc(ctx, tmpl_request_t));
-		*rr = (tmpl_request_t){
-			.request = ref
-		};
-		tmpl_request_list_insert_tail(out, rr);
-
-		/*
-		 *	Advance past the separator (if there is one)
-		 */
-		end = !fr_sbuff_next_if_char(&our_in, '.');
-
-		/*
-		 *	Update to the last successfully parsed component
-		 *
-		 *	This makes it easy to backtrack from refs like
-		 *
-		 *		parent.outer-realm-name
-		 */
-		fr_sbuff_set(&m, &our_in);
-
-		if (end) break;
+		return 0;
 	}
 
 	/*
-	 *	Nesting level too deep
+	 *	See if there is a known reference.
 	 */
-	if (depth > TMPL_MAX_REQUEST_REF_NESTING) {
-		fr_strerror_const("Request ref nesting too deep");
-		if (err) *err = TMPL_ATTR_ERROR_NESTING_TOO_DEEP;
-		goto error;	/* Leave marker at the end */
+	fr_sbuff_marker(&m, &our_in);
+	if (fr_sbuff_adv_past_str_literal(&our_in, "outer.")) {
+		ref = REQUEST_OUTER;
+
+	} else if (fr_sbuff_adv_past_str_literal(&our_in, "parent.")) {
+		ref = REQUEST_PARENT;
+
+	} else {
+		/*
+		 *	No recognized string.  Set the default list if it was specified.
+		 */
+		if (at_rules->request_def) tmpl_request_ref_list_copy(ctx, out, at_rules->request_def);
+
+		return 0;
 	}
 
-	FR_SBUFF_SET_RETURN(in, &m);
+	/*
+	 *	Add a new entry to the dlist
+	 */
+	MEM(rr = talloc(ctx, tmpl_request_t));
+	*rr = (tmpl_request_t){
+		.request = ref
+	};
+	tmpl_request_list_insert_tail(out, rr);
+
+	if (ref == REQUEST_OUTER) {
+		/*
+		 *	No parent?  Guess.
+		 *
+		 *	If there is a parent, we use the outermost one.
+		 */
+		if (!t_rules->parent) {
+			t_rules = NULL;
+
+		} else while (t_rules->parent) {
+			t_rules = t_rules->parent;
+		}
+
+	} else {
+		int depth = 1;
+
+		t_rules = t_rules->parent;
+
+		while (fr_sbuff_adv_past_str_literal(&our_in, "parent.")) {
+			if (t_rules) t_rules = t_rules->parent;
+			depth++;
+
+			/*
+			 *	Nesting level too deep
+			 */
+			if (depth > TMPL_MAX_REQUEST_REF_NESTING) {
+				fr_strerror_const("Request ref nesting too deep");
+				if (err) *err = TMPL_ATTR_ERROR_NESTING_TOO_DEEP;
+				goto error;	/* Leave marker at the end */
+			}
+
+			MEM(rr = talloc(ctx, tmpl_request_t));
+			*rr = (tmpl_request_t){
+				.request = ref
+			};
+			tmpl_request_list_insert_tail(out, rr);
+		}
+	}
+
+	/*
+	 *	If we mix and match the references, that's wrong.
+	 */
+	if (fr_sbuff_is_str_literal(&our_in, "outer.") || fr_sbuff_is_str_literal(&our_in, "parent.")) {
+		if (err) *err = TMPL_ATTR_ERROR_INVALID_REQUEST_REF;
+		fr_strerror_const("Invalid list reference - cannot mix 'outer' and 'parent' references");
+		goto error;
+	}
+
+	/*
+	 *	Now that we have the correct namespace, set it if the caller needs it.
+	 */
+	if (namespace) {
+		/*
+		 *	The namespace could be unknown.
+		 */
+		if (!t_rules) {
+			*namespace = NULL;
+
+		} else if (t_rules->attr.namespace) {
+			*namespace = t_rules->attr.namespace;
+
+		} else if (t_rules->attr.dict_def) {
+			*namespace = fr_dict_root(t_rules->attr.dict_def);
+
+		} else {
+			*namespace = NULL;
+		}
+	}
+
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Parse one or more request references, allocing a new list and adding the references to it
@@ -694,7 +706,7 @@ fr_slen_t tmpl_request_ref_list_afrom_substr(TALLOC_CTX *ctx, tmpl_attr_error_t 
 	MEM(rql = talloc_zero(ctx, FR_DLIST_HEAD(tmpl_request_list)));
 	tmpl_request_list_talloc_init(rql);
 
-	slen = tmpl_request_ref_list_from_substr(rql, err, rql, in, NULL, NULL, NULL);
+	slen = tmpl_request_ref_list_from_substr(rql, err, rql, in, NULL, NULL);
 	if (slen < 0) {
 		talloc_free(rql);
 		return slen;
@@ -2299,7 +2311,6 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	ret = tmpl_request_ref_list_from_substr(vpt, NULL,
 						&vpt->data.attribute.rr,
 						&our_name,
-						p_rules,
 						t_rules,
 						&namespace);
 	if (ret < 0) {
@@ -4671,7 +4682,7 @@ fr_slen_t tmpl_request_ref_list_print(fr_sbuff_t *out, FR_DLIST_HEAD(tmpl_reques
 	 *	Print request references
 	 */
 	while (rr) {
-		FR_SBUFF_IN_TABLE_STR_RETURN(&our_out, tmpl_request_ref_table, rr->request, "<INVALID>");
+		FR_SBUFF_IN_TABLE_STR_RETURN(&our_out, tmpl_request_ref_print_table, rr->request, "<INVALID>");
 		rr = tmpl_request_list_next(rql, rr);
 		if (rr) FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 	}

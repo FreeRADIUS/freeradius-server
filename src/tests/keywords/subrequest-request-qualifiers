@@ -13,15 +13,12 @@ subrequest ::Access-Request {
 			User-Name := "joe"
 
 			outer.request += {
-				Filter-Id = current.User-Name
-				Filter-Id = parent.User-Name
-				Filter-Id = parent.parent.User-Name
-				Filter-Id = parent.parent.parent.User-Name
-				Filter-Id = outer.User-Name
-				Filter-Id = current.outer.User-Name
-				Filter-Id = parent.current.outer.User-Name
-				Filter-Id = "%{parent.parent.parent.parent.User-Name}"
-				Filter-Id = "%{outer.parent.User-Name}"
+				Filter-Id = User-Name				# [0] joe
+				Filter-Id = parent.User-Name			# [1] jim
+				Filter-Id = parent.parent.User-Name		# [2] obo
+				Filter-Id = parent.parent.parent.User-Name	# [3] bob
+				Filter-Id = outer.User-Name			# [4] bob
+				Filter-Id = "%{parent.parent.parent.parent.User-Name}" # [5] Nope!
 			}
 		}
 	}
@@ -51,19 +48,7 @@ if !(Filter-Id[4] == 'bob') {
 	test_fail
 }
 
-if !(Filter-Id[5] == 'bob') {
-	test_fail
-}
-
-if !(Filter-Id[6] == 'bob') {
-	test_fail
-}
-
-if !(Filter-Id[7] == "") {
-	test_fail
-}
-
-if !(Filter-Id[8] == "") {
+if !(Filter-Id[5] == "") {
 	test_fail
 }
 
