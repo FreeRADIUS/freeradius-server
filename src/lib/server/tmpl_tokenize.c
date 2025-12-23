@@ -160,8 +160,6 @@ static fr_table_num_sorted_t const attr_num_table[] = {
 static size_t attr_num_table_len = NUM_ELEMENTS(attr_num_table);
 /* clang-format on */
 
-static int attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref) CC_HINT(nonnull,warn_unused_result);
-
 /*
  *	Can't use |= or ^= else we get out of range errors
  */
@@ -2171,6 +2169,37 @@ do_suffix:
 	return 0;
 }
 
+static int attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
+{
+	switch (ref->type) {
+	case TMPL_ATTR_TYPE_NORMAL:
+	{
+		ref->da = ref->ar_unknown = fr_dict_attr_unknown_afrom_da(vpt, ref->da);
+		if (!ref->da) return -1;
+
+		ref->ar_unknown->type = FR_TYPE_OCTETS;
+		ref->is_raw = 1;
+		ref->type = TMPL_ATTR_TYPE_UNKNOWN;
+	}
+		break;
+	case TMPL_ATTR_TYPE_UNSPEC:	/* noop */
+		break;
+
+	case TMPL_ATTR_TYPE_UNKNOWN:
+		ref->ar_unknown->type = FR_TYPE_OCTETS;
+		ref->is_raw = 1;
+		break;
+
+	case TMPL_ATTR_TYPE_UNRESOLVED:
+		ref->is_raw = true;
+		break;
+	}
+
+	TMPL_ATTR_VERIFY(vpt);
+
+	return 0;
+}
+
 /** Parse a string into a TMPL_TYPE_ATTR_* type #tmpl_t
  *
  * @param[in,out] ctx		to allocate #tmpl_t in.
@@ -2334,75 +2363,75 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 *	later.
 	 */
 	if (tmpl_is_attr(vpt)) {
-		if (is_raw) {
-			ret = attr_to_raw(vpt, tmpl_attr_list_tail(tmpl_attr(vpt)));
-			if (ret < 0) goto error;
-		}
+		tmpl_attr_t	*ar = tmpl_attr_list_head(tmpl_attr(vpt));
+		bool		is_local = ar->ar_da->flags.local;
+		bool		allow_local = is_local;
 
 		/*
-		 *	Local variables cannot be given a list modifier.
+		 *	Convert known attributes to raw ones if requested.
 		 */
-		if (tmpl_attr_tail_da(vpt)) {
-			tmpl_attr_t	*ar = tmpl_attr_list_head(tmpl_attr(vpt));
-			bool		is_local = ar->ar_da->flags.local;
-			bool		allow_local = is_local;
-
-			if (is_local && is_raw) {
+		if (is_raw) {
+			/*
+			 *	Local variables cannot be raw.
+			 */
+			if (is_local) {
 				fr_strerror_printf("Local attributes cannot be 'raw'");
 				if (err) *err = TMPL_ATTR_ERROR_UNKNOWN_NOT_ALLOWED;
 				fr_sbuff_set(&our_name, &m_l);
 				goto error;
 			}
+			ret = attr_to_raw(vpt, tmpl_attr_list_tail(tmpl_attr(vpt)));
+			if (ret < 0) goto error;
+		}
 
-			/*
-			 *	We can transition from local to non-local, but not the other way around.
-			 */
-			for (;
-			     ar != NULL;
-			     ar = tmpl_attr_list_next(tmpl_attr(vpt), ar)) {
-				if (ar->ar_da->flags.local == allow_local) continue;
+		/*
+		 *	We can transition from local to non-local, but not the other way around.
+		 */
+		for (;
+		     ar != NULL;
+		     ar = tmpl_attr_list_next(tmpl_attr(vpt), ar)) {
+			if (ar->ar_da->flags.local == allow_local) continue;
 
-				if (!ar->ar_da->flags.local && allow_local) {
-					allow_local = false;
-					continue;
-				}
-
-				if (ar->ar_da->flags.local) {
-					fr_strerror_printf("Local attributes cannot be used in any list");
-					if (err) *err = TMPL_ATTR_ERROR_FOREIGN_NOT_ALLOWED;
-					fr_sbuff_set(&our_name, &m_l);
-					goto error;
-				}
+			if (!ar->ar_da->flags.local && allow_local) {
+				allow_local = false;
+				continue;
 			}
 
-			/*
-			 *	Local variables are named "foo", but are always put into the local list.
-			 *
-			 *	We add the list after checking for non-local -> local transition, as
-			 *	request_attr_local isn't a local attribute.
-			 *
-			 *	When the list is forbidden, we're creating a local attribute inside of a local
-			 *	TLV.
-			 */
-			if (is_local && (at_rules->list_presence != TMPL_ATTR_LIST_FORBID)) {
-				MEM(ar = talloc(vpt, tmpl_attr_t));
-				*ar = (tmpl_attr_t){
-					.ar_type = TMPL_ATTR_TYPE_NORMAL,
-					.ar_da = request_attr_local,
-					.ar_parent = fr_dict_root(fr_dict_internal())
-				};
-
-				/*
-				 *	Prepend the local list ref so it gets evaluated
-				 *	first.
-				 */
-				tmpl_attr_list_insert_head(tmpl_attr(vpt), ar);
+			if (ar->ar_da->flags.local) {
+				fr_strerror_printf("Local attributes cannot be used in any list");
+				if (err) *err = TMPL_ATTR_ERROR_FOREIGN_NOT_ALLOWED;
+				fr_sbuff_set(&our_name, &m_l);
+				goto error;
 			}
+		}
+
+		/*
+		 *	Local variables are named "foo", but are always put into the local list.
+		 *
+		 *	We add the list after checking for non-local -> local transition, as
+		 *	request_attr_local isn't a local attribute.
+		 *
+		 *	When the list is forbidden, we're creating a local attribute inside of a local
+		 *	TLV.
+		 */
+		if (is_local && (at_rules->list_presence != TMPL_ATTR_LIST_FORBID)) {
+			MEM(ar = talloc(vpt, tmpl_attr_t));
+			*ar = (tmpl_attr_t){
+				.ar_type = TMPL_ATTR_TYPE_NORMAL,
+				.ar_da = request_attr_local,
+				.ar_parent = fr_dict_root(fr_dict_internal())
+			};
+
+			/*
+			 *	Prepend the local list ref so it gets evaluated
+			 *	first.
+			 */
+			tmpl_attr_list_insert_head(tmpl_attr(vpt), ar);
 		}
 	}
 
 	/*
-	 *	Ensure that the default list is specified.
+	 *	If a list wasn't already specified, then add one now.
 	 */
 	if (!tmpl_attr_is_list_attr(tmpl_attr_list_head(tmpl_attr(vpt)))) {
 		tmpl_attr_t *ar;
@@ -2424,8 +2453,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	}
 
 	/*
-	 *	If there is a default request (parent, outer, etc.), duplicate them and move them into the
-	 *	list.
+	 *	If there is a default request (parent, outer, etc.), add it to the ar list.
 	 *
 	 *	A NULL request_def pointer is equivalent to the current request.
 	 */
@@ -2441,9 +2469,8 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		tmpl_attr_t *ar;
 
 		/*
-		 *	Ensure that the list is set correctly, so that
-		 *	the returned vpt just doesn't just match the
-		 *	input rules, it is also internally consistent.
+		 *	Ensure that the list is set correctly, so that the returned vpt just doesn't just
+		 *	match the input rules, it is also internally consistent.
 		 */
 		ar = tmpl_attr_list_head(tmpl_attr(vpt));
 		fr_assert(ar != NULL);
@@ -4450,37 +4477,6 @@ void tmpl_unresolve(tmpl_t *vpt)
 	memcpy(vpt, &tmp, sizeof(*vpt));
 
 	TMPL_VERIFY(vpt);
-}
-
-static int attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
-{
-	switch (ref->type) {
-	case TMPL_ATTR_TYPE_NORMAL:
-	{
-		ref->da = ref->ar_unknown = fr_dict_attr_unknown_afrom_da(vpt, ref->da);
-		if (!ref->da) return -1;
-
-		ref->ar_unknown->type = FR_TYPE_OCTETS;
-		ref->is_raw = 1;
-		ref->type = TMPL_ATTR_TYPE_UNKNOWN;
-	}
-		break;
-	case TMPL_ATTR_TYPE_UNSPEC:	/* noop */
-		break;
-
-	case TMPL_ATTR_TYPE_UNKNOWN:
-		ref->ar_unknown->type = FR_TYPE_OCTETS;
-		ref->is_raw = 1;
-		break;
-
-	case TMPL_ATTR_TYPE_UNRESOLVED:
-		ref->is_raw = true;
-		break;
-	}
-
-	TMPL_ATTR_VERIFY(vpt);
-
-	return 0;
 }
 
 /** Add an unknown #fr_dict_attr_t specified by a #tmpl_t to the main dictionary
