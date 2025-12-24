@@ -684,11 +684,7 @@ static inline bool tmpl_attr_is_list_attr(tmpl_attr_t const *ar)
 {
 	if (!ar || !ar_is_normal(ar)) return false;
 
-	return (ar->ar_da == request_attr_request) ||
-	       (ar->ar_da == request_attr_reply) ||
-	       (ar->ar_da == request_attr_control) ||
-	       (ar->ar_da == request_attr_state) ||
-	       (ar->ar_da == request_attr_local);
+	return request_attr_is_list(ar->ar_da);
 }
 
 /** Return true if the head attribute reference is a list reference

@@ -359,6 +359,15 @@ void		request_log_prepend(request_t *request, fr_log_t *log, fr_log_lvl_t lvl);
 void		request_verify(char const *file, int line, request_t const *request);	/* only for special debug builds */
 #endif
 
+static inline bool request_attr_is_list(fr_dict_attr_t const *da)
+{
+	return (da == request_attr_request) ||
+		(da == request_attr_reply) ||
+		(da == request_attr_control) ||
+		(da == request_attr_state) ||
+		(da == request_attr_local);
+}
+
 #ifdef __cplusplus
 }
 #endif

@@ -574,10 +574,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map, fr_edit_list_t
 		/*
 		 *	We don't delete the main lists, we just modify their contents.
 		 */
-		if ((da == request_attr_request) ||
-		    (da == request_attr_reply) ||
-		    (da == request_attr_control) ||
-		    (da == request_attr_state)) {
+		if (request_attr_is_list(da)) {
 			fr_assert(vp != NULL);
 
 			if (fr_edit_list_free_pair_children(el, vp) < 0) return -1;
