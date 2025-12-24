@@ -629,7 +629,7 @@ static void cancel_request(UNUSED fr_timer_list_t *tl, UNUSED fr_time_t when, vo
 	request->rcode = RLM_MODULE_TIMEOUT;
 }
 
-fr_time_delta_t time_offset = fr_time_delta_wrap(0);
+static fr_time_delta_t time_offset = fr_time_delta_wrap(0);
 
 /** Sythentic time source for tests
  *
