@@ -1442,6 +1442,7 @@ void main_config_hup(main_config_t *config)
 	INFO("HUP - NYI in version 4");	/* Not yet implemented in v4 */
 }
 
+#if 0
 static fr_table_num_ordered_t config_arg_table[] = {
 };
 static size_t config_arg_table_len = NUM_ELEMENTS(config_arg_table);
@@ -1499,3 +1500,4 @@ bool main_config_migrate_option_get(char const *name)
 
 	return *(bool *) (((uintptr_t) main_config) + offset);
 }
+#endif

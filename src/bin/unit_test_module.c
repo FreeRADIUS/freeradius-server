@@ -837,11 +837,13 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'S': /* Migration support */
+#if 0
 				if (main_config_parse_option(optarg) < 0) {
 					fprintf(stderr, "%s: Unknown configuration option '%s'\n",
 						config->name, optarg);
 					fr_exit_now(EXIT_FAILURE);
 				}
+#endif
 				break;
 
 			case 'X':

@@ -419,11 +419,13 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'S':	/* Migration support */
+#if 0
 			if (main_config_parse_option(optarg) < 0) {
 				fprintf(stderr, "%s: Unknown configuration option '%s'\n",
 					program, optarg);
 				EXIT_WITH_FAILURE;
 			}
+#endif
 			break;
 
 		case 't':	/* no child threads */
@@ -1212,7 +1214,11 @@ static NEVER_RETURNS void usage(int status)
 #endif
 	fprintf(output, "  -P            Always write out PID, even with -f.\n");
 	fprintf(output, "  -s            Do not spawn child processes to handle requests (same as -ft).\n");
-	fprintf(output, "  -S <flag>     Set migration flags to assist with upgrades from version 3.\n");
+
+	/*
+	 *	Place-holder in case we need it.  Should be removed before the release.
+	 */
+//	fprintf(output, "  -S <flag>     Set migration flags to assist with upgrades from version 3.\n");
 	fprintf(output, "  -t            Disable threads.\n");
 	fprintf(output, "  -T            Prepend timestamps to  log messages.\n");
 	fprintf(output, "  -v            Print server version information.\n");
