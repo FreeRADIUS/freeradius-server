@@ -99,11 +99,11 @@ fr_dict_autoload_t rlm_eap_peap_dict[] = {
 	DICT_AUTOLOAD_TERMINATOR
 };
 
-fr_dict_attr_t const *attr_auth_type;
-fr_dict_attr_t const *attr_eap_tls_require_client_cert;
+static fr_dict_attr_t const *attr_auth_type;
+static fr_dict_attr_t const *attr_eap_tls_require_client_cert;
 
-fr_dict_attr_t const *attr_eap_message;
-fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_eap_message;
+static fr_dict_attr_t const *attr_user_name;
 
 extern fr_dict_attr_autoload_t rlm_eap_peap_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_peap_dict_attr[] = {
