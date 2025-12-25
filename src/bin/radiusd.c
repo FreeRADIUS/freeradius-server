@@ -82,7 +82,7 @@ RCSID("$Id$")
 
 char const	*radiusd_version = RADIUSD_VERSION_BUILD("FreeRADIUS");
 static pid_t	radius_pid;
-char const	*program = NULL;
+static char const	*program = NULL;
 
 /*
  *  Configuration items.
