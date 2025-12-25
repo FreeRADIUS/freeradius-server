@@ -863,37 +863,41 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 	 *	Check the "update" section for destination lists.
 	 */
 	if (update) {
-		fr_slen_t slen;
-		char const *p;
+		char const *name2 = cf_section_name2(cs);
 
-		p = cf_section_name2(cs);
-		if (!p) goto do_children;
+		if (name2) {
+			fr_dict_attr_t const *list_def = NULL;
+			fr_sbuff_t sbuff = FR_SBUFF_IN(name2, strlen(name2));
 
-		if (our_lhs_rules.attr.list_presence == TMPL_ATTR_LIST_FORBID) {
-			cf_log_err(ci, "Invalid \"update\" section - list references are not allowed here");
-			return -1;
-		}
+			/*
+			 *	There's a name, but it's not one we recognize.  Or, it's one we recognize but
+			 *	there are things after it, we forbid it.
+			 *
+			 *	This code is ONLY used for "update" sections in modules.  None of those
+			 *	examples use a destination list.  If we allow any destination list (including
+			 *	parent, outer, etc.) then we allow the possibility of changing protocols,
+			 *	which is bad.
+			 *
+			 *	This limitation also means that the module "update" lists can't automatically
+			 *	edit other structural attributes, such as "reply.foo".  But that seems a small
+			 *	price to pay.
+			 *
+			 *	The admin can still specify outer / parent / etc. on the individual entries in
+			 *	an "update" section, but we'll let that go for now.
+			 *
+			 *	@todo - We should arguably forbid parent/outer list references in an "update"
+			 *	section.
+			 */
+			if ((tmpl_attr_list_from_substr(&list_def, &sbuff) <= 0) ||
+			    !fr_sbuff_eof(&sbuff)) {
+				cf_log_err(ci, "Invalid destination list specifier for 'update' - must be one of 'request', 'reply', 'control', or 'state'");
+				return -1;
+			}
 
-		MEM(tmp_ctx = talloc_init_const("tmp"));
-
-		slen = tmpl_request_ref_list_afrom_substr(ctx, NULL, &our_lhs_rules.attr.request_def,
-							  &FR_SBUFF_IN_STR(p));
-		if (slen < 0) {
-			cf_log_err(ci, "Invalid reference - %s", fr_strerror());
-			talloc_free(tmp_ctx);
-			return -1;
-		}
-		p += slen;
-
-		slen = tmpl_attr_list_from_substr(&our_lhs_rules.attr.list_def, &FR_SBUFF_IN_STR(p));
-		if (slen == 0) {
-			cf_log_err(ci, "Unknown list reference \"%s\"", p);
-			talloc_free(tmp_ctx);
-			return -1;
+			our_lhs_rules.attr.list_def = list_def;
 		}
 	}
 
-do_children:
 	for (ci = cf_item_next(cs, NULL);
 	     ci != NULL;
 	     ci = cf_item_next(cs, ci)) {
