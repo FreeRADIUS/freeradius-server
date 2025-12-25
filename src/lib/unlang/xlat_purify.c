@@ -87,7 +87,7 @@ static int xlat_purify_list_internal(xlat_exp_head_t *head, request_t *request, 
 	our_flags.constant = our_flags.pure = true;		/* we flip these if the children are not pure */
 
 	for (node = fr_dlist_head(&head->dlist);
-	     next = fr_dlist_next(&head->dlist, node), node != NULL;
+	     (void) (next = fr_dlist_next(&head->dlist, node)), node != NULL;
 	     node = next) {
 		if (!node->flags.can_purify) continue;
 
