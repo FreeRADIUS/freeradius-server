@@ -571,10 +571,7 @@ static int edit_delete_lhs(request_t *request, edit_map_t *current, bool delete)
 		fr_dict_attr_t const *da = tmpl_attr_tail_da(current->lhs.vpt);
 
 		if (fr_type_is_structural(da->type) &&
-		    ((da == request_attr_request) ||
-		     (da == request_attr_reply) ||
-		     (da == request_attr_control) ||
-		     (da == request_attr_state))) {
+		    request_attr_is_list(da)) {
 			delete = false;
 		}
 	}
