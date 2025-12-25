@@ -76,7 +76,7 @@ RCSID("$Id$")
 
 fr_dict_t const *dict_freeradius;
 fr_dict_t const *dict_radius;
-fr_dict_t const *dict_tls;
+static fr_dict_t const *dict_tls;
 
 extern fr_dict_autoload_t eap_base_dict[];
 fr_dict_autoload_t eap_base_dict[] = {
