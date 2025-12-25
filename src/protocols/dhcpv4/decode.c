@@ -120,6 +120,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) return PAIR_DECODE_OOM;
+	PAIR_ALLOCED(vp);
 
 	/*
 	 *	string / octets / bool can be empty.  Other data types are
@@ -432,6 +433,7 @@ next:
 	if (!vp) {
 		vp = fr_pair_afrom_da(ctx, vendor);
 		if (!vp) return PAIR_DECODE_FATAL_ERROR;
+		PAIR_ALLOCED(vp);
 
 		fr_pair_append(out, vp);
 	}
@@ -518,6 +520,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (!vp) {
 			vp = fr_pair_afrom_da(ctx, da);
 			if (!vp) return PAIR_DECODE_FATAL_ERROR;
+			PAIR_ALLOCED(vp);
 
 			append = true;
 		}

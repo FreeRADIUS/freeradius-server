@@ -2036,6 +2036,7 @@ static ssize_t fr_der_decode_choice(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
+	PAIR_ALLOCED(vp);
 
 	if (unlikely(fr_der_decode_pair_dbuff(vp, &vp->vp_group, child, &our_in, decode_ctx) < 0)) {
 		fr_strerror_printf_push("Failed decoding %s", vp->da->name);
@@ -2130,6 +2131,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
+	PAIR_ALLOCED(vp);
 
 	/*
 	 *	Critical extensions are decoded into the Critical parent.
@@ -2144,6 +2146,7 @@ static ssize_t fr_der_decode_x509_extensions(TALLOC_CTX *ctx, fr_pair_list_t *ou
 		talloc_free(vp);
 		goto oom;
 	}
+	PAIR_ALLOCED(vp2);
 
 	max = fr_der_flag_max(parent); /* Maximum number of extensions which can be used here */
 
@@ -2357,6 +2360,7 @@ static ssize_t fr_der_decode_string(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 		fr_strerror_const_push("Out of memory");
 		return -1;
 	}
+	PAIR_ALLOCED(vp);
 
 	if (unlikely(fr_pair_value_bstr_alloc(vp, &str, len, false) < 0)) {
 		talloc_free(vp);
@@ -2467,6 +2471,7 @@ ssize_t fr_der_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 			fr_strerror_const_push("Out of memory");
 			return -1;
 		}
+		PAIR_ALLOCED(vp);
 
 		if (unlikely(fr_value_box_copy(vp, &vp->data, flags->default_value) < 0)) {
 			talloc_free(vp);

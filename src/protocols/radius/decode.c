@@ -388,6 +388,7 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, fr_pair_list_t *list,
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return -1;
+	PAIR_ALLOCED(vp);
 
 	if (fr_pair_value_mem_alloc(vp, &p, total, true) != 0) {
 		talloc_free(vp);
@@ -570,6 +571,7 @@ static ssize_t decode_nas_filter_rule(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				talloc_free(buffer);
 				return -1;
 			}
+			PAIR_ALLOCED(vp);
 
 			if (fr_pair_value_bstrndup(vp, (char const *) decode, len, true) != 0) {
 				talloc_free(buffer);
@@ -607,6 +609,7 @@ static ssize_t decode_digest_attributes(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return PAIR_DECODE_OOM;
+	PAIR_ALLOCED(vp);
 
 redo:
 	FR_PROTO_HEX_DUMP(p, end - p, "decode_digest_attributes");
@@ -667,6 +670,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return PAIR_DECODE_OOM;
+	PAIR_ALLOCED(vp);
 
 	/*
 	 *  Record where we were in the list when this function was called
@@ -1590,6 +1594,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 			group = fr_pair_afrom_da(packet_ctx->tag_root_ctx, group_da);
 			if (unlikely(!group)) goto tag_alloc_error;
+			PAIR_ALLOCED(group);
 
 			packet_ctx->tags[tag]->parent = group;
 
@@ -1813,6 +1818,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return -1;
+		PAIR_ALLOCED(vp);
 
 		ret = proto->decode(vp, &vp->vp_group, p, attr_len);
 		if (ret < 0) goto raw;
@@ -1842,6 +1848,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		vp = fr_pair_afrom_da_nested(packet_ctx->tags[tag]->parent, &packet_ctx->tags[tag]->parent->vp_group, parent);
 	}
 	if (!vp) return -1;
+	PAIR_ALLOCED(vp);
 
 	switch (parent->type) {
 	/*
@@ -2032,6 +2039,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 */
 		vp = fr_pair_afrom_da(ctx, da);
 		if (!vp) return -1;
+		PAIR_ALLOCED(vp);
 
 		/*
 		 *	Ensure that it has a value.
@@ -2041,7 +2049,6 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			return -1;
 		}
 
-		PAIR_ALLOCED(vp);
 		fr_pair_append(out, vp);
 
 		return 2;
@@ -2216,6 +2223,8 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		fr_strerror_const("Failed creating Packet-Type");
 		return -1;
 	}
+	PAIR_ALLOCED(vp);
+
 	vp->vp_uint32 = data[0];
 	fr_pair_append(out, vp);
 
@@ -2224,6 +2233,8 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		fr_strerror_const("Failed creating Packet-Authentication-Vector");
 		return -1;
 	}
+	PAIR_ALLOCED(vp);
+
 	(void) fr_pair_value_memdup(vp, data + 4, 16, true);
 	fr_pair_append(out, vp);
 

@@ -92,6 +92,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 			vp = fr_pair_afrom_da(ctx, parent);
 			if (!vp) return PAIR_DECODE_OOM;
+			PAIR_ALLOCED(vp);
 
 			vp->vp_ip.af = AF_INET6;
 			vp->vp_ip.prefix = data[0];
@@ -107,6 +108,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 			vp = fr_pair_afrom_da(ctx, parent);
 			if (!vp) return PAIR_DECODE_OOM;
+			PAIR_ALLOCED(vp);
 
 			vp->vp_ip.af = AF_INET6;
 			break;
@@ -122,6 +124,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
+		PAIR_ALLOCED(vp);
 
 		vp->vp_ip.af = AF_INET6;
 		vp->vp_ip.prefix = prefix_len;
@@ -137,6 +140,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (data_len != 0) goto raw;
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
+		PAIR_ALLOCED(vp);
+
 		vp->vp_bool = true;
 		break;
 
@@ -152,6 +157,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	default:
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
+		PAIR_ALLOCED(vp);
 
 		if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
 					      &FR_DBUFF_TMP(data, data_len), data_len, true) < 0) {

@@ -62,6 +62,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (!struct_vp) {
 		return PAIR_DECODE_OOM;
 	}
+	PAIR_ALLOCED(struct_vp);
 
 	fr_pair_list_init(&child_list_head); /* still used elsewhere */
 	child_list = &struct_vp->vp_group;
@@ -176,6 +177,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				talloc_free(struct_vp);
 				return PAIR_DECODE_OOM;
 			}
+			PAIR_ALLOCED(vp);
 
 			switch (child->type) {
 				case FR_TYPE_BOOL:
@@ -289,6 +291,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			 */
 			vp = fr_pair_afrom_da(child_ctx, child);
 			if (!vp) goto oom;
+			PAIR_ALLOCED(vp);
 
 			fr_pair_append(child_list, vp);
 			substruct_da = child;
