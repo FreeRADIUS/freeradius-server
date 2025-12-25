@@ -70,7 +70,7 @@ typedef struct {
 	struct wbcContext	*ctx;
 } winbind_ctx_t;
 
-FR_SLAB_TYPES(mschap, winbind_ctx_t);
+FR_SLAB_TYPES(mschap, winbind_ctx_t)
 FR_SLAB_FUNCS(mschap, winbind_ctx_t)
 
 typedef struct {

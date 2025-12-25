@@ -78,8 +78,8 @@ static void worker_verify(fr_worker_t *worker);
 #define CACHE_LINE_SIZE	64
 static _Atomic(uint64_t) request_number = 0;
 
-FR_SLAB_TYPES(request, request_t);
-FR_SLAB_FUNCS(request, request_t);
+FR_SLAB_TYPES(request, request_t)
+FR_SLAB_FUNCS(request, request_t)
 
 static _Thread_local fr_ring_buffer_t *fr_worker_rb;
 
