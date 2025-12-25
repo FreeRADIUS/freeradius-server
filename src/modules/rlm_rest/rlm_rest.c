@@ -1341,7 +1341,7 @@ static int rest_sect_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, UNUSED 
 		call_env_parsed_set_data(parsed, section);
 	}
 	return 0;
-};
+}
 
 static const call_env_method_t rest_method_env = {
 	FR_CALL_ENV_METHOD_OUT(rlm_rest_call_env_t),
