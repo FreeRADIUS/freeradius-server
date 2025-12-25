@@ -4306,7 +4306,7 @@ int tmpl_xlat_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
  */
 int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 {
-	static tmpl_res_rules_t const default_tr_rules;
+	static tmpl_res_rules_t const default_tr_rules = {};
 
 	int ret = 0;
 
