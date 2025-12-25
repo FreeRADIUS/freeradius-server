@@ -155,7 +155,7 @@ void fr_backtrace(void)
 {
 	unsigned int frame = 0;
 
-	if (fr_fault_log_fd >= 0) {
+	if ((fr_fault_log_fd >= 0) && backtrace_state) {
 		FR_FAULT_LOG("Backtrace:");
 		backtrace_full(backtrace_state, 0, _backtrace_print, _backtrace_error, &frame);
 	}
