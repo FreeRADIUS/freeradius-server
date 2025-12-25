@@ -67,9 +67,9 @@ cache cache_eap {
 	ttl = 15
 
 	#
-	#  update <section> { ... }::
+	#  update { ... }::
 	#
-	update reply {
+	update {
 		reply += reply
 		control.State := request.State
 	}

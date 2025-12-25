@@ -44,7 +44,7 @@ ttl:: TTL for `cache` entries.
 
 
 
-update <section> { ... }::
+update { ... }::
 
 
 
@@ -61,7 +61,7 @@ key:: `cache` key.
 
 
 
-update <section> { ... }::
+update { ... }::
 
 
 == Default Configuration

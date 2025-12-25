@@ -51,7 +51,7 @@ cache cache_tls_session {
 	ttl = 3600	# 60 mins
 
 	#
-	#  update <section> { ... }::
+	#  update { ... }::
 	#
 	update {
 		reply.Session-Data := Session-Data
@@ -75,7 +75,7 @@ cache cache_ocsp {
 	key = %{session-state.TLS-Client-Cert-Serial}
 
 	#
-	#  update <section> { ... }::
+	#  update { ... }::
 	#
 	update {
 		control.TLS-OCSP-Cert-Valid := TLS-OCSP-Cert-Valid
