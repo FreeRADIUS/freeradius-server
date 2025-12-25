@@ -1272,7 +1272,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				fr_assert(arg != NULL);
 
 				if (fr_value_box_list_concat_in_place(arg, arg, result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
-					return -1;
+					return XLAT_ACTION_FAIL;
 				}
 			}
 
