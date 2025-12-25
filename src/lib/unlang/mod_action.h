@@ -32,6 +32,7 @@ extern "C" {
 #include <freeradius-devel/util/retry.h>
 
 #define MOD_PRIORITY(_x) ((_x) | 0x80)
+#define MOD_DEFINE(_x) MOD_PRIORITY_ ## _x = MOD_PRIORITY(_x)
 
 typedef enum {
 	MOD_ACTION_NOT_SET = 0,       	//!< default "not set by anything"
@@ -40,10 +41,14 @@ typedef enum {
 	MOD_ACTION_RETURN = 3,		//!< stop processing the section,
 					//!<  and return the rcode with unset priority
 
-	MOD_PRIORITY_1 = MOD_PRIORITY(1),
-	MOD_PRIORITY_2 = MOD_PRIORITY(2),
-	MOD_PRIORITY_3 = MOD_PRIORITY(3),
-	MOD_PRIORITY_4 = MOD_PRIORITY(4),
+	MOD_DEFINE(1),
+	MOD_DEFINE(2),
+	MOD_DEFINE(3),
+	MOD_DEFINE(4),
+	MOD_DEFINE(5),
+	MOD_DEFINE(6),
+	MOD_DEFINE(7),
+	MOD_DEFINE(8),
 
 	/*
 	 *	If ubsan or the compiler complains
