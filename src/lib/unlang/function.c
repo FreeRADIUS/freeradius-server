@@ -104,7 +104,7 @@ static unlang_action_t call_with_result_repeat(unlang_result_t *p_result, reques
 {
 	unlang_action_t			ua;
 	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
-	unlang_function_with_result_t	func = REPEAT(state);
+	unlang_function_with_result_t	func;
 
 	STORE_CALLER;
 
@@ -120,6 +120,7 @@ again:
 	/*
 	 *	Only called once...
 	 */
+	func = state->repeat.wres;
 	REPEAT(state) = NULL;
 	state->repeat_name = NULL;
 	ua = func(p_result, request, state->uctx);
@@ -181,7 +182,7 @@ static unlang_action_t call_no_result_repeat(UNUSED unlang_result_t *p_result, r
 {
 	unlang_action_t			ua;
 	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
-	unlang_function_no_result_t	func = REPEAT(state);
+	unlang_function_no_result_t	func;
 
 	STORE_CALLER;
 
@@ -197,6 +198,7 @@ again:
 	/*
 	 *	Only called once...
 	 */
+	func = state->repeat.nres;
 	REPEAT(state) = NULL;
 	state->repeat_name = NULL;
 	ua = func(request, state->uctx);
@@ -464,8 +466,8 @@ unlang_action_t _unlang_function_push_with_result(unlang_result_t *p_result,
 
 	ua = unlang_function_push_common(p_result,
 					 request,
-					 func, func_name,
-					 repeat, repeat_name,
+					 (void *) func, func_name,
+					 (void *) repeat, repeat_name,
 					 signal, sigmask, signal_name,
 					 UNLANG_FUNCTION_TYPE_WITH_RESULT, top_frame, uctx);
 
@@ -514,8 +516,8 @@ unlang_action_t _unlang_function_push_no_result(request_t *request,
 
 	ua = unlang_function_push_common(NULL,
 					 request,
-					 func, func_name,
-					 repeat, repeat_name,
+					 (void *) func, func_name,
+					 (void *) repeat, repeat_name,
 					 signal, sigmask, signal_name,
 					 UNLANG_FUNCTION_TYPE_NO_RESULT, top_frame, uctx);
 
