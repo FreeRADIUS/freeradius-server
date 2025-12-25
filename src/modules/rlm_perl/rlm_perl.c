@@ -35,6 +35,8 @@ RCSID("$Id$")
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(compound-token-split-by-macro) /* Perl does horrible things with macros */
+DIAG_OFF(unreachable-code-return)
+DIAG_OFF(unreachable-code-break)
 DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
 #ifdef INADDR_ANY
