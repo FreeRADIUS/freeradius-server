@@ -541,18 +541,44 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 	at_rules = &t_rules->attr;
 
 	/*
-	 *	The caller wants to know the default namespace for
-	 *	resolving the attribute.
-	 *
-	 *	@todo - why not use dict_def if it's set?  Tho TBH we
-	 *	should probably just remove dict_def, and always use "namespace".
+	 *	The caller wants to know the default namespace for resolving the attribute.
 	 */
 	if (namespace) {
 		if (at_rules->namespace) {
-			/*
-			 *	If the namespace is FR_TYPE_GROUP use the correct namespace
-			 */
-			*namespace = at_rules->namespace->type == FR_TYPE_GROUP ? fr_dict_attr_ref(at_rules->namespace) : at_rules->namespace;
+			if (request_attr_is_list(at_rules->namespace)) {
+				/*
+				 *	If the namespace is a list attribute, then reset it to NULL, so that the rest of the
+				 *	code will use the default dictionary.
+				 */
+				if (!at_rules->dict_def) {
+					fr_strerror_const("No dictionary was set - cannot parse attributes");
+					FR_SBUFF_ERROR_RETURN(&our_in);
+				}
+				*namespace = NULL;
+
+			} else if (at_rules->namespace->type != FR_TYPE_GROUP) {
+				/*
+				 *	If the namespace is a structural type, then use the namespace is this
+				 *	attribute.  We can then parse children of the attribute.
+				 */
+				*namespace = at_rules->namespace;
+
+			} else if (at_rules->namespace->flags.internal && at_rules->dict_def) {
+				/*
+				 *	If the group is internal, AND we have a default dictionary, reset the
+				 *	namespace to NULL, so that the rest of the code will use the default
+				 *	dictionary.
+				 */
+				*namespace = NULL;
+
+			} else {
+				/*
+				 *	The namespace is a non-internal group.  Update the namespace to be
+				 *	whereever the group is pointing to.
+				 */
+				*namespace = fr_dict_attr_ref(at_rules->namespace);
+			}
+
 		} else {
 			*namespace = NULL;
 		}
@@ -568,7 +594,7 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 	/*
 	 *	We're in a name space, OR lists are forbidden, don't allow list qualifiers.
 	 */
-	if (at_rules->namespace || (at_rules->list_presence == TMPL_ATTR_LIST_FORBID)) {
+	if (*namespace || (at_rules->list_presence == TMPL_ATTR_LIST_FORBID)) {
 		if (fr_sbuff_is_str_literal(&our_in, "outer.") ||
 		    fr_sbuff_is_str_literal(&our_in, "parent.")) {
 			fr_strerror_const("request list qualifiers are not allowed here");

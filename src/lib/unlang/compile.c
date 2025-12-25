@@ -682,16 +682,10 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_ctx_t *un
 		map_t *child;
 
 		/*
-		 *	Don't update namespace for reply += { ... }
-		 *
-		 *	Do update namespace for reply.foo += { ... }
-		 *
-		 *	Don't update if the LHS is an internal group.
+		 *	Reset the namespace to be this attribute.  The tmpl tokenizer will take care of
+		 *	figuring out if this is a group, TLV, dictionary switch, etc.
 		 */
-		if ((tmpl_attr_num_elements(map->lhs) > 1) && (t_rules.attr.list_def != parent_da) &&
-		    !((parent_da->type == FR_TYPE_GROUP) && parent_da->flags.internal)) {
-			t_rules.attr.namespace = parent_da;
-		}
+		t_rules.attr.namespace = parent_da;
 
 		if (map_afrom_cs_edit(map, &map->child, cs, &t_rules, &t_rules, unlang_fixup_edit, map, 256) < 0) {
 			goto fail;
