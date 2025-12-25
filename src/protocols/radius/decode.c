@@ -1852,7 +1852,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	switch (parent->type) {
 	/*
-	 *  Magic RADIUS format IPv4 prefix
+	 *  RFC8044 IPv4 prefix
 	 *
 	 *  0                   1                   2                   3
 	 *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -1862,22 +1862,20 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *      ... Prefix                 |
 	 * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 *
-	 * RFC does not require non-masked bits to be zero.
+	 *  The bits outside of the prefix mask MUST be zero.
 	 */
 	case FR_TYPE_IPV4_PREFIX:
 		if (data_len != 6) goto raw;
 		if (p[0] != 0) goto raw;
-		if ((p[1] & 0x3f) > 32) goto raw;
 
-		vp->vp_ip.af = AF_INET;
-		vp->vp_ip.scope_id = 0;
-		vp->vp_ip.prefix = p[1] & 0x3f;
-		memcpy((uint8_t *)&vp->vp_ipv4addr, p + 2, data_len - 2);
-		fr_ipaddr_mask(&vp->vp_ip, p[1] & 0x3f);
+		if (fr_value_box_ipaddr_from_network(&vp->data, parent->type, parent,
+						     p[1], p + 2, 4, true, true) < 0) {
+			goto raw;
+		}
 		break;
 
 	/*
-	 *  Magic RADIUS format IPv6 prefix
+	 *  RFC8044 IPv6 prefix
 	 *
 	 *   0                   1                   2                   3
 	 *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -1893,36 +1891,19 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *                               Prefix                             |
 	 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 *
-	 *  RFC says non-masked bits MUST be zero.
+	 *  The bits outside of the prefix mask MUST be zero.
 	 */
 	case FR_TYPE_IPV6_PREFIX:
 	{
 		if (data_len > 18) goto raw;
 		if (data_len < 2) goto raw;
 		if (p[0] != 0) goto raw;	/* First byte is always 0 */
-		if (p[1] > 128) goto raw;
 
-		/*
-		 *	Convert prefix bits to bytes to check that
-		 *	we have sufficient data.
-		 *
-		 *	If Prefix has more data than Prefix-Length
-		 *	indicates, we just ignore the rest.
-		 */
-		if (fr_bytes_from_bits(p[1]) > (data_len - 2)) goto raw;
+		if (fr_value_box_ipaddr_from_network(&vp->data, parent->type, parent,
+						     p[1], p + 2, data_len - 2, false, true) < 0) {
+			goto raw;
+		}
 
-		vp->vp_ip.af = AF_INET6;
-		vp->vp_ip.scope_id = 0;
-		vp->vp_ip.prefix = p[1];
-
-		memcpy((uint8_t *)&vp->vp_ipv6addr, p + 2, data_len - 2);
-		fr_ipaddr_mask(&vp->vp_ip, p[1]);
-
-		/*
-		 *	Check the prefix data is the same before
-		 *	and after casting (it should be).
-		 */
-		if (memcmp(p + 2, (uint8_t *)&vp->vp_ipv6addr, data_len - 2) != 0) goto raw;
 	}
 		break;
 

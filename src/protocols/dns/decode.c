@@ -69,7 +69,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 {
 	ssize_t			slen;
 	fr_pair_t		*vp;
-	uint8_t			prefix_len;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_value");
 
@@ -78,57 +77,24 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	Address MAY be shorter than 16 bytes.
 	 */
 	case FR_TYPE_IPV6_PREFIX:
-		if ((data_len == 0) || (data_len > (1 + sizeof(vp->vp_ipv6addr)))) {
+		if (data_len == 0) {
 		raw:
 			return fr_pair_raw_from_network(ctx, out, parent, data, data_len);
-
 		}
-
-		/*
-		 *	Structs used fixed length fields
-		 */
-		if (parent->parent->type == FR_TYPE_STRUCT) {
-			if (data_len != (1 + sizeof(vp->vp_ipv6addr))) goto raw;
-
-			vp = fr_pair_afrom_da(ctx, parent);
-			if (!vp) return PAIR_DECODE_OOM;
-			PAIR_ALLOCED(vp);
-
-			vp->vp_ip.af = AF_INET6;
-			vp->vp_ip.prefix = data[0];
-			memcpy(&vp->vp_ipv6addr, data + 1, data_len - 1);
-			break;
-		}
-
-		/*
-		 *	No address, the prefix length MUST be zero.
-		 */
-		if (data_len == 1) {
-			if (data[0] != 0) goto raw;
-
-			vp = fr_pair_afrom_da(ctx, parent);
-			if (!vp) return PAIR_DECODE_OOM;
-			PAIR_ALLOCED(vp);
-
-			vp->vp_ip.af = AF_INET6;
-			break;
-		}
-
-		prefix_len = data[0];
-
-		/*
-		 *	If we have a /64 prefix but only 7 bytes of
-		 *	address, that's an error.
-		 */
-		if (fr_bytes_from_bits(prefix_len) > (data_len - 1)) goto raw;
 
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
 		PAIR_ALLOCED(vp);
 
-		vp->vp_ip.af = AF_INET6;
-		vp->vp_ip.prefix = prefix_len;
-		memcpy(&vp->vp_ipv6addr, data + 1, data_len - 1);
+		/*
+		 *	Check values of prefix length, data lengths, etc.
+		 */
+		if (fr_value_box_ipaddr_from_network(&vp->data, parent->type, parent,
+						     data[0], data + 1, data_len - 1,
+						     (parent->parent->type == FR_TYPE_STRUCT), true) < 0) {
+			talloc_free(vp);
+			goto raw;
+		}
 		break;
 
 	/*

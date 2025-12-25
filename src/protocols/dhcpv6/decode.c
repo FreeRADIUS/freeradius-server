@@ -72,7 +72,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 {
 	ssize_t			slen;
 	fr_pair_t		*vp = NULL;
-	uint8_t			prefix_len;
 	fr_dict_attr_t const	*ref;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_value");
@@ -115,61 +114,16 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		}
 
-		/*
-		 *	Structs used fixed length IPv6 addressews.
-		 */
-		if (parent->parent->type == FR_TYPE_STRUCT) {
-			if (data_len != (1 + sizeof(vp->vp_ipv6addr))) {
-				goto raw;
-			}
-
-			vp = fr_pair_afrom_da(ctx, parent);
-			if (!vp) return PAIR_DECODE_OOM;
-			PAIR_ALLOCED(vp);
-
-			vp->vp_ip.af = AF_INET6;
-			vp->vp_ip.scope_id = 0;
-			vp->vp_ip.prefix = data[0];
-			memcpy(&vp->vp_ipv6addr, data + 1, sizeof(vp->vp_ipv6addr));
-			slen = 1 + sizeof(vp->vp_ipv6addr);
-			break;
-		}
-
-		/*
-		 *	No address, the prefix length MUST be zero.
-		 */
-		if (data_len == 1) {
-			if (data[0] != 0) goto raw;
-
-			vp = fr_pair_afrom_da(ctx, parent);
-			if (!vp) return PAIR_DECODE_OOM;
-			PAIR_ALLOCED(vp);
-
-			vp->vp_ip.af = AF_INET6;
-			slen = 1;
-			break;
-		}
-
-		prefix_len = data[0];
-
-		/*
-		 *	If we have a /64 prefix but only 7 bytes of
-		 *	address, that's an error.
-		 */
-		slen = fr_bytes_from_bits(prefix_len);
-		if ((size_t) slen > (data_len - 1)) {
-			goto raw;
-		}
-
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
 		PAIR_ALLOCED(vp);
 
-		vp->vp_ip.af = AF_INET6;
-		vp->vp_ip.prefix = prefix_len;
-		memcpy(&vp->vp_ipv6addr, data + 1, slen);
+		slen = fr_value_box_ipaddr_from_network(&vp->data, parent->type, parent,
+							data[0], data + 1, data_len - 1,
+							(parent->parent->type == FR_TYPE_STRUCT), true);
+		if (slen < 0) goto raw_free;
 
-		slen++;
+		slen++;		/* account for the prefix */
 		break;
 
 	/*
@@ -258,13 +212,9 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (!vp) return PAIR_DECODE_OOM;
 		PAIR_ALLOCED(vp);
 
-		/*
-		 *	Limit the IPv6 address to 16 octets, with no scope.
-		 */
-		if (data_len < sizeof(vp->vp_ipv6addr)) goto raw;
-
-		slen = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
-						 &FR_DBUFF_TMP(data,  sizeof(vp->vp_ipv6addr)),  sizeof(vp->vp_ipv6addr), true);
+		slen = fr_value_box_ipaddr_from_network(&vp->data, parent->type, parent,
+							128, data, data_len,
+							true, true);
 		if (slen < 0) goto raw_free;
 		break;
 

@@ -161,32 +161,32 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 		break;
 
 	/*
-	 *	Doesn't include scope, whereas the generic format can
+	 *	Doesn't include scope, whereas the generic format can.
 	 */
 	case FR_TYPE_IPV6_ADDR:
-		if ((size_t) (end - p) < sizeof(vp->vp_ipv6addr)) goto raw;
+		slen = fr_value_box_ipaddr_from_network(&vp->data, da->type, da,
+							128, p, (size_t) (end - p),
+							exact, true);
+		if (slen < 0) goto raw;
+		fr_assert(slen == sizeof(vp->vp_ipv6addr));
 
-		if (exact && ((size_t) (end - p) > sizeof(vp->vp_ipv6addr))) goto raw;
-
-		memcpy(&vp->vp_ipv6addr, p, sizeof(vp->vp_ipv6addr));
-		vp->vp_ip.af = AF_INET6;
-		vp->vp_ip.scope_id = 0;
-		vp->vp_ip.prefix = 128;
-		vp->vp_tainted = true;
 		p += sizeof(vp->vp_ipv6addr);
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
-		if ((size_t) (end - (p + 1)) < sizeof(vp->vp_ipv6addr)) goto raw;
+		/*
+		 *	Not enough room for the prefix length, that's an issue.
+		 *
+		 *	Note that there's actually no standard for IPv6 prefixes inside of DHCPv4.
+		 */
+		if ((end - p) < 1) goto raw;
 
-		if (exact && ((size_t) (end - p) > sizeof(vp->vp_ipv6addr))) goto raw;
+		slen = fr_value_box_ipaddr_from_network(&vp->data, da->type, da,
+							p[0], p + 1, ((size_t) (end - p)) - 1,
+							exact, true);
+		if (slen < 0) goto raw;
 
-		memcpy(&vp->vp_ipv6addr, p + 1, sizeof(vp->vp_ipv6addr));
-		vp->vp_ip.af = AF_INET6;
-		vp->vp_ip.scope_id = 0;
-		vp->vp_ip.prefix = p[0];
-		vp->vp_tainted = true;
-		p += sizeof(vp->vp_ipv6addr) + 1;
+		p += slen + 1;
 		break;
 
 	case FR_TYPE_STRUCTURAL:
