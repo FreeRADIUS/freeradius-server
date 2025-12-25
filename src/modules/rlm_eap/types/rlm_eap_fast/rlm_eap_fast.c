@@ -85,7 +85,7 @@ static conf_parser_t submodule_config[] = {
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
-fr_dict_t const *dict_eap_fast;
+static fr_dict_t const *dict_eap_fast;
 
 extern fr_dict_autoload_t rlm_eap_fast_dict[];
 fr_dict_autoload_t rlm_eap_fast_dict[] = {
