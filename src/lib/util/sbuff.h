@@ -1769,7 +1769,7 @@ static inline bool fr_sbuff_is_in_charset(fr_sbuff_t *sbuff, bool const chars[st
 static inline bool fr_sbuff_is_str(fr_sbuff_t *sbuff, char const *str, size_t len)
 {
 	if (len == SIZE_MAX) len = strlen(str);
-	if (!fr_sbuff_extend_lowat(NULL, sbuff, len)) return false;
+	if (fr_sbuff_extend_lowat(NULL, sbuff, len) < len) return false;
 	return memcmp(sbuff->p, str, len) == 0;
 }
 #define fr_sbuff_is_str_literal(_sbuff, _str) fr_sbuff_is_str(_sbuff, _str, sizeof(_str) - 1)
