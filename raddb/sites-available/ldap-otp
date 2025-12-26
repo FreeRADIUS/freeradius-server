@@ -1,0 +1,38 @@
+server ldap-otp {
+	listen {
+		type = auth
+		ipaddr = *
+		port = 1812
+	}
+
+	authorize {
+		filter_username
+		preprocess
+
+		sql {
+			notfound = 1
+		}
+
+		if (notfound) {
+			update control {
+				&Auth-Type := Reject
+			}
+			reject
+		}
+
+		update control {
+			&Auth-Type := ldap-otp
+		}
+	}
+
+	authenticate {
+		Auth-Type ldap-otp {
+			ldap
+			if (reject || fail) {
+				reject
+			}
+
+			ldap_otp
+		}
+	}
+}

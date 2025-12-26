@@ -1,0 +1,7 @@
+ldap_otp {
+	time_step = 30
+	otp_length = 6
+	lookback_steps = 1
+	lookback_interval = 30
+	lookforward_steps = 0
+}
