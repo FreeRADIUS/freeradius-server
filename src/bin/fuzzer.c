@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/strerror.h>
@@ -106,7 +107,11 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 
 	if (!argc || !argv || !*argv) return -1; /* shut up clang scan */
 
-	if (debug_lvl_str) fr_debug_lvl = atoi(debug_lvl_str);
+	if (debug_lvl_str) {
+		fr_debug_lvl = atoi(debug_lvl_str);
+
+		if (fr_debug_lvl) fr_time_start();
+	}
 
 	/*
 	 *	Setup atexit handlers to free any thread local
@@ -283,6 +288,12 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 	if (tp_encode->test_ctx && (tp_encode->test_ctx(&encode_ctx, NULL, dict, NULL) < 0)) {
 		fr_perror("fuzzer: Failed initializing test point encode_ctx");
 		fr_exit_now(EXIT_FAILURE);
+	}
+
+	if (fr_debug_lvl > 3) {
+		FR_PROTO_TRACE("Fuzzer input");
+
+		FR_PROTO_HEX_DUMP(buf, len, "");
 	}
 
 	/*
