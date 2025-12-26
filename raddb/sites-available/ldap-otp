@@ -1,0 +1,192 @@
+#  -*- text -*-
+#  $Id$
+#
+#######################################################################
+#
+#  LDAP + OTP Authentication Virtual Server
+#
+#  Multi-factor authentication combining LDAP/AD password validation with
+#  TOTP verification. OTP secrets stored in radcheck table.
+#
+#  User input format: password#OTPcode (e.g., "mypassword#123456")
+#  If TOTP not configured, users enter password only.
+#
+#  Add TOTP secrets:
+#    INSERT INTO radcheck (username, attribute, op, value)
+#    VALUES ('user', 'TOTP.Secret', ':=', 'BASE32SECRET');
+#
+#######################################################################
+
+server ldap-otp {
+	namespace = radius
+
+	listen {
+		type = Access-Request
+		transport = udp
+
+		udp {
+			ipaddr = *
+			port = 1812
+		}
+	}
+
+	listen {
+		type = Accounting-Request
+		transport = udp
+
+		udp {
+			ipaddr = *
+			port = 1813
+		}
+	}
+
+	radius {
+		Access-Request {
+			auth_log
+
+			sql {
+				fail = 1
+			}
+
+			#  Handle SQL errors
+			if (fail) {
+				update reply {
+					&Reply-Message := "Authentication failed"
+				}
+				reject
+			}
+
+			#  Rate limiting (optional): Uncomment to limit failed attempts
+			#  Limits to 5 failed attempts per minute per username
+			#  Requires radpostauth logging to be enabled in mods-enabled/sql
+			#
+			#  NOTE: Query syntax is for PostgreSQL. Adjust for your database:
+			#  MySQL:  DATE_SUB(NOW(), INTERVAL 1 MINUTE)
+			#  SQLite: datetime('now', '-1 minute')
+			#  Oracle: SYSDATE - INTERVAL '1' MINUTE
+			#
+			#update control {
+			#	&Auth-Fail-Count := "%{sql:SELECT COUNT(*) FROM radpostauth WHERE username = '%sql.escape(%{User-Name})' AND reply = 'Access-Reject' AND authdate > NOW() - INTERVAL '1 minute'}"
+			#}
+			#
+			#if (&control.Auth-Fail-Count && &control.Auth-Fail-Count >= 5) {
+			#	update reply {
+			#		&Reply-Message := "Authentication failed"
+			#	}
+			#	reject
+			#}
+
+			#  Check if TOTP is configured
+			if (&control.TOTP.Secret) {
+				#  Validate input format: password#OTP (min 8 chars: 1+ char password + '#' + 6-8 digit OTP, max 256)
+				if (%length(&User-Password) < 8) {
+					update reply {
+						&Reply-Message := "Authentication failed"
+					}
+					reject
+				}
+
+				if (%length(&User-Password) > 256) {
+					update reply {
+						&Reply-Message := "Authentication failed"
+					}
+					reject
+				}
+
+				#  Reject non-ASCII characters to prevent Unicode-based attacks
+				if (&User-Password =~ /[^\x00-\x7F]/) {
+					update reply {
+						&Reply-Message := "Authentication failed"
+					}
+					reject
+				}
+
+				#  Split password and OTP using '#' delimiter
+				#  '#' delimiter chosen because it is forbidden in AD passwords by default
+				#  TOTP module validates OTP length (6 or 8 digits) automatically
+				if (&User-Password =~ /^([^#]+)#([0-9]{6,8})$/) {
+					update request {
+						&User-Password-Clean := "%{regex.match(1)}"
+						&TOTP.From-User := "%{regex.match(2)}"
+					}
+
+					#  Validate password is not empty after split
+					if (%length(&User-Password-Clean) == 0) {
+						update reply {
+							&Reply-Message := "Authentication failed"
+						}
+						reject
+					}
+				}
+				else {
+					update reply {
+						&Reply-Message := "Authentication failed"
+					}
+					reject
+				}
+
+				update control {
+					&Auth-Type := LDAP-OTP
+				}
+			}
+			else {
+				update control {
+					&Auth-Type := LDAP
+				}
+			}
+		}
+
+		Access-Accept {
+			ok
+		}
+
+		Access-Reject {
+			attr_filter.access_reject
+			remove_reply_message_if_eap
+		}
+	}
+
+	#  Log authentication attempts to radpostauth for rate limiting
+	send {
+		Access-Accept {
+			sql
+		}
+
+		Access-Reject {
+			sql
+		}
+	}
+
+	authenticate {
+		Auth-Type LDAP-OTP {
+			update request {
+				&User-Password := &User-Password-Clean
+			}
+
+			ldap
+			totp
+		}
+
+		Auth-Type LDAP {
+			ldap
+		}
+	}
+
+	recv Accounting-Request {
+		acct_unique
+		files_accounting
+	}
+
+	accounting Start {
+	}
+
+	accounting Stop {
+	}
+
+	accounting Interim-Update {
+	}
+
+	send Accounting-Response {
+		attr_filter.accounting_response
+	}
+}
