@@ -1,62 +1,68 @@
 
 = FreeRADIUS Development
 
-List with some usual howtos for FreeRADIUS.
+As the name suggests, FreeRADIUS is developed under the GNU General Public License, Version 2 (GPLv2). We invite anyone to use and contribute code to the project. The following information should be helpful to those who want to contribute.
 
-Programming reference documentation can be found at the
-https://doc.freeradius.org/[Doxygen] site.
+The official FreeRADIUS v4 developer guidelines are also online at the https://www.freeradius.org/documentation/freeradius-server/4.0.0[project's website].
 
-## Instructions for Developers
+Key resources for developers include:
 
-As the name suggests, FreeRADIUS is developed under the GNU
-General Public License, Version 2 (GPLv2).
-We invite anyone to use and contribute code to the project. The
-following information should prove useful for potential
-contributors.
+* Developers Section: This part of the official documentation covers topics like bug reporting, coding methods, module interfaces, and buffer handling.
 
-## Patches and contributions
+* Module Interface Documentation: This resource explains how to develop modules for the FreeRADIUS server.
 
-Development of FreeRADIUS is done using
-Github. Please
-submit issues, bugs, patches, etc. there. Additional instructions are on
-the wiki.
+* GitHub Repository: The source code and all documentation files are on GitHub, giving developers access to the latest information and a way to contribute.
 
-## Development mailing list
-
-We encourage everyone who might contribute code to join the FreeRADIUS
-development list(http://www.freeradius.org/list/devel.html). This
-list is highly technical and isn't for most users of the server.
-For normal discussion of the server and how to use it, subscribe to the
-https://lists.freeradius.org/mailman/listinfo/freeradius-users[FreeRADIUS user-list].
-*Only* subscribe to the development list if you are
+* Development mailing list: We encourage everyone who might contribute code to join the http://www.freeradius.org/list/devel.html[FreeRADIUS
+development list]. This list is highly technical and isn't for most users of the server. *Only* subscribe to the development list if you are
 interested in writing software for the new server.
+For normal discussion of the server and how to use it, subscribe to the https://lists.freeradius.org/mailman/listinfo/freeradius-users[FreeRADIUS user-list].
 
+== xref:bugs.adoc[Bugs]
 
-## Miscellaneous links
+If the server crashes due to memory errors, report it to the issue tracker with debugging info. For other issues, discuss them on the users mailing list.
 
-RADIUS RFC's and drafts: The two
-most important are
-RFC2865(http://www.freeradius.org/rfc/rfc2865.html) and
-RFC2866.(http://www.freeradius.org/rfc/rfc2866.html). These are
+== xref:coding-methods.adoc[Coding Methods]
+
+This is a short set of guidelines to follow when programming. Coding standards focus on function names, code appearance, and consistency.
+
+== xref:coverage.adoc[Code Coverage]
+
+The gcov tool analyzes your programs. It helps you create efficient code and find untested areas.
+
+== xref:profile.adoc[Profiling]
+
+The gperftools (Google Performance Tools) help you find memory leaks, analyze performance issues, and optimize your code.
+
+== xref:coccinelle.adoc[Semantic Patches]
+
+Coccinelle analyzes and transforms C code to create Semantic Patch Language (SmPL) patches.
+
+== xref:contributing.adoc[Contributing]
+
+Development of FreeRADIUS is done using Github. Please submit issues, bugs, patches, etc. there. Additional instructions are online or within this section.
+
+== xref:module_interface.adoc[Module Interface]
+
+The purpose of modules is to handle small, simple tasks when RADIUS packets arrive. The module framework is built to process incoming RADIUS packets. It is also highly customizable.
+
+== xref:release-method.adoc[Release Method]
+
+Review the steps to push or update a release.
+
+== xref:buffers.adoc[Buffer Management]
+
+FreeRADIUS provides APIs to handle xref:dbuff.adoc[Data] and
+xref:sbuff.adoc[String] buffers enabling devlopers to streamline their coding and processes.
+
+== More Information
+
+The two most important RADIUS RFC's and drafts are
+http://www.freeradius.org/rfc/rfc2865.html[RFC2865] and
+http://www.freeradius.org/rfc/rfc2866.html[RFC2866]. These are
 the new RFCs, which replace the old ones,
-RFC2138(http://www.freeradius.org/rfc/rfc2138.txt) and
-RFC2139(http://www.freeradius.org/rfc/rfc2139.txt)
-
-== Topics
-
-* xref:bugs.adoc[Bugs]
-* xref:coding-methods.adoc[Coding Methods]
-* xref:coverage.adoc[Code Coverage]
-* xref:profile.adoc[Profiling]
-* xref:coccinelle.adoc[Semantic Patches]
-* xref:contributing.adoc[Contributing]
-* xref:module_interface.adoc[Module Interface]
-* xref:release-method.adoc[Release Method]
-* Buffer handling
-** xref:dbuff.adoc[Data buffers] (`dbuff` s)
-** xref:sbuff.adoc[String buffers] (`sbuff` s)
-** xref:sbuff-parsing.adoc[Parsing with string buffers]
-** xref:sbuff-ng.adoc[Sbuff issues]
+http://www.freeradius.org/rfc/rfc2138.txt[RFC2138] and
+http://www.freeradius.org/rfc/rfc2139.txt[RFC2139].
 
 Also see the  xref:howto:installation/dependencies.adoc[build
 dependencies] page.
