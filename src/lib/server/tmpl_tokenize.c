@@ -511,47 +511,30 @@ int8_t tmpl_request_ref_list_cmp(FR_DLIST_HEAD(tmpl_request_list) const *a, FR_D
 	}
 }
 
-static fr_dict_attr_t const *tmpl_namespace(fr_dict_attr_t const *namespace, fr_dict_t const *dict)
-{
-	if (!namespace) {
-		return NULL;
-	}
-
-	if (request_attr_is_list(namespace)) {
-		return NULL;
-
-	} else if (namespace->type != FR_TYPE_GROUP) {
-		/*
-		 *	If the namespace is a structural type, then use the namespace is this
-		 *	attribute.  We can then parse children of the attribute.
-		 */
-		return namespace;
-
-	} else if (namespace->flags.internal && dict) {
-		/*
-		 *	If the group is internal, AND we have a default dictionary, reset the
-		 *	namespace to NULL, so that the rest of the code will use the default
-		 *	dictionary.
-		 */
-		return NULL;
-
-	}
-
-	/*
-	 *	The namespace is a non-internal group.  Update the
-	 *	namespace to be whereever the group is pointing to.
-	 */
-	return fr_dict_attr_ref(namespace);
-}
-
-static fr_dict_attr_t const *tmpl_namespace2(tmpl_rules_t const *t_rules)
+static fr_dict_attr_t const *tmpl_namespace(tmpl_rules_t const *t_rules)
 {
 	if (!t_rules) {
 		return NULL;
 	}
 
 	if (t_rules->attr.namespace) {
-		return t_rules->attr.namespace;
+		if (request_attr_is_list(t_rules->attr.namespace)) {
+			return NULL;
+		}
+
+		if (t_rules->attr.namespace->type != FR_TYPE_GROUP) {
+			return t_rules->attr.namespace;
+		}
+
+		if (t_rules->attr.namespace->flags.local) {
+			return t_rules->attr.namespace;
+		}
+
+		if (t_rules->attr.namespace->flags.internal && t_rules->attr.dict_def) {
+			return fr_dict_root(t_rules->attr.dict_def);
+		}
+
+		return fr_dict_attr_ref(t_rules->attr.namespace);
 	}
 
 	if (t_rules->attr.dict_def) {
@@ -587,12 +570,11 @@ static fr_slen_t  CC_HINT(nonnull(1,3,4,6)) tmpl_request_ref_list_from_substr(TA
 
 	/*
 	 *	The caller needs to know the default namespace for resolving the attribute.
+	 *
+	 *	But the first round can't have "namespace" set to the root, otherwise things complain.
 	 */
-	if (!t_rules) {
-		*namespace = NULL;
-	} else {
-		*namespace = tmpl_namespace(t_rules->attr.namespace, t_rules->attr.dict_def);
-	}
+	*namespace = tmpl_namespace(t_rules);
+	if (*namespace && (*namespace)->flags.is_root) *namespace = NULL;
 
 	/*
 	 *	We could make the caller do this but as this
@@ -697,8 +679,11 @@ static fr_slen_t  CC_HINT(nonnull(1,3,4,6)) tmpl_request_ref_list_from_substr(TA
 
 	/*
 	 *	Now that we have the correct set of tmpl_rules, update the namespace to match.
+	 *
+	 *	This can have "namespace" set to a dict root, because it is not _our_ dict root. It is an
+	 *	outer / parent one.
 	 */
-	*namespace = tmpl_namespace2(t_rules);
+	*namespace = tmpl_namespace(t_rules);
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }

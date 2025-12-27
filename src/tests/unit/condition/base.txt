@@ -152,13 +152,13 @@ match ((ipaddr)Filter-Id == Framed-IP-Address)
 #  user forces incompatible types, then that's an error.
 #
 condition (ipaddr)Filter-Id == (uint) Framed-IP-Address
-match ERROR offset 22: Attribute 'uint' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 22: Attribute 'uint' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 condition (ipaddr)Filter-Id == (uint32) Framed-IP-Address
 match ((ipaddr)Filter-Id == (uint32)Framed-IP-Address)
 
 condition (blerg)Filter-Id == "foo"
-match ERROR offset 1: Attribute 'blerg' not found in namespace 'internal': Unresolved attributes are not allowed here
+match  ERROR offset 1: Attribute 'blerg' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  Normalize things
@@ -228,10 +228,10 @@ condition Event-Timestamp == 'January 1, 2012'
 
 # literals are parsed when the conditions are parsed
 condition (integer)X == 1
-match ERROR offset 9: Attribute 'X' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 9: Attribute 'X' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 condition NAS-Port == X
-match ERROR offset 12: Attribute 'X' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 12: Attribute 'X' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  The RHS is a static string, so this gets mashed to a literal,
@@ -385,7 +385,7 @@ condition ('a')
 match 'a'
 
 condition (a)
-match ERROR offset 1: Attribute 'a' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 1: Attribute 'a' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  Module return codes are OK
@@ -479,7 +479,7 @@ match (User-Name[n] == "bob")
 #  Disallowed as it's an unknown attribute
 #
 condition Foo-Bar
-match ERROR offset 0: Attribute 'Foo-Bar' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 0: Attribute 'Foo' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #  Same types are optimized
 #
@@ -523,10 +523,10 @@ match (raw.26.24757.84.9.5.15 == 0x1a99)
 #  Invalid array references.
 #
 condition User-Name[a] == 'bob'
-match ERROR offset 10: Attribute 'a' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 10: Attribute 'a' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 condition User-Name == Filter-Id[a]
-match ERROR offset 23: Attribute 'a' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 23: Attribute 'a' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  Bounds checks...
@@ -566,11 +566,11 @@ condition request.Tunnel-Password:0 == 0
 match ERROR offset 23: Unexpected text after attribute reference
 
 condition not-a-list:User-Name == not-a-list:User-Name
-match ERROR offset 0: Attribute 'not-a-list' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 0: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 # . is a valid dictionary name attribute, so we can't error out in pass1
 condition not-a-packet.User-Name == not-a-packet.User-Name
-match ERROR offset 0: Attribute 'not-a-packet' not found in namespace 'internal': Unresolved attributes are not allowed here
+match ERROR offset 0: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
 #
 #  The LHS is a string with ASCII 5C 30 30 30 inside of it vs the RHS which should contain ASCII 0.
