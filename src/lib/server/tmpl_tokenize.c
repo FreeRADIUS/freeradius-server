@@ -544,6 +544,23 @@ static fr_dict_attr_t const *tmpl_namespace(fr_dict_attr_t const *namespace, fr_
 	return fr_dict_attr_ref(namespace);
 }
 
+static fr_dict_attr_t const *tmpl_namespace2(tmpl_rules_t const *t_rules)
+{
+	if (!t_rules) {
+		return NULL;
+	}
+
+	if (t_rules->attr.namespace) {
+		return t_rules->attr.namespace;
+	}
+
+	if (t_rules->attr.dict_def) {
+		return fr_dict_root(t_rules->attr.dict_def);
+	}
+
+	return NULL;
+}
+
 /** Parse one or more request references, writing the list to out
  *
  * @param[in] ctx	to allocate request refs in.
@@ -678,22 +695,9 @@ static fr_slen_t  CC_HINT(nonnull(1,3,4,5,6)) tmpl_request_ref_list_from_substr(
 	}
 
 	/*
-	 *	Now that we have the correct namespace, set it.
-	 *
-	 *	@todo - handle groups, too.
+	 *	Now that we have the correct set of tmpl_rules, update the namespace to match.
 	 */
-	if (!t_rules) {
-		*namespace = NULL;
-
-	} else if (t_rules->attr.namespace) {
-		*namespace = t_rules->attr.namespace;
-
-	} else if (t_rules->attr.dict_def) {
-		*namespace = fr_dict_root(t_rules->attr.dict_def);
-
-	} else {
-		*namespace = NULL;
-	}
+	*namespace = tmpl_namespace2(t_rules);
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }
