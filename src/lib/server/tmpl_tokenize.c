@@ -511,6 +511,39 @@ int8_t tmpl_request_ref_list_cmp(FR_DLIST_HEAD(tmpl_request_list) const *a, FR_D
 	}
 }
 
+static fr_dict_attr_t const *tmpl_namespace(fr_dict_attr_t const *namespace, fr_dict_t const *dict)
+{
+	if (!namespace) {
+		return NULL;
+	}
+
+	if (request_attr_is_list(namespace)) {
+		return NULL;
+
+	} else if (namespace->type != FR_TYPE_GROUP) {
+		/*
+		 *	If the namespace is a structural type, then use the namespace is this
+		 *	attribute.  We can then parse children of the attribute.
+		 */
+		return namespace;
+
+	} else if (namespace->flags.internal && dict) {
+		/*
+		 *	If the group is internal, AND we have a default dictionary, reset the
+		 *	namespace to NULL, so that the rest of the code will use the default
+		 *	dictionary.
+		 */
+		return NULL;
+
+	}
+
+	/*
+	 *	The namespace is a non-internal group.  Update the
+	 *	namespace to be whereever the group is pointing to.
+	 */
+	return fr_dict_attr_ref(namespace);
+}
+
 /** Parse one or more request references, writing the list to out
  *
  * @param[in] ctx	to allocate request refs in.
@@ -523,11 +556,11 @@ int8_t tmpl_request_ref_list_cmp(FR_DLIST_HEAD(tmpl_request_list) const *a, FR_D
  *	- >= 0 the number of bytes parsed.
  *      - <0 negative offset for where the error occurred
  */
-static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
-						   FR_DLIST_HEAD(tmpl_request_list) *out,
-						   fr_sbuff_t *in,
-						   tmpl_rules_t const *t_rules,
-						   fr_dict_attr_t const **namespace)
+static fr_slen_t  CC_HINT(nonnull(1,3,4,5,6)) tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
+										FR_DLIST_HEAD(tmpl_request_list) *out,
+										fr_sbuff_t *in,
+										tmpl_rules_t const *t_rules,
+										fr_dict_attr_t const **namespace)
 {
 	tmpl_request_ref_t	ref;
 	tmpl_request_t		*rr;
@@ -535,54 +568,13 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 	tmpl_request_t		*tail = tmpl_request_list_tail(out);
 	fr_sbuff_marker_t	m;
 	tmpl_attr_rules_t const	*at_rules;
-	DEFAULT_RULES;
 
-	CHECK_T_RULES;
 	at_rules = &t_rules->attr;
 
 	/*
-	 *	The caller wants to know the default namespace for resolving the attribute.
+	 *	The caller needs to know the default namespace for resolving the attribute.
 	 */
-	if (namespace) {
-		if (at_rules->namespace) {
-			if (request_attr_is_list(at_rules->namespace)) {
-				/*
-				 *	If the namespace is a list attribute, then reset it to NULL, so that the rest of the
-				 *	code will use the default dictionary.
-				 */
-				if (!at_rules->dict_def) {
-					fr_strerror_const("No dictionary was set - cannot parse attributes");
-					FR_SBUFF_ERROR_RETURN(&our_in);
-				}
-				*namespace = NULL;
-
-			} else if (at_rules->namespace->type != FR_TYPE_GROUP) {
-				/*
-				 *	If the namespace is a structural type, then use the namespace is this
-				 *	attribute.  We can then parse children of the attribute.
-				 */
-				*namespace = at_rules->namespace;
-
-			} else if (at_rules->namespace->flags.internal && at_rules->dict_def) {
-				/*
-				 *	If the group is internal, AND we have a default dictionary, reset the
-				 *	namespace to NULL, so that the rest of the code will use the default
-				 *	dictionary.
-				 */
-				*namespace = NULL;
-
-			} else {
-				/*
-				 *	The namespace is a non-internal group.  Update the namespace to be
-				 *	whereever the group is pointing to.
-				 */
-				*namespace = fr_dict_attr_ref(at_rules->namespace);
-			}
-
-		} else {
-			*namespace = NULL;
-		}
-	}
+	*namespace = tmpl_namespace(at_rules->namespace, at_rules->dict_def);
 
 	/*
 	 *	We could make the caller do this but as this
@@ -686,24 +678,21 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 	}
 
 	/*
-	 *	Now that we have the correct namespace, set it if the caller needs it.
+	 *	Now that we have the correct namespace, set it.
+	 *
+	 *	@todo - handle groups, too.
 	 */
-	if (namespace) {
-		/*
-		 *	The namespace could be unknown.
-		 */
-		if (!t_rules) {
-			*namespace = NULL;
+	if (!t_rules) {
+		*namespace = NULL;
 
-		} else if (t_rules->attr.namespace) {
-			*namespace = t_rules->attr.namespace;
+	} else if (t_rules->attr.namespace) {
+		*namespace = t_rules->attr.namespace;
 
-		} else if (t_rules->attr.dict_def) {
-			*namespace = fr_dict_root(t_rules->attr.dict_def);
+	} else if (t_rules->attr.dict_def) {
+		*namespace = fr_dict_root(t_rules->attr.dict_def);
 
-		} else {
-			*namespace = NULL;
-		}
+	} else {
+		*namespace = NULL;
 	}
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -726,13 +715,15 @@ fr_slen_t tmpl_request_ref_list_afrom_substr(TALLOC_CTX *ctx, tmpl_attr_error_t 
 					     fr_sbuff_t *in)
 {
 	fr_slen_t	slen;
+	fr_dict_attr_t const *namespace;
+	DEFAULT_RULES;
 
 	FR_DLIST_HEAD(tmpl_request_list) *rql;
 
 	MEM(rql = talloc_zero(ctx, FR_DLIST_HEAD(tmpl_request_list)));
 	tmpl_request_list_talloc_init(rql);
 
-	slen = tmpl_request_ref_list_from_substr(rql, err, rql, in, NULL, NULL);
+	slen = tmpl_request_ref_list_from_substr(rql, err, rql, in, &default_rules, &namespace);
 	if (slen < 0) {
 		talloc_free(rql);
 		return slen;
@@ -2334,7 +2325,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	/*
 	 *	Parse one or more request references
 	 */
-	ret = tmpl_request_ref_list_from_substr(vpt, NULL,
+	ret = tmpl_request_ref_list_from_substr(vpt, err,
 						&vpt->data.attribute.rr,
 						&our_name,
 						t_rules,
