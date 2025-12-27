@@ -573,7 +573,7 @@ static fr_dict_attr_t const *tmpl_namespace2(tmpl_rules_t const *t_rules)
  *	- >= 0 the number of bytes parsed.
  *      - <0 negative offset for where the error occurred
  */
-static fr_slen_t  CC_HINT(nonnull(1,3,4,5,6)) tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
+static fr_slen_t  CC_HINT(nonnull(1,3,4,6)) tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 										FR_DLIST_HEAD(tmpl_request_list) *out,
 										fr_sbuff_t *in,
 										tmpl_rules_t const *t_rules,
@@ -584,14 +584,15 @@ static fr_slen_t  CC_HINT(nonnull(1,3,4,5,6)) tmpl_request_ref_list_from_substr(
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 	tmpl_request_t		*tail = tmpl_request_list_tail(out);
 	fr_sbuff_marker_t	m;
-	tmpl_attr_rules_t const	*at_rules;
-
-	at_rules = &t_rules->attr;
 
 	/*
 	 *	The caller needs to know the default namespace for resolving the attribute.
 	 */
-	*namespace = tmpl_namespace(at_rules->namespace, at_rules->dict_def);
+	if (!t_rules) {
+		*namespace = NULL;
+	} else {
+		*namespace = tmpl_namespace(t_rules->attr.namespace, t_rules->attr.dict_def);
+	}
 
 	/*
 	 *	We could make the caller do this but as this
@@ -603,7 +604,7 @@ static fr_slen_t  CC_HINT(nonnull(1,3,4,5,6)) tmpl_request_ref_list_from_substr(
 	/*
 	 *	We're in a name space, OR lists are forbidden, don't allow list qualifiers.
 	 */
-	if (*namespace || (at_rules->list_presence == TMPL_ATTR_LIST_FORBID)) {
+	if (*namespace || (t_rules && (t_rules->attr.list_presence == TMPL_ATTR_LIST_FORBID))) {
 		if (fr_sbuff_is_str_literal(&our_in, "outer.") ||
 		    fr_sbuff_is_str_literal(&our_in, "parent.")) {
 			fr_strerror_const("request list qualifiers are not allowed here");
@@ -632,7 +633,7 @@ static fr_slen_t  CC_HINT(nonnull(1,3,4,5,6)) tmpl_request_ref_list_from_substr(
 		/*
 		 *	No recognized string.  Set the default list if it was specified.
 		 */
-		if (at_rules->request_def) tmpl_request_ref_list_copy(ctx, out, at_rules->request_def);
+		if (t_rules && t_rules->attr.request_def) tmpl_request_ref_list_copy(ctx, out, t_rules->attr.request_def);
 
 		return 0;
 	}
@@ -720,14 +721,13 @@ fr_slen_t tmpl_request_ref_list_afrom_substr(TALLOC_CTX *ctx, tmpl_attr_error_t 
 {
 	fr_slen_t	slen;
 	fr_dict_attr_t const *namespace;
-	DEFAULT_RULES;
 
 	FR_DLIST_HEAD(tmpl_request_list) *rql;
 
 	MEM(rql = talloc_zero(ctx, FR_DLIST_HEAD(tmpl_request_list)));
 	tmpl_request_list_talloc_init(rql);
 
-	slen = tmpl_request_ref_list_from_substr(rql, err, rql, in, &default_rules, &namespace);
+	slen = tmpl_request_ref_list_from_substr(rql, err, rql, in, NULL, &namespace);
 	if (slen < 0) {
 		talloc_free(rql);
 		return slen;
