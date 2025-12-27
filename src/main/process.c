@@ -3005,6 +3005,23 @@ static void mark_home_server_alive(REQUEST *request, home_server_t *home)
 	       request->proxy->dst_port);
 }
 
+/*
+ *	If we have a reply, what should the request have been?
+ */
+static const unsigned int reply2request[FR_MAX_PACKET_CODE] = {
+	[PW_CODE_ACCESS_ACCEPT]		= PW_CODE_ACCESS_REQUEST,
+	[PW_CODE_ACCESS_CHALLENGE]	= PW_CODE_ACCESS_REQUEST,
+	[PW_CODE_ACCESS_REJECT]		= PW_CODE_ACCESS_REQUEST,
+
+	[PW_CODE_ACCOUNTING_RESPONSE]	= PW_CODE_ACCOUNTING_REQUEST,
+
+	[PW_CODE_COA_ACK]		= PW_CODE_COA_REQUEST,
+	[PW_CODE_COA_NAK]		= PW_CODE_COA_REQUEST,
+
+	[PW_CODE_DISCONNECT_ACK]	= PW_CODE_DISCONNECT_REQUEST,
+	[PW_CODE_DISCONNECT_NAK]	= PW_CODE_DISCONNECT_REQUEST,
+};
+
 
 int request_proxy_reply(RADIUS_PACKET *packet)
 {
@@ -3035,9 +3052,9 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
 	/*
-	 *	No reply, BUT the current packet fails verification:
-	 *	ignore it.  This does the MD5 calculations in the
-	 *	server core, but I guess we can fix that later.
+	 *	No previous reply, check if the packet is OK.  This
+	 *	does the MD5 calculations in the worker thread, which
+	 *	we should fix later.
 	 */
 	if (!request->proxy_reply) {
 		decode_fail_t reason;
@@ -3064,6 +3081,24 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 			       request->home_server->secret) != 0) {
 			DEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
 			return 0;
+		}
+
+		/*
+		 *	Any request can get a Protocol-Error reply.
+		 *
+		 *	Status-Server can get any reply.
+		 *
+		 *	Other requests should receive the correct reply.
+		 */
+		if ((packet->code != PW_CODE_PROTOCOL_ERROR) &&
+		    (request->proxy->code != PW_CODE_STATUS_SERVER)) {
+			if (reply2request[packet->code] != request->proxy->code) {
+				RERROR("Proxy sent %s and received unexpected %s in response.",
+				       fr_packet_codes[request->proxy->code], fr_packet_codes[packet->code]);
+				REDEBUG("Please update the home server to send the correct code.");
+				REDEBUG("The Response Authenticator is correct, so we are processing the packet.");
+				REDEBUG("However, the server is likely to do the wrong thing with the wrong response code.");
+			}
 		}
 
 		/*
