@@ -2,6 +2,11 @@ FreeRADIUS 3.2.9 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	Configuration changes
 
 	Feature improvements
+	* Always allow Protocol-Error packet as valid response to any
+	  packet.
+	* Add "protocol_error = yes" configuration to clients.  If set,
+	  the server can return Protocol-Error responses to the client.
+	* Add Error-Cause attributes to CoA-NAK and Disconnect-NAK
 	* added filter_username_nai to policy.d/filter, mainly for use in
 	  eduroam.
 	* Initial implementation of Protocol-Failure as per IETF draft.
@@ -14,6 +19,9 @@ FreeRADIUS 3.2.9 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	* amend policy insert_acct_class/acct_unique to work in
 	  environments with multiple Class attributes (#5337)
 	* Tweak sqlippool messages to make them clearer.
+	* Print log message if the server receives a correct authenticated
+	  proxy response packet, but which has an unexpected code.
+	  e.g. received Access-Accept in response to an Accounting-Request.
 
 	Bug fixes
 	* Fix run_dir (#5637) and MemoryLimit (#5639)
@@ -34,6 +42,12 @@ FreeRADIUS 3.2.9 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	  cases / race conditions.  Thanks to Paul Dekkers for testing.
 	* Don't close the main listen socket for TCP.  Fixes #5661.
 	* Fix rlm_dspk to properly support dynamic filenames.
+	* Don't crash in corner cases when running Post-Proxy-Type Fail.
+	* Use correct name offsets in proxy_rate_limit.  Fixes #5675.
+	* push fallback virtual server to child thread.  Fixes #5679.
+	* Correct corner case in hash table.  Fixes #5680.
+	* Allow new proxy sockets after reaching "too many sockets", when
+	  we close an existing proxy connection.  Fixes #5964.
 
 FreeRADIUS 3.2.8 Wed 20 Aug 2025 12:00:00 UTC urgency=low
 	Configuration changes
