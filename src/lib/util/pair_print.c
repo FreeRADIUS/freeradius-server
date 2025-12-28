@@ -123,6 +123,58 @@ static ssize_t fr_pair_print_value(fr_sbuff_t *out, fr_pair_t const *vp)
 	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
+/** Print an attribute name.
+ *
+ * @param[in] out	Where to write the string.
+ * @param[in] parent	If not NULL, only print OID components from
+ *			this parent to the VP.
+ * @param[in,out] vp_p	to print.
+ * @return
+ *	- Length of data written to out.
+ *	- value >= outlen on truncation.
+ */
+static ssize_t fr_pair_print_name(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_t const **vp_p)
+{
+	char const		*token;
+	fr_pair_t const		*vp = *vp_p;
+	fr_sbuff_t		our_out = FR_SBUFF(out);
+
+	/*
+	 *	Omit the union if we can.  But if the child is raw, then always print it.  That way it's
+	 *	clearer what's going on.
+	 */
+	if (vp->vp_type == FR_TYPE_UNION) {
+		fr_pair_t *child = fr_pair_list_head(&vp->vp_group);
+
+		if (!child->da->flags.is_unknown &&
+		    (fr_pair_list_num_elements(&vp->vp_group) == 1)) {
+			parent = vp->da;
+			vp = fr_pair_list_head(&vp->vp_group);
+		}
+	}
+
+	fr_pair_reset_parent(parent);
+
+	if (vp->vp_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
+	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent, vp->da, false);
+
+	/*
+	 *	Print the operator for the _last_ attribute, which is generally what we want.
+	 */
+	if ((vp->op > T_INVALID) && (vp->op < T_TOKEN_LAST)) {
+		token = fr_tokens[vp->op];
+	} else {
+		token = "<INVALID-TOKEN>";
+	}
+
+	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
+	FR_SBUFF_IN_STRCPY_RETURN(&our_out, token);
+	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
+
+	*vp_p = vp;
+	FR_SBUFF_SET_RETURN(out, &our_out);
+}
+
 /** Print one attribute and value to a string
  *
  * Print a fr_pair_t in the format:
@@ -141,38 +193,11 @@ static ssize_t fr_pair_print_value(fr_sbuff_t *out, fr_pair_t const *vp)
  */
 ssize_t fr_pair_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_t const *vp)
 {
-	char const		*token = NULL;
 	fr_sbuff_t		our_out = FR_SBUFF(out);
 
 	PAIR_VERIFY(vp);
 
-	/*
-	 *	Omit the union if we can.  But if the child is raw, then always print it.  That way it's
-	 *	clearer what's going on.
-	 */
-	if (vp->vp_type == FR_TYPE_UNION) {
-		fr_pair_t *child = fr_pair_list_head(&vp->vp_group);
-
-		if (!child->da->flags.is_unknown &&
-		    (fr_pair_list_num_elements(&vp->vp_group) == 1)) {
-			parent = vp->da;
-			vp = fr_pair_list_head(&vp->vp_group);
-		}
-	}
-
-	if ((vp->op > T_INVALID) && (vp->op < T_TOKEN_LAST)) {
-		token = fr_tokens[vp->op];
-	} else {
-		token = "<INVALID-TOKEN>";
-	}
-
-	fr_pair_reset_parent(parent);
-
-	if (vp->vp_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
-	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent, vp->da, false);
-	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
-	FR_SBUFF_IN_STRCPY_RETURN(&our_out, token);
-	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
+	FR_SBUFF_RETURN(fr_pair_print_name, &our_out, parent, &vp);
 
 	FR_SBUFF_RETURN(fr_pair_print_value, &our_out, vp);
 
@@ -203,24 +228,11 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_t c
  */
 ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_t const *vp)
 {
-	char const		*token = NULL;
 	fr_sbuff_t		our_out = FR_SBUFF(out);
 
 	PAIR_VERIFY(vp);
 
-	if ((vp->op > T_INVALID) && (vp->op < T_TOKEN_LAST)) {
-		token = fr_tokens[vp->op];
-	} else {
-		token = "<INVALID-TOKEN>";
-	}
-
-	fr_pair_reset_parent(parent);
-
-	if (vp->vp_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
-	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent, vp->da, false);
-	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
-	FR_SBUFF_IN_STRCPY_RETURN(&our_out, token);
-	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
+	FR_SBUFF_RETURN(fr_pair_print_name, &our_out, parent, &vp);
 
 	if (fr_type_is_leaf(vp->vp_type)) {
 		if (!vp->data.secret) {
