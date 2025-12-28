@@ -416,7 +416,7 @@ match User-Name
 #  Forbidden data types in cast
 #
 xlat_purify_cond ((vsa)"foo" == User-Name)
-match ERROR offset 1: Invalid data type 'vsa' in cast
+match ERROR offset 6: Invalid structural data type 'vsa' in cast
 
 #
 #  If the LHS is a cast to a type, and the RHS is an attribute

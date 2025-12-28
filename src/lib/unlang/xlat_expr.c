@@ -2223,7 +2223,6 @@ static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type, xlat_exp_t *
 static fr_slen_t expr_cast_from_substr(fr_type_t *cast, fr_sbuff_t *in)
 {
 	fr_sbuff_t		our_in = FR_SBUFF(in);
-	fr_sbuff_marker_t	m;
 	ssize_t			slen;
 
 	if (!fr_sbuff_next_if_char(&our_in, '(')) {
@@ -2232,28 +2231,46 @@ static fr_slen_t expr_cast_from_substr(fr_type_t *cast, fr_sbuff_t *in)
 		return 0;
 	}
 
-	fr_sbuff_marker(&m, &our_in);
+	/*
+	 *	Check for an actual data type.
+	 */
 	fr_sbuff_out_by_longest_prefix(&slen, cast, fr_type_table, &our_in, FR_TYPE_NULL);
 
 	/*
-	 *	We didn't read anything, there's no cast.
+	 *	It's not a known data type, so it's not a cast.
 	 */
-	if (fr_sbuff_diff(&our_in, &m) == 0) goto no_cast;
-
-	if (!fr_sbuff_next_if_char(&our_in, ')')) goto no_cast;
-
-	if (fr_type_is_null(*cast)) {
-		fr_strerror_printf("Invalid data type in cast");
-		FR_SBUFF_ERROR_RETURN(&m);
+	if (*cast == FR_TYPE_NULL) {
+		goto no_cast;
 	}
 
+	/*
+	 *	We're not allowed to start expressions with data types:
+	 *
+	 *		(ipaddr ...
+	 *		(ipaddr+...
+	 *		(ipaddr(...
+	 */
+	if (!fr_sbuff_next_if_char(&our_in, ')')) {
+		if (!fr_sbuff_is_in_charset(&our_in, sbuff_char_word)) {
+			fr_strerror_printf("Unexpected text after data type '%s'", fr_type_to_str(*cast));
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
+
+		goto no_cast;
+	}
+
+	/*
+	 *	We're not allowed to cast to a structural data type: (group)
+	 *
+	 *	@todo - maybe cast to structural data type could mean "parse it as a string"?  But then where
+	 *	do the pairs go..
+	 */
 	if (!fr_type_is_leaf(*cast)) {
-		fr_strerror_printf("Invalid data type '%s' in cast", fr_type_to_str(*cast));
+		fr_strerror_printf("Invalid structural data type '%s' in cast", fr_type_to_str(*cast));
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
-
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
@@ -2430,7 +2447,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	/*
 	 *	Allow for explicit casts.  Non-leaf types are forbidden.
 	 */
-	if (expr_cast_from_substr(&cast_type, &our_in) < 0) return -1;
+	if (expr_cast_from_substr(&cast_type, &our_in) < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 	/*
 	 *	Do NOT pass the cast down to the next set of parsing routines.  Instead, let the next data be
