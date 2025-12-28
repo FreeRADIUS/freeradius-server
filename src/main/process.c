@@ -3093,11 +3093,11 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 		if ((packet->code != PW_CODE_PROTOCOL_ERROR) &&
 		    (request->proxy->code != PW_CODE_STATUS_SERVER)) {
 			if (reply2request[packet->code] != request->proxy->code) {
-				RERROR("Proxy sent %s and received unexpected %s in response.",
+				RWARN("Proxy sent %s and received unexpected %s in response.",
 				       fr_packet_codes[request->proxy->code], fr_packet_codes[packet->code]);
-				REDEBUG("Please update the home server to send the correct code.");
-				REDEBUG("The Response Authenticator is correct, so we are processing the packet.");
-				REDEBUG("However, the server is likely to do the wrong thing with the wrong response code.");
+				RWDEBUG("Please update the home server to send the correct code.");
+				RWDEBUG("The Response Authenticator is correct, so we are processing the packet.");
+				RWDEBUG("However, the server is likely to do the wrong thing with the wrong response code.");
 			}
 		}
 
