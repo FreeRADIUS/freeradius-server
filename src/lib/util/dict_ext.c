@@ -197,14 +197,14 @@ static int dict_ext_protocol_specific_copy(UNUSED int ext,
 	if (unlikely(from_proto->attr.flags.len != src_ext_len)) {
 		fr_strerror_printf("Protocol specific extension length mismatch in source attribute %s.  Expected %zu, got %zu",
 				   from->name,
-				   fr_dict_protocol(from->dict)->attr.flags.len, fr_dict_protocol(to->dict)->attr.flags.len);
+				   fr_dict_protocol(from->dict)->attr.flags.len, src_ext_len);
 		return -1;
 	}
 
 	if (unlikely(to_proto->attr.flags.len != dst_ext_len)) {
-		fr_strerror_printf("Protocol specific extension length mismatch in destintion attribute %s.  Expected %zu, got %zu",
+		fr_strerror_printf("Protocol specific extension length mismatch in destination attribute %s.  Expected %zu, got %zu",
 				   to->name,
-				   fr_dict_protocol(to->dict)->attr.flags.len, fr_dict_protocol(to->dict)->attr.flags.len);
+				   fr_dict_protocol(to->dict)->attr.flags.len, dst_ext_len);
 		return -1;
 	}
 
