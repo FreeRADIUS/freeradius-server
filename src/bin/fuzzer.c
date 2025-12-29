@@ -124,11 +124,6 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	 */
 	fr_talloc_fault_setup();
 
-	if (fr_fault_setup(autofree, NULL, "fuzzer_XX_PROTOCOL_XX") < 0) {
-		fr_perror("fuzzer: Failed to register fault handler");
-		fr_exit_now(EXIT_FAILURE);
-	}
-
 	/*
 	 *	Initialise the error stack _before_ we run any
 	 *	tests so there's no chance of the memory
@@ -247,13 +242,10 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	 */
 	dl_proto = fuzzer_dict_init(RTLD_DEFAULT, proto);
 
-	if (panic_action) {
-		autofree = talloc_autofree_context();
-
-		if (fr_fault_setup(autofree, panic_action, (*argv)[0]) < 0) {
-			fr_perror("Failed initializing panic action");
-			fr_exit_now(EXIT_FAILURE);
-		}
+	autofree = talloc_autofree_context();
+	if (fr_fault_setup(autofree, panic_action, (*argv)[0]) < 0) {
+		fr_perror("Failed initializing fault handler");
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	init = true;
