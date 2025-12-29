@@ -36,6 +36,8 @@ RCSID("$Id$")
 
 #include "der.h"
 
+extern fr_dict_attr_t const *attr_oid_tree;
+
 typedef struct {
 	uint8_t *tmp_ctx;	 		//!< Temporary context for encoding.
 } fr_der_encode_ctx_t;
@@ -692,6 +694,8 @@ static ssize_t fr_der_encode_oid(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, UNUSED
 	 */
 	for (i = 0; i < da_stack.depth; i++) {
 		ssize_t slen;
+
+		if ((i == 0) && (da_stack.da[0] == attr_oid_tree)) continue; /* don't encode this */
 
 		slen = fr_der_encode_oid_from_value(&our_dbuff, da_stack.da[i]->attr, &component, &count);
 		if (slen < 0) return -1;

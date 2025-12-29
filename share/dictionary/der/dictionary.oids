@@ -84,3 +84,6 @@ ATTRIBUTE	certificateExtension			2.5.29	sequence
 $INCLUDE dictionary.extensions
 
 END OID-Tree
+
+ALIAS	iso			OID-Tree.iso
+ALIAS	joint-iso-itu-t		OID-Tree.joint-iso-itu-t

@@ -58,12 +58,13 @@ DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
 	FR_DICT_ATTR_REF_NONE		= 0x00,			//!< No ref set.
 	FR_DICT_ATTR_REF_ALIAS		= 0x01,			//!< The attribute is an alias for another attribute.
-								///< Either a straight ALIAS, or a reference into another
-								///< dictionary.
+								///< Either a straight ALIAS, or a pointer from FR_TYPE_GROUP
+								///< into another dictionary.
 	FR_DICT_ATTR_REF_CLONE		= 0x02,			//!< The attribute is a "copy" of another attribute.
 	FR_DICT_ATTR_REF_ENUM		= 0x04,			//!< The attribute is an enumeration value.
 	FR_DICT_ATTR_REF_KEY		= 0x08,			//!< it is a UNION which has a ref to a key, and children.
-	FR_DICT_ATTR_REF_UNRESOLVED	= 0x10			//!< This flag is combined with the other states to indicate
+	FR_DICT_ATTR_REF_ROOT		= 0x10,			//!< only for FR_TYPE_ATTR, point to the default root for enums
+	FR_DICT_ATTR_REF_UNRESOLVED	= 0x8000	       	//!< This flag is combined with the other states to indicate
 								///< that the reference is unresolved.
 } fr_dict_attr_ref_type_t;
 DIAG_ON(attributes)

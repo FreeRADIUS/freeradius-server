@@ -767,6 +767,28 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 	*type_p = fr_type;
 	flags->der_type = der_type;
 
+	if (der_type == FR_DER_TAG_OID) {
+		fr_dict_attr_ext_ref_t *ext;
+		fr_dict_attr_t const *parent;
+
+		fr_assert(fr_type == FR_TYPE_ATTR);
+
+		fr_assert(!fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_REF));
+
+		ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_REF); /* can change da_p */
+		if (unlikely(!ext)) return -1;
+
+		if (!attr_oid_tree) {
+			parent = fr_dict_attr_by_name(NULL, fr_dict_root((*da_p)->dict), "OID-Tree");
+			fr_assert(parent != NULL);
+		} else {
+			parent = attr_oid_tree;
+		}
+
+		ext->type = FR_DICT_ATTR_REF_ROOT;
+		ext->ref = parent;
+	}
+
 	/*
 	 *	If it is a collection of x509 extensions, we will set
 	 * 	a few other flags as per RFC 5280.

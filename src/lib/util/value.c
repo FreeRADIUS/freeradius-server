@@ -5128,11 +5128,38 @@ void fr_value_box_set_cursor(fr_value_box_t *dst, fr_type_t type, void *cursor, 
 	dst->vb_cursor_name = name;
 }
 
+static fr_dict_attr_t const *fr_value_box_attr_enumv(fr_dict_attr_t const *da)
+{
+	fr_dict_attr_ext_ref_t *ext;
+
+	/*
+	 *	If the DA points to a root (e.g. OID-Tree), then use that.
+	 *
+	 *	Otherwise if it doesn't have ENUMs defined, then point it at the dict root.
+	 *
+	 *	If it does have enums, then the enumv is itself.
+	 */
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_REF);
+	if (ext) {
+		fr_assert(ext->type == FR_DICT_ATTR_REF_ROOT);
+		fr_assert(!da->flags.has_value);
+
+		 return ext->ref;
+	}
+
+	if (!da->flags.has_value) {
+		return fr_dict_root(da->dict);
+	}
+
+	return da;
+}
+
 void fr_value_box_set_attr(fr_value_box_t *dst, fr_dict_attr_t const *da)
 {
 	fr_value_box_init(dst, FR_TYPE_ATTR, NULL, false);
 	dst->vb_attr = da;
-	dst->enumv = da;
+
+	dst->enumv = fr_value_box_attr_enumv(da);
 }
 
 /** Increment a boxed value
@@ -5790,7 +5817,7 @@ parse:
 		 *	carry a ref to where their values are taken from.
 		 */
 		if (dst_enumv->type == FR_TYPE_ATTR) {
-			if (!dst_enumv->flags.has_value) dst_enumv = fr_dict_root(dst_enumv->dict);
+			dst_enumv = fr_value_box_attr_enumv(dst_enumv);
 
 		} else if (dst_enumv->type != FR_TYPE_TLV) {
 			fr_strerror_printf("Can only start from data type 'tlv' for data type 'attribute', and not from %s", dst_enumv->name);
@@ -5842,6 +5869,8 @@ parse:
 
 		} else {
 			fr_dict_attr_t const *da;
+
+			fr_assert(dst_enumv != NULL);
 
 			slen = fr_dict_attr_by_oid_substr(NULL, &dst->vb_attr, dst_enumv, &our_in, rules->terminals);
 			if (slen > 0) {

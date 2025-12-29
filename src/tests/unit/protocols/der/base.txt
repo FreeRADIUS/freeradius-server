@@ -15,14 +15,11 @@ max-buffer-size 2048
 #  OID tests
 #
 
-#
-#  @todo - we need an alias from "1" -> test-oid.1, and "iso" -> test-oid.2
-#
 pair  Test-Oid = "1.2.840.113549.1.1.11"
-match Test-Oid = ::1.2.840.113549.1.1.11
+match Test-Oid = ::iso.member-body.us.rsadsi.pkcs.pkcs-1.sha256WithRSAEncryption
 
 pair Test-Oid = ::iso.member-body.us.rsadsi.pkcs.pkcs-1.rsaEncryption
-match Attribute 'iso' not found in namespace 'DER': Failed to find the attribute in DER
+match Test-Oid = ::iso.member-body.us.rsadsi.pkcs.pkcs-1.rsaEncryption
 
 #
 #  These tests work
@@ -835,25 +832,25 @@ encode-pair Test-Oid = "1.2.840.266451853.1.1.11"
 match 06 0a 2a 86 48 ff 86 f7 0d 01 01 0b
 
 encode-pair Test-Oid = "1.2.840.34357754765.1.1.11"
-match Invalid value "34357754765" - attribute numbers must be less than 2^32: Failed to find the attribute in DER
+match Invalid value "34357754765" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Test-Oid = "1.2.840.4398044527501.1.1.11"
-match Invalid value "4398044527501" - attribute numbers must be less than 2^32: Failed to find the attribute in DER
+match Invalid value "4398044527501" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Test-Oid = "1.2.840.34359738367.13.1.1.11"
-match Invalid value "34359738367" - attribute numbers must be less than 2^32: Failed to find the attribute in DER
+match Invalid value "34359738367" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Test-Oid = "1.2.840.4398046511103.13.1.1.11"
-match Invalid value "4398046511103" - attribute numbers must be less than 2^32: Failed to find the attribute in DER
+match Invalid value "4398046511103" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Test-Oid = "1.2.840.562949953421311.13.1.1.11"
-match Invalid value "562949953421311" - attribute numbers must be less than 2^32: Failed to find the attribute in DER
+match Invalid value "562949953421311" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Test-Oid = "1.2.840.72057594037927935.13.1.1.11"
-match Invalid value "72057594037927935" - attribute numbers must be less than 2^32: Failed to find the attribute in DER
+match Invalid value "72057594037927935" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Test-Oid = "1.2.840.9223372036854775807.13.1.1.11"
-match Invalid value "9223372036854775807" - attribute numbers must be less than 2^32: Failed to find the attribute in DER
+match Invalid value "9223372036854775807" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Seq-Oid = { Test-Oid = "1.2.840.113549.1.1.11" }
 match 30 0b 06 09 2a 86 48 86 f7 0d 01 01 0b
@@ -862,25 +859,25 @@ encode-pair Seq-Oid = { Test-Oid = "1.2.840.266451853.1.1.11" }
 match 30 0c 06 0a 2a 86 48 ff 86 f7 0d 01 01 0b
 
 encode-pair Seq-Oid = { Test-Oid = "1.2.840.34357754765.1.1.11" }
-match Invalid value "34357754765" - attribute numbers must be less than 2^32: Failed to find the attribute in DER
+match Invalid value "34357754765" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Seq-Oid = { Test-Oid = "1.2.840.4398044527501.1.1.11" }
-match Invalid value "4398044527501" - attribute numbers must be less than 2^32: Failed to find the attribute in DER
+match Invalid value "4398044527501" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Seq-Oid = { Test-Oid = "1.2.840.34359738367.13.1.1.11" }
-match Invalid value "34359738367" - attribute numbers must be less than 2^32: Failed to find the attribute in DER
+match Invalid value "34359738367" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Seq-Oid = { Test-Oid = "1.2.840.4398046511103.13.1.1.11" }
-match Invalid value "4398046511103" - attribute numbers must be less than 2^32: Failed to find the attribute in DER
+match Invalid value "4398046511103" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Seq-Oid = { Test-Oid = "1.2.840.562949953421311.13.1.1.11" }
-match Invalid value "562949953421311" - attribute numbers must be less than 2^32: Failed to find the attribute in DER
+match Invalid value "562949953421311" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Seq-Oid = { Test-Oid = "1.2.840.72057594037927935.13.1.1.11" }
-match Invalid value "72057594037927935" - attribute numbers must be less than 2^32: Failed to find the attribute in DER
+match Invalid value "72057594037927935" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Seq-Oid = { Test-Oid = "1.2.840.9223372036854775807.13.1.1.11" }
-match Invalid value "9223372036854775807" - attribute numbers must be less than 2^32: Failed to find the attribute in DER
+match Invalid value "9223372036854775807" - attribute numbers must be less than 2^32: Failed to find the attribute in OID-Tree
 
 encode-pair Test-Seq-Of = { Test-First-Integer = 1, Test-First-Integer = 2 }
 match 30 06 02 01 01 02 01 02
