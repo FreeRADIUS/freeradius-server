@@ -336,7 +336,10 @@ static int dict_flag_sequence_of(fr_dict_attr_t **da_p, char const *value, UNUSE
 		flags->is_oid_and_value = true;
 		flags->is_sequence_of = true;
 		flags->sequence_of = FR_DER_TAG_SEQUENCE;
-		return fr_dict_attr_set_group(da_p);
+		if (fr_dict_attr_set_group(da_p) < 0) return -1;
+
+		(*da_p)->flags.allow_flat = 1;
+		return 0;
 	}
 
 	type = fr_table_value_by_str(tag_name_to_number, value, FR_DER_TAG_INVALID);
@@ -370,7 +373,10 @@ static int dict_flag_set_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 		flags->is_oid_and_value = true;
 		flags->is_sequence_of = true;
 		flags->sequence_of = FR_DER_TAG_SEQUENCE;
-		return fr_dict_attr_set_group(da_p);
+		if (fr_dict_attr_set_group(da_p) < 0) return -1;
+
+		(*da_p)->flags.allow_flat = 1;
+		return 0;
 	}
 
 	type = fr_table_value_by_str(tag_name_to_number, value, FR_DER_TAG_INVALID);

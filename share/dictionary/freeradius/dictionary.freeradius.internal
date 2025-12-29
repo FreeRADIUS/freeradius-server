@@ -391,8 +391,11 @@ ATTRIBUTE	b					.2	uint32
 ATTRIBUTE	c					.3	string
 ATTRIBUTE	d					.4	ipaddr
 
+ATTRIBUTE	Tmp-Flat-Group				1811	group	flat
+
+
 #
-#  1810 - 1879 - unused
+#  1812 - 1879 - unused
 #
 
 ATTRIBUTE	Tmp-Float-0				1880	float32

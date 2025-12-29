@@ -856,6 +856,17 @@ redo:
 		if (components == 1) append = (op != T_OP_EQ);
 	}
 
+#if 0
+	/*
+	 *	STEP 5.1: Flatten the hierarchy if necessary.
+	 */
+	if ((relative->da->flags.allow_flat) && (da_stack.depth > 2)) {
+		da_stack.da[1] = da_stack.da[da_stack.depth - 1];
+
+		da_stack.depth = 2;
+	}
+#endif
+
 	/*
 	 *	STEP 6: Use the da_stack to either find or add intermediate #fr_pair_t.
 	 */

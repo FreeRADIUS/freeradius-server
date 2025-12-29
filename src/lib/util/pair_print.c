@@ -159,6 +159,23 @@ static ssize_t fr_pair_print_name(fr_sbuff_t *out, fr_dict_attr_t const *parent,
 	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent, vp->da, false);
 
 	/*
+	 *	Mash the nesting levels if we're asked to do that, and if each structural child has only one
+	 *	member.
+	 */
+	if (vp->da->flags.allow_flat) {
+		while (fr_type_is_structural(vp->vp_type) &&
+		       (fr_pair_list_num_elements(&vp->vp_group) == 1)) {
+			parent = vp->da;
+			vp = fr_pair_list_head(&vp->vp_group);
+
+			fr_pair_reset_parent(parent);
+
+			FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
+			FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent, vp->da, false);
+		}
+	}
+
+	/*
 	 *	Print the operator for the _last_ attribute, which is generally what we want.
 	 */
 	if ((vp->op > T_INVALID) && (vp->op < T_TOKEN_LAST)) {

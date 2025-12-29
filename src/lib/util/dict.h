@@ -121,6 +121,8 @@ typedef struct {
 
 	unsigned int		local : 1;       		//!< is a local variable
 
+	unsigned int		allow_flat : 1;			//!< only for FR_TYPE_GROUP, can contain "flat" lists.
+
 	unsigned int		has_fixup : 1;			//! needs a fixup during dictionary parsing
 
 	/*

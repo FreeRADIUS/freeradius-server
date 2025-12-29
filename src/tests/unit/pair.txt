@@ -228,5 +228,15 @@ match Test-Attr = ::Vendor-Specific.Cisco.AVPair
 pair Test-Attr = ::Vendor-Specific.12345.1.1
 match Test-Attr = ::Vendor-Specific.12345.1.1
 
+#
+#  Flat attributes are allowed in certain situations.
+#
+#  Note that they are only _printed_ as flat.  The internal
+#  representation is still fully nested.
+#
+pair Tmp-Flat-Group = { Vendor-Specific.Cisco.AVPair = "foo" }
+match Tmp-Flat-Group.Vendor-Specific.Cisco.AVPair = "foo"
+
+
 count
-match 71
+match 73
