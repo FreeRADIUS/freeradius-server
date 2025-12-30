@@ -2779,8 +2779,7 @@ int fr_pair_value_bstr_realloc(fr_pair_t *vp, char **out, size_t size)
 
 /** Copy data into a "string" type value pair
  *
- * @note unlike the original strncpy, this function does not stop
- *	if it finds \0 bytes embedded in the string.
+ * @note This API will copy binary data, including embedded '\0'
  *
  * @note vp->da must be of type FR_TYPE_STRING.
  *
