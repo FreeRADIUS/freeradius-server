@@ -35,10 +35,17 @@
 void _make_vlog(char const *log_keyword, char const *file, int line, char const *fmt, va_list ap)
 {
 	va_list	ap_q;
+	size_t	len;
 	char	buffer[256];
 	char	*p = buffer, *end = (p + (sizeof(buffer) - 1));
 
-	strncpy(p, log_keyword, (end - p));
+	/*
+	 *	Ensure that there's enough room for the keyword + data.
+	 */
+	len = strlen(log_keyword);
+	if (len > (sizeof(buffer) / 2)) return;
+
+	memcpy(p, log_keyword, len);
 	p += strlen(p);
 	*p++ = ' ';
 
