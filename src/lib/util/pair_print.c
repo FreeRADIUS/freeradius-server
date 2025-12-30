@@ -163,6 +163,12 @@ static ssize_t fr_pair_print_name(fr_sbuff_t *out, fr_dict_attr_t const *parent,
 	 *	member.
 	 */
 	if (vp->da->flags.allow_flat) {
+		bool raw = vp->vp_raw;
+		fr_dict_attr_t const *root = parent;
+		fr_sbuff_marker_t m;
+
+		fr_sbuff_marker(&m, &our_out);
+
 		while (fr_type_is_structural(vp->vp_type) &&
 		       (fr_pair_list_num_elements(&vp->vp_group) == 1)) {
 			parent = vp->da;
@@ -172,6 +178,21 @@ static ssize_t fr_pair_print_name(fr_sbuff_t *out, fr_dict_attr_t const *parent,
 
 			FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
 			FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent, vp->da, false);
+		}
+
+		/*
+		 *	If the root attribute is an internal group, then look for aliases in the protocol
+		 *	root.
+		 *
+		 *	Otherwise the root attribute is a protocol group.  The protocol dictionary or library
+		 *	can add aliases.
+		 */
+		if (!root || root->flags.internal) root = fr_dict_root(vp->da->dict);
+
+		if (!raw && (vp->da->depth > (root->depth + 1)) && (fr_dict_attr_by_name(NULL, root, vp->da->name) == vp->da)) {
+			fr_sbuff_set(&our_out, &m);
+			FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
+			FR_SBUFF_IN_STRCPY_RETURN(&our_out, vp->da->name);
 		}
 	}
 

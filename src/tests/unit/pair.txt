@@ -237,6 +237,18 @@ match Test-Attr = ::Vendor-Specific.12345.1.1
 pair Tmp-Flat-Group = { Vendor-Specific.Cisco.AVPair = "foo" }
 match Tmp-Flat-Group.Vendor-Specific.Cisco.AVPair = "foo"
 
+#
+#  We have an alias in the dictionary root from "Long-Name" to the super-long version.
+#
+#  Print the short version to make people happier.
+#
+#  Note that this shortening happens ONLY when the 'group' is marked as "allow_flat".
+#
+pair Tmp-Flat-Group = { Extended-Attribute-2.Extended-Vendor-Specific-2.FreeRADIUS.Long-Name = 1 }
+match Tmp-Flat-Group.Long-Name = 1
+
+pair Tmp-Flat-Group.Long-Name = 1
+match Tmp-Flat-Group.Long-Name = 1
 
 count
-match 73
+match 77
