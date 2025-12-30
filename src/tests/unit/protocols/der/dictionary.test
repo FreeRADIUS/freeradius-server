@@ -2,7 +2,7 @@
 # Copyright (C) 2025 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
-DEFINE	Certificate-Extensions				x509_extensions ref=@.OID-Tree
+DEFINE	Certificate-Extensions				x509_extensions
 
 DEFINE Test-GeneralNames				group sequence_of=choice,ref=@.GeneralName
 

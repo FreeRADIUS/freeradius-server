@@ -317,6 +317,27 @@ static int dict_flag_der_type(fr_dict_attr_t **da_p, char const *value, UNUSED f
 	return 0;
 }
 
+static int dict_flag_set_oid_and_value(fr_dict_attr_t **da_p, fr_der_attr_flags_t *flags)
+{
+	flags->is_oid_and_value = true;
+	flags->is_sequence_of = true;
+	flags->sequence_of = FR_DER_TAG_SEQUENCE;
+
+	/*
+	 *	The dict autoload things aren't set until after we load all of the dictionary entries.  So we
+	 *	just manually set it here for laziness.
+	 */
+	if (!attr_oid_tree) {
+		attr_oid_tree = fr_dict_attr_by_name(NULL, fr_dict_root((*da_p)->dict), "OID-Tree");
+		if (!attr_oid_tree) return -1;
+	}
+
+	if (fr_dict_attr_set_group(da_p, attr_oid_tree) < 0) return -1;
+
+	(*da_p)->flags.allow_flat = !flags->is_extensions;
+	return 0;
+}
+
 static int dict_flag_sequence_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
@@ -333,13 +354,7 @@ static int dict_flag_sequence_of(fr_dict_attr_t **da_p, char const *value, UNUSE
 	}
 
 	if (strcmp(value, "oid_and_value") == 0) {
-		flags->is_oid_and_value = true;
-		flags->is_sequence_of = true;
-		flags->sequence_of = FR_DER_TAG_SEQUENCE;
-		if (fr_dict_attr_set_group(da_p) < 0) return -1;
-
-		(*da_p)->flags.allow_flat = 1;
-		return 0;
+		return dict_flag_set_oid_and_value(da_p, flags);
 	}
 
 	type = fr_table_value_by_str(tag_name_to_number, value, FR_DER_TAG_INVALID);
@@ -370,13 +385,7 @@ static int dict_flag_set_of(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 	}
 
 	if (strcmp(value, "oid_and_value") == 0) {
-		flags->is_oid_and_value = true;
-		flags->is_sequence_of = true;
-		flags->sequence_of = FR_DER_TAG_SEQUENCE;
-		if (fr_dict_attr_set_group(da_p) < 0) return -1;
-
-		(*da_p)->flags.allow_flat = 1;
-		return 0;
+		return dict_flag_set_oid_and_value(da_p, flags);
 	}
 
 	type = fr_table_value_by_str(tag_name_to_number, value, FR_DER_TAG_INVALID);
@@ -801,8 +810,7 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 		flags->option = 3;
 		flags->is_option = true;
 
-		flags->is_sequence_of = true;
-		flags->sequence_of = FR_DER_TAG_SEQUENCE;
+		if (dict_flag_set_oid_and_value(da_p, flags) < 0) return false;
 	}
 
 	/*
@@ -858,26 +866,6 @@ static bool attr_valid(fr_dict_attr_t *da)
 		da->flags.type_size = 0;
 		da->flags.length = 0;
 	}
-
-	/*
-	 *	sequence_of=oid_and_value has to have a reference to the OID tree.
-	 *
-	 *	Group refs are added as unresolved refs, see dict_flag_ref(), and are resolved later
-	 *	in dict_fixup_group_apply().
-	 *
-	 *	@todo - have a function called from dict_attr_finalize() ?
-	 */
-#if 0
-	if (flags->is_oid_and_value) {
-		fr_dict_attr_t const *ref;
-
-		fr_assert(da->type == FR_TYPE_GROUP);
-
-		if (!fr_dict_attr_ref(da)) {
-			(void) dict_attr_ref_set(da, attr_oid_tree, FR_DICT_ATTR_REF_ALIAS);
-		}
-	}
-#endif
 
 	if (flags->is_choice && unlikely(!fr_type_is_tlv(da->type))) {
 		fr_strerror_printf("Attribute %s of type %s is not allowed represent a collection of choices.",

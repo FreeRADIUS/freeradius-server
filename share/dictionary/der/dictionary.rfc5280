@@ -12,7 +12,7 @@ BEGIN version
 DEFINE	number						integer
 END version
 DEFINE	serialNumber					octets der_type=integer
-DEFINE	signature					sequence sequence_of=oid_and_value,ref=@.OID-Tree
+DEFINE	signature					sequence sequence_of=oid_and_value
 
 DEFINE	issuer						sequence sequence_of=set
 BEGIN issuer
@@ -32,18 +32,18 @@ END subject
 
 DEFINE	subjectPublicKeyInfo				sequence
 BEGIN subjectPublicKeyInfo
-DEFINE	algorithm					sequence sequence_of=oid_and_value,ref=@.OID-Tree
+DEFINE	algorithm					sequence sequence_of=oid_and_value
 DEFINE	subjectPublicKey				bitstring
 END subjectPublicKeyInfo
 
 DEFINE issuerUniqueID					octetstring option=1,optional
 DEFINE subjectUniqueID					octetstring option=2,optional
 
-DEFINE	extensions					x509_extensions ref=@.OID-Tree,size=1..,option=3,optional
+DEFINE	extensions					x509_extensions size=1..,option=3,optional
 
 END tbsCertificate
 
-DEFINE	signatureAlgorithm				sequence sequence_of=oid_and_value,ref=@.OID-Tree
+DEFINE	signatureAlgorithm				sequence sequence_of=oid_and_value
 
 DEFINE	signature					bitstring
 END Certificate

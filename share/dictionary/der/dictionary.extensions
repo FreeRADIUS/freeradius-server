@@ -2,7 +2,7 @@
 # Copyright (C) 2025 Network RADIUS SAS (legal@networkradius.com)
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
-DEFINE	Critical					sequence sequence_of=oid_and_value,ref=@.OID-Tree
+DEFINE	Critical					sequence sequence_of=oid_and_value
 
 ATTRIBUTE	authorityInfoAccess			1.3.6.1.5.5.7.1.1	sequence        sequence_of=sequence,leaf
 BEGIN 1.3.6.1.5.5.7.1.1
@@ -65,7 +65,7 @@ DEFINE	policyIdentifier				oid
 
 DEFINE	policyQualifiers				sequence        sequence_of=sequence,size=1..,optional
 BEGIN policyQualifiers
-DEFINE	policyQualifierInfo				sequence	sequence_of=oid_and_value,ref=@.OID-Tree
+DEFINE	policyQualifierInfo				sequence	sequence_of=oid_and_value
 END policyQualifiers
 
 END policyInformation

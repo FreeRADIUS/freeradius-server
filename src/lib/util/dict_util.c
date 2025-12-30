@@ -5316,7 +5316,7 @@ fr_dict_t const	*fr_dict_proto_dict(fr_dict_t const *dict)
 	return dict;
 }
 
-int fr_dict_attr_set_group(fr_dict_attr_t **da_p)
+int fr_dict_attr_set_group(fr_dict_attr_t **da_p, fr_dict_attr_t const *ref)
 {
 	if ((*da_p)->type == FR_TYPE_GROUP) {
 		fr_assert(fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_REF) != NULL);
@@ -5327,9 +5327,5 @@ int fr_dict_attr_set_group(fr_dict_attr_t **da_p)
 
 	fr_assert(fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_REF) == NULL);
 
-	if (!dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_REF)) {
-		return -1;
-	}
-
-	return 0;
+	return dict_attr_ref_aset(da_p, ref, FR_DICT_ATTR_REF_ALIAS);
 }
