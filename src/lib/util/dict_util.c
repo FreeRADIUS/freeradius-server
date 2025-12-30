@@ -1464,6 +1464,7 @@ int dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict
 	case FR_TYPE_TLV:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_VSA:
+	case FR_TYPE_GROUP:
 		break;
 
 	default:

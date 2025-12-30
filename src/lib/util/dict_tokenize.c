@@ -1435,7 +1435,7 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *dctx, char **argv, int a
 	}
 
 	/*
-	 *	Internally we can add aliases to STRUCTs.  But the poor user can't.
+	 *	Internally we can add aliases to STRUCTs and GROUPs.  But the poor user can't.
 	 *
 	 *	This limitation is mainly so that we can differentiate automatically added aliases (which
 	 *	point to unions), from ones added by users.  If we make dict_attr_acopy_aliases() a little
