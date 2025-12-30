@@ -1236,7 +1236,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 			 *	If we find a normal leaf data type, we don't encode it.  But we do encode leaf data
 			 *	types which are marked up as needing OID leaf encoding.
 			 */
-			if (!fr_type_is_structural(child->vp_type) && !fr_der_flag_is_oid_leaf(child->da) && !child->da->flags.is_raw) {
+			if (!fr_type_is_structural(child->vp_type) && !fr_der_flag_leaf(child->da) && !child->da->flags.is_raw) {
 				FR_PROTO_TRACE("Found non-structural child %s", child->da->name);
 
 				fr_dcursor_copy(&child_cursor, &parent_cursor);
@@ -1258,7 +1258,7 @@ static ssize_t fr_der_encode_X509_extensions(fr_dbuff_t *dbuff, fr_dcursor_t *cu
 			if (fr_pair_list_num_elements(&child->children) > 1) break;
 
 		next:
-			if (fr_der_flag_is_oid_leaf(child->da)) break;
+			if (fr_der_flag_leaf(child->da)) break;
 
 			fr_pair_dcursor_child_iter_init(&child_cursor, &child->children, &child_cursor);
 		}
@@ -1382,7 +1382,7 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 		 *	If we find a normal leaf data type, we don't encode it.  But we do encode leaf data
 		 *	types which are marked up as needing OID leaf encoding.
 		 */
-		if (!fr_type_is_structural(child->vp_type) && !fr_der_flag_is_oid_leaf(child->da) && !child->da->flags.is_raw) {
+		if (!fr_type_is_structural(child->vp_type) && !fr_der_flag_leaf(child->da) && !child->da->flags.is_raw) {
 			FR_PROTO_TRACE("Found non-structural child %s", child->da->name);
 
 			fr_dcursor_copy(&child_cursor, &parent_cursor);
@@ -1400,7 +1400,7 @@ static ssize_t fr_der_encode_oid_and_value(fr_dbuff_t *dbuff, fr_dcursor_t *curs
 		/*
 		 *	Some structural types can be marked as a leaf for the purposes of OID encoding.
 		 */
-		if (fr_der_flag_is_oid_leaf(child->da)) break;
+		if (fr_der_flag_leaf(child->da)) break;
 
 		/*
 		 *	Unless this was the last child (marked as an oid leaf), there should only be one child

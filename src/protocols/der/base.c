@@ -408,21 +408,22 @@ static int dict_flag_is_extensions(fr_dict_attr_t **da_p, UNUSED char const *val
 	return 0;
 }
 
-static int dict_flag_is_oid_leaf(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
+static int dict_flag_leaf(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 
 	/*
-	 *	is_oid_leaf is perhaps better as a property of the _parent_ sequence.  It ensures that we only
-	 *	walk through the sequences children once.
+	 *	The "leaf" property means that when we're encoding a nested set of attributes, we encode the
+	 *	OIDs until we hit one which has the "leaf" property set.  We then encode the OID of this
+	 *	attribute, along with its value.
 	 */
 	if (fr_der_flag_der_type((*da_p)->parent) != FR_DER_TAG_SEQUENCE) {
-		fr_strerror_printf("Cannot set 'is_oid_leaf' for parent %s of DER type %s",
+		fr_strerror_printf("Cannot set 'leaf' for parent %s of DER type %s",
 				   (*da_p)->parent->name, fr_der_tag_to_str(fr_der_flag_der_type((*da_p)->parent)));
 		return -1;
 	}
 
-	flags->is_oid_leaf = true;
+	flags->leaf = true;
 
 	return 0;
 }
@@ -622,7 +623,7 @@ static const fr_dict_flag_parser_t  der_flags[] = {
 	{ L("default"),		{ .func = dict_flag_default_value,.needs_value = true } },
 	{ L("der_type"),	{ .func = dict_flag_der_type, .needs_value = true } },
 	{ L("is_extensions"),	{ .func = dict_flag_is_extensions } },
-	{ L("is_oid_leaf"),	{ .func = dict_flag_is_oid_leaf } },
+	{ L("leaf"),		{ .func = dict_flag_leaf } },
 	{ L("max"),		{ .func = dict_flag_max, .needs_value = true } },
 	{ L("option"),		{ .func = dict_flag_option} },
 	{ L("optional"),       	{ .func = dict_flag_optional} },

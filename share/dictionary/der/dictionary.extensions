@@ -4,7 +4,7 @@
 # Version $Id$
 DEFINE	Critical					sequence sequence_of=oid_and_value,ref=@.OID-Tree
 
-ATTRIBUTE	authorityInfoAccess			1.3.6.1.5.5.7.1.1	sequence        sequence_of=sequence,is_oid_leaf
+ATTRIBUTE	authorityInfoAccess			1.3.6.1.5.5.7.1.1	sequence        sequence_of=sequence,leaf
 BEGIN 1.3.6.1.5.5.7.1.1
 DEFINE	accessDescription				sequence
 BEGIN accessDescription
@@ -13,7 +13,7 @@ DEFINE	accessLocation					choice clone=@.GeneralName
 END accessDescription
 END 1.3.6.1.5.5.7.1.1
 
-ATTRIBUTE	subjectInfoAccess			1.3.6.1.5.5.7.1.11	sequence        sequence_of=sequence,is_oid_leaf
+ATTRIBUTE	subjectInfoAccess			1.3.6.1.5.5.7.1.11	sequence        sequence_of=sequence,leaf
 BEGIN 1.3.6.1.5.5.7.1.11
 DEFINE	accessDescription				sequence
 BEGIN accessDescription
@@ -22,9 +22,9 @@ DEFINE	accessLocation					choice clone=@.GeneralName
 END accessDescription
 END 1.3.6.1.5.5.7.1.11
 
-ATTRIBUTE	subjectKeyIdentifier			2.5.29.14	octetstring     is_oid_leaf
+ATTRIBUTE	subjectKeyIdentifier			2.5.29.14	octetstring     leaf
 
-ATTRIBUTE	keyUsage				2.5.29.15	struct  is_oid_leaf
+ATTRIBUTE	keyUsage				2.5.29.15	struct  leaf
 MEMBER		digitalSignature			bit[1]
 MEMBER		nonRepudation				bit[1]
 MEMBER		keyEncipherment				bit[1]
@@ -36,28 +36,28 @@ MEMBER		encipherOnly				bit[1]
 MEMBER		decipherOnly				bit[1]
 MEMBER		unused_bits				bit[7]
 
-ATTRIBUTE	subjectAltName				2.5.29.17	group der_type=sequence,sequence_of=choice,ref=@.GeneralName,is_oid_leaf,size=1..
+ATTRIBUTE	subjectAltName				2.5.29.17	group der_type=sequence,sequence_of=choice,ref=@.GeneralName,leaf,size=1..
 
-ATTRIBUTE	issuerAltName				2.5.29.18	group der_type=sequence,sequence_of=choice,ref=@.GeneralName,is_oid_leaf,size=1..
+ATTRIBUTE	issuerAltName				2.5.29.18	group der_type=sequence,sequence_of=choice,ref=@.GeneralName,leaf,size=1..
 
-ATTRIBUTE	basicConstraints			2.5.29.19	sequence is_oid_leaf
+ATTRIBUTE	basicConstraints			2.5.29.19	sequence leaf
 BEGIN 2.5.29.19
 DEFINE	cA						boolean		default=false
 DEFINE	pathLenConstraint				integer		optional
 END 2.5.29.19
 
-ATTRIBUTE	nameConstraints				2.5.29.30	sequence        is_oid_leaf
+ATTRIBUTE	nameConstraints				2.5.29.30	sequence        leaf
 BEGIN 2.5.29.30
 ATTRIBUTE	permittedSubtrees			0	group   ref=@.GeneralSubtree,sequence_of=sequence,option,optional
 ATTRIBUTE	excludedSubtrees			1	group   ref=@.GeneralSubtree,sequence_of=sequence,option,optional
 END 2.5.29.30
 
-ATTRIBUTE	CRLDIstributionPoints			2.5.29.31	sequence        sequence_of=sequence,is_oid_leaf
+ATTRIBUTE	CRLDIstributionPoints			2.5.29.31	sequence        sequence_of=sequence,leaf
 BEGIN 2.5.29.31
 $INCLUDE dictionary.crl
 END 2.5.29.31
 
-ATTRIBUTE	certificatePolicies			2.5.29.32	sequence        sequence_of=sequence,is_oid_leaf,size=1..
+ATTRIBUTE	certificatePolicies			2.5.29.32	sequence        sequence_of=sequence,leaf,size=1..
 BEGIN 2.5.29.32
 DEFINE	policyInformation				sequence
 BEGIN policyInformation
@@ -71,32 +71,32 @@ END policyQualifiers
 END policyInformation
 END 2.5.29.32
 
-ATTRIBUTE	policyMappings				2.5.29.33	sequence        is_oid_leaf,size=1..
+ATTRIBUTE	policyMappings				2.5.29.33	sequence        leaf,size=1..
 BEGIN 2.5.29.33
 DEFINE	issuerDomainPolicy				oid
 DEFINE	subjectDomainPolicy				oid
 END 2.5.29.33
 
-ATTRIBUTE	authorityKeyIdentifier			2.5.29.35	sequence        sequence_of=choice,is_oid_leaf
+ATTRIBUTE	authorityKeyIdentifier			2.5.29.35	sequence        sequence_of=choice,leaf
 BEGIN 2.5.29.35
 ATTRIBUTE	keyIdentifier				0	octetstring  option,optional
 ATTRIBUTE	authorityCertIssuer			1	group   der_type=sequence,sequence_of=choice,ref=@.GeneralName,option,optional
 ATTRIBUTE	authorityCertSerialNumber		2	octetstring der_type=integer,option,optional
 END 2.5.29.35
 
-ATTRIBUTE	policyConstraints			2.5.29.36	sequence        is_oid_leaf
+ATTRIBUTE	policyConstraints			2.5.29.36	sequence        leaf
 BEGIN 2.5.29.36
 ATTRIBUTE	requireExplicitPolicy			0	octetstring option,optional
 ATTRIBUTE	inhibitPolicyMapping			1	octetstring option,optional
 END 2.5.29.36
 
-ATTRIBUTE	extKeyUsage				2.5.29.37	sequence        sequence_of=oid,size=1..,is_oid_leaf
+ATTRIBUTE	extKeyUsage				2.5.29.37	sequence        sequence_of=oid,size=1..,leaf
 #DEFINE extKeyUsageSyntax        sequence
 BEGIN 2.5.29.37
 DEFINE	keyPurposeId					oid
 END 2.5.29.37
 
-ATTRIBUTE	freshestCRL				2.5.29.46	sequence        sequence_of=sequence,is_oid_leaf
+ATTRIBUTE	freshestCRL				2.5.29.46	sequence        sequence_of=sequence,leaf
 $INCLUDE dictionary.crl
 
-ATTRIBUTE	inhibitAnyPolicy			2.5.29.54	integer is_oid_leaf
+ATTRIBUTE	inhibitAnyPolicy			2.5.29.54	integer leaf

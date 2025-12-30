@@ -9,21 +9,21 @@ ATTRIBUTE	member-body				1.2	sequence
 ATTRIBUTE	us					1.2.840	sequence
 ATTRIBUTE	ansi-x962				1.2.840.10045	sequence
 ATTRIBUTE	keyType					1.2.840.10045.2	sequence
-ATTRIBUTE	ecPublicKey				1.2.840.10045.2.1	oid     is_oid_leaf
+ATTRIBUTE	ecPublicKey				1.2.840.10045.2.1	oid     leaf
 
 ATTRIBUTE	signatures				1.2.840.10045.4	sequence
 ATTRIBUTE	ecdsa-with-SHA2				1.2.840.10045.4.3	sequence
-ATTRIBUTE	ecdsa-with-SHA384			1.2.840.10045.4.3.3	bool     is_oid_leaf,default=false
+ATTRIBUTE	ecdsa-with-SHA384			1.2.840.10045.4.3.3	bool     leaf,default=false
 
 ATTRIBUTE	rsadsi					1.2.840.113549	sequence
 ATTRIBUTE	pkcs					1.2.840.113549.1	sequence
 ATTRIBUTE	pkcs-1					1.2.840.113549.1.1	sequence
-ATTRIBUTE	rsaEncryption				1.2.840.113549.1.1.1	null    is_oid_leaf
+ATTRIBUTE	rsaEncryption				1.2.840.113549.1.1.1	null    leaf
 
-ATTRIBUTE	sha256WithRSAEncryption			1.2.840.113549.1.1.11	null    is_oid_leaf
+ATTRIBUTE	sha256WithRSAEncryption			1.2.840.113549.1.1.11	null    leaf
 
 ATTRIBUTE	pkcs-9					1.2.840.113549.1.9	sequence
-ATTRIBUTE	emailAddress				1.2.840.113549.1.9.1	string  is_oid_leaf
+ATTRIBUTE	emailAddress				1.2.840.113549.1.9.1	string  leaf
 
 ATTRIBUTE	identified-organization			1.3	sequence
 ATTRIBUTE	dod					1.3.6	sequence
@@ -54,30 +54,30 @@ ATTRIBUTE	on					1.3.6.1.5.5.7.8 sequence
 ATTRIBUTE	id-on-naiRealm				1.3.6.1.5.5.7.8.8 utf8string size=1..255
 
 ATTRIBUTE	ad					1.3.6.1.5.5.7.48 sequence
-ATTRIBUTE	id-ad-ocsp				1.3.6.1.5.5.7.48.1 bool is_oid_leaf
+ATTRIBUTE	id-ad-ocsp				1.3.6.1.5.5.7.48.1 bool leaf
 #ALIAS		id-pkix-ocsp id-ad-ocsp
-ATTRIBUTE	id-ad-caIssuers				1.3.6.1.5.5.7.48.2 bool is_oid_leaf
-ATTRIBUTE	id-ad-timestamping			1.3.6.1.5.5.7.48.3 bool is_oid_leaf
-ATTRIBUTE	id-ad-dvcsk				1.3.6.1.5.5.7.48.4 bool is_oid_leaf
-ATTRIBUTE	id-ad-caRepository			1.3.6.1.5.5.7.48.5 bool is_oid_leaf
-ATTRIBUTE	id-ad-http-certs			1.3.6.1.5.5.7.48.6 bool is_oid_leaf
-ATTRIBUTE	id-ad-http-crls				1.3.6.1.5.5.7.48.7 bool is_oid_leaf
-ATTRIBUTE	id-ad-xkms				1.3.6.1.5.5.7.48.8 bool is_oid_leaf
-ATTRIBUTE	id-ad-signedObjectRepository		1.3.6.1.5.5.7.48.9 bool is_oid_leaf
-ATTRIBUTE	id-ad-rpkiManifest			1.3.6.1.5.5.7.48.10 bool is_oid_leaf
-ATTRIBUTE	id-ad-signedObject			1.3.6.1.5.5.7.48.11 bool is_oid_leaf
-ATTRIBUTE	id-ad-cmc				1.3.6.1.5.5.7.48.12 bool is_oid_leaf
+ATTRIBUTE	id-ad-caIssuers				1.3.6.1.5.5.7.48.2 bool leaf
+ATTRIBUTE	id-ad-timestamping			1.3.6.1.5.5.7.48.3 bool leaf
+ATTRIBUTE	id-ad-dvcsk				1.3.6.1.5.5.7.48.4 bool leaf
+ATTRIBUTE	id-ad-caRepository			1.3.6.1.5.5.7.48.5 bool leaf
+ATTRIBUTE	id-ad-http-certs			1.3.6.1.5.5.7.48.6 bool leaf
+ATTRIBUTE	id-ad-http-crls				1.3.6.1.5.5.7.48.7 bool leaf
+ATTRIBUTE	id-ad-xkms				1.3.6.1.5.5.7.48.8 bool leaf
+ATTRIBUTE	id-ad-signedObjectRepository		1.3.6.1.5.5.7.48.9 bool leaf
+ATTRIBUTE	id-ad-rpkiManifest			1.3.6.1.5.5.7.48.10 bool leaf
+ATTRIBUTE	id-ad-signedObject			1.3.6.1.5.5.7.48.11 bool leaf
+ATTRIBUTE	id-ad-cmc				1.3.6.1.5.5.7.48.12 bool leaf
 
 ATTRIBUTE	joint-iso-itu-t				2	sequence
 ATTRIBUTE	ds					2.5	sequence
 
 ATTRIBUTE	attributeType				2.5.4	sequence
-ATTRIBUTE	commonName				2.5.4.3	printablestring is_oid_leaf
-ATTRIBUTE	countryName				2.5.4.6	printablestring size=2,is_oid_leaf
-ATTRIBUTE	serialNumber				2.5.4.5	printablestring is_oid_leaf
-ATTRIBUTE	localityName				2.5.4.7	string  is_oid_leaf
-ATTRIBUTE	stateOrProvinceName			2.5.4.8	string  is_oid_leaf
-ATTRIBUTE	organizationName			2.5.4.10	printablestring is_oid_leaf
+ATTRIBUTE	commonName				2.5.4.3	printablestring leaf
+ATTRIBUTE	countryName				2.5.4.6	printablestring size=2,leaf
+ATTRIBUTE	serialNumber				2.5.4.5	printablestring leaf
+ATTRIBUTE	localityName				2.5.4.7	string  leaf
+ATTRIBUTE	stateOrProvinceName			2.5.4.8	string  leaf
+ATTRIBUTE	organizationName			2.5.4.10	printablestring leaf
 
 ATTRIBUTE	certificateExtension			2.5.29	sequence
 

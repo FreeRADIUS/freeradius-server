@@ -109,7 +109,7 @@ typedef struct {
 	bool 			is_oid_and_value : 1;	//!< is OID+value
 	bool 			is_extensions : 1;	//!< a list of X.509 extensions
 	bool			has_default_value : 1;	//!< a default value exists
-	bool 			is_oid_leaf : 1;
+	bool 			leaf : 1;		//!< encode this OID along with its value
 	bool			is_choice : 1;		//!< DER name "choice".
 } fr_der_attr_flags_t;
 
@@ -134,7 +134,7 @@ static inline fr_der_attr_flags_t const *fr_der_attr_flags(fr_dict_attr_t const 
 #define fr_der_flag_is_oid_and_value(_da) (fr_der_attr_flags(_da)->is_oid_and_value)
 #define fr_der_flag_is_extensions(_da) 	(fr_der_attr_flags(_da)->is_extensions)
 #define fr_der_flag_has_default_value(_da) 	((fr_der_attr_flags(_da)->has_default_value) != NULL);
-#define fr_der_flag_is_oid_leaf(_da) 	(fr_der_attr_flags(_da)->is_oid_leaf)
+#define fr_der_flag_leaf(_da) 		(fr_der_attr_flags(_da)->leaf)
 #define fr_der_flag_is_choice(_da) 	(fr_der_attr_flags(_da)->is_choice)
 
 /*
