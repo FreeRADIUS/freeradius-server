@@ -510,3 +510,10 @@ do { \
 	do { \
 		_type ignored UNUSED = (_expr); \
 	} while (0)
+
+/** Force a compilation error if strncpy() is used.
+ *
+ */
+extern char *dont_use_strncpy(char *dst, char const *src, size_t len);
+#undef strncpy
+#define strncpy(_dst, _src, _len) dont_use_strncpy()
