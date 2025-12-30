@@ -315,7 +315,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_decrypt_xlat(TALLOC_CTX *ctx, fr_
 	if (include_tag) {
 		MEM(fr_value_box_bstr_alloc(vb, &buff, vb, NULL, AKA_SIM_IMSI_MAX_LEN + 1, false) == 0);
 		*buff = out_tag;
-		strncpy(buff + 1, decrypted, AKA_SIM_IMSI_MAX_LEN + 1);
+		memcpy(buff + 1, decrypted, AKA_SIM_IMSI_MAX_LEN);
 	} else {
 		MEM(fr_value_box_bstrndup(vb, vb, NULL, decrypted, AKA_SIM_IMSI_MAX_LEN, true) == 0);
 	}
