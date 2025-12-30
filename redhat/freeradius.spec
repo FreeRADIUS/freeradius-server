@@ -980,15 +980,6 @@ fi
 %{_libdir}/freeradius/proto_vmps.so
 %{_libdir}/freeradius/proto_vmps_udp.so
 
-# Support libraries without external deps.
-# Protocol libraries should not be included here, they should be added to the common package instead.
-%{_libdir}/freeradius/libfreeradius-control.so
-%{_libdir}/freeradius/libfreeradius-io.so
-%{_libdir}/freeradius/libfreeradius-server.so
-%{_libdir}/freeradius/libfreeradius-tls.so
-%{_libdir}/freeradius/libfreeradius-totp.so
-%{_libdir}/freeradius/libfreeradius-unlang.so
-
 # Backend modules without external deps
 %{_libdir}/freeradius/rlm_always.so
 %{_libdir}/freeradius/rlm_attr_filter.so
@@ -1069,6 +1060,14 @@ fi
 %{_libdir}/freeradius/libfreeradius-tacacs.so
 %{_libdir}/freeradius/libfreeradius-tftp.so
 %{_libdir}/freeradius/libfreeradius-vmps.so
+
+# Support libraries without external deps.
+%{_libdir}/freeradius/libfreeradius-control.so
+%{_libdir}/freeradius/libfreeradius-io.so
+%{_libdir}/freeradius/libfreeradius-server.so
+%{_libdir}/freeradius/libfreeradius-tls.so
+%{_libdir}/freeradius/libfreeradius-totp.so
+%{_libdir}/freeradius/libfreeradius-unlang.so
 
 # Utility libraries
 %{_libdir}/freeradius/libfreeradius-bio.so
