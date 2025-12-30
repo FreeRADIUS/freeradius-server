@@ -1552,16 +1552,12 @@ acutest_cmdline_read_(const ACUTEST_CMDLINE_OPTION_* options, int argc, char** a
                     char* badoptname = argv[i];
 
                     if(strncmp(badoptname, "--", 2) == 0) {
+                        char* assignment;
                         /* Strip any argument from the long option. */
-                        char* assignment = strchr(badoptname, '=');
-                        if(assignment != NULL) {
-                            size_t len = assignment - badoptname;
-                            if(len > ACUTEST_CMDLINE_AUXBUF_SIZE_)
-                                len = ACUTEST_CMDLINE_AUXBUF_SIZE_;
-                            strncpy(auxbuf, badoptname, len);
-                            auxbuf[len] = '\0';
-                            badoptname = auxbuf;
-                        }
+                        strlcpy(auxbuf, badoptname, sizeof(auxbuf));
+			assignment = strchr(auxbuf, '=');
+			if (assignment) *assignment = '\0';
+			badoptname = auxbuf;
                     }
 
                     ret = callback(ACUTEST_CMDLINE_OPTID_UNKNOWN_, badoptname);
