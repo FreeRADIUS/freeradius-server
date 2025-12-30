@@ -749,7 +749,7 @@ cf_file_check_err_t cf_file_check_unix_connect(char const *filename, UNUSED void
 		return CF_FILE_OTHER_ERROR;
 	}
 
-	strncpy(addr.sun_path, filename, sizeof(addr.sun_path) - 1);
+	strlcpy(addr.sun_path, filename, sizeof(addr.sun_path));
 
 	fd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (fd < 0) {
