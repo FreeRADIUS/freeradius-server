@@ -208,35 +208,56 @@ static size_t ftp_response_body(void *in, size_t size, size_t nmemb, void *userd
 	rlm_ftp_response_t	*ctx = userdata;
 	request_t		*request = ctx->request; /* Used by RDEBUG */
 
-	char const		*start = in, *p = start, *end = p + (size * nmemb);
-	char			*out_p;
-	size_t			needed;
+	char const		*start = in, *end = start + (size * nmemb);
+	char			*out;
+	size_t			needed, chunk_len, total;
 
-	if (start == end) return 0; 	/* Nothing to process */
+	/*
+	 *	Get how much data we're being asked to write now, and the total amount of data we've written.
+	 */
+	chunk_len = (size_t) (end - start);
+	total = ctx->used + chunk_len;
 
-	if ((ctx->instance->max_resp_size > 0) && ((ctx->used + (end - p)) > ctx->instance->max_resp_size)) {
-			REDEBUG("Incoming data (%zu bytes) exceeds max_resp_size (%zu bytes).  "
-				"Forcing body to type 'invalid'", ctx->used + (end - p), ctx->instance->max_resp_size);
-			ctx->state = WRITE_STATE_DISCARD;
-			TALLOC_FREE(ctx->buffer);
-			goto end;
+	if (!chunk_len) return 0; 	/* Nothing to process */
+
+	/*
+	 *	We had previously decided to discard the writes, just tell curl "yes, we wrote it all".
+	 */
+	if (ctx->state == WRITE_STATE_DISCARD) return chunk_len;
+
+	/*
+	 *	We're being asked to write too much data, free the buffer and discard all of the data.
+	 */
+	if (total > ctx->instance->max_resp_size) {
+		REDEBUG("Incoming data (%zu bytes) exceeds max_body_in (%zu bytes).  Forcing discard",
+			total, ctx->instance->max_resp_size);
+		ctx->state = WRITE_STATE_DISCARD;
+		TALLOC_FREE(ctx->buffer);
+		ctx->alloc = 0;
+		ctx->used  = 0;
+		return chunk_len;
 	}
 
-	needed = ROUND_UP(ctx->used + (end - p), FTP_BODY_ALLOC_CHUNK);
+	/*
+	 *	If there's no buffer, then we can't have used any part of the buffer.
+	 */
+	fr_assert(ctx->buffer || !ctx->used);
+
+	/*
+	 *	Ensure that there's enough room in the buffer for all of the data that we need to write.
+	 */
+	needed = ROUND_UP(total, FTP_BODY_ALLOC_CHUNK);
 	if (needed > ctx->alloc) {
 		MEM(ctx->buffer = talloc_bstr_realloc(NULL, ctx->buffer, needed));
 		ctx->alloc = needed;
 	}
 
-	out_p = ctx->buffer + ctx->used;
-	memcpy(out_p, p, (end - p));
-	out_p += (end - p);
-	*out_p = '\0';
-	ctx->used += (end - p);
-	ctx->state = WRITE_STATE_POPULATED;
+	out = ctx->buffer + ctx->used;
+	memcpy(out, start, chunk_len);
+	ctx->used = total;
+	ctx->buffer[ctx->used] = '\0';
 
-end:
-	return (end - start);
+	return chunk_len;
 }
 
 
