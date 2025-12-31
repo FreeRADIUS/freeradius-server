@@ -374,8 +374,8 @@ if [ ! -z "$file_args" ]; then
 	INFO "(Parallelised tests)"
 	INFO ""
 
-	rm -f "$packets" 2>&1 > /dev/null
-	rm -f "$filters" 2>&1 > /dev/null
+	rm -f "$packets" >/dev/null 2>&1
+	rm -f "$filters" >/dev/null 2>&1
 
 	if [ $ret -ne 0 ]; then
     		ERROR "One or more tests failed (radclient exited with $ret)"
