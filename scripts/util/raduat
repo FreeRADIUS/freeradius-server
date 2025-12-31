@@ -33,7 +33,7 @@ secret='testing123'
 # Some very basic logging functions
 function ERROR
 {
-    echo "$@" 1>&2;
+    echo "$@" 1>&2
 }
 
 function INFO
