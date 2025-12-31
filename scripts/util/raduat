@@ -346,7 +346,7 @@ for i in $test_files; do
     # and can later be specified with -v -- <test> to drill down.
     echo "Radclient-Test-Name := \""$(echo "$i" | sed -e "s@${test_path}/\?@@")"\"" >> "$packets"
     echo >> "$packets"
-    printf '%s\n' "$(cat "${i}_expected")" >> "$filters"
+    printf '%s\n' "$(cat "${expected}")" >> "$filters"
     echo >> "$filters"
 done
 
