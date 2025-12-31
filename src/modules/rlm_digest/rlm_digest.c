@@ -573,7 +573,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 	/*
 	 *  And finally, compare the digest in the packet with KD.
 	 */
-	if (memcmp(&kd[0], &hash[0], 16) == 0) {
+	if (rad_digest_cmp(&kd[0], &hash[0], 16) == 0) {
 		return RLM_MODULE_OK;
 	}
 
