@@ -779,7 +779,6 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 
 	if (der_type == FR_DER_TAG_OID) {
 		fr_dict_attr_ext_ref_t *ext;
-		fr_dict_attr_t const *parent;
 
 		fr_assert(fr_type == FR_TYPE_ATTR);
 
@@ -789,14 +788,12 @@ static bool type_parse(fr_type_t *type_p,fr_dict_attr_t **da_p, char const *name
 		if (unlikely(!ext)) return -1;
 
 		if (!attr_oid_tree) {
-			parent = fr_dict_attr_by_name(NULL, fr_dict_root((*da_p)->dict), "OID-Tree");
-			fr_assert(parent != NULL);
-		} else {
-			parent = attr_oid_tree;
+			attr_oid_tree = fr_dict_attr_by_name(NULL, fr_dict_root((*da_p)->dict), "OID-Tree");
+			fr_assert(attr_oid_tree != NULL);
 		}
 
 		ext->type = FR_DICT_ATTR_REF_ROOT;
-		ext->ref = parent;
+		ext->ref = attr_oid_tree;
 	}
 
 	/*
@@ -857,15 +854,6 @@ static bool attr_valid(fr_dict_attr_t *da)
 {
 	fr_der_attr_flags_t *flags = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 	fr_der_attr_flags_t *parent;
-
-	/*
-	 *	We might have created the attribute of type "tlv", and then later swapped it to "group".
-	 *	Ensure that the main validation routines are happy with the result.
-	 */
-	if (da->type == FR_TYPE_GROUP) {
-		da->flags.type_size = 0;
-		da->flags.length = 0;
-	}
 
 	if (flags->is_choice && unlikely(!fr_type_is_tlv(da->type))) {
 		fr_strerror_printf("Attribute %s of type %s is not allowed represent a collection of choices.",

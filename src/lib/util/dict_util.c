@@ -5324,6 +5324,8 @@ int fr_dict_attr_set_group(fr_dict_attr_t **da_p, fr_dict_attr_t const *ref)
 	}
 
 	(*da_p)->type = FR_TYPE_GROUP;
+	(*da_p)->flags.type_size = 0;
+	(*da_p)->flags.length = 0;
 
 	fr_assert(fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_REF) == NULL);
 
