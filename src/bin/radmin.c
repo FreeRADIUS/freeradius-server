@@ -267,8 +267,17 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		line = readline(prompt);
 		if (stop) break;
 
-		if (!line) continue;
+		/*
+		 *	NULL means "read hit EOF"
+		 */
+		if (!line) {
+			main_loop_signal_raise(RADIUS_SIGNAL_SELF_EXIT);
+			break;
+		}
 
+		/*
+		 *	non-NULL, but empty line means "no input"
+		 */
 		if (!*line) {
 			radmin_free(line);
 			continue;
