@@ -108,8 +108,8 @@ if [ ! -d "$TESTDIR" ]; then
 fi
 
 # Definitions (build these dynamically by looking at the files under tests)
-cluster_dirs=$(find "$TESTDIR/" -mindepth 1 -maxdepth 1 -type d)
 cluster_types=$(echo $cluster_dirs | sed 's/\s/ /g')
+cluster_dirs=$(find "$TESTDIR/" -mindepth 1 -maxdepth 1 -type d -exec basename {} \;)
 cluster_types=$(echo "$cluster_dirs" | sed 's/\s/ /g')
 
 role_types=
