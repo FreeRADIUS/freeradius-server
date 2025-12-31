@@ -38,22 +38,33 @@ ifneq "$(FILES.test.ldap_sync)" ""
 TEST_ALL_ORDER += ldap_sync
 endif
 
-TEST_ALL_PREV = process
+#
+#  Walk through all files for tests in one directory, ensuring that
+#  the tests are serialized in file order.
+#
+#  This is because each of these tests runs the server, and listens on
+#  either a port or a unix socket.  And (for now), all of the tests in
+#  one directory use the same port.
+#
+define TEST_ALL_DEPS_INNER
+ifeq "$(OUTPUT.${1}._serial)" ""
+OUTPUT.${1}._serial := $2
+else
+$2: $(OUTPUT.${1}._serial)
+OUTPUT.${1}._serial := $2
+endif
+endef
 
 #
-#  Ensure that all of the "radiusd -C" tests are run in series.
-#
-#  At least until such time as they're either run in docker
-#  containers, OR they're all run on different ports.
+#  Walk through the tests with run radiusd, ensuring that the tests
+#  are serialized in directory order.
 #
 define TEST_ALL_DEPS
 $$(FILES.test.${1}): $$(FILES.test.$(TEST_ALL_PREV))
 TEST_ALL_PREV := ${1}
+
+$(foreach x,$(FILES.test.${1}),$(eval $(call TEST_ALL_DEPS_INNER,${1},$x)))
+
 endef
 
 $(foreach x,$(TEST_ALL_ORDER),$(eval $(call TEST_ALL_DEPS,$x)))
-
-#
-#  @todo - loop over all tests in each directory which runs radiusd-c,
-#  serializing them, too.  See src/tests/modules/all.mk for examples.
-#
