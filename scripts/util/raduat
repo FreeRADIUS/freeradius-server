@@ -10,14 +10,14 @@
 OPTIND=1         # Reset in case getopts has been used previously in the shell.
 
 # Environmental variables
-: ${TESTDIR=$(dirname $0)"/tests"}
+: ${TESTDIR=$(dirname "$0")"/tests"}
 : ${RADCLIENT='radclient'}
 : ${FILTER_SUFFIX='_expected'}
 # What we send back in response to a CoA request
 : ${COA_REPLY_SUFFIX='_coa_reply'}
 # What we expect from a CoA request
 : ${COA_FILTER_SUFFIX='_coa_expected'}
-PATH="$(dirname $0)/bin:${PATH}"
+PATH="$(dirname "$0")/bin:${PATH}"
 
 # Initialize our own variables
 verbose=0
@@ -50,7 +50,7 @@ function DEBUG
 
 function show_help
 {
-    echo $(basename $0)" [options] [-- <test_glob0> <test_glob1> <test_globN>]"
+    echo $(basename "$0")" [options] [-- <test_glob0> <test_glob1> <test_globN>]"
     echo "  -h                        Display this help message."
     echo "  -H <host>[:port]          Send test packets to specified host and port (defaults to 127.0.0.1)"
     echo "  -v                        Verbose mode."
@@ -110,6 +110,7 @@ fi
 # Definitions (build these dynamically by looking at the files under tests)
 cluster_dirs=$(find "$TESTDIR/" -mindepth 1 -maxdepth 1 -type d)
 cluster_types=$(echo $cluster_dirs | sed 's/\s/ /g')
+cluster_types=$(echo "$cluster_dirs" | sed 's/\s/ /g')
 
 role_types=
 for i in $cluster_dirs; do
@@ -283,7 +284,7 @@ fi
 #  Figure out which tests we can munge into a single file which we can
 #  use to parallelise testing
 #
-base=$(basename $0)
+base=$(basename "$0")
 packets=$(mktemp -t "${base}XXX") || exit 1
 filters=$(mktemp -t "${base}XXX") || exit 1
 
