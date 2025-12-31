@@ -72,12 +72,53 @@ else
 endif
 endef
 
+######################################################################
+#
+#  Ensure that tests in one directory run in sequence.
+#
+#  If the magic macro is set: TEST.modules.foo.parallel=1
+#  then the tests in that directory can be run in parallel.
+#
+#  Each "foo/all.mk" file contains a horrible GNU Make thing which
+#  automatically uses the correct name.  This is so that we can just
+#  copy the macro to a new file, and don't have to edit it for each
+#  directory.
+#
+#  If there's no macro defined for this subdirectory, then define it
+#  to be the current test.
+#
+#  Otherwise, make the current test depend on the previous one.
+#  Then redefine the macro to be the current test.
+#
+#  This creates a "chain" of dependencies for all tests in a
+#  subdirectory, so that they run in series.
+#
+#  We only do this if the module is explicitly marked as can
+#  parallelize.
+#
+#  Use $(eval $(call TEST_MODULES_DEPS))
+#
+######################################################################
+define TEST_MODULES_DEPS
+ifneq "$(TEST.modules.$(subst /,,$(dir $1)).parallel)" ""
+ifeq "$(OUTPUT.modules.$(dir $1))" ""
+OUTPUT.modules.$(dir $1) := $(OUTPUT)/$1
+else
+$(OUTPUT.modules.$(dir $1)): $(OUTPUT)/$1
+OUTPUT.modules.$(dir $1) := $(OUTPUT)/$1
+endif
+endif
+endef
+
 #
 #  Ensure that "rlm_foo.a" is built when we run a module from directory "foo"
 #
 $(foreach x,$(FILES),$(eval $(call MODULE_FILTER,$(firstword $(subst /, ,$x)),$x)))
 FILES := $(filter-out $(FILES_SKIP),$(FILES))
 $(eval $(call TEST_BOOTSTRAP))
+
+$(foreach x,$(FILES),$(eval $(call TEST_MODULES_DEPS,$x)))
+
 
 #
 #  For each output file, find the rlm_*.la module which it needs,
