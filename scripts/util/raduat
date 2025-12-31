@@ -24,10 +24,11 @@ verbose=0
 cluster=
 role=
 type=
+host_split_chars='.'
 parallel=40
 retries=3
 timeout=2
-target='127.0.0.1'
+target_host="$(hostname -f)"
 secret='testing123'
 
 # Some very basic logging functions
@@ -49,12 +50,26 @@ function DEBUG
 }
 
 function show_help
+#
+# Escape characters for use inside a sed bracket expression
+#
+function char_class_escape
+{
+    local s="$1"
+    s=${s//\\/\\\\}   # backslash
+    s=${s//]/\\]}     # closing bracket
+    s=${s//-/\\-}     # dash
+    s=${s//^/\\^}     # caret
+    s=${s//./\\.}     # dot (explicitly required)
+    echo "$s"
+}
 {
     echo $(basename "$0")" [options] [-- <test_glob0> <test_glob1> <test_globN>]"
     echo "  -h                        Display this help message."
-    echo "  -H <host>[:port]          Send test packets to specified host and port (defaults to 127.0.0.1)"
+    echo "  -H <host>[:port]          Send test packets to specified host and port (defaults to ${target_host})"
     echo "  -v                        Verbose mode."
     echo "  -p <number>               Run tests in parallel (defaults to 20)."
+    echo "  -d <chars>                Characters to split FQDN on for cluster and type matching (defaults to '.')."
     echo "  -s <secret>               Shared secret."
     if [ ! -z "$role_types" ]; then
         echo "  -c <cluster>              Specify cluster type one of ($cluster_types)."
@@ -65,7 +80,7 @@ function show_help
 
     echo
     echo "For role based test file layout create test files under ${TESTDIR}/<cluster>/<type>"
-    echo "Where <cluster> and <type> are substrings found in the FQDN of <host>."
+    echo "Where <cluster> and <type> are substrings (exploded with -d) found in the FQDN of <host>."
     echo "For simplified test layout create test files under ${TESTDIR}"
     echo
     echo "The directory containing the tests should contains pairs of request files and filter files."
@@ -142,6 +157,9 @@ while getopts "h?H:vc:r:s:p:" opt; do
         verbose=1
         ;;
 
+    d)
+        host_split_chars="$OPTARG"
+        ;;
     c)
         found=0
         for i in $cluster_types; do
@@ -186,7 +204,7 @@ while getopts "h?H:vc:r:s:p:" opt; do
         ;;
 
     H)
-        target="$OPTARG"
+        target_host="$OPTARG"
         ;;
 
     esac
@@ -201,25 +219,34 @@ test_files=$@
 #  Match keywords from the hostname to clusters or roles
 #
 if [ ! -z "$role_types" ]; then
-    this_host=$(hostname -f)
-    for tok in $(echo "$this_host" | sed 's/\./ /g'); do
-        for key in ${cluster_types}; do
-            if echo "$tok" | grep "$key" > /dev/null && [ "$cluster" = '' ]; then cluster="$key"; fi
-        done
-        for key in ${role_types}; do
-            if echo "$tok" | grep "$key" > /dev/null && [ "$role" = '' ]; then role="$key"; fi
-        done
+    for tok in ${target_host//[$(char_class_escape "$host_split_chars")]/ }; do
+        if [ -z "${cluster}" ]; then
+            for key in ${cluster_types}; do
+                grep -qF -- "${key}" <<<"${tok}" && cluster="${key}" && break
+            done
+        fi
+        if [ -z "${role}" ]; then
+            for key in $role_types; do
+                grep -qF -- "${key}" <<<"${tok}" && role="${key}" && break
+            done
+        fi
+        [ -n "${cluster}" ] && [ -n "${role}" ] && break
     done
 
-    if [ "$cluster" == '' ]; then
-        ERROR "Couldn't determine the cluster $this_host belongs to";
-        show_help
+    if [ $skip_tests_not_found -eq 1 ] && [ -z "$cluster" ] || [ -z "$role" ] && ; then
+        DEBUG "Skipping tests for host $target_host: couldn't determine cluster or role"
+        exit 0
+    fi
+
+    if [ -z "$cluster" ]; then
+        ERROR "Couldn't determine the cluster $target_host belongs to";
+        usage
         exit 64;
     fi
 
-    if [ "$role" == '' ]; then
-        ERROR "Couldn't determine the role $this_host performs";
-        show_help
+    if [ -z "$role" ]; then
+        ERROR "Couldn't determine the role $target_host performs";
+        usage
         exit 64;
     fi
 
@@ -371,7 +398,7 @@ if [ ! -z "$file_args" ]; then
 	args+=" -t \"$timeout\""
 	args+=" -r \"$retries\""
 	args+=" -p \"$parallel\""
-	args+=" \"$target\""
+	args+=" \"$target_host\""
 	args+=" auto"
 	args+=" \"$secret\""
 
@@ -400,7 +427,7 @@ if [ ! -z "$serial_file_args" ]; then
 	args+=" -t \"$timeout\""
 	args+=" -r \"$retries\""
 	args+=" -p 1"
-	args+=" \"$target\""
+	args+=" \"$target_host\""
 	args+=" auto"
 	args+=" \"$secret\""
 
