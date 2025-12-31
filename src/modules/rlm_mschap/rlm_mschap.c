@@ -1083,7 +1083,7 @@ ntlm_auth_err:
 		 */
 		smbhash(old_nt_hash_expected, nt_password->vp_octets, q);
 		smbhash(old_nt_hash_expected+8, nt_password->vp_octets+8, q + 7);
-		if (memcmp(old_nt_hash_expected, old_nt_hash, NT_DIGEST_LENGTH)!=0) {
+		if (rad_digest_cmp(old_nt_hash_expected, old_nt_hash, NT_DIGEST_LENGTH)!=0) {
 			REDEBUG("Old NT hash value from client does not match our value");
 			return -1;
 		}
