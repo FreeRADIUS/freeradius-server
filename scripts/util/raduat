@@ -287,6 +287,12 @@ base=$(basename "$0")
 packets=$(mktemp -t "${base}XXX") || exit 1
 filters=$(mktemp -t "${base}XXX") || exit 1
 
+function cleanup
+{
+    rm -f -- "$packets" "$filters" >/dev/null 2>&1
+}
+trap cleanup EXIT INT TERM
+
 args=
 file_args=
 serial_file_args=
