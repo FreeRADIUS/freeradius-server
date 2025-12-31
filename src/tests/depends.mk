@@ -24,11 +24,13 @@ $(FILES.test.radsniff): $(FILES.test.unit)
 
 $(FILES.test.process): $(FILES.test.keywords)
 
+$(FILES.test.radiusd-c): $(FILES.test.process)
+
 #
 #  All of the tests which run a RADIUS server need to be run in
 #  series, so they all depend on each other
 #
-TEST_ALL_ORDER := radiusd-c radclient detail digest radmin eap vmps
+TEST_ALL_ORDER := radclient detail digest radmin eap vmps
 
 ifneq "$(FILES.test.tacacs)" ""
 TEST_ALL_ORDER += tacacs
@@ -60,11 +62,9 @@ endef
 #  are serialized in directory order.
 #
 define TEST_ALL_DEPS
-$$(FILES.test.${1}): $$(FILES.test.$(TEST_ALL_PREV))
-TEST_ALL_PREV := ${1}
+$(FILES.test.${1}): $(FILES.test.radiusd-c)
 
 $(foreach x,$(FILES.test.${1}),$(eval $(call TEST_ALL_DEPS_INNER,${1},$x)))
-
 endef
 
 $(foreach x,$(TEST_ALL_ORDER),$(eval $(call TEST_ALL_DEPS,$x)))
