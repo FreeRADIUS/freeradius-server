@@ -47,7 +47,7 @@ include Make.inc
 
 define RADIUSD_SERVICE
 $$(eval RADIUSD_BIN := $(JLIBTOOL) $(if ${VERBOSE},--debug,--silent) --mode=execute $$(TEST_BIN)/radiusd)
-$(eval PORT := $(shell echo $$(($(PORT)+1))))
+$(eval PORT := $(shell echo $$(($(PORT)+20))))
 $(eval $(subst test.,,$(TEST))_port := $(PORT))
 
 #
