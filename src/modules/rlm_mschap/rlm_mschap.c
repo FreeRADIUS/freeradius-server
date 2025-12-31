@@ -2130,7 +2130,7 @@ static int mschap_new_pass_decrypt(request_t *request, mschap_auth_ctx_t *auth_c
 	 */
 	smbhash(old_nt_hash_expected, auth_ctx->nt_password->vp_octets, q);
 	smbhash(old_nt_hash_expected + 8, auth_ctx->nt_password->vp_octets + 8, q + 7);
-	if (memcmp(old_nt_hash_expected, auth_ctx->cpw_ctx->old_nt_hash, NT_DIGEST_LENGTH)!=0) {
+	if (fr_digest_cmp(old_nt_hash_expected, auth_ctx->cpw_ctx->old_nt_hash, NT_DIGEST_LENGTH)!=0) {
 		REDEBUG("Old NT hash value from client does not match our value");
 		RHEXDUMP1(old_nt_hash_expected, NT_DIGEST_LENGTH, "expected");
 		RHEXDUMP1(auth_ctx->cpw_ctx->old_nt_hash, NT_DIGEST_LENGTH, "got");

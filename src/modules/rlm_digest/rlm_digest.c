@@ -439,7 +439,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	/*
 	 *  And finally, compare the digest in the packet with KD.
 	 */
-	if (memcmp(&kd[0], &hash[0], 16) == 0) RETURN_UNLANG_OK;
+	if (fr_digest_cmp(&kd[0], &hash[0], 16) == 0) RETURN_UNLANG_OK;
 
 	REDEBUG("FAILED authentication");
 	RETURN_UNLANG_REJECT;

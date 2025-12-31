@@ -2241,7 +2241,7 @@ RESUME(recv_aka_challenge_response)
 		goto failure;
 	}
 
-  	if (memcmp(vp->vp_octets, eap_aka_sim_session->keys.umts.vector.xres, vp->vp_length)) {
+	if (fr_digest_cmp(vp->vp_octets, eap_aka_sim_session->keys.umts.vector.xres, vp->vp_length)) {
     		REDEBUG("Received RES does not match calculated XRES");
 		RHEXDUMP_INLINE2(vp->vp_octets, vp->vp_length, "RES  :");
 		RHEXDUMP_INLINE2(eap_aka_sim_session->keys.umts.vector.xres,
