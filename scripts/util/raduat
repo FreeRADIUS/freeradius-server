@@ -49,7 +49,6 @@ function DEBUG
     fi
 }
 
-function show_help
 #
 # Escape characters for use inside a sed bracket expression
 #
@@ -63,6 +62,8 @@ function char_class_escape
     s=${s//./\\.}     # dot (explicitly required)
     echo "$s"
 }
+
+function usage
 {
     echo $(basename "$0")" [options] [-- <test_glob0> <test_glob1> <test_globN>]"
     echo "  -h                        Display this help message."
@@ -119,7 +120,7 @@ fi
 
 if [ ! -d "$TESTDIR" ]; then
     ERROR "Test dir $TESTDIR does not exist, create it or specify it with TESTDIR=<dir>"
-    show_help
+    usage
     exit 64
 fi
 
@@ -150,7 +151,7 @@ fi
 while getopts "h?H:vc:r:s:p:" opt; do
     case "$opt" in
     h|\?)
-        show_help
+        usage
         exit 0
         ;;
 
@@ -170,7 +171,7 @@ while getopts "h?H:vc:r:s:p:" opt; do
         done
         if [ $found -ne 1 ]; then
             ERROR "'$OPTARG' is not a valid cluster type"
-            show_help
+            usage
             exit 64
         fi
         cluster="$OPTARG"
@@ -185,7 +186,7 @@ while getopts "h?H:vc:r:s:p:" opt; do
         done
         if [ $found -ne 1 ]; then
             ERROR "'$OPTARG' is not a valid role type"
-            show_help
+            usage
             exit 64
         fi
         role="$OPTARG"
@@ -198,7 +199,7 @@ while getopts "h?H:vc:r:s:p:" opt; do
     p)
         if ! echo "$OPTARG" | grep -E '^[0-9]+$' > /dev/null; then
             ERROR "Non integer argument '$OPTARG' specified for -p"
-            show_help
+            usage
             exit 64
         fi
         parallel=$OPTARG
