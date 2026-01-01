@@ -73,9 +73,9 @@ function usage
     echo "  -p <number>               Run tests in parallel (defaults to ${parallel})."
     echo "  -d <chars>                Characters to split FQDN on for cluster and type matching (defaults to '.')."
     echo "  -s <secret>               Shared secret."
-    if [ ! -z "$role_types" ]; then
+    if [ ${#role_types[@]} -gt 0 ]; then
         echo "  -c <cluster>              Specify cluster type one of ($cluster_types)."
-        echo "  -r <type>                 Specify server role one of ($role_types)."
+        echo "  -r <type>                 Specify server role one of (${role_types[@]})."
         echo "  -S                        Skip host if we can't find a matching cluster or role".
         echo
         echo "Note: Test path globs are relative to ${TESTDIR}/<cluster>/<type>/"
@@ -131,23 +131,16 @@ cluster_types=$(echo $cluster_dirs | sed 's/\s/ /g')
 cluster_dirs=$(find "$TESTDIR/" -mindepth 1 -maxdepth 1 -type d -exec basename {} \;)
 cluster_types=$(echo "$cluster_dirs" | sed 's/\s/ /g')
 
-role_types=
+role_types=()
 for i in $cluster_dirs; do
-    for j in $(find "$TESTDIR/$(basename $i)/" -mindepth 1 -maxdepth 1 -type d  -exec basename {} \;); do
-        if [ "$role_types" == '' ]; then
-            role_types="$j"
-        else
-            role_types+="\n$j"
-        fi
-    done
+    role_types+=($(find "$TESTDIR/$(basename $i)/" -mindepth 1 -maxdepth 1 -type d  -exec basename {} \;))
 done
 
-if [ -z "$role_types" ]; then
+if [ ${#role_types[@]} -eq 0 ]; then
     DEBUG "Using simple test file layout"
 else
     DEBUG "Using role based test file layout"
-    role_types=$(echo -e "$role_types" | sort | uniq)   # Remove duplicates
-    role_types=$(echo $role_types | sed 's/\s/ /g')     # Change \n back to spaces
+    role_types=($(echo "${role_types[@]}" | sort -u))
 fi
 
 while getopts "h?H:vd:c:r:s:Sp:" opt; do
@@ -227,10 +220,10 @@ test_files=$@
 #
 #  Match keywords from the hostname to clusters or roles
 #
-if [ ! -z "$role_types" ]; then
+if [ ${#role_types[@]} -gt 0 ]; then
     for tok in ${target_host//[$(char_class_escape "$host_split_chars")]/ }; do
         if [ -z "${cluster}" ]; then
-            for key in ${cluster_types}; do
+            for key in $cluster_types; do
                 grep -qF -- "${key}" <<<"${tok}" && cluster="${key}" && break
             done
         fi
