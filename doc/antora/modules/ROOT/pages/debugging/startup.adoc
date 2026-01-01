@@ -362,7 +362,7 @@ The `sql` module is in the default configuration, even if the `sql` module is no
 It can be ignored, or, in a production environment where you don't use `sql`, you can just remove references to `sql` from the virtual servers.
 [%collapsible]
 ====
-    Ignoring "sql" (see raddb/mods-available/README.rst)
+    Ignoring "sql"
      # Loading post-proxy {...}
      # Loading post-auth {...}
     } # server default
