@@ -10,7 +10,7 @@ SOURCES				:= ${TARGET_NAME}.c log.c
 #
 $(TARGET): CFLAGS		:= $(filter-out -W% -fsanitize%,$(CFLAGS))
 $(TARGET): CPPFLAGS		:= $(filter-out -W%,$(CPPFLAGS))
-$(TARGET): LDFLAGS		:= $(filter-out -fsanitize% --rtlib=%,$(LDFLAGS))
+$(TARGET): LDFLAGS		:= $(filter-out -fsanitize% --rtlib=% --unwindlib=%,$(LDFLAGS))
 
 #
 #  This gets built with the BUILD_CC i.e. the one we use to bootstrap

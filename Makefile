@@ -146,24 +146,35 @@ build/autoconf.mk: src/include/autoconf.h
     ifeq "$(findstring libfreeradius-make,$(MAKECMDGOALS))" ""
 
       #
-      #  Avoid calling shell if we don't need to build support libraries
+      #  Manually check the dependencies.  This is because we want to
+      #  use special rules for building these libraries.  So we can't
+      #  rely on the normal GNU make dependencies.
       #
-      ifeq "$(wildcard build/lib/.libs/libfreeradius-make-dlopen.${BUILD_LIB_EXT})" ""
-        BUILD_MAKE_LIBS=yes
-      endif
-      ifeq "$(wildcard build/lib/.libs/libfreeradius-make-version.${BUILD_LIB_EXT})" ""
-        BUILD_MAKE_LIBS=yes
-      endif
-      ifeq "$(wildcard build/lib/.libs/libfreeradius-make-util.${BUILD_LIB_EXT})" ""
-        BUILD_MAKE_LIBS=yes
-      endif
+      define MAKE_LIB_CHECK
+        ifeq "$(wildcard build/lib/.libs/libfreeradius-make-${1}.${BUILD_LIB_EXT})" ""
+          BUILD_MAKE_LIBS += libfreeradius-make-${1}.${BUILD_LIB_EXT}
+        endif
+      endef
+
+      $(foreach x, dlopen util version,$(eval $(call MAKE_LIB_CHECK,${x})))
 
       ifdef BUILD_MAKE_LIBS
-        define n
+        #
+        #  Define a variable which contains one new line.  Note that
+        #  it needs to contain multiple lines, not just one.
+        #
+        define newline
 
 
         endef
-        $(info $(subst CC,$nCC,$(shell $(MAKE) VERBOSE=$(VERBOSE) libfreeradius-make-dlopen.${BUILD_LIB_EXT} libfreeradius-make-version.${BUILD_LIB_EXT} libfreeradius-make-util.${BUILD_LIB_EXT})))
+
+        #
+        #  Run the shell command to build the targets.  The result is
+        #  mashed all on one line, so we do some horrible
+        #  substitutions to get it on multiple lines.  Then, we print
+        #  out the result.
+        #
+        $(info $(subst gmake[,$(newline)gmake[,$(subst LINK,$(newline)LINK,$(subst CC,$(newline)CC,$(shell $(MAKE) VERBOSE=$(VERBOSE) ${BUILD_MAKE_LIBS})))))
       endif
 
       load build/lib/.libs/libfreeradius-make-dlopen.${BUILD_LIB_EXT}(dlopen_gmk_setup)
