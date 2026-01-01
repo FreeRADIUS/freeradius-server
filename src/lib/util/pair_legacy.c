@@ -20,14 +20,18 @@
  *
  * @copyright 2000,2006,2015 The FreeRADIUS server project
  */
-
 RCSID("$Id$")
+
+#include <sys/wait.h>
 
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/regex.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/value.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
@@ -98,46 +102,149 @@ static fr_sbuff_parse_rules_t const bareword_unquoted = {
 };
 
 
-static ssize_t fr_pair_value_from_substr(fr_pair_t *vp, fr_sbuff_t *in, UNUSED bool tainted)
+static ssize_t fr_pair_value_from_substr(fr_pair_parse_t const *conf, fr_pair_t *vp, fr_sbuff_t *in)
 {
-	char quote;
-	ssize_t slen;
-	fr_sbuff_parse_rules_t const *rules;
+	fr_sbuff_t			our_in = FR_SBUFF(in);
+	char				quote;
+	ssize_t				slen;
+	fr_sbuff_parse_rules_t const	*rules;
 
-	if (fr_sbuff_next_if_char(in, '"')) {
+	if (fr_sbuff_next_if_char(&our_in, '"')) {
 		rules = &value_parse_rules_double_quoted;
 		quote = '"';
-
-	} else if (fr_sbuff_next_if_char(in, '\'')) {
+	parse:
+		slen = fr_value_box_from_substr(vp, &vp->data, vp->da->type, vp->da, &our_in, rules);
+	} else if (fr_sbuff_next_if_char(&our_in, '\'')) {
 		rules = &value_parse_rules_single_quoted;
 		quote = '\'';
+		goto parse;
+	} else if (!fr_sbuff_next_if_char(&our_in, '`')) {
+		quote = '\0';
+		rules = &bareword_unquoted;
+		goto parse;
+	/*
+	 *	We _sometimes_ support backticks, depending on the
+	 *	source of the data.  This should ONLY be used on
+	 *	trusted input, like config files.
+	 *
+	 *	We don't impose arbitrary limits on exec input or
+	 *	output, as AGAIN this should only be used on trusted
+	 *	input.
+	 *
+	 *	Only the first line of output from the process is used,
+	 *	and no escape sequences in the output are processed.
+	 */
+	} else {
+		fr_sbuff_t		*exec_in;
+		size_t			exec_out_buff_len = 0;
+		ssize_t			exec_out_len;
+		char			*exec_out = NULL;
+		FILE			*fp;
+		int			ret;
+
+		if (!conf->allow_exec) {
+			fr_strerror_const("Backticks are not supported here");
+			return 0;
+		}
 
 		/*
-		 *	We don't support backticks here.
+		 *	Should only be used for trusted resources, so no artificial limits
 		 */
-	} else if (fr_sbuff_is_char(in, '\'')) {
-		fr_strerror_const("Backticks are not supported here");
-		return 0;
+		FR_SBUFF_TALLOC_THREAD_LOCAL(&exec_in, 1024, SIZE_MAX);
+		(void)fr_sbuff_out_unescape_until(exec_in, &our_in, SIZE_MAX, &FR_SBUFF_TERMS(L("`")), &fr_value_unescape_backtick);
+		/*
+		 *	Don't exec if we know we're going to fail
+		 */
+		if (!fr_sbuff_is_char(&our_in, '`')) {
+			fr_strerror_const("Unterminated backtick string");
+			return 0;
+		}
 
-	} else {
-		rules = &bareword_unquoted;
-		quote = '\0';
+		fp = popen(fr_sbuff_start(exec_in), "r");
+		if (!fp) {
+			fr_strerror_printf("Cannot execute command `%pV`: %s",
+					   fr_box_strvalue_len(fr_sbuff_start(exec_in), fr_sbuff_used(exec_in)),
+					   fr_syserror(errno));
+			return 0;
+		}
+
+		errno = 0; /* If we get EOF immediately, we don't want to emit spurious errors */
+		exec_out_len = getline(&exec_out, &exec_out_buff_len, fp);
+		if ((exec_out_len < 0) || (exec_out == NULL)) { /* defensive */
+			fr_strerror_printf("Cannot read output from command `%pV`: %s",
+					   fr_box_strvalue_len(fr_sbuff_start(exec_in), fr_sbuff_used(exec_in)),
+					   fr_syserror(errno));
+			pclose(fp);
+			return 0;
+		}
+
+		/*
+		 *	Protect against child writing too much data to stdout,
+		 *	blocking, and never exiting.
+		 *
+		 *	This is likely overly cautious for this particular use
+		 *	case, but it doesn't hurt.
+		 */
+		{
+			char buffer[128];
+
+			while (fread(buffer, 1, sizeof(buffer), fp) > 0) { /* discard */ }
+		}
+
+		errno = 0;	/* ensure we don't have stale errno */
+		ret = pclose(fp);
+		if (ret < 0) {
+			fr_strerror_printf("Error waiting for command `%pV` to finish: %s",
+					   fr_box_strvalue_len(fr_sbuff_start(exec_in), fr_sbuff_used(exec_in)),
+					   fr_syserror(errno));
+		pclose_error:
+			free(exec_out);
+			return 0;
+		} else if (ret != 0) {
+			if (WIFEXITED(ret)) {
+				fr_strerror_printf("Command `%pV` exited with status %d",
+						  fr_box_strvalue_len(fr_sbuff_start(exec_in), fr_sbuff_used(exec_in)),
+						  WEXITSTATUS(ret));
+			} else if (WIFSIGNALED(ret)) {
+				fr_strerror_printf("Command `%pV` terminated by signal %d",
+						   fr_box_strvalue_len(fr_sbuff_start(exec_in), fr_sbuff_used(exec_in)),
+						   WTERMSIG(ret));
+			} else {
+				fr_strerror_printf("Command `%pV` terminated abnormally",
+						   fr_box_strvalue_len(fr_sbuff_start(exec_in), fr_sbuff_used(exec_in)));
+			}
+			goto pclose_error;
+		}
+
+		/*
+		 *	Trim line endings
+		 */
+		if (exec_out_len > 0 && exec_out[exec_out_len - 1] == '\n') exec_out[--exec_out_len] = '\0';
+		if (exec_out_len > 0 && exec_out[exec_out_len - 1] == '\r') exec_out[--exec_out_len] = '\0';
+
+		slen = fr_value_box_from_substr(vp, &vp->data, vp->da->type, vp->da,
+						&FR_SBUFF_IN(exec_out, exec_out_len), &value_parse_rules_single_quoted);
+		free(exec_out);
+		if (unlikely(slen < 0)) {
+			return 0; /* slen is parse position in the exec output*/
+		}
+
+		quote = '`';
 	}
 
-	slen = fr_value_box_from_substr(vp, &vp->data, vp->da->type, vp->da, in, rules);
 	if (slen < 0) {
 		fr_assert(slen >= -((ssize_t) 1 << 20));
 		return slen - (quote != 0);
 	}
 
-	if (quote && !fr_sbuff_next_if_char(in, quote)) {
+	if (quote && !fr_sbuff_next_if_char(&our_in, quote)) {
 		fr_strerror_const("Unterminated string");
 		return 0;
 	}
 
 	fr_assert(slen <= ((ssize_t) 1 << 20));
 
-	return slen + ((quote != 0) << 1);
+	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
 /** Our version of a DA stack.
@@ -1008,7 +1115,7 @@ redo:
 		*relative = my;
 
 	} else {
-		slen = fr_pair_value_from_substr(vp, &our_in, relative->tainted);
+		slen = fr_pair_value_from_substr(root, vp, &our_in);
 		if (slen <= 0) goto error;
 
 		fr_pair_append(my.list, vp);
@@ -1141,11 +1248,12 @@ done:
  * @param[in,out] out		where the parsed fr_pair_ts will be appended.
  * @param[in] fp		to read valuepairs from.
  * @param[out] pfiledone	true if file parsing complete;
+ * @param[in] allow_exec	Whether we allow `backtick` expansions.
  * @return
  *	- 0 on success
  *	- -1 on error
  */
-int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *out, FILE *fp, bool *pfiledone)
+int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *out, FILE *fp, bool *pfiledone, bool allow_exec)
 {
 	fr_pair_list_t tmp_list;
 	fr_pair_parse_t	root, relative;
@@ -1167,6 +1275,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		.internal = fr_dict_internal(),
 		.allow_crlf = true,
 		.allow_compare = true,
+		.allow_exec = allow_exec
 	};
 	relative = (fr_pair_parse_t) { };
 

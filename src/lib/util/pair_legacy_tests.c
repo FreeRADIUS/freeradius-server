@@ -124,6 +124,85 @@ static void test_fr_pair_list_afrom_substr(void)
 	fr_pair_list_free(&list);
 }
 
+
+static void test_fr_pair_list_afrom_substr_exec(void)
+{
+	fr_pair_t	*vp;
+	ssize_t		len;
+	fr_pair_list_t	list;
+	ssize_t		slen;
+	char const	*buffer = "Test-Uint32-0 = 123, Test-String-0 = `echo \"Testing321\"`";
+	char const	*buffer_multi = "Test-String-0 = `echo \"Testing321\"`, Test-String-0 += 'Testing123'";
+	fr_pair_parse_t	root, relative;
+
+	root = (fr_pair_parse_t) {
+		.ctx = autofree,
+		.da = fr_dict_root(test_dict),
+		.list = &list,
+		.dict = test_dict,
+		.internal = fr_dict_internal(),
+		.allow_exec = true
+	};
+	relative = (fr_pair_parse_t) { };
+
+	fr_pair_list_init(&list);
+	len = strlen(buffer);
+
+	TEST_CASE("Create 'vp' using fr_pair_list_afrom_substr()");
+	slen = fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(buffer, len));
+	TEST_CHECK_SLEN(slen, (ssize_t)len);
+	TEST_MSG_FAIL("fr_pair_list_afrom_substr(): %s", fr_strerror());
+
+	TEST_CASE("Looking for Test-Uint32-0");
+	TEST_CHECK((vp = fr_pair_find_by_da(&list, NULL, fr_dict_attr_test_uint32)) != NULL);
+
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
+
+	TEST_CASE("Checking if (Test-Uint32-0 == 123)");
+	TEST_CHECK(vp && vp->vp_uint32 == 123);
+
+	TEST_CASE("Looking for Test-String-0");
+	TEST_CHECK((vp = fr_pair_find_by_da(&list, NULL, fr_dict_attr_test_string)) != NULL);
+
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
+
+	TEST_MSG_FAIL("Pair value was: %s", vp->vp_strvalue);
+	TEST_CASE("Checking if (Test-String-0 == 'Testing321')");
+	TEST_CHECK(vp && strcmp(vp->vp_strvalue, "Testing321") == 0);
+
+	fr_pair_list_free(&list);
+
+	len = strlen(buffer_multi);
+	TEST_CASE("Create 'vp' using fr_pair_list_afrom_substr()");
+	slen = fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(buffer_multi, len));
+	TEST_CHECK_SLEN(slen, (ssize_t)len);
+	TEST_MSG_FAIL("fr_pair_list_afrom_substr(): %s", fr_strerror());
+
+	TEST_CASE("Looking for Test-String-0");
+	TEST_CHECK((vp = fr_pair_find_by_da(&list, NULL, fr_dict_attr_test_string)) != NULL);
+
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
+
+	TEST_MSG_FAIL("Pair value was: %s", vp->vp_strvalue);
+	TEST_CASE("Checking if (Test-String-0 == 'Testing321')");
+	TEST_CHECK(vp && strcmp(vp->vp_strvalue, "Testing321") == 0);
+
+	TEST_CASE("Looking for Test-String-0");
+	TEST_CHECK((vp = fr_pair_find_by_da(&list, vp, fr_dict_attr_test_string)) != NULL);
+
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
+
+	TEST_MSG_FAIL("Pair value was: %s", vp->vp_strvalue);
+	TEST_CASE("Checking if (Test-String-0 == 'Testing123')");
+	TEST_CHECK(vp && strcmp(vp->vp_strvalue, "Testing123") == 0);
+
+	fr_pair_list_free(&list);
+}
+
 static FILE *open_buffer_as_file(uint8_t const *buffer, size_t buffer_len)
 {
 	FILE *fp;
@@ -147,7 +226,7 @@ static void test_fr_pair_list_afrom_file(void)
 	fr_pair_list_init(&list);
 
 	TEST_CASE("Create 'vp' using fr_pair_list_afrom_file()");
-	TEST_CHECK(fr_pair_list_afrom_file(autofree, test_dict, &list, fp, &pfiledone) == 0);
+	TEST_CHECK(fr_pair_list_afrom_file(autofree, test_dict, &list, fp, &pfiledone, false) == 0);
 
 	TEST_CASE("Looking for Test-Uint32-0");
 	TEST_CHECK((vp = fr_pair_find_by_da(&list, NULL, fr_dict_attr_test_uint32)) != NULL);
@@ -184,7 +263,7 @@ static void test_fr_pair_list_move_op(void)
 	fr_pair_list_init(&new_list);
 
 	TEST_CASE("Create 'vp' using fr_pair_list_afrom_file()");
-	TEST_CHECK(fr_pair_list_afrom_file(autofree, test_dict, &old_list, fp, &pfiledone) == 0);
+	TEST_CHECK(fr_pair_list_afrom_file(autofree, test_dict, &old_list, fp, &pfiledone, false) == 0);
 	TEST_CHECK(pfiledone == true);
 
 	TEST_CASE("Move pair from 'old_list' to 'new_list' using fr_pair_list_move_op()");
@@ -222,6 +301,7 @@ TEST_LIST = {
 	 *	Legacy calls
 	 */
 	{ "fr_pair_list_afrom_substr",  test_fr_pair_list_afrom_substr },
+	{ "fr_pair_list_afrom_substr_exec", test_fr_pair_list_afrom_substr_exec },
 	{ "fr_pair_list_afrom_file", test_fr_pair_list_afrom_file },
 	{ "fr_pair_list_move_op",       test_fr_pair_list_move_op },
 

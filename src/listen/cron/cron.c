@@ -421,7 +421,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	if (fr_pair_list_afrom_file(inst, inst->dict, &inst->vps, fp, &done) < 0) {
+	if (fr_pair_list_afrom_file(inst, inst->dict, &inst->vps, fp, &done, true) < 0) {
 		fclose(fp);
 		cf_log_err(conf, "Failed reading %s - %s", inst->filename, fr_strerror());
 		return -1;

@@ -2108,6 +2108,7 @@ static int rs_build_filter(fr_pair_list_t *out, char const *filter)
 		.dict = dict_radius,
 		.internal = fr_dict_internal(),
 		.allow_compare = true,
+		.allow_exec = true
 	};
 	relative = (fr_pair_parse_t) { };
 

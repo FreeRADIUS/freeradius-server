@@ -367,7 +367,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			return -1;
 		}
 
-		if (fr_pair_list_afrom_file(inst, inst->dict, &inst->pair_list, fp, &done) < 0) {
+		if (fr_pair_list_afrom_file(inst, inst->dict, &inst->pair_list, fp, &done, true) < 0) {
 			cf_log_perr(conf, "Failed reading %s", inst->filename);
 			fclose(fp);
 			return -1;

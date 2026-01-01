@@ -1260,7 +1260,7 @@ static size_t command_allow_unresolved(command_result_t *result, command_file_ct
 static size_t command_attr_children(command_result_t *result, command_file_ctx_t *cc,
 				    UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
-	fr_hash_table_t *namespace;	
+	fr_hash_table_t *namespace;
 	fr_hash_iter_t	iter;
 	fr_dict_attr_t const *ref;
 	fr_sbuff_t out = FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX);
@@ -2141,6 +2141,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 		.list = &head,
 		.dict = cc->tmpl_rules.attr.namespace->dict,
 		.internal = fr_dict_internal(),
+		.allow_exec = true
 	};
 	relative = (fr_pair_parse_t) { };
 
@@ -2295,7 +2296,7 @@ static size_t command_read_file(command_result_t *result, command_file_ctx_t *cc
 	}
 
 	fr_pair_list_init(&head);
-	slen = fr_pair_list_afrom_file(cc->tmp_ctx, cc->tmpl_rules.attr.dict_def, &head, fp, &done);
+	slen = fr_pair_list_afrom_file(cc->tmp_ctx, cc->tmpl_rules.attr.dict_def, &head, fp, &done, true);
 	fclose(fp);
 	if (slen < 0) {
 		RETURN_OK_WITH_ERROR();
@@ -2362,6 +2363,7 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 		.list = &head,
 		.dict = cc->tmpl_rules.attr.namespace->dict,
 		.internal = fr_dict_internal(),
+		.allow_exec = true
 	};
 	relative = (fr_pair_parse_t) { };
 
@@ -2717,6 +2719,7 @@ static size_t command_pair_common(command_result_t *result, command_file_ctx_t *
 		.dict = dict,
 		.internal = fr_dict_internal(),
 		.allow_compare = allow_compare,
+		.allow_exec = true
 	};
 	relative = (fr_pair_parse_t) { };
 

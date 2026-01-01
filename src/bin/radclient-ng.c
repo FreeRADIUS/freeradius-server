@@ -422,7 +422,7 @@ static int coa_init(rc_request_t *parent, FILE *coa_reply, char const *reply_fil
 	 *	Read the reply VP's.
 	 */
 	if (fr_pair_list_afrom_file(request, dict_radius,
-				    &request->reply_pairs, coa_reply, coa_reply_done) < 0) {
+				    &request->reply_pairs, coa_reply, coa_reply_done, true) < 0) {
 		REDEBUG("Error parsing \"%s\"", reply_filename);
 	error:
 		talloc_free(request);
@@ -440,7 +440,7 @@ static int coa_init(rc_request_t *parent, FILE *coa_reply, char const *reply_fil
 	 */
 	if (coa_filter) {
 		if (fr_pair_list_afrom_file(request, dict_radius,
-					    &request->filter, coa_filter, coa_filter_done) < 0) {
+					    &request->filter, coa_filter, coa_filter_done, true) < 0) {
 			REDEBUG("Error parsing \"%s\"", filter_filename);
 			goto error;
 		}
@@ -577,7 +577,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 *	Read the request VP's.
 		 */
 		if (fr_pair_list_afrom_file(request, dict_radius,
-					    &request->request_pairs, packets, &packets_done) < 0) {
+					    &request->request_pairs, packets, &packets_done, true) < 0) {
 			char const *input;
 
 			if ((files->packets[0] == '-') && (files->packets[1] == '\0')) {
@@ -606,7 +606,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			bool filters_done;
 
 			if (fr_pair_list_afrom_file(request, dict_radius,
-						    &request->filter, filters, &filters_done) < 0) {
+						    &request->filter, filters, &filters_done, true) < 0) {
 				REDEBUG("Error parsing \"%s\"", files->filters);
 				goto error;
 			}

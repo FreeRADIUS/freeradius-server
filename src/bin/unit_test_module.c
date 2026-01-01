@@ -225,7 +225,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	/*
 	 *	Read packet from fp
 	 */
-	if (fr_pair_list_afrom_file(request->request_ctx, dict_protocol, &request->request_pairs, fp, &filedone) < 0) {
+	if (fr_pair_list_afrom_file(request->request_ctx, dict_protocol, &request->request_pairs, fp, &filedone, true) < 0) {
 		goto error;
 	}
 
@@ -1126,7 +1126,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		if (fr_pair_list_afrom_file(request->request_ctx, dict_protocol, &filter_vps, fp, &filedone) < 0) {
+		if (fr_pair_list_afrom_file(request->request_ctx, dict_protocol, &filter_vps, fp, &filedone, true) < 0) {
 			fr_perror("Failed reading attributes from %s", filter_file);
 			EXIT_WITH_FAILURE;
 		}
