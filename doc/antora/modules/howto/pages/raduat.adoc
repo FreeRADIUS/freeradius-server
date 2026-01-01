@@ -1,14 +1,12 @@
 # raduat
 
-Note: only ``radclient`` from version >= 3.0.7 will work correctly with ``raduat``
-
-Latest version is available at https://raw.githubusercontent.com/FreeRADIUS/freeradius-server/v3.1.x/scripts/raduat
+The latest version of the script is available at https://raw.githubusercontent.com/FreeRADIUS/freeradius-server/master/scripts/util/raduat
 
 ## Overview
 
-Bundled with the server source is a small shell script for writing test suites. It uses ``radclient`` to send test requests, and validate responses.
+``raduat`` is a small shell script that makes it easier to write test suites. It uses ``radclient`` to send test requests and validate responses.
 
-It currently supports PAP and CHAP, no EAP methods. Because of this raduat is only really useful for ISPs and carriers, as they generally use simple authentication methods, but need to perform end to end testing involving complex business logic.
+It currently supports PAP and CHAP.  No EAP methods are supported.  Because of this limitation, ``raduat`` is useful only for ISPs and carriers, as they generally use simple authentication methods, but need to perform end to end testing which involve complex business logic.
 
 ## Creating a test request
 
@@ -40,9 +38,11 @@ Op should be one of the assignment operators:
 
 Only static values are currently supported, though backtick (exec) expansion may be added in the future.
 
-Only strings should be wrapped in single quotes, other values should be left unquoted.
+The values use the same format as the normal `unlang` attribute assignments, or the xref:raddb/mods-config/files/users.adoc[users file].  A short summary is given here for convenience.
 
-For binary attributes the value may be specified as an unquoted string with a 0x prefix e.g. ``0xffffff``
+Strings should be wrapped in single quotes. Other values should be left unquoted.
+
+For binary attributes, the value may be specified as an unquoted string with a `0x` prefix e.g. ``0xffffff``
 
 ### Tags
 
@@ -58,7 +58,7 @@ Any line starting with ``#`` is treated as a comment.
 
 An example test request might look like this:
 
-```bash
+```shell
 # serial
 # My test access request
 Packet-Type=Access-Request
@@ -79,9 +79,9 @@ The pairs in the response filter do not need to be in the same order as the resp
 
 ### Attribute
 
-Every response filter must contain a ``Response-Packet-Type=[Access-Accept|Access-Reject|Accounting-Response]`` pair, to set the type of response expected.
+Every response filter must contain a ``Packet-Type=[Access-Accept|Access-Reject|Accounting-Response]`` pair, to set the type of response expected.
 
-In addition to ``Response-Packet-Type`` it may contain any attribute (including VSAs) found in the FreeRADIUS dictionaries.
+In addition to ``Packet-Type``, the response may contain any attribute (including VSAs) found in the FreeRADIUS dictionaries.
 
 Commonly used attributes are:
 - ``Reply-Message``
@@ -129,7 +129,7 @@ For example the response file for ``test000_check_static_ip`` would be ``test000
 
 ### Example
 
-```bash
+```shell
 mkdir -p ./tests/static_ip
 
 echo "Packet-Type=Access-Request
@@ -149,7 +149,7 @@ Framed-IP-address==192.168.0.2" >> ./tests/static_ip/test001_check_static_ip_exp
 
 ## Running the tests
 
-By default radaut will execute tests in parallel batches of 20. If you want to execute tests one at a time, either add ``# serial`` to the top of the file, or pass ``-p 1``.
+By default, ``radaut`` will execute tests in parallel batches of 20. If you want to execute tests one at a time, either add ``# serial`` to the top of the file, or pass the command line argument ``-p 1``.
 
 ### Arguments
 
@@ -167,7 +167,7 @@ Command line arguments can be found with ``raduat -h``. They can be used to spec
 Running the above test requests/response filters against a dummy configuration:
 
 ```text
-authorize {
+recv Access-Request {
 	switch User-Name {
 		case 'test_user001@test.realm' {
 			update reply {
@@ -180,9 +180,7 @@ authorize {
 			}
 		}
 	}
-	update control {
-		Auth-Type := Accept
-	}
+	accept
 }
 ```
 
@@ -248,5 +246,5 @@ The tests to run can be filtered using glob patterns:
 
 This can be used to drill down, and only run the failing tests.
 
-// Copyright (C) 2025 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
