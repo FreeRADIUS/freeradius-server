@@ -127,12 +127,11 @@ if [ ! -d "$TESTDIR" ]; then
 fi
 
 # Definitions (build these dynamically by looking at the files under tests)
-cluster_dirs=$(find "$TESTDIR/" -mindepth 1 -maxdepth 1 -type d -exec basename {} \;)
-cluster_types=$(echo "$cluster_dirs" | sed 's/\s/ /g')
+cluster_types=($(find "$TESTDIR/" -mindepth 1 -maxdepth 1 -type d -exec basename {} \;))
 
 role_types=()
-for i in $cluster_dirs; do
-    role_types+=($(find "$TESTDIR/$(basename $i)/" -mindepth 1 -maxdepth 1 -type d  -exec basename {} \;))
+for i in "${cluster_types[@]}"; do
+    role_types+=($(find "$TESTDIR/${i}/" -mindepth 1 -maxdepth 1 -type d  -exec basename {} \;))
 done
 
 if [ ${#role_types[@]} -eq 0 ]; then
@@ -159,7 +158,7 @@ while getopts "h?H:vd:c:r:s:Sp:" opt; do
 
     c)
         found=0
-        for i in $cluster_types; do
+        for i in "${cluster_types[@]}"; do
             if [ "$i" == "$OPTARG" ]; then
                 found=1
             fi
@@ -174,7 +173,7 @@ while getopts "h?H:vd:c:r:s:Sp:" opt; do
 
     r)
         found=0
-        for i in $role_types; do
+        for i in "${role_types[@]}"; do
             if [ "$i" == "$OPTARG" ]; then
                 found=1
             fi
@@ -214,7 +213,7 @@ done
 shift $((OPTIND-1))
 
 [ "$1" = "--" ] && shift
-test_files=$@
+test_globs=("$@")
 
 #
 #  Match keywords from the hostname to clusters or roles
@@ -222,12 +221,12 @@ test_files=$@
 if [ ${#role_types[@]} -gt 0 ]; then
     for tok in ${target_host//[$(char_class_escape "$host_split_chars")]/ }; do
         if [ -z "${cluster}" ]; then
-            for key in $cluster_types; do
+            for key in "${cluster_types[@]}"; do
                 grep -qF -- "${key}" <<<"${tok}" && cluster="${key}" && break
             done
         fi
         if [ -z "${role}" ]; then
-            for key in $role_types; do
+            for key in "${role_types[@]}"; do
                 grep -qF -- "${key}" <<<"${tok}" && role="${key}" && break
             done
         fi
@@ -259,37 +258,42 @@ else
     test_path="${TESTDIR}"
 fi
 
-if [ "$test_files" != '' ]; then
-    tmp=
-    for glob in $test_files; do
+# Allow test files with spaces in them, and only split on newlines
+old_ifs=$IFS
+IFS=$'\n'
+set -f  # Disable globbing
+test_files=()
+if [ ${#test_globs[@]} -gt 0 ]; then
+    for glob in $test_globs; do
         # Filter out response files (makes wildcards easier), and expand the globs
         for file in $(find "${test_path}" -depth -path "*${glob}" \
             -and -not -path "*${FILTER_SUFFIX}" \
             -and -not -path "*${COA_REPLY_SUFFIX}" \
             -and -not -path "*${COA_FILTER_SUFFIX}" \
             -and '(' -type f -or -type l ')'); do
-            tmp+="${file} "
+            test_files+=("$file")
         done
     done
-    test_files="${tmp}"
 else
     # Lexicographical, depth-first
-    test_files=$(find "$test_path" -depth -path '*test[0-9][0-9][0-9]*' \
+    test_files=($(find "$test_path" -depth -path '*test[0-9][0-9][0-9]*' \
                 -and -not -path "*${FILTER_SUFFIX}" \
                 -and -not -path "*${COA_REPLY_SUFFIX}" \
                 -and -not -path "*${COA_FILTER_SUFFIX}" \
-                -and '(' -type f -or -type l ')')
-    if [ "$test_files" == '' ]; then
+                -and '(' -type f -or -type l ')'))
+    if [ "${#test_files[@]}" -eq 0 ]; then
         ERROR "No test files found in $test_path"
         exit 64;
     fi
-    INFO "Executing"$(echo "$test_files" | wc -l)" test(s) from ${test_path}"
+    INFO "Executing ${#test_files[@]} test(s) from ${test_path}"
 fi
+IFS=$old_ifs
+set +f  # Re-enable globbing
 
 #
 #  Check if we got any test files
 #
-if [ "$test_files" == '' ]; then
+if [ "${#test_files[@]}" -eq 0 ]; then
     ERROR "No test files to process"
     exit 1
 fi
@@ -302,7 +306,7 @@ if [ $verbose -eq 0 ]; then
     INFO "Use -v to see full list"
 else
     INFO "Executing specified tests:"
-    for i in $test_files; do
+    for i in "${test_files[@]}"; do
         DEBUG "$i"
     done
 fi
@@ -324,7 +328,7 @@ trap cleanup EXIT INT TERM
 args=
 file_args=
 serial_file_args=
-for i in $test_files; do
+for i in "${test_files[@]}"; do
     if [ ! -f "$i" ] && [ ! -L "$i" ]; then
         INFO "Skipping $i: not file"
         continue
