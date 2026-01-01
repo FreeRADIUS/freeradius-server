@@ -164,6 +164,7 @@ while getopts "h?H:vd:c:r:s:Sp:" opt; do
     d)
         host_split_chars="$OPTARG"
         ;;
+
     c)
         found=0
         for i in $cluster_types; do
@@ -201,6 +202,7 @@ while getopts "h?H:vd:c:r:s:Sp:" opt; do
     S)
         skip_tests_not_found=1
         ;;
+
     p)
         if ! echo "$OPTARG" | grep -E '^[0-9]+$' > /dev/null; then
             ERROR "Non integer argument '$OPTARG' specified for -p"
