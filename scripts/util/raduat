@@ -24,6 +24,7 @@ verbose=0
 cluster=
 role=
 type=
+skip_tests_not_found=0
 host_split_chars='.'
 parallel=40
 retries=3
@@ -75,6 +76,7 @@ function usage
     if [ ! -z "$role_types" ]; then
         echo "  -c <cluster>              Specify cluster type one of ($cluster_types)."
         echo "  -r <type>                 Specify server role one of ($role_types)."
+        echo "  -S                        Skip host if we can't find a matching cluster or role".
         echo
         echo "Note: Test path globs are relative to ${TESTDIR}/<cluster>/<type>/"
     fi
@@ -148,7 +150,7 @@ else
     role_types=$(echo $role_types | sed 's/\s/ /g')     # Change \n back to spaces
 fi
 
-while getopts "h?H:vc:r:s:p:" opt; do
+while getopts "h?H:vd:c:r:s:Sp:" opt; do
     case "$opt" in
     h|\?)
         usage
@@ -196,6 +198,9 @@ while getopts "h?H:vc:r:s:p:" opt; do
         secret="$OPTARG"
         ;;
 
+    S)
+        skip_tests_not_found=1
+        ;;
     p)
         if ! echo "$OPTARG" | grep -E '^[0-9]+$' > /dev/null; then
             ERROR "Non integer argument '$OPTARG' specified for -p"
@@ -235,7 +240,7 @@ if [ ! -z "$role_types" ]; then
         [ -n "${cluster}" ] && [ -n "${role}" ] && break
     done
 
-    if [ $skip_tests_not_found -eq 1 ] && [ -z "$cluster" ] || [ -z "$role" ] && ; then
+    if [ $skip_tests_not_found -eq 1 ] && [ -z "$cluster" ] || [ -z "$role" ] ; then
         DEBUG "Skipping tests for host $target_host: couldn't determine cluster or role"
         exit 0
     fi
