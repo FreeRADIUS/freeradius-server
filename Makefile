@@ -156,7 +156,7 @@ build/autoconf.mk: src/include/autoconf.h
         endif
       endef
 
-      $(foreach x, dlopen util version,$(eval $(call MAKE_LIB_CHECK,${x})))
+      $(foreach x, dlopen fork util version,$(eval $(call MAKE_LIB_CHECK,${x})))
 
       ifdef BUILD_MAKE_LIBS
         #
@@ -180,6 +180,7 @@ build/autoconf.mk: src/include/autoconf.h
       load build/lib/.libs/libfreeradius-make-dlopen.${BUILD_LIB_EXT}(dlopen_gmk_setup)
       load build/lib/.libs/libfreeradius-make-version.${BUILD_LIB_EXT}(version_gmk_setup)
       load build/lib/.libs/libfreeradius-make-util.${BUILD_LIB_EXT}(util_gmk_setup)
+      load build/lib/.libs/libfreeradius-make-fork.${BUILD_LIB_EXT}(fork_gmk_setup)
     else
       BUILD_DIR:=${top_srcdir}/build
       top_builddir:=${top_srcdir}/scripts/build
