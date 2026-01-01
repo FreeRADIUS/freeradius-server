@@ -325,7 +325,7 @@ args=
 file_args=
 serial_file_args=
 for i in $test_files; do
-    if [ ! -f "$i" -a ! -L "$i" ]; then
+    if [ ! -f "$i" ] && [ ! -L "$i" ]; then
         INFO "Skipping $i: not file"
         continue
     fi
@@ -337,7 +337,7 @@ for i in $test_files; do
 
     expected="${i}${FILTER_SUFFIX}"
     # We need pairs of requests and responses in the bulk format
-    if [ ! -f "$expected" -a ! -L "$expected" ]; then
+    if [ ! -f "$expected" ] && [ ! -L "$expected" ]; then
         DEBUG "$i cannot be parallelised: Can't find 'expected' file"
         file_args+=" -f \"$i\""
         continue
@@ -353,12 +353,12 @@ for i in $test_files; do
     # If there's a coa_reply file, then we need to serialise the test
     # because there's no bulk test format that includes coa_reply
     coa_reply="${i}${COA_REPLY_SUFFIX}"
-    if [ -f "$coa_reply" -o -L "$coa_reply" ]; then
+    if [ -f "$coa_reply" ] || [ -L "$coa_reply" ]; then
         DEBUG "$i cannot be parallelised: Found CoA Reply"
 
         # We also have a filter
         coa_filter="${i}${COA_FILTER_SUFFIX}"
-        if [ -f "$coa_filter" -o -L "$coa_filter" ]; then
+        if [ -f "$coa_filter" ] || [ -L "$coa_filter" ]; then
             serial_file_args+=" -f \"${i}:${expected}:${coa_reply}:${coa_filter}\""
         else
             serial_file_args+=" -f \"${i}:${expected}:${coa_reply}\""
