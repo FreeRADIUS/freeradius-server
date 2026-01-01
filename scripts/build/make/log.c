@@ -37,7 +37,7 @@ void _make_vlog(char const *log_keyword, char const *file, int line, char const 
 	va_list	ap_q;
 	size_t	len;
 	char	buffer[256];
-	char	*p = buffer, *end = (p + (sizeof(buffer) - 1));
+	char	*p = buffer, *end = (p + (sizeof(buffer) - 2));
 
 	/*
 	 *	Ensure that there's enough room for the keyword + data.
@@ -45,7 +45,7 @@ void _make_vlog(char const *log_keyword, char const *file, int line, char const 
 	len = strlen(log_keyword);
 	if (len > (sizeof(buffer) / 2)) return;
 
-	memcpy(p, log_keyword, len);
+	snprintf(buffer, sizeof(buffer), "$(%s", log_keyword);
 	p += strlen(p);
 	*p++ = ' ';
 
@@ -53,7 +53,19 @@ void _make_vlog(char const *log_keyword, char const *file, int line, char const 
 	vsnprintf(p, end - p, fmt, ap_q);
 	va_end(ap_q);
 
-	*end = '\0';	/* Ensure we always \0 terminate */
+	p += strlen(p);
+
+	/*
+	 *	For some reason there are trailing CRs added
+	 */
+	p--;
+	while (*p < ' ') {
+		*p = '\0';
+		p--;
+	}
+	p++;
+
+	strcpy(p, ")");
 
 	gmk_eval(buffer, &(gmk_floc){ .filenm = file, .lineno = line });
 }
