@@ -168,6 +168,12 @@ do { \
 	goto cleanup; \
 } while (0)
 
+#define EXIT_WITH_PERROR \
+do { \
+	fr_perror("%s", program); \
+	EXIT_WITH_FAILURE; \
+} while (0)
+
 static fr_timer_t *fr_time_sync_ev = NULL;
 
 static void fr_time_sync_event(fr_timer_list_t *tl, UNUSED fr_time_t now, UNUSED void *uctx)
@@ -484,8 +490,7 @@ int main(int argc, char *argv[])
 	 *  Mismatch between the binary and the libraries it depends on.
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
-		fr_perror("%s", program);
-		EXIT_WITH_FAILURE;
+		EXIT_WITH_PERROR;
 	}
 
 	if (rad_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) EXIT_WITH_FAILURE;
@@ -514,8 +519,7 @@ int main(int argc, char *argv[])
 	 *  So we can't run with a null context and threads.
 	 */
 	if (talloc_config_set(config) != 0) {
-		fr_perror("%s", program);
-		EXIT_WITH_FAILURE;
+		EXIT_WITH_PERROR;
 	}
 
 	/*
@@ -557,14 +561,12 @@ int main(int argc, char *argv[])
 	 *	the protocols.
 	 */
 	if (!fr_dict_global_ctx_init(NULL, true, config->dict_dir)) {
-		fr_perror("%s", program);
-		EXIT_WITH_FAILURE;
+		EXIT_WITH_PERROR;
 	}
 
 #ifdef WITH_TLS
 	if (fr_tls_dict_init() < 0) {
-		fr_perror("%s", program);
-		EXIT_WITH_FAILURE;
+		EXIT_WITH_PERROR;
 	}
 #endif
 
@@ -572,13 +574,11 @@ int main(int argc, char *argv[])
 	 *	Setup the global structures for module lists
 	 */
 	if (modules_rlm_init() < 0) {
-		fr_perror("%s", program);
-		EXIT_WITH_FAILURE;
+		EXIT_WITH_PERROR;
 	}
 
 	if (virtual_servers_init() < 0) {
-		fr_perror("%s", program);
-		EXIT_WITH_FAILURE;
+		EXIT_WITH_PERROR;
 	}
 
 	/*
@@ -586,8 +586,7 @@ int main(int argc, char *argv[])
 	 *	for requests.
 	 */
 	if (request_global_init() < 0) {
-		fr_perror("%s", program);
-		EXIT_WITH_FAILURE;
+		EXIT_WITH_PERROR;
 	}
 
 	/*
@@ -626,8 +625,7 @@ int main(int argc, char *argv[])
 
 		case 1:
 		default:	/* All other errors */
-			fr_perror("%s", program);
-			EXIT_WITH_FAILURE;
+			EXIT_WITH_PERROR;
 		}
 	}
 
@@ -671,8 +669,7 @@ int main(int argc, char *argv[])
 	 *  Call this again now we've loaded the configuration. Yes I know...
 	 */
 	if (talloc_config_set(config) < 0) {
-		fr_perror("%s", program);
-		EXIT_WITH_FAILURE;
+		EXIT_WITH_PERROR;
 	}
 
 	/*
