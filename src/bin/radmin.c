@@ -71,6 +71,9 @@ static bool stop = false;
 static int context = 0;
 static fr_cmd_info_t radmin_info;
 static TALLOC_CTX *radmin_ctx = NULL;
+static FILE *my_stdin = NULL;
+static FILE *my_stdout = NULL;
+static FILE *my_stderr = NULL;
 
 #ifndef USE_READLINE
 /*
@@ -83,14 +86,14 @@ static char *readline(char const *prompt)
 	char *line, *p;
 
 	if (prompt && *prompt) puts(prompt);
-	fflush(stdout);
+	fflush(my_stdout);
 
 	line = fgets(readline_buffer, sizeof(readline_buffer), stdin);
 	if (!line) return NULL;
 
 	p = strchr(line, '\n');
 	if (!p) {
-		fprintf(stderr, "Input line too long\n");
+		fprintf(my_stderr, "Input line too long\n");
 		return NULL;
 	}
 
@@ -214,12 +217,12 @@ radmin_completion(const char *text, int start, UNUSED int end)
 static int radmin_help(UNUSED int count, UNUSED int key)
 {
 	size_t offset;
-	printf("\n");
+	fprintf(my_stdout, "\n");
 
 	offset = (radmin_partial_line - radmin_buffer);
 	strlcpy(radmin_partial_line, rl_line_buffer, 8192 - offset);
 
-	(void) fr_command_print_help(stdout, radmin_cmd, radmin_buffer);
+	(void) fr_command_print_help(my_stdout, radmin_cmd, radmin_buffer);
 	rl_on_new_line();
 	return 0;
 }
@@ -250,7 +253,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	context_offset = talloc_zero_array(ctx, int, CMD_MAX_ARGV + 1);
 	context_offset[0] = 0;
 
-	fflush(stdout);
+	fflush(my_stdout);
 
 #ifdef USE_READLINE
 	rl_attempted_completion_function = radmin_completion;
@@ -292,7 +295,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	It closes the CLI immediately.
 			 */
 			if (strcmp(line, "quit") == 0) {
-				cmd_exit(stdout, stderr, NULL, info);
+				cmd_exit(my_stdout, my_stderr, NULL, info);
 				goto next;
 			}
 
@@ -360,7 +363,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 			 *	Not enough room for more commands, refuse to do it.
 			 */
 			if ((context_offset[context] + len + 80) >= size) {
-				fprintf(stderr, "Too many commands!\n");
+				fprintf(my_stderr, "Too many commands!\n");
 				goto next;
 			}
 
@@ -398,8 +401,8 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 */
 		add_history(line);
 
-		if (fr_command_run(stdout, stderr, info, false) < 0) {
-			fprintf(stderr, "Failed running command.\n");
+		if (fr_command_run(my_stdout, my_stderr, info, false) < 0) {
+			fprintf(my_stderr, "Failed running command.\n");
 		}
 
 	next:
@@ -415,6 +418,10 @@ static void *fr_radmin(UNUSED void *input_ctx)
 
 		if (stop) break;
 	}
+
+	fclose(my_stdin);
+	fclose(my_stdout);
+	fclose(my_stderr);
 
 	talloc_free(ctx);
 	radmin_buffer = NULL;
@@ -1070,7 +1077,7 @@ static fr_cmd_table_t cmd_table[] = {
 	CMD_TABLE_END
 };
 
-int fr_radmin_start(main_config_t *config, bool cli)
+int fr_radmin_start(main_config_t *config, bool cli, int std_fd[static 3])
 {
 	radmin_ctx = talloc_init_const("radmin");
 	if (!radmin_ctx) return -1;
@@ -1090,6 +1097,26 @@ int fr_radmin_start(main_config_t *config, bool cli)
 	}
 
 	if (!cli) return 0;
+
+	my_stdin = fdopen(std_fd[0], "r");
+	if (!my_stdin) {
+		PERROR("Failed initializing radmin stdin");
+		return -1;
+	}
+	rl_instream = my_stdin;
+
+	my_stdout = fdopen(std_fd[1], "w");
+	if (!my_stdout) {
+		PERROR("Failed initializing radmin stdout");
+		return -1;
+	}
+	rl_outstream = my_stdout;
+
+	my_stderr = fdopen(std_fd[2], "w");
+	if (!my_stderr) {
+		PERROR("Failed initializing radmin stderr");
+		return -1;
+	}
 
 	/*
 	 *	Note that the commands are registered by the main

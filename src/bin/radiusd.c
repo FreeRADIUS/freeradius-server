@@ -242,6 +242,7 @@ int main(int argc, char *argv[])
 	void			*pool_page_start = NULL;
 	size_t			pool_page_len = 0;
 	bool			do_mprotect;
+	int			std_fd[3];
 
 #ifndef NDEBUG
 	fr_time_delta_t	exit_after = fr_time_delta_wrap(0);
@@ -444,7 +445,6 @@ int main(int argc, char *argv[])
 			config->spawn_workers = false;
 			config->daemonize = false;
 			fr_debug_lvl += 2;
-			if (fr_debug_lvl > 2) default_log.suppress_secrets = false;
 
 	do_stdout:
 			default_log.dst = L_DST_STDOUT;
@@ -453,13 +453,14 @@ int main(int argc, char *argv[])
 
 		case 'x':
 			fr_debug_lvl++;
-			if (fr_debug_lvl > 2) default_log.suppress_secrets = false;
 			break;
 
 		default:
 			usage(EXIT_FAILURE);
 			break;
 	}
+
+	if (fr_debug_lvl > 2) default_log.suppress_secrets = false;
 
 	/*
 	 *	Allow the configuration directory to be set from an
@@ -590,6 +591,21 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	The radmin functions need to write somewhere.
+	 *
+	 *	The log functions redirect stdin and stdout to /dev/null, so that exec'd programs can't mangle
+	 *	them.  But radmin needs to be able to use them.
+	 */
+	if (radmin) {
+		std_fd[0] = dup(STDIN_FILENO);
+		(void) fr_cloexec(std_fd[0]);
+		std_fd[1] = dup(STDOUT_FILENO);
+		(void) fr_cloexec(std_fd[1]);
+		std_fd[2] = dup(STDERR_FILENO);
+		(void) fr_cloexec(std_fd[2]);
+	}
+
+	/*
 	 *  Read the configuration files, BEFORE doing anything else.
 	 */
 	if (main_config_init(config) < 0) EXIT_WITH_FAILURE;
@@ -699,7 +715,7 @@ int main(int argc, char *argv[])
 	 */
 	if (check_config) radmin = false;
 
-	if (fr_radmin_start(config, radmin) < 0) EXIT_WITH_FAILURE;
+	if (fr_radmin_start(config, radmin, std_fd) < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Disconnect from session
