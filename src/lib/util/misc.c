@@ -303,6 +303,38 @@ int fr_blocking(UNUSED int fd)
 }
 #endif
 
+#ifdef FD_CLOEXEC
+/** Set FD_CLOEXEC on a socket
+ * @param fd to set FD_CLOEXEC flag on.
+ * @return
+ *	- Flags set on the fd.
+ *	- -1 on failure.
+ */
+int fr_cloexec(int fd)
+{
+	int flags;
+
+	flags = fcntl(fd, F_GETFL, NULL);
+	if (flags < 0)  {
+		fr_strerror_printf("Failed getting fd flags: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	flags |= FD_CLOEXEC;
+	if (fcntl(fd, F_SETFL, flags) < 0) {
+		fr_strerror_printf("Failed setting fd flags: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	return flags;
+}
+#else
+int fr_nonblock(UNUSED int fd)
+{
+	return 0;
+}
+#endif
+
 /** Convert UTF8 string to UCS2 encoding
  *
  * @note Borrowed from src/crypto/ms_funcs.c of wpa_supplicant project (http://hostap.epitest.fi/wpa_supplicant/)

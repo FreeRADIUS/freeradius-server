@@ -145,6 +145,7 @@ char		*fr_tolower(char *str);
 
 int		fr_nonblock(int fd);
 int		fr_blocking(int fd);
+int		fr_cloexec(int fd);
 
 ssize_t		fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inlen);
 size_t		fr_snprint_uint128(char *out, size_t outlen, uint128_t const num);
