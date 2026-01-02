@@ -595,13 +595,16 @@ int main(int argc, char *argv[])
 	 *	The log functions redirect stdin and stdout to /dev/null, so that exec'd programs can't mangle
 	 *	them.  But radmin needs to be able to use them.
 	 */
+#define RDUP(_x) \
+do { \
+	if ((std_fd[_x] = dup(_x)) < 0) EXIT_WITH_PERROR; \
+	if (fr_cloexec(std_fd[_x]) < 0) EXIT_WITH_PERROR; \
+} while (0)
+
 	if (radmin) {
-		std_fd[0] = dup(STDIN_FILENO);
-		(void) fr_cloexec(std_fd[0]);
-		std_fd[1] = dup(STDOUT_FILENO);
-		(void) fr_cloexec(std_fd[1]);
-		std_fd[2] = dup(STDERR_FILENO);
-		(void) fr_cloexec(std_fd[2]);
+	  	RDUP(STDIN_FILENO);
+	  	RDUP(STDOUT_FILENO);
+	  	RDUP(STDERR_FILENO);
 	}
 
 	/*
