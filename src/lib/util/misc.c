@@ -329,7 +329,7 @@ int fr_cloexec(int fd)
 	return flags;
 }
 #else
-int fr_nonblock(UNUSED int fd)
+int fr_cloexec(UNUSED int fd)
 {
 	return 0;
 }
