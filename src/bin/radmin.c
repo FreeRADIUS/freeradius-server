@@ -274,6 +274,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	NULL means "read hit EOF"
 		 */
 		if (!line) {
+			INFO("radmin input was closed - exiting");
 			main_loop_signal_raise(RADIUS_SIGNAL_SELF_EXIT);
 			break;
 		}
@@ -1098,16 +1099,16 @@ int fr_radmin_start(main_config_t *config, bool cli, int std_fd[static 3])
 
 	if (!cli) return 0;
 
-	my_stdin = fdopen(std_fd[0], "r");
+	my_stdin = fdopen(std_fd[STDIN_FILENO], "r");
 	if (!my_stdin) {
-		PERROR("Failed initializing radmin stdin");
+		ERROR("Failed initializing radmin stdin %s", fr_syserror(errno));
 		return -1;
 	}
 	rl_instream = my_stdin;
 
-	my_stdout = fdopen(std_fd[1], "w");
+	my_stdout = fdopen(std_fd[STDOUT_FILENO], "w");
 	if (!my_stdout) {
-		PERROR("Failed initializing radmin stdout");
+		ERROR("Failed initializing radmin stdout - %s", fr_syserror(errno));
 		return -1;
 	}
 	rl_outstream = my_stdout;
@@ -1130,6 +1131,7 @@ int fr_radmin_start(main_config_t *config, bool cli, int std_fd[static 3])
 		return -1;
 	}
 	cli_started = true;
+	INFO("radmin interface started");
 
 	return 0;
 }
