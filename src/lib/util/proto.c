@@ -117,33 +117,19 @@ void *fr_proto_next_encodable(fr_dcursor_t *cursor, void *current, void *uctx)
  */
 void fr_proto_da_stack_build(fr_da_stack_t *stack, fr_dict_attr_t const *da)
 {
-	fr_dict_attr_t const **cached;
+	fr_dict_attr_t const *da_p, **da_o;
 
 	if (!da) return;
 
 	/*
-	 *	See if we have a cached da stack available
+	 *	Manually build the da_stack.
 	 */
-	cached = fr_dict_attr_da_stack(da);
-	if (cached) {
-		/*
-		 *	da->da_stack[0] is dict->root
-		 */
-		memcpy(&stack->da[0], &cached[1], sizeof(stack->da[0]) * da->depth);
+	da_p = da;
+	da_o = stack->da + (da->depth - 1);
 
-	} else {
-		fr_dict_attr_t const	*da_p, **da_o;
-
-		/*
-		 *	Unknown attributes don't have a da->da_stack.
-		 */
-		da_p = da;
-		da_o = stack->da + (da->depth - 1);
-
-		while (da_o >= stack->da) {
-			*da_o-- = da_p;
-			da_p = da_p->parent;
-		}
+	while (da_o >= stack->da) {
+		*da_o-- = da_p;
+		da_p = da_p->parent;
 	}
 
 	stack->depth = da->depth;

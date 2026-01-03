@@ -31,7 +31,6 @@ static fr_table_num_ordered_t const dict_attr_ext_table[] = {
 	{ L("ref"),			FR_DICT_ATTR_EXT_REF			},
 	{ L("key"),			FR_DICT_ATTR_EXT_KEY			},
 	{ L("vendor"),			FR_DICT_ATTR_EXT_VENDOR			},
-	{ L("da_stack"),		FR_DICT_ATTR_EXT_DA_STACK		},
 	{ L("enumv"),			FR_DICT_ATTR_EXT_ENUMV			},
 	{ L("namespace"),		FR_DICT_ATTR_EXT_NAMESPACE		},
 	{ L("protocol-specific"),	FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC	}
@@ -132,27 +131,12 @@ static int fr_dict_attr_ext_vendor_copy(UNUSED int ext,
 {
 	fr_dict_attr_t			*da_dst = talloc_get_type_abort(chunk_dst, fr_dict_attr_t);
 	fr_dict_attr_ext_vendor_t	*dst_ext = dst_ext_ptr, *src_ext = src_ext_ptr;
-	fr_dict_attr_t const		**da_stack;
 	fr_dict_attr_t const		*old_vendor = src_ext->vendor;
-	fr_dict_attr_t const		*new_vendor, *da;
+	fr_dict_attr_t const		*da;
 
 	if (!old_vendor) {
 		dst_ext->vendor = NULL;
 		return 0;
-	}
-
-	/*
-	 *	If we have a da stack, see if we can
-	 *	find a vendor at the same depth as
-	 *	the old depth.
-	 */
-	da_stack = fr_dict_attr_da_stack(da_dst);
-	if (da_stack) {
-		new_vendor = da_stack[old_vendor->depth];
-		if ((new_vendor->type == old_vendor->type) && (new_vendor->attr == old_vendor->attr)) {
-			dst_ext->vendor = new_vendor;
-			return 0;
-		}
 	}
 
 	/*
@@ -308,11 +292,6 @@ fr_ext_t const fr_dict_attr_ext_def = {
 							.min = sizeof(fr_dict_attr_ext_vendor_t),
 							.can_copy = true,
 							.copy = fr_dict_attr_ext_vendor_copy
-						},
-		[FR_DICT_ATTR_EXT_DA_STACK]	= {
-							.min = sizeof(fr_dict_attr_ext_da_stack_t),
-							.has_hdr = true,
-							.can_copy = false		/* Reinitialised for each new attribute */
 						},
 		[FR_DICT_ATTR_EXT_ENUMV]	= {
 							.min = sizeof(fr_dict_attr_ext_enumv_t),

@@ -89,19 +89,6 @@ typedef struct {
 	fr_dict_attr_t const	*vendor;			//!< ancestor which has type #FR_TYPE_VENDOR
 } fr_dict_attr_ext_vendor_t;
 
-/** Attribute extension - Stack of dictionary attributes that describe the path back to the root of the dictionary
- *
- */
-typedef struct {
-	bool			unused;				//!< Zero length arrays are apparently GNU extensions
-								///< and we're not allowed to have structs with a
-								///< single variable array as its member.
-								///< We'll likely want to store something else here
-								///< at some point, so we just have a dummy field to
-								///< avoid changing all the code.
-	fr_dict_attr_t const	*da_stack[];			//!< Stack of dictionary attributes
-} fr_dict_attr_ext_da_stack_t;
-
 /** Attribute extension - Holds enumeration values
  *
  */
@@ -149,23 +136,6 @@ static inline void *fr_dict_attr_ext(fr_dict_attr_t const *da, fr_dict_attr_ext_
 static inline bool fr_dict_attr_has_ext(fr_dict_attr_t const *da, fr_dict_attr_ext_t ext)
 {
 	return (da->ext[ext] > 0);
-}
-
-/** Return the cached da stack (if any) associated with an attribute
- *
- * @param[in] da	to return cached da stack for.
- * @return
- *	- NULL if no da stack available.
- *	- The cached da stack on success.
- */
-static inline fr_dict_attr_t const **fr_dict_attr_da_stack(fr_dict_attr_t const *da)
-{
-	fr_dict_attr_ext_da_stack_t *ext;
-
-	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_DA_STACK);
-	if (!ext) return NULL;
-
-	return ext->da_stack;
 }
 
 /** Return the reference associated with a group type attribute

@@ -187,7 +187,6 @@ typedef enum {
 								///< attribute and/or dictionary.
 	FR_DICT_ATTR_EXT_KEY,					//!< UNION attribute references a key
 	FR_DICT_ATTR_EXT_VENDOR,				//!< Cached vendor pointer.
-	FR_DICT_ATTR_EXT_DA_STACK,				//!< Cached da stack.
 	FR_DICT_ATTR_EXT_ENUMV,					//!< Enumeration values.
 	FR_DICT_ATTR_EXT_NAMESPACE,				//!< Attribute has its own namespace.
 	FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC,			//!< Protocol specific extensions
@@ -506,10 +505,6 @@ typedef struct fr_dict_gctx_s fr_dict_gctx_t;
 /** Maximum level of TLV nesting allowed
  */
 #define FR_DICT_TLV_NEST_MAX		(24)
-
-/** Maximum level of da stack caching
- */
-#define FR_DICT_DA_STACK_CACHE_MAX	(5)
 
 /** Maximum TLV stack size
  *
