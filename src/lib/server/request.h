@@ -230,8 +230,8 @@ struct request_s {
 	 *
 	 */
 	struct {
-		uint8_t			detachable : 1;		//!< This request may be detached from its parent..
-		uint8_t			dynamic_client : 1;	//!< this is a dynamic client request
+		unsigned int   		detachable : 1;		//!< This request may be detached from its parent..
+		unsigned int		dynamic_client : 1;	//!< this is a dynamic client request
 	} flags;
 
 	/** Logging information

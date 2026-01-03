@@ -106,13 +106,13 @@ typedef struct xlat_s xlat_t;
  *
  */
 typedef struct {
-	uint8_t    		needs_resolving : 1;	//!< Needs pass2 resolution.
-	uint8_t			pure : 1;		//!< has no external side effects, true for BOX, LITERAL, and some functions
-	uint8_t			impure_func : 1;	//!< xlat contains an impure function
-	uint8_t			can_purify : 1;		//!< if the xlat has a pure function with pure arguments.
+	unsigned int   		needs_resolving : 1;	//!< Needs pass2 resolution.
+	unsigned int		pure : 1;		//!< has no external side effects, true for BOX, LITERAL, and some functions
+	unsigned int		impure_func : 1;	//!< xlat contains an impure function
+	unsigned int		can_purify : 1;		//!< if the xlat has a pure function with pure arguments.
 
-	uint8_t			constant : 1;		//!< xlat is just tmpl_attr_tail_data, or XLAT_BOX
-	uint8_t			xlat : 1;		//!< it's an xlat wrapper
+	unsigned int		constant : 1;		//!< xlat is just tmpl_attr_tail_data, or XLAT_BOX
+	unsigned int		xlat : 1;		//!< it's an xlat wrapper
 } xlat_flags_t;
 
 #define XLAT_FLAGS_INIT ((xlat_flags_t) { .pure = true, .can_purify = true, .constant = true, })
@@ -143,12 +143,12 @@ typedef enum {
  *
  */
 typedef struct {
-	uint8_t				required : 1;	//!< Argument must be present, and non-empty.
-	uint8_t				concat : 1;    	//!< Concat boxes together.
-	uint8_t				single : 1;    	//!< Argument must only contain a single box
-	uint8_t				allow_wildcard : 1; //!< For parsing the cursor
-	uint8_t				will_escape : 1;   //!< the function will do escaping and concatenation.
-	uint8_t				always_escape : 1;  //!< Pass all arguments to escape function not just
+	unsigned int			required : 1;	//!< Argument must be present, and non-empty.
+	unsigned int			concat : 1;    	//!< Concat boxes together.
+	unsigned int			single : 1;    	//!< Argument must only contain a single box
+	unsigned int			allow_wildcard : 1; //!< For parsing the cursor
+	unsigned int			will_escape : 1;   //!< the function will do escaping and concatenation.
+	unsigned int			always_escape : 1;  //!< Pass all arguments to escape function not just
 							    ///< tainted ones.
 	xlat_arg_parser_variadic_t	variadic;	//!< All additional boxes should be processed
 							///< using this definition.

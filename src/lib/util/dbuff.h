@@ -160,8 +160,8 @@ struct fr_dbuff_s {
 		uint8_t *p;				//!< Mutable 'current' pointer.
 	};
 
-	uint8_t			is_const:1;		//!< The buffer this dbuff wraps is const.
-	uint8_t			adv_parent:2;	//!< Whether we advance the parent
+	unsigned int   		is_const : 1;  	//!< The buffer this dbuff wraps is const.
+	unsigned int   		adv_parent : 2;	//!< Whether we advance the parent
 						///< of this dbuff.
 
 	size_t			shifted;	//!< How many bytes this sbuff has been

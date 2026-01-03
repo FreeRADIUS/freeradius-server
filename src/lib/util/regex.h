@@ -113,13 +113,13 @@ typedef struct {
  * then the library will produce an error.
  */
 typedef struct {
-	uint8_t	global:1;			//!< g - Perform global matching or substitution.
-	uint8_t ignore_case:1;			//!< i - Perform case insensitive matching.
-	uint8_t	multiline:1;			//!< m - Multiline search.
-	uint8_t dot_all:1;			//!< s - Singleline - '.' matches everything, including newlines.
-	uint8_t unicode:1;			//!< u - Use unicode properties for character with code points
+	unsigned int	global : 1;	       	//!< g - Perform global matching or substitution.
+	unsigned int	ignore_case : 1;	//!< i - Perform case insensitive matching.
+	unsigned int	multiline : 1;		//!< m - Multiline search.
+	unsigned int	dot_all : 1;		//!< s - Singleline - '.' matches everything, including newlines.
+	unsigned int	unicode : 1;		//!< u - Use unicode properties for character with code points
 						///< greater than 127.
-	uint8_t extended:1;			//!< x - Permit whitespace and comments.
+	unsigned int	extended : 1;		//!< x - Permit whitespace and comments.
 } fr_regex_flags_t;
 
 #define REGEX_FLAG_BUFF_SIZE	7

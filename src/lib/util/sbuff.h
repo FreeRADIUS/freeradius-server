@@ -114,8 +114,8 @@ struct fr_sbuff_s {
 
 	char const *err;					//!< Where the last error occurred.
 
-	uint8_t				is_const:1;		//!< Can't be modified.
-	uint8_t				adv_parent:1;		//!< If true, advance the parent.
+	unsigned int   			is_const:1;		//!< Can't be modified.
+	unsigned int   			adv_parent:1;		//!< If true, advance the parent.
 	size_t				shifted;		//!< How many bytes this sbuff has been
 								///< shifted since its creation.
 

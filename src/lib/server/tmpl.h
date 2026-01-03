@@ -300,28 +300,28 @@ struct tmpl_attr_rules_s {
 
 	CONF_ITEM		*ci;			//!< for migration support and various warnings
 
-	uint8_t			allow_unknown:1;	//!< Allow unknown attributes i.e. attributes
+	unsigned int		allow_unknown : 1;	//!< Allow unknown attributes i.e. attributes
 							///< defined by OID string.
 
-	uint8_t			allow_unresolved:1;	//!< Allow attributes that look valid but were
+	unsigned int		allow_unresolved : 1;	//!< Allow attributes that look valid but were
 							///< not found in the dictionaries.
 							///< This should be used as part of a multi-pass
 							///< approach to parsing.
 
-	uint8_t			allow_wildcard:1;	//!< Allow the special case of .[*] representing
+	unsigned int		allow_wildcard : 1;	//!< Allow the special case of .[*] representing
 							///< all children of a structural attribute.
 
-	uint8_t			allow_foreign:1;	//!< Allow arguments not found in dict_def.
+	unsigned int		allow_foreign : 1;	//!< Allow arguments not found in dict_def.
 
-	uint8_t			allow_oid:1;		//!< allow numerical OIDs.
+	unsigned int		allow_oid : 1;		//!< allow numerical OIDs.
 
-	uint8_t			disallow_filters:1;	//!< disallow filters.
+	unsigned int		disallow_filters : 1;	//!< disallow filters.
 
-	uint8_t			xlat:1	;		//!< for %{User-Name}
+	unsigned int		xlat : 1	;	//!< for %{User-Name}
 
-	uint8_t			bare_word_enum:1;	//!< for v3 compatibility.
+	unsigned int		bare_word_enum : 1;	//!< for v3 compatibility.
 
-	uint8_t			disallow_rhs_resolve:1;	//!< map RHS is NOT immediately resolved in the context of the LHS.
+	unsigned int		disallow_rhs_resolve : 1; //!< map RHS is NOT immediately resolved in the context of the LHS.
 };
 
 struct tmpl_xlat_rules_s {
