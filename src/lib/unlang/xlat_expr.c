@@ -344,12 +344,12 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	if (!a) {
 		a = &one;
-		fr_value_box_init_zero(a, b->type);
+		fr_value_box_init_zero(a, b ? b->type : default_type);
 	}
 
 	if (!b) {
 		b = &two;
-		fr_value_box_init_zero(b, a->type);
+		fr_value_box_init_zero(b, a ? a->type : default_type);
 	}
 
 	rcode = fr_value_calc_binary_op(dst, dst, default_type, a, op, b);

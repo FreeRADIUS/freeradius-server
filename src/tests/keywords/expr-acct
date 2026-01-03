@@ -4,9 +4,12 @@ uint64 input
 #  PRE: if edit
 #
 
+#
+#  These don't exist.
+#
 input := %{((uint64)Acct-Input-Gigawords << 32) | (uint64)Acct-Input-Octets}
 
-if !(input == 0) {
+if (input != 0) {
 	test_fail
 }
 
