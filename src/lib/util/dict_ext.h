@@ -50,7 +50,6 @@ extern fr_ext_t const fr_dict_enum_ext_def;
  * VALUE.  See dict_attr_can_have_children() for details.
  */
 typedef struct {
-	fr_hash_table_t		*child_by_name;			//!< Namespace at this level in the hierarchy.
 	fr_dict_attr_t const	**children;			//!< Children of this attribute.
 } fr_dict_attr_ext_children_t;
 
