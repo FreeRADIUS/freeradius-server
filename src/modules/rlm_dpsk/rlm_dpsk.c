@@ -77,13 +77,6 @@ typedef struct eapol_attr_t {
 	eapol_key_frame_t frame;
 } CC_HINT(__packed__) eapol_attr_t;
 
-#ifdef HAVE_PTHREAD_H
-#define PTHREAD_MUTEX_LOCK pthread_mutex_lock
-#define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
-#else
-#define PTHREAD_MUTEX_LOCK(_x)
-#define PTHREAD_MUTEX_UNLOCK(_x)
-#endif
 
 typedef struct rlm_dpsk_s rlm_dpsk_t;
 
@@ -109,9 +102,7 @@ typedef struct {
 typedef struct {
 	fr_rb_tree_t			cache;
 
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_t			mutex;
-#endif
 	fr_dlist_head_t			head;
 } rlm_dpsk_mutable_t;
 
@@ -737,9 +728,9 @@ make_digest:
 			 *	cache.  If so, delete the oldest one.
 			 */
 			if (fr_rb_num_elements(&inst->mutable->cache) > inst->cache_size) {
-				PTHREAD_MUTEX_LOCK(&inst->mutable->mutex);
+				pthread_mutex_lock(&inst->mutable->mutex);
 				entry = fr_dlist_head(&inst->mutable->head);
-				PTHREAD_MUTEX_UNLOCK(&inst->mutable->mutex);
+				pthread_mutex_unlock(&inst->mutable->mutex);
 
 				fr_rb_delete(&inst->mutable->cache, entry); /* locks and unlinks the entry */
 			}
@@ -774,11 +765,11 @@ make_digest:
 		}
 
 	update_entry:
-		PTHREAD_MUTEX_LOCK(&inst->mutable->mutex);
+		pthread_mutex_lock(&inst->mutable->mutex);
 		entry->expires = fr_time_add(fr_time(), inst->cache_lifetime);
 		if (fr_dlist_entry_in_list(&entry->dlist)) fr_dlist_remove(&inst->mutable->head, entry);
 		fr_dlist_insert_tail(&inst->mutable->head, entry);
-		PTHREAD_MUTEX_UNLOCK(&inst->mutable->mutex);
+		pthread_mutex_unlock(&inst->mutable->mutex);
 
 		/*
 		 *	Add the PSK to the reply items, if it was cached.
@@ -900,9 +891,9 @@ static void free_cache_entry(void *data)
 {
 	rlm_dpsk_cache_t *entry = (rlm_dpsk_cache_t *) data;
 
-	PTHREAD_MUTEX_LOCK(&entry->inst->mutable->mutex);
+	pthread_mutex_lock(&entry->inst->mutable->mutex);
 	fr_dlist_entry_unlink(&entry->dlist);
-	PTHREAD_MUTEX_UNLOCK(&entry->inst->mutable->mutex);
+	pthread_mutex_unlock(&entry->inst->mutable->mutex);
 
 	talloc_free(entry);
 }
@@ -913,9 +904,7 @@ static int mod_detach(const module_detach_ctx_t *mctx)
 
 	if (!inst->cache_size) return 0;
 
-#ifdef HAVE_PTHREAD_H
 	pthread_mutex_destroy(&inst->mutable->mutex);
-#endif
 
 	talloc_free(inst->mutable);
 
@@ -951,12 +940,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	fr_rb_inline_init(&inst->mutable->cache, rlm_dpsk_cache_t, node, cmp_cache_entry, free_cache_entry);
 
 	fr_dlist_init(&inst->mutable->head, rlm_dpsk_cache_t, dlist);
-#ifdef HAVE_PTHREAD_H
+
 	if (pthread_mutex_init(&inst->mutable->mutex, NULL) < 0) {
 		cf_log_err(mctx->mi->conf, "Failed creating mutex");
 		return -1;
 	}
-#endif
 
 	return 0;
 #else
