@@ -2510,6 +2510,14 @@ static size_t command_load_dictionary(command_result_t *result, command_file_ctx
 		dir = cc->path;
 	}
 
+	/*
+	 *	When we're reading multiple files at the same time, they might all have a 'load-dictionary foo'
+	 *	command.  In which case we don't complain.
+	 */
+	if (fr_dict_filename_loaded(cc->tmpl_rules.attr.dict_def, dir, name)) {
+		RETURN_OK(0);
+	}
+
 	ret = fr_dict_read(UNCONST(fr_dict_t *, cc->tmpl_rules.attr.dict_def), dir, name);
 	talloc_free(tmp);
 	if (ret < 0) RETURN_COMMAND_ERROR();

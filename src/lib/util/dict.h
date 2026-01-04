@@ -899,6 +899,8 @@ fr_dict_t		*fr_dict_protocol_alloc(fr_dict_t const *parent);
 int			fr_dict_protocol_reference(fr_dict_attr_t const **da_p, fr_dict_attr_t const *root, fr_sbuff_t *in);
 
 int			fr_dict_read(fr_dict_t *dict, char const *dict_dir, char const *filename);
+
+bool			fr_dict_filename_loaded(fr_dict_t const *dict, char const *dict_dir, char const *filename);
 /** @} */
 
 /** @name Autoloader interface
