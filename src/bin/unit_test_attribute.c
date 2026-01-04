@@ -4164,7 +4164,8 @@ int main(int argc, char *argv[])
 	bool			do_usage = false;
 	bool			allow_purify = false;
 	xlat_t			*xlat;
-	char const		*p;
+	char			*p;
+	char const		*error_str = NULL, *fail_str = NULL;
 
 	/*
 	 *	Must be called first, so the handler is called last
@@ -4455,11 +4456,29 @@ int main(int argc, char *argv[])
 									   fr_sbuff_start(&in),
 									   fr_sbuff_used(&dir_end));
 
-			if (receipt_dir) {
-				if (strncmp(argv[i], "src/tests/unit/", 15) == 0) {
+			/*
+			 *	Do things so that GNU Make does less work.
+			 */
+			if ((receipt_dir || receipt_file) &&
+			    (strncmp(argv[i], "src/tests/unit/", 15) == 0)) {
+				p = strchr(argv[i] + 15, '/');
+				if (!p) {
 					printf("UNIT-TEST %s\n", argv[i] + 15);
 				} else {
-					printf("UNIT-TEST %s\n", argv[i] + 15);
+					char *q = strchr(p + 1, '/');
+
+					*p = '\0';
+
+					if (!q) {
+						printf("UNIT-TEST %s - %s\n", argv[i] + 15, p + 1);
+					} else {
+						*q = '\0';
+
+						printf("UNIT-TEST %s - %s\n", p + 1, q + 1);
+						*q = '/';
+					}
+
+					*p = '/';
 				}
 			}
 
@@ -4516,6 +4535,15 @@ int main(int argc, char *argv[])
 	 *	memory, so we get clean talloc reports.
 	 */
 cleanup:
+#undef EXIT_WITH_FAILURE
+#define EXIT_WITH_FAILURE \
+do { \
+	ret = EXIT_FAILURE; \
+	error_str = fr_strerror(); \
+	if (error_str) error_str = talloc_strdup(NULL, error_str); \
+	goto fail; \
+} while (0)
+
 	/*
 	 *	Ensure all thread local memory is cleaned up
 	 *	at the appropriate time.  This emulates what's
@@ -4533,16 +4561,17 @@ cleanup:
 	 *	returns -1 on failure.
 	 */
 	if (dl_loader && (talloc_free(dl_loader) < 0)) {
-		fr_perror("unit_test_attribute - dl_loader - ");	/* Print free order issues */
+		fail_str = "cleaning up dynamically loaded libraries";
 		EXIT_WITH_FAILURE;
 	}
+
 	if (fr_dict_free(&config.dict, __FILE__) < 0) {
-		fr_perror("unit_test_attribute");
+		fail_str = "cleaning up dictionaries";
 		EXIT_WITH_FAILURE;
 	}
 
 	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
-		fr_perror("unit_test_attribute");
+		fail_str = "creating receipt file";
 		EXIT_WITH_FAILURE;
 	}
 
@@ -4551,9 +4580,24 @@ cleanup:
 	 *	to make errors less confusing.
 	 */
 	if (talloc_free(autofree) < 0) {
-		fr_perror("unit_test_attribute");
+		fail_str = "cleaning up all memory";
 		EXIT_WITH_FAILURE;
 	}
+
+	if (ret != EXIT_SUCCESS) {
+	fail:
+		if (!fail_str) fail_str = "in an input file";
+		if (!error_str) error_str = "";
+
+		fprintf(stderr, "unit_test_attribute failed %s - %s\n", fail_str, error_str);
+
+		/*
+		 *	Print any command needed to run the test from the command line.
+		 */
+		p = getenv("UNIT_TEST_ATTRIBUTE");
+		if (p) printf("%s\n", p);
+	}
+
 
 	/*
 	 *	Ensure our atexit handlers run before any other
