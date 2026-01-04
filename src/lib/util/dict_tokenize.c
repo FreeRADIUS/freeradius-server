@@ -1902,14 +1902,14 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 		fr_dict_attr_t const *da;
 
 		if (strncmp(argv[1], "parent=", 7) != 0) {
-			fr_strerror_printf("BEGIN-VENDOR invalid argument (%s)", argv[1]);
+			fr_strerror_const("BEGIN-VENDOR invalid argument - expected 'parent='");
 			return -1;
 		}
 
 		p = argv[1] + 7;
 		da = fr_dict_attr_by_oid(NULL, CURRENT_FRAME(dctx)->da, p);
 		if (!da) {
-			fr_strerror_printf("BEGIN-VENDOR invalid argument (%s)", argv[1]);
+			fr_strerror_printf("BEGIN-VENDOR Failed to find attribute '%s'", p);
 			return -1;
 		}
 
