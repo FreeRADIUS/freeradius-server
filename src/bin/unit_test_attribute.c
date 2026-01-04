@@ -274,8 +274,8 @@ static xlat_action_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static char		proto_name_prev[128];
-static dl_t		*dl;
+static char		proto_name_prev[128] = {};
+static dl_t		*dl = NULL;
 static dl_loader_t	*dl_loader = NULL;
 
 static fr_event_list_t	*el = NULL;
@@ -933,6 +933,7 @@ static ssize_t encode_rfc(char *buffer, uint8_t *output, size_t outlen)
 
 static void unload_proto_library(void)
 {
+	proto_name_prev[0] = '\0';
 	TALLOC_FREE(dl);
 }
 
@@ -959,6 +960,7 @@ static ssize_t load_proto_library(char const *proto_name)
 		strlcpy(proto_name_prev, proto_name, sizeof(proto_name_prev));
 	}
 
+	fr_assert(dl != NULL);
 	return strlen(proto_name);
 }
 
@@ -4144,6 +4146,7 @@ int main(int argc, char *argv[])
 {
 	int			c;
 	char const		*receipt_file = NULL;
+	char const		*receipt_dir = NULL;
 	CONF_SECTION		*cs;
 	int			ret = EXIT_SUCCESS;
 	TALLOC_CTX		*autofree;
@@ -4161,6 +4164,7 @@ int main(int argc, char *argv[])
 	bool			do_usage = false;
 	bool			allow_purify = false;
 	xlat_t			*xlat;
+	char const		*p;
 
 	/*
 	 *	Must be called first, so the handler is called last
@@ -4234,7 +4238,18 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'r':
-			receipt_file = optarg;
+			p = strrchr(optarg, '/');
+			if (!p || p[1]) {
+				receipt_file = optarg;
+
+				if ((fr_unlink(receipt_file) < 0)) {
+					fr_perror("unit_test_attribute");
+					EXIT_WITH_FAILURE;
+				}
+
+			} else {
+				receipt_dir = optarg;
+			}
 			break;
 
 		case 'p':
@@ -4263,11 +4278,6 @@ int main(int argc, char *argv[])
 	if (do_usage || do_features || do_commands) {
 		ret = EXIT_SUCCESS;
 		goto cleanup;
-	}
-
-	if (receipt_file && (fr_unlink(receipt_file) < 0)) {
-		fr_perror("unit_test_attribute");
-		EXIT_WITH_FAILURE;
 	}
 
 	/*
@@ -4445,7 +4455,46 @@ int main(int argc, char *argv[])
 									   fr_sbuff_start(&in),
 									   fr_sbuff_used(&dir_end));
 
+			if (receipt_dir) {
+				if (strncmp(argv[i], "src/tests/unit/", 15) == 0) {
+					printf("UNIT-TEST %s\n", argv[i] + 15);
+				} else {
+					printf("UNIT-TEST %s\n", argv[i] + 15);
+				}
+			}
+
 			ret = process_file(&exit_now, autofree, &config, dir, file, &lines);
+
+			if ((ret == EXIT_SUCCESS) && receipt_dir) {
+				char *touch_file, *subdir;
+
+				if (strncmp(dir, "src/", 4) == 0) {
+					subdir = dir + 4;
+				} else {
+					subdir = dir;
+				}
+
+				touch_file = talloc_asprintf(autofree, "build/%s/%s", subdir, file);
+				fr_assert(touch_file);
+
+				p = strchr(touch_file, '/');
+				fr_assert(p);
+
+				if (fr_mkdir(NULL, touch_file, (size_t) (p - touch_file), S_IRWXU, NULL, NULL) < 0) {
+					fr_perror("unit_test_attribute - failed to make directory %.*s - ",
+						(int) (p - touch_file), touch_file);
+					EXIT_WITH_FAILURE;
+				}
+
+				if (fr_touch(NULL, touch_file, 0644, true, 0755) <= 0) {
+					fr_perror("unit_test_attribute - failed to create receipt file %s - ",
+						  touch_file);
+					EXIT_WITH_FAILURE;
+				}
+
+				talloc_free(touch_file);
+			}
+
 			talloc_free(dir);
 			talloc_free(file);
 			fr_dlist_talloc_free(&lines);
