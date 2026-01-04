@@ -372,10 +372,12 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			 *	children have no "real" number, and are all unique da's, they are
 			 *	incomparable.  And thus can all be given the same number.
 			 */
-			uint64_t attr = 0;
+			uint64_t attr;
 
 			FR_PROTO_TRACE("No matching child structure found");
+
 		unknown_child:
+			attr = 0;
 
 			/*
 			 *	But if we have a key field, the unknown attribute number is taken from the
