@@ -124,7 +124,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 
 	fr_redis_cluster_state_t	state;
 	fr_redis_conn_t			*conn;
-	fr_redis_rcode_t		status;
+	fr_redis_rcode_t		status = REDIS_RCODE_SUCCESS;
 	redisReply			*reply = NULL;
 	int				s_ret;
 
@@ -255,7 +255,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 
 	fr_redis_conn_t		*conn;
 	fr_redis_cluster_state_t	state;
-	fr_redis_rcode_t	status;
+	fr_redis_rcode_t	status = REDIS_RCODE_SUCCESS;
 	redisReply		*reply = NULL;
 	int			s_ret;
 
@@ -430,7 +430,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 	rlm_cache_redis_t		*driver = instance;
 	fr_redis_cluster_state_t	state;
 	fr_redis_conn_t			*conn;
-	fr_redis_rcode_t			status;
+	fr_redis_rcode_t		status = REDIS_RCODE_SUCCESS;
 	redisReply			*reply = NULL;
 	int				s_ret;
 	cache_status_t			cache_status;
