@@ -668,7 +668,7 @@ redo:
 			 *	We were looking in the internal dictionary.  Maybe this attribute is instead
 			 *	in the protocol dictionary?
 			 */
-			if ((relative->da->dict == relative->internal) && relative->dict) {
+			if ((i == 1) && (relative->da->dict == relative->internal) && relative->dict) {
 				fr_assert(relative->dict != relative->internal);
 
 				/*
@@ -1088,6 +1088,8 @@ redo:
 		}
 
 		fr_assert(my.ctx == vp);
+		fr_assert(my.da == vp->da);
+		fr_assert(my.list == &vp->vp_group);
 		my.allow_compare = root->allow_compare;
 		my.end_of_list = true;
 
