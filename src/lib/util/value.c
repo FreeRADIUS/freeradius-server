@@ -695,7 +695,9 @@ static int8_t float_cmp(double a, double b)
 	/*
 	 *	Handles the best cast scenario.
 	 */
+DIAG_OFF(float-equal)
 	if (a == b) return 0;
+DIAG_ON(float-equal)
 
 	diff = fabs(a - b);
 
@@ -861,19 +863,18 @@ int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		 */
 		return fr_dict_attr_cmp(a->vb_attr, b->vb_attr);
 
-	/*
-	 *	These should be handled at some point
-	 */
-	default:
-		(void)fr_cond_assert(0);	/* unknown type */
-		return -2;
+	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_INTERNAL:
+		break;
 
 	/*
 	 *	Do NOT add a default here, as new types are added
 	 *	static analysis will warn us they're not handled
 	 */
 	}
-	return 0;
+
+	(void)fr_cond_assert(0);	/* invalud type for leaf comparison */
+	return -2;
 }
 
 /*
