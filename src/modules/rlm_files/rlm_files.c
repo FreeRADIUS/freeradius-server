@@ -415,7 +415,7 @@ static unlang_action_t CC_HINT(nonnull) mod_files_resume(unlang_result_t *p_resu
 	PAIR_LIST const 	*user_pl, *default_pl;
 	bool			found = false, trie = false;
 	PAIR_LIST_LIST		my_list;
-	uint8_t			key_buffer[16], *key;
+	uint8_t			key_buffer[16], *key = NULL;
 	size_t			keylen = 0;
 	fr_edit_list_t		*el, *child;
 	fr_htrie_t		*tree = env->data->htrie;
