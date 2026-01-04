@@ -472,6 +472,7 @@ static inline CC_HINT(nonnull) int dump_fuzzer_data(int fd_dir, char const *text
 	}
 
 	if (flock(file_fd, LOCK_EX) < 0) {
+		close(file_fd);
 		fr_strerror_printf("Failed locking corpus seed file \"%s\": %s",
 				   digest_str, fr_syserror(errno));
 		return -1;
@@ -486,12 +487,14 @@ static inline CC_HINT(nonnull) int dump_fuzzer_data(int fd_dir, char const *text
 					   digest_str, fr_syserror(errno));
 			(void)flock(file_fd, LOCK_UN);
 			unlinkat(fd_dir, digest_str, 0);
+			close(file_fd);
 			return -1;
 		}
 		data_len -= ret;
 		data += ret;
 	}
 	(void)flock(file_fd, LOCK_UN);
+	close(file_fd);
 
 	return 0;
 }
