@@ -3,12 +3,12 @@
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
-#	The FreeRADIUS Extended-Vendor-Specific-5 dictionary.
+#	The FreeRADIUS Vendor-Specific dictionary.
 #
 # Version:	$Id$
 #
 
-BEGIN-VENDOR	FreeRADIUS			parent=.Extended-Attribute-5.Extended-Vendor-Specific-5
+BEGIN-VENDOR	FreeRADIUS			parent=.Extended-Attribute-5.Vendor-Specific
 
 #
 #  The next two attributes are for sending EAPoL keys to a RADIUS server.
@@ -43,4 +43,4 @@ ATTRIBUTE	802_1X-EAPoL-Key-Msg			2	octets
 
 END-VENDOR	FreeRADIUS
 
-ALIAS		FreeRADIUS-EV5			Extended-Attribute-5.Extended-Vendor-Specific-5.FreeRADIUS
+ALIAS		FreeRADIUS-EV5			Extended-Attribute-5.Vendor-Specific.FreeRADIUS

@@ -57,7 +57,7 @@ ATTRIBUTE	Extended-Attribute-1			241	tlv
 ATTRIBUTE	Extended-Attribute-2			242	tlv
 ATTRIBUTE	Extended-Attribute-5			245	tlv
 ATTRIBUTE	Extended-Attribute-6			246	tlv
-ATTRIBUTE	Extended-Vendor-Specific-2		242.26	vsa
+ATTRIBUTE	Vendor-Specific		242.26	vsa
 
 ATTRIBUTE	Unit-Ext-241-Integer	241.241		integer
 ATTRIBUTE	Unit-Ext-241-Octets	241.242		octets
