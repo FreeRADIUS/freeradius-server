@@ -261,9 +261,11 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 				ALLOW_FLAG(array);
 
 				if (!da_is_length_field(da)) {
-					fr_assert(0);
 					goto invalid_extra;
 				}
+
+			} else if (da_is_length_field(da)) {
+				/* this is allowed */
 
 			} else if (flags->subtype) {
 			invalid_extra:
