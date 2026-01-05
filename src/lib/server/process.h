@@ -119,6 +119,19 @@ typedef struct {
 } process_rctx_t;
 
 /*
+ *	C doesn't technically support forward declaration of static variables.  Until such time as we
+ *	rearrange all of the process code, disabling the warnings will have to do.
+ *
+ *	A real fix is to provide a header file which contains only the macro definitions for the process state
+ *	machine.  The process files can include that, then define the function prototypes.  Then define their
+ *	own process_state[] state machine, then define the functions.
+ */
+#ifdef __clang__
+DIAG_OFF(tentative-definition-compat)
+DIAG_OFF(tentative-definition-incomplete-type)
+#endif
+
+/*
  *	Some protocols have the same packet codes for requests and replies.
  */
 #ifndef PROCESS_SEND_RECV
