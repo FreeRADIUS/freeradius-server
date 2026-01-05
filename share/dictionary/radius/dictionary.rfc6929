@@ -44,7 +44,7 @@ ALIAS		Extended-Vendor-Specific-6		Vendor-Specific
 #
 #  In this case, the "Cisco-Foo-Bar" attribute has OID 241.26.9.1
 #
-#BEGIN-VENDOR Cisco format=Extended-Vendor-Specific-1.Vendor-Specific
+#BEGIN-VENDOR Cisco format=Extended-Attribute-1.Vendor-Specific
 #ATTRIBUTE Cisco-Foo-Bar 1 uint32
 #ATTRIBUTE Cisco-Bar-Baz 2 uint32
 #...
