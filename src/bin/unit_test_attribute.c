@@ -285,6 +285,10 @@ static bool		allow_purify = false;
 static char const	*write_filename = NULL;
 static FILE		*write_fp = NULL;
 
+static char const		*receipt_file = NULL;
+static char const		*receipt_dir = NULL;
+static char const      		*fail_file = "";
+
 size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data, size_t data_used, char *in, size_t inlen);
 static int process_file(bool *exit_now, TALLOC_CTX *ctx,
 			command_config_t const *config, const char *root_dir, char const *filename, fr_dlist_head_t *lines);
@@ -3874,6 +3878,8 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 	if (strcmp(filename, "-") == 0) {
 		fp = stdin;
 		filename = "<stdin>";
+		fr_assert(!root_dir);
+
 	} else {
 		if (root_dir && *root_dir) {
 			snprintf(path, sizeof(path), "%s/%s", root_dir, filename);
@@ -4150,6 +4156,149 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 	return 0;
 }
 
+static int process_path(bool *exit_now, TALLOC_CTX *ctx, command_config_t const *config, const char *path)
+{
+	char			*p, *dir = NULL, *file;
+	int			ret = EXIT_SUCCESS;
+	fr_sbuff_t		in = FR_SBUFF_IN(path, strlen(path));
+	fr_sbuff_term_t		dir_sep = FR_SBUFF_TERMS(
+		L("/"),
+		L(":")
+		);
+	fr_sbuff_marker_t	file_start, file_end, dir_end;
+	fr_dlist_head_t		lines;
+
+	fr_sbuff_marker(&file_start, &in);
+	fr_sbuff_marker(&file_end, &in);
+	fr_sbuff_marker(&dir_end, &in);
+	fr_sbuff_set(&file_end, fr_sbuff_end(&in));
+
+	fr_dlist_init(&lines, command_line_range_t, entry);
+
+	while (fr_sbuff_extend(&in)) {
+		fr_sbuff_adv_until(&in, SIZE_MAX, &dir_sep, '\0');
+
+		fr_sbuff_switch(&in, '\0') {
+			case '/':
+				fr_sbuff_set(&dir_end, &in);
+				fr_sbuff_advance(&in, 1);
+				fr_sbuff_set(&file_start, &in);
+				break;
+
+				case ':':
+					fr_sbuff_set(&file_end, &in);
+					fr_sbuff_advance(&in, 1);
+					if (line_ranges_parse(ctx, &lines, &in) < 0) {
+						return EXIT_FAILURE;
+					}
+					break;
+
+					default:
+						fr_sbuff_set(&file_end, &in);
+						break;
+		}
+	}
+
+	file = talloc_bstrndup(ctx,
+			       fr_sbuff_current(&file_start), fr_sbuff_diff(&file_end, &file_start));
+	if (fr_sbuff_used(&dir_end)) dir = talloc_bstrndup(ctx,
+							   fr_sbuff_start(&in),
+							   fr_sbuff_used(&dir_end));
+
+	/*
+	 *	Do things so that GNU Make does less work.
+	 */
+	if ((receipt_dir || receipt_file) &&
+	    (strncmp(path, "src/tests/unit/", 15) == 0)) {
+		p = strchr(path + 15, '/');
+		if (!p) {
+			printf("UNIT-TEST %s\n", path + 15);
+		} else {
+			char *q = strchr(p + 1, '/');
+
+			*p = '\0';
+
+			if (!q) {
+				printf("UNIT-TEST %s - %s\n", path + 15, p + 1);
+			} else {
+				*q = '\0';
+
+				printf("UNIT-TEST %s - %s\n", p + 1, q + 1);
+				*q = '/';
+			}
+
+			*p = '/';
+		}
+	}
+
+	/*
+	 *	Rewrite this file if requested.
+	 */
+	if (write_filename) {
+		write_fp = fopen(write_filename, "w");
+		if (!write_fp) {
+			ERROR("Failed opening %s: %s", write_filename, strerror(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
+	ret = process_file(exit_now, ctx, config, dir, file, &lines);
+
+	if ((ret == EXIT_SUCCESS) && receipt_dir) {
+		char *touch_file, *subdir;
+
+		if (strncmp(dir, "src/", 4) == 0) {
+			subdir = dir + 4;
+		} else {
+			subdir = dir;
+		}
+
+		touch_file = talloc_asprintf(ctx, "build/%s/%s", subdir, file);
+		fr_assert(touch_file);
+
+		p = strchr(touch_file, '/');
+		fr_assert(p);
+
+		if (fr_mkdir(NULL, touch_file, (size_t) (p - touch_file), S_IRWXU, NULL, NULL) < 0) {
+			fr_perror("unit_test_attribute - failed to make directory %.*s - ",
+				  (int) (p - touch_file), touch_file);
+fail:
+			if (write_fp) fclose(write_fp);
+			return EXIT_FAILURE;
+		}
+
+		if (fr_touch(NULL, touch_file, 0644, true, 0755) <= 0) {
+			fr_perror("unit_test_attribute - failed to create receipt file %s - ",
+				  touch_file);
+			goto fail;
+		}
+
+		talloc_free(touch_file);
+	}
+
+	talloc_free(dir);
+	talloc_free(file);
+	fr_dlist_talloc_free(&lines);
+
+	if (ret != EXIT_SUCCESS) {
+		if (write_fp) {
+			fclose(write_fp);
+			write_fp = NULL;
+		}
+		fail_file = path;
+	}
+
+	if (write_fp) {
+		fclose(write_fp);
+		if (rename(write_filename, path) < 0) {
+			ERROR("Failed renaming %s: %s", write_filename, strerror(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
+	return ret;
+}
+
 /**
  *
  * @hidecallgraph
@@ -4157,8 +4306,6 @@ static int line_ranges_parse(TALLOC_CTX *ctx, fr_dlist_head_t *out, fr_sbuff_t *
 int main(int argc, char *argv[])
 {
 	int			c;
-	char const		*receipt_file = NULL;
-	char const		*receipt_dir = NULL;
 	CONF_SECTION		*cs;
 	int			ret = EXIT_SUCCESS;
 	TALLOC_CTX		*autofree;
@@ -4177,7 +4324,6 @@ int main(int argc, char *argv[])
 	xlat_t			*xlat;
 	char			*p;
 	char const		*error_str = NULL, *fail_str = NULL;
-	char			*fail_file = "";
 
 	/*
 	 *	Must be called first, so the handler is called last
@@ -4399,7 +4545,7 @@ int main(int argc, char *argv[])
 			EXIT_WITH_FAILURE;
 		}
 
-		ret = process_file(&exit_now, autofree, &config, name, "-", NULL);
+		ret = process_file(&exit_now, autofree, &config, NULL, "-", NULL);
 
 	} else {
 		int i;
@@ -4408,138 +4554,8 @@ int main(int argc, char *argv[])
 		 *	Read test commands from a list of files in argv[].
 		 */
 		for (i = 1; i < argc; i++) {
-			char			*dir = NULL, *file;
-			fr_sbuff_t		in = FR_SBUFF_IN(argv[i], strlen(argv[i]));
-			fr_sbuff_term_t		dir_sep = FR_SBUFF_TERMS(
-							L("/"),
-							L(":")
-						);
-			fr_sbuff_marker_t	file_start, file_end, dir_end;
-			fr_dlist_head_t		lines;
-
-			fr_sbuff_marker(&file_start, &in);
-			fr_sbuff_marker(&file_end, &in);
-			fr_sbuff_marker(&dir_end, &in);
-			fr_sbuff_set(&file_end, fr_sbuff_end(&in));
-
-			fr_dlist_init(&lines, command_line_range_t, entry);
-
-			while (fr_sbuff_extend(&in)) {
-				fr_sbuff_adv_until(&in, SIZE_MAX, &dir_sep, '\0');
-
-				fr_sbuff_switch(&in, '\0') {
-				case '/':
-					fr_sbuff_set(&dir_end, &in);
-					fr_sbuff_advance(&in, 1);
-					fr_sbuff_set(&file_start, &in);
-					break;
-
-				case ':':
-					fr_sbuff_set(&file_end, &in);
-					fr_sbuff_advance(&in, 1);
-					if (line_ranges_parse(autofree, &lines, &in) < 0) EXIT_WITH_FAILURE;
-					break;
-
-				default:
-					fr_sbuff_set(&file_end, &in);
-					break;
-				}
-			}
-
-			file = talloc_bstrndup(autofree,
-					       fr_sbuff_current(&file_start), fr_sbuff_diff(&file_end, &file_start));
-			if (fr_sbuff_used(&dir_end)) dir = talloc_bstrndup(autofree,
-									   fr_sbuff_start(&in),
-									   fr_sbuff_used(&dir_end));
-
-			/*
-			 *	Do things so that GNU Make does less work.
-			 */
-			if ((receipt_dir || receipt_file) &&
-			    (strncmp(argv[i], "src/tests/unit/", 15) == 0)) {
-				p = strchr(argv[i] + 15, '/');
-				if (!p) {
-					printf("UNIT-TEST %s\n", argv[i] + 15);
-				} else {
-					char *q = strchr(p + 1, '/');
-
-					*p = '\0';
-
-					if (!q) {
-						printf("UNIT-TEST %s - %s\n", argv[i] + 15, p + 1);
-					} else {
-						*q = '\0';
-
-						printf("UNIT-TEST %s - %s\n", p + 1, q + 1);
-						*q = '/';
-					}
-
-					*p = '/';
-				}
-			}
-
-			/*
-			 *	Rewrite this file if requested.
-			 */
-			if (write_filename) {
-				write_fp = fopen(write_filename, "w");
-				if (!write_fp) {
-					ERROR("Failed opening %s: %s", write_filename, strerror(errno));
-					EXIT_WITH_FAILURE;
-				}
-			}
-
-			ret = process_file(&exit_now, autofree, &config, dir, file, &lines);
-
-			if ((ret == EXIT_SUCCESS) && receipt_dir) {
-				char *touch_file, *subdir;
-
-				if (strncmp(dir, "src/", 4) == 0) {
-					subdir = dir + 4;
-				} else {
-					subdir = dir;
-				}
-
-				touch_file = talloc_asprintf(autofree, "build/%s/%s", subdir, file);
-				fr_assert(touch_file);
-
-				p = strchr(touch_file, '/');
-				fr_assert(p);
-
-				if (fr_mkdir(NULL, touch_file, (size_t) (p - touch_file), S_IRWXU, NULL, NULL) < 0) {
-					fr_perror("unit_test_attribute - failed to make directory %.*s - ",
-						(int) (p - touch_file), touch_file);
-					EXIT_WITH_FAILURE;
-				}
-
-				if (fr_touch(NULL, touch_file, 0644, true, 0755) <= 0) {
-					fr_perror("unit_test_attribute - failed to create receipt file %s - ",
-						  touch_file);
-					EXIT_WITH_FAILURE;
-				}
-
-				talloc_free(touch_file);
-			}
-
-			talloc_free(dir);
-			talloc_free(file);
-			fr_dlist_talloc_free(&lines);
-
-			if (exit_now) break;
-
-			if (ret != EXIT_SUCCESS) {
-				if (write_fp) fclose(write_fp);
-				fail_file = argv[i];
-				break;
-			}
-
-			if (write_fp) {
-				fclose(write_fp);
-				if (rename(write_filename, argv[i]) < 0) {
-					ERROR("Failed renaming %s: %s", write_filename, strerror(errno));
-					EXIT_WITH_FAILURE;
-				}
-			}
+			ret = process_path(&exit_now, autofree, &config, argv[i]);
+			if ((ret != EXIT_SUCCESS) || exit_now) break;
 		}
 	}
 
