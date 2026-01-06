@@ -354,6 +354,8 @@ conf_parser_t const trunk_config[] = {
 
 	{ FR_CONF_OFFSET("max_backlog", trunk_conf_t, max_backlog), .dflt = "1000" },
 
+	{ FR_CONF_OFFSET("backlog_on_failed_conn", trunk_conf_t, backlog_on_failed_conn), },
+
 	{ FR_CONF_OFFSET("triggers", trunk_conf_t, conn_triggers), .func = trunk_trigger_cf_parse },
 
 	{ FR_CONF_OFFSET_SUBSECTION("connection", 0, trunk_conf_t, conn_conf, trunk_config_connection), .subcs_size = sizeof(trunk_config_connection) },
@@ -4501,7 +4503,6 @@ static void trunk_manage(trunk_t *trunk, fr_time_t now)
 		}
 
 		trunk->pub.last_closed = now;
-
 
 		return;
 	}
