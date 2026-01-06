@@ -280,6 +280,8 @@ static dl_loader_t	*dl_loader = NULL;
 
 static fr_event_list_t	*el = NULL;
 
+static bool		allow_purify = false;
+
 static char const	*write_filename = NULL;
 static FILE		*write_fp = NULL;
 
@@ -3131,6 +3133,11 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 	size_t			input_len = strlen(in), escaped_len;
 	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 
+	if (allow_purify) {
+		fr_strerror_printf_push_head("ERROR cannot run 'xlat' when running with command-line argument '-p'");
+		RETURN_OK_WITH_ERROR();
+	}
+
 	slen = xlat_tokenize(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), &p_rules,
 			     &(tmpl_rules_t) {
 				     .attr = {
@@ -3334,6 +3341,11 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 	size_t		len;
 	size_t		input_len = strlen(in);
 	char		buff[1024];
+
+	if (allow_purify) {
+		fr_strerror_printf_push_head("ERROR cannot run 'xlat_argv' when running with command-line argument '-p'");
+		RETURN_OK_WITH_ERROR();
+	}
 
 	slen = xlat_tokenize_argv(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len),
 				  NULL, NULL,
@@ -4162,10 +4174,10 @@ int main(int argc, char *argv[])
 	bool			do_features = false;
 	bool			do_commands = false;
 	bool			do_usage = false;
-	bool			allow_purify = false;
 	xlat_t			*xlat;
 	char			*p;
 	char const		*error_str = NULL, *fail_str = NULL;
+	char			*fail_file = "";
 
 	/*
 	 *	Must be called first, so the handler is called last
@@ -4518,7 +4530,12 @@ int main(int argc, char *argv[])
 			talloc_free(file);
 			fr_dlist_talloc_free(&lines);
 
-			if ((ret != 0) || exit_now) break;
+			if (exit_now) break;
+
+			if (ret != EXIT_SUCCESS) {
+				fail_file = argv[i];
+				break;
+			}
 		}
 
 		if (write_fp) {
@@ -4595,7 +4612,7 @@ do { \
 		 *	Print any command needed to run the test from the command line.
 		 */
 		p = getenv("UNIT_TEST_ATTRIBUTE");
-		if (p) printf("%s\n", p);
+		if (p) printf("%s %s\n", p, fail_file);
 	}
 
 
