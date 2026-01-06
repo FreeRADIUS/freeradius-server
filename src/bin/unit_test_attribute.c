@@ -4547,6 +4547,41 @@ int main(int argc, char *argv[])
 
 		ret = process_file(&exit_now, autofree, &config, NULL, "-", NULL);
 
+	} else if ((argc == 2) && (strcmp(argv[1], "-") == 0)) {
+			char buffer[1024];
+
+			/*
+			 *	Read the list of filenames from stdin.
+			 */
+			while (fgets(buffer, sizeof(buffer) - 1, stdin) != NULL) {
+				buffer[sizeof(buffer) - 1] = '\0';
+
+				p = buffer;
+				while (isspace((unsigned int) *p)) p++;
+
+				if (!*p || (*p == '#')) continue;
+
+				name = p;
+
+				/*
+				 *	Smash CR/LF.
+				 *
+				 *	Note that we don't care about truncated filenames.  The code below
+				 *	will complain that it can't open the file.
+				 */
+				while (*p) {
+					if (*p < ' ') {
+						*p = '\0';
+						break;
+					}
+
+					p++;
+				}
+
+				ret = process_path(&exit_now, autofree, &config, name);
+				if ((ret != EXIT_SUCCESS) || exit_now) break;
+			}
+
 	} else {
 		int i;
 
