@@ -62,6 +62,8 @@ $(foreach x,$(PROTOCOLS),$(eval $(call UNIT_TEST_PROTOCOLS,$x)))
 
 test.unit.xlat: $(addprefix $(OUTPUT)/,$(filter xlat/%.txt,$(FILES))) $(BUILD_DIR)/lib/libfreeradius-unlang.la
 
+test.unit.purify: $(addprefix $(OUTPUT)/,$(filter purify/%.txt,$(FILES))) $(BUILD_DIR)/lib/libfreeradius-unlang.la
+
 test.unit.condition: $(addprefix $(OUTPUT)/,$(filter condition/%.txt,$(FILES))) $(BUILD_DIR)/lib/libfreeradius-server.la
 
 test.unit.tmpl: $(addprefix $(OUTPUT)/,$(filter tmpl/%.txt,$(FILES))) $(BUILD_DIR)/lib/libfreeradius-server.la
@@ -71,7 +73,7 @@ test.unit.help: TEST_UNIT_HELP += test.unit.xlat
 #
 #  Add special command-line flag for purify tests.
 #
-$(BUILD_DIR)/tests/unit/xlat/purify.txt $(filter $(BUILD_DIR)/tests/unit/xlat/cond_%,$(FILES.$(TEST))): PURIFY=-p
+$(filter $(BUILD_DIR)/tests/unit/purify/%,$(FILES.$(TEST))): PURIFY=-p
 
 #
 #  For automatically fixing the tests when only the output has changed
