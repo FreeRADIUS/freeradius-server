@@ -4391,37 +4391,21 @@ int main(int argc, char *argv[])
 	fr_hostname_lookups = fr_reverse_lookups = false;
 
 	/*
-	 *	Read tests from stdin
+	 *	Read test commands from stdin
 	 */
 	if (argc < 2) {
 		if (write_filename) {
-			ERROR("Can't use '-w' with stdin");
+			ERROR("Can only use '-w' with input files");
 			EXIT_WITH_FAILURE;
 		}
 
 		ret = process_file(&exit_now, autofree, &config, name, "-", NULL);
 
-	/*
-	 *	...or process each file in turn.
-	 */
 	} else {
 		int i;
 
-		if (write_filename) {
-			if (argc != 2) { /* program name and file to write */
-				ERROR("Can't use '-w' with multiple filenames");
-				EXIT_WITH_FAILURE;
-			}
-
-			write_fp = fopen(write_filename, "w");
-			if (!write_fp) {
-				ERROR("Failed opening %s: %s", write_filename, strerror(errno));
-				EXIT_WITH_FAILURE;
-			}
-		}
-
 		/*
-		 *	Loop over all input files.
+		 *	Read test commands from a list of files in argv[].
 		 */
 		for (i = 1; i < argc; i++) {
 			char			*dir = NULL, *file;
@@ -4494,6 +4478,17 @@ int main(int argc, char *argv[])
 				}
 			}
 
+			/*
+			 *	Rewrite this file if requested.
+			 */
+			if (write_filename) {
+				write_fp = fopen(write_filename, "w");
+				if (!write_fp) {
+					ERROR("Failed opening %s: %s", write_filename, strerror(errno));
+					EXIT_WITH_FAILURE;
+				}
+			}
+
 			ret = process_file(&exit_now, autofree, &config, dir, file, &lines);
 
 			if ((ret == EXIT_SUCCESS) && receipt_dir) {
@@ -4533,16 +4528,17 @@ int main(int argc, char *argv[])
 			if (exit_now) break;
 
 			if (ret != EXIT_SUCCESS) {
+				if (write_fp) fclose(write_fp);
 				fail_file = argv[i];
 				break;
 			}
-		}
 
-		if (write_fp) {
-			fclose(write_fp);
-			if (rename(write_filename, argv[1]) < 0) {
-				ERROR("Failed renaming %s: %s", write_filename, strerror(errno));
-				EXIT_WITH_FAILURE;
+			if (write_fp) {
+				fclose(write_fp);
+				if (rename(write_filename, argv[i]) < 0) {
+					ERROR("Failed renaming %s: %s", write_filename, strerror(errno));
+					EXIT_WITH_FAILURE;
+				}
 			}
 		}
 	}
