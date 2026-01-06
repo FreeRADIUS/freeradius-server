@@ -182,7 +182,7 @@ void unlang_finally_init(void)
 			 *	that's pushed in unlang
 			 *	finally should have braces
 			 */
-			.flag = UNLANG_OP_FLAG_NO_FORCE_UNWIND | UNLANG_OP_FLAG_INTERNAL,
+			.flag = UNLANG_OP_FLAG_NO_FORCE_UNWIND | UNLANG_OP_FLAG_RETURN_POINT | UNLANG_OP_FLAG_INTERNAL,
 
 			.frame_state_size = sizeof(unlang_frame_state_finally_t),
 			.frame_state_type = "unlang_frame_state_finally_t",
