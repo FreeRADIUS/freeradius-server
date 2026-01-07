@@ -38,7 +38,7 @@ Op should be one of the assignment operators:
 
 Only static values are currently supported, though backtick (exec) expansion may be added in the future.
 
-The values use the same format as the normal `unlang` attribute assignments, or the xref:raddb/mods-config/files/users.adoc[users file].  A short summary is given here for convenience.
+The values use the same format as the normal `unlang` attribute assignments, or the xref:reference:raddb/mods-config/files/users.adoc[users file].  A short summary is given here for convenience.
 
 Strings should be wrapped in single quotes. Other values should be left unquoted.
 
