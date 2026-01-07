@@ -4244,7 +4244,7 @@ static int process_path(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 
 	ret = process_file(exit_now, ctx, config, dir, file, &lines);
 
-	if ((ret == EXIT_SUCCESS) && receipt_dir) {
+	if ((ret == EXIT_SUCCESS) && receipt_dir && dir) {
 		char *touch_file, *subdir;
 
 		if (strncmp(dir, "src/", 4) == 0) {
