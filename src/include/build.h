@@ -388,11 +388,13 @@ do { \
  *	GNU version check
  */
 #ifdef __GNUC__
-#define	__GNUC_PREREQ__(x, y)						\
+  #ifndef __GNUC_PREREQ__
+    #define	__GNUC_PREREQ__(x, y)						\
 	((__GNUC__ == (x) && __GNUC_MINOR__ >= (y)) ||			\
 	 (__GNUC__ > (x)))
+  #endif
 #else
-#define	__GNUC_PREREQ__(x, y)	0
+  #define	__GNUC_PREREQ__(x, y)	0
 #endif
 
 
