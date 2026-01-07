@@ -2845,7 +2845,7 @@ ocsp_end:
 /*
  *	For creating certificate attributes.
  */
-static char const *cert_attr_names[11][2] = {
+static char const *cert_attr_names[13][2] = {
 	{ "TLS-Client-Cert-Serial",			"TLS-Cert-Serial" },
 	{ "TLS-Client-Cert-Expiration",			"TLS-Cert-Expiration" },
 	{ "TLS-Client-Cert-Subject",			"TLS-Cert-Subject" },
@@ -2857,6 +2857,8 @@ static char const *cert_attr_names[11][2] = {
 	{ "TLS-Client-Cert-Valid-Since",		"TLS-Cert-Valid-Since" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Uri",	"TLS-Cert-Subject-Alt-Name-Uri" },
 	{ "TLS-Client-Cert-CRL-Distribution-Points",	"TLS-Cert-CRL-Distribution-Points"},
+	{ "TLS-Client-Cert-Subject-Alt-Name-Directory-Name",	"TLS-Cert-Subject-Alt-Name-Directory-Name" },
+	{ "TLS-Client-Cert-Subject-Alt-Name-Directory-Name-Common-Name",	"TLS-Cert-Subject-Alt-Name-Directory-Name-Common-Name" },
 };
 
 #define FR_TLS_SERIAL		(0)
@@ -2870,6 +2872,9 @@ static char const *cert_attr_names[11][2] = {
 #define FR_TLS_VALID_SINCE	(8)
 #define FR_TLS_SAN_URI		(9)
 #define FR_TLS_CDP		(10)
+#define FR_TLS_SAN_DIRNAME	(11)
+#define FR_TLS_SAN_DIRNAME_CN	(12)
+
 
 /*
  *	Extract Certification Distribution point URL from the certificate
@@ -2898,7 +2903,6 @@ static const char *get_cdp_url(DIST_POINT *dp)
 
 	return NULL;
 }
-
 
 /*
  *	Before trusting a certificate, you must make sure that the
@@ -2934,6 +2938,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	char		common_name[1024];
 	char		cn_str[1024];
 	char		buf[64];
+	char		dirname[1024]; /* Used for the san:dirname */
+	char		dirname_common_name[1024];
 	X509		*client_cert;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 	const STACK_OF(X509_EXTENSION) *ext_list;
@@ -3176,6 +3182,35 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 					rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 					break;
 #endif /* GEN_URI */
+#ifdef GEN_DIRNAME
+                case GEN_DIRNAME:
+					dirname[0] = '\0';
+
+					X509_NAME_oneline(name->d.directoryName, dirname,
+							  sizeof(dirname));
+					dirname[sizeof(dirname) - 1] = '\0';
+					if (!dirname[0]) {
+						RWARN("Invalid Directory Name in Subject Alt Name");
+						break;
+					}
+
+					vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_DIRNAME][lookup],
+								dirname, T_OP_SET);
+					rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+
+					dirname_common_name[0] = '\0';
+					X509_NAME_get_text_by_NID(name->d.directoryName,
+								NID_commonName, dirname_common_name, sizeof(dirname_common_name));
+					dirname_common_name[sizeof(dirname_common_name) - 1] = '\0';
+
+					if (dirname_common_name[0]) {
+						vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_DIRNAME_CN][lookup],
+									dirname_common_name, T_OP_SET);
+						rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+					}
+
+					break;
+#endif /* GEN_DIRNAME */
 				default:
 					/* XXX TODO handle other SAN types */
 					break;
