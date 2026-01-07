@@ -605,6 +605,9 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		.request_code = request->packet->data[0],
 		.code = request->reply->code,
 		.id = request->reply->id,
+#ifdef NAS_VIOLATES_RFC
+		.allow_vulnerable_clients = client->allow_vulnerable_clients,
+#endif
 	};
 
 	data_len = fr_radius_encode(&FR_DBUFF_TMP(buffer, buffer_len), &request->reply_pairs, &encode_ctx);

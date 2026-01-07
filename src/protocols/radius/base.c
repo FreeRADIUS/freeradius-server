@@ -1056,10 +1056,22 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 	 *	header for insecure transport protocols.
 	 */
 	if (!packet_ctx->common->secure_transport) switch (packet_ctx->code) {
-	case FR_RADIUS_CODE_ACCESS_REQUEST:
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 	case FR_RADIUS_CODE_ACCESS_REJECT:
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
+#ifdef NAS_VIOLATES_RFC
+		/*
+		 *	Allow ridiculous behavior for vendors who violate the RFCs.
+		 *
+		 *	But only if there's no EAP-Message in the packet.
+		 */
+		if (packet_ctx->allow_vulnerable_clients && !fr_pair_find_by_da(vps, NULL, attr_eap_message);
+			break;
+		}
+		FALL_THROUGH;
+#endif
+
+	case FR_RADIUS_CODE_ACCESS_REQUEST:
 	case FR_RADIUS_CODE_STATUS_SERVER:
 	case FR_RADIUS_CODE_PROTOCOL_ERROR:
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_MESSAGE_AUTHENTICATOR, 0x12,

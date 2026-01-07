@@ -452,6 +452,13 @@ static const conf_parser_t client_config[] = {
 
 	{ FR_CONF_OFFSET("response_window", fr_client_t, response_window) },
 
+#ifdef NAS_VIOLATES_RFC
+	/*
+	 *	For vendors who violate the RFCs and go out of their way to make their systems vulnerable.
+	 */
+	{ FR_CONF_OFFSET("nas_violates_rfc_security_requirements", fr_client_t, allow_vulnerable_clients) },
+#endif
+
 	{ FR_CONF_POINTER("proto", FR_TYPE_STRING, 0, &hs_proto) },
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 

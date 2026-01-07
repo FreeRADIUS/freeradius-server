@@ -124,6 +124,10 @@ struct fr_client_s {
 	bool			tls_required;		//!< whether TLS encryption is required.
 #endif
 
+#ifdef NAS_VIOLATES_RFC
+	bool			allow_vulnerable_clients; //!< for vendors who violate the RFCs.
+#endif
+
 	char const		*nas_type;		//!< Type of client (arbitrary).
 
 	char const 		*server;		//!< Name of the virtual server client is associated with.
