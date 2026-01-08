@@ -1104,14 +1104,18 @@ int fr_radmin_start(main_config_t *config, bool cli, int std_fd[static 3])
 		ERROR("Failed initializing radmin stdin %s", fr_syserror(errno));
 		return -1;
 	}
+#ifdef USE_READLINE
 	rl_instream = my_stdin;
+#endif
 
 	my_stdout = fdopen(std_fd[STDOUT_FILENO], "w");
 	if (!my_stdout) {
 		ERROR("Failed initializing radmin stdout - %s", fr_syserror(errno));
 		return -1;
 	}
+#ifdef USE_READLINE
 	rl_outstream = my_stdout;
+#endif
 
 	my_stderr = fdopen(std_fd[2], "w");
 	if (!my_stderr) {
