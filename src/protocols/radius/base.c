@@ -49,7 +49,7 @@ fr_dict_autoload_t libfreeradius_radius_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
 
-	DICT_AUTOLOAD_TERMINATOR	
+	DICT_AUTOLOAD_TERMINATOR
 };
 
 fr_dict_attr_t const *attr_packet_type;
@@ -1065,7 +1065,7 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 		 *
 		 *	But only if there's no EAP-Message in the packet.
 		 */
-		if (packet_ctx->allow_vulnerable_clients && !fr_pair_find_by_da(vps, NULL, attr_eap_message);
+		if (packet_ctx->allow_vulnerable_clients && !fr_pair_find_by_da(vps, NULL, attr_eap_message));
 			break;
 		}
 		FALL_THROUGH;
