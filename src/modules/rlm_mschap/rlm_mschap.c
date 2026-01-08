@@ -1616,6 +1616,27 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 	return rcode;
 }
 
+static void debug_hex(REQUEST *request, char const *msg, uint8_t const *data, size_t data_len)
+{
+	uint8_t const *end = data + data_len;
+	char *p, buffer[256];
+
+	if (data_len > sizeof(buffer) / 3) data_len = (sizeof(buffer) / 3) - 1;
+
+	p = buffer;
+	if (data_len) {
+		while (data < end) {
+			sprintf(p, "%02x ", *data);
+			data++;
+			p += 3;
+		}
+		p--;
+	}
+	*p = '\0';
+
+	RDEBUG3("%s: %s", msg, buffer);
+}
+
 /*
  *	mod_authenticate() - authenticate user based on given
  *	attributes and configuration.
@@ -2059,6 +2080,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 				      challenge->vp_octets,	/* our challenge */
 				      username_string,		/* user name */
 				      mschapv1_challenge);	/* resulting challenge */
+
+		if (RDEBUG_ENABLED3) {
+			debug_hex(request, "auth challenge : ", challenge->vp_octets, challenge->vp_length);
+			debug_hex(request, "peer challenge : ", peer_challenge, 16);
+			debug_hex(request, "user-name      : ", (uint8_t const *) username_string, strlen(username_string));
+			if (password) {
+				debug_hex(request, "user-password  : ", (uint8_t const *) password->vp_strvalue, password->vp_length);
+			} else if (nt_password) {
+				debug_hex(request, "nt-password    : ", nt_password->vp_octets, nt_password->vp_length);
+			}
+		}
 
 		RDEBUG2("Client is using MS-CHAPv2");
 		mschap_result = do_mschap(inst, request, nt_password, mschapv1_challenge,
