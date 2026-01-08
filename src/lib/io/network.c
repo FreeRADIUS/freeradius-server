@@ -600,7 +600,7 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
 				/*
 				 *	Close the hole...
 				 */
-				memcpy(&nr->workers[i], &nr->workers[i + 1], ((nr->num_workers - i) - 1));
+				memmove(&nr->workers[i], &nr->workers[i + 1], ((nr->num_workers - i) - 1));
 				break;
 			}
 		}
