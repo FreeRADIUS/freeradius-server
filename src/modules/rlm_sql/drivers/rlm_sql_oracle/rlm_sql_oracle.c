@@ -55,6 +55,7 @@ typedef struct rlm_sql_oracle_conn_t {
 	int		id;
 	int		col_count;	//!< Number of columns associated with the result set
 	struct timeval	tv;
+	bool		prepared;
 } rlm_sql_oracle_conn_t;
 
 #define	MAX_DATASTR_LEN	64
@@ -214,6 +215,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 
 		return RLM_SQL_ERROR;
 	}
+	conn->prepared = true;
 
 	status = OCIStmtExecute(conn->ctx, conn->query, conn->error, 1, 0,
 				NULL, NULL, OCI_COMMIT_ON_SUCCESS);
@@ -254,6 +256,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 
 		return RLM_SQL_ERROR;
 	}
+	conn->prepared = true;
 
 	/*
 	 *	Retrieve a single row
@@ -426,11 +429,12 @@ static sql_rcode_t sql_finish_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_
 {
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 
-	if (OCIStmtRelease(conn->query, conn->error, NULL, 0, OCI_DEFAULT) != OCI_SUCCESS ) {
+	if (conn->prepared && (OCIStmtRelease(conn->query, conn->error, NULL, 0, OCI_DEFAULT) != OCI_SUCCESS)) {
 		ERROR("OCI release failed in sql_finish_query");
 		(void) sql_check_error(handle, config);
 		return RLM_SQL_ERROR;
 	}
+	conn->prepared = false;
 
 	return 0;
 }
@@ -443,11 +447,12 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_
 	conn->ind = NULL;	/* ind is a child of row */
 	conn->col_count = 0;
 
-	if (OCIStmtRelease (conn->query, conn->error, NULL, 0, OCI_DEFAULT) != OCI_SUCCESS ) {
+	if (conn->prepared && (OCIStmtRelease (conn->query, conn->error, NULL, 0, OCI_DEFAULT) != OCI_SUCCESS)) {
 		ERROR("OCI release failed in sql_finish_select_query");
 		(void) sql_check_error(handle, config);
 		return RLM_SQL_ERROR;
 	}
+	conn->prepared = false;
 
 	return 0;
 }
