@@ -85,12 +85,16 @@ RUN git clone --depth 1 --no-single-branch ${source}
 
 #
 #  Install build dependencies for all branches from v4 onwards
+#  Debian sid fails if debian/control doesn't exist due to an issue
+#  in one of the included make files, so we create a blank file.
 #
 WORKDIR freeradius-server
 RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[4-9]*\.[0-9x]*\.x|master|${branch})$" | sort -u); \
     do \
         git checkout $i; \
         if [ -e ./debian/control.in ] ; then \
+	    touch debian/control; \
+            touch debian/control.in; \
             debian/rules debian/control ; \
         fi ; \
         mk-build-deps -irt"apt-get -o Debug::pkgProblemResolver=yes $APT_OPTS" debian/control ; \
