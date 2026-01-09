@@ -185,7 +185,7 @@ static int eap_peap_success(request_t *request, eap_session_t *eap_session, fr_t
 
 static int eap_peap_identity(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
-	eap_packet_raw_t eap_packet;
+	eap_packet_hdr_t eap_packet;
 
 	eap_packet.code = FR_EAP_CODE_REQUEST;
 	eap_packet.id = eap_session->this_round->response->id + 1;

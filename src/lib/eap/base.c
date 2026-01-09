@@ -309,7 +309,7 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 	/*
 	 *	Sanity check the length before doing anything.
 	 */
-	if (vp->vp_length < 4) {
+	if (vp->vp_length < EAP_HEADER_LEN) {
 		fr_strerror_const("EAP packet is too short");
 		return NULL;
 	}
@@ -324,7 +324,7 @@ eap_packet_raw_t *eap_packet_from_vp(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 	/*
 	 *	Take out even more weird things.
 	 */
-	if (len < 4) {
+	if (len < EAP_HEADER_LEN) {
 		fr_strerror_const("EAP packet has invalid length (less than 4 bytes)");
 		return NULL;
 	}

@@ -264,7 +264,7 @@ static char *eap_identity(request_t *request, eap_session_t *eap_session, eap_pa
 	 *  The identity value *MUST NOT* be artificially limited or truncated
 	 *  here.
 	 */
-	if (len < sizeof(eap_packet_raw_t)) {
+	if (len <= EAP_HEADER_LEN) {
 		REDEBUG("EAP-Identity length field too short, expected >= 5, got %u", len);
 		return NULL;
 	}

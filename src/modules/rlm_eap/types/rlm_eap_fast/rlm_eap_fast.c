@@ -289,7 +289,7 @@ static void eap_fast_append_result(fr_tls_session_t *tls_session, fr_radius_pack
 
 static void eap_fast_send_identity_request(request_t *request, fr_tls_session_t *tls_session, eap_session_t *eap_session)
 {
-	eap_packet_raw_t eap_packet;
+	eap_packet_hdr_t eap_packet;
 
 	RDEBUG2("Sending EAP-Identity");
 

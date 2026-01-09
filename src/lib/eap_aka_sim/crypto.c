@@ -152,7 +152,7 @@ int fr_aka_sim_crypto_init_checkcode(TALLOC_CTX *ctx, fr_aka_sim_checkcode_t **c
 int fr_aka_sim_crypto_update_checkcode(fr_aka_sim_checkcode_t *checkcode, eap_packet_t *eap_packet)
 {
 	uint16_t		packet_len;
-	eap_packet_raw_t	eap_hdr;
+	eap_packet_hdr_t	eap_hdr;
 
 	eap_hdr.code = eap_packet->code;
 	eap_hdr.id = eap_packet->id;
@@ -294,7 +294,7 @@ ssize_t fr_aka_sim_crypto_sign_packet(uint8_t out[static AKA_SIM_MAC_DIGEST_SIZE
 	uint8_t	const		*mac;
 	uint8_t			*p = eap_packet->type.data, *end = p + eap_packet->type.length;
 
-	eap_packet_raw_t	eap_hdr;
+	eap_packet_hdr_t	eap_hdr;
 	uint16_t		packet_len;
 
 	if (unlikely(!eap_packet)) {
