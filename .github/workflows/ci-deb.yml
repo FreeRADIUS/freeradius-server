@@ -128,8 +128,7 @@ jobs:
     - name: Install build dependencies
       run: |
         apt-get install -y --no-install-recommends build-essential devscripts quilt fakeroot
-        touch debian/control
-        touch debian/control.in
+        touch -t 202001010000 debian/control
         debian/rules debian/control
         mk-build-deps -irt"apt-get -y" debian/control
       working-directory: freeradius

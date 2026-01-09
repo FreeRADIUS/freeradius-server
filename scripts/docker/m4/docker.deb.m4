@@ -41,8 +41,7 @@ RUN git clean -fdxx \
 #  in one of the included make files, so we create a blank file.
 #
 RUN if [ -e ./debian/control.in ]; then \
-        touch debian/control; \
-        touch debian/control.in; \
+        touch -t 202001010000 debian/control; \
         debian/rules debian/control; \
     fi; \
     echo 'y' | mk-build-deps -irt'apt-get -yV' debian/control

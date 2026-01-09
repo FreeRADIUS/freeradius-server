@@ -118,8 +118,7 @@ RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 
     do \
         git checkout $i; \
         if [ -e ./debian/control.in ] ; then \
-	    touch debian/control; \
-            touch debian/control.in; \
+	    touch -t 202001010000 debian/control; \
             debian/rules debian/control ; \
         fi ; \
         mk-build-deps -irt"apt-get -o Debug::pkgProblemResolver=yes $APT_OPTS" debian/control ; \
