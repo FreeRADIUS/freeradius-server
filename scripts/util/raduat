@@ -371,7 +371,7 @@ for i in "${test_files[@]}"; do
     fi
 
     # If the test file is marked as serial only, then we need to serialise the test
-    if head -n 1 "$i" | grep -i -E '^#\s*serial' > /dev/null; then
+    if head -n 1 "$i" | grep -qiE '^#\s*serial'; then
         DEBUG "$i marked as serial only"
         serial_file_args+=" -f \"${i}:${expected}\""
         continue
