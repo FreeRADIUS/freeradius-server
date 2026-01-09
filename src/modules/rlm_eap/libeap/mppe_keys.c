@@ -101,12 +101,12 @@ static void P_hash(EVP_MD const *evp_md,
 		/* Place digest in output buffer */
 		digest_len = EVP_MAX_MD_SIZE;
 		HMAC_Final(ctx_out, out, &digest_len);
-		HMAC_Init_ex(ctx_out, NULL, 0, NULL, NULL);
+		HMAC_Init_ex(ctx_out, secret, secret_len, evp_md, NULL);
 		out += size;
 		out_len -= size;
 
 		/* Calculate next A(i) */
-		HMAC_Init_ex(ctx_a, NULL, 0, NULL, NULL);
+		HMAC_Init_ex(ctx_a, secret, secret_len, evp_md, NULL);
 		HMAC_Update(ctx_a, a, size);
 		digest_len = EVP_MAX_MD_SIZE;
 		HMAC_Final(ctx_a, a, &digest_len);
