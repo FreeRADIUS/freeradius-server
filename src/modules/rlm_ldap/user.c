@@ -119,7 +119,7 @@ static unlang_action_t ldap_find_user_async_result(unlang_result_t *p_result, re
 
 	RDEBUG2("User object found at DN \"%s\"", dn);
 
-	MEM(pair_update_control(&vp, attr_ldap_userdn) >= 0);
+	MEM(pair_update_control(&vp, user_ctx->inst->user.da) >= 0);
 	fr_pair_value_strdup(vp, dn, false);
 	ldap_memfree(dn);
 

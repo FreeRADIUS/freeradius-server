@@ -388,6 +388,11 @@ ldap {
 		#  do not (e.g. mixed IPoE and PPPoE).
 		#
 #		expect_password = no
+
+		#
+		#  dn_attribute:: Where to cache the user's DN for use in authentication.
+		#
+#		dn_attribute = 'LDAP-UserDN'
 	}
 
 	#
@@ -1103,4 +1108,3 @@ ldap {
 #  my_profile = 'cn=profile1,ou=profiles,dc=example,dc=com'
 #  %ldap.profile(my_profile)
 #  ----
-

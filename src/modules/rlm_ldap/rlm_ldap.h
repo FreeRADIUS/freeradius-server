@@ -47,6 +47,13 @@ typedef struct {
 		bool		expect_password;		//!< Allow the user to forcefully decide if a password should be
 								///< expected.  Controls whether warnings are issued.
 		bool		expect_password_is_set;		//!< Whether an expect password value was provided.
+
+		char const	*dn_attr_str;			//!< Sets the attribute we use when creating and retrieving
+								//!< cached group memberships.
+
+		fr_dict_attr_t const *da;			//!< The DA associated with this specific instance of the
+								//!< rlm_ldap module for caching user DNs between autz and
+								///< auth phases.
 	} user;
 
 	/*
@@ -72,7 +79,7 @@ typedef struct {
 								//!< resolution necessary to determine the DNs of those groups,
 								//!< then right them to the control list (LDAP-GroupDN).
 
-		char const	*cache_attribute;		//!< Sets the attribute we use when creating and retrieving
+		char const	*cache_attr_str;		//!< Sets the attribute we use when creating and retrieving
 								//!< cached group memberships.
 
 		fr_dict_attr_t const	*cache_da;		//!< The DA associated with this specific instance of the
@@ -238,7 +245,6 @@ typedef struct {
 extern HIDDEN fr_dict_attr_t const *attr_password;
 extern HIDDEN fr_dict_attr_t const *attr_cleartext_password;
 extern HIDDEN fr_dict_attr_t const *attr_crypt_password;
-extern HIDDEN fr_dict_attr_t const *attr_ldap_userdn;
 extern HIDDEN fr_dict_attr_t const *attr_nt_password;
 extern HIDDEN fr_dict_attr_t const *attr_password_with_header;
 
@@ -248,11 +254,11 @@ extern HIDDEN fr_dict_attr_t const *attr_user_name;
 /*
  *	user.c - User lookup functions
  */
-static inline char const *rlm_find_user_dn_cached(request_t *request)
+static inline char const *rlm_find_user_dn_cached(rlm_ldap_t const *inst, request_t *request)
 {
 	fr_pair_t	*vp;
 
-	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_ldap_userdn);
+	vp = fr_pair_find_by_da(&request->control_pairs, NULL, inst->user.da);
 	if (!vp) return NULL;
 
 	RDEBUG2("Using user DN from request \"%pV\"", &vp->data);

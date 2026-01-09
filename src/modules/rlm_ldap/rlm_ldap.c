@@ -53,6 +53,7 @@ USES_APPLE_DEPRECATED_API
 typedef struct {
 	fr_dict_attr_t const	*group_da;
 	fr_dict_attr_t const 	*cache_da;
+	fr_dict_attr_t const    *user_da;
 } rlm_ldap_boot_t;
 
 typedef struct {
@@ -119,6 +120,7 @@ static conf_parser_t user_config[] = {
 	{ FR_CONF_OFFSET("access_positive", rlm_ldap_t, user.access_positive), .dflt = "yes" },
 	{ FR_CONF_OFFSET("access_value_negate", rlm_ldap_t, user.access_value_negate), .dflt = "false" },
 	{ FR_CONF_OFFSET("access_value_suspend", rlm_ldap_t, user.access_value_suspend), .dflt = "suspended" },
+	{ FR_CONF_OFFSET("dn_attribute", rlm_ldap_t, user.dn_attr_str), .dflt = "LDAP-UserDN" },
 	{ FR_CONF_OFFSET_IS_SET("expect_password", FR_TYPE_BOOL, 0, rlm_ldap_t, user.expect_password) },
 	CONF_PARSER_TERMINATOR
 };
@@ -136,7 +138,7 @@ static conf_parser_t group_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("membership_filter", CONF_FLAG_XLAT, rlm_ldap_t, group.obj_membership_filter) },
 	{ FR_CONF_OFFSET("cacheable_name", rlm_ldap_t, group.cacheable_name), .dflt = "no" },
 	{ FR_CONF_OFFSET("cacheable_dn", rlm_ldap_t, group.cacheable_dn), .dflt = "no" },
-	{ FR_CONF_OFFSET("cache_attribute", rlm_ldap_t, group.cache_attribute) },
+	{ FR_CONF_OFFSET("cache_attribute", rlm_ldap_t, group.cache_attr_str) },
 	{ FR_CONF_OFFSET("group_attribute", rlm_ldap_t, group.attribute) },
 	{ FR_CONF_OFFSET("allow_dangling_group_ref", rlm_ldap_t, group.allow_dangling_refs), .dflt = "no" },
 	{ FR_CONF_OFFSET("skip_on_suspend", rlm_ldap_t, group.skip_on_suspend), .dflt = "yes"},
@@ -325,7 +327,6 @@ fr_dict_autoload_t rlm_ldap_dict[] = {
 fr_dict_attr_t const *attr_password;
 fr_dict_attr_t const *attr_cleartext_password;
 fr_dict_attr_t const *attr_crypt_password;
-fr_dict_attr_t const *attr_ldap_userdn;
 fr_dict_attr_t const *attr_nt_password;
 fr_dict_attr_t const *attr_password_with_header;
 static fr_dict_attr_t const *attr_expr_bool_enum;
@@ -335,7 +336,6 @@ fr_dict_attr_autoload_t rlm_ldap_dict_attr[] = {
 	{ .out = &attr_password, .name = "Password", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 	{ .out = &attr_cleartext_password, .name = "Password.Cleartext", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_crypt_password, .name = "Password.Crypt", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_ldap_userdn, .name = "LDAP-UserDN", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_nt_password, .name = "Password.NT", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_password_with_header, .name = "Password.With-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
@@ -991,7 +991,7 @@ static unlang_action_t ldap_group_xlat_results(unlang_result_t *p_result, reques
 
 	switch (xlat_ctx->status) {
 	case GROUP_XLAT_FIND_USER:
-		if (!xlat_ctx->dn) xlat_ctx->dn = rlm_find_user_dn_cached(request);
+		if (!xlat_ctx->dn) xlat_ctx->dn = rlm_find_user_dn_cached(inst, request);
 		if (!xlat_ctx->dn) RETURN_UNLANG_FAIL;
 
 		RDEBUG3("Entered GROUP_XLAT_FIND_USER with user DN \"%s\"", xlat_ctx->dn);
@@ -1116,7 +1116,7 @@ static xlat_action_t ldap_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ct
 	*xlat_ctx = (ldap_group_xlat_ctx_t){
 		.inst = inst,
 		.group = group_vb,
-		.dn = rlm_find_user_dn_cached(request),
+		.dn = rlm_find_user_dn_cached(inst, request),
 		.attrs = { inst->group.userobj_membership_attr, NULL },
 		.group_is_dn = group_is_dn,
 		.env_data = env_data
@@ -1576,14 +1576,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(unlang_result_t *p_resu
 	/*
 	 *	Find the user's DN
 	 */
-	auth_ctx->dn = rlm_find_user_dn_cached(request);
+	auth_ctx->dn = rlm_find_user_dn_cached(inst, request);
 
 	/*
 	 *	The DN is required for non-SASL auth
 	 */
 	if (!auth_ctx->dn && (call_env->user_sasl_mech.type != FR_TYPE_STRING)) {
 		REDEBUG("No DN found for authentication.  Populate control.%s with the DN to use in authentication.",
-			attr_ldap_userdn->name);
+			inst->user.da->name);
 		REDEBUG("You should call %s in the recv section and check its return.", inst->mi->name);
 		talloc_free(auth_ctx);
 		RETURN_UNLANG_FAIL;
@@ -1734,7 +1734,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize_resume(unlang_result_t *p_
 		 *      Retrieve Universal Password if we use eDirectory
 		 */
 		if (inst->edir) {
-			autz_ctx->dn = rlm_find_user_dn_cached(request);
+			autz_ctx->dn = rlm_find_user_dn_cached(inst, request);
 
 			/*
 			 *	Retrieve universal password
@@ -2199,7 +2199,7 @@ static unlang_action_t CC_HINT(nonnull) user_modify_resume(unlang_result_t *p_re
 	 *	If an LDAP search was used to find the user DN
 	 *	usermod_ctx->dn will be NULL.
 	 */
-	if (!usermod_ctx->dn) usermod_ctx->dn = rlm_find_user_dn_cached(request);
+	if (!usermod_ctx->dn) usermod_ctx->dn = rlm_find_user_dn_cached(mctx->mi->data, request);
 
 	if (!usermod_ctx->dn) {
 	fail:
@@ -2262,7 +2262,7 @@ static unlang_action_t CC_HINT(nonnull) mod_modify(unlang_result_t *p_result, mo
 		RETURN_UNLANG_FAIL;
 	}
 
-	usermod_ctx->dn = rlm_find_user_dn_cached(request);
+	usermod_ctx->dn = rlm_find_user_dn_cached(inst, request);
 	/*
 	 *	Find the user first
 	 */
@@ -2575,6 +2575,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->mi = mctx->mi;	/* Cached for IO callbacks */
 	inst->group.da = boot->group_da;
 	inst->group.cache_da = boot->cache_da;
+	inst->user.da = boot->user_da;
 
 	inst->handle_config.name = talloc_typed_asprintf(inst, "rlm_ldap (%s)", mctx->mi->name);
 
@@ -2835,19 +2836,31 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Setup the cache attribute
 	 */
-
-	if (inst->group.cache_attribute) {
-		boot->cache_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), inst->group.cache_attribute);
+	if (inst->group.cache_attr_str) {
+		boot->cache_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), inst->group.cache_attr_str);
 		if (!boot->cache_da) {
 			if (fr_dict_attr_add_name_only(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
-						       inst->group.cache_attribute, FR_TYPE_STRING, NULL) < 0) {
+						       inst->group.cache_attr_str, FR_TYPE_STRING, NULL) < 0) {
 				PERROR("Error creating cache attribute");
 				return -1;
 			}
-			boot->cache_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), inst->group.cache_attribute);
+			boot->cache_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), inst->group.cache_attr_str);
 		}
 	} else {
 		boot->cache_da = boot->group_da;	/* Default to the group_da */
+	}
+
+
+	if (inst->user.dn_attr_str) {
+		boot->user_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), inst->user.dn_attr_str);
+		if (!boot->user_da) {
+			if (fr_dict_attr_add_name_only(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
+						       inst->user.dn_attr_str, FR_TYPE_STRING, NULL) < 0) {
+				PERROR("Error creating user DN cache attribute");
+				return -1;
+			}
+			boot->user_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), inst->user.dn_attr_str);
+		}
 	}
 
 	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, NULL, ldap_xlat, FR_TYPE_STRING);
