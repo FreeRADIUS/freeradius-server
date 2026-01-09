@@ -334,7 +334,7 @@ static int dict_flag_set_oid_and_value(fr_dict_attr_t **da_p, fr_der_attr_flags_
 
 	if (fr_dict_attr_set_group(da_p, attr_oid_tree) < 0) return -1;
 
-	(*da_p)->flags.allow_flat = !flags->is_extensions;
+	(*da_p)->flags.allow_flat = true;
 	return 0;
 }
 
