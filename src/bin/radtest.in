@@ -113,7 +113,6 @@ fi
 	echo "$PASSWORD = \"$2\""
 	echo "$NAS_ADDR_ATTR = $nas"
 	echo "NAS-Port = $4"
-	echo "Message-Authenticator = 0x00"
 	if [ "$6" != "" -a "$6" != "0" ]
 	then
 		echo "Framed-Protocol = PPP"
