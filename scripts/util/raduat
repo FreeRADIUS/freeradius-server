@@ -3,7 +3,7 @@
 # Simple test wrapper around radclient to allow automated UATs
 #
 # Author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
-# Copyright 2014-2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+# Copyright 2014-2015,2025-2026 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
 # Copyright 2015 The FreeRADIUS Project
 
 # A POSIX variable
@@ -17,6 +17,11 @@ OPTIND=1         # Reset in case getopts has been used previously in the shell.
 : ${COA_REPLY_SUFFIX='_coa_reply'}
 # What we expect from a CoA request
 : ${COA_FILTER_SUFFIX='_coa_expected'}
+# File to run before running tests
+: ${PRE_FILE='pre'}
+# File to run after running tests
+: ${POST_FILE='post'}
+
 PATH="$(dirname "$0")/bin:${PATH}"
 
 # Initialize our own variables
@@ -31,6 +36,11 @@ retries=3
 timeout=2
 target_host="$(hostname -f)"
 secret='testing123'
+
+# Initialise now for scoping
+test_path=
+packets=
+filters=
 
 # Some very basic logging functions
 function ERROR
@@ -62,6 +72,50 @@ function char_class_escape
     s=${s//^/\\^}     # caret
     s=${s//./\\.}     # dot (explicitly required)
     echo "$s"
+}
+
+#
+#  Execute the post file after tests have completed, or the script exits
+#
+#  $1: if set to 1, then if the post file fails, exit with the return code.
+#      if set to 0, ignore the failure
+#
+function post_run
+{
+    rm -f -- "$packets" "$filters" >/dev/null 2>&1
+
+    if [ -n "${test_path}" ] && [ -f "${test_path}/${POST_FILE}" ]; then
+        file_path="${test_path}/${POST_FILE}"
+
+        DEBUG "Executing post-file: ${file_path}"
+        "${file_path}"
+        ret=$?
+        if [ ${1-0} -eq 1 ] && [ $ret -ne 0 ]; then
+            ERROR "Post-file failed with ${ret}"
+            exit ${ret}
+        fi
+    fi
+}
+
+#
+#  Execute the "pre" file to setup any pre-requisites for the tests for
+#  this particular cluster/role or set of tests.
+#
+function pre_run
+{
+    trap post_run EXIT INT TERM
+
+    if [ -f "${test_path}/${PRE_FILE}" ]; then
+        file_path="${test_path}/${PRE_FILE}"
+
+        DEBUG "Executing pre-file: ${file_path}"
+        "${filte_path}"
+        ret=$?
+        if [ $ret -ne 0 ]; then
+            ERROR "Pre-file failed with ${ret}"
+            exit ${ret}
+        fi
+    fi
 }
 
 function usage
@@ -195,7 +249,7 @@ while getopts "h?H:vd:c:r:s:Sp:" opt; do
         ;;
 
     p)
-        if ! echo "$OPTARG" | grep -E '^[0-9]+$' > /dev/null; then
+        if ! echo "$OPTARG" | grep -qE '^[0-9]+$'; then
             ERROR "Non integer argument '$OPTARG' specified for -p"
             usage
             exit 64
@@ -270,6 +324,8 @@ if [ ${#test_globs[@]} -gt 0 ]; then
             -and -not -path "*${FILTER_SUFFIX}" \
             -and -not -path "*${COA_REPLY_SUFFIX}" \
             -and -not -path "*${COA_FILTER_SUFFIX}" \
+            -and -not -path "${PRE_FILE}" \
+            -and -not -path "${POST_FILE}" \
             -and '(' -type f -or -type l ')'); do
             test_files+=("$file")
         done
@@ -280,6 +336,8 @@ else
                 -and -not -path "*${FILTER_SUFFIX}" \
                 -and -not -path "*${COA_REPLY_SUFFIX}" \
                 -and -not -path "*${COA_FILTER_SUFFIX}" \
+                -and -not -path "${PRE_FILE}" \
+                -and -not -path "${POST_FILE}" \
                 -and '(' -type f -or -type l ')'))
     if [ "${#test_files[@]}" -eq 0 ]; then
         ERROR "No test files found in $test_path"
@@ -319,11 +377,10 @@ base=$(basename "$0")
 packets=$(mktemp -t "${base}XXX") || exit 1
 filters=$(mktemp -t "${base}XXX") || exit 1
 
-function cleanup
-{
-    rm -f -- "$packets" "$filters" >/dev/null 2>&1
-}
-trap cleanup EXIT INT TERM
+#
+#  Run any pre-test setup, and setup cleanup handlers
+#
+pre_run
 
 args=
 file_args=
