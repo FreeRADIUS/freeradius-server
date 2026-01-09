@@ -410,6 +410,9 @@ static fr_client_t *radclient_clone(TALLOC_CTX *ctx, fr_client_t const *parent)
 
 	COPY_FIELD(require_message_authenticator);
 	COPY_FIELD(require_message_authenticator_is_set);
+#ifdef NAS_VIOLATES_RFC
+	COPY_FIELD(allow_vulnerable_clients);
+#endif
 	COPY_FIELD(limit_proxy_state);
 	COPY_FIELD(limit_proxy_state_is_set);
 	COPY_FIELD(received_message_authenticator);
