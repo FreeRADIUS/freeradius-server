@@ -1029,6 +1029,21 @@ static bool attr_valid(fr_dict_attr_t *da)
 		}
 	}
 
+	if ((da->type == FR_TYPE_GROUP) && !da->flags.allow_flat) {
+		if ((da->parent == attr_oid_tree) || da->parent->flags.allow_flat) {
+			da->flags.allow_flat = true;
+		} else {			
+			fr_dict_attr_t const *oid;
+
+			for (oid = da->parent; !oid->flags.is_root; oid = oid->parent) {
+				if (oid == attr_oid_tree) {
+					da->flags.allow_flat = true;
+					break;
+				}
+			}
+		}
+	}
+
 	return true;
 }
 
