@@ -954,35 +954,12 @@ void *fr_radius_next_encodable(fr_dcursor_t *cursor, void *current, void *uctx)
 }
 
 
-static const bool disallow_tunnel_passwords[FR_RADIUS_CODE_MAX] = {
-	[ FR_RADIUS_CODE_ACCESS_REQUEST ] = true,
-	// can be in Access-Accept
-	[ FR_RADIUS_CODE_ACCESS_REJECT ] = true,
-	[ FR_RADIUS_CODE_ACCESS_CHALLENGE ] = true,
-
-	[ FR_RADIUS_CODE_ACCOUNTING_REQUEST ] = true,
-	[ FR_RADIUS_CODE_ACCOUNTING_RESPONSE ] = true,
-
-	[ FR_RADIUS_CODE_STATUS_SERVER ] = true,
-
-	[ FR_RADIUS_CODE_COA_ACK ] = true,
-	[ FR_RADIUS_CODE_COA_NAK ] = true,
-
-	[ FR_RADIUS_CODE_DISCONNECT_REQUEST ] = true,
-	[ FR_RADIUS_CODE_DISCONNECT_ACK ] = true,
-	[ FR_RADIUS_CODE_DISCONNECT_NAK ] = true,
-
-	[ FR_RADIUS_CODE_PROTOCOL_ERROR ] = true,
-};
-
 ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encode_ctx_t *packet_ctx)
 {
 	ssize_t			slen;
 	fr_pair_t const		*vp;
 	fr_dcursor_t		cursor;
 	fr_dbuff_t		work_dbuff, length_dbuff;
-
-	packet_ctx->disallow_tunnel_passwords = disallow_tunnel_passwords[packet_ctx->code];
 
 	/*
 	 *	The RADIUS header can't do more than 64K of data.

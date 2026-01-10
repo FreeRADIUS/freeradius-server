@@ -34,6 +34,13 @@ RCSID("$Id$")
 
 #define TAG_VALID(x)		((x) > 0 && (x) < 0x20)
 
+static const bool allow_tunnel_passwords[FR_RADIUS_CODE_MAX] = {
+	[ 0 ] = true,		/* only for testing */
+	[ FR_RADIUS_CODE_ACCESS_ACCEPT ] = true,
+	[ FR_RADIUS_CODE_COA_REQUEST ] = true,
+};
+
+
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_dcursor_t *cursor, void *encode_ctx);
@@ -519,8 +526,10 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	{
 		bool has_tag = fr_radius_flag_has_tag(vp->da);
 
-		if (packet_ctx->disallow_tunnel_passwords) {
-			fr_strerror_const("Attributes with 'encrypt=Tunnel-Password' set cannot go into this packet.");
+		fr_assert(packet_ctx->code < FR_RADIUS_CODE_MAX);
+		if (!allow_tunnel_passwords[packet_ctx->code]) {
+			fr_strerror_printf("Attributes with 'encrypt=Tunnel-Password' set cannot go into %s.",
+					   fr_radius_packet_name[packet_ctx->code]);
 			goto return_0;
 		}
 
