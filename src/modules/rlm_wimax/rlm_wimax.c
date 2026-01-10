@@ -90,19 +90,27 @@ fr_dict_attr_autoload_t rlm_wimax_dict_attr[] = {
 
 	{ .out = &attr_calling_station_id, .name = "Calling-Station-ID", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
-	{ .out = &attr_wimax_msk, .name = "Vendor-Specific.WiMAX.MSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_wimax_ip_technology, .name = "Vendor-Specific.WiMAX.IP-Technology", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_wimax_mn_hha_mip4_key, .name = "Vendor-Specific.WiMAX.MN-hHA-MIP4-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_wimax_mn_hha_mip4_spi, .name = "Vendor-Specific.WiMAX.MN-hHA-MIP4-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_wimax_hha_ip_mip4, .name = "Vendor-Specific.WiMAX.hHA-IP-MIP4", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
-	{ .out = &attr_wimax_hha_ip_mip6, .name = "Vendor-Specific.WiMAX.hHA-IP-MIP6", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_radius },
-	{ .out = &attr_wimax_mn_hha_mip6_key, .name = "Vendor-Specific.WiMAX.MN-hHA-MIP6-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_wimax_mn_hha_mip6_spi, .name = "Vendor-Specific.WiMAX.MN-hHA-MIP6-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_wimax_fa_rk_key, .name = "Vendor-Specific.WiMAX.FA-RK-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_wimax_fa_rk_spi, .name = "Vendor-Specific.WiMAX.FA-RK-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_wimax_rrq_mn_ha_spi, .name = "Vendor-Specific.WiMAX.RRQ-MN-HA-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_wimax_rrq_ha_ip, .name = "Vendor-Specific.WiMAX.RRQ-HA-IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_radius },
-	{ .out = &attr_wimax_ha_rk_key_requested, .name = "Vendor-Specific.WiMAX.HA-RK-Key-Requested", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	/*
+	 *	Load this, but we don't use it.
+	 */
+	{ .out = NULL, .name = "Vendor-Specific.WiMAX", .type = FR_TYPE_VENDOR, .dict = &dict_radius },
+
+	/*
+	 *	Relative names are shorter.
+	 */
+	{ .out = &attr_wimax_msk, .name = ".MSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_wimax_ip_technology, .name = ".IP-Technology", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_wimax_mn_hha_mip4_key, .name = ".MN-hHA-MIP4-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_wimax_mn_hha_mip4_spi, .name = ".MN-hHA-MIP4-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_wimax_hha_ip_mip4, .name = ".hHA-IP-MIP4", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_wimax_hha_ip_mip6, .name = ".hHA-IP-MIP6", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_radius },
+	{ .out = &attr_wimax_mn_hha_mip6_key, .name = ".MN-hHA-MIP6-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_wimax_mn_hha_mip6_spi, .name = ".MN-hHA-MIP6-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_wimax_fa_rk_key, .name = ".FA-RK-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_wimax_fa_rk_spi, .name = ".FA-RK-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_wimax_rrq_mn_ha_spi, .name = ".RRQ-MN-HA-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_wimax_rrq_ha_ip, .name = ".RRQ-HA-IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_radius },
+	{ .out = &attr_wimax_ha_rk_key_requested, .name = ".HA-RK-Key-Requested", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 
 	{ .out = &attr_ms_mppe_send_key, .name = "Vendor-Specific.Microsoft.MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_recv_key, .name = "Vendor-Specific.Microsoft.MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },

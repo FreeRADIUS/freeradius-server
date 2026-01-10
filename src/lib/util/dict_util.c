@@ -4401,6 +4401,7 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 {
 	fr_dict_attr_t const		*da;
 	fr_dict_attr_autoload_t const	*p = to_load;
+	fr_dict_attr_t const		*root = NULL;
 
 	for (p = to_load; p->out; p++) {
 		if (!p->dict) {
@@ -4416,11 +4417,26 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 			return -1;
 		}
 
-		da = fr_dict_attr_by_oid(NULL, fr_dict_root(*p->dict), p->name);
-		if (!da) {
-			fr_strerror_printf("Autoloader attribute \"%s\" not found in \"%s\" dictionary", p->name,
-					   *p->dict ? (*p->dict)->root->name : "internal");
-			return -1;
+		if (!root || (root->dict != *p->dict) || (p->name[0] != '.')) {
+			root = (*p->dict)->root;
+		}
+
+		if (p->name[0] == '.') {
+			da = fr_dict_attr_by_oid(NULL, root, p->name + 1);
+			if (!da) {
+				fr_strerror_printf("Autoloader attribute \"%s\" not found in \"%s\" dictionary under attribute %s", p->name,
+						   *p->dict ? (*p->dict)->root->name : "internal", root->name);
+				return -1;
+			}
+		} else {
+			da = fr_dict_attr_by_oid(NULL, fr_dict_root(*p->dict), p->name);
+			if (!da) {
+				fr_strerror_printf("Autoloader attribute \"%s\" not found in \"%s\" dictionary", p->name,
+						   *p->dict ? (*p->dict)->root->name : "internal");
+				return -1;
+			}
+
+			if (fr_type_is_structural(da->type)) root = da;
 		}
 
 		if (da->type != p->type) {
