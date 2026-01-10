@@ -57,9 +57,9 @@ $(eval $(subst test.,,$(TEST))_port := $(PORT))
 .PHONY: $(TEST).radiusd_kill
 $(TEST).radiusd_kill: | ${2}
 	${Q}if [ -f ${2}/radiusd.pid ]; then \
+		echo "FreeRADIUS terminated during test called by $(TEST).radiusd_kill"; \
 		if ! ps `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
 		    rm -f ${2}/radiusd.pid; \
-		    echo "FreeRADIUS terminated during test called by $(TEST).radiusd_kill"; \
 		    echo "GDB output was:"; \
 		    cat "${2}/gdb.log" 2> /dev/null; \
 		    echo "--------------------------------------------------"; \
