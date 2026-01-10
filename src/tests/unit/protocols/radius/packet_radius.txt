@@ -14,6 +14,26 @@ proto-dictionary radius
 fuzzer-out radius
 
 #
+#  For the tests, we set "secure_transport = true", so Message-Authenticator
+#  is not added automatically.
+#
+
+#
+#  No RADIUS data - we encode using random numbers from a fixed seed.
+#
+#  So encoding the same thing twice gets us the same authentication vector
+#
+encode-proto Tmp-String-0 := "foof"
+match 01 00 00 14 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
+
+encode-proto Tmp-String-0 := "aaa"
+match 01 00 00 14 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
+
+encode-proto Packet-Type = Access-Accept
+match 02 00 00 14 fe 5b 5a 24 2f a7 76 cb 61 5f f2 62 0a 20 e2 d9
+
+
+#
 #  1.
 #
 # [ RADIUS ]
@@ -232,5 +252,4 @@ decode-proto 02 06 00 61 fb ba 6a 78 4c 7d ec b3 14 ca f0 f2 79 44 a3 7b 08 06 f
 match Packet-Type = ::Access-Accept, Packet-Authentication-Vector = 0xfbba6a784c7decb314caf0f27944a37b, Framed-IP-Address = 255.255.255.254, Framed-MTU = 576, Service-Type = ::Framed-User, Reply-Message = "Hello, John.McGuirk", EAP-Message = 0x03010004, Message-Authenticator = 0xb9c4ae6213a71d32125ef7ca4e4c6360, User-Name = "John.McGuirk"
 
 count
-match 11
-
+match 17

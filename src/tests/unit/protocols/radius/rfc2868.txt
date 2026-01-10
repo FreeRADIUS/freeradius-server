@@ -38,6 +38,16 @@ decode-pair -
 match Tunnel-Password = "barbar"
 
 #
+#  Tunnel-Password is automatically skipped when it's not possible to encode it securely.
+#
+encode-proto Packet-Type = Access-Request, User-Name = "bob", Tunnel-Password = "foo", User-Password = "bob"
+match 01 00 00 2b 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 01 05 62 6f 62 02 12 f4 81 6b ca 74 fd 7a 1a 10 46 07 24 00 14 82 8b
+
+decode-proto -
+match Packet-Type = ::Access-Request, Packet-Authentication-Vector = 0x000102030405060708090a0b0c0d0e0f, User-Name = "bob", User-Password = "bob"
+
+
+#
 #  Integer attributes
 #
 encode-pair Tunnel-Type = PPTP
@@ -109,4 +119,4 @@ decode-pair -
 match Tunnel-Client-Endpoint = "\001\002\003"
 
 count
-match 45
+match 49

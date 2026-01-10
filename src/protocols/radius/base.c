@@ -173,7 +173,7 @@ char const *fr_radius_packet_name[FR_RADIUS_CODE_MAX] = {
 /** If we get a reply, the request must come from one of a small
  * number of packet types.
  */
-static const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
+const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
 	[FR_RADIUS_CODE_ACCESS_ACCEPT]		= FR_RADIUS_CODE_ACCESS_REQUEST,
 	[FR_RADIUS_CODE_ACCESS_CHALLENGE]	= FR_RADIUS_CODE_ACCESS_REQUEST,
 	[FR_RADIUS_CODE_ACCESS_REJECT]		= FR_RADIUS_CODE_ACCESS_REQUEST,

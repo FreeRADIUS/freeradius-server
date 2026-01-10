@@ -1757,9 +1757,17 @@ static ssize_t fr_radius_encode_proto(TALLOC_CTX *ctx, fr_pair_list_t *vps, uint
 	int packet_type = FR_RADIUS_CODE_ACCESS_REQUEST;
 	fr_pair_t *vp;
 	ssize_t slen;
+	uint8_t const *request_authenticator = NULL;
 
 	vp = fr_pair_find_by_da(vps, NULL, attr_packet_type);
-	if (vp) packet_type = vp->vp_uint32;
+	if (vp) {
+		packet_type = vp->vp_uint32;
+
+		if (!FR_RADIUS_PACKET_CODE_VALID(packet_type)) {
+			fr_strerror_printf("Invalid packet code %u", packet_type);
+			return -1;
+		}
+	}
 
 	/*
 	 *	Force specific values for testing.
@@ -1767,18 +1775,14 @@ static ssize_t fr_radius_encode_proto(TALLOC_CTX *ctx, fr_pair_list_t *vps, uint
 	if ((packet_type == FR_RADIUS_CODE_ACCESS_REQUEST) || (packet_type == FR_RADIUS_CODE_STATUS_SERVER)) {
 		vp = fr_pair_find_by_da(vps, NULL, attr_packet_authentication_vector);
 		if (!vp) {
-			int i;
-			uint8_t vector[RADIUS_AUTH_VECTOR_LENGTH];
-
-			for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i++) {
-				data[4 + i] = fr_fast_rand(&packet_ctx->rand_ctx);
-			}
-
-			fr_pair_list_append_by_da_len(ctx, vp, vps, attr_packet_authentication_vector, vector, sizeof(vector), false);
+			fr_pair_list_append_by_da_len(ctx, vp, vps, attr_packet_authentication_vector,
+						      packet_ctx->request_authenticator, RADIUS_AUTH_VECTOR_LENGTH, false);
 		}
 	}
 
 	packet_ctx->code = packet_type;
+	packet_ctx->request_code = allowed_replies[packet_type];
+	if (packet_ctx->request_code) request_authenticator = packet_ctx->request_authenticator;
 
 	/*
 	 *	@todo - pass in packet_ctx to this function, so that we
@@ -1787,7 +1791,8 @@ static ssize_t fr_radius_encode_proto(TALLOC_CTX *ctx, fr_pair_list_t *vps, uint
 	slen = fr_radius_encode(&FR_DBUFF_TMP(data, data_len), vps, packet_ctx);
 	if (slen <= 0) return slen;
 
-	if (fr_radius_sign(data, NULL, (uint8_t const *) packet_ctx->common->secret, talloc_array_length(packet_ctx->common->secret) - 1) < 0) {
+	if (fr_radius_sign(data, request_authenticator,
+			   (uint8_t const *) packet_ctx->common->secret, talloc_array_length(packet_ctx->common->secret) - 1) < 0) {
 		return -1;
 	}
 
