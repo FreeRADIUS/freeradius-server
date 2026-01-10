@@ -40,7 +40,11 @@ RCSID("$Id$")
 typedef enum {
 	RADICT_OUT_FANCY = 1,
 	RADICT_OUT_CSV,
-	RADICT_OUT_DICT
+	RADICT_OUT_DICT,
+	RADICT_OUT_STRUCT,
+	RADICT_OUT_STATS_LINK,
+	RADICT_OUT_ATTR_DEF,
+	RADICT_OUT_ATTR_AUTOLOAD,
 } radict_out_t;
 
 static fr_dict_t *dicts[255];
@@ -278,6 +282,278 @@ static void da_print_info(fr_dict_t const *dict, fr_dict_attr_t const *da, int d
 	}
 }
 
+static char const *type_to_c_type[] = {
+	[FR_TYPE_STRING]			= "char",
+	[FR_TYPE_OCTETS]			= "uint8_t",
+
+	[FR_TYPE_IPV4_ADDR]			= "struct in_addr",
+	[FR_TYPE_IPV6_ADDR]			= "struct in6_addr",
+	[FR_TYPE_IFID]				= "fr_ifid_t",
+	[FR_TYPE_ETHERNET]			= "fr_ethernet_t",
+
+	[FR_TYPE_UINT8]				= "uint8_t",
+	[FR_TYPE_UINT16]			= "uint16_t",
+	[FR_TYPE_UINT32]			= "uint32_t",
+	[FR_TYPE_UINT64]			= "uint64_t",
+
+	[FR_TYPE_INT8]				= "int8_t",
+	[FR_TYPE_INT16]				= "int16_t",
+	[FR_TYPE_INT32]				= "int32_t",
+	[FR_TYPE_INT64]				= "int64_t",
+
+	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
+};
+
+static char const *length_to_c_type[] = {
+	[2] = "uint16_t",
+	[4] = "uint32_t",
+	[8] = "uint64_t",
+};
+
+static void da_normalize_name(fr_dict_attr_t const *da, char buffer[static FR_DICT_ATTR_MAX_NAME_LEN + 1])
+{
+	char const *p;
+	char *q;
+
+	q = buffer;
+
+	for (p = da->name; *p != '\0'; p++) {
+		if ((*p >= '0') && (*p <= '9')) {
+			*q++ = *p;
+			continue;
+		}
+
+		if (islower((unsigned int) *p)) {
+			*q++ = *p;
+			continue;
+		}
+
+		if (isupper((unsigned int) *p)) {
+			*q++ = tolower((unsigned int)*p);
+			continue;
+		}
+
+		*q++ = '_';
+	}
+
+	*q = '\0';
+}
+
+static void da_print_name(fr_dict_attr_t const *da)
+{
+	char buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+
+	da_normalize_name(da, buffer);
+	printf("%s", buffer);
+}
+
+/** Print structures and mappings, mainly for statistics.
+ */
+static void da_print_struct(fr_dict_attr_t const *parent)
+{
+	int i;
+	fr_dict_attr_t const *da;
+
+	if (parent->type != FR_TYPE_STRUCT) {
+		fprintf(stderr, "%s is not a struct\n", parent->name);
+		return;
+	}
+
+	/*
+	 *	@todo - print full OID path and filename?
+	 */
+	printf("/*\n *\t%s\n */\n", parent->name);
+	printf("typedef struct {\n");
+
+	for (i = 1; (da = fr_dict_attr_child_by_num(parent, i)) != NULL; i++) {
+		unsigned int length = 0;
+
+		/*
+		 *	@todo - if the last field is a union, print out the union definitions first.
+		 */
+		fr_assert(!da->flags.array);
+
+		if (da_is_bit_field(da)) {
+			/*
+			 *	@todo - this is all big endian.  for little endian, we print out the bytes in
+			 *	order, but the bits in each byte are reversed.  Likely the easiest way to do
+			 *	this is via a separate function that we call.  But this shouldn't be necessary
+			 *	for statistics structures, as they shouldn't contain bitfields.
+			 */
+			printf("\tunsigned int : %u\t", da->flags.length);
+
+		} else switch (da->type) {
+			case FR_TYPE_STRING:
+			case FR_TYPE_OCTETS:
+				fr_assert(da->flags.length > 0);
+				length = da->flags.length;
+				printf("\t%s\t", type_to_c_type[da->type]);
+				break;
+
+			case FR_TYPE_DATE:
+				fr_assert(da->flags.length <= 8);
+				fr_assert(length_to_c_type[da->flags.length] != NULL);
+				printf("\t%s\t", length_to_c_type[da->flags.length]);
+				break;
+
+			default:
+				fr_assert(type_to_c_type[da->type] != NULL);
+				printf("\t%s\t", type_to_c_type[da->type]);
+				break;
+		}
+
+		da_print_name(da);
+
+		if (length) {
+			printf("[%u]", length);
+		}
+
+		printf(";\n");
+	}
+
+	printf("} ");
+
+	printf("fr_");
+	da_print_name(fr_dict_root(parent->dict));
+	printf("_");
+	da_print_name(parent);
+	printf("_t;\n");
+}
+
+static void da_print_stats_link(fr_dict_attr_t const *parent)
+{
+	int i;
+	fr_dict_attr_t const *da;
+	char dict_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+	char parent_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+
+	if (parent->type != FR_TYPE_STRUCT) {
+		fprintf(stderr, "%s is not a struct\n", parent->name);
+		return;
+	}
+
+	da_normalize_name(fr_dict_root(parent->dict), dict_name);
+	da_normalize_name(parent, parent_name);
+
+	printf("fr_stats_link_t const fr_%s_%s_stats_link_t[] = {\n", dict_name, parent_name);
+
+	for (i = 1; (da = fr_dict_attr_child_by_num(parent, i)) != NULL; i++) {
+		printf("\t{ &attr_%s_", parent_name);
+		da_print_name(da);
+		printf(", offsetof(fr_%s_%s_t, ", dict_name, parent_name);
+		da_print_name(da);
+		printf(") },\n");
+	}
+
+	printf("};\n\n");
+}
+
+static void da_print_attr_def(fr_dict_attr_t const *parent)
+{
+	int i;
+	fr_dict_attr_t const *da;
+	char parent_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+
+	if (parent->type != FR_TYPE_STRUCT) {
+		fprintf(stderr, "%s is not a struct\n", parent->name);
+		return;
+	}
+
+	da_normalize_name(parent, parent_name);
+
+	printf("static fr_dict_attr_t const *attr_%s;\n", parent_name);
+
+	for (i = 1; (da = fr_dict_attr_child_by_num(parent, i)) != NULL; i++) {
+		printf("static fr_dict_attr_t const *attr_%s_", parent_name);
+		da_print_name(da);
+		printf(";\n");
+	}
+
+	printf("\n\n");
+}
+
+/** Map data types to enum names representing those types
+ */
+#define ENUM_NAME(_x) [_x] = STRINGIFY(_x)
+
+static char const *fr_type_to_enum_name[] = {
+	ENUM_NAME(FR_TYPE_NULL),
+	ENUM_NAME(FR_TYPE_STRING),
+	ENUM_NAME(FR_TYPE_OCTETS),
+
+	ENUM_NAME(FR_TYPE_IPV4_ADDR),
+	ENUM_NAME(FR_TYPE_IPV4_PREFIX),
+	ENUM_NAME(FR_TYPE_IPV6_ADDR),
+	ENUM_NAME(FR_TYPE_IPV6_PREFIX),
+	ENUM_NAME(FR_TYPE_IFID),
+	ENUM_NAME(FR_TYPE_COMBO_IP_ADDR),
+	ENUM_NAME(FR_TYPE_COMBO_IP_PREFIX),
+	ENUM_NAME(FR_TYPE_ETHERNET),
+
+	ENUM_NAME(FR_TYPE_BOOL),
+
+	ENUM_NAME(FR_TYPE_UINT8),
+	ENUM_NAME(FR_TYPE_UINT16),
+	ENUM_NAME(FR_TYPE_UINT32),
+	ENUM_NAME(FR_TYPE_UINT64),
+
+	ENUM_NAME(FR_TYPE_INT8),
+	ENUM_NAME(FR_TYPE_INT16),
+	ENUM_NAME(FR_TYPE_INT32),
+	ENUM_NAME(FR_TYPE_INT64),
+
+	ENUM_NAME(FR_TYPE_FLOAT32),
+	ENUM_NAME(FR_TYPE_FLOAT64),
+
+	ENUM_NAME(FR_TYPE_DATE),
+	ENUM_NAME(FR_TYPE_TIME_DELTA),
+
+	ENUM_NAME(FR_TYPE_SIZE),
+
+	ENUM_NAME(FR_TYPE_TLV),
+	ENUM_NAME(FR_TYPE_STRUCT),
+
+	ENUM_NAME(FR_TYPE_VSA),
+	ENUM_NAME(FR_TYPE_VENDOR),
+	ENUM_NAME(FR_TYPE_GROUP),
+	ENUM_NAME(FR_TYPE_UNION),
+
+	ENUM_NAME(FR_TYPE_ATTR),
+};
+
+static void da_print_attr_autoload(fr_dict_attr_t const *parent)
+{
+	int i;
+	fr_dict_attr_t const *da;
+	char dict_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+	char parent_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+
+	if (parent->type != FR_TYPE_STRUCT) {
+		fprintf(stderr, "%s is not a struct\n", parent->name);
+		return;
+	}
+
+	da_normalize_name(fr_dict_root(parent->dict), dict_name);
+	da_normalize_name(parent, parent_name);
+
+	/*
+	 *	@todo - print the full path to the name.
+	 *
+	 *	@todo - print the enum for the data type
+	 */
+	printf("{ .out = &attr_%s, .name = \"%s\", .type = %s, .dict = &dict_%s },\n",
+	       parent_name, parent->name, fr_type_to_enum_name[parent->type], dict_name);
+
+	for (i = 1; (da = fr_dict_attr_child_by_num(parent, i)) != NULL; i++) {
+		printf("{ .out = &attr_%s_", parent_name);
+		da_print_name(da);
+		printf(", .name = \".%s\", .type = %s, .dict = &dict_%s },\n",
+		       da->name, fr_type_to_enum_name[da->type], dict_name);
+	}
+
+	printf("\n\n");
+}
+
 static void _raddict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *low, uintptr_t *high, fr_dict_attr_t const *da, unsigned int lvl)
 {
 	unsigned int		i;
@@ -388,8 +664,20 @@ int main(int argc, char *argv[])
 			} else if (strcmp(optarg, "full") == 0) {
 				output_format = RADICT_OUT_CSV;
 
-			} else if (strncmp(optarg, "dict", 4) == 0) {
+			} else if (strcmp(optarg, "dict") == 0) {
 				output_format = RADICT_OUT_DICT;
+
+			} else if (strcmp(optarg, "struct") == 0) {
+				output_format = RADICT_OUT_STRUCT;
+
+			} else if (strcmp(optarg, "stats_link") == 0) {
+				output_format = RADICT_OUT_STATS_LINK;
+
+			} else if (strcmp(optarg, "attr_def") == 0) {
+				output_format = RADICT_OUT_ATTR_DEF;
+
+			} else if (strcmp(optarg, "attr_autoload") == 0) {
+				output_format = RADICT_OUT_ATTR_AUTOLOAD;
 
 			} else {
 				fprintf(stderr, "Invalid output format '%s'\n", optarg);
@@ -534,13 +822,34 @@ int main(int argc, char *argv[])
 			DEBUG2("Looking for \"%s\" in dict \"%s\"", attr, fr_dict_root(*dict_p)->name);
 
 			da = fr_dict_attr_by_oid(NULL, fr_dict_root(*dict_p), attr);
-			if (da) {
-				da_print_info(*dict_p, da, 0);
-				found = true;
-			} else {
-				fprintf(stderr, "Dictionary %s does not contain attribute %s\n",
-					fr_dict_root(*dict_p)->name, attr);
+			if (!da) {
+				DEBUG2("Dictionary %s does not contain attribute %s\n",
+				       fr_dict_root(*dict_p)->name, attr);
+				continue;
 			}
+
+			switch (output_format) {
+			default:
+				da_print_info(*dict_p, da, 0);
+				break;
+
+			case RADICT_OUT_STRUCT:
+				da_print_struct(da);
+				break;
+
+			case RADICT_OUT_STATS_LINK:
+				da_print_stats_link(da);
+				break;
+
+			case RADICT_OUT_ATTR_DEF:
+				da_print_attr_def(da);
+				break;
+
+			case RADICT_OUT_ATTR_AUTOLOAD:
+				da_print_attr_autoload(da);
+				break;
+			}
+			found = true;
 		} while (++dict_p < dict_end);
 	}
 
