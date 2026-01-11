@@ -1,0 +1,20 @@
+# if
+
+if !(%interpreter('server') == 'default') {
+	test_fail
+}
+
+subrequest ::Access-Request {
+	if !(%interpreter('server') == 'default') {
+		test_fail
+	}
+}
+
+# Mostly a smoke test as we wont see the result
+subrequest ::Access-Request {
+	detach
+	if !(%interpreter('server') != 'default') { # Should be null
+		test_fail
+	}
+}
+success

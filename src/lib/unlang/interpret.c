@@ -1899,9 +1899,25 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	The virtual server handling the request
 	 */
 	if (strcmp(fmt, "server") == 0) {
-		if (!unlang_call_current(request)) goto finish;
+		request_t *our_request;
+		CONF_SECTION *server = NULL;
 
-		if (fr_value_box_strdup(vb, vb, NULL, cf_section_name2(unlang_call_current(request)), false) < 0) goto error;
+		/*
+		*	If we're being pedantic subrequests don't have a virtual
+		*	server associated with them unless they go call {}.
+		*
+		*	But we're not being pendantic, so go back up the request
+		*	list ooking for a call frame.
+		*
+		*	Unfortunately for detached subrequests we still won't find
+		*	the actual virtual server...
+		*/
+		for (our_request = request; our_request && server == NULL; our_request = our_request->parent) {
+			server = unlang_call_current(our_request);
+		}
+		if (server == NULL) goto finish;
+
+		if (fr_value_box_strdup(vb, vb, NULL, cf_section_name2(server), false) < 0) goto error;
 
 		goto finish;
 	}
