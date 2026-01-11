@@ -121,7 +121,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	 *                           field (allows for future extensions).
 	 *
 	 * 0                   1                   2                   3
-	 * 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1kk
+	 * 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 	 * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 * |tlen |llen |t|e|   Type (min)  |  Length (min) | value...
 	 * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -253,8 +253,13 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 				return fr_pair_decode_slen(slen, fr_dbuff_start(&work_dbuff), fr_dbuff_current(&work_dbuff));
 			}
 		}
+		/*
+		 *	It's ok for this function to return 0
+		 *	we can have empty groups (i.e. groups
+		 *	with no children)
+		 */
 		slen = internal_decode_structural(ctx, out, da, &work_dbuff, decode_ctx);
-		if (slen <= 0) goto error;
+		if (slen < 0) goto error;
 		break;
 
 	default:
