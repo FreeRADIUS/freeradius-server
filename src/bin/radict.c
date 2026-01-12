@@ -339,31 +339,65 @@ static void da_normalize_name(fr_dict_attr_t const *da, char buffer[static FR_DI
 	*q = '\0';
 }
 
-static void da_print_name(fr_dict_attr_t const *da)
+static void da_print_name(FILE *fp, fr_dict_attr_t const *da)
 {
 	char buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
 
 	da_normalize_name(da, buffer);
-	printf("%s", buffer);
+	fprintf(fp, "%s", buffer);
 }
 
-/** Print structures and mappings, mainly for statistics.
- */
-static void da_print_struct(fr_dict_attr_t const *parent)
+static const bool type_allowed[FR_TYPE_MAX] = {
+	[FR_TYPE_STRING] = true,
+	[FR_TYPE_OCTETS] = true,
+
+	[FR_TYPE_UINT16] = true,
+	[FR_TYPE_UINT32] = true,
+	[FR_TYPE_UINT64] = true,
+
+	[FR_TYPE_IPV4_ADDR] = true,
+	[FR_TYPE_IPV6_ADDR] = true,
+
+	[FR_TYPE_DATE] = true,
+	[FR_TYPE_TIME_DELTA] = true,
+
+};
+
+static bool children_ok(fr_dict_attr_t const *parent)
 {
 	int i;
 	fr_dict_attr_t const *da;
 
-	if (parent->type != FR_TYPE_STRUCT) {
-		fprintf(stderr, "%s is not a struct\n", parent->name);
-		return;
+	for (i = 1; (da = fr_dict_attr_child_by_num(parent, i)) != NULL; i++) {
+		if (!type_allowed[da->type]) return false;
 	}
+
+	return true;
+}
+
+#define CHECK_TYPE(_parent) \
+do { \
+	if ((parent->type != FR_TYPE_STRUCT) && (parent->type != FR_TYPE_TLV)) { \
+		fprintf(stderr, "%s is not a struct or tlv\n", parent->name); \
+		return; \
+	} \
+	if (!children_ok(parent)) fr_exit(EXIT_FAILURE); \
+} while (0)
+
+/** Print structures and mappings, mainly for statistics.
+ */
+static void da_print_struct(FILE *fp, fr_dict_attr_t const *parent)
+{
+	int i;
+	fr_dict_attr_t const *da;
+
+	CHECK_TYPE(parent);
 
 	/*
 	 *	@todo - print full OID path and filename?
 	 */
-	printf("/*\n *\t%s\n */\n", parent->name);
-	printf("typedef struct {\n");
+	fprintf(fp, "/*\n *\t%s\n */\n", parent->name);
+	fprintf(fp, "typedef struct {\n");
 
 	for (i = 1; (da = fr_dict_attr_child_by_num(parent, i)) != NULL; i++) {
 		unsigned int length = 0;
@@ -380,96 +414,71 @@ static void da_print_struct(fr_dict_attr_t const *parent)
 			 *	this is via a separate function that we call.  But this shouldn't be necessary
 			 *	for statistics structures, as they shouldn't contain bitfields.
 			 */
-			printf("\tunsigned int : %u\t", da->flags.length);
+			fprintf(fp, "\tunsigned int : %u\t", da->flags.length);
 
 		} else switch (da->type) {
 			case FR_TYPE_STRING:
+				if ((parent->type == FR_TYPE_TLV) && !da->flags.length) {
+					fprintf(fp, "\t%s\t*", type_to_c_type[da->type]);
+					break;
+				}
+				FALL_THROUGH;
+
 			case FR_TYPE_OCTETS:
 				fr_assert(da->flags.length > 0);
 				length = da->flags.length;
-				printf("\t%s\t", type_to_c_type[da->type]);
+				fprintf(fp, "\t%s\t", type_to_c_type[da->type]);
 				break;
 
 			case FR_TYPE_DATE:
 				fr_assert(da->flags.length <= 8);
 				fr_assert(length_to_c_type[da->flags.length] != NULL);
-				printf("\t%s\t", length_to_c_type[da->flags.length]);
+				fprintf(fp, "\t%s\t", length_to_c_type[da->flags.length]);
 				break;
 
 			default:
 				fr_assert(type_to_c_type[da->type] != NULL);
-				printf("\t%s\t", type_to_c_type[da->type]);
+				fprintf(fp, "\t%s\t", type_to_c_type[da->type]);
 				break;
 		}
 
-		da_print_name(da);
+		da_print_name(fp, da);
 
 		if (length) {
-			printf("[%u]", length);
+			fprintf(fp, "[%u]", length);
 		}
 
-		printf(";\n");
+		fprintf(fp, ";\n");
 	}
 
-	printf("} ");
+	fprintf(fp, "} ");
 
-	printf("fr_");
-	da_print_name(fr_dict_root(parent->dict));
-	printf("_");
-	da_print_name(parent);
-	printf("_t;\n");
+	fprintf(fp, "fr_");
+	da_print_name(fp, fr_dict_root(parent->dict));
+	fprintf(fp, "_");
+	da_print_name(fp, parent);
+	fprintf(fp, "_t;\n");
 }
 
-static void da_print_stats_link(fr_dict_attr_t const *parent)
-{
-	int i;
-	fr_dict_attr_t const *da;
-	char dict_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
-	char parent_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
-
-	if (parent->type != FR_TYPE_STRUCT) {
-		fprintf(stderr, "%s is not a struct\n", parent->name);
-		return;
-	}
-
-	da_normalize_name(fr_dict_root(parent->dict), dict_name);
-	da_normalize_name(parent, parent_name);
-
-	printf("fr_stats_link_t const fr_%s_%s_stats_link_t[] = {\n", dict_name, parent_name);
-
-	for (i = 1; (da = fr_dict_attr_child_by_num(parent, i)) != NULL; i++) {
-		printf("\t{ &attr_%s_", parent_name);
-		da_print_name(da);
-		printf(", offsetof(fr_%s_%s_t, ", dict_name, parent_name);
-		da_print_name(da);
-		printf(") },\n");
-	}
-
-	printf("};\n\n");
-}
-
-static void da_print_attr_def(fr_dict_attr_t const *parent)
+static void da_print_attr_def(FILE *fp, fr_dict_attr_t const *parent)
 {
 	int i;
 	fr_dict_attr_t const *da;
 	char parent_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
 
-	if (parent->type != FR_TYPE_STRUCT) {
-		fprintf(stderr, "%s is not a struct\n", parent->name);
-		return;
-	}
+	CHECK_TYPE(parent);
 
 	da_normalize_name(parent, parent_name);
 
-	printf("static fr_dict_attr_t const *attr_%s;\n", parent_name);
+	fprintf(fp, "static fr_dict_attr_t const *attr_%s;\n", parent_name);
 
 	for (i = 1; (da = fr_dict_attr_child_by_num(parent, i)) != NULL; i++) {
-		printf("static fr_dict_attr_t const *attr_%s_", parent_name);
-		da_print_name(da);
-		printf(";\n");
+		fprintf(fp, "static fr_dict_attr_t const *attr_%s_", parent_name);
+		da_print_name(fp, da);
+		fprintf(fp, ";\n");
 	}
 
-	printf("\n\n");
+	fprintf(fp, "\n\n");
 }
 
 /** Map data types to enum names representing those types
@@ -521,17 +530,64 @@ static char const *fr_type_to_enum_name[] = {
 	ENUM_NAME(FR_TYPE_ATTR),
 };
 
-static void da_print_attr_autoload(fr_dict_attr_t const *parent)
+static void da_print_stats_link(FILE *fp, fr_dict_attr_t const *parent)
+{
+	int i, num_elements = 0;
+	fr_dict_attr_t const *da;
+	char dict_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+	char parent_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+
+	CHECK_TYPE(parent);
+
+	da_normalize_name(fr_dict_root(parent->dict), dict_name);
+	da_normalize_name(parent, parent_name);
+
+	fprintf(fp, "fr_stats_link_t const fr_%s_%s_stats_link_t[] = {\n", dict_name, parent_name);
+
+	fprintf(fp, "\t.name = \"fr_%s_%s_t\",\n", dict_name, parent_name);
+	fprintf(fp, "\t.da_p = &attr_%s,\n", parent_name);
+	fprintf(fp, "\t.size = sizeof(fr_%s_%s_t),\n", dict_name, parent_name);
+
+	for (i = 1; fr_dict_attr_child_by_num(parent, i) != NULL; i++) {
+		num_elements = i;
+	}
+	fprintf(fp, "\t.num_elements = %d,\n", num_elements);
+
+	fprintf(fp, "\t.entry = {\n");
+
+	/*
+	 *	For locality, also print out data type and size.  That way we _can_ dereference the da, but we
+	 *	don't _need_ to.
+	 */
+	for (i = 1; (da = fr_dict_attr_child_by_num(parent, i)) != NULL; i++) {
+		fprintf(fp, "\t\t{\n");
+		fprintf(fp, "\t\t\t.da_p = &attr_%s_", parent_name);
+		da_print_name(fp, da);
+		fprintf(fp, ",\n");
+
+		fprintf(fp, "\t\t\t.type = %s,\n", fr_type_to_enum_name[da->type]);
+
+		fprintf(fp, "\t\t\t.offset = offsetof(fr_%s_%s_t, ", dict_name, parent_name);
+		da_print_name(fp, da);
+		fprintf(fp, "),\n");
+
+		fprintf(fp, "\t\t\t.size = %u,\n", da->flags.length);
+
+		fprintf(fp, "\t\t},\n");
+	}
+
+	fprintf(fp, "\t};\n");
+	fprintf(fp, "};\n\n");
+}
+
+static void da_print_attr_autoload(FILE *fp, fr_dict_attr_t const *parent)
 {
 	int i;
 	fr_dict_attr_t const *da;
 	char dict_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
 	char parent_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
 
-	if (parent->type != FR_TYPE_STRUCT) {
-		fprintf(stderr, "%s is not a struct\n", parent->name);
-		return;
-	}
+	CHECK_TYPE(parent);
 
 	da_normalize_name(fr_dict_root(parent->dict), dict_name);
 	da_normalize_name(parent, parent_name);
@@ -541,17 +597,17 @@ static void da_print_attr_autoload(fr_dict_attr_t const *parent)
 	 *
 	 *	@todo - print the enum for the data type
 	 */
-	printf("{ .out = &attr_%s, .name = \"%s\", .type = %s, .dict = &dict_%s },\n",
+	fprintf(fp, "{ .out = &attr_%s, .name = \"%s\", .type = %s, .dict = &dict_%s },\n",
 	       parent_name, parent->name, fr_type_to_enum_name[parent->type], dict_name);
 
 	for (i = 1; (da = fr_dict_attr_child_by_num(parent, i)) != NULL; i++) {
-		printf("{ .out = &attr_%s_", parent_name);
-		da_print_name(da);
-		printf(", .name = \".%s\", .type = %s, .dict = &dict_%s },\n",
+		fprintf(fp, "{ .out = &attr_%s_", parent_name);
+		da_print_name(fp, da);
+		fprintf(fp, ", .name = \".%s\", .type = %s, .dict = &dict_%s },\n",
 		       da->name, fr_type_to_enum_name[da->type], dict_name);
 	}
 
-	printf("\n\n");
+	fprintf(fp, "\n\n");
 }
 
 static void _raddict_export(fr_dict_t const *dict, uint64_t *count, uintptr_t *low, uintptr_t *high, fr_dict_attr_t const *da, unsigned int lvl)
@@ -834,19 +890,19 @@ int main(int argc, char *argv[])
 				break;
 
 			case RADICT_OUT_STRUCT:
-				da_print_struct(da);
+				da_print_struct(stdout, da);
 				break;
 
 			case RADICT_OUT_STATS_LINK:
-				da_print_stats_link(da);
+				da_print_stats_link(stdout, da);
 				break;
 
 			case RADICT_OUT_ATTR_DEF:
-				da_print_attr_def(da);
+				da_print_attr_def(stdout, da);
 				break;
 
 			case RADICT_OUT_ATTR_AUTOLOAD:
-				da_print_attr_autoload(da);
+				da_print_attr_autoload(stdout, da);
 				break;
 			}
 			found = true;
