@@ -1,0 +1,42 @@
+# -*- text -*-
+# Copyright (C) 2026 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+DEFINE	mib-2						tlv	internal
+
+BEGIN mib-2
+ATTRIBUTE	radiusMIB				67	tlv
+
+ATTRIBUTE	radiusAuthentication			67.1	tlv
+ATTRIBUTE	radiusAuthServMIB			67.1.1	tlv
+ATTRIBUTE	radiusAuthServMIBObjects		67.1.1.1	tlv
+ATTRIBUTE	radiusAuthServ				67.1.1.1.1	tlv
+
+#
+#  These names are huge and long.  They also have most of the "full path" in them.
+#  we arguably want to convert these to more RADIUS style names, especially for
+#  the C structure names.
+#
+#  i.e. get rid of the "radiusAuthServ" prefix, and change mashed camel case to
+#  camel case with dashes.
+#
+ATTRIBUTE	radiusAuthServIdent			.1	string
+ATTRIBUTE	radiusAuthServUpTime			.2	time_delta precision=centiseconds
+ATTRIBUTE	radiusAuthServResetTime			.3	time_delta precision=centiseconds
+ATTRIBUTE	radiusAuthServConfigReset		.4	uint32
+ATTRIBUTE	radiusAuthServTotalAccessRequests	.5	uint32 counter
+ATTRIBUTE	radiusAuthServTotalInvalidRequests	.6	uint32 counter
+ATTRIBUTE	radiusAuthServTotalDupAccessRequests	.7	uint32 counter
+ATTRIBUTE	radiusAuthServTotalAccessAccepts	.8	uint32 counter
+ATTRIBUTE	radiusAuthServTotalAccessRejects	.9	uint32 counter
+ATTRIBUTE	radiusAuthServTotalAccessChallenges	.10	uint32 counter
+ATTRIBUTE	radiusAuthServTotalMalformedAccessRequests .11	uint32 counter
+ATTRIBUTE	radiusAuthServTotalBadAuthenticators	.12	uint32 counter
+ATTRIBUTE	radiusAuthServTotalPacketsDropped	.13	uint32 counter
+ATTRIBUTE	radiusAuthServTotalUnknownTypes		.14	uint32 counter
+#ATTRIBUTE	radiusAuthClientTable			.15	tlv
+
+ALIAS		radiusAuthServ				.radiusMIB.radiusAuthentication.radiusAuthServMIB.radiusAuthServMIBObjects.radiusAuthServ
+
+END mib-2

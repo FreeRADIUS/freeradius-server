@@ -51,6 +51,7 @@ static fr_dict_t *dicts[255];
 static bool print_values = false;
 static bool print_headers = false;
 static bool print_recursive = false;
+static bool mibs = false;
 static radict_out_t output_format = RADICT_OUT_FANCY;
 static fr_dict_t **dict_end = dicts;
 
@@ -71,6 +72,7 @@ static void usage(void)
 	fprintf(stderr, "  -E               Export dictionary definitions.\n");
 	fprintf(stderr, "  -h               Print help text.\n");
 	fprintf(stderr, "  -H               Show the headers of each field.\n");
+	fprintf(stderr, "  -M               Mangle names for MIBs.\n");
 	fprintf(stderr, "  -p <protocol>    Set protocol by name\n");
 	fprintf(stderr, "  -r               Write out attributes recursively.\n");
 	fprintf(stderr, "  -V               Write out all attribute values.\n");
@@ -288,8 +290,9 @@ static char const *type_to_c_type[] = {
 
 	[FR_TYPE_IPV4_ADDR]			= "struct in_addr",
 	[FR_TYPE_IPV6_ADDR]			= "struct in6_addr",
-	[FR_TYPE_IFID]				= "fr_ifid_t",
-	[FR_TYPE_ETHERNET]			= "fr_ethernet_t",
+
+//	[FR_TYPE_IFID]				= "fr_ifid_t",
+//	[FR_TYPE_ETHERNET]			= "fr_ethernet_t",
 
 	[FR_TYPE_UINT8]				= "uint8_t",
 	[FR_TYPE_UINT16]			= "uint16_t",
@@ -300,6 +303,9 @@ static char const *type_to_c_type[] = {
 	[FR_TYPE_INT16]				= "int16_t",
 	[FR_TYPE_INT32]				= "int32_t",
 	[FR_TYPE_INT64]				= "int64_t",
+
+	[FR_TYPE_DATE]				= "fr_time_t",
+	[FR_TYPE_TIME_DELTA]		       	= "fr_time_delta_t",
 
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
 };
@@ -312,12 +318,40 @@ static char const *length_to_c_type[] = {
 
 static void da_normalize_name(fr_dict_attr_t const *da, char buffer[static FR_DICT_ATTR_MAX_NAME_LEN + 1])
 {
+	char const *start = da->name;
 	char const *p;
-	char *q;
+	char	*q;
+	bool	mangle = false;
+
+	/*
+	 *	The RADIUS MIBs have lots of repetition.  So we do some simple mangling of the names to make
+	 *	them easier to understand.
+	 */
+	if (mibs && da->parent) {
+		size_t	len;
+
+		len = strlen(da->parent->name);
+       
+		/*
+		 *	"radiusAuthServer" and "radiusAuthServTotalAccessRejects"
+		 *	to "total_access_rejects"
+		 *
+		 *	Otherwise "radiusAuthServer" in the "RADIUS" dictionary, to "auth_server"
+		 */
+		mangle = (strncmp(da->parent->name, da->name, len) == 0);
+		if (!mangle) {
+			fr_dict_attr_t const *root = fr_dict_root(da->dict);
+
+			len = strlen(root->name);
+			mangle = (strncasecmp(root->name, da->name, len) == 0);
+		}
+
+		if (mangle) start += len;
+	}
 
 	q = buffer;
 
-	for (p = da->name; *p != '\0'; p++) {
+	for (p = start; *p != '\0'; p++) {
 		if ((*p >= '0') && (*p <= '9')) {
 			*q++ = *p;
 			continue;
@@ -329,6 +363,10 @@ static void da_normalize_name(fr_dict_attr_t const *da, char buffer[static FR_DI
 		}
 
 		if (isupper((unsigned int) *p)) {
+			if (mangle && (p > start)) {
+				*(q++) = '_';
+			}
+
 			*q++ = tolower((unsigned int)*p);
 			continue;
 		}
@@ -696,7 +734,7 @@ int main(int argc, char *argv[])
 	fr_debug_lvl = 1;
 	fr_log_fp = stdout;
 
-	while ((c = getopt(argc, argv, "AcfF:ED:p:rVxhH")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "AcfF:ED:Mp:rVxhH")) != -1) switch (c) {
 		case 'A':
 			alias = true;
 			break;
@@ -747,6 +785,10 @@ int main(int argc, char *argv[])
 
 		case 'D':
 			dict_dir = optarg;
+			break;
+
+		case 'M':
+			mibs = true;
 			break;
 
 		case 'p':

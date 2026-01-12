@@ -159,7 +159,6 @@ $INCLUDE dictionary.fortinet
 $INCLUDE dictionary.foundry
 $INCLUDE dictionary.freeradius
 $INCLUDE dictionary.freeradius.evs5
-$INCLUDE dictionary.freeradius.internal
 $INCLUDE dictionary.freeswitch
 $INCLUDE dictionary.gandalf
 $INCLUDE dictionary.garderos
@@ -291,5 +290,11 @@ $INCLUDE dictionary.yubico
 $INCLUDE dictionary.zeus
 $INCLUDE dictionary.zte
 $INCLUDE dictionary.zyxel
+
+#
+#  Internal attributes used by the server.
+#
+$INCLUDE dictionary.freeradius.internal
+$INCLUDE dictionary.stats
 
 END-PROTOCOL RADIUS
