@@ -28,6 +28,9 @@ RCSID("$Id$")
 
 /** Convert a statistics structure to #fr_pair_t
  *
+ * @param[in] ctx	talloc ctx
+ * @param[out] out	where the output pairs will be stored
+ * @param[in] inst	data structure defining this instance of the statistics
  */
 int fr_stats_to_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_stats_instance_t const *inst)
 {
@@ -253,22 +256,21 @@ bool fr_stats_iter_next(fr_stats_iter_t *iter)
 	return false;
 }
 
-int fr_stats_iter_to_value_box(TALLOC_CTX *ctx, fr_value_box_t **out, fr_stats_iter_t *iter)
+int fr_stats_index_to_value_box(TALLOC_CTX *ctx, fr_value_box_t **out, fr_stats_instance_t const *inst, unsigned int index)
 {
 	fr_value_box_t *box;
 	uint8_t const *field;
 	fr_dict_attr_t const *da;
 
-	fr_assert(iter->inst);
-	fr_assert(iter->current < iter->inst->def->num_elements);
+	if (index >= inst->def->num_elements) return 0;
 
-	da = *(iter->inst->def->entry[iter->current].da_p);
+	da = *(inst->def->entry[index].da_p);
 	fr_assert(da != NULL);
 
-	box = fr_value_box_alloc(ctx, iter->inst->def->entry[iter->current].type, da);
+	box = fr_value_box_alloc(ctx, inst->def->entry[index].type, da);
 	if (!box) return -1;
 
-	field = ((uint8_t const *) iter->inst->stats) + iter->inst->def->entry[iter->current].offset;
+	field = ((uint8_t const *) inst->stats) + inst->def->entry[index].offset;
 
 #undef COPY
 #define COPY(_type, _field) \
@@ -278,7 +280,7 @@ int fr_stats_iter_to_value_box(TALLOC_CTX *ctx, fr_value_box_t **out, fr_stats_i
 
 	switch (box->type) {
 		case FR_TYPE_STRING:
-			if (!iter->inst->def->entry[iter->current].size) {
+			if (!inst->def->entry[index].size) {
 				char const *str;
 
 				memcpy(&str, field, sizeof(str));
@@ -294,7 +296,7 @@ int fr_stats_iter_to_value_box(TALLOC_CTX *ctx, fr_value_box_t **out, fr_stats_i
 				/*
 				 *	Find the trailing NUL within the fixed-size field.
 				 */
-				end = memchr(field, '\0', iter->inst->def->entry[iter->current].size);
+				end = memchr(field, '\0', inst->def->entry[index].size);
 
 				if (fr_value_box_bstrndup(box, box, da, (char const *) field,
 							  (size_t) (end - field), false) < 0) {
@@ -305,7 +307,7 @@ int fr_stats_iter_to_value_box(TALLOC_CTX *ctx, fr_value_box_t **out, fr_stats_i
 
 		case FR_TYPE_OCTETS:
 			if (fr_value_box_memdup(box, box, da, field,
-						iter->inst->def->entry[iter->current].size, false) < 0) {
+						inst->def->entry[index].size, false) < 0) {
 				goto fail;
 			}
 			break;
@@ -330,3 +332,10 @@ int fr_stats_iter_to_value_box(TALLOC_CTX *ctx, fr_value_box_t **out, fr_stats_i
 }
 
 
+int fr_stats_iter_to_value_box(TALLOC_CTX *ctx, fr_value_box_t **out, fr_stats_iter_t *iter)
+{
+	fr_assert(iter->inst);
+	fr_assert(iter->current < iter->inst->def->num_elements);
+
+	return fr_stats_index_to_value_box(ctx, out, iter->inst, iter->current);
+}
