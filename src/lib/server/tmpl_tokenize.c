@@ -2776,7 +2776,7 @@ static fr_slen_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_
 	if (prefix < 32) {
 		ipaddr &= ~((uint32_t) 0) << (32 - prefix);
 	}
-	vpt->data.literal.vb_ip.addr.v4.s_addr = htonl(ipaddr);
+	vpt->data.literal.vb_ipv4addr = htonl(ipaddr);
 
 	*out = vpt;
 

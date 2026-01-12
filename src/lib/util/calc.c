@@ -1267,7 +1267,7 @@ static int calc_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		if (b->vb_uint32 >= (((uint32_t) 1) << (32 - a->vb_ip.prefix))) return ERR_OVERFLOW;
 
 		dst->vb_ip.af = AF_INET;
-		dst->vb_ip.addr.v4.s_addr = htonl(ntohl(a->vb_ip.addr.v4.s_addr) | b->vb_uint32);
+		dst->vb_ipv4addr = htonl(ntohl(a->vb_ipv4addr) | b->vb_uint32);
 		dst->vb_ip.prefix = 32;
 		fr_value_box_safety_copy(dst, a);
 		fr_value_box_safety_merge(dst, b);
@@ -1322,11 +1322,11 @@ static int calc_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_valu
 		}
 
 		if (b->vb_uint32 == 0) { /* set everything to zero */
-			dst->vb_ip.addr.v4.s_addr = 0;
+			dst->vb_ipv4addr = 0;
 			prefix = 0;
 
 		} else if ((~b->vb_uint32) == 0) { /* all 1's */
-			dst->vb_ip.addr.v4.s_addr = a->vb_ip.addr.v4.s_addr;
+			dst->vb_ipv4addr = a->vb_ipv4addr;
 			prefix = 32;
 
 		} else {
@@ -1351,7 +1351,7 @@ static int calc_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_valu
 			}
 			fr_assert(prefix > 0);
 
-			dst->vb_ip.addr.v4.s_addr = htonl(ntohl(a->vb_ip.addr.v4.s_addr) & b->vb_uint32);
+			dst->vb_ipv4addr = htonl(ntohl(a->vb_ipv4addr) & b->vb_uint32);
 		}
 
 		dst->vb_ip.af = AF_INET;
@@ -1479,7 +1479,7 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		 */
 		mask = b->vb_uint64;
 		for (i = 15; i >= ((a->vb_ip.prefix + 7) >> 3); i--) {
-			dst->vb_ip.addr.v6.s6_addr[i] |= mask & 0xff;
+			dst->vb_ipv6addr[i] |= mask & 0xff;
 			mask >>= 8;
 		}
 
@@ -1536,7 +1536,7 @@ static int calc_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_valu
 		prefix = get_ipv6_prefix(pa);
 
 	} else if (a->type == FR_TYPE_IPV6_ADDR) {
-		pa = (const uint8_t *) &a->vb_ip.addr.v6.s6_addr;
+		pa = (const uint8_t *) &a->vb_ipv6addr;
 
 	} else {
 		return ERR_INVALID;

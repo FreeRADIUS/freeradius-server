@@ -325,7 +325,7 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 
 		}
 
-		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_ip.addr.v4.s_addr, 4);
+		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_ipv4addr, 4);
 		if (slen <= 0) return_slen;
 
 		if (vb->vb_ip.scope_id == 0) break;
@@ -351,7 +351,7 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		slen = cbor_encode_tag(&work_dbuff, cbor_type_to_tag[vb->type]);
 		if (slen <= 0) return_slen;
 
-		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_ip.addr.v6.s6_addr, 16);
+		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_ipv6addr, 16);
 		if (slen <= 0) return_slen;
 
 		if (vb->vb_ip.scope_id == 0) break;
@@ -378,7 +378,7 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, vb->vb_ip.prefix);
 		if (slen <= 0) return_slen;
 
-		p = (uint8_t const *) &vb->vb_ip.addr.v4.s_addr;
+		p = (uint8_t const *) &vb->vb_ipv4addr;
 		end = p + 3;
 
 		/*
@@ -414,7 +414,7 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, vb->vb_ip.prefix);
 		if (slen <= 0) return_slen;
 
-		p = (uint8_t const *) &vb->vb_ip.addr.v6.s6_addr;
+		p = (uint8_t const *) &vb->vb_ipv6addr;
 		end = p + 15;
 
 		/*
@@ -643,9 +643,9 @@ static ssize_t cbor_decode_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb,
 	/*
 	 *	Get the IP address.
 	 */
-	slen = cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v4.s_addr,
-					 sizeof(vb->vb_ip.addr.v4.s_addr),
-					 sizeof(vb->vb_ip.addr.v4.s_addr), &work_dbuff);
+	slen = cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ipv4addr,
+					 sizeof(vb->vb_ipv4addr),
+					 sizeof(vb->vb_ipv4addr), &work_dbuff);
 	if (slen <= 0) return_slen;
 
 	if (!count) return fr_dbuff_set(dbuff, &work_dbuff);
@@ -699,9 +699,9 @@ static ssize_t cbor_decode_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb,
 	/*
 	 *	Get the IP address.
 	 */
-	slen = cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v6.s6_addr,
-					 sizeof(vb->vb_ip.addr.v6.s6_addr),
-					 sizeof(vb->vb_ip.addr.v6.s6_addr), dbuff);
+	slen = cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ipv6addr,
+					 sizeof(vb->vb_ipv6addr),
+					 sizeof(vb->vb_ipv6addr), dbuff);
 
 	if (slen <= 0) return_slen;
 
@@ -736,7 +736,7 @@ static ssize_t cbor_decode_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	ssize_t slen;
 	uint8_t header;
 	uint64_t value = 0;
-	uint8_t buffer[sizeof(vb->vb_ip.addr.v4.s_addr)];
+	uint8_t buffer[sizeof(vb->vb_ipv4addr)];
 
 	FR_DBUFF_OUT_RETURN(&header, &work_dbuff);
 
@@ -765,7 +765,7 @@ static ssize_t cbor_decode_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	slen = cbor_decode_octets_memcpy(buffer, 0, sizeof(buffer), &work_dbuff);
 	if (slen <= 0) return_slen;
 
-	memcpy((uint8_t *) &vb->vb_ip.addr.v4.s_addr, buffer, sizeof(vb->vb_ip.addr.v4.s_addr));
+	memcpy((uint8_t *) &vb->vb_ipv4addr, buffer, sizeof(vb->vb_ipv4addr));
 	vb->vb_ip.prefix = value;
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -777,7 +777,7 @@ static ssize_t cbor_decode_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	ssize_t slen;
 	uint8_t header;
 	uint64_t value = 0;
-	uint8_t buffer[sizeof(vb->vb_ip.addr.v6.s6_addr)];
+	uint8_t buffer[sizeof(vb->vb_ipv6addr)];
 
 	FR_DBUFF_OUT_RETURN(&header, &work_dbuff);
 
@@ -806,7 +806,7 @@ static ssize_t cbor_decode_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	slen = cbor_decode_octets_memcpy(buffer, 0, sizeof(buffer), &work_dbuff);
 	if (slen <= 0) return_slen;
 
-	memcpy((uint8_t *) &vb->vb_ip.addr.v6.s6_addr, buffer, sizeof(vb->vb_ip.addr.v6.s6_addr));
+	memcpy((uint8_t *) &vb->vb_ipv6addr, buffer, sizeof(vb->vb_ipv6addr));
 	vb->vb_ip.prefix = value;
 
 	return fr_dbuff_set(dbuff, &work_dbuff);

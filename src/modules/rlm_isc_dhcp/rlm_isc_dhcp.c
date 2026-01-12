@@ -1516,11 +1516,6 @@ static int parse_host(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *info
 	return 2;
 }
 
-/*
- *	Utter laziness
- */
-#define vb_ipv4addr vb_ip.addr.v4.s_addr
-
 /** subnet IPADDR netmask MASK { ... }
  *
  */

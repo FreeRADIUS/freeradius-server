@@ -1100,7 +1100,7 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		/*
 		 *	Needed for correct alignment (as flagged by ubsan)
 		 */
-		memcpy(&ipv6int, &in_vb->vb_ip.addr.v6.s6_addr, sizeof(ipv6int));
+		memcpy(&ipv6int, &in_vb->vb_ipv6addr, sizeof(ipv6int));
 
 		fr_snprint_uint128(buff, sizeof(buff), ntohlll(ipv6int));
 
@@ -4280,7 +4280,7 @@ static xlat_action_t xlat_func_subnet_netmask(TALLOC_CTX *ctx, fr_dcursor_t *out
 	XLAT_ARGS(args, &subnet);
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_IPV4_ADDR, NULL));
-	vb->vb_ip.addr.v4.s_addr = htonl((uint32_t)0xffffffff << (32 - subnet->vb_ip.prefix));
+	vb->vb_ipv4addr = htonl((uint32_t)0xffffffff << (32 - subnet->vb_ip.prefix));
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -4302,7 +4302,7 @@ static xlat_action_t xlat_func_subnet_broadcast(TALLOC_CTX *ctx, fr_dcursor_t *o
 	XLAT_ARGS(args, &subnet);
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_IPV4_ADDR, NULL));
-	vb->vb_ip.addr.v4.s_addr = htonl( ntohl(subnet->vb_ip.addr.v4.s_addr) | (uint32_t)0xffffffff >> subnet->vb_ip.prefix);
+	vb->vb_ipv4addr = htonl( ntohl(subnet->vb_ipv4addr) | (uint32_t)0xffffffff >> subnet->vb_ip.prefix);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;

@@ -263,6 +263,8 @@ typedef enum {
 #define vb_attr					datum.da
 
 #define vb_ip					datum.ip
+#define vb_ipv4addr    				datum.ip.addr.v4.s_addr
+#define vb_ipv6addr    				datum.ip.addr.v6.s6_addr
 
 #define vb_ifid					datum.ifid.addr
 #define vb_ether				datum.ether.addr
