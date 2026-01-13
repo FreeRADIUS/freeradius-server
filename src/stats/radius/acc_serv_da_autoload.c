@@ -1,0 +1,16 @@
+{ .out = &attr_acc_serv, .name = "mib-2.radiusAccServ", .type = FR_TYPE_TLV, .dict = &dict_radius },
+{ .out = &attr_acc_serv_ident, .name = ".radiusAccServIdent", .type = FR_TYPE_STRING, .dict = &dict_radius },
+{ .out = &attr_acc_serv_up_time, .name = ".radiusAccServUpTime", .type = FR_TYPE_TIME_DELTA, .dict = &dict_radius },
+{ .out = &attr_acc_serv_reset_time, .name = ".radiusAccServResetTime", .type = FR_TYPE_TIME_DELTA, .dict = &dict_radius },
+{ .out = &attr_acc_serv_config_reset, .name = ".radiusAccServConfigReset", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_acc_serv_total_access_requests, .name = ".radiusAccServTotalAccessRequests", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_acc_serv_total_invalid_requests, .name = ".radiusAccServTotalInvalidRequests", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_acc_serv_total_dup_requests, .name = ".radiusAccServTotalDupRequests", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_acc_serv_total_responses, .name = ".radiusAccServTotalResponses", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_acc_serv_total_malformed_access_requests, .name = ".radiusAccServTotalMalformedAccessRequests", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_acc_serv_total_bad_authenticators, .name = ".radiusAccServTotalBadAuthenticators", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_acc_serv_total_packets_dropped, .name = ".radiusAccServTotalPacketsDropped", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_acc_serv_total_no_records, .name = ".radiusAccServTotalNoRecords", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+{ .out = &attr_acc_serv_total_unknown_types, .name = ".radiusAccServTotalUnknownTypes", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+
+

@@ -668,6 +668,7 @@ static void da_print_stats_h(FILE *fp, fr_dict_attr_t const *parent)
 
 	fprintf(fp, "\n");
 
+	fprintf(fp, "/*\n * fr_stats_%s_%s_instance_t\n */\n", dict_name, parent_name);
 	fprintf(fp, "FR_STATS_TYPEDEF(%s_%s);\n\n", dict_name, parent_name);
 
 	fprintf(fp, "extern fr_stats_link_t const fr_stats_link_%s_%s;\n\n", dict_name, parent_name);

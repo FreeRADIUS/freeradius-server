@@ -33,6 +33,8 @@
  *	fr_stats_link_radius_auth_serv - the structure linking the base stats structure to the dictionary
  *	attributes.
  *
- *	fr_stats_radius_auth_serv_t
+ *	fr_stats_radius_auth_serv_instance_t - a structure holding an instance of the statistics.
  */
 #include "auth_serv_stats.h"
+
+#include "acc_serv_stats.h"

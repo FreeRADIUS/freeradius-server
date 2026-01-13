@@ -34,6 +34,8 @@ static fr_dict_t const *dict_radius;
  */
 #include "auth_serv_da_def.c"
 
+#include "acc_serv_da_def.c"
+
 extern fr_dict_autoload_t libfreeradius_radius_stats_dict[];
 fr_dict_autoload_t libfreeradius_radius_stats_dict[] = {
 	{ .out = &dict_radius, .proto = "radius" },
@@ -45,6 +47,8 @@ extern fr_dict_attr_autoload_t libfreeradius_radius_stats_dict_attr[];
 fr_dict_attr_autoload_t libfreeradius_radius_stats_dict_attr[] = {
 
 #include "auth_serv_da_autoload.c"
+
+#include "acc_serv_da_autoload.c"
 
 	DICT_AUTOLOAD_TERMINATOR
 };
@@ -62,3 +66,5 @@ DIAG_OFF(gnu-flexible-array-initializer)
  *	Define the fr_stats_link_t for the statistics data structures.
  */
 #include "auth_serv_stats.c"
+
+#include "acc_serv_stats.c"

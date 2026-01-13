@@ -35,4 +35,27 @@ ATTRIBUTE	radiusAuthServTotalUnknownTypes		.14	uint32 counter
 
 ALIAS		radiusAuthServ				.radiusMIB.radiusAuthentication.radiusAuthServMIB.radiusAuthServMIBObjects.radiusAuthServ
 
+ATTRIBUTE	radiusAccounting			67.2	tlv
+ATTRIBUTE	radiusAccServMIBObjects			67.2.1	tlv
+
+# radisAccServ is 1.3.6.1.2.1.67.2.1.1
+ATTRIBUTE	radiusAccServ				67.2.1.1	tlv
+
+ATTRIBUTE	radiusAccServIdent			.1	string
+ATTRIBUTE	radiusAccServUpTime			.2	time_delta precision=centiseconds
+ATTRIBUTE	radiusAccServResetTime			.3	time_delta precision=centiseconds
+ATTRIBUTE	radiusAccServConfigReset		.4	uint32
+ATTRIBUTE	radiusAccServTotalAccessRequests	.5	uint32 counter
+ATTRIBUTE	radiusAccServTotalInvalidRequests	.6	uint32 counter
+ATTRIBUTE	radiusAccServTotalDupRequests		.7	uint32 counter
+ATTRIBUTE	radiusAccServTotalResponses		.8	uint32 counter
+ATTRIBUTE	radiusAccServTotalMalformedAccessRequests .9	uint32 counter
+ATTRIBUTE	radiusAccServTotalBadAuthenticators	.10	uint32 counter
+ATTRIBUTE	radiusAccServTotalPacketsDropped	.11	uint32 counter
+ATTRIBUTE	radiusAccServTotalNoRecords		.12	uint32 counter
+ATTRIBUTE	radiusAccServTotalUnknownTypes		.13	uint32 counter
+#ATTRIBUTE	radiusAccClientTable			.14	tlv
+
+ALIAS		radiusAccServ				.radiusMIB.radiusAccounting.radiusAccServMIBObjects.radiusAccServ
+
 END mib-2
