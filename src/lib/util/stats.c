@@ -258,6 +258,7 @@ bool fr_stats_iter_next(fr_stats_iter_t *iter)
 
 int fr_stats_index_to_value_box(TALLOC_CTX *ctx, fr_value_box_t **out, fr_stats_instance_t const *inst, unsigned int index)
 {
+	size_t len;
 	fr_value_box_t *box;
 	uint8_t const *field;
 	fr_dict_attr_t const *da;
@@ -272,58 +273,40 @@ int fr_stats_index_to_value_box(TALLOC_CTX *ctx, fr_value_box_t **out, fr_stats_
 
 	field = ((uint8_t const *) inst->stats) + inst->def->entry[index].offset;
 
-#undef COPY
-#define COPY(_type, _field) \
-	case _type: \
-		memcpy(&box->vb_ ## _field, field, sizeof(box->vb_ ## _field)); \
-		break
-
 	switch (box->type) {
-		case FR_TYPE_STRING:
-			if (!inst->def->entry[index].size) {
-				char const *str;
+	case FR_TYPE_STRING:
+		if (!inst->def->entry[index].size) {
+			char const *str;
 
-				memcpy(&str, field, sizeof(str));
+			memcpy(&str, field, sizeof(str));
+			len = strlen(str);
+		} else {
+			uint8_t const *end;
 
-				if (fr_value_box_strdup(box, box, da, str, false) < 0) {
-				fail:
-					talloc_free(box);
-					return -1;
-				}
-			} else {
-				uint8_t const *end;
+			/*
+			 *	Find the trailing NUL within the fixed-size field.
+			 */
+			end = memchr(field, '\0', inst->def->entry[index].size);
+			len = (size_t) (end - field);
+		}
+		break;
 
-				/*
-				 *	Find the trailing NUL within the fixed-size field.
-				 */
-				end = memchr(field, '\0', inst->def->entry[index].size);
-
-				if (fr_value_box_bstrndup(box, box, da, (char const *) field,
-							  (size_t) (end - field), false) < 0) {
-					goto fail;
-				}
-			}
-			break;
-
-		case FR_TYPE_OCTETS:
-			if (fr_value_box_memdup(box, box, da, field,
-						inst->def->entry[index].size, false) < 0) {
-				goto fail;
-			}
-			break;
-
-		COPY(FR_TYPE_UINT16, uint16);
-		COPY(FR_TYPE_UINT32, uint32);
-		COPY(FR_TYPE_UINT64, uint64);
-
-		COPY(FR_TYPE_IPV4_ADDR, ipv4addr); /* struct in_addr, and not vp_ip */
-		COPY(FR_TYPE_IPV6_ADDR, ipv6addr); /* struct in6_addr, and not vp_ip */
-
-		COPY(FR_TYPE_DATE, date);
-		COPY(FR_TYPE_TIME_DELTA, time_delta);
-
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+		len = inst->def->entry[index].size;
+		break;
+	
 	default:
 		fr_strerror_printf("Unsupported data type '%s'", fr_type_to_str(box->type));
+		return -1;
+	}
+
+	if (fr_value_box_from_memory(box, box, box->type, da, field, len) < 0) {
+		talloc_free(box);
 		return -1;
 	}
 
