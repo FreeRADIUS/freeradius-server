@@ -164,14 +164,14 @@ static const conf_parser_t unix_config[] = {
 static const conf_parser_t udp_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("server", FR_TYPE_COMBO_IP_ADDR, 0, linelog_net_t, dst_ipaddr) },
 	{ FR_CONF_OFFSET("port", linelog_net_t, port) },
-	{ FR_CONF_OFFSET("timeout", linelog_net_t, timeout), .dflt = "1000" },
+	{ FR_CONF_OFFSET("timeout", linelog_net_t, timeout), .dflt = "1s" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t tcp_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("server", FR_TYPE_COMBO_IP_ADDR, 0, linelog_net_t, dst_ipaddr) },
 	{ FR_CONF_OFFSET("port", linelog_net_t, port) },
-	{ FR_CONF_OFFSET("timeout", linelog_net_t, timeout), .dflt = "1000" },
+	{ FR_CONF_OFFSET("timeout", linelog_net_t, timeout), .dflt = "1s" },
 	CONF_PARSER_TERMINATOR
 };
 
