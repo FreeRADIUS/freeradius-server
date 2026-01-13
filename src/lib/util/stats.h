@@ -68,46 +68,76 @@ typedef struct {
 	uint8_t			stats[];	//!< generic statistics data
 } fr_stats_instance_t;
 
-/** Macro to define a typedef for a particular kind of statistics
+/** Iterator for a statistics structure.
  *
+ *  This is used internally, and there's no real need for code outside of the statistics library to use it.
  */
-#define FR_STATS_TYPEDEF(_name, _type) \
-	typedef struct {		\
-		STATS_HEADER_COMMON;	\
-		_type	stats;		\
-	} fr_stats_## _name ## _instance_t
-
-/** Macro used when declaring a variable which contains the statistics
- *
- */
-#define FR_STATS_ENTRY_DECL(_name, _var) fr_stats_## _name ## _instance_t _var;
-
-/** Macro used when initializing a variable which contains the statistics
- *
- */
-#define FR_STATS_ENTRY_INIT(_name, _var, _mib)		\
-	_var = (fr_stats_## _name ## _instance_t) {	\
-		.def = fr_stats_link_ ## _name ## _t,	\
-		.mib = _mib,				\
-		fr_stats_## _name ## _t stats = {},	\
-	       }
-	
-
-/** Macro used when referencing a linking structure
- *
- * .def = FR_STATS_LINK_NAME(radius_auth_serv),
- */
-#define FR_STATS_LINK_NAME(_name) fr_stats_link_ ## _name ## _t
-
-/** Macro used to increment one field in the statistics structure
- *
- */
-#define FR_STATS_INC(_var, _field) _var->stats._field++
-
 typedef struct {
 	fr_stats_instance_t const *inst;
 	unsigned int		  current;
 } fr_stats_iter_t;
+
+
+/** Macro to define a typedef for a particular instance of statistics
+ *
+ *  Defines fr_stats_name_instance_t which contains an instance of the statistics for fr_stats_name_t, and
+ *  which points to the linking structure fr_stats_link_name_t.
+ *
+ *  Note that nothing needs to refer to the base statistics structure: fr_stats_name_t.  All of that is
+ *  wrapped in an instance definition.
+ *
+ *  This is used internally, and there's no real need for code outside of the statistics library to use it.
+ */
+#define FR_STATS_TYPEDEF(_name) \
+	typedef struct {		\
+		STATS_HEADER_COMMON;	\
+		fr_stats_ ## _name ## _t	stats;	 \
+	} fr_stats_ ## _name ## _instance_t
+
+/** Macro used when referencing a linking structure
+ *
+ *  .def = FR_STATS_LINK_NAME(radius_auth_serv),
+ *
+ *  This is used internally, and there's no real need for code outside of the statistics library to use it.
+ */
+#define FR_STATS_LINK_NAME(_name) fr_stats_link_ ## _name ## _t
+
+/** Macro used when declaring a variable which contains an instance of the statistics
+ *
+ *  Defines "fr_stats_name_instance_t var", which can be used in a structure
+ *
+ *  Code which needs to use some statistics can use this macro to declare a variable which contains stats for
+ *  the local module / etc.
+ */
+#define FR_STATS_ENTRY_DECL(_name, _var) fr_stats_ ## _name ## _instance_t _var
+
+/** Macro used when initializing a variable which contains an instance of the statistics
+ *
+ *  var = .... initializer for the stats instance ...
+ *
+ *  Code which needs to use some statistics can use this macro to initialize a variable which contains stats
+ *  for the local module / etc.
+ */
+#define FR_STATS_ENTRY_INIT(_name, _var, _mib)		\
+	_var = (fr_stats_ ## _name ## _instance_t) {	\
+		.def = fr_stats_link_ ## _name ## _t,	\
+		.mib = _mib,				\
+		fr_stats_ ## _name ## _t stats = {},	\
+	       }
+
+
+/** Macro used to increment one field in the statistics structure
+ *
+ *  Code which needs to update some statistics can use this macro to increment a variable which contains
+ *  stats for the local module / etc.
+ */
+#define FR_STATS_INC(_var, _field) ((_var)->stats.(_field))++
+
+/** Macro used to reference a field in the statistics structure
+ *
+ *  Code which needs to mangle a field of the statistics can use this macro to get the correct field name.
+ */
+#define FR_STATS_FIELD(_var, _field) (_var)->stats.(_field)
 
 int	fr_stats_to_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_stats_instance_t const *in) CC_HINT(nonnull);
 int	fr_stats_from_pairs(TALLOC_CTX *ctx, fr_stats_instance_t *out, fr_pair_list_t *in) CC_HINT(nonnull);

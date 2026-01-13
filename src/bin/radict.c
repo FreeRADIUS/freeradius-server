@@ -44,7 +44,6 @@ typedef enum {
 	RADICT_OUT_DICT,
 	RADICT_OUT_STRUCT,
 	RADICT_OUT_STATS_LINK,
-	RADICT_OUT_ATTRS_H,
 	RADICT_OUT_BASE_C_DA_DEF,
 	RADICT_OUT_ATTR_AUTOLOAD,
 	RADICT_OUT_STATS_H,
@@ -502,7 +501,7 @@ static void da_print_struct(FILE *fp, fr_dict_attr_t const *parent)
 	fprintf(fp, "_t;\n");
 }
 
-static void da_print_attr_def(FILE *fp, fr_dict_attr_t const *parent, char const *prefix)
+static void da_print_base_c_da_def(FILE *fp, fr_dict_attr_t const *parent)
 {
 	int i;
 	fr_dict_attr_t const *da;
@@ -512,10 +511,10 @@ static void da_print_attr_def(FILE *fp, fr_dict_attr_t const *parent, char const
 
 	da_normalize_name(parent, parent_name);
 
-	fprintf(fp, "%sfr_dict_attr_t const *attr_%s;\n", prefix, parent_name);
+	fprintf(fp, "static fr_dict_attr_t const *attr_%s;\n", parent_name);
 
 	for (i = 1; (da = fr_dict_attr_child_by_num(parent, i)) != NULL; i++) {
-		fprintf(fp, "%sfr_dict_attr_t const *attr_%s_", prefix, parent_name);
+		fprintf(fp, "static fr_dict_attr_t const *attr_%s_", parent_name);
 		da_print_name(fp, da);
 		fprintf(fp, ";\n");
 	}
@@ -523,15 +522,6 @@ static void da_print_attr_def(FILE *fp, fr_dict_attr_t const *parent, char const
 	fprintf(fp, "\n\n");
 }
 
-static void da_print_attrs_h(FILE *fp, fr_dict_attr_t const *parent)
-{
-	da_print_attr_def(fp, parent, "extern HIDDEN ");
-}
-
-static void da_print_base_c_da_def(FILE *fp, fr_dict_attr_t const *parent)
-{
-	da_print_attr_def(fp, parent, "");
-}
 
 /** Map data types to enum names representing those types
  */
@@ -606,7 +596,7 @@ static void da_print_stats_link(FILE *fp, fr_dict_attr_t const *parent)
 	}
 	fprintf(fp, "\t.num_elements = %d,\n", num_elements);
 
-	fprintf(fp, "\t.entry = (fr_stats_link_entry_t[]) { /* -Wgnu-flexible-array-initializer */\n");
+	fprintf(fp, "\t.entry = {\n");
 
 	/*
 	 *	For locality, also print out data type and size.  That way we _can_ dereference the da, but we
@@ -678,6 +668,8 @@ static void da_print_stats_h(FILE *fp, fr_dict_attr_t const *parent)
 
 	fprintf(fp, "\n");
 
+	fprintf(fp, "FR_STATS_TYPEDEF(%s_%s);\n\n", dict_name, parent_name);
+
 	fprintf(fp, "extern fr_stats_link_t const fr_stats_link_%s_%s;\n\n", dict_name, parent_name);
 }
 
@@ -738,7 +730,6 @@ static fr_table_num_ordered_t const format_table[] = {
 	{ L("dict"),		RADICT_OUT_DICT },
 	{ L("struct"),		RADICT_OUT_STRUCT },
 	{ L("stats_link"),	RADICT_OUT_STATS_LINK },
-	{ L("attrs.h"),		RADICT_OUT_ATTRS_H },
 	{ L("da_def"),		RADICT_OUT_BASE_C_DA_DEF },
 	{ L("attr_autoload"),	RADICT_OUT_ATTR_AUTOLOAD },
 	{ L("stats.h"),		RADICT_OUT_STATS_H },
@@ -751,7 +742,6 @@ static fr_table_ptr_ordered_t const function_table[] = {
 	{ L("dict"),		NULL },
 	{ L("struct"),		(void *) da_print_struct },
 	{ L("stats_link"),	(void *) da_print_stats_link },
-	{ L("attrs.h"),		(void *) da_print_attrs_h },
 	{ L("da_def"),		(void *) da_print_base_c_da_def },
 	{ L("attr_autoload"),	(void *) da_print_attr_autoload },
 	{ L("stats.h"),		(void *) da_print_stats_h },

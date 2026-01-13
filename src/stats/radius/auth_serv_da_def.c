@@ -1,0 +1,17 @@
+static fr_dict_attr_t const *attr_auth_serv;
+static fr_dict_attr_t const *attr_auth_serv_ident;
+static fr_dict_attr_t const *attr_auth_serv_up_time;
+static fr_dict_attr_t const *attr_auth_serv_reset_time;
+static fr_dict_attr_t const *attr_auth_serv_config_reset;
+static fr_dict_attr_t const *attr_auth_serv_total_access_requests;
+static fr_dict_attr_t const *attr_auth_serv_total_invalid_requests;
+static fr_dict_attr_t const *attr_auth_serv_total_dup_access_requests;
+static fr_dict_attr_t const *attr_auth_serv_total_access_accepts;
+static fr_dict_attr_t const *attr_auth_serv_total_access_rejects;
+static fr_dict_attr_t const *attr_auth_serv_total_access_challenges;
+static fr_dict_attr_t const *attr_auth_serv_total_malformed_access_requests;
+static fr_dict_attr_t const *attr_auth_serv_total_bad_authenticators;
+static fr_dict_attr_t const *attr_auth_serv_total_packets_dropped;
+static fr_dict_attr_t const *attr_auth_serv_total_unknown_types;
+
+
