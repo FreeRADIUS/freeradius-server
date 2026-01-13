@@ -1058,6 +1058,11 @@ ssize_t		fr_value_box_ipaddr_from_network(fr_value_box_t *dst, fr_type_t type, f
 						 int prefix_len, uint8_t const *data, size_t data_len, bool fixed, bool tainted)
 		CC_HINT(nonnull(1,5));
 
+ssize_t		fr_value_box_from_memory(TALLOC_CTX *ctx,
+					 fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
+					 void const *src, size_t len)
+		CC_HINT(nonnull(2,5));
+
 int		fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 				  fr_value_box_t const *src)

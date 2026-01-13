@@ -2421,6 +2421,77 @@ ssize_t fr_value_box_ipaddr_from_network(fr_value_box_t *dst, fr_type_t type, fr
 	return data_len;
 }
 
+/** Decode a #fr_value_box_t from a C type in memory
+ *
+ *  We ignore arrays
+ *
+ * @param[in] ctx	Where to allocate any talloc buffers required.
+ * @param[out] dst	value_box to write the result to.
+ * @param[in] type	to decode data to.
+ * @param[in] enumv	Aliases for values.
+ * @param[in] src	raw pointer to the (possibly unaligned) source
+ * @param[in] len	Length of data to decode.  For fixed length types we only
+ *			decode complete values.
+ * @return
+ *	- >= 0 The number of bytes consumed.
+ *	- <0 an error occured
+ */
+ssize_t	fr_value_box_from_memory(TALLOC_CTX *ctx,
+				 fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
+				 void const *src, size_t len)
+{
+	switch (type) {
+	case FR_TYPE_INTEGER_EXCEPT_BOOL:
+	case FR_TYPE_FLOAT32:
+	case FR_TYPE_FLOAT64:
+		if (len != fr_value_box_field_sizes[type]) {
+			fr_strerror_printf("Invalid size passed for type %s - expected %zu got %zu",
+					   fr_type_to_str(type), fr_value_box_field_sizes[type], len);
+				return -1;
+		}
+
+		fr_value_box_init(dst, type, enumv, false);
+		memcpy(&dst->datum, src, len);
+		break;
+
+	case FR_TYPE_IPV4_ADDR:
+		if (len != sizeof(struct in_addr)) {
+			fr_strerror_printf("Invalid size passed for type %s - expected %zu got %zu",
+					   fr_type_to_str(type), sizeof(struct in_addr), len);
+				return -1;
+		}
+
+		fr_value_box_init(dst, type, enumv, false);
+		memcpy(&dst->vb_ipv4addr, src, len);
+		break;
+
+	case FR_TYPE_IPV6_ADDR:
+		if (len != sizeof(struct in6_addr)) {
+			fr_strerror_printf("Invalid size passed for type %s - expected %zu got %zu",
+					   fr_type_to_str(type), sizeof(struct in6_addr), len);
+			return -1;
+		}
+
+		fr_value_box_init(dst, type, enumv, false);
+		memcpy(&dst->vb_ipv6addr, src, len);
+		break;
+
+	case FR_TYPE_STRING:
+		return fr_value_box_bstrndup(ctx, dst, enumv, src, len, false);
+
+	case FR_TYPE_OCTETS:
+		return fr_value_box_memdup(ctx, dst, enumv, src, len, false);
+
+	default:
+		fr_strerror_printf("Unsupported data type %s",
+				   fr_type_to_str(type));
+		return -1;
+	}
+
+	return len;
+}
+
+
 /** Get a key from a value box
  *
  * @param[in,out] out - set to a small buffer on input.  If the callback has more data
