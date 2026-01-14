@@ -30,9 +30,9 @@ fr_stats_link_t const fr_stats_link_radius_acc_serv = {
 			.size = 4,
 		},
 		{
-			.da_p = &attr_acc_serv_total_access_requests,
+			.da_p = &attr_acc_serv_totals_requests,
 			.type = FR_TYPE_UINT32,
-			.offset = offsetof(fr_stats_radius_acc_serv_t, total_access_requests),
+			.offset = offsetof(fr_stats_radius_acc_serv_t, totals_requests),
 			.size = 4,
 		},
 		{
@@ -54,9 +54,9 @@ fr_stats_link_t const fr_stats_link_radius_acc_serv = {
 			.size = 4,
 		},
 		{
-			.da_p = &attr_acc_serv_total_malformed_access_requests,
+			.da_p = &attr_acc_serv_total_malformed_requests,
 			.type = FR_TYPE_UINT32,
-			.offset = offsetof(fr_stats_radius_acc_serv_t, total_malformed_access_requests),
+			.offset = offsetof(fr_stats_radius_acc_serv_t, total_malformed_requests),
 			.size = 4,
 		},
 		{

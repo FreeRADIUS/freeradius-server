@@ -6,11 +6,11 @@ typedef struct {
 	fr_time_delta_t	up_time;
 	fr_time_delta_t	reset_time;
 	uint32_t	config_reset;
-	uint32_t	total_access_requests;
+	uint32_t	totals_requests;
 	uint32_t	total_invalid_requests;
 	uint32_t	total_dup_requests;
 	uint32_t	total_responses;
-	uint32_t	total_malformed_access_requests;
+	uint32_t	total_malformed_requests;
 	uint32_t	total_bad_authenticators;
 	uint32_t	total_packets_dropped;
 	uint32_t	total_no_records;

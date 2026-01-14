@@ -45,11 +45,11 @@ ATTRIBUTE	radiusAccServIdent			.1	string
 ATTRIBUTE	radiusAccServUpTime			.2	time_delta precision=centiseconds
 ATTRIBUTE	radiusAccServResetTime			.3	time_delta precision=centiseconds
 ATTRIBUTE	radiusAccServConfigReset		.4	uint32
-ATTRIBUTE	radiusAccServTotalAccessRequests	.5	uint32 counter
+ATTRIBUTE	radiusAccServTotalsRequests		.5	uint32 counter
 ATTRIBUTE	radiusAccServTotalInvalidRequests	.6	uint32 counter
 ATTRIBUTE	radiusAccServTotalDupRequests		.7	uint32 counter
 ATTRIBUTE	radiusAccServTotalResponses		.8	uint32 counter
-ATTRIBUTE	radiusAccServTotalMalformedAccessRequests .9	uint32 counter
+ATTRIBUTE	radiusAccServTotalMalformedRequests	.9	uint32 counter
 ATTRIBUTE	radiusAccServTotalBadAuthenticators	.10	uint32 counter
 ATTRIBUTE	radiusAccServTotalPacketsDropped	.11	uint32 counter
 ATTRIBUTE	radiusAccServTotalNoRecords		.12	uint32 counter
