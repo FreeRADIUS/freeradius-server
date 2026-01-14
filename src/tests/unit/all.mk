@@ -90,12 +90,12 @@ $(filter $(BUILD_DIR)/tests/unit/purify/%,$(FILES.$(TEST))): PURIFY=-p
 $(addprefix $(OUTPUT)/,$(FILES_NORMAL)) &: $(addprefix src/tests/unit/,$(FILES_NORMAL))
 	$(eval DIR:=${top_srcdir}/src/tests/unit)
 	$(eval export UNIT_TEST_ATTRIBUTE:=TZ=GMT $(TEST_BIN_NO_TIMEOUT)/unit_test_attribute $(PURIFY) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r build/tests/unit/)
-	${Q}$(TEST_BIN)/unit_test_attribute $(REWRITE_FLAGS) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r build/tests/unit/ $(filter src/tests/unit/%,$?)
+	${Q}$(TEST_BIN)/unit_test_attribute $(REWRITE_FLAGS) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r build/tests/unit/ $(filter src/tests/unit/%,$(filter-out build/%,$?))
 
 $(addprefix $(OUTPUT)/,$(FILES_PURIFY)) &: $(addprefix src/tests/unit/,$(FILES_PURIFY))
 	$(eval DIR:=${top_srcdir}/src/tests/unit)
 	$(eval export UNIT_TEST_ATTRIBUTE:=TZ=GMT $(TEST_BIN_NO_TIMEOUT)/unit_test_attribute $(PURIFY) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -p -r build/tests/unit/)
-	${Q}$(TEST_BIN)/unit_test_attribute $(REWRITE_FLAGS) -p -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r build/tests/unit/ $(filter src/tests/unit/%,$?)
+	${Q}$(TEST_BIN)/unit_test_attribute $(REWRITE_FLAGS) -p -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r build/tests/unit/ $(filter src/tests/unit/%,$(filter-out build/%,$?))
 
 #
 #  And the actual script to run each test.

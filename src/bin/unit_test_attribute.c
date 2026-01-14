@@ -4539,7 +4539,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Read test commands from stdin
 	 */
-	if (argc < 2) {
+	if ((argc < 2) && !receipt_dir) {
 		if (write_filename) {
 			ERROR("Can only use '-w' with input files");
 			EXIT_WITH_FAILURE;
@@ -4582,7 +4582,7 @@ int main(int argc, char *argv[])
 				if ((ret != EXIT_SUCCESS) || exit_now) break;
 			}
 
-	} else {
+	} else if (argc > 1) {
 		int i;
 
 		/*
@@ -4592,7 +4592,7 @@ int main(int argc, char *argv[])
 			ret = process_path(&exit_now, autofree, &config, argv[i]);
 			if ((ret != EXIT_SUCCESS) || exit_now) break;
 		}
-	}
+	} /* nothing to do */
 
 	/*
 	 *	Try really hard to free any allocated
