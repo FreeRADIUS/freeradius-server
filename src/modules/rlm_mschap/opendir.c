@@ -230,6 +230,13 @@ static unlang_action_t getUserNodeRef(unlang_result_t *p_result, request_t *requ
 	RETURN_UNLANG_RCODE(result);
 }
 
+/*
+ *	DirServicesTypes.h defines "char fBufferData[1];" as a
+ *	old-style declaration, instead of as a new-style indeterminate
+ *	array.
+ */
+DIAG_OFF(array-bounds)
+
 unlang_action_t od_mschap_auth(unlang_result_t *p_result, request_t *request, fr_pair_t *challenge, fr_pair_t *usernamepair,
 			       mschap_auth_call_env_t *env_data)
 {
