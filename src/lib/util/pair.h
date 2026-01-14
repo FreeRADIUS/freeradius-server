@@ -844,6 +844,8 @@ static inline fr_slen_t CC_HINT(nonnull(2,3))
 					    fr_pair_t const *vp, fr_token_t quote)
 		SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_pair_print_value_quoted, vp, quote)
 
+ssize_t		fr_pair_print_name(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_t const **vp_p);
+
 ssize_t		fr_pair_print(fr_sbuff_t *out, fr_dict_attr_t const *parent,
 			      fr_pair_t const *vp) CC_HINT(nonnull(1,3));
 
@@ -861,11 +863,11 @@ static inline fr_slen_t CC_HINT(nonnull(2,4))
 		SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_pair_print_secure, parent, vp)
 
 #define		fr_pair_list_log(_log, _lvl, _list) _fr_pair_list_log(_log, _lvl, NULL, _list, __FILE__, __LINE__)
-void		_fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent,
+void		_fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t const *parent,
 				  fr_pair_list_t const *list, char const *file, int line) CC_HINT(nonnull(1,4));
 
 void		fr_pair_list_debug(FILE *fp, fr_pair_list_t const *list) CC_HINT(nonnull);
-void		_fr_pair_list_debug(FILE *fp, int lvl, fr_pair_t *parent, fr_pair_list_t const *list)
+void		_fr_pair_list_debug(FILE *fp, int lvl, fr_pair_t const *parent, fr_pair_list_t const *list)
 				    CC_HINT(nonnull(1, 4));
 void		fr_pair_debug(FILE *fp, fr_pair_t const *pair) CC_HINT(nonnull);
 

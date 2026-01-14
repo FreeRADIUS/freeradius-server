@@ -109,7 +109,7 @@ done:
 }
 
 
-static void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp);
+static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp);
 
 static void xlat_debug_attr_list(request_t *request, fr_pair_list_t const *list)
 {
@@ -128,15 +128,30 @@ static xlat_arg_parser_t const xlat_pair_cursor_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-static void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp)
+static void xlat_debug_attr_vp(request_t *request, fr_pair_t const *vp)
 {
 	fr_dict_vendor_t const		*vendor;
 	fr_table_num_ordered_t const	*type;
 	size_t				i;
+	ssize_t				slen;
+	char const			*name;
+	char				buffer[1024];
+
+	/*
+	 *	Squash the names down if necessary.
+	 */
+	if (!RDEBUG_ENABLED3) {
+		slen = fr_pair_print_name(&FR_SBUFF_OUT(buffer, sizeof(buffer)), NULL, &vp);
+		if (slen <= 0) return;
+		name = buffer;
+
+	} else {
+		name = vp->da->name;
+	}
 
 	switch (vp->vp_type) {
 	case FR_TYPE_STRUCTURAL:
-		RIDEBUG2("%s = {", vp->da->name);
+		RIDEBUG2("%s = {", name);
 		RINDENT();
 		xlat_debug_attr_list(request, &vp->vp_group);
 		REXDENT();
@@ -144,7 +159,7 @@ static void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp)
 		break;
 
 	default:
-		RIDEBUG2("%s = %pV", vp->da->name, &vp->data);
+		RIDEBUG2("%s = %pV", name, &vp->data);
 	}
 
 	if (!RDEBUG_ENABLED3) return;
@@ -194,9 +209,10 @@ static void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp)
 		 */
 		if (!fr_type_is_leaf(type->value) || !fr_type_is_leaf(vp->vp_type)) goto next_type;
 
-		MEM(dst = fr_value_box_alloc_null(vp));
+		MEM(dst = fr_value_box_acopy(NULL, &vp->data));
+
 		/* We expect some to fail */
-		if (fr_value_box_cast(dst, dst, type->value, NULL, &vp->data) < 0) {
+		if (fr_value_box_cast_in_place(dst, dst, type->value, NULL) < 0) {
 			goto next_type;
 		}
 

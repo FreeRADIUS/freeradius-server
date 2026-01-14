@@ -211,7 +211,7 @@ static int tmpl_to_values(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
 
 static void edit_debug_attr_list(request_t *request, fr_pair_list_t const *list, map_t const *map);
 
-static void edit_debug_attr_vp(request_t *request, fr_pair_t *vp, map_t const *map)
+static void edit_debug_attr_vp(request_t *request, fr_pair_t const *vp, map_t const *map)
 {
 	fr_assert(vp != NULL);
 
@@ -230,9 +230,28 @@ static void edit_debug_attr_vp(request_t *request, fr_pair_t *vp, map_t const *m
 			break;
 		}
 	} else {
+		size_t slen;
+		char const *name;
+		fr_sbuff_t sbuff;
+		char buffer[1024];
+
+		sbuff = FR_SBUFF_OUT(buffer, sizeof(buffer));
+
+		/*
+		 *	Squash the names down if necessary.
+		 */
+		if (!RDEBUG_ENABLED3) {
+			slen = fr_pair_print_name(&sbuff, NULL, &vp);
+			if (slen <= 0) return;
+			name = buffer;
+
+		} else {
+			name = vp->da->name;
+		}
+
 		switch (vp->vp_type) {
 		case FR_TYPE_STRUCTURAL:
-                        RDEBUG2("%s = {", vp->da->name);
+                        RDEBUG2("%s = {", name);
 			RINDENT();
 			edit_debug_attr_list(request, &vp->vp_group, NULL);
 			REXDENT();
@@ -240,7 +259,8 @@ static void edit_debug_attr_vp(request_t *request, fr_pair_t *vp, map_t const *m
 			break;
 
 		default:
-			RDEBUG_ASSIGN(vp->da->name, vp->op, &vp->data);
+			if (fr_pair_print_value_quoted(&sbuff, vp, T_DOUBLE_QUOTED_STRING) <= 0) return;
+			RDEBUG2("%s", fr_sbuff_start(&sbuff));
 			break;
 		}
 	}

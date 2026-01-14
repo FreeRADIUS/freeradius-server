@@ -21,7 +21,7 @@
  */
 #define fr_pair_reset_parent(parent) do {		\
 	if (!parent) break;				\
-	fr_assert(parent != vp->da);			\
+	fr_assert((parent != vp->da) || (parent->type == FR_TYPE_GROUP)); \
 	fr_assert(fr_type_is_structural(parent->type));	\
 	if (parent->type == FR_TYPE_GROUP) {		\
 		parent = fr_dict_attr_ref(parent);	\
@@ -133,7 +133,7 @@ static ssize_t fr_pair_print_value(fr_sbuff_t *out, fr_pair_t const *vp)
  *	- Length of data written to out.
  *	- value >= outlen on truncation.
  */
-static ssize_t fr_pair_print_name(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_t const **vp_p)
+ssize_t fr_pair_print_name(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_t const **vp_p)
 {
 	char const		*token;
 	fr_pair_t const		*vp = *vp_p;
@@ -341,34 +341,30 @@ ssize_t fr_pair_list_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pai
 	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
-static void fr_pair_list_log_sbuff(fr_log_t const *log, int lvl, fr_pair_t *parent, fr_pair_list_t const *list, char const *file, int line, fr_sbuff_t *sbuff)
+static void fr_pair_list_log_sbuff(fr_log_t const *log, int lvl, fr_pair_t const *parent, fr_pair_list_t const *list, char const *file, int line, fr_sbuff_t *sbuff)
 {
-	fr_dict_attr_t const *parent_da = NULL;
-
 	fr_pair_list_foreach(list, vp) {
+		fr_pair_t const *child = vp;
+
 		PAIR_VERIFY_WITH_LIST(list, vp);
 
 		fr_sbuff_set_to_start(sbuff);
 
-		if (vp->vp_raw) (void) fr_sbuff_in_strcpy(sbuff, "raw.");
-
-		if (parent && (parent->vp_type != FR_TYPE_GROUP)) parent_da = parent->da;
-		if (fr_dict_attr_oid_print(sbuff, parent_da, vp->da, false) <= 0) return;
+		if (fr_pair_print_name(sbuff, parent ? parent->da : NULL, &child) <= 0) return;
 
 		/*
 		 *	Recursively print grouped attributes.
 		 */
-		switch (vp->vp_type) {
+		switch (child->vp_type) {
 		case FR_TYPE_STRUCTURAL:
 			fr_log(log, L_DBG, file, line, "%*s%*s {", lvl * 2, "",
 			       (int) fr_sbuff_used(sbuff), fr_sbuff_start(sbuff));
-			_fr_pair_list_log(log, lvl + 1, vp, &vp->vp_group, file, line);
+			_fr_pair_list_log(log, lvl + 1, child, &child->vp_group, file, line);
 			fr_log(log, L_DBG, file, line, "%*s}", lvl * 2, "");
 			break;
 
 		default:
-			(void) fr_sbuff_in_strcpy(sbuff, " = ");
-			if (fr_pair_print_value(sbuff, vp) < 0) break;
+			if (fr_pair_print_value(sbuff, child) < 0) break;
 
 			fr_log(log, L_DBG, file, line, "%*s%*s", lvl * 2, "",
 			       (int) fr_sbuff_used(sbuff), fr_sbuff_start(sbuff));
@@ -386,7 +382,7 @@ static void fr_pair_list_log_sbuff(fr_log_t const *log, int lvl, fr_pair_t *pare
  * @param[in] file	where the message originated
  * @param[in] line	where the message originated
  */
-void _fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent, fr_pair_list_t const *list, char const *file, int line)
+void _fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t const *parent, fr_pair_list_t const *list, char const *file, int line)
 {
 	fr_sbuff_t sbuff;
 	char buffer[1024];
@@ -398,33 +394,29 @@ void _fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent, fr_pair_
 	fr_pair_list_log_sbuff(log, lvl, parent, list, file, line, &sbuff);
 }
 
-static void fr_pair_list_debug_sbuff(FILE *fp, int lvl, fr_pair_t *parent, fr_pair_list_t const *list, fr_sbuff_t *sbuff)
+static void fr_pair_list_debug_sbuff(FILE *fp, int lvl, fr_pair_t const *parent, fr_pair_list_t const *list, fr_sbuff_t *sbuff)
 {
-	fr_dict_attr_t const *parent_da = NULL;
-
 	fr_pair_list_foreach(list, vp) {
+		fr_pair_t const *child = vp;
+
 		PAIR_VERIFY_WITH_LIST(list, vp);
 
 		fr_sbuff_set_to_start(sbuff);
 
-		if (vp->vp_raw) (void) fr_sbuff_in_strcpy(sbuff, "raw.");
-
-		if (parent && (parent->vp_type != FR_TYPE_GROUP)) parent_da = parent->da;
-		if (fr_dict_attr_oid_print(sbuff, parent_da, vp->da, false) <= 0) return;
+		if (fr_pair_print_name(sbuff, parent ? parent->da : NULL, &child) <= 0) return;
 
 		/*
 		 *	Recursively print grouped attributes.
 		 */
-		switch (vp->vp_type) {
+		switch (child->vp_type) {
 		case FR_TYPE_STRUCTURAL:
 			fprintf(fp, "%*s%*s {\n", lvl * 2, "", (int) fr_sbuff_used(sbuff), fr_sbuff_start(sbuff));
-			_fr_pair_list_debug(fp, lvl + 1, vp, &vp->vp_group);
+			_fr_pair_list_debug(fp, lvl + 1, child, &child->vp_group);
 			fprintf(fp, "%*s}\n", lvl * 2, "");
 			break;
 
 		default:
-			(void) fr_sbuff_in_strcpy(sbuff, " = ");
-			if (fr_value_box_print_quoted(sbuff, &vp->data, T_DOUBLE_QUOTED_STRING)< 0) break;
+			if (fr_value_box_print_quoted(sbuff, &child->data, T_DOUBLE_QUOTED_STRING)< 0) break;
 
 			fprintf(fp, "%*s%*s\n", lvl * 2, "", (int) fr_sbuff_used(sbuff), fr_sbuff_start(sbuff));
 		}
@@ -438,7 +430,7 @@ static void fr_pair_list_debug_sbuff(FILE *fp, int lvl, fr_pair_t *parent, fr_pa
  * @param[in] parent	parent attribute
  * @param[in] list	to print.
  */
-void _fr_pair_list_debug(FILE *fp, int lvl, fr_pair_t *parent, fr_pair_list_t const *list)
+void _fr_pair_list_debug(FILE *fp, int lvl, fr_pair_t const *parent, fr_pair_list_t const *list)
 {
 	fr_sbuff_t sbuff;
 	char buffer[1024];

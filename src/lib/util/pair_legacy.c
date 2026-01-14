@@ -497,6 +497,11 @@ redo:
 			goto error;
 		}
 
+		/*
+		 *	People can use this, but it doesn't mean anything.
+		 */
+		if (op == T_OP_SET) op = T_OP_EQ;
+
 	} else {
 		/*
 		 *	@todo - handle different operators ala v3?
