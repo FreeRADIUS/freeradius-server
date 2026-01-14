@@ -140,13 +140,17 @@ typedef struct {
 #define FR_STATS_FIELD(_var, _field) (_var)->stats.(_field)
 
 int	fr_stats_to_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_stats_instance_t const *in) CC_HINT(nonnull);
-int	fr_stats_from_pairs(TALLOC_CTX *ctx, fr_stats_instance_t *out, fr_pair_list_t *in) CC_HINT(nonnull);
-int	fr_stats_merge(fr_stats_instance_t *out, fr_stats_instance_t const *in) CC_HINT(nonnull);
+int	fr_stats_from_pairs(TALLOC_CTX *ctx, fr_stats_instance_t *out, fr_pair_list_t const *list) CC_HINT(nonnull);
+int	fr_stats_merge_instance(fr_stats_instance_t *out, fr_stats_instance_t const *in) CC_HINT(nonnull);
+int	fr_stats_merge_value_box(fr_value_box_t *dst, fr_value_box_t const *src) CC_HINT(nonnull);
 
 void	fr_stats_iter_init(fr_stats_instance_t const *in, fr_stats_iter_t *iter) CC_HINT(nonnull);
 bool	fr_stats_iter_next(fr_stats_iter_t *iter) CC_HINT(nonnull);
 int	fr_stats_iter_to_value_box(TALLOC_CTX *ctx, fr_value_box_t **out, fr_stats_iter_t *iter) CC_HINT(nonnull);
-int	fr_stats_index_to_value_box(TALLOC_CTX *ctx, fr_value_box_t **out, fr_stats_instance_t const *in, unsigned int index) CC_HINT(nonnull);
+int	fr_stats_index_to_value_box(TALLOC_CTX *ctx, fr_value_box_t **out,
+				    fr_stats_instance_t const *in, unsigned int index) CC_HINT(nonnull);
+int	fr_stats_name_to_value_box(TALLOC_CTX *ctx, fr_value_box_t **out,
+				   fr_stats_instance_t const *inst, char const *name) CC_HINT(nonnull);
 
 
 #ifdef __cplusplus
