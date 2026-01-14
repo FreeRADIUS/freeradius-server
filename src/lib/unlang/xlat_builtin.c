@@ -109,12 +109,26 @@ done:
 }
 
 
+static void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp);
+
+static void xlat_debug_attr_list(request_t *request, fr_pair_list_t const *list)
+{
+	fr_pair_t *vp;
+
+	for (vp = fr_pair_list_next(list, NULL);
+	     vp != NULL;
+	     vp = fr_pair_list_next(list, vp)) {
+		xlat_debug_attr_vp(request, vp);
+	}
+}
+
+
 static xlat_arg_parser_t const xlat_pair_cursor_args[] = {
 	XLAT_ARG_PARSER_CURSOR,
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
+static void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp)
 {
 	fr_dict_vendor_t const		*vendor;
 	fr_table_num_ordered_t const	*type;
@@ -122,13 +136,7 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 
 	switch (vp->vp_type) {
 	case FR_TYPE_STRUCTURAL:
-		if (vpt) {
-			RIDEBUG2("%s.%s = {",
-				 tmpl_list_name(tmpl_list(vpt), "<INVALID>"),
-				 vp->da->name);
-		} else {
-			RIDEBUG2("%s = {", vp->da->name);
-		}
+		RIDEBUG2("%s = {", vp->da->name);
 		RINDENT();
 		xlat_debug_attr_list(request, &vp->vp_group);
 		REXDENT();
@@ -136,14 +144,7 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 		break;
 
 	default:
-		if (vpt) {
-			RIDEBUG2("%s.%s = %pV",
-				 tmpl_list_name(tmpl_list(vpt), "<INVALID>"),
-				 vp->da->name,
-				 &vp->data);
-		} else {
-			RIDEBUG2("%s = %pV", vp->da->name, &vp->data);
-		}
+		RIDEBUG2("%s = %pV", vp->da->name, &vp->data);
 	}
 
 	if (!RDEBUG_ENABLED3) return;
@@ -212,17 +213,6 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 	REXDENT();
 }
 
-void xlat_debug_attr_list(request_t *request, fr_pair_list_t const *list)
-{
-	fr_pair_t *vp;
-
-	for (vp = fr_pair_list_next(list, NULL);
-	     vp != NULL;
-	     vp = fr_pair_list_next(list, vp)) {
-		xlat_debug_attr_vp(request, vp, NULL);
-	}
-}
-
 /** Common function to move boxes from input list to output list
  *
  * This can be used to implement safe_for functions, as the xlat framework
@@ -278,7 +268,7 @@ static xlat_action_t xlat_func_pairs_debug(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	for (vp = fr_dcursor_current(cursor);
 	     vp;
 	     vp = fr_dcursor_next(cursor)) {
-		xlat_debug_attr_vp(request, vp, NULL); /* @todo - pass in vpt, too, via the vb_cursor stuff */
+		xlat_debug_attr_vp(request, vp);
 	}
 	REXDENT();
 
